@@ -4,10 +4,23 @@ import (
 	"bytes"
 	"encoding/json"
 	"errors"
+	"fmt"
 	"net/http"
 	"reflect"
 	"sync/atomic"
 )
+
+type ErrClient struct {
+	err error
+}
+
+func (e *ErrClient) Error() string {
+	return fmt.Sprintf("RPC client error: %s", e.err)
+}
+
+func (e *ErrClient) Unwrap(err error) error {
+	return e.err
+}
 
 type result reflect.Value
 
@@ -61,6 +74,20 @@ func NewClient(addr string, namespace string, handler interface{}) {
 			return out
 		}
 
+		processError := func(err error) []reflect.Value{
+			out := make([]reflect.Value, nout)
+
+			if valOut != -1 {
+				out[valOut] = reflect.New(ftyp.Out(valOut)).Elem()
+			}
+			if errOut != -1 {
+				out[errOut] = reflect.New(reflect.TypeOf(new(error)).Elem()).Elem()
+				out[errOut].Set(reflect.ValueOf(&ErrClient{err}))
+			}
+
+			return out
+		}
+
 		fn := reflect.MakeFunc(ftyp, func(args []reflect.Value) (results []reflect.Value) {
 			id := atomic.AddInt64(&idCtr, 1)
 			params := make([]param, len(args))
@@ -79,21 +106,18 @@ func NewClient(addr string, namespace string, handler interface{}) {
 
 			b, err := json.Marshal(&req)
 			if err != nil {
-				// TODO: try returning an error if the method has one
-				panic(err)
+				return processError(err)
 			}
 
 			httpResp, err := http.Post(addr, "application/json", bytes.NewReader(b))
 			if err != nil {
-				// TODO: try returning an error if the method has one
-				panic(err)
+				return processError(err)
 			}
 			defer httpResp.Body.Close()
 
+			// TODO: check error codes in spec
 			if httpResp.StatusCode != 200 {
-				// TODO: try returning an error if the method has one
-				// TODO: actually parse response, it haz right errors
-				panic("non 200 code")
+				return processError(errors.New("non 200 response code"))
 			}
 
 			var resp clientResponse
@@ -102,13 +126,11 @@ func NewClient(addr string, namespace string, handler interface{}) {
 			}
 
 			if err := json.NewDecoder(httpResp.Body).Decode(&resp); err != nil {
-				// TODO: try returning an error if the method has one
-				panic(err)
+				return processError(err)
 			}
 
 			if resp.Id != *req.Id {
-				// TODO: try returning an error if the method has one
-				panic("request and response id didn't match")
+				return processError(errors.New("request and response id didn't match"))
 			}
 
 			return processResponse(resp)

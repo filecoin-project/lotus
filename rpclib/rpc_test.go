@@ -142,4 +142,23 @@ func TestRPC(t *testing.T) {
 	// shouldn't panic
 	noparam.Add()
 
+	var erronly struct {
+		Add func() error
+	}
+	NewClient(testServ.URL, "SimpleServerHandler", &erronly)
+
+	err = erronly.Add()
+	if err == nil || err.Error() != "RPC client error: non 200 response code" {
+		t.Error("wrong error")
+	}
+
+	var wrongtype struct {
+		Add func(string) error
+	}
+	NewClient(testServ.URL, "SimpleServerHandler", &wrongtype)
+
+	err = wrongtype.Add("not an int")
+	if err == nil || err.Error() != "RPC client error: non 200 response code" {
+		t.Error("wrong error")
+	}
 }
