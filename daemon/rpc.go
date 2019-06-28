@@ -19,9 +19,7 @@ func serveRPC() error {
 	fc := new(Filecoin)
 
 	rpcServer := rpclib.NewServer()
-
 	rpcServer.Register(fc)
-
 	http.Handle("/rpc/v0", rpcServer)
 	return http.ListenAndServe(":1234", http.DefaultServeMux)
 }

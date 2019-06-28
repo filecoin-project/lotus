@@ -5,7 +5,6 @@ import (
 	"encoding/json"
 	"fmt"
 	"net/http"
-	"os"
 	"reflect"
 )
 
@@ -31,7 +30,9 @@ func NewServer() *RPCServer {
 }
 
 type param struct {
-	data []byte
+	data []byte // from unmarshal
+
+	v reflect.Value // to marshal
 }
 
 func (p *param) UnmarshalJSON(raw []byte) error {
@@ -40,9 +41,13 @@ func (p *param) UnmarshalJSON(raw []byte) error {
 	return nil
 }
 
+func (p *param) MarshalJSON() ([]byte, error) {
+	return json.Marshal(p.v.Interface())
+}
+
 type request struct {
 	Jsonrpc string  `json:"jsonrpc"`
-	Id      *int    `json:"id,omitempty"`
+	Id      *int64  `json:"id,omitempty"`
 	Method  string  `json:"method"`
 	Params  []param `json:"params"`
 }
@@ -54,8 +59,8 @@ type respError struct {
 
 type response struct {
 	Jsonrpc string      `json:"jsonrpc"`
-	Result  interface{} `json:"result"`
-	Id      int         `json:"id"`
+	Result  interface{} `json:"result,omitempty"`
+	Id      int64       `json:"id"`
 	Error   *respError  `json:"error,omitempty"`
 }
 
@@ -68,6 +73,11 @@ func (s *RPCServer) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 
 	handler, ok := s.methods[req.Method]
 	if !ok {
+		w.WriteHeader(500)
+		return
+	}
+
+	if len(req.Params) != handler.nParams {
 		w.WriteHeader(500)
 		return
 	}
@@ -108,7 +118,10 @@ func (s *RPCServer) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 		resp.Result = callResult[handler.valOut].Interface()
 	}
 
-	json.NewEncoder(os.Stderr).Encode(resp)
+	if err := json.NewEncoder(w).Encode(resp); err != nil {
+		w.WriteHeader(500)
+		return
+	}
 }
 
 func (s *RPCServer) Register(r interface{}) {
@@ -129,26 +142,7 @@ func (s *RPCServer) Register(r interface{}) {
 			recvs[i] = method.Type.In(i + 1)
 		}
 
-		errOut := -1
-		valOut := -1
-
-		switch funcType.NumOut() {
-		case 0:
-		case 1:
-			if funcType.Out(0) == reflect.TypeOf(new(error)).Elem() {
-				errOut = 0
-			} else {
-				valOut = 0
-			}
-		case 2:
-			valOut = 0
-			errOut = 1
-			if funcType.Out(1) != reflect.TypeOf(new(error)).Elem() {
-				panic("expected error as second return value")
-			}
-		default:
-			panic("too many error values")
-		}
+		valOut, errOut, _ := processFuncOut(funcType)
 
 		s.methods[name+"."+method.Name] = rpcHandler{
 			paramReceivers: recvs,
@@ -161,4 +155,30 @@ func (s *RPCServer) Register(r interface{}) {
 			valOut: valOut,
 		}
 	}
+}
+
+func processFuncOut(funcType reflect.Type) (valOut int, errOut int, n int) {
+	errOut = -1
+	valOut = -1
+	n = funcType.NumOut()
+
+	switch n {
+	case 0:
+	case 1:
+		if funcType.Out(0) == reflect.TypeOf(new(error)).Elem() {
+			errOut = 0
+		} else {
+			valOut = 0
+		}
+	case 2:
+		valOut = 0
+		errOut = 1
+		if funcType.Out(1) != reflect.TypeOf(new(error)).Elem() {
+			panic("expected error as second return value")
+		}
+	default:
+		panic("too many error values")
+	}
+
+	return
 }
