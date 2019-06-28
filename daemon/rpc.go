@@ -1,31 +1,27 @@
 package daemon
 
 import (
+	"fmt"
 	"net/http"
 
-	"github.com/gorilla/rpc/v2"
-	"github.com/gorilla/rpc/v2/json"
-
 	"github.com/filecoin-project/go-lotus/build"
+	"github.com/filecoin-project/go-lotus/rpclib"
 )
 
-type Filecoin struct {}
+type Filecoin struct{}
 
-func (*Filecoin) ServerVersion(r *http.Request, _ *struct{}, out *string) error {
-	*out = build.Version
-	return nil
+func (*Filecoin) ServerVersion(in int) (string, error) {
+	fmt.Println(in)
+	return build.Version, nil
 }
 
 func serveRPC() error {
 	fc := new(Filecoin)
 
-	rpcServer := rpc.NewServer()
-	rpcServer.RegisterCodec(json.NewCodec(), "application/json")
-	if err := rpcServer.RegisterService(fc, ""); err != nil {
-		return err
-	}
+	rpcServer := rpclib.NewServer()
+
+	rpcServer.Register(fc)
 
 	http.Handle("/rpc/v0", rpcServer)
 	return http.ListenAndServe(":1234", http.DefaultServeMux)
 }
-

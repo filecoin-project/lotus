@@ -17,8 +17,8 @@ func main() {
 	}
 
 	app := &cli.App{
-		Name: "lotus",
-		Usage: "Filecoin decentralized storage network client",
+		Name:    "lotus",
+		Usage:   "Filecoin decentralized storage network client",
 		Version: build.Version,
 
 		Commands: append(local, lcli.Commands...),

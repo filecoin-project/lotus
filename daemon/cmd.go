@@ -5,7 +5,7 @@ import (
 )
 
 var Cmd = &cli.Command{
-	Name: "daemon",
+	Name:  "daemon",
 	Usage: "Start a lotus daemon process",
 	Action: func(context *cli.Context) error {
 		return serveRPC()
