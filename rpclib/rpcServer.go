@@ -15,6 +15,8 @@ type rpcHandler struct {
 	receiver    reflect.Value
 	handlerFunc reflect.Value
 
+	hasCtx int
+
 	errOut int
 	valOut int
 }
@@ -82,8 +84,12 @@ func (s *RPCServer) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	callParams := make([]reflect.Value, 1+handler.nParams)
+	callParams := make([]reflect.Value, 1+handler.hasCtx+handler.nParams)
 	callParams[0] = handler.receiver
+	if handler.hasCtx == 1 {
+		callParams[1] = reflect.ValueOf(r.Context())
+	}
+
 	for i := 0; i < handler.nParams; i++ {
 		rp := reflect.New(handler.paramReceivers[i])
 		if err := json.NewDecoder(bytes.NewReader(req.Params[i].data)).Decode(rp.Interface()); err != nil {
@@ -92,7 +98,7 @@ func (s *RPCServer) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 			return
 		}
 
-		callParams[i+1] = reflect.ValueOf(rp.Elem().Interface())
+		callParams[i+1+handler.hasCtx] = reflect.ValueOf(rp.Elem().Interface())
 	}
 
 	callResult := handler.handlerFunc.Call(callParams)
@@ -133,13 +139,16 @@ func (s *RPCServer) Register(r interface{}) {
 	for i := 0; i < val.NumMethod(); i++ {
 		method := val.Type().Method(i)
 
-		fmt.Println(name + "." + method.Name)
-
 		funcType := method.Func.Type()
-		ins := funcType.NumIn() - 1
+		hasCtx := 0
+		if funcType.NumIn() >= 2 && funcType.In(1) == contextType {
+			hasCtx = 1
+		}
+
+		ins := funcType.NumIn() - 1 - hasCtx
 		recvs := make([]reflect.Type, ins)
 		for i := 0; i < ins; i++ {
-			recvs[i] = method.Type.In(i + 1)
+			recvs[i] = method.Type.In(i + 1 + hasCtx)
 		}
 
 		valOut, errOut, _ := processFuncOut(funcType)
@@ -150,6 +159,8 @@ func (s *RPCServer) Register(r interface{}) {
 
 			handlerFunc: method.Func,
 			receiver:    val,
+
+			hasCtx: hasCtx,
 
 			errOut: errOut,
 			valOut: valOut,
@@ -165,7 +176,7 @@ func processFuncOut(funcType reflect.Type) (valOut int, errOut int, n int) {
 	switch n {
 	case 0:
 	case 1:
-		if funcType.Out(0) == reflect.TypeOf(new(error)).Elem() {
+		if funcType.Out(0) == errorType {
 			errOut = 0
 		} else {
 			valOut = 0
@@ -173,7 +184,7 @@ func processFuncOut(funcType reflect.Type) (valOut int, errOut int, n int) {
 	case 2:
 		valOut = 0
 		errOut = 1
-		if funcType.Out(1) != reflect.TypeOf(new(error)).Elem() {
+		if funcType.Out(1) != errorType {
 			panic("expected error as second return value")
 		}
 	default:

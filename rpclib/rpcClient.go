@@ -2,12 +2,18 @@ package rpclib
 
 import (
 	"bytes"
+	"context"
 	"encoding/json"
 	"errors"
 	"fmt"
 	"net/http"
 	"reflect"
 	"sync/atomic"
+)
+
+var (
+	errorType = reflect.TypeOf(new(error)).Elem()
+	contextType = reflect.TypeOf(new(context.Context)).Elem()
 )
 
 type ErrClient struct {
@@ -65,7 +71,7 @@ func NewClient(addr string, namespace string, handler interface{}) {
 				out[valOut] = reflect.Value(resp.Result).Elem()
 			}
 			if errOut != -1 {
-				out[errOut] = reflect.New(reflect.TypeOf(new(error)).Elem()).Elem()
+				out[errOut] = reflect.New(errorType).Elem()
 				if resp.Error != nil {
 					out[errOut].Set(reflect.ValueOf(errors.New(resp.Error.Message)))
 				}
@@ -81,17 +87,22 @@ func NewClient(addr string, namespace string, handler interface{}) {
 				out[valOut] = reflect.New(ftyp.Out(valOut)).Elem()
 			}
 			if errOut != -1 {
-				out[errOut] = reflect.New(reflect.TypeOf(new(error)).Elem()).Elem()
+				out[errOut] = reflect.New(errorType).Elem()
 				out[errOut].Set(reflect.ValueOf(&ErrClient{err}))
 			}
 
 			return out
 		}
 
+		hasCtx := 0
+		if ftyp.NumIn() > 0 && ftyp.In(0) == contextType {
+			hasCtx = 1
+		}
+
 		fn := reflect.MakeFunc(ftyp, func(args []reflect.Value) (results []reflect.Value) {
 			id := atomic.AddInt64(&idCtr, 1)
-			params := make([]param, len(args))
-			for i, arg := range args {
+			params := make([]param, len(args) - hasCtx)
+			for i, arg := range args[hasCtx:] {
 				params[i] = param{
 					v: arg,
 				}
@@ -109,11 +120,24 @@ func NewClient(addr string, namespace string, handler interface{}) {
 				return processError(err)
 			}
 
-			httpResp, err := http.Post(addr, "application/json", bytes.NewReader(b))
+			// prepare / execute http request
+
+			hreq, err := http.NewRequest("POST", addr, bytes.NewReader(b))
+			if err != nil {
+				return processError(err)
+			}
+			if hasCtx == 1 {
+				hreq = hreq.WithContext(args[0].Interface().(context.Context))
+			}
+			hreq.Header.Set("Content-Type", "application/json")
+
+			httpResp, err := http.DefaultClient.Do(hreq)
 			if err != nil {
 				return processError(err)
 			}
 			defer httpResp.Body.Close()
+
+			// process response
 
 			// TODO: check error codes in spec
 			if httpResp.StatusCode != 200 {

@@ -1,10 +1,12 @@
 package rpclib
 
 import (
+	"context"
 	"errors"
 	"net/http/httptest"
 	"strconv"
 	"testing"
+	"time"
 )
 
 type SimpleServerHandler struct {
@@ -143,11 +145,11 @@ func TestRPC(t *testing.T) {
 	noparam.Add()
 
 	var erronly struct {
-		Add func() error
+		AddGet func() (int, error)
 	}
 	NewClient(testServ.URL, "SimpleServerHandler", &erronly)
 
-	err = erronly.Add()
+	_, err = erronly.AddGet()
 	if err == nil || err.Error() != "RPC client error: non 200 response code" {
 		t.Error("wrong error")
 	}
@@ -160,5 +162,61 @@ func TestRPC(t *testing.T) {
 	err = wrongtype.Add("not an int")
 	if err == nil || err.Error() != "RPC client error: non 200 response code" {
 		t.Error("wrong error")
+	}
+}
+
+type CtxHandler struct {
+	cancelled bool
+	i int
+}
+
+func (h *CtxHandler) Test(ctx context.Context) {
+	timeout := time.After(300 * time.Millisecond)
+	h.i++
+
+	select {
+	case <-timeout:
+	case <-ctx.Done():
+		h.cancelled = true
+	}
+}
+
+func TestCtx(t *testing.T) {
+	// setup server
+
+	serverHandler := &CtxHandler{}
+
+	rpcServer := NewServer()
+	rpcServer.Register(serverHandler)
+
+	// httptest stuff
+	testServ := httptest.NewServer(rpcServer)
+	defer testServ.Close()
+
+	// setup client
+
+	var client struct {
+		Test func(ctx context.Context)
+	}
+	NewClient(testServ.URL, "CtxHandler", &client)
+
+	ctx, cancel := context.WithTimeout(context.Background(), 20 * time.Millisecond)
+	defer cancel()
+
+	client.Test(ctx)
+	if !serverHandler.cancelled {
+		t.Error("expected cancellation on the server side")
+	}
+
+	serverHandler.cancelled = false
+
+	var noCtxClient struct {
+		Test func()
+	}
+	NewClient(testServ.URL, "CtxHandler", &noCtxClient)
+
+	noCtxClient.Test()
+	if serverHandler.cancelled || serverHandler.i != 2 {
+		t.Error("wrong serverHandler state")
 	}
 }
