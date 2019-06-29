@@ -56,7 +56,7 @@ func TestRPC(t *testing.T) {
 	serverHandler := &SimpleServerHandler{}
 
 	rpcServer := NewServer()
-	rpcServer.Register(serverHandler)
+	rpcServer.Register("SimpleServerHandler", serverHandler)
 
 	// httptest stuff
 	testServ := httptest.NewServer(rpcServer)
@@ -187,7 +187,7 @@ func TestCtx(t *testing.T) {
 	serverHandler := &CtxHandler{}
 
 	rpcServer := NewServer()
-	rpcServer.Register(serverHandler)
+	rpcServer.Register("SimpleServerHandler", serverHandler)
 
 	// httptest stuff
 	testServ := httptest.NewServer(rpcServer)

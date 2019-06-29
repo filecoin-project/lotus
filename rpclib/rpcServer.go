@@ -130,11 +130,9 @@ func (s *RPCServer) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 	}
 }
 
-func (s *RPCServer) Register(r interface{}) {
+func (s *RPCServer) Register(namespace string, r interface{}) {
 	val := reflect.ValueOf(r)
 	//TODO: expect ptr
-
-	name := val.Type().Elem().Name()
 
 	for i := 0; i < val.NumMethod(); i++ {
 		method := val.Type().Method(i)
@@ -153,7 +151,9 @@ func (s *RPCServer) Register(r interface{}) {
 
 		valOut, errOut, _ := processFuncOut(funcType)
 
-		s.methods[name+"."+method.Name] = rpcHandler{
+		fmt.Println(namespace+"."+method.Name)
+
+		s.methods[namespace+"."+method.Name] = rpcHandler{
 			paramReceivers: recvs,
 			nParams:        ins,
 
