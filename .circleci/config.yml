@@ -1,0 +1,11 @@
+version: 2.1
+orbs:
+  go: gotest/tools@0.0.9
+
+
+workflows:
+  version: 2
+  ci:
+    jobs:
+      - go/lint
+      - go/test
