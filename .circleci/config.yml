@@ -8,4 +8,5 @@ workflows:
   ci:
     jobs:
       - go/lint
-      - go/test
+      - go/test:
+          executor: go/circleci-golang
