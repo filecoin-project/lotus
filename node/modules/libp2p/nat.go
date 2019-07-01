@@ -1,5 +1,9 @@
 package libp2p
 
+import (
+	"github.com/libp2p/go-libp2p"
+)
+
 /*import (
 	"github.com/libp2p/go-libp2p"
 	autonat "github.com/libp2p/go-libp2p-autonat-svc"
@@ -11,8 +15,6 @@ package libp2p
 
 	"github.com/filecoin-project/go-lotus/node/modules/helpers"
 )
-
-var NatPortMap = simpleOpt(libp2p.NATPortMap())
 
 func AutoNATService(quic bool) func(repo repo.Repo, mctx helpers.MetricsCtx, lc fx.Lifecycle, host host.Host) error {
 	return func(repo repo.Repo, mctx helpers.MetricsCtx, lc fx.Lifecycle, host host.Host) error {
@@ -32,3 +34,5 @@ func AutoNATService(quic bool) func(repo repo.Repo, mctx helpers.MetricsCtx, lc 
 	}
 }
 */
+
+var NatPortMap = simpleOpt(libp2p.NATPortMap())
