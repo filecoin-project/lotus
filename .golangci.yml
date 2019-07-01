@@ -1,0 +1,21 @@
+linters:
+  disable-all: true
+  enable:
+    - vet
+    - gofmt
+    - misspell
+    - goconst
+    - golint
+    - errcheck
+    - unconvert
+    - staticcheck
+    - varcheck
+    - structcheck
+    - deadcode
+
+issues:
+  exclude-use-default: false
+
+linters-settings:
+  goconst:
+    min-occurrences: 6
