@@ -42,6 +42,7 @@ func New(ctx context.Context) (api.API, error) {
 				pstoremem.NewPeerstore,
 
 				libp2p.DefaultTransports,
+				libp2p.PNet,
 				libp2p.Host,
 				libp2p.RoutedHost,
 				libp2p.DHTRouting(false),

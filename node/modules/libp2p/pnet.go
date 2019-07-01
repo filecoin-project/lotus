@@ -1,28 +1,19 @@
 package libp2p
 
-/*import (
-	"bytes"
-	"context"
+import (
 	"fmt"
-	"time"
+	"strings"
 
 	"github.com/libp2p/go-libp2p"
-	host "github.com/libp2p/go-libp2p-core/host"
 	pnet "github.com/libp2p/go-libp2p-pnet"
-	"go.uber.org/fx"
-
-	"github.com/ipfs/go-ipfs/repo"
 )
+
+var lotusKey = "/key/swarm/psk/1.0.0/\n/base16/\n20c72398e6299c7bbc1b501fdcc8abe4f89f798e9b93b2d2bc02e3c29b6a088e"
 
 type PNetFingerprint []byte
 
-func PNet(repo repo.Repo) (opts Libp2pOpts, fp PNetFingerprint, err error) {
-	swarmkey, err := repo.SwarmKey()
-	if err != nil || swarmkey == nil {
-		return opts, nil, err
-	}
-
-	protec, err := pnet.NewProtector(bytes.NewReader(swarmkey))
+func PNet() (opts Libp2pOpts, fp PNetFingerprint, err error) {
+	protec, err := pnet.NewProtector(strings.NewReader(lotusKey))
 	if err != nil {
 		return opts, nil, fmt.Errorf("failed to configure private network: %s", err)
 	}
@@ -32,6 +23,7 @@ func PNet(repo repo.Repo) (opts Libp2pOpts, fp PNetFingerprint, err error) {
 	return opts, fp, nil
 }
 
+/*
 func PNetChecker(repo repo.Repo, ph host.Host, lc fx.Lifecycle) error {
 	// TODO: better check?
 	swarmkey, err := repo.SwarmKey()
