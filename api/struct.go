@@ -7,8 +7,8 @@ import (
 )
 
 type Struct struct {
-	Internal struct{
-		ID func(context.Context) (peer.ID, error)
+	Internal struct {
+		ID      func(context.Context) (peer.ID, error)
 		Version func(context.Context) (Version, error)
 	}
 }

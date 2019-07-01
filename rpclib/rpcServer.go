@@ -151,7 +151,7 @@ func (s *RPCServer) Register(namespace string, r interface{}) {
 
 		valOut, errOut, _ := processFuncOut(funcType)
 
-		fmt.Println(namespace+"."+method.Name)
+		fmt.Println(namespace + "." + method.Name)
 
 		s.methods[namespace+"."+method.Name] = rpcHandler{
 			paramReceivers: recvs,

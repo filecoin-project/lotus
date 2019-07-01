@@ -8,6 +8,6 @@ import (
 // RecordValidator provides namesys compatible routing record validator
 func RecordValidator(ps peerstore.Peerstore) record.Validator {
 	return record.NamespacedValidator{
-		"pk":   record.PublicKeyValidator{},
+		"pk": record.PublicKeyValidator{},
 	}
 }

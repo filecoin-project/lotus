@@ -57,7 +57,7 @@ func New(ctx context.Context) (api.API, error) {
 				libp2p.Routing,
 
 				libp2p.NatPortMap,
-				libp2p.ConnectionManager(50, 200, 20 * time.Second),
+				libp2p.ConnectionManager(50, 200, 20*time.Second),
 			),
 
 			fx.Invoke(

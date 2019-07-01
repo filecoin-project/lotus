@@ -22,4 +22,3 @@ func LifecycleCtx(mctx MetricsCtx, lc fx.Lifecycle) context.Context {
 	})
 	return ctx
 }
-

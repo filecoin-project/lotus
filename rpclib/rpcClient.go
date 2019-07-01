@@ -12,7 +12,7 @@ import (
 )
 
 var (
-	errorType = reflect.TypeOf(new(error)).Elem()
+	errorType   = reflect.TypeOf(new(error)).Elem()
 	contextType = reflect.TypeOf(new(context.Context)).Elem()
 )
 
@@ -80,7 +80,7 @@ func NewClient(addr string, namespace string, handler interface{}) {
 			return out
 		}
 
-		processError := func(err error) []reflect.Value{
+		processError := func(err error) []reflect.Value {
 			out := make([]reflect.Value, nout)
 
 			if valOut != -1 {
@@ -101,7 +101,7 @@ func NewClient(addr string, namespace string, handler interface{}) {
 
 		fn := reflect.MakeFunc(ftyp, func(args []reflect.Value) (results []reflect.Value) {
 			id := atomic.AddInt64(&idCtr, 1)
-			params := make([]param, len(args) - hasCtx)
+			params := make([]param, len(args)-hasCtx)
 			for i, arg := range args[hasCtx:] {
 				params[i] = param{
 					v: arg,

@@ -167,7 +167,7 @@ func TestRPC(t *testing.T) {
 
 type CtxHandler struct {
 	cancelled bool
-	i int
+	i         int
 }
 
 func (h *CtxHandler) Test(ctx context.Context) {
@@ -200,7 +200,7 @@ func TestCtx(t *testing.T) {
 	}
 	NewClient(testServ.URL, "CtxHandler", &client)
 
-	ctx, cancel := context.WithTimeout(context.Background(), 20 * time.Millisecond)
+	ctx, cancel := context.WithTimeout(context.Background(), 20*time.Millisecond)
 	defer cancel()
 
 	client.Test(ctx)

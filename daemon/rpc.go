@@ -7,7 +7,6 @@ import (
 	"github.com/filecoin-project/go-lotus/rpclib"
 )
 
-
 func serveRPC(api api.API) error {
 	rpcServer := rpclib.NewServer()
 	rpcServer.Register("Filecoin", api)
