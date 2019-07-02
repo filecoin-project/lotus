@@ -10,10 +10,10 @@ import (
 
 const (
 	rpcParseError     = -32700
-	rpcInvalidRequest = -32600
+//	rpcInvalidRequest = -32600
 	rpcMethodNotFound = -32601
 	rpcInvalidParams  = -32602
-	rpcInternalError  = -32603
+//	rpcInternalError  = -32603
 )
 
 type rpcHandler struct {
@@ -29,10 +29,12 @@ type rpcHandler struct {
 	valOut int
 }
 
+// RPCServer provides a jsonrpc 2.0 http server handler
 type RPCServer struct {
 	methods map[string]rpcHandler
 }
 
+// NewServer creates new RPCServer instance
 func NewServer() *RPCServer {
 	return &RPCServer{
 		methods: map[string]rpcHandler{},
@@ -163,6 +165,9 @@ func (s *RPCServer) rpcError(w http.ResponseWriter, req *request, code int, err 
 	_ = json.NewEncoder(w).Encode(resp)
 }
 
+// Register registers new RPC handler
+//
+// Handler is any value with methods defined
 func (s *RPCServer) Register(namespace string, r interface{}) {
 	val := reflect.ValueOf(r)
 	//TODO: expect ptr

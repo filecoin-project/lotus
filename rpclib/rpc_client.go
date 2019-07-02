@@ -16,6 +16,7 @@ var (
 	contextType = reflect.TypeOf(new(context.Context)).Elem()
 )
 
+// ErrClient is an error which occured on the client side the library
 type ErrClient struct {
 	err error
 }
@@ -24,6 +25,7 @@ func (e *ErrClient) Error() string {
 	return fmt.Sprintf("RPC client error: %s", e.err)
 }
 
+// Unwrap unwraps the actual error
 func (e *ErrClient) Unwrap(err error) error {
 	return e.err
 }
@@ -41,6 +43,11 @@ type clientResponse struct {
 	Error   *respError `json:"error,omitempty"`
 }
 
+// NewClient creates new josnrpc 2.0 client
+//
+// handler must be pointer to a struct with function fields
+//
+// TODO: Example
 func NewClient(addr string, namespace string, handler interface{}) {
 	htyp := reflect.TypeOf(handler)
 	if htyp.Kind() != reflect.Ptr {
