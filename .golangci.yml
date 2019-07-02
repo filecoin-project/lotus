@@ -7,14 +7,23 @@ linters:
     - goconst
     - golint
     - errcheck
+    - gosec
     - unconvert
     - staticcheck
     - varcheck
     - structcheck
     - deadcode
 
+
 issues:
+  exclude:
+    - "func name will be used as test\\.Test.* by other packages, and that stutters; consider calling this"
+
   exclude-use-default: false
+  exclude-rules:
+    - path: node/modules/lp2p
+      linters:
+        - golint
 
 linters-settings:
   goconst:
