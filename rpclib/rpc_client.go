@@ -16,7 +16,7 @@ var (
 	contextType = reflect.TypeOf(new(context.Context)).Elem()
 )
 
-// ErrClient is an error which occured on the client side the library
+// ErrClient is an error which occurred on the client side the library
 type ErrClient struct {
 	err error
 }
@@ -39,7 +39,7 @@ func (r *result) UnmarshalJSON(raw []byte) error {
 type clientResponse struct {
 	Jsonrpc string     `json:"jsonrpc"`
 	Result  result     `json:"result"`
-	Id      int64      `json:"id"`
+	ID      int64      `json:"id"`
 	Error   *respError `json:"error,omitempty"`
 }
 
@@ -117,7 +117,7 @@ func NewClient(addr string, namespace string, handler interface{}) {
 
 			req := request{
 				Jsonrpc: "2.0",
-				Id:      &id,
+				ID:      &id,
 				Method:  namespace + "." + f.Name,
 				Params:  params,
 			}
@@ -142,7 +142,6 @@ func NewClient(addr string, namespace string, handler interface{}) {
 			if err != nil {
 				return processError(err)
 			}
-			defer httpResp.Body.Close()
 
 			// process response
 
@@ -155,7 +154,11 @@ func NewClient(addr string, namespace string, handler interface{}) {
 				return processError(err)
 			}
 
-			if resp.Id != *req.Id {
+			if err := httpResp.Body.Close(); err != nil {
+				return processError(err)
+			}
+
+			if resp.ID != *req.ID {
 				return processError(errors.New("request and response id didn't match"))
 			}
 

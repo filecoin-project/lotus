@@ -10,10 +10,8 @@ import (
 
 const (
 	rpcParseError     = -32700
-//	rpcInvalidRequest = -32600
 	rpcMethodNotFound = -32601
 	rpcInvalidParams  = -32602
-//	rpcInternalError  = -32603
 )
 
 type rpcHandler struct {
@@ -59,7 +57,7 @@ func (p *param) MarshalJSON() ([]byte, error) {
 
 type request struct {
 	Jsonrpc string  `json:"jsonrpc"`
-	Id      *int64  `json:"id,omitempty"`
+	ID      *int64  `json:"id,omitempty"`
 	Method  string  `json:"method"`
 	Params  []param `json:"params"`
 }
@@ -79,7 +77,7 @@ func (e *respError) Error() string {
 type response struct {
 	Jsonrpc string      `json:"jsonrpc"`
 	Result  interface{} `json:"result,omitempty"`
-	Id      int64       `json:"id"`
+	ID      int64       `json:"id"`
 	Error   *respError  `json:"error,omitempty"`
 }
 
@@ -119,13 +117,13 @@ func (s *RPCServer) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 	}
 
 	callResult := handler.handlerFunc.Call(callParams)
-	if req.Id == nil {
+	if req.ID == nil {
 		return // notification
 	}
 
 	resp := response{
 		Jsonrpc: "2.0",
-		Id:      *req.Id,
+		ID:      *req.ID,
 	}
 
 	if handler.errOut != -1 {
@@ -149,13 +147,13 @@ func (s *RPCServer) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 
 func (s *RPCServer) rpcError(w http.ResponseWriter, req *request, code int, err error) {
 	w.WriteHeader(500)
-	if req.Id == nil { // notification
+	if req.ID == nil { // notification
 		return
 	}
 
 	resp := response{
 		Jsonrpc: "2.0",
-		Id:      *req.Id,
+		ID:      *req.ID,
 		Error: &respError{
 			Code:    code,
 			Message: err.Error(),

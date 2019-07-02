@@ -5,7 +5,7 @@ import (
 	"errors"
 	"net/http/httptest"
 	"strconv"
-	"sync/atomic"
+	"sync"
 	"testing"
 	"time"
 )
@@ -177,13 +177,17 @@ func TestRPC(t *testing.T) {
 }
 
 type CtxHandler struct {
+	lk sync.Mutex
+
 	cancelled bool
-	i         int32
+	i         int
 }
 
 func (h *CtxHandler) Test(ctx context.Context) {
+	h.lk.Lock()
+	defer h.lk.Unlock()
 	timeout := time.After(300 * time.Millisecond)
-	atomic.AddInt32(&h.i, 1)
+	h.i++
 
 	select {
 	case <-timeout:
@@ -215,11 +219,15 @@ func TestCtx(t *testing.T) {
 	defer cancel()
 
 	client.Test(ctx)
+	serverHandler.lk.Lock()
+
 	if !serverHandler.cancelled {
 		t.Error("expected cancellation on the server side")
 	}
 
 	serverHandler.cancelled = false
+
+	serverHandler.lk.Unlock()
 
 	var noCtxClient struct {
 		Test func()
@@ -227,7 +235,12 @@ func TestCtx(t *testing.T) {
 	NewClient(testServ.URL, "CtxHandler", &noCtxClient)
 
 	noCtxClient.Test()
-	if serverHandler.cancelled || atomic.LoadInt32(&serverHandler.i) != 2 {
+
+	serverHandler.lk.Lock()
+
+	if serverHandler.cancelled || serverHandler.i != 2 {
 		t.Error("wrong serverHandler state")
 	}
+
+	serverHandler.lk.Unlock()
 }
