@@ -17,6 +17,7 @@ workflows:
   ci:
     jobs:
       - go/lint
+          executor: go/circleci-golang
       - go/test:
           executor: go/circleci-golang
           codecov-upload: true
