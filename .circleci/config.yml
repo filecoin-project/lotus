@@ -9,6 +9,7 @@ jobs:
     steps:
       - go/install-ssh
       - checkout
+      - go/mod-download
       - go/mod-tidy-check
 
 workflows:
@@ -18,4 +19,5 @@ workflows:
       - go/lint
       - go/test:
           executor: go/circleci-golang
+          codecov-upload: true
       - mod-tidy-check
