@@ -6,6 +6,7 @@ import (
 	"github.com/libp2p/go-libp2p-core/peer"
 )
 
+// Struct implements API passing calls to user-provided function values.
 type Struct struct {
 	Internal struct {
 		ID      func(context.Context) (peer.ID, error)
@@ -13,10 +14,12 @@ type Struct struct {
 	}
 }
 
+// ID implements API.ID
 func (c *Struct) ID(ctx context.Context) (peer.ID, error) {
 	return c.Internal.ID(ctx)
 }
 
+// Version implements API.Version
 func (c *Struct) Version(ctx context.Context) (Version, error) {
 	return c.Internal.Version(ctx)
 }

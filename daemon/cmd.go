@@ -8,6 +8,7 @@ import (
 	"github.com/filecoin-project/go-lotus/node"
 )
 
+// Cmd is the `go-lotus daemon` command
 var Cmd = &cli.Command{
 	Name:  "daemon",
 	Usage: "Start a lotus daemon process",

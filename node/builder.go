@@ -23,8 +23,9 @@ var defaultListenAddrs = []string{ // TODO: better defaults?
 	"/ip6/::/tcp/4001",
 }
 
+// New builds and starts new Filecoin node
 func New(ctx context.Context) (api.API, error) {
-	var resApi api.Struct
+	var resAPI api.Struct
 
 	online := true
 
@@ -66,15 +67,15 @@ func New(ctx context.Context) (api.API, error) {
 			),
 		),
 
-		fx.Invoke(versionApi(&resApi.Internal.Version)),
-		fx.Invoke(idApi(&resApi.Internal.ID)),
+		fx.Invoke(versionAPI(&resAPI.Internal.Version)),
+		fx.Invoke(idAPI(&resAPI.Internal.ID)),
 	)
 
 	if err := app.Start(ctx); err != nil {
 		return nil, err
 	}
 
-	return &resApi, nil
+	return &resAPI, nil
 }
 
 // In-memory / testing
@@ -112,7 +113,7 @@ func ifOpt(cond bool, options ...fx.Option) fx.Option {
 // API IMPL
 
 // TODO: figure out a better way, this isn't usable in long term
-func idApi(set *func(ctx context.Context) (peer.ID, error)) func(id peer.ID) {
+func idAPI(set *func(ctx context.Context) (peer.ID, error)) func(id peer.ID) {
 	return func(id peer.ID) {
 		*set = func(ctx context.Context) (peer.ID, error) {
 			return id, nil
@@ -120,7 +121,7 @@ func idApi(set *func(ctx context.Context) (peer.ID, error)) func(id peer.ID) {
 	}
 }
 
-func versionApi(set *func(context.Context) (api.Version, error)) func() {
+func versionAPI(set *func(context.Context) (api.Version, error)) func() {
 	return func() {
 		*set = func(context.Context) (api.Version, error) {
 			return api.Version{

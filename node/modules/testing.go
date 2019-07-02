@@ -9,6 +9,7 @@ import (
 	mh "github.com/multiformats/go-multihash"
 )
 
+// RandomPeerID generates random peer id
 func RandomPeerID() (peer.ID, error) {
 	b, err := ioutil.ReadAll(io.LimitReader(rand.Reader, 32))
 	if err != nil {
