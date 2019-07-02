@@ -156,7 +156,7 @@ func (s *RPCServer) rpcError(w http.ResponseWriter, req *request, code int, err 
 		Id:      *req.Id,
 		Error: &respError{
 			Code:    code,
-			Message: err.(error).Error(),
+			Message: err.Error(),
 		},
 	}
 
