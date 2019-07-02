@@ -182,6 +182,7 @@ func (h *CtxHandler) Test(ctx context.Context) {
 }
 
 func TestCtx(t *testing.T) {
+	t.SkipNow()
 	// setup server
 
 	serverHandler := &CtxHandler{}
