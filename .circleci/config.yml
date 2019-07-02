@@ -16,7 +16,7 @@ workflows:
   version: 2
   ci:
     jobs:
-      - go/lint
+      - go/lint:
           executor: go/circleci-golang
       - go/test:
           executor: go/circleci-golang
