@@ -3,6 +3,14 @@ orbs:
   go: gotest/tools@0.0.9
 
 
+jobs:
+  mod-tidy-check:
+    executor: go/circleci-golang
+    steps:
+      - go/install-ssh
+      - checkout
+      - go/mod-tidy-check
+
 workflows:
   version: 2
   ci:
@@ -10,3 +18,4 @@ workflows:
       - go/lint
       - go/test:
           executor: go/circleci-golang
+      - mod-tidy-check
