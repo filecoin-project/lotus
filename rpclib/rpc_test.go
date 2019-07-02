@@ -5,6 +5,7 @@ import (
 	"errors"
 	"net/http/httptest"
 	"strconv"
+	"sync/atomic"
 	"testing"
 	"time"
 )
@@ -167,12 +168,12 @@ func TestRPC(t *testing.T) {
 
 type CtxHandler struct {
 	cancelled bool
-	i         int
+	i         int32
 }
 
 func (h *CtxHandler) Test(ctx context.Context) {
 	timeout := time.After(300 * time.Millisecond)
-	h.i++
+	atomic.AddInt32(&h.i, 1)
 
 	select {
 	case <-timeout:
@@ -182,13 +183,12 @@ func (h *CtxHandler) Test(ctx context.Context) {
 }
 
 func TestCtx(t *testing.T) {
-	t.SkipNow()
 	// setup server
 
 	serverHandler := &CtxHandler{}
 
 	rpcServer := NewServer()
-	rpcServer.Register("SimpleServerHandler", serverHandler)
+	rpcServer.Register("CtxHandler", serverHandler)
 
 	// httptest stuff
 	testServ := httptest.NewServer(rpcServer)
@@ -201,7 +201,7 @@ func TestCtx(t *testing.T) {
 	}
 	NewClient(testServ.URL, "CtxHandler", &client)
 
-	ctx, cancel := context.WithTimeout(context.Background(), 20*time.Millisecond)
+	ctx, cancel := context.WithTimeout(context.Background(), 100*time.Millisecond)
 	defer cancel()
 
 	client.Test(ctx)
@@ -217,7 +217,7 @@ func TestCtx(t *testing.T) {
 	NewClient(testServ.URL, "CtxHandler", &noCtxClient)
 
 	noCtxClient.Test()
-	if serverHandler.cancelled || serverHandler.i != 2 {
+	if serverHandler.cancelled || atomic.LoadInt32(&serverHandler.i) != 2 {
 		t.Error("wrong serverHandler state")
 	}
 }

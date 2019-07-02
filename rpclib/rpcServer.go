@@ -77,7 +77,7 @@ func (s *RPCServer) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 
 	handler, ok := s.methods[req.Method]
 	if !ok {
-		fmt.Println("rpcserver: unknown method")
+		fmt.Printf("rpcserver: unknown method %s\n", req.Method)
 		w.WriteHeader(500)
 		return
 	}
