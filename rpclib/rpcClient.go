@@ -64,7 +64,7 @@ func NewClient(addr string, namespace string, handler interface{}) {
 
 		valOut, errOut, nout := processFuncOut(ftyp)
 
-		processResponse := func(resp clientResponse) []reflect.Value {
+		processResponse := func(resp clientResponse, code int) []reflect.Value {
 			out := make([]reflect.Value, nout)
 
 			if valOut != -1 {
@@ -73,7 +73,7 @@ func NewClient(addr string, namespace string, handler interface{}) {
 			if errOut != -1 {
 				out[errOut] = reflect.New(errorType).Elem()
 				if resp.Error != nil {
-					out[errOut].Set(reflect.ValueOf(errors.New(resp.Error.Message)))
+					out[errOut].Set(reflect.ValueOf(resp.Error))
 				}
 			}
 
@@ -139,11 +139,6 @@ func NewClient(addr string, namespace string, handler interface{}) {
 
 			// process response
 
-			// TODO: check error codes in spec
-			if httpResp.StatusCode != 200 {
-				return processError(errors.New("non 200 response code"))
-			}
-
 			var resp clientResponse
 			if valOut != -1 {
 				resp.Result = result(reflect.New(ftyp.Out(valOut)))
@@ -157,7 +152,7 @@ func NewClient(addr string, namespace string, handler interface{}) {
 				return processError(errors.New("request and response id didn't match"))
 			}
 
-			return processResponse(resp)
+			return processResponse(resp, httpResp.StatusCode)
 		})
 
 		val.Elem().Field(i).Set(fn)

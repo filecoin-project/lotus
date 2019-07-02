@@ -87,7 +87,7 @@ func TestRPC(t *testing.T) {
 		t.Fatal("expected error")
 	}
 	if err.Error() != "test" {
-		t.Fatal("wrong error")
+		t.Fatal("wrong error", err)
 	}
 
 	// AddGet(int) int
@@ -151,8 +151,8 @@ func TestRPC(t *testing.T) {
 	NewClient(testServ.URL, "SimpleServerHandler", &erronly)
 
 	_, err = erronly.AddGet()
-	if err == nil || err.Error() != "RPC client error: non 200 response code" {
-		t.Error("wrong error")
+	if err == nil || err.Error() != "RPC error (-32602): wrong param count" {
+		t.Error("wrong error:", err)
 	}
 
 	var wrongtype struct {
@@ -161,8 +161,18 @@ func TestRPC(t *testing.T) {
 	NewClient(testServ.URL, "SimpleServerHandler", &wrongtype)
 
 	err = wrongtype.Add("not an int")
-	if err == nil || err.Error() != "RPC client error: non 200 response code" {
-		t.Error("wrong error")
+	if err == nil || err.Error() != "RPC error (-32700): json: cannot unmarshal string into Go value of type int" {
+		t.Error("wrong error:", err)
+	}
+
+	var notfound struct {
+		NotThere func(string) error
+	}
+	NewClient(testServ.URL, "SimpleServerHandler", &notfound)
+
+	err = notfound.NotThere("hello?")
+	if err == nil || err.Error() != "RPC error (-32601): method 'SimpleServerHandler.NotThere' not found" {
+		t.Error("wrong error:", err)
 	}
 }
 

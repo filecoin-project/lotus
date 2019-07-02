@@ -8,6 +8,14 @@ import (
 	"reflect"
 )
 
+const (
+	rpcParseError     = -32700
+	rpcInvalidRequest = -32600
+	rpcMethodNotFound = -32601
+	rpcInvalidParams  = -32602
+	rpcInternalError  = -32603
+)
+
 type rpcHandler struct {
 	paramReceivers []reflect.Type
 	nParams        int
@@ -59,6 +67,13 @@ type respError struct {
 	Message string `json:"message"`
 }
 
+func (e *respError) Error() string {
+	if e.Code >= -32768 && e.Code <= -32000 {
+		return fmt.Sprintf("RPC error (%d): %s", e.Code, e.Message)
+	}
+	return e.Message
+}
+
 type response struct {
 	Jsonrpc string      `json:"jsonrpc"`
 	Result  interface{} `json:"result,omitempty"`
@@ -70,21 +85,18 @@ type response struct {
 func (s *RPCServer) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 	var req request
 	if err := json.NewDecoder(r.Body).Decode(&req); err != nil {
-		fmt.Println(err)
-		w.WriteHeader(500)
+		s.rpcError(w, &req, rpcParseError, err)
 		return
 	}
 
 	handler, ok := s.methods[req.Method]
 	if !ok {
-		fmt.Printf("rpcserver: unknown method %s\n", req.Method)
-		w.WriteHeader(500)
+		s.rpcError(w, &req, rpcMethodNotFound, fmt.Errorf("method '%s' not found", req.Method))
 		return
 	}
 
 	if len(req.Params) != handler.nParams {
-		fmt.Println("rpcserver: wrong param count")
-		w.WriteHeader(500)
+		s.rpcError(w, &req, rpcInvalidParams, fmt.Errorf("wrong param count"))
 		return
 	}
 
@@ -97,8 +109,7 @@ func (s *RPCServer) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 	for i := 0; i < handler.nParams; i++ {
 		rp := reflect.New(handler.paramReceivers[i])
 		if err := json.NewDecoder(bytes.NewReader(req.Params[i].data)).Decode(rp.Interface()); err != nil {
-			w.WriteHeader(500)
-			fmt.Println(err)
+			s.rpcError(w, &req, rpcParseError, err)
 			return
 		}
 
@@ -130,9 +141,26 @@ func (s *RPCServer) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 
 	if err := json.NewEncoder(w).Encode(resp); err != nil {
 		fmt.Println(err)
-		w.WriteHeader(500)
 		return
 	}
+}
+
+func (s *RPCServer) rpcError(w http.ResponseWriter, req *request, code int, err error) {
+	w.WriteHeader(500)
+	if req.Id == nil { // notification
+		return
+	}
+
+	resp := response{
+		Jsonrpc: "2.0",
+		Id:      *req.Id,
+		Error: &respError{
+			Code:    code,
+			Message: err.(error).Error(),
+		},
+	}
+
+	_ = json.NewEncoder(w).Encode(resp)
 }
 
 func (s *RPCServer) Register(namespace string, r interface{}) {
@@ -198,3 +226,5 @@ func processFuncOut(funcType reflect.Type) (valOut int, errOut int, n int) {
 
 	return
 }
+
+var _ error = &respError{}
