@@ -1,7 +1,7 @@
 package daemon
 
 import (
-	goctx "context"
+	"context"
 
 	"gopkg.in/urfave/cli.v2"
 
@@ -11,8 +11,8 @@ import (
 var Cmd = &cli.Command{
 	Name:  "daemon",
 	Usage: "Start a lotus daemon process",
-	Action: func(context *cli.Context) error {
-		ctx := goctx.Background()
+	Action: func(cctx *cli.Context) error {
+		ctx := context.Background()
 
 		api, err := node.New(ctx)
 		if err != nil {

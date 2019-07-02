@@ -1,4 +1,4 @@
-package libp2p
+package lp2p
 
 import (
 	host "github.com/libp2p/go-libp2p-core/host"

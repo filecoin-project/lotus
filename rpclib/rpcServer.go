@@ -66,20 +66,24 @@ type response struct {
 	Error   *respError  `json:"error,omitempty"`
 }
 
+// TODO: return errors to clients per spec
 func (s *RPCServer) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 	var req request
 	if err := json.NewDecoder(r.Body).Decode(&req); err != nil {
+		fmt.Println(err)
 		w.WriteHeader(500)
 		return
 	}
 
 	handler, ok := s.methods[req.Method]
 	if !ok {
+		fmt.Println("rpcserver: unknown method")
 		w.WriteHeader(500)
 		return
 	}
 
 	if len(req.Params) != handler.nParams {
+		fmt.Println("rpcserver: wrong param count")
 		w.WriteHeader(500)
 		return
 	}
@@ -125,6 +129,7 @@ func (s *RPCServer) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 	}
 
 	if err := json.NewEncoder(w).Encode(resp); err != nil {
+		fmt.Println(err)
 		w.WriteHeader(500)
 		return
 	}

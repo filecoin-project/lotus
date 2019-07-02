@@ -8,14 +8,14 @@ import (
 	"github.com/filecoin-project/go-lotus/build"
 )
 
-type NodeBuilder func() api.API
+type APIBuilder func() api.API
 type testSuite struct {
-	makeNode NodeBuilder
+	makeNode APIBuilder
 }
 
-func TestApis(t *testing.T, nb NodeBuilder) {
+func TestApis(t *testing.T, b APIBuilder) {
 	ts := testSuite{
-		makeNode: nb,
+		makeNode: b,
 	}
 
 	t.Run("version", ts.testVersion)

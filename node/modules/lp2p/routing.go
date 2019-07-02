@@ -1,4 +1,4 @@
-package libp2p
+package lp2p
 
 import (
 	"context"

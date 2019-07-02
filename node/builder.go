@@ -15,7 +15,7 @@ import (
 	"github.com/filecoin-project/go-lotus/build"
 	"github.com/filecoin-project/go-lotus/node/modules"
 	"github.com/filecoin-project/go-lotus/node/modules/helpers"
-	"github.com/filecoin-project/go-lotus/node/modules/libp2p"
+	"github.com/filecoin-project/go-lotus/node/modules/lp2p"
 )
 
 var defaultListenAddrs = []string{ // TODO: better defaults?
@@ -41,28 +41,28 @@ func New(ctx context.Context) (api.API, error) {
 			fx.Provide(
 				pstoremem.NewPeerstore,
 
-				libp2p.DefaultTransports,
-				libp2p.PNet,
-				libp2p.Host,
-				libp2p.RoutedHost,
-				libp2p.DHTRouting(false),
+				lp2p.DefaultTransports,
+				lp2p.PNet,
+				lp2p.Host,
+				lp2p.RoutedHost,
+				lp2p.DHTRouting(false),
 
-				libp2p.DiscoveryHandler,
-				libp2p.AddrsFactory(nil, nil),
-				libp2p.SmuxTransport(true),
-				libp2p.Relay(true, false),
-				libp2p.Security(true, false),
+				lp2p.DiscoveryHandler,
+				lp2p.AddrsFactory(nil, nil),
+				lp2p.SmuxTransport(true),
+				lp2p.Relay(true, false),
+				lp2p.Security(true, false),
 
-				libp2p.BaseRouting,
-				libp2p.Routing,
+				lp2p.BaseRouting,
+				lp2p.Routing,
 
-				libp2p.NatPortMap,
-				libp2p.ConnectionManager(50, 200, 20*time.Second),
+				lp2p.NatPortMap,
+				lp2p.ConnectionManager(50, 200, 20*time.Second),
 			),
 
 			fx.Invoke(
-				libp2p.PstoreAddSelfKeys,
-				libp2p.StartListening(defaultListenAddrs),
+				lp2p.PstoreAddSelfKeys,
+				lp2p.StartListening(defaultListenAddrs),
 			),
 		),
 
