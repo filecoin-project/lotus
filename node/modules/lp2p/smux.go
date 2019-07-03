@@ -36,7 +36,7 @@ func makeSmuxTransportOption(mplexExp bool) libp2p.Option {
 	for _, id := range order {
 		tpt, ok := muxers[id]
 		if !ok {
-			log.Warningf("unknown or duplicate muxer in LIBP2P_MUX_PREFS: %s", id)
+			log.Warnf("unknown or duplicate muxer in LIBP2P_MUX_PREFS: %s", id)
 			continue
 		}
 		delete(muxers, id)
