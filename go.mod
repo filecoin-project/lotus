@@ -5,7 +5,7 @@ go 1.12
 require (
 	github.com/ipfs/go-datastore v0.0.5
 	github.com/ipfs/go-ipfs-routing v0.1.0
-	github.com/ipfs/go-log v0.0.1
+	github.com/ipfs/go-log v0.0.2-0.20190624152255-de7847a377fd
 	github.com/libp2p/go-libp2p v0.2.0
 	github.com/libp2p/go-libp2p-circuit v0.1.0
 	github.com/libp2p/go-libp2p-connmgr v0.1.0
@@ -26,10 +26,8 @@ require (
 	github.com/multiformats/go-multiaddr v0.0.4
 	github.com/multiformats/go-multihash v0.0.5
 	github.com/whyrusleeping/multiaddr-filter v0.0.0-20160516205228-e903e4adabd7
-	go.uber.org/atomic v1.4.0 // indirect
 	go.uber.org/dig v1.7.0 // indirect
 	go.uber.org/fx v1.9.0
 	go.uber.org/goleak v0.10.0 // indirect
-	go.uber.org/multierr v1.1.0 // indirect
 	gopkg.in/urfave/cli.v2 v2.0.0-20180128182452-d3ae77c26ac8
 )
