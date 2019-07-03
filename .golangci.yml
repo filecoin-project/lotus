@@ -18,6 +18,7 @@ linters:
 issues:
   exclude:
     - "func name will be used as test\\.Test.* by other packages, and that stutters; consider calling this"
+    - "Potential file inclusion via variable"
 
   exclude-use-default: false
   exclude-rules:
