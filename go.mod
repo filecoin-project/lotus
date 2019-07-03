@@ -5,6 +5,7 @@ go 1.12
 require (
 	github.com/ipfs/go-datastore v0.0.5
 	github.com/ipfs/go-ipfs-routing v0.1.0
+	github.com/ipfs/go-ipld-cbor v0.0.2 // indirect
 	github.com/ipfs/go-log v0.0.2-0.20190703113630-0c3cfb1eccc4
 	github.com/libp2p/go-libp2p v0.2.0
 	github.com/libp2p/go-libp2p-circuit v0.1.0

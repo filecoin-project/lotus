@@ -1,4 +1,4 @@
-package rpclib
+package jsonrpc
 
 import (
 	"bytes"

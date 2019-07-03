@@ -6,6 +6,7 @@ import (
 	"time"
 
 	"github.com/ipfs/go-datastore"
+	logging "github.com/ipfs/go-log"
 	ci "github.com/libp2p/go-libp2p-core/crypto"
 	"github.com/libp2p/go-libp2p-core/peer"
 	"github.com/libp2p/go-libp2p-peerstore/pstoremem"
@@ -13,10 +14,13 @@ import (
 
 	"github.com/filecoin-project/go-lotus/api"
 	"github.com/filecoin-project/go-lotus/build"
+	"github.com/filecoin-project/go-lotus/node/hello"
 	"github.com/filecoin-project/go-lotus/node/modules"
 	"github.com/filecoin-project/go-lotus/node/modules/helpers"
 	"github.com/filecoin-project/go-lotus/node/modules/lp2p"
 )
+
+var log = logging.Logger("builder")
 
 var defaultListenAddrs = []string{ // TODO: better defaults?
 	"/ip4/0.0.0.0/tcp/4001",
@@ -42,6 +46,7 @@ func New(ctx context.Context) (api.API, error) {
 			fx.Provide(
 				pstoremem.NewPeerstore,
 
+				// libp2p
 				lp2p.DefaultTransports,
 				lp2p.PNet,
 				lp2p.Host,
@@ -59,6 +64,10 @@ func New(ctx context.Context) (api.API, error) {
 
 				lp2p.NatPortMap,
 				lp2p.ConnectionManager(50, 200, 20*time.Second),
+
+				// filecoin protocols
+
+				hello.NewHelloService,
 			),
 
 			fx.Invoke(
@@ -69,6 +78,8 @@ func New(ctx context.Context) (api.API, error) {
 
 		fx.Invoke(versionAPI(&resAPI.Internal.Version)),
 		fx.Invoke(idAPI(&resAPI.Internal.ID)),
+
+		fx.Logger(&debugPrinter{log}),
 	)
 
 	if err := app.Start(ctx); err != nil {
