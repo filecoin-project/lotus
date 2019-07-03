@@ -8,6 +8,7 @@ import (
 	"fmt"
 	"net/http"
 	"reflect"
+	"sync/atomic"
 )
 
 var (
@@ -48,7 +49,7 @@ type ClientCloser func()
 // NewClient creates new josnrpc 2.0 client
 //
 // handler must be pointer to a struct with function fields
-// Returned value closes the client from further use
+// Returned value closes the client connection
 // TODO: Example
 func NewClient(addr string, namespace string, handler interface{}) ClientCloser {
 	htyp := reflect.TypeOf(handler)
@@ -60,33 +61,9 @@ func NewClient(addr string, namespace string, handler interface{}) ClientCloser 
 		panic("handler should be a struct")
 	}
 
-	closeChan := make(chan struct{})
-	closer := func() {
-		close(closeChan)
-	}
-
 	val := reflect.ValueOf(handler)
 
-	var ids <-chan int64
-	{
-		idsChan := make(chan int64, 64)
-
-		go func() {
-			var id int64
-
-			for {
-				select {
-				case idsChan <- id:
-					id++
-				case _, ok := <-closeChan:
-					if !ok {
-						return
-					}
-				}
-			}
-		}()
-		ids = idsChan
-	}
+	var idCtr int64
 
 	for i := 0; i < typ.NumField(); i++ {
 		f := typ.Field(i)
@@ -133,7 +110,7 @@ func NewClient(addr string, namespace string, handler interface{}) ClientCloser 
 		}
 
 		fn := reflect.MakeFunc(ftyp, func(args []reflect.Value) (results []reflect.Value) {
-			id := <-ids
+			id := atomic.AddInt64(&idCtr, 1)
 			params := make([]param, len(args)-hasCtx)
 			for i, arg := range args[hasCtx:] {
 				params[i] = param{
@@ -193,5 +170,7 @@ func NewClient(addr string, namespace string, handler interface{}) ClientCloser 
 
 		val.Elem().Field(i).Set(fn)
 	}
-	return closer
+
+	// TODO: if this is still unused as of 2020, remove the closer stuff
+	return func() {} // noop for now, not for long though
 }
