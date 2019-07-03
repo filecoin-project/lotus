@@ -73,6 +73,7 @@ func New(ctx context.Context) (api.API, error) {
 			fx.Invoke(
 				lp2p.PstoreAddSelfKeys,
 				lp2p.StartListening(defaultListenAddrs),
+				modules.RunHello,
 			),
 		),
 

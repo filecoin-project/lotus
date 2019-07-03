@@ -8,7 +8,7 @@ import (
 	"go.uber.org/fx"
 )
 
-func HandleHello(mctx helpers.MetricsCtx, lc fx.Lifecycle, h host.Host, svc *hello.Service) error {
+func RunHello(mctx helpers.MetricsCtx, lc fx.Lifecycle, h host.Host, svc *hello.Service) {
 	h.SetStreamHandler(hello.ProtocolID, svc.HandleStream)
 
 	bundle := inet.NotifyBundle{

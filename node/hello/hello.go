@@ -15,6 +15,7 @@ import (
 )
 
 const ProtocolID = "/fil/hello/1.0.0"
+
 var log = logging.Logger("hello")
 
 func init() {
