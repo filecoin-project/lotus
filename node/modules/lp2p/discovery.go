@@ -20,11 +20,11 @@ type discoveryHandler struct {
 }
 
 func (dh *discoveryHandler) HandlePeerFound(p peer.AddrInfo) {
-	log.Warning("trying peer info: ", p)
+	log.Warnw("discovred peer", "peer", p)
 	ctx, cancel := context.WithTimeout(dh.ctx, discoveryConnTimeout)
 	defer cancel()
 	if err := dh.host.Connect(ctx, p); err != nil {
-		log.Warning("Failed to connect to peer found by discovery: ", err)
+		log.Warnw("failed to connect to peer found by discovery", "error", err)
 	}
 }
 
@@ -43,7 +43,7 @@ func SetupDiscovery(mdns bool, mdnsInterval int) func(helpers.MetricsCtx, fx.Lif
 			}
 			service, err := discovery.NewMdnsService(helpers.LifecycleCtx(mctx, lc), host, time.Duration(mdnsInterval)*time.Second, discovery.ServiceTag)
 			if err != nil {
-				log.Error("mdns error: ", err)
+				log.Errorw("mdns error", "error", err)
 				return nil
 			}
 			service.RegisterNotifee(handler)
