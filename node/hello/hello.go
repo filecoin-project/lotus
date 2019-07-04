@@ -1,8 +1,8 @@
 package hello
 
 import (
-	"bufio"
 	"context"
+
 	"github.com/filecoin-project/go-lotus/cborrpc"
 	"github.com/libp2p/go-libp2p-core/host"
 
@@ -46,15 +46,15 @@ func NewHelloService(h host.Host) *Service {
 func (hs *Service) HandleStream(s inet.Stream) {
 	defer s.Close()
 
-	log.Debugw("Handling hello")
-
 	var hmsg Message
-	if err := cborrpc.ReadCborRPC(bufio.NewReader(s), &hmsg); err != nil {
-		log.Error("failed to read hello message: ", err)
+	if err := cborrpc.ReadCborRPC(s, &hmsg); err != nil {
+		log.Infow("failed to read hello message", "error", err)
 		return
 	}
-	log.Debugw("heaviest tipset", "tipset", hmsg.HeaviestTipSet)
-	log.Debugw("got genesis from hello", "hash", hmsg.GenesisHash)
+	log.Debugw("genesis from hello",
+		"tipset", hmsg.HeaviestTipSet,
+		"peer", s.Conn().RemotePeer(),
+		"hash", hmsg.GenesisHash)
 
 	/*if hmsg.GenesisHash != hs.syncer.genesis.Cids()[0] {
 		log.Error("other peer has different genesis!")

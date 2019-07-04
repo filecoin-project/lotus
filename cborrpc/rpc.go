@@ -19,12 +19,7 @@ func WriteCborRPC(w io.Writer, obj interface{}) error {
 	return err
 }
 
-type ByteReader interface {
-	io.Reader
-	io.ByteReader
-}
-
-func ReadCborRPC(r ByteReader, out interface{}) error {
+func ReadCborRPC(r io.Reader, out interface{}) error {
 	b, err := ioutil.ReadAll(r)
 	if err != nil {
 		return err
