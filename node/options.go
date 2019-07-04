@@ -1,31 +1,16 @@
 package node
 
 import (
-	"go.uber.org/fx"
 	"reflect"
 )
 
+// Option is a functional option which can be used with the New function to
+// change how the node is constructed
+//
+// Options are applied in sequence
 type Option func(*settings) error
 
-func Override(typ, constructor interface{}) Option {
-	return func(s *settings) error {
-		if i, ok := typ.(invoke); ok {
-			s.invokes[i] = fx.Invoke(constructor)
-			return nil
-		}
-
-		if c, ok := typ.(special); ok {
-			s.modules[c] = fx.Provide(constructor)
-			return nil
-		}
-		ctor := as(constructor, typ)
-		rt := reflect.TypeOf(typ).Elem()
-
-		s.modules[rt] = fx.Provide(ctor)
-		return nil
-	}
-}
-
+// Options groups multiple options into one
 func Options(opts ...Option) Option {
 	return func(s *settings) error {
 		for _, opt := range opts {
@@ -37,6 +22,7 @@ func Options(opts ...Option) Option {
 	}
 }
 
+// Error is a special option which returns an error when applied
 func Error(err error) Option {
 	return func(_ *settings) error {
 		return err

@@ -9,6 +9,7 @@ import (
 	"github.com/libp2p/go-libp2p-core/peerstore"
 	"github.com/libp2p/go-libp2p-core/routing"
 	record "github.com/libp2p/go-libp2p-record"
+	"reflect"
 	"time"
 
 	ci "github.com/libp2p/go-libp2p-core/crypto"
@@ -27,6 +28,7 @@ import (
 //  can't really be identified by the returned type
 type special struct{ id int }
 
+// nolint
 var (
 	DefaultTransportsKey = special{0} // Libp2p option
 	PNetKey              = special{1} // Option + multiret
@@ -38,19 +40,26 @@ var (
 	BaseRoutingKey       = special{7} // fx groups + multiret
 	NatPortMapKey        = special{8} // Libp2p option
 	ConnectionManagerKey = special{9} // Libp2p option
-
 )
 
 type invoke int
 
 const (
+	// PstoreAddSelfKeysKey is a key for Override for PstoreAddSelfKeys
 	PstoreAddSelfKeysKey = invoke(iota)
+
+	// StartListeningKey is a key for Override for StartListening
 	StartListeningKey
 
 	_nInvokes // keep this last
 )
 
 type settings struct {
+	// modules is a map of constructors for DI
+	//
+	// In most cases the index will be a reflect. Type of element returned by
+	// the constructor, but for some 'constructors' it's hard to specify what's
+	// the return type should be (or the constructor returns fx group)
 	modules map[interface{}]fx.Option
 
 	// invokes are separate from modules as they can't be referenced by return
@@ -59,6 +68,26 @@ type settings struct {
 
 	online bool // Online option applied
 	config bool // Config option applied
+}
+
+// Override option changes constructor for a given type
+func Override(typ, constructor interface{}) Option {
+	return func(s *settings) error {
+		if i, ok := typ.(invoke); ok {
+			s.invokes[i] = fx.Invoke(constructor)
+			return nil
+		}
+
+		if c, ok := typ.(special); ok {
+			s.modules[c] = fx.Provide(constructor)
+			return nil
+		}
+		ctor := as(constructor, typ)
+		rt := reflect.TypeOf(typ).Elem()
+
+		s.modules[rt] = fx.Provide(ctor)
+		return nil
+	}
 }
 
 var defConf = config.Default()
@@ -72,8 +101,11 @@ var defaults = []Option{
 	Override(new(record.Validator), modules.RecordValidator),
 }
 
+// Online sets up basic libp2p node
 func Online() Option {
 	return Options(
+		// make sure that online is applied before Config.
+		// This is important because Config overrides some of Online units
 		func(s *settings) error { s.online = true; return nil },
 		applyIf(func(s *settings) bool { return s.config },
 			Error(errors.New("the Online option must be set before Config option")),
@@ -105,6 +137,7 @@ func Online() Option {
 	)
 }
 
+// Config sets up constructors based on the provided config
 func Config(cfg *config.Root) Option {
 	return Options(
 		func(s *settings) error { s.config = true; return nil },
@@ -123,16 +156,18 @@ func New(ctx context.Context, opts ...Option) (api.API, error) {
 		invokes: make([]fx.Option, _nInvokes),
 	}
 
+	// apply module options in the right order
 	if err := Options(Options(defaults...), Options(opts...))(&settings); err != nil {
 		return nil, err
 	}
 
+	// gather constructors for fx.Options
 	ctors := make([]fx.Option, 0, len(settings.modules))
 	for _, opt := range settings.modules {
 		ctors = append(ctors, opt)
 	}
 
-	// fill holes in invokes
+	// fill holes in invokes for use in fx.Options
 	for i, opt := range settings.invokes {
 		if opt == nil {
 			settings.invokes[i] = fx.Options()
@@ -147,6 +182,9 @@ func New(ctx context.Context, opts ...Option) (api.API, error) {
 		fx.Invoke(idAPI(&resAPI.Internal.ID)),
 	)
 
+	// TODO: we probably should have a 'firewall' for Closing signal
+	//  on this context, and implement closing logic through lifecycles
+	//  correctly
 	if err := app.Start(ctx); err != nil {
 		return nil, err
 	}
