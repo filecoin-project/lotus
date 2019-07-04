@@ -4,7 +4,8 @@ import "time"
 
 // Root is starting point of the config
 type Root struct {
-	API API
+	API    API
+	Libp2p Libp2p
 }
 
 // API contains configs for API endpoint
@@ -13,12 +14,23 @@ type API struct {
 	Timeout       Duration
 }
 
+// Libp2p contains configs for libp2p
+type Libp2p struct {
+	ListenAddresses []string
+}
+
 // Default returns the default config
 func Default() *Root {
 	def := Root{
 		API: API{
 			ListenAddress: "/ip6/::1/tcp/1234/http",
 			Timeout:       Duration(30 * time.Second),
+		},
+		Libp2p: Libp2p{
+			ListenAddresses: []string{
+				"/ip4/0.0.0.0/tcp/4001",
+				"/ip6/::/tcp/4001",
+			},
 		},
 	}
 	return &def

@@ -13,15 +13,11 @@ import (
 
 	"github.com/filecoin-project/go-lotus/api"
 	"github.com/filecoin-project/go-lotus/build"
+	"github.com/filecoin-project/go-lotus/node/config"
 	"github.com/filecoin-project/go-lotus/node/modules"
 	"github.com/filecoin-project/go-lotus/node/modules/helpers"
 	"github.com/filecoin-project/go-lotus/node/modules/lp2p"
 )
-
-var defaultListenAddrs = []string{ // TODO: better defaults?
-	"/ip4/0.0.0.0/tcp/4001",
-	"/ip6/::/tcp/4001",
-}
 
 // New builds and starts new Filecoin node
 func New(ctx context.Context) (api.API, error) {
@@ -31,6 +27,9 @@ func New(ctx context.Context) (api.API, error) {
 
 	app := fx.New(
 		fx.Provide(as(ctx, new(helpers.MetricsCtx))),
+		fx.Provide(func() (*config.Root, error) {
+			return config.FromFile("./config.toml")
+		}),
 
 		//fx.Provide(modules.RandomPeerID),
 		randomIdentity(),
@@ -63,7 +62,7 @@ func New(ctx context.Context) (api.API, error) {
 
 			fx.Invoke(
 				lp2p.PstoreAddSelfKeys,
-				lp2p.StartListening(defaultListenAddrs),
+				lp2p.StartListening,
 			),
 		),
 

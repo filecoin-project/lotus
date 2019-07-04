@@ -3,6 +3,7 @@ package lp2p
 import (
 	"fmt"
 
+	"github.com/filecoin-project/go-lotus/node/config"
 	"github.com/libp2p/go-libp2p"
 	host "github.com/libp2p/go-libp2p-core/host"
 	p2pbhost "github.com/libp2p/go-libp2p/p2p/host/basic"
@@ -94,24 +95,22 @@ func listenAddresses(addresses []string) ([]ma.Multiaddr, error) {
 	return listen, nil
 }
 
-func StartListening(addresses []string) func(host host.Host) error {
-	return func(host host.Host) error {
-		listenAddrs, err := listenAddresses(addresses)
-		if err != nil {
-			return err
-		}
-
-		// Actually start listening:
-		if err := host.Network().Listen(listenAddrs...); err != nil {
-			return err
-		}
-
-		// list out our addresses
-		addrs, err := host.Network().InterfaceListenAddresses()
-		if err != nil {
-			return err
-		}
-		log.Infof("Swarm listening at: %s", addrs)
-		return nil
+func StartListening(host host.Host, cfg *config.Root) error {
+	listenAddrs, err := listenAddresses(cfg.Libp2p.ListenAddresses)
+	if err != nil {
+		return err
 	}
+
+	// Actually start listening:
+	if err := host.Network().Listen(listenAddrs...); err != nil {
+		return err
+	}
+
+	// list out our addresses
+	addrs, err := host.Network().InterfaceListenAddresses()
+	if err != nil {
+		return err
+	}
+	log.Infof("Swarm listening at: %s", addrs)
+	return nil
 }
