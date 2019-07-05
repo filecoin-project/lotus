@@ -2,7 +2,7 @@ linters:
   disable-all: true
   enable:
     - vet
-    - gofmt
+    - goimports
     - misspell
     - goconst
     - golint
@@ -13,6 +13,7 @@ linters:
     - varcheck
     - structcheck
     - deadcode
+    - scopelint
 
 
 issues:
