@@ -125,18 +125,18 @@ func MakeGenesisBlock(bs bstore.Blockstore, w *Wallet) (*GenesisBootstrap, error
 	if err != nil {
 		return nil, err
 	}
-	fmt.Println("at end of make genesis block")
+	fmt.Println("at end of make Genesis block")
 
 	emptyroot, err := sharray.Build(context.TODO(), 4, []interface{}{}, cst)
 	if err != nil {
 		return nil, err
 	}
-	fmt.Println("Empty genesis root: ", emptyroot)
+	fmt.Println("Empty Genesis root: ", emptyroot)
 
 	b := &BlockHeader{
 		Miner:           InitActorAddress,
 		Tickets:         []Ticket{},
-		ElectionProof:   []byte("the genesis block"),
+		ElectionProof:   []byte("the Genesis block"),
 		Parents:         []cid.Cid{},
 		Height:          0,
 		ParentWeight:    NewInt(0),

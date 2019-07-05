@@ -4,6 +4,8 @@ import (
 	"bufio"
 	"context"
 	"fmt"
+	"github.com/filecoin-project/go-lotus/cborrpc"
+	"github.com/libp2p/go-libp2p-core/protocol"
 	"math/rand"
 	"sync"
 
@@ -14,6 +16,8 @@ import (
 	"github.com/libp2p/go-libp2p-peer"
 	//"github.com/libp2p/go-libp2p-protocol"
 )
+
+type NewStreamFunc func(context.Context, peer.ID, ...protocol.ID) (inet.Stream, error)
 
 const BlockSyncProtocolID = "/fil/sync/blk/0.0.1"
 
@@ -76,7 +80,7 @@ func (bss *BlockSyncService) HandleStream(s inet.Stream) {
 	log.Error("handling block sync request")
 
 	var req BlockSyncRequest
-	if err := ReadCborRPC(bufio.NewReader(s), &req); err != nil {
+	if err := cborrpc.ReadCborRPC(bufio.NewReader(s), &req); err != nil {
 		log.Errorf("failed to read block sync request: %s", err)
 		return
 	}
@@ -88,7 +92,7 @@ func (bss *BlockSyncService) HandleStream(s inet.Stream) {
 		return
 	}
 
-	if err := WriteCborRPC(s, resp); err != nil {
+	if err := cborrpc.WriteCborRPC(s, resp); err != nil {
 		log.Error("failed to write back response for handle stream: ", err)
 		return
 	}
@@ -322,12 +326,12 @@ func (bs *BlockSync) sendRequestToPeer(ctx context.Context, p peer.ID, req *Bloc
 		return nil, err
 	}
 
-	if err := WriteCborRPC(s, req); err != nil {
+	if err := cborrpc.WriteCborRPC(s, req); err != nil {
 		return nil, err
 	}
 
 	var res BlockSyncResponse
-	if err := ReadCborRPC(bufio.NewReader(s), &res); err != nil {
+	if err := cborrpc.ReadCborRPC(bufio.NewReader(s), &res); err != nil {
 		return nil, err
 	}
 

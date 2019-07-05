@@ -3,6 +3,7 @@ package chain
 import (
 	"context"
 	"fmt"
+	"github.com/filecoin-project/go-lotus/chain/address"
 	"sync"
 
 	"github.com/ipfs/go-cid"
@@ -21,8 +22,8 @@ type Syncer struct {
 	// The interface for accessing and putting tipsets into local storage
 	store *ChainStore
 
-	// The known genesis tipset
-	genesis *TipSet
+	// The known Genesis tipset
+	Genesis *TipSet
 
 	// the current mode the syncer is in
 	syncMode SyncMode
@@ -54,7 +55,7 @@ func NewSyncer(cs *ChainStore, bsync *BlockSync) (*Syncer, error) {
 
 	return &Syncer{
 		syncMode:  Bootstrap,
-		genesis:   gent,
+		Genesis:   gent,
 		bsync:     bsync,
 		peerHeads: make(map[peer.ID]*TipSet),
 		head:      cs.GetHeaviestTipSet(),
@@ -200,17 +201,17 @@ func (syncer *Syncer) SyncBootstrap() {
 	}
 
 	// hacks. in the case that we request X blocks starting at height X+1, we
-	// won't get the genesis block in the returned blockset. This hacks around it
+	// won't get the Genesis block in the returned blockset. This hacks around it
 	if blockSet[len(blockSet)-1].Height() != 0 {
-		blockSet = append(blockSet, syncer.genesis)
+		blockSet = append(blockSet, syncer.Genesis)
 	}
 
 	blockSet = reverse(blockSet)
 
 	genesis := blockSet[0]
-	if !genesis.Equals(syncer.genesis) {
+	if !genesis.Equals(syncer.Genesis) {
 		// TODO: handle this...
-		log.Errorf("We synced to the wrong chain! %s != %s", genesis, syncer.genesis)
+		log.Errorf("We synced to the wrong chain! %s != %s", genesis, syncer.Genesis)
 		return
 	}
 
@@ -473,7 +474,7 @@ func (fts *FullTipSet) TipSet() *TipSet {
 // the rest of the network.
 func (syncer *Syncer) SyncCaughtUp(maybeHead *FullTipSet) error {
 	ts := maybeHead.TipSet()
-	if syncer.genesis.Equals(ts) {
+	if syncer.Genesis.Equals(ts) {
 		return nil
 	}
 
@@ -504,7 +505,7 @@ func (syncer *Syncer) SyncCaughtUp(maybeHead *FullTipSet) error {
 
 func (syncer *Syncer) ValidateTipSet(fts *FullTipSet) error {
 	ts := fts.TipSet()
-	if ts.Equals(syncer.genesis) {
+	if ts.Equals(syncer.Genesis) {
 		return nil
 	}
 
@@ -657,7 +658,7 @@ func (syncer *Syncer) collectChainCaughtUp(fts *FullTipSet) ([]*FullTipSet, erro
 
 		return chain, nil // return the chain because we have this last block in our cache already.
 
-		if ts.Equals(syncer.genesis) {
+		if ts.Equals(syncer.Genesis) {
 			break
 		}
 

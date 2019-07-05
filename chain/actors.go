@@ -108,16 +108,3 @@ func (ias *InitActorState) Lookup(cst *hamt.CborIpldStore, addr address.Address)
 type AccountActorState struct {
 	Address address.Address
 }
-
-func DeductFunds(act *Actor, amt BigInt) error {
-	if BigCmp(act.Balance, amt) < 0 {
-		return fmt.Errorf("not enough funds")
-	}
-
-	act.Balance = BigSub(act.Balance, amt)
-	return nil
-}
-
-func DepositFunds(act *Actor, amt BigInt) {
-	act.Balance = BigAdd(act.Balance, amt)
-}

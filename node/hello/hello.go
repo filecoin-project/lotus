@@ -2,6 +2,8 @@ package hello
 
 import (
 	"context"
+	"fmt"
+	"github.com/filecoin-project/go-lotus/chain"
 
 	"github.com/filecoin-project/go-lotus/cborrpc"
 	"github.com/libp2p/go-libp2p-core/host"
@@ -11,7 +13,6 @@ import (
 	logging "github.com/ipfs/go-log"
 	inet "github.com/libp2p/go-libp2p-core/network"
 	"github.com/libp2p/go-libp2p-core/peer"
-	"github.com/libp2p/go-libp2p-core/protocol"
 )
 
 const ProtocolID = "/fil/hello/1.0.0"
@@ -28,13 +29,11 @@ type Message struct {
 	GenesisHash          cid.Cid
 }
 
-type NewStreamFunc func(context.Context, peer.ID, ...protocol.ID) (inet.Stream, error)
-
 type Service struct {
-	newStream NewStreamFunc
+	newStream chain.NewStreamFunc
 
-	//cs        *ChainStore
-	//syncer    *Syncer
+	cs     *chain.ChainStore
+	syncer *chain.Syncer
 }
 
 func NewHelloService(h host.Host) *Service {
@@ -56,7 +55,7 @@ func (hs *Service) HandleStream(s inet.Stream) {
 		"peer", s.Conn().RemotePeer(),
 		"hash", hmsg.GenesisHash)
 
-	/*if hmsg.GenesisHash != hs.syncer.genesis.Cids()[0] {
+	if hmsg.GenesisHash != hs.syncer.Genesis.Cids()[0] {
 		log.Error("other peer has different genesis!")
 		s.Conn().Close()
 		return
@@ -68,11 +67,11 @@ func (hs *Service) HandleStream(s inet.Stream) {
 		return
 	}
 
-	hs.syncer.InformNewHead(s.Conn().RemotePeer(), ts)*/
+	hs.syncer.InformNewHead(s.Conn().RemotePeer(), ts)
 }
 
 func (hs *Service) SayHello(ctx context.Context, pid peer.ID) error {
-	/*s, err := hs.newStream(ctx, pid, ProtocolID)
+	s, err := hs.newStream(ctx, pid, ProtocolID)
 	if err != nil {
 		return err
 	}
@@ -92,9 +91,9 @@ func (hs *Service) SayHello(ctx context.Context, pid peer.ID) error {
 	fmt.Println("SENDING HELLO MESSAGE: ", hts.Cids())
 	fmt.Println("hello message genesis: ", gen.Cid())
 
-	if err := WriteCborRPC(s, hmsg); err != nil {
+	if err := cborrpc.WriteCborRPC(s, hmsg); err != nil {
 		return err
-	}*/
+	}
 
 	return nil
 }
