@@ -1,6 +1,5 @@
 package address
 
-
 import (
 	"encoding/base32"
 

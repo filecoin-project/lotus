@@ -13,8 +13,8 @@ import (
 	bstore "github.com/ipfs/go-ipfs-blockstore"
 	logging "github.com/ipfs/go-log"
 	"github.com/pkg/errors"
-	sharray "github.com/whyrusleeping/sharray"
 	pubsub "github.com/whyrusleeping/pubsub"
+	sharray "github.com/whyrusleeping/sharray"
 )
 
 const ForkLengthThreshold = 20
@@ -456,4 +456,3 @@ func (cs *ChainStore) LoadMessagesFromCids(cids []cid.Cid) ([]*SignedMessage, er
 
 	return msgs, nil
 }
-
