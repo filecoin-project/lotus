@@ -3,9 +3,10 @@ package daemon
 import (
 	"context"
 
-	"gopkg.in/urfave/cli.v2"
-
 	"github.com/filecoin-project/go-lotus/node"
+	"github.com/filecoin-project/go-lotus/node/config"
+
+	"gopkg.in/urfave/cli.v2"
 )
 
 // Cmd is the `go-lotus daemon` command
@@ -15,7 +16,12 @@ var Cmd = &cli.Command{
 	Action: func(cctx *cli.Context) error {
 		ctx := context.Background()
 
-		api, err := node.New(ctx)
+		cfg, err := config.FromFile("./config.toml")
+		if err != nil {
+			return err
+		}
+
+		api, err := node.New(ctx, node.Online(), node.Config(cfg))
 		if err != nil {
 			return err
 		}
