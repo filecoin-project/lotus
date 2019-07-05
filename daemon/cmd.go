@@ -2,11 +2,11 @@ package daemon
 
 import (
 	"context"
+
+	"github.com/filecoin-project/go-lotus/node"
 	"github.com/filecoin-project/go-lotus/node/config"
 
 	"gopkg.in/urfave/cli.v2"
-
-	"github.com/filecoin-project/go-lotus/node"
 )
 
 // Cmd is the `go-lotus daemon` command
