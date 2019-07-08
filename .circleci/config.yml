@@ -3,6 +3,15 @@ orbs:
   go: gotest/tools@0.0.9
 
 
+commands:
+  prepare:
+    steps:
+      - checkout
+      - run: git submodule sync
+      - run: git submodule update --init
+      - run: make deps
+
+
 jobs:
   mod-tidy-check:
     executor: go/circleci-golang
@@ -12,13 +21,105 @@ jobs:
       - go/mod-download
       - go/mod-tidy-check
 
+  test:
+    description: |
+      Run tests with gotestsum.
+    parameters:
+      executor:
+        type: executor
+        default: go/golang
+      go-test-flags:
+        type: string
+        default: ""
+        description: Flags passed to go test.
+      packages:
+        type: string
+        default: "./..."
+        description: Import paths of packages to be tested.
+      test-suite-name:
+        type: string
+        default: unit
+        description: Test suite name to report to CircleCI.
+      gotestsum-format:
+        type: string
+        default: short
+        description: gotestsum format. https://github.com/gotestyourself/gotestsum#format
+      coverage:
+        type: string
+        default: -coverprofile=coverage.txt
+        description: Coverage flag. Set to the empty string to disable.
+      codecov-upload:
+        type: boolean
+        default: false
+        description: |
+          Upload coverage report to https://codecov.io/. Requires the codecov API token to be
+          set as an environment variable for private projects.
+    executor: << parameters.executor >>
+    steps:
+      - go/install: {package: git}
+      - go/install-ssh
+      - prepare
+      - go/mod-download
+      - go/install-gotestsum
+      - run:
+          name: go test
+          environment:
+            GOTESTSUM_JUNITFILE: /tmp/test-reports/<< parameters.test-suite-name >>/junit.xml
+            GOTESTSUM_FORMAT: << parameters.gotestsum-format >>
+          command: |
+            mkdir -p /tmp/test-reports/<< parameters.test-suite-name >>
+            gotestsum -- \
+              << parameters.coverage >> \
+              << parameters.go-test-flags >> \
+              << parameters.packages >>
+      - store_test_results:
+          path: /tmp/test-reports
+      - when:
+          condition: << parameters.codecov-upload >>
+          steps:
+            - go/install: {package: bash}
+            - go/install: {package: curl}
+            - run:
+                shell: /bin/bash -eo pipefail
+                command: |
+                  bash <(curl -s https://codecov.io/bash)
+
+  lint:
+    description: |
+      Run golangci-lint.
+    parameters:
+      executor:
+        type: executor
+        default: go/golang
+      golangci-lint-version:
+        type: string
+        default: 1.15.0
+      concurrency:
+        type: string
+        default: '2'
+        description: |
+          Concurrency used to run linters. Defaults to 2 because NumCPU is not
+          aware of container CPU limits.
+    executor: << parameters.executor >>
+    steps:
+      - prepare
+      - go/mod-download
+      - go/install-golangci-lint:
+          version: << parameters.golangci-lint-version >>
+      - run:
+          name: Lint
+          command: |
+            golangci-lint run -v \
+              --concurrency << parameters.concurrency >>
+
+
 workflows:
   version: 2
   ci:
     jobs:
-      - go/lint:
+      - lint:
           golangci-lint-version: 1.17.1
-      - go/test:
+      - test:
           executor: go/circleci-golang
           codecov-upload: true
       - mod-tidy-check
