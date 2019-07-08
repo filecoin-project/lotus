@@ -10,4 +10,4 @@ deps: blssigs
 build: deps
 	go build -o lotus ./cmd/lotus
 
-.PHONY: all build deps
+.PHONY: all build deps blssigs
