@@ -32,7 +32,6 @@ var netPeers = &cli.Command{
 	},
 }
 
-
 var netConnect = &cli.Command{
 	Name:  "connect",
 	Usage: "Connect to a peer",
@@ -56,7 +55,6 @@ var netConnect = &cli.Command{
 		return nil
 	},
 }
-
 
 // parseAddresses is a function that takes in a slice of string peer addresses
 // (multiaddr + peerid) and returns a slice of properly constructed peers
