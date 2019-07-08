@@ -4,7 +4,7 @@ import (
 	"context"
 	"fmt"
 	"github.com/filecoin-project/go-lotus/chain"
-	"github.com/filecoin-project/go-lotus/lib"
+	"github.com/filecoin-project/go-lotus/lib/cborrpc"
 
 	"github.com/libp2p/go-libp2p-core/host"
 
@@ -46,7 +46,7 @@ func (hs *Service) HandleStream(s inet.Stream) {
 	defer s.Close()
 
 	var hmsg Message
-	if err := lib.ReadCborRPC(s, &hmsg); err != nil {
+	if err := cborrpc.ReadCborRPC(s, &hmsg); err != nil {
 		log.Infow("failed to read hello message", "error", err)
 		return
 	}
@@ -91,7 +91,7 @@ func (hs *Service) SayHello(ctx context.Context, pid peer.ID) error {
 	fmt.Println("SENDING HELLO MESSAGE: ", hts.Cids())
 	fmt.Println("hello message genesis: ", gen.Cid())
 
-	if err := lib.WriteCborRPC(s, hmsg); err != nil {
+	if err := cborrpc.WriteCborRPC(s, hmsg); err != nil {
 		return err
 	}
 

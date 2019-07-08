@@ -4,7 +4,6 @@ import (
 	"bytes"
 	"encoding/json"
 	"fmt"
-	"github.com/filecoin-project/go-lotus/lib"
 	"net/http"
 	"reflect"
 )
@@ -176,7 +175,7 @@ func (s *RPCServer) Register(namespace string, r interface{}) {
 
 		funcType := method.Func.Type()
 		hasCtx := 0
-		if funcType.NumIn() >= 2 && funcType.In(1) == lib.contextType {
+		if funcType.NumIn() >= 2 && funcType.In(1) == contextType {
 			hasCtx = 1
 		}
 
@@ -213,7 +212,7 @@ func processFuncOut(funcType reflect.Type) (valOut int, errOut int, n int) {
 	switch n {
 	case 0:
 	case 1:
-		if funcType.Out(0) == lib.errorType {
+		if funcType.Out(0) == errorType {
 			errOut = 0
 		} else {
 			valOut = 0
@@ -221,7 +220,7 @@ func processFuncOut(funcType reflect.Type) (valOut int, errOut int, n int) {
 	case 2:
 		valOut = 0
 		errOut = 1
-		if funcType.Out(1) != lib.errorType {
+		if funcType.Out(1) != errorType {
 			panic("expected error as second return value")
 		}
 	default:
