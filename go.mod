@@ -50,4 +50,5 @@ require (
 	go.uber.org/fx v1.9.0
 	go.uber.org/goleak v0.10.0 // indirect
 	gopkg.in/urfave/cli.v2 v2.0.0-20180128182452-d3ae77c26ac8
+	launchpad.net/gocheck v0.0.0-20140225173054-000000000087 // indirect
 )

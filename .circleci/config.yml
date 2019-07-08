@@ -9,7 +9,6 @@ commands:
       - checkout
       - run: git submodule sync
       - run: git submodule update --init
-      - run: make deps
 
 
 jobs:
@@ -60,6 +59,7 @@ jobs:
       - go/install-ssh
       - prepare
       - go/mod-download
+      - run: make deps
       - go/install-gotestsum
       - run:
           name: go test
@@ -102,8 +102,11 @@ jobs:
           aware of container CPU limits.
     executor: << parameters.executor >>
     steps:
+      - go/install: {package: git}
+      - go/install-ssh
       - prepare
       - go/mod-download
+      - run: make deps
       - go/install-golangci-lint:
           version: << parameters.golangci-lint-version >>
       - run:
