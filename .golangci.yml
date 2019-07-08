@@ -20,12 +20,16 @@ issues:
   exclude:
     - "func name will be used as test\\.Test.* by other packages, and that stutters; consider calling this"
     - "Potential file inclusion via variable"
+    - "should have( a package)? comment"
 
   exclude-use-default: false
   exclude-rules:
     - path: node/modules/lp2p
       linters:
         - golint
+    - path: ".*_test.go"
+      linters:
+        - gosec
 
 linters-settings:
   goconst:
