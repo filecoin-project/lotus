@@ -7,13 +7,10 @@ import (
 
 	"github.com/stretchr/testify/assert"
 
-	"github.com/filecoin-project/go-filecoin/crypto"
-	tf "github.com/filecoin-project/go-filecoin/testhelpers/testflags"
+	"github.com/filecoin-project/go-lotus/lib/crypto"
 )
 
 func TestGenerateKey(t *testing.T) {
-	tf.UnitTest(t)
-
 	rand.Seed(time.Now().UnixNano())
 
 	sk, err := crypto.GenerateKey()
