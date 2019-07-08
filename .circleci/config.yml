@@ -31,7 +31,7 @@ jobs:
     parameters:
       executor:
         type: executor
-        default: go/golang
+        default: go/circleci-golang
       go-test-flags:
         type: string
         default: ""
@@ -65,6 +65,7 @@ jobs:
       - go/mod-download
       - run: make deps
       - go/install-gotestsum
+          gobin: $HOME/.local/bin
       - run:
           name: go test
           environment:
@@ -94,7 +95,7 @@ jobs:
     parameters:
       executor:
         type: executor
-        default: go/golang
+        default: go/circleci-golang
       golangci-lint-version:
         type: string
         default: 1.15.0
@@ -107,11 +108,11 @@ jobs:
     executor: << parameters.executor >>
     steps:
       - install-deps
-      - go/install: {package: make}
       - prepare
       - go/mod-download
       - run: make deps
       - go/install-golangci-lint:
+          gobin: $HOME/.local/bin
           version: << parameters.golangci-lint-version >>
       - run:
           name: Lint
@@ -127,6 +128,5 @@ workflows:
       - lint:
           golangci-lint-version: 1.17.1
       - test:
-          executor: go/circleci-golang
           codecov-upload: true
       - mod-tidy-check
