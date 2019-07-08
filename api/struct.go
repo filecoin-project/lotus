@@ -11,7 +11,18 @@ type Struct struct {
 	Internal struct {
 		ID      func(context.Context) (peer.ID, error)
 		Version func(context.Context) (Version, error)
+
+		NetPeers   func(context.Context) ([]peer.AddrInfo, error)
+		NetConnect func(context.Context, peer.AddrInfo) error
 	}
+}
+
+func (c *Struct) NetPeers(ctx context.Context) ([]peer.AddrInfo, error) {
+	return c.Internal.NetPeers(ctx)
+}
+
+func (c *Struct) NetConnect(ctx context.Context, p peer.AddrInfo) error {
+	return c.Internal.NetConnect(ctx, p)
 }
 
 // ID implements API.ID

@@ -2,7 +2,6 @@ package api
 
 import (
 	"context"
-
 	"github.com/libp2p/go-libp2p-core/peer"
 )
 
@@ -34,9 +33,9 @@ type API interface {
 
 	// network
 
-	// // peers
+	NetPeers(context.Context) ([]peer.AddrInfo, error) // TODO: check serialization
+	NetConnect(context.Context, peer.AddrInfo) error
 	// // ping
-	// // connect
 
 	// Struct
 

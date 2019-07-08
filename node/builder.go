@@ -20,7 +20,6 @@ import (
 	"go.uber.org/fx"
 
 	"github.com/filecoin-project/go-lotus/api"
-	"github.com/filecoin-project/go-lotus/build"
 	"github.com/filecoin-project/go-lotus/chain"
 	"github.com/filecoin-project/go-lotus/node/config"
 	"github.com/filecoin-project/go-lotus/node/hello"
@@ -222,8 +221,7 @@ func New(ctx context.Context, opts ...Option) (api.API, error) {
 		fx.Options(ctors...),
 		fx.Options(settings.invokes...),
 
-		fx.Invoke(versionAPI(&resAPI.Internal.Version)),
-		fx.Invoke(idAPI(&resAPI.Internal.ID)),
+		apiOption(&resAPI),
 	)
 
 	// TODO: we probably should have a 'firewall' for Closing signal
@@ -249,25 +247,4 @@ func randomIdentity() Option {
 		Override(new(ci.PubKey), pk),
 		Override(new(peer.ID), peer.IDFromPublicKey),
 	)
-}
-
-// API IMPL
-
-// TODO: figure out a better way, this isn't usable in long term
-func idAPI(set *func(ctx context.Context) (peer.ID, error)) func(id peer.ID) {
-	return func(id peer.ID) {
-		*set = func(ctx context.Context) (peer.ID, error) {
-			return id, nil
-		}
-	}
-}
-
-func versionAPI(set *func(context.Context) (api.Version, error)) func() {
-	return func() {
-		*set = func(context.Context) (api.Version, error) {
-			return api.Version{
-				Version: build.Version,
-			}, nil
-		}
-	}
 }

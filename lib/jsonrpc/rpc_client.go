@@ -6,10 +6,17 @@ import (
 	"encoding/json"
 	"errors"
 	"fmt"
+	"io/ioutil"
 	"net/http"
 	"reflect"
 	"sync/atomic"
+
+	logging "github.com/ipfs/go-log"
 )
+
+var log = logging.Logger("rpc")
+
+const clientDebug = true
 
 var (
 	errorType   = reflect.TypeOf(new(error)).Elem()
@@ -147,6 +154,20 @@ func NewClient(addr string, namespace string, handler interface{}) ClientCloser 
 			}
 
 			// process response
+
+			if clientDebug {
+				rsp, err := ioutil.ReadAll(httpResp.Body)
+				if err != nil {
+					return processError(err)
+				}
+				if err := httpResp.Body.Close(); err != nil {
+					return processError(err)
+				}
+
+				log.Warnw("rpc response", "body", string(rsp))
+
+				httpResp.Body = ioutil.NopCloser(bytes.NewReader(rsp))
+			}
 
 			var resp clientResponse
 			if valOut != -1 {

@@ -1,6 +1,8 @@
 package main
 
 import (
+	"github.com/filecoin-project/go-lotus/api"
+	"github.com/filecoin-project/go-lotus/api/client"
 	"log"
 	"os"
 
@@ -20,6 +22,12 @@ func main() {
 		Name:    "lotus",
 		Usage:   "Filecoin decentralized storage network client",
 		Version: build.Version,
+		Metadata: map[string]interface{}{
+			"api": lcli.ApiConnector(func() api.API {
+				// TODO: get this from repo
+				return client.NewRPC("http://127.0.0.1:1234/rpc/v0")
+			}),
+		},
 
 		Commands: append(local, lcli.Commands...),
 	}
