@@ -7,8 +7,8 @@ import (
 
 	"github.com/minio/blake2b-simd"
 
-	bls "github.com/filecoin-project/go-filecoin/bls-signatures"
-	crypto "github.com/filecoin-project/go-filecoin/crypto"
+	"github.com/filecoin-project/go-lotus/lib/crypto"
+	"github.com/filecoin-project/go-lotus/lib/bls-signatures"
 )
 
 const (

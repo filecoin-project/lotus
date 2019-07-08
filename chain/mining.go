@@ -5,8 +5,8 @@ import (
 	"fmt"
 	"time"
 
-	bls "github.com/filecoin-project/go-filecoin/bls-signatures"
 	"github.com/filecoin-project/go-lotus/chain/address"
+	bls "github.com/filecoin-project/go-lotus/lib/bls-signatures"
 	cid "github.com/ipfs/go-cid"
 	hamt "github.com/ipfs/go-hamt-ipld"
 	"github.com/pkg/errors"

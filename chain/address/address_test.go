@@ -13,9 +13,9 @@ import (
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 
-	"github.com/filecoin-project/go-filecoin/bls-signatures"
-	"github.com/filecoin-project/go-filecoin/crypto"
 	tf "github.com/filecoin-project/go-filecoin/testhelpers/testflags"
+	"github.com/filecoin-project/go-lotus/lib/bls-signatures"
+	"github.com/filecoin-project/go-lotus/lib/crypto"
 )
 
 func init() {
