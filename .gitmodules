@@ -1,0 +1,3 @@
+[submodule "lib/bls-signatures/bls-signatures"]
+	path = lib/bls-signatures/bls-signatures
+	url = https://github.com/filecoin-project/bls-signatures.git
