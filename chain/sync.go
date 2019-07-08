@@ -35,7 +35,7 @@ type Syncer struct {
 	bad BadTipSetCache
 
 	// handle to the block sync service
-	bsync *BlockSync
+	Bsync *BlockSync
 
 	// peer heads
 	// Note: clear cache on disconnects
@@ -57,7 +57,7 @@ func NewSyncer(cs *ChainStore, bsync *BlockSync) (*Syncer, error) {
 	return &Syncer{
 		syncMode:  Bootstrap,
 		Genesis:   gent,
-		bsync:     bsync,
+		Bsync:     bsync,
 		peerHeads: make(map[peer.ID]*TipSet),
 		head:      cs.GetHeaviestTipSet(),
 		store:     cs,
@@ -123,7 +123,7 @@ func (syncer *Syncer) InformNewHead(from peer.ID, fts *FullTipSet) {
 	syncer.peerHeadsLk.Lock()
 	syncer.peerHeads[from] = fts.TipSet()
 	syncer.peerHeadsLk.Unlock()
-	syncer.bsync.AddPeer(from)
+	syncer.Bsync.AddPeer(from)
 
 	go func() {
 		syncer.syncLock.Lock()
@@ -185,7 +185,7 @@ func (syncer *Syncer) SyncBootstrap() {
 		// requested, and that they are correctly linked to eachother. It does
 		// not validate any state transitions
 		fmt.Println("Get blocks: ", cur)
-		blks, err := syncer.bsync.GetBlocks(context.TODO(), cur, 10)
+		blks, err := syncer.Bsync.GetBlocks(context.TODO(), cur, 10)
 		if err != nil {
 			log.Error("failed to get blocks: ", err)
 			return
@@ -238,7 +238,7 @@ func (syncer *Syncer) SyncBootstrap() {
 		}
 
 		next := blockSet[nextHeight]
-		bstips, err := syncer.bsync.GetChainMessages(ctx, next, (nextHeight+1)-i)
+		bstips, err := syncer.Bsync.GetChainMessages(ctx, next, (nextHeight+1)-i)
 		if err != nil {
 			log.Errorf("failed to fetch messages: %s", err)
 			return
@@ -400,7 +400,7 @@ func (syncer *Syncer) FetchTipSet(ctx context.Context, p peer.ID, cids []cid.Cid
 		return fts, nil
 	}
 
-	return syncer.bsync.GetFullTipSet(ctx, p, cids)
+	return syncer.Bsync.GetFullTipSet(ctx, p, cids)
 }
 
 func (syncer *Syncer) tryLoadFullTipSet(cids []cid.Cid) (*FullTipSet, error) {

@@ -3,19 +3,19 @@ package node
 import (
 	"context"
 	"errors"
-	"github.com/filecoin-project/go-lotus/node/modules/testing"
-	blockstore "github.com/ipfs/go-ipfs-blockstore"
-	exchange "github.com/ipfs/go-ipfs-exchange-interface"
 	"reflect"
 	"time"
 
 	"github.com/ipfs/go-datastore"
+	blockstore "github.com/ipfs/go-ipfs-blockstore"
+	exchange "github.com/ipfs/go-ipfs-exchange-interface"
 	ci "github.com/libp2p/go-libp2p-core/crypto"
 	"github.com/libp2p/go-libp2p-core/host"
 	"github.com/libp2p/go-libp2p-core/peer"
 	"github.com/libp2p/go-libp2p-core/peerstore"
 	"github.com/libp2p/go-libp2p-core/routing"
 	"github.com/libp2p/go-libp2p-peerstore/pstoremem"
+	pubsub "github.com/libp2p/go-libp2p-pubsub"
 	record "github.com/libp2p/go-libp2p-record"
 	"go.uber.org/fx"
 
@@ -27,6 +27,7 @@ import (
 	"github.com/filecoin-project/go-lotus/node/modules"
 	"github.com/filecoin-project/go-lotus/node/modules/helpers"
 	"github.com/filecoin-project/go-lotus/node/modules/lp2p"
+	"github.com/filecoin-project/go-lotus/node/modules/testing"
 )
 
 // special is a type used to give keys to modules which
@@ -58,7 +59,12 @@ const (
 
 	// filecoin
 	SetGenisisKey
+
 	RunHelloKey
+	RunBlockSyncKey
+
+	HandleIncomingBlocksKey
+	HandleIncomingMessagesKey
 
 	_nInvokes // keep this last
 )
@@ -146,6 +152,8 @@ func Online() Option {
 		Override(NatPortMapKey, lp2p.NatPortMap),
 		Override(ConnectionManagerKey, lp2p.ConnectionManager(50, 200, 20*time.Second)),
 
+		Override(new(*pubsub.PubSub), lp2p.GossipSub()),
+
 		Override(PstoreAddSelfKeysKey, lp2p.PstoreAddSelfKeys),
 		Override(StartListeningKey, lp2p.StartListening(defConf.Libp2p.ListenAddresses)),
 
@@ -159,14 +167,18 @@ func Online() Option {
 		Override(new(*chain.Syncer), chain.NewSyncer),
 		Override(new(*chain.BlockSync), chain.NewBlockSyncClient),
 		Override(new(*chain.Wallet), chain.NewWallet),
+		Override(new(*chain.MessagePool), chain.NewMessagePool),
 
 		Override(new(modules.Genesis), testing.MakeGenesis),
 		Override(SetGenisisKey, modules.SetGenesis),
 
 		Override(new(*hello.Service), hello.NewHelloService),
-		Override(RunHelloKey, hello.Run),
+		Override(new(*chain.BlockSyncService), chain.NewBlockSyncService),
+		Override(RunHelloKey, modules.RunHello),
+		Override(RunBlockSyncKey, modules.RunBlockSync),
+		Override(HandleIncomingBlocksKey, modules.HandleIncomingBlocks),
+		Override(HandleIncomingMessagesKey, modules.HandleIncomingMessages),
 	)
-
 }
 
 // Config sets up constructors based on the provided config
