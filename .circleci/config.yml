@@ -4,6 +4,11 @@ orbs:
 
 
 commands:
+  install-deps:
+    steps:
+      - go/install-ssh
+      - go/install: {package: git}
+      - go/install: {package: bzr}
   prepare:
     steps:
       - checkout
@@ -55,8 +60,7 @@ jobs:
           set as an environment variable for private projects.
     executor: << parameters.executor >>
     steps:
-      - go/install: {package: git}
-      - go/install-ssh
+      - install-deps
       - prepare
       - go/mod-download
       - run: make deps
@@ -102,8 +106,7 @@ jobs:
           aware of container CPU limits.
     executor: << parameters.executor >>
     steps:
-      - go/install: {package: git}
-      - go/install-ssh
+      - install-deps
       - prepare
       - go/mod-download
       - run: make deps
