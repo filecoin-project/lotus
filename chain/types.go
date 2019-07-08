@@ -425,6 +425,10 @@ func (ts *TipSet) Height() uint64 {
 	return ts.height
 }
 
+func (ts *TipSet) Weight() uint64 {
+	panic("if tipsets are going to have weight on them, we need to wire that through")
+}
+
 func (ts *TipSet) Parents() []cid.Cid {
 	return ts.blks[0].Parents
 }
