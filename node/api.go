@@ -2,7 +2,6 @@ package node
 
 import (
 	"context"
-	"errors"
 	"reflect"
 
 	"github.com/filecoin-project/go-lotus/api"
@@ -82,7 +81,7 @@ func netPeersAPI(h host.Host) interface{} {
 
 func netConnectAPI(h host.Host) interface{} {
 	return func(ctx context.Context, p peer.AddrInfo) error {
-		return errors.New("nope")
+		return h.Connect(ctx, p)
 	}
 }
 
