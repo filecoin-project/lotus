@@ -1,4 +1,4 @@
-package chain
+package bufbstore
 
 import (
 	"context"
@@ -114,4 +114,8 @@ func (bs *BufferedBS) HashOnRead(hor bool) {
 
 func (bs *BufferedBS) PutMany(blks []block.Block) error {
 	return bs.write.PutMany(blks)
+}
+
+func (bs *BufferedBS) Read() bstore.Blockstore {
+	return bs.read
 }
