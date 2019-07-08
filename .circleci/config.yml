@@ -64,7 +64,7 @@ jobs:
       - prepare
       - go/mod-download
       - run: make deps
-      - go/install-gotestsum
+      - go/install-gotestsum:
           gobin: $HOME/.local/bin
       - run:
           name: go test
