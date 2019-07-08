@@ -98,13 +98,18 @@ jobs:
         default: go/circleci-golang
       golangci-lint-version:
         type: string
-        default: 1.15.0
+        default: 1.17.1
       concurrency:
         type: string
         default: '2'
         description: |
           Concurrency used to run linters. Defaults to 2 because NumCPU is not
           aware of container CPU limits.
+      args:
+        type: string
+        default: ''
+        description: |
+          Arguments to pass to golangci-lint
     executor: << parameters.executor >>
     steps:
       - install-deps
@@ -118,15 +123,16 @@ jobs:
           name: Lint
           command: |
             golangci-lint run -v \
-              --concurrency << parameters.concurrency >>
+              --concurrency << parameters.concurrency >> << parameters.args >>
 
 
 workflows:
   version: 2
   ci:
     jobs:
+      - lint
       - lint:
-          golangci-lint-version: 1.17.1
+          args: "--no-config --exclude-use-default=false --disable-all --enable golint"
       - test:
           codecov-upload: true
       - mod-tidy-check
