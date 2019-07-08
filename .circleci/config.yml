@@ -20,8 +20,8 @@ jobs:
   mod-tidy-check:
     executor: go/circleci-golang
     steps:
-      - go/install-ssh
-      - checkout
+      - install-deps
+      - prepare
       - go/mod-download
       - go/mod-tidy-check
 
