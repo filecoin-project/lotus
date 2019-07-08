@@ -107,6 +107,7 @@ jobs:
     executor: << parameters.executor >>
     steps:
       - install-deps
+      - go/install: {package: make}
       - prepare
       - go/mod-download
       - run: make deps
