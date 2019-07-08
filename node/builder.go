@@ -3,6 +3,9 @@ package node
 import (
 	"context"
 	"errors"
+	"github.com/filecoin-project/go-lotus/node/modules/testing"
+	blockstore "github.com/ipfs/go-ipfs-blockstore"
+	exchange "github.com/ipfs/go-ipfs-exchange-interface"
 	"reflect"
 	"time"
 
@@ -18,7 +21,9 @@ import (
 
 	"github.com/filecoin-project/go-lotus/api"
 	"github.com/filecoin-project/go-lotus/build"
+	"github.com/filecoin-project/go-lotus/chain"
 	"github.com/filecoin-project/go-lotus/node/config"
+	"github.com/filecoin-project/go-lotus/node/hello"
 	"github.com/filecoin-project/go-lotus/node/modules"
 	"github.com/filecoin-project/go-lotus/node/modules/helpers"
 	"github.com/filecoin-project/go-lotus/node/modules/lp2p"
@@ -44,12 +49,16 @@ var (
 
 type invoke int
 
+//nolint:golint
 const (
-	// PstoreAddSelfKeysKey is a key for Override for PstoreAddSelfKeys
-	PstoreAddSelfKeysKey = invoke(iota)
+	// libp2p
 
-	// StartListeningKey is a key for Override for StartListening
+	PstoreAddSelfKeysKey = invoke(iota)
 	StartListeningKey
+
+	// filecoin
+	SetGenisisKey
+	RunHelloKey
 
 	_nInvokes // keep this last
 )
@@ -97,8 +106,13 @@ var defaults = []Option{
 
 	randomIdentity(),
 
-	Override(new(datastore.Batching), datastore.NewMapDatastore),
+	Override(new(datastore.Batching), testing.MapDatastore),
+	Override(new(blockstore.Blockstore), testing.MapBlockstore), // NOT on top of ds above
 	Override(new(record.Validator), modules.RecordValidator),
+
+	// Filecoin modules
+
+	Override(new(*chain.ChainStore), chain.NewChainStore),
 }
 
 // Online sets up basic libp2p node
@@ -134,7 +148,25 @@ func Online() Option {
 
 		Override(PstoreAddSelfKeysKey, lp2p.PstoreAddSelfKeys),
 		Override(StartListeningKey, lp2p.StartListening(defConf.Libp2p.ListenAddresses)),
+
+		//
+
+		Override(new(blockstore.GCLocker), blockstore.NewGCLocker),
+		Override(new(blockstore.GCBlockstore), blockstore.NewGCBlockstore),
+		Override(new(exchange.Interface), modules.Bitswap),
+
+		// Filecoin services
+		Override(new(*chain.Syncer), chain.NewSyncer),
+		Override(new(*chain.BlockSync), chain.NewBlockSyncClient),
+		Override(new(*chain.Wallet), chain.NewWallet),
+
+		Override(new(modules.Genesis), testing.MakeGenesis),
+		Override(SetGenisisKey, modules.SetGenesis),
+
+		Override(new(*hello.Service), hello.NewHelloService),
+		Override(RunHelloKey, hello.Run),
 	)
+
 }
 
 // Config sets up constructors based on the provided config

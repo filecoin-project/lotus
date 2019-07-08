@@ -5,11 +5,12 @@ import (
 	"context"
 	"fmt"
 	"github.com/filecoin-project/go-lotus/lib/cborrpc"
+	exchange "github.com/ipfs/go-ipfs-exchange-interface"
+	"github.com/libp2p/go-libp2p-core/host"
 	"github.com/libp2p/go-libp2p-core/protocol"
 	"math/rand"
 	"sync"
 
-	"github.com/ipfs/go-bitswap"
 	"github.com/ipfs/go-cid"
 	cbor "github.com/ipfs/go-ipld-cbor"
 	inet "github.com/libp2p/go-libp2p-core/network"
@@ -180,17 +181,17 @@ func (bss *BlockSyncService) gatherMessages(ts *TipSet) ([]*SignedMessage, [][]i
 }
 
 type BlockSync struct {
-	bswap     *bitswap.Bitswap
+	bswap     exchange.Interface
 	newStream NewStreamFunc
 
 	syncPeersLk sync.Mutex
 	syncPeers   map[peer.ID]struct{}
 }
 
-func NewBlockSyncClient(bswap *bitswap.Bitswap, newStreamF NewStreamFunc) *BlockSync {
+func NewBlockSyncClient(bswap exchange.Interface, h host.Host) *BlockSync {
 	return &BlockSync{
 		bswap:     bswap,
-		newStream: newStreamF,
+		newStream: h.NewStream,
 		syncPeers: make(map[peer.ID]struct{}),
 	}
 }

@@ -5,6 +5,8 @@ import (
 	"fmt"
 	"github.com/filecoin-project/go-lotus/chain"
 	"github.com/filecoin-project/go-lotus/lib/cborrpc"
+	"github.com/filecoin-project/go-lotus/node/modules/helpers"
+	"go.uber.org/fx"
 
 	"github.com/libp2p/go-libp2p-core/host"
 
@@ -36,9 +38,12 @@ type Service struct {
 	syncer *chain.Syncer
 }
 
-func NewHelloService(h host.Host) *Service {
+func NewHelloService(h host.Host, cs *chain.ChainStore, syncer *chain.Syncer) *Service {
 	return &Service{
 		newStream: h.NewStream,
+
+		cs:     cs,
+		syncer: syncer,
 	}
 }
 
@@ -96,4 +101,21 @@ func (hs *Service) SayHello(ctx context.Context, pid peer.ID) error {
 	}
 
 	return nil
+}
+
+func Run(mctx helpers.MetricsCtx, lc fx.Lifecycle, hs *Service, h host.Host) {
+	ctx := helpers.LifecycleCtx(mctx, lc)
+	h.SetStreamHandler(ProtocolID, hs.HandleStream)
+
+	bundle := inet.NotifyBundle{
+		ConnectedF: func(_ inet.Network, c inet.Conn) {
+			go func() {
+				if err := hs.SayHello(ctx, c.RemotePeer()); err != nil {
+					log.Error("failed to say hello: ", err)
+					return
+				}
+			}()
+		},
+	}
+	h.Network().Notify(&bundle)
 }

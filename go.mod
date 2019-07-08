@@ -12,6 +12,7 @@ require (
 	github.com/ipfs/go-datastore v0.0.5
 	github.com/ipfs/go-hamt-ipld v0.0.0-20190613164304-cd074602062f
 	github.com/ipfs/go-ipfs-blockstore v0.0.1
+	github.com/ipfs/go-ipfs-exchange-interface v0.0.1
 	github.com/ipfs/go-ipfs-routing v0.1.0
 	github.com/ipfs/go-ipld-cbor v0.0.2
 	github.com/ipfs/go-ipld-format v0.0.2

@@ -173,7 +173,7 @@ type ChainStore struct {
 	headChange func(rev, app []*TipSet) error
 }
 
-func NewChainStore(bs bstore.Blockstore, ds datastore.Datastore) *ChainStore {
+func NewChainStore(bs bstore.Blockstore, ds datastore.Batching) *ChainStore {
 	return &ChainStore{
 		bs:       bs,
 		ds:       ds,
