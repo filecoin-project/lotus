@@ -10,7 +10,7 @@ import (
 
 	"github.com/libp2p/go-libp2p-core/host"
 	"github.com/libp2p/go-libp2p-core/peer"
-	"github.com/multiformats/go-multiaddr"
+	ma "github.com/multiformats/go-multiaddr"
 	"go.uber.org/fx"
 )
 
@@ -41,8 +41,10 @@ func apiOption(resAPI *api.Struct) fx.Option {
 	return fx.Options(
 		provideApi(versionAPI, &in.Version),
 		provideApi(idAPI, &in.ID),
+
 		provideApi(netPeersAPI, &in.NetPeers),
 		provideApi(netConnectAPI, &in.NetConnect),
+		provideApi(netAddrsListenAPI, &in.NetAddrsListen),
 	)
 }
 
@@ -68,7 +70,7 @@ func netPeersAPI(h host.Host) interface{} {
 		for i, conn := range conns {
 			out[i] = peer.AddrInfo{
 				ID: conn.RemotePeer(),
-				Addrs: []multiaddr.Multiaddr{
+				Addrs: []ma.Multiaddr{
 					conn.RemoteMultiaddr(),
 				},
 			}
@@ -81,5 +83,11 @@ func netPeersAPI(h host.Host) interface{} {
 func netConnectAPI(h host.Host) interface{} {
 	return func(ctx context.Context, p peer.AddrInfo) error {
 		return errors.New("nope")
+	}
+}
+
+func netAddrsListenAPI(h host.Host) interface{} {
+	return func(context.Context) ([]ma.Multiaddr, error) {
+		return h.Addrs(), nil
 	}
 }

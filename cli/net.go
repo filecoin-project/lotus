@@ -18,6 +18,7 @@ var netCmd = &cli.Command{
 	Subcommands: []*cli.Command{
 		netPeers,
 		netConnect,
+		netListen,
 	},
 }
 
@@ -27,6 +28,17 @@ var netPeers = &cli.Command{
 	Action: func(ctx *cli.Context) error {
 		api := getApi(ctx)
 		fmt.Println(api.NetPeers(context.Background()))
+
+		return nil
+	},
+}
+
+var netListen = &cli.Command{
+	Name:  "listen",
+	Usage: "List listen addresses",
+	Action: func(ctx *cli.Context) error {
+		api := getApi(ctx)
+		fmt.Println(api.NetAddrsListen(context.Background()))
 
 		return nil
 	},
