@@ -28,7 +28,7 @@ import (
 //  can't really be identified by the returned type
 type special struct{ id int }
 
-// nolint
+//nolint:golint
 var (
 	DefaultTransportsKey = special{0} // Libp2p option
 	PNetKey              = special{1} // Option + multiret
