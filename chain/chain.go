@@ -3,8 +3,9 @@ package chain
 import (
 	"context"
 	"fmt"
-	"github.com/filecoin-project/go-lotus/chain/address"
 	"sync"
+
+	"github.com/filecoin-project/go-lotus/chain/address"
 
 	"github.com/ipfs/go-cid"
 	datastore "github.com/ipfs/go-datastore"

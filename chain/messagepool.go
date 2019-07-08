@@ -1,8 +1,9 @@
 package chain
 
 import (
-	"github.com/filecoin-project/go-lotus/chain/address"
 	"sync"
+
+	"github.com/filecoin-project/go-lotus/chain/address"
 )
 
 type MessagePool struct {

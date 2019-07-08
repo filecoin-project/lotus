@@ -3,14 +3,15 @@ package chain
 import (
 	"context"
 	"fmt"
-	"github.com/filecoin-project/go-lotus/chain/address"
 	"sync"
+
+	"github.com/filecoin-project/go-lotus/chain/address"
 
 	"github.com/ipfs/go-cid"
 	dstore "github.com/ipfs/go-datastore"
 	"github.com/ipfs/go-hamt-ipld"
 	bstore "github.com/ipfs/go-ipfs-blockstore"
-	peer "github.com/libp2p/go-libp2p-peer"
+	peer "github.com/libp2p/go-libp2p-core/peer"
 	"github.com/pkg/errors"
 	"github.com/whyrusleeping/sharray"
 )

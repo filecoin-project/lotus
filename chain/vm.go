@@ -3,15 +3,16 @@ package chain
 import (
 	"context"
 	"fmt"
-	"github.com/filecoin-project/go-lotus/chain/address"
-	"github.com/pkg/errors"
 	"math/big"
+
+	"github.com/filecoin-project/go-lotus/chain/address"
 
 	bserv "github.com/ipfs/go-blockservice"
 	cid "github.com/ipfs/go-cid"
 	hamt "github.com/ipfs/go-hamt-ipld"
 	ipld "github.com/ipfs/go-ipld-format"
 	dag "github.com/ipfs/go-merkledag"
+	"github.com/pkg/errors"
 )
 
 type VMContext struct {

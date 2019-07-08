@@ -3,12 +3,12 @@ package chain
 import (
 	"encoding/binary"
 	"fmt"
+
 	"github.com/filecoin-project/go-lotus/chain/address"
+	"github.com/filecoin-project/go-lotus/lib/bls-signatures"
+	"github.com/filecoin-project/go-lotus/lib/crypto"
 
 	"github.com/minio/blake2b-simd"
-
-	"github.com/filecoin-project/go-lotus/lib/crypto"
-	"github.com/filecoin-project/go-lotus/lib/bls-signatures"
 )
 
 const (

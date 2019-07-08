@@ -4,8 +4,9 @@ import (
 	"bytes"
 	"encoding/binary"
 	"fmt"
-	"github.com/filecoin-project/go-lotus/chain/address"
 	"math/big"
+
+	"github.com/filecoin-project/go-lotus/chain/address"
 
 	block "github.com/ipfs/go-block-format"
 	"github.com/ipfs/go-cid"
