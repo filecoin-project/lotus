@@ -4,9 +4,10 @@ import (
 	"context"
 	"fmt"
 
-	"github.com/filecoin-project/go-lotus/chain"
 	logging "github.com/ipfs/go-log"
 	pubsub "github.com/libp2p/go-libp2p-pubsub"
+
+	"github.com/filecoin-project/go-lotus/chain"
 )
 
 var log = logging.Logger("sub")

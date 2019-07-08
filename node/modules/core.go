@@ -2,8 +2,7 @@ package modules
 
 import (
 	"context"
-	"github.com/filecoin-project/go-lotus/chain"
-	"github.com/filecoin-project/go-lotus/node/modules/helpers"
+
 	"github.com/ipfs/go-bitswap"
 	"github.com/ipfs/go-bitswap/network"
 	blockstore "github.com/ipfs/go-ipfs-blockstore"
@@ -14,6 +13,9 @@ import (
 	"github.com/libp2p/go-libp2p-core/routing"
 	record "github.com/libp2p/go-libp2p-record"
 	"go.uber.org/fx"
+
+	"github.com/filecoin-project/go-lotus/chain"
+	"github.com/filecoin-project/go-lotus/node/modules/helpers"
 )
 
 var log = logging.Logger("modules")

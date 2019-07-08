@@ -26,6 +26,9 @@ issues:
     - path: node/modules/lp2p
       linters:
         - golint
+    - path: ".*_test.go"
+      linters:
+        - gosec
 
 linters-settings:
   goconst:

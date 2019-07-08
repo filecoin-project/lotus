@@ -1,14 +1,15 @@
 package modules
 
 import (
-	"github.com/filecoin-project/go-lotus/chain"
-	"github.com/filecoin-project/go-lotus/chain/sub"
-	"github.com/filecoin-project/go-lotus/node/hello"
-	"github.com/filecoin-project/go-lotus/node/modules/helpers"
 	"github.com/libp2p/go-libp2p-core/host"
 	inet "github.com/libp2p/go-libp2p-core/network"
 	pubsub "github.com/libp2p/go-libp2p-pubsub"
 	"go.uber.org/fx"
+
+	"github.com/filecoin-project/go-lotus/chain"
+	"github.com/filecoin-project/go-lotus/chain/sub"
+	"github.com/filecoin-project/go-lotus/node/hello"
+	"github.com/filecoin-project/go-lotus/node/modules/helpers"
 )
 
 func RunHello(mctx helpers.MetricsCtx, lc fx.Lifecycle, h host.Host, svc *hello.Service) {

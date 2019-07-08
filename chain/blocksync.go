@@ -4,12 +4,14 @@ import (
 	"bufio"
 	"context"
 	"fmt"
-	"github.com/filecoin-project/go-lotus/lib/cborrpc"
+	"math/rand"
+	"sync"
+
 	exchange "github.com/ipfs/go-ipfs-exchange-interface"
 	"github.com/libp2p/go-libp2p-core/host"
 	"github.com/libp2p/go-libp2p-core/protocol"
-	"math/rand"
-	"sync"
+
+	"github.com/filecoin-project/go-lotus/lib/cborrpc"
 
 	"github.com/ipfs/go-cid"
 	cbor "github.com/ipfs/go-ipld-cbor"

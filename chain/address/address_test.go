@@ -54,6 +54,7 @@ func TestVectorsIDAddress(t *testing.T) {
 	}
 
 	for _, tc := range testCases {
+		tc := tc
 		t.Run(fmt.Sprintf("testing actorID address: %s", tc.expected), func(t *testing.T) {
 			assert := assert.New(t)
 
@@ -149,6 +150,7 @@ func TestVectorSecp256k1Address(t *testing.T) {
 	}
 
 	for _, tc := range testCases {
+		tc := tc
 		t.Run(fmt.Sprintf("testing secp256k1 address: %s", tc.expected), func(t *testing.T) {
 			assert := assert.New(t)
 
@@ -221,6 +223,7 @@ func TestVectorActorAddress(t *testing.T) {
 	}
 
 	for _, tc := range testCases {
+		tc := tc
 		t.Run(fmt.Sprintf("testing Actor address: %s", tc.expected), func(t *testing.T) {
 			assert := assert.New(t)
 
@@ -302,6 +305,7 @@ func TestVectorBLSAddress(t *testing.T) {
 	}
 
 	for _, tc := range testCases {
+		tc := tc
 		t.Run(fmt.Sprintf("testing bls address: %s", tc.expected), func(t *testing.T) {
 			assert := assert.New(t)
 
@@ -348,6 +352,7 @@ func TestInvalidStringAddresses(t *testing.T) {
 	}
 
 	for _, tc := range testCases {
+		tc := tc
 		t.Run(fmt.Sprintf("testing string address: %s", tc.expetErr), func(t *testing.T) {
 			assert := assert.New(t)
 
@@ -382,6 +387,7 @@ func TestInvalidByteAddresses(t *testing.T) {
 	}
 
 	for _, tc := range testCases {
+		tc := tc
 		t.Run(fmt.Sprintf("testing byte address: %s", tc.expetErr), func(t *testing.T) {
 			assert := assert.New(t)
 

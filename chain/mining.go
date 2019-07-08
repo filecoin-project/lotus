@@ -5,12 +5,13 @@ import (
 	"fmt"
 	"time"
 
-	"github.com/filecoin-project/go-lotus/chain/address"
-	bls "github.com/filecoin-project/go-lotus/lib/bls-signatures"
 	cid "github.com/ipfs/go-cid"
 	hamt "github.com/ipfs/go-hamt-ipld"
 	"github.com/pkg/errors"
 	sharray "github.com/whyrusleeping/sharray"
+
+	"github.com/filecoin-project/go-lotus/chain/address"
+	bls "github.com/filecoin-project/go-lotus/lib/bls-signatures"
 )
 
 type Miner struct {

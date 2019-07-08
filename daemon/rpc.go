@@ -1,10 +1,10 @@
 package daemon
 
 import (
-	"github.com/filecoin-project/go-lotus/lib/jsonrpc"
 	"net/http"
 
 	"github.com/filecoin-project/go-lotus/api"
+	"github.com/filecoin-project/go-lotus/lib/jsonrpc"
 )
 
 func serveRPC(api api.API) error {
