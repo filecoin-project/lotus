@@ -6,6 +6,7 @@ import (
 	"encoding/json"
 	"errors"
 	"fmt"
+	"github.com/filecoin-project/go-lotus/lib"
 	"net/http"
 	"reflect"
 	"sync/atomic"
@@ -37,10 +38,10 @@ func (r *result) UnmarshalJSON(raw []byte) error {
 }
 
 type clientResponse struct {
-	Jsonrpc string     `json:"jsonrpc"`
-	Result  result     `json:"result"`
-	ID      int64      `json:"id"`
-	Error   *respError `json:"error,omitempty"`
+	Jsonrpc string         `json:"jsonrpc"`
+	Result  result         `json:"result"`
+	ID      int64          `json:"id"`
+	Error   *lib.respError `json:"error,omitempty"`
 }
 
 // ClientCloser is used to close Client from further use
@@ -72,7 +73,7 @@ func NewClient(addr string, namespace string, handler interface{}) ClientCloser 
 			panic("handler field not a func")
 		}
 
-		valOut, errOut, nout := processFuncOut(ftyp)
+		valOut, errOut, nout := lib.processFuncOut(ftyp)
 
 		processResponse := func(resp clientResponse, code int) []reflect.Value {
 			out := make([]reflect.Value, nout)
@@ -111,14 +112,14 @@ func NewClient(addr string, namespace string, handler interface{}) ClientCloser 
 
 		fn := reflect.MakeFunc(ftyp, func(args []reflect.Value) (results []reflect.Value) {
 			id := atomic.AddInt64(&idCtr, 1)
-			params := make([]param, len(args)-hasCtx)
+			params := make([]lib.param, len(args)-hasCtx)
 			for i, arg := range args[hasCtx:] {
-				params[i] = param{
+				params[i] = lib.param{
 					v: arg,
 				}
 			}
 
-			req := request{
+			req := lib.request{
 				Jsonrpc: "2.0",
 				ID:      &id,
 				Method:  namespace + "." + f.Name,

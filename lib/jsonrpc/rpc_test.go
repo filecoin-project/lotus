@@ -3,6 +3,7 @@ package jsonrpc
 import (
 	"context"
 	"errors"
+	"github.com/filecoin-project/go-lotus/lib"
 	"net/http/httptest"
 	"strconv"
 	"sync"
@@ -56,7 +57,7 @@ func TestRPC(t *testing.T) {
 
 	serverHandler := &SimpleServerHandler{}
 
-	rpcServer := NewServer()
+	rpcServer := lib.NewServer()
 	rpcServer.Register("SimpleServerHandler", serverHandler)
 
 	// httptest stuff
@@ -70,7 +71,7 @@ func TestRPC(t *testing.T) {
 		AddGet      func(int) int
 		StringMatch func(t TestType, i2 int64) (out TestOut, err error)
 	}
-	closer := NewClient(testServ.URL, "SimpleServerHandler", &client)
+	closer := lib.NewClient(testServ.URL, "SimpleServerHandler", &client)
 	defer closer()
 
 	// Add(int) error
@@ -130,7 +131,7 @@ func TestRPC(t *testing.T) {
 	var noret struct {
 		Add func(int)
 	}
-	closer = NewClient(testServ.URL, "SimpleServerHandler", &noret)
+	closer = lib.NewClient(testServ.URL, "SimpleServerHandler", &noret)
 
 	// this one should actually work
 	noret.Add(4)
@@ -142,7 +143,7 @@ func TestRPC(t *testing.T) {
 	var noparam struct {
 		Add func()
 	}
-	closer = NewClient(testServ.URL, "SimpleServerHandler", &noparam)
+	closer = lib.NewClient(testServ.URL, "SimpleServerHandler", &noparam)
 
 	// shouldn't panic
 	noparam.Add()
@@ -151,7 +152,7 @@ func TestRPC(t *testing.T) {
 	var erronly struct {
 		AddGet func() (int, error)
 	}
-	closer = NewClient(testServ.URL, "SimpleServerHandler", &erronly)
+	closer = lib.NewClient(testServ.URL, "SimpleServerHandler", &erronly)
 
 	_, err = erronly.AddGet()
 	if err == nil || err.Error() != "RPC error (-32602): wrong param count" {
@@ -162,7 +163,7 @@ func TestRPC(t *testing.T) {
 	var wrongtype struct {
 		Add func(string) error
 	}
-	closer = NewClient(testServ.URL, "SimpleServerHandler", &wrongtype)
+	closer = lib.NewClient(testServ.URL, "SimpleServerHandler", &wrongtype)
 
 	err = wrongtype.Add("not an int")
 	if err == nil || err.Error() != "RPC error (-32700): json: cannot unmarshal string into Go value of type int" {
@@ -173,7 +174,7 @@ func TestRPC(t *testing.T) {
 	var notfound struct {
 		NotThere func(string) error
 	}
-	closer = NewClient(testServ.URL, "SimpleServerHandler", &notfound)
+	closer = lib.NewClient(testServ.URL, "SimpleServerHandler", &notfound)
 
 	err = notfound.NotThere("hello?")
 	if err == nil || err.Error() != "RPC error (-32601): method 'SimpleServerHandler.NotThere' not found" {
@@ -207,7 +208,7 @@ func TestCtx(t *testing.T) {
 
 	serverHandler := &CtxHandler{}
 
-	rpcServer := NewServer()
+	rpcServer := lib.NewServer()
 	rpcServer.Register("CtxHandler", serverHandler)
 
 	// httptest stuff
@@ -219,7 +220,7 @@ func TestCtx(t *testing.T) {
 	var client struct {
 		Test func(ctx context.Context)
 	}
-	closer := NewClient(testServ.URL, "CtxHandler", &client)
+	closer := lib.NewClient(testServ.URL, "CtxHandler", &client)
 
 	ctx, cancel := context.WithTimeout(context.Background(), 100*time.Millisecond)
 	defer cancel()
@@ -239,7 +240,7 @@ func TestCtx(t *testing.T) {
 	var noCtxClient struct {
 		Test func()
 	}
-	closer = NewClient(testServ.URL, "CtxHandler", &noCtxClient)
+	closer = lib.NewClient(testServ.URL, "CtxHandler", &noCtxClient)
 
 	noCtxClient.Test()
 

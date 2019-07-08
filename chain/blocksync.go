@@ -4,7 +4,7 @@ import (
 	"bufio"
 	"context"
 	"fmt"
-	"github.com/filecoin-project/go-lotus/cborrpc"
+	"github.com/filecoin-project/go-lotus/lib"
 	"github.com/libp2p/go-libp2p-core/protocol"
 	"math/rand"
 	"sync"
@@ -80,7 +80,7 @@ func (bss *BlockSyncService) HandleStream(s inet.Stream) {
 	log.Error("handling block sync request")
 
 	var req BlockSyncRequest
-	if err := cborrpc.ReadCborRPC(bufio.NewReader(s), &req); err != nil {
+	if err := lib.ReadCborRPC(bufio.NewReader(s), &req); err != nil {
 		log.Errorf("failed to read block sync request: %s", err)
 		return
 	}
@@ -92,7 +92,7 @@ func (bss *BlockSyncService) HandleStream(s inet.Stream) {
 		return
 	}
 
-	if err := cborrpc.WriteCborRPC(s, resp); err != nil {
+	if err := lib.WriteCborRPC(s, resp); err != nil {
 		log.Error("failed to write back response for handle stream: ", err)
 		return
 	}
@@ -326,12 +326,12 @@ func (bs *BlockSync) sendRequestToPeer(ctx context.Context, p peer.ID, req *Bloc
 		return nil, err
 	}
 
-	if err := cborrpc.WriteCborRPC(s, req); err != nil {
+	if err := lib.WriteCborRPC(s, req); err != nil {
 		return nil, err
 	}
 
 	var res BlockSyncResponse
-	if err := cborrpc.ReadCborRPC(bufio.NewReader(s), &res); err != nil {
+	if err := lib.ReadCborRPC(bufio.NewReader(s), &res); err != nil {
 		return nil, err
 	}
 
