@@ -6,6 +6,7 @@ import (
 	"math/big"
 
 	"github.com/filecoin-project/go-lotus/chain/address"
+	"github.com/filecoin-project/go-lotus/lib/bufbstore"
 
 	bserv "github.com/ipfs/go-blockservice"
 	cid "github.com/ipfs/go-cid"
@@ -64,13 +65,13 @@ type VM struct {
 	cstate      *StateTree
 	base        cid.Cid
 	cs          *ChainStore
-	buf         *BufferedBS
+	buf         *bufbstore.BufferedBS
 	blockHeight uint64
 	blockMiner  address.Address
 }
 
 func NewVM(base cid.Cid, height uint64, maddr address.Address, cs *ChainStore) (*VM, error) {
-	buf := NewBufferedBstore(cs.bs)
+	buf := bufbstore.NewBufferedBstore(cs.bs)
 	cst := hamt.CSTFromBstore(buf)
 	state, err := LoadStateTree(cst, base)
 	if err != nil {
@@ -166,7 +167,7 @@ func (vm *VM) ApplyMessage(msg *Message) (*MessageReceipt, error) {
 
 func (vm *VM) Flush(ctx context.Context) (cid.Cid, error) {
 	from := dag.NewDAGService(bserv.New(vm.buf, nil))
-	to := dag.NewDAGService(bserv.New(vm.buf.read, nil))
+	to := dag.NewDAGService(bserv.New(vm.buf.Read(), nil))
 
 	root, err := vm.cstate.Flush()
 	if err != nil {
