@@ -14,7 +14,7 @@ type Struct struct {
 
 		NetPeers       func(context.Context) ([]peer.AddrInfo, error)
 		NetConnect     func(context.Context, peer.AddrInfo) error
-		NetAddrsListen func(context.Context) (MultiaddrSlice, error)
+		NetAddrsListen func(context.Context) (peer.AddrInfo, error)
 	}
 }
 
@@ -26,7 +26,7 @@ func (c *Struct) NetConnect(ctx context.Context, p peer.AddrInfo) error {
 	return c.Internal.NetConnect(ctx, p)
 }
 
-func (c *Struct) NetAddrsListen(ctx context.Context) (MultiaddrSlice, error) {
+func (c *Struct) NetAddrsListen(ctx context.Context) (peer.AddrInfo, error) {
 	return c.Internal.NetAddrsListen(ctx)
 }
 

@@ -30,6 +30,10 @@ func builder(t *testing.T, n int) []api.API {
 		}
 	}
 
+	if err := mn.LinkAll(); err != nil {
+		t.Fatal(err)
+	}
+
 	return out
 }
 

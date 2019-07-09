@@ -53,8 +53,8 @@ var netListen = &cli.Command{
 			return err
 		}
 
-		for _, peer := range addrs {
-			fmt.Println(peer)
+		for _, peer := range addrs.Addrs {
+			fmt.Printf("%s/p2p/%s\n", peer, addrs.ID)
 		}
 		return nil
 	},

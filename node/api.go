@@ -45,8 +45,11 @@ func (a *API) NetConnect(ctx context.Context, p peer.AddrInfo) error {
 	return a.Host.Connect(ctx, p)
 }
 
-func (a *API) NetAddrsListen(context.Context) (api.MultiaddrSlice, error) {
-	return a.Host.Addrs(), nil
+func (a *API) NetAddrsListen(context.Context) (peer.AddrInfo, error) {
+	return peer.AddrInfo{
+		ID:    a.Host.ID(),
+		Addrs: a.Host.Addrs(),
+	}, nil
 }
 
 var _ api.API = &API{}

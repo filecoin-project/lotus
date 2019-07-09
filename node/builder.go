@@ -108,18 +108,20 @@ func Override(typ, constructor interface{}) Option {
 
 var defConf = config.Default()
 
-var defaults = []Option{
-	Override(new(helpers.MetricsCtx), context.Background),
+func defaults() []Option {
+	return []Option{
+		Override(new(helpers.MetricsCtx), context.Background),
 
-	randomIdentity(),
+		randomIdentity(),
 
-	Override(new(datastore.Batching), testing.MapDatastore),
-	Override(new(blockstore.Blockstore), testing.MapBlockstore), // NOT on top of ds above
-	Override(new(record.Validator), modules.RecordValidator),
+		Override(new(datastore.Batching), testing.MapDatastore),
+		Override(new(blockstore.Blockstore), testing.MapBlockstore), // NOT on top of ds above
+		Override(new(record.Validator), modules.RecordValidator),
 
-	// Filecoin modules
+		// Filecoin modules
 
-	Override(new(*chain.ChainStore), chain.NewChainStore),
+		Override(new(*chain.ChainStore), chain.NewChainStore),
+	}
 }
 
 // Online sets up basic libp2p node
@@ -202,7 +204,7 @@ func New(ctx context.Context, opts ...Option) (api.API, error) {
 	}
 
 	// apply module options in the right order
-	if err := Options(Options(defaults...), Options(opts...))(&settings); err != nil {
+	if err := Options(Options(defaults()...), Options(opts...))(&settings); err != nil {
 		return nil, err
 	}
 
@@ -224,6 +226,8 @@ func New(ctx context.Context, opts ...Option) (api.API, error) {
 		fx.Options(settings.invokes...),
 
 		fx.Extract(resAPI),
+
+		fx.NopLogger,
 	)
 
 	// TODO: we probably should have a 'firewall' for Closing signal
