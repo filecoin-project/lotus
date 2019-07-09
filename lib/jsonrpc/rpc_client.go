@@ -40,7 +40,9 @@ func (e *ErrClient) Unwrap(err error) error {
 type result reflect.Value
 
 func (r *result) UnmarshalJSON(raw []byte) error {
-	return json.Unmarshal(raw, reflect.Value(*r).Interface())
+	err := json.Unmarshal(raw, reflect.Value(*r).Interface())
+	log.Debugw("rpc unmarshal response", "raw", string(raw), "err", err)
+	return err
 }
 
 type clientResponse struct {
@@ -164,13 +166,14 @@ func NewClient(addr string, namespace string, handler interface{}) ClientCloser 
 					return processError(err)
 				}
 
-				log.Warnw("rpc response", "body", string(rsp))
+				log.Debugw("rpc response", "body", string(rsp))
 
 				httpResp.Body = ioutil.NopCloser(bytes.NewReader(rsp))
 			}
 
 			var resp clientResponse
 			if valOut != -1 {
+				log.Debugw("rpc result", "type", ftyp.Out(valOut))
 				resp.Result = result(reflect.New(ftyp.Out(valOut)))
 			}
 
