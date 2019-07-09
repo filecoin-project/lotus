@@ -3,6 +3,7 @@ package node
 import (
 	"context"
 	"errors"
+	mocknet "github.com/libp2p/go-libp2p/p2p/net/mock"
 	"reflect"
 	"time"
 
@@ -235,6 +236,17 @@ func New(ctx context.Context, opts ...Option) (api.API, error) {
 }
 
 // In-memory / testing
+
+func MockHost(mn mocknet.Mocknet) Option {
+	return Options(
+		applyIf(func(s *settings) bool { return !s.online },
+			Error(errors.New("MockHost must be specified after Online")),
+		),
+
+		Override(new(lp2p.RawHost), lp2p.MockHost),
+		Override(new(mocknet.Mocknet), mn),
+	)
+}
 
 func randomIdentity() Option {
 	sk, pk, err := ci.GenerateKeyPair(ci.RSA, 512)
