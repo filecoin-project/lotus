@@ -27,7 +27,7 @@ func getApi(ctx *cli.Context) api.API {
 // Not safe for concurrent execution.
 func reqContext(cctx *cli.Context) context.Context {
 	if uctx, ok := cctx.App.Metadata[metadataContext]; ok {
-		// unchecked cast as if somethign else is in there
+		// unchecked cast as if something else is in there
 		// it is crash worthy either way
 		return uctx.(context.Context)
 	}
