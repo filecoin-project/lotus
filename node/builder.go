@@ -3,9 +3,10 @@ package node
 import (
 	"context"
 	"errors"
-	mocknet "github.com/libp2p/go-libp2p/p2p/net/mock"
 	"reflect"
 	"time"
+
+	mocknet "github.com/libp2p/go-libp2p/p2p/net/mock"
 
 	"github.com/ipfs/go-datastore"
 	blockstore "github.com/ipfs/go-ipfs-blockstore"
