@@ -193,7 +193,7 @@ func Config(cfg *config.Root) Option {
 
 // New builds and starts new Filecoin node
 func New(ctx context.Context, opts ...Option) (api.API, error) {
-	var resAPI api.Struct
+	resAPI := &API{}
 	settings := settings{
 		modules: map[interface{}]fx.Option{},
 		invokes: make([]fx.Option, _nInvokes),
@@ -221,7 +221,7 @@ func New(ctx context.Context, opts ...Option) (api.API, error) {
 		fx.Options(ctors...),
 		fx.Options(settings.invokes...),
 
-		apiOption(&resAPI),
+		fx.Extract(resAPI),
 	)
 
 	// TODO: we probably should have a 'firewall' for Closing signal
@@ -231,7 +231,7 @@ func New(ctx context.Context, opts ...Option) (api.API, error) {
 		return nil, err
 	}
 
-	return &resAPI, nil
+	return resAPI, nil
 }
 
 // In-memory / testing
