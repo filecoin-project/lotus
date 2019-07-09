@@ -4,7 +4,6 @@ import (
 	"context"
 
 	"github.com/libp2p/go-libp2p-core/peer"
-	ma "github.com/multiformats/go-multiaddr"
 )
 
 // Struct implements API passing calls to user-provided function values.
@@ -15,7 +14,7 @@ type Struct struct {
 
 		NetPeers       func(context.Context) ([]peer.AddrInfo, error)
 		NetConnect     func(context.Context, peer.AddrInfo) error
-		NetAddrsListen func(context.Context) ([]ma.Multiaddr, error)
+		NetAddrsListen func(context.Context) (MultiaddrSlice, error)
 	}
 }
 
@@ -27,7 +26,7 @@ func (c *Struct) NetConnect(ctx context.Context, p peer.AddrInfo) error {
 	return c.Internal.NetConnect(ctx, p)
 }
 
-func (c *Struct) NetAddrsListen(ctx context.Context) ([]ma.Multiaddr, error) {
+func (c *Struct) NetAddrsListen(ctx context.Context) (MultiaddrSlice, error) {
 	return c.Internal.NetAddrsListen(ctx)
 }
 

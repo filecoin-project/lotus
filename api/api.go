@@ -4,7 +4,6 @@ import (
 	"context"
 
 	"github.com/libp2p/go-libp2p-core/peer"
-	ma "github.com/multiformats/go-multiaddr"
 )
 
 // Version provides various build-time information
@@ -37,7 +36,7 @@ type API interface {
 
 	NetPeers(context.Context) ([]peer.AddrInfo, error) // TODO: check serialization
 	NetConnect(context.Context, peer.AddrInfo) error
-	NetAddrsListen(context.Context) ([]ma.Multiaddr, error)
+	NetAddrsListen(context.Context) (MultiaddrSlice, error)
 	// // ping
 
 	// Struct
