@@ -4,8 +4,8 @@ import (
 	"context"
 
 	"github.com/filecoin-project/go-lotus/chain"
-
 	"github.com/ipfs/go-cid"
+
 	"github.com/libp2p/go-libp2p-core/peer"
 )
 
@@ -18,10 +18,16 @@ type Struct struct {
 		ChainSubmitBlock func(ctx context.Context, blk *chain.BlockMsg) error
 		ChainHead        func(context.Context) ([]cid.Cid, error)
 
+		MpoolPending func(ctx context.Context) ([]*chain.SignedMessage, error)
+
 		NetPeers       func(context.Context) ([]peer.AddrInfo, error)
 		NetConnect     func(context.Context, peer.AddrInfo) error
 		NetAddrsListen func(context.Context) (peer.AddrInfo, error)
 	}
+}
+
+func (c *Struct) MpoolPending(ctx context.Context) ([]*chain.SignedMessage, error) {
+	return c.Internal.MpoolPending(ctx)
 }
 
 func (c *Struct) NetPeers(ctx context.Context) ([]peer.AddrInfo, error) {

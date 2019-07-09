@@ -18,6 +18,7 @@ type API struct {
 	Host   host.Host
 	Chain  *chain.ChainStore
 	PubSub *pubsub.PubSub
+	Mpool  *chain.MessagePool
 }
 
 func (a *API) ChainSubmitBlock(ctx context.Context, blk *chain.BlockMsg) error {
@@ -42,6 +43,10 @@ func (a *API) Version(context.Context) (api.Version, error) {
 	return api.Version{
 		Version: build.Version,
 	}, nil
+}
+
+func (a *API) MpoolPending(context.Context) ([]*chain.SignedMessage, error) {
+	return a.Mpool.Pending(), nil
 }
 
 func (a *API) NetPeers(context.Context) ([]peer.AddrInfo, error) {

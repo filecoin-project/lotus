@@ -30,6 +30,7 @@ type API interface {
 	// // status
 	// // mpool
 	// // // ls / show / rm
+	MpoolPending(context.Context) ([]*chain.SignedMessage, error)
 
 	// dag
 
