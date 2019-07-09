@@ -3,6 +3,9 @@ package api
 import (
 	"context"
 
+	"github.com/filecoin-project/go-lotus/chain"
+
+	"github.com/ipfs/go-cid"
 	"github.com/libp2p/go-libp2p-core/peer"
 )
 
@@ -17,7 +20,8 @@ type Version struct {
 type API interface {
 	// chain
 
-	// // head
+	ChainHead(context.Context) ([]cid.Cid, error)
+	ChainSubmitBlock(ctx context.Context, blk *chain.BlockMsg) error // TODO: check serialization
 
 	// messages
 
@@ -34,7 +38,7 @@ type API interface {
 
 	// network
 
-	NetPeers(context.Context) ([]peer.AddrInfo, error) // TODO: check serialization
+	NetPeers(context.Context) ([]peer.AddrInfo, error)
 	NetConnect(context.Context, peer.AddrInfo) error
 	NetAddrsListen(context.Context) (MultiaddrSlice, error)
 	// // ping
