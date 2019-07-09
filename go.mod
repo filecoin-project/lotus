@@ -16,7 +16,7 @@ require (
 	github.com/ipfs/go-ipfs-routing v0.1.0
 	github.com/ipfs/go-ipld-cbor v0.0.2
 	github.com/ipfs/go-ipld-format v0.0.2
-	github.com/ipfs/go-log v0.0.2-0.20190703113630-0c3cfb1eccc4
+	github.com/ipfs/go-log v0.0.2-0.20190708183747-9c9fd6111bea
 	github.com/ipfs/go-merkledag v0.0.2
 	github.com/ipsn/go-secp256k1 v0.0.0-20180726113642-9d62b9f0bc52
 	github.com/libp2p/go-libp2p v0.2.0
@@ -38,6 +38,7 @@ require (
 	github.com/libp2p/go-maddr-filter v0.0.4
 	github.com/minio/blake2b-simd v0.0.0-20160723061019-3f5f724cb5b1
 	github.com/multiformats/go-multiaddr v0.0.4
+	github.com/multiformats/go-multiaddr-dns v0.0.2
 	github.com/multiformats/go-multihash v0.0.5
 	github.com/pkg/errors v0.8.1
 	github.com/polydawn/refmt v0.0.0-20190408063855-01bf1e26dd14

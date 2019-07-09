@@ -20,7 +20,6 @@ import (
 	"go.uber.org/fx"
 
 	"github.com/filecoin-project/go-lotus/api"
-	"github.com/filecoin-project/go-lotus/build"
 	"github.com/filecoin-project/go-lotus/chain"
 	"github.com/filecoin-project/go-lotus/node/config"
 	"github.com/filecoin-project/go-lotus/node/hello"
@@ -149,7 +148,7 @@ func Online() Option {
 		Override(BaseRoutingKey, lp2p.BaseRouting),
 		Override(new(routing.Routing), lp2p.Routing),
 
-		Override(NatPortMapKey, lp2p.NatPortMap),
+		//Override(NatPortMapKey, lp2p.NatPortMap), //TODO: reenable when closing logic is actually there
 		Override(ConnectionManagerKey, lp2p.ConnectionManager(50, 200, 20*time.Second)),
 
 		Override(new(*pubsub.PubSub), lp2p.GossipSub()),
@@ -194,7 +193,7 @@ func Config(cfg *config.Root) Option {
 
 // New builds and starts new Filecoin node
 func New(ctx context.Context, opts ...Option) (api.API, error) {
-	var resAPI api.Struct
+	resAPI := &API{}
 	settings := settings{
 		modules: map[interface{}]fx.Option{},
 		invokes: make([]fx.Option, _nInvokes),
@@ -222,8 +221,7 @@ func New(ctx context.Context, opts ...Option) (api.API, error) {
 		fx.Options(ctors...),
 		fx.Options(settings.invokes...),
 
-		fx.Invoke(versionAPI(&resAPI.Internal.Version)),
-		fx.Invoke(idAPI(&resAPI.Internal.ID)),
+		fx.Extract(resAPI),
 	)
 
 	// TODO: we probably should have a 'firewall' for Closing signal
@@ -233,7 +231,7 @@ func New(ctx context.Context, opts ...Option) (api.API, error) {
 		return nil, err
 	}
 
-	return &resAPI, nil
+	return resAPI, nil
 }
 
 // In-memory / testing
@@ -249,25 +247,4 @@ func randomIdentity() Option {
 		Override(new(ci.PubKey), pk),
 		Override(new(peer.ID), peer.IDFromPublicKey),
 	)
-}
-
-// API IMPL
-
-// TODO: figure out a better way, this isn't usable in long term
-func idAPI(set *func(ctx context.Context) (peer.ID, error)) func(id peer.ID) {
-	return func(id peer.ID) {
-		*set = func(ctx context.Context) (peer.ID, error) {
-			return id, nil
-		}
-	}
-}
-
-func versionAPI(set *func(context.Context) (api.Version, error)) func() {
-	return func() {
-		*set = func(context.Context) (api.Version, error) {
-			return api.Version{
-				Version: build.Version,
-			}, nil
-		}
-	}
 }

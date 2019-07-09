@@ -34,9 +34,10 @@ type API interface {
 
 	// network
 
-	// // peers
+	NetPeers(context.Context) ([]peer.AddrInfo, error) // TODO: check serialization
+	NetConnect(context.Context, peer.AddrInfo) error
+	NetAddrsListen(context.Context) (MultiaddrSlice, error)
 	// // ping
-	// // connect
 
 	// Struct
 

@@ -6,10 +6,17 @@ import (
 	"encoding/json"
 	"errors"
 	"fmt"
+	"io/ioutil"
 	"net/http"
 	"reflect"
 	"sync/atomic"
+
+	logging "github.com/ipfs/go-log"
 )
+
+var log = logging.Logger("rpc")
+
+const clientDebug = true
 
 var (
 	errorType   = reflect.TypeOf(new(error)).Elem()
@@ -33,7 +40,9 @@ func (e *ErrClient) Unwrap(err error) error {
 type result reflect.Value
 
 func (r *result) UnmarshalJSON(raw []byte) error {
-	return json.Unmarshal(raw, reflect.Value(*r).Interface())
+	err := json.Unmarshal(raw, reflect.Value(*r).Interface())
+	log.Debugw("rpc unmarshal response", "raw", string(raw), "err", err)
+	return err
 }
 
 type clientResponse struct {
@@ -148,8 +157,23 @@ func NewClient(addr string, namespace string, handler interface{}) ClientCloser 
 
 			// process response
 
+			if clientDebug {
+				rsp, err := ioutil.ReadAll(httpResp.Body)
+				if err != nil {
+					return processError(err)
+				}
+				if err := httpResp.Body.Close(); err != nil {
+					return processError(err)
+				}
+
+				log.Debugw("rpc response", "body", string(rsp))
+
+				httpResp.Body = ioutil.NopCloser(bytes.NewReader(rsp))
+			}
+
 			var resp clientResponse
 			if valOut != -1 {
+				log.Debugw("rpc result", "type", ftyp.Out(valOut))
 				resp.Result = result(reflect.New(ftyp.Out(valOut)))
 			}
 

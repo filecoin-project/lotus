@@ -28,8 +28,8 @@ func Default() *Root {
 		},
 		Libp2p: Libp2p{
 			ListenAddresses: []string{
-				"/ip4/0.0.0.0/tcp/4001",
-				"/ip6/::/tcp/4001",
+				"/ip4/0.0.0.0/tcp/0",
+				"/ip6/::/tcp/0",
 			},
 		},
 	}

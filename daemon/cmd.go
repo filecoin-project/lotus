@@ -1,3 +1,5 @@
+// +build !nodaemon
+
 package daemon
 
 import (
@@ -13,6 +15,12 @@ import (
 var Cmd = &cli.Command{
 	Name:  "daemon",
 	Usage: "Start a lotus daemon process",
+	Flags: []cli.Flag{
+		&cli.StringFlag{
+			Name:  "api",
+			Value: ":1234",
+		},
+	},
 	Action: func(cctx *cli.Context) error {
 		ctx := context.Background()
 
@@ -26,6 +34,6 @@ var Cmd = &cli.Command{
 			return err
 		}
 
-		return serveRPC(api)
+		return serveRPC(api, cctx.String("api"))
 	},
 }
