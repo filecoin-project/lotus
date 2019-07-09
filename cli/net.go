@@ -25,9 +25,9 @@ var netCmd = &cli.Command{
 var netPeers = &cli.Command{
 	Name:  "peers",
 	Usage: "Print peers",
-	Action: func(ctx *cli.Context) error {
-		api := getApi(ctx)
-		fmt.Println(api.NetPeers(context.Background()))
+	Action: func(cctx *cli.Context) error {
+		api := getApi(cctx)
+		fmt.Println(api.NetPeers(reqContext(cctx)))
 
 		return nil
 	},
@@ -36,9 +36,9 @@ var netPeers = &cli.Command{
 var netListen = &cli.Command{
 	Name:  "listen",
 	Usage: "List listen addresses",
-	Action: func(ctx *cli.Context) error {
-		api := getApi(ctx)
-		fmt.Println(api.NetAddrsListen(context.Background()))
+	Action: func(cctx *cli.Context) error {
+		api := getApi(cctx)
+		fmt.Println(api.NetAddrsListen(reqContext(cctx)))
 
 		return nil
 	},
@@ -47,15 +47,17 @@ var netListen = &cli.Command{
 var netConnect = &cli.Command{
 	Name:  "connect",
 	Usage: "Connect to a peer",
-	Action: func(ctx *cli.Context) error {
-		pis, err := parseAddresses(context.Background(), ctx.Args().Slice())
+	Action: func(cctx *cli.Context) error {
+		ctx := reqContext(cctx)
+		api := getApi(cctx)
+
+		pis, err := parseAddresses(ctx, cctx.Args().Slice())
 		if err != nil {
 			return err
 		}
 
-		api := getApi(ctx)
 		for _, pi := range pis {
-			fmt.Printf("connect %s", pi.ID.Pretty())
+			fmt.Printf("connect %s: ", pi.ID.Pretty())
 			err := api.NetConnect(context.Background(), pi)
 			if err != nil {
 				fmt.Println("failure")
