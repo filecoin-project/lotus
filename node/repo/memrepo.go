@@ -4,11 +4,12 @@ import (
 	"crypto/rand"
 	"sync"
 
-	"github.com/filecoin-project/go-lotus/node/config"
 	"github.com/ipfs/go-datastore"
 	dssync "github.com/ipfs/go-datastore/sync"
-	crypto "github.com/libp2p/go-libp2p-crypto"
+	"github.com/libp2p/go-libp2p-core/crypto"
 	"github.com/multiformats/go-multiaddr"
+
+	"github.com/filecoin-project/go-lotus/node/config"
 )
 
 type MemRepo struct {
@@ -35,6 +36,7 @@ type lockedMemRepo struct {
 
 var _ Repo = &MemRepo{}
 
+// MemRepoOptions contains options for memory repo
 type MemRepoOptions struct {
 	ds        datastore.Datastore
 	configF   func() *config.Root
@@ -42,6 +44,9 @@ type MemRepoOptions struct {
 	wallet    interface{}
 }
 
+// NewMemory creates new memory based repo with provided options.
+// opts can be nil will be replaced with default
+// any filed in opts can be nil, it will be replaced by defaults
 func NewMemory(opts *MemRepoOptions) *MemRepo {
 	if opts == nil {
 		opts = &MemRepoOptions{}
@@ -117,6 +122,7 @@ func (lmem *lockedMemRepo) Close() error {
 	lmem.mem.api.Lock()
 	lmem.mem.api.ma = nil
 	lmem.mem.api.Unlock()
+	<-lmem.mem.repoLock // unlock
 	return nil
 
 }
