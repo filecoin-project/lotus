@@ -36,6 +36,8 @@ type LockedRepo interface {
 	// Libp2pIdentity returns private key for libp2p indentity
 	Libp2pIdentity() (crypto.PrivKey, error)
 
+	// SetAPIEndpoint sets the endpoint of the current API
+	// so it can be read by API clients
 	SetAPIEndpoint(multiaddr.Multiaddr) error
 
 	// Wallet returns store of private keys for Filecoin transactions
