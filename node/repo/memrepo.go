@@ -38,10 +38,10 @@ var _ Repo = &MemRepo{}
 
 // MemRepoOptions contains options for memory repo
 type MemRepoOptions struct {
-	ds        datastore.Datastore
-	configF   func() *config.Root
-	libp2pKey crypto.PrivKey
-	wallet    interface{}
+	Ds        datastore.Datastore
+	ConfigF   func() *config.Root
+	Libp2pKey crypto.PrivKey
+	Wallet    interface{}
 }
 
 // NewMemory creates new memory based repo with provided options.
@@ -51,27 +51,27 @@ func NewMemory(opts *MemRepoOptions) *MemRepo {
 	if opts == nil {
 		opts = &MemRepoOptions{}
 	}
-	if opts.configF == nil {
-		opts.configF = config.Default
+	if opts.ConfigF == nil {
+		opts.ConfigF = config.Default
 	}
-	if opts.ds == nil {
-		opts.ds = dssync.MutexWrap(datastore.NewMapDatastore())
+	if opts.Ds == nil {
+		opts.Ds = dssync.MutexWrap(datastore.NewMapDatastore())
 	}
-	if opts.libp2pKey == nil {
+	if opts.Libp2pKey == nil {
 		pk, _, err := crypto.GenerateEd25519Key(rand.Reader)
 		if err != nil {
 			panic(err)
 		}
-		opts.libp2pKey = pk
+		opts.Libp2pKey = pk
 	}
 
 	return &MemRepo{
 		repoLock: make(chan struct{}, 1),
 
-		datastore: opts.ds,
-		configF:   opts.configF,
-		libp2pKey: opts.libp2pKey,
-		wallet:    opts.wallet,
+		datastore: opts.Ds,
+		configF:   opts.ConfigF,
+		libp2pKey: opts.Libp2pKey,
+		wallet:    opts.Wallet,
 	}
 }
 
