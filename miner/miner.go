@@ -25,6 +25,8 @@ type api interface {
 	// mined on, and which messages are included.
 	GetBestTipset() (*chain.TipSet, error)
 
+	LatestTipsets() (<-chan *chain.TipSet, error)
+
 	// returns the lookback randomness from the chain used for the election
 	GetChainRandomness(ts *chain.TipSet) ([]byte, error)
 
@@ -45,25 +47,84 @@ type Miner struct {
 }
 
 func (m *Miner) Mine(ctx context.Context) {
-	for {
-		base, err := m.GetBestMiningCandidate()
-		if err != nil {
-			log.Errorf("failed to get best mining candidate: %s", err)
-			continue
-		}
+	tsetch, err := m.api.LatestTipsets()
+	if err != nil {
+		log.Errorf("failed to get latest tipset channel, shutting down: %s", err)
+		return
+	}
 
-		b, err := m.mineOne(ctx, base)
+	best, ok := <-tsetch
+	if !ok {
+		log.Errorf("couldnt get initial best tipset, exiting mining process")
+		return
+	}
+
+	cur := &MiningBase{
+		ts: best,
+	}
+
+	miningDone := make(chan *chain.BlockMsg)
+
+	go func() {
+		b, err := m.mineOne(ctx, cur)
 		if err != nil {
 			log.Errorf("mining block failed: %s", err)
-			continue
+			return
 		}
 
-		if b != nil {
-			if err := m.api.SubmitNewBlock(b); err != nil {
+		miningDone <- b
+	}()
+
+	for {
+		select {
+		case ts, ok := <-tsetch:
+			if !ok {
+				log.Error("tipset channel closed, exiting mining process")
+				return
+			}
+
+			if ts.Weight() > cur.ts.Weight() {
+				cur = &MiningBase{ts: ts}
+			}
+			// Interrupt running mining job?
+
+		case blk := <-miningDone:
+			if err := m.api.SubmitNewBlock(blk); err != nil {
 				log.Errorf("failed to submit newly mined block: %s", err)
 			}
+
+			go func() {
+				b, err := m.mineOne(ctx, cur)
+				if err != nil {
+					log.Errorf("mining block failed: %s", err)
+					return
+				}
+
+				miningDone <- b
+			}()
 		}
 	}
+
+	/*
+			base, err := m.GetBestMiningCandidate()
+			if err != nil {
+				log.Errorf("failed to get best mining candidate: %s", err)
+				continue
+			}
+
+			b, err := m.mineOne(ctx, base)
+			if err != nil {
+				log.Errorf("mining block failed: %s", err)
+				continue
+			}
+
+			if b != nil {
+				if err := m.api.SubmitNewBlock(b); err != nil {
+					log.Errorf("failed to submit newly mined block: %s", err)
+				}
+			}
+		}
+	*/
 }
 
 type MiningBase struct {
