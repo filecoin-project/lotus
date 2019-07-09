@@ -28,7 +28,14 @@ var netPeers = &cli.Command{
 	Action: func(cctx *cli.Context) error {
 		api := getApi(cctx)
 		ctx := reqContext(cctx)
-		fmt.Println(api.NetPeers(ctx))
+		peers, err := api.NetPeers(ctx)
+		if err != nil {
+			return err
+		}
+
+		for _, peer := range peers {
+			fmt.Println(peer)
+		}
 
 		return nil
 	},
@@ -40,8 +47,15 @@ var netListen = &cli.Command{
 	Action: func(cctx *cli.Context) error {
 		api := getApi(cctx)
 		ctx := reqContext(cctx)
-		fmt.Println(api.NetAddrsListen(ctx))
 
+		addrs, err := api.NetAddrsListen(ctx)
+		if err != nil {
+			return err
+		}
+
+		for _, peer := range addrs {
+			fmt.Println(peer)
+		}
 		return nil
 	},
 }
