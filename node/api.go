@@ -5,14 +5,33 @@ import (
 
 	"github.com/filecoin-project/go-lotus/api"
 	"github.com/filecoin-project/go-lotus/build"
+	"github.com/filecoin-project/go-lotus/chain"
 
+	"github.com/ipfs/go-cid"
 	"github.com/libp2p/go-libp2p-core/host"
 	"github.com/libp2p/go-libp2p-core/peer"
+	pubsub "github.com/libp2p/go-libp2p-pubsub"
 	ma "github.com/multiformats/go-multiaddr"
 )
 
 type API struct {
-	Host host.Host
+	Host   host.Host
+	Chain  *chain.ChainStore
+	PubSub *pubsub.PubSub
+}
+
+func (a *API) ChainSubmitBlock(ctx context.Context, blk *chain.BlockMsg) error {
+	b, err := blk.Serialize()
+	if err != nil {
+		return err
+	}
+
+	// TODO: anything else to do here?
+	return a.PubSub.Publish("/fil/blocks", b)
+}
+
+func (a *API) ChainHead(context.Context) ([]cid.Cid, error) {
+	return a.Chain.GetHeaviestTipSet().Cids(), nil
 }
 
 func (a *API) ID(context.Context) (peer.ID, error) {
