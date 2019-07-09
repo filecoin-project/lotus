@@ -1,3 +1,5 @@
+// +build !nodaemon
+
 package daemon
 
 import (
