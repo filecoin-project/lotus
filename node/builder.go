@@ -148,7 +148,7 @@ func Online() Option {
 		Override(BaseRoutingKey, lp2p.BaseRouting),
 		Override(new(routing.Routing), lp2p.Routing),
 
-		Override(NatPortMapKey, lp2p.NatPortMap),
+		//Override(NatPortMapKey, lp2p.NatPortMap), //TODO: reenable when closing logic is actually there
 		Override(ConnectionManagerKey, lp2p.ConnectionManager(50, 200, 20*time.Second)),
 
 		Override(new(*pubsub.PubSub), lp2p.GossipSub()),
