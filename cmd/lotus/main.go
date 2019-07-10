@@ -6,8 +6,6 @@ import (
 
 	"gopkg.in/urfave/cli.v2"
 
-	"github.com/filecoin-project/go-lotus/api"
-	"github.com/filecoin-project/go-lotus/api/client"
 	"github.com/filecoin-project/go-lotus/build"
 	lcli "github.com/filecoin-project/go-lotus/cli"
 	"github.com/filecoin-project/go-lotus/daemon"
@@ -22,11 +20,13 @@ func main() {
 		Name:    "lotus",
 		Usage:   "Filecoin decentralized storage network client",
 		Version: build.Version,
-		Metadata: map[string]interface{}{
-			"api": lcli.ApiConnector(func() api.API {
-				// TODO: get this from repo
-				return client.NewRPC("http://127.0.0.1:1234/rpc/v0")
-			}),
+		Flags: []cli.Flag{
+			&cli.StringFlag{
+				Name:    "repo",
+				EnvVars: []string{"LOTUS_PATH"},
+				Hidden:  true,
+				Value:   "~/.lotus", // TODO: Consider XDG_DATA_HOME
+			},
 		},
 
 		Commands: append(local, lcli.Commands...),

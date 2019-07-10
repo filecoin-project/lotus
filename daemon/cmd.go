@@ -23,11 +23,18 @@ var Cmd = &cli.Command{
 	},
 	Action: func(cctx *cli.Context) error {
 		ctx := context.Background()
-		repo := repo.NewMemory(nil)
+		r, err := repo.NewFS(cctx.String("repo"))
+		if err != nil {
+			return err
+		}
+
+		if err := r.Init(); err != nil && err != repo.ErrRepoExists {
+			return err
+		}
 
 		api, err := node.New(ctx,
 			node.Online(),
-			node.Repo(repo),
+			node.Repo(r),
 		)
 		if err != nil {
 			return err
