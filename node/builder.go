@@ -68,7 +68,7 @@ const (
 	_nInvokes // keep this last
 )
 
-type settings struct {
+type Settings struct {
 	// modules is a map of constructors for DI
 	//
 	// In most cases the index will be a reflect. Type of element returned by
@@ -80,13 +80,13 @@ type settings struct {
 	// type, and must be applied in correct order
 	invokes []fx.Option
 
-	online bool // Online option applied
-	config bool // Config option applied
+	Online bool // Online option applied
+	Config bool // Config option applied
 }
 
 // Override option changes constructor for a given type
 func Override(typ, constructor interface{}) Option {
-	return func(s *settings) error {
+	return func(s *Settings) error {
 		if i, ok := typ.(invoke); ok {
 			s.invokes[i] = fx.Invoke(constructor)
 			return nil
@@ -106,18 +106,20 @@ func Override(typ, constructor interface{}) Option {
 
 var defConf = config.Default()
 
-var defaults = []Option{
-	Override(new(helpers.MetricsCtx), context.Background),
+func defaults() []Option {
+	return []Option{
+		Override(new(helpers.MetricsCtx), context.Background),
 
-	randomIdentity(),
+		randomIdentity(),
 
-	Override(new(datastore.Batching), testing.MapDatastore),
-	Override(new(blockstore.Blockstore), testing.MapBlockstore), // NOT on top of ds above
-	Override(new(record.Validator), modules.RecordValidator),
+		Override(new(datastore.Batching), testing.MapDatastore),
+		Override(new(blockstore.Blockstore), testing.MapBlockstore), // NOT on top of ds above
+		Override(new(record.Validator), modules.RecordValidator),
 
-	// Filecoin modules
+		// Filecoin modules
 
-	Override(new(*chain.ChainStore), chain.NewChainStore),
+		Override(new(*chain.ChainStore), chain.NewChainStore),
+	}
 }
 
 // Online sets up basic libp2p node
@@ -125,8 +127,8 @@ func Online() Option {
 	return Options(
 		// make sure that online is applied before Config.
 		// This is important because Config overrides some of Online units
-		func(s *settings) error { s.online = true; return nil },
-		applyIf(func(s *settings) bool { return s.config },
+		func(s *Settings) error { s.Online = true; return nil },
+		ApplyIf(func(s *Settings) bool { return s.Config },
 			Error(errors.New("the Online option must be set before Config option")),
 		),
 
@@ -180,12 +182,12 @@ func Online() Option {
 	)
 }
 
-// Config sets up constructors based on the provided config
+// Config sets up constructors based on the provided Config
 func Config(cfg *config.Root) Option {
 	return Options(
-		func(s *settings) error { s.config = true; return nil },
+		func(s *Settings) error { s.Config = true; return nil },
 
-		applyIf(func(s *settings) bool { return s.online },
+		ApplyIf(func(s *Settings) bool { return s.Online },
 			Override(StartListeningKey, lp2p.StartListening(cfg.Libp2p.ListenAddresses)),
 		),
 	)
@@ -194,13 +196,13 @@ func Config(cfg *config.Root) Option {
 // New builds and starts new Filecoin node
 func New(ctx context.Context, opts ...Option) (api.API, error) {
 	resAPI := &API{}
-	settings := settings{
+	settings := Settings{
 		modules: map[interface{}]fx.Option{},
 		invokes: make([]fx.Option, _nInvokes),
 	}
 
 	// apply module options in the right order
-	if err := Options(Options(defaults...), Options(opts...))(&settings); err != nil {
+	if err := Options(Options(defaults()...), Options(opts...))(&settings); err != nil {
 		return nil, err
 	}
 
@@ -222,6 +224,8 @@ func New(ctx context.Context, opts ...Option) (api.API, error) {
 		fx.Options(settings.invokes...),
 
 		fx.Extract(resAPI),
+
+		fx.NopLogger,
 	)
 
 	// TODO: we probably should have a 'firewall' for Closing signal

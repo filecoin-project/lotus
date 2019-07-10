@@ -8,11 +8,11 @@ import (
 // change how the node is constructed
 //
 // Options are applied in sequence
-type Option func(*settings) error
+type Option func(*Settings) error
 
 // Options groups multiple options into one
 func Options(opts ...Option) Option {
-	return func(s *settings) error {
+	return func(s *Settings) error {
 		for _, opt := range opts {
 			if err := opt(s); err != nil {
 				return err
@@ -24,13 +24,13 @@ func Options(opts ...Option) Option {
 
 // Error is a special option which returns an error when applied
 func Error(err error) Option {
-	return func(_ *settings) error {
+	return func(_ *Settings) error {
 		return err
 	}
 }
 
-func applyIf(check func(s *settings) bool, opts ...Option) Option {
-	return func(s *settings) error {
+func ApplyIf(check func(s *Settings) bool, opts ...Option) Option {
+	return func(s *Settings) error {
 		if check(s) {
 			return Options(opts...)(s)
 		}
