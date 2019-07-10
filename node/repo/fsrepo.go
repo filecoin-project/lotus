@@ -25,12 +25,14 @@ const (
 	fsLock      = "repo.lock"
 )
 
+// FsRepo is struct for repo, use NewFS to create
 type FsRepo struct {
 	path string
 }
 
 var _ Repo = &FsRepo{}
 
+// APIEndpoint returns endpoint of API in this repo
 func (fsr *FsRepo) APIEndpoint() (multiaddr.Multiaddr, error) {
 	p := filepath.Join(fsr.path, fsAPI)
 	f, err := os.Open(p)
@@ -56,6 +58,7 @@ func (fsr *FsRepo) APIEndpoint() (multiaddr.Multiaddr, error) {
 	return apima, nil
 }
 
+// Lock acquires exclusive lock on this repo
 func (fsr *FsRepo) Lock() (LockedRepo, error) {
 	closer, err := fslock.Lock(fsr.path, fsLock)
 	if err != nil {
