@@ -45,7 +45,7 @@ var _ Repo = &FsRepo{}
 func NewFS(path string) (*FsRepo, error) {
 	path, err := homedir.Expand(path)
 	if err != nil {
-		return &FsRepo{}, err
+		return nil, err
 	}
 
 	return &FsRepo{
@@ -175,6 +175,13 @@ func (fsr *fsLockedRepo) Libp2pIdentity() (crypto.PrivKey, error) {
 		if err != nil {
 			return nil, xerrors.Errorf("could not write private key: %w", err)
 		}
+	} else if err != nil {
+		return nil, err
+	}
+
+	stat, err = os.Stat(kpath)
+	if err != nil {
+		return nil, err
 	}
 
 	if stat.Mode()&0066 != 0 {
