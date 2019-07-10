@@ -32,6 +32,12 @@ type FsRepo struct {
 
 var _ Repo = &FsRepo{}
 
+func NewFS(path string) (*FsRepo, error) {
+	return &FsRepo{
+		path: path,
+	}, nil
+}
+
 // APIEndpoint returns endpoint of API in this repo
 func (fsr *FsRepo) APIEndpoint() (multiaddr.Multiaddr, error) {
 	p := filepath.Join(fsr.path, fsAPI)
@@ -60,6 +66,14 @@ func (fsr *FsRepo) APIEndpoint() (multiaddr.Multiaddr, error) {
 
 // Lock acquires exclusive lock on this repo
 func (fsr *FsRepo) Lock() (LockedRepo, error) {
+	locked, err := fslock.Locked(fsr.path, fsLock)
+	if err != nil {
+		return nil, xerrors.Errorf("could not check lock status: %w", err)
+	}
+	if locked {
+		return nil, ErrRepoAlreadyLocked
+	}
+
 	closer, err := fslock.Lock(fsr.path, fsLock)
 	if err != nil {
 		return nil, xerrors.Errorf("could not lock the repo: %w", err)
@@ -76,7 +90,13 @@ type fsLockedRepo struct {
 }
 
 func (fsr *fsLockedRepo) Close() error {
-	err := fsr.closer.Close()
+	err := os.Remove(fsr.join(fsAPI))
+
+	if err != nil && !os.IsNotExist(err) {
+		return xerrors.Errorf("could not remove API file: %w", err)
+	}
+
+	err = fsr.closer.Close()
 	fsr.closer = nil
 	return err
 }
@@ -150,7 +170,7 @@ func (fsr *fsLockedRepo) SetAPIEndpoint(ma multiaddr.Multiaddr) error {
 	if err := fsr.stillValid(); err != nil {
 		return err
 	}
-	return ioutil.WriteFile(fsr.join(fsAPI), ma.Bytes(), 0666)
+	return ioutil.WriteFile(fsr.join(fsAPI), []byte(ma.String()), 0666)
 }
 
 func (fsr *fsLockedRepo) Wallet() (interface{}, error) {
