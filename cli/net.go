@@ -26,7 +26,10 @@ var netPeers = &cli.Command{
 	Name:  "peers",
 	Usage: "Print peers",
 	Action: func(cctx *cli.Context) error {
-		api := getApi(cctx)
+		api, err := getApi(cctx)
+		if err != nil {
+			return err
+		}
 		ctx := reqContext(cctx)
 		peers, err := api.NetPeers(ctx)
 		if err != nil {
@@ -45,7 +48,10 @@ var netListen = &cli.Command{
 	Name:  "listen",
 	Usage: "List listen addresses",
 	Action: func(cctx *cli.Context) error {
-		api := getApi(cctx)
+		api, err := getApi(cctx)
+		if err != nil {
+			return err
+		}
 		ctx := reqContext(cctx)
 
 		addrs, err := api.NetAddrsListen(ctx)
@@ -64,7 +70,10 @@ var netConnect = &cli.Command{
 	Name:  "connect",
 	Usage: "Connect to a peer",
 	Action: func(cctx *cli.Context) error {
-		api := getApi(cctx)
+		api, err := getApi(cctx)
+		if err != nil {
+			return err
+		}
 		ctx := reqContext(cctx)
 
 		pis, err := parseAddresses(ctx, cctx.Args().Slice())

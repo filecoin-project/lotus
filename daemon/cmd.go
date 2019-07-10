@@ -5,6 +5,7 @@ package daemon
 import (
 	"context"
 
+	"github.com/multiformats/go-multiaddr"
 	"gopkg.in/urfave/cli.v2"
 
 	"github.com/filecoin-project/go-lotus/node"
@@ -18,7 +19,7 @@ var Cmd = &cli.Command{
 	Flags: []cli.Flag{
 		&cli.StringFlag{
 			Name:  "api",
-			Value: ":1234",
+			Value: "1234",
 		},
 	},
 	Action: func(cctx *cli.Context) error {
@@ -35,11 +36,19 @@ var Cmd = &cli.Command{
 		api, err := node.New(ctx,
 			node.Online(),
 			node.Repo(r),
+
+			node.Override(node.SetApiEndpointKey, func(lr repo.LockedRepo) error {
+				apima, err := multiaddr.NewMultiaddr("/ip4/127.0.0.1/tcp/" + cctx.String("api"))
+				if err != nil {
+					return err
+				}
+				return lr.SetAPIEndpoint(apima)
+			}),
 		)
 		if err != nil {
 			return err
 		}
 
-		return serveRPC(api, cctx.String("api"))
+		return serveRPC(api, ":"+cctx.String("api"))
 	},
 }

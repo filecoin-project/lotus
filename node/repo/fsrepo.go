@@ -115,8 +115,8 @@ type fsLockedRepo struct {
 	path   string
 	closer io.Closer
 
-	ds datastore.Batching
-	dsErr error
+	ds     datastore.Batching
+	dsErr  error
 	dsOnce sync.Once
 }
 

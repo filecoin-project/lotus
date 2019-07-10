@@ -6,20 +6,33 @@ import (
 	"os/signal"
 	"syscall"
 
-	"github.com/filecoin-project/go-lotus/api"
+	manet "github.com/multiformats/go-multiaddr-net"
 	"gopkg.in/urfave/cli.v2"
+
+	"github.com/filecoin-project/go-lotus/api"
+	"github.com/filecoin-project/go-lotus/api/client"
+	"github.com/filecoin-project/go-lotus/node/repo"
 )
 
 const (
 	metadataContext = "context"
-	metadataAPI     = "api"
 )
 
 // ApiConnector returns API instance
 type ApiConnector func() api.API
 
-func getApi(ctx *cli.Context) api.API {
-	return ctx.App.Metadata[metadataAPI].(ApiConnector)()
+func getApi(ctx *cli.Context) (api.API, error) {
+	r, err := repo.NewFS(ctx.String("repo"))
+	if err != nil {
+		return nil, err
+	}
+
+	ma, err := r.APIEndpoint()
+	if err != nil {
+		return nil, err
+	}
+	_, addr, err := manet.DialArgs(ma)
+	return client.NewRPC("http://" + addr + "/rpc/v0"), nil
 }
 
 // reqContext returns context for cli execution. Calling it for the first time

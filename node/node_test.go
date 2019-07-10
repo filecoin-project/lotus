@@ -2,9 +2,10 @@ package node_test
 
 import (
 	"context"
-	"github.com/filecoin-project/go-lotus/node"
 	"net/http/httptest"
 	"testing"
+
+	"github.com/filecoin-project/go-lotus/node"
 
 	"github.com/filecoin-project/go-lotus/api"
 	"github.com/filecoin-project/go-lotus/api/client"

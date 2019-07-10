@@ -66,6 +66,8 @@ const (
 	HandleIncomingBlocksKey
 	HandleIncomingMessagesKey
 
+	SetApiEndpointKey
+
 	_nInvokes // keep this last
 )
 
