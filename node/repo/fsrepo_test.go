@@ -15,7 +15,7 @@ func genFsRepo(t *testing.T) (*FsRepo, func()) {
 		t.Fatal(err)
 	}
 	return repo, func() {
-		os.RemoveAll(path)
+		_ = os.RemoveAll(path)
 	}
 }
 

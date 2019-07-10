@@ -32,6 +32,7 @@ type FsRepo struct {
 
 var _ Repo = &FsRepo{}
 
+// NewFS creates a repo instance based on a path on file system
 func NewFS(path string) (*FsRepo, error) {
 	return &FsRepo{
 		path: path,
