@@ -89,7 +89,7 @@ jobs:
                 command: |
                   bash <(curl -s https://codecov.io/bash)
 
-  lint:
+  lint: &lint
     description: |
       Run golangci-lint.
     parameters:
@@ -124,15 +124,20 @@ jobs:
           command: |
             golangci-lint run -v \
               --concurrency << parameters.concurrency >> << parameters.args >>
+  lint-changes:
+    <<: *lint
+
+  lint-all:
+    <<: *lint
 
 
 workflows:
   version: 2
   ci:
     jobs:
-      - lint
-      - lint:
-          args: "--no-config --exclude-use-default=false --disable-all --enable golint"
+      - lint-changes:
+          args: "--new-from-rev origin/master"
+      - lint-all
       - test:
           codecov-upload: true
       - mod-tidy-check

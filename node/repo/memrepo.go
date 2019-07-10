@@ -45,6 +45,14 @@ type MemRepoOptions struct {
 	Wallet    interface{}
 }
 
+func genLibp2pKey() (crypto.PrivKey, error) {
+	pk, _, err := crypto.GenerateEd25519Key(rand.Reader)
+	if err != nil {
+		return nil, err
+	}
+	return pk, nil
+}
+
 // NewMemory creates new memory based repo with provided options.
 // opts can be nil, it  will be replaced with defaults.
 // Any field in opts can be nil, they will be replaced by defaults.
@@ -59,7 +67,7 @@ func NewMemory(opts *MemRepoOptions) *MemRepo {
 		opts.Ds = dssync.MutexWrap(datastore.NewMapDatastore())
 	}
 	if opts.Libp2pKey == nil {
-		pk, _, err := crypto.GenerateEd25519Key(rand.Reader)
+		pk, err := genLibp2pKey()
 		if err != nil {
 			panic(err)
 		}

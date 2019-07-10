@@ -10,6 +10,8 @@ require (
 	github.com/ipfs/go-blockservice v0.0.2
 	github.com/ipfs/go-cid v0.0.2
 	github.com/ipfs/go-datastore v0.0.5
+	github.com/ipfs/go-ds-badger v0.0.2
+	github.com/ipfs/go-fs-lock v0.0.0-20190710120703-5ab4a142bd90
 	github.com/ipfs/go-hamt-ipld v0.0.0-20190613164304-cd074602062f
 	github.com/ipfs/go-ipfs-blockstore v0.0.1
 	github.com/ipfs/go-ipfs-exchange-interface v0.0.1
