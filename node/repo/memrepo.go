@@ -5,6 +5,7 @@ import (
 	"sync"
 
 	"github.com/ipfs/go-datastore"
+	"github.com/ipfs/go-datastore/namespace"
 	dssync "github.com/ipfs/go-datastore/sync"
 	"github.com/libp2p/go-libp2p-core/crypto"
 	"github.com/multiformats/go-multiaddr"
@@ -127,11 +128,12 @@ func (lmem *lockedMemRepo) Close() error {
 
 }
 
-func (lmem *lockedMemRepo) Datastore() (datastore.Datastore, error) {
+func (lmem *lockedMemRepo) Datastore(ns string) (datastore.Batching, error) {
 	if err := lmem.checkToken(); err != nil {
 		return nil, err
 	}
-	return lmem.mem.datastore, nil
+
+	return namespace.Wrap(lmem.mem.datastore, datastore.NewKey(ns)), nil
 }
 
 func (lmem *lockedMemRepo) Config() (*config.Root, error) {

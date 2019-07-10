@@ -10,7 +10,7 @@ import (
 )
 
 var (
-	ErrNoAPIEndpoint     = xerrors.New("no API Endpoint set")
+	ErrNoAPIEndpoint     = xerrors.New("API not running (no endpoint)")
 	ErrRepoAlreadyLocked = xerrors.New("repo is already locked")
 	ErrClosedRepo        = xerrors.New("repo is no longer open")
 )
@@ -28,7 +28,7 @@ type LockedRepo interface {
 	Close() error
 
 	// Returns datastore defined in this repo.
-	Datastore() (datastore.Datastore, error)
+	Datastore(namespace string) (datastore.Batching, error)
 
 	// Returns config in this repo
 	Config() (*config.Root, error)
