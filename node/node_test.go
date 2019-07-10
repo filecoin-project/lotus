@@ -1,7 +1,8 @@
-package node
+package node_test
 
 import (
 	"context"
+	"github.com/filecoin-project/go-lotus/node"
 	"net/http/httptest"
 	"testing"
 
@@ -21,8 +22,8 @@ func builder(t *testing.T, n int) []api.API {
 
 	for i := 0; i < n; i++ {
 		var err error
-		out[i], err = New(ctx,
-			Online(),
+		out[i], err = node.New(ctx,
+			node.Online(),
 			MockHost(mn),
 		)
 		if err != nil {
