@@ -226,7 +226,7 @@ func (cs *ChainStore) maybeTakeHeavierTipSet(ts *TipSet) error {
 			return err
 		}
 		cs.headChange(revert, apply)
-		log.Errorf("New heaviest tipset! %s", ts.Cids())
+		log.Infof("New heaviest tipset! %s", ts.Cids())
 		cs.heaviest = ts
 	}
 	return nil
