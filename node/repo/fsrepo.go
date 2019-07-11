@@ -148,7 +148,10 @@ func (fsr *fsLockedRepo) Datastore(ns string) (datastore.Batching, error) {
 	fsr.dsOnce.Do(func() {
 		fsr.ds, fsr.dsErr = badger.NewDatastore(fsr.join(fsDatastore), nil)
 	})
-	return namespace.Wrap(fsr.ds, datastore.NewKey(ns)), fsr.dsErr
+	if fsr.dsErr != nil {
+		return nil, fsr.dsErr
+	}
+	return namespace.Wrap(fsr.ds, datastore.NewKey(ns)), nil
 }
 
 func (fsr *fsLockedRepo) Config() (*config.Root, error) {
