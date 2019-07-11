@@ -27,6 +27,7 @@ import (
 	"github.com/filecoin-project/go-lotus/node/modules/helpers"
 	"github.com/filecoin-project/go-lotus/node/modules/lp2p"
 	"github.com/filecoin-project/go-lotus/node/modules/testing"
+	"github.com/filecoin-project/go-lotus/node/repo"
 )
 
 // special is a type used to give keys to modules which
@@ -64,6 +65,8 @@ const (
 
 	HandleIncomingBlocksKey
 	HandleIncomingMessagesKey
+
+	SetApiEndpointKey
 
 	_nInvokes // keep this last
 )
@@ -190,6 +193,33 @@ func Config(cfg *config.Root) Option {
 		ApplyIf(func(s *Settings) bool { return s.Online },
 			Override(StartListeningKey, lp2p.StartListening(cfg.Libp2p.ListenAddresses)),
 		),
+	)
+}
+
+func Repo(r repo.Repo) Option {
+	lr, err := r.Lock()
+	if err != nil {
+		return Error(err)
+	}
+	cfg, err := lr.Config()
+	if err != nil {
+		return Error(err)
+	}
+	pk, err := lr.Libp2pIdentity()
+	if err != nil {
+		return Error(err)
+	}
+
+	return Options(
+		Config(cfg),
+		Override(new(repo.LockedRepo), modules.LockedRepo(lr)), // module handles closing
+
+		Override(new(datastore.Batching), modules.Datastore),
+		Override(new(blockstore.Blockstore), modules.Blockstore),
+
+		Override(new(ci.PrivKey), pk),
+		Override(new(ci.PubKey), ci.PrivKey.GetPublic),
+		Override(new(peer.ID), peer.IDFromPublicKey),
 	)
 }
 

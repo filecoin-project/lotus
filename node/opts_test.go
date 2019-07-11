@@ -2,6 +2,7 @@ package node_test
 
 import (
 	"errors"
+
 	"github.com/filecoin-project/go-lotus/node"
 
 	"github.com/filecoin-project/go-lotus/node/modules/lp2p"

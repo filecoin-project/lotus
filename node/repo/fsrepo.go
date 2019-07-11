@@ -6,12 +6,17 @@ import (
 	"os"
 	"path/filepath"
 	"strings"
+	"sync"
 
 	"github.com/ipfs/go-datastore"
+	"github.com/ipfs/go-datastore/namespace"
 	badger "github.com/ipfs/go-ds-badger"
 	fslock "github.com/ipfs/go-fs-lock"
+	logging "github.com/ipfs/go-log"
 	"github.com/libp2p/go-libp2p-core/crypto"
+	"github.com/mitchellh/go-homedir"
 	"github.com/multiformats/go-multiaddr"
+	"github.com/pkg/errors"
 	"golang.org/x/xerrors"
 
 	"github.com/filecoin-project/go-lotus/node/config"
@@ -25,6 +30,10 @@ const (
 	fsLock      = "repo.lock"
 )
 
+var log = logging.Logger("repo")
+
+var ErrRepoExists = errors.New("repo exists")
+
 // FsRepo is struct for repo, use NewFS to create
 type FsRepo struct {
 	path string
@@ -34,9 +43,26 @@ var _ Repo = &FsRepo{}
 
 // NewFS creates a repo instance based on a path on file system
 func NewFS(path string) (*FsRepo, error) {
+	path, err := homedir.Expand(path)
+	if err != nil {
+		return nil, err
+	}
+
 	return &FsRepo{
 		path: path,
 	}, nil
+}
+
+func (fsr *FsRepo) Init() error {
+	if _, err := os.Stat(fsr.path); err == nil {
+		return ErrRepoExists
+	} else if !os.IsNotExist(err) {
+		return err
+	}
+
+	log.Infof("Initializing repo at '%s'", fsr.path)
+
+	return os.Mkdir(fsr.path, 0755) // nolint
 }
 
 // APIEndpoint returns endpoint of API in this repo
@@ -88,6 +114,10 @@ func (fsr *FsRepo) Lock() (LockedRepo, error) {
 type fsLockedRepo struct {
 	path   string
 	closer io.Closer
+
+	ds     datastore.Batching
+	dsErr  error
+	dsOnce sync.Once
 }
 
 func (fsr *fsLockedRepo) Close() error {
@@ -114,8 +144,14 @@ func (fsr *fsLockedRepo) stillValid() error {
 	return nil
 }
 
-func (fsr *fsLockedRepo) Datastore() (datastore.Datastore, error) {
-	return badger.NewDatastore(fsr.join(fsDatastore), nil)
+func (fsr *fsLockedRepo) Datastore(ns string) (datastore.Batching, error) {
+	fsr.dsOnce.Do(func() {
+		fsr.ds, fsr.dsErr = badger.NewDatastore(fsr.join(fsDatastore), nil)
+	})
+	if fsr.dsErr != nil {
+		return nil, fsr.dsErr
+	}
+	return namespace.Wrap(fsr.ds, datastore.NewKey(ns)), nil
 }
 
 func (fsr *fsLockedRepo) Config() (*config.Root, error) {
@@ -142,6 +178,13 @@ func (fsr *fsLockedRepo) Libp2pIdentity() (crypto.PrivKey, error) {
 		if err != nil {
 			return nil, xerrors.Errorf("could not write private key: %w", err)
 		}
+	} else if err != nil {
+		return nil, err
+	}
+
+	stat, err = os.Stat(kpath)
+	if err != nil {
+		return nil, err
 	}
 
 	if stat.Mode()&0066 != 0 {
@@ -171,7 +214,7 @@ func (fsr *fsLockedRepo) SetAPIEndpoint(ma multiaddr.Multiaddr) error {
 	if err := fsr.stillValid(); err != nil {
 		return err
 	}
-	return ioutil.WriteFile(fsr.join(fsAPI), []byte(ma.String()), 0666)
+	return ioutil.WriteFile(fsr.join(fsAPI), []byte(ma.String()), 0644)
 }
 
 func (fsr *fsLockedRepo) Wallet() (interface{}, error) {
