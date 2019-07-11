@@ -3,6 +3,7 @@ package chain
 import (
 	"bytes"
 	"encoding/binary"
+	"encoding/json"
 	"fmt"
 	"math/big"
 
@@ -229,6 +230,25 @@ func (bi *BigInt) Nil() bool {
 	return bi.Int == nil
 }
 
+func (bi *BigInt) MarshalJSON() ([]byte, error) {
+	return json.Marshal(bi.String())
+}
+
+func (bi *BigInt) UnmarshalJSON(b []byte) error {
+	var s string
+	if err := json.Unmarshal(b, &s); err != nil {
+		return err
+	}
+
+	i, ok := big.NewInt(0).SetString(s, 10)
+	if !ok {
+		return fmt.Errorf("failed to parse bigint string")
+	}
+
+	bi.Int = i
+	return nil
+}
+
 type Actor struct {
 	Code    cid.Cid
 	Head    cid.Cid
@@ -400,6 +420,34 @@ type TipSet struct {
 	cids   []cid.Cid
 	blks   []*BlockHeader
 	height uint64
+}
+
+// why didnt i just export the fields? Because the struct has methods with the
+// same names already
+type expTipSet struct {
+	Cids   []cid.Cid
+	Blocks []*BlockHeader
+	Height uint64
+}
+
+func (ts *TipSet) MarshalJSON() ([]byte, error) {
+	return json.Marshal(expTipSet{
+		Cids:   ts.cids,
+		Blocks: ts.blks,
+		Height: ts.height,
+	})
+}
+
+func (ts *TipSet) UnmarshalJSON(b []byte) error {
+	var ets expTipSet
+	if err := json.Unmarshal(b, &ets); err != nil {
+		return err
+	}
+
+	ts.cids = ets.Cids
+	ts.blks = ets.Blocks
+	ts.height = ets.Height
+	return nil
 }
 
 func NewTipSet(blks []*BlockHeader) (*TipSet, error) {

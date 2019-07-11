@@ -62,4 +62,6 @@ var Commands = []*cli.Command{
 	chainCmd,
 	netCmd,
 	versionCmd,
+	mpoolCmd,
+	minerCmd,
 }

@@ -58,7 +58,7 @@ const (
 	StartListeningKey
 
 	// filecoin
-	SetGenisisKey
+	SetGenesisKey
 
 	RunHelloKey
 	RunBlockSyncKey
@@ -174,7 +174,7 @@ func Online() Option {
 		Override(new(*chain.MessagePool), chain.NewMessagePool),
 
 		Override(new(modules.Genesis), testing.MakeGenesis),
-		Override(SetGenisisKey, modules.SetGenesis),
+		Override(SetGenesisKey, modules.SetGenesis),
 
 		Override(new(*hello.Service), hello.NewHelloService),
 		Override(new(*chain.BlockSyncService), chain.NewBlockSyncService),

@@ -4,6 +4,7 @@ import (
 	"log"
 	"os"
 
+	logging "github.com/ipfs/go-log"
 	"gopkg.in/urfave/cli.v2"
 
 	"github.com/filecoin-project/go-lotus/build"
@@ -12,6 +13,7 @@ import (
 )
 
 func main() {
+	logging.SetLogLevel("*", "INFO")
 	local := []*cli.Command{
 		daemon.Cmd,
 	}
