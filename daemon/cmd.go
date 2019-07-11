@@ -49,6 +49,7 @@ var Cmd = &cli.Command{
 			return err
 		}
 
-		return serveRPC(api, ":"+cctx.String("api"))
+		// TODO: properly parse api endpoint (or make it a URL)
+		return serveRPC(api, "127.0.0.1:"+cctx.String("api"))
 	},
 }
