@@ -64,7 +64,7 @@ func (*invoker) transform(instance Invokee) (nativeCode, error) {
 	exports := instance.Exports()
 	for i, m := range exports {
 		i := i
-		newErr = func(str string) error {
+		newErr := func(str string) error {
 			return fmt.Errorf("transform(%s) export(%d): %s", itype.Name(), i, str)
 		}
 		if m == nil {
