@@ -68,6 +68,7 @@ type VM struct {
 	buf         *bufbstore.BufferedBS
 	blockHeight uint64
 	blockMiner  address.Address
+	inv         *invoker
 }
 
 func NewVM(base cid.Cid, height uint64, maddr address.Address, cs *ChainStore) (*VM, error) {
@@ -85,6 +86,7 @@ func NewVM(base cid.Cid, height uint64, maddr address.Address, cs *ChainStore) (
 		buf:         buf,
 		blockHeight: height,
 		blockMiner:  maddr,
+		inv:         newInvoker(),
 	}, nil
 }
 
@@ -205,5 +207,9 @@ func (vm *VM) TransferFunds(from, to address.Address, amt BigInt) error {
 }
 
 func (vm *VM) Invoke(act *Actor, vmctx *VMContext, method uint64, params []byte) ([]byte, byte, error) {
-	panic("Implement me")
+	ret, err := vm.inv.Invoke(act, vmctx, method, params)
+	if err != nil {
+		return nil, 0, err
+	}
+	return ret.result, ret.returnCode, nil
 }
