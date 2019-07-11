@@ -21,7 +21,7 @@ const (
 // ApiConnector returns API instance
 type ApiConnector func() api.API
 
-func getApi(ctx *cli.Context) (api.API, error) {
+func getAPI(ctx *cli.Context) (api.API, error) {
 	r, err := repo.NewFS(ctx.String("repo"))
 	if err != nil {
 		return nil, err
@@ -32,6 +32,9 @@ func getApi(ctx *cli.Context) (api.API, error) {
 		return nil, err
 	}
 	_, addr, err := manet.DialArgs(ma)
+	if err != nil {
+		return nil, err
+	}
 	return client.NewRPC("http://" + addr + "/rpc/v0"), nil
 }
 

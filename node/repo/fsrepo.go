@@ -62,7 +62,7 @@ func (fsr *FsRepo) Init() error {
 
 	log.Infof("Initializing repo at '%s'", fsr.path)
 
-	return os.Mkdir(fsr.path, 0755)
+	return os.Mkdir(fsr.path, 0755) // nolint
 }
 
 // APIEndpoint returns endpoint of API in this repo
@@ -214,7 +214,7 @@ func (fsr *fsLockedRepo) SetAPIEndpoint(ma multiaddr.Multiaddr) error {
 	if err := fsr.stillValid(); err != nil {
 		return err
 	}
-	return ioutil.WriteFile(fsr.join(fsAPI), []byte(ma.String()), 0666)
+	return ioutil.WriteFile(fsr.join(fsAPI), []byte(ma.String()), 0644)
 }
 
 func (fsr *fsLockedRepo) Wallet() (interface{}, error) {

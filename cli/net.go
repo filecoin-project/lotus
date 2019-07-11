@@ -26,7 +26,7 @@ var netPeers = &cli.Command{
 	Name:  "peers",
 	Usage: "Print peers",
 	Action: func(cctx *cli.Context) error {
-		api, err := getApi(cctx)
+		api, err := getAPI(cctx)
 		if err != nil {
 			return err
 		}
@@ -48,7 +48,7 @@ var netListen = &cli.Command{
 	Name:  "listen",
 	Usage: "List listen addresses",
 	Action: func(cctx *cli.Context) error {
-		api, err := getApi(cctx)
+		api, err := getAPI(cctx)
 		if err != nil {
 			return err
 		}
@@ -70,7 +70,7 @@ var netConnect = &cli.Command{
 	Name:  "connect",
 	Usage: "Connect to a peer",
 	Action: func(cctx *cli.Context) error {
-		api, err := getApi(cctx)
+		api, err := getAPI(cctx)
 		if err != nil {
 			return err
 		}

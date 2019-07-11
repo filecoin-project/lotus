@@ -18,7 +18,7 @@ var chainHeadCmd = &cli.Command{
 	Name:  "head",
 	Usage: "Print chain head",
 	Action: func(cctx *cli.Context) error {
-		api, err := getApi(cctx)
+		api, err := getAPI(cctx)
 		if err != nil {
 			return err
 		}
