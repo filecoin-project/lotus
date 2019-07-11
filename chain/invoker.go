@@ -4,8 +4,6 @@ import (
 	"errors"
 	"fmt"
 	"reflect"
-	"strconv"
-	"strings"
 
 	"github.com/ipfs/go-cid"
 )
@@ -42,7 +40,7 @@ func (inv *invoker) Invoke(act *Actor, vmctx *VMContext, method uint64, params [
 
 }
 
-func (inv *invoker) register(c cid.Cid, instance interface{}) {
+func (inv *invoker) register(c cid.Cid, instance Invokee) {
 	code, err := inv.transform(instance)
 	if err != nil {
 		panic(err)
@@ -54,51 +52,45 @@ type unmarshalCBOR interface {
 	UnmarshalCBOR([]byte) (int, error)
 }
 
+type Invokee interface {
+	Exports() []interface{}
+}
+
 var tUnmarhsalCBOR = reflect.TypeOf((*unmarshalCBOR)(nil)).Elem()
 var tError = reflect.TypeOf((*error)(nil)).Elem()
 
-func (*invoker) transform(instance interface{}) (nativeCode, error) {
+func (*invoker) transform(instance Invokee) (nativeCode, error) {
 	itype := reflect.TypeOf(instance)
-	newErr := func(str string) error {
-		return fmt.Errorf("transform(%s): %s", itype.Name(), str)
-
-	}
-	var maxn uint64
-	invokes := make(map[uint64]reflect.Method)
-	for i := 0; i < itype.NumMethod(); i++ {
-		meth := itype.Method(i)
-		if !strings.HasPrefix(meth.Name, "Invoke") {
+	exports := instance.Exports()
+	for i, m := range exports {
+		i := i
+		newErr = func(str string) error {
+			return fmt.Errorf("transform(%s) export(%d): %s", itype.Name(), i, str)
+		}
+		if m == nil {
 			continue
 		}
-		sid := strings.TrimLeftFunc(meth.Name, func(r rune) bool {
-			return r < '0' || r > '9'
-		})
-
-		id, err := strconv.ParseUint(sid, 10, 64)
-		if err != nil {
-			return nil, err
+		meth := reflect.ValueOf(m)
+		t := meth.Type()
+		if t.Kind() != reflect.Func {
+			return nil, newErr("is not a function")
 		}
-
-		t := meth.Type
-		if t.NumIn() != 4 {
+		if t.NumIn() != 3 {
 			return nil, newErr("wrong number of inputs should be: " +
 				"*Actor, *VMContext, <type of parameter>")
 		}
-		if t.In(0) != itype {
-			return nil, newErr("passed instance is not struct")
-		}
-		if t.In(1) != reflect.TypeOf(&Actor{}) {
+		if t.In(0) != reflect.TypeOf(&Actor{}) {
 			return nil, newErr("first arguemnt should be *Actor")
 		}
-		if t.In(2) != reflect.TypeOf(&VMContext{}) {
+		if t.In(1) != reflect.TypeOf(&VMContext{}) {
 			return nil, newErr("second argument should be *VMContext")
 		}
 
-		if !t.In(3).Implements(tUnmarhsalCBOR) {
+		if !t.In(2).Implements(tUnmarhsalCBOR) {
 			return nil, newErr("parameter doesn't implement UnmarshalCBOR")
 		}
 
-		if t.In(3).Kind() != reflect.Ptr {
+		if t.In(2).Kind() != reflect.Ptr {
 			return nil, newErr("parameter has to be a pointer")
 		}
 
@@ -113,21 +105,13 @@ func (*invoker) transform(instance interface{}) (nativeCode, error) {
 			return nil, newErr("second output should be error type")
 		}
 
-		if id > maxn {
-			maxn = id
-		}
-		if _, has := invokes[id]; has {
-			return nil, newErr(fmt.Sprintf("repeated method=%s id: %d", meth.Name, id))
-		}
-		invokes[id] = meth
 	}
-	code := make(nativeCode, maxn+1)
-	_ = code
-	for id, meth := range invokes {
-		meth := meth
+	code := make(nativeCode, len(exports))
+	for id, m := range exports {
+		meth := reflect.ValueOf(m)
 		code[id] = reflect.MakeFunc(reflect.TypeOf((invokeFunc)(nil)),
 			func(in []reflect.Value) []reflect.Value {
-				paramT := meth.Type.In(3).Elem()
+				paramT := meth.Type().In(2).Elem()
 				param := reflect.New(paramT)
 
 				inBytes := in[2].Interface().([]byte)
@@ -138,8 +122,8 @@ func (*invoker) transform(instance interface{}) (nativeCode, error) {
 						reflect.ValueOf(err),
 					}
 				}
-				return meth.Func.Call([]reflect.Value{
-					reflect.ValueOf(instance), in[0], in[1], param,
+				return meth.Call([]reflect.Value{
+					in[0], in[1], param,
 				})
 			}).Interface().(invokeFunc)
 

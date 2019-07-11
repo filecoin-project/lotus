@@ -16,6 +16,22 @@ func (b *basicParams) UnmarshalCBOR(in []byte) (int, error) {
 	return 1, nil
 }
 
+func (b basicContract) Exports() []interface{} {
+	return []interface{}{
+		b.InvokeSomething0,
+		nil,
+		nil,
+		nil,
+		nil,
+		nil,
+		nil,
+		nil,
+		nil,
+		nil,
+		b.InvokeSomething10,
+	}
+}
+
 func (basicContract) InvokeSomething0(act *Actor, vmctx *VMContext,
 	params *basicParams) (InvokeRet, error) {
 	return InvokeRet{
@@ -37,7 +53,7 @@ func TestInvokerBasic(t *testing.T) {
 	assert.NoError(t, err)
 	assert.Equal(t, byte(1), ret.returnCode, "return code should be 1")
 
-	ret, err = code[10](nil, nil, []byte{1})
+	ret, err = code[10](nil, nil, []byte{2})
 	assert.NoError(t, err)
-	assert.Equal(t, byte(11), ret.returnCode, "return code should be 1")
+	assert.Equal(t, byte(12), ret.returnCode, "return code should be 1")
 }
