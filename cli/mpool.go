@@ -21,7 +21,7 @@ var mpoolPending = &cli.Command{
 		api := getApi(cctx)
 		ctx := reqContext(cctx)
 
-		msgs, err := api.MpoolPending(ctx)
+		msgs, err := api.MpoolPending(ctx, nil)
 		if err != nil {
 			return err
 		}

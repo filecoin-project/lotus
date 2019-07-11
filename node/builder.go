@@ -80,8 +80,9 @@ type Settings struct {
 	// type, and must be applied in correct order
 	invokes []fx.Option
 
-	Online bool // Online option applied
-	Config bool // Config option applied
+	Online    bool // Online option applied
+	Bootstrap bool // Start chain syncer bootstrapped
+	Config    bool // Config option applied
 }
 
 // Override option changes constructor for a given type

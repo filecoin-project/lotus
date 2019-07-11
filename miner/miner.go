@@ -8,35 +8,45 @@ import (
 	"github.com/pkg/errors"
 
 	chain "github.com/filecoin-project/go-lotus/chain"
+	"github.com/filecoin-project/go-lotus/chain/address"
 )
 
 var log = logging.Logger("miner")
 
 type api interface {
-	SubmitNewBlock(blk *chain.BlockMsg) error
+	ChainSubmitBlock(context.Context, *chain.BlockMsg) error
 
 	// returns a set of messages that havent been included in the chain as of
 	// the given tipset
-	PendingMessages(base *chain.TipSet) ([]*chain.SignedMessage, error)
+	MpoolPending(ctx context.Context, base *chain.TipSet) ([]*chain.SignedMessage, error)
 
 	// Returns the best tipset for the miner to mine on top of.
 	// TODO: Not sure this feels right (including the messages api). Miners
 	// will likely want to have more control over exactly which blocks get
 	// mined on, and which messages are included.
-	GetBestTipset() (*chain.TipSet, error)
+	ChainHead(context.Context) (*chain.TipSet, error)
 
 	// returns the lookback randomness from the chain used for the election
-	GetChainRandomness(ts *chain.TipSet) ([]byte, error)
+	ChainGetRandomness(context.Context, *chain.TipSet) ([]byte, error)
 
 	// create a block
 	// it seems realllllly annoying to do all the actions necessary to build a
 	// block through the API. so, we just add the block creation to the API
 	// now, all the 'miner' does is check if they win, and call create block
-	CreateBlock(base *chain.TipSet, tickets []chain.Ticket, eproof chain.ElectionProof, msgs []*chain.SignedMessage) (*chain.BlockMsg, error)
+	MinerCreateBlock(context.Context, address.Address, *chain.TipSet, []chain.Ticket, chain.ElectionProof, []*chain.SignedMessage) (*chain.BlockMsg, error)
+}
+
+func NewMiner(api api, addr address.Address) *Miner {
+	return &Miner{
+		api:   api,
+		Delay: time.Second * 4,
+	}
 }
 
 type Miner struct {
 	api api
+
+	address address.Address
 
 	// time between blocks, network parameter
 	Delay time.Duration
@@ -59,7 +69,7 @@ func (m *Miner) Mine(ctx context.Context) {
 		}
 
 		if b != nil {
-			if err := m.api.SubmitNewBlock(b); err != nil {
+			if err := m.api.ChainSubmitBlock(ctx, b); err != nil {
 				log.Errorf("failed to submit newly mined block: %s", err)
 			}
 		}
@@ -72,7 +82,7 @@ type MiningBase struct {
 }
 
 func (m *Miner) GetBestMiningCandidate() (*MiningBase, error) {
-	bts, err := m.api.GetBestTipset()
+	bts, err := m.api.ChainHead(context.TODO())
 	if err != nil {
 		return nil, err
 	}
@@ -93,7 +103,7 @@ func (m *Miner) GetBestMiningCandidate() (*MiningBase, error) {
 }
 
 func (m *Miner) mineOne(ctx context.Context, base *MiningBase) (*chain.BlockMsg, error) {
-	log.Info("mine one")
+	log.Info("mine one on:", base.ts.Cids())
 	ticket, err := m.scratchTicket(ctx, base)
 	if err != nil {
 		return nil, errors.Wrap(err, "scratching ticket failed")
@@ -114,6 +124,7 @@ func (m *Miner) mineOne(ctx context.Context, base *MiningBase) (*chain.BlockMsg,
 		return nil, errors.Wrap(err, "failed to create block")
 	}
 	log.Infof("created new block: %s", b.Cid())
+	log.Infof("new blocks parents: %s", b.Header.Parents)
 
 	return b, nil
 }
@@ -124,7 +135,7 @@ func (m *Miner) submitNullTicket(base *MiningBase, ticket chain.Ticket) {
 }
 
 func (m *Miner) isWinnerNextRound(base *MiningBase) (bool, chain.ElectionProof, error) {
-	r, err := m.api.GetChainRandomness(base.ts)
+	r, err := m.api.ChainGetRandomness(context.TODO(), base.ts)
 	if err != nil {
 		return false, nil, err
 	}
@@ -146,13 +157,15 @@ func (m *Miner) scratchTicket(ctx context.Context, base *MiningBase) (chain.Tick
 
 func (m *Miner) createBlock(base *MiningBase, ticket chain.Ticket, proof chain.ElectionProof) (*chain.BlockMsg, error) {
 
-	pending, err := m.api.PendingMessages(base.ts)
+	pending, err := m.api.MpoolPending(context.TODO(), base.ts)
 	if err != nil {
 		return nil, errors.Wrapf(err, "failed to get pending messages")
 	}
 
+	msgs := m.selectMessages(pending)
+
 	// why even return this? that api call could just submit it for us
-	return m.api.CreateBlock(base.ts, append(base.tickets, ticket), proof, pending)
+	return m.api.MinerCreateBlock(context.TODO(), m.address, base.ts, append(base.tickets, ticket), proof, msgs)
 }
 
 func (m *Miner) selectMessages(msgs []*chain.SignedMessage) []*chain.SignedMessage {

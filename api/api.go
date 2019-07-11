@@ -4,8 +4,8 @@ import (
 	"context"
 
 	"github.com/filecoin-project/go-lotus/chain"
+	"github.com/filecoin-project/go-lotus/chain/address"
 
-	"github.com/ipfs/go-cid"
 	"github.com/libp2p/go-libp2p-core/peer"
 )
 
@@ -20,8 +20,9 @@ type Version struct {
 type API interface {
 	// chain
 
-	ChainHead(context.Context) ([]cid.Cid, error)
+	ChainHead(context.Context) (*chain.TipSet, error)                // TODO: check serialization
 	ChainSubmitBlock(ctx context.Context, blk *chain.BlockMsg) error // TODO: check serialization
+	ChainGetRandomness(context.Context, *chain.TipSet) ([]byte, error)
 
 	// messages
 
@@ -30,7 +31,7 @@ type API interface {
 	// // status
 	// // mpool
 	// // // ls / show / rm
-	MpoolPending(context.Context) ([]*chain.SignedMessage, error)
+	MpoolPending(context.Context, *chain.TipSet) ([]*chain.SignedMessage, error)
 
 	// dag
 
@@ -53,6 +54,8 @@ type API interface {
 	// // power
 	// // set-price
 	// // set-perrid
+	MinerStart(context.Context, address.Address) error
+	MinerCreateBlock(context.Context, address.Address, *chain.TipSet, []chain.Ticket, chain.ElectionProof, []*chain.SignedMessage) (*chain.BlockMsg, error)
 
 	// // UX ?
 

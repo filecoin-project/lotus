@@ -20,6 +20,10 @@ var Cmd = &cli.Command{
 			Name:  "api",
 			Value: ":1234",
 		},
+		&cli.BoolFlag{
+			Name:  "bootstrap",
+			Usage: "start node as already bootstrapped. Useful when starting a new testnet",
+		},
 	},
 	Action: func(cctx *cli.Context) error {
 		ctx := context.Background()

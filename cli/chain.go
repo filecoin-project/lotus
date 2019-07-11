@@ -26,7 +26,7 @@ var chainHeadCmd = &cli.Command{
 			return err
 		}
 
-		for _, c := range head {
+		for _, c := range head.Cids() {
 			fmt.Println(c)
 		}
 		return nil

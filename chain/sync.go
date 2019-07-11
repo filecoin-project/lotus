@@ -37,13 +37,15 @@ type Syncer struct {
 	// handle to the block sync service
 	Bsync *BlockSync
 
+	self peer.ID
+
 	// peer heads
 	// Note: clear cache on disconnects
 	peerHeads   map[peer.ID]*TipSet
 	peerHeadsLk sync.Mutex
 }
 
-func NewSyncer(cs *ChainStore, bsync *BlockSync) (*Syncer, error) {
+func NewSyncer(cs *ChainStore, bsync *BlockSync, self peer.ID) (*Syncer, error) {
 	gen, err := cs.GetGenesis()
 	if err != nil {
 		return nil, err
@@ -61,6 +63,7 @@ func NewSyncer(cs *ChainStore, bsync *BlockSync) (*Syncer, error) {
 		peerHeads: make(map[peer.ID]*TipSet),
 		head:      cs.GetHeaviestTipSet(),
 		store:     cs,
+		self:      self,
 	}, nil
 }
 
@@ -119,6 +122,21 @@ const BootstrapPeerThreshold = 1
 func (syncer *Syncer) InformNewHead(from peer.ID, fts *FullTipSet) {
 	if fts == nil {
 		panic("bad")
+	}
+	if from == syncer.self {
+		// TODO: this is kindof a hack...
+		log.Infof("got block from ourselves")
+		syncer.syncLock.Lock()
+		defer syncer.syncLock.Unlock()
+
+		if syncer.syncMode == Bootstrap {
+			syncer.syncMode = CaughtUp
+		}
+		if err := syncer.SyncCaughtUp(fts); err != nil {
+			log.Errorf("failed to sync our own block: %s", err)
+		}
+
+		return
 	}
 	syncer.peerHeadsLk.Lock()
 	syncer.peerHeads[from] = fts.TipSet()
@@ -180,7 +198,25 @@ func (syncer *Syncer) SyncBootstrap() {
 
 	blockSet := []*TipSet{selectedHead}
 	cur := selectedHead.Cids()
-	for /* would be cool to have a terminating condition maybe */ {
+
+	// If, for some reason, we have a suffix of the chain locally, handle that here
+	for blockSet[len(blockSet)-1].Height() > 0 {
+		log.Errorf("syncing local: ", cur)
+		ts, err := syncer.store.LoadTipSet(cur)
+		if err != nil {
+			if err == bstore.ErrNotFound {
+				log.Error("not found: ", cur)
+				break
+			}
+			log.Errorf("loading local tipset: %s", err)
+			return
+		}
+
+		blockSet = append(blockSet, ts)
+		cur = ts.Parents()
+	}
+
+	for blockSet[len(blockSet)-1].Height() > 0 {
 		// NB: GetBlocks validates that the blocks are in-fact the ones we
 		// requested, and that they are correctly linked to eachother. It does
 		// not validate any state transitions
@@ -193,9 +229,6 @@ func (syncer *Syncer) SyncBootstrap() {
 
 		for _, b := range blks {
 			blockSet = append(blockSet, b)
-		}
-		if blks[len(blks)-1].Height() == 0 {
-			break
 		}
 
 		cur = blks[len(blks)-1].Parents()

@@ -47,4 +47,5 @@ var Commands = []*cli.Command{
 	netCmd,
 	versionCmd,
 	mpoolCmd,
+	minerCmd,
 }
