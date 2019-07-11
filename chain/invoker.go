@@ -57,7 +57,7 @@ type unmarshalCBOR interface {
 var tUnmarhsalCBOR = reflect.TypeOf((*unmarshalCBOR)(nil)).Elem()
 var tError = reflect.TypeOf((*error)(nil)).Elem()
 
-func (_ *invoker) transform(instance interface{}) (nativeCode, error) {
+func (*invoker) transform(instance interface{}) (nativeCode, error) {
 	itype := reflect.TypeOf(instance)
 	newErr := func(str string) error {
 		return fmt.Errorf("transform(%s): %s", itype.Name(), str)
@@ -95,11 +95,11 @@ func (_ *invoker) transform(instance interface{}) (nativeCode, error) {
 		}
 
 		if !t.In(3).Implements(tUnmarhsalCBOR) {
-			return nil, newErr("paramter doesn't implement UnmarshalCBOR")
+			return nil, newErr("parameter doesn't implement UnmarshalCBOR")
 		}
 
 		if t.In(3).Kind() != reflect.Ptr {
-			return nil, newErr("paramter has to be a pointer")
+			return nil, newErr("parameter has to be a pointer")
 		}
 
 		if t.NumOut() != 2 {
@@ -124,12 +124,20 @@ func (_ *invoker) transform(instance interface{}) (nativeCode, error) {
 	code := make(nativeCode, maxn+1)
 	_ = code
 	for id, meth := range invokes {
+		meth := meth
 		code[id] = reflect.MakeFunc(reflect.TypeOf((invokeFunc)(nil)),
 			func(in []reflect.Value) []reflect.Value {
 				paramT := meth.Type.In(3).Elem()
 				param := reflect.New(paramT)
 
-				param.Interface().(unmarshalCBOR).UnmarshalCBOR(in[2].Interface().([]byte))
+				inBytes := in[2].Interface().([]byte)
+				_, err := param.Interface().(unmarshalCBOR).UnmarshalCBOR(inBytes)
+				if err != nil {
+					return []reflect.Value{
+						reflect.ValueOf(InvokeRet{}),
+						reflect.ValueOf(err),
+					}
+				}
 				return meth.Func.Call([]reflect.Value{
 					reflect.ValueOf(instance), in[0], in[1], param,
 				})

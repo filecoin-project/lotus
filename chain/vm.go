@@ -86,6 +86,7 @@ func NewVM(base cid.Cid, height uint64, maddr address.Address, cs *ChainStore) (
 		buf:         buf,
 		blockHeight: height,
 		blockMiner:  maddr,
+		inv:         newInvoker(),
 	}, nil
 }
 
