@@ -206,7 +206,6 @@ func (vm *VM) TransferFunds(from, to address.Address, amt BigInt) error {
 }
 
 func (vm *VM) Invoke(act *Actor, vmctx *VMContext, method uint64, params []byte) ([]byte, byte, error) {
-	panic("Implement me")
 	ret, err := vm.inv.Invoke(act, vmctx, method, params)
 	if err != nil {
 		return nil, 0, err
