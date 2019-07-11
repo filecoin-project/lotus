@@ -155,8 +155,6 @@ func MakeGenesisBlock(bs bstore.Blockstore, w *Wallet) (*GenesisBootstrap, error
 		return nil, err
 	}
 
-	fmt.Println("genesis block is: ", sb.Cid())
-
 	return &GenesisBootstrap{
 		Genesis:  b,
 		MinerKey: minerAddr,

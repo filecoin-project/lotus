@@ -103,7 +103,7 @@ func (m *Miner) GetBestMiningCandidate() (*MiningBase, error) {
 }
 
 func (m *Miner) mineOne(ctx context.Context, base *MiningBase) (*chain.BlockMsg, error) {
-	log.Info("mine one on:", base.ts.Cids())
+	log.Info("attempting to mine a block on:", base.ts.Cids())
 	ticket, err := m.scratchTicket(ctx, base)
 	if err != nil {
 		return nil, errors.Wrap(err, "scratching ticket failed")
@@ -123,8 +123,7 @@ func (m *Miner) mineOne(ctx context.Context, base *MiningBase) (*chain.BlockMsg,
 	if err != nil {
 		return nil, errors.Wrap(err, "failed to create block")
 	}
-	log.Infof("created new block: %s", b.Cid())
-	log.Infof("new blocks parents: %s", b.Header.Parents)
+	log.Infof("mined new block: %s", b.Cid())
 
 	return b, nil
 }
