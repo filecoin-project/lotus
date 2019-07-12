@@ -79,7 +79,7 @@ func Blockstore(r repo.LockedRepo) (blockstore.Blockstore, error) {
 	return blockstore.NewIdStore(bs), nil
 }
 
-func ClientDAG(lc fx.Lifecycle, r repo.LockedRepo) (ipld.DAGService, error) {
+func ClientFstore(r repo.LockedRepo) (*filestore.Filestore, error) {
 	clientds, err := r.Datastore("/client")
 	if err != nil {
 		return nil, err
@@ -91,7 +91,10 @@ func ClientDAG(lc fx.Lifecycle, r repo.LockedRepo) (ipld.DAGService, error) {
 	// TODO: fm.AllowUrls (needs more code in client import)
 
 	bs := blockstore.NewBlockstore(blocks)
-	fstore := filestore.NewFilestore(bs, fm)
+	return filestore.NewFilestore(bs, fm), nil
+}
+
+func ClientDAG(lc fx.Lifecycle, fstore *filestore.Filestore) ipld.DAGService {
 	ibs := blockstore.NewIdStore(fstore)
 	bsvc := blockservice.New(ibs, offline.Exchange(ibs))
 	dag := merkledag.NewDAGService(bsvc)
@@ -102,5 +105,5 @@ func ClientDAG(lc fx.Lifecycle, r repo.LockedRepo) (ipld.DAGService, error) {
 		},
 	})
 
-	return dag, nil
+	return dag
 }

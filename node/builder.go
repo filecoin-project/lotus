@@ -3,12 +3,14 @@ package node
 import (
 	"context"
 	"errors"
+	"github.com/ipfs/go-ipfs/filestore"
 	"reflect"
 	"time"
 
 	"github.com/ipfs/go-datastore"
 	blockstore "github.com/ipfs/go-ipfs-blockstore"
 	exchange "github.com/ipfs/go-ipfs-exchange-interface"
+	ipld "github.com/ipfs/go-ipld-format"
 	ci "github.com/libp2p/go-libp2p-core/crypto"
 	"github.com/libp2p/go-libp2p-core/host"
 	"github.com/libp2p/go-libp2p-core/peer"
@@ -18,7 +20,6 @@ import (
 	pubsub "github.com/libp2p/go-libp2p-pubsub"
 	record "github.com/libp2p/go-libp2p-record"
 	"go.uber.org/fx"
-	ipld "github.com/ipfs/go-ipld-format"
 
 	"github.com/filecoin-project/go-lotus/api"
 	"github.com/filecoin-project/go-lotus/chain"
@@ -167,6 +168,7 @@ func Online() Option {
 		Override(new(blockstore.GCLocker), blockstore.NewGCLocker),
 		Override(new(blockstore.GCBlockstore), blockstore.NewGCBlockstore),
 		Override(new(exchange.Interface), modules.Bitswap),
+		Override(new(*filestore.Filestore), modules.ClientFstore),
 		Override(new(ipld.DAGService), modules.ClientDAG),
 
 		// Filecoin services

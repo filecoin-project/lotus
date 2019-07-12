@@ -2,6 +2,7 @@ package api
 
 import (
 	"context"
+	"github.com/ipfs/go-ipfs/filestore"
 
 	"github.com/filecoin-project/go-lotus/chain"
 	"github.com/filecoin-project/go-lotus/chain/address"
@@ -15,6 +16,13 @@ type Version struct {
 	Version string
 
 	// TODO: git commit / os / genesis cid?
+}
+
+type Import struct {
+	Status   filestore.Status
+	Key      cid.Cid
+	FilePath string
+	Size     uint64
 }
 
 // API is a low-level interface to the Filecoin network
@@ -89,7 +97,7 @@ type API interface {
 	//ClientUnimport(path string)
 
 	// ClientListImports lists imported files and their root CIDs
-	//ClientListImports() []Import
+	ClientListImports(ctx context.Context) ([]Import, error)
 
 	//ClientListAsks() []Ask
 

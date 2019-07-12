@@ -2,6 +2,7 @@ package node
 
 import (
 	"context"
+	"github.com/ipfs/go-ipfs/filestore"
 
 	"github.com/filecoin-project/go-lotus/api"
 	"github.com/filecoin-project/go-lotus/build"
@@ -22,6 +23,7 @@ type API struct {
 	Host   host.Host
 	Chain  *chain.ChainStore
 	PubSub *pubsub.PubSub
+	Filestore *filestore.Filestore
 	Mpool  *chain.MessagePool
 	Wallet *chain.Wallet
 }

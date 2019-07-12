@@ -28,12 +28,17 @@ type Struct struct {
 		WalletNew  func(context.Context, string) (address.Address, error)
 		WalletList func(context.Context) ([]address.Address, error)
 
-		ClientImport func(ctx context.Context, path string) (cid.Cid, error)
+		ClientImport      func(ctx context.Context, path string) (cid.Cid, error)
+		ClientListImports func(ctx context.Context) ([]Import, error)
 
 		NetPeers       func(context.Context) ([]peer.AddrInfo, error)
 		NetConnect     func(context.Context, peer.AddrInfo) error
 		NetAddrsListen func(context.Context) (peer.AddrInfo, error)
 	}
+}
+
+func (c *Struct) ClientListImports(ctx context.Context) ([]Import, error) {
+	return c.Internal.ClientListImports(ctx)
 }
 
 func (c *Struct) ClientImport(ctx context.Context, path string) (cid.Cid, error) {

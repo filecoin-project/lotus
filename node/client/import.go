@@ -2,6 +2,8 @@ package client
 
 import (
 	"context"
+	"github.com/filecoin-project/go-lotus/api"
+	"github.com/ipfs/go-ipfs/filestore"
 	"go.uber.org/fx"
 	"os"
 
@@ -17,9 +19,10 @@ type LocalStorage struct {
 	fx.In
 
 	LocalDAG ipld.DAGService
+	Filestore *filestore.Filestore
 }
 
-func (s *LocalStorage) ClientImport(ctx context.Context, path string) (cid.Cid, error)  {
+func (s *LocalStorage) ClientImport(ctx context.Context, path string) (cid.Cid, error) {
 	f, err := os.Open(path)
 	if err != nil {
 		return cid.Undef, err
@@ -54,4 +57,31 @@ func (s *LocalStorage) ClientImport(ctx context.Context, path string) (cid.Cid, 
 	}
 
 	return nd.Cid(), bufferedDS.Commit()
+}
+
+
+func (s *LocalStorage) ClientListImports(ctx context.Context) ([]api.Import, error) {
+	next, err := filestore.ListAll(s.Filestore, false)
+	if err != nil {
+		return nil, err
+	}
+
+	// TODO: make this less very bad by tracking root cids instead of using ListAll
+
+	out := make([]api.Import, 0)
+	for {
+		r := next()
+		if r == nil {
+			return out, nil
+		}
+		if r.Offset != 0 {
+			continue
+		}
+		out = append(out, api.Import{
+			Status:   r.Status,
+			Key:      r.Key,
+			FilePath: r.FilePath,
+			Size:     r.Size,
+		})
+	}
 }
