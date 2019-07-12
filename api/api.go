@@ -6,6 +6,7 @@ import (
 	"github.com/filecoin-project/go-lotus/chain"
 	"github.com/filecoin-project/go-lotus/chain/address"
 
+	"github.com/ipfs/go-cid"
 	"github.com/libp2p/go-libp2p-core/peer"
 )
 
@@ -81,7 +82,16 @@ type API interface {
 
 	// Other
 
-	// // ID (on cli - print with other info)
+	// ClientImport imports file under the specified path into filestore
+	ClientImport(ctx context.Context, path string) (cid.Cid, error)
+
+	// ClientUnimport removes references to the specified file from filestore
+	//ClientUnimport(path string)
+
+	// ClientListImports lists imported files and their root CIDs
+	//ClientListImports() []Import
+
+	//ClientListAsks() []Ask
 
 	// ID returns peerID of libp2p node backing this API
 	ID(context.Context) (peer.ID, error)

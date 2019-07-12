@@ -2,12 +2,19 @@ package modules
 
 import (
 	"context"
+	"github.com/ipfs/go-blockservice"
+	"github.com/ipfs/go-datastore/namespace"
+	"github.com/ipfs/go-ipfs/filestore"
+	"github.com/ipfs/go-merkledag"
+	"path/filepath"
 
 	"github.com/ipfs/go-bitswap"
 	"github.com/ipfs/go-bitswap/network"
 	"github.com/ipfs/go-datastore"
 	blockstore "github.com/ipfs/go-ipfs-blockstore"
 	exchange "github.com/ipfs/go-ipfs-exchange-interface"
+	offline "github.com/ipfs/go-ipfs-exchange-offline"
+	ipld "github.com/ipfs/go-ipld-format"
 	logging "github.com/ipfs/go-log"
 	"github.com/libp2p/go-libp2p-core/host"
 	"github.com/libp2p/go-libp2p-core/peerstore"
@@ -70,4 +77,28 @@ func Blockstore(r repo.LockedRepo) (blockstore.Blockstore, error) {
 
 	bs := blockstore.NewBlockstore(blocks)
 	return blockstore.NewIdStore(bs), nil
+}
+
+func ClientDAG(lc fx.Lifecycle, r repo.LockedRepo) (ipld.DAGService, error) {
+	clientds, err := r.Datastore("/client")
+	if err != nil {
+		return nil, err
+	}
+	blocks := namespace.Wrap(clientds, datastore.NewKey("blocks"))
+
+	fm := filestore.NewFileManager(clientds, filepath.Dir(r.Path()))
+
+	bs := blockstore.NewBlockstore(blocks)
+	fstore := filestore.NewFilestore(bs, fm)
+	ibs := blockstore.NewIdStore(fstore)
+	bsvc := blockservice.New(ibs, offline.Exchange(ibs))
+	dag := merkledag.NewDAGService(bsvc)
+
+	lc.Append(fx.Hook{
+		OnStop: func(_ context.Context) error {
+			return bsvc.Close()
+		},
+	})
+
+	return dag, nil
 }

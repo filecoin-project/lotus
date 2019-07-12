@@ -120,6 +120,10 @@ type fsLockedRepo struct {
 	dsOnce sync.Once
 }
 
+func (fsr *fsLockedRepo) Path() string {
+	return fsr.path
+}
+
 func (fsr *fsLockedRepo) Close() error {
 	err := os.Remove(fsr.join(fsAPI))
 

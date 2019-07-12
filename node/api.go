@@ -8,6 +8,7 @@ import (
 	"github.com/filecoin-project/go-lotus/chain"
 	"github.com/filecoin-project/go-lotus/chain/address"
 	"github.com/filecoin-project/go-lotus/miner"
+	"github.com/filecoin-project/go-lotus/node/client"
 
 	"github.com/libp2p/go-libp2p-core/host"
 	"github.com/libp2p/go-libp2p-core/peer"
@@ -16,6 +17,8 @@ import (
 )
 
 type API struct {
+	client.LocalStorage
+
 	Host   host.Host
 	Chain  *chain.ChainStore
 	PubSub *pubsub.PubSub

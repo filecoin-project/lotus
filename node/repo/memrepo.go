@@ -35,6 +35,10 @@ type lockedMemRepo struct {
 	token *byte
 }
 
+func (lmem *lockedMemRepo) Path() string {
+	return ""
+}
+
 var _ Repo = &MemRepo{}
 
 // MemRepoOptions contains options for memory repo

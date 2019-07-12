@@ -18,6 +18,7 @@ import (
 	pubsub "github.com/libp2p/go-libp2p-pubsub"
 	record "github.com/libp2p/go-libp2p-record"
 	"go.uber.org/fx"
+	ipld "github.com/ipfs/go-ipld-format"
 
 	"github.com/filecoin-project/go-lotus/api"
 	"github.com/filecoin-project/go-lotus/chain"
@@ -166,6 +167,7 @@ func Online() Option {
 		Override(new(blockstore.GCLocker), blockstore.NewGCLocker),
 		Override(new(blockstore.GCBlockstore), blockstore.NewGCBlockstore),
 		Override(new(exchange.Interface), modules.Bitswap),
+		Override(new(ipld.DAGService), modules.ClientDAG),
 
 		// Filecoin services
 		Override(new(*chain.Syncer), chain.NewSyncer),
