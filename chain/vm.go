@@ -6,6 +6,7 @@ import (
 	"math/big"
 
 	"github.com/filecoin-project/go-lotus/chain/address"
+	"github.com/filecoin-project/go-lotus/chain/types"
 	"github.com/filecoin-project/go-lotus/lib/bufbstore"
 
 	bserv "github.com/ipfs/go-blockservice"
@@ -49,8 +50,8 @@ func (vmc *VMContext) BlockHeight() uint64 {
 	return vmc.height
 }
 
-func (vmc *VMContext) GasUsed() BigInt {
-	return NewInt(0)
+func (vmc *VMContext) GasUsed() types.BigInt {
+	return types.NewInt(0)
 }
 
 func makeVMContext(state *StateTree, msg *Message, height uint64) *VMContext {
@@ -90,7 +91,7 @@ func NewVM(base cid.Cid, height uint64, maddr address.Address, cs *ChainStore) (
 	}, nil
 }
 
-func (vm *VM) ApplyMessage(msg *Message) (*MessageReceipt, error) {
+func (vm *VM) ApplyMessage(msg *Message) (*types.MessageReceipt, error) {
 	st := vm.cstate
 	st.Snapshot()
 	fromActor, err := st.GetActor(msg.From)
@@ -98,9 +99,9 @@ func (vm *VM) ApplyMessage(msg *Message) (*MessageReceipt, error) {
 		return nil, errors.Wrap(err, "from actor not found")
 	}
 
-	gascost := BigMul(msg.GasLimit, msg.GasPrice)
-	totalCost := BigAdd(gascost, msg.Value)
-	if BigCmp(fromActor.Balance, totalCost) < 0 {
+	gascost := types.BigMul(msg.GasLimit, msg.GasPrice)
+	totalCost := types.BigAdd(gascost, msg.Value)
+	if types.BigCmp(fromActor.Balance, totalCost) < 0 {
 		return nil, fmt.Errorf("not enough funds")
 	}
 
@@ -140,13 +141,13 @@ func (vm *VM) ApplyMessage(msg *Message) (*MessageReceipt, error) {
 		if errcode != 0 {
 			// revert all state changes since snapshot
 			st.Revert()
-			gascost := BigMul(vmctx.GasUsed(), msg.GasPrice)
+			gascost := types.BigMul(vmctx.GasUsed(), msg.GasPrice)
 			if err := DeductFunds(fromActor, gascost); err != nil {
 				panic("invariant violated: " + err.Error())
 			}
 		} else {
 			// refund unused gas
-			refund := BigMul(BigSub(msg.GasLimit, vmctx.GasUsed()), msg.GasPrice)
+			refund := types.BigMul(types.BigSub(msg.GasLimit, vmctx.GasUsed()), msg.GasPrice)
 			DepositFunds(fromActor, refund)
 		}
 	}
@@ -157,10 +158,10 @@ func (vm *VM) ApplyMessage(msg *Message) (*MessageReceipt, error) {
 		return nil, errors.Wrap(err, "getting block miner actor failed")
 	}
 
-	gasReward := BigMul(msg.GasPrice, vmctx.GasUsed())
+	gasReward := types.BigMul(msg.GasPrice, vmctx.GasUsed())
 	DepositFunds(miner, gasReward)
 
-	return &MessageReceipt{
+	return &types.MessageReceipt{
 		ExitCode: errcode,
 		Return:   ret,
 		GasUsed:  vmctx.GasUsed(),
@@ -183,7 +184,7 @@ func (vm *VM) Flush(ctx context.Context) (cid.Cid, error) {
 	return root, nil
 }
 
-func (vm *VM) TransferFunds(from, to address.Address, amt BigInt) error {
+func (vm *VM) TransferFunds(from, to address.Address, amt types.BigInt) error {
 	if from == to {
 		return nil
 	}
@@ -206,7 +207,7 @@ func (vm *VM) TransferFunds(from, to address.Address, amt BigInt) error {
 	return nil
 }
 
-func (vm *VM) Invoke(act *Actor, vmctx *VMContext, method uint64, params []byte) ([]byte, byte, error) {
+func (vm *VM) Invoke(act *types.Actor, vmctx *VMContext, method uint64, params []byte) ([]byte, byte, error) {
 	ret, err := vm.inv.Invoke(act, vmctx, method, params)
 	if err != nil {
 		return nil, 0, err

@@ -10,11 +10,12 @@ import (
 	sharray "github.com/whyrusleeping/sharray"
 
 	"github.com/filecoin-project/go-lotus/chain/address"
+	"github.com/filecoin-project/go-lotus/chain/types"
 	bls "github.com/filecoin-project/go-lotus/lib/bls-signatures"
 )
 
-func miningRewardForBlock(base *TipSet) BigInt {
-	return NewInt(10000)
+func miningRewardForBlock(base *TipSet) types.BigInt {
+	return types.NewInt(10000)
 }
 
 func MinerCreateBlock(cs *ChainStore, miner address.Address, parents *TipSet, tickets []Ticket, proof ElectionProof, msgs []*SignedMessage) (*FullBlock, error) {
@@ -96,7 +97,7 @@ func MinerCreateBlock(cs *ChainStore, miner address.Address, parents *TipSet, ti
 	next.BLSAggregate = aggSig
 	next.StateRoot = stateRoot
 	pweight := cs.Weight(parents)
-	next.ParentWeight = NewInt(pweight)
+	next.ParentWeight = types.NewInt(pweight)
 
 	fullBlock := &FullBlock{
 		Header:   next,

@@ -4,11 +4,12 @@ import (
 	"context"
 	"fmt"
 
-	"github.com/filecoin-project/go-lotus/chain/address"
-
 	"github.com/ipfs/go-cid"
 	hamt "github.com/ipfs/go-hamt-ipld"
 	cbor "github.com/ipfs/go-ipld-cbor"
+
+	"github.com/filecoin-project/go-lotus/chain/address"
+	"github.com/filecoin-project/go-lotus/chain/types"
 )
 
 var ErrActorNotFound = fmt.Errorf("actor not found")
@@ -17,7 +18,7 @@ type StateTree struct {
 	root  *hamt.Node
 	store *hamt.CborIpldStore
 
-	actorcache map[address.Address]*Actor
+	actorcache map[address.Address]*types.Actor
 	snapshot   cid.Cid
 }
 
@@ -25,7 +26,7 @@ func NewStateTree(cst *hamt.CborIpldStore) (*StateTree, error) {
 	return &StateTree{
 		root:       hamt.NewNode(cst),
 		store:      cst,
-		actorcache: make(map[address.Address]*Actor),
+		actorcache: make(map[address.Address]*types.Actor),
 	}, nil
 }
 
@@ -39,11 +40,11 @@ func LoadStateTree(cst *hamt.CborIpldStore, c cid.Cid) (*StateTree, error) {
 	return &StateTree{
 		root:       nd,
 		store:      cst,
-		actorcache: make(map[address.Address]*Actor),
+		actorcache: make(map[address.Address]*types.Actor),
 	}, nil
 }
 
-func (st *StateTree) SetActor(addr address.Address, act *Actor) error {
+func (st *StateTree) SetActor(addr address.Address, act *types.Actor) error {
 	if addr.Protocol() != address.ID {
 		iaddr, err := st.lookupID(addr)
 		if err != nil {
@@ -76,7 +77,7 @@ func (st *StateTree) lookupID(addr address.Address) (address.Address, error) {
 	return ias.Lookup(st.store, addr)
 }
 
-func (st *StateTree) GetActor(addr address.Address) (*Actor, error) {
+func (st *StateTree) GetActor(addr address.Address) (*types.Actor, error) {
 	if addr.Protocol() != address.ID {
 		iaddr, err := st.lookupID(addr)
 		if err != nil {
@@ -101,7 +102,7 @@ func (st *StateTree) GetActor(addr address.Address) (*Actor, error) {
 		return nil, err
 	}
 
-	var act Actor
+	var act types.Actor
 	badout, err := cbor.DumpObject(thing)
 	if err != nil {
 		return nil, err
@@ -122,7 +123,7 @@ func (st *StateTree) Flush() (cid.Cid, error) {
 			return cid.Undef, err
 		}
 	}
-	st.actorcache = make(map[address.Address]*Actor)
+	st.actorcache = make(map[address.Address]*types.Actor)
 
 	if err := st.root.Flush(context.TODO()); err != nil {
 		return cid.Undef, err
@@ -141,9 +142,9 @@ func (st *StateTree) Snapshot() error {
 	return nil
 }
 
-func (st *StateTree) RegisterNewAddress(addr address.Address, act *Actor) (address.Address, error) {
+func (st *StateTree) RegisterNewAddress(addr address.Address, act *types.Actor) (address.Address, error) {
 	var out address.Address
-	err := st.MutateActor(InitActorAddress, func(initact *Actor) error {
+	err := st.MutateActor(InitActorAddress, func(initact *types.Actor) error {
 		var ias InitActorState
 		if err := st.store.Get(context.TODO(), initact.Head, &ias); err != nil {
 			return err
@@ -185,7 +186,7 @@ func (st *StateTree) Revert() error {
 	return nil
 }
 
-func (st *StateTree) MutateActor(addr address.Address, f func(*Actor) error) error {
+func (st *StateTree) MutateActor(addr address.Address, f func(*types.Actor) error) error {
 	act, err := st.GetActor(addr)
 	if err != nil {
 		return err

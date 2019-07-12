@@ -6,6 +6,7 @@ import (
 	"sync"
 
 	"github.com/filecoin-project/go-lotus/chain/address"
+	"github.com/filecoin-project/go-lotus/chain/types"
 
 	"github.com/ipfs/go-cid"
 	dstore "github.com/ipfs/go-datastore"
@@ -604,20 +605,20 @@ func (syncer *Syncer) ValidateBlock(b *FullBlock) error {
 
 }
 
-func DeductFunds(act *Actor, amt BigInt) error {
-	if BigCmp(act.Balance, amt) < 0 {
+func DeductFunds(act *types.Actor, amt types.BigInt) error {
+	if types.BigCmp(act.Balance, amt) < 0 {
 		return fmt.Errorf("not enough funds")
 	}
 
-	act.Balance = BigSub(act.Balance, amt)
+	act.Balance = types.BigSub(act.Balance, amt)
 	return nil
 }
 
-func DepositFunds(act *Actor, amt BigInt) {
-	act.Balance = BigAdd(act.Balance, amt)
+func DepositFunds(act *types.Actor, amt types.BigInt) {
+	act.Balance = types.BigAdd(act.Balance, amt)
 }
 
-func TryCreateAccountActor(st *StateTree, addr address.Address) (*Actor, error) {
+func TryCreateAccountActor(st *StateTree, addr address.Address) (*types.Actor, error) {
 	act, err := makeActor(st, addr)
 	if err != nil {
 		return nil, err
@@ -631,7 +632,7 @@ func TryCreateAccountActor(st *StateTree, addr address.Address) (*Actor, error) 
 	return act, nil
 }
 
-func makeActor(st *StateTree, addr address.Address) (*Actor, error) {
+func makeActor(st *StateTree, addr address.Address) (*types.Actor, error) {
 	switch addr.Protocol() {
 	case address.BLS:
 		return NewBLSAccountActor(st, addr)
@@ -646,7 +647,7 @@ func makeActor(st *StateTree, addr address.Address) (*Actor, error) {
 	}
 }
 
-func NewBLSAccountActor(st *StateTree, addr address.Address) (*Actor, error) {
+func NewBLSAccountActor(st *StateTree, addr address.Address) (*types.Actor, error) {
 	var acstate AccountActorState
 	acstate.Address = addr
 
@@ -655,19 +656,19 @@ func NewBLSAccountActor(st *StateTree, addr address.Address) (*Actor, error) {
 		return nil, err
 	}
 
-	nact := &Actor{
+	nact := &types.Actor{
 		Code:    AccountActorCodeCid,
-		Balance: NewInt(0),
+		Balance: types.NewInt(0),
 		Head:    c,
 	}
 
 	return nact, nil
 }
 
-func NewSecp256k1AccountActor(st *StateTree, addr address.Address) (*Actor, error) {
-	nact := &Actor{
+func NewSecp256k1AccountActor(st *StateTree, addr address.Address) (*types.Actor, error) {
+	nact := &types.Actor{
 		Code:    AccountActorCodeCid,
-		Balance: NewInt(0),
+		Balance: types.NewInt(0),
 		Head:    EmptyObjectCid,
 	}
 
