@@ -88,6 +88,14 @@ func (vmc *VMContext) GasUsed() types.BigInt {
 	return types.NewInt(0)
 }
 
+func (vmc *VMContext) StateTree() (types.StateTree, error) {
+	if vmc.msg.To != InitActorAddress {
+		return nil, fmt.Errorf("only init actor can access state tree directly")
+	}
+
+	return vmc.state, nil
+}
+
 func makeVMContext(state *StateTree, bs bstore.Blockstore, sroot cid.Cid, msg *types.Message, height uint64) *VMContext {
 	cst := hamt.CSTFromBstore(bs)
 	return &VMContext{

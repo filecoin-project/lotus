@@ -101,10 +101,14 @@ func (ia InitActor) Exec(act *types.Actor, vmctx types.VMContext, p *ExecParams)
 
 	// NOTE: This is a privileged call that only the init actor is allowed to make
 	// FIXME: Had to comment this  because state is not in interface
-	_ = actor
-	//if err := vmctx.state.SetActor(idAddr, &actor); err != nil {
-	//return InvokeRet{}, errors.Wrap(err, "inserting new actor into state tree")
-	//}
+	state, err := vmctx.StateTree()
+	if err != nil {
+		return InvokeRet{}, err
+	}
+
+	if err := state.SetActor(idAddr, &actor); err != nil {
+		return InvokeRet{}, errors.Wrap(err, "inserting new actor into state tree")
+	}
 
 	c, err := vmctx.Storage().Put(self)
 	if err != nil {

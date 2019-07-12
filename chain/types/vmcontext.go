@@ -19,6 +19,11 @@ type Storage interface {
 	Commit(oldh cid.Cid, newh cid.Cid) error
 }
 
+type StateTree interface {
+	SetActor(addr address.Address, act *Actor) error
+	GetActor(addr address.Address) (*Actor, error)
+}
+
 type VMContext interface {
 	Message() *Message
 	Ipld() *hamt.CborIpldStore
@@ -26,4 +31,5 @@ type VMContext interface {
 	BlockHeight() uint64
 	GasUsed() BigInt
 	Storage() Storage
+	StateTree() (StateTree, error)
 }
