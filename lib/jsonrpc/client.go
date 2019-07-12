@@ -5,7 +5,6 @@ import (
 	"encoding/json"
 	"errors"
 	"fmt"
-	"io"
 	"reflect"
 	"sync/atomic"
 
@@ -82,70 +81,10 @@ func NewClient(addr string, namespace string, handler interface{}) (ClientCloser
 	}
 
 	stop := make(chan struct{})
-	errs := make(chan error, 1)
 	requests := make(chan clientRequest)
-	responses := make(chan io.Reader)
 
-	nextMessage := func() {
-		mtype, r, err := conn.NextReader()
-		if err != nil {
-			r, _ := io.Pipe()
-			r.CloseWithError(err) // nolint
-			return
-
-		}
-		if mtype != websocket.BinaryMessage && mtype != websocket.TextMessage {
-			r, _ := io.Pipe()
-			r.CloseWithError(errors.New("unsupported message type")) // nolint
-			return
-		}
-		responses <- r
-	}
-
-	go func() {
-		var err error
-		defer func() {
-			close(requests)
-			cerr := conn.Close()
-			if err == nil {
-				err = cerr
-			}
-			errs <- cerr
-
-			// close requests somehow
-		}()
-
-		inflight := map[int64]clientRequest{}
-
-		go nextMessage()
-
-		for {
-			select {
-			case req := <-requests:
-				inflight[*req.req.ID] = req
-				if err = conn.WriteJSON(req.req); err != nil {
-					return
-				}
-			case r := <- responses:
-				var resp clientResponse
-				if err = json.NewDecoder(r).Decode(&resp); err != nil {
-					return
-				}
-				req, ok := inflight[resp.ID]
-				if !ok {
-					log.Error("client got unknown ID in response")
-					continue
-				}
-
-				req.ready <- resp
-				delete(inflight, resp.ID)
-
-				go nextMessage()
-			case <-stop:
-				return
-			}
-		}
-	}()
+	handlers := map[string]rpcHandler{}
+	go handleWsConn(context.TODO(), conn, handlers, requests, stop)
 
 	for i := 0; i < typ.NumField(); i++ {
 		f := typ.Field(i)
@@ -235,6 +174,5 @@ func NewClient(addr string, namespace string, handler interface{}) (ClientCloser
 
 	return func() {
 		close(stop)
-		<-errs // TODO: return
 	}, nil
 }
