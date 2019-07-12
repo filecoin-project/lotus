@@ -124,7 +124,9 @@ func (*invoker) transform(instance Invokee) (nativeCode, error) {
 				if err != nil {
 					return []reflect.Value{
 						reflect.ValueOf(InvokeRet{}),
-						reflect.ValueOf(err),
+						// Below is a hack, fixed in Go 1.13
+						// https://git.io/fjXU6
+						reflect.ValueOf(&err).Elem(),
 					}
 				}
 				return meth.Call([]reflect.Value{
