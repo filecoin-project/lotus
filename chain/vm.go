@@ -99,13 +99,15 @@ func (vmc *VMContext) GasUsed() BigInt {
 }
 
 func makeVMContext(state *StateTree, bs bstore.Blockstore, sroot cid.Cid, msg *Message, height uint64) *VMContext {
+	cst := hamt.CSTFromBstore(bs)
 	return &VMContext{
 		state:  state,
 		sroot:  sroot,
 		msg:    msg,
 		height: height,
+		cst:    cst,
 		storage: &storage{
-			cst:  hamt.CSTFromBstore(bs),
+			cst:  cst,
 			head: sroot,
 		},
 	}

@@ -8,7 +8,13 @@ import (
 
 	"github.com/ipfs/go-cid"
 	hamt "github.com/ipfs/go-hamt-ipld"
+	cbor "github.com/ipfs/go-ipld-cbor"
+	"github.com/pkg/errors"
 )
+
+func init() {
+	cbor.RegisterCborType(ExecParams{})
+}
 
 type InitActor struct{}
 
@@ -31,6 +37,14 @@ type ExecParams struct {
 	Params []byte
 }
 
+func (ep *ExecParams) UnmarshalCBOR(b []byte) (int, error) {
+	if err := cbor.DecodeInto(b, ep); err != nil {
+		return 0, err
+	}
+
+	return len(b), nil
+}
+
 func (ia InitActor) Exec(act *Actor, vmctx *VMContext, p *ExecParams) (InvokeRet, error) {
 	beginState := vmctx.Storage().GetHead()
 
@@ -41,7 +55,7 @@ func (ia InitActor) Exec(act *Actor, vmctx *VMContext, p *ExecParams) (InvokeRet
 
 	// Make sure that only the actors defined in the spec can be launched.
 	if !IsBuiltinActor(p.Code) {
-		//Fatal("cannot launch actor instance that is not a builtin actor")
+		log.Error("cannot launch actor instance that is not a builtin actor")
 		return InvokeRet{
 			returnCode: 1,
 		}, nil
@@ -50,7 +64,7 @@ func (ia InitActor) Exec(act *Actor, vmctx *VMContext, p *ExecParams) (InvokeRet
 	// Ensure that singeltons can be only launched once.
 	// TODO: do we want to enforce this? If so how should actors be marked as such?
 	if IsSingletonActor(p.Code) {
-		//Fatal("cannot launch another actor of this type")
+		log.Error("cannot launch another actor of this type")
 		return InvokeRet{
 			returnCode: 1,
 		}, nil
@@ -78,15 +92,15 @@ func (ia InitActor) Exec(act *Actor, vmctx *VMContext, p *ExecParams) (InvokeRet
 	// TODO: can constructors fail?
 	//actor.Constructor(p.Params)
 
-	// NOTE: This is a privileged call that only the init actor is allowed to make
-	if err := vmctx.state.SetActor(addr, &actor); err != nil {
-		return InvokeRet{}, err
-	}
-
 	// Store the mapping of address to actor ID.
 	idAddr, err := self.AddActor(vmctx, addr)
 	if err != nil {
-		return InvokeRet{}, err
+		return InvokeRet{}, errors.Wrap(err, "adding new actor mapping")
+	}
+
+	// NOTE: This is a privileged call that only the init actor is allowed to make
+	if err := vmctx.state.SetActor(idAddr, &actor); err != nil {
+		return InvokeRet{}, errors.Wrap(err, "inserting new actor into state tree")
 	}
 
 	c, err := vmctx.Storage().Put(self)

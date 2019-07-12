@@ -8,7 +8,6 @@ import (
 	"github.com/filecoin-project/go-lotus/chain/address"
 
 	"github.com/ipfs/go-cid"
-	datastore "github.com/ipfs/go-datastore"
 	dstore "github.com/ipfs/go-datastore"
 	hamt "github.com/ipfs/go-hamt-ipld"
 	bstore "github.com/ipfs/go-ipfs-blockstore"
@@ -103,6 +102,17 @@ func MakeInitialStateTree(bs bstore.Blockstore, actors map[address.Address]BigIn
 		return nil, err
 	}
 
+	/*
+		smact, err := SetupStorageMarketActor(bs)
+		if err != nil {
+			return nil, err
+		}
+
+		if err := state.SetActor(StorageMarketAddress, smact); err != nil {
+			return nil, err
+		}
+	*/
+
 	err = state.SetActor(NetworkAddress, &Actor{
 		Code:    AccountActorCodeCid,
 		Balance: NewInt(100000000000),
@@ -124,6 +134,26 @@ func MakeInitialStateTree(bs bstore.Blockstore, actors map[address.Address]BigIn
 	}
 
 	return state, nil
+}
+
+/*
+func SetupStorageMarketActor(bs bstore.Blockstore) (*Actor, error) {
+	sms := &StorageMarketState{
+		Miners:       make(map[address.Address]struct{}),
+		TotalStorage: NewInt(0),
+	}
+
+	stcid, err := hamt.CSTFromBstore(bs).Put(context.TODO(), sms)
+	if err != nil {
+		return nil, err
+	}
+
+	return &Actor{
+		Code:    StorageMarketActorCodeCid,
+		Head:    stcid,
+		Nonce:   0,
+		Balance: NewInt(0),
+	}, nil
 }
 
 func MakeGenesisBlock(bs bstore.Blockstore, w *Wallet) (*GenesisBootstrap, error) {
@@ -181,10 +211,11 @@ func MakeGenesisBlock(bs bstore.Blockstore, w *Wallet) (*GenesisBootstrap, error
 		MinerKey: minerAddr,
 	}, nil
 }
+*/
 
 type ChainStore struct {
 	bs bstore.Blockstore
-	ds datastore.Datastore
+	ds dstore.Datastore
 
 	heaviestLk sync.Mutex
 	heaviest   *TipSet
@@ -194,7 +225,7 @@ type ChainStore struct {
 	headChange func(rev, app []*TipSet) error
 }
 
-func NewChainStore(bs bstore.Blockstore, ds datastore.Batching) *ChainStore {
+func NewChainStore(bs bstore.Blockstore, ds dstore.Batching) *ChainStore {
 	return &ChainStore{
 		bs:       bs,
 		ds:       ds,
@@ -224,7 +255,7 @@ func (cs *ChainStore) SetGenesis(b *BlockHeader) error {
 		return err
 	}
 
-	return cs.ds.Put(datastore.NewKey("0"), b.Cid().Bytes())
+	return cs.ds.Put(dstore.NewKey("0"), b.Cid().Bytes())
 }
 
 func (cs *ChainStore) PutTipSet(ts *FullTipSet) error {
@@ -399,7 +430,7 @@ func (cs *ChainStore) AddBlock(b *BlockHeader) error {
 }
 
 func (cs *ChainStore) GetGenesis() (*BlockHeader, error) {
-	data, err := cs.ds.Get(datastore.NewKey("0"))
+	data, err := cs.ds.Get(dstore.NewKey("0"))
 	if err != nil {
 		return nil, err
 	}
