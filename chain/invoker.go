@@ -27,6 +27,7 @@ func newInvoker() *invoker {
 
 	// add builtInCode using: register(cid, singleton)
 	inv.register(InitActorCodeCid, InitActor{})
+	inv.register(StorageMarketActorCodeCid, StorageMarketActor{})
 
 	return inv
 }

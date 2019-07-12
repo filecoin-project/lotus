@@ -103,16 +103,14 @@ func MakeInitialStateTree(bs bstore.Blockstore, actors map[address.Address]types
 		return nil, err
 	}
 
-	/*
-		smact, err := SetupStorageMarketActor(bs)
-		if err != nil {
-			return nil, err
-		}
+	smact, err := SetupStorageMarketActor(bs)
+	if err != nil {
+		return nil, err
+	}
 
-		if err := state.SetActor(StorageMarketAddress, smact); err != nil {
-			return nil, err
-		}
-	*/
+	if err := state.SetActor(StorageMarketAddress, smact); err != nil {
+		return nil, err
+	}
 
 	err = state.SetActor(NetworkAddress, &types.Actor{
 		Code:    AccountActorCodeCid,
@@ -137,11 +135,10 @@ func MakeInitialStateTree(bs bstore.Blockstore, actors map[address.Address]types
 	return state, nil
 }
 
-/*
-func SetupStorageMarketActor(bs bstore.Blockstore) (*Actor, error) {
+func SetupStorageMarketActor(bs bstore.Blockstore) (*types.Actor, error) {
 	sms := &StorageMarketState{
 		Miners:       make(map[address.Address]struct{}),
-		TotalStorage: NewInt(0),
+		TotalStorage: types.NewInt(0),
 	}
 
 	stcid, err := hamt.CSTFromBstore(bs).Put(context.TODO(), sms)
@@ -149,14 +146,13 @@ func SetupStorageMarketActor(bs bstore.Blockstore) (*Actor, error) {
 		return nil, err
 	}
 
-	return &Actor{
+	return &types.Actor{
 		Code:    StorageMarketActorCodeCid,
 		Head:    stcid,
 		Nonce:   0,
-		Balance: NewInt(0),
+		Balance: types.NewInt(0),
 	}, nil
 }
-*/
 
 func MakeGenesisBlock(bs bstore.Blockstore, w *Wallet) (*GenesisBootstrap, error) {
 	fmt.Println("at end of make Genesis block")

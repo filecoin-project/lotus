@@ -5,7 +5,6 @@ import (
 	"context"
 	"encoding/binary"
 	"fmt"
-	"math/big"
 
 	"github.com/filecoin-project/go-lotus/chain/address"
 	"github.com/filecoin-project/go-lotus/chain/types"
@@ -14,13 +13,13 @@ import (
 	bserv "github.com/ipfs/go-blockservice"
 	cid "github.com/ipfs/go-cid"
 	hamt "github.com/ipfs/go-hamt-ipld"
-	bstore "github.com/ipfs/go-ipfs-blockstore"
 	ipld "github.com/ipfs/go-ipld-format"
 	dag "github.com/ipfs/go-merkledag"
 	"github.com/pkg/errors"
 )
 
 type VMContext struct {
+	vm     *VM
 	state  *StateTree
 	msg    *types.Message
 	height uint64
@@ -75,8 +74,22 @@ func (vmc *VMContext) Ipld() *hamt.CborIpldStore {
 }
 
 // Send allows the current execution context to invoke methods on other actors in the system
-func (vmc *VMContext) Send(to address.Address, method string, value *big.Int, params []interface{}) ([][]byte, uint8, error) {
-	panic("nyi")
+func (vmc *VMContext) Send(to address.Address, method uint64, value types.BigInt, params []byte) ([]byte, uint8, error) {
+	msg := &types.Message{
+		To:     to,
+		Method: method,
+		Value:  value,
+		Params: params,
+	}
+
+	toAct, err := vmc.state.GetActor(to)
+	if err != nil {
+		return nil, 0, err
+	}
+
+	nvmctx := vmc.vm.makeVMContext(toAct.Head, msg)
+
+	return vmc.vm.Invoke(toAct, nvmctx, method, params)
 }
 
 // BlockHeight returns the height of the block this message was added to the chain in
@@ -96,13 +109,15 @@ func (vmc *VMContext) StateTree() (types.StateTree, error) {
 	return vmc.state, nil
 }
 
-func makeVMContext(state *StateTree, bs bstore.Blockstore, sroot cid.Cid, msg *types.Message, height uint64) *VMContext {
-	cst := hamt.CSTFromBstore(bs)
+func (vm *VM) makeVMContext(sroot cid.Cid, msg *types.Message) *VMContext {
+	cst := hamt.CSTFromBstore(vm.cs.bs)
+
 	return &VMContext{
-		state:  state,
+		vm:     vm,
+		state:  vm.cstate,
 		sroot:  sroot,
 		msg:    msg,
-		height: height,
+		height: vm.blockHeight,
 		cst:    cst,
 		storage: &storage{
 			cst:  cst,
@@ -177,7 +192,7 @@ func (vm *VM) ApplyMessage(msg *types.Message) (*types.MessageReceipt, error) {
 	}
 	DepositFunds(toActor, msg.Value)
 
-	vmctx := makeVMContext(st, vm.cs.bs, toActor.Head, msg, vm.blockHeight)
+	vmctx := vm.makeVMContext(toActor.Head, msg)
 
 	var errcode byte
 	var ret []byte
