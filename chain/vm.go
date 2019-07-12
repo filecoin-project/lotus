@@ -258,9 +258,15 @@ func (vm *VM) Invoke(act *types.Actor, vmctx *VMContext, method uint64, params [
 
 func ComputeActorAddress(creator address.Address, nonce uint64) (address.Address, error) {
 	buf := new(bytes.Buffer)
-	buf.Write(creator.Bytes())
+	_, err := buf.Write(creator.Bytes())
+	if err != nil {
+		return address.Address{}, err
+	}
 
-	binary.Write(buf, binary.BigEndian, nonce)
+	err = binary.Write(buf, binary.BigEndian, nonce)
+	if err != nil {
+		return address.Address{}, err
+	}
 
 	return address.NewActorAddress(buf.Bytes())
 }

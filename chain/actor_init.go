@@ -89,7 +89,7 @@ func (ia InitActor) Exec(act *types.Actor, vmctx types.VMContext, p *ExecParams)
 	}
 
 	// The call to the actors constructor will set up the initial state
-	// from the given parameters, setting `actor.Head` to a new value when successfull.
+	// from the given parameters, setting `actor.Head` to a new value when successful.
 	// TODO: can constructors fail?
 	//actor.Constructor(p.Params)
 
