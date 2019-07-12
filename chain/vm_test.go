@@ -23,7 +23,7 @@ func blsaddr(n uint64) address.Address {
 	return addr
 }
 
-func TestVMInvokeMethod(t *testing.T) {
+func setupVMTestEnv(t *testing.T) (*VM, []address.Address) {
 	bs := bstore.NewBlockstore(dstore.NewMapDatastore())
 
 	from := blsaddr(0)
@@ -51,6 +51,12 @@ func TestVMInvokeMethod(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
+	return vm, []address.Address{from, maddr}
+}
+
+func TestVMInvokeMethod(t *testing.T) {
+	vm, addrs := setupVMTestEnv(t)
+	from := addrs[0]
 
 	execparams := &ExecParams{
 		Code:   StorageMinerCodeCid,
@@ -91,35 +97,9 @@ func TestVMInvokeMethod(t *testing.T) {
 }
 
 func TestStorageMarketActorCreateMiner(t *testing.T) {
-	////////// BOILERPLATE //////////
-	bs := bstore.NewBlockstore(dstore.NewMapDatastore())
-
-	from := blsaddr(0)
-	maddr := blsaddr(1)
-
-	actors := map[address.Address]types.BigInt{
-		from:  types.NewInt(1000000),
-		maddr: types.NewInt(0),
-	}
-	st, err := MakeInitialStateTree(bs, actors)
-	if err != nil {
-		t.Fatal(err)
-	}
-
-	stateroot, err := st.Flush()
-	if err != nil {
-		t.Fatal(err)
-	}
-
-	cs := &ChainStore{
-		bs: bs,
-	}
-
-	vm, err := NewVM(stateroot, 1, maddr, cs)
-	if err != nil {
-		t.Fatal(err)
-	}
-	////// END BOILERPLATE //////////
+	vm, addrs := setupVMTestEnv(t)
+	from := addrs[0]
+	maddr := addrs[1]
 
 	params := &StorageMinerConstructorParams{
 		Worker:     maddr,
