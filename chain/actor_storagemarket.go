@@ -50,21 +50,11 @@ func (sma StorageMarketActor) CreateStorageMiner(act *types.Actor, vmctx types.V
 		}, nil
 	}
 
-	var smcp StorageMinerConstructorParams
-	smcp.Worker = params.Worker
-	smcp.SectorSize = params.SectorSize
-	smcp.PeerID = params.PeerID
-
-	encsmcp, err := cbor.DumpObject(smcp)
-	if err != nil {
-		return InvokeRet{}, err
-	}
-
-	var ep ExecParams
-	ep.Code = StorageMinerCodeCid
-	ep.Params = encsmcp
-
-	encoded, err := cbor.DumpObject(ep)
+	encoded, err := CreateExecParams(StorageMinerCodeCid, &StorageMinerConstructorParams{
+		Worker:     params.Worker,
+		SectorSize: params.SectorSize,
+		PeerID:     params.PeerID,
+	})
 	if err != nil {
 		return InvokeRet{}, err
 	}

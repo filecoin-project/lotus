@@ -46,6 +46,19 @@ func (ep *ExecParams) UnmarshalCBOR(b []byte) (int, error) {
 	return len(b), nil
 }
 
+func CreateExecParams(act cid.Cid, obj interface{}) ([]byte, error) {
+	encparams, err := cbor.DumpObject(obj)
+	if err != nil {
+		return nil, err
+	}
+
+	var ep ExecParams
+	ep.Code = act
+	ep.Params = encparams
+
+	return cbor.DumpObject(ep)
+}
+
 func (ia InitActor) Exec(act *types.Actor, vmctx types.VMContext, p *ExecParams) (InvokeRet, error) {
 	beginState := vmctx.Storage().GetHead()
 
