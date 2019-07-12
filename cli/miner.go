@@ -21,7 +21,11 @@ var minerStart = &cli.Command{
 	Name:  "start",
 	Usage: "start mining",
 	Action: func(cctx *cli.Context) error {
-		api := getApi(cctx)
+		api, err := getAPI(cctx)
+		if err != nil {
+			return err
+		}
+
 		ctx := reqContext(cctx)
 
 		// TODO: this address needs to be the address of an actual miner
