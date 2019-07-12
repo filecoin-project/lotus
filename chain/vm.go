@@ -1,7 +1,9 @@
 package chain
 
 import (
+	"bytes"
 	"context"
+	"encoding/binary"
 	"fmt"
 	"math/big"
 
@@ -28,12 +30,21 @@ func (vmc *VMContext) Message() *Message {
 	return vmc.msg
 }
 
-/*
+type Storage interface {
+	Put(interface{}) (cid.Cid, error)
+	Get(cid.Cid) ([]byte, error)
+
+	GetHead() (cid.Cid, error)
+
+	// Commit sets the new head of the actors state as long as the current
+	// state matches 'oldh'
+	Commit(oldh cid.Cid, newh cid.Cid) error
+}
+
 // Storage provides access to the VM storage layer
 func (vmc *VMContext) Storage() Storage {
-	panic("nyi")
+	panic("ok")
 }
-*/
 
 func (vmc *VMContext) Ipld() *hamt.CborIpldStore {
 	return vmc.cst
@@ -212,4 +223,13 @@ func (vm *VM) Invoke(act *Actor, vmctx *VMContext, method uint64, params []byte)
 		return nil, 0, err
 	}
 	return ret.result, ret.returnCode, nil
+}
+
+func ComputeActorAddress(creator address.Address, nonce uint64) (address.Address, error) {
+	buf := new(bytes.Buffer)
+	buf.Write(creator.Bytes())
+
+	binary.Write(buf, binary.BigEndian, nonce)
+
+	return address.NewActorAddress(buf.Bytes())
 }

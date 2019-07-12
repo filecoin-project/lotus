@@ -1,0 +1,183 @@
+package chain
+
+import (
+	"context"
+	"fmt"
+
+	"github.com/filecoin-project/go-lotus/chain/address"
+
+	"github.com/ipfs/go-cid"
+	hamt "github.com/ipfs/go-hamt-ipld"
+	cbor "github.com/ipfs/go-ipld-cbor"
+)
+
+type InitActor struct{}
+
+type InitActorState struct {
+	// TODO: this needs to be a HAMT, its a dumb map for now
+	AddressMap cid.Cid
+
+	NextID uint64
+}
+
+func (ia InitActor) Exports() []interface{} {
+	return []interface{}{
+		nil,
+		ia.Exec,
+	}
+}
+
+type ExecParams struct {
+	Code   cid.Cid
+	Params []byte
+}
+
+func LoadState(s Storage, c cid.Cid, out interface{}) error {
+	data, err := s.Get(c)
+	if err != nil {
+		return err
+	}
+
+	if c.Type() != cid.DagCBOR {
+		return fmt.Errorf("only support dag cbor for now")
+	}
+
+	return cbor.DecodeInto(data, out)
+}
+
+func (ia InitActor) Exec(act *Actor, vmctx *VMContext, p *ExecParams) (InvokeRet, error) {
+	beginState, err := vmctx.Storage().GetHead()
+	if err != nil {
+		return InvokeRet{}, err
+	}
+
+	var self InitActorState
+	if err := LoadState(vmctx.Storage(), beginState, &self); err != nil {
+		return InvokeRet{}, err
+	}
+
+	// Make sure that only the actors defined in the spec can be launched.
+	if !IsBuiltinActor(p.Code) {
+		//Fatal("cannot launch actor instance that is not a builtin actor")
+		return InvokeRet{
+			returnCode: 1,
+		}, nil
+	}
+
+	// Ensure that singeltons can be only launched once.
+	// TODO: do we want to enforce this? If so how should actors be marked as such?
+	if IsSingletonActor(p.Code) {
+		//Fatal("cannot launch another actor of this type")
+		return InvokeRet{
+			returnCode: 1,
+		}, nil
+	}
+
+	// This generates a unique address for this actor that is stable across message
+	// reordering
+	creator := vmctx.Message().From
+	nonce := vmctx.Message().Nonce
+	addr, err := ComputeActorAddress(creator, nonce)
+	if err != nil {
+		return InvokeRet{}, err
+	}
+
+	// Set up the actor itself
+	actor := Actor{
+		Code:    p.Code,
+		Balance: vmctx.Message().Value,
+		Head:    cid.Undef,
+		Nonce:   0,
+	}
+
+	// The call to the actors constructor will set up the initial state
+	// from the given parameters, setting `actor.Head` to a new value when successfull.
+	// TODO: can constructors fail?
+	//actor.Constructor(p.Params)
+
+	// NOTE: This is a privileged call that only the init actor is allowed to make
+	if err := vmctx.state.SetActor(addr, &actor); err != nil {
+		return InvokeRet{}, err
+	}
+
+	// Store the mapping of address to actor ID.
+	idAddr, err := self.AddActor(vmctx, addr)
+	if err != nil {
+		return InvokeRet{}, err
+	}
+
+	c, err := vmctx.Storage().Put(self)
+	if err != nil {
+		return InvokeRet{}, err
+	}
+
+	if err := vmctx.Storage().Commit(beginState, c); err != nil {
+		return InvokeRet{}, err
+	}
+
+	return InvokeRet{
+		result: idAddr.Bytes(),
+	}, nil
+}
+
+func IsBuiltinActor(code cid.Cid) bool {
+	switch code {
+	case StorageMinerCodeCid, StorageMinerCodeCid, AccountActorCodeCid, InitActorCodeCid, MultisigActorCodeCid:
+		return true
+	default:
+		return false
+	}
+}
+
+func IsSingletonActor(code cid.Cid) bool {
+	return code == StorageMarketActorCodeCid || code == InitActorCodeCid
+}
+
+func (ias *InitActorState) AddActor(vmctx *VMContext, addr address.Address) (address.Address, error) {
+	nid := ias.NextID
+	ias.NextID++
+
+	amap, err := hamt.LoadNode(context.TODO(), vmctx.Ipld(), ias.AddressMap)
+	if err != nil {
+		return address.Undef, err
+	}
+
+	if err := amap.Set(context.TODO(), string(addr.Bytes()), nid); err != nil {
+		return address.Undef, err
+	}
+
+	if err := amap.Flush(context.TODO()); err != nil {
+		return address.Undef, err
+	}
+
+	ncid, err := vmctx.Ipld().Put(context.TODO(), amap)
+	if err != nil {
+		return address.Undef, err
+	}
+	ias.AddressMap = ncid
+
+	return address.NewIDAddress(nid)
+}
+
+func (ias *InitActorState) Lookup(cst *hamt.CborIpldStore, addr address.Address) (address.Address, error) {
+	amap, err := hamt.LoadNode(context.TODO(), cst, ias.AddressMap)
+	if err != nil {
+		return address.Undef, err
+	}
+
+	val, err := amap.Find(context.TODO(), string(addr.Bytes()))
+	if err != nil {
+		return address.Undef, err
+	}
+
+	ival, ok := val.(uint64)
+	if !ok {
+		return address.Undef, fmt.Errorf("invalid value in init actor state, expected uint64, got %T", val)
+	}
+
+	return address.NewIDAddress(ival)
+}
+
+type AccountActorState struct {
+	Address address.Address
+}

@@ -23,7 +23,10 @@ func newInvoker() *invoker {
 	inv := &invoker{
 		builtInCode: make(map[cid.Cid]nativeCode),
 	}
+
 	// add builtInCode using: register(cid, singleton)
+	inv.register(InitActorCodeCid, InitActor{})
+
 	return inv
 }
 

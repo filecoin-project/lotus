@@ -77,7 +77,7 @@ func init() {
 
 var EmptyObjectCid cid.Cid
 
-func MakeGenesisBlock(bs bstore.Blockstore, w *Wallet) (*GenesisBootstrap, error) {
+func MakeInitialStateTree(bs bstore.Blockstore, actors map[address.Address]BigInt) (*StateTree, error) {
 	cst := hamt.CSTFromBstore(bs)
 	state, err := NewStateTree(cst)
 	if err != nil {
@@ -89,12 +89,12 @@ func MakeGenesisBlock(bs bstore.Blockstore, w *Wallet) (*GenesisBootstrap, error
 		return nil, err
 	}
 
-	minerAddr, err := w.GenerateKey(KTSecp256k1)
-	if err != nil {
-		return nil, err
+	var addrs []address.Address
+	for a := range actors {
+		addrs = append(addrs, a)
 	}
 
-	initact, err := SetupInitActor(bs, []address.Address{minerAddr})
+	initact, err := SetupInitActor(bs, addrs)
 	if err != nil {
 		return nil, err
 	}
@@ -112,22 +112,43 @@ func MakeGenesisBlock(bs bstore.Blockstore, w *Wallet) (*GenesisBootstrap, error
 		return nil, err
 	}
 
-	err = state.SetActor(minerAddr, &Actor{
-		Code:    AccountActorCodeCid,
-		Balance: NewInt(5000000),
-		Head:    emptyobject,
-	})
+	for a, v := range actors {
+		err = state.SetActor(a, &Actor{
+			Code:    AccountActorCodeCid,
+			Balance: v,
+			Head:    emptyobject,
+		})
+		if err != nil {
+			return nil, err
+		}
+	}
+
+	return state, nil
+}
+
+func MakeGenesisBlock(bs bstore.Blockstore, w *Wallet) (*GenesisBootstrap, error) {
+	fmt.Println("at end of make Genesis block")
+
+	minerAddr, err := w.GenerateKey(KTSecp256k1)
 	if err != nil {
 		return nil, err
 	}
-	fmt.Println("about to flush state...")
+
+	addrs := map[address.Address]BigInt{
+		minerAddr: NewInt(50000000),
+	}
+
+	state, err := MakeInitialStateTree(bs, addrs)
+	if err != nil {
+		return nil, err
+	}
 
 	stateroot, err := state.Flush()
 	if err != nil {
 		return nil, err
 	}
-	fmt.Println("at end of make Genesis block")
 
+	cst := hamt.CSTFromBstore(bs)
 	emptyroot, err := sharray.Build(context.TODO(), 4, []interface{}{}, cst)
 	if err != nil {
 		return nil, err
