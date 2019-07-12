@@ -10,6 +10,8 @@ import (
 
 func init() {
 	cbor.RegisterCborType(StorageMarketState{})
+	cbor.RegisterCborType(CreateStorageMinerParams{})
+	cbor.RegisterCborType(struct{}{})
 }
 
 type StorageMarketActor struct{}
@@ -53,7 +55,16 @@ func (sma StorageMarketActor) CreateStorageMiner(act *types.Actor, vmctx types.V
 	smcp.SectorSize = params.SectorSize
 	smcp.PeerID = params.PeerID
 
-	encoded, err := cbor.DumpObject(smcp)
+	encsmcp, err := cbor.DumpObject(smcp)
+	if err != nil {
+		return InvokeRet{}, err
+	}
+
+	var ep ExecParams
+	ep.Code = StorageMinerCodeCid
+	ep.Params = encsmcp
+
+	encoded, err := cbor.DumpObject(ep)
 	if err != nil {
 		return InvokeRet{}, err
 	}

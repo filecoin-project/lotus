@@ -121,7 +121,11 @@ func TestStorageMarketActorCreateMiner(t *testing.T) {
 	}
 	////// END BOILERPLATE //////////
 
-	params := &StorageMinerConstructorParams{}
+	params := &StorageMinerConstructorParams{
+		Worker:     maddr,
+		SectorSize: types.NewInt(1024),
+		PeerID:     "fakepeerid",
+	}
 	enc, err := cbor.DumpObject(params)
 	if err != nil {
 		t.Fatal(err)
@@ -143,7 +147,7 @@ func TestStorageMarketActorCreateMiner(t *testing.T) {
 	}
 
 	if ret.ExitCode != 0 {
-		t.Fatal("invocation failed")
+		t.Fatal("invocation failed: ", ret.ExitCode)
 	}
 
 	outaddr, err := address.NewFromBytes(ret.Return)
