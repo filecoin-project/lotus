@@ -1,13 +1,9 @@
 package chain
 
 import (
-	"bytes"
 	"encoding/binary"
 	"encoding/json"
 	"fmt"
-	"math/big"
-
-	"github.com/filecoin-project/go-lotus/chain/address"
 
 	block "github.com/ipfs/go-block-format"
 	"github.com/ipfs/go-cid"
@@ -15,30 +11,17 @@ import (
 	ipld "github.com/ipfs/go-ipld-format"
 	"github.com/multiformats/go-multihash"
 	"github.com/polydawn/refmt/obj/atlas"
+
+	"github.com/filecoin-project/go-lotus/chain/address"
+	"github.com/filecoin-project/go-lotus/chain/types"
 )
 
 func init() {
 	ipld.Register(0x1f, IpldDecode)
 
-	cbor.RegisterCborType(MessageReceipt{})
-	cbor.RegisterCborType(Actor{})
 	cbor.RegisterCborType(BlockMsg{})
 
 	///*
-	cbor.RegisterCborType(atlas.BuildEntry(BigInt{}).UseTag(2).Transform().
-		TransformMarshal(atlas.MakeMarshalTransformFunc(
-			func(i BigInt) ([]byte, error) {
-				if i.Int == nil {
-					return []byte{}, nil
-				}
-
-				return i.Bytes(), nil
-			})).
-		TransformUnmarshal(atlas.MakeUnmarshalTransformFunc(
-			func(x []byte) (BigInt, error) {
-				return BigFromBytes(x), nil
-			})).
-		Complete())
 	//*/
 	cbor.RegisterCborType(atlas.BuildEntry(SignedMessage{}).UseTag(45).Transform().
 		TransformMarshal(atlas.MakeMarshalTransformFunc(
@@ -61,7 +44,7 @@ func init() {
 				}
 
 				return SignedMessage{
-					Message:   x[0].(Message),
+					Message:   x[0].(types.Message),
 					Signature: sig,
 				}, nil
 			})).
@@ -76,63 +59,6 @@ func init() {
 		TransformUnmarshal(atlas.MakeUnmarshalTransformFunc(
 			func(x []byte) (Signature, error) {
 				return SignatureFromBytes(x)
-			})).
-		Complete())
-	cbor.RegisterCborType(atlas.BuildEntry(Message{}).UseTag(44).Transform().
-		TransformMarshal(atlas.MakeMarshalTransformFunc(
-			func(m Message) ([]interface{}, error) {
-				return []interface{}{
-					m.To.Bytes(),
-					m.From.Bytes(),
-					m.Nonce,
-					m.Value,
-					m.GasPrice,
-					m.GasLimit,
-					m.Method,
-					m.Params,
-				}, nil
-			})).
-		TransformUnmarshal(atlas.MakeUnmarshalTransformFunc(
-			func(arr []interface{}) (Message, error) {
-				to, err := address.NewFromBytes(arr[0].([]byte))
-				if err != nil {
-					return Message{}, err
-				}
-
-				from, err := address.NewFromBytes(arr[1].([]byte))
-				if err != nil {
-					return Message{}, err
-				}
-
-				nonce, ok := arr[2].(uint64)
-				if !ok {
-					return Message{}, fmt.Errorf("expected uint64 nonce at index 2")
-				}
-
-				value := arr[3].(BigInt)
-				gasPrice := arr[4].(BigInt)
-				gasLimit := arr[5].(BigInt)
-				method, _ := arr[6].(uint64)
-				params, _ := arr[7].([]byte)
-
-				if gasPrice.Nil() {
-					gasPrice = NewInt(0)
-				}
-
-				if gasLimit.Nil() {
-					gasLimit = NewInt(0)
-				}
-
-				return Message{
-					To:       to,
-					From:     from,
-					Nonce:    nonce,
-					Value:    value,
-					GasPrice: gasPrice,
-					GasLimit: gasLimit,
-					Method:   method,
-					Params:   params,
-				}, nil
 			})).
 		Complete())
 	cbor.RegisterCborType(atlas.BuildEntry(BlockHeader{}).UseTag(43).Transform().
@@ -175,7 +101,7 @@ func init() {
 				for _, p := range parentsArr {
 					parents = append(parents, p.(cid.Cid))
 				}
-				parentWeight := arr[4].(BigInt)
+				parentWeight := arr[4].(types.BigInt)
 				height := arr[5].(uint64)
 				stateRoot := arr[6].(cid.Cid)
 
@@ -197,65 +123,6 @@ func init() {
 		Complete())
 }
 
-type BigInt struct {
-	*big.Int
-}
-
-func NewInt(i uint64) BigInt {
-	return BigInt{big.NewInt(0).SetUint64(i)}
-}
-
-func BigFromBytes(b []byte) BigInt {
-	i := big.NewInt(0).SetBytes(b)
-	return BigInt{i}
-}
-
-func BigMul(a, b BigInt) BigInt {
-	return BigInt{big.NewInt(0).Mul(a.Int, b.Int)}
-}
-
-func BigAdd(a, b BigInt) BigInt {
-	return BigInt{big.NewInt(0).Add(a.Int, b.Int)}
-}
-
-func BigSub(a, b BigInt) BigInt {
-	return BigInt{big.NewInt(0).Sub(a.Int, b.Int)}
-}
-
-func BigCmp(a, b BigInt) int {
-	return a.Int.Cmp(b.Int)
-}
-
-func (bi *BigInt) Nil() bool {
-	return bi.Int == nil
-}
-
-func (bi *BigInt) MarshalJSON() ([]byte, error) {
-	return json.Marshal(bi.String())
-}
-
-func (bi *BigInt) UnmarshalJSON(b []byte) error {
-	var s string
-	if err := json.Unmarshal(b, &s); err != nil {
-		return err
-	}
-
-	i, ok := big.NewInt(0).SetString(s, 10)
-	if !ok {
-		return fmt.Errorf("failed to parse bigint string")
-	}
-
-	bi.Int = i
-	return nil
-}
-
-type Actor struct {
-	Code    cid.Cid
-	Head    cid.Cid
-	Nonce   uint64
-	Balance BigInt
-}
-
 type BlockHeader struct {
 	Miner address.Address
 
@@ -265,7 +132,7 @@ type BlockHeader struct {
 
 	Parents []cid.Cid
 
-	ParentWeight BigInt
+	ParentWeight types.BigInt
 
 	Height uint64
 
@@ -315,49 +182,6 @@ func (blk *BlockHeader) Serialize() ([]byte, error) {
 	return cbor.DumpObject(blk)
 }
 
-type Message struct {
-	To   address.Address
-	From address.Address
-
-	Nonce uint64
-
-	Value BigInt
-
-	GasPrice BigInt
-	GasLimit BigInt
-
-	Method uint64
-	Params []byte
-}
-
-func DecodeMessage(b []byte) (*Message, error) {
-	var msg Message
-	if err := cbor.DecodeInto(b, &msg); err != nil {
-		return nil, err
-	}
-
-	return &msg, nil
-}
-
-func (m *Message) Serialize() ([]byte, error) {
-	return cbor.DumpObject(m)
-}
-
-func (m *Message) ToStorageBlock() (block.Block, error) {
-	data, err := m.Serialize()
-	if err != nil {
-		return nil, err
-	}
-
-	pref := cid.NewPrefixV1(0x1f, multihash.BLAKE2B_MIN+31)
-	c, err := pref.Sum(data)
-	if err != nil {
-		return nil, err
-	}
-
-	return block.NewBlockWithCid(data, c)
-}
-
 func (m *SignedMessage) ToStorageBlock() (block.Block, error) {
 	data, err := m.Serialize()
 	if err != nil {
@@ -382,20 +206,8 @@ func (m *SignedMessage) Cid() cid.Cid {
 	return sb.Cid()
 }
 
-type MessageReceipt struct {
-	ExitCode uint8
-
-	Return []byte
-
-	GasUsed BigInt
-}
-
-func (mr *MessageReceipt) Equals(o *MessageReceipt) bool {
-	return mr.ExitCode == o.ExitCode && bytes.Equal(mr.Return, o.Return) && BigCmp(mr.GasUsed, o.GasUsed) == 0
-}
-
 type SignedMessage struct {
-	Message   Message
+	Message   types.Message
 	Signature Signature
 }
 
@@ -546,7 +358,7 @@ func (f *filecoinIpldNode) Links() []*ipld.Link {
 				Cid: t.MessageReceipts,
 			},
 		}
-	case Message:
+	case types.Message:
 		return nil
 	default:
 		panic("whats going on")

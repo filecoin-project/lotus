@@ -4,6 +4,8 @@ import (
 	"testing"
 
 	"github.com/stretchr/testify/assert"
+
+	"github.com/filecoin-project/go-lotus/chain/types"
 )
 
 type basicContract struct{}
@@ -32,13 +34,13 @@ func (b basicContract) Exports() []interface{} {
 	}
 }
 
-func (basicContract) InvokeSomething0(act *Actor, vmctx *VMContext,
+func (basicContract) InvokeSomething0(act *types.Actor, vmctx types.VMContext,
 	params *basicParams) (InvokeRet, error) {
 	return InvokeRet{
 		returnCode: params.b,
 	}, nil
 }
-func (basicContract) InvokeSomething10(act *Actor, vmctx *VMContext,
+func (basicContract) InvokeSomething10(act *types.Actor, vmctx types.VMContext,
 	params *basicParams) (InvokeRet, error) {
 	return InvokeRet{
 		returnCode: params.b + 10,
@@ -53,7 +55,7 @@ func TestInvokerBasic(t *testing.T) {
 	assert.NoError(t, err)
 	assert.Equal(t, byte(1), ret.returnCode, "return code should be 1")
 
-	ret, err = code[10](nil, nil, []byte{2})
+	ret, err = code[10](nil, &VMContext{}, []byte{2})
 	assert.NoError(t, err)
 	assert.Equal(t, byte(12), ret.returnCode, "return code should be 1")
 }

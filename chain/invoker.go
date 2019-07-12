@@ -5,6 +5,7 @@ import (
 	"fmt"
 	"reflect"
 
+	"github.com/filecoin-project/go-lotus/chain/types"
 	"github.com/ipfs/go-cid"
 )
 
@@ -12,7 +13,7 @@ type invoker struct {
 	builtInCode map[cid.Cid]nativeCode
 }
 
-type invokeFunc func(act *Actor, vmctx *VMContext, params []byte) (InvokeRet, error)
+type invokeFunc func(act *types.Actor, vmctx *VMContext, params []byte) (InvokeRet, error)
 type nativeCode []invokeFunc
 type InvokeRet struct {
 	result     []byte
@@ -27,7 +28,7 @@ func newInvoker() *invoker {
 	return inv
 }
 
-func (inv *invoker) Invoke(act *Actor, vmctx *VMContext, method uint64, params []byte) (InvokeRet, error) {
+func (inv *invoker) Invoke(act *types.Actor, vmctx *VMContext, method uint64, params []byte) (InvokeRet, error) {
 
 	code, ok := inv.builtInCode[act.Code]
 	if !ok {
@@ -57,6 +58,7 @@ type Invokee interface {
 }
 
 var tUnmarhsalCBOR = reflect.TypeOf((*unmarshalCBOR)(nil)).Elem()
+var tVMContext = reflect.TypeOf((*types.VMContext)(nil)).Elem()
 var tError = reflect.TypeOf((*error)(nil)).Elem()
 
 func (*invoker) transform(instance Invokee) (nativeCode, error) {
@@ -77,13 +79,13 @@ func (*invoker) transform(instance Invokee) (nativeCode, error) {
 		}
 		if t.NumIn() != 3 {
 			return nil, newErr("wrong number of inputs should be: " +
-				"*Actor, *VMContext, <type of parameter>")
+				"*types.Actor, *VMContext, <type of parameter>")
 		}
-		if t.In(0) != reflect.TypeOf(&Actor{}) {
-			return nil, newErr("first arguemnt should be *Actor")
+		if t.In(0) != reflect.TypeOf(&types.Actor{}) {
+			return nil, newErr("first arguemnt should be *types.Actor")
 		}
-		if t.In(1) != reflect.TypeOf(&VMContext{}) {
-			return nil, newErr("second argument should be *VMContext")
+		if t.In(1) != tVMContext {
+			return nil, newErr("second argument should be types.VMContext")
 		}
 
 		if !t.In(2).Implements(tUnmarhsalCBOR) {

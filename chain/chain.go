@@ -6,6 +6,7 @@ import (
 	"sync"
 
 	"github.com/filecoin-project/go-lotus/chain/address"
+	"github.com/filecoin-project/go-lotus/chain/types"
 
 	"github.com/ipfs/go-cid"
 	datastore "github.com/ipfs/go-datastore"
@@ -27,7 +28,7 @@ type GenesisBootstrap struct {
 	MinerKey address.Address
 }
 
-func SetupInitActor(bs bstore.Blockstore, addrs []address.Address) (*Actor, error) {
+func SetupInitActor(bs bstore.Blockstore, addrs []address.Address) (*types.Actor, error) {
 	var ias InitActorState
 	ias.NextID = 100
 
@@ -56,7 +57,7 @@ func SetupInitActor(bs bstore.Blockstore, addrs []address.Address) (*Actor, erro
 		return nil, err
 	}
 
-	act := &Actor{
+	act := &types.Actor{
 		Code: InitActorCodeCid,
 		Head: statecid,
 	}
@@ -103,18 +104,18 @@ func MakeGenesisBlock(bs bstore.Blockstore, w *Wallet) (*GenesisBootstrap, error
 		return nil, err
 	}
 
-	err = state.SetActor(NetworkAddress, &Actor{
+	err = state.SetActor(NetworkAddress, &types.Actor{
 		Code:    AccountActorCodeCid,
-		Balance: NewInt(100000000000),
+		Balance: types.NewInt(100000000000),
 		Head:    emptyobject,
 	})
 	if err != nil {
 		return nil, err
 	}
 
-	err = state.SetActor(minerAddr, &Actor{
+	err = state.SetActor(minerAddr, &types.Actor{
 		Code:    AccountActorCodeCid,
-		Balance: NewInt(5000000),
+		Balance: types.NewInt(5000000),
 		Head:    emptyobject,
 	})
 	if err != nil {
@@ -140,7 +141,7 @@ func MakeGenesisBlock(bs bstore.Blockstore, w *Wallet) (*GenesisBootstrap, error
 		ElectionProof:   []byte("the Genesis block"),
 		Parents:         []cid.Cid{},
 		Height:          0,
-		ParentWeight:    NewInt(0),
+		ParentWeight:    types.NewInt(0),
 		StateRoot:       stateroot,
 		Messages:        emptyroot,
 		MessageReceipts: emptyroot,
