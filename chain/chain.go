@@ -155,6 +155,7 @@ func SetupStorageMarketActor(bs bstore.Blockstore) (*Actor, error) {
 		Balance: NewInt(0),
 	}, nil
 }
+*/
 
 func MakeGenesisBlock(bs bstore.Blockstore, w *Wallet) (*GenesisBootstrap, error) {
 	fmt.Println("at end of make Genesis block")
@@ -211,7 +212,6 @@ func MakeGenesisBlock(bs bstore.Blockstore, w *Wallet) (*GenesisBootstrap, error
 		MinerKey: minerAddr,
 	}, nil
 }
-*/
 
 type ChainStore struct {
 	bs bstore.Blockstore
