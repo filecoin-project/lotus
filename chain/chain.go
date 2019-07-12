@@ -9,7 +9,6 @@ import (
 	"github.com/filecoin-project/go-lotus/chain/types"
 
 	"github.com/ipfs/go-cid"
-	datastore "github.com/ipfs/go-datastore"
 	dstore "github.com/ipfs/go-datastore"
 	hamt "github.com/ipfs/go-hamt-ipld"
 	bstore "github.com/ipfs/go-ipfs-blockstore"
@@ -78,7 +77,7 @@ func init() {
 
 var EmptyObjectCid cid.Cid
 
-func MakeGenesisBlock(bs bstore.Blockstore, w *Wallet) (*GenesisBootstrap, error) {
+func MakeInitialStateTree(bs bstore.Blockstore, actors map[address.Address]types.BigInt) (*StateTree, error) {
 	cst := hamt.CSTFromBstore(bs)
 	state, err := NewStateTree(cst)
 	if err != nil {
@@ -90,12 +89,12 @@ func MakeGenesisBlock(bs bstore.Blockstore, w *Wallet) (*GenesisBootstrap, error
 		return nil, err
 	}
 
-	minerAddr, err := w.GenerateKey(KTSecp256k1)
-	if err != nil {
-		return nil, err
+	var addrs []address.Address
+	for a := range actors {
+		addrs = append(addrs, a)
 	}
 
-	initact, err := SetupInitActor(bs, []address.Address{minerAddr})
+	initact, err := SetupInitActor(bs, addrs)
 	if err != nil {
 		return nil, err
 	}
@@ -103,6 +102,17 @@ func MakeGenesisBlock(bs bstore.Blockstore, w *Wallet) (*GenesisBootstrap, error
 	if err := state.SetActor(InitActorAddress, initact); err != nil {
 		return nil, err
 	}
+
+	/*
+		smact, err := SetupStorageMarketActor(bs)
+		if err != nil {
+			return nil, err
+		}
+
+		if err := state.SetActor(StorageMarketAddress, smact); err != nil {
+			return nil, err
+		}
+	*/
 
 	err = state.SetActor(NetworkAddress, &types.Actor{
 		Code:    AccountActorCodeCid,
@@ -113,22 +123,64 @@ func MakeGenesisBlock(bs bstore.Blockstore, w *Wallet) (*GenesisBootstrap, error
 		return nil, err
 	}
 
-	err = state.SetActor(minerAddr, &types.Actor{
-		Code:    AccountActorCodeCid,
-		Balance: types.NewInt(5000000),
-		Head:    emptyobject,
-	})
+	for a, v := range actors {
+		err = state.SetActor(a, &types.Actor{
+			Code:    AccountActorCodeCid,
+			Balance: v,
+			Head:    emptyobject,
+		})
+		if err != nil {
+			return nil, err
+		}
+	}
+
+	return state, nil
+}
+
+/*
+func SetupStorageMarketActor(bs bstore.Blockstore) (*Actor, error) {
+	sms := &StorageMarketState{
+		Miners:       make(map[address.Address]struct{}),
+		TotalStorage: NewInt(0),
+	}
+
+	stcid, err := hamt.CSTFromBstore(bs).Put(context.TODO(), sms)
 	if err != nil {
 		return nil, err
 	}
-	fmt.Println("about to flush state...")
+
+	return &Actor{
+		Code:    StorageMarketActorCodeCid,
+		Head:    stcid,
+		Nonce:   0,
+		Balance: NewInt(0),
+	}, nil
+}
+*/
+
+func MakeGenesisBlock(bs bstore.Blockstore, w *Wallet) (*GenesisBootstrap, error) {
+	fmt.Println("at end of make Genesis block")
+
+	minerAddr, err := w.GenerateKey(KTSecp256k1)
+	if err != nil {
+		return nil, err
+	}
+
+	addrs := map[address.Address]types.BigInt{
+		minerAddr: types.NewInt(50000000),
+	}
+
+	state, err := MakeInitialStateTree(bs, addrs)
+	if err != nil {
+		return nil, err
+	}
 
 	stateroot, err := state.Flush()
 	if err != nil {
 		return nil, err
 	}
-	fmt.Println("at end of make Genesis block")
 
+	cst := hamt.CSTFromBstore(bs)
 	emptyroot, err := sharray.Build(context.TODO(), 4, []interface{}{}, cst)
 	if err != nil {
 		return nil, err
@@ -164,7 +216,7 @@ func MakeGenesisBlock(bs bstore.Blockstore, w *Wallet) (*GenesisBootstrap, error
 
 type ChainStore struct {
 	bs bstore.Blockstore
-	ds datastore.Datastore
+	ds dstore.Datastore
 
 	heaviestLk sync.Mutex
 	heaviest   *TipSet
@@ -174,7 +226,7 @@ type ChainStore struct {
 	headChange func(rev, app []*TipSet) error
 }
 
-func NewChainStore(bs bstore.Blockstore, ds datastore.Batching) *ChainStore {
+func NewChainStore(bs bstore.Blockstore, ds dstore.Batching) *ChainStore {
 	return &ChainStore{
 		bs:       bs,
 		ds:       ds,
@@ -204,7 +256,7 @@ func (cs *ChainStore) SetGenesis(b *BlockHeader) error {
 		return err
 	}
 
-	return cs.ds.Put(datastore.NewKey("0"), b.Cid().Bytes())
+	return cs.ds.Put(dstore.NewKey("0"), b.Cid().Bytes())
 }
 
 func (cs *ChainStore) PutTipSet(ts *FullTipSet) error {
@@ -379,7 +431,7 @@ func (cs *ChainStore) AddBlock(b *BlockHeader) error {
 }
 
 func (cs *ChainStore) GetGenesis() (*BlockHeader, error) {
-	data, err := cs.ds.Get(datastore.NewKey("0"))
+	data, err := cs.ds.Get(dstore.NewKey("0"))
 	if err != nil {
 		return nil, err
 	}
