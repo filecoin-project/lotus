@@ -40,8 +40,8 @@ func (s *LocalStorage) ClientImport(ctx context.Context, path string) (cid.Cid, 
 		Maxlinks:   ihelper.DefaultLinksPerBlock,
 		RawLeaves:  true,
 		CidBuilder: nil,
-		Dagserv:    bufferedDS, // flush?
-		NoCopy:     false,
+		Dagserv:    bufferedDS,
+		NoCopy:     true,
 	}
 
 	db, err := params.New(chunker.DefaultSplitter(file))

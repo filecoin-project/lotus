@@ -87,6 +87,8 @@ func ClientDAG(lc fx.Lifecycle, r repo.LockedRepo) (ipld.DAGService, error) {
 	blocks := namespace.Wrap(clientds, datastore.NewKey("blocks"))
 
 	fm := filestore.NewFileManager(clientds, filepath.Dir(r.Path()))
+	fm.AllowFiles = true
+	// TODO: fm.AllowUrls (needs more code in client import)
 
 	bs := blockstore.NewBlockstore(blocks)
 	fstore := filestore.NewFilestore(bs, fm)

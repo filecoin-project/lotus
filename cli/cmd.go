@@ -59,6 +59,7 @@ func reqContext(cctx *cli.Context) context.Context {
 }
 
 var Commands = []*cli.Command{
+	clientCmd,
 	chainCmd,
 	netCmd,
 	versionCmd,
