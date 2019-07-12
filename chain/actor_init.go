@@ -8,7 +8,6 @@ import (
 
 	"github.com/ipfs/go-cid"
 	hamt "github.com/ipfs/go-hamt-ipld"
-	cbor "github.com/ipfs/go-ipld-cbor"
 )
 
 type InitActor struct{}
@@ -32,27 +31,11 @@ type ExecParams struct {
 	Params []byte
 }
 
-func LoadState(s Storage, c cid.Cid, out interface{}) error {
-	data, err := s.Get(c)
-	if err != nil {
-		return err
-	}
-
-	if c.Type() != cid.DagCBOR {
-		return fmt.Errorf("only support dag cbor for now")
-	}
-
-	return cbor.DecodeInto(data, out)
-}
-
 func (ia InitActor) Exec(act *Actor, vmctx *VMContext, p *ExecParams) (InvokeRet, error) {
-	beginState, err := vmctx.Storage().GetHead()
-	if err != nil {
-		return InvokeRet{}, err
-	}
+	beginState := vmctx.Storage().GetHead()
 
 	var self InitActorState
-	if err := LoadState(vmctx.Storage(), beginState, &self); err != nil {
+	if err := vmctx.Storage().Get(beginState, &self); err != nil {
 		return InvokeRet{}, err
 	}
 

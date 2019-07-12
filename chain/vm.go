@@ -13,6 +13,7 @@ import (
 	bserv "github.com/ipfs/go-blockservice"
 	cid "github.com/ipfs/go-cid"
 	hamt "github.com/ipfs/go-hamt-ipld"
+	bstore "github.com/ipfs/go-ipfs-blockstore"
 	ipld "github.com/ipfs/go-ipld-format"
 	dag "github.com/ipfs/go-merkledag"
 	"github.com/pkg/errors"
@@ -23,6 +24,11 @@ type VMContext struct {
 	msg    *Message
 	height uint64
 	cst    *hamt.CborIpldStore
+
+	// root cid of the state of the actor this invocation will be on
+	sroot cid.Cid
+
+	storage Storage
 }
 
 // Message is the message that kicked off the current invocation
@@ -32,18 +38,46 @@ func (vmc *VMContext) Message() *Message {
 
 type Storage interface {
 	Put(interface{}) (cid.Cid, error)
-	Get(cid.Cid) ([]byte, error)
+	Get(cid.Cid, interface{}) error
 
-	GetHead() (cid.Cid, error)
+	GetHead() cid.Cid
 
 	// Commit sets the new head of the actors state as long as the current
 	// state matches 'oldh'
 	Commit(oldh cid.Cid, newh cid.Cid) error
 }
 
+type storage struct {
+	// would be great to stop depending on this crap everywhere
+	// I am my own worst enemy
+	cst  *hamt.CborIpldStore
+	head cid.Cid
+}
+
+func (s *storage) Put(i interface{}) (cid.Cid, error) {
+	return s.cst.Put(context.TODO(), i)
+}
+
+func (s *storage) Get(c cid.Cid, out interface{}) error {
+	return s.cst.Get(context.TODO(), c, out)
+}
+
+func (s *storage) GetHead() cid.Cid {
+	return s.head
+}
+
+func (s *storage) Commit(oldh, newh cid.Cid) error {
+	if s.head != oldh {
+		return fmt.Errorf("failed to update, inconsistent base reference")
+	}
+
+	s.head = newh
+	return nil
+}
+
 // Storage provides access to the VM storage layer
 func (vmc *VMContext) Storage() Storage {
-	panic("ok")
+	return vmc.storage
 }
 
 func (vmc *VMContext) Ipld() *hamt.CborIpldStore {
@@ -64,11 +98,16 @@ func (vmc *VMContext) GasUsed() BigInt {
 	return NewInt(0)
 }
 
-func makeVMContext(state *StateTree, msg *Message, height uint64) *VMContext {
+func makeVMContext(state *StateTree, bs bstore.Blockstore, sroot cid.Cid, msg *Message, height uint64) *VMContext {
 	return &VMContext{
 		state:  state,
+		sroot:  sroot,
 		msg:    msg,
 		height: height,
+		storage: &storage{
+			cst:  hamt.CSTFromBstore(bs),
+			head: sroot,
+		},
 	}
 }
 
@@ -138,7 +177,7 @@ func (vm *VM) ApplyMessage(msg *Message) (*MessageReceipt, error) {
 	}
 	DepositFunds(toActor, msg.Value)
 
-	vmctx := makeVMContext(st, msg, vm.blockHeight)
+	vmctx := makeVMContext(st, vm.cs.bs, toActor.Head, msg, vm.blockHeight)
 
 	var errcode byte
 	var ret []byte
