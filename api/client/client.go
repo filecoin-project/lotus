@@ -6,8 +6,8 @@ import (
 )
 
 // NewRPC creates a new http jsonrpc client.
-func NewRPC(addr string) api.API {
+func NewRPC(addr string) (api.API, error) {
 	var res api.Struct
-	jsonrpc.NewClient(addr, "Filecoin", &res.Internal)
-	return &res
+	_, err := jsonrpc.NewClient(addr, "Filecoin", &res.Internal)
+	return &res, err
 }

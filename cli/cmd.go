@@ -35,7 +35,7 @@ func getAPI(ctx *cli.Context) (api.API, error) {
 	if err != nil {
 		return nil, err
 	}
-	return client.NewRPC("http://" + addr + "/rpc/v0"), nil
+	return client.NewRPC("ws://" + addr + "/rpc/v0")
 }
 
 // reqContext returns context for cli execution. Calling it for the first time
