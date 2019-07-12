@@ -100,7 +100,6 @@ func (ia InitActor) Exec(act *types.Actor, vmctx types.VMContext, p *ExecParams)
 	}
 
 	// NOTE: This is a privileged call that only the init actor is allowed to make
-	// FIXME: Had to comment this  because state is not in interface
 	state, err := vmctx.StateTree()
 	if err != nil {
 		return InvokeRet{}, err

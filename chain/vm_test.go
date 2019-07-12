@@ -84,6 +84,13 @@ func TestVMInvokeMethod(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
+	act, err := st.GetActor(outaddr)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if act.Code != execparams.Code {
+		t.Fatalf("wrong actor code %s instead of %s", act.Code, execparams.Code)
+	}
 
 	if outaddr.String() != "t0102" {
 		t.Fatal("hold up")
