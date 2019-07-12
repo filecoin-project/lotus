@@ -60,6 +60,7 @@ func (st *StateTree) SetActor(addr address.Address, act *types.Actor) error {
 		}
 	}
 
+	fmt.Printf("Saving actor %s\n", addr.String())
 	return st.root.Set(context.TODO(), string(addr.Bytes()), act)
 }
 
@@ -94,8 +95,10 @@ func (st *StateTree) GetActor(addr address.Address) (*types.Actor, error) {
 		return cact, nil
 	}
 
+	fmt.Printf("Looking for actor %s\n", addr.String())
 	thing, err := st.root.Find(context.TODO(), string(addr.Bytes()))
 	if err != nil {
+		fmt.Printf("Got error: %s\n", err)
 		if err == hamt.ErrNotFound {
 			return nil, ErrActorNotFound
 		}

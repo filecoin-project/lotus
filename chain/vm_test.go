@@ -6,6 +6,7 @@ import (
 
 	"github.com/filecoin-project/go-lotus/chain/address"
 	"github.com/filecoin-project/go-lotus/chain/types"
+	"github.com/ipfs/go-cid"
 	dstore "github.com/ipfs/go-datastore"
 	bstore "github.com/ipfs/go-ipfs-blockstore"
 	cbor "github.com/ipfs/go-ipld-cbor"
@@ -25,6 +26,9 @@ func blsaddr(n uint64) address.Address {
 
 func TestVMInvokeMethod(t *testing.T) {
 	bs := bstore.NewBlockstore(dstore.NewMapDatastore())
+	cs := &ChainStore{
+		bs: bs,
+	}
 
 	from := blsaddr(0)
 	maddr := blsaddr(1)
@@ -33,18 +37,19 @@ func TestVMInvokeMethod(t *testing.T) {
 		from:  types.NewInt(1000000),
 		maddr: types.NewInt(0),
 	}
-	st, err := MakeInitialStateTree(bs, actors)
-	if err != nil {
-		t.Fatal(err)
-	}
 
-	stateroot, err := st.Flush()
-	if err != nil {
-		t.Fatal(err)
-	}
+	var stateroot cid.Cid
+	{
+		st, err := MakeInitialStateTree(bs, actors)
+		if err != nil {
+			t.Fatal(err)
+		}
 
-	cs := &ChainStore{
-		bs: bs,
+		stateroot, err = st.Flush()
+		if err != nil {
+			t.Fatal(err)
+		}
+
 	}
 
 	vm, err := NewVM(stateroot, 1, maddr, cs)
@@ -84,9 +89,10 @@ func TestVMInvokeMethod(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	act, err := st.GetActor(outaddr)
+
+	act, err := vm.cstate.GetActor(outaddr)
 	if err != nil {
-		t.Fatal(err)
+		t.Fatalf("Could not find actor with id %s, err: %s", outaddr, err)
 	}
 	if act.Code != execparams.Code {
 		t.Fatalf("wrong actor code %s instead of %s", act.Code, execparams.Code)
