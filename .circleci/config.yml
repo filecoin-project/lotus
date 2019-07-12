@@ -137,7 +137,6 @@ workflows:
     jobs:
       - lint-changes:
           args: "--new-from-rev origin/master"
-      - lint-all
       - test:
           codecov-upload: true
       - mod-tidy-check

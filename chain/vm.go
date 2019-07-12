@@ -1,7 +1,9 @@
 package chain
 
 import (
+	"bytes"
 	"context"
+	"encoding/binary"
 	"fmt"
 	"math/big"
 
@@ -12,6 +14,7 @@ import (
 	bserv "github.com/ipfs/go-blockservice"
 	cid "github.com/ipfs/go-cid"
 	hamt "github.com/ipfs/go-hamt-ipld"
+	bstore "github.com/ipfs/go-ipfs-blockstore"
 	ipld "github.com/ipfs/go-ipld-format"
 	dag "github.com/ipfs/go-merkledag"
 	"github.com/pkg/errors"
@@ -22,6 +25,11 @@ type VMContext struct {
 	msg    *types.Message
 	height uint64
 	cst    *hamt.CborIpldStore
+
+	// root cid of the state of the actor this invocation will be on
+	sroot cid.Cid
+
+	storage types.Storage
 }
 
 // Message is the message that kicked off the current invocation
@@ -29,12 +37,38 @@ func (vmc *VMContext) Message() *types.Message {
 	return vmc.msg
 }
 
-/*
-// Storage provides access to the VM storage layer
-func (vmc *VMContext) Storage() Storage {
-	panic("nyi")
+type storage struct {
+	// would be great to stop depending on this crap everywhere
+	// I am my own worst enemy
+	cst  *hamt.CborIpldStore
+	head cid.Cid
 }
-*/
+
+func (s *storage) Put(i interface{}) (cid.Cid, error) {
+	return s.cst.Put(context.TODO(), i)
+}
+
+func (s *storage) Get(c cid.Cid, out interface{}) error {
+	return s.cst.Get(context.TODO(), c, out)
+}
+
+func (s *storage) GetHead() cid.Cid {
+	return s.head
+}
+
+func (s *storage) Commit(oldh, newh cid.Cid) error {
+	if s.head != oldh {
+		return fmt.Errorf("failed to update, inconsistent base reference")
+	}
+
+	s.head = newh
+	return nil
+}
+
+// Storage provides access to the VM storage layer
+func (vmc *VMContext) Storage() types.Storage {
+	return vmc.storage
+}
 
 func (vmc *VMContext) Ipld() *hamt.CborIpldStore {
 	return vmc.cst
@@ -54,11 +88,26 @@ func (vmc *VMContext) GasUsed() types.BigInt {
 	return types.NewInt(0)
 }
 
-func makeVMContext(state *StateTree, msg *types.Message, height uint64) *VMContext {
+func (vmc *VMContext) StateTree() (types.StateTree, error) {
+	if vmc.msg.To != InitActorAddress {
+		return nil, fmt.Errorf("only init actor can access state tree directly")
+	}
+
+	return vmc.state, nil
+}
+
+func makeVMContext(state *StateTree, bs bstore.Blockstore, sroot cid.Cid, msg *types.Message, height uint64) *VMContext {
+	cst := hamt.CSTFromBstore(bs)
 	return &VMContext{
 		state:  state,
+		sroot:  sroot,
 		msg:    msg,
 		height: height,
+		cst:    cst,
+		storage: &storage{
+			cst:  cst,
+			head: sroot,
+		},
 	}
 }
 
@@ -128,7 +177,7 @@ func (vm *VM) ApplyMessage(msg *types.Message) (*types.MessageReceipt, error) {
 	}
 	DepositFunds(toActor, msg.Value)
 
-	vmctx := makeVMContext(st, msg, vm.blockHeight)
+	vmctx := makeVMContext(st, vm.cs.bs, toActor.Head, msg, vm.blockHeight)
 
 	var errcode byte
 	var ret []byte
@@ -213,4 +262,19 @@ func (vm *VM) Invoke(act *types.Actor, vmctx *VMContext, method uint64, params [
 		return nil, 0, err
 	}
 	return ret.result, ret.returnCode, nil
+}
+
+func ComputeActorAddress(creator address.Address, nonce uint64) (address.Address, error) {
+	buf := new(bytes.Buffer)
+	_, err := buf.Write(creator.Bytes())
+	if err != nil {
+		return address.Address{}, err
+	}
+
+	err = binary.Write(buf, binary.BigEndian, nonce)
+	if err != nil {
+		return address.Address{}, err
+	}
+
+	return address.NewActorAddress(buf.Bytes())
 }
