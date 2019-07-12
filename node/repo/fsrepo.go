@@ -62,7 +62,7 @@ func (fsr *FsRepo) Init() error {
 
 	log.Infof("Initializing repo at '%s'", fsr.path)
 
-	return os.Mkdir(fsr.path, 0755) // nolint
+	return os.Mkdir(fsr.path, 0755) //nolint: gosec
 }
 
 // APIEndpoint returns endpoint of API in this repo

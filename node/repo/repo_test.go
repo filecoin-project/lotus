@@ -5,6 +5,8 @@ import (
 
 	"github.com/multiformats/go-multiaddr"
 	"github.com/stretchr/testify/assert"
+
+	"github.com/filecoin-project/go-lotus/node/config"
 )
 
 func basicTest(t *testing.T, repo Repo) {
@@ -42,6 +44,14 @@ func basicTest(t *testing.T, repo Repo) {
 	apima, err = repo.APIEndpoint()
 	assert.NoError(t, err, "setting multiaddr shouldn't error")
 	assert.Equal(t, ma, apima, "returned API multiaddr should be the same")
+
+	iden, err := lrepo.Libp2pIdentity()
+	assert.NotNil(t, iden, "identity is not nil")
+	assert.NoError(t, err, "identity should not error")
+
+	cfg, err := lrepo.Config()
+	assert.Equal(t, config.Default(), cfg, "there should be a default config")
+	assert.NoError(t, err, "config should not error")
 
 	err = lrepo.Close()
 	assert.NoError(t, err, "should be able to close")
