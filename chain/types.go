@@ -5,8 +5,6 @@ import (
 	"encoding/json"
 	"fmt"
 
-	"github.com/filecoin-project/go-lotus/chain/address"
-
 	block "github.com/ipfs/go-block-format"
 	"github.com/ipfs/go-cid"
 	cbor "github.com/ipfs/go-ipld-cbor"
@@ -14,6 +12,7 @@ import (
 	"github.com/multiformats/go-multihash"
 	"github.com/polydawn/refmt/obj/atlas"
 
+	"github.com/filecoin-project/go-lotus/chain/address"
 	"github.com/filecoin-project/go-lotus/chain/types"
 )
 
@@ -45,7 +44,7 @@ func init() {
 				}
 
 				return SignedMessage{
-					Message:   x[0].(Message),
+					Message:   x[0].(types.Message),
 					Signature: sig,
 				}, nil
 			})).
@@ -60,63 +59,6 @@ func init() {
 		TransformUnmarshal(atlas.MakeUnmarshalTransformFunc(
 			func(x []byte) (Signature, error) {
 				return SignatureFromBytes(x)
-			})).
-		Complete())
-	cbor.RegisterCborType(atlas.BuildEntry(Message{}).UseTag(44).Transform().
-		TransformMarshal(atlas.MakeMarshalTransformFunc(
-			func(m Message) ([]interface{}, error) {
-				return []interface{}{
-					m.To.Bytes(),
-					m.From.Bytes(),
-					m.Nonce,
-					m.Value,
-					m.GasPrice,
-					m.GasLimit,
-					m.Method,
-					m.Params,
-				}, nil
-			})).
-		TransformUnmarshal(atlas.MakeUnmarshalTransformFunc(
-			func(arr []interface{}) (Message, error) {
-				to, err := address.NewFromBytes(arr[0].([]byte))
-				if err != nil {
-					return Message{}, err
-				}
-
-				from, err := address.NewFromBytes(arr[1].([]byte))
-				if err != nil {
-					return Message{}, err
-				}
-
-				nonce, ok := arr[2].(uint64)
-				if !ok {
-					return Message{}, fmt.Errorf("expected uint64 nonce at index 2")
-				}
-
-				value := arr[3].(types.BigInt)
-				gasPrice := arr[4].(types.BigInt)
-				gasLimit := arr[5].(types.BigInt)
-				method, _ := arr[6].(uint64)
-				params, _ := arr[7].([]byte)
-
-				if gasPrice.Nil() {
-					gasPrice = types.NewInt(0)
-				}
-
-				if gasLimit.Nil() {
-					gasLimit = types.NewInt(0)
-				}
-
-				return Message{
-					To:       to,
-					From:     from,
-					Nonce:    nonce,
-					Value:    value,
-					GasPrice: gasPrice,
-					GasLimit: gasLimit,
-					Method:   method,
-					Params:   params,
-				}, nil
 			})).
 		Complete())
 	cbor.RegisterCborType(atlas.BuildEntry(BlockHeader{}).UseTag(43).Transform().
@@ -240,49 +182,6 @@ func (blk *BlockHeader) Serialize() ([]byte, error) {
 	return cbor.DumpObject(blk)
 }
 
-type Message struct {
-	To   address.Address
-	From address.Address
-
-	Nonce uint64
-
-	Value types.BigInt
-
-	GasPrice types.BigInt
-	GasLimit types.BigInt
-
-	Method uint64
-	Params []byte
-}
-
-func DecodeMessage(b []byte) (*Message, error) {
-	var msg Message
-	if err := cbor.DecodeInto(b, &msg); err != nil {
-		return nil, err
-	}
-
-	return &msg, nil
-}
-
-func (m *Message) Serialize() ([]byte, error) {
-	return cbor.DumpObject(m)
-}
-
-func (m *Message) ToStorageBlock() (block.Block, error) {
-	data, err := m.Serialize()
-	if err != nil {
-		return nil, err
-	}
-
-	pref := cid.NewPrefixV1(0x1f, multihash.BLAKE2B_MIN+31)
-	c, err := pref.Sum(data)
-	if err != nil {
-		return nil, err
-	}
-
-	return block.NewBlockWithCid(data, c)
-}
-
 func (m *SignedMessage) ToStorageBlock() (block.Block, error) {
 	data, err := m.Serialize()
 	if err != nil {
@@ -308,7 +207,7 @@ func (m *SignedMessage) Cid() cid.Cid {
 }
 
 type SignedMessage struct {
-	Message   Message
+	Message   types.Message
 	Signature Signature
 }
 
@@ -459,7 +358,7 @@ func (f *filecoinIpldNode) Links() []*ipld.Link {
 				Cid: t.MessageReceipts,
 			},
 		}
-	case Message:
+	case types.Message:
 		return nil
 	default:
 		panic("whats going on")

@@ -58,6 +58,7 @@ type Invokee interface {
 }
 
 var tUnmarhsalCBOR = reflect.TypeOf((*unmarshalCBOR)(nil)).Elem()
+var tVMContext = reflect.TypeOf((*types.VMContext)(nil)).Elem()
 var tError = reflect.TypeOf((*error)(nil)).Elem()
 
 func (*invoker) transform(instance Invokee) (nativeCode, error) {
@@ -83,8 +84,8 @@ func (*invoker) transform(instance Invokee) (nativeCode, error) {
 		if t.In(0) != reflect.TypeOf(&types.Actor{}) {
 			return nil, newErr("first arguemnt should be *types.Actor")
 		}
-		if t.In(1) != reflect.TypeOf(&VMContext{}) {
-			return nil, newErr("second argument should be *VMContext")
+		if t.In(1) != tVMContext {
+			return nil, newErr("second argument should be types.VMContext")
 		}
 
 		if !t.In(2).Implements(tUnmarhsalCBOR) {

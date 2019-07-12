@@ -19,13 +19,13 @@ import (
 
 type VMContext struct {
 	state  *StateTree
-	msg    *Message
+	msg    *types.Message
 	height uint64
 	cst    *hamt.CborIpldStore
 }
 
 // Message is the message that kicked off the current invocation
-func (vmc *VMContext) Message() *Message {
+func (vmc *VMContext) Message() *types.Message {
 	return vmc.msg
 }
 
@@ -54,7 +54,7 @@ func (vmc *VMContext) GasUsed() types.BigInt {
 	return types.NewInt(0)
 }
 
-func makeVMContext(state *StateTree, msg *Message, height uint64) *VMContext {
+func makeVMContext(state *StateTree, msg *types.Message, height uint64) *VMContext {
 	return &VMContext{
 		state:  state,
 		msg:    msg,
@@ -91,7 +91,7 @@ func NewVM(base cid.Cid, height uint64, maddr address.Address, cs *ChainStore) (
 	}, nil
 }
 
-func (vm *VM) ApplyMessage(msg *Message) (*types.MessageReceipt, error) {
+func (vm *VM) ApplyMessage(msg *types.Message) (*types.MessageReceipt, error) {
 	st := vm.cstate
 	st.Snapshot()
 	fromActor, err := st.GetActor(msg.From)
