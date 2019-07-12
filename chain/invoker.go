@@ -5,6 +5,7 @@ import (
 	"fmt"
 	"reflect"
 
+	actors "github.com/filecoin-project/go-lotus/chain/actors"
 	"github.com/filecoin-project/go-lotus/chain/types"
 	"github.com/ipfs/go-cid"
 )
@@ -13,12 +14,8 @@ type invoker struct {
 	builtInCode map[cid.Cid]nativeCode
 }
 
-type invokeFunc func(act *types.Actor, vmctx *VMContext, params []byte) (InvokeRet, error)
+type invokeFunc func(act *types.Actor, vmctx *VMContext, params []byte) (types.InvokeRet, error)
 type nativeCode []invokeFunc
-type InvokeRet struct {
-	result     []byte
-	returnCode byte
-}
 
 func newInvoker() *invoker {
 	inv := &invoker{
@@ -26,20 +23,20 @@ func newInvoker() *invoker {
 	}
 
 	// add builtInCode using: register(cid, singleton)
-	inv.register(InitActorCodeCid, InitActor{})
-	inv.register(StorageMarketActorCodeCid, StorageMarketActor{})
+	inv.register(actors.InitActorCodeCid, actors.InitActor{})
+	inv.register(actors.StorageMarketActorCodeCid, actors.StorageMarketActor{})
 
 	return inv
 }
 
-func (inv *invoker) Invoke(act *types.Actor, vmctx *VMContext, method uint64, params []byte) (InvokeRet, error) {
+func (inv *invoker) Invoke(act *types.Actor, vmctx *VMContext, method uint64, params []byte) (types.InvokeRet, error) {
 
 	code, ok := inv.builtInCode[act.Code]
 	if !ok {
-		return InvokeRet{}, errors.New("no code for actor")
+		return types.InvokeRet{}, errors.New("no code for actor")
 	}
 	if method >= uint64(len(code)) || code[method] == nil {
-		return InvokeRet{}, fmt.Errorf("no method %d on actor", method)
+		return types.InvokeRet{}, fmt.Errorf("no method %d on actor", method)
 	}
 	return code[method](act, vmctx, params)
 
@@ -104,7 +101,7 @@ func (*invoker) transform(instance Invokee) (nativeCode, error) {
 			return nil, newErr("wrong number of outputs should be: " +
 				"(InvokeRet, error)")
 		}
-		if t.Out(0) != reflect.TypeOf(InvokeRet{}) {
+		if t.Out(0) != reflect.TypeOf(types.InvokeRet{}) {
 			return nil, newErr("first output should be of type InvokeRet")
 		}
 		if !t.Out(1).Implements(tError) {
@@ -124,7 +121,7 @@ func (*invoker) transform(instance Invokee) (nativeCode, error) {
 				_, err := param.Interface().(unmarshalCBOR).UnmarshalCBOR(inBytes)
 				if err != nil {
 					return []reflect.Value{
-						reflect.ValueOf(InvokeRet{}),
+						reflect.ValueOf(types.InvokeRet{}),
 						// Below is a hack, fixed in Go 1.13
 						// https://git.io/fjXU6
 						reflect.ValueOf(&err).Elem(),

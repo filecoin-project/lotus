@@ -1,9 +1,11 @@
-package chain
+package actors_test
 
 import (
 	"encoding/binary"
 	"testing"
 
+	"github.com/filecoin-project/go-lotus/chain"
+	. "github.com/filecoin-project/go-lotus/chain/actors"
 	"github.com/filecoin-project/go-lotus/chain/address"
 	"github.com/filecoin-project/go-lotus/chain/types"
 	dstore "github.com/ipfs/go-datastore"
@@ -23,7 +25,7 @@ func blsaddr(n uint64) address.Address {
 	return addr
 }
 
-func setupVMTestEnv(t *testing.T) (*VM, []address.Address) {
+func setupVMTestEnv(t *testing.T) (*chain.VM, []address.Address) {
 	bs := bstore.NewBlockstore(dstore.NewMapDatastore())
 
 	from := blsaddr(0)
@@ -33,7 +35,7 @@ func setupVMTestEnv(t *testing.T) (*VM, []address.Address) {
 		from:  types.NewInt(1000000),
 		maddr: types.NewInt(0),
 	}
-	st, err := MakeInitialStateTree(bs, actors)
+	st, err := chain.MakeInitialStateTree(bs, actors)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -43,11 +45,9 @@ func setupVMTestEnv(t *testing.T) (*VM, []address.Address) {
 		t.Fatal(err)
 	}
 
-	cs := &ChainStore{
-		bs: bs,
-	}
+	cs := chain.NewChainStore(bs, nil)
 
-	vm, err := NewVM(stateroot, 1, maddr, cs)
+	vm, err := chain.NewVM(stateroot, 1, maddr, cs)
 	if err != nil {
 		t.Fatal(err)
 	}

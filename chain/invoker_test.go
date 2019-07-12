@@ -43,20 +43,20 @@ func (b basicContract) Exports() []interface{} {
 }
 
 func (basicContract) InvokeSomething0(act *types.Actor, vmctx types.VMContext,
-	params *basicParams) (InvokeRet, error) {
-	return InvokeRet{
-		returnCode: params.b,
+	params *basicParams) (types.InvokeRet, error) {
+	return types.InvokeRet{
+		ReturnCode: params.b,
 	}, nil
 }
 func (basicContract) BadParam(act *types.Actor, vmctx types.VMContext,
-	params *badParam) (InvokeRet, error) {
+	params *badParam) (types.InvokeRet, error) {
 	panic("should not execute")
 }
 
 func (basicContract) InvokeSomething10(act *types.Actor, vmctx types.VMContext,
-	params *basicParams) (InvokeRet, error) {
-	return InvokeRet{
-		returnCode: params.b + 10,
+	params *basicParams) (types.InvokeRet, error) {
+	return types.InvokeRet{
+		ReturnCode: params.b + 10,
 	}, nil
 }
 
@@ -66,11 +66,11 @@ func TestInvokerBasic(t *testing.T) {
 	assert.NoError(t, err)
 	ret, err := code[0](nil, nil, []byte{1})
 	assert.NoError(t, err)
-	assert.Equal(t, byte(1), ret.returnCode, "return code should be 1")
+	assert.Equal(t, byte(1), ret.ReturnCode, "return code should be 1")
 
 	ret, err = code[10](nil, &VMContext{}, []byte{2})
 	assert.NoError(t, err)
-	assert.Equal(t, byte(12), ret.returnCode, "return code should be 1")
+	assert.Equal(t, byte(12), ret.ReturnCode, "return code should be 1")
 
 	ret, err = code[1](nil, &VMContext{}, []byte{2})
 	assert.Error(t, err)

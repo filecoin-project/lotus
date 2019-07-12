@@ -8,6 +8,7 @@ import (
 	hamt "github.com/ipfs/go-hamt-ipld"
 	cbor "github.com/ipfs/go-ipld-cbor"
 
+	"github.com/filecoin-project/go-lotus/chain/actors"
 	"github.com/filecoin-project/go-lotus/chain/address"
 	"github.com/filecoin-project/go-lotus/chain/types"
 )
@@ -64,12 +65,12 @@ func (st *StateTree) SetActor(addr address.Address, act *types.Actor) error {
 }
 
 func (st *StateTree) lookupID(addr address.Address) (address.Address, error) {
-	act, err := st.GetActor(InitActorAddress)
+	act, err := st.GetActor(actors.InitActorAddress)
 	if err != nil {
 		return address.Undef, err
 	}
 
-	var ias InitActorState
+	var ias actors.InitActorState
 	if err := st.store.Get(context.TODO(), act.Head, &ias); err != nil {
 		return address.Undef, err
 	}
@@ -144,8 +145,8 @@ func (st *StateTree) Snapshot() error {
 
 func (st *StateTree) RegisterNewAddress(addr address.Address, act *types.Actor) (address.Address, error) {
 	var out address.Address
-	err := st.MutateActor(InitActorAddress, func(initact *types.Actor) error {
-		var ias InitActorState
+	err := st.MutateActor(actors.InitActorAddress, func(initact *types.Actor) error {
+		var ias actors.InitActorState
 		if err := st.store.Get(context.TODO(), initact.Head, &ias); err != nil {
 			return err
 		}

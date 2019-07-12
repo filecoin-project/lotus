@@ -5,6 +5,7 @@ import (
 	"fmt"
 	"sync"
 
+	"github.com/filecoin-project/go-lotus/chain/actors"
 	"github.com/filecoin-project/go-lotus/chain/address"
 	"github.com/filecoin-project/go-lotus/chain/types"
 
@@ -569,7 +570,7 @@ func (syncer *Syncer) ValidateBlock(b *FullBlock) error {
 		return err
 	}
 
-	if err := vm.TransferFunds(NetworkAddress, b.Header.Miner, miningRewardForBlock(baseTs)); err != nil {
+	if err := vm.TransferFunds(actors.NetworkAddress, b.Header.Miner, miningRewardForBlock(baseTs)); err != nil {
 		return err
 	}
 
@@ -648,7 +649,7 @@ func makeActor(st *StateTree, addr address.Address) (*types.Actor, error) {
 }
 
 func NewBLSAccountActor(st *StateTree, addr address.Address) (*types.Actor, error) {
-	var acstate AccountActorState
+	var acstate actors.AccountActorState
 	acstate.Address = addr
 
 	c, err := st.store.Put(context.TODO(), acstate)
@@ -657,7 +658,7 @@ func NewBLSAccountActor(st *StateTree, addr address.Address) (*types.Actor, erro
 	}
 
 	nact := &types.Actor{
-		Code:    AccountActorCodeCid,
+		Code:    actors.AccountActorCodeCid,
 		Balance: types.NewInt(0),
 		Head:    c,
 	}
@@ -667,7 +668,7 @@ func NewBLSAccountActor(st *StateTree, addr address.Address) (*types.Actor, erro
 
 func NewSecp256k1AccountActor(st *StateTree, addr address.Address) (*types.Actor, error) {
 	nact := &types.Actor{
-		Code:    AccountActorCodeCid,
+		Code:    actors.AccountActorCodeCid,
 		Balance: types.NewInt(0),
 		Head:    EmptyObjectCid,
 	}

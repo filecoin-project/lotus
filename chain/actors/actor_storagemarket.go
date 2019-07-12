@@ -1,4 +1,4 @@
-package chain
+package actors
 
 import (
 	"github.com/filecoin-project/go-lotus/chain/address"
@@ -42,11 +42,11 @@ func (p *CreateStorageMinerParams) UnmarshalCBOR(b []byte) (int, error) {
 	return len(b), nil
 }
 
-func (sma StorageMarketActor) CreateStorageMiner(act *types.Actor, vmctx types.VMContext, params *CreateStorageMinerParams) (InvokeRet, error) {
+func (sma StorageMarketActor) CreateStorageMiner(act *types.Actor, vmctx types.VMContext, params *CreateStorageMinerParams) (types.InvokeRet, error) {
 	if !SupportedSectorSize(params.SectorSize) {
 		//Fatal("Unsupported sector size")
-		return InvokeRet{
-			returnCode: 1,
+		return types.InvokeRet{
+			ReturnCode: 1,
 		}, nil
 	}
 
@@ -56,44 +56,44 @@ func (sma StorageMarketActor) CreateStorageMiner(act *types.Actor, vmctx types.V
 		PeerID:     params.PeerID,
 	})
 	if err != nil {
-		return InvokeRet{}, err
+		return types.InvokeRet{}, err
 	}
 
 	ret, exit, err := vmctx.Send(InitActorAddress, 1, vmctx.Message().Value, encoded)
 	if err != nil {
-		return InvokeRet{}, err
+		return types.InvokeRet{}, err
 	}
 
 	naddr, err := address.NewFromBytes(ret)
 	if err != nil {
-		return InvokeRet{}, err
+		return types.InvokeRet{}, err
 	}
 
 	if exit != 0 {
-		return InvokeRet{
-			returnCode: 2,
+		return types.InvokeRet{
+			ReturnCode: 2,
 		}, nil
 	}
 
 	var self StorageMarketState
 	old := vmctx.Storage().GetHead()
 	if err := vmctx.Storage().Get(old, &self); err != nil {
-		return InvokeRet{}, err
+		return types.InvokeRet{}, err
 	}
 
 	self.Miners[naddr] = struct{}{}
 
 	nroot, err := vmctx.Storage().Put(self)
 	if err != nil {
-		return InvokeRet{}, err
+		return types.InvokeRet{}, err
 	}
 
 	if err := vmctx.Storage().Commit(old, nroot); err != nil {
-		return InvokeRet{}, err
+		return types.InvokeRet{}, err
 	}
 
-	return InvokeRet{
-		result: naddr.Bytes(),
+	return types.InvokeRet{
+		Result: naddr.Bytes(),
 	}, nil
 }
 

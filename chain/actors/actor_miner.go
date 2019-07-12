@@ -1,4 +1,4 @@
-package chain
+package actors
 
 import (
 	"github.com/filecoin-project/go-lotus/chain/address"
@@ -77,7 +77,7 @@ type StorageMinerConstructorParams struct {
 	PeerID     peer.ID
 }
 
-func (sma StorageMinerActor) StorageMinerActor(act *types.Actor, vmctx types.VMContext, params *StorageMinerConstructorParams) (InvokeRet, error) {
+func (sma StorageMinerActor) StorageMinerActor(act *types.Actor, vmctx types.VMContext, params *StorageMinerConstructorParams) (types.InvokeRet, error) {
 	var self StorageMinerActorState
 	self.Owner = vmctx.Message().From
 	self.Worker = params.Worker
@@ -87,12 +87,12 @@ func (sma StorageMinerActor) StorageMinerActor(act *types.Actor, vmctx types.VMC
 	storage := vmctx.Storage()
 	c, err := storage.Put(self)
 	if err != nil {
-		return InvokeRet{}, err
+		return types.InvokeRet{}, err
 	}
 
 	if err := storage.Commit(cid.Undef, c); err != nil {
-		return InvokeRet{}, err
+		return types.InvokeRet{}, err
 	}
 
-	return InvokeRet{}, nil
+	return types.InvokeRet{}, nil
 }

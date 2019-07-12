@@ -1,11 +1,10 @@
 package chain
 
 import (
-	"bytes"
 	"context"
-	"encoding/binary"
 	"fmt"
 
+	"github.com/filecoin-project/go-lotus/chain/actors"
 	"github.com/filecoin-project/go-lotus/chain/address"
 	"github.com/filecoin-project/go-lotus/chain/types"
 	"github.com/filecoin-project/go-lotus/lib/bufbstore"
@@ -102,7 +101,7 @@ func (vmc *VMContext) GasUsed() types.BigInt {
 }
 
 func (vmc *VMContext) StateTree() (types.StateTree, error) {
-	if vmc.msg.To != InitActorAddress {
+	if vmc.msg.To != actors.InitActorAddress {
 		return nil, fmt.Errorf("only init actor can access state tree directly")
 	}
 
@@ -276,20 +275,5 @@ func (vm *VM) Invoke(act *types.Actor, vmctx *VMContext, method uint64, params [
 	if err != nil {
 		return nil, 0, err
 	}
-	return ret.result, ret.returnCode, nil
-}
-
-func ComputeActorAddress(creator address.Address, nonce uint64) (address.Address, error) {
-	buf := new(bytes.Buffer)
-	_, err := buf.Write(creator.Bytes())
-	if err != nil {
-		return address.Address{}, err
-	}
-
-	err = binary.Write(buf, binary.BigEndian, nonce)
-	if err != nil {
-		return address.Address{}, err
-	}
-
-	return address.NewActorAddress(buf.Bytes())
+	return ret.Result, ret.ReturnCode, nil
 }
