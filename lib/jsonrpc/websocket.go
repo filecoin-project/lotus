@@ -25,20 +25,18 @@ type frame struct {
 
 func handleWsConn(ctx context.Context, conn *websocket.Conn, handler handlers, requests <-chan clientRequest, stop <-chan struct{}) {
 	incoming := make(chan io.Reader)
+	var incErr error
 
 	nextMessage := func() {
 		mtype, r, err := conn.NextReader()
 		if err != nil {
-			r, _ := io.Pipe()
-			r.CloseWithError(err) // nolint
-			incoming <- r
+			incErr = err
+			close(incoming)
 			return
-
 		}
 		if mtype != websocket.BinaryMessage && mtype != websocket.TextMessage {
-			r, _ := io.Pipe()
-			r.CloseWithError(errors.New("unsupported message type")) // nolint
-			incoming <- r
+			incErr = errors.New("unsupported message type")
+			close(incoming)
 			return
 		}
 		incoming <- r
@@ -50,7 +48,14 @@ func handleWsConn(ctx context.Context, conn *websocket.Conn, handler handlers, r
 
 	for {
 		select {
-		case r := <-incoming:
+		case r, ok := <-incoming:
+			if !ok {
+				if incErr != nil {
+					log.Debugf("websocket error", "error", incErr)
+				}
+				return // remote closed
+			}
+
 			var frame frame
 			if err := json.NewDecoder(r).Decode(&frame); err != nil {
 				log.Error("handle me:", err)
@@ -107,6 +112,9 @@ func handleWsConn(ctx context.Context, conn *websocket.Conn, handler handlers, r
 				return
 			}
 		case <-stop:
+			if err := conn.Close(); err != nil {
+				log.Debugf("websocket close error", "error", err)
+			}
 			return
 		}
 	}
