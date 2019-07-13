@@ -3,6 +3,7 @@ package chain
 import (
 	"encoding/binary"
 	"fmt"
+	"sort"
 
 	"github.com/filecoin-project/go-lotus/chain/address"
 	"github.com/filecoin-project/go-lotus/lib/bls-signatures"
@@ -131,6 +132,17 @@ func (w *Wallet) Export(addr address.Address) ([]byte, error) {
 
 func (w *Wallet) Import(kdata []byte) (address.Address, error) {
 	panic("nyi")
+}
+
+func (w *Wallet) ListAddrs() []address.Address {
+	var out []address.Address
+	for a := range w.keys {
+		out = append(out, a)
+	}
+	sort.Slice(out, func(i, j int) bool {
+		return out[i].String() < out[j].String()
+	})
+	return out
 }
 
 func (w *Wallet) GenerateKey(typ string) (address.Address, error) {

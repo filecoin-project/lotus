@@ -20,6 +20,7 @@ type API struct {
 	Chain  *chain.ChainStore
 	PubSub *pubsub.PubSub
 	Mpool  *chain.MessagePool
+	Wallet *chain.Wallet
 }
 
 func (a *API) ChainSubmitBlock(ctx context.Context, blk *chain.BlockMsg) error {
@@ -99,6 +100,14 @@ func (a *API) NetPeers(context.Context) ([]peer.AddrInfo, error) {
 	}
 
 	return out, nil
+}
+
+func (a *API) WalletNew(ctx context.Context, typ string) (address.Address, error) {
+	return a.Wallet.GenerateKey(typ)
+}
+
+func (a *API) WalletList(ctx context.Context) ([]address.Address, error) {
+	return a.Wallet.ListAddrs(), nil
 }
 
 func (a *API) NetConnect(ctx context.Context, p peer.AddrInfo) error {
