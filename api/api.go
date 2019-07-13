@@ -61,9 +61,10 @@ type API interface {
 
 	// wallet
 
+	WalletNew(context.Context, string) (address.Address, error)
+	WalletList(context.Context) ([]address.Address, error)
 	// // import
 	// // export
-	// // list
 	// // (on cli - cmd to list associations)
 
 	// dht

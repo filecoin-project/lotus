@@ -24,6 +24,9 @@ type Struct struct {
 		MinerStart       func(context.Context, address.Address) error
 		MinerCreateBlock func(context.Context, address.Address, *chain.TipSet, []chain.Ticket, chain.ElectionProof, []*chain.SignedMessage) (*chain.BlockMsg, error)
 
+		WalletNew  func(context.Context, string) (address.Address, error)
+		WalletList func(context.Context) ([]address.Address, error)
+
 		NetPeers       func(context.Context) ([]peer.AddrInfo, error)
 		NetConnect     func(context.Context, peer.AddrInfo) error
 		NetAddrsListen func(context.Context) (peer.AddrInfo, error)
@@ -74,6 +77,14 @@ func (c *Struct) ID(ctx context.Context) (peer.ID, error) {
 // Version implements API.Version
 func (c *Struct) Version(ctx context.Context) (Version, error) {
 	return c.Internal.Version(ctx)
+}
+
+func (c *Struct) WalletNew(ctx context.Context, typ string) (address.Address, error) {
+	return c.Internal.WalletNew(ctx, typ)
+}
+
+func (c *Struct) WalletList(ctx context.Context) ([]address.Address, error) {
+	return c.Internal.WalletList(ctx)
 }
 
 var _ API = &Struct{}
