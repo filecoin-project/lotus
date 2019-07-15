@@ -103,7 +103,7 @@ func TestStorageMarketActorCreateMiner(t *testing.T) {
 
 	params := &StorageMinerConstructorParams{
 		Worker:     maddr,
-		SectorSize: types.NewInt(1024),
+		SectorSize: types.NewInt(SectorSize),
 		PeerID:     "fakepeerid",
 	}
 	enc, err := cbor.DumpObject(params)

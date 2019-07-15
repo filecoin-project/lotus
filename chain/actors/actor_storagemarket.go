@@ -8,6 +8,8 @@ import (
 	"github.com/libp2p/go-libp2p-core/peer"
 )
 
+const SectorSize = 1024
+
 func init() {
 	cbor.RegisterCborType(StorageMarketState{})
 	cbor.RegisterCborType(CreateStorageMinerParams{})
@@ -90,7 +92,7 @@ func (sma StorageMarketActor) CreateStorageMiner(act *types.Actor, vmctx types.V
 }
 
 func SupportedSectorSize(ssize types.BigInt) bool {
-	if ssize.Uint64() == 1024 {
+	if ssize.Uint64() == SectorSize {
 		return true
 	}
 	return false
