@@ -10,6 +10,7 @@ import (
 	"github.com/ipfs/go-cid"
 	hamt "github.com/ipfs/go-hamt-ipld"
 	cbor "github.com/ipfs/go-ipld-cbor"
+	mh "github.com/multiformats/go-multihash"
 	"github.com/pkg/errors"
 )
 
@@ -80,11 +81,16 @@ func (ia InitActor) Exec(act *types.Actor, vmctx types.VMContext, p *ExecParams)
 		return InvokeRet{}, err
 	}
 
+	head, err := cbor.WrapObject(struct{}{}, mh.SHA2_256, -1)
+	if err != nil {
+		return InvokeRet{}, err
+	}
+
 	// Set up the actor itself
 	actor := types.Actor{
 		Code:    p.Code,
 		Balance: vmctx.Message().Value,
-		Head:    cid.Undef,
+		Head:    head.Cid(),
 		Nonce:   0,
 	}
 

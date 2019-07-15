@@ -6,6 +6,7 @@ import (
 )
 
 func init() {
+	cbor.RegisterCborType(struct{}{})
 	cbor.RegisterCborType(Actor{})
 }
 
