@@ -35,9 +35,13 @@ func (s *RPCServer) handleWS(w http.ResponseWriter, r *http.Request) {
 		w.WriteHeader(500)
 		return
 	}
-	defer c.Close()
 
 	handleWsConn(r.Context(), c, s.methods, nil, nil)
+
+	if err := c.Close(); err != nil {
+		log.Error(err)
+		return
+	}
 }
 
 // TODO: return errors to clients per spec

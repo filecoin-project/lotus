@@ -169,8 +169,8 @@ func NewClient(addr string, namespace string, handler interface{}) (ClientCloser
 					requests <- clientRequest{
 						req: request{
 							Jsonrpc: "2.0",
-							Method: wsCancel,
-							Params: []param{{v: reflect.ValueOf(id)}},
+							Method:  wsCancel,
+							Params:  []param{{v: reflect.ValueOf(id)}},
 						},
 					}
 				}

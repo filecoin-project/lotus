@@ -15,16 +15,16 @@ const wsCancel = "xrpc.cancel"
 
 type frame struct {
 	// common
-	Jsonrpc string     `json:"jsonrpc"`
-	ID      *int64      `json:"id,omitempty"`
+	Jsonrpc string `json:"jsonrpc"`
+	ID      *int64 `json:"id,omitempty"`
 
 	// request
-	Method  string  `json:"method,omitempty"`
-	Params  []param `json:"params,omitempty"`
+	Method string  `json:"method,omitempty"`
+	Params []param `json:"params,omitempty"`
 
 	// response
-	Result  result     `json:"result,omitempty"`
-	Error   *respError `json:"error,omitempty"`
+	Result result     `json:"result,omitempty"`
+	Error  *respError `json:"error,omitempty"`
 }
 
 func handleWsConn(ctx context.Context, conn *websocket.Conn, handler handlers, requests <-chan clientRequest, stop <-chan struct{}) {
@@ -137,10 +137,9 @@ func handleWsConn(ctx context.Context, conn *websocket.Conn, handler handlers, r
 				nw := func(cb func(io.Writer)) {
 					cb(ioutil.Discard)
 				}
-				done := func(){}
+				done := cf
 				if frame.ID != nil {
 					nw = nextWriter
-
 
 					handlingLk.Lock()
 					handling[*frame.ID] = cf
@@ -150,7 +149,6 @@ func handleWsConn(ctx context.Context, conn *websocket.Conn, handler handlers, r
 						handlingLk.Lock()
 						defer handlingLk.Unlock()
 
-						cf := handling[*frame.ID]
 						cf()
 						delete(handling, *frame.ID)
 					}

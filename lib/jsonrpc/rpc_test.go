@@ -69,7 +69,7 @@ func TestRPC(t *testing.T) {
 		AddGet      func(int) int
 		StringMatch func(t TestType, i2 int64) (out TestOut, err error)
 	}
-	closer, err := NewClient("ws://" + testServ.Listener.Addr().String(), "SimpleServerHandler", &client)
+	closer, err := NewClient("ws://"+testServ.Listener.Addr().String(), "SimpleServerHandler", &client)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -132,7 +132,7 @@ func TestRPC(t *testing.T) {
 	var noret struct {
 		Add func(int)
 	}
-	closer, err = NewClient("ws://" + testServ.Listener.Addr().String(), "SimpleServerHandler", &noret)
+	closer, err = NewClient("ws://"+testServ.Listener.Addr().String(), "SimpleServerHandler", &noret)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -147,7 +147,7 @@ func TestRPC(t *testing.T) {
 	var noparam struct {
 		Add func()
 	}
-	closer, err = NewClient("ws://" + testServ.Listener.Addr().String(), "SimpleServerHandler", &noparam)
+	closer, err = NewClient("ws://"+testServ.Listener.Addr().String(), "SimpleServerHandler", &noparam)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -159,7 +159,7 @@ func TestRPC(t *testing.T) {
 	var erronly struct {
 		AddGet func() (int, error)
 	}
-	closer, err = NewClient("ws://" + testServ.Listener.Addr().String(), "SimpleServerHandler", &erronly)
+	closer, err = NewClient("ws://"+testServ.Listener.Addr().String(), "SimpleServerHandler", &erronly)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -173,7 +173,7 @@ func TestRPC(t *testing.T) {
 	var wrongtype struct {
 		Add func(string) error
 	}
-	closer, err = NewClient("ws://" + testServ.Listener.Addr().String(), "SimpleServerHandler", &wrongtype)
+	closer, err = NewClient("ws://"+testServ.Listener.Addr().String(), "SimpleServerHandler", &wrongtype)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -187,7 +187,7 @@ func TestRPC(t *testing.T) {
 	var notfound struct {
 		NotThere func(string) error
 	}
-	closer, err = NewClient("ws://" + testServ.Listener.Addr().String(), "SimpleServerHandler", &notfound)
+	closer, err = NewClient("ws://"+testServ.Listener.Addr().String(), "SimpleServerHandler", &notfound)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -236,7 +236,7 @@ func TestCtx(t *testing.T) {
 	var client struct {
 		Test func(ctx context.Context)
 	}
-	closer, err := NewClient("ws://" + testServ.Listener.Addr().String(), "CtxHandler", &client)
+	closer, err := NewClient("ws://"+testServ.Listener.Addr().String(), "CtxHandler", &client)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -259,7 +259,7 @@ func TestCtx(t *testing.T) {
 	var noCtxClient struct {
 		Test func()
 	}
-	closer, err = NewClient("ws://" + testServ.Listener.Addr().String(), "CtxHandler", &noCtxClient)
+	closer, err = NewClient("ws://"+testServ.Listener.Addr().String(), "CtxHandler", &noCtxClient)
 	if err != nil {
 		t.Fatal(err)
 	}
