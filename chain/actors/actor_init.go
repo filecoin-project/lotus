@@ -43,6 +43,14 @@ type ExecParams struct {
 	Params []byte
 }
 
+func (ep *ExecParams) UnmarshalCBOR(b []byte) (int, error) {
+	if err := cbor.DecodeInto(b, ep); err != nil {
+		return 0, err
+	}
+
+	return len(b), nil
+}
+
 func CreateExecParams(act cid.Cid, obj interface{}) ([]byte, error) {
 	encparams, err := cbor.DumpObject(obj)
 	if err != nil {
