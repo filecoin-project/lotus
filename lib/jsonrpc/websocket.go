@@ -5,9 +5,13 @@ import (
 	"encoding/json"
 	"errors"
 	"io"
+	"io/ioutil"
+	"sync"
 
 	"github.com/gorilla/websocket"
 )
+
+const wsCancel = "xrpc.cancel"
 
 type frame struct {
 	// common
@@ -42,9 +46,50 @@ func handleWsConn(ctx context.Context, conn *websocket.Conn, handler handlers, r
 		incoming <- r
 	}
 
+	var writeLk sync.Mutex
+	nextWriter := func(cb func(io.Writer)) {
+		writeLk.Lock()
+		defer writeLk.Unlock()
+
+		wcl, err := conn.NextWriter(websocket.TextMessage)
+		if err != nil {
+			log.Error("handle me:", err)
+			return
+		}
+
+		cb(wcl)
+
+		if err := wcl.Close(); err != nil {
+			log.Error("handle me:", err)
+			return
+		}
+	}
+
 	go nextMessage()
 
 	inflight := map[int64]clientRequest{}
+	handling := map[int64]context.CancelFunc{}
+	var handlingLk sync.Mutex
+
+	cancelCtx := func(req frame) {
+		if req.ID != nil {
+			log.Warnf("%s call with ID set, won't respond", wsCancel)
+		}
+
+		var id int64
+		if err := json.Unmarshal(req.Params[0].data, &id); err != nil {
+			log.Error("handle me:", err)
+			return
+		}
+
+		handlingLk.Lock()
+		defer handlingLk.Unlock()
+
+		cf, ok := handling[id]
+		if ok {
+			cf()
+		}
+	}
 
 	for {
 		select {
@@ -62,33 +107,8 @@ func handleWsConn(ctx context.Context, conn *websocket.Conn, handler handlers, r
 				return
 			}
 
-			if frame.Method != "" {
-				// call
-				req := request{
-					Jsonrpc: frame.Jsonrpc,
-					ID:      frame.ID,
-					Method:  frame.Method,
-					Params:  frame.Params,
-				}
-
-				// TODO: ignore ID
-				wcl, err := conn.NextWriter(websocket.TextMessage)
-				if err != nil {
-					log.Error("handle me:", err)
-					return
-				}
-
-				handler.handle(ctx, req, wcl, func(w io.Writer, req *request, code int, err error) {
-					log.Error("handle me:", err) // TODO: seriously
-					return
-				})
-
-				if err := wcl.Close(); err != nil {
-					log.Error("handle me:", err)
-					return
-				}
-			} else {
-				// response
+			switch frame.Method {
+			case "": // Response to our call
 				req, ok := inflight[*frame.ID]
 				if !ok {
 					log.Error("client got unknown ID in response")
@@ -102,11 +122,48 @@ func handleWsConn(ctx context.Context, conn *websocket.Conn, handler handlers, r
 					Error:   frame.Error,
 				}
 				delete(inflight, *frame.ID)
+			case wsCancel:
+				cancelCtx(frame)
+			default: // Remote call
+				req := request{
+					Jsonrpc: frame.Jsonrpc,
+					ID:      frame.ID,
+					Method:  frame.Method,
+					Params:  frame.Params,
+				}
+
+				ctx, cf := context.WithCancel(ctx)
+
+				nw := func(cb func(io.Writer)) {
+					cb(ioutil.Discard)
+				}
+				done := func(){}
+				if frame.ID != nil {
+					nw = nextWriter
+
+
+					handlingLk.Lock()
+					handling[*frame.ID] = cf
+					handlingLk.Unlock()
+
+					done = func() {
+						handlingLk.Lock()
+						defer handlingLk.Unlock()
+
+						cf := handling[*frame.ID]
+						cf()
+						delete(handling, *frame.ID)
+					}
+				}
+
+				go handler.handle(ctx, req, nw, rpcError, done)
 			}
 
 			go nextMessage()
 		case req := <-requests:
-			inflight[*req.req.ID] = req
+			if req.req.ID != nil {
+				inflight[*req.req.ID] = req
+			}
 			if err := conn.WriteJSON(req.req); err != nil {
 				log.Error("handle me:", err)
 				return

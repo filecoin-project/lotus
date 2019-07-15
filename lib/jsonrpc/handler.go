@@ -92,19 +92,25 @@ func (h handlers) register(namespace string, r interface{}) {
 
 // Handle
 
-type rpcErrFunc func(w io.Writer, req *request, code int, err error)
+type rpcErrFunc func(w func(func(io.Writer)), req *request, code int, err error)
 
 func (h handlers) handleReader(ctx context.Context, r io.Reader, w io.Writer, rpcError rpcErrFunc) {
+	wf := func(cb func(io.Writer)) {
+		cb(w)
+	}
+
 	var req request
 	if err := json.NewDecoder(r).Decode(&req); err != nil {
-		rpcError(w, &req, rpcParseError, err)
+		rpcError(wf, &req, rpcParseError, err)
 		return
 	}
 
-	h.handle(ctx, req, w, rpcError)
+	h.handle(ctx, req, wf, rpcError, func() {})
 }
 
-func (h handlers) handle(ctx context.Context, req request, w io.Writer, rpcError rpcErrFunc) {
+func (h handlers) handle(ctx context.Context, req request, w func(func(io.Writer)), rpcError rpcErrFunc, done func()) {
+	defer done()
+
 	handler, ok := h[req.Method]
 	if !ok {
 		rpcError(w, &req, rpcMethodNotFound, fmt.Errorf("method '%s' not found", req.Method))
@@ -159,8 +165,10 @@ func (h handlers) handle(ctx context.Context, req request, w io.Writer, rpcError
 		resp.Result = callResult[handler.valOut].Interface()
 	}
 
-	if err := json.NewEncoder(w).Encode(resp); err != nil {
-		fmt.Println(err)
-		return
-	}
+	w(func(w io.Writer) {
+		if err := json.NewEncoder(w).Encode(resp); err != nil {
+			fmt.Println(err)
+			return
+		}
+	})
 }

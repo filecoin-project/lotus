@@ -47,25 +47,30 @@ func (s *RPCServer) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	s.methods.handleReader(r.Context(), r.Body, w, s.rpcError)
+	s.methods.handleReader(r.Context(), r.Body, w, rpcError)
 }
 
-func (s *RPCServer) rpcError(w io.Writer, req *request, code int, err error) {
-	w.(http.ResponseWriter).WriteHeader(500)
-	if req.ID == nil { // notification
-		return
-	}
+func rpcError(wf func(func(io.Writer)), req *request, code int, err error) {
+	wf(func(w io.Writer) {
+		if hw, ok := w.(http.ResponseWriter); ok {
+			hw.WriteHeader(500)
+		}
 
-	resp := response{
-		Jsonrpc: "2.0",
-		ID:      *req.ID,
-		Error: &respError{
-			Code:    code,
-			Message: err.Error(),
-		},
-	}
+		if req.ID == nil { // notification
+			return
+		}
 
-	_ = json.NewEncoder(w).Encode(resp)
+		resp := response{
+			Jsonrpc: "2.0",
+			ID:      *req.ID,
+			Error: &respError{
+				Code:    code,
+				Message: err.Error(),
+			},
+		}
+
+		_ = json.NewEncoder(w).Encode(resp)
+	})
 }
 
 // Register registers new RPC handler

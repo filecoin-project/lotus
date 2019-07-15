@@ -151,14 +151,40 @@ func NewClient(addr string, namespace string, handler interface{}) (ClientCloser
 				req:   req,
 				ready: rchan,
 			}
-			resp := <- rchan
+			var ctxDone <-chan struct{}
+			var resp clientResponse
+
+			if hasCtx == 1 {
+				ctxDone = args[0].Interface().(context.Context).Done()
+			}
+
+		loop:
+			for {
+				select {
+				case resp = <-rchan:
+					break loop
+				case <-ctxDone: // send cancel request
+					ctxDone = nil
+
+					requests <- clientRequest{
+						req: request{
+							Jsonrpc: "2.0",
+							Method: wsCancel,
+							Params: []param{{v: reflect.ValueOf(id)}},
+						},
+					}
+				}
+			}
 			var rval reflect.Value
 
 			if valOut != -1 {
-				log.Debugw("rpc result", "type", ftyp.Out(valOut))
 				rval = reflect.New(ftyp.Out(valOut))
-				if err := json.Unmarshal(resp.Result, rval.Interface()); err != nil {
-					return processError(err)
+
+				if resp.Result != nil {
+					log.Debugw("rpc result", "type", ftyp.Out(valOut))
+					if err := json.Unmarshal(resp.Result, rval.Interface()); err != nil {
+						return processError(err)
+					}
 				}
 			}
 
