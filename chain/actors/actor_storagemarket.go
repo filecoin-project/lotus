@@ -34,14 +34,6 @@ type CreateStorageMinerParams struct {
 	PeerID     peer.ID
 }
 
-func (p *CreateStorageMinerParams) UnmarshalCBOR(b []byte) (int, error) {
-	if err := cbor.DecodeInto(b, p); err != nil {
-		return 0, err
-	}
-
-	return len(b), nil
-}
-
 func (sma StorageMarketActor) CreateStorageMiner(act *types.Actor, vmctx types.VMContext, params *CreateStorageMinerParams) (types.InvokeRet, error) {
 	if !SupportedSectorSize(params.SectorSize) {
 		//Fatal("Unsupported sector size")
