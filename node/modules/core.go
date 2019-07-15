@@ -4,7 +4,7 @@ import (
 	"context"
 	"github.com/ipfs/go-blockservice"
 	"github.com/ipfs/go-datastore/namespace"
-	"github.com/ipfs/go-ipfs/filestore"
+	"github.com/ipfs/go-filestore"
 	"github.com/ipfs/go-merkledag"
 	"path/filepath"
 

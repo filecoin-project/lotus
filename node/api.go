@@ -2,7 +2,7 @@ package node
 
 import (
 	"context"
-	"github.com/ipfs/go-ipfs/filestore"
+	"github.com/ipfs/go-filestore"
 
 	"github.com/filecoin-project/go-lotus/api"
 	"github.com/filecoin-project/go-lotus/build"
@@ -20,12 +20,12 @@ import (
 type API struct {
 	client.LocalStorage
 
-	Host   host.Host
-	Chain  *chain.ChainStore
-	PubSub *pubsub.PubSub
+	Host      host.Host
+	Chain     *chain.ChainStore
+	PubSub    *pubsub.PubSub
 	Filestore *filestore.Filestore
-	Mpool  *chain.MessagePool
-	Wallet *chain.Wallet
+	Mpool     *chain.MessagePool
+	Wallet    *chain.Wallet
 }
 
 func (a *API) ChainSubmitBlock(ctx context.Context, blk *chain.BlockMsg) error {

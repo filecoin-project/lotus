@@ -3,7 +3,7 @@ package node
 import (
 	"context"
 	"errors"
-	"github.com/ipfs/go-ipfs/filestore"
+	"github.com/ipfs/go-filestore"
 	"reflect"
 	"time"
 

@@ -11,9 +11,9 @@ require (
 	github.com/ipfs/go-cid v0.0.2
 	github.com/ipfs/go-datastore v0.0.5
 	github.com/ipfs/go-ds-badger v0.0.5
+	github.com/ipfs/go-filestore v0.0.2
 	github.com/ipfs/go-fs-lock v0.0.1
 	github.com/ipfs/go-hamt-ipld v0.0.0-20190613164304-cd074602062f
-	github.com/ipfs/go-ipfs v0.4.22-0.20190710041203-0e9175467385
 	github.com/ipfs/go-ipfs-blockstore v0.0.1
 	github.com/ipfs/go-ipfs-chunker v0.0.1
 	github.com/ipfs/go-ipfs-exchange-interface v0.0.1
@@ -26,6 +26,7 @@ require (
 	github.com/ipfs/go-merkledag v0.1.0
 	github.com/ipfs/go-unixfs v0.1.0
 	github.com/ipsn/go-secp256k1 v0.0.0-20180726113642-9d62b9f0bc52
+	github.com/libp2p/go-eventbus v0.0.3 // indirect
 	github.com/libp2p/go-libp2p v0.2.0
 	github.com/libp2p/go-libp2p-circuit v0.1.0
 	github.com/libp2p/go-libp2p-connmgr v0.1.0
@@ -40,6 +41,7 @@ require (
 	github.com/libp2p/go-libp2p-record v0.1.0
 	github.com/libp2p/go-libp2p-routing-helpers v0.1.0
 	github.com/libp2p/go-libp2p-secio v0.1.0
+	github.com/libp2p/go-libp2p-swarm v0.1.1 // indirect
 	github.com/libp2p/go-libp2p-tls v0.1.0
 	github.com/libp2p/go-libp2p-yamux v0.2.1
 	github.com/libp2p/go-maddr-filter v0.0.5
@@ -56,7 +58,11 @@ require (
 	github.com/whyrusleeping/pubsub v0.0.0-20131020042734-02de8aa2db3d
 	github.com/whyrusleeping/sharray v0.0.0-20190520213710-bd32aab369f8
 	go.opencensus.io v0.22.0 // indirect
+	go.uber.org/dig v1.7.0 // indirect
 	go.uber.org/fx v1.9.0
+	go.uber.org/goleak v0.10.0 // indirect
+	go4.org v0.0.0-20190313082347-94abd6928b1d // indirect
+	golang.org/x/sync v0.0.0-20190423024810-112230192c58 // indirect
 	golang.org/x/xerrors v0.0.0-20190513163551-3ee3066db522
 	google.golang.org/appengine v1.4.0 // indirect
 	gopkg.in/urfave/cli.v2 v2.0.0-20180128182452-d3ae77c26ac8
