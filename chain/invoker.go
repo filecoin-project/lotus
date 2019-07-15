@@ -7,6 +7,7 @@ import (
 
 	"github.com/filecoin-project/go-lotus/chain/types"
 	"github.com/ipfs/go-cid"
+	cbor "github.com/ipfs/go-ipld-cbor"
 )
 
 type invoker struct {
@@ -52,15 +53,10 @@ func (inv *invoker) register(c cid.Cid, instance Invokee) {
 	inv.builtInCode[c] = code
 }
 
-type unmarshalCBOR interface {
-	UnmarshalCBOR([]byte) (int, error)
-}
-
 type Invokee interface {
 	Exports() []interface{}
 }
 
-var tUnmarhsalCBOR = reflect.TypeOf((*unmarshalCBOR)(nil)).Elem()
 var tVMContext = reflect.TypeOf((*types.VMContext)(nil)).Elem()
 var tError = reflect.TypeOf((*error)(nil)).Elem()
 
@@ -91,12 +87,8 @@ func (*invoker) transform(instance Invokee) (nativeCode, error) {
 			return nil, newErr("second argument should be types.VMContext")
 		}
 
-		if !t.In(2).Implements(tUnmarhsalCBOR) {
-			return nil, newErr("parameter doesn't implement UnmarshalCBOR")
-		}
-
 		if t.In(2).Kind() != reflect.Ptr {
-			return nil, newErr("parameter has to be a pointer")
+			return nil, newErr("parameter has to be a pointer to parameter")
 		}
 
 		if t.NumOut() != 2 {
@@ -120,7 +112,7 @@ func (*invoker) transform(instance Invokee) (nativeCode, error) {
 				param := reflect.New(paramT)
 
 				inBytes := in[2].Interface().([]byte)
-				_, err := param.Interface().(unmarshalCBOR).UnmarshalCBOR(inBytes)
+				err := cbor.DecodeInto(inBytes, param.Interface())
 				if err != nil {
 					return []reflect.Value{
 						reflect.ValueOf(InvokeRet{}),
@@ -129,6 +121,7 @@ func (*invoker) transform(instance Invokee) (nativeCode, error) {
 						reflect.ValueOf(&err).Elem(),
 					}
 				}
+
 				return meth.Call([]reflect.Value{
 					in[0], in[1], param,
 				})
