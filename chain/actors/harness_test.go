@@ -153,6 +153,7 @@ func TestVMInvokeHarness(t *testing.T) {
 	}
 
 	smas := &StorageMinerActorState{}
+	cbor.DecodeInto(hblock.RawData(), smas)
 	if smas.Owner != h.From {
 		t.Fatalf("Owner should be %s, but is %s", h.From, smas.Owner)
 	}
