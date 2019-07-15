@@ -1,4 +1,4 @@
-package chain
+package actors
 
 import (
 	"github.com/filecoin-project/go-lotus/chain/address"
@@ -46,7 +46,4 @@ func init() {
 	StorageMinerCodeCid = mustSum("sminer")
 	MultisigActorCodeCid = mustSum("multisig")
 	InitActorCodeCid = mustSum("init")
-}
-
-type VMActor struct {
 }

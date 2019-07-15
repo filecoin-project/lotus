@@ -21,12 +21,12 @@ func init() {
 
 var addressAtlasEntry = atlas.BuildEntry(Address{}).Transform().
 	TransformMarshal(atlas.MakeMarshalTransformFunc(
-		func(a Address) ([]byte, error) {
-			return a.Bytes(), nil
+		func(a Address) (string, error) {
+			return string(a.Bytes()), nil
 		})).
 	TransformUnmarshal(atlas.MakeUnmarshalTransformFunc(
-		func(x []byte) (Address, error) {
-			return NewFromBytes(x)
+		func(x string) (Address, error) {
+			return NewFromBytes([]byte(x))
 		})).
 	Complete()
 

@@ -9,6 +9,7 @@ import (
 	"github.com/pkg/errors"
 	sharray "github.com/whyrusleeping/sharray"
 
+	"github.com/filecoin-project/go-lotus/chain/actors"
 	"github.com/filecoin-project/go-lotus/chain/address"
 	"github.com/filecoin-project/go-lotus/chain/types"
 	bls "github.com/filecoin-project/go-lotus/lib/bls-signatures"
@@ -32,7 +33,7 @@ func MinerCreateBlock(cs *ChainStore, miner address.Address, parents *TipSet, ti
 	}
 
 	// apply miner reward
-	if err := vm.TransferFunds(NetworkAddress, miner, miningRewardForBlock(parents)); err != nil {
+	if err := vm.TransferFunds(actors.NetworkAddress, miner, miningRewardForBlock(parents)); err != nil {
 		return nil, err
 	}
 

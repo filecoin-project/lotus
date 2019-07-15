@@ -5,20 +5,18 @@ import (
 	"fmt"
 	"reflect"
 
+	actors "github.com/filecoin-project/go-lotus/chain/actors"
 	"github.com/filecoin-project/go-lotus/chain/types"
 	"github.com/ipfs/go-cid"
+	cbor "github.com/ipfs/go-ipld-cbor"
 )
 
 type invoker struct {
 	builtInCode map[cid.Cid]nativeCode
 }
 
-type invokeFunc func(act *types.Actor, vmctx *VMContext, params []byte) (InvokeRet, error)
+type invokeFunc func(act *types.Actor, vmctx *VMContext, params []byte) (types.InvokeRet, error)
 type nativeCode []invokeFunc
-type InvokeRet struct {
-	result     []byte
-	returnCode byte
-}
 
 func newInvoker() *invoker {
 	inv := &invoker{
@@ -26,19 +24,20 @@ func newInvoker() *invoker {
 	}
 
 	// add builtInCode using: register(cid, singleton)
-	inv.register(InitActorCodeCid, InitActor{})
+	inv.register(actors.InitActorCodeCid, actors.InitActor{})
+	inv.register(actors.StorageMarketActorCodeCid, actors.StorageMarketActor{})
 
 	return inv
 }
 
-func (inv *invoker) Invoke(act *types.Actor, vmctx *VMContext, method uint64, params []byte) (InvokeRet, error) {
+func (inv *invoker) Invoke(act *types.Actor, vmctx *VMContext, method uint64, params []byte) (types.InvokeRet, error) {
 
 	code, ok := inv.builtInCode[act.Code]
 	if !ok {
-		return InvokeRet{}, errors.New("no code for actor")
+		return types.InvokeRet{}, errors.New("no code for actor")
 	}
 	if method >= uint64(len(code)) || code[method] == nil {
-		return InvokeRet{}, fmt.Errorf("no method %d on actor", method)
+		return types.InvokeRet{}, fmt.Errorf("no method %d on actor", method)
 	}
 	return code[method](act, vmctx, params)
 
@@ -52,15 +51,10 @@ func (inv *invoker) register(c cid.Cid, instance Invokee) {
 	inv.builtInCode[c] = code
 }
 
-type unmarshalCBOR interface {
-	UnmarshalCBOR([]byte) (int, error)
-}
-
 type Invokee interface {
 	Exports() []interface{}
 }
 
-var tUnmarhsalCBOR = reflect.TypeOf((*unmarshalCBOR)(nil)).Elem()
 var tVMContext = reflect.TypeOf((*types.VMContext)(nil)).Elem()
 var tError = reflect.TypeOf((*error)(nil)).Elem()
 
@@ -91,19 +85,15 @@ func (*invoker) transform(instance Invokee) (nativeCode, error) {
 			return nil, newErr("second argument should be types.VMContext")
 		}
 
-		if !t.In(2).Implements(tUnmarhsalCBOR) {
-			return nil, newErr("parameter doesn't implement UnmarshalCBOR")
-		}
-
 		if t.In(2).Kind() != reflect.Ptr {
-			return nil, newErr("parameter has to be a pointer")
+			return nil, newErr("parameter has to be a pointer to parameter")
 		}
 
 		if t.NumOut() != 2 {
 			return nil, newErr("wrong number of outputs should be: " +
 				"(InvokeRet, error)")
 		}
-		if t.Out(0) != reflect.TypeOf(InvokeRet{}) {
+		if t.Out(0) != reflect.TypeOf(types.InvokeRet{}) {
 			return nil, newErr("first output should be of type InvokeRet")
 		}
 		if !t.Out(1).Implements(tError) {
@@ -120,15 +110,16 @@ func (*invoker) transform(instance Invokee) (nativeCode, error) {
 				param := reflect.New(paramT)
 
 				inBytes := in[2].Interface().([]byte)
-				_, err := param.Interface().(unmarshalCBOR).UnmarshalCBOR(inBytes)
+				err := cbor.DecodeInto(inBytes, param.Interface())
 				if err != nil {
 					return []reflect.Value{
-						reflect.ValueOf(InvokeRet{}),
+						reflect.ValueOf(types.InvokeRet{}),
 						// Below is a hack, fixed in Go 1.13
 						// https://git.io/fjXU6
 						reflect.ValueOf(&err).Elem(),
 					}
 				}
+
 				return meth.Call([]reflect.Value{
 					in[0], in[1], param,
 				})
