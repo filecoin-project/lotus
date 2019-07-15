@@ -140,14 +140,11 @@ func TestVMInvokeHarness(t *testing.T) {
 	}
 
 	state := h.Execute()
-	_ = state
-	/*
-		act, err := state.GetActor(outaddr)
-		if err != nil {
-			t.Fatal(err)
-		}
-		if act.Code != StorageMinerCodeCid {
-			t.Fatalf("Expected correct code, got %s, instead of %s", act.Code, StorageMinerCodeCid)
-		}
-	*/
+	act, err := state.GetActor(outaddr)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if act.Code != StorageMinerCodeCid {
+		t.Fatalf("Expected correct code, got %s, instead of %s", act.Code, StorageMinerCodeCid)
+	}
 }
