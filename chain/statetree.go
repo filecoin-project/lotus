@@ -120,6 +120,7 @@ func (st *StateTree) GetActor(addr address.Address) (*types.Actor, error) {
 
 func (st *StateTree) Flush() (cid.Cid, error) {
 	for addr, act := range st.actorcache {
+		fmt.Println("FLUSHING ACTOR CACHE: ", addr.String(), act.Head)
 		if err := st.root.Set(context.TODO(), string(addr.Bytes()), act); err != nil {
 			return cid.Undef, err
 		}

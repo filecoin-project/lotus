@@ -24,10 +24,12 @@ var EmptyCBOR cid.Cid
 func init() {
 	cbor.RegisterCborType(ExecParams{})
 	cbor.RegisterCborType(struct{}{})
-	n, err := cbor.WrapObject(struct{}{}, mh.SHA2_256, -1)
+
+	n, err := cbor.WrapObject(map[string]string{}, mh.SHA2_256, -1)
 	if err != nil {
 		panic(err)
 	}
+
 	EmptyCBOR = n.Cid()
 }
 
@@ -141,6 +143,7 @@ func (ia InitActor) Exec(act *types.Actor, vmctx types.VMContext, p *ExecParams)
 		return types.InvokeRet{}, errors.Wrap(err, "inserting new actor into state tree")
 	}
 
+	fmt.Println("PARAMS: ", string(p.Params))
 	_, _, err = vmctx.Send(idAddr, 0, vmctx.Message().Value, p.Params)
 	if err != nil {
 		return types.InvokeRet{}, err

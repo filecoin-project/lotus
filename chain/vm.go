@@ -93,8 +93,13 @@ func (vmc *VMContext) Send(to address.Address, method uint64, value types.BigInt
 	if err != nil {
 		return nil, 0, err
 	}
+
+	toAct.Head = nvmctx.Storage().GetHead()
+
 	// We need probably copy here the content from sub-vmcontext to this vm-context
 	// I think, @why??
+
+	return res, ret, err
 }
 
 // BlockHeight returns the height of the block this message was added to the chain in
@@ -246,11 +251,43 @@ func (vm *VM) Flush(ctx context.Context) (cid.Cid, error) {
 		return cid.Undef, xerrors.Errorf("flushing vm: %w", err)
 	}
 
-	if err := ipld.Copy(ctx, from, to, root); err != nil {
+	if err := Copy(ctx, from, to, root); err != nil {
 		return cid.Undef, xerrors.Errorf("copying tree: %w", err)
 	}
 
 	return root, nil
+}
+
+func Copy(ctx context.Context, from, to ipld.DAGService, root cid.Cid) error {
+	if root.Prefix().MhType == 0 {
+		// identity cid, skip
+		return nil
+	}
+	node, err := from.Get(ctx, root)
+	if err != nil {
+		fmt.Printf("fail: %#v\n", root.Prefix())
+		return errors.Wrapf(err, "get %s", root)
+	}
+	links := node.Links()
+	for _, link := range links {
+		_, err := to.Get(ctx, link.Cid)
+		switch err {
+		default:
+			return err
+		case nil:
+			continue
+		case ipld.ErrNotFound:
+			// continue
+		}
+		if err := Copy(ctx, from, to, link.Cid); err != nil {
+			return err
+		}
+	}
+	err = to.Add(ctx, node)
+	if err != nil {
+		return err
+	}
+	return nil
 }
 
 func (vm *VM) TransferFunds(from, to address.Address, amt types.BigInt) error {
