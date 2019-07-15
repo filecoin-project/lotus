@@ -13,13 +13,22 @@ import (
 	hamt "github.com/ipfs/go-hamt-ipld"
 	cbor "github.com/ipfs/go-ipld-cbor"
 	logging "github.com/ipfs/go-log"
+	mh "github.com/multiformats/go-multihash"
 	"github.com/pkg/errors"
 )
 
 var log = logging.Logger("actors")
 
+var EmptyCBOR cid.Cid
+
 func init() {
 	cbor.RegisterCborType(ExecParams{})
+	cbor.RegisterCborType(struct{}{})
+	n, err := cbor.WrapObject(struct{}{}, mh.SHA2_256, -1)
+	if err != nil {
+		panic(err)
+	}
+	EmptyCBOR = n.Cid()
 }
 
 type InitActor struct{}
@@ -102,8 +111,12 @@ func (ia InitActor) Exec(act *types.Actor, vmctx types.VMContext, p *ExecParams)
 	actor := types.Actor{
 		Code:    p.Code,
 		Balance: vmctx.Message().Value,
-		Head:    cid.Undef,
+		Head:    EmptyCBOR,
 		Nonce:   0,
+	}
+	_, err = vmctx.Storage().Put(struct{}{})
+	if err != nil {
+		return types.InvokeRet{}, err
 	}
 
 	// The call to the actors constructor will set up the initial state
@@ -126,6 +139,11 @@ func (ia InitActor) Exec(act *types.Actor, vmctx types.VMContext, p *ExecParams)
 
 	if err := state.SetActor(idAddr, &actor); err != nil {
 		return types.InvokeRet{}, errors.Wrap(err, "inserting new actor into state tree")
+	}
+
+	_, _, err = vmctx.Send(idAddr, 0, vmctx.Message().Value, p.Params)
+	if err != nil {
+		return types.InvokeRet{}, err
 	}
 
 	c, err := vmctx.Storage().Put(self)

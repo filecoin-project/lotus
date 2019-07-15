@@ -13,7 +13,6 @@ const SectorSize = 1024
 func init() {
 	cbor.RegisterCborType(StorageMarketState{})
 	cbor.RegisterCborType(CreateStorageMinerParams{})
-	cbor.RegisterCborType(struct{}{})
 }
 
 type StorageMarketActor struct{}

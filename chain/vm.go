@@ -8,6 +8,7 @@ import (
 	"github.com/filecoin-project/go-lotus/chain/address"
 	"github.com/filecoin-project/go-lotus/chain/types"
 	"github.com/filecoin-project/go-lotus/lib/bufbstore"
+	"golang.org/x/xerrors"
 
 	bserv "github.com/ipfs/go-blockservice"
 	cid "github.com/ipfs/go-cid"
@@ -88,7 +89,12 @@ func (vmc *VMContext) Send(to address.Address, method uint64, value types.BigInt
 
 	nvmctx := vmc.vm.makeVMContext(toAct.Head, msg)
 
-	return vmc.vm.Invoke(toAct, nvmctx, method, params)
+	res, ret, err := vmc.vm.Invoke(toAct, nvmctx, method, params)
+	if err != nil {
+		return nil, 0, err
+	}
+	// We need probably copy here the content from sub-vmcontext to this vm-context
+	// I think, @why??
 }
 
 // BlockHeight returns the height of the block this message was added to the chain in
@@ -237,11 +243,11 @@ func (vm *VM) Flush(ctx context.Context) (cid.Cid, error) {
 
 	root, err := vm.cstate.Flush()
 	if err != nil {
-		return cid.Undef, err
+		return cid.Undef, xerrors.Errorf("flushing vm: %w", err)
 	}
 
 	if err := ipld.Copy(ctx, from, to, root); err != nil {
-		return cid.Undef, err
+		return cid.Undef, xerrors.Errorf("copying tree: %w", err)
 	}
 
 	return root, nil

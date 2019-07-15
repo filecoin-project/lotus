@@ -4,7 +4,6 @@ import (
 	"github.com/filecoin-project/go-lotus/chain/address"
 	"github.com/filecoin-project/go-lotus/chain/types"
 
-	"github.com/ipfs/go-cid"
 	cbor "github.com/ipfs/go-ipld-cbor"
 	"github.com/libp2p/go-libp2p-core/peer"
 )
@@ -56,7 +55,8 @@ type StorageMinerActorState struct {
 	//NextDoneSet BitField
 
 	// Deals this miner has been slashed for since the last post submission.
-	ArbitratedDeals map[cid.Cid]struct{}
+	//TODO: unsupported map key type "Cid" (if you want to use struct keys, your atlas needs a transform to string)
+	//ArbitratedDeals map[cid.Cid]struct{}
 
 	// Amount of power this miner has.
 	Power types.BigInt
@@ -77,6 +77,12 @@ type StorageMinerConstructorParams struct {
 	PeerID     peer.ID
 }
 
+func (sma StorageMinerActor) Exports() []interface{} {
+	return []interface{}{
+		sma.StorageMinerActor,
+	}
+}
+
 func (sma StorageMinerActor) StorageMinerActor(act *types.Actor, vmctx types.VMContext, params *StorageMinerConstructorParams) (types.InvokeRet, error) {
 	var self StorageMinerActorState
 	self.Owner = vmctx.Message().From
@@ -90,7 +96,7 @@ func (sma StorageMinerActor) StorageMinerActor(act *types.Actor, vmctx types.VMC
 		return types.InvokeRet{}, err
 	}
 
-	if err := storage.Commit(cid.Undef, c); err != nil {
+	if err := storage.Commit(EmptyCBOR, c); err != nil {
 		return types.InvokeRet{}, err
 	}
 

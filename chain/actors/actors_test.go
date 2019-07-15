@@ -58,9 +58,14 @@ func TestVMInvokeMethod(t *testing.T) {
 	vm, addrs := setupVMTestEnv(t)
 	from := addrs[0]
 
+	cenc, err := cbor.DumpObject(StorageMinerConstructorParams{})
+	if err != nil {
+		t.Fatal(err)
+	}
+
 	execparams := &ExecParams{
 		Code:   StorageMinerCodeCid,
-		Params: []byte("cats"),
+		Params: cenc,
 	}
 	enc, err := cbor.DumpObject(execparams)
 	if err != nil {

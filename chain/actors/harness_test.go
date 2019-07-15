@@ -71,12 +71,12 @@ func (h *Harness) Execute() *chain.StateTree {
 	for i, step := range h.Steps {
 		h.currStep = i
 		ret, err := h.vm.ApplyMessage(&step.M)
-		step.Ret(h.t, ret)
 		step.Err(h.t, err)
+		step.Ret(h.t, ret)
 	}
 	stateroot, err := h.vm.Flush(context.TODO())
 	if err != nil {
-		h.t.Fatal(err)
+		h.t.Fatalf("%+v", err)
 	}
 	cst := hamt.CSTFromBstore(h.bs)
 	state, err := chain.LoadStateTree(cst, stateroot)
@@ -95,7 +95,7 @@ func (h *Harness) DumpObject(obj interface{}) []byte {
 }
 func (h *Harness) NoError(t *testing.T, err error) {
 	if err != nil {
-		t.Fatalf("Expected no errors from applying message in step %d. Got %s", h.currStep, err)
+		t.Fatalf("Error in step %d: %s", h.currStep, err)
 	}
 }
 
@@ -111,13 +111,16 @@ func TestVMInvokeHarness(t *testing.T) {
 				Params: h.DumpObject(
 					&ExecParams{
 						Code:   StorageMinerCodeCid,
-						Params: []byte("cats"),
+						Params: h.DumpObject(&StorageMinerConstructorParams{}),
 					}),
 				GasPrice: types.NewInt(1),
 				GasLimit: types.NewInt(1),
 				Value:    types.NewInt(0),
 			},
 			Ret: func(t *testing.T, ret *types.MessageReceipt) {
+				if ret == nil {
+					t.Fatal("ret is nil")
+				}
 				if ret.ExitCode != 0 {
 					t.Fatal("invocation failed: ", ret.ExitCode)
 				}

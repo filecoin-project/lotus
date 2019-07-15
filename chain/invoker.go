@@ -1,7 +1,6 @@
 package chain
 
 import (
-	"errors"
 	"fmt"
 	"reflect"
 
@@ -26,6 +25,7 @@ func newInvoker() *invoker {
 	// add builtInCode using: register(cid, singleton)
 	inv.register(actors.InitActorCodeCid, actors.InitActor{})
 	inv.register(actors.StorageMarketActorCodeCid, actors.StorageMarketActor{})
+	inv.register(actors.StorageMinerCodeCid, actors.StorageMinerActor{})
 
 	return inv
 }
@@ -34,7 +34,7 @@ func (inv *invoker) Invoke(act *types.Actor, vmctx *VMContext, method uint64, pa
 
 	code, ok := inv.builtInCode[act.Code]
 	if !ok {
-		return types.InvokeRet{}, errors.New("no code for actor")
+		return types.InvokeRet{}, fmt.Errorf("no code for actor %s", act.Code)
 	}
 	if method >= uint64(len(code)) || code[method] == nil {
 		return types.InvokeRet{}, fmt.Errorf("no method %d on actor", method)
