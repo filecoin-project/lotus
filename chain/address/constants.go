@@ -66,7 +66,7 @@ var (
 )
 
 // UndefAddressString is the string used to represent an empty address when encoded to a string.
-var UndefAddressString = "empty"
+var UndefAddressString = "<empty>"
 
 // PayloadHashLength defines the hash length taken over addresses using the Actor and SECP256K1 protocols.
 const PayloadHashLength = 20

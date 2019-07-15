@@ -147,4 +147,13 @@ func TestVMInvokeHarness(t *testing.T) {
 	if act.Code != StorageMinerCodeCid {
 		t.Fatalf("Expected correct code, got %s, instead of %s", act.Code, StorageMinerCodeCid)
 	}
+	hblock, err := h.bs.Get(act.Head)
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	smas := &StorageMinerActorState{}
+	if smas.Owner != h.From {
+		t.Fatalf("Owner should be %s, but is %s", h.From, smas.Owner)
+	}
 }

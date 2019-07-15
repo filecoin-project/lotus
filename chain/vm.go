@@ -76,6 +76,7 @@ func (vmc *VMContext) Ipld() *hamt.CborIpldStore {
 // Send allows the current execution context to invoke methods on other actors in the system
 func (vmc *VMContext) Send(to address.Address, method uint64, value types.BigInt, params []byte) ([]byte, uint8, error) {
 	msg := &types.Message{
+		From:   vmc.msg.From,
 		To:     to,
 		Method: method,
 		Value:  value,
@@ -95,9 +96,6 @@ func (vmc *VMContext) Send(to address.Address, method uint64, value types.BigInt
 	}
 
 	toAct.Head = nvmctx.Storage().GetHead()
-
-	// We need probably copy here the content from sub-vmcontext to this vm-context
-	// I think, @why??
 
 	return res, ret, err
 }
