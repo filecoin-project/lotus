@@ -53,7 +53,12 @@ func rpcBuilder(t *testing.T, n int) []api.API {
 		rpcServer := jsonrpc.NewServer()
 		rpcServer.Register("Filecoin", a)
 		testServ := httptest.NewServer(rpcServer) //  todo: close
-		out[i] = client.NewRPC(testServ.URL)
+
+		var err error
+		out[i], err = client.NewRPC("ws://" + testServ.Listener.Addr().String())
+		if err != nil {
+			t.Fatal(err)
+		}
 	}
 	return out
 }

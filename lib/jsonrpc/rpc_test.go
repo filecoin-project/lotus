@@ -62,7 +62,6 @@ func TestRPC(t *testing.T) {
 	// httptest stuff
 	testServ := httptest.NewServer(rpcServer)
 	defer testServ.Close()
-
 	// setup client
 
 	var client struct {
@@ -70,7 +69,10 @@ func TestRPC(t *testing.T) {
 		AddGet      func(int) int
 		StringMatch func(t TestType, i2 int64) (out TestOut, err error)
 	}
-	closer := NewClient(testServ.URL, "SimpleServerHandler", &client)
+	closer, err := NewClient("ws://"+testServ.Listener.Addr().String(), "SimpleServerHandler", &client)
+	if err != nil {
+		t.Fatal(err)
+	}
 	defer closer()
 
 	// Add(int) error
@@ -83,7 +85,7 @@ func TestRPC(t *testing.T) {
 		t.Error("expected 2")
 	}
 
-	err := client.Add(-3546)
+	err = client.Add(-3546)
 	if err == nil {
 		t.Fatal("expected error")
 	}
@@ -130,7 +132,10 @@ func TestRPC(t *testing.T) {
 	var noret struct {
 		Add func(int)
 	}
-	closer = NewClient(testServ.URL, "SimpleServerHandler", &noret)
+	closer, err = NewClient("ws://"+testServ.Listener.Addr().String(), "SimpleServerHandler", &noret)
+	if err != nil {
+		t.Fatal(err)
+	}
 
 	// this one should actually work
 	noret.Add(4)
@@ -142,7 +147,10 @@ func TestRPC(t *testing.T) {
 	var noparam struct {
 		Add func()
 	}
-	closer = NewClient(testServ.URL, "SimpleServerHandler", &noparam)
+	closer, err = NewClient("ws://"+testServ.Listener.Addr().String(), "SimpleServerHandler", &noparam)
+	if err != nil {
+		t.Fatal(err)
+	}
 
 	// shouldn't panic
 	noparam.Add()
@@ -151,7 +159,10 @@ func TestRPC(t *testing.T) {
 	var erronly struct {
 		AddGet func() (int, error)
 	}
-	closer = NewClient(testServ.URL, "SimpleServerHandler", &erronly)
+	closer, err = NewClient("ws://"+testServ.Listener.Addr().String(), "SimpleServerHandler", &erronly)
+	if err != nil {
+		t.Fatal(err)
+	}
 
 	_, err = erronly.AddGet()
 	if err == nil || err.Error() != "RPC error (-32602): wrong param count" {
@@ -162,7 +173,10 @@ func TestRPC(t *testing.T) {
 	var wrongtype struct {
 		Add func(string) error
 	}
-	closer = NewClient(testServ.URL, "SimpleServerHandler", &wrongtype)
+	closer, err = NewClient("ws://"+testServ.Listener.Addr().String(), "SimpleServerHandler", &wrongtype)
+	if err != nil {
+		t.Fatal(err)
+	}
 
 	err = wrongtype.Add("not an int")
 	if err == nil || err.Error() != "RPC error (-32700): json: cannot unmarshal string into Go value of type int" {
@@ -173,7 +187,10 @@ func TestRPC(t *testing.T) {
 	var notfound struct {
 		NotThere func(string) error
 	}
-	closer = NewClient(testServ.URL, "SimpleServerHandler", &notfound)
+	closer, err = NewClient("ws://"+testServ.Listener.Addr().String(), "SimpleServerHandler", &notfound)
+	if err != nil {
+		t.Fatal(err)
+	}
 
 	err = notfound.NotThere("hello?")
 	if err == nil || err.Error() != "RPC error (-32601): method 'SimpleServerHandler.NotThere' not found" {
@@ -219,7 +236,10 @@ func TestCtx(t *testing.T) {
 	var client struct {
 		Test func(ctx context.Context)
 	}
-	closer := NewClient(testServ.URL, "CtxHandler", &client)
+	closer, err := NewClient("ws://"+testServ.Listener.Addr().String(), "CtxHandler", &client)
+	if err != nil {
+		t.Fatal(err)
+	}
 
 	ctx, cancel := context.WithTimeout(context.Background(), 100*time.Millisecond)
 	defer cancel()
@@ -239,7 +259,10 @@ func TestCtx(t *testing.T) {
 	var noCtxClient struct {
 		Test func()
 	}
-	closer = NewClient(testServ.URL, "CtxHandler", &noCtxClient)
+	closer, err = NewClient("ws://"+testServ.Listener.Addr().String(), "CtxHandler", &noCtxClient)
+	if err != nil {
+		t.Fatal(err)
+	}
 
 	noCtxClient.Test()
 

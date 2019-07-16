@@ -1,22 +1,18 @@
 package jsonrpc
 
 import (
-	"bytes"
 	"context"
 	"encoding/json"
 	"errors"
 	"fmt"
-	"io/ioutil"
-	"net/http"
 	"reflect"
 	"sync/atomic"
 
+	"github.com/gorilla/websocket"
 	logging "github.com/ipfs/go-log"
 )
 
 var log = logging.Logger("rpc")
-
-const clientDebug = true
 
 var (
 	errorType   = reflect.TypeOf(new(error)).Elem()
@@ -37,12 +33,12 @@ func (e *ErrClient) Unwrap(err error) error {
 	return e.err
 }
 
-type result reflect.Value
+type result []byte
 
-func (r *result) UnmarshalJSON(raw []byte) error {
-	err := json.Unmarshal(raw, reflect.Value(*r).Interface())
-	log.Debugw("rpc unmarshal response", "raw", string(raw), "err", err)
-	return err
+func (p *result) UnmarshalJSON(raw []byte) error {
+	*p = make([]byte, len(raw))
+	copy(*p, raw)
+	return nil
 }
 
 type clientResponse struct {
@@ -50,6 +46,11 @@ type clientResponse struct {
 	Result  result     `json:"result"`
 	ID      int64      `json:"id"`
 	Error   *respError `json:"error,omitempty"`
+}
+
+type clientRequest struct {
+	req   request
+	ready chan clientResponse
 }
 
 // ClientCloser is used to close Client from further use
@@ -60,7 +61,7 @@ type ClientCloser func()
 // handler must be pointer to a struct with function fields
 // Returned value closes the client connection
 // TODO: Example
-func NewClient(addr string, namespace string, handler interface{}) ClientCloser {
+func NewClient(addr string, namespace string, handler interface{}) (ClientCloser, error) {
 	htyp := reflect.TypeOf(handler)
 	if htyp.Kind() != reflect.Ptr {
 		panic("expected handler to be a pointer")
@@ -74,6 +75,17 @@ func NewClient(addr string, namespace string, handler interface{}) ClientCloser 
 
 	var idCtr int64
 
+	conn, _, err := websocket.DefaultDialer.Dial(addr, nil)
+	if err != nil {
+		return nil, err
+	}
+
+	stop := make(chan struct{})
+	requests := make(chan clientRequest)
+
+	handlers := map[string]rpcHandler{}
+	go handleWsConn(context.TODO(), conn, handlers, requests, stop)
+
 	for i := 0; i < typ.NumField(); i++ {
 		f := typ.Field(i)
 		ftyp := f.Type
@@ -83,11 +95,11 @@ func NewClient(addr string, namespace string, handler interface{}) ClientCloser 
 
 		valOut, errOut, nout := processFuncOut(ftyp)
 
-		processResponse := func(resp clientResponse, code int) []reflect.Value {
+		processResponse := func(resp clientResponse, rval reflect.Value) []reflect.Value {
 			out := make([]reflect.Value, nout)
 
 			if valOut != -1 {
-				out[valOut] = reflect.Value(resp.Result).Elem()
+				out[valOut] = rval.Elem()
 			}
 			if errOut != -1 {
 				out[errOut] = reflect.New(errorType).Elem()
@@ -134,67 +146,59 @@ func NewClient(addr string, namespace string, handler interface{}) ClientCloser 
 				Params:  params,
 			}
 
-			b, err := json.Marshal(&req)
-			if err != nil {
-				return processError(err)
+			rchan := make(chan clientResponse, 1)
+			requests <- clientRequest{
+				req:   req,
+				ready: rchan,
 			}
-
-			// prepare / execute http request
-
-			hreq, err := http.NewRequest("POST", addr, bytes.NewReader(b))
-			if err != nil {
-				return processError(err)
-			}
-			if hasCtx == 1 {
-				hreq = hreq.WithContext(args[0].Interface().(context.Context))
-			}
-			hreq.Header.Set("Content-Type", "application/json")
-
-			httpResp, err := http.DefaultClient.Do(hreq)
-			if err != nil {
-				return processError(err)
-			}
-
-			// process response
-
-			if clientDebug {
-				rsp, err := ioutil.ReadAll(httpResp.Body)
-				if err != nil {
-					return processError(err)
-				}
-				if err := httpResp.Body.Close(); err != nil {
-					return processError(err)
-				}
-
-				log.Debugw("rpc response", "body", string(rsp))
-
-				httpResp.Body = ioutil.NopCloser(bytes.NewReader(rsp))
-			}
-
+			var ctxDone <-chan struct{}
 			var resp clientResponse
+
+			if hasCtx == 1 {
+				ctxDone = args[0].Interface().(context.Context).Done()
+			}
+
+		loop:
+			for {
+				select {
+				case resp = <-rchan:
+					break loop
+				case <-ctxDone: // send cancel request
+					ctxDone = nil
+
+					requests <- clientRequest{
+						req: request{
+							Jsonrpc: "2.0",
+							Method:  wsCancel,
+							Params:  []param{{v: reflect.ValueOf(id)}},
+						},
+					}
+				}
+			}
+			var rval reflect.Value
+
 			if valOut != -1 {
-				log.Debugw("rpc result", "type", ftyp.Out(valOut))
-				resp.Result = result(reflect.New(ftyp.Out(valOut)))
-			}
+				rval = reflect.New(ftyp.Out(valOut))
 
-			if err := json.NewDecoder(httpResp.Body).Decode(&resp); err != nil {
-				return processError(err)
-			}
-
-			if err := httpResp.Body.Close(); err != nil {
-				return processError(err)
+				if resp.Result != nil {
+					log.Debugw("rpc result", "type", ftyp.Out(valOut))
+					if err := json.Unmarshal(resp.Result, rval.Interface()); err != nil {
+						return processError(err)
+					}
+				}
 			}
 
 			if resp.ID != *req.ID {
 				return processError(errors.New("request and response id didn't match"))
 			}
 
-			return processResponse(resp, httpResp.StatusCode)
+			return processResponse(resp, rval)
 		})
 
 		val.Elem().Field(i).Set(fn)
 	}
 
-	// TODO: if this is still unused as of 2020, remove the closer stuff
-	return func() {} // noop for now, not for long though
+	return func() {
+		close(stop)
+	}, nil
 }
