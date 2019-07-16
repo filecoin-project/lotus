@@ -2,13 +2,20 @@ package modules
 
 import (
 	"context"
+	"path/filepath"
 
 	"github.com/ipfs/go-bitswap"
 	"github.com/ipfs/go-bitswap/network"
+	"github.com/ipfs/go-blockservice"
 	"github.com/ipfs/go-datastore"
+	"github.com/ipfs/go-datastore/namespace"
+	"github.com/ipfs/go-filestore"
 	blockstore "github.com/ipfs/go-ipfs-blockstore"
 	exchange "github.com/ipfs/go-ipfs-exchange-interface"
+	offline "github.com/ipfs/go-ipfs-exchange-offline"
+	ipld "github.com/ipfs/go-ipld-format"
 	logging "github.com/ipfs/go-log"
+	"github.com/ipfs/go-merkledag"
 	"github.com/libp2p/go-libp2p-core/host"
 	"github.com/libp2p/go-libp2p-core/peerstore"
 	"github.com/libp2p/go-libp2p-core/routing"
@@ -70,4 +77,33 @@ func Blockstore(r repo.LockedRepo) (blockstore.Blockstore, error) {
 
 	bs := blockstore.NewBlockstore(blocks)
 	return blockstore.NewIdStore(bs), nil
+}
+
+func ClientFstore(r repo.LockedRepo) (*filestore.Filestore, error) {
+	clientds, err := r.Datastore("/client")
+	if err != nil {
+		return nil, err
+	}
+	blocks := namespace.Wrap(clientds, datastore.NewKey("blocks"))
+
+	fm := filestore.NewFileManager(clientds, filepath.Dir(r.Path()))
+	fm.AllowFiles = true
+	// TODO: fm.AllowUrls (needs more code in client import)
+
+	bs := blockstore.NewBlockstore(blocks)
+	return filestore.NewFilestore(bs, fm), nil
+}
+
+func ClientDAG(lc fx.Lifecycle, fstore *filestore.Filestore) ipld.DAGService {
+	ibs := blockstore.NewIdStore(fstore)
+	bsvc := blockservice.New(ibs, offline.Exchange(ibs))
+	dag := merkledag.NewDAGService(bsvc)
+
+	lc.Append(fx.Hook{
+		OnStop: func(_ context.Context) error {
+			return bsvc.Close()
+		},
+	})
+
+	return dag
 }

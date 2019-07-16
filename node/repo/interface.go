@@ -42,4 +42,7 @@ type LockedRepo interface {
 
 	// Wallet returns store of private keys for Filecoin transactions
 	Wallet() (interface{}, error)
+
+	// Path returns absolute path of the repo (or empty string if in-memory)
+	Path() string
 }
