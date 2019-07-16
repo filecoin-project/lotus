@@ -168,8 +168,7 @@ func Online() Option {
 		Override(new(blockstore.GCLocker), blockstore.NewGCLocker),
 		Override(new(blockstore.GCBlockstore), blockstore.NewGCBlockstore),
 		Override(new(exchange.Interface), modules.Bitswap),
-		Override(new(*filestore.Filestore), modules.ClientFstore),
-		Override(new(ipld.DAGService), modules.ClientDAG),
+		Override(new(ipld.DAGService), testing.MemoryClientDag),
 
 		// Filecoin services
 		Override(new(*chain.Syncer), chain.NewSyncer),
@@ -220,6 +219,9 @@ func Repo(r repo.Repo) Option {
 
 		Override(new(datastore.Batching), modules.Datastore),
 		Override(new(blockstore.Blockstore), modules.Blockstore),
+
+		Override(new(*filestore.Filestore), modules.ClientFstore),
+		Override(new(ipld.DAGService), modules.ClientDAG),
 
 		Override(new(ci.PrivKey), pk),
 		Override(new(ci.PubKey), ci.PrivKey.GetPublic),

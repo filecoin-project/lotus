@@ -2,6 +2,7 @@ package client
 
 import (
 	"context"
+	"errors"
 	"github.com/filecoin-project/go-lotus/api"
 	"github.com/ipfs/go-filestore"
 	"go.uber.org/fx"
@@ -19,7 +20,7 @@ type LocalStorage struct {
 	fx.In
 
 	LocalDAG  ipld.DAGService
-	Filestore *filestore.Filestore
+	Filestore *filestore.Filestore `optional:"true"`
 }
 
 func (s *LocalStorage) ClientImport(ctx context.Context, path string) (cid.Cid, error) {
@@ -60,6 +61,9 @@ func (s *LocalStorage) ClientImport(ctx context.Context, path string) (cid.Cid, 
 }
 
 func (s *LocalStorage) ClientListImports(ctx context.Context) ([]api.Import, error) {
+	if s.Filestore == nil {
+		return nil, errors.New("listing imports is not supported with in-memory dag yet")
+	}
 	next, err := filestore.ListAll(s.Filestore, false)
 	if err != nil {
 		return nil, err
