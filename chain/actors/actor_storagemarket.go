@@ -13,7 +13,6 @@ const SectorSize = 1024
 func init() {
 	cbor.RegisterCborType(StorageMarketState{})
 	cbor.RegisterCborType(CreateStorageMinerParams{})
-	cbor.RegisterCborType(struct{}{})
 }
 
 type StorageMarketActor struct{}
@@ -31,6 +30,7 @@ type StorageMarketState struct {
 }
 
 type CreateStorageMinerParams struct {
+	Owner      address.Address
 	Worker     address.Address
 	SectorSize types.BigInt
 	PeerID     peer.ID
@@ -45,6 +45,7 @@ func (sma StorageMarketActor) CreateStorageMiner(act *types.Actor, vmctx types.V
 	}
 
 	encoded, err := CreateExecParams(StorageMinerCodeCid, &StorageMinerConstructorParams{
+		Owner:      params.Owner,
 		Worker:     params.Worker,
 		SectorSize: params.SectorSize,
 		PeerID:     params.PeerID,

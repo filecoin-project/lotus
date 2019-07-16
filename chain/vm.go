@@ -14,7 +14,7 @@ import (
 	hamt "github.com/ipfs/go-hamt-ipld"
 	ipld "github.com/ipfs/go-ipld-format"
 	dag "github.com/ipfs/go-merkledag"
-	"github.com/pkg/errors"
+	"golang.org/x/xerrors"
 )
 
 type VMContext struct {
@@ -26,6 +26,9 @@ type VMContext struct {
 
 	// root cid of the state of the actor this invocation will be on
 	sroot cid.Cid
+
+	// address that started invokation chain
+	origin address.Address
 
 	storage types.Storage
 }
@@ -72,9 +75,15 @@ func (vmc *VMContext) Ipld() *hamt.CborIpldStore {
 	return vmc.cst
 }
 
+func (vmc *VMContext) Origin() address.Address {
+	return vmc.origin
+}
+
 // Send allows the current execution context to invoke methods on other actors in the system
 func (vmc *VMContext) Send(to address.Address, method uint64, value types.BigInt, params []byte) ([]byte, uint8, error) {
+
 	msg := &types.Message{
+		From:   vmc.msg.To,
 		To:     to,
 		Method: method,
 		Value:  value,
@@ -86,9 +95,16 @@ func (vmc *VMContext) Send(to address.Address, method uint64, value types.BigInt
 		return nil, 0, err
 	}
 
-	nvmctx := vmc.vm.makeVMContext(toAct.Head, msg)
+	nvmctx := vmc.vm.makeVMContext(toAct.Head, vmc.origin, msg)
 
-	return vmc.vm.Invoke(toAct, nvmctx, method, params)
+	res, ret, err := vmc.vm.Invoke(toAct, nvmctx, method, params)
+	if err != nil {
+		return nil, 0, err
+	}
+
+	toAct.Head = nvmctx.Storage().GetHead()
+
+	return res, ret, err
 }
 
 // BlockHeight returns the height of the block this message was added to the chain in
@@ -108,7 +124,7 @@ func (vmc *VMContext) StateTree() (types.StateTree, error) {
 	return vmc.state, nil
 }
 
-func (vm *VM) makeVMContext(sroot cid.Cid, msg *types.Message) *VMContext {
+func (vm *VM) makeVMContext(sroot cid.Cid, origin address.Address, msg *types.Message) *VMContext {
 	cst := hamt.CSTFromBstore(vm.cs.bs)
 
 	return &VMContext{
@@ -116,6 +132,7 @@ func (vm *VM) makeVMContext(sroot cid.Cid, msg *types.Message) *VMContext {
 		state:  vm.cstate,
 		sroot:  sroot,
 		msg:    msg,
+		origin: origin,
 		height: vm.blockHeight,
 		cst:    cst,
 		storage: &storage{
@@ -159,17 +176,17 @@ func (vm *VM) ApplyMessage(msg *types.Message) (*types.MessageReceipt, error) {
 	st.Snapshot()
 	fromActor, err := st.GetActor(msg.From)
 	if err != nil {
-		return nil, errors.Wrap(err, "from actor not found")
+		return nil, xerrors.Errorf("from actor not found: %w", err)
 	}
 
 	gascost := types.BigMul(msg.GasLimit, msg.GasPrice)
 	totalCost := types.BigAdd(gascost, msg.Value)
 	if types.BigCmp(fromActor.Balance, totalCost) < 0 {
-		return nil, fmt.Errorf("not enough funds")
+		return nil, xerrors.Errorf("not enough funds")
 	}
 
 	if msg.Nonce != fromActor.Nonce {
-		return nil, fmt.Errorf("invalid nonce")
+		return nil, xerrors.Errorf("invalid nonce")
 	}
 	fromActor.Nonce++
 
@@ -187,11 +204,11 @@ func (vm *VM) ApplyMessage(msg *types.Message) (*types.MessageReceipt, error) {
 	}
 
 	if err := DeductFunds(fromActor, totalCost); err != nil {
-		return nil, errors.Wrap(err, "failed to deduct funds")
+		return nil, xerrors.Errorf("failed to deduct funds: %w", err)
 	}
 	DepositFunds(toActor, msg.Value)
 
-	vmctx := vm.makeVMContext(toActor.Head, msg)
+	vmctx := vm.makeVMContext(toActor.Head, msg.From, msg)
 
 	var errcode byte
 	var ret []byte
@@ -218,7 +235,7 @@ func (vm *VM) ApplyMessage(msg *types.Message) (*types.MessageReceipt, error) {
 	// reward miner gas fees
 	miner, err := st.GetActor(vm.blockMiner)
 	if err != nil {
-		return nil, errors.Wrap(err, "getting block miner actor failed")
+		return nil, xerrors.Errorf("getting block miner actor failed: %w", err)
 	}
 
 	gasReward := types.BigMul(msg.GasPrice, vmctx.GasUsed())
@@ -237,14 +254,45 @@ func (vm *VM) Flush(ctx context.Context) (cid.Cid, error) {
 
 	root, err := vm.cstate.Flush()
 	if err != nil {
-		return cid.Undef, err
+		return cid.Undef, xerrors.Errorf("flushing vm: %w", err)
 	}
 
-	if err := ipld.Copy(ctx, from, to, root); err != nil {
-		return cid.Undef, err
+	if err := Copy(ctx, from, to, root); err != nil {
+		return cid.Undef, xerrors.Errorf("copying tree: %w", err)
 	}
 
 	return root, nil
+}
+
+func Copy(ctx context.Context, from, to ipld.DAGService, root cid.Cid) error {
+	if root.Prefix().MhType == 0 {
+		// identity cid, skip
+		return nil
+	}
+	node, err := from.Get(ctx, root)
+	if err != nil {
+		return xerrors.Errorf("get %s failed: %w", root, err)
+	}
+	links := node.Links()
+	for _, link := range links {
+		_, err := to.Get(ctx, link.Cid)
+		switch err {
+		default:
+			return err
+		case nil:
+			continue
+		case ipld.ErrNotFound:
+			// continue
+		}
+		if err := Copy(ctx, from, to, link.Cid); err != nil {
+			return err
+		}
+	}
+	err = to.Add(ctx, node)
+	if err != nil {
+		return err
+	}
+	return nil
 }
 
 func (vm *VM) TransferFunds(from, to address.Address, amt types.BigInt) error {
@@ -263,7 +311,7 @@ func (vm *VM) TransferFunds(from, to address.Address, amt types.BigInt) error {
 	}
 
 	if err := DeductFunds(fromAct, amt); err != nil {
-		return errors.Wrap(err, "failed to deduct funds")
+		return xerrors.Errorf("failed to deduct funds: %w", err)
 	}
 	DepositFunds(toAct, amt)
 
