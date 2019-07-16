@@ -59,9 +59,9 @@ func NewHarness(t *testing.T) *Harness {
 		t.Fatal(err)
 	}
 
-	cs := chain.NewChainStore(h.bs, nil)
+	h.cs = chain.NewChainStore(h.bs, nil)
 
-	h.vm, err = chain.NewVM(stateroot, 1, maddr, cs)
+	h.vm, err = chain.NewVM(stateroot, 1, maddr, h.cs)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -160,7 +160,11 @@ func TestVMInvokeHarness(t *testing.T) {
 	}
 
 	smas := &StorageMinerActorState{}
-	cbor.DecodeInto(hblock.RawData(), smas)
+	err = cbor.DecodeInto(hblock.RawData(), smas)
+	if err != nil {
+		t.Fatal(err)
+	}
+
 	if smas.Owner != h.From {
 		t.Fatalf("Owner should be %s, but is %s", h.From, smas.Owner)
 	}
