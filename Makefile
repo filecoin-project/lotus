@@ -5,6 +5,8 @@ blssigs: lib/bls-signatures/include/libbls_signatures.h
 lib/bls-signatures/include/libbls_signatures.h: lib/bls-signatures/bls-signatures ;
 	./scripts/install-bls-signatures.sh
 
+lib/sectorbuilder/include:
+
 deps: blssigs
 
 build: deps
