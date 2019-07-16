@@ -1,6 +1,6 @@
 // +build !windows
 
-package libsectorbuilder
+package sectorbuilder
 
 import (
 	"time"

@@ -1,4 +1,4 @@
-package libsectorbuilder
+package sectorbuilder
 
 import (
 	"unsafe"

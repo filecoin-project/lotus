@@ -10,7 +10,7 @@ sectorbuilder: lib/sectorbuilder/include/sector_builder_ffi.h
 lib/sectorbuilder/include/sector_builder_ffi.h: lib/rust-fil-sector-builder ;
 	./scripts/install-sectorbuilder.sh
 
-deps: blssigs sectorbuilder
+deps: blssigs
 
 build: deps
 	go build -o lotus ./cmd/lotus
