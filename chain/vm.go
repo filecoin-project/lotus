@@ -8,14 +8,13 @@ import (
 	"github.com/filecoin-project/go-lotus/chain/address"
 	"github.com/filecoin-project/go-lotus/chain/types"
 	"github.com/filecoin-project/go-lotus/lib/bufbstore"
-	"golang.org/x/xerrors"
 
 	bserv "github.com/ipfs/go-blockservice"
 	cid "github.com/ipfs/go-cid"
 	hamt "github.com/ipfs/go-hamt-ipld"
 	ipld "github.com/ipfs/go-ipld-format"
 	dag "github.com/ipfs/go-merkledag"
-	"github.com/pkg/errors"
+	"golang.org/x/xerrors"
 )
 
 type VMContext struct {
@@ -176,17 +175,17 @@ func (vm *VM) ApplyMessage(msg *types.Message) (*types.MessageReceipt, error) {
 	st.Snapshot()
 	fromActor, err := st.GetActor(msg.From)
 	if err != nil {
-		return nil, errors.Wrap(err, "from actor not found")
+		return nil, xerrors.Errorf("from actor not found: %w", err)
 	}
 
 	gascost := types.BigMul(msg.GasLimit, msg.GasPrice)
 	totalCost := types.BigAdd(gascost, msg.Value)
 	if types.BigCmp(fromActor.Balance, totalCost) < 0 {
-		return nil, fmt.Errorf("not enough funds")
+		return nil, xerrors.Errorf("not enough funds")
 	}
 
 	if msg.Nonce != fromActor.Nonce {
-		return nil, fmt.Errorf("invalid nonce")
+		return nil, xerrors.Errorf("invalid nonce")
 	}
 	fromActor.Nonce++
 
@@ -204,7 +203,7 @@ func (vm *VM) ApplyMessage(msg *types.Message) (*types.MessageReceipt, error) {
 	}
 
 	if err := DeductFunds(fromActor, totalCost); err != nil {
-		return nil, errors.Wrap(err, "failed to deduct funds")
+		return nil, xerrors.Errorf("failed to deduct funds: %w", err)
 	}
 	DepositFunds(toActor, msg.Value)
 
@@ -235,7 +234,7 @@ func (vm *VM) ApplyMessage(msg *types.Message) (*types.MessageReceipt, error) {
 	// reward miner gas fees
 	miner, err := st.GetActor(vm.blockMiner)
 	if err != nil {
-		return nil, errors.Wrap(err, "getting block miner actor failed")
+		return nil, xerrors.Errorf("getting block miner actor failed: %w", err)
 	}
 
 	gasReward := types.BigMul(msg.GasPrice, vmctx.GasUsed())
@@ -271,8 +270,7 @@ func Copy(ctx context.Context, from, to ipld.DAGService, root cid.Cid) error {
 	}
 	node, err := from.Get(ctx, root)
 	if err != nil {
-		fmt.Printf("fail: %#v\n", root.Prefix())
-		return errors.Wrapf(err, "get %s", root)
+		return xerrors.Errorf("get %s failed: %w", root, err)
 	}
 	links := node.Links()
 	for _, link := range links {
@@ -312,7 +310,7 @@ func (vm *VM) TransferFunds(from, to address.Address, amt types.BigInt) error {
 	}
 
 	if err := DeductFunds(fromAct, amt); err != nil {
-		return errors.Wrap(err, "failed to deduct funds")
+		return xerrors.Errorf("failed to deduct funds: %w", err)
 	}
 	DepositFunds(toAct, amt)
 
