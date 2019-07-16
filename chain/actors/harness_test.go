@@ -19,6 +19,7 @@ import (
 type Harness struct {
 	Steps []Step
 	From  address.Address
+	Third address.Address
 
 	currStep int
 
@@ -41,10 +42,12 @@ func NewHarness(t *testing.T) *Harness {
 
 	from := blsaddr(0)
 	maddr := blsaddr(1)
+	third := blsaddr(1)
 
 	actors := map[address.Address]types.BigInt{
 		from:  types.NewInt(1000000),
 		maddr: types.NewInt(0),
+		third: types.NewInt(1000),
 	}
 	st, err := chain.MakeInitialStateTree(h.bs, actors)
 	if err != nil {
@@ -62,8 +65,9 @@ func NewHarness(t *testing.T) *Harness {
 	if err != nil {
 		t.Fatal(err)
 	}
-	h.actors = []address.Address{from, maddr}
+	h.actors = []address.Address{from, maddr, third}
 	h.From = from
+	h.Third = third
 	return h
 }
 
@@ -71,7 +75,11 @@ func (h *Harness) Execute() *chain.StateTree {
 	for i, step := range h.Steps {
 		h.currStep = i
 		ret, err := h.vm.ApplyMessage(&step.M)
-		step.Err(h.t, err)
+		if step.Err != nil {
+			step.Err(h.t, err)
+		} else {
+			h.NoError(h.t, err)
+		}
 		step.Ret(h.t, ret)
 	}
 	stateroot, err := h.vm.Flush(context.TODO())
@@ -118,9 +126,6 @@ func TestVMInvokeHarness(t *testing.T) {
 				Value:    types.NewInt(0),
 			},
 			Ret: func(t *testing.T, ret *types.MessageReceipt) {
-				if ret == nil {
-					t.Fatal("ret is nil")
-				}
 				if ret.ExitCode != 0 {
 					t.Fatal("invocation failed: ", ret.ExitCode)
 				}

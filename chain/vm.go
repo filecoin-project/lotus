@@ -75,8 +75,16 @@ func (vmc *VMContext) Ipld() *hamt.CborIpldStore {
 
 // Send allows the current execution context to invoke methods on other actors in the system
 func (vmc *VMContext) Send(to address.Address, method uint64, value types.BigInt, params []byte) ([]byte, uint8, error) {
+
+	var from address.Address
+	if method == 0 {
+		// is constructor
+		from = vmc.msg.From
+	} else {
+		from = vmc.msg.To
+	}
 	msg := &types.Message{
-		From:   vmc.msg.From,
+		From:   from,
 		To:     to,
 		Method: method,
 		Value:  value,

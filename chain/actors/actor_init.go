@@ -143,7 +143,6 @@ func (ia InitActor) Exec(act *types.Actor, vmctx types.VMContext, p *ExecParams)
 		return types.InvokeRet{}, errors.Wrap(err, "inserting new actor into state tree")
 	}
 
-	fmt.Println("PARAMS: ", string(p.Params))
 	_, _, err = vmctx.Send(idAddr, 0, vmctx.Message().Value, p.Params)
 	if err != nil {
 		return types.InvokeRet{}, err
