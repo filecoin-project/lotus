@@ -2,6 +2,7 @@ package node
 
 import (
 	"context"
+
 	"github.com/filecoin-project/go-lotus/api"
 	"github.com/filecoin-project/go-lotus/build"
 	"github.com/filecoin-project/go-lotus/chain"
@@ -18,11 +19,11 @@ import (
 type API struct {
 	client.LocalStorage
 
-	Host      host.Host
-	Chain     *chain.ChainStore
-	PubSub    *pubsub.PubSub
-	Mpool     *chain.MessagePool
-	Wallet    *chain.Wallet
+	Host   host.Host
+	Chain  *chain.ChainStore
+	PubSub *pubsub.PubSub
+	Mpool  *chain.MessagePool
+	Wallet *chain.Wallet
 }
 
 func (a *API) ChainSubmitBlock(ctx context.Context, blk *chain.BlockMsg) error {

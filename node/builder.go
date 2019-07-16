@@ -3,9 +3,10 @@ package node
 import (
 	"context"
 	"errors"
-	"github.com/ipfs/go-filestore"
 	"reflect"
 	"time"
+
+	"github.com/ipfs/go-filestore"
 
 	"github.com/ipfs/go-datastore"
 	blockstore "github.com/ipfs/go-ipfs-blockstore"

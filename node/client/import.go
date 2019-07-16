@@ -3,10 +3,11 @@ package client
 import (
 	"context"
 	"errors"
+	"os"
+
 	"github.com/filecoin-project/go-lotus/api"
 	"github.com/ipfs/go-filestore"
 	"go.uber.org/fx"
-	"os"
 
 	"github.com/ipfs/go-cid"
 	chunker "github.com/ipfs/go-ipfs-chunker"
