@@ -24,6 +24,7 @@ type StateTree interface {
 
 type VMContext interface {
 	Message() *Message
+	Origin() address.Address
 	Ipld() *hamt.CborIpldStore
 	Send(to address.Address, method uint64, value BigInt, params []byte) ([]byte, uint8, error)
 	BlockHeight() uint64

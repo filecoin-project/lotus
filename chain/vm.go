@@ -27,6 +27,9 @@ type VMContext struct {
 	// root cid of the state of the actor this invocation will be on
 	sroot cid.Cid
 
+	// address that started invokation chain
+	origin address.Address
+
 	storage types.Storage
 }
 
@@ -72,18 +75,15 @@ func (vmc *VMContext) Ipld() *hamt.CborIpldStore {
 	return vmc.cst
 }
 
+func (vmc *VMContext) Origin() address.Address {
+	return vmc.origin
+}
+
 // Send allows the current execution context to invoke methods on other actors in the system
 func (vmc *VMContext) Send(to address.Address, method uint64, value types.BigInt, params []byte) ([]byte, uint8, error) {
 
-	var from address.Address
-	if method == 0 {
-		// is constructor
-		from = vmc.msg.From
-	} else {
-		from = vmc.msg.To
-	}
 	msg := &types.Message{
-		From:   from,
+		From:   vmc.msg.To,
 		To:     to,
 		Method: method,
 		Value:  value,
@@ -95,7 +95,7 @@ func (vmc *VMContext) Send(to address.Address, method uint64, value types.BigInt
 		return nil, 0, err
 	}
 
-	nvmctx := vmc.vm.makeVMContext(toAct.Head, msg)
+	nvmctx := vmc.vm.makeVMContext(toAct.Head, vmc.origin, msg)
 
 	res, ret, err := vmc.vm.Invoke(toAct, nvmctx, method, params)
 	if err != nil {
@@ -124,7 +124,7 @@ func (vmc *VMContext) StateTree() (types.StateTree, error) {
 	return vmc.state, nil
 }
 
-func (vm *VM) makeVMContext(sroot cid.Cid, msg *types.Message) *VMContext {
+func (vm *VM) makeVMContext(sroot cid.Cid, origin address.Address, msg *types.Message) *VMContext {
 	cst := hamt.CSTFromBstore(vm.cs.bs)
 
 	return &VMContext{
@@ -132,6 +132,7 @@ func (vm *VM) makeVMContext(sroot cid.Cid, msg *types.Message) *VMContext {
 		state:  vm.cstate,
 		sroot:  sroot,
 		msg:    msg,
+		origin: origin,
 		height: vm.blockHeight,
 		cst:    cst,
 		storage: &storage{
@@ -207,7 +208,7 @@ func (vm *VM) ApplyMessage(msg *types.Message) (*types.MessageReceipt, error) {
 	}
 	DepositFunds(toActor, msg.Value)
 
-	vmctx := vm.makeVMContext(toActor.Head, msg)
+	vmctx := vm.makeVMContext(toActor.Head, msg.From, msg)
 
 	var errcode byte
 	var ret []byte

@@ -72,6 +72,7 @@ type StorageMinerActorState struct {
 }
 
 type StorageMinerConstructorParams struct {
+	Owner      address.Address
 	Worker     address.Address
 	SectorSize types.BigInt
 	PeerID     peer.ID
@@ -85,7 +86,7 @@ func (sma StorageMinerActor) Exports() []interface{} {
 
 func (sma StorageMinerActor) StorageMinerActor(act *types.Actor, vmctx types.VMContext, params *StorageMinerConstructorParams) (types.InvokeRet, error) {
 	var self StorageMinerActorState
-	self.Owner = vmctx.Message().From
+	self.Owner = params.Owner
 	self.Worker = params.Worker
 	self.PeerID = params.PeerID
 	self.SectorSize = params.SectorSize

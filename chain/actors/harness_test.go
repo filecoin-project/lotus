@@ -118,8 +118,10 @@ func TestVMInvokeHarness(t *testing.T) {
 				Method: 1,
 				Params: h.DumpObject(
 					&ExecParams{
-						Code:   StorageMinerCodeCid,
-						Params: h.DumpObject(&StorageMinerConstructorParams{}),
+						Code: StorageMinerCodeCid,
+						Params: h.DumpObject(&StorageMinerConstructorParams{
+							Owner: h.From,
+						}),
 					}),
 				GasPrice: types.NewInt(1),
 				GasLimit: types.NewInt(1),

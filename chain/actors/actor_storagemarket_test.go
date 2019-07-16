@@ -21,7 +21,8 @@ func TestStorageMarketCreateMiner(t *testing.T) {
 				GasPrice: types.NewInt(1),
 				GasLimit: types.NewInt(1),
 				Value:    types.NewInt(0),
-				Params: h.DumpObject(&StorageMinerConstructorParams{
+				Params: h.DumpObject(&CreateStorageMinerParams{
+					Owner:      h.From,
 					Worker:     h.Third,
 					SectorSize: types.NewInt(SectorSize),
 					PeerID:     "fakepeerid",
