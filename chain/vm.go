@@ -30,7 +30,7 @@ type VMContext struct {
 	// address that started invokation chain
 	origin address.Address
 
-	storage types.Storage
+	storage *storage
 }
 
 // Message is the message that kicked off the current invocation
@@ -215,7 +215,7 @@ func (vm *VM) ApplyMessage(msg *types.Message) (*types.MessageReceipt, error) {
 	if msg.Method != 0 {
 		ret, errcode, err = vm.Invoke(toActor, vmctx, msg.Method, msg.Params)
 		if err != nil {
-			return nil, err
+			return nil, xerrors.Errorf("during invoke: %w", err)
 		}
 
 		if errcode != 0 {
@@ -226,6 +226,8 @@ func (vm *VM) ApplyMessage(msg *types.Message) (*types.MessageReceipt, error) {
 				panic("invariant violated: " + err.Error())
 			}
 		} else {
+			// Update actor head reference
+			toActor.Head = vmctx.storage.head
 			// refund unused gas
 			refund := types.BigMul(types.BigSub(msg.GasLimit, vmctx.GasUsed()), msg.GasPrice)
 			DepositFunds(fromActor, refund)

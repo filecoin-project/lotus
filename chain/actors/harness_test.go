@@ -103,7 +103,7 @@ func (h *Harness) DumpObject(obj interface{}) []byte {
 }
 func (h *Harness) NoError(t *testing.T, err error) {
 	if err != nil {
-		t.Fatalf("Error in step %d: %s", h.currStep, err)
+		t.Fatalf("Error in step %d: %+v", h.currStep, err)
 	}
 }
 

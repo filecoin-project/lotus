@@ -6,6 +6,7 @@ import (
 
 	cbor "github.com/ipfs/go-ipld-cbor"
 	"github.com/libp2p/go-libp2p-core/peer"
+	"golang.org/x/xerrors"
 )
 
 const SectorSize = 1024
@@ -13,16 +14,22 @@ const SectorSize = 1024
 func init() {
 	cbor.RegisterCborType(StorageMarketState{})
 	cbor.RegisterCborType(CreateStorageMinerParams{})
+	cbor.RegisterCborType(IsMinerParam{})
+	cbor.RegisterCborType(PowerLookupParams{})
 }
 
 type StorageMarketActor struct{}
 
 func (sma StorageMarketActor) Exports() []interface{} {
 	return []interface{}{
-		nil,
-		sma.CreateStorageMiner,
-		nil, // TODO: slash consensus fault
-		sma.UpdateStorage,
+		//0: sma.StorageMarketConstructor,
+		1: sma.CreateStorageMiner,
+		//2: sma.SlashConsensusFault,
+		3: sma.UpdateStorage,
+		4: sma.GetTotalStorage,
+		5: sma.PowerLookup,
+		6: sma.IsMiner,
+		//7: sma.StorageCollateralForSize,
 	}
 }
 
@@ -61,15 +68,15 @@ func (sma StorageMarketActor) CreateStorageMiner(act *types.Actor, vmctx types.V
 		return types.InvokeRet{}, err
 	}
 
-	naddr, err := address.NewFromBytes(ret)
-	if err != nil {
-		return types.InvokeRet{}, err
-	}
-
 	if exit != 0 {
 		return types.InvokeRet{
 			ReturnCode: 2,
 		}, nil
+	}
+
+	naddr, err := address.NewFromBytes(ret)
+	if err != nil {
+		return types.InvokeRet{}, err
 	}
 
 	var self StorageMarketState
@@ -123,7 +130,7 @@ func (sma StorageMarketActor) UpdateStorage(act *types.Actor, vmctx types.VMCont
 	return types.InvokeRet{}, nil
 }
 
-func (sma StorageMarketActor) GetTotalStorage(act *types.Actor, vmctx types.VMContext, params struct{}) (types.InvokeRet, error) {
+func (sma StorageMarketActor) GetTotalStorage(act *types.Actor, vmctx types.VMContext, params *struct{}) (types.InvokeRet, error) {
 	var self StorageMarketState
 	if err := vmctx.Storage().Get(vmctx.Storage().GetHead(), &self); err != nil {
 		return types.InvokeRet{}, err
@@ -141,7 +148,7 @@ type PowerLookupParams struct {
 func (sma StorageMarketActor) PowerLookup(act *types.Actor, vmctx types.VMContext, params *PowerLookupParams) (types.InvokeRet, error) {
 	var self StorageMarketState
 	if err := vmctx.Storage().Get(vmctx.Storage().GetHead(), &self); err != nil {
-		return types.InvokeRet{}, err
+		return types.InvokeRet{}, xerrors.Errorf("getting head: %w", err)
 	}
 
 	if _, ok := self.Miners[params.Miner]; !ok {
@@ -151,9 +158,9 @@ func (sma StorageMarketActor) PowerLookup(act *types.Actor, vmctx types.VMContex
 		}, nil
 	}
 
-	ret, code, err := vmctx.Send(params.Miner, 9999, types.NewInt(0), nil)
+	ret, code, err := vmctx.Send(params.Miner, 9, types.NewInt(0), EmptyStructCBOR)
 	if err != nil {
-		return types.InvokeRet{}, err
+		return types.InvokeRet{}, xerrors.Errorf("invoke Miner.GetPower: %w", err)
 	}
 
 	if code != 0 {
@@ -165,5 +172,24 @@ func (sma StorageMarketActor) PowerLookup(act *types.Actor, vmctx types.VMContex
 
 	return types.InvokeRet{
 		Result: ret,
+	}, nil
+}
+
+type IsMinerParam struct {
+	Addr address.Address
+}
+
+func (sma StorageMarketActor) IsMiner(act *types.Actor, vmctx types.VMContext, param *IsMinerParam) (types.InvokeRet, error) {
+	var self StorageMarketState
+	if err := vmctx.Storage().Get(vmctx.Storage().GetHead(), &self); err != nil {
+		return types.InvokeRet{}, err
+	}
+	_, ok := self.Miners[param.Addr]
+	out, err := SerializeParams(ok)
+	if err != nil {
+		return types.InvokeRet{}, err
+	}
+	return types.InvokeRet{
+		Result: out,
 	}, nil
 }
