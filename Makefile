@@ -7,10 +7,10 @@ lib/bls-signatures/include/libbls_signatures.h: lib/bls-signatures/bls-signature
 
 sectorbuilder: lib/sectorbuilder/include/sector_builder_ffi.h
 
-lib/sectorbuilder/include/sector_builder_ffi.h: lib/rust-fil-sector-builder ;
-	./scripts/install-sectorbuilder.sh
+lib/sectorbuilder/include/sector_builder_ffi.h: lib/sectorbuilder/rust-fil-sector-builder ;
+	./lib/sectorbuilder/build.sh
 
-deps: blssigs
+deps: blssigs sectorbuilder
 
 build: deps
 	go build -o lotus ./cmd/lotus
