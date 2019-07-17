@@ -5,7 +5,6 @@ import (
 
 	"github.com/filecoin-project/go-lotus/chain"
 	"github.com/filecoin-project/go-lotus/chain/address"
-	"github.com/filecoin-project/go-lotus/chain/types"
 
 	"github.com/ipfs/go-cid"
 	"github.com/libp2p/go-libp2p-core/peer"
@@ -20,7 +19,7 @@ type Struct struct {
 		ChainSubmitBlock   func(ctx context.Context, blk *chain.BlockMsg) error
 		ChainHead          func(context.Context) (*chain.TipSet, error)
 		ChainGetRandomness func(context.Context, *chain.TipSet) ([]byte, error)
-		ChainWaitMsg       func(context.Context, cid.Cid) (cid.Cid, *types.MessageReceipt, error)
+		ChainWaitMsg       func(context.Context, cid.Cid) (*MsgWait, error)
 
 		MpoolPending func(context.Context, *chain.TipSet) ([]*chain.SignedMessage, error)
 		MpoolPush    func(context.Context, *chain.SignedMessage) error
@@ -33,7 +32,7 @@ type Struct struct {
 		WalletBalance        func(context.Context, address.Address) (types.BigInt, error)
 		WalletSign           func(context.Context, address.Address, []byte) (*chain.Signature, error)
 		WalletDefaultAddress func(context.Context) (address.Address, error)
-		WalletGetNonce       func(context.Context, address.Address) (uint64, error)
+		MpoolGetNonce        func(context.Context, address.Address) (uint64, error)
 
 		ClientImport      func(ctx context.Context, path string) (cid.Cid, error)
 		ClientListImports func(ctx context.Context) ([]Import, error)
@@ -92,7 +91,7 @@ func (c *Struct) ChainGetRandomness(ctx context.Context, pts *chain.TipSet) ([]b
 	return c.Internal.ChainGetRandomness(ctx, pts)
 }
 
-func (c *Struct) ChainWaitMsg(ctx context.Context, msgc cid.Cid) (cid.Cid, *types.MessageReceipt, error) {
+func (c *Struct) ChainWaitMsg(ctx context.Context, msgc cid.Cid) (*MsgWait, error) {
 	return c.Internal.ChainWaitMsg(ctx, msgc)
 }
 
@@ -126,8 +125,8 @@ func (c *Struct) WalletDefaultAddress(ctx context.Context) (address.Address, err
 	return c.Internal.WalletDefaultAddress(ctx)
 }
 
-func (c *Struct) WalletGetNonce(ctx context.Context, addr address.Address) (uint64, error) {
-	return c.Internal.WalletGetNonce(ctx, addr)
+func (c *Struct) MpoolGetNonce(ctx context.Context, addr address.Address) (uint64, error) {
+	return c.Internal.MpoolGetNonce(ctx, addr)
 }
 
 var _ API = &Struct{}

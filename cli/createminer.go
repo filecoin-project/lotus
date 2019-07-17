@@ -67,7 +67,7 @@ var createMinerCmd = &cli.Command{
 			return err
 		}
 
-		nonce, err := api.WalletGetNonce(ctx, addr)
+		nonce, err := api.MpoolGetNonce(ctx, addr)
 		if err != nil {
 			return err
 		}
@@ -101,17 +101,17 @@ var createMinerCmd = &cli.Command{
 			return err
 		}
 
-		inblk, rect, err := api.ChainWaitMsg(ctx, smsg.Cid())
+		mwait, err := api.ChainWaitMsg(ctx, smsg.Cid())
 		if err != nil {
 			return err
 		}
 
-		maddr, err := address.NewFromBytes(rect.Return)
+		maddr, err := address.NewFromBytes(mwait.Receipt.Return)
 		if err != nil {
 			return err
 		}
 
-		fmt.Printf("miner created in block %s\n", inblk)
+		fmt.Printf("miner created in block %s\n", mwait.InBlock)
 		fmt.Println("new miner address: %s\n", maddr)
 
 		return nil

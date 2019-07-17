@@ -4,6 +4,7 @@ import (
 	"sync"
 
 	"github.com/filecoin-project/go-lotus/chain/address"
+	hamt "github.com/ipfs/go-hamt-ipld"
 )
 
 type MessagePool struct {
@@ -72,6 +73,36 @@ func (mp *MessagePool) Add(m *SignedMessage) error {
 
 	mset.add(m)
 	return nil
+}
+
+func (mp *MessagePool) GetNonce(addr address.Address) (uint64, error) {
+	mp.lk.Lock()
+	defer mp.lk.Unlock()
+
+	mset, ok := mp.pending[addr]
+	if ok {
+		return mset.startNonce + uint64(len(mset.msgs)), nil
+	}
+
+	head := mp.cs.GetHeaviestTipSet()
+
+	state, err := mp.cs.TipSetState(head.Cids())
+	if err != nil {
+		return 0, err
+	}
+
+	cst := hamt.CSTFromBstore(mp.cs.bs)
+	st, err := LoadStateTree(cst, state)
+	if err != nil {
+		return 0, err
+	}
+
+	act, err := st.GetActor(addr)
+	if err != nil {
+		return 0, err
+	}
+
+	return act.Nonce, nil
 }
 
 func (mp *MessagePool) Remove(m *SignedMessage) {

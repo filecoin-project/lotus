@@ -51,7 +51,8 @@ func (a *API) ChainGetRandomness(ctx context.Context, pts *chain.TipSet) ([]byte
 	return []byte("foo bar random"), nil
 }
 
-func (a *API) ChainWaitMsg(ctx context.Context, msg cid.Cid) (*api.WaitMsg, error) {
+func (a *API) ChainWaitMsg(ctx context.Context, msg cid.Cid) (*api.MsgWait, error) {
+	panic("TODO")
 }
 
 func (a *API) ID(context.Context) (peer.ID, error) {

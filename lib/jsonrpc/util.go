@@ -2,6 +2,7 @@ package jsonrpc
 
 import (
 	"encoding/json"
+	"fmt"
 	"reflect"
 )
 
@@ -42,7 +43,8 @@ func processFuncOut(funcType reflect.Type) (valOut int, errOut int, n int) {
 			panic("expected error as second return value")
 		}
 	default:
-		panic("too many error values")
+		errstr := fmt.Sprintf("too many return values: %s", funcType)
+		panic(errstr)
 	}
 
 	return
