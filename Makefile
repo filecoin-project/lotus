@@ -7,8 +7,11 @@ lib/bls-signatures/include/libbls_signatures.h: lib/bls-signatures/bls-signature
 
 sectorbuilder: lib/sectorbuilder/include/sector_builder_ffi.h
 
-lib/sectorbuilder/include/sector_builder_ffi.h: lib/sectorbuilder/rust-fil-sector-builder ;
+lib/sectorbuilder/include/sector_builder_ffi.h: lib/sectorbuilder lib/sectorbuilder/rust-fil-sector-builder ;
 	./lib/sectorbuilder/build.sh
+
+lib/sectorbuilder:
+	git submodule update --init --recursive lib/sectorbuilder
 
 deps: blssigs sectorbuilder
 
