@@ -1,6 +1,3 @@
 [submodule "lib/bls-signatures/bls-signatures"]
 	path = lib/bls-signatures/bls-signatures
 	url = https://github.com/filecoin-project/bls-signatures.git
-[submodule "lib/sectorbuilder/rust-builder"]
-	path = lib/sectorbuilder/rust-fil-sector-builder
-	url = https://github.com/filecoin-project/rust-fil-sector-builder

@@ -4,6 +4,7 @@ package daemon
 
 import (
 	"context"
+	sectorbuilder "github.com/filecoin-project/go-lotus/lib/sectorbuilder/binding"
 
 	"github.com/multiformats/go-multiaddr"
 	"gopkg.in/urfave/cli.v2"
@@ -23,6 +24,8 @@ var Cmd = &cli.Command{
 		},
 	},
 	Action: func(cctx *cli.Context) error {
+		_, _ = sectorbuilder.GetSectorSealingStatusByID(nil, 0)
+
 		ctx := context.Background()
 		r, err := repo.NewFS(cctx.String("repo"))
 		if err != nil {
