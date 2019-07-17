@@ -19,10 +19,14 @@ type StorageMarketActor struct{}
 
 func (sma StorageMarketActor) Exports() []interface{} {
 	return []interface{}{
-		nil,
-		sma.CreateStorageMiner,
-		nil, // TODO: slash consensus fault
-		sma.UpdateStorage,
+		//0: sma.StorageMarketConstructor,
+		1: sma.CreateStorageMiner,
+		//2: sma.SlashConsensusFault,
+		3: sma.UpdateStorage,
+		4: sma.GetTotalStorage,
+		5: sma.PowerLookup,
+		//6: sma.IsMiner,
+		//7: sma.StorageCollateralForSize,
 	}
 }
 
@@ -123,7 +127,7 @@ func (sma StorageMarketActor) UpdateStorage(act *types.Actor, vmctx types.VMCont
 	return types.InvokeRet{}, nil
 }
 
-func (sma StorageMarketActor) GetTotalStorage(act *types.Actor, vmctx types.VMContext, params struct{}) (types.InvokeRet, error) {
+func (sma StorageMarketActor) GetTotalStorage(act *types.Actor, vmctx types.VMContext, params *struct{}) (types.InvokeRet, error) {
 	var self StorageMarketState
 	if err := vmctx.Storage().Get(vmctx.Storage().GetHead(), &self); err != nil {
 		return types.InvokeRet{}, err
@@ -151,7 +155,7 @@ func (sma StorageMarketActor) PowerLookup(act *types.Actor, vmctx types.VMContex
 		}, nil
 	}
 
-	ret, code, err := vmctx.Send(params.Miner, 9999, types.NewInt(0), nil)
+	ret, code, err := vmctx.Send(params.Miner, 9, types.NewInt(0), nil)
 	if err != nil {
 		return types.InvokeRet{}, err
 	}

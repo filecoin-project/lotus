@@ -89,12 +89,24 @@ type StorageMinerConstructorParams struct {
 
 func (sma StorageMinerActor) Exports() []interface{} {
 	return []interface{}{
-		sma.StorageMinerActor,
-		sma.CommitSector,
+		0: sma.StorageMinerConstructor,
+		1: sma.CommitSector,
+		//2:  sma.SubmitPost,
+		//3:  sma.SlashStorageFault,
+		//4:  sma.GetCurrentProvingSet,
+		//5:  sma.ArbitrateDeal,
+		//6:  sma.DePledge,
+		//7:  sma.GetOwner,
+		//8:  sma.GetWorkerAddr,
+		9: sma.GetPower,
+		//10: sma.GetPeerID,
+		//11: sma.GetSectorSize,
+		//12: sma.UpdatePeerID,
+		//13: sma.ChangeWorker,
 	}
 }
 
-func (sma StorageMinerActor) StorageMinerActor(act *types.Actor, vmctx types.VMContext, params *StorageMinerConstructorParams) (types.InvokeRet, error) {
+func (sma StorageMinerActor) StorageMinerConstructor(act *types.Actor, vmctx types.VMContext, params *StorageMinerConstructorParams) (types.InvokeRet, error) {
 	var self StorageMinerActorState
 	self.Owner = params.Owner
 	self.Worker = params.Worker
@@ -207,6 +219,17 @@ func (sma StorageMinerActor) CommitSector(act *types.Actor, vmctx types.VMContex
 	}
 
 	return types.InvokeRet{}, nil
+}
+
+func (sma StorageMinerActor) GetPower(act *types.Actor, vmctx types.VMContext, params *struct{}) (types.InvokeRet, error) {
+	var self StorageMinerActorState
+	state := vmctx.Storage().GetHead()
+	if err := vmctx.Storage().Get(state, &self); err != nil {
+		return types.InvokeRet{}, err
+	}
+	return types.InvokeRet{
+		Result: self.Power.Bytes(),
+	}, nil
 }
 
 func SectorIsUnique(cst *hamt.CborIpldStore, sroot cid.Cid, sid types.BigInt) (bool, error) {

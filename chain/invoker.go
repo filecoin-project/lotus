@@ -63,7 +63,8 @@ func (*invoker) transform(instance Invokee) (nativeCode, error) {
 	exports := instance.Exports()
 	for i, m := range exports {
 		i := i
-		newErr := func(str string) error {
+		newErr := func(format string, args ...interface{}) error {
+			str := fmt.Sprintf(format, args)
 			return fmt.Errorf("transform(%s) export(%d): %s", itype.Name(), i, str)
 		}
 		if m == nil {
@@ -86,7 +87,8 @@ func (*invoker) transform(instance Invokee) (nativeCode, error) {
 		}
 
 		if t.In(2).Kind() != reflect.Ptr {
-			return nil, newErr("parameter has to be a pointer to parameter")
+			return nil, newErr("parameter has to be a pointer to parameter, is: %s",
+				t.In(2).Kind())
 		}
 
 		if t.NumOut() != 2 {
