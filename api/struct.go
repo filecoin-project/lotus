@@ -56,7 +56,7 @@ func (c *Struct) MpoolPending(ctx context.Context, ts *chain.TipSet) ([]*chain.S
 }
 
 func (c *Struct) MpoolPush(ctx context.Context, smsg *chain.SignedMessage) error {
-	return c.MpoolPush(ctx, smsg)
+	return c.Internal.MpoolPush(ctx, smsg)
 }
 
 func (c *Struct) MinerStart(ctx context.Context, addr address.Address) error {

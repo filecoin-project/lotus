@@ -112,7 +112,7 @@ var createMinerCmd = &cli.Command{
 		}
 
 		fmt.Printf("miner created in block %s\n", mwait.InBlock)
-		fmt.Println("new miner address: %s\n", maddr)
+		fmt.Printf("new miner address: %s\n", maddr)
 
 		return nil
 	},
