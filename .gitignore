@@ -2,3 +2,4 @@ lotus
 **/*.h
 **/*.a
 **/*.pc
+build/.update-modules
