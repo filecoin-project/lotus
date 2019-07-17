@@ -8,6 +8,7 @@ import (
 	"github.com/filecoin-project/go-lotus/chain/types"
 	"github.com/ipfs/go-cid"
 	cbor "github.com/ipfs/go-ipld-cbor"
+	"golang.org/x/xerrors"
 )
 
 type invoker struct {
@@ -34,10 +35,10 @@ func (inv *invoker) Invoke(act *types.Actor, vmctx *VMContext, method uint64, pa
 
 	code, ok := inv.builtInCode[act.Code]
 	if !ok {
-		return types.InvokeRet{}, fmt.Errorf("no code for actor %s", act.Code)
+		return types.InvokeRet{}, xerrors.Errorf("no code for actor %s", act.Code)
 	}
 	if method >= uint64(len(code)) || code[method] == nil {
-		return types.InvokeRet{}, fmt.Errorf("no method %d on actor", method)
+		return types.InvokeRet{}, xerrors.Errorf("no method %d on actor", method)
 	}
 	return code[method](act, vmctx, params)
 

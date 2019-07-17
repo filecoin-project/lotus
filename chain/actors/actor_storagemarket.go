@@ -6,6 +6,7 @@ import (
 
 	cbor "github.com/ipfs/go-ipld-cbor"
 	"github.com/libp2p/go-libp2p-core/peer"
+	"golang.org/x/xerrors"
 )
 
 const SectorSize = 1024
@@ -14,6 +15,7 @@ func init() {
 	cbor.RegisterCborType(StorageMarketState{})
 	cbor.RegisterCborType(CreateStorageMinerParams{})
 	cbor.RegisterCborType(IsMinerParam{})
+	cbor.RegisterCborType(PowerLookupParams{})
 }
 
 type StorageMarketActor struct{}
@@ -146,7 +148,7 @@ type PowerLookupParams struct {
 func (sma StorageMarketActor) PowerLookup(act *types.Actor, vmctx types.VMContext, params *PowerLookupParams) (types.InvokeRet, error) {
 	var self StorageMarketState
 	if err := vmctx.Storage().Get(vmctx.Storage().GetHead(), &self); err != nil {
-		return types.InvokeRet{}, err
+		return types.InvokeRet{}, xerrors.Errorf("getting head: %w", err)
 	}
 
 	if _, ok := self.Miners[params.Miner]; !ok {
@@ -156,9 +158,9 @@ func (sma StorageMarketActor) PowerLookup(act *types.Actor, vmctx types.VMContex
 		}, nil
 	}
 
-	ret, code, err := vmctx.Send(params.Miner, 9, types.NewInt(0), nil)
+	ret, code, err := vmctx.Send(params.Miner, 9, types.NewInt(0), EmptyStructCBOR)
 	if err != nil {
-		return types.InvokeRet{}, err
+		return types.InvokeRet{}, xerrors.Errorf("invoke Miner.GetPower: %w", err)
 	}
 
 	if code != 0 {

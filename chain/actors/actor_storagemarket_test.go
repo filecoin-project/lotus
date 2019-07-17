@@ -9,6 +9,11 @@ import (
 	cbor "github.com/ipfs/go-ipld-cbor"
 )
 
+func TestDumpEmpyStruct(t *testing.T) {
+	res, err := SerializeParams(struct{}{})
+	t.Logf("res: %x, err: %+v", res, err)
+}
+
 func TestStorageMarketCreateMiner(t *testing.T) {
 	h := NewHarness(t)
 	var sminer address.Address
@@ -43,6 +48,7 @@ func TestStorageMarketCreateMiner(t *testing.T) {
 					t.Fatal("hold up")
 				}
 				h.Steps[1].M.Params = h.DumpObject(&IsMinerParam{Addr: sminer})
+				h.Steps[2].M.Params = h.DumpObject(&PowerLookupParams{Miner: sminer})
 			},
 		},
 		{
@@ -68,6 +74,28 @@ func TestStorageMarketCreateMiner(t *testing.T) {
 
 				if !output {
 					t.Fatalf("%s is miner but IsMiner call returned false", sminer)
+				}
+			},
+		},
+		{
+			M: types.Message{
+				To:       StorageMarketAddress,
+				From:     h.From,
+				Method:   5,
+				GasPrice: types.NewInt(1),
+				GasLimit: types.NewInt(1),
+				Value:    types.NewInt(0),
+				Nonce:    2,
+				// Params is sent in previous set
+			},
+			Ret: func(t *testing.T, ret *types.MessageReceipt) {
+				if ret.ExitCode != 0 {
+					t.Fatal("invokation failed: ", ret.ExitCode)
+				}
+				power := types.BigFromBytes(ret.Return)
+
+				if types.BigCmp(power, types.NewInt(0)) != 0 {
+					t.Fatalf("power should be zero, is: %s", power)
 				}
 			},
 		},

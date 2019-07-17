@@ -215,7 +215,7 @@ func (vm *VM) ApplyMessage(msg *types.Message) (*types.MessageReceipt, error) {
 	if msg.Method != 0 {
 		ret, errcode, err = vm.Invoke(toActor, vmctx, msg.Method, msg.Params)
 		if err != nil {
-			return nil, err
+			return nil, xerrors.Errorf("during invoke: %w", err)
 		}
 
 		if errcode != 0 {
