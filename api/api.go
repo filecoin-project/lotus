@@ -33,6 +33,7 @@ type API interface {
 	ChainHead(context.Context) (*chain.TipSet, error)                // TODO: check serialization
 	ChainSubmitBlock(ctx context.Context, blk *chain.BlockMsg) error // TODO: check serialization
 	ChainGetRandomness(context.Context, *chain.TipSet) ([]byte, error)
+	ChainWaitMsg(context.Context, cid.Cid) (cid.Cid, *types.MessageReceipt, error)
 
 	// messages
 
@@ -42,6 +43,7 @@ type API interface {
 	// // mpool
 	// // // ls / show / rm
 	MpoolPending(context.Context, *chain.TipSet) ([]*chain.SignedMessage, error)
+	MpoolPush(context.Context, *chain.SignedMessage) error
 
 	// dag
 
@@ -74,6 +76,12 @@ type API interface {
 	WalletNew(context.Context, string) (address.Address, error)
 	WalletList(context.Context) ([]address.Address, error)
 	WalletBalance(context.Context, address.Address) (types.BigInt, error)
+	WalletSign(context.Context, address.Address, []byte) (*chain.Signature, error)
+	WalletDefaultAddress(context.Context) (address.Address, error)
+
+	// Really not sure where this belongs. It could go on the wallet, or the message pool, or the chain...
+	WalletGetNonce(context.Context, address.Address) (uint64, error)
+
 	// // import
 	// // export
 	// // (on cli - cmd to list associations)

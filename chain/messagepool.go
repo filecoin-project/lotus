@@ -37,7 +37,7 @@ func NewMessagePool(cs *ChainStore) *MessagePool {
 		pending: make(map[address.Address]*msgSet),
 		cs:      cs,
 	}
-	cs.headChange = mp.HeadChange
+	cs.SubscribeHeadChanges(mp.HeadChange)
 
 	return mp
 }

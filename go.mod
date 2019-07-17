@@ -58,7 +58,7 @@ require (
 	github.com/stretchr/testify v1.3.0
 	github.com/whyrusleeping/multiaddr-filter v0.0.0-20160516205228-e903e4adabd7
 	github.com/whyrusleeping/pubsub v0.0.0-20131020042734-02de8aa2db3d
-	github.com/whyrusleeping/sharray v0.0.0-20190520213710-bd32aab369f8
+	github.com/whyrusleeping/sharray v0.0.0-20190718051354-e41931821e33
 	go.opencensus.io v0.22.0 // indirect
 	go.uber.org/dig v1.7.0 // indirect
 	go.uber.org/fx v1.9.0
@@ -66,6 +66,7 @@ require (
 	go4.org v0.0.0-20190313082347-94abd6928b1d // indirect
 	golang.org/x/sync v0.0.0-20190423024810-112230192c58 // indirect
 	golang.org/x/xerrors v0.0.0-20190513163551-3ee3066db522
+	google.golang.org/appengine v1.4.0 // indirect
 	gopkg.in/urfave/cli.v2 v2.0.0-20180128182452-d3ae77c26ac8
 	launchpad.net/gocheck v0.0.0-20140225173054-000000000087 // indirect
 )
