@@ -4,6 +4,7 @@ import (
 	"fmt"
 	"strconv"
 
+	"golang.org/x/xerrors"
 	"gopkg.in/urfave/cli.v2"
 
 	"github.com/filecoin-project/go-lotus/chain"
@@ -59,7 +60,7 @@ var createMinerCmd = &cli.Command{
 		ctx := reqContext(cctx)
 		addr, err := api.WalletDefaultAddress(ctx)
 		if err != nil {
-			return err
+			return xerrors.Errorf("failed to get default address: %w", err)
 		}
 
 		params, err := actors.SerializeParams(createMinerArgs)
@@ -69,7 +70,7 @@ var createMinerCmd = &cli.Command{
 
 		nonce, err := api.MpoolGetNonce(ctx, addr)
 		if err != nil {
-			return err
+			return xerrors.Errorf("failed to get account nonce: %w", err)
 		}
 
 		msg := types.Message{
@@ -89,7 +90,7 @@ var createMinerCmd = &cli.Command{
 
 		sig, err := api.WalletSign(ctx, addr, msgbytes)
 		if err != nil {
-			return err
+			return xerrors.Errorf("failed to sign message: %w", err)
 		}
 
 		smsg := &chain.SignedMessage{
@@ -98,12 +99,12 @@ var createMinerCmd = &cli.Command{
 		}
 
 		if err := api.MpoolPush(ctx, smsg); err != nil {
-			return err
+			return xerrors.Errorf("failed to push signed message: %w", err)
 		}
 
 		mwait, err := api.ChainWaitMsg(ctx, smsg.Cid())
 		if err != nil {
-			return err
+			return xerrors.Errorf("failed waiting for message inclusion: %w", err)
 		}
 
 		maddr, err := address.NewFromBytes(mwait.Receipt.Return)
