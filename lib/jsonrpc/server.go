@@ -4,6 +4,7 @@ import (
 	"encoding/json"
 	"io"
 	"net/http"
+	"strings"
 
 	"github.com/gorilla/websocket"
 )
@@ -49,6 +50,17 @@ func (s *RPCServer) handleWS(w http.ResponseWriter, r *http.Request) {
 
 // TODO: return errors to clients per spec
 func (s *RPCServer) ServeHTTP(w http.ResponseWriter, r *http.Request) {
+	token := r.Header.Get("Authorization")
+	if token != "" {
+		if !strings.HasPrefix(token, "Bearer ") {
+			w.WriteHeader(401)
+			return
+		}
+		token = token[len("Bearer "):]
+
+
+	}
+
 	if r.Header.Get("Connection") == "Upgrade" {
 		s.handleWS(w, r)
 		return

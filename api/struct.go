@@ -17,7 +17,7 @@ type Struct struct {
 		ID      func(context.Context) (peer.ID, error)
 		Version func(context.Context) (Version, error)
 
-		ChainSubmitBlock      func(ctx context.Context, blk *chain.BlockMsg) error
+		ChainSubmitBlock      func(ctx context.Context, blk *chain.BlockMsg) error `perm:"write"`
 		ChainHead             func(context.Context) (*chain.TipSet, error)
 		ChainGetRandomness    func(context.Context, *chain.TipSet) ([]byte, error)
 		ChainWaitMsg          func(context.Context, cid.Cid) (*MsgWait, error)
@@ -27,21 +27,21 @@ type Struct struct {
 		MpoolPending func(context.Context, *chain.TipSet) ([]*chain.SignedMessage, error)
 		MpoolPush    func(context.Context, *chain.SignedMessage) error
 
-		MinerStart       func(context.Context, address.Address) error
-		MinerCreateBlock func(context.Context, address.Address, *chain.TipSet, []chain.Ticket, chain.ElectionProof, []*chain.SignedMessage) (*chain.BlockMsg, error)
+		MinerStart       func(context.Context, address.Address) error                                                                                                `perm:"write"`
+		MinerCreateBlock func(context.Context, address.Address, *chain.TipSet, []chain.Ticket, chain.ElectionProof, []*chain.SignedMessage) (*chain.BlockMsg, error) `perm:"write"`
 
-		WalletNew            func(context.Context, string) (address.Address, error)
+		WalletNew            func(context.Context, string) (address.Address, error) `perm:"write"`
 		WalletList           func(context.Context) ([]address.Address, error)
 		WalletBalance        func(context.Context, address.Address) (types.BigInt, error)
-		WalletSign           func(context.Context, address.Address, []byte) (*chain.Signature, error)
+		WalletSign           func(context.Context, address.Address, []byte) (*chain.Signature, error) `perm:"write"`
 		WalletDefaultAddress func(context.Context) (address.Address, error)
 		MpoolGetNonce        func(context.Context, address.Address) (uint64, error)
 
-		ClientImport      func(ctx context.Context, path string) (cid.Cid, error)
+		ClientImport      func(ctx context.Context, path string) (cid.Cid, error) `perm:"write"`
 		ClientListImports func(ctx context.Context) ([]Import, error)
 
 		NetPeers       func(context.Context) ([]peer.AddrInfo, error)
-		NetConnect     func(context.Context, peer.AddrInfo) error
+		NetConnect     func(context.Context, peer.AddrInfo) error `perm:"write"`
 		NetAddrsListen func(context.Context) (peer.AddrInfo, error)
 	}
 }
