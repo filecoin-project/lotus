@@ -184,7 +184,7 @@ func NewClient(addr string, namespace string, handler interface{}) (ClientCloser
 				if resp.Result != nil {
 					log.Debugw("rpc result", "type", ftyp.Out(valOut))
 					if err := json.Unmarshal(resp.Result, rval.Interface()); err != nil {
-						return processError(xerrors.Errorf("unmarshaling result: ", err))
+						return processError(xerrors.Errorf("unmarshaling result: %w", err))
 					}
 				}
 			}
