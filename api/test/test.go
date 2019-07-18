@@ -2,11 +2,11 @@ package test
 
 import (
 	"context"
-	"strings"
 	"testing"
 
 	"github.com/filecoin-project/go-lotus/api"
 	"github.com/filecoin-project/go-lotus/build"
+	"github.com/stretchr/testify/assert"
 )
 
 // APIBuilder is a function which is invoked in test suite to provide
@@ -49,9 +49,7 @@ func (ts *testSuite) testID(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	if !strings.HasPrefix(id.Pretty(), "Qm") {
-		t.Error("expected identity to be Qm..")
-	}
+	assert.Regexp(t, "^12", id.Pretty())
 }
 
 func (ts *testSuite) testConnectTwo(t *testing.T) {

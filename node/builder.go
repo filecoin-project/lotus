@@ -24,6 +24,7 @@ import (
 
 	"github.com/filecoin-project/go-lotus/api"
 	"github.com/filecoin-project/go-lotus/chain"
+	"github.com/filecoin-project/go-lotus/chain/types"
 	"github.com/filecoin-project/go-lotus/node/config"
 	"github.com/filecoin-project/go-lotus/node/hello"
 	"github.com/filecoin-project/go-lotus/node/modules"
@@ -115,11 +116,6 @@ var defConf = config.Default()
 func defaults() []Option {
 	return []Option{
 		Override(new(helpers.MetricsCtx), context.Background),
-
-		randomIdentity(),
-
-		Override(new(datastore.Batching), testing.MapDatastore),
-		Override(new(blockstore.Blockstore), testing.MapBlockstore), // NOT on top of ds above
 		Override(new(record.Validator), modules.RecordValidator),
 
 		// Filecoin modules
@@ -227,6 +223,8 @@ func Repo(r repo.Repo) Option {
 		Override(new(ci.PrivKey), pk),
 		Override(new(ci.PubKey), ci.PrivKey.GetPublic),
 		Override(new(peer.ID), peer.IDFromPublicKey),
+
+		Override(new(types.KeyStore), modules.KeyStore),
 	)
 }
 

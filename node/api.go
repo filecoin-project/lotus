@@ -110,7 +110,7 @@ func (a *API) WalletNew(ctx context.Context, typ string) (address.Address, error
 }
 
 func (a *API) WalletList(ctx context.Context) ([]address.Address, error) {
-	return a.Wallet.ListAddrs(), nil
+	return a.Wallet.ListAddrs()
 }
 
 func (a *API) NetConnect(ctx context.Context, p peer.AddrInfo) error {

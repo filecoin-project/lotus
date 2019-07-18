@@ -9,7 +9,9 @@ import (
 	dssync "github.com/ipfs/go-datastore/sync"
 	"github.com/libp2p/go-libp2p-core/crypto"
 	"github.com/multiformats/go-multiaddr"
+	"golang.org/x/xerrors"
 
+	"github.com/filecoin-project/go-lotus/chain/types"
 	"github.com/filecoin-project/go-lotus/node/config"
 )
 
@@ -25,7 +27,7 @@ type MemRepo struct {
 	datastore datastore.Datastore
 	configF   func() *config.Root
 	libp2pKey crypto.PrivKey
-	wallet    interface{}
+	keystore  map[string]types.KeyInfo
 }
 
 type lockedMemRepo struct {
@@ -46,7 +48,7 @@ type MemRepoOptions struct {
 	Ds        datastore.Datastore
 	ConfigF   func() *config.Root
 	Libp2pKey crypto.PrivKey
-	Wallet    interface{}
+	KeyStore  map[string]types.KeyInfo
 }
 
 func genLibp2pKey() (crypto.PrivKey, error) {
@@ -77,6 +79,9 @@ func NewMemory(opts *MemRepoOptions) *MemRepo {
 		}
 		opts.Libp2pKey = pk
 	}
+	if opts.KeyStore == nil {
+		opts.KeyStore = make(map[string]types.KeyInfo)
+	}
 
 	return &MemRepo{
 		repoLock: make(chan struct{}, 1),
@@ -84,7 +89,7 @@ func NewMemory(opts *MemRepoOptions) *MemRepo {
 		datastore: opts.Ds,
 		configF:   opts.ConfigF,
 		libp2pKey: opts.Libp2pKey,
-		wallet:    opts.Wallet,
+		keystore:  opts.KeyStore,
 	}
 }
 
@@ -172,9 +177,73 @@ func (lmem *lockedMemRepo) SetAPIEndpoint(ma multiaddr.Multiaddr) error {
 	return nil
 }
 
-func (lmem *lockedMemRepo) Wallet() (interface{}, error) {
+func (lmem *lockedMemRepo) KeyStore() (types.KeyStore, error) {
 	if err := lmem.checkToken(); err != nil {
 		return nil, err
 	}
-	return lmem.mem.wallet, nil
+	return lmem, nil
+}
+
+// Implement KeyStore on the same instance
+
+// List lists all the keys stored in the KeyStore
+func (lmem *lockedMemRepo) List() ([]string, error) {
+	if err := lmem.checkToken(); err != nil {
+		return nil, err
+	}
+	lmem.RLock()
+	defer lmem.RUnlock()
+
+	res := make([]string, 0, len(lmem.mem.keystore))
+	for k := range lmem.mem.keystore {
+		res = append(res, k)
+	}
+	return res, nil
+}
+
+// Get gets a key out of keystore and returns types.KeyInfo coresponding to named key
+func (lmem *lockedMemRepo) Get(name string) (types.KeyInfo, error) {
+	if err := lmem.checkToken(); err != nil {
+		return types.KeyInfo{}, err
+	}
+	lmem.RLock()
+	defer lmem.RUnlock()
+
+	key, ok := lmem.mem.keystore[name]
+	if !ok {
+		return types.KeyInfo{}, xerrors.Errorf("getting key '%s': %w", name, ErrKeyNotFound)
+	}
+	return key, nil
+}
+
+// Put saves key info under given name
+func (lmem *lockedMemRepo) Put(name string, key types.KeyInfo) error {
+	if err := lmem.checkToken(); err != nil {
+		return err
+	}
+	lmem.Lock()
+	defer lmem.Unlock()
+
+	_, isThere := lmem.mem.keystore[name]
+	if isThere {
+		return xerrors.Errorf("putting key '%s': %w", name, ErrKeyExists)
+	}
+
+	lmem.mem.keystore[name] = key
+	return nil
+}
+
+func (lmem *lockedMemRepo) Delete(name string) error {
+	if err := lmem.checkToken(); err != nil {
+		return err
+	}
+	lmem.Lock()
+	defer lmem.Unlock()
+
+	_, isThere := lmem.mem.keystore[name]
+	if !isThere {
+		return xerrors.Errorf("deleting key '%s': %w", name, ErrKeyNotFound)
+	}
+	delete(lmem.mem.keystore, name)
+	return nil
 }
