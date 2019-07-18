@@ -23,11 +23,11 @@ var chainHeadCmd = &cli.Command{
 	Name:  "head",
 	Usage: "Print chain head",
 	Action: func(cctx *cli.Context) error {
-		api, err := getAPI(cctx)
+		api, err := GetAPI(cctx)
 		if err != nil {
 			return err
 		}
-		ctx := reqContext(cctx)
+		ctx := ReqContext(cctx)
 
 		head, err := api.ChainHead(ctx)
 		if err != nil {
@@ -51,11 +51,11 @@ var chainGetBlock = &cli.Command{
 		},
 	},
 	Action: func(cctx *cli.Context) error {
-		api, err := getAPI(cctx)
+		api, err := GetAPI(cctx)
 		if err != nil {
 			return err
 		}
-		ctx := reqContext(cctx)
+		ctx := ReqContext(cctx)
 
 		if !cctx.Args().Present() {
 			return fmt.Errorf("must pass cid of block to print")

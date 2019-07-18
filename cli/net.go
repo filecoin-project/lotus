@@ -27,11 +27,11 @@ var netPeers = &cli.Command{
 	Name:  "peers",
 	Usage: "Print peers",
 	Action: func(cctx *cli.Context) error {
-		api, err := getAPI(cctx)
+		api, err := GetAPI(cctx)
 		if err != nil {
 			return err
 		}
-		ctx := reqContext(cctx)
+		ctx := ReqContext(cctx)
 		peers, err := api.NetPeers(ctx)
 		if err != nil {
 			return err
@@ -49,11 +49,11 @@ var netListen = &cli.Command{
 	Name:  "listen",
 	Usage: "List listen addresses",
 	Action: func(cctx *cli.Context) error {
-		api, err := getAPI(cctx)
+		api, err := GetAPI(cctx)
 		if err != nil {
 			return err
 		}
-		ctx := reqContext(cctx)
+		ctx := ReqContext(cctx)
 
 		addrs, err := api.NetAddrsListen(ctx)
 		if err != nil {
@@ -71,11 +71,11 @@ var netConnect = &cli.Command{
 	Name:  "connect",
 	Usage: "Connect to a peer",
 	Action: func(cctx *cli.Context) error {
-		api, err := getAPI(cctx)
+		api, err := GetAPI(cctx)
 		if err != nil {
 			return err
 		}
-		ctx := reqContext(cctx)
+		ctx := ReqContext(cctx)
 
 		pis, err := parseAddresses(ctx, cctx.Args().Slice())
 		if err != nil {
@@ -100,12 +100,12 @@ var netId = &cli.Command{
 	Name:  "id",
 	Usage: "Get node identity",
 	Action: func(cctx *cli.Context) error {
-		api, err := getAPI(cctx)
+		api, err := GetAPI(cctx)
 		if err != nil {
 			return err
 		}
 
-		ctx := reqContext(cctx)
+		ctx := ReqContext(cctx)
 
 		pid, err := api.ID(ctx)
 		if err != nil {

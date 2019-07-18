@@ -18,12 +18,12 @@ var mpoolPending = &cli.Command{
 	Name:  "pending",
 	Usage: "Get pending messages",
 	Action: func(cctx *cli.Context) error {
-		api, err := getAPI(cctx)
+		api, err := GetAPI(cctx)
 		if err != nil {
 			return err
 		}
 
-		ctx := reqContext(cctx)
+		ctx := ReqContext(cctx)
 
 		msgs, err := api.MpoolPending(ctx, nil)
 		if err != nil {
