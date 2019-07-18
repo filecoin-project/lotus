@@ -10,6 +10,7 @@ import (
 
 	"github.com/gorilla/websocket"
 	logging "github.com/ipfs/go-log"
+	"golang.org/x/xerrors"
 )
 
 var log = logging.Logger("rpc")
@@ -183,7 +184,7 @@ func NewClient(addr string, namespace string, handler interface{}) (ClientCloser
 				if resp.Result != nil {
 					log.Debugw("rpc result", "type", ftyp.Out(valOut))
 					if err := json.Unmarshal(resp.Result, rval.Interface()); err != nil {
-						return processError(err)
+						return processError(xerrors.Errorf("unmarshaling result: ", err))
 					}
 				}
 			}
