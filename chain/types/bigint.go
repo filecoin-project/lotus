@@ -71,6 +71,9 @@ func (bi *BigInt) UnmarshalJSON(b []byte) error {
 
 	i, ok := big.NewInt(0).SetString(s, 10)
 	if !ok {
+		if string(s) == "<nil>" {
+			return nil
+		}
 		return fmt.Errorf("failed to parse bigint string")
 	}
 

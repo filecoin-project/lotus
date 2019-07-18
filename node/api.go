@@ -141,7 +141,10 @@ func (a *API) WalletSign(ctx context.Context, k address.Address, msg []byte) (*c
 }
 
 func (a *API) WalletDefaultAddress(ctx context.Context) (address.Address, error) {
-	addrs := a.Wallet.ListAddrs()
+	addrs, err := a.Wallet.ListAddrs()
+	if err != nil {
+		return address.Undef, err
+	}
 
 	// TODO: store a default address in the config or 'wallet' portion of the repo
 	return addrs[0], nil

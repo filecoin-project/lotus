@@ -78,6 +78,7 @@ var createMinerCmd = &cli.Command{
 			From:     addr,
 			Method:   1, // TODO: constants pls
 			Params:   params,
+			Value:    types.NewInt(0),
 			Nonce:    nonce,
 			GasPrice: types.NewInt(1),
 			GasLimit: types.NewInt(1),
