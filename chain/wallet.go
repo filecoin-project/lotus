@@ -185,16 +185,24 @@ func (w *Wallet) GenerateKey(typ string) (address.Address, error) {
 		if err != nil {
 			return address.Undef, err
 		}
+		ki := types.KeyInfo{
+			Type:       typ,
+			PrivateKey: priv,
+		}
 
-		k, err = NewKey(types.KeyInfo{typ, priv})
+		k, err = NewKey(ki)
 		if err != nil {
 			return address.Undef, err
 		}
 	case KTBLS:
 		priv := bls.PrivateKeyGenerate()
+		ki := types.KeyInfo{
+			Type:       typ,
+			PrivateKey: priv[:],
+		}
 
 		var err error
-		k, err = NewKey(types.KeyInfo{typ, priv[:]})
+		k, err = NewKey(ki)
 		if err != nil {
 			return address.Undef, err
 		}
