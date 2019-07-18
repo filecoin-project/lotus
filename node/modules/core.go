@@ -23,6 +23,7 @@ import (
 	"go.uber.org/fx"
 
 	"github.com/filecoin-project/go-lotus/chain"
+	"github.com/filecoin-project/go-lotus/chain/types"
 	"github.com/filecoin-project/go-lotus/node/modules/helpers"
 	"github.com/filecoin-project/go-lotus/node/repo"
 )
@@ -63,6 +64,10 @@ func LockedRepo(lr repo.LockedRepo) func(lc fx.Lifecycle) repo.LockedRepo {
 
 		return lr
 	}
+}
+
+func KeyStore(lr repo.LockedRepo) (types.KeyStore, error) {
+	return lr.KeyStore()
 }
 
 func Datastore(r repo.LockedRepo) (datastore.Batching, error) {

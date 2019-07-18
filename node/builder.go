@@ -209,10 +209,6 @@ func Repo(r repo.Repo) Option {
 	if err != nil {
 		return Error(err)
 	}
-	kstore, err := lr.KeyStore()
-	if err != nil {
-		return Error(err)
-	}
 
 	return Options(
 		Config(cfg),
@@ -228,7 +224,7 @@ func Repo(r repo.Repo) Option {
 		Override(new(ci.PubKey), ci.PrivKey.GetPublic),
 		Override(new(peer.ID), peer.IDFromPublicKey),
 
-		Override(new(types.KeyStore), kstore),
+		Override(new(types.KeyStore), modules.KeyStore),
 	)
 }
 
