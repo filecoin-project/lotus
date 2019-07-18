@@ -10,4 +10,10 @@ type jwtPayload struct {
 	Allow []string
 }
 
-
+func init() {
+	p := jwtPayload{
+		Allow: []string{"read", "write"},
+	}
+	r, _ := jwt.Sign(&p, secret)
+	log.Infof("WRITE TOKEN: %s", string(r))
+}

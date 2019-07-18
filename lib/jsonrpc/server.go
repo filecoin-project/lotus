@@ -1,12 +1,16 @@
 package jsonrpc
 
 import (
+	"context"
 	"encoding/json"
 	"io"
 	"net/http"
 	"strings"
 
+	"github.com/gbrlsnchs/jwt/v3"
 	"github.com/gorilla/websocket"
+
+	"github.com/filecoin-project/go-lotus/api"
 )
 
 const (
@@ -29,7 +33,7 @@ func NewServer() *RPCServer {
 
 var upgrader = websocket.Upgrader{}
 
-func (s *RPCServer) handleWS(w http.ResponseWriter, r *http.Request) {
+func (s *RPCServer) handleWS(ctx context.Context, w http.ResponseWriter, r *http.Request) {
 	c, err := upgrader.Upgrade(w, r, nil)
 	if err != nil {
 		log.Error(err)
@@ -40,7 +44,7 @@ func (s *RPCServer) handleWS(w http.ResponseWriter, r *http.Request) {
 	(&wsConn{
 		conn:    c,
 		handler: s.methods,
-	}).handleWsConn(r.Context())
+	}).handleWsConn(ctx)
 
 	if err := c.Close(); err != nil {
 		log.Error(err)
@@ -50,6 +54,8 @@ func (s *RPCServer) handleWS(w http.ResponseWriter, r *http.Request) {
 
 // TODO: return errors to clients per spec
 func (s *RPCServer) ServeHTTP(w http.ResponseWriter, r *http.Request) {
+	ctx := r.Context()
+
 	token := r.Header.Get("Authorization")
 	if token != "" {
 		if !strings.HasPrefix(token, "Bearer ") {
@@ -58,15 +64,21 @@ func (s *RPCServer) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 		}
 		token = token[len("Bearer "):]
 
+		var payload jwtPayload
+		if _, err := jwt.Verify([]byte(token), secret, &payload); err != nil {
+			w.WriteHeader(401)
+			return
+		}
 
+		ctx = api.WithPerm(ctx, payload.Allow)
 	}
 
 	if r.Header.Get("Connection") == "Upgrade" {
-		s.handleWS(w, r)
+		s.handleWS(ctx, w, r)
 		return
 	}
 
-	s.methods.handleReader(r.Context(), r.Body, w, rpcError)
+	s.methods.handleReader(ctx, r.Body, w, rpcError)
 }
 
 func rpcError(wf func(func(io.Writer)), req *request, code int, err error) {
