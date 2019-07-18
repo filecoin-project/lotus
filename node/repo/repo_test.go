@@ -7,6 +7,7 @@ import (
 	"github.com/stretchr/testify/assert"
 	"golang.org/x/xerrors"
 
+	"github.com/filecoin-project/go-lotus/chain/types"
 	"github.com/filecoin-project/go-lotus/node/config"
 )
 
@@ -64,8 +65,8 @@ func basicTest(t *testing.T, repo Repo) {
 	}
 	assert.Nil(t, apima, "with closed repo, apima should be set back to nil")
 
-	k1 := KeyInfo{Type: "foo"}
-	k2 := KeyInfo{Type: "bar"}
+	k1 := types.KeyInfo{Type: "foo"}
+	k2 := types.KeyInfo{Type: "bar"}
 
 	lrepo, err = repo.Lock()
 	assert.NoError(t, err, "should be able to relock")

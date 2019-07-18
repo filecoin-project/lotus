@@ -21,6 +21,7 @@ import (
 	"github.com/pkg/errors"
 	"golang.org/x/xerrors"
 
+	"github.com/filecoin-project/go-lotus/chain/types"
 	"github.com/filecoin-project/go-lotus/node/config"
 )
 
@@ -244,7 +245,7 @@ func (fsr *fsLockedRepo) SetAPIEndpoint(ma multiaddr.Multiaddr) error {
 	return ioutil.WriteFile(fsr.join(fsAPI), []byte(ma.String()), 0644)
 }
 
-func (fsr *fsLockedRepo) KeyStore() (KeyStore, error) {
+func (fsr *fsLockedRepo) KeyStore() (types.KeyStore, error) {
 	if err := fsr.stillValid(); err != nil {
 		return nil, err
 	}
@@ -283,10 +284,10 @@ func (fsr *fsLockedRepo) List() ([]string, error) {
 	return keys, nil
 }
 
-// Get gets a key out of keystore and returns KeyInfo coresponding to named key
-func (fsr *fsLockedRepo) Get(name string) (KeyInfo, error) {
+// Get gets a key out of keystore and returns types.KeyInfo coresponding to named key
+func (fsr *fsLockedRepo) Get(name string) (types.KeyInfo, error) {
 	if err := fsr.stillValid(); err != nil {
-		return KeyInfo{}, err
+		return types.KeyInfo{}, err
 	}
 
 	encName := base32.RawStdEncoding.EncodeToString([]byte(name))
@@ -294,37 +295,37 @@ func (fsr *fsLockedRepo) Get(name string) (KeyInfo, error) {
 
 	fstat, err := os.Stat(keyPath)
 	if os.IsNotExist(err) {
-		return KeyInfo{}, xerrors.Errorf("opening key '%s': %w", name, ErrKeyNotFound)
+		return types.KeyInfo{}, xerrors.Errorf("opening key '%s': %w", name, ErrKeyNotFound)
 	} else if err != nil {
-		return KeyInfo{}, xerrors.Errorf("opening key '%s': %w", name, err)
+		return types.KeyInfo{}, xerrors.Errorf("opening key '%s': %w", name, err)
 	}
 
 	if fstat.Mode()&0077 != 0 {
-		return KeyInfo{}, xerrors.Errorf(kstrPermissionMsg, name, err)
+		return types.KeyInfo{}, xerrors.Errorf(kstrPermissionMsg, name, err)
 	}
 
 	file, err := os.Open(keyPath)
 	if err != nil {
-		return KeyInfo{}, xerrors.Errorf("opening key '%s': %w", name, err)
+		return types.KeyInfo{}, xerrors.Errorf("opening key '%s': %w", name, err)
 	}
 	defer file.Close() //nolint: errcheck // read only op
 
 	data, err := ioutil.ReadAll(file)
 	if err != nil {
-		return KeyInfo{}, xerrors.Errorf("reading key '%s': %w", name, err)
+		return types.KeyInfo{}, xerrors.Errorf("reading key '%s': %w", name, err)
 	}
 
-	var res KeyInfo
+	var res types.KeyInfo
 	err = json.Unmarshal(data, &res)
 	if err != nil {
-		return KeyInfo{}, xerrors.Errorf("decoding key '%s': %w", name, err)
+		return types.KeyInfo{}, xerrors.Errorf("decoding key '%s': %w", name, err)
 	}
 
 	return res, nil
 }
 
 // Put saves key info under given name
-func (fsr *fsLockedRepo) Put(name string, info KeyInfo) error {
+func (fsr *fsLockedRepo) Put(name string, info types.KeyInfo) error {
 	if err := fsr.stillValid(); err != nil {
 		return err
 	}

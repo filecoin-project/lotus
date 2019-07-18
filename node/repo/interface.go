@@ -7,6 +7,7 @@ import (
 	"github.com/libp2p/go-libp2p-core/crypto"
 	"github.com/multiformats/go-multiaddr"
 
+	"github.com/filecoin-project/go-lotus/chain/types"
 	"github.com/filecoin-project/go-lotus/node/config"
 )
 
@@ -27,22 +28,6 @@ type Repo interface {
 	Lock() (LockedRepo, error)
 }
 
-type KeyInfo struct {
-	Type       string
-	PrivateKey []byte
-}
-
-type KeyStore interface {
-	// List lists all the keys stored in the KeyStore
-	List() ([]string, error)
-	// Get gets a key out of keystore and returns KeyInfo coresponding to named key
-	Get(string) (KeyInfo, error)
-	// Put saves a key info under given name
-	Put(string, KeyInfo) error
-	// Delete removes a key from keystore
-	Delete(string) error
-}
-
 type LockedRepo interface {
 	// Close closes repo and removes lock.
 	Close() error
@@ -61,7 +46,7 @@ type LockedRepo interface {
 	SetAPIEndpoint(multiaddr.Multiaddr) error
 
 	// KeyStore returns store of private keys for Filecoin transactions
-	KeyStore() (KeyStore, error)
+	KeyStore() (types.KeyStore, error)
 
 	// Path returns absolute path of the repo (or empty string if in-memory)
 	Path() string

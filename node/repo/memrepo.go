@@ -11,6 +11,7 @@ import (
 	"github.com/multiformats/go-multiaddr"
 	"golang.org/x/xerrors"
 
+	"github.com/filecoin-project/go-lotus/chain/types"
 	"github.com/filecoin-project/go-lotus/node/config"
 )
 
@@ -26,7 +27,7 @@ type MemRepo struct {
 	datastore datastore.Datastore
 	configF   func() *config.Root
 	libp2pKey crypto.PrivKey
-	keystore  map[string]KeyInfo
+	keystore  map[string]types.KeyInfo
 }
 
 type lockedMemRepo struct {
@@ -47,7 +48,7 @@ type MemRepoOptions struct {
 	Ds        datastore.Datastore
 	ConfigF   func() *config.Root
 	Libp2pKey crypto.PrivKey
-	KeyStore  map[string]KeyInfo
+	KeyStore  map[string]types.KeyInfo
 }
 
 func genLibp2pKey() (crypto.PrivKey, error) {
@@ -79,7 +80,7 @@ func NewMemory(opts *MemRepoOptions) *MemRepo {
 		opts.Libp2pKey = pk
 	}
 	if opts.KeyStore == nil {
-		opts.KeyStore = make(map[string]KeyInfo)
+		opts.KeyStore = make(map[string]types.KeyInfo)
 	}
 
 	return &MemRepo{
@@ -176,7 +177,7 @@ func (lmem *lockedMemRepo) SetAPIEndpoint(ma multiaddr.Multiaddr) error {
 	return nil
 }
 
-func (lmem *lockedMemRepo) KeyStore() (KeyStore, error) {
+func (lmem *lockedMemRepo) KeyStore() (types.KeyStore, error) {
 	if err := lmem.checkToken(); err != nil {
 		return nil, err
 	}
@@ -200,23 +201,23 @@ func (lmem *lockedMemRepo) List() ([]string, error) {
 	return res, nil
 }
 
-// Get gets a key out of keystore and returns KeyInfo coresponding to named key
-func (lmem *lockedMemRepo) Get(name string) (KeyInfo, error) {
+// Get gets a key out of keystore and returns types.KeyInfo coresponding to named key
+func (lmem *lockedMemRepo) Get(name string) (types.KeyInfo, error) {
 	if err := lmem.checkToken(); err != nil {
-		return KeyInfo{}, err
+		return types.KeyInfo{}, err
 	}
 	lmem.RLock()
 	defer lmem.RUnlock()
 
 	key, ok := lmem.mem.keystore[name]
 	if !ok {
-		return KeyInfo{}, xerrors.Errorf("getting key '%s': %w", name, ErrKeyNotFound)
+		return types.KeyInfo{}, xerrors.Errorf("getting key '%s': %w", name, ErrKeyNotFound)
 	}
 	return key, nil
 }
 
 // Put saves key info under given name
-func (lmem *lockedMemRepo) Put(name string, key KeyInfo) error {
+func (lmem *lockedMemRepo) Put(name string, key types.KeyInfo) error {
 	if err := lmem.checkToken(); err != nil {
 		return err
 	}
