@@ -5,6 +5,7 @@ import (
 	"errors"
 	"net/http/httptest"
 	"strconv"
+	"strings"
 	"sync"
 	"testing"
 	"time"
@@ -179,7 +180,7 @@ func TestRPC(t *testing.T) {
 	}
 
 	err = wrongtype.Add("not an int")
-	if err == nil || err.Error() != "RPC error (-32700): json: cannot unmarshal string into Go value of type int" {
+	if err == nil || !strings.Contains(err.Error(), "RPC error (-32700):") || !strings.Contains(err.Error(), "json: cannot unmarshal string into Go value of type int") {
 		t.Error("wrong error:", err)
 	}
 	closer()

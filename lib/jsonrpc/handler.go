@@ -7,6 +7,8 @@ import (
 	"fmt"
 	"io"
 	"reflect"
+
+	"golang.org/x/xerrors"
 )
 
 type rpcHandler struct {
@@ -101,7 +103,7 @@ func (h handlers) handleReader(ctx context.Context, r io.Reader, w io.Writer, rp
 
 	var req request
 	if err := json.NewDecoder(r).Decode(&req); err != nil {
-		rpcError(wf, &req, rpcParseError, err)
+		rpcError(wf, &req, rpcParseError, xerrors.Errorf("unmarshaling request: %w", err))
 		return
 	}
 
@@ -131,7 +133,7 @@ func (h handlers) handle(ctx context.Context, req request, w func(func(io.Writer
 	for i := 0; i < handler.nParams; i++ {
 		rp := reflect.New(handler.paramReceivers[i])
 		if err := json.NewDecoder(bytes.NewReader(req.Params[i].data)).Decode(rp.Interface()); err != nil {
-			rpcError(w, &req, rpcParseError, err)
+			rpcError(w, &req, rpcParseError, xerrors.Errorf("unmarshaling params for '%s': %w", handler.handlerFunc, err))
 			return
 		}
 
