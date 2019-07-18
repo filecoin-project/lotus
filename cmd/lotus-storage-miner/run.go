@@ -9,6 +9,13 @@ import (
 var RunCmd = &cli.Command{
 	Name:  "run",
 	Usage: "Start a lotus storage miner process",
+	Flags: []cli.Flag{
+		&cli.StringFlag{
+			Name:    "storagerepo",
+			EnvVars: []string{"LOTUS_STORAGE_PATH"},
+			Value:   "~/.lotusstorage", // TODO: Consider XDG_DATA_HOME
+		},
+	},
 	Action: func(cctx *cli.Context) error {
 		api, err := lcli.GetAPI(cctx)
 		if err != nil {

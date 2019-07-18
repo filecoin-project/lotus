@@ -31,7 +31,7 @@ func main() {
 			},
 			&cli.StringFlag{
 				Name:    "storagerepo",
-				EnvVars: []string{"LOTUS_PATH"},
+				EnvVars: []string{"LOTUS_STORAGE_PATH"},
 				Hidden:  true,
 				Value:   "~/.lotusstorage", // TODO: Consider XDG_DATA_HOME
 			},
