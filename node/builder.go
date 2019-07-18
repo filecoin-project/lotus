@@ -116,11 +116,6 @@ var defConf = config.Default()
 func defaults() []Option {
 	return []Option{
 		Override(new(helpers.MetricsCtx), context.Background),
-
-		randomIdentity(),
-
-		Override(new(datastore.Batching), testing.MapDatastore),
-		Override(new(blockstore.Blockstore), testing.MapBlockstore), // NOT on top of ds above
 		Override(new(record.Validator), modules.RecordValidator),
 
 		// Filecoin modules

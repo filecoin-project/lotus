@@ -12,6 +12,7 @@ import (
 	"github.com/filecoin-project/go-lotus/api/test"
 	"github.com/filecoin-project/go-lotus/lib/jsonrpc"
 
+	"github.com/filecoin-project/go-lotus/node/repo"
 	mocknet "github.com/libp2p/go-libp2p/p2p/net/mock"
 )
 
@@ -25,6 +26,7 @@ func builder(t *testing.T, n int) []api.API {
 		var err error
 		out[i], err = node.New(ctx,
 			node.Online(),
+			node.Repo(repo.NewMemory(nil)),
 			MockHost(mn),
 		)
 		if err != nil {
