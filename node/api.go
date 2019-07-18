@@ -7,6 +7,7 @@ import (
 	"github.com/filecoin-project/go-lotus/build"
 	"github.com/filecoin-project/go-lotus/chain"
 	"github.com/filecoin-project/go-lotus/chain/address"
+	"github.com/filecoin-project/go-lotus/chain/types"
 	"github.com/filecoin-project/go-lotus/miner"
 	"github.com/filecoin-project/go-lotus/node/client"
 
@@ -111,6 +112,10 @@ func (a *API) WalletNew(ctx context.Context, typ string) (address.Address, error
 
 func (a *API) WalletList(ctx context.Context) ([]address.Address, error) {
 	return a.Wallet.ListAddrs()
+}
+
+func (a *API) WalletBalance(ctx context.Context, addr address.Address) (types.BigInt, error) {
+	return a.Chain.GetBalance(addr)
 }
 
 func (a *API) NetConnect(ctx context.Context, p peer.AddrInfo) error {

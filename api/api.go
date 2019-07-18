@@ -5,6 +5,7 @@ import (
 
 	"github.com/filecoin-project/go-lotus/chain"
 	"github.com/filecoin-project/go-lotus/chain/address"
+	"github.com/filecoin-project/go-lotus/chain/types"
 
 	"github.com/ipfs/go-cid"
 	"github.com/ipfs/go-filestore"
@@ -72,6 +73,7 @@ type API interface {
 
 	WalletNew(context.Context, string) (address.Address, error)
 	WalletList(context.Context) ([]address.Address, error)
+	WalletBalance(context.Context, address.Address) (types.BigInt, error)
 	// // import
 	// // export
 	// // (on cli - cmd to list associations)

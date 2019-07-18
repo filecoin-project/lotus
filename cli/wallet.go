@@ -3,6 +3,7 @@ package cli
 import (
 	"fmt"
 
+	"github.com/filecoin-project/go-lotus/chain/address"
 	"gopkg.in/urfave/cli.v2"
 )
 
@@ -12,6 +13,7 @@ var walletCmd = &cli.Command{
 	Subcommands: []*cli.Command{
 		walletNew,
 		walletList,
+		walletBalance,
 	},
 }
 
@@ -59,6 +61,31 @@ var walletList = &cli.Command{
 		for _, addr := range addrs {
 			fmt.Println(addr.String())
 		}
+		return nil
+	},
+}
+
+var walletBalance = &cli.Command{
+	Name:  "balance",
+	Usage: "get account balance",
+	Action: func(cctx *cli.Context) error {
+		api, err := getAPI(cctx)
+		if err != nil {
+			return err
+		}
+		ctx := reqContext(cctx)
+
+		addr, err := address.NewFromString(cctx.Args().First())
+		if err != nil {
+			return err
+		}
+
+		balance, err := api.WalletBalance(ctx, addr)
+		if err != nil {
+			return err
+		}
+
+		fmt.Printf("%s\n", balance.String())
 		return nil
 	},
 }
