@@ -507,3 +507,24 @@ func (cs *ChainStore) LoadMessagesFromCids(cids []cid.Cid) ([]*SignedMessage, er
 
 	return msgs, nil
 }
+
+func (cs *ChainStore) GetBalance(addr address.Address) (types.BigInt, error) {
+	ts := cs.GetHeaviestTipSet()
+	stcid, err := cs.TipSetState(ts.Cids())
+	if err != nil {
+		return types.BigInt{}, err
+	}
+
+	cst := hamt.CSTFromBstore(cs.bs)
+	state, err := LoadStateTree(cst, stcid)
+	if err != nil {
+		return types.BigInt{}, err
+	}
+
+	act, err := state.GetActor(addr)
+	if err != nil {
+		return types.BigInt{}, err
+	}
+
+	return act.Balance, nil
+}

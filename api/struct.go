@@ -5,6 +5,7 @@ import (
 
 	"github.com/filecoin-project/go-lotus/chain"
 	"github.com/filecoin-project/go-lotus/chain/address"
+	"github.com/filecoin-project/go-lotus/chain/types"
 
 	"github.com/ipfs/go-cid"
 	"github.com/libp2p/go-libp2p-core/peer"
@@ -25,8 +26,9 @@ type Struct struct {
 		MinerStart       func(context.Context, address.Address) error
 		MinerCreateBlock func(context.Context, address.Address, *chain.TipSet, []chain.Ticket, chain.ElectionProof, []*chain.SignedMessage) (*chain.BlockMsg, error)
 
-		WalletNew  func(context.Context, string) (address.Address, error)
-		WalletList func(context.Context) ([]address.Address, error)
+		WalletNew     func(context.Context, string) (address.Address, error)
+		WalletList    func(context.Context) ([]address.Address, error)
+		WalletBalance func(context.Context, address.Address) (types.BigInt, error)
 
 		ClientImport      func(ctx context.Context, path string) (cid.Cid, error)
 		ClientListImports func(ctx context.Context) ([]Import, error)
@@ -97,6 +99,10 @@ func (c *Struct) WalletNew(ctx context.Context, typ string) (address.Address, er
 
 func (c *Struct) WalletList(ctx context.Context) ([]address.Address, error) {
 	return c.Internal.WalletList(ctx)
+}
+
+func (c *Struct) WalletBalance(ctx context.Context, a address.Address) (types.BigInt, error) {
+	return c.Internal.WalletBalance(ctx, a)
 }
 
 var _ API = &Struct{}
