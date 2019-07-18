@@ -24,6 +24,7 @@ import (
 
 	"github.com/filecoin-project/go-lotus/api"
 	"github.com/filecoin-project/go-lotus/chain"
+	"github.com/filecoin-project/go-lotus/chain/types"
 	"github.com/filecoin-project/go-lotus/node/config"
 	"github.com/filecoin-project/go-lotus/node/hello"
 	"github.com/filecoin-project/go-lotus/node/modules"
@@ -213,6 +214,10 @@ func Repo(r repo.Repo) Option {
 	if err != nil {
 		return Error(err)
 	}
+	kstore, err := lr.KeyStore()
+	if err != nil {
+		return Error(err)
+	}
 
 	return Options(
 		Config(cfg),
@@ -227,6 +232,8 @@ func Repo(r repo.Repo) Option {
 		Override(new(ci.PrivKey), pk),
 		Override(new(ci.PubKey), ci.PrivKey.GetPublic),
 		Override(new(peer.ID), peer.IDFromPublicKey),
+
+		Override(new(types.KeyStore), kstore),
 	)
 }
 
