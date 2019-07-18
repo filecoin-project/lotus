@@ -1,18 +1,22 @@
 package repo
 
 import (
+	"errors"
+
 	"github.com/ipfs/go-datastore"
 	"github.com/libp2p/go-libp2p-core/crypto"
 	"github.com/multiformats/go-multiaddr"
-	"golang.org/x/xerrors"
 
 	"github.com/filecoin-project/go-lotus/node/config"
 )
 
 var (
-	ErrNoAPIEndpoint     = xerrors.New("API not running (no endpoint)")
-	ErrRepoAlreadyLocked = xerrors.New("repo is already locked")
-	ErrClosedRepo        = xerrors.New("repo is no longer open")
+	ErrNoAPIEndpoint     = errors.New("API not running (no endpoint)")
+	ErrRepoAlreadyLocked = errors.New("repo is already locked")
+	ErrClosedRepo        = errors.New("repo is no longer open")
+
+	ErrKeyExists   = errors.New("key already exists")
+	ErrKeyNotFound = errors.New("key not found")
 )
 
 type Repo interface {
@@ -21,6 +25,22 @@ type Repo interface {
 
 	// Lock locks the repo for exclusive use.
 	Lock() (LockedRepo, error)
+}
+
+type KeyInfo struct {
+	Type       string
+	PrivateKey []byte
+}
+
+type KeyStore interface {
+	// List lists all the keys stored in the KeyStore
+	List() ([]string, error)
+	// Get gets a key out of keystore and returns KeyInfo coresponding to named key
+	Get(string) (KeyInfo, error)
+	// Put saves a key info under given name
+	Put(string, KeyInfo) error
+	// Delete removes a key from keystore
+	Delete(string) error
 }
 
 type LockedRepo interface {
@@ -40,8 +60,8 @@ type LockedRepo interface {
 	// so it can be read by API clients
 	SetAPIEndpoint(multiaddr.Multiaddr) error
 
-	// Wallet returns store of private keys for Filecoin transactions
-	Wallet() (interface{}, error)
+	// KeyStore returns store of private keys for Filecoin transactions
+	KeyStore() (KeyStore, error)
 
 	// Path returns absolute path of the repo (or empty string if in-memory)
 	Path() string
