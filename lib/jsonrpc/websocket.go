@@ -71,6 +71,24 @@ func handleWsConn(ctx context.Context, conn *websocket.Conn, handler handlers, r
 	handling := map[int64]context.CancelFunc{}
 	var handlingLk sync.Mutex
 
+	defer func() {
+		for id, req := range inflight {
+			req.ready <- clientResponse{
+				Jsonrpc: "2.0",
+				ID: id,
+				Error: &respError{
+					Message: "handler: websocket connection closed",
+				},
+			}
+
+			handlingLk.Lock()
+			for _, cancel := range handling {
+				cancel()
+			}
+			handlingLk.Unlock()
+		}
+	}()
+
 	cancelCtx := func(req frame) {
 		if req.ID != nil {
 			log.Warnf("%s call with ID set, won't respond", wsCancel)
