@@ -2,8 +2,9 @@ package api
 
 import (
 	"context"
-	"fmt"
 	"reflect"
+
+	"golang.org/x/xerrors"
 )
 
 type permKey int
@@ -50,8 +51,17 @@ func Permissioned(a API) API {
 				}
 			}
 
-			// TODO: return as error
-			panic(fmt.Sprintf("unauthorized call to %s", field.Name))
+			err := xerrors.Errorf("missing permission to invoke '%s' (need '%s')", field.Name, requiredPerm)
+			rerr := reflect.ValueOf(&err).Elem()
+
+			if field.Type.NumOut() == 2 {
+				return []reflect.Value{
+					reflect.Zero(field.Type.Out(0)),
+					rerr,
+				}
+			} else {
+				return []reflect.Value{rerr}
+			}
 		}))
 
 	}
