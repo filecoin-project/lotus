@@ -7,10 +7,10 @@ import (
 	"time"
 
 	"github.com/ipfs/go-filestore"
+	exchange "github.com/ipfs/go-ipfs-exchange-interface"
 
 	"github.com/ipfs/go-datastore"
 	blockstore "github.com/ipfs/go-ipfs-blockstore"
-	exchange "github.com/ipfs/go-ipfs-exchange-interface"
 	ipld "github.com/ipfs/go-ipld-format"
 	ci "github.com/libp2p/go-libp2p-core/crypto"
 	"github.com/libp2p/go-libp2p-core/host"
@@ -76,6 +76,11 @@ const (
 	_nInvokes // keep this last
 )
 
+const (
+	nodeFull = iota
+	nodeStorageMiner
+)
+
 type Settings struct {
 	// modules is a map of constructors for DI
 	//
@@ -87,6 +92,8 @@ type Settings struct {
 	// invokes are separate from modules as they can't be referenced by return
 	// type, and must be applied in correct order
 	invokes []fx.Option
+
+	nodeType int
 
 	Online bool // Online option applied
 	Config bool // Config option applied
@@ -125,16 +132,8 @@ func defaults() []Option {
 	}
 }
 
-// Online sets up basic libp2p node
-func Online() Option {
+func libp2p() Option {
 	return Options(
-		// make sure that online is applied before Config.
-		// This is important because Config overrides some of Online units
-		func(s *Settings) error { s.Online = true; return nil },
-		ApplyIf(func(s *Settings) bool { return s.Config },
-			Error(errors.New("the Online option must be set before Config option")),
-		),
-
 		Override(new(peerstore.Peerstore), pstoremem.NewPeerstore),
 
 		Override(DefaultTransportsKey, lp2p.DefaultTransports),
@@ -160,29 +159,65 @@ func Online() Option {
 
 		Override(PstoreAddSelfKeysKey, lp2p.PstoreAddSelfKeys),
 		Override(StartListeningKey, lp2p.StartListening(defConf.Libp2p.ListenAddresses)),
+	)
+}
 
-		//
-
-		Override(new(blockstore.GCLocker), blockstore.NewGCLocker),
-		Override(new(blockstore.GCBlockstore), blockstore.NewGCBlockstore),
-		Override(new(exchange.Interface), modules.Bitswap),
-		Override(new(ipld.DAGService), testing.MemoryClientDag),
-
-		// Filecoin services
-		Override(new(*chain.Syncer), chain.NewSyncer),
-		Override(new(*chain.BlockSync), chain.NewBlockSyncClient),
-		Override(new(*chain.Wallet), chain.NewWallet),
-		Override(new(*chain.MessagePool), chain.NewMessagePool),
-
-		Override(new(modules.Genesis), testing.MakeGenesis),
-		Override(SetGenesisKey, modules.SetGenesis),
-
-		Override(new(*hello.Service), hello.NewHelloService),
-		Override(new(*chain.BlockSyncService), chain.NewBlockSyncService),
-		Override(RunHelloKey, modules.RunHello),
-		Override(RunBlockSyncKey, modules.RunBlockSync),
-		Override(HandleIncomingBlocksKey, modules.HandleIncomingBlocks),
+// Online sets up basic libp2p node
+func Online() Option {
+	return Options(
 		Override(HandleIncomingMessagesKey, modules.HandleIncomingMessages),
+		// make sure that online is applied before Config.
+		// This is important because Config overrides some of Online units
+		func(s *Settings) error { s.Online = true; return nil },
+		ApplyIf(func(s *Settings) bool { return s.Config },
+			Error(errors.New("the Online option must be set before Config option")),
+		),
+
+		libp2p(),
+
+		// Full node
+
+		ApplyIf(func(s *Settings) bool { return s.nodeType == nodeFull },
+			Override(new(blockstore.GCLocker), blockstore.NewGCLocker),
+			Override(new(blockstore.GCBlockstore), blockstore.NewGCBlockstore),
+			Override(new(exchange.Interface), modules.Bitswap),
+			Override(new(ipld.DAGService), testing.MemoryClientDag),
+
+			// Filecoin services
+			Override(new(*chain.Syncer), chain.NewSyncer),
+			Override(new(*chain.BlockSync), chain.NewBlockSyncClient),
+			Override(new(*chain.Wallet), chain.NewWallet),
+			Override(new(*chain.MessagePool), chain.NewMessagePool),
+
+			Override(new(modules.Genesis), testing.MakeGenesis),
+			Override(SetGenesisKey, modules.SetGenesis),
+
+			Override(new(*hello.Service), hello.NewHelloService),
+			Override(new(*chain.BlockSyncService), chain.NewBlockSyncService),
+			Override(RunHelloKey, modules.RunHello),
+			Override(RunBlockSyncKey, modules.RunBlockSync),
+			Override(HandleIncomingBlocksKey, modules.HandleIncomingBlocks),
+		),
+
+		// Storage miner
+
+
+	)
+}
+
+func StorageMiner() Option {
+	return Options(
+		ApplyIf(func(s *Settings) bool { return s.Config },
+			Error(errors.New("the StorageMiner option must be set before Config option")),
+		),
+		ApplyIf(func(s *Settings) bool { return s.Online },
+			Error(errors.New("the StorageMiner option must be set before Online option")),
+		),
+
+		func(s *Settings) error {
+			s.nodeType = nodeStorageMiner
+			return nil
+		},
 	)
 }
 

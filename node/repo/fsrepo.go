@@ -58,6 +58,11 @@ func NewFS(path string) (*FsRepo, error) {
 	}, nil
 }
 
+func (fsr *FsRepo) Exists() bool {
+	_, err := os.Stat(fsr.path)
+	return err == nil
+}
+
 func (fsr *FsRepo) Init() error {
 	if _, err := os.Stat(fsr.path); err == nil {
 		return fsr.initKeystore()
