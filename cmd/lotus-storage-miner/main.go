@@ -15,7 +15,8 @@ var log = logging.Logger("main")
 func main() {
 	logging.SetLogLevel("*", "INFO")
 	local := []*cli.Command{
-		RunCmd,
+		runCmd,
+		initCmd,
 	}
 
 	app := &cli.App{

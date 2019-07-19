@@ -16,6 +16,12 @@ import (
 type Version struct {
 	Version string
 
+	// APIVersion is a binary encoded semver version of the remote implementing
+	// this api
+	//
+	// See APIVersion in build/version.go
+	APIVersion uint32
+
 	// TODO: git commit / os / genesis cid?
 }
 

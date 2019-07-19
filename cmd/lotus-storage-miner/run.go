@@ -13,7 +13,7 @@ import (
 	"github.com/filecoin-project/go-lotus/node/repo"
 )
 
-var RunCmd = &cli.Command{
+var runCmd = &cli.Command{
 	Name:  "run",
 	Usage: "Start a lotus storage miner process",
 	Flags: []cli.Flag{

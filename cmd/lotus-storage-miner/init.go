@@ -4,6 +4,7 @@ import (
 	"golang.org/x/xerrors"
 	"gopkg.in/urfave/cli.v2"
 
+	"github.com/filecoin-project/go-lotus/build"
 	lcli "github.com/filecoin-project/go-lotus/cli"
 	"github.com/filecoin-project/go-lotus/node/repo"
 )
@@ -26,7 +27,7 @@ var initCmd = &cli.Command{
 
 		log.Info("Trying to connect to full node RPC")
 
-		api, err := lcli.GetAPI(cctx)
+		api, err := lcli.GetAPI(cctx) // TODO: consider storing full node address in config
 		if err != nil {
 			return err
 		}
@@ -34,9 +35,24 @@ var initCmd = &cli.Command{
 
 		log.Info("Checking full node version")
 
+		v, err := api.Version(ctx)
+		if err != nil {
+			return err
+		}
+
+		if v.APIVersion & build.MinorMask != build.APIVersion & build.MinorMask {
+			return xerrors.Errorf("Remote API version didn't match (local %x, remote %x)", build.APIVersion, v.APIVersion)
+		}
+
+		log.Info("Initializing repo")
+
 		if err := r.Init(); err != nil {
 			return err
 		}
+
+		// create actors and stuff
+
+		log.Info("Storage miner successfully created, you can now start it with 'lotus-storage-miner run'")
 
 		return nil
 	},
