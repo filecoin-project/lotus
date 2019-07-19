@@ -1,6 +1,6 @@
-[submodule "lib/bls-signatures/bls-signatures"]
-	path = lib/bls-signatures/bls-signatures
-	url = https://github.com/filecoin-project/bls-signatures.git
 [submodule "lib/sectorbuilder"]
 	path = lib/sectorbuilder
 	url = https://github.com/filecoin-project/go-sectorbuilder.git
+[submodule "extern/go-bls-sigs"]
+	path = extern/go-bls-sigs
+	url = https://github.com/filecoin-project/go-bls-sigs.git

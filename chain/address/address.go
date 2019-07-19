@@ -7,8 +7,7 @@ import (
 	"strconv"
 	"strings"
 
-	"github.com/filecoin-project/go-lotus/lib/bls-signatures"
-
+	"github.com/filecoin-project/go-bls-sigs"
 	"github.com/filecoin-project/go-leb128"
 	cbor "github.com/ipfs/go-ipld-cbor"
 	"github.com/minio/blake2b-simd"

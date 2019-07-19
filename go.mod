@@ -4,6 +4,7 @@ go 1.12
 
 require (
 	github.com/BurntSushi/toml v0.3.1
+	github.com/filecoin-project/go-bls-sigs v0.0.0-20190718224239-4bc4b8a7bbf8
 	github.com/filecoin-project/go-leb128 v0.0.0-20190212224330-8d79a5489543
 	github.com/gorilla/websocket v1.4.0
 	github.com/ipfs/go-bitswap v0.1.5
@@ -69,3 +70,5 @@ require (
 	gopkg.in/urfave/cli.v2 v2.0.0-20180128182452-d3ae77c26ac8
 	launchpad.net/gocheck v0.0.0-20140225173054-000000000087 // indirect
 )
+
+replace github.com/filecoin-project/go-bls-sigs => ./extern/go-bls-sigs

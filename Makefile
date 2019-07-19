@@ -1,17 +1,26 @@
 all: build
 .PHONY: all
 
-BUILD_DEPS:=lib/bls-signatures/include/libbls_signatures.h
 BUILD_DEPS+=lib/sectorbuilder/include/sector_builder_ffi.h
 
 # git modules that need to be loaded
 MODULES:=
 
-lib/bls-signatures/include/libbls_signatures.h: lib/bls-signatures/bls-signatures
-	./scripts/install-bls-signatures.sh
+CLEAN:=
+
+BLS_PATH:=extern/go-bls-sigs/
+BLS_DEPS:=libbls_signatures.a libbls_signatures.pc libbls_signatures.h
+BLS_DEPS:=$(addprefix $(BLS_PATH),$(BLS_DEPS))
+
+$(BLS_DEPS): build/.bls-install ;
+
+build/.bls-install: $(BLS_PATH)
+	$(MAKE) -C $(BLS_PATH) $(BLS_DEPS:$(BLS_PATH)%=%)
 	@touch $@
 
-MODULES+=lib/bls-signatures/bls-signatures
+MODULES+=$(BLS_PATH)
+BUILD_DEPS+=build/.bls-install
+CLEAN+=build/.bls-install
 
 
 lib/sectorbuilder/include/sector_builder_ffi.h: lib/sectorbuilder lib/sectorbuilder/rust-fil-sector-builder
@@ -28,12 +37,19 @@ build/.update-modules:
 	git submodule update --init --recursive
 	touch $@
 
+CLEAN+=build/.update-modules
+
 deps: $(BUILD_DEPS)
 .PHONY: deps
 
 build: $(BUILD_DEPS)
 	go build -o lotus ./cmd/lotus
 .PHONY: build
+
+clean:
+	$(MAKE) -C $(BLS_PATH) clean
+	rm -rf $(CLEAN)
+.PHONY: clean
 
 dist-clean:
 	git clean -xdff
