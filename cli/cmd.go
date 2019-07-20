@@ -59,12 +59,13 @@ func reqContext(cctx *cli.Context) context.Context {
 }
 
 var Commands = []*cli.Command{
-	clientCmd,
 	chainCmd,
+	clientCmd,
+	idCmd,
+	minerCmd,
+	mpoolCmd,
 	netCmd,
 	versionCmd,
-	mpoolCmd,
-	minerCmd,
 	walletCmd,
 	createMinerCmd,
 }
