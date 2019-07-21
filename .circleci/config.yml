@@ -8,7 +8,6 @@ commands:
     steps:
       - go/install-ssh
       - go/install: {package: git}
-      - go/install: {package: bzr}
   prepare:
     steps:
       - checkout
