@@ -5,6 +5,7 @@ import (
 
 	"github.com/filecoin-project/go-lotus/chain"
 	"github.com/filecoin-project/go-lotus/chain/address"
+	"github.com/filecoin-project/go-lotus/chain/types"
 
 	"github.com/ipfs/go-cid"
 	"github.com/libp2p/go-libp2p-core/peer"
