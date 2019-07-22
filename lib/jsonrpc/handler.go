@@ -174,14 +174,17 @@ func (h handlers) handle(ctx context.Context, req request, w func(func(io.Writer
 	}
 	if handler.valOut != -1 {
 		resp.Result = callResult[handler.valOut].Interface()
-
-		if reflect.TypeOf(resp.Result).Kind() == reflect.Chan {
-			//noinspection GoNilness // already checked above
-			resp.Result = chOut(callResult[handler.valOut])
-		}
 	}
 
 	w(func(w io.Writer) {
+		if resp.Result != nil && reflect.TypeOf(resp.Result).Kind() == reflect.Chan {
+			// this must happen in the writer callback, otherwise we may start sending
+			// channel messages before we send this response
+
+			//noinspection GoNilness // already checked above
+			resp.Result = chOut(callResult[handler.valOut])
+		}
+
 		if err := json.NewEncoder(w).Encode(resp); err != nil {
 			fmt.Println(err)
 			return
