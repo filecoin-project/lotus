@@ -59,11 +59,11 @@ type ClientCloser func()
 func NewClient(addr string, namespace string, handler interface{}) (ClientCloser, error) {
 	htyp := reflect.TypeOf(handler)
 	if htyp.Kind() != reflect.Ptr {
-		panic("expected handler to be a pointer")
+		return nil, xerrors.New("expected handler to be a pointer")
 	}
 	typ := htyp.Elem()
 	if typ.Kind() != reflect.Struct {
-		panic("handler should be a struct")
+		return nil, xerrors.New("handler should be a struct")
 	}
 
 	val := reflect.ValueOf(handler)
@@ -85,7 +85,7 @@ func NewClient(addr string, namespace string, handler interface{}) (ClientCloser
 		f := typ.Field(i)
 		ftyp := f.Type
 		if ftyp.Kind() != reflect.Func {
-			panic("handler field not a func")
+			return nil, xerrors.New("handler field not a func")
 		}
 
 		valOut, errOut, nout := processFuncOut(ftyp)
