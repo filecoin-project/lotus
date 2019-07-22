@@ -19,8 +19,8 @@ type Storage interface {
 }
 
 type StateTree interface {
-	SetActor(addr address.Address, act *Actor) aerrors.ActorError
-	GetActor(addr address.Address) (*Actor, aerrors.ActorError)
+	SetActor(addr address.Address, act *Actor) error
+	GetActor(addr address.Address) (*Actor, error)
 }
 
 type VMContext interface {

@@ -2,7 +2,6 @@ package chain
 
 import (
 	"context"
-	"fmt"
 
 	"github.com/ipfs/go-cid"
 	hamt "github.com/ipfs/go-hamt-ipld"
@@ -12,8 +11,6 @@ import (
 	"github.com/filecoin-project/go-lotus/chain/address"
 	"github.com/filecoin-project/go-lotus/chain/types"
 )
-
-var ErrActorNotFound = fmt.Errorf("actor not found")
 
 type StateTree struct {
 	root  *hamt.Node
@@ -83,7 +80,7 @@ func (st *StateTree) GetActor(addr address.Address) (*types.Actor, error) {
 		iaddr, err := st.lookupID(addr)
 		if err != nil {
 			if err == hamt.ErrNotFound {
-				return nil, ErrActorNotFound
+				return nil, types.ErrActorNotFound
 			}
 			return nil, err
 		}
@@ -98,7 +95,7 @@ func (st *StateTree) GetActor(addr address.Address) (*types.Actor, error) {
 	thing, err := st.root.Find(context.TODO(), string(addr.Bytes()))
 	if err != nil {
 		if err == hamt.ErrNotFound {
-			return nil, ErrActorNotFound
+			return nil, types.ErrActorNotFound
 		}
 		return nil, err
 	}

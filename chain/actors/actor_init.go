@@ -9,6 +9,7 @@ import (
 	"github.com/filecoin-project/go-lotus/chain/actors/aerrors"
 	"github.com/filecoin-project/go-lotus/chain/address"
 	"github.com/filecoin-project/go-lotus/chain/types"
+	"golang.org/x/xerrors"
 
 	"github.com/ipfs/go-cid"
 	hamt "github.com/ipfs/go-hamt-ipld"
@@ -127,7 +128,11 @@ func (ia InitActor) Exec(act *types.Actor, vmctx types.VMContext, p *ExecParams)
 	}
 
 	if err := state.SetActor(idAddr, &actor); err != nil {
-		return nil, aerrors.Wrap(err, "inserting new actor into state tree")
+		if xerrors.Is(err, types.ErrActorNotFound) {
+			return nil, aerrors.Absorb(err, 1, "SetActor, actor not found")
+		} else {
+			return nil, aerrors.Escalate(err, "inserting new actor into state tree")
+		}
 	}
 
 	_, err = vmctx.Send(idAddr, 0, vmctx.Message().Value, p.Params)
