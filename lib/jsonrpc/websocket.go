@@ -230,6 +230,9 @@ func handleWsConn(ctx context.Context, conn *websocket.Conn, handler handlers, r
 				return // remote closed
 			}
 
+			// debug util - dump all messages to stderr
+			// r = io.TeeReader(r, os.Stderr)
+
 			var frame frame
 			if err := json.NewDecoder(r).Decode(&frame); err != nil {
 				log.Error("handle me:", err)
@@ -248,11 +251,11 @@ func handleWsConn(ctx context.Context, conn *websocket.Conn, handler handlers, r
 					continue
 				}
 
-				if req.retCh != nil {
+				if req.retCh != nil && frame.Result != nil {
 					// output is channel
 					var chid uint64
 					if err := json.Unmarshal(frame.Result, &chid); err != nil {
-						log.Error("failed to unmarshal channel id response: %s", err)
+						log.Errorf("failed to unmarshal channel id response: %s, data '%s'", err, string(frame.Result))
 						continue
 					}
 
@@ -277,7 +280,7 @@ func handleWsConn(ctx context.Context, conn *websocket.Conn, handler handlers, r
 
 				hnd, ok := chanHandlers[chid]
 				if !ok {
-					log.Error("xrpc.ch.val: handler %d not found", chid)
+					log.Errorf("xrpc.ch.val: handler %d not found", chid)
 					continue
 				}
 
