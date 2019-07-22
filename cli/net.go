@@ -19,6 +19,7 @@ var netCmd = &cli.Command{
 		netPeers,
 		netConnect,
 		netListen,
+		netId,
 	},
 }
 
@@ -91,6 +92,27 @@ var netConnect = &cli.Command{
 			fmt.Println("success")
 		}
 
+		return nil
+	},
+}
+
+var netId = &cli.Command{
+	Name:  "id",
+	Usage: "Get node identity",
+	Action: func(cctx *cli.Context) error {
+		api, err := getAPI(cctx)
+		if err != nil {
+			return err
+		}
+
+		ctx := reqContext(cctx)
+
+		pid, err := api.ID(ctx)
+		if err != nil {
+			return err
+		}
+
+		fmt.Println(pid)
 		return nil
 	},
 }
