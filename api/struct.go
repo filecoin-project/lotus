@@ -20,15 +20,20 @@ type Struct struct {
 		ChainSubmitBlock   func(ctx context.Context, blk *chain.BlockMsg) error
 		ChainHead          func(context.Context) (*chain.TipSet, error)
 		ChainGetRandomness func(context.Context, *chain.TipSet) ([]byte, error)
+		ChainWaitMsg       func(context.Context, cid.Cid) (*MsgWait, error)
 
 		MpoolPending func(context.Context, *chain.TipSet) ([]*chain.SignedMessage, error)
+		MpoolPush    func(context.Context, *chain.SignedMessage) error
 
 		MinerStart       func(context.Context, address.Address) error
 		MinerCreateBlock func(context.Context, address.Address, *chain.TipSet, []chain.Ticket, chain.ElectionProof, []*chain.SignedMessage) (*chain.BlockMsg, error)
 
-		WalletNew     func(context.Context, string) (address.Address, error)
-		WalletList    func(context.Context) ([]address.Address, error)
-		WalletBalance func(context.Context, address.Address) (types.BigInt, error)
+		WalletNew            func(context.Context, string) (address.Address, error)
+		WalletList           func(context.Context) ([]address.Address, error)
+		WalletBalance        func(context.Context, address.Address) (types.BigInt, error)
+		WalletSign           func(context.Context, address.Address, []byte) (*chain.Signature, error)
+		WalletDefaultAddress func(context.Context) (address.Address, error)
+		MpoolGetNonce        func(context.Context, address.Address) (uint64, error)
 
 		ClientImport      func(ctx context.Context, path string) (cid.Cid, error)
 		ClientListImports func(ctx context.Context) ([]Import, error)
@@ -49,6 +54,10 @@ func (c *Struct) ClientImport(ctx context.Context, path string) (cid.Cid, error)
 
 func (c *Struct) MpoolPending(ctx context.Context, ts *chain.TipSet) ([]*chain.SignedMessage, error) {
 	return c.Internal.MpoolPending(ctx, ts)
+}
+
+func (c *Struct) MpoolPush(ctx context.Context, smsg *chain.SignedMessage) error {
+	return c.Internal.MpoolPush(ctx, smsg)
 }
 
 func (c *Struct) MinerStart(ctx context.Context, addr address.Address) error {
@@ -83,6 +92,10 @@ func (c *Struct) ChainGetRandomness(ctx context.Context, pts *chain.TipSet) ([]b
 	return c.Internal.ChainGetRandomness(ctx, pts)
 }
 
+func (c *Struct) ChainWaitMsg(ctx context.Context, msgc cid.Cid) (*MsgWait, error) {
+	return c.Internal.ChainWaitMsg(ctx, msgc)
+}
+
 // ID implements API.ID
 func (c *Struct) ID(ctx context.Context) (peer.ID, error) {
 	return c.Internal.ID(ctx)
@@ -103,6 +116,18 @@ func (c *Struct) WalletList(ctx context.Context) ([]address.Address, error) {
 
 func (c *Struct) WalletBalance(ctx context.Context, a address.Address) (types.BigInt, error) {
 	return c.Internal.WalletBalance(ctx, a)
+}
+
+func (c *Struct) WalletSign(ctx context.Context, k address.Address, msg []byte) (*chain.Signature, error) {
+	return c.Internal.WalletSign(ctx, k, msg)
+}
+
+func (c *Struct) WalletDefaultAddress(ctx context.Context) (address.Address, error) {
+	return c.Internal.WalletDefaultAddress(ctx)
+}
+
+func (c *Struct) MpoolGetNonce(ctx context.Context, addr address.Address) (uint64, error) {
+	return c.Internal.MpoolGetNonce(ctx, addr)
 }
 
 var _ API = &Struct{}

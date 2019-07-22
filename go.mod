@@ -59,7 +59,7 @@ require (
 	github.com/stretchr/testify v1.3.0
 	github.com/whyrusleeping/multiaddr-filter v0.0.0-20160516205228-e903e4adabd7
 	github.com/whyrusleeping/pubsub v0.0.0-20131020042734-02de8aa2db3d
-	github.com/whyrusleeping/sharray v0.0.0-20190520213710-bd32aab369f8
+	github.com/whyrusleeping/sharray v0.0.0-20190718051354-e41931821e33
 	go.opencensus.io v0.22.0 // indirect
 	go.uber.org/dig v1.7.0 // indirect
 	go.uber.org/fx v1.9.0

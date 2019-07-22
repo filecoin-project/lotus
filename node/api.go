@@ -11,6 +11,7 @@ import (
 	"github.com/filecoin-project/go-lotus/miner"
 	"github.com/filecoin-project/go-lotus/node/client"
 
+	"github.com/ipfs/go-cid"
 	"github.com/libp2p/go-libp2p-core/host"
 	"github.com/libp2p/go-libp2p-core/peer"
 	pubsub "github.com/libp2p/go-libp2p-pubsub"
@@ -50,6 +51,10 @@ func (a *API) ChainGetRandomness(ctx context.Context, pts *chain.TipSet) ([]byte
 	return []byte("foo bar random"), nil
 }
 
+func (a *API) ChainWaitMsg(ctx context.Context, msg cid.Cid) (*api.MsgWait, error) {
+	panic("TODO")
+}
+
 func (a *API) ID(context.Context) (peer.ID, error) {
 	return a.Host.ID(), nil
 }
@@ -64,6 +69,19 @@ func (a *API) MpoolPending(ctx context.Context, ts *chain.TipSet) ([]*chain.Sign
 	// TODO: need to make sure we don't return messages that were already included in the referenced chain
 	// also need to accept ts == nil just fine, assume nil == chain.Head()
 	return a.Mpool.Pending(), nil
+}
+
+func (a *API) MpoolPush(ctx context.Context, smsg *chain.SignedMessage) error {
+	msgb, err := smsg.Serialize()
+	if err != nil {
+		return err
+	}
+
+	return a.PubSub.Publish("/fil/messages", msgb)
+}
+
+func (a *API) MpoolGetNonce(ctx context.Context, addr address.Address) (uint64, error) {
+	return a.Mpool.GetNonce(addr)
 }
 
 func (a *API) MinerStart(ctx context.Context, addr address.Address) error {
@@ -116,6 +134,20 @@ func (a *API) WalletList(ctx context.Context) ([]address.Address, error) {
 
 func (a *API) WalletBalance(ctx context.Context, addr address.Address) (types.BigInt, error) {
 	return a.Chain.GetBalance(addr)
+}
+
+func (a *API) WalletSign(ctx context.Context, k address.Address, msg []byte) (*chain.Signature, error) {
+	return a.Wallet.Sign(k, msg)
+}
+
+func (a *API) WalletDefaultAddress(ctx context.Context) (address.Address, error) {
+	addrs, err := a.Wallet.ListAddrs()
+	if err != nil {
+		return address.Undef, err
+	}
+
+	// TODO: store a default address in the config or 'wallet' portion of the repo
+	return addrs[0], nil
 }
 
 func (a *API) NetConnect(ctx context.Context, p peer.AddrInfo) error {

@@ -2,6 +2,7 @@ package chain
 
 import (
 	"context"
+	"encoding/json"
 	"fmt"
 	"sync"
 
@@ -220,7 +221,7 @@ type ChainStore struct {
 
 	bestTips *pubsub.PubSub
 
-	headChange func(rev, app []*TipSet) error
+	headChangeNotifs []func(rev, app []*TipSet) error
 }
 
 func NewChainStore(bs bstore.Blockstore, ds dstore.Batching) *ChainStore {
@@ -231,8 +232,42 @@ func NewChainStore(bs bstore.Blockstore, ds dstore.Batching) *ChainStore {
 	}
 }
 
-func (cs *ChainStore) SubNewTips() chan interface{} {
-	return cs.bestTips.Sub("best")
+func (cs *ChainStore) SubNewTips() chan *TipSet {
+	subch := cs.bestTips.Sub("best")
+	out := make(chan *TipSet)
+	go func() {
+		defer close(out)
+		for val := range subch {
+			out <- val.(*TipSet)
+		}
+	}()
+	return out
+}
+
+const (
+	HCRevert = "revert"
+	HCApply  = "apply"
+)
+
+type HeadChange struct {
+	Type string
+	Val  *TipSet
+}
+
+func (cs *ChainStore) SubHeadChanges() chan *HeadChange {
+	subch := cs.bestTips.Sub("headchange")
+	out := make(chan *HeadChange, 16)
+	go func() {
+		defer close(out)
+		for val := range subch {
+			out <- val.(*HeadChange)
+		}
+	}()
+	return out
+}
+
+func (cs *ChainStore) SubscribeHeadChanges(f func(rev, app []*TipSet) error) {
+	cs.headChangeNotifs = append(cs.headChangeNotifs, f)
 }
 
 func (cs *ChainStore) SetGenesis(b *BlockHeader) error {
@@ -275,7 +310,9 @@ func (cs *ChainStore) maybeTakeHeavierTipSet(ts *TipSet) error {
 		if err != nil {
 			return err
 		}
-		cs.headChange(revert, apply)
+		for _, hcf := range cs.headChangeNotifs {
+			hcf(revert, apply)
+		}
 		log.Infof("New heaviest tipset! %s", ts.Cids())
 		cs.heaviest = ts
 	}
@@ -470,7 +507,7 @@ func (cs *ChainStore) GetMessage(c cid.Cid) (*SignedMessage, error) {
 	return DecodeSignedMessage(sb.RawData())
 }
 
-func (cs *ChainStore) MessagesForBlock(b *BlockHeader) ([]*SignedMessage, error) {
+func (cs *ChainStore) MessageCidsForBlock(b *BlockHeader) ([]cid.Cid, error) {
 	cst := hamt.CSTFromBstore(cs.bs)
 	shar, err := sharray.Load(context.TODO(), b.Messages, 4, cst)
 	if err != nil {
@@ -491,7 +528,41 @@ func (cs *ChainStore) MessagesForBlock(b *BlockHeader) ([]*SignedMessage, error)
 		return nil, err
 	}
 
+	return cids, nil
+}
+
+func (cs *ChainStore) MessagesForBlock(b *BlockHeader) ([]*SignedMessage, error) {
+	cids, err := cs.MessageCidsForBlock(b)
+	if err != nil {
+		return nil, err
+	}
+
 	return cs.LoadMessagesFromCids(cids)
+}
+
+func (cs *ChainStore) GetReceipt(b *BlockHeader, i int) (*types.MessageReceipt, error) {
+	cst := hamt.CSTFromBstore(cs.bs)
+	shar, err := sharray.Load(context.TODO(), b.MessageReceipts, 4, cst)
+	if err != nil {
+		return nil, errors.Wrap(err, "sharray load")
+	}
+
+	ival, err := shar.Get(context.TODO(), i)
+	if err != nil {
+		return nil, err
+	}
+
+	// @warpfork, @EricMyhre help me. save me.
+	out, err := json.Marshal(ival)
+	if err != nil {
+		return nil, err
+	}
+	var r types.MessageReceipt
+	if err := json.Unmarshal(out, &r); err != nil {
+		return nil, err
+	}
+
+	return &r, nil
 }
 
 func (cs *ChainStore) LoadMessagesFromCids(cids []cid.Cid) ([]*SignedMessage, error) {
@@ -527,4 +598,67 @@ func (cs *ChainStore) GetBalance(addr address.Address) (types.BigInt, error) {
 	}
 
 	return act.Balance, nil
+}
+
+func (cs *ChainStore) WaitForMessage(ctx context.Context, mcid cid.Cid) (cid.Cid, *types.MessageReceipt, error) {
+	tsub := cs.SubHeadChanges()
+
+	head := cs.GetHeaviestTipSet()
+
+	bc, r, err := cs.tipsetContainsMsg(head, mcid)
+	if err != nil {
+		return cid.Undef, nil, err
+	}
+
+	if r != nil {
+		return bc, r, nil
+	}
+
+	for {
+		select {
+		case val := <-tsub:
+			switch val.Type {
+			case HCRevert:
+				continue
+			case HCApply:
+				bc, r, err := cs.tipsetContainsMsg(val.Val, mcid)
+				if err != nil {
+					return cid.Undef, nil, err
+				}
+				if r != nil {
+					return bc, r, nil
+				}
+			}
+		case <-ctx.Done():
+			return cid.Undef, nil, ctx.Err()
+		}
+	}
+}
+
+func (cs *ChainStore) tipsetContainsMsg(ts *TipSet, msg cid.Cid) (cid.Cid, *types.MessageReceipt, error) {
+	for _, b := range ts.Blocks() {
+		r, err := cs.blockContainsMsg(b, msg)
+		if err != nil {
+			return cid.Undef, nil, err
+		}
+		if r != nil {
+			return b.Cid(), r, nil
+		}
+	}
+	return cid.Undef, nil, nil
+}
+
+func (cs *ChainStore) blockContainsMsg(blk *BlockHeader, msg cid.Cid) (*types.MessageReceipt, error) {
+	msgs, err := cs.MessageCidsForBlock(blk)
+	if err != nil {
+		return nil, err
+	}
+
+	for i, mc := range msgs {
+		if mc == msg {
+			return cs.GetReceipt(blk, i)
+		}
+	}
+
+	return nil, nil
 }

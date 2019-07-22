@@ -66,4 +66,5 @@ var Commands = []*cli.Command{
 	mpoolCmd,
 	minerCmd,
 	walletCmd,
+	createMinerCmd,
 }
