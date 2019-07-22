@@ -34,12 +34,11 @@ func (e *ErrClient) Unwrap(err error) error {
 	return e.err
 }
 
-
 type clientResponse struct {
-	Jsonrpc string     `json:"jsonrpc"`
-	Result  json.RawMessage     `json:"result"`
-	ID      int64      `json:"id"`
-	Error   *respError `json:"error,omitempty"`
+	Jsonrpc string          `json:"jsonrpc"`
+	Result  json.RawMessage `json:"result"`
+	ID      int64           `json:"id"`
+	Error   *respError      `json:"error,omitempty"`
 }
 
 type clientRequest struct {

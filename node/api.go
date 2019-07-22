@@ -39,10 +39,10 @@ func (a *API) TestCh(ctx context.Context) (<-chan int, error) {
 			time.Sleep(time.Millisecond * 100)
 			n++
 			select {
-				case <-ctx.Done():
-					fmt.Println("CTXCANCEL!")
-					return
-				case out <- n:
+			case <-ctx.Done():
+				fmt.Println("CTXCANCEL!")
+				return
+			case out <- n:
 			}
 		}
 	}()

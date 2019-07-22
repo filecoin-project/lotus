@@ -70,7 +70,7 @@ var Commands = []*cli.Command{
 	createMinerCmd,
 
 	{
-		Name:"testch",
+		Name: "testch",
 		Action: func(cctx *cli.Context) error {
 			api, err := getAPI(cctx)
 			if err != nil {
@@ -87,7 +87,7 @@ var Commands = []*cli.Command{
 				select {
 				case n := <-c:
 					fmt.Println(n)
-				case <- ctx.Done():
+				case <-ctx.Done():
 					return nil
 				}
 			}

@@ -27,8 +27,8 @@ type frame struct {
 	Params []param `json:"params,omitempty"`
 
 	// response
-	Result json.RawMessage     `json:"result,omitempty"`
-	Error  *respError `json:"error,omitempty"`
+	Result json.RawMessage `json:"result,omitempty"`
+	Error  *respError      `json:"error,omitempty"`
 }
 
 func handleWsConn(ctx context.Context, conn *websocket.Conn, handler handlers, requests <-chan clientRequest, stop <-chan struct{}) {
@@ -98,7 +98,10 @@ func handleWsConn(ctx context.Context, conn *websocket.Conn, handler handlers, r
 
 	var chOnce sync.Once
 	var outId uint64
-	type chReg struct { id uint64; ch reflect.Value }
+	type chReg struct {
+		id uint64
+		ch reflect.Value
+	}
 	registerCh := make(chan chReg)
 	defer close(registerCh)
 
@@ -107,12 +110,11 @@ func handleWsConn(ctx context.Context, conn *websocket.Conn, handler handlers, r
 
 		cases := []reflect.SelectCase{
 			{ // registration chan always 0
-				Dir: reflect.SelectRecv,
+				Dir:  reflect.SelectRecv,
 				Chan: regV,
 			},
 		}
 		var caseToId []uint64
-
 
 		for {
 			chosen, val, ok := reflect.Select(cases)
@@ -129,19 +131,18 @@ func handleWsConn(ctx context.Context, conn *websocket.Conn, handler handlers, r
 
 				caseToId = append(caseToId, registration.id)
 				cases = append(cases, reflect.SelectCase{
-					Dir: reflect.SelectRecv,
+					Dir:  reflect.SelectRecv,
 					Chan: registration.ch,
 				})
 
 				continue
 			}
 
-
 			if !ok {
 				n := len(caseToId)
 				if n > 0 {
 					cases[chosen] = cases[n]
-					caseToId[chosen - 1] = caseToId[n - 1]
+					caseToId[chosen-1] = caseToId[n-1]
 				}
 
 				cases = cases[:n]
@@ -151,9 +152,9 @@ func handleWsConn(ctx context.Context, conn *websocket.Conn, handler handlers, r
 
 			sendReq(request{
 				Jsonrpc: "2.0",
-				ID: nil, // notification
-				Method: chValue,
-				Params: []param{{v: reflect.ValueOf(caseToId[chosen - 1])}, {v: val}},
+				ID:      nil, // notification
+				Method:  chValue,
+				Params:  []param{{v: reflect.ValueOf(caseToId[chosen-1])}, {v: val}},
 			})
 		}
 	}
@@ -184,7 +185,7 @@ func handleWsConn(ctx context.Context, conn *websocket.Conn, handler handlers, r
 		for id, req := range inflight {
 			req.ready <- clientResponse{
 				Jsonrpc: "2.0",
-				ID: id,
+				ID:      id,
 				Error: &respError{
 					Message: "handler: websocket connection closed",
 				},
