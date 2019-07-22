@@ -47,11 +47,15 @@ build: $(BUILD_DEPS)
 .PHONY: build
 
 clean:
-	$(MAKE) -C $(BLS_PATH) clean
 	rm -rf $(CLEAN)
+	-$(MAKE) -C $(BLS_PATH) clean
 .PHONY: clean
 
 dist-clean:
 	git clean -xdff
 	git submodule deinit --all -f
 .PHONY: dist-clean
+
+
+print-%:
+	@echo $*=$($*)
