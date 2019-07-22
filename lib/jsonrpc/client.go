@@ -45,7 +45,8 @@ type clientRequest struct {
 	req   request
 	ready chan clientResponse
 
-	retCh func() func([]byte, bool)
+	// retCh provides a context and sink for handling incoming channel messages
+	retCh func() (context.Context, func([]byte, bool))
 }
 
 // ClientCloser is used to close Client from further use
@@ -135,28 +136,40 @@ func NewClient(addr string, namespace string, handler interface{}) (ClientCloser
 				}
 			}
 
+			var ctx context.Context
+			if hasCtx == 1 {
+				ctx = args[0].Interface().(context.Context)
+			}
+
 			var retVal reflect.Value
-			var chCtor func() func([]byte, bool)
+
+			// if the function returns a channel, we need to provide a sink for the
+			// messages
+			var chCtor func() (context.Context, func([]byte, bool))
+
 			if retCh {
 				retVal = reflect.Zero(ftyp.Out(valOut))
-				chCtor = func() func([]byte, bool) {
+
+				chCtor = func() (context.Context, func([]byte, bool)) {
 					// unpack chan type to make sure it's reflect.BothDir
 					ctyp := reflect.ChanOf(reflect.BothDir, ftyp.Out(valOut).Elem())
 					ch := reflect.MakeChan(ctyp, 0) // todo: buffer?
 					retVal = ch.Convert(ftyp.Out(valOut))
 
-					return func(result []byte, ok bool) {
+					return ctx, func(result []byte, ok bool) {
 						if !ok {
+							// remote channel closed, close ours too
 							ch.Close()
 							return
 						}
+
 						val := reflect.New(ftyp.Out(valOut).Elem())
 						if err := json.Unmarshal(result, val.Interface()); err != nil {
 							log.Errorf("error unmarshaling chan response: %s", err)
 							return
 						}
 
-						ch.Send(val.Elem()) // todo: select on ctx
+						ch.Send(val.Elem()) // todo: select on ctx is probably a good idea
 					}
 				}
 			}
@@ -178,8 +191,8 @@ func NewClient(addr string, namespace string, handler interface{}) (ClientCloser
 			var ctxDone <-chan struct{}
 			var resp clientResponse
 
-			if hasCtx == 1 {
-				ctxDone = args[0].Interface().(context.Context).Done()
+			if ctx != nil {
+				ctxDone = ctx.Done()
 			}
 
 			// wait for response, handle context cancellation

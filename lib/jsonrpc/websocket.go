@@ -145,8 +145,16 @@ func handleWsConn(ctx context.Context, conn *websocket.Conn, handler handlers, r
 					caseToId[chosen-1] = caseToId[n-1]
 				}
 
+				id := caseToId[chosen-1]
 				cases = cases[:n]
 				caseToId = caseToId[:n-1]
+
+				sendReq(request{
+					Jsonrpc: "2.0",
+					ID:      nil, // notification
+					Method:  chClose,
+					Params:  []param{{v: reflect.ValueOf(id)}},
+				})
 				continue
 			}
 
@@ -198,6 +206,16 @@ func handleWsConn(ctx context.Context, conn *websocket.Conn, handler handlers, r
 			handlingLk.Unlock()
 		}
 	}()
+
+	handleCtxAsync := func(actx context.Context, id int64) {
+		<-actx.Done()
+
+		sendReq(request{
+			Jsonrpc: "2.0",
+			Method:  wsCancel,
+			Params:  []param{{v: reflect.ValueOf(id)}},
+		})
+	}
 
 	// cancelCtx is a built-in rpc which handles context cancellation over rpc
 	cancelCtx := func(req frame) {
@@ -259,7 +277,9 @@ func handleWsConn(ctx context.Context, conn *websocket.Conn, handler handlers, r
 						continue
 					}
 
-					chanHandlers[chid] = req.retCh()
+					var chanCtx context.Context
+					chanCtx, chanHandlers[chid] = req.retCh()
+					go handleCtxAsync(chanCtx, *frame.ID)
 				}
 
 				req.ready <- clientResponse{
@@ -285,6 +305,22 @@ func handleWsConn(ctx context.Context, conn *websocket.Conn, handler handlers, r
 				}
 
 				hnd(frame.Params[1].data, true)
+			case chClose:
+				var chid uint64
+				if err := json.Unmarshal(frame.Params[0].data, &chid); err != nil {
+					log.Error("failed to unmarshal channel id in xrpc.ch.val: %s", err)
+					continue
+				}
+
+				hnd, ok := chanHandlers[chid]
+				if !ok {
+					log.Errorf("xrpc.ch.val: handler %d not found", chid)
+					continue
+				}
+
+				delete(chanHandlers, chid)
+
+				hnd(nil, false)
 			default: // Remote call
 				req := request{
 					Jsonrpc: frame.Jsonrpc,
@@ -316,9 +352,8 @@ func handleWsConn(ctx context.Context, conn *websocket.Conn, handler handlers, r
 
 						if !keepctx {
 							cf()
+							delete(handling, *frame.ID)
 						}
-
-						delete(handling, *frame.ID)
 					}
 				}
 

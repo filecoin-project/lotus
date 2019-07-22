@@ -3,6 +3,7 @@ package jsonrpc
 import (
 	"context"
 	"errors"
+	"fmt"
 	"net/http/httptest"
 	"strconv"
 	"strings"
@@ -241,11 +242,12 @@ func TestCtx(t *testing.T) {
 }
 
 type UnUnmarshalable int
+
 func (*UnUnmarshalable) UnmarshalJSON([]byte) error {
 	return errors.New("nope")
 }
 
-type UnUnmarshalableHandler struct {}
+type UnUnmarshalableHandler struct{}
 
 func (*UnUnmarshalableHandler) GetUnUnmarshalableStuff() (UnUnmarshalable, error) {
 	return UnUnmarshalable(5), nil
@@ -274,7 +276,7 @@ type ChanHandler struct {
 	wait chan struct{}
 }
 
-func (h *ChanHandler) Sub(ctx context.Context, i int) (<-chan int, error) {
+func (h *ChanHandler) Sub(ctx context.Context, i int, eq int) (<-chan int, error) {
 	out := make(chan int)
 
 	go func() {
@@ -282,11 +284,23 @@ func (h *ChanHandler) Sub(ctx context.Context, i int) (<-chan int, error) {
 		var n int
 
 		for {
-			<-h.wait
+			select {
+			case <-ctx.Done():
+				fmt.Println("ctxdone1")
+				return
+			case <-h.wait:
+			}
+
 			n += i
+
+			if n == eq {
+				fmt.Println("eq")
+				return
+			}
 
 			select {
 			case <-ctx.Done():
+				fmt.Println("ctxdone2")
 				return
 			case out <- n:
 			}
@@ -298,7 +312,7 @@ func (h *ChanHandler) Sub(ctx context.Context, i int) (<-chan int, error) {
 
 func TestChan(t *testing.T) {
 	var client struct {
-		Sub func(context.Context, int) (<-chan int, error)
+		Sub func(context.Context, int, int) (<-chan int, error)
 	}
 
 	serverHandler := &ChanHandler{
@@ -319,13 +333,47 @@ func TestChan(t *testing.T) {
 	serverHandler.wait <- struct{}{}
 
 	ctx, cancel := context.WithCancel(context.Background())
-	defer cancel()
 
+	// sub
 
-
-	sub, err := client.Sub(ctx, 2)
+	sub, err := client.Sub(ctx, 2, -1)
 	require.NoError(t, err)
 
+	// recv one
 
 	require.Equal(t, 2, <-sub)
+
+	// recv many (order)
+
+	serverHandler.wait <- struct{}{}
+	serverHandler.wait <- struct{}{}
+	serverHandler.wait <- struct{}{}
+
+	require.Equal(t, 4, <-sub)
+	require.Equal(t, 6, <-sub)
+	require.Equal(t, 8, <-sub)
+
+	// close (through ctx)
+	cancel()
+
+	_, ok := <-sub
+	require.Equal(t, false, ok)
+
+	// sub (again)
+
+	serverHandler.wait <- struct{}{}
+
+	ctx, cancel = context.WithCancel(context.Background())
+	defer cancel()
+
+	sub, err = client.Sub(ctx, 3, 6)
+	require.NoError(t, err)
+
+	require.Equal(t, 3, <-sub)
+
+	// close (remote)
+	serverHandler.wait <- struct{}{}
+	_, ok = <-sub
+	require.Equal(t, false, ok)
+
 }
