@@ -6,6 +6,7 @@ import (
 	"encoding/binary"
 	"fmt"
 
+	"github.com/filecoin-project/go-lotus/chain/actors/aerrors"
 	"github.com/filecoin-project/go-lotus/chain/address"
 	"github.com/filecoin-project/go-lotus/chain/types"
 
@@ -14,7 +15,6 @@ import (
 	cbor "github.com/ipfs/go-ipld-cbor"
 	logging "github.com/ipfs/go-log"
 	mh "github.com/multiformats/go-multihash"
-	"github.com/pkg/errors"
 )
 
 var log = logging.Logger("actors")
@@ -54,50 +54,37 @@ type ExecParams struct {
 	Params []byte
 }
 
-func (ep *ExecParams) UnmarshalCBOR(b []byte) (int, error) {
-	if err := cbor.DecodeInto(b, ep); err != nil {
-		return 0, err
-	}
-
-	return len(b), nil
-}
-
-func CreateExecParams(act cid.Cid, obj interface{}) ([]byte, error) {
-	encparams, err := cbor.DumpObject(obj)
+func CreateExecParams(act cid.Cid, obj interface{}) ([]byte, aerrors.ActorError) {
+	encparams, err := SerializeParams(obj)
 	if err != nil {
-		return nil, err
+		return nil, aerrors.Wrap(err, "creating ExecParams")
 	}
 
 	var ep ExecParams
 	ep.Code = act
 	ep.Params = encparams
 
-	return cbor.DumpObject(ep)
+	return SerializeParams(ep)
 }
 
-func (ia InitActor) Exec(act *types.Actor, vmctx types.VMContext, p *ExecParams) (types.InvokeRet, error) {
+func (ia InitActor) Exec(act *types.Actor, vmctx types.VMContext, p *ExecParams) ([]byte, aerrors.ActorError) {
 	beginState := vmctx.Storage().GetHead()
 
 	var self InitActorState
 	if err := vmctx.Storage().Get(beginState, &self); err != nil {
-		return types.InvokeRet{}, err
+		return nil, err
 	}
 
 	// Make sure that only the actors defined in the spec can be launched.
 	if !IsBuiltinActor(p.Code) {
-		log.Error("cannot launch actor instance that is not a builtin actor")
-		return types.InvokeRet{
-			ReturnCode: 1,
-		}, nil
+		return nil, aerrors.New(1,
+			"cannot launch actor instance that is not a builtin actor")
 	}
 
 	// Ensure that singeltons can be only launched once.
 	// TODO: do we want to enforce this? If so how should actors be marked as such?
 	if IsSingletonActor(p.Code) {
-		log.Error("cannot launch another actor of this type")
-		return types.InvokeRet{
-			ReturnCode: 1,
-		}, nil
+		return nil, aerrors.New(1, "cannot launch another actor of this type")
 	}
 
 	// This generates a unique address for this actor that is stable across message
@@ -106,7 +93,7 @@ func (ia InitActor) Exec(act *types.Actor, vmctx types.VMContext, p *ExecParams)
 	nonce := vmctx.Message().Nonce
 	addr, err := ComputeActorAddress(creator, nonce)
 	if err != nil {
-		return types.InvokeRet{}, err
+		return nil, err
 	}
 
 	// Set up the actor itself
@@ -118,7 +105,7 @@ func (ia InitActor) Exec(act *types.Actor, vmctx types.VMContext, p *ExecParams)
 	}
 	_, err = vmctx.Storage().Put(struct{}{})
 	if err != nil {
-		return types.InvokeRet{}, err
+		return nil, err
 	}
 
 	// The call to the actors constructor will set up the initial state
@@ -127,39 +114,37 @@ func (ia InitActor) Exec(act *types.Actor, vmctx types.VMContext, p *ExecParams)
 	//actor.Constructor(p.Params)
 
 	// Store the mapping of address to actor ID.
-	idAddr, err := self.AddActor(vmctx, addr)
-	if err != nil {
-		return types.InvokeRet{}, errors.Wrap(err, "adding new actor mapping")
+	idAddr, nerr := self.AddActor(vmctx, addr)
+	if nerr != nil {
+		return nil, aerrors.Escalate(err, "adding new actor mapping")
 	}
 
 	// NOTE: This is a privileged call that only the init actor is allowed to make
 	// FIXME: Had to comment this  because state is not in interface
 	state, err := vmctx.StateTree()
 	if err != nil {
-		return types.InvokeRet{}, err
+		return nil, err
 	}
 
 	if err := state.SetActor(idAddr, &actor); err != nil {
-		return types.InvokeRet{}, errors.Wrap(err, "inserting new actor into state tree")
+		return nil, aerrors.Wrap(err, "inserting new actor into state tree")
 	}
 
-	_, _, err = vmctx.Send(idAddr, 0, vmctx.Message().Value, p.Params)
+	_, err = vmctx.Send(idAddr, 0, vmctx.Message().Value, p.Params)
 	if err != nil {
-		return types.InvokeRet{}, err
+		return nil, err
 	}
 
 	c, err := vmctx.Storage().Put(self)
 	if err != nil {
-		return types.InvokeRet{}, err
+		return nil, err
 	}
 
 	if err := vmctx.Storage().Commit(beginState, c); err != nil {
-		return types.InvokeRet{}, err
+		return nil, err
 	}
 
-	return types.InvokeRet{
-		Result: idAddr.Bytes(),
-	}, nil
+	return idAddr.Bytes(), nil
 }
 
 func IsBuiltinActor(code cid.Cid) bool {
@@ -198,7 +183,7 @@ func (ias *InitActorState) AddActor(vmctx types.VMContext, addr address.Address)
 	}
 	ias.AddressMap = ncid
 
-	return address.NewIDAddress(nid)
+	return NewIDAddress(nid)
 }
 
 func (ias *InitActorState) Lookup(cst *hamt.CborIpldStore, addr address.Address) (address.Address, error) {
@@ -224,17 +209,21 @@ type AccountActorState struct {
 	Address address.Address
 }
 
-func ComputeActorAddress(creator address.Address, nonce uint64) (address.Address, error) {
+func ComputeActorAddress(creator address.Address, nonce uint64) (address.Address, ActorError) {
 	buf := new(bytes.Buffer)
 	_, err := buf.Write(creator.Bytes())
 	if err != nil {
-		return address.Address{}, err
+		return address.Undef, aerrors.Escalate(err, "could not write address")
 	}
 
 	err = binary.Write(buf, binary.BigEndian, nonce)
 	if err != nil {
-		return address.Address{}, err
+		return address.Undef, aerrors.Escalate(err, "could not write nonce")
 	}
 
-	return address.NewActorAddress(buf.Bytes())
+	addr, err := address.NewActorAddress(buf.Bytes())
+	if err != nil {
+		return address.Undef, aerrors.Escalate(err, "could not create address")
+	}
+	return addr, nil
 }

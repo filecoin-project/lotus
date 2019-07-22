@@ -6,6 +6,15 @@ import (
 	"golang.org/x/xerrors"
 )
 
+func New(retCode uint8, message string) ActorError {
+	return &actorError{
+		retCode: retCode,
+
+		msg:   message,
+		frame: xerrors.Caller(1),
+	}
+}
+
 func Wrap(err ActorError, message string) ActorError {
 	if err == nil {
 		return nil

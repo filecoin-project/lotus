@@ -63,19 +63,13 @@ func (sma StorageMarketActor) CreateStorageMiner(act *types.Actor, vmctx types.V
 		return types.InvokeRet{}, err
 	}
 
-	ret, exit, err := vmctx.Send(InitActorAddress, 1, vmctx.Message().Value, encoded)
+	ret, err := vmctx.Send(InitActorAddress, 1, vmctx.Message().Value, encoded)
 	if err != nil {
 		return types.InvokeRet{}, err
 	}
 
-	if exit != 0 {
-		return types.InvokeRet{
-			ReturnCode: 2,
-		}, nil
-	}
-
-	naddr, err := address.NewFromBytes(ret)
-	if err != nil {
+	naddr, nerr := address.NewFromBytes(ret)
+	if nerr != nil {
 		return types.InvokeRet{}, err
 	}
 
@@ -158,16 +152,9 @@ func (sma StorageMarketActor) PowerLookup(act *types.Actor, vmctx types.VMContex
 		}, nil
 	}
 
-	ret, code, err := vmctx.Send(params.Miner, 9, types.NewInt(0), EmptyStructCBOR)
+	ret, err := vmctx.Send(params.Miner, 9, types.NewInt(0), EmptyStructCBOR)
 	if err != nil {
 		return types.InvokeRet{}, xerrors.Errorf("invoke Miner.GetPower: %w", err)
-	}
-
-	if code != 0 {
-		return types.InvokeRet{
-			// TODO: error handling... these codes really don't tell us what the problem is very well
-			ReturnCode: code,
-		}, nil
 	}
 
 	return types.InvokeRet{
