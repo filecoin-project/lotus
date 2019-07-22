@@ -9,6 +9,8 @@ import (
 	"sync"
 	"testing"
 	"time"
+
+	"github.com/stretchr/testify/assert"
 )
 
 type SimpleServerHandler struct {
@@ -71,62 +73,37 @@ func TestRPC(t *testing.T) {
 		StringMatch func(t TestType, i2 int64) (out TestOut, err error)
 	}
 	closer, err := NewClient("ws://"+testServ.Listener.Addr().String(), "SimpleServerHandler", &client)
-	if err != nil {
-		t.Fatal(err)
-	}
+	assert.NoError(t, err)
 	defer closer()
 
 	// Add(int) error
 
-	if err := client.Add(2); err != nil {
-		t.Fatal(err)
-	}
-
-	if serverHandler.n != 2 {
-		t.Error("expected 2")
-	}
+	assert.NoError(t, client.Add(2))
+	assert.Equal(t, 2, serverHandler.n)
 
 	err = client.Add(-3546)
-	if err == nil {
-		t.Fatal("expected error")
-	}
-	if err.Error() != "test" {
-		t.Fatal("wrong error", err)
-	}
+	assert.EqualError(t, err, "test")
 
 	// AddGet(int) int
 
 	n := client.AddGet(3)
-	if n != 5 {
-		t.Error("wrong n")
-	}
-
-	if serverHandler.n != 5 {
-		t.Error("expected 5")
-	}
+	assert.Equal(t, 5, n)
+	assert.Equal(t, 5, serverHandler.n)
 
 	// StringMatch
 
 	o, err := client.StringMatch(TestType{S: "0"}, 0)
-	if err != nil {
-		t.Error(err)
-	}
-	if o.S != "0" || o.I != 0 {
-		t.Error("wrong result")
-	}
+	assert.NoError(t, err)
+	assert.Equal(t, "0", o.S)
+	assert.Equal(t, 0, o.I)
 
 	_, err = client.StringMatch(TestType{S: "5"}, 5)
-	if err == nil || err.Error() != ":(" {
-		t.Error("wrong err")
-	}
+	assert.EqualError(t, err, ":(")
 
 	o, err = client.StringMatch(TestType{S: "8", I: 8}, 8)
-	if err != nil {
-		t.Error(err)
-	}
-	if o.S != "8" || o.I != 8 {
-		t.Error("wrong result")
-	}
+	assert.NoError(t, err)
+	assert.Equal(t, "8", o.S)
+	assert.Equal(t, 8, o.I)
 
 	// Invalid client handlers
 
@@ -134,24 +111,18 @@ func TestRPC(t *testing.T) {
 		Add func(int)
 	}
 	closer, err = NewClient("ws://"+testServ.Listener.Addr().String(), "SimpleServerHandler", &noret)
-	if err != nil {
-		t.Fatal(err)
-	}
+	assert.NoError(t, err)
 
 	// this one should actually work
 	noret.Add(4)
-	if serverHandler.n != 9 {
-		t.Error("expected 9")
-	}
+	assert.Equal(t, 9, serverHandler.n)
 	closer()
 
 	var noparam struct {
 		Add func()
 	}
 	closer, err = NewClient("ws://"+testServ.Listener.Addr().String(), "SimpleServerHandler", &noparam)
-	if err != nil {
-		t.Fatal(err)
-	}
+	assert.NoError(t, err)
 
 	// shouldn't panic
 	noparam.Add()
@@ -161,9 +132,7 @@ func TestRPC(t *testing.T) {
 		AddGet func() (int, error)
 	}
 	closer, err = NewClient("ws://"+testServ.Listener.Addr().String(), "SimpleServerHandler", &erronly)
-	if err != nil {
-		t.Fatal(err)
-	}
+	assert.NoError(t, err)
 
 	_, err = erronly.AddGet()
 	if err == nil || err.Error() != "RPC error (-32602): wrong param count" {
@@ -175,9 +144,7 @@ func TestRPC(t *testing.T) {
 		Add func(string) error
 	}
 	closer, err = NewClient("ws://"+testServ.Listener.Addr().String(), "SimpleServerHandler", &wrongtype)
-	if err != nil {
-		t.Fatal(err)
-	}
+	assert.NoError(t, err)
 
 	err = wrongtype.Add("not an int")
 	if err == nil || !strings.Contains(err.Error(), "RPC error (-32700):") || !strings.Contains(err.Error(), "json: cannot unmarshal string into Go value of type int") {
@@ -189,9 +156,7 @@ func TestRPC(t *testing.T) {
 		NotThere func(string) error
 	}
 	closer, err = NewClient("ws://"+testServ.Listener.Addr().String(), "SimpleServerHandler", &notfound)
-	if err != nil {
-		t.Fatal(err)
-	}
+	assert.NoError(t, err)
 
 	err = notfound.NotThere("hello?")
 	if err == nil || err.Error() != "RPC error (-32601): method 'SimpleServerHandler.NotThere' not found" {
@@ -238,9 +203,7 @@ func TestCtx(t *testing.T) {
 		Test func(ctx context.Context)
 	}
 	closer, err := NewClient("ws://"+testServ.Listener.Addr().String(), "CtxHandler", &client)
-	if err != nil {
-		t.Fatal(err)
-	}
+	assert.NoError(t, err)
 
 	ctx, cancel := context.WithTimeout(context.Background(), 100*time.Millisecond)
 	defer cancel()
