@@ -34,17 +34,10 @@ func (e *ErrClient) Unwrap(err error) error {
 	return e.err
 }
 
-type result []byte
-
-func (p *result) UnmarshalJSON(raw []byte) error {
-	*p = make([]byte, len(raw))
-	copy(*p, raw)
-	return nil
-}
 
 type clientResponse struct {
 	Jsonrpc string     `json:"jsonrpc"`
-	Result  result     `json:"result"`
+	Result  json.RawMessage     `json:"result"`
 	ID      int64      `json:"id"`
 	Error   *respError `json:"error,omitempty"`
 }
@@ -52,6 +45,8 @@ type clientResponse struct {
 type clientRequest struct {
 	req   request
 	ready chan clientResponse
+
+	retCh func() func([]byte, bool)
 }
 
 // ClientCloser is used to close Client from further use
@@ -100,7 +95,7 @@ func NewClient(addr string, namespace string, handler interface{}) (ClientCloser
 			out := make([]reflect.Value, nout)
 
 			if valOut != -1 {
-				out[valOut] = rval.Elem()
+				out[valOut] = rval
 			}
 			if errOut != -1 {
 				out[errOut] = reflect.New(errorType).Elem()
@@ -130,6 +125,7 @@ func NewClient(addr string, namespace string, handler interface{}) (ClientCloser
 		if ftyp.NumIn() > 0 && ftyp.In(0) == contextType {
 			hasCtx = 1
 		}
+		retCh := valOut != -1 && ftyp.Out(valOut).Kind() == reflect.Chan
 
 		fn := reflect.MakeFunc(ftyp, func(args []reflect.Value) (results []reflect.Value) {
 			id := atomic.AddInt64(&idCtr, 1)
@@ -137,6 +133,31 @@ func NewClient(addr string, namespace string, handler interface{}) (ClientCloser
 			for i, arg := range args[hasCtx:] {
 				params[i] = param{
 					v: arg,
+				}
+			}
+
+			var retVal reflect.Value
+			var chCtor func() func([]byte, bool)
+			if retCh {
+				chCtor = func() func([]byte, bool) {
+					// unpack chan type to make sure it's reflect.BothDir
+					ctyp := reflect.ChanOf(reflect.BothDir, ftyp.Out(valOut).Elem())
+					ch := reflect.MakeChan(ctyp, 0) // todo: buffer?
+					retVal = ch.Convert(ftyp.Out(valOut))
+
+					return func(result []byte, ok bool) {
+						if !ok {
+							ch.Close()
+							return
+						}
+						val := reflect.New(ftyp.Out(valOut).Elem())
+						if err := json.Unmarshal(result, val.Interface()); err != nil {
+							log.Errorf("error unmarshaling chan response: %s", err)
+							return
+						}
+
+						ch.Send(val.Elem()) // todo: select on ctx
+					}
 				}
 			}
 
@@ -151,6 +172,8 @@ func NewClient(addr string, namespace string, handler interface{}) (ClientCloser
 			requests <- clientRequest{
 				req:   req,
 				ready: rchan,
+
+				retCh: chCtor,
 			}
 			var ctxDone <-chan struct{}
 			var resp clientResponse
@@ -159,6 +182,7 @@ func NewClient(addr string, namespace string, handler interface{}) (ClientCloser
 				ctxDone = args[0].Interface().(context.Context).Done()
 			}
 
+			// wait for response, handle context cancellation
 		loop:
 			for {
 				select {
@@ -176,24 +200,25 @@ func NewClient(addr string, namespace string, handler interface{}) (ClientCloser
 					}
 				}
 			}
-			var rval reflect.Value
 
-			if valOut != -1 {
-				rval = reflect.New(ftyp.Out(valOut))
+			if valOut != -1 && !retCh {
+				retVal = reflect.New(ftyp.Out(valOut))
 
 				if resp.Result != nil {
 					log.Debugw("rpc result", "type", ftyp.Out(valOut))
-					if err := json.Unmarshal(resp.Result, rval.Interface()); err != nil {
+					if err := json.Unmarshal(resp.Result, retVal.Interface()); err != nil {
 						return processError(xerrors.Errorf("unmarshaling result: %w", err))
 					}
 				}
+
+				retVal = retVal.Elem()
 			}
 
 			if resp.ID != *req.ID {
 				return processError(errors.New("request and response id didn't match"))
 			}
 
-			return processResponse(resp, rval)
+			return processResponse(resp, retVal)
 		})
 
 		val.Elem().Field(i).Set(fn)

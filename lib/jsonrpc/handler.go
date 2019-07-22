@@ -95,6 +95,7 @@ func (h handlers) register(namespace string, r interface{}) {
 // Handle
 
 type rpcErrFunc func(w func(func(io.Writer)), req *request, code int, err error)
+type chanOut func(reflect.Value) interface{}
 
 func (h handlers) handleReader(ctx context.Context, r io.Reader, w io.Writer, rpcError rpcErrFunc) {
 	wf := func(cb func(io.Writer)) {
@@ -107,20 +108,28 @@ func (h handlers) handleReader(ctx context.Context, r io.Reader, w io.Writer, rp
 		return
 	}
 
-	h.handle(ctx, req, wf, rpcError, func() {})
+	h.handle(ctx, req, wf, rpcError, func(bool) {}, nil)
 }
 
-func (h handlers) handle(ctx context.Context, req request, w func(func(io.Writer)), rpcError rpcErrFunc, done func()) {
-	defer done()
-
+func (h handlers) handle(ctx context.Context, req request, w func(func(io.Writer)), rpcError rpcErrFunc, done func(keepCtx bool), chOut chanOut) {
 	handler, ok := h[req.Method]
 	if !ok {
 		rpcError(w, &req, rpcMethodNotFound, fmt.Errorf("method '%s' not found", req.Method))
+		done(false)
 		return
 	}
 
 	if len(req.Params) != handler.nParams {
 		rpcError(w, &req, rpcInvalidParams, fmt.Errorf("wrong param count"))
+		done(false)
+		return
+	}
+
+	outCh := handler.valOut != -1 && handler.handlerFunc.Type().Out(handler.valOut).Kind() == reflect.Chan
+	defer done(outCh)
+
+	if chOut == nil && outCh {
+		rpcError(w, &req, rpcMethodNotFound, fmt.Errorf("method '%s' not supported in this mode (no out channel support)", req.Method))
 		return
 	}
 
@@ -165,6 +174,11 @@ func (h handlers) handle(ctx context.Context, req request, w func(func(io.Writer
 	}
 	if handler.valOut != -1 {
 		resp.Result = callResult[handler.valOut].Interface()
+
+		if reflect.TypeOf(resp.Result).Kind() == reflect.Chan {
+			//noinspection GoNilness // already checked above
+			resp.Result = chOut(callResult[handler.valOut])
+		}
 	}
 
 	w(func(w io.Writer) {
