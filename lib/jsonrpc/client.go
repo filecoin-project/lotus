@@ -138,6 +138,7 @@ func NewClient(addr string, namespace string, handler interface{}) (ClientCloser
 			var retVal reflect.Value
 			var chCtor func() func([]byte, bool)
 			if retCh {
+				retVal = reflect.Zero(ftyp.Out(valOut))
 				chCtor = func() func([]byte, bool) {
 					// unpack chan type to make sure it's reflect.BothDir
 					ctyp := reflect.ChanOf(reflect.BothDir, ftyp.Out(valOut).Elem())
