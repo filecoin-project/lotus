@@ -121,6 +121,4 @@ type API interface {
 
 	// Version provides information about API provider
 	Version(context.Context) (Version, error)
-
-	TestCh(context.Context) (<-chan int, error)
 }

@@ -2,7 +2,6 @@ package cli
 
 import (
 	"context"
-	"fmt"
 	"os"
 	"os/signal"
 	"syscall"
@@ -68,29 +67,4 @@ var Commands = []*cli.Command{
 	versionCmd,
 	walletCmd,
 	createMinerCmd,
-
-	{
-		Name: "testch",
-		Action: func(cctx *cli.Context) error {
-			api, err := getAPI(cctx)
-			if err != nil {
-				return err
-			}
-			ctx := reqContext(cctx)
-
-			c, err := api.TestCh(ctx)
-			if err != nil {
-				return err
-			}
-
-			for {
-				select {
-				case n := <-c:
-					fmt.Println(n)
-				case <-ctx.Done():
-					return nil
-				}
-			}
-		},
-	},
 }

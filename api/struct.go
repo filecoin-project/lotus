@@ -41,13 +41,7 @@ type Struct struct {
 		NetPeers       func(context.Context) ([]peer.AddrInfo, error)
 		NetConnect     func(context.Context, peer.AddrInfo) error
 		NetAddrsListen func(context.Context) (peer.AddrInfo, error)
-
-		TestCh func(context.Context) (<-chan int, error)
 	}
-}
-
-func (c *Struct) TestCh(ctx context.Context) (<-chan int, error) {
-	return c.Internal.TestCh(ctx)
 }
 
 func (c *Struct) ClientListImports(ctx context.Context) ([]Import, error) {

@@ -322,6 +322,7 @@ func TestChan(t *testing.T) {
 	defer cancel()
 
 
+
 	sub, err := client.Sub(ctx, 2)
 	require.NoError(t, err)
 

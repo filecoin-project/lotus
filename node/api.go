@@ -2,8 +2,6 @@ package node
 
 import (
 	"context"
-	"fmt"
-	"time"
 
 	"github.com/filecoin-project/go-lotus/api"
 	"github.com/filecoin-project/go-lotus/build"
@@ -28,26 +26,6 @@ type API struct {
 	PubSub *pubsub.PubSub
 	Mpool  *chain.MessagePool
 	Wallet *chain.Wallet
-}
-
-func (a *API) TestCh(ctx context.Context) (<-chan int, error) {
-	out := make(chan int)
-	go func() {
-		defer close(out)
-		var n int
-		for {
-			time.Sleep(time.Millisecond * 100)
-			n++
-			select {
-			case <-ctx.Done():
-				fmt.Println("CTXCANCEL!")
-				return
-			case out <- n:
-			}
-		}
-	}()
-
-	return out, nil
 }
 
 func (a *API) ChainSubmitBlock(ctx context.Context, blk *chain.BlockMsg) error {
