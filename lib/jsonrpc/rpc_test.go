@@ -240,6 +240,36 @@ func TestCtx(t *testing.T) {
 	closer()
 }
 
+type UnUnmarshalable int
+func (*UnUnmarshalable) UnmarshalJSON([]byte) error {
+	return errors.New("nope")
+}
+
+type UnUnmarshalableHandler struct {}
+
+func (*UnUnmarshalableHandler) GetUnUnmarshalableStuff() (UnUnmarshalable, error) {
+	return UnUnmarshalable(5), nil
+}
+
+func TestUnmarshalableResult(t *testing.T) {
+	var client struct {
+		GetUnUnmarshalableStuff func() (UnUnmarshalable, error)
+	}
+
+	rpcServer := NewServer()
+	rpcServer.Register("Handler", &UnUnmarshalableHandler{})
+
+	testServ := httptest.NewServer(rpcServer)
+	defer testServ.Close()
+
+	closer, err := NewClient("ws://"+testServ.Listener.Addr().String(), "Handler", &client)
+	require.NoError(t, err)
+	defer closer()
+
+	_, err = client.GetUnUnmarshalableStuff()
+	require.EqualError(t, err, "RPC client error: unmarshaling result: nope")
+}
+
 type ChanHandler struct {
 	wait chan struct{}
 }
