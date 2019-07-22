@@ -418,8 +418,6 @@ github.com/whyrusleeping/multiaddr-filter v0.0.0-20160516205228-e903e4adabd7 h1:
 github.com/whyrusleeping/multiaddr-filter v0.0.0-20160516205228-e903e4adabd7/go.mod h1:X2c0RVCI1eSUFI8eLcY3c0423ykwiUdxLJtkDvruhjI=
 github.com/whyrusleeping/pubsub v0.0.0-20131020042734-02de8aa2db3d h1:wnjWu1N8UTNf2zzF5FWlEyNNbNw5GMVHaHaaLdvdTdA=
 github.com/whyrusleeping/pubsub v0.0.0-20131020042734-02de8aa2db3d/go.mod h1:g7ckxrjiFh8mi1AY7ox23PZD0g6QU/TxW3U3unX7I3A=
-github.com/whyrusleeping/sharray v0.0.0-20190520213710-bd32aab369f8 h1:n89ErB+0d4SBbyD8ykr7Q/j+C41ysUttZG3l9/2ufC4=
-github.com/whyrusleeping/sharray v0.0.0-20190520213710-bd32aab369f8/go.mod h1:c1pwhNePDPlcYJZinQlfLTOKwTmVf45nfdTg73yOOcA=
 github.com/whyrusleeping/sharray v0.0.0-20190718051354-e41931821e33 h1:7Bsg3GZnFAhdadeyRie9ReenkK2XbC2FlOpJQgTzpbA=
 github.com/whyrusleeping/sharray v0.0.0-20190718051354-e41931821e33/go.mod h1:c1pwhNePDPlcYJZinQlfLTOKwTmVf45nfdTg73yOOcA=
 github.com/whyrusleeping/timecache v0.0.0-20160911033111-cfcb2f1abfee h1:lYbXeSvJi5zk5GLKVuid9TVjS9a0OmLIDKTfoZBL6Ow=
