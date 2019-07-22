@@ -4,6 +4,7 @@ import (
 	"context"
 	"fmt"
 
+	bls "github.com/filecoin-project/go-bls-sigs"
 	cid "github.com/ipfs/go-cid"
 	hamt "github.com/ipfs/go-hamt-ipld"
 	"github.com/pkg/errors"
@@ -12,7 +13,6 @@ import (
 	"github.com/filecoin-project/go-lotus/chain/actors"
 	"github.com/filecoin-project/go-lotus/chain/address"
 	"github.com/filecoin-project/go-lotus/chain/types"
-	bls "github.com/filecoin-project/go-lotus/lib/bls-signatures"
 )
 
 func miningRewardForBlock(base *TipSet) types.BigInt {
