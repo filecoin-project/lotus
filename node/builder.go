@@ -201,7 +201,6 @@ func Online() Option {
 
 		// Storage miner
 
-
 	)
 }
 

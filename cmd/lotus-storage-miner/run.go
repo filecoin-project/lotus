@@ -65,7 +65,6 @@ var runCmd = &cli.Command{
 
 		log.Infof("Remote version %s", v)
 
-
 		rpcServer := jsonrpc.NewServer()
 		rpcServer.Register("Filecoin", minerapi)
 		http.Handle("/rpc/v0", rpcServer)
