@@ -2,9 +2,6 @@ package node
 
 import (
 	"context"
-	"crypto/rand"
-	"io"
-	"io/ioutil"
 
 	"github.com/filecoin-project/go-lotus/api"
 	"github.com/filecoin-project/go-lotus/build"
@@ -14,7 +11,6 @@ import (
 	"github.com/filecoin-project/go-lotus/miner"
 	"github.com/filecoin-project/go-lotus/node/client"
 	"github.com/filecoin-project/go-lotus/node/modules"
-	"github.com/filecoin-project/go-lotus/node/repo"
 
 	"github.com/gbrlsnchs/jwt/v3"
 	"github.com/ipfs/go-cid"
@@ -36,9 +32,7 @@ type API struct {
 	PubSub    *pubsub.PubSub
 	Mpool     *chain.MessagePool
 	Wallet    *chain.Wallet
-	Keystore  types.KeyStore
 	APISecret *modules.APIAlg
-	Repo      repo.LockedRepo
 }
 
 type jwtPayload struct {
@@ -55,44 +49,11 @@ func (a *API) AuthVerify(ctx context.Context, token string) ([]string, error) {
 }
 
 func (a *API) AuthNew(ctx context.Context, perms []string) ([]byte, error) {
-	key, err := a.Keystore.Get(modules.JWTSecretName)
-	if err != nil {
-		log.Warn("Generating new API secret")
-
-		sk, err := ioutil.ReadAll(io.LimitReader(rand.Reader, 32))
-		if err != nil {
-			return nil, err
-		}
-
-		key = types.KeyInfo{
-			Type:       "jwt-hmac-secret",
-			PrivateKey: sk,
-		}
-
-		if err := a.Keystore.Put(modules.JWTSecretName, key); err != nil {
-			return nil, xerrors.Errorf("writing API secret: %w", err)
-		}
-
-		// TODO: make this configurable
-		p := jwtPayload{
-			Allow: api.AllPermissions,
-		}
-
-		cliToken, err := jwt.Sign(&p, jwt.NewHS256(key.PrivateKey))
-		if err != nil {
-			return nil, err
-		}
-
-		if err := a.Repo.SetAPIToken(cliToken); err != nil {
-			return nil, err
-		}
-	}
-
 	p := jwtPayload{
 		Allow: perms, // TODO: consider checking validity
 	}
 
-	return jwt.Sign(&p, jwt.NewHS256(key.PrivateKey))
+	return jwt.Sign(&p, (*jwt.HMACSHA)(a.APISecret))
 }
 
 func (a *API) ChainSubmitBlock(ctx context.Context, blk *chain.BlockMsg) error {
