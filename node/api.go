@@ -2,6 +2,9 @@ package node
 
 import (
 	"context"
+	"crypto/rand"
+	"io"
+	"io/ioutil"
 
 	"github.com/filecoin-project/go-lotus/api"
 	"github.com/filecoin-project/go-lotus/build"
@@ -61,9 +64,14 @@ func (a *API) AuthNew(ctx context.Context, perms []string) ([]byte, error) {
 	if err != nil {
 		log.Warn("Generating new API secret")
 
+		sk, err := ioutil.ReadAll(io.LimitReader(rand.Reader, 32))
+		if err != nil {
+			return nil, err
+		}
+
 		key = types.KeyInfo{
 			Type:       "jwt-hmac-secret",
-			PrivateKey: make([]byte, 32),
+			PrivateKey: sk,
 		}
 
 		if err := a.Keystore.Put(JWTSecretName, key); err != nil {
