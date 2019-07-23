@@ -3,8 +3,6 @@ package node
 import (
 	"context"
 	"crypto/rand"
-	"github.com/filecoin-project/go-lotus/node/modules"
-	"github.com/filecoin-project/go-lotus/node/repo"
 	"io"
 	"io/ioutil"
 
@@ -15,6 +13,9 @@ import (
 	"github.com/filecoin-project/go-lotus/chain/types"
 	"github.com/filecoin-project/go-lotus/miner"
 	"github.com/filecoin-project/go-lotus/node/client"
+	"github.com/filecoin-project/go-lotus/node/modules"
+	"github.com/filecoin-project/go-lotus/node/repo"
+
 	"github.com/gbrlsnchs/jwt/v3"
 	"github.com/ipfs/go-cid"
 	logging "github.com/ipfs/go-log"
@@ -30,14 +31,14 @@ var log = logging.Logger("node")
 type API struct {
 	client.LocalStorage
 
-	Host     host.Host
-	Chain    *chain.ChainStore
-	PubSub   *pubsub.PubSub
-	Mpool    *chain.MessagePool
-	Wallet   *chain.Wallet
-	Keystore types.KeyStore
+	Host      host.Host
+	Chain     *chain.ChainStore
+	PubSub    *pubsub.PubSub
+	Mpool     *chain.MessagePool
+	Wallet    *chain.Wallet
+	Keystore  types.KeyStore
 	APISecret *modules.APIAlg
-	Repo     repo.LockedRepo
+	Repo      repo.LockedRepo
 }
 
 type jwtPayload struct {
