@@ -130,9 +130,8 @@ func (ia InitActor) Exec(act *types.Actor, vmctx types.VMContext, p *ExecParams)
 	if err := state.SetActor(idAddr, &actor); err != nil {
 		if xerrors.Is(err, types.ErrActorNotFound) {
 			return nil, aerrors.Absorb(err, 1, "SetActor, actor not found")
-		} else {
-			return nil, aerrors.Escalate(err, "inserting new actor into state tree")
 		}
+		return nil, aerrors.Escalate(err, "inserting new actor into state tree")
 	}
 
 	_, err = vmctx.Send(idAddr, 0, vmctx.Message().Value, p.Params)
