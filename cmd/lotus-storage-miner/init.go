@@ -21,7 +21,11 @@ var initCmd = &cli.Command{
 			return err
 		}
 
-		if r.Exists() {
+		ok, err := r.Exists()
+		if err != nil {
+			return err
+		}
+		if ok {
 			return xerrors.Errorf("repo at '%s' is already initialized", cctx.String(FlagStorageRepo))
 		}
 

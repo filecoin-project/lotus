@@ -36,7 +36,11 @@ var runCmd = &cli.Command{
 			return err
 		}
 
-		if !r.Exists() {
+		ok, err := r.Exists()
+		if err != nil {
+			return err
+		}
+		if !ok {
 			return xerrors.Errorf("repo at '%s' is not initialized, run 'lotus-storage-miner init' to set it up", cctx.String(FlagStorageRepo))
 		}
 
