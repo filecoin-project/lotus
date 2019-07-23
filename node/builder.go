@@ -70,7 +70,9 @@ const (
 	HandleIncomingBlocksKey
 	HandleIncomingMessagesKey
 
+	// daemon
 	SetApiEndpointKey
+	ServeRPCKey
 
 	_nInvokes // keep this last
 )

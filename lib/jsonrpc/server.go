@@ -3,14 +3,9 @@ package jsonrpc
 import (
 	"context"
 	"encoding/json"
+	"github.com/gorilla/websocket"
 	"io"
 	"net/http"
-	"strings"
-
-	"github.com/gbrlsnchs/jwt/v3"
-	"github.com/gorilla/websocket"
-
-	"github.com/filecoin-project/go-lotus/api"
 )
 
 const (
@@ -55,23 +50,6 @@ func (s *RPCServer) handleWS(ctx context.Context, w http.ResponseWriter, r *http
 // TODO: return errors to clients per spec
 func (s *RPCServer) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 	ctx := r.Context()
-
-	token := r.Header.Get("Authorization")
-	if token != "" {
-		if !strings.HasPrefix(token, "Bearer ") {
-			w.WriteHeader(401)
-			return
-		}
-		token = token[len("Bearer "):]
-
-		var payload jwtPayload
-		if _, err := jwt.Verify([]byte(token), secret, &payload); err != nil {
-			w.WriteHeader(401)
-			return
-		}
-
-		ctx = api.WithPerm(ctx, payload.Allow)
-	}
 
 	if r.Header.Get("Connection") == "Upgrade" {
 		s.handleWS(ctx, w, r)
