@@ -39,6 +39,8 @@ type API interface {
 	ChainSubmitBlock(ctx context.Context, blk *chain.BlockMsg) error // TODO: check serialization
 	ChainGetRandomness(context.Context, *chain.TipSet) ([]byte, error)
 	ChainWaitMsg(context.Context, cid.Cid) (*MsgWait, error)
+	ChainGetBlock(context.Context, cid.Cid) (*chain.BlockHeader, error)
+	ChainGetBlockMessages(context.Context, cid.Cid) ([]*chain.SignedMessage, error)
 
 	// messages
 

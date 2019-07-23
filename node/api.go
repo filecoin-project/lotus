@@ -55,6 +55,19 @@ func (a *API) ChainWaitMsg(ctx context.Context, msg cid.Cid) (*api.MsgWait, erro
 	panic("TODO")
 }
 
+func (a *API) ChainGetBlock(ctx context.Context, msg cid.Cid) (*chain.BlockHeader, error) {
+	return a.Chain.GetBlock(msg)
+}
+
+func (a *API) ChainGetBlockMessages(ctx context.Context, msg cid.Cid) ([]*chain.SignedMessage, error) {
+	b, err := a.Chain.GetBlock(msg)
+	if err != nil {
+		return nil, err
+	}
+
+	return a.Chain.MessagesForBlock(b)
+}
+
 func (a *API) ID(context.Context) (peer.ID, error) {
 	return a.Host.ID(), nil
 }

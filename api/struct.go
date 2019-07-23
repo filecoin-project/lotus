@@ -17,10 +17,12 @@ type Struct struct {
 		ID      func(context.Context) (peer.ID, error)
 		Version func(context.Context) (Version, error)
 
-		ChainSubmitBlock   func(ctx context.Context, blk *chain.BlockMsg) error
-		ChainHead          func(context.Context) (*chain.TipSet, error)
-		ChainGetRandomness func(context.Context, *chain.TipSet) ([]byte, error)
-		ChainWaitMsg       func(context.Context, cid.Cid) (*MsgWait, error)
+		ChainSubmitBlock      func(ctx context.Context, blk *chain.BlockMsg) error
+		ChainHead             func(context.Context) (*chain.TipSet, error)
+		ChainGetRandomness    func(context.Context, *chain.TipSet) ([]byte, error)
+		ChainWaitMsg          func(context.Context, cid.Cid) (*MsgWait, error)
+		ChainGetBlock         func(context.Context, cid.Cid) (*chain.BlockHeader, error)
+		ChainGetBlockMessages func(context.Context, cid.Cid) ([]*chain.SignedMessage, error)
 
 		MpoolPending func(context.Context, *chain.TipSet) ([]*chain.SignedMessage, error)
 		MpoolPush    func(context.Context, *chain.SignedMessage) error
@@ -128,6 +130,14 @@ func (c *Struct) WalletDefaultAddress(ctx context.Context) (address.Address, err
 
 func (c *Struct) MpoolGetNonce(ctx context.Context, addr address.Address) (uint64, error) {
 	return c.Internal.MpoolGetNonce(ctx, addr)
+}
+
+func (c *Struct) ChainGetBlock(ctx context.Context, b cid.Cid) (*chain.BlockHeader, error) {
+	return c.Internal.ChainGetBlock(ctx, b)
+}
+
+func (c *Struct) ChainGetBlockMessages(ctx context.Context, b cid.Cid) ([]*chain.SignedMessage, error) {
+	return c.Internal.ChainGetBlockMessages(ctx, b)
 }
 
 var _ API = &Struct{}
