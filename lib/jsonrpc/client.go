@@ -56,7 +56,7 @@ type ClientCloser func()
 // NewClient creates new josnrpc 2.0 client
 //
 // handler must be pointer to a struct with function fields
-// Returned value closes the client connectionnil
+// Returned value closes the client connection
 // TODO: Example
 func NewClient(addr string, namespace string, handler interface{}, requestHeader http.Header) (ClientCloser, error) {
 	htyp := reflect.TypeOf(handler)

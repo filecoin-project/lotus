@@ -26,7 +26,7 @@ func (h *Handler) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 			w.WriteHeader(401)
 			return
 		}
-		token = token[len("Bearer "):]
+		token = strings.TrimPrefix(token, "Bearer ")
 
 		allow, err := h.Verify(ctx, token)
 		if err != nil {
