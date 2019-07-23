@@ -5,7 +5,6 @@ import (
 	"encoding/json"
 	"fmt"
 	"strconv"
-	"strings"
 
 	"github.com/filecoin-project/go-bls-sigs"
 	"github.com/filecoin-project/go-leb128"
@@ -106,8 +105,12 @@ func (a Address) Marshal() ([]byte, error) {
 
 // UnmarshalJSON implements the json unmarshal interface.
 func (a *Address) UnmarshalJSON(b []byte) error {
-	in := strings.TrimSuffix(strings.TrimPrefix(string(b), `"`), `"`)
-	addr, err := decode(in)
+	var s string
+	if err := json.Unmarshal(b, &s); err != nil {
+		return err
+	}
+
+	addr, err := decode(s)
 	if err != nil {
 		return err
 	}
@@ -117,7 +120,7 @@ func (a *Address) UnmarshalJSON(b []byte) error {
 
 // MarshalJSON implements the json marshal interface.
 func (a Address) MarshalJSON() ([]byte, error) {
-	return json.Marshal(a.String())
+	return []byte(`"` + a.String() + `"`), nil
 }
 
 // Format implements the Formatter interface.
