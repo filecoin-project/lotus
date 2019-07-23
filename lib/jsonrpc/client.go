@@ -5,6 +5,7 @@ import (
 	"encoding/json"
 	"errors"
 	"fmt"
+	"net/http"
 	"reflect"
 	"sync/atomic"
 
@@ -57,7 +58,7 @@ type ClientCloser func()
 // handler must be pointer to a struct with function fields
 // Returned value closes the client connection
 // TODO: Example
-func NewClient(addr string, namespace string, handler interface{}) (ClientCloser, error) {
+func NewClient(addr string, namespace string, handler interface{}, requestHeader http.Header) (ClientCloser, error) {
 	htyp := reflect.TypeOf(handler)
 	if htyp.Kind() != reflect.Ptr {
 		return nil, xerrors.New("expected handler to be a pointer")
@@ -71,7 +72,7 @@ func NewClient(addr string, namespace string, handler interface{}) (ClientCloser
 
 	var idCtr int64
 
-	conn, _, err := websocket.DefaultDialer.Dial(addr, nil)
+	conn, _, err := websocket.DefaultDialer.Dial(addr, requestHeader)
 	if err != nil {
 		return nil, err
 	}

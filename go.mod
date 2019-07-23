@@ -6,6 +6,7 @@ require (
 	github.com/BurntSushi/toml v0.3.1
 	github.com/filecoin-project/go-bls-sigs v0.0.0-20190718224239-4bc4b8a7bbf8
 	github.com/filecoin-project/go-leb128 v0.0.0-20190212224330-8d79a5489543
+	github.com/gbrlsnchs/jwt/v3 v3.0.0-beta.1
 	github.com/gorilla/websocket v1.4.0
 	github.com/ipfs/go-bitswap v0.1.5
 	github.com/ipfs/go-block-format v0.0.2
@@ -67,7 +68,6 @@ require (
 	go4.org v0.0.0-20190313082347-94abd6928b1d // indirect
 	golang.org/x/sync v0.0.0-20190423024810-112230192c58 // indirect
 	golang.org/x/xerrors v0.0.0-20190717185122-a985d3407aa7
-	google.golang.org/appengine v1.4.0 // indirect
 	gopkg.in/urfave/cli.v2 v2.0.0-20180128182452-d3ae77c26ac8
 	launchpad.net/gocheck v0.0.0-20140225173054-000000000087 // indirect
 )

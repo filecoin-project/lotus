@@ -10,22 +10,50 @@ import (
 	"github.com/filecoin-project/go-lotus/chain/types"
 	"github.com/filecoin-project/go-lotus/miner"
 	"github.com/filecoin-project/go-lotus/node/client"
+	"github.com/filecoin-project/go-lotus/node/modules"
 
+	"github.com/gbrlsnchs/jwt/v3"
 	"github.com/ipfs/go-cid"
+	logging "github.com/ipfs/go-log"
 	"github.com/libp2p/go-libp2p-core/host"
 	"github.com/libp2p/go-libp2p-core/peer"
 	pubsub "github.com/libp2p/go-libp2p-pubsub"
 	ma "github.com/multiformats/go-multiaddr"
+	"golang.org/x/xerrors"
 )
+
+var log = logging.Logger("node")
 
 type API struct {
 	client.LocalStorage
 
-	Host   host.Host
-	Chain  *chain.ChainStore
-	PubSub *pubsub.PubSub
-	Mpool  *chain.MessagePool
-	Wallet *chain.Wallet
+	Host      host.Host
+	Chain     *chain.ChainStore
+	PubSub    *pubsub.PubSub
+	Mpool     *chain.MessagePool
+	Wallet    *chain.Wallet
+	APISecret *modules.APIAlg
+}
+
+type jwtPayload struct {
+	Allow []string
+}
+
+func (a *API) AuthVerify(ctx context.Context, token string) ([]string, error) {
+	var payload jwtPayload
+	if _, err := jwt.Verify([]byte(token), (*jwt.HMACSHA)(a.APISecret), &payload); err != nil {
+		return nil, xerrors.Errorf("JWT Verification failed: %w", err)
+	}
+
+	return payload.Allow, nil
+}
+
+func (a *API) AuthNew(ctx context.Context, perms []string) ([]byte, error) {
+	p := jwtPayload{
+		Allow: perms, // TODO: consider checking validity
+	}
+
+	return jwt.Sign(&p, (*jwt.HMACSHA)(a.APISecret))
 }
 
 func (a *API) ChainSubmitBlock(ctx context.Context, blk *chain.BlockMsg) error {

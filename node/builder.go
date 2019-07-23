@@ -70,6 +70,7 @@ const (
 	HandleIncomingBlocksKey
 	HandleIncomingMessagesKey
 
+	// daemon
 	SetApiEndpointKey
 
 	_nInvokes // keep this last
@@ -225,6 +226,8 @@ func Repo(r repo.Repo) Option {
 		Override(new(peer.ID), peer.IDFromPublicKey),
 
 		Override(new(types.KeyStore), modules.KeyStore),
+
+		Override(new(*modules.APIAlg), modules.APISecret),
 	)
 }
 

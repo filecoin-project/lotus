@@ -1,11 +1,11 @@
 package jsonrpc
 
 import (
+	"context"
 	"encoding/json"
+	"github.com/gorilla/websocket"
 	"io"
 	"net/http"
-
-	"github.com/gorilla/websocket"
 )
 
 const (
@@ -28,7 +28,7 @@ func NewServer() *RPCServer {
 
 var upgrader = websocket.Upgrader{}
 
-func (s *RPCServer) handleWS(w http.ResponseWriter, r *http.Request) {
+func (s *RPCServer) handleWS(ctx context.Context, w http.ResponseWriter, r *http.Request) {
 	c, err := upgrader.Upgrade(w, r, nil)
 	if err != nil {
 		log.Error(err)
@@ -39,7 +39,7 @@ func (s *RPCServer) handleWS(w http.ResponseWriter, r *http.Request) {
 	(&wsConn{
 		conn:    c,
 		handler: s.methods,
-	}).handleWsConn(r.Context())
+	}).handleWsConn(ctx)
 
 	if err := c.Close(); err != nil {
 		log.Error(err)
@@ -49,12 +49,14 @@ func (s *RPCServer) handleWS(w http.ResponseWriter, r *http.Request) {
 
 // TODO: return errors to clients per spec
 func (s *RPCServer) ServeHTTP(w http.ResponseWriter, r *http.Request) {
+	ctx := r.Context()
+
 	if r.Header.Get("Connection") == "Upgrade" {
-		s.handleWS(w, r)
+		s.handleWS(ctx, w, r)
 		return
 	}
 
-	s.methods.handleReader(r.Context(), r.Body, w, rpcError)
+	s.methods.handleReader(ctx, r.Body, w, rpcError)
 }
 
 func rpcError(wf func(func(io.Writer)), req *request, code int, err error) {

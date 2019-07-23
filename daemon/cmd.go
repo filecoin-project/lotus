@@ -49,7 +49,12 @@ var Cmd = &cli.Command{
 			return err
 		}
 
+		// Write cli token to the repo if not there yet
+		if _, err := api.AuthNew(ctx, nil); err != nil {
+			return err
+		}
+
 		// TODO: properly parse api endpoint (or make it a URL)
-		return serveRPC(api, "127.0.0.1:"+cctx.String("api"))
+		return serveRPC(api, "127.0.0.1:"+cctx.String("api"), api.AuthVerify)
 	},
 }

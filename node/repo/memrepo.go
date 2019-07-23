@@ -18,7 +18,8 @@ import (
 type MemRepo struct {
 	api struct {
 		sync.Mutex
-		ma multiaddr.Multiaddr
+		ma    multiaddr.Multiaddr
+		token []byte
 	}
 
 	repoLock chan struct{}
@@ -102,6 +103,15 @@ func (mem *MemRepo) APIEndpoint() (multiaddr.Multiaddr, error) {
 	return mem.api.ma, nil
 }
 
+func (mem *MemRepo) APIToken() ([]byte, error) {
+	mem.api.Lock()
+	defer mem.api.Unlock()
+	if mem.api.ma == nil {
+		return nil, ErrNoAPIToken
+	}
+	return mem.api.token, nil
+}
+
 func (mem *MemRepo) Lock() (LockedRepo, error) {
 	select {
 	case mem.repoLock <- struct{}{}:
@@ -173,6 +183,16 @@ func (lmem *lockedMemRepo) SetAPIEndpoint(ma multiaddr.Multiaddr) error {
 	}
 	lmem.mem.api.Lock()
 	lmem.mem.api.ma = ma
+	lmem.mem.api.Unlock()
+	return nil
+}
+
+func (lmem *lockedMemRepo) SetAPIToken(token []byte) error {
+	if err := lmem.checkToken(); err != nil {
+		return err
+	}
+	lmem.mem.api.Lock()
+	lmem.mem.api.token = token
 	lmem.mem.api.Unlock()
 	return nil
 }
