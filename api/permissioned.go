@@ -35,7 +35,19 @@ func Permissioned(a API) API {
 		field := rint.Type().Field(f)
 		requiredPerm := field.Tag.Get("perm")
 		if requiredPerm == "" {
-			requiredPerm = PermRead
+			panic("missing 'perm' tag on " + field.Name)
+		}
+
+		// Validate perm tag
+		ok := false
+		for _, perm := range AllPermissions {
+			if requiredPerm == perm {
+				ok = true
+				break
+			}
+		}
+		if !ok {
+			panic("unknown 'perm' tag on " + field.Name)
 		}
 
 		fn := ra.MethodByName(field.Name)

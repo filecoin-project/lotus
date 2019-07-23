@@ -11,41 +11,44 @@ import (
 	"github.com/libp2p/go-libp2p-core/peer"
 )
 
+// All permissions are listed in permissioned.go
+var _ = AllPermissions
+
 // Struct implements API passing calls to user-provided function values.
 type Struct struct {
 	Internal struct {
-		AuthVerify func(ctx context.Context, token string) ([]string, error)
+		AuthVerify func(ctx context.Context, token string) ([]string, error) `perm:"read"`
 		AuthNew    func(ctx context.Context, perms []string) ([]byte, error) `perm:"admin"`
 
-		ID      func(context.Context) (peer.ID, error)
-		Version func(context.Context) (Version, error)
+		ID      func(context.Context) (peer.ID, error) `perm:"read"`
+		Version func(context.Context) (Version, error) `perm:"read"`
 
-		ChainSubmitBlock      func(ctx context.Context, blk *chain.BlockMsg) error `perm:"write"`
-		ChainHead             func(context.Context) (*chain.TipSet, error)
-		ChainGetRandomness    func(context.Context, *chain.TipSet) ([]byte, error)
-		ChainWaitMsg          func(context.Context, cid.Cid) (*MsgWait, error)
-		ChainGetBlock         func(context.Context, cid.Cid) (*chain.BlockHeader, error)
-		ChainGetBlockMessages func(context.Context, cid.Cid) ([]*chain.SignedMessage, error)
+		ChainSubmitBlock      func(ctx context.Context, blk *chain.BlockMsg) error           `perm:"write"`
+		ChainHead             func(context.Context) (*chain.TipSet, error)                   `perm:"read"`
+		ChainGetRandomness    func(context.Context, *chain.TipSet) ([]byte, error)           `perm:"read"`
+		ChainWaitMsg          func(context.Context, cid.Cid) (*MsgWait, error)               `perm:"read"`
+		ChainGetBlock         func(context.Context, cid.Cid) (*chain.BlockHeader, error)     `perm:"read"`
+		ChainGetBlockMessages func(context.Context, cid.Cid) ([]*chain.SignedMessage, error) `perm:"read"`
 
-		MpoolPending func(context.Context, *chain.TipSet) ([]*chain.SignedMessage, error)
-		MpoolPush    func(context.Context, *chain.SignedMessage) error
+		MpoolPending func(context.Context, *chain.TipSet) ([]*chain.SignedMessage, error) `perm:"read"`
+		MpoolPush    func(context.Context, *chain.SignedMessage) error                    `perm:"write"`
 
-		MinerStart       func(context.Context, address.Address) error                                                                                                `perm:"write"`
+		MinerStart       func(context.Context, address.Address) error                                                                                                `perm:"admin"`
 		MinerCreateBlock func(context.Context, address.Address, *chain.TipSet, []chain.Ticket, chain.ElectionProof, []*chain.SignedMessage) (*chain.BlockMsg, error) `perm:"write"`
 
-		WalletNew            func(context.Context, string) (address.Address, error) `perm:"write"`
-		WalletList           func(context.Context) ([]address.Address, error)
-		WalletBalance        func(context.Context, address.Address) (types.BigInt, error)
+		WalletNew            func(context.Context, string) (address.Address, error)                   `perm:"write"`
+		WalletList           func(context.Context) ([]address.Address, error)                         `perm:"read"`
+		WalletBalance        func(context.Context, address.Address) (types.BigInt, error)             `perm:"read"`
 		WalletSign           func(context.Context, address.Address, []byte) (*chain.Signature, error) `perm:"sign"`
-		WalletDefaultAddress func(context.Context) (address.Address, error)
-		MpoolGetNonce        func(context.Context, address.Address) (uint64, error)
+		WalletDefaultAddress func(context.Context) (address.Address, error)                           `perm:"read"` // todo: this reveals owner identity, should be write?
+		MpoolGetNonce        func(context.Context, address.Address) (uint64, error)                   `perm:"read"`
 
 		ClientImport      func(ctx context.Context, path string) (cid.Cid, error) `perm:"write"`
-		ClientListImports func(ctx context.Context) ([]Import, error)
+		ClientListImports func(ctx context.Context) ([]Import, error)             `perm:"read"`
 
-		NetPeers       func(context.Context) ([]peer.AddrInfo, error)
-		NetConnect     func(context.Context, peer.AddrInfo) error `perm:"write"`
-		NetAddrsListen func(context.Context) (peer.AddrInfo, error)
+		NetPeers       func(context.Context) ([]peer.AddrInfo, error) `perm:"read"`
+		NetConnect     func(context.Context, peer.AddrInfo) error     `perm:"write"`
+		NetAddrsListen func(context.Context) (peer.AddrInfo, error)   `perm:"read"`
 	}
 }
 

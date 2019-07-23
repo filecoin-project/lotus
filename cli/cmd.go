@@ -44,7 +44,7 @@ func getAPI(ctx *cli.Context) (api.API, error) {
 	if err != nil {
 		log.Warnf("Couldn't load CLI token, capabilities may be limited: %w", err)
 	} else {
-		headers = map[string][]string{}
+		headers = http.Header{}
 		headers.Add("Authorization", "Bearer "+string(token))
 	}
 
