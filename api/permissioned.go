@@ -12,6 +12,8 @@ type permKey int
 var permCtxKey permKey
 
 const (
+	// When changing these, update docs/API.md too
+
 	PermRead  = "read" // default
 	PermWrite = "write"
 	PermSign  = "sign"  // Use wallet keys for signing

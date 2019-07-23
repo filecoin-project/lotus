@@ -37,10 +37,10 @@ type Struct struct {
 		MinerCreateBlock func(context.Context, address.Address, *chain.TipSet, []chain.Ticket, chain.ElectionProof, []*chain.SignedMessage) (*chain.BlockMsg, error) `perm:"write"`
 
 		WalletNew            func(context.Context, string) (address.Address, error)                   `perm:"write"`
-		WalletList           func(context.Context) ([]address.Address, error)                         `perm:"read"`
+		WalletList           func(context.Context) ([]address.Address, error)                         `perm:"write"`
 		WalletBalance        func(context.Context, address.Address) (types.BigInt, error)             `perm:"read"`
 		WalletSign           func(context.Context, address.Address, []byte) (*chain.Signature, error) `perm:"sign"`
-		WalletDefaultAddress func(context.Context) (address.Address, error)                           `perm:"read"` // todo: this reveals owner identity, should be write?
+		WalletDefaultAddress func(context.Context) (address.Address, error)                           `perm:"write"`
 		MpoolGetNonce        func(context.Context, address.Address) (uint64, error)                   `perm:"read"`
 
 		ClientImport      func(ctx context.Context, path string) (cid.Cid, error) `perm:"write"`
