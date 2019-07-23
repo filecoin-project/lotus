@@ -27,6 +27,26 @@ func New(retCode uint8, message string) ActorError {
 	}
 }
 
+// Newf creates a new non-fatal error
+func Newf(retCode uint8, format string, args ...interface{}) ActorError {
+	if retCode == 0 {
+		return &actorError{
+			fatal:   true,
+			retCode: 0,
+
+			msg:   "tried creating an error and setting RetCode to 0",
+			frame: xerrors.Caller(1),
+			err:   fmt.Errorf(format, args...),
+		}
+	}
+	return &actorError{
+		retCode: retCode,
+
+		msg:   fmt.Sprintf(format, args...),
+		frame: xerrors.Caller(1),
+	}
+}
+
 // Wrap extens chain of errors with a message
 func Wrap(err ActorError, message string) ActorError {
 	if err == nil {

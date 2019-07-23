@@ -35,10 +35,10 @@ func (inv *invoker) Invoke(act *types.Actor, vmctx *VMContext, method uint64, pa
 
 	code, ok := inv.builtInCode[act.Code]
 	if !ok {
-		return nil, aerrors.Escalate(fmt.Errorf("no code for actor %s", act.Code), "")
+		return nil, aerrors.Newf(255, "no code for actor %s", act.Code)
 	}
 	if method >= uint64(len(code)) || code[method] == nil {
-		return nil, aerrors.Escalate(fmt.Errorf("no method %d on actor", method), "")
+		return nil, aerrors.Newf(255, "no method %d on actor", method)
 	}
 	return code[method](act, vmctx, params)
 
