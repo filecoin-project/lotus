@@ -12,9 +12,8 @@ func IsFatal(err ActorError) bool {
 func RetCode(err ActorError) uint8 {
 	if err == nil {
 		return 0
-	} else {
-		return err.RetCode()
 	}
+	return err.RetCode()
 }
 
 type internalActorError interface {

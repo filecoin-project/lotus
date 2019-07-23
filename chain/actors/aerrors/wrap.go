@@ -6,7 +6,18 @@ import (
 	"golang.org/x/xerrors"
 )
 
+// New creates a new non-fatal error
 func New(retCode uint8, message string) ActorError {
+	if retCode == 0 {
+		return &actorError{
+			fatal:   true,
+			retCode: 0,
+
+			msg:   "tried creating an error and setting RetCode to 0",
+			frame: xerrors.Caller(1),
+			err:   err,
+		}
+	}
 	return &actorError{
 		retCode: retCode,
 
@@ -15,6 +26,7 @@ func New(retCode uint8, message string) ActorError {
 	}
 }
 
+// Wrap extens chain of errors with a message
 func Wrap(err ActorError, message string) ActorError {
 	if err == nil {
 		return nil
@@ -29,7 +41,7 @@ func Wrap(err ActorError, message string) ActorError {
 	}
 }
 
-// Wrap extens chain of errors with
+// Wrapf extens chain of errors with a message
 func Wrapf(err ActorError, format string, args ...interface{}) ActorError {
 	if err == nil {
 		return nil
