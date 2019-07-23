@@ -72,7 +72,6 @@ const (
 
 	// daemon
 	SetApiEndpointKey
-	ServeRPCKey
 
 	_nInvokes // keep this last
 )

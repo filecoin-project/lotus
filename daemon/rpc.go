@@ -1,20 +1,20 @@
 package daemon
 
 import (
+	"context"
 	"github.com/filecoin-project/go-lotus/lib/auth"
-	"github.com/gbrlsnchs/jwt/v3"
 	"net/http"
 
 	"github.com/filecoin-project/go-lotus/api"
 	"github.com/filecoin-project/go-lotus/lib/jsonrpc"
 )
 
-func serveRPC(a api.API, addr string, authSecret []byte) error {
+func serveRPC(a api.API, addr string, verify func(ctx context.Context, token string) ([]string, error)) error {
 	rpcServer := jsonrpc.NewServer()
 	rpcServer.Register("Filecoin", api.Permissioned(a))
 
 	authHandler := &auth.Handler{
-		Secret: jwt.NewHS256(authSecret),
+		Verify: verify,
 		Next:   rpcServer.ServeHTTP,
 	}
 

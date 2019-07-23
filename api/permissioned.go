@@ -17,6 +17,7 @@ const (
 	// todo: more perms once needed (network / sign / call/invoke / miner / etc)
 )
 
+var AllPermissions = []string{PermRead, PermWrite}
 var defaultPerms = []string{PermRead}
 
 func WithPerm(ctx context.Context, perms []string) context.Context {

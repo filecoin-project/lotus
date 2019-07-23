@@ -33,6 +33,10 @@ type MsgWait struct {
 
 // API is a low-level interface to the Filecoin network
 type API interface {
+	// Auth
+	AuthVerify(ctx context.Context, token string) ([]string, error)
+	AuthNew(ctx context.Context, perms []string) ([]byte, error)
+
 	// chain
 
 	ChainHead(context.Context) (*chain.TipSet, error)                // TODO: check serialization

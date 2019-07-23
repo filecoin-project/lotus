@@ -11,12 +11,17 @@ import (
 	"github.com/filecoin-project/go-lotus/miner"
 	"github.com/filecoin-project/go-lotus/node/client"
 
+	"github.com/gbrlsnchs/jwt/v3"
 	"github.com/ipfs/go-cid"
+	logging "github.com/ipfs/go-log"
 	"github.com/libp2p/go-libp2p-core/host"
 	"github.com/libp2p/go-libp2p-core/peer"
 	pubsub "github.com/libp2p/go-libp2p-pubsub"
 	ma "github.com/multiformats/go-multiaddr"
+	"golang.org/x/xerrors"
 )
+
+var log = logging.Logger("node")
 
 type API struct {
 	client.LocalStorage
@@ -26,6 +31,51 @@ type API struct {
 	PubSub *pubsub.PubSub
 	Mpool  *chain.MessagePool
 	Wallet *chain.Wallet
+	Keystore types.KeyStore
+}
+
+const JWTSecretName = "auth-jwt-private"
+
+type jwtPayload struct {
+	Allow []string
+}
+
+func (a *API) AuthVerify(ctx context.Context, token string) ([]string, error) {
+	key, err := a.Keystore.Get(JWTSecretName)
+	if err != nil {
+		return nil, xerrors.Errorf("couldn't get JWT secret: %w", err)
+	}
+
+	var payload jwtPayload
+	if _, err := jwt.Verify([]byte(token), jwt.NewHS256(key.PrivateKey), &payload); err != nil {
+		return nil, xerrors.Errorf("JWT Verification failed: %w", err)
+	}
+
+	return payload.Allow, nil
+}
+
+func (a *API) AuthNew(ctx context.Context, perms []string) ([]byte, error) {
+	key, err := a.Keystore.Get(JWTSecretName)
+	if err != nil {
+		log.Warn("Generating new API secret")
+
+		key = types.KeyInfo{
+			Type:       "jwt-hmac-secret",
+			PrivateKey: make([]byte, 32),
+		}
+
+		if err := a.Keystore.Put(JWTSecretName, key); err != nil {
+			return nil, xerrors.Errorf("writing API secret: %w", err)
+		}
+
+		// TODO: put cli token in repo
+	}
+
+	p := jwtPayload{
+		Allow: perms, // TODO: consider checking validity
+	}
+
+	return jwt.Sign(&p, jwt.NewHS256(key.PrivateKey))
 }
 
 func (a *API) ChainSubmitBlock(ctx context.Context, blk *chain.BlockMsg) error {

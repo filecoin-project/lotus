@@ -14,6 +14,9 @@ import (
 // Struct implements API passing calls to user-provided function values.
 type Struct struct {
 	Internal struct {
+		AuthVerify func(ctx context.Context, token string) ([]string, error)
+		AuthNew    func(ctx context.Context, perms []string) ([]byte, error) `perm:"write"`
+
 		ID      func(context.Context) (peer.ID, error)
 		Version func(context.Context) (Version, error)
 
@@ -44,6 +47,14 @@ type Struct struct {
 		NetConnect     func(context.Context, peer.AddrInfo) error `perm:"write"`
 		NetAddrsListen func(context.Context) (peer.AddrInfo, error)
 	}
+}
+
+func (c *Struct) AuthVerify(ctx context.Context, token string) ([]string, error) {
+	return c.Internal.AuthVerify(ctx, token)
+}
+
+func (c *Struct) AuthNew(ctx context.Context, perms []string) ([]byte, error) {
+	return c.Internal.AuthNew(ctx, perms)
 }
 
 func (c *Struct) ClientListImports(ctx context.Context) ([]Import, error) {

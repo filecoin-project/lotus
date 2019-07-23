@@ -6,7 +6,6 @@ import (
 	"context"
 
 	"github.com/multiformats/go-multiaddr"
-	"go.uber.org/fx"
 	"gopkg.in/urfave/cli.v2"
 
 	"github.com/filecoin-project/go-lotus/node"
@@ -45,16 +44,12 @@ var Cmd = &cli.Command{
 				}
 				return lr.SetAPIEndpoint(apima)
 			}),
-
-			node.Override(node.ServeRPCKey, func(lc fx.Lifecycle) error {
-
-			}),
 		)
 		if err != nil {
 			return err
 		}
 
 		// TODO: properly parse api endpoint (or make it a URL)
-		return serveRPC(api, "127.0.0.1:"+cctx.String("api"))
+		return serveRPC(api, "127.0.0.1:"+cctx.String("api"), api.AuthVerify)
 	},
 }
