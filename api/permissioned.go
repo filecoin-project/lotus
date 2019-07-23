@@ -14,10 +14,11 @@ var permCtxKey permKey
 const (
 	PermRead  = "read" // default
 	PermWrite = "write"
-	// todo: more perms once needed (network / sign / call/invoke / miner / etc)
+	PermSign  = "sign"  // Use wallet keys for signing
+	PermAdmin = "admin" // Manage permissions
 )
 
-var AllPermissions = []string{PermRead, PermWrite}
+var AllPermissions = []string{PermRead, PermWrite, PermSign, PermAdmin}
 var defaultPerms = []string{PermRead}
 
 func WithPerm(ctx context.Context, perms []string) context.Context {

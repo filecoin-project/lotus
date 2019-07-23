@@ -15,7 +15,7 @@ import (
 type Struct struct {
 	Internal struct {
 		AuthVerify func(ctx context.Context, token string) ([]string, error)
-		AuthNew    func(ctx context.Context, perms []string) ([]byte, error) `perm:"write"`
+		AuthNew    func(ctx context.Context, perms []string) ([]byte, error) `perm:"admin"`
 
 		ID      func(context.Context) (peer.ID, error)
 		Version func(context.Context) (Version, error)
@@ -36,7 +36,7 @@ type Struct struct {
 		WalletNew            func(context.Context, string) (address.Address, error) `perm:"write"`
 		WalletList           func(context.Context) ([]address.Address, error)
 		WalletBalance        func(context.Context, address.Address) (types.BigInt, error)
-		WalletSign           func(context.Context, address.Address, []byte) (*chain.Signature, error) `perm:"write"`
+		WalletSign           func(context.Context, address.Address, []byte) (*chain.Signature, error) `perm:"sign"`
 		WalletDefaultAddress func(context.Context) (address.Address, error)
 		MpoolGetNonce        func(context.Context, address.Address) (uint64, error)
 
