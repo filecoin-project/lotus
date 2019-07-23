@@ -5,17 +5,17 @@ import (
 	"reflect"
 
 	actors "github.com/filecoin-project/go-lotus/chain/actors"
+	"github.com/filecoin-project/go-lotus/chain/actors/aerrors"
 	"github.com/filecoin-project/go-lotus/chain/types"
 	"github.com/ipfs/go-cid"
 	cbor "github.com/ipfs/go-ipld-cbor"
-	"golang.org/x/xerrors"
 )
 
 type invoker struct {
 	builtInCode map[cid.Cid]nativeCode
 }
 
-type invokeFunc func(act *types.Actor, vmctx *VMContext, params []byte) (types.InvokeRet, error)
+type invokeFunc func(act *types.Actor, vmctx *VMContext, params []byte) ([]byte, aerrors.ActorError)
 type nativeCode []invokeFunc
 
 func newInvoker() *invoker {
@@ -31,14 +31,14 @@ func newInvoker() *invoker {
 	return inv
 }
 
-func (inv *invoker) Invoke(act *types.Actor, vmctx *VMContext, method uint64, params []byte) (types.InvokeRet, error) {
+func (inv *invoker) Invoke(act *types.Actor, vmctx *VMContext, method uint64, params []byte) ([]byte, aerrors.ActorError) {
 
 	code, ok := inv.builtInCode[act.Code]
 	if !ok {
-		return types.InvokeRet{}, xerrors.Errorf("no code for actor %s", act.Code)
+		return nil, aerrors.Newf(255, "no code for actor %s", act.Code)
 	}
 	if method >= uint64(len(code)) || code[method] == nil {
-		return types.InvokeRet{}, xerrors.Errorf("no method %d on actor", method)
+		return nil, aerrors.Newf(255, "no method %d on actor", method)
 	}
 	return code[method](act, vmctx, params)
 
@@ -57,7 +57,7 @@ type Invokee interface {
 }
 
 var tVMContext = reflect.TypeOf((*types.VMContext)(nil)).Elem()
-var tError = reflect.TypeOf((*error)(nil)).Elem()
+var tAError = reflect.TypeOf((*aerrors.ActorError)(nil)).Elem()
 
 func (*invoker) transform(instance Invokee) (nativeCode, error) {
 	itype := reflect.TypeOf(instance)
@@ -65,7 +65,7 @@ func (*invoker) transform(instance Invokee) (nativeCode, error) {
 	for i, m := range exports {
 		i := i
 		newErr := func(format string, args ...interface{}) error {
-			str := fmt.Sprintf(format, args)
+			str := fmt.Sprintf(format, args...)
 			return fmt.Errorf("transform(%s) export(%d): %s", itype.Name(), i, str)
 		}
 		if m == nil {
@@ -96,11 +96,11 @@ func (*invoker) transform(instance Invokee) (nativeCode, error) {
 			return nil, newErr("wrong number of outputs should be: " +
 				"(InvokeRet, error)")
 		}
-		if t.Out(0) != reflect.TypeOf(types.InvokeRet{}) {
-			return nil, newErr("first output should be of type InvokeRet")
+		if t.Out(0) != reflect.TypeOf([]byte{}) {
+			return nil, newErr("first output should be slice of bytes")
 		}
-		if !t.Out(1).Implements(tError) {
-			return nil, newErr("second output should be error type")
+		if !t.Out(1).Implements(tAError) {
+			return nil, newErr("second output should be ActorError type")
 		}
 
 	}
@@ -115,11 +115,12 @@ func (*invoker) transform(instance Invokee) (nativeCode, error) {
 				inBytes := in[2].Interface().([]byte)
 				err := cbor.DecodeInto(inBytes, param.Interface())
 				if err != nil {
+					aerr := aerrors.Absorb(err, 1, "failed to decode parameters")
 					return []reflect.Value{
-						reflect.ValueOf(types.InvokeRet{}),
+						reflect.ValueOf([]byte{}),
 						// Below is a hack, fixed in Go 1.13
 						// https://git.io/fjXU6
-						reflect.ValueOf(&err).Elem(),
+						reflect.ValueOf(&aerr).Elem(),
 					}
 				}
 

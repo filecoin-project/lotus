@@ -3,8 +3,10 @@ package actors
 import (
 	"context"
 
+	"github.com/filecoin-project/go-lotus/chain/actors/aerrors"
 	"github.com/filecoin-project/go-lotus/chain/address"
 	"github.com/filecoin-project/go-lotus/chain/types"
+	"golang.org/x/xerrors"
 
 	cid "github.com/ipfs/go-cid"
 	hamt "github.com/ipfs/go-hamt-ipld"
@@ -106,7 +108,7 @@ func (sma StorageMinerActor) Exports() []interface{} {
 	}
 }
 
-func (sma StorageMinerActor) StorageMinerConstructor(act *types.Actor, vmctx types.VMContext, params *StorageMinerConstructorParams) (types.InvokeRet, error) {
+func (sma StorageMinerActor) StorageMinerConstructor(act *types.Actor, vmctx types.VMContext, params *StorageMinerConstructorParams) ([]byte, ActorError) {
 	var self StorageMinerActorState
 	self.Owner = params.Owner
 	self.Worker = params.Worker
@@ -114,9 +116,9 @@ func (sma StorageMinerActor) StorageMinerConstructor(act *types.Actor, vmctx typ
 	self.SectorSize = params.SectorSize
 
 	nd := hamt.NewNode(vmctx.Ipld())
-	sectors, err := vmctx.Ipld().Put(context.TODO(), nd)
-	if err != nil {
-		return types.InvokeRet{}, err
+	sectors, nerr := vmctx.Ipld().Put(context.TODO(), nd)
+	if nerr != nil {
+		return nil, aerrors.Escalate(nerr, "could not put in storage")
 	}
 	self.Sectors = sectors
 	self.ProvingSet = sectors
@@ -124,14 +126,14 @@ func (sma StorageMinerActor) StorageMinerConstructor(act *types.Actor, vmctx typ
 	storage := vmctx.Storage()
 	c, err := storage.Put(self)
 	if err != nil {
-		return types.InvokeRet{}, err
+		return nil, err
 	}
 
 	if err := storage.Commit(EmptyCBOR, c); err != nil {
-		return types.InvokeRet{}, err
+		return nil, err
 	}
 
-	return types.InvokeRet{}, nil
+	return nil, nil
 }
 
 type CommitSectorParams struct {
@@ -142,30 +144,24 @@ type CommitSectorParams struct {
 	Proof     []byte
 }
 
-func (sma StorageMinerActor) CommitSector(act *types.Actor, vmctx types.VMContext, params *CommitSectorParams) (types.InvokeRet, error) {
+func (sma StorageMinerActor) CommitSector(act *types.Actor, vmctx types.VMContext, params *CommitSectorParams) ([]byte, ActorError) {
 	var self StorageMinerActorState
 	oldstate := vmctx.Storage().GetHead()
 	if err := vmctx.Storage().Get(oldstate, &self); err != nil {
-		return types.InvokeRet{}, err
+		return nil, err
 	}
 
 	if !ValidatePoRep(self.SectorSize, params) {
-		//Fatal("bad proof!")
-		return types.InvokeRet{
-			ReturnCode: 1,
-		}, nil
+		return nil, aerrors.New(1, "bad proof!")
 	}
 
 	// make sure the miner isnt trying to submit a pre-existing sector
 	unique, err := SectorIsUnique(vmctx.Ipld(), self.Sectors, params.SectorId)
 	if err != nil {
-		return types.InvokeRet{}, err
+		return nil, err
 	}
 	if !unique {
-		//Fatal("sector already committed!")
-		return types.InvokeRet{
-			ReturnCode: 2,
-		}, nil
+		return nil, aerrors.New(2, "sector already committed!")
 	}
 
 	// Power of the miner after adding this sector
@@ -173,18 +169,12 @@ func (sma StorageMinerActor) CommitSector(act *types.Actor, vmctx types.VMContex
 	collateralRequired := CollateralForPower(futurePower)
 
 	if types.BigCmp(collateralRequired, act.Balance) < 0 {
-		//Fatal("not enough collateral")
-		return types.InvokeRet{
-			ReturnCode: 3,
-		}, nil
+		return nil, aerrors.New(3, "not enough collateral")
 	}
 
 	// ensure that the miner cannot commit more sectors than can be proved with a single PoSt
 	if self.SectorSetSize >= POST_SECTORS_COUNT {
-		// Fatal("too many sectors")
-		return types.InvokeRet{
-			ReturnCode: 4,
-		}, nil
+		return nil, aerrors.New(4, "too many sectors")
 	}
 
 	// Note: There must exist a unique index in the miner's sector set for each
@@ -192,7 +182,7 @@ func (sma StorageMinerActor) CommitSector(act *types.Actor, vmctx types.VMContex
 	// SubmitPoSt method express indices into this sector set.
 	nssroot, err := AddToSectorSet(self.Sectors, params.SectorId, params.CommR, params.CommD)
 	if err != nil {
-		return types.InvokeRet{}, err
+		return nil, err
 	}
 	self.Sectors = nssroot
 
@@ -212,43 +202,41 @@ func (sma StorageMinerActor) CommitSector(act *types.Actor, vmctx types.VMContex
 
 	nstate, err := vmctx.Storage().Put(self)
 	if err != nil {
-		return types.InvokeRet{}, err
+		return nil, err
 	}
 	if err := vmctx.Storage().Commit(oldstate, nstate); err != nil {
-		return types.InvokeRet{}, err
+		return nil, err
 	}
 
-	return types.InvokeRet{}, nil
+	return nil, nil
 }
 
-func (sma StorageMinerActor) GetPower(act *types.Actor, vmctx types.VMContext, params *struct{}) (types.InvokeRet, error) {
+func (sma StorageMinerActor) GetPower(act *types.Actor, vmctx types.VMContext, params *struct{}) ([]byte, ActorError) {
 	var self StorageMinerActorState
 	state := vmctx.Storage().GetHead()
 	if err := vmctx.Storage().Get(state, &self); err != nil {
-		return types.InvokeRet{}, err
+		return nil, err
 	}
-	return types.InvokeRet{
-		Result: self.Power.Bytes(),
-	}, nil
+	return self.Power.Bytes(), nil
 }
 
-func SectorIsUnique(cst *hamt.CborIpldStore, sroot cid.Cid, sid types.BigInt) (bool, error) {
+func SectorIsUnique(cst *hamt.CborIpldStore, sroot cid.Cid, sid types.BigInt) (bool, ActorError) {
 	nd, err := hamt.LoadNode(context.TODO(), cst, sroot)
 	if err != nil {
-		return false, err
+		return false, aerrors.Absorb(err, 1, "could not load node in HAMT")
 	}
 
 	if _, err := nd.Find(context.TODO(), sid.String()); err != nil {
-		if err == hamt.ErrNotFound {
+		if xerrors.Is(err, hamt.ErrNotFound) {
 			return true, nil
 		}
-		return false, err
+		return false, aerrors.Absorb(err, 1, "could not find node in HAMT")
 	}
 
 	return false, nil
 }
 
-func AddToSectorSet(ss cid.Cid, sectorID types.BigInt, commR, commD []byte) (cid.Cid, error) {
+func AddToSectorSet(ss cid.Cid, sectorID types.BigInt, commR, commD []byte) (cid.Cid, ActorError) {
 	panic("NYI")
 }
 

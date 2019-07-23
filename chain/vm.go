@@ -5,6 +5,7 @@ import (
 	"fmt"
 
 	"github.com/filecoin-project/go-lotus/chain/actors"
+	"github.com/filecoin-project/go-lotus/chain/actors/aerrors"
 	"github.com/filecoin-project/go-lotus/chain/address"
 	"github.com/filecoin-project/go-lotus/chain/types"
 	"github.com/filecoin-project/go-lotus/lib/bufbstore"
@@ -45,21 +46,25 @@ type storage struct {
 	head cid.Cid
 }
 
-func (s *storage) Put(i interface{}) (cid.Cid, error) {
-	return s.cst.Put(context.TODO(), i)
+func (s *storage) Put(i interface{}) (cid.Cid, aerrors.ActorError) {
+	c, err := s.cst.Put(context.TODO(), i)
+	if err != nil {
+		return cid.Undef, aerrors.Escalate(err, "putting cid")
+	}
+	return c, nil
 }
 
-func (s *storage) Get(c cid.Cid, out interface{}) error {
-	return s.cst.Get(context.TODO(), c, out)
+func (s *storage) Get(c cid.Cid, out interface{}) aerrors.ActorError {
+	return aerrors.Escalate(s.cst.Get(context.TODO(), c, out), "getting cid")
 }
 
 func (s *storage) GetHead() cid.Cid {
 	return s.head
 }
 
-func (s *storage) Commit(oldh, newh cid.Cid) error {
+func (s *storage) Commit(oldh, newh cid.Cid) aerrors.ActorError {
 	if s.head != oldh {
-		return fmt.Errorf("failed to update, inconsistent base reference")
+		return aerrors.New(1, "failed to update, inconsistent base reference")
 	}
 
 	s.head = newh
@@ -80,7 +85,7 @@ func (vmc *VMContext) Origin() address.Address {
 }
 
 // Send allows the current execution context to invoke methods on other actors in the system
-func (vmc *VMContext) Send(to address.Address, method uint64, value types.BigInt, params []byte) ([]byte, uint8, error) {
+func (vmc *VMContext) Send(to address.Address, method uint64, value types.BigInt, params []byte) ([]byte, aerrors.ActorError) {
 
 	msg := &types.Message{
 		From:   vmc.msg.To,
@@ -92,19 +97,19 @@ func (vmc *VMContext) Send(to address.Address, method uint64, value types.BigInt
 
 	toAct, err := vmc.state.GetActor(to)
 	if err != nil {
-		return nil, 0, err
+		return nil, aerrors.Absorb(err, 2, "could not find actor for Send")
 	}
 
 	nvmctx := vmc.vm.makeVMContext(toAct.Head, vmc.origin, msg)
 
-	res, ret, err := vmc.vm.Invoke(toAct, nvmctx, method, params)
-	if err != nil {
-		return nil, 0, err
+	res, aerr := vmc.vm.Invoke(toAct, nvmctx, method, params)
+	if aerr != nil {
+		return nil, aerr
 	}
 
 	toAct.Head = nvmctx.Storage().GetHead()
 
-	return res, ret, err
+	return res, nil
 }
 
 // BlockHeight returns the height of the block this message was added to the chain in
@@ -116,9 +121,9 @@ func (vmc *VMContext) GasUsed() types.BigInt {
 	return types.NewInt(0)
 }
 
-func (vmc *VMContext) StateTree() (types.StateTree, error) {
+func (vmc *VMContext) StateTree() (types.StateTree, aerrors.ActorError) {
 	if vmc.msg.To != actors.InitActorAddress {
-		return nil, fmt.Errorf("only init actor can access state tree directly")
+		return nil, aerrors.Escalate(fmt.Errorf("only init actor can access state tree directly"), "invalid use of StateTree")
 	}
 
 	return vmc.state, nil
@@ -192,7 +197,7 @@ func (vm *VM) ApplyMessage(msg *types.Message) (*types.MessageReceipt, error) {
 
 	toActor, err := st.GetActor(msg.To)
 	if err != nil {
-		if err == ErrActorNotFound {
+		if xerrors.Is(err, types.ErrActorNotFound) {
 			a, err := TryCreateAccountActor(st, msg.To)
 			if err != nil {
 				return nil, err
@@ -213,18 +218,21 @@ func (vm *VM) ApplyMessage(msg *types.Message) (*types.MessageReceipt, error) {
 	var errcode byte
 	var ret []byte
 	if msg.Method != 0 {
-		ret, errcode, err = vm.Invoke(toActor, vmctx, msg.Method, msg.Params)
-		if err != nil {
+		var err aerrors.ActorError
+		ret, err = vm.Invoke(toActor, vmctx, msg.Method, msg.Params)
+
+		if aerrors.IsFatal(err) {
 			return nil, xerrors.Errorf("during invoke: %w", err)
 		}
 
-		if errcode != 0 {
+		if errcode = aerrors.RetCode(err); errcode != 0 {
 			// revert all state changes since snapshot
 			st.Revert()
 			gascost := types.BigMul(vmctx.GasUsed(), msg.GasPrice)
 			if err := DeductFunds(fromActor, gascost); err != nil {
 				panic("invariant violated: " + err.Error())
 			}
+
 		} else {
 			// Update actor head reference
 			toActor.Head = vmctx.storage.head
@@ -320,10 +328,10 @@ func (vm *VM) TransferFunds(from, to address.Address, amt types.BigInt) error {
 	return nil
 }
 
-func (vm *VM) Invoke(act *types.Actor, vmctx *VMContext, method uint64, params []byte) ([]byte, byte, error) {
+func (vm *VM) Invoke(act *types.Actor, vmctx *VMContext, method uint64, params []byte) ([]byte, aerrors.ActorError) {
 	ret, err := vm.inv.Invoke(act, vmctx, method, params)
 	if err != nil {
-		return nil, 0, err
+		return nil, err
 	}
-	return ret.Result, ret.ReturnCode, nil
+	return ret, nil
 }

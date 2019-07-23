@@ -1,12 +1,12 @@
 package actors
 
 import (
+	"github.com/filecoin-project/go-lotus/chain/actors/aerrors"
 	"github.com/filecoin-project/go-lotus/chain/address"
 	"github.com/filecoin-project/go-lotus/chain/types"
 
 	cbor "github.com/ipfs/go-ipld-cbor"
 	"github.com/libp2p/go-libp2p-core/peer"
-	"golang.org/x/xerrors"
 )
 
 const SectorSize = 1024
@@ -45,12 +45,9 @@ type CreateStorageMinerParams struct {
 	PeerID     peer.ID
 }
 
-func (sma StorageMarketActor) CreateStorageMiner(act *types.Actor, vmctx types.VMContext, params *CreateStorageMinerParams) (types.InvokeRet, error) {
+func (sma StorageMarketActor) CreateStorageMiner(act *types.Actor, vmctx types.VMContext, params *CreateStorageMinerParams) ([]byte, ActorError) {
 	if !SupportedSectorSize(params.SectorSize) {
-		//Fatal("Unsupported sector size")
-		return types.InvokeRet{
-			ReturnCode: 1,
-		}, nil
+		return nil, aerrors.New(1, "Unsupported sector size")
 	}
 
 	encoded, err := CreateExecParams(StorageMinerCodeCid, &StorageMinerConstructorParams{
@@ -60,45 +57,37 @@ func (sma StorageMarketActor) CreateStorageMiner(act *types.Actor, vmctx types.V
 		PeerID:     params.PeerID,
 	})
 	if err != nil {
-		return types.InvokeRet{}, err
+		return nil, err
 	}
 
-	ret, exit, err := vmctx.Send(InitActorAddress, 1, vmctx.Message().Value, encoded)
+	ret, err := vmctx.Send(InitActorAddress, 1, vmctx.Message().Value, encoded)
 	if err != nil {
-		return types.InvokeRet{}, err
+		return nil, err
 	}
 
-	if exit != 0 {
-		return types.InvokeRet{
-			ReturnCode: 2,
-		}, nil
-	}
-
-	naddr, err := address.NewFromBytes(ret)
-	if err != nil {
-		return types.InvokeRet{}, err
+	naddr, nerr := address.NewFromBytes(ret)
+	if nerr != nil {
+		return nil, aerrors.Absorb(nerr, 1, "could not read address of new actor")
 	}
 
 	var self StorageMarketState
 	old := vmctx.Storage().GetHead()
 	if err := vmctx.Storage().Get(old, &self); err != nil {
-		return types.InvokeRet{}, err
+		return nil, err
 	}
 
 	self.Miners[naddr] = struct{}{}
 
 	nroot, err := vmctx.Storage().Put(self)
 	if err != nil {
-		return types.InvokeRet{}, err
+		return nil, err
 	}
 
 	if err := vmctx.Storage().Commit(old, nroot); err != nil {
-		return types.InvokeRet{}, err
+		return nil, err
 	}
 
-	return types.InvokeRet{
-		Result: naddr.Bytes(),
-	}, nil
+	return naddr.Bytes(), nil
 }
 
 func SupportedSectorSize(ssize types.BigInt) bool {
@@ -112,84 +101,65 @@ type UpdateStorageParams struct {
 	Delta types.BigInt
 }
 
-func (sma StorageMarketActor) UpdateStorage(act *types.Actor, vmctx types.VMContext, params *UpdateStorageParams) (types.InvokeRet, error) {
+func (sma StorageMarketActor) UpdateStorage(act *types.Actor, vmctx types.VMContext, params *UpdateStorageParams) ([]byte, ActorError) {
 	var self StorageMarketState
 	if err := vmctx.Storage().Get(vmctx.Storage().GetHead(), &self); err != nil {
-		return types.InvokeRet{}, err
+		return nil, err
 	}
 
 	_, ok := self.Miners[vmctx.Message().From]
 	if !ok {
-		//Fatal("update storage must only be called by a miner actor")
-		return types.InvokeRet{
-			ReturnCode: 1,
-		}, nil
+		return nil, aerrors.New(1, "update storage must only be called by a miner actor")
 	}
 
 	self.TotalStorage = types.BigAdd(self.TotalStorage, params.Delta)
-	return types.InvokeRet{}, nil
+	return nil, nil
 }
 
-func (sma StorageMarketActor) GetTotalStorage(act *types.Actor, vmctx types.VMContext, params *struct{}) (types.InvokeRet, error) {
+func (sma StorageMarketActor) GetTotalStorage(act *types.Actor, vmctx types.VMContext, params *struct{}) ([]byte, ActorError) {
 	var self StorageMarketState
 	if err := vmctx.Storage().Get(vmctx.Storage().GetHead(), &self); err != nil {
-		return types.InvokeRet{}, err
+		return nil, err
 	}
 
-	return types.InvokeRet{
-		Result: self.TotalStorage.Bytes(),
-	}, nil
+	return self.TotalStorage.Bytes(), nil
 }
 
 type PowerLookupParams struct {
 	Miner address.Address
 }
 
-func (sma StorageMarketActor) PowerLookup(act *types.Actor, vmctx types.VMContext, params *PowerLookupParams) (types.InvokeRet, error) {
+func (sma StorageMarketActor) PowerLookup(act *types.Actor, vmctx types.VMContext, params *PowerLookupParams) ([]byte, ActorError) {
 	var self StorageMarketState
 	if err := vmctx.Storage().Get(vmctx.Storage().GetHead(), &self); err != nil {
-		return types.InvokeRet{}, xerrors.Errorf("getting head: %w", err)
+		return nil, aerrors.Wrap(err, "getting head")
 	}
 
 	if _, ok := self.Miners[params.Miner]; !ok {
-		//Fatal("miner not registered with storage market")
-		return types.InvokeRet{
-			ReturnCode: 1,
-		}, nil
+		return nil, aerrors.New(1, "miner not registered with storage market")
 	}
 
-	ret, code, err := vmctx.Send(params.Miner, 9, types.NewInt(0), EmptyStructCBOR)
+	ret, err := vmctx.Send(params.Miner, 9, types.NewInt(0), EmptyStructCBOR)
 	if err != nil {
-		return types.InvokeRet{}, xerrors.Errorf("invoke Miner.GetPower: %w", err)
+		return nil, aerrors.Wrap(err, "invoke Miner.GetPower")
 	}
 
-	if code != 0 {
-		return types.InvokeRet{
-			// TODO: error handling... these codes really don't tell us what the problem is very well
-			ReturnCode: code,
-		}, nil
-	}
-
-	return types.InvokeRet{
-		Result: ret,
-	}, nil
+	return ret, nil
 }
 
 type IsMinerParam struct {
 	Addr address.Address
 }
 
-func (sma StorageMarketActor) IsMiner(act *types.Actor, vmctx types.VMContext, param *IsMinerParam) (types.InvokeRet, error) {
+func (sma StorageMarketActor) IsMiner(act *types.Actor, vmctx types.VMContext, param *IsMinerParam) ([]byte, ActorError) {
 	var self StorageMarketState
 	if err := vmctx.Storage().Get(vmctx.Storage().GetHead(), &self); err != nil {
-		return types.InvokeRet{}, err
+		return nil, err
 	}
 	_, ok := self.Miners[param.Addr]
 	out, err := SerializeParams(ok)
 	if err != nil {
-		return types.InvokeRet{}, err
+		return nil, err
 	}
-	return types.InvokeRet{
-		Result: out,
-	}, nil
+	return out, nil
 }
