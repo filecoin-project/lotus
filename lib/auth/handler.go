@@ -13,7 +13,7 @@ var log = logging.Logger("auth")
 
 type Handler struct {
 	Verify func(ctx context.Context, token string) ([]string, error)
-	Next http.HandlerFunc
+	Next   http.HandlerFunc
 }
 
 func (h *Handler) ServeHTTP(w http.ResponseWriter, r *http.Request) {

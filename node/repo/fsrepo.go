@@ -27,6 +27,7 @@ import (
 
 const (
 	fsAPI       = "api"
+	fsAPIToken  = "token"
 	fsConfig    = "config.toml"
 	fsDatastore = "datastore"
 	fsLibp2pKey = "libp2p.priv"
@@ -107,6 +108,20 @@ func (fsr *FsRepo) APIEndpoint() (multiaddr.Multiaddr, error) {
 		return nil, err
 	}
 	return apima, nil
+}
+
+func (fsr *FsRepo) APIToken() ([]byte, error) {
+	p := filepath.Join(fsr.path, fsAPIToken)
+	f, err := os.Open(p)
+
+	if os.IsNotExist(err) {
+		return nil, ErrNoAPIEndpoint
+	} else if err != nil {
+		return nil, err
+	}
+	defer f.Close() //nolint: errcheck // Read only op
+
+	return ioutil.ReadAll(f)
 }
 
 // Lock acquires exclusive lock on this repo
@@ -243,6 +258,13 @@ func (fsr *fsLockedRepo) SetAPIEndpoint(ma multiaddr.Multiaddr) error {
 		return err
 	}
 	return ioutil.WriteFile(fsr.join(fsAPI), []byte(ma.String()), 0644)
+}
+
+func (fsr *fsLockedRepo) SetAPIToken(token []byte) error {
+	if err := fsr.stillValid(); err != nil {
+		return err
+	}
+	return ioutil.WriteFile(fsr.join(fsAPIToken), token, 0600)
 }
 
 func (fsr *fsLockedRepo) KeyStore() (types.KeyStore, error) {

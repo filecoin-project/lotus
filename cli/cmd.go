@@ -2,10 +2,12 @@ package cli
 
 import (
 	"context"
+	"net/http"
 	"os"
 	"os/signal"
 	"syscall"
 
+	logging "github.com/ipfs/go-log"
 	manet "github.com/multiformats/go-multiaddr-net"
 	"gopkg.in/urfave/cli.v2"
 
@@ -13,6 +15,8 @@ import (
 	"github.com/filecoin-project/go-lotus/api/client"
 	"github.com/filecoin-project/go-lotus/node/repo"
 )
+
+var log = logging.Logger("cli")
 
 const (
 	metadataContext = "context"
@@ -35,7 +39,16 @@ func getAPI(ctx *cli.Context) (api.API, error) {
 	if err != nil {
 		return nil, err
 	}
-	return client.NewRPC("ws://" + addr + "/rpc/v0")
+	var headers http.Header
+	token, err := r.APIToken()
+	if err != nil {
+		log.Warnf("Couldn't load CLI token, capabilities may be limited: %w", err)
+	} else {
+		headers = map[string][]string{}
+		headers.Add("Authorization", "Bearer "+string(token))
+	}
+
+	return client.NewRPC("ws://"+addr+"/rpc/v0", headers)
 }
 
 // reqContext returns context for cli execution. Calling it for the first time

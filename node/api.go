@@ -10,6 +10,7 @@ import (
 	"github.com/filecoin-project/go-lotus/chain/types"
 	"github.com/filecoin-project/go-lotus/miner"
 	"github.com/filecoin-project/go-lotus/node/client"
+	"github.com/filecoin-project/go-lotus/node/repo"
 
 	"github.com/gbrlsnchs/jwt/v3"
 	"github.com/ipfs/go-cid"
@@ -26,12 +27,13 @@ var log = logging.Logger("node")
 type API struct {
 	client.LocalStorage
 
-	Host   host.Host
-	Chain  *chain.ChainStore
-	PubSub *pubsub.PubSub
-	Mpool  *chain.MessagePool
-	Wallet *chain.Wallet
+	Host     host.Host
+	Chain    *chain.ChainStore
+	PubSub   *pubsub.PubSub
+	Mpool    *chain.MessagePool
+	Wallet   *chain.Wallet
 	Keystore types.KeyStore
+	Repo     repo.LockedRepo
 }
 
 const JWTSecretName = "auth-jwt-private"
@@ -68,7 +70,19 @@ func (a *API) AuthNew(ctx context.Context, perms []string) ([]byte, error) {
 			return nil, xerrors.Errorf("writing API secret: %w", err)
 		}
 
-		// TODO: put cli token in repo
+		// TODO: make this configurable
+		p := jwtPayload{
+			Allow: api.AllPermissions,
+		}
+
+		cliToken, err := jwt.Sign(&p, jwt.NewHS256(key.PrivateKey))
+		if err != nil {
+			return nil, err
+		}
+
+		if err := a.Repo.SetAPIToken(cliToken); err != nil {
+			return nil, err
+		}
 	}
 
 	p := jwtPayload{
