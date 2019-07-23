@@ -80,7 +80,12 @@ func NewClient(addr string, namespace string, handler interface{}) (ClientCloser
 	requests := make(chan clientRequest)
 
 	handlers := map[string]rpcHandler{}
-	go handleWsConn(context.TODO(), conn, handlers, requests, stop)
+	go (&wsConn{
+		conn:     conn,
+		handler:  handlers,
+		requests: requests,
+		stop:     stop,
+	}).handleWsConn(context.TODO())
 
 	for i := 0; i < typ.NumField(); i++ {
 		f := typ.Field(i)

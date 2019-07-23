@@ -36,7 +36,10 @@ func (s *RPCServer) handleWS(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	handleWsConn(r.Context(), c, s.methods, nil, nil)
+	(&wsConn{
+		conn:     c,
+		handler:  s.methods,
+	}).handleWsConn(r.Context())
 
 	if err := c.Close(); err != nil {
 		log.Error(err)
