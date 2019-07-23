@@ -264,7 +264,7 @@ func TestUnmarshalableResult(t *testing.T) {
 	testServ := httptest.NewServer(rpcServer)
 	defer testServ.Close()
 
-	closer, err := NewClient("ws://"+testServ.Listener.Addr().String(), "Handler", &client)
+	closer, err := NewClient("ws://"+testServ.Listener.Addr().String(), "Handler", &client, nil)
 	require.NoError(t, err)
 	defer closer()
 
@@ -325,7 +325,7 @@ func TestChan(t *testing.T) {
 	testServ := httptest.NewServer(rpcServer)
 	defer testServ.Close()
 
-	closer, err := NewClient("ws://"+testServ.Listener.Addr().String(), "ChanHandler", &client)
+	closer, err := NewClient("ws://"+testServ.Listener.Addr().String(), "ChanHandler", &client, nil)
 	require.NoError(t, err)
 
 	defer closer()
