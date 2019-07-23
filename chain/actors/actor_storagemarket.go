@@ -67,7 +67,7 @@ func (sma StorageMarketActor) CreateStorageMiner(act *types.Actor, vmctx types.V
 
 	naddr, nerr := address.NewFromBytes(ret)
 	if nerr != nil {
-		return nil, err
+		return nil, aerrors.Absorb(nerr, 1, "could not read address of new actor")
 	}
 
 	var self StorageMarketState
