@@ -44,7 +44,6 @@ func handleWsConn(ctx context.Context, conn *websocket.Conn, handler handlers, r
 	var handling = map[int64]context.CancelFunc{}
 	var handlingLk sync.Mutex
 
-
 	type outChanReg struct {
 		id uint64
 		ch reflect.Value
@@ -59,7 +58,6 @@ func handleWsConn(ctx context.Context, conn *websocket.Conn, handler handlers, r
 
 	// chanHandlers is a map of client-side channel handlers
 	chanHandlers := map[uint64]func(m []byte, ok bool){}
-
 
 	// nextMessage wait for one message and puts it to the incoming channel
 	nextMessage := func() {
@@ -121,7 +119,7 @@ func handleWsConn(ctx context.Context, conn *websocket.Conn, handler handlers, r
 				Chan: regV,
 			},
 		}
-		var caseToId []uint64
+		var caseToID []uint64
 
 		for {
 			chosen, val, ok := reflect.Select(cases)
@@ -138,7 +136,7 @@ func handleWsConn(ctx context.Context, conn *websocket.Conn, handler handlers, r
 
 				registration := val.Interface().(outChanReg)
 
-				caseToId = append(caseToId, registration.id)
+				caseToID = append(caseToID, registration.id)
 				cases = append(cases, reflect.SelectCase{
 					Dir:  reflect.SelectRecv,
 					Chan: registration.ch,
@@ -150,15 +148,15 @@ func handleWsConn(ctx context.Context, conn *websocket.Conn, handler handlers, r
 			if !ok {
 				// Output channel closed, cleanup, and tell remote that this happened
 
-				n := len(caseToId)
+				n := len(caseToID)
 				if n > 0 {
 					cases[chosen] = cases[n]
-					caseToId[chosen-1] = caseToId[n-1]
+					caseToID[chosen-1] = caseToID[n-1]
 				}
 
-				id := caseToId[chosen-1]
+				id := caseToID[chosen-1]
 				cases = cases[:n]
-				caseToId = caseToId[:n-1]
+				caseToID = caseToID[:n-1]
 
 				sendReq(request{
 					Jsonrpc: "2.0",
@@ -174,7 +172,7 @@ func handleWsConn(ctx context.Context, conn *websocket.Conn, handler handlers, r
 				Jsonrpc: "2.0",
 				ID:      nil, // notification
 				Method:  chValue,
-				Params:  []param{{v: reflect.ValueOf(caseToId[chosen-1])}, {v: val}},
+				Params:  []param{{v: reflect.ValueOf(caseToID[chosen-1])}, {v: val}},
 			})
 		}
 	}
