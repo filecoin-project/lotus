@@ -71,6 +71,8 @@ const (
 	HandleIncomingMessagesKey
 
 	// daemon
+	ExtractApiKey
+
 	SetApiEndpointKey
 
 	_nInvokes // keep this last
@@ -125,10 +127,6 @@ func defaults() []Option {
 	return []Option{
 		Override(new(helpers.MetricsCtx), context.Background),
 		Override(new(record.Validator), modules.RecordValidator),
-
-		// Filecoin modules
-
-		Override(new(*chain.ChainStore), chain.NewChainStore),
 	}
 }
 
@@ -165,7 +163,6 @@ func libp2p() Option {
 // Online sets up basic libp2p node
 func Online() Option {
 	return Options(
-		Override(HandleIncomingMessagesKey, modules.HandleIncomingMessages),
 		// make sure that online is applied before Config.
 		// This is important because Config overrides some of Online units
 		func(s *Settings) error { s.Online = true; return nil },
@@ -178,6 +175,12 @@ func Online() Option {
 		// Full node
 
 		ApplyIf(func(s *Settings) bool { return s.nodeType == nodeFull },
+			// TODO: Fix offline mode
+
+			Override(HandleIncomingMessagesKey, modules.HandleIncomingMessages),
+
+			Override(new(*chain.ChainStore), chain.NewChainStore),
+
 			Override(new(blockstore.GCLocker), blockstore.NewGCLocker),
 			Override(new(blockstore.GCBlockstore), blockstore.NewGCBlockstore),
 			Override(new(exchange.Interface), modules.Bitswap),
@@ -265,9 +268,17 @@ func Repo(r repo.Repo) Option {
 	)
 }
 
+func FullAPI(out *api.API) Option {
+	return func(s *Settings) error {
+		resAPI := &API{}
+		s.invokes[ExtractApiKey] = fx.Extract(resAPI)
+		*out = resAPI
+		return nil
+	}
+}
+
 // New builds and starts new Filecoin node
-func New(ctx context.Context, opts ...Option) (api.API, error) {
-	resAPI := &API{}
+func New(ctx context.Context, opts ...Option) error {
 	settings := Settings{
 		modules: map[interface{}]fx.Option{},
 		invokes: make([]fx.Option, _nInvokes),
@@ -275,7 +286,7 @@ func New(ctx context.Context, opts ...Option) (api.API, error) {
 
 	// apply module options in the right order
 	if err := Options(Options(defaults()...), Options(opts...))(&settings); err != nil {
-		return nil, err
+		return err
 	}
 
 	// gather constructors for fx.Options
@@ -295,8 +306,6 @@ func New(ctx context.Context, opts ...Option) (api.API, error) {
 		fx.Options(ctors...),
 		fx.Options(settings.invokes...),
 
-		fx.Extract(resAPI),
-
 		fx.NopLogger,
 	)
 
@@ -304,10 +313,10 @@ func New(ctx context.Context, opts ...Option) (api.API, error) {
 	//  on this context, and implement closing logic through lifecycles
 	//  correctly
 	if err := app.Start(ctx); err != nil {
-		return nil, err
+		return err
 	}
 
-	return resAPI, nil
+	return nil
 }
 
 // In-memory / testing

@@ -4,6 +4,8 @@ package main
 
 import (
 	"context"
+
+	"github.com/filecoin-project/go-lotus/api"
 	"github.com/multiformats/go-multiaddr"
 	"gopkg.in/urfave/cli.v2"
 
@@ -32,7 +34,10 @@ var DaemonCmd = &cli.Command{
 			return err
 		}
 
-		api, err := node.New(ctx,
+		var api api.API
+		err = node.New(ctx,
+			node.FullAPI(&api),
+
 			node.Online(),
 			node.Repo(r),
 

@@ -24,7 +24,8 @@ func builder(t *testing.T, n int) []api.API {
 
 	for i := 0; i < n; i++ {
 		var err error
-		out[i], err = node.New(ctx,
+		err = node.New(ctx,
+			node.FullAPI(&out[i]),
 			node.Online(),
 			node.Repo(repo.NewMemory(nil)),
 			MockHost(mn),

@@ -44,7 +44,7 @@ var runCmd = &cli.Command{
 			return xerrors.Errorf("repo at '%s' is not initialized, run 'lotus-storage-miner init' to set it up", cctx.String(FlagStorageRepo))
 		}
 
-		minerapi, err := node.New(ctx,
+		err = node.New(ctx,
 			node.StorageMiner(),
 			node.Online(),
 			node.Repo(r),
@@ -66,7 +66,7 @@ var runCmd = &cli.Command{
 		log.Infof("Remote version %s", v)
 
 		rpcServer := jsonrpc.NewServer()
-		rpcServer.Register("Filecoin", minerapi)
+		//rpcServer.Register("Filecoin", minerapi)
 		http.Handle("/rpc/v0", rpcServer)
 		return http.ListenAndServe("127.0.0.1:"+cctx.String("api"), http.DefaultServeMux)
 	},
