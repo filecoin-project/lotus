@@ -1,6 +1,7 @@
 package aerrors
 
 import (
+	"errors"
 	"fmt"
 
 	"golang.org/x/xerrors"
@@ -15,7 +16,7 @@ func New(retCode uint8, message string) ActorError {
 
 			msg:   "tried creating an error and setting RetCode to 0",
 			frame: xerrors.Caller(1),
-			err:   err,
+			err:   errors.New(message),
 		}
 	}
 	return &actorError{
