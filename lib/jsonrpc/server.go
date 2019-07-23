@@ -36,7 +36,10 @@ func (s *RPCServer) handleWS(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	handleWsConn(r.Context(), c, s.methods, nil, nil)
+	(&wsConn{
+		conn:    c,
+		handler: s.methods,
+	}).handleWsConn(r.Context())
 
 	if err := c.Close(); err != nil {
 		log.Error(err)
@@ -60,6 +63,8 @@ func rpcError(wf func(func(io.Writer)), req *request, code int, err error) {
 			hw.WriteHeader(500)
 		}
 
+		log.Warnf("rpc error: %s", err)
+
 		if req.ID == nil { // notification
 			return
 		}
@@ -73,7 +78,11 @@ func rpcError(wf func(func(io.Writer)), req *request, code int, err error) {
 			},
 		}
 
-		_ = json.NewEncoder(w).Encode(resp)
+		err = json.NewEncoder(w).Encode(resp)
+		if err != nil {
+			log.Warnf("failed to write rpc error: %s", err)
+			return
+		}
 	})
 }
 

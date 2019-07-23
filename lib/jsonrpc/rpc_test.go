@@ -3,12 +3,15 @@ package jsonrpc
 import (
 	"context"
 	"errors"
+	"fmt"
 	"net/http/httptest"
 	"strconv"
 	"strings"
 	"sync"
 	"testing"
 	"time"
+
+	"github.com/stretchr/testify/require"
 )
 
 type SimpleServerHandler struct {
@@ -71,62 +74,37 @@ func TestRPC(t *testing.T) {
 		StringMatch func(t TestType, i2 int64) (out TestOut, err error)
 	}
 	closer, err := NewClient("ws://"+testServ.Listener.Addr().String(), "SimpleServerHandler", &client)
-	if err != nil {
-		t.Fatal(err)
-	}
+	require.NoError(t, err)
 	defer closer()
 
 	// Add(int) error
 
-	if err := client.Add(2); err != nil {
-		t.Fatal(err)
-	}
-
-	if serverHandler.n != 2 {
-		t.Error("expected 2")
-	}
+	require.NoError(t, client.Add(2))
+	require.Equal(t, 2, serverHandler.n)
 
 	err = client.Add(-3546)
-	if err == nil {
-		t.Fatal("expected error")
-	}
-	if err.Error() != "test" {
-		t.Fatal("wrong error", err)
-	}
+	require.EqualError(t, err, "test")
 
 	// AddGet(int) int
 
 	n := client.AddGet(3)
-	if n != 5 {
-		t.Error("wrong n")
-	}
-
-	if serverHandler.n != 5 {
-		t.Error("expected 5")
-	}
+	require.Equal(t, 5, n)
+	require.Equal(t, 5, serverHandler.n)
 
 	// StringMatch
 
 	o, err := client.StringMatch(TestType{S: "0"}, 0)
-	if err != nil {
-		t.Error(err)
-	}
-	if o.S != "0" || o.I != 0 {
-		t.Error("wrong result")
-	}
+	require.NoError(t, err)
+	require.Equal(t, "0", o.S)
+	require.Equal(t, 0, o.I)
 
 	_, err = client.StringMatch(TestType{S: "5"}, 5)
-	if err == nil || err.Error() != ":(" {
-		t.Error("wrong err")
-	}
+	require.EqualError(t, err, ":(")
 
 	o, err = client.StringMatch(TestType{S: "8", I: 8}, 8)
-	if err != nil {
-		t.Error(err)
-	}
-	if o.S != "8" || o.I != 8 {
-		t.Error("wrong result")
-	}
+	require.NoError(t, err)
+	require.Equal(t, "8", o.S)
+	require.Equal(t, 8, o.I)
 
 	// Invalid client handlers
 
@@ -134,24 +112,18 @@ func TestRPC(t *testing.T) {
 		Add func(int)
 	}
 	closer, err = NewClient("ws://"+testServ.Listener.Addr().String(), "SimpleServerHandler", &noret)
-	if err != nil {
-		t.Fatal(err)
-	}
+	require.NoError(t, err)
 
 	// this one should actually work
 	noret.Add(4)
-	if serverHandler.n != 9 {
-		t.Error("expected 9")
-	}
+	require.Equal(t, 9, serverHandler.n)
 	closer()
 
 	var noparam struct {
 		Add func()
 	}
 	closer, err = NewClient("ws://"+testServ.Listener.Addr().String(), "SimpleServerHandler", &noparam)
-	if err != nil {
-		t.Fatal(err)
-	}
+	require.NoError(t, err)
 
 	// shouldn't panic
 	noparam.Add()
@@ -161,9 +133,7 @@ func TestRPC(t *testing.T) {
 		AddGet func() (int, error)
 	}
 	closer, err = NewClient("ws://"+testServ.Listener.Addr().String(), "SimpleServerHandler", &erronly)
-	if err != nil {
-		t.Fatal(err)
-	}
+	require.NoError(t, err)
 
 	_, err = erronly.AddGet()
 	if err == nil || err.Error() != "RPC error (-32602): wrong param count" {
@@ -175,9 +145,7 @@ func TestRPC(t *testing.T) {
 		Add func(string) error
 	}
 	closer, err = NewClient("ws://"+testServ.Listener.Addr().String(), "SimpleServerHandler", &wrongtype)
-	if err != nil {
-		t.Fatal(err)
-	}
+	require.NoError(t, err)
 
 	err = wrongtype.Add("not an int")
 	if err == nil || !strings.Contains(err.Error(), "RPC error (-32700):") || !strings.Contains(err.Error(), "json: cannot unmarshal string into Go value of type int") {
@@ -189,9 +157,7 @@ func TestRPC(t *testing.T) {
 		NotThere func(string) error
 	}
 	closer, err = NewClient("ws://"+testServ.Listener.Addr().String(), "SimpleServerHandler", &notfound)
-	if err != nil {
-		t.Fatal(err)
-	}
+	require.NoError(t, err)
 
 	err = notfound.NotThere("hello?")
 	if err == nil || err.Error() != "RPC error (-32601): method 'SimpleServerHandler.NotThere' not found" {
@@ -238,9 +204,7 @@ func TestCtx(t *testing.T) {
 		Test func(ctx context.Context)
 	}
 	closer, err := NewClient("ws://"+testServ.Listener.Addr().String(), "CtxHandler", &client)
-	if err != nil {
-		t.Fatal(err)
-	}
+	require.NoError(t, err)
 
 	ctx, cancel := context.WithTimeout(context.Background(), 100*time.Millisecond)
 	defer cancel()
@@ -275,4 +239,141 @@ func TestCtx(t *testing.T) {
 
 	serverHandler.lk.Unlock()
 	closer()
+}
+
+type UnUnmarshalable int
+
+func (*UnUnmarshalable) UnmarshalJSON([]byte) error {
+	return errors.New("nope")
+}
+
+type UnUnmarshalableHandler struct{}
+
+func (*UnUnmarshalableHandler) GetUnUnmarshalableStuff() (UnUnmarshalable, error) {
+	return UnUnmarshalable(5), nil
+}
+
+func TestUnmarshalableResult(t *testing.T) {
+	var client struct {
+		GetUnUnmarshalableStuff func() (UnUnmarshalable, error)
+	}
+
+	rpcServer := NewServer()
+	rpcServer.Register("Handler", &UnUnmarshalableHandler{})
+
+	testServ := httptest.NewServer(rpcServer)
+	defer testServ.Close()
+
+	closer, err := NewClient("ws://"+testServ.Listener.Addr().String(), "Handler", &client)
+	require.NoError(t, err)
+	defer closer()
+
+	_, err = client.GetUnUnmarshalableStuff()
+	require.EqualError(t, err, "RPC client error: unmarshaling result: nope")
+}
+
+type ChanHandler struct {
+	wait chan struct{}
+}
+
+func (h *ChanHandler) Sub(ctx context.Context, i int, eq int) (<-chan int, error) {
+	out := make(chan int)
+
+	go func() {
+		defer close(out)
+		var n int
+
+		for {
+			select {
+			case <-ctx.Done():
+				fmt.Println("ctxdone1")
+				return
+			case <-h.wait:
+			}
+
+			n += i
+
+			if n == eq {
+				fmt.Println("eq")
+				return
+			}
+
+			select {
+			case <-ctx.Done():
+				fmt.Println("ctxdone2")
+				return
+			case out <- n:
+			}
+		}
+	}()
+
+	return out, nil
+}
+
+func TestChan(t *testing.T) {
+	var client struct {
+		Sub func(context.Context, int, int) (<-chan int, error)
+	}
+
+	serverHandler := &ChanHandler{
+		wait: make(chan struct{}, 5),
+	}
+
+	rpcServer := NewServer()
+	rpcServer.Register("ChanHandler", serverHandler)
+
+	testServ := httptest.NewServer(rpcServer)
+	defer testServ.Close()
+
+	closer, err := NewClient("ws://"+testServ.Listener.Addr().String(), "ChanHandler", &client)
+	require.NoError(t, err)
+
+	defer closer()
+
+	serverHandler.wait <- struct{}{}
+
+	ctx, cancel := context.WithCancel(context.Background())
+
+	// sub
+
+	sub, err := client.Sub(ctx, 2, -1)
+	require.NoError(t, err)
+
+	// recv one
+
+	require.Equal(t, 2, <-sub)
+
+	// recv many (order)
+
+	serverHandler.wait <- struct{}{}
+	serverHandler.wait <- struct{}{}
+	serverHandler.wait <- struct{}{}
+
+	require.Equal(t, 4, <-sub)
+	require.Equal(t, 6, <-sub)
+	require.Equal(t, 8, <-sub)
+
+	// close (through ctx)
+	cancel()
+
+	_, ok := <-sub
+	require.Equal(t, false, ok)
+
+	// sub (again)
+
+	serverHandler.wait <- struct{}{}
+
+	ctx, cancel = context.WithCancel(context.Background())
+	defer cancel()
+
+	sub, err = client.Sub(ctx, 3, 6)
+	require.NoError(t, err)
+
+	require.Equal(t, 3, <-sub)
+
+	// close (remote)
+	serverHandler.wait <- struct{}{}
+	_, ok = <-sub
+	require.Equal(t, false, ok)
+
 }
