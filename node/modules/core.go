@@ -2,6 +2,8 @@ package modules
 
 import (
 	"context"
+	"github.com/gbrlsnchs/jwt/v3"
+	"golang.org/x/xerrors"
 	"path/filepath"
 
 	"github.com/ipfs/go-bitswap"
@@ -68,6 +70,18 @@ func LockedRepo(lr repo.LockedRepo) func(lc fx.Lifecycle) repo.LockedRepo {
 
 func KeyStore(lr repo.LockedRepo) (types.KeyStore, error) {
 	return lr.KeyStore()
+}
+
+const JWTSecretName = "auth-jwt-private"
+
+type APIAlg jwt.HMACSHA
+
+func APISecret(keystore types.KeyStore) (*APIAlg, error) {
+	key, err := keystore.Get(JWTSecretName)
+	if err != nil {
+		return nil, xerrors.Errorf("couldn't get JWT secret: %w", err)
+	}
+	return (*APIAlg)(jwt.NewHS256(key.PrivateKey)), nil
 }
 
 func Datastore(r repo.LockedRepo) (datastore.Batching, error) {

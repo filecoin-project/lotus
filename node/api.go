@@ -3,6 +3,8 @@ package node
 import (
 	"context"
 	"crypto/rand"
+	"github.com/filecoin-project/go-lotus/node/modules"
+	"github.com/filecoin-project/go-lotus/node/repo"
 	"io"
 	"io/ioutil"
 
@@ -13,8 +15,6 @@ import (
 	"github.com/filecoin-project/go-lotus/chain/types"
 	"github.com/filecoin-project/go-lotus/miner"
 	"github.com/filecoin-project/go-lotus/node/client"
-	"github.com/filecoin-project/go-lotus/node/repo"
-
 	"github.com/gbrlsnchs/jwt/v3"
 	"github.com/ipfs/go-cid"
 	logging "github.com/ipfs/go-log"
@@ -36,23 +36,17 @@ type API struct {
 	Mpool    *chain.MessagePool
 	Wallet   *chain.Wallet
 	Keystore types.KeyStore
+	APISecret *modules.APIAlg
 	Repo     repo.LockedRepo
 }
-
-const JWTSecretName = "auth-jwt-private"
 
 type jwtPayload struct {
 	Allow []string
 }
 
 func (a *API) AuthVerify(ctx context.Context, token string) ([]string, error) {
-	key, err := a.Keystore.Get(JWTSecretName)
-	if err != nil {
-		return nil, xerrors.Errorf("couldn't get JWT secret: %w", err)
-	}
-
 	var payload jwtPayload
-	if _, err := jwt.Verify([]byte(token), jwt.NewHS256(key.PrivateKey), &payload); err != nil {
+	if _, err := jwt.Verify([]byte(token), (*jwt.HMACSHA)(a.APISecret), &payload); err != nil {
 		return nil, xerrors.Errorf("JWT Verification failed: %w", err)
 	}
 
@@ -60,7 +54,7 @@ func (a *API) AuthVerify(ctx context.Context, token string) ([]string, error) {
 }
 
 func (a *API) AuthNew(ctx context.Context, perms []string) ([]byte, error) {
-	key, err := a.Keystore.Get(JWTSecretName)
+	key, err := a.Keystore.Get(modules.JWTSecretName)
 	if err != nil {
 		log.Warn("Generating new API secret")
 
@@ -74,7 +68,7 @@ func (a *API) AuthNew(ctx context.Context, perms []string) ([]byte, error) {
 			PrivateKey: sk,
 		}
 
-		if err := a.Keystore.Put(JWTSecretName, key); err != nil {
+		if err := a.Keystore.Put(modules.JWTSecretName, key); err != nil {
 			return nil, xerrors.Errorf("writing API secret: %w", err)
 		}
 
