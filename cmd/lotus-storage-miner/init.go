@@ -16,13 +16,13 @@ var initCmd = &cli.Command{
 		log.Info("Initializing lotus storage miner")
 		log.Info("Checking if repo exists")
 
-		r, err := repo.NewFS(cctx.String("storagerepo"))
+		r, err := repo.NewFS(cctx.String(FlagStorageRepo))
 		if err != nil {
 			return err
 		}
 
 		if r.Exists() {
-			return xerrors.Errorf("repo at '%s' is already initialized", cctx.String("storagerepo"))
+			return xerrors.Errorf("repo at '%s' is already initialized", cctx.String(FlagStorageRepo))
 		}
 
 		log.Info("Trying to connect to full node RPC")

@@ -9,7 +9,7 @@ import (
 )
 
 // DaemonCmd is the `go-lotus daemon` command
-var Cmd = &cli.Command{
+var DaemonCmd = &cli.Command{
 	Name:  "daemon",
 	Usage: "Start a lotus daemon process",
 	Flags: []cli.Flag{

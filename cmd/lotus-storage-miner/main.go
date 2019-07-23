@@ -12,6 +12,8 @@ import (
 
 var log = logging.Logger("main")
 
+const FlagStorageRepo = "storagerepo"
+
 func main() {
 	logging.SetLogLevel("*", "INFO")
 	local := []*cli.Command{
@@ -31,9 +33,8 @@ func main() {
 				Value:   "~/.lotus", // TODO: Consider XDG_DATA_HOME
 			},
 			&cli.StringFlag{
-				Name:    "storagerepo",
+				Name:    FlagStorageRepo,
 				EnvVars: []string{"LOTUS_STORAGE_PATH"},
-				Hidden:  true,
 				Value:   "~/.lotusstorage", // TODO: Consider XDG_DATA_HOME
 			},
 		},

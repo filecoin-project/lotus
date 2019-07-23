@@ -18,11 +18,6 @@ var runCmd = &cli.Command{
 	Usage: "Start a lotus storage miner process",
 	Flags: []cli.Flag{
 		&cli.StringFlag{
-			Name:    "storagerepo",
-			EnvVars: []string{"LOTUS_STORAGE_PATH"},
-			Value:   "~/.lotusstorage", // TODO: Consider XDG_DATA_HOME
-		},
-		&cli.StringFlag{
 			Name:  "api",
 			Value: "2345",
 		},
@@ -36,13 +31,13 @@ var runCmd = &cli.Command{
 
 		v, err := api.Version(ctx)
 
-		r, err := repo.NewFS(cctx.String("storagerepo"))
+		r, err := repo.NewFS(cctx.String(FlagStorageRepo))
 		if err != nil {
 			return err
 		}
 
 		if !r.Exists() {
-			return xerrors.Errorf("repo at '%s' is not initialized, run 'lotus-storage-miner init' to set it up", cctx.String("storagerepo"))
+			return xerrors.Errorf("repo at '%s' is not initialized, run 'lotus-storage-miner init' to set it up", cctx.String(FlagStorageRepo))
 		}
 
 		minerapi, err := node.New(ctx,
