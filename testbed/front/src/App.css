@@ -1,0 +1,11 @@
+.App {
+  min-height: 100vh;
+  background: #b7c4cd;
+  font-family: monospace;
+}
+
+.FullNode {
+  background: #f9be77;
+  margin-bottom: 5px;
+  padding: 5px;
+}
