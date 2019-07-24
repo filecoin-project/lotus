@@ -236,6 +236,10 @@ func NewChainStore(bs bstore.Blockstore, ds dstore.Batching) *ChainStore {
 
 func (cs *ChainStore) Load() error {
 	head, err := cs.ds.Get(chainHeadKey)
+	if err == dstore.ErrNotFound {
+		log.Warn("no previous chain state found")
+		return nil
+	}
 	if err != nil {
 		return errors.Wrap(err, "failed to load chain state from datastore")
 	}
@@ -353,9 +357,8 @@ func (cs *ChainStore) maybeTakeHeavierTipSet(ts *TipSet) error {
 		cs.heaviest = ts
 
 		if err := cs.writeHead(ts); err != nil {
-			// TODO: should this error? we've already accepted it as our best
-			// head and told everyone...
-			return err
+			log.Errorf("failed to write chain head: %s", err)
+			return nil
 		}
 	}
 	return nil

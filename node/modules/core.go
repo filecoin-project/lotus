@@ -8,6 +8,7 @@ import (
 	"path/filepath"
 
 	"github.com/gbrlsnchs/jwt/v3"
+
 	"github.com/ipfs/go-bitswap"
 	"github.com/ipfs/go-bitswap/network"
 	"github.com/ipfs/go-blockservice"
@@ -162,4 +163,16 @@ func ClientDAG(lc fx.Lifecycle, fstore *filestore.Filestore) ipld.DAGService {
 	})
 
 	return dag
+}
+
+func ChainStore(lc fx.Lifecycle, bs blockstore.Blockstore, ds datastore.Batching) *chain.ChainStore {
+	chain := chain.NewChainStore(bs, ds)
+
+	lc.Append(fx.Hook{
+		OnStart: func(ctx context.Context) error {
+			return chain.Load()
+		},
+	})
+
+	return chain
 }

@@ -128,6 +128,10 @@ func defaults() []Option {
 	return []Option{
 		Override(new(helpers.MetricsCtx), context.Background),
 		Override(new(record.Validator), modules.RecordValidator),
+
+		// Filecoin modules
+
+		Override(new(*chain.ChainStore), modules.ChainStore),
 	}
 }
 
