@@ -1,7 +1,6 @@
 package main
 
 import (
-	"log"
 	"os"
 
 	logging "github.com/ipfs/go-log"
@@ -11,15 +10,20 @@ import (
 	lcli "github.com/filecoin-project/go-lotus/cli"
 )
 
+var log = logging.Logger("main")
+
+const FlagStorageRepo = "storagerepo"
+
 func main() {
 	logging.SetLogLevel("*", "INFO")
 	local := []*cli.Command{
-		DaemonCmd,
+		runCmd,
+		initCmd,
 	}
 
 	app := &cli.App{
-		Name:    "lotus",
-		Usage:   "Filecoin decentralized storage network client",
+		Name:    "lotus-storage-miner",
+		Usage:   "Filecoin decentralized storage network storage miner",
 		Version: build.Version,
 		Flags: []cli.Flag{
 			&cli.StringFlag{
@@ -28,13 +32,18 @@ func main() {
 				Hidden:  true,
 				Value:   "~/.lotus", // TODO: Consider XDG_DATA_HOME
 			},
+			&cli.StringFlag{
+				Name:    FlagStorageRepo,
+				EnvVars: []string{"LOTUS_STORAGE_PATH"},
+				Value:   "~/.lotusstorage", // TODO: Consider XDG_DATA_HOME
+			},
 		},
 
 		Commands: append(local, lcli.Commands...),
 	}
 
 	if err := app.Run(os.Args); err != nil {
-		log.Println(err)
+		log.Error(err)
 		return
 	}
 }

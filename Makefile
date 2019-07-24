@@ -44,6 +44,7 @@ deps: $(BUILD_DEPS)
 
 build: $(BUILD_DEPS)
 	go build -o lotus ./cmd/lotus
+	go build -o lotus-storage-miner ./cmd/lotus-storage-miner
 .PHONY: build
 
 clean:

@@ -1,10 +1,11 @@
 // +build !nodaemon
 
-package daemon
+package main
 
 import (
 	"context"
 
+	"github.com/filecoin-project/go-lotus/api"
 	"github.com/multiformats/go-multiaddr"
 	"gopkg.in/urfave/cli.v2"
 
@@ -12,8 +13,8 @@ import (
 	"github.com/filecoin-project/go-lotus/node/repo"
 )
 
-// Cmd is the `go-lotus daemon` command
-var Cmd = &cli.Command{
+// DaemonCmd is the `go-lotus daemon` command
+var DaemonCmd = &cli.Command{
 	Name:  "daemon",
 	Usage: "Start a lotus daemon process",
 	Flags: []cli.Flag{
@@ -33,7 +34,10 @@ var Cmd = &cli.Command{
 			return err
 		}
 
-		api, err := node.New(ctx,
+		var api api.FullNode
+		err = node.New(ctx,
+			node.FullAPI(&api),
+
 			node.Online(),
 			node.Repo(r),
 
@@ -49,12 +53,7 @@ var Cmd = &cli.Command{
 			return err
 		}
 
-		// Write cli token to the repo if not there yet
-		if _, err := api.AuthNew(ctx, nil); err != nil {
-			return err
-		}
-
 		// TODO: properly parse api endpoint (or make it a URL)
-		return serveRPC(api, "127.0.0.1:"+cctx.String("api"), api.AuthVerify)
+		return serveRPC(api, "127.0.0.1:"+cctx.String("api"))
 	},
 }

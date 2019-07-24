@@ -1,4 +1,5 @@
-lotus
+/lotus
+/lotus-storage-miner
 **/*.h
 **/*.a
 **/*.pc

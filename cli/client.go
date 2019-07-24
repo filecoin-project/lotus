@@ -19,11 +19,11 @@ var clientImportCmd = &cli.Command{
 	Name:  "import",
 	Usage: "Import data",
 	Action: func(cctx *cli.Context) error {
-		api, err := getAPI(cctx)
+		api, err := GetAPI(cctx)
 		if err != nil {
 			return err
 		}
-		ctx := reqContext(cctx)
+		ctx := ReqContext(cctx)
 
 		c, err := api.ClientImport(ctx, cctx.Args().First())
 		if err != nil {
@@ -38,11 +38,11 @@ var clientLocalCmd = &cli.Command{
 	Name:  "local",
 	Usage: "List locally imported data",
 	Action: func(cctx *cli.Context) error {
-		api, err := getAPI(cctx)
+		api, err := GetAPI(cctx)
 		if err != nil {
 			return err
 		}
-		ctx := reqContext(cctx)
+		ctx := ReqContext(cctx)
 
 		list, err := api.ClientListImports(ctx)
 		if err != nil {

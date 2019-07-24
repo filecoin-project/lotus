@@ -23,9 +23,9 @@ const (
 )
 
 // ApiConnector returns API instance
-type ApiConnector func() api.API
+type ApiConnector func() api.FullNode
 
-func getAPI(ctx *cli.Context) (api.API, error) {
+func GetAPI(ctx *cli.Context) (api.FullNode, error) {
 	r, err := repo.NewFS(ctx.String("repo"))
 	if err != nil {
 		return nil, err
@@ -48,13 +48,13 @@ func getAPI(ctx *cli.Context) (api.API, error) {
 		headers.Add("Authorization", "Bearer "+string(token))
 	}
 
-	return client.NewRPC("ws://"+addr+"/rpc/v0", headers)
+	return client.NewFullNodeRPC("ws://"+addr+"/rpc/v0", headers)
 }
 
-// reqContext returns context for cli execution. Calling it for the first time
+// ReqContext returns context for cli execution. Calling it for the first time
 // installs SIGTERM handler that will close returned context.
 // Not safe for concurrent execution.
-func reqContext(cctx *cli.Context) context.Context {
+func ReqContext(cctx *cli.Context) context.Context {
 	if uctx, ok := cctx.App.Metadata[metadataContext]; ok {
 		// unchecked cast as if something else is in there
 		// it is crash worthy either way

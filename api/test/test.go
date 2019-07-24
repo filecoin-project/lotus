@@ -11,7 +11,7 @@ import (
 
 // APIBuilder is a function which is invoked in test suite to provide
 // test nodes and networks
-type APIBuilder func(t *testing.T, n int) []api.API
+type APIBuilder func(t *testing.T, n int) []api.FullNode
 type testSuite struct {
 	makeNodes APIBuilder
 }

@@ -21,11 +21,11 @@ var walletNew = &cli.Command{
 	Name:  "new",
 	Usage: "Generate a new key of the given type (bls or secp256k1)",
 	Action: func(cctx *cli.Context) error {
-		api, err := getAPI(cctx)
+		api, err := GetAPI(cctx)
 		if err != nil {
 			return err
 		}
-		ctx := reqContext(cctx)
+		ctx := ReqContext(cctx)
 
 		t := cctx.Args().First()
 		if t == "" {
@@ -47,11 +47,11 @@ var walletList = &cli.Command{
 	Name:  "list",
 	Usage: "List wallet address",
 	Action: func(cctx *cli.Context) error {
-		api, err := getAPI(cctx)
+		api, err := GetAPI(cctx)
 		if err != nil {
 			return err
 		}
-		ctx := reqContext(cctx)
+		ctx := ReqContext(cctx)
 
 		addrs, err := api.WalletList(ctx)
 		if err != nil {
@@ -69,11 +69,11 @@ var walletBalance = &cli.Command{
 	Name:  "balance",
 	Usage: "get account balance",
 	Action: func(cctx *cli.Context) error {
-		api, err := getAPI(cctx)
+		api, err := GetAPI(cctx)
 		if err != nil {
 			return err
 		}
-		ctx := reqContext(cctx)
+		ctx := ReqContext(cctx)
 
 		addr, err := address.NewFromString(cctx.Args().First())
 		if err != nil {

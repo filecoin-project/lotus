@@ -1,6 +1,6 @@
 // +build nodaemon
 
-package daemon
+package main
 
 import (
 	"errors"
@@ -8,8 +8,8 @@ import (
 	"gopkg.in/urfave/cli.v2"
 )
 
-// Cmd is the `go-lotus daemon` command
-var Cmd = &cli.Command{
+// DaemonCmd is the `go-lotus daemon` command
+var DaemonCmd = &cli.Command{
 	Name:  "daemon",
 	Usage: "Start a lotus daemon process",
 	Flags: []cli.Flag{

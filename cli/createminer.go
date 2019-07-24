@@ -23,7 +23,7 @@ var createMinerCmd = &cli.Command{
 			return fmt.Errorf("must pass four arguments: worker address, owner address, sector size, peer ID")
 		}
 
-		api, err := getAPI(cctx)
+		api, err := GetAPI(cctx)
 		if err != nil {
 			return err
 		}
@@ -57,7 +57,7 @@ var createMinerCmd = &cli.Command{
 			PeerID:     pid,
 		}
 
-		ctx := reqContext(cctx)
+		ctx := ReqContext(cctx)
 		addr, err := api.WalletDefaultAddress(ctx)
 		if err != nil {
 			return xerrors.Errorf("failed to get default address: %w", err)

@@ -3,13 +3,11 @@ package modules
 import (
 	"context"
 	"crypto/rand"
-	"github.com/filecoin-project/go-lotus/api"
-	"github.com/gbrlsnchs/jwt/v3"
-	"golang.org/x/xerrors"
 	"io"
 	"io/ioutil"
 	"path/filepath"
 
+	"github.com/gbrlsnchs/jwt/v3"
 	"github.com/ipfs/go-bitswap"
 	"github.com/ipfs/go-bitswap/network"
 	"github.com/ipfs/go-blockservice"
@@ -27,7 +25,9 @@ import (
 	"github.com/libp2p/go-libp2p-core/routing"
 	record "github.com/libp2p/go-libp2p-record"
 	"go.uber.org/fx"
+	"golang.org/x/xerrors"
 
+	"github.com/filecoin-project/go-lotus/api"
 	"github.com/filecoin-project/go-lotus/chain"
 	"github.com/filecoin-project/go-lotus/chain/types"
 	"github.com/filecoin-project/go-lotus/node/modules/helpers"

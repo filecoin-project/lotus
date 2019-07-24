@@ -27,11 +27,23 @@ func WithPerm(ctx context.Context, perms []string) context.Context {
 	return context.WithValue(ctx, permCtxKey, perms)
 }
 
-func Permissioned(a API) API {
-	var out Struct
+func PermissionedStorMinerAPI(a StorageMiner) StorageMiner {
+	var out StorageMinerStruct
+	permissionedAny(a, &out.Internal)
+	permissionedAny(a, &out.CommonStruct.Internal)
+	return &out
+}
 
-	rint := reflect.ValueOf(&out.Internal).Elem()
-	ra := reflect.ValueOf(a)
+func PermissionedFullAPI(a FullNode) FullNode {
+	var out FullNodeStruct
+	permissionedAny(a, &out.Internal)
+	permissionedAny(a, &out.CommonStruct.Internal)
+	return &out
+}
+
+func permissionedAny(in interface{}, out interface{}) {
+	rint := reflect.ValueOf(out).Elem()
+	ra := reflect.ValueOf(in)
 
 	for f := 0; f < rint.NumField(); f++ {
 		field := rint.Type().Field(f)
@@ -81,6 +93,4 @@ func Permissioned(a API) API {
 		}))
 
 	}
-
-	return &out
 }
