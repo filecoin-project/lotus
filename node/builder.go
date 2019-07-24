@@ -131,7 +131,6 @@ func defaults() []Option {
 
 		// Filecoin modules
 
-		Override(new(*chain.ChainStore), modules.ChainStore),
 	}
 }
 
@@ -184,7 +183,7 @@ func Online() Option {
 
 			Override(HandleIncomingMessagesKey, modules.HandleIncomingMessages),
 
-			Override(new(*chain.ChainStore), chain.NewChainStore),
+			Override(new(*chain.ChainStore), modules.ChainStore),
 
 			Override(new(blockstore.GCLocker), blockstore.NewGCLocker),
 			Override(new(blockstore.GCBlockstore), blockstore.NewGCBlockstore),
