@@ -196,7 +196,7 @@ func Online() Option {
 			Override(new(*chain.Wallet), chain.NewWallet),
 			Override(new(*chain.MessagePool), chain.NewMessagePool),
 
-			Override(new(modules.Genesis), testing.MakeGenesis),
+			Override(new(modules.Genesis), modules.ErrorGenesis),
 			Override(SetGenesisKey, modules.SetGenesis),
 
 			Override(new(*hello.Service), hello.NewHelloService),
