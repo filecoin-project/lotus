@@ -27,6 +27,7 @@ import (
 	"github.com/filecoin-project/go-lotus/chain/types"
 	"github.com/filecoin-project/go-lotus/node/config"
 	"github.com/filecoin-project/go-lotus/node/hello"
+	"github.com/filecoin-project/go-lotus/node/impl"
 	"github.com/filecoin-project/go-lotus/node/modules"
 	"github.com/filecoin-project/go-lotus/node/modules/helpers"
 	"github.com/filecoin-project/go-lotus/node/modules/lp2p"
@@ -222,7 +223,7 @@ func StorageMiner(out *api.StorageMiner) Option {
 		},
 
 		func(s *Settings) error {
-			resAPI := &StorageMinerAPI{}
+			resAPI := &impl.StorageMinerAPI{}
 			s.invokes[ExtractApiKey] = fx.Extract(resAPI)
 			*out = resAPI
 			return nil
@@ -277,7 +278,7 @@ func Repo(r repo.Repo) Option {
 
 func FullAPI(out *api.FullNode) Option {
 	return func(s *Settings) error {
-		resAPI := &FullNodeAPI{}
+		resAPI := &impl.FullNodeAPI{}
 		s.invokes[ExtractApiKey] = fx.Extract(resAPI)
 		*out = resAPI
 		return nil

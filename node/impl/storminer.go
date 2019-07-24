@@ -1,4 +1,4 @@
-package node
+package impl
 
 import (
 	"github.com/filecoin-project/go-lotus/api"
