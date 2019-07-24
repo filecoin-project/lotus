@@ -7,6 +7,7 @@ import (
 	"golang.org/x/xerrors"
 	"gopkg.in/urfave/cli.v2"
 
+	"github.com/filecoin-project/go-lotus/api"
 	lcli "github.com/filecoin-project/go-lotus/cli"
 	"github.com/filecoin-project/go-lotus/lib/jsonrpc"
 	"github.com/filecoin-project/go-lotus/node"
@@ -23,13 +24,13 @@ var runCmd = &cli.Command{
 		},
 	},
 	Action: func(cctx *cli.Context) error {
-		api, err := lcli.GetAPI(cctx)
+		nodeApi, err := lcli.GetAPI(cctx)
 		if err != nil {
 			return err
 		}
 		ctx := lcli.ReqContext(cctx)
 
-		v, err := api.Version(ctx)
+		v, err := nodeApi.Version(ctx)
 
 		r, err := repo.NewFS(cctx.String(FlagStorageRepo))
 		if err != nil {
@@ -44,8 +45,9 @@ var runCmd = &cli.Command{
 			return xerrors.Errorf("repo at '%s' is not initialized, run 'lotus-storage-miner init' to set it up", cctx.String(FlagStorageRepo))
 		}
 
+		var minerapi api.StorageMiner
 		err = node.New(ctx,
-			node.StorageMiner(),
+			node.StorageMiner(&minerapi),
 			node.Online(),
 			node.Repo(r),
 

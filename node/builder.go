@@ -207,7 +207,7 @@ func Online() Option {
 	)
 }
 
-func StorageMiner() Option {
+func StorageMiner(out *api.StorageMiner) Option {
 	return Options(
 		ApplyIf(func(s *Settings) bool { return s.Config },
 			Error(errors.New("the StorageMiner option must be set before Config option")),
@@ -218,6 +218,13 @@ func StorageMiner() Option {
 
 		func(s *Settings) error {
 			s.nodeType = nodeStorageMiner
+			return nil
+		},
+
+		func(s *Settings) error {
+			resAPI := &StorageMinerAPI{}
+			s.invokes[ExtractApiKey] = fx.Extract(resAPI)
+			*out = resAPI
 			return nil
 		},
 	)

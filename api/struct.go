@@ -28,36 +28,6 @@ type CommonStruct struct {
 	}
 }
 
-func (c *CommonStruct) AuthVerify(ctx context.Context, token string) ([]string, error) {
-	return c.Internal.AuthVerify(ctx, token)
-}
-
-func (c *CommonStruct) AuthNew(ctx context.Context, perms []string) ([]byte, error) {
-	return c.Internal.AuthNew(ctx, perms)
-}
-
-func (c *CommonStruct) NetPeers(ctx context.Context) ([]peer.AddrInfo, error) {
-	return c.Internal.NetPeers(ctx)
-}
-
-func (c *CommonStruct) NetConnect(ctx context.Context, p peer.AddrInfo) error {
-	return c.Internal.NetConnect(ctx, p)
-}
-
-func (c *CommonStruct) NetAddrsListen(ctx context.Context) (peer.AddrInfo, error) {
-	return c.Internal.NetAddrsListen(ctx)
-}
-
-// ID implements API.ID
-func (c *CommonStruct) ID(ctx context.Context) (peer.ID, error) {
-	return c.Internal.ID(ctx)
-}
-
-// Version implements API.Version
-func (c *CommonStruct) Version(ctx context.Context) (Version, error) {
-	return c.Internal.Version(ctx)
-}
-
 // FullNodeStruct implements API passing calls to user-provided function values.
 type FullNodeStruct struct {
 	CommonStruct
@@ -94,6 +64,36 @@ type StorageMinerStruct struct {
 	Internal struct{
 
 	}
+}
+
+func (c *CommonStruct) AuthVerify(ctx context.Context, token string) ([]string, error) {
+	return c.Internal.AuthVerify(ctx, token)
+}
+
+func (c *CommonStruct) AuthNew(ctx context.Context, perms []string) ([]byte, error) {
+	return c.Internal.AuthNew(ctx, perms)
+}
+
+func (c *CommonStruct) NetPeers(ctx context.Context) ([]peer.AddrInfo, error) {
+	return c.Internal.NetPeers(ctx)
+}
+
+func (c *CommonStruct) NetConnect(ctx context.Context, p peer.AddrInfo) error {
+	return c.Internal.NetConnect(ctx, p)
+}
+
+func (c *CommonStruct) NetAddrsListen(ctx context.Context) (peer.AddrInfo, error) {
+	return c.Internal.NetAddrsListen(ctx)
+}
+
+// ID implements API.ID
+func (c *CommonStruct) ID(ctx context.Context) (peer.ID, error) {
+	return c.Internal.ID(ctx)
+}
+
+// Version implements API.Version
+func (c *CommonStruct) Version(ctx context.Context) (Version, error) {
+	return c.Internal.Version(ctx)
 }
 
 func (c *FullNodeStruct) ClientListImports(ctx context.Context) ([]Import, error) {

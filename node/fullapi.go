@@ -4,22 +4,15 @@ import (
 	"context"
 
 	"github.com/filecoin-project/go-lotus/api"
-	"github.com/filecoin-project/go-lotus/build"
 	"github.com/filecoin-project/go-lotus/chain"
 	"github.com/filecoin-project/go-lotus/chain/address"
 	"github.com/filecoin-project/go-lotus/chain/types"
 	"github.com/filecoin-project/go-lotus/miner"
 	"github.com/filecoin-project/go-lotus/node/client"
-	"github.com/filecoin-project/go-lotus/node/modules"
 
-	"github.com/gbrlsnchs/jwt/v3"
 	"github.com/ipfs/go-cid"
 	logging "github.com/ipfs/go-log"
-	"github.com/libp2p/go-libp2p-core/host"
-	"github.com/libp2p/go-libp2p-core/peer"
 	pubsub "github.com/libp2p/go-libp2p-pubsub"
-	ma "github.com/multiformats/go-multiaddr"
-	"golang.org/x/xerrors"
 )
 
 var log = logging.Logger("node")
@@ -27,33 +20,12 @@ var log = logging.Logger("node")
 type FullNodeAPI struct {
 	client.LocalStorage
 
-	Host      host.Host
+	CommonAPI
+
 	Chain     *chain.ChainStore
 	PubSub    *pubsub.PubSub
 	Mpool     *chain.MessagePool
 	Wallet    *chain.Wallet
-	APISecret *modules.APIAlg
-}
-
-type jwtPayload struct {
-	Allow []string
-}
-
-func (a *FullNodeAPI) AuthVerify(ctx context.Context, token string) ([]string, error) {
-	var payload jwtPayload
-	if _, err := jwt.Verify([]byte(token), (*jwt.HMACSHA)(a.APISecret), &payload); err != nil {
-		return nil, xerrors.Errorf("JWT Verification failed: %w", err)
-	}
-
-	return payload.Allow, nil
-}
-
-func (a *FullNodeAPI) AuthNew(ctx context.Context, perms []string) ([]byte, error) {
-	p := jwtPayload{
-		Allow: perms, // TODO: consider checking validity
-	}
-
-	return jwt.Sign(&p, (*jwt.HMACSHA)(a.APISecret))
 }
 
 func (a *FullNodeAPI) ChainSubmitBlock(ctx context.Context, blk *chain.BlockMsg) error {
@@ -94,16 +66,6 @@ func (a *FullNodeAPI) ChainGetBlockMessages(ctx context.Context, msg cid.Cid) ([
 	}
 
 	return a.Chain.MessagesForBlock(b)
-}
-
-func (a *FullNodeAPI) ID(context.Context) (peer.ID, error) {
-	return a.Host.ID(), nil
-}
-
-func (a *FullNodeAPI) Version(context.Context) (api.Version, error) {
-	return api.Version{
-		Version: build.Version,
-	}, nil
 }
 
 func (a *FullNodeAPI) MpoolPending(ctx context.Context, ts *chain.TipSet) ([]*chain.SignedMessage, error) {
@@ -149,22 +111,6 @@ func (a *FullNodeAPI) MinerCreateBlock(ctx context.Context, addr address.Address
 	return &out, nil
 }
 
-func (a *FullNodeAPI) NetPeers(context.Context) ([]peer.AddrInfo, error) {
-	conns := a.Host.Network().Conns()
-	out := make([]peer.AddrInfo, len(conns))
-
-	for i, conn := range conns {
-		out[i] = peer.AddrInfo{
-			ID: conn.RemotePeer(),
-			Addrs: []ma.Multiaddr{
-				conn.RemoteMultiaddr(),
-			},
-		}
-	}
-
-	return out, nil
-}
-
 func (a *FullNodeAPI) WalletNew(ctx context.Context, typ string) (address.Address, error) {
 	return a.Wallet.GenerateKey(typ)
 }
@@ -189,17 +135,6 @@ func (a *FullNodeAPI) WalletDefaultAddress(ctx context.Context) (address.Address
 
 	// TODO: store a default address in the config or 'wallet' portion of the repo
 	return addrs[0], nil
-}
-
-func (a *FullNodeAPI) NetConnect(ctx context.Context, p peer.AddrInfo) error {
-	return a.Host.Connect(ctx, p)
-}
-
-func (a *FullNodeAPI) NetAddrsListen(context.Context) (peer.AddrInfo, error) {
-	return peer.AddrInfo{
-		ID:    a.Host.ID(),
-		Addrs: a.Host.Addrs(),
-	}, nil
 }
 
 var _ api.FullNode = &FullNodeAPI{}
