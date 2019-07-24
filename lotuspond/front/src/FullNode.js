@@ -12,10 +12,13 @@ class FullNode extends React.Component {
 
     this.state = {
       state: stateGettingToken,
-      id: "~"
+      id: "~",
+
+      mining: false,
     }
 
-    this.loadInfo = this.loadInfo.bind(this);
+    this.loadInfo = this.loadInfo.bind(this)
+    this.startMining = this.startMining.bind(this)
 
     this.connect()
   }
@@ -64,6 +67,13 @@ class FullNode extends React.Component {
     this.setState(() => ({tipset: tipset}))
   }
 
+  async startMining() {
+    // TODO: Use actual miner address
+    // see cli/miner.go
+    this.setState({mining: true})
+    await this.state.client.call("Filecoin.MinerStart", ["[0 - bf9dcbf901]"])
+  }
+
   render() {
     let runtime = <div></div>
     if (this.state.state === stateConnected) {
@@ -79,6 +89,7 @@ class FullNode extends React.Component {
           <div>v{this.state.version.Version}, {this.state.id.substr(-8)}, {this.state.peers} peers</div>
           <div>Repo: LOTUS_PATH={this.props.node.Repo}</div>
           {chainInfo}
+          <button disabled={this.state.mining} onClick={this.startMining}>Mine</button>
 
         </div>
       )
