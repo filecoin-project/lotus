@@ -1,5 +1,6 @@
 /lotus
 /lotus-storage-miner
+/pond
 **/*.h
 **/*.a
 **/*.pc

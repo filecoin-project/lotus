@@ -47,6 +47,11 @@ build: $(BUILD_DEPS)
 	go build -o lotus-storage-miner ./cmd/lotus-storage-miner
 .PHONY: build
 
+pond: build
+	go build -o pond ./lotuspond
+	(cd lotuspond/front && npm run build)
+.PHONY: pond
+
 clean:
 	rm -rf $(CLEAN)
 	-$(MAKE) -C $(BLS_PATH) clean

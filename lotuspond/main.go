@@ -108,7 +108,7 @@ func main() {
 	rpcServer := jsonrpc.NewServer()
 	rpcServer.Register("Pond", &api{running: map[int32]runningNode{}})
 
-	http.Handle("/", http.FileServer(http.Dir("testbed/front/build")))
+	http.Handle("/", http.FileServer(http.Dir("lotuspond/front/build")))
 	http.Handle("/rpc/v0", rpcServer)
 
 	fmt.Printf("Listening on http://%s\n", listenAddr)
