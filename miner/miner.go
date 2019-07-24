@@ -38,8 +38,9 @@ type api interface {
 
 func NewMiner(api api, addr address.Address) *Miner {
 	return &Miner{
-		api:   api,
-		Delay: time.Second * 4,
+		api:     api,
+		address: addr,
+		Delay:   time.Second * 4,
 	}
 }
 
