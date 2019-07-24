@@ -59,7 +59,7 @@ func NewFS(path string) (*FsRepo, error) {
 }
 
 func (fsr *FsRepo) Exists() (bool, error) {
-	_, err := os.Stat(fsr.path)
+	_, err := os.Stat(filepath.Join(fsr.path, fsConfig))
 	notexist := os.IsNotExist(err)
 	if notexist {
 		err = nil
@@ -79,6 +79,14 @@ func (fsr *FsRepo) Init() error {
 	if err != nil {
 		return err
 	}
+	c, err := os.Create(filepath.Join(fsr.path, fsConfig))
+	if err != nil {
+		return err
+	}
+	if err := c.Close(); err != nil {
+		return err
+	}
+
 	return fsr.initKeystore()
 
 }

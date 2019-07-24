@@ -31,6 +31,9 @@ var runCmd = &cli.Command{
 		ctx := lcli.ReqContext(cctx)
 
 		v, err := nodeApi.Version(ctx)
+		if err != nil {
+			return err
+		}
 
 		r, err := repo.NewFS(cctx.String(FlagStorageRepo))
 		if err != nil {
