@@ -129,6 +129,10 @@ func (vmc *VMContext) StateTree() (types.StateTree, aerrors.ActorError) {
 	return vmc.state, nil
 }
 
+func (vmctx *VMContext) VerifySignature(sig types.Signature, act address.Address) aerrors.ActorError {
+	panic("NYI")
+}
+
 func (vm *VM) makeVMContext(sroot cid.Cid, origin address.Address, msg *types.Message) *VMContext {
 	cst := hamt.CSTFromBstore(vm.cs.bs)
 

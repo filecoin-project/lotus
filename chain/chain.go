@@ -161,7 +161,7 @@ func SetupStorageMarketActor(bs bstore.Blockstore) (*types.Actor, error) {
 func MakeGenesisBlock(bs bstore.Blockstore, w *Wallet) (*GenesisBootstrap, error) {
 	fmt.Println("at end of make Genesis block")
 
-	minerAddr, err := w.GenerateKey(KTSecp256k1)
+	minerAddr, err := w.GenerateKey(types.KTSecp256k1)
 	if err != nil {
 		return nil, err
 	}

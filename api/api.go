@@ -87,7 +87,7 @@ type FullNode interface {
 	WalletNew(context.Context, string) (address.Address, error)
 	WalletList(context.Context) ([]address.Address, error)
 	WalletBalance(context.Context, address.Address) (types.BigInt, error)
-	WalletSign(context.Context, address.Address, []byte) (*chain.Signature, error)
+	WalletSign(context.Context, address.Address, []byte) (*types.Signature, error)
 	WalletDefaultAddress(context.Context) (address.Address, error)
 
 	// Really not sure where this belongs. It could go on the wallet, or the message pool, or the chain...
