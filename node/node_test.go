@@ -6,18 +6,17 @@ import (
 	"net/http/httptest"
 	"testing"
 
+	mocknet "github.com/libp2p/go-libp2p/p2p/net/mock"
+
 	"github.com/filecoin-project/go-lotus/node"
 	"github.com/filecoin-project/go-lotus/node/modules"
 	modtest "github.com/filecoin-project/go-lotus/node/modules/testing"
+	"github.com/filecoin-project/go-lotus/node/repo"
 
 	"github.com/filecoin-project/go-lotus/api"
 	"github.com/filecoin-project/go-lotus/api/client"
 	"github.com/filecoin-project/go-lotus/api/test"
 	"github.com/filecoin-project/go-lotus/lib/jsonrpc"
-
-	mocknet "github.com/libp2p/go-libp2p/p2p/net/mock"
-
-	"github.com/filecoin-project/go-lotus/node/repo"
 )
 
 func builder(t *testing.T, n int) []api.FullNode {
