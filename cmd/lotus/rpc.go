@@ -7,7 +7,7 @@ import (
 	"github.com/filecoin-project/go-lotus/lib/jsonrpc"
 )
 
-func serveRPC(api api.API, addr string) error {
+func serveRPC(api api.FullNode, addr string) error {
 	rpcServer := jsonrpc.NewServer()
 	rpcServer.Register("Filecoin", api)
 	http.Handle("/rpc/v0", rpcServer)

@@ -8,8 +8,8 @@ import (
 )
 
 // NewRPC creates a new http jsonrpc client.
-func NewRPC(addr string, requestHeader http.Header) (api.API, error) {
-	var res api.Struct
+func NewRPC(addr string, requestHeader http.Header) (api.FullNode, error) {
+	var res api.FullNodeStruct
 	_, err := jsonrpc.NewClient(addr, "Filecoin", &res.Internal, requestHeader)
 	return &res, err
 }

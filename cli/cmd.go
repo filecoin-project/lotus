@@ -23,9 +23,9 @@ const (
 )
 
 // ApiConnector returns API instance
-type ApiConnector func() api.API
+type ApiConnector func() api.FullNode
 
-func GetAPI(ctx *cli.Context) (api.API, error) {
+func GetAPI(ctx *cli.Context) (api.FullNode, error) {
 	r, err := repo.NewFS(ctx.String("repo"))
 	if err != nil {
 		return nil, err

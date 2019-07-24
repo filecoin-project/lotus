@@ -34,7 +34,7 @@ var DaemonCmd = &cli.Command{
 			return err
 		}
 
-		var api api.API
+		var api api.FullNode
 		err = node.New(ctx,
 			node.FullAPI(&api),
 

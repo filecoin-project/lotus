@@ -27,8 +27,8 @@ func WithPerm(ctx context.Context, perms []string) context.Context {
 	return context.WithValue(ctx, permCtxKey, perms)
 }
 
-func Permissioned(a API) API {
-	var out Struct
+func Permissioned(a FullNode) FullNode {
+	var out FullNodeStruct
 
 	rint := reflect.ValueOf(&out.Internal).Elem()
 	ra := reflect.ValueOf(a)

@@ -268,7 +268,7 @@ func Repo(r repo.Repo) Option {
 	)
 }
 
-func FullAPI(out *api.API) Option {
+func FullAPI(out *api.FullNode) Option {
 	return func(s *Settings) error {
 		resAPI := &API{}
 		s.invokes[ExtractApiKey] = fx.Extract(resAPI)

@@ -202,4 +202,4 @@ func (a *API) NetAddrsListen(context.Context) (peer.AddrInfo, error) {
 	}, nil
 }
 
-var _ api.API = &API{}
+var _ api.FullNode = &API{}

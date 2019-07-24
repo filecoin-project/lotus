@@ -16,11 +16,11 @@ import (
 	mocknet "github.com/libp2p/go-libp2p/p2p/net/mock"
 )
 
-func builder(t *testing.T, n int) []api.API {
+func builder(t *testing.T, n int) []api.FullNode {
 	ctx := context.Background()
 	mn := mocknet.New(ctx)
 
-	out := make([]api.API, n)
+	out := make([]api.FullNode, n)
 
 	for i := 0; i < n; i++ {
 		var err error
@@ -48,9 +48,9 @@ func TestAPI(t *testing.T) {
 
 var nextApi int
 
-func rpcBuilder(t *testing.T, n int) []api.API {
+func rpcBuilder(t *testing.T, n int) []api.FullNode {
 	nodeApis := builder(t, n)
-	out := make([]api.API, n)
+	out := make([]api.FullNode, n)
 
 	for i, a := range nodeApis {
 		rpcServer := jsonrpc.NewServer()
