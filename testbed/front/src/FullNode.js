@@ -30,7 +30,7 @@ class FullNode extends React.Component {
       token: token,
     }))
 
-    const client = new Client(`ws://127.0.0.1:${this.props.node.ApiPort}/rpc/v0`)
+    const client = new Client(`ws://127.0.0.1:${this.props.node.ApiPort}/rpc/v0?token=${token}`)
     client.on('open', () => {
       this.setState(() => ({
         state: stateConnected,

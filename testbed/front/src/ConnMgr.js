@@ -8,9 +8,15 @@ class ConnMgr extends React.Component {
     this.connect = this.connect.bind(this)
   }
 
-  connect(action, from, to) {
+  async connect(action, from, to) {
     if (action) {
-      console.log("conn", from, to)
+      const fromNd = this.props.nodes[from]
+      const toNd = this.props.nodes[to]
+
+      const toPeerInfo = await toNd.conn.call('Filecoin.NetAddrsListen', [])
+
+      console.log("conn")
+      await fromNd.conn.call('Filecoin.NetConnect', [toPeerInfo])
     }
   }
 
@@ -18,16 +24,9 @@ class ConnMgr extends React.Component {
     const nodes = this.props.nodes
     let keys = Object.keys(nodes)
 
-    //   T O - -
-    // F
-    // R
-    // O
-    // M
-    //
-
     const rows = keys.filter((_, i) => i > 0).map((k, i) => {
       const cols = keys.filter((_, j) => i >= j).map((kt, i) => {
-        return (<td><input type="checkbox" onChange={e => this.connect(e.target.checked, k, kt)}/></td>)
+        return (<td><input key={k + "-" + kt} type="checkbox" onChange={e => this.connect(e.target.checked, k, kt)}/></td>)
       })
       return (
           <tr><td>{k}</td>{cols}</tr>
