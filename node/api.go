@@ -24,7 +24,7 @@ import (
 
 var log = logging.Logger("node")
 
-type API struct {
+type FullNodeAPI struct {
 	client.LocalStorage
 
 	Host      host.Host
@@ -39,7 +39,7 @@ type jwtPayload struct {
 	Allow []string
 }
 
-func (a *API) AuthVerify(ctx context.Context, token string) ([]string, error) {
+func (a *FullNodeAPI) AuthVerify(ctx context.Context, token string) ([]string, error) {
 	var payload jwtPayload
 	if _, err := jwt.Verify([]byte(token), (*jwt.HMACSHA)(a.APISecret), &payload); err != nil {
 		return nil, xerrors.Errorf("JWT Verification failed: %w", err)
@@ -48,7 +48,7 @@ func (a *API) AuthVerify(ctx context.Context, token string) ([]string, error) {
 	return payload.Allow, nil
 }
 
-func (a *API) AuthNew(ctx context.Context, perms []string) ([]byte, error) {
+func (a *FullNodeAPI) AuthNew(ctx context.Context, perms []string) ([]byte, error) {
 	p := jwtPayload{
 		Allow: perms, // TODO: consider checking validity
 	}
@@ -56,7 +56,7 @@ func (a *API) AuthNew(ctx context.Context, perms []string) ([]byte, error) {
 	return jwt.Sign(&p, (*jwt.HMACSHA)(a.APISecret))
 }
 
-func (a *API) ChainSubmitBlock(ctx context.Context, blk *chain.BlockMsg) error {
+func (a *FullNodeAPI) ChainSubmitBlock(ctx context.Context, blk *chain.BlockMsg) error {
 	if err := a.Chain.AddBlock(blk.Header); err != nil {
 		return err
 	}
@@ -70,24 +70,24 @@ func (a *API) ChainSubmitBlock(ctx context.Context, blk *chain.BlockMsg) error {
 	return a.PubSub.Publish("/fil/blocks", b)
 }
 
-func (a *API) ChainHead(context.Context) (*chain.TipSet, error) {
+func (a *FullNodeAPI) ChainHead(context.Context) (*chain.TipSet, error) {
 	return a.Chain.GetHeaviestTipSet(), nil
 }
 
-func (a *API) ChainGetRandomness(ctx context.Context, pts *chain.TipSet) ([]byte, error) {
+func (a *FullNodeAPI) ChainGetRandomness(ctx context.Context, pts *chain.TipSet) ([]byte, error) {
 	// TODO: this needs to look back in the chain for the right random beacon value
 	return []byte("foo bar random"), nil
 }
 
-func (a *API) ChainWaitMsg(ctx context.Context, msg cid.Cid) (*api.MsgWait, error) {
+func (a *FullNodeAPI) ChainWaitMsg(ctx context.Context, msg cid.Cid) (*api.MsgWait, error) {
 	panic("TODO")
 }
 
-func (a *API) ChainGetBlock(ctx context.Context, msg cid.Cid) (*chain.BlockHeader, error) {
+func (a *FullNodeAPI) ChainGetBlock(ctx context.Context, msg cid.Cid) (*chain.BlockHeader, error) {
 	return a.Chain.GetBlock(msg)
 }
 
-func (a *API) ChainGetBlockMessages(ctx context.Context, msg cid.Cid) ([]*chain.SignedMessage, error) {
+func (a *FullNodeAPI) ChainGetBlockMessages(ctx context.Context, msg cid.Cid) ([]*chain.SignedMessage, error) {
 	b, err := a.Chain.GetBlock(msg)
 	if err != nil {
 		return nil, err
@@ -96,23 +96,23 @@ func (a *API) ChainGetBlockMessages(ctx context.Context, msg cid.Cid) ([]*chain.
 	return a.Chain.MessagesForBlock(b)
 }
 
-func (a *API) ID(context.Context) (peer.ID, error) {
+func (a *FullNodeAPI) ID(context.Context) (peer.ID, error) {
 	return a.Host.ID(), nil
 }
 
-func (a *API) Version(context.Context) (api.Version, error) {
+func (a *FullNodeAPI) Version(context.Context) (api.Version, error) {
 	return api.Version{
 		Version: build.Version,
 	}, nil
 }
 
-func (a *API) MpoolPending(ctx context.Context, ts *chain.TipSet) ([]*chain.SignedMessage, error) {
+func (a *FullNodeAPI) MpoolPending(ctx context.Context, ts *chain.TipSet) ([]*chain.SignedMessage, error) {
 	// TODO: need to make sure we don't return messages that were already included in the referenced chain
 	// also need to accept ts == nil just fine, assume nil == chain.Head()
 	return a.Mpool.Pending(), nil
 }
 
-func (a *API) MpoolPush(ctx context.Context, smsg *chain.SignedMessage) error {
+func (a *FullNodeAPI) MpoolPush(ctx context.Context, smsg *chain.SignedMessage) error {
 	msgb, err := smsg.Serialize()
 	if err != nil {
 		return err
@@ -121,11 +121,11 @@ func (a *API) MpoolPush(ctx context.Context, smsg *chain.SignedMessage) error {
 	return a.PubSub.Publish("/fil/messages", msgb)
 }
 
-func (a *API) MpoolGetNonce(ctx context.Context, addr address.Address) (uint64, error) {
+func (a *FullNodeAPI) MpoolGetNonce(ctx context.Context, addr address.Address) (uint64, error) {
 	return a.Mpool.GetNonce(addr)
 }
 
-func (a *API) MinerStart(ctx context.Context, addr address.Address) error {
+func (a *FullNodeAPI) MinerStart(ctx context.Context, addr address.Address) error {
 	// hrm...
 	m := miner.NewMiner(a, addr)
 
@@ -134,7 +134,7 @@ func (a *API) MinerStart(ctx context.Context, addr address.Address) error {
 	return nil
 }
 
-func (a *API) MinerCreateBlock(ctx context.Context, addr address.Address, parents *chain.TipSet, tickets []chain.Ticket, proof chain.ElectionProof, msgs []*chain.SignedMessage) (*chain.BlockMsg, error) {
+func (a *FullNodeAPI) MinerCreateBlock(ctx context.Context, addr address.Address, parents *chain.TipSet, tickets []chain.Ticket, proof chain.ElectionProof, msgs []*chain.SignedMessage) (*chain.BlockMsg, error) {
 	fblk, err := chain.MinerCreateBlock(a.Chain, addr, parents, tickets, proof, msgs)
 	if err != nil {
 		return nil, err
@@ -149,7 +149,7 @@ func (a *API) MinerCreateBlock(ctx context.Context, addr address.Address, parent
 	return &out, nil
 }
 
-func (a *API) NetPeers(context.Context) ([]peer.AddrInfo, error) {
+func (a *FullNodeAPI) NetPeers(context.Context) ([]peer.AddrInfo, error) {
 	conns := a.Host.Network().Conns()
 	out := make([]peer.AddrInfo, len(conns))
 
@@ -165,23 +165,23 @@ func (a *API) NetPeers(context.Context) ([]peer.AddrInfo, error) {
 	return out, nil
 }
 
-func (a *API) WalletNew(ctx context.Context, typ string) (address.Address, error) {
+func (a *FullNodeAPI) WalletNew(ctx context.Context, typ string) (address.Address, error) {
 	return a.Wallet.GenerateKey(typ)
 }
 
-func (a *API) WalletList(ctx context.Context) ([]address.Address, error) {
+func (a *FullNodeAPI) WalletList(ctx context.Context) ([]address.Address, error) {
 	return a.Wallet.ListAddrs()
 }
 
-func (a *API) WalletBalance(ctx context.Context, addr address.Address) (types.BigInt, error) {
+func (a *FullNodeAPI) WalletBalance(ctx context.Context, addr address.Address) (types.BigInt, error) {
 	return a.Chain.GetBalance(addr)
 }
 
-func (a *API) WalletSign(ctx context.Context, k address.Address, msg []byte) (*chain.Signature, error) {
+func (a *FullNodeAPI) WalletSign(ctx context.Context, k address.Address, msg []byte) (*chain.Signature, error) {
 	return a.Wallet.Sign(k, msg)
 }
 
-func (a *API) WalletDefaultAddress(ctx context.Context) (address.Address, error) {
+func (a *FullNodeAPI) WalletDefaultAddress(ctx context.Context) (address.Address, error) {
 	addrs, err := a.Wallet.ListAddrs()
 	if err != nil {
 		return address.Undef, err
@@ -191,15 +191,15 @@ func (a *API) WalletDefaultAddress(ctx context.Context) (address.Address, error)
 	return addrs[0], nil
 }
 
-func (a *API) NetConnect(ctx context.Context, p peer.AddrInfo) error {
+func (a *FullNodeAPI) NetConnect(ctx context.Context, p peer.AddrInfo) error {
 	return a.Host.Connect(ctx, p)
 }
 
-func (a *API) NetAddrsListen(context.Context) (peer.AddrInfo, error) {
+func (a *FullNodeAPI) NetAddrsListen(context.Context) (peer.AddrInfo, error) {
 	return peer.AddrInfo{
 		ID:    a.Host.ID(),
 		Addrs: a.Host.Addrs(),
 	}, nil
 }
 
-var _ api.FullNode = &API{}
+var _ api.FullNode = &FullNodeAPI{}

@@ -58,7 +58,7 @@ func rpcBuilder(t *testing.T, n int) []api.FullNode {
 		testServ := httptest.NewServer(rpcServer) //  todo: close
 
 		var err error
-		out[i], err = client.NewRPC("ws://"+testServ.Listener.Addr().String(), nil)
+		out[i], err = client.NewFullNodeRPC("ws://"+testServ.Listener.Addr().String(), nil)
 		if err != nil {
 			t.Fatal(err)
 		}

@@ -48,7 +48,7 @@ func GetAPI(ctx *cli.Context) (api.FullNode, error) {
 		headers.Add("Authorization", "Bearer "+string(token))
 	}
 
-	return client.NewRPC("ws://"+addr+"/rpc/v0", headers)
+	return client.NewFullNodeRPC("ws://"+addr+"/rpc/v0", headers)
 }
 
 // ReqContext returns context for cli execution. Calling it for the first time
