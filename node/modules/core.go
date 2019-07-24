@@ -195,14 +195,9 @@ func ErrorGenesis() Genesis {
 	}
 }
 
-func LoadGenesis(f string) func() Genesis {
+func LoadGenesis(genBytes []byte) func() Genesis {
 	return func() Genesis {
 		return func() (header *chain.BlockHeader, e error) {
-			genBytes, err := ioutil.ReadFile(f)
-			if err != nil {
-				return &chain.BlockHeader{}, err
-			}
-
 			return chain.DecodeBlock(genBytes)
 		}
 	}

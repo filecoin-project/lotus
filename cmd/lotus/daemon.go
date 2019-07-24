@@ -4,6 +4,7 @@ package main
 
 import (
 	"context"
+	"io/ioutil"
 
 	"github.com/filecoin-project/go-lotus/api"
 	"github.com/filecoin-project/go-lotus/node/modules"
@@ -55,7 +56,12 @@ var DaemonCmd = &cli.Command{
 			genesis = node.Override(new(modules.Genesis), testing.MakeGenesis(cctx.String(makeGenFlag)))
 		}
 		if cctx.String("genesis") != "" {
-			genesis = node.Override(new(modules.Genesis), modules.LoadGenesis(cctx.String("genesis")))
+			genBytes, err := ioutil.ReadFile(cctx.String("genesis"))
+			if err != nil {
+				return err
+			}
+
+			genesis = node.Override(new(modules.Genesis), modules.LoadGenesis(genBytes))
 		}
 
 		var api api.FullNode
