@@ -71,7 +71,7 @@ class FullNode extends React.Component {
     // TODO: Use actual miner address
     // see cli/miner.go
     this.setState({mining: true})
-    await this.state.client.call("Filecoin.MinerStart", ["[0 - bf9dcbf901]"])
+    await this.state.client.call("Filecoin.MinerStart", ["t0523423423"])
   }
 
   render() {
@@ -84,12 +84,17 @@ class FullNode extends React.Component {
         )
       }
 
+      let mine = <a href="#" disabled={this.state.mining} onClick={this.startMining}>Mine</a>
+      if (this.state.mining) {
+        mine = "Mining"
+      }
+
       runtime = (
         <div>
           <div>v{this.state.version.Version}, {this.state.id.substr(-8)}, {this.state.peers} peers</div>
           <div>Repo: LOTUS_PATH={this.props.node.Repo}</div>
           {chainInfo}
-          <button disabled={this.state.mining} onClick={this.startMining}>Mine</button>
+          {mine}
 
         </div>
       )
