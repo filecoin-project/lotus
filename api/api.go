@@ -54,7 +54,6 @@ type Common interface {
 
 	// Version provides information about API provider
 	Version(context.Context) (Version, error)
-
 }
 
 // FullNode API is a low-level interface to the Filecoin network full node
@@ -111,6 +110,4 @@ type FullNode interface {
 // Full API is a low-level interface to the Filecoin network storage miner node
 type StorageMiner interface {
 	Common
-
-
 }

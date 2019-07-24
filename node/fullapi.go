@@ -22,10 +22,10 @@ type FullNodeAPI struct {
 
 	CommonAPI
 
-	Chain     *chain.ChainStore
-	PubSub    *pubsub.PubSub
-	Mpool     *chain.MessagePool
-	Wallet    *chain.Wallet
+	Chain  *chain.ChainStore
+	PubSub *pubsub.PubSub
+	Mpool  *chain.MessagePool
+	Wallet *chain.Wallet
 }
 
 func (a *FullNodeAPI) ChainSubmitBlock(ctx context.Context, blk *chain.BlockMsg) error {

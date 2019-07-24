@@ -15,7 +15,7 @@ import (
 var _ = AllPermissions
 
 type CommonStruct struct {
-	Internal struct{
+	Internal struct {
 		AuthVerify func(ctx context.Context, token string) ([]string, error) `perm:"read"`
 		AuthNew    func(ctx context.Context, perms []string) ([]byte, error) `perm:"admin"`
 
@@ -61,8 +61,7 @@ type FullNodeStruct struct {
 type StorageMinerStruct struct {
 	CommonStruct
 
-	Internal struct{
-
+	Internal struct {
 	}
 }
 
