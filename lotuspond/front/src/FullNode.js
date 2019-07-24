@@ -59,15 +59,27 @@ class FullNode extends React.Component {
 
     const peers = await this.state.client.call("Filecoin.NetPeers", [])
     this.setState(() => ({peers: peers.length}))
+
+    const tipset = await this.state.client.call("Filecoin.ChainHead", [])
+    this.setState(() => ({tipset: tipset}))
   }
 
   render() {
     let runtime = <div></div>
     if (this.state.state === stateConnected) {
+      let chainInfo = <div></div>
+      if (this.state.tipset !== undefined) {
+        chainInfo = (
+          <div>Head: {this.state.tipset.Cids.map(c => c['/'].substr(-8))} H:{this.state.tipset.Height}</div>
+        )
+      }
+
       runtime = (
         <div>
           <div>v{this.state.version.Version}, {this.state.id.substr(-8)}, {this.state.peers} peers</div>
-          <div>{this.props.node.Repo}</div>
+          <div>Repo: LOTUS_PATH={this.props.node.Repo}</div>
+          {chainInfo}
+
         </div>
       )
     }
