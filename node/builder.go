@@ -128,6 +128,9 @@ func defaults() []Option {
 	return []Option{
 		Override(new(helpers.MetricsCtx), context.Background),
 		Override(new(record.Validator), modules.RecordValidator),
+
+		// Filecoin modules
+
 	}
 }
 
@@ -180,7 +183,7 @@ func Online() Option {
 
 			Override(HandleIncomingMessagesKey, modules.HandleIncomingMessages),
 
-			Override(new(*chain.ChainStore), chain.NewChainStore),
+			Override(new(*chain.ChainStore), modules.ChainStore),
 
 			Override(new(blockstore.GCLocker), blockstore.NewGCLocker),
 			Override(new(blockstore.GCBlockstore), blockstore.NewGCBlockstore),

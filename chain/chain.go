@@ -24,6 +24,8 @@ const ForkLengthThreshold = 20
 
 var log = logging.Logger("f2")
 
+var chainHeadKey = dstore.NewKey("head")
+
 type GenesisBootstrap struct {
 	Genesis  *BlockHeader
 	MinerKey address.Address
@@ -232,6 +234,44 @@ func NewChainStore(bs bstore.Blockstore, ds dstore.Batching) *ChainStore {
 	}
 }
 
+func (cs *ChainStore) Load() error {
+	head, err := cs.ds.Get(chainHeadKey)
+	if err == dstore.ErrNotFound {
+		log.Warn("no previous chain state found")
+		return nil
+	}
+	if err != nil {
+		return errors.Wrap(err, "failed to load chain state from datastore")
+	}
+
+	var tscids []cid.Cid
+	if err := json.Unmarshal(head, &tscids); err != nil {
+		return errors.Wrap(err, "failed to unmarshal stored chain head")
+	}
+
+	ts, err := cs.LoadTipSet(tscids)
+	if err != nil {
+		return err
+	}
+
+	cs.heaviest = ts
+
+	return nil
+}
+
+func (cs *ChainStore) writeHead(ts *TipSet) error {
+	data, err := json.Marshal(ts.Cids())
+	if err != nil {
+		return errors.Wrap(err, "failed to marshal tipset")
+	}
+
+	if err := cs.ds.Put(chainHeadKey, data); err != nil {
+		return errors.Wrap(err, "failed to write chain head to datastore")
+	}
+
+	return nil
+}
+
 func (cs *ChainStore) SubNewTips() chan *TipSet {
 	subch := cs.bestTips.Sub("best")
 	out := make(chan *TipSet)
@@ -315,6 +355,11 @@ func (cs *ChainStore) maybeTakeHeavierTipSet(ts *TipSet) error {
 		}
 		log.Infof("New heaviest tipset! %s", ts.Cids())
 		cs.heaviest = ts
+
+		if err := cs.writeHead(ts); err != nil {
+			log.Errorf("failed to write chain head: %s", err)
+			return nil
+		}
 	}
 	return nil
 }
