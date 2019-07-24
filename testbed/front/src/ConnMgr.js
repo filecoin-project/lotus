@@ -5,7 +5,7 @@ class ConnMgr extends React.Component {
   render() {
     return(
       <Cristal title="Connection Manager">
-        Cmgr
+        {Object.keys(this.props.nodes)}
       </Cristal>
     )
   }

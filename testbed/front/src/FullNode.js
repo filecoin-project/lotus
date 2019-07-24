@@ -41,6 +41,8 @@ class FullNode extends React.Component {
         peers: -1
       }))
 
+      this.props.onConnect(client)
+
       this.loadInfo()
       setInterval(this.loadInfo, 1000)
     })

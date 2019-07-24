@@ -7,7 +7,7 @@ class NodeList extends React.Component {
     super(props)
     this.state = {
       existingLoaded: false,
-      nodes: [],
+      nodes: {},
 
       showConnMgr: false,
     }
@@ -16,13 +16,20 @@ class NodeList extends React.Component {
     this.spawnNode = this.spawnNode.bind(this)
     this.connMgr = this.connMgr.bind(this)
 
-    this.props.client.call('Pond.Nodes').then(nodes => this.setState({existingLoaded: true, nodes: nodes}))
+    this.getNodes()
+  }
+
+  async getNodes() {
+    const nds = await this.props.client.call('Pond.Nodes')
+    const nodes = nds.reduce((o, i) => {o[i.ID] = i; return o}, {})
+    console.log('nds', nodes)
+    this.setState({existingLoaded: true, nodes: nodes})
   }
 
   async spawnNode() {
     const node = await this.props.client.call('Pond.Spawn')
     console.log(node)
-    this.setState(state => ({nodes: state.nodes.concat(node)}))
+    this.setState(state => ({nodes: {...state.nodes, [node.ID]: node}}))
   }
 
   connMgr() {
@@ -43,10 +50,13 @@ class NodeList extends React.Component {
         </div>
         <div>
           {
-            this.state.nodes.map((node, i) => {
+            Object.keys(this.state.nodes).map(n => {
+              const node = this.state.nodes[n]
+
               return (<FullNode key={node.ID}
-                                node={node}
-                                pondClient={this.props.client}/>)
+                                node={{...node}}
+                                pondClient={this.props.client}
+                                onConnect={conn => this.setState(prev => ({nodes: {...prev.nodes, [n]: {...node, conn: conn}}}))}/>)
             })
           }
           {connMgr}
