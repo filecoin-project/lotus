@@ -1,5 +1,6 @@
 import React from 'react';
 import { Client } from 'rpc-websockets'
+import Cristal from 'react-cristal'
 
 const stateConnected = 'connected'
 const stateConnecting = 'connecting'
@@ -10,7 +11,8 @@ class FullNode extends React.Component {
     super(props)
 
     this.state = {
-      state: stateGettingToken
+      state: stateGettingToken,
+      id: "~"
     }
 
     this.loadInfo = this.loadInfo.bind(this);
@@ -63,16 +65,21 @@ class FullNode extends React.Component {
       runtime = (
         <div>
           <div>v{this.state.version.Version}, {this.state.id.substr(-8)}, {this.state.peers} peers</div>
-
+          <div>{this.props.node.Repo}</div>
         </div>
       )
     }
 
     return (
-      <div className="FullNode">
-        <div>{this.props.node.ID} - {this.state.state}</div>
-        {runtime}
-      </div>
+      <Cristal
+        title={"Node " + this.props.node.ID}
+        initialPosition={{x: this.props.node.ID*30, y: this.props.node.ID * 30}} >
+
+        <div className="FullNode">
+          <div>{this.props.node.ID} - {this.state.state}</div>
+          {runtime}
+        </div>
+      </Cristal>
     )
   }
 }

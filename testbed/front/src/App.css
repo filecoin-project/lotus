@@ -8,4 +8,5 @@
   background: #f9be77;
   margin-bottom: 5px;
   padding: 5px;
+  user-select: text;
 }
