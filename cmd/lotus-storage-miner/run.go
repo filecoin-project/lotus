@@ -9,6 +9,7 @@ import (
 
 	"github.com/filecoin-project/go-lotus/api"
 	lcli "github.com/filecoin-project/go-lotus/cli"
+	"github.com/filecoin-project/go-lotus/lib/auth"
 	"github.com/filecoin-project/go-lotus/lib/jsonrpc"
 	"github.com/filecoin-project/go-lotus/node"
 	"github.com/filecoin-project/go-lotus/node/repo"
@@ -72,7 +73,13 @@ var runCmd = &cli.Command{
 
 		rpcServer := jsonrpc.NewServer()
 		rpcServer.Register("Filecoin", api.PermissionedStorMinerAPI(minerapi))
-		http.Handle("/rpc/v0", rpcServer)
+
+		ah := &auth.Handler{
+			Verify: minerapi.AuthVerify,
+			Next: rpcServer.ServeHTTP,
+		}
+
+		http.Handle("/rpc/v0", ah)
 		return http.ListenAndServe("127.0.0.1:"+cctx.String("api"), http.DefaultServeMux)
 	},
 }

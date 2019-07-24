@@ -5,6 +5,7 @@ import (
 	"encoding/json"
 	"io"
 	"net/http"
+	"strings"
 
 	"github.com/gorilla/websocket"
 )
@@ -27,9 +28,21 @@ func NewServer() *RPCServer {
 	}
 }
 
-var upgrader = websocket.Upgrader{}
+var upgrader = websocket.Upgrader{
+	CheckOrigin: func(r *http.Request) bool {
+		return true
+	},
+}
 
 func (s *RPCServer) handleWS(ctx context.Context, w http.ResponseWriter, r *http.Request) {
+	// TODO: allow setting
+	// (note that we still are mostly covered by jwt tokens)
+	w.Header().Set("Access-Control-Allow-Origin", "*")
+	if r.Header.Get("Sec-WebSocket-Protocol") != "" {
+		w.Header().Set("Sec-WebSocket-Protocol", r.Header.Get("Sec-WebSocket-Protocol"))
+	}
+
+
 	c, err := upgrader.Upgrade(w, r, nil)
 	if err != nil {
 		log.Error(err)
@@ -52,7 +65,7 @@ func (s *RPCServer) handleWS(ctx context.Context, w http.ResponseWriter, r *http
 func (s *RPCServer) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 	ctx := r.Context()
 
-	if r.Header.Get("Connection") == "Upgrade" {
+	if strings.Contains(r.Header.Get("Connection"), "Upgrade") {
 		s.handleWS(ctx, w, r)
 		return
 	}
