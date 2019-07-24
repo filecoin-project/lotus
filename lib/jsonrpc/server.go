@@ -3,9 +3,10 @@ package jsonrpc
 import (
 	"context"
 	"encoding/json"
-	"github.com/gorilla/websocket"
 	"io"
 	"net/http"
+
+	"github.com/gorilla/websocket"
 )
 
 const (
