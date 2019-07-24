@@ -191,7 +191,7 @@ func ChainStore(lc fx.Lifecycle, bs blockstore.Blockstore, ds datastore.Batching
 
 func ErrorGenesis() Genesis {
 	return func() (header *chain.BlockHeader, e error) {
-		return nil, xerrors.New("No genesis block provided")
+		return nil, xerrors.New("No genesis block provided, provide the file with 'lotus daemon --genesis=[genesis file]'")
 	}
 }
 
