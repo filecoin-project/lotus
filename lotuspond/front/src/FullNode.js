@@ -6,6 +6,10 @@ const stateConnected = 'connected'
 const stateConnecting = 'connecting'
 const stateGettingToken = 'getting-token'
 
+async function awaitListReducer(prev, c) {
+  return [...await prev, await c]
+}
+
 class FullNode extends React.Component {
   constructor(props) {
     super(props)
@@ -41,7 +45,8 @@ class FullNode extends React.Component {
 
         version: {Version: "~version~"},
         id: "~peerid~",
-        peers: -1
+        peers: -1,
+        balances: []
       }))
 
       const id = await this.state.client.call("Filecoin.ID", [])
@@ -50,7 +55,7 @@ class FullNode extends React.Component {
       this.props.onConnect(client, id)
 
       this.loadInfo()
-      setInterval(this.loadInfo, 1000)
+      setInterval(this.loadInfo, 2050)
     })
 
     console.log(token) // todo: use
@@ -65,6 +70,15 @@ class FullNode extends React.Component {
 
     const tipset = await this.state.client.call("Filecoin.ChainHead", [])
     this.setState(() => ({tipset: tipset}))
+
+    const addrss = await this.state.client.call('Filecoin.WalletList', [])
+
+    const balances = await addrss.map(async addr => {
+      const balance = await this.state.client.call('Filecoin.WalletBalance', [addr])
+      return [addr, balance]
+    }).reduce(awaitListReducer, Promise.resolve([]))
+
+    this.setState(() => ({balances: balances}))
   }
 
   async startMining() {
@@ -89,12 +103,18 @@ class FullNode extends React.Component {
         mine = "Mining"
       }
 
+      let balances = this.state.balances.map(([addr, balance]) => (<div>{addr}: {balance} (ActTyp)</div>))
+
       runtime = (
         <div>
           <div>v{this.state.version.Version}, {this.state.id.substr(-8)}, {this.state.peers} peers</div>
           <div>Repo: LOTUS_PATH={this.props.node.Repo}</div>
           {chainInfo}
           {mine}
+          <div>
+            <div>Balances:</div>
+            <div>{balances}</div>
+          </div>
 
         </div>
       )
@@ -104,10 +124,11 @@ class FullNode extends React.Component {
       <Cristal
         title={"Node " + this.props.node.ID}
         initialPosition={{x: this.props.node.ID*30, y: this.props.node.ID * 30}} >
-
-        <div className="FullNode">
-          <div>{this.props.node.ID} - {this.state.state}</div>
-          {runtime}
+        <div className="CristalScroll">
+          <div className="FullNode">
+            <div>{this.props.node.ID} - {this.state.state}</div>
+            {runtime}
+          </div>
         </div>
       </Cristal>
     )

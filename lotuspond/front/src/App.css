@@ -6,8 +6,14 @@
 
 .FullNode {
   background: #f9be77;
-  margin-bottom: 5px;
-  padding: 5px;
   user-select: text;
   font-family: monospace;
+  min-width: 40em;
+  width: 100%;
+}
+
+.CristalScroll {
+  width: 100%;
+  height: 100%;
+  overflow: auto;
 }
