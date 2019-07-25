@@ -49,7 +49,7 @@ type FullNodeStruct struct {
 		WalletNew            func(context.Context, string) (address.Address, error)                   `perm:"write"`
 		WalletList           func(context.Context) ([]address.Address, error)                         `perm:"write"`
 		WalletBalance        func(context.Context, address.Address) (types.BigInt, error)             `perm:"read"`
-		WalletSign           func(context.Context, address.Address, []byte) (*chain.Signature, error) `perm:"sign"`
+		WalletSign           func(context.Context, address.Address, []byte) (*types.Signature, error) `perm:"sign"`
 		WalletDefaultAddress func(context.Context) (address.Address, error)                           `perm:"write"`
 		MpoolGetNonce        func(context.Context, address.Address) (uint64, error)                   `perm:"read"`
 
@@ -147,7 +147,7 @@ func (c *FullNodeStruct) WalletBalance(ctx context.Context, a address.Address) (
 	return c.Internal.WalletBalance(ctx, a)
 }
 
-func (c *FullNodeStruct) WalletSign(ctx context.Context, k address.Address, msg []byte) (*chain.Signature, error) {
+func (c *FullNodeStruct) WalletSign(ctx context.Context, k address.Address, msg []byte) (*types.Signature, error) {
 	return c.Internal.WalletSign(ctx, k, msg)
 }
 

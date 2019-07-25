@@ -123,7 +123,7 @@ func (a *FullNodeAPI) WalletBalance(ctx context.Context, addr address.Address) (
 	return a.Chain.GetBalance(addr)
 }
 
-func (a *FullNodeAPI) WalletSign(ctx context.Context, k address.Address, msg []byte) (*chain.Signature, error) {
+func (a *FullNodeAPI) WalletSign(ctx context.Context, k address.Address, msg []byte) (*types.Signature, error) {
 	return a.Wallet.Sign(k, msg)
 }
 

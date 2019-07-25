@@ -46,7 +46,7 @@ func MinerCreateBlock(cs *ChainStore, miner address.Address, parents *TipSet, ti
 
 	fmt.Printf("adding %d messages to block...", len(msgs))
 	var msgCids []cid.Cid
-	var blsSigs []Signature
+	var blsSigs []types.Signature
 	var receipts []interface{}
 	for _, msg := range msgs {
 		if msg.Signature.TypeCode() == 2 {
@@ -108,7 +108,7 @@ func MinerCreateBlock(cs *ChainStore, miner address.Address, parents *TipSet, ti
 	return fullBlock, nil
 }
 
-func aggregateSignatures(sigs []Signature) (Signature, error) {
+func aggregateSignatures(sigs []types.Signature) (types.Signature, error) {
 	var blsSigs []bls.Signature
 	for _, s := range sigs {
 		var bsig bls.Signature
@@ -117,8 +117,8 @@ func aggregateSignatures(sigs []Signature) (Signature, error) {
 	}
 
 	aggSig := bls.Aggregate(blsSigs)
-	return Signature{
-		Type: KTBLS,
+	return types.Signature{
+		Type: types.KTBLS,
 		Data: aggSig[:],
 	}, nil
 }

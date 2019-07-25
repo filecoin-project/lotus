@@ -1,7 +1,6 @@
 package chain
 
 import (
-	"encoding/binary"
 	"encoding/json"
 	"fmt"
 
@@ -38,7 +37,7 @@ func init() {
 					return SignedMessage{}, fmt.Errorf("signature in signed message was not bytes")
 				}
 
-				sig, err := SignatureFromBytes(sigb)
+				sig, err := types.SignatureFromBytes(sigb)
 				if err != nil {
 					return SignedMessage{}, err
 				}
@@ -47,18 +46,6 @@ func init() {
 					Message:   x[0].(types.Message),
 					Signature: sig,
 				}, nil
-			})).
-		Complete())
-	cbor.RegisterCborType(atlas.BuildEntry(Signature{}).Transform().
-		TransformMarshal(atlas.MakeMarshalTransformFunc(
-			func(s Signature) ([]byte, error) {
-				buf := make([]byte, 4)
-				n := binary.PutUvarint(buf, uint64(s.TypeCode()))
-				return append(buf[:n], s.Data...), nil
-			})).
-		TransformUnmarshal(atlas.MakeUnmarshalTransformFunc(
-			func(x []byte) (Signature, error) {
-				return SignatureFromBytes(x)
 			})).
 		Complete())
 	cbor.RegisterCborType(atlas.BuildEntry(BlockHeader{}).UseTag(43).Transform().
@@ -140,7 +127,7 @@ type BlockHeader struct {
 
 	Messages cid.Cid
 
-	BLSAggregate Signature
+	BLSAggregate types.Signature
 
 	MessageReceipts cid.Cid
 }
@@ -208,7 +195,7 @@ func (m *SignedMessage) Cid() cid.Cid {
 
 type SignedMessage struct {
 	Message   types.Message
-	Signature Signature
+	Signature types.Signature
 }
 
 func DecodeSignedMessage(data []byte) (*SignedMessage, error) {

@@ -1,8 +1,6 @@
 package chain
 
 import (
-	"encoding/binary"
-	"fmt"
 	"sort"
 	"strings"
 
@@ -17,9 +15,6 @@ import (
 
 const (
 	KNamePrefix = "wallet-"
-
-	KTSecp256k1 = "secp256k1"
-	KTBLS       = "bls"
 )
 
 type Wallet struct {
@@ -36,91 +31,31 @@ func NewWallet(keystore types.KeyStore) (*Wallet, error) {
 	return w, nil
 }
 
-type Signature struct {
-	Type string
-	Data []byte
-}
-
-func SignatureFromBytes(x []byte) (Signature, error) {
-	val, nr := binary.Uvarint(x)
-	if nr != 1 {
-		return Signature{}, fmt.Errorf("signatures with type field longer than one byte are invalid")
-	}
-	var ts string
-	switch val {
-	case 1:
-		ts = KTSecp256k1
-	default:
-		return Signature{}, fmt.Errorf("unsupported signature type: %d", val)
-	}
-
-	return Signature{
-		Type: ts,
-		Data: x[1:],
-	}, nil
-}
-
-func (s *Signature) Verify(addr address.Address, msg []byte) error {
-	b2sum := blake2b.Sum256(msg)
-
-	switch s.Type {
-	case KTSecp256k1:
-		pubk, err := crypto.EcRecover(b2sum[:], s.Data)
-		if err != nil {
-			return err
-		}
-
-		maybeaddr, err := address.NewSecp256k1Address(pubk)
-		if err != nil {
-			return err
-		}
-
-		if addr != maybeaddr {
-			return fmt.Errorf("signature did not match")
-		}
-
-		return nil
-	default:
-		return fmt.Errorf("cannot verify signature of unsupported type: %s", s.Type)
-	}
-}
-
-func (s *Signature) TypeCode() int {
-	switch s.Type {
-	case KTSecp256k1:
-		return 1
-	case KTBLS:
-		return 2
-	default:
-		panic("unsupported signature type")
-	}
-}
-
-func (w *Wallet) Sign(addr address.Address, msg []byte) (*Signature, error) {
+func (w *Wallet) Sign(addr address.Address, msg []byte) (*types.Signature, error) {
 	ki, err := w.findKey(addr)
 	if err != nil {
 		return nil, err
 	}
 
 	switch ki.Type {
-	case KTSecp256k1:
+	case types.KTSecp256k1:
 		b2sum := blake2b.Sum256(msg)
 		sig, err := crypto.Sign(ki.PrivateKey, b2sum[:])
 		if err != nil {
 			return nil, err
 		}
 
-		return &Signature{
-			Type: KTSecp256k1,
+		return &types.Signature{
+			Type: types.KTSecp256k1,
 			Data: sig,
 		}, nil
-	case KTBLS:
+	case types.KTBLS:
 		var pk bls.PrivateKey
 		copy(pk[:], ki.PrivateKey)
 		sig := bls.PrivateKeySign(pk, msg)
 
-		return &Signature{
-			Type: KTBLS,
+		return &types.Signature{
+			Type: types.KTBLS,
 			Data: sig[:],
 		}, nil
 
@@ -180,7 +115,7 @@ func (w *Wallet) ListAddrs() ([]address.Address, error) {
 func (w *Wallet) GenerateKey(typ string) (address.Address, error) {
 	var k *Key
 	switch typ {
-	case KTSecp256k1:
+	case types.KTSecp256k1:
 		priv, err := crypto.GenerateKey()
 		if err != nil {
 			return address.Undef, err
@@ -194,7 +129,7 @@ func (w *Wallet) GenerateKey(typ string) (address.Address, error) {
 		if err != nil {
 			return address.Undef, err
 		}
-	case KTBLS:
+	case types.KTBLS:
 		priv := bls.PrivateKeyGenerate()
 		ki := types.KeyInfo{
 			Type:       typ,
@@ -231,7 +166,7 @@ func NewKey(keyinfo types.KeyInfo) (*Key, error) {
 	}
 
 	switch k.Type {
-	case KTSecp256k1:
+	case types.KTSecp256k1:
 		k.PublicKey = crypto.PublicKey(k.PrivateKey)
 
 		var err error
@@ -240,7 +175,7 @@ func NewKey(keyinfo types.KeyInfo) (*Key, error) {
 			return nil, xerrors.Errorf("converting Secp256k1 to address: %w", err)
 		}
 
-	case KTBLS:
+	case types.KTBLS:
 		var pk bls.PrivateKey
 		copy(pk[:], k.PrivateKey)
 		pub := bls.PrivateKeyPublicKey(pk)
