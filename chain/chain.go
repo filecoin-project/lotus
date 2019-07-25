@@ -315,7 +315,6 @@ func (cs *ChainStore) SetGenesis(b *BlockHeader) error {
 	if err != nil {
 		return err
 	}
-
 	fts := &FullTipSet{
 		Blocks: []*FullBlock{
 			{Header: b},

@@ -1,6 +1,7 @@
 package modules
 
 import (
+	"bytes"
 	"context"
 	"crypto/rand"
 	"io"
@@ -8,10 +9,10 @@ import (
 	"path/filepath"
 
 	"github.com/gbrlsnchs/jwt/v3"
-
 	"github.com/ipfs/go-bitswap"
 	"github.com/ipfs/go-bitswap/network"
 	"github.com/ipfs/go-blockservice"
+	"github.com/ipfs/go-car"
 	"github.com/ipfs/go-datastore"
 	"github.com/ipfs/go-datastore/namespace"
 	"github.com/ipfs/go-filestore"
@@ -37,7 +38,7 @@ import (
 
 var log = logging.Logger("modules")
 
-type Genesis *chain.BlockHeader
+type Genesis func() (*chain.BlockHeader, error)
 
 // RecordValidator provides namesys compatible routing record validator
 func RecordValidator(ps peerstore.Peerstore) record.Validator {
@@ -58,7 +59,20 @@ func Bitswap(mctx helpers.MetricsCtx, lc fx.Lifecycle, host host.Host, rt routin
 }
 
 func SetGenesis(cs *chain.ChainStore, g Genesis) error {
-	return cs.SetGenesis(g)
+	_, err := cs.GetGenesis()
+	if err == nil {
+		return nil // already set, noop
+	}
+	if err != datastore.ErrNotFound {
+		return err
+	}
+
+	genesis, err := g()
+	if err != nil {
+		return err
+	}
+
+	return cs.SetGenesis(genesis)
 }
 
 func LockedRepo(lr repo.LockedRepo) func(lc fx.Lifecycle) repo.LockedRepo {
@@ -175,4 +189,30 @@ func ChainStore(lc fx.Lifecycle, bs blockstore.Blockstore, ds datastore.Batching
 	})
 
 	return chain
+}
+
+func ErrorGenesis() Genesis {
+	return func() (header *chain.BlockHeader, e error) {
+		return nil, xerrors.New("No genesis block provided, provide the file with 'lotus daemon --genesis=[genesis file]'")
+	}
+}
+
+func LoadGenesis(genBytes []byte) func(blockstore.Blockstore) Genesis {
+	return func(bs blockstore.Blockstore) Genesis {
+		return func() (header *chain.BlockHeader, e error) {
+			c, err := car.LoadCar(bs, bytes.NewReader(genBytes))
+			if err != nil {
+				return nil, err
+			}
+			if len(c.Roots) != 1 {
+				return nil, xerrors.New("expected genesis file to have one root")
+			}
+			root, err := bs.Get(c.Roots[0])
+			if err != nil {
+				return &chain.BlockHeader{}, err
+			}
+
+			return chain.DecodeBlock(root.RawData())
+		}
+	}
 }

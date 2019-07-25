@@ -4,13 +4,21 @@ package main
 
 import (
 	"context"
+	"io/ioutil"
 
 	"github.com/filecoin-project/go-lotus/api"
+	"github.com/filecoin-project/go-lotus/node/modules"
+	"github.com/filecoin-project/go-lotus/node/modules/testing"
+
 	"github.com/multiformats/go-multiaddr"
 	"gopkg.in/urfave/cli.v2"
 
 	"github.com/filecoin-project/go-lotus/node"
 	"github.com/filecoin-project/go-lotus/node/repo"
+)
+
+const (
+	makeGenFlag = "lotus-make-random-genesis"
 )
 
 // DaemonCmd is the `go-lotus daemon` command
@@ -21,6 +29,15 @@ var DaemonCmd = &cli.Command{
 		&cli.StringFlag{
 			Name:  "api",
 			Value: "1234",
+		},
+		&cli.StringFlag{
+			Name:   makeGenFlag,
+			Value:  "",
+			Hidden: true,
+		},
+		&cli.StringFlag{
+			Name:  "genesis",
+			Usage: "genesis file to use for first node run",
 		},
 	},
 	Action: func(cctx *cli.Context) error {
@@ -34,12 +51,27 @@ var DaemonCmd = &cli.Command{
 			return err
 		}
 
+		genesis := node.Options()
+		if cctx.String(makeGenFlag) != "" {
+			genesis = node.Override(new(modules.Genesis), testing.MakeGenesis(cctx.String(makeGenFlag)))
+		}
+		if cctx.String("genesis") != "" {
+			genBytes, err := ioutil.ReadFile(cctx.String("genesis"))
+			if err != nil {
+				return err
+			}
+
+			genesis = node.Override(new(modules.Genesis), modules.LoadGenesis(genBytes))
+		}
+
 		var api api.FullNode
 		err = node.New(ctx,
 			node.FullAPI(&api),
 
 			node.Online(),
 			node.Repo(r),
+
+			genesis,
 
 			node.Override(node.SetApiEndpointKey, func(lr repo.LockedRepo) error {
 				apima, err := multiaddr.NewMultiaddr("/ip4/127.0.0.1/tcp/" + cctx.String("api"))
