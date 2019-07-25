@@ -80,7 +80,10 @@ class FullNode extends React.Component {
     this.setState(() => ({tipset: tipset}))
 
     const addrss = await this.state.client.call('Filecoin.WalletList', [])
-    const defaultAddr = await this.state.client.call('Filecoin.WalletDefaultAddress', [])
+    let defaultAddr = ""
+    if (addrss.length > 0) {
+      defaultAddr = await this.state.client.call('Filecoin.WalletDefaultAddress', [])
+    }
 
     const balances = await addrss.map(async addr => {
       let balance = 0

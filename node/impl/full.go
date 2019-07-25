@@ -2,6 +2,7 @@ package impl
 
 import (
 	"context"
+	"golang.org/x/xerrors"
 
 	"github.com/filecoin-project/go-lotus/api"
 	"github.com/filecoin-project/go-lotus/chain"
@@ -131,6 +132,9 @@ func (a *FullNodeAPI) WalletDefaultAddress(ctx context.Context) (address.Address
 	addrs, err := a.Wallet.ListAddrs()
 	if err != nil {
 		return address.Undef, err
+	}
+	if len(addrs) == 0 {
+		return address.Undef, xerrors.New("no addresses in wallet")
 	}
 
 	// TODO: store a default address in the config or 'wallet' portion of the repo
