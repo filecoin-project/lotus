@@ -78,6 +78,7 @@ func (hs *Service) SayHello(ctx context.Context, pid peer.ID) error {
 	if err != nil {
 		return err
 	}
+	defer s.Close()
 
 	hts := hs.cs.GetHeaviestTipSet()
 	weight := hs.cs.Weight(hts)
