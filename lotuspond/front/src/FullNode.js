@@ -1,6 +1,7 @@
 import React from 'react';
 import { Client } from 'rpc-websockets'
 import Cristal from 'react-cristal'
+import { BlockLinks } from "./BlockLink";
 
 const stateConnected = 'connected'
 const stateConnecting = 'connecting'
@@ -109,7 +110,7 @@ class FullNode extends React.Component {
         chainInfo = (
           <div>
             Head: {
-            this.state.tipset.Cids.map(c => <abbr title={c['/']}>{c['/'].substr(-8)}</abbr>)
+            <BlockLinks cids={this.state.tipset.Cids} conn={this.state.client} mountWindow={this.props.mountWindow} />
           } H:{this.state.tipset.Height}
           </div>
         )

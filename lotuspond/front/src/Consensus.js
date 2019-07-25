@@ -1,5 +1,6 @@
 import React from 'react';
 import {Cristal} from "react-cristal";
+import {BlockLinks} from "./BlockLink";
 
 function styleForHDiff(max, act) {
   switch (max - act) {
@@ -53,7 +54,7 @@ class Consensus extends React.Component {
               {this.state.tipsets.map(([k, ts]) => {
                 return (
                   <tr style={styleForHDiff(this.state.maxH, ts.Height)}>
-                    <td>{k}</td><td>{ts.Height}</td><td>{ts.Cids.map(c => <abbr title={c['/']}>{c['/'].substr(-8)}</abbr>)}</td>
+                    <td>{k}</td><td>{ts.Height}</td><td><BlockLinks cids={ts.Cids} conn={this.props.nodes[k].conn} mountWindow={this.props.mountWindow}/></td>
                   </tr>
                 )
               })}
