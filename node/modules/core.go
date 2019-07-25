@@ -1,6 +1,7 @@
 package modules
 
 import (
+	"bytes"
 	"context"
 	"crypto/rand"
 	"io"
@@ -11,6 +12,7 @@ import (
 	"github.com/ipfs/go-bitswap"
 	"github.com/ipfs/go-bitswap/network"
 	"github.com/ipfs/go-blockservice"
+	"github.com/ipfs/go-car"
 	"github.com/ipfs/go-datastore"
 	"github.com/ipfs/go-datastore/namespace"
 	"github.com/ipfs/go-filestore"
@@ -195,10 +197,22 @@ func ErrorGenesis() Genesis {
 	}
 }
 
-func LoadGenesis(genBytes []byte) func() Genesis {
-	return func() Genesis {
+func LoadGenesis(genBytes []byte) func(blockstore.Blockstore) Genesis {
+	return func(bs blockstore.Blockstore) Genesis {
 		return func() (header *chain.BlockHeader, e error) {
-			return chain.DecodeBlock(genBytes)
+			c, err := car.LoadCar(bs, bytes.NewReader(genBytes))
+			if err != nil {
+				return nil, err
+			}
+			if len(c.Roots) != 1 {
+				return nil, xerrors.New("expected genesis file to have one root")
+			}
+			root, err := bs.Get(c.Roots[0])
+			if err != nil {
+				return &chain.BlockHeader{}, err
+			}
+
+			return chain.DecodeBlock(root.RawData())
 		}
 	}
 }

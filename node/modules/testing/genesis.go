@@ -1,11 +1,17 @@
 package testing
 
 import (
+	"context"
 	"io"
 	"os"
 
+	"github.com/ipfs/go-blockservice"
+	"github.com/ipfs/go-car"
+	"github.com/ipfs/go-cid"
 	blockstore "github.com/ipfs/go-ipfs-blockstore"
+	offline "github.com/ipfs/go-ipfs-exchange-offline"
 	logging "github.com/ipfs/go-log"
+	"github.com/ipfs/go-merkledag"
 
 	"github.com/filecoin-project/go-lotus/chain"
 	"github.com/filecoin-project/go-lotus/node/modules"
@@ -21,13 +27,11 @@ func MakeGenesisMem(out io.Writer) func(bs blockstore.Blockstore, w *chain.Walle
 			if err != nil {
 				return nil, err
 			}
+			offl := offline.Exchange(bs)
+			blkserv := blockservice.New(bs, offl)
+			dserv := merkledag.NewDAGService(blkserv)
 
-			genBytes, err := b.Genesis.Serialize()
-			if err != nil {
-				return nil, err
-			}
-
-			if _, err := out.Write(genBytes); err != nil {
+			if err := car.WriteCar(context.TODO(), dserv, []cid.Cid{b.Genesis.Cid()}, out); err != nil {
 				return nil, err
 			}
 
@@ -50,12 +54,11 @@ func MakeGenesis(outFile string) func(bs blockstore.Blockstore, w *chain.Wallet)
 				return nil, err
 			}
 
-			genBytes, err := b.Genesis.Serialize()
-			if err != nil {
-				return nil, err
-			}
+			offl := offline.Exchange(bs)
+			blkserv := blockservice.New(bs, offl)
+			dserv := merkledag.NewDAGService(blkserv)
 
-			if _, err := f.Write(genBytes); err != nil {
+			if err := car.WriteCar(context.TODO(), dserv, []cid.Cid{b.Genesis.Cid()}, f); err != nil {
 				return nil, err
 			}
 
