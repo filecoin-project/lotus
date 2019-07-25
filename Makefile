@@ -49,7 +49,7 @@ build: $(BUILD_DEPS)
 
 pond: build
 	go build -o pond ./lotuspond
-	(cd lotuspond/front && npm run build)
+	(cd lotuspond/front && npm i && npm run build)
 .PHONY: pond
 
 clean:
