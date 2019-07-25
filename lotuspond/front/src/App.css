@@ -17,3 +17,7 @@
   height: 100%;
   overflow: auto;
 }
+
+.Consensus {
+  font-family: monospace;
+}

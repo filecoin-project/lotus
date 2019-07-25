@@ -1,6 +1,7 @@
 import React from 'react';
 import FullNode from "./FullNode";
 import ConnMgr from "./ConnMgr";
+import Consensus from "./Consensus";
 
 class NodeList extends React.Component {
   constructor(props) {
@@ -10,11 +11,13 @@ class NodeList extends React.Component {
       nodes: {},
 
       showConnMgr: false,
+      showConsensus: false,
     }
 
     // This binding is necessary to make `this` work in the callback
     this.spawnNode = this.spawnNode.bind(this)
     this.connMgr = this.connMgr.bind(this)
+    this.consensus = this.consensus.bind(this)
 
     this.getNodes()
   }
@@ -36,10 +39,19 @@ class NodeList extends React.Component {
     this.setState({showConnMgr: true})
   }
 
+  consensus() {
+    this.setState({showConsensus: true})
+  }
+
   render() {
     let connMgr
     if (this.state.showConnMgr) {
       connMgr = (<ConnMgr nodes={this.state.nodes}/>)
+    }
+
+    let consensus
+    if (this.state.showConsensus) {
+      consensus = (<Consensus nodes={this.state.nodes}/>)
     }
 
     return (
@@ -47,6 +59,7 @@ class NodeList extends React.Component {
         <div>
           <button onClick={this.spawnNode} disabled={!this.state.existingLoaded}>Spawn Node</button>
           <button onClick={this.connMgr} disabled={!this.state.existingLoaded && !this.state.showConnMgr}>Connections</button>
+          <button onClick={this.consensus} disabled={!this.state.existingLoaded && !this.state.showConsensus}>Consensus</button>
         </div>
         <div>
           {
@@ -60,6 +73,7 @@ class NodeList extends React.Component {
             })
           }
           {connMgr}
+          {consensus}
         </div>
       </div>
     );

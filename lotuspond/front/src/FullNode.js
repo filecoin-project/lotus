@@ -107,13 +107,17 @@ class FullNode extends React.Component {
       let chainInfo = <div></div>
       if (this.state.tipset !== undefined) {
         chainInfo = (
-          <div>Head: {this.state.tipset.Cids.map(c => c['/'].substr(-8))} H:{this.state.tipset.Height}</div>
+          <div>
+            Head: {
+            this.state.tipset.Cids.map(c => <abbr title={c['/']}>{c['/'].substr(-8)}</abbr>)
+          } H:{this.state.tipset.Height}
+          </div>
         )
       }
 
-      let mine = <a href="#" disabled={this.state.mining} onClick={this.startMining}>Mine</a>
+      let mine = <a href="#" disabled={this.state.mining} onClick={this.startMining}>[Mine]</a>
       if (this.state.mining) {
-        mine = "Mining"
+        mine = "[Mining]"
       }
 
       let balances = this.state.balances.map(([addr, balance]) => {
@@ -126,7 +130,7 @@ class FullNode extends React.Component {
 
       runtime = (
         <div>
-          <div>v{this.state.version.Version}, {this.state.id.substr(-8)}, {this.state.peers} peers</div>
+          <div>v{this.state.version.Version}, <abbr title={this.state.id}>{this.state.id.substr(-8)}</abbr>, {this.state.peers} peers</div>
           <div>Repo: LOTUS_PATH={this.props.node.Repo}</div>
           {chainInfo}
           {mine}
