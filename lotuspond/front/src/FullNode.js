@@ -34,7 +34,7 @@ class FullNode extends React.Component {
     }))
 
     const client = new Client(`ws://127.0.0.1:${this.props.node.ApiPort}/rpc/v0?token=${token}`)
-    client.on('open', () => {
+    client.on('open', async () => {
       this.setState(() => ({
         state: stateConnected,
         client: client,
@@ -44,7 +44,10 @@ class FullNode extends React.Component {
         peers: -1
       }))
 
-      this.props.onConnect(client)
+      const id = await this.state.client.call("Filecoin.ID", [])
+      this.setState(() => ({id: id}))
+
+      this.props.onConnect(client, id)
 
       this.loadInfo()
       setInterval(this.loadInfo, 1000)
@@ -56,9 +59,6 @@ class FullNode extends React.Component {
   async loadInfo() {
     const version = await this.state.client.call("Filecoin.Version", [])
     this.setState(() => ({version: version}))
-
-    const id = await this.state.client.call("Filecoin.ID", [])
-    this.setState(() => ({id: id}))
 
     const peers = await this.state.client.call("Filecoin.NetPeers", [])
     this.setState(() => ({peers: peers.length}))

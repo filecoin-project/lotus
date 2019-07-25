@@ -19,20 +19,19 @@ import (
 const listenAddr = "127.0.0.1:2222"
 
 type runningNode struct {
-	cmd *exec.Cmd
+	cmd  *exec.Cmd
 	meta nodeInfo
 }
 
 type api struct {
-	cmds int32
-	running map[int32]runningNode
+	cmds      int32
+	running   map[int32]runningNode
 	runningLk sync.Mutex
-
 }
 
 type nodeInfo struct {
-	Repo string
-	ID   int32
+	Repo    string
+	ID      int32
 	ApiPort int32
 }
 
@@ -44,7 +43,7 @@ func (api *api) Spawn() (nodeInfo, error) {
 
 	id := atomic.AddInt32(&api.cmds, 1)
 
-	cmd := exec.Command("./lotus", "daemon", "--api", fmt.Sprintf("%d", 2500 + id))
+	cmd := exec.Command("./lotus", "daemon", "--api", fmt.Sprintf("%d", 2500+id))
 	cmd.Stderr = os.Stderr
 	cmd.Stdout = os.Stdout
 	cmd.Env = []string{"LOTUS_PATH=" + dir}
@@ -53,14 +52,14 @@ func (api *api) Spawn() (nodeInfo, error) {
 	}
 
 	info := nodeInfo{
-		Repo: dir,
-		ID: id,
+		Repo:    dir,
+		ID:      id,
 		ApiPort: 2500 + id,
 	}
 
 	api.runningLk.Lock()
 	api.running[id] = runningNode{
-		cmd: cmd,
+		cmd:  cmd,
 		meta: info,
 	}
 	api.runningLk.Unlock()

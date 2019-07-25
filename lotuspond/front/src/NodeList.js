@@ -56,7 +56,7 @@ class NodeList extends React.Component {
               return (<FullNode key={node.ID}
                                 node={{...node}}
                                 pondClient={this.props.client}
-                                onConnect={conn => this.setState(prev => ({nodes: {...prev.nodes, [n]: {...node, conn: conn}}}))}/>)
+                                onConnect={(conn, id) => this.setState(prev => ({nodes: {...prev.nodes, [n]: {...node, conn: conn, peerid: id}}}))}/>)
             })
           }
           {connMgr}

@@ -3,6 +3,8 @@ package api
 import (
 	"context"
 
+	"github.com/libp2p/go-libp2p-core/network"
+
 	"github.com/filecoin-project/go-lotus/chain"
 	"github.com/filecoin-project/go-lotus/chain/address"
 	"github.com/filecoin-project/go-lotus/chain/types"
@@ -19,9 +21,11 @@ type CommonStruct struct {
 		AuthVerify func(ctx context.Context, token string) ([]string, error) `perm:"read"`
 		AuthNew    func(ctx context.Context, perms []string) ([]byte, error) `perm:"admin"`
 
-		NetPeers       func(context.Context) ([]peer.AddrInfo, error) `perm:"read"`
-		NetConnect     func(context.Context, peer.AddrInfo) error     `perm:"write"`
-		NetAddrsListen func(context.Context) (peer.AddrInfo, error)   `perm:"read"`
+		NetConnectedness func(context.Context, peer.ID) (network.Connectedness, error) `perm:"read"`
+		NetPeers         func(context.Context) ([]peer.AddrInfo, error)                `perm:"read"`
+		NetConnect       func(context.Context, peer.AddrInfo) error                    `perm:"write"`
+		NetAddrsListen   func(context.Context) (peer.AddrInfo, error)                  `perm:"read"`
+		NetDisconnect    func(context.Context, peer.ID) error                          `perm:"write"`
 
 		ID      func(context.Context) (peer.ID, error) `perm:"read"`
 		Version func(context.Context) (Version, error) `perm:"read"`
@@ -73,6 +77,10 @@ func (c *CommonStruct) AuthNew(ctx context.Context, perms []string) ([]byte, err
 	return c.Internal.AuthNew(ctx, perms)
 }
 
+func (c *CommonStruct) NetConnectedness(ctx context.Context, pid peer.ID) (network.Connectedness, error) {
+	return c.Internal.NetConnectedness(ctx, pid)
+}
+
 func (c *CommonStruct) NetPeers(ctx context.Context) ([]peer.AddrInfo, error) {
 	return c.Internal.NetPeers(ctx)
 }
@@ -83,6 +91,10 @@ func (c *CommonStruct) NetConnect(ctx context.Context, p peer.AddrInfo) error {
 
 func (c *CommonStruct) NetAddrsListen(ctx context.Context) (peer.AddrInfo, error) {
 	return c.Internal.NetAddrsListen(ctx)
+}
+
+func (c *CommonStruct) NetDisconnect(ctx context.Context, p peer.ID) error {
+	return c.Internal.NetDisconnect(ctx, p)
 }
 
 // ID implements API.ID
