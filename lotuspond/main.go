@@ -27,6 +27,7 @@ type api struct {
 	cmds      int32
 	running   map[int32]runningNode
 	runningLk sync.Mutex
+	genesis   string
 }
 
 type nodeInfo struct {
@@ -41,9 +42,25 @@ func (api *api) Spawn() (nodeInfo, error) {
 		return nodeInfo{}, err
 	}
 
+	genParam := "--genesis=" + api.genesis
 	id := atomic.AddInt32(&api.cmds, 1)
+	if id == 1 {
+		// make genesis
+		genf, err := ioutil.TempFile(os.TempDir(), "lotus-genesis-")
+		if err != nil {
+			return nodeInfo{}, err
+		}
 
-	cmd := exec.Command("./lotus", "daemon", "--api", fmt.Sprintf("%d", 2500+id))
+		api.genesis = genf.Name()
+		genParam = "--lotus-make-random-genesis=" + api.genesis
+
+		if err := genf.Close(); err != nil {
+			return nodeInfo{}, err
+		}
+
+	}
+
+	cmd := exec.Command("./lotus", "daemon", genParam, "--api", fmt.Sprintf("%d", 2500+id))
 	cmd.Stderr = os.Stderr
 	cmd.Stdout = os.Stdout
 	cmd.Env = []string{"LOTUS_PATH=" + dir}
