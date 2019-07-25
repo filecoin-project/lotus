@@ -67,7 +67,7 @@ type client struct {
 	namespace string
 
 	requests chan clientRequest
-	idCtr int64
+	idCtr    int64
 }
 
 // NewMergeClient is like NewClient, but allows to specify multiple structs
@@ -143,7 +143,7 @@ func (c *client) makeOutChan(ctx context.Context, ftyp reflect.Type, valOut int)
 			}
 
 			ch.Send(val.Elem()) // todo: select on ctx is probably a good idea
-			}
+		}
 	}
 
 	return func() reflect.Value { return retVal }, chCtor
@@ -192,12 +192,12 @@ type rpcFunc struct {
 	ftyp reflect.Type
 	name string
 
-	nout int
+	nout   int
 	valOut int
 	errOut int
 
 	hasCtx int
-	retCh bool
+	retCh  bool
 }
 
 func (fn *rpcFunc) processResponse(resp clientResponse, rval reflect.Value) []reflect.Value {
@@ -290,8 +290,8 @@ func (c *client) makeRpcFunc(f reflect.StructField) (reflect.Value, error) {
 
 	fun := &rpcFunc{
 		client: c,
-		ftyp: ftyp,
-		name: f.Name,
+		ftyp:   ftyp,
+		name:   f.Name,
 	}
 	fun.valOut, fun.errOut, fun.nout = processFuncOut(ftyp)
 
