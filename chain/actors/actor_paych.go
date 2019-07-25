@@ -10,6 +10,8 @@ import (
 	cbor "github.com/ipfs/go-ipld-cbor"
 )
 
+const ChannelClosingDelay = 6 * 60 * 2 // six hours
+
 func init() {
 	cbor.RegisterCborType(PaymentChannelActorState{})
 	cbor.RegisterCborType(PCAConstructorParams{})
@@ -46,6 +48,9 @@ type PaymentChannelActorState struct {
 func (pca PaymentChannelActor) Exports() []interface{} {
 	return []interface{}{
 		0: pca.Constructor,
+		1: pca.UpdateChannelState,
+		2: pca.Close,
+		3: pca.Collect,
 	}
 }
 
@@ -107,7 +112,8 @@ func hash(b []byte) []byte {
 func (pca PaymentChannelActor) UpdateChannelState(act *types.Actor, vmctx types.VMContext, params *UpdateChannelState) ([]byte, ActorError) {
 	var self PaymentChannelActorState
 	oldstate := vmctx.Storage().GetHead()
-	if err := vmctx.Storage().Get(oldstate, &self); err != nil {
+	storage := vmctx.Storage()
+	if err := storage.Get(oldstate, &self); err != nil {
 		return nil, err
 	}
 
@@ -191,6 +197,84 @@ func (pca PaymentChannelActor) UpdateChannelState(act *types.Actor, vmctx types.
 		if self.MinCloseHeight < sv.MinCloseHeight {
 			self.MinCloseHeight = sv.MinCloseHeight
 		}
+	}
+
+	ncid, err := storage.Put(self)
+	if err != nil {
+		return nil, err
+	}
+	if err := storage.Commit(oldstate, ncid); err != nil {
+		return nil, err
+	}
+
+	return nil, nil
+}
+
+func (pca PaymentChannelActor) Close(act *types.Actor, vmctx types.VMContext, params struct{}) ([]byte, aerrors.ActorError) {
+	var self PaymentChannelActorState
+	storage := vmctx.Storage()
+	oldstate := storage.GetHead()
+	if err := storage.Get(oldstate, &self); err != nil {
+		return nil, err
+	}
+
+	if vmctx.Message().From != self.From && vmctx.Message().From != self.To {
+		return nil, aerrors.New(1, "not authorized to close channel")
+	}
+
+	if self.ClosingAt != 0 {
+		return nil, aerrors.New(2, "channel already closing")
+	}
+
+	self.ClosingAt = vmctx.BlockHeight() + ChannelClosingDelay
+	if self.ClosingAt < self.MinCloseHeight {
+		self.ClosingAt = self.MinCloseHeight
+	}
+
+	ncid, err := storage.Put(self)
+	if err != nil {
+		return nil, err
+	}
+	if err := storage.Commit(oldstate, ncid); err != nil {
+		return nil, err
+	}
+
+	return nil, nil
+}
+
+func (pca PaymentChannelActor) Collect(act *types.Actor, vmctx types.VMContext, params struct{}) ([]byte, aerrors.ActorError) {
+	var self PaymentChannelActorState
+	storage := vmctx.Storage()
+	oldstate := storage.GetHead()
+	if err := storage.Get(oldstate, &self); err != nil {
+		return nil, err
+	}
+
+	if self.ClosingAt == 0 {
+		return nil, aerrors.New(1, "payment channel not closing or closed")
+	}
+
+	if vmctx.BlockHeight() < self.ClosingAt {
+		return nil, aerrors.New(2, "payment channel not closed yet")
+	}
+	_, err := vmctx.Send(self.From, 0, types.BigSub(self.ChannelTotal, self.ToSend), nil)
+	if err != nil {
+		return nil, err
+	}
+	_, err = vmctx.Send(self.To, 0, self.ToSend, nil)
+	if err != nil {
+		return nil, err
+	}
+
+	self.ChannelTotal = types.NewInt(0)
+	self.ToSend = types.NewInt(0)
+
+	ncid, err := storage.Put(self)
+	if err != nil {
+		return nil, err
+	}
+	if err := storage.Commit(oldstate, ncid); err != nil {
+		return nil, err
 	}
 
 	return nil, nil
