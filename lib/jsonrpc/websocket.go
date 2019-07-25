@@ -19,8 +19,9 @@ const chClose = "xrpc.ch.close"
 
 type frame struct {
 	// common
-	Jsonrpc string `json:"jsonrpc"`
-	ID      *int64 `json:"id,omitempty"`
+	Jsonrpc string            `json:"jsonrpc"`
+	ID      *int64            `json:"id,omitempty"`
+	Meta    map[string]string `json:"meta,omitempty"`
 
 	// request
 	Method string  `json:"method,omitempty"`
@@ -324,6 +325,7 @@ func (c *wsConn) handleCall(ctx context.Context, frame frame) {
 	req := request{
 		Jsonrpc: frame.Jsonrpc,
 		ID:      frame.ID,
+		Meta:    frame.Meta,
 		Method:  frame.Method,
 		Params:  frame.Params,
 	}

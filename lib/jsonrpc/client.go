@@ -2,6 +2,7 @@ package jsonrpc
 
 import (
 	"context"
+	"encoding/base64"
 	"encoding/json"
 	"fmt"
 	"net/http"
@@ -10,6 +11,8 @@ import (
 
 	"github.com/gorilla/websocket"
 	logging "github.com/ipfs/go-log"
+	"go.opencensus.io/trace"
+	"go.opencensus.io/trace/propagation"
 	"golang.org/x/xerrors"
 )
 
@@ -240,8 +243,11 @@ func (fn *rpcFunc) handleRpcCall(args []reflect.Value) (results []reflect.Value)
 	}
 
 	var ctx context.Context
+	var span *trace.Span
 	if fn.hasCtx == 1 {
 		ctx = args[0].Interface().(context.Context)
+		ctx, span = trace.StartSpan(ctx, "api.call")
+		defer span.End()
 	}
 
 	retVal := func() reflect.Value { return reflect.Value{} }
@@ -258,6 +264,16 @@ func (fn *rpcFunc) handleRpcCall(args []reflect.Value) (results []reflect.Value)
 		ID:      &id,
 		Method:  fn.client.namespace + "." + fn.name,
 		Params:  params,
+	}
+
+	if span != nil {
+		span.AddAttributes(trace.StringAttribute("method", req.Method))
+
+		eSC := base64.StdEncoding.EncodeToString(
+			propagation.Binary(span.SpanContext()))
+		req.Meta = map[string]string{
+			"SpanContext": eSC,
+		}
 	}
 
 	resp := fn.client.sendRequest(ctx, req, chCtor)

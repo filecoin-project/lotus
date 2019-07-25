@@ -3,11 +3,14 @@ package jsonrpc
 import (
 	"bytes"
 	"context"
+	"encoding/base64"
 	"encoding/json"
 	"fmt"
 	"io"
 	"reflect"
 
+	"go.opencensus.io/trace"
+	"go.opencensus.io/trace/propagation"
 	"golang.org/x/xerrors"
 )
 
@@ -29,10 +32,11 @@ type handlers map[string]rpcHandler
 // Request / response
 
 type request struct {
-	Jsonrpc string  `json:"jsonrpc"`
-	ID      *int64  `json:"id,omitempty"`
-	Method  string  `json:"method"`
-	Params  []param `json:"params"`
+	Jsonrpc string            `json:"jsonrpc"`
+	ID      *int64            `json:"id,omitempty"`
+	Method  string            `json:"method"`
+	Params  []param           `json:"params"`
+	Meta    map[string]string `json:"meta,omitempty"`
 }
 
 type respError struct {
@@ -123,7 +127,33 @@ func doCall(f reflect.Value, params []reflect.Value) (out []reflect.Value, err e
 	return out, nil
 }
 
+func (handlers) getSpan(ctx context.Context, req request) (context.Context, *trace.Span) {
+	if req.Meta == nil {
+		return ctx, nil
+	}
+	if eSC, ok := req.Meta["SpanContext"]; ok {
+		bSC := make([]byte, base64.StdEncoding.DecodedLen(len(eSC)))
+		_, err := base64.StdEncoding.Decode(bSC, []byte(eSC))
+		if err != nil {
+			log.Errorf("SpanContext: decode", "error", err)
+			return ctx, nil
+		}
+		sc, ok := propagation.FromBinary(bSC)
+		if !ok {
+			log.Errorf("SpanContext: could not create span", "data", bSC)
+			return ctx, nil
+		}
+		ctx, span := trace.StartSpanWithRemoteParent(ctx, "api.handle", sc)
+		span.AddAttributes(trace.StringAttribute("method", req.Method))
+		return ctx, span
+	}
+	return ctx, nil
+}
+
 func (h handlers) handle(ctx context.Context, req request, w func(func(io.Writer)), rpcError rpcErrFunc, done func(keepCtx bool), chOut chanOut) {
+	ctx, span := h.getSpan(ctx, req)
+	defer span.End()
+
 	handler, ok := h[req.Method]
 	if !ok {
 		rpcError(w, &req, rpcMethodNotFound, fmt.Errorf("method '%s' not found", req.Method))
