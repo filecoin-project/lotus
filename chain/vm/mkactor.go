@@ -6,10 +6,26 @@ import (
 
 	"github.com/filecoin-project/go-lotus/chain/actors"
 	"github.com/filecoin-project/go-lotus/chain/address"
-	"github.com/filecoin-project/go-lotus/chain/gen"
 	"github.com/filecoin-project/go-lotus/chain/state"
 	"github.com/filecoin-project/go-lotus/chain/types"
+	"github.com/ipfs/go-cid"
+	dstore "github.com/ipfs/go-datastore"
+	hamt "github.com/ipfs/go-hamt-ipld"
+	bstore "github.com/ipfs/go-ipfs-blockstore"
 )
+
+func init() {
+	bs := bstore.NewBlockstore(dstore.NewMapDatastore())
+	cst := hamt.CSTFromBstore(bs)
+	emptyobject, err := cst.Put(context.TODO(), map[string]string{})
+	if err != nil {
+		panic(err)
+	}
+
+	EmptyObjectCid = emptyobject
+}
+
+var EmptyObjectCid cid.Cid
 
 func TryCreateAccountActor(st *state.StateTree, addr address.Address) (*types.Actor, error) {
 	act, err := makeActor(st, addr)
@@ -62,7 +78,7 @@ func NewSecp256k1AccountActor(st *state.StateTree, addr address.Address) (*types
 	nact := &types.Actor{
 		Code:    actors.AccountActorCodeCid,
 		Balance: types.NewInt(0),
-		Head:    gen.EmptyObjectCid,
+		Head:    EmptyObjectCid,
 	}
 
 	return nact, nil

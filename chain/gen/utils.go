@@ -10,24 +10,10 @@ import (
 	"github.com/filecoin-project/go-lotus/chain/types"
 
 	"github.com/ipfs/go-cid"
-	dstore "github.com/ipfs/go-datastore"
 	hamt "github.com/ipfs/go-hamt-ipld"
 	bstore "github.com/ipfs/go-ipfs-blockstore"
 	sharray "github.com/whyrusleeping/sharray"
 )
-
-func init() {
-	bs := bstore.NewBlockstore(dstore.NewMapDatastore())
-	cst := hamt.CSTFromBstore(bs)
-	emptyobject, err := cst.Put(context.TODO(), map[string]string{})
-	if err != nil {
-		panic(err)
-	}
-
-	EmptyObjectCid = emptyobject
-}
-
-var EmptyObjectCid cid.Cid
 
 type GenesisBootstrap struct {
 	Genesis *types.BlockHeader

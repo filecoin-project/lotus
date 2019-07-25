@@ -1,4 +1,4 @@
-package chain
+package gen
 
 import (
 	"context"
@@ -17,10 +17,6 @@ import (
 	"github.com/filecoin-project/go-lotus/chain/vm"
 )
 
-func miningRewardForBlock(base *types.TipSet) types.BigInt {
-	return types.NewInt(10000)
-}
-
 func MinerCreateBlock(ctx context.Context, cs *store.ChainStore, miner address.Address, parents *types.TipSet, tickets []types.Ticket, proof types.ElectionProof, msgs []*types.SignedMessage) (*types.FullBlock, error) {
 	st, err := cs.TipSetState(parents.Cids())
 	if err != nil {
@@ -35,7 +31,7 @@ func MinerCreateBlock(ctx context.Context, cs *store.ChainStore, miner address.A
 	}
 
 	// apply miner reward
-	if err := vm.TransferFunds(actors.NetworkAddress, miner, miningRewardForBlock(parents)); err != nil {
+	if err := vm.TransferFunds(actors.NetworkAddress, miner, vm.MiningRewardForBlock(parents)); err != nil {
 		return nil, err
 	}
 

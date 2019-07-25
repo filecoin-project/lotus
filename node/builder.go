@@ -26,6 +26,7 @@ import (
 	"github.com/filecoin-project/go-lotus/chain"
 	"github.com/filecoin-project/go-lotus/chain/store"
 	"github.com/filecoin-project/go-lotus/chain/types"
+	"github.com/filecoin-project/go-lotus/chain/wallet"
 	"github.com/filecoin-project/go-lotus/node/config"
 	"github.com/filecoin-project/go-lotus/node/hello"
 	"github.com/filecoin-project/go-lotus/node/impl"
@@ -194,7 +195,7 @@ func Online() Option {
 			// Filecoin services
 			Override(new(*chain.Syncer), chain.NewSyncer),
 			Override(new(*chain.BlockSync), chain.NewBlockSyncClient),
-			Override(new(*chain.Wallet), chain.NewWallet),
+			Override(new(*wallet.Wallet), wallet.NewWallet),
 			Override(new(*chain.MessagePool), chain.NewMessagePool),
 
 			Override(new(modules.Genesis), modules.ErrorGenesis),
