@@ -191,7 +191,7 @@ func (pca PaymentChannelActor) UpdateChannelState(act *types.Actor, vmctx types.
 	self.ToSend = newSendBalance
 
 	if sv.MinCloseHeight != 0 {
-		if self.ClosingAt < sv.MinCloseHeight {
+		if self.ClosingAt != 0 && self.ClosingAt < sv.MinCloseHeight {
 			self.ClosingAt = sv.MinCloseHeight
 		}
 		if self.MinCloseHeight < sv.MinCloseHeight {
