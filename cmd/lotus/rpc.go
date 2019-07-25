@@ -14,7 +14,7 @@ func serveRPC(a api.FullNode, addr string) error {
 
 	ah := &auth.Handler{
 		Verify: a.AuthVerify,
-		Next: rpcServer.ServeHTTP,
+		Next:   rpcServer.ServeHTTP,
 	}
 
 	http.Handle("/rpc/v0", ah)

@@ -76,7 +76,7 @@ var runCmd = &cli.Command{
 
 		ah := &auth.Handler{
 			Verify: minerapi.AuthVerify,
-			Next: rpcServer.ServeHTTP,
+			Next:   rpcServer.ServeHTTP,
 		}
 
 		http.Handle("/rpc/v0", ah)

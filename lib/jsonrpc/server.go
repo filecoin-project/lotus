@@ -42,7 +42,6 @@ func (s *RPCServer) handleWS(ctx context.Context, w http.ResponseWriter, r *http
 		w.Header().Set("Sec-WebSocket-Protocol", r.Header.Get("Sec-WebSocket-Protocol"))
 	}
 
-
 	c, err := upgrader.Upgrade(w, r, nil)
 	if err != nil {
 		log.Error(err)
