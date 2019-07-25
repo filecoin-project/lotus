@@ -7,7 +7,6 @@ import (
 	"golang.org/x/xerrors"
 	"gopkg.in/urfave/cli.v2"
 
-	"github.com/filecoin-project/go-lotus/chain"
 	actors "github.com/filecoin-project/go-lotus/chain/actors"
 	address "github.com/filecoin-project/go-lotus/chain/address"
 	types "github.com/filecoin-project/go-lotus/chain/types"
@@ -94,7 +93,7 @@ var createMinerCmd = &cli.Command{
 			return xerrors.Errorf("failed to sign message: %w", err)
 		}
 
-		smsg := &chain.SignedMessage{
+		smsg := &types.SignedMessage{
 			Message:   msg,
 			Signature: *sig,
 		}

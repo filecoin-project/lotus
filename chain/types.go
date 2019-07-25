@@ -8,10 +8,7 @@ import (
 	"github.com/ipfs/go-cid"
 	cbor "github.com/ipfs/go-ipld-cbor"
 	ipld "github.com/ipfs/go-ipld-format"
-	"github.com/multiformats/go-multihash"
-	"github.com/polydawn/refmt/obj/atlas"
 
-	"github.com/filecoin-project/go-lotus/chain/address"
 	"github.com/filecoin-project/go-lotus/chain/types"
 )
 
@@ -19,205 +16,11 @@ func init() {
 	ipld.Register(0x1f, IpldDecode)
 
 	cbor.RegisterCborType(BlockMsg{})
-
-	///*
-	//*/
-	cbor.RegisterCborType(atlas.BuildEntry(SignedMessage{}).UseTag(45).Transform().
-		TransformMarshal(atlas.MakeMarshalTransformFunc(
-			func(sm SignedMessage) ([]interface{}, error) {
-				return []interface{}{
-					sm.Message,
-					sm.Signature,
-				}, nil
-			})).
-		TransformUnmarshal(atlas.MakeUnmarshalTransformFunc(
-			func(x []interface{}) (SignedMessage, error) {
-				sigb, ok := x[1].([]byte)
-				if !ok {
-					return SignedMessage{}, fmt.Errorf("signature in signed message was not bytes")
-				}
-
-				sig, err := types.SignatureFromBytes(sigb)
-				if err != nil {
-					return SignedMessage{}, err
-				}
-
-				return SignedMessage{
-					Message:   x[0].(types.Message),
-					Signature: sig,
-				}, nil
-			})).
-		Complete())
-	cbor.RegisterCborType(atlas.BuildEntry(BlockHeader{}).UseTag(43).Transform().
-		TransformMarshal(atlas.MakeMarshalTransformFunc(
-			func(blk BlockHeader) ([]interface{}, error) {
-				if blk.Tickets == nil {
-					blk.Tickets = []Ticket{}
-				}
-				if blk.Parents == nil {
-					blk.Parents = []cid.Cid{}
-				}
-				return []interface{}{
-					blk.Miner.Bytes(),
-					blk.Tickets,
-					blk.ElectionProof,
-					blk.Parents,
-					blk.ParentWeight,
-					blk.Height,
-					blk.StateRoot,
-					blk.Messages,
-					blk.MessageReceipts,
-				}, nil
-			})).
-		TransformUnmarshal(atlas.MakeUnmarshalTransformFunc(
-			func(arr []interface{}) (BlockHeader, error) {
-				miner, err := address.NewFromBytes(arr[0].([]byte))
-				if err != nil {
-					return BlockHeader{}, err
-				}
-
-				tickets := []Ticket{}
-				ticketarr, _ := arr[1].([]interface{})
-				for _, t := range ticketarr {
-					tickets = append(tickets, Ticket(t.([]byte)))
-				}
-				electionProof, _ := arr[2].([]byte)
-
-				parents := []cid.Cid{}
-				parentsArr, _ := arr[3].([]interface{})
-				for _, p := range parentsArr {
-					parents = append(parents, p.(cid.Cid))
-				}
-				parentWeight := arr[4].(types.BigInt)
-				height := arr[5].(uint64)
-				stateRoot := arr[6].(cid.Cid)
-
-				msgscid := arr[7].(cid.Cid)
-				recscid := arr[8].(cid.Cid)
-
-				return BlockHeader{
-					Miner:           miner,
-					Tickets:         tickets,
-					ElectionProof:   electionProof,
-					Parents:         parents,
-					ParentWeight:    parentWeight,
-					Height:          height,
-					StateRoot:       stateRoot,
-					Messages:        msgscid,
-					MessageReceipts: recscid,
-				}, nil
-			})).
-		Complete())
-}
-
-type BlockHeader struct {
-	Miner address.Address
-
-	Tickets []Ticket
-
-	ElectionProof []byte
-
-	Parents []cid.Cid
-
-	ParentWeight types.BigInt
-
-	Height uint64
-
-	StateRoot cid.Cid
-
-	Messages cid.Cid
-
-	BLSAggregate types.Signature
-
-	MessageReceipts cid.Cid
-}
-
-func (b *BlockHeader) ToStorageBlock() (block.Block, error) {
-	data, err := b.Serialize()
-	if err != nil {
-		return nil, err
-	}
-
-	pref := cid.NewPrefixV1(0x1f, multihash.BLAKE2B_MIN+31)
-	c, err := pref.Sum(data)
-	if err != nil {
-		return nil, err
-	}
-
-	return block.NewBlockWithCid(data, c)
-}
-
-func (b *BlockHeader) Cid() cid.Cid {
-	sb, err := b.ToStorageBlock()
-	if err != nil {
-		panic(err)
-	}
-
-	return sb.Cid()
-}
-
-func DecodeBlock(b []byte) (*BlockHeader, error) {
-	var blk BlockHeader
-	if err := cbor.DecodeInto(b, &blk); err != nil {
-		return nil, err
-	}
-
-	return &blk, nil
-}
-
-func (blk *BlockHeader) Serialize() ([]byte, error) {
-	return cbor.DumpObject(blk)
-}
-
-func (m *SignedMessage) ToStorageBlock() (block.Block, error) {
-	data, err := m.Serialize()
-	if err != nil {
-		return nil, err
-	}
-
-	pref := cid.NewPrefixV1(0x1f, multihash.BLAKE2B_MIN+31)
-	c, err := pref.Sum(data)
-	if err != nil {
-		return nil, err
-	}
-
-	return block.NewBlockWithCid(data, c)
-}
-
-func (m *SignedMessage) Cid() cid.Cid {
-	sb, err := m.ToStorageBlock()
-	if err != nil {
-		panic(err)
-	}
-
-	return sb.Cid()
-}
-
-type SignedMessage struct {
-	Message   types.Message
-	Signature types.Signature
-}
-
-func DecodeSignedMessage(data []byte) (*SignedMessage, error) {
-	var msg SignedMessage
-	if err := cbor.DecodeInto(data, &msg); err != nil {
-		return nil, err
-	}
-
-	return &msg, nil
-}
-
-func (sm *SignedMessage) Serialize() ([]byte, error) {
-	data, err := cbor.DumpObject(sm)
-	if err != nil {
-		return nil, err
-	}
-	return data, nil
 }
 
 type TipSet struct {
 	cids   []cid.Cid
-	blks   []*BlockHeader
+	blks   []*types.BlockHeader
 	height uint64
 }
 
@@ -225,7 +28,7 @@ type TipSet struct {
 // same names already
 type expTipSet struct {
 	Cids   []cid.Cid
-	Blocks []*BlockHeader
+	Blocks []*types.BlockHeader
 	Height uint64
 }
 
@@ -249,7 +52,7 @@ func (ts *TipSet) UnmarshalJSON(b []byte) error {
 	return nil
 }
 
-func NewTipSet(blks []*BlockHeader) (*TipSet, error) {
+func NewTipSet(blks []*types.BlockHeader) (*TipSet, error) {
 	var ts TipSet
 	ts.cids = []cid.Cid{blks[0].Cid()}
 	ts.blks = blks
@@ -280,7 +83,7 @@ func (ts *TipSet) Parents() []cid.Cid {
 	return ts.blks[0].Parents
 }
 
-func (ts *TipSet) Blocks() []*BlockHeader {
+func (ts *TipSet) Blocks() []*types.BlockHeader {
 	return ts.blks
 }
 
@@ -298,9 +101,6 @@ func (ts *TipSet) Equals(ots *TipSet) bool {
 	return true
 }
 
-type Ticket []byte
-type ElectionProof []byte
-
 func IpldDecode(block block.Block) (ipld.Node, error) {
 	var i interface{}
 	if err := cbor.DecodeInto(block.RawData(), &i); err != nil {
@@ -317,9 +117,9 @@ type filecoinIpldNode struct {
 
 func (f *filecoinIpldNode) Cid() cid.Cid {
 	switch t := f.val.(type) {
-	case BlockHeader:
+	case types.BlockHeader:
 		return t.Cid()
-	case SignedMessage:
+	case types.SignedMessage:
 		return t.Cid()
 	default:
 		panic("whats going on")
@@ -332,7 +132,7 @@ func (f *filecoinIpldNode) Copy() ipld.Node {
 
 func (f *filecoinIpldNode) Links() []*ipld.Link {
 	switch t := f.val.(type) {
-	case BlockHeader:
+	case types.BlockHeader:
 		fmt.Println("block links!", t.StateRoot)
 		return []*ipld.Link{
 			{
@@ -392,13 +192,13 @@ func (f *filecoinIpldNode) Loggable() map[string]interface{} {
 
 func (f *filecoinIpldNode) RawData() []byte {
 	switch t := f.val.(type) {
-	case BlockHeader:
+	case types.BlockHeader:
 		sb, err := t.ToStorageBlock()
 		if err != nil {
 			panic(err)
 		}
 		return sb.RawData()
-	case SignedMessage:
+	case types.SignedMessage:
 		sb, err := t.ToStorageBlock()
 		if err != nil {
 			panic(err)
@@ -413,17 +213,8 @@ func (f *filecoinIpldNode) String() string {
 	return "cats"
 }
 
-type FullBlock struct {
-	Header   *BlockHeader
-	Messages []*SignedMessage
-}
-
-func (fb *FullBlock) Cid() cid.Cid {
-	return fb.Header.Cid()
-}
-
 type BlockMsg struct {
-	Header   *BlockHeader
+	Header   *types.BlockHeader
 	Messages []cid.Cid
 }
 

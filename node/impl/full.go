@@ -55,11 +55,11 @@ func (a *FullNodeAPI) ChainWaitMsg(ctx context.Context, msg cid.Cid) (*api.MsgWa
 	panic("TODO")
 }
 
-func (a *FullNodeAPI) ChainGetBlock(ctx context.Context, msg cid.Cid) (*chain.BlockHeader, error) {
+func (a *FullNodeAPI) ChainGetBlock(ctx context.Context, msg cid.Cid) (*types.BlockHeader, error) {
 	return a.Chain.GetBlock(msg)
 }
 
-func (a *FullNodeAPI) ChainGetBlockMessages(ctx context.Context, msg cid.Cid) ([]*chain.SignedMessage, error) {
+func (a *FullNodeAPI) ChainGetBlockMessages(ctx context.Context, msg cid.Cid) ([]*types.SignedMessage, error) {
 	b, err := a.Chain.GetBlock(msg)
 	if err != nil {
 		return nil, err
@@ -68,13 +68,13 @@ func (a *FullNodeAPI) ChainGetBlockMessages(ctx context.Context, msg cid.Cid) ([
 	return a.Chain.MessagesForBlock(b)
 }
 
-func (a *FullNodeAPI) MpoolPending(ctx context.Context, ts *chain.TipSet) ([]*chain.SignedMessage, error) {
+func (a *FullNodeAPI) MpoolPending(ctx context.Context, ts *chain.TipSet) ([]*types.SignedMessage, error) {
 	// TODO: need to make sure we don't return messages that were already included in the referenced chain
 	// also need to accept ts == nil just fine, assume nil == chain.Head()
 	return a.Mpool.Pending(), nil
 }
 
-func (a *FullNodeAPI) MpoolPush(ctx context.Context, smsg *chain.SignedMessage) error {
+func (a *FullNodeAPI) MpoolPush(ctx context.Context, smsg *types.SignedMessage) error {
 	msgb, err := smsg.Serialize()
 	if err != nil {
 		return err
@@ -96,7 +96,7 @@ func (a *FullNodeAPI) MinerStart(ctx context.Context, addr address.Address) erro
 	return nil
 }
 
-func (a *FullNodeAPI) MinerCreateBlock(ctx context.Context, addr address.Address, parents *chain.TipSet, tickets []chain.Ticket, proof chain.ElectionProof, msgs []*chain.SignedMessage) (*chain.BlockMsg, error) {
+func (a *FullNodeAPI) MinerCreateBlock(ctx context.Context, addr address.Address, parents *chain.TipSet, tickets []types.Ticket, proof types.ElectionProof, msgs []*types.SignedMessage) (*chain.BlockMsg, error) {
 	fblk, err := chain.MinerCreateBlock(a.Chain, addr, parents, tickets, proof, msgs)
 	if err != nil {
 		return nil, err

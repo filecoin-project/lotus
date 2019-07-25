@@ -1,4 +1,4 @@
-package chain
+package state
 
 import (
 	"context"
@@ -6,15 +6,18 @@ import (
 	"github.com/ipfs/go-cid"
 	hamt "github.com/ipfs/go-hamt-ipld"
 	cbor "github.com/ipfs/go-ipld-cbor"
+	logging "github.com/ipfs/go-log"
 
 	"github.com/filecoin-project/go-lotus/chain/actors"
 	"github.com/filecoin-project/go-lotus/chain/address"
 	"github.com/filecoin-project/go-lotus/chain/types"
 )
 
+var log = logging.Logger("statetree")
+
 type StateTree struct {
 	root  *hamt.Node
-	store *hamt.CborIpldStore
+	Store *hamt.CborIpldStore
 
 	actorcache map[address.Address]*types.Actor
 	snapshot   cid.Cid
@@ -23,7 +26,7 @@ type StateTree struct {
 func NewStateTree(cst *hamt.CborIpldStore) (*StateTree, error) {
 	return &StateTree{
 		root:       hamt.NewNode(cst),
-		store:      cst,
+		Store:      cst,
 		actorcache: make(map[address.Address]*types.Actor),
 	}, nil
 }
@@ -37,7 +40,7 @@ func LoadStateTree(cst *hamt.CborIpldStore, c cid.Cid) (*StateTree, error) {
 
 	return &StateTree{
 		root:       nd,
-		store:      cst,
+		Store:      cst,
 		actorcache: make(map[address.Address]*types.Actor),
 	}, nil
 }
@@ -68,11 +71,11 @@ func (st *StateTree) lookupID(addr address.Address) (address.Address, error) {
 	}
 
 	var ias actors.InitActorState
-	if err := st.store.Get(context.TODO(), act.Head, &ias); err != nil {
+	if err := st.Store.Get(context.TODO(), act.Head, &ias); err != nil {
 		return address.Undef, err
 	}
 
-	return ias.Lookup(st.store, addr)
+	return ias.Lookup(st.Store, addr)
 }
 
 func (st *StateTree) GetActor(addr address.Address) (*types.Actor, error) {
@@ -127,7 +130,7 @@ func (st *StateTree) Flush() (cid.Cid, error) {
 		return cid.Undef, err
 	}
 
-	return st.store.Put(context.TODO(), st.root)
+	return st.Store.Put(context.TODO(), st.root)
 }
 
 func (st *StateTree) Snapshot() error {
@@ -144,18 +147,17 @@ func (st *StateTree) RegisterNewAddress(addr address.Address, act *types.Actor) 
 	var out address.Address
 	err := st.MutateActor(actors.InitActorAddress, func(initact *types.Actor) error {
 		var ias actors.InitActorState
-		if err := st.store.Get(context.TODO(), initact.Head, &ias); err != nil {
+		if err := st.Store.Get(context.TODO(), initact.Head, &ias); err != nil {
 			return err
 		}
 
-		fvm := &VMContext{cst: st.store}
-		oaddr, err := ias.AddActor(fvm, addr)
+		oaddr, err := ias.AddActor(st.Store, addr)
 		if err != nil {
 			return err
 		}
 		out = oaddr
 
-		ncid, err := st.store.Put(context.TODO(), &ias)
+		ncid, err := st.Store.Put(context.TODO(), &ias)
 		if err != nil {
 			return err
 		}
@@ -175,7 +177,7 @@ func (st *StateTree) RegisterNewAddress(addr address.Address, act *types.Actor) 
 }
 
 func (st *StateTree) Revert() error {
-	nd, err := hamt.LoadNode(context.Background(), st.store, st.snapshot)
+	nd, err := hamt.LoadNode(context.Background(), st.Store, st.snapshot)
 	if err != nil {
 		return err
 	}

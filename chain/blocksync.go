@@ -11,6 +11,7 @@ import (
 	"github.com/libp2p/go-libp2p-core/host"
 	"github.com/libp2p/go-libp2p-core/protocol"
 
+	"github.com/filecoin-project/go-lotus/chain/types"
 	"github.com/filecoin-project/go-lotus/lib/cborrpc"
 
 	"github.com/ipfs/go-cid"
@@ -65,9 +66,9 @@ type BlockSyncResponse struct {
 }
 
 type BSTipSet struct {
-	Blocks []*BlockHeader
+	Blocks []*types.BlockHeader
 
-	Messages    []*SignedMessage
+	Messages    []*types.SignedMessage
 	MsgIncludes [][]int
 }
 
@@ -153,9 +154,9 @@ func (bss *BlockSyncService) collectChainSegment(start []cid.Cid, length uint64,
 	}
 }
 
-func (bss *BlockSyncService) gatherMessages(ts *TipSet) ([]*SignedMessage, [][]int, error) {
+func (bss *BlockSyncService) gatherMessages(ts *TipSet) ([]*types.SignedMessage, [][]int, error) {
 	msgmap := make(map[cid.Cid]int)
-	var allmsgs []*SignedMessage
+	var allmsgs []*types.SignedMessage
 	var msgincl [][]int
 
 	for _, b := range ts.Blocks() {
@@ -310,7 +311,7 @@ func (bs *BlockSync) GetChainMessages(ctx context.Context, h *TipSet, count uint
 func bstsToFullTipSet(bts *BSTipSet) (*FullTipSet, error) {
 	fts := &FullTipSet{}
 	for i, b := range bts.Blocks {
-		fb := &FullBlock{
+		fb := &types.FullBlock{
 			Header: b,
 		}
 		for _, mi := range bts.MsgIncludes[i] {
@@ -376,13 +377,13 @@ func cidArrsEqual(a, b []cid.Cid) bool {
 	return true
 }
 
-func (bs *BlockSync) GetBlock(ctx context.Context, c cid.Cid) (*BlockHeader, error) {
+func (bs *BlockSync) GetBlock(ctx context.Context, c cid.Cid) (*types.BlockHeader, error) {
 	sb, err := bs.bswap.GetBlock(ctx, c)
 	if err != nil {
 		return nil, err
 	}
 
-	return DecodeBlock(sb.RawData())
+	return types.DecodeBlock(sb.RawData())
 }
 
 func (bs *BlockSync) AddPeer(p peer.ID) {
@@ -391,8 +392,8 @@ func (bs *BlockSync) AddPeer(p peer.ID) {
 	bs.syncPeers[p] = struct{}{}
 }
 
-func (bs *BlockSync) FetchMessagesByCids(cids []cid.Cid) ([]*SignedMessage, error) {
-	out := make([]*SignedMessage, len(cids))
+func (bs *BlockSync) FetchMessagesByCids(cids []cid.Cid) ([]*types.SignedMessage, error) {
+	out := make([]*types.SignedMessage, len(cids))
 
 	resp, err := bs.bswap.GetBlocks(context.TODO(), cids)
 	if err != nil {
@@ -415,7 +416,7 @@ func (bs *BlockSync) FetchMessagesByCids(cids []cid.Cid) ([]*SignedMessage, erro
 				return nil, fmt.Errorf("failed to fetch all messages")
 			}
 
-			sm, err := DecodeSignedMessage(v.RawData())
+			sm, err := types.DecodeSignedMessage(v.RawData())
 			if err != nil {
 				return nil, err
 			}

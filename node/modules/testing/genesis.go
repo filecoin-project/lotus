@@ -14,6 +14,8 @@ import (
 	"github.com/ipfs/go-merkledag"
 
 	"github.com/filecoin-project/go-lotus/chain"
+	"github.com/filecoin-project/go-lotus/chain/gen"
+	"github.com/filecoin-project/go-lotus/chain/types"
 	"github.com/filecoin-project/go-lotus/node/modules"
 )
 
@@ -21,9 +23,10 @@ var glog = logging.Logger("genesis")
 
 func MakeGenesisMem(out io.Writer) func(bs blockstore.Blockstore, w *chain.Wallet) modules.Genesis {
 	return func(bs blockstore.Blockstore, w *chain.Wallet) modules.Genesis {
-		return func() (*chain.BlockHeader, error) {
+		return func() (*types.BlockHeader, error) {
 			glog.Warn("Generating new random genesis block, note that this SHOULD NOT happen unless you are setting up new network")
-			b, err := chain.MakeGenesisBlock(bs, w)
+			// TODO: make an address allocation
+			b, err := gen.MakeGenesisBlock(bs, nil)
 			if err != nil {
 				return nil, err
 			}
@@ -42,9 +45,10 @@ func MakeGenesisMem(out io.Writer) func(bs blockstore.Blockstore, w *chain.Walle
 
 func MakeGenesis(outFile string) func(bs blockstore.Blockstore, w *chain.Wallet) modules.Genesis {
 	return func(bs blockstore.Blockstore, w *chain.Wallet) modules.Genesis {
-		return func() (*chain.BlockHeader, error) {
+		return func() (*types.BlockHeader, error) {
 			glog.Warn("Generating new random genesis block, note that this SHOULD NOT happen unless you are setting up new network")
-			b, err := chain.MakeGenesisBlock(bs, w)
+			// TODO: make an address allocation
+			b, err := gen.MakeGenesisBlock(bs, nil)
 			if err != nil {
 				return nil, err
 			}
