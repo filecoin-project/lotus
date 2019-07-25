@@ -75,7 +75,12 @@ var walletBalance = &cli.Command{
 		}
 		ctx := ReqContext(cctx)
 
-		addr, err := address.NewFromString(cctx.Args().First())
+		var addr address.Address
+		if cctx.Args().First() != "" {
+			addr, err = address.NewFromString(cctx.Args().First())
+		} else {
+			addr, err = api.WalletDefaultAddress(ctx)
+		}
 		if err != nil {
 			return err
 		}
