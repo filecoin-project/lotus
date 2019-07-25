@@ -2,8 +2,7 @@ import React from 'react';
 import Cristal from 'react-cristal'
 
 async function awaitReducer(prev, c) {
-  await prev
-  await c
+  return {...await prev, ...await c}
 }
 
 class ConnMgr extends React.Component {
@@ -19,29 +18,29 @@ class ConnMgr extends React.Component {
     this.state = {conns: {}, lock: true}
 
     this.getActualState()
-    setInterval(this.getActualState, 2000)
+    setInterval(this.getActualState, 500)
   }
 
   async getActualState() {
     const nodes = this.props.nodes
     let keys = Object.keys(nodes)
 
-    await keys.filter((_, i) => i > 0).map(async (kfrom, i) => {
-      await keys.filter((_, j) => i >= j).map(async kto => {
+    const newConns = await keys.filter((_, i) => i > 0).map(async (kfrom, i) => {
+      return await keys.filter((_, j) => i >= j).map(async kto => {
 
         const fromNd = this.props.nodes[kfrom]
         const toNd = this.props.nodes[kto]
 
         const connectedness = await fromNd.conn.call('Filecoin.NetConnectedness', [toNd.peerid])
 
-        this.setState(prev => ({conns: {...prev.conns, [`${kfrom},${kto}`]: connectedness === 1}}))
-      }).reduce(awaitReducer)
-    }).reduce(awaitReducer)
+        return {[`${kfrom},${kto}`]: connectedness === 1}
+      }).reduce(awaitReducer, Promise.resolve({}))
+    }).reduce(awaitReducer, Promise.resolve({}))
 
-    this.setState({lock: false})
+    this.setState({conns: newConns, lock: false})
   }
 
-  async connect(action, from, to) {
+  async connect(action, from, to, noupdate) {
     const fromNd = this.props.nodes[from]
     const toNd = this.props.nodes[to]
 
@@ -53,7 +52,8 @@ class ConnMgr extends React.Component {
       await fromNd.conn.call('Filecoin.NetDisconnect', [toNd.peerid])
     }
 
-    this.setState(prev => ({conns: {...prev.conns, [`${from},${to}`]: action}}))
+    if (!noupdate)
+      this.setState(prev => ({conns: {...prev.conns, [`${from},${to}`]: action}}))
   }
 
   connectAll(discon) {
@@ -63,7 +63,7 @@ class ConnMgr extends React.Component {
 
       keys.filter((_, i) => i > 0).forEach((kfrom, i) => {
         keys.filter((_, j) => i >= j).forEach((kto, i) => {
-          this.connect(!discon, kfrom, kto)
+          this.connect(!discon, kfrom, kto, true)
         })
       })
     }
