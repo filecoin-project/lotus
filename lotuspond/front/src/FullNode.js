@@ -10,6 +10,13 @@ async function awaitListReducer(prev, c) {
   return [...await prev, await c]
 }
 
+function truncAddr(addr) {
+  if (addr.length > 41) {
+    return <abbr title={addr}>{addr.substr(0, 38) + '...'}</abbr>
+  }
+  return addr
+}
+
 class FullNode extends React.Component {
   constructor(props) {
     super(props)
@@ -72,13 +79,19 @@ class FullNode extends React.Component {
     this.setState(() => ({tipset: tipset}))
 
     const addrss = await this.state.client.call('Filecoin.WalletList', [])
+    const defaultAddr = await this.state.client.call('Filecoin.WalletDefaultAddress', [])
 
     const balances = await addrss.map(async addr => {
-      const balance = await this.state.client.call('Filecoin.WalletBalance', [addr])
+      let balance = 0
+      try {
+        balance = await this.state.client.call('Filecoin.WalletBalance', [addr])
+      } catch {
+        balance = -1
+      }
       return [addr, balance]
     }).reduce(awaitListReducer, Promise.resolve([]))
 
-    this.setState(() => ({balances: balances}))
+    this.setState(() => ({balances: balances, defaultAddr: defaultAddr}))
   }
 
   async startMining() {
@@ -103,7 +116,13 @@ class FullNode extends React.Component {
         mine = "Mining"
       }
 
-      let balances = this.state.balances.map(([addr, balance]) => (<div>{addr}: {balance} (ActTyp)</div>))
+      let balances = this.state.balances.map(([addr, balance]) => {
+        let line = <span>{truncAddr(addr)}:&nbsp;{balance}&nbsp;(ActTyp)</span>
+        if (this.state.defaultAddr === addr) {
+          line = <b>{line}</b>
+        }
+        return <div>{line}</div>
+      })
 
       runtime = (
         <div>

@@ -9,11 +9,11 @@
   user-select: text;
   font-family: monospace;
   min-width: 40em;
-  width: 100%;
+  display: inline-block;
 }
 
 .CristalScroll {
-  width: 100%;
+  min-width: 100%;
   height: 100%;
   overflow: auto;
 }
