@@ -14,6 +14,7 @@ import (
 	"github.com/ipfs/go-merkledag"
 
 	"github.com/filecoin-project/go-lotus/chain"
+	"github.com/filecoin-project/go-lotus/chain/address"
 	"github.com/filecoin-project/go-lotus/chain/gen"
 	"github.com/filecoin-project/go-lotus/chain/types"
 	"github.com/filecoin-project/go-lotus/node/modules"
@@ -47,8 +48,16 @@ func MakeGenesis(outFile string) func(bs blockstore.Blockstore, w *chain.Wallet)
 	return func(bs blockstore.Blockstore, w *chain.Wallet) modules.Genesis {
 		return func() (*types.BlockHeader, error) {
 			glog.Warn("Generating new random genesis block, note that this SHOULD NOT happen unless you are setting up new network")
-			// TODO: make an address allocation
-			b, err := gen.MakeGenesisBlock(bs, nil)
+			minerAddr, err := w.GenerateKey(types.KTSecp256k1)
+			if err != nil {
+				return nil, err
+			}
+
+			addrs := map[address.Address]types.BigInt{
+				minerAddr: types.NewInt(50000000),
+			}
+
+			b, err := gen.MakeGenesisBlock(bs, addrs)
 			if err != nil {
 				return nil, err
 			}
