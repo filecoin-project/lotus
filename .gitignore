@@ -1,6 +1,7 @@
 /lotus
 /lotus-storage-miner
 /pond
+/lotuspond/front/node_modules
 **/*.h
 **/*.a
 **/*.pc
