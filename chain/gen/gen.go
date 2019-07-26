@@ -8,8 +8,9 @@ import (
 	"github.com/filecoin-project/go-lotus/chain/types"
 	"github.com/filecoin-project/go-lotus/chain/wallet"
 	"github.com/filecoin-project/go-lotus/node/repo"
+
 	block "github.com/ipfs/go-block-format"
-	cid "github.com/ipfs/go-cid"
+	"github.com/ipfs/go-cid"
 	blockstore "github.com/ipfs/go-ipfs-blockstore"
 	logging "github.com/ipfs/go-log"
 )
@@ -93,6 +94,10 @@ func NewGenerator() (*ChainGen, error) {
 
 	genfb := &types.FullBlock{Header: genb.Genesis}
 
+	if err := cs.SetGenesis(genb.Genesis); err != nil {
+		return nil, err
+	}
+
 	gen := &ChainGen{
 		bs:           bs,
 		cs:           cs,
@@ -128,6 +133,10 @@ func (cg *ChainGen) NextBlock() (*types.FullBlock, error) {
 
 	fblk, err := MinerCreateBlock(context.TODO(), cg.cs, miner, parents, tickets, proof, msgs)
 	if err != nil {
+		return nil, err
+	}
+
+	if err := cg.cs.AddBlock(fblk.Header); err != nil {
 		return nil, err
 	}
 

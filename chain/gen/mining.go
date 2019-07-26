@@ -42,7 +42,7 @@ func MinerCreateBlock(ctx context.Context, cs *store.ChainStore, miner address.A
 		Height:  height,
 	}
 
-	fmt.Printf("adding %d messages to block...", len(msgs))
+	fmt.Printf("adding %d messages to block...\n", len(msgs))
 	var msgCids []cid.Cid
 	var blsSigs []types.Signature
 	var receipts []interface{}

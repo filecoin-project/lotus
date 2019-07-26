@@ -13,7 +13,7 @@ func TestChainGeneration(t *testing.T) {
 	for i := 0; i < 10; i++ {
 		b, err := g.NextBlock()
 		if err != nil {
-			t.Fatal(err)
+			t.Fatalf("error at H:%d, %s", i, err)
 		}
 		if b.Header.Height != uint64(i+1) {
 			t.Fatal("wrong height")
