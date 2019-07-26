@@ -4,3 +4,6 @@
 [submodule "extern/go-bls-sigs"]
 	path = extern/go-bls-sigs
 	url = https://github.com/filecoin-project/go-bls-sigs.git
+[submodule "extern/go-sectorbuilder"]
+	path = extern/go-sectorbuilder
+	url = https://github.com/filecoin-project/go-sectorbuilder

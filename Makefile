@@ -1,7 +1,6 @@
 all: build
 .PHONY: all
 
-BUILD_DEPS+=lib/sectorbuilder/include/sector_builder_ffi.h
 
 # git modules that need to be loaded
 MODULES:=
@@ -22,13 +21,20 @@ MODULES+=$(BLS_PATH)
 BUILD_DEPS+=build/.bls-install
 CLEAN+=build/.bls-install
 
+SECTOR_BUILDER_PATH:=extern/go-sectorbuilder/
+SECTOR_BUILDER_DEPS:=libsector_builder_ffi.a sector_builder_ffi.pc sector_builder_ffi.h
+SECTOR_BUILDER_DEPS:=$(addprefix $(SECTOR_BUILDER_PATH),$(SECTOR_BUILDER_DEPS))
 
-lib/sectorbuilder/include/sector_builder_ffi.h: lib/sectorbuilder lib/sectorbuilder/rust-fil-sector-builder
-	./lib/sectorbuilder/build.sh
+$(SECTOR_BUILDER_DEPS): build/.sector-builder-install ;
+
+build/.sector-builder-install: $(SECTOR_BUILDER_PATH)
+	$(MAKE) -C $(SECTOR_BUILDER_PATH) $(SECTOR_BUILDER_DEPS:$(SECTOR_BUILDER_PATH)%=%)
 	@touch $@
 
-MODULES+=lib/sectorbuilder
-MODULES+=lib/sectorbuilder/rust-fil-sector-builder
+MODULES+=$(SECTOR_BUILDER_PATH)
+BUILD_DEPS+=build/.sector-builder-install
+CLEAN+=build/.sector-builder-install
+
 
 $(MODULES): build/.update-modules ;
 
