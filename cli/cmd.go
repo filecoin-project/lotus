@@ -19,7 +19,8 @@ import (
 var log = logging.Logger("cli")
 
 const (
-	metadataContext = "context"
+	metadataTraceConetxt = "traceContext"
+	metadataContext      = "context"
 )
 
 // ApiConnector returns API instance
@@ -60,7 +61,15 @@ func ReqContext(cctx *cli.Context) context.Context {
 		// it is crash worthy either way
 		return uctx.(context.Context)
 	}
-	ctx, done := context.WithCancel(context.Background())
+	var tCtx context.Context
+
+	if mtCtx, ok := cctx.App.Metadata[metadataTraceConetxt]; ok {
+		tCtx = mtCtx.(context.Context)
+	} else {
+		tCtx = context.Background()
+	}
+
+	ctx, done := context.WithCancel(tCtx)
 	sigChan := make(chan os.Signal, 2)
 	go func() {
 		<-sigChan
