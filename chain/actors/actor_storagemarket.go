@@ -20,16 +20,28 @@ func init() {
 
 type StorageMarketActor struct{}
 
+type smaMethods struct {
+	Constructor         uint64
+	CreateStorageMiner  uint64
+	SlashConsensusFault uint64
+	UpdateStorage       uint64
+	GetTotalStorage     uint64
+	PowerLookup         uint64
+	IsMiner             uint64
+}
+
+var SMAMethods = smaMethods{1, 2, 3, 4, 5, 6, 7}
+
 func (sma StorageMarketActor) Exports() []interface{} {
 	return []interface{}{
-		//0: sma.StorageMarketConstructor,
-		1: sma.CreateStorageMiner,
-		//2: sma.SlashConsensusFault,
-		3: sma.UpdateStorage,
-		4: sma.GetTotalStorage,
-		5: sma.PowerLookup,
-		6: sma.IsMiner,
-		//7: sma.StorageCollateralForSize,
+		//1: sma.StorageMarketConstructor,
+		2: sma.CreateStorageMiner,
+		//3: sma.SlashConsensusFault,
+		4: sma.UpdateStorage,
+		5: sma.GetTotalStorage,
+		6: sma.PowerLookup,
+		7: sma.IsMiner,
+		//8: sma.StorageCollateralForSize,
 	}
 }
 
@@ -60,7 +72,7 @@ func (sma StorageMarketActor) CreateStorageMiner(act *types.Actor, vmctx types.V
 		return nil, err
 	}
 
-	ret, err := vmctx.Send(InitActorAddress, 1, vmctx.Message().Value, encoded)
+	ret, err := vmctx.Send(InitActorAddress, IAMethods.Exec, vmctx.Message().Value, encoded)
 	if err != nil {
 		return nil, err
 	}
@@ -139,7 +151,7 @@ func (sma StorageMarketActor) PowerLookup(act *types.Actor, vmctx types.VMContex
 		return nil, aerrors.New(1, "miner not registered with storage market")
 	}
 
-	ret, err := vmctx.Send(params.Miner, 9, types.NewInt(0), EmptyStructCBOR)
+	ret, err := vmctx.Send(params.Miner, MAMethods.GetPower, types.NewInt(0), EmptyStructCBOR)
 	if err != nil {
 		return nil, aerrors.Wrap(err, "invoke Miner.GetPower")
 	}

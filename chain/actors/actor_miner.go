@@ -89,22 +89,41 @@ type StorageMinerConstructorParams struct {
 	PeerID     peer.ID
 }
 
+type maMethods struct {
+	Constructor          uint64
+	CommitSector         uint64
+	SubmitPost           uint64
+	SlashStorageFault    uint64
+	GetCurrentProvingSet uint64
+	ArbitrateDeal        uint64
+	DePledge             uint64
+	GetOwner             uint64
+	GetWorkerAddr        uint64
+	GetPower             uint64
+	GetPeerID            uint64
+	GetSectorSize        uint64
+	UpdatePeerID         uint64
+	ChangeWorker         uint64
+}
+
+var MAMethods = maMethods{1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14}
+
 func (sma StorageMinerActor) Exports() []interface{} {
 	return []interface{}{
-		0: sma.StorageMinerConstructor,
-		1: sma.CommitSector,
-		//2:  sma.SubmitPost,
-		//3:  sma.SlashStorageFault,
-		//4:  sma.GetCurrentProvingSet,
-		//5:  sma.ArbitrateDeal,
-		//6:  sma.DePledge,
-		//7:  sma.GetOwner,
-		//8:  sma.GetWorkerAddr,
-		9: sma.GetPower,
-		//10: sma.GetPeerID,
-		//11: sma.GetSectorSize,
-		//12: sma.UpdatePeerID,
-		//13: sma.ChangeWorker,
+		1: sma.StorageMinerConstructor,
+		2: sma.CommitSector,
+		//3:  sma.SubmitPost,
+		//4:  sma.SlashStorageFault,
+		//5:  sma.GetCurrentProvingSet,
+		//6:  sma.ArbitrateDeal,
+		//7:  sma.DePledge,
+		//8:  sma.GetOwner,
+		//9:  sma.GetWorkerAddr,
+		10: sma.GetPower,
+		//11: sma.GetPeerID,
+		//12: sma.GetSectorSize,
+		//13: sma.UpdatePeerID,
+		//14: sma.ChangeWorker,
 	}
 }
 

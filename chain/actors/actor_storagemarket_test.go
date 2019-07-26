@@ -22,7 +22,7 @@ func TestStorageMarketCreateMiner(t *testing.T) {
 			M: types.Message{
 				To:       StorageMarketAddress,
 				From:     h.From,
-				Method:   1,
+				Method:   SMAMethods.CreateStorageMiner,
 				GasPrice: types.NewInt(1),
 				GasLimit: types.NewInt(1),
 				Value:    types.NewInt(0),
@@ -55,7 +55,7 @@ func TestStorageMarketCreateMiner(t *testing.T) {
 			M: types.Message{
 				To:       StorageMarketAddress,
 				From:     h.From,
-				Method:   6,
+				Method:   SMAMethods.IsMiner,
 				GasPrice: types.NewInt(1),
 				GasLimit: types.NewInt(1),
 				Value:    types.NewInt(0),
@@ -81,7 +81,7 @@ func TestStorageMarketCreateMiner(t *testing.T) {
 			M: types.Message{
 				To:       StorageMarketAddress,
 				From:     h.From,
-				Method:   5,
+				Method:   SMAMethods.PowerLookup,
 				GasPrice: types.NewInt(1),
 				GasLimit: types.NewInt(1),
 				Value:    types.NewInt(0),

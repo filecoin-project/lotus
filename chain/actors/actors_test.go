@@ -78,7 +78,7 @@ func TestVMInvokeMethod(t *testing.T) {
 	msg := &types.Message{
 		To:       InitActorAddress,
 		From:     from,
-		Method:   1,
+		Method:   IAMethods.Exec,
 		Params:   enc,
 		GasPrice: types.NewInt(1),
 		GasLimit: types.NewInt(1),
@@ -122,7 +122,7 @@ func TestStorageMarketActorCreateMiner(t *testing.T) {
 	msg := &types.Message{
 		To:       StorageMarketAddress,
 		From:     from,
-		Method:   1,
+		Method:   SMAMethods.CreateStorageMiner,
 		Params:   enc,
 		GasPrice: types.NewInt(1),
 		GasLimit: types.NewInt(1),

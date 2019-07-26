@@ -64,7 +64,7 @@ func NewHarness(t *testing.T) *Harness {
 
 	h.cs = store.NewChainStore(h.bs, nil)
 
-	h.vm, err = vm.NewVM(stateroot, 1, maddr, h.cs)
+	h.vm, err = vm.NewVM(stateroot, IAMethods.Exec, maddr, h.cs)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -118,7 +118,7 @@ func TestVMInvokeHarness(t *testing.T) {
 			M: types.Message{
 				To:     InitActorAddress,
 				From:   h.From,
-				Method: 1,
+				Method: IAMethods.Exec,
 				Params: h.DumpObject(
 					&ExecParams{
 						Code: StorageMinerCodeCid,
