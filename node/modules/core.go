@@ -38,7 +38,7 @@ import (
 
 var log = logging.Logger("modules")
 
-type Genesis func() (*chain.BlockHeader, error)
+type Genesis func() (*types.BlockHeader, error)
 
 // RecordValidator provides namesys compatible routing record validator
 func RecordValidator(ps peerstore.Peerstore) record.Validator {
@@ -192,14 +192,14 @@ func ChainStore(lc fx.Lifecycle, bs blockstore.Blockstore, ds datastore.Batching
 }
 
 func ErrorGenesis() Genesis {
-	return func() (header *chain.BlockHeader, e error) {
+	return func() (header *types.BlockHeader, e error) {
 		return nil, xerrors.New("No genesis block provided, provide the file with 'lotus daemon --genesis=[genesis file]'")
 	}
 }
 
 func LoadGenesis(genBytes []byte) func(blockstore.Blockstore) Genesis {
 	return func(bs blockstore.Blockstore) Genesis {
-		return func() (header *chain.BlockHeader, e error) {
+		return func() (header *types.BlockHeader, e error) {
 			c, err := car.LoadCar(bs, bytes.NewReader(genBytes))
 			if err != nil {
 				return nil, err
@@ -209,10 +209,10 @@ func LoadGenesis(genBytes []byte) func(blockstore.Blockstore) Genesis {
 			}
 			root, err := bs.Get(c.Roots[0])
 			if err != nil {
-				return &chain.BlockHeader{}, err
+				return &types.BlockHeader{}, err
 			}
 
-			return chain.DecodeBlock(root.RawData())
+			return types.DecodeBlock(root.RawData())
 		}
 	}
 }

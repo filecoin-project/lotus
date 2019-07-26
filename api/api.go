@@ -68,20 +68,20 @@ type FullNode interface {
 	ChainSubmitBlock(ctx context.Context, blk *chain.BlockMsg) error // TODO: check serialization
 	ChainGetRandomness(context.Context, *chain.TipSet) ([]byte, error)
 	ChainWaitMsg(context.Context, cid.Cid) (*MsgWait, error)
-	ChainGetBlock(context.Context, cid.Cid) (*chain.BlockHeader, error)
-	ChainGetBlockMessages(context.Context, cid.Cid) ([]*chain.SignedMessage, error)
+	ChainGetBlock(context.Context, cid.Cid) (*types.BlockHeader, error)
+	ChainGetBlockMessages(context.Context, cid.Cid) ([]*types.SignedMessage, error)
 
 	// messages
 
-	MpoolPending(context.Context, *chain.TipSet) ([]*chain.SignedMessage, error)
-	MpoolPush(context.Context, *chain.SignedMessage) error
+	MpoolPending(context.Context, *chain.TipSet) ([]*types.SignedMessage, error)
+	MpoolPush(context.Context, *types.SignedMessage) error
 
 	// FullNodeStruct
 
 	// miner
 
 	MinerStart(context.Context, address.Address) error
-	MinerCreateBlock(context.Context, address.Address, *chain.TipSet, []chain.Ticket, chain.ElectionProof, []*chain.SignedMessage) (*chain.BlockMsg, error)
+	MinerCreateBlock(context.Context, address.Address, *chain.TipSet, []types.Ticket, types.ElectionProof, []*types.SignedMessage) (*chain.BlockMsg, error)
 
 	// // UX ?
 

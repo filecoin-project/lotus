@@ -7,6 +7,8 @@ import (
 
 	"github.com/filecoin-project/go-lotus/chain/actors"
 	"github.com/filecoin-project/go-lotus/chain/address"
+	"github.com/filecoin-project/go-lotus/chain/gen"
+	"github.com/filecoin-project/go-lotus/chain/state"
 	"github.com/filecoin-project/go-lotus/chain/types"
 
 	"github.com/ipfs/go-cid"
@@ -53,7 +55,7 @@ func NewSyncer(cs *ChainStore, bsync *BlockSync, self peer.ID) (*Syncer, error) 
 		return nil, err
 	}
 
-	gent, err := NewTipSet([]*BlockHeader{gen})
+	gent, err := NewTipSet([]*types.BlockHeader{gen})
 	if err != nil {
 		return nil, err
 	}
@@ -172,11 +174,11 @@ func (syncer *Syncer) GetPeers() []peer.ID {
 	return out
 }
 
-func (syncer *Syncer) InformNewBlock(from peer.ID, blk *FullBlock) {
+func (syncer *Syncer) InformNewBlock(from peer.ID, blk *types.FullBlock) {
 	// TODO: search for other blocks that could form a tipset with this block
 	// and then send that tipset to InformNewHead
 
-	fts := &FullTipSet{Blocks: []*FullBlock{blk}}
+	fts := &FullTipSet{Blocks: []*types.FullBlock{blk}}
 	syncer.InformNewHead(from, fts)
 }
 
@@ -348,7 +350,7 @@ func copyBlockstore(from, to bstore.Blockstore) error {
 	return nil
 }
 
-func zipTipSetAndMessages(cst *hamt.CborIpldStore, ts *TipSet, messages []*SignedMessage, msgincl [][]int) (*FullTipSet, error) {
+func zipTipSetAndMessages(cst *hamt.CborIpldStore, ts *TipSet, messages []*types.SignedMessage, msgincl [][]int) (*FullTipSet, error) {
 	if len(ts.Blocks()) != len(msgincl) {
 		return nil, fmt.Errorf("msgincl length didnt match tipset size")
 	}
@@ -357,7 +359,7 @@ func zipTipSetAndMessages(cst *hamt.CborIpldStore, ts *TipSet, messages []*Signe
 
 	fts := &FullTipSet{}
 	for bi, b := range ts.Blocks() {
-		var msgs []*SignedMessage
+		var msgs []*types.SignedMessage
 		var msgCids []interface{}
 		for _, m := range msgincl[bi] {
 			msgs = append(msgs, messages[m])
@@ -375,7 +377,7 @@ func zipTipSetAndMessages(cst *hamt.CborIpldStore, ts *TipSet, messages []*Signe
 			return nil, fmt.Errorf("messages didnt match message root in header")
 		}
 
-		fb := &FullBlock{
+		fb := &types.FullBlock{
 			Header:   b,
 			Messages: msgs,
 		}
@@ -451,7 +453,7 @@ func (syncer *Syncer) tryLoadFullTipSet(cids []cid.Cid) (*FullTipSet, error) {
 			return nil, err
 		}
 
-		fb := &FullBlock{
+		fb := &types.FullBlock{
 			Header:   b,
 			Messages: messages,
 		}
@@ -463,12 +465,12 @@ func (syncer *Syncer) tryLoadFullTipSet(cids []cid.Cid) (*FullTipSet, error) {
 
 // FullTipSet is an expanded version of the TipSet that contains all the blocks and messages
 type FullTipSet struct {
-	Blocks []*FullBlock
+	Blocks []*types.FullBlock
 	tipset *TipSet
 	cids   []cid.Cid
 }
 
-func NewFullTipSet(blks []*FullBlock) *FullTipSet {
+func NewFullTipSet(blks []*types.FullBlock) *FullTipSet {
 	return &FullTipSet{
 		Blocks: blks,
 	}
@@ -493,7 +495,7 @@ func (fts *FullTipSet) TipSet() *TipSet {
 		return fts.tipset
 	}
 
-	var headers []*BlockHeader
+	var headers []*types.BlockHeader
 	for _, b := range fts.Blocks {
 		headers = append(headers, b.Header)
 	}
@@ -553,7 +555,7 @@ func (syncer *Syncer) ValidateTipSet(fts *FullTipSet) error {
 	return nil
 }
 
-func (syncer *Syncer) ValidateBlock(b *FullBlock) error {
+func (syncer *Syncer) ValidateBlock(b *types.FullBlock) error {
 	h := b.Header
 	stateroot, err := syncer.store.TipSetState(h.Parents)
 	if err != nil {
@@ -619,7 +621,7 @@ func DepositFunds(act *types.Actor, amt types.BigInt) {
 	act.Balance = types.BigAdd(act.Balance, amt)
 }
 
-func TryCreateAccountActor(st *StateTree, addr address.Address) (*types.Actor, error) {
+func TryCreateAccountActor(st *state.StateTree, addr address.Address) (*types.Actor, error) {
 	act, err := makeActor(st, addr)
 	if err != nil {
 		return nil, err
@@ -633,7 +635,7 @@ func TryCreateAccountActor(st *StateTree, addr address.Address) (*types.Actor, e
 	return act, nil
 }
 
-func makeActor(st *StateTree, addr address.Address) (*types.Actor, error) {
+func makeActor(st *state.StateTree, addr address.Address) (*types.Actor, error) {
 	switch addr.Protocol() {
 	case address.BLS:
 		return NewBLSAccountActor(st, addr)
@@ -648,11 +650,11 @@ func makeActor(st *StateTree, addr address.Address) (*types.Actor, error) {
 	}
 }
 
-func NewBLSAccountActor(st *StateTree, addr address.Address) (*types.Actor, error) {
+func NewBLSAccountActor(st *state.StateTree, addr address.Address) (*types.Actor, error) {
 	var acstate actors.AccountActorState
 	acstate.Address = addr
 
-	c, err := st.store.Put(context.TODO(), acstate)
+	c, err := st.Store.Put(context.TODO(), acstate)
 	if err != nil {
 		return nil, err
 	}
@@ -666,11 +668,11 @@ func NewBLSAccountActor(st *StateTree, addr address.Address) (*types.Actor, erro
 	return nact, nil
 }
 
-func NewSecp256k1AccountActor(st *StateTree, addr address.Address) (*types.Actor, error) {
+func NewSecp256k1AccountActor(st *state.StateTree, addr address.Address) (*types.Actor, error) {
 	nact := &types.Actor{
 		Code:    actors.AccountActorCodeCid,
 		Balance: types.NewInt(0),
-		Head:    EmptyObjectCid,
+		Head:    gen.EmptyObjectCid,
 	}
 
 	return nact, nil

@@ -9,6 +9,7 @@ import (
 
 	chain "github.com/filecoin-project/go-lotus/chain"
 	"github.com/filecoin-project/go-lotus/chain/address"
+	"github.com/filecoin-project/go-lotus/chain/types"
 )
 
 var log = logging.Logger("miner")
@@ -18,7 +19,7 @@ type api interface {
 
 	// returns a set of messages that havent been included in the chain as of
 	// the given tipset
-	MpoolPending(ctx context.Context, base *chain.TipSet) ([]*chain.SignedMessage, error)
+	MpoolPending(ctx context.Context, base *chain.TipSet) ([]*types.SignedMessage, error)
 
 	// Returns the best tipset for the miner to mine on top of.
 	// TODO: Not sure this feels right (including the messages api). Miners
@@ -33,7 +34,7 @@ type api interface {
 	// it seems realllllly annoying to do all the actions necessary to build a
 	// block through the API. so, we just add the block creation to the API
 	// now, all the 'miner' does is check if they win, and call create block
-	MinerCreateBlock(context.Context, address.Address, *chain.TipSet, []chain.Ticket, chain.ElectionProof, []*chain.SignedMessage) (*chain.BlockMsg, error)
+	MinerCreateBlock(context.Context, address.Address, *chain.TipSet, []types.Ticket, types.ElectionProof, []*types.SignedMessage) (*chain.BlockMsg, error)
 }
 
 func NewMiner(api api, addr address.Address) *Miner {
@@ -79,7 +80,7 @@ func (m *Miner) Mine(ctx context.Context) {
 
 type MiningBase struct {
 	ts      *chain.TipSet
-	tickets []chain.Ticket
+	tickets []types.Ticket
 }
 
 func (m *Miner) GetBestMiningCandidate() (*MiningBase, error) {
@@ -129,12 +130,12 @@ func (m *Miner) mineOne(ctx context.Context, base *MiningBase) (*chain.BlockMsg,
 	return b, nil
 }
 
-func (m *Miner) submitNullTicket(base *MiningBase, ticket chain.Ticket) {
+func (m *Miner) submitNullTicket(base *MiningBase, ticket types.Ticket) {
 	base.tickets = append(base.tickets, ticket)
 	m.lastWork = base
 }
 
-func (m *Miner) isWinnerNextRound(base *MiningBase) (bool, chain.ElectionProof, error) {
+func (m *Miner) isWinnerNextRound(base *MiningBase) (bool, types.ElectionProof, error) {
 	r, err := m.api.ChainGetRandomness(context.TODO(), base.ts)
 	if err != nil {
 		return false, nil, err
@@ -145,7 +146,7 @@ func (m *Miner) isWinnerNextRound(base *MiningBase) (bool, chain.ElectionProof, 
 	return true, []byte("election prooooof"), nil
 }
 
-func (m *Miner) scratchTicket(ctx context.Context, base *MiningBase) (chain.Ticket, error) {
+func (m *Miner) scratchTicket(ctx context.Context, base *MiningBase) (types.Ticket, error) {
 	select {
 	case <-ctx.Done():
 		return nil, ctx.Err()
@@ -155,7 +156,7 @@ func (m *Miner) scratchTicket(ctx context.Context, base *MiningBase) (chain.Tick
 	return []byte("this is a ticket"), nil
 }
 
-func (m *Miner) createBlock(base *MiningBase, ticket chain.Ticket, proof chain.ElectionProof) (*chain.BlockMsg, error) {
+func (m *Miner) createBlock(base *MiningBase, ticket types.Ticket, proof types.ElectionProof) (*chain.BlockMsg, error) {
 
 	pending, err := m.api.MpoolPending(context.TODO(), base.ts)
 	if err != nil {
@@ -168,7 +169,7 @@ func (m *Miner) createBlock(base *MiningBase, ticket chain.Ticket, proof chain.E
 	return m.api.MinerCreateBlock(context.TODO(), m.address, base.ts, append(base.tickets, ticket), proof, msgs)
 }
 
-func (m *Miner) selectMessages(msgs []*chain.SignedMessage) []*chain.SignedMessage {
+func (m *Miner) selectMessages(msgs []*types.SignedMessage) []*types.SignedMessage {
 	// TODO: filter and select 'best' message if too many to fit in one block
 	return msgs
 }

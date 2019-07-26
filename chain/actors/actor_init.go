@@ -115,7 +115,7 @@ func (ia InitActor) Exec(act *types.Actor, vmctx types.VMContext, p *ExecParams)
 	//actor.Constructor(p.Params)
 
 	// Store the mapping of address to actor ID.
-	idAddr, nerr := self.AddActor(vmctx, addr)
+	idAddr, nerr := self.AddActor(vmctx.Ipld(), addr)
 	if nerr != nil {
 		return nil, aerrors.Escalate(err, "adding new actor mapping")
 	}
@@ -164,11 +164,11 @@ func IsSingletonActor(code cid.Cid) bool {
 	return code == StorageMarketActorCodeCid || code == InitActorCodeCid
 }
 
-func (ias *InitActorState) AddActor(vmctx types.VMContext, addr address.Address) (address.Address, error) {
+func (ias *InitActorState) AddActor(cst *hamt.CborIpldStore, addr address.Address) (address.Address, error) {
 	nid := ias.NextID
 	ias.NextID++
 
-	amap, err := hamt.LoadNode(context.TODO(), vmctx.Ipld(), ias.AddressMap)
+	amap, err := hamt.LoadNode(context.TODO(), cst, ias.AddressMap)
 	if err != nil {
 		return address.Undef, err
 	}
@@ -181,7 +181,7 @@ func (ias *InitActorState) AddActor(vmctx types.VMContext, addr address.Address)
 		return address.Undef, err
 	}
 
-	ncid, err := vmctx.Ipld().Put(context.TODO(), amap)
+	ncid, err := cst.Put(context.TODO(), amap)
 	if err != nil {
 		return address.Undef, err
 	}

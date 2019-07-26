@@ -8,6 +8,7 @@ import (
 	pubsub "github.com/libp2p/go-libp2p-pubsub"
 
 	"github.com/filecoin-project/go-lotus/chain"
+	"github.com/filecoin-project/go-lotus/chain/types"
 )
 
 var log = logging.Logger("sub")
@@ -33,7 +34,7 @@ func HandleIncomingBlocks(ctx context.Context, bsub *pubsub.Subscription, s *cha
 				return
 			}
 			fmt.Println("inform new block over pubsub")
-			s.InformNewBlock(msg.GetFrom(), &chain.FullBlock{
+			s.InformNewBlock(msg.GetFrom(), &types.FullBlock{
 				Header:   blk.Header,
 				Messages: msgs,
 			})
@@ -49,7 +50,7 @@ func HandleIncomingMessages(ctx context.Context, mpool *chain.MessagePool, msub 
 			continue
 		}
 
-		m, err := chain.DecodeSignedMessage(msg.GetData())
+		m, err := types.DecodeSignedMessage(msg.GetData())
 		if err != nil {
 			log.Errorf("got incorrectly formatted Message: %s", err)
 			continue
