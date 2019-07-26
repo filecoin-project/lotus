@@ -6,9 +6,9 @@ import (
 	"gopkg.in/urfave/cli.v2"
 
 	"github.com/filecoin-project/go-lotus/build"
-	"github.com/filecoin-project/go-lotus/chain"
 	"github.com/filecoin-project/go-lotus/chain/actors"
 	"github.com/filecoin-project/go-lotus/chain/types"
+	"github.com/filecoin-project/go-lotus/chain/wallet"
 	lcli "github.com/filecoin-project/go-lotus/cli"
 	"github.com/filecoin-project/go-lotus/node/repo"
 )
@@ -71,7 +71,7 @@ var initCmd = &cli.Command{
 			return err
 		}
 
-		wallet, err := chain.NewWallet(ks)
+		wallet, err := wallet.NewWallet(ks)
 		if err != nil {
 			return err
 		}

@@ -2,7 +2,6 @@ package gen
 
 import (
 	"context"
-	"fmt"
 
 	bls "github.com/filecoin-project/go-bls-sigs"
 	cid "github.com/ipfs/go-cid"
@@ -25,13 +24,13 @@ func MinerCreateBlock(ctx context.Context, cs *store.ChainStore, miner address.A
 
 	height := parents.Height() + uint64(len(tickets))
 
-	vm, err := vm.NewVM(st, height, miner, cs)
+	vmi, err := vm.NewVM(st, height, miner, cs)
 	if err != nil {
 		return nil, err
 	}
 
 	// apply miner reward
-	if err := vm.TransferFunds(actors.NetworkAddress, miner, vm.MiningRewardForBlock(parents)); err != nil {
+	if err := vmi.TransferFunds(actors.NetworkAddress, miner, vm.MiningRewardForBlock(parents)); err != nil {
 		return nil, err
 	}
 
@@ -42,7 +41,6 @@ func MinerCreateBlock(ctx context.Context, cs *store.ChainStore, miner address.A
 		Height:  height,
 	}
 
-	fmt.Printf("adding %d messages to block...\n", len(msgs))
 	var msgCids []cid.Cid
 	var blsSigs []types.Signature
 	var receipts []interface{}
@@ -59,7 +57,7 @@ func MinerCreateBlock(ctx context.Context, cs *store.ChainStore, miner address.A
 		} else {
 			msgCids = append(msgCids, msg.Cid())
 		}
-		rec, err := vm.ApplyMessage(ctx, &msg.Message)
+		rec, err := vmi.ApplyMessage(ctx, &msg.Message)
 		if err != nil {
 			return nil, errors.Wrap(err, "apply message failure")
 		}
@@ -80,7 +78,7 @@ func MinerCreateBlock(ctx context.Context, cs *store.ChainStore, miner address.A
 	}
 	next.MessageReceipts = rectroot
 
-	stateRoot, err := vm.Flush(context.TODO())
+	stateRoot, err := vmi.Flush(context.TODO())
 	if err != nil {
 		return nil, errors.Wrap(err, "flushing state tree failed")
 	}

@@ -4,13 +4,13 @@ import (
 	"testing"
 )
 
-func TestChainGeneration(t *testing.T) {
+func testGeneration(t testing.TB, n int) {
 	g, err := NewGenerator()
 	if err != nil {
 		t.Fatal(err)
 	}
 
-	for i := 0; i < 10; i++ {
+	for i := 0; i < n; i++ {
 		b, err := g.NextBlock()
 		if err != nil {
 			t.Fatalf("error at H:%d, %s", i, err)
@@ -19,5 +19,12 @@ func TestChainGeneration(t *testing.T) {
 			t.Fatal("wrong height")
 		}
 	}
+}
 
+func TestChainGeneration(t *testing.T) {
+	testGeneration(t, 10)
+}
+
+func BenchmarkChainGeneration(b *testing.B) {
+	testGeneration(b, b.N)
 }
