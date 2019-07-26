@@ -4,6 +4,8 @@ import (
 	"sync"
 
 	"github.com/filecoin-project/go-lotus/chain/address"
+	"github.com/filecoin-project/go-lotus/chain/state"
+	"github.com/filecoin-project/go-lotus/chain/types"
 	hamt "github.com/ipfs/go-hamt-ipld"
 )
 
@@ -16,17 +18,17 @@ type MessagePool struct {
 }
 
 type msgSet struct {
-	msgs       map[uint64]*SignedMessage
+	msgs       map[uint64]*types.SignedMessage
 	startNonce uint64
 }
 
 func newMsgSet() *msgSet {
 	return &msgSet{
-		msgs: make(map[uint64]*SignedMessage),
+		msgs: make(map[uint64]*types.SignedMessage),
 	}
 }
 
-func (ms *msgSet) add(m *SignedMessage) {
+func (ms *msgSet) add(m *types.SignedMessage) {
 	if len(ms.msgs) == 0 || m.Message.Nonce < ms.startNonce {
 		ms.startNonce = m.Message.Nonce
 	}
@@ -43,7 +45,7 @@ func NewMessagePool(cs *ChainStore) *MessagePool {
 	return mp
 }
 
-func (mp *MessagePool) Add(m *SignedMessage) error {
+func (mp *MessagePool) Add(m *types.SignedMessage) error {
 	mp.lk.Lock()
 	defer mp.lk.Unlock()
 
@@ -86,13 +88,13 @@ func (mp *MessagePool) GetNonce(addr address.Address) (uint64, error) {
 
 	head := mp.cs.GetHeaviestTipSet()
 
-	state, err := mp.cs.TipSetState(head.Cids())
+	stc, err := mp.cs.TipSetState(head.Cids())
 	if err != nil {
 		return 0, err
 	}
 
 	cst := hamt.CSTFromBstore(mp.cs.bs)
-	st, err := LoadStateTree(cst, state)
+	st, err := state.LoadStateTree(cst, stc)
 	if err != nil {
 		return 0, err
 	}
@@ -105,7 +107,7 @@ func (mp *MessagePool) GetNonce(addr address.Address) (uint64, error) {
 	return act.Nonce, nil
 }
 
-func (mp *MessagePool) Remove(m *SignedMessage) {
+func (mp *MessagePool) Remove(m *types.SignedMessage) {
 	mp.lk.Lock()
 	defer mp.lk.Unlock()
 
@@ -123,10 +125,10 @@ func (mp *MessagePool) Remove(m *SignedMessage) {
 	}
 }
 
-func (mp *MessagePool) Pending() []*SignedMessage {
+func (mp *MessagePool) Pending() []*types.SignedMessage {
 	mp.lk.Lock()
 	defer mp.lk.Unlock()
-	var out []*SignedMessage
+	var out []*types.SignedMessage
 	for _, mset := range mp.pending {
 		for i := mset.startNonce; true; i++ {
 			m, ok := mset.msgs[i]

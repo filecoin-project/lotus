@@ -6,7 +6,7 @@ import (
 
 	"gopkg.in/urfave/cli.v2"
 
-	"github.com/filecoin-project/go-lotus/chain"
+	types "github.com/filecoin-project/go-lotus/chain/types"
 	cid "github.com/ipfs/go-cid"
 )
 
@@ -87,8 +87,8 @@ var chainGetBlock = &cli.Command{
 		}
 
 		cblock := struct {
-			chain.BlockHeader
-			Messages []*chain.SignedMessage
+			types.BlockHeader
+			Messages []*types.SignedMessage
 		}{}
 
 		cblock.BlockHeader = *blk

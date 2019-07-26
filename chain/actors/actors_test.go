@@ -7,6 +7,7 @@ import (
 	"github.com/filecoin-project/go-lotus/chain"
 	. "github.com/filecoin-project/go-lotus/chain/actors"
 	"github.com/filecoin-project/go-lotus/chain/address"
+	"github.com/filecoin-project/go-lotus/chain/gen"
 	"github.com/filecoin-project/go-lotus/chain/types"
 	dstore "github.com/ipfs/go-datastore"
 	bstore "github.com/ipfs/go-ipfs-blockstore"
@@ -35,7 +36,7 @@ func setupVMTestEnv(t *testing.T) (*chain.VM, []address.Address) {
 		from:  types.NewInt(1000000),
 		maddr: types.NewInt(0),
 	}
-	st, err := chain.MakeInitialStateTree(bs, actors)
+	st, err := gen.MakeInitialStateTree(bs, actors)
 	if err != nil {
 		t.Fatal(err)
 	}

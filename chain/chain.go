@@ -6,8 +6,8 @@ import (
 	"fmt"
 	"sync"
 
-	actors "github.com/filecoin-project/go-lotus/chain/actors"
 	"github.com/filecoin-project/go-lotus/chain/address"
+	"github.com/filecoin-project/go-lotus/chain/state"
 	"github.com/filecoin-project/go-lotus/chain/types"
 
 	"github.com/ipfs/go-cid"
@@ -25,194 +25,6 @@ const ForkLengthThreshold = 20
 var log = logging.Logger("f2")
 
 var chainHeadKey = dstore.NewKey("head")
-
-type GenesisBootstrap struct {
-	Genesis  *BlockHeader
-	MinerKey address.Address
-}
-
-func SetupInitActor(bs bstore.Blockstore, addrs []address.Address) (*types.Actor, error) {
-	var ias actors.InitActorState
-	ias.NextID = 100
-
-	cst := hamt.CSTFromBstore(bs)
-	amap := hamt.NewNode(cst)
-
-	for i, a := range addrs {
-		if err := amap.Set(context.TODO(), string(a.Bytes()), 100+uint64(i)); err != nil {
-			return nil, err
-		}
-	}
-
-	ias.NextID += uint64(len(addrs))
-	if err := amap.Flush(context.TODO()); err != nil {
-		return nil, err
-	}
-	amapcid, err := cst.Put(context.TODO(), amap)
-	if err != nil {
-		return nil, err
-	}
-
-	ias.AddressMap = amapcid
-
-	statecid, err := cst.Put(context.TODO(), &ias)
-	if err != nil {
-		return nil, err
-	}
-
-	act := &types.Actor{
-		Code: actors.InitActorCodeCid,
-		Head: statecid,
-	}
-
-	return act, nil
-}
-
-func init() {
-	bs := bstore.NewBlockstore(dstore.NewMapDatastore())
-	cst := hamt.CSTFromBstore(bs)
-	emptyobject, err := cst.Put(context.TODO(), map[string]string{})
-	if err != nil {
-		panic(err)
-	}
-
-	EmptyObjectCid = emptyobject
-}
-
-var EmptyObjectCid cid.Cid
-
-func MakeInitialStateTree(bs bstore.Blockstore, actmap map[address.Address]types.BigInt) (*StateTree, error) {
-	cst := hamt.CSTFromBstore(bs)
-	state, err := NewStateTree(cst)
-	if err != nil {
-		return nil, err
-	}
-
-	emptyobject, err := cst.Put(context.TODO(), map[string]string{})
-	if err != nil {
-		return nil, err
-	}
-
-	var addrs []address.Address
-	for a := range actmap {
-		addrs = append(addrs, a)
-	}
-
-	initact, err := SetupInitActor(bs, addrs)
-	if err != nil {
-		return nil, err
-	}
-
-	if err := state.SetActor(actors.InitActorAddress, initact); err != nil {
-		return nil, err
-	}
-
-	smact, err := SetupStorageMarketActor(bs)
-	if err != nil {
-		return nil, err
-	}
-
-	if err := state.SetActor(actors.StorageMarketAddress, smact); err != nil {
-		return nil, err
-	}
-
-	err = state.SetActor(actors.NetworkAddress, &types.Actor{
-		Code:    actors.AccountActorCodeCid,
-		Balance: types.NewInt(100000000000),
-		Head:    emptyobject,
-	})
-	if err != nil {
-		return nil, err
-	}
-
-	for a, v := range actmap {
-		err = state.SetActor(a, &types.Actor{
-			Code:    actors.AccountActorCodeCid,
-			Balance: v,
-			Head:    emptyobject,
-		})
-		if err != nil {
-			return nil, err
-		}
-	}
-
-	return state, nil
-}
-
-func SetupStorageMarketActor(bs bstore.Blockstore) (*types.Actor, error) {
-	sms := &actors.StorageMarketState{
-		Miners:       make(map[address.Address]struct{}),
-		TotalStorage: types.NewInt(0),
-	}
-
-	stcid, err := hamt.CSTFromBstore(bs).Put(context.TODO(), sms)
-	if err != nil {
-		return nil, err
-	}
-
-	return &types.Actor{
-		Code:    actors.StorageMarketActorCodeCid,
-		Head:    stcid,
-		Nonce:   0,
-		Balance: types.NewInt(0),
-	}, nil
-}
-
-func MakeGenesisBlock(bs bstore.Blockstore, w *Wallet) (*GenesisBootstrap, error) {
-	fmt.Println("at end of make Genesis block")
-
-	minerAddr, err := w.GenerateKey(types.KTSecp256k1)
-	if err != nil {
-		return nil, err
-	}
-
-	addrs := map[address.Address]types.BigInt{
-		minerAddr: types.NewInt(50000000),
-	}
-
-	state, err := MakeInitialStateTree(bs, addrs)
-	if err != nil {
-		return nil, err
-	}
-
-	stateroot, err := state.Flush()
-	if err != nil {
-		return nil, err
-	}
-
-	cst := hamt.CSTFromBstore(bs)
-	emptyroot, err := sharray.Build(context.TODO(), 4, []interface{}{}, cst)
-	if err != nil {
-		return nil, err
-	}
-	fmt.Println("Empty Genesis root: ", emptyroot)
-
-	b := &BlockHeader{
-		Miner:           actors.InitActorAddress,
-		Tickets:         []Ticket{},
-		ElectionProof:   []byte("the Genesis block"),
-		Parents:         []cid.Cid{},
-		Height:          0,
-		ParentWeight:    types.NewInt(0),
-		StateRoot:       stateroot,
-		Messages:        emptyroot,
-		MessageReceipts: emptyroot,
-	}
-
-	sb, err := b.ToStorageBlock()
-	if err != nil {
-		return nil, err
-	}
-
-	if err := bs.Put(sb); err != nil {
-		return nil, err
-	}
-
-	return &GenesisBootstrap{
-		Genesis:  b,
-		MinerKey: minerAddr,
-	}, nil
-}
 
 type ChainStore struct {
 	bs bstore.Blockstore
@@ -310,13 +122,13 @@ func (cs *ChainStore) SubscribeHeadChanges(f func(rev, app []*TipSet) error) {
 	cs.headChangeNotifs = append(cs.headChangeNotifs, f)
 }
 
-func (cs *ChainStore) SetGenesis(b *BlockHeader) error {
-	gents, err := NewTipSet([]*BlockHeader{b})
+func (cs *ChainStore) SetGenesis(b *types.BlockHeader) error {
+	gents, err := NewTipSet([]*types.BlockHeader{b})
 	if err != nil {
 		return err
 	}
 	fts := &FullTipSet{
-		Blocks: []*FullBlock{
+		Blocks: []*types.FullBlock{
 			{Header: b},
 		},
 	}
@@ -377,17 +189,17 @@ func (cs *ChainStore) Contains(ts *TipSet) (bool, error) {
 	return true, nil
 }
 
-func (cs *ChainStore) GetBlock(c cid.Cid) (*BlockHeader, error) {
+func (cs *ChainStore) GetBlock(c cid.Cid) (*types.BlockHeader, error) {
 	sb, err := cs.bs.Get(c)
 	if err != nil {
 		return nil, err
 	}
 
-	return DecodeBlock(sb.RawData())
+	return types.DecodeBlock(sb.RawData())
 }
 
 func (cs *ChainStore) LoadTipSet(cids []cid.Cid) (*TipSet, error) {
-	var blks []*BlockHeader
+	var blks []*types.BlockHeader
 	for _, c := range cids {
 		b, err := cs.GetBlock(c)
 		if err != nil {
@@ -466,7 +278,7 @@ func (cs *ChainStore) GetHeaviestTipSet() *TipSet {
 	return cs.heaviest
 }
 
-func (cs *ChainStore) persistBlockHeader(b *BlockHeader) error {
+func (cs *ChainStore) persistBlockHeader(b *types.BlockHeader) error {
 	sb, err := b.ToStorageBlock()
 	if err != nil {
 		return err
@@ -475,7 +287,7 @@ func (cs *ChainStore) persistBlockHeader(b *BlockHeader) error {
 	return cs.bs.Put(sb)
 }
 
-func (cs *ChainStore) persistBlock(b *FullBlock) error {
+func (cs *ChainStore) persistBlock(b *types.FullBlock) error {
 	if err := cs.persistBlockHeader(b.Header); err != nil {
 		return err
 	}
@@ -488,7 +300,7 @@ func (cs *ChainStore) persistBlock(b *FullBlock) error {
 	return nil
 }
 
-func (cs *ChainStore) PutMessage(m *SignedMessage) error {
+func (cs *ChainStore) PutMessage(m *types.SignedMessage) error {
 	sb, err := m.ToStorageBlock()
 	if err != nil {
 		return err
@@ -497,18 +309,18 @@ func (cs *ChainStore) PutMessage(m *SignedMessage) error {
 	return cs.bs.Put(sb)
 }
 
-func (cs *ChainStore) AddBlock(b *BlockHeader) error {
+func (cs *ChainStore) AddBlock(b *types.BlockHeader) error {
 	if err := cs.persistBlockHeader(b); err != nil {
 		return err
 	}
 
-	ts, _ := NewTipSet([]*BlockHeader{b})
+	ts, _ := NewTipSet([]*types.BlockHeader{b})
 	cs.maybeTakeHeavierTipSet(ts)
 
 	return nil
 }
 
-func (cs *ChainStore) GetGenesis() (*BlockHeader, error) {
+func (cs *ChainStore) GetGenesis() (*types.BlockHeader, error) {
 	data, err := cs.ds.Get(dstore.NewKey("0"))
 	if err != nil {
 		return nil, err
@@ -524,7 +336,7 @@ func (cs *ChainStore) GetGenesis() (*BlockHeader, error) {
 		return nil, err
 	}
 
-	return DecodeBlock(genb.RawData())
+	return types.DecodeBlock(genb.RawData())
 }
 
 func (cs *ChainStore) TipSetState(cids []cid.Cid) (cid.Cid, error) {
@@ -542,16 +354,16 @@ func (cs *ChainStore) TipSetState(cids []cid.Cid) (cid.Cid, error) {
 
 }
 
-func (cs *ChainStore) GetMessage(c cid.Cid) (*SignedMessage, error) {
+func (cs *ChainStore) GetMessage(c cid.Cid) (*types.SignedMessage, error) {
 	sb, err := cs.bs.Get(c)
 	if err != nil {
 		return nil, err
 	}
 
-	return DecodeSignedMessage(sb.RawData())
+	return types.DecodeSignedMessage(sb.RawData())
 }
 
-func (cs *ChainStore) MessageCidsForBlock(b *BlockHeader) ([]cid.Cid, error) {
+func (cs *ChainStore) MessageCidsForBlock(b *types.BlockHeader) ([]cid.Cid, error) {
 	cst := hamt.CSTFromBstore(cs.bs)
 	shar, err := sharray.Load(context.TODO(), b.Messages, 4, cst)
 	if err != nil {
@@ -575,7 +387,7 @@ func (cs *ChainStore) MessageCidsForBlock(b *BlockHeader) ([]cid.Cid, error) {
 	return cids, nil
 }
 
-func (cs *ChainStore) MessagesForBlock(b *BlockHeader) ([]*SignedMessage, error) {
+func (cs *ChainStore) MessagesForBlock(b *types.BlockHeader) ([]*types.SignedMessage, error) {
 	cids, err := cs.MessageCidsForBlock(b)
 	if err != nil {
 		return nil, err
@@ -584,7 +396,7 @@ func (cs *ChainStore) MessagesForBlock(b *BlockHeader) ([]*SignedMessage, error)
 	return cs.LoadMessagesFromCids(cids)
 }
 
-func (cs *ChainStore) GetReceipt(b *BlockHeader, i int) (*types.MessageReceipt, error) {
+func (cs *ChainStore) GetReceipt(b *types.BlockHeader, i int) (*types.MessageReceipt, error) {
 	cst := hamt.CSTFromBstore(cs.bs)
 	shar, err := sharray.Load(context.TODO(), b.MessageReceipts, 4, cst)
 	if err != nil {
@@ -609,8 +421,8 @@ func (cs *ChainStore) GetReceipt(b *BlockHeader, i int) (*types.MessageReceipt, 
 	return &r, nil
 }
 
-func (cs *ChainStore) LoadMessagesFromCids(cids []cid.Cid) ([]*SignedMessage, error) {
-	msgs := make([]*SignedMessage, 0, len(cids))
+func (cs *ChainStore) LoadMessagesFromCids(cids []cid.Cid) ([]*types.SignedMessage, error) {
+	msgs := make([]*types.SignedMessage, 0, len(cids))
 	for _, c := range cids {
 		m, err := cs.GetMessage(c)
 		if err != nil {
@@ -631,7 +443,7 @@ func (cs *ChainStore) GetBalance(addr address.Address) (types.BigInt, error) {
 	}
 
 	cst := hamt.CSTFromBstore(cs.bs)
-	state, err := LoadStateTree(cst, stcid)
+	state, err := state.LoadStateTree(cst, stcid)
 	if err != nil {
 		return types.BigInt{}, err
 	}
@@ -692,7 +504,7 @@ func (cs *ChainStore) tipsetContainsMsg(ts *TipSet, msg cid.Cid) (cid.Cid, *type
 	return cid.Undef, nil, nil
 }
 
-func (cs *ChainStore) blockContainsMsg(blk *BlockHeader, msg cid.Cid) (*types.MessageReceipt, error) {
+func (cs *ChainStore) blockContainsMsg(blk *types.BlockHeader, msg cid.Cid) (*types.MessageReceipt, error) {
 	msgs, err := cs.MessageCidsForBlock(blk)
 	if err != nil {
 		return nil, err

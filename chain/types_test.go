@@ -11,7 +11,7 @@ import (
 func TestSignedMessageJsonRoundtrip(t *testing.T) {
 	to, _ := address.NewIDAddress(5234623)
 	from, _ := address.NewIDAddress(603911192)
-	smsg := &SignedMessage{
+	smsg := &types.SignedMessage{
 		Message: types.Message{
 			To:       to,
 			From:     from,
@@ -29,7 +29,7 @@ func TestSignedMessageJsonRoundtrip(t *testing.T) {
 		t.Fatal(err)
 	}
 
-	var osmsg SignedMessage
+	var osmsg types.SignedMessage
 	if err := json.Unmarshal(out, &osmsg); err != nil {
 		t.Fatal(err)
 	}

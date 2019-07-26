@@ -7,6 +7,7 @@ import (
 	"github.com/filecoin-project/go-lotus/chain/actors"
 	"github.com/filecoin-project/go-lotus/chain/actors/aerrors"
 	"github.com/filecoin-project/go-lotus/chain/address"
+	"github.com/filecoin-project/go-lotus/chain/state"
 	"github.com/filecoin-project/go-lotus/chain/types"
 	"github.com/filecoin-project/go-lotus/lib/bufbstore"
 
@@ -20,7 +21,7 @@ import (
 
 type VMContext struct {
 	vm     *VM
-	state  *StateTree
+	state  *state.StateTree
 	msg    *types.Message
 	height uint64
 	cst    *hamt.CborIpldStore
@@ -152,7 +153,7 @@ func (vm *VM) makeVMContext(sroot cid.Cid, origin address.Address, msg *types.Me
 }
 
 type VM struct {
-	cstate      *StateTree
+	cstate      *state.StateTree
 	base        cid.Cid
 	cs          *ChainStore
 	buf         *bufbstore.BufferedBS
@@ -164,7 +165,7 @@ type VM struct {
 func NewVM(base cid.Cid, height uint64, maddr address.Address, cs *ChainStore) (*VM, error) {
 	buf := bufbstore.NewBufferedBstore(cs.bs)
 	cst := hamt.CSTFromBstore(buf)
-	state, err := LoadStateTree(cst, base)
+	state, err := state.LoadStateTree(cst, base)
 	if err != nil {
 		return nil, err
 	}

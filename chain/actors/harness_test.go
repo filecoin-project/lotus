@@ -5,9 +5,11 @@ import (
 	"testing"
 
 	. "github.com/filecoin-project/go-lotus/chain/actors"
+	"github.com/filecoin-project/go-lotus/chain/gen"
 
 	"github.com/filecoin-project/go-lotus/chain"
 	"github.com/filecoin-project/go-lotus/chain/address"
+	"github.com/filecoin-project/go-lotus/chain/state"
 	"github.com/filecoin-project/go-lotus/chain/types"
 
 	dstore "github.com/ipfs/go-datastore"
@@ -49,7 +51,7 @@ func NewHarness(t *testing.T) *Harness {
 		maddr: types.NewInt(0),
 		third: types.NewInt(1000),
 	}
-	st, err := chain.MakeInitialStateTree(h.bs, actors)
+	st, err := gen.MakeInitialStateTree(h.bs, actors)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -71,7 +73,7 @@ func NewHarness(t *testing.T) *Harness {
 	return h
 }
 
-func (h *Harness) Execute() *chain.StateTree {
+func (h *Harness) Execute() *state.StateTree {
 	for i, step := range h.Steps {
 		h.currStep = i
 		ret, err := h.vm.ApplyMessage(&step.M)
@@ -87,7 +89,7 @@ func (h *Harness) Execute() *chain.StateTree {
 		h.t.Fatalf("%+v", err)
 	}
 	cst := hamt.CSTFromBstore(h.bs)
-	state, err := chain.LoadStateTree(cst, stateroot)
+	state, err := state.LoadStateTree(cst, stateroot)
 	if err != nil {
 		h.t.Fatal(err)
 	}

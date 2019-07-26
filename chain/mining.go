@@ -19,7 +19,7 @@ func miningRewardForBlock(base *TipSet) types.BigInt {
 	return types.NewInt(10000)
 }
 
-func MinerCreateBlock(cs *ChainStore, miner address.Address, parents *TipSet, tickets []Ticket, proof ElectionProof, msgs []*SignedMessage) (*FullBlock, error) {
+func MinerCreateBlock(cs *ChainStore, miner address.Address, parents *TipSet, tickets []types.Ticket, proof types.ElectionProof, msgs []*types.SignedMessage) (*types.FullBlock, error) {
 	st, err := cs.TipSetState(parents.Cids())
 	if err != nil {
 		return nil, errors.Wrap(err, "failed to load tipset state")
@@ -37,7 +37,7 @@ func MinerCreateBlock(cs *ChainStore, miner address.Address, parents *TipSet, ti
 		return nil, err
 	}
 
-	next := &BlockHeader{
+	next := &types.BlockHeader{
 		Miner:   miner,
 		Parents: parents.Cids(),
 		Tickets: tickets,
@@ -100,7 +100,7 @@ func MinerCreateBlock(cs *ChainStore, miner address.Address, parents *TipSet, ti
 	pweight := cs.Weight(parents)
 	next.ParentWeight = types.NewInt(pweight)
 
-	fullBlock := &FullBlock{
+	fullBlock := &types.FullBlock{
 		Header:   next,
 		Messages: msgs,
 	}
