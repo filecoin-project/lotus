@@ -21,7 +21,7 @@ func miningRewardForBlock(base *types.TipSet) types.BigInt {
 	return types.NewInt(10000)
 }
 
-func MinerCreateBlock(cs *store.ChainStore, miner address.Address, parents *types.TipSet, tickets []types.Ticket, proof types.ElectionProof, msgs []*types.SignedMessage) (*types.FullBlock, error) {
+func MinerCreateBlock(ctx context.Context, cs *store.ChainStore, miner address.Address, parents *types.TipSet, tickets []types.Ticket, proof types.ElectionProof, msgs []*types.SignedMessage) (*types.FullBlock, error) {
 	st, err := cs.TipSetState(parents.Cids())
 	if err != nil {
 		return nil, errors.Wrap(err, "failed to load tipset state")
@@ -63,7 +63,7 @@ func MinerCreateBlock(cs *store.ChainStore, miner address.Address, parents *type
 		} else {
 			msgCids = append(msgCids, msg.Cid())
 		}
-		rec, err := vm.ApplyMessage(&msg.Message)
+		rec, err := vm.ApplyMessage(ctx, &msg.Message)
 		if err != nil {
 			return nil, errors.Wrap(err, "apply message failure")
 		}

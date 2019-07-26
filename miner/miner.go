@@ -6,6 +6,7 @@ import (
 
 	logging "github.com/ipfs/go-log"
 	"github.com/pkg/errors"
+	"go.opencensus.io/trace"
 
 	chain "github.com/filecoin-project/go-lotus/chain"
 	"github.com/filecoin-project/go-lotus/chain/address"
@@ -57,6 +58,8 @@ type Miner struct {
 }
 
 func (m *Miner) Mine(ctx context.Context) {
+	ctx, span := trace.StartSpan(ctx, "/mine")
+	defer span.End()
 	for {
 		base, err := m.GetBestMiningCandidate()
 		if err != nil {

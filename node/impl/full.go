@@ -100,7 +100,7 @@ func (a *FullNodeAPI) MinerStart(ctx context.Context, addr address.Address) erro
 }
 
 func (a *FullNodeAPI) MinerCreateBlock(ctx context.Context, addr address.Address, parents *types.TipSet, tickets []types.Ticket, proof types.ElectionProof, msgs []*types.SignedMessage) (*chain.BlockMsg, error) {
-	fblk, err := chain.MinerCreateBlock(a.Chain, addr, parents, tickets, proof, msgs)
+	fblk, err := chain.MinerCreateBlock(ctx, a.Chain, addr, parents, tickets, proof, msgs)
 	if err != nil {
 		return nil, err
 	}

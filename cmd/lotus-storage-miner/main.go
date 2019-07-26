@@ -4,10 +4,12 @@ import (
 	"os"
 
 	logging "github.com/ipfs/go-log"
+	"go.opencensus.io/trace"
 	"gopkg.in/urfave/cli.v2"
 
 	"github.com/filecoin-project/go-lotus/build"
 	lcli "github.com/filecoin-project/go-lotus/cli"
+	"github.com/filecoin-project/go-lotus/tracing"
 )
 
 var log = logging.Logger("main")
@@ -19,6 +21,26 @@ func main() {
 	local := []*cli.Command{
 		runCmd,
 		initCmd,
+	}
+	jaeger := tracing.SetupJaegerTracing("lotus")
+	defer func() {
+		if jaeger != nil {
+			jaeger.Flush()
+		}
+	}()
+
+	for _, cmd := range local {
+		cmd := cmd
+		originBefore := cmd.Before
+		cmd.Before = func(cctx *cli.Context) error {
+			trace.UnregisterExporter(jaeger)
+			jaeger = tracing.SetupJaegerTracing("lotus/" + cmd.Name)
+
+			if originBefore != nil {
+				return originBefore(cctx)
+			}
+			return nil
+		}
 	}
 
 	app := &cli.App{

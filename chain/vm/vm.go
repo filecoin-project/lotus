@@ -11,16 +11,22 @@ import (
 	"github.com/filecoin-project/go-lotus/chain/store"
 	"github.com/filecoin-project/go-lotus/chain/types"
 	"github.com/filecoin-project/go-lotus/lib/bufbstore"
+	"go.opencensus.io/trace"
 
 	bserv "github.com/ipfs/go-blockservice"
 	cid "github.com/ipfs/go-cid"
 	hamt "github.com/ipfs/go-hamt-ipld"
 	ipld "github.com/ipfs/go-ipld-format"
+	logging "github.com/ipfs/go-log"
 	dag "github.com/ipfs/go-merkledag"
 	"golang.org/x/xerrors"
 )
 
+var log = logging.Logger("vm")
+
 type VMContext struct {
+	ctx context.Context
+
 	vm     *VM
 	state  *state.StateTree
 	msg    *types.Message
@@ -88,6 +94,15 @@ func (vmc *VMContext) Origin() address.Address {
 
 // Send allows the current execution context to invoke methods on other actors in the system
 func (vmc *VMContext) Send(to address.Address, method uint64, value types.BigInt, params []byte) ([]byte, aerrors.ActorError) {
+	ctx, span := trace.StartSpan(vmc.ctx, "vm.send")
+	defer span.End()
+	if span.IsRecordingEvents() {
+		span.AddAttributes(
+			trace.StringAttribute("to", to.String()),
+			trace.Int64Attribute("method", int64(method)),
+			trace.StringAttribute("value", value.String()),
+		)
+	}
 
 	msg := &types.Message{
 		From:   vmc.msg.To,
@@ -102,7 +117,7 @@ func (vmc *VMContext) Send(to address.Address, method uint64, value types.BigInt
 		return nil, aerrors.Absorb(err, 2, "could not find actor for Send")
 	}
 
-	nvmctx := vmc.vm.makeVMContext(toAct.Head, vmc.origin, msg)
+	nvmctx := vmc.vm.makeVMContext(ctx, toAct.Head, vmc.origin, msg)
 
 	res, aerr := vmc.vm.Invoke(toAct, nvmctx, method, params)
 	if aerr != nil {
@@ -135,9 +150,10 @@ func (vmctx *VMContext) VerifySignature(sig types.Signature, act address.Address
 	panic("NYI")
 }
 
-func (vm *VM) makeVMContext(sroot cid.Cid, origin address.Address, msg *types.Message) *VMContext {
+func (vm *VM) makeVMContext(ctx context.Context, sroot cid.Cid, origin address.Address, msg *types.Message) *VMContext {
 
 	return &VMContext{
+		ctx:    ctx,
 		vm:     vm,
 		state:  vm.cstate,
 		sroot:  sroot,
@@ -183,7 +199,10 @@ func NewVM(base cid.Cid, height uint64, maddr address.Address, cs *store.ChainSt
 	}, nil
 }
 
-func (vm *VM) ApplyMessage(msg *types.Message) (*types.MessageReceipt, error) {
+func (vm *VM) ApplyMessage(ctx context.Context, msg *types.Message) (*types.MessageReceipt, error) {
+	ctx, span := trace.StartSpan(ctx, "vm.ApplyMessage")
+	defer span.End()
+
 	st := vm.cstate
 	st.Snapshot()
 	fromActor, err := st.GetActor(msg.From)
@@ -220,7 +239,7 @@ func (vm *VM) ApplyMessage(msg *types.Message) (*types.MessageReceipt, error) {
 	}
 	DepositFunds(toActor, msg.Value)
 
-	vmctx := vm.makeVMContext(toActor.Head, msg.From, msg)
+	vmctx := vm.makeVMContext(ctx, toActor.Head, msg.From, msg)
 
 	var errcode byte
 	var ret []byte
@@ -336,6 +355,13 @@ func (vm *VM) TransferFunds(from, to address.Address, amt types.BigInt) error {
 }
 
 func (vm *VM) Invoke(act *types.Actor, vmctx *VMContext, method uint64, params []byte) ([]byte, aerrors.ActorError) {
+	ctx, span := trace.StartSpan(vmctx.ctx, "vm.Invoke")
+	defer span.End()
+	var oldCtx context.Context
+	oldCtx, vmctx.ctx = vmctx.ctx, ctx
+	defer func() {
+		vmctx.ctx = oldCtx
+	}()
 	ret, err := vm.inv.Invoke(act, vmctx, method, params)
 	if err != nil {
 		return nil, err
