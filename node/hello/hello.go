@@ -12,6 +12,7 @@ import (
 	"github.com/libp2p/go-libp2p-core/peer"
 
 	"github.com/filecoin-project/go-lotus/chain"
+	"github.com/filecoin-project/go-lotus/chain/store"
 	"github.com/filecoin-project/go-lotus/lib/cborrpc"
 )
 
@@ -32,11 +33,11 @@ type Message struct {
 type Service struct {
 	newStream chain.NewStreamFunc
 
-	cs     *chain.ChainStore
+	cs     *store.ChainStore
 	syncer *chain.Syncer
 }
 
-func NewHelloService(h host.Host, cs *chain.ChainStore, syncer *chain.Syncer) *Service {
+func NewHelloService(h host.Host, cs *store.ChainStore, syncer *chain.Syncer) *Service {
 	return &Service{
 		newStream: h.NewStream,
 

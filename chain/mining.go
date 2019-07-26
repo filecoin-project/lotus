@@ -12,14 +12,16 @@ import (
 
 	"github.com/filecoin-project/go-lotus/chain/actors"
 	"github.com/filecoin-project/go-lotus/chain/address"
+	"github.com/filecoin-project/go-lotus/chain/store"
 	"github.com/filecoin-project/go-lotus/chain/types"
+	"github.com/filecoin-project/go-lotus/chain/vm"
 )
 
-func miningRewardForBlock(base *TipSet) types.BigInt {
+func miningRewardForBlock(base *types.TipSet) types.BigInt {
 	return types.NewInt(10000)
 }
 
-func MinerCreateBlock(cs *ChainStore, miner address.Address, parents *TipSet, tickets []types.Ticket, proof types.ElectionProof, msgs []*types.SignedMessage) (*types.FullBlock, error) {
+func MinerCreateBlock(cs *store.ChainStore, miner address.Address, parents *types.TipSet, tickets []types.Ticket, proof types.ElectionProof, msgs []*types.SignedMessage) (*types.FullBlock, error) {
 	st, err := cs.TipSetState(parents.Cids())
 	if err != nil {
 		return nil, errors.Wrap(err, "failed to load tipset state")
@@ -27,7 +29,7 @@ func MinerCreateBlock(cs *ChainStore, miner address.Address, parents *TipSet, ti
 
 	height := parents.Height() + uint64(len(tickets))
 
-	vm, err := NewVM(st, height, miner, cs)
+	vm, err := vm.NewVM(st, height, miner, cs)
 	if err != nil {
 		return nil, err
 	}
@@ -52,15 +54,12 @@ func MinerCreateBlock(cs *ChainStore, miner address.Address, parents *TipSet, ti
 		if msg.Signature.TypeCode() == 2 {
 			blsSigs = append(blsSigs, msg.Signature)
 
-			blk, err := msg.Message.ToStorageBlock()
+			c, err := cs.PutMessage(&msg.Message)
 			if err != nil {
 				return nil, err
 			}
-			if err := cs.bs.Put(blk); err != nil {
-				return nil, err
-			}
 
-			msgCids = append(msgCids, blk.Cid())
+			msgCids = append(msgCids, c)
 		} else {
 			msgCids = append(msgCids, msg.Cid())
 		}
@@ -72,7 +71,7 @@ func MinerCreateBlock(cs *ChainStore, miner address.Address, parents *TipSet, ti
 		receipts = append(receipts, rec)
 	}
 
-	cst := hamt.CSTFromBstore(cs.bs)
+	cst := hamt.CSTFromBstore(cs.Blockstore())
 	msgroot, err := sharray.Build(context.TODO(), 4, toIfArr(msgCids), cst)
 	if err != nil {
 		return nil, err

@@ -6,29 +6,33 @@ import (
 	"sync"
 
 	"github.com/filecoin-project/go-lotus/chain/actors"
-	"github.com/filecoin-project/go-lotus/chain/address"
-	"github.com/filecoin-project/go-lotus/chain/gen"
-	"github.com/filecoin-project/go-lotus/chain/state"
+	"github.com/filecoin-project/go-lotus/chain/store"
 	"github.com/filecoin-project/go-lotus/chain/types"
+	"github.com/filecoin-project/go-lotus/chain/vm"
 
 	"github.com/ipfs/go-cid"
 	dstore "github.com/ipfs/go-datastore"
 	"github.com/ipfs/go-hamt-ipld"
 	bstore "github.com/ipfs/go-ipfs-blockstore"
+	logging "github.com/ipfs/go-log"
 	peer "github.com/libp2p/go-libp2p-core/peer"
 	"github.com/pkg/errors"
 	"github.com/whyrusleeping/sharray"
 )
 
+const ForkLengthThreshold = 20
+
+var log = logging.Logger("chain")
+
 type Syncer struct {
 	// The heaviest known tipset in the network.
-	head *TipSet
+	head *types.TipSet
 
 	// The interface for accessing and putting tipsets into local storage
-	store *ChainStore
+	store *store.ChainStore
 
 	// The known Genesis tipset
-	Genesis *TipSet
+	Genesis *types.TipSet
 
 	// the current mode the syncer is in
 	syncMode SyncMode
@@ -45,17 +49,17 @@ type Syncer struct {
 
 	// peer heads
 	// Note: clear cache on disconnects
-	peerHeads   map[peer.ID]*TipSet
+	peerHeads   map[peer.ID]*types.TipSet
 	peerHeadsLk sync.Mutex
 }
 
-func NewSyncer(cs *ChainStore, bsync *BlockSync, self peer.ID) (*Syncer, error) {
+func NewSyncer(cs *store.ChainStore, bsync *BlockSync, self peer.ID) (*Syncer, error) {
 	gen, err := cs.GetGenesis()
 	if err != nil {
 		return nil, err
 	}
 
-	gent, err := NewTipSet([]*types.BlockHeader{gen})
+	gent, err := types.NewTipSet([]*types.BlockHeader{gen})
 	if err != nil {
 		return nil, err
 	}
@@ -64,7 +68,7 @@ func NewSyncer(cs *ChainStore, bsync *BlockSync, self peer.ID) (*Syncer, error) 
 		syncMode:  Bootstrap,
 		Genesis:   gent,
 		Bsync:     bsync,
-		peerHeads: make(map[peer.ID]*TipSet),
+		peerHeads: make(map[peer.ID]*types.TipSet),
 		head:      cs.GetHeaviestTipSet(),
 		store:     cs,
 		self:      self,
@@ -84,13 +88,13 @@ type BadTipSetCache struct {
 }
 
 type BlockSet struct {
-	tset map[uint64]*TipSet
-	head *TipSet
+	tset map[uint64]*types.TipSet
+	head *types.TipSet
 }
 
-func (bs *BlockSet) Insert(ts *TipSet) {
+func (bs *BlockSet) Insert(ts *types.TipSet) {
 	if bs.tset == nil {
-		bs.tset = make(map[uint64]*TipSet)
+		bs.tset = make(map[uint64]*types.TipSet)
 	}
 
 	if bs.head == nil || ts.Height() > bs.head.Height() {
@@ -99,14 +103,14 @@ func (bs *BlockSet) Insert(ts *TipSet) {
 	bs.tset[ts.Height()] = ts
 }
 
-func (bs *BlockSet) GetByHeight(h uint64) *TipSet {
+func (bs *BlockSet) GetByHeight(h uint64) *types.TipSet {
 	return bs.tset[h]
 }
 
-func (bs *BlockSet) PersistTo(cs *ChainStore) error {
+func (bs *BlockSet) PersistTo(cs *store.ChainStore) error {
 	for _, ts := range bs.tset {
 		for _, b := range ts.Blocks() {
-			if err := cs.persistBlockHeader(b); err != nil {
+			if err := cs.PersistBlockHeader(b); err != nil {
 				return err
 			}
 		}
@@ -114,7 +118,7 @@ func (bs *BlockSet) PersistTo(cs *ChainStore) error {
 	return nil
 }
 
-func (bs *BlockSet) Head() *TipSet {
+func (bs *BlockSet) Head() *types.TipSet {
 	return bs.head
 }
 
@@ -123,7 +127,7 @@ const BootstrapPeerThreshold = 1
 // InformNewHead informs the syncer about a new potential tipset
 // This should be called when connecting to new peers, and additionally
 // when receiving new blocks from the network
-func (syncer *Syncer) InformNewHead(from peer.ID, fts *FullTipSet) {
+func (syncer *Syncer) InformNewHead(from peer.ID, fts *store.FullTipSet) {
 	if fts == nil {
 		panic("bad")
 	}
@@ -178,7 +182,7 @@ func (syncer *Syncer) InformNewBlock(from peer.ID, blk *types.FullBlock) {
 	// TODO: search for other blocks that could form a tipset with this block
 	// and then send that tipset to InformNewHead
 
-	fts := &FullTipSet{Blocks: []*types.FullBlock{blk}}
+	fts := &store.FullTipSet{Blocks: []*types.FullBlock{blk}}
 	syncer.InformNewHead(from, fts)
 }
 
@@ -200,7 +204,7 @@ func (syncer *Syncer) SyncBootstrap() {
 		return
 	}
 
-	blockSet := []*TipSet{selectedHead}
+	blockSet := []*types.TipSet{selectedHead}
 	cur := selectedHead.Cids()
 
 	// If, for some reason, we have a suffix of the chain locally, handle that here
@@ -255,7 +259,7 @@ func (syncer *Syncer) SyncBootstrap() {
 
 	for _, ts := range blockSet {
 		for _, b := range ts.Blocks() {
-			if err := syncer.store.persistBlockHeader(b); err != nil {
+			if err := syncer.store.PersistBlockHeader(b); err != nil {
 				log.Errorf("failed to persist synced blocks to the chainstore: %s", err)
 				return
 			}
@@ -309,7 +313,7 @@ func (syncer *Syncer) SyncBootstrap() {
 			}
 		}
 
-		if err := copyBlockstore(bs, syncer.store.bs); err != nil {
+		if err := copyBlockstore(bs, syncer.store.Blockstore()); err != nil {
 			log.Errorf("failed to persist temp blocks: %s", err)
 			return
 		}
@@ -317,13 +321,13 @@ func (syncer *Syncer) SyncBootstrap() {
 
 	head := blockSet[len(blockSet)-1]
 	log.Errorf("Finished syncing! new head: %s", head.Cids())
-	syncer.store.maybeTakeHeavierTipSet(selectedHead)
+	syncer.store.MaybeTakeHeavierTipSet(selectedHead)
 	syncer.head = head
 	syncer.syncMode = CaughtUp
 }
 
-func reverse(tips []*TipSet) []*TipSet {
-	out := make([]*TipSet, len(tips))
+func reverse(tips []*types.TipSet) []*types.TipSet {
+	out := make([]*types.TipSet, len(tips))
 	for i := 0; i < len(tips); i++ {
 		out[i] = tips[len(tips)-(i+1)]
 	}
@@ -350,14 +354,14 @@ func copyBlockstore(from, to bstore.Blockstore) error {
 	return nil
 }
 
-func zipTipSetAndMessages(cst *hamt.CborIpldStore, ts *TipSet, messages []*types.SignedMessage, msgincl [][]int) (*FullTipSet, error) {
+func zipTipSetAndMessages(cst *hamt.CborIpldStore, ts *types.TipSet, messages []*types.SignedMessage, msgincl [][]int) (*store.FullTipSet, error) {
 	if len(ts.Blocks()) != len(msgincl) {
 		return nil, fmt.Errorf("msgincl length didnt match tipset size")
 	}
 	fmt.Println("zipping messages: ", msgincl)
 	fmt.Println("into block: ", ts.Blocks()[0].Height)
 
-	fts := &FullTipSet{}
+	fts := &store.FullTipSet{}
 	for bi, b := range ts.Blocks() {
 		var msgs []*types.SignedMessage
 		var msgCids []interface{}
@@ -388,8 +392,8 @@ func zipTipSetAndMessages(cst *hamt.CborIpldStore, ts *TipSet, messages []*types
 	return fts, nil
 }
 
-func (syncer *Syncer) selectHead(heads map[peer.ID]*TipSet) (*TipSet, error) {
-	var headsArr []*TipSet
+func (syncer *Syncer) selectHead(heads map[peer.ID]*types.TipSet) (*types.TipSet, error) {
+	var headsArr []*types.TipSet
 	for _, ts := range heads {
 		headsArr = append(headsArr, ts)
 	}
@@ -432,7 +436,7 @@ func (syncer *Syncer) selectHead(heads map[peer.ID]*TipSet) (*TipSet, error) {
 	return sel, nil
 }
 
-func (syncer *Syncer) FetchTipSet(ctx context.Context, p peer.ID, cids []cid.Cid) (*FullTipSet, error) {
+func (syncer *Syncer) FetchTipSet(ctx context.Context, p peer.ID, cids []cid.Cid) (*store.FullTipSet, error) {
 	if fts, err := syncer.tryLoadFullTipSet(cids); err == nil {
 		return fts, nil
 	}
@@ -440,13 +444,13 @@ func (syncer *Syncer) FetchTipSet(ctx context.Context, p peer.ID, cids []cid.Cid
 	return syncer.Bsync.GetFullTipSet(ctx, p, cids)
 }
 
-func (syncer *Syncer) tryLoadFullTipSet(cids []cid.Cid) (*FullTipSet, error) {
+func (syncer *Syncer) tryLoadFullTipSet(cids []cid.Cid) (*store.FullTipSet, error) {
 	ts, err := syncer.store.LoadTipSet(cids)
 	if err != nil {
 		return nil, err
 	}
 
-	fts := &FullTipSet{}
+	fts := &store.FullTipSet{}
 	for _, b := range ts.Blocks() {
 		messages, err := syncer.store.MessagesForBlock(b)
 		if err != nil {
@@ -463,54 +467,9 @@ func (syncer *Syncer) tryLoadFullTipSet(cids []cid.Cid) (*FullTipSet, error) {
 	return fts, nil
 }
 
-// FullTipSet is an expanded version of the TipSet that contains all the blocks and messages
-type FullTipSet struct {
-	Blocks []*types.FullBlock
-	tipset *TipSet
-	cids   []cid.Cid
-}
-
-func NewFullTipSet(blks []*types.FullBlock) *FullTipSet {
-	return &FullTipSet{
-		Blocks: blks,
-	}
-}
-
-func (fts *FullTipSet) Cids() []cid.Cid {
-	if fts.cids != nil {
-		return fts.cids
-	}
-
-	var cids []cid.Cid
-	for _, b := range fts.Blocks {
-		cids = append(cids, b.Cid())
-	}
-	fts.cids = cids
-
-	return cids
-}
-
-func (fts *FullTipSet) TipSet() *TipSet {
-	if fts.tipset != nil {
-		return fts.tipset
-	}
-
-	var headers []*types.BlockHeader
-	for _, b := range fts.Blocks {
-		headers = append(headers, b.Header)
-	}
-
-	ts, err := NewTipSet(headers)
-	if err != nil {
-		panic(err)
-	}
-
-	return ts
-}
-
 // SyncCaughtUp is used to stay in sync once caught up to
 // the rest of the network.
-func (syncer *Syncer) SyncCaughtUp(maybeHead *FullTipSet) error {
+func (syncer *Syncer) SyncCaughtUp(maybeHead *store.FullTipSet) error {
 	ts := maybeHead.TipSet()
 	if syncer.Genesis.Equals(ts) {
 		return nil
@@ -541,7 +500,7 @@ func (syncer *Syncer) SyncCaughtUp(maybeHead *FullTipSet) error {
 	return nil
 }
 
-func (syncer *Syncer) ValidateTipSet(fts *FullTipSet) error {
+func (syncer *Syncer) ValidateTipSet(fts *store.FullTipSet) error {
 	ts := fts.TipSet()
 	if ts.Equals(syncer.Genesis) {
 		return nil
@@ -567,7 +526,7 @@ func (syncer *Syncer) ValidateBlock(b *types.FullBlock) error {
 		return err
 	}
 
-	vm, err := NewVM(stateroot, b.Header.Height, b.Header.Miner, syncer.store)
+	vm, err := vm.NewVM(stateroot, b.Header.Height, b.Header.Miner, syncer.store)
 	if err != nil {
 		return err
 	}
@@ -586,7 +545,7 @@ func (syncer *Syncer) ValidateBlock(b *types.FullBlock) error {
 		receipts = append(receipts, receipt)
 	}
 
-	cst := hamt.CSTFromBstore(syncer.store.bs)
+	cst := hamt.CSTFromBstore(syncer.store.Blockstore())
 	recptRoot, err := sharray.Build(context.TODO(), 4, receipts, cst)
 	if err != nil {
 		return err
@@ -608,84 +567,14 @@ func (syncer *Syncer) ValidateBlock(b *types.FullBlock) error {
 
 }
 
-func DeductFunds(act *types.Actor, amt types.BigInt) error {
-	if types.BigCmp(act.Balance, amt) < 0 {
-		return fmt.Errorf("not enough funds")
-	}
-
-	act.Balance = types.BigSub(act.Balance, amt)
-	return nil
-}
-
-func DepositFunds(act *types.Actor, amt types.BigInt) {
-	act.Balance = types.BigAdd(act.Balance, amt)
-}
-
-func TryCreateAccountActor(st *state.StateTree, addr address.Address) (*types.Actor, error) {
-	act, err := makeActor(st, addr)
-	if err != nil {
-		return nil, err
-	}
-
-	_, err = st.RegisterNewAddress(addr, act)
-	if err != nil {
-		return nil, err
-	}
-
-	return act, nil
-}
-
-func makeActor(st *state.StateTree, addr address.Address) (*types.Actor, error) {
-	switch addr.Protocol() {
-	case address.BLS:
-		return NewBLSAccountActor(st, addr)
-	case address.SECP256K1:
-		return NewSecp256k1AccountActor(st, addr)
-	case address.ID:
-		return nil, fmt.Errorf("no actor with given ID")
-	case address.Actor:
-		return nil, fmt.Errorf("no such actor")
-	default:
-		return nil, fmt.Errorf("address has unsupported protocol: %d", addr.Protocol())
-	}
-}
-
-func NewBLSAccountActor(st *state.StateTree, addr address.Address) (*types.Actor, error) {
-	var acstate actors.AccountActorState
-	acstate.Address = addr
-
-	c, err := st.Store.Put(context.TODO(), acstate)
-	if err != nil {
-		return nil, err
-	}
-
-	nact := &types.Actor{
-		Code:    actors.AccountActorCodeCid,
-		Balance: types.NewInt(0),
-		Head:    c,
-	}
-
-	return nact, nil
-}
-
-func NewSecp256k1AccountActor(st *state.StateTree, addr address.Address) (*types.Actor, error) {
-	nact := &types.Actor{
-		Code:    actors.AccountActorCodeCid,
-		Balance: types.NewInt(0),
-		Head:    gen.EmptyObjectCid,
-	}
-
-	return nact, nil
-}
-
-func (syncer *Syncer) Punctual(ts *TipSet) bool {
+func (syncer *Syncer) Punctual(ts *types.TipSet) bool {
 	return true
 }
 
-func (syncer *Syncer) collectChainCaughtUp(fts *FullTipSet) ([]*FullTipSet, error) {
+func (syncer *Syncer) collectChainCaughtUp(fts *store.FullTipSet) ([]*store.FullTipSet, error) {
 	// fetch tipset and messages via bitswap
 
-	chain := []*FullTipSet{fts}
+	chain := []*store.FullTipSet{fts}
 	cur := fts.TipSet()
 
 	for {

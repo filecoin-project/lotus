@@ -4,11 +4,12 @@ import (
 	"encoding/binary"
 	"testing"
 
-	"github.com/filecoin-project/go-lotus/chain"
 	. "github.com/filecoin-project/go-lotus/chain/actors"
 	"github.com/filecoin-project/go-lotus/chain/address"
 	"github.com/filecoin-project/go-lotus/chain/gen"
+	"github.com/filecoin-project/go-lotus/chain/store"
 	"github.com/filecoin-project/go-lotus/chain/types"
+	"github.com/filecoin-project/go-lotus/chain/vm"
 	dstore "github.com/ipfs/go-datastore"
 	bstore "github.com/ipfs/go-ipfs-blockstore"
 	cbor "github.com/ipfs/go-ipld-cbor"
@@ -26,7 +27,7 @@ func blsaddr(n uint64) address.Address {
 	return addr
 }
 
-func setupVMTestEnv(t *testing.T) (*chain.VM, []address.Address) {
+func setupVMTestEnv(t *testing.T) (*vm.VM, []address.Address) {
 	bs := bstore.NewBlockstore(dstore.NewMapDatastore())
 
 	from := blsaddr(0)
@@ -46,9 +47,9 @@ func setupVMTestEnv(t *testing.T) (*chain.VM, []address.Address) {
 		t.Fatal(err)
 	}
 
-	cs := chain.NewChainStore(bs, nil)
+	cs := store.NewChainStore(bs, nil)
 
-	vm, err := chain.NewVM(stateroot, 1, maddr, cs)
+	vm, err := vm.NewVM(stateroot, 1, maddr, cs)
 	if err != nil {
 		t.Fatal(err)
 	}

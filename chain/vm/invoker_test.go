@@ -1,4 +1,4 @@
-package chain
+package vm
 
 import (
 	"testing"

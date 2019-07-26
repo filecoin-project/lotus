@@ -6,8 +6,9 @@ import (
 
 	. "github.com/filecoin-project/go-lotus/chain/actors"
 	"github.com/filecoin-project/go-lotus/chain/gen"
+	"github.com/filecoin-project/go-lotus/chain/store"
+	"github.com/filecoin-project/go-lotus/chain/vm"
 
-	"github.com/filecoin-project/go-lotus/chain"
 	"github.com/filecoin-project/go-lotus/chain/address"
 	"github.com/filecoin-project/go-lotus/chain/state"
 	"github.com/filecoin-project/go-lotus/chain/types"
@@ -27,9 +28,9 @@ type Harness struct {
 
 	t      *testing.T
 	actors []address.Address
-	vm     *chain.VM
+	vm     *vm.VM
 	bs     bstore.Blockstore
-	cs     *chain.ChainStore
+	cs     *store.ChainStore
 }
 
 type Step struct {
@@ -61,9 +62,9 @@ func NewHarness(t *testing.T) *Harness {
 		t.Fatal(err)
 	}
 
-	h.cs = chain.NewChainStore(h.bs, nil)
+	h.cs = store.NewChainStore(h.bs, nil)
 
-	h.vm, err = chain.NewVM(stateroot, 1, maddr, h.cs)
+	h.vm, err = vm.NewVM(stateroot, 1, maddr, h.cs)
 	if err != nil {
 		t.Fatal(err)
 	}

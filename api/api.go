@@ -64,16 +64,16 @@ type FullNode interface {
 	Common
 
 	// chain
-	ChainHead(context.Context) (*chain.TipSet, error)                // TODO: check serialization
+	ChainHead(context.Context) (*types.TipSet, error)                // TODO: check serialization
 	ChainSubmitBlock(ctx context.Context, blk *chain.BlockMsg) error // TODO: check serialization
-	ChainGetRandomness(context.Context, *chain.TipSet) ([]byte, error)
+	ChainGetRandomness(context.Context, *types.TipSet) ([]byte, error)
 	ChainWaitMsg(context.Context, cid.Cid) (*MsgWait, error)
 	ChainGetBlock(context.Context, cid.Cid) (*types.BlockHeader, error)
 	ChainGetBlockMessages(context.Context, cid.Cid) ([]*types.SignedMessage, error)
 
 	// messages
 
-	MpoolPending(context.Context, *chain.TipSet) ([]*types.SignedMessage, error)
+	MpoolPending(context.Context, *types.TipSet) ([]*types.SignedMessage, error)
 	MpoolPush(context.Context, *types.SignedMessage) error
 
 	// FullNodeStruct
@@ -81,7 +81,7 @@ type FullNode interface {
 	// miner
 
 	MinerStart(context.Context, address.Address) error
-	MinerCreateBlock(context.Context, address.Address, *chain.TipSet, []types.Ticket, types.ElectionProof, []*types.SignedMessage) (*chain.BlockMsg, error)
+	MinerCreateBlock(context.Context, address.Address, *types.TipSet, []types.Ticket, types.ElectionProof, []*types.SignedMessage) (*chain.BlockMsg, error)
 
 	// // UX ?
 

@@ -1,4 +1,4 @@
-package chain
+package vm
 
 import (
 	"context"
@@ -8,6 +8,7 @@ import (
 	"github.com/filecoin-project/go-lotus/chain/actors/aerrors"
 	"github.com/filecoin-project/go-lotus/chain/address"
 	"github.com/filecoin-project/go-lotus/chain/state"
+	"github.com/filecoin-project/go-lotus/chain/store"
 	"github.com/filecoin-project/go-lotus/chain/types"
 	"github.com/filecoin-project/go-lotus/lib/bufbstore"
 
@@ -135,7 +136,6 @@ func (vmctx *VMContext) VerifySignature(sig types.Signature, act address.Address
 }
 
 func (vm *VM) makeVMContext(sroot cid.Cid, origin address.Address, msg *types.Message) *VMContext {
-	cst := hamt.CSTFromBstore(vm.cs.bs)
 
 	return &VMContext{
 		vm:     vm,
@@ -144,9 +144,9 @@ func (vm *VM) makeVMContext(sroot cid.Cid, origin address.Address, msg *types.Me
 		msg:    msg,
 		origin: origin,
 		height: vm.blockHeight,
-		cst:    cst,
+		cst:    vm.cst,
 		storage: &storage{
-			cst:  cst,
+			cst:  vm.cst,
 			head: sroot,
 		},
 	}
@@ -155,15 +155,16 @@ func (vm *VM) makeVMContext(sroot cid.Cid, origin address.Address, msg *types.Me
 type VM struct {
 	cstate      *state.StateTree
 	base        cid.Cid
-	cs          *ChainStore
+	cs          *store.ChainStore
+	cst         *hamt.CborIpldStore
 	buf         *bufbstore.BufferedBS
 	blockHeight uint64
 	blockMiner  address.Address
 	inv         *invoker
 }
 
-func NewVM(base cid.Cid, height uint64, maddr address.Address, cs *ChainStore) (*VM, error) {
-	buf := bufbstore.NewBufferedBstore(cs.bs)
+func NewVM(base cid.Cid, height uint64, maddr address.Address, cs *store.ChainStore) (*VM, error) {
+	buf := bufbstore.NewBufferedBstore(cs.Blockstore())
 	cst := hamt.CSTFromBstore(buf)
 	state, err := state.LoadStateTree(cst, base)
 	if err != nil {
@@ -174,6 +175,7 @@ func NewVM(base cid.Cid, height uint64, maddr address.Address, cs *ChainStore) (
 		cstate:      state,
 		base:        base,
 		cs:          cs,
+		cst:         cst,
 		buf:         buf,
 		blockHeight: height,
 		blockMiner:  maddr,
@@ -339,4 +341,17 @@ func (vm *VM) Invoke(act *types.Actor, vmctx *VMContext, method uint64, params [
 		return nil, err
 	}
 	return ret, nil
+}
+
+func DeductFunds(act *types.Actor, amt types.BigInt) error {
+	if types.BigCmp(act.Balance, amt) < 0 {
+		return fmt.Errorf("not enough funds")
+	}
+
+	act.Balance = types.BigSub(act.Balance, amt)
+	return nil
+}
+
+func DepositFunds(act *types.Actor, amt types.BigInt) {
+	act.Balance = types.BigAdd(act.Balance, amt)
 }

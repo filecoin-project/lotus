@@ -11,6 +11,7 @@ import (
 	"github.com/libp2p/go-libp2p-core/host"
 	"github.com/libp2p/go-libp2p-core/protocol"
 
+	"github.com/filecoin-project/go-lotus/chain/store"
 	"github.com/filecoin-project/go-lotus/chain/types"
 	"github.com/filecoin-project/go-lotus/lib/cborrpc"
 
@@ -31,7 +32,7 @@ func init() {
 }
 
 type BlockSyncService struct {
-	cs *ChainStore
+	cs *store.ChainStore
 }
 
 type BlockSyncRequest struct {
@@ -72,7 +73,7 @@ type BSTipSet struct {
 	MsgIncludes [][]int
 }
 
-func NewBlockSyncService(cs *ChainStore) *BlockSyncService {
+func NewBlockSyncService(cs *store.ChainStore) *BlockSyncService {
 	return &BlockSyncService{
 		cs: cs,
 	}
@@ -154,7 +155,7 @@ func (bss *BlockSyncService) collectChainSegment(start []cid.Cid, length uint64,
 	}
 }
 
-func (bss *BlockSyncService) gatherMessages(ts *TipSet) ([]*types.SignedMessage, [][]int, error) {
+func (bss *BlockSyncService) gatherMessages(ts *types.TipSet) ([]*types.SignedMessage, [][]int, error) {
 	msgmap := make(map[cid.Cid]int)
 	var allmsgs []*types.SignedMessage
 	var msgincl [][]int
@@ -209,7 +210,7 @@ func (bs *BlockSync) getPeers() []peer.ID {
 	return out
 }
 
-func (bs *BlockSync) GetBlocks(ctx context.Context, tipset []cid.Cid, count int) ([]*TipSet, error) {
+func (bs *BlockSync) GetBlocks(ctx context.Context, tipset []cid.Cid, count int) ([]*types.TipSet, error) {
 	peers := bs.getPeers()
 	perm := rand.Perm(len(peers))
 	// TODO: round robin through these peers on error
@@ -241,7 +242,7 @@ func (bs *BlockSync) GetBlocks(ctx context.Context, tipset []cid.Cid, count int)
 	}
 }
 
-func (bs *BlockSync) GetFullTipSet(ctx context.Context, p peer.ID, h []cid.Cid) (*FullTipSet, error) {
+func (bs *BlockSync) GetFullTipSet(ctx context.Context, p peer.ID, h []cid.Cid) (*store.FullTipSet, error) {
 	// TODO: round robin through these peers on error
 
 	req := &BlockSyncRequest{
@@ -276,7 +277,7 @@ func (bs *BlockSync) GetFullTipSet(ctx context.Context, p peer.ID, h []cid.Cid) 
 	}
 }
 
-func (bs *BlockSync) GetChainMessages(ctx context.Context, h *TipSet, count uint64) ([]*BSTipSet, error) {
+func (bs *BlockSync) GetChainMessages(ctx context.Context, h *types.TipSet, count uint64) ([]*BSTipSet, error) {
 	peers := bs.getPeers()
 	perm := rand.Perm(len(peers))
 	// TODO: round robin through these peers on error
@@ -308,8 +309,8 @@ func (bs *BlockSync) GetChainMessages(ctx context.Context, h *TipSet, count uint
 	}
 }
 
-func bstsToFullTipSet(bts *BSTipSet) (*FullTipSet, error) {
-	fts := &FullTipSet{}
+func bstsToFullTipSet(bts *BSTipSet) (*store.FullTipSet, error) {
+	fts := &store.FullTipSet{}
 	for i, b := range bts.Blocks {
 		fb := &types.FullBlock{
 			Header: b,
@@ -341,16 +342,16 @@ func (bs *BlockSync) sendRequestToPeer(ctx context.Context, p peer.ID, req *Bloc
 	return &res, nil
 }
 
-func (bs *BlockSync) processBlocksResponse(req *BlockSyncRequest, res *BlockSyncResponse) ([]*TipSet, error) {
-	cur, err := NewTipSet(res.Chain[0].Blocks)
+func (bs *BlockSync) processBlocksResponse(req *BlockSyncRequest, res *BlockSyncResponse) ([]*types.TipSet, error) {
+	cur, err := types.NewTipSet(res.Chain[0].Blocks)
 	if err != nil {
 		return nil, err
 	}
 
-	out := []*TipSet{cur}
+	out := []*types.TipSet{cur}
 	for bi := 1; bi < len(res.Chain); bi++ {
 		next := res.Chain[bi].Blocks
-		nts, err := NewTipSet(next)
+		nts, err := types.NewTipSet(next)
 		if err != nil {
 			return nil, err
 		}

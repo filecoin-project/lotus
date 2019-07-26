@@ -4,9 +4,8 @@ import (
 	"sync"
 
 	"github.com/filecoin-project/go-lotus/chain/address"
-	"github.com/filecoin-project/go-lotus/chain/state"
+	"github.com/filecoin-project/go-lotus/chain/store"
 	"github.com/filecoin-project/go-lotus/chain/types"
-	hamt "github.com/ipfs/go-hamt-ipld"
 )
 
 type MessagePool struct {
@@ -14,7 +13,7 @@ type MessagePool struct {
 
 	pending map[address.Address]*msgSet
 
-	cs *ChainStore
+	cs *store.ChainStore
 }
 
 type msgSet struct {
@@ -35,7 +34,7 @@ func (ms *msgSet) add(m *types.SignedMessage) {
 	ms.msgs[m.Message.Nonce] = m
 }
 
-func NewMessagePool(cs *ChainStore) *MessagePool {
+func NewMessagePool(cs *store.ChainStore) *MessagePool {
 	mp := &MessagePool{
 		pending: make(map[address.Address]*msgSet),
 		cs:      cs,
@@ -58,12 +57,7 @@ func (mp *MessagePool) Add(m *types.SignedMessage) error {
 		return err
 	}
 
-	msb, err := m.ToStorageBlock()
-	if err != nil {
-		return err
-	}
-
-	if err := mp.cs.bs.Put(msb); err != nil {
+	if _, err := mp.cs.PutMessage(m); err != nil {
 		return err
 	}
 
@@ -86,20 +80,7 @@ func (mp *MessagePool) GetNonce(addr address.Address) (uint64, error) {
 		return mset.startNonce + uint64(len(mset.msgs)), nil
 	}
 
-	head := mp.cs.GetHeaviestTipSet()
-
-	stc, err := mp.cs.TipSetState(head.Cids())
-	if err != nil {
-		return 0, err
-	}
-
-	cst := hamt.CSTFromBstore(mp.cs.bs)
-	st, err := state.LoadStateTree(cst, stc)
-	if err != nil {
-		return 0, err
-	}
-
-	act, err := st.GetActor(addr)
+	act, err := mp.cs.GetActor(addr)
 	if err != nil {
 		return 0, err
 	}
@@ -142,7 +123,7 @@ func (mp *MessagePool) Pending() []*types.SignedMessage {
 	return out
 }
 
-func (mp *MessagePool) HeadChange(revert []*TipSet, apply []*TipSet) error {
+func (mp *MessagePool) HeadChange(revert []*types.TipSet, apply []*types.TipSet) error {
 	for _, ts := range revert {
 		for _, b := range ts.Blocks() {
 			msgs, err := mp.cs.MessagesForBlock(b)
