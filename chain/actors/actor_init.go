@@ -43,10 +43,16 @@ type InitActorState struct {
 	NextID uint64
 }
 
+type iAMethods struct {
+	Exec uint64
+}
+
+var IAMethods = iAMethods{2}
+
 func (ia InitActor) Exports() []interface{} {
 	return []interface{}{
-		nil,
-		ia.Exec,
+		1: nil,
+		2: ia.Exec,
 	}
 }
 
@@ -134,7 +140,8 @@ func (ia InitActor) Exec(act *types.Actor, vmctx types.VMContext, p *ExecParams)
 		return nil, aerrors.Escalate(err, "inserting new actor into state tree")
 	}
 
-	_, err = vmctx.Send(idAddr, 0, vmctx.Message().Value, p.Params)
+	// '1' is reserved for constructor methods
+	_, err = vmctx.Send(idAddr, 1, vmctx.Message().Value, p.Params)
 	if err != nil {
 		return nil, err
 	}

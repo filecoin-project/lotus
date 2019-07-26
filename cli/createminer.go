@@ -75,7 +75,7 @@ var createMinerCmd = &cli.Command{
 		msg := types.Message{
 			To:       actors.StorageMarketAddress,
 			From:     addr,
-			Method:   1, // TODO: constants pls
+			Method:   actors.SMAMethods.CreateStorageMiner,
 			Params:   params,
 			Value:    types.NewInt(0),
 			Nonce:    nonce,

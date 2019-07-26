@@ -125,7 +125,7 @@ var initCmd = &cli.Command{
 
 			Value: collateral,
 
-			Method: 1, // TODO: Review: do we have a reverse index with these anywhere? (actor_storageminer.go)
+			Method: actors.SMAMethods.CreateStorageMiner,
 			Params: params,
 		}
 
