@@ -77,7 +77,7 @@ func NewHarness(t *testing.T) *Harness {
 func (h *Harness) Execute() *state.StateTree {
 	for i, step := range h.Steps {
 		h.currStep = i
-		ret, err := h.vm.ApplyMessage(&step.M)
+		ret, err := h.vm.ApplyMessage(context.TODO(), &step.M)
 		if step.Err != nil {
 			step.Err(h.t, err)
 		} else {
