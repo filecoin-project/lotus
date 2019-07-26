@@ -34,7 +34,7 @@ func makeActor(st *state.StateTree, addr address.Address) (*types.Actor, error) 
 	case address.ID:
 		return nil, fmt.Errorf("no actor with given ID")
 	case address.Actor:
-		return nil, fmt.Errorf("no such actor")
+		return nil, fmt.Errorf("no such actor: %s", addr)
 	default:
 		return nil, fmt.Errorf("address has unsupported protocol: %d", addr.Protocol())
 	}

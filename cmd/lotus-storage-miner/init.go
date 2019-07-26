@@ -8,7 +8,6 @@ import (
 	"github.com/filecoin-project/go-lotus/build"
 	"github.com/filecoin-project/go-lotus/chain"
 	"github.com/filecoin-project/go-lotus/chain/actors"
-	"github.com/filecoin-project/go-lotus/chain/address"
 	"github.com/filecoin-project/go-lotus/chain/types"
 	lcli "github.com/filecoin-project/go-lotus/cli"
 	"github.com/filecoin-project/go-lotus/node/repo"
@@ -119,7 +118,7 @@ var initCmd = &cli.Command{
 		}
 
 		createStorageMinerMsg := types.Message{
-			To:   address.StorageMarketAddress,
+			To:   actors.StorageMarketAddress,
 			From: defOwner,
 
 			Nonce: nonce,
