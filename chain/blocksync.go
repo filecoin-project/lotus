@@ -210,6 +210,23 @@ func (bs *BlockSync) getPeers() []peer.ID {
 	return out
 }
 
+func (bs *BlockSync) processStatus(req *BlockSyncRequest, res *BlockSyncResponse) ([]*types.TipSet, error) {
+	switch res.Status {
+	case 0: // Success
+		return bs.processBlocksResponse(req, res)
+	case 101: // Partial Response
+		panic("not handled")
+	case 201: // req.Start not found
+		return nil, fmt.Errorf("not found")
+	case 202: // Go Away
+		panic("not handled")
+	case 203: // Internal Error
+		return nil, fmt.Errorf("block sync peer errored: %s", res.Message)
+	default:
+		return nil, fmt.Errorf("unrecognized response code")
+	}
+}
+
 func (bs *BlockSync) GetBlocks(ctx context.Context, tipset []cid.Cid, count int) ([]*types.TipSet, error) {
 	peers := bs.getPeers()
 	perm := rand.Perm(len(peers))
@@ -225,31 +242,17 @@ func (bs *BlockSync) GetBlocks(ctx context.Context, tipset []cid.Cid, count int)
 	var res *BlockSyncResponse
 	for _, p := range perm {
 		res, err = bs.sendRequestToPeer(ctx, peers[p], req)
-		if err == nil {
-			break
+		if err != nil {
+			log.Warnf("BlockSync request failed for peer %s: %s", peers[p].String(), err)
+			continue
 		}
-		log.Warnf("BlockSync request failed for peer %s: %s", peers[p].String(), err)
 
-		//TODO: also do the status check here
+		ts, err := bs.processStatus(req, res)
+		if err == nil {
+			return ts, nil
+		}
 	}
-	if err != nil {
-		return nil, xerrors.Errorf("GetBlocks failed with all peers: %w", err)
-	}
-
-	switch res.Status {
-	case 0: // Success
-		return bs.processBlocksResponse(req, res)
-	case 101: // Partial Response
-		panic("not handled")
-	case 201: // req.Start not found
-		return nil, fmt.Errorf("not found")
-	case 202: // Go Away
-		panic("not handled")
-	case 203: // Internal Error
-		return nil, fmt.Errorf("block sync peer errored: %s", res.Message)
-	default:
-		return nil, fmt.Errorf("unrecognized response code")
-	}
+	return nil, xerrors.Errorf("GetBlocks failed with all peers: %w", err)
 }
 
 func (bs *BlockSync) GetFullTipSet(ctx context.Context, p peer.ID, h []cid.Cid) (*store.FullTipSet, error) {
