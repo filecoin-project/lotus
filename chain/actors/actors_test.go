@@ -1,6 +1,7 @@
 package actors_test
 
 import (
+	"context"
 	"encoding/binary"
 	"testing"
 
@@ -84,7 +85,7 @@ func TestVMInvokeMethod(t *testing.T) {
 		Value:    types.NewInt(0),
 	}
 
-	ret, err := vm.ApplyMessage(msg)
+	ret, err := vm.ApplyMessage(context.TODO(), msg)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -128,7 +129,7 @@ func TestStorageMarketActorCreateMiner(t *testing.T) {
 		Value:    types.NewInt(0),
 	}
 
-	ret, err := vm.ApplyMessage(msg)
+	ret, err := vm.ApplyMessage(context.TODO(), msg)
 	if err != nil {
 		t.Fatal(err)
 	}

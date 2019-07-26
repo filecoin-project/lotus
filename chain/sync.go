@@ -298,7 +298,7 @@ func (syncer *Syncer) SyncBootstrap() {
 				return
 			}
 
-			if err := syncer.ValidateTipSet(fts); err != nil {
+			if err := syncer.ValidateTipSet(context.TODO(), fts); err != nil {
 				log.Errorf("failed to validate tipset: %s", err)
 				return
 			}
@@ -482,7 +482,7 @@ func (syncer *Syncer) SyncCaughtUp(maybeHead *store.FullTipSet) error {
 
 	for i := len(chain) - 1; i >= 0; i-- {
 		ts := chain[i]
-		if err := syncer.ValidateTipSet(ts); err != nil {
+		if err := syncer.ValidateTipSet(context.TODO(), ts); err != nil {
 			return errors.Wrap(err, "validate tipset failed")
 		}
 
@@ -500,21 +500,21 @@ func (syncer *Syncer) SyncCaughtUp(maybeHead *store.FullTipSet) error {
 	return nil
 }
 
-func (syncer *Syncer) ValidateTipSet(fts *store.FullTipSet) error {
+func (syncer *Syncer) ValidateTipSet(ctx context.Context, fts *store.FullTipSet) error {
 	ts := fts.TipSet()
 	if ts.Equals(syncer.Genesis) {
 		return nil
 	}
 
 	for _, b := range fts.Blocks {
-		if err := syncer.ValidateBlock(b); err != nil {
+		if err := syncer.ValidateBlock(ctx, b); err != nil {
 			return err
 		}
 	}
 	return nil
 }
 
-func (syncer *Syncer) ValidateBlock(b *types.FullBlock) error {
+func (syncer *Syncer) ValidateBlock(ctx context.Context, b *types.FullBlock) error {
 	h := b.Header
 	stateroot, err := syncer.store.TipSetState(h.Parents)
 	if err != nil {
@@ -537,7 +537,7 @@ func (syncer *Syncer) ValidateBlock(b *types.FullBlock) error {
 
 	var receipts []interface{}
 	for _, m := range b.Messages {
-		receipt, err := vm.ApplyMessage(&m.Message)
+		receipt, err := vm.ApplyMessage(ctx, &m.Message)
 		if err != nil {
 			return err
 		}
