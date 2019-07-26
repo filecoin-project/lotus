@@ -2,6 +2,7 @@ package main
 
 import (
 	"fmt"
+	"io"
 	"io/ioutil"
 	"net/http"
 	"os"
@@ -21,6 +22,8 @@ const listenAddr = "127.0.0.1:2222"
 type runningNode struct {
 	cmd  *exec.Cmd
 	meta nodeInfo
+
+	stop func()
 }
 
 type api struct {
@@ -60,9 +63,18 @@ func (api *api) Spawn() (nodeInfo, error) {
 
 	}
 
+	errlogfile, err := os.OpenFile(dir + ".err.log", os.O_CREATE | os.O_WRONLY, 0644)
+	if err != nil {
+		return nodeInfo{}, err
+	}
+	logfile, err := os.OpenFile(dir + ".out.log", os.O_CREATE | os.O_WRONLY, 0644)
+	if err != nil {
+		return nodeInfo{}, err
+	}
+
 	cmd := exec.Command("./lotus", "daemon", genParam, "--api", fmt.Sprintf("%d", 2500+id))
-	cmd.Stderr = os.Stderr
-	cmd.Stdout = os.Stdout
+	cmd.Stderr = io.MultiWriter(os.Stderr, errlogfile)
+	cmd.Stdout = io.MultiWriter(os.Stdout, logfile)
 	cmd.Env = []string{"LOTUS_PATH=" + dir}
 	if err := cmd.Start(); err != nil {
 		return nodeInfo{}, err
@@ -78,6 +90,11 @@ func (api *api) Spawn() (nodeInfo, error) {
 	api.running[id] = runningNode{
 		cmd:  cmd,
 		meta: info,
+
+		stop: func() {
+			defer errlogfile.Close()
+			defer logfile.Close()
+		},
 	}
 	api.runningLk.Unlock()
 
