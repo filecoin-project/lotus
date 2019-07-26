@@ -5,6 +5,7 @@ import (
 
 	"github.com/gbrlsnchs/jwt/v3"
 	"github.com/libp2p/go-libp2p-core/host"
+	"github.com/libp2p/go-libp2p-core/network"
 	"github.com/libp2p/go-libp2p-core/peer"
 	ma "github.com/multiformats/go-multiaddr"
 	"go.uber.org/fx"
@@ -43,6 +44,10 @@ func (a *CommonAPI) AuthNew(ctx context.Context, perms []string) ([]byte, error)
 	return jwt.Sign(&p, (*jwt.HMACSHA)(a.APISecret))
 }
 
+func (a *CommonAPI) NetConnectedness(ctx context.Context, pid peer.ID) (network.Connectedness, error) {
+	return a.Host.Network().Connectedness(pid), nil
+}
+
 func (a *CommonAPI) NetPeers(context.Context) ([]peer.AddrInfo, error) {
 	conns := a.Host.Network().Conns()
 	out := make([]peer.AddrInfo, len(conns))
@@ -68,6 +73,10 @@ func (a *CommonAPI) NetAddrsListen(context.Context) (peer.AddrInfo, error) {
 		ID:    a.Host.ID(),
 		Addrs: a.Host.Addrs(),
 	}, nil
+}
+
+func (a *CommonAPI) NetDisconnect(ctx context.Context, p peer.ID) error {
+	return a.Host.Network().ClosePeer(p)
 }
 
 func (a *CommonAPI) ID(context.Context) (peer.ID, error) {

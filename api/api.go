@@ -3,6 +3,7 @@ package api
 import (
 	"context"
 
+	"github.com/libp2p/go-libp2p-core/network"
 	"github.com/libp2p/go-libp2p-core/peer"
 
 	"github.com/filecoin-project/go-lotus/chain"
@@ -45,9 +46,11 @@ type Common interface {
 
 	// network
 
+	NetConnectedness(context.Context, peer.ID) (network.Connectedness, error)
 	NetPeers(context.Context) ([]peer.AddrInfo, error)
 	NetConnect(context.Context, peer.AddrInfo) error
 	NetAddrsListen(context.Context) (peer.AddrInfo, error)
+	NetDisconnect(context.Context, peer.ID) error
 
 	// ID returns peerID of libp2p node backing this API
 	ID(context.Context) (peer.ID, error)

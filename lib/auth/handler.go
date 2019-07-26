@@ -20,6 +20,13 @@ func (h *Handler) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 	ctx := r.Context()
 
 	token := r.Header.Get("Authorization")
+	if token == "" {
+		token = r.FormValue("token")
+		if token != "" {
+			token = "Bearer " + token
+		}
+	}
+
 	if token != "" {
 		if !strings.HasPrefix(token, "Bearer ") {
 			log.Warn("missing Bearer prefix in auth header")

@@ -80,7 +80,7 @@ func NewBlockSyncService(cs *ChainStore) *BlockSyncService {
 
 func (bss *BlockSyncService) HandleStream(s inet.Stream) {
 	defer s.Close()
-	log.Error("handling block sync request")
+	log.Info("handling block sync request")
 
 	var req BlockSyncRequest
 	if err := cborrpc.ReadCborRPC(bufio.NewReader(s), &req); err != nil {

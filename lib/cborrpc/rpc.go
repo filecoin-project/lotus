@@ -2,7 +2,6 @@ package cborrpc
 
 import (
 	"io"
-	"io/ioutil"
 
 	cbor "github.com/ipfs/go-ipld-cbor"
 )
@@ -20,10 +19,5 @@ func WriteCborRPC(w io.Writer, obj interface{}) error {
 }
 
 func ReadCborRPC(r io.Reader, out interface{}) error {
-	b, err := ioutil.ReadAll(r)
-	if err != nil {
-		return err
-	}
-
-	return cbor.DecodeInto(b, out)
+	return cbor.DecodeReader(r, out)
 }
