@@ -584,8 +584,51 @@ func (syncer *Syncer) collectChainCaughtUp(fts *store.FullTipSet) ([]*store.Full
 	for {
 		ts, err := syncer.store.LoadTipSet(cur.Parents())
 		if err != nil {
-			log.Errorf("dont have parent blocks for sync tipset: %s", err)
-			panic("should do something better, like fetch? or error?")
+			// <TODO: cleanup>
+			// TODO: This is 'borrowed' from SyncBootstrap, needs at least some deduplicating
+
+			blockSet := []*types.TipSet{cur}
+
+			at := cur.Cids()
+			for blockSet[len(blockSet)-1].Height() > syncer.head.Height() {
+				// NB: GetBlocks validates that the blocks are in-fact the ones we
+				// requested, and that they are correctly linked to eachother. It does
+				// not validate any state transitions
+				fmt.Println("CaughtUp Get blocks")
+				blks, err := syncer.Bsync.GetBlocks(context.TODO(), at, 10)
+				if err != nil {
+					log.Error("failed to get blocks: ", err)
+					panic("aaa")
+				}
+
+				for _, b := range blks {
+					blockSet = append(blockSet, b)
+				}
+
+				at = blks[len(blks)-1].Parents()
+			}
+
+			for _, ts := range blockSet {
+				for _, b := range ts.Blocks() {
+					if err := syncer.store.PersistBlockHeader(b); err != nil {
+						log.Errorf("failed to persist synced blocks to the chainstore: %s", err)
+						panic("bbbbb")
+					}
+				}
+			}
+
+			// TODO: Message processing?
+
+			//log.Errorf("dont have parent blocks for sync tipset: %s", err)
+			//panic("should do something better, like fetch? or error?")
+
+			ts, err = syncer.store.LoadTipSet(cur.Parents())
+			if err != nil {
+				log.Errorf("HACK DIDNT WORK :( dont have parent blocks for sync tipset: %s", err)
+				panic("should do something better, like fetch? or error?")
+			}
+
+			// </TODO>
 		}
 
 		return chain, nil // return the chain because we have this last block in our cache already.
