@@ -10,6 +10,7 @@ import (
 	bserv "github.com/ipfs/go-blockservice"
 	"github.com/libp2p/go-libp2p-core/host"
 	"github.com/libp2p/go-libp2p-core/protocol"
+	"golang.org/x/xerrors"
 
 	"github.com/filecoin-project/go-lotus/chain/store"
 	"github.com/filecoin-project/go-lotus/chain/types"
@@ -220,9 +221,19 @@ func (bs *BlockSync) GetBlocks(ctx context.Context, tipset []cid.Cid, count int)
 		Options:       BSOptBlocks,
 	}
 
-	res, err := bs.sendRequestToPeer(ctx, peers[perm[0]], req)
+	var err error
+	var res *BlockSyncResponse
+	for _, p := range perm {
+		res, err = bs.sendRequestToPeer(ctx, peers[p], req)
+		if err == nil {
+			break
+		}
+		log.Warnf("BlockSync request failed for peer %s: %s", peers[p].String(), err)
+
+		//TODO: also do the status check here
+	}
 	if err != nil {
-		return nil, err
+		return nil, xerrors.Errorf("GetBlocks failed with all peers: %w", err)
 	}
 
 	switch res.Status {
