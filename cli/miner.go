@@ -3,7 +3,6 @@ package cli
 import (
 	"fmt"
 
-	"github.com/pkg/errors"
 	"gopkg.in/urfave/cli.v2"
 )
 
@@ -29,7 +28,7 @@ var minerStart = &cli.Command{
 		// TODO: this address needs to be the address of an actual miner
 		maddr, err := api.WalletDefaultAddress(ctx)
 		if err != nil {
-			return errors.Wrap(err, "failed to create miner address")
+			return err
 		}
 
 		if err := api.MinerStart(ctx, maddr); err != nil {
