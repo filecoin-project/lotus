@@ -104,8 +104,8 @@ func (fsr *FsRepo) initKeystore() error {
 // APIEndpoint returns endpoint of API in this repo
 func (fsr *FsRepo) APIEndpoint() (multiaddr.Multiaddr, error) {
 	p := filepath.Join(fsr.path, fsAPI)
-	f, err := os.Open(p)
 
+	f, err := os.Open(p)
 	if os.IsNotExist(err) {
 		return nil, ErrNoAPIEndpoint
 	} else if err != nil {
@@ -115,7 +115,7 @@ func (fsr *FsRepo) APIEndpoint() (multiaddr.Multiaddr, error) {
 
 	data, err := ioutil.ReadAll(f)
 	if err != nil {
-		return nil, err
+		return nil, errors.Wrapf(err, "failed to read %q", p)
 	}
 	strma := string(data)
 	strma = strings.TrimSpace(strma)
