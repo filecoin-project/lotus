@@ -129,19 +129,19 @@ func (bss *BlockSyncService) collectChainSegment(start []cid.Cid, length uint64,
 		}
 
 		if opts.IncludeMessages {
-			log.Error("INCLUDING MESSAGES IN SYNC RESPONSE")
+			log.Info("INCLUDING MESSAGES IN SYNC RESPONSE")
 			msgs, mincl, err := bss.gatherMessages(ts)
 			if err != nil {
 				return nil, err
 			}
-			log.Errorf("messages: ", msgs)
+			log.Infof("messages: ", msgs)
 
 			bst.Messages = msgs
 			bst.MsgIncludes = mincl
 		}
 
 		if opts.IncludeBlocks {
-			log.Error("INCLUDING BLOCKS IN SYNC RESPONSE")
+			log.Info("INCLUDING BLOCKS IN SYNC RESPONSE")
 			bst.Blocks = ts.Blocks()
 		}
 
@@ -165,7 +165,7 @@ func (bss *BlockSyncService) gatherMessages(ts *types.TipSet) ([]*types.SignedMe
 		if err != nil {
 			return nil, nil, err
 		}
-		log.Errorf("MESSAGES FOR BLOCK: %d", len(msgs))
+		log.Infof("MESSAGES FOR BLOCK: %d", len(msgs))
 
 		msgindexes := make([]int, 0, len(msgs))
 		for _, m := range msgs {
