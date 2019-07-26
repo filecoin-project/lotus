@@ -9,7 +9,7 @@ import (
 
 	logging "github.com/ipfs/go-log"
 	manet "github.com/multiformats/go-multiaddr-net"
-	"github.com/pkg/errors"
+	"golang.org/x/xerrors"
 	"gopkg.in/urfave/cli.v2"
 
 	"github.com/filecoin-project/go-lotus/api"
@@ -34,7 +34,7 @@ func GetAPI(ctx *cli.Context) (api.FullNode, error) {
 
 	ma, err := r.APIEndpoint()
 	if err != nil {
-		return nil, errors.Wrap(err, "failed to get api endpoint")
+		return nil, xerrors.Errorf("failed to get api endpoint: %w", err)
 	}
 	_, addr, err := manet.DialArgs(ma)
 	if err != nil {

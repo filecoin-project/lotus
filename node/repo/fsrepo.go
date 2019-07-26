@@ -18,7 +18,6 @@ import (
 	"github.com/mitchellh/go-homedir"
 	"github.com/multiformats/go-base32"
 	"github.com/multiformats/go-multiaddr"
-	"github.com/pkg/errors"
 	"golang.org/x/xerrors"
 
 	"github.com/filecoin-project/go-lotus/chain/types"
@@ -37,7 +36,7 @@ const (
 
 var log = logging.Logger("repo")
 
-var ErrRepoExists = errors.New("repo exists")
+var ErrRepoExists = xerrors.New("repo exists")
 
 // FsRepo is struct for repo, use NewFS to create
 type FsRepo struct {
@@ -115,7 +114,7 @@ func (fsr *FsRepo) APIEndpoint() (multiaddr.Multiaddr, error) {
 
 	data, err := ioutil.ReadAll(f)
 	if err != nil {
-		return nil, errors.Wrapf(err, "failed to read %q", p)
+		return nil, xerrors.Errorf("failed to read %q: %w", p, err)
 	}
 	strma := string(data)
 	strma = strings.TrimSpace(strma)
