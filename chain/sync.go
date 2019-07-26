@@ -689,6 +689,7 @@ func (syncer *Syncer) collectChainCaughtUp(fts *FullTipSet) ([]*FullTipSet, erro
 	for {
 		ts, err := syncer.store.LoadTipSet(cur.Parents())
 		if err != nil {
+			log.Errorf("dont have parent blocks for sync tipset: %s", err)
 			panic("should do something better, like fetch? or error?")
 		}
 
