@@ -101,7 +101,7 @@ var initCmd = &cli.Command{
 			return err
 		}
 
-		k, err := wallet.GenerateKey(chain.KTSecp256k1) // TODO: review: is this right?
+		k, err := wallet.GenerateKey(types.KTSecp256k1) // TODO: review: is this right?
 		if err != nil {
 			return err
 		}
@@ -142,7 +142,7 @@ var initCmd = &cli.Command{
 			return err
 		}
 
-		signed := &chain.SignedMessage{
+		signed := &types.SignedMessage{
 			Message:   createStorageMinerMsg,
 			Signature: *sig,
 		}
