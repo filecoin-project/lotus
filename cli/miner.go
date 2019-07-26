@@ -5,8 +5,6 @@ import (
 
 	"github.com/pkg/errors"
 	"gopkg.in/urfave/cli.v2"
-
-	"github.com/filecoin-project/go-lotus/chain/address"
 )
 
 var minerCmd = &cli.Command{
@@ -29,7 +27,7 @@ var minerStart = &cli.Command{
 		ctx := ReqContext(cctx)
 
 		// TODO: this address needs to be the address of an actual miner
-		maddr, err := address.NewIDAddress(523423423)
+		maddr, err := api.WalletDefaultAddress(ctx)
 		if err != nil {
 			return errors.Wrap(err, "failed to create miner address")
 		}

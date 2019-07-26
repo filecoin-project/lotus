@@ -252,7 +252,7 @@ func (vm *VM) ApplyMessage(msg *types.Message) (*types.MessageReceipt, error) {
 	// reward miner gas fees
 	miner, err := st.GetActor(vm.blockMiner)
 	if err != nil {
-		return nil, xerrors.Errorf("getting block miner actor failed: %w", err)
+		return nil, xerrors.Errorf("getting block miner actor (%s) failed: %w", vm.blockMiner, err)
 	}
 
 	gasReward := types.BigMul(msg.GasPrice, vmctx.GasUsed())
