@@ -1,4 +1,4 @@
-package chain
+package store
 
 import (
 	"context"
@@ -10,9 +10,11 @@ import (
 	"github.com/filecoin-project/go-lotus/chain/state"
 	"github.com/filecoin-project/go-lotus/chain/types"
 
+	block "github.com/ipfs/go-block-format"
 	"github.com/ipfs/go-cid"
 	dstore "github.com/ipfs/go-datastore"
 	hamt "github.com/ipfs/go-hamt-ipld"
+	blockstore "github.com/ipfs/go-ipfs-blockstore"
 	bstore "github.com/ipfs/go-ipfs-blockstore"
 	logging "github.com/ipfs/go-log"
 	"github.com/pkg/errors"
@@ -20,9 +22,7 @@ import (
 	sharray "github.com/whyrusleeping/sharray"
 )
 
-const ForkLengthThreshold = 20
-
-var log = logging.Logger("f2")
+var log = logging.Logger("chainstore")
 
 var chainHeadKey = dstore.NewKey("head")
 
@@ -31,11 +31,11 @@ type ChainStore struct {
 	ds dstore.Datastore
 
 	heaviestLk sync.Mutex
-	heaviest   *TipSet
+	heaviest   *types.TipSet
 
 	bestTips *pubsub.PubSub
 
-	headChangeNotifs []func(rev, app []*TipSet) error
+	headChangeNotifs []func(rev, app []*types.TipSet) error
 }
 
 func NewChainStore(bs bstore.Blockstore, ds dstore.Batching) *ChainStore {
@@ -71,7 +71,7 @@ func (cs *ChainStore) Load() error {
 	return nil
 }
 
-func (cs *ChainStore) writeHead(ts *TipSet) error {
+func (cs *ChainStore) writeHead(ts *types.TipSet) error {
 	data, err := json.Marshal(ts.Cids())
 	if err != nil {
 		return errors.Wrap(err, "failed to marshal tipset")
@@ -84,13 +84,13 @@ func (cs *ChainStore) writeHead(ts *TipSet) error {
 	return nil
 }
 
-func (cs *ChainStore) SubNewTips() chan *TipSet {
+func (cs *ChainStore) SubNewTips() chan *types.TipSet {
 	subch := cs.bestTips.Sub("best")
-	out := make(chan *TipSet)
+	out := make(chan *types.TipSet)
 	go func() {
 		defer close(out)
 		for val := range subch {
-			out <- val.(*TipSet)
+			out <- val.(*types.TipSet)
 		}
 	}()
 	return out
@@ -103,7 +103,7 @@ const (
 
 type HeadChange struct {
 	Type string
-	Val  *TipSet
+	Val  *types.TipSet
 }
 
 func (cs *ChainStore) SubHeadChanges() chan *HeadChange {
@@ -118,12 +118,12 @@ func (cs *ChainStore) SubHeadChanges() chan *HeadChange {
 	return out
 }
 
-func (cs *ChainStore) SubscribeHeadChanges(f func(rev, app []*TipSet) error) {
+func (cs *ChainStore) SubscribeHeadChanges(f func(rev, app []*types.TipSet) error) {
 	cs.headChangeNotifs = append(cs.headChangeNotifs, f)
 }
 
 func (cs *ChainStore) SetGenesis(b *types.BlockHeader) error {
-	gents, err := NewTipSet([]*types.BlockHeader{b})
+	gents, err := types.NewTipSet([]*types.BlockHeader{b})
 	if err != nil {
 		return err
 	}
@@ -149,11 +149,11 @@ func (cs *ChainStore) PutTipSet(ts *FullTipSet) error {
 		}
 	}
 
-	cs.maybeTakeHeavierTipSet(ts.TipSet())
+	cs.MaybeTakeHeavierTipSet(ts.TipSet())
 	return nil
 }
 
-func (cs *ChainStore) maybeTakeHeavierTipSet(ts *TipSet) error {
+func (cs *ChainStore) MaybeTakeHeavierTipSet(ts *types.TipSet) error {
 	cs.heaviestLk.Lock()
 	defer cs.heaviestLk.Unlock()
 	if cs.heaviest == nil || cs.Weight(ts) > cs.Weight(cs.heaviest) {
@@ -175,8 +175,8 @@ func (cs *ChainStore) maybeTakeHeavierTipSet(ts *TipSet) error {
 	return nil
 }
 
-func (cs *ChainStore) Contains(ts *TipSet) (bool, error) {
-	for _, c := range ts.cids {
+func (cs *ChainStore) Contains(ts *types.TipSet) (bool, error) {
+	for _, c := range ts.Cids() {
 		has, err := cs.bs.Has(c)
 		if err != nil {
 			return false, err
@@ -198,7 +198,7 @@ func (cs *ChainStore) GetBlock(c cid.Cid) (*types.BlockHeader, error) {
 	return types.DecodeBlock(sb.RawData())
 }
 
-func (cs *ChainStore) LoadTipSet(cids []cid.Cid) (*TipSet, error) {
+func (cs *ChainStore) LoadTipSet(cids []cid.Cid) (*types.TipSet, error) {
 	var blks []*types.BlockHeader
 	for _, c := range cids {
 		b, err := cs.GetBlock(c)
@@ -209,11 +209,11 @@ func (cs *ChainStore) LoadTipSet(cids []cid.Cid) (*TipSet, error) {
 		blks = append(blks, b)
 	}
 
-	return NewTipSet(blks)
+	return types.NewTipSet(blks)
 }
 
 // returns true if 'a' is an ancestor of 'b'
-func (cs *ChainStore) IsAncestorOf(a, b *TipSet) (bool, error) {
+func (cs *ChainStore) IsAncestorOf(a, b *types.TipSet) (bool, error) {
 	if b.Height() <= a.Height() {
 		return false, nil
 	}
@@ -231,7 +231,7 @@ func (cs *ChainStore) IsAncestorOf(a, b *TipSet) (bool, error) {
 	return cur.Equals(a), nil
 }
 
-func (cs *ChainStore) NearestCommonAncestor(a, b *TipSet) (*TipSet, error) {
+func (cs *ChainStore) NearestCommonAncestor(a, b *types.TipSet) (*types.TipSet, error) {
 	l, _, err := cs.ReorgOps(a, b)
 	if err != nil {
 		return nil, err
@@ -240,11 +240,11 @@ func (cs *ChainStore) NearestCommonAncestor(a, b *TipSet) (*TipSet, error) {
 	return cs.LoadTipSet(l[len(l)-1].Parents())
 }
 
-func (cs *ChainStore) ReorgOps(a, b *TipSet) ([]*TipSet, []*TipSet, error) {
+func (cs *ChainStore) ReorgOps(a, b *types.TipSet) ([]*types.TipSet, []*types.TipSet, error) {
 	left := a
 	right := b
 
-	var leftChain, rightChain []*TipSet
+	var leftChain, rightChain []*types.TipSet
 	for !left.Equals(right) {
 		if left.Height() > right.Height() {
 			leftChain = append(leftChain, left)
@@ -268,17 +268,17 @@ func (cs *ChainStore) ReorgOps(a, b *TipSet) ([]*TipSet, []*TipSet, error) {
 	return leftChain, rightChain, nil
 }
 
-func (cs *ChainStore) Weight(ts *TipSet) uint64 {
+func (cs *ChainStore) Weight(ts *types.TipSet) uint64 {
 	return ts.Blocks()[0].ParentWeight.Uint64() + uint64(len(ts.Cids()))
 }
 
-func (cs *ChainStore) GetHeaviestTipSet() *TipSet {
+func (cs *ChainStore) GetHeaviestTipSet() *types.TipSet {
 	cs.heaviestLk.Lock()
 	defer cs.heaviestLk.Unlock()
 	return cs.heaviest
 }
 
-func (cs *ChainStore) persistBlockHeader(b *types.BlockHeader) error {
+func (cs *ChainStore) PersistBlockHeader(b *types.BlockHeader) error {
 	sb, err := b.ToStorageBlock()
 	if err != nil {
 		return err
@@ -288,34 +288,38 @@ func (cs *ChainStore) persistBlockHeader(b *types.BlockHeader) error {
 }
 
 func (cs *ChainStore) persistBlock(b *types.FullBlock) error {
-	if err := cs.persistBlockHeader(b.Header); err != nil {
+	if err := cs.PersistBlockHeader(b.Header); err != nil {
 		return err
 	}
 
 	for _, m := range b.Messages {
-		if err := cs.PutMessage(m); err != nil {
+		if _, err := cs.PutMessage(m); err != nil {
 			return err
 		}
 	}
 	return nil
 }
 
-func (cs *ChainStore) PutMessage(m *types.SignedMessage) error {
+type storable interface {
+	ToStorageBlock() (block.Block, error)
+}
+
+func (cs *ChainStore) PutMessage(m storable) (cid.Cid, error) {
 	sb, err := m.ToStorageBlock()
 	if err != nil {
-		return err
+		return cid.Undef, err
 	}
 
-	return cs.bs.Put(sb)
+	return sb.Cid(), cs.bs.Put(sb)
 }
 
 func (cs *ChainStore) AddBlock(b *types.BlockHeader) error {
-	if err := cs.persistBlockHeader(b); err != nil {
+	if err := cs.PersistBlockHeader(b); err != nil {
 		return err
 	}
 
-	ts, _ := NewTipSet([]*types.BlockHeader{b})
-	cs.maybeTakeHeavierTipSet(ts)
+	ts, _ := types.NewTipSet([]*types.BlockHeader{b})
+	cs.MaybeTakeHeavierTipSet(ts)
 
 	return nil
 }
@@ -436,24 +440,28 @@ func (cs *ChainStore) LoadMessagesFromCids(cids []cid.Cid) ([]*types.SignedMessa
 }
 
 func (cs *ChainStore) GetBalance(addr address.Address) (types.BigInt, error) {
-	ts := cs.GetHeaviestTipSet()
-	stcid, err := cs.TipSetState(ts.Cids())
-	if err != nil {
-		return types.BigInt{}, err
-	}
-
-	cst := hamt.CSTFromBstore(cs.bs)
-	state, err := state.LoadStateTree(cst, stcid)
-	if err != nil {
-		return types.BigInt{}, err
-	}
-
-	act, err := state.GetActor(addr)
+	act, err := cs.GetActor(addr)
 	if err != nil {
 		return types.BigInt{}, err
 	}
 
 	return act.Balance, nil
+}
+
+func (cs *ChainStore) GetActor(addr address.Address) (*types.Actor, error) {
+	ts := cs.GetHeaviestTipSet()
+	stcid, err := cs.TipSetState(ts.Cids())
+	if err != nil {
+		return nil, err
+	}
+
+	cst := hamt.CSTFromBstore(cs.bs)
+	state, err := state.LoadStateTree(cst, stcid)
+	if err != nil {
+		return nil, err
+	}
+
+	return state.GetActor(addr)
 }
 
 func (cs *ChainStore) WaitForMessage(ctx context.Context, mcid cid.Cid) (cid.Cid, *types.MessageReceipt, error) {
@@ -491,7 +499,7 @@ func (cs *ChainStore) WaitForMessage(ctx context.Context, mcid cid.Cid) (cid.Cid
 	}
 }
 
-func (cs *ChainStore) tipsetContainsMsg(ts *TipSet, msg cid.Cid) (cid.Cid, *types.MessageReceipt, error) {
+func (cs *ChainStore) tipsetContainsMsg(ts *types.TipSet, msg cid.Cid) (cid.Cid, *types.MessageReceipt, error) {
 	for _, b := range ts.Blocks() {
 		r, err := cs.blockContainsMsg(b, msg)
 		if err != nil {
@@ -517,4 +525,8 @@ func (cs *ChainStore) blockContainsMsg(blk *types.BlockHeader, msg cid.Cid) (*ty
 	}
 
 	return nil, nil
+}
+
+func (cs *ChainStore) Blockstore() blockstore.Blockstore {
+	return cs.bs
 }

@@ -19,22 +19,22 @@ type api interface {
 
 	// returns a set of messages that havent been included in the chain as of
 	// the given tipset
-	MpoolPending(ctx context.Context, base *chain.TipSet) ([]*types.SignedMessage, error)
+	MpoolPending(ctx context.Context, base *types.TipSet) ([]*types.SignedMessage, error)
 
 	// Returns the best tipset for the miner to mine on top of.
 	// TODO: Not sure this feels right (including the messages api). Miners
 	// will likely want to have more control over exactly which blocks get
 	// mined on, and which messages are included.
-	ChainHead(context.Context) (*chain.TipSet, error)
+	ChainHead(context.Context) (*types.TipSet, error)
 
 	// returns the lookback randomness from the chain used for the election
-	ChainGetRandomness(context.Context, *chain.TipSet) ([]byte, error)
+	ChainGetRandomness(context.Context, *types.TipSet) ([]byte, error)
 
 	// create a block
 	// it seems realllllly annoying to do all the actions necessary to build a
 	// block through the API. so, we just add the block creation to the API
 	// now, all the 'miner' does is check if they win, and call create block
-	MinerCreateBlock(context.Context, address.Address, *chain.TipSet, []types.Ticket, types.ElectionProof, []*types.SignedMessage) (*chain.BlockMsg, error)
+	MinerCreateBlock(context.Context, address.Address, *types.TipSet, []types.Ticket, types.ElectionProof, []*types.SignedMessage) (*chain.BlockMsg, error)
 }
 
 func NewMiner(api api, addr address.Address) *Miner {
@@ -79,7 +79,7 @@ func (m *Miner) Mine(ctx context.Context) {
 }
 
 type MiningBase struct {
-	ts      *chain.TipSet
+	ts      *types.TipSet
 	tickets []types.Ticket
 }
 

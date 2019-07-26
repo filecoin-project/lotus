@@ -1,4 +1,4 @@
-package chain
+package vm
 
 import (
 	"fmt"
@@ -15,7 +15,7 @@ type invoker struct {
 	builtInCode map[cid.Cid]nativeCode
 }
 
-type invokeFunc func(act *types.Actor, vmctx *VMContext, params []byte) ([]byte, aerrors.ActorError)
+type invokeFunc func(act *types.Actor, vmctx types.VMContext, params []byte) ([]byte, aerrors.ActorError)
 type nativeCode []invokeFunc
 
 func newInvoker() *invoker {
@@ -31,7 +31,7 @@ func newInvoker() *invoker {
 	return inv
 }
 
-func (inv *invoker) Invoke(act *types.Actor, vmctx *VMContext, method uint64, params []byte) ([]byte, aerrors.ActorError) {
+func (inv *invoker) Invoke(act *types.Actor, vmctx types.VMContext, method uint64, params []byte) ([]byte, aerrors.ActorError) {
 
 	code, ok := inv.builtInCode[act.Code]
 	if !ok {

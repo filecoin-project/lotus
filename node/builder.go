@@ -24,6 +24,7 @@ import (
 
 	"github.com/filecoin-project/go-lotus/api"
 	"github.com/filecoin-project/go-lotus/chain"
+	"github.com/filecoin-project/go-lotus/chain/store"
 	"github.com/filecoin-project/go-lotus/chain/types"
 	"github.com/filecoin-project/go-lotus/node/config"
 	"github.com/filecoin-project/go-lotus/node/hello"
@@ -183,7 +184,7 @@ func Online() Option {
 
 			Override(HandleIncomingMessagesKey, modules.HandleIncomingMessages),
 
-			Override(new(*chain.ChainStore), modules.ChainStore),
+			Override(new(*store.ChainStore), modules.ChainStore),
 
 			Override(new(blockstore.GCLocker), blockstore.NewGCLocker),
 			Override(new(blockstore.GCBlockstore), blockstore.NewGCBlockstore),

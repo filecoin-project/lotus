@@ -38,17 +38,17 @@ type FullNodeStruct struct {
 
 	Internal struct {
 		ChainSubmitBlock      func(ctx context.Context, blk *chain.BlockMsg) error           `perm:"write"`
-		ChainHead             func(context.Context) (*chain.TipSet, error)                   `perm:"read"`
-		ChainGetRandomness    func(context.Context, *chain.TipSet) ([]byte, error)           `perm:"read"`
+		ChainHead             func(context.Context) (*types.TipSet, error)                   `perm:"read"`
+		ChainGetRandomness    func(context.Context, *types.TipSet) ([]byte, error)           `perm:"read"`
 		ChainWaitMsg          func(context.Context, cid.Cid) (*MsgWait, error)               `perm:"read"`
 		ChainGetBlock         func(context.Context, cid.Cid) (*types.BlockHeader, error)     `perm:"read"`
 		ChainGetBlockMessages func(context.Context, cid.Cid) ([]*types.SignedMessage, error) `perm:"read"`
 
-		MpoolPending func(context.Context, *chain.TipSet) ([]*types.SignedMessage, error) `perm:"read"`
+		MpoolPending func(context.Context, *types.TipSet) ([]*types.SignedMessage, error) `perm:"read"`
 		MpoolPush    func(context.Context, *types.SignedMessage) error                    `perm:"write"`
 
 		MinerStart       func(context.Context, address.Address) error                                                                                                `perm:"admin"`
-		MinerCreateBlock func(context.Context, address.Address, *chain.TipSet, []types.Ticket, types.ElectionProof, []*types.SignedMessage) (*chain.BlockMsg, error) `perm:"write"`
+		MinerCreateBlock func(context.Context, address.Address, *types.TipSet, []types.Ticket, types.ElectionProof, []*types.SignedMessage) (*chain.BlockMsg, error) `perm:"write"`
 
 		WalletNew            func(context.Context, string) (address.Address, error)                   `perm:"write"`
 		WalletList           func(context.Context) ([]address.Address, error)                         `perm:"write"`
@@ -115,7 +115,7 @@ func (c *FullNodeStruct) ClientImport(ctx context.Context, path string) (cid.Cid
 	return c.Internal.ClientImport(ctx, path)
 }
 
-func (c *FullNodeStruct) MpoolPending(ctx context.Context, ts *chain.TipSet) ([]*types.SignedMessage, error) {
+func (c *FullNodeStruct) MpoolPending(ctx context.Context, ts *types.TipSet) ([]*types.SignedMessage, error) {
 	return c.Internal.MpoolPending(ctx, ts)
 }
 
@@ -127,7 +127,7 @@ func (c *FullNodeStruct) MinerStart(ctx context.Context, addr address.Address) e
 	return c.Internal.MinerStart(ctx, addr)
 }
 
-func (c *FullNodeStruct) MinerCreateBlock(ctx context.Context, addr address.Address, base *chain.TipSet, tickets []types.Ticket, eproof types.ElectionProof, msgs []*types.SignedMessage) (*chain.BlockMsg, error) {
+func (c *FullNodeStruct) MinerCreateBlock(ctx context.Context, addr address.Address, base *types.TipSet, tickets []types.Ticket, eproof types.ElectionProof, msgs []*types.SignedMessage) (*chain.BlockMsg, error) {
 	return c.Internal.MinerCreateBlock(ctx, addr, base, tickets, eproof, msgs)
 }
 
@@ -135,11 +135,11 @@ func (c *FullNodeStruct) ChainSubmitBlock(ctx context.Context, blk *chain.BlockM
 	return c.Internal.ChainSubmitBlock(ctx, blk)
 }
 
-func (c *FullNodeStruct) ChainHead(ctx context.Context) (*chain.TipSet, error) {
+func (c *FullNodeStruct) ChainHead(ctx context.Context) (*types.TipSet, error) {
 	return c.Internal.ChainHead(ctx)
 }
 
-func (c *FullNodeStruct) ChainGetRandomness(ctx context.Context, pts *chain.TipSet) ([]byte, error) {
+func (c *FullNodeStruct) ChainGetRandomness(ctx context.Context, pts *types.TipSet) ([]byte, error) {
 	return c.Internal.ChainGetRandomness(ctx, pts)
 }
 

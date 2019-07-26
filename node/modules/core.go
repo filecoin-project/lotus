@@ -30,7 +30,7 @@ import (
 	"golang.org/x/xerrors"
 
 	"github.com/filecoin-project/go-lotus/api"
-	"github.com/filecoin-project/go-lotus/chain"
+	"github.com/filecoin-project/go-lotus/chain/store"
 	"github.com/filecoin-project/go-lotus/chain/types"
 	"github.com/filecoin-project/go-lotus/node/modules/helpers"
 	"github.com/filecoin-project/go-lotus/node/repo"
@@ -58,7 +58,7 @@ func Bitswap(mctx helpers.MetricsCtx, lc fx.Lifecycle, host host.Host, rt routin
 	return exch
 }
 
-func SetGenesis(cs *chain.ChainStore, g Genesis) error {
+func SetGenesis(cs *store.ChainStore, g Genesis) error {
 	_, err := cs.GetGenesis()
 	if err == nil {
 		return nil // already set, noop
@@ -179,8 +179,8 @@ func ClientDAG(lc fx.Lifecycle, fstore *filestore.Filestore) ipld.DAGService {
 	return dag
 }
 
-func ChainStore(lc fx.Lifecycle, bs blockstore.Blockstore, ds datastore.Batching) *chain.ChainStore {
-	chain := chain.NewChainStore(bs, ds)
+func ChainStore(lc fx.Lifecycle, bs blockstore.Blockstore, ds datastore.Batching) *store.ChainStore {
+	chain := store.NewChainStore(bs, ds)
 
 	lc.Append(fx.Hook{
 		OnStart: func(ctx context.Context) error {
