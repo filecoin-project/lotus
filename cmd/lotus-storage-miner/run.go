@@ -1,7 +1,9 @@
 package main
 
 import (
+	"fmt"
 	"net/http"
+	"os"
 
 	"github.com/multiformats/go-multiaddr"
 	"golang.org/x/xerrors"
@@ -32,6 +34,13 @@ var runCmd = &cli.Command{
 			return err
 		}
 		ctx := lcli.ReqContext(cctx)
+
+		go func() {
+			// a hack for now to handle sigint
+
+			<-ctx.Done()
+			os.Exit(0)
+		}()
 
 		v, err := nodeApi.Version(ctx)
 		if err != nil {
@@ -92,16 +101,18 @@ var storeGarbageCmd = &cli.Command{
 	Name:  "store-garbage",
 	Usage: "store random data in a sector",
 	Action: func(cctx *cli.Context) error {
-		nodeApi, err := lcli.GetAPI(cctx)
+		nodeApi, err := lcli.GetStorageMinerAPI(cctx)
 		if err != nil {
 			return err
 		}
 		ctx := lcli.ReqContext(cctx)
 
-		_ = ctx
-		_ = nodeApi
-		// ???
-		// wait a second, i need the api handler for the storage miner...
+		sectorId, err := nodeApi.StoreGarbageData(ctx)
+		if err != nil {
+			return err
+		}
+
+		fmt.Println(sectorId)
 		return nil
 	},
 }

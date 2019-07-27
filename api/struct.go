@@ -68,7 +68,7 @@ type StorageMinerStruct struct {
 	CommonStruct
 
 	Internal struct {
-		StoreGarbageData func(context.Context) (uint64, error)
+		StoreGarbageData func(context.Context) (uint64, error) `perm:"write"`
 	}
 }
 
