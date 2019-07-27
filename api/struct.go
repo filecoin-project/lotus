@@ -68,6 +68,7 @@ type StorageMinerStruct struct {
 	CommonStruct
 
 	Internal struct {
+		StoreGarbageData func(context.Context) (uint64, error)
 	}
 }
 
@@ -183,6 +184,10 @@ func (c *FullNodeStruct) ChainGetBlockMessages(ctx context.Context, b cid.Cid) (
 
 func (c *FullNodeStruct) ChainNotify(ctx context.Context) (<-chan *store.HeadChange, error) {
 	return c.Internal.ChainNotify(ctx)
+}
+
+func (c *StorageMinerStruct) StoreGarbageData(ctx context.Context) (uint64, error) {
+	return c.Internal.StoreGarbageData(ctx)
 }
 
 var _ Common = &CommonStruct{}

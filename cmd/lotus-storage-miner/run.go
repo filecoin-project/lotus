@@ -11,7 +11,9 @@ import (
 	lcli "github.com/filecoin-project/go-lotus/cli"
 	"github.com/filecoin-project/go-lotus/lib/auth"
 	"github.com/filecoin-project/go-lotus/lib/jsonrpc"
+	"github.com/filecoin-project/go-lotus/lib/sectorbuilder"
 	"github.com/filecoin-project/go-lotus/node"
+	"github.com/filecoin-project/go-lotus/node/modules"
 	"github.com/filecoin-project/go-lotus/node/repo"
 )
 
@@ -36,7 +38,8 @@ var runCmd = &cli.Command{
 			return err
 		}
 
-		r, err := repo.NewFS(cctx.String(FlagStorageRepo))
+		storageRepoPath := cctx.String(FlagStorageRepo)
+		r, err := repo.NewFS(storageRepoPath)
 		if err != nil {
 			return err
 		}
@@ -46,7 +49,7 @@ var runCmd = &cli.Command{
 			return err
 		}
 		if !ok {
-			return xerrors.Errorf("repo at '%s' is not initialized, run 'lotus-storage-miner init' to set it up", cctx.String(FlagStorageRepo))
+			return xerrors.Errorf("repo at '%s' is not initialized, run 'lotus-storage-miner init' to set it up", storageRepoPath)
 		}
 
 		var minerapi api.StorageMiner
@@ -62,6 +65,7 @@ var runCmd = &cli.Command{
 				}
 				return lr.SetAPIEndpoint(apima)
 			}),
+			node.Override(new(*sectorbuilder.SectorBuilderConfig), modules.SectorBuilderConfig(storageRepoPath)),
 		)
 		if err != nil {
 			return err
@@ -81,5 +85,23 @@ var runCmd = &cli.Command{
 
 		http.Handle("/rpc/v0", ah)
 		return http.ListenAndServe("127.0.0.1:"+cctx.String("api"), http.DefaultServeMux)
+	},
+}
+
+var storeGarbageCmd = &cli.Command{
+	Name:  "store-garbage",
+	Usage: "store random data in a sector",
+	Action: func(cctx *cli.Context) error {
+		nodeApi, err := lcli.GetAPI(cctx)
+		if err != nil {
+			return err
+		}
+		ctx := lcli.ReqContext(cctx)
+
+		_ = ctx
+		_ = nodeApi
+		// ???
+		// wait a second, i need the api handler for the storage miner...
+		return nil
 	},
 }

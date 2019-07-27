@@ -219,22 +219,24 @@ func LoadGenesis(genBytes []byte) func(blockstore.Blockstore) Genesis {
 	}
 }
 
-func SectorBuilderConfig(storagePath string) (*sectorbuilder.SectorBuilderConfig, error) {
-	metadata := filepath.Join(storagePath, "meta")
-	sealed := filepath.Join(storagePath, "sealed")
-	staging := filepath.Join(storagePath, "staging")
+func SectorBuilderConfig(storagePath string) func() (*sectorbuilder.SectorBuilderConfig, error) {
+	return func() (*sectorbuilder.SectorBuilderConfig, error) {
+		metadata := filepath.Join(storagePath, "meta")
+		sealed := filepath.Join(storagePath, "sealed")
+		staging := filepath.Join(storagePath, "staging")
 
-	// TODO: get the address of the miner actor
-	minerAddr, err := address.NewIDAddress(42)
-	if err != nil {
-		return nil, err
+		// TODO: get the address of the miner actor
+		minerAddr, err := address.NewIDAddress(42)
+		if err != nil {
+			return nil, err
+		}
+
+		return &sectorbuilder.SectorBuilderConfig{
+			Miner:       minerAddr,
+			SectorSize:  1024,
+			MetadataDir: metadata,
+			SealedDir:   sealed,
+			StagedDir:   staging,
+		}, nil
 	}
-
-	return &sectorbuilder.SectorBuilderConfig{
-		Miner:       minerAddr,
-		SectorSize:  1024,
-		MetadataDir: metadata,
-		SealedDir:   sealed,
-		StagedDir:   staging,
-	}, nil
 }

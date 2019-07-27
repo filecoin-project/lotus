@@ -115,4 +115,7 @@ type FullNode interface {
 // Full API is a low-level interface to the Filecoin network storage miner node
 type StorageMiner interface {
 	Common
+
+	// Temp api for testing
+	StoreGarbageData(context.Context) (uint64, error)
 }

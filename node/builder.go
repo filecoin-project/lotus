@@ -249,7 +249,6 @@ func Config(cfg *config.Root) Option {
 		),
 
 		ApplyIf(func(s *Settings) bool { return s.nodeType == nodeStorageMiner },
-			Override(new(*sectorbuilder.SectorBuilderConfig), modules.SectorBuilderConfig),
 			Override(new(*sectorbuilder.SectorBuilder), sectorbuilder.New),
 		),
 	)
