@@ -28,6 +28,7 @@ import (
 	"github.com/filecoin-project/go-lotus/chain/store"
 	"github.com/filecoin-project/go-lotus/chain/types"
 	"github.com/filecoin-project/go-lotus/chain/wallet"
+	"github.com/filecoin-project/go-lotus/lib/sectorbuilder"
 	"github.com/filecoin-project/go-lotus/node/config"
 	"github.com/filecoin-project/go-lotus/node/hello"
 	"github.com/filecoin-project/go-lotus/node/impl"
@@ -245,6 +246,11 @@ func Config(cfg *config.Root) Option {
 
 		ApplyIf(func(s *Settings) bool { return s.Online },
 			Override(StartListeningKey, lp2p.StartListening(cfg.Libp2p.ListenAddresses)),
+		),
+
+		ApplyIf(func(s *Settings) bool { return s.nodeType == nodeStorageMiner },
+			Override(new(*sectorbuilder.SectorBuilderConfig), modules.SectorBuilderConfig),
+			Override(new(*sectorbuilder.SectorBuilder), sectorbuilder.New),
 		),
 	)
 }

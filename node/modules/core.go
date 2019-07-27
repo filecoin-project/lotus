@@ -30,8 +30,10 @@ import (
 	"golang.org/x/xerrors"
 
 	"github.com/filecoin-project/go-lotus/api"
+	"github.com/filecoin-project/go-lotus/chain/address"
 	"github.com/filecoin-project/go-lotus/chain/store"
 	"github.com/filecoin-project/go-lotus/chain/types"
+	"github.com/filecoin-project/go-lotus/lib/sectorbuilder"
 	"github.com/filecoin-project/go-lotus/node/modules/helpers"
 	"github.com/filecoin-project/go-lotus/node/repo"
 )
@@ -215,4 +217,24 @@ func LoadGenesis(genBytes []byte) func(blockstore.Blockstore) Genesis {
 			return types.DecodeBlock(root.RawData())
 		}
 	}
+}
+
+func SectorBuilderConfig(storagePath string) (*sectorbuilder.SectorBuilderConfig, error) {
+	metadata := filepath.Join(storagePath, "meta")
+	sealed := filepath.Join(storagePath, "sealed")
+	staging := filepath.Join(storagePath, "staging")
+
+	// TODO: get the address of the miner actor
+	minerAddr, err := address.NewIDAddress(42)
+	if err != nil {
+		return nil, err
+	}
+
+	return &sectorbuilder.SectorBuilderConfig{
+		Miner:       minerAddr,
+		SectorSize:  1024,
+		MetadataDir: metadata,
+		SealedDir:   sealed,
+		StagedDir:   staging,
+	}, nil
 }
