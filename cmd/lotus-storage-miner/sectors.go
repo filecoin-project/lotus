@@ -70,7 +70,7 @@ var sectorsStatusCmd = &cli.Command{
 		fmt.Printf("CommR:\t\t%x\n", status.CommR)
 		fmt.Printf("CommR*:\t\t%x\n", status.CommRStar)
 		fmt.Printf("Proof:\t\t%x\n", status.Proof)
-		fmt.Printf("Pieces:\t\t%s\n", status.Pieces)
+		fmt.Printf("Pieces:\t\t%v\n", status.Pieces)
 		return nil
 	},
 }
