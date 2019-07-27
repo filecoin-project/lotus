@@ -22,6 +22,7 @@ func main() {
 		runCmd,
 		initCmd,
 		storeGarbageCmd,
+		sectorsCmd,
 	}
 	jaeger := tracing.SetupJaegerTracing("lotus")
 	defer func() {

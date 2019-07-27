@@ -7,6 +7,10 @@ import (
 	sectorbuilder "github.com/filecoin-project/go-sectorbuilder"
 )
 
+type SectorSealingStatus = sectorbuilder.SectorSealingStatus
+
+type StagedSectorMetadata = sectorbuilder.StagedSectorMetadata
+
 const CommLen = sectorbuilder.CommitmentBytesLen
 
 type SectorBuilder struct {
@@ -52,8 +56,12 @@ func (sb *SectorBuilder) SealAllStagedSectors() error {
 	return sectorbuilder.SealAllStagedSectors(sb.handle)
 }
 
-func (sb *SectorBuilder) SealStatus(sector uint64) (sectorbuilder.SectorSealingStatus, error) {
+func (sb *SectorBuilder) SealStatus(sector uint64) (SectorSealingStatus, error) {
 	return sectorbuilder.GetSectorSealingStatusByID(sb.handle, sector)
+}
+
+func (sb *SectorBuilder) GetAllStagedSectors() ([]StagedSectorMetadata, error) {
+	return sectorbuilder.GetAllStagedSectors(sb.handle)
 }
 
 func (sb *SectorBuilder) GeneratePoSt(sortedCommRs [][CommLen]byte, challengeSeed [CommLen]byte) ([][]byte, []uint64, error) {
@@ -61,6 +69,8 @@ func (sb *SectorBuilder) GeneratePoSt(sortedCommRs [][CommLen]byte, challengeSee
 	// does it checkpoint itself?
 	return sectorbuilder.GeneratePoSt(sb.handle, sortedCommRs, challengeSeed)
 }
+
+var UserBytesForSectorSize = sectorbuilder.GetMaxUserBytesPerStagedSector
 
 func VerifySeal(sectorSize uint64, commR, commD, commRStar [CommLen]byte, proverID address.Address, sectorID uint64, proof []byte) (bool, error) {
 	panic("TODO")

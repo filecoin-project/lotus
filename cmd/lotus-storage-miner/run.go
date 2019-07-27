@@ -1,7 +1,6 @@
 package main
 
 import (
-	"fmt"
 	"net/http"
 	"os"
 
@@ -94,25 +93,5 @@ var runCmd = &cli.Command{
 
 		http.Handle("/rpc/v0", ah)
 		return http.ListenAndServe("127.0.0.1:"+cctx.String("api"), http.DefaultServeMux)
-	},
-}
-
-var storeGarbageCmd = &cli.Command{
-	Name:  "store-garbage",
-	Usage: "store random data in a sector",
-	Action: func(cctx *cli.Context) error {
-		nodeApi, err := lcli.GetStorageMinerAPI(cctx)
-		if err != nil {
-			return err
-		}
-		ctx := lcli.ReqContext(cctx)
-
-		sectorId, err := nodeApi.StoreGarbageData(ctx)
-		if err != nil {
-			return err
-		}
-
-		fmt.Println(sectorId)
-		return nil
 	},
 }
