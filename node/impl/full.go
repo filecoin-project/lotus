@@ -68,7 +68,7 @@ func (a *FullNodeAPI) ChainWaitMsg(ctx context.Context, msg cid.Cid) (*api.MsgWa
 
 	return &api.MsgWait{
 		InBlock: blkcid,
-		Receipt: recpt,
+		Receipt: *recpt,
 	}, nil
 }
 
@@ -94,6 +94,9 @@ func (a *FullNodeAPI) MpoolPending(ctx context.Context, ts *types.TipSet) ([]*ty
 func (a *FullNodeAPI) MpoolPush(ctx context.Context, smsg *types.SignedMessage) error {
 	msgb, err := smsg.Serialize()
 	if err != nil {
+		return err
+	}
+	if err := a.Mpool.Add(smsg); err != nil {
 		return err
 	}
 

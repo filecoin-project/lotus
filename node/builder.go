@@ -9,6 +9,7 @@ import (
 	"github.com/ipfs/go-filestore"
 	exchange "github.com/ipfs/go-ipfs-exchange-interface"
 
+	bserv "github.com/ipfs/go-blockservice"
 	"github.com/ipfs/go-datastore"
 	blockstore "github.com/ipfs/go-ipfs-blockstore"
 	ipld "github.com/ipfs/go-ipld-format"
@@ -190,6 +191,7 @@ func Online() Option {
 			Override(new(blockstore.GCLocker), blockstore.NewGCLocker),
 			Override(new(blockstore.GCBlockstore), blockstore.NewGCBlockstore),
 			Override(new(exchange.Interface), modules.Bitswap),
+			Override(new(bserv.BlockService), bserv.New),
 			Override(new(ipld.DAGService), testing.MemoryClientDag),
 
 			// Filecoin services

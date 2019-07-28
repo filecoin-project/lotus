@@ -204,7 +204,10 @@ func (vm *VM) ApplyMessage(ctx context.Context, msg *types.Message) (*types.Mess
 	defer span.End()
 
 	st := vm.cstate
-	st.Snapshot()
+	if err := st.Snapshot(); err != nil {
+		return nil, xerrors.Errorf("snapshot failed: %w", err)
+	}
+
 	fromActor, err := st.GetActor(msg.From)
 	if err != nil {
 		return nil, xerrors.Errorf("from actor not found: %w", err)
@@ -253,7 +256,10 @@ func (vm *VM) ApplyMessage(ctx context.Context, msg *types.Message) (*types.Mess
 
 		if errcode = aerrors.RetCode(err); errcode != 0 {
 			// revert all state changes since snapshot
-			st.Revert()
+			if err := st.Revert(); err != nil {
+				return nil, xerrors.Errorf("revert state failed: %w", err)
+			}
+
 			gascost := types.BigMul(vmctx.GasUsed(), msg.GasPrice)
 			if err := DeductFunds(fromActor, gascost); err != nil {
 				panic("invariant violated: " + err.Error())

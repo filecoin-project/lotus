@@ -7,6 +7,7 @@ import (
 
 	"github.com/filecoin-project/go-lotus/build"
 	"github.com/filecoin-project/go-lotus/chain/actors"
+	"github.com/filecoin-project/go-lotus/chain/address"
 	"github.com/filecoin-project/go-lotus/chain/types"
 	"github.com/filecoin-project/go-lotus/chain/wallet"
 	lcli "github.com/filecoin-project/go-lotus/cli"
@@ -155,9 +156,18 @@ var initCmd = &cli.Command{
 
 		log.Infof("Waiting for confirmation")
 
-		// TODO: Wait
+		mw, err := api.ChainWaitMsg(ctx, signed.Cid())
+		if err != nil {
+			return err
+		}
 
-		// create actors and stuff
+		addr, err := address.NewFromBytes(mw.Receipt.Return)
+		if err != nil {
+			return err
+		}
+
+		// TODO: persist this address in the storage-miner repo
+		log.Infof("New storage miners address is: %s", addr)
 
 		// TODO: Point to setting storage price, maybe do it interactively or something
 		log.Info("Storage miner successfully created, you can now start it with 'lotus-storage-miner run'")

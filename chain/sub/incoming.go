@@ -17,7 +17,7 @@ func HandleIncomingBlocks(ctx context.Context, bsub *pubsub.Subscription, s *cha
 	for {
 		msg, err := bsub.Next(ctx)
 		if err != nil {
-			fmt.Println("error from block subscription: ", err)
+			log.Error("error from block subscription: ", err)
 			continue
 		}
 
@@ -33,7 +33,7 @@ func HandleIncomingBlocks(ctx context.Context, bsub *pubsub.Subscription, s *cha
 				log.Errorf("failed to fetch all messages for block received over pubusb: %s", err)
 				return
 			}
-			fmt.Println("inform new block over pubsub")
+			log.Info("inform new block over pubsub")
 			s.InformNewBlock(msg.GetFrom(), &types.FullBlock{
 				Header:   blk.Header,
 				Messages: msgs,
