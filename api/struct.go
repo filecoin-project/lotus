@@ -7,6 +7,7 @@ import (
 
 	"github.com/filecoin-project/go-lotus/chain"
 	"github.com/filecoin-project/go-lotus/chain/address"
+	"github.com/filecoin-project/go-lotus/chain/store"
 	"github.com/filecoin-project/go-lotus/chain/types"
 
 	"github.com/ipfs/go-cid"
@@ -37,6 +38,7 @@ type FullNodeStruct struct {
 	CommonStruct
 
 	Internal struct {
+		ChainNotify           func(context.Context) (<-chan *store.HeadChange, error)        `perm:"read"`
 		ChainSubmitBlock      func(ctx context.Context, blk *chain.BlockMsg) error           `perm:"write"`
 		ChainHead             func(context.Context) (*types.TipSet, error)                   `perm:"read"`
 		ChainGetRandomness    func(context.Context, *types.TipSet) ([]byte, error)           `perm:"read"`
@@ -177,6 +179,10 @@ func (c *FullNodeStruct) ChainGetBlock(ctx context.Context, b cid.Cid) (*types.B
 
 func (c *FullNodeStruct) ChainGetBlockMessages(ctx context.Context, b cid.Cid) ([]*types.SignedMessage, error) {
 	return c.Internal.ChainGetBlockMessages(ctx, b)
+}
+
+func (c *FullNodeStruct) ChainNotify(ctx context.Context) (<-chan *store.HeadChange, error) {
+	return c.Internal.ChainNotify(ctx)
 }
 
 var _ Common = &CommonStruct{}

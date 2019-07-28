@@ -106,13 +106,21 @@ type HeadChange struct {
 	Val  *types.TipSet
 }
 
-func (cs *ChainStore) SubHeadChanges() chan *HeadChange {
+func (cs *ChainStore) SubHeadChanges(ctx context.Context) chan *HeadChange {
 	subch := cs.bestTips.Sub("headchange")
 	out := make(chan *HeadChange, 16)
 	go func() {
 		defer close(out)
-		for val := range subch {
-			out <- val.(*HeadChange)
+		for {
+			select {
+			case val, ok := <-subch:
+				if !ok {
+					return
+				}
+				out <- val.(*HeadChange)
+			case <-ctx.Done():
+				cs.bestTips.Unsub(subch)
+			}
 		}
 	}()
 	return out
@@ -465,7 +473,7 @@ func (cs *ChainStore) GetActor(addr address.Address) (*types.Actor, error) {
 }
 
 func (cs *ChainStore) WaitForMessage(ctx context.Context, mcid cid.Cid) (cid.Cid, *types.MessageReceipt, error) {
-	tsub := cs.SubHeadChanges()
+	tsub := cs.SubHeadChanges(ctx)
 
 	head := cs.GetHeaviestTipSet()
 
