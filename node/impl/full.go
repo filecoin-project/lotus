@@ -61,7 +61,15 @@ func (a *FullNodeAPI) ChainGetRandomness(ctx context.Context, pts *types.TipSet)
 }
 
 func (a *FullNodeAPI) ChainWaitMsg(ctx context.Context, msg cid.Cid) (*api.MsgWait, error) {
-	panic("TODO")
+	blkcid, recpt, err := a.Chain.WaitForMessage(ctx, msg)
+	if err != nil {
+		return nil, err
+	}
+
+	return &api.MsgWait{
+		InBlock: blkcid,
+		Receipt: recpt,
+	}, nil
 }
 
 func (a *FullNodeAPI) ChainGetBlock(ctx context.Context, msg cid.Cid) (*types.BlockHeader, error) {
