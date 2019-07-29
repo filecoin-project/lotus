@@ -212,7 +212,9 @@ func Online() Option {
 		),
 
 		// Storage miner
-
+		ApplyIf(func(s *Settings) bool { return s.nodeType == nodeStorageMiner },
+			Override(new(*sectorbuilder.SectorBuilder), sectorbuilder.New),
+		),
 	)
 }
 
@@ -246,10 +248,6 @@ func Config(cfg *config.Root) Option {
 
 		ApplyIf(func(s *Settings) bool { return s.Online },
 			Override(StartListeningKey, lp2p.StartListening(cfg.Libp2p.ListenAddresses)),
-		),
-
-		ApplyIf(func(s *Settings) bool { return s.nodeType == nodeStorageMiner },
-			Override(new(*sectorbuilder.SectorBuilder), sectorbuilder.New),
 		),
 	)
 }
