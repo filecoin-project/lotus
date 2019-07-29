@@ -5,6 +5,8 @@ go 1.12
 require (
 	contrib.go.opencensus.io/exporter/jaeger v0.1.0
 	github.com/BurntSushi/toml v0.3.1
+	github.com/alecthomas/template v0.0.0-20190718012654-fb15b899a751 // indirect
+	github.com/alecthomas/units v0.0.0-20190717042225-c3de453c63f4 // indirect
 	github.com/filecoin-project/go-bls-sigs v0.0.0-20190718224239-4bc4b8a7bbf8
 	github.com/filecoin-project/go-leb128 v0.0.0-20190212224330-8d79a5489543
 	github.com/filecoin-project/go-sectorbuilder v0.0.0-00010101000000-000000000000
@@ -60,6 +62,7 @@ require (
 	github.com/multiformats/go-multihash v0.0.6
 	github.com/pkg/errors v0.8.1
 	github.com/polydawn/refmt v0.0.0-20190408063855-01bf1e26dd14
+	github.com/prometheus/common v0.6.0
 	github.com/smartystreets/assertions v1.0.1 // indirect
 	github.com/smartystreets/goconvey v0.0.0-20190710185942-9d28bd7c0945 // indirect
 	github.com/stretchr/testify v1.3.0
