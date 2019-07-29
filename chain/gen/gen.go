@@ -31,6 +31,9 @@ type ChainGen struct {
 	curBlock *types.FullBlock
 
 	miner address.Address
+
+	r repo.Repo
+	lr repo.LockedRepo
 }
 
 type mybs struct {
@@ -48,18 +51,23 @@ func (m mybs) Get(c cid.Cid) (block.Block, error) {
 }
 
 func NewGenerator() (*ChainGen, error) {
-
 	mr := repo.NewMemory(nil)
 	lr, err := mr.Lock()
 	if err != nil {
 		return nil, err
 	}
 
-	ds, err := lr.Datastore("/blocks")
+	ds, err := lr.Datastore("/metadata")
 	if err != nil {
 		return nil, err
 	}
-	bs := mybs{blockstore.NewBlockstore(ds)}
+
+	bds, err := lr.Datastore("/blocks")
+	if err != nil {
+		return nil, err
+	}
+
+	bs := mybs{blockstore.NewBlockstore(bds)}
 
 	ks, err := lr.KeyStore()
 	if err != nil {
@@ -105,6 +113,9 @@ func NewGenerator() (*ChainGen, error) {
 		genesis:      genb.Genesis,
 		miner:        miner,
 		curBlock:     genfb,
+
+		r: mr,
+		lr: lr,
 	}
 
 	return gen, nil
@@ -143,4 +154,11 @@ func (cg *ChainGen) NextBlock() (*types.FullBlock, error) {
 	cg.curBlock = fblk
 
 	return fblk, nil
+}
+
+func (cg *ChainGen) YieldRepo() (repo.Repo, error) {
+	if err := cg.lr.Close(); err != nil {
+		return nil, err
+	}
+	return cg.r, nil
 }
