@@ -526,18 +526,18 @@ func (syncer *Syncer) ValidateBlock(ctx context.Context, b *types.FullBlock) err
 		return err
 	}
 
-	vm, err := vm.NewVM(stateroot, b.Header.Height, b.Header.Miner, syncer.store)
+	vmi, err := vm.NewVM(stateroot, b.Header.Height, b.Header.Miner, syncer.store)
 	if err != nil {
 		return err
 	}
 
-	if err := vm.TransferFunds(actors.NetworkAddress, b.Header.Miner, miningRewardForBlock(baseTs)); err != nil {
+	if err := vmi.TransferFunds(actors.NetworkAddress, b.Header.Miner, vm.MiningRewardForBlock(baseTs)); err != nil {
 		return err
 	}
 
 	var receipts []interface{}
 	for _, m := range b.Messages {
-		receipt, err := vm.ApplyMessage(ctx, &m.Message)
+		receipt, err := vmi.ApplyMessage(ctx, &m.Message)
 		if err != nil {
 			return err
 		}
@@ -554,7 +554,7 @@ func (syncer *Syncer) ValidateBlock(ctx context.Context, b *types.FullBlock) err
 		return fmt.Errorf("receipts mismatched")
 	}
 
-	final, err := vm.Flush(context.TODO())
+	final, err := vmi.Flush(context.TODO())
 	if err != nil {
 		return err
 	}

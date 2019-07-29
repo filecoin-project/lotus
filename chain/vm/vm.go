@@ -311,6 +311,9 @@ func Copy(ctx context.Context, from, to ipld.DAGService, root cid.Cid) error {
 	}
 	links := node.Links()
 	for _, link := range links {
+		if link.Cid.Prefix().MhType == 0 {
+			continue
+		}
 		_, err := to.Get(ctx, link.Cid)
 		switch err {
 		default:
@@ -380,4 +383,8 @@ func DeductFunds(act *types.Actor, amt types.BigInt) error {
 
 func DepositFunds(act *types.Actor, amt types.BigInt) {
 	act.Balance = types.BigAdd(act.Balance, amt)
+}
+
+func MiningRewardForBlock(base *types.TipSet) types.BigInt {
+	return types.NewInt(10000)
 }

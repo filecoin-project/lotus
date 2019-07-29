@@ -1,8 +1,7 @@
-package chain
+package gen
 
 import (
 	"context"
-	"fmt"
 
 	bls "github.com/filecoin-project/go-bls-sigs"
 	cid "github.com/ipfs/go-cid"
@@ -17,10 +16,6 @@ import (
 	"github.com/filecoin-project/go-lotus/chain/vm"
 )
 
-func miningRewardForBlock(base *types.TipSet) types.BigInt {
-	return types.NewInt(10000)
-}
-
 func MinerCreateBlock(ctx context.Context, cs *store.ChainStore, miner address.Address, parents *types.TipSet, tickets []types.Ticket, proof types.ElectionProof, msgs []*types.SignedMessage) (*types.FullBlock, error) {
 	st, err := cs.TipSetState(parents.Cids())
 	if err != nil {
@@ -29,13 +24,13 @@ func MinerCreateBlock(ctx context.Context, cs *store.ChainStore, miner address.A
 
 	height := parents.Height() + uint64(len(tickets))
 
-	vm, err := vm.NewVM(st, height, miner, cs)
+	vmi, err := vm.NewVM(st, height, miner, cs)
 	if err != nil {
 		return nil, err
 	}
 
 	// apply miner reward
-	if err := vm.TransferFunds(actors.NetworkAddress, miner, miningRewardForBlock(parents)); err != nil {
+	if err := vmi.TransferFunds(actors.NetworkAddress, miner, vm.MiningRewardForBlock(parents)); err != nil {
 		return nil, err
 	}
 
@@ -46,7 +41,6 @@ func MinerCreateBlock(ctx context.Context, cs *store.ChainStore, miner address.A
 		Height:  height,
 	}
 
-	fmt.Printf("adding %d messages to block...", len(msgs))
 	var msgCids []cid.Cid
 	var blsSigs []types.Signature
 	var receipts []interface{}
@@ -63,7 +57,7 @@ func MinerCreateBlock(ctx context.Context, cs *store.ChainStore, miner address.A
 		} else {
 			msgCids = append(msgCids, msg.Cid())
 		}
-		rec, err := vm.ApplyMessage(ctx, &msg.Message)
+		rec, err := vmi.ApplyMessage(ctx, &msg.Message)
 		if err != nil {
 			return nil, errors.Wrap(err, "apply message failure")
 		}
@@ -84,7 +78,7 @@ func MinerCreateBlock(ctx context.Context, cs *store.ChainStore, miner address.A
 	}
 	next.MessageReceipts = rectroot
 
-	stateRoot, err := vm.Flush(context.TODO())
+	stateRoot, err := vmi.Flush(context.TODO())
 	if err != nil {
 		return nil, errors.Wrap(err, "flushing state tree failed")
 	}

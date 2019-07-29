@@ -8,8 +8,10 @@ import (
 	"github.com/filecoin-project/go-lotus/api"
 	"github.com/filecoin-project/go-lotus/chain"
 	"github.com/filecoin-project/go-lotus/chain/address"
+	"github.com/filecoin-project/go-lotus/chain/gen"
 	"github.com/filecoin-project/go-lotus/chain/store"
 	"github.com/filecoin-project/go-lotus/chain/types"
+	"github.com/filecoin-project/go-lotus/chain/wallet"
 	"github.com/filecoin-project/go-lotus/miner"
 	"github.com/filecoin-project/go-lotus/node/client"
 
@@ -28,7 +30,7 @@ type FullNodeAPI struct {
 	Chain  *store.ChainStore
 	PubSub *pubsub.PubSub
 	Mpool  *chain.MessagePool
-	Wallet *chain.Wallet
+	Wallet *wallet.Wallet
 }
 
 func (a *FullNodeAPI) ChainSubmitBlock(ctx context.Context, blk *chain.BlockMsg) error {
@@ -100,7 +102,7 @@ func (a *FullNodeAPI) MinerStart(ctx context.Context, addr address.Address) erro
 }
 
 func (a *FullNodeAPI) MinerCreateBlock(ctx context.Context, addr address.Address, parents *types.TipSet, tickets []types.Ticket, proof types.ElectionProof, msgs []*types.SignedMessage) (*chain.BlockMsg, error) {
-	fblk, err := chain.MinerCreateBlock(ctx, a.Chain, addr, parents, tickets, proof, msgs)
+	fblk, err := gen.MinerCreateBlock(ctx, a.Chain, addr, parents, tickets, proof, msgs)
 	if err != nil {
 		return nil, err
 	}
