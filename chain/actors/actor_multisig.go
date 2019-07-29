@@ -234,16 +234,7 @@ func (msa MultiSigActor) Approve(act *types.Actor, vmctx types.VMContext,
 		tx.Complete = true
 	}
 
-	newHead, err := vmctx.Storage().Put(self)
-	if err != nil {
-		return nil, aerrors.Wrap(err, "could not put new head")
-	}
-	err = vmctx.Storage().Commit(head, newHead)
-	if err != nil {
-		return nil, aerrors.Wrap(err, "could not commit new head")
-	}
-
-	return nil, nil
+	return nil, msa.save(vmctx, head, self)
 }
 
 func (msa MultiSigActor) Cancel(act *types.Actor, vmctx types.VMContext,
@@ -265,16 +256,7 @@ func (msa MultiSigActor) Cancel(act *types.Actor, vmctx types.VMContext,
 	}
 	tx.Canceled = true
 
-	newHead, err := vmctx.Storage().Put(self)
-	if err != nil {
-		return nil, aerrors.Wrap(err, "could not put new head")
-	}
-	err = vmctx.Storage().Commit(head, newHead)
-	if err != nil {
-		return nil, aerrors.Wrap(err, "could not commit new head")
-	}
-
-	return nil, nil
+	return nil, msa.save(vmctx, head, self)
 }
 
 type MultiSigSigner struct {
