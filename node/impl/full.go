@@ -33,6 +33,10 @@ type FullNodeAPI struct {
 	Wallet *wallet.Wallet
 }
 
+func (a *FullNodeAPI) ChainNotify(ctx context.Context) (<-chan *store.HeadChange, error) {
+	return a.Chain.SubHeadChanges(ctx), nil
+}
+
 func (a *FullNodeAPI) ChainSubmitBlock(ctx context.Context, blk *chain.BlockMsg) error {
 	if err := a.Chain.AddBlock(blk.Header); err != nil {
 		return err

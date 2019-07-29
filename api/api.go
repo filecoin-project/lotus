@@ -8,6 +8,7 @@ import (
 
 	"github.com/filecoin-project/go-lotus/chain"
 	"github.com/filecoin-project/go-lotus/chain/address"
+	"github.com/filecoin-project/go-lotus/chain/store"
 	"github.com/filecoin-project/go-lotus/chain/types"
 
 	"github.com/ipfs/go-cid"
@@ -64,6 +65,7 @@ type FullNode interface {
 	Common
 
 	// chain
+	ChainNotify(context.Context) (<-chan *store.HeadChange, error)
 	ChainHead(context.Context) (*types.TipSet, error)                // TODO: check serialization
 	ChainSubmitBlock(ctx context.Context, blk *chain.BlockMsg) error // TODO: check serialization
 	ChainGetRandomness(context.Context, *types.TipSet) ([]byte, error)
