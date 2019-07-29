@@ -23,7 +23,7 @@ type MultiSigActor struct{}
 type MultiSigActorState struct {
 	Signers  []address.Address
 	Required uint32
-	NextTxId uint64
+	NextTxID uint64
 
 	//TODO: make this map/sharray/whatever
 	Transactions []MTransaction
@@ -171,8 +171,8 @@ func (msa MultiSigActor) Propose(act *types.Actor, vmctx types.VMContext,
 		return nil, err
 	}
 
-	txid := self.NextTxId
-	self.NextTxId++
+	txid := self.NextTxID
+	self.NextTxID++
 
 	tx := MTransaction{
 		TxID:     txid,
