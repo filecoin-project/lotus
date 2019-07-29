@@ -321,7 +321,9 @@ func (syncer *Syncer) SyncBootstrap() {
 
 	head := blockSet[len(blockSet)-1]
 	log.Errorf("Finished syncing! new head: %s", head.Cids())
-	syncer.store.MaybeTakeHeavierTipSet(selectedHead)
+	if err := syncer.store.MaybeTakeHeavierTipSet(selectedHead); err != nil {
+		log.Errorf("MaybeTakeHeavierTipSet failed: %s", err)
+	}
 	syncer.head = head
 	syncer.syncMode = CaughtUp
 }
@@ -486,7 +488,9 @@ func (syncer *Syncer) SyncCaughtUp(maybeHead *store.FullTipSet) error {
 			return errors.Wrap(err, "validate tipset failed")
 		}
 
-		syncer.store.PutTipSet(ts)
+		if err := syncer.store.PutTipSet(ts); err != nil {
+			return errors.Wrap(err, "PutTipSet failed in SyncCaughtUp")
+		}
 	}
 
 	if err := syncer.store.PutTipSet(maybeHead); err != nil {

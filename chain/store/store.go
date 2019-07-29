@@ -39,11 +39,31 @@ type ChainStore struct {
 }
 
 func NewChainStore(bs bstore.Blockstore, ds dstore.Batching) *ChainStore {
-	return &ChainStore{
+	cs := &ChainStore{
 		bs:       bs,
 		ds:       ds,
 		bestTips: pubsub.New(64),
 	}
+
+	hcnf := func(rev, app []*types.TipSet) error {
+		for _, r := range rev {
+			cs.bestTips.Pub(&HeadChange{
+				Type: HCRevert,
+				Val:  r,
+			}, "headchange")
+		}
+		for _, r := range app {
+			cs.bestTips.Pub(&HeadChange{
+				Type: HCApply,
+				Val:  r,
+			}, "headchange")
+		}
+		return nil
+	}
+
+	cs.headChangeNotifs = append(cs.headChangeNotifs, hcnf)
+
+	return cs
 }
 
 func (cs *ChainStore) Load() error {
@@ -157,7 +177,9 @@ func (cs *ChainStore) PutTipSet(ts *FullTipSet) error {
 		}
 	}
 
-	cs.MaybeTakeHeavierTipSet(ts.TipSet())
+	if err := cs.MaybeTakeHeavierTipSet(ts.TipSet()); err != nil {
+		return errors.Wrap(err, "MaybeTakeHeavierTipSet failed in PutTipSet")
+	}
 	return nil
 }
 
@@ -170,7 +192,9 @@ func (cs *ChainStore) MaybeTakeHeavierTipSet(ts *types.TipSet) error {
 			return err
 		}
 		for _, hcf := range cs.headChangeNotifs {
-			hcf(revert, apply)
+			if err := hcf(revert, apply); err != nil {
+				return errors.Wrap(err, "head change func errored (BAD)")
+			}
 		}
 		log.Infof("New heaviest tipset! %s", ts.Cids())
 		cs.heaviest = ts
@@ -327,7 +351,9 @@ func (cs *ChainStore) AddBlock(b *types.BlockHeader) error {
 	}
 
 	ts, _ := types.NewTipSet([]*types.BlockHeader{b})
-	cs.MaybeTakeHeavierTipSet(ts)
+	if err := cs.MaybeTakeHeavierTipSet(ts); err != nil {
+		return errors.Wrap(err, "MaybeTakeHeavierTipSet failed")
+	}
 
 	return nil
 }

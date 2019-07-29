@@ -7,7 +7,7 @@ import (
 	"math/rand"
 	"sync"
 
-	exchange "github.com/ipfs/go-ipfs-exchange-interface"
+	bserv "github.com/ipfs/go-blockservice"
 	"github.com/libp2p/go-libp2p-core/host"
 	"github.com/libp2p/go-libp2p-core/protocol"
 
@@ -81,7 +81,6 @@ func NewBlockSyncService(cs *store.ChainStore) *BlockSyncService {
 
 func (bss *BlockSyncService) HandleStream(s inet.Stream) {
 	defer s.Close()
-	log.Info("handling block sync request")
 
 	var req BlockSyncRequest
 	if err := cborrpc.ReadCborRPC(bufio.NewReader(s), &req); err != nil {
@@ -185,16 +184,16 @@ func (bss *BlockSyncService) gatherMessages(ts *types.TipSet) ([]*types.SignedMe
 }
 
 type BlockSync struct {
-	bswap     exchange.Interface
+	bserv     bserv.BlockService
 	newStream NewStreamFunc
 
 	syncPeersLk sync.Mutex
 	syncPeers   map[peer.ID]struct{}
 }
 
-func NewBlockSyncClient(bswap exchange.Interface, h host.Host) *BlockSync {
+func NewBlockSyncClient(bserv bserv.BlockService, h host.Host) *BlockSync {
 	return &BlockSync{
-		bswap:     bswap,
+		bserv:     bserv,
 		newStream: h.NewStream,
 		syncPeers: make(map[peer.ID]struct{}),
 	}
@@ -379,7 +378,7 @@ func cidArrsEqual(a, b []cid.Cid) bool {
 }
 
 func (bs *BlockSync) GetBlock(ctx context.Context, c cid.Cid) (*types.BlockHeader, error) {
-	sb, err := bs.bswap.GetBlock(ctx, c)
+	sb, err := bs.bserv.GetBlock(ctx, c)
 	if err != nil {
 		return nil, err
 	}
@@ -396,10 +395,7 @@ func (bs *BlockSync) AddPeer(p peer.ID) {
 func (bs *BlockSync) FetchMessagesByCids(cids []cid.Cid) ([]*types.SignedMessage, error) {
 	out := make([]*types.SignedMessage, len(cids))
 
-	resp, err := bs.bswap.GetBlocks(context.TODO(), cids)
-	if err != nil {
-		return nil, err
-	}
+	resp := bs.bserv.GetBlocks(context.TODO(), cids)
 
 	m := make(map[cid.Cid]int)
 	for i, c := range cids {
