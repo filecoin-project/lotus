@@ -40,7 +40,7 @@ func builder(t *testing.T, n int) []api.FullNode {
 			node.FullAPI(&out[i]),
 			node.Online(),
 			node.Repo(repo.NewMemory(nil)),
-			MockHost(mn),
+			node.MockHost(mn),
 
 			genesis,
 		)
