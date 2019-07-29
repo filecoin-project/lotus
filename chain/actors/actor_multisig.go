@@ -335,7 +335,7 @@ func (msa MultiSigActor) SwapSigner(act *types.Actor, vmctx types.VMContext,
 		return nil, aerrors.New(6, "given new address was already a signer")
 	}
 
-	newSigners := make([]address.Address, 0, len(self.Signers)-1)
+	newSigners := make([]address.Address, 0, len(self.Signers))
 	for _, s := range self.Signers {
 		if s != params.From {
 			newSigners = append(newSigners, s)
