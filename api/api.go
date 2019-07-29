@@ -11,6 +11,7 @@ import (
 	"github.com/filecoin-project/go-lotus/chain/store"
 	"github.com/filecoin-project/go-lotus/chain/types"
 
+	sectorbuilder "github.com/filecoin-project/go-sectorbuilder"
 	"github.com/ipfs/go-cid"
 	"github.com/ipfs/go-filestore"
 )
@@ -115,4 +116,16 @@ type FullNode interface {
 // Full API is a low-level interface to the Filecoin network storage miner node
 type StorageMiner interface {
 	Common
+
+	// Temp api for testing
+	StoreGarbageData(context.Context) (uint64, error)
+
+	// Get the status of a given sector by ID
+	SectorsStatus(context.Context, uint64) (sectorbuilder.SectorSealingStatus, error)
+
+	// List all staged sectors
+	SectorsStagedList(context.Context) ([]sectorbuilder.StagedSectorMetadata, error)
+
+	// Seal all staged sectors
+	SectorsStagedSeal(context.Context) error
 }

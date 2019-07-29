@@ -21,6 +21,8 @@ func main() {
 	local := []*cli.Command{
 		runCmd,
 		initCmd,
+		storeGarbageCmd,
+		sectorsCmd,
 	}
 	jaeger := tracing.SetupJaegerTracing("lotus")
 	defer func() {

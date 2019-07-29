@@ -27,19 +27,19 @@ const (
 // ApiConnector returns API instance
 type ApiConnector func() api.FullNode
 
-func GetAPI(ctx *cli.Context) (api.FullNode, error) {
-	r, err := repo.NewFS(ctx.String("repo"))
+func getAPI(ctx *cli.Context, repoFlag string) (string, http.Header, error) {
+	r, err := repo.NewFS(ctx.String(repoFlag))
 	if err != nil {
-		return nil, err
+		return "", nil, err
 	}
 
 	ma, err := r.APIEndpoint()
 	if err != nil {
-		return nil, xerrors.Errorf("failed to get api endpoint: %w", err)
+		return "", nil, xerrors.Errorf("failed to get api endpoint: %w", err)
 	}
 	_, addr, err := manet.DialArgs(ma)
 	if err != nil {
-		return nil, err
+		return "", nil, err
 	}
 	var headers http.Header
 	token, err := r.APIToken()
@@ -50,7 +50,25 @@ func GetAPI(ctx *cli.Context) (api.FullNode, error) {
 		headers.Add("Authorization", "Bearer "+string(token))
 	}
 
-	return client.NewFullNodeRPC("ws://"+addr+"/rpc/v0", headers)
+	return "ws://" + addr + "/rpc/v0", headers, nil
+}
+
+func GetAPI(ctx *cli.Context) (api.FullNode, error) {
+	addr, headers, err := getAPI(ctx, "repo")
+	if err != nil {
+		return nil, err
+	}
+
+	return client.NewFullNodeRPC(addr, headers)
+}
+
+func GetStorageMinerAPI(ctx *cli.Context) (api.StorageMiner, error) {
+	addr, headers, err := getAPI(ctx, "storagerepo")
+	if err != nil {
+		return nil, err
+	}
+
+	return client.NewStorageMinerRPC(addr, headers)
 }
 
 // ReqContext returns context for cli execution. Calling it for the first time

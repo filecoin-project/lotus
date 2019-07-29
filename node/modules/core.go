@@ -26,12 +26,15 @@ import (
 	"github.com/libp2p/go-libp2p-core/peerstore"
 	"github.com/libp2p/go-libp2p-core/routing"
 	record "github.com/libp2p/go-libp2p-record"
+	"github.com/mitchellh/go-homedir"
 	"go.uber.org/fx"
 	"golang.org/x/xerrors"
 
 	"github.com/filecoin-project/go-lotus/api"
+	"github.com/filecoin-project/go-lotus/chain/address"
 	"github.com/filecoin-project/go-lotus/chain/store"
 	"github.com/filecoin-project/go-lotus/chain/types"
+	"github.com/filecoin-project/go-lotus/lib/sectorbuilder"
 	"github.com/filecoin-project/go-lotus/node/modules/helpers"
 	"github.com/filecoin-project/go-lotus/node/repo"
 )
@@ -214,5 +217,32 @@ func LoadGenesis(genBytes []byte) func(blockstore.Blockstore) Genesis {
 
 			return types.DecodeBlock(root.RawData())
 		}
+	}
+}
+
+func SectorBuilderConfig(storagePath string) func() (*sectorbuilder.SectorBuilderConfig, error) {
+	return func() (*sectorbuilder.SectorBuilderConfig, error) {
+		sp, err := homedir.Expand(storagePath)
+		if err != nil {
+			return nil, err
+		}
+
+		metadata := filepath.Join(sp, "meta")
+		sealed := filepath.Join(sp, "sealed")
+		staging := filepath.Join(sp, "staging")
+
+		// TODO: get the address of the miner actor
+		minerAddr, err := address.NewIDAddress(42)
+		if err != nil {
+			return nil, err
+		}
+
+		return &sectorbuilder.SectorBuilderConfig{
+			Miner:       minerAddr,
+			SectorSize:  1024,
+			MetadataDir: metadata,
+			SealedDir:   sealed,
+			StagedDir:   staging,
+		}, nil
 	}
 }

@@ -2,6 +2,7 @@ package main
 
 import (
 	"net/http"
+	"os"
 
 	"github.com/multiformats/go-multiaddr"
 	"golang.org/x/xerrors"
@@ -11,7 +12,9 @@ import (
 	lcli "github.com/filecoin-project/go-lotus/cli"
 	"github.com/filecoin-project/go-lotus/lib/auth"
 	"github.com/filecoin-project/go-lotus/lib/jsonrpc"
+	"github.com/filecoin-project/go-lotus/lib/sectorbuilder"
 	"github.com/filecoin-project/go-lotus/node"
+	"github.com/filecoin-project/go-lotus/node/modules"
 	"github.com/filecoin-project/go-lotus/node/repo"
 )
 
@@ -31,12 +34,20 @@ var runCmd = &cli.Command{
 		}
 		ctx := lcli.ReqContext(cctx)
 
+		go func() {
+			// a hack for now to handle sigint
+
+			<-ctx.Done()
+			os.Exit(0)
+		}()
+
 		v, err := nodeApi.Version(ctx)
 		if err != nil {
 			return err
 		}
 
-		r, err := repo.NewFS(cctx.String(FlagStorageRepo))
+		storageRepoPath := cctx.String(FlagStorageRepo)
+		r, err := repo.NewFS(storageRepoPath)
 		if err != nil {
 			return err
 		}
@@ -46,7 +57,7 @@ var runCmd = &cli.Command{
 			return err
 		}
 		if !ok {
-			return xerrors.Errorf("repo at '%s' is not initialized, run 'lotus-storage-miner init' to set it up", cctx.String(FlagStorageRepo))
+			return xerrors.Errorf("repo at '%s' is not initialized, run 'lotus-storage-miner init' to set it up", storageRepoPath)
 		}
 
 		var minerapi api.StorageMiner
@@ -62,6 +73,7 @@ var runCmd = &cli.Command{
 				}
 				return lr.SetAPIEndpoint(apima)
 			}),
+			node.Override(new(*sectorbuilder.SectorBuilderConfig), modules.SectorBuilderConfig(storageRepoPath)),
 		)
 		if err != nil {
 			return err

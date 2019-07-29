@@ -9,6 +9,7 @@ import (
 	"github.com/filecoin-project/go-lotus/chain/address"
 	"github.com/filecoin-project/go-lotus/chain/store"
 	"github.com/filecoin-project/go-lotus/chain/types"
+	sectorbuilder "github.com/filecoin-project/go-sectorbuilder"
 
 	"github.com/ipfs/go-cid"
 	"github.com/libp2p/go-libp2p-core/peer"
@@ -68,6 +69,11 @@ type StorageMinerStruct struct {
 	CommonStruct
 
 	Internal struct {
+		StoreGarbageData func(context.Context) (uint64, error) `perm:"write"`
+
+		SectorsStatus     func(context.Context, uint64) (sectorbuilder.SectorSealingStatus, error) `perm:"read"`
+		SectorsStagedList func(context.Context) ([]sectorbuilder.StagedSectorMetadata, error)      `perm:"read"`
+		SectorsStagedSeal func(context.Context) error                                              `perm:"write"`
 	}
 }
 
@@ -183,6 +189,25 @@ func (c *FullNodeStruct) ChainGetBlockMessages(ctx context.Context, b cid.Cid) (
 
 func (c *FullNodeStruct) ChainNotify(ctx context.Context) (<-chan *store.HeadChange, error) {
 	return c.Internal.ChainNotify(ctx)
+}
+
+func (c *StorageMinerStruct) StoreGarbageData(ctx context.Context) (uint64, error) {
+	return c.Internal.StoreGarbageData(ctx)
+}
+
+// Get the status of a given sector by ID
+func (c *StorageMinerStruct) SectorsStatus(ctx context.Context, sid uint64) (sectorbuilder.SectorSealingStatus, error) {
+	return c.Internal.SectorsStatus(ctx, sid)
+}
+
+// List all staged sectors
+func (c *StorageMinerStruct) SectorsStagedList(ctx context.Context) ([]sectorbuilder.StagedSectorMetadata, error) {
+	return c.Internal.SectorsStagedList(ctx)
+}
+
+// Seal all staged sectors
+func (c *StorageMinerStruct) SectorsStagedSeal(ctx context.Context) error {
+	return c.Internal.SectorsStagedSeal(ctx)
 }
 
 var _ Common = &CommonStruct{}
