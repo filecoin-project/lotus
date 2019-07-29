@@ -174,14 +174,18 @@ func (msa MultiSigActor) Propose(act *types.Actor, vmctx types.VMContext,
 	txid := self.NextTxID
 	self.NextTxID++
 
-	tx := MTransaction{
-		TxID:     txid,
-		To:       params.To,
-		Value:    params.Value,
-		Method:   params.Method,
-		Params:   params.Params,
-		Approved: []address.Address{vmctx.Message().From},
+	{
+		tx := MTransaction{
+			TxID:     txid,
+			To:       params.To,
+			Value:    params.Value,
+			Method:   params.Method,
+			Params:   params.Params,
+			Approved: []address.Address{vmctx.Message().From},
+		}
+		self.Transactions = append(self.Transactions, tx)
 	}
+	tx := self.getTransaction(txid)
 
 	if self.Required == 1 {
 		_, err := vmctx.Send(tx.To, tx.Method, tx.Value, tx.Params)
@@ -191,8 +195,6 @@ func (msa MultiSigActor) Propose(act *types.Actor, vmctx types.VMContext,
 		tx.RetCode = aerrors.RetCode(err)
 		tx.Complete = true
 	}
-
-	self.Transactions = append(self.Transactions, tx)
 
 	err = msa.save(vmctx, head, self)
 	if err != nil {
