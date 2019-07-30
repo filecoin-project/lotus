@@ -37,6 +37,7 @@ import (
 	"github.com/filecoin-project/go-lotus/node/modules/lp2p"
 	"github.com/filecoin-project/go-lotus/node/modules/testing"
 	"github.com/filecoin-project/go-lotus/node/repo"
+	"github.com/filecoin-project/go-lotus/storage"
 )
 
 // special is a type used to give keys to modules which
@@ -180,6 +181,9 @@ func Online() Option {
 
 		libp2p(),
 
+		// common
+		Override(new(*wallet.Wallet), wallet.NewWallet),
+
 		// Full node
 
 		ApplyIf(func(s *Settings) bool { return s.nodeType == nodeFull },
@@ -198,7 +202,6 @@ func Online() Option {
 			// Filecoin services
 			Override(new(*chain.Syncer), chain.NewSyncer),
 			Override(new(*chain.BlockSync), chain.NewBlockSyncClient),
-			Override(new(*wallet.Wallet), wallet.NewWallet),
 			Override(new(*chain.MessagePool), chain.NewMessagePool),
 
 			Override(new(modules.Genesis), modules.ErrorGenesis),
@@ -214,6 +217,7 @@ func Online() Option {
 		// Storage miner
 		ApplyIf(func(s *Settings) bool { return s.nodeType == nodeStorageMiner },
 			Override(new(*sectorbuilder.SectorBuilder), sectorbuilder.New),
+			Override(new(*storage.Miner), modules.StorageMiner),
 		),
 	)
 }

@@ -153,6 +153,14 @@ func (w *Wallet) GenerateKey(typ string) (address.Address, error) {
 	return k.Address, nil
 }
 
+func (w *Wallet) HasKey(addr address.Address) (bool, error) {
+	k, err := w.findKey(addr)
+	if err != nil {
+		return false, err
+	}
+	return k != nil, nil
+}
+
 type Key struct {
 	types.KeyInfo
 

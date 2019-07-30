@@ -34,9 +34,11 @@ import (
 	"github.com/filecoin-project/go-lotus/chain/address"
 	"github.com/filecoin-project/go-lotus/chain/store"
 	"github.com/filecoin-project/go-lotus/chain/types"
+	"github.com/filecoin-project/go-lotus/chain/wallet"
 	"github.com/filecoin-project/go-lotus/lib/sectorbuilder"
 	"github.com/filecoin-project/go-lotus/node/modules/helpers"
 	"github.com/filecoin-project/go-lotus/node/repo"
+	"github.com/filecoin-project/go-lotus/storage"
 )
 
 var log = logging.Logger("modules")
@@ -237,12 +239,55 @@ func SectorBuilderConfig(storagePath string) func() (*sectorbuilder.SectorBuilde
 			return nil, err
 		}
 
-		return &sectorbuilder.SectorBuilderConfig{
+		sb := &sectorbuilder.SectorBuilderConfig{
 			Miner:       minerAddr,
 			SectorSize:  1024,
 			MetadataDir: metadata,
 			SealedDir:   sealed,
 			StagedDir:   staging,
-		}, nil
+		}
+
+		return sb, nil
 	}
+}
+
+func SectorBuilder(lc fx.Lifecycle, sbc *sectorbuilder.SectorBuilderConfig) (*sectorbuilder.SectorBuilder, error) {
+	sb, err := sectorbuilder.New(sbc)
+	if err != nil {
+		return nil, err
+	}
+
+	lc.Append(fx.Hook{
+		OnStart: func(ctx context.Context) error {
+			sb.Run(ctx)
+			return nil
+		},
+	})
+
+	return sb, nil
+}
+
+func StorageMiner(lc fx.Lifecycle, api api.FullNode, h host.Host, ds datastore.Batching, sb *sectorbuilder.SectorBuilder, w *wallet.Wallet) (*storage.Miner, error) {
+	maddrb, err := ds.Get(datastore.NewKey("miner-address"))
+	if err != nil {
+		return nil, err
+	}
+
+	maddr, err := address.NewFromBytes(maddrb)
+	if err != nil {
+		return nil, err
+	}
+
+	sm, err := storage.NewMiner(api, maddr, h, ds, sb, w)
+	if err != nil {
+		return nil, err
+	}
+
+	lc.Append(fx.Hook{
+		OnStart: func(ctx context.Context) error {
+			return sm.Run(ctx)
+		},
+	})
+
+	return sm, nil
 }

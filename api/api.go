@@ -73,6 +73,7 @@ type FullNode interface {
 	ChainWaitMsg(context.Context, cid.Cid) (*MsgWait, error)
 	ChainGetBlock(context.Context, cid.Cid) (*types.BlockHeader, error)
 	ChainGetBlockMessages(context.Context, cid.Cid) ([]*types.SignedMessage, error)
+	ChainCall(context.Context, *types.Message) (*types.MessageReceipt, error)
 
 	// messages
 
