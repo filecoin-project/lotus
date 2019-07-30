@@ -84,17 +84,30 @@ class NodeList extends React.Component {
 
     return (
       <Cristal title={"Node List"} initialPosition="bottom-left">
-        <div>
-          <button onClick={this.spawnNode} disabled={!this.state.existingLoaded}>Spawn Node</button>
-          <button onClick={this.connMgr} disabled={!this.state.existingLoaded && !this.state.showConnMgr}>Connections</button>
-          <button onClick={this.consensus} disabled={!this.state.existingLoaded && !this.state.showConsensus}>Consensus</button>
-        </div>
-        <div>
-          {Object.keys(this.state.nodes).map(n => {
-            return <div key={n}>
-              {n}
-            </div>
-          })}
+        <div className={'NodeList'}>
+          <div>
+            <button onClick={this.spawnNode} disabled={!this.state.existingLoaded}>Spawn Node</button>
+            <button onClick={this.connMgr} disabled={!this.state.existingLoaded && !this.state.showConnMgr}>Connections</button>
+            <button onClick={this.consensus} disabled={!this.state.existingLoaded && !this.state.showConsensus}>Consensus</button>
+          </div>
+          <div>
+            {Object.keys(this.state.nodes).map(n => {
+              const nd = this.state.nodes[n]
+              let type = "FULL"
+              if (nd.Storage) {
+                type = "STOR"
+              }
+
+              let info = "[CONNECTING..]"
+              if (nd.conn) {
+                info = <span>{nd.peerid}</span>
+              }
+
+              return <div key={n}>
+                {n} {type} {info}
+              </div>
+            })}
+          </div>
         </div>
         <div>
           {connMgr}
