@@ -158,6 +158,7 @@ func (tu *syncTestUtil) compareSourceState(with int) {
 
 func (tu *syncTestUtil) submitSourceBlock(to int, h int) {
 	// utility to simulate incoming blocks without miner process
+	// TODO: should call syncer directly, this won't work correctly in all cases
 
 	var b chain.BlockMsg
 
@@ -196,7 +197,7 @@ func TestSyncSimple(t *testing.T) {
 }
 
 func TestSyncManual(t *testing.T) {
-	H := 2
+	H := 20
 	tu := prepSyncTest(t, H)
 
 	client := tu.addClientNode()
@@ -210,3 +211,28 @@ func TestSyncManual(t *testing.T) {
 
 	tu.compareSourceState(client)
 }
+
+/*
+TODO: this is broken because of how tu.submitSourceBlock works now
+func TestSyncIncoming(t *testing.T) {
+	H := 1
+	tu := prepSyncTest(t, H)
+
+	producer := tu.addClientNode()
+	client := tu.addClientNode()
+
+	tu.mn.LinkAll()
+	tu.connect(client, producer)
+
+	for h := 0; h < H; h++ {
+		tu.submitSourceBlock(producer, h + 1)
+
+		time.Sleep(time.Millisecond * 200)
+
+	}
+	tu.checkHeight("client", client, H)
+	tu.checkHeight("producer", producer, H)
+
+	tu.compareSourceState(client)
+}
+ */

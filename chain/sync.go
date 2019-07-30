@@ -17,7 +17,7 @@ import (
 	"github.com/ipfs/go-hamt-ipld"
 	bstore "github.com/ipfs/go-ipfs-blockstore"
 	logging "github.com/ipfs/go-log"
-	peer "github.com/libp2p/go-libp2p-core/peer"
+	"github.com/libp2p/go-libp2p-core/peer"
 	"github.com/pkg/errors"
 	"github.com/whyrusleeping/sharray"
 )
@@ -125,7 +125,7 @@ func (syncer *Syncer) InformNewHead(from peer.ID, fts *store.FullTipSet) {
 		// TODO: this is kindof a hack...
 		log.Infof("got block from ourselves")
 
-		if err := syncer.SyncCaughtUp(fts); err != nil {
+		if err := syncer.Sync(fts); err != nil {
 			log.Errorf("failed to sync our own block: %s", err)
 		}
 
@@ -137,7 +137,7 @@ func (syncer *Syncer) InformNewHead(from peer.ID, fts *store.FullTipSet) {
 	syncer.Bsync.AddPeer(from)
 
 	go func() {
-		if err := syncer.SyncCaughtUp(fts); err != nil {
+		if err := syncer.Sync(fts); err != nil {
 			log.Errorf("sync error: %s", err)
 		}
 	}()
@@ -227,9 +227,7 @@ func (syncer *Syncer) SyncBootstrap() {
 
 	head := blockSet[len(blockSet)-1]
 	log.Errorf("Finished syncing! new head: %s", head.Cids())
-	if err := syncer.store.MaybeTakeHeavierTipSet(selectedHead); err != nil {
-		log.Errorf("MaybeTakeHeavierTipSet failed: %s", err)
-	}
+	syncer.store.MaybeTakeHeavierTipSet(selectedHead)
 	syncer.head = head
 }
 
@@ -374,9 +372,7 @@ func (syncer *Syncer) tryLoadFullTipSet(cids []cid.Cid) (*store.FullTipSet, erro
 	return fts, nil
 }
 
-// SyncCaughtUp is used to stay in sync once caught up to
-// the rest of the network.
-func (syncer *Syncer) SyncCaughtUp(maybeHead *store.FullTipSet) error {
+func (syncer *Syncer) Sync(maybeHead *store.FullTipSet) error {
 	syncer.syncLock.Lock()
 	defer syncer.syncLock.Unlock()
 
@@ -489,9 +485,6 @@ func (syncer *Syncer) collectChainCaughtUp(fts *store.FullTipSet) ([]*store.Full
 
 	_, err := syncer.store.LoadTipSet(cur.Parents())
 	if err != nil {
-		// <TODO: cleanup>
-		// TODO: This is 'borrowed' from SyncBootstrap, needs at least some deduplicating
-
 		blockSet := []*types.TipSet{cur}
 
 		at := cur.Cids()
@@ -621,14 +614,10 @@ func (syncer *Syncer) collectChainCaughtUp(fts *store.FullTipSet) ([]*store.Full
 
 		_, err = syncer.store.LoadTipSet(cur.Parents())
 		if err != nil {
-			log.Errorf("HACK DIDNT WORK :( dont have parent blocks for sync tipset: %s", err)
-			panic("should do something better, like fetch? or error?")
+			log.Errorf("dont have parent blocks for sync tipset: %s", err)
+			panic("should do something better, error?")
 		}
-
-		// </TODO>
 	}
 
 	return chain, nil // return the chain because we have this last block in our cache already.
-
-	return chain, nil
 }
