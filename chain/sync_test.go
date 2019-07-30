@@ -11,24 +11,32 @@ import (
 	"github.com/stretchr/testify/require"
 
 	"github.com/filecoin-project/go-lotus/api"
+	"github.com/filecoin-project/go-lotus/chain"
 	"github.com/filecoin-project/go-lotus/chain/gen"
+	"github.com/filecoin-project/go-lotus/chain/types"
 	"github.com/filecoin-project/go-lotus/node"
+	"github.com/filecoin-project/go-lotus/node/impl"
 	"github.com/filecoin-project/go-lotus/node/modules"
 	"github.com/filecoin-project/go-lotus/node/repo"
 )
 
 const source = 0
 
-func repoWithChain(t *testing.T, h int) (repo.Repo, []byte) {
+func repoWithChain(t *testing.T, h int) (repo.Repo, []byte, []*types.FullBlock) {
 	g, err := gen.NewGenerator()
 	if err != nil {
 		t.Fatal(err)
 	}
 
+	blks := make([]*types.FullBlock, h)
+
 	for i := 0; i < h; i++ {
-		b, err := g.NextBlock()
+		blks[i], err = g.NextBlock()
 		require.NoError(t, err)
-		require.Equal(t, uint64(i+1), b.Header.Height, "wrong height")
+
+		fmt.Printf("block at H:%d: %s\n", blks[i].Header.Height, blks[i].Cid())
+
+		require.Equal(t, uint64(i+1), blks[i].Header.Height, "wrong height")
 	}
 
 	r, err := g.YieldRepo()
@@ -37,7 +45,7 @@ func repoWithChain(t *testing.T, h int) (repo.Repo, []byte) {
 	genb, err := g.GenesisCar()
 	require.NoError(t, err)
 
-	return r, genb
+	return r, genb, blks
 }
 
 type syncTestUtil struct {
@@ -47,8 +55,28 @@ type syncTestUtil struct {
 	mn  mocknet.Mocknet
 
 	genesis []byte
+	blocks []*types.FullBlock
 
 	nds []api.FullNode
+}
+
+func prepSyncTest(t *testing.T, h int) *syncTestUtil {
+	logging.SetLogLevel("*", "INFO")
+
+	ctx := context.Background()
+	tu := &syncTestUtil{
+		t:   t,
+		ctx: ctx,
+		mn:  mocknet.New(ctx),
+	}
+
+	tu.addSourceNode(h)
+	tu.checkHeight("source", source, h)
+
+	// separate logs
+	fmt.Println("\x1b[31m///////////////////////////////////////////////////\x1b[39b")
+
+	return tu
 }
 
 func (tu *syncTestUtil) addSourceNode(gen int) {
@@ -56,7 +84,7 @@ func (tu *syncTestUtil) addSourceNode(gen int) {
 		tu.t.Fatal("source node already exists")
 	}
 
-	sourceRepo, genesis := repoWithChain(tu.t, gen)
+	sourceRepo, genesis, blocks := repoWithChain(tu.t, gen)
 	var out api.FullNode
 
 	err := node.New(tu.ctx,
@@ -70,6 +98,7 @@ func (tu *syncTestUtil) addSourceNode(gen int) {
 	require.NoError(tu.t, err)
 
 	tu.genesis = genesis
+	tu.blocks = blocks
 	tu.nds = append(tu.nds, out) // always at 0
 }
 
@@ -117,36 +146,64 @@ func (tu *syncTestUtil) compareSourceState(with int) {
 	for _, addr := range sourceAccounts {
 		sourceBalance, err := tu.nds[source].WalletBalance(tu.ctx, addr)
 		require.NoError(tu.t, err)
+		fmt.Printf("Source state check for %s, expect %s\n", addr, sourceBalance)
 
 		actBalance, err := tu.nds[with].WalletBalance(tu.ctx, addr)
 		require.NoError(tu.t, err)
 
 		require.Equal(tu.t, sourceBalance, actBalance)
+		fmt.Printf("Source state check <OK> for %s\n", addr)
+	}
+}
+
+func (tu *syncTestUtil) submitSourceBlock(to int, h int) {
+	// utility to simulate incoming blocks without miner process
+
+	var b chain.BlockMsg
+
+	// -1 to match block.Height
+	b.Header = tu.blocks[h - 1].Header
+	for _, msg := range tu.blocks[h - 1].Messages {
+		c, err := tu.nds[to].(*impl.FullNodeAPI).Chain.PutMessage(msg)
+		require.NoError(tu.t, err)
+
+		b.Messages = append(b.Messages, c)
+	}
+
+	require.NoError(tu.t, tu.nds[to].ChainSubmitBlock(tu.ctx, &b))
+}
+
+func (tu *syncTestUtil) submitSourceBlocks(to int, h int, n int) {
+	for i := 0; i < n; i++ {
+		tu.submitSourceBlock(to, h + i)
 	}
 }
 
 func TestSyncSimple(t *testing.T) {
-	logging.SetLogLevel("*", "INFO")
-
 	H := 20
-	ctx := context.Background()
-	tu := &syncTestUtil{
-		t:   t,
-		ctx: ctx,
-		mn:  mocknet.New(ctx),
-	}
-
-	tu.addSourceNode(H)
-	tu.checkHeight("source", source, H)
-
-	// separate logs
-	fmt.Println("\x1b[31m///////////////////////////////////////////////////\x1b[39b")
+	tu := prepSyncTest(t, H)
 
 	client := tu.addClientNode()
 	tu.checkHeight("client", client, 0)
 
 	require.NoError(t, tu.mn.LinkAll())
 	tu.connect(1, 0)
+	time.Sleep(time.Second * 3)
+
+	tu.checkHeight("client", client, H)
+
+	tu.compareSourceState(client)
+}
+
+func TestSyncManual(t *testing.T) {
+	H := 2
+	tu := prepSyncTest(t, H)
+
+	client := tu.addClientNode()
+	tu.checkHeight("client", client, 0)
+
+	tu.submitSourceBlocks(client, 1, H)
+
 	time.Sleep(time.Second * 1)
 
 	tu.checkHeight("client", client, H)

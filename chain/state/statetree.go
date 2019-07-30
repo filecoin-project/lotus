@@ -35,7 +35,7 @@ func NewStateTree(cst *hamt.CborIpldStore) (*StateTree, error) {
 func LoadStateTree(cst *hamt.CborIpldStore, c cid.Cid) (*StateTree, error) {
 	nd, err := hamt.LoadNode(context.Background(), cst, c)
 	if err != nil {
-		log.Errorf("loading hamt node failed: %s", err)
+		log.Errorf("loading hamt node %s failed: %s", c, err)
 		return nil, err
 	}
 
