@@ -24,7 +24,7 @@ import (
 
 var log = logging.Logger("gen")
 
-const msgsPerBlock = 2
+const msgsPerBlock = 20
 
 type ChainGen struct {
 	accounts []address.Address
@@ -56,7 +56,8 @@ type mybs struct {
 func (m mybs) Get(c cid.Cid) (block.Block, error) {
 	b, err := m.Blockstore.Get(c)
 	if err != nil {
-		log.Errorf("Get failed: %s %s", c, err)
+		// change to error for stacktraces, don't commit with that pls
+		log.Warnf("Get failed: %s %s", c, err)
 		return nil, err
 	}
 
@@ -97,7 +98,8 @@ func NewGenerator() (*ChainGen, error) {
 		return nil, err
 	}
 
-	banker, err := w.GenerateKey(types.KTBLS)
+	// KTBLS doesn't support signature verification or something like that yet
+	banker, err := w.GenerateKey(types.KTSecp256k1)
 	if err != nil {
 		return nil, err
 	}
