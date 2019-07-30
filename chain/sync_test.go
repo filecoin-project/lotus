@@ -1,22 +1,22 @@
 package chain_test
 
 import (
-	"bytes"
 	"context"
 	"fmt"
 	"testing"
+	"time"
 
 	mocknet "github.com/libp2p/go-libp2p/p2p/net/mock"
+	"github.com/stretchr/testify/require"
 
 	"github.com/filecoin-project/go-lotus/api"
 	"github.com/filecoin-project/go-lotus/chain/gen"
 	"github.com/filecoin-project/go-lotus/node"
 	"github.com/filecoin-project/go-lotus/node/modules"
-	modtest "github.com/filecoin-project/go-lotus/node/modules/testing"
 	"github.com/filecoin-project/go-lotus/node/repo"
 )
 
-func repoWithChain(t *testing.T, h int) repo.Repo {
+func repoWithChain(t *testing.T, h int) (repo.Repo, []byte) {
 	g, err := gen.NewGenerator()
 	if err != nil {
 		t.Fatal(err)
@@ -24,47 +24,44 @@ func repoWithChain(t *testing.T, h int) repo.Repo {
 
 	for i := 0; i < h; i++ {
 		b, err := g.NextBlock()
-		if err != nil {
-			t.Fatalf("error at H:%d, %s", i, err)
-		}
-		if b.Header.Height != uint64(i+1) {
-			t.Fatal("wrong height")
-		}
+		require.NoError(t, err)
+		require.Equal(t, uint64(i+1), b.Header.Height, "wrong height")
 	}
 
 	r, err := g.YieldRepo()
-	if err != nil {
-		t.Fatal(err)
-	}
-	return r
+	require.NoError(t, err)
+
+	genb, err := g.GenesisCar()
+	require.NoError(t, err)
+
+	return r, genb
 }
 
 func TestSyncSimple(t *testing.T) {
 	ctx := context.Background()
 
-	var genbuf bytes.Buffer
 	var source api.FullNode
 	var client api.FullNode
 
 	mn := mocknet.New(ctx)
 
+	sourceRepo, genesis := repoWithChain(t, 20)
+
 	err := node.New(ctx,
 		node.FullAPI(&source),
 		node.Online(),
-		node.Repo(repoWithChain(t, 20)),
+		node.Repo(sourceRepo),
 		node.MockHost(mn),
 
-		node.Override(new(modules.Genesis), modtest.MakeGenesisMem(&genbuf)),
+		node.Override(new(modules.Genesis), modules.LoadGenesis(genesis)),
 	)
-	if err != nil {
-		t.Fatal(err)
-	}
+	require.NoError(t, err)
 
 	b, err := source.ChainHead(ctx)
-	if err != nil {
-		t.Fatal(err)
-	}
-	fmt.Println(b.Height())
+	require.NoError(t, err)
+
+	require.Equal(t, uint64(20), b.Height())
+	fmt.Printf("source H: %d\n", b.Height())
 
 	err = node.New(ctx,
 		node.FullAPI(&client),
@@ -72,11 +69,27 @@ func TestSyncSimple(t *testing.T) {
 		node.Repo(repo.NewMemory(nil)),
 		node.MockHost(mn),
 
-		node.Override(new(modules.Genesis), modules.LoadGenesis(genbuf.Bytes())),
+		node.Override(new(modules.Genesis), modules.LoadGenesis(genesis)),
 	)
-	if err != nil {
-		t.Fatal(err)
-	}
+	require.NoError(t, err)
 
+	require.NoError(t, mn.LinkAll())
+
+	cb, err := client.ChainHead(ctx)
+	require.NoError(t, err)
+	require.Equal(t, uint64(0), cb.Height())
+	fmt.Printf("client H: %d\n", cb.Height())
+
+	sourcePI, err := source.NetAddrsListen(ctx)
+	require.NoError(t, err)
+
+	err = client.NetConnect(ctx, sourcePI)
+	require.NoError(t, err)
+
+	time.Sleep(time.Second)
+
+	cb, err = client.ChainHead(ctx)
+	require.NoError(t, err)
+	require.Equal(t, uint64(20), cb.Height())
+	fmt.Printf("client H: %d\n", cb.Height())
 }
-

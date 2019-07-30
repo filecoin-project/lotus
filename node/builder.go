@@ -331,6 +331,7 @@ func New(ctx context.Context, opts ...Option) error {
 	//  on this context, and implement closing logic through lifecycles
 	//  correctly
 	if err := app.Start(ctx); err != nil {
+		// comment fx.NopLogger few lines above for easier debugging
 		return err
 	}
 
