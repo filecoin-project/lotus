@@ -220,7 +220,7 @@ func (vm *VM) ApplyMessage(ctx context.Context, msg *types.Message) (*types.Mess
 	}
 
 	if msg.Nonce != fromActor.Nonce {
-		return nil, xerrors.Errorf("invalid nonce")
+		return nil, xerrors.Errorf("invalid nonce (got %d, expected %d)", msg.Nonce, fromActor.Nonce)
 	}
 	fromActor.Nonce++
 

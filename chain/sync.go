@@ -143,16 +143,6 @@ func (syncer *Syncer) InformNewHead(from peer.ID, fts *store.FullTipSet) {
 	}()
 }
 
-func (syncer *Syncer) GetPeers() []peer.ID {
-	syncer.peerHeadsLk.Lock()
-	defer syncer.peerHeadsLk.Unlock()
-	var out []peer.ID
-	for p, _ := range syncer.peerHeads {
-		out = append(out, p)
-	}
-	return out
-}
-
 func (syncer *Syncer) InformNewBlock(from peer.ID, blk *types.FullBlock) {
 	// TODO: search for other blocks that could form a tipset with this block
 	// and then send that tipset to InformNewHead

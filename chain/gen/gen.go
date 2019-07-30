@@ -3,6 +3,7 @@ package gen
 import (
 	"bytes"
 	"context"
+	"sync/atomic"
 
 	"github.com/ipfs/go-blockservice"
 	"github.com/ipfs/go-car"
@@ -23,6 +24,8 @@ import (
 
 var log = logging.Logger("gen")
 
+const msgsPerBlock = 2
+
 type ChainGen struct {
 	accounts []address.Address
 
@@ -32,11 +35,15 @@ type ChainGen struct {
 
 	cs *store.ChainStore
 
-	genesis *types.BlockHeader
-
+	genesis  *types.BlockHeader
 	curBlock *types.FullBlock
 
-	miner address.Address
+	w *wallet.Wallet
+
+	miner       address.Address
+	receivers   []address.Address
+	banker      address.Address
+	bankerNonce uint64
 
 	r  repo.Repo
 	lr repo.LockedRepo
@@ -95,7 +102,16 @@ func NewGenerator() (*ChainGen, error) {
 		return nil, err
 	}
 
+	receievers := make([]address.Address, msgsPerBlock)
+	for r := range receievers {
+		receievers[r], err = w.GenerateKey(types.KTBLS)
+		if err != nil {
+			return nil, err
+		}
+	}
+
 	genb, err := MakeGenesisBlock(bs, map[address.Address]types.BigInt{
+		miner:  types.NewInt(5),
 		banker: types.NewInt(90000000),
 	})
 	if err != nil {
@@ -103,8 +119,6 @@ func NewGenerator() (*ChainGen, error) {
 	}
 
 	cs := store.NewChainStore(bs, ds)
-
-	msgsPerBlock := 10
 
 	genfb := &types.FullBlock{Header: genb.Genesis}
 
@@ -117,8 +131,13 @@ func NewGenerator() (*ChainGen, error) {
 		cs:           cs,
 		msgsPerBlock: msgsPerBlock,
 		genesis:      genb.Genesis,
-		miner:        miner,
-		curBlock:     genfb,
+		w:            w,
+
+		miner:     miner,
+		banker:    banker,
+		receivers: receievers,
+
+		curBlock: genfb,
 
 		r:  mr,
 		lr: lr,
@@ -155,7 +174,45 @@ func (cg *ChainGen) NextBlock() (*types.FullBlock, error) {
 		return nil, err
 	}
 
-	var msgs []*types.SignedMessage
+	// make some transfers from banker
+
+	msgs := make([]*types.SignedMessage, cg.msgsPerBlock)
+	for m := range msgs {
+		msg := types.Message{
+			To:   cg.receivers[m],
+			From: cg.banker,
+
+			Nonce: atomic.AddUint64(&cg.bankerNonce, 1) - 1,
+
+			Value: types.NewInt(uint64(m + 1)),
+
+			Method: 0,
+
+			GasLimit: types.NewInt(10000),
+			GasPrice: types.NewInt(0),
+		}
+
+		unsigned, err := msg.Serialize()
+		if err != nil {
+			return nil, err
+		}
+
+		sig, err := cg.w.Sign(cg.banker, unsigned)
+		if err != nil {
+			return &types.FullBlock{}, err
+		}
+
+		msgs[m] = &types.SignedMessage{
+			Message:   msg,
+			Signature: *sig,
+		}
+
+		if _, err := cg.cs.PutMessage(msgs[m]); err != nil {
+			return nil, err
+		}
+	}
+
+	// create block
 
 	parents, err := types.NewTipSet([]*types.BlockHeader{cg.curBlock.Header})
 	if err != nil {

@@ -37,59 +37,100 @@ func repoWithChain(t *testing.T, h int) (repo.Repo, []byte) {
 	return r, genb
 }
 
-func TestSyncSimple(t *testing.T) {
-	ctx := context.Background()
+type syncTestUtil struct {
+	t *testing.T
 
-	var source api.FullNode
-	var client api.FullNode
+	ctx context.Context
+	mn  mocknet.Mocknet
+
+	genesis []byte
+
+	nds []api.FullNode
+}
+
+func (tu *syncTestUtil) addSourceNode(gen int) int {
+	if tu.genesis != nil {
+		tu.t.Fatal("source node already exists")
+	}
+
+	sourceRepo, genesis := repoWithChain(tu.t, gen)
+	var out api.FullNode
+
+	err := node.New(tu.ctx,
+		node.FullAPI(&out),
+		node.Online(),
+		node.Repo(sourceRepo),
+		node.MockHost(tu.mn),
+
+		node.Override(new(modules.Genesis), modules.LoadGenesis(genesis)),
+	)
+	require.NoError(tu.t, err)
+
+	tu.genesis = genesis
+	tu.nds = append(tu.nds, out)
+	return len(tu.nds) - 1
+}
+
+func (tu *syncTestUtil) addClientNode() int {
+	var out api.FullNode
+
+	err := node.New(tu.ctx,
+		node.FullAPI(&out),
+		node.Online(),
+		node.Repo(repo.NewMemory(nil)),
+		node.MockHost(tu.mn),
+
+		node.Override(new(modules.Genesis), modules.LoadGenesis(tu.genesis)),
+	)
+	require.NoError(tu.t, err)
+
+	tu.nds = append(tu.nds, out)
+	return len(tu.nds) - 1
+}
+
+func TestSyncSimple(t *testing.T) {
+	H := 3
+
+	ctx := context.Background()
 
 	mn := mocknet.New(ctx)
 
-	sourceRepo, genesis := repoWithChain(t, 20)
+	tu := &syncTestUtil{
+		t:   t,
+		ctx: ctx,
+		mn:  mn,
+	}
 
-	err := node.New(ctx,
-		node.FullAPI(&source),
-		node.Online(),
-		node.Repo(sourceRepo),
-		node.MockHost(mn),
+	source := tu.addSourceNode(H)
 
-		node.Override(new(modules.Genesis), modules.LoadGenesis(genesis)),
-	)
+	b, err := tu.nds[source].ChainHead(ctx)
 	require.NoError(t, err)
 
-	b, err := source.ChainHead(ctx)
-	require.NoError(t, err)
-
-	require.Equal(t, uint64(20), b.Height())
+	require.Equal(t, uint64(H), b.Height())
 	fmt.Printf("source H: %d\n", b.Height())
 
-	err = node.New(ctx,
-		node.FullAPI(&client),
-		node.Online(),
-		node.Repo(repo.NewMemory(nil)),
-		node.MockHost(mn),
+	// separate logs
+	fmt.Println("///////////////////////////////////////////////////")
 
-		node.Override(new(modules.Genesis), modules.LoadGenesis(genesis)),
-	)
-	require.NoError(t, err)
+	client := tu.addClientNode()
 
 	require.NoError(t, mn.LinkAll())
 
-	cb, err := client.ChainHead(ctx)
+	cb, err := tu.nds[client].ChainHead(ctx)
 	require.NoError(t, err)
 	require.Equal(t, uint64(0), cb.Height())
 	fmt.Printf("client H: %d\n", cb.Height())
 
-	sourcePI, err := source.NetAddrsListen(ctx)
+	sourcePI, err := tu.nds[source].NetAddrsListen(ctx)
 	require.NoError(t, err)
 
-	err = client.NetConnect(ctx, sourcePI)
+	err = tu.nds[client].NetConnect(ctx, sourcePI)
 	require.NoError(t, err)
 
-	time.Sleep(time.Second)
+	time.Sleep(time.Second * 1)
 
-	cb, err = client.ChainHead(ctx)
+	cb, err = tu.nds[client].ChainHead(ctx)
 	require.NoError(t, err)
-	require.Equal(t, uint64(20), cb.Height())
+	require.Equal(t, uint64(H), cb.Height())
 	fmt.Printf("client H: %d\n", cb.Height())
 }
