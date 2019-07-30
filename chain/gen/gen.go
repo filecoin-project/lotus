@@ -1,7 +1,13 @@
 package gen
 
 import (
+	"bytes"
 	"context"
+
+	"github.com/ipfs/go-blockservice"
+	"github.com/ipfs/go-car"
+	offline "github.com/ipfs/go-ipfs-exchange-offline"
+	"github.com/ipfs/go-merkledag"
 
 	"github.com/filecoin-project/go-lotus/chain/address"
 	"github.com/filecoin-project/go-lotus/chain/store"
@@ -32,7 +38,7 @@ type ChainGen struct {
 
 	miner address.Address
 
-	r repo.Repo
+	r  repo.Repo
 	lr repo.LockedRepo
 }
 
@@ -67,7 +73,7 @@ func NewGenerator() (*ChainGen, error) {
 		return nil, err
 	}
 
-	bs := mybs{blockstore.NewBlockstore(bds)}
+	bs := mybs{blockstore.NewIdStore(blockstore.NewBlockstore(bds))}
 
 	ks, err := lr.KeyStore()
 	if err != nil {
@@ -114,7 +120,7 @@ func NewGenerator() (*ChainGen, error) {
 		miner:        miner,
 		curBlock:     genfb,
 
-		r: mr,
+		r:  mr,
 		lr: lr,
 	}
 
@@ -123,6 +129,20 @@ func NewGenerator() (*ChainGen, error) {
 
 func (cg *ChainGen) Genesis() *types.BlockHeader {
 	return cg.genesis
+}
+
+func (cg *ChainGen) GenesisCar() ([]byte, error) {
+	offl := offline.Exchange(cg.bs)
+	blkserv := blockservice.New(cg.bs, offl)
+	dserv := merkledag.NewDAGService(blkserv)
+
+	out := new(bytes.Buffer)
+
+	if err := car.WriteCar(context.TODO(), dserv, []cid.Cid{cg.Genesis().Cid()}, out); err != nil {
+		return nil, err
+	}
+
+	return out.Bytes(), nil
 }
 
 func (cg *ChainGen) nextBlockProof() (address.Address, types.ElectionProof, []types.Ticket, error) {
