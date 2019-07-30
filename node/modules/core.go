@@ -58,6 +58,7 @@ func Bitswap(mctx helpers.MetricsCtx, lc fx.Lifecycle, host host.Host, rt routin
 			return exch.Close()
 		},
 	})
+
 	return exch
 }
 
