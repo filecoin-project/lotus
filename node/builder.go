@@ -6,7 +6,6 @@ import (
 	"reflect"
 	"time"
 
-	"github.com/ipfs/go-blockservice"
 	"github.com/ipfs/go-filestore"
 	exchange "github.com/ipfs/go-ipfs-exchange-interface"
 
