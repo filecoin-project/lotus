@@ -479,10 +479,6 @@ func (syncer *Syncer) ValidateBlock(ctx context.Context, b *types.FullBlock) err
 
 }
 
-func (syncer *Syncer) Punctual(ts *types.TipSet) bool {
-	return true
-}
-
 func (syncer *Syncer) collectChainCaughtUp(fts *store.FullTipSet) ([]*store.FullTipSet, error) {
 	// fetch tipset and messages via bitswap
 
@@ -491,151 +487,148 @@ func (syncer *Syncer) collectChainCaughtUp(fts *store.FullTipSet) ([]*store.Full
 
 	startHeight := syncer.head.Height()
 
-	for {
-		_, err := syncer.store.LoadTipSet(cur.Parents())
-		if err != nil {
-			// <TODO: cleanup>
-			// TODO: This is 'borrowed' from SyncBootstrap, needs at least some deduplicating
+	_, err := syncer.store.LoadTipSet(cur.Parents())
+	if err != nil {
+		// <TODO: cleanup>
+		// TODO: This is 'borrowed' from SyncBootstrap, needs at least some deduplicating
 
-			blockSet := []*types.TipSet{cur}
+		blockSet := []*types.TipSet{cur}
 
-			at := cur.Cids()
+		at := cur.Cids()
 
-			// If, for some reason, we have a suffix of the chain locally, handle that here
-			for blockSet[len(blockSet)-1].Height() > startHeight {
-				log.Warn("syncing local: ", at)
-				ts, err := syncer.store.LoadTipSet(at)
-				if err != nil {
-					if err == bstore.ErrNotFound {
-						log.Error("not found: ", at)
-						break
-					}
-					log.Warn("loading local tipset: %s", err)
-					continue // TODO: verify
-				}
-
-				blockSet = append(blockSet, ts)
-				at = ts.Parents()
-			}
-
-			for blockSet[len(blockSet)-1].Height() > startHeight {
-				// NB: GetBlocks validates that the blocks are in-fact the ones we
-				// requested, and that they are correctly linked to eachother. It does
-				// not validate any state transitions
-				fmt.Println("CaughtUp Get blocks")
-				blks, err := syncer.Bsync.GetBlocks(context.TODO(), at, 10)
-				if err != nil {
-					// Most likely our peers aren't fully synced yet, but forwarded
-					// new block message (ideally we'd find better peers)
-
-					log.Error("failed to get blocks: ", err)
-
-					// This error will only be logged above,
-					return nil, xerrors.Errorf("failed to get blocks: %w", err)
-				}
-
-				for _, b := range blks {
-					blockSet = append(blockSet, b)
-				}
-
-				at = blks[len(blks)-1].Parents()
-			}
-
-			if startHeight == 0 {
-				// hacks. in the case that we request X blocks starting at height X+1, we
-				// won't get the Genesis block in the returned blockset. This hacks around it
-				if blockSet[len(blockSet)-1].Height() != 0 {
-					blockSet = append(blockSet, syncer.Genesis)
-				}
-
-				blockSet = reverse(blockSet)
-
-				genesis := blockSet[0]
-				if !genesis.Equals(syncer.Genesis) {
-					// TODO: handle this...
-					log.Errorf("We synced to the wrong chain! %s != %s", genesis, syncer.Genesis)
-					panic("We synced to the wrong chain")
-				}
-			}
-
-			for _, ts := range blockSet {
-				for _, b := range ts.Blocks() {
-					if err := syncer.store.PersistBlockHeader(b); err != nil {
-						log.Errorf("failed to persist synced blocks to the chainstore: %s", err)
-						panic("bbbbb")
-					}
-				}
-			}
-
-			// Fetch all the messages for all the blocks in this chain
-
-			windowSize := uint64(10)
-			for i := uint64(0); i <= cur.Height(); i += windowSize {
-				bs := bstore.NewBlockstore(dstore.NewMapDatastore())
-				cst := hamt.CSTFromBstore(bs)
-
-				nextHeight := i + windowSize - 1
-				if nextHeight > cur.Height() {
-					nextHeight = cur.Height()
-				}
-
-				log.Infof("Fetch next messages on %d (len(blockSet)=%d)", nextHeight, len(blockSet))
-				next := blockSet[nextHeight]
-				bstips, err := syncer.Bsync.GetChainMessages(context.TODO(), next, (nextHeight+1)-i)
-				if err != nil {
-					log.Errorf("failed to fetch messages: %s", err)
-					return nil, xerrors.Errorf("message processing failed: %w", err)
-				}
-
-				for bsi := 0; bsi < len(bstips); bsi++ {
-					cur := blockSet[i+uint64(bsi)]
-					bstip := bstips[len(bstips)-(bsi+1)]
-					fmt.Println("that loop: ", bsi, len(bstips))
-					fts, err := zipTipSetAndMessages(cst, cur, bstip.Messages, bstip.MsgIncludes)
-					if err != nil {
-						log.Error("zipping failed: ", err, bsi, i)
-						log.Error("height: ", cur.Height())
-						log.Error("bstips: ", bstips)
-						log.Error("next height: ", nextHeight)
-						return nil, xerrors.Errorf("message processing failed: %w", err)
-					}
-
-					if err := syncer.ValidateTipSet(context.TODO(), fts); err != nil {
-						log.Errorf("failed to validate tipset: %s", err)
-						return nil, xerrors.Errorf("message processing failed: %w", err)
-					}
-				}
-
-				for _, bst := range bstips {
-					for _, m := range bst.Messages {
-						if _, err := cst.Put(context.TODO(), m); err != nil {
-							log.Error("failed to persist messages: ", err)
-							return nil, xerrors.Errorf("message processing failed: %w", err)
-						}
-					}
-				}
-
-				if err := copyBlockstore(bs, syncer.store.Blockstore()); err != nil {
-					log.Errorf("failed to persist temp blocks: %s", err)
-					return nil, xerrors.Errorf("message processing failed: %w", err)
-				}
-			}
-
-			//log.Errorf("dont have parent blocks for sync tipset: %s", err)
-			//panic("should do something better, like fetch? or error?")
-
-			_, err = syncer.store.LoadTipSet(cur.Parents())
+		// If, for some reason, we have a suffix of the chain locally, handle that here
+		for blockSet[len(blockSet)-1].Height() > startHeight {
+			log.Warn("syncing local: ", at)
+			ts, err := syncer.store.LoadTipSet(at)
 			if err != nil {
-				log.Errorf("HACK DIDNT WORK :( dont have parent blocks for sync tipset: %s", err)
-				panic("should do something better, like fetch? or error?")
+				if err == bstore.ErrNotFound {
+					log.Info("tipset not found locally, starting sync: ", at)
+					break
+				}
+				log.Warn("loading local tipset: %s", err)
+				continue // TODO: verify
 			}
 
-			// </TODO>
+			blockSet = append(blockSet, ts)
+			at = ts.Parents()
 		}
 
-		return chain, nil // return the chain because we have this last block in our cache already.
+		for blockSet[len(blockSet)-1].Height() > startHeight {
+			// NB: GetBlocks validates that the blocks are in-fact the ones we
+			// requested, and that they are correctly linked to eachother. It does
+			// not validate any state transitions
+			fmt.Println("Get blocks")
+			blks, err := syncer.Bsync.GetBlocks(context.TODO(), at, 10)
+			if err != nil {
+				// Most likely our peers aren't fully synced yet, but forwarded
+				// new block message (ideally we'd find better peers)
 
+				log.Error("failed to get blocks: ", err)
+
+				// This error will only be logged above,
+				return nil, xerrors.Errorf("failed to get blocks: %w", err)
+			}
+
+			for _, b := range blks {
+				blockSet = append(blockSet, b)
+			}
+
+			at = blks[len(blks)-1].Parents()
+		}
+
+		if startHeight == 0 {
+			// hacks. in the case that we request X blocks starting at height X+1, we
+			// won't get the Genesis block in the returned blockset. This hacks around it
+			if blockSet[len(blockSet)-1].Height() != 0 {
+				blockSet = append(blockSet, syncer.Genesis)
+			}
+
+			blockSet = reverse(blockSet)
+
+			genesis := blockSet[0]
+			if !genesis.Equals(syncer.Genesis) {
+				// TODO: handle this...
+				log.Errorf("We synced to the wrong chain! %s != %s", genesis, syncer.Genesis)
+				panic("We synced to the wrong chain")
+			}
+		}
+
+		for _, ts := range blockSet {
+			for _, b := range ts.Blocks() {
+				if err := syncer.store.PersistBlockHeader(b); err != nil {
+					log.Errorf("failed to persist synced blocks to the chainstore: %s", err)
+					panic("bbbbb")
+				}
+			}
+		}
+
+		// Fetch all the messages for all the blocks in this chain
+
+		windowSize := uint64(10)
+		for i := uint64(0); i <= cur.Height(); i += windowSize {
+			bs := bstore.NewBlockstore(dstore.NewMapDatastore())
+			cst := hamt.CSTFromBstore(bs)
+
+			nextHeight := i + windowSize - 1
+			if nextHeight > cur.Height() {
+				nextHeight = cur.Height()
+			}
+
+			log.Infof("Fetch next messages on %d (len(blockSet)=%d)", nextHeight, len(blockSet))
+			next := blockSet[nextHeight]
+			bstips, err := syncer.Bsync.GetChainMessages(context.TODO(), next, (nextHeight+1)-i)
+			if err != nil {
+				log.Errorf("failed to fetch messages: %s", err)
+				return nil, xerrors.Errorf("message processing failed: %w", err)
+			}
+
+			for bsi := 0; bsi < len(bstips); bsi++ {
+				cur := blockSet[i+uint64(bsi)]
+				bstip := bstips[len(bstips)-(bsi+1)]
+				fmt.Println("that loop: ", bsi, len(bstips))
+				fts, err := zipTipSetAndMessages(cst, cur, bstip.Messages, bstip.MsgIncludes)
+				if err != nil {
+					log.Error("zipping failed: ", err, bsi, i)
+					log.Error("height: ", cur.Height())
+					log.Error("bstips: ", bstips)
+					log.Error("next height: ", nextHeight)
+					return nil, xerrors.Errorf("message processing failed: %w", err)
+				}
+
+				if err := syncer.ValidateTipSet(context.TODO(), fts); err != nil {
+					log.Errorf("failed to validate tipset: %s", err)
+					return nil, xerrors.Errorf("message processing failed: %w", err)
+				}
+			}
+
+			for _, bst := range bstips {
+				for _, m := range bst.Messages {
+					if _, err := cst.Put(context.TODO(), m); err != nil {
+						log.Error("failed to persist messages: ", err)
+						return nil, xerrors.Errorf("message processing failed: %w", err)
+					}
+				}
+			}
+
+			if err := copyBlockstore(bs, syncer.store.Blockstore()); err != nil {
+				log.Errorf("failed to persist temp blocks: %s", err)
+				return nil, xerrors.Errorf("message processing failed: %w", err)
+			}
+		}
+
+		//log.Errorf("dont have parent blocks for sync tipset: %s", err)
+		//panic("should do something better, like fetch? or error?")
+
+		_, err = syncer.store.LoadTipSet(cur.Parents())
+		if err != nil {
+			log.Errorf("HACK DIDNT WORK :( dont have parent blocks for sync tipset: %s", err)
+			panic("should do something better, like fetch? or error?")
+		}
+
+		// </TODO>
 	}
+
+	return chain, nil // return the chain because we have this last block in our cache already.
 
 	return chain, nil
 }

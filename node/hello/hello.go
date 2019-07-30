@@ -93,7 +93,7 @@ func (hs *Service) SayHello(ctx context.Context, pid peer.ID) error {
 		HeaviestTipSetWeight: weight,
 		GenesisHash:          gen.Cid(),
 	}
-	fmt.Println("SENDING HELLO MESSAGE: ", hts.Cids())
+	fmt.Println("SENDING HELLO MESSAGE: ", hts.Cids(), hts.Height())
 	fmt.Println("hello message genesis: ", gen.Cid())
 
 	if err := cborrpc.WriteCborRPC(s, hmsg); err != nil {

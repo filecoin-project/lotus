@@ -6,6 +6,7 @@ import (
 	"testing"
 	"time"
 
+	logging "github.com/ipfs/go-log"
 	mocknet "github.com/libp2p/go-libp2p/p2p/net/mock"
 	"github.com/stretchr/testify/require"
 
@@ -15,6 +16,8 @@ import (
 	"github.com/filecoin-project/go-lotus/node/modules"
 	"github.com/filecoin-project/go-lotus/node/repo"
 )
+
+const source = 0
 
 func repoWithChain(t *testing.T, h int) (repo.Repo, []byte) {
 	g, err := gen.NewGenerator()
@@ -48,7 +51,7 @@ type syncTestUtil struct {
 	nds []api.FullNode
 }
 
-func (tu *syncTestUtil) addSourceNode(gen int) int {
+func (tu *syncTestUtil) addSourceNode(gen int) {
 	if tu.genesis != nil {
 		tu.t.Fatal("source node already exists")
 	}
@@ -67,11 +70,14 @@ func (tu *syncTestUtil) addSourceNode(gen int) int {
 	require.NoError(tu.t, err)
 
 	tu.genesis = genesis
-	tu.nds = append(tu.nds, out)
-	return len(tu.nds) - 1
+	tu.nds = append(tu.nds, out) // always at 0
 }
 
 func (tu *syncTestUtil) addClientNode() int {
+	if tu.genesis == nil {
+		tu.t.Fatal("source doesn't exists")
+	}
+
 	var out api.FullNode
 
 	err := node.New(tu.ctx,
@@ -88,49 +94,62 @@ func (tu *syncTestUtil) addClientNode() int {
 	return len(tu.nds) - 1
 }
 
+func (tu *syncTestUtil) connect(from, to int) {
+	toPI, err := tu.nds[to].NetAddrsListen(tu.ctx)
+	require.NoError(tu.t, err)
+
+	err = tu.nds[from].NetConnect(tu.ctx, toPI)
+	require.NoError(tu.t, err)
+}
+
+func (tu *syncTestUtil) checkHeight(name string, n int, h int) {
+	b, err := tu.nds[n].ChainHead(tu.ctx)
+	require.NoError(tu.t, err)
+
+	require.Equal(tu.t, uint64(h), b.Height())
+	fmt.Printf("%s H: %d\n", name, b.Height())
+}
+
+func (tu *syncTestUtil) compareSourceState(with int) {
+	sourceAccounts, err := tu.nds[source].WalletList(tu.ctx)
+	require.NoError(tu.t, err)
+
+	for _, addr := range sourceAccounts {
+		sourceBalance, err := tu.nds[source].WalletBalance(tu.ctx, addr)
+		require.NoError(tu.t, err)
+
+		actBalance, err := tu.nds[with].WalletBalance(tu.ctx, addr)
+		require.NoError(tu.t, err)
+
+		require.Equal(tu.t, sourceBalance, actBalance)
+	}
+}
+
 func TestSyncSimple(t *testing.T) {
-	H := 3
+	logging.SetLogLevel("*", "INFO")
 
+	H := 20
 	ctx := context.Background()
-
-	mn := mocknet.New(ctx)
-
 	tu := &syncTestUtil{
 		t:   t,
 		ctx: ctx,
-		mn:  mn,
+		mn:  mocknet.New(ctx),
 	}
 
-	source := tu.addSourceNode(H)
-
-	b, err := tu.nds[source].ChainHead(ctx)
-	require.NoError(t, err)
-
-	require.Equal(t, uint64(H), b.Height())
-	fmt.Printf("source H: %d\n", b.Height())
+	tu.addSourceNode(H)
+	tu.checkHeight("source", source, H)
 
 	// separate logs
-	fmt.Println("///////////////////////////////////////////////////")
+	fmt.Println("\x1b[31m///////////////////////////////////////////////////\x1b[39b")
 
 	client := tu.addClientNode()
+	tu.checkHeight("client", client, 0)
 
-	require.NoError(t, mn.LinkAll())
-
-	cb, err := tu.nds[client].ChainHead(ctx)
-	require.NoError(t, err)
-	require.Equal(t, uint64(0), cb.Height())
-	fmt.Printf("client H: %d\n", cb.Height())
-
-	sourcePI, err := tu.nds[source].NetAddrsListen(ctx)
-	require.NoError(t, err)
-
-	err = tu.nds[client].NetConnect(ctx, sourcePI)
-	require.NoError(t, err)
-
+	require.NoError(t, tu.mn.LinkAll())
+	tu.connect(1, 0)
 	time.Sleep(time.Second * 1)
 
-	cb, err = tu.nds[client].ChainHead(ctx)
-	require.NoError(t, err)
-	require.Equal(t, uint64(H), cb.Height())
-	fmt.Printf("client H: %d\n", cb.Height())
+	tu.checkHeight("client", client, H)
+
+	tu.compareSourceState(client)
 }

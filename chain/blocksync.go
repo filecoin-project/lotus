@@ -88,7 +88,7 @@ func (bss *BlockSyncService) HandleStream(s inet.Stream) {
 		log.Errorf("failed to read block sync request: %s", err)
 		return
 	}
-	log.Errorf("block sync request for: %s %d", req.Start, req.RequestLength)
+	log.Infof("block sync request for: %s %d", req.Start, req.RequestLength)
 
 	resp, err := bss.processRequest(&req)
 	if err != nil {
