@@ -5,7 +5,7 @@ class StorageNode extends React.Component {
   render() {
     return <Cristal
       title={"Storage miner XYZ"}
-      initialPosition={'center'}>
+      initialPosition={{x: this.props.node.ID*30, y: this.props.node.ID * 30}}>
       <div className="CristalScroll">
         <div className="StorageNodeInit">
           I'm a node

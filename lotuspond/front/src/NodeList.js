@@ -2,6 +2,8 @@ import React from 'react';
 import FullNode from "./FullNode";
 import ConnMgr from "./ConnMgr";
 import Consensus from "./Consensus";
+import {Cristal} from "react-cristal";
+import StorageNode from "./StorageNode";
 
 class NodeList extends React.Component {
   constructor(props) {
@@ -22,22 +24,41 @@ class NodeList extends React.Component {
     this.getNodes()
   }
 
+  mountNode(node) {
+    if (!node.Storage) {
+      this.props.mountWindow((onClose) =>
+        <FullNode key={node.ID}
+                  node={{...node}}
+                  pondClient={this.props.client}
+                  onConnect={(conn, id) => this.setState(prev => ({
+                    nodes: {
+                      ...prev.nodes,
+                      [node.ID]: {...node, conn: conn, peerid: id}
+                    }
+                  }))}
+                  mountWindow={this.props.mountWindow}/>)
+    } else {
+      this.props.mountWindow((onClose) =>
+        <StorageNode node={{...node}}
+                     pondClient={this.props.client}
+                     mountWindow={this.props.mountWindow}/>)
+    }
+  }
+
   async getNodes() {
     const nds = await this.props.client.call('Pond.Nodes')
     const nodes = nds.reduce((o, i) => {o[i.ID] = i; return o}, {})
     console.log('nds', nodes)
+
+    Object.keys(nodes).map(n => nodes[n]).forEach(n => this.mountNode(n))
+
     this.setState({existingLoaded: true, nodes: nodes})
   }
 
   async spawnNode() {
     const node = await this.props.client.call('Pond.Spawn')
     console.log(node)
-    this.props.mountWindow((onClose) =>
-      <FullNode key={node.ID}
-                node={{...node}}
-                pondClient={this.props.client}
-                onConnect={(conn, id) => this.setState(prev => ({nodes: {...prev.nodes, [node.ID]: {...node, conn: conn, peerid: id}}}))}
-                mountWindow={this.props.mountWindow}/>)
+    this.mountNode(node)
 
     this.setState(state => ({nodes: {...state.nodes, [node.ID]: node}}))
   }
@@ -62,17 +83,24 @@ class NodeList extends React.Component {
     }
 
     return (
-      <div>
+      <Cristal title={"Node List"} initialPosition="bottom-left">
         <div>
           <button onClick={this.spawnNode} disabled={!this.state.existingLoaded}>Spawn Node</button>
           <button onClick={this.connMgr} disabled={!this.state.existingLoaded && !this.state.showConnMgr}>Connections</button>
           <button onClick={this.consensus} disabled={!this.state.existingLoaded && !this.state.showConsensus}>Consensus</button>
         </div>
         <div>
+          {Object.keys(this.state.nodes).map(n => {
+            return <div key={n}>
+              {n}
+            </div>
+          })}
+        </div>
+        <div>
           {connMgr}
           {consensus}
         </div>
-      </div>
+      </Cristal>
     );
   }
 }
