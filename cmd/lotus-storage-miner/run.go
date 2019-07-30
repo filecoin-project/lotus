@@ -74,7 +74,7 @@ var runCmd = &cli.Command{
 				return lr.SetAPIEndpoint(apima)
 			}),
 			node.Override(new(*sectorbuilder.SectorBuilderConfig), modules.SectorBuilderConfig(storageRepoPath)),
-			node.Override(new(api.FullNode), func() api.FullNode { return nodeApi }),
+			node.Override(new(api.FullNode), nodeApi),
 		)
 		if err != nil {
 			return err
