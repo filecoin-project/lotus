@@ -52,7 +52,7 @@ class NodeList extends React.Component {
     this.setState({nextWindow: id + 1})
 
     const window = cb(() => {
-      console.log("umount wnd todo")
+      this.setState(prev => ({windows: {...prev.windows, [id]: undefined}}))
     })
 
     this.setState(prev => ({windows: {...prev.windows, [id]: window}}))

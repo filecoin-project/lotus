@@ -37,6 +37,8 @@ type nodeInfo struct {
 	Repo    string
 	ID      int32
 	ApiPort int32
+
+	Storage bool
 }
 
 func (api *api) Spawn() (nodeInfo, error) {
@@ -63,11 +65,11 @@ func (api *api) Spawn() (nodeInfo, error) {
 
 	}
 
-	errlogfile, err := os.OpenFile(dir + ".err.log", os.O_CREATE | os.O_WRONLY, 0644)
+	errlogfile, err := os.OpenFile(dir+".err.log", os.O_CREATE|os.O_WRONLY, 0644)
 	if err != nil {
 		return nodeInfo{}, err
 	}
-	logfile, err := os.OpenFile(dir + ".out.log", os.O_CREATE | os.O_WRONLY, 0644)
+	logfile, err := os.OpenFile(dir+".out.log", os.O_CREATE|os.O_WRONLY, 0644)
 	if err != nil {
 		return nodeInfo{}, err
 	}
@@ -135,6 +137,65 @@ func (api *api) TokenFor(id int32) (string, error) {
 	}
 
 	return string(t), nil
+}
+
+func (api *api) SpawnStorage(fullNodeRepo string) (nodeInfo, error) {
+	dir, err := ioutil.TempDir(os.TempDir(), "lotus-storage-")
+	if err != nil {
+		return nodeInfo{}, err
+	}
+
+	errlogfile, err := os.OpenFile(dir+".err.log", os.O_CREATE|os.O_WRONLY, 0644)
+	if err != nil {
+		return nodeInfo{}, err
+	}
+	logfile, err := os.OpenFile(dir+".out.log", os.O_CREATE|os.O_WRONLY, 0644)
+	if err != nil {
+		return nodeInfo{}, err
+	}
+
+	id := atomic.AddInt32(&api.cmds, 1)
+	cmd := exec.Command("./lotus-storage-miner", "init")
+	cmd.Stderr = io.MultiWriter(os.Stderr, errlogfile)
+	cmd.Stdout = io.MultiWriter(os.Stdout, logfile)
+	cmd.Env = []string{"LOTUS_STORAGE_PATH=" + dir, "LOTUS_PATH=" + fullNodeRepo}
+	if err := cmd.Run(); err != nil {
+		return nodeInfo{}, err
+	}
+
+	time.Sleep(time.Millisecond * 300)
+
+	cmd = exec.Command("./lotus-storage-miner", "run", "--api", fmt.Sprintf("%d", 2500+id))
+	cmd.Stderr = io.MultiWriter(os.Stderr, errlogfile)
+	cmd.Stdout = io.MultiWriter(os.Stdout, logfile)
+	cmd.Env = []string{"LOTUS_STORAGE_PATH=" + dir, "LOTUS_PATH=" + fullNodeRepo}
+	if err := cmd.Start(); err != nil {
+		return nodeInfo{}, err
+	}
+
+	info := nodeInfo{
+		Repo:    dir,
+		ID:      id,
+		ApiPort: 2500 + id,
+
+		Storage: true,
+	}
+
+	api.runningLk.Lock()
+	api.running[id] = runningNode{
+		cmd:  cmd,
+		meta: info,
+
+		stop: func() {
+			defer errlogfile.Close()
+			defer logfile.Close()
+		},
+	}
+	api.runningLk.Unlock()
+
+	time.Sleep(time.Millisecond * 750) // TODO: Something less terrible
+
+	return info, nil
 }
 
 func main() {
