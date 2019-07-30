@@ -12,16 +12,12 @@ class NodeList extends React.Component {
 
       showConnMgr: false,
       showConsensus: false,
-
-      windows: {},
-      nextWindow: 0,
     }
 
     // This binding is necessary to make `this` work in the callback
     this.spawnNode = this.spawnNode.bind(this)
     this.connMgr = this.connMgr.bind(this)
     this.consensus = this.consensus.bind(this)
-    this.mountWindow = this.mountWindow.bind(this)
 
     this.getNodes()
   }
@@ -47,17 +43,6 @@ class NodeList extends React.Component {
     this.setState({showConsensus: true})
   }
 
-  mountWindow(cb) {
-    const id = this.state.nextWindow
-    this.setState({nextWindow: id + 1})
-
-    const window = cb(() => {
-      this.setState(prev => ({windows: {...prev.windows, [id]: undefined}}))
-    })
-
-    this.setState(prev => ({windows: {...prev.windows, [id]: window}}))
-  }
-
   render() {
     let connMgr
     if (this.state.showConnMgr) {
@@ -66,7 +51,7 @@ class NodeList extends React.Component {
 
     let consensus
     if (this.state.showConsensus) {
-      consensus = (<Consensus nodes={this.state.nodes} mountWindow={this.mountWindow}/>)
+      consensus = (<Consensus nodes={this.state.nodes} mountWindow={this.props.mountWindow}/>)
     }
 
     return (
@@ -85,14 +70,11 @@ class NodeList extends React.Component {
                                 node={{...node}}
                                 pondClient={this.props.client}
                                 onConnect={(conn, id) => this.setState(prev => ({nodes: {...prev.nodes, [n]: {...node, conn: conn, peerid: id}}}))}
-                                mountWindow={this.mountWindow}/>)
+                                mountWindow={this.props.mountWindow}/>)
             })
           }
           {connMgr}
           {consensus}
-        </div>
-        <div>
-          {Object.keys(this.state.windows).map((w, i) => <div key={i}>{this.state.windows[w]}</div>)}
         </div>
       </div>
     );

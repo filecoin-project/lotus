@@ -13,7 +13,23 @@ class App extends React.Component {
       this.setState(() => ({client: client}))
     })
 
-    this.state = {}
+    this.state = {
+      windows: {},
+      nextWindow: 0,
+    }
+
+    this.mountWindow = this.mountWindow.bind(this)
+  }
+
+  mountWindow(cb) {
+    const id = this.state.nextWindow
+    this.setState({nextWindow: id + 1})
+
+    const window = cb(() => {
+      this.setState(prev => ({windows: {...prev.windows, [id]: undefined}}))
+    })
+
+    this.setState(prev => ({windows: {...prev.windows, [id]: window}}))
   }
 
   render() {
@@ -27,7 +43,10 @@ class App extends React.Component {
 
     return (
         <div className="App">
-          <NodeList client={this.state.client}/>
+          <NodeList client={this.state.client} mountWindow={this.mountWindow}/>
+          <div>
+            {Object.keys(this.state.windows).map((w, i) => <div key={i}>{this.state.windows[w]}</div>)}
+          </div>
         </div>
     )
   }
