@@ -32,6 +32,13 @@ class NodeList extends React.Component {
   async spawnNode() {
     const node = await this.props.client.call('Pond.Spawn')
     console.log(node)
+    this.props.mountWindow((onClose) =>
+      <FullNode key={node.ID}
+                node={{...node}}
+                pondClient={this.props.client}
+                onConnect={(conn, id) => this.setState(prev => ({nodes: {...prev.nodes, [node.ID]: {...node, conn: conn, peerid: id}}}))}
+                mountWindow={this.props.mountWindow}/>)
+
     this.setState(state => ({nodes: {...state.nodes, [node.ID]: node}}))
   }
 
@@ -62,17 +69,6 @@ class NodeList extends React.Component {
           <button onClick={this.consensus} disabled={!this.state.existingLoaded && !this.state.showConsensus}>Consensus</button>
         </div>
         <div>
-          {
-            Object.keys(this.state.nodes).map(n => {
-              const node = this.state.nodes[n]
-
-              return (<FullNode key={node.ID}
-                                node={{...node}}
-                                pondClient={this.props.client}
-                                onConnect={(conn, id) => this.setState(prev => ({nodes: {...prev.nodes, [n]: {...node, conn: conn, peerid: id}}}))}
-                                mountWindow={this.props.mountWindow}/>)
-            })
-          }
           {connMgr}
           {consensus}
         </div>
