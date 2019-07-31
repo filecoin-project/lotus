@@ -6,6 +6,7 @@ import (
 	"github.com/filecoin-project/go-lotus/chain/address"
 	"github.com/filecoin-project/go-lotus/chain/store"
 	"github.com/filecoin-project/go-lotus/chain/types"
+	"github.com/pkg/errors"
 )
 
 type MessagePool struct {
@@ -128,7 +129,7 @@ func (mp *MessagePool) HeadChange(revert []*types.TipSet, apply []*types.TipSet)
 		for _, b := range ts.Blocks() {
 			msgs, err := mp.cs.MessagesForBlock(b)
 			if err != nil {
-				return err
+				return errors.Wrapf(err, "failed to get messages for revert block %s(height %d)", b.Cid(), b.Height)
 			}
 			for _, msg := range msgs {
 				if err := mp.Add(msg); err != nil {
@@ -142,7 +143,7 @@ func (mp *MessagePool) HeadChange(revert []*types.TipSet, apply []*types.TipSet)
 		for _, b := range ts.Blocks() {
 			msgs, err := mp.cs.MessagesForBlock(b)
 			if err != nil {
-				return err
+				return errors.Wrapf(err, "failed to get messages for apply block %s(height %d) (msgroot = %s)", b.Cid(), b.Height, b.Messages)
 			}
 			for _, msg := range msgs {
 				mp.Remove(msg)

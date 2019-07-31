@@ -57,7 +57,7 @@ func (m mybs) Get(c cid.Cid) (block.Block, error) {
 	b, err := m.Blockstore.Get(c)
 	if err != nil {
 		// change to error for stacktraces, don't commit with that pls
-		log.Warn("Get failed: %s %s", c, err)
+		log.Warnf("Get failed: %s %s", c, err)
 		return nil, err
 	}
 
