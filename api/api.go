@@ -81,6 +81,7 @@ type FullNode interface {
 
 	MpoolPending(context.Context, *types.TipSet) ([]*types.SignedMessage, error)
 	MpoolPush(context.Context, *types.SignedMessage) error
+	MpoolGetNonce(context.Context, address.Address) (uint64, error)
 
 	// FullNodeStruct
 
@@ -98,9 +99,6 @@ type FullNode interface {
 	WalletBalance(context.Context, address.Address) (types.BigInt, error)
 	WalletSign(context.Context, address.Address, []byte) (*types.Signature, error)
 	WalletDefaultAddress(context.Context) (address.Address, error)
-
-	// Really not sure where this belongs. It could go on the wallet, or the message pool, or the chain...
-	MpoolGetNonce(context.Context, address.Address) (uint64, error)
 
 	// Other
 

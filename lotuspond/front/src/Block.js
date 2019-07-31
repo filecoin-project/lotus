@@ -26,6 +26,7 @@ class Block extends React.Component {
           <div>Height: {head.Height}</div>
           <div>Parents: <BlockLinks cids={head.Parents} conn={this.props.conn} mountWindow={this.props.mountWindow}/></div>
           <div>Weight: {head.ParentWeight}</div>
+          <div>Miner: {head.Miner}</div>
           <div>Messages: {head.Messages['/']} {/*TODO: link to message explorer */}</div>
           <div>Receipts: {head.MessageReceipts['/']}</div>
           <div>State Root: {head.StateRoot['/']}</div>

@@ -10,6 +10,7 @@ import (
 	bserv "github.com/ipfs/go-blockservice"
 	"github.com/libp2p/go-libp2p-core/host"
 	"github.com/libp2p/go-libp2p-core/protocol"
+	"golang.org/x/xerrors"
 
 	"github.com/filecoin-project/go-lotus/chain/store"
 	"github.com/filecoin-project/go-lotus/chain/types"
@@ -87,7 +88,7 @@ func (bss *BlockSyncService) HandleStream(s inet.Stream) {
 		log.Errorf("failed to read block sync request: %s", err)
 		return
 	}
-	log.Errorf("block sync request for: %s %d", req.Start, req.RequestLength)
+	log.Infof("block sync request for: %s %d", req.Start, req.RequestLength)
 
 	resp, err := bss.processRequest(&req)
 	if err != nil {
@@ -128,19 +129,16 @@ func (bss *BlockSyncService) collectChainSegment(start []cid.Cid, length uint64,
 		}
 
 		if opts.IncludeMessages {
-			log.Error("INCLUDING MESSAGES IN SYNC RESPONSE")
 			msgs, mincl, err := bss.gatherMessages(ts)
 			if err != nil {
 				return nil, err
 			}
-			log.Errorf("messages: ", msgs)
 
 			bst.Messages = msgs
 			bst.MsgIncludes = mincl
 		}
 
 		if opts.IncludeBlocks {
-			log.Error("INCLUDING BLOCKS IN SYNC RESPONSE")
 			bst.Blocks = ts.Blocks()
 		}
 
@@ -164,7 +162,7 @@ func (bss *BlockSyncService) gatherMessages(ts *types.TipSet) ([]*types.SignedMe
 		if err != nil {
 			return nil, nil, err
 		}
-		log.Errorf("MESSAGES FOR BLOCK: %d", len(msgs))
+		log.Infof("MESSAGES FOR BLOCK: %d", len(msgs))
 
 		msgindexes := make([]int, 0, len(msgs))
 		for _, m := range msgs {
@@ -209,22 +207,7 @@ func (bs *BlockSync) getPeers() []peer.ID {
 	return out
 }
 
-func (bs *BlockSync) GetBlocks(ctx context.Context, tipset []cid.Cid, count int) ([]*types.TipSet, error) {
-	peers := bs.getPeers()
-	perm := rand.Perm(len(peers))
-	// TODO: round robin through these peers on error
-
-	req := &BlockSyncRequest{
-		Start:         tipset,
-		RequestLength: uint64(count),
-		Options:       BSOptBlocks,
-	}
-
-	res, err := bs.sendRequestToPeer(ctx, peers[perm[0]], req)
-	if err != nil {
-		return nil, err
-	}
-
+func (bs *BlockSync) processStatus(req *BlockSyncRequest, res *BlockSyncResponse) ([]*types.TipSet, error) {
 	switch res.Status {
 	case 0: // Success
 		return bs.processBlocksResponse(req, res)
@@ -239,6 +222,34 @@ func (bs *BlockSync) GetBlocks(ctx context.Context, tipset []cid.Cid, count int)
 	default:
 		return nil, fmt.Errorf("unrecognized response code")
 	}
+}
+
+func (bs *BlockSync) GetBlocks(ctx context.Context, tipset []cid.Cid, count int) ([]*types.TipSet, error) {
+	peers := bs.getPeers()
+	perm := rand.Perm(len(peers))
+	// TODO: round robin through these peers on error
+
+	req := &BlockSyncRequest{
+		Start:         tipset,
+		RequestLength: uint64(count),
+		Options:       BSOptBlocks,
+	}
+
+	var err error
+	var res *BlockSyncResponse
+	for _, p := range perm {
+		res, err = bs.sendRequestToPeer(ctx, peers[p], req)
+		if err != nil {
+			log.Warnf("BlockSync request failed for peer %s: %s", peers[p].String(), err)
+			continue
+		}
+
+		ts, err := bs.processStatus(req, res)
+		if err == nil {
+			return ts, nil
+		}
+	}
+	return nil, xerrors.Errorf("GetBlocks failed with all peers: %w", err)
 }
 
 func (bs *BlockSync) GetFullTipSet(ctx context.Context, p peer.ID, h []cid.Cid) (*store.FullTipSet, error) {
