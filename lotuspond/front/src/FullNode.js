@@ -39,8 +39,6 @@ class FullNode extends React.Component {
   }
 
   async connect() {
-    console.log("gettok")
-
     const token = await this.props.pondClient.call('Pond.TokenFor', [this.props.node.ID])
 
     this.setState(() => ({

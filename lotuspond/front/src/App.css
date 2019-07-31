@@ -20,6 +20,14 @@
   display: inline-block;
 }
 
+.StorageNode {
+  background: #f9be77;
+  user-select: text;
+  font-family: monospace;
+  min-width: 40em;
+  display: inline-block;
+}
+
 .CristalScroll {
   display: flex;
   min-width: 100%;
