@@ -87,8 +87,8 @@ var MultiSigMethods = musigMethods{1, 2, 3, 4, 5, 6, 7, 8, 9}
 func (msa MultiSigActor) Exports() []interface{} {
 	return []interface{}{
 		1: msa.MultiSigConstructor,
-		2: msa.Approve,
-		3: msa.Propose,
+		2: msa.Propose,
+		3: msa.Approve,
 		4: msa.Cancel,
 		//5: msa.ClearCompleted,
 		6: msa.AddSigner,

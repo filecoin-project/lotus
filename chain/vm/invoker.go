@@ -27,6 +27,7 @@ func newInvoker() *invoker {
 	inv.register(actors.InitActorCodeCid, actors.InitActor{})
 	inv.register(actors.StorageMarketActorCodeCid, actors.StorageMarketActor{})
 	inv.register(actors.StorageMinerCodeCid, actors.StorageMinerActor{})
+	inv.register(actors.MultisigActorCodeCid, actors.MultiSigActor{})
 
 	return inv
 }

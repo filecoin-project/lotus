@@ -44,8 +44,8 @@ func TestStorageMarketCreateMiner(t *testing.T) {
 					t.Fatal(err)
 				}
 
-				if sminer.String() != "t0102" {
-					t.Fatal("hold up")
+				if sminer.String() != "t0103" {
+					t.Fatalf("hold up got: %s", sminer)
 				}
 				h.Steps[1].M.Params = h.DumpObject(&IsMinerParam{Addr: sminer})
 				h.Steps[2].M.Params = h.DumpObject(&PowerLookupParams{Miner: sminer})

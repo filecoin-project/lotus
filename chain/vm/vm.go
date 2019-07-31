@@ -199,7 +199,12 @@ func NewVM(base cid.Cid, height uint64, maddr address.Address, cs *store.ChainSt
 	}, nil
 }
 
-func (vm *VM) ApplyMessage(ctx context.Context, msg *types.Message) (*types.MessageReceipt, error) {
+type ApplyRet struct {
+	types.MessageReceipt
+	ActorErr aerrors.ActorError
+}
+
+func (vm *VM) ApplyMessage(ctx context.Context, msg *types.Message) (*ApplyRet, error) {
 	ctx, span := trace.StartSpan(ctx, "vm.ApplyMessage")
 	defer span.End()
 
@@ -246,15 +251,16 @@ func (vm *VM) ApplyMessage(ctx context.Context, msg *types.Message) (*types.Mess
 
 	var errcode byte
 	var ret []byte
-	if msg.Method != 0 {
-		var err aerrors.ActorError
-		ret, err = vm.Invoke(toActor, vmctx, msg.Method, msg.Params)
+	var actorError aerrors.ActorError
 
-		if aerrors.IsFatal(err) {
-			return nil, xerrors.Errorf("during invoke: %w", err)
+	if msg.Method != 0 {
+		ret, actorError = vm.Invoke(toActor, vmctx, msg.Method, msg.Params)
+
+		if aerrors.IsFatal(actorError) {
+			return nil, xerrors.Errorf("during invoke: %w", actorError)
 		}
 
-		if errcode = aerrors.RetCode(err); errcode != 0 {
+		if errcode = aerrors.RetCode(actorError); errcode != 0 {
 			// revert all state changes since snapshot
 			if err := st.Revert(); err != nil {
 				return nil, xerrors.Errorf("revert state failed: %w", err)
@@ -283,10 +289,13 @@ func (vm *VM) ApplyMessage(ctx context.Context, msg *types.Message) (*types.Mess
 	gasReward := types.BigMul(msg.GasPrice, vmctx.GasUsed())
 	DepositFunds(miner, gasReward)
 
-	return &types.MessageReceipt{
-		ExitCode: errcode,
-		Return:   ret,
-		GasUsed:  vmctx.GasUsed(),
+	return &ApplyRet{
+		MessageReceipt: types.MessageReceipt{
+			ExitCode: errcode,
+			Return:   ret,
+			GasUsed:  vmctx.GasUsed(),
+		},
+		ActorErr: actorError,
 	}, nil
 }
 
