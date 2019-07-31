@@ -187,9 +187,12 @@ func (cs *ChainStore) MaybeTakeHeavierTipSet(ts *types.TipSet) error {
 	cs.heaviestLk.Lock()
 	defer cs.heaviestLk.Unlock()
 	if cs.heaviest == nil || cs.Weight(ts) > cs.Weight(cs.heaviest) {
+		// TODO: don't do this for initial sync. Now that we don't have a
+		// difference between 'bootstrap sync' and 'caught up' sync, we need
+		// some other heuristic.
 		revert, apply, err := cs.ReorgOps(cs.heaviest, ts)
 		if err != nil {
-			return err
+			return errors.Wrap(err, "computing reorg ops failed")
 		}
 		for _, hcf := range cs.headChangeNotifs {
 			if err := hcf(revert, apply); err != nil {
@@ -290,6 +293,7 @@ func (cs *ChainStore) ReorgOps(a, b *types.TipSet) ([]*types.TipSet, []*types.Ti
 			rightChain = append(rightChain, right)
 			par, err := cs.LoadTipSet(right.Parents())
 			if err != nil {
+				log.Infof("failed to fetch right.Parents: %s", err)
 				return nil, nil, err
 			}
 
@@ -336,13 +340,21 @@ type storable interface {
 	ToStorageBlock() (block.Block, error)
 }
 
-func (cs *ChainStore) PutMessage(m storable) (cid.Cid, error) {
-	sb, err := m.ToStorageBlock()
+func PutMessage(bs blockstore.Blockstore, m storable) (cid.Cid, error) {
+	b, err := m.ToStorageBlock()
 	if err != nil {
 		return cid.Undef, err
 	}
 
-	return sb.Cid(), cs.bs.Put(sb)
+	if err := bs.Put(b); err != nil {
+		return cid.Undef, err
+	}
+
+	return b.Cid(), nil
+}
+
+func (cs *ChainStore) PutMessage(m storable) (cid.Cid, error) {
+	return PutMessage(cs.bs, m)
 }
 
 func (cs *ChainStore) AddBlock(b *types.BlockHeader) error {
@@ -395,6 +407,7 @@ func (cs *ChainStore) TipSetState(cids []cid.Cid) (cid.Cid, error) {
 func (cs *ChainStore) GetMessage(c cid.Cid) (*types.SignedMessage, error) {
 	sb, err := cs.bs.Get(c)
 	if err != nil {
+		log.Errorf("get message get failed: %s: %s", c, err)
 		return nil, err
 	}
 
@@ -428,7 +441,7 @@ func (cs *ChainStore) MessageCidsForBlock(b *types.BlockHeader) ([]cid.Cid, erro
 func (cs *ChainStore) MessagesForBlock(b *types.BlockHeader) ([]*types.SignedMessage, error) {
 	cids, err := cs.MessageCidsForBlock(b)
 	if err != nil {
-		return nil, err
+		return nil, errors.Wrap(err, "loading message cids for block")
 	}
 
 	return cs.LoadMessagesFromCids(cids)
@@ -461,10 +474,10 @@ func (cs *ChainStore) GetReceipt(b *types.BlockHeader, i int) (*types.MessageRec
 
 func (cs *ChainStore) LoadMessagesFromCids(cids []cid.Cid) ([]*types.SignedMessage, error) {
 	msgs := make([]*types.SignedMessage, 0, len(cids))
-	for _, c := range cids {
+	for i, c := range cids {
 		m, err := cs.GetMessage(c)
 		if err != nil {
-			return nil, err
+			return nil, errors.Wrapf(err, "failed to get message: (%s):%d", c, i)
 		}
 
 		msgs = append(msgs, m)

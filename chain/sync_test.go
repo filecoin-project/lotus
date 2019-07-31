@@ -55,7 +55,7 @@ type syncTestUtil struct {
 	mn  mocknet.Mocknet
 
 	genesis []byte
-	blocks []*types.FullBlock
+	blocks  []*types.FullBlock
 
 	nds []api.FullNode
 }
@@ -163,8 +163,8 @@ func (tu *syncTestUtil) submitSourceBlock(to int, h int) {
 	var b chain.BlockMsg
 
 	// -1 to match block.Height
-	b.Header = tu.blocks[h - 1].Header
-	for _, msg := range tu.blocks[h - 1].Messages {
+	b.Header = tu.blocks[h-1].Header
+	for _, msg := range tu.blocks[h-1].Messages {
 		c, err := tu.nds[to].(*impl.FullNodeAPI).Chain.PutMessage(msg)
 		require.NoError(tu.t, err)
 
@@ -176,12 +176,12 @@ func (tu *syncTestUtil) submitSourceBlock(to int, h int) {
 
 func (tu *syncTestUtil) submitSourceBlocks(to int, h int, n int) {
 	for i := 0; i < n; i++ {
-		tu.submitSourceBlock(to, h + i)
+		tu.submitSourceBlock(to, h+i)
 	}
 }
 
 func TestSyncSimple(t *testing.T) {
-	H := 20
+	H := 21
 	tu := prepSyncTest(t, H)
 
 	client := tu.addClientNode()
@@ -235,4 +235,4 @@ func TestSyncIncoming(t *testing.T) {
 
 	tu.compareSourceState(client)
 }
- */
+*/
