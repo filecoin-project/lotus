@@ -16,6 +16,7 @@ import (
 	hamt "github.com/ipfs/go-hamt-ipld"
 	blockstore "github.com/ipfs/go-ipfs-blockstore"
 	bstore "github.com/ipfs/go-ipfs-blockstore"
+	cbor "github.com/ipfs/go-ipld-cbor"
 	logging "github.com/ipfs/go-log"
 	"github.com/pkg/errors"
 	pubsub "github.com/whyrusleeping/pubsub"
@@ -411,7 +412,19 @@ func (cs *ChainStore) GetMessage(c cid.Cid) (*types.SignedMessage, error) {
 		return nil, err
 	}
 
-	return types.DecodeSignedMessage(sb.RawData())
+	var i interface{}
+	if err := cbor.DecodeInto(sb.RawData(), &i); err != nil {
+		return nil, err
+	}
+
+	switch m := i.(type) {
+	case types.Message:
+		return &types.SignedMessage{Message: m}, nil
+	case types.SignedMessage:
+		return &m, nil
+	default:
+		return nil, fmt.Errorf("unrecognized type in GetMessage: %#v", i)
+	}
 }
 
 func (cs *ChainStore) MessageCidsForBlock(b *types.BlockHeader) ([]cid.Cid, error) {

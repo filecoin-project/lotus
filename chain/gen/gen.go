@@ -99,7 +99,7 @@ func NewGenerator() (*ChainGen, error) {
 	}
 
 	// KTBLS doesn't support signature verification or something like that yet
-	banker, err := w.GenerateKey(types.KTSecp256k1)
+	banker, err := w.GenerateKey(types.KTBLS)
 	if err != nil {
 		return nil, err
 	}
