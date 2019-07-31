@@ -117,14 +117,24 @@ func (sma StorageMinerActor) Exports() []interface{} {
 		//5:  sma.GetCurrentProvingSet,
 		//6:  sma.ArbitrateDeal,
 		//7:  sma.DePledge,
-		//8:  sma.GetOwner,
+		8:  sma.GetOwner,
 		9:  sma.GetWorkerAddr,
 		10: sma.GetPower,
-		//11: sma.GetPeerID,
-		//12: sma.GetSectorSize,
-		//13: sma.UpdatePeerID,
+		11: sma.GetPeerID,
+		12: sma.GetSectorSize,
+		13: sma.UpdatePeerID,
 		//14: sma.ChangeWorker,
 	}
+}
+
+func loadState(vmctx types.VMContext) (cid.Cid, *StorageMinerActorState, ActorError) {
+	var self StorageMinerActorState
+	oldstate := vmctx.Storage().GetHead()
+	if err := vmctx.Storage().Get(oldstate, &self); err != nil {
+		return cid.Undef, nil, err
+	}
+
+	return oldstate, &self, nil
 }
 
 func (sma StorageMinerActor) StorageMinerConstructor(act *types.Actor, vmctx types.VMContext, params *StorageMinerConstructorParams) ([]byte, ActorError) {
@@ -164,9 +174,8 @@ type CommitSectorParams struct {
 }
 
 func (sma StorageMinerActor) CommitSector(act *types.Actor, vmctx types.VMContext, params *CommitSectorParams) ([]byte, ActorError) {
-	var self StorageMinerActorState
-	oldstate := vmctx.Storage().GetHead()
-	if err := vmctx.Storage().Get(oldstate, &self); err != nil {
+	oldstate, self, err := loadState(vmctx)
+	if err != nil {
 		return nil, err
 	}
 
@@ -231,9 +240,8 @@ func (sma StorageMinerActor) CommitSector(act *types.Actor, vmctx types.VMContex
 }
 
 func (sma StorageMinerActor) GetPower(act *types.Actor, vmctx types.VMContext, params *struct{}) ([]byte, ActorError) {
-	var self StorageMinerActorState
-	state := vmctx.Storage().GetHead()
-	if err := vmctx.Storage().Get(state, &self); err != nil {
+	_, self, err := loadState(vmctx)
+	if err != nil {
 		return nil, err
 	}
 	return self.Power.Bytes(), nil
@@ -277,10 +285,64 @@ func CollateralForPower(power types.BigInt) types.BigInt {
 }
 
 func (sma StorageMinerActor) GetWorkerAddr(act *types.Actor, vmctx types.VMContext, params *struct{}) ([]byte, ActorError) {
-	var self StorageMinerActorState
-	state := vmctx.Storage().GetHead()
-	if err := vmctx.Storage().Get(state, &self); err != nil {
+	_, self, err := loadState(vmctx)
+	if err != nil {
 		return nil, err
 	}
 	return self.Worker.Bytes(), nil
+}
+
+func (sma StorageMinerActor) GetOwner(act *types.Actor, vmctx types.VMContext, params *struct{}) ([]byte, ActorError) {
+	_, self, err := loadState(vmctx)
+	if err != nil {
+		return nil, err
+	}
+
+	return self.Owner.Bytes(), nil
+}
+
+func (sma StorageMinerActor) GetPeerID(act *types.Actor, vmctx types.VMContext, params *struct{}) ([]byte, ActorError) {
+	_, self, err := loadState(vmctx)
+	if err != nil {
+		return nil, err
+	}
+
+	return []byte(self.PeerID), nil
+}
+
+type UpdatePeerIDParams struct {
+	PeerID peer.ID
+}
+
+func (sma StorageMinerActor) UpdatePeerID(act *types.Actor, vmctx types.VMContext, params *UpdatePeerIDParams) ([]byte, ActorError) {
+	oldstate, self, err := loadState(vmctx)
+	if err != nil {
+		return nil, err
+	}
+
+	if vmctx.Message().From != self.Worker {
+		return nil, aerrors.New(2, "only the mine worker may update the peer ID")
+	}
+
+	self.PeerID = params.PeerID
+
+	c, err := vmctx.Storage().Put(self)
+	if err != nil {
+		return nil, err
+	}
+
+	if err := vmctx.Storage().Commit(oldstate, c); err != nil {
+		return nil, err
+	}
+
+	return nil, nil
+}
+
+func (sma StorageMinerActor) GetSectorSize(act *types.Actor, vmctx types.VMContext, params *struct{}) ([]byte, ActorError) {
+	_, self, err := loadState(vmctx)
+	if err != nil {
+		return nil, err
+	}
+
+	return self.SectorSize.Bytes(), nil
 }
