@@ -41,9 +41,10 @@ type Harness2 struct {
 	Stage  HarnessStage
 	Nonces map[address.Address]uint64
 
-	bs blockstore.Blockstore
-	vm *vm.VM
-	cs *store.ChainStore
+	ctx context.Context
+	bs  blockstore.Blockstore
+	vm  *vm.VM
+	cs  *store.ChainStore
 }
 
 var HarnessMinerFunds = types.NewInt(1000000)
@@ -99,20 +100,28 @@ func HarnessActor(actor *address.Address, creator *address.Address, code cid.Cid
 
 }
 
+func HarnessCtx(ctx context.Context) HarnessOpt {
+	return func(t testing.TB, h *Harness2) error {
+		h.ctx = ctx
+		return nil
+	}
+}
+
 func NewHarness2(t *testing.T, options ...HarnessOpt) *Harness2 {
 	h := &Harness2{
 		Stage:  HarnessPreInit,
 		Nonces: make(map[address.Address]uint64),
-	}
-	h.bs = bstore.NewBlockstore(dstore.NewMapDatastore())
-	h.HI = HarnessInit{
-		NAddrs: 1,
-		Miner:  blsaddr(0),
-		Addrs: map[address.Address]types.BigInt{
-			blsaddr(0): HarnessMinerFunds,
+		HI: HarnessInit{
+			NAddrs: 1,
+			Miner:  blsaddr(0),
+			Addrs: map[address.Address]types.BigInt{
+				blsaddr(0): HarnessMinerFunds,
+			},
 		},
-	}
 
+		ctx: context.Background(),
+		bs:  bstore.NewBlockstore(dstore.NewMapDatastore()),
+	}
 	for _, opt := range options {
 		err := opt(t, h)
 		if err != nil {
@@ -152,7 +161,7 @@ func (h *Harness2) Apply(t testing.TB, msg types.Message) (*vm.ApplyRet, *state.
 		h.Nonces[msg.From] = msg.Nonce + 1
 	}
 
-	ret, err := h.vm.ApplyMessage(context.TODO(), &msg)
+	ret, err := h.vm.ApplyMessage(h.ctx, &msg)
 	if err != nil {
 		t.Fatalf("Applying message: %+v", err)
 	}

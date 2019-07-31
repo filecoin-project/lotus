@@ -1,15 +1,18 @@
 package actors_test
 
 import (
+	"context"
 	"testing"
 
 	cbor "github.com/ipfs/go-ipld-cbor"
 	"github.com/stretchr/testify/assert"
+	"go.opencensus.io/trace"
 
 	"github.com/filecoin-project/go-lotus/chain/actors"
 	"github.com/filecoin-project/go-lotus/chain/address"
 	"github.com/filecoin-project/go-lotus/chain/types"
 	"github.com/filecoin-project/go-lotus/chain/vm"
+	"github.com/filecoin-project/go-lotus/tracing"
 )
 
 func TestMultiSigCreate(t *testing.T) {
@@ -38,9 +41,15 @@ func ApplyOK(t testing.TB, ret *vm.ApplyRet) {
 }
 
 func TestMultiSigOps(t *testing.T) {
+	je := tracing.SetupJaegerTracing("test")
+	defer je.Flush()
+	ctx, span := trace.StartSpan(context.Background(), "/test-"+t.Name())
+	defer span.End()
+
 	var creatorAddr, sig1Addr, sig2Addr, outsideAddr address.Address
 	var multSigAddr address.Address
 	opts := []HarnessOpt{
+		HarnessCtx(ctx),
 		HarnessAddr(&creatorAddr, 10000),
 		HarnessAddr(&sig1Addr, 10000),
 		HarnessAddr(&sig2Addr, 10000),
@@ -54,14 +63,14 @@ func TestMultiSigOps(t *testing.T) {
 			}),
 	}
 
+	curVal := types.NewInt(2000)
 	h := NewHarness2(t, opts...)
 	{
-		sendVal := types.NewInt(2000)
-		ret, state := h.SendFunds(t, creatorAddr, multSigAddr, sendVal)
+		ret, state := h.SendFunds(t, creatorAddr, multSigAddr, curVal)
 		ApplyOK(t, ret)
 		ms, err := state.GetActor(multSigAddr)
 		assert.NoError(t, err)
-		assert.Equal(t, sendVal, ms.Balance)
+		assert.Equal(t, curVal, ms.Balance)
 	}
 
 	{
@@ -72,9 +81,21 @@ func TestMultiSigOps(t *testing.T) {
 				Value: sendVal,
 			})
 		ApplyOK(t, ret)
-		var txIdParam actors.MultiSigTxID
-		err := cbor.DecodeInto(ret.Return, &txIdParam.TxID)
+		var txIDParam actors.MultiSigTxID
+		err := cbor.DecodeInto(ret.Return, &txIDParam.TxID)
 		assert.NoError(t, err, "decoding txid")
+		ret, state := h.Invoke(t, sig1Addr, multSigAddr, actors.MultiSigMethods.Approve,
+			txIDParam)
+		ApplyOK(t, ret)
+		curVal = types.BigSub(curVal, sendVal)
+
+		outAct, err := state.GetActor(outsideAddr)
+		assert.NoError(t, err)
+		assert.Equal(t, sendVal, outAct.Balance)
+
+		msAct, err := state.GetActor(multSigAddr)
+		assert.NoError(t, err)
+		assert.Equal(t, curVal, msAct.Balance)
 	}
 
 }

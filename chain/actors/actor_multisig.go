@@ -17,6 +17,7 @@ func init() {
 	cbor.RegisterCborType(MultiSigSigner{})
 	cbor.RegisterCborType(MultiSigSwapSignerParams{})
 	cbor.RegisterCborType(MultiSigChangeReqParams{})
+	cbor.RegisterCborType(MTransaction{})
 }
 
 type MultiSigActor struct{}
