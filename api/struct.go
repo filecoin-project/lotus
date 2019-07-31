@@ -39,14 +39,14 @@ type FullNodeStruct struct {
 	CommonStruct
 
 	Internal struct {
-		ChainNotify           func(context.Context) (<-chan *store.HeadChange, error)              `perm:"read"`
-		ChainSubmitBlock      func(ctx context.Context, blk *chain.BlockMsg) error                 `perm:"write"`
-		ChainHead             func(context.Context) (*types.TipSet, error)                         `perm:"read"`
-		ChainGetRandomness    func(context.Context, *types.TipSet) ([]byte, error)                 `perm:"read"`
-		ChainWaitMsg          func(context.Context, cid.Cid) (*MsgWait, error)                     `perm:"read"`
-		ChainGetBlock         func(context.Context, cid.Cid) (*types.BlockHeader, error)           `perm:"read"`
-		ChainGetBlockMessages func(context.Context, cid.Cid) ([]*types.SignedMessage, error)       `perm:"read"`
-		ChainCall             func(context.Context, *types.Message) (*types.MessageReceipt, error) `perm:"read"`
+		ChainNotify           func(context.Context) (<-chan *store.HeadChange, error)                             `perm:"read"`
+		ChainSubmitBlock      func(ctx context.Context, blk *chain.BlockMsg) error                                `perm:"write"`
+		ChainHead             func(context.Context) (*types.TipSet, error)                                        `perm:"read"`
+		ChainGetRandomness    func(context.Context, *types.TipSet) ([]byte, error)                                `perm:"read"`
+		ChainWaitMsg          func(context.Context, cid.Cid) (*MsgWait, error)                                    `perm:"read"`
+		ChainGetBlock         func(context.Context, cid.Cid) (*types.BlockHeader, error)                          `perm:"read"`
+		ChainGetBlockMessages func(context.Context, cid.Cid) ([]*types.SignedMessage, error)                      `perm:"read"`
+		ChainCall             func(context.Context, *types.Message, *types.TipSet) (*types.MessageReceipt, error) `perm:"read"`
 
 		MpoolPending func(context.Context, *types.TipSet) ([]*types.SignedMessage, error) `perm:"read"`
 		MpoolPush    func(context.Context, *types.SignedMessage) error                    `perm:"write"`
@@ -156,8 +156,8 @@ func (c *FullNodeStruct) ChainWaitMsg(ctx context.Context, msgc cid.Cid) (*MsgWa
 	return c.Internal.ChainWaitMsg(ctx, msgc)
 }
 
-func (c *FullNodeStruct) ChainCall(ctx context.Context, msg *types.Message) (*types.MessageReceipt, error) {
-	return c.Internal.ChainCall(ctx, msg)
+func (c *FullNodeStruct) ChainCall(ctx context.Context, msg *types.Message, ts *types.TipSet) (*types.MessageReceipt, error) {
+	return c.Internal.ChainCall(ctx, msg, ts)
 }
 
 func (c *FullNodeStruct) WalletNew(ctx context.Context, typ string) (address.Address, error) {

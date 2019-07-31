@@ -86,14 +86,16 @@ func (a *FullNodeAPI) ChainGetBlockMessages(ctx context.Context, msg cid.Cid) ([
 	return a.Chain.MessagesForBlock(b)
 }
 
-func (a *FullNodeAPI) ChainCall(ctx context.Context, msg *types.Message) (*types.MessageReceipt, error) {
-	hts := a.Chain.GetHeaviestTipSet()
-	state, err := a.Chain.TipSetState(hts.Cids())
+func (a *FullNodeAPI) ChainCall(ctx context.Context, msg *types.Message, ts *types.TipSet) (*types.MessageReceipt, error) {
+	if ts == nil {
+		ts = a.Chain.GetHeaviestTipSet()
+	}
+	state, err := a.Chain.TipSetState(ts.Cids())
 	if err != nil {
 		return nil, err
 	}
 
-	vmi, err := vm.NewVM(state, hts.Height(), hts.Blocks()[0].Miner, a.Chain)
+	vmi, err := vm.NewVM(state, ts.Height(), ts.Blocks()[0].Miner, a.Chain)
 	if err != nil {
 		return nil, xerrors.Errorf("failed to set up vm: %w", err)
 	}
