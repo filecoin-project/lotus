@@ -251,14 +251,16 @@ func SectorBuilderConfig(storagePath string) func() (*sectorbuilder.SectorBuilde
 	}
 }
 
-func SectorBuilder(lc fx.Lifecycle, sbc *sectorbuilder.SectorBuilderConfig) (*sectorbuilder.SectorBuilder, error) {
+func SectorBuilder(mctx helpers.MetricsCtx, lc fx.Lifecycle, sbc *sectorbuilder.SectorBuilderConfig) (*sectorbuilder.SectorBuilder, error) {
 	sb, err := sectorbuilder.New(sbc)
 	if err != nil {
 		return nil, err
 	}
 
+	ctx := helpers.LifecycleCtx(mctx, lc)
+
 	lc.Append(fx.Hook{
-		OnStart: func(ctx context.Context) error {
+		OnStart: func(context.Context) error {
 			sb.Run(ctx)
 			return nil
 		},
@@ -267,7 +269,7 @@ func SectorBuilder(lc fx.Lifecycle, sbc *sectorbuilder.SectorBuilderConfig) (*se
 	return sb, nil
 }
 
-func StorageMiner(lc fx.Lifecycle, api api.FullNode, h host.Host, ds datastore.Batching, sb *sectorbuilder.SectorBuilder, w *wallet.Wallet) (*storage.Miner, error) {
+func StorageMiner(mctx helpers.MetricsCtx, lc fx.Lifecycle, api api.FullNode, h host.Host, ds datastore.Batching, sb *sectorbuilder.SectorBuilder, w *wallet.Wallet) (*storage.Miner, error) {
 	maddrb, err := ds.Get(datastore.NewKey("miner-address"))
 	if err != nil {
 		return nil, err
@@ -283,8 +285,10 @@ func StorageMiner(lc fx.Lifecycle, api api.FullNode, h host.Host, ds datastore.B
 		return nil, err
 	}
 
+	ctx := helpers.LifecycleCtx(mctx, lc)
+
 	lc.Append(fx.Hook{
-		OnStart: func(ctx context.Context) error {
+		OnStart: func(context.Context) error {
 			return sm.Run(ctx)
 		},
 	})
