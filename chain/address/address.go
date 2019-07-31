@@ -62,10 +62,15 @@ const (
 	Actor
 	// BLS represents the address BLS protocol.
 	BLS
+
+	Unknown = Protocol(255)
 )
 
 // Protocol returns the protocol used by the address.
 func (a Address) Protocol() Protocol {
+	if len(a.str) == 0 {
+		return Unknown
+	}
 	return a.str[0]
 }
 

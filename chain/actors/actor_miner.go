@@ -118,7 +118,7 @@ func (sma StorageMinerActor) Exports() []interface{} {
 		//6:  sma.ArbitrateDeal,
 		//7:  sma.DePledge,
 		//8:  sma.GetOwner,
-		//9:  sma.GetWorkerAddr,
+		9:  sma.GetWorkerAddr,
 		10: sma.GetPower,
 		//11: sma.GetPeerID,
 		//12: sma.GetSectorSize,
@@ -274,4 +274,13 @@ func CollateralForPower(power types.BigInt) types.BigInt {
 	collateralRequired = math.Ceil(minerPowerCollateral + minerPerCapitaCollateral)
 	return collateralRequired
 	*/
+}
+
+func (sma StorageMinerActor) GetWorkerAddr(act *types.Actor, vmctx types.VMContext, params *struct{}) ([]byte, ActorError) {
+	var self StorageMinerActorState
+	state := vmctx.Storage().GetHead()
+	if err := vmctx.Storage().Get(state, &self); err != nil {
+		return nil, err
+	}
+	return self.Worker.Bytes(), nil
 }

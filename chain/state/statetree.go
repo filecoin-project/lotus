@@ -2,6 +2,7 @@ package state
 
 import (
 	"context"
+	"fmt"
 
 	"github.com/ipfs/go-cid"
 	hamt "github.com/ipfs/go-hamt-ipld"
@@ -79,6 +80,10 @@ func (st *StateTree) lookupID(addr address.Address) (address.Address, error) {
 }
 
 func (st *StateTree) GetActor(addr address.Address) (*types.Actor, error) {
+	if addr == address.Undef {
+		return nil, fmt.Errorf("GetActor called on undefined address")
+	}
+
 	if addr.Protocol() != address.ID {
 		iaddr, err := st.lookupID(addr)
 		if err != nil {

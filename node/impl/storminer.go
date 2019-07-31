@@ -8,12 +8,15 @@ import (
 
 	"github.com/filecoin-project/go-lotus/api"
 	"github.com/filecoin-project/go-lotus/lib/sectorbuilder"
+	"github.com/filecoin-project/go-lotus/storage"
 )
 
 type StorageMinerAPI struct {
 	CommonAPI
 
 	SectorBuilder *sectorbuilder.SectorBuilder
+
+	Miner *storage.Miner
 }
 
 func (sm *StorageMinerAPI) StoreGarbageData(ctx context.Context) (uint64, error) {

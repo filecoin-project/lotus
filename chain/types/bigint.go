@@ -26,6 +26,8 @@ func init() {
 		Complete())
 }
 
+var EmptyInt = BigInt{}
+
 type BigInt struct {
 	*big.Int
 }

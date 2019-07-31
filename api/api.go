@@ -74,6 +74,9 @@ type FullNode interface {
 	ChainGetBlock(context.Context, cid.Cid) (*types.BlockHeader, error)
 	ChainGetBlockMessages(context.Context, cid.Cid) ([]*types.SignedMessage, error)
 
+	// if tipset is nil, we'll use heaviest
+	ChainCall(context.Context, *types.Message, *types.TipSet) (*types.MessageReceipt, error)
+
 	// messages
 
 	MpoolPending(context.Context, *types.TipSet) ([]*types.SignedMessage, error)

@@ -1,6 +1,7 @@
 package sectorbuilder
 
 import (
+	"context"
 	"unsafe"
 
 	"github.com/filecoin-project/go-lotus/chain/address"
@@ -15,6 +16,8 @@ const CommLen = sectorbuilder.CommitmentBytesLen
 
 type SectorBuilder struct {
 	handle unsafe.Pointer
+
+	sschan chan SectorSealingStatus
 }
 
 type SectorBuilderConfig struct {
@@ -37,6 +40,10 @@ func New(cfg *SectorBuilderConfig) (*SectorBuilder, error) {
 	return &SectorBuilder{
 		handle: sbp,
 	}, nil
+}
+
+func (sb *SectorBuilder) Run(ctx context.Context) {
+	go sb.pollForSealedSectors(ctx)
 }
 
 func (sb *SectorBuilder) Destroy() {
@@ -68,6 +75,11 @@ func (sb *SectorBuilder) GeneratePoSt(sortedCommRs [][CommLen]byte, challengeSee
 	// Wait, this is a blocking method with no way of interrupting it?
 	// does it checkpoint itself?
 	return sectorbuilder.GeneratePoSt(sb.handle, sortedCommRs, challengeSeed)
+}
+
+func (sb *SectorBuilder) SealedSectorChan() <-chan SectorSealingStatus {
+	// is this ever going to be multi-consumer? If so, switch to using pubsub/eventbus
+	return sb.sschan
 }
 
 var UserBytesForSectorSize = sectorbuilder.GetMaxUserBytesPerStagedSector

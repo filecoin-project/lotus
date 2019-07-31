@@ -1,6 +1,7 @@
 package main
 
 import (
+	"github.com/ipfs/go-datastore"
 	"github.com/libp2p/go-libp2p-core/peer"
 	"golang.org/x/xerrors"
 	"gopkg.in/urfave/cli.v2"
@@ -166,8 +167,15 @@ var initCmd = &cli.Command{
 			return err
 		}
 
-		// TODO: persist this address in the storage-miner repo
 		log.Infof("New storage miners address is: %s", addr)
+
+		ds, err := lr.Datastore("/metadata")
+		if err != nil {
+			return err
+		}
+		if err := ds.Put(datastore.NewKey("miner-address"), addr.Bytes()); err != nil {
+			return err
+		}
 
 		// TODO: Point to setting storage price, maybe do it interactively or something
 		log.Info("Storage miner successfully created, you can now start it with 'lotus-storage-miner run'")

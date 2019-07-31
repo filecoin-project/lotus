@@ -11,6 +11,7 @@ import (
 	"github.com/filecoin-project/go-lotus/chain/gen"
 	"github.com/filecoin-project/go-lotus/chain/store"
 	"github.com/filecoin-project/go-lotus/chain/types"
+	"github.com/filecoin-project/go-lotus/chain/vm"
 	"github.com/filecoin-project/go-lotus/chain/wallet"
 	"github.com/filecoin-project/go-lotus/miner"
 	"github.com/filecoin-project/go-lotus/node/client"
@@ -83,6 +84,34 @@ func (a *FullNodeAPI) ChainGetBlockMessages(ctx context.Context, msg cid.Cid) ([
 	}
 
 	return a.Chain.MessagesForBlock(b)
+}
+
+func (a *FullNodeAPI) ChainCall(ctx context.Context, msg *types.Message, ts *types.TipSet) (*types.MessageReceipt, error) {
+	if ts == nil {
+		ts = a.Chain.GetHeaviestTipSet()
+	}
+	state, err := a.Chain.TipSetState(ts.Cids())
+	if err != nil {
+		return nil, err
+	}
+
+	vmi, err := vm.NewVM(state, ts.Height(), ts.Blocks()[0].Miner, a.Chain)
+	if err != nil {
+		return nil, xerrors.Errorf("failed to set up vm: %w", err)
+	}
+
+	if msg.GasLimit == types.EmptyInt {
+		msg.GasLimit = types.NewInt(10000000000)
+	}
+	if msg.GasPrice == types.EmptyInt {
+		msg.GasPrice = types.NewInt(0)
+	}
+	if msg.Value == types.EmptyInt {
+		msg.Value = types.NewInt(0)
+	}
+
+	// TODO: maybe just use the invoker directly?
+	return vmi.ApplyMessage(ctx, msg)
 }
 
 func (a *FullNodeAPI) MpoolPending(ctx context.Context, ts *types.TipSet) ([]*types.SignedMessage, error) {

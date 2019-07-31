@@ -5,6 +5,8 @@ import (
 	"strings"
 
 	"github.com/filecoin-project/go-bls-sigs"
+	"github.com/filecoin-project/go-lotus/node/repo"
+
 	"github.com/minio/blake2b-simd"
 	"golang.org/x/xerrors"
 
@@ -71,6 +73,9 @@ func (w *Wallet) findKey(addr address.Address) (*Key, error) {
 	}
 	ki, err := w.keystore.Get(KNamePrefix + addr.String())
 	if err != nil {
+		if xerrors.Is(err, repo.ErrKeyNotFound) {
+			return nil, nil
+		}
 		return nil, xerrors.Errorf("getting from keystore: %w", err)
 	}
 	k, err = NewKey(ki)
@@ -151,6 +156,14 @@ func (w *Wallet) GenerateKey(typ string) (address.Address, error) {
 	}
 	w.keys[k.Address] = k
 	return k.Address, nil
+}
+
+func (w *Wallet) HasKey(addr address.Address) (bool, error) {
+	k, err := w.findKey(addr)
+	if err != nil {
+		return false, err
+	}
+	return k != nil, nil
 }
 
 type Key struct {
