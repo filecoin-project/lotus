@@ -11,6 +11,7 @@ import (
 	"github.com/filecoin-project/go-lotus/chain"
 	"github.com/filecoin-project/go-lotus/chain/actors"
 	"github.com/filecoin-project/go-lotus/chain/address"
+	"github.com/filecoin-project/go-lotus/chain/deals"
 	"github.com/filecoin-project/go-lotus/chain/gen"
 	"github.com/filecoin-project/go-lotus/chain/state"
 	"github.com/filecoin-project/go-lotus/chain/store"
@@ -34,10 +35,16 @@ type FullNodeAPI struct {
 
 	CommonAPI
 
-	Chain  *store.ChainStore
-	PubSub *pubsub.PubSub
-	Mpool  *chain.MessagePool
-	Wallet *wallet.Wallet
+	DealClient *deals.Client
+	Chain      *store.ChainStore
+	PubSub     *pubsub.PubSub
+	Mpool      *chain.MessagePool
+	Wallet     *wallet.Wallet
+}
+
+func (a *FullNodeAPI) ClientStartDeal(ctx context.Context, data cid.Cid, miner address.Address, blocksDuration uint64) error {
+	_, err := a.DealClient.Start(ctx, data, miner, blocksDuration)
+	return err
 }
 
 func (a *FullNodeAPI) ChainNotify(ctx context.Context) (<-chan *store.HeadChange, error) {

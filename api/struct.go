@@ -62,8 +62,9 @@ type FullNodeStruct struct {
 		WalletDefaultAddress func(context.Context) (address.Address, error)                           `perm:"write"`
 		MpoolGetNonce        func(context.Context, address.Address) (uint64, error)                   `perm:"read"`
 
-		ClientImport      func(ctx context.Context, path string) (cid.Cid, error) `perm:"write"`
-		ClientListImports func(ctx context.Context) ([]Import, error)             `perm:"read"`
+		ClientImport      func(ctx context.Context, path string) (cid.Cid, error)                                     `perm:"write"`
+		ClientListImports func(ctx context.Context) ([]Import, error)                                                 `perm:"read"`
+		ClientStartDeal   func(ctx context.Context, data cid.Cid, miner address.Address, blocksDuration uint64) error `perm:"admin"`
 
 		StateMinerSectors    func(context.Context, address.Address) ([]*SectorInfo, error) `perm:"read"`
 		StateMinerProvingSet func(context.Context, address.Address) ([]*SectorInfo, error) `perm:"read"`
@@ -126,6 +127,10 @@ func (c *FullNodeStruct) ClientListImports(ctx context.Context) ([]Import, error
 
 func (c *FullNodeStruct) ClientImport(ctx context.Context, path string) (cid.Cid, error) {
 	return c.Internal.ClientImport(ctx, path)
+}
+
+func (c *FullNodeStruct) ClientStartDeal(ctx context.Context, data cid.Cid, miner address.Address, blocksDuration uint64) error {
+	return c.Internal.ClientStartDeal(ctx, data, miner, blocksDuration)
 }
 
 func (c *FullNodeStruct) MpoolPending(ctx context.Context, ts *types.TipSet) ([]*types.SignedMessage, error) {
