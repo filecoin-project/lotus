@@ -11,17 +11,9 @@ import (
 	"github.com/gbrlsnchs/jwt/v3"
 	"github.com/ipfs/go-bitswap"
 	"github.com/ipfs/go-bitswap/network"
-	"github.com/ipfs/go-blockservice"
 	"github.com/ipfs/go-car"
 	"github.com/ipfs/go-datastore"
-	"github.com/ipfs/go-datastore/namespace"
-	"github.com/ipfs/go-filestore"
-	blockstore "github.com/ipfs/go-ipfs-blockstore"
-	exchange "github.com/ipfs/go-ipfs-exchange-interface"
-	offline "github.com/ipfs/go-ipfs-exchange-offline"
-	ipld "github.com/ipfs/go-ipld-format"
 	logging "github.com/ipfs/go-log"
-	"github.com/ipfs/go-merkledag"
 	"github.com/libp2p/go-libp2p-core/host"
 	"github.com/libp2p/go-libp2p-core/peerstore"
 	"github.com/libp2p/go-libp2p-core/routing"
@@ -36,6 +28,7 @@ import (
 	"github.com/filecoin-project/go-lotus/chain/types"
 	"github.com/filecoin-project/go-lotus/chain/wallet"
 	"github.com/filecoin-project/go-lotus/lib/sectorbuilder"
+	"github.com/filecoin-project/go-lotus/node/modules/dtypes"
 	"github.com/filecoin-project/go-lotus/node/modules/helpers"
 	"github.com/filecoin-project/go-lotus/node/repo"
 	"github.com/filecoin-project/go-lotus/storage"
@@ -52,7 +45,7 @@ func RecordValidator(ps peerstore.Peerstore) record.Validator {
 	}
 }
 
-func Bitswap(mctx helpers.MetricsCtx, lc fx.Lifecycle, host host.Host, rt routing.Routing, bs blockstore.GCBlockstore) exchange.Interface {
+func ChainExchange(mctx helpers.MetricsCtx, lc fx.Lifecycle, host host.Host, rt routing.Routing, bs dtypes.ChainGCBlockstore) dtypes.ChainExchange {
 	bitswapNetwork := network.NewFromIpfsHost(host, rt)
 	exch := bitswap.New(helpers.LifecycleCtx(mctx, lc), bitswapNetwork, bs)
 	lc.Append(fx.Hook{
@@ -142,50 +135,7 @@ func APISecret(keystore types.KeyStore, lr repo.LockedRepo) (*APIAlg, error) {
 	return (*APIAlg)(jwt.NewHS256(key.PrivateKey)), nil
 }
 
-func Datastore(r repo.LockedRepo) (datastore.Batching, error) {
-	return r.Datastore("/metadata")
-}
-
-func Blockstore(r repo.LockedRepo) (blockstore.Blockstore, error) {
-	blocks, err := r.Datastore("/blocks")
-	if err != nil {
-		return nil, err
-	}
-
-	bs := blockstore.NewBlockstore(blocks)
-	return blockstore.NewIdStore(bs), nil
-}
-
-func ClientFstore(r repo.LockedRepo) (*filestore.Filestore, error) {
-	clientds, err := r.Datastore("/client")
-	if err != nil {
-		return nil, err
-	}
-	blocks := namespace.Wrap(clientds, datastore.NewKey("blocks"))
-
-	fm := filestore.NewFileManager(clientds, filepath.Dir(r.Path()))
-	fm.AllowFiles = true
-	// TODO: fm.AllowUrls (needs more code in client import)
-
-	bs := blockstore.NewBlockstore(blocks)
-	return filestore.NewFilestore(bs, fm), nil
-}
-
-func ClientDAG(lc fx.Lifecycle, fstore *filestore.Filestore) ipld.DAGService {
-	ibs := blockstore.NewIdStore(fstore)
-	bsvc := blockservice.New(ibs, offline.Exchange(ibs))
-	dag := merkledag.NewDAGService(bsvc)
-
-	lc.Append(fx.Hook{
-		OnStop: func(_ context.Context) error {
-			return bsvc.Close()
-		},
-	})
-
-	return dag
-}
-
-func ChainStore(lc fx.Lifecycle, bs blockstore.Blockstore, ds datastore.Batching) *store.ChainStore {
+func ChainStore(lc fx.Lifecycle, bs dtypes.ChainBlockstore, ds dtypes.MetadataDS) *store.ChainStore {
 	chain := store.NewChainStore(bs, ds)
 
 	lc.Append(fx.Hook{
@@ -203,8 +153,8 @@ func ErrorGenesis() Genesis {
 	}
 }
 
-func LoadGenesis(genBytes []byte) func(blockstore.Blockstore) Genesis {
-	return func(bs blockstore.Blockstore) Genesis {
+func LoadGenesis(genBytes []byte) func(dtypes.ChainBlockstore) Genesis {
+	return func(bs dtypes.ChainBlockstore) Genesis {
 		return func() (header *types.BlockHeader, e error) {
 			c, err := car.LoadCar(bs, bytes.NewReader(genBytes))
 			if err != nil {
@@ -270,7 +220,7 @@ func SectorBuilder(mctx helpers.MetricsCtx, lc fx.Lifecycle, sbc *sectorbuilder.
 	return sb, nil
 }
 
-func StorageMiner(mctx helpers.MetricsCtx, lc fx.Lifecycle, api api.FullNode, h host.Host, ds datastore.Batching, sb *sectorbuilder.SectorBuilder, w *wallet.Wallet) (*storage.Miner, error) {
+func StorageMiner(mctx helpers.MetricsCtx, lc fx.Lifecycle, api api.FullNode, h host.Host, ds dtypes.MetadataDS, sb *sectorbuilder.SectorBuilder, w *wallet.Wallet) (*storage.Miner, error) {
 	maddrb, err := ds.Get(datastore.NewKey("miner-address"))
 	if err != nil {
 		return nil, err

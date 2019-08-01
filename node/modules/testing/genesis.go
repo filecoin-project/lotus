@@ -18,6 +18,7 @@ import (
 	"github.com/filecoin-project/go-lotus/chain/types"
 	"github.com/filecoin-project/go-lotus/chain/wallet"
 	"github.com/filecoin-project/go-lotus/node/modules"
+	"github.com/filecoin-project/go-lotus/node/modules/dtypes"
 )
 
 var glog = logging.Logger("genesis")
@@ -44,8 +45,8 @@ func MakeGenesisMem(out io.Writer) func(bs blockstore.Blockstore, w *wallet.Wall
 	}
 }
 
-func MakeGenesis(outFile string) func(bs blockstore.Blockstore, w *wallet.Wallet) modules.Genesis {
-	return func(bs blockstore.Blockstore, w *wallet.Wallet) modules.Genesis {
+func MakeGenesis(outFile string) func(bs dtypes.ChainBlockstore, w *wallet.Wallet) modules.Genesis {
+	return func(bs dtypes.ChainBlockstore, w *wallet.Wallet) modules.Genesis {
 		return func() (*types.BlockHeader, error) {
 			glog.Warn("Generating new random genesis block, note that this SHOULD NOT happen unless you are setting up new network")
 			minerAddr, err := w.GenerateKey(types.KTSecp256k1)

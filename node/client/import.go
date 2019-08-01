@@ -6,6 +6,8 @@ import (
 	"os"
 
 	"github.com/filecoin-project/go-lotus/api"
+	"github.com/filecoin-project/go-lotus/node/modules/dtypes"
+
 	"github.com/ipfs/go-filestore"
 	"go.uber.org/fx"
 
@@ -20,8 +22,8 @@ import (
 type LocalStorage struct {
 	fx.In
 
-	LocalDAG  ipld.DAGService
-	Filestore *filestore.Filestore `optional:"true"`
+	LocalDAG  dtypes.ClientDAG
+	Filestore dtypes.ClientFilestore `optional:"true"`
 }
 
 func (s *LocalStorage) ClientImport(ctx context.Context, path string) (cid.Cid, error) {

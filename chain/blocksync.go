@@ -15,6 +15,7 @@ import (
 	"github.com/filecoin-project/go-lotus/chain/store"
 	"github.com/filecoin-project/go-lotus/chain/types"
 	"github.com/filecoin-project/go-lotus/lib/cborrpc"
+	"github.com/filecoin-project/go-lotus/node/modules/dtypes"
 
 	"github.com/ipfs/go-cid"
 	cbor "github.com/ipfs/go-ipld-cbor"
@@ -189,7 +190,7 @@ type BlockSync struct {
 	syncPeers   map[peer.ID]struct{}
 }
 
-func NewBlockSyncClient(bserv bserv.BlockService, h host.Host) *BlockSync {
+func NewBlockSyncClient(bserv dtypes.ChainBlockService, h host.Host) *BlockSync {
 	return &BlockSync{
 		bserv:     bserv,
 		newStream: h.NewStream,

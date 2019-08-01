@@ -4,12 +4,11 @@ import (
 	"context"
 	"fmt"
 
-	"github.com/ipfs/go-datastore"
 	nilrouting "github.com/ipfs/go-ipfs-routing/none"
 	"github.com/libp2p/go-libp2p"
-	host "github.com/libp2p/go-libp2p-core/host"
-	peer "github.com/libp2p/go-libp2p-core/peer"
-	peerstore "github.com/libp2p/go-libp2p-core/peerstore"
+	"github.com/libp2p/go-libp2p-core/host"
+	"github.com/libp2p/go-libp2p-core/peer"
+	"github.com/libp2p/go-libp2p-core/peerstore"
 	dht "github.com/libp2p/go-libp2p-kad-dht"
 	dhtopts "github.com/libp2p/go-libp2p-kad-dht/opts"
 	record "github.com/libp2p/go-libp2p-record"
@@ -17,6 +16,7 @@ import (
 	mocknet "github.com/libp2p/go-libp2p/p2p/net/mock"
 	"go.uber.org/fx"
 
+	"github.com/filecoin-project/go-lotus/node/modules/dtypes"
 	"github.com/filecoin-project/go-lotus/node/modules/helpers"
 )
 
@@ -65,7 +65,7 @@ func MockHost(mn mocknet.Mocknet, id peer.ID, ps peerstore.Peerstore) (RawHost, 
 }
 
 func DHTRouting(client bool) interface{} {
-	return func(mctx helpers.MetricsCtx, lc fx.Lifecycle, host RawHost, dstore datastore.Batching, validator record.Validator) (BaseIpfsRouting, error) {
+	return func(mctx helpers.MetricsCtx, lc fx.Lifecycle, host RawHost, dstore dtypes.MetadataDS, validator record.Validator) (BaseIpfsRouting, error) {
 		ctx := helpers.LifecycleCtx(mctx, lc)
 
 		d, err := dht.New(
