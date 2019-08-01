@@ -246,6 +246,9 @@ func (bs *BlockSync) GetBlocks(ctx context.Context, tipset []cid.Cid, count int)
 			return bs.processBlocksResponse(req, res)
 		}
 		err = bs.processStatus(req, res)
+		if err != nil {
+			log.Warnf("BlockSync peer %s response was an error: %s", peers[p].String(), err)
+		}
 	}
 	return nil, xerrors.Errorf("GetBlocks failed with all peers: %w", err)
 }
@@ -308,6 +311,9 @@ func (bs *BlockSync) GetChainMessages(ctx context.Context, h *types.TipSet, coun
 			return res.Chain, nil
 		}
 		err = bs.processStatus(req, res)
+		if err != nil {
+			log.Warnf("BlockSync peer %s response was an error: %s", peers[p].String(), err)
+		}
 	}
 
 	// TODO: What if we have no peers (and err is nil)?
