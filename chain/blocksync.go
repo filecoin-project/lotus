@@ -207,20 +207,18 @@ func (bs *BlockSync) getPeers() []peer.ID {
 	return out
 }
 
-func (bs *BlockSync) processStatus(req *BlockSyncRequest, res *BlockSyncResponse) ([]*types.TipSet, error) {
+func (bs *BlockSync) processStatus(req *BlockSyncRequest, res *BlockSyncResponse) error {
 	switch res.Status {
-	case 0: // Success
-		return bs.processBlocksResponse(req, res)
 	case 101: // Partial Response
 		panic("not handled")
 	case 201: // req.Start not found
-		return nil, fmt.Errorf("not found")
+		return fmt.Errorf("not found")
 	case 202: // Go Away
 		panic("not handled")
 	case 203: // Internal Error
-		return nil, fmt.Errorf("block sync peer errored: %s", res.Message)
+		return fmt.Errorf("block sync peer errored: %s", res.Message)
 	default:
-		return nil, fmt.Errorf("unrecognized response code")
+		return fmt.Errorf("unrecognized response code")
 	}
 }
 
@@ -236,18 +234,17 @@ func (bs *BlockSync) GetBlocks(ctx context.Context, tipset []cid.Cid, count int)
 	}
 
 	var err error
-	var res *BlockSyncResponse
 	for _, p := range perm {
-		res, err = bs.sendRequestToPeer(ctx, peers[p], req)
+		res, err := bs.sendRequestToPeer(ctx, peers[p], req)
 		if err != nil {
 			log.Warnf("BlockSync request failed for peer %s: %s", peers[p].String(), err)
 			continue
 		}
 
-		ts, err := bs.processStatus(req, res)
-		if err == nil {
-			return ts, nil
+		if res.Status == 0 {
+			return bs.processBlocksResponse(req, res)
 		}
+		err = bs.processStatus(req, res)
 	}
 	return nil, xerrors.Errorf("GetBlocks failed with all peers: %w", err)
 }
@@ -298,25 +295,22 @@ func (bs *BlockSync) GetChainMessages(ctx context.Context, h *types.TipSet, coun
 		Options:       BSOptMessages,
 	}
 
-	res, err := bs.sendRequestToPeer(ctx, peers[perm[0]], req)
-	if err != nil {
-		return nil, err
+	var err error
+	for _, p := range perm {
+		res, err := bs.sendRequestToPeer(ctx, peers[p], req)
+		if err != nil {
+			log.Warnf("BlockSync request failed for peer %s: %s", peers[p].String(), err)
+			continue
+		}
+
+		if res.Status == 0 {
+			return res.Chain, nil
+		}
+		err = bs.processStatus(req, res)
 	}
 
-	switch res.Status {
-	case 0: // Success
-		return res.Chain, nil
-	case 101: // Partial Response
-		panic("not handled")
-	case 201: // req.Start not found
-		return nil, fmt.Errorf("not found")
-	case 202: // Go Away
-		panic("not handled")
-	case 203: // Internal Error
-		return nil, fmt.Errorf("block sync peer errored: %s", res.Message)
-	default:
-		return nil, fmt.Errorf("unrecognized response code")
-	}
+	// TODO: What if we have no peers (and err is nil)?
+	return nil, xerrors.Errorf("GetChainMessages failed with all peers: %w", err)
 }
 
 func bstsToFullTipSet(bts *BSTipSet) (*store.FullTipSet, error) {
