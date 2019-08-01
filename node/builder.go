@@ -6,13 +6,7 @@ import (
 	"reflect"
 	"time"
 
-	"github.com/ipfs/go-filestore"
-	exchange "github.com/ipfs/go-ipfs-exchange-interface"
-
-	bserv "github.com/ipfs/go-blockservice"
-	"github.com/ipfs/go-datastore"
 	blockstore "github.com/ipfs/go-ipfs-blockstore"
-	ipld "github.com/ipfs/go-ipld-format"
 	ci "github.com/libp2p/go-libp2p-core/crypto"
 	"github.com/libp2p/go-libp2p-core/host"
 	"github.com/libp2p/go-libp2p-core/peer"
@@ -33,6 +27,7 @@ import (
 	"github.com/filecoin-project/go-lotus/node/hello"
 	"github.com/filecoin-project/go-lotus/node/impl"
 	"github.com/filecoin-project/go-lotus/node/modules"
+	"github.com/filecoin-project/go-lotus/node/modules/dtypes"
 	"github.com/filecoin-project/go-lotus/node/modules/helpers"
 	"github.com/filecoin-project/go-lotus/node/modules/lp2p"
 	"github.com/filecoin-project/go-lotus/node/modules/testing"
@@ -193,11 +188,11 @@ func Online() Option {
 
 			Override(new(*store.ChainStore), modules.ChainStore),
 
-			Override(new(blockstore.GCLocker), blockstore.NewGCLocker),
-			Override(new(blockstore.GCBlockstore), blockstore.NewGCBlockstore),
-			Override(new(exchange.Interface), modules.Bitswap),
-			Override(new(bserv.BlockService), bserv.New),
-			Override(new(ipld.DAGService), testing.MemoryClientDag),
+			Override(new(dtypes.ChainGCLocker), blockstore.NewGCLocker),
+			Override(new(dtypes.ChainGCBlockstore), modules.ChainGCBlockstore),
+			Override(new(dtypes.ChainExchange), modules.ChainExchange),
+			Override(new(dtypes.ChainBlockService), modules.ChainBlockservice),
+			Override(new(dtypes.ClientDAG), testing.MemoryClientDag),
 
 			// Filecoin services
 			Override(new(*chain.Syncer), chain.NewSyncer),
@@ -274,11 +269,11 @@ func Repo(r repo.Repo) Option {
 		Config(cfg),
 		Override(new(repo.LockedRepo), modules.LockedRepo(lr)), // module handles closing
 
-		Override(new(datastore.Batching), modules.Datastore),
-		Override(new(blockstore.Blockstore), modules.Blockstore),
+		Override(new(dtypes.MetadataDS), modules.Datastore),
+		Override(new(dtypes.ChainBlockstore), modules.ChainBlockstore),
 
-		Override(new(*filestore.Filestore), modules.ClientFstore),
-		Override(new(ipld.DAGService), modules.ClientDAG),
+		Override(new(dtypes.ClientFilestore), modules.ClientFstore),
+		Override(new(dtypes.ClientDAG), modules.ClientDAG),
 
 		Override(new(ci.PrivKey), pk),
 		Override(new(ci.PubKey), ci.PrivKey.GetPublic),
