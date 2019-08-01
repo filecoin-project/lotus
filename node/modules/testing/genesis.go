@@ -8,7 +8,6 @@ import (
 	"github.com/ipfs/go-blockservice"
 	"github.com/ipfs/go-car"
 	"github.com/ipfs/go-cid"
-	blockstore "github.com/ipfs/go-ipfs-blockstore"
 	offline "github.com/ipfs/go-ipfs-exchange-offline"
 	logging "github.com/ipfs/go-log"
 	"github.com/ipfs/go-merkledag"
@@ -23,8 +22,8 @@ import (
 
 var glog = logging.Logger("genesis")
 
-func MakeGenesisMem(out io.Writer) func(bs blockstore.Blockstore, w *wallet.Wallet) modules.Genesis {
-	return func(bs blockstore.Blockstore, w *wallet.Wallet) modules.Genesis {
+func MakeGenesisMem(out io.Writer) func(bs dtypes.ChainBlockstore, w *wallet.Wallet) modules.Genesis {
+	return func(bs dtypes.ChainBlockstore, w *wallet.Wallet) modules.Genesis {
 		return func() (*types.BlockHeader, error) {
 			glog.Warn("Generating new random genesis block, note that this SHOULD NOT happen unless you are setting up new network")
 			// TODO: make an address allocation
