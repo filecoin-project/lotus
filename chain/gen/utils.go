@@ -147,10 +147,19 @@ func MakeGenesisBlock(bs bstore.Blockstore, balances map[address.Address]types.B
 	}
 
 	cst := hamt.CSTFromBstore(bs)
+
 	emptyroot, err := sharray.Build(context.TODO(), 4, []interface{}{}, cst)
 	if err != nil {
 		return nil, err
 	}
+	mmcid, err := cst.Put(context.TODO(), &types.MsgMeta{
+		BlsMessages:   emptyroot,
+		SecpkMessages: emptyroot,
+	})
+	if err != nil {
+		return nil, err
+	}
+
 	fmt.Println("Empty Genesis root: ", emptyroot)
 
 	b := &types.BlockHeader{
@@ -161,7 +170,7 @@ func MakeGenesisBlock(bs bstore.Blockstore, balances map[address.Address]types.B
 		Height:          0,
 		ParentWeight:    types.NewInt(0),
 		StateRoot:       stateroot,
-		Messages:        emptyroot,
+		Messages:        mmcid,
 		MessageReceipts: emptyroot,
 	}
 

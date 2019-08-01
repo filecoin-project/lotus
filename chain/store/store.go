@@ -328,7 +328,12 @@ func (cs *ChainStore) persistBlock(b *types.FullBlock) error {
 		return err
 	}
 
-	for _, m := range b.Messages {
+	for _, m := range b.BlsMessages {
+		if _, err := cs.PutMessage(m); err != nil {
+			return err
+		}
+	}
+	for _, m := range b.SecpkMessages {
 		if _, err := cs.PutMessage(m); err != nil {
 			return err
 		}
@@ -404,7 +409,17 @@ func (cs *ChainStore) TipSetState(cids []cid.Cid) (cid.Cid, error) {
 
 }
 
-func (cs *ChainStore) GetMessage(c cid.Cid) (*types.SignedMessage, error) {
+func (cs *ChainStore) GetMessage(c cid.Cid) (*types.Message, error) {
+	sb, err := cs.bs.Get(c)
+	if err != nil {
+		log.Errorf("get message get failed: %s: %s", c, err)
+		return nil, err
+	}
+
+	return types.DecodeMessage(sb.RawData())
+}
+
+func (cs *ChainStore) GetSignedMessage(c cid.Cid) (*types.SignedMessage, error) {
 	sb, err := cs.bs.Get(c)
 	if err != nil {
 		log.Errorf("get message get failed: %s: %s", c, err)
@@ -414,9 +429,9 @@ func (cs *ChainStore) GetMessage(c cid.Cid) (*types.SignedMessage, error) {
 	return types.DecodeSignedMessage(sb.RawData())
 }
 
-func (cs *ChainStore) MessageCidsForBlock(b *types.BlockHeader) ([]cid.Cid, error) {
+func (cs *ChainStore) readSharrayCids(root cid.Cid) ([]cid.Cid, error) {
 	cst := hamt.CSTFromBstore(cs.bs)
-	shar, err := sharray.Load(context.TODO(), b.Messages, 4, cst)
+	shar, err := sharray.Load(context.TODO(), root, 4, cst)
 	if err != nil {
 		return nil, errors.Wrap(err, "sharray load")
 	}
@@ -438,13 +453,34 @@ func (cs *ChainStore) MessageCidsForBlock(b *types.BlockHeader) ([]cid.Cid, erro
 	return cids, nil
 }
 
-func (cs *ChainStore) MessagesForBlock(b *types.BlockHeader) ([]*types.SignedMessage, error) {
-	cids, err := cs.MessageCidsForBlock(b)
-	if err != nil {
-		return nil, errors.Wrap(err, "loading message cids for block")
+func (cs *ChainStore) MessagesForBlock(b *types.BlockHeader) ([]*types.Message, []*types.SignedMessage, error) {
+	cst := hamt.CSTFromBstore(cs.bs)
+	var msgmeta types.MsgMeta
+	if err := cst.Get(context.TODO(), b.Messages, &msgmeta); err != nil {
+		return nil, nil, err
 	}
 
-	return cs.LoadMessagesFromCids(cids)
+	blscids, err := cs.readSharrayCids(msgmeta.BlsMessages)
+	if err != nil {
+		return nil, nil, errors.Wrap(err, "loading bls message cids for block")
+	}
+
+	secpkcids, err := cs.readSharrayCids(msgmeta.SecpkMessages)
+	if err != nil {
+		return nil, nil, errors.Wrap(err, "loading secpk message cids for block")
+	}
+
+	blsmsgs, err := cs.LoadMessagesFromCids(blscids)
+	if err != nil {
+		return nil, nil, errors.Wrap(err, "loading bls messages for block")
+	}
+
+	secpkmsgs, err := cs.LoadSignedMessagesFromCids(secpkcids)
+	if err != nil {
+		return nil, nil, errors.Wrap(err, "loading secpk messages for block")
+	}
+
+	return blsmsgs, secpkmsgs, nil
 }
 
 func (cs *ChainStore) GetReceipt(b *types.BlockHeader, i int) (*types.MessageReceipt, error) {
@@ -472,10 +508,24 @@ func (cs *ChainStore) GetReceipt(b *types.BlockHeader, i int) (*types.MessageRec
 	return &r, nil
 }
 
-func (cs *ChainStore) LoadMessagesFromCids(cids []cid.Cid) ([]*types.SignedMessage, error) {
-	msgs := make([]*types.SignedMessage, 0, len(cids))
+func (cs *ChainStore) LoadMessagesFromCids(cids []cid.Cid) ([]*types.Message, error) {
+	msgs := make([]*types.Message, 0, len(cids))
 	for i, c := range cids {
 		m, err := cs.GetMessage(c)
+		if err != nil {
+			return nil, errors.Wrapf(err, "failed to get message: (%s):%d", c, i)
+		}
+
+		msgs = append(msgs, m)
+	}
+
+	return msgs, nil
+}
+
+func (cs *ChainStore) LoadSignedMessagesFromCids(cids []cid.Cid) ([]*types.SignedMessage, error) {
+	msgs := make([]*types.SignedMessage, 0, len(cids))
+	for i, c := range cids {
+		m, err := cs.GetSignedMessage(c)
 		if err != nil {
 			return nil, errors.Wrapf(err, "failed to get message: (%s):%d", c, i)
 		}
@@ -560,14 +610,31 @@ func (cs *ChainStore) tipsetContainsMsg(ts *types.TipSet, msg cid.Cid) (cid.Cid,
 }
 
 func (cs *ChainStore) blockContainsMsg(blk *types.BlockHeader, msg cid.Cid) (*types.MessageReceipt, error) {
-	msgs, err := cs.MessageCidsForBlock(blk)
-	if err != nil {
+	cst := hamt.CSTFromBstore(cs.bs)
+	var msgmeta types.MsgMeta
+	if err := cst.Get(context.TODO(), blk.Messages, &msgmeta); err != nil {
 		return nil, err
 	}
 
-	for i, mc := range msgs {
-		if mc == msg {
+	blscids, err := cs.readSharrayCids(msgmeta.BlsMessages)
+	if err != nil {
+		return nil, errors.Wrap(err, "loading bls message cids for block")
+	}
+
+	for i, c := range blscids {
+		if c == msg {
 			return cs.GetReceipt(blk, i)
+		}
+	}
+
+	secpkcids, err := cs.readSharrayCids(msgmeta.SecpkMessages)
+	if err != nil {
+		return nil, errors.Wrap(err, "loading secpk message cids for block")
+	}
+
+	for i, c := range secpkcids {
+		if c == msg {
+			return cs.GetReceipt(blk, i+len(blscids))
 		}
 	}
 
@@ -582,7 +649,7 @@ func (cs *ChainStore) TryFillTipSet(ts *types.TipSet) (*FullTipSet, error) {
 	var out []*types.FullBlock
 
 	for _, b := range ts.Blocks() {
-		msgs, err := cs.MessagesForBlock(b)
+		bmsgs, smsgs, err := cs.MessagesForBlock(b)
 		if err != nil {
 			// TODO: check for 'not found' errors, and only return nil if this
 			// is actually a 'not found' error
@@ -590,8 +657,9 @@ func (cs *ChainStore) TryFillTipSet(ts *types.TipSet) (*FullTipSet, error) {
 		}
 
 		fb := &types.FullBlock{
-			Header:   b,
-			Messages: msgs,
+			Header:        b,
+			BlsMessages:   bmsgs,
+			SecpkMessages: smsgs,
 		}
 
 		out = append(out, fb)

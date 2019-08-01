@@ -72,7 +72,7 @@ type FullNode interface {
 	ChainGetRandomness(context.Context, *types.TipSet) ([]byte, error)
 	ChainWaitMsg(context.Context, cid.Cid) (*MsgWait, error)
 	ChainGetBlock(context.Context, cid.Cid) (*types.BlockHeader, error)
-	ChainGetBlockMessages(context.Context, cid.Cid) ([]*types.SignedMessage, error)
+	ChainGetBlockMessages(context.Context, cid.Cid) ([]*types.Message, []*types.SignedMessage, error)
 
 	// if tipset is nil, we'll use heaviest
 	ChainCall(context.Context, *types.Message, *types.TipSet) (*types.MessageReceipt, error)

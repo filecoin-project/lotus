@@ -28,15 +28,24 @@ func HandleIncomingBlocks(ctx context.Context, bsub *pubsub.Subscription, s *cha
 		}
 
 		go func() {
-			msgs, err := s.Bsync.FetchMessagesByCids(blk.Messages)
+			log.Info("about to fetch messages for block from pubsub")
+			bmsgs, err := s.Bsync.FetchMessagesByCids(context.TODO(), blk.BlsMessages)
 			if err != nil {
-				log.Errorf("failed to fetch all messages for block received over pubusb: %s", err)
+				log.Errorf("failed to fetch all bls messages for block received over pubusb: %s", err)
 				return
 			}
+
+			smsgs, err := s.Bsync.FetchSignedMessagesByCids(context.TODO(), blk.SecpkMessages)
+			if err != nil {
+				log.Errorf("failed to fetch all secpk messages for block received over pubusb: %s", err)
+				return
+			}
+
 			log.Info("inform new block over pubsub")
 			s.InformNewBlock(msg.GetFrom(), &types.FullBlock{
-				Header:   blk.Header,
-				Messages: msgs,
+				Header:        blk.Header,
+				BlsMessages:   bmsgs,
+				SecpkMessages: smsgs,
 			})
 		}()
 	}
