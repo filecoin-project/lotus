@@ -71,4 +71,3 @@ func APISecret(keystore types.KeyStore, lr repo.LockedRepo) (*APIAlg, error) {
 
 	return (*APIAlg)(jwt.NewHS256(key.PrivateKey)), nil
 }
-
