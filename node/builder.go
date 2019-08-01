@@ -270,7 +270,7 @@ func Repo(r repo.Repo) Option {
 		Override(new(repo.LockedRepo), modules.LockedRepo(lr)), // module handles closing
 
 		Override(new(dtypes.MetadataDS), modules.Datastore),
-		Override(new(dtypes.ChainBlockstore), modules.Blockstore),
+		Override(new(dtypes.ChainBlockstore), modules.ChainBlockstore),
 
 		Override(new(dtypes.ClientFilestore), modules.ClientFstore),
 		Override(new(dtypes.ClientDAG), modules.ClientDAG),
