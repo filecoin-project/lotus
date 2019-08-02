@@ -231,7 +231,7 @@ func TestSyncMining(t *testing.T) {
 
 	require.NoError(t, tu.mn.LinkAll())
 	tu.connect(1, 0)
-	time.Sleep(time.Second)
+	time.Sleep(time.Second * 2)
 
 	tu.checkHeight("client", client, H)
 
