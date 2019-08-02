@@ -577,3 +577,24 @@ func (cs *ChainStore) blockContainsMsg(blk *types.BlockHeader, msg cid.Cid) (*ty
 func (cs *ChainStore) Blockstore() blockstore.Blockstore {
 	return cs.bs
 }
+
+func (cs *ChainStore) TryFillTipSet(ts *types.TipSet) (*FullTipSet, error) {
+	var out []*types.FullBlock
+
+	for _, b := range ts.Blocks() {
+		msgs, err := cs.MessagesForBlock(b)
+		if err != nil {
+			// TODO: check for 'not found' errors, and only return nil if this
+			// is actually a 'not found' error
+			return nil, nil
+		}
+
+		fb := &types.FullBlock{
+			Header:   b,
+			Messages: msgs,
+		}
+
+		out = append(out, fb)
+	}
+	return NewFullTipSet(out), nil
+}
