@@ -296,7 +296,7 @@ func (bs *BlockSync) GetChainMessages(ctx context.Context, h *types.TipSet, coun
 	req := &BlockSyncRequest{
 		Start:         h.Cids(),
 		RequestLength: count,
-		Options:       BSOptMessages,
+		Options:       BSOptMessages | BSOptBlocks,
 	}
 
 	var err error
