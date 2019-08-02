@@ -88,10 +88,6 @@ func (sb *SectorBuilder) GetAllStagedSectors() ([]StagedSectorMetadata, error) {
 	return sectorbuilder.GetAllStagedSectors(sb.handle)
 }
 
-func (sb *SectorBuilder) GeneratePieceCommitment(piecePath string, pieceSize uint64) ([CommLen]byte, error) {
-	return sectorbuilder.GeneratePieceCommitment(piecePath, pieceSize)
-}
-
 func (sb *SectorBuilder) GeneratePoSt(sortedCommRs [][CommLen]byte, challengeSeed [CommLen]byte) ([][]byte, []uint64, error) {
 	// Wait, this is a blocking method with no way of interrupting it?
 	// does it checkpoint itself?

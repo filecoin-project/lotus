@@ -15,6 +15,8 @@ func NewHandler() *Handler {
 func (h *Handler) HandleStream(s inet.Stream) {
 	defer s.Close()
 
+	log.Info("Handling storage deal proposal!")
+
 	var proposal SignedStorageDealProposal
 	if err := cborrpc.ReadCborRPC(s, &proposal); err != nil {
 		log.Errorw("failed to read proposal message", "error", err)
@@ -25,13 +27,13 @@ func (h *Handler) HandleStream(s inet.Stream) {
 	// (and signature, obviously)
 
 	response := StorageDealResponse{
-		State:    Accepted,
-		Message:  "",
-		Proposal: nil, // TODO
+		State:   Accepted,
+		Message: "",
+		//Proposal: , // TODO
 	}
 	signedResponse := &SignedStorageDealResponse{
-		Response:  response,
-		Signature: nil, // TODO
+		Response: response,
+		//Signature: sig, // TODO
 	}
 	if err := cborrpc.WriteCborRPC(s, signedResponse); err != nil {
 		log.Errorw("failed to write deal response", "error", err)

@@ -11,6 +11,7 @@ import (
 
 	"github.com/filecoin-project/go-lotus/api"
 	"github.com/filecoin-project/go-lotus/chain/address"
+	"github.com/filecoin-project/go-lotus/chain/deals"
 	"github.com/filecoin-project/go-lotus/chain/wallet"
 	"github.com/filecoin-project/go-lotus/lib/sectorbuilder"
 	"github.com/filecoin-project/go-lotus/node/modules/dtypes"
@@ -93,4 +94,8 @@ func StorageMiner(mctx helpers.MetricsCtx, lc fx.Lifecycle, api api.FullNode, h 
 	})
 
 	return sm, nil
+}
+
+func HandleDeals(h host.Host, handler *deals.Handler) {
+	h.SetStreamHandler(deals.ProtocolID, handler.HandleStream)
 }

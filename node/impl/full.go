@@ -44,9 +44,14 @@ type FullNodeAPI struct {
 }
 
 func (a *FullNodeAPI) ClientStartDeal(ctx context.Context, data cid.Cid, miner address.Address, blocksDuration uint64) error {
+	self, err := a.WalletDefaultAddress(ctx)
+	if err != nil {
+		return err
+	}
+
 	msg := &types.Message{
 		To:     miner,
-		From:   miner, // TODO: we need /something/ here, but this smells
+		From:   miner,
 		Method: actors.MAMethods.GetPeerID,
 	}
 
@@ -59,7 +64,9 @@ func (a *FullNodeAPI) ClientStartDeal(ctx context.Context, data cid.Cid, miner a
 		return err
 	}
 
-	_, err = a.DealClient.Start(ctx, data, miner, pid, blocksDuration)
+	price := types.NewInt(10 * blocksDuration) // TODO: allow to actually specify this
+
+	_, err = a.DealClient.Start(ctx, data, price, self, miner, pid, blocksDuration)
 	return err
 }
 

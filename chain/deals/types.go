@@ -69,7 +69,7 @@ type StorageDealProposal struct {
 type SignedStorageDealProposal struct {
 	Proposal StorageDealProposal
 
-	Signature types.Signature
+	Signature *types.Signature
 }
 
 // response
@@ -96,5 +96,5 @@ type StorageDealResponse struct {
 type SignedStorageDealResponse struct {
 	Response StorageDealResponse
 
-	Signature types.Signature
+	Signature *types.Signature
 }

@@ -6,7 +6,9 @@ import (
 	"os"
 	"sync/atomic"
 
+	sectorbuilder "github.com/filecoin-project/go-sectorbuilder"
 	"github.com/ipfs/go-cid"
+	cbor "github.com/ipfs/go-ipld-cbor"
 	logging "github.com/ipfs/go-log"
 	"github.com/libp2p/go-libp2p-core/host"
 	"github.com/libp2p/go-libp2p-core/peer"
@@ -14,8 +16,8 @@ import (
 	"github.com/filecoin-project/go-lotus/chain/address"
 	"github.com/filecoin-project/go-lotus/chain/store"
 	"github.com/filecoin-project/go-lotus/chain/types"
+	"github.com/filecoin-project/go-lotus/chain/wallet"
 	"github.com/filecoin-project/go-lotus/lib/cborrpc"
-	"github.com/filecoin-project/go-lotus/lib/sectorbuilder"
 )
 
 var log = logging.Logger("deals")
@@ -36,8 +38,8 @@ type Deal struct {
 
 type Client struct {
 	cs *store.ChainStore
-	sb *sectorbuilder.SectorBuilder
 	h  host.Host
+	w  *wallet.Wallet
 
 	next  uint64
 	deals map[uint64]Deal
@@ -48,9 +50,11 @@ type Client struct {
 	stopped chan struct{}
 }
 
-func NewClient(cs *store.ChainStore) *Client {
+func NewClient(cs *store.ChainStore, h host.Host, w *wallet.Wallet) *Client {
 	c := &Client{
 		cs: cs,
+		h:  h,
+		w:  w,
 
 		deals: map[uint64]Deal{},
 
@@ -95,13 +99,15 @@ func (c *Client) Start(ctx context.Context, data cid.Cid, totalPrice types.BigIn
 	if err := f.Close(); err != nil {
 		return 0, err
 	}
-	commP, err := c.sb.GeneratePieceCommitment(f.Name(), 6)
+	commP, err := sectorbuilder.GeneratePieceCommitment(f.Name(), 6)
 	if err != nil {
 		return 0, err
 	}
 	if err := os.Remove(f.Name()); err != nil {
 		return 0, err
 	}
+
+	dummyCid, _ := cid.Parse("bafkqaaa")
 
 	// TODO: use data
 	proposal := StorageDealProposal{
@@ -111,9 +117,15 @@ func (c *Client) Start(ctx context.Context, data cid.Cid, totalPrice types.BigIn
 		Size:              6,
 		TotalPrice:        totalPrice,
 		Duration:          blocksDuration,
-		Payment:           nil, // TODO
-		MinerAddress:      miner,
-		ClientAddress:     from,
+		Payment: PaymentInfo{
+			PayChActor:     address.Address{},
+			Payer:          address.Address{},
+			Channel:        0,
+			ChannelMessage: dummyCid,
+			Vouchers:       nil,
+		},
+		MinerAddress:  miner,
+		ClientAddress: from,
 	}
 
 	s, err := c.h.NewStream(ctx, minerID, ProtocolID)
@@ -124,20 +136,33 @@ func (c *Client) Start(ctx context.Context, data cid.Cid, totalPrice types.BigIn
 
 	log.Info("Sending deal proposal")
 
+	msg, err := cbor.DumpObject(proposal)
+	if err != nil {
+		return 0, err
+	}
+	sig, err := c.w.Sign(from, msg)
+	if err != nil {
+		return 0, err
+	}
+
 	signedProposal := &SignedStorageDealProposal{
 		Proposal:  proposal,
-		Signature: nil, // TODO: SIGN!
+		Signature: sig,
 	}
 
 	if err := cborrpc.WriteCborRPC(s, signedProposal); err != nil {
 		return 0, err
 	}
 
+	log.Info("Reading response")
+
 	var resp SignedStorageDealResponse
 	if err := cborrpc.ReadCborRPC(s, &resp); err != nil {
 		log.Errorw("failed to read StorageDealResponse message", "error", err)
 		return 0, err
 	}
+
+	log.Info("Registering deal")
 
 	id := atomic.AddUint64(&c.next, 1)
 	deal := Deal{

@@ -73,6 +73,7 @@ const (
 	HandleIncomingMessagesKey
 
 	RunDealClientKey
+	HandleDealsKey
 
 	// daemon
 	ExtractApiKey
@@ -219,6 +220,9 @@ func Online() Option {
 		ApplyIf(func(s *Settings) bool { return s.nodeType == nodeStorageMiner },
 			Override(new(*sectorbuilder.SectorBuilder), modules.SectorBuilder),
 			Override(new(*storage.Miner), modules.StorageMiner),
+
+			Override(new(*deals.Handler), deals.NewHandler),
+			Override(HandleDealsKey, modules.HandleDeals),
 		),
 	)
 }
