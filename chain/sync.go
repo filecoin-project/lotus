@@ -394,23 +394,6 @@ func (syncer *Syncer) collectHeaders(from *types.TipSet, to *types.TipSet) ([]*t
 		return nil, xerrors.Errorf("synced header chain does not link to our best block")
 	}
 
-	/*
-		if to.Height() == 0 {
-			// hacks. in the case that we request X blocks starting at height X+1, we
-			// won't get the Genesis block in the returned blockset. This hacks around it
-			if blockSet[len(blockSet)-1].Height() != 0 {
-				blockSet = append(blockSet, syncer.Genesis)
-			}
-
-			genesis := blockSet[len(blockSet)-1]
-			if !genesis.Equals(syncer.Genesis) {
-				// TODO: handle this...
-				log.Errorf("We synced to the wrong chain! %s != %s", genesis, syncer.Genesis)
-				panic("We synced to the wrong chain")
-			}
-		}
-	*/
-
 	return blockSet, nil
 }
 
@@ -459,16 +442,7 @@ func (syncer *Syncer) iterFullTipsets(headers []*types.TipSet, cb func(*store.Fu
 		next := headers[i-batchSize]
 		bstips, err := syncer.Bsync.GetChainMessages(context.TODO(), next, uint64(batchSize+1))
 		if err != nil {
-			log.Errorf("failed to fetch messages: %s", err)
 			return xerrors.Errorf("message processing failed: %w", err)
-		}
-
-		log.Infof("len bstips: %d, batchSize+1: %d, len(headers): %d", len(bstips), batchSize+1, len(headers))
-		if len(headers) == 2 {
-			log.Infof("headers[0]: %d", headers[0].Height())
-			log.Infof("headers[1]: %d", headers[1].Height())
-			log.Infof("bstips[0]: %d", bstips[0].Blocks[0].Height)
-			log.Infof("bstips[1]: %d", bstips[1].Blocks[0].Height)
 		}
 
 		for bsi := 0; bsi < len(bstips); bsi++ {
