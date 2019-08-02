@@ -70,5 +70,13 @@ The storage miner logic. This package also interfaces with the full node
 through a subset of the api. This code is used to implement the
 lotus-storage-miner process.
 
+## Pond
+Pond is a graphical testbed for lotus. It can be used to spin up nodes, connect
+them in a given topology, start them mining, and observe how they function over
+time.
+
+To try it out, run `make pond`, then run the `pond` binary that gets created.
+Once it is running, visit localhost:2222 in your browser.
+
 ## License
 MIT + Apache
