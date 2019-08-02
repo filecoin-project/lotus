@@ -2,21 +2,25 @@ package deals
 
 import (
 	"context"
+	"io/ioutil"
+	"os"
 	"sync/atomic"
 
 	"github.com/ipfs/go-cid"
 	logging "github.com/ipfs/go-log"
+	"github.com/libp2p/go-libp2p-core/host"
 	"github.com/libp2p/go-libp2p-core/peer"
-	"golang.org/x/xerrors"
 
-	"github.com/filecoin-project/go-lotus/chain/actors"
 	"github.com/filecoin-project/go-lotus/chain/address"
 	"github.com/filecoin-project/go-lotus/chain/store"
 	"github.com/filecoin-project/go-lotus/chain/types"
-	"github.com/filecoin-project/go-lotus/chain/vm"
+	"github.com/filecoin-project/go-lotus/lib/cborrpc"
+	"github.com/filecoin-project/go-lotus/lib/sectorbuilder"
 )
 
 var log = logging.Logger("deals")
+
+const ProtocolID = "/fil/storage/mk/1.0.0"
 
 type DealStatus int
 
@@ -27,10 +31,13 @@ const (
 type Deal struct {
 	ID     uint64
 	Status DealStatus
+	Miner  peer.ID
 }
 
 type Client struct {
 	cs *store.ChainStore
+	sb *sectorbuilder.SectorBuilder
+	h  host.Host
 
 	next  uint64
 	deals map[uint64]Deal
@@ -65,6 +72,7 @@ func (c *Client) Run() {
 			case deal := <-c.incoming:
 				log.Info("incoming deal")
 
+				// TODO: track in datastore
 				c.deals[deal.ID] = deal
 
 			case <-c.stop:
@@ -74,49 +82,68 @@ func (c *Client) Run() {
 	}()
 }
 
-func (c *Client) Start(ctx context.Context, data cid.Cid, miner address.Address, blocksDuration uint64) (uint64, error) {
-	// Getting PeerID
-	// TODO: Is there a nicer way?
-
-	ts := c.cs.GetHeaviestTipSet()
-	state, err := c.cs.TipSetState(ts.Cids())
+func (c *Client) Start(ctx context.Context, data cid.Cid, totalPrice types.BigInt, from address.Address, miner address.Address, minerID peer.ID, blocksDuration uint64) (uint64, error) {
+	// TODO: Eww
+	f, err := ioutil.TempFile(os.TempDir(), "commP-temp-")
 	if err != nil {
 		return 0, err
 	}
-
-	vmi, err := vm.NewVM(state, ts.Height(), ts.Blocks()[0].Miner, c.cs)
-	if err != nil {
-		return 0, xerrors.Errorf("failed to set up vm: %w", err)
-	}
-
-	msg := &types.Message{
-		To:     miner,
-		Method: actors.MAMethods.GetPeerID,
-
-		Value:    types.NewInt(0),
-		GasPrice: types.NewInt(0),
-		GasLimit: types.NewInt(10000000000),
-	}
-
-	// TODO: maybe just use the invoker directly?
-	r, err := vmi.ApplyMessage(ctx, msg)
+	_, err = f.Write([]byte("hello\n"))
 	if err != nil {
 		return 0, err
 	}
-	if r.ExitCode != 0 {
-		panic("TODO: do we error here?")
+	if err := f.Close(); err != nil {
+		return 0, err
 	}
-	pid, err := peer.IDFromBytes(r.Return)
+	commP, err := c.sb.GeneratePieceCommitment(f.Name(), 6)
 	if err != nil {
 		return 0, err
 	}
+	if err := os.Remove(f.Name()); err != nil {
+		return 0, err
+	}
 
-	log.Warnf("miner pid:%s", pid)
+	// TODO: use data
+	proposal := StorageDealProposal{
+		PieceRef:          "bafkqabtimvwgy3yk", // identity 'hello\n'
+		SerializationMode: SerializationRaw,
+		CommP:             commP[:],
+		Size:              6,
+		TotalPrice:        totalPrice,
+		Duration:          blocksDuration,
+		Payment:           nil, // TODO
+		MinerAddress:      miner,
+		ClientAddress:     from,
+	}
+
+	s, err := c.h.NewStream(ctx, minerID, ProtocolID)
+	if err != nil {
+		return 0, err
+	}
+	defer s.Close() // TODO: not too soon?
+
+	log.Info("Sending deal proposal")
+
+	signedProposal := &SignedStorageDealProposal{
+		Proposal:  proposal,
+		Signature: nil, // TODO: SIGN!
+	}
+
+	if err := cborrpc.WriteCborRPC(s, signedProposal); err != nil {
+		return 0, err
+	}
+
+	var resp SignedStorageDealResponse
+	if err := cborrpc.ReadCborRPC(s, &resp); err != nil {
+		log.Errorw("failed to read StorageDealResponse message", "error", err)
+		return 0, err
+	}
 
 	id := atomic.AddUint64(&c.next, 1)
 	deal := Deal{
 		ID:     id,
 		Status: DealResolvingMiner,
+		Miner:  minerID,
 	}
 
 	c.incoming <- deal

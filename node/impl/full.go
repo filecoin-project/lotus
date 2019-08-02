@@ -25,6 +25,7 @@ import (
 	hamt "github.com/ipfs/go-hamt-ipld"
 	cbor "github.com/ipfs/go-ipld-cbor"
 	logging "github.com/ipfs/go-log"
+	"github.com/libp2p/go-libp2p-core/peer"
 	pubsub "github.com/libp2p/go-libp2p-pubsub"
 )
 
@@ -43,7 +44,22 @@ type FullNodeAPI struct {
 }
 
 func (a *FullNodeAPI) ClientStartDeal(ctx context.Context, data cid.Cid, miner address.Address, blocksDuration uint64) error {
-	_, err := a.DealClient.Start(ctx, data, miner, blocksDuration)
+	msg := &types.Message{
+		To:     miner,
+		From:   miner, // TODO: we need /something/ here, but this smells
+		Method: actors.MAMethods.GetPeerID,
+	}
+
+	r, err := a.ChainCall(ctx, msg, nil)
+	if err != nil {
+		return err
+	}
+	pid, err := peer.IDFromBytes(r.Return)
+	if err != nil {
+		return err
+	}
+
+	_, err = a.DealClient.Start(ctx, data, miner, pid, blocksDuration)
 	return err
 }
 
@@ -154,6 +170,12 @@ func (a *FullNodeAPI) ChainCall(ctx context.Context, msg *types.Message, ts *typ
 	}
 	if msg.Value == types.EmptyInt {
 		msg.Value = types.NewInt(0)
+	}
+	if msg.Params == nil {
+		msg.Params, err = actors.SerializeParams(struct{}{})
+		if err != nil {
+			return nil, err
+		}
 	}
 
 	// TODO: maybe just use the invoker directly?
