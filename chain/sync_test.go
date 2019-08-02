@@ -83,6 +83,28 @@ func prepSyncTest(t *testing.T, h int) *syncTestUtil {
 	return tu
 }
 
+func (tu *syncTestUtil) mineNewBlock(src int) {
+	fblk, err := tu.g.NextBlock()
+	require.NoError(tu.t, err)
+
+	for _, msg := range fblk.Messages {
+		require.NoError(tu.t, tu.nds[src].MpoolPush(context.TODO(), msg))
+	}
+
+	require.NoError(tu.t, tu.nds[src].ChainSubmitBlock(context.TODO(), fblkToBlkMsg(fblk)))
+}
+
+func fblkToBlkMsg(fb *types.FullBlock) *chain.BlockMsg {
+	out := &chain.BlockMsg{
+		Header: fb.Header,
+	}
+
+	for _, msg := range fb.Messages {
+		out.Messages = append(out.Messages, msg.Cid())
+	}
+	return out
+}
+
 func (tu *syncTestUtil) addSourceNode(gen int) {
 	if tu.genesis != nil {
 		tu.t.Fatal("source node already exists")
@@ -215,27 +237,11 @@ func TestSyncMining(t *testing.T) {
 
 	tu.compareSourceState(client)
 
-	fblk, err := tu.g.NextBlock()
-	require.NoError(t, err)
-
-	for _, msg := range fblk.Messages {
-		require.NoError(t, tu.nds[0].MpoolPush(context.TODO(), msg))
+	for i := 0; i < 5; i++ {
+		tu.mineNewBlock(0)
+		time.Sleep(time.Second / 2)
+		tu.compareSourceState(client)
 	}
-
-	require.NoError(t, tu.nds[0].ChainSubmitBlock(context.TODO(), fblkToBlkMsg(fblk)))
-
-	time.Sleep(time.Second)
-}
-
-func fblkToBlkMsg(fb *types.FullBlock) *chain.BlockMsg {
-	out := &chain.BlockMsg{
-		Header: fb.Header,
-	}
-
-	for _, msg := range fb.Messages {
-		out.Messages = append(out.Messages, msg.Cid())
-	}
-	return out
 }
 
 /*
