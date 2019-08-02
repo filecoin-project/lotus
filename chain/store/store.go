@@ -584,6 +584,8 @@ func (cs *ChainStore) TryFillTipSet(ts *types.TipSet) (*FullTipSet, error) {
 	for _, b := range ts.Blocks() {
 		msgs, err := cs.MessagesForBlock(b)
 		if err != nil {
+			// TODO: check for 'not found' errors, and only return nil if this
+			// is actually a 'not found' error
 			return nil, nil
 		}
 
