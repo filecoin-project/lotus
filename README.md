@@ -78,5 +78,13 @@ time.
 To try it out, run `make pond`, then run the `pond` binary that gets created.
 Once it is running, visit localhost:2222 in your browser.
 
+## Tracing
+Lotus has tracing built into many of its internals. To view the traces, first
+[download jaeger](https://www.jaegertracing.io/download/) (Choose the
+'all-in-one' binary). Then run it somewhere, start up the lotus daemon, and
+open up localhost:16686 in your browser.
+
+For more details, see [this document](./docs/tracing.md).
+
 ## License
 MIT + Apache
