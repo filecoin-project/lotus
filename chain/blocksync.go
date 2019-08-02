@@ -107,7 +107,8 @@ func (bss *BlockSyncService) processRequest(req *BlockSyncRequest) (*BlockSyncRe
 	opts := ParseBSOptions(req.Options)
 	if len(req.Start) == 0 {
 		return &BlockSyncResponse{
-			Status: 204,
+			Status:  204,
+			Message: "no cids given in blocksync request",
 		}, nil
 	}
 
@@ -288,7 +289,9 @@ func (bs *BlockSync) GetFullTipSet(ctx context.Context, p peer.ID, h []cid.Cid) 
 	case 202: // Go Away
 		panic("not handled")
 	case 203: // Internal Error
-		return nil, fmt.Errorf("block sync peer errored: %s", res.Message)
+		return nil, fmt.Errorf("block sync peer errored: %q", res.Message)
+	case 204: // Invalid Request
+		return nil, fmt.Errorf("block sync request invalid: %q", res.Message)
 	default:
 		return nil, fmt.Errorf("unrecognized response code")
 	}
