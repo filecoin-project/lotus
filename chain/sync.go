@@ -28,7 +28,6 @@ var log = logging.Logger("chain")
 
 type Syncer struct {
 	// The heaviest known tipset in the network.
-	head *types.TipSet
 
 	// The interface for accessing and putting tipsets into local storage
 	store *store.ChainStore
@@ -67,9 +66,8 @@ func NewSyncer(cs *store.ChainStore, bsync *BlockSync, self peer.ID) (*Syncer, e
 		Genesis:   gent,
 		Bsync:     bsync,
 		peerHeads: make(map[peer.ID]*types.TipSet),
-		head:      cs.GetHeaviestTipSet(),
-		store:     cs,
-		self:      self,
+		store: cs,
+		self:  self,
 	}, nil
 }
 
@@ -270,10 +268,6 @@ func (syncer *Syncer) Sync(maybeHead *store.FullTipSet) error {
 		return errors.Wrap(err, "failed to put synced tipset to chainstore")
 	}
 
-	if syncer.store.Weight(maybeHead.TipSet()) > syncer.store.Weight(syncer.head) {
-		fmt.Println("Accepted new head: ", maybeHead.Cids())
-		syncer.head = maybeHead.TipSet()
-	}
 	return nil
 }
 
@@ -513,7 +507,7 @@ func persistMessages(bs bstore.Blockstore, bstips []*BSTipSet) error {
 }
 
 func (syncer *Syncer) collectChain(fts *store.FullTipSet) error {
-	curHeight := syncer.head.Height()
+	curHeight := syncer.store.GetHeaviestTipSet().Height()
 
 	headers, err := syncer.collectHeaders(fts.TipSet(), curHeight)
 	if err != nil {

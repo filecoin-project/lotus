@@ -55,11 +55,9 @@ func ChainBlockservice(bs dtypes.ChainBlockstore, rem dtypes.ChainExchange) dtyp
 func ChainStore(lc fx.Lifecycle, bs dtypes.ChainBlockstore, ds dtypes.MetadataDS) *store.ChainStore {
 	chain := store.NewChainStore(bs, ds)
 
-	lc.Append(fx.Hook{
-		OnStart: func(ctx context.Context) error {
-			return chain.Load()
-		},
-	})
+	if err := chain.Load(); err != nil {
+		log.Warnf("loading chain state from disk: %s", err)
+	}
 
 	return chain
 }
