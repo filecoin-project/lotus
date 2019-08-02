@@ -53,7 +53,21 @@ func getAPI(ctx *cli.Context, repoFlag string) (string, http.Header, error) {
 	return "ws://" + addr + "/rpc/v0", headers, nil
 }
 
-func GetAPI(ctx *cli.Context) (api.FullNode, error) {
+func GetAPI(ctx *cli.Context) (api.Common, error) {
+	f := "repo"
+	if ctx.String("storagerepo") != "" {
+		f = "storagerepo"
+	}
+
+	addr, headers, err := getAPI(ctx, f)
+	if err != nil {
+		return nil, err
+	}
+
+	return client.NewCommonRPC(addr, headers)
+}
+
+func GetFullNodeAPI(ctx *cli.Context) (api.FullNode, error) {
 	addr, headers, err := getAPI(ctx, "repo")
 	if err != nil {
 		return nil, err

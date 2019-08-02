@@ -25,7 +25,7 @@ var clientImportCmd = &cli.Command{
 	Name:  "import",
 	Usage: "Import data",
 	Action: func(cctx *cli.Context) error {
-		api, err := GetAPI(cctx)
+		api, err := GetFullNodeAPI(cctx)
 		if err != nil {
 			return err
 		}
@@ -44,7 +44,7 @@ var clientLocalCmd = &cli.Command{
 	Name:  "local",
 	Usage: "List locally imported data",
 	Action: func(cctx *cli.Context) error {
-		api, err := GetAPI(cctx)
+		api, err := GetFullNodeAPI(cctx)
 		if err != nil {
 			return err
 		}
@@ -65,7 +65,7 @@ var clientDealCmd = &cli.Command{
 	Name:  "deal",
 	Usage: "Initialize storage deal with a miner",
 	Action: func(cctx *cli.Context) error {
-		api, err := GetAPI(cctx)
+		api, err := GetFullNodeAPI(cctx)
 		if err != nil {
 			return err
 		}

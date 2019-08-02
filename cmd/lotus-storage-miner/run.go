@@ -28,7 +28,7 @@ var runCmd = &cli.Command{
 		},
 	},
 	Action: func(cctx *cli.Context) error {
-		nodeApi, err := lcli.GetAPI(cctx)
+		nodeApi, err := lcli.GetFullNodeAPI(cctx)
 		if err != nil {
 			return err
 		}
@@ -79,8 +79,6 @@ var runCmd = &cli.Command{
 		if err != nil {
 			return err
 		}
-
-		// TODO: libp2p node
 
 		log.Infof("Remote version %s", v)
 
