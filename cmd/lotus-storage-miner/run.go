@@ -80,6 +80,17 @@ var runCmd = &cli.Command{
 			return err
 		}
 
+		// Bootstrap with full node
+		remoteAddrs, err := nodeApi.NetAddrsListen(ctx)
+		if err != nil {
+			return err
+		}
+
+		// TODO: Hello won't disconnect us because it only calls close in HandleStream when genesis doesn't match
+		if err := minerapi.NetConnect(ctx, remoteAddrs); err != nil {
+			return err
+		}
+
 		log.Infof("Remote version %s", v)
 
 		rpcServer := jsonrpc.NewServer()
