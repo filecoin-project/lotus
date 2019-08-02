@@ -45,7 +45,7 @@ type FullNodeStruct struct {
 		ChainGetRandomness    func(context.Context, *types.TipSet) ([]byte, error)                                `perm:"read"`
 		ChainWaitMsg          func(context.Context, cid.Cid) (*MsgWait, error)                                    `perm:"read"`
 		ChainGetBlock         func(context.Context, cid.Cid) (*types.BlockHeader, error)                          `perm:"read"`
-		ChainGetBlockMessages func(context.Context, cid.Cid) ([]*types.Message, []*types.SignedMessage, error)    `perm:"read"`
+		ChainGetBlockMessages func(context.Context, cid.Cid) (*BlockMessages, error)                              `perm:"read"`
 		ChainCall             func(context.Context, *types.Message, *types.TipSet) (*types.MessageReceipt, error) `perm:"read"`
 
 		MpoolPending func(context.Context, *types.TipSet) ([]*types.SignedMessage, error) `perm:"read"`
@@ -188,7 +188,7 @@ func (c *FullNodeStruct) ChainGetBlock(ctx context.Context, b cid.Cid) (*types.B
 	return c.Internal.ChainGetBlock(ctx, b)
 }
 
-func (c *FullNodeStruct) ChainGetBlockMessages(ctx context.Context, b cid.Cid) ([]*types.Message, []*types.SignedMessage, error) {
+func (c *FullNodeStruct) ChainGetBlockMessages(ctx context.Context, b cid.Cid) (*BlockMessages, error) {
 	return c.Internal.ChainGetBlockMessages(ctx, b)
 }
 

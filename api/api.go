@@ -41,6 +41,11 @@ type MsgWait struct {
 	Receipt types.MessageReceipt
 }
 
+type BlockMessages struct {
+	BlsMessages   []*types.Message
+	SecpkMessages []*types.SignedMessage
+}
+
 type Common interface {
 	// Auth
 	AuthVerify(ctx context.Context, token string) ([]string, error)
@@ -72,7 +77,7 @@ type FullNode interface {
 	ChainGetRandomness(context.Context, *types.TipSet) ([]byte, error)
 	ChainWaitMsg(context.Context, cid.Cid) (*MsgWait, error)
 	ChainGetBlock(context.Context, cid.Cid) (*types.BlockHeader, error)
-	ChainGetBlockMessages(context.Context, cid.Cid) ([]*types.Message, []*types.SignedMessage, error)
+	ChainGetBlockMessages(context.Context, cid.Cid) (*BlockMessages, error)
 
 	// if tipset is nil, we'll use heaviest
 	ChainCall(context.Context, *types.Message, *types.TipSet) (*types.MessageReceipt, error)
