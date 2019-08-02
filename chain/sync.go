@@ -66,7 +66,6 @@ func NewSyncer(cs *store.ChainStore, bsync *BlockSync, self peer.ID) (*Syncer, e
 		Genesis:   gent,
 		Bsync:     bsync,
 		peerHeads: make(map[peer.ID]*types.TipSet),
-		//head:      cs.GetHeaviestTipSet(),
 		store: cs,
 		self:  self,
 	}, nil
