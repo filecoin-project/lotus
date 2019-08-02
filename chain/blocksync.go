@@ -105,6 +105,12 @@ func (bss *BlockSyncService) HandleStream(s inet.Stream) {
 
 func (bss *BlockSyncService) processRequest(req *BlockSyncRequest) (*BlockSyncResponse, error) {
 	opts := ParseBSOptions(req.Options)
+	if len(req.Start) == 0 {
+		return &BlockSyncResponse{
+			Status: 204,
+		}, nil
+	}
+
 	chain, err := bss.collectChainSegment(req.Start, req.RequestLength, opts)
 	if err != nil {
 		log.Error("encountered error while responding to block sync request: ", err)
