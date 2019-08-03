@@ -111,7 +111,8 @@ func (a *FullNodeAPI) ChainCall(ctx context.Context, msg *types.Message, ts *typ
 	}
 
 	// TODO: maybe just use the invoker directly?
-	return vmi.ApplyMessage(ctx, msg)
+	ret, err := vmi.ApplyMessage(ctx, msg)
+	return &ret.MessageReceipt, err
 }
 
 func (a *FullNodeAPI) MpoolPending(ctx context.Context, ts *types.TipSet) ([]*types.SignedMessage, error) {

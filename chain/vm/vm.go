@@ -92,6 +92,8 @@ func (vmc *VMContext) Origin() address.Address {
 	return vmc.origin
 }
 
+var oldSend = false
+
 // Send allows the current execution context to invoke methods on other actors in the system
 func (vmc *VMContext) Send(to address.Address, method uint64, value types.BigInt, params []byte) ([]byte, aerrors.ActorError) {
 	ctx, span := trace.StartSpan(vmc.ctx, "vm.send")
@@ -111,22 +113,27 @@ func (vmc *VMContext) Send(to address.Address, method uint64, value types.BigInt
 		Value:  value,
 		Params: params,
 	}
+	if oldSend {
 
-	toAct, err := vmc.state.GetActor(to)
-	if err != nil {
-		return nil, aerrors.Absorb(err, 2, "could not find actor for Send")
+		toAct, err := vmc.state.GetActor(to)
+		if err != nil {
+			return nil, aerrors.Absorb(err, 2, "could not find actor for Send")
+		}
+
+		nvmctx := vmc.vm.makeVMContext(ctx, toAct.Head, vmc.origin, msg)
+
+		res, aerr := vmc.vm.Invoke(toAct, nvmctx, method, params)
+		if aerr != nil {
+			return nil, aerr
+		}
+
+		toAct.Head = nvmctx.Storage().GetHead()
+
+		return res, nil
+	} else {
+		ret, err, _ := vmc.vm.send(ctx, vmc.origin, msg)
+		return ret, err
 	}
-
-	nvmctx := vmc.vm.makeVMContext(ctx, toAct.Head, vmc.origin, msg)
-
-	res, aerr := vmc.vm.Invoke(toAct, nvmctx, method, params)
-	if aerr != nil {
-		return nil, aerr
-	}
-
-	toAct.Head = nvmctx.Storage().GetHead()
-
-	return res, nil
 }
 
 // BlockHeight returns the height of the block this message was added to the chain in
@@ -204,6 +211,40 @@ type ApplyRet struct {
 	ActorErr aerrors.ActorError
 }
 
+func (vm *VM) send(ctx context.Context, origin address.Address, msg *types.Message) ([]byte, aerrors.ActorError, *VMContext) {
+	st := vm.cstate
+	fromActor, err := st.GetActor(msg.From)
+	if err != nil {
+		return nil, aerrors.Absorb(err, 1, "could not find source actor"), nil
+	}
+
+	toActor, err := st.GetActor(msg.To)
+	if err != nil {
+		if xerrors.Is(err, types.ErrActorNotFound) {
+			a, err := TryCreateAccountActor(st, msg.To)
+			if err != nil {
+				return nil, aerrors.Absorb(err, 1, "could not create account"), nil
+			}
+			toActor = a
+		} else {
+			return nil, aerrors.Escalate(err, "getting actor"), nil
+		}
+	}
+
+	if err := DeductFunds(fromActor, msg.Value); err != nil {
+		return nil, aerrors.Absorb(err, 1, "failed to deduct funds"), nil
+	}
+	DepositFunds(toActor, msg.Value)
+	vmctx := vm.makeVMContext(ctx, toActor.Head, origin, msg)
+	if msg.Method != 0 {
+		ret, err := vm.Invoke(toActor, vmctx, msg.Method, msg.Params)
+		toActor.Head = vmctx.Storage().GetHead()
+		return ret, err, vmctx
+	}
+
+	return nil, nil, vmctx
+}
+
 func (vm *VM) ApplyMessage(ctx context.Context, msg *types.Message) (*ApplyRet, error) {
 	ctx, span := trace.StartSpan(ctx, "vm.ApplyMessage")
 	defer span.End()
@@ -218,85 +259,131 @@ func (vm *VM) ApplyMessage(ctx context.Context, msg *types.Message) (*ApplyRet, 
 		return nil, xerrors.Errorf("from actor not found: %w", err)
 	}
 
-	gascost := types.BigMul(msg.GasLimit, msg.GasPrice)
-	totalCost := types.BigAdd(gascost, msg.Value)
-	if types.BigCmp(fromActor.Balance, totalCost) < 0 {
-		return nil, xerrors.Errorf("not enough funds")
-	}
+	if oldSend {
+		gascost := types.BigMul(msg.GasLimit, msg.GasPrice)
+		totalCost := types.BigAdd(gascost, msg.Value)
+		if types.BigCmp(fromActor.Balance, totalCost) < 0 {
+			return nil, xerrors.Errorf("not enough funds")
+		}
 
-	if msg.Nonce != fromActor.Nonce {
-		return nil, xerrors.Errorf("invalid nonce (got %d, expected %d)", msg.Nonce, fromActor.Nonce)
-	}
-	fromActor.Nonce++
+		if msg.Nonce != fromActor.Nonce {
+			return nil, xerrors.Errorf("invalid nonce (got %d, expected %d)", msg.Nonce, fromActor.Nonce)
+		}
+		fromActor.Nonce++
 
-	toActor, err := st.GetActor(msg.To)
-	if err != nil {
-		if xerrors.Is(err, types.ErrActorNotFound) {
-			a, err := TryCreateAccountActor(st, msg.To)
-			if err != nil {
+		toActor, err := st.GetActor(msg.To)
+		if err != nil {
+			if xerrors.Is(err, types.ErrActorNotFound) {
+				a, err := TryCreateAccountActor(st, msg.To)
+				if err != nil {
+					return nil, err
+				}
+				toActor = a
+			} else {
 				return nil, err
 			}
-			toActor = a
-		} else {
-			return nil, err
-		}
-	}
-
-	if err := DeductFunds(fromActor, totalCost); err != nil {
-		return nil, xerrors.Errorf("failed to deduct funds: %w", err)
-	}
-	DepositFunds(toActor, msg.Value)
-
-	vmctx := vm.makeVMContext(ctx, toActor.Head, msg.From, msg)
-
-	var errcode byte
-	var ret []byte
-	var actorError aerrors.ActorError
-
-	if msg.Method != 0 {
-		ret, actorError = vm.Invoke(toActor, vmctx, msg.Method, msg.Params)
-
-		if aerrors.IsFatal(actorError) {
-			return nil, xerrors.Errorf("during invoke: %w", actorError)
 		}
 
-		if errcode = aerrors.RetCode(actorError); errcode != 0 {
+		if err := DeductFunds(fromActor, totalCost); err != nil {
+			return nil, xerrors.Errorf("failed to deduct funds: %w", err)
+		}
+		DepositFunds(toActor, msg.Value)
+
+		vmctx := vm.makeVMContext(ctx, toActor.Head, msg.From, msg)
+
+		var errcode byte
+		var ret []byte
+		var actorError aerrors.ActorError
+
+		if msg.Method != 0 {
+			ret, actorError = vm.Invoke(toActor, vmctx, msg.Method, msg.Params)
+
+			if aerrors.IsFatal(actorError) {
+				return nil, xerrors.Errorf("during invoke: %w", actorError)
+			}
+
+			if errcode = aerrors.RetCode(actorError); errcode != 0 {
+				// revert all state changes since snapshot
+				if err := st.Revert(); err != nil {
+					return nil, xerrors.Errorf("revert state failed: %w", err)
+				}
+
+				gascost := types.BigMul(vmctx.GasUsed(), msg.GasPrice)
+				if err := DeductFunds(fromActor, gascost); err != nil {
+					panic("invariant violated: " + err.Error())
+				}
+
+			} else {
+				// Update actor head reference
+				toActor.Head = vmctx.storage.head
+				// refund unused gas
+				refund := types.BigMul(types.BigSub(msg.GasLimit, vmctx.GasUsed()), msg.GasPrice)
+				DepositFunds(fromActor, refund)
+			}
+		}
+
+		// reward miner gas fees
+		miner, err := st.GetActor(vm.blockMiner)
+		if err != nil {
+			return nil, xerrors.Errorf("getting block miner actor (%s) failed: %w", vm.blockMiner, err)
+		}
+
+		gasReward := types.BigMul(msg.GasPrice, vmctx.GasUsed())
+		DepositFunds(miner, gasReward)
+
+		return &ApplyRet{
+			MessageReceipt: types.MessageReceipt{
+				ExitCode: errcode,
+				Return:   ret,
+				GasUsed:  vmctx.GasUsed(),
+			},
+			ActorErr: actorError,
+		}, nil
+	} else {
+		gascost := types.BigMul(msg.GasLimit, msg.GasPrice)
+		totalCost := types.BigAdd(gascost, msg.Value)
+		if types.BigCmp(fromActor.Balance, totalCost) < 0 {
+			return nil, xerrors.Errorf("not enough funds")
+		}
+		if err := DeductFunds(fromActor, gascost); err != nil {
+			return nil, xerrors.Errorf("failed to deduct funds: %w", err)
+		}
+
+		if msg.Nonce != fromActor.Nonce {
+			return nil, xerrors.Errorf("invalid nonce (got %d, expected %d)", msg.Nonce, fromActor.Nonce)
+		}
+		fromActor.Nonce++
+		ret, actorErr, vmctx := vm.send(ctx, msg.From, msg)
+
+		var errcode uint8
+		if errcode = aerrors.RetCode(actorErr); errcode != 0 {
 			// revert all state changes since snapshot
 			if err := st.Revert(); err != nil {
 				return nil, xerrors.Errorf("revert state failed: %w", err)
 			}
-
-			gascost := types.BigMul(vmctx.GasUsed(), msg.GasPrice)
-			if err := DeductFunds(fromActor, gascost); err != nil {
-				panic("invariant violated: " + err.Error())
-			}
-
 		} else {
-			// Update actor head reference
-			toActor.Head = vmctx.storage.head
 			// refund unused gas
 			refund := types.BigMul(types.BigSub(msg.GasLimit, vmctx.GasUsed()), msg.GasPrice)
 			DepositFunds(fromActor, refund)
 		}
+
+		miner, err := st.GetActor(vm.blockMiner)
+		if err != nil {
+			return nil, xerrors.Errorf("getting block miner actor (%s) failed: %w", vm.blockMiner, err)
+		}
+
+		gasReward := types.BigMul(msg.GasPrice, vmctx.GasUsed())
+		DepositFunds(miner, gasReward)
+
+		return &ApplyRet{
+			MessageReceipt: types.MessageReceipt{
+				ExitCode: errcode,
+				Return:   ret,
+				GasUsed:  vmctx.GasUsed(),
+			},
+			ActorErr: actorErr,
+		}, nil
 	}
-
-	// reward miner gas fees
-	miner, err := st.GetActor(vm.blockMiner)
-	if err != nil {
-		return nil, xerrors.Errorf("getting block miner actor (%s) failed: %w", vm.blockMiner, err)
-	}
-
-	gasReward := types.BigMul(msg.GasPrice, vmctx.GasUsed())
-	DepositFunds(miner, gasReward)
-
-	return &ApplyRet{
-		MessageReceipt: types.MessageReceipt{
-			ExitCode: errcode,
-			Return:   ret,
-			GasUsed:  vmctx.GasUsed(),
-		},
-		ActorErr: actorError,
-	}, nil
 }
 
 func (vm *VM) Flush(ctx context.Context) (cid.Cid, error) {
