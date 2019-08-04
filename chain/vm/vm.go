@@ -242,7 +242,7 @@ func (vm *VM) ApplyMessage(ctx context.Context, msg *types.Message) (*ApplyRet, 
 	gascost := types.BigMul(msg.GasLimit, msg.GasPrice)
 	totalCost := types.BigAdd(gascost, msg.Value)
 	if types.BigCmp(fromActor.Balance, totalCost) < 0 {
-		return nil, xerrors.Errorf("not enough funds")
+		return nil, xerrors.Errorf("not enough funds (%s < %s)", fromActor.Balance, totalCost)
 	}
 	if err := DeductFunds(fromActor, gascost); err != nil {
 		return nil, xerrors.Errorf("failed to deduct funds: %w", err)

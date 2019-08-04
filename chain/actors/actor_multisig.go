@@ -14,10 +14,11 @@ func init() {
 	cbor.RegisterCborType(MultiSigConstructorParams{})
 	cbor.RegisterCborType(MultiSigProposeParams{})
 	cbor.RegisterCborType(MultiSigTxID{})
-	cbor.RegisterCborType(MultiSigSigner{})
 	cbor.RegisterCborType(MultiSigSwapSignerParams{})
 	cbor.RegisterCborType(MultiSigChangeReqParams{})
 	cbor.RegisterCborType(MTransaction{})
+	cbor.RegisterCborType(MultiSigRemoveSignerParam{})
+	cbor.RegisterCborType(MultiSigAddSignerParam{})
 }
 
 type MultiSigActor struct{}
@@ -262,12 +263,13 @@ func (msa MultiSigActor) Cancel(act *types.Actor, vmctx types.VMContext,
 	return nil, msa.save(vmctx, head, self)
 }
 
-type MultiSigSigner struct {
-	Signer address.Address
+type MultiSigAddSignerParam struct {
+	Signer   address.Address
+	Increase bool
 }
 
 func (msa MultiSigActor) AddSigner(act *types.Actor, vmctx types.VMContext,
-	params *MultiSigSigner) ([]byte, ActorError) {
+	params *MultiSigAddSignerParam) ([]byte, ActorError) {
 
 	head, self, err := msa.load(vmctx)
 	if err != nil {
@@ -281,13 +283,22 @@ func (msa MultiSigActor) AddSigner(act *types.Actor, vmctx types.VMContext,
 	if self.isSigner(params.Signer) {
 		return nil, aerrors.New(5, "new address is already a signer")
 	}
+
 	self.Signers = append(self.Signers, params.Signer)
+	if params.Increase {
+		self.Required = self.Required + 1
+	}
 
 	return nil, msa.save(vmctx, head, self)
 }
 
+type MultiSigRemoveSignerParam struct {
+	Signer   address.Address
+	Decrease bool
+}
+
 func (msa MultiSigActor) RemoveSigner(act *types.Actor, vmctx types.VMContext,
-	params *MultiSigSigner) ([]byte, ActorError) {
+	params *MultiSigRemoveSignerParam) ([]byte, ActorError) {
 
 	head, self, err := msa.load(vmctx)
 	if err != nil {
@@ -308,6 +319,10 @@ func (msa MultiSigActor) RemoveSigner(act *types.Actor, vmctx types.VMContext,
 			newSigners = append(newSigners, s)
 		}
 	}
+	if params.Decrease || uint32(len(self.Signers)-1) < self.Required {
+		self.Required = self.Required - 1
+	}
+
 	self.Signers = newSigners
 
 	return nil, msa.save(vmctx, head, self)

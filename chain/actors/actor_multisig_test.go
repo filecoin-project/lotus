@@ -53,7 +53,7 @@ func TestMultiSigOps(t *testing.T) {
 		HarnessAddr(&creatorAddr, 10000),
 		HarnessAddr(&sig1Addr, 10000),
 		HarnessAddr(&sig2Addr, 10000),
-		HarnessAddr(&outsideAddr, 0),
+		HarnessAddr(&outsideAddr, 1000),
 		HarnessActor(&multSigAddr, &creatorAddr, actors.MultisigActorCodeCid,
 			func() interface{} {
 				return actors.MultiSigConstructorParams{
@@ -66,6 +66,7 @@ func TestMultiSigOps(t *testing.T) {
 	curVal := types.NewInt(2000)
 	h := NewHarness2(t, opts...)
 	{
+		// Send funds into the multisig
 		ret, state := h.SendFunds(t, creatorAddr, multSigAddr, curVal)
 		ApplyOK(t, ret)
 		ms, err := state.GetActor(multSigAddr)
@@ -74,6 +75,7 @@ func TestMultiSigOps(t *testing.T) {
 	}
 
 	{
+		// Transfer funds outside of multsig
 		sendVal := types.NewInt(100)
 		ret, _ := h.Invoke(t, creatorAddr, multSigAddr, actors.MultiSigMethods.Propose,
 			actors.MultiSigProposeParams{
@@ -84,14 +86,19 @@ func TestMultiSigOps(t *testing.T) {
 		var txIDParam actors.MultiSigTxID
 		err := cbor.DecodeInto(ret.Return, &txIDParam.TxID)
 		assert.NoError(t, err, "decoding txid")
+
+		ret, _ = h.Invoke(t, outsideAddr, multSigAddr, actors.MultiSigMethods.Approve,
+			txIDParam)
+		assert.Equal(t, uint8(1), ret.ExitCode, "outsideAddr should not approve")
+
 		ret, state := h.Invoke(t, sig1Addr, multSigAddr, actors.MultiSigMethods.Approve,
 			txIDParam)
+		outAct, err := state.GetActor(outsideAddr)
 		ApplyOK(t, ret)
 		curVal = types.BigSub(curVal, sendVal)
 
-		outAct, err := state.GetActor(outsideAddr)
 		assert.NoError(t, err)
-		assert.Equal(t, sendVal, outAct.Balance)
+		assert.Equal(t, types.NewInt(1099), outAct.Balance)
 
 		msAct, err := state.GetActor(multSigAddr)
 		assert.NoError(t, err)
