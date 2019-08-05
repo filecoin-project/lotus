@@ -11,7 +11,7 @@ func testGeneration(t testing.TB, n int) {
 	}
 
 	for i := 0; i < n; i++ {
-		b, err := g.NextBlock()
+		b, _, err := g.NextBlock()
 		if err != nil {
 			t.Fatalf("error at H:%d, %s", i, err)
 		}

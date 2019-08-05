@@ -170,10 +170,10 @@ func (cg *ChainGen) nextBlockProof() (address.Address, types.ElectionProof, []ty
 	return cg.miner, []byte("cat in a box"), []types.Ticket{types.Ticket("im a ticket, promise")}, nil
 }
 
-func (cg *ChainGen) NextBlock() (*types.FullBlock, error) {
+func (cg *ChainGen) NextBlock() (*types.FullBlock, []*types.SignedMessage, error) {
 	miner, proof, tickets, err := cg.nextBlockProof()
 	if err != nil {
-		return nil, err
+		return nil, nil, err
 	}
 
 	// make some transfers from banker
@@ -196,12 +196,12 @@ func (cg *ChainGen) NextBlock() (*types.FullBlock, error) {
 
 		unsigned, err := msg.Serialize()
 		if err != nil {
-			return nil, err
+			return nil, nil, err
 		}
 
 		sig, err := cg.w.Sign(cg.banker, unsigned)
 		if err != nil {
-			return &types.FullBlock{}, err
+			return nil, nil, err
 		}
 
 		msgs[m] = &types.SignedMessage{
@@ -210,7 +210,7 @@ func (cg *ChainGen) NextBlock() (*types.FullBlock, error) {
 		}
 
 		if _, err := cg.cs.PutMessage(msgs[m]); err != nil {
-			return nil, err
+			return nil, nil, err
 		}
 	}
 
@@ -218,21 +218,21 @@ func (cg *ChainGen) NextBlock() (*types.FullBlock, error) {
 
 	parents, err := types.NewTipSet([]*types.BlockHeader{cg.curBlock.Header})
 	if err != nil {
-		return nil, err
+		return nil, nil, err
 	}
 
 	fblk, err := MinerCreateBlock(context.TODO(), cg.cs, miner, parents, tickets, proof, msgs)
 	if err != nil {
-		return nil, err
+		return nil, nil, err
 	}
 
 	if err := cg.cs.AddBlock(fblk.Header); err != nil {
-		return nil, err
+		return nil, nil, err
 	}
 
 	cg.curBlock = fblk
 
-	return fblk, nil
+	return fblk, msgs, nil
 }
 
 func (cg *ChainGen) YieldRepo() (repo.Repo, error) {

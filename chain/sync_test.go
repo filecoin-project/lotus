@@ -27,7 +27,7 @@ func (tu *syncTestUtil) repoWithChain(t *testing.T, h int) (repo.Repo, []byte, [
 
 	for i := 0; i < h; i++ {
 		var err error
-		blks[i], err = tu.g.NextBlock()
+		blks[i], _, err = tu.g.NextBlock()
 		require.NoError(t, err)
 
 		fmt.Printf("block at H:%d: %s\n", blks[i].Header.Height, blks[i].Cid())
@@ -84,10 +84,10 @@ func prepSyncTest(t *testing.T, h int) *syncTestUtil {
 }
 
 func (tu *syncTestUtil) mineNewBlock(src int) {
-	fblk, err := tu.g.NextBlock()
+	fblk, msgs, err := tu.g.NextBlock()
 	require.NoError(tu.t, err)
 
-	for _, msg := range fblk.Messages {
+	for _, msg := range msgs {
 		require.NoError(tu.t, tu.nds[src].MpoolPush(context.TODO(), msg))
 	}
 
@@ -99,8 +99,11 @@ func fblkToBlkMsg(fb *types.FullBlock) *chain.BlockMsg {
 		Header: fb.Header,
 	}
 
-	for _, msg := range fb.Messages {
-		out.Messages = append(out.Messages, msg.Cid())
+	for _, msg := range fb.BlsMessages {
+		out.BlsMessages = append(out.BlsMessages, msg.Cid())
+	}
+	for _, msg := range fb.SecpkMessages {
+		out.SecpkMessages = append(out.SecpkMessages, msg.Cid())
 	}
 	return out
 }
