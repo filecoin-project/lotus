@@ -41,22 +41,38 @@ func MinerCreateBlock(ctx context.Context, cs *store.ChainStore, miner address.A
 		Height:  height,
 	}
 
-	var msgCids []cid.Cid
+	var blsMessages []*types.Message
+	var secpkMessages []*types.SignedMessage
+
+	var blsMsgCids, secpkMsgCids []cid.Cid
 	var blsSigs []types.Signature
-	var receipts []interface{}
 	for _, msg := range msgs {
 		if msg.Signature.TypeCode() == 2 {
 			blsSigs = append(blsSigs, msg.Signature)
+			blsMessages = append(blsMessages, &msg.Message)
 
 			c, err := cs.PutMessage(&msg.Message)
 			if err != nil {
 				return nil, err
 			}
 
-			msgCids = append(msgCids, c)
+			blsMsgCids = append(blsMsgCids, c)
 		} else {
-			msgCids = append(msgCids, msg.Cid())
+			secpkMsgCids = append(secpkMsgCids, msg.Cid())
+			secpkMessages = append(secpkMessages, msg)
 		}
+	}
+
+	var receipts []interface{}
+	for _, msg := range blsMessages {
+		rec, err := vmi.ApplyMessage(ctx, msg)
+		if err != nil {
+			return nil, errors.Wrap(err, "apply message failure")
+		}
+
+		receipts = append(receipts, rec)
+	}
+	for _, msg := range secpkMessages {
 		rec, err := vmi.ApplyMessage(ctx, &msg.Message)
 		if err != nil {
 			return nil, errors.Wrap(err, "apply message failure")
@@ -66,11 +82,23 @@ func MinerCreateBlock(ctx context.Context, cs *store.ChainStore, miner address.A
 	}
 
 	cst := hamt.CSTFromBstore(cs.Blockstore())
-	msgroot, err := sharray.Build(context.TODO(), 4, toIfArr(msgCids), cst)
+	blsmsgroot, err := sharray.Build(context.TODO(), 4, toIfArr(blsMsgCids), cst)
 	if err != nil {
 		return nil, err
 	}
-	next.Messages = msgroot
+	secpkmsgroot, err := sharray.Build(context.TODO(), 4, toIfArr(secpkMsgCids), cst)
+	if err != nil {
+		return nil, err
+	}
+
+	mmcid, err := cst.Put(context.TODO(), &types.MsgMeta{
+		BlsMessages:   blsmsgroot,
+		SecpkMessages: secpkmsgroot,
+	})
+	if err != nil {
+		return nil, err
+	}
+	next.Messages = mmcid
 
 	rectroot, err := sharray.Build(context.TODO(), 4, receipts, cst)
 	if err != nil {
@@ -94,8 +122,9 @@ func MinerCreateBlock(ctx context.Context, cs *store.ChainStore, miner address.A
 	next.ParentWeight = types.NewInt(pweight)
 
 	fullBlock := &types.FullBlock{
-		Header:   next,
-		Messages: msgs,
+		Header:        next,
+		BlsMessages:   blsMessages,
+		SecpkMessages: secpkMessages,
 	}
 
 	return fullBlock, nil

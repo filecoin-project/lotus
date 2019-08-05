@@ -17,6 +17,7 @@ import (
 	"github.com/filecoin-project/go-lotus/lib/cborrpc"
 	"github.com/filecoin-project/go-lotus/node/modules/dtypes"
 
+	blocks "github.com/ipfs/go-block-format"
 	"github.com/ipfs/go-cid"
 	cbor "github.com/ipfs/go-ipld-cbor"
 	inet "github.com/libp2p/go-libp2p-core/network"
@@ -71,8 +72,11 @@ type BlockSyncResponse struct {
 type BSTipSet struct {
 	Blocks []*types.BlockHeader
 
-	Messages    []*types.SignedMessage
-	MsgIncludes [][]int
+	BlsMessages    []*types.Message
+	BlsMsgIncludes [][]int
+
+	SecpkMessages    []*types.SignedMessage
+	SecpkMsgIncludes [][]int
 }
 
 func NewBlockSyncService(cs *store.ChainStore) *BlockSyncService {
@@ -130,13 +134,15 @@ func (bss *BlockSyncService) collectChainSegment(start []cid.Cid, length uint64,
 		}
 
 		if opts.IncludeMessages {
-			msgs, mincl, err := bss.gatherMessages(ts)
+			bmsgs, bmincl, smsgs, smincl, err := bss.gatherMessages(ts)
 			if err != nil {
-				return nil, err
+				return nil, xerrors.Errorf("gather messages failed: %w", err)
 			}
 
-			bst.Messages = msgs
-			bst.MsgIncludes = mincl
+			bst.BlsMessages = bmsgs
+			bst.BlsMsgIncludes = bmincl
+			bst.SecpkMessages = smsgs
+			bst.SecpkMsgIncludes = smincl
 		}
 
 		if opts.IncludeBlocks {
@@ -153,33 +159,47 @@ func (bss *BlockSyncService) collectChainSegment(start []cid.Cid, length uint64,
 	}
 }
 
-func (bss *BlockSyncService) gatherMessages(ts *types.TipSet) ([]*types.SignedMessage, [][]int, error) {
-	msgmap := make(map[cid.Cid]int)
-	var allmsgs []*types.SignedMessage
-	var msgincl [][]int
+func (bss *BlockSyncService) gatherMessages(ts *types.TipSet) ([]*types.Message, [][]int, []*types.SignedMessage, [][]int, error) {
+	blsmsgmap := make(map[cid.Cid]int)
+	secpkmsgmap := make(map[cid.Cid]int)
+	var secpkmsgs []*types.SignedMessage
+	var blsmsgs []*types.Message
+	var secpkincl, blsincl [][]int
 
 	for _, b := range ts.Blocks() {
-		msgs, err := bss.cs.MessagesForBlock(b)
+		bmsgs, smsgs, err := bss.cs.MessagesForBlock(b)
 		if err != nil {
-			return nil, nil, err
+			return nil, nil, nil, nil, err
 		}
-		log.Infof("MESSAGES FOR BLOCK: %d", len(msgs))
 
-		msgindexes := make([]int, 0, len(msgs))
-		for _, m := range msgs {
-			i, ok := msgmap[m.Cid()]
+		bmi := make([]int, 0, len(bmsgs))
+		for _, m := range bmsgs {
+			i, ok := blsmsgmap[m.Cid()]
 			if !ok {
-				i = len(allmsgs)
-				allmsgs = append(allmsgs, m)
-				msgmap[m.Cid()] = i
+				i = len(blsmsgs)
+				blsmsgs = append(blsmsgs, m)
+				blsmsgmap[m.Cid()] = i
 			}
 
-			msgindexes = append(msgindexes, i)
+			bmi = append(bmi, i)
 		}
-		msgincl = append(msgincl, msgindexes)
+		blsincl = append(blsincl, bmi)
+
+		smi := make([]int, 0, len(smsgs))
+		for _, m := range smsgs {
+			i, ok := secpkmsgmap[m.Cid()]
+			if !ok {
+				i = len(secpkmsgs)
+				secpkmsgs = append(secpkmsgs, m)
+				secpkmsgmap[m.Cid()] = i
+			}
+
+			smi = append(smi, i)
+		}
+		secpkincl = append(secpkincl, smi)
 	}
 
-	return allmsgs, msgincl, nil
+	return blsmsgs, blsincl, secpkmsgs, secpkincl, nil
 }
 
 type BlockSync struct {
@@ -326,8 +346,8 @@ func bstsToFullTipSet(bts *BSTipSet) (*store.FullTipSet, error) {
 		fb := &types.FullBlock{
 			Header: b,
 		}
-		for _, mi := range bts.MsgIncludes[i] {
-			fb.Messages = append(fb.Messages, bts.Messages[mi])
+		for _, mi := range bts.BlsMsgIncludes[i] {
+			fb.BlsMessages = append(fb.BlsMessages, bts.BlsMessages[mi])
 		}
 		fts.Blocks = append(fts.Blocks, fb)
 	}
@@ -404,9 +424,51 @@ func (bs *BlockSync) AddPeer(p peer.ID) {
 	bs.syncPeers[p] = struct{}{}
 }
 
-func (bs *BlockSync) FetchMessagesByCids(cids []cid.Cid) ([]*types.SignedMessage, error) {
+func (bs *BlockSync) FetchMessagesByCids(ctx context.Context, cids []cid.Cid) ([]*types.Message, error) {
+	out := make([]*types.Message, len(cids))
+
+	err := bs.fetchCids(ctx, cids, func(i int, b blocks.Block) error {
+		msg, err := types.DecodeMessage(b.RawData())
+		if err != nil {
+			return err
+		}
+
+		if out[i] != nil {
+			return fmt.Errorf("received duplicate message")
+		}
+
+		out[i] = msg
+		return nil
+	})
+	if err != nil {
+		return nil, err
+	}
+	return out, nil
+}
+
+func (bs *BlockSync) FetchSignedMessagesByCids(ctx context.Context, cids []cid.Cid) ([]*types.SignedMessage, error) {
 	out := make([]*types.SignedMessage, len(cids))
 
+	err := bs.fetchCids(ctx, cids, func(i int, b blocks.Block) error {
+		smsg, err := types.DecodeSignedMessage(b.RawData())
+		if err != nil {
+			return err
+		}
+
+		if out[i] != nil {
+			return fmt.Errorf("received duplicate message")
+		}
+
+		out[i] = smsg
+		return nil
+	})
+	if err != nil {
+		return nil, err
+	}
+	return out, nil
+}
+
+func (bs *BlockSync) fetchCids(ctx context.Context, cids []cid.Cid, cb func(int, blocks.Block) error) error {
 	resp := bs.bserv.GetBlocks(context.TODO(), cids)
 
 	m := make(map[cid.Cid]int)
@@ -422,25 +484,19 @@ func (bs *BlockSync) FetchMessagesByCids(cids []cid.Cid) ([]*types.SignedMessage
 					break
 				}
 
-				return nil, fmt.Errorf("failed to fetch all messages")
+				return fmt.Errorf("failed to fetch all messages")
 			}
 
-			sm, err := types.DecodeSignedMessage(v.RawData())
-			if err != nil {
-				return nil, err
-			}
-			ix, ok := m[sm.Cid()]
+			ix, ok := m[v.Cid()]
 			if !ok {
-				return nil, fmt.Errorf("received message we didnt ask for")
+				return fmt.Errorf("received message we didnt ask for")
 			}
 
-			if out[ix] != nil {
-				return nil, fmt.Errorf("received duplicate message")
+			if err := cb(ix, v); err != nil {
+				return err
 			}
-
-			out[ix] = sm
 		}
 	}
 
-	return out, nil
+	return nil
 }

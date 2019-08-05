@@ -127,13 +127,24 @@ func (mp *MessagePool) Pending() []*types.SignedMessage {
 func (mp *MessagePool) HeadChange(revert []*types.TipSet, apply []*types.TipSet) error {
 	for _, ts := range revert {
 		for _, b := range ts.Blocks() {
-			msgs, err := mp.cs.MessagesForBlock(b)
+			bmsgs, smsgs, err := mp.cs.MessagesForBlock(b)
 			if err != nil {
 				return errors.Wrapf(err, "failed to get messages for revert block %s(height %d)", b.Cid(), b.Height)
 			}
-			for _, msg := range msgs {
+			for _, msg := range smsgs {
 				if err := mp.Add(msg); err != nil {
 					return err
+				}
+			}
+
+			for _, msg := range bmsgs {
+				smsg := mp.RecoverSig(msg)
+				if smsg != nil {
+					if err := mp.Add(smsg); err != nil {
+						return err
+					}
+				} else {
+					log.Warnf("could not recover signature for bls message %s during a reorg revert", msg.Cid())
 				}
 			}
 		}
@@ -141,15 +152,30 @@ func (mp *MessagePool) HeadChange(revert []*types.TipSet, apply []*types.TipSet)
 
 	for _, ts := range apply {
 		for _, b := range ts.Blocks() {
-			msgs, err := mp.cs.MessagesForBlock(b)
+			bmsgs, smsgs, err := mp.cs.MessagesForBlock(b)
 			if err != nil {
 				return errors.Wrapf(err, "failed to get messages for apply block %s(height %d) (msgroot = %s)", b.Cid(), b.Height, b.Messages)
 			}
-			for _, msg := range msgs {
+			for _, msg := range smsgs {
 				mp.Remove(msg)
+			}
+
+			for _, msg := range bmsgs {
+				smsg := mp.RecoverSig(msg)
+				if smsg != nil {
+					mp.Remove(smsg)
+				} else {
+					// TODO: this one is likely fine
+					log.Warnf("could not recover signature for bls message %s during a reorg apply", msg.Cid())
+				}
 			}
 		}
 	}
 
+	return nil
+}
+
+func (mp *MessagePool) RecoverSig(msg *types.Message) *types.SignedMessage {
+	// TODO: persist signatures for BLS messages for a little while in case of reorgs
 	return nil
 }

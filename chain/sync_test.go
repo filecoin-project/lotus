@@ -164,11 +164,11 @@ func (tu *syncTestUtil) submitSourceBlock(to int, h int) {
 
 	// -1 to match block.Height
 	b.Header = tu.blocks[h-1].Header
-	for _, msg := range tu.blocks[h-1].Messages {
+	for _, msg := range tu.blocks[h-1].SecpkMessages {
 		c, err := tu.nds[to].(*impl.FullNodeAPI).Chain.PutMessage(msg)
 		require.NoError(tu.t, err)
 
-		b.Messages = append(b.Messages, c)
+		b.SecpkMessages = append(b.SecpkMessages, c)
 	}
 
 	require.NoError(tu.t, tu.nds[to].ChainSubmitBlock(tu.ctx, &b))

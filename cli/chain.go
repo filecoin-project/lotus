@@ -88,11 +88,13 @@ var chainGetBlock = &cli.Command{
 
 		cblock := struct {
 			types.BlockHeader
-			Messages []*types.SignedMessage
+			BlsMessages   []*types.Message
+			SecpkMessages []*types.SignedMessage
 		}{}
 
 		cblock.BlockHeader = *blk
-		cblock.Messages = msgs
+		cblock.BlsMessages = msgs.BlsMessages
+		cblock.SecpkMessages = msgs.SecpkMessages
 
 		out, err := json.MarshalIndent(cblock, "", "  ")
 		if err != nil {

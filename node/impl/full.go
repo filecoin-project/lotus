@@ -77,13 +77,21 @@ func (a *FullNodeAPI) ChainGetBlock(ctx context.Context, msg cid.Cid) (*types.Bl
 	return a.Chain.GetBlock(msg)
 }
 
-func (a *FullNodeAPI) ChainGetBlockMessages(ctx context.Context, msg cid.Cid) ([]*types.SignedMessage, error) {
+func (a *FullNodeAPI) ChainGetBlockMessages(ctx context.Context, msg cid.Cid) (*api.BlockMessages, error) {
 	b, err := a.Chain.GetBlock(msg)
 	if err != nil {
 		return nil, err
 	}
 
-	return a.Chain.MessagesForBlock(b)
+	bmsgs, smsgs, err := a.Chain.MessagesForBlock(b)
+	if err != nil {
+		return nil, err
+	}
+
+	return &api.BlockMessages{
+		BlsMessages:   bmsgs,
+		SecpkMessages: smsgs,
+	}, nil
 }
 
 func (a *FullNodeAPI) ChainCall(ctx context.Context, msg *types.Message, ts *types.TipSet) (*types.MessageReceipt, error) {
@@ -154,8 +162,11 @@ func (a *FullNodeAPI) MinerCreateBlock(ctx context.Context, addr address.Address
 
 	var out chain.BlockMsg
 	out.Header = fblk.Header
-	for _, msg := range fblk.Messages {
-		out.Messages = append(out.Messages, msg.Cid())
+	for _, msg := range fblk.BlsMessages {
+		out.BlsMessages = append(out.BlsMessages, msg.Cid())
+	}
+	for _, msg := range fblk.SecpkMessages {
+		out.SecpkMessages = append(out.SecpkMessages, msg.Cid())
 	}
 
 	return &out, nil

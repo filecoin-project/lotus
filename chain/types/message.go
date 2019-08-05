@@ -114,3 +114,12 @@ func (m *Message) ToStorageBlock() (block.Block, error) {
 
 	return block.NewBlockWithCid(data, c)
 }
+
+func (m *Message) Cid() cid.Cid {
+	b, err := m.ToStorageBlock()
+	if err != nil {
+		panic(fmt.Sprintf("failed to marshal message: %s", err))
+	}
+
+	return b.Cid()
+}

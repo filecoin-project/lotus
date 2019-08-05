@@ -130,8 +130,9 @@ func (f *filecoinIpldNode) String() string {
 }
 
 type BlockMsg struct {
-	Header   *types.BlockHeader
-	Messages []cid.Cid
+	Header        *types.BlockHeader
+	BlsMessages   []cid.Cid
+	SecpkMessages []cid.Cid
 }
 
 func DecodeBlockMsg(b []byte) (*BlockMsg, error) {

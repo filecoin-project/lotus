@@ -71,6 +71,7 @@ func init() {
 				}, nil
 			})).
 		Complete())
+	cbor.RegisterCborType(MsgMeta{})
 }
 
 type Ticket []byte
@@ -96,6 +97,11 @@ type BlockHeader struct {
 	BLSAggregate Signature
 
 	MessageReceipts cid.Cid
+}
+
+type MsgMeta struct {
+	BlsMessages   cid.Cid
+	SecpkMessages cid.Cid
 }
 
 func (b *BlockHeader) ToStorageBlock() (block.Block, error) {

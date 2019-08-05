@@ -142,32 +142,57 @@ func copyBlockstore(from, to bstore.Blockstore) error {
 	return nil
 }
 
-func zipTipSetAndMessages(cst *hamt.CborIpldStore, ts *types.TipSet, messages []*types.SignedMessage, msgincl [][]int) (*store.FullTipSet, error) {
-	if len(ts.Blocks()) != len(msgincl) {
+// TODO: this function effectively accepts unchecked input from the network,
+// either validate it here, or ensure that its validated elsewhere (maybe make
+// sure the blocksync code checks it?)
+// maybe this code should actually live in blocksync??
+func zipTipSetAndMessages(cst *hamt.CborIpldStore, ts *types.TipSet, allbmsgs []*types.Message, allsmsgs []*types.SignedMessage, bmi, smi [][]int) (*store.FullTipSet, error) {
+	if len(ts.Blocks()) != len(smi) || len(ts.Blocks()) != len(bmi) {
 		return nil, fmt.Errorf("msgincl length didnt match tipset size")
 	}
 
 	fts := &store.FullTipSet{}
 	for bi, b := range ts.Blocks() {
-		var msgs []*types.SignedMessage
-		var msgCids []interface{}
-		for _, m := range msgincl[bi] {
-			msgs = append(msgs, messages[m])
-			msgCids = append(msgCids, messages[m].Cid())
+		var smsgs []*types.SignedMessage
+		var smsgCids []interface{}
+		for _, m := range smi[bi] {
+			smsgs = append(smsgs, allsmsgs[m])
+			smsgCids = append(smsgCids, allsmsgs[m].Cid())
 		}
 
-		mroot, err := sharray.Build(context.TODO(), 4, msgCids, cst)
+		smroot, err := sharray.Build(context.TODO(), 4, smsgCids, cst)
 		if err != nil {
 			return nil, err
 		}
 
-		if b.Messages != mroot {
+		var bmsgs []*types.Message
+		var bmsgCids []interface{}
+		for _, m := range bmi[bi] {
+			bmsgs = append(bmsgs, allbmsgs[m])
+			bmsgCids = append(bmsgCids, allbmsgs[m].Cid())
+		}
+
+		bmroot, err := sharray.Build(context.TODO(), 4, bmsgCids, cst)
+		if err != nil {
+			return nil, err
+		}
+
+		mrcid, err := cst.Put(context.TODO(), &types.MsgMeta{
+			BlsMessages:   bmroot,
+			SecpkMessages: smroot,
+		})
+		if err != nil {
+			return nil, err
+		}
+
+		if b.Messages != mrcid {
 			return nil, fmt.Errorf("messages didnt match message root in header")
 		}
 
 		fb := &types.FullBlock{
-			Header:   b,
-			Messages: msgs,
+			Header:        b,
+			BlsMessages:   bmsgs,
+			SecpkMessages: smsgs,
 		}
 
 		fts.Blocks = append(fts.Blocks, fb)
@@ -236,14 +261,15 @@ func (syncer *Syncer) tryLoadFullTipSet(cids []cid.Cid) (*store.FullTipSet, erro
 
 	fts := &store.FullTipSet{}
 	for _, b := range ts.Blocks() {
-		messages, err := syncer.store.MessagesForBlock(b)
+		bmsgs, smsgs, err := syncer.store.MessagesForBlock(b)
 		if err != nil {
 			return nil, err
 		}
 
 		fb := &types.FullBlock{
-			Header:   b,
-			Messages: messages,
+			Header:        b,
+			BlsMessages:   bmsgs,
+			SecpkMessages: smsgs,
 		}
 		fts.Blocks = append(fts.Blocks, fb)
 	}
@@ -307,10 +333,19 @@ func (syncer *Syncer) ValidateBlock(ctx context.Context, b *types.FullBlock) err
 	}
 
 	var receipts []interface{}
-	for _, m := range b.Messages {
+	for i, m := range b.BlsMessages {
+		receipt, err := vmi.ApplyMessage(ctx, m)
+		if err != nil {
+			return xerrors.Errorf("failed executing bls message %d in block %s: %w", i, b.Header.Cid(), err)
+		}
+
+		receipts = append(receipts, receipt)
+	}
+
+	for i, m := range b.SecpkMessages {
 		receipt, err := vmi.ApplyMessage(ctx, &m.Message)
 		if err != nil {
-			return err
+			return xerrors.Errorf("failed executing secpk message %d in block %s: %w", i, b.Header.Cid(), err)
 		}
 
 		receipts = append(receipts, receipt.MessageReceipt)
@@ -454,7 +489,7 @@ func (syncer *Syncer) iterFullTipsets(headers []*types.TipSet, cb func(*store.Fu
 		for bsi := 0; bsi < len(bstips); bsi++ {
 			this := headers[i+bsi]
 			bstip := bstips[len(bstips)-(bsi+1)]
-			fts, err := zipTipSetAndMessages(cst, this, bstip.Messages, bstip.MsgIncludes)
+			fts, err := zipTipSetAndMessages(cst, this, bstip.BlsMessages, bstip.SecpkMessages, bstip.BlsMsgIncludes, bstip.SecpkMsgIncludes)
 			if err != nil {
 				log.Error("zipping failed: ", err, bsi, i)
 				log.Error("height: ", this.Height())
@@ -483,22 +518,21 @@ func (syncer *Syncer) iterFullTipsets(headers []*types.TipSet, cb func(*store.Fu
 
 func persistMessages(bs bstore.Blockstore, bstips []*BSTipSet) error {
 	for _, bst := range bstips {
-		for _, m := range bst.Messages {
-			switch m.Signature.Type {
-			case types.KTBLS:
-				//log.Infof("putting BLS message: %s", m.Cid())
-				if _, err := store.PutMessage(bs, &m.Message); err != nil {
-					log.Error("failed to persist messages: ", err)
-					return xerrors.Errorf("BLS message processing failed: %w", err)
-				}
-			case types.KTSecp256k1:
-				//log.Infof("putting secp256k1 message: %s", m.Cid())
-				if _, err := store.PutMessage(bs, m); err != nil {
-					log.Error("failed to persist messages: ", err)
-					return xerrors.Errorf("secp256k1 message processing failed: %w", err)
-				}
-			default:
+		for _, m := range bst.BlsMessages {
+			//log.Infof("putting BLS message: %s", m.Cid())
+			if _, err := store.PutMessage(bs, m); err != nil {
+				log.Error("failed to persist messages: ", err)
+				return xerrors.Errorf("BLS message processing failed: %w", err)
+			}
+		}
+		for _, m := range bst.SecpkMessages {
+			if m.Signature.Type != types.KTSecp256k1 {
 				return xerrors.Errorf("unknown signature type on message %s: %q", m.Cid(), m.Signature.TypeCode)
+			}
+			//log.Infof("putting secp256k1 message: %s", m.Cid())
+			if _, err := store.PutMessage(bs, m); err != nil {
+				log.Error("failed to persist messages: ", err)
+				return xerrors.Errorf("secp256k1 message processing failed: %w", err)
 			}
 		}
 	}
