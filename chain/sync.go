@@ -66,8 +66,8 @@ func NewSyncer(cs *store.ChainStore, bsync *BlockSync, self peer.ID) (*Syncer, e
 		Genesis:   gent,
 		Bsync:     bsync,
 		peerHeads: make(map[peer.ID]*types.TipSet),
-		store: cs,
-		self:  self,
+		store:     cs,
+		self:      self,
 	}, nil
 }
 
@@ -282,7 +282,7 @@ func (syncer *Syncer) Sync(maybeHead *store.FullTipSet) error {
 	defer syncer.syncLock.Unlock()
 
 	ts := maybeHead.TipSet()
-	if syncer.Genesis.Equals(ts) {
+	if syncer.Genesis.Equals(ts) || syncer.store.GetHeaviestTipSet().Equals(ts) {
 		return nil
 	}
 
@@ -315,9 +315,9 @@ func (syncer *Syncer) ValidateBlock(ctx context.Context, b *types.FullBlock) err
 	h := b.Header
 	stateroot, err := syncer.store.TipSetState(h.Parents)
 	if err != nil {
-		log.Error("get tipsetstate failed: ", h.Height, h.Parents, err)
-		return err
+		return xerrors.Errorf("get tipsetstate(%d, %s) failed: %w", h.Height, h.Parents, err)
 	}
+
 	baseTs, err := syncer.store.LoadTipSet(b.Header.Parents)
 	if err != nil {
 		return err
@@ -373,13 +373,16 @@ func (syncer *Syncer) ValidateBlock(ctx context.Context, b *types.FullBlock) err
 
 }
 
-func (syncer *Syncer) collectHeaders(from *types.TipSet, toHeight uint64) ([]*types.TipSet, error) {
+func (syncer *Syncer) collectHeaders(from *types.TipSet, to *types.TipSet) ([]*types.TipSet, error) {
 	blockSet := []*types.TipSet{from}
 
 	at := from.Parents()
 
+	// we want to sync all the blocks until the height above the block we have
+	untilHeight := to.Height() + 1
+
 	// If, for some reason, we have a suffix of the chain locally, handle that here
-	for blockSet[len(blockSet)-1].Height() > toHeight {
+	for blockSet[len(blockSet)-1].Height() > untilHeight {
 		log.Warn("syncing local: ", at)
 		ts, err := syncer.store.LoadTipSet(at)
 		if err != nil {
@@ -395,7 +398,7 @@ func (syncer *Syncer) collectHeaders(from *types.TipSet, toHeight uint64) ([]*ty
 		at = ts.Parents()
 	}
 
-	for blockSet[len(blockSet)-1].Height() > toHeight {
+	for blockSet[len(blockSet)-1].Height() > untilHeight {
 		// NB: GetBlocks validates that the blocks are in-fact the ones we
 		// requested, and that they are correctly linked to eachother. It does
 		// not validate any state transitions
@@ -412,27 +415,18 @@ func (syncer *Syncer) collectHeaders(from *types.TipSet, toHeight uint64) ([]*ty
 		}
 
 		for _, b := range blks {
+			if b.Height() < untilHeight {
+				break
+			}
 			blockSet = append(blockSet, b)
 		}
 
 		at = blks[len(blks)-1].Parents()
 	}
 
-	if toHeight == 0 {
-		// hacks. in the case that we request X blocks starting at height X+1, we
-		// won't get the Genesis block in the returned blockset. This hacks around it
-		if blockSet[len(blockSet)-1].Height() != 0 {
-			blockSet = append(blockSet, syncer.Genesis)
-		}
-
-		blockSet = reverse(blockSet)
-
-		genesis := blockSet[0]
-		if !genesis.Equals(syncer.Genesis) {
-			// TODO: handle this...
-			log.Errorf("We synced to the wrong chain! %s != %s", genesis, syncer.Genesis)
-			panic("We synced to the wrong chain")
-		}
+	if !cidArrsEqual(blockSet[len(blockSet)-1].Parents(), to.Cids()) {
+		// TODO: handle the case where we are on a fork and its not a simple fast forward
+		return nil, xerrors.Errorf("synced header chain does not link to our best block")
 	}
 
 	return blockSet, nil
@@ -440,6 +434,7 @@ func (syncer *Syncer) collectHeaders(from *types.TipSet, toHeight uint64) ([]*ty
 
 func (syncer *Syncer) syncMessagesAndCheckState(headers []*types.TipSet) error {
 	return syncer.iterFullTipsets(headers, func(fts *store.FullTipSet) error {
+		log.Warn("validating tipset: ", fts.TipSet().Height())
 		if err := syncer.ValidateTipSet(context.TODO(), fts); err != nil {
 			log.Errorf("failed to validate tipset: %s", err)
 			return xerrors.Errorf("message processing failed: %w", err)
@@ -450,9 +445,9 @@ func (syncer *Syncer) syncMessagesAndCheckState(headers []*types.TipSet) error {
 
 // fills out each of the given tipsets with messages and calls the callback with it
 func (syncer *Syncer) iterFullTipsets(headers []*types.TipSet, cb func(*store.FullTipSet) error) error {
-	var beg int
+	beg := len(headers) - 1
 	// handle case where we have a prefix of these locally
-	for ; beg < len(headers); beg++ {
+	for ; beg >= 0; beg-- {
 		fts, err := syncer.store.TryFillTipSet(headers[beg])
 		if err != nil {
 			return err
@@ -464,38 +459,37 @@ func (syncer *Syncer) iterFullTipsets(headers []*types.TipSet, cb func(*store.Fu
 			return err
 		}
 	}
-	headers = headers[beg:]
+	headers = headers[:beg+1]
 
 	windowSize := 10
 
-	for i := 0; i < len(headers); i += windowSize {
+	for i := len(headers) - 1; i >= 0; i -= windowSize {
 		// temp storage so we don't persist data we dont want to
 		ds := dstore.NewMapDatastore()
 		bs := bstore.NewBlockstore(ds)
 		cst := hamt.CSTFromBstore(bs)
 
 		batchSize := windowSize
-		if i+batchSize >= len(headers) {
-			batchSize = (len(headers) - i) - 1
+		if i < batchSize {
+			batchSize = i
 		}
 
-		next := headers[i+batchSize]
+		next := headers[i-batchSize]
 		bstips, err := syncer.Bsync.GetChainMessages(context.TODO(), next, uint64(batchSize+1))
 		if err != nil {
-			log.Errorf("failed to fetch messages: %s", err)
 			return xerrors.Errorf("message processing failed: %w", err)
 		}
 
 		for bsi := 0; bsi < len(bstips); bsi++ {
-			this := headers[i+bsi]
+			this := headers[i-bsi]
 			bstip := bstips[len(bstips)-(bsi+1)]
 			fts, err := zipTipSetAndMessages(cst, this, bstip.BlsMessages, bstip.SecpkMessages, bstip.BlsMsgIncludes, bstip.SecpkMsgIncludes)
 			if err != nil {
-				log.Error("zipping failed: ", err, bsi, i)
-				log.Error("height: ", this.Height())
-				log.Error("bstip height: ", bstip.Blocks[0].Height)
-				log.Error("bstips: ", bstips)
-				log.Error("next height: ", i+batchSize)
+				log.Warn("zipping failed: ", err, bsi, i)
+				log.Warn("height: ", this.Height())
+				log.Warn("bstip height: ", bstip.Blocks[0].Height)
+				log.Warn("bstips: ", bstips)
+				log.Warn("next height: ", i+batchSize)
 				return xerrors.Errorf("message processing failed: %w", err)
 			}
 
@@ -541,9 +535,7 @@ func persistMessages(bs bstore.Blockstore, bstips []*BSTipSet) error {
 }
 
 func (syncer *Syncer) collectChain(fts *store.FullTipSet) error {
-	curHeight := syncer.store.GetHeaviestTipSet().Height()
-
-	headers, err := syncer.collectHeaders(fts.TipSet(), curHeight)
+	headers, err := syncer.collectHeaders(fts.TipSet(), syncer.store.GetHeaviestTipSet())
 	if err != nil {
 		return err
 	}

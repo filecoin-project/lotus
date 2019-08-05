@@ -22,16 +22,12 @@ import (
 
 const source = 0
 
-func repoWithChain(t *testing.T, h int) (repo.Repo, []byte, []*types.FullBlock) {
-	g, err := gen.NewGenerator()
-	if err != nil {
-		t.Fatal(err)
-	}
-
+func (tu *syncTestUtil) repoWithChain(t *testing.T, h int) (repo.Repo, []byte, []*types.FullBlock) {
 	blks := make([]*types.FullBlock, h)
 
 	for i := 0; i < h; i++ {
-		blks[i], err = g.NextBlock()
+		var err error
+		blks[i], err = tu.g.NextBlock()
 		require.NoError(t, err)
 
 		fmt.Printf("block at H:%d: %s\n", blks[i].Header.Height, blks[i].Cid())
@@ -39,10 +35,10 @@ func repoWithChain(t *testing.T, h int) (repo.Repo, []byte, []*types.FullBlock) 
 		require.Equal(t, uint64(i+1), blks[i].Header.Height, "wrong height")
 	}
 
-	r, err := g.YieldRepo()
+	r, err := tu.g.YieldRepo()
 	require.NoError(t, err)
 
-	genb, err := g.GenesisCar()
+	genb, err := tu.g.GenesisCar()
 	require.NoError(t, err)
 
 	return r, genb, blks
@@ -54,6 +50,8 @@ type syncTestUtil struct {
 	ctx context.Context
 	mn  mocknet.Mocknet
 
+	g *gen.ChainGen
+
 	genesis []byte
 	blocks  []*types.FullBlock
 
@@ -63,11 +61,17 @@ type syncTestUtil struct {
 func prepSyncTest(t *testing.T, h int) *syncTestUtil {
 	logging.SetLogLevel("*", "INFO")
 
+	g, err := gen.NewGenerator()
+	if err != nil {
+		t.Fatal(err)
+	}
+
 	ctx := context.Background()
 	tu := &syncTestUtil{
 		t:   t,
 		ctx: ctx,
 		mn:  mocknet.New(ctx),
+		g:   g,
 	}
 
 	tu.addSourceNode(h)
@@ -79,12 +83,34 @@ func prepSyncTest(t *testing.T, h int) *syncTestUtil {
 	return tu
 }
 
+func (tu *syncTestUtil) mineNewBlock(src int) {
+	fblk, err := tu.g.NextBlock()
+	require.NoError(tu.t, err)
+
+	for _, msg := range fblk.Messages {
+		require.NoError(tu.t, tu.nds[src].MpoolPush(context.TODO(), msg))
+	}
+
+	require.NoError(tu.t, tu.nds[src].ChainSubmitBlock(context.TODO(), fblkToBlkMsg(fblk)))
+}
+
+func fblkToBlkMsg(fb *types.FullBlock) *chain.BlockMsg {
+	out := &chain.BlockMsg{
+		Header: fb.Header,
+	}
+
+	for _, msg := range fb.Messages {
+		out.Messages = append(out.Messages, msg.Cid())
+	}
+	return out
+}
+
 func (tu *syncTestUtil) addSourceNode(gen int) {
 	if tu.genesis != nil {
 		tu.t.Fatal("source node already exists")
 	}
 
-	sourceRepo, genesis, blocks := repoWithChain(tu.t, gen)
+	sourceRepo, genesis, blocks := tu.repoWithChain(tu.t, gen)
 	var out api.FullNode
 
 	err := node.New(tu.ctx,
@@ -181,7 +207,7 @@ func (tu *syncTestUtil) submitSourceBlocks(to int, h int, n int) {
 }
 
 func TestSyncSimple(t *testing.T) {
-	H := 21
+	H := 50
 	tu := prepSyncTest(t, H)
 
 	client := tu.addClientNode()
@@ -194,6 +220,28 @@ func TestSyncSimple(t *testing.T) {
 	tu.checkHeight("client", client, H)
 
 	tu.compareSourceState(client)
+}
+
+func TestSyncMining(t *testing.T) {
+	H := 50
+	tu := prepSyncTest(t, H)
+
+	client := tu.addClientNode()
+	tu.checkHeight("client", client, 0)
+
+	require.NoError(t, tu.mn.LinkAll())
+	tu.connect(1, 0)
+	time.Sleep(time.Second * 2)
+
+	tu.checkHeight("client", client, H)
+
+	tu.compareSourceState(client)
+
+	for i := 0; i < 5; i++ {
+		tu.mineNewBlock(0)
+		time.Sleep(time.Second / 2)
+		tu.compareSourceState(client)
+	}
 }
 
 /*
