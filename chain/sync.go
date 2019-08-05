@@ -313,7 +313,7 @@ func (syncer *Syncer) ValidateBlock(ctx context.Context, b *types.FullBlock) err
 			return err
 		}
 
-		receipts = append(receipts, receipt)
+		receipts = append(receipts, receipt.MessageReceipt)
 	}
 
 	cst := hamt.CSTFromBstore(syncer.store.Blockstore())

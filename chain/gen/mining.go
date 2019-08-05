@@ -62,7 +62,7 @@ func MinerCreateBlock(ctx context.Context, cs *store.ChainStore, miner address.A
 			return nil, errors.Wrap(err, "apply message failure")
 		}
 
-		receipts = append(receipts, rec)
+		receipts = append(receipts, rec.MessageReceipt)
 	}
 
 	cst := hamt.CSTFromBstore(cs.Blockstore())

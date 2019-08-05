@@ -45,7 +45,7 @@ func NewHarness(t *testing.T) *Harness {
 
 	from := blsaddr(0)
 	maddr := blsaddr(1)
-	third := blsaddr(1)
+	third := blsaddr(2)
 
 	actors := map[address.Address]types.BigInt{
 		from:  types.NewInt(1000000),
@@ -64,7 +64,7 @@ func NewHarness(t *testing.T) *Harness {
 
 	h.cs = store.NewChainStore(h.bs, nil)
 
-	h.vm, err = vm.NewVM(stateroot, IAMethods.Exec, maddr, h.cs)
+	h.vm, err = vm.NewVM(stateroot, 1, maddr, h.cs)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -83,7 +83,7 @@ func (h *Harness) Execute() *state.StateTree {
 		} else {
 			h.NoError(h.t, err)
 		}
-		step.Ret(h.t, ret)
+		step.Ret(h.t, &ret.MessageReceipt)
 	}
 	stateroot, err := h.vm.Flush(context.TODO())
 	if err != nil {
@@ -141,7 +141,7 @@ func TestVMInvokeHarness(t *testing.T) {
 					t.Fatal(err)
 				}
 
-				if outaddr.String() != "t0102" {
+				if outaddr.String() != "t0103" {
 					t.Fatal("hold up")
 				}
 			},
