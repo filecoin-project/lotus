@@ -120,7 +120,6 @@ func (c *Client) Start(ctx context.Context, data cid.Cid, totalPrice types.BigIn
 		Payment: PaymentInfo{
 			PayChActor:     address.Address{},
 			Payer:          address.Address{},
-			Channel:        0,
 			ChannelMessage: dummyCid,
 			Vouchers:       nil,
 		},

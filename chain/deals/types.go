@@ -45,18 +45,17 @@ const (
 type PaymentInfo struct {
 	PayChActor     address.Address
 	Payer          address.Address
-	Channel        uint64 // TODO: Not clear what that refers to, guessing something to do with multi-lane payments
 	ChannelMessage cid.Cid
 
 	Vouchers []actors.SignedVoucher
 }
 
 type StorageDealProposal struct {
-	PieceRef          string // TODO: string per spec, but maybe should be a CID?
+	PieceRef          string
 	SerializationMode SerializationMode
 	CommP             []byte
 
-	Size       uint64 // TODO: spec doesn't clearly specify the type
+	Size       uint64
 	TotalPrice types.BigInt
 	Duration   uint64
 
@@ -73,12 +72,12 @@ type SignedStorageDealProposal struct {
 }
 
 // response
+
 type PieceInclusionProof struct {
-	Position      uint // todo: type?
+	Position      uint64
 	ProofElements [32]byte
 }
 
-// TODO: Spec says 'representation keyed', this is probably wrong
 type StorageDealResponse struct {
 	State DealState
 
