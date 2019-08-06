@@ -3,12 +3,17 @@ package sectorbuilder
 import (
 	"context"
 	"encoding/binary"
+	"io"
 	"unsafe"
 
-	"github.com/filecoin-project/go-lotus/chain/address"
+	"golang.org/x/xerrors"
+
 	sectorbuilder "github.com/filecoin-project/go-sectorbuilder"
 
 	logging "github.com/ipfs/go-log"
+
+	"github.com/filecoin-project/go-lotus/chain/address"
+	"github.com/filecoin-project/go-lotus/lib/bytesink"
 )
 
 var log = logging.Logger("sectorbuilder")
@@ -67,8 +72,84 @@ func (sb *SectorBuilder) Destroy() {
 	sectorbuilder.DestroySectorBuilder(sb.handle)
 }
 
-func (sb *SectorBuilder) AddPiece(pieceKey string, pieceSize uint64, piecePath string) (uint64, error) {
-	return sectorbuilder.AddPiece(sb.handle, pieceKey, pieceSize, piecePath)
+func (sb *SectorBuilder) AddPiece(ctx context.Context, pieceRef string, pieceSize uint64, pieceReader io.ReadCloser) (uint64, error) {
+	fifoFile, err := bytesink.NewFifo()
+	if err != nil {
+		return 0, err
+	}
+
+	// errCh holds any error encountered when streaming bytes or making the CGO
+	// call. The channel is buffered so that the goroutines can exit, which will
+	// close the pipe, which unblocks the CGO call.
+	errCh := make(chan error, 2)
+
+	// sectorIDCh receives a value if the CGO call indicates that the client
+	// piece has successfully been added to a sector. The channel is buffered
+	// so that the goroutine can exit if a value is sent to errCh before the
+	// CGO call completes.
+	sectorIDCh := make(chan uint64, 1)
+
+	// goroutine attempts to copy bytes from piece's reader to the fifoFile
+	go func() {
+		// opening the fifoFile blocks the goroutine until a reader is opened on the
+		// other end of the FIFO pipe
+		err := fifoFile.Open()
+		if err != nil {
+			errCh <- xerrors.Errorf("failed to open fifoFile: %w", err)
+			return
+		}
+
+		// closing theg s fifoFile signals to the reader that we're done writing, which
+		// unblocks the reader
+		defer func() {
+			err := fifoFile.Close()
+			if err != nil {
+				log.Warnf("failed to close fifoFile: %s", err)
+			}
+		}()
+
+		n, err := io.Copy(fifoFile, pieceReader)
+		if err != nil {
+			errCh <- xerrors.Errorf("failed to copy to pipe: %w", err)
+			return
+		}
+
+		if uint64(n) != pieceSize {
+			errCh <- xerrors.Errorf("expected to write %d bytes but wrote %d", pieceSize, n)
+			return
+		}
+	}()
+
+	// goroutine makes CGO call, which blocks until FIFO pipe opened for writing
+	// from within other goroutine
+	go func() {
+		id, err := sectorbuilder.AddPiece(sb.handle, pieceRef, pieceSize, fifoFile.ID())
+		if err != nil {
+			msg := "CGO add_piece returned an error (err=%s, fifo path=%s)"
+			log.Errorf(msg, err, fifoFile.ID())
+			errCh <- err
+			return
+		}
+
+		sectorIDCh <- id
+	}()
+
+	select {
+	case <-ctx.Done():
+		errStr := "context completed before CGO call could return"
+		strFmt := "%s (sinkPath=%s)"
+		log.Errorf(strFmt, errStr, fifoFile.ID())
+
+		return 0, xerrors.New(errStr)
+	case err := <-errCh:
+		errStr := "error streaming piece-bytes"
+		strFmt := "%s (sinkPath=%s)"
+		log.Errorf(strFmt, errStr, fifoFile.ID())
+
+		return 0, xerrors.Errorf("%w: %s", errStr, err)
+	case sectorID := <-sectorIDCh:
+		return sectorID, nil
+	}
 }
 
 // TODO: should *really really* return an io.ReadCloser

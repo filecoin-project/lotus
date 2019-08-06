@@ -2,6 +2,11 @@ package modules
 
 import (
 	"context"
+	"github.com/filecoin-project/go-lotus/node/modules/helpers"
+	"github.com/ipfs/go-bitswap"
+	"github.com/ipfs/go-bitswap/network"
+	"github.com/libp2p/go-libp2p-core/host"
+	"github.com/libp2p/go-libp2p-core/routing"
 	"path/filepath"
 
 	"github.com/ipfs/go-blockservice"
@@ -9,7 +14,6 @@ import (
 	"github.com/ipfs/go-datastore/namespace"
 	"github.com/ipfs/go-filestore"
 	blockstore "github.com/ipfs/go-ipfs-blockstore"
-	offline "github.com/ipfs/go-ipfs-exchange-offline"
 	"github.com/ipfs/go-merkledag"
 	"go.uber.org/fx"
 
@@ -32,9 +36,13 @@ func ClientFstore(r repo.LockedRepo) (dtypes.ClientFilestore, error) {
 	return filestore.NewFilestore(bs, fm), nil
 }
 
-func ClientDAG(lc fx.Lifecycle, fstore dtypes.ClientFilestore) dtypes.ClientDAG {
+func ClientDAG(mctx helpers.MetricsCtx, lc fx.Lifecycle, fstore dtypes.ClientFilestore, rt routing.Routing, h host.Host) dtypes.ClientDAG {
 	ibs := blockstore.NewIdStore((*filestore.Filestore)(fstore))
-	bsvc := blockservice.New(ibs, offline.Exchange(ibs))
+
+	bitswapNetwork := network.NewFromIpfsHost(h, rt)
+	exch := bitswap.New(helpers.LifecycleCtx(mctx, lc), bitswapNetwork, ibs)
+
+	bsvc := blockservice.New(ibs, exch)
 	dag := merkledag.NewDAGService(bsvc)
 
 	lc.Append(fx.Hook{

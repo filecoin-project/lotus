@@ -3,21 +3,25 @@ package deals
 import (
 	"context"
 	"io/ioutil"
+	"math"
 	"os"
-	"sync/atomic"
 
 	sectorbuilder "github.com/filecoin-project/go-sectorbuilder"
 	"github.com/ipfs/go-cid"
+	"github.com/ipfs/go-datastore"
+	"github.com/ipfs/go-datastore/namespace"
 	cbor "github.com/ipfs/go-ipld-cbor"
 	logging "github.com/ipfs/go-log"
 	"github.com/libp2p/go-libp2p-core/host"
 	"github.com/libp2p/go-libp2p-core/peer"
+	"golang.org/x/xerrors"
 
 	"github.com/filecoin-project/go-lotus/chain/address"
 	"github.com/filecoin-project/go-lotus/chain/store"
 	"github.com/filecoin-project/go-lotus/chain/types"
 	"github.com/filecoin-project/go-lotus/chain/wallet"
 	"github.com/filecoin-project/go-lotus/lib/cborrpc"
+	"github.com/filecoin-project/go-lotus/node/modules/dtypes"
 )
 
 var log = logging.Logger("deals")
@@ -30,10 +34,10 @@ const (
 	DealResolvingMiner = DealStatus(iota)
 )
 
-type Deal struct {
-	ID     uint64
-	Status DealStatus
-	Miner  peer.ID
+type ClientDeal struct {
+	ProposalCid cid.Cid
+	Status      DealStatus
+	Miner       peer.ID
 }
 
 type Client struct {
@@ -41,24 +45,23 @@ type Client struct {
 	h  host.Host
 	w  *wallet.Wallet
 
-	next  uint64
-	deals map[uint64]Deal
+	deals StateStore
 
-	incoming chan Deal
+	incoming chan ClientDeal
 
 	stop    chan struct{}
 	stopped chan struct{}
 }
 
-func NewClient(cs *store.ChainStore, h host.Host, w *wallet.Wallet) *Client {
+func NewClient(cs *store.ChainStore, h host.Host, w *wallet.Wallet, ds dtypes.MetadataDS) *Client {
 	c := &Client{
 		cs: cs,
 		h:  h,
 		w:  w,
 
-		deals: map[uint64]Deal{},
+		deals: StateStore{ds: namespace.Wrap(ds, datastore.NewKey("/deals/client"))},
 
-		incoming: make(chan Deal, 16),
+		incoming: make(chan ClientDeal, 16),
 
 		stop:    make(chan struct{}),
 		stopped: make(chan struct{}),
@@ -77,7 +80,10 @@ func (c *Client) Run() {
 				log.Info("incoming deal")
 
 				// TODO: track in datastore
-				c.deals[deal.ID] = deal
+				if err := c.deals.Begin(deal.ProposalCid, deal); err != nil {
+					log.Errorf("deal state begin failed: %s", err)
+					continue
+				}
 
 			case <-c.stop:
 				return
@@ -86,25 +92,25 @@ func (c *Client) Run() {
 	}()
 }
 
-func (c *Client) Start(ctx context.Context, data cid.Cid, totalPrice types.BigInt, from address.Address, miner address.Address, minerID peer.ID, blocksDuration uint64) (uint64, error) {
+func (c *Client) Start(ctx context.Context, data cid.Cid, totalPrice types.BigInt, from address.Address, miner address.Address, minerID peer.ID, blocksDuration uint64) (cid.Cid, error) {
 	// TODO: Eww
 	f, err := ioutil.TempFile(os.TempDir(), "commP-temp-")
 	if err != nil {
-		return 0, err
+		return cid.Undef, err
 	}
 	_, err = f.Write([]byte("hello\n"))
 	if err != nil {
-		return 0, err
+		return cid.Undef, err
 	}
 	if err := f.Close(); err != nil {
-		return 0, err
+		return cid.Undef, err
 	}
 	commP, err := sectorbuilder.GeneratePieceCommitment(f.Name(), 6)
 	if err != nil {
-		return 0, err
+		return cid.Undef, err
 	}
 	if err := os.Remove(f.Name()); err != nil {
-		return 0, err
+		return cid.Undef, err
 	}
 
 	dummyCid, _ := cid.Parse("bafkqaaa")
@@ -129,7 +135,7 @@ func (c *Client) Start(ctx context.Context, data cid.Cid, totalPrice types.BigIn
 
 	s, err := c.h.NewStream(ctx, minerID, ProtocolID)
 	if err != nil {
-		return 0, err
+		return cid.Undef, err
 	}
 	defer s.Close() // TODO: not too soon?
 
@@ -137,11 +143,11 @@ func (c *Client) Start(ctx context.Context, data cid.Cid, totalPrice types.BigIn
 
 	msg, err := cbor.DumpObject(proposal)
 	if err != nil {
-		return 0, err
+		return cid.Undef, err
 	}
 	sig, err := c.w.Sign(from, msg)
 	if err != nil {
-		return 0, err
+		return cid.Undef, err
 	}
 
 	signedProposal := &SignedStorageDealProposal{
@@ -150,7 +156,7 @@ func (c *Client) Start(ctx context.Context, data cid.Cid, totalPrice types.BigIn
 	}
 
 	if err := cborrpc.WriteCborRPC(s, signedProposal); err != nil {
-		return 0, err
+		return cid.Undef, err
 	}
 
 	log.Info("Reading response")
@@ -158,20 +164,30 @@ func (c *Client) Start(ctx context.Context, data cid.Cid, totalPrice types.BigIn
 	var resp SignedStorageDealResponse
 	if err := cborrpc.ReadCborRPC(s, &resp); err != nil {
 		log.Errorw("failed to read StorageDealResponse message", "error", err)
-		return 0, err
+		return cid.Undef, err
+	}
+
+	// TODO: verify signature
+
+	if resp.Response.State != Accepted {
+		return cid.Undef, xerrors.Errorf("Deal wasn't accepted (State=%d)", resp.Response.State)
 	}
 
 	log.Info("Registering deal")
 
-	id := atomic.AddUint64(&c.next, 1)
-	deal := Deal{
-		ID:     id,
-		Status: DealResolvingMiner,
-		Miner:  minerID,
+	proposalNd, err := cbor.WrapObject(proposal, math.MaxUint64, -1)
+	if err != nil {
+		return cid.Undef, err
+	}
+
+	deal := ClientDeal{
+		ProposalCid: proposalNd.Cid(),
+		Status:      DealResolvingMiner,
+		Miner:       minerID,
 	}
 
 	c.incoming <- deal
-	return id, nil
+	return proposalNd.Cid(), nil
 }
 
 func (c *Client) Stop() {

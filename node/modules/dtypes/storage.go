@@ -22,3 +22,5 @@ type ChainBlockService bserv.BlockService
 
 type ClientFilestore *filestore.Filestore
 type ClientDAG ipld.DAGService
+
+type StagingDAG ipld.DAGService

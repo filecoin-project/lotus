@@ -221,6 +221,8 @@ func Online() Option {
 			Override(new(*sectorbuilder.SectorBuilder), modules.SectorBuilder),
 			Override(new(*storage.Miner), modules.StorageMiner),
 
+			Override(new(dtypes.StagingDAG), modules.StagingDAG),
+
 			Override(new(*deals.Handler), deals.NewHandler),
 			Override(HandleDealsKey, modules.HandleDeals),
 		),

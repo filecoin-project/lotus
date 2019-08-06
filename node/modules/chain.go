@@ -5,7 +5,6 @@ import (
 	"context"
 
 	"github.com/ipfs/go-bitswap"
-	"github.com/ipfs/go-bitswap/network"
 	"github.com/ipfs/go-blockservice"
 	"github.com/ipfs/go-car"
 	"github.com/ipfs/go-datastore"
@@ -17,13 +16,16 @@ import (
 
 	"github.com/filecoin-project/go-lotus/chain/store"
 	"github.com/filecoin-project/go-lotus/chain/types"
+	"github.com/filecoin-project/go-lotus/lib/nsbsnet"
 	"github.com/filecoin-project/go-lotus/node/modules/dtypes"
 	"github.com/filecoin-project/go-lotus/node/modules/helpers"
 	"github.com/filecoin-project/go-lotus/node/repo"
 )
 
 func ChainExchange(mctx helpers.MetricsCtx, lc fx.Lifecycle, host host.Host, rt routing.Routing, bs dtypes.ChainGCBlockstore) dtypes.ChainExchange {
-	bitswapNetwork := network.NewFromIpfsHost(host, rt)
+	// prefix protocol for chain bitswap
+	// (so bitswap uses /chain/ipfs/bitswap/1.0.0 internally for chain sync stuff)
+	bitswapNetwork := nsbsnet.NewFromIpfsHost(host, rt, "/chain")
 	exch := bitswap.New(helpers.LifecycleCtx(mctx, lc), bitswapNetwork, bs)
 	lc.Append(fx.Hook{
 		OnStop: func(ctx context.Context) error {
