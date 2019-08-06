@@ -89,7 +89,7 @@ type StorageDealResponse struct {
 	PieceInclusionProof PieceInclusionProof
 
 	// Complete
-	SectorCommitMessage cid.Cid
+	SectorCommitMessage *cid.Cid
 }
 
 type SignedStorageDealResponse struct {

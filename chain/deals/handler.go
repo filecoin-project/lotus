@@ -2,6 +2,7 @@ package deals
 
 import (
 	"context"
+	"github.com/filecoin-project/go-lotus/chain/address"
 	"github.com/filecoin-project/go-lotus/lib/sectorbuilder"
 	"github.com/ipfs/go-cid"
 	"github.com/ipfs/go-datastore"
@@ -19,6 +20,10 @@ import (
 	inet "github.com/libp2p/go-libp2p-core/network"
 	"github.com/libp2p/go-libp2p-core/peer"
 )
+
+func init() {
+	cbor.RegisterCborType(MinerDeal{})
+}
 
 type MinerDeal struct {
 	Client      peer.ID
@@ -41,21 +46,38 @@ type Handler struct {
 
 	incoming chan MinerDeal
 
+	actor address.Address
+
 	stop    chan struct{}
 	stopped chan struct{}
 }
 
-func NewHandler(w *wallet.Wallet, ds dtypes.MetadataDS, sb *sectorbuilder.SectorBuilder, dag dtypes.StagingDAG) *Handler {
+func NewHandler(w *wallet.Wallet, ds dtypes.MetadataDS, sb *sectorbuilder.SectorBuilder, dag dtypes.StagingDAG) (*Handler, error) {
+	addr, err := ds.Get(datastore.NewKey("miner-address"))
+	if err != nil {
+		return nil, err
+	}
+	minerAddress, err := address.NewFromBytes(addr)
+	if err != nil {
+		return nil, err
+	}
+
 	return &Handler{
 		w:   w,
+		sb:  sb,
 		dag: dag,
 
+		incoming: make(chan MinerDeal),
+
+		actor: minerAddress,
+
 		deals: StateStore{ds: namespace.Wrap(ds, datastore.NewKey("/deals/client"))},
-	}
+	}, nil
 }
 
 func (h *Handler) Run(ctx context.Context) {
 	go func() {
+		defer log.Error("quitting deal handler loop")
 		defer close(h.stopped)
 		fetched := make(chan cid.Cid)
 
@@ -67,7 +89,7 @@ func (h *Handler) Run(ctx context.Context) {
 				if err := h.deals.Begin(deal.ProposalCid, deal); err != nil {
 					// TODO: This can happen when client re-sends proposal
 					log.Errorf("deal tracking failed: %s", err)
-					return
+					continue
 				}
 
 				go func(id cid.Cid) {
@@ -104,7 +126,7 @@ func (h *Handler) Run(ctx context.Context) {
 				if err != nil {
 					// TODO: fail deal
 					log.Errorf("failed to get file root for deal: %s", err)
-					return
+					continue
 				}
 
 				// TODO: abstract this away into ReadSizeCloser + implement different modes
@@ -112,7 +134,7 @@ func (h *Handler) Run(ctx context.Context) {
 				if err != nil {
 					// TODO: fail deal
 					log.Errorf("cannot open unixfs file: %s", err)
-					return
+					continue
 				}
 
 				f, ok := n.(files.File)
@@ -127,7 +149,7 @@ func (h *Handler) Run(ctx context.Context) {
 				if err != nil {
 					log.Errorf("failed to get file size: %s", err)
 					// TODO: fail deal
-					return
+					continue
 				}
 
 				// TODO: can we use pipes?
@@ -135,7 +157,7 @@ func (h *Handler) Run(ctx context.Context) {
 				if err != nil {
 					// TODO: fail deal
 					log.Errorf("AddPiece failed: %s", err)
-					return
+					continue
 				}
 
 				log.Warnf("New Sector: %d", sectorID)
@@ -162,6 +184,12 @@ func (h *Handler) HandleStream(s inet.Stream) {
 	// TODO: Validate proposal maybe
 	// (and signature, obviously)
 
+	if proposal.Proposal.MinerAddress != h.actor {
+		log.Errorf("proposal with wrong MinerAddress: %s", proposal.Proposal.MinerAddress)
+		// TODO: send error
+		return
+	}
+
 	switch proposal.Proposal.SerializationMode {
 	//case SerializationRaw:
 	//case SerializationIPLD:
@@ -175,6 +203,7 @@ func (h *Handler) HandleStream(s inet.Stream) {
 	// TODO: Review: Not signed?
 	proposalNd, err := cbor.WrapObject(proposal.Proposal, math.MaxUint64, -1)
 	if err != nil {
+		log.Error(err)
 		return
 	}
 
@@ -189,11 +218,26 @@ func (h *Handler) HandleStream(s inet.Stream) {
 		log.Errorw("failed to serialize response message", "error", err)
 		return
 	}
-	sig, err := h.w.Sign(proposal.Proposal.MinerAddress, msg)
+
+	def, err := h.w.ListAddrs()
+	if err != nil {
+		log.Error(err)
+		return
+	}
+	if len(def) != 1 {
+		// NOTE: If this ever happens for a good reason, implement this with GetWorker on the miner actor
+		// TODO: implement with GetWorker on the miner actor
+		log.Errorf("Expected only 1 address in wallet, got %d", len(def))
+		return
+	}
+
+	sig, err := h.w.Sign(def[0], msg)
 	if err != nil {
 		log.Errorw("failed to sign response message", "error", err)
 		return
 	}
+
+	log.Info("accepting deal")
 
 	signedResponse := &SignedStorageDealResponse{
 		Response:  response,
@@ -206,8 +250,11 @@ func (h *Handler) HandleStream(s inet.Stream) {
 
 	ref, err := cid.Parse(proposal.Proposal.PieceRef)
 	if err != nil {
+		log.Error(err)
 		return
 	}
+
+	log.Info("processing deal")
 
 	h.incoming <- MinerDeal{
 		Client:      s.Conn().RemotePeer(),
@@ -217,4 +264,9 @@ func (h *Handler) HandleStream(s inet.Stream) {
 
 		Ref: ref,
 	}
+}
+
+func (h *Handler) Stop() {
+	close(h.stop)
+	<-h.stopped
 }

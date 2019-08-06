@@ -103,8 +103,20 @@ func StorageMiner(mctx helpers.MetricsCtx, lc fx.Lifecycle, api api.FullNode, h 
 	return sm, nil
 }
 
-func HandleDeals(h host.Host, handler *deals.Handler) {
-	h.SetStreamHandler(deals.ProtocolID, handler.HandleStream)
+func HandleDeals(mctx helpers.MetricsCtx, lc fx.Lifecycle, host host.Host, h *deals.Handler) {
+	ctx := helpers.LifecycleCtx(mctx, lc)
+
+	lc.Append(fx.Hook{
+		OnStart: func(context.Context) error {
+			h.Run(ctx)
+			host.SetStreamHandler(deals.ProtocolID, h.HandleStream)
+			return nil
+		},
+		OnStop: func(context.Context) error {
+			h.Stop()
+			return nil
+		},
+	})
 }
 
 func StagingDAG(mctx helpers.MetricsCtx, lc fx.Lifecycle, r repo.LockedRepo, rt routing.Routing, h host.Host) (dtypes.StagingDAG, error) {
