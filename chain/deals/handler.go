@@ -93,6 +93,7 @@ func (h *Handler) Run(ctx context.Context) {
 				}
 
 				go func(id cid.Cid) {
+					log.Info("fetching data for a deal")
 					err := merkledag.FetchGraph(ctx, deal.Ref, h.dag)
 					if err != nil {
 						return
@@ -102,6 +103,7 @@ func (h *Handler) Run(ctx context.Context) {
 					case fetched <- id:
 					case <-h.stop:
 					}
+					log.Info("Fetched!")
 				}(deal.ProposalCid)
 			case id := <-fetched:
 				// TODO: send response if client still there

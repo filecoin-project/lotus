@@ -17,7 +17,7 @@ var log = logging.Logger("main")
 const FlagStorageRepo = "storagerepo"
 
 func main() {
-	logging.SetLogLevel("*", "DEBUG")
+	logging.SetLogLevel("*", "INFO")
 	local := []*cli.Command{
 		runCmd,
 		initCmd,

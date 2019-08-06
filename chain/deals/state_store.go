@@ -18,7 +18,8 @@ func (st *StateStore) Begin(i cid.Cid, s interface{}) error {
 		return err
 	}
 	if has {
-		return xerrors.Errorf("Already tracking state for %s", i)
+		// TODO: uncomment after deals work
+		//return xerrors.Errorf("Already tracking state for %s", i)
 	}
 	b, err := cbor.DumpObject(s)
 	if err != nil {
@@ -49,7 +50,7 @@ func (st *StateStore) MutateMiner(i cid.Cid, mutator func(MinerDeal) (MinerDeal,
 func minerMutator(m func(MinerDeal) (MinerDeal, error)) func([]byte) ([]byte, error) {
 	return func(in []byte) ([]byte, error) {
 		var cur MinerDeal
-		err := cbor.DecodeInto(in, cur)
+		err := cbor.DecodeInto(in, &cur)
 		if err != nil {
 			return nil, err
 		}
@@ -70,7 +71,7 @@ func (st *StateStore) MutateClient(i cid.Cid, mutator func(ClientDeal) (ClientDe
 func clientMutator(m func(ClientDeal) (ClientDeal, error)) func([]byte) ([]byte, error) {
 	return func(in []byte) ([]byte, error) {
 		var cur ClientDeal
-		err := cbor.DecodeInto(in, cur)
+		err := cbor.DecodeInto(in, &cur)
 		if err != nil {
 			return nil, err
 		}
