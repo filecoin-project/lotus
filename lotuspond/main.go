@@ -63,11 +63,11 @@ func (api *api) Spawn() (nodeInfo, error) {
 
 	}
 
-	errlogfile, err := os.OpenFile(dir + ".err.log", os.O_CREATE | os.O_WRONLY, 0644)
+	errlogfile, err := os.OpenFile(dir+".err.log", os.O_CREATE|os.O_WRONLY, 0644)
 	if err != nil {
 		return nodeInfo{}, err
 	}
-	logfile, err := os.OpenFile(dir + ".out.log", os.O_CREATE | os.O_WRONLY, 0644)
+	logfile, err := os.OpenFile(dir+".out.log", os.O_CREATE|os.O_WRONLY, 0644)
 	if err != nil {
 		return nodeInfo{}, err
 	}
