@@ -18,6 +18,8 @@ func init() {
 	cbor.RegisterCborType(StorageMinerActorState{})
 	cbor.RegisterCborType(StorageMinerConstructorParams{})
 	cbor.RegisterCborType(CommitSectorParams{})
+	cbor.RegisterCborType(MinerInfo{})
+	cbor.RegisterCborType(SubmitPoStParams{})
 }
 
 var ProvingPeriodDuration = uint64(2 * 60) // an hour, for now
@@ -26,22 +28,8 @@ const POST_SECTORS_COUNT = 8192
 type StorageMinerActor struct{}
 
 type StorageMinerActorState struct {
-	// Account that owns this miner.
-	// - Income and returned collateral are paid to this address.
-	// - This address is also allowed to change the worker address for the miner.
-	Owner address.Address
-
-	// Worker account for this miner.
-	// This will be the key that is used to sign blocks created by this miner, and
-	// sign messages sent on behalf of this miner to commit sectors, submit PoSts, and
-	// other day to day miner activities.
-	Worker address.Address
-
-	// Libp2p identity that should be used when connecting to this miner.
-	PeerID peer.ID
-
-	// Amount of space in each sector committed to the network by this miner.
-	SectorSize types.BigInt
+	// Contains mostly static info about this miner
+	Info cid.Cid
 
 	// Collateral that is waiting to be withdrawn.
 	DePledgedCollateral types.BigInt
@@ -70,8 +58,6 @@ type StorageMinerActorState struct {
 	// Amount of power this miner has.
 	Power types.BigInt
 
-	ProvingPeriodEnd uint64
-
 	// List of sectors that this miner was slashed for.
 	//SlashedSet SectorSet
 
@@ -80,6 +66,27 @@ type StorageMinerActorState struct {
 
 	// The amount of storage collateral that is owed to clients, and cannot be used for collateral anymore.
 	OwedStorageCollateral types.BigInt
+
+	ProvingPeriodEnd uint64
+}
+
+type MinerInfo struct {
+	// Account that owns this miner.
+	// - Income and returned collateral are paid to this address.
+	// - This address is also allowed to change the worker address for the miner.
+	Owner address.Address
+
+	// Worker account for this miner.
+	// This will be the key that is used to sign blocks created by this miner, and
+	// sign messages sent on behalf of this miner to commit sectors, submit PoSts, and
+	// other day to day miner activities.
+	Worker address.Address
+
+	// Libp2p identity that should be used when connecting to this miner.
+	PeerID peer.ID
+
+	// Amount of space in each sector committed to the network by this miner.
+	SectorSize types.BigInt
 }
 
 type StorageMinerConstructorParams struct {
@@ -92,7 +99,7 @@ type StorageMinerConstructorParams struct {
 type maMethods struct {
 	Constructor          uint64
 	CommitSector         uint64
-	SubmitPost           uint64
+	SubmitPoSt           uint64
 	SlashStorageFault    uint64
 	GetCurrentProvingSet uint64
 	ArbitrateDeal        uint64
@@ -112,9 +119,9 @@ func (sma StorageMinerActor) Exports() []interface{} {
 	return []interface{}{
 		1: sma.StorageMinerConstructor,
 		2: sma.CommitSector,
-		//3:  sma.SubmitPost,
+		3: sma.SubmitPoSt,
 		//4:  sma.SlashStorageFault,
-		//5:  sma.GetCurrentProvingSet,
+		//5: sma.GetCurrentProvingSet,
 		//6:  sma.ArbitrateDeal,
 		//7:  sma.DePledge,
 		8:  sma.GetOwner,
@@ -137,13 +144,29 @@ func loadState(vmctx types.VMContext) (cid.Cid, *StorageMinerActorState, ActorEr
 	return oldstate, &self, nil
 }
 
-func (sma StorageMinerActor) StorageMinerConstructor(act *types.Actor, vmctx types.VMContext, params *StorageMinerConstructorParams) ([]byte, ActorError) {
-	var self StorageMinerActorState
-	self.Owner = params.Owner
-	self.Worker = params.Worker
-	self.PeerID = params.PeerID
-	self.SectorSize = params.SectorSize
+func loadMinerInfo(vmctx types.VMContext, m *StorageMinerActorState) (*MinerInfo, ActorError) {
+	var mi MinerInfo
+	if err := vmctx.Storage().Get(m.Info, &mi); err != nil {
+		return nil, err
+	}
 
+	return &mi, nil
+}
+
+func (sma StorageMinerActor) StorageMinerConstructor(act *types.Actor, vmctx types.VMContext, params *StorageMinerConstructorParams) ([]byte, ActorError) {
+	minerInfo := &MinerInfo{
+		Owner:      params.Owner,
+		Worker:     params.Worker,
+		PeerID:     params.PeerID,
+		SectorSize: params.SectorSize,
+	}
+
+	minfocid, err := vmctx.Storage().Put(minerInfo)
+	if err != nil {
+		return nil, err
+	}
+
+	var self StorageMinerActorState
 	nd := hamt.NewNode(vmctx.Ipld())
 	sectors, nerr := vmctx.Ipld().Put(context.TODO(), nd)
 	if nerr != nil {
@@ -151,6 +174,7 @@ func (sma StorageMinerActor) StorageMinerConstructor(act *types.Actor, vmctx typ
 	}
 	self.Sectors = sectors
 	self.ProvingSet = sectors
+	self.Info = minfocid
 
 	storage := vmctx.Storage()
 	c, err := storage.Put(self)
@@ -179,7 +203,12 @@ func (sma StorageMinerActor) CommitSector(act *types.Actor, vmctx types.VMContex
 		return nil, err
 	}
 
-	if !ValidatePoRep(self.SectorSize, params) {
+	mi, err := loadMinerInfo(vmctx, self)
+	if err != nil {
+		return nil, err
+	}
+
+	if !ValidatePoRep(mi.SectorSize, params) {
 		return nil, aerrors.New(1, "bad proof!")
 	}
 
@@ -193,7 +222,7 @@ func (sma StorageMinerActor) CommitSector(act *types.Actor, vmctx types.VMContex
 	}
 
 	// Power of the miner after adding this sector
-	futurePower := types.BigAdd(self.Power, self.SectorSize)
+	futurePower := types.BigAdd(self.Power, mi.SectorSize)
 	collateralRequired := CollateralForPower(futurePower)
 
 	if types.BigCmp(collateralRequired, act.Balance) < 0 {
@@ -233,6 +262,57 @@ func (sma StorageMinerActor) CommitSector(act *types.Actor, vmctx types.VMContex
 		return nil, err
 	}
 	if err := vmctx.Storage().Commit(oldstate, nstate); err != nil {
+		return nil, err
+	}
+
+	return nil, nil
+}
+
+type SubmitPoStParams struct {
+	// TODO: once the spec changes finish, we have more work to do here...
+}
+
+// TODO: this is a dummy method that allows us to plumb in other parts of the
+// system for now.
+func (sma StorageMinerActor) SubmitPoSt(act *types.Actor, vmctx types.VMContext, params *SubmitPoStParams) ([]byte, ActorError) {
+	oldstate, self, err := loadState(vmctx)
+	if err != nil {
+		return nil, err
+	}
+
+	mi, err := loadMinerInfo(vmctx, self)
+	if err != nil {
+		return nil, err
+	}
+
+	if vmctx.Message().From != mi.Worker {
+		return nil, aerrors.New(1, "not authorized to submit post for miner")
+	}
+
+	oldProvingSetSize := self.ProvingSetSize
+
+	self.ProvingSet = self.Sectors
+	self.ProvingSetSize = self.SectorSetSize
+
+	oldPower := self.Power
+	self.Power = types.BigMul(types.NewInt(oldProvingSetSize), mi.SectorSize)
+
+	enc, err := SerializeParams(&UpdateStorageParams{Delta: types.BigSub(self.Power, oldPower)})
+	if err != nil {
+		return nil, err
+	}
+
+	_, err = vmctx.Send(StorageMarketAddress, SMAMethods.UpdateStorage, types.NewInt(0), enc)
+	if err != nil {
+		return nil, err
+	}
+
+	c, err := vmctx.Storage().Put(self)
+	if err != nil {
+		return nil, err
+	}
+
+	if err := vmctx.Storage().Commit(oldstate, c); err != nil {
 		return nil, err
 	}
 
@@ -289,7 +369,13 @@ func (sma StorageMinerActor) GetWorkerAddr(act *types.Actor, vmctx types.VMConte
 	if err != nil {
 		return nil, err
 	}
-	return self.Worker.Bytes(), nil
+
+	mi, err := loadMinerInfo(vmctx, self)
+	if err != nil {
+		return nil, err
+	}
+
+	return mi.Worker.Bytes(), nil
 }
 
 func (sma StorageMinerActor) GetOwner(act *types.Actor, vmctx types.VMContext, params *struct{}) ([]byte, ActorError) {
@@ -298,7 +384,12 @@ func (sma StorageMinerActor) GetOwner(act *types.Actor, vmctx types.VMContext, p
 		return nil, err
 	}
 
-	return self.Owner.Bytes(), nil
+	mi, err := loadMinerInfo(vmctx, self)
+	if err != nil {
+		return nil, err
+	}
+
+	return mi.Owner.Bytes(), nil
 }
 
 func (sma StorageMinerActor) GetPeerID(act *types.Actor, vmctx types.VMContext, params *struct{}) ([]byte, ActorError) {
@@ -307,7 +398,12 @@ func (sma StorageMinerActor) GetPeerID(act *types.Actor, vmctx types.VMContext, 
 		return nil, err
 	}
 
-	return []byte(self.PeerID), nil
+	mi, err := loadMinerInfo(vmctx, self)
+	if err != nil {
+		return nil, err
+	}
+
+	return []byte(mi.PeerID), nil
 }
 
 type UpdatePeerIDParams struct {
@@ -320,11 +416,23 @@ func (sma StorageMinerActor) UpdatePeerID(act *types.Actor, vmctx types.VMContex
 		return nil, err
 	}
 
-	if vmctx.Message().From != self.Worker {
+	mi, err := loadMinerInfo(vmctx, self)
+	if err != nil {
+		return nil, err
+	}
+
+	if vmctx.Message().From != mi.Worker {
 		return nil, aerrors.New(2, "only the mine worker may update the peer ID")
 	}
 
-	self.PeerID = params.PeerID
+	mi.PeerID = params.PeerID
+
+	mic, err := vmctx.Storage().Put(mi)
+	if err != nil {
+		return nil, err
+	}
+
+	self.Info = mic
 
 	c, err := vmctx.Storage().Put(self)
 	if err != nil {
@@ -344,5 +452,10 @@ func (sma StorageMinerActor) GetSectorSize(act *types.Actor, vmctx types.VMConte
 		return nil, err
 	}
 
-	return self.SectorSize.Bytes(), nil
+	mi, err := loadMinerInfo(vmctx, self)
+	if err != nil {
+		return nil, err
+	}
+
+	return mi.SectorSize.Bytes(), nil
 }

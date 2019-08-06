@@ -119,7 +119,17 @@ func TestStorageMarketCreateMiner(t *testing.T) {
 		t.Fatal(err)
 	}
 
-	if smas.Owner != h.From {
-		t.Fatalf("Owner should be %s, but is %s", h.From, smas.Owner)
+	iblock, err := h.bs.Get(smas.Info)
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	var minfo MinerInfo
+	if err := cbor.DecodeInto(iblock.RawData(), &minfo); err != nil {
+		t.Fatal(err)
+	}
+
+	if minfo.Owner != h.From {
+		t.Fatalf("Owner should be %s, but is %s", h.From, minfo.Owner)
 	}
 }
