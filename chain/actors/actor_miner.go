@@ -18,6 +18,8 @@ func init() {
 	cbor.RegisterCborType(StorageMinerActorState{})
 	cbor.RegisterCborType(StorageMinerConstructorParams{})
 	cbor.RegisterCborType(CommitSectorParams{})
+	cbor.RegisterCborType(MinerInfo{})
+	cbor.RegisterCborType(SubmitPoStParams{})
 }
 
 var ProvingPeriodDuration = uint64(2 * 60) // an hour, for now
@@ -97,7 +99,7 @@ type StorageMinerConstructorParams struct {
 type maMethods struct {
 	Constructor          uint64
 	CommitSector         uint64
-	SubmitPost           uint64
+	SubmitPoSt           uint64
 	SlashStorageFault    uint64
 	GetCurrentProvingSet uint64
 	ArbitrateDeal        uint64
@@ -172,6 +174,7 @@ func (sma StorageMinerActor) StorageMinerConstructor(act *types.Actor, vmctx typ
 	}
 	self.Sectors = sectors
 	self.ProvingSet = sectors
+	self.Info = minfocid
 
 	storage := vmctx.Storage()
 	c, err := storage.Put(self)
@@ -269,6 +272,8 @@ type SubmitPoStParams struct {
 	// TODO: once the spec changes finish, we have more work to do here...
 }
 
+// TODO: this is a dummy method that allows us to plumb in other parts of the
+// system for now.
 func (sma StorageMinerActor) SubmitPoSt(act *types.Actor, vmctx types.VMContext, params *SubmitPoStParams) ([]byte, ActorError) {
 	oldstate, self, err := loadState(vmctx)
 	if err != nil {
@@ -290,9 +295,28 @@ func (sma StorageMinerActor) SubmitPoSt(act *types.Actor, vmctx types.VMContext,
 	self.ProvingSetSize = self.SectorSetSize
 
 	oldPower := self.Power
-	self.Power = (oldProvingSetSize * mi.SectorSize)
+	self.Power = types.BigMul(types.NewInt(oldProvingSetSize), mi.SectorSize)
 
-	// TODO: call update power
+	enc, err := SerializeParams(&UpdateStorageParams{Delta: types.BigSub(self.Power, oldPower)})
+	if err != nil {
+		return nil, err
+	}
+
+	_, err = vmctx.Send(StorageMarketAddress, SMAMethods.UpdateStorage, types.NewInt(0), enc)
+	if err != nil {
+		return nil, err
+	}
+
+	c, err := vmctx.Storage().Put(self)
+	if err != nil {
+		return nil, err
+	}
+
+	if err := vmctx.Storage().Commit(oldstate, c); err != nil {
+		return nil, err
+	}
+
+	return nil, nil
 }
 
 func (sma StorageMinerActor) GetPower(act *types.Actor, vmctx types.VMContext, params *struct{}) ([]byte, ActorError) {
@@ -345,7 +369,13 @@ func (sma StorageMinerActor) GetWorkerAddr(act *types.Actor, vmctx types.VMConte
 	if err != nil {
 		return nil, err
 	}
-	return self.Worker.Bytes(), nil
+
+	mi, err := loadMinerInfo(vmctx, self)
+	if err != nil {
+		return nil, err
+	}
+
+	return mi.Worker.Bytes(), nil
 }
 
 func (sma StorageMinerActor) GetOwner(act *types.Actor, vmctx types.VMContext, params *struct{}) ([]byte, ActorError) {
@@ -354,7 +384,12 @@ func (sma StorageMinerActor) GetOwner(act *types.Actor, vmctx types.VMContext, p
 		return nil, err
 	}
 
-	return self.Owner.Bytes(), nil
+	mi, err := loadMinerInfo(vmctx, self)
+	if err != nil {
+		return nil, err
+	}
+
+	return mi.Owner.Bytes(), nil
 }
 
 func (sma StorageMinerActor) GetPeerID(act *types.Actor, vmctx types.VMContext, params *struct{}) ([]byte, ActorError) {
@@ -363,7 +398,12 @@ func (sma StorageMinerActor) GetPeerID(act *types.Actor, vmctx types.VMContext, 
 		return nil, err
 	}
 
-	return []byte(self.PeerID), nil
+	mi, err := loadMinerInfo(vmctx, self)
+	if err != nil {
+		return nil, err
+	}
+
+	return []byte(mi.PeerID), nil
 }
 
 type UpdatePeerIDParams struct {
@@ -376,11 +416,23 @@ func (sma StorageMinerActor) UpdatePeerID(act *types.Actor, vmctx types.VMContex
 		return nil, err
 	}
 
-	if vmctx.Message().From != self.Worker {
+	mi, err := loadMinerInfo(vmctx, self)
+	if err != nil {
+		return nil, err
+	}
+
+	if vmctx.Message().From != mi.Worker {
 		return nil, aerrors.New(2, "only the mine worker may update the peer ID")
 	}
 
-	self.PeerID = params.PeerID
+	mi.PeerID = params.PeerID
+
+	mic, err := vmctx.Storage().Put(mi)
+	if err != nil {
+		return nil, err
+	}
+
+	self.Info = mic
 
 	c, err := vmctx.Storage().Put(self)
 	if err != nil {
@@ -400,5 +452,10 @@ func (sma StorageMinerActor) GetSectorSize(act *types.Actor, vmctx types.VMConte
 		return nil, err
 	}
 
-	return self.SectorSize.Bytes(), nil
+	mi, err := loadMinerInfo(vmctx, self)
+	if err != nil {
+		return nil, err
+	}
+
+	return mi.SectorSize.Bytes(), nil
 }
