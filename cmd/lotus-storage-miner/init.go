@@ -155,7 +155,7 @@ var initCmd = &cli.Command{
 			return err
 		}
 
-		log.Infof("Waiting for confirmation (TODO: actually wait)")
+		log.Infof("Waiting for confirmation")
 
 		mw, err := api.ChainWaitMsg(ctx, signed.Cid())
 		if err != nil {

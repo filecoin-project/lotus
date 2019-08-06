@@ -67,15 +67,17 @@ func (fsr *FsRepo) Exists() (bool, error) {
 }
 
 func (fsr *FsRepo) Init() error {
-	if _, err := os.Stat(fsr.path); err == nil {
-		return fsr.initKeystore()
-	} else if !os.IsNotExist(err) {
+	exist, err := fsr.Exists()
+	if err != nil {
 		return err
+	}
+	if exist {
+		return nil
 	}
 
 	log.Infof("Initializing repo at '%s'", fsr.path)
-	err := os.Mkdir(fsr.path, 0755) //nolint: gosec
-	if err != nil {
+	err = os.Mkdir(fsr.path, 0755) //nolint: gosec
+	if err != nil && !os.IsExist(err) {
 		return err
 	}
 	c, err := os.Create(filepath.Join(fsr.path, fsConfig))
