@@ -121,7 +121,7 @@ jobs:
       - run:
           name: Lint
           command: |
-            golangci-lint run -v \
+            $HOME/.local/bin/golangci-lint run -v \
               --concurrency << parameters.concurrency >> << parameters.args >>
   lint-changes:
     <<: *lint
