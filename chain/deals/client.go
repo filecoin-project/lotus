@@ -48,9 +48,9 @@ type ClientDeal struct {
 }
 
 type Client struct {
-	cs *store.ChainStore
-	h  host.Host
-	w  *wallet.Wallet
+	cs  *store.ChainStore
+	h   host.Host
+	w   *wallet.Wallet
 	dag dtypes.ClientDAG
 
 	deals StateStore
@@ -63,9 +63,9 @@ type Client struct {
 
 func NewClient(cs *store.ChainStore, h host.Host, w *wallet.Wallet, ds dtypes.MetadataDS, dag dtypes.ClientDAG) *Client {
 	c := &Client{
-		cs: cs,
-		h:  h,
-		w:  w,
+		cs:  cs,
+		h:   h,
+		w:   w,
 		dag: dag,
 
 		deals: StateStore{ds: namespace.Wrap(ds, datastore.NewKey("/deals/client"))},
