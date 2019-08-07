@@ -52,6 +52,11 @@ type Handler struct {
 	stopped chan struct{}
 }
 
+type fetchResult struct {
+	id  cid.Cid
+	err error
+}
+
 func NewHandler(w *wallet.Wallet, ds dtypes.MetadataDS, sb *sectorbuilder.SectorBuilder, dag dtypes.StagingDAG) (*Handler, error) {
 	addr, err := ds.Get(datastore.NewKey("miner-address"))
 	if err != nil {
@@ -79,7 +84,7 @@ func (h *Handler) Run(ctx context.Context) {
 	go func() {
 		defer log.Error("quitting deal handler loop")
 		defer close(h.stopped)
-		fetched := make(chan cid.Cid)
+		fetched := make(chan fetchResult)
 
 		for {
 			select {
@@ -95,17 +100,20 @@ func (h *Handler) Run(ctx context.Context) {
 				go func(id cid.Cid) {
 					log.Info("fetching data for a deal")
 					err := merkledag.FetchGraph(ctx, deal.Ref, h.dag)
-					if err != nil {
-						return
-					}
-
 					select {
-					case fetched <- id:
+					case fetched <- fetchResult{
+						id:  id,
+						err: err,
+					}:
 					case <-h.stop:
 					}
-					log.Info("Fetched!")
 				}(deal.ProposalCid)
-			case id := <-fetched:
+			case result := <-fetched:
+				if result.err != nil {
+					log.Errorf("failed to fetch data for deal: %s", result.err)
+					// TODO: fail deal
+				}
+
 				// TODO: send response if client still there
 				// TODO: staging
 
@@ -113,7 +121,7 @@ func (h *Handler) Run(ctx context.Context) {
 				log.Info("sealing deal")
 
 				var deal MinerDeal
-				err := h.deals.MutateMiner(id, func(in MinerDeal) (MinerDeal, error) {
+				err := h.deals.MutateMiner(result.id, func(in MinerDeal) (MinerDeal, error) {
 					in.State = Sealing
 					deal = in
 					return in, nil
