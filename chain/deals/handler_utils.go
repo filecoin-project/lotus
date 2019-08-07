@@ -21,7 +21,7 @@ func (h *Handler) failDeal(id cid.Cid, cerr error) {
 		cerr = xerrors.Errorf("unknown error (fail called at %s:%d)", f, l)
 	}
 
-	log.Error("Deal %s failed: %s", id, cerr)
+	log.Errorf("deal %s failed: %s", id, cerr)
 
 	err := h.sendSignedResponse(StorageDealResponse{
 		State:    Failed,
@@ -76,7 +76,7 @@ func (h *Handler) sendSignedResponse(resp StorageDealResponse) error {
 	if len(def) != 1 {
 		// NOTE: If this ever happens for a good reason, implement this with GetWorker on the miner actor
 		// TODO: implement with GetWorker on the miner actor
-		return xerrors.Errorf("Expected only 1 address in wallet, got %d", len(def))
+		return xerrors.Errorf("expected only 1 address in wallet, got %d", len(def))
 	}
 
 	sig, err := h.w.Sign(def[0], msg)

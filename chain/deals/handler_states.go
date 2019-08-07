@@ -59,7 +59,7 @@ func (h *Handler) staged(ctx context.Context, deal MinerDeal) error {
 		Proposal: deal.ProposalCid,
 	})
 	if err != nil {
-		return err
+		log.Warnf("Sending deal response failed: %s", err)
 	}
 
 	root, err := h.dag.Get(ctx, deal.Ref)
