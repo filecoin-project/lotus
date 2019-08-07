@@ -2,6 +2,7 @@ package gen
 
 import (
 	"context"
+	"fmt"
 
 	bls "github.com/filecoin-project/go-bls-sigs"
 	cid "github.com/ipfs/go-cid"
@@ -69,13 +70,19 @@ func MinerCreateBlock(ctx context.Context, cs *store.ChainStore, miner address.A
 		if err != nil {
 			return nil, errors.Wrap(err, "apply message failure")
 		}
+		if rec.ActorErr != nil {
+			fmt.Println(rec.ActorErr)
+		}
 
-		receipts = append(receipts, rec)
+		receipts = append(receipts, rec.MessageReceipt)
 	}
 	for _, msg := range secpkMessages {
 		rec, err := vmi.ApplyMessage(ctx, &msg.Message)
 		if err != nil {
 			return nil, errors.Wrap(err, "apply message failure")
+		}
+		if rec.ActorErr != nil {
+			fmt.Println(rec.ActorErr)
 		}
 
 		receipts = append(receipts, rec.MessageReceipt)

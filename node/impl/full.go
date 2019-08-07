@@ -100,6 +100,31 @@ func (a *FullNodeAPI) ChainGetBlockMessages(ctx context.Context, msg cid.Cid) (*
 	}, nil
 }
 
+func (a *FullNodeAPI) ChainGetBlockReceipts(ctx context.Context, bcid cid.Cid) ([]*types.MessageReceipt, error) {
+	b, err := a.Chain.GetBlock(bcid)
+	if err != nil {
+		return nil, err
+	}
+
+	// TODO: need to get the number of messages better than this
+	bm, sm, err := a.Chain.MessagesForBlock(b)
+	if err != nil {
+		return nil, err
+	}
+
+	var out []*types.MessageReceipt
+	for i := 0; i < len(bm)+len(sm); i++ {
+		r, err := a.Chain.GetReceipt(b, i)
+		if err != nil {
+			return nil, err
+		}
+
+		out = append(out, r)
+	}
+
+	return out, nil
+}
+
 func (a *FullNodeAPI) ChainCall(ctx context.Context, msg *types.Message, ts *types.TipSet) (*types.MessageReceipt, error) {
 	if ts == nil {
 		ts = a.Chain.GetHeaviestTipSet()
@@ -239,6 +264,8 @@ func (a *FullNodeAPI) StateMinerSectors(ctx context.Context, addr address.Addres
 	if err != nil {
 		return nil, err
 	}
+
+	log.Info("miner sector count: ", minerState.SectorSetSize)
 
 	var sinfos []*api.SectorInfo
 	// Note to self: the hamt isnt a great data structure to use here... need to implement the sector set

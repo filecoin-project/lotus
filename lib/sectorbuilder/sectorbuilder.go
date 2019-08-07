@@ -7,7 +7,11 @@ import (
 
 	"github.com/filecoin-project/go-lotus/chain/address"
 	sectorbuilder "github.com/filecoin-project/go-sectorbuilder"
+
+	logging "github.com/ipfs/go-log"
 )
+
+var log = logging.Logger("sectorbuilder")
 
 type SectorSealingStatus = sectorbuilder.SectorSealingStatus
 
@@ -39,6 +43,7 @@ func New(cfg *SectorBuilderConfig) (*SectorBuilder, error) {
 
 	return &SectorBuilder{
 		handle: sbp,
+		sschan: make(chan SectorSealingStatus, 32),
 	}, nil
 }
 

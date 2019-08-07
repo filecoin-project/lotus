@@ -41,6 +41,15 @@ func BigFromBytes(b []byte) BigInt {
 	return BigInt{i}
 }
 
+func BigFromString(s string) (BigInt, error) {
+	v, ok := big.NewInt(0).SetString(s, 10)
+	if !ok {
+		return BigInt{}, fmt.Errorf("failed to parse string as a big int")
+	}
+
+	return BigInt{v}, nil
+}
+
 func BigMul(a, b BigInt) BigInt {
 	return BigInt{big.NewInt(0).Mul(a.Int, b.Int)}
 }

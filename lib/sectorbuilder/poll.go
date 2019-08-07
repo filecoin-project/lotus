@@ -3,12 +3,12 @@ package sectorbuilder
 import (
 	"context"
 	"time"
-
-	"github.com/prometheus/common/log"
 )
 
 // TODO: really need to get a callbacks API from the rust-sectorbuilder
 func (sb *SectorBuilder) pollForSealedSectors(ctx context.Context) {
+	log.Info("starting sealed sector poller")
+	defer log.Info("leaving sealed sector polling routine")
 	watching := make(map[uint64]bool)
 
 	staged, err := sb.GetAllStagedSectors()
@@ -33,9 +33,11 @@ func (sb *SectorBuilder) pollForSealedSectors(ctx context.Context) {
 				log.Errorf("in loop: failed to get staged sectors: %s", err)
 				continue
 			}
+			log.Info("num staged sectors: ", len(staged))
 			for _, s := range staged {
 				watching[s.SectorID] = true
 			}
+			log.Info("len watching: ", len(watching))
 
 			for s := range watching {
 				status, err := sb.SealStatus(s)
@@ -44,6 +46,7 @@ func (sb *SectorBuilder) pollForSealedSectors(ctx context.Context) {
 					continue
 				}
 
+				log.Infof("sector %d has status %d", s, status.SealStatusCode)
 				if status.SealStatusCode == 0 { // constant pls, zero implies the last step?
 					delete(watching, s)
 					sb.sschan <- status

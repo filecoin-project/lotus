@@ -73,15 +73,18 @@ func (m *Miner) Run(ctx context.Context) error {
 }
 
 func (m *Miner) handlePostingSealedSectors(ctx context.Context) {
+	defer log.Info("leaving handle posting sealed sectors routine")
 	for {
 		select {
 		case sinfo, ok := <-m.sb.SealedSectorChan():
+			log.Info("got a sealed sector notification!")
 			if !ok {
 				// TODO: set some state variable so that this state can be
 				// visible via some status command
 				log.Warning("sealed sector channel closed, aborting process")
 				return
 			}
+			log.Info("about to send commit sector message: ", sinfo.SectorID, m.maddr)
 
 			if err := m.commitSector(ctx, sinfo); err != nil {
 				log.Errorf("failed to commit sector: %s", err)
@@ -114,7 +117,7 @@ func (m *Miner) commitSector(ctx context.Context, sinfo sectorbuilder.SectorSeal
 		Method:   actors.MAMethods.CommitSector,
 		Params:   enc,
 		Value:    types.NewInt(0), // TODO: need to ensure sufficient collateral
-		GasLimit: types.NewInt(10000 /* i dont know help */),
+		GasLimit: types.NewInt(1000 /* i dont know help */),
 		GasPrice: types.NewInt(1),
 	}
 

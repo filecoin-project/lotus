@@ -76,6 +76,7 @@ func StorageMiner(mctx helpers.MetricsCtx, lc fx.Lifecycle, api api.FullNode, h 
 		return nil, err
 	}
 
+	log.Infof("setting up miner: %s", maddr)
 	sm, err := storage.NewMiner(api, maddr, h, ds, sb, w)
 	if err != nil {
 		return nil, err

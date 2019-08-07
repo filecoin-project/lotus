@@ -109,4 +109,5 @@ var Commands = []*cli.Command{
 	walletCmd,
 	createMinerCmd,
 	stateCmd,
+	sendCmd,
 }
