@@ -11,7 +11,7 @@ type StateStore struct {
 	ds datastore.Datastore
 }
 
-func (st *StateStore) Begin(i cid.Cid, s interface{}) error {
+func (st *StateStore) Begin(i cid.Cid, state interface{}) error {
 	k := datastore.NewKey(i.String())
 	has, err := st.ds.Has(k)
 	if err != nil {
@@ -21,7 +21,8 @@ func (st *StateStore) Begin(i cid.Cid, s interface{}) error {
 		// TODO: uncomment after deals work
 		//return xerrors.Errorf("Already tracking state for %s", i)
 	}
-	b, err := cbor.DumpObject(s)
+
+	b, err := cbor.DumpObject(state)
 	if err != nil {
 		return err
 	}
@@ -43,45 +44,43 @@ func (st *StateStore) End(i cid.Cid) error {
 
 // When this gets used anywhere else, migrate to reflect
 
-func (st *StateStore) MutateMiner(i cid.Cid, mutator func(MinerDeal) (MinerDeal, error)) error {
+func (st *StateStore) MutateMiner(i cid.Cid, mutator func(*MinerDeal) error) error {
 	return st.mutate(i, minerMutator(mutator))
 }
 
-func minerMutator(m func(MinerDeal) (MinerDeal, error)) func([]byte) ([]byte, error) {
+func minerMutator(m func(*MinerDeal) error) func([]byte) ([]byte, error) {
 	return func(in []byte) ([]byte, error) {
-		var cur MinerDeal
-		err := cbor.DecodeInto(in, &cur)
+		var deal MinerDeal
+		err := cbor.DecodeInto(in, &deal)
 		if err != nil {
 			return nil, err
 		}
 
-		mutated, err := m(cur)
-		if err != nil {
+		if err := m(&deal); err != nil {
 			return nil, err
 		}
 
-		return cbor.DumpObject(mutated)
+		return cbor.DumpObject(deal)
 	}
 }
 
-func (st *StateStore) MutateClient(i cid.Cid, mutator func(ClientDeal) (ClientDeal, error)) error {
+func (st *StateStore) MutateClient(i cid.Cid, mutator func(*ClientDeal) error) error {
 	return st.mutate(i, clientMutator(mutator))
 }
 
-func clientMutator(m func(ClientDeal) (ClientDeal, error)) func([]byte) ([]byte, error) {
+func clientMutator(m func(*ClientDeal) error) func([]byte) ([]byte, error) {
 	return func(in []byte) ([]byte, error) {
-		var cur ClientDeal
-		err := cbor.DecodeInto(in, &cur)
+		var deal ClientDeal
+		err := cbor.DecodeInto(in, &deal)
 		if err != nil {
 			return nil, err
 		}
 
-		mutated, err := m(cur)
-		if err != nil {
+		if err := m(&deal); err != nil {
 			return nil, err
 		}
 
-		return cbor.DumpObject(mutated)
+		return cbor.DumpObject(deal)
 	}
 }
 

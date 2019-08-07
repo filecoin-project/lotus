@@ -2,23 +2,16 @@ package deals
 
 import (
 	"context"
+	"math"
+
 	"github.com/filecoin-project/go-lotus/chain/address"
+	"github.com/filecoin-project/go-lotus/chain/wallet"
 	"github.com/filecoin-project/go-lotus/lib/sectorbuilder"
+	"github.com/filecoin-project/go-lotus/node/modules/dtypes"
+
 	"github.com/ipfs/go-cid"
 	"github.com/ipfs/go-datastore"
 	"github.com/ipfs/go-datastore/namespace"
-	files "github.com/ipfs/go-ipfs-files"
-	"github.com/ipfs/go-merkledag"
-	unixfile "github.com/ipfs/go-unixfs/file"
-	"io"
-	"io/ioutil"
-	"math"
-	"os"
-
-	"github.com/filecoin-project/go-lotus/chain/wallet"
-	"github.com/filecoin-project/go-lotus/lib/cborrpc"
-	"github.com/filecoin-project/go-lotus/node/modules/dtypes"
-
 	cbor "github.com/ipfs/go-ipld-cbor"
 	inet "github.com/libp2p/go-libp2p-core/network"
 	"github.com/libp2p/go-libp2p-core/peer"
@@ -35,6 +28,8 @@ type MinerDeal struct {
 	State       DealState
 
 	Ref cid.Cid
+
+	s inet.Stream
 }
 
 type Handler struct {
@@ -46,18 +41,20 @@ type Handler struct {
 	dag dtypes.StagingDAG
 
 	deals StateStore
-
-	incoming chan MinerDeal
+	conns map[cid.Cid]inet.Stream
 
 	actor address.Address
 
-	stop    chan struct{}
-	stopped chan struct{}
+	incoming chan MinerDeal
+	updated  chan dealUpdate
+	stop     chan struct{}
+	stopped  chan struct{}
 }
 
-type fetchResult struct {
-	id  cid.Cid
-	err error
+type dealUpdate struct {
+	newState DealState
+	id       cid.Cid
+	err      error
 }
 
 func NewHandler(w *wallet.Wallet, ds dtypes.MetadataDS, sb *sectorbuilder.SectorBuilder, dag dtypes.StagingDAG) (*Handler, error) {
@@ -75,7 +72,12 @@ func NewHandler(w *wallet.Wallet, ds dtypes.MetadataDS, sb *sectorbuilder.Sector
 		sb:  sb,
 		dag: dag,
 
+		conns: map[cid.Cid]inet.Stream{},
+
 		incoming: make(chan MinerDeal),
+		updated:  make(chan dealUpdate),
+		stop:     make(chan struct{}),
+		stopped:  make(chan struct{}),
 
 		actor: minerAddress,
 
@@ -87,117 +89,13 @@ func (h *Handler) Run(ctx context.Context) {
 	go func() {
 		defer log.Error("quitting deal handler loop")
 		defer close(h.stopped)
-		fetched := make(chan fetchResult)
 
 		for {
 			select {
-			case deal := <-h.incoming:
-				log.Info("incoming deal")
-
-				if err := h.deals.Begin(deal.ProposalCid, deal); err != nil {
-					// TODO: This can happen when client re-sends proposal
-					log.Errorf("deal tracking failed: %s", err)
-					continue
-				}
-
-				go func(id cid.Cid) {
-					log.Info("fetching data for a deal")
-					err := merkledag.FetchGraph(ctx, deal.Ref, h.dag)
-					select {
-					case fetched <- fetchResult{
-						id:  id,
-						err: err,
-					}:
-					case <-h.stop:
-					}
-				}(deal.ProposalCid)
-			case result := <-fetched:
-				if result.err != nil {
-					log.Errorf("failed to fetch data for deal: %s", result.err)
-					// TODO: fail deal
-				}
-
-				// TODO: send response if client still there
-				// TODO: staging
-
-				// TODO: async
-				log.Info("sealing deal")
-
-				var deal MinerDeal
-				err := h.deals.MutateMiner(result.id, func(in MinerDeal) (MinerDeal, error) {
-					in.State = Sealing
-					deal = in
-					return in, nil
-				})
-				if err != nil {
-					// TODO: fail deal
-					log.Errorf("deal tracking failed (set sealing): %s", err)
-					continue
-				}
-
-				root, err := h.dag.Get(ctx, deal.Ref)
-				if err != nil {
-					// TODO: fail deal
-					log.Errorf("failed to get file root for deal: %s", err)
-					continue
-				}
-
-				// TODO: abstract this away into ReadSizeCloser + implement different modes
-				n, err := unixfile.NewUnixfsFile(ctx, h.dag, root)
-				if err != nil {
-					// TODO: fail deal
-					log.Errorf("cannot open unixfs file: %s", err)
-					continue
-				}
-
-				uf, ok := n.(files.File)
-				if !ok {
-					// TODO: we probably got directory, how should we handle this in unixfs mode?
-					log.Errorf("unsupported unixfs type")
-					// TODO: fail deal
-					continue
-				}
-
-				size, err := uf.Size()
-				if err != nil {
-					log.Errorf("failed to get file size: %s", err)
-					// TODO: fail deal
-					continue
-				}
-
-				//////////////
-
-				f, err := ioutil.TempFile(os.TempDir(), "piece-temp-")
-				if err != nil {
-					log.Error(err)
-					// TODO: fail deal
-					continue
-				}
-				if _, err := io.Copy(f, uf); err != nil {
-					log.Error(err)
-					// TODO: fail deal
-					continue
-				}
-				if err := f.Close(); err != nil {
-					log.Error(err)
-					// TODO: fail deal
-					continue
-				}
-				sectorID, err := h.sb.AddPiece(deal.Proposal.PieceRef, uint64(size), f.Name())
-				if err != nil {
-					// TODO: fail deal
-					log.Errorf("AddPiece failed: %s", err)
-					continue
-				}
-				if err := os.Remove(f.Name()); err != nil {
-					log.Error(err)
-					// TODO: fail deal
-					continue
-				}
-
-				log.Warnf("New Sector: %d", sectorID)
-
-				// TODO: update state, tell client
+			case deal := <-h.incoming: // Accepted
+				h.onIncoming(deal)
+			case update := <-h.updated: // Staged
+				h.onUpdated(ctx, update)
 			case <-h.stop:
 				return
 			}
@@ -205,100 +103,97 @@ func (h *Handler) Run(ctx context.Context) {
 	}()
 }
 
-func (h *Handler) HandleStream(s inet.Stream) {
-	defer s.Close()
+func (h *Handler) onIncoming(deal MinerDeal) {
+	log.Info("incoming deal")
 
-	log.Info("Handling storage deal proposal!")
+	h.conns[deal.ProposalCid] = deal.s
 
-	var proposal SignedStorageDealProposal
-	if err := cborrpc.ReadCborRPC(s, &proposal); err != nil {
-		log.Errorw("failed to read proposal message", "error", err)
+	if err := h.deals.Begin(deal.ProposalCid, deal); err != nil {
+		// This can happen when client re-sends proposal
+		h.failDeal(deal.ProposalCid, err)
+		log.Errorf("deal tracking failed: %s", err)
 		return
 	}
 
-	// TODO: Validate proposal maybe
-	// (and signature, obviously)
+	go func() {
+		h.updated <- dealUpdate{
+			newState: Accepted,
+			id:       deal.ProposalCid,
+			err:      nil,
+		}
+	}()
+}
 
-	if proposal.Proposal.MinerAddress != h.actor {
-		log.Errorf("proposal with wrong MinerAddress: %s", proposal.Proposal.MinerAddress)
-		// TODO: send error
+func (h *Handler) onUpdated(ctx context.Context, update dealUpdate) {
+	log.Infof("Deal %s updated state to %d", update.id, update.newState)
+	if update.err != nil {
+		log.Errorf("deal %s failed: %s", update.id, update.err)
+		h.failDeal(update.id, update.err)
+		return
+	}
+	var deal MinerDeal
+	err := h.deals.MutateMiner(update.id, func(d *MinerDeal) error {
+		d.State = update.newState
+		deal = *d
+		return nil
+	})
+	if err != nil {
+		h.failDeal(update.id, err)
 		return
 	}
 
-	switch proposal.Proposal.SerializationMode {
-	//case SerializationRaw:
-	//case SerializationIPLD:
-	case SerializationUnixFs:
-	default:
-		log.Errorf("deal proposal with unsupported serialization: %s", proposal.Proposal.SerializationMode)
-		// TODO: send error
-		return
+	switch update.newState {
+	case Accepted:
+		h.handle(ctx, deal, h.accept, Staged)
+	case Staged:
+		h.handle(ctx, deal, h.staged, Sealing)
+	case Sealing:
+		log.Error("TODO")
 	}
+}
 
+func (h *Handler) newDeal(s inet.Stream, proposal StorageDealProposal) (MinerDeal, error) {
 	// TODO: Review: Not signed?
-	proposalNd, err := cbor.WrapObject(proposal.Proposal, math.MaxUint64, -1)
+	proposalNd, err := cbor.WrapObject(proposal, math.MaxUint64, -1)
 	if err != nil {
-		log.Error(err)
-		return
+		return MinerDeal{}, err
 	}
 
-	response := StorageDealResponse{
-		State:    Accepted,
-		Message:  "",
-		Proposal: proposalNd.Cid(),
-	}
-
-	msg, err := cbor.DumpObject(response)
+	ref, err := cid.Parse(proposal.PieceRef)
 	if err != nil {
-		log.Errorw("failed to serialize response message", "error", err)
-		return
+		return MinerDeal{}, err
 	}
 
-	def, err := h.w.ListAddrs()
-	if err != nil {
-		log.Error(err)
-		return
-	}
-	if len(def) != 1 {
-		// NOTE: If this ever happens for a good reason, implement this with GetWorker on the miner actor
-		// TODO: implement with GetWorker on the miner actor
-		log.Errorf("Expected only 1 address in wallet, got %d", len(def))
-		return
-	}
-
-	sig, err := h.w.Sign(def[0], msg)
-	if err != nil {
-		log.Errorw("failed to sign response message", "error", err)
-		return
-	}
-
-	log.Info("accepting deal")
-
-	signedResponse := &SignedStorageDealResponse{
-		Response:  response,
-		Signature: sig,
-	}
-	if err := cborrpc.WriteCborRPC(s, signedResponse); err != nil {
-		log.Errorw("failed to write deal response", "error", err)
-		return
-	}
-
-	ref, err := cid.Parse(proposal.Proposal.PieceRef)
-	if err != nil {
-		log.Error(err)
-		return
-	}
-
-	log.Info("processing deal")
-
-	h.incoming <- MinerDeal{
+	return MinerDeal{
 		Client:      s.Conn().RemotePeer(),
-		Proposal:    proposal.Proposal,
+		Proposal:    proposal,
 		ProposalCid: proposalNd.Cid(),
-		State:       Accepted,
+		State:       Unknown,
 
 		Ref: ref,
+
+		s: s,
+	}, nil
+}
+
+func (h *Handler) HandleStream(s inet.Stream) {
+	log.Info("Handling storage deal proposal!")
+
+	proposal, err := h.readProposal(s)
+	if err != nil {
+		log.Error(err)
+		s.Close()
+		return
 	}
+
+	deal, err := h.newDeal(s, proposal.Proposal)
+	if err != nil {
+		log.Error(err)
+		s.Close()
+		return
+	}
+
+	h.incoming <- deal
 }
 
 func (h *Handler) Stop() {
