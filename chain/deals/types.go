@@ -10,7 +10,6 @@ import (
 )
 
 func init() {
-	cbor.RegisterCborType(PaymentInfo{})
 	cbor.RegisterCborType(StorageDealProposal{})
 	cbor.RegisterCborType(SignedStorageDealProposal{})
 
@@ -41,15 +40,6 @@ const (
 	Complete
 )
 
-// TODO: this should probably be in a separate package with other paych utils
-type PaymentInfo struct {
-	PayChActor     address.Address
-	Payer          address.Address
-	ChannelMessage cid.Cid
-
-	Vouchers []actors.SignedVoucher
-}
-
 type StorageDealProposal struct {
 	PieceRef          string
 	SerializationMode SerializationMode
@@ -59,7 +49,7 @@ type StorageDealProposal struct {
 	TotalPrice types.BigInt
 	Duration   uint64
 
-	Payment PaymentInfo
+	Payment actors.PaymentInfo
 
 	MinerAddress  address.Address
 	ClientAddress address.Address

@@ -86,6 +86,8 @@ func NewHandler(w *wallet.Wallet, ds dtypes.MetadataDS, sb *sectorbuilder.Sector
 }
 
 func (h *Handler) Run(ctx context.Context) {
+	// TODO: restore state
+
 	go func() {
 		defer log.Error("quitting deal handler loop")
 		defer close(h.stopped)

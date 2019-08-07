@@ -2,6 +2,7 @@ package deals
 
 import (
 	"context"
+	"github.com/filecoin-project/go-lotus/chain/actors"
 	"math"
 
 	sectorbuilder "github.com/filecoin-project/go-sectorbuilder"
@@ -198,7 +199,7 @@ func (c *Client) Start(ctx context.Context, data cid.Cid, totalPrice types.BigIn
 		Size:              uint64(size),
 		TotalPrice:        totalPrice,
 		Duration:          blocksDuration,
-		Payment: PaymentInfo{
+		Payment: actors.PaymentInfo{
 			PayChActor:     address.Address{},
 			Payer:          address.Address{},
 			ChannelMessage: dummyCid,

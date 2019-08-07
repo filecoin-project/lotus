@@ -37,6 +37,8 @@ func (h *Handler) accept(ctx context.Context, deal MinerDeal) error {
 		return xerrors.Errorf("deal proposal with unsupported serialization: %s", deal.Proposal.SerializationMode)
 	}
 
+	// TODO: check payment
+
 	log.Info("fetching data for a deal")
 	err := h.sendSignedResponse(StorageDealResponse{
 		State:    Accepted,
