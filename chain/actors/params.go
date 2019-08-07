@@ -12,6 +12,7 @@ var (
 func SerializeParams(i interface{}) ([]byte, aerrors.ActorError) {
 	dump, err := cbor.DumpObject(i)
 	if err != nil {
+		// TODO: shouldnt this be a fatal error?
 		return nil, aerrors.Absorb(err, 1, "failed to encode parameter")
 	}
 	return dump, nil

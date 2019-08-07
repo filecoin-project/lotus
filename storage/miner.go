@@ -97,7 +97,7 @@ func (m *Miner) handlePostingSealedSectors(ctx context.Context) {
 
 func (m *Miner) commitSector(ctx context.Context, sinfo sectorbuilder.SectorSealingStatus) error {
 	params := &actors.CommitSectorParams{
-		SectorId:  types.NewInt(sinfo.SectorID),
+		SectorID:  types.NewInt(sinfo.SectorID),
 		CommD:     sinfo.CommD[:],
 		CommR:     sinfo.CommR[:],
 		CommRStar: sinfo.CommRStar[:],
