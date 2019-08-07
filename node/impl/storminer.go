@@ -3,7 +3,6 @@ package impl
 import (
 	"context"
 	"fmt"
-	"io"
 	"io/ioutil"
 	"math/rand"
 
@@ -21,12 +20,20 @@ type StorageMinerAPI struct {
 }
 
 func (sm *StorageMinerAPI) StoreGarbageData(ctx context.Context) (uint64, error) {
-	maxSize := 1016 // this is the most data we can fit in a 1024 byte sector
+	maxSize := uint64(1016) // this is the most data we can fit in a 1024 byte sector
+	data := make([]byte, maxSize)
+	fi, err := ioutil.TempFile("", "lotus-garbage")
+	if err != nil {
+		return 0, err
+	}
+
+	if _, err := fi.Write(data); err != nil {
+		return 0, err
+	}
+	fi.Close()
 
 	name := fmt.Sprintf("fake-file-%d", rand.Intn(100000000))
-
-	sectorId, err := sm.SectorBuilder.AddPiece(ctx, name, uint64(maxSize),
-		ioutil.NopCloser(io.LimitReader(rand.New(rand.NewSource(rand.Int63())), int64(maxSize))))
+	sectorId, err := sm.SectorBuilder.AddPiece(name, maxSize, fi.Name())
 	if err != nil {
 		return 0, err
 	}

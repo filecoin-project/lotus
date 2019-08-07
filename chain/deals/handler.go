@@ -10,7 +10,10 @@ import (
 	files "github.com/ipfs/go-ipfs-files"
 	"github.com/ipfs/go-merkledag"
 	unixfile "github.com/ipfs/go-unixfs/file"
+	"io"
+	"io/ioutil"
 	"math"
+	"os"
 
 	"github.com/filecoin-project/go-lotus/chain/wallet"
 	"github.com/filecoin-project/go-lotus/lib/cborrpc"
@@ -147,7 +150,7 @@ func (h *Handler) Run(ctx context.Context) {
 					continue
 				}
 
-				f, ok := n.(files.File)
+				uf, ok := n.(files.File)
 				if !ok {
 					// TODO: we probably got directory, how should we handle this in unixfs mode?
 					log.Errorf("unsupported unixfs type")
@@ -155,18 +158,40 @@ func (h *Handler) Run(ctx context.Context) {
 					continue
 				}
 
-				size, err := f.Size()
+				size, err := uf.Size()
 				if err != nil {
 					log.Errorf("failed to get file size: %s", err)
 					// TODO: fail deal
 					continue
 				}
 
-				// TODO: can we use pipes?
-				sectorID, err := h.sb.AddPiece(ctx, deal.Proposal.PieceRef, uint64(size), f)
+				//////////////
+
+				f, err := ioutil.TempFile(os.TempDir(), "piece-temp-")
+				if err != nil {
+					log.Error(err)
+					// TODO: fail deal
+					continue
+				}
+				if _, err := io.Copy(f, uf); err != nil {
+					log.Error(err)
+					// TODO: fail deal
+					continue
+				}
+				if err := f.Close(); err != nil {
+					log.Error(err)
+					// TODO: fail deal
+					continue
+				}
+				sectorID, err := h.sb.AddPiece(deal.Proposal.PieceRef, uint64(size), f.Name())
 				if err != nil {
 					// TODO: fail deal
 					log.Errorf("AddPiece failed: %s", err)
+					continue
+				}
+				if err := os.Remove(f.Name()); err != nil {
+					log.Error(err)
+					// TODO: fail deal
 					continue
 				}
 
