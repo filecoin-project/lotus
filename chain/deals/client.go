@@ -121,6 +121,11 @@ func (c *Client) Start(ctx context.Context, data cid.Cid, totalPrice types.BigIn
 		return cid.Undef, xerrors.New("unsupported unixfs type")
 	}
 
+	size, err := uf.Size()
+	if err != nil {
+		return cid.Cid{}, err
+	}
+
 	f, err := ioutil.TempFile(os.TempDir(), "commP-temp-")
 	if err != nil {
 		return cid.Undef, err
@@ -131,7 +136,7 @@ func (c *Client) Start(ctx context.Context, data cid.Cid, totalPrice types.BigIn
 	if err := f.Close(); err != nil {
 		return cid.Undef, err
 	}
-	commP, err := sectorbuilder.GeneratePieceCommitment(f.Name(), 6)
+	commP, err := sectorbuilder.GeneratePieceCommitment(f.Name(), uint64(size))
 	if err != nil {
 		return cid.Undef, err
 	}
