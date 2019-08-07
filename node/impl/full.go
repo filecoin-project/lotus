@@ -5,8 +5,6 @@ import (
 	"fmt"
 	"strconv"
 
-	"golang.org/x/xerrors"
-
 	"github.com/filecoin-project/go-lotus/api"
 	"github.com/filecoin-project/go-lotus/chain"
 	"github.com/filecoin-project/go-lotus/chain/actors"
@@ -27,6 +25,7 @@ import (
 	logging "github.com/ipfs/go-log"
 	"github.com/libp2p/go-libp2p-core/peer"
 	pubsub "github.com/libp2p/go-libp2p-pubsub"
+	"golang.org/x/xerrors"
 )
 
 var log = logging.Logger("node")
@@ -43,10 +42,10 @@ type FullNodeAPI struct {
 	Wallet     *wallet.Wallet
 }
 
-func (a *FullNodeAPI) ClientStartDeal(ctx context.Context, data cid.Cid, miner address.Address, blocksDuration uint64) error {
+func (a *FullNodeAPI) ClientStartDeal(ctx context.Context, data cid.Cid, miner address.Address, price types.BigInt, blocksDuration uint64) (*cid.Cid, error) {
 	self, err := a.WalletDefaultAddress(ctx)
 	if err != nil {
-		return err
+		return nil, err
 	}
 
 	msg := &types.Message{
@@ -57,17 +56,16 @@ func (a *FullNodeAPI) ClientStartDeal(ctx context.Context, data cid.Cid, miner a
 
 	r, err := a.ChainCall(ctx, msg, nil)
 	if err != nil {
-		return err
+		return nil, err
 	}
 	pid, err := peer.IDFromBytes(r.Return)
 	if err != nil {
-		return err
+		return nil, err
 	}
 
-	price := types.NewInt(10 * blocksDuration) // TODO: allow to actually specify this
-
-	_, err = a.DealClient.Start(ctx, data, price, self, miner, pid, blocksDuration)
-	return err
+	total := types.BigMul(price, types.NewInt(blocksDuration))
+	c, err := a.DealClient.Start(ctx, data, total, self, miner, pid, blocksDuration)
+	return &c, err
 }
 
 func (a *FullNodeAPI) ChainNotify(ctx context.Context) (<-chan *store.HeadChange, error) {

@@ -9,6 +9,7 @@ import (
 	"gopkg.in/urfave/cli.v2"
 
 	"github.com/filecoin-project/go-lotus/chain/address"
+	"github.com/filecoin-project/go-lotus/chain/types"
 )
 
 var clientCmd = &cli.Command{
@@ -71,8 +72,8 @@ var clientDealCmd = &cli.Command{
 		}
 		ctx := ReqContext(cctx)
 
-		if cctx.NArg() != 3 {
-			return xerrors.New("expected 3 args: dataCid, miner, duration")
+		if cctx.NArg() != 4 {
+			return xerrors.New("expected 4 args: dataCid, miner, price, duration")
 		}
 
 		// [data, miner, dur]
@@ -87,11 +88,23 @@ var clientDealCmd = &cli.Command{
 			return err
 		}
 
-		dur, err := strconv.ParseInt(cctx.Args().Get(2), 10, 32)
+		// TODO: parse bigint
+		price, err := strconv.ParseInt(cctx.Args().Get(2), 10, 32)
 		if err != nil {
 			return err
 		}
 
-		return api.ClientStartDeal(ctx, data, miner, uint64(dur))
+		dur, err := strconv.ParseInt(cctx.Args().Get(3), 10, 32)
+		if err != nil {
+			return err
+		}
+
+		proposal, err := api.ClientStartDeal(ctx, data, miner, types.NewInt(uint64(price)), uint64(dur))
+		if err != nil {
+			return err
+		}
+
+		fmt.Println(proposal)
+		return nil
 	},
 }
