@@ -2,10 +2,11 @@ package modules
 
 import (
 	"context"
+	"path/filepath"
+
 	"github.com/ipfs/go-bitswap"
 	"github.com/ipfs/go-bitswap/network"
 	"github.com/libp2p/go-libp2p-core/routing"
-	"path/filepath"
 
 	"github.com/ipfs/go-blockservice"
 	"github.com/ipfs/go-datastore"
@@ -18,7 +19,6 @@ import (
 	"github.com/filecoin-project/go-lotus/api"
 	"github.com/filecoin-project/go-lotus/chain/address"
 	"github.com/filecoin-project/go-lotus/chain/deals"
-	"github.com/filecoin-project/go-lotus/chain/wallet"
 	"github.com/filecoin-project/go-lotus/lib/sectorbuilder"
 	"github.com/filecoin-project/go-lotus/node/modules/dtypes"
 	"github.com/filecoin-project/go-lotus/node/modules/helpers"
@@ -81,13 +81,13 @@ func SectorBuilder(mctx helpers.MetricsCtx, lc fx.Lifecycle, sbc *sectorbuilder.
 	return sb, nil
 }
 
-func StorageMiner(mctx helpers.MetricsCtx, lc fx.Lifecycle, api api.FullNode, h host.Host, ds dtypes.MetadataDS, sb *sectorbuilder.SectorBuilder, w *wallet.Wallet) (*storage.Miner, error) {
+func StorageMiner(mctx helpers.MetricsCtx, lc fx.Lifecycle, api api.FullNode, h host.Host, ds dtypes.MetadataDS, sb *sectorbuilder.SectorBuilder) (*storage.Miner, error) {
 	maddr, err := minerAddrFromDS(ds)
 	if err != nil {
 		return nil, err
 	}
 
-	sm, err := storage.NewMiner(api, maddr, h, ds, sb, w)
+	sm, err := storage.NewMiner(api, maddr, h, ds, sb)
 	if err != nil {
 		return nil, err
 	}

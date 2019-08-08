@@ -10,7 +10,6 @@ import (
 	"github.com/filecoin-project/go-lotus/chain/actors"
 	"github.com/filecoin-project/go-lotus/chain/address"
 	"github.com/filecoin-project/go-lotus/chain/types"
-	"github.com/filecoin-project/go-lotus/chain/wallet"
 	lcli "github.com/filecoin-project/go-lotus/cli"
 	"github.com/filecoin-project/go-lotus/node/repo"
 )
@@ -66,18 +65,6 @@ var initCmd = &cli.Command{
 		}
 		defer lr.Close()
 
-		log.Info("Initializing wallet")
-
-		ks, err := lr.KeyStore()
-		if err != nil {
-			return err
-		}
-
-		wallet, err := wallet.NewWallet(ks)
-		if err != nil {
-			return err
-		}
-
 		log.Info("Initializing libp2p identity")
 
 		p2pSk, err := lr.Libp2pIdentity()
@@ -102,7 +89,7 @@ var initCmd = &cli.Command{
 			return err
 		}
 
-		k, err := wallet.GenerateKey(types.KTSecp256k1) // TODO: review: is this right?
+		k, err := api.WalletNew(ctx, types.KTSecp256k1)
 		if err != nil {
 			return err
 		}

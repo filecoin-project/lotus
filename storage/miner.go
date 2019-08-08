@@ -9,7 +9,6 @@ import (
 	"github.com/filecoin-project/go-lotus/chain/address"
 	"github.com/filecoin-project/go-lotus/chain/store"
 	"github.com/filecoin-project/go-lotus/chain/types"
-	"github.com/filecoin-project/go-lotus/chain/wallet"
 	"github.com/ipfs/go-cid"
 	"github.com/ipfs/go-datastore"
 	logging "github.com/ipfs/go-log"
@@ -25,8 +24,6 @@ type Miner struct {
 	api storageMinerApi
 
 	sb *sectorbuilder.SectorBuilder
-
-	w *wallet.Wallet
 
 	maddr address.Address
 
@@ -49,16 +46,19 @@ type storageMinerApi interface {
 
 	ChainWaitMsg(context.Context, cid.Cid) (*api.MsgWait, error)
 	ChainNotify(context.Context) (<-chan *store.HeadChange, error)
+
+	WalletBalance(context.Context, address.Address) (types.BigInt, error)
+	WalletSign(context.Context, address.Address, []byte) (*types.Signature, error)
+	WalletList(context.Context) ([]address.Address, error)
 }
 
-func NewMiner(api storageMinerApi, addr address.Address, h host.Host, ds datastore.Batching, sb *sectorbuilder.SectorBuilder, w *wallet.Wallet) (*Miner, error) {
+func NewMiner(api storageMinerApi, addr address.Address, h host.Host, ds datastore.Batching, sb *sectorbuilder.SectorBuilder) (*Miner, error) {
 	return &Miner{
 		api:   api,
 		maddr: addr,
 		h:     h,
 		ds:    ds,
 		sb:    sb,
-		w:     w,
 	}, nil
 }
 
@@ -138,7 +138,7 @@ func (m *Miner) commitSector(ctx context.Context, sinfo sectorbuilder.SectorSeal
 		return errors.Wrap(err, "serializing commit sector message")
 	}
 
-	sig, err := m.w.Sign(m.worker, data)
+	sig, err := m.api.WalletSign(ctx, m.worker, data)
 	if err != nil {
 		return errors.Wrap(err, "signing commit sector message")
 	}
@@ -173,9 +173,16 @@ func (m *Miner) runPreflightChecks(ctx context.Context) error {
 
 	m.worker = worker
 
-	has, err := m.w.HasKey(worker)
+	addrs, err := m.api.WalletList(ctx)
 	if err != nil {
 		return errors.Wrap(err, "failed to check wallet for worker key")
+	}
+	var has bool
+	for _, a := range addrs {
+		if a == worker {
+			has = true
+			break
+		}
 	}
 
 	if !has {
