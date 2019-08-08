@@ -36,7 +36,7 @@ func (h *Handler) failDeal(id cid.Cid, cerr error) {
 	}
 
 	if err != nil {
-		log.Warnf("notifying client about deal failure: %s")
+		log.Warnf("notifying client about deal failure: %s", err)
 	}
 }
 
