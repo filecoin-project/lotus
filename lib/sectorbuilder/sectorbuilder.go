@@ -36,7 +36,7 @@ type SectorBuilderConfig struct {
 func New(cfg *SectorBuilderConfig) (*SectorBuilder, error) {
 	proverId := addressToProverID(cfg.Miner)
 
-	sbp, err := sectorbuilder.InitSectorBuilder(cfg.SectorSize, 2, 2, 1, cfg.MetadataDir, proverId, cfg.SealedDir, cfg.StagedDir, 16)
+	sbp, err := sectorbuilder.InitSectorBuilder(cfg.SectorSize, 1, 1, 1, cfg.MetadataDir, proverId, cfg.SealedDir, cfg.StagedDir, 16)
 	if err != nil {
 		return nil, err
 	}

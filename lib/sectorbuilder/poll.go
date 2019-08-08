@@ -21,7 +21,7 @@ func (sb *SectorBuilder) pollForSealedSectors(ctx context.Context) {
 		watching[s.SectorID] = true
 	}
 
-	tick := time.Tick(time.Second * 30)
+	tick := time.Tick(time.Second * 5)
 	for {
 		select {
 		case <-tick:

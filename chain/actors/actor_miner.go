@@ -377,6 +377,7 @@ func AddToSectorSet(ctx context.Context, cst *hamt.CborIpldStore, ss cid.Cid, se
 }
 
 func ValidatePoRep(maddr address.Address, ssize types.BigInt, params *CommitSectorParams) (bool, ActorError) {
+	log.Infof("VALIDATE POREP: %d %x %x %x %s %d %x", ssize.Uint64(), params.CommR, params.CommD, params.CommRStar, maddr, params.SectorID.Uint64(), params.Proof)
 	ok, err := sectorbuilder.VerifySeal(ssize.Uint64(), params.CommR, params.CommD, params.CommRStar, maddr, params.SectorID.Uint64(), params.Proof)
 	if err != nil {
 		return false, aerrors.Escalate(err, "verify seal failed")
