@@ -244,6 +244,10 @@ func (a *FullNodeAPI) WalletNew(ctx context.Context, typ string) (address.Addres
 	return a.Wallet.GenerateKey(typ)
 }
 
+func (a *FullNodeAPI) WalletHas(ctx context.Context, addr address.Address) (bool, error) {
+	return a.Wallet.HasKey(addr)
+}
+
 func (a *FullNodeAPI) WalletList(ctx context.Context) ([]address.Address, error) {
 	return a.Wallet.ListAddrs()
 }

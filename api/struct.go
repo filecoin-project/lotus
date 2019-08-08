@@ -56,6 +56,7 @@ type FullNodeStruct struct {
 		MinerCreateBlock func(context.Context, address.Address, *types.TipSet, []types.Ticket, types.ElectionProof, []*types.SignedMessage) (*chain.BlockMsg, error) `perm:"write"`
 
 		WalletNew            func(context.Context, string) (address.Address, error)                   `perm:"write"`
+		WalletHas            func(context.Context, address.Address) (bool, error)                     `perm:"write"`
 		WalletList           func(context.Context) ([]address.Address, error)                         `perm:"write"`
 		WalletBalance        func(context.Context, address.Address) (types.BigInt, error)             `perm:"read"`
 		WalletSign           func(context.Context, address.Address, []byte) (*types.Signature, error) `perm:"sign"`
@@ -171,6 +172,10 @@ func (c *FullNodeStruct) ChainCall(ctx context.Context, msg *types.Message, ts *
 
 func (c *FullNodeStruct) WalletNew(ctx context.Context, typ string) (address.Address, error) {
 	return c.Internal.WalletNew(ctx, typ)
+}
+
+func (c *FullNodeStruct) WalletHas(ctx context.Context, addr address.Address) (bool, error) {
+	return c.Internal.WalletHas(ctx, addr)
 }
 
 func (c *FullNodeStruct) WalletList(ctx context.Context) ([]address.Address, error) {

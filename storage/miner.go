@@ -49,7 +49,7 @@ type storageMinerApi interface {
 
 	WalletBalance(context.Context, address.Address) (types.BigInt, error)
 	WalletSign(context.Context, address.Address, []byte) (*types.Signature, error)
-	WalletList(context.Context) ([]address.Address, error)
+	WalletHas(context.Context, address.Address) (bool, error)
 }
 
 func NewMiner(api storageMinerApi, addr address.Address, h host.Host, ds datastore.Batching, sb *sectorbuilder.SectorBuilder) (*Miner, error) {
@@ -173,16 +173,9 @@ func (m *Miner) runPreflightChecks(ctx context.Context) error {
 
 	m.worker = worker
 
-	addrs, err := m.api.WalletList(ctx)
+	has, err := m.api.WalletHas(ctx, worker)
 	if err != nil {
 		return errors.Wrap(err, "failed to check wallet for worker key")
-	}
-	var has bool
-	for _, a := range addrs {
-		if a == worker {
-			has = true
-			break
-		}
 	}
 
 	if !has {
