@@ -25,7 +25,7 @@ var statePowerCmd = &cli.Command{
 	Name:  "power",
 	Usage: "Query network or miner power",
 	Action: func(cctx *cli.Context) error {
-		api, err := GetAPI(cctx)
+		api, err := GetFullNodeAPI(cctx)
 		if err != nil {
 			return err
 		}
@@ -77,7 +77,7 @@ var stateSectorsCmd = &cli.Command{
 	Name:  "sectors",
 	Usage: "Query the sector set of a miner",
 	Action: func(cctx *cli.Context) error {
-		api, err := GetAPI(cctx)
+		api, err := GetFullNodeAPI(cctx)
 		if err != nil {
 			return err
 		}
@@ -110,7 +110,7 @@ var stateProvingSetCmd = &cli.Command{
 	Name:  "proving",
 	Usage: "Query the proving set of a miner",
 	Action: func(cctx *cli.Context) error {
-		api, err := GetAPI(cctx)
+		api, err := GetFullNodeAPI(cctx)
 		if err != nil {
 			return err
 		}
