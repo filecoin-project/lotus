@@ -5,12 +5,11 @@ import (
 	"fmt"
 	"strconv"
 
-	"golang.org/x/xerrors"
-
 	"github.com/filecoin-project/go-lotus/api"
 	"github.com/filecoin-project/go-lotus/chain"
 	"github.com/filecoin-project/go-lotus/chain/actors"
 	"github.com/filecoin-project/go-lotus/chain/address"
+	"github.com/filecoin-project/go-lotus/chain/deals"
 	"github.com/filecoin-project/go-lotus/chain/gen"
 	"github.com/filecoin-project/go-lotus/chain/state"
 	"github.com/filecoin-project/go-lotus/chain/store"
@@ -24,7 +23,9 @@ import (
 	hamt "github.com/ipfs/go-hamt-ipld"
 	cbor "github.com/ipfs/go-ipld-cbor"
 	logging "github.com/ipfs/go-log"
+	"github.com/libp2p/go-libp2p-core/peer"
 	pubsub "github.com/libp2p/go-libp2p-pubsub"
+	"golang.org/x/xerrors"
 )
 
 var log = logging.Logger("node")
@@ -34,10 +35,37 @@ type FullNodeAPI struct {
 
 	CommonAPI
 
-	Chain  *store.ChainStore
-	PubSub *pubsub.PubSub
-	Mpool  *chain.MessagePool
-	Wallet *wallet.Wallet
+	DealClient *deals.Client
+	Chain      *store.ChainStore
+	PubSub     *pubsub.PubSub
+	Mpool      *chain.MessagePool
+	Wallet     *wallet.Wallet
+}
+
+func (a *FullNodeAPI) ClientStartDeal(ctx context.Context, data cid.Cid, miner address.Address, price types.BigInt, blocksDuration uint64) (*cid.Cid, error) {
+	self, err := a.WalletDefaultAddress(ctx)
+	if err != nil {
+		return nil, err
+	}
+
+	msg := &types.Message{
+		To:     miner,
+		From:   miner,
+		Method: actors.MAMethods.GetPeerID,
+	}
+
+	r, err := a.ChainCall(ctx, msg, nil)
+	if err != nil {
+		return nil, err
+	}
+	pid, err := peer.IDFromBytes(r.Return)
+	if err != nil {
+		return nil, err
+	}
+
+	total := types.BigMul(price, types.NewInt(blocksDuration))
+	c, err := a.DealClient.Start(ctx, data, total, self, miner, pid, blocksDuration)
+	return &c, err
 }
 
 func (a *FullNodeAPI) ChainNotify(ctx context.Context) (<-chan *store.HeadChange, error) {
@@ -147,6 +175,12 @@ func (a *FullNodeAPI) ChainCall(ctx context.Context, msg *types.Message, ts *typ
 	}
 	if msg.Value == types.EmptyInt {
 		msg.Value = types.NewInt(0)
+	}
+	if msg.Params == nil {
+		msg.Params, err = actors.SerializeParams(struct{}{})
+		if err != nil {
+			return nil, err
+		}
 	}
 
 	// TODO: maybe just use the invoker directly?

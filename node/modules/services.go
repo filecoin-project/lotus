@@ -1,12 +1,15 @@
 package modules
 
 import (
+	"context"
+
 	"github.com/libp2p/go-libp2p-core/host"
 	inet "github.com/libp2p/go-libp2p-core/network"
 	pubsub "github.com/libp2p/go-libp2p-pubsub"
 	"go.uber.org/fx"
 
 	"github.com/filecoin-project/go-lotus/chain"
+	"github.com/filecoin-project/go-lotus/chain/deals"
 	"github.com/filecoin-project/go-lotus/chain/sub"
 	"github.com/filecoin-project/go-lotus/node/hello"
 	"github.com/filecoin-project/go-lotus/node/modules/helpers"
@@ -52,4 +55,17 @@ func HandleIncomingMessages(mctx helpers.MetricsCtx, lc fx.Lifecycle, pubsub *pu
 	}
 
 	go sub.HandleIncomingMessages(ctx, mpool, msgsub)
+}
+
+func RunDealClient(lc fx.Lifecycle, c *deals.Client) {
+	lc.Append(fx.Hook{
+		OnStart: func(context.Context) error {
+			c.Run()
+			return nil
+		},
+		OnStop: func(context.Context) error {
+			c.Stop()
+			return nil
+		},
+	})
 }

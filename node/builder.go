@@ -19,6 +19,7 @@ import (
 
 	"github.com/filecoin-project/go-lotus/api"
 	"github.com/filecoin-project/go-lotus/chain"
+	"github.com/filecoin-project/go-lotus/chain/deals"
 	"github.com/filecoin-project/go-lotus/chain/store"
 	"github.com/filecoin-project/go-lotus/chain/types"
 	"github.com/filecoin-project/go-lotus/chain/wallet"
@@ -70,6 +71,9 @@ const (
 
 	HandleIncomingBlocksKey
 	HandleIncomingMessagesKey
+
+	RunDealClientKey
+	HandleDealsKey
 
 	// daemon
 	ExtractApiKey
@@ -207,12 +211,20 @@ func Online() Option {
 			Override(RunHelloKey, modules.RunHello),
 			Override(RunBlockSyncKey, modules.RunBlockSync),
 			Override(HandleIncomingBlocksKey, modules.HandleIncomingBlocks),
+
+			Override(new(*deals.Client), deals.NewClient),
+			Override(RunDealClientKey, modules.RunDealClient),
 		),
 
 		// Storage miner
 		ApplyIf(func(s *Settings) bool { return s.nodeType == nodeStorageMiner },
 			Override(new(*sectorbuilder.SectorBuilder), modules.SectorBuilder),
 			Override(new(*storage.Miner), modules.StorageMiner),
+
+			Override(new(dtypes.StagingDAG), modules.StagingDAG),
+
+			Override(new(*deals.Handler), deals.NewHandler),
+			Override(HandleDealsKey, modules.HandleDeals),
 		),
 	)
 }

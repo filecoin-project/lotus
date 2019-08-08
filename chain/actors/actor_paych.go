@@ -3,11 +3,12 @@ package actors
 import (
 	"bytes"
 
+	"github.com/ipfs/go-cid"
+	cbor "github.com/ipfs/go-ipld-cbor"
+
 	"github.com/filecoin-project/go-lotus/chain/actors/aerrors"
 	"github.com/filecoin-project/go-lotus/chain/address"
 	"github.com/filecoin-project/go-lotus/chain/types"
-
-	cbor "github.com/ipfs/go-ipld-cbor"
 )
 
 const ChannelClosingDelay = 6 * 60 * 2 // six hours
@@ -19,9 +20,18 @@ func init() {
 	cbor.RegisterCborType(Merge{})
 	cbor.RegisterCborType(LaneState{})
 	cbor.RegisterCborType(UpdateChannelState{})
+	cbor.RegisterCborType(PaymentInfo{})
 }
 
 type PaymentChannelActor struct{}
+
+type PaymentInfo struct {
+	PayChActor     address.Address
+	Payer          address.Address
+	ChannelMessage cid.Cid
+
+	Vouchers []SignedVoucher
+}
 
 type LaneState struct {
 	Closed   bool

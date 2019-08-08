@@ -22,7 +22,7 @@ var createMinerCmd = &cli.Command{
 			return fmt.Errorf("must pass four arguments: worker address, owner address, sector size, peer ID")
 		}
 
-		api, err := GetAPI(cctx)
+		api, err := GetFullNodeAPI(cctx)
 		if err != nil {
 			return err
 		}

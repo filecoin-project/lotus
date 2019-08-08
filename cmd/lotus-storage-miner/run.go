@@ -28,7 +28,7 @@ var runCmd = &cli.Command{
 		},
 	},
 	Action: func(cctx *cli.Context) error {
-		nodeApi, err := lcli.GetAPI(cctx)
+		nodeApi, err := lcli.GetFullNodeAPI(cctx)
 		if err != nil {
 			return err
 		}
@@ -80,7 +80,15 @@ var runCmd = &cli.Command{
 			return err
 		}
 
-		// TODO: libp2p node
+		// Bootstrap with full node
+		remoteAddrs, err := nodeApi.NetAddrsListen(ctx)
+		if err != nil {
+			return err
+		}
+
+		if err := minerapi.NetConnect(ctx, remoteAddrs); err != nil {
+			return err
+		}
 
 		log.Infof("Remote version %s", v)
 

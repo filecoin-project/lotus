@@ -18,7 +18,7 @@ var minerStart = &cli.Command{
 	Name:  "start",
 	Usage: "start mining",
 	Action: func(cctx *cli.Context) error {
-		api, err := GetAPI(cctx)
+		api, err := GetFullNodeAPI(cctx)
 		if err != nil {
 			return err
 		}

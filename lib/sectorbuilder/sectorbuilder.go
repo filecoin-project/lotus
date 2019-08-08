@@ -5,10 +5,11 @@ import (
 	"encoding/binary"
 	"unsafe"
 
-	"github.com/filecoin-project/go-lotus/chain/address"
 	sectorbuilder "github.com/filecoin-project/go-sectorbuilder"
 
 	logging "github.com/ipfs/go-log"
+
+	"github.com/filecoin-project/go-lotus/chain/address"
 )
 
 var log = logging.Logger("sectorbuilder")

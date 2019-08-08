@@ -38,6 +38,9 @@ func (w *Wallet) Sign(addr address.Address, msg []byte) (*types.Signature, error
 	if err != nil {
 		return nil, err
 	}
+	if ki == nil {
+		return nil, xerrors.Errorf("signing using key '%s': %w", addr.String(), repo.ErrKeyNotFound)
+	}
 
 	switch ki.Type {
 	case types.KTSecp256k1:
