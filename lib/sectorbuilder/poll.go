@@ -3,8 +3,6 @@ package sectorbuilder
 import (
 	"context"
 	"time"
-
-	"github.com/prometheus/common/log"
 )
 
 // TODO: really need to get a callbacks API from the rust-sectorbuilder
@@ -21,7 +19,7 @@ func (sb *SectorBuilder) pollForSealedSectors(ctx context.Context) {
 		watching[s.SectorID] = true
 	}
 
-	tick := time.Tick(time.Second * 30)
+	tick := time.Tick(time.Second * 5)
 	for {
 		select {
 		case <-tick:
@@ -33,6 +31,7 @@ func (sb *SectorBuilder) pollForSealedSectors(ctx context.Context) {
 				log.Errorf("in loop: failed to get staged sectors: %s", err)
 				continue
 			}
+
 			for _, s := range staged {
 				watching[s.SectorID] = true
 			}

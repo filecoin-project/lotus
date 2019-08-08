@@ -96,8 +96,16 @@ func (m *Miner) handlePostingSealedSectors(ctx context.Context) {
 }
 
 func (m *Miner) commitSector(ctx context.Context, sinfo sectorbuilder.SectorSealingStatus) error {
+	ok, err := sectorbuilder.VerifySeal(1024, sinfo.CommR[:], sinfo.CommD[:], sinfo.CommRStar[:], m.maddr, sinfo.SectorID, sinfo.Proof)
+	if err != nil {
+		log.Error("failed to verify seal we just created: ", err)
+	}
+	if !ok {
+		log.Error("seal we just created failed verification")
+	}
+
 	params := &actors.CommitSectorParams{
-		SectorId:  types.NewInt(sinfo.SectorID),
+		SectorID:  types.NewInt(sinfo.SectorID),
 		CommD:     sinfo.CommD[:],
 		CommR:     sinfo.CommR[:],
 		CommRStar: sinfo.CommRStar[:],
@@ -114,7 +122,7 @@ func (m *Miner) commitSector(ctx context.Context, sinfo sectorbuilder.SectorSeal
 		Method:   actors.MAMethods.CommitSector,
 		Params:   enc,
 		Value:    types.NewInt(0), // TODO: need to ensure sufficient collateral
-		GasLimit: types.NewInt(10000 /* i dont know help */),
+		GasLimit: types.NewInt(1000 /* i dont know help */),
 		GasPrice: types.NewInt(1),
 	}
 
@@ -165,7 +173,6 @@ func (m *Miner) runPreflightChecks(ctx context.Context) error {
 
 	m.worker = worker
 
-	// try signing something with that key to make sure we can
 	has, err := m.w.HasKey(worker)
 	if err != nil {
 		return errors.Wrap(err, "failed to check wallet for worker key")

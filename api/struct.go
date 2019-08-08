@@ -46,6 +46,7 @@ type FullNodeStruct struct {
 		ChainWaitMsg          func(context.Context, cid.Cid) (*MsgWait, error)                                    `perm:"read"`
 		ChainGetBlock         func(context.Context, cid.Cid) (*types.BlockHeader, error)                          `perm:"read"`
 		ChainGetBlockMessages func(context.Context, cid.Cid) (*BlockMessages, error)                              `perm:"read"`
+		ChainGetBlockReceipts func(context.Context, cid.Cid) ([]*types.MessageReceipt, error)                     `perm:"read"`
 		ChainCall             func(context.Context, *types.Message, *types.TipSet) (*types.MessageReceipt, error) `perm:"read"`
 
 		MpoolPending func(context.Context, *types.TipSet) ([]*types.SignedMessage, error) `perm:"read"`
@@ -63,6 +64,9 @@ type FullNodeStruct struct {
 
 		ClientImport      func(ctx context.Context, path string) (cid.Cid, error) `perm:"write"`
 		ClientListImports func(ctx context.Context) ([]Import, error)             `perm:"read"`
+
+		StateMinerSectors    func(context.Context, address.Address) ([]*SectorInfo, error) `perm:"read"`
+		StateMinerProvingSet func(context.Context, address.Address) ([]*SectorInfo, error) `perm:"read"`
 	}
 }
 
@@ -192,8 +196,20 @@ func (c *FullNodeStruct) ChainGetBlockMessages(ctx context.Context, b cid.Cid) (
 	return c.Internal.ChainGetBlockMessages(ctx, b)
 }
 
+func (c *FullNodeStruct) ChainGetBlockReceipts(ctx context.Context, b cid.Cid) ([]*types.MessageReceipt, error) {
+	return c.Internal.ChainGetBlockReceipts(ctx, b)
+}
+
 func (c *FullNodeStruct) ChainNotify(ctx context.Context) (<-chan *store.HeadChange, error) {
 	return c.Internal.ChainNotify(ctx)
+}
+
+func (c *FullNodeStruct) StateMinerSectors(ctx context.Context, addr address.Address) ([]*SectorInfo, error) {
+	return c.Internal.StateMinerSectors(ctx, addr)
+}
+
+func (c *FullNodeStruct) StateMinerProvingSet(ctx context.Context, addr address.Address) ([]*SectorInfo, error) {
+	return c.Internal.StateMinerProvingSet(ctx, addr)
 }
 
 func (c *StorageMinerStruct) StoreGarbageData(ctx context.Context) (uint64, error) {

@@ -86,15 +86,22 @@ var chainGetBlock = &cli.Command{
 			return err
 		}
 
+		recpts, err := api.ChainGetBlockReceipts(ctx, bcid)
+		if err != nil {
+			return err
+		}
+
 		cblock := struct {
 			types.BlockHeader
-			BlsMessages   []*types.Message
-			SecpkMessages []*types.SignedMessage
+			BlsMessages     []*types.Message
+			SecpkMessages   []*types.SignedMessage
+			MessageReceipts []*types.MessageReceipt
 		}{}
 
 		cblock.BlockHeader = *blk
 		cblock.BlsMessages = msgs.BlsMessages
 		cblock.SecpkMessages = msgs.SecpkMessages
+		cblock.MessageReceipts = recpts
 
 		out, err := json.MarshalIndent(cblock, "", "  ")
 		if err != nil {

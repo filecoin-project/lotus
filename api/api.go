@@ -46,6 +46,12 @@ type BlockMessages struct {
 	SecpkMessages []*types.SignedMessage
 }
 
+type SectorInfo struct {
+	SectorID uint64
+	CommD    []byte
+	CommR    []byte
+}
+
 type Common interface {
 	// Auth
 	AuthVerify(ctx context.Context, token string) ([]string, error)
@@ -78,6 +84,7 @@ type FullNode interface {
 	ChainWaitMsg(context.Context, cid.Cid) (*MsgWait, error)
 	ChainGetBlock(context.Context, cid.Cid) (*types.BlockHeader, error)
 	ChainGetBlockMessages(context.Context, cid.Cid) (*BlockMessages, error)
+	ChainGetBlockReceipts(context.Context, cid.Cid) ([]*types.MessageReceipt, error)
 
 	// if tipset is nil, we'll use heaviest
 	ChainCall(context.Context, *types.Message, *types.TipSet) (*types.MessageReceipt, error)
@@ -117,6 +124,9 @@ type FullNode interface {
 	ClientListImports(ctx context.Context) ([]Import, error)
 
 	//ClientListAsks() []Ask
+
+	StateMinerSectors(context.Context, address.Address) ([]*SectorInfo, error)
+	StateMinerProvingSet(context.Context, address.Address) ([]*SectorInfo, error)
 }
 
 // Full API is a low-level interface to the Filecoin network storage miner node

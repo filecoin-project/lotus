@@ -18,8 +18,22 @@ import (
 	"github.com/filecoin-project/go-lotus/storage"
 )
 
-func SectorBuilderConfig(storagePath string) func() (*sectorbuilder.SectorBuilderConfig, error) {
-	return func() (*sectorbuilder.SectorBuilderConfig, error) {
+func minerAddrFromDS(ds dtypes.MetadataDS) (address.Address, error) {
+	maddrb, err := ds.Get(datastore.NewKey("miner-address"))
+	if err != nil {
+		return address.Undef, err
+	}
+
+	return address.NewFromBytes(maddrb)
+}
+
+func SectorBuilderConfig(storagePath string) func(dtypes.MetadataDS) (*sectorbuilder.SectorBuilderConfig, error) {
+	return func(ds dtypes.MetadataDS) (*sectorbuilder.SectorBuilderConfig, error) {
+		minerAddr, err := minerAddrFromDS(ds)
+		if err != nil {
+			return nil, err
+		}
+
 		sp, err := homedir.Expand(storagePath)
 		if err != nil {
 			return nil, err
@@ -28,12 +42,6 @@ func SectorBuilderConfig(storagePath string) func() (*sectorbuilder.SectorBuilde
 		metadata := filepath.Join(sp, "meta")
 		sealed := filepath.Join(sp, "sealed")
 		staging := filepath.Join(sp, "staging")
-
-		// TODO: get the address of the miner actor
-		minerAddr, err := address.NewIDAddress(42)
-		if err != nil {
-			return nil, err
-		}
 
 		sb := &sectorbuilder.SectorBuilderConfig{
 			Miner:       minerAddr,
@@ -66,12 +74,7 @@ func SectorBuilder(mctx helpers.MetricsCtx, lc fx.Lifecycle, sbc *sectorbuilder.
 }
 
 func StorageMiner(mctx helpers.MetricsCtx, lc fx.Lifecycle, api api.FullNode, h host.Host, ds dtypes.MetadataDS, sb *sectorbuilder.SectorBuilder, w *wallet.Wallet) (*storage.Miner, error) {
-	maddrb, err := ds.Get(datastore.NewKey("miner-address"))
-	if err != nil {
-		return nil, err
-	}
-
-	maddr, err := address.NewFromBytes(maddrb)
+	maddr, err := minerAddrFromDS(ds)
 	if err != nil {
 		return nil, err
 	}

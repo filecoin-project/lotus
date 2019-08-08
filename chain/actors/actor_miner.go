@@ -6,6 +6,7 @@ import (
 	"github.com/filecoin-project/go-lotus/chain/actors/aerrors"
 	"github.com/filecoin-project/go-lotus/chain/address"
 	"github.com/filecoin-project/go-lotus/chain/types"
+	"github.com/filecoin-project/go-lotus/lib/sectorbuilder"
 	"golang.org/x/xerrors"
 
 	cid "github.com/ipfs/go-cid"
@@ -190,7 +191,7 @@ func (sma StorageMinerActor) StorageMinerConstructor(act *types.Actor, vmctx typ
 }
 
 type CommitSectorParams struct {
-	SectorId  types.BigInt
+	SectorID  types.BigInt
 	CommD     []byte
 	CommR     []byte
 	CommRStar []byte
@@ -208,12 +209,17 @@ func (sma StorageMinerActor) CommitSector(act *types.Actor, vmctx types.VMContex
 		return nil, err
 	}
 
-	if !ValidatePoRep(mi.SectorSize, params) {
+	// TODO: this needs to get normalized to either the ID address or the actor address
+	maddr := vmctx.Message().To
+
+	if ok, err := ValidatePoRep(maddr, mi.SectorSize, params); err != nil {
+		return nil, err
+	} else if !ok {
 		return nil, aerrors.New(1, "bad proof!")
 	}
 
 	// make sure the miner isnt trying to submit a pre-existing sector
-	unique, err := SectorIsUnique(vmctx.Ipld(), self.Sectors, params.SectorId)
+	unique, err := SectorIsUnique(vmctx.Ipld(), self.Sectors, params.SectorID)
 	if err != nil {
 		return nil, err
 	}
@@ -237,7 +243,7 @@ func (sma StorageMinerActor) CommitSector(act *types.Actor, vmctx types.VMContex
 	// Note: There must exist a unique index in the miner's sector set for each
 	// sector ID. The `faults`, `recovered`, and `done` parameters of the
 	// SubmitPoSt method express indices into this sector set.
-	nssroot, err := AddToSectorSet(self.Sectors, params.SectorId, params.CommR, params.CommD)
+	nssroot, err := AddToSectorSet(context.TODO(), vmctx.Ipld(), self.Sectors, params.SectorID, params.CommR, params.CommD)
 	if err != nil {
 		return nil, err
 	}
@@ -330,25 +336,53 @@ func (sma StorageMinerActor) GetPower(act *types.Actor, vmctx types.VMContext, p
 func SectorIsUnique(cst *hamt.CborIpldStore, sroot cid.Cid, sid types.BigInt) (bool, ActorError) {
 	nd, err := hamt.LoadNode(context.TODO(), cst, sroot)
 	if err != nil {
-		return false, aerrors.Absorb(err, 1, "could not load node in HAMT")
+		return false, aerrors.Escalate(err, "could not load node in HAMT")
 	}
 
 	if _, err := nd.Find(context.TODO(), sid.String()); err != nil {
 		if xerrors.Is(err, hamt.ErrNotFound) {
 			return true, nil
 		}
-		return false, aerrors.Absorb(err, 1, "could not find node in HAMT")
+		return false, aerrors.Escalate(err, "could not find node in HAMT")
 	}
 
 	return false, nil
 }
 
-func AddToSectorSet(ss cid.Cid, sectorID types.BigInt, commR, commD []byte) (cid.Cid, ActorError) {
-	panic("NYI")
+func AddToSectorSet(ctx context.Context, cst *hamt.CborIpldStore, ss cid.Cid, sectorID types.BigInt, commR, commD []byte) (cid.Cid, ActorError) {
+	nd, err := hamt.LoadNode(ctx, cst, ss)
+	if err != nil {
+		return cid.Undef, aerrors.Escalate(err, "could not load HAMT node")
+	}
+
+	enc, aerr := SerializeParams([][]byte{commR, commD})
+	if err != nil {
+		return cid.Undef, aerrors.Wrap(aerr, "failed to serialize commR and commD for sector set")
+	}
+
+	if err := nd.Set(ctx, sectorID.String(), enc); err != nil {
+		return cid.Undef, aerrors.Escalate(err, "failed to set new sector in sector set")
+	}
+
+	if err := nd.Flush(ctx); err != nil {
+		return cid.Undef, aerrors.Escalate(err, "failed to flush sector set")
+	}
+
+	ssroot, err := cst.Put(ctx, nd)
+	if err != nil {
+		return cid.Undef, aerrors.Escalate(err, "failed to store new sector set root")
+	}
+
+	return ssroot, nil
 }
 
-func ValidatePoRep(ssize types.BigInt, params *CommitSectorParams) bool {
-	return true
+func ValidatePoRep(maddr address.Address, ssize types.BigInt, params *CommitSectorParams) (bool, ActorError) {
+	ok, err := sectorbuilder.VerifySeal(ssize.Uint64(), params.CommR, params.CommD, params.CommRStar, maddr, params.SectorID.Uint64(), params.Proof)
+	if err != nil {
+		return false, aerrors.Escalate(err, "verify seal failed")
+	}
+
+	return ok, nil
 }
 
 func CollateralForPower(power types.BigInt) types.BigInt {

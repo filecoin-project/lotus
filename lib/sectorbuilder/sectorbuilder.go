@@ -2,11 +2,16 @@ package sectorbuilder
 
 import (
 	"context"
+	"encoding/binary"
 	"unsafe"
 
 	"github.com/filecoin-project/go-lotus/chain/address"
 	sectorbuilder "github.com/filecoin-project/go-sectorbuilder"
+
+	logging "github.com/ipfs/go-log"
 )
+
+var log = logging.Logger("sectorbuilder")
 
 type SectorSealingStatus = sectorbuilder.SectorSealingStatus
 
@@ -29,17 +34,29 @@ type SectorBuilderConfig struct {
 }
 
 func New(cfg *SectorBuilderConfig) (*SectorBuilder, error) {
-	var proverId [31]byte
-	copy(proverId[:], cfg.Miner.Payload())
+	proverId := addressToProverID(cfg.Miner)
 
-	sbp, err := sectorbuilder.InitSectorBuilder(cfg.SectorSize, 2, 2, 1, cfg.MetadataDir, [31]byte{}, cfg.SealedDir, cfg.StagedDir, 16)
+	sbp, err := sectorbuilder.InitSectorBuilder(cfg.SectorSize, 1, 1, 1, cfg.MetadataDir, proverId, cfg.SealedDir, cfg.StagedDir, 16)
 	if err != nil {
 		return nil, err
 	}
 
 	return &SectorBuilder{
 		handle: sbp,
+		sschan: make(chan SectorSealingStatus, 32),
 	}, nil
+}
+
+func addressToProverID(a address.Address) [31]byte {
+	var proverId [31]byte
+	copy(proverId[:], a.Payload())
+	return proverId
+}
+
+func sectorIDtoBytes(sid uint64) [31]byte {
+	var out [31]byte
+	binary.LittleEndian.PutUint64(out[:], sid)
+	return out
 }
 
 func (sb *SectorBuilder) Run(ctx context.Context) {
@@ -84,9 +101,15 @@ func (sb *SectorBuilder) SealedSectorChan() <-chan SectorSealingStatus {
 
 var UserBytesForSectorSize = sectorbuilder.GetMaxUserBytesPerStagedSector
 
-func VerifySeal(sectorSize uint64, commR, commD, commRStar [CommLen]byte, proverID address.Address, sectorID uint64, proof []byte) (bool, error) {
-	panic("TODO")
-	// return sectorbuilder.VerifySeal(sectorSize, commR, commD, commRStar, providerID, sectorID, proof)
+func VerifySeal(sectorSize uint64, commR, commD, commRStar []byte, proverID address.Address, sectorID uint64, proof []byte) (bool, error) {
+	var commRa, commDa, commRStara [32]byte
+	copy(commRa[:], commR)
+	copy(commDa[:], commD)
+	copy(commRStara[:], commRStar)
+	proverIDa := addressToProverID(proverID)
+	sectorIDa := sectorIDtoBytes(sectorID)
+
+	return sectorbuilder.VerifySeal(sectorSize, commRa, commDa, commRStara, proverIDa, sectorIDa, proof)
 }
 
 func VerifyPost(sectorSize uint64, sortedCommRs [][CommLen]byte, challengeSeed [CommLen]byte, proofs [][]byte, faults []uint64) (bool, error) {

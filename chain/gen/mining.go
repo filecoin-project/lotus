@@ -70,7 +70,7 @@ func MinerCreateBlock(ctx context.Context, cs *store.ChainStore, miner address.A
 			return nil, errors.Wrap(err, "apply message failure")
 		}
 
-		receipts = append(receipts, rec)
+		receipts = append(receipts, rec.MessageReceipt)
 	}
 	for _, msg := range secpkMessages {
 		rec, err := vmi.ApplyMessage(ctx, &msg.Message)
