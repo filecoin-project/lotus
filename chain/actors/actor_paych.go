@@ -50,9 +50,6 @@ type PaymentChannelActorState struct {
 	MinCloseHeight uint64
 
 	LaneStates map[uint64]*LaneState
-
-	VerifActor  address.Address
-	VerifMethod uint64
 }
 
 func (pca PaymentChannelActor) Exports() []interface{} {
@@ -74,8 +71,6 @@ func (pca PaymentChannelActor) Constructor(act *types.Actor, vmctx types.VMConte
 	var self PaymentChannelActorState
 	self.From = vmctx.Origin()
 	self.To = params.To
-	self.VerifActor = params.VerifActor
-	self.VerifMethod = params.VerifMethod
 
 	storage := vmctx.Storage()
 	c, err := storage.Put(self)
@@ -93,7 +88,7 @@ func (pca PaymentChannelActor) Constructor(act *types.Actor, vmctx types.VMConte
 type SignedVoucher struct {
 	TimeLock       uint64
 	SecretPreimage []byte
-	Extra          []byte
+	Extra          *ModVerifyParams
 	Lane           uint64
 	Nonce          uint64
 	Amount         types.BigInt
@@ -102,6 +97,12 @@ type SignedVoucher struct {
 	Merges []Merge
 
 	Signature types.Signature
+}
+
+type ModVerifyParams struct {
+	Actor  address.Address
+	Method uint64
+	Data   []byte
 }
 
 type Merge struct {
@@ -144,40 +145,36 @@ func (pca PaymentChannelActor) UpdateChannelState(act *types.Actor, vmctx types.
 	}
 
 	if sv.Extra != nil {
-		if self.VerifActor == address.Undef {
-			return nil, aerrors.New(4, "no verifActor for extra data")
-		}
-
-		encoded, err := SerializeParams([]interface{}{sv.Extra, params.Proof})
+		encoded, err := SerializeParams([]interface{}{sv.Extra.Data, params.Proof})
 		if err != nil {
 			return nil, err
 		}
 
-		_, err = vmctx.Send(self.VerifActor, self.VerifMethod, types.NewInt(0), encoded)
+		_, err = vmctx.Send(sv.Extra.Actor, sv.Extra.Method, types.NewInt(0), encoded)
 		if err != nil {
-			return nil, aerrors.New(5, "spend voucher verification failed")
+			return nil, aerrors.New(4, "spend voucher verification failed")
 		}
 	}
 
 	ls := self.LaneStates[sv.Lane]
 	if ls.Closed {
-		return nil, aerrors.New(6, "cannot redeem a voucher on a closed lane")
+		return nil, aerrors.New(5, "cannot redeem a voucher on a closed lane")
 	}
 
 	if ls.Nonce > sv.Nonce {
-		return nil, aerrors.New(7, "voucher has an outdated nonce, cannot redeem")
+		return nil, aerrors.New(6, "voucher has an outdated nonce, cannot redeem")
 	}
 
 	mergeValue := types.NewInt(0)
 	for _, merge := range sv.Merges {
 		if merge.Lane == sv.Lane {
-			return nil, aerrors.New(8, "voucher cannot merge its own lane")
+			return nil, aerrors.New(7, "voucher cannot merge its own lane")
 		}
 
 		ols := self.LaneStates[merge.Lane]
 
 		if ols.Nonce >= merge.Nonce {
-			return nil, aerrors.New(9, "merge in voucher has outdated nonce, cannot redeem")
+			return nil, aerrors.New(8, "merge in voucher has outdated nonce, cannot redeem")
 		}
 
 		mergeValue = types.BigAdd(mergeValue, ols.Redeemed)
@@ -191,11 +188,11 @@ func (pca PaymentChannelActor) UpdateChannelState(act *types.Actor, vmctx types.
 	newSendBalance := types.BigAdd(self.ToSend, balanceDelta)
 	if types.BigCmp(newSendBalance, types.NewInt(0)) < 0 {
 		// TODO: is this impossible?
-		return nil, aerrors.New(10, "voucher would leave channel balance negative")
+		return nil, aerrors.New(9, "voucher would leave channel balance negative")
 	}
 
 	if types.BigCmp(newSendBalance, self.ChannelTotal) > 0 {
-		return nil, aerrors.New(11, "not enough funds in channel to cover voucher")
+		return nil, aerrors.New(10, "not enough funds in channel to cover voucher")
 	}
 
 	self.ToSend = newSendBalance
