@@ -73,6 +73,7 @@ func (s *RPCServer) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 }
 
 func rpcError(wf func(func(io.Writer)), req *request, code int, err error) {
+	log.Errorf("RPC Error: %s", err)
 	wf(func(w io.Writer) {
 		if hw, ok := w.(http.ResponseWriter); ok {
 			hw.WriteHeader(500)

@@ -13,7 +13,9 @@ class Block extends React.Component {
 
   async loadHeader() {
     const header = await this.props.conn.call('Filecoin.ChainGetBlock', [this.props.cid])
-    this.setState({header: header})
+    const messages = await this.props.conn.call('Filecoin.ChainGetBlockMessages', [this.props.cid])
+    console.log(messages)
+    this.setState({header: header, messages: messages})
   }
 
   render() {
@@ -21,17 +23,28 @@ class Block extends React.Component {
     if (this.state.header) {
       let head = this.state.header
 
-      content = (
+
+
+      let messages = [
+        ...(this.state.messages.BlsMessages.map(m => ({...m, type: 'BLS'}))),
+        ...(this.state.messages.SecpkMessages.map(m => ({...(m.Message), type: 'Secpk'})))
+      ].map(m => (
         <div>
+          {m.From}<b> => </b>{m.To} {m.Value}FIL M{m.Method}
+        </div>
+      ))
+
+      content = (
+        <div className="Block">
           <div>Height: {head.Height}</div>
           <div>Parents: <BlockLinks cids={head.Parents} conn={this.props.conn} mountWindow={this.props.mountWindow}/></div>
           <div>Weight: {head.ParentWeight}</div>
           <div>Miner: {head.Miner}</div>
           <div>Messages: {head.Messages['/']} {/*TODO: link to message explorer */}</div>
           <div>Receipts: {head.MessageReceipts['/']}</div>
-          <div>State Root: {head.StateRoot['/']}</div>
-
-
+          <div>State Root:&nbsp;{head.StateRoot['/']}</div>
+          <div>----</div>
+          <div>{messages}</div>
         </div>
       )
     }

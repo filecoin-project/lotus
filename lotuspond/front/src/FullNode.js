@@ -104,7 +104,7 @@ class FullNode extends React.Component {
         chainInfo = (
           <div>
             Head: {
-            <BlockLinks cids={this.state.tipset.Cids} conn={this.state.client} mountWindow={this.props.mountWindow} />
+            <BlockLinks cids={this.state.tipset.Cids} conn={this.props.client} mountWindow={this.props.mountWindow} />
           } H:{this.state.tipset.Height}
           </div>
         )
