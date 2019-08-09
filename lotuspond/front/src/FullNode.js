@@ -20,8 +20,6 @@ class FullNode extends React.Component {
     super(props)
 
     this.state = {
-      id: "~",
-
       mining: false,
     }
 
@@ -37,16 +35,12 @@ class FullNode extends React.Component {
 
   async loadInfo() {
     const id = await this.props.client.call("Filecoin.ID", [])
-    this.setState(() => ({id: id}))
 
     const version = await this.props.client.call("Filecoin.Version", [])
-    this.setState(() => ({version: version}))
 
     const peers = await this.props.client.call("Filecoin.NetPeers", [])
-    this.setState(() => ({peers: peers.length}))
 
     const tipset = await this.props.client.call("Filecoin.ChainHead", [])
-    this.setState(() => ({tipset: tipset}))
 
     const addrss = await this.props.client.call('Filecoin.WalletList', [])
     let defaultAddr = ""
@@ -64,7 +58,14 @@ class FullNode extends React.Component {
       return [addr, balance]
     }).reduce(awaitListReducer, Promise.resolve([]))
 
-    this.setState(() => ({balances: balances, defaultAddr: defaultAddr}))
+    this.setState(() => ({
+      id: id,
+      version: version,
+      peers: peers.length,
+      tipset: tipset,
+
+      balances: balances,
+      defaultAddr: defaultAddr}))
   }
 
   async startMining() {
@@ -96,7 +97,8 @@ class FullNode extends React.Component {
 
   render() {
     let runtime = <div></div>
-    if (this.state.defaultAddr) {
+
+    if (this.state.id) {
       let chainInfo = <div></div>
       if (this.state.tipset !== undefined) {
         chainInfo = (
@@ -122,12 +124,12 @@ class FullNode extends React.Component {
         if (this.state.defaultAddr === addr) {
           line = <b>{line}</b>
         }
-        return <div>{line}</div>
+        return <div key={addr}>{line}</div>
       })
 
       runtime = (
         <div>
-          <div>v{this.state.version.Version}, <abbr title={this.state.id}>{this.state.id.substr(-8)}</abbr>, {this.state.peers} peers</div>
+          <div>{this.props.node.ID} - v{this.state.version.Version}, <abbr title={this.state.id}>{this.state.id.substr(-8)}</abbr>, {this.state.peers} peers</div>
           <div>Repo: LOTUS_PATH={this.props.node.Repo}</div>
           {chainInfo}
           <div>
@@ -148,7 +150,6 @@ class FullNode extends React.Component {
         initialPosition={{x: this.props.node.ID*30, y: this.props.node.ID * 30}} >
         <div className="CristalScroll">
           <div className="FullNode">
-            <div>{this.props.node.ID} - {this.state.state}</div>
             {runtime}
           </div>
         </div>
