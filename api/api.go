@@ -16,47 +16,6 @@ import (
 	"github.com/ipfs/go-filestore"
 )
 
-// Version provides various build-time information
-type Version struct {
-	Version string
-
-	// APIVersion is a binary encoded semver version of the remote implementing
-	// this api
-	//
-	// See APIVersion in build/version.go
-	APIVersion uint32
-
-	// TODO: git commit / os / genesis cid?
-}
-
-type Import struct {
-	Status   filestore.Status
-	Key      cid.Cid
-	FilePath string
-	Size     uint64
-}
-
-type MsgWait struct {
-	InBlock cid.Cid
-	Receipt types.MessageReceipt
-}
-
-type BlockMessages struct {
-	BlsMessages   []*types.Message
-	SecpkMessages []*types.SignedMessage
-}
-
-type SectorInfo struct {
-	SectorID uint64
-	CommD    []byte
-	CommR    []byte
-}
-
-type ActorState struct {
-	Balance types.BigInt
-	State   interface{}
-}
-
 type Common interface {
 	// Auth
 	AuthVerify(ctx context.Context, token string) ([]string, error)
@@ -137,6 +96,15 @@ type FullNode interface {
 
 	StateMinerSectors(context.Context, address.Address) ([]*SectorInfo, error)
 	StateMinerProvingSet(context.Context, address.Address) ([]*SectorInfo, error)
+
+	PaychCreate(ctx context.Context, from, to address.Address, amt types.BigInt) (address.Address, error)
+	PaychList(context.Context) ([]address.Address, error)
+	PaychStatus(context.Context, address.Address) (*PaychStatus, error)
+	PaychClose(context.Context, address.Address) error
+	PaychVoucherCheck(context.Context, *types.SignedVoucher) error
+	PaychVoucherCreate(context.Context, address.Address, types.BigInt, uint64) (*types.SignedVoucher, error)
+	PaychVoucherAdd(context.Context, *types.SignedVoucher) error
+	PaychVoucherList(context.Context, address.Address) ([]*types.SignedVoucher, error)
 }
 
 // Full API is a low-level interface to the Filecoin network storage miner node
@@ -157,3 +125,46 @@ type StorageMiner interface {
 	// Seal all staged sectors
 	SectorsStagedSeal(context.Context) error
 }
+
+// Version provides various build-time information
+type Version struct {
+	Version string
+
+	// APIVersion is a binary encoded semver version of the remote implementing
+	// this api
+	//
+	// See APIVersion in build/version.go
+	APIVersion uint32
+
+	// TODO: git commit / os / genesis cid?
+}
+
+type Import struct {
+	Status   filestore.Status
+	Key      cid.Cid
+	FilePath string
+	Size     uint64
+}
+
+type MsgWait struct {
+	InBlock cid.Cid
+	Receipt types.MessageReceipt
+}
+
+type BlockMessages struct {
+	BlsMessages   []*types.Message
+	SecpkMessages []*types.SignedMessage
+}
+
+type SectorInfo struct {
+	SectorID uint64
+	CommD    []byte
+	CommR    []byte
+}
+
+type ActorState struct {
+	Balance types.BigInt
+	State   interface{}
+}
+
+type PaychStatus struct{}

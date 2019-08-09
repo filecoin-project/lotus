@@ -120,23 +120,19 @@ func (w *Wallet) ListAddrs() ([]address.Address, error) {
 	return out, nil
 }
 
-func (w *Wallet) GenerateKey(typ string) (address.Address, error) {
-	var k *Key
+func GenerateKey(typ string) (*Key, error) {
 	switch typ {
 	case types.KTSecp256k1:
 		priv, err := crypto.GenerateKey()
 		if err != nil {
-			return address.Undef, err
+			return nil, err
 		}
 		ki := types.KeyInfo{
 			Type:       typ,
 			PrivateKey: priv,
 		}
 
-		k, err = NewKey(ki)
-		if err != nil {
-			return address.Undef, err
-		}
+		return NewKey(ki)
 	case types.KTBLS:
 		priv := bls.PrivateKeyGenerate()
 		ki := types.KeyInfo{
@@ -144,17 +140,19 @@ func (w *Wallet) GenerateKey(typ string) (address.Address, error) {
 			PrivateKey: priv[:],
 		}
 
-		var err error
-		k, err = NewKey(ki)
-		if err != nil {
-			return address.Undef, err
-		}
+		return NewKey(ki)
 	default:
-		return address.Undef, xerrors.Errorf("invalid key type: %s", typ)
+		return nil, xerrors.Errorf("invalid key type: %s", typ)
+	}
+}
+
+func (w *Wallet) GenerateKey(typ string) (address.Address, error) {
+	k, err := GenerateKey(typ)
+	if err != nil {
+		return address.Undef, err
 	}
 
-	err := w.keystore.Put(KNamePrefix+k.Address.String(), k.KeyInfo)
-	if err != nil {
+	if err := w.keystore.Put(KNamePrefix+k.Address.String(), k.KeyInfo); err != nil {
 		return address.Undef, xerrors.Errorf("saving to keystore: %w", err)
 	}
 	w.keys[k.Address] = k

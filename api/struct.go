@@ -72,6 +72,15 @@ type FullNodeStruct struct {
 
 		StateMinerSectors    func(context.Context, address.Address) ([]*SectorInfo, error) `perm:"read"`
 		StateMinerProvingSet func(context.Context, address.Address) ([]*SectorInfo, error) `perm:"read"`
+
+		PaychCreate        func(ctx context.Context, from, to address.Address, amt types.BigInt) (address.Address, error) `perm:"sign"`
+		PaychList          func(context.Context) ([]address.Address, error)                                               `perm:"read"`
+		PaychStatus        func(context.Context, address.Address) (*PaychStatus, error)                                   `perm:"read"`
+		PaychClose         func(context.Context, address.Address) error                                                   `perm:"write"`
+		PaychVoucherCheck  func(context.Context, *types.SignedVoucher) error                                              `perm:"read"`
+		PaychVoucherAdd    func(context.Context, *types.SignedVoucher) error                                              `perm:"write"`
+		PaychVoucherCreate func(context.Context, address.Address, types.BigInt, uint64) (*types.SignedVoucher, error)     `perm:"sign"`
+		PaychVoucherList   func(context.Context, address.Address) ([]*types.SignedVoucher, error)                         `perm:"write"`
 	}
 }
 
@@ -237,6 +246,38 @@ func (c *FullNodeStruct) StateMinerSectors(ctx context.Context, addr address.Add
 
 func (c *FullNodeStruct) StateMinerProvingSet(ctx context.Context, addr address.Address) ([]*SectorInfo, error) {
 	return c.Internal.StateMinerProvingSet(ctx, addr)
+}
+
+func (c *FullNodeStruct) PaychCreate(ctx context.Context, from, to address.Address, amt types.BigInt) (address.Address, error) {
+	return c.Internal.PaychCreate(ctx, from, to, amt)
+}
+
+func (c *FullNodeStruct) PaychList(ctx context.Context) ([]address.Address, error) {
+	return c.Internal.PaychList(ctx)
+}
+
+func (c *FullNodeStruct) PaychStatus(ctx context.Context, pch address.Address) (*PaychStatus, error) {
+	return c.Internal.PaychStatus(ctx, pch)
+}
+
+func (c *FullNodeStruct) PaychVoucherCheck(ctx context.Context, sv *types.SignedVoucher) error {
+	return c.Internal.PaychVoucherCheck(ctx, sv)
+}
+
+func (c *FullNodeStruct) PaychVoucherAdd(ctx context.Context, sv *types.SignedVoucher) error {
+	return c.Internal.PaychVoucherAdd(ctx, sv)
+}
+
+func (c *FullNodeStruct) PaychVoucherCreate(ctx context.Context, pch address.Address, amt types.BigInt, lane uint64) (*types.SignedVoucher, error) {
+	return c.Internal.PaychVoucherCreate(ctx, pch, amt, lane)
+}
+
+func (c *FullNodeStruct) PaychVoucherList(ctx context.Context, pch address.Address) ([]*types.SignedVoucher, error) {
+	return c.Internal.PaychVoucherList(ctx, pch)
+}
+
+func (c *FullNodeStruct) PaychClose(ctx context.Context, a address.Address) error {
+	return c.Internal.PaychClose(ctx, a)
 }
 
 func (c *StorageMinerStruct) ActorAddresses(ctx context.Context) ([]address.Address, error) {

@@ -1,0 +1,92 @@
+package actors_test
+
+import (
+	"testing"
+
+	"github.com/filecoin-project/go-lotus/chain/actors"
+	"github.com/filecoin-project/go-lotus/chain/address"
+	"github.com/filecoin-project/go-lotus/chain/types"
+	"github.com/filecoin-project/go-lotus/chain/wallet"
+)
+
+func TestPaychCreate(t *testing.T) {
+	var creatorAddr, targetAddr address.Address
+	opts := []HarnessOpt{
+		HarnessAddr(&creatorAddr, 10000),
+		HarnessAddr(&targetAddr, 10000),
+	}
+
+	h := NewHarness2(t, opts...)
+	ret, _ := h.CreateActor(t, creatorAddr, actors.PaymentChannelActorCodeCid,
+		actors.PCAConstructorParams{
+			To: targetAddr,
+		})
+	ApplyOK(t, ret)
+}
+
+func signVoucher(t *testing.T, w *wallet.Wallet, addr address.Address, sv *types.SignedVoucher) {
+	vb, err := sv.SigningBytes()
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	sig, err := w.Sign(addr, vb)
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	sv.Signature = sig
+}
+
+func TestPaychUpdate(t *testing.T) {
+	var creatorAddr, targetAddr address.Address
+	opts := []HarnessOpt{
+		HarnessAddr(&creatorAddr, 10000),
+		HarnessAddr(&targetAddr, 10000),
+	}
+
+	h := NewHarness2(t, opts...)
+	ret, _ := h.CreateActor(t, creatorAddr, actors.PaymentChannelActorCodeCid,
+		actors.PCAConstructorParams{
+			To: targetAddr,
+		})
+	ApplyOK(t, ret)
+	pch, err := address.NewFromBytes(ret.Return)
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	ret, _ = h.SendFunds(t, creatorAddr, pch, types.NewInt(5000))
+	ApplyOK(t, ret)
+
+	sv := &types.SignedVoucher{
+		Amount: types.NewInt(100),
+		Nonce:  1,
+	}
+	signVoucher(t, h.w, creatorAddr, sv)
+
+	ret, _ = h.Invoke(t, targetAddr, pch, actors.PCAMethods.UpdateChannelState, actors.PCAUpdateChannelStateParams{
+		Sv: *sv,
+	})
+	ApplyOK(t, ret)
+
+	ret, _ = h.Invoke(t, targetAddr, pch, actors.PCAMethods.GetToSend, struct{}{})
+	ApplyOK(t, ret)
+
+	bi := types.BigFromBytes(ret.Return)
+	if bi.String() != "100" {
+		t.Fatal("toSend amount was wrong: ", bi.String())
+	}
+
+	ret, _ = h.Invoke(t, targetAddr, pch, actors.PCAMethods.Close, struct{}{})
+	ApplyOK(t, ret)
+
+	// now we have to 'wait' for the chain to advance.
+	h.vm.SetBlockHeight(1000)
+
+	ret, _ = h.Invoke(t, targetAddr, pch, actors.PCAMethods.Collect, struct{}{})
+	ApplyOK(t, ret)
+
+	h.AssertBalance(t, targetAddr, 10100)
+	h.AssertBalance(t, creatorAddr, 9900)
+}

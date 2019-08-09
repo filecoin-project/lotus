@@ -2,6 +2,7 @@ package actors
 
 import (
 	"bytes"
+	"fmt"
 
 	"github.com/ipfs/go-cid"
 	cbor "github.com/ipfs/go-ipld-cbor"
@@ -16,10 +17,8 @@ const ChannelClosingDelay = 6 * 60 * 2 // six hours
 func init() {
 	cbor.RegisterCborType(PaymentChannelActorState{})
 	cbor.RegisterCborType(PCAConstructorParams{})
-	cbor.RegisterCborType(SignedVoucher{})
-	cbor.RegisterCborType(Merge{})
 	cbor.RegisterCborType(LaneState{})
-	cbor.RegisterCborType(UpdateChannelState{})
+	cbor.RegisterCborType(PCAUpdateChannelStateParams{})
 	cbor.RegisterCborType(PaymentInfo{})
 }
 
@@ -30,7 +29,7 @@ type PaymentInfo struct {
 	Payer          address.Address
 	ChannelMessage cid.Cid
 
-	Vouchers []SignedVoucher
+	Vouchers []types.SignedVoucher
 }
 
 type LaneState struct {
@@ -43,34 +42,47 @@ type PaymentChannelActorState struct {
 	From address.Address
 	To   address.Address
 
-	ChannelTotal types.BigInt
-	ToSend       types.BigInt
+	ToSend types.BigInt
 
 	ClosingAt      uint64
 	MinCloseHeight uint64
 
-	LaneStates map[uint64]*LaneState
+	// TODO: needs to be map[uint64]*LaneState
+	// waiting on refmt#35 to be fixed
+	LaneStates map[string]*LaneState
 }
 
 func (pca PaymentChannelActor) Exports() []interface{} {
 	return []interface{}{
-		0: pca.Constructor,
-		1: pca.UpdateChannelState,
-		2: pca.Close,
-		3: pca.Collect,
+		1: pca.Constructor,
+		2: pca.UpdateChannelState,
+		3: pca.Close,
+		4: pca.Collect,
+		5: pca.GetOwner,
+		6: pca.GetToSend,
 	}
 }
 
+type pcaMethods struct {
+	Constructor        uint64
+	UpdateChannelState uint64
+	Close              uint64
+	Collect            uint64
+	GetOwner           uint64
+	GetToSend          uint64
+}
+
+var PCAMethods = pcaMethods{1, 2, 3, 4, 5, 6}
+
 type PCAConstructorParams struct {
-	To          address.Address
-	VerifActor  address.Address
-	VerifMethod uint64
+	To address.Address
 }
 
 func (pca PaymentChannelActor) Constructor(act *types.Actor, vmctx types.VMContext, params *PCAConstructorParams) ([]byte, ActorError) {
 	var self PaymentChannelActorState
 	self.From = vmctx.Origin()
 	self.To = params.To
+	self.LaneStates = make(map[string]*LaneState)
 
 	storage := vmctx.Storage()
 	c, err := storage.Put(self)
@@ -85,33 +97,8 @@ func (pca PaymentChannelActor) Constructor(act *types.Actor, vmctx types.VMConte
 	return nil, nil
 }
 
-type SignedVoucher struct {
-	TimeLock       uint64
-	SecretPreimage []byte
-	Extra          *ModVerifyParams
-	Lane           uint64
-	Nonce          uint64
-	Amount         types.BigInt
-	MinCloseHeight uint64
-
-	Merges []Merge
-
-	Signature types.Signature
-}
-
-type ModVerifyParams struct {
-	Actor  address.Address
-	Method uint64
-	Data   []byte
-}
-
-type Merge struct {
-	Lane  uint64
-	Nonce uint64
-}
-
-type UpdateChannelState struct {
-	Sv     SignedVoucher
+type PCAUpdateChannelStateParams struct {
+	Sv     types.SignedVoucher
 	Secret []byte
 	Proof  []byte
 }
@@ -120,7 +107,7 @@ func hash(b []byte) []byte {
 	panic("blake 2b hash pls")
 }
 
-func (pca PaymentChannelActor) UpdateChannelState(act *types.Actor, vmctx types.VMContext, params *UpdateChannelState) ([]byte, ActorError) {
+func (pca PaymentChannelActor) UpdateChannelState(act *types.Actor, vmctx types.VMContext, params *PCAUpdateChannelStateParams) ([]byte, ActorError) {
 	var self PaymentChannelActorState
 	oldstate := vmctx.Storage().GetHead()
 	storage := vmctx.Storage()
@@ -130,7 +117,12 @@ func (pca PaymentChannelActor) UpdateChannelState(act *types.Actor, vmctx types.
 
 	sv := params.Sv
 
-	if err := vmctx.VerifySignature(sv.Signature, self.From); err != nil {
+	vb, nerr := sv.SigningBytes()
+	if nerr != nil {
+		return nil, aerrors.Escalate(nerr, "failed to serialize signedvoucher")
+	}
+
+	if err := vmctx.VerifySignature(sv.Signature, self.From, vb); err != nil {
 		return nil, err
 	}
 
@@ -156,7 +148,12 @@ func (pca PaymentChannelActor) UpdateChannelState(act *types.Actor, vmctx types.
 		}
 	}
 
-	ls := self.LaneStates[sv.Lane]
+	ls, ok := self.LaneStates[fmt.Sprint(sv.Lane)]
+	if !ok {
+		ls = new(LaneState)
+		ls.Redeemed = types.NewInt(0) // TODO: kinda annoying that this doesnt default to a usable value
+		self.LaneStates[fmt.Sprint(sv.Lane)] = ls
+	}
 	if ls.Closed {
 		return nil, aerrors.New(5, "cannot redeem a voucher on a closed lane")
 	}
@@ -171,7 +168,7 @@ func (pca PaymentChannelActor) UpdateChannelState(act *types.Actor, vmctx types.
 			return nil, aerrors.New(7, "voucher cannot merge its own lane")
 		}
 
-		ols := self.LaneStates[merge.Lane]
+		ols := self.LaneStates[fmt.Sprint(merge.Lane)]
 
 		if ols.Nonce >= merge.Nonce {
 			return nil, aerrors.New(8, "merge in voucher has outdated nonce, cannot redeem")
@@ -191,10 +188,11 @@ func (pca PaymentChannelActor) UpdateChannelState(act *types.Actor, vmctx types.
 		return nil, aerrors.New(9, "voucher would leave channel balance negative")
 	}
 
-	if types.BigCmp(newSendBalance, self.ChannelTotal) > 0 {
+	if types.BigCmp(newSendBalance, act.Balance) > 0 {
 		return nil, aerrors.New(10, "not enough funds in channel to cover voucher")
 	}
 
+	log.Info("vals: ", newSendBalance, sv.Amount, balanceDelta, mergeValue, ls.Redeemed)
 	self.ToSend = newSendBalance
 
 	if sv.MinCloseHeight != 0 {
@@ -217,7 +215,7 @@ func (pca PaymentChannelActor) UpdateChannelState(act *types.Actor, vmctx types.
 	return nil, nil
 }
 
-func (pca PaymentChannelActor) Close(act *types.Actor, vmctx types.VMContext, params struct{}) ([]byte, aerrors.ActorError) {
+func (pca PaymentChannelActor) Close(act *types.Actor, vmctx types.VMContext, params *struct{}) ([]byte, aerrors.ActorError) {
 	var self PaymentChannelActorState
 	storage := vmctx.Storage()
 	oldstate := storage.GetHead()
@@ -249,7 +247,7 @@ func (pca PaymentChannelActor) Close(act *types.Actor, vmctx types.VMContext, pa
 	return nil, nil
 }
 
-func (pca PaymentChannelActor) Collect(act *types.Actor, vmctx types.VMContext, params struct{}) ([]byte, aerrors.ActorError) {
+func (pca PaymentChannelActor) Collect(act *types.Actor, vmctx types.VMContext, params *struct{}) ([]byte, aerrors.ActorError) {
 	var self PaymentChannelActorState
 	storage := vmctx.Storage()
 	oldstate := storage.GetHead()
@@ -264,7 +262,7 @@ func (pca PaymentChannelActor) Collect(act *types.Actor, vmctx types.VMContext, 
 	if vmctx.BlockHeight() < self.ClosingAt {
 		return nil, aerrors.New(2, "payment channel not closed yet")
 	}
-	_, err := vmctx.Send(self.From, 0, types.BigSub(self.ChannelTotal, self.ToSend), nil)
+	_, err := vmctx.Send(self.From, 0, types.BigSub(act.Balance, self.ToSend), nil)
 	if err != nil {
 		return nil, err
 	}
@@ -273,7 +271,6 @@ func (pca PaymentChannelActor) Collect(act *types.Actor, vmctx types.VMContext, 
 		return nil, err
 	}
 
-	self.ChannelTotal = types.NewInt(0)
 	self.ToSend = types.NewInt(0)
 
 	ncid, err := storage.Put(self)
@@ -285,4 +282,24 @@ func (pca PaymentChannelActor) Collect(act *types.Actor, vmctx types.VMContext, 
 	}
 
 	return nil, nil
+}
+
+func (pca PaymentChannelActor) GetOwner(act *types.Actor, vmctx types.VMContext, params *struct{}) ([]byte, aerrors.ActorError) {
+	var self PaymentChannelActorState
+	storage := vmctx.Storage()
+	if err := storage.Get(storage.GetHead(), &self); err != nil {
+		return nil, err
+	}
+
+	return self.From.Bytes(), nil
+}
+
+func (pca PaymentChannelActor) GetToSend(act *types.Actor, vmctx types.VMContext, params *struct{}) ([]byte, aerrors.ActorError) {
+	var self PaymentChannelActorState
+	storage := vmctx.Storage()
+	if err := storage.Get(storage.GetHead(), &self); err != nil {
+		return nil, err
+	}
+
+	return self.ToSend.Bytes(), nil
 }

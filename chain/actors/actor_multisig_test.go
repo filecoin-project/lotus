@@ -38,6 +38,9 @@ func ApplyOK(t testing.TB, ret *vm.ApplyRet) {
 	if ret.ExitCode != 0 {
 		t.Fatalf("exit code should be 0, got %d, actorErr: %+v", ret.ExitCode, ret.ActorErr)
 	}
+	if ret.ActorErr != nil {
+		t.Fatalf("somehow got an error with exit == 0: %s", ret.ActorErr)
+	}
 }
 
 func TestMultiSigOps(t *testing.T) {

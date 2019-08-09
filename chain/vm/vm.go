@@ -133,8 +133,42 @@ func (vmc *VMContext) StateTree() (types.StateTree, aerrors.ActorError) {
 	return vmc.state, nil
 }
 
-func (vmctx *VMContext) VerifySignature(sig types.Signature, act address.Address) aerrors.ActorError {
-	panic("NYI")
+func (vmctx *VMContext) VerifySignature(sig *types.Signature, act address.Address, data []byte) aerrors.ActorError {
+	if act.Protocol() == address.ID {
+		kaddr, err := vmctx.resolveToKeyAddr(act)
+		if err != nil {
+			return aerrors.Wrap(err, "failed to resolve address to key address")
+		}
+		act = kaddr
+	}
+
+	if err := sig.Verify(act, data); err != nil {
+		return aerrors.New(2, "signature verification failed")
+	}
+
+	return nil
+}
+
+func (vmctx *VMContext) resolveToKeyAddr(addr address.Address) (address.Address, aerrors.ActorError) {
+	if addr.Protocol() == address.BLS || addr.Protocol() == address.SECP256K1 {
+		return addr, nil
+	}
+
+	act, err := vmctx.state.GetActor(addr)
+	if err != nil {
+		return address.Undef, aerrors.Newf(1, "failed to find actor: %s", addr)
+	}
+
+	if act.Code != actors.AccountActorCodeCid {
+		return address.Undef, aerrors.New(1, "address was not for an account actor")
+	}
+
+	var aast actors.AccountActorState
+	if err := vmctx.cst.Get(context.TODO(), act.Head, &aast); err != nil {
+		return address.Undef, aerrors.Escalate(err, fmt.Sprintf("failed to get account actor state for %s", addr))
+	}
+
+	return aast.Address, nil
 }
 
 func (vm *VM) makeVMContext(ctx context.Context, sroot cid.Cid, origin address.Address, msg *types.Message) *VMContext {
@@ -225,9 +259,29 @@ func (vm *VM) send(ctx context.Context, origin address.Address, msg *types.Messa
 	return nil, nil, vmctx
 }
 
+func checkMessage(msg *types.Message) error {
+	if msg.GasLimit == types.EmptyInt {
+		return xerrors.Errorf("message gas no gas limit set")
+	}
+
+	if msg.GasPrice == types.EmptyInt {
+		return xerrors.Errorf("message gas no gas price set")
+	}
+
+	if msg.Value == types.EmptyInt {
+		return xerrors.Errorf("message gas no gas price set")
+	}
+
+	return nil
+}
+
 func (vm *VM) ApplyMessage(ctx context.Context, msg *types.Message) (*ApplyRet, error) {
 	ctx, span := trace.StartSpan(ctx, "vm.ApplyMessage")
 	defer span.End()
+
+	if err := checkMessage(msg); err != nil {
+		return nil, err
+	}
 
 	st := vm.cstate
 	if err := st.Snapshot(); err != nil {
@@ -282,6 +336,15 @@ func (vm *VM) ApplyMessage(ctx context.Context, msg *types.Message) (*ApplyRet, 
 		},
 		ActorErr: actorErr,
 	}, nil
+}
+
+func (vm *VM) ActorBalance(addr address.Address) (types.BigInt, aerrors.ActorError) {
+	act, err := vm.cstate.GetActor(addr)
+	if err != nil {
+		return types.EmptyInt, aerrors.Absorb(err, 1, "failed to find actor")
+	}
+
+	return act.Balance, nil
 }
 
 func (vm *VM) Flush(ctx context.Context) (cid.Cid, error) {
@@ -355,6 +418,10 @@ func (vm *VM) TransferFunds(from, to address.Address, amt types.BigInt) error {
 	DepositFunds(toAct, amt)
 
 	return nil
+}
+
+func (vm *VM) SetBlockHeight(h uint64) {
+	vm.blockHeight = h
 }
 
 func (vm *VM) Invoke(act *types.Actor, vmctx *VMContext, method uint64, params []byte) ([]byte, aerrors.ActorError) {
