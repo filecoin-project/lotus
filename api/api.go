@@ -111,6 +111,7 @@ type FullNode interface {
 	WalletList(context.Context) ([]address.Address, error)
 	WalletBalance(context.Context, address.Address) (types.BigInt, error)
 	WalletSign(context.Context, address.Address, []byte) (*types.Signature, error)
+	WalletSignMessage(context.Context, address.Address, *types.Message) (*types.SignedMessage, error)
 	WalletDefaultAddress(context.Context) (address.Address, error)
 
 	// Other

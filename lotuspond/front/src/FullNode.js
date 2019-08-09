@@ -4,10 +4,6 @@ import Cristal from 'react-cristal'
 import { BlockLinks } from "./BlockLink";
 import StorageNodeInit from "./StorageNodeInit";
 
-const stateConnected = 'connected'
-const stateConnecting = 'connecting'
-const stateGettingToken = 'getting-token'
-
 async function awaitListReducer(prev, c) {
   return [...await prev, await c]
 }
@@ -24,7 +20,6 @@ class FullNode extends React.Component {
     super(props)
 
     this.state = {
-      state: stateGettingToken,
       id: "~",
 
       mining: false,
@@ -34,62 +29,35 @@ class FullNode extends React.Component {
     this.startMining = this.startMining.bind(this)
     this.newScepAddr = this.newScepAddr.bind(this)
     this.startStorageMiner = this.startStorageMiner.bind(this)
+    this.add1k = this.add1k.bind(this)
 
-    this.connect()
-  }
-
-  async connect() {
-    const token = await this.props.pondClient.call('Pond.TokenFor', [this.props.node.ID])
-
-    this.setState(() => ({
-      state: stateConnecting,
-      token: token,
-    }))
-
-    const client = new Client(`ws://127.0.0.1:${this.props.node.ApiPort}/rpc/v0?token=${token}`)
-    client.on('open', async () => {
-      this.setState(() => ({
-        state: stateConnected,
-        client: client,
-
-        version: {Version: "~version~"},
-        id: "~peerid~",
-        peers: -1,
-        balances: []
-      }))
-
-      const id = await this.state.client.call("Filecoin.ID", [])
-      this.setState(() => ({id: id}))
-
-      this.props.onConnect(client, id)
-
-      this.loadInfo()
-      setInterval(this.loadInfo, 2050)
-    })
-
-    console.log(token) // todo: use
+    this.loadInfo()
+    setInterval(this.loadInfo, 2050)
   }
 
   async loadInfo() {
-    const version = await this.state.client.call("Filecoin.Version", [])
+    const id = await this.props.client.call("Filecoin.ID", [])
+    this.setState(() => ({id: id}))
+
+    const version = await this.props.client.call("Filecoin.Version", [])
     this.setState(() => ({version: version}))
 
-    const peers = await this.state.client.call("Filecoin.NetPeers", [])
+    const peers = await this.props.client.call("Filecoin.NetPeers", [])
     this.setState(() => ({peers: peers.length}))
 
-    const tipset = await this.state.client.call("Filecoin.ChainHead", [])
+    const tipset = await this.props.client.call("Filecoin.ChainHead", [])
     this.setState(() => ({tipset: tipset}))
 
-    const addrss = await this.state.client.call('Filecoin.WalletList', [])
+    const addrss = await this.props.client.call('Filecoin.WalletList', [])
     let defaultAddr = ""
     if (addrss.length > 0) {
-      defaultAddr = await this.state.client.call('Filecoin.WalletDefaultAddress', [])
+      defaultAddr = await this.props.client.call('Filecoin.WalletDefaultAddress', [])
     }
 
     const balances = await addrss.map(async addr => {
       let balance = 0
       try {
-        balance = await this.state.client.call('Filecoin.WalletBalance', [addr])
+        balance = await this.props.client.call('Filecoin.WalletBalance', [addr])
       } catch {
         balance = -1
       }
@@ -109,22 +77,26 @@ class FullNode extends React.Component {
     }
 
     this.setState({mining: true})
-    await this.state.client.call("Filecoin.MinerStart", [addr])
+    await this.props.client.call("Filecoin.MinerStart", [addr])
   }
 
   async newScepAddr() {
     const t = "secp256k1"
-    await this.state.client.call("Filecoin.WalletNew", [t])
+    await this.props.client.call("Filecoin.WalletNew", [t])
     this.loadInfo()
   }
 
   async startStorageMiner() {
-    this.props.mountWindow((onClose) => <StorageNodeInit fullRepo={this.props.node.Repo} fullConn={this.props.conn} pondClient={this.props.pondClient} onClose={onClose} mountWindow={this.props.mountWindow}/>)
+    this.props.mountWindow((onClose) => <StorageNodeInit fullRepo={this.props.node.Repo} fullConn={this.props.client} pondClient={this.props.pondClient} onClose={onClose} mountWindow={this.props.mountWindow}/>)
+  }
+
+  async add1k(to) {
+    await this.props.give1k(to)
   }
 
   render() {
     let runtime = <div></div>
-    if (this.state.state === stateConnected) {
+    if (this.state.defaultAddr) {
       let chainInfo = <div></div>
       if (this.state.tipset !== undefined) {
         chainInfo = (
@@ -144,7 +116,9 @@ class FullNode extends React.Component {
       let storageMine = <a href="#" onClick={this.startStorageMiner}>[Spawn Storage Miner]</a>
 
       let balances = this.state.balances.map(([addr, balance]) => {
-        let line = <span>{truncAddr(addr)}:&nbsp;{balance}&nbsp;(ActTyp)</span>
+        let add1k = <a href="#" onClick={() => this.add1k(addr)}>[+1k]</a>
+
+        let line = <span>{truncAddr(addr)}:&nbsp;{balance}&nbsp;(ActTyp) {add1k}</span>
         if (this.state.defaultAddr === addr) {
           line = <b>{line}</b>
         }

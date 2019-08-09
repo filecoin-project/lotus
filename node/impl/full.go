@@ -260,6 +260,23 @@ func (a *FullNodeAPI) WalletSign(ctx context.Context, k address.Address, msg []b
 	return a.Wallet.Sign(k, msg)
 }
 
+func (a *FullNodeAPI) WalletSignMessage(ctx context.Context, k address.Address, msg *types.Message) (*types.SignedMessage, error) {
+	msgbytes, err := msg.Serialize()
+	if err != nil {
+		return nil, err
+	}
+
+	sig, err := a.WalletSign(ctx, k, msgbytes)
+	if err != nil {
+		return nil, xerrors.Errorf("failed to sign message: %w", err)
+	}
+
+	return &types.SignedMessage{
+		Message:   *msg,
+		Signature: *sig,
+	}, nil
+}
+
 func (a *FullNodeAPI) WalletDefaultAddress(ctx context.Context) (address.Address, error) {
 	addrs, err := a.Wallet.ListAddrs()
 	if err != nil {

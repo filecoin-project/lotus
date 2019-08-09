@@ -26,7 +26,7 @@ class ConnMgr extends React.Component {
     let keys = Object.keys(nodes)
 
     const newConns = await keys.filter((_, i) => i > 0).map(async (kfrom, i) => {
-      return await keys.filter((_, j) => i >= j).map(async kto => {
+      return keys.filter((_, j) => i >= j).map(async kto => {
 
         const fromNd = this.props.nodes[kfrom]
         const toNd = this.props.nodes[kto]

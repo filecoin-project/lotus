@@ -55,13 +55,14 @@ type FullNodeStruct struct {
 		MinerStart       func(context.Context, address.Address) error                                                                                                `perm:"admin"`
 		MinerCreateBlock func(context.Context, address.Address, *types.TipSet, []types.Ticket, types.ElectionProof, []*types.SignedMessage) (*chain.BlockMsg, error) `perm:"write"`
 
-		WalletNew            func(context.Context, string) (address.Address, error)                   `perm:"write"`
-		WalletHas            func(context.Context, address.Address) (bool, error)                     `perm:"write"`
-		WalletList           func(context.Context) ([]address.Address, error)                         `perm:"write"`
-		WalletBalance        func(context.Context, address.Address) (types.BigInt, error)             `perm:"read"`
-		WalletSign           func(context.Context, address.Address, []byte) (*types.Signature, error) `perm:"sign"`
-		WalletDefaultAddress func(context.Context) (address.Address, error)                           `perm:"write"`
-		MpoolGetNonce        func(context.Context, address.Address) (uint64, error)                   `perm:"read"`
+		WalletNew            func(context.Context, string) (address.Address, error)                               `perm:"write"`
+		WalletHas            func(context.Context, address.Address) (bool, error)                                 `perm:"write"`
+		WalletList           func(context.Context) ([]address.Address, error)                                     `perm:"write"`
+		WalletBalance        func(context.Context, address.Address) (types.BigInt, error)                         `perm:"read"`
+		WalletSign           func(context.Context, address.Address, []byte) (*types.Signature, error)             `perm:"sign"`
+		WalletSignMessage    func(context.Context, address.Address, *types.Message) (*types.SignedMessage, error) `perm:"sign"`
+		WalletDefaultAddress func(context.Context) (address.Address, error)                                       `perm:"write"`
+		MpoolGetNonce        func(context.Context, address.Address) (uint64, error)                               `perm:"read"`
 
 		ClientImport      func(ctx context.Context, path string) (cid.Cid, error)                                                                     `perm:"write"`
 		ClientListImports func(ctx context.Context) ([]Import, error)                                                                                 `perm:"read"`
@@ -188,6 +189,10 @@ func (c *FullNodeStruct) WalletBalance(ctx context.Context, a address.Address) (
 
 func (c *FullNodeStruct) WalletSign(ctx context.Context, k address.Address, msg []byte) (*types.Signature, error) {
 	return c.Internal.WalletSign(ctx, k, msg)
+}
+
+func (c *FullNodeStruct) WalletSignMessage(ctx context.Context, k address.Address, msg *types.Message) (*types.SignedMessage, error) {
+	return c.Internal.WalletSignMessage(ctx, k, msg)
 }
 
 func (c *FullNodeStruct) WalletDefaultAddress(ctx context.Context) (address.Address, error) {
