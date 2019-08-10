@@ -15,7 +15,7 @@ class State extends React.Component {
   }
 
   render() {
-    const content = <div>
+    const content = <div className="State">
       <div>Balance: {this.state.Balance}</div>
       <div>---</div>
       <div>{Object.keys(this.state.State).map(k => <div key={k}>{k}: <span>{JSON.stringify(this.state.State[k])}</span></div>)}</div>
