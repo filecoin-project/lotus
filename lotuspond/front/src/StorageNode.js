@@ -1,6 +1,7 @@
 import React from 'react';
 import {Cristal} from "react-cristal";
 import { Client } from 'rpc-websockets'
+import Address from "./Address";
 
 const stateConnected = 'connected'
 const stateConnecting = 'connecting'
@@ -66,20 +67,10 @@ class StorageNode extends React.Component {
 
   async loadInfo() {
     const version = await this.state.client.call("Filecoin.Version", [])
-    this.setState(() => ({version: version}))
-
     const peers = await this.state.client.call("Filecoin.NetPeers", [])
-    this.setState(() => ({peers: peers.length}))
+    const [actor] = await this.state.client.call("Filecoin.ActorAddresses", [])
 
-    /*const addrss = await this.state.client.call('Filecoin.WalletList', [])
-    let defaultAddr = ""
-    if (addrss.length > 0) {
-      defaultAddr = await this.state.client.call('Filecoin.WalletDefaultAddress', [])
-    }
-
-    this.setState(() => ({defaultAddr: defaultAddr}))
-     */
-
+    this.setState({version: version, peers: peers.length, actor: actor})
     await this.stagedList()
   }
 
@@ -100,7 +91,7 @@ class StorageNode extends React.Component {
 
   render() {
     let runtime = <div></div>
-    if (this.state.state === stateConnected) {
+    if (this.state.actor) {
       const sealGarbage = <a href="#" onClick={this.sealGarbage}>[Seal Garbage]</a>
 
       runtime = (
@@ -109,6 +100,9 @@ class StorageNode extends React.Component {
           <div>Repo: LOTUS_STORAGE_PATH={this.props.node.Repo}</div>
           <div>
             {sealGarbage}
+          </div>
+          <div>
+            <Address client={this.props.fullConn} addr={this.state.actor} mountWindow={this.props.mountWindow}/>
           </div>
           <div>{this.state.statusCounts.map((c, i) => <span>{sealCodes[i]}: {c} | </span>)}</div>
           <div>

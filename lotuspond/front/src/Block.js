@@ -1,6 +1,7 @@
 import React from 'react';
 import {Cristal} from "react-cristal";
 import {BlockLinks} from "./BlockLink";
+import Address from "./Address";
 
 class Block extends React.Component {
   constructor(props) {
@@ -30,7 +31,9 @@ class Block extends React.Component {
         ...(this.state.messages.SecpkMessages.map(m => ({...(m.Message), type: 'Secpk'})))
       ].map(m => (
         <div>
-          {m.From}<b> => </b>{m.To} {m.Value}FIL M{m.Method}
+          <Address client={this.props.conn} addr={m.From} mountWindow={this.props.mountWindow}/><b>=>&nbsp;</b>
+          <Address client={this.props.conn} addr={m.To} mountWindow={this.props.mountWindow}/>
+          {m.Value}FIL&nbsp;M{m.Method}
         </div>
       ))
 
@@ -39,7 +42,7 @@ class Block extends React.Component {
           <div>Height: {head.Height}</div>
           <div>Parents: <BlockLinks cids={head.Parents} conn={this.props.conn} mountWindow={this.props.mountWindow}/></div>
           <div>Weight: {head.ParentWeight}</div>
-          <div>Miner: {head.Miner}</div>
+          <div>Miner: {<Address client={this.props.conn} addr={head.Miner} mountWindow={this.props.mountWindow}/>}</div>
           <div>Messages: {head.Messages['/']} {/*TODO: link to message explorer */}</div>
           <div>Receipts: {head.MessageReceipts['/']}</div>
           <div>State Root:&nbsp;{head.StateRoot['/']}</div>

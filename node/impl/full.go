@@ -3,6 +3,7 @@ package impl
 import (
 	"context"
 	"fmt"
+	"github.com/filecoin-project/go-lotus/lib/bufbstore"
 	"strconv"
 
 	"github.com/filecoin-project/go-lotus/api"
@@ -20,7 +21,7 @@ import (
 	"github.com/filecoin-project/go-lotus/node/client"
 
 	"github.com/ipfs/go-cid"
-	hamt "github.com/ipfs/go-hamt-ipld"
+	"github.com/ipfs/go-hamt-ipld"
 	cbor "github.com/ipfs/go-ipld-cbor"
 	logging "github.com/ipfs/go-log"
 	"github.com/libp2p/go-libp2p-core/peer"
@@ -189,6 +190,47 @@ func (a *FullNodeAPI) ChainCall(ctx context.Context, msg *types.Message, ts *typ
 		log.Warnf("chain call failed: %s", ret.ActorErr)
 	}
 	return &ret.MessageReceipt, err
+}
+
+func (a *FullNodeAPI) stateForTs(ts *types.TipSet) (*state.StateTree, error) {
+	if ts == nil {
+		ts = a.Chain.GetHeaviestTipSet()
+	}
+
+	st, err := a.Chain.TipSetState(ts.Cids())
+	if err != nil {
+		return nil, err
+	}
+
+	buf := bufbstore.NewBufferedBstore(a.Chain.Blockstore())
+	cst := hamt.CSTFromBstore(buf)
+	return state.LoadStateTree(cst, st)
+}
+
+func (a *FullNodeAPI) ChainGetActor(ctx context.Context, actor address.Address, ts *types.TipSet) (*types.Actor, error) {
+	state, err := a.stateForTs(ts)
+	if err != nil {
+		return nil, err
+	}
+
+	return state.GetActor(actor)
+}
+
+func (a *FullNodeAPI) ChainReadState(ctx context.Context, act *types.Actor, ts *types.TipSet) (*api.ActorState, error) {
+	state, err := a.stateForTs(ts)
+	if err != nil {
+		return nil, err
+	}
+
+	var oif interface{}
+	if err := state.Store.Get(context.TODO(), act.Head, &oif); err != nil {
+		return nil, err
+	}
+
+	return &api.ActorState{
+		Balance: act.Balance,
+		State:   oif,
+	}, nil
 }
 
 func (a *FullNodeAPI) MpoolPending(ctx context.Context, ts *types.TipSet) ([]*types.SignedMessage, error) {

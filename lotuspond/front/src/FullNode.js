@@ -3,16 +3,10 @@ import { Client } from 'rpc-websockets'
 import Cristal from 'react-cristal'
 import { BlockLinks } from "./BlockLink";
 import StorageNodeInit from "./StorageNodeInit";
+import Address from "./Address";
 
 async function awaitListReducer(prev, c) {
   return [...await prev, await c]
-}
-
-function truncAddr(addr) {
-  if (addr.length > 41) {
-    return <abbr title={addr}>{addr.substr(0, 38) + '...'}</abbr>
-  }
-  return addr
 }
 
 class FullNode extends React.Component {
@@ -42,13 +36,13 @@ class FullNode extends React.Component {
 
     const tipset = await this.props.client.call("Filecoin.ChainHead", [])
 
-    const addrss = await this.props.client.call('Filecoin.WalletList', [])
+    const addrs = await this.props.client.call('Filecoin.WalletList', [])
     let defaultAddr = ""
-    if (addrss.length > 0) {
+    if (addrs.length > 0) {
       defaultAddr = await this.props.client.call('Filecoin.WalletDefaultAddress', [])
     }
 
-    const balances = await addrss.map(async addr => {
+/*    const balances = await addrss.map(async addr => {
       let balance = 0
       try {
         balance = await this.props.client.call('Filecoin.WalletBalance', [addr])
@@ -56,7 +50,7 @@ class FullNode extends React.Component {
         balance = -1
       }
       return [addr, balance]
-    }).reduce(awaitListReducer, Promise.resolve([]))
+    }).reduce(awaitListReducer, Promise.resolve([]))*/
 
     this.setState(() => ({
       id: id,
@@ -64,7 +58,7 @@ class FullNode extends React.Component {
       peers: peers.length,
       tipset: tipset,
 
-      balances: balances,
+      addrs: addrs,
       defaultAddr: defaultAddr}))
   }
 
@@ -117,10 +111,8 @@ class FullNode extends React.Component {
 
       let storageMine = <a href="#" onClick={this.startStorageMiner}>[Spawn Storage Miner]</a>
 
-      let balances = this.state.balances.map(([addr, balance]) => {
-        let add1k = <a href="#" onClick={() => this.add1k(addr)}>[+1k]</a>
-
-        let line = <span>{truncAddr(addr)}:&nbsp;{balance}&nbsp;(ActTyp) {add1k}</span>
+      let addresses = this.state.addrs.map((addr) => {
+        let line = <Address client={this.props.client} add1k={this.add1k} addr={addr} mountWindow={this.props.mountWindow}/>
         if (this.state.defaultAddr === addr) {
           line = <b>{line}</b>
         }
@@ -137,7 +129,7 @@ class FullNode extends React.Component {
           </div>
           <div>
             <div>Balances: [New <a href="#" onClick={this.newScepAddr}>[Secp256k1]</a>]</div>
-            <div>{balances}</div>
+            <div>{addresses}</div>
           </div>
 
         </div>

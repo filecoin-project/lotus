@@ -52,6 +52,11 @@ type SectorInfo struct {
 	CommR    []byte
 }
 
+type ActorState struct {
+	Balance types.BigInt
+	State   interface{}
+}
+
 type Common interface {
 	// Auth
 	AuthVerify(ctx context.Context, token string) ([]string, error)
@@ -85,6 +90,8 @@ type FullNode interface {
 	ChainGetBlock(context.Context, cid.Cid) (*types.BlockHeader, error)
 	ChainGetBlockMessages(context.Context, cid.Cid) (*BlockMessages, error)
 	ChainGetBlockReceipts(context.Context, cid.Cid) ([]*types.MessageReceipt, error)
+	ChainGetActor(ctx context.Context, actor address.Address, ts *types.TipSet) (*types.Actor, error)
+	ChainReadState(ctx context.Context, act *types.Actor, ts *types.TipSet) (*ActorState, error)
 
 	// if tipset is nil, we'll use heaviest
 	ChainCall(context.Context, *types.Message, *types.TipSet) (*types.MessageReceipt, error)
@@ -135,6 +142,8 @@ type FullNode interface {
 // Full API is a low-level interface to the Filecoin network storage miner node
 type StorageMiner interface {
 	Common
+
+	ActorAddresses(context.Context) ([]address.Address, error)
 
 	// Temp api for testing
 	StoreGarbageData(context.Context) (uint64, error)

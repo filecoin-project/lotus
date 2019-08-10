@@ -48,6 +48,8 @@ type FullNodeStruct struct {
 		ChainGetBlockMessages func(context.Context, cid.Cid) (*BlockMessages, error)                              `perm:"read"`
 		ChainGetBlockReceipts func(context.Context, cid.Cid) ([]*types.MessageReceipt, error)                     `perm:"read"`
 		ChainCall             func(context.Context, *types.Message, *types.TipSet) (*types.MessageReceipt, error) `perm:"read"`
+		ChainGetActor         func(context.Context, address.Address, *types.TipSet) (*types.Actor, error)         `perm:"read"`
+		ChainReadState        func(context.Context, *types.Actor, *types.TipSet) (*ActorState, error)             `perm:"read"`
 
 		MpoolPending func(context.Context, *types.TipSet) ([]*types.SignedMessage, error) `perm:"read"`
 		MpoolPush    func(context.Context, *types.SignedMessage) error                    `perm:"write"`
@@ -77,6 +79,8 @@ type StorageMinerStruct struct {
 	CommonStruct
 
 	Internal struct {
+		ActorAddresses func(context.Context) ([]address.Address, error) `perm:"read"`
+
 		StoreGarbageData func(context.Context) (uint64, error) `perm:"write"`
 
 		SectorsStatus     func(context.Context, uint64) (sectorbuilder.SectorSealingStatus, error) `perm:"read"`
@@ -171,6 +175,14 @@ func (c *FullNodeStruct) ChainCall(ctx context.Context, msg *types.Message, ts *
 	return c.Internal.ChainCall(ctx, msg, ts)
 }
 
+func (c *FullNodeStruct) ChainGetActor(ctx context.Context, actor address.Address, ts *types.TipSet) (*types.Actor, error) {
+	return c.Internal.ChainGetActor(ctx, actor, ts)
+}
+
+func (c *FullNodeStruct) ChainReadState(ctx context.Context, act *types.Actor, ts *types.TipSet) (*ActorState, error) {
+	return c.Internal.ChainReadState(ctx, act, ts)
+}
+
 func (c *FullNodeStruct) WalletNew(ctx context.Context, typ string) (address.Address, error) {
 	return c.Internal.WalletNew(ctx, typ)
 }
@@ -225,6 +237,10 @@ func (c *FullNodeStruct) StateMinerSectors(ctx context.Context, addr address.Add
 
 func (c *FullNodeStruct) StateMinerProvingSet(ctx context.Context, addr address.Address) ([]*SectorInfo, error) {
 	return c.Internal.StateMinerProvingSet(ctx, addr)
+}
+
+func (c *StorageMinerStruct) ActorAddresses(ctx context.Context) ([]address.Address, error) {
+	return c.Internal.ActorAddresses(ctx)
 }
 
 func (c *StorageMinerStruct) StoreGarbageData(ctx context.Context) (uint64, error) {
