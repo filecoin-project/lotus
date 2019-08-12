@@ -35,7 +35,7 @@ var onCmd = &cli.Command{
 			return err
 		}
 
-		node := client.Nodes()[nd-1] // -1 to match numbers in UI
+		node := nodeById(client.Nodes(), int(nd))
 		var cmd *exec.Cmd
 		if !node.Storage {
 			cmd = exec.Command("./lotus", cctx.Args().Slice()[1:]...)
@@ -73,7 +73,7 @@ var shCmd = &cli.Command{
 			return err
 		}
 
-		node := client.Nodes()[nd-1] // -1 to match numbers in UI
+		node := nodeById(client.Nodes(), int(nd))
 		shcmd := exec.Command("/bin/bash")
 		if !node.Storage {
 			shcmd.Env = []string{
@@ -96,6 +96,15 @@ var shCmd = &cli.Command{
 
 		return err
 	},
+}
+
+func nodeById(nodes []nodeInfo, i int) nodeInfo {
+	for _, n := range nodes {
+		if n.ID == int32(i) {
+			return n
+		}
+	}
+	panic("no node with this id")
 }
 
 var runCmd = &cli.Command{
