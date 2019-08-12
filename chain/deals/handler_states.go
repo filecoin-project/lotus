@@ -117,7 +117,7 @@ func getInclusionProof(ref string, status sectorbuilder.SectorSealingStatus) (Pi
 	return PieceInclusionProof{}, xerrors.Errorf("pieceInclusionProof for %s in sector %d not found", ref, status.SectorID)
 }
 
-func (h *Handler) pollSectorSealed(deal MinerDeal) (status sectorbuilder.SectorSealingStatus, err error){
+func (h *Handler) pollSectorSealed(deal MinerDeal) (status sectorbuilder.SectorSealingStatus, err error) {
 loop:
 	for {
 		status, err = h.sb.SealStatus(deal.SectorID)

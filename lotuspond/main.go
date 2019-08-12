@@ -2,19 +2,14 @@ package main
 
 import (
 	"fmt"
-	"io"
-	"io/ioutil"
 	"net/http"
 	"os"
 	"os/exec"
-	"sync"
-	"sync/atomic"
-	"time"
-
-	"github.com/pkg/errors"
+	"strconv"
 
 	"github.com/filecoin-project/go-lotus/lib/jsonrpc"
-	"github.com/filecoin-project/go-lotus/node/repo"
+
+	"gopkg.in/urfave/cli.v2"
 )
 
 const listenAddr = "127.0.0.1:2222"
@@ -26,185 +21,108 @@ type runningNode struct {
 	stop func()
 }
 
-type api struct {
-	cmds      int32
-	running   map[int32]runningNode
-	runningLk sync.Mutex
-	genesis   string
-}
-
-type nodeInfo struct {
-	Repo    string
-	ID      int32
-	ApiPort int32
-
-	Storage bool
-}
-
-func (api *api) Spawn() (nodeInfo, error) {
-	dir, err := ioutil.TempDir(os.TempDir(), "lotus-")
-	if err != nil {
-		return nodeInfo{}, err
-	}
-
-	genParam := "--genesis=" + api.genesis
-	id := atomic.AddInt32(&api.cmds, 1)
-	if id == 1 {
-		// make genesis
-		genf, err := ioutil.TempFile(os.TempDir(), "lotus-genesis-")
+var onCmd = &cli.Command{
+	Name:  "on",
+	Usage: "run a command on a given node",
+	Action: func(cctx *cli.Context) error {
+		client, err := apiClient()
 		if err != nil {
-			return nodeInfo{}, err
+			return err
 		}
 
-		api.genesis = genf.Name()
-		genParam = "--lotus-make-random-genesis=" + api.genesis
-
-		if err := genf.Close(); err != nil {
-			return nodeInfo{}, err
+		nd, err := strconv.ParseInt(cctx.Args().Get(0), 10, 32)
+		if err != nil {
+			return err
 		}
 
-	}
+		node := client.Nodes()[nd-1] // -1 to match numbers in UI
+		var cmd *exec.Cmd
+		if !node.Storage {
+			cmd = exec.Command("./lotus", cctx.Args().Slice()[1:]...)
+			cmd.Env = []string{
+				"LOTUS_PATH=" + node.Repo,
+			}
+		} else {
+			cmd = exec.Command("./lotus-storage-miner")
+			cmd.Env = []string{
+				"LOTUS_STORAGE_PATH=" + node.Repo,
+				"LOTUS_PATH=" + node.FullNode,
+			}
+		}
 
-	errlogfile, err := os.OpenFile(dir+".err.log", os.O_CREATE|os.O_WRONLY, 0644)
-	if err != nil {
-		return nodeInfo{}, err
-	}
-	logfile, err := os.OpenFile(dir+".out.log", os.O_CREATE|os.O_WRONLY, 0644)
-	if err != nil {
-		return nodeInfo{}, err
-	}
+		cmd.Stdin = os.Stdin
+		cmd.Stdout = os.Stdout
+		cmd.Stderr = os.Stderr
 
-	cmd := exec.Command("./lotus", "daemon", genParam, "--api", fmt.Sprintf("%d", 2500+id))
-	cmd.Stderr = io.MultiWriter(os.Stderr, errlogfile)
-	cmd.Stdout = io.MultiWriter(os.Stdout, logfile)
-	cmd.Env = []string{"LOTUS_PATH=" + dir}
-	if err := cmd.Start(); err != nil {
-		return nodeInfo{}, err
-	}
-
-	info := nodeInfo{
-		Repo:    dir,
-		ID:      id,
-		ApiPort: 2500 + id,
-	}
-
-	api.runningLk.Lock()
-	api.running[id] = runningNode{
-		cmd:  cmd,
-		meta: info,
-
-		stop: func() {
-			defer errlogfile.Close()
-			defer logfile.Close()
-		},
-	}
-	api.runningLk.Unlock()
-
-	time.Sleep(time.Millisecond * 750) // TODO: Something less terrible
-
-	return info, nil
+		err = cmd.Run()
+		return err
+	},
 }
 
-func (api *api) Nodes() []nodeInfo {
-	api.runningLk.Lock()
-	out := make([]nodeInfo, 0, len(api.running))
-	for _, node := range api.running {
-		out = append(out, node.meta)
-	}
+var shCmd = &cli.Command{
+	Name:  "sh",
+	Usage: "spawn shell with node shell variables set",
+	Action: func(cctx *cli.Context) error {
+		client, err := apiClient()
+		if err != nil {
+			return err
+		}
 
-	api.runningLk.Unlock()
+		nd, err := strconv.ParseInt(cctx.Args().Get(0), 10, 32)
+		if err != nil {
+			return err
+		}
 
-	return out
+		node := client.Nodes()[nd-1] // -1 to match numbers in UI
+		shcmd := exec.Command("/bin/bash")
+		if !node.Storage {
+			shcmd.Env = []string{
+				"LOTUS_PATH=" + node.Repo,
+			}
+		} else {
+			shcmd.Env = []string{
+				"LOTUS_STORAGE_PATH=" + node.Repo,
+				"LOTUS_PATH=" + node.FullNode,
+			}
+		}
+
+		shcmd.Stdin = os.Stdin
+		shcmd.Stdout = os.Stdout
+		shcmd.Stderr = os.Stderr
+
+		fmt.Printf("Entering shell for Node %d\n", nd)
+		err = shcmd.Run()
+		fmt.Printf("Closed pond shell\n")
+
+		return err
+	},
 }
 
-func (api *api) TokenFor(id int32) (string, error) {
-	api.runningLk.Lock()
-	defer api.runningLk.Unlock()
+var runCmd = &cli.Command{
+	Name:  "run",
+	Usage: "run lotuspond daemon",
+	Action: func(cctx *cli.Context) error {
+		rpcServer := jsonrpc.NewServer()
+		rpcServer.Register("Pond", &api{running: map[int32]runningNode{}})
 
-	rnd, ok := api.running[id]
-	if !ok {
-		return "", errors.New("no running node with this ID")
-	}
+		http.Handle("/", http.FileServer(http.Dir("lotuspond/front/build")))
+		http.Handle("/rpc/v0", rpcServer)
 
-	r, err := repo.NewFS(rnd.meta.Repo)
-	if err != nil {
-		return "", err
-	}
-
-	t, err := r.APIToken()
-	if err != nil {
-		return "", err
-	}
-
-	return string(t), nil
-}
-
-func (api *api) SpawnStorage(fullNodeRepo string) (nodeInfo, error) {
-	dir, err := ioutil.TempDir(os.TempDir(), "lotus-storage-")
-	if err != nil {
-		return nodeInfo{}, err
-	}
-
-	errlogfile, err := os.OpenFile(dir+".err.log", os.O_CREATE|os.O_WRONLY, 0644)
-	if err != nil {
-		return nodeInfo{}, err
-	}
-	logfile, err := os.OpenFile(dir+".out.log", os.O_CREATE|os.O_WRONLY, 0644)
-	if err != nil {
-		return nodeInfo{}, err
-	}
-
-	id := atomic.AddInt32(&api.cmds, 1)
-	cmd := exec.Command("./lotus-storage-miner", "init")
-	cmd.Stderr = io.MultiWriter(os.Stderr, errlogfile)
-	cmd.Stdout = io.MultiWriter(os.Stdout, logfile)
-	cmd.Env = []string{"LOTUS_STORAGE_PATH=" + dir, "LOTUS_PATH=" + fullNodeRepo}
-	if err := cmd.Run(); err != nil {
-		return nodeInfo{}, err
-	}
-
-	time.Sleep(time.Millisecond * 300)
-
-	cmd = exec.Command("./lotus-storage-miner", "run", "--api", fmt.Sprintf("%d", 2500+id))
-	cmd.Stderr = io.MultiWriter(os.Stderr, errlogfile)
-	cmd.Stdout = io.MultiWriter(os.Stdout, logfile)
-	cmd.Env = []string{"LOTUS_STORAGE_PATH=" + dir, "LOTUS_PATH=" + fullNodeRepo}
-	if err := cmd.Start(); err != nil {
-		return nodeInfo{}, err
-	}
-
-	info := nodeInfo{
-		Repo:    dir,
-		ID:      id,
-		ApiPort: 2500 + id,
-
-		Storage: true,
-	}
-
-	api.runningLk.Lock()
-	api.running[id] = runningNode{
-		cmd:  cmd,
-		meta: info,
-
-		stop: func() {
-			defer errlogfile.Close()
-			defer logfile.Close()
-		},
-	}
-	api.runningLk.Unlock()
-
-	time.Sleep(time.Millisecond * 750) // TODO: Something less terrible
-
-	return info, nil
+		fmt.Printf("Listening on http://%s\n", listenAddr)
+		return http.ListenAndServe(listenAddr, nil)
+	},
 }
 
 func main() {
-	rpcServer := jsonrpc.NewServer()
-	rpcServer.Register("Pond", &api{running: map[int32]runningNode{}})
-
-	http.Handle("/", http.FileServer(http.Dir("lotuspond/front/build")))
-	http.Handle("/rpc/v0", rpcServer)
-
-	fmt.Printf("Listening on http://%s\n", listenAddr)
-	http.ListenAndServe(listenAddr, nil)
+	app := &cli.App{
+		Name: "pond",
+		Commands: []*cli.Command{
+			runCmd,
+			shCmd,
+			onCmd,
+		},
+	}
+	if err := app.Run(os.Args); err != nil {
+		panic(err)
+	}
 }
