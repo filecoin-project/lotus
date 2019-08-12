@@ -101,9 +101,10 @@ type FullNode interface {
 	PaychList(context.Context) ([]address.Address, error)
 	PaychStatus(context.Context, address.Address) (*PaychStatus, error)
 	PaychClose(context.Context, address.Address) error
-	PaychVoucherCheck(context.Context, *types.SignedVoucher) error
+	PaychVoucherCheckValid(context.Context, address.Address, *types.SignedVoucher) error
+	PaychVoucherCheckSpendable(context.Context, address.Address, *types.SignedVoucher, []byte, []byte) (bool, error)
 	PaychVoucherCreate(context.Context, address.Address, types.BigInt, uint64) (*types.SignedVoucher, error)
-	PaychVoucherAdd(context.Context, *types.SignedVoucher) error
+	PaychVoucherAdd(context.Context, address.Address, *types.SignedVoucher) error
 	PaychVoucherList(context.Context, address.Address) ([]*types.SignedVoucher, error)
 }
 

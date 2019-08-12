@@ -73,14 +73,16 @@ type FullNodeStruct struct {
 		StateMinerSectors    func(context.Context, address.Address) ([]*SectorInfo, error) `perm:"read"`
 		StateMinerProvingSet func(context.Context, address.Address) ([]*SectorInfo, error) `perm:"read"`
 
-		PaychCreate        func(ctx context.Context, from, to address.Address, amt types.BigInt) (address.Address, error) `perm:"sign"`
-		PaychList          func(context.Context) ([]address.Address, error)                                               `perm:"read"`
-		PaychStatus        func(context.Context, address.Address) (*PaychStatus, error)                                   `perm:"read"`
-		PaychClose         func(context.Context, address.Address) error                                                   `perm:"sign"`
-		PaychVoucherCheck  func(context.Context, *types.SignedVoucher) error                                              `perm:"read"`
-		PaychVoucherAdd    func(context.Context, *types.SignedVoucher) error                                              `perm:"write"`
-		PaychVoucherCreate func(context.Context, address.Address, types.BigInt, uint64) (*types.SignedVoucher, error)     `perm:"sign"`
-		PaychVoucherList   func(context.Context, address.Address) ([]*types.SignedVoucher, error)                         `perm:"write"`
+		PaychCreate                func(ctx context.Context, from, to address.Address, amt types.BigInt) (address.Address, error) `perm:"sign"`
+		PaychList                  func(context.Context) ([]address.Address, error)                                               `perm:"read"`
+		PaychStatus                func(context.Context, address.Address) (*PaychStatus, error)                                   `perm:"read"`
+		PaychClose                 func(context.Context, address.Address) error                                                   `perm:"sign"`
+		PaychVoucherCheck          func(context.Context, *types.SignedVoucher) error                                              `perm:"read"`
+		PaychVoucherCheckValid     func(context.Context, address.Address, *types.SignedVoucher) error                             `perm:"read"`
+		PaychVoucherCheckSpendable func(context.Context, address.Address, *types.SignedVoucher, []byte, []byte) (bool, error)     `perm:"read"`
+		PaychVoucherAdd            func(context.Context, address.Address, *types.SignedVoucher) error                             `perm:"write"`
+		PaychVoucherCreate         func(context.Context, address.Address, types.BigInt, uint64) (*types.SignedVoucher, error)     `perm:"sign"`
+		PaychVoucherList           func(context.Context, address.Address) ([]*types.SignedVoucher, error)                         `perm:"write"`
 	}
 }
 
@@ -260,12 +262,16 @@ func (c *FullNodeStruct) PaychStatus(ctx context.Context, pch address.Address) (
 	return c.Internal.PaychStatus(ctx, pch)
 }
 
-func (c *FullNodeStruct) PaychVoucherCheck(ctx context.Context, sv *types.SignedVoucher) error {
-	return c.Internal.PaychVoucherCheck(ctx, sv)
+func (c *FullNodeStruct) PaychVoucherCheckValid(ctx context.Context, addr address.Address, sv *types.SignedVoucher) error {
+	return c.Internal.PaychVoucherCheckValid(ctx, addr, sv)
 }
 
-func (c *FullNodeStruct) PaychVoucherAdd(ctx context.Context, sv *types.SignedVoucher) error {
-	return c.Internal.PaychVoucherAdd(ctx, sv)
+func (c *FullNodeStruct) PaychVoucherCheckSpendable(ctx context.Context, addr address.Address, sv *types.SignedVoucher, secret []byte, proof []byte) (bool, error) {
+	return c.Internal.PaychVoucherCheckSpendable(ctx, addr, sv, secret, proof)
+}
+
+func (c *FullNodeStruct) PaychVoucherAdd(ctx context.Context, addr address.Address, sv *types.SignedVoucher) error {
+	return c.Internal.PaychVoucherAdd(ctx, addr, sv)
 }
 
 func (c *FullNodeStruct) PaychVoucherCreate(ctx context.Context, pch address.Address, amt types.BigInt, lane uint64) (*types.SignedVoucher, error) {

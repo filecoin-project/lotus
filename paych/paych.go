@@ -17,26 +17,56 @@ type paychMgrApi interface {
 	ChainCall(ctx context.Context, msg *types.Message, ts *types.TipSet) (*types.MessageReceipt, error)
 }
 
-type PaychManager struct {
+type Manager struct {
 	chain *store.ChainStore
 	api   paychMgrApi
-	store *PaychStore
+	store *Store
 }
 
-func NewManager(api paychMgrApi, chain *store.ChainStore, pchstore *PaychStore) *PaychManager {
-	return &PaychManager{
+func NewManager(api paychMgrApi, chain *store.ChainStore, pchstore *Store) *Manager {
+	return &Manager{
 		api:   api,
 		chain: chain,
 		store: pchstore,
 	}
 }
 
-func (pm *PaychManager) TrackChannel(ch address.Address) error {
-	return pm.store.TrackChannel(ch)
+func (pm *Manager) TrackInboundChannel(ctx context.Context, ch address.Address) error {
+	_, st, err := pm.loadPaychState(ctx, ch)
+	if err != nil {
+		return err
+	}
+
+	return pm.store.TrackChannel(&ChannelInfo{
+		Channel:     ch,
+		Direction:   DirInbound,
+		ControlAddr: st.To,
+	})
+}
+
+func (pm *Manager) TrackOutboundChannel(ctx context.Context, ch address.Address) error {
+	_, st, err := pm.loadPaychState(ctx, ch)
+	if err != nil {
+		return err
+	}
+
+	return pm.store.TrackChannel(&ChannelInfo{
+		Channel:     ch,
+		Direction:   DirOutbound,
+		ControlAddr: st.From,
+	})
+}
+
+func (pm *Manager) ListChannels() ([]address.Address, error) {
+	return pm.store.ListChannels()
+}
+
+func (pm *Manager) GetChannelInfo(addr address.Address) (*ChannelInfo, error) {
+	return pm.store.getChannelInfo(addr)
 }
 
 // checks if the given voucher is valid (is or could become spendable at some point)
-func (pm *PaychManager) CheckVoucherValid(ctx context.Context, ch address.Address, sv *types.SignedVoucher) error {
+func (pm *Manager) CheckVoucherValid(ctx context.Context, ch address.Address, sv *types.SignedVoucher) error {
 	act, pca, err := pm.loadPaychState(ctx, ch)
 	if err != nil {
 		return err
@@ -83,7 +113,7 @@ func (pm *PaychManager) CheckVoucherValid(ctx context.Context, ch address.Addres
 }
 
 // checks if the given voucher is currently spendable
-func (pm *PaychManager) CheckVoucherSpendable(ctx context.Context, ch address.Address, sv *types.SignedVoucher, secret []byte, proof []byte) (bool, error) {
+func (pm *Manager) CheckVoucherSpendable(ctx context.Context, ch address.Address, sv *types.SignedVoucher, secret []byte, proof []byte) (bool, error) {
 	owner, err := pm.getPaychOwner(ctx, ch)
 	if err != nil {
 		return false, err
@@ -115,7 +145,7 @@ func (pm *PaychManager) CheckVoucherSpendable(ctx context.Context, ch address.Ad
 	return true, nil
 }
 
-func (pm *PaychManager) loadPaychState(ctx context.Context, ch address.Address) (*types.Actor, *actors.PaymentChannelActorState, error) {
+func (pm *Manager) loadPaychState(ctx context.Context, ch address.Address) (*types.Actor, *actors.PaymentChannelActorState, error) {
 	st, err := pm.chain.TipSetState(pm.chain.GetHeaviestTipSet().Cids())
 	if err != nil {
 		return nil, nil, err
@@ -140,7 +170,7 @@ func (pm *PaychManager) loadPaychState(ctx context.Context, ch address.Address) 
 	return act, &pcast, nil
 }
 
-func (pm *PaychManager) getPaychOwner(ctx context.Context, ch address.Address) (address.Address, error) {
+func (pm *Manager) getPaychOwner(ctx context.Context, ch address.Address) (address.Address, error) {
 	ret, err := pm.api.ChainCall(ctx, &types.Message{
 		From:   ch,
 		To:     ch,
@@ -155,4 +185,12 @@ func (pm *PaychManager) getPaychOwner(ctx context.Context, ch address.Address) (
 	}
 
 	return address.NewFromBytes(ret.Return)
+}
+
+func (pm *Manager) AddVoucher(ctx context.Context, ch address.Address, sv *types.SignedVoucher) error {
+	if err := pm.CheckVoucherValid(ctx, ch, sv); err != nil {
+		return err
+	}
+
+	return pm.store.AddVoucher(ch, sv)
 }

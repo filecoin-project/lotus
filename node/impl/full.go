@@ -19,6 +19,7 @@ import (
 	"github.com/filecoin-project/go-lotus/chain/wallet"
 	"github.com/filecoin-project/go-lotus/miner"
 	"github.com/filecoin-project/go-lotus/node/client"
+	"github.com/filecoin-project/go-lotus/paych"
 
 	"github.com/ipfs/go-cid"
 	"github.com/ipfs/go-hamt-ipld"
@@ -41,6 +42,7 @@ type FullNodeAPI struct {
 	PubSub     *pubsub.PubSub
 	Mpool      *chain.MessagePool
 	Wallet     *wallet.Wallet
+	PaychMgr   *paych.Manager
 }
 
 func (a *FullNodeAPI) ClientStartDeal(ctx context.Context, data cid.Cid, miner address.Address, price types.BigInt, blocksDuration uint64) (*cid.Cid, error) {
@@ -516,7 +518,7 @@ func (a *FullNodeAPI) PaychCreate(ctx context.Context, from, to address.Address,
 }
 
 func (a *FullNodeAPI) PaychList(ctx context.Context) ([]address.Address, error) {
-	panic("nyi")
+	return a.PaychMgr.ListChannels()
 }
 
 func (a *FullNodeAPI) PaychStatus(ctx context.Context, pch address.Address) (*api.PaychStatus, error) {
@@ -524,15 +526,60 @@ func (a *FullNodeAPI) PaychStatus(ctx context.Context, pch address.Address) (*ap
 }
 
 func (a *FullNodeAPI) PaychClose(ctx context.Context, addr address.Address) error {
-	panic("nyi")
+	ci, err := a.PaychMgr.GetChannelInfo(addr)
+	if err != nil {
+		return err
+	}
+
+	nonce, err := a.MpoolGetNonce(ctx, ci.ControlAddr)
+	if err != nil {
+		return err
+	}
+
+	msg := &types.Message{
+		To:     addr,
+		From:   ci.ControlAddr,
+		Value:  types.NewInt(0),
+		Method: actors.PCAMethods.Close,
+		Nonce:  nonce,
+
+		GasLimit: types.NewInt(500),
+		GasPrice: types.NewInt(0),
+	}
+
+	b, err := msg.Serialize()
+	if err != nil {
+		return err
+	}
+
+	sig, err := a.WalletSign(ctx, ci.ControlAddr, b)
+	if err != nil {
+		return err
+	}
+
+	smsg := &types.SignedMessage{
+		Message:   *msg,
+		Signature: *sig,
+	}
+
+	// TODO: should this block and wait?
+	return a.MpoolPush(ctx, smsg)
 }
 
-func (a *FullNodeAPI) PaychVoucherCheck(ctx context.Context, sv *types.SignedVoucher) error {
-	panic("nyi")
+func (a *FullNodeAPI) PaychVoucherCheckValid(ctx context.Context, ch address.Address, sv *types.SignedVoucher) error {
+	return a.PaychMgr.CheckVoucherValid(ctx, ch, sv)
 }
 
-func (a *FullNodeAPI) PaychVoucherAdd(ctx context.Context, sv *types.SignedVoucher) error {
-	panic("nyi")
+func (a *FullNodeAPI) PaychVoucherCheckSpendable(ctx context.Context, ch address.Address, sv *types.SignedVoucher, secret []byte, proof []byte) (bool, error) {
+	return a.PaychMgr.CheckVoucherSpendable(ctx, ch, sv, secret, proof)
+}
+
+func (a *FullNodeAPI) PaychVoucherAdd(ctx context.Context, ch address.Address, sv *types.SignedVoucher) error {
+	if err := a.PaychVoucherCheckValid(ctx, ch, sv); err != nil {
+		return err
+	}
+
+	return a.PaychMgr.AddVoucher(ctx, ch, sv)
 }
 
 func (a *FullNodeAPI) PaychVoucherCreate(ctx context.Context, pch address.Address, amt types.BigInt, lane uint64) (*types.SignedVoucher, error) {
