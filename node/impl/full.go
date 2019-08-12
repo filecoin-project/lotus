@@ -3,8 +3,9 @@ package impl
 import (
 	"context"
 	"fmt"
-	"github.com/filecoin-project/go-lotus/lib/bufbstore"
 	"strconv"
+
+	"github.com/filecoin-project/go-lotus/lib/bufbstore"
 
 	"github.com/filecoin-project/go-lotus/api"
 	"github.com/filecoin-project/go-lotus/chain"
@@ -15,7 +16,6 @@ import (
 	"github.com/filecoin-project/go-lotus/chain/state"
 	"github.com/filecoin-project/go-lotus/chain/store"
 	"github.com/filecoin-project/go-lotus/chain/types"
-	"github.com/filecoin-project/go-lotus/chain/vm"
 	"github.com/filecoin-project/go-lotus/chain/wallet"
 	"github.com/filecoin-project/go-lotus/miner"
 	"github.com/filecoin-project/go-lotus/node/client"
@@ -157,41 +157,7 @@ func (a *FullNodeAPI) ChainGetBlockReceipts(ctx context.Context, bcid cid.Cid) (
 }
 
 func (a *FullNodeAPI) ChainCall(ctx context.Context, msg *types.Message, ts *types.TipSet) (*types.MessageReceipt, error) {
-	if ts == nil {
-		ts = a.Chain.GetHeaviestTipSet()
-	}
-	state, err := a.Chain.TipSetState(ts.Cids())
-	if err != nil {
-		return nil, err
-	}
-
-	vmi, err := vm.NewVM(state, ts.Height(), ts.Blocks()[0].Miner, a.Chain)
-	if err != nil {
-		return nil, xerrors.Errorf("failed to set up vm: %w", err)
-	}
-
-	if msg.GasLimit == types.EmptyInt {
-		msg.GasLimit = types.NewInt(10000000000)
-	}
-	if msg.GasPrice == types.EmptyInt {
-		msg.GasPrice = types.NewInt(0)
-	}
-	if msg.Value == types.EmptyInt {
-		msg.Value = types.NewInt(0)
-	}
-	if msg.Params == nil {
-		msg.Params, err = actors.SerializeParams(struct{}{})
-		if err != nil {
-			return nil, err
-		}
-	}
-
-	// TODO: maybe just use the invoker directly?
-	ret, err := vmi.ApplyMessage(ctx, msg)
-	if ret.ActorErr != nil {
-		log.Warnf("chain call failed: %s", ret.ActorErr)
-	}
-	return &ret.MessageReceipt, err
+	return chain.Call(ctx, a.Chain, msg, ts)
 }
 
 func (a *FullNodeAPI) stateForTs(ts *types.TipSet) (*state.StateTree, error) {

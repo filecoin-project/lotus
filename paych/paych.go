@@ -4,6 +4,7 @@ import (
 	"context"
 	"fmt"
 
+	"github.com/filecoin-project/go-lotus/chain"
 	"github.com/filecoin-project/go-lotus/chain/actors"
 	"github.com/filecoin-project/go-lotus/chain/address"
 	"github.com/filecoin-project/go-lotus/chain/state"
@@ -13,19 +14,13 @@ import (
 	hamt "github.com/ipfs/go-hamt-ipld"
 )
 
-type paychMgrApi interface {
-	ChainCall(ctx context.Context, msg *types.Message, ts *types.TipSet) (*types.MessageReceipt, error)
-}
-
 type Manager struct {
 	chain *store.ChainStore
-	api   paychMgrApi
 	store *Store
 }
 
-func NewManager(api paychMgrApi, chain *store.ChainStore, pchstore *Store) *Manager {
+func NewManager(chain *store.ChainStore, pchstore *Store) *Manager {
 	return &Manager{
-		api:   api,
 		chain: chain,
 		store: pchstore,
 	}
@@ -128,7 +123,7 @@ func (pm *Manager) CheckVoucherSpendable(ctx context.Context, ch address.Address
 		return false, err
 	}
 
-	ret, err := pm.api.ChainCall(ctx, &types.Message{
+	ret, err := chain.Call(ctx, pm.chain, &types.Message{
 		From:   owner,
 		To:     ch,
 		Method: actors.PCAMethods.UpdateChannelState,
@@ -171,7 +166,7 @@ func (pm *Manager) loadPaychState(ctx context.Context, ch address.Address) (*typ
 }
 
 func (pm *Manager) getPaychOwner(ctx context.Context, ch address.Address) (address.Address, error) {
-	ret, err := pm.api.ChainCall(ctx, &types.Message{
+	ret, err := chain.Call(ctx, pm.chain, &types.Message{
 		From:   ch,
 		To:     ch,
 		Method: actors.PCAMethods.GetOwner,
