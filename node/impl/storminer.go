@@ -3,6 +3,7 @@ package impl
 import (
 	"context"
 	"fmt"
+	"github.com/filecoin-project/go-lotus/chain/address"
 	"io/ioutil"
 	"math/rand"
 
@@ -14,9 +15,14 @@ import (
 type StorageMinerAPI struct {
 	CommonAPI
 
-	SectorBuilder *sectorbuilder.SectorBuilder
+	SectorBuilderConfig *sectorbuilder.SectorBuilderConfig
+	SectorBuilder       *sectorbuilder.SectorBuilder
 
 	Miner *storage.Miner
+}
+
+func (sm *StorageMinerAPI) ActorAddresses(context.Context) ([]address.Address, error) {
+	return []address.Address{sm.SectorBuilderConfig.Miner}, nil
 }
 
 func (sm *StorageMinerAPI) StoreGarbageData(ctx context.Context) (uint64, error) {

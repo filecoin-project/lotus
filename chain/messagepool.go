@@ -1,6 +1,7 @@
 package chain
 
 import (
+	"encoding/base64"
 	"sync"
 
 	"github.com/filecoin-project/go-lotus/chain/address"
@@ -53,6 +54,8 @@ func (mp *MessagePool) Add(m *types.SignedMessage) error {
 	if err != nil {
 		return err
 	}
+
+	log.Info("mpooladd: %s", base64.StdEncoding.EncodeToString(data))
 
 	if err := m.Signature.Verify(m.Message.From, data); err != nil {
 		return err

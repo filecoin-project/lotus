@@ -3,20 +3,10 @@ import { Client } from 'rpc-websockets'
 import Cristal from 'react-cristal'
 import { BlockLinks } from "./BlockLink";
 import StorageNodeInit from "./StorageNodeInit";
-
-const stateConnected = 'connected'
-const stateConnecting = 'connecting'
-const stateGettingToken = 'getting-token'
+import Address from "./Address";
 
 async function awaitListReducer(prev, c) {
   return [...await prev, await c]
-}
-
-function truncAddr(addr) {
-  if (addr.length > 41) {
-    return <abbr title={addr}>{addr.substr(0, 38) + '...'}</abbr>
-  }
-  return addr
 }
 
 class FullNode extends React.Component {
@@ -24,9 +14,6 @@ class FullNode extends React.Component {
     super(props)
 
     this.state = {
-      state: stateGettingToken,
-      id: "~",
-
       mining: false,
     }
 
@@ -34,69 +21,45 @@ class FullNode extends React.Component {
     this.startMining = this.startMining.bind(this)
     this.newScepAddr = this.newScepAddr.bind(this)
     this.startStorageMiner = this.startStorageMiner.bind(this)
+    this.add1k = this.add1k.bind(this)
 
-    this.connect()
-  }
-
-  async connect() {
-    const token = await this.props.pondClient.call('Pond.TokenFor', [this.props.node.ID])
-
-    this.setState(() => ({
-      state: stateConnecting,
-      token: token,
-    }))
-
-    const client = new Client(`ws://127.0.0.1:${this.props.node.ApiPort}/rpc/v0?token=${token}`)
-    client.on('open', async () => {
-      this.setState(() => ({
-        state: stateConnected,
-        client: client,
-
-        version: {Version: "~version~"},
-        id: "~peerid~",
-        peers: -1,
-        balances: []
-      }))
-
-      const id = await this.state.client.call("Filecoin.ID", [])
-      this.setState(() => ({id: id}))
-
-      this.props.onConnect(client, id)
-
-      this.loadInfo()
-      setInterval(this.loadInfo, 2050)
-    })
-
-    console.log(token) // todo: use
+    this.loadInfo()
+    setInterval(this.loadInfo, 2050)
   }
 
   async loadInfo() {
-    const version = await this.state.client.call("Filecoin.Version", [])
-    this.setState(() => ({version: version}))
+    const id = await this.props.client.call("Filecoin.ID", [])
 
-    const peers = await this.state.client.call("Filecoin.NetPeers", [])
-    this.setState(() => ({peers: peers.length}))
+    const version = await this.props.client.call("Filecoin.Version", [])
 
-    const tipset = await this.state.client.call("Filecoin.ChainHead", [])
-    this.setState(() => ({tipset: tipset}))
+    const peers = await this.props.client.call("Filecoin.NetPeers", [])
 
-    const addrss = await this.state.client.call('Filecoin.WalletList', [])
+    const tipset = await this.props.client.call("Filecoin.ChainHead", [])
+
+    const addrs = await this.props.client.call('Filecoin.WalletList', [])
     let defaultAddr = ""
-    if (addrss.length > 0) {
-      defaultAddr = await this.state.client.call('Filecoin.WalletDefaultAddress', [])
+    if (addrs.length > 0) {
+      defaultAddr = await this.props.client.call('Filecoin.WalletDefaultAddress', [])
     }
 
-    const balances = await addrss.map(async addr => {
+/*    const balances = await addrss.map(async addr => {
       let balance = 0
       try {
-        balance = await this.state.client.call('Filecoin.WalletBalance', [addr])
+        balance = await this.props.client.call('Filecoin.WalletBalance', [addr])
       } catch {
         balance = -1
       }
       return [addr, balance]
-    }).reduce(awaitListReducer, Promise.resolve([]))
+    }).reduce(awaitListReducer, Promise.resolve([]))*/
 
-    this.setState(() => ({balances: balances, defaultAddr: defaultAddr}))
+    this.setState(() => ({
+      id: id,
+      version: version,
+      peers: peers.length,
+      tipset: tipset,
+
+      addrs: addrs,
+      defaultAddr: defaultAddr}))
   }
 
   async startMining() {
@@ -109,28 +72,33 @@ class FullNode extends React.Component {
     }
 
     this.setState({mining: true})
-    await this.state.client.call("Filecoin.MinerStart", [addr])
+    await this.props.client.call("Filecoin.MinerStart", [addr])
   }
 
   async newScepAddr() {
     const t = "secp256k1"
-    await this.state.client.call("Filecoin.WalletNew", [t])
+    await this.props.client.call("Filecoin.WalletNew", [t])
     this.loadInfo()
   }
 
   async startStorageMiner() {
-    this.props.mountWindow((onClose) => <StorageNodeInit fullRepo={this.props.node.Repo} fullConn={this.props.conn} pondClient={this.props.pondClient} onClose={onClose} mountWindow={this.props.mountWindow}/>)
+    this.props.mountWindow((onClose) => <StorageNodeInit fullRepo={this.props.node.Repo} fullConn={this.props.client} pondClient={this.props.pondClient} onClose={onClose} mountWindow={this.props.mountWindow}/>)
+  }
+
+  async add1k(to) {
+    await this.props.give1k(to)
   }
 
   render() {
     let runtime = <div></div>
-    if (this.state.state === stateConnected) {
+
+    if (this.state.id) {
       let chainInfo = <div></div>
       if (this.state.tipset !== undefined) {
         chainInfo = (
           <div>
             Head: {
-            <BlockLinks cids={this.state.tipset.Cids} conn={this.state.client} mountWindow={this.props.mountWindow} />
+            <BlockLinks cids={this.state.tipset.Cids} conn={this.props.client} mountWindow={this.props.mountWindow} />
           } H:{this.state.tipset.Height}
           </div>
         )
@@ -143,17 +111,17 @@ class FullNode extends React.Component {
 
       let storageMine = <a href="#" onClick={this.startStorageMiner}>[Spawn Storage Miner]</a>
 
-      let balances = this.state.balances.map(([addr, balance]) => {
-        let line = <span>{truncAddr(addr)}:&nbsp;{balance}&nbsp;(ActTyp)</span>
+      let addresses = this.state.addrs.map((addr) => {
+        let line = <Address client={this.props.client} add1k={this.add1k} addr={addr} mountWindow={this.props.mountWindow}/>
         if (this.state.defaultAddr === addr) {
           line = <b>{line}</b>
         }
-        return <div>{line}</div>
+        return <div key={addr}>{line}</div>
       })
 
       runtime = (
         <div>
-          <div>v{this.state.version.Version}, <abbr title={this.state.id}>{this.state.id.substr(-8)}</abbr>, {this.state.peers} peers</div>
+          <div>{this.props.node.ID} - v{this.state.version.Version}, <abbr title={this.state.id}>{this.state.id.substr(-8)}</abbr>, {this.state.peers} peers</div>
           <div>Repo: LOTUS_PATH={this.props.node.Repo}</div>
           {chainInfo}
           <div>
@@ -161,7 +129,7 @@ class FullNode extends React.Component {
           </div>
           <div>
             <div>Balances: [New <a href="#" onClick={this.newScepAddr}>[Secp256k1]</a>]</div>
-            <div>{balances}</div>
+            <div>{addresses}</div>
           </div>
 
         </div>
@@ -174,7 +142,6 @@ class FullNode extends React.Component {
         initialPosition={{x: this.props.node.ID*30, y: this.props.node.ID * 30}} >
         <div className="CristalScroll">
           <div className="FullNode">
-            <div>{this.props.node.ID} - {this.state.state}</div>
             {runtime}
           </div>
         </div>

@@ -212,6 +212,7 @@ func (h handlers) handle(ctx context.Context, req request, w func(func(io.Writer
 	if handler.errOut != -1 {
 		err := callResult[handler.errOut].Interface()
 		if err != nil {
+			log.Warnf("error in RPC call: %s", err)
 			resp.Error = &respError{
 				Code:    1,
 				Message: err.(error).Error(),
@@ -232,7 +233,7 @@ func (h handlers) handle(ctx context.Context, req request, w func(func(io.Writer
 		}
 
 		if err := json.NewEncoder(w).Encode(resp); err != nil {
-			fmt.Println(err)
+			log.Error(err)
 			return
 		}
 	})

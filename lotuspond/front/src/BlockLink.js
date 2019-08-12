@@ -4,7 +4,7 @@ import Block from "./Block";
 
 export class BlockLinks extends React.Component {
   render() {
-    return this.props.cids.map(c => <BlockLink conn={this.props.conn} cid={c} mountWindow={this.props.mountWindow}/>)
+    return this.props.cids.map(c => <BlockLink key={c} conn={this.props.conn} cid={c} mountWindow={this.props.mountWindow}/>)
   }
 }
 
