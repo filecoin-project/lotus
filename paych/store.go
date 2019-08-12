@@ -107,9 +107,21 @@ func (ps *Store) ListChannels() ([]address.Address, error) {
 }
 
 func (ps *Store) AddVoucher(ch address.Address, sv *types.SignedVoucher) error {
-	panic("nyi")
+	ci, err := ps.getChannelInfo(ch)
+	if err != nil {
+		return err
+	}
+
+	ci.Vouchers = append(ci.Vouchers, sv)
+
+	return ps.putChannelInfo(ci)
 }
 
-func (ps *Store) VouchersForPaych(addr address.Address) ([]*types.SignedVoucher, error) {
-	panic("nyi")
+func (ps *Store) VouchersForPaych(ch address.Address) ([]*types.SignedVoucher, error) {
+	ci, err := ps.getChannelInfo(ch)
+	if err != nil {
+		return nil, err
+	}
+
+	return ci.Vouchers, nil
 }

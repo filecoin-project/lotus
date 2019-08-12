@@ -189,3 +189,27 @@ func (pm *Manager) AddVoucher(ctx context.Context, ch address.Address, sv *types
 
 	return pm.store.AddVoucher(ch, sv)
 }
+
+func (pm *Manager) ListVouchers(ctx context.Context, ch address.Address) ([]*types.SignedVoucher, error) {
+	// TODO: just having a passthrough method like this feels odd. Seems like
+	// there should be some filtering we're doing here
+	return pm.store.VouchersForPaych(ch)
+}
+
+func (pm *Manager) NextNonceForLane(ctx context.Context, ch address.Address, lane uint64) (uint64, error) {
+	vouchers, err := pm.store.VouchersForPaych(ch)
+	if err != nil {
+		return 0, err
+	}
+
+	var maxnonce uint64
+	for _, v := range vouchers {
+		if v.Lane == lane {
+			if v.Nonce > maxnonce {
+				maxnonce = v.Nonce
+			}
+		}
+	}
+
+	return maxnonce, nil
+}

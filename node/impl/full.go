@@ -549,11 +549,46 @@ func (a *FullNodeAPI) PaychVoucherAdd(ctx context.Context, ch address.Address, s
 }
 
 func (a *FullNodeAPI) PaychVoucherCreate(ctx context.Context, pch address.Address, amt types.BigInt, lane uint64) (*types.SignedVoucher, error) {
-	panic("nyi")
+	ci, err := a.PaychMgr.GetChannelInfo(pch)
+	if err != nil {
+		return nil, err
+	}
+
+	nonce, err := a.PaychMgr.NextNonceForLane(ctx, pch, lane)
+	if err != nil {
+		return nil, err
+	}
+
+	// REVIEW ME: The amount passed into this method is the absolute value on
+	// the channel.  I think that a common usecase here might be 'i want to pay
+	// person X an additional 4 FIL'.  If they just pass '4' for the amount,
+	// and the channel already has sent some amount, they wont actually be
+	// sending four additional filecoin.
+	sv := &types.SignedVoucher{
+		Lane:   lane,
+		Nonce:  nonce,
+		Amount: amt,
+	}
+
+	vb, err := sv.SigningBytes()
+	if err != nil {
+		return nil, err
+	}
+
+	sig, err := a.WalletSign(ctx, ci.ControlAddr, vb)
+	if err != nil {
+		return nil, err
+	}
+
+	sv.Signature = sig
+
+	// REVIEWME: Should we immediately add this to the voucher store? or leave that to the caller?
+
+	return sv, nil
 }
 
 func (a *FullNodeAPI) PaychVoucherList(ctx context.Context, pch address.Address) ([]*types.SignedVoucher, error) {
-	panic("nyi")
+	return a.PaychMgr.ListVouchers(ctx, pch)
 }
 
 var _ api.FullNode = &FullNodeAPI{}
