@@ -47,8 +47,6 @@ func NewMessagePool(cs *store.ChainStore) *MessagePool {
 }
 
 func (mp *MessagePool) Add(m *types.SignedMessage) error {
-	log.Info("MPOOLADD<<<<<<<<<<<<<<")
-
 	mp.lk.Lock()
 	defer mp.lk.Unlock()
 
