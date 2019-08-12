@@ -76,7 +76,7 @@ type FullNodeStruct struct {
 		PaychCreate        func(ctx context.Context, from, to address.Address, amt types.BigInt) (address.Address, error) `perm:"sign"`
 		PaychList          func(context.Context) ([]address.Address, error)                                               `perm:"read"`
 		PaychStatus        func(context.Context, address.Address) (*PaychStatus, error)                                   `perm:"read"`
-		PaychClose         func(context.Context, address.Address) error                                                   `perm:"write"`
+		PaychClose         func(context.Context, address.Address) error                                                   `perm:"sign"`
 		PaychVoucherCheck  func(context.Context, *types.SignedVoucher) error                                              `perm:"read"`
 		PaychVoucherAdd    func(context.Context, *types.SignedVoucher) error                                              `perm:"write"`
 		PaychVoucherCreate func(context.Context, address.Address, types.BigInt, uint64) (*types.SignedVoucher, error)     `perm:"sign"`
