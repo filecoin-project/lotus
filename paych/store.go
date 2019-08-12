@@ -2,11 +2,11 @@ package paych
 
 import (
 	"fmt"
-	"strings"
 
 	"github.com/filecoin-project/go-lotus/chain/address"
 	"github.com/filecoin-project/go-lotus/chain/types"
 	"github.com/ipfs/go-datastore"
+	"github.com/ipfs/go-datastore/namespace"
 	dsq "github.com/ipfs/go-datastore/query"
 
 	cbor "github.com/ipfs/go-ipld-cbor"
@@ -21,6 +21,7 @@ type Store struct {
 }
 
 func NewStore(ds datastore.Batching) *Store {
+	ds = namespace.Wrap(ds, datastore.NewKey("/paych/"))
 	return &Store{
 		ds: ds,
 	}
@@ -39,7 +40,7 @@ type ChannelInfo struct {
 }
 
 func dskeyForChannel(addr address.Address) datastore.Key {
-	return datastore.NewKey("/paych/" + addr.String())
+	return datastore.NewKey(addr.String())
 }
 
 func (ps *Store) putChannelInfo(ci *ChannelInfo) error {
@@ -82,7 +83,7 @@ func (ps *Store) TrackChannel(ch *ChannelInfo) error {
 }
 
 func (ps *Store) ListChannels() ([]address.Address, error) {
-	res, err := ps.ds.Query(dsq.Query{Prefix: "/paych/", KeysOnly: true})
+	res, err := ps.ds.Query(dsq.Query{KeysOnly: true})
 	if err != nil {
 		return nil, err
 	}
@@ -94,7 +95,7 @@ func (ps *Store) ListChannels() ([]address.Address, error) {
 			break
 		}
 
-		addr, err := address.NewFromString(strings.TrimPrefix(res.Key, "/paych/"))
+		addr, err := address.NewFromString(res.Key)
 		if err != nil {
 			return nil, err
 		}
