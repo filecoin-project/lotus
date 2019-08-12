@@ -96,6 +96,8 @@ func (m *Miner) handlePostingSealedSectors(ctx context.Context) {
 }
 
 func (m *Miner) commitSector(ctx context.Context, sinfo sectorbuilder.SectorSealingStatus) error {
+	log.Info("committing sector")
+
 	ok, err := sectorbuilder.VerifySeal(1024, sinfo.CommR[:], sinfo.CommD[:], sinfo.CommRStar[:], m.maddr, sinfo.SectorID, sinfo.Proof)
 	if err != nil {
 		log.Error("failed to verify seal we just created: ", err)

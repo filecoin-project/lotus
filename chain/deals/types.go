@@ -65,7 +65,7 @@ type SignedStorageDealProposal struct {
 
 type PieceInclusionProof struct {
 	Position      uint64
-	ProofElements [32]byte
+	ProofElements []byte
 }
 
 type StorageDealResponse struct {

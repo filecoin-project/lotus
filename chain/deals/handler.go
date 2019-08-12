@@ -29,6 +29,8 @@ type MinerDeal struct {
 
 	Ref cid.Cid
 
+	SectorID uint64 // Set when State >= Staged
+
 	s inet.Stream
 }
 
@@ -55,6 +57,7 @@ type dealUpdate struct {
 	newState DealState
 	id       cid.Cid
 	err      error
+	mut      func(*MinerDeal)
 }
 
 func NewHandler(w *wallet.Wallet, ds dtypes.MetadataDS, sb *sectorbuilder.SectorBuilder, dag dtypes.StagingDAG) (*Handler, error) {
@@ -136,6 +139,9 @@ func (h *Handler) onUpdated(ctx context.Context, update dealUpdate) {
 	var deal MinerDeal
 	err := h.deals.MutateMiner(update.id, func(d *MinerDeal) error {
 		d.State = update.newState
+		if update.mut != nil {
+			update.mut(d)
+		}
 		deal = *d
 		return nil
 	})
@@ -150,7 +156,7 @@ func (h *Handler) onUpdated(ctx context.Context, update dealUpdate) {
 	case Staged:
 		h.handle(ctx, deal, h.staged, Sealing)
 	case Sealing:
-		log.Error("TODO")
+		h.handle(ctx, deal, h.sealing, Complete)
 	}
 }
 
