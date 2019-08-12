@@ -19,6 +19,7 @@ import (
 	"github.com/filecoin-project/go-lotus/chain/store"
 	"github.com/filecoin-project/go-lotus/chain/types"
 	"github.com/filecoin-project/go-lotus/chain/vm"
+	"github.com/filecoin-project/go-lotus/chain/wallet"
 )
 
 type HarnessInit struct {
@@ -45,6 +46,7 @@ type Harness2 struct {
 	bs  blockstore.Blockstore
 	vm  *vm.VM
 	cs  *store.ChainStore
+	w   *wallet.Wallet
 }
 
 var HarnessMinerFunds = types.NewInt(1000000)
@@ -56,8 +58,12 @@ func HarnessAddr(addr *address.Address, value uint64) HarnessOpt {
 		}
 		hi := &h.HI
 		if addr.Empty() {
-			*addr = blsaddr(hi.NAddrs)
-			hi.NAddrs++
+			k, err := h.w.GenerateKey(types.KTSecp256k1)
+			if err != nil {
+				t.Fatal(err)
+			}
+
+			*addr = k
 		}
 		hi.Addrs[*addr] = types.NewInt(value)
 		return nil
@@ -108,6 +114,10 @@ func HarnessCtx(ctx context.Context) HarnessOpt {
 }
 
 func NewHarness2(t *testing.T, options ...HarnessOpt) *Harness2 {
+	w, err := wallet.NewWallet(wallet.NewMemKeyStore())
+	if err != nil {
+		t.Fatal(err)
+	}
 	h := &Harness2{
 		Stage:  HarnessPreInit,
 		Nonces: make(map[address.Address]uint64),
@@ -119,6 +129,7 @@ func NewHarness2(t *testing.T, options ...HarnessOpt) *Harness2 {
 			},
 		},
 
+		w:   w,
 		ctx: context.Background(),
 		bs:  bstore.NewBlockstore(dstore.NewMapDatastore()),
 	}
@@ -221,6 +232,19 @@ func (h *Harness2) Invoke(t testing.TB, from address.Address, to address.Address
 		GasPrice: types.NewInt(1),
 		GasLimit: types.NewInt(1),
 	})
+}
+
+func (h *Harness2) AssertBalance(t testing.TB, addr address.Address, amt uint64) {
+	t.Helper()
+
+	b, err := h.vm.ActorBalance(addr)
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	if types.BigCmp(types.NewInt(amt), b) != 0 {
+		t.Fatalf("expected %s to have balanced of %d. Instead has %s", addr, amt, b)
+	}
 }
 
 func DumpObject(t testing.TB, obj interface{}) []byte {

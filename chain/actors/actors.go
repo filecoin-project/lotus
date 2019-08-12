@@ -18,6 +18,7 @@ var StorageMarketActorCodeCid cid.Cid
 var StorageMinerCodeCid cid.Cid
 var MultisigActorCodeCid cid.Cid
 var InitActorCodeCid cid.Cid
+var PaymentChannelActorCodeCid cid.Cid
 
 var InitActorAddress = mustIDAddress(0)
 var NetworkAddress = mustIDAddress(1)
@@ -46,4 +47,5 @@ func init() {
 	StorageMinerCodeCid = mustSum("sminer")
 	MultisigActorCodeCid = mustSum("multisig")
 	InitActorCodeCid = mustSum("init")
+	PaymentChannelActorCodeCid = mustSum("paych")
 }

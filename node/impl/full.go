@@ -450,4 +450,97 @@ func (a *FullNodeAPI) StateMinerProvingSet(ctx context.Context, addr address.Add
 	return sinfos, nil
 }
 
+func (a *FullNodeAPI) PaychCreate(ctx context.Context, from, to address.Address, amt types.BigInt) (address.Address, error) {
+
+	params, aerr := actors.SerializeParams(&actors.PCAConstructorParams{To: to})
+	if aerr != nil {
+		return address.Undef, aerr
+	}
+
+	nonce, err := a.MpoolGetNonce(ctx, from)
+	if err != nil {
+		return address.Undef, err
+	}
+
+	enc, err := actors.SerializeParams(&actors.ExecParams{
+		Params: params,
+		Code:   actors.PaymentChannelActorCodeCid,
+	})
+
+	msg := &types.Message{
+		To:       actors.InitActorAddress,
+		From:     from,
+		Value:    amt,
+		Nonce:    nonce,
+		Method:   actors.IAMethods.Exec,
+		Params:   enc,
+		GasLimit: types.NewInt(1000),
+		GasPrice: types.NewInt(0),
+	}
+
+	ser, err := msg.Serialize()
+	if err != nil {
+		return address.Undef, err
+	}
+
+	sig, err := a.WalletSign(ctx, from, ser)
+	if err != nil {
+		return address.Undef, err
+	}
+
+	smsg := &types.SignedMessage{
+		Message:   *msg,
+		Signature: *sig,
+	}
+
+	if err := a.MpoolPush(ctx, smsg); err != nil {
+		return address.Undef, err
+	}
+
+	mwait, err := a.ChainWaitMsg(ctx, smsg.Cid())
+	if err != nil {
+		return address.Undef, err
+	}
+
+	if mwait.Receipt.ExitCode != 0 {
+		return address.Undef, fmt.Errorf("payment channel creation failed (exit code %d)", mwait.Receipt.ExitCode)
+	}
+
+	paychaddr, err := address.NewFromBytes(mwait.Receipt.Return)
+	if err != nil {
+		return address.Undef, err
+	}
+
+	// TODO: track this somewhere?
+	return paychaddr, nil
+}
+
+func (a *FullNodeAPI) PaychList(ctx context.Context) ([]address.Address, error) {
+	panic("nyi")
+}
+
+func (a *FullNodeAPI) PaychStatus(ctx context.Context, pch address.Address) (*api.PaychStatus, error) {
+	panic("nyi")
+}
+
+func (a *FullNodeAPI) PaychClose(ctx context.Context, addr address.Address) error {
+	panic("nyi")
+}
+
+func (a *FullNodeAPI) PaychVoucherCheck(ctx context.Context, sv *types.SignedVoucher) error {
+	panic("nyi")
+}
+
+func (a *FullNodeAPI) PaychVoucherAdd(ctx context.Context, sv *types.SignedVoucher) error {
+	panic("nyi")
+}
+
+func (a *FullNodeAPI) PaychVoucherCreate(ctx context.Context, pch address.Address, amt types.BigInt, lane uint64) (*types.SignedVoucher, error) {
+	panic("nyi")
+}
+
+func (a *FullNodeAPI) PaychVoucherList(ctx context.Context, pch address.Address) ([]*types.SignedVoucher, error) {
+	panic("nyi")
+}
+
 var _ api.FullNode = &FullNodeAPI{}
