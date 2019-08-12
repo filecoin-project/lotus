@@ -181,7 +181,6 @@ func Online() Option {
 		libp2p(),
 
 		// common
-		Override(new(*wallet.Wallet), wallet.NewWallet),
 
 		// Full node
 
@@ -191,6 +190,7 @@ func Online() Option {
 			Override(HandleIncomingMessagesKey, modules.HandleIncomingMessages),
 
 			Override(new(*store.ChainStore), modules.ChainStore),
+			Override(new(*wallet.Wallet), wallet.NewWallet),
 
 			Override(new(dtypes.ChainGCLocker), blockstore.NewGCLocker),
 			Override(new(dtypes.ChainGCBlockstore), modules.ChainGCBlockstore),

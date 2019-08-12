@@ -4,8 +4,8 @@ import (
 	"context"
 	"math"
 
+	"github.com/filecoin-project/go-lotus/api"
 	"github.com/filecoin-project/go-lotus/chain/address"
-	"github.com/filecoin-project/go-lotus/chain/wallet"
 	"github.com/filecoin-project/go-lotus/lib/sectorbuilder"
 	"github.com/filecoin-project/go-lotus/node/modules/dtypes"
 
@@ -35,8 +35,8 @@ type MinerDeal struct {
 }
 
 type Handler struct {
-	w  *wallet.Wallet
-	sb *sectorbuilder.SectorBuilder
+	sb   *sectorbuilder.SectorBuilder
+	full api.FullNode
 
 	// TODO: Use a custom protocol or graphsync in the future
 	// TODO: GC
@@ -60,7 +60,7 @@ type dealUpdate struct {
 	mut      func(*MinerDeal)
 }
 
-func NewHandler(w *wallet.Wallet, ds dtypes.MetadataDS, sb *sectorbuilder.SectorBuilder, dag dtypes.StagingDAG) (*Handler, error) {
+func NewHandler(ds dtypes.MetadataDS, sb *sectorbuilder.SectorBuilder, dag dtypes.StagingDAG, fullNode api.FullNode) (*Handler, error) {
 	addr, err := ds.Get(datastore.NewKey("miner-address"))
 	if err != nil {
 		return nil, err
@@ -71,9 +71,9 @@ func NewHandler(w *wallet.Wallet, ds dtypes.MetadataDS, sb *sectorbuilder.Sector
 	}
 
 	return &Handler{
-		w:   w,
 		sb:  sb,
 		dag: dag,
+		full: fullNode,
 
 		conns: map[cid.Cid]inet.Stream{},
 
