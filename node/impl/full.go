@@ -545,6 +545,11 @@ func (a *FullNodeAPI) PaychVoucherAdd(ctx context.Context, ch address.Address, s
 	return a.PaychMgr.AddVoucher(ctx, ch, sv)
 }
 
+// PaychVoucherCreate creates a new signed voucher on the given payment channel
+// with the given lane and amount.  The value passed in is exactly the value
+// that will be used to create the voucher, so if previous vouchers exist, the
+// actual additional value of this voucher will only be the difference between
+// the two.
 func (a *FullNodeAPI) PaychVoucherCreate(ctx context.Context, pch address.Address, amt types.BigInt, lane uint64) (*types.SignedVoucher, error) {
 	ci, err := a.PaychMgr.GetChannelInfo(pch)
 	if err != nil {
@@ -556,11 +561,6 @@ func (a *FullNodeAPI) PaychVoucherCreate(ctx context.Context, pch address.Addres
 		return nil, err
 	}
 
-	// REVIEW ME: The amount passed into this method is the absolute value on
-	// the channel.  I think that a common usecase here might be 'i want to pay
-	// person X an additional 4 FIL'.  If they just pass '4' for the amount,
-	// and the channel already has sent some amount, they wont actually be
-	// sending four additional filecoin.
 	sv := &types.SignedVoucher{
 		Lane:   lane,
 		Nonce:  nonce,
@@ -579,7 +579,9 @@ func (a *FullNodeAPI) PaychVoucherCreate(ctx context.Context, pch address.Addres
 
 	sv.Signature = sig
 
-	// REVIEWME: Should we immediately add this to the voucher store? or leave that to the caller?
+	if err := a.PaychMgr.AddVoucher(ctx, pch, sv); err != nil {
+		return nil, xerrors.Errorf("failed to persist voucher: %w", err)
+	}
 
 	return sv, nil
 }

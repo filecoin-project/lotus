@@ -72,6 +72,10 @@ func (pm *Manager) CheckVoucherValid(ctx context.Context, ch address.Address, sv
 	if err != nil {
 		return err
 	}
+
+	// TODO: technically, either party may create and sign a voucher.
+	// However, for now, we only accept them from the channel creator.
+	// More complex handling logic can be added later
 	if err := sv.Signature.Verify(pca.From, vb); err != nil {
 		return err
 	}
@@ -79,10 +83,10 @@ func (pm *Manager) CheckVoucherValid(ctx context.Context, ch address.Address, sv
 	sendAmount := sv.Amount
 
 	// now check the lane state
+	// TODO: should check against vouchers in our local store too
+	// there might be something conflicting
 	ls, ok := pca.LaneStates[fmt.Sprint(sv.Lane)]
 	if !ok {
-		// TODO: should check against vouchers in our local store too
-		// there might be something conflicting
 	} else {
 		if ls.Closed {
 			return fmt.Errorf("voucher is on a closed lane")
