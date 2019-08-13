@@ -1,13 +1,17 @@
 package deals
 
 import (
+	"context"
 	"runtime"
 
+	"github.com/filecoin-project/go-lotus/chain/actors"
+	"github.com/filecoin-project/go-lotus/chain/address"
+	"github.com/filecoin-project/go-lotus/chain/types"
 	"github.com/filecoin-project/go-lotus/lib/cborrpc"
-	cbor "github.com/ipfs/go-ipld-cbor"
-	inet "github.com/libp2p/go-libp2p-core/network"
 
 	"github.com/ipfs/go-cid"
+	cbor "github.com/ipfs/go-ipld-cbor"
+	inet "github.com/libp2p/go-libp2p-core/network"
 	"golang.org/x/xerrors"
 )
 
@@ -68,18 +72,21 @@ func (h *Handler) sendSignedResponse(resp StorageDealResponse) error {
 		return xerrors.Errorf("serializing response: %w", err)
 	}
 
-	def, err := h.w.ListAddrs()
-	if err != nil {
-		log.Error(err)
-		return xerrors.Errorf("listing wallet addresses: %w", err)
+	getworker := &types.Message{
+		To:     h.actor,
+		From:   h.actor,
+		Method: actors.MAMethods.GetWorkerAddr,
 	}
-	if len(def) != 1 {
-		// NOTE: If this ever happens for a good reason, implement this with GetWorker on the miner actor
-		// TODO: implement with GetWorker on the miner actor
-		return xerrors.Errorf("expected only 1 address in wallet, got %d", len(def))
+	r, err := h.full.ChainCall(context.TODO(), getworker, nil)
+	if err != nil {
+		return xerrors.Errorf("getting worker address: %w", err)
+	}
+	worker, err := address.NewFromBytes(r.Return)
+	if err != nil {
+		return err
 	}
 
-	sig, err := h.w.Sign(def[0], msg)
+	sig, err := h.full.WalletSign(context.TODO(), worker, msg)
 	if err != nil {
 		return xerrors.Errorf("failed to sign response message: %w", err)
 	}

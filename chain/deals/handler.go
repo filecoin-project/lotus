@@ -4,8 +4,8 @@ import (
 	"context"
 	"math"
 
+	"github.com/filecoin-project/go-lotus/api"
 	"github.com/filecoin-project/go-lotus/chain/address"
-	"github.com/filecoin-project/go-lotus/chain/wallet"
 	"github.com/filecoin-project/go-lotus/lib/sectorbuilder"
 	"github.com/filecoin-project/go-lotus/node/modules/dtypes"
 
@@ -29,12 +29,14 @@ type MinerDeal struct {
 
 	Ref cid.Cid
 
+	SectorID uint64 // Set when State >= Staged
+
 	s inet.Stream
 }
 
 type Handler struct {
-	w  *wallet.Wallet
-	sb *sectorbuilder.SectorBuilder
+	sb   *sectorbuilder.SectorBuilder
+	full api.FullNode
 
 	// TODO: Use a custom protocol or graphsync in the future
 	// TODO: GC
@@ -55,9 +57,10 @@ type dealUpdate struct {
 	newState DealState
 	id       cid.Cid
 	err      error
+	mut      func(*MinerDeal)
 }
 
-func NewHandler(w *wallet.Wallet, ds dtypes.MetadataDS, sb *sectorbuilder.SectorBuilder, dag dtypes.StagingDAG) (*Handler, error) {
+func NewHandler(ds dtypes.MetadataDS, sb *sectorbuilder.SectorBuilder, dag dtypes.StagingDAG, fullNode api.FullNode) (*Handler, error) {
 	addr, err := ds.Get(datastore.NewKey("miner-address"))
 	if err != nil {
 		return nil, err
@@ -68,9 +71,9 @@ func NewHandler(w *wallet.Wallet, ds dtypes.MetadataDS, sb *sectorbuilder.Sector
 	}
 
 	return &Handler{
-		w:   w,
 		sb:  sb,
 		dag: dag,
+		full: fullNode,
 
 		conns: map[cid.Cid]inet.Stream{},
 
@@ -136,6 +139,9 @@ func (h *Handler) onUpdated(ctx context.Context, update dealUpdate) {
 	var deal MinerDeal
 	err := h.deals.MutateMiner(update.id, func(d *MinerDeal) error {
 		d.State = update.newState
+		if update.mut != nil {
+			update.mut(d)
+		}
 		deal = *d
 		return nil
 	})
@@ -150,7 +156,7 @@ func (h *Handler) onUpdated(ctx context.Context, update dealUpdate) {
 	case Staged:
 		h.handle(ctx, deal, h.staged, Sealing)
 	case Sealing:
-		log.Error("TODO")
+		h.handle(ctx, deal, h.sealing, Complete)
 	}
 }
 

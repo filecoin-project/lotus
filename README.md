@@ -75,7 +75,7 @@ Pond is a graphical testbed for lotus. It can be used to spin up nodes, connect
 them in a given topology, start them mining, and observe how they function over
 time.
 
-To try it out, run `make pond`, then run the `pond` binary that gets created.
+To try it out, run `make pond`, then run `./pond run`.
 Once it is running, visit localhost:2222 in your browser.
 
 ## Tracing
