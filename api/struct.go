@@ -76,13 +76,14 @@ type FullNodeStruct struct {
 		PaychCreate                func(ctx context.Context, from, to address.Address, amt types.BigInt) (address.Address, error) `perm:"sign"`
 		PaychList                  func(context.Context) ([]address.Address, error)                                               `perm:"read"`
 		PaychStatus                func(context.Context, address.Address) (*PaychStatus, error)                                   `perm:"read"`
-		PaychClose                 func(context.Context, address.Address) error                                                   `perm:"sign"`
+		PaychClose                 func(context.Context, address.Address) (cid.Cid, error)                                        `perm:"sign"`
 		PaychVoucherCheck          func(context.Context, *types.SignedVoucher) error                                              `perm:"read"`
 		PaychVoucherCheckValid     func(context.Context, address.Address, *types.SignedVoucher) error                             `perm:"read"`
 		PaychVoucherCheckSpendable func(context.Context, address.Address, *types.SignedVoucher, []byte, []byte) (bool, error)     `perm:"read"`
 		PaychVoucherAdd            func(context.Context, address.Address, *types.SignedVoucher) error                             `perm:"write"`
 		PaychVoucherCreate         func(context.Context, address.Address, types.BigInt, uint64) (*types.SignedVoucher, error)     `perm:"sign"`
 		PaychVoucherList           func(context.Context, address.Address) ([]*types.SignedVoucher, error)                         `perm:"write"`
+		PaychVoucherSubmit         func(context.Context, address.Address, *types.SignedVoucher) (cid.Cid, error)                  `perm:"sign"`
 	}
 }
 
@@ -282,8 +283,12 @@ func (c *FullNodeStruct) PaychVoucherList(ctx context.Context, pch address.Addre
 	return c.Internal.PaychVoucherList(ctx, pch)
 }
 
-func (c *FullNodeStruct) PaychClose(ctx context.Context, a address.Address) error {
+func (c *FullNodeStruct) PaychClose(ctx context.Context, a address.Address) (cid.Cid, error) {
 	return c.Internal.PaychClose(ctx, a)
+}
+
+func (c *FullNodeStruct) PaychVoucherSubmit(ctx context.Context, ch address.Address, sv *types.SignedVoucher) (cid.Cid, error) {
+	return c.Internal.PaychVoucherSubmit(ctx, ch, sv)
 }
 
 func (c *StorageMinerStruct) ActorAddresses(ctx context.Context) ([]address.Address, error) {

@@ -4,12 +4,12 @@ import (
 	"context"
 	"fmt"
 
-	"github.com/filecoin-project/go-lotus/chain"
 	"github.com/filecoin-project/go-lotus/chain/actors"
 	"github.com/filecoin-project/go-lotus/chain/address"
 	"github.com/filecoin-project/go-lotus/chain/state"
 	"github.com/filecoin-project/go-lotus/chain/store"
 	"github.com/filecoin-project/go-lotus/chain/types"
+	"github.com/filecoin-project/go-lotus/chain/vm"
 
 	hamt "github.com/ipfs/go-hamt-ipld"
 )
@@ -123,7 +123,7 @@ func (pm *Manager) CheckVoucherSpendable(ctx context.Context, ch address.Address
 		return false, err
 	}
 
-	ret, err := chain.Call(ctx, pm.chain, &types.Message{
+	ret, err := vm.Call(ctx, pm.chain, &types.Message{
 		From:   owner,
 		To:     ch,
 		Method: actors.PCAMethods.UpdateChannelState,
@@ -166,7 +166,7 @@ func (pm *Manager) loadPaychState(ctx context.Context, ch address.Address) (*typ
 }
 
 func (pm *Manager) getPaychOwner(ctx context.Context, ch address.Address) (address.Address, error) {
-	ret, err := chain.Call(ctx, pm.chain, &types.Message{
+	ret, err := vm.Call(ctx, pm.chain, &types.Message{
 		From:   ch,
 		To:     ch,
 		Method: actors.PCAMethods.GetOwner,
@@ -211,5 +211,5 @@ func (pm *Manager) NextNonceForLane(ctx context.Context, ch address.Address, lan
 		}
 	}
 
-	return maxnonce, nil
+	return maxnonce + 1, nil
 }

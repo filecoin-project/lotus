@@ -100,12 +100,13 @@ type FullNode interface {
 	PaychCreate(ctx context.Context, from, to address.Address, amt types.BigInt) (address.Address, error)
 	PaychList(context.Context) ([]address.Address, error)
 	PaychStatus(context.Context, address.Address) (*PaychStatus, error)
-	PaychClose(context.Context, address.Address) error
+	PaychClose(context.Context, address.Address) (cid.Cid, error)
 	PaychVoucherCheckValid(context.Context, address.Address, *types.SignedVoucher) error
 	PaychVoucherCheckSpendable(context.Context, address.Address, *types.SignedVoucher, []byte, []byte) (bool, error)
 	PaychVoucherCreate(context.Context, address.Address, types.BigInt, uint64) (*types.SignedVoucher, error)
 	PaychVoucherAdd(context.Context, address.Address, *types.SignedVoucher) error
 	PaychVoucherList(context.Context, address.Address) ([]*types.SignedVoucher, error)
+	PaychVoucherSubmit(context.Context, address.Address, *types.SignedVoucher) (cid.Cid, error)
 }
 
 // Full API is a low-level interface to the Filecoin network storage miner node

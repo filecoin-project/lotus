@@ -2,6 +2,7 @@ package paych
 
 import (
 	"fmt"
+	"strings"
 
 	"github.com/filecoin-project/go-lotus/chain/address"
 	"github.com/filecoin-project/go-lotus/chain/types"
@@ -10,6 +11,7 @@ import (
 	dsq "github.com/ipfs/go-datastore/query"
 
 	cbor "github.com/ipfs/go-ipld-cbor"
+	"golang.org/x/xerrors"
 )
 
 func init() {
@@ -95,9 +97,13 @@ func (ps *Store) ListChannels() ([]address.Address, error) {
 			break
 		}
 
-		addr, err := address.NewFromString(res.Key)
-		if err != nil {
+		if res.Error != nil {
 			return nil, err
+		}
+
+		addr, err := address.NewFromString(strings.TrimPrefix(res.Key, "/"))
+		if err != nil {
+			return nil, xerrors.Errorf("failed reading paych key (%q) from datastore: %w", res.Key, err)
 		}
 
 		out = append(out, addr)

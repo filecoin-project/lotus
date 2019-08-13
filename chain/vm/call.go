@@ -1,4 +1,4 @@
-package chain
+package vm
 
 import (
 	"context"
@@ -6,7 +6,6 @@ import (
 	"github.com/filecoin-project/go-lotus/chain/actors"
 	"github.com/filecoin-project/go-lotus/chain/store"
 	"github.com/filecoin-project/go-lotus/chain/types"
-	"github.com/filecoin-project/go-lotus/chain/vm"
 	"golang.org/x/xerrors"
 )
 
@@ -19,7 +18,7 @@ func Call(ctx context.Context, cs *store.ChainStore, msg *types.Message, ts *typ
 		return nil, err
 	}
 
-	vmi, err := vm.NewVM(state, ts.Height(), ts.Blocks()[0].Miner, cs)
+	vmi, err := NewVM(state, ts.Height(), ts.Blocks()[0].Miner, cs)
 	if err != nil {
 		return nil, xerrors.Errorf("failed to set up vm: %w", err)
 	}
@@ -40,10 +39,21 @@ func Call(ctx context.Context, cs *store.ChainStore, msg *types.Message, ts *typ
 		}
 	}
 
+	fromActor, err := vmi.cstate.GetActor(msg.From)
+	if err != nil {
+		return nil, err
+	}
+
+	msg.Nonce = fromActor.Nonce
+
 	// TODO: maybe just use the invoker directly?
 	ret, err := vmi.ApplyMessage(ctx, msg)
+	if err != nil {
+		return nil, xerrors.Errorf("apply message failed: %w", err)
+	}
+
 	if ret.ActorErr != nil {
 		log.Warnf("chain call failed: %s", ret.ActorErr)
 	}
-	return &ret.MessageReceipt, err
+	return &ret.MessageReceipt, nil
 }

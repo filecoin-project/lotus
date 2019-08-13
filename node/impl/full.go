@@ -16,6 +16,7 @@ import (
 	"github.com/filecoin-project/go-lotus/chain/state"
 	"github.com/filecoin-project/go-lotus/chain/store"
 	"github.com/filecoin-project/go-lotus/chain/types"
+	"github.com/filecoin-project/go-lotus/chain/vm"
 	"github.com/filecoin-project/go-lotus/chain/wallet"
 	"github.com/filecoin-project/go-lotus/miner"
 	"github.com/filecoin-project/go-lotus/node/client"
@@ -157,7 +158,7 @@ func (a *FullNodeAPI) ChainGetBlockReceipts(ctx context.Context, bcid cid.Cid) (
 }
 
 func (a *FullNodeAPI) ChainCall(ctx context.Context, msg *types.Message, ts *types.TipSet) (*types.MessageReceipt, error) {
-	return chain.Call(ctx, a.Chain, msg, ts)
+	return vm.Call(ctx, a.Chain, msg, ts)
 }
 
 func (a *FullNodeAPI) stateForTs(ts *types.TipSet) (*state.StateTree, error) {
@@ -479,7 +480,10 @@ func (a *FullNodeAPI) PaychCreate(ctx context.Context, from, to address.Address,
 		return address.Undef, err
 	}
 
-	// TODO: track this somewhere?
+	if err := a.PaychMgr.TrackOutboundChannel(ctx, paychaddr); err != nil {
+		return address.Undef, err
+	}
+
 	return paychaddr, nil
 }
 
@@ -491,15 +495,15 @@ func (a *FullNodeAPI) PaychStatus(ctx context.Context, pch address.Address) (*ap
 	panic("nyi")
 }
 
-func (a *FullNodeAPI) PaychClose(ctx context.Context, addr address.Address) error {
+func (a *FullNodeAPI) PaychClose(ctx context.Context, addr address.Address) (cid.Cid, error) {
 	ci, err := a.PaychMgr.GetChannelInfo(addr)
 	if err != nil {
-		return err
+		return cid.Undef, err
 	}
 
 	nonce, err := a.MpoolGetNonce(ctx, ci.ControlAddr)
 	if err != nil {
-		return err
+		return cid.Undef, err
 	}
 
 	msg := &types.Message{
@@ -513,23 +517,16 @@ func (a *FullNodeAPI) PaychClose(ctx context.Context, addr address.Address) erro
 		GasPrice: types.NewInt(0),
 	}
 
-	b, err := msg.Serialize()
+	smsg, err := a.WalletSignMessage(ctx, ci.ControlAddr, msg)
 	if err != nil {
-		return err
+		return cid.Undef, err
 	}
 
-	sig, err := a.WalletSign(ctx, ci.ControlAddr, b)
-	if err != nil {
-		return err
+	if err := a.MpoolPush(ctx, smsg); err != nil {
+		return cid.Undef, err
 	}
 
-	smsg := &types.SignedMessage{
-		Message:   *msg,
-		Signature: *sig,
-	}
-
-	// TODO: should this block and wait?
-	return a.MpoolPush(ctx, smsg)
+	return smsg.Cid(), nil
 }
 
 func (a *FullNodeAPI) PaychVoucherCheckValid(ctx context.Context, ch address.Address, sv *types.SignedVoucher) error {
@@ -589,6 +586,52 @@ func (a *FullNodeAPI) PaychVoucherCreate(ctx context.Context, pch address.Addres
 
 func (a *FullNodeAPI) PaychVoucherList(ctx context.Context, pch address.Address) ([]*types.SignedVoucher, error) {
 	return a.PaychMgr.ListVouchers(ctx, pch)
+}
+
+func (a *FullNodeAPI) PaychVoucherSubmit(ctx context.Context, ch address.Address, sv *types.SignedVoucher) (cid.Cid, error) {
+	ci, err := a.PaychMgr.GetChannelInfo(ch)
+	if err != nil {
+		return cid.Undef, err
+	}
+
+	nonce, err := a.MpoolGetNonce(ctx, ci.ControlAddr)
+	if err != nil {
+		return cid.Undef, err
+	}
+
+	if sv.Extra != nil || len(sv.SecretPreimage) > 0 {
+		return cid.Undef, fmt.Errorf("cant handle more advanced payment channel stuff yet")
+	}
+
+	enc, err := actors.SerializeParams(&actors.PCAUpdateChannelStateParams{
+		Sv: *sv,
+	})
+	if err != nil {
+		return cid.Undef, err
+	}
+
+	msg := &types.Message{
+		From:     ci.ControlAddr,
+		To:       ch,
+		Value:    types.NewInt(0),
+		Nonce:    nonce,
+		Method:   actors.PCAMethods.UpdateChannelState,
+		Params:   enc,
+		GasLimit: types.NewInt(100000),
+		GasPrice: types.NewInt(0),
+	}
+
+	smsg, err := a.WalletSignMessage(ctx, ci.ControlAddr, msg)
+	if err != nil {
+		return cid.Undef, err
+	}
+
+	if err := a.MpoolPush(ctx, smsg); err != nil {
+		return cid.Undef, err
+	}
+
+	// TODO: should we wait for it...?
+	return smsg.Cid(), nil
 }
 
 var _ api.FullNode = &FullNodeAPI{}
