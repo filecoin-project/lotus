@@ -33,6 +33,7 @@ import (
 	"github.com/filecoin-project/go-lotus/node/modules/lp2p"
 	"github.com/filecoin-project/go-lotus/node/modules/testing"
 	"github.com/filecoin-project/go-lotus/node/repo"
+	"github.com/filecoin-project/go-lotus/paych"
 	"github.com/filecoin-project/go-lotus/storage"
 )
 
@@ -214,6 +215,9 @@ func Online() Option {
 
 			Override(new(*deals.Client), deals.NewClient),
 			Override(RunDealClientKey, modules.RunDealClient),
+
+			Override(new(*paych.Store), modules.PaychStore),
+			Override(new(*paych.Manager), modules.PaymentChannelManager),
 		),
 
 		// Storage miner

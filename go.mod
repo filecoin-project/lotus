@@ -61,6 +61,7 @@ require (
 	github.com/multiformats/go-multihash v0.0.6
 	github.com/pkg/errors v0.8.1
 	github.com/polydawn/refmt v0.0.0-20190809202753-05966cbd336a
+	github.com/prometheus/common v0.2.0
 	github.com/smartystreets/assertions v1.0.1 // indirect
 	github.com/smartystreets/goconvey v0.0.0-20190710185942-9d28bd7c0945 // indirect
 	github.com/stretchr/testify v1.3.0
