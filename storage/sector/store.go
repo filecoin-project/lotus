@@ -24,14 +24,14 @@ type Store struct {
 	incoming []chan sectorbuilder.SectorSealingStatus
 	// TODO: outdated chan
 
-	close chan struct{}
+	closeCh chan struct{}
 }
 
 func NewStore(sb *sectorbuilder.SectorBuilder) *Store {
 	return &Store{
 		sb:      sb,
 		waiting: map[uint64]chan struct{}{},
-		close:   make(chan struct{}),
+		closeCh: make(chan struct{}),
 	}
 }
 
@@ -88,7 +88,7 @@ func (s *Store) service() {
 		select {
 		case <-poll:
 			s.poll()
-		case <-s.close:
+		case <-s.closeCh:
 			s.lk.Lock()
 			for _, c := range s.incoming {
 				close(c)
@@ -131,7 +131,9 @@ func (s *Store) CloseIncoming(c <-chan sectorbuilder.SectorSealingStatus) {
 		return
 	}
 	if len(s.incoming) > 1 {
-		s.incoming[at] = s.incoming[len(s.incoming)-1]
+		last := len(s.incoming) - 1
+		s.incoming[at] = s.incoming[last]
+		s.incoming[last] = nil
 	}
 	s.incoming = s.incoming[:len(s.incoming)-1]
 	s.lk.Unlock()
@@ -161,7 +163,7 @@ func (s *Store) WaitSeal(ctx context.Context, sector uint64) (sectorbuilder.Sect
 }
 
 func (s *Store) Stop() {
-	close(s.close)
+	close(s.closeCh)
 }
 
 func withTemp(r io.Reader, cb func(string) error) error {
@@ -178,7 +180,9 @@ func withTemp(r io.Reader, cb func(string) error) error {
 
 	err = cb(f.Name())
 	if err != nil {
-		os.Remove(f.Name())
+		if err := os.Remove(f.Name()); err != nil {
+			log.Errorf("couldn't remove temp file '%s'", f.Name())
+		}
 		return err
 	}
 
