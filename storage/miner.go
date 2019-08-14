@@ -3,6 +3,7 @@ package storage
 import (
 	"context"
 	"fmt"
+	"github.com/filecoin-project/go-lotus/storage/sector"
 
 	"github.com/filecoin-project/go-lotus/api"
 	"github.com/filecoin-project/go-lotus/chain/actors"
@@ -23,7 +24,7 @@ var log = logging.Logger("storageminer")
 type Miner struct {
 	api storageMinerApi
 
-	sb *sectorbuilder.SectorBuilder
+	secst *sector.Store
 
 	maddr address.Address
 
@@ -52,13 +53,13 @@ type storageMinerApi interface {
 	WalletHas(context.Context, address.Address) (bool, error)
 }
 
-func NewMiner(api storageMinerApi, addr address.Address, h host.Host, ds datastore.Batching, sb *sectorbuilder.SectorBuilder) (*Miner, error) {
+func NewMiner(api storageMinerApi, addr address.Address, h host.Host, ds datastore.Batching, secst *sector.Store) (*Miner, error) {
 	return &Miner{
 		api:   api,
 		maddr: addr,
 		h:     h,
 		ds:    ds,
-		sb:    sb,
+		secst: secst,
 	}, nil
 }
 
@@ -73,9 +74,12 @@ func (m *Miner) Run(ctx context.Context) error {
 }
 
 func (m *Miner) handlePostingSealedSectors(ctx context.Context) {
+	incoming := m.secst.Incoming()
+	defer m.secst.CloseIncoming(incoming)
+
 	for {
 		select {
-		case sinfo, ok := <-m.sb.SealedSectorChan():
+		case sinfo, ok := <-incoming:
 			if !ok {
 				// TODO: set some state variable so that this state can be
 				// visible via some status command

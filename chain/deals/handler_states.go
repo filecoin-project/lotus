@@ -2,8 +2,6 @@ package deals
 
 import (
 	"context"
-	"time"
-
 	"github.com/filecoin-project/go-lotus/lib/sectorbuilder"
 
 	files "github.com/ipfs/go-ipfs-files"
@@ -88,11 +86,7 @@ func (h *Handler) staged(ctx context.Context, deal MinerDeal) (func(*MinerDeal),
 		return nil, xerrors.Errorf("failed to get file size: %s", err)
 	}
 
-	var sectorID uint64
-	err = withTemp(uf, func(f string) (err error) {
-		sectorID, err = h.sb.AddPiece(deal.Proposal.PieceRef, uint64(size), f)
-		return err
-	})
+	sectorID, err := h.secst.AddPiece(deal.Proposal.PieceRef, uint64(size), uf, deal.Proposal.Duration)
 	if err != nil {
 		return nil, xerrors.Errorf("AddPiece failed: %s", err)
 	}
@@ -117,37 +111,29 @@ func getInclusionProof(ref string, status sectorbuilder.SectorSealingStatus) (Pi
 	return PieceInclusionProof{}, xerrors.Errorf("pieceInclusionProof for %s in sector %d not found", ref, status.SectorID)
 }
 
-func (h *Handler) pollSectorSealed(deal MinerDeal) (status sectorbuilder.SectorSealingStatus, err error) {
-loop:
-	for {
-		status, err = h.sb.SealStatus(deal.SectorID)
-		if err != nil {
-			return sectorbuilder.SectorSealingStatus{}, err
-		}
-
-		switch status.SealStatusCode {
-		case 0: // sealed
-			break loop
-		case 2: // failed
-			return sectorbuilder.SectorSealingStatus{}, xerrors.Errorf("sealing sector %d for deal %s (ref=%s) failed: %s", deal.SectorID, deal.ProposalCid, deal.Ref, status.SealErrorMsg)
-		case 1: // pending
-			if err := h.sb.SealAllStagedSectors(); err != nil {
-				return sectorbuilder.SectorSealingStatus{}, err
-			}
-			// start seal
-			fallthrough
-		case 3: // sealing
-			// wait
-		default:
-			return sectorbuilder.SectorSealingStatus{}, xerrors.Errorf("unknown SealStatusCode: %d", status.SectorID)
-		}
-		time.Sleep(3 * time.Second)
+func (h *Handler) waitSealed(deal MinerDeal) (sectorbuilder.SectorSealingStatus, error) {
+	status, err := h.secst.WaitSeal(context.TODO(), deal.SectorID)
+	if err != nil {
+		return sectorbuilder.SectorSealingStatus{}, err
 	}
+
+	switch status.SealStatusCode {
+	case 0: // sealed
+	case 2: // failed
+		return sectorbuilder.SectorSealingStatus{}, xerrors.Errorf("sealing sector %d for deal %s (ref=%s) failed: %s", deal.SectorID, deal.ProposalCid, deal.Ref, status.SealErrorMsg)
+	case 1: // pending
+		return sectorbuilder.SectorSealingStatus{}, xerrors.Errorf("sector status was 'pending' after call to WaitSeal (for sector %d)", deal.SectorID)
+	case 3: // sealing
+		return sectorbuilder.SectorSealingStatus{}, xerrors.Errorf("sector status was 'wait' after call to WaitSeal (for sector %d)", deal.SectorID)
+	default:
+		return sectorbuilder.SectorSealingStatus{}, xerrors.Errorf("unknown SealStatusCode: %d", status.SectorID)
+	}
+
 	return status, nil
 }
 
 func (h *Handler) sealing(ctx context.Context, deal MinerDeal) (func(*MinerDeal), error) {
-	status, err := h.pollSectorSealed(deal)
+	status, err := h.waitSealed(deal)
 	if err != nil {
 		return nil, err
 	}
