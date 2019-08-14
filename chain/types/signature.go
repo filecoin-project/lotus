@@ -4,6 +4,7 @@ import (
 	"encoding/binary"
 	"fmt"
 
+	bls "github.com/filecoin-project/go-bls-sigs"
 	"github.com/filecoin-project/go-lotus/chain/address"
 	"github.com/filecoin-project/go-lotus/lib/crypto"
 	cbor "github.com/ipfs/go-ipld-cbor"
@@ -45,6 +46,8 @@ func SignatureFromBytes(x []byte) (Signature, error) {
 	switch val {
 	case 1:
 		ts = KTSecp256k1
+	case 2:
+		ts = KTBLS
 	default:
 		return Signature{}, fmt.Errorf("unsupported signature type: %d", val)
 	}
@@ -56,6 +59,9 @@ func SignatureFromBytes(x []byte) (Signature, error) {
 }
 
 func (s *Signature) Verify(addr address.Address, msg []byte) error {
+	if addr.Protocol() == address.ID {
+		return fmt.Errorf("must resolve ID addresses before using them to verify a signature")
+	}
 	b2sum := blake2b.Sum256(msg)
 
 	switch s.Type {
@@ -72,6 +78,21 @@ func (s *Signature) Verify(addr address.Address, msg []byte) error {
 
 		if addr != maybeaddr {
 			return fmt.Errorf("signature did not match")
+		}
+
+		return nil
+	case KTBLS:
+		digests := []bls.Digest{bls.Hash(bls.Message(msg))}
+
+		var pubk bls.PublicKey
+		copy(pubk[:], addr.Payload())
+		pubkeys := []bls.PublicKey{pubk}
+
+		var sig bls.Signature
+		copy(sig[:], s.Data)
+
+		if !bls.Verify(sig, digests, pubkeys) {
+			return fmt.Errorf("bls signature failed to verify")
 		}
 
 		return nil

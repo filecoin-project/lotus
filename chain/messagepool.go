@@ -92,21 +92,21 @@ func (mp *MessagePool) GetNonce(addr address.Address) (uint64, error) {
 	return act.Nonce, nil
 }
 
-func (mp *MessagePool) Remove(m *types.SignedMessage) {
+func (mp *MessagePool) Remove(from address.Address, nonce uint64) {
 	mp.lk.Lock()
 	defer mp.lk.Unlock()
 
-	mset, ok := mp.pending[m.Message.From]
+	mset, ok := mp.pending[from]
 	if !ok {
 		return
 	}
 
 	// NB: This deletes any message with the given nonce. This makes sense
 	// as two messages with the same sender cannot have the same nonce
-	delete(mset.msgs, m.Message.Nonce)
+	delete(mset.msgs, nonce)
 
 	if len(mset.msgs) == 0 {
-		delete(mp.pending, m.Message.From)
+		delete(mp.pending, from)
 	}
 }
 
@@ -160,17 +160,11 @@ func (mp *MessagePool) HeadChange(revert []*types.TipSet, apply []*types.TipSet)
 				return errors.Wrapf(err, "failed to get messages for apply block %s(height %d) (msgroot = %s)", b.Cid(), b.Height, b.Messages)
 			}
 			for _, msg := range smsgs {
-				mp.Remove(msg)
+				mp.Remove(msg.Message.From, msg.Message.Nonce)
 			}
 
 			for _, msg := range bmsgs {
-				smsg := mp.RecoverSig(msg)
-				if smsg != nil {
-					mp.Remove(smsg)
-				} else {
-					// TODO: this one is likely fine
-					log.Warnf("could not recover signature for bls message %s during a reorg apply", msg.Cid())
-				}
+				mp.Remove(msg.From, msg.Nonce)
 			}
 		}
 	}
