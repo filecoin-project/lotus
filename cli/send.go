@@ -66,8 +66,8 @@ var sendCmd = &cli.Command{
 			To:       toAddr,
 			Value:    val,
 			Nonce:    nonce,
-			GasLimit: types.NewInt(10000),
-			GasPrice: types.NewInt(1),
+			GasLimit: types.NewInt(1000),
+			GasPrice: types.NewInt(0),
 		}
 
 		sermsg, err := msg.Serialize()
