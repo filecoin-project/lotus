@@ -2,12 +2,18 @@ package sector
 
 import (
 	"context"
-	"github.com/filecoin-project/go-lotus/lib/sectorbuilder"
 	"io"
 	"io/ioutil"
 	"os"
 	"sync"
+	"time"
+
+	"github.com/filecoin-project/go-lotus/lib/sectorbuilder"
+
+	logging "github.com/ipfs/go-log"
 )
+
+var log = logging.Logger("sectorstore")
 
 // TODO: eventually handle sector storage here instead of in rust-sectorbuilder
 type Store struct {
@@ -33,22 +39,55 @@ func (s *Store) Service() {
 	go s.service()
 }
 
+func (s *Store) poll() {
+	log.Info("polling for sealed sectors...")
+
+	// get a list of sectors to poll
+	s.lk.Lock()
+	toPoll := make([]uint64, 0, len(s.waiting))
+
+	for id := range s.waiting {
+		toPoll = append(toPoll, id)
+	}
+	s.lk.Unlock()
+
+	var done []sectorbuilder.SectorSealingStatus
+
+	// check status of each
+	for _, sec := range toPoll {
+		status, err := s.sb.SealStatus(sec)
+		if err != nil {
+			log.Errorf("getting seal status: %s", err)
+			continue
+		}
+
+		if status.SealStatusCode == 0 { // constant pls, zero implies the last step?
+			done = append(done, status)
+		}
+	}
+
+	// send updates
+	s.lk.Lock()
+	for _, sector := range done {
+		watch, ok := s.waiting[sector.SectorID]
+		if ok {
+			close(watch)
+			delete(s.waiting, sector.SectorID)
+		}
+		for _, c := range s.incoming {
+			c <- sector // TODO: ctx!
+		}
+	}
+	s.lk.Unlock()
+}
+
 func (s *Store) service() {
-	sealed := s.sb.SealedSectorChan()
+	poll := time.Tick(5 * time.Second)
 
 	for {
 		select {
-		case sector := <-sealed:
-			s.lk.Lock()
-			watch, ok := s.waiting[sector.SectorID]
-			if ok {
-				close(watch)
-				delete(s.waiting, sector.SectorID)
-			}
-			for _, c := range s.incoming {
-				c <- sector // TODO: ctx!
-			}
-			s.lk.Unlock()
+		case <-poll:
+			s.poll()
 		case <-s.close:
 			s.lk.Lock()
 			for _, c := range s.incoming {
@@ -68,12 +107,14 @@ func (s *Store) AddPiece(ref string, size uint64, r io.Reader, keepAtLeast uint6
 	if err != nil {
 		return 0, err
 	}
+
 	s.lk.Lock()
 	_, exists := s.waiting[sectorID]
-	if !exists {
+	if !exists { // pieces can share sectors
 		s.waiting[sectorID] = make(chan struct{})
 	}
 	s.lk.Unlock()
+
 	return sectorID, nil
 }
 

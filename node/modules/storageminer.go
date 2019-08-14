@@ -64,24 +64,6 @@ func SectorBuilderConfig(storagePath string) func(dtypes.MetadataDS) (*sectorbui
 	}
 }
 
-func SectorBuilder(mctx helpers.MetricsCtx, lc fx.Lifecycle, sbc *sectorbuilder.SectorBuilderConfig) (*sectorbuilder.SectorBuilder, error) {
-	sb, err := sectorbuilder.New(sbc)
-	if err != nil {
-		return nil, err
-	}
-
-	ctx := helpers.LifecycleCtx(mctx, lc)
-
-	lc.Append(fx.Hook{
-		OnStart: func(context.Context) error {
-			sb.Run(ctx)
-			return nil
-		},
-	})
-
-	return sb, nil
-}
-
 func StorageMiner(mctx helpers.MetricsCtx, lc fx.Lifecycle, api api.FullNode, h host.Host, ds dtypes.MetadataDS, secst *sector.Store) (*storage.Miner, error) {
 	maddr, err := minerAddrFromDS(ds)
 	if err != nil {
