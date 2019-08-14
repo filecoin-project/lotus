@@ -2,6 +2,7 @@ package modules
 
 import (
 	"context"
+	"github.com/filecoin-project/go-lotus/storage/sector"
 	"path/filepath"
 
 	"github.com/ipfs/go-bitswap"
@@ -81,13 +82,13 @@ func SectorBuilder(mctx helpers.MetricsCtx, lc fx.Lifecycle, sbc *sectorbuilder.
 	return sb, nil
 }
 
-func StorageMiner(mctx helpers.MetricsCtx, lc fx.Lifecycle, api api.FullNode, h host.Host, ds dtypes.MetadataDS, sb *sectorbuilder.SectorBuilder) (*storage.Miner, error) {
+func StorageMiner(mctx helpers.MetricsCtx, lc fx.Lifecycle, api api.FullNode, h host.Host, ds dtypes.MetadataDS, secst *sector.Store) (*storage.Miner, error) {
 	maddr, err := minerAddrFromDS(ds)
 	if err != nil {
 		return nil, err
 	}
 
-	sm, err := storage.NewMiner(api, maddr, h, ds, sb)
+	sm, err := storage.NewMiner(api, maddr, h, ds, secst)
 	if err != nil {
 		return nil, err
 	}

@@ -2,6 +2,7 @@ package modules
 
 import (
 	"context"
+	"github.com/filecoin-project/go-lotus/storage/sector"
 
 	"github.com/libp2p/go-libp2p-core/host"
 	inet "github.com/libp2p/go-libp2p-core/network"
@@ -65,6 +66,19 @@ func RunDealClient(lc fx.Lifecycle, c *deals.Client) {
 		},
 		OnStop: func(context.Context) error {
 			c.Stop()
+			return nil
+		},
+	})
+}
+
+func RunSectorService(lc fx.Lifecycle, secst *sector.Store) {
+	lc.Append(fx.Hook{
+		OnStart: func(context.Context) error {
+			secst.Service()
+			return nil
+		},
+		OnStop: func(context.Context) error {
+			secst.Stop()
 			return nil
 		},
 	})

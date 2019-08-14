@@ -35,6 +35,7 @@ import (
 	"github.com/filecoin-project/go-lotus/node/repo"
 	"github.com/filecoin-project/go-lotus/paych"
 	"github.com/filecoin-project/go-lotus/storage"
+	"github.com/filecoin-project/go-lotus/storage/sector"
 )
 
 // special is a type used to give keys to modules which
@@ -74,7 +75,10 @@ const (
 	HandleIncomingMessagesKey
 
 	RunDealClientKey
+
+	// storage miner
 	HandleDealsKey
+	RunSectorServiceKey
 
 	// daemon
 	ExtractApiKey
@@ -223,12 +227,14 @@ func Online() Option {
 		// Storage miner
 		ApplyIf(func(s *Settings) bool { return s.nodeType == nodeStorageMiner },
 			Override(new(*sectorbuilder.SectorBuilder), modules.SectorBuilder),
+			Override(new(*sector.Store), sector.NewStore),
 			Override(new(*storage.Miner), modules.StorageMiner),
 
 			Override(new(dtypes.StagingDAG), modules.StagingDAG),
 
 			Override(new(*deals.Handler), deals.NewHandler),
 			Override(HandleDealsKey, modules.HandleDeals),
+			Override(RunSectorServiceKey, modules.RunSectorService),
 		),
 	)
 }

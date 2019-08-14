@@ -4,7 +4,8 @@ import (
 	"context"
 	"fmt"
 	"github.com/filecoin-project/go-lotus/chain/address"
-	"io/ioutil"
+	"github.com/filecoin-project/go-lotus/storage/sector"
+	"io"
 	"math/rand"
 
 	"github.com/filecoin-project/go-lotus/api"
@@ -17,6 +18,7 @@ type StorageMinerAPI struct {
 
 	SectorBuilderConfig *sectorbuilder.SectorBuilderConfig
 	SectorBuilder       *sectorbuilder.SectorBuilder
+	Sectors             *sector.Store
 
 	Miner *storage.Miner
 }
@@ -26,20 +28,10 @@ func (sm *StorageMinerAPI) ActorAddresses(context.Context) ([]address.Address, e
 }
 
 func (sm *StorageMinerAPI) StoreGarbageData(ctx context.Context) (uint64, error) {
-	maxSize := uint64(1016) // this is the most data we can fit in a 1024 byte sector
-	data := make([]byte, maxSize)
-	fi, err := ioutil.TempFile("", "lotus-garbage")
-	if err != nil {
-		return 0, err
-	}
-
-	if _, err := fi.Write(data); err != nil {
-		return 0, err
-	}
-	fi.Close()
+	size := uint64(1016) // this is the most data we can fit in a 1024 byte sector
 
 	name := fmt.Sprintf("fake-file-%d", rand.Intn(100000000))
-	sectorId, err := sm.SectorBuilder.AddPiece(name, maxSize, fi.Name())
+	sectorId, err := sm.Sectors.AddPiece(name, size, io.LimitReader(rand.New(rand.NewSource(42)), 1016), 0)
 	if err != nil {
 		return 0, err
 	}
