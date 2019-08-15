@@ -196,19 +196,19 @@ type ClientDealProposal struct {
 	MinerID       peer.ID
 }
 
-func (c *Client) VerifyParams(ctx context.Context, data cid.Cid) (*actors.StorageVoucherData, error) {
+func (c *Client) VerifyParams(ctx context.Context, data cid.Cid) (*actors.PieceInclVoucherData, error) {
 	commP, size, err := c.commP(ctx, data)
 	if err != nil {
 		return nil, err
 	}
 
-	return &actors.StorageVoucherData{
+	return &actors.PieceInclVoucherData{
 		CommP:     commP,
 		PieceSize: types.NewInt(uint64(size)),
 	}, nil
 }
 
-func (c *Client) Start(ctx context.Context, p ClientDealProposal, vd *actors.StorageVoucherData) (cid.Cid, error) {
+func (c *Client) Start(ctx context.Context, p ClientDealProposal, vd *actors.PieceInclVoucherData) (cid.Cid, error) {
 	// TODO: use data
 	proposal := StorageDealProposal{
 		PieceRef:          p.Data.String(),

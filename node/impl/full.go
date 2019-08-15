@@ -92,7 +92,7 @@ func (a *FullNodeAPI) ClientStartDeal(ctx context.Context, data cid.Cid, miner a
 		// TimeLock:       0, // TODO: do we want to use this somehow?
 		Extra: &types.ModVerifyParams{
 			Actor:  miner,
-			Method: actors.MAMethods.PaymentVerify,
+			Method: actors.MAMethods.PaymentVerifyInclusion,
 			Data:   voucherData,
 		},
 		Lane:           0,
@@ -121,6 +121,7 @@ func (a *FullNodeAPI) ClientStartDeal(ctx context.Context, data cid.Cid, miner a
 	}
 
 	c, err := a.DealClient.Start(ctx, proposal, vd)
+	// TODO: send updated voucher with PaymentVerifySector for cheaper validation (validate the sector the miner sent us first!)
 	return &c, err
 }
 
