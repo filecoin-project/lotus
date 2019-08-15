@@ -16,6 +16,7 @@ func init() {
 	cbor.RegisterCborType(CreateStorageMinerParams{})
 	cbor.RegisterCborType(IsMinerParam{})
 	cbor.RegisterCborType(PowerLookupParams{})
+	cbor.RegisterCborType(UpdateStorageParams{})
 }
 
 type StorageMarketActor struct{}

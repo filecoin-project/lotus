@@ -9,6 +9,7 @@ import (
 	"github.com/ipfs/go-car"
 	offline "github.com/ipfs/go-ipfs-exchange-offline"
 	"github.com/ipfs/go-merkledag"
+	"golang.org/x/xerrors"
 
 	"github.com/filecoin-project/go-lotus/chain/address"
 	"github.com/filecoin-project/go-lotus/chain/store"
@@ -69,47 +70,46 @@ func NewGenerator() (*ChainGen, error) {
 	mr := repo.NewMemory(nil)
 	lr, err := mr.Lock()
 	if err != nil {
-		return nil, err
+		return nil, xerrors.Errorf("taking mem-repo lock failed: %w", err)
 	}
 
 	ds, err := lr.Datastore("/metadata")
 	if err != nil {
-		return nil, err
+		return nil, xerrors.Errorf("failed to get metadata datastore: %w", err)
 	}
 
 	bds, err := lr.Datastore("/blocks")
 	if err != nil {
-		return nil, err
+		return nil, xerrors.Errorf("failed to get blocks datastore: %w", err)
 	}
 
 	bs := mybs{blockstore.NewIdStore(blockstore.NewBlockstore(bds))}
 
 	ks, err := lr.KeyStore()
 	if err != nil {
-		return nil, err
+		return nil, xerrors.Errorf("getting repo keystore failed: %w", err)
 	}
 
 	w, err := wallet.NewWallet(ks)
 	if err != nil {
-		return nil, err
+		return nil, xerrors.Errorf("creating memrepo wallet failed: %w", err)
 	}
 
 	worker, err := w.GenerateKey(types.KTBLS)
 	if err != nil {
-		return nil, err
+		return nil, xerrors.Errorf("failed to generate worker key: %w", err)
 	}
 
-	// KTBLS doesn't support signature verification or something like that yet
 	banker, err := w.GenerateKey(types.KTSecp256k1)
 	if err != nil {
-		return nil, err
+		return nil, xerrors.Errorf("failed to generate banker key: %w", err)
 	}
 
 	receievers := make([]address.Address, msgsPerBlock)
 	for r := range receievers {
 		receievers[r], err = w.GenerateKey(types.KTBLS)
 		if err != nil {
-			return nil, err
+			return nil, xerrors.Errorf("failed to generate receiver key: %w", err)
 		}
 	}
 
@@ -123,7 +123,7 @@ func NewGenerator() (*ChainGen, error) {
 		banker: types.NewInt(90000000),
 	}, minercfg)
 	if err != nil {
-		return nil, err
+		return nil, xerrors.Errorf("make genesis block failed: %w", err)
 	}
 
 	cs := store.NewChainStore(bs, ds)
@@ -131,7 +131,7 @@ func NewGenerator() (*ChainGen, error) {
 	genfb := &types.FullBlock{Header: genb.Genesis}
 
 	if err := cs.SetGenesis(genb.Genesis); err != nil {
-		return nil, err
+		return nil, xerrors.Errorf("set genesis failed: %w", err)
 	}
 
 	gen := &ChainGen{

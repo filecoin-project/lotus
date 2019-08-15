@@ -162,7 +162,7 @@ func mustEnc(i interface{}) []byte {
 func SetupStorageMiners(ctx context.Context, cs *store.ChainStore, sroot cid.Cid, gmcfg *GenMinerCfg) (cid.Cid, error) {
 	vm, err := vm.NewVM(sroot, 0, actors.NetworkAddress, cs)
 	if err != nil {
-		return cid.Undef, err
+		return cid.Undef, xerrors.Errorf("failed to create NewVM: %w", err)
 	}
 
 	params := mustEnc(actors.CreateStorageMinerParams{
@@ -189,16 +189,22 @@ func SetupStorageMiners(ctx context.Context, cs *store.ChainStore, sroot cid.Cid
 	_, err = doExec(ctx, vm, actors.StorageMarketAddress, maddr, actors.SMAMethods.UpdateStorage, params)
 
 	// UGLY HACKY MODIFICATION OF MINER POWER
+
+	// we have to flush the vm here because it buffers stuff internally for perf reasons
+	if _, err := vm.Flush(ctx); err != nil {
+		return cid.Undef, xerrors.Errorf("vm.Flush failed: %w", err)
+	}
+
 	st := vm.StateTree()
 	mact, err := st.GetActor(maddr)
 	if err != nil {
-		return cid.Undef, err
+		return cid.Undef, xerrors.Errorf("get miner actor failed: %w", err)
 	}
 
 	cst := hamt.CSTFromBstore(cs.Blockstore())
 	var mstate actors.StorageMinerActorState
 	if err := cst.Get(ctx, mact.Head, &mstate); err != nil {
-		return cid.Undef, err
+		return cid.Undef, xerrors.Errorf("getting miner actor state failed: %w", err)
 	}
 	mstate.Power = types.NewInt(5000)
 
@@ -242,19 +248,19 @@ func MakeGenesisBlock(bs bstore.Blockstore, balances map[address.Address]types.B
 
 	state, err := MakeInitialStateTree(bs, balances)
 	if err != nil {
-		return nil, err
+		return nil, xerrors.Errorf("make initial state tree failed: %w", err)
 	}
 
 	stateroot, err := state.Flush()
 	if err != nil {
-		return nil, err
+		return nil, xerrors.Errorf("flush state tree failed: %w", err)
 	}
 
 	// temp chainstore
 	cs := store.NewChainStore(bs, datastore.NewMapDatastore())
 	stateroot, err = SetupStorageMiners(ctx, cs, stateroot, gmcfg)
 	if err != nil {
-		return nil, err
+		return nil, xerrors.Errorf("setup storage miners failed: %w", err)
 	}
 
 	cst := hamt.CSTFromBstore(bs)
