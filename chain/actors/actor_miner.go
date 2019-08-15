@@ -19,6 +19,9 @@ func init() {
 	cbor.RegisterCborType(CommitSectorParams{})
 	cbor.RegisterCborType(MinerInfo{})
 	cbor.RegisterCborType(SubmitPoStParams{})
+	cbor.RegisterCborType(StorageVoucherData{})
+	cbor.RegisterCborType(StoragePaymentVerifyProof{})
+	cbor.RegisterCborType(PaymentVerifyParams{})
 }
 
 var ProvingPeriodDuration = uint64(2 * 60) // an hour, for now

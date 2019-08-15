@@ -69,6 +69,16 @@ func (a *FullNodeAPI) ClientStartDeal(ctx context.Context, data cid.Cid, miner a
 		return nil, err
 	}
 
+	vd, err := a.DealClient.VerifyParams(ctx, data)
+	if err != nil {
+		return nil, err
+	}
+
+	voucherData, err := cbor.DumpObject(vd)
+	if err != nil {
+		return nil, err
+	}
+
 	// setup payments
 	total := types.BigMul(price, types.NewInt(blocksDuration))
 
@@ -77,7 +87,20 @@ func (a *FullNodeAPI) ClientStartDeal(ctx context.Context, data cid.Cid, miner a
 	if err != nil {
 		return nil, err
 	}
-	sv, err := a.PaychVoucherCreate(ctx, paych, total, 0)
+
+	voucher := types.SignedVoucher{
+		// TimeLock:       0, // TODO: do we want to use this somehow?
+		Extra: &types.ModVerifyParams{
+			Actor:  miner,
+			Method: actors.MAMethods.PaymentVerify,
+			Data:   voucherData,
+		},
+		Lane:           0,
+		Amount:         total,
+		MinCloseHeight: blocksDuration, // TODO: some way to start this after initial piece inclusion by actor? (also, at least add current height)
+	}
+
+	sv, err := a.paychVoucherCreate(ctx, paych, voucher)
 	if err != nil {
 		return nil, err
 	}
@@ -97,7 +120,7 @@ func (a *FullNodeAPI) ClientStartDeal(ctx context.Context, data cid.Cid, miner a
 		MinerID:       pid,
 	}
 
-	c, err := a.DealClient.Start(ctx, proposal)
+	c, err := a.DealClient.Start(ctx, proposal, vd)
 	return &c, err
 }
 
@@ -584,21 +607,22 @@ func (a *FullNodeAPI) PaychVoucherAdd(ctx context.Context, ch address.Address, s
 // actual additional value of this voucher will only be the difference between
 // the two.
 func (a *FullNodeAPI) PaychVoucherCreate(ctx context.Context, pch address.Address, amt types.BigInt, lane uint64) (*types.SignedVoucher, error) {
+	return a.paychVoucherCreate(ctx, pch, types.SignedVoucher{Amount: amt, Lane: lane})
+}
+
+func (a *FullNodeAPI) paychVoucherCreate(ctx context.Context, pch address.Address, voucher types.SignedVoucher) (*types.SignedVoucher, error) {
 	ci, err := a.PaychMgr.GetChannelInfo(pch)
 	if err != nil {
 		return nil, err
 	}
 
-	nonce, err := a.PaychMgr.NextNonceForLane(ctx, pch, lane)
+	nonce, err := a.PaychMgr.NextNonceForLane(ctx, pch, voucher.Lane)
 	if err != nil {
 		return nil, err
 	}
 
-	sv := &types.SignedVoucher{
-		Lane:   lane,
-		Nonce:  nonce,
-		Amount: amt,
-	}
+	sv := &voucher
+	sv.Nonce = nonce
 
 	vb, err := sv.SigningBytes()
 	if err != nil {
