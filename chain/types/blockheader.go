@@ -1,6 +1,8 @@
 package types
 
 import (
+	"fmt"
+
 	block "github.com/ipfs/go-block-format"
 	"github.com/ipfs/go-cid"
 	cbor "github.com/ipfs/go-ipld-cbor"
@@ -15,14 +17,22 @@ func init() {
 		TransformMarshal(atlas.MakeMarshalTransformFunc(
 			func(blk BlockHeader) ([]interface{}, error) {
 				if blk.Tickets == nil {
-					blk.Tickets = []Ticket{}
+					blk.Tickets = []*Ticket{}
 				}
 				if blk.Parents == nil {
 					blk.Parents = []cid.Cid{}
 				}
+
+				var tickarrs [][][]byte // oh boy
+				for _, t := range blk.Tickets {
+					tickarrs = append(tickarrs, [][]byte{
+						t.VRFProof, t.VDFResult, t.VDFProof,
+					})
+				}
+
 				return []interface{}{
 					blk.Miner.Bytes(),
-					blk.Tickets,
+					tickarrs,
 					blk.ElectionProof,
 					blk.Parents,
 					blk.ParentWeight,
@@ -39,10 +49,23 @@ func init() {
 					return BlockHeader{}, err
 				}
 
-				tickets := []Ticket{}
+				tickets := []*Ticket{}
 				ticketarr, _ := arr[1].([]interface{})
 				for _, t := range ticketarr {
-					tickets = append(tickets, Ticket(t.([]byte)))
+					ticklist, ok := t.([]interface{})
+					if !ok {
+						return BlockHeader{}, fmt.Errorf("tickets were incorrectly formatted (type = %T)", t)
+					}
+
+					if len(ticklist) != 3 {
+						return BlockHeader{}, fmt.Errorf("ticket should be a three item array of Byte arrays (got len = %d)", len(ticklist))
+					}
+
+					tickets = append(tickets, &Ticket{
+						VRFProof:  ticklist[0].([]byte),
+						VDFResult: ticklist[1].([]byte),
+						VDFProof:  ticklist[2].([]byte),
+					})
 				}
 				electionProof, _ := arr[2].([]byte)
 
@@ -72,15 +95,21 @@ func init() {
 			})).
 		Complete())
 	cbor.RegisterCborType(MsgMeta{})
+	cbor.RegisterCborType(Ticket{})
 }
 
-type Ticket []byte
+type Ticket struct {
+	VRFProof  []byte
+	VDFResult []byte
+	VDFProof  []byte
+}
+
 type ElectionProof []byte
 
 type BlockHeader struct {
 	Miner address.Address
 
-	Tickets []Ticket
+	Tickets []*Ticket
 
 	ElectionProof []byte
 

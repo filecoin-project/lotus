@@ -41,6 +41,7 @@ type ChainGen struct {
 	w *wallet.Wallet
 
 	miner       address.Address
+	mworker     address.Address
 	receivers   []address.Address
 	banker      address.Address
 	bankerNonce uint64
@@ -93,7 +94,7 @@ func NewGenerator() (*ChainGen, error) {
 		return nil, err
 	}
 
-	miner, err := w.GenerateKey(types.KTBLS)
+	worker, err := w.GenerateKey(types.KTBLS)
 	if err != nil {
 		return nil, err
 	}
@@ -112,10 +113,15 @@ func NewGenerator() (*ChainGen, error) {
 		}
 	}
 
+	minercfg := &GenMinerCfg{
+		Worker: worker,
+		Owner:  worker,
+	}
+
 	genb, err := MakeGenesisBlock(bs, map[address.Address]types.BigInt{
-		miner:  types.NewInt(5),
+		worker: types.NewInt(50000),
 		banker: types.NewInt(90000000),
-	})
+	}, minercfg)
 	if err != nil {
 		return nil, err
 	}
@@ -135,7 +141,8 @@ func NewGenerator() (*ChainGen, error) {
 		genesis:      genb.Genesis,
 		w:            w,
 
-		miner:     miner,
+		miner:     minercfg.MinerAddr,
+		mworker:   worker,
 		banker:    banker,
 		receivers: receievers,
 
@@ -166,8 +173,13 @@ func (cg *ChainGen) GenesisCar() ([]byte, error) {
 	return out.Bytes(), nil
 }
 
-func (cg *ChainGen) nextBlockProof() (address.Address, types.ElectionProof, []types.Ticket, error) {
-	return cg.miner, []byte("cat in a box"), []types.Ticket{types.Ticket("im a ticket, promise")}, nil
+func (cg *ChainGen) nextBlockProof() (address.Address, types.ElectionProof, []*types.Ticket, error) {
+	tick := &types.Ticket{
+		VRFProof:  []byte("im a ticket, promise"),
+		VDFProof:  []byte("vdf proof"),
+		VDFResult: []byte("verifiable and delayed"),
+	}
+	return cg.miner, []byte("cat in a box"), []*types.Ticket{tick}, nil
 }
 
 func (cg *ChainGen) NextBlock() (*types.FullBlock, []*types.SignedMessage, error) {
