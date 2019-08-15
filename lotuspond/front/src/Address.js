@@ -59,7 +59,12 @@ class Address extends React.Component {
       addr = <a href="#" onClick={this.openState}>{addr}</a>
     }
 
-    return <span>{addr}:&nbsp;{this.state.balance}&nbsp;{actInfo}&nbsp;{add1k}</span>
+    let balance = <span>:&nbsp;{this.state.balance}</span>
+    if(this.props.nobalance) {
+      balance = <span></span>
+    }
+
+    return <span>{addr}{balance}&nbsp;{actInfo}&nbsp;{add1k}</span>
   }
 }
 
