@@ -2,17 +2,15 @@ package actors
 
 import (
 	"context"
-
 	"github.com/filecoin-project/go-lotus/chain/actors/aerrors"
 	"github.com/filecoin-project/go-lotus/chain/address"
 	"github.com/filecoin-project/go-lotus/chain/types"
 	"github.com/filecoin-project/go-lotus/lib/sectorbuilder"
-	"golang.org/x/xerrors"
-
-	cid "github.com/ipfs/go-cid"
-	hamt "github.com/ipfs/go-hamt-ipld"
+	"github.com/ipfs/go-cid"
+	"github.com/ipfs/go-hamt-ipld"
 	cbor "github.com/ipfs/go-ipld-cbor"
 	"github.com/libp2p/go-libp2p-core/peer"
+	"golang.org/x/xerrors"
 )
 
 func init() {
@@ -21,6 +19,9 @@ func init() {
 	cbor.RegisterCborType(CommitSectorParams{})
 	cbor.RegisterCborType(MinerInfo{})
 	cbor.RegisterCborType(SubmitPoStParams{})
+	cbor.RegisterCborType(PieceInclVoucherData{})
+	cbor.RegisterCborType(InclusionProof{})
+	cbor.RegisterCborType(PaymentVerifyParams{})
 }
 
 var ProvingPeriodDuration = uint64(2 * 60) // an hour, for now
@@ -98,23 +99,27 @@ type StorageMinerConstructorParams struct {
 }
 
 type maMethods struct {
-	Constructor          uint64
-	CommitSector         uint64
-	SubmitPoSt           uint64
-	SlashStorageFault    uint64
-	GetCurrentProvingSet uint64
-	ArbitrateDeal        uint64
-	DePledge             uint64
-	GetOwner             uint64
-	GetWorkerAddr        uint64
-	GetPower             uint64
-	GetPeerID            uint64
-	GetSectorSize        uint64
-	UpdatePeerID         uint64
-	ChangeWorker         uint64
+	Constructor            uint64
+	CommitSector           uint64
+	SubmitPoSt             uint64
+	SlashStorageFault      uint64
+	GetCurrentProvingSet   uint64
+	ArbitrateDeal          uint64
+	DePledge               uint64
+	GetOwner               uint64
+	GetWorkerAddr          uint64
+	GetPower               uint64
+	GetPeerID              uint64
+	GetSectorSize          uint64
+	UpdatePeerID           uint64
+	ChangeWorker           uint64
+	IsSlashed              uint64
+	IsLate                 uint64
+	PaymentVerifyInclusion uint64
+	PaymentVerifySector    uint64
 }
 
-var MAMethods = maMethods{1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14}
+var MAMethods = maMethods{1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16, 17, 18}
 
 func (sma StorageMinerActor) Exports() []interface{} {
 	return []interface{}{
@@ -132,6 +137,10 @@ func (sma StorageMinerActor) Exports() []interface{} {
 		12: sma.GetSectorSize,
 		13: sma.UpdatePeerID,
 		//14: sma.ChangeWorker,
+		//15: sma.IsSlashed,
+		//16: sma.IsLate,
+		17: sma.PaymentVerifyInclusion,
+		18: sma.PaymentVerifySector,
 	}
 }
 
@@ -376,6 +385,38 @@ func AddToSectorSet(ctx context.Context, cst *hamt.CborIpldStore, ss cid.Cid, se
 	return ssroot, nil
 }
 
+func GetFromSectorSet(ctx context.Context, cst *hamt.CborIpldStore, ss cid.Cid, sectorID types.BigInt) (bool, []byte, []byte, ActorError) {
+	nd, err := hamt.LoadNode(ctx, cst, ss)
+	if err != nil {
+		return false, nil, nil, aerrors.Escalate(err, "could not load HAMT node")
+	}
+
+	infoIf, err := nd.Find(ctx, sectorID.String())
+	if err == hamt.ErrNotFound {
+		return false, nil, nil, nil
+	}
+	if err != nil {
+		return false, nil, nil, aerrors.Escalate(err, "failed to find sector in sector set")
+	}
+
+	infoB, ok := infoIf.([]byte)
+	if !ok {
+		return false, nil, nil, aerrors.Escalate(xerrors.New("casting infoIf to []byte failed"), "") // TODO: Review: how to create aerrror without retcode?
+	}
+
+	var comms [][]byte // [ [commR], [commD] ]
+	err = cbor.DecodeInto(infoB, &comms)
+	if err != nil {
+		return false, nil, nil, aerrors.Escalate(err, "failed to decode sector set entry")
+	}
+
+	if len(comms) != 2 {
+		return false, nil, nil, aerrors.Escalate(xerrors.New("sector set entry should only have 2 elements"), "")
+	}
+
+	return true, comms[0], comms[1], nil
+}
+
 func ValidatePoRep(maddr address.Address, ssize types.BigInt, params *CommitSectorParams) (bool, ActorError) {
 	ok, err := sectorbuilder.VerifySeal(ssize.Uint64(), params.CommR, params.CommD, params.CommRStar, maddr, params.SectorID.Uint64(), params.Proof)
 	if err != nil {
@@ -492,4 +533,87 @@ func (sma StorageMinerActor) GetSectorSize(act *types.Actor, vmctx types.VMConte
 	}
 
 	return mi.SectorSize.Bytes(), nil
+}
+
+type PaymentVerifyParams struct {
+	Extra []byte
+	Proof []byte
+}
+
+type PieceInclVoucherData struct { // TODO: Update spec at https://github.com/filecoin-project/specs/blob/master/actors.md#paymentverify
+	CommP     []byte
+	PieceSize types.BigInt
+}
+
+type InclusionProof struct {
+	Sector types.BigInt // for CommD, also verifies the sector is in sector set
+	Proof  []byte
+}
+
+func (sma StorageMinerActor) PaymentVerifyInclusion(act *types.Actor, vmctx types.VMContext, params *PaymentVerifyParams) ([]byte, ActorError) {
+	// params.Extra - PieceInclVoucherData
+	// params.Proof - InclusionProof
+
+	_, self, aerr := loadState(vmctx)
+	if aerr != nil {
+		return nil, aerr
+	}
+	mi, aerr := loadMinerInfo(vmctx, self)
+	if aerr != nil {
+		return nil, aerr
+	}
+
+	var voucherData PieceInclVoucherData
+	if err := cbor.DecodeInto(params.Extra, &voucherData); err != nil {
+		return nil, aerrors.Escalate(err, "failed to decode storage voucher data for verification")
+	}
+	var proof InclusionProof
+	if err := cbor.DecodeInto(params.Proof, &proof); err != nil {
+		return nil, aerrors.Escalate(err, "failed to decode storage payment proof")
+	}
+
+	ok, _, commD, aerr := GetFromSectorSet(context.TODO(), vmctx.Ipld(), self.Sectors, proof.Sector)
+	if aerr != nil {
+		return nil, aerr
+	}
+	if !ok {
+		return nil, aerrors.New(1, "miner does not have required sector")
+	}
+
+	ok, err := sectorbuilder.VerifyPieceInclusionProof(mi.SectorSize.Uint64(), voucherData.PieceSize.Uint64(), voucherData.CommP, commD, params.Proof)
+	if err != nil {
+		return nil, aerrors.Escalate(err, "verify piece inclusion proof failed")
+	}
+	if !ok {
+		return nil, aerrors.New(2, "piece inclusion proof was invalid")
+	}
+
+	return nil, nil
+}
+
+func (sma StorageMinerActor) PaymentVerifySector(act *types.Actor, vmctx types.VMContext, params *PaymentVerifyParams) ([]byte, ActorError) {
+	// params.Extra - BigInt - sector id
+	// params.Proof - nil
+
+	_, self, aerr := loadState(vmctx)
+	if aerr != nil {
+		return nil, aerr
+	}
+
+	// TODO: ensure no sector ID reusability within related deal lifetime
+	sector := types.BigFromBytes(params.Extra)
+
+	if len(params.Proof) > 0 {
+		return nil, aerrors.New(1, "unexpected proof bytes")
+	}
+
+	ok, _, _, aerr := GetFromSectorSet(context.TODO(), vmctx.Ipld(), self.Sectors, sector)
+	if aerr != nil {
+		return nil, aerr
+	}
+	if !ok {
+		return nil, aerrors.New(2, "miner does not have required sector")
+	}
+
+	return nil, nil
 }

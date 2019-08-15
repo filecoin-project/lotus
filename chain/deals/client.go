@@ -183,43 +183,56 @@ func (c *Client) waitAccept(s inet.Stream, proposal StorageDealProposal, minerID
 	}, nil
 }
 
-func (c *Client) Start(ctx context.Context, data cid.Cid, totalPrice types.BigInt, from address.Address, miner address.Address, minerID peer.ID, blocksDuration uint64) (cid.Cid, error) {
+type ClientDealProposal struct {
+	Data cid.Cid
+
+	TotalPrice types.BigInt
+	Duration   uint64
+
+	Payment actors.PaymentInfo
+
+	MinerAddress  address.Address
+	ClientAddress address.Address
+	MinerID       peer.ID
+}
+
+func (c *Client) VerifyParams(ctx context.Context, data cid.Cid) (*actors.PieceInclVoucherData, error) {
 	commP, size, err := c.commP(ctx, data)
 	if err != nil {
-		return cid.Undef, err
+		return nil, err
 	}
 
-	dummyCid, _ := cid.Parse("bafkqaaa")
+	return &actors.PieceInclVoucherData{
+		CommP:     commP,
+		PieceSize: types.NewInt(uint64(size)),
+	}, nil
+}
 
+func (c *Client) Start(ctx context.Context, p ClientDealProposal, vd *actors.PieceInclVoucherData) (cid.Cid, error) {
 	// TODO: use data
 	proposal := StorageDealProposal{
-		PieceRef:          data.String(),
+		PieceRef:          p.Data.String(),
 		SerializationMode: SerializationUnixFs,
-		CommP:             commP[:],
-		Size:              uint64(size),
-		TotalPrice:        totalPrice,
-		Duration:          blocksDuration,
-		Payment: actors.PaymentInfo{
-			PayChActor:     address.Address{},
-			Payer:          address.Address{},
-			ChannelMessage: dummyCid,
-			Vouchers:       nil,
-		},
-		MinerAddress:  miner,
-		ClientAddress: from,
+		CommP:             vd.CommP[:],
+		Size:              vd.PieceSize.Uint64(),
+		TotalPrice:        p.TotalPrice,
+		Duration:          p.Duration,
+		Payment:           p.Payment,
+		MinerAddress:      p.MinerAddress,
+		ClientAddress:     p.ClientAddress,
 	}
 
-	s, err := c.h.NewStream(ctx, minerID, ProtocolID)
+	s, err := c.h.NewStream(ctx, p.MinerID, ProtocolID)
 	if err != nil {
 		return cid.Undef, err
 	}
 	defer s.Reset() // TODO: handle other updates
 
-	if err := c.sendProposal(s, proposal, from); err != nil {
+	if err := c.sendProposal(s, proposal, p.ClientAddress); err != nil {
 		return cid.Undef, err
 	}
 
-	deal, err := c.waitAccept(s, proposal, minerID)
+	deal, err := c.waitAccept(s, proposal, p.MinerID)
 	if err != nil {
 		return cid.Undef, err
 	}

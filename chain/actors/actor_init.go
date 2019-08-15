@@ -106,7 +106,7 @@ func (ia InitActor) Exec(act *types.Actor, vmctx types.VMContext, p *ExecParams)
 	// Set up the actor itself
 	actor := types.Actor{
 		Code:    p.Code,
-		Balance: vmctx.Message().Value,
+		Balance: types.NewInt(0),
 		Head:    EmptyCBOR,
 		Nonce:   0,
 	}

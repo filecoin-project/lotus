@@ -100,6 +100,14 @@ func VerifySeal(sectorSize uint64, commR, commD, commRStar []byte, proverID addr
 	return sectorbuilder.VerifySeal(sectorSize, commRa, commDa, commRStara, proverIDa, sectorIDa, proof)
 }
 
+func VerifyPieceInclusionProof(sectorSize uint64, pieceSize uint64, commP []byte, commD []byte, proof []byte) (bool, error) {
+	var commPa, commDa [32]byte
+	copy(commPa[:], commP)
+	copy(commDa[:], commD)
+
+	return sectorbuilder.VerifyPieceInclusionProof(sectorSize, pieceSize, commPa, commDa, proof)
+}
+
 func VerifyPost(sectorSize uint64, sortedCommRs [][CommLen]byte, challengeSeed [CommLen]byte, proofs [][]byte, faults []uint64) (bool, error) {
 	// sectorbuilder.VerifyPost()
 	panic("no")

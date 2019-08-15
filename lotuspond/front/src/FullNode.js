@@ -36,21 +36,17 @@ class FullNode extends React.Component {
 
     const tipset = await this.props.client.call("Filecoin.ChainHead", [])
 
-    const addrs = await this.props.client.call('Filecoin.WalletList', [])
+    let addrs = await this.props.client.call('Filecoin.WalletList', [])
     let defaultAddr = ""
     if (addrs.length > 0) {
       defaultAddr = await this.props.client.call('Filecoin.WalletDefaultAddress', [])
     }
-
-/*    const balances = await addrss.map(async addr => {
-      let balance = 0
-      try {
-        balance = await this.props.client.call('Filecoin.WalletBalance', [addr])
-      } catch {
-        balance = -1
-      }
-      return [addr, balance]
-    }).reduce(awaitListReducer, Promise.resolve([]))*/
+    let paychs = await this.props.client.call('Filecoin.PaychList', [])
+    if(!paychs)
+      paychs = []
+    const vouchers = await Promise.all(paychs.map(paych => {
+      return this.props.client.call('Filecoin.PaychVoucherList', [paych])
+    }))
 
     this.setState(() => ({
       id: id,
@@ -59,6 +55,9 @@ class FullNode extends React.Component {
       tipset: tipset,
 
       addrs: addrs,
+      paychs: paychs,
+      vouchers: vouchers,
+
       defaultAddr: defaultAddr}))
   }
 
@@ -118,6 +117,23 @@ class FullNode extends React.Component {
         }
         return <div key={addr}>{line}</div>
       })
+      let paychannels = this.state.paychs.map((addr, ak) => {
+        const line = <Address client={this.props.client} add1k={this.add1k} addr={addr} mountWindow={this.props.mountWindow}/>
+        const vouchers = this.state.vouchers[ak].map(voucher => {
+          let extra = <span></span>
+          if(voucher.Extra) {
+            extra = <span>Verif: &lt;<b><Address nobalance={true} client={this.props.client} addr={voucher.Extra.Actor} mountWindow={this.props.mountWindow}/>M{voucher.Extra.Method}</b>&gt;</span>
+          }
+
+          return <div key={voucher.Nonce} className="FullNode-voucher">
+            Voucher Nonce:<b>{voucher.Nonce}</b> Lane:<b>{voucher.Lane}</b> Amt:<b>{voucher.Amount}</b> TL:<b>{voucher.TimeLock}</b> MinCl:<b>{voucher.MinCloseHeight}</b> {extra}
+          </div>
+        })
+        return <div key={addr}>
+          {line}
+          {vouchers}
+        </div>
+      })
 
       runtime = (
         <div>
@@ -130,6 +146,7 @@ class FullNode extends React.Component {
           <div>
             <div>Balances: [New <a href="#" onClick={this.newScepAddr}>[Secp256k1]</a>]</div>
             <div>{addresses}</div>
+            <div>{paychannels}</div>
           </div>
 
         </div>

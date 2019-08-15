@@ -47,11 +47,13 @@ type FullNodeAPI struct {
 }
 
 func (a *FullNodeAPI) ClientStartDeal(ctx context.Context, data cid.Cid, miner address.Address, price types.BigInt, blocksDuration uint64) (*cid.Cid, error) {
+	// TODO: make this a param
 	self, err := a.WalletDefaultAddress(ctx)
 	if err != nil {
 		return nil, err
 	}
 
+	// get miner peerID
 	msg := &types.Message{
 		To:     miner,
 		From:   miner,
@@ -67,8 +69,59 @@ func (a *FullNodeAPI) ClientStartDeal(ctx context.Context, data cid.Cid, miner a
 		return nil, err
 	}
 
+	vd, err := a.DealClient.VerifyParams(ctx, data)
+	if err != nil {
+		return nil, err
+	}
+
+	voucherData, err := cbor.DumpObject(vd)
+	if err != nil {
+		return nil, err
+	}
+
+	// setup payments
 	total := types.BigMul(price, types.NewInt(blocksDuration))
-	c, err := a.DealClient.Start(ctx, data, total, self, miner, pid, blocksDuration)
+
+	// TODO: at least ping the miner before creating paych / locking the money
+	paych, paychMsg, err := a.paychCreate(ctx, self, miner, total)
+	if err != nil {
+		return nil, err
+	}
+
+	voucher := types.SignedVoucher{
+		// TimeLock:       0, // TODO: do we want to use this somehow?
+		Extra: &types.ModVerifyParams{
+			Actor:  miner,
+			Method: actors.MAMethods.PaymentVerifyInclusion,
+			Data:   voucherData,
+		},
+		Lane:           0,
+		Amount:         total,
+		MinCloseHeight: blocksDuration, // TODO: some way to start this after initial piece inclusion by actor? (also, at least add current height)
+	}
+
+	sv, err := a.paychVoucherCreate(ctx, paych, voucher)
+	if err != nil {
+		return nil, err
+	}
+
+	proposal := deals.ClientDealProposal{
+		Data:       data,
+		TotalPrice: total,
+		Duration:   blocksDuration,
+		Payment: actors.PaymentInfo{
+			PayChActor:     paych,
+			Payer:          self,
+			ChannelMessage: paychMsg,
+			Vouchers:       []types.SignedVoucher{*sv},
+		},
+		MinerAddress:  miner,
+		ClientAddress: self,
+		MinerID:       pid,
+	}
+
+	c, err := a.DealClient.Start(ctx, proposal, vd)
+	// TODO: send updated voucher with PaymentVerifySector for cheaper validation (validate the sector the miner sent us first!)
 	return &c, err
 }
 
@@ -420,15 +473,19 @@ func (a *FullNodeAPI) StateMinerProvingSet(ctx context.Context, addr address.Add
 }
 
 func (a *FullNodeAPI) PaychCreate(ctx context.Context, from, to address.Address, amt types.BigInt) (address.Address, error) {
+	act, _, err := a.paychCreate(ctx, from, to, amt)
+	return act, err
+}
 
+func (a *FullNodeAPI) paychCreate(ctx context.Context, from, to address.Address, amt types.BigInt) (address.Address, cid.Cid, error) {
 	params, aerr := actors.SerializeParams(&actors.PCAConstructorParams{To: to})
 	if aerr != nil {
-		return address.Undef, aerr
+		return address.Undef, cid.Undef, aerr
 	}
 
 	nonce, err := a.MpoolGetNonce(ctx, from)
 	if err != nil {
-		return address.Undef, err
+		return address.Undef, cid.Undef, err
 	}
 
 	enc, err := actors.SerializeParams(&actors.ExecParams{
@@ -449,12 +506,12 @@ func (a *FullNodeAPI) PaychCreate(ctx context.Context, from, to address.Address,
 
 	ser, err := msg.Serialize()
 	if err != nil {
-		return address.Undef, err
+		return address.Undef, cid.Undef, err
 	}
 
 	sig, err := a.WalletSign(ctx, from, ser)
 	if err != nil {
-		return address.Undef, err
+		return address.Undef, cid.Undef, err
 	}
 
 	smsg := &types.SignedMessage{
@@ -463,28 +520,28 @@ func (a *FullNodeAPI) PaychCreate(ctx context.Context, from, to address.Address,
 	}
 
 	if err := a.MpoolPush(ctx, smsg); err != nil {
-		return address.Undef, err
+		return address.Undef, cid.Undef, err
 	}
 
 	mwait, err := a.ChainWaitMsg(ctx, smsg.Cid())
 	if err != nil {
-		return address.Undef, err
+		return address.Undef, cid.Undef, err
 	}
 
 	if mwait.Receipt.ExitCode != 0 {
-		return address.Undef, fmt.Errorf("payment channel creation failed (exit code %d)", mwait.Receipt.ExitCode)
+		return address.Undef, cid.Undef, fmt.Errorf("payment channel creation failed (exit code %d)", mwait.Receipt.ExitCode)
 	}
 
 	paychaddr, err := address.NewFromBytes(mwait.Receipt.Return)
 	if err != nil {
-		return address.Undef, err
+		return address.Undef, cid.Undef, err
 	}
 
 	if err := a.PaychMgr.TrackOutboundChannel(ctx, paychaddr); err != nil {
-		return address.Undef, err
+		return address.Undef, cid.Undef, err
 	}
 
-	return paychaddr, nil
+	return paychaddr, msg.Cid(), nil
 }
 
 func (a *FullNodeAPI) PaychList(ctx context.Context) ([]address.Address, error) {
@@ -551,21 +608,22 @@ func (a *FullNodeAPI) PaychVoucherAdd(ctx context.Context, ch address.Address, s
 // actual additional value of this voucher will only be the difference between
 // the two.
 func (a *FullNodeAPI) PaychVoucherCreate(ctx context.Context, pch address.Address, amt types.BigInt, lane uint64) (*types.SignedVoucher, error) {
+	return a.paychVoucherCreate(ctx, pch, types.SignedVoucher{Amount: amt, Lane: lane})
+}
+
+func (a *FullNodeAPI) paychVoucherCreate(ctx context.Context, pch address.Address, voucher types.SignedVoucher) (*types.SignedVoucher, error) {
 	ci, err := a.PaychMgr.GetChannelInfo(pch)
 	if err != nil {
 		return nil, err
 	}
 
-	nonce, err := a.PaychMgr.NextNonceForLane(ctx, pch, lane)
+	nonce, err := a.PaychMgr.NextNonceForLane(ctx, pch, voucher.Lane)
 	if err != nil {
 		return nil, err
 	}
 
-	sv := &types.SignedVoucher{
-		Lane:   lane,
-		Nonce:  nonce,
-		Amount: amt,
-	}
+	sv := &voucher
+	sv.Nonce = nonce
 
 	vb, err := sv.SigningBytes()
 	if err != nil {
