@@ -24,6 +24,10 @@ import (
 
 var log = logging.Logger("vm")
 
+const (
+	gasFundTransfer = 10
+)
+
 type VMContext struct {
 	ctx context.Context
 
@@ -32,6 +36,9 @@ type VMContext struct {
 	msg    *types.Message
 	height uint64
 	cst    *hamt.CborIpldStore
+
+	gasAvaliable types.BigInt
+	gasUsed      types.BigInt
 
 	// root cid of the state of the actor this invocation will be on
 	sroot cid.Cid
@@ -94,7 +101,7 @@ func (vmc *VMContext) Origin() address.Address {
 
 // Send allows the current execution context to invoke methods on other actors in the system
 func (vmc *VMContext) Send(to address.Address, method uint64, value types.BigInt, params []byte) ([]byte, aerrors.ActorError) {
-	ctx, span := trace.StartSpan(vmc.ctx, "vm.send")
+	ctx, span := trace.StartSpan(vmc.ctx, "vmc.Send")
 	defer span.End()
 	if span.IsRecordingEvents() {
 		span.AddAttributes(
@@ -105,14 +112,15 @@ func (vmc *VMContext) Send(to address.Address, method uint64, value types.BigInt
 	}
 
 	msg := &types.Message{
-		From:   vmc.msg.To,
-		To:     to,
-		Method: method,
-		Value:  value,
-		Params: params,
+		From:     vmc.msg.To,
+		To:       to,
+		Method:   method,
+		Value:    value,
+		Params:   params,
+		GasLimit: vmc.gasAvaliable,
 	}
 
-	ret, err, _ := vmc.vm.send(ctx, vmc.origin, msg)
+	ret, err, _ := vmc.vm.send(ctx, msg, vmc)
 	return ret, err
 }
 
@@ -122,7 +130,16 @@ func (vmc *VMContext) BlockHeight() uint64 {
 }
 
 func (vmc *VMContext) GasUsed() types.BigInt {
-	return types.NewInt(0)
+	return vmc.gasUsed
+}
+
+func (vmc *VMContext) ChargeGas(amount uint64) aerrors.ActorError {
+	toUse := types.NewInt(amount)
+	vmc.gasUsed = types.BigAdd(vmc.gasUsed, toUse)
+	if types.BigCmp(vmc.gasUsed, vmc.gasAvaliable) > 0 {
+		return aerrors.Newf(254, "not enough gas: used=%s, avaliable=%s", vmc.gasUsed, vmc.gasAvaliable)
+	}
+	return nil
 }
 
 func (vmc *VMContext) StateTree() (types.StateTree, aerrors.ActorError) {
@@ -171,7 +188,7 @@ func (vmctx *VMContext) resolveToKeyAddr(addr address.Address) (address.Address,
 	return aast.Address, nil
 }
 
-func (vm *VM) makeVMContext(ctx context.Context, sroot cid.Cid, origin address.Address, msg *types.Message) *VMContext {
+func (vm *VM) makeVMContext(ctx context.Context, sroot cid.Cid, msg *types.Message, origin address.Address, usedGas types.BigInt) *VMContext {
 
 	return &VMContext{
 		ctx:    ctx,
@@ -186,6 +203,9 @@ func (vm *VM) makeVMContext(ctx context.Context, sroot cid.Cid, origin address.A
 			cst:  vm.cst,
 			head: sroot,
 		},
+
+		gasUsed:      usedGas,
+		gasAvaliable: msg.GasLimit,
 	}
 }
 
@@ -225,7 +245,8 @@ type ApplyRet struct {
 	ActorErr aerrors.ActorError
 }
 
-func (vm *VM) send(ctx context.Context, origin address.Address, msg *types.Message) ([]byte, aerrors.ActorError, *VMContext) {
+func (vm *VM) send(ctx context.Context, msg *types.Message, parent *VMContext) ([]byte, aerrors.ActorError, *VMContext) {
+
 	st := vm.cstate
 	fromActor, err := st.GetActor(msg.From)
 	if err != nil {
@@ -245,11 +266,30 @@ func (vm *VM) send(ctx context.Context, origin address.Address, msg *types.Messa
 		}
 	}
 
-	if err := DeductFunds(fromActor, msg.Value); err != nil {
-		return nil, aerrors.Absorb(err, 1, "failed to deduct funds"), nil
+	gasUsed := types.NewInt(0)
+	origin := msg.From
+	if parent != nil {
+		gasUsed = parent.gasUsed
+		origin = parent.origin
 	}
-	DepositFunds(toActor, msg.Value)
-	vmctx := vm.makeVMContext(ctx, toActor.Head, origin, msg)
+	vmctx := vm.makeVMContext(ctx, toActor.Head, msg, origin, gasUsed)
+	if parent != nil {
+		defer func() {
+			parent.gasUsed = vmctx.gasUsed
+		}()
+	}
+
+	if types.BigCmp(msg.Value, types.NewInt(0)) != 0 {
+		if aerr := vmctx.ChargeGas(gasFundTransfer); aerr != nil {
+			return nil, aerrors.Wrap(aerr, "sending funds"), nil
+		}
+
+		if err := DeductFunds(fromActor, msg.Value); err != nil {
+			return nil, aerrors.Absorb(err, 1, "failed to deduct funds"), nil
+		}
+		DepositFunds(toActor, msg.Value)
+	}
+
 	if msg.Method != 0 {
 		ret, err := vm.Invoke(toActor, vmctx, msg.Method, msg.Params)
 		toActor.Head = vmctx.Storage().GetHead()
@@ -269,7 +309,7 @@ func checkMessage(msg *types.Message) error {
 	}
 
 	if msg.Value == types.EmptyInt {
-		return xerrors.Errorf("message gas no gas price set")
+		return xerrors.Errorf("message no value set")
 	}
 
 	return nil
@@ -306,17 +346,21 @@ func (vm *VM) ApplyMessage(ctx context.Context, msg *types.Message) (*ApplyRet, 
 		return nil, xerrors.Errorf("invalid nonce (got %d, expected %d)", msg.Nonce, fromActor.Nonce)
 	}
 	fromActor.Nonce++
-	ret, actorErr, vmctx := vm.send(ctx, msg.From, msg)
+
+	ret, actorErr, vmctx := vm.send(ctx, msg, nil)
 
 	var errcode uint8
+	var gasUsed types.BigInt
 	if errcode = aerrors.RetCode(actorErr); errcode != 0 {
+		gasUsed = msg.GasLimit
 		// revert all state changes since snapshot
 		if err := st.Revert(); err != nil {
 			return nil, xerrors.Errorf("revert state failed: %w", err)
 		}
 	} else {
 		// refund unused gas
-		refund := types.BigMul(types.BigSub(msg.GasLimit, vmctx.GasUsed()), msg.GasPrice)
+		gasUsed = vmctx.GasUsed()
+		refund := types.BigMul(types.BigSub(msg.GasLimit, gasUsed), msg.GasPrice)
 		DepositFunds(fromActor, refund)
 	}
 
@@ -325,14 +369,14 @@ func (vm *VM) ApplyMessage(ctx context.Context, msg *types.Message) (*ApplyRet, 
 		return nil, xerrors.Errorf("getting block miner actor (%s) failed: %w", vm.blockMiner, err)
 	}
 
-	gasReward := types.BigMul(msg.GasPrice, vmctx.GasUsed())
+	gasReward := types.BigMul(msg.GasPrice, gasUsed)
 	DepositFunds(miner, gasReward)
 
 	return &ApplyRet{
 		MessageReceipt: types.MessageReceipt{
 			ExitCode: errcode,
 			Return:   ret,
-			GasUsed:  vmctx.GasUsed(),
+			GasUsed:  gasUsed,
 		},
 		ActorErr: actorErr,
 	}, nil

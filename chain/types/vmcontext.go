@@ -33,4 +33,5 @@ type VMContext interface {
 	Storage() Storage
 	StateTree() (StateTree, aerrors.ActorError)
 	VerifySignature(sig *Signature, from address.Address, data []byte) aerrors.ActorError
+	ChargeGas(uint64) aerrors.ActorError
 }

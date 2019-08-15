@@ -22,6 +22,8 @@ import (
 	"github.com/filecoin-project/go-lotus/chain/wallet"
 )
 
+const testGasLimit = 100
+
 type HarnessInit struct {
 	NAddrs uint64
 	Addrs  map[address.Address]types.BigInt
@@ -202,7 +204,7 @@ func (h *Harness2) CreateActor(t testing.TB, from address.Address,
 				Params: DumpObject(t, params),
 			}),
 		GasPrice: types.NewInt(1),
-		GasLimit: types.NewInt(1),
+		GasLimit: types.NewInt(testGasLimit),
 		Value:    types.NewInt(0),
 	})
 }
@@ -216,7 +218,7 @@ func (h *Harness2) SendFunds(t testing.TB, from address.Address, to address.Addr
 		Method:   0,
 		Value:    value,
 		GasPrice: types.NewInt(1),
-		GasLimit: types.NewInt(1),
+		GasLimit: types.NewInt(testGasLimit),
 	})
 }
 
@@ -230,7 +232,7 @@ func (h *Harness2) Invoke(t testing.TB, from address.Address, to address.Address
 		Value:    types.NewInt(0),
 		Params:   DumpObject(t, params),
 		GasPrice: types.NewInt(1),
-		GasLimit: types.NewInt(1),
+		GasLimit: types.NewInt(testGasLimit),
 	})
 }
 
@@ -239,11 +241,11 @@ func (h *Harness2) AssertBalance(t testing.TB, addr address.Address, amt uint64)
 
 	b, err := h.vm.ActorBalance(addr)
 	if err != nil {
-		t.Fatal(err)
+		t.Fatalf("%+v", err)
 	}
 
 	if types.BigCmp(types.NewInt(amt), b) != 0 {
-		t.Fatalf("expected %s to have balanced of %d. Instead has %s", addr, amt, b)
+		t.Errorf("expected %s to have balanced of %d. Instead has %s", addr, amt, b)
 	}
 }
 
