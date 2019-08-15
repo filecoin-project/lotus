@@ -6,12 +6,11 @@ import (
 	"github.com/filecoin-project/go-lotus/chain/address"
 	"github.com/filecoin-project/go-lotus/chain/types"
 	"github.com/filecoin-project/go-lotus/lib/sectorbuilder"
-	"golang.org/x/xerrors"
-
 	"github.com/ipfs/go-cid"
 	"github.com/ipfs/go-hamt-ipld"
 	cbor "github.com/ipfs/go-ipld-cbor"
 	"github.com/libp2p/go-libp2p-core/peer"
+	"golang.org/x/xerrors"
 )
 
 func init() {
@@ -533,14 +532,17 @@ func (sma StorageMinerActor) GetSectorSize(act *types.Actor, vmctx types.VMConte
 
 type StorageVoucherData struct { // TODO: Update spec at https://github.com/filecoin-project/specs/blob/master/actors.md#paymentverify
 	CommP     []byte
-	PieceSize []byte
+	PieceSize types.BigInt
+}
+
+type StoragePaymentVerifyProof struct {
+	Sector types.BigInt
+	Proof  []byte
 }
 
 type PaymentVerifyParams struct {
-	Extra StorageVoucherData
-
-	Sector []byte
-	Proof  []byte
+	Extra []byte // StorageVoucherData
+	Proof []byte // StoragePaymentVerifyProof
 }
 
 func (sma StorageMinerActor) PaymentVerify(act *types.Actor, vmctx types.VMContext, params *PaymentVerifyParams) ([]byte, ActorError) {
@@ -554,9 +556,17 @@ func (sma StorageMinerActor) PaymentVerify(act *types.Actor, vmctx types.VMConte
 		return nil, err
 	}
 
-	sectorID := types.BigFromBytes(params.Sector)
+	var voucherData StorageVoucherData
+	if err := cbor.DecodeInto(params.Extra, &voucherData); err != nil {
+		return nil, aerrors.Escalate(err, "failed to decode storage voucher data for verification")
+	}
 
-	ok, _, commD, aerr := GetFromSectorSet(context.TODO(), vmctx.Ipld(), self.Sectors, sectorID)
+	var proof StoragePaymentVerifyProof
+	if err := cbor.DecodeInto(params.Proof, &proof); err != nil {
+		return nil, aerrors.Escalate(err, "failed to decode storage payment proof")
+	}
+
+	ok, _, commD, aerr := GetFromSectorSet(context.TODO(), vmctx.Ipld(), self.Sectors, proof.Sector)
 	if aerr != nil {
 		return nil, aerr
 	}
@@ -564,10 +574,8 @@ func (sma StorageMinerActor) PaymentVerify(act *types.Actor, vmctx types.VMConte
 		return nil, aerrors.New(1, "miner does not have required sector")
 	}
 
-	if params.Extra.CommP != nil {
-		pieceSize := types.BigFromBytes(params.Extra.PieceSize)
-
-		ok, err := sectorbuilder.VerifyPieceInclusionProof(mi.SectorSize.Uint64(), pieceSize.Uint64(), params.Extra.CommP, commD, params.Proof)
+	if voucherData.CommP != nil {
+		ok, err := sectorbuilder.VerifyPieceInclusionProof(mi.SectorSize.Uint64(), voucherData.PieceSize.Uint64(), voucherData.CommP, commD, params.Proof)
 		if err != nil {
 			return nil, aerrors.Escalate(err, "verify piece inclusion proof failed")
 		}
