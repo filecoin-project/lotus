@@ -2,6 +2,7 @@ package vm
 
 import (
 	"fmt"
+	"golang.org/x/xerrors"
 	"reflect"
 
 	actors "github.com/filecoin-project/go-lotus/chain/actors"
@@ -13,6 +14,7 @@ import (
 
 type invoker struct {
 	builtInCode map[cid.Cid]nativeCode
+	builtInState map[cid.Cid]reflect.Type
 }
 
 type invokeFunc func(act *types.Actor, vmctx types.VMContext, params []byte) ([]byte, aerrors.ActorError)
@@ -21,14 +23,15 @@ type nativeCode []invokeFunc
 func newInvoker() *invoker {
 	inv := &invoker{
 		builtInCode: make(map[cid.Cid]nativeCode),
+		builtInState: make(map[cid.Cid]reflect.Type),
 	}
 
 	// add builtInCode using: register(cid, singleton)
-	inv.register(actors.InitActorCodeCid, actors.InitActor{})
-	inv.register(actors.StorageMarketActorCodeCid, actors.StorageMarketActor{})
-	inv.register(actors.StorageMinerCodeCid, actors.StorageMinerActor{})
-	inv.register(actors.MultisigActorCodeCid, actors.MultiSigActor{})
-	inv.register(actors.PaymentChannelActorCodeCid, actors.PaymentChannelActor{})
+	inv.register(actors.InitActorCodeCid, actors.InitActor{}, actors.InitActorState{})
+	inv.register(actors.StorageMarketActorCodeCid, actors.StorageMarketActor{}, actors.StorageMarketState{})
+	inv.register(actors.StorageMinerCodeCid, actors.StorageMinerActor{}, actors.StorageMinerActorState{})
+	inv.register(actors.MultisigActorCodeCid, actors.MultiSigActor{}, actors.MultiSigActorState{})
+	inv.register(actors.PaymentChannelActorCodeCid, actors.PaymentChannelActor{}, actors.PaymentChannelActorState{})
 
 	return inv
 }
@@ -46,12 +49,13 @@ func (inv *invoker) Invoke(act *types.Actor, vmctx types.VMContext, method uint6
 
 }
 
-func (inv *invoker) register(c cid.Cid, instance Invokee) {
+func (inv *invoker) register(c cid.Cid, instance Invokee, state interface{}) {
 	code, err := inv.transform(instance)
 	if err != nil {
 		panic(err)
 	}
 	inv.builtInCode[c] = code
+	inv.builtInState[c] = reflect.TypeOf(state)
 }
 
 type Invokee interface {
@@ -135,4 +139,20 @@ func (*invoker) transform(instance Invokee) (nativeCode, error) {
 
 	}
 	return code, nil
+}
+
+func DumpActorState(code cid.Cid, b []byte) (interface{}, error) {
+	i := newInvoker() // TODO: register builtins in init block
+
+	typ, ok := i.builtInState[code]
+	if !ok {
+		return nil, xerrors.New("state type for actor not found")
+	}
+
+	rv := reflect.New(typ)
+	if err := cbor.DecodeInto(b, rv.Interface()); err != nil {
+		return nil, err
+	}
+
+	return rv.Elem().Interface(), nil
 }

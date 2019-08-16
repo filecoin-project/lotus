@@ -244,8 +244,13 @@ func (a *FullNodeAPI) ChainReadState(ctx context.Context, act *types.Actor, ts *
 		return nil, err
 	}
 
-	var oif interface{}
-	if err := state.Store.Get(context.TODO(), act.Head, &oif); err != nil {
+	blk, err := state.Store.Blocks.GetBlock(ctx, act.Head)
+	if err != nil {
+		return nil, err
+	}
+
+	oif, err := vm.DumpActorState(act.Code, blk.RawData())
+	if err != nil {
 		return nil, err
 	}
 
