@@ -29,7 +29,7 @@ class Consensus extends React.Component {
 
   async updateNodes() {
     const nodes = this.props.nodes
-    let keys = Object.keys(nodes)
+    let keys = Object.keys(nodes).filter(k => !nodes[k].Storage)
 
     const tipsets = await keys.map(async k => {
       const tipset = await nodes[k].conn.call("Filecoin.ChainHead", [])
