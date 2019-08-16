@@ -4,10 +4,7 @@ import Cristal from 'react-cristal'
 import { BlockLinks } from "./BlockLink";
 import StorageNodeInit from "./StorageNodeInit";
 import Address from "./Address";
-
-async function awaitListReducer(prev, c) {
-  return [...await prev, await c]
-}
+import ChainExplorer from "./ChainExplorer";
 
 class FullNode extends React.Component {
   constructor(props) {
@@ -22,6 +19,7 @@ class FullNode extends React.Component {
     this.newScepAddr = this.newScepAddr.bind(this)
     this.startStorageMiner = this.startStorageMiner.bind(this)
     this.add1k = this.add1k.bind(this)
+    this.explorer = this.explorer.bind(this)
 
     this.loadInfo()
     setInterval(this.loadInfo, 2050)
@@ -88,6 +86,10 @@ class FullNode extends React.Component {
     await this.props.give1k(to)
   }
 
+  explorer() {
+    this.props.mountWindow((onClose) => <ChainExplorer onClose={onClose} ts={this.state.tipset} client={this.props.client} mountWindow={this.props.mountWindow}/>)
+  }
+
   render() {
     let runtime = <div></div>
 
@@ -98,7 +100,7 @@ class FullNode extends React.Component {
           <div>
             Head: {
             <BlockLinks cids={this.state.tipset.Cids} conn={this.props.client} mountWindow={this.props.mountWindow} />
-          } H:{this.state.tipset.Height}
+          } H:{this.state.tipset.Height} <a href="#" onClick={this.explorer}>[Explore]</a>
           </div>
         )
       }
@@ -122,7 +124,7 @@ class FullNode extends React.Component {
         const vouchers = this.state.vouchers[ak].map(voucher => {
           let extra = <span></span>
           if(voucher.Extra) {
-            extra = <span>Verif: &lt;<b><Address nobalance={true} client={this.props.client} addr={voucher.Extra.Actor} mountWindow={this.props.mountWindow}/>M{voucher.Extra.Method}</b>&gt;</span>
+            extra = <span>Verif: &lt;<b><Address nobalance={true} client={this.props.client} addr={voucher.Extra.Actor} mountWindow={this.props.mountWindow}/>&nbsp;M{voucher.Extra.Method}</b>&gt;</span>
           }
 
           return <div key={voucher.Nonce} className="FullNode-voucher">
