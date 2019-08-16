@@ -2,14 +2,15 @@ package vm
 
 import (
 	"fmt"
-	"golang.org/x/xerrors"
 	"reflect"
+
+	"github.com/ipfs/go-cid"
+	cbor "github.com/ipfs/go-ipld-cbor"
+	"golang.org/x/xerrors"
 
 	actors "github.com/filecoin-project/go-lotus/chain/actors"
 	"github.com/filecoin-project/go-lotus/chain/actors/aerrors"
 	"github.com/filecoin-project/go-lotus/chain/types"
-	"github.com/ipfs/go-cid"
-	cbor "github.com/ipfs/go-ipld-cbor"
 )
 
 type invoker struct {
