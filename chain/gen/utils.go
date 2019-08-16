@@ -187,6 +187,9 @@ func SetupStorageMiners(ctx context.Context, cs *store.ChainStore, sroot cid.Cid
 	params = mustEnc(actors.UpdateStorageParams{Delta: types.NewInt(5000)})
 
 	_, err = doExec(ctx, vm, actors.StorageMarketAddress, maddr, actors.SMAMethods.UpdateStorage, params)
+	if err != nil {
+		return cid.Undef, xerrors.Errorf("failed to update total storage: %w", err)
+	}
 
 	// UGLY HACKY MODIFICATION OF MINER POWER
 
