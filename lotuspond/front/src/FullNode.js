@@ -124,7 +124,7 @@ class FullNode extends React.Component {
         const vouchers = this.state.vouchers[ak].map(voucher => {
           let extra = <span></span>
           if(voucher.Extra) {
-            extra = <span>Verif: &lt;<b><Address nobalance={true} client={this.props.client} addr={voucher.Extra.Actor} mountWindow={this.props.mountWindow}/>&nbsp;M{voucher.Extra.Method}</b>&gt;</span>
+            extra = <span>Verif: &lt;<b><Address nobalance={true} client={this.props.client} addr={voucher.Extra.Actor} method={voucher.Extra.Method} mountWindow={this.props.mountWindow}/></b>&gt;</span>
           }
 
           return <div key={voucher.Nonce} className="FullNode-voucher">
@@ -158,7 +158,8 @@ class FullNode extends React.Component {
     return (
       <Cristal
         title={"Node " + this.props.node.ID}
-        initialPosition={{x: this.props.node.ID*30, y: this.props.node.ID * 30}} >
+        initialPosition={{x: this.props.node.ID*30, y: this.props.node.ID * 30}}
+        initialSize={{width: 690, height: 300}} >
         <div className="CristalScroll">
           <div className="FullNode">
             {runtime}

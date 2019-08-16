@@ -31,9 +31,8 @@ class Block extends React.Component {
         ...(this.state.messages.SecpkMessages.map(m => ({...(m.Message), type: 'Secpk'})))
       ].map(m => (
         <div>
-          <Address client={this.props.conn} addr={m.From} mountWindow={this.props.mountWindow}/><b>=>&nbsp;</b>
-          <Address client={this.props.conn} addr={m.To} mountWindow={this.props.mountWindow}/>
-          {m.Value}FIL&nbsp;M{m.Method}
+          <Address client={this.props.conn} addr={m.From} mountWindow={this.props.mountWindow}/><b>&nbsp;=>&nbsp;</b>
+          <Address client={this.props.conn} addr={m.To} mountWindow={this.props.mountWindow} transfer={m.Value} method={m.Method}/>
         </div>
       ))
 
@@ -52,7 +51,7 @@ class Block extends React.Component {
       )
     }
 
-    return (<Cristal onClose={this.props.onClose} title={`Block ${this.props.cid['/']}`}>
+    return (<Cristal initialSize={{width: 700, height: 200}} onClose={this.props.onClose} title={`Block ${this.props.cid['/']}`}>
       {content}
     </Cristal>)
   }
