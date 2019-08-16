@@ -37,7 +37,7 @@ type VMContext struct {
 	height uint64
 	cst    *hamt.CborIpldStore
 
-	gasAvaliable types.BigInt
+	gasAvailable types.BigInt
 	gasUsed      types.BigInt
 
 	// root cid of the state of the actor this invocation will be on
@@ -117,7 +117,7 @@ func (vmc *VMContext) Send(to address.Address, method uint64, value types.BigInt
 		Method:   method,
 		Value:    value,
 		Params:   params,
-		GasLimit: vmc.gasAvaliable,
+		GasLimit: vmc.gasAvailable,
 	}
 
 	ret, err, _ := vmc.vm.send(ctx, msg, vmc)
@@ -136,8 +136,8 @@ func (vmc *VMContext) GasUsed() types.BigInt {
 func (vmc *VMContext) ChargeGas(amount uint64) aerrors.ActorError {
 	toUse := types.NewInt(amount)
 	vmc.gasUsed = types.BigAdd(vmc.gasUsed, toUse)
-	if types.BigCmp(vmc.gasUsed, vmc.gasAvaliable) > 0 {
-		return aerrors.Newf(254, "not enough gas: used=%s, avaliable=%s", vmc.gasUsed, vmc.gasAvaliable)
+	if types.BigCmp(vmc.gasUsed, vmc.gasAvailable) > 0 {
+		return aerrors.Newf(254, "not enough gas: used=%s, available=%s", vmc.gasUsed, vmc.gasAvailable)
 	}
 	return nil
 }
@@ -205,7 +205,7 @@ func (vm *VM) makeVMContext(ctx context.Context, sroot cid.Cid, msg *types.Messa
 		},
 
 		gasUsed:      usedGas,
-		gasAvaliable: msg.GasLimit,
+		gasAvailable: msg.GasLimit,
 	}
 }
 
