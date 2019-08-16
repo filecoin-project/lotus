@@ -2,6 +2,7 @@ import React from 'react'
 import CID from 'cids'
 import * as multihash from "multihashes";
 import State from "./State";
+import methods from "./chain/methods";
 
 function truncAddr(addr) {
   if (addr.length > 21) {
@@ -34,6 +35,7 @@ class Address extends React.Component {
     try {
       balance = await this.props.client.call('Filecoin.WalletBalance', [this.props.addr])
       actor = await this.props.client.call('Filecoin.ChainGetActor', [this.props.addr, this.props.ts || null])
+
       actorInfo = await this.actorInfo(actor)
     } catch (err) {
       console.log(err)
@@ -50,11 +52,16 @@ class Address extends React.Component {
     const c = new CID(actor.Code['/'])
     const mh = multihash.decode(c.multihash) // TODO: check identity
 
-    let info = <span>({mh.digest.toString()})</span>
+    let method = <span></span>
+    if(this.props.method !== undefined && mh.digest.toString()) {
+      method = <span>.{methods[mh.digest.toString()][this.props.method]}</span>
+    }
+
+    let info = <span>({mh.digest.toString()}{method})</span>
     switch(mh.digest.toString()) {
       case 'paych':
         const actstate = await this.props.client.call('Filecoin.ChainReadState', [actor, this.props.ts || null])
-        info = <span>({mh.digest.toString()} to <Address nobalance={true} client={this.props.client} addr={actstate.State.To} mountWindow={this.props.mountWindow}/>)</span>
+        info = <span>({mh.digest.toString()}{method} to <Address nobalance={true} client={this.props.client} addr={actstate.State.To} mountWindow={this.props.mountWindow}/>)</span>
     }
 
     return info
@@ -78,7 +85,12 @@ class Address extends React.Component {
       balance = <span></span>
     }
 
-    return <span>{addr}{balance}&nbsp;{actInfo}{add1k}</span>
+    let transfer = <span></span>
+    if(this.props.transfer) {
+      transfer = <span>&nbsp;{this.props.transfer}FIL</span>
+    }
+
+    return <span>{addr}{balance}&nbsp;{actInfo}{add1k}{transfer}</span>
   }
 }
 
