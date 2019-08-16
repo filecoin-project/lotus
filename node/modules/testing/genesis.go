@@ -2,6 +2,7 @@ package testing
 
 import (
 	"context"
+	"fmt"
 	"io"
 	"os"
 
@@ -79,6 +80,8 @@ func MakeGenesis(outFile string) func(bs dtypes.ChainBlockstore, w *wallet.Walle
 			if err != nil {
 				return nil, err
 			}
+
+			fmt.Println("GENESIS MINER ADDRESS: ", gmc.MinerAddr.String())
 
 			f, err := os.OpenFile(outFile, os.O_CREATE|os.O_WRONLY, 0644)
 			if err != nil {

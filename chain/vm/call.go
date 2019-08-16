@@ -56,6 +56,7 @@ func Call(ctx context.Context, cs *store.ChainStore, msg *types.Message, ts *typ
 	if ts == nil {
 		ts = cs.GetHeaviestTipSet()
 	}
+
 	state, err := cs.TipSetState(ts.Cids())
 	if err != nil {
 		return nil, err
