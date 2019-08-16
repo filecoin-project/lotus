@@ -326,7 +326,7 @@ func (a *FullNodeAPI) WalletBalance(ctx context.Context, addr address.Address) (
 }
 
 func (a *FullNodeAPI) WalletSign(ctx context.Context, k address.Address, msg []byte) (*types.Signature, error) {
-	return a.Wallet.Sign(k, msg)
+	return a.Wallet.Sign(ctx, k, msg)
 }
 
 func (a *FullNodeAPI) WalletSignMessage(ctx context.Context, k address.Address, msg *types.Message) (*types.SignedMessage, error) {

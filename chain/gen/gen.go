@@ -178,16 +178,23 @@ func (cg *ChainGen) GenesisCar() ([]byte, error) {
 	return out.Bytes(), nil
 }
 
-func (cg *ChainGen) nextBlockProof() (address.Address, types.ElectionProof, []*types.Ticket, error) {
-	vrf := []byte("veee arrr efff")
+func (cg *ChainGen) nextBlockProof(ctx context.Context) (address.Address, types.ElectionProof, []*types.Ticket, error) {
 
-	out, proof, err := vdf.Run(vrf)
+	ticks := cg.curBlock.Header.Tickets
+	lastTicket := ticks[len(ticks)-1]
+
+	vrfout, err := ComputeVRF(ctx, cg.w.Sign, cg.mworker, lastTicket.VDFResult)
+	if err != nil {
+		return address.Undef, nil, nil, err
+	}
+
+	out, proof, err := vdf.Run(vrfout)
 	if err != nil {
 		return address.Undef, nil, nil, err
 	}
 
 	tick := &types.Ticket{
-		VRFProof:  vrf,
+		VRFProof:  vrfout,
 		VDFProof:  proof,
 		VDFResult: out,
 	}
@@ -196,7 +203,7 @@ func (cg *ChainGen) nextBlockProof() (address.Address, types.ElectionProof, []*t
 }
 
 func (cg *ChainGen) NextBlock() (*types.FullBlock, []*types.SignedMessage, error) {
-	miner, proof, tickets, err := cg.nextBlockProof()
+	miner, proof, tickets, err := cg.nextBlockProof(context.TODO())
 	if err != nil {
 		return nil, nil, err
 	}
@@ -224,7 +231,7 @@ func (cg *ChainGen) NextBlock() (*types.FullBlock, []*types.SignedMessage, error
 			return nil, nil, err
 		}
 
-		sig, err := cg.w.Sign(cg.banker, unsigned)
+		sig, err := cg.w.Sign(context.TODO(), cg.banker, unsigned)
 		if err != nil {
 			return nil, nil, err
 		}

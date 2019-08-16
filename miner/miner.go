@@ -3,7 +3,6 @@ package miner
 import (
 	"context"
 	"crypto/sha256"
-	"fmt"
 	"math/big"
 	"time"
 
@@ -15,6 +14,7 @@ import (
 	chain "github.com/filecoin-project/go-lotus/chain"
 	"github.com/filecoin-project/go-lotus/chain/actors"
 	"github.com/filecoin-project/go-lotus/chain/address"
+	"github.com/filecoin-project/go-lotus/chain/gen"
 	"github.com/filecoin-project/go-lotus/chain/types"
 	"github.com/filecoin-project/go-lotus/lib/vdf"
 )
@@ -154,16 +154,7 @@ func (m *Miner) computeVRF(ctx context.Context, input []byte) ([]byte, error) {
 		return nil, err
 	}
 
-	sig, err := m.api.WalletSign(ctx, w, input)
-	if err != nil {
-		return nil, err
-	}
-
-	if sig.Type != types.KTBLS {
-		return nil, fmt.Errorf("miner worker address was not a BLS key")
-	}
-
-	return sig.Data, nil
+	return gen.ComputeVRF(ctx, m.api.WalletSign, w, input)
 }
 
 func (m *Miner) getMinerWorker(ctx context.Context, addr address.Address, ts *types.TipSet) (address.Address, error) {

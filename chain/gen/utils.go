@@ -310,3 +310,19 @@ func MakeGenesisBlock(bs bstore.Blockstore, balances map[address.Address]types.B
 		Genesis: b,
 	}, nil
 }
+
+type SignFunc func(context.Context, address.Address, []byte) (*types.Signature, error)
+
+func ComputeVRF(ctx context.Context, sign SignFunc, w address.Address, input []byte) ([]byte, error) {
+
+	sig, err := sign(ctx, w, input)
+	if err != nil {
+		return nil, err
+	}
+
+	if sig.Type != types.KTBLS {
+		return nil, fmt.Errorf("miner worker address was not a BLS key")
+	}
+
+	return sig.Data, nil
+}

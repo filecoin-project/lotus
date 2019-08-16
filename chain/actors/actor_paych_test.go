@@ -1,6 +1,7 @@
 package actors_test
 
 import (
+	"context"
 	"testing"
 
 	"github.com/filecoin-project/go-lotus/chain/actors"
@@ -30,7 +31,7 @@ func signVoucher(t *testing.T, w *wallet.Wallet, addr address.Address, sv *types
 		t.Fatal(err)
 	}
 
-	sig, err := w.Sign(addr, vb)
+	sig, err := w.Sign(context.TODO(), addr, vb)
 	if err != nil {
 		t.Fatal(err)
 	}
