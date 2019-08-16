@@ -13,7 +13,7 @@ import (
 )
 
 type invoker struct {
-	builtInCode map[cid.Cid]nativeCode
+	builtInCode  map[cid.Cid]nativeCode
 	builtInState map[cid.Cid]reflect.Type
 }
 
@@ -22,7 +22,7 @@ type nativeCode []invokeFunc
 
 func newInvoker() *invoker {
 	inv := &invoker{
-		builtInCode: make(map[cid.Cid]nativeCode),
+		builtInCode:  make(map[cid.Cid]nativeCode),
 		builtInState: make(map[cid.Cid]reflect.Type),
 	}
 
