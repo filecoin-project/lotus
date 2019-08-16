@@ -8,9 +8,11 @@ import (
 	"golang.org/x/xerrors"
 
 	"github.com/filecoin-project/go-lotus/chain/actors"
+	"github.com/filecoin-project/go-lotus/chain/address"
 	"github.com/filecoin-project/go-lotus/chain/store"
 	"github.com/filecoin-project/go-lotus/chain/types"
 	"github.com/filecoin-project/go-lotus/chain/vm"
+	"github.com/filecoin-project/go-lotus/lib/vdf"
 
 	"github.com/ipfs/go-cid"
 	dstore "github.com/ipfs/go-datastore"
@@ -287,7 +289,7 @@ func (syncer *Syncer) Sync(maybeHead *store.FullTipSet) error {
 	}
 
 	if err := syncer.collectChain(maybeHead); err != nil {
-		return err
+		return xerrors.Errorf("collectChain failed: %w", err)
 	}
 
 	if err := syncer.store.PutTipSet(maybeHead); err != nil {
@@ -311,6 +313,89 @@ func (syncer *Syncer) ValidateTipSet(ctx context.Context, fts *store.FullTipSet)
 	return nil
 }
 
+func (syncer *Syncer) minerIsValid(ctx context.Context, maddr address.Address, baseTs *types.TipSet) error {
+	var err error
+	enc, err := actors.SerializeParams(&actors.IsMinerParam{Addr: maddr})
+	if err != nil {
+		return err
+	}
+
+	ret, err := vm.Call(ctx, syncer.store, &types.Message{
+		To:     actors.StorageMarketAddress,
+		From:   maddr,
+		Method: actors.SMAMethods.IsMiner,
+		Params: enc,
+	}, baseTs)
+	if err != nil {
+		return xerrors.Errorf("checking if block miner is valid failed: %w", err)
+	}
+
+	if ret.ExitCode != 0 {
+		return xerrors.Errorf("StorageMarket.IsMiner check failed (exit code %d)", ret.ExitCode)
+	}
+
+	// TODO: ensure the miner is currently not late on their PoSt submission (this hasnt landed in the spec yet)
+
+	return nil
+}
+
+func (syncer *Syncer) validateTickets(ctx context.Context, mworker address.Address, tickets []*types.Ticket, base *types.TipSet) error {
+	if len(tickets) == 0 {
+		return xerrors.Errorf("block had no tickets")
+	}
+
+	cur := base.MinTicket()
+	for i := 0; i < len(tickets); i++ {
+		next := tickets[i]
+
+		sig := &types.Signature{
+			Type: types.KTBLS,
+			Data: next.VRFProof,
+		}
+
+		log.Infof("About to verify signature: ", sig.Data, mworker, cur.VDFResult)
+		if err := sig.Verify(mworker, cur.VDFResult); err != nil {
+			return xerrors.Errorf("invalid ticket, VRFProof invalid: %w", err)
+		}
+
+		// now verify the VDF
+		if err := vdf.Verify(next.VRFProof, next.VDFResult, next.VDFProof); err != nil {
+			return xerrors.Errorf("ticket %d had invalid VDF: %w", err)
+		}
+
+		cur = next
+	}
+
+	return nil
+}
+
+func getMinerWorker(ctx context.Context, cs *store.ChainStore, st cid.Cid, maddr address.Address) (address.Address, error) {
+	recp, err := vm.CallRaw(ctx, cs, &types.Message{
+		To:     maddr,
+		From:   maddr,
+		Method: actors.MAMethods.GetWorkerAddr,
+	}, st, 0)
+	if err != nil {
+		return address.Undef, xerrors.Errorf("callRaw failed: %w", err)
+	}
+
+	if recp.ExitCode != 0 {
+		return address.Undef, xerrors.Errorf("getting miner worker addr failed (exit code %d)", recp.ExitCode)
+	}
+
+	worker, err := address.NewFromBytes(recp.Return)
+	if err != nil {
+		return address.Undef, err
+	}
+
+	if worker.Protocol() == address.ID {
+		return address.Undef, xerrors.Errorf("need to resolve worker address to a pubkeyaddr")
+	}
+
+	return worker, nil
+}
+
+// Should match up with 'Semantical Validation' in validation.md in the spec
 func (syncer *Syncer) ValidateBlock(ctx context.Context, b *types.FullBlock) error {
 	h := b.Header
 	stateroot, err := syncer.store.TipSetState(h.Parents)
@@ -318,12 +403,25 @@ func (syncer *Syncer) ValidateBlock(ctx context.Context, b *types.FullBlock) err
 		return xerrors.Errorf("get tipsetstate(%d, %s) failed: %w", h.Height, h.Parents, err)
 	}
 
-	baseTs, err := syncer.store.LoadTipSet(b.Header.Parents)
+	baseTs, err := syncer.store.LoadTipSet(h.Parents)
 	if err != nil {
 		return err
 	}
 
-	vmi, err := vm.NewVM(stateroot, b.Header.Height, b.Header.Miner, syncer.store)
+	if err := syncer.minerIsValid(ctx, h.Miner, baseTs); err != nil {
+		return xerrors.Errorf("minerIsValid failed: %w", err)
+	}
+
+	waddr, err := getMinerWorker(ctx, syncer.store, stateroot, h.Miner)
+	if err != nil {
+		return xerrors.Errorf("getMinerWorker failed: %w", err)
+	}
+
+	if err := syncer.validateTickets(ctx, waddr, h.Tickets, baseTs); err != nil {
+		return xerrors.Errorf("validating block tickets failed: %w", err)
+	}
+
+	vmi, err := vm.NewVM(stateroot, h.Height, h.Miner, syncer.store)
 	if err != nil {
 		return err
 	}
@@ -549,7 +647,7 @@ func (syncer *Syncer) collectChain(fts *store.FullTipSet) error {
 	}
 
 	if err := syncer.syncMessagesAndCheckState(headers); err != nil {
-		return err
+		return xerrors.Errorf("collectChain syncMessages: %w", err)
 	}
 
 	return nil

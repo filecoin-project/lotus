@@ -1,6 +1,7 @@
 package types
 
 import (
+	"bytes"
 	"encoding/json"
 	"fmt"
 
@@ -88,4 +89,19 @@ func (ts *TipSet) Equals(ots *TipSet) bool {
 	}
 
 	return true
+}
+
+func (ts *TipSet) MinTicket() *Ticket {
+	if len(ts.Blocks()) == 0 {
+		panic("tipset has no blocks!")
+	}
+	var minTicket *Ticket
+	for _, b := range ts.Blocks() {
+		lastTicket := b.Tickets[len(b.Tickets)-1]
+		if minTicket == nil || bytes.Compare(lastTicket.VDFResult, minTicket.VDFResult) < 0 {
+			minTicket = lastTicket
+		}
+	}
+
+	return minTicket
 }

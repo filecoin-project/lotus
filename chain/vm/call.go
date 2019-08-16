@@ -6,19 +6,12 @@ import (
 	"github.com/filecoin-project/go-lotus/chain/actors"
 	"github.com/filecoin-project/go-lotus/chain/store"
 	"github.com/filecoin-project/go-lotus/chain/types"
+	cid "github.com/ipfs/go-cid"
 	"golang.org/x/xerrors"
 )
 
-func Call(ctx context.Context, cs *store.ChainStore, msg *types.Message, ts *types.TipSet) (*types.MessageReceipt, error) {
-	if ts == nil {
-		ts = cs.GetHeaviestTipSet()
-	}
-	state, err := cs.TipSetState(ts.Cids())
-	if err != nil {
-		return nil, err
-	}
-
-	vmi, err := NewVM(state, ts.Height(), ts.Blocks()[0].Miner, cs)
+func CallRaw(ctx context.Context, cs *store.ChainStore, msg *types.Message, bstate cid.Cid, bheight uint64) (*types.MessageReceipt, error) {
+	vmi, err := NewVM(bstate, bheight, actors.NetworkAddress, cs)
 	if err != nil {
 		return nil, xerrors.Errorf("failed to set up vm: %w", err)
 	}
@@ -56,4 +49,17 @@ func Call(ctx context.Context, cs *store.ChainStore, msg *types.Message, ts *typ
 		log.Warnf("chain call failed: %s", ret.ActorErr)
 	}
 	return &ret.MessageReceipt, nil
+
+}
+
+func Call(ctx context.Context, cs *store.ChainStore, msg *types.Message, ts *types.TipSet) (*types.MessageReceipt, error) {
+	if ts == nil {
+		ts = cs.GetHeaviestTipSet()
+	}
+	state, err := cs.TipSetState(ts.Cids())
+	if err != nil {
+		return nil, err
+	}
+
+	return CallRaw(ctx, cs, msg, state, ts.Height())
 }

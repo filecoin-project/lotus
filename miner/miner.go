@@ -1,7 +1,6 @@
 package miner
 
 import (
-	"bytes"
 	"context"
 	"crypto/sha256"
 	"fmt"
@@ -17,6 +16,7 @@ import (
 	"github.com/filecoin-project/go-lotus/chain/actors"
 	"github.com/filecoin-project/go-lotus/chain/address"
 	"github.com/filecoin-project/go-lotus/chain/types"
+	"github.com/filecoin-project/go-lotus/lib/vdf"
 )
 
 var log = logging.Logger("miner")
@@ -271,24 +271,7 @@ func (m *Miner) runVDF(ctx context.Context, input []byte) ([]byte, []byte, error
 	case <-time.After(m.Delay):
 	}
 
-	h := sha256.Sum256(input)
-	// TODO: THIS IS A FAKE VDF. THE SPEC IS UNCLEAR ON WHAT TO REALLY DO HERE
-	return h[:], []byte("proof"), nil
-}
-
-func minTicket(ts *types.TipSet) *types.Ticket {
-	if len(ts.Blocks()) == 0 {
-		panic("tipset has no blocks!")
-	}
-	var minTicket *types.Ticket
-	for _, b := range ts.Blocks() {
-		lastTicket := b.Tickets[len(b.Tickets)-1]
-		if minTicket == nil || bytes.Compare(lastTicket.VDFResult, minTicket.VDFResult) < 0 {
-			minTicket = lastTicket
-		}
-	}
-
-	return minTicket
+	return vdf.Run(input)
 }
 
 func (m *Miner) scratchTicket(ctx context.Context, base *MiningBase) (*types.Ticket, error) {
@@ -296,7 +279,7 @@ func (m *Miner) scratchTicket(ctx context.Context, base *MiningBase) (*types.Tic
 	if len(base.tickets) > 0 {
 		lastTicket = base.tickets[len(base.tickets)-1]
 	} else {
-		lastTicket = minTicket(base.ts)
+		lastTicket = base.ts.MinTicket()
 	}
 
 	vrfOut, err := m.computeVRF(ctx, lastTicket.VDFResult)

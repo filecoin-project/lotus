@@ -15,6 +15,7 @@ import (
 	"github.com/filecoin-project/go-lotus/chain/store"
 	"github.com/filecoin-project/go-lotus/chain/types"
 	"github.com/filecoin-project/go-lotus/chain/wallet"
+	"github.com/filecoin-project/go-lotus/lib/vdf"
 	"github.com/filecoin-project/go-lotus/node/repo"
 
 	block "github.com/ipfs/go-block-format"
@@ -134,6 +135,10 @@ func NewGenerator() (*ChainGen, error) {
 		return nil, xerrors.Errorf("set genesis failed: %w", err)
 	}
 
+	if minercfg.MinerAddr == address.Undef {
+		return nil, xerrors.Errorf("MakeGenesisBlock failed to set miner address")
+	}
+
 	gen := &ChainGen{
 		bs:           bs,
 		cs:           cs,
@@ -174,11 +179,19 @@ func (cg *ChainGen) GenesisCar() ([]byte, error) {
 }
 
 func (cg *ChainGen) nextBlockProof() (address.Address, types.ElectionProof, []*types.Ticket, error) {
-	tick := &types.Ticket{
-		VRFProof:  []byte("im a ticket, promise"),
-		VDFProof:  []byte("vdf proof"),
-		VDFResult: []byte("verifiable and delayed"),
+	vrf := []byte("veee arrr efff")
+
+	out, proof, err := vdf.Run(vrf)
+	if err != nil {
+		return address.Undef, nil, nil, err
 	}
+
+	tick := &types.Ticket{
+		VRFProof:  vrf,
+		VDFProof:  proof,
+		VDFResult: out,
+	}
+
 	return cg.miner, []byte("cat in a box"), []*types.Ticket{tick}, nil
 }
 
