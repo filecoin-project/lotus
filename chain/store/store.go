@@ -151,17 +151,11 @@ func (cs *ChainStore) SubscribeHeadChanges(f func(rev, app []*types.TipSet) erro
 }
 
 func (cs *ChainStore) SetGenesis(b *types.BlockHeader) error {
-	gents, err := types.NewTipSet([]*types.BlockHeader{b})
-	if err != nil {
-		return err
-	}
 	fts := &FullTipSet{
 		Blocks: []*types.FullBlock{
 			{Header: b},
 		},
 	}
-
-	cs.heaviest = gents
 
 	if err := cs.PutTipSet(fts); err != nil {
 		return err
@@ -190,15 +184,20 @@ func (cs *ChainStore) MaybeTakeHeavierTipSet(ts *types.TipSet) error {
 		// TODO: don't do this for initial sync. Now that we don't have a
 		// difference between 'bootstrap sync' and 'caught up' sync, we need
 		// some other heuristic.
-		revert, apply, err := cs.ReorgOps(cs.heaviest, ts)
-		if err != nil {
-			return errors.Wrap(err, "computing reorg ops failed")
-		}
-		for _, hcf := range cs.headChangeNotifs {
-			if err := hcf(revert, apply); err != nil {
-				return errors.Wrap(err, "head change func errored (BAD)")
+		if cs.heaviest != nil {
+			revert, apply, err := cs.ReorgOps(cs.heaviest, ts)
+			if err != nil {
+				return errors.Wrap(err, "computing reorg ops failed")
 			}
+			for _, hcf := range cs.headChangeNotifs {
+				if err := hcf(revert, apply); err != nil {
+					return errors.Wrap(err, "head change func errored (BAD)")
+				}
+			}
+		} else {
+			log.Warn("no heaviest tipset found, using %s", ts.Cids())
 		}
+
 		log.Infof("New heaviest tipset! %s", ts.Cids())
 		cs.heaviest = ts
 
