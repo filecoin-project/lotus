@@ -194,6 +194,8 @@ func (cs *ChainStore) MaybeTakeHeavierTipSet(ts *types.TipSet) error {
 					return errors.Wrap(err, "head change func errored (BAD)")
 				}
 			}
+		} else {
+			log.Warn("no heaviest tipset found, using %s", ts.Cids())
 		}
 
 		log.Infof("New heaviest tipset! %s", ts.Cids())
