@@ -1,11 +1,14 @@
 package main
 
 import (
+	"context"
+
 	"github.com/ipfs/go-datastore"
 	"github.com/libp2p/go-libp2p-core/peer"
 	"golang.org/x/xerrors"
 	"gopkg.in/urfave/cli.v2"
 
+	"github.com/filecoin-project/go-lotus/api"
 	"github.com/filecoin-project/go-lotus/build"
 	"github.com/filecoin-project/go-lotus/chain/actors"
 	"github.com/filecoin-project/go-lotus/chain/address"
@@ -17,6 +20,12 @@ import (
 var initCmd = &cli.Command{
 	Name:  "init",
 	Usage: "Initialize a lotus storage miner repo",
+	Flags: []cli.Flag{
+		&cli.StringFlag{
+			Name:  "actor",
+			Usage: "specify the address of an already created miner actor",
+		},
+	},
 	Action: func(cctx *cli.Context) error {
 		log.Info("Initializing lotus storage miner")
 		log.Info("Checking if repo exists")
@@ -77,84 +86,26 @@ var initCmd = &cli.Command{
 			return err
 		}
 
-		log.Info("Creating StorageMarket.CreateStorageMiner message")
+		var addr address.Address
+		if act := cctx.String("actor"); act != "" {
+			a, err := address.NewFromString(act)
+			if err != nil {
+				return err
+			}
 
-		defOwner, err := api.WalletDefaultAddress(ctx)
-		if err != nil {
-			return err
+			if err := configureStorageMiner(ctx, api, a, peerid); err != nil {
+				return xerrors.Errorf("failed to configure storage miner: %w", err)
+			}
+
+			addr = a
+		} else {
+			a, err := createStorageMiner(ctx, api, peerid)
+			if err != nil {
+				return err
+			}
+
+			addr = a
 		}
-
-		nonce, err := api.MpoolGetNonce(ctx, defOwner)
-		if err != nil {
-			return err
-		}
-
-		k, err := api.WalletNew(ctx, types.KTSecp256k1)
-		if err != nil {
-			return err
-		}
-
-		collateral := types.NewInt(1000) // TODO: Get this from params
-
-		params, err := actors.SerializeParams(actors.CreateStorageMinerParams{
-			Owner:      defOwner,
-			Worker:     k,
-			SectorSize: types.NewInt(actors.SectorSize),
-			PeerID:     peerid,
-		})
-		if err != nil {
-			return err
-		}
-
-		createStorageMinerMsg := types.Message{
-			To:   actors.StorageMarketAddress,
-			From: defOwner,
-
-			Nonce: nonce,
-
-			Value: collateral,
-
-			Method: actors.SMAMethods.CreateStorageMiner,
-			Params: params,
-		}
-
-		unsigned, err := createStorageMinerMsg.Serialize()
-		if err != nil {
-			return err
-		}
-
-		log.Info("Signing StorageMarket.CreateStorageMiner")
-
-		sig, err := api.WalletSign(ctx, defOwner, unsigned)
-		if err != nil {
-			return err
-		}
-
-		signed := &types.SignedMessage{
-			Message:   createStorageMinerMsg,
-			Signature: *sig,
-		}
-
-		log.Infof("Pushing %s to Mpool", signed.Cid())
-
-		err = api.MpoolPush(ctx, signed)
-		if err != nil {
-			return err
-		}
-
-		log.Infof("Waiting for confirmation")
-
-		mw, err := api.ChainWaitMsg(ctx, signed.Cid())
-		if err != nil {
-			return err
-		}
-
-		addr, err := address.NewFromBytes(mw.Receipt.Return)
-		if err != nil {
-			return err
-		}
-
-		log.Infof("New storage miners address is: %s", addr)
 
 		ds, err := lr.Datastore("/metadata")
 		if err != nil {
@@ -169,4 +120,147 @@ var initCmd = &cli.Command{
 
 		return nil
 	},
+}
+
+func configureStorageMiner(ctx context.Context, api api.FullNode, addr address.Address, peerid peer.ID) error {
+	// This really just needs to be an api call at this point...
+	recp, err := api.ChainCall(ctx, &types.Message{
+		To:     addr,
+		From:   addr,
+		Method: actors.MAMethods.GetWorkerAddr,
+	}, nil)
+	if err != nil {
+		return xerrors.Errorf("failed to get worker address: %w", err)
+	}
+
+	if recp.ExitCode != 0 {
+		return xerrors.Errorf("getWorkerAddr returned exit code %d", recp.ExitCode)
+	}
+
+	waddr, err := address.NewFromBytes(recp.Return)
+	if err != nil {
+		return xerrors.Errorf("getWorkerAddr returned bad address: %w", err)
+	}
+
+	enc, err := actors.SerializeParams(&actors.UpdatePeerIDParams{PeerID: peerid})
+	if err != nil {
+		return err
+	}
+
+	nonce, err := api.MpoolGetNonce(ctx, waddr)
+	if err != nil {
+		return err
+	}
+
+	msg := &types.Message{
+		To:       addr,
+		From:     waddr,
+		Method:   actors.MAMethods.UpdatePeerID,
+		Params:   enc,
+		Nonce:    nonce,
+		GasPrice: types.NewInt(0),
+		GasLimit: types.NewInt(1000),
+	}
+
+	smsg, err := api.WalletSignMessage(ctx, waddr, msg)
+	if err != nil {
+		return err
+	}
+
+	if err := api.MpoolPush(ctx, smsg); err != nil {
+		return err
+	}
+
+	ret, err := api.ChainWaitMsg(ctx, smsg.Cid())
+	if err != nil {
+		return err
+	}
+
+	if ret.Receipt.ExitCode != 0 {
+		return xerrors.Errorf("update peer id message failed with exit code %d", ret.Receipt.ExitCode)
+	}
+
+	return nil
+}
+
+func createStorageMiner(ctx context.Context, api api.FullNode, peerid peer.ID) (address.Address, error) {
+	log.Info("Creating StorageMarket.CreateStorageMiner message")
+
+	defOwner, err := api.WalletDefaultAddress(ctx)
+	if err != nil {
+		return address.Undef, err
+	}
+
+	nonce, err := api.MpoolGetNonce(ctx, defOwner)
+	if err != nil {
+		return address.Undef, err
+	}
+
+	k, err := api.WalletNew(ctx, types.KTSecp256k1)
+	if err != nil {
+		return address.Undef, err
+	}
+
+	collateral := types.NewInt(1000) // TODO: Get this from params
+
+	params, err := actors.SerializeParams(actors.CreateStorageMinerParams{
+		Owner:      defOwner,
+		Worker:     k,
+		SectorSize: types.NewInt(actors.SectorSize),
+		PeerID:     peerid,
+	})
+	if err != nil {
+		return address.Undef, err
+	}
+
+	createStorageMinerMsg := types.Message{
+		To:   actors.StorageMarketAddress,
+		From: defOwner,
+
+		Nonce: nonce,
+
+		Value: collateral,
+
+		Method: actors.SMAMethods.CreateStorageMiner,
+		Params: params,
+	}
+
+	unsigned, err := createStorageMinerMsg.Serialize()
+	if err != nil {
+		return address.Undef, err
+	}
+
+	log.Info("Signing StorageMarket.CreateStorageMiner")
+
+	sig, err := api.WalletSign(ctx, defOwner, unsigned)
+	if err != nil {
+		return address.Undef, err
+	}
+
+	signed := &types.SignedMessage{
+		Message:   createStorageMinerMsg,
+		Signature: *sig,
+	}
+
+	log.Infof("Pushing %s to Mpool", signed.Cid())
+
+	err = api.MpoolPush(ctx, signed)
+	if err != nil {
+		return address.Undef, err
+	}
+
+	log.Infof("Waiting for confirmation")
+
+	mw, err := api.ChainWaitMsg(ctx, signed.Cid())
+	if err != nil {
+		return address.Undef, err
+	}
+
+	addr, err := address.NewFromBytes(mw.Receipt.Return)
+	if err != nil {
+		return address.Undef, err
+	}
+
+	log.Infof("New storage miners address is: %s", addr)
+	return addr, nil
 }
