@@ -58,3 +58,19 @@
 .Consensus {
   font-family: monospace;
 }
+
+.ChainExplorer {
+  font-family: monospace;
+}
+
+.ChainExplorer-at {
+  background: #77ff77;
+}
+
+.ChainExplorer-after {
+  background: #cc9c44
+}
+
+.ChainExplorer-before {
+  background: #cccc00
+}
