@@ -26,6 +26,10 @@ var minerStart = &cli.Command{
 
 		ctx := ReqContext(cctx)
 
+		if !cctx.Args().Present() {
+			return fmt.Errorf("must specify miner actor address to mine for")
+		}
+
 		// TODO: need to pull this from disk or something
 		maddr, err := address.NewFromString(cctx.Args().First())
 		if err != nil {
