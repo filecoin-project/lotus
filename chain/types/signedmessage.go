@@ -55,6 +55,10 @@ func (m *SignedMessage) ToStorageBlock() (block.Block, error) {
 }
 
 func (m *SignedMessage) Cid() cid.Cid {
+	if m.Signature.Type == KTBLS {
+		return m.Message.Cid()
+	}
+
 	sb, err := m.ToStorageBlock()
 	if err != nil {
 		panic(err)

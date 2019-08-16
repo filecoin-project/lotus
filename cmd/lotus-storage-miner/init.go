@@ -158,6 +158,7 @@ func configureStorageMiner(ctx context.Context, api api.FullNode, addr address.A
 		Method:   actors.MAMethods.UpdatePeerID,
 		Params:   enc,
 		Nonce:    nonce,
+		Value:    types.NewInt(0),
 		GasPrice: types.NewInt(0),
 		GasLimit: types.NewInt(1000),
 	}
@@ -171,6 +172,7 @@ func configureStorageMiner(ctx context.Context, api api.FullNode, addr address.A
 		return err
 	}
 
+	log.Info("Waiting for message: ", smsg.Cid())
 	ret, err := api.ChainWaitMsg(ctx, smsg.Cid())
 	if err != nil {
 		return err
