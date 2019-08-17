@@ -1,13 +1,23 @@
 package cli
 
 import (
+	"context"
 	"encoding/json"
 	"fmt"
+	"os"
 
+	"golang.org/x/xerrors"
 	"gopkg.in/urfave/cli.v2"
 
-	types "github.com/filecoin-project/go-lotus/chain/types"
+	"github.com/filecoin-project/go-lotus/chain/store"
+	"github.com/filecoin-project/go-lotus/chain/types"
+	"github.com/filecoin-project/go-lotus/node/repo"
+
+	bserv "github.com/ipfs/go-blockservice"
+	car "github.com/ipfs/go-car"
 	cid "github.com/ipfs/go-cid"
+	blockstore "github.com/ipfs/go-ipfs-blockstore"
+	mdag "github.com/ipfs/go-merkledag"
 )
 
 var chainCmd = &cli.Command{
@@ -16,6 +26,7 @@ var chainCmd = &cli.Command{
 	Subcommands: []*cli.Command{
 		chainHeadCmd,
 		chainGetBlock,
+		chainExportCmd,
 	},
 }
 
@@ -111,5 +122,60 @@ var chainGetBlock = &cli.Command{
 		fmt.Println(string(out))
 		return nil
 
+	},
+}
+
+var chainExportCmd = &cli.Command{
+	Name:  "export",
+	Usage: "Export chain to a file",
+	Action: func(cctx *cli.Context) error {
+		outname := "chain.car"
+
+		ctx := context.Background()
+		r, err := repo.NewFS(cctx.String("repo"))
+		if err != nil {
+			return err
+		}
+
+		lr, err := r.Lock()
+		if err != nil {
+			return err
+		}
+
+		mds, err := lr.Datastore("/metadata")
+		if err != nil {
+			return err
+		}
+
+		kb, err := mds.Get(store.ChainHeadKey)
+		if err != nil {
+			return err
+		}
+
+		var ts []cid.Cid
+		if err := json.Unmarshal(kb, &ts); err != nil {
+			return err
+		}
+
+		bds, err := lr.Datastore("/blocks")
+		if err != nil {
+			return err
+		}
+
+		bs := blockstore.NewBlockstore(bds)
+		bs = blockstore.NewIdStore(bs)
+		dserv := mdag.NewDAGService(bserv.New(bs, nil))
+
+		fi, err := os.Create(outname)
+		if err != nil {
+			return err
+		}
+		defer fi.Close()
+
+		if err := car.WriteCar(ctx, dserv, ts, fi); err != nil {
+			return xerrors.Errorf("failed to write car: %w", err)
+		}
+
+		return nil
 	},
 }

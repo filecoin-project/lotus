@@ -24,7 +24,7 @@ import (
 
 var log = logging.Logger("chainstore")
 
-var chainHeadKey = dstore.NewKey("head")
+var ChainHeadKey = dstore.NewKey("head")
 
 type ChainStore struct {
 	bs bstore.Blockstore
@@ -67,7 +67,7 @@ func NewChainStore(bs bstore.Blockstore, ds dstore.Batching) *ChainStore {
 }
 
 func (cs *ChainStore) Load() error {
-	head, err := cs.ds.Get(chainHeadKey)
+	head, err := cs.ds.Get(ChainHeadKey)
 	if err == dstore.ErrNotFound {
 		log.Warn("no previous chain state found")
 		return nil
@@ -97,7 +97,7 @@ func (cs *ChainStore) writeHead(ts *types.TipSet) error {
 		return errors.Wrap(err, "failed to marshal tipset")
 	}
 
-	if err := cs.ds.Put(chainHeadKey, data); err != nil {
+	if err := cs.ds.Put(ChainHeadKey, data); err != nil {
 		return errors.Wrap(err, "failed to write chain head to datastore")
 	}
 
