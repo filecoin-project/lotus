@@ -19,7 +19,7 @@ type runningNode struct {
 	cmd  *exec.Cmd
 	meta nodeInfo
 
-	mux *outmux
+	mux  *outmux
 	stop func()
 }
 

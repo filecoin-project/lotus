@@ -19,19 +19,19 @@ type outmux struct {
 	errpr *io.PipeReader
 	outpr *io.PipeReader
 
-	n uint64
+	n    uint64
 	outs map[uint64]*websocket.Conn
 
-	new chan *websocket.Conn
+	new  chan *websocket.Conn
 	stop chan struct{}
 }
 
 func newWsMux() *outmux {
 	out := &outmux{
-		n:     0,
+		n:    0,
 		outs: map[uint64]*websocket.Conn{},
-		new:   make(chan *websocket.Conn),
-		stop:  make(chan struct{}),
+		new:  make(chan *websocket.Conn),
+		stop: make(chan struct{}),
 	}
 
 	out.outpr, out.outpw = io.Pipe()
