@@ -5,6 +5,7 @@ import (
 	"net/http"
 	"os"
 	"os/exec"
+	"path"
 	"strconv"
 
 	"github.com/filecoin-project/go-lotus/lib/jsonrpc"
@@ -18,6 +19,7 @@ type runningNode struct {
 	cmd  *exec.Cmd
 	meta nodeInfo
 
+	mux *outmux
 	stop func()
 }
 
@@ -107,15 +109,33 @@ func nodeById(nodes []nodeInfo, i int) nodeInfo {
 	panic("no node with this id")
 }
 
+func logHandler(api *api) func(http.ResponseWriter, *http.Request) {
+	return func(w http.ResponseWriter, req *http.Request) {
+		id, err := strconv.ParseInt(path.Base(req.URL.Path), 10, 32)
+		if err != nil {
+			panic(err)
+			return
+		}
+
+		api.runningLk.Lock()
+		n := api.running[int32(id)]
+		api.runningLk.Unlock()
+
+		n.mux.ServeHTTP(w, req)
+	}
+}
+
 var runCmd = &cli.Command{
 	Name:  "run",
 	Usage: "run lotuspond daemon",
 	Action: func(cctx *cli.Context) error {
 		rpcServer := jsonrpc.NewServer()
-		rpcServer.Register("Pond", &api{running: map[int32]runningNode{}})
+		a := &api{running: map[int32]runningNode{}}
+		rpcServer.Register("Pond", a)
 
 		http.Handle("/", http.FileServer(http.Dir("lotuspond/front/build")))
 		http.Handle("/rpc/v0", rpcServer)
+		http.HandleFunc("/logs/", logHandler(a))
 
 		fmt.Printf("Listening on http://%s\n", listenAddr)
 		return http.ListenAndServe(listenAddr, nil)
