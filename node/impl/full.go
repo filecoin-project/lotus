@@ -291,7 +291,7 @@ func (a *FullNodeAPI) MinerStart(ctx context.Context, addr address.Address) erro
 	return nil
 }
 
-func (a *FullNodeAPI) MinerCreateBlock(ctx context.Context, addr address.Address, parents *types.TipSet, tickets []types.Ticket, proof types.ElectionProof, msgs []*types.SignedMessage) (*chain.BlockMsg, error) {
+func (a *FullNodeAPI) MinerCreateBlock(ctx context.Context, addr address.Address, parents *types.TipSet, tickets []*types.Ticket, proof types.ElectionProof, msgs []*types.SignedMessage) (*chain.BlockMsg, error) {
 	fblk, err := gen.MinerCreateBlock(ctx, a.Chain, addr, parents, tickets, proof, msgs)
 	if err != nil {
 		return nil, err
@@ -326,7 +326,7 @@ func (a *FullNodeAPI) WalletBalance(ctx context.Context, addr address.Address) (
 }
 
 func (a *FullNodeAPI) WalletSign(ctx context.Context, k address.Address, msg []byte) (*types.Signature, error) {
-	return a.Wallet.Sign(k, msg)
+	return a.Wallet.Sign(ctx, k, msg)
 }
 
 func (a *FullNodeAPI) WalletSignMessage(ctx context.Context, k address.Address, msg *types.Message) (*types.SignedMessage, error) {

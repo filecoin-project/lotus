@@ -16,6 +16,7 @@ func init() {
 	cbor.RegisterCborType(CreateStorageMinerParams{})
 	cbor.RegisterCborType(IsMinerParam{})
 	cbor.RegisterCborType(PowerLookupParams{})
+	cbor.RegisterCborType(UpdateStorageParams{})
 }
 
 type StorageMarketActor struct{}
@@ -115,7 +116,8 @@ type UpdateStorageParams struct {
 
 func (sma StorageMarketActor) UpdateStorage(act *types.Actor, vmctx types.VMContext, params *UpdateStorageParams) ([]byte, ActorError) {
 	var self StorageMarketState
-	if err := vmctx.Storage().Get(vmctx.Storage().GetHead(), &self); err != nil {
+	old := vmctx.Storage().GetHead()
+	if err := vmctx.Storage().Get(old, &self); err != nil {
 		return nil, err
 	}
 
@@ -125,6 +127,16 @@ func (sma StorageMarketActor) UpdateStorage(act *types.Actor, vmctx types.VMCont
 	}
 
 	self.TotalStorage = types.BigAdd(self.TotalStorage, params.Delta)
+
+	nroot, err := vmctx.Storage().Put(self)
+	if err != nil {
+		return nil, err
+	}
+
+	if err := vmctx.Storage().Commit(old, nroot); err != nil {
+		return nil, err
+	}
+
 	return nil, nil
 }
 

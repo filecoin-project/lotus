@@ -7,11 +7,16 @@ import (
 	actors "github.com/filecoin-project/go-lotus/chain/actors"
 	"github.com/filecoin-project/go-lotus/chain/address"
 	"github.com/filecoin-project/go-lotus/chain/state"
+	"github.com/filecoin-project/go-lotus/chain/store"
 	"github.com/filecoin-project/go-lotus/chain/types"
+	"github.com/filecoin-project/go-lotus/chain/vm"
+	"golang.org/x/xerrors"
 
 	"github.com/ipfs/go-cid"
+	"github.com/ipfs/go-datastore"
 	hamt "github.com/ipfs/go-hamt-ipld"
 	bstore "github.com/ipfs/go-ipfs-blockstore"
+	peer "github.com/libp2p/go-libp2p-peer"
 	sharray "github.com/whyrusleeping/sharray"
 )
 
@@ -133,17 +138,132 @@ func SetupStorageMarketActor(bs bstore.Blockstore) (*types.Actor, error) {
 	}, nil
 }
 
-func MakeGenesisBlock(bs bstore.Blockstore, balances map[address.Address]types.BigInt) (*GenesisBootstrap, error) {
-	fmt.Println("at end of make Genesis block")
+type GenMinerCfg struct {
+	Owner  address.Address
+	Worker address.Address
 
-	state, err := MakeInitialStateTree(bs, balances)
+	// not quite generating real sectors yet, but this will be necessary
+	//SectorDir string
+
+	// The address of the created miner, this is set by the genesis setup
+	MinerAddr address.Address
+
+	PeerID peer.ID
+}
+
+func mustEnc(i interface{}) []byte {
+	enc, err := actors.SerializeParams(i)
+	if err != nil {
+		panic(err)
+	}
+	return enc
+}
+
+func SetupStorageMiners(ctx context.Context, cs *store.ChainStore, sroot cid.Cid, gmcfg *GenMinerCfg) (cid.Cid, error) {
+	vm, err := vm.NewVM(sroot, 0, actors.NetworkAddress, cs)
+	if err != nil {
+		return cid.Undef, xerrors.Errorf("failed to create NewVM: %w", err)
+	}
+
+	params := mustEnc(actors.CreateStorageMinerParams{
+		Owner:      gmcfg.Owner,
+		Worker:     gmcfg.Worker,
+		SectorSize: types.NewInt(1024),
+		PeerID:     gmcfg.PeerID,
+	})
+
+	rval, err := doExec(ctx, vm, actors.StorageMarketAddress, gmcfg.Owner, actors.SMAMethods.CreateStorageMiner, params)
+	if err != nil {
+		return cid.Undef, xerrors.Errorf("failed to create genesis miner: %w", err)
+	}
+
+	maddr, err := address.NewFromBytes(rval)
+	if err != nil {
+		return cid.Undef, err
+	}
+
+	gmcfg.MinerAddr = maddr
+
+	params = mustEnc(actors.UpdateStorageParams{Delta: types.NewInt(5000)})
+
+	_, err = doExec(ctx, vm, actors.StorageMarketAddress, maddr, actors.SMAMethods.UpdateStorage, params)
+	if err != nil {
+		return cid.Undef, xerrors.Errorf("failed to update total storage: %w", err)
+	}
+
+	// UGLY HACKY MODIFICATION OF MINER POWER
+
+	// we have to flush the vm here because it buffers stuff internally for perf reasons
+	if _, err := vm.Flush(ctx); err != nil {
+		return cid.Undef, xerrors.Errorf("vm.Flush failed: %w", err)
+	}
+
+	st := vm.StateTree()
+	mact, err := st.GetActor(maddr)
+	if err != nil {
+		return cid.Undef, xerrors.Errorf("get miner actor failed: %w", err)
+	}
+
+	cst := hamt.CSTFromBstore(cs.Blockstore())
+	var mstate actors.StorageMinerActorState
+	if err := cst.Get(ctx, mact.Head, &mstate); err != nil {
+		return cid.Undef, xerrors.Errorf("getting miner actor state failed: %w", err)
+	}
+	mstate.Power = types.NewInt(5000)
+
+	nstate, err := cst.Put(ctx, mstate)
+	if err != nil {
+		return cid.Undef, err
+	}
+
+	mact.Head = nstate
+	if err := st.SetActor(maddr, mact); err != nil {
+		return cid.Undef, err
+	}
+	// End of super haxx
+
+	return vm.Flush(ctx)
+}
+
+func doExec(ctx context.Context, vm *vm.VM, to, from address.Address, method uint64, params []byte) ([]byte, error) {
+	ret, err := vm.ApplyMessage(context.TODO(), &types.Message{
+		To:       to,
+		From:     from,
+		Method:   method,
+		Params:   params,
+		GasLimit: types.NewInt(1000000),
+		GasPrice: types.NewInt(0),
+		Value:    types.NewInt(0),
+	})
 	if err != nil {
 		return nil, err
 	}
 
+	if ret.ExitCode != 0 {
+		return nil, fmt.Errorf("failed to call method: %s", ret.ActorErr)
+	}
+
+	return ret.Return, nil
+}
+
+func MakeGenesisBlock(bs bstore.Blockstore, balances map[address.Address]types.BigInt, gmcfg *GenMinerCfg) (*GenesisBootstrap, error) {
+	ctx := context.Background()
+
+	state, err := MakeInitialStateTree(bs, balances)
+	if err != nil {
+		return nil, xerrors.Errorf("make initial state tree failed: %w", err)
+	}
+
 	stateroot, err := state.Flush()
 	if err != nil {
-		return nil, err
+		return nil, xerrors.Errorf("flush state tree failed: %w", err)
+	}
+
+	// temp chainstore
+	cs := store.NewChainStore(bs, datastore.NewMapDatastore())
+	stateroot, err = SetupStorageMiners(ctx, cs, stateroot, gmcfg)
+	if err != nil {
+		return nil, xerrors.Errorf("setup storage miners failed: %w", err)
 	}
 
 	cst := hamt.CSTFromBstore(bs)
@@ -162,9 +282,15 @@ func MakeGenesisBlock(bs bstore.Blockstore, balances map[address.Address]types.B
 
 	fmt.Println("Empty Genesis root: ", emptyroot)
 
+	genesisticket := &types.Ticket{
+		VRFProof:  []byte("vrf proof"),
+		VDFResult: []byte("i am a vdf result"),
+		VDFProof:  []byte("vdf proof"),
+	}
+
 	b := &types.BlockHeader{
 		Miner:           actors.InitActorAddress,
-		Tickets:         []types.Ticket{},
+		Tickets:         []*types.Ticket{genesisticket},
 		ElectionProof:   []byte("the Genesis block"),
 		Parents:         []cid.Cid{},
 		Height:          0,
@@ -186,4 +312,20 @@ func MakeGenesisBlock(bs bstore.Blockstore, balances map[address.Address]types.B
 	return &GenesisBootstrap{
 		Genesis: b,
 	}, nil
+}
+
+type SignFunc func(context.Context, address.Address, []byte) (*types.Signature, error)
+
+func ComputeVRF(ctx context.Context, sign SignFunc, w address.Address, input []byte) ([]byte, error) {
+
+	sig, err := sign(ctx, w, input)
+	if err != nil {
+		return nil, err
+	}
+
+	if sig.Type != types.KTBLS {
+		return nil, fmt.Errorf("miner worker address was not a BLS key")
+	}
+
+	return sig.Data, nil
 }

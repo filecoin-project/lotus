@@ -54,8 +54,8 @@ type FullNodeStruct struct {
 		MpoolPending func(context.Context, *types.TipSet) ([]*types.SignedMessage, error) `perm:"read"`
 		MpoolPush    func(context.Context, *types.SignedMessage) error                    `perm:"write"`
 
-		MinerStart       func(context.Context, address.Address) error                                                                                                `perm:"admin"`
-		MinerCreateBlock func(context.Context, address.Address, *types.TipSet, []types.Ticket, types.ElectionProof, []*types.SignedMessage) (*chain.BlockMsg, error) `perm:"write"`
+		MinerStart       func(context.Context, address.Address) error                                                                                                 `perm:"admin"`
+		MinerCreateBlock func(context.Context, address.Address, *types.TipSet, []*types.Ticket, types.ElectionProof, []*types.SignedMessage) (*chain.BlockMsg, error) `perm:"write"`
 
 		WalletNew            func(context.Context, string) (address.Address, error)                               `perm:"write"`
 		WalletHas            func(context.Context, address.Address) (bool, error)                                 `perm:"write"`
@@ -163,7 +163,7 @@ func (c *FullNodeStruct) MinerStart(ctx context.Context, addr address.Address) e
 	return c.Internal.MinerStart(ctx, addr)
 }
 
-func (c *FullNodeStruct) MinerCreateBlock(ctx context.Context, addr address.Address, base *types.TipSet, tickets []types.Ticket, eproof types.ElectionProof, msgs []*types.SignedMessage) (*chain.BlockMsg, error) {
+func (c *FullNodeStruct) MinerCreateBlock(ctx context.Context, addr address.Address, base *types.TipSet, tickets []*types.Ticket, eproof types.ElectionProof, msgs []*types.SignedMessage) (*chain.BlockMsg, error) {
 	return c.Internal.MinerCreateBlock(ctx, addr, base, tickets, eproof, msgs)
 }
 

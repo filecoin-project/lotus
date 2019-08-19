@@ -9,11 +9,13 @@ import (
 	"github.com/ipfs/go-car"
 	offline "github.com/ipfs/go-ipfs-exchange-offline"
 	"github.com/ipfs/go-merkledag"
+	"golang.org/x/xerrors"
 
 	"github.com/filecoin-project/go-lotus/chain/address"
 	"github.com/filecoin-project/go-lotus/chain/store"
 	"github.com/filecoin-project/go-lotus/chain/types"
 	"github.com/filecoin-project/go-lotus/chain/wallet"
+	"github.com/filecoin-project/go-lotus/lib/vdf"
 	"github.com/filecoin-project/go-lotus/node/repo"
 
 	block "github.com/ipfs/go-block-format"
@@ -41,6 +43,7 @@ type ChainGen struct {
 	w *wallet.Wallet
 
 	miner       address.Address
+	mworker     address.Address
 	receivers   []address.Address
 	banker      address.Address
 	bankerNonce uint64
@@ -68,56 +71,60 @@ func NewGenerator() (*ChainGen, error) {
 	mr := repo.NewMemory(nil)
 	lr, err := mr.Lock()
 	if err != nil {
-		return nil, err
+		return nil, xerrors.Errorf("taking mem-repo lock failed: %w", err)
 	}
 
 	ds, err := lr.Datastore("/metadata")
 	if err != nil {
-		return nil, err
+		return nil, xerrors.Errorf("failed to get metadata datastore: %w", err)
 	}
 
 	bds, err := lr.Datastore("/blocks")
 	if err != nil {
-		return nil, err
+		return nil, xerrors.Errorf("failed to get blocks datastore: %w", err)
 	}
 
 	bs := mybs{blockstore.NewIdStore(blockstore.NewBlockstore(bds))}
 
 	ks, err := lr.KeyStore()
 	if err != nil {
-		return nil, err
+		return nil, xerrors.Errorf("getting repo keystore failed: %w", err)
 	}
 
 	w, err := wallet.NewWallet(ks)
 	if err != nil {
-		return nil, err
+		return nil, xerrors.Errorf("creating memrepo wallet failed: %w", err)
 	}
 
-	miner, err := w.GenerateKey(types.KTBLS)
+	worker, err := w.GenerateKey(types.KTBLS)
 	if err != nil {
-		return nil, err
+		return nil, xerrors.Errorf("failed to generate worker key: %w", err)
 	}
 
-	// KTBLS doesn't support signature verification or something like that yet
 	banker, err := w.GenerateKey(types.KTSecp256k1)
 	if err != nil {
-		return nil, err
+		return nil, xerrors.Errorf("failed to generate banker key: %w", err)
 	}
 
 	receievers := make([]address.Address, msgsPerBlock)
 	for r := range receievers {
 		receievers[r], err = w.GenerateKey(types.KTBLS)
 		if err != nil {
-			return nil, err
+			return nil, xerrors.Errorf("failed to generate receiver key: %w", err)
 		}
 	}
 
+	minercfg := &GenMinerCfg{
+		Worker: worker,
+		Owner:  worker,
+	}
+
 	genb, err := MakeGenesisBlock(bs, map[address.Address]types.BigInt{
-		miner:  types.NewInt(5),
+		worker: types.NewInt(50000),
 		banker: types.NewInt(90000000),
-	})
+	}, minercfg)
 	if err != nil {
-		return nil, err
+		return nil, xerrors.Errorf("make genesis block failed: %w", err)
 	}
 
 	cs := store.NewChainStore(bs, ds)
@@ -125,7 +132,11 @@ func NewGenerator() (*ChainGen, error) {
 	genfb := &types.FullBlock{Header: genb.Genesis}
 
 	if err := cs.SetGenesis(genb.Genesis); err != nil {
-		return nil, err
+		return nil, xerrors.Errorf("set genesis failed: %w", err)
+	}
+
+	if minercfg.MinerAddr == address.Undef {
+		return nil, xerrors.Errorf("MakeGenesisBlock failed to set miner address")
 	}
 
 	gen := &ChainGen{
@@ -135,7 +146,8 @@ func NewGenerator() (*ChainGen, error) {
 		genesis:      genb.Genesis,
 		w:            w,
 
-		miner:     miner,
+		miner:     minercfg.MinerAddr,
+		mworker:   worker,
 		banker:    banker,
 		receivers: receievers,
 
@@ -166,12 +178,32 @@ func (cg *ChainGen) GenesisCar() ([]byte, error) {
 	return out.Bytes(), nil
 }
 
-func (cg *ChainGen) nextBlockProof() (address.Address, types.ElectionProof, []types.Ticket, error) {
-	return cg.miner, []byte("cat in a box"), []types.Ticket{types.Ticket("im a ticket, promise")}, nil
+func (cg *ChainGen) nextBlockProof(ctx context.Context) (address.Address, types.ElectionProof, []*types.Ticket, error) {
+
+	ticks := cg.curBlock.Header.Tickets
+	lastTicket := ticks[len(ticks)-1]
+
+	vrfout, err := ComputeVRF(ctx, cg.w.Sign, cg.mworker, lastTicket.VDFResult)
+	if err != nil {
+		return address.Undef, nil, nil, err
+	}
+
+	out, proof, err := vdf.Run(vrfout)
+	if err != nil {
+		return address.Undef, nil, nil, err
+	}
+
+	tick := &types.Ticket{
+		VRFProof:  vrfout,
+		VDFProof:  proof,
+		VDFResult: out,
+	}
+
+	return cg.miner, []byte("cat in a box"), []*types.Ticket{tick}, nil
 }
 
 func (cg *ChainGen) NextBlock() (*types.FullBlock, []*types.SignedMessage, error) {
-	miner, proof, tickets, err := cg.nextBlockProof()
+	miner, proof, tickets, err := cg.nextBlockProof(context.TODO())
 	if err != nil {
 		return nil, nil, err
 	}
@@ -199,7 +231,7 @@ func (cg *ChainGen) NextBlock() (*types.FullBlock, []*types.SignedMessage, error
 			return nil, nil, err
 		}
 
-		sig, err := cg.w.Sign(cg.banker, unsigned)
+		sig, err := cg.w.Sign(context.TODO(), cg.banker, unsigned)
 		if err != nil {
 			return nil, nil, err
 		}

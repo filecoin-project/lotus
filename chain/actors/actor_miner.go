@@ -2,6 +2,7 @@ package actors
 
 import (
 	"context"
+
 	"github.com/filecoin-project/go-lotus/chain/actors/aerrors"
 	"github.com/filecoin-project/go-lotus/chain/address"
 	"github.com/filecoin-project/go-lotus/chain/types"
@@ -22,6 +23,7 @@ func init() {
 	cbor.RegisterCborType(PieceInclVoucherData{})
 	cbor.RegisterCborType(InclusionProof{})
 	cbor.RegisterCborType(PaymentVerifyParams{})
+	cbor.RegisterCborType(UpdatePeerIDParams{})
 }
 
 var ProvingPeriodDuration = uint64(2 * 60) // an hour, for now

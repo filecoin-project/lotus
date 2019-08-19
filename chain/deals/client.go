@@ -2,8 +2,9 @@ package deals
 
 import (
 	"context"
-	"github.com/filecoin-project/go-lotus/chain/actors"
 	"math"
+
+	"github.com/filecoin-project/go-lotus/chain/actors"
 
 	sectorbuilder "github.com/filecoin-project/go-sectorbuilder"
 	"github.com/ipfs/go-cid"
@@ -139,7 +140,7 @@ func (c *Client) sendProposal(s inet.Stream, proposal StorageDealProposal, from 
 	if err != nil {
 		return err
 	}
-	sig, err := c.w.Sign(from, msg)
+	sig, err := c.w.Sign(context.TODO(), from, msg)
 	if err != nil {
 		return err
 	}

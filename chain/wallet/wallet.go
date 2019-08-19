@@ -1,6 +1,7 @@
 package wallet
 
 import (
+	"context"
 	"sort"
 	"strings"
 
@@ -33,7 +34,7 @@ func NewWallet(keystore types.KeyStore) (*Wallet, error) {
 	return w, nil
 }
 
-func (w *Wallet) Sign(addr address.Address, msg []byte) (*types.Signature, error) {
+func (w *Wallet) Sign(ctx context.Context, addr address.Address, msg []byte) (*types.Signature, error) {
 	ki, err := w.findKey(addr)
 	if err != nil {
 		return nil, err

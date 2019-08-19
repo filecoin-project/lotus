@@ -2,6 +2,7 @@ package testing
 
 import (
 	"context"
+	"fmt"
 	"io"
 	"os"
 
@@ -27,7 +28,20 @@ func MakeGenesisMem(out io.Writer) func(bs dtypes.ChainBlockstore, w *wallet.Wal
 		return func() (*types.BlockHeader, error) {
 			glog.Warn("Generating new random genesis block, note that this SHOULD NOT happen unless you are setting up new network")
 			// TODO: make an address allocation
-			b, err := gen.MakeGenesisBlock(bs, nil)
+			w, err := w.GenerateKey(types.KTBLS)
+			if err != nil {
+				return nil, err
+			}
+
+			gmc := &gen.GenMinerCfg{
+				Owner:  w,
+				Worker: w,
+			}
+			alloc := map[address.Address]types.BigInt{
+				w: types.NewInt(100000),
+			}
+
+			b, err := gen.MakeGenesisBlock(bs, alloc, gmc)
 			if err != nil {
 				return nil, err
 			}
@@ -48,19 +62,26 @@ func MakeGenesis(outFile string) func(bs dtypes.ChainBlockstore, w *wallet.Walle
 	return func(bs dtypes.ChainBlockstore, w *wallet.Wallet) modules.Genesis {
 		return func() (*types.BlockHeader, error) {
 			glog.Warn("Generating new random genesis block, note that this SHOULD NOT happen unless you are setting up new network")
-			minerAddr, err := w.GenerateKey(types.KTSecp256k1)
+			minerAddr, err := w.GenerateKey(types.KTBLS)
 			if err != nil {
 				return nil, err
+			}
+
+			gmc := &gen.GenMinerCfg{
+				Owner:  minerAddr,
+				Worker: minerAddr,
 			}
 
 			addrs := map[address.Address]types.BigInt{
 				minerAddr: types.NewInt(50000000),
 			}
 
-			b, err := gen.MakeGenesisBlock(bs, addrs)
+			b, err := gen.MakeGenesisBlock(bs, addrs, gmc)
 			if err != nil {
 				return nil, err
 			}
+
+			fmt.Println("GENESIS MINER ADDRESS: ", gmc.MinerAddr.String())
 
 			f, err := os.OpenFile(outFile, os.O_CREATE|os.O_WRONLY, 0644)
 			if err != nil {

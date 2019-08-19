@@ -3,6 +3,7 @@ package cli
 import (
 	"fmt"
 
+	"github.com/filecoin-project/go-lotus/chain/address"
 	"gopkg.in/urfave/cli.v2"
 )
 
@@ -25,8 +26,12 @@ var minerStart = &cli.Command{
 
 		ctx := ReqContext(cctx)
 
-		// TODO: this address needs to be the address of an actual miner
-		maddr, err := api.WalletDefaultAddress(ctx)
+		if !cctx.Args().Present() {
+			return fmt.Errorf("must specify miner actor address to mine for")
+		}
+
+		// TODO: need to pull this from disk or something
+		maddr, err := address.NewFromString(cctx.Args().First())
 		if err != nil {
 			return err
 		}

@@ -441,6 +441,10 @@ func Copy(ctx context.Context, from, to ipld.DAGService, root cid.Cid) error {
 	return nil
 }
 
+func (vm *VM) StateTree() types.StateTree {
+	return vm.cstate
+}
+
 func (vm *VM) TransferFunds(from, to address.Address, amt types.BigInt) error {
 	if from == to {
 		return nil
