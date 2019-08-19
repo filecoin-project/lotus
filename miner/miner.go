@@ -80,6 +80,8 @@ func (m *Miner) Mine(ctx context.Context) {
 		b, err := m.mineOne(ctx, base)
 		if err != nil {
 			log.Errorf("mining block failed: %s", err)
+			log.Warn("waiting 400ms before attempting to mine a block")
+			time.Sleep(400 * time.Millisecond)
 			continue
 		}
 
