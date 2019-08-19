@@ -14,8 +14,16 @@ class Block extends React.Component {
 
   async loadHeader() {
     const header = await this.props.conn.call('Filecoin.ChainGetBlock', [this.props.cid])
-    const messages = await this.props.conn.call('Filecoin.ChainGetBlockMessages', [this.props.cid])
-    console.log(messages)
+    let messages = await this.props.conn.call('Filecoin.ChainGetBlockMessages', [this.props.cid])
+    let receipts = await this.props.conn.call('Filecoin.ChainGetBlockReceipts', [this.props.cid])
+
+    messages = [
+      ...(messages.BlsMessages.map(m => ({...m, type: 'BLS'}))),
+      ...(messages.SecpkMessages.map(m => ({...(m.Message), type: 'Secpk'})))
+    ]
+
+    messages = messages.map((msg, k) => ({...msg, receipt: receipts[k]}))
+
     this.setState({header: header, messages: messages})
   }
 
@@ -24,15 +32,12 @@ class Block extends React.Component {
     if (this.state.header) {
       let head = this.state.header
 
-
-
-      let messages = [
-        ...(this.state.messages.BlsMessages.map(m => ({...m, type: 'BLS'}))),
-        ...(this.state.messages.SecpkMessages.map(m => ({...(m.Message), type: 'Secpk'})))
-      ].map(m => (
+      const messages = this.state.messages.map(m => (
         <div>
           <Address client={this.props.conn} addr={m.From} mountWindow={this.props.mountWindow}/><b>&nbsp;=>&nbsp;</b>
           <Address client={this.props.conn} addr={m.To} mountWindow={this.props.mountWindow} transfer={m.Value} method={m.Method}/>
+          <span>&nbsp;{m.receipt.GasUsed}Gas</span>
+          {m.receipt.ExitCode !== 0 ? <span>&nbsp;<b>EXIT:{m.receipt.ExitCode}</b></span> : <span/>}
         </div>
       ))
 

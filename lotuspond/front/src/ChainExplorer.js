@@ -114,12 +114,15 @@ class ChainExplorer extends React.Component {
         const ts = this.state.cache[row]
 
         let msgc = -1
-        if(ts.Cids[0] && this.state.messages[ts.Cids[0]['/']]) {
+        if(ts.Cids[0] && this.state.messages[ts.Cids[0]['/']]) { // TODO: get from all blks
           msgc = this.state.messages[ts.Cids[0]['/']].SecpkMessages.length + this.state.messages[ts.Cids[0]['/']].BlsMessages.length
+        }
+        if(msgc > 0) {
+          msgc = <b>{msgc}</b>
         }
 
         info = <span>
-          <BlockLinks cids={ts.Cids} conn={this.props.client} mountWindow={this.props.mountWindow} /> Msgs: <b>{msgc}</b>
+          <BlockLinks cids={ts.Cids} blocks={ts.Blocks} conn={this.props.client} mountWindow={this.props.mountWindow} /> Msgs: {msgc}
         </span>
       }
 

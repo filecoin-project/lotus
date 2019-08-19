@@ -4,9 +4,9 @@ import * as multihash from "multihashes";
 import State from "./State";
 import methods from "./chain/methods";
 
-function truncAddr(addr) {
-  if (addr.length > 21) {
-    return <abbr title={addr}>{addr.substr(0, 18) + '..'}</abbr>
+function truncAddr(addr, len) {
+  if (addr.length > len) {
+    return <abbr title={addr}>{addr.substr(0, len - 3) + '..'}</abbr>
   }
   return addr
 }
@@ -72,7 +72,7 @@ class Address extends React.Component {
     if(this.props.add1k) {
       add1k = <span>&nbsp;<a href="#" onClick={() => this.props.add1k(this.props.addr)}>[+1k]</a></span>
     }
-    let addr = truncAddr(this.props.addr)
+    let addr = truncAddr(this.props.addr, this.props.short ? 12 : 17)
 
     let actInfo = <span>(?)</span>
     if(this.state.balance >= 0) {
@@ -80,17 +80,21 @@ class Address extends React.Component {
       addr = <a href="#" onClick={this.openState}>{addr}</a>
     }
 
-    let balance = <span>:&nbsp;{this.state.balance}</span>
+    let balance = <span>:&nbsp;{this.state.balance}&nbsp;</span>
     if(this.props.nobalance) {
-      balance = <span></span>
+      balance = <span/>
+    }
+    if(this.props.short) {
+      actInfo = <span/>
+      balance = <span/>
     }
 
-    let transfer = <span></span>
+    let transfer = <span/>
     if(this.props.transfer) {
       transfer = <span>&nbsp;{this.props.transfer}FIL</span>
     }
 
-    return <span>{addr}{balance}&nbsp;{actInfo}{add1k}{transfer}</span>
+    return <span>{addr}{balance}{actInfo}{add1k}{transfer}</span>
   }
 }
 

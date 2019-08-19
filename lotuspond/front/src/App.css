@@ -64,6 +64,7 @@
 }
 
 .ChainExplorer-at {
+  min-width: 40em;
   background: #77ff77;
 }
 
