@@ -75,3 +75,12 @@
 .ChainExplorer-before {
   background: #cccc00
 }
+
+.Logs {
+  width: 100%;
+  height: 100%;
+}
+
+.Logs-window :nth-child(2) {
+  height: 100%;
+}

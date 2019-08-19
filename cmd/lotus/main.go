@@ -15,7 +15,7 @@ import (
 )
 
 func main() {
-	logging.SetLogLevel("*", "DEBUG")
+	logging.SetLogLevel("*", "INFO")
 	local := []*cli.Command{
 		DaemonCmd,
 	}
