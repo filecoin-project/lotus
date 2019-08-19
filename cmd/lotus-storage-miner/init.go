@@ -216,15 +216,16 @@ func createStorageMiner(ctx context.Context, api api.FullNode, peerid peer.ID) (
 	}
 
 	createStorageMinerMsg := types.Message{
-		To:   actors.StorageMarketAddress,
-		From: defOwner,
-
+		To:    actors.StorageMarketAddress,
+		From:  defOwner,
 		Nonce: nonce,
-
 		Value: collateral,
 
 		Method: actors.SMAMethods.CreateStorageMiner,
 		Params: params,
+
+		GasLimit: types.NewInt(10000),
+		GasPrice: types.NewInt(0),
 	}
 
 	unsigned, err := createStorageMinerMsg.Serialize()
