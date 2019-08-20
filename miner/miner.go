@@ -4,12 +4,8 @@ import (
 	"context"
 	"crypto/sha256"
 	"math/big"
+	"sync"
 	"time"
-
-	logging "github.com/ipfs/go-log"
-	"github.com/pkg/errors"
-	"go.opencensus.io/trace"
-	"golang.org/x/xerrors"
 
 	chain "github.com/filecoin-project/go-lotus/chain"
 	"github.com/filecoin-project/go-lotus/chain/actors"
@@ -17,49 +13,37 @@ import (
 	"github.com/filecoin-project/go-lotus/chain/gen"
 	"github.com/filecoin-project/go-lotus/chain/types"
 	"github.com/filecoin-project/go-lotus/lib/vdf"
+	"github.com/filecoin-project/go-lotus/node/impl/full"
+
+	logging "github.com/ipfs/go-log"
+	"github.com/pkg/errors"
+	"go.opencensus.io/trace"
+	"go.uber.org/fx"
+	"golang.org/x/xerrors"
 )
 
 var log = logging.Logger("miner")
 
-type api interface {
-	ChainCall(context.Context, *types.Message, *types.TipSet) (*types.MessageReceipt, error)
+type api struct {
+	fx.In
 
-	ChainSubmitBlock(context.Context, *chain.BlockMsg) error
-
-	// returns a set of messages that havent been included in the chain as of
-	// the given tipset
-	MpoolPending(ctx context.Context, base *types.TipSet) ([]*types.SignedMessage, error)
-
-	// Returns the best tipset for the miner to mine on top of.
-	// TODO: Not sure this feels right (including the messages api). Miners
-	// will likely want to have more control over exactly which blocks get
-	// mined on, and which messages are included.
-	ChainHead(context.Context) (*types.TipSet, error)
-
-	// returns the lookback randomness from the chain used for the election
-	ChainGetRandomness(context.Context, *types.TipSet) ([]byte, error)
-
-	// create a block
-	// it seems realllllly annoying to do all the actions necessary to build a
-	// block through the API. so, we just add the block creation to the API
-	// now, all the 'miner' does is check if they win, and call create block
-	MinerCreateBlock(context.Context, address.Address, *types.TipSet, []*types.Ticket, types.ElectionProof, []*types.SignedMessage) (*chain.BlockMsg, error)
-
-	WalletSign(context.Context, address.Address, []byte) (*types.Signature, error)
+	full.ChainAPI
+	full.MpoolAPI
+	full.WalletAPI
 }
 
-func NewMiner(api api, addr address.Address) *Miner {
+func NewMiner(api api) *Miner {
 	return &Miner{
-		api:     api,
-		address: addr,
-		Delay:   time.Second * 4,
+		api:   api,
+		Delay: time.Second * 4,
 	}
 }
 
 type Miner struct {
 	api api
 
-	address address.Address
+	lk        sync.Mutex
+	addresses []address.Address
 
 	// time between blocks, network parameter
 	Delay time.Duration
@@ -67,7 +51,21 @@ type Miner struct {
 	lastWork *MiningBase
 }
 
-func (m *Miner) Mine(ctx context.Context) {
+func (m *Miner) Register(addr address.Address) error {
+	m.lk.Lock()
+	defer m.lk.Unlock()
+
+	if len(m.addresses) > 0 {
+		return errors.New("mining with more than one storage miner instance not supported yet") // TODO !
+	}
+
+	m.addresses = append(m.addresses, addr)
+	go m.mine(context.TODO())
+
+	return nil
+}
+
+func (m *Miner) mine(ctx context.Context) {
 	ctx, span := trace.StartSpan(ctx, "/mine")
 	defer span.End()
 	for {
@@ -151,7 +149,7 @@ func (m *Miner) submitNullTicket(base *MiningBase, ticket *types.Ticket) {
 }
 
 func (m *Miner) computeVRF(ctx context.Context, input []byte) ([]byte, error) {
-	w, err := m.getMinerWorker(ctx, m.address, nil)
+	w, err := m.getMinerWorker(ctx, m.addresses[0], nil)
 	if err != nil {
 		return nil, err
 	}
@@ -192,7 +190,7 @@ func (m *Miner) isWinnerNextRound(ctx context.Context, base *MiningBase) (bool, 
 		return false, nil, xerrors.Errorf("failed to compute VRF: %w", err)
 	}
 
-	mpow, totpow, err := m.getPowerForTipset(ctx, m.address, base.ts)
+	mpow, totpow, err := m.getPowerForTipset(ctx, m.addresses[0], base.ts)
 	if err != nil {
 		return false, nil, xerrors.Errorf("failed to check power: %w", err)
 	}
@@ -302,7 +300,7 @@ func (m *Miner) createBlock(base *MiningBase, ticket *types.Ticket, proof types.
 	msgs := m.selectMessages(pending)
 
 	// why even return this? that api call could just submit it for us
-	return m.api.MinerCreateBlock(context.TODO(), m.address, base.ts, append(base.tickets, ticket), proof, msgs)
+	return m.api.MinerCreateBlock(context.TODO(), m.addresses[0], base.ts, append(base.tickets, ticket), proof, msgs)
 }
 
 func (m *Miner) selectMessages(msgs []*types.SignedMessage) []*types.SignedMessage {

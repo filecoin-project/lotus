@@ -24,6 +24,7 @@ import (
 	"github.com/filecoin-project/go-lotus/chain/types"
 	"github.com/filecoin-project/go-lotus/chain/wallet"
 	"github.com/filecoin-project/go-lotus/lib/sectorbuilder"
+	"github.com/filecoin-project/go-lotus/miner"
 	"github.com/filecoin-project/go-lotus/node/config"
 	"github.com/filecoin-project/go-lotus/node/hello"
 	"github.com/filecoin-project/go-lotus/node/impl"
@@ -222,6 +223,8 @@ func Online() Option {
 
 			Override(new(*paych.Store), modules.PaychStore),
 			Override(new(*paych.Manager), modules.PaymentChannelManager),
+
+			Override(new(*miner.Miner), miner.NewMiner),
 		),
 
 		// Storage miner
@@ -309,7 +312,7 @@ func Repo(r repo.Repo) Option {
 
 func FullAPI(out *api.FullNode) Option {
 	return func(s *Settings) error {
-		resAPI := &impl.FullNodeAPI{}
+		resAPI := &impl.API{}
 		s.invokes[ExtractApiKey] = fx.Extract(resAPI)
 		*out = resAPI
 		return nil

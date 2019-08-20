@@ -36,7 +36,7 @@ var minerStart = &cli.Command{
 			return err
 		}
 
-		if err := api.MinerStart(ctx, maddr); err != nil {
+		if err := api.MinerRegister(ctx, maddr); err != nil {
 			return err
 		}
 
