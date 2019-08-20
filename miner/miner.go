@@ -56,7 +56,11 @@ func (m *Miner) Register(addr address.Address) error {
 	defer m.lk.Unlock()
 
 	if len(m.addresses) > 0 {
-		return errors.New("mining with more than one storage miner instance not supported yet") // TODO !
+		if len(m.addresses) > 1 || m.addresses[0] != addr {
+			return errors.New("mining with more than one storage miner instance not supported yet") // TODO !
+		}
+
+		log.Warnf("miner.Register called more than once for actor '%s'", addr)
 	}
 
 	m.addresses = append(m.addresses, addr)

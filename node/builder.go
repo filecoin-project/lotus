@@ -80,6 +80,7 @@ const (
 	// storage miner
 	HandleDealsKey
 	RunSectorServiceKey
+	RegisterMinerKey
 
 	// daemon
 	ExtractApiKey
@@ -238,6 +239,7 @@ func Online() Option {
 			Override(new(*deals.Handler), deals.NewHandler),
 			Override(HandleDealsKey, modules.HandleDeals),
 			Override(RunSectorServiceKey, modules.RunSectorService),
+			Override(RegisterMinerKey, modules.RegisterMiner),
 		),
 	)
 }
@@ -306,13 +308,13 @@ func Repo(r repo.Repo) Option {
 
 		Override(new(types.KeyStore), modules.KeyStore),
 
-		Override(new(*modules.APIAlg), modules.APISecret),
+		Override(new(*dtypes.APIAlg), modules.APISecret),
 	)
 }
 
 func FullAPI(out *api.FullNode) Option {
 	return func(s *Settings) error {
-		resAPI := &impl.API{}
+		resAPI := &impl.FullNodeAPI{}
 		s.invokes[ExtractApiKey] = fx.Extract(resAPI)
 		*out = resAPI
 		return nil

@@ -123,6 +123,12 @@ var initCmd = &cli.Command{
 }
 
 func configureStorageMiner(ctx context.Context, api api.FullNode, addr address.Address, peerid peer.ID) error {
+	// We may be one of genesis miners, start mining before trying to do any chain operations
+	// (otherwise our messages won't be mined)
+	if err := api.MinerRegister(ctx, addr); err != nil {
+		return err
+	}
+
 	// This really just needs to be an api call at this point...
 	recp, err := api.ChainCall(ctx, &types.Message{
 		To:     addr,

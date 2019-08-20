@@ -13,6 +13,7 @@ import (
 
 	"github.com/filecoin-project/go-lotus/api"
 	"github.com/filecoin-project/go-lotus/chain/types"
+	"github.com/filecoin-project/go-lotus/node/modules/dtypes"
 	"github.com/filecoin-project/go-lotus/node/repo"
 )
 
@@ -29,13 +30,11 @@ func RecordValidator(ps peerstore.Peerstore) record.Validator {
 
 const JWTSecretName = "auth-jwt-private"
 
-type APIAlg jwt.HMACSHA
-
 type jwtPayload struct {
 	Allow []string
 }
 
-func APISecret(keystore types.KeyStore, lr repo.LockedRepo) (*APIAlg, error) {
+func APISecret(keystore types.KeyStore, lr repo.LockedRepo) (*dtypes.APIAlg, error) {
 	key, err := keystore.Get(JWTSecretName)
 	if err != nil {
 		log.Warn("Generating new API secret")
@@ -69,5 +68,5 @@ func APISecret(keystore types.KeyStore, lr repo.LockedRepo) (*APIAlg, error) {
 		}
 	}
 
-	return (*APIAlg)(jwt.NewHS256(key.PrivateKey)), nil
+	return (*dtypes.APIAlg)(jwt.NewHS256(key.PrivateKey)), nil
 }

@@ -12,7 +12,7 @@ import (
 
 var log = logging.Logger("node")
 
-type API struct {
+type FullNodeAPI struct {
 	CommonAPI
 	full.ChainAPI
 	full.ClientAPI
@@ -24,8 +24,8 @@ type API struct {
 	Miner *miner.Miner
 }
 
-func (a *API) MinerRegister(ctx context.Context, addr address.Address) error {
+func (a *FullNodeAPI) MinerRegister(ctx context.Context, addr address.Address) error {
 	return a.Miner.Register(addr)
 }
 
-var _ api.FullNode = &API{}
+var _ api.FullNode = &FullNodeAPI{}
