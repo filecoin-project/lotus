@@ -6,6 +6,7 @@ import {Cristal} from "react-cristal";
 import StorageNode from "./StorageNode";
 import {Client} from "rpc-websockets";
 import pushMessage from "./chain/send";
+import Logs from "./Logs";
 
 class NodeList extends React.Component {
   constructor(props) {
@@ -130,13 +131,15 @@ class NodeList extends React.Component {
                 type = "STOR"
               }
 
+              let logs = "[logs]"
               let info = "[CONNECTING..]"
               if (nd.conn) {
                 info = <span>{nd.peerid}</span>
+                logs = <a href='#' onClick={() => this.props.mountWindow(cl => <Logs node={nd.ID} onClose={cl}/>)}>[logs]</a>
               }
 
               return <div key={n}>
-                {n} {type} {info}
+                {n} {type} {logs} {info}
               </div>
             })}
           </div>

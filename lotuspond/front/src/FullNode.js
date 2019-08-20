@@ -63,10 +63,10 @@ class FullNode extends React.Component {
     // TODO: Use actual miner address
     // see cli/miner.go
     this.setState({mining: true})
-    let addr = "t0523423423" // in case we have no wallets
-    if (this.state.defaultAddr) {
+    let addr = "t0101" // in case we have no wallets
+    /*if (this.state.defaultAddr) {
       addr = this.state.defaultAddr
-    }
+    }*/
 
     this.setState({mining: true})
     await this.props.client.call("Filecoin.MinerStart", [addr])

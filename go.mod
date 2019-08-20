@@ -59,6 +59,7 @@ require (
 	github.com/multiformats/go-multiaddr-dns v0.0.3
 	github.com/multiformats/go-multiaddr-net v0.0.1
 	github.com/multiformats/go-multihash v0.0.6
+	github.com/opentracing/opentracing-go v1.1.0
 	github.com/pkg/errors v0.8.1
 	github.com/polydawn/refmt v0.0.0-20190809202753-05966cbd336a
 	github.com/smartystreets/assertions v1.0.1 // indirect
