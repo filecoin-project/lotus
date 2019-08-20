@@ -63,6 +63,7 @@ func (m *Miner) Register(addr address.Address) error {
 		}
 
 		log.Warnf("miner.Register called more than once for actor '%s'", addr)
+		return xerrors.Errorf("miner.Register called more than once for actor '%s'", addr)
 	}
 
 	m.addresses = append(m.addresses, addr)
