@@ -121,10 +121,14 @@ func (m *Miner) mine(ctx context.Context) {
 		select {
 		case <-m.stop:
 			m.lk.Lock()
+
 			close(m.stopping)
 			m.stop = nil
 			m.stopping = nil
+
 			m.lk.Unlock()
+
+			return
 		default:
 		}
 

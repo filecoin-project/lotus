@@ -25,6 +25,10 @@ var initCmd = &cli.Command{
 			Name:  "actor",
 			Usage: "specify the address of an already created miner actor",
 		},
+		&cli.BoolFlag{
+			Name:  "genesis-miner",
+			Usage: "enable genesis mining (DON'T USE ON BOOTSTRAPPED NETWORK)",
+		},
 	},
 	Action: func(cctx *cli.Context) error {
 		log.Info("Initializing lotus storage miner")
@@ -93,7 +97,7 @@ var initCmd = &cli.Command{
 				return err
 			}
 
-			if err := configureStorageMiner(ctx, api, a, peerid); err != nil {
+			if err := configureStorageMiner(ctx, api, a, peerid, cctx.Bool("genesis-miner")); err != nil {
 				return xerrors.Errorf("failed to configure storage miner: %w", err)
 			}
 
@@ -122,11 +126,20 @@ var initCmd = &cli.Command{
 	},
 }
 
-func configureStorageMiner(ctx context.Context, api api.FullNode, addr address.Address, peerid peer.ID) error {
-	// We may be one of genesis miners, start mining before trying to do any chain operations
-	// (otherwise our messages won't be mined)
-	if err := api.MinerRegister(ctx, addr); err != nil {
-		return err
+func configureStorageMiner(ctx context.Context, api api.FullNode, addr address.Address, peerid peer.ID, genmine bool) error {
+	if genmine {
+		log.Warn("Starting genesis mining. This shouldn't happen when connecting to the real network.")
+		// We may be one of genesis miners, start mining before trying to do any chain operations
+		// (otherwise our messages won't be mined)
+		if err := api.MinerRegister(ctx, addr); err != nil {
+			return err
+		}
+
+		defer func() {
+			if err := api.MinerUnregister(ctx, addr); err != nil {
+				log.Errorf("failed to call api.MinerUnregister: %s", err)
+			}
+		}()
 	}
 
 	// This really just needs to be an api call at this point...
