@@ -24,6 +24,7 @@ import (
 	"github.com/filecoin-project/go-lotus/chain/types"
 	"github.com/filecoin-project/go-lotus/chain/wallet"
 	"github.com/filecoin-project/go-lotus/lib/sectorbuilder"
+	"github.com/filecoin-project/go-lotus/miner"
 	"github.com/filecoin-project/go-lotus/node/config"
 	"github.com/filecoin-project/go-lotus/node/hello"
 	"github.com/filecoin-project/go-lotus/node/impl"
@@ -79,6 +80,7 @@ const (
 	// storage miner
 	HandleDealsKey
 	RunSectorServiceKey
+	RegisterMinerKey
 
 	// daemon
 	ExtractApiKey
@@ -222,6 +224,8 @@ func Online() Option {
 
 			Override(new(*paych.Store), modules.PaychStore),
 			Override(new(*paych.Manager), modules.PaymentChannelManager),
+
+			Override(new(*miner.Miner), miner.NewMiner),
 		),
 
 		// Storage miner
@@ -235,6 +239,7 @@ func Online() Option {
 			Override(new(*deals.Handler), deals.NewHandler),
 			Override(HandleDealsKey, modules.HandleDeals),
 			Override(RunSectorServiceKey, modules.RunSectorService),
+			Override(RegisterMinerKey, modules.RegisterMiner),
 		),
 	)
 }
@@ -303,7 +308,7 @@ func Repo(r repo.Repo) Option {
 
 		Override(new(types.KeyStore), modules.KeyStore),
 
-		Override(new(*modules.APIAlg), modules.APISecret),
+		Override(new(*dtypes.APIAlg), modules.APISecret),
 	)
 }
 

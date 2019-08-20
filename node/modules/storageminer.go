@@ -125,3 +125,18 @@ func StagingDAG(mctx helpers.MetricsCtx, lc fx.Lifecycle, r repo.LockedRepo, rt 
 
 	return dag, nil
 }
+
+func RegisterMiner(lc fx.Lifecycle, ds dtypes.MetadataDS, api api.FullNode) error {
+	minerAddr, err := minerAddrFromDS(ds)
+	if err != nil {
+		return err
+	}
+
+	lc.Append(fx.Hook{
+		OnStart: func(ctx context.Context) error {
+			log.Infof("registering miner '%s' with full node", minerAddr)
+			return api.MinerRegister(ctx, minerAddr)
+		},
+	})
+	return nil
+}
