@@ -44,6 +44,8 @@ type Miner struct {
 
 	lk        sync.Mutex
 	addresses []address.Address
+	stop      chan struct{}
+	stopping  chan struct{}
 
 	// time between blocks, network parameter
 	Delay time.Duration
@@ -64,15 +66,68 @@ func (m *Miner) Register(addr address.Address) error {
 	}
 
 	m.addresses = append(m.addresses, addr)
+	m.stop = make(chan struct{})
+
 	go m.mine(context.TODO())
 
+	return nil
+}
+
+func (m *Miner) Unregister(ctx context.Context, addr address.Address) error {
+	m.lk.Lock()
+	if len(m.addresses) == 0 {
+		m.lk.Unlock()
+		return xerrors.New("no addresses registered")
+	}
+
+	if len(m.addresses) > 1 {
+		m.lk.Unlock()
+		log.Errorf("UNREGISTER NOT IMPLEMENTED FOR MORE THAN ONE ADDRESS!")
+		return xerrors.New("can't unregister when more than one actor is registered: not implemented")
+	}
+
+	if m.addresses[0] != addr {
+		m.lk.Unlock()
+		return xerrors.New("unregister: address not found")
+	}
+
+	// Unregistering last address, stop mining first
+	if m.stop != nil {
+		if m.stopping == nil {
+			m.stopping = make(chan struct{})
+			close(m.stop)
+		}
+		stopping := m.stopping
+		m.lk.Unlock()
+		select {
+		case <-stopping:
+		case <-ctx.Done():
+			return ctx.Err()
+		}
+		m.lk.Lock()
+	}
+
+	m.addresses = []address.Address{}
+
+	m.lk.Unlock()
 	return nil
 }
 
 func (m *Miner) mine(ctx context.Context) {
 	ctx, span := trace.StartSpan(ctx, "/mine")
 	defer span.End()
+
 	for {
+		select {
+		case <-m.stop:
+			m.lk.Lock()
+			close(m.stopping)
+			m.stop = nil
+			m.stopping = nil
+			m.lk.Unlock()
+		default:
+		}
+
 		base, err := m.GetBestMiningCandidate()
 		if err != nil {
 			log.Errorf("failed to get best mining candidate: %s", err)

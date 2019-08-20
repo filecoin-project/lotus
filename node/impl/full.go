@@ -28,4 +28,8 @@ func (a *FullNodeAPI) MinerRegister(ctx context.Context, addr address.Address) e
 	return a.Miner.Register(addr)
 }
 
+func (a *FullNodeAPI) MinerUnregister(ctx context.Context, addr address.Address) error {
+	return a.Miner.Unregister(ctx, addr)
+}
+
 var _ api.FullNode = &FullNodeAPI{}
