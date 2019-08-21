@@ -6,7 +6,10 @@ import (
 	"fmt"
 
 	"github.com/ipfs/go-cid"
+	logging "github.com/ipfs/go-log"
 )
+
+var log = logging.Logger("types")
 
 type TipSet struct {
 	cids   []cid.Cid
@@ -65,8 +68,10 @@ func (ts *TipSet) Height() uint64 {
 	return ts.height
 }
 
-func (ts *TipSet) Weight() uint64 {
-	panic("if tipsets are going to have weight on them, we need to wire that through")
+func (ts *TipSet) Weight() BigInt {
+	// TODO: implement correctly
+	log.Warn("Called TipSet.Weight: TODO: correct implementation")
+	return BigAdd(ts.blks[0].ParentWeight, NewInt(1))
 }
 
 func (ts *TipSet) Parents() []cid.Cid {
