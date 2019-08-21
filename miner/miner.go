@@ -53,6 +53,16 @@ type Miner struct {
 	lastWork *MiningBase
 }
 
+func (m *Miner) Addresses() ([]address.Address, error) {
+	m.lk.Lock()
+	defer m.lk.Unlock()
+
+	out := make([]address.Address, len(m.addresses))
+	copy(out, m.addresses)
+
+	return out, nil
+}
+
 func (m *Miner) Register(addr address.Address) error {
 	m.lk.Lock()
 	defer m.lk.Unlock()

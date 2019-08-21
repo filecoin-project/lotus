@@ -149,8 +149,13 @@ func (api *api) SpawnStorage(fullNodeRepo string) (nodeInfo, error) {
 		return nodeInfo{}, err
 	}
 
+	initArgs := []string{"init"}
+	if fullNodeRepo == api.running[1].meta.Repo {
+		initArgs = []string{"init", "--actor=t0101", "--genesis-miner"}
+	}
+
 	id := atomic.AddInt32(&api.cmds, 1)
-	cmd := exec.Command("./lotus-storage-miner", "init")
+	cmd := exec.Command("./lotus-storage-miner", initArgs...)
 	cmd.Stderr = io.MultiWriter(os.Stderr, errlogfile)
 	cmd.Stdout = io.MultiWriter(os.Stdout, logfile)
 	cmd.Env = []string{"LOTUS_STORAGE_PATH=" + dir, "LOTUS_PATH=" + fullNodeRepo}

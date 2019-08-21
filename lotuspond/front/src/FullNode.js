@@ -10,12 +10,9 @@ class FullNode extends React.Component {
   constructor(props) {
     super(props)
 
-    this.state = {
-      mining: false,
-    }
+    this.state = {}
 
     this.loadInfo = this.loadInfo.bind(this)
-    this.startMining = this.startMining.bind(this)
     this.newScepAddr = this.newScepAddr.bind(this)
     this.startStorageMiner = this.startStorageMiner.bind(this)
     this.add1k = this.add1k.bind(this)
@@ -46,6 +43,8 @@ class FullNode extends React.Component {
       return this.props.client.call('Filecoin.PaychVoucherList', [paych])
     }))
 
+    let minerList = await this.props.client.call('Filecoin.MinerAddresses', [])
+
     this.setState(() => ({
       id: id,
       version: version,
@@ -56,20 +55,10 @@ class FullNode extends React.Component {
       paychs: paychs,
       vouchers: vouchers,
 
-      defaultAddr: defaultAddr}))
-  }
+      defaultAddr: defaultAddr,
 
-  async startMining() {
-    // TODO: Use actual miner address
-    // see cli/miner.go
-    this.setState({mining: true})
-    let addr = "t0101" // in case we have no wallets
-    /*if (this.state.defaultAddr) {
-      addr = this.state.defaultAddr
-    }*/
-
-    this.setState({mining: true})
-    await this.props.client.call("Filecoin.MinerStart", [addr])
+      minerList: minerList,
+    }))
   }
 
   async newScepAddr() {
@@ -105,9 +94,10 @@ class FullNode extends React.Component {
         )
       }
 
-      let mine = <a href="#" disabled={this.state.mining} onClick={this.startMining}>[Mine]</a>
-      if (this.state.mining) {
-        mine = "[Mining]"
+      let mining = <span/>
+      if(this.state.minerList.length > 0) {
+        mining = this.state.minerList.map((a, k) => <span key={k}>&nbsp;<Address short={true} client={this.props.client} addr={a} mountWindow={this.props.mountWindow}/></span>)
+        mining = <span>[Mine{mining}]</span>
       }
 
       let storageMine = <a href="#" onClick={this.startStorageMiner}>[Spawn Storage Miner]</a>
@@ -143,7 +133,7 @@ class FullNode extends React.Component {
           <div>Repo: LOTUS_PATH={this.props.node.Repo}</div>
           {chainInfo}
           <div>
-            {mine} {storageMine}
+            {mining} {storageMine}
           </div>
           <div>
             <div>Balances: [New <a href="#" onClick={this.newScepAddr}>[Secp256k1]</a>]</div>

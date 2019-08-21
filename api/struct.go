@@ -56,6 +56,7 @@ type FullNodeStruct struct {
 
 		MinerRegister    func(context.Context, address.Address) error                                                                                                 `perm:"admin"`
 		MinerUnregister  func(context.Context, address.Address) error                                                                                                 `perm:"admin"`
+		MinerAddresses   func(context.Context) ([]address.Address, error)                                                                                             `perm:"write"`
 		MinerCreateBlock func(context.Context, address.Address, *types.TipSet, []*types.Ticket, types.ElectionProof, []*types.SignedMessage) (*chain.BlockMsg, error) `perm:"write"`
 
 		WalletNew            func(context.Context, string) (address.Address, error)                               `perm:"write"`
@@ -166,6 +167,10 @@ func (c *FullNodeStruct) MinerRegister(ctx context.Context, addr address.Address
 
 func (c *FullNodeStruct) MinerUnregister(ctx context.Context, addr address.Address) error {
 	return c.Internal.MinerUnregister(ctx, addr)
+}
+
+func (c *FullNodeStruct) MinerAddresses(ctx context.Context) ([]address.Address, error) {
+	return c.Internal.MinerAddresses(ctx)
 }
 
 func (c *FullNodeStruct) MinerCreateBlock(ctx context.Context, addr address.Address, base *types.TipSet, tickets []*types.Ticket, eproof types.ElectionProof, msgs []*types.SignedMessage) (*chain.BlockMsg, error) {
