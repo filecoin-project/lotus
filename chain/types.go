@@ -1,22 +1,19 @@
 package chain
 
 import (
-	"fmt"
-
-	block "github.com/ipfs/go-block-format"
 	"github.com/ipfs/go-cid"
 	cbor "github.com/ipfs/go-ipld-cbor"
-	ipld "github.com/ipfs/go-ipld-format"
 
 	"github.com/filecoin-project/go-lotus/chain/types"
 )
 
 func init() {
-	ipld.Register(0x1f, IpldDecode)
+	//ipld.Register(0x1f, IpldDecode)
 
 	cbor.RegisterCborType(BlockMsg{})
 }
 
+/*
 func IpldDecode(block block.Block) (ipld.Node, error) {
 	var i interface{}
 	if err := cbor.DecodeInto(block.RawData(), &i); err != nil {
@@ -38,6 +35,8 @@ func (f *filecoinIpldNode) Cid() cid.Cid {
 	case types.SignedMessage:
 		return t.Cid()
 	default:
+		fmt.Printf("bad type: %T\n", f.val)
+		fmt.Printf("what even is this: %#v\n", f.val)
 		panic("whats going on")
 	}
 }
@@ -70,16 +69,15 @@ func (f *filecoinIpldNode) Links() []*ipld.Link {
 }
 
 func (f *filecoinIpldNode) Resolve(path []string) (interface{}, []string, error) {
-	/*
-		switch t := f.val.(type) {
-		case Block:
-			switch path[0] {
-			}
-		case Message:
-		default:
-			panic("whats going on")
-		}
-	*/
+	//
+		//switch t := f.val.(type) {
+		//case Block:
+			//switch path[0] {
+			//}
+		//case Message:
+		//default:
+			//panic("whats going on")
+		//}
 	panic("please dont call this")
 }
 
@@ -128,6 +126,7 @@ func (f *filecoinIpldNode) RawData() []byte {
 func (f *filecoinIpldNode) String() string {
 	return "cats"
 }
+*/
 
 type BlockMsg struct {
 	Header        *types.BlockHeader

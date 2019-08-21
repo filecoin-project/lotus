@@ -1,0 +1,88 @@
+package types
+
+import (
+	"bytes"
+	"reflect"
+	"testing"
+
+	"github.com/filecoin-project/go-lotus/chain/address"
+	cid "github.com/ipfs/go-cid"
+	cbor "github.com/ipfs/go-ipld-cbor"
+)
+
+func testBlockHeader(t testing.TB) *BlockHeader {
+	t.Helper()
+
+	addr, err := address.NewIDAddress(12512063)
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	c, err := cid.Decode("bafyreicmaj5hhoy5mgqvamfhgexxyergw7hdeshizghodwkjg6qmpoco7i")
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	return &BlockHeader{
+		Miner:         addr,
+		ElectionProof: []byte("cats won the election"),
+		Tickets: []*Ticket{
+			&Ticket{
+				VRFProof:  []byte("vrf proof"),
+				VDFResult: []byte("vdf result"),
+				VDFProof:  []byte("vrf proof"),
+			},
+		},
+		Parents:         []cid.Cid{c, c},
+		MessageReceipts: c,
+		BLSAggregate:    Signature{Type: KTBLS, Data: []byte("boo! im a signature")},
+		ParentWeight:    NewInt(123125126212),
+		Messages:        c,
+		Height:          85919298723,
+		StateRoot:       c,
+	}
+}
+
+func TestBlockHeaderSerialization(t *testing.T) {
+	bh := testBlockHeader(t)
+
+	buf := new(bytes.Buffer)
+	if err := bh.MarshalCBOR(buf); err != nil {
+		t.Fatal(err)
+	}
+
+	var out BlockHeader
+	if err := out.UnmarshalCBOR(buf); err != nil {
+		t.Fatal(err)
+	}
+
+	if !reflect.DeepEqual(&out, bh) {
+		t.Fatal("not equal")
+	}
+}
+
+func BenchmarkBlockHeaderMarshal(b *testing.B) {
+	bh := testBlockHeader(b)
+
+	b.ReportAllocs()
+
+	buf := new(bytes.Buffer)
+	for i := 0; i < b.N; i++ {
+		buf.Reset()
+		if err := bh.MarshalCBOR(buf); err != nil {
+			b.Fatal(err)
+		}
+	}
+}
+
+func BenchmarkBlockHeaderMarshalOld(b *testing.B) {
+	bh := testBlockHeader(b)
+
+	b.ReportAllocs()
+
+	for i := 0; i < b.N; i++ {
+		if _, err := cbor.DumpObject(bh); err != nil {
+			b.Fatal(err)
+		}
+	}
+}

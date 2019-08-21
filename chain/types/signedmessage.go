@@ -1,43 +1,12 @@
 package types
 
 import (
-	"fmt"
+	"bytes"
 
 	block "github.com/ipfs/go-block-format"
 	"github.com/ipfs/go-cid"
-	cbor "github.com/ipfs/go-ipld-cbor"
 	"github.com/multiformats/go-multihash"
-	"github.com/polydawn/refmt/obj/atlas"
 )
-
-func init() {
-	cbor.RegisterCborType(atlas.BuildEntry(SignedMessage{}).UseTag(45).Transform().
-		TransformMarshal(atlas.MakeMarshalTransformFunc(
-			func(sm SignedMessage) ([]interface{}, error) {
-				return []interface{}{
-					sm.Message,
-					sm.Signature,
-				}, nil
-			})).
-		TransformUnmarshal(atlas.MakeUnmarshalTransformFunc(
-			func(x []interface{}) (SignedMessage, error) {
-				sigb, ok := x[1].([]byte)
-				if !ok {
-					return SignedMessage{}, fmt.Errorf("signature in signed message was not bytes")
-				}
-
-				sig, err := SignatureFromBytes(sigb)
-				if err != nil {
-					return SignedMessage{}, err
-				}
-
-				return SignedMessage{
-					Message:   x[0].(Message),
-					Signature: sig,
-				}, nil
-			})).
-		Complete())
-}
 
 func (m *SignedMessage) ToStorageBlock() (block.Block, error) {
 	data, err := m.Serialize()
@@ -45,7 +14,7 @@ func (m *SignedMessage) ToStorageBlock() (block.Block, error) {
 		return nil, err
 	}
 
-	pref := cid.NewPrefixV1(0x1f, multihash.BLAKE2B_MIN+31)
+	pref := cid.NewPrefixV1(cid.DagCBOR, multihash.BLAKE2B_MIN+31)
 	c, err := pref.Sum(data)
 	if err != nil {
 		return nil, err
@@ -74,7 +43,7 @@ type SignedMessage struct {
 
 func DecodeSignedMessage(data []byte) (*SignedMessage, error) {
 	var msg SignedMessage
-	if err := cbor.DecodeInto(data, &msg); err != nil {
+	if err := msg.UnmarshalCBOR(bytes.NewReader(data)); err != nil {
 		return nil, err
 	}
 
@@ -82,9 +51,9 @@ func DecodeSignedMessage(data []byte) (*SignedMessage, error) {
 }
 
 func (sm *SignedMessage) Serialize() ([]byte, error) {
-	data, err := cbor.DumpObject(sm)
-	if err != nil {
+	buf := new(bytes.Buffer)
+	if err := sm.MarshalCBOR(buf); err != nil {
 		return nil, err
 	}
-	return data, nil
+	return buf.Bytes(), nil
 }
