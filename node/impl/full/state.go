@@ -148,23 +148,27 @@ func (a *StateAPI) StateMinerPower(ctx context.Context, maddr address.Address, t
 		return api.MinerPower{}, err
 	}
 
+	var mpow types.BigInt
+
+	if maddr != address.Undef {
+		ret, err := vm.Call(ctx, a.Chain, &types.Message{
+			From:   maddr,
+			To:     actors.StorageMarketAddress,
+			Method: actors.SMAMethods.PowerLookup,
+			Params: enc,
+		}, ts)
+		if err != nil {
+			return api.MinerPower{}, xerrors.Errorf("failed to get miner power from chain: %w", err)
+		}
+		if ret.ExitCode != 0 {
+			return api.MinerPower{}, xerrors.Errorf("failed to get miner power from chain (exit code %d)", ret.ExitCode)
+		}
+
+		mpow = types.BigFromBytes(ret.Return)
+	}
+
 	ret, err := vm.Call(ctx, a.Chain, &types.Message{
-		From:   maddr,
-		To:     actors.StorageMarketAddress,
-		Method: actors.SMAMethods.PowerLookup,
-		Params: enc,
-	}, ts)
-	if err != nil {
-		return api.MinerPower{}, xerrors.Errorf("failed to get miner power from chain: %w", err)
-	}
-	if ret.ExitCode != 0 {
-		return api.MinerPower{}, xerrors.Errorf("failed to get miner power from chain (exit code %d)", ret.ExitCode)
-	}
-
-	mpow := types.BigFromBytes(ret.Return)
-
-	ret, err = vm.Call(ctx, a.Chain, &types.Message{
-		From:   maddr,
+		From:   actors.StorageMarketAddress,
 		To:     actors.StorageMarketAddress,
 		Method: actors.SMAMethods.GetTotalStorage,
 	}, ts)

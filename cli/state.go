@@ -2,13 +2,10 @@ package cli
 
 import (
 	"fmt"
-	"math/big"
 
 	"gopkg.in/urfave/cli.v2"
 
-	"github.com/filecoin-project/go-lotus/chain/actors"
 	"github.com/filecoin-project/go-lotus/chain/address"
-	types "github.com/filecoin-project/go-lotus/chain/types"
 )
 
 var stateCmd = &cli.Command{
@@ -32,43 +29,24 @@ var statePowerCmd = &cli.Command{
 
 		ctx := ReqContext(cctx)
 
-		var msg *types.Message
+		var maddr address.Address
 		if cctx.Args().Present() {
-			maddr, err := address.NewFromString(cctx.Args().First())
+			maddr, err = address.NewFromString(cctx.Args().First())
 			if err != nil {
 				return err
-			}
-
-			enc, err := actors.SerializeParams(&actors.PowerLookupParams{
-				Miner: maddr,
-			})
-			if err != nil {
-				return err
-			}
-
-			msg = &types.Message{
-				To:     actors.StorageMarketAddress,
-				From:   actors.StorageMarketAddress,
-				Method: actors.SMAMethods.PowerLookup,
-				Params: enc,
-			}
-		} else {
-			msg = &types.Message{
-				To:     actors.StorageMarketAddress,
-				From:   actors.StorageMarketAddress,
-				Method: actors.SMAMethods.GetTotalStorage,
 			}
 		}
-		ret, err := api.ChainCall(ctx, msg, nil)
+		power, err := api.StateMinerPower(ctx, maddr, nil)
 		if err != nil {
 			return err
 		}
-		if ret.ExitCode != 0 {
-			return fmt.Errorf("call to get power failed: %d", ret.ExitCode)
+
+		res := power.TotalPower
+		if cctx.Args().Present() {
+			res = power.MinerPower
 		}
 
-		v := big.NewInt(0).SetBytes(ret.Return)
-		fmt.Println(v.String())
+		fmt.Println(res.String())
 		return nil
 	},
 }
