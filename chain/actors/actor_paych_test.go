@@ -88,6 +88,6 @@ func TestPaychUpdate(t *testing.T) {
 	ret, _ = h.Invoke(t, targetAddr, pch, actors.PCAMethods.Collect, struct{}{})
 	ApplyOK(t, ret)
 
-	h.AssertBalance(t, targetAddr, 10100-2*10 /*gas cost*/)
-	h.AssertBalance(t, creatorAddr, 9900-10)
+	h.AssertBalanceChange(t, targetAddr, 100)
+	h.AssertBalanceChange(t, creatorAddr, -100)
 }

@@ -150,7 +150,13 @@ func (vmc *VMContext) StateTree() (types.StateTree, aerrors.ActorError) {
 	return vmc.state, nil
 }
 
+const GasVerifySignature = 50
+
 func (vmctx *VMContext) VerifySignature(sig *types.Signature, act address.Address, data []byte) aerrors.ActorError {
+	if err := vmctx.ChargeGas(GasVerifySignature); err != nil {
+		return err
+	}
+
 	if act.Protocol() == address.ID {
 		kaddr, err := vmctx.resolveToKeyAddr(act)
 		if err != nil {

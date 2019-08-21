@@ -40,9 +40,12 @@ const (
 type HarnessOpt func(testing.TB, *Harness2) error
 
 type Harness2 struct {
-	HI     HarnessInit
-	Stage  HarnessStage
-	Nonces map[address.Address]uint64
+	HI         HarnessInit
+	Stage      HarnessStage
+	Nonces     map[address.Address]uint64
+	GasCharges map[address.Address]types.BigInt
+
+	lastBalanceCheck map[address.Address]types.BigInt
 
 	ctx context.Context
 	bs  blockstore.Blockstore
@@ -130,10 +133,12 @@ func NewHarness2(t *testing.T, options ...HarnessOpt) *Harness2 {
 				blsaddr(0): HarnessMinerFunds,
 			},
 		},
+		GasCharges: make(map[address.Address]types.BigInt),
 
-		w:   w,
-		ctx: context.Background(),
-		bs:  bstore.NewBlockstore(dstore.NewMapDatastore()),
+		lastBalanceCheck: make(map[address.Address]types.BigInt),
+		w:                w,
+		ctx:              context.Background(),
+		bs:               bstore.NewBlockstore(dstore.NewMapDatastore()),
 	}
 	for _, opt := range options {
 		err := opt(t, h)
@@ -178,6 +183,15 @@ func (h *Harness2) Apply(t testing.TB, msg types.Message) (*vm.ApplyRet, *state.
 	if err != nil {
 		t.Fatalf("Applying message: %+v", err)
 	}
+
+	if ret != nil {
+		if prev, ok := h.GasCharges[msg.From]; ok {
+			h.GasCharges[msg.From] = types.BigAdd(prev, ret.GasUsed)
+		} else {
+			h.GasCharges[msg.From] = ret.GasUsed
+		}
+	}
+
 	stateroot, err := h.vm.Flush(context.TODO())
 	if err != nil {
 		t.Fatalf("Flushing VM: %+v", err)
@@ -245,6 +259,40 @@ func (h *Harness2) AssertBalance(t testing.TB, addr address.Address, amt uint64)
 	}
 
 	if types.BigCmp(types.NewInt(amt), b) != 0 {
+		t.Errorf("expected %s to have balanced of %d. Instead has %s", addr, amt, b)
+	}
+}
+
+func (h *Harness2) AssertBalanceChange(t testing.TB, addr address.Address, amt int64) {
+	t.Helper()
+	lastBalance, ok := h.lastBalanceCheck[addr]
+	if !ok {
+		lastBalance, ok = h.HI.Addrs[addr]
+		if !ok {
+			lastBalance = types.NewInt(0)
+		}
+	}
+
+	var expected types.BigInt
+
+	if amt >= 0 {
+		expected = types.BigAdd(lastBalance, types.NewInt(uint64(amt)))
+	} else {
+		expected = types.BigSub(lastBalance, types.NewInt(uint64(-amt)))
+	}
+
+	h.lastBalanceCheck[addr] = expected
+
+	if gasUsed, ok := h.GasCharges[addr]; ok {
+		expected = types.BigSub(expected, gasUsed)
+	}
+
+	b, err := h.vm.ActorBalance(addr)
+	if err != nil {
+		t.Fatalf("%+v", err)
+	}
+
+	if types.BigCmp(expected, b) != 0 {
 		t.Errorf("expected %s to have balanced of %d. Instead has %s", addr, amt, b)
 	}
 }

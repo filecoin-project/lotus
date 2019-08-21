@@ -1,18 +1,15 @@
 package actors_test
 
 import (
-	"context"
 	"testing"
 
 	cbor "github.com/ipfs/go-ipld-cbor"
 	"github.com/stretchr/testify/assert"
-	"go.opencensus.io/trace"
 
 	"github.com/filecoin-project/go-lotus/chain/actors"
 	"github.com/filecoin-project/go-lotus/chain/address"
 	"github.com/filecoin-project/go-lotus/chain/types"
 	"github.com/filecoin-project/go-lotus/chain/vm"
-	"github.com/filecoin-project/go-lotus/tracing"
 )
 
 func TestMultiSigCreate(t *testing.T) {
@@ -44,15 +41,9 @@ func ApplyOK(t testing.TB, ret *vm.ApplyRet) {
 }
 
 func TestMultiSigOps(t *testing.T) {
-	je := tracing.SetupJaegerTracing("test")
-	defer je.Flush()
-	ctx, span := trace.StartSpan(context.Background(), "/test-"+t.Name())
-	defer span.End()
-
 	var creatorAddr, sig1Addr, sig2Addr, outsideAddr address.Address
 	var multSigAddr address.Address
 	opts := []HarnessOpt{
-		HarnessCtx(ctx),
 		HarnessAddr(&creatorAddr, 100000),
 		HarnessAddr(&sig1Addr, 100000),
 		HarnessAddr(&sig2Addr, 100000),
@@ -66,25 +57,24 @@ func TestMultiSigOps(t *testing.T) {
 			}),
 	}
 
-	curVal := types.NewInt(2000)
 	h := NewHarness2(t, opts...)
 	{
+		const chargeVal = 2000
 		// Send funds into the multisig
-		ret, state := h.SendFunds(t, creatorAddr, multSigAddr, curVal)
+		ret, _ := h.SendFunds(t, creatorAddr, multSigAddr, types.NewInt(chargeVal))
 		ApplyOK(t, ret)
-		ms, err := state.GetActor(multSigAddr)
-		assert.NoError(t, err)
-		assert.Equal(t, curVal, ms.Balance)
+		h.AssertBalanceChange(t, creatorAddr, -chargeVal)
+		h.AssertBalanceChange(t, multSigAddr, chargeVal)
 	}
 
 	{
 		// Transfer funds outside of multsig
-		sendVal := types.NewInt(1000)
+		const sendVal = 1000
 		ret, _ := h.Invoke(t, creatorAddr, multSigAddr, actors.MultiSigMethods.Propose,
 
 			actors.MultiSigProposeParams{
 				To:    outsideAddr,
-				Value: sendVal,
+				Value: types.NewInt(sendVal),
 			})
 		ApplyOK(t, ret)
 		var txIDParam actors.MultiSigTxID
@@ -94,19 +84,14 @@ func TestMultiSigOps(t *testing.T) {
 		ret, _ = h.Invoke(t, outsideAddr, multSigAddr, actors.MultiSigMethods.Approve,
 			txIDParam)
 		assert.Equal(t, uint8(1), ret.ExitCode, "outsideAddr should not approve")
+		h.AssertBalanceChange(t, multSigAddr, 0)
 
-		ret2, state := h.Invoke(t, sig1Addr, multSigAddr, actors.MultiSigMethods.Approve,
+		ret2, _ := h.Invoke(t, sig1Addr, multSigAddr, actors.MultiSigMethods.Approve,
 			txIDParam)
 		ApplyOK(t, ret2)
-		curVal = types.BigSub(curVal, sendVal)
 
-		outAct, err := state.GetActor(outsideAddr)
-		assert.NoError(t, err)
-		assert.Equal(t, types.NewInt(uint64(1000+1000-ret.GasUsed.Int64())), outAct.Balance)
-
-		msAct, err := state.GetActor(multSigAddr)
-		assert.NoError(t, err)
-		assert.Equal(t, curVal, msAct.Balance)
+		h.AssertBalanceChange(t, outsideAddr, sendVal)
+		h.AssertBalanceChange(t, multSigAddr, -sendVal)
 	}
 
 }
