@@ -405,7 +405,7 @@ func (syncer *Syncer) ValidateBlock(ctx context.Context, b *types.FullBlock) err
 
 	baseTs, err := syncer.store.LoadTipSet(h.Parents)
 	if err != nil {
-		return err
+		return xerrors.Errorf("load tipset failed: %w", err)
 	}
 
 	if err := syncer.minerIsValid(ctx, h.Miner, baseTs); err != nil {
@@ -423,11 +423,11 @@ func (syncer *Syncer) ValidateBlock(ctx context.Context, b *types.FullBlock) err
 
 	vmi, err := vm.NewVM(stateroot, h.Height, h.Miner, syncer.store)
 	if err != nil {
-		return err
+		return xerrors.Errorf("failed to instantiate VM: %w", err)
 	}
 
 	if err := vmi.TransferFunds(actors.NetworkAddress, b.Header.Miner, vm.MiningRewardForBlock(baseTs)); err != nil {
-		return err
+		return xerrors.Errorf("fund transfer failed: %w", err)
 	}
 
 	var receipts []interface{}
@@ -437,7 +437,7 @@ func (syncer *Syncer) ValidateBlock(ctx context.Context, b *types.FullBlock) err
 			return xerrors.Errorf("failed executing bls message %d in block %s: %w", i, b.Header.Cid(), err)
 		}
 
-		receipts = append(receipts, receipt)
+		receipts = append(receipts, receipt.MessageReceipt)
 	}
 
 	for i, m := range b.SecpkMessages {
@@ -452,7 +452,7 @@ func (syncer *Syncer) ValidateBlock(ctx context.Context, b *types.FullBlock) err
 	cst := hamt.CSTFromBstore(syncer.store.Blockstore())
 	recptRoot, err := sharray.Build(context.TODO(), 4, receipts, cst)
 	if err != nil {
-		return err
+		return xerrors.Errorf("building receipts sharray failed: %w", err)
 	}
 	if recptRoot != b.Header.MessageReceipts {
 		return fmt.Errorf("receipts mismatched")
@@ -460,7 +460,7 @@ func (syncer *Syncer) ValidateBlock(ctx context.Context, b *types.FullBlock) err
 
 	final, err := vmi.Flush(context.TODO())
 	if err != nil {
-		return err
+		return xerrors.Errorf("failed to flush VM state: %w", err)
 	}
 
 	if b.Header.StateRoot != final {
