@@ -13,7 +13,8 @@ class FullNode extends React.Component {
     this.state = {}
 
     this.loadInfo = this.loadInfo.bind(this)
-    this.newScepAddr = this.newScepAddr.bind(this)
+    this.newSecpAddr = this.newSecpAddr.bind(this)
+    this.newBLSAddr = this.newBLSAddr.bind(this)
     this.startStorageMiner = this.startStorageMiner.bind(this)
     this.add1k = this.add1k.bind(this)
     this.explorer = this.explorer.bind(this)
@@ -61,8 +62,14 @@ class FullNode extends React.Component {
     }))
   }
 
-  async newScepAddr() {
+  async newSecpAddr() {
     const t = "secp256k1"
+    await this.props.client.call("Filecoin.WalletNew", [t])
+    this.loadInfo()
+  }
+
+  async newBLSAddr() {
+    const t = "bls"
     await this.props.client.call("Filecoin.WalletNew", [t])
     this.loadInfo()
   }
@@ -135,7 +142,7 @@ class FullNode extends React.Component {
             {storageMine}
           </div>
           <div>
-            <div>Balances: [New <a href="#" onClick={this.newScepAddr}>[Secp256k1]</a>]</div>
+            <div>Balances: [New <a href="#" onClick={this.newSecpAddr}>[Secp256k1]</a> <a href="#" onClick={this.newBLSAddr}>[BLS]</a>]</div>
             <div>{addresses}</div>
             <div>{miners}</div>
             <div>{paychannels}</div>
