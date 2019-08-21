@@ -31,17 +31,21 @@ class Address extends React.Component {
     let balance = 0
     let actor = {}
     let actorInfo
+    let minerInfo
 
     try {
       balance = await this.props.client.call('Filecoin.WalletBalance', [this.props.addr])
       actor = await this.props.client.call('Filecoin.ChainGetActor', [this.props.addr, this.props.ts || null])
 
       actorInfo = await this.actorInfo(actor)
+      if(this.props.miner) {
+        minerInfo = await this.props.client.call('Filecoin.StateMinerPower', [this.props.addr, this.props.ts || null])
+      }
     } catch (err) {
       console.log(err)
       balance = -1
     }
-    this.setState({balance, actor, actorInfo})
+    this.setState({balance, actor, actorInfo, minerInfo})
   }
 
   openState() {
@@ -94,7 +98,12 @@ class Address extends React.Component {
       transfer = <span>&nbsp;{this.props.transfer}FIL</span>
     }
 
-    return <span>{addr}{balance}{actInfo}{add1k}{transfer}</span>
+    let minerInfo = <span/>
+    if(this.state.minerInfo) {
+      minerInfo = <span>&nbsp;Power: {this.state.minerInfo.MinerPower} ({this.state.minerInfo.MinerPower/this.state.minerInfo.TotalPower*100}%)</span>
+    }
+
+    return <span>{addr}{balance}{actInfo}{add1k}{transfer}{minerInfo}</span>
   }
 }
 

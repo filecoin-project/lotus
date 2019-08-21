@@ -94,10 +94,9 @@ class FullNode extends React.Component {
         )
       }
 
-      let mining = <span/>
+      let miners = <span/>
       if(this.state.minerList.length > 0) {
-        mining = this.state.minerList.map((a, k) => <span key={k}>&nbsp;<Address short={true} client={this.props.client} addr={a} mountWindow={this.props.mountWindow}/></span>)
-        mining = <span>[Mine{mining}]</span>
+        miners = this.state.minerList.map((a, k) => <div key={k}><Address miner={true} client={this.props.client} addr={a} mountWindow={this.props.mountWindow}/></div>)
       }
 
       let storageMine = <a href="#" onClick={this.startStorageMiner}>[Spawn Storage Miner]</a>
@@ -133,11 +132,12 @@ class FullNode extends React.Component {
           <div>Repo: LOTUS_PATH={this.props.node.Repo}</div>
           {chainInfo}
           <div>
-            {mining} {storageMine}
+            {storageMine}
           </div>
           <div>
             <div>Balances: [New <a href="#" onClick={this.newScepAddr}>[Secp256k1]</a>]</div>
             <div>{addresses}</div>
+            <div>{miners}</div>
             <div>{paychannels}</div>
           </div>
 
