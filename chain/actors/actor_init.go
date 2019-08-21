@@ -22,6 +22,10 @@ var log = logging.Logger("actors")
 
 var EmptyCBOR cid.Cid
 
+const (
+	GasCreateActor = 100
+)
+
 func init() {
 	cbor.RegisterCborType(ExecParams{})
 	cbor.RegisterCborType(struct{}{})
@@ -80,6 +84,10 @@ func (ia InitActor) Exec(act *types.Actor, vmctx types.VMContext, p *ExecParams)
 	var self InitActorState
 	if err := vmctx.Storage().Get(beginState, &self); err != nil {
 		return nil, err
+	}
+
+	if err := vmctx.ChargeGas(GasCreateActor); err != nil {
+		return nil, aerrors.Wrap(err, "run out of gas")
 	}
 
 	// Make sure that only the actors defined in the spec can be launched.

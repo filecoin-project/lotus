@@ -24,7 +24,7 @@ func TestStorageMarketCreateMiner(t *testing.T) {
 				From:     h.From,
 				Method:   SMAMethods.CreateStorageMiner,
 				GasPrice: types.NewInt(1),
-				GasLimit: types.NewInt(1),
+				GasLimit: types.NewInt(1000),
 				Value:    types.NewInt(0),
 				Params: h.DumpObject(&CreateStorageMinerParams{
 					Owner:      h.From,

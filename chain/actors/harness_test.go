@@ -127,7 +127,7 @@ func TestVMInvokeHarness(t *testing.T) {
 						}),
 					}),
 				GasPrice: types.NewInt(1),
-				GasLimit: types.NewInt(1),
+				GasLimit: types.NewInt(1000),
 				Value:    types.NewInt(0),
 			},
 			Ret: func(t *testing.T, ret *types.MessageReceipt) {
