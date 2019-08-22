@@ -24,6 +24,10 @@ type FullNodeAPI struct {
 	Miner *miner.Miner
 }
 
+func (a *FullNodeAPI) MinerAddresses(context.Context) ([]address.Address, error) {
+	return a.Miner.Addresses()
+}
+
 func (a *FullNodeAPI) MinerRegister(ctx context.Context, addr address.Address) error {
 	return a.Miner.Register(addr)
 }

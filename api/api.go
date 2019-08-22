@@ -67,6 +67,7 @@ type FullNode interface {
 
 	MinerRegister(context.Context, address.Address) error
 	MinerUnregister(context.Context, address.Address) error
+	MinerAddresses(context.Context) ([]address.Address, error)
 	MinerCreateBlock(context.Context, address.Address, *types.TipSet, []*types.Ticket, types.ElectionProof, []*types.SignedMessage) (*chain.BlockMsg, error)
 
 	// // UX ?
@@ -97,6 +98,7 @@ type FullNode interface {
 
 	StateMinerSectors(context.Context, address.Address) ([]*SectorInfo, error)
 	StateMinerProvingSet(context.Context, address.Address) ([]*SectorInfo, error)
+	StateMinerPower(context.Context, address.Address, *types.TipSet) (MinerPower, error)
 
 	PaychCreate(ctx context.Context, from, to address.Address, amt types.BigInt) (address.Address, error)
 	PaychList(context.Context) ([]address.Address, error)
@@ -171,3 +173,8 @@ type ActorState struct {
 }
 
 type PaychStatus struct{}
+
+type MinerPower struct {
+	MinerPower types.BigInt
+	TotalPower types.BigInt
+}

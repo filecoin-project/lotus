@@ -30,6 +30,7 @@ type api struct {
 	full.ChainAPI
 	full.MpoolAPI
 	full.WalletAPI
+	full.StateAPI
 }
 
 func NewMiner(api api) *Miner {
@@ -51,6 +52,16 @@ type Miner struct {
 	Delay time.Duration
 
 	lastWork *MiningBase
+}
+
+func (m *Miner) Addresses() ([]address.Address, error) {
+	m.lk.Lock()
+	defer m.lk.Unlock()
+
+	out := make([]address.Address, len(m.addresses))
+	copy(out, m.addresses)
+
+	return out, nil
 }
 
 func (m *Miner) Register(addr address.Address) error {
@@ -171,7 +182,7 @@ func (m *Miner) GetBestMiningCandidate() (*MiningBase, error) {
 			return m.lastWork, nil
 		}
 
-		if bts.Weight() <= m.lastWork.ts.Weight() {
+		if types.BigCmp(bts.Weight(), m.lastWork.ts.Weight()) <= 0 {
 			return m.lastWork, nil
 		}
 	}
@@ -254,12 +265,12 @@ func (m *Miner) isWinnerNextRound(ctx context.Context, base *MiningBase) (bool, 
 		return false, nil, xerrors.Errorf("failed to compute VRF: %w", err)
 	}
 
-	mpow, totpow, err := m.getPowerForTipset(ctx, m.addresses[0], base.ts)
+	pow, err := m.api.StateMinerPower(ctx, m.addresses[0], base.ts)
 	if err != nil {
 		return false, nil, xerrors.Errorf("failed to check power: %w", err)
 	}
 
-	return powerCmp(vrfout, mpow, totpow), vrfout, nil
+	return powerCmp(vrfout, pow.MinerPower, pow.TotalPower), vrfout, nil
 }
 
 func powerCmp(vrfout []byte, mpow, totpow types.BigInt) bool {
@@ -278,45 +289,6 @@ func powerCmp(vrfout []byte, mpow, totpow types.BigInt) bool {
 	out := types.BigDiv(top, totpow)
 
 	return types.BigCmp(types.BigFromBytes(h[:]), out) < 0
-}
-
-func (m *Miner) getPowerForTipset(ctx context.Context, maddr address.Address, ts *types.TipSet) (types.BigInt, types.BigInt, error) {
-	var err error
-	enc, err := actors.SerializeParams(&actors.PowerLookupParams{maddr})
-	if err != nil {
-		return types.EmptyInt, types.EmptyInt, err
-	}
-
-	ret, err := m.api.ChainCall(ctx, &types.Message{
-		From:   maddr,
-		To:     actors.StorageMarketAddress,
-		Method: actors.SMAMethods.PowerLookup,
-		Params: enc,
-	}, ts)
-	if err != nil {
-		return types.EmptyInt, types.EmptyInt, xerrors.Errorf("failed to get miner power from chain: %w", err)
-	}
-	if ret.ExitCode != 0 {
-		return types.EmptyInt, types.EmptyInt, xerrors.Errorf("failed to get miner power from chain (exit code %d)", ret.ExitCode)
-	}
-
-	mpow := types.BigFromBytes(ret.Return)
-
-	ret, err = m.api.ChainCall(ctx, &types.Message{
-		From:   maddr,
-		To:     actors.StorageMarketAddress,
-		Method: actors.SMAMethods.GetTotalStorage,
-	}, ts)
-	if err != nil {
-		return types.EmptyInt, types.EmptyInt, xerrors.Errorf("failed to get total power from chain: %w", err)
-	}
-	if ret.ExitCode != 0 {
-		return types.EmptyInt, types.EmptyInt, xerrors.Errorf("failed to get total power from chain (exit code %d)", ret.ExitCode)
-	}
-
-	tpow := types.BigFromBytes(ret.Return)
-
-	return mpow, tpow, nil
 }
 
 func (m *Miner) runVDF(ctx context.Context, input []byte) ([]byte, []byte, error) {

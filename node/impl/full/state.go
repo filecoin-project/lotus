@@ -3,6 +3,9 @@ package full
 import (
 	"context"
 	"fmt"
+	"github.com/filecoin-project/go-lotus/chain/types"
+	"github.com/filecoin-project/go-lotus/chain/vm"
+	"golang.org/x/xerrors"
 	"strconv"
 
 	"github.com/filecoin-project/go-lotus/api"
@@ -136,4 +139,50 @@ func (a *StateAPI) StateMinerProvingSet(ctx context.Context, addr address.Addres
 		return nil
 	})
 	return sinfos, nil
+}
+
+func (a *StateAPI) StateMinerPower(ctx context.Context, maddr address.Address, ts *types.TipSet) (api.MinerPower, error) {
+	var err error
+	enc, err := actors.SerializeParams(&actors.PowerLookupParams{maddr})
+	if err != nil {
+		return api.MinerPower{}, err
+	}
+
+	var mpow types.BigInt
+
+	if maddr != address.Undef {
+		ret, err := vm.Call(ctx, a.Chain, &types.Message{
+			From:   maddr,
+			To:     actors.StorageMarketAddress,
+			Method: actors.SMAMethods.PowerLookup,
+			Params: enc,
+		}, ts)
+		if err != nil {
+			return api.MinerPower{}, xerrors.Errorf("failed to get miner power from chain: %w", err)
+		}
+		if ret.ExitCode != 0 {
+			return api.MinerPower{}, xerrors.Errorf("failed to get miner power from chain (exit code %d)", ret.ExitCode)
+		}
+
+		mpow = types.BigFromBytes(ret.Return)
+	}
+
+	ret, err := vm.Call(ctx, a.Chain, &types.Message{
+		From:   actors.StorageMarketAddress,
+		To:     actors.StorageMarketAddress,
+		Method: actors.SMAMethods.GetTotalStorage,
+	}, ts)
+	if err != nil {
+		return api.MinerPower{}, xerrors.Errorf("failed to get total power from chain: %w", err)
+	}
+	if ret.ExitCode != 0 {
+		return api.MinerPower{}, xerrors.Errorf("failed to get total power from chain (exit code %d)", ret.ExitCode)
+	}
+
+	tpow := types.BigFromBytes(ret.Return)
+
+	return api.MinerPower{
+		MinerPower: mpow,
+		TotalPower: tpow,
+	}, nil
 }

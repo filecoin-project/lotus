@@ -56,6 +56,7 @@ type FullNodeStruct struct {
 
 		MinerRegister    func(context.Context, address.Address) error                                                                                                 `perm:"admin"`
 		MinerUnregister  func(context.Context, address.Address) error                                                                                                 `perm:"admin"`
+		MinerAddresses   func(context.Context) ([]address.Address, error)                                                                                             `perm:"write"`
 		MinerCreateBlock func(context.Context, address.Address, *types.TipSet, []*types.Ticket, types.ElectionProof, []*types.SignedMessage) (*chain.BlockMsg, error) `perm:"write"`
 
 		WalletNew            func(context.Context, string) (address.Address, error)                               `perm:"write"`
@@ -71,8 +72,9 @@ type FullNodeStruct struct {
 		ClientListImports func(ctx context.Context) ([]Import, error)                                                                                 `perm:"read"`
 		ClientStartDeal   func(ctx context.Context, data cid.Cid, miner address.Address, price types.BigInt, blocksDuration uint64) (*cid.Cid, error) `perm:"admin"`
 
-		StateMinerSectors    func(context.Context, address.Address) ([]*SectorInfo, error) `perm:"read"`
-		StateMinerProvingSet func(context.Context, address.Address) ([]*SectorInfo, error) `perm:"read"`
+		StateMinerSectors    func(context.Context, address.Address) ([]*SectorInfo, error)             `perm:"read"`
+		StateMinerProvingSet func(context.Context, address.Address) ([]*SectorInfo, error)             `perm:"read"`
+		StateMinerPower      func(context.Context, address.Address, *types.TipSet) (MinerPower, error) `perm:"read"`
 
 		PaychCreate                func(ctx context.Context, from, to address.Address, amt types.BigInt) (address.Address, error) `perm:"sign"`
 		PaychList                  func(context.Context) ([]address.Address, error)                                               `perm:"read"`
@@ -168,6 +170,10 @@ func (c *FullNodeStruct) MinerUnregister(ctx context.Context, addr address.Addre
 	return c.Internal.MinerUnregister(ctx, addr)
 }
 
+func (c *FullNodeStruct) MinerAddresses(ctx context.Context) ([]address.Address, error) {
+	return c.Internal.MinerAddresses(ctx)
+}
+
 func (c *FullNodeStruct) MinerCreateBlock(ctx context.Context, addr address.Address, base *types.TipSet, tickets []*types.Ticket, eproof types.ElectionProof, msgs []*types.SignedMessage) (*chain.BlockMsg, error) {
 	return c.Internal.MinerCreateBlock(ctx, addr, base, tickets, eproof, msgs)
 }
@@ -254,6 +260,10 @@ func (c *FullNodeStruct) StateMinerSectors(ctx context.Context, addr address.Add
 
 func (c *FullNodeStruct) StateMinerProvingSet(ctx context.Context, addr address.Address) ([]*SectorInfo, error) {
 	return c.Internal.StateMinerProvingSet(ctx, addr)
+}
+
+func (c *FullNodeStruct) StateMinerPower(ctx context.Context, a address.Address, ts *types.TipSet) (MinerPower, error) {
+	return c.Internal.StateMinerPower(ctx, a, ts)
 }
 
 func (c *FullNodeStruct) PaychCreate(ctx context.Context, from, to address.Address, amt types.BigInt) (address.Address, error) {

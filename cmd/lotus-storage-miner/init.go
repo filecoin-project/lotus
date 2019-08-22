@@ -217,7 +217,7 @@ func createStorageMiner(ctx context.Context, api api.FullNode, peerid peer.ID) (
 		return address.Undef, err
 	}
 
-	k, err := api.WalletNew(ctx, types.KTSecp256k1)
+	k, err := api.WalletNew(ctx, types.KTBLS)
 	if err != nil {
 		return address.Undef, err
 	}
