@@ -305,7 +305,6 @@ func MakeGenesisBlock(bs bstore.Blockstore, balances map[address.Address]types.B
 		MessageReceipts: emptyroot,
 		BLSAggregate:    types.Signature{Type: types.KTBLS, Data: []byte("signatureeee")},
 	}
-	fmt.Println("MESSAGES CID: ", b.Messages)
 
 	sb, err := b.ToStorageBlock()
 	if err != nil {
