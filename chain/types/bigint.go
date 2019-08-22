@@ -101,6 +101,11 @@ func (bi *BigInt) UnmarshalJSON(b []byte) error {
 }
 
 func (bi *BigInt) MarshalCBOR(w io.Writer) error {
+	if bi.Int == nil {
+		zero := NewInt(0)
+		return zero.MarshalCBOR(w)
+	}
+
 	if bi.Sign() < 0 {
 		// right now we don't support negative integers.
 		// In the spec, everything is listed as a Uint.
@@ -126,7 +131,7 @@ func (bi *BigInt) MarshalCBOR(w io.Writer) error {
 	return nil
 }
 
-func (bi *BigInt) UnmarshalCBOR(br cbg.ByteReader) error {
+func (bi *BigInt) UnmarshalCBOR(br io.Reader) error {
 	maj, extra, err := cbg.CborReadHeader(br)
 	if err != nil {
 		return err

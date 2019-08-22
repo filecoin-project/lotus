@@ -1,6 +1,8 @@
 package chain
 
 import (
+	"bytes"
+
 	"github.com/ipfs/go-cid"
 	cbor "github.com/ipfs/go-ipld-cbor"
 
@@ -136,7 +138,7 @@ type BlockMsg struct {
 
 func DecodeBlockMsg(b []byte) (*BlockMsg, error) {
 	var bm BlockMsg
-	if err := cbor.DecodeInto(b, &bm); err != nil {
+	if err := bm.UnmarshalCBOR(bytes.NewReader(b)); err != nil {
 		return nil, err
 	}
 
@@ -148,5 +150,9 @@ func (bm *BlockMsg) Cid() cid.Cid {
 }
 
 func (bm *BlockMsg) Serialize() ([]byte, error) {
-	return cbor.DumpObject(bm)
+	buf := new(bytes.Buffer)
+	if err := bm.MarshalCBOR(buf); err != nil {
+		return nil, err
+	}
+	return buf.Bytes(), nil
 }

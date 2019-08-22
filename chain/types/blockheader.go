@@ -6,6 +6,7 @@ import (
 	block "github.com/ipfs/go-block-format"
 	"github.com/ipfs/go-cid"
 	"github.com/multiformats/go-multihash"
+	xerrors "golang.org/x/xerrors"
 
 	"github.com/filecoin-project/go-lotus/chain/address"
 )
@@ -38,11 +39,6 @@ type BlockHeader struct {
 	BLSAggregate Signature
 
 	MessageReceipts cid.Cid
-}
-
-type MsgMeta struct {
-	BlsMessages   cid.Cid
-	SecpkMessages cid.Cid
 }
 
 func (b *BlockHeader) ToStorageBlock() (block.Block, error) {
@@ -87,6 +83,34 @@ func (blk *BlockHeader) Serialize() ([]byte, error) {
 	return buf.Bytes(), nil
 }
 
+type MsgMeta struct {
+	BlsMessages   cid.Cid
+	SecpkMessages cid.Cid
+}
+
+func (mm *MsgMeta) Cid() cid.Cid {
+	b, err := mm.ToStorageBlock()
+	if err != nil {
+		panic(err)
+	}
+	return b.Cid()
+}
+
+func (mm *MsgMeta) ToStorageBlock() (block.Block, error) {
+	buf := new(bytes.Buffer)
+	if err := mm.MarshalCBOR(buf); err != nil {
+		return nil, xerrors.Errorf("failed to marshal MsgMeta: %w", err)
+	}
+
+	pref := cid.NewPrefixV1(cid.DagCBOR, multihash.BLAKE2B_MIN+31)
+	c, err := pref.Sum(buf.Bytes())
+	if err != nil {
+		return nil, err
+	}
+
+	return block.NewBlockWithCid(buf.Bytes(), c)
+}
+
 /*
 func (blk *BlockHeader) MarshalCBOR(w io.Writer) error {
 	panic("no")
@@ -111,4 +135,13 @@ func (blk *SignedMessage) MarshalCBOR(w io.Writer) error {
 func (blk *SignedMessage) UnmarshalCBOR(r io.Reader) error {
 	panic("no")
 }
-*/
+
+func (blk *MsgMeta) MarshalCBOR(w io.Writer) error {
+	panic("no")
+}
+
+func (blk *MsgMeta) UnmarshalCBOR(r io.Reader) error {
+	panic("no")
+}
+
+//*/

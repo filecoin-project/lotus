@@ -337,7 +337,7 @@ func (a Address) MarshalCBOR(w io.Writer) error {
 	return nil
 }
 
-func (a *Address) UnmarshalCBOR(br cbg.ByteReader) error {
+func (a *Address) UnmarshalCBOR(br io.Reader) error {
 	maj, extra, err := cbg.CborReadHeader(br)
 	if err != nil {
 		return err

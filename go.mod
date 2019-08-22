@@ -20,7 +20,7 @@ require (
 	github.com/ipfs/go-ds-badger v0.0.5
 	github.com/ipfs/go-filestore v0.0.2
 	github.com/ipfs/go-fs-lock v0.0.1
-	github.com/ipfs/go-hamt-ipld v0.0.11
+	github.com/ipfs/go-hamt-ipld v0.0.12-0.20190822003241-7ff276389cbf
 	github.com/ipfs/go-ipfs-blockstore v0.0.1
 	github.com/ipfs/go-ipfs-chunker v0.0.1
 	github.com/ipfs/go-ipfs-exchange-interface v0.0.1
@@ -66,7 +66,7 @@ require (
 	github.com/smartystreets/assertions v1.0.1 // indirect
 	github.com/smartystreets/goconvey v0.0.0-20190710185942-9d28bd7c0945 // indirect
 	github.com/stretchr/testify v1.3.0
-	github.com/whyrusleeping/cbor-gen v0.0.0-20190821171244-dffbd9058edd
+	github.com/whyrusleeping/cbor-gen v0.0.0-20190822012446-bb2210dd2804
 	github.com/whyrusleeping/multiaddr-filter v0.0.0-20160516205228-e903e4adabd7
 	github.com/whyrusleeping/pubsub v0.0.0-20131020042734-02de8aa2db3d
 	github.com/whyrusleeping/sharray v0.0.0-20190718051354-e41931821e33

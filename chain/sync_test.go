@@ -91,6 +91,8 @@ func (tu *syncTestUtil) mineNewBlock(src int) {
 		require.NoError(tu.t, tu.nds[src].MpoolPush(context.TODO(), msg))
 	}
 
+	fmt.Printf("state root: %v\n", fblk.Header.StateRoot)
+
 	require.NoError(tu.t, tu.nds[src].ChainSubmitBlock(context.TODO(), fblkToBlkMsg(fblk)))
 }
 

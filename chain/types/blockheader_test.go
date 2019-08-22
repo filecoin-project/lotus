@@ -7,7 +7,6 @@ import (
 
 	"github.com/filecoin-project/go-lotus/chain/address"
 	cid "github.com/ipfs/go-cid"
-	cbor "github.com/ipfs/go-ipld-cbor"
 )
 
 func testBlockHeader(t testing.TB) *BlockHeader {
@@ -70,18 +69,6 @@ func BenchmarkBlockHeaderMarshal(b *testing.B) {
 	for i := 0; i < b.N; i++ {
 		buf.Reset()
 		if err := bh.MarshalCBOR(buf); err != nil {
-			b.Fatal(err)
-		}
-	}
-}
-
-func BenchmarkBlockHeaderMarshalOld(b *testing.B) {
-	bh := testBlockHeader(b)
-
-	b.ReportAllocs()
-
-	for i := 0; i < b.N; i++ {
-		if _, err := cbor.DumpObject(bh); err != nil {
 			b.Fatal(err)
 		}
 	}

@@ -148,7 +148,7 @@ func copyBlockstore(from, to bstore.Blockstore) error {
 // either validate it here, or ensure that its validated elsewhere (maybe make
 // sure the blocksync code checks it?)
 // maybe this code should actually live in blocksync??
-func zipTipSetAndMessages(cst *hamt.CborIpldStore, ts *types.TipSet, allbmsgs []*types.Message, allsmsgs []*types.SignedMessage, bmi, smi [][]int) (*store.FullTipSet, error) {
+func zipTipSetAndMessages(cst *hamt.CborIpldStore, ts *types.TipSet, allbmsgs []*types.Message, allsmsgs []*types.SignedMessage, bmi, smi [][]uint64) (*store.FullTipSet, error) {
 	if len(ts.Blocks()) != len(smi) || len(ts.Blocks()) != len(bmi) {
 		return nil, fmt.Errorf("msgincl length didnt match tipset size")
 	}

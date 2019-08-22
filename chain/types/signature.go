@@ -135,7 +135,7 @@ func (s *Signature) MarshalCBOR(w io.Writer) error {
 	return nil
 }
 
-func (s *Signature) UnmarshalCBOR(br cbg.ByteReader) error {
+func (s *Signature) UnmarshalCBOR(br io.Reader) error {
 	maj, l, err := cbg.CborReadHeader(br)
 	if err != nil {
 		return err
