@@ -110,38 +110,3 @@ func (mm *MsgMeta) ToStorageBlock() (block.Block, error) {
 
 	return block.NewBlockWithCid(buf.Bytes(), c)
 }
-
-/*
-func (blk *BlockHeader) MarshalCBOR(w io.Writer) error {
-	panic("no")
-}
-
-func (blk *BlockHeader) UnmarshalCBOR(r io.Reader) error {
-	panic("no")
-}
-
-func (blk *Message) MarshalCBOR(w io.Writer) error {
-	panic("no")
-}
-
-func (blk *Message) UnmarshalCBOR(r io.Reader) error {
-	panic("no")
-}
-
-func (blk *SignedMessage) MarshalCBOR(w io.Writer) error {
-	panic("no")
-}
-
-func (blk *SignedMessage) UnmarshalCBOR(r io.Reader) error {
-	panic("no")
-}
-
-func (blk *MsgMeta) MarshalCBOR(w io.Writer) error {
-	panic("no")
-}
-
-func (blk *MsgMeta) UnmarshalCBOR(r io.Reader) error {
-	panic("no")
-}
-
-//*/
