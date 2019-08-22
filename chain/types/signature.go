@@ -1,8 +1,10 @@
 package types
 
 import (
+	"bytes"
 	"encoding/binary"
 	"fmt"
+	"io"
 
 	bls "github.com/filecoin-project/go-bls-sigs"
 	"github.com/filecoin-project/go-lotus/chain/address"
@@ -10,7 +12,10 @@ import (
 	cbor "github.com/ipfs/go-ipld-cbor"
 	"github.com/minio/blake2b-simd"
 	"github.com/polydawn/refmt/obj/atlas"
+	cbg "github.com/whyrusleeping/cbor-gen"
 )
+
+const SignatureMaxLength = 200
 
 const (
 	KTSecp256k1 = "secp256k1"
@@ -44,9 +49,9 @@ func SignatureFromBytes(x []byte) (Signature, error) {
 	}
 	var ts string
 	switch val {
-	case 1:
+	case 0:
 		ts = KTSecp256k1
-	case 2:
+	case 1:
 		ts = KTBLS
 	default:
 		return Signature{}, fmt.Errorf("unsupported signature type: %d", val)
@@ -104,10 +109,64 @@ func (s *Signature) Verify(addr address.Address, msg []byte) error {
 func (s *Signature) TypeCode() int {
 	switch s.Type {
 	case KTSecp256k1:
-		return 1
+		return 0
 	case KTBLS:
-		return 2
+		return 1
 	default:
 		panic("unsupported signature type")
 	}
+}
+
+func (s *Signature) MarshalCBOR(w io.Writer) error {
+	header := cbg.CborEncodeMajorType(cbg.MajByteString, uint64(len(s.Data)+1))
+
+	if _, err := w.Write(header); err != nil {
+		return err
+	}
+
+	if _, err := w.Write([]byte{byte(s.TypeCode())}); err != nil {
+		return err
+	}
+
+	if _, err := w.Write(s.Data); err != nil {
+		return err
+	}
+
+	return nil
+}
+
+func (s *Signature) UnmarshalCBOR(br cbg.ByteReader) error {
+	maj, l, err := cbg.CborReadHeader(br)
+	if err != nil {
+		return err
+	}
+
+	if maj != cbg.MajByteString {
+		return fmt.Errorf("cbor input for signature was not a byte string")
+	}
+
+	if l > SignatureMaxLength {
+		return fmt.Errorf("cbor byte array for signature was too long")
+	}
+
+	buf := make([]byte, l)
+	if _, err := io.ReadFull(br, buf); err != nil {
+		return err
+	}
+
+	switch buf[0] {
+	default:
+		return fmt.Errorf("invalid signature type in cbor input: %d", buf[0])
+	case 0:
+		s.Type = KTSecp256k1
+	case 1:
+		s.Type = KTBLS
+	}
+	s.Data = buf[1:]
+
+	return nil
+}
+
+func (s *Signature) Equals(o *Signature) bool {
+	return s.Type == o.Type && bytes.Equal(s.Data, o.Data)
 }

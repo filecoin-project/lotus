@@ -1,6 +1,7 @@
 package address
 
 import (
+	"bytes"
 	"encoding/base32"
 	"fmt"
 	"math"
@@ -11,6 +12,7 @@ import (
 
 	"github.com/filecoin-project/go-bls-sigs"
 	"github.com/filecoin-project/go-leb128"
+	cbor "github.com/ipfs/go-ipld-cbor"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 
@@ -35,6 +37,33 @@ func TestRandomIDAddress(t *testing.T) {
 	assert.NoError(err)
 	assert.Equal(addr, maybe)
 
+}
+
+var allTestAddresses = []string{
+	"t00",
+	"t01",
+	"t010",
+	"t0150",
+	"t0499",
+	"t01024",
+	"t01729",
+	"t0999999",
+	"t15ihq5ibzwki2b4ep2f46avlkrqzhpqgtga7pdrq",
+	"t12fiakbhe2gwd5cnmrenekasyn6v5tnaxaqizq6a",
+	"t1wbxhu3ypkuo6eyp6hjx6davuelxaxrvwb2kuwva",
+	"t1xtwapqc6nh4si2hcwpr3656iotzmlwumogqbuaa",
+	"t1xcbgdhkgkwht3hrrnui3jdopeejsoatkzmoltqy",
+	"t17uoq6tp427uzv7fztkbsnn64iwotfrristwpryy",
+	"t24vg6ut43yw2h2jqydgbg2xq7x6f4kub3bg6as6i",
+	"t25nml2cfbljvn4goqtclhifepvfnicv6g7mfmmvq",
+	"t2nuqrg7vuysaue2pistjjnt3fadsdzvyuatqtfei",
+	"t24dd4ox4c2vpf5vk5wkadgyyn6qtuvgcpxxon64a",
+	"t2gfvuyh7v2sx3patm5k23wdzmhyhtmqctasbr23y",
+	"t3vvmn62lofvhjd2ugzca6sof2j2ubwok6cj4xxbfzz4yuxfkgobpihhd2thlanmsh3w2ptld2gqkn2jvlss4a",
+	"t3wmuu6crofhqmm3v4enos73okk2l366ck6yc4owxwbdtkmpk42ohkqxfitcpa57pjdcftql4tojda2poeruwa",
+	"t3s2q2hzhkpiknjgmf4zq3ejab2rh62qbndueslmsdzervrhapxr7dftie4kpnpdiv2n6tvkr743ndhrsw6d3a",
+	"t3q22fijmmlckhl56rn5nkyamkph3mcfu5ed6dheq53c244hfmnq2i7efdma3cj5voxenwiummf2ajlsbxc65a",
+	"t3u5zgwa4ael3vuocgc5mfgygo4yuqocrntuuhcklf4xzg5tcaqwbyfabxetwtj4tsam3pbhnwghyhijr5mixa",
 }
 
 func TestVectorsIDAddress(t *testing.T) {
@@ -426,4 +455,120 @@ func TestAddressFormat(t *testing.T) {
 	assert.Equal("", fmt.Sprintf("%X", Undef))
 	assert.Equal(UndefAddressString, Undef.String())
 	assert.Equal(UndefAddressString, fmt.Sprintf("%v", Undef))
+}
+
+func TestCborMarshal(t *testing.T) {
+	for _, a := range allTestAddresses {
+		addr, err := NewFromString(a)
+		if err != nil {
+			t.Fatal(err)
+		}
+
+		buf := new(bytes.Buffer)
+		if err := addr.MarshalCBOR(buf); err != nil {
+			t.Fatal(err)
+		}
+
+		/*
+			// Note: this is commented out because we're currently serializing addresses as cbor "text strings", not "byte strings".
+			// This is to get around the restriction that refmt only allows string keys in maps.
+			// if you change it to serialize to byte strings and uncomment this, the tests pass fine
+			oldbytes, err := cbor.DumpObject(addr)
+			if err != nil {
+				t.Fatal(err)
+			}
+
+			if !bytes.Equal(oldbytes, buf.Bytes()) {
+				t.Fatalf("serialization doesnt match old serialization: %s", a)
+			}
+		*/
+
+		var out Address
+		if err := out.UnmarshalCBOR(buf); err != nil {
+			t.Fatal(err)
+		}
+
+		if out != addr {
+			t.Fatalf("failed to round trip %s", a)
+		}
+	}
+}
+
+func BenchmarkOldCborMarshal(b *testing.B) {
+	addr, err := NewFromString("t15ihq5ibzwki2b4ep2f46avlkrqzhpqgtga7pdrq")
+	if err != nil {
+		b.Fatal(err)
+	}
+
+	b.ReportAllocs()
+	b.ResetTimer()
+
+	for i := 0; i < b.N; i++ {
+		_, err := cbor.DumpObject(addr)
+		if err != nil {
+			b.Fatal(err)
+		}
+	}
+}
+
+func BenchmarkCborMarshal(b *testing.B) {
+	addr, err := NewFromString("t15ihq5ibzwki2b4ep2f46avlkrqzhpqgtga7pdrq")
+	if err != nil {
+		b.Fatal(err)
+	}
+
+	b.ReportAllocs()
+	b.ResetTimer()
+
+	buf := new(bytes.Buffer)
+	for i := 0; i < b.N; i++ {
+		buf.Reset()
+		if err := addr.MarshalCBOR(buf); err != nil {
+			b.Fatal(err)
+		}
+	}
+}
+
+func BenchmarkOldCborUnmarshal(b *testing.B) {
+	addr, err := NewFromString("t15ihq5ibzwki2b4ep2f46avlkrqzhpqgtga7pdrq")
+	if err != nil {
+		b.Fatal(err)
+	}
+
+	buf := new(bytes.Buffer)
+	if err := addr.MarshalCBOR(buf); err != nil {
+		b.Fatal(err)
+	}
+
+	b.ReportAllocs()
+	b.ResetTimer()
+
+	for i := 0; i < b.N; i++ {
+		var a Address
+		if err := cbor.DecodeInto(buf.Bytes(), &a); err != nil {
+			b.Fatal(err)
+		}
+	}
+}
+
+func BenchmarkCborUnmarshal(b *testing.B) {
+	addr, err := NewFromString("t15ihq5ibzwki2b4ep2f46avlkrqzhpqgtga7pdrq")
+	if err != nil {
+		b.Fatal(err)
+	}
+
+	buf := new(bytes.Buffer)
+	if err := addr.MarshalCBOR(buf); err != nil {
+		b.Fatal(err)
+	}
+
+	b.ReportAllocs()
+	b.ResetTimer()
+
+	for i := 0; i < b.N; i++ {
+		var a Address
+		if err := a.UnmarshalCBOR(bytes.NewReader(buf.Bytes())); err != nil {
+			b.Fatal(err)
+		}
+	}
 }

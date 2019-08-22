@@ -3,11 +3,15 @@ package types
 import (
 	"encoding/json"
 	"fmt"
+	"io"
 	"math/big"
 
 	cbor "github.com/ipfs/go-ipld-cbor"
 	"github.com/polydawn/refmt/obj/atlas"
+	cbg "github.com/whyrusleeping/cbor-gen"
 )
+
+const BigIntMaxSerializedLen = 128 // is this big enough? or too big?
 
 func init() {
 	cbor.RegisterCborType(atlas.BuildEntry(BigInt{}).UseTag(2).Transform().
@@ -93,5 +97,64 @@ func (bi *BigInt) UnmarshalJSON(b []byte) error {
 	}
 
 	bi.Int = i
+	return nil
+}
+
+func (bi *BigInt) MarshalCBOR(w io.Writer) error {
+	if bi.Sign() < 0 {
+		// right now we don't support negative integers.
+		// In the spec, everything is listed as a Uint.
+		return fmt.Errorf("BigInt does not support negative integers")
+	}
+
+	header := cbg.CborEncodeMajorType(cbg.MajTag, 2)
+	if _, err := w.Write(header); err != nil {
+		return err
+	}
+
+	b := bi.Bytes()
+
+	header = cbg.CborEncodeMajorType(cbg.MajByteString, uint64(len(b)))
+	if _, err := w.Write(header); err != nil {
+		return err
+	}
+
+	if _, err := w.Write(b); err != nil {
+		return err
+	}
+
+	return nil
+}
+
+func (bi *BigInt) UnmarshalCBOR(br cbg.ByteReader) error {
+	maj, extra, err := cbg.CborReadHeader(br)
+	if err != nil {
+		return err
+	}
+
+	if maj != cbg.MajTag && extra != 2 {
+		return fmt.Errorf("cbor input for big int was not a tagged big int")
+	}
+
+	maj, extra, err = cbg.CborReadHeader(br)
+	if err != nil {
+		return err
+	}
+
+	if maj != cbg.MajByteString {
+		return fmt.Errorf("cbor input for big int was not a tagged byte string")
+	}
+
+	if extra > BigIntMaxSerializedLen {
+		return fmt.Errorf("big integer byte array too long")
+	}
+
+	buf := make([]byte, extra)
+	if _, err := io.ReadFull(br, buf); err != nil {
+		return err
+	}
+
+	bi.Int = big.NewInt(0).SetBytes(buf)
+
 	return nil
 }

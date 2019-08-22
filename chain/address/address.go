@@ -4,6 +4,7 @@ import (
 	"bytes"
 	"encoding/json"
 	"fmt"
+	"io"
 	"strconv"
 
 	"github.com/filecoin-project/go-bls-sigs"
@@ -11,6 +12,8 @@ import (
 	cbor "github.com/ipfs/go-ipld-cbor"
 	"github.com/minio/blake2b-simd"
 	"github.com/polydawn/refmt/obj/atlas"
+
+	cbg "github.com/whyrusleeping/cbor-gen"
 )
 
 func init() {
@@ -319,4 +322,46 @@ func hash(ingest []byte, cfg *blake2b.Config) []byte {
 		panic(fmt.Sprintf("blake2b is unable to process hashes: %v", err))
 	}
 	return hasher.Sum(nil)
+}
+
+func (a Address) MarshalCBOR(w io.Writer) error {
+	abytes := a.Bytes()
+	if _, err := w.Write(cbg.CborEncodeMajorType(cbg.MajByteString, uint64(len(abytes)))); err != nil {
+		return err
+	}
+
+	if _, err := w.Write(abytes); err != nil {
+		return err
+	}
+
+	return nil
+}
+
+func (a *Address) UnmarshalCBOR(br cbg.ByteReader) error {
+	maj, extra, err := cbg.CborReadHeader(br)
+	if err != nil {
+		return err
+	}
+
+	if maj != cbg.MajByteString {
+		return fmt.Errorf("cbor type for address unmarshal was not byte string")
+	}
+
+	if extra > 64 {
+		return fmt.Errorf("too many bytes to unmarshal for an address")
+	}
+
+	buf := make([]byte, int(extra))
+	if _, err := io.ReadFull(br, buf); err != nil {
+		return err
+	}
+
+	addr, err := NewFromBytes(buf)
+	if err != nil {
+		return err
+	}
+
+	*a = addr
+
+	return nil
 }
