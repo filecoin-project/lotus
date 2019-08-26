@@ -92,7 +92,7 @@ type FullNode interface {
 	ClientImport(ctx context.Context, path string) (cid.Cid, error)
 	ClientStartDeal(ctx context.Context, data cid.Cid, miner address.Address, price types.BigInt, blocksDuration uint64) (*cid.Cid, error)
 	ClientHasLocal(ctx context.Context, root cid.Cid) (bool, error)
-	ClientFindData(ctx context.Context, root cid.Cid) ([]RetrievalOffer, error) // TODO: specify serialization mode we want (defaults to unixfs for now)
+	ClientFindData(ctx context.Context, root cid.Cid) ([]QueryOffer, error) // TODO: specify serialization mode we want (defaults to unixfs for now)
 
 	// ClientUnimport removes references to the specified file from filestore
 	//ClientUnimport(path string)
@@ -193,7 +193,7 @@ type SealedRef struct {
 	Size   uint32
 }
 
-type RetrievalOffer struct {
+type QueryOffer struct {
 	Err string
 
 	Size     uint64

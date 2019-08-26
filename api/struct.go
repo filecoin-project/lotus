@@ -71,7 +71,7 @@ type FullNodeStruct struct {
 		ClientImport      func(ctx context.Context, path string) (cid.Cid, error)                                                                     `perm:"write"`
 		ClientListImports func(ctx context.Context) ([]Import, error)                                                                                 `perm:"write"`
 		ClientHasLocal    func(ctx context.Context, root cid.Cid) (bool, error)                                                                       `perm:"write"`
-		ClientFindData    func(ctx context.Context, root cid.Cid) ([]RetrievalOffer, error)                                                           `perm:"read"`
+		ClientFindData    func(ctx context.Context, root cid.Cid) ([]QueryOffer, error)                                                               `perm:"read"`
 		ClientStartDeal   func(ctx context.Context, data cid.Cid, miner address.Address, price types.BigInt, blocksDuration uint64) (*cid.Cid, error) `perm:"admin"`
 
 		StateMinerSectors    func(context.Context, address.Address) ([]*SectorInfo, error)             `perm:"read"`
@@ -158,7 +158,7 @@ func (c *FullNodeStruct) ClientHasLocal(ctx context.Context, root cid.Cid) (bool
 	return c.Internal.ClientHasLocal(ctx, root)
 }
 
-func (c *FullNodeStruct) ClientFindData(ctx context.Context, root cid.Cid) ([]RetrievalOffer, error) {
+func (c *FullNodeStruct) ClientFindData(ctx context.Context, root cid.Cid) ([]QueryOffer, error) {
 	return c.Internal.ClientFindData(ctx, root)
 }
 

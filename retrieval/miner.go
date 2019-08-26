@@ -21,7 +21,7 @@ func NewMiner(sblks *sectorblocks.SectorBlocks) *Miner {
 func (m *Miner) HandleStream(stream network.Stream) {
 	defer stream.Close()
 
-	var query RetQuery
+	var query Query
 	if err := cborrpc.ReadCborRPC(stream, &query); err != nil {
 		log.Errorf("Retrieval query: ReadCborRPC: %s", err)
 		return
@@ -33,15 +33,15 @@ func (m *Miner) HandleStream(stream network.Stream) {
 		return
 	}
 
-	answer := RetQueryResponse{
+	answer := QueryResponse{
 		Status: Unavailable,
 	}
 	if len(refs) > 0 {
 		answer.Status = Available
 
 		// TODO: get price, look for already unsealed ref to reduce work
-		answer.MinPrice = types.NewInt(uint64(refs[0].Size)) // TODO: Get this from somewhere
-		answer.Size = uint64(refs[0].Size)
+		answer.MinPrice = types.NewInt(uint64(refs[0].Size) * 2) // TODO: Get this from somewhere
+		answer.Size = uint64(refs[0].Size)                       // TODO: verify on intermediate
 	}
 
 	if err := cborrpc.WriteCborRPC(stream, answer); err != nil {

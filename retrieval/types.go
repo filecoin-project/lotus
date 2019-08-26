@@ -10,35 +10,53 @@ import (
 const ProtocolID = "/fil/retrieval/-1.0.0"          // TODO: spec
 const QueryProtocolID = "/fil/retrieval/qry/-1.0.0" // TODO: spec
 
-type QueryResponse int
+type QueryResponseStatus int
 
 const (
-	Available QueryResponse = iota
+	Available QueryResponseStatus = iota
 	Unavailable
 )
 
 func init() {
-	cbor.RegisterCborType(RetDealProposal{})
+	cbor.RegisterCborType(Deal{})
 
-	cbor.RegisterCborType(RetQuery{})
-	cbor.RegisterCborType(RetQueryResponse{})
+	cbor.RegisterCborType(Query{})
+	cbor.RegisterCborType(QueryResponse{})
 }
 
-type RetDealProposal struct {
-	Piece   cid.Cid
-	Price   types.BigInt
-	Payment types.SignedVoucher
-}
-
-type RetQuery struct {
+type Query struct {
 	Piece cid.Cid
+	// TODO: payment
 }
 
-type RetQueryResponse struct {
-	Status QueryResponse
+type QueryResponse struct {
+	Status QueryResponseStatus
 
 	Size uint64 // TODO: spec
 	// TODO: unseal price (+spec)
+	// TODO: sectors to unseal
 	// TODO: address to send money for the deal?
 	MinPrice types.BigInt
+}
+
+type Unixfs0Offer struct {
+	Root   cid.Cid
+	Offset uint64
+	Size   uint64
+}
+
+type Deal struct {
+	Unixfs0 *Unixfs0Offer
+}
+
+type AcceptedResponse struct{}
+type RejectedResponse struct {
+	Message string
+}
+type ErrorResponse RejectedResponse
+
+type DealResponse struct {
+	*AcceptedResponse
+	*RejectedResponse
+	*ErrorResponse
 }

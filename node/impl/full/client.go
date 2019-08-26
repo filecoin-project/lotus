@@ -3,6 +3,7 @@ package full
 import (
 	"context"
 	"errors"
+	"github.com/filecoin-project/go-lotus/build"
 	"github.com/filecoin-project/go-lotus/retrieval"
 	"github.com/filecoin-project/go-lotus/retrieval/discovery"
 	"github.com/ipfs/go-blockservice"
@@ -138,13 +139,13 @@ func (a *ClientAPI) ClientHasLocal(ctx context.Context, root cid.Cid) (bool, err
 	return true, nil
 }
 
-func (a *ClientAPI) ClientFindData(ctx context.Context, root cid.Cid) ([]api.RetrievalOffer, error) {
+func (a *ClientAPI) ClientFindData(ctx context.Context, root cid.Cid) ([]api.QueryOffer, error) {
 	peers, err := a.RetDiscovery.GetPeers(root)
 	if err != nil {
 		return nil, err
 	}
 
-	out := make([]api.RetrievalOffer, len(peers))
+	out := make([]api.QueryOffer, len(peers))
 	for k, p := range peers {
 		out[k] = a.Retrieval.Query(ctx, p, root)
 	}
@@ -177,7 +178,7 @@ func (a *ClientAPI) ClientImport(ctx context.Context, path string) (cid.Cid, err
 		NoCopy:     true,
 	}
 
-	db, err := params.New(chunker.DefaultSplitter(file))
+	db, err := params.New(chunker.NewSizeSplitter(file, build.UnixfsChunkSize))
 	if err != nil {
 		return cid.Undef, err
 	}
