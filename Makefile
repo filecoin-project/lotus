@@ -68,6 +68,9 @@ dist-clean:
 	git submodule deinit --all -f
 .PHONY: dist-clean
 
+type-gen:
+	rm -f ./chain/types/cbor_gen.go
+	go run ./gen/main.go
 
 print-%:
 	@echo $*=$($*)

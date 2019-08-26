@@ -12,6 +12,7 @@ import (
 	"github.com/filecoin-project/go-lotus/chain/types"
 	"github.com/filecoin-project/go-lotus/chain/vm"
 	"github.com/filecoin-project/go-lotus/lib/bufbstore"
+	"golang.org/x/xerrors"
 
 	"github.com/ipfs/go-cid"
 	"github.com/ipfs/go-hamt-ipld"
@@ -32,12 +33,12 @@ func (a *ChainAPI) ChainNotify(ctx context.Context) (<-chan *store.HeadChange, e
 
 func (a *ChainAPI) ChainSubmitBlock(ctx context.Context, blk *chain.BlockMsg) error {
 	if err := a.Chain.AddBlock(blk.Header); err != nil {
-		return err
+		return xerrors.Errorf("AddBlock failed: %w", err)
 	}
 
 	b, err := blk.Serialize()
 	if err != nil {
-		return err
+		return xerrors.Errorf("serializing block for pubsub publishing failed: %w", err)
 	}
 
 	// TODO: anything else to do here?

@@ -270,14 +270,19 @@ func MakeGenesisBlock(bs bstore.Blockstore, balances map[address.Address]types.B
 
 	emptyroot, err := sharray.Build(context.TODO(), 4, []interface{}{}, cst)
 	if err != nil {
-		return nil, err
+		return nil, xerrors.Errorf("sharray build failed: %w", err)
 	}
-	mmcid, err := cst.Put(context.TODO(), &types.MsgMeta{
+
+	mm := &types.MsgMeta{
 		BlsMessages:   emptyroot,
 		SecpkMessages: emptyroot,
-	})
+	}
+	mmb, err := mm.ToStorageBlock()
 	if err != nil {
-		return nil, err
+		return nil, xerrors.Errorf("serializing msgmeta failed: %w", err)
+	}
+	if err := bs.Put(mmb); err != nil {
+		return nil, xerrors.Errorf("putting msgmeta block to blockstore: %w", err)
 	}
 
 	fmt.Println("Empty Genesis root: ", emptyroot)
@@ -296,17 +301,18 @@ func MakeGenesisBlock(bs bstore.Blockstore, balances map[address.Address]types.B
 		Height:          0,
 		ParentWeight:    types.NewInt(0),
 		StateRoot:       stateroot,
-		Messages:        mmcid,
+		Messages:        mmb.Cid(),
 		MessageReceipts: emptyroot,
+		BLSAggregate:    types.Signature{Type: types.KTBLS, Data: []byte("signatureeee")},
 	}
 
 	sb, err := b.ToStorageBlock()
 	if err != nil {
-		return nil, err
+		return nil, xerrors.Errorf("serializing block header failed: %w", err)
 	}
 
 	if err := bs.Put(sb); err != nil {
-		return nil, err
+		return nil, xerrors.Errorf("putting header to blockstore: %w", err)
 	}
 
 	return &GenesisBootstrap{

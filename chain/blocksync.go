@@ -65,7 +65,7 @@ const (
 type BlockSyncResponse struct {
 	Chain []*BSTipSet
 
-	Status  uint
+	Status  uint64
 	Message string
 }
 
@@ -73,10 +73,10 @@ type BSTipSet struct {
 	Blocks []*types.BlockHeader
 
 	BlsMessages    []*types.Message
-	BlsMsgIncludes [][]int
+	BlsMsgIncludes [][]uint64
 
 	SecpkMessages    []*types.SignedMessage
-	SecpkMsgIncludes [][]int
+	SecpkMsgIncludes [][]uint64
 }
 
 func NewBlockSyncService(cs *store.ChainStore) *BlockSyncService {
@@ -166,12 +166,12 @@ func (bss *BlockSyncService) collectChainSegment(start []cid.Cid, length uint64,
 	}
 }
 
-func (bss *BlockSyncService) gatherMessages(ts *types.TipSet) ([]*types.Message, [][]int, []*types.SignedMessage, [][]int, error) {
-	blsmsgmap := make(map[cid.Cid]int)
-	secpkmsgmap := make(map[cid.Cid]int)
+func (bss *BlockSyncService) gatherMessages(ts *types.TipSet) ([]*types.Message, [][]uint64, []*types.SignedMessage, [][]uint64, error) {
+	blsmsgmap := make(map[cid.Cid]uint64)
+	secpkmsgmap := make(map[cid.Cid]uint64)
 	var secpkmsgs []*types.SignedMessage
 	var blsmsgs []*types.Message
-	var secpkincl, blsincl [][]int
+	var secpkincl, blsincl [][]uint64
 
 	for _, b := range ts.Blocks() {
 		bmsgs, smsgs, err := bss.cs.MessagesForBlock(b)
@@ -179,11 +179,11 @@ func (bss *BlockSyncService) gatherMessages(ts *types.TipSet) ([]*types.Message,
 			return nil, nil, nil, nil, err
 		}
 
-		bmi := make([]int, 0, len(bmsgs))
+		bmi := make([]uint64, 0, len(bmsgs))
 		for _, m := range bmsgs {
 			i, ok := blsmsgmap[m.Cid()]
 			if !ok {
-				i = len(blsmsgs)
+				i = uint64(len(blsmsgs))
 				blsmsgs = append(blsmsgs, m)
 				blsmsgmap[m.Cid()] = i
 			}
@@ -192,11 +192,11 @@ func (bss *BlockSyncService) gatherMessages(ts *types.TipSet) ([]*types.Message,
 		}
 		blsincl = append(blsincl, bmi)
 
-		smi := make([]int, 0, len(smsgs))
+		smi := make([]uint64, 0, len(smsgs))
 		for _, m := range smsgs {
 			i, ok := secpkmsgmap[m.Cid()]
 			if !ok {
-				i = len(secpkmsgs)
+				i = uint64(len(secpkmsgs))
 				secpkmsgs = append(secpkmsgs, m)
 				secpkmsgmap[m.Cid()] = i
 			}
