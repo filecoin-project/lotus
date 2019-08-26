@@ -47,7 +47,7 @@ func MinerCreateBlock(ctx context.Context, cs *store.ChainStore, miner address.A
 	var blsMsgCids, secpkMsgCids []cid.Cid
 	var blsSigs []types.Signature
 	for _, msg := range msgs {
-		if msg.Signature.TypeCode() == 2 {
+		if msg.Signature.TypeCode() == types.IKTBLS {
 			blsSigs = append(blsSigs, msg.Signature)
 			blsMessages = append(blsMessages, &msg.Message)
 
