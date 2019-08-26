@@ -3,6 +3,11 @@ package full
 import (
 	"context"
 	"errors"
+	"github.com/filecoin-project/go-lotus/retrieval"
+	"github.com/filecoin-project/go-lotus/retrieval/discovery"
+	"github.com/ipfs/go-blockservice"
+	offline "github.com/ipfs/go-ipfs-exchange-offline"
+	"github.com/ipfs/go-merkledag"
 	"os"
 
 	"github.com/filecoin-project/go-lotus/api"
@@ -31,10 +36,13 @@ type ClientAPI struct {
 	WalletAPI
 	PaychAPI
 
-	DealClient *deals.Client
+	DealClient   *deals.Client
+	RetDiscovery discovery.PeerResolver
+	Retrieval    *retrieval.Client
 
-	LocalDAG  dtypes.ClientDAG
-	Filestore dtypes.ClientFilestore `optional:"true"`
+	LocalDAG   dtypes.ClientDAG
+	Blockstore dtypes.ClientBlockstore
+	Filestore  dtypes.ClientFilestore `optional:"true"`
 }
 
 func (a *ClientAPI) ClientStartDeal(ctx context.Context, data cid.Cid, miner address.Address, price types.BigInt, blocksDuration uint64) (*cid.Cid, error) {
@@ -114,6 +122,34 @@ func (a *ClientAPI) ClientStartDeal(ctx context.Context, data cid.Cid, miner add
 	c, err := a.DealClient.Start(ctx, proposal, vd)
 	// TODO: send updated voucher with PaymentVerifySector for cheaper validation (validate the sector the miner sent us first!)
 	return &c, err
+}
+
+func (a *ClientAPI) ClientHasLocal(ctx context.Context, root cid.Cid) (bool, error) {
+	// TODO: check if we have the ENTIRE dag
+
+	offExch := merkledag.NewDAGService(blockservice.New(a.Blockstore, offline.Exchange(a.Blockstore)))
+	_, err := offExch.Get(ctx, root)
+	if err == ipld.ErrNotFound {
+		return false, nil
+	}
+	if err != nil {
+		return false, err
+	}
+	return true, nil
+}
+
+func (a *ClientAPI) ClientFindData(ctx context.Context, root cid.Cid) ([]api.RetrievalOffer, error) {
+	peers, err := a.RetDiscovery.GetPeers(root)
+	if err != nil {
+		return nil, err
+	}
+
+	out := make([]api.RetrievalOffer, len(peers))
+	for k, p := range peers {
+		out[k] = a.Retrieval.Query(ctx, p, root)
+	}
+
+	return out, nil
 }
 
 func (a *ClientAPI) ClientImport(ctx context.Context, path string) (cid.Cid, error) {

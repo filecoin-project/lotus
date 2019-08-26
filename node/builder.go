@@ -3,7 +3,7 @@ package node
 import (
 	"context"
 	"errors"
-	"github.com/filecoin-project/go-lotus/storage/sectorblocks"
+	"github.com/filecoin-project/go-lotus/retrieval"
 	"reflect"
 	"time"
 
@@ -36,8 +36,10 @@ import (
 	"github.com/filecoin-project/go-lotus/node/modules/testing"
 	"github.com/filecoin-project/go-lotus/node/repo"
 	"github.com/filecoin-project/go-lotus/paych"
+	"github.com/filecoin-project/go-lotus/retrieval/discovery"
 	"github.com/filecoin-project/go-lotus/storage"
 	"github.com/filecoin-project/go-lotus/storage/sector"
+	"github.com/filecoin-project/go-lotus/storage/sectorblocks"
 )
 
 // special is a type used to give keys to modules which
@@ -80,6 +82,7 @@ const (
 
 	// storage miner
 	HandleDealsKey
+	HandleRetrievalKey
 	RunSectorServiceKey
 	RegisterMinerKey
 
@@ -220,6 +223,10 @@ func Online() Option {
 			Override(RunBlockSyncKey, modules.RunBlockSync),
 			Override(HandleIncomingBlocksKey, modules.HandleIncomingBlocks),
 
+			Override(new(*discovery.Local), discovery.NewLocal),
+			Override(new(discovery.PeerResolver), modules.RetrievalResolver),
+
+			Override(new(*retrieval.Client), retrieval.NewClient),
 			Override(new(*deals.Client), deals.NewClient),
 			Override(RunDealClientKey, modules.RunDealClient),
 
@@ -238,7 +245,9 @@ func Online() Option {
 
 			Override(new(dtypes.StagingDAG), modules.StagingDAG),
 
+			Override(new(*retrieval.Miner), retrieval.NewMiner),
 			Override(new(*deals.Handler), deals.NewHandler),
+			Override(HandleRetrievalKey, modules.HandleRetrieval),
 			Override(HandleDealsKey, modules.HandleDeals),
 			Override(RunSectorServiceKey, modules.RunSectorService),
 			Override(RegisterMinerKey, modules.RegisterMiner),
@@ -302,6 +311,7 @@ func Repo(r repo.Repo) Option {
 		Override(new(dtypes.ChainBlockstore), modules.ChainBlockstore),
 
 		Override(new(dtypes.ClientFilestore), modules.ClientFstore),
+		Override(new(dtypes.ClientBlockstore), modules.ClientBlockstore),
 		Override(new(dtypes.ClientDAG), modules.ClientDAG),
 
 		Override(new(ci.PrivKey), pk),

@@ -2,6 +2,7 @@ package modules
 
 import (
 	"context"
+	"github.com/filecoin-project/go-lotus/retrieval"
 	"github.com/filecoin-project/go-lotus/storage/sector"
 	"path/filepath"
 
@@ -84,6 +85,15 @@ func StorageMiner(mctx helpers.MetricsCtx, lc fx.Lifecycle, api api.FullNode, h 
 	})
 
 	return sm, nil
+}
+
+func HandleRetrieval(host host.Host, lc fx.Lifecycle, m *retrieval.Miner) {
+	lc.Append(fx.Hook{
+		OnStart: func(context.Context) error {
+			host.SetStreamHandler(retrieval.QueryProtocolID, m.HandleStream)
+			return nil
+		},
+	})
 }
 
 func HandleDeals(mctx helpers.MetricsCtx, lc fx.Lifecycle, host host.Host, h *deals.Handler) {

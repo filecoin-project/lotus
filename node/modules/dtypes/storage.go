@@ -21,6 +21,7 @@ type ChainExchange exchange.Interface
 type ChainBlockService bserv.BlockService
 
 type ClientFilestore *filestore.Filestore
+type ClientBlockstore blockstore.Blockstore
 type ClientDAG ipld.DAGService
 
 type StagingDAG ipld.DAGService

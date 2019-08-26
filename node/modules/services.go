@@ -2,6 +2,7 @@ package modules
 
 import (
 	"context"
+	"github.com/filecoin-project/go-lotus/retrieval/discovery"
 	"github.com/filecoin-project/go-lotus/storage/sector"
 
 	"github.com/libp2p/go-libp2p-core/host"
@@ -82,4 +83,8 @@ func RunSectorService(lc fx.Lifecycle, secst *sector.Store) {
 			return nil
 		},
 	})
+}
+
+func RetrievalResolver(l *discovery.Local) discovery.PeerResolver {
+	return discovery.Multi(l)
 }

@@ -69,7 +69,9 @@ type FullNodeStruct struct {
 		MpoolGetNonce        func(context.Context, address.Address) (uint64, error)                               `perm:"read"`
 
 		ClientImport      func(ctx context.Context, path string) (cid.Cid, error)                                                                     `perm:"write"`
-		ClientListImports func(ctx context.Context) ([]Import, error)                                                                                 `perm:"read"`
+		ClientListImports func(ctx context.Context) ([]Import, error)                                                                                 `perm:"write"`
+		ClientHasLocal    func(ctx context.Context, root cid.Cid) (bool, error)                                                                       `perm:"write"`
+		ClientFindData    func(ctx context.Context, root cid.Cid) ([]RetrievalOffer, error)                                                           `perm:"read"`
 		ClientStartDeal   func(ctx context.Context, data cid.Cid, miner address.Address, price types.BigInt, blocksDuration uint64) (*cid.Cid, error) `perm:"admin"`
 
 		StateMinerSectors    func(context.Context, address.Address) ([]*SectorInfo, error)             `perm:"read"`
@@ -150,6 +152,14 @@ func (c *FullNodeStruct) ClientListImports(ctx context.Context) ([]Import, error
 
 func (c *FullNodeStruct) ClientImport(ctx context.Context, path string) (cid.Cid, error) {
 	return c.Internal.ClientImport(ctx, path)
+}
+
+func (c *FullNodeStruct) ClientHasLocal(ctx context.Context, root cid.Cid) (bool, error) {
+	return c.Internal.ClientHasLocal(ctx, root)
+}
+
+func (c *FullNodeStruct) ClientFindData(ctx context.Context, root cid.Cid) ([]RetrievalOffer, error) {
+	return c.Internal.ClientFindData(ctx, root)
 }
 
 func (c *FullNodeStruct) ClientStartDeal(ctx context.Context, data cid.Cid, miner address.Address, price types.BigInt, blocksDuration uint64) (*cid.Cid, error) {

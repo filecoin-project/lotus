@@ -106,6 +106,10 @@ func (r *refStorer) Read(p []byte) (n int, err error) {
 			return 0, err
 		}
 
+		if len(data) == 0 {
+			panic("Handle intermediate nodes") // TODO: !
+		}
+
 		if err := r.writeRef(cid, offset, uint32(len(data))); err != nil {
 			return 0, err
 		}
@@ -157,4 +161,18 @@ func (st *SectorBlocks) List() (map[cid.Cid][]api.SealedRef, error) {
 	}
 
 	return out, nil
+}
+
+func (st *SectorBlocks) GetRefs(k cid.Cid) ([]api.SealedRef, error) { // TODO: track unsealed sectors
+	ent, err := st.keys.Get(dshelp.CidToDsKey(k))
+	if err != nil {
+		return nil, err
+	}
+
+	var refs []api.SealedRef
+	if err := cbor.DecodeInto(ent, &refs); err != nil {
+		return nil, err
+	}
+
+	return refs, nil
 }
