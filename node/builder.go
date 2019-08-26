@@ -3,6 +3,7 @@ package node
 import (
 	"context"
 	"errors"
+	"github.com/filecoin-project/go-lotus/storage/sealedbstore"
 	"reflect"
 	"time"
 
@@ -232,6 +233,7 @@ func Online() Option {
 		ApplyIf(func(s *Settings) bool { return s.nodeType == nodeStorageMiner },
 			Override(new(*sectorbuilder.SectorBuilder), sectorbuilder.New),
 			Override(new(*sector.Store), sector.NewStore),
+			Override(new(*sealedbstore.Sealedbstore), sealedbstore.NewSealedbstore),
 			Override(new(*storage.Miner), modules.StorageMiner),
 
 			Override(new(dtypes.StagingDAG), modules.StagingDAG),

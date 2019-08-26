@@ -1,6 +1,8 @@
 package sealedbstore
 
 import (
+	"github.com/filecoin-project/go-lotus/node/modules/dtypes"
+	"github.com/ipfs/go-datastore/namespace"
 	"sync"
 
 	"github.com/ipfs/go-cid"
@@ -18,19 +20,28 @@ const (
 	SerializationUnixfs0 SealSerialization = 'u'
 )
 
+var dsPrefix = datastore.NewKey("/sealedblocks")
+
 type SealedRef struct {
 	Serialization SealSerialization
 
-	Piece cid.Cid
+	Piece  cid.Cid
 	Offset uint64
-	Size uint32
+	Size   uint32
 }
 
 type Sealedbstore struct {
 	*sector.Store
 
-	keys datastore.Batching
+	keys  datastore.Batching
 	keyLk sync.Mutex
+}
+
+func NewSealedbstore(sectst *sector.Store, ds dtypes.MetadataDS) *Sealedbstore {
+	return &Sealedbstore{
+		Store: sectst,
+		keys:  namespace.Wrap(ds, dsPrefix),
+	}
 }
 
 type UnixfsReader interface {
@@ -43,9 +54,9 @@ type UnixfsReader interface {
 
 type refStorer struct {
 	blockReader UnixfsReader
-	writeRef func(cid cid.Cid, offset uint64, size uint32) error
+	writeRef    func(cid cid.Cid, offset uint64, size uint32) error
 
-	pieceRef string
+	pieceRef  string
 	remaining []byte
 }
 
@@ -114,7 +125,7 @@ func (st *Sealedbstore) AddUnixfsPiece(ref cid.Cid, r UnixfsReader, keepAtLeast 
 		return 0, err
 	}
 
-	refst := &refStorer{blockReader: r, pieceRef: string(SerializationUnixfs0)+ref.String(), writeRef: st.writeRef}
+	refst := &refStorer{blockReader: r, pieceRef: string(SerializationUnixfs0) + ref.String(), writeRef: st.writeRef}
 
 	return st.Store.AddPiece(refst.pieceRef, uint64(size), refst)
 }

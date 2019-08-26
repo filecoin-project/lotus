@@ -7,14 +7,15 @@ import (
 )
 
 type QueryResponse int
+
 const (
 	Available QueryResponse = iota
 	Unavailable
 )
 
 type RetDealProposal struct {
-	Piece cid.Cid
-	Price types.BigInt
+	Piece   cid.Cid
+	Price   types.BigInt
 	Payment types.SignedVoucher
 }
 
@@ -27,5 +28,3 @@ type RetQueryResponse struct {
 
 	MinPricePerMiB types.BigInt // TODO: check units used for sector size
 }
-
-
