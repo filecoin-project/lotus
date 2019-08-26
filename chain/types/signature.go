@@ -22,6 +22,11 @@ const (
 	KTBLS       = "bls"
 )
 
+const (
+	IKTSecp256k1 = iota
+	IKTBLS
+)
+
 func init() {
 	cbor.RegisterCborType(atlas.BuildEntry(Signature{}).Transform().
 		TransformMarshal(atlas.MakeMarshalTransformFunc(
@@ -49,9 +54,9 @@ func SignatureFromBytes(x []byte) (Signature, error) {
 	}
 	var ts string
 	switch val {
-	case 0:
+	case IKTSecp256k1:
 		ts = KTSecp256k1
-	case 1:
+	case IKTBLS:
 		ts = KTBLS
 	default:
 		return Signature{}, fmt.Errorf("unsupported signature type: %d", val)
@@ -109,9 +114,9 @@ func (s *Signature) Verify(addr address.Address, msg []byte) error {
 func (s *Signature) TypeCode() int {
 	switch s.Type {
 	case KTSecp256k1:
-		return 0
+		return IKTSecp256k1
 	case KTBLS:
-		return 1
+		return IKTBLS
 	default:
 		panic("unsupported signature type")
 	}
@@ -157,9 +162,9 @@ func (s *Signature) UnmarshalCBOR(br cbg.ByteReader) error {
 	switch buf[0] {
 	default:
 		return fmt.Errorf("invalid signature type in cbor input: %d", buf[0])
-	case 0:
+	case IKTSecp256k1:
 		s.Type = KTSecp256k1
-	case 1:
+	case IKTBLS:
 		s.Type = KTBLS
 	}
 	s.Data = buf[1:]
