@@ -3,6 +3,9 @@ package api
 import (
 	"context"
 
+	"github.com/ipfs/go-cid"
+	"github.com/ipfs/go-filestore"
+	cbor "github.com/ipfs/go-ipld-cbor"
 	"github.com/libp2p/go-libp2p-core/network"
 	"github.com/libp2p/go-libp2p-core/peer"
 
@@ -10,11 +13,12 @@ import (
 	"github.com/filecoin-project/go-lotus/chain/address"
 	"github.com/filecoin-project/go-lotus/chain/store"
 	"github.com/filecoin-project/go-lotus/chain/types"
-
 	sectorbuilder "github.com/filecoin-project/go-sectorbuilder"
-	"github.com/ipfs/go-cid"
-	"github.com/ipfs/go-filestore"
 )
+
+func init() {
+	cbor.RegisterCborType(SealedRef{})
+}
 
 type Common interface {
 	// Auth
@@ -129,6 +133,8 @@ type StorageMiner interface {
 
 	// Seal all staged sectors
 	SectorsStagedSeal(context.Context) error
+
+	SectorsRefs(context.Context) (map[string][]SealedRef, error)
 }
 
 // Version provides various build-time information
@@ -177,4 +183,10 @@ type PaychStatus struct{}
 type MinerPower struct {
 	MinerPower types.BigInt
 	TotalPower types.BigInt
+}
+
+type SealedRef struct {
+	Piece  string
+	Offset uint64
+	Size   uint32
 }

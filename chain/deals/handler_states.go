@@ -8,7 +8,7 @@ import (
 	"golang.org/x/xerrors"
 
 	"github.com/filecoin-project/go-lotus/lib/sectorbuilder"
-	"github.com/filecoin-project/go-lotus/storage/sealedbstore"
+	"github.com/filecoin-project/go-lotus/storage/sectorblocks"
 )
 
 type handlerFunc func(ctx context.Context, deal MinerDeal) (func(*MinerDeal), error)
@@ -76,10 +76,10 @@ func (h *Handler) staged(ctx context.Context, deal MinerDeal) (func(*MinerDeal),
 		return nil, xerrors.Errorf("cannot open unixfs file: %s", err)
 	}
 
-	uf, ok := n.(sealedbstore.UnixfsReader)
+	uf, ok := n.(sectorblocks.UnixfsReader)
 	if !ok {
 		// we probably got directory, unsupported for now
-		return nil, xerrors.Errorf("unsupported unixfs type")
+		return nil, xerrors.Errorf("unsupported unixfs file type")
 	}
 
 	sectorID, err := h.secst.AddUnixfsPiece(deal.Proposal.PieceRef, uf, deal.Proposal.Duration)

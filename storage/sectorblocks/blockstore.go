@@ -1,8 +1,11 @@
-package sealedbstore
+package sectorblocks
 
 import (
+	"context"
+	"github.com/filecoin-project/go-lotus/api"
 	"github.com/filecoin-project/go-lotus/node/modules/dtypes"
 	"github.com/ipfs/go-datastore/namespace"
+	"github.com/ipfs/go-datastore/query"
 	"sync"
 
 	"github.com/ipfs/go-cid"
@@ -22,23 +25,15 @@ const (
 
 var dsPrefix = datastore.NewKey("/sealedblocks")
 
-type SealedRef struct {
-	Serialization SealSerialization
-
-	Piece  cid.Cid
-	Offset uint64
-	Size   uint32
-}
-
-type Sealedbstore struct {
+type SectorBlocks struct {
 	*sector.Store
 
 	keys  datastore.Batching
 	keyLk sync.Mutex
 }
 
-func NewSealedbstore(sectst *sector.Store, ds dtypes.MetadataDS) *Sealedbstore {
-	return &Sealedbstore{
+func NewSectorBlocks(sectst *sector.Store, ds dtypes.MetadataDS) *SectorBlocks {
+	return &SectorBlocks{
 		Store: sectst,
 		keys:  namespace.Wrap(ds, dsPrefix),
 	}
@@ -49,7 +44,7 @@ type UnixfsReader interface {
 
 	// ReadBlock reads data from a single unixfs block. Data is nil
 	// for intermediate nodes
-	ReadBlock() (data []byte, offset uint64, cid cid.Cid, err error)
+	ReadBlock(context.Context) (data []byte, offset uint64, cid cid.Cid, err error)
 }
 
 type refStorer struct {
@@ -60,7 +55,7 @@ type refStorer struct {
 	remaining []byte
 }
 
-func (st *Sealedbstore) writeRef(cid cid.Cid, offset uint64, size uint32) error {
+func (st *SectorBlocks) writeRef(cid cid.Cid, offset uint64, size uint32) error {
 	st.keyLk.Lock() // TODO: make this multithreaded
 	defer st.keyLk.Unlock()
 
@@ -72,18 +67,17 @@ func (st *Sealedbstore) writeRef(cid cid.Cid, offset uint64, size uint32) error 
 		return err
 	}
 
-	var refs []SealedRef
+	var refs []api.SealedRef
 	if len(v) > 0 {
 		if err := cbor.DecodeInto(v, &refs); err != nil {
 			return err
 		}
 	}
 
-	refs = append(refs, SealedRef{
-		Serialization: SerializationUnixfs0,
-		Piece:         cid,
-		Offset:        offset,
-		Size:          size,
+	refs = append(refs, api.SealedRef{
+		Piece:  string(SerializationUnixfs0) + cid.String(),
+		Offset: offset,
+		Size:   size,
 	})
 
 	newRef, err := cbor.DumpObject(&refs)
@@ -107,7 +101,7 @@ func (r *refStorer) Read(p []byte) (n int, err error) {
 	}
 
 	for {
-		data, offset, cid, err := r.blockReader.ReadBlock()
+		data, offset, cid, err := r.blockReader.ReadBlock(context.TODO())
 		if err != nil {
 			return 0, err
 		}
@@ -116,10 +110,16 @@ func (r *refStorer) Read(p []byte) (n int, err error) {
 			return 0, err
 		}
 
+		read := copy(p, data)
+		if read < len(data) {
+			r.remaining = data[read:]
+		}
+		// TODO: read multiple
+		return read, nil
 	}
 }
 
-func (st *Sealedbstore) AddUnixfsPiece(ref cid.Cid, r UnixfsReader, keepAtLeast uint64) (sectorID uint64, err error) {
+func (st *SectorBlocks) AddUnixfsPiece(ref cid.Cid, r UnixfsReader, keepAtLeast uint64) (sectorID uint64, err error) {
 	size, err := r.Size()
 	if err != nil {
 		return 0, err
@@ -128,4 +128,33 @@ func (st *Sealedbstore) AddUnixfsPiece(ref cid.Cid, r UnixfsReader, keepAtLeast 
 	refst := &refStorer{blockReader: r, pieceRef: string(SerializationUnixfs0) + ref.String(), writeRef: st.writeRef}
 
 	return st.Store.AddPiece(refst.pieceRef, uint64(size), refst)
+}
+
+func (st *SectorBlocks) List() (map[cid.Cid][]api.SealedRef, error) {
+	res, err := st.keys.Query(query.Query{})
+	if err != nil {
+		return nil, err
+	}
+
+	ents, err := res.Rest()
+	if err != nil {
+		return nil, err
+	}
+
+	out := map[cid.Cid][]api.SealedRef{}
+	for _, ent := range ents {
+		refCid, err := dshelp.DsKeyToCid(datastore.RawKey(ent.Key))
+		if err != nil {
+			return nil, err
+		}
+
+		var refs []api.SealedRef
+		if err := cbor.DecodeInto(ent.Value, &refs); err != nil {
+			return nil, err
+		}
+
+		out[refCid] = refs
+	}
+
+	return out, nil
 }

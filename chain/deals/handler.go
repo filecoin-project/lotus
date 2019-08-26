@@ -2,7 +2,7 @@ package deals
 
 import (
 	"context"
-	"github.com/filecoin-project/go-lotus/storage/sealedbstore"
+	"github.com/filecoin-project/go-lotus/storage/sectorblocks"
 	"math"
 
 	"github.com/filecoin-project/go-lotus/api"
@@ -34,7 +34,7 @@ type MinerDeal struct {
 }
 
 type Handler struct {
-	secst *sealedbstore.Sealedbstore
+	secst *sectorblocks.SectorBlocks
 	full  api.FullNode
 
 	// TODO: Use a custom protocol or graphsync in the future
@@ -59,7 +59,7 @@ type dealUpdate struct {
 	mut      func(*MinerDeal)
 }
 
-func NewHandler(ds dtypes.MetadataDS, secst *sealedbstore.Sealedbstore, dag dtypes.StagingDAG, fullNode api.FullNode) (*Handler, error) {
+func NewHandler(ds dtypes.MetadataDS, secst *sectorblocks.SectorBlocks, dag dtypes.StagingDAG, fullNode api.FullNode) (*Handler, error) {
 	addr, err := ds.Get(datastore.NewKey("miner-address"))
 	if err != nil {
 		return nil, err

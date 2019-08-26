@@ -3,6 +3,7 @@ package impl
 import (
 	"context"
 	"fmt"
+	"github.com/filecoin-project/go-lotus/storage/sectorblocks"
 	"io"
 	"math/rand"
 
@@ -19,6 +20,7 @@ type StorageMinerAPI struct {
 	SectorBuilderConfig *sectorbuilder.SectorBuilderConfig
 	SectorBuilder       *sectorbuilder.SectorBuilder
 	Sectors             *sector.Store
+	SectorBlocks        *sectorblocks.SectorBlocks
 
 	Miner *storage.Miner
 }
@@ -51,6 +53,22 @@ func (sm *StorageMinerAPI) SectorsStagedList(context.Context) ([]sectorbuilder.S
 // Seal all staged sectors
 func (sm *StorageMinerAPI) SectorsStagedSeal(context.Context) error {
 	return sm.SectorBuilder.SealAllStagedSectors()
+}
+
+func (sm *StorageMinerAPI) SectorsRefs(context.Context) (map[string][]api.SealedRef, error) {
+	// json can't handle cids as map keys
+	out := map[string][]api.SealedRef{}
+
+	refs, err := sm.SectorBlocks.List()
+	if err != nil {
+		return nil, err
+	}
+
+	for k, v := range refs {
+		out[k.String()] = v
+	}
+
+	return out, nil
 }
 
 var _ api.StorageMiner = &StorageMinerAPI{}

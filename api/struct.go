@@ -101,6 +101,8 @@ type StorageMinerStruct struct {
 		SectorsStatus     func(context.Context, uint64) (sectorbuilder.SectorSealingStatus, error) `perm:"read"`
 		SectorsStagedList func(context.Context) ([]sectorbuilder.StagedSectorMetadata, error)      `perm:"read"`
 		SectorsStagedSeal func(context.Context) error                                              `perm:"write"`
+
+		SectorsRefs func(context.Context) (map[string][]SealedRef, error) `perm:"read"`
 	}
 }
 
@@ -327,6 +329,10 @@ func (c *StorageMinerStruct) SectorsStagedList(ctx context.Context) ([]sectorbui
 // Seal all staged sectors
 func (c *StorageMinerStruct) SectorsStagedSeal(ctx context.Context) error {
 	return c.Internal.SectorsStagedSeal(ctx)
+}
+
+func (c *StorageMinerStruct) SectorsRefs(ctx context.Context) (map[string][]SealedRef, error) {
+	return c.Internal.SectorsRefs(ctx)
 }
 
 var _ Common = &CommonStruct{}
