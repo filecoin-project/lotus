@@ -31,7 +31,7 @@ func (sm *StorageMinerAPI) StoreGarbageData(ctx context.Context) (uint64, error)
 	size := uint64(1016) // this is the most data we can fit in a 1024 byte sector
 
 	name := fmt.Sprintf("fake-file-%d", rand.Intn(100000000))
-	sectorId, err := sm.Sectors.AddPiece(name, size, io.LimitReader(rand.New(rand.NewSource(42)), 1016), 0)
+	sectorId, err := sm.Sectors.AddPiece(name, size, io.LimitReader(rand.New(rand.NewSource(42)), 1016))
 	if err != nil {
 		return 0, err
 	}

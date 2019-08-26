@@ -99,7 +99,7 @@ func (s *Store) service() {
 	}
 }
 
-func (s *Store) AddPiece(ref string, size uint64, r io.Reader, keepAtLeast uint64) (sectorID uint64, err error) {
+func (s *Store) AddPiece(ref string, size uint64, r io.Reader) (sectorID uint64, err error) {
 	err = withTemp(r, func(f string) (err error) {
 		sectorID, err = s.sb.AddPiece(ref, size, f)
 		return err

@@ -212,7 +212,7 @@ func (c *Client) VerifyParams(ctx context.Context, data cid.Cid) (*actors.PieceI
 func (c *Client) Start(ctx context.Context, p ClientDealProposal, vd *actors.PieceInclVoucherData) (cid.Cid, error) {
 	// TODO: use data
 	proposal := StorageDealProposal{
-		PieceRef:          p.Data.String(),
+		PieceRef:          p.Data,
 		SerializationMode: SerializationUnixFs,
 		CommP:             vd.CommP[:],
 		Size:              vd.PieceSize.Uint64(),

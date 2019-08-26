@@ -41,7 +41,7 @@ const (
 )
 
 type StorageDealProposal struct {
-	PieceRef          string
+	PieceRef          cid.Cid // TODO: port to spec
 	SerializationMode SerializationMode
 	CommP             []byte
 
