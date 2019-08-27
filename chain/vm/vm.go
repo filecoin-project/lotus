@@ -56,37 +56,38 @@ func (vmc *VMContext) Message() *types.Message {
 }
 
 // Storage interface
-func (s *VMContext) Put(i interface{}) (cid.Cid, aerrors.ActorError) {
-	if err := s.ChargeGas(gasPutObj); err != nil {
+
+func (vmc *VMContext) Put(i interface{}) (cid.Cid, aerrors.ActorError) {
+	if err := vmc.ChargeGas(gasPutObj); err != nil {
 		return cid.Undef, aerrors.Wrap(err, "out of gas")
 	}
-	c, err := s.cst.Put(context.TODO(), i)
+	c, err := vmc.cst.Put(context.TODO(), i)
 	if err != nil {
 		return cid.Undef, aerrors.Escalate(err, "putting cid")
 	}
 	return c, nil
 }
 
-func (s *VMContext) Get(c cid.Cid, out interface{}) aerrors.ActorError {
-	if err := s.ChargeGas(gasGetObj); err != nil {
+func (vmc *VMContext) Get(c cid.Cid, out interface{}) aerrors.ActorError {
+	if err := vmc.ChargeGas(gasGetObj); err != nil {
 		return aerrors.Wrap(err, "out of gas")
 	}
-	return aerrors.Escalate(s.cst.Get(context.TODO(), c, out), "getting cid")
+	return aerrors.Escalate(vmc.cst.Get(context.TODO(), c, out), "getting cid")
 }
 
-func (s *VMContext) GetHead() cid.Cid {
-	return s.sroot
+func (vmc *VMContext) GetHead() cid.Cid {
+	return vmc.sroot
 }
 
-func (s *VMContext) Commit(oldh, newh cid.Cid) aerrors.ActorError {
-	if err := s.ChargeGas(gasCommit); err != nil {
+func (vmc *VMContext) Commit(oldh, newh cid.Cid) aerrors.ActorError {
+	if err := vmc.ChargeGas(gasCommit); err != nil {
 		return aerrors.Wrap(err, "out of gas")
 	}
-	if s.sroot != oldh {
+	if vmc.sroot != oldh {
 		return aerrors.New(1, "failed to update, inconsistent base reference")
 	}
 
-	s.sroot = newh
+	vmc.sroot = newh
 	return nil
 }
 
