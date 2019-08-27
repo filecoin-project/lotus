@@ -6,7 +6,9 @@ import (
 	. "github.com/filecoin-project/go-lotus/chain/actors"
 	"github.com/filecoin-project/go-lotus/chain/address"
 	"github.com/filecoin-project/go-lotus/chain/types"
+
 	cbor "github.com/ipfs/go-ipld-cbor"
+	"github.com/stretchr/testify/assert"
 )
 
 func TestDumpEmpyStruct(t *testing.T) {
@@ -15,121 +17,62 @@ func TestDumpEmpyStruct(t *testing.T) {
 }
 
 func TestStorageMarketCreateMiner(t *testing.T) {
-	h := NewHarness(t)
-	var sminer address.Address
-	h.Steps = []Step{
-		{
-			M: types.Message{
-				To:       StorageMarketAddress,
-				From:     h.From,
-				Method:   SMAMethods.CreateStorageMiner,
-				GasPrice: types.NewInt(1),
-				GasLimit: types.NewInt(1000),
-				Value:    types.NewInt(0),
-				Params: h.DumpObject(&CreateStorageMinerParams{
-					Owner:      h.From,
-					Worker:     h.Third,
-					SectorSize: types.NewInt(SectorSize),
-					PeerID:     "fakepeerid",
-				}),
-			},
-			Ret: func(t *testing.T, ret *types.MessageReceipt) {
-				if ret.ExitCode != 0 {
-					t.Fatal("invokation failed: ", ret.ExitCode)
-				}
+	var ownerAddr, workerAddr address.Address
 
-				var err error
-				sminer, err = address.NewFromBytes(ret.Return)
-				if err != nil {
-					t.Fatal(err)
-				}
-
-				if sminer.String() != "t0103" {
-					t.Fatalf("hold up got: %s", sminer)
-				}
-				h.Steps[1].M.Params = h.DumpObject(&IsMinerParam{Addr: sminer})
-				h.Steps[2].M.Params = h.DumpObject(&PowerLookupParams{Miner: sminer})
-			},
-		},
-		{
-			M: types.Message{
-				To:       StorageMarketAddress,
-				From:     h.From,
-				Method:   SMAMethods.IsMiner,
-				GasPrice: types.NewInt(1),
-				GasLimit: types.NewInt(1),
-				Value:    types.NewInt(0),
-				Nonce:    1,
-				// Params is sent in previous set
-			},
-			Ret: func(t *testing.T, ret *types.MessageReceipt) {
-				if ret.ExitCode != 0 {
-					t.Fatal("invokation failed: ", ret.ExitCode)
-				}
-				var output bool
-				err := cbor.DecodeInto(ret.Return, &output)
-				if err != nil {
-					t.Fatalf("error decoding: %+v", err)
-				}
-
-				if !output {
-					t.Fatalf("%s is miner but IsMiner call returned false", sminer)
-				}
-			},
-		},
-		{
-			M: types.Message{
-				To:       StorageMarketAddress,
-				From:     h.From,
-				Method:   SMAMethods.PowerLookup,
-				GasPrice: types.NewInt(1),
-				GasLimit: types.NewInt(1),
-				Value:    types.NewInt(0),
-				Nonce:    2,
-				// Params is sent in previous set
-			},
-			Ret: func(t *testing.T, ret *types.MessageReceipt) {
-				if ret.ExitCode != 0 {
-					t.Fatal("invokation failed: ", ret.ExitCode)
-				}
-				power := types.BigFromBytes(ret.Return)
-
-				if types.BigCmp(power, types.NewInt(0)) != 0 {
-					t.Fatalf("power should be zero, is: %s", power)
-				}
-			},
-		},
-	}
-	state := h.Execute()
-	act, err := state.GetActor(sminer)
-	if err != nil {
-		t.Fatal(err)
-	}
-	if act.Code != StorageMinerCodeCid {
-		t.Fatalf("Expected correct code, got %s, instead of %s", act.Code, StorageMinerCodeCid)
-	}
-	hblock, err := h.bs.Get(act.Head)
-	if err != nil {
-		t.Fatal(err)
+	opts := []HarnessOpt{
+		HarnessAddr(&ownerAddr, 10000),
+		HarnessAddr(&workerAddr, 10000),
 	}
 
-	smas := &StorageMinerActorState{}
-	err = cbor.DecodeInto(hblock.RawData(), smas)
-	if err != nil {
-		t.Fatal(err)
+	h := NewHarness2(t, opts...)
+
+	var minerAddr address.Address
+	{
+		ret, _ := h.Invoke(t, ownerAddr, StorageMarketAddress, SMAMethods.CreateStorageMiner,
+			CreateStorageMinerParams{
+				Owner:      ownerAddr,
+				Worker:     workerAddr,
+				SectorSize: types.NewInt(SectorSize),
+				PeerID:     "fakepeerid",
+			})
+		ApplyOK(t, ret)
+		var err error
+		minerAddr, err = address.NewFromBytes(ret.Return)
+		assert.NoError(t, err)
 	}
 
-	iblock, err := h.bs.Get(smas.Info)
-	if err != nil {
-		t.Fatal(err)
+	{
+		ret, _ := h.Invoke(t, ownerAddr, StorageMarketAddress, SMAMethods.IsMiner,
+			IsMinerParam{Addr: minerAddr})
+		ApplyOK(t, ret)
+
+		var output bool
+		err := cbor.DecodeInto(ret.Return, &output)
+		if err != nil {
+			t.Fatalf("error decoding: %+v", err)
+		}
+
+		if !output {
+			t.Fatalf("%s is miner but IsMiner call returned false", minerAddr)
+		}
 	}
 
-	var minfo MinerInfo
-	if err := cbor.DecodeInto(iblock.RawData(), &minfo); err != nil {
-		t.Fatal(err)
+	{
+		ret, _ := h.Invoke(t, ownerAddr, StorageMarketAddress, SMAMethods.PowerLookup,
+			PowerLookupParams{Miner: minerAddr})
+		ApplyOK(t, ret)
+		power := types.BigFromBytes(ret.Return)
+
+		if types.BigCmp(power, types.NewInt(0)) != 0 {
+			t.Fatalf("power should be zero, is: %s", power)
+		}
 	}
 
-	if minfo.Owner != h.From {
-		t.Fatalf("Owner should be %s, but is %s", h.From, minfo.Owner)
+	{
+		ret, _ := h.Invoke(t, ownerAddr, minerAddr, MAMethods.GetOwner, nil)
+		ApplyOK(t, ret)
+		oA, err := address.NewFromBytes(ret.Return)
+		assert.NoError(t, err)
+		assert.Equal(t, ownerAddr, oA, "return from GetOwner should be equal to the owner")
 	}
 }

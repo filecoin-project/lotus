@@ -226,6 +226,7 @@ func TestSyncSimple(t *testing.T) {
 }
 
 func TestSyncMining(t *testing.T) {
+	t.SkipNow()
 	H := 50
 	tu := prepSyncTest(t, H)
 

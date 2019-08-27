@@ -26,6 +26,9 @@ var log = logging.Logger("vm")
 
 const (
 	gasFundTransfer = 10
+	gasGetObj       = 10
+	gasPutObj       = 20
+	gasCommit       = 50
 )
 
 type VMContext struct {
@@ -45,8 +48,6 @@ type VMContext struct {
 
 	// address that started invokation chain
 	origin address.Address
-
-	storage *storage
 }
 
 // Message is the message that kicked off the current invocation
@@ -54,14 +55,11 @@ func (vmc *VMContext) Message() *types.Message {
 	return vmc.msg
 }
 
-type storage struct {
-	// would be great to stop depending on this crap everywhere
-	// I am my own worst enemy
-	cst  *hamt.CborIpldStore
-	head cid.Cid
-}
-
-func (s *storage) Put(i interface{}) (cid.Cid, aerrors.ActorError) {
+// Storage interface
+func (s *VMContext) Put(i interface{}) (cid.Cid, aerrors.ActorError) {
+	if err := s.ChargeGas(gasPutObj); err != nil {
+		return cid.Undef, aerrors.Wrap(err, "out of gas")
+	}
 	c, err := s.cst.Put(context.TODO(), i)
 	if err != nil {
 		return cid.Undef, aerrors.Escalate(err, "putting cid")
@@ -69,26 +67,34 @@ func (s *storage) Put(i interface{}) (cid.Cid, aerrors.ActorError) {
 	return c, nil
 }
 
-func (s *storage) Get(c cid.Cid, out interface{}) aerrors.ActorError {
+func (s *VMContext) Get(c cid.Cid, out interface{}) aerrors.ActorError {
+	if err := s.ChargeGas(gasGetObj); err != nil {
+		return aerrors.Wrap(err, "out of gas")
+	}
 	return aerrors.Escalate(s.cst.Get(context.TODO(), c, out), "getting cid")
 }
 
-func (s *storage) GetHead() cid.Cid {
-	return s.head
+func (s *VMContext) GetHead() cid.Cid {
+	return s.sroot
 }
 
-func (s *storage) Commit(oldh, newh cid.Cid) aerrors.ActorError {
-	if s.head != oldh {
+func (s *VMContext) Commit(oldh, newh cid.Cid) aerrors.ActorError {
+	if err := s.ChargeGas(gasCommit); err != nil {
+		return aerrors.Wrap(err, "out of gas")
+	}
+	if s.sroot != oldh {
 		return aerrors.New(1, "failed to update, inconsistent base reference")
 	}
 
-	s.head = newh
+	s.sroot = newh
 	return nil
 }
 
+// End of storage interface
+
 // Storage provides access to the VM storage layer
 func (vmc *VMContext) Storage() types.Storage {
-	return vmc.storage
+	return vmc
 }
 
 func (vmc *VMContext) Ipld() *hamt.CborIpldStore {
@@ -205,10 +211,6 @@ func (vm *VM) makeVMContext(ctx context.Context, sroot cid.Cid, msg *types.Messa
 		origin: origin,
 		height: vm.blockHeight,
 		cst:    vm.cst,
-		storage: &storage{
-			cst:  vm.cst,
-			head: sroot,
-		},
 
 		gasUsed:      usedGas,
 		gasAvailable: msg.GasLimit,
