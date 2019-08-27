@@ -8,7 +8,7 @@ import (
 )
 
 type SectorBlockStore struct {
-	// local        blockstore.Blockstore // staging before GC // TODO: Pass staging
+	intermediate blockstore.Blockstore
 	sectorBlocks *SectorBlocks
 
 	approveUnseal func() error
@@ -38,25 +38,25 @@ func (s *SectorBlockStore) HashOnRead(enabled bool) {
 }
 
 func (s *SectorBlockStore) Has(c cid.Cid) (bool, error) {
-	/*has, err := s.local.Has(c) // TODO: Pass staging
+	has, err := s.intermediate.Has(c)
 	if err != nil {
 		return false, err
 	}
 	if has {
 		return true, nil
-	}*/
+	}
 
 	return s.sectorBlocks.Has(c)
 }
 
 func (s *SectorBlockStore) Get(c cid.Cid) (blocks.Block, error) {
-	/*val, err := s.local.Get(c) // TODO: Pass staging
+	val, err := s.intermediate.Get(c)
 	if err == nil {
 		return val, nil
 	}
 	if err != blockstore.ErrNotFound {
 		return nil, err
-	}*/
+	}
 
 	refs, err := s.sectorBlocks.GetRefs(c)
 	if err != nil {

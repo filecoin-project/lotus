@@ -7,6 +7,7 @@ import (
 	"github.com/filecoin-project/go-lotus/node/modules/dtypes"
 	"github.com/ipfs/go-datastore/namespace"
 	"github.com/ipfs/go-datastore/query"
+	blockstore "github.com/ipfs/go-ipfs-blockstore"
 	ipld "github.com/ipfs/go-ipld-format"
 	"sync"
 
@@ -26,9 +27,12 @@ const (
 )
 
 var dsPrefix = datastore.NewKey("/sealedblocks")
+var imBlocksPrefix = datastore.NewKey("/intermediate")
 
 type SectorBlocks struct {
 	*sector.Store
+
+	intermediate blockstore.Blockstore // holds intermediate nodes TODO: consider combining with the staging blockstore
 
 	unsealed *unsealedBlocks
 	keys     datastore.Batching
@@ -38,11 +42,15 @@ type SectorBlocks struct {
 func NewSectorBlocks(sectst *sector.Store, ds dtypes.MetadataDS, sb *sectorbuilder.SectorBuilder) *SectorBlocks {
 	sbc := &SectorBlocks{
 		Store: sectst,
-		keys:  namespace.Wrap(ds, dsPrefix),
+
+		intermediate: blockstore.NewBlockstore(namespace.Wrap(ds, imBlocksPrefix)),
+
+		keys: namespace.Wrap(ds, dsPrefix),
 	}
 
 	unsealed := &unsealedBlocks{ // TODO: untangle this
-		sb:        sb,
+		sb: sb,
+
 		unsealed:  map[string][]byte{},
 		unsealing: map[string]chan struct{}{},
 	}
@@ -60,8 +68,9 @@ type UnixfsReader interface {
 }
 
 type refStorer struct {
-	blockReader UnixfsReader
-	writeRef    func(cid cid.Cid, offset uint64, size uint32) error
+	blockReader  UnixfsReader
+	writeRef     func(cid cid.Cid, offset uint64, size uint32) error
+	intermediate blockstore.Blockstore
 
 	pieceRef  string
 	remaining []byte
@@ -119,7 +128,12 @@ func (r *refStorer) Read(p []byte) (n int, err error) {
 		}
 
 		if len(data) == 0 {
-			panic("Handle intermediate nodes") // TODO: !
+			// TODO: batch
+			// TODO: GC
+			if err := r.intermediate.Put(nd); err != nil {
+				return 0, err
+			}
+			continue
 		}
 
 		if err := r.writeRef(nd.Cid(), offset, uint32(len(data))); err != nil {
@@ -141,7 +155,12 @@ func (st *SectorBlocks) AddUnixfsPiece(ref cid.Cid, r UnixfsReader, keepAtLeast 
 		return 0, err
 	}
 
-	refst := &refStorer{blockReader: r, pieceRef: string(SerializationUnixfs0) + ref.String(), writeRef: st.writeRef}
+	refst := &refStorer{
+		blockReader:  r,
+		pieceRef:     string(SerializationUnixfs0) + ref.String(),
+		writeRef:     st.writeRef,
+		intermediate: st.intermediate,
+	}
 
 	return st.Store.AddPiece(refst.pieceRef, uint64(size), refst)
 }
@@ -196,7 +215,7 @@ func (st *SectorBlocks) Has(k cid.Cid) (bool, error) {
 
 func (st *SectorBlocks) SealedBlockstore(approveUnseal func() error) *SectorBlockStore {
 	return &SectorBlockStore{
-		//local:         nil, // TODO: Pass staging
+		intermediate:  st.intermediate,
 		sectorBlocks:  st,
 		approveUnseal: approveUnseal,
 	}
