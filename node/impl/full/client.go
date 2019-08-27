@@ -171,7 +171,7 @@ func (a *ClientAPI) ClientImport(ctx context.Context, path string) (cid.Cid, err
 	bufferedDS := ipld.NewBufferedDAG(ctx, a.LocalDAG)
 
 	params := ihelper.DagBuilderParams{
-		Maxlinks:   ihelper.DefaultLinksPerBlock,
+		Maxlinks:   build.UnixfsLinksPerLevel,
 		RawLeaves:  true,
 		CidBuilder: nil,
 		Dagserv:    bufferedDS,
@@ -219,6 +219,17 @@ func (a *ClientAPI) ClientListImports(ctx context.Context) ([]api.Import, error)
 	}
 }
 
-func (a *ClientAPI) ClientRetrieve(ctx context.Context, order api.RetrievalOrder) error {
-	return a.Retrieval.RetrieveUnixfs(ctx, order.Root, order.Size, order.MinerPeerID, order.Miner)
+func (a *ClientAPI) ClientRetrieve(ctx context.Context, order api.RetrievalOrder, path string) error {
+	outFile, err := os.OpenFile(path, os.O_TRUNC|os.O_CREATE|os.O_WRONLY, 0777)
+	if err != nil {
+		return err
+	}
+
+	err = a.Retrieval.RetrieveUnixfs(ctx, order.Root, order.Size, order.MinerPeerID, order.Miner, outFile)
+	if err != nil {
+		_ = outFile.Close()
+		return err
+	}
+
+	return outFile.Close()
 }

@@ -163,8 +163,8 @@ var clientRetrieveCmd = &cli.Command{
 	Name:  "retrieve",
 	Usage: "retrieve data from network",
 	Action: func(cctx *cli.Context) error {
-		if !cctx.Args().Present() {
-			fmt.Println("Usage: retrieve [CID]")
+		if cctx.NArg() != 2 {
+			fmt.Println("Usage: retrieve [CID] [outfile]")
 			return nil
 		}
 
@@ -189,7 +189,7 @@ var clientRetrieveCmd = &cli.Command{
 		if has {
 			fmt.Println("Success: Already in local storage")
 			return nil
-		}*/ // TODO: uncomment before merge
+		}*/ // TODO: fix
 
 		offers, err := api.ClientFindData(ctx, file)
 		if err != nil {
@@ -199,7 +199,7 @@ var clientRetrieveCmd = &cli.Command{
 		// TODO: parse offer strings from `client find`, make this smarter
 
 		order := offers[0].Order()
-		err = api.ClientRetrieve(ctx, order)
+		err = api.ClientRetrieve(ctx, order, cctx.Args().Get(1))
 		if err == nil {
 			fmt.Println("Success")
 		}

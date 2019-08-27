@@ -2,6 +2,7 @@ package retrieval
 
 import (
 	"context"
+	"io"
 	"io/ioutil"
 
 	pb "github.com/ipfs/go-bitswap/message/pb"
@@ -92,7 +93,7 @@ type clientStream struct {
 // < ..Blocks
 // > Deal(...)
 // < ...
-func (c *Client) RetrieveUnixfs(ctx context.Context, root cid.Cid, size uint64, miner peer.ID, minerAddr address.Address) error {
+func (c *Client) RetrieveUnixfs(ctx context.Context, root cid.Cid, size uint64, miner peer.ID, minerAddr address.Address, out io.Writer) error {
 	s, err := c.h.NewStream(ctx, miner, ProtocolID)
 	if err != nil {
 		return err
@@ -108,7 +109,7 @@ func (c *Client) RetrieveUnixfs(ctx context.Context, root cid.Cid, size uint64, 
 		// TODO: Allow client to specify this
 
 		windowSize: build.UnixfsChunkSize,
-		verifier:   &OptimisticVerifier{}, // TODO: Use a real verifier
+		verifier:   &UnixFs0Verifier{Root: root},
 	}
 
 	for cst.offset != size {
@@ -116,8 +117,9 @@ func (c *Client) RetrieveUnixfs(ctx context.Context, root cid.Cid, size uint64, 
 		if toFetch+cst.offset > size {
 			toFetch = size - cst.offset
 		}
+		log.Infof("Retrieve %dB @%d", toFetch, cst.offset)
 
-		err := cst.doOneExchange(toFetch)
+		err := cst.doOneExchange(toFetch, out)
 		if err != nil {
 			return err
 		}
@@ -128,7 +130,7 @@ func (c *Client) RetrieveUnixfs(ctx context.Context, root cid.Cid, size uint64, 
 	return nil
 }
 
-func (cst *clientStream) doOneExchange(toFetch uint64) error {
+func (cst *clientStream) doOneExchange(toFetch uint64, out io.Writer) error {
 	deal := Deal{Unixfs0: &Unixfs0Offer{
 		Root:   cst.root,
 		Offset: cst.offset,
@@ -158,18 +160,21 @@ func (cst *clientStream) doOneExchange(toFetch uint64) error {
 		return xerrors.New("storage deal response had no Accepted section")
 	}
 
-	return cst.fetchBlocks(toFetch)
+	log.Info("Retrieval accepted, fetching blocks")
+
+	return cst.fetchBlocks(toFetch, out)
 
 	// TODO: maybe increase miner window size after success
 }
 
-func (cst *clientStream) fetchBlocks(toFetch uint64) error {
+func (cst *clientStream) fetchBlocks(toFetch uint64, out io.Writer) error {
 	blocksToFetch := (toFetch + build.UnixfsChunkSize - 1) / build.UnixfsChunkSize
 
 	// TODO: put msgio into spec
 	reader := msgio.NewVarintReaderSize(cst.stream, network.MessageSizeMax)
 
 	for i := uint64(0); i < blocksToFetch; {
+		log.Infof("block %d of %d", i+1, blocksToFetch)
 		msg, err := reader.ReadMsg()
 		if err != nil {
 			return err
@@ -180,7 +185,7 @@ func (cst *clientStream) fetchBlocks(toFetch uint64) error {
 			return err
 		}
 
-		dataBlocks, err := cst.consumeBlockMessage(pb)
+		dataBlocks, err := cst.consumeBlockMessage(pb, out)
 		if err != nil {
 			return err
 		}
@@ -193,7 +198,7 @@ func (cst *clientStream) fetchBlocks(toFetch uint64) error {
 	return nil
 }
 
-func (cst *clientStream) consumeBlockMessage(pb pb.Message_Block) (uint64, error) {
+func (cst *clientStream) consumeBlockMessage(pb pb.Message_Block, out io.Writer) (uint64, error) {
 	prefix, err := cid.PrefixFromBytes(pb.GetPrefix())
 	if err != nil {
 		return 0, err
@@ -205,15 +210,17 @@ func (cst *clientStream) consumeBlockMessage(pb pb.Message_Block) (uint64, error
 		return 0, err
 	}
 
-	internal, err := cst.verifier.Verify(blk)
+	internal, err := cst.verifier.Verify(context.TODO(), blk, out)
 	if err != nil {
 		return 0, err
 	}
 
-	// TODO: Persist block
+	// TODO: Smarter out, maybe add to filestore automagically
+	//  (Also, persist intermediate nodes)
 
 	if internal {
 		return 0, nil
 	}
+
 	return 1, nil
 }

@@ -73,7 +73,7 @@ type FullNodeStruct struct {
 		ClientHasLocal    func(ctx context.Context, root cid.Cid) (bool, error)                                                                       `perm:"write"`
 		ClientFindData    func(ctx context.Context, root cid.Cid) ([]QueryOffer, error)                                                               `perm:"read"`
 		ClientStartDeal   func(ctx context.Context, data cid.Cid, miner address.Address, price types.BigInt, blocksDuration uint64) (*cid.Cid, error) `perm:"admin"`
-		ClientRetrieve    func(ctx context.Context, order RetrievalOrder) error                                                                       `perm:"admin"`
+		ClientRetrieve    func(ctx context.Context, order RetrievalOrder, path string) error                                                          `perm:"admin"`
 
 		StateMinerSectors    func(context.Context, address.Address) ([]*SectorInfo, error)             `perm:"read"`
 		StateMinerProvingSet func(context.Context, address.Address) ([]*SectorInfo, error)             `perm:"read"`
@@ -167,8 +167,8 @@ func (c *FullNodeStruct) ClientStartDeal(ctx context.Context, data cid.Cid, mine
 	return c.Internal.ClientStartDeal(ctx, data, miner, price, blocksDuration)
 }
 
-func (c *FullNodeStruct) ClientRetrieve(ctx context.Context, order RetrievalOrder) error {
-	return c.Internal.ClientRetrieve(ctx, order)
+func (c *FullNodeStruct) ClientRetrieve(ctx context.Context, order RetrievalOrder, path string) error {
+	return c.Internal.ClientRetrieve(ctx, order, path)
 }
 
 func (c *FullNodeStruct) MpoolPending(ctx context.Context, ts *types.TipSet) ([]*types.SignedMessage, error) {
