@@ -93,6 +93,7 @@ type FullNode interface {
 	ClientStartDeal(ctx context.Context, data cid.Cid, miner address.Address, price types.BigInt, blocksDuration uint64) (*cid.Cid, error)
 	ClientHasLocal(ctx context.Context, root cid.Cid) (bool, error)
 	ClientFindData(ctx context.Context, root cid.Cid) ([]QueryOffer, error) // TODO: specify serialization mode we want (defaults to unixfs for now)
+	ClientRetrieve(ctx context.Context, order RetrievalOrder) error // TODO: maybe just allow putting this straight into some file
 
 	// ClientUnimport removes references to the specified file from filestore
 	//ClientUnimport(path string)
@@ -196,8 +197,29 @@ type SealedRef struct {
 type QueryOffer struct {
 	Err string
 
+	Root cid.Cid
+
 	Size     uint64
 	MinPrice types.BigInt
+
+	Miner       address.Address
+	MinerPeerID peer.ID
+}
+
+func (o *QueryOffer) Order() RetrievalOrder {
+	return RetrievalOrder{
+		Root:        o.Root,
+		Size:        o.Size,
+		Miner:       o.Miner,
+		MinerPeerID: o.MinerPeerID,
+	}
+}
+
+type RetrievalOrder struct {
+	// TODO: make this loss unixfs specific
+	Root cid.Cid
+	Size uint64
+	// TODO: support offset
 
 	Miner       address.Address
 	MinerPeerID peer.ID

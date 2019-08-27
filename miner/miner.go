@@ -193,7 +193,7 @@ func (m *Miner) GetBestMiningCandidate() (*MiningBase, error) {
 }
 
 func (m *Miner) mineOne(ctx context.Context, base *MiningBase) (*chain.BlockMsg, error) {
-	log.Info("attempting to mine a block on:", base.ts.Cids())
+	log.Debug("attempting to mine a block on:", base.ts.Cids())
 	ticket, err := m.scratchTicket(ctx, base)
 	if err != nil {
 		return nil, errors.Wrap(err, "scratching ticket failed")

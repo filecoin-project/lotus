@@ -181,7 +181,7 @@ var clientRetrieveCmd = &cli.Command{
 
 		// Check if we already have this data locally
 
-		has, err := api.ClientHasLocal(ctx, file)
+		/*has, err := api.ClientHasLocal(ctx, file)
 		if err != nil {
 			return err
 		}
@@ -189,20 +189,20 @@ var clientRetrieveCmd = &cli.Command{
 		if has {
 			fmt.Println("Success: Already in local storage")
 			return nil
-		}
+		}*/ // TODO: uncomment before merge
 
-		_, err = api.ClientFindData(ctx, file)
+		offers, err := api.ClientFindData(ctx, file)
 		if err != nil {
 			return err
 		}
 
-		// Find miner which may have this data
+		// TODO: parse offer strings from `client find`, make this smarter
 
-		// Get merkle proofs (intermediate nodes)
-
-		// if acceptable, make retrieval deals to get data
-		// done
-
-		panic("TODO")
+		order := offers[0].Order()
+		err = api.ClientRetrieve(ctx, order)
+		if err == nil {
+			fmt.Println("Success")
+		}
+		return err
 	},
 }

@@ -90,7 +90,8 @@ func StorageMiner(mctx helpers.MetricsCtx, lc fx.Lifecycle, api api.FullNode, h 
 func HandleRetrieval(host host.Host, lc fx.Lifecycle, m *retrieval.Miner) {
 	lc.Append(fx.Hook{
 		OnStart: func(context.Context) error {
-			host.SetStreamHandler(retrieval.QueryProtocolID, m.HandleStream)
+			host.SetStreamHandler(retrieval.QueryProtocolID, m.HandleQueryStream)
+			host.SetStreamHandler(retrieval.ProtocolID, m.HandleDealStream)
 			return nil
 		},
 	})

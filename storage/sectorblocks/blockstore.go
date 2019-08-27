@@ -2,177 +2,77 @@ package sectorblocks
 
 import (
 	"context"
-	"github.com/filecoin-project/go-lotus/api"
-	"github.com/filecoin-project/go-lotus/node/modules/dtypes"
-	"github.com/ipfs/go-datastore/namespace"
-	"github.com/ipfs/go-datastore/query"
-	"sync"
-
+	"github.com/ipfs/go-block-format"
 	"github.com/ipfs/go-cid"
-	"github.com/ipfs/go-datastore"
-	dshelp "github.com/ipfs/go-ipfs-ds-help"
-	files "github.com/ipfs/go-ipfs-files"
-	cbor "github.com/ipfs/go-ipld-cbor"
-
-	"github.com/filecoin-project/go-lotus/storage/sector"
+	blockstore "github.com/ipfs/go-ipfs-blockstore"
 )
 
-type SealSerialization uint8
+type SectorBlockStore struct {
+	// local        blockstore.Blockstore // staging before GC // TODO: Pass staging
+	sectorBlocks *SectorBlocks
 
-const (
-	SerializationUnixfs0 SealSerialization = 'u'
-)
-
-var dsPrefix = datastore.NewKey("/sealedblocks")
-
-type SectorBlocks struct {
-	*sector.Store
-
-	keys  datastore.Batching
-	keyLk sync.Mutex
+	approveUnseal func() error
 }
 
-func NewSectorBlocks(sectst *sector.Store, ds dtypes.MetadataDS) *SectorBlocks {
-	return &SectorBlocks{
-		Store: sectst,
-		keys:  namespace.Wrap(ds, dsPrefix),
-	}
+func (s *SectorBlockStore) DeleteBlock(cid.Cid) error {
+	panic("not supported")
+}
+func (s *SectorBlockStore) GetSize(cid.Cid) (int, error) {
+	panic("not supported")
 }
 
-type UnixfsReader interface {
-	files.File
-
-	// ReadBlock reads data from a single unixfs block. Data is nil
-	// for intermediate nodes
-	ReadBlock(context.Context) (data []byte, offset uint64, cid cid.Cid, err error)
+func (s *SectorBlockStore) Put(blocks.Block) error {
+	panic("not supported")
 }
 
-type refStorer struct {
-	blockReader UnixfsReader
-	writeRef    func(cid cid.Cid, offset uint64, size uint32) error
-
-	pieceRef  string
-	remaining []byte
+func (s *SectorBlockStore) PutMany([]blocks.Block) error {
+	panic("not supported")
 }
 
-func (st *SectorBlocks) writeRef(cid cid.Cid, offset uint64, size uint32) error {
-	st.keyLk.Lock() // TODO: make this multithreaded
-	defer st.keyLk.Unlock()
+func (s *SectorBlockStore) AllKeysChan(ctx context.Context) (<-chan cid.Cid, error) {
+	panic("not supported")
+}
 
-	v, err := st.keys.Get(dshelp.CidToDsKey(cid))
-	if err == datastore.ErrNotFound {
-		err = nil
-	}
+func (s *SectorBlockStore) HashOnRead(enabled bool) {
+	panic("not supported")
+}
+
+func (s *SectorBlockStore) Has(c cid.Cid) (bool, error) {
+	/*has, err := s.local.Has(c) // TODO: Pass staging
 	if err != nil {
-		return err
+		return false, err
 	}
+	if has {
+		return true, nil
+	}*/
 
-	var refs []api.SealedRef
-	if len(v) > 0 {
-		if err := cbor.DecodeInto(v, &refs); err != nil {
-			return err
-		}
+	return s.sectorBlocks.Has(c)
+}
+
+func (s *SectorBlockStore) Get(c cid.Cid) (blocks.Block, error) {
+	/*val, err := s.local.Get(c) // TODO: Pass staging
+	if err == nil {
+		return val, nil
 	}
+	if err != blockstore.ErrNotFound {
+		return nil, err
+	}*/
 
-	refs = append(refs, api.SealedRef{
-		Piece:  string(SerializationUnixfs0) + cid.String(),
-		Offset: offset,
-		Size:   size,
-	})
-
-	newRef, err := cbor.DumpObject(&refs)
+	refs, err := s.sectorBlocks.GetRefs(c)
 	if err != nil {
-		return err
+		return nil, err
 	}
-	return st.keys.Put(dshelp.CidToDsKey(cid), newRef) // TODO: batch somehow
-}
-
-func (r *refStorer) Read(p []byte) (n int, err error) {
-	offset := 0
-	if len(r.remaining) > 0 {
-		offset += len(r.remaining)
-		read := copy(p, r.remaining)
-		if read == len(r.remaining) {
-			r.remaining = nil
-		} else {
-			r.remaining = r.remaining[read:]
-		}
-		return read, nil
+	if len(refs) == 0 {
+		return nil, blockstore.ErrNotFound
 	}
 
-	for {
-		data, offset, cid, err := r.blockReader.ReadBlock(context.TODO())
-		if err != nil {
-			return 0, err
-		}
-
-		if len(data) == 0 {
-			panic("Handle intermediate nodes") // TODO: !
-		}
-
-		if err := r.writeRef(cid, offset, uint32(len(data))); err != nil {
-			return 0, err
-		}
-
-		read := copy(p, data)
-		if read < len(data) {
-			r.remaining = data[read:]
-		}
-		// TODO: read multiple
-		return read, nil
-	}
-}
-
-func (st *SectorBlocks) AddUnixfsPiece(ref cid.Cid, r UnixfsReader, keepAtLeast uint64) (sectorID uint64, err error) {
-	size, err := r.Size()
-	if err != nil {
-		return 0, err
-	}
-
-	refst := &refStorer{blockReader: r, pieceRef: string(SerializationUnixfs0) + ref.String(), writeRef: st.writeRef}
-
-	return st.Store.AddPiece(refst.pieceRef, uint64(size), refst)
-}
-
-func (st *SectorBlocks) List() (map[cid.Cid][]api.SealedRef, error) {
-	res, err := st.keys.Query(query.Query{})
+	data, err := s.sectorBlocks.unsealed.getRef(context.TODO(), refs, s.approveUnseal)
 	if err != nil {
 		return nil, err
 	}
 
-	ents, err := res.Rest()
-	if err != nil {
-		return nil, err
-	}
-
-	out := map[cid.Cid][]api.SealedRef{}
-	for _, ent := range ents {
-		refCid, err := dshelp.DsKeyToCid(datastore.RawKey(ent.Key))
-		if err != nil {
-			return nil, err
-		}
-
-		var refs []api.SealedRef
-		if err := cbor.DecodeInto(ent.Value, &refs); err != nil {
-			return nil, err
-		}
-
-		out[refCid] = refs
-	}
-
-	return out, nil
+	return blocks.NewBlockWithCid(data, c)
 }
 
-func (st *SectorBlocks) GetRefs(k cid.Cid) ([]api.SealedRef, error) { // TODO: track unsealed sectors
-	ent, err := st.keys.Get(dshelp.CidToDsKey(k))
-	if err != nil {
-		return nil, err
-	}
 
-	var refs []api.SealedRef
-	if err := cbor.DecodeInto(ent, &refs); err != nil {
-		return nil, err
-	}
-
-	return refs, nil
-}
+var _ blockstore.Blockstore = &SectorBlockStore{}

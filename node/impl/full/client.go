@@ -178,7 +178,7 @@ func (a *ClientAPI) ClientImport(ctx context.Context, path string) (cid.Cid, err
 		NoCopy:     true,
 	}
 
-	db, err := params.New(chunker.NewSizeSplitter(file, build.UnixfsChunkSize))
+	db, err := params.New(chunker.NewSizeSplitter(file, int64(build.UnixfsChunkSize)))
 	if err != nil {
 		return cid.Undef, err
 	}
@@ -217,4 +217,8 @@ func (a *ClientAPI) ClientListImports(ctx context.Context) ([]api.Import, error)
 			Size:     r.Size,
 		})
 	}
+}
+
+func (a *ClientAPI) ClientRetrieve(ctx context.Context, order api.RetrievalOrder) error {
+	return a.Retrieval.RetrieveUnixfs(ctx, order.Root, order.Size, order.MinerPeerID, order.Miner)
 }

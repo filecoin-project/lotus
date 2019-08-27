@@ -17,11 +17,20 @@ const (
 	Unavailable
 )
 
+const (
+	Accepted = iota
+	Error
+	Rejected
+)
+
 func init() {
 	cbor.RegisterCborType(Deal{})
 
 	cbor.RegisterCborType(Query{})
 	cbor.RegisterCborType(QueryResponse{})
+	cbor.RegisterCborType(Unixfs0Offer{})
+
+	cbor.RegisterCborType(DealResponse{})
 }
 
 type Query struct {
@@ -49,14 +58,7 @@ type Deal struct {
 	Unixfs0 *Unixfs0Offer
 }
 
-type AcceptedResponse struct{}
-type RejectedResponse struct {
-	Message string
-}
-type ErrorResponse RejectedResponse
-
 type DealResponse struct {
-	*AcceptedResponse
-	*RejectedResponse
-	*ErrorResponse
+	Status int // TODO: make this more spec complainant
+	Message string
 }
