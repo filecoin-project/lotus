@@ -3,6 +3,7 @@ package impl
 import (
 	"context"
 	"fmt"
+	"github.com/filecoin-project/go-lotus/build"
 	"github.com/filecoin-project/go-lotus/storage/sectorblocks"
 	"io"
 	"math/rand"
@@ -30,7 +31,7 @@ func (sm *StorageMinerAPI) ActorAddresses(context.Context) ([]address.Address, e
 }
 
 func (sm *StorageMinerAPI) StoreGarbageData(ctx context.Context) (uint64, error) {
-	size := uint64(1016) // this is the most data we can fit in a 1024 byte sector
+	size := uint64(build.SectorSize - 8) // this is the most data we can fit in a sector. TODO: check if correct
 
 	name := fmt.Sprintf("fake-file-%d", rand.Intn(100000000))
 	sectorId, err := sm.Sectors.AddPiece(name, size, io.LimitReader(rand.New(rand.NewSource(42)), 1016))

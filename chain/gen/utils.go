@@ -3,6 +3,7 @@ package gen
 import (
 	"context"
 	"fmt"
+	"github.com/filecoin-project/go-lotus/build"
 
 	actors "github.com/filecoin-project/go-lotus/chain/actors"
 	"github.com/filecoin-project/go-lotus/chain/address"
@@ -168,7 +169,7 @@ func SetupStorageMiners(ctx context.Context, cs *store.ChainStore, sroot cid.Cid
 	params := mustEnc(actors.CreateStorageMinerParams{
 		Owner:      gmcfg.Owner,
 		Worker:     gmcfg.Worker,
-		SectorSize: types.NewInt(1024),
+		SectorSize: types.NewInt(build.SectorSize),
 		PeerID:     gmcfg.PeerID,
 	})
 

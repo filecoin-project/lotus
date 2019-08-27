@@ -2,6 +2,7 @@ package modules
 
 import (
 	"context"
+	"github.com/filecoin-project/go-lotus/build"
 	"github.com/filecoin-project/go-lotus/retrieval"
 	"github.com/filecoin-project/go-lotus/storage/sector"
 	"path/filepath"
@@ -55,7 +56,7 @@ func SectorBuilderConfig(storagePath string) func(dtypes.MetadataDS) (*sectorbui
 
 		sb := &sectorbuilder.SectorBuilderConfig{
 			Miner:       minerAddr,
-			SectorSize:  1024,
+			SectorSize:  build.SectorSize,
 			MetadataDir: metadata,
 			SealedDir:   sealed,
 			StagedDir:   staging,

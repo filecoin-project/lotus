@@ -1,6 +1,7 @@
 package actors
 
 import (
+	"github.com/filecoin-project/go-lotus/build"
 	"github.com/filecoin-project/go-lotus/chain/actors/aerrors"
 	"github.com/filecoin-project/go-lotus/chain/address"
 	"github.com/filecoin-project/go-lotus/chain/types"
@@ -8,8 +9,6 @@ import (
 	cbor "github.com/ipfs/go-ipld-cbor"
 	"github.com/libp2p/go-libp2p-core/peer"
 )
-
-const SectorSize = 1024
 
 func init() {
 	cbor.RegisterCborType(StorageMarketState{})
@@ -104,7 +103,7 @@ func (sma StorageMarketActor) CreateStorageMiner(act *types.Actor, vmctx types.V
 }
 
 func SupportedSectorSize(ssize types.BigInt) bool {
-	if ssize.Uint64() == SectorSize {
+	if ssize.Uint64() == build.SectorSize {
 		return true
 	}
 	return false
