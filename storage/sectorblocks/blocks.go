@@ -2,6 +2,7 @@ package sectorblocks
 
 import (
 	"context"
+	"errors"
 	"github.com/filecoin-project/go-lotus/api"
 	"github.com/filecoin-project/go-lotus/lib/sectorbuilder"
 	"github.com/filecoin-project/go-lotus/node/modules/dtypes"
@@ -9,6 +10,7 @@ import (
 	"github.com/ipfs/go-datastore/query"
 	blockstore "github.com/ipfs/go-ipfs-blockstore"
 	ipld "github.com/ipfs/go-ipld-format"
+	"github.com/ipfs/go-unixfs"
 	"sync"
 
 	"github.com/ipfs/go-cid"
@@ -28,6 +30,8 @@ const (
 
 var dsPrefix = datastore.NewKey("/sealedblocks")
 var imBlocksPrefix = datastore.NewKey("/intermediate")
+
+var ErrNotFound = errors.New("not found")
 
 type SectorBlocks struct {
 	*sector.Store
@@ -69,14 +73,14 @@ type UnixfsReader interface {
 
 type refStorer struct {
 	blockReader  UnixfsReader
-	writeRef     func(cid cid.Cid, offset uint64, size uint32) error
+	writeRef     func(cid cid.Cid, pieceRef string, offset uint64, size uint32) error
 	intermediate blockstore.Blockstore
 
 	pieceRef  string
 	remaining []byte
 }
 
-func (st *SectorBlocks) writeRef(cid cid.Cid, offset uint64, size uint32) error {
+func (st *SectorBlocks) writeRef(cid cid.Cid, pieceRef string, offset uint64, size uint32) error {
 	st.keyLk.Lock() // TODO: make this multithreaded
 	defer st.keyLk.Unlock()
 
@@ -96,7 +100,7 @@ func (st *SectorBlocks) writeRef(cid cid.Cid, offset uint64, size uint32) error 
 	}
 
 	refs = append(refs, api.SealedRef{
-		Piece:  string(SerializationUnixfs0) + cid.String(),
+		Piece:  pieceRef,
 		Offset: offset,
 		Size:   size,
 	})
@@ -136,7 +140,7 @@ func (r *refStorer) Read(p []byte) (n int, err error) {
 			continue
 		}
 
-		if err := r.writeRef(nd.Cid(), offset, uint32(len(data))); err != nil {
+		if err := r.writeRef(nd.Cid(), r.pieceRef, offset, uint32(len(data))); err != nil {
 			return 0, err
 		}
 
@@ -196,6 +200,9 @@ func (st *SectorBlocks) List() (map[cid.Cid][]api.SealedRef, error) {
 
 func (st *SectorBlocks) GetRefs(k cid.Cid) ([]api.SealedRef, error) { // TODO: track local sectors
 	ent, err := st.keys.Get(dshelp.CidToDsKey(k))
+	if err == datastore.ErrNotFound {
+		err = ErrNotFound
+	}
 	if err != nil {
 		return nil, err
 	}
@@ -206,6 +213,33 @@ func (st *SectorBlocks) GetRefs(k cid.Cid) ([]api.SealedRef, error) { // TODO: t
 	}
 
 	return refs, nil
+}
+
+func (st *SectorBlocks) GetSize(k cid.Cid) (uint64, error) {
+	blk, err := st.intermediate.Get(k)
+	if err == blockstore.ErrNotFound {
+		refs, err := st.GetRefs(k)
+		if err != nil {
+			return 0, err
+		}
+
+		return uint64(refs[0].Size), nil
+	}
+	if err != nil {
+		return 0, err
+	}
+
+	nd, err := ipld.Decode(blk)
+	if err != nil {
+		return 0, err
+	}
+
+	fsn, err := unixfs.ExtractFSNode(nd)
+	if err != nil {
+		return 0, err
+	}
+
+	return fsn.FileSize(), nil
 }
 
 func (st *SectorBlocks) Has(k cid.Cid) (bool, error) {

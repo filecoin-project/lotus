@@ -85,11 +85,14 @@ func (ub *unsealedBlocks) maybeUnseal(ctx context.Context, pieceKey string, appr
 
 	log.Infof("Unsealing piece '%s'", pieceKey)
 	data, err := ub.sb.ReadPieceFromSealedSector(pieceKey)
+	ub.lk.Lock()
+
 	if err != nil {
+		// TODO: tell subs
+		log.Error(err)
 		return nil, err
 	}
 
-	ub.lk.Lock()
 	ub.unsealed[pieceKey] = data
 	close(ub.unsealing[pieceKey])
 	return data, nil

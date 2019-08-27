@@ -31,17 +31,25 @@ func NewMiner(sblks *sectorblocks.SectorBlocks) *Miner {
 	}
 }
 
+func writeErr(stream network.Stream, err error) {
+	log.Errorf("Retrieval deal error: %s", err)
+	_ = cborrpc.WriteCborRPC(stream, DealResponse{
+		Status:  Error,
+		Message: err.Error(),
+	})
+}
+
 func (m *Miner) HandleQueryStream(stream network.Stream) {
 	defer stream.Close()
 
 	var query Query
 	if err := cborrpc.ReadCborRPC(stream, &query); err != nil {
-		log.Errorf("Retrieval query: ReadCborRPC: %s", err)
+		writeErr(stream, err)
 		return
 	}
 
-	refs, err := m.sectorBlocks.GetRefs(query.Piece)
-	if err != nil {
+	size, err := m.sectorBlocks.GetSize(query.Piece)
+	if err != nil && err != sectorblocks.ErrNotFound {
 		log.Errorf("Retrieval query: GetRefs: %s", err)
 		return
 	}
@@ -49,26 +57,18 @@ func (m *Miner) HandleQueryStream(stream network.Stream) {
 	answer := QueryResponse{
 		Status: Unavailable,
 	}
-	if len(refs) > 0 {
+	if err == nil {
 		answer.Status = Available
 
 		// TODO: get price, look for already unsealed ref to reduce work
-		answer.MinPrice = types.BigMul(types.NewInt(uint64(refs[0].Size)), m.pricePerByte)
-		answer.Size = uint64(refs[0].Size) // TODO: verify on intermediate
+		answer.MinPrice = types.BigMul(types.NewInt(uint64(size)), m.pricePerByte)
+		answer.Size = uint64(size) // TODO: verify on intermediate
 	}
 
 	if err := cborrpc.WriteCborRPC(stream, answer); err != nil {
 		log.Errorf("Retrieval query: WriteCborRPC: %s", err)
 		return
 	}
-}
-
-func writeErr(stream network.Stream, err error) {
-	log.Errorf("Retrieval deal error: %s", err)
-	_ = cborrpc.WriteCborRPC(stream, DealResponse{
-		Status:  Error,
-		Message: err.Error(),
-	})
 }
 
 func (m *Miner) HandleDealStream(stream network.Stream) { // TODO: should we block in stream handlers
