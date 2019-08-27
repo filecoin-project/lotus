@@ -22,7 +22,7 @@ import (
 	"github.com/filecoin-project/go-lotus/chain/wallet"
 )
 
-const testGasLimit = 100
+const testGasLimit = 1000
 
 type HarnessInit struct {
 	NAddrs uint64
