@@ -522,6 +522,7 @@ func (t *BlockMsg) UnmarshalCBOR(br io.Reader) error {
 	// t.t.Header (types.BlockHeader)
 
 	t.Header = new(types.BlockHeader)
+
 	if err := t.Header.UnmarshalCBOR(br); err != nil {
 		return err
 	}

@@ -39,6 +39,10 @@ type BlockHeader struct {
 	BLSAggregate Signature
 
 	MessageReceipts cid.Cid
+
+	Timestamp uint64
+
+	BlockSig Signature
 }
 
 func (b *BlockHeader) ToStorageBlock() (block.Block, error) {
