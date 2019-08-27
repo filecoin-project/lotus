@@ -253,7 +253,7 @@ func (cg *ChainGen) NextBlock() (*types.FullBlock, []*types.SignedMessage, error
 		return nil, nil, err
 	}
 
-	fblk, err := MinerCreateBlock(context.TODO(), cg.cs, miner, parents, tickets, proof, msgs)
+	fblk, err := MinerCreateBlock(context.TODO(), cg.cs, cg.w, miner, parents, tickets, proof, msgs, 0)
 	if err != nil {
 		return nil, nil, err
 	}

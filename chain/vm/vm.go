@@ -158,7 +158,7 @@ func (vmctx *VMContext) VerifySignature(sig *types.Signature, act address.Addres
 	}
 
 	if act.Protocol() == address.ID {
-		kaddr, err := vmctx.resolveToKeyAddr(act)
+		kaddr, err := ResolveToKeyAddr(vmctx.state, vmctx.cst, act)
 		if err != nil {
 			return aerrors.Wrap(err, "failed to resolve address to key address")
 		}
@@ -172,12 +172,12 @@ func (vmctx *VMContext) VerifySignature(sig *types.Signature, act address.Addres
 	return nil
 }
 
-func (vmctx *VMContext) resolveToKeyAddr(addr address.Address) (address.Address, aerrors.ActorError) {
+func ResolveToKeyAddr(state types.StateTree, cst *hamt.CborIpldStore, addr address.Address) (address.Address, aerrors.ActorError) {
 	if addr.Protocol() == address.BLS || addr.Protocol() == address.SECP256K1 {
 		return addr, nil
 	}
 
-	act, err := vmctx.state.GetActor(addr)
+	act, err := state.GetActor(addr)
 	if err != nil {
 		return address.Undef, aerrors.Newf(1, "failed to find actor: %s", addr)
 	}
@@ -187,7 +187,7 @@ func (vmctx *VMContext) resolveToKeyAddr(addr address.Address) (address.Address,
 	}
 
 	var aast actors.AccountActorState
-	if err := vmctx.cst.Get(context.TODO(), act.Head, &aast); err != nil {
+	if err := cst.Get(context.TODO(), act.Head, &aast); err != nil {
 		return address.Undef, aerrors.Escalate(err, fmt.Sprintf("failed to get account actor state for %s", addr))
 	}
 
@@ -195,7 +195,6 @@ func (vmctx *VMContext) resolveToKeyAddr(addr address.Address) (address.Address,
 }
 
 func (vm *VM) makeVMContext(ctx context.Context, sroot cid.Cid, msg *types.Message, origin address.Address, usedGas types.BigInt) *VMContext {
-
 	return &VMContext{
 		ctx:    ctx,
 		vm:     vm,

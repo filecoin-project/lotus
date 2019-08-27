@@ -23,6 +23,8 @@ const (
 )
 
 const (
+	IKTUnknown = -1
+
 	IKTSecp256k1 = iota
 	IKTBLS
 )
@@ -117,6 +119,8 @@ func (s *Signature) TypeCode() int {
 		return IKTSecp256k1
 	case KTBLS:
 		return IKTBLS
+	case "":
+		return IKTUnknown
 	default:
 		panic("unsupported signature type")
 	}

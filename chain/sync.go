@@ -395,6 +395,32 @@ func getMinerWorker(ctx context.Context, cs *store.ChainStore, st cid.Cid, maddr
 	return worker, nil
 }
 
+func getMinerOwner(ctx context.Context, cs *store.ChainStore, st cid.Cid, maddr address.Address) (address.Address, error) {
+	recp, err := vm.CallRaw(ctx, cs, &types.Message{
+		To:     maddr,
+		From:   maddr,
+		Method: actors.MAMethods.GetOwner,
+	}, st, 0)
+	if err != nil {
+		return address.Undef, xerrors.Errorf("callRaw failed: %w", err)
+	}
+
+	if recp.ExitCode != 0 {
+		return address.Undef, xerrors.Errorf("getting miner owner addr failed (exit code %d)", recp.ExitCode)
+	}
+
+	owner, err := address.NewFromBytes(recp.Return)
+	if err != nil {
+		return address.Undef, err
+	}
+
+	if owner.Protocol() == address.ID {
+		return address.Undef, xerrors.Errorf("need to resolve owner address to a pubkeyaddr")
+	}
+
+	return owner, nil
+}
+
 // Should match up with 'Semantical Validation' in validation.md in the spec
 func (syncer *Syncer) ValidateBlock(ctx context.Context, b *types.FullBlock) error {
 	h := b.Header
@@ -426,7 +452,12 @@ func (syncer *Syncer) ValidateBlock(ctx context.Context, b *types.FullBlock) err
 		return xerrors.Errorf("failed to instantiate VM: %w", err)
 	}
 
-	if err := vmi.TransferFunds(actors.NetworkAddress, b.Header.Miner, vm.MiningRewardForBlock(baseTs)); err != nil {
+	owner, err := getMinerOwner(ctx, syncer.store, stateroot, b.Header.Miner)
+	if err != nil {
+		return xerrors.Errorf("getting miner owner for block miner failed: %w", err)
+	}
+
+	if err := vmi.TransferFunds(actors.NetworkAddress, owner, vm.MiningRewardForBlock(baseTs)); err != nil {
 		return xerrors.Errorf("fund transfer failed: %w", err)
 	}
 

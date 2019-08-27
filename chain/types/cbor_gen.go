@@ -14,7 +14,7 @@ import (
 var _ = xerrors.Errorf
 
 func (t *BlockHeader) MarshalCBOR(w io.Writer) error {
-	if _, err := w.Write([]byte{138}); err != nil {
+	if _, err := w.Write([]byte{140}); err != nil {
 		return err
 	}
 
@@ -80,6 +80,16 @@ func (t *BlockHeader) MarshalCBOR(w io.Writer) error {
 	if err := cbg.WriteCid(w, t.MessageReceipts); err != nil {
 		return xerrors.Errorf("failed to write cid field t.MessageReceipts: %w", err)
 	}
+
+	// t.t.Timestamp (uint64)
+	if _, err := w.Write(cbg.CborEncodeMajorType(cbg.MajUnsignedInt, t.Timestamp)); err != nil {
+		return err
+	}
+
+	// t.t.BlockSig (types.Signature)
+	if err := t.BlockSig.MarshalCBOR(w); err != nil {
+		return err
+	}
 	return nil
 }
 
@@ -93,7 +103,7 @@ func (t *BlockHeader) UnmarshalCBOR(br io.Reader) error {
 		return fmt.Errorf("cbor input should be of type array")
 	}
 
-	if extra != 10 {
+	if extra != 12 {
 		return fmt.Errorf("cbor input had wrong number of fields")
 	}
 
@@ -215,6 +225,21 @@ func (t *BlockHeader) UnmarshalCBOR(br io.Reader) error {
 			return xerrors.Errorf("failed to read cid field t.MessageReceipts: %w", err)
 		}
 		t.MessageReceipts = c
+	}
+	// t.t.Timestamp (uint64)
+
+	maj, extra, err = cbg.CborReadHeader(br)
+	if err != nil {
+		return err
+	}
+	if maj != cbg.MajUnsignedInt {
+		return fmt.Errorf("wrong type for uint64 field")
+	}
+	t.Timestamp = extra
+	// t.t.BlockSig (types.Signature)
+
+	if err := t.BlockSig.UnmarshalCBOR(br); err != nil {
+		return err
 	}
 	return nil
 }

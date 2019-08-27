@@ -23,6 +23,8 @@ import (
 type ChainAPI struct {
 	fx.In
 
+	WalletAPI
+
 	Chain  *store.ChainStore
 	PubSub *pubsub.PubSub
 }
@@ -163,8 +165,8 @@ func (a *ChainAPI) ChainReadState(ctx context.Context, act *types.Actor, ts *typ
 }
 
 // This is on ChainAPI because miner.Miner requires this, and MinerAPI requires miner.Miner
-func (a *ChainAPI) MinerCreateBlock(ctx context.Context, addr address.Address, parents *types.TipSet, tickets []*types.Ticket, proof types.ElectionProof, msgs []*types.SignedMessage) (*chain.BlockMsg, error) {
-	fblk, err := gen.MinerCreateBlock(ctx, a.Chain, addr, parents, tickets, proof, msgs)
+func (a *ChainAPI) MinerCreateBlock(ctx context.Context, addr address.Address, parents *types.TipSet, tickets []*types.Ticket, proof types.ElectionProof, msgs []*types.SignedMessage, ts uint64) (*chain.BlockMsg, error) {
+	fblk, err := gen.MinerCreateBlock(ctx, a.Chain, a.Wallet, addr, parents, tickets, proof, msgs, ts)
 	if err != nil {
 		return nil, err
 	}

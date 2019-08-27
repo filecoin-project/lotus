@@ -336,7 +336,7 @@ func (m *Miner) createBlock(base *MiningBase, ticket *types.Ticket, proof types.
 	msgs := m.selectMessages(pending)
 
 	// why even return this? that api call could just submit it for us
-	return m.api.MinerCreateBlock(context.TODO(), m.addresses[0], base.ts, append(base.tickets, ticket), proof, msgs)
+	return m.api.MinerCreateBlock(context.TODO(), m.addresses[0], base.ts, append(base.tickets, ticket), proof, msgs, 0)
 }
 
 func (m *Miner) selectMessages(msgs []*types.SignedMessage) []*types.SignedMessage {
