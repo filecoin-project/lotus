@@ -59,6 +59,6 @@ type Deal struct {
 }
 
 type DealResponse struct {
-	Status int // TODO: make this more spec complainant
+	Status  int // TODO: make this more spec complainant
 	Message string
 }

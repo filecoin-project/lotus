@@ -62,7 +62,7 @@ func (c *Client) Query(ctx context.Context, p discovery.RetrievalPeer, data cid.
 	}
 
 	return api.QueryOffer{
-		Root: data,
+		Root:        data,
 		Size:        resp.Size,
 		MinPrice:    resp.MinPrice,
 		Miner:       p.Address, // TODO: check
@@ -104,8 +104,8 @@ func (c *Client) RetrieveUnixfs(ctx context.Context, root cid.Cid, size uint64, 
 
 		root:   root,
 		offset: 0, // TODO: Check how much data we have locally
-		           // TODO: Support in handler
-		           // TODO: Allow client to specify this
+		// TODO: Support in handler
+		// TODO: Allow client to specify this
 
 		windowSize: build.UnixfsChunkSize,
 		verifier:   &OptimisticVerifier{}, // TODO: Use a real verifier

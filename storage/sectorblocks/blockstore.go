@@ -74,5 +74,4 @@ func (s *SectorBlockStore) Get(c cid.Cid) (blocks.Block, error) {
 	return blocks.NewBlockWithCid(data, c)
 }
 
-
 var _ blockstore.Blockstore = &SectorBlockStore{}

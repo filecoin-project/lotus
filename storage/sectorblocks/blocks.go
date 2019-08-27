@@ -31,8 +31,8 @@ type SectorBlocks struct {
 	*sector.Store
 
 	unsealed *unsealedBlocks
-	keys  datastore.Batching
-	keyLk sync.Mutex
+	keys     datastore.Batching
+	keyLk    sync.Mutex
 }
 
 func NewSectorBlocks(sectst *sector.Store, ds dtypes.MetadataDS, sb *sectorbuilder.SectorBuilder) *SectorBlocks {
@@ -43,7 +43,7 @@ func NewSectorBlocks(sectst *sector.Store, ds dtypes.MetadataDS, sb *sectorbuild
 
 	unsealed := &unsealedBlocks{ // TODO: untangle this
 		sb:        sb,
-		unsealed: map[string][]byte{},
+		unsealed:  map[string][]byte{},
 		unsealing: map[string]chan struct{}{},
 	}
 
@@ -201,4 +201,3 @@ func (st *SectorBlocks) SealedBlockstore(approveUnseal func() error) *SectorBloc
 		approveUnseal: approveUnseal,
 	}
 }
-

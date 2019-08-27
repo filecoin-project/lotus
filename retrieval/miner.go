@@ -54,7 +54,7 @@ func (m *Miner) HandleQueryStream(stream network.Stream) {
 
 		// TODO: get price, look for already unsealed ref to reduce work
 		answer.MinPrice = types.BigMul(types.NewInt(uint64(refs[0].Size)), m.pricePerByte)
-		answer.Size = uint64(refs[0].Size)                       // TODO: verify on intermediate
+		answer.Size = uint64(refs[0].Size) // TODO: verify on intermediate
 	}
 
 	if err := cborrpc.WriteCborRPC(stream, answer); err != nil {
@@ -66,7 +66,7 @@ func (m *Miner) HandleQueryStream(stream network.Stream) {
 func writeErr(stream network.Stream, err error) {
 	log.Errorf("Retrieval deal error: %s", err)
 	_ = cborrpc.WriteCborRPC(stream, DealResponse{
-		Status: Error,
+		Status:  Error,
 		Message: err.Error(),
 	})
 }
@@ -82,9 +82,9 @@ func (m *Miner) HandleDealStream(stream network.Stream) { // TODO: should we blo
 	for {
 		var deal Deal
 		if err := cborrpc.ReadCborRPC(stream, &deal); err != nil {
-			return 
+			return
 		}
-		
+
 		if deal.Unixfs0 == nil {
 			writeErr(stream, xerrors.New("unknown deal type"))
 			return
@@ -133,7 +133,7 @@ func (m *Miner) HandleDealStream(stream network.Stream) { // TODO: should we blo
 			size = uint64(isize)
 		}
 
-		if deal.Unixfs0.Offset + deal.Unixfs0.Size > size {
+		if deal.Unixfs0.Offset+deal.Unixfs0.Size > size {
 			writeErr(stream, xerrors.Errorf("tried to read too much %d+%d > %d", deal.Unixfs0.Offset, deal.Unixfs0.Size, size))
 			return
 		}

@@ -3,21 +3,21 @@ package storage
 import (
 	"context"
 	"fmt"
-	"github.com/filecoin-project/go-lotus/build"
-	"github.com/filecoin-project/go-lotus/storage/sector"
 
-	"github.com/filecoin-project/go-lotus/api"
-	"github.com/filecoin-project/go-lotus/chain/actors"
-	"github.com/filecoin-project/go-lotus/chain/address"
-	"github.com/filecoin-project/go-lotus/chain/store"
-	"github.com/filecoin-project/go-lotus/chain/types"
 	"github.com/ipfs/go-cid"
 	"github.com/ipfs/go-datastore"
 	logging "github.com/ipfs/go-log"
 	host "github.com/libp2p/go-libp2p-core/host"
 	"github.com/pkg/errors"
 
+	"github.com/filecoin-project/go-lotus/api"
+	"github.com/filecoin-project/go-lotus/build"
+	"github.com/filecoin-project/go-lotus/chain/actors"
+	"github.com/filecoin-project/go-lotus/chain/address"
+	"github.com/filecoin-project/go-lotus/chain/store"
+	"github.com/filecoin-project/go-lotus/chain/types"
 	"github.com/filecoin-project/go-lotus/lib/sectorbuilder"
+	"github.com/filecoin-project/go-lotus/storage/sector"
 )
 
 var log = logging.Logger("storageminer")

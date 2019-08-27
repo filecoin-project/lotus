@@ -31,7 +31,7 @@ func (ub *unsealedBlocks) getRef(ctx context.Context, refs []api.SealedRef, appr
 		b, ok := ub.unsealed[ref.Piece]
 		if ok {
 			ub.lk.Unlock()
-			return b[ref.Offset:ref.Offset + uint64(ref.Size)], nil // TODO: check slice math
+			return b[ref.Offset : ref.Offset+uint64(ref.Size)], nil // TODO: check slice math
 		}
 		// TODO: pick unsealing based on how long it's running (or just select all relevant, usually it'll be just one)
 		_, ok = ub.unsealing[ref.Piece]
@@ -48,7 +48,7 @@ func (ub *unsealedBlocks) getRef(ctx context.Context, refs []api.SealedRef, appr
 		return nil, err
 	}
 
-	return b[best.Offset:best.Offset + uint64(best.Size)], nil // TODO: check slice math
+	return b[best.Offset : best.Offset+uint64(best.Size)], nil // TODO: check slice math
 }
 
 func (ub *unsealedBlocks) maybeUnseal(ctx context.Context, pieceKey string, approveUnseal func() error) ([]byte, error) {
@@ -94,5 +94,3 @@ func (ub *unsealedBlocks) maybeUnseal(ctx context.Context, pieceKey string, appr
 	close(ub.unsealing[pieceKey])
 	return data, nil
 }
-
-
