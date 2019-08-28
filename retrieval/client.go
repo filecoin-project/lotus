@@ -100,19 +100,21 @@ func (c *Client) RetrieveUnixfs(ctx context.Context, root cid.Cid, size uint64, 
 	}
 	defer s.Close()
 
+	initialOffset := uint64(0) // TODO: Check how much data we have locally
+	// TODO: Support in handler
+	// TODO: Allow client to specify this
+
 	cst := clientStream{
 		stream: s,
 
 		root:   root,
-		offset: 0, // TODO: Check how much data we have locally
-		// TODO: Support in handler
-		// TODO: Allow client to specify this
+		offset: initialOffset,
 
 		windowSize: build.UnixfsChunkSize,
 		verifier:   &UnixFs0Verifier{Root: root},
 	}
 
-	for cst.offset != size {
+	for cst.offset != size + initialOffset {
 		toFetch := cst.windowSize
 		if toFetch+cst.offset > size {
 			toFetch = size - cst.offset

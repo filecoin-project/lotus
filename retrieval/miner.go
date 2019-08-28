@@ -6,6 +6,7 @@ import (
 	"github.com/ipfs/go-cid"
 	"github.com/libp2p/go-msgio"
 	"golang.org/x/xerrors"
+	"io"
 
 	"github.com/filecoin-project/go-lotus/chain/types"
 	"github.com/filecoin-project/go-lotus/lib/cborrpc"
@@ -90,8 +91,11 @@ func (m *Miner) HandleDealStream(stream network.Stream) { // TODO: should we blo
 		stream: stream,
 	}
 
-	for {
-		err := hnd.handleNext() // TODO: 'more' bool
+	var err error
+	more := true
+
+	for more {
+		more, err = hnd.handleNext() // TODO: 'more' bool
 		if err != nil {
 			writeErr(stream, err)
 			return
@@ -100,14 +104,17 @@ func (m *Miner) HandleDealStream(stream network.Stream) { // TODO: should we blo
 
 }
 
-func (hnd *handlerDeal) handleNext() error {
+func (hnd *handlerDeal) handleNext() (bool, error) {
 	var deal Deal
 	if err := cborrpc.ReadCborRPC(hnd.stream, &deal); err != nil {
-		return err
+		if err == io.EOF { // client sent all deals
+			err = nil
+		}
+		return false, err
 	}
 
 	if deal.Unixfs0 == nil {
-		return xerrors.New("unknown deal type")
+		return false, xerrors.New("unknown deal type")
 	}
 
 	// TODO: Verify payment, check how much we can send based on that
@@ -116,15 +123,19 @@ func (hnd *handlerDeal) handleNext() error {
 	if hnd.open != deal.Unixfs0.Root || hnd.at != deal.Unixfs0.Offset {
 		log.Infof("opening file for sending (open '%s') (@%d, want %d)", hnd.open, hnd.at, deal.Unixfs0.Offset)
 		if err := hnd.openFile(deal); err != nil {
-			return err
+			return false, err
 		}
 	}
 
 	if deal.Unixfs0.Offset+deal.Unixfs0.Size > hnd.size {
-		return xerrors.Errorf("tried to read too much %d+%d > %d", deal.Unixfs0.Offset, deal.Unixfs0.Size, hnd.size)
+		return false, xerrors.Errorf("tried to read too much %d+%d > %d", deal.Unixfs0.Offset, deal.Unixfs0.Size, hnd.size)
 	}
 
-	return hnd.accept(deal)
+	err := hnd.accept(deal)
+	if err != nil {
+		return false, err
+	}
+	return true, nil
 }
 
 func (hnd *handlerDeal) openFile(deal Deal) error {

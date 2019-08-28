@@ -39,6 +39,8 @@ type UnixFs0Verifier struct {
 
 func (b *UnixFs0Verifier) verify(ctx context.Context, blk blocks.Block, out io.Writer) (last bool, internal bool, err error) {
 	if b.sub != nil {
+		// TODO: check links here (iff b.sub.sub == nil)
+
 		subLast, internal, err := b.sub.verify(ctx, blk, out)
 		if err != nil {
 			return false, false, err
@@ -110,7 +112,6 @@ func (b *UnixFs0Verifier) checkInternal(blk blocks.Block, out io.Writer) (int, e
 		return len(nd.Links()), nil
 
 	case *merkledag.RawNode:
-		// TODO: do we check the hash before writing?
 		_, err := out.Write(nd.RawData())
 		return 0, err
 	default:

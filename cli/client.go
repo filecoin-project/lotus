@@ -116,7 +116,7 @@ var clientFindCmd = &cli.Command{
 	Usage: "find data in the network",
 	Action: func(cctx *cli.Context) error {
 		if !cctx.Args().Present() {
-			fmt.Println("Usage: retrieve [CID]")
+			fmt.Println("Usage: find [CID]")
 			return nil
 		}
 
