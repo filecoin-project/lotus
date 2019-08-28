@@ -152,6 +152,8 @@ github.com/ipfs/go-block-format v0.0.2/go.mod h1:AWR46JfpcObNfg3ok2JHDUfdiHRgWhJ
 github.com/ipfs/go-blockservice v0.1.0/go.mod h1:hzmMScl1kXHg3M2BjTymbVPjv627N7sYcvYaKbop39M=
 github.com/ipfs/go-blockservice v0.1.2 h1:fqFeeu1EG0lGVrqUo+BVJv7LZV31I4ZsyNthCOMAJRc=
 github.com/ipfs/go-blockservice v0.1.2/go.mod h1:t+411r7psEUhLueM8C7aPA7cxCclv4O3VsUVxt9kz2I=
+github.com/ipfs/go-car v0.0.0-20190823083746-79984a8632b4 h1:qYLz/x/d1SOiiFGS8dwCBCFJ5Oh64Y8HMBrS+MbaU8c=
+github.com/ipfs/go-car v0.0.0-20190823083746-79984a8632b4/go.mod h1:NSSM0pxlhej9rSFXQmB/lDru7TYNoDjKgmvqzlsd06Y=
 github.com/ipfs/go-cid v0.0.1/go.mod h1:GHWU/WuQdMPmIosc4Yn1bcCT7dSeX4lBafM7iqUPQvM=
 github.com/ipfs/go-cid v0.0.2/go.mod h1:GHWU/WuQdMPmIosc4Yn1bcCT7dSeX4lBafM7iqUPQvM=
 github.com/ipfs/go-cid v0.0.3 h1:UIAh32wymBpStoe83YCzwVQQ5Oy/H0FdxvUS6DJDzms=
@@ -222,6 +224,8 @@ github.com/ipfs/go-peertaskqueue v0.1.1 h1:+gPjbI+V3NktXZOqJA1kzbms2pYmhjgQQal0M
 github.com/ipfs/go-peertaskqueue v0.1.1/go.mod h1:Jmk3IyCcfl1W3jTW3YpghSwSEC6IJ3Vzz/jUmWw8Z0U=
 github.com/ipfs/go-todocounter v0.0.1 h1:kITWA5ZcQZfrUnDNkRn04Xzh0YFaDFXsoO2A81Eb6Lw=
 github.com/ipfs/go-todocounter v0.0.1/go.mod h1:l5aErvQc8qKE2r7NDMjmq5UNAvuZy0rC8BHOplkWvZ4=
+github.com/ipfs/go-unixfs v0.2.2-0.20190823181532-868af2e9e5cb63f114a445a00d595c028026c28c h1:SaTWPkLp9OWnd+Wm6oyBQ1NODnvSmRFz9bKNo4PheVU=
+github.com/ipfs/go-unixfs v0.2.2-0.20190823181532-868af2e9e5cb63f114a445a00d595c028026c28c/go.mod h1:IwAAgul1UQIcNZzKPYZWOCijryFBeCV79cNubPzol+k=
 github.com/ipfs/go-verifcid v0.0.1 h1:m2HI7zIuR5TFyQ1b79Da5N9dnnCP1vcu2QqawmWlK2E=
 github.com/ipfs/go-verifcid v0.0.1/go.mod h1:5Hrva5KBeIog4A+UpqlaIU+DEstipcJYQQZc0g37pY0=
 github.com/ipsn/go-secp256k1 v0.0.0-20180726113642-9d62b9f0bc52 h1:QG4CGBqCeuBo6aZlGAamSkxWdgWfZGeE49eUOWJPA4c=

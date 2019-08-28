@@ -33,7 +33,7 @@ require (
 	github.com/ipfs/go-ipld-format v0.0.2
 	github.com/ipfs/go-log v0.0.2-0.20190708183747-9c9fd6111bea
 	github.com/ipfs/go-merkledag v0.2.3
-	github.com/ipfs/go-unixfs v0.2.1
+	github.com/ipfs/go-unixfs v0.2.2-0.20190823181532-868af2e9e5cb63f114a445a00d595c028026c28c
 	github.com/ipsn/go-secp256k1 v0.0.0-20180726113642-9d62b9f0bc52
 	github.com/libp2p/go-libp2p v0.3.0
 	github.com/libp2p/go-libp2p-circuit v0.1.1
@@ -84,7 +84,3 @@ require (
 replace github.com/filecoin-project/go-bls-sigs => ./extern/go-bls-sigs
 
 replace github.com/filecoin-project/go-sectorbuilder => ./extern/go-sectorbuilder
-
-replace github.com/ipfs/go-car => /home/magik6k/gohack/github.com/ipfs/go-car
-
-replace github.com/ipfs/go-unixfs => /home/magik6k/gohack/github.com/ipfs/go-unixfs
