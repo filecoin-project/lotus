@@ -135,7 +135,7 @@ func (h *Handler) sealing(ctx context.Context, deal MinerDeal) (func(*MinerDeal)
 	}
 
 	// TODO: don't hardcode unixfs
-	ip, err := getInclusionProof(string(sectorblocks.SerializationUnixfs0) + deal.Ref.String(), status)
+	ip, err := getInclusionProof(string(sectorblocks.SerializationUnixfs0)+deal.Ref.String(), status)
 	if err != nil {
 		return nil, err
 	}

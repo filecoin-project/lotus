@@ -73,12 +73,12 @@ func (m *Miner) HandleQueryStream(stream network.Stream) {
 }
 
 type handlerDeal struct {
-	m *Miner
+	m      *Miner
 	stream network.Stream
 
 	ufsr sectorblocks.UnixfsReader
 	open cid.Cid
-	at uint64
+	at   uint64
 	size uint64
 }
 

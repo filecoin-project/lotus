@@ -114,7 +114,7 @@ func (c *Client) RetrieveUnixfs(ctx context.Context, root cid.Cid, size uint64, 
 		verifier:   &UnixFs0Verifier{Root: root},
 	}
 
-	for cst.offset != size + initialOffset {
+	for cst.offset != size+initialOffset {
 		toFetch := cst.windowSize
 		if toFetch+cst.offset > size {
 			toFetch = size - cst.offset
