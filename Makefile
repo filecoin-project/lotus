@@ -7,6 +7,8 @@ MODULES:=
 
 CLEAN:=
 
+## BLS
+
 BLS_PATH:=extern/go-bls-sigs/
 BLS_DEPS:=libbls_signatures.a libbls_signatures.pc libbls_signatures.h
 BLS_DEPS:=$(addprefix $(BLS_PATH),$(BLS_DEPS))
@@ -20,6 +22,8 @@ build/.bls-install: $(BLS_PATH)
 MODULES+=$(BLS_PATH)
 BUILD_DEPS+=build/.bls-install
 CLEAN+=build/.bls-install
+
+## SECTOR BUILDER
 
 SECTOR_BUILDER_PATH:=extern/go-sectorbuilder/
 SECTOR_BUILDER_DEPS:=libsector_builder_ffi.a sector_builder_ffi.pc sector_builder_ffi.h
@@ -35,6 +39,23 @@ MODULES+=$(SECTOR_BUILDER_PATH)
 BUILD_DEPS+=build/.sector-builder-install
 CLEAN+=build/.sector-builder-install
 
+## PROOFS
+
+PROOFS_PATH:=extern/proofs/
+PROOFS_DEPS:=bin/paramcache bin/paramfetch misc/parameters.json
+PROOFS_DEPS:=$(addprefix $(SECTOR_BUILDER_PATH),$(SECTOR_BUILDER_DEPS))
+
+$(PROOFS_DEPS): build/.proofs-install ;
+
+build/.proofs-install: $(PROOFS_PATH)
+	$(MAKE) -C $(PROOFS_PATH) $(PROOFS_DEPS:$(PROOFS_PATH)%=%)
+	@touch $@
+
+MODULES+=$(PROOFS_PATH)
+BUILD_DEPS+=build/.proofs-install
+CLEAN+=build/.proofs-install
+
+# end git modules
 
 $(MODULES): build/.update-modules ;
 

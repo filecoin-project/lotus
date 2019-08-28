@@ -1,0 +1,31 @@
+#!/usr/bin/env bash
+
+set -Eeo pipefail
+
+# shellcheck source=install-shared.bash
+source "$(dirname "${BASH_SOURCE[0]}")/install-shared.bash"
+
+subm_dir="rust-fil-proofs"
+
+git submodule update --init --recursive ${subm_dir}
+
+if download_release_tarball tarball_path "${subm_dir}"; then
+    tmp_dir=$(mktemp -d)
+    tar -C "$tmp_dir" -xzf "$tarball_path"
+
+    mkdir -p bin
+    mkdir -p misc
+
+    cp -R "${tmp_dir}/bin/*" bin
+    cp -R "${tmp_dir}/misc/*" misc
+else
+    echo "failed to find or obtain precompiled assets for ${subm_dir}, falling back to local build"
+    build_from_source "${subm_dir}"
+
+    mkdir -p bin
+    mkdir -p misc
+
+    find "${subm_dir}" -type f -name parameters.json -exec mv -- "{}" ./misc/ \;
+    find "${subm_dir}" -type f -name paramcache -exec cp -- "{}" ./bin/ \;
+    find "${subm_dir}" -type f -name paramfetch -exec cp -- "{}" ./bin/ \;
+fi

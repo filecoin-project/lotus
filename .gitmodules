@@ -4,3 +4,6 @@
 [submodule "extern/go-sectorbuilder"]
 	path = extern/go-sectorbuilder
 	url = https://github.com/filecoin-project/go-sectorbuilder
+[submodule "extern/proofs/rust-fil-proofs"]
+	path = extern/proofs/rust-fil-proofs
+	url = git@github.com:filecoin-project/rust-fil-proofs.git
