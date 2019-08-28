@@ -41,9 +41,9 @@ CLEAN+=build/.sector-builder-install
 
 ## PROOFS
 
-PROOFS_PATH:=extern/proofs/
+PROOFS_PATH:=extern/go-fil-proofs/
 PROOFS_DEPS:=bin/paramcache bin/paramfetch misc/parameters.json
-PROOFS_DEPS:=$(addprefix $(SECTOR_BUILDER_PATH),$(SECTOR_BUILDER_DEPS))
+PROOFS_DEPS:=$(addprefix $(PROOFS_PATH),$(PROOFS_DEPS))
 
 $(PROOFS_DEPS): build/.proofs-install ;
 
@@ -54,6 +54,16 @@ build/.proofs-install: $(PROOFS_PATH)
 MODULES+=$(PROOFS_PATH)
 BUILD_DEPS+=build/.proofs-install
 CLEAN+=build/.proofs-install
+
+PARAM_SECTOR_SIZES:=1024 268435456
+PARAM_SECTOR_SIZES:=$(addprefix params-,$(PARAM_SECTOR_SIZES))
+
+$(PARAM_SECTOR_SIZES): extern/go-fil-proofs/bin/paramfetch extern/go-fil-proofs/misc/parameters.json
+	./extern/go-fil-proofs/bin/paramfetch -z $(subst params-,,$@) --verbose --json=./extern/go-fil-proofs/misc/parameters.json
+.PHONY: $(PARAM_SECTOR_SIZES)
+
+paramcache: extern/go-fil-proofs/bin/paramcache
+	RUST_LOG=info ./extern/go-fil-proofs/bin/paramcache
 
 # end git modules
 
@@ -82,6 +92,8 @@ pond: build
 clean:
 	rm -rf $(CLEAN)
 	-$(MAKE) -C $(BLS_PATH) clean
+	-$(MAKE) -C $(SECTOR_BUILDER_PATH) clean
+	-$(MAKE) -C $(PROOFS_PATH) clean
 .PHONY: clean
 
 dist-clean:
