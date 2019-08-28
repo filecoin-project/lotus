@@ -86,14 +86,16 @@ func (b *UnixFs0Verifier) verify(ctx context.Context, blk blocks.Block, out io.W
 func (b *UnixFs0Verifier) checkInternal(blk blocks.Block, out io.Writer) (int, error) {
 	nd, err := ipld.Decode(blk)
 	if err != nil {
+		log.Warnf("IPLD Decode failed: %s", err)
 		return 0, err
 	}
 
 	// TODO: check size
-	switch nd.(type) {
+	switch nd := nd.(type) {
 	case *merkledag.ProtoNode:
-		fsn, err := unixfs.FSNodeFromBytes(nd.RawData())
+		fsn, err := unixfs.FSNodeFromBytes(nd.Data())
 		if err != nil {
+			log.Warnf("unixfs.FSNodeFromBytes failed: %s", err)
 			return 0, err
 		}
 		if fsn.Type() != pb.Data_File {

@@ -212,6 +212,7 @@ func (cst *clientStream) consumeBlockMessage(pb pb.Message_Block, out io.Writer)
 
 	internal, err := cst.verifier.Verify(context.TODO(), blk, out)
 	if err != nil {
+		log.Warnf("block verify failed: %s", err)
 		return 0, err
 	}
 
