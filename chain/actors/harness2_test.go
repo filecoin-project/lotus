@@ -22,7 +22,7 @@ import (
 	"github.com/filecoin-project/go-lotus/chain/wallet"
 )
 
-const testGasLimit = 1000
+const testGasLimit = 10000
 
 type HarnessInit struct {
 	NAddrs uint64
@@ -37,9 +37,9 @@ const (
 	HarnessPostInit
 )
 
-type HarnessOpt func(testing.TB, *Harness2) error
+type HarnessOpt func(testing.TB, *Harness) error
 
-type Harness2 struct {
+type Harness struct {
 	HI         HarnessInit
 	Stage      HarnessStage
 	Nonces     map[address.Address]uint64
@@ -57,7 +57,7 @@ type Harness2 struct {
 var HarnessMinerFunds = types.NewInt(1000000)
 
 func HarnessAddr(addr *address.Address, value uint64) HarnessOpt {
-	return func(t testing.TB, h *Harness2) error {
+	return func(t testing.TB, h *Harness) error {
 		if h.Stage != HarnessPreInit {
 			return nil
 		}
@@ -76,7 +76,7 @@ func HarnessAddr(addr *address.Address, value uint64) HarnessOpt {
 }
 
 func HarnessMiner(addr *address.Address) HarnessOpt {
-	return func(_ testing.TB, h *Harness2) error {
+	return func(_ testing.TB, h *Harness) error {
 		if h.Stage != HarnessPreInit {
 			return nil
 		}
@@ -92,7 +92,7 @@ func HarnessMiner(addr *address.Address) HarnessOpt {
 }
 
 func HarnessActor(actor *address.Address, creator *address.Address, code cid.Cid, params func() interface{}) HarnessOpt {
-	return func(t testing.TB, h *Harness2) error {
+	return func(t testing.TB, h *Harness) error {
 		if h.Stage != HarnessPostInit {
 			return nil
 		}
@@ -112,18 +112,18 @@ func HarnessActor(actor *address.Address, creator *address.Address, code cid.Cid
 }
 
 func HarnessCtx(ctx context.Context) HarnessOpt {
-	return func(t testing.TB, h *Harness2) error {
+	return func(t testing.TB, h *Harness) error {
 		h.ctx = ctx
 		return nil
 	}
 }
 
-func NewHarness2(t *testing.T, options ...HarnessOpt) *Harness2 {
+func NewHarness(t *testing.T, options ...HarnessOpt) *Harness {
 	w, err := wallet.NewWallet(wallet.NewMemKeyStore())
 	if err != nil {
 		t.Fatal(err)
 	}
-	h := &Harness2{
+	h := &Harness{
 		Stage:  HarnessPreInit,
 		Nonces: make(map[address.Address]uint64),
 		HI: HarnessInit{
@@ -172,7 +172,7 @@ func NewHarness2(t *testing.T, options ...HarnessOpt) *Harness2 {
 	return h
 }
 
-func (h *Harness2) Apply(t testing.TB, msg types.Message) (*vm.ApplyRet, *state.StateTree) {
+func (h *Harness) Apply(t testing.TB, msg types.Message) (*vm.ApplyRet, *state.StateTree) {
 	t.Helper()
 	if msg.Nonce == 0 {
 		msg.Nonce, _ = h.Nonces[msg.From]
@@ -204,7 +204,7 @@ func (h *Harness2) Apply(t testing.TB, msg types.Message) (*vm.ApplyRet, *state.
 	return ret, state
 }
 
-func (h *Harness2) CreateActor(t testing.TB, from address.Address,
+func (h *Harness) CreateActor(t testing.TB, from address.Address,
 	code cid.Cid, params interface{}) (*vm.ApplyRet, *state.StateTree) {
 	t.Helper()
 
@@ -223,7 +223,7 @@ func (h *Harness2) CreateActor(t testing.TB, from address.Address,
 	})
 }
 
-func (h *Harness2) SendFunds(t testing.TB, from address.Address, to address.Address,
+func (h *Harness) SendFunds(t testing.TB, from address.Address, to address.Address,
 	value types.BigInt) (*vm.ApplyRet, *state.StateTree) {
 	t.Helper()
 	return h.Apply(t, types.Message{
@@ -236,7 +236,7 @@ func (h *Harness2) SendFunds(t testing.TB, from address.Address, to address.Addr
 	})
 }
 
-func (h *Harness2) Invoke(t testing.TB, from address.Address, to address.Address,
+func (h *Harness) Invoke(t testing.TB, from address.Address, to address.Address,
 	method uint64, params interface{}) (*vm.ApplyRet, *state.StateTree) {
 	t.Helper()
 	return h.Apply(t, types.Message{
@@ -250,7 +250,7 @@ func (h *Harness2) Invoke(t testing.TB, from address.Address, to address.Address
 	})
 }
 
-func (h *Harness2) AssertBalance(t testing.TB, addr address.Address, amt uint64) {
+func (h *Harness) AssertBalance(t testing.TB, addr address.Address, amt uint64) {
 	t.Helper()
 
 	b, err := h.vm.ActorBalance(addr)
@@ -263,7 +263,7 @@ func (h *Harness2) AssertBalance(t testing.TB, addr address.Address, amt uint64)
 	}
 }
 
-func (h *Harness2) AssertBalanceChange(t testing.TB, addr address.Address, amt int64) {
+func (h *Harness) AssertBalanceChange(t testing.TB, addr address.Address, amt int64) {
 	t.Helper()
 	lastBalance, ok := h.lastBalanceCheck[addr]
 	if !ok {

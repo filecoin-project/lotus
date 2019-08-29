@@ -13,11 +13,11 @@ import (
 func TestPaychCreate(t *testing.T) {
 	var creatorAddr, targetAddr address.Address
 	opts := []HarnessOpt{
-		HarnessAddr(&creatorAddr, 10000),
-		HarnessAddr(&targetAddr, 10000),
+		HarnessAddr(&creatorAddr, 100000),
+		HarnessAddr(&targetAddr, 100000),
 	}
 
-	h := NewHarness2(t, opts...)
+	h := NewHarness(t, opts...)
 	ret, _ := h.CreateActor(t, creatorAddr, actors.PaymentChannelActorCodeCid,
 		actors.PCAConstructorParams{
 			To: targetAddr,
@@ -42,11 +42,11 @@ func signVoucher(t *testing.T, w *wallet.Wallet, addr address.Address, sv *types
 func TestPaychUpdate(t *testing.T) {
 	var creatorAddr, targetAddr address.Address
 	opts := []HarnessOpt{
-		HarnessAddr(&creatorAddr, 10000),
-		HarnessAddr(&targetAddr, 10000),
+		HarnessAddr(&creatorAddr, 100000),
+		HarnessAddr(&targetAddr, 100000),
 	}
 
-	h := NewHarness2(t, opts...)
+	h := NewHarness(t, opts...)
 	ret, _ := h.CreateActor(t, creatorAddr, actors.PaymentChannelActorCodeCid,
 		actors.PCAConstructorParams{
 			To: targetAddr,

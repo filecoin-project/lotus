@@ -13,6 +13,7 @@ import (
 	"github.com/filecoin-project/go-lotus/lib/bufbstore"
 	"go.opencensus.io/trace"
 
+	block "github.com/ipfs/go-block-format"
 	bserv "github.com/ipfs/go-blockservice"
 	cid "github.com/ipfs/go-cid"
 	hamt "github.com/ipfs/go-hamt-ipld"
@@ -26,9 +27,15 @@ var log = logging.Logger("vm")
 
 const (
 	gasFundTransfer = 10
-	gasGetObj       = 10
-	gasPutObj       = 20
-	gasCommit       = 50
+
+	gasGetObj     = 10
+	gasPutObj     = 20
+	gasPutPerByte = 2
+	gasCommit     = 50
+)
+
+const (
+	outOfGasErrCode = 200
 )
 
 type VMContext struct {
@@ -58,21 +65,25 @@ func (vmc *VMContext) Message() *types.Message {
 // Storage interface
 
 func (vmc *VMContext) Put(i interface{}) (cid.Cid, aerrors.ActorError) {
-	if err := vmc.ChargeGas(gasPutObj); err != nil {
-		return cid.Undef, aerrors.Wrap(err, "out of gas")
-	}
 	c, err := vmc.cst.Put(context.TODO(), i)
 	if err != nil {
+		if aerr := vmc.ChargeGas(0); aerr != nil {
+			return cid.Undef, aerrors.Absorb(err, outOfGasErrCode, "Put out of gas")
+		}
 		return cid.Undef, aerrors.Escalate(err, "putting cid")
 	}
 	return c, nil
 }
 
 func (vmc *VMContext) Get(c cid.Cid, out interface{}) aerrors.ActorError {
-	if err := vmc.ChargeGas(gasGetObj); err != nil {
-		return aerrors.Wrap(err, "out of gas")
+	err := vmc.cst.Get(context.TODO(), c, out)
+	if err != nil {
+		if aerr := vmc.ChargeGas(0); aerr != nil {
+			return aerrors.Absorb(err, outOfGasErrCode, "Get out of gas")
+		}
+		return aerrors.Escalate(err, "getting cid")
 	}
-	return aerrors.Escalate(vmc.cst.Get(context.TODO(), c, out), "getting cid")
+	return nil
 }
 
 func (vmc *VMContext) GetHead() cid.Cid {
@@ -144,7 +155,7 @@ func (vmc *VMContext) ChargeGas(amount uint64) aerrors.ActorError {
 	toUse := types.NewInt(amount)
 	vmc.gasUsed = types.BigAdd(vmc.gasUsed, toUse)
 	if types.BigCmp(vmc.gasUsed, vmc.gasAvailable) > 0 {
-		return aerrors.Newf(254, "not enough gas: used=%s, available=%s", vmc.gasUsed, vmc.gasAvailable)
+		return aerrors.Newf(outOfGasErrCode, "not enough gas: used=%s, available=%s", vmc.gasUsed, vmc.gasAvailable)
 	}
 	return nil
 }
@@ -201,8 +212,34 @@ func ResolveToKeyAddr(state types.StateTree, cst *hamt.CborIpldStore, addr addre
 	return aast.Address, nil
 }
 
+type hBlocks interface {
+	GetBlock(context.Context, cid.Cid) (block.Block, error)
+	AddBlock(block.Block) error
+}
+
+var _ hBlocks = (*gasChargingBlocks)(nil)
+
+type gasChargingBlocks struct {
+	chargeGas func(uint64) aerrors.ActorError
+	under     hBlocks
+}
+
+func (bs *gasChargingBlocks) GetBlock(ctx context.Context, c cid.Cid) (block.Block, error) {
+	if err := bs.chargeGas(gasGetObj); err != nil {
+		return nil, err
+	}
+	return bs.under.GetBlock(ctx, c)
+}
+
+func (bs *gasChargingBlocks) AddBlock(blk block.Block) error {
+	if err := bs.chargeGas(gasPutObj + uint64(len(blk.RawData()))*gasPutPerByte); err != nil {
+		return err
+	}
+	return bs.under.AddBlock(blk)
+}
+
 func (vm *VM) makeVMContext(ctx context.Context, sroot cid.Cid, msg *types.Message, origin address.Address, usedGas types.BigInt) *VMContext {
-	return &VMContext{
+	vmc := &VMContext{
 		ctx:    ctx,
 		vm:     vm,
 		state:  vm.cstate,
@@ -210,11 +247,15 @@ func (vm *VM) makeVMContext(ctx context.Context, sroot cid.Cid, msg *types.Messa
 		msg:    msg,
 		origin: origin,
 		height: vm.blockHeight,
-		cst:    vm.cst,
 
 		gasUsed:      usedGas,
 		gasAvailable: msg.GasLimit,
 	}
+	vmc.cst = &hamt.CborIpldStore{
+		Blocks: &gasChargingBlocks{vmc.ChargeGas, vm.cst.Blocks},
+		Atlas:  vm.cst.Atlas,
+	}
+	return vmc
 }
 
 type VM struct {
@@ -357,8 +398,13 @@ func (vm *VM) ApplyMessage(ctx context.Context, msg *types.Message) (*ApplyRet, 
 
 	ret, actorErr, vmctx := vm.send(ctx, msg, nil)
 
+	if aerrors.IsFatal(actorErr) {
+		return nil, xerrors.Errorf("fatal error: %w", actorErr)
+	}
+
 	var errcode uint8
 	var gasUsed types.BigInt
+
 	if errcode = aerrors.RetCode(actorErr); errcode != 0 {
 		gasUsed = msg.GasLimit
 		// revert all state changes since snapshot
