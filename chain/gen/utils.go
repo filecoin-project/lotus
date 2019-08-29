@@ -286,7 +286,7 @@ func MakeGenesisBlock(bs bstore.Blockstore, balances map[address.Address]types.B
 		return nil, xerrors.Errorf("putting msgmeta block to blockstore: %w", err)
 	}
 
-	fmt.Println("Empty Genesis root: ", emptyroot)
+	log.Infof("Empty Genesis root: %s", emptyroot)
 
 	genesisticket := &types.Ticket{
 		VRFProof:  []byte("vrf proof"),

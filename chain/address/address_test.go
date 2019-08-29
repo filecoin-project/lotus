@@ -12,7 +12,6 @@ import (
 
 	"github.com/filecoin-project/go-bls-sigs"
 	"github.com/filecoin-project/go-leb128"
-	cbor "github.com/ipfs/go-ipld-cbor"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 
@@ -494,23 +493,6 @@ func TestCborMarshal(t *testing.T) {
 	}
 }
 
-func BenchmarkOldCborMarshal(b *testing.B) {
-	addr, err := NewFromString("t15ihq5ibzwki2b4ep2f46avlkrqzhpqgtga7pdrq")
-	if err != nil {
-		b.Fatal(err)
-	}
-
-	b.ReportAllocs()
-	b.ResetTimer()
-
-	for i := 0; i < b.N; i++ {
-		_, err := cbor.DumpObject(addr)
-		if err != nil {
-			b.Fatal(err)
-		}
-	}
-}
-
 func BenchmarkCborMarshal(b *testing.B) {
 	addr, err := NewFromString("t15ihq5ibzwki2b4ep2f46avlkrqzhpqgtga7pdrq")
 	if err != nil {
@@ -524,28 +506,6 @@ func BenchmarkCborMarshal(b *testing.B) {
 	for i := 0; i < b.N; i++ {
 		buf.Reset()
 		if err := addr.MarshalCBOR(buf); err != nil {
-			b.Fatal(err)
-		}
-	}
-}
-
-func BenchmarkOldCborUnmarshal(b *testing.B) {
-	addr, err := NewFromString("t15ihq5ibzwki2b4ep2f46avlkrqzhpqgtga7pdrq")
-	if err != nil {
-		b.Fatal(err)
-	}
-
-	buf := new(bytes.Buffer)
-	if err := addr.MarshalCBOR(buf); err != nil {
-		b.Fatal(err)
-	}
-
-	b.ReportAllocs()
-	b.ResetTimer()
-
-	for i := 0; i < b.N; i++ {
-		var a Address
-		if err := cbor.DecodeInto(buf.Bytes(), &a); err != nil {
 			b.Fatal(err)
 		}
 	}

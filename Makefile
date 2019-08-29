@@ -86,6 +86,11 @@ build: $(BUILD_DEPS)
 	go build -o lotus-storage-miner ./cmd/lotus-storage-miner
 .PHONY: build
 
+benchmarks:
+	go get github.com/whyrusleeping/bencher
+	bencher ./... > bench.json
+	curl -X POST 'http://benchmark.kittyhawk.wtf/benchmark' -d '@bench.json' -u ${benchmark_http_user}:${benchmark_http_pw}
+
 pond: build
 	go build -o pond ./lotuspond
 	(cd lotuspond/front && npm i && npm run build)
