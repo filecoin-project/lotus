@@ -5,6 +5,7 @@ go 1.12
 require (
 	contrib.go.opencensus.io/exporter/jaeger v0.1.0
 	github.com/BurntSushi/toml v0.3.1
+	github.com/filecoin-project/go-amt-ipld v0.0.0-20190828233303-a41bd0b6f985
 	github.com/filecoin-project/go-bls-sigs v0.0.0-20190718224239-4bc4b8a7bbf8
 	github.com/filecoin-project/go-leb128 v0.0.0-20190212224330-8d79a5489543
 	github.com/filecoin-project/go-sectorbuilder v0.0.0-00010101000000-000000000000
@@ -15,12 +16,12 @@ require (
 	github.com/ipfs/go-blockservice v0.1.2
 	github.com/ipfs/go-car v0.0.1
 	github.com/ipfs/go-cid v0.0.3
-	github.com/ipfs/go-datastore v0.0.5
+	github.com/ipfs/go-datastore v0.1.0
 	github.com/ipfs/go-ds-badger v0.0.5
 	github.com/ipfs/go-filestore v0.0.2
 	github.com/ipfs/go-fs-lock v0.0.1
 	github.com/ipfs/go-hamt-ipld v0.0.12-0.20190822003241-7ff276389cbf
-	github.com/ipfs/go-ipfs-blockstore v0.0.1
+	github.com/ipfs/go-ipfs-blockstore v0.1.0
 	github.com/ipfs/go-ipfs-chunker v0.0.1
 	github.com/ipfs/go-ipfs-exchange-interface v0.0.1
 	github.com/ipfs/go-ipfs-exchange-offline v0.0.1
@@ -66,7 +67,7 @@ require (
 	github.com/smartystreets/goconvey v0.0.0-20190710185942-9d28bd7c0945 // indirect
 	github.com/stretchr/objx v0.1.1 // indirect
 	github.com/stretchr/testify v1.3.0
-	github.com/whyrusleeping/cbor-gen v0.0.0-20190822012446-bb2210dd2804
+	github.com/whyrusleeping/cbor-gen v0.0.0-20190822231004-8db835b09a5a
 	github.com/whyrusleeping/multiaddr-filter v0.0.0-20160516205228-e903e4adabd7
 	github.com/whyrusleeping/pubsub v0.0.0-20131020042734-02de8aa2db3d
 	github.com/whyrusleeping/sharray v0.0.0-20190718051354-e41931821e33

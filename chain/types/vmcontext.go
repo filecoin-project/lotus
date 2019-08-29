@@ -1,6 +1,7 @@
 package types
 
 import (
+	"github.com/filecoin-project/go-amt-ipld"
 	"github.com/filecoin-project/go-lotus/chain/actors/aerrors"
 	"github.com/filecoin-project/go-lotus/chain/address"
 	"github.com/ipfs/go-cid"
@@ -34,4 +35,29 @@ type VMContext interface {
 	StateTree() (StateTree, aerrors.ActorError)
 	VerifySignature(sig *Signature, from address.Address, data []byte) aerrors.ActorError
 	ChargeGas(uint64) aerrors.ActorError
+}
+
+type storageWrapper struct {
+	s Storage
+}
+
+func (sw *storageWrapper) Put(i interface{}) (cid.Cid, error) {
+	c, err := sw.s.Put(i)
+	if err != nil {
+		return cid.Undef, err
+	}
+
+	return c, nil
+}
+
+func (sw *storageWrapper) Get(c cid.Cid, out interface{}) error {
+	if err := sw.s.Get(c, out); err != nil {
+		return err
+	}
+
+	return nil
+}
+
+func WrapStorage(s Storage) amt.Blocks {
+	return &storageWrapper{s}
 }
