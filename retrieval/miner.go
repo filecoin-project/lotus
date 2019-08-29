@@ -121,6 +121,8 @@ func (hnd *handlerDeal) handleNext() (bool, error) {
 	// TODO: Verify payment, check how much we can send based on that
 	//  Or reject (possibly returning the payment to retain reputation with the client)
 
+	// If the file isn't open (new deal stream), isn't the right file, or isn't
+	// at the right offset, (re)open it
 	if hnd.open != deal.Ref || hnd.at != unixfs0.Offset {
 		log.Infof("opening file for sending (open '%s') (@%d, want %d)", hnd.open, hnd.at, unixfs0.Offset)
 		if err := hnd.openFile(deal); err != nil {

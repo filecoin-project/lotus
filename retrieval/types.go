@@ -25,12 +25,13 @@ const (
 )
 
 func init() {
-	cbor.RegisterCborType(DealProposal{})
+	cbor.RegisterCborType(RetParams{})
 
 	cbor.RegisterCborType(Query{})
 	cbor.RegisterCborType(QueryResponse{})
 	cbor.RegisterCborType(Unixfs0Offer{})
 
+	cbor.RegisterCborType(DealProposal{})
 	cbor.RegisterCborType(DealResponse{})
 	cbor.RegisterCborType(Block{})
 }
@@ -50,7 +51,7 @@ type QueryResponse struct {
 	MinPrice types.BigInt
 }
 
-type Unixfs0Offer struct { // UNBORK
+type Unixfs0Offer struct {
 	Offset uint64
 	Size   uint64
 }
