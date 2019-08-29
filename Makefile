@@ -62,6 +62,8 @@ $(PARAM_SECTOR_SIZES): extern/go-fil-proofs/bin/paramfetch extern/go-fil-proofs/
 	./extern/go-fil-proofs/bin/paramfetch -z $(subst params-,,$@) --verbose --json=./extern/go-fil-proofs/misc/parameters.json
 .PHONY: $(PARAM_SECTOR_SIZES)
 
+BUILD_DEPS+=params-1024
+
 paramcache: extern/go-fil-proofs/bin/paramcache
 	RUST_LOG=info ./extern/go-fil-proofs/bin/paramcache
 
