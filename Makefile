@@ -87,9 +87,9 @@ build: $(BUILD_DEPS)
 .PHONY: build
 
 benchmarks:
-	go get github.com/whyrusleeping/bencher
-	bencher ./... > bench.json
-	curl -X POST 'http://benchmark.kittyhawk.wtf/benchmark' -d '@bench.json' -u ${benchmark_http_user}:${benchmark_http_pw}
+	go run github.com/whyrusleeping/bencher ./... > bench.json
+	curl -X POST 'http://benchmark.kittyhawk.wtf/benchmark' -d '@bench.json' -u "${benchmark_http_cred}"
+.PHONY: benchmarks
 
 pond: build
 	go build -o pond ./lotuspond
