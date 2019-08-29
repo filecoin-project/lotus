@@ -112,7 +112,7 @@ func (m *Miner) commitSector(ctx context.Context, sinfo sectorbuilder.SectorSeal
 	}
 
 	params := &actors.CommitSectorParams{
-		SectorID:  types.NewInt(sinfo.SectorID),
+		SectorID:  sinfo.SectorID,
 		CommD:     sinfo.CommD[:],
 		CommR:     sinfo.CommR[:],
 		CommRStar: sinfo.CommRStar[:],
