@@ -27,11 +27,13 @@ var log = logging.Logger("vm")
 
 const (
 	gasFundTransfer = 10
+	gasInvoke       = 5
 
-	gasGetObj     = 10
-	gasPutObj     = 20
-	gasPutPerByte = 2
-	gasCommit     = 50
+	gasGetObj         = 10
+	gasPutObj         = 20
+	gasPutPerByte     = 2
+	gasCommit         = 50
+	gasPerMessageByte = 2
 )
 
 const (
@@ -138,7 +140,7 @@ func (vmc *VMContext) Send(to address.Address, method uint64, value types.BigInt
 		GasLimit: vmc.gasAvailable,
 	}
 
-	ret, err, _ := vmc.vm.send(ctx, msg, vmc)
+	ret, err, _ := vmc.vm.send(ctx, msg, vmc, 0)
 	return ret, err
 }
 
@@ -294,7 +296,8 @@ type ApplyRet struct {
 	ActorErr aerrors.ActorError
 }
 
-func (vm *VM) send(ctx context.Context, msg *types.Message, parent *VMContext) ([]byte, aerrors.ActorError, *VMContext) {
+func (vm *VM) send(ctx context.Context, msg *types.Message, parent *VMContext,
+	gasCharge uint64) ([]byte, aerrors.ActorError, *VMContext) {
 
 	st := vm.cstate
 	fromActor, err := st.GetActor(msg.From)
@@ -315,10 +318,10 @@ func (vm *VM) send(ctx context.Context, msg *types.Message, parent *VMContext) (
 		}
 	}
 
-	gasUsed := types.NewInt(0)
+	gasUsed := types.NewInt(gasCharge)
 	origin := msg.From
 	if parent != nil {
-		gasUsed = parent.gasUsed
+		gasUsed = types.BigAdd(parent.gasUsed, gasUsed)
 		origin = parent.origin
 	}
 	vmctx := vm.makeVMContext(ctx, toActor.Head, msg, origin, gasUsed)
@@ -382,6 +385,12 @@ func (vm *VM) ApplyMessage(ctx context.Context, msg *types.Message) (*ApplyRet, 
 		return nil, xerrors.Errorf("from actor not found: %w", err)
 	}
 
+	serMsg, err := msg.Serialize()
+	if err != nil {
+		return nil, xerrors.Errorf("could not serialize message: %w", err)
+	}
+	msgGasCost := uint64(len(serMsg)) * gasPerMessageByte
+
 	gascost := types.BigMul(msg.GasLimit, msg.GasPrice)
 	totalCost := types.BigAdd(gascost, msg.Value)
 	if types.BigCmp(fromActor.Balance, totalCost) < 0 {
@@ -396,7 +405,7 @@ func (vm *VM) ApplyMessage(ctx context.Context, msg *types.Message) (*ApplyRet, 
 	}
 	fromActor.Nonce++
 
-	ret, actorErr, vmctx := vm.send(ctx, msg, nil)
+	ret, actorErr, vmctx := vm.send(ctx, msg, nil, msgGasCost)
 
 	if aerrors.IsFatal(actorErr) {
 		return nil, xerrors.Errorf("fatal error: %w", actorErr)
@@ -534,6 +543,9 @@ func (vm *VM) Invoke(act *types.Actor, vmctx *VMContext, method uint64, params [
 	defer func() {
 		vmctx.ctx = oldCtx
 	}()
+	if err := vmctx.ChargeGas(gasInvoke); err != nil {
+		return nil, aerrors.Wrap(err, "invokeing")
+	}
 	ret, err := vm.inv.Invoke(act, vmctx, method, params)
 	if err != nil {
 		return nil, err
