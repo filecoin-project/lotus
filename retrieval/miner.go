@@ -2,20 +2,19 @@ package retrieval
 
 import (
 	"context"
-	"github.com/filecoin-project/go-lotus/build"
-	"github.com/ipfs/go-cid"
-	"github.com/libp2p/go-msgio"
-	"golang.org/x/xerrors"
 	"io"
 
-	"github.com/filecoin-project/go-lotus/chain/types"
-	"github.com/filecoin-project/go-lotus/lib/cborrpc"
-	"github.com/filecoin-project/go-lotus/storage/sectorblocks"
-	pb "github.com/ipfs/go-bitswap/message/pb"
 	"github.com/ipfs/go-blockservice"
+	"github.com/ipfs/go-cid"
 	"github.com/ipfs/go-merkledag"
 	unixfile "github.com/ipfs/go-unixfs/file"
 	"github.com/libp2p/go-libp2p-core/network"
+	"golang.org/x/xerrors"
+
+	"github.com/filecoin-project/go-lotus/build"
+	"github.com/filecoin-project/go-lotus/chain/types"
+	"github.com/filecoin-project/go-lotus/lib/cborrpc"
+	"github.com/filecoin-project/go-lotus/storage/sectorblocks"
 )
 
 type Miner struct {
@@ -186,9 +185,6 @@ func (hnd *handlerDeal) accept(deal Deal) error {
 		return err
 	}
 
-	buf := make([]byte, network.MessageSizeMax)
-	msgw := msgio.NewVarintWriter(hnd.stream)
-
 	blocksToSend := (deal.Unixfs0.Size + build.UnixfsChunkSize - 1) / build.UnixfsChunkSize
 	for i := uint64(0); i < blocksToSend; {
 		data, offset, nd, err := hnd.ufsr.ReadBlock(context.TODO())
@@ -207,18 +203,12 @@ func (hnd *handlerDeal) accept(deal Deal) error {
 			return
 		}*/
 
-		block := pb.Message_Block{
+		block := Block{
 			Prefix: nd.Cid().Prefix().Bytes(),
 			Data:   nd.RawData(),
 		}
 
-		n, err := block.MarshalTo(buf)
-		if err != nil {
-			return err
-		}
-
-		if err := msgw.WriteMsg(buf[:n]); err != nil {
-			log.Error(err)
+		if err := cborrpc.WriteCborRPC(hnd.stream, block); err != nil {
 			return err
 		}
 

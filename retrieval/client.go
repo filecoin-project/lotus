@@ -5,7 +5,6 @@ import (
 	"io"
 	"io/ioutil"
 
-	pb "github.com/ipfs/go-bitswap/message/pb"
 	blocks "github.com/ipfs/go-block-format"
 	"github.com/ipfs/go-cid"
 	cbor "github.com/ipfs/go-ipld-cbor"
@@ -13,7 +12,6 @@ import (
 	"github.com/libp2p/go-libp2p-core/host"
 	"github.com/libp2p/go-libp2p-core/network"
 	"github.com/libp2p/go-libp2p-core/peer"
-	"github.com/libp2p/go-msgio"
 	"golang.org/x/xerrors"
 
 	"github.com/filecoin-project/go-lotus/api"
@@ -172,42 +170,34 @@ func (cst *clientStream) doOneExchange(toFetch uint64, out io.Writer) error {
 func (cst *clientStream) fetchBlocks(toFetch uint64, out io.Writer) error {
 	blocksToFetch := (toFetch + build.UnixfsChunkSize - 1) / build.UnixfsChunkSize
 
-	// TODO: put msgio into spec
-	reader := msgio.NewVarintReaderSize(cst.stream, network.MessageSizeMax)
-
 	for i := uint64(0); i < blocksToFetch; {
 		log.Infof("block %d of %d", i+1, blocksToFetch)
-		msg, err := reader.ReadMsg()
-		if err != nil {
+
+		var block Block
+		if err := cborrpc.ReadCborRPC(cst.stream, &block); err != nil {
 			return err
 		}
 
-		var pb pb.Message_Block
-		if err := pb.Unmarshal(msg); err != nil {
-			return err
-		}
-
-		dataBlocks, err := cst.consumeBlockMessage(pb, out)
+		dataBlocks, err := cst.consumeBlockMessage(block, out)
 		if err != nil {
 			return err
 		}
 
 		i += dataBlocks
-
-		reader.ReleaseMsg(msg)
 	}
 
 	return nil
 }
 
-func (cst *clientStream) consumeBlockMessage(pb pb.Message_Block, out io.Writer) (uint64, error) {
-	prefix, err := cid.PrefixFromBytes(pb.GetPrefix())
+func (cst *clientStream) consumeBlockMessage(block Block, out io.Writer) (uint64, error) {
+	prefix, err := cid.PrefixFromBytes(block.Prefix)
 	if err != nil {
 		return 0, err
 	}
-	cid, err := prefix.Sum(pb.GetData())
 
-	blk, err := blocks.NewBlockWithCid(pb.GetData(), cid)
+	cid, err := prefix.Sum(block.Data)
+
+	blk, err := blocks.NewBlockWithCid(block.Data, cid)
 	if err != nil {
 		return 0, err
 	}

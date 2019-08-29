@@ -31,6 +31,7 @@ func init() {
 	cbor.RegisterCborType(Unixfs0Offer{})
 
 	cbor.RegisterCborType(DealResponse{})
+	cbor.RegisterCborType(Block{})
 }
 
 type Query struct {
@@ -61,4 +62,9 @@ type Deal struct {
 type DealResponse struct {
 	Status  int // TODO: make this more spec complainant
 	Message string
+}
+
+type Block struct { // TODO: put in spec
+	Prefix []byte // TODO: fix cid.Prefix marshaling somehow
+	Data   []byte
 }
