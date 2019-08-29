@@ -1,6 +1,7 @@
 package actors_test
 
 import (
+	"github.com/filecoin-project/go-lotus/build"
 	"testing"
 
 	. "github.com/filecoin-project/go-lotus/chain/actors"
@@ -32,7 +33,7 @@ func TestStorageMarketCreateMiner(t *testing.T) {
 			CreateStorageMinerParams{
 				Owner:      ownerAddr,
 				Worker:     workerAddr,
-				SectorSize: types.NewInt(SectorSize),
+				SectorSize: types.NewInt(build.SectorSize),
 				PeerID:     "fakepeerid",
 			})
 		ApplyOK(t, ret)
