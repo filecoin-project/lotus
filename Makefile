@@ -88,7 +88,8 @@ build: $(BUILD_DEPS)
 
 benchmarks:
 	go run github.com/whyrusleeping/bencher ./... > bench.json
-	curl -X POST 'http://benchmark.kittyhawk.wtf/benchmark' -d '@bench.json' -u "${benchmark_http_cred}"
+	@echo Submitting results
+	@curl -X POST 'http://benchmark.kittyhawk.wtf/benchmark' -d '@bench.json' -u "${benchmark_http_cred}"
 .PHONY: benchmarks
 
 pond: build
