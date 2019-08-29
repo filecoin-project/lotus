@@ -104,7 +104,7 @@ func (m *Miner) HandleDealStream(stream network.Stream) {
 }
 
 func (hnd *handlerDeal) handleNext() (bool, error) {
-	var deal Deal
+	var deal DealProposal
 	if err := cborrpc.ReadCborRPC(hnd.stream, &deal); err != nil {
 		if err == io.EOF { // client sent all deals
 			err = nil
@@ -112,22 +112,24 @@ func (hnd *handlerDeal) handleNext() (bool, error) {
 		return false, err
 	}
 
-	if deal.Unixfs0 == nil {
+	if deal.Params.Unixfs0 == nil {
 		return false, xerrors.New("unknown deal type")
 	}
+
+	unixfs0 := deal.Params.Unixfs0
 
 	// TODO: Verify payment, check how much we can send based on that
 	//  Or reject (possibly returning the payment to retain reputation with the client)
 
-	if hnd.open != deal.Unixfs0.Root || hnd.at != deal.Unixfs0.Offset {
-		log.Infof("opening file for sending (open '%s') (@%d, want %d)", hnd.open, hnd.at, deal.Unixfs0.Offset)
+	if hnd.open != deal.Ref || hnd.at != unixfs0.Offset {
+		log.Infof("opening file for sending (open '%s') (@%d, want %d)", hnd.open, hnd.at, unixfs0.Offset)
 		if err := hnd.openFile(deal); err != nil {
 			return false, err
 		}
 	}
 
-	if deal.Unixfs0.Offset+deal.Unixfs0.Size > hnd.size {
-		return false, xerrors.Errorf("tried to read too much %d+%d > %d", deal.Unixfs0.Offset, deal.Unixfs0.Size, hnd.size)
+	if unixfs0.Offset+unixfs0.Size > hnd.size {
+		return false, xerrors.Errorf("tried to read too much %d+%d > %d", unixfs0.Offset, unixfs0.Size, hnd.size)
 	}
 
 	err := hnd.accept(deal)
@@ -137,19 +139,21 @@ func (hnd *handlerDeal) handleNext() (bool, error) {
 	return true, nil
 }
 
-func (hnd *handlerDeal) openFile(deal Deal) error {
-	if deal.Unixfs0.Offset != 0 {
+func (hnd *handlerDeal) openFile(deal DealProposal) error {
+	unixfs0 := deal.Params.Unixfs0
+
+	if unixfs0.Offset != 0 {
 		// TODO: Implement SeekBlock (like ReadBlock) in go-unixfs
 		return xerrors.New("sending merkle proofs for nonzero offset not supported yet")
 	}
-	hnd.at = deal.Unixfs0.Offset
+	hnd.at = unixfs0.Offset
 
 	bstore := hnd.m.sectorBlocks.SealedBlockstore(func() error {
 		return nil // TODO: approve unsealing based on amount paid
 	})
 
 	ds := merkledag.NewDAGService(blockservice.New(bstore, nil))
-	rootNd, err := ds.Get(context.TODO(), deal.Unixfs0.Root)
+	rootNd, err := ds.Get(context.TODO(), deal.Ref)
 	if err != nil {
 		return err
 	}
@@ -162,7 +166,7 @@ func (hnd *handlerDeal) openFile(deal Deal) error {
 	var ok bool
 	hnd.ufsr, ok = fsr.(sectorblocks.UnixfsReader)
 	if !ok {
-		return xerrors.Errorf("file %s didn't implement sectorblocks.UnixfsReader", deal.Unixfs0.Root)
+		return xerrors.Errorf("file %s didn't implement sectorblocks.UnixfsReader", deal.Ref)
 	}
 
 	isize, err := hnd.ufsr.Size()
@@ -171,12 +175,14 @@ func (hnd *handlerDeal) openFile(deal Deal) error {
 	}
 	hnd.size = uint64(isize)
 
-	hnd.open = deal.Unixfs0.Root
+	hnd.open = deal.Ref
 
 	return nil
 }
 
-func (hnd *handlerDeal) accept(deal Deal) error {
+func (hnd *handlerDeal) accept(deal DealProposal) error {
+	unixfs0 := deal.Params.Unixfs0
+
 	resp := DealResponse{
 		Status: Accepted,
 	}
@@ -185,7 +191,7 @@ func (hnd *handlerDeal) accept(deal Deal) error {
 		return err
 	}
 
-	blocksToSend := (deal.Unixfs0.Size + build.UnixfsChunkSize - 1) / build.UnixfsChunkSize
+	blocksToSend := (unixfs0.Size + build.UnixfsChunkSize - 1) / build.UnixfsChunkSize
 	for i := uint64(0); i < blocksToSend; {
 		data, offset, nd, err := hnd.ufsr.ReadBlock(context.TODO())
 		if err != nil {
@@ -194,8 +200,8 @@ func (hnd *handlerDeal) accept(deal Deal) error {
 
 		log.Infof("sending block for a deal: %s", nd.Cid())
 
-		if offset != deal.Unixfs0.Offset {
-			return xerrors.Errorf("ReadBlock on wrong offset: want %d, got %d", deal.Unixfs0.Offset, offset)
+		if offset != unixfs0.Offset {
+			return xerrors.Errorf("ReadBlock on wrong offset: want %d, got %d", unixfs0.Offset, offset)
 		}
 
 		/*if uint64(len(data)) != deal.Unixfs0.Size { // TODO: Fix for internal nodes (and any other node too)

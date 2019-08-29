@@ -21,10 +21,11 @@ const (
 	Accepted = iota
 	Error
 	Rejected
+	Unsealing
 )
 
 func init() {
-	cbor.RegisterCborType(Deal{})
+	cbor.RegisterCborType(DealProposal{})
 
 	cbor.RegisterCborType(Query{})
 	cbor.RegisterCborType(QueryResponse{})
@@ -50,17 +51,22 @@ type QueryResponse struct {
 }
 
 type Unixfs0Offer struct { // UNBORK
-	Root   cid.Cid
 	Offset uint64
 	Size   uint64
 }
 
-type Deal struct {
+type RetParams struct {
 	Unixfs0 *Unixfs0Offer
 }
 
+type DealProposal struct {
+	Ref    cid.Cid
+	Params RetParams
+	// TODO: payment
+}
+
 type DealResponse struct {
-	Status  int // TODO: make this more spec complainant
+	Status  int
 	Message string
 }
 

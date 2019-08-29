@@ -83,13 +83,13 @@ type clientStream struct {
 //
 // Offset MUST be aligned on chunking boundaries, size is rounded up to leaf size
 //
-// > Deal{Mode: Unixfs0, RootCid, Offset, Size, Payment(nil if free)}
+// > DealProposal{Mode: Unixfs0, RootCid, Offset, Size, Payment(nil if free)}
 // < Resp{Accept}
 // < ..(Intermediate Block)
 // < ..Blocks
 // < ..(Intermediate Block)
 // < ..Blocks
-// > Deal(...)
+// > DealProposal(...)
 // < ...
 func (c *Client) RetrieveUnixfs(ctx context.Context, root cid.Cid, size uint64, miner peer.ID, minerAddr address.Address, out io.Writer) error {
 	s, err := c.h.NewStream(ctx, miner, ProtocolID)
@@ -131,11 +131,15 @@ func (c *Client) RetrieveUnixfs(ctx context.Context, root cid.Cid, size uint64, 
 }
 
 func (cst *clientStream) doOneExchange(toFetch uint64, out io.Writer) error {
-	deal := Deal{Unixfs0: &Unixfs0Offer{
-		Root:   cst.root,
-		Offset: cst.offset,
-		Size:   toFetch,
-	}}
+	deal := DealProposal{
+		Ref: cst.root,
+		Params: RetParams{
+			Unixfs0: &Unixfs0Offer{
+				Offset: cst.offset,
+				Size:   toFetch,
+			},
+		},
+	}
 
 	if err := cborrpc.WriteCborRPC(cst.stream, deal); err != nil {
 		return err
