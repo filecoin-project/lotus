@@ -64,10 +64,6 @@ github.com/eapache/go-resiliency v1.1.0/go.mod h1:kFI+JgMyC7bLPUVY133qvEBtVayf5m
 github.com/eapache/go-xerial-snappy v0.0.0-20180814174437-776d5712da21/go.mod h1:+020luEh2TKB4/GOp8oxxtq0Daoen/Cii55CzbTV6DU=
 github.com/eapache/queue v1.1.0/go.mod h1:6eCeP0CKFpHLu8blIFXhExK/dRa7WDZfr6jVFPTqq+I=
 github.com/fd/go-nat v1.0.0/go.mod h1:BTBu/CKvMmOMUPkKVef1pngt2WFH/lg7E6yQnulfp6E=
-github.com/filecoin-project/go-amt-ipld v0.0.0-20190828222406-5f4c30401bda h1:IZKqXB3VvlRCwroy8GbdHjyxJgueveGPXKiSL8nvI7o=
-github.com/filecoin-project/go-amt-ipld v0.0.0-20190828222406-5f4c30401bda/go.mod h1:muo8IeR187EUiX5AcMmIb0XSgpSU3qrszgh+pGWf3rY=
-github.com/filecoin-project/go-amt-ipld v0.0.0-20190828225523-8bbaf27f2782 h1:J0h4pFlx2ZSm1xWO7e2EesXz5xW/35AMqMzk4VGZ6B8=
-github.com/filecoin-project/go-amt-ipld v0.0.0-20190828225523-8bbaf27f2782/go.mod h1:muo8IeR187EUiX5AcMmIb0XSgpSU3qrszgh+pGWf3rY=
 github.com/filecoin-project/go-amt-ipld v0.0.0-20190828233303-a41bd0b6f985 h1:rpid5Xgp6GnDACqZvugxWvJ8L1HpyttUkzpUk/4BPXk=
 github.com/filecoin-project/go-amt-ipld v0.0.0-20190828233303-a41bd0b6f985/go.mod h1:muo8IeR187EUiX5AcMmIb0XSgpSU3qrszgh+pGWf3rY=
 github.com/filecoin-project/go-leb128 v0.0.0-20190212224330-8d79a5489543 h1:aMJGfgqe1QDhAVwxRg5fjCRF533xHidiKsugk7Vvzug=
@@ -518,8 +514,6 @@ github.com/whyrusleeping/base32 v0.0.0-20170828182744-c30ac30633cc h1:BCPnHtcboa
 github.com/whyrusleeping/base32 v0.0.0-20170828182744-c30ac30633cc/go.mod h1:r45hJU7yEoA81k6MWNhpMj/kms0n14dkzkxYHoB96UM=
 github.com/whyrusleeping/cbor-gen v0.0.0-20190822002707-4e02357de5c1 h1:wDIXmhgPVpV1gWj68IIj1zQNyp7QzBvr5d5UOvMqRNw=
 github.com/whyrusleeping/cbor-gen v0.0.0-20190822002707-4e02357de5c1/go.mod h1:xdlJQaiqipF0HW+Mzpg7XRM3fWbGvfgFlcppuvlkIvY=
-github.com/whyrusleeping/cbor-gen v0.0.0-20190822012446-bb2210dd2804 h1:wK83hcnZgKf1AyH8804pc4zVZOB2ND+d2cagsuhQmZc=
-github.com/whyrusleeping/cbor-gen v0.0.0-20190822012446-bb2210dd2804/go.mod h1:xdlJQaiqipF0HW+Mzpg7XRM3fWbGvfgFlcppuvlkIvY=
 github.com/whyrusleeping/cbor-gen v0.0.0-20190822231004-8db835b09a5a h1:9oEQR9eq2H2JDmglMcrCa+TxUEYy3HKSiNoLIkPNy/U=
 github.com/whyrusleeping/cbor-gen v0.0.0-20190822231004-8db835b09a5a/go.mod h1:xdlJQaiqipF0HW+Mzpg7XRM3fWbGvfgFlcppuvlkIvY=
 github.com/whyrusleeping/chunker v0.0.0-20181014151217-fe64bd25879f h1:jQa4QT2UP9WYv2nzyawpKMOCl+Z/jW7djv2/J50lj9E=

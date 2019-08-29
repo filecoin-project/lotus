@@ -20,11 +20,11 @@ func TestStorageMarketCreateMiner(t *testing.T) {
 	var ownerAddr, workerAddr address.Address
 
 	opts := []HarnessOpt{
-		HarnessAddr(&ownerAddr, 10000),
-		HarnessAddr(&workerAddr, 10000),
+		HarnessAddr(&ownerAddr, 100000),
+		HarnessAddr(&workerAddr, 100000),
 	}
 
-	h := NewHarness2(t, opts...)
+	h := NewHarness(t, opts...)
 
 	var minerAddr address.Address
 	{
