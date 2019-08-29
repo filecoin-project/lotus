@@ -216,7 +216,7 @@ func (o *QueryOffer) Order() RetrievalOrder {
 }
 
 type RetrievalOrder struct {
-	// TODO: make this loss unixfs specific
+	// TODO: make this less unixfs specific
 	Root cid.Cid
 	Size uint64
 	// TODO: support offset

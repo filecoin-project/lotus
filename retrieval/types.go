@@ -49,7 +49,7 @@ type QueryResponse struct {
 	MinPrice types.BigInt
 }
 
-type Unixfs0Offer struct {
+type Unixfs0Offer struct { // UNBORK
 	Root   cid.Cid
 	Offset uint64
 	Size   uint64

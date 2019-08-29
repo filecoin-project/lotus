@@ -81,7 +81,7 @@ type handlerDeal struct {
 	size uint64
 }
 
-func (m *Miner) HandleDealStream(stream network.Stream) { // TODO: should we block in stream handlers
+func (m *Miner) HandleDealStream(stream network.Stream) {
 	defer stream.Close()
 
 	hnd := &handlerDeal{

@@ -3,16 +3,16 @@ package impl
 import (
 	"context"
 	"fmt"
-	"github.com/filecoin-project/go-lotus/build"
-	"github.com/filecoin-project/go-lotus/storage/sectorblocks"
 	"io"
 	"math/rand"
 
 	"github.com/filecoin-project/go-lotus/api"
+	"github.com/filecoin-project/go-lotus/build"
 	"github.com/filecoin-project/go-lotus/chain/address"
 	"github.com/filecoin-project/go-lotus/lib/sectorbuilder"
 	"github.com/filecoin-project/go-lotus/storage"
 	"github.com/filecoin-project/go-lotus/storage/sector"
+	"github.com/filecoin-project/go-lotus/storage/sectorblocks"
 )
 
 type StorageMinerAPI struct {

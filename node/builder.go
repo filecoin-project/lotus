@@ -3,7 +3,6 @@ package node
 import (
 	"context"
 	"errors"
-	"github.com/filecoin-project/go-lotus/retrieval"
 	"reflect"
 	"time"
 
@@ -36,6 +35,7 @@ import (
 	"github.com/filecoin-project/go-lotus/node/modules/testing"
 	"github.com/filecoin-project/go-lotus/node/repo"
 	"github.com/filecoin-project/go-lotus/paych"
+	"github.com/filecoin-project/go-lotus/retrieval"
 	"github.com/filecoin-project/go-lotus/retrieval/discovery"
 	"github.com/filecoin-project/go-lotus/storage"
 	"github.com/filecoin-project/go-lotus/storage/sector"
