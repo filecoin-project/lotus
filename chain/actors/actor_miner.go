@@ -7,8 +7,10 @@ import (
 	"github.com/filecoin-project/go-lotus/chain/address"
 	"github.com/filecoin-project/go-lotus/chain/types"
 	"github.com/filecoin-project/go-lotus/lib/sectorbuilder"
-	"github.com/ipfs/go-cid"
-	"github.com/ipfs/go-hamt-ipld"
+
+	amt "github.com/filecoin-project/go-amt-ipld"
+	cid "github.com/ipfs/go-cid"
+	hamt "github.com/ipfs/go-hamt-ipld"
 	cbor "github.com/ipfs/go-ipld-cbor"
 	"github.com/libp2p/go-libp2p-core/peer"
 	"golang.org/x/xerrors"
@@ -202,7 +204,7 @@ func (sma StorageMinerActor) StorageMinerConstructor(act *types.Actor, vmctx typ
 }
 
 type CommitSectorParams struct {
-	SectorID  types.BigInt
+	SectorID  uint64
 	CommD     []byte
 	CommR     []byte
 	CommRStar []byte
@@ -210,6 +212,7 @@ type CommitSectorParams struct {
 }
 
 func (sma StorageMinerActor) CommitSector(act *types.Actor, vmctx types.VMContext, params *CommitSectorParams) ([]byte, ActorError) {
+	ctx := context.TODO()
 	oldstate, self, err := loadState(vmctx)
 	if err != nil {
 		return nil, err
@@ -230,7 +233,7 @@ func (sma StorageMinerActor) CommitSector(act *types.Actor, vmctx types.VMContex
 	}
 
 	// make sure the miner isnt trying to submit a pre-existing sector
-	unique, err := SectorIsUnique(vmctx.Ipld(), self.Sectors, params.SectorID)
+	unique, err := SectorIsUnique(ctx, vmctx.Storage(), self.Sectors, params.SectorID)
 	if err != nil {
 		return nil, err
 	}
@@ -254,7 +257,7 @@ func (sma StorageMinerActor) CommitSector(act *types.Actor, vmctx types.VMContex
 	// Note: There must exist a unique index in the miner's sector set for each
 	// sector ID. The `faults`, `recovered`, and `done` parameters of the
 	// SubmitPoSt method express indices into this sector set.
-	nssroot, err := AddToSectorSet(context.TODO(), vmctx.Ipld(), self.Sectors, params.SectorID, params.CommR, params.CommD)
+	nssroot, err := AddToSectorSet(ctx, vmctx.Storage(), self.Sectors, params.SectorID, params.CommR, params.CommD)
 	if err != nil {
 		return nil, err
 	}
@@ -344,72 +347,46 @@ func (sma StorageMinerActor) GetPower(act *types.Actor, vmctx types.VMContext, p
 	return self.Power.Bytes(), nil
 }
 
-func SectorIsUnique(cst *hamt.CborIpldStore, sroot cid.Cid, sid types.BigInt) (bool, ActorError) {
-	nd, err := hamt.LoadNode(context.TODO(), cst, sroot)
+func SectorIsUnique(ctx context.Context, s types.Storage, sroot cid.Cid, sid uint64) (bool, ActorError) {
+	found, _, _, err := GetFromSectorSet(ctx, s, sroot, sid)
 	if err != nil {
-		return false, aerrors.Escalate(err, "could not load node in HAMT")
+		return false, err
 	}
 
-	if _, err := nd.Find(context.TODO(), sid.String()); err != nil {
-		if xerrors.Is(err, hamt.ErrNotFound) {
-			return true, nil
-		}
-		return false, aerrors.Escalate(err, "could not find node in HAMT")
-	}
-
-	return false, nil
+	return !found, nil
 }
 
-func AddToSectorSet(ctx context.Context, cst *hamt.CborIpldStore, ss cid.Cid, sectorID types.BigInt, commR, commD []byte) (cid.Cid, ActorError) {
-	nd, err := hamt.LoadNode(ctx, cst, ss)
+func AddToSectorSet(ctx context.Context, s types.Storage, ss cid.Cid, sectorID uint64, commR, commD []byte) (cid.Cid, ActorError) {
+	ssr, err := amt.LoadAMT(types.WrapStorage(s), ss)
 	if err != nil {
-		return cid.Undef, aerrors.Escalate(err, "could not load HAMT node")
+		return cid.Undef, aerrors.Escalate(err, "could not load sector set node")
 	}
 
-	enc, aerr := SerializeParams([][]byte{commR, commD})
+	if err := ssr.Set(sectorID, [][]byte{commR, commD}); err != nil {
+		return cid.Undef, aerrors.Escalate(err, "failed to set commitment in sector set")
+	}
+
+	ncid, err := ssr.Flush()
 	if err != nil {
-		return cid.Undef, aerrors.Wrap(aerr, "failed to serialize commR and commD for sector set")
-	}
-
-	if err := nd.Set(ctx, sectorID.String(), enc); err != nil {
-		return cid.Undef, aerrors.Escalate(err, "failed to set new sector in sector set")
-	}
-
-	if err := nd.Flush(ctx); err != nil {
 		return cid.Undef, aerrors.Escalate(err, "failed to flush sector set")
 	}
 
-	ssroot, err := cst.Put(ctx, nd)
-	if err != nil {
-		return cid.Undef, aerrors.Escalate(err, "failed to store new sector set root")
-	}
-
-	return ssroot, nil
+	return ncid, nil
 }
 
-func GetFromSectorSet(ctx context.Context, cst *hamt.CborIpldStore, ss cid.Cid, sectorID types.BigInt) (bool, []byte, []byte, ActorError) {
-	nd, err := hamt.LoadNode(ctx, cst, ss)
+func GetFromSectorSet(ctx context.Context, s types.Storage, ss cid.Cid, sectorID uint64) (bool, []byte, []byte, ActorError) {
+	ssr, err := amt.LoadAMT(types.WrapStorage(s), ss)
 	if err != nil {
-		return false, nil, nil, aerrors.Escalate(err, "could not load HAMT node")
+		return false, nil, nil, aerrors.Escalate(err, "could not load sector set node")
 	}
 
-	infoIf, err := nd.Find(ctx, sectorID.String())
-	if err == hamt.ErrNotFound {
-		return false, nil, nil, nil
-	}
+	var comms [][]byte
+	err = ssr.Get(sectorID, &comms)
 	if err != nil {
+		if _, ok := err.(amt.ErrNotFound); ok {
+			return false, nil, nil, nil
+		}
 		return false, nil, nil, aerrors.Escalate(err, "failed to find sector in sector set")
-	}
-
-	infoB, ok := infoIf.([]byte)
-	if !ok {
-		return false, nil, nil, aerrors.Escalate(xerrors.New("casting infoIf to []byte failed"), "") // TODO: Review: how to create aerrror without retcode?
-	}
-
-	var comms [][]byte // [ [commR], [commD] ]
-	err = cbor.DecodeInto(infoB, &comms)
-	if err != nil {
-		return false, nil, nil, aerrors.Escalate(err, "failed to decode sector set entry")
 	}
 
 	if len(comms) != 2 {
@@ -420,7 +397,7 @@ func GetFromSectorSet(ctx context.Context, cst *hamt.CborIpldStore, ss cid.Cid, 
 }
 
 func ValidatePoRep(maddr address.Address, ssize types.BigInt, params *CommitSectorParams) (bool, ActorError) {
-	ok, err := sectorbuilder.VerifySeal(ssize.Uint64(), params.CommR, params.CommD, params.CommRStar, maddr, params.SectorID.Uint64(), params.Proof)
+	ok, err := sectorbuilder.VerifySeal(ssize.Uint64(), params.CommR, params.CommD, params.CommRStar, maddr, params.SectorID, params.Proof)
 	if err != nil {
 		return false, aerrors.Escalate(err, "verify seal failed")
 	}
@@ -548,7 +525,7 @@ type PieceInclVoucherData struct { // TODO: Update spec at https://github.com/fi
 }
 
 type InclusionProof struct {
-	Sector types.BigInt // for CommD, also verifies the sector is in sector set
+	Sector uint64 // for CommD, also verifies the sector is in sector set
 	Proof  []byte
 }
 
@@ -574,7 +551,7 @@ func (sma StorageMinerActor) PaymentVerifyInclusion(act *types.Actor, vmctx type
 		return nil, aerrors.Escalate(err, "failed to decode storage payment proof")
 	}
 
-	ok, _, commD, aerr := GetFromSectorSet(context.TODO(), vmctx.Ipld(), self.Sectors, proof.Sector)
+	ok, _, commD, aerr := GetFromSectorSet(context.TODO(), vmctx.Storage(), self.Sectors, proof.Sector)
 	if aerr != nil {
 		return nil, aerr
 	}
@@ -609,7 +586,7 @@ func (sma StorageMinerActor) PaymentVerifySector(act *types.Actor, vmctx types.V
 		return nil, aerrors.New(1, "unexpected proof bytes")
 	}
 
-	ok, _, _, aerr := GetFromSectorSet(context.TODO(), vmctx.Ipld(), self.Sectors, sector)
+	ok, _, _, aerr := GetFromSectorSet(context.TODO(), vmctx.Storage(), self.Sectors, sector.Uint64())
 	if aerr != nil {
 		return nil, aerr
 	}
