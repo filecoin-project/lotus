@@ -41,7 +41,7 @@ func MakeGenesisMem(out io.Writer) func(bs dtypes.ChainBlockstore, w *wallet.Wal
 				w: types.NewInt(100000),
 			}
 
-			b, err := gen.MakeGenesisBlock(bs, alloc, gmc)
+			b, err := gen.MakeGenesisBlock(bs, alloc, gmc, 100000)
 			if err != nil {
 				return nil, err
 			}
@@ -76,7 +76,7 @@ func MakeGenesis(outFile string) func(bs dtypes.ChainBlockstore, w *wallet.Walle
 				minerAddr: types.NewInt(50000000),
 			}
 
-			b, err := gen.MakeGenesisBlock(bs, addrs, gmc)
+			b, err := gen.MakeGenesisBlock(bs, addrs, gmc, 100000)
 			if err != nil {
 				return nil, err
 			}

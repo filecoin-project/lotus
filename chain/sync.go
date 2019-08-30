@@ -4,9 +4,11 @@ import (
 	"context"
 	"fmt"
 	"sync"
+	"time"
 
 	"golang.org/x/xerrors"
 
+	"github.com/filecoin-project/go-lotus/build"
 	"github.com/filecoin-project/go-lotus/chain/actors"
 	"github.com/filecoin-project/go-lotus/chain/address"
 	"github.com/filecoin-project/go-lotus/chain/store"
@@ -432,6 +434,15 @@ func (syncer *Syncer) ValidateBlock(ctx context.Context, b *types.FullBlock) err
 	baseTs, err := syncer.store.LoadTipSet(h.Parents)
 	if err != nil {
 		return xerrors.Errorf("load tipset failed: %w", err)
+	}
+
+	if h.Timestamp > uint64(time.Now().Unix()+build.AllowableClockDrift) {
+		return xerrors.Errorf("block was from the future")
+	}
+
+	if h.Timestamp < baseTs.MinTimestamp()+uint64(build.BlockDelay*len(h.Tickets)) {
+		log.Warn("timestamp funtimes: ", h.Timestamp, baseTs.MinTimestamp(), len(h.Tickets))
+		return xerrors.Errorf("block was generated too soon (timestamp < BLOCK_DELAY * len(tickets))")
 	}
 
 	if err := syncer.minerIsValid(ctx, h.Miner, baseTs); err != nil {
