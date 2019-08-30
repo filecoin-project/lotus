@@ -119,8 +119,8 @@ jobs:
       - prepare
       - go/mod-download
       - run:
-        command: make deps
-        no_output_timeout: 30mps
+          command: make deps
+          no_output_timeout: 30m
       - go/install-golangci-lint:
           gobin: $HOME/.local/bin
           version: << parameters.golangci-lint-version >>

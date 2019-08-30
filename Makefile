@@ -59,7 +59,7 @@ PARAM_SECTOR_SIZES:=1024 268435456
 PARAM_SECTOR_SIZES:=$(addprefix params-,$(PARAM_SECTOR_SIZES))
 
 $(PARAM_SECTOR_SIZES): extern/go-fil-proofs/bin/paramfetch extern/go-fil-proofs/misc/parameters.json
-	./extern/go-fil-proofs/bin/paramfetch -z $(subst params-,,$@) --verbose --json=./extern/go-fil-proofs/misc/parameters.json
+	IPFS_LOGGING=info ./extern/go-fil-proofs/bin/paramfetch -z $(subst params-,,$@) --verbose --json=./extern/go-fil-proofs/misc/parameters.json --ipget-version=v0.4.0 --ipget-args="--node spawn"
 .PHONY: $(PARAM_SECTOR_SIZES)
 
 BUILD_DEPS+=params-1024
