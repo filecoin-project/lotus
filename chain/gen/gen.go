@@ -214,7 +214,7 @@ func (cg *ChainGen) NextBlock() (*types.FullBlock, []*types.SignedMessage, error
 	msgs := make([]*types.SignedMessage, cg.msgsPerBlock)
 	for m := range msgs {
 		msg := types.Message{
-			To:   cg.receivers[m],
+			To:   cg.receivers[m%len(cg.receivers)],
 			From: cg.banker,
 
 			Nonce: atomic.AddUint64(&cg.bankerNonce, 1) - 1,
