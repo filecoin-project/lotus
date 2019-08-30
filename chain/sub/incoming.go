@@ -28,7 +28,7 @@ func HandleIncomingBlocks(ctx context.Context, bsub *pubsub.Subscription, s *cha
 		}
 
 		go func() {
-			log.Info("about to fetch messages for block from pubsub")
+			log.Debug("about to fetch messages for block from pubsub")
 			bmsgs, err := s.Bsync.FetchMessagesByCids(context.TODO(), blk.BlsMessages)
 			if err != nil {
 				log.Errorf("failed to fetch all bls messages for block received over pubusb: %s", err)
@@ -41,7 +41,7 @@ func HandleIncomingBlocks(ctx context.Context, bsub *pubsub.Subscription, s *cha
 				return
 			}
 
-			log.Info("inform new block over pubsub")
+			log.Debug("inform new block over pubsub")
 			s.InformNewBlock(msg.GetFrom(), &types.FullBlock{
 				Header:        blk.Header,
 				BlsMessages:   bmsgs,

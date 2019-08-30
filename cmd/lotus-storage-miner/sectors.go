@@ -36,6 +36,7 @@ var sectorsCmd = &cli.Command{
 		sectorsStatusCmd,
 		sectorsStagedListCmd,
 		sectorsStagedSealCmd,
+		sectorsRefsCmd,
 	},
 }
 
@@ -108,5 +109,30 @@ var sectorsStagedSealCmd = &cli.Command{
 		ctx := lcli.ReqContext(cctx)
 
 		return nodeApi.SectorsStagedSeal(ctx)
+	},
+}
+
+var sectorsRefsCmd = &cli.Command{
+	Name:  "refs",
+	Usage: "List References to sectors",
+	Action: func(cctx *cli.Context) error {
+		nodeApi, err := lcli.GetStorageMinerAPI(cctx)
+		if err != nil {
+			return err
+		}
+		ctx := lcli.ReqContext(cctx)
+
+		refs, err := nodeApi.SectorsRefs(ctx)
+		if err != nil {
+			return err
+		}
+
+		for name, refs := range refs {
+			fmt.Printf("Block %s:\n", name)
+			for _, ref := range refs {
+				fmt.Printf("\t%s+%d %d bytes\n", ref.Piece, ref.Offset, ref.Size)
+			}
+		}
+		return nil
 	},
 }

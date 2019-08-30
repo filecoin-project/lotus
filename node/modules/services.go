@@ -2,7 +2,6 @@ package modules
 
 import (
 	"context"
-	"github.com/filecoin-project/go-lotus/storage/sector"
 
 	"github.com/libp2p/go-libp2p-core/host"
 	inet "github.com/libp2p/go-libp2p-core/network"
@@ -14,6 +13,8 @@ import (
 	"github.com/filecoin-project/go-lotus/chain/sub"
 	"github.com/filecoin-project/go-lotus/node/hello"
 	"github.com/filecoin-project/go-lotus/node/modules/helpers"
+	"github.com/filecoin-project/go-lotus/retrieval/discovery"
+	"github.com/filecoin-project/go-lotus/storage/sector"
 )
 
 func RunHello(mctx helpers.MetricsCtx, lc fx.Lifecycle, h host.Host, svc *hello.Service) {
@@ -82,4 +83,8 @@ func RunSectorService(lc fx.Lifecycle, secst *sector.Store) {
 			return nil
 		},
 	})
+}
+
+func RetrievalResolver(l *discovery.Local) discovery.PeerResolver {
+	return discovery.Multi(l)
 }

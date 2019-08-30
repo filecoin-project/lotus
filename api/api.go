@@ -3,6 +3,9 @@ package api
 import (
 	"context"
 
+	"github.com/ipfs/go-cid"
+	"github.com/ipfs/go-filestore"
+	cbor "github.com/ipfs/go-ipld-cbor"
 	"github.com/libp2p/go-libp2p-core/network"
 	"github.com/libp2p/go-libp2p-core/peer"
 
@@ -10,11 +13,12 @@ import (
 	"github.com/filecoin-project/go-lotus/chain/address"
 	"github.com/filecoin-project/go-lotus/chain/store"
 	"github.com/filecoin-project/go-lotus/chain/types"
-
 	sectorbuilder "github.com/filecoin-project/go-sectorbuilder"
-	"github.com/ipfs/go-cid"
-	"github.com/ipfs/go-filestore"
 )
+
+func init() {
+	cbor.RegisterCborType(SealedRef{})
+}
 
 type Common interface {
 	// Auth
@@ -87,6 +91,9 @@ type FullNode interface {
 	// ClientImport imports file under the specified path into filestore
 	ClientImport(ctx context.Context, path string) (cid.Cid, error)
 	ClientStartDeal(ctx context.Context, data cid.Cid, miner address.Address, price types.BigInt, blocksDuration uint64) (*cid.Cid, error)
+	ClientHasLocal(ctx context.Context, root cid.Cid) (bool, error)
+	ClientFindData(ctx context.Context, root cid.Cid) ([]QueryOffer, error) // TODO: specify serialization mode we want (defaults to unixfs for now)
+	ClientRetrieve(ctx context.Context, order RetrievalOrder, path string) error
 
 	// ClientUnimport removes references to the specified file from filestore
 	//ClientUnimport(path string)
@@ -129,6 +136,8 @@ type StorageMiner interface {
 
 	// Seal all staged sectors
 	SectorsStagedSeal(context.Context) error
+
+	SectorsRefs(context.Context) (map[string][]SealedRef, error)
 }
 
 // Version provides various build-time information
@@ -177,4 +186,41 @@ type PaychStatus struct{}
 type MinerPower struct {
 	MinerPower types.BigInt
 	TotalPower types.BigInt
+}
+
+type SealedRef struct {
+	Piece  string
+	Offset uint64
+	Size   uint32
+}
+
+type QueryOffer struct {
+	Err string
+
+	Root cid.Cid
+
+	Size     uint64
+	MinPrice types.BigInt
+
+	Miner       address.Address
+	MinerPeerID peer.ID
+}
+
+func (o *QueryOffer) Order() RetrievalOrder {
+	return RetrievalOrder{
+		Root:        o.Root,
+		Size:        o.Size,
+		Miner:       o.Miner,
+		MinerPeerID: o.MinerPeerID,
+	}
+}
+
+type RetrievalOrder struct {
+	// TODO: make this less unixfs specific
+	Root cid.Cid
+	Size uint64
+	// TODO: support offset
+
+	Miner       address.Address
+	MinerPeerID peer.ID
 }

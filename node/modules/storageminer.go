@@ -2,29 +2,30 @@ package modules
 
 import (
 	"context"
-	"github.com/filecoin-project/go-lotus/storage/sector"
 	"path/filepath"
 
 	"github.com/ipfs/go-bitswap"
 	"github.com/ipfs/go-bitswap/network"
-	"github.com/libp2p/go-libp2p-core/routing"
-
 	"github.com/ipfs/go-blockservice"
 	"github.com/ipfs/go-datastore"
 	blockstore "github.com/ipfs/go-ipfs-blockstore"
 	"github.com/ipfs/go-merkledag"
 	"github.com/libp2p/go-libp2p-core/host"
+	"github.com/libp2p/go-libp2p-core/routing"
 	"github.com/mitchellh/go-homedir"
 	"go.uber.org/fx"
 
 	"github.com/filecoin-project/go-lotus/api"
+	"github.com/filecoin-project/go-lotus/build"
 	"github.com/filecoin-project/go-lotus/chain/address"
 	"github.com/filecoin-project/go-lotus/chain/deals"
 	"github.com/filecoin-project/go-lotus/lib/sectorbuilder"
 	"github.com/filecoin-project/go-lotus/node/modules/dtypes"
 	"github.com/filecoin-project/go-lotus/node/modules/helpers"
 	"github.com/filecoin-project/go-lotus/node/repo"
+	"github.com/filecoin-project/go-lotus/retrieval"
 	"github.com/filecoin-project/go-lotus/storage"
+	"github.com/filecoin-project/go-lotus/storage/sector"
 )
 
 func minerAddrFromDS(ds dtypes.MetadataDS) (address.Address, error) {
@@ -54,7 +55,7 @@ func SectorBuilderConfig(storagePath string) func(dtypes.MetadataDS) (*sectorbui
 
 		sb := &sectorbuilder.SectorBuilderConfig{
 			Miner:       minerAddr,
-			SectorSize:  1024,
+			SectorSize:  build.SectorSize,
 			MetadataDir: metadata,
 			SealedDir:   sealed,
 			StagedDir:   staging,
@@ -84,6 +85,16 @@ func StorageMiner(mctx helpers.MetricsCtx, lc fx.Lifecycle, api api.FullNode, h 
 	})
 
 	return sm, nil
+}
+
+func HandleRetrieval(host host.Host, lc fx.Lifecycle, m *retrieval.Miner) {
+	lc.Append(fx.Hook{
+		OnStart: func(context.Context) error {
+			host.SetStreamHandler(retrieval.QueryProtocolID, m.HandleQueryStream)
+			host.SetStreamHandler(retrieval.ProtocolID, m.HandleDealStream)
+			return nil
+		},
+	})
 }
 
 func HandleDeals(mctx helpers.MetricsCtx, lc fx.Lifecycle, host host.Host, h *deals.Handler) {

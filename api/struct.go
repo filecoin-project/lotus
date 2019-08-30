@@ -69,8 +69,11 @@ type FullNodeStruct struct {
 		MpoolGetNonce        func(context.Context, address.Address) (uint64, error)                               `perm:"read"`
 
 		ClientImport      func(ctx context.Context, path string) (cid.Cid, error)                                                                     `perm:"write"`
-		ClientListImports func(ctx context.Context) ([]Import, error)                                                                                 `perm:"read"`
+		ClientListImports func(ctx context.Context) ([]Import, error)                                                                                 `perm:"write"`
+		ClientHasLocal    func(ctx context.Context, root cid.Cid) (bool, error)                                                                       `perm:"write"`
+		ClientFindData    func(ctx context.Context, root cid.Cid) ([]QueryOffer, error)                                                               `perm:"read"`
 		ClientStartDeal   func(ctx context.Context, data cid.Cid, miner address.Address, price types.BigInt, blocksDuration uint64) (*cid.Cid, error) `perm:"admin"`
+		ClientRetrieve    func(ctx context.Context, order RetrievalOrder, path string) error                                                          `perm:"admin"`
 
 		StateMinerSectors    func(context.Context, address.Address) ([]*SectorInfo, error)             `perm:"read"`
 		StateMinerProvingSet func(context.Context, address.Address) ([]*SectorInfo, error)             `perm:"read"`
@@ -101,6 +104,8 @@ type StorageMinerStruct struct {
 		SectorsStatus     func(context.Context, uint64) (sectorbuilder.SectorSealingStatus, error) `perm:"read"`
 		SectorsStagedList func(context.Context) ([]sectorbuilder.StagedSectorMetadata, error)      `perm:"read"`
 		SectorsStagedSeal func(context.Context) error                                              `perm:"write"`
+
+		SectorsRefs func(context.Context) (map[string][]SealedRef, error) `perm:"read"`
 	}
 }
 
@@ -150,8 +155,20 @@ func (c *FullNodeStruct) ClientImport(ctx context.Context, path string) (cid.Cid
 	return c.Internal.ClientImport(ctx, path)
 }
 
+func (c *FullNodeStruct) ClientHasLocal(ctx context.Context, root cid.Cid) (bool, error) {
+	return c.Internal.ClientHasLocal(ctx, root)
+}
+
+func (c *FullNodeStruct) ClientFindData(ctx context.Context, root cid.Cid) ([]QueryOffer, error) {
+	return c.Internal.ClientFindData(ctx, root)
+}
+
 func (c *FullNodeStruct) ClientStartDeal(ctx context.Context, data cid.Cid, miner address.Address, price types.BigInt, blocksDuration uint64) (*cid.Cid, error) {
 	return c.Internal.ClientStartDeal(ctx, data, miner, price, blocksDuration)
+}
+
+func (c *FullNodeStruct) ClientRetrieve(ctx context.Context, order RetrievalOrder, path string) error {
+	return c.Internal.ClientRetrieve(ctx, order, path)
 }
 
 func (c *FullNodeStruct) MpoolPending(ctx context.Context, ts *types.TipSet) ([]*types.SignedMessage, error) {
@@ -327,6 +344,10 @@ func (c *StorageMinerStruct) SectorsStagedList(ctx context.Context) ([]sectorbui
 // Seal all staged sectors
 func (c *StorageMinerStruct) SectorsStagedSeal(ctx context.Context) error {
 	return c.Internal.SectorsStagedSeal(ctx)
+}
+
+func (c *StorageMinerStruct) SectorsRefs(ctx context.Context) (map[string][]SealedRef, error) {
+	return c.Internal.SectorsRefs(ctx)
 }
 
 var _ Common = &CommonStruct{}

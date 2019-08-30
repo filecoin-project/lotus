@@ -3,6 +3,7 @@ package actors_test
 import (
 	"context"
 	"encoding/binary"
+	"github.com/filecoin-project/go-lotus/build"
 	"testing"
 
 	. "github.com/filecoin-project/go-lotus/chain/actors"
@@ -111,7 +112,7 @@ func TestStorageMarketActorCreateMiner(t *testing.T) {
 
 	params := &StorageMinerConstructorParams{
 		Worker:     maddr,
-		SectorSize: types.NewInt(SectorSize),
+		SectorSize: types.NewInt(build.SectorSize),
 		PeerID:     "fakepeerid",
 	}
 	enc, err := cbor.DumpObject(params)

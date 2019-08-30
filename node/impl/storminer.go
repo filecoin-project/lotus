@@ -7,10 +7,12 @@ import (
 	"math/rand"
 
 	"github.com/filecoin-project/go-lotus/api"
+	"github.com/filecoin-project/go-lotus/build"
 	"github.com/filecoin-project/go-lotus/chain/address"
 	"github.com/filecoin-project/go-lotus/lib/sectorbuilder"
 	"github.com/filecoin-project/go-lotus/storage"
 	"github.com/filecoin-project/go-lotus/storage/sector"
+	"github.com/filecoin-project/go-lotus/storage/sectorblocks"
 )
 
 type StorageMinerAPI struct {
@@ -19,6 +21,7 @@ type StorageMinerAPI struct {
 	SectorBuilderConfig *sectorbuilder.SectorBuilderConfig
 	SectorBuilder       *sectorbuilder.SectorBuilder
 	Sectors             *sector.Store
+	SectorBlocks        *sectorblocks.SectorBlocks
 
 	Miner *storage.Miner
 }
@@ -28,10 +31,10 @@ func (sm *StorageMinerAPI) ActorAddresses(context.Context) ([]address.Address, e
 }
 
 func (sm *StorageMinerAPI) StoreGarbageData(ctx context.Context) (uint64, error) {
-	size := uint64(1016) // this is the most data we can fit in a 1024 byte sector
+	size := sectorbuilder.UserBytesForSectorSize(build.SectorSize)
 
 	name := fmt.Sprintf("fake-file-%d", rand.Intn(100000000))
-	sectorId, err := sm.Sectors.AddPiece(name, size, io.LimitReader(rand.New(rand.NewSource(42)), 1016), 0)
+	sectorId, err := sm.Sectors.AddPiece(name, size, io.LimitReader(rand.New(rand.NewSource(42)), 1016))
 	if err != nil {
 		return 0, err
 	}
@@ -51,6 +54,22 @@ func (sm *StorageMinerAPI) SectorsStagedList(context.Context) ([]sectorbuilder.S
 // Seal all staged sectors
 func (sm *StorageMinerAPI) SectorsStagedSeal(context.Context) error {
 	return sm.SectorBuilder.SealAllStagedSectors()
+}
+
+func (sm *StorageMinerAPI) SectorsRefs(context.Context) (map[string][]api.SealedRef, error) {
+	// json can't handle cids as map keys
+	out := map[string][]api.SealedRef{}
+
+	refs, err := sm.SectorBlocks.List()
+	if err != nil {
+		return nil, err
+	}
+
+	for k, v := range refs {
+		out[k.String()] = v
+	}
+
+	return out, nil
 }
 
 var _ api.StorageMiner = &StorageMinerAPI{}

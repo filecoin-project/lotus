@@ -227,7 +227,7 @@ func createStorageMiner(ctx context.Context, api api.FullNode, peerid peer.ID) (
 	params, err := actors.SerializeParams(actors.CreateStorageMinerParams{
 		Owner:      defOwner,
 		Worker:     k,
-		SectorSize: types.NewInt(actors.SectorSize),
+		SectorSize: types.NewInt(build.SectorSize),
 		PeerID:     peerid,
 	})
 	if err != nil {

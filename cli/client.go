@@ -19,6 +19,8 @@ var clientCmd = &cli.Command{
 		clientImportCmd,
 		clientLocalCmd,
 		clientDealCmd,
+		clientFindCmd,
+		clientRetrieveCmd,
 	},
 }
 
@@ -106,5 +108,101 @@ var clientDealCmd = &cli.Command{
 
 		fmt.Println(proposal)
 		return nil
+	},
+}
+
+var clientFindCmd = &cli.Command{
+	Name:  "find",
+	Usage: "find data in the network",
+	Action: func(cctx *cli.Context) error {
+		if !cctx.Args().Present() {
+			fmt.Println("Usage: find [CID]")
+			return nil
+		}
+
+		file, err := cid.Parse(cctx.Args().First())
+		if err != nil {
+			return err
+		}
+
+		api, err := GetFullNodeAPI(cctx)
+		if err != nil {
+			return err
+		}
+		ctx := ReqContext(cctx)
+
+		// Check if we already have this data locally
+
+		has, err := api.ClientHasLocal(ctx, file)
+		if err != nil {
+			return err
+		}
+
+		if has {
+			fmt.Println("LOCAL")
+		}
+
+		offers, err := api.ClientFindData(ctx, file)
+		if err != nil {
+			return err
+		}
+
+		for _, offer := range offers {
+			if offer.Err != "" {
+				fmt.Printf("ERR %s@%s: %s\n", offer.Miner, offer.MinerPeerID, offer.Err)
+				continue
+			}
+			fmt.Printf("RETRIEVAL %s@%s-%sfil-%db\n", offer.Miner, offer.MinerPeerID, offer.MinPrice, offer.Size)
+		}
+
+		return nil
+	},
+}
+
+var clientRetrieveCmd = &cli.Command{
+	Name:  "retrieve",
+	Usage: "retrieve data from network",
+	Action: func(cctx *cli.Context) error {
+		if cctx.NArg() != 2 {
+			fmt.Println("Usage: retrieve [CID] [outfile]")
+			return nil
+		}
+
+		file, err := cid.Parse(cctx.Args().First())
+		if err != nil {
+			return err
+		}
+
+		api, err := GetFullNodeAPI(cctx)
+		if err != nil {
+			return err
+		}
+		ctx := ReqContext(cctx)
+
+		// Check if we already have this data locally
+
+		/*has, err := api.ClientHasLocal(ctx, file)
+		if err != nil {
+			return err
+		}
+
+		if has {
+			fmt.Println("Success: Already in local storage")
+			return nil
+		}*/ // TODO: fix
+
+		offers, err := api.ClientFindData(ctx, file)
+		if err != nil {
+			return err
+		}
+
+		// TODO: parse offer strings from `client find`, make this smarter
+
+		order := offers[0].Order()
+		err = api.ClientRetrieve(ctx, order, cctx.Args().Get(1))
+		if err == nil {
+			fmt.Println("Success")
+		}
+		return err
 	},
 }

@@ -36,9 +36,11 @@ func ClientFstore(r repo.LockedRepo) (dtypes.ClientFilestore, error) {
 	return filestore.NewFilestore(bs, fm), nil
 }
 
-func ClientDAG(mctx helpers.MetricsCtx, lc fx.Lifecycle, fstore dtypes.ClientFilestore, rt routing.Routing, h host.Host) dtypes.ClientDAG {
-	ibs := blockstore.NewIdStore((*filestore.Filestore)(fstore))
+func ClientBlockstore(fstore dtypes.ClientFilestore) dtypes.ClientBlockstore {
+	return blockstore.NewIdStore((*filestore.Filestore)(fstore))
+}
 
+func ClientDAG(mctx helpers.MetricsCtx, lc fx.Lifecycle, ibs dtypes.ClientBlockstore, rt routing.Routing, h host.Host) dtypes.ClientDAG {
 	bitswapNetwork := network.NewFromIpfsHost(h, rt)
 	exch := bitswap.New(helpers.LifecycleCtx(mctx, lc), bitswapNetwork, ibs)
 

@@ -4,8 +4,6 @@ import (
 	"context"
 	"math"
 
-	"github.com/filecoin-project/go-lotus/chain/actors"
-
 	sectorbuilder "github.com/filecoin-project/go-sectorbuilder"
 	"github.com/ipfs/go-cid"
 	"github.com/ipfs/go-datastore"
@@ -19,12 +17,14 @@ import (
 	"github.com/libp2p/go-libp2p-core/peer"
 	"golang.org/x/xerrors"
 
+	"github.com/filecoin-project/go-lotus/chain/actors"
 	"github.com/filecoin-project/go-lotus/chain/address"
 	"github.com/filecoin-project/go-lotus/chain/store"
 	"github.com/filecoin-project/go-lotus/chain/types"
 	"github.com/filecoin-project/go-lotus/chain/wallet"
 	"github.com/filecoin-project/go-lotus/lib/cborrpc"
 	"github.com/filecoin-project/go-lotus/node/modules/dtypes"
+	"github.com/filecoin-project/go-lotus/retrieval/discovery"
 )
 
 func init() {
@@ -48,10 +48,11 @@ type ClientDeal struct {
 }
 
 type Client struct {
-	cs  *store.ChainStore
-	h   host.Host
-	w   *wallet.Wallet
-	dag dtypes.ClientDAG
+	cs        *store.ChainStore
+	h         host.Host
+	w         *wallet.Wallet
+	dag       dtypes.ClientDAG
+	discovery *discovery.Local
 
 	deals StateStore
 
@@ -61,12 +62,13 @@ type Client struct {
 	stopped chan struct{}
 }
 
-func NewClient(cs *store.ChainStore, h host.Host, w *wallet.Wallet, ds dtypes.MetadataDS, dag dtypes.ClientDAG) *Client {
+func NewClient(cs *store.ChainStore, h host.Host, w *wallet.Wallet, ds dtypes.MetadataDS, dag dtypes.ClientDAG, discovery *discovery.Local) *Client {
 	c := &Client{
-		cs:  cs,
-		h:   h,
-		w:   w,
-		dag: dag,
+		cs:        cs,
+		h:         h,
+		w:         w,
+		dag:       dag,
+		discovery: discovery,
 
 		deals: StateStore{ds: namespace.Wrap(ds, datastore.NewKey("/deals/client"))},
 
@@ -210,9 +212,8 @@ func (c *Client) VerifyParams(ctx context.Context, data cid.Cid) (*actors.PieceI
 }
 
 func (c *Client) Start(ctx context.Context, p ClientDealProposal, vd *actors.PieceInclVoucherData) (cid.Cid, error) {
-	// TODO: use data
 	proposal := StorageDealProposal{
-		PieceRef:          p.Data.String(),
+		PieceRef:          p.Data,
 		SerializationMode: SerializationUnixFs,
 		CommP:             vd.CommP[:],
 		Size:              vd.PieceSize.Uint64(),
@@ -242,7 +243,12 @@ func (c *Client) Start(ctx context.Context, p ClientDealProposal, vd *actors.Pie
 
 	// TODO: actually care about what happens with the deal after it was accepted
 	//c.incoming <- deal
-	return deal.ProposalCid, nil
+
+	// TODO: start tracking after the deal is sealed
+	return deal.ProposalCid, c.discovery.AddPeer(p.Data, discovery.RetrievalPeer{
+		Address: proposal.MinerAddress,
+		ID:      deal.Miner,
+	})
 }
 
 func (c *Client) Stop() {

@@ -8,6 +8,7 @@ commands:
     steps:
       - go/install-ssh
       - go/install: {package: git}
+      - run: curl --proto '=https' --tlsv1.2 -sSf https://sh.rustup.rs | sh -s -- -y
   prepare:
     steps:
       - checkout
@@ -62,7 +63,10 @@ jobs:
       - install-deps
       - prepare
       - go/mod-download
-      - run: make deps
+      - run: echo 'export PATH=$HOME/.cargo/bin:$PATH' >> $BASH_ENV
+      - run:
+          command: make deps
+          no_output_timeout: 30m
       - go/install-gotestsum:
           gobin: $HOME/.local/bin
       - run:
@@ -114,7 +118,9 @@ jobs:
       - install-deps
       - prepare
       - go/mod-download
-      - run: make deps
+      - run:
+          command: make deps
+          no_output_timeout: 30m
       - go/install-golangci-lint:
           gobin: $HOME/.local/bin
           version: << parameters.golangci-lint-version >>

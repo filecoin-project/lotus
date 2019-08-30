@@ -4,20 +4,20 @@ import (
 	"context"
 	"fmt"
 
-	"github.com/filecoin-project/go-lotus/storage/sector"
-
-	"github.com/filecoin-project/go-lotus/api"
-	"github.com/filecoin-project/go-lotus/chain/actors"
-	"github.com/filecoin-project/go-lotus/chain/address"
-	"github.com/filecoin-project/go-lotus/chain/store"
-	"github.com/filecoin-project/go-lotus/chain/types"
 	"github.com/ipfs/go-cid"
 	"github.com/ipfs/go-datastore"
 	logging "github.com/ipfs/go-log"
 	host "github.com/libp2p/go-libp2p-core/host"
 	"github.com/pkg/errors"
 
+	"github.com/filecoin-project/go-lotus/api"
+	"github.com/filecoin-project/go-lotus/build"
+	"github.com/filecoin-project/go-lotus/chain/actors"
+	"github.com/filecoin-project/go-lotus/chain/address"
+	"github.com/filecoin-project/go-lotus/chain/store"
+	"github.com/filecoin-project/go-lotus/chain/types"
 	"github.com/filecoin-project/go-lotus/lib/sectorbuilder"
+	"github.com/filecoin-project/go-lotus/storage/sector"
 )
 
 var log = logging.Logger("storageminer")
@@ -103,7 +103,7 @@ func (m *Miner) handlePostingSealedSectors(ctx context.Context) {
 func (m *Miner) commitSector(ctx context.Context, sinfo sectorbuilder.SectorSealingStatus) error {
 	log.Info("committing sector")
 
-	ok, err := sectorbuilder.VerifySeal(1024, sinfo.CommR[:], sinfo.CommD[:], sinfo.CommRStar[:], m.maddr, sinfo.SectorID, sinfo.Proof)
+	ok, err := sectorbuilder.VerifySeal(build.SectorSize, sinfo.CommR[:], sinfo.CommD[:], sinfo.CommRStar[:], m.maddr, sinfo.SectorID, sinfo.Proof)
 	if err != nil {
 		log.Error("failed to verify seal we just created: ", err)
 	}
