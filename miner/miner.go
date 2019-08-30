@@ -7,6 +7,7 @@ import (
 	"sync"
 	"time"
 
+	"github.com/filecoin-project/go-lotus/build"
 	chain "github.com/filecoin-project/go-lotus/chain"
 	"github.com/filecoin-project/go-lotus/chain/actors"
 	"github.com/filecoin-project/go-lotus/chain/address"
@@ -36,7 +37,7 @@ type api struct {
 func NewMiner(api api) *Miner {
 	return &Miner{
 		api:   api,
-		Delay: time.Second * 4,
+		Delay: build.BlockDelay,
 	}
 }
 

@@ -47,10 +47,11 @@ func MinerCreateBlock(ctx context.Context, cs *store.ChainStore, w *wallet.Walle
 	}
 
 	next := &types.BlockHeader{
-		Miner:   miner,
-		Parents: parents.Cids(),
-		Tickets: tickets,
-		Height:  height,
+		Miner:     miner,
+		Parents:   parents.Cids(),
+		Tickets:   tickets,
+		Height:    height,
+		Timestamp: timestamp,
 	}
 
 	var blsMessages []*types.Message

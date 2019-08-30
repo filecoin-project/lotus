@@ -110,3 +110,13 @@ func (ts *TipSet) MinTicket() *Ticket {
 
 	return minTicket
 }
+
+func (ts *TipSet) MinTimestamp() uint64 {
+	minTs := ts.Blocks()[0].Timestamp
+	for _, bh := range ts.Blocks()[1:] {
+		if bh.Timestamp < minTs {
+			minTs = bh.Timestamp
+		}
+	}
+	return minTs
+}

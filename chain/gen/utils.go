@@ -246,7 +246,7 @@ func doExec(ctx context.Context, vm *vm.VM, to, from address.Address, method uin
 	return ret.Return, nil
 }
 
-func MakeGenesisBlock(bs bstore.Blockstore, balances map[address.Address]types.BigInt, gmcfg *GenMinerCfg) (*GenesisBootstrap, error) {
+func MakeGenesisBlock(bs bstore.Blockstore, balances map[address.Address]types.BigInt, gmcfg *GenMinerCfg, ts uint64) (*GenesisBootstrap, error) {
 	ctx := context.Background()
 
 	state, err := MakeInitialStateTree(bs, balances)
@@ -305,6 +305,7 @@ func MakeGenesisBlock(bs bstore.Blockstore, balances map[address.Address]types.B
 		MessageReceipts: emptyroot,
 		BLSAggregate:    types.Signature{Type: types.KTBLS, Data: []byte("signatureeee")},
 		BlockSig:        types.Signature{Type: types.KTBLS, Data: []byte("block signatureeee")},
+		Timestamp:       ts,
 	}
 
 	sb, err := b.ToStorageBlock()

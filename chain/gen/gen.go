@@ -11,6 +11,7 @@ import (
 	"github.com/ipfs/go-merkledag"
 	"golang.org/x/xerrors"
 
+	"github.com/filecoin-project/go-lotus/build"
 	"github.com/filecoin-project/go-lotus/chain/address"
 	"github.com/filecoin-project/go-lotus/chain/store"
 	"github.com/filecoin-project/go-lotus/chain/types"
@@ -122,7 +123,7 @@ func NewGenerator() (*ChainGen, error) {
 	genb, err := MakeGenesisBlock(bs, map[address.Address]types.BigInt{
 		worker: types.NewInt(50000),
 		banker: types.NewInt(90000000),
-	}, minercfg)
+	}, minercfg, 100000)
 	if err != nil {
 		return nil, xerrors.Errorf("make genesis block failed: %w", err)
 	}
@@ -253,7 +254,9 @@ func (cg *ChainGen) NextBlock() (*types.FullBlock, []*types.SignedMessage, error
 		return nil, nil, err
 	}
 
-	fblk, err := MinerCreateBlock(context.TODO(), cg.cs, cg.w, miner, parents, tickets, proof, msgs, 0)
+	ts := parents.MinTimestamp() + (uint64(len(tickets)) * build.BlockDelay)
+
+	fblk, err := MinerCreateBlock(context.TODO(), cg.cs, cg.w, miner, parents, tickets, proof, msgs, ts)
 	if err != nil {
 		return nil, nil, err
 	}
