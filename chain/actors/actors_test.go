@@ -82,7 +82,7 @@ func TestVMInvokeMethod(t *testing.T) {
 		Method:   IAMethods.Exec,
 		Params:   enc,
 		GasPrice: types.NewInt(1),
-		GasLimit: types.NewInt(1000),
+		GasLimit: types.NewInt(10000),
 		Value:    types.NewInt(0),
 	}
 
@@ -126,7 +126,7 @@ func TestStorageMarketActorCreateMiner(t *testing.T) {
 		Method:   SMAMethods.CreateStorageMiner,
 		Params:   enc,
 		GasPrice: types.NewInt(1),
-		GasLimit: types.NewInt(1000),
+		GasLimit: types.NewInt(10000),
 		Value:    types.NewInt(0),
 	}
 

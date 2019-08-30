@@ -15,13 +15,13 @@ import (
 func TestMultiSigCreate(t *testing.T) {
 	var creatorAddr, sig1Addr, sig2Addr, outsideAddr address.Address
 	opts := []HarnessOpt{
-		HarnessAddr(&creatorAddr, 10000),
-		HarnessAddr(&sig1Addr, 10000),
-		HarnessAddr(&sig2Addr, 10000),
-		HarnessAddr(&outsideAddr, 1000),
+		HarnessAddr(&creatorAddr, 100000),
+		HarnessAddr(&sig1Addr, 100000),
+		HarnessAddr(&sig2Addr, 100000),
+		HarnessAddr(&outsideAddr, 100000),
 	}
 
-	h := NewHarness2(t, opts...)
+	h := NewHarness(t, opts...)
 	ret, _ := h.CreateActor(t, creatorAddr, actors.MultisigActorCodeCid,
 		actors.MultiSigConstructorParams{
 			Signers:  []address.Address{creatorAddr, sig1Addr, sig2Addr},
@@ -47,7 +47,7 @@ func TestMultiSigOps(t *testing.T) {
 		HarnessAddr(&creatorAddr, 100000),
 		HarnessAddr(&sig1Addr, 100000),
 		HarnessAddr(&sig2Addr, 100000),
-		HarnessAddr(&outsideAddr, 1000),
+		HarnessAddr(&outsideAddr, 100000),
 		HarnessActor(&multSigAddr, &creatorAddr, actors.MultisigActorCodeCid,
 			func() interface{} {
 				return actors.MultiSigConstructorParams{
@@ -57,7 +57,7 @@ func TestMultiSigOps(t *testing.T) {
 			}),
 	}
 
-	h := NewHarness2(t, opts...)
+	h := NewHarness(t, opts...)
 	{
 		const chargeVal = 2000
 		// Send funds into the multisig
