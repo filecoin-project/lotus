@@ -30,6 +30,7 @@ const (
 	gasInvoke       = 5
 
 	gasGetObj         = 10
+	gasGetPerByte     = 1
 	gasPutObj         = 20
 	gasPutPerByte     = 2
 	gasCommit         = 50
@@ -230,7 +231,15 @@ func (bs *gasChargingBlocks) GetBlock(ctx context.Context, c cid.Cid) (block.Blo
 	if err := bs.chargeGas(gasGetObj); err != nil {
 		return nil, err
 	}
-	return bs.under.GetBlock(ctx, c)
+	blk, err := bs.under.GetBlock(ctx, c)
+	if err != nil {
+		return nil, err
+	}
+	if err := bs.chargeGas(uint64(len(blk.RawData())) * gasGetPerByte); err != nil {
+		return nil, err
+	}
+
+	return blk, nil
 }
 
 func (bs *gasChargingBlocks) AddBlock(blk block.Block) error {
