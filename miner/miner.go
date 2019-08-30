@@ -37,7 +37,7 @@ type api struct {
 func NewMiner(api api) *Miner {
 	return &Miner{
 		api:   api,
-		Delay: build.BlockDelay,
+		Delay: build.BlockDelay * time.Second,
 	}
 }
 
