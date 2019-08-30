@@ -576,7 +576,10 @@ func (cs *ChainStore) WaitForMessage(ctx context.Context, mcid cid.Cid) (cid.Cid
 
 	for {
 		select {
-		case val := <-tsub:
+		case val, ok := <-tsub:
+			if !ok {
+				return cid.Undef, nil, ctx.Err()
+			}
 			switch val.Type {
 			case HCRevert:
 				continue
