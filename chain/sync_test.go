@@ -265,7 +265,10 @@ func TestSyncMining(t *testing.T) {
 
 	require.NoError(t, tu.mn.LinkAll())
 	tu.connect(client, 0)
+	fmt.Println("waiting for sync...")
 	tu.waitUntilSync(0, client)
+
+	fmt.Println("after wait until sync")
 
 	tu.checkHeight("client", client, H)
 
@@ -296,13 +299,6 @@ func runSyncBenchLength(b *testing.B, l int) {
 	tu.connect(1, 0)
 
 	tu.waitUntilSync(0, client)
-
-	fmt.Println("check height...")
-	tu.checkHeight("client", client, l)
-
-	fmt.Println("compare state...")
-	tu.compareSourceState(client)
-	fmt.Println("and we done")
 }
 
 /*

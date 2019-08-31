@@ -135,11 +135,15 @@ func (cs *ChainStore) SubHeadChanges(ctx context.Context) chan *HeadChange {
 			select {
 			case val, ok := <-subch:
 				if !ok {
+					log.Warn("chain head sub exit loop")
 					return
 				}
-				out <- val.(*HeadChange)
+				select {
+				case out <- val.(*HeadChange):
+				case <-ctx.Done():
+				}
 			case <-ctx.Done():
-				cs.bestTips.Unsub(subch)
+				go cs.bestTips.Unsub(subch)
 			}
 		}
 	}()
