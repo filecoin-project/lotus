@@ -4,7 +4,6 @@ import (
 	"context"
 	"fmt"
 	"testing"
-	"time"
 
 	logging "github.com/ipfs/go-log"
 	mocknet "github.com/libp2p/go-libp2p/p2p/net/mock"
@@ -249,7 +248,7 @@ func TestSyncSimple(t *testing.T) {
 
 	require.NoError(t, tu.mn.LinkAll())
 	tu.connect(1, 0)
-	time.Sleep(time.Second * 3)
+	tu.waitUntilSync(0, client)
 
 	tu.checkHeight("client", client, H)
 
@@ -276,7 +275,7 @@ func TestSyncMining(t *testing.T) {
 
 	for i := 0; i < 5; i++ {
 		tu.mineNewBlock(0)
-		time.Sleep(time.Second / 2)
+		tu.waitUntilSync(0, client)
 		tu.compareSourceState(client)
 	}
 }
