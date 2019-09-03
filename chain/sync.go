@@ -26,8 +26,6 @@ import (
 	"github.com/whyrusleeping/sharray"
 )
 
-const ForkLengthThreshold = 20
-
 var log = logging.Logger("chain")
 
 type Syncer struct {
@@ -237,7 +235,7 @@ func (syncer *Syncer) selectHead(heads map[peer.ID]*types.TipSet) (*types.TipSet
 			return nil, err
 		}
 
-		if sel.Height()-nca.Height() > ForkLengthThreshold {
+		if sel.Height()-nca.Height() > build.ForkLengthThreshold {
 			// TODO: handle this better than refusing to sync
 			return nil, fmt.Errorf("Conflict exists in heads set")
 		}
