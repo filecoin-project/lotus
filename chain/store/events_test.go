@@ -303,4 +303,13 @@ func TestCalled(t *testing.T) {
 	require.Equal(t, t0123, appliedMsg.To)
 	require.Equal(t, uint64(2), appliedMsg.Nonce)
 	require.Equal(t, uint64(5), appliedMsg.Method)
+
+	// call method again
+
+	fcs.advance(0, 4, map[int]cid.Cid{ // msg at H=12; H=15
+		0: n2msg,
+	})
+
+	// require.Equal(t, false, applied) TODO: FIX!
+	require.Equal(t, false, reverted)
 }

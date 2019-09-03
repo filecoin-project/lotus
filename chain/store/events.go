@@ -86,19 +86,27 @@ func NewEvents(cs eventChainStore) *Events {
 	_ = e.tsc.add(cs.GetHeaviestTipSet())
 	cs.SubscribeHeadChanges(e.headChange)
 
-	// TODO: cleanup goroutine
+	// TODO: cleanup/gc goroutine
 
 	return e
 }
 
 func (e *Events) headChange(rev, app []*types.TipSet) error {
-	e.lk.Lock()
-	defer e.lk.Unlock()
-
 	if len(app) == 0 {
 		return xerrors.New("events.headChange expected at least one applied tipset")
 	}
 
+	e.lk.Lock()
+	defer e.lk.Unlock()
+
+	if err := e.headChangeAt(rev, app); err != nil {
+		return err
+	}
+
+	return e.headChangeCalled(rev, app)
+}
+
+func (e *Events) headChangeAt(rev, app []*types.TipSet) error {
 	// highest tipset is always the first (see cs.ReorgOps)
 	newH := app[0].Height()
 
@@ -121,8 +129,6 @@ func (e *Events) headChange(rev, app []*types.TipSet) error {
 				log.Errorf("reverting chain trigger (@H %d): %s", ts.Height(), err)
 			}
 		}
-
-		// todo: called reverts
 
 		if err := e.tsc.revert(ts); err != nil {
 			return err
@@ -158,7 +164,17 @@ func (e *Events) headChange(rev, app []*types.TipSet) error {
 			}
 			hnd.disable = hnd.msg != nil // special case for Called
 		}
+	}
 
+	return nil
+}
+
+func (e *Events) headChangeCalled(rev, app []*types.TipSet) error {
+	for _, ts := range rev {
+		_ = ts
+	}
+
+	for _, ts := range app {
 		// called triggers
 
 		err := e.messagesForTs(ts, func(msg *types.Message) error {
