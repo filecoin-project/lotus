@@ -562,7 +562,7 @@ func (syncer *Syncer) collectHeaders(from *types.TipSet, to *types.TipSet) ([]*t
 		at = blks[len(blks)-1].Parents()
 	}
 
-	if !cidArrsEqual(blockSet[len(blockSet)-1].Parents(), to.Cids()) {
+	if !types.CidArrsEqual(blockSet[len(blockSet)-1].Parents(), to.Cids()) {
 		// TODO: handle the case where we are on a fork and its not a simple fast forward
 		return nil, xerrors.Errorf("synced header chain does not link to our best block")
 	}

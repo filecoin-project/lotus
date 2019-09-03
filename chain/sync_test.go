@@ -12,26 +12,28 @@ import (
 	"github.com/filecoin-project/go-lotus/api"
 	"github.com/filecoin-project/go-lotus/chain"
 	"github.com/filecoin-project/go-lotus/chain/gen"
+	"github.com/filecoin-project/go-lotus/chain/store"
 	"github.com/filecoin-project/go-lotus/chain/types"
 	"github.com/filecoin-project/go-lotus/node"
-	"github.com/filecoin-project/go-lotus/node/impl"
 	"github.com/filecoin-project/go-lotus/node/modules"
 	"github.com/filecoin-project/go-lotus/node/repo"
 )
 
 const source = 0
 
-func (tu *syncTestUtil) repoWithChain(t testing.TB, h int) (repo.Repo, []byte, []*types.FullBlock) {
-	blks := make([]*types.FullBlock, h)
+func (tu *syncTestUtil) repoWithChain(t testing.TB, h int) (repo.Repo, []byte, []*store.FullTipSet) {
+	blks := make([]*store.FullTipSet, h)
 
 	for i := 0; i < h; i++ {
-		var err error
-		blks[i], _, err = tu.g.NextBlock()
+		mts, err := tu.g.NextTipSet()
 		require.NoError(t, err)
 
-		fmt.Printf("block at H:%d: %s\n", blks[i].Header.Height, blks[i].Cid())
+		blks[i] = mts.TipSet
 
-		require.Equal(t, uint64(i+1), blks[i].Header.Height, "wrong height")
+		ts := mts.TipSet.TipSet()
+		fmt.Printf("tipset at H:%d: %s\n", ts.Height(), ts.Cids())
+
+		require.Equal(t, uint64(i+1), ts.Height(), "wrong height")
 	}
 
 	r, err := tu.g.YieldRepo()
@@ -54,7 +56,7 @@ type syncTestUtil struct {
 	g *gen.ChainGen
 
 	genesis []byte
-	blocks  []*types.FullBlock
+	blocks  []*store.FullTipSet
 
 	nds []api.FullNode
 }
@@ -92,14 +94,16 @@ func (tu *syncTestUtil) Shutdown() {
 }
 
 func (tu *syncTestUtil) mineNewBlock(src int) {
-	fblk, msgs, err := tu.g.NextBlock()
+	mts, err := tu.g.NextTipSet()
 	require.NoError(tu.t, err)
 
-	for _, msg := range msgs {
+	for _, msg := range mts.Messages {
 		require.NoError(tu.t, tu.nds[src].MpoolPush(context.TODO(), msg))
 	}
 
-	require.NoError(tu.t, tu.nds[src].ChainSubmitBlock(context.TODO(), fblkToBlkMsg(fblk)))
+	for _, fblk := range mts.TipSet.Blocks {
+		require.NoError(tu.t, tu.nds[src].ChainSubmitBlock(context.TODO(), fblkToBlkMsg(fblk)))
+	}
 }
 
 func fblkToBlkMsg(fb *types.FullBlock) *chain.BlockMsg {
@@ -215,6 +219,7 @@ func (tu *syncTestUtil) waitUntilSync(from, to int) {
 	}
 }
 
+/*
 func (tu *syncTestUtil) submitSourceBlock(to int, h int) {
 	// utility to simulate incoming blocks without miner process
 	// TODO: should call syncer directly, this won't work correctly in all cases
@@ -238,6 +243,7 @@ func (tu *syncTestUtil) submitSourceBlocks(to int, h int, n int) {
 		tu.submitSourceBlock(to, h+i)
 	}
 }
+*/
 
 func TestSyncSimple(t *testing.T) {
 	H := 50
@@ -256,7 +262,7 @@ func TestSyncSimple(t *testing.T) {
 }
 
 func TestSyncMining(t *testing.T) {
-	H := 100
+	H := 50
 	tu := prepSyncTest(t, H)
 
 	client := tu.addClientNode()

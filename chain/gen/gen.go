@@ -3,6 +3,8 @@ package gen
 import (
 	"bytes"
 	"context"
+	"crypto/sha256"
+	"math/big"
 	"sync/atomic"
 
 	"github.com/ipfs/go-blockservice"
@@ -11,6 +13,7 @@ import (
 	"github.com/ipfs/go-merkledag"
 	"golang.org/x/xerrors"
 
+	"github.com/filecoin-project/go-lotus/api"
 	"github.com/filecoin-project/go-lotus/build"
 	"github.com/filecoin-project/go-lotus/chain/address"
 	"github.com/filecoin-project/go-lotus/chain/store"
@@ -43,8 +46,8 @@ type ChainGen struct {
 
 	w *wallet.Wallet
 
-	miner       address.Address
-	mworker     address.Address
+	miners      []address.Address
+	mworkers    []address.Address
 	receivers   []address.Address
 	banker      address.Address
 	bankerNonce uint64
@@ -147,8 +150,8 @@ func NewGenerator() (*ChainGen, error) {
 		genesis:      genb.Genesis,
 		w:            w,
 
-		miner:     minercfg.MinerAddr,
-		mworker:   worker,
+		miners:    []address.Address{minercfg.MinerAddr},
+		mworkers:  []address.Address{worker},
 		banker:    banker,
 		receivers: receievers,
 
@@ -184,7 +187,7 @@ func (cg *ChainGen) nextBlockProof(ctx context.Context) (address.Address, types.
 	ticks := cg.curBlock.Header.Tickets
 	lastTicket := ticks[len(ticks)-1]
 
-	vrfout, err := ComputeVRF(ctx, cg.w.Sign, cg.mworker, lastTicket.VDFResult)
+	vrfout, err := ComputeVRF(ctx, cg.w.Sign, cg.mworkers[0], lastTicket.VDFResult)
 	if err != nil {
 		return address.Undef, nil, nil, err
 	}
@@ -200,13 +203,18 @@ func (cg *ChainGen) nextBlockProof(ctx context.Context) (address.Address, types.
 		VDFResult: out,
 	}
 
-	return cg.miner, []byte("cat in a box"), []*types.Ticket{tick}, nil
+	return cg.miners[0], []byte("cat in a box"), []*types.Ticket{tick}, nil
 }
 
-func (cg *ChainGen) NextBlock() (*types.FullBlock, []*types.SignedMessage, error) {
+type MinedTipSet struct {
+	TipSet   *store.FullTipSet
+	Messages []*types.SignedMessage
+}
+
+func (cg *ChainGen) NextTipSet() (*MinedTipSet, error) {
 	miner, proof, tickets, err := cg.nextBlockProof(context.TODO())
 	if err != nil {
-		return nil, nil, err
+		return nil, err
 	}
 
 	// make some transfers from banker
@@ -229,12 +237,12 @@ func (cg *ChainGen) NextBlock() (*types.FullBlock, []*types.SignedMessage, error
 
 		unsigned, err := msg.Serialize()
 		if err != nil {
-			return nil, nil, err
+			return nil, err
 		}
 
 		sig, err := cg.w.Sign(context.TODO(), cg.banker, unsigned)
 		if err != nil {
-			return nil, nil, err
+			return nil, err
 		}
 
 		msgs[m] = &types.SignedMessage{
@@ -243,7 +251,7 @@ func (cg *ChainGen) NextBlock() (*types.FullBlock, []*types.SignedMessage, error
 		}
 
 		if _, err := cg.cs.PutMessage(msgs[m]); err != nil {
-			return nil, nil, err
+			return nil, err
 		}
 	}
 
@@ -251,23 +259,26 @@ func (cg *ChainGen) NextBlock() (*types.FullBlock, []*types.SignedMessage, error
 
 	parents, err := types.NewTipSet([]*types.BlockHeader{cg.curBlock.Header})
 	if err != nil {
-		return nil, nil, err
+		return nil, err
 	}
 
 	ts := parents.MinTimestamp() + (uint64(len(tickets)) * build.BlockDelay)
 
 	fblk, err := MinerCreateBlock(context.TODO(), cg.cs, cg.w, miner, parents, tickets, proof, msgs, ts)
 	if err != nil {
-		return nil, nil, err
+		return nil, err
 	}
 
 	if err := cg.cs.AddBlock(fblk.Header); err != nil {
-		return nil, nil, err
+		return nil, err
 	}
 
 	cg.curBlock = fblk
 
-	return fblk, msgs, nil
+	return &MinedTipSet{
+		TipSet:   store.NewFullTipSet([]*types.FullBlock{fblk}),
+		Messages: msgs,
+	}, nil
 }
 
 func (cg *ChainGen) YieldRepo() (repo.Repo, error) {
@@ -275,4 +286,56 @@ func (cg *ChainGen) YieldRepo() (repo.Repo, error) {
 		return nil, err
 	}
 	return cg.r, nil
+}
+
+type MiningCheckAPI interface {
+	ChainGetRandomness(context.Context, *types.TipSet) ([]byte, error)
+
+	StateMinerPower(context.Context, address.Address, *types.TipSet) (api.MinerPower, error)
+
+	StateMinerWorker(context.Context, address.Address, *types.TipSet) (address.Address, error)
+
+	WalletSign(context.Context, address.Address, []byte) (*types.Signature, error)
+}
+
+func IsRoundWinner(ctx context.Context, ts *types.TipSet, ticks []*types.Ticket, miner address.Address, a MiningCheckAPI) (bool, types.ElectionProof, error) {
+	r, err := a.ChainGetRandomness(ctx, ts)
+	if err != nil {
+		return false, nil, err
+	}
+
+	mworker, err := a.StateMinerWorker(ctx, miner, ts)
+	if err != nil {
+		return false, nil, xerrors.Errorf("failed to get miner worker: %w", err)
+	}
+
+	vrfout, err := ComputeVRF(ctx, a.WalletSign, mworker, r)
+	if err != nil {
+		return false, nil, xerrors.Errorf("failed to compute VRF: %w", err)
+	}
+
+	pow, err := a.StateMinerPower(ctx, miner, ts)
+	if err != nil {
+		return false, nil, xerrors.Errorf("failed to check power: %w", err)
+	}
+
+	return PowerCmp(vrfout, pow.MinerPower, pow.TotalPower), vrfout, nil
+}
+
+func PowerCmp(vrfout []byte, mpow, totpow types.BigInt) bool {
+
+	/*
+		Need to check that
+		h(vrfout) / 2^256 < minerPower / totalPower
+	*/
+
+	h := sha256.Sum256(vrfout)
+
+	// 2^256
+	rden := types.BigInt{big.NewInt(0).Exp(big.NewInt(2), big.NewInt(256), nil)}
+
+	top := types.BigMul(rden, mpow)
+	out := types.BigDiv(top, totpow)
+
+	return types.BigCmp(types.BigFromBytes(h[:]), out) < 0
 }

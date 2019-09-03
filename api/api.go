@@ -106,6 +106,7 @@ type FullNode interface {
 	StateMinerSectors(context.Context, address.Address) ([]*SectorInfo, error)
 	StateMinerProvingSet(context.Context, address.Address) ([]*SectorInfo, error)
 	StateMinerPower(context.Context, address.Address, *types.TipSet) (MinerPower, error)
+	StateMinerWorker(context.Context, address.Address, *types.TipSet) (address.Address, error)
 
 	PaychCreate(ctx context.Context, from, to address.Address, amt types.BigInt) (address.Address, error)
 	PaychList(context.Context) ([]address.Address, error)

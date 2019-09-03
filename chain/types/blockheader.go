@@ -114,3 +114,15 @@ func (mm *MsgMeta) ToStorageBlock() (block.Block, error) {
 
 	return block.NewBlockWithCid(buf.Bytes(), c)
 }
+
+func CidArrsEqual(a, b []cid.Cid) bool {
+	if len(a) != len(b) {
+		return false
+	}
+	for i, v := range a {
+		if b[i] != v {
+			return false
+		}
+	}
+	return true
+}

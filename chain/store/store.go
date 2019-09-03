@@ -9,6 +9,7 @@ import (
 	"github.com/filecoin-project/go-lotus/chain/address"
 	"github.com/filecoin-project/go-lotus/chain/state"
 	"github.com/filecoin-project/go-lotus/chain/types"
+	"golang.org/x/xerrors"
 
 	block "github.com/ipfs/go-block-format"
 	"github.com/ipfs/go-cid"
@@ -35,6 +36,9 @@ type ChainStore struct {
 
 	bestTips *pubsub.PubSub
 
+	tstLk   sync.Mutex
+	tipsets map[uint64][]cid.Cid
+
 	headChangeNotifs []func(rev, app []*types.TipSet) error
 }
 
@@ -43,6 +47,7 @@ func NewChainStore(bs bstore.Blockstore, ds dstore.Batching) *ChainStore {
 		bs:       bs,
 		ds:       ds,
 		bestTips: pubsub.New(64),
+		tipsets:  make(map[uint64][]cid.Cid),
 	}
 
 	hcnf := func(rev, app []*types.TipSet) error {
@@ -317,10 +322,33 @@ func (cs *ChainStore) GetHeaviestTipSet() *types.TipSet {
 	return cs.heaviest
 }
 
+func (cs *ChainStore) addToTipSetTracker(b *types.BlockHeader) error {
+	cs.tstLk.Lock()
+	defer cs.tstLk.Unlock()
+
+	tss := cs.tipsets[b.Height]
+	for _, oc := range tss {
+		if oc == b.Cid() {
+			log.Warn("tried to add block to tipset tracker that was already there")
+			return nil
+		}
+	}
+
+	cs.tipsets[b.Height] = append(tss, b.Cid())
+
+	// TODO: do we want to look for slashable submissions here? might as well...
+
+	return nil
+}
+
 func (cs *ChainStore) PersistBlockHeader(b *types.BlockHeader) error {
 	sb, err := b.ToStorageBlock()
 	if err != nil {
 		return err
+	}
+
+	if err := cs.addToTipSetTracker(b); err != nil {
+		return xerrors.Errorf("failed to insert new block (%s) into tipset tracker: %w", b.Cid(), err)
 	}
 
 	return cs.bs.Put(sb)
@@ -365,12 +393,49 @@ func (cs *ChainStore) PutMessage(m storable) (cid.Cid, error) {
 	return PutMessage(cs.bs, m)
 }
 
+func (cs *ChainStore) expandTipset(b *types.BlockHeader) (*types.TipSet, error) {
+	// Hold lock for the whole function for now, if it becomes a problem we can
+	// fix pretty easily
+	cs.tstLk.Lock()
+	defer cs.tstLk.Unlock()
+
+	all := []*types.BlockHeader{b}
+
+	tsets, ok := cs.tipsets[b.Height]
+	if !ok {
+		return types.NewTipSet(all)
+	}
+
+	for _, bhc := range tsets {
+		if bhc == b.Cid() {
+			continue
+		}
+
+		h, err := cs.GetBlock(bhc)
+		if err != nil {
+			return nil, xerrors.Errorf("failed to load block (%s) for tipset expansion: %w", bhc, err)
+		}
+
+		if types.CidArrsEqual(h.Parents, b.Parents) {
+			all = append(all, h)
+		}
+	}
+
+	// TODO: other validation...?
+
+	return types.NewTipSet(all)
+}
+
 func (cs *ChainStore) AddBlock(b *types.BlockHeader) error {
 	if err := cs.PersistBlockHeader(b); err != nil {
 		return err
 	}
 
-	ts, _ := types.NewTipSet([]*types.BlockHeader{b})
+	ts, err := cs.expandTipset(b)
+	if err != nil {
+		return err
+	}
+
 	if err := cs.MaybeTakeHeavierTipSet(ts); err != nil {
 		return errors.Wrap(err, "MaybeTakeHeavierTipSet failed")
 	}

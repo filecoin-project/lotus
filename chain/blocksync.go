@@ -396,7 +396,7 @@ func (bs *BlockSync) processBlocksResponse(req *BlockSyncRequest, res *BlockSync
 			return nil, err
 		}
 
-		if !cidArrsEqual(cur.Parents(), nts.Cids()) {
+		if !types.CidArrsEqual(cur.Parents(), nts.Cids()) {
 			return nil, fmt.Errorf("parents of tipset[%d] were not tipset[%d]", bi-1, bi)
 		}
 
@@ -404,18 +404,6 @@ func (bs *BlockSync) processBlocksResponse(req *BlockSyncRequest, res *BlockSync
 		cur = nts
 	}
 	return out, nil
-}
-
-func cidArrsEqual(a, b []cid.Cid) bool {
-	if len(a) != len(b) {
-		return false
-	}
-	for i, v := range a {
-		if b[i] != v {
-			return false
-		}
-	}
-	return true
 }
 
 func (bs *BlockSync) GetBlock(ctx context.Context, c cid.Cid) (*types.BlockHeader, error) {

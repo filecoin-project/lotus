@@ -3,10 +3,11 @@ package full
 import (
 	"context"
 	"fmt"
+	"strconv"
+
 	"github.com/filecoin-project/go-lotus/chain/types"
 	"github.com/filecoin-project/go-lotus/chain/vm"
 	"golang.org/x/xerrors"
-	"strconv"
 
 	"github.com/filecoin-project/go-lotus/api"
 	"github.com/filecoin-project/go-lotus/chain/actors"
@@ -185,4 +186,26 @@ func (a *StateAPI) StateMinerPower(ctx context.Context, maddr address.Address, t
 		MinerPower: mpow,
 		TotalPower: tpow,
 	}, nil
+}
+
+func (a *StateAPI) StateMinerWorker(ctx context.Context, m address.Address, ts *types.TipSet) (address.Address, error) {
+	ret, err := vm.Call(ctx, a.Chain, &types.Message{
+		From:   m,
+		To:     m,
+		Method: actors.MAMethods.GetWorkerAddr,
+	}, ts)
+	if err != nil {
+		return address.Undef, xerrors.Errorf("failed to get miner worker addr: %w", err)
+	}
+
+	if ret.ExitCode != 0 {
+		return address.Undef, xerrors.Errorf("failed to get miner worker addr (exit code %d)", ret.ExitCode)
+	}
+
+	w, err := address.NewFromBytes(ret.Return)
+	if err != nil {
+		return address.Undef, xerrors.Errorf("GetWorkerAddr returned malformed address: %w", err)
+	}
+
+	return w, nil
 }

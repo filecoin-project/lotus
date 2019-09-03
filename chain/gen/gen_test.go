@@ -13,11 +13,11 @@ func testGeneration(t testing.TB, n int, msgs int) {
 	g.msgsPerBlock = msgs
 
 	for i := 0; i < n; i++ {
-		b, _, err := g.NextBlock()
+		mts, err := g.NextTipSet()
 		if err != nil {
 			t.Fatalf("error at H:%d, %s", i, err)
 		}
-		if b.Header.Height != uint64(i+1) {
+		if mts.TipSet.TipSet().Height() != uint64(i+1) {
 			t.Fatal("wrong height")
 		}
 	}
