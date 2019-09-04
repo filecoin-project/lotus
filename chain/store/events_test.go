@@ -131,10 +131,9 @@ func TestAt(t *testing.T) {
 	var applied bool
 	var reverted bool
 
-	err := events.ChainAt(func(msg *types.Message, ts *types.TipSet, curH uint64) error {
+	err := events.ChainAt(func(ts *types.TipSet, curH uint64) error {
 		require.Equal(t, 5, int(ts.Height()))
 		require.Equal(t, 8, int(curH))
-		require.Nil(t, msg)
 		applied = true
 		return nil
 	}, func(ts *types.TipSet) error {
@@ -198,7 +197,7 @@ func TestCalled(t *testing.T) {
 	var appliedTs *types.TipSet
 	var appliedH uint64
 
-	err = events.CalledOnce(func(ts *types.TipSet) (b bool, e error) {
+	err = events.Called(func(ts *types.TipSet) (b bool, e error) {
 		return false, nil
 	}, func(msg *types.Message, ts *types.TipSet, curH uint64) error {
 		applied = true
@@ -310,6 +309,6 @@ func TestCalled(t *testing.T) {
 		0: n2msg,
 	})
 
-	// require.Equal(t, false, applied) TODO: FIX!
+	require.Equal(t, false, applied)
 	require.Equal(t, false, reverted)
 }
