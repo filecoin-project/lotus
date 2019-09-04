@@ -197,8 +197,8 @@ func TestCalled(t *testing.T) {
 	var appliedTs *types.TipSet
 	var appliedH uint64
 
-	err = events.Called(func(ts *types.TipSet) (b bool, e error) {
-		return false, nil
+	err = events.Called(func(ts *types.TipSet) (d bool, m bool, e error) {
+		return false, true, nil
 	}, func(msg *types.Message, ts *types.TipSet, curH uint64) (bool, error) {
 		applied = true
 		appliedMsg = msg
@@ -390,8 +390,8 @@ func TestCalledTimeout(t *testing.T) {
 
 	called := false
 
-	err = events.Called(func(ts *types.TipSet) (b bool, e error) {
-		return false, nil
+	err = events.Called(func(ts *types.TipSet) (d bool, m bool, e error) {
+		return false, true, nil
 	}, func(msg *types.Message, ts *types.TipSet, curH uint64) (bool, error) {
 		called = true
 		require.Nil(t, msg)
@@ -409,4 +409,38 @@ func TestCalledTimeout(t *testing.T) {
 
 	fcs.advance(0, 5, nil)
 	require.True(t, called)
+	called = false
+
+	// with check func reporting done
+
+	fcs = &fakeCS{
+		t: t,
+		h: 1,
+
+		msgs: map[cid.Cid]fakeMsg{},
+		tsc:  newTSCache(2 * build.ForkLengthThreshold),
+	}
+	require.NoError(t, fcs.tsc.add(makeTs(t, 1, dummyCid)))
+
+	events = NewEvents(fcs)
+
+	err = events.Called(func(ts *types.TipSet) (d bool, m bool, e error) {
+		return true, true, nil
+	}, func(msg *types.Message, ts *types.TipSet, curH uint64) (bool, error) {
+		called = true
+		require.Nil(t, msg)
+		require.Equal(t, uint64(20), ts.Height())
+		require.Equal(t, uint64(23), curH)
+		return false, nil
+	}, func(ts *types.TipSet) error {
+		t.Fatal("revert on timeout")
+		return nil
+	}, 3, 20, t0123, 5)
+	require.NoError(t, err)
+
+	fcs.advance(0, 21, nil)
+	require.False(t, called)
+
+	fcs.advance(0, 5, nil)
+	require.False(t, called)
 }

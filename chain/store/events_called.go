@@ -17,10 +17,13 @@ import (
 // `curH`-`ts.Height` = `confidence`
 type CalledHandler func(msg *types.Message, ts *types.TipSet, curH uint64) (bool, error)
 
-// CheckFunc is used before one-shoot callbacks for atomicity
-// guarantees. If the condition the callbacks wait for has already happened in
-// tipset `ts`, this function MUST return true
-type CheckFunc func(ts *types.TipSet) (bool, error)
+// CheckFunc is used for atomicity guarantees. If the condition the callbacks
+// wait for has already happened in tipset `ts`
+//
+// If `done` is true, timeout won't be triggered
+// If `more` is false, no messages will be sent to CalledHandler (RevertHandler
+//  may still be called)
+type CheckFunc func(ts *types.TipSet) (done bool, more bool, err error)
 
 type callHandler struct {
 	confidence int
@@ -251,14 +254,12 @@ func (e *calledEvents) Called(check CheckFunc, hnd CalledHandler, rev RevertHand
 	e.lk.Lock()
 	defer e.lk.Unlock()
 
-	// TODO: this should use older tipset, and take reverts into account
-	done, err := check(e.tsc.best())
+	done, more, err := check(e.tsc.best())
 	if err != nil {
 		return err
 	}
 	if done {
-		// Already happened, don't bother registering callback
-		return nil
+		timeout = math.MaxUint64
 	}
 
 	id := e.ctr
@@ -267,6 +268,8 @@ func (e *calledEvents) Called(check CheckFunc, hnd CalledHandler, rev RevertHand
 	e.triggers[id] = &callHandler{
 		confidence: confidence,
 		timeout:    timeout + uint64(confidence),
+
+		disabled: !more,
 
 		handle: hnd,
 		revert: rev,
