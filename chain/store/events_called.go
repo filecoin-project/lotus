@@ -76,11 +76,7 @@ func (e *calledEvents) headChangeCalled(rev, app []*types.TipSet) error {
 	for _, ts := range app {
 		// called triggers
 
-		err := e.checkNewCalls(ts)
-		if err != nil {
-			return err
-		}
-
+		e.checkNewCalls(ts)
 		e.applyWithConfidence(ts)
 		e.applyTimeouts(ts)
 	}
@@ -112,8 +108,8 @@ func (e *calledEvents) handleReverts(ts *types.TipSet) {
 	delete(e.revertQueue, ts.Height())
 }
 
-func (e *calledEvents) checkNewCalls(ts *types.TipSet) error {
-	return e.messagesForTs(ts, func(msg *types.Message) {
+func (e *calledEvents) checkNewCalls(ts *types.TipSet) {
+	e.messagesForTs(ts, func(msg *types.Message) {
 		// TODO: do we have to verify the receipt, or are messages on chain
 		//  guaranteed to be successful?
 
@@ -218,13 +214,15 @@ func (e *calledEvents) applyTimeouts(ts *types.TipSet) {
 	}
 }
 
-func (e *calledEvents) messagesForTs(ts *types.TipSet, consume func(*types.Message)) error {
+func (e *calledEvents) messagesForTs(ts *types.TipSet, consume func(*types.Message)) {
 	seen := map[cid.Cid]struct{}{}
 
 	for _, tsb := range ts.Blocks() {
 		bmsgs, smsgs, err := e.cs.MessagesForBlock(tsb)
 		if err != nil {
-			return err
+			log.Errorf("messagesForTs MessagesForBlock failed (ts.H=%d, Bcid:%s, B.Mcid:%s): %s", ts.Height(), tsb.Cid(), tsb.Messages, err)
+			// this is quite bad, but probably better than missing all the other updates
+			continue
 		}
 
 		for _, m := range bmsgs {
@@ -247,8 +245,6 @@ func (e *calledEvents) messagesForTs(ts *types.TipSet, consume func(*types.Messa
 			consume(&m.Message)
 		}
 	}
-
-	return nil
 }
 
 func (e *calledEvents) Called(check CheckFunc, hnd CalledHandler, rev RevertHandler, confidence int, timeout uint64, actor address.Address, method uint64) error {
