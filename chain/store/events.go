@@ -67,8 +67,9 @@ func NewEvents(cs eventChainStore) *Events {
 
 			confQueue:   map[uint64]map[uint64][]*queuedEvent{},
 			revertQueue: map[uint64][]uint64{},
-			triggers:    map[uint64]callHandler{},
+			triggers:    map[uint64]*callHandler{},
 			callTuples:  map[callTuple][]uint64{},
+			timeouts:    map[uint64]map[uint64]int{},
 		},
 	}
 
