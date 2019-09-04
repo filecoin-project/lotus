@@ -35,6 +35,8 @@ type queuedEvent struct {
 
 	h   uint64
 	msg *types.Message
+
+	called bool
 }
 
 type calledEvents struct {
@@ -47,7 +49,7 @@ type calledEvents struct {
 
 	// maps block heights to events
 	// [triggerH][msgH][event]
-	confQueue map[uint64]map[uint64][]queuedEvent
+	confQueue map[uint64]map[uint64][]*queuedEvent
 
 	// [msgH][triggerH]
 	revertQueue map[uint64][]uint64
@@ -89,12 +91,19 @@ func (e *calledEvents) handleReverts(ts *types.TipSet) {
 	for _, triggerH := range reverts {
 		toRevert := e.confQueue[triggerH][ts.Height()]
 		for _, event := range toRevert {
+			if !event.called {
+				continue // event wasn't apply()-ied yet
+			}
+
 			trigger := e.triggers[event.trigger]
+
 			if err := trigger.revert(ts); err != nil {
 				log.Errorf("reverting chain trigger (call %s.%d() @H %d, called @ %d) failed: %s", event.msg.To, event.msg.Method, ts.Height(), triggerH, err)
 			}
 		}
+		delete(e.confQueue[triggerH], ts.Height())
 	}
+	delete(e.revertQueue, ts.Height())
 }
 
 func (e *calledEvents) checkNewCalls(ts *types.TipSet) error {
@@ -124,15 +133,17 @@ func (e *calledEvents) queueForConfidence(triggerId uint64, msg *types.Message, 
 
 	byOrigH, ok := e.confQueue[triggerH]
 	if !ok {
-		byOrigH = map[uint64][]queuedEvent{}
+		byOrigH = map[uint64][]*queuedEvent{}
 		e.confQueue[triggerH] = byOrigH
 	}
 
-	byOrigH[ts.Height()] = append(byOrigH[ts.Height()], queuedEvent{
+	byOrigH[ts.Height()] = append(byOrigH[ts.Height()], &queuedEvent{
 		trigger: triggerId,
 		h:       ts.Height(),
 		msg:     msg,
 	})
+
+	e.revertQueue[ts.Height()] = append(e.revertQueue[ts.Height()], triggerH) // todo: dedupe?
 }
 
 func (e *calledEvents) applyWithConfidence(ts *types.TipSet) {
@@ -149,12 +160,13 @@ func (e *calledEvents) applyWithConfidence(ts *types.TipSet) {
 
 		for _, event := range events {
 			trigger := e.triggers[event.trigger]
+
 			if err := trigger.handle(event.msg, triggerTs, ts.Height()); err != nil {
 				log.Errorf("chain trigger (call %s.%d() @H %d, called @ %d) failed: %s", event.msg.To, event.msg.Method, origH, ts.Height(), err)
 				continue // don't revert failed calls
 			}
 
-			e.revertQueue[origH] = append(e.revertQueue[origH], ts.Height())
+			event.called = true
 		}
 	}
 }
@@ -225,3 +237,20 @@ func (e *calledEvents) Called(check CheckFunc, hnd CalledHandler, rev RevertHand
 	e.callTuples[ct] = append(e.callTuples[ct], id)
 	return nil
 }
+
+/*func (e *calledEvents) debugInfo() {
+	fmt.Println("vvv")
+	fmt.Println("@", e.tsc.best().Height())
+
+	for k, v := range e.revertQueue {
+		fmt.Println("revert (msgH->trigH)", k, v)
+	}
+	for triggerH, v := range e.confQueue {
+		for msgh, e := range v {
+			for _, evt := range e {
+				fmt.Printf("T@ %d, M@ %d, EH %d, T %d, called %t\n", triggerH, msgh, evt.h, evt.trigger, evt.called)
+			}
+		}
+	}
+	fmt.Println("^^^")
+}*/

@@ -4,12 +4,11 @@ import (
 	"fmt"
 	"github.com/filecoin-project/go-lotus/build"
 	"github.com/filecoin-project/go-lotus/chain/address"
-	"github.com/multiformats/go-multihash"
-	"testing"
-
 	"github.com/filecoin-project/go-lotus/chain/types"
 	"github.com/ipfs/go-cid"
+	"github.com/multiformats/go-multihash"
 	"github.com/stretchr/testify/require"
+	"testing"
 )
 
 var dummyCid cid.Cid
@@ -309,6 +308,22 @@ func TestCalled(t *testing.T) {
 		0: n2msg,
 	})
 
+	require.Equal(t, true, applied)
+	require.Equal(t, false, reverted)
+	applied = false
+
+	// send and revert below confidence, then cross confidence
+	fcs.advance(0, 1, map[int]cid.Cid{ // msg at H=16; H=16
+		0: fcs.fakeMsgs(fakeMsg{
+			bmsgs: []*types.Message{
+				{To: t0123, Method: 5, Nonce: 3},
+			},
+		}),
+	})
+
+	fcs.advance(1, 4, nil) // H=19, but message reverted
+
 	require.Equal(t, false, applied)
 	require.Equal(t, false, reverted)
+
 }
