@@ -7,4 +7,6 @@ const UnixfsLinksPerLevel = 1024
 
 const SectorSize = 1024
 
+const ForkLengthThreshold = 20
+
 // TODO: Move other important consts here
