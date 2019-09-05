@@ -1,4 +1,4 @@
-package store
+package events
 
 import (
 	"golang.org/x/xerrors"

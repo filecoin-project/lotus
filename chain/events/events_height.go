@@ -1,8 +1,9 @@
-package store
+package events
 
 import (
-	"github.com/filecoin-project/go-lotus/chain/types"
 	"sync"
+
+	"github.com/filecoin-project/go-lotus/chain/types"
 )
 
 type heightEvents struct {

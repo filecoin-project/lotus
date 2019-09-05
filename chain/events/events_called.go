@@ -1,9 +1,10 @@
-package store
+package events
 
 import (
-	"github.com/ipfs/go-cid"
 	"math"
 	"sync"
+
+	"github.com/ipfs/go-cid"
 
 	"github.com/filecoin-project/go-lotus/chain/address"
 	"github.com/filecoin-project/go-lotus/chain/types"

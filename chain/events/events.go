@@ -1,13 +1,16 @@
-package store
+package events
 
 import (
 	"sync"
 
+	logging "github.com/ipfs/go-log"
 	"golang.org/x/xerrors"
 
 	"github.com/filecoin-project/go-lotus/build"
 	"github.com/filecoin-project/go-lotus/chain/types"
 )
+
+var log = logging.Logger("events")
 
 // `curH`-`ts.Height` = `confidence`
 type HeightHandler func(ts *types.TipSet, curH uint64) error
