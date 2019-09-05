@@ -28,21 +28,12 @@ type eventChainStore interface {
 }
 
 type Events struct {
-	cs           eventChainStore
-	gcConfidence uint64
+	cs eventChainStore
 
 	tsc *tipSetCache
 	lk  sync.Mutex
 
-	ctr triggerId
-
-	// ChainAt
-
-	heightTriggers map[triggerId]*heightHandler
-
-	htTriggerHeights map[triggerH][]triggerId
-	htHeights        map[msgH][]triggerId
-
+	heightEvents
 	calledEvents
 }
 
@@ -52,18 +43,23 @@ func NewEvents(cs eventChainStore) *Events {
 	tsc := newTSCache(gcConfidence)
 
 	e := &Events{
-		cs:           cs,
-		gcConfidence: uint64(gcConfidence),
+		cs: cs,
 
 		tsc: tsc,
 
-		heightTriggers:   map[uint64]*heightHandler{},
-		htTriggerHeights: map[uint64][]uint64{},
-		htHeights:        map[uint64][]uint64{},
+		heightEvents: heightEvents{
+			tsc:          tsc,
+			gcConfidence: uint64(gcConfidence),
+
+			heightTriggers:   map[uint64]*heightHandler{},
+			htTriggerHeights: map[uint64][]uint64{},
+			htHeights:        map[uint64][]uint64{},
+		},
 
 		calledEvents: calledEvents{
-			cs:  cs,
-			tsc: tsc,
+			cs:           cs,
+			tsc:          tsc,
+			gcConfidence: uint64(gcConfidence),
 
 			confQueue:   map[triggerH]map[msgH][]*queuedEvent{},
 			revertQueue: map[msgH][]triggerH{},

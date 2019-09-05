@@ -50,8 +50,9 @@ type queuedEvent struct {
 }
 
 type calledEvents struct {
-	cs  eventChainStore
-	tsc *tipSetCache
+	cs           eventChainStore
+	tsc          *tipSetCache
+	gcConfidence uint64
 
 	lk sync.Mutex
 

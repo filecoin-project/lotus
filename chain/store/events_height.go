@@ -2,9 +2,26 @@ package store
 
 import (
 	"github.com/filecoin-project/go-lotus/chain/types"
+	"sync"
 )
 
-func (e *Events) headChangeAt(rev, app []*types.TipSet) error {
+type heightEvents struct {
+	lk           sync.Mutex
+	tsc          *tipSetCache
+	gcConfidence uint64
+
+	ctr triggerId
+
+	heightTriggers map[triggerId]*heightHandler
+
+	htTriggerHeights map[triggerH][]triggerId
+	htHeights        map[msgH][]triggerId
+}
+
+func (e *heightEvents) headChangeAt(rev, app []*types.TipSet) error {
+	e.lk.Lock()
+	defer e.lk.Unlock()
+
 	// highest tipset is always the first (see cs.ReorgOps)
 	newH := app[0].Height()
 
@@ -55,7 +72,7 @@ func (e *Events) headChangeAt(rev, app []*types.TipSet) error {
 	return nil
 }
 
-func (e *Events) ChainAt(hnd HeightHandler, rev RevertHandler, confidence int, h uint64) error {
+func (e *heightEvents) ChainAt(hnd HeightHandler, rev RevertHandler, confidence int, h uint64) error {
 	e.lk.Lock()
 	defer e.lk.Unlock()
 
