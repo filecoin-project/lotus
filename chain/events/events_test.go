@@ -98,7 +98,7 @@ func (fcs *fakeCS) advance(rev, app int, msgs map[int]cid.Cid) { // todo: allow 
 		require.NoError(fcs.t, fcs.tsc.revert(ts))
 	}
 
-	var apps []*types.TipSet
+	apps := make([]*types.TipSet, app)
 	for i := 0; i < app; i++ {
 		fcs.h++
 
@@ -110,7 +110,7 @@ func (fcs *fakeCS) advance(rev, app int, msgs map[int]cid.Cid) { // todo: allow 
 		ts := makeTs(fcs.t, fcs.h, mc)
 		require.NoError(fcs.t, fcs.tsc.add(ts))
 
-		apps = append(apps, ts)
+		apps[app-i-1] = ts
 	}
 
 	err := fcs.sub(revs, apps)
@@ -445,4 +445,67 @@ func TestCalledTimeout(t *testing.T) {
 
 	fcs.advance(0, 5, nil)
 	require.False(t, called)
+}
+
+func TestCalledOrder(t *testing.T) {
+	fcs := &fakeCS{
+		t: t,
+		h: 1,
+
+		msgs: map[cid.Cid]fakeMsg{},
+		tsc:  newTSCache(2 * build.ForkLengthThreshold),
+	}
+	require.NoError(t, fcs.tsc.add(makeTs(t, 1, dummyCid)))
+
+	events := NewEvents(fcs)
+
+	t0123, err := address.NewFromString("t0123")
+	require.NoError(t, err)
+
+	at := 0
+
+	err = events.Called(func(ts *types.TipSet) (d bool, m bool, e error) {
+		return false, true, nil
+	}, func(msg *types.Message, ts *types.TipSet, curH uint64) (bool, error) {
+		switch at {
+		case 0:
+			require.Equal(t, uint64(1), msg.Nonce)
+			require.Equal(t, uint64(3), ts.Height())
+		case 1:
+			require.Equal(t, uint64(2), msg.Nonce)
+			require.Equal(t, uint64(4), ts.Height())
+		default:
+			t.Fatal("apply should only get called twice, at: ", at)
+		}
+		at++
+		return true, nil
+	}, func(ts *types.TipSet) error {
+		switch at {
+		case 2:
+			require.Equal(t, uint64(4), ts.Height())
+		case 3:
+			require.Equal(t, uint64(3), ts.Height())
+		default:
+			t.Fatal("revert should only get called twice, at: ", at)
+		}
+		at++
+		return nil
+	}, 3, 20, t0123, 5)
+	require.NoError(t, err)
+
+	fcs.advance(0, 10, map[int]cid.Cid{
+		1: fcs.fakeMsgs(fakeMsg{
+			bmsgs: []*types.Message{
+				{To: t0123, Method: 5, Nonce: 1},
+			},
+		}),
+		2: fcs.fakeMsgs(fakeMsg{
+			bmsgs: []*types.Message{
+				{To: t0123, Method: 5, Nonce: 2},
+			},
+		}),
+	})
+
+	fcs.advance(9, 1, nil)
+
 }

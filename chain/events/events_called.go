@@ -86,7 +86,9 @@ func (e *calledEvents) headChangeCalled(rev, app []*types.TipSet) error {
 		e.handleReverts(ts)
 	}
 
-	for _, ts := range app {
+	tail := len(app) - 1
+	for i := range app {
+		ts := app[tail-i]
 		// called triggers
 
 		e.checkNewCalls(ts)

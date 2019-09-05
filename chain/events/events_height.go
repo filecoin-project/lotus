@@ -47,7 +47,10 @@ func (e *heightEvents) headChangeAt(rev, app []*types.TipSet) error {
 		}
 	}
 
-	for _, ts := range app {
+	tail := len(app) - 1
+	for i := range app {
+		ts := app[tail-i]
+
 		if err := e.tsc.add(ts); err != nil {
 			return err
 		}
