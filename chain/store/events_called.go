@@ -9,9 +9,14 @@ import (
 	"github.com/filecoin-project/go-lotus/chain/types"
 )
 
-// continous
-// with reverts
-// no timout
+type triggerId = uint64
+
+// msgH is the block height at which a message was present / event has happened
+type msgH = uint64
+
+// triggerH is the block height at which the listener will be notified about the
+//  message (msgH+confidence)
+type triggerH = uint64
 
 // `ts` is the tipset, in which the `msg` is included.
 // `curH`-`ts.Height` = `confidence`
@@ -36,7 +41,7 @@ type callHandler struct {
 }
 
 type queuedEvent struct {
-	trigger uint64
+	trigger triggerId
 
 	h   uint64
 	msg *types.Message
@@ -50,20 +55,20 @@ type calledEvents struct {
 
 	lk sync.Mutex
 
-	ctr uint64
+	ctr triggerId
 
-	triggers   map[uint64]*callHandler
-	callTuples map[callTuple][]uint64
+	triggers   map[triggerId]*callHandler
+	callTuples map[callTuple][]triggerId
 
 	// maps block heights to events
 	// [triggerH][msgH][event]
-	confQueue map[uint64]map[uint64][]*queuedEvent
+	confQueue map[triggerH]map[msgH][]*queuedEvent
 
 	// [msgH][triggerH]
-	revertQueue map[uint64][]uint64
+	revertQueue map[msgH][]triggerH
 
 	// [timeoutH+confidence][triggerId]{calls}
-	timeouts map[uint64]map[uint64]int
+	timeouts map[uint64]map[triggerId]int
 }
 
 type callTuple struct {
@@ -72,6 +77,9 @@ type callTuple struct {
 }
 
 func (e *calledEvents) headChangeCalled(rev, app []*types.TipSet) error {
+	e.lk.Lock()
+	defer e.lk.Unlock()
+
 	for _, ts := range rev {
 		e.handleReverts(ts)
 	}
@@ -290,20 +298,3 @@ func (e *calledEvents) Called(check CheckFunc, hnd CalledHandler, rev RevertHand
 
 	return nil
 }
-
-/*func (e *calledEvents) debugInfo() {
-	fmt.Println("vvv")
-	fmt.Println("@", e.tsc.best().Height())
-
-	for k, v := range e.revertQueue {
-		fmt.Println("revert (msgH->trigH)", k, v)
-	}
-	for triggerH, v := range e.confQueue {
-		for msgh, e := range v {
-			for _, evt := range e {
-				fmt.Printf("T@ %d, M@ %d, EH %d, T %d, called %t\n", triggerH, msgh, evt.h, evt.trigger, evt.called)
-			}
-		}
-	}
-	fmt.Println("^^^")
-}*/

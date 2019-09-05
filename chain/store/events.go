@@ -34,14 +34,14 @@ type Events struct {
 	tsc *tipSetCache
 	lk  sync.Mutex
 
-	ctr uint64
+	ctr triggerId
 
 	// ChainAt
 
-	heightTriggers map[uint64]*heightHandler
+	heightTriggers map[triggerId]*heightHandler
 
-	htTriggerHeights map[uint64][]uint64
-	htHeights        map[uint64][]uint64
+	htTriggerHeights map[triggerH][]triggerId
+	htHeights        map[msgH][]triggerId
 
 	calledEvents
 }
@@ -65,11 +65,11 @@ func NewEvents(cs eventChainStore) *Events {
 			cs:  cs,
 			tsc: tsc,
 
-			confQueue:   map[uint64]map[uint64][]*queuedEvent{},
-			revertQueue: map[uint64][]uint64{},
-			triggers:    map[uint64]*callHandler{},
-			callTuples:  map[callTuple][]uint64{},
-			timeouts:    map[uint64]map[uint64]int{},
+			confQueue:   map[triggerH]map[msgH][]*queuedEvent{},
+			revertQueue: map[msgH][]triggerH{},
+			triggers:    map[triggerId]*callHandler{},
+			callTuples:  map[callTuple][]triggerId{},
+			timeouts:    map[uint64]map[triggerId]int{},
 		},
 	}
 
