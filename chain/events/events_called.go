@@ -10,6 +10,8 @@ import (
 	"github.com/filecoin-project/go-lotus/chain/types"
 )
 
+const NoTimeout = math.MaxUint64
+
 type triggerId = uint64
 
 // msgH is the block height at which a message was present / event has happened
@@ -271,7 +273,7 @@ func (e *calledEvents) Called(check CheckFunc, hnd CalledHandler, rev RevertHand
 		return err
 	}
 	if done {
-		timeout = math.MaxUint64
+		timeout = NoTimeout
 	}
 
 	id := e.ctr
@@ -293,7 +295,7 @@ func (e *calledEvents) Called(check CheckFunc, hnd CalledHandler, rev RevertHand
 	}
 
 	e.callTuples[ct] = append(e.callTuples[ct], id)
-	if timeout != math.MaxUint64 {
+	if timeout != NoTimeout {
 		if e.timeouts[timeout+uint64(confidence)] == nil {
 			e.timeouts[timeout+uint64(confidence)] = map[uint64]int{}
 		}
