@@ -7,3 +7,7 @@
 **/*.a
 **/*.pc
 build/.*
+/vendor
+
+*-fuzz.zip
+/chain/types/work_msg/
