@@ -13,7 +13,7 @@ require (
 	github.com/gbrlsnchs/jwt/v3 v3.0.0-beta.1
 	github.com/go-ole/go-ole v1.2.4 // indirect
 	github.com/gorilla/websocket v1.4.0
-	github.com/ipfs/go-bitswap v0.1.7-0.20190808170517-167327fc3c5e
+	github.com/ipfs/go-bitswap v0.1.8
 	github.com/ipfs/go-block-format v0.0.2
 	github.com/ipfs/go-blockservice v0.1.2
 	github.com/ipfs/go-car v0.0.0-20190823083746-79984a8632b4
@@ -32,9 +32,9 @@ require (
 	github.com/ipfs/go-ipfs-routing v0.1.0
 	github.com/ipfs/go-ipld-cbor v0.0.3
 	github.com/ipfs/go-ipld-format v0.0.2
-	github.com/ipfs/go-log v0.0.2-0.20190708183747-9c9fd6111bea
+	github.com/ipfs/go-log v0.0.2-0.20190905183954-62f287c7db59
 	github.com/ipfs/go-merkledag v0.2.3
-	github.com/ipfs/go-unixfs v0.2.2-0.20190823181532-868af2e9e5cb63f114a445a00d595c028026c28c
+	github.com/ipfs/go-unixfs v0.2.2-0.20190827150610-868af2e9e5cb
 	github.com/ipsn/go-secp256k1 v0.0.0-20180726113642-9d62b9f0bc52
 	github.com/libp2p/go-libp2p v0.3.0
 	github.com/libp2p/go-libp2p-circuit v0.1.1
