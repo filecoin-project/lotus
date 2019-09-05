@@ -264,6 +264,30 @@ func (e *calledEvents) messagesForTs(ts *types.TipSet, consume func(*types.Messa
 	}
 }
 
+// Called registers a callbacks which are triggered when a specified method is
+//  called on an actor, or a timeout is reached.
+//
+// * `CheckFunc` callback is invoked immediately with a recent tipset, it
+//    returns two booleans - `done`, and `more`.
+//
+//  * `done` should be true when some on-chain action we are waiting for has
+//    happened. When `done` is set to true, timeout trigger is disabled.
+//
+//  * `more` should be false when we don't want to receive new notifications
+//    through CalledHandler. Note that notifications may still be delivered to
+//    RevertHandler
+//
+// * `CalledHandler` is called when the specified event was observed on-chain,
+//    and a confidence threshold was reached, or the specified `timeout` height
+//    was reached with no events observed. When this callback is invoked on a
+//    timeout, `msg` is set to nil. This callback returns a boolean specifying
+//    whether further notifications should be sent, like `more` return param
+//    from `CheckFunc` above.
+//
+// * `RevertHandler` is called after apply handler, when we drop the tipset
+//    containing the message. The tipset passed as the argument is the tipset
+//    that is being dropped. Note that the message dropped may be re-applied
+//    in a different tipset in small amount of time.
 func (e *calledEvents) Called(check CheckFunc, hnd CalledHandler, rev RevertHandler, confidence int, timeout uint64, actor address.Address, method uint64) error {
 	e.lk.Lock()
 	defer e.lk.Unlock()

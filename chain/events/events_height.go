@@ -76,6 +76,9 @@ func (e *heightEvents) headChangeAt(rev, app []*types.TipSet) error {
 	return nil
 }
 
+// ChainAt invokes the specified `HeightHandler` when the chain reaches the
+//  specified height+confidence threshold. If the chain is rolled-back under the
+//  specified height, `RevertHandler` will be called.
 func (e *heightEvents) ChainAt(hnd HeightHandler, rev RevertHandler, confidence int, h uint64) error {
 	e.lk.Lock()
 	defer e.lk.Unlock()
