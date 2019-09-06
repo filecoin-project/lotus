@@ -47,11 +47,15 @@ class FullNode extends React.Component {
 
     let minerList = await this.props.client.call('Filecoin.MinerAddresses', [])
 
+    let mpoolPending = (await this.props.client.call('Filecoin.MpoolPending', [tipset])).length
+
     this.setState(() => ({
       id: id,
       version: version,
       peers: peers.length,
       tipset: tipset,
+
+      mpoolPending: mpoolPending,
 
       addrs: addrs,
       paychs: paychs,
@@ -101,7 +105,7 @@ class FullNode extends React.Component {
           <div>
             Head: {
             <BlockLinks cids={this.state.tipset.Cids} conn={this.props.client} mountWindow={this.props.mountWindow} />
-          } H:{this.state.tipset.Height} <a href="#" onClick={this.explorer}>[Explore]</a> <a href="#" onClick={this.client}>[Client]</a>
+          } H:{this.state.tipset.Height} Mp:{this.state.mpoolPending} <a href="#" onClick={this.explorer}>[Explore]</a> <a href="#" onClick={this.client}>[Client]</a>
           </div>
         )
       }
@@ -114,14 +118,14 @@ class FullNode extends React.Component {
       let storageMine = <a href="#" onClick={this.startStorageMiner}>[Spawn Storage Miner]</a>
 
       let addresses = this.state.addrs.map((addr) => {
-        let line = <Address client={this.props.client} add1k={this.add1k} addr={addr} mountWindow={this.props.mountWindow}/>
+        let line = <Address client={this.props.client} add1k={this.add1k} add10k={true} nonce={true} addr={addr} mountWindow={this.props.mountWindow}/>
         if (this.state.defaultAddr === addr) {
           line = <b>{line}</b>
         }
         return <div key={addr}>{line}</div>
       })
       let paychannels = this.state.paychs.map((addr, ak) => {
-        const line = <Address client={this.props.client} add1k={this.add1k} addr={addr} mountWindow={this.props.mountWindow}/>
+        const line = <Address client={this.props.client} add1k={this.add1k} add10k={true} addr={addr} mountWindow={this.props.mountWindow}/>
         const vouchers = this.state.vouchers[ak].map(voucher => {
           let extra = <span></span>
           if(voucher.Extra) {

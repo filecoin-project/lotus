@@ -8,7 +8,7 @@ class Client extends React.Component {
     this.state = {
       kbs: 1,
       blocks: 12,
-      total: "1000",
+      total: 36000,
       miner: "t0101"
     }
   }
@@ -16,9 +16,9 @@ class Client extends React.Component {
   update = (name) => (e) => this.setState({ [name]: e.target.value });
 
   makeDeal = async () => {
-    let file = await this.props.pondClient.call('Pond.CreateRandomFile', [this.state.kbs * 1000]) // 1024 won't fit in 1x blocks :(
+    let file = await this.props.pondClient.call('Pond.CreateRandomFile', [this.state.kbs * 1000]) // 1024 won't fit in 1k blocks :(
     let cid = await this.props.client.call('Filecoin.ClientImport', [file])
-    let dealcid = await this.props.client.call('Filecoin.ClientStartDeal', [cid, this.state.miner, this.state.total, this.state.blocks])
+    let dealcid = await this.props.client.call('Filecoin.ClientStartDeal', [cid, this.state.miner, `${Math.round(this.state.total / this.state.blocks)}`, this.state.blocks])
     console.log("deal cid: ", dealcid)
   }
 
@@ -31,7 +31,7 @@ class Client extends React.Component {
       <select><option>t0101</option></select>
       <abbr title="Data length">L:</abbr> <input placeholder="KBs" defaultValue={1} onChange={this.update("kbs")}/>
       <abbr title="Deal duration">Dur:</abbr><input placeholder="blocks" defaultValue={12} onChange={this.update("blocks")}/>
-      Total: <input placeholder="total price" defaultValue={1000} onChange={this.update("total")}/>
+      Total: <input placeholder="total price" defaultValue={36000} onChange={this.update("total")}/>
       <span><abbr title="Price per block">PpB:</abbr> {ppb} </span>
       <span><abbr title="Price per block-MiB">PpMbB:</abbr> {ppmbb} </span>
       <button onClick={this.makeDeal}>Deal!</button>

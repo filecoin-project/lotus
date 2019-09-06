@@ -81,7 +81,7 @@ class NodeList extends React.Component {
       return [addr, balance]
     }).reduce(async (c, n) => (await c)[1] > (await n)[1] ? await c : await n, Promise.resolve(['', -2]))
 
-    pushMessage(this.state.nodes[1].conn, bestaddr, {
+    await pushMessage(this.state.nodes[1].conn, bestaddr, {
       To: to,
       From: bestaddr,
       Value: "1000",
