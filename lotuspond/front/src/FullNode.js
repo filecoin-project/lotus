@@ -1,10 +1,10 @@
 import React from 'react';
-import { Client } from 'rpc-websockets'
 import Cristal from 'react-cristal'
 import { BlockLinks } from "./BlockLink";
 import StorageNodeInit from "./StorageNodeInit";
 import Address from "./Address";
 import ChainExplorer from "./ChainExplorer";
+import Client from "./Client";
 
 class FullNode extends React.Component {
   constructor(props) {
@@ -18,6 +18,7 @@ class FullNode extends React.Component {
     this.startStorageMiner = this.startStorageMiner.bind(this)
     this.add1k = this.add1k.bind(this)
     this.explorer = this.explorer.bind(this)
+    this.client = this.client.bind(this)
 
     this.loadInfo()
     setInterval(this.loadInfo, 2050)
@@ -86,6 +87,10 @@ class FullNode extends React.Component {
     this.props.mountWindow((onClose) => <ChainExplorer onClose={onClose} ts={this.state.tipset} client={this.props.client} mountWindow={this.props.mountWindow}/>)
   }
 
+  client() {
+    this.props.mountWindow((onClose) => <Client onClose={onClose} node={this.props.node} client={this.props.client} pondClient={this.props.pondClient} mountWindow={this.props.mountWindow}/>)
+  }
+
   render() {
     let runtime = <div></div>
 
@@ -96,7 +101,7 @@ class FullNode extends React.Component {
           <div>
             Head: {
             <BlockLinks cids={this.state.tipset.Cids} conn={this.props.client} mountWindow={this.props.mountWindow} />
-          } H:{this.state.tipset.Height} <a href="#" onClick={this.explorer}>[Explore]</a>
+          } H:{this.state.tipset.Height} <a href="#" onClick={this.explorer}>[Explore]</a> <a href="#" onClick={this.client}>[Client]</a>
           </div>
         )
       }
