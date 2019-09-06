@@ -113,7 +113,7 @@ func (mp *MessagePool) Remove(from address.Address, nonce uint64) {
 func (mp *MessagePool) Pending() []*types.SignedMessage {
 	mp.lk.Lock()
 	defer mp.lk.Unlock()
-	var out []*types.SignedMessage
+	out := make([]*types.SignedMessage, 0)
 	for _, mset := range mp.pending {
 		for i := mset.startNonce; true; i++ {
 			m, ok := mset.msgs[i]
