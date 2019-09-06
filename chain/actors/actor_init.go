@@ -5,14 +5,13 @@ import (
 	"context"
 	"encoding/binary"
 	"fmt"
-
 	"github.com/filecoin-project/go-lotus/chain/actors/aerrors"
 	"github.com/filecoin-project/go-lotus/chain/address"
 	"github.com/filecoin-project/go-lotus/chain/types"
 	"golang.org/x/xerrors"
 
 	"github.com/ipfs/go-cid"
-	hamt "github.com/ipfs/go-hamt-ipld"
+	"github.com/ipfs/go-hamt-ipld"
 	cbor "github.com/ipfs/go-ipld-cbor"
 	logging "github.com/ipfs/go-log"
 	mh "github.com/multiformats/go-multihash"
@@ -211,7 +210,8 @@ func (ias *InitActorState) Lookup(cst *hamt.CborIpldStore, addr address.Address)
 		return address.Undef, err
 	}
 
-	val, err := amap.Find(context.TODO(), string(addr.Bytes()))
+	var val interface{}
+	err = amap.Find(context.TODO(), string(addr.Bytes()), &val)
 	if err != nil {
 		return address.Undef, err
 	}

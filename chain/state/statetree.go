@@ -100,7 +100,8 @@ func (st *StateTree) GetActor(addr address.Address) (*types.Actor, error) {
 		return cact, nil
 	}
 
-	thing, err := st.root.Find(context.TODO(), string(addr.Bytes()))
+	var thing interface{}
+	err := st.root.Find(context.TODO(), string(addr.Bytes()), &thing)
 	if err != nil {
 		if err == hamt.ErrNotFound {
 			return nil, types.ErrActorNotFound
