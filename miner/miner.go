@@ -232,7 +232,7 @@ func (m *Miner) computeVRF(ctx context.Context, input []byte) ([]byte, error) {
 }
 
 func (m *Miner) getMinerWorker(ctx context.Context, addr address.Address, ts *types.TipSet) (address.Address, error) {
-	ret, err := m.api.ChainCall(ctx, &types.Message{
+	ret, err := m.api.StateCall(ctx, &types.Message{
 		From:   addr,
 		To:     addr,
 		Method: actors.MAMethods.GetWorkerAddr,

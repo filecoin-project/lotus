@@ -454,6 +454,10 @@ func (vm *VM) ApplyMessage(ctx context.Context, msg *types.Message) (*ApplyRet, 
 	}, nil
 }
 
+func (vm *VM) SetBlockMiner(m address.Address) {
+	vm.blockMiner = m
+}
+
 func (vm *VM) ActorBalance(addr address.Address) (types.BigInt, aerrors.ActorError) {
 	act, err := vm.cstate.GetActor(addr)
 	if err != nil {

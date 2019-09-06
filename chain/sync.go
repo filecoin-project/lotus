@@ -11,6 +11,7 @@ import (
 	"github.com/filecoin-project/go-lotus/build"
 	"github.com/filecoin-project/go-lotus/chain/actors"
 	"github.com/filecoin-project/go-lotus/chain/address"
+	"github.com/filecoin-project/go-lotus/chain/stmgr"
 	"github.com/filecoin-project/go-lotus/chain/store"
 	"github.com/filecoin-project/go-lotus/chain/types"
 	"github.com/filecoin-project/go-lotus/chain/vm"
@@ -34,6 +35,9 @@ type Syncer struct {
 	// The interface for accessing and putting tipsets into local storage
 	store *store.ChainStore
 
+	// the state manager handles making state queries
+	sm *stmgr.StateManager
+
 	// The known Genesis tipset
 	Genesis *types.TipSet
 
@@ -53,8 +57,8 @@ type Syncer struct {
 	peerHeadsLk sync.Mutex
 }
 
-func NewSyncer(cs *store.ChainStore, bsync *BlockSync, self peer.ID) (*Syncer, error) {
-	gen, err := cs.GetGenesis()
+func NewSyncer(sm *stmgr.StateManager, bsync *BlockSync, self peer.ID) (*Syncer, error) {
+	gen, err := sm.ChainStore().GetGenesis()
 	if err != nil {
 		return nil, err
 	}
@@ -68,7 +72,8 @@ func NewSyncer(cs *store.ChainStore, bsync *BlockSync, self peer.ID) (*Syncer, e
 		Genesis:   gent,
 		Bsync:     bsync,
 		peerHeads: make(map[peer.ID]*types.TipSet),
-		store:     cs,
+		store:     sm.ChainStore(),
+		sm:        sm,
 		self:      self,
 	}, nil
 }
@@ -320,7 +325,7 @@ func (syncer *Syncer) minerIsValid(ctx context.Context, maddr address.Address, b
 		return err
 	}
 
-	ret, err := vm.Call(ctx, syncer.store, &types.Message{
+	ret, err := stmgr.Call(ctx, syncer.sm, &types.Message{
 		To:     actors.StorageMarketAddress,
 		From:   maddr,
 		Method: actors.SMAMethods.IsMiner,
@@ -353,7 +358,6 @@ func (syncer *Syncer) validateTickets(ctx context.Context, mworker address.Addre
 			Data: next.VRFProof,
 		}
 
-		log.Infof("About to verify signature: ", sig.Data, mworker, cur.VDFResult)
 		if err := sig.Verify(mworker, cur.VDFResult); err != nil {
 			return xerrors.Errorf("invalid ticket, VRFProof invalid: %w", err)
 		}
@@ -369,62 +373,10 @@ func (syncer *Syncer) validateTickets(ctx context.Context, mworker address.Addre
 	return nil
 }
 
-func getMinerWorker(ctx context.Context, cs *store.ChainStore, st cid.Cid, maddr address.Address) (address.Address, error) {
-	recp, err := vm.CallRaw(ctx, cs, &types.Message{
-		To:     maddr,
-		From:   maddr,
-		Method: actors.MAMethods.GetWorkerAddr,
-	}, st, 0)
-	if err != nil {
-		return address.Undef, xerrors.Errorf("callRaw failed: %w", err)
-	}
-
-	if recp.ExitCode != 0 {
-		return address.Undef, xerrors.Errorf("getting miner worker addr failed (exit code %d)", recp.ExitCode)
-	}
-
-	worker, err := address.NewFromBytes(recp.Return)
-	if err != nil {
-		return address.Undef, err
-	}
-
-	if worker.Protocol() == address.ID {
-		return address.Undef, xerrors.Errorf("need to resolve worker address to a pubkeyaddr")
-	}
-
-	return worker, nil
-}
-
-func getMinerOwner(ctx context.Context, cs *store.ChainStore, st cid.Cid, maddr address.Address) (address.Address, error) {
-	recp, err := vm.CallRaw(ctx, cs, &types.Message{
-		To:     maddr,
-		From:   maddr,
-		Method: actors.MAMethods.GetOwner,
-	}, st, 0)
-	if err != nil {
-		return address.Undef, xerrors.Errorf("callRaw failed: %w", err)
-	}
-
-	if recp.ExitCode != 0 {
-		return address.Undef, xerrors.Errorf("getting miner owner addr failed (exit code %d)", recp.ExitCode)
-	}
-
-	owner, err := address.NewFromBytes(recp.Return)
-	if err != nil {
-		return address.Undef, err
-	}
-
-	if owner.Protocol() == address.ID {
-		return address.Undef, xerrors.Errorf("need to resolve owner address to a pubkeyaddr")
-	}
-
-	return owner, nil
-}
-
 // Should match up with 'Semantical Validation' in validation.md in the spec
 func (syncer *Syncer) ValidateBlock(ctx context.Context, b *types.FullBlock) error {
 	h := b.Header
-	stateroot, err := syncer.store.TipSetState(h.Parents)
+	stateroot, err := syncer.sm.TipSetState(h.Parents)
 	if err != nil {
 		return xerrors.Errorf("get tipsetstate(%d, %s) failed: %w", h.Height, h.Parents, err)
 	}
@@ -447,13 +399,31 @@ func (syncer *Syncer) ValidateBlock(ctx context.Context, b *types.FullBlock) err
 		return xerrors.Errorf("minerIsValid failed: %w", err)
 	}
 
-	waddr, err := getMinerWorker(ctx, syncer.store, stateroot, h.Miner)
+	waddr, err := stmgr.GetMinerWorker(ctx, syncer.sm, stateroot, h.Miner)
 	if err != nil {
-		return xerrors.Errorf("getMinerWorker failed: %w", err)
+		return xerrors.Errorf("GetMinerWorker failed: %w", err)
 	}
 
 	if err := syncer.validateTickets(ctx, waddr, h.Tickets, baseTs); err != nil {
 		return xerrors.Errorf("validating block tickets failed: %w", err)
+	}
+
+	rand, err := syncer.sm.ChainStore().GetRandomness(ctx, baseTs, h.Tickets, build.RandomnessLookback)
+	if err != nil {
+		return xerrors.Errorf("failed to get randomness for verifying election proof: %w", err)
+	}
+
+	if err := VerifyElectionProof(ctx, h.ElectionProof, rand, waddr); err != nil {
+		return xerrors.Errorf("checking eproof failed: %w", err)
+	}
+
+	mpow, tpow, err := GetPower(ctx, syncer.sm, baseTs, h.Miner)
+	if err != nil {
+		return xerrors.Errorf("failed getting power: %w", err)
+	}
+
+	if !types.PowerCmp(h.ElectionProof, mpow, tpow) {
+		return xerrors.Errorf("miner created a block but was not a winner")
 	}
 
 	vmi, err := vm.NewVM(stateroot, h.Height, h.Miner, syncer.store)
@@ -461,7 +431,7 @@ func (syncer *Syncer) ValidateBlock(ctx context.Context, b *types.FullBlock) err
 		return xerrors.Errorf("failed to instantiate VM: %w", err)
 	}
 
-	owner, err := getMinerOwner(ctx, syncer.store, stateroot, b.Header.Miner)
+	owner, err := stmgr.GetMinerOwner(ctx, syncer.sm, stateroot, b.Header.Miner)
 	if err != nil {
 		return xerrors.Errorf("getting miner owner for block miner failed: %w", err)
 	}
@@ -572,7 +542,7 @@ func (syncer *Syncer) collectHeaders(from *types.TipSet, to *types.TipSet) ([]*t
 
 func (syncer *Syncer) syncMessagesAndCheckState(headers []*types.TipSet) error {
 	return syncer.iterFullTipsets(headers, func(fts *store.FullTipSet) error {
-		log.Warn("validating tipset: ", fts.TipSet().Height())
+		log.Warnf("validating tipset (heigt=%d, size=%d)", fts.TipSet().Height(), len(fts.TipSet().Cids()))
 		if err := syncer.ValidateTipSet(context.TODO(), fts); err != nil {
 			log.Errorf("failed to validate tipset: %s", err)
 			return xerrors.Errorf("message processing failed: %w", err)
@@ -691,4 +661,60 @@ func (syncer *Syncer) collectChain(fts *store.FullTipSet) error {
 	}
 
 	return nil
+}
+
+func VerifyElectionProof(ctx context.Context, eproof []byte, rand []byte, worker address.Address) error {
+	sig := types.Signature{
+		Data: eproof,
+		Type: types.KTBLS,
+	}
+
+	if err := sig.Verify(worker, rand); err != nil {
+		return xerrors.Errorf("failed to verify election proof signature: %w", err)
+	}
+
+	return nil
+}
+
+func GetPower(ctx context.Context, sm *stmgr.StateManager, ts *types.TipSet, maddr address.Address) (types.BigInt, types.BigInt, error) {
+	var err error
+	enc, err := actors.SerializeParams(&actors.PowerLookupParams{maddr})
+	if err != nil {
+		return types.EmptyInt, types.EmptyInt, err
+	}
+
+	var mpow types.BigInt
+
+	if maddr != address.Undef {
+		ret, err := stmgr.Call(ctx, sm, &types.Message{
+			From:   maddr,
+			To:     actors.StorageMarketAddress,
+			Method: actors.SMAMethods.PowerLookup,
+			Params: enc,
+		}, ts)
+		if err != nil {
+			return types.EmptyInt, types.EmptyInt, xerrors.Errorf("failed to get miner power from chain: %w", err)
+		}
+		if ret.ExitCode != 0 {
+			return types.EmptyInt, types.EmptyInt, xerrors.Errorf("failed to get miner power from chain (exit code %d)", ret.ExitCode)
+		}
+
+		mpow = types.BigFromBytes(ret.Return)
+	}
+
+	ret, err := stmgr.Call(ctx, sm, &types.Message{
+		From:   actors.StorageMarketAddress,
+		To:     actors.StorageMarketAddress,
+		Method: actors.SMAMethods.GetTotalStorage,
+	}, ts)
+	if err != nil {
+		return types.EmptyInt, types.EmptyInt, xerrors.Errorf("failed to get total power from chain: %w", err)
+	}
+	if ret.ExitCode != 0 {
+		return types.EmptyInt, types.EmptyInt, xerrors.Errorf("failed to get total power from chain (exit code %d)", ret.ExitCode)
+	}
+
+	tpow := types.BigFromBytes(ret.Return)
+
+	return mpow, tpow, nil
 }

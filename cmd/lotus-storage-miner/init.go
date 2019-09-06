@@ -143,7 +143,7 @@ func configureStorageMiner(ctx context.Context, api api.FullNode, addr address.A
 	}
 
 	// This really just needs to be an api call at this point...
-	recp, err := api.ChainCall(ctx, &types.Message{
+	recp, err := api.StateCall(ctx, &types.Message{
 		To:     addr,
 		From:   addr,
 		Method: actors.MAMethods.GetWorkerAddr,

@@ -4,7 +4,7 @@ import (
 	"context"
 
 	"github.com/filecoin-project/go-lotus/chain/address"
-	"github.com/filecoin-project/go-lotus/chain/store"
+	"github.com/filecoin-project/go-lotus/chain/stmgr"
 	"github.com/filecoin-project/go-lotus/chain/types"
 	"github.com/filecoin-project/go-lotus/chain/wallet"
 
@@ -15,8 +15,8 @@ import (
 type WalletAPI struct {
 	fx.In
 
-	Chain  *store.ChainStore
-	Wallet *wallet.Wallet
+	StateManager *stmgr.StateManager
+	Wallet       *wallet.Wallet
 }
 
 func (a *WalletAPI) WalletNew(ctx context.Context, typ string) (address.Address, error) {
@@ -32,7 +32,7 @@ func (a *WalletAPI) WalletList(ctx context.Context) ([]address.Address, error) {
 }
 
 func (a *WalletAPI) WalletBalance(ctx context.Context, addr address.Address) (types.BigInt, error) {
-	return a.Chain.GetBalance(addr)
+	return a.StateManager.GetBalance(addr)
 }
 
 func (a *WalletAPI) WalletSign(ctx context.Context, k address.Address, msg []byte) (*types.Signature, error) {

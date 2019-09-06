@@ -48,16 +48,11 @@ type FullNode interface {
 	ChainNotify(context.Context) (<-chan *store.HeadChange, error)
 	ChainHead(context.Context) (*types.TipSet, error)                // TODO: check serialization
 	ChainSubmitBlock(ctx context.Context, blk *chain.BlockMsg) error // TODO: check serialization
-	ChainGetRandomness(context.Context, *types.TipSet) ([]byte, error)
+	ChainGetRandomness(context.Context, *types.TipSet, []*types.Ticket, int) ([]byte, error)
 	ChainWaitMsg(context.Context, cid.Cid) (*MsgWait, error)
 	ChainGetBlock(context.Context, cid.Cid) (*types.BlockHeader, error)
 	ChainGetBlockMessages(context.Context, cid.Cid) (*BlockMessages, error)
 	ChainGetBlockReceipts(context.Context, cid.Cid) ([]*types.MessageReceipt, error)
-	ChainGetActor(ctx context.Context, actor address.Address, ts *types.TipSet) (*types.Actor, error)
-	ChainReadState(ctx context.Context, act *types.Actor, ts *types.TipSet) (*ActorState, error)
-
-	// if tipset is nil, we'll use heaviest
-	ChainCall(context.Context, *types.Message, *types.TipSet) (*types.MessageReceipt, error)
 
 	// messages
 
@@ -107,6 +102,10 @@ type FullNode interface {
 	StateMinerProvingSet(context.Context, address.Address) ([]*SectorInfo, error)
 	StateMinerPower(context.Context, address.Address, *types.TipSet) (MinerPower, error)
 	StateMinerWorker(context.Context, address.Address, *types.TipSet) (address.Address, error)
+	// if tipset is nil, we'll use heaviest
+	StateCall(context.Context, *types.Message, *types.TipSet) (*types.MessageReceipt, error)
+	StateGetActor(ctx context.Context, actor address.Address, ts *types.TipSet) (*types.Actor, error)
+	StateReadState(ctx context.Context, act *types.Actor, ts *types.TipSet) (*ActorState, error)
 
 	PaychCreate(ctx context.Context, from, to address.Address, amt types.BigInt) (address.Address, error)
 	PaychList(context.Context) ([]address.Address, error)

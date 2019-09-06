@@ -140,16 +140,16 @@ func SetupStorageMarketActor(bs bstore.Blockstore) (*types.Actor, error) {
 }
 
 type GenMinerCfg struct {
-	Owner  address.Address
-	Worker address.Address
+	Owners  []address.Address
+	Workers []address.Address
 
 	// not quite generating real sectors yet, but this will be necessary
 	//SectorDir string
 
-	// The address of the created miner, this is set by the genesis setup
-	MinerAddr address.Address
+	// The addresses of the created miner, this is set by the genesis setup
+	MinerAddrs []address.Address
 
-	PeerID peer.ID
+	PeerIDs []peer.ID
 }
 
 func mustEnc(i interface{}) []byte {
@@ -166,67 +166,78 @@ func SetupStorageMiners(ctx context.Context, cs *store.ChainStore, sroot cid.Cid
 		return cid.Undef, xerrors.Errorf("failed to create NewVM: %w", err)
 	}
 
-	params := mustEnc(actors.CreateStorageMinerParams{
-		Owner:      gmcfg.Owner,
-		Worker:     gmcfg.Worker,
-		SectorSize: types.NewInt(build.SectorSize),
-		PeerID:     gmcfg.PeerID,
-	})
+	for i := 0; i < len(gmcfg.Workers); i++ {
+		owner := gmcfg.Owners[i]
+		worker := gmcfg.Workers[i]
+		pid := gmcfg.PeerIDs[i]
 
-	rval, err := doExec(ctx, vm, actors.StorageMarketAddress, gmcfg.Owner, actors.SMAMethods.CreateStorageMiner, params)
-	if err != nil {
-		return cid.Undef, xerrors.Errorf("failed to create genesis miner: %w", err)
+		params := mustEnc(actors.CreateStorageMinerParams{
+			Owner:      owner,
+			Worker:     worker,
+			SectorSize: types.NewInt(build.SectorSize),
+			PeerID:     pid,
+		})
+
+		rval, err := doExec(ctx, vm, actors.StorageMarketAddress, owner, actors.SMAMethods.CreateStorageMiner, params)
+		if err != nil {
+			return cid.Undef, xerrors.Errorf("failed to create genesis miner: %w", err)
+		}
+
+		maddr, err := address.NewFromBytes(rval)
+		if err != nil {
+			return cid.Undef, err
+		}
+
+		gmcfg.MinerAddrs = append(gmcfg.MinerAddrs, maddr)
+
+		params = mustEnc(actors.UpdateStorageParams{Delta: types.NewInt(5000)})
+
+		_, err = doExec(ctx, vm, actors.StorageMarketAddress, maddr, actors.SMAMethods.UpdateStorage, params)
+		if err != nil {
+			return cid.Undef, xerrors.Errorf("failed to update total storage: %w", err)
+		}
+
+		// UGLY HACKY MODIFICATION OF MINER POWER
+
+		// we have to flush the vm here because it buffers stuff internally for perf reasons
+		if _, err := vm.Flush(ctx); err != nil {
+			return cid.Undef, xerrors.Errorf("vm.Flush failed: %w", err)
+		}
+
+		st := vm.StateTree()
+		mact, err := st.GetActor(maddr)
+		if err != nil {
+			return cid.Undef, xerrors.Errorf("get miner actor failed: %w", err)
+		}
+
+		cst := hamt.CSTFromBstore(cs.Blockstore())
+		var mstate actors.StorageMinerActorState
+		if err := cst.Get(ctx, mact.Head, &mstate); err != nil {
+			return cid.Undef, xerrors.Errorf("getting miner actor state failed: %w", err)
+		}
+		mstate.Power = types.NewInt(5000)
+
+		nstate, err := cst.Put(ctx, mstate)
+		if err != nil {
+			return cid.Undef, err
+		}
+
+		mact.Head = nstate
+		if err := st.SetActor(maddr, mact); err != nil {
+			return cid.Undef, err
+		}
+		// End of super haxx
 	}
-
-	maddr, err := address.NewFromBytes(rval)
-	if err != nil {
-		return cid.Undef, err
-	}
-
-	gmcfg.MinerAddr = maddr
-
-	params = mustEnc(actors.UpdateStorageParams{Delta: types.NewInt(5000)})
-
-	_, err = doExec(ctx, vm, actors.StorageMarketAddress, maddr, actors.SMAMethods.UpdateStorage, params)
-	if err != nil {
-		return cid.Undef, xerrors.Errorf("failed to update total storage: %w", err)
-	}
-
-	// UGLY HACKY MODIFICATION OF MINER POWER
-
-	// we have to flush the vm here because it buffers stuff internally for perf reasons
-	if _, err := vm.Flush(ctx); err != nil {
-		return cid.Undef, xerrors.Errorf("vm.Flush failed: %w", err)
-	}
-
-	st := vm.StateTree()
-	mact, err := st.GetActor(maddr)
-	if err != nil {
-		return cid.Undef, xerrors.Errorf("get miner actor failed: %w", err)
-	}
-
-	cst := hamt.CSTFromBstore(cs.Blockstore())
-	var mstate actors.StorageMinerActorState
-	if err := cst.Get(ctx, mact.Head, &mstate); err != nil {
-		return cid.Undef, xerrors.Errorf("getting miner actor state failed: %w", err)
-	}
-	mstate.Power = types.NewInt(5000)
-
-	nstate, err := cst.Put(ctx, mstate)
-	if err != nil {
-		return cid.Undef, err
-	}
-
-	mact.Head = nstate
-	if err := st.SetActor(maddr, mact); err != nil {
-		return cid.Undef, err
-	}
-	// End of super haxx
 
 	return vm.Flush(ctx)
 }
 
 func doExec(ctx context.Context, vm *vm.VM, to, from address.Address, method uint64, params []byte) ([]byte, error) {
+	act, err := vm.StateTree().GetActor(from)
+	if err != nil {
+		return nil, xerrors.Errorf("doExec failed to get from actor: %w", err)
+	}
+
 	ret, err := vm.ApplyMessage(context.TODO(), &types.Message{
 		To:       to,
 		From:     from,
@@ -235,6 +246,7 @@ func doExec(ctx context.Context, vm *vm.VM, to, from address.Address, method uin
 		GasLimit: types.NewInt(1000000),
 		GasPrice: types.NewInt(0),
 		Value:    types.NewInt(0),
+		Nonce:    act.Nonce,
 	})
 	if err != nil {
 		return nil, err
@@ -321,20 +333,4 @@ func MakeGenesisBlock(bs bstore.Blockstore, balances map[address.Address]types.B
 	return &GenesisBootstrap{
 		Genesis: b,
 	}, nil
-}
-
-type SignFunc func(context.Context, address.Address, []byte) (*types.Signature, error)
-
-func ComputeVRF(ctx context.Context, sign SignFunc, w address.Address, input []byte) ([]byte, error) {
-
-	sig, err := sign(ctx, w, input)
-	if err != nil {
-		return nil, err
-	}
-
-	if sig.Type != types.KTBLS {
-		return nil, fmt.Errorf("miner worker address was not a BLS key")
-	}
-
-	return sig.Data, nil
 }

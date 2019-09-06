@@ -2,12 +2,11 @@ package store
 
 import (
 	"context"
+	"crypto/sha256"
 	"encoding/json"
 	"fmt"
 	"sync"
 
-	"github.com/filecoin-project/go-lotus/chain/address"
-	"github.com/filecoin-project/go-lotus/chain/state"
 	"github.com/filecoin-project/go-lotus/chain/types"
 	"golang.org/x/xerrors"
 
@@ -462,21 +461,6 @@ func (cs *ChainStore) GetGenesis() (*types.BlockHeader, error) {
 	return types.DecodeBlock(genb.RawData())
 }
 
-func (cs *ChainStore) TipSetState(cids []cid.Cid) (cid.Cid, error) {
-	ts, err := cs.LoadTipSet(cids)
-	if err != nil {
-		log.Error("failed loading tipset: ", cids)
-		return cid.Undef, err
-	}
-
-	if len(ts.Blocks()) == 1 {
-		return ts.Blocks()[0].StateRoot, nil
-	}
-
-	panic("cant handle multiblock tipsets yet")
-
-}
-
 func (cs *ChainStore) GetMessage(c cid.Cid) (*types.Message, error) {
 	sb, err := cs.bs.Get(c)
 	if err != nil {
@@ -604,31 +588,6 @@ func (cs *ChainStore) LoadSignedMessagesFromCids(cids []cid.Cid) ([]*types.Signe
 	return msgs, nil
 }
 
-func (cs *ChainStore) GetBalance(addr address.Address) (types.BigInt, error) {
-	act, err := cs.GetActor(addr)
-	if err != nil {
-		return types.BigInt{}, err
-	}
-
-	return act.Balance, nil
-}
-
-func (cs *ChainStore) GetActor(addr address.Address) (*types.Actor, error) {
-	ts := cs.GetHeaviestTipSet()
-	stcid, err := cs.TipSetState(ts.Cids())
-	if err != nil {
-		return nil, err
-	}
-
-	cst := hamt.CSTFromBstore(cs.bs)
-	state, err := state.LoadStateTree(cst, stcid)
-	if err != nil {
-		return nil, err
-	}
-
-	return state.GetActor(addr)
-}
-
 func (cs *ChainStore) WaitForMessage(ctx context.Context, mcid cid.Cid) (cid.Cid, *types.MessageReceipt, error) {
 	tsub := cs.SubHeadChanges(ctx)
 
@@ -736,4 +695,45 @@ func (cs *ChainStore) TryFillTipSet(ts *types.TipSet) (*FullTipSet, error) {
 		out = append(out, fb)
 	}
 	return NewFullTipSet(out), nil
+}
+
+func (cs *ChainStore) GetRandomness(ctx context.Context, pts *types.TipSet, tickets []*types.Ticket, lb int) ([]byte, error) {
+	if lb < len(tickets) {
+		t := tickets[len(tickets)-(1+lb)]
+
+		return t.VDFResult, nil
+	}
+
+	nv := lb - len(tickets)
+
+	for {
+		fmt.Println("lookback looping: ", nv)
+		nts, err := cs.LoadTipSet(pts.Cids())
+		if err != nil {
+			return nil, err
+		}
+
+		mtb := nts.MinTicketBlock()
+		if nv < len(mtb.Tickets) {
+			t := mtb.Tickets[len(mtb.Tickets)-(1+nv)]
+			return t.VDFResult, nil
+		}
+
+		nv -= len(mtb.Tickets)
+
+		// special case for lookback behind genesis block
+		// TODO(spec): this is not in the spec, need to sync that
+		if mtb.Height == 0 {
+			fmt.Println("Randomness from height 0: ", nv)
+
+			t := mtb.Tickets[0]
+
+			rval := t.VDFResult
+			for i := 0; i < nv; i++ {
+				h := sha256.Sum256(rval)
+				rval = h[:]
+			}
+			return rval, nil
+		}
+	}
 }

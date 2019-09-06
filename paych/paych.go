@@ -4,28 +4,25 @@ import (
 	"context"
 	"fmt"
 
-	hamt "github.com/ipfs/go-hamt-ipld"
 	logging "github.com/ipfs/go-log"
 
 	"github.com/filecoin-project/go-lotus/chain/actors"
 	"github.com/filecoin-project/go-lotus/chain/address"
-	"github.com/filecoin-project/go-lotus/chain/state"
-	"github.com/filecoin-project/go-lotus/chain/store"
+	"github.com/filecoin-project/go-lotus/chain/stmgr"
 	"github.com/filecoin-project/go-lotus/chain/types"
-	"github.com/filecoin-project/go-lotus/chain/vm"
 )
 
 var log = logging.Logger("paych")
 
 type Manager struct {
-	chain *store.ChainStore
 	store *Store
+	sm    *stmgr.StateManager
 }
 
-func NewManager(chain *store.ChainStore, pchstore *Store) *Manager {
+func NewManager(sm *stmgr.StateManager, pchstore *Store) *Manager {
 	return &Manager{
-		chain: chain,
 		store: pchstore,
+		sm:    sm,
 	}
 }
 
@@ -148,7 +145,7 @@ func (pm *Manager) CheckVoucherSpendable(ctx context.Context, ch address.Address
 		return false, err
 	}
 
-	ret, err := vm.Call(ctx, pm.chain, &types.Message{
+	ret, err := stmgr.Call(ctx, pm.sm, &types.Message{
 		From:   owner,
 		To:     ch,
 		Method: actors.PCAMethods.UpdateChannelState,
@@ -166,24 +163,9 @@ func (pm *Manager) CheckVoucherSpendable(ctx context.Context, ch address.Address
 }
 
 func (pm *Manager) loadPaychState(ctx context.Context, ch address.Address) (*types.Actor, *actors.PaymentChannelActorState, error) {
-	st, err := pm.chain.TipSetState(pm.chain.GetHeaviestTipSet().Cids())
-	if err != nil {
-		return nil, nil, err
-	}
-
-	cst := hamt.CSTFromBstore(pm.chain.Blockstore())
-	tree, err := state.LoadStateTree(cst, st)
-	if err != nil {
-		return nil, nil, err
-	}
-
-	act, err := tree.GetActor(ch)
-	if err != nil {
-		return nil, nil, err
-	}
-
 	var pcast actors.PaymentChannelActorState
-	if err := cst.Get(ctx, act.Head, &pcast); err != nil {
+	act, err := pm.sm.LoadActorState(ctx, ch, &pcast)
+	if err != nil {
 		return nil, nil, err
 	}
 
@@ -191,7 +173,7 @@ func (pm *Manager) loadPaychState(ctx context.Context, ch address.Address) (*typ
 }
 
 func (pm *Manager) getPaychOwner(ctx context.Context, ch address.Address) (address.Address, error) {
-	ret, err := vm.Call(ctx, pm.chain, &types.Message{
+	ret, err := stmgr.Call(ctx, pm.sm, &types.Message{
 		From:   ch,
 		To:     ch,
 		Method: actors.PCAMethods.GetOwner,

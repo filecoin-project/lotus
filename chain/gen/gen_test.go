@@ -1,6 +1,7 @@
 package gen
 
 import (
+	"fmt"
 	"testing"
 )
 
@@ -13,11 +14,12 @@ func testGeneration(t testing.TB, n int, msgs int) {
 	g.msgsPerBlock = msgs
 
 	for i := 0; i < n; i++ {
+		fmt.Println("LOOP: ", i)
 		mts, err := g.NextTipSet()
 		if err != nil {
 			t.Fatalf("error at H:%d, %s", i, err)
 		}
-		if mts.TipSet.TipSet().Height() != uint64(i+1) {
+		if mts.TipSet.TipSet().Height() != uint64(i+len(mts.TipSet.Blocks[0].Header.Tickets)) {
 			t.Fatal("wrong height")
 		}
 	}
