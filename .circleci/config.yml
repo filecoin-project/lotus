@@ -18,7 +18,7 @@ commands:
       - restore_cache:
           name: Restore parameters cache
           keys: 
-            - 'v1-lotus-params-{{ checksum build/proof-params/parameters.json }}'
+            - 'v1-lotus-params-{{ checksum "build/proof-params/parameters.json" }}'
           paths:
             - /var/tmp/filecoin-proof-parameters/
             - build/.params-1024
@@ -28,7 +28,7 @@ commands:
       - run:  make build/.params-1024
       - save_cache:
           name: Save parameters cache
-          key: 'v1-lotus-params-{{ checksum build/proof-params/parameters.json }}'
+          key: 'v1-lotus-params-{{ "checksum build/proof-params/parameters.json" }}'
           paths:
             - /var/tmp/filecoin-proof-parameters/
             - build/.params-1024
