@@ -53,7 +53,7 @@ func (a *PaychAPI) paychCreate(ctx context.Context, from, to address.Address, am
 		Nonce:    nonce,
 		Method:   actors.IAMethods.Exec,
 		Params:   enc,
-		GasLimit: types.NewInt(1000),
+		GasLimit: types.NewInt(1000000),
 		GasPrice: types.NewInt(0),
 	}
 
