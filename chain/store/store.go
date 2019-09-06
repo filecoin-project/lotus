@@ -509,7 +509,7 @@ func (cs *ChainStore) MessagesForBlock(b *types.BlockHeader) ([]*types.Message, 
 	cst := hamt.CSTFromBstore(cs.bs)
 	var msgmeta types.MsgMeta
 	if err := cst.Get(context.TODO(), b.Messages, &msgmeta); err != nil {
-		return nil, nil, err
+		return nil, nil, xerrors.Errorf("failed to load msgmeta: %w", err)
 	}
 
 	blscids, err := cs.readSharrayCids(msgmeta.BlsMessages)
@@ -699,6 +699,7 @@ func (cs *ChainStore) TryFillTipSet(ts *types.TipSet) (*FullTipSet, error) {
 
 func (cs *ChainStore) GetRandomness(ctx context.Context, pts *types.TipSet, tickets []*types.Ticket, lb int) ([]byte, error) {
 	if lb < len(tickets) {
+		panic("self sampling is bad")
 		t := tickets[len(tickets)-(1+lb)]
 
 		return t.VDFResult, nil
@@ -706,9 +707,9 @@ func (cs *ChainStore) GetRandomness(ctx context.Context, pts *types.TipSet, tick
 
 	nv := lb - len(tickets)
 
+	nextCids := pts.Cids()
 	for {
-		fmt.Println("lookback looping: ", nv)
-		nts, err := cs.LoadTipSet(pts.Cids())
+		nts, err := cs.LoadTipSet(nextCids)
 		if err != nil {
 			return nil, err
 		}
@@ -724,7 +725,6 @@ func (cs *ChainStore) GetRandomness(ctx context.Context, pts *types.TipSet, tick
 		// special case for lookback behind genesis block
 		// TODO(spec): this is not in the spec, need to sync that
 		if mtb.Height == 0 {
-			fmt.Println("Randomness from height 0: ", nv)
 
 			t := mtb.Tickets[0]
 
@@ -735,5 +735,7 @@ func (cs *ChainStore) GetRandomness(ctx context.Context, pts *types.TipSet, tick
 			}
 			return rval, nil
 		}
+
+		nextCids = mtb.Parents
 	}
 }

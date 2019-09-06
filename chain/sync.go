@@ -478,7 +478,6 @@ func (syncer *Syncer) ValidateBlock(ctx context.Context, b *types.FullBlock) err
 	}
 
 	return nil
-
 }
 
 func (syncer *Syncer) collectHeaders(from *types.TipSet, to *types.TipSet) ([]*types.TipSet, error) {
@@ -506,11 +505,16 @@ func (syncer *Syncer) collectHeaders(from *types.TipSet, to *types.TipSet) ([]*t
 		at = ts.Parents()
 	}
 
+loop:
 	for blockSet[len(blockSet)-1].Height() > untilHeight {
 		// NB: GetBlocks validates that the blocks are in-fact the ones we
 		// requested, and that they are correctly linked to eachother. It does
 		// not validate any state transitions
 		fmt.Println("Get blocks")
+		if len(at) == 0 {
+			fmt.Println("Weird situation, about to request blocks with empty tipset")
+			fmt.Println("info: ", len(blockSet), blockSet[len(blockSet)-1].Height(), untilHeight)
+		}
 		blks, err := syncer.Bsync.GetBlocks(context.TODO(), at, 10)
 		if err != nil {
 			// Most likely our peers aren't fully synced yet, but forwarded
@@ -524,11 +528,16 @@ func (syncer *Syncer) collectHeaders(from *types.TipSet, to *types.TipSet) ([]*t
 
 		for _, b := range blks {
 			if b.Height() < untilHeight {
-				break
+				// REVIEW: this was an existing bug I think, if this got hit
+				// we would not append the remaining blocks to our blockset, but
+				// we would keep looping, and the outer for loop condition wouldnt trigger
+				// causing us to request the parents of the genesis block (aka, an empty cid set)
+				break loop
 			}
 			blockSet = append(blockSet, b)
 		}
 
+		fmt.Println("AT CHILD: ", blks[len(blks)-1].Height())
 		at = blks[len(blks)-1].Parents()
 	}
 
@@ -547,6 +556,7 @@ func (syncer *Syncer) syncMessagesAndCheckState(headers []*types.TipSet) error {
 			log.Errorf("failed to validate tipset: %s", err)
 			return xerrors.Errorf("message processing failed: %w", err)
 		}
+
 		return nil
 	})
 }
@@ -572,10 +582,6 @@ func (syncer *Syncer) iterFullTipsets(headers []*types.TipSet, cb func(*store.Fu
 	windowSize := 10
 
 	for i := len(headers) - 1; i >= 0; i -= windowSize {
-		// temp storage so we don't persist data we dont want to
-		ds := dstore.NewMapDatastore()
-		bs := bstore.NewBlockstore(ds)
-		cst := hamt.CSTFromBstore(bs)
 
 		batchSize := windowSize
 		if i < batchSize {
@@ -589,6 +595,11 @@ func (syncer *Syncer) iterFullTipsets(headers []*types.TipSet, cb func(*store.Fu
 		}
 
 		for bsi := 0; bsi < len(bstips); bsi++ {
+			// temp storage so we don't persist data we dont want to
+			ds := dstore.NewMapDatastore()
+			bs := bstore.NewBlockstore(ds)
+			cst := hamt.CSTFromBstore(bs)
+
 			this := headers[i-bsi]
 			bstip := bstips[len(bstips)-(bsi+1)]
 			fts, err := zipTipSetAndMessages(cst, this, bstip.BlsMessages, bstip.SecpkMessages, bstip.BlsMsgIncludes, bstip.SecpkMsgIncludes)
@@ -604,38 +615,37 @@ func (syncer *Syncer) iterFullTipsets(headers []*types.TipSet, cb func(*store.Fu
 			if err := cb(fts); err != nil {
 				return err
 			}
+
+			if err := persistMessages(bs, bstip); err != nil {
+				return err
+			}
+
+			if err := copyBlockstore(bs, syncer.store.Blockstore()); err != nil {
+				return xerrors.Errorf("message processing failed: %w", err)
+			}
 		}
 
-		if err := persistMessages(bs, bstips); err != nil {
-			return err
-		}
-
-		if err := copyBlockstore(bs, syncer.store.Blockstore()); err != nil {
-			return xerrors.Errorf("message processing failed: %w", err)
-		}
 	}
 
 	return nil
 }
 
-func persistMessages(bs bstore.Blockstore, bstips []*BSTipSet) error {
-	for _, bst := range bstips {
-		for _, m := range bst.BlsMessages {
-			//log.Infof("putting BLS message: %s", m.Cid())
-			if _, err := store.PutMessage(bs, m); err != nil {
-				log.Error("failed to persist messages: ", err)
-				return xerrors.Errorf("BLS message processing failed: %w", err)
-			}
+func persistMessages(bs bstore.Blockstore, bst *BSTipSet) error {
+	for _, m := range bst.BlsMessages {
+		//log.Infof("putting BLS message: %s", m.Cid())
+		if _, err := store.PutMessage(bs, m); err != nil {
+			log.Error("failed to persist messages: ", err)
+			return xerrors.Errorf("BLS message processing failed: %w", err)
 		}
-		for _, m := range bst.SecpkMessages {
-			if m.Signature.Type != types.KTSecp256k1 {
-				return xerrors.Errorf("unknown signature type on message %s: %q", m.Cid(), m.Signature.TypeCode)
-			}
-			//log.Infof("putting secp256k1 message: %s", m.Cid())
-			if _, err := store.PutMessage(bs, m); err != nil {
-				log.Error("failed to persist messages: ", err)
-				return xerrors.Errorf("secp256k1 message processing failed: %w", err)
-			}
+	}
+	for _, m := range bst.SecpkMessages {
+		if m.Signature.Type != types.KTSecp256k1 {
+			return xerrors.Errorf("unknown signature type on message %s: %q", m.Cid(), m.Signature.TypeCode)
+		}
+		//log.Infof("putting secp256k1 message: %s", m.Cid())
+		if _, err := store.PutMessage(bs, m); err != nil {
+			log.Error("failed to persist messages: ", err)
+			return xerrors.Errorf("secp256k1 message processing failed: %w", err)
 		}
 	}
 

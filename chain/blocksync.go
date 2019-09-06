@@ -245,8 +245,10 @@ func (bs *BlockSync) processStatus(req *BlockSyncRequest, res *BlockSyncResponse
 		panic("not handled")
 	case 203: // Internal Error
 		return fmt.Errorf("block sync peer errored: %s", res.Message)
+	case 204:
+		return fmt.Errorf("block sync request invalid: %s", res.Message)
 	default:
-		return fmt.Errorf("unrecognized response code")
+		return fmt.Errorf("unrecognized response code: %d", res.Status)
 	}
 }
 
@@ -261,10 +263,11 @@ func (bs *BlockSync) GetBlocks(ctx context.Context, tipset []cid.Cid, count int)
 		Options:       BSOptBlocks,
 	}
 
-	var err error
+	var oerr error
 	for _, p := range perm {
 		res, err := bs.sendRequestToPeer(ctx, peers[p], req)
 		if err != nil {
+			oerr = err
 			log.Warnf("BlockSync request failed for peer %s: %s", peers[p].String(), err)
 			continue
 		}
@@ -272,12 +275,12 @@ func (bs *BlockSync) GetBlocks(ctx context.Context, tipset []cid.Cid, count int)
 		if res.Status == 0 {
 			return bs.processBlocksResponse(req, res)
 		}
-		err = bs.processStatus(req, res)
-		if err != nil {
+		oerr = bs.processStatus(req, res)
+		if oerr != nil {
 			log.Warnf("BlockSync peer %s response was an error: %s", peers[p].String(), err)
 		}
 	}
-	return nil, xerrors.Errorf("GetBlocks failed with all peers: %w", err)
+	return nil, xerrors.Errorf("GetBlocks failed with all peers: %w", oerr)
 }
 
 func (bs *BlockSync) GetFullTipSet(ctx context.Context, p peer.ID, h []cid.Cid) (*store.FullTipSet, error) {

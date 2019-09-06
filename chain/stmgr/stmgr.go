@@ -2,12 +2,14 @@ package stmgr
 
 import (
 	"context"
+	"sync"
 
 	"github.com/filecoin-project/go-lotus/chain/address"
 	"github.com/filecoin-project/go-lotus/chain/state"
 	"github.com/filecoin-project/go-lotus/chain/store"
 	"github.com/filecoin-project/go-lotus/chain/types"
 	"github.com/filecoin-project/go-lotus/chain/vm"
+	"golang.org/x/xerrors"
 
 	"github.com/ipfs/go-cid"
 	hamt "github.com/ipfs/go-hamt-ipld"
@@ -18,13 +20,47 @@ var log = logging.Logger("chainstore")
 
 type StateManager struct {
 	cs *store.ChainStore
+
+	stCache map[string]cid.Cid
+	stlk    sync.Mutex
 }
 
 func NewStateManager(cs *store.ChainStore) *StateManager {
-	return &StateManager{cs}
+	return &StateManager{
+		cs:      cs,
+		stCache: make(map[string]cid.Cid),
+	}
+}
+
+func cidsToKey(cids []cid.Cid) string {
+	var out string
+	for _, c := range cids {
+		out += c.KeyString()
+	}
+	return out
 }
 
 func (sm *StateManager) TipSetState(cids []cid.Cid) (cid.Cid, error) {
+	ck := cidsToKey(cids)
+	sm.stlk.Lock()
+	cached, ok := sm.stCache[ck]
+	sm.stlk.Unlock()
+	if ok {
+		return cached, nil
+	}
+
+	out, err := sm.computeTipSetState(cids)
+	if err != nil {
+		return cid.Undef, err
+	}
+
+	sm.stlk.Lock()
+	sm.stCache[ck] = out
+	sm.stlk.Unlock()
+	return out, nil
+}
+
+func (sm *StateManager) computeTipSetState(cids []cid.Cid) (cid.Cid, error) {
 	ctx := context.TODO()
 
 	ts, err := sm.cs.LoadTipSet(cids)
@@ -39,12 +75,12 @@ func (sm *StateManager) TipSetState(cids []cid.Cid) (cid.Cid, error) {
 
 	pstate, err := sm.TipSetState(ts.Parents())
 	if err != nil {
-		return cid.Undef, err
+		return cid.Undef, xerrors.Errorf("recursive TipSetState failed: %w", err)
 	}
 
 	vmi, err := vm.NewVM(pstate, ts.Height(), address.Undef, sm.cs)
 	if err != nil {
-		return cid.Undef, err
+		return cid.Undef, xerrors.Errorf("instantiating VM failed: %w", err)
 	}
 
 	applied := make(map[cid.Cid]bool)
@@ -53,7 +89,8 @@ func (sm *StateManager) TipSetState(cids []cid.Cid) (cid.Cid, error) {
 
 		bms, sms, err := sm.cs.MessagesForBlock(b)
 		if err != nil {
-			return cid.Undef, err
+			panic("stop a sec: " + err.Error())
+			return cid.Undef, xerrors.Errorf("failed to get messages for block: %w", err)
 		}
 
 		for _, m := range bms {

@@ -122,18 +122,19 @@ func NewGenerator() (*ChainGen, error) {
 		}
 	}
 
+	minercfg := &GenMinerCfg{
+		Workers: []address.Address{worker, worker},
+		Owners:  []address.Address{worker, worker},
+		PeerIDs: []peer.ID{"peerID1", "peerID2"},
+	}
+
 	/*
 		minercfg := &GenMinerCfg{
-			Workers: []address.Address{worker, worker},
-			Owners:  []address.Address{worker, worker},
-			PeerIDs: []peer.ID{"peerID1", "peerID2"},
+			Workers: []address.Address{worker},
+			Owners:  []address.Address{worker},
+			PeerIDs: []peer.ID{"peerID1"},
 		}
 	*/
-	minercfg := &GenMinerCfg{
-		Workers: []address.Address{worker},
-		Owners:  []address.Address{worker},
-		PeerIDs: []peer.ID{"peerID1"},
-	}
 
 	genb, err := MakeGenesisBlock(bs, map[address.Address]types.BigInt{
 		worker: types.NewInt(50000),
@@ -201,7 +202,6 @@ func (cg *ChainGen) GenesisCar() ([]byte, error) {
 func (cg *ChainGen) nextBlockProof(ctx context.Context, m address.Address, ticks []*types.Ticket) (types.ElectionProof, *types.Ticket, error) {
 	pts := cg.curTipset.TipSet()
 
-	fmt.Println("checking winner:", m, ticks)
 	var lastTicket *types.Ticket
 	if len(ticks) == 0 {
 		lastTicket = pts.MinTicket()
@@ -262,7 +262,6 @@ func (cg *ChainGen) NextTipSet() (*MinedTipSet, error) {
 
 	for len(blks) == 0 {
 		for i, m := range cg.miners {
-			fmt.Println("Checking for winner: ", m)
 			proof, t, err := cg.nextBlockProof(context.TODO(), m, ticketSets[i])
 			if err != nil {
 				return nil, err
@@ -270,7 +269,6 @@ func (cg *ChainGen) NextTipSet() (*MinedTipSet, error) {
 
 			ticketSets[i] = append(ticketSets[i], t)
 			if proof != nil {
-				fmt.Println("WINNER!!!!", m)
 				fblk, err := cg.makeBlock(m, proof, ticketSets[i], msgs)
 				if err != nil {
 					return nil, xerrors.Errorf("making a block for next tipset failed: %w", err)
@@ -284,8 +282,6 @@ func (cg *ChainGen) NextTipSet() (*MinedTipSet, error) {
 			}
 		}
 	}
-
-	fmt.Println("num winners: ", len(blks))
 
 	cg.curTipset = store.NewFullTipSet(blks)
 
@@ -301,6 +297,7 @@ func (cg *ChainGen) makeBlock(m address.Address, eproof types.ElectionProof, tic
 
 	ts := parents.MinTimestamp() + (uint64(len(tickets)) * build.BlockDelay)
 
+	fmt.Println("Make block: ", parents.Height(), len(tickets))
 	fblk, err := MinerCreateBlock(context.TODO(), cg.sm, cg.w, m, parents, tickets, eproof, msgs, ts)
 	if err != nil {
 		return nil, err
@@ -406,7 +403,6 @@ func IsRoundWinner(ctx context.Context, ts *types.TipSet, ticks []*types.Ticket,
 		return false, nil, err
 	}
 
-	fmt.Println("chain randomness: ", r)
 	mworker, err := a.StateMinerWorker(ctx, miner, ts)
 	if err != nil {
 		return false, nil, xerrors.Errorf("failed to get miner worker: %w", err)

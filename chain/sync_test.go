@@ -33,7 +33,6 @@ func (tu *syncTestUtil) repoWithChain(t testing.TB, h int) (repo.Repo, []byte, [
 		ts := mts.TipSet.TipSet()
 		fmt.Printf("tipset at H:%d: %s\n", ts.Height(), ts.Cids())
 
-		require.Equal(t, uint64(i+1), ts.Height(), "wrong height")
 	}
 
 	r, err := tu.g.YieldRepo()
@@ -81,7 +80,7 @@ func prepSyncTest(t testing.TB, h int) *syncTestUtil {
 	}
 
 	tu.addSourceNode(h)
-	tu.checkHeight("source", source, h)
+	//tu.checkHeight("source", source, h)
 
 	// separate logs
 	fmt.Println("\x1b[31m///////////////////////////////////////////////////\x1b[39b")
@@ -181,6 +180,17 @@ func (tu *syncTestUtil) checkHeight(name string, n int, h int) {
 }
 
 func (tu *syncTestUtil) compareSourceState(with int) {
+	sourceHead, err := tu.nds[source].ChainHead(tu.ctx)
+	require.NoError(tu.t, err)
+
+	targetHead, err := tu.nds[with].ChainHead(tu.ctx)
+	require.NoError(tu.t, err)
+
+	if !sourceHead.Equals(targetHead) {
+		fmt.Println("different chains: ", sourceHead.Height(), targetHead.Height())
+		tu.t.Fatalf("nodes were not synced correctly: %s != %s", sourceHead.Cids(), targetHead.Cids())
+	}
+
 	sourceAccounts, err := tu.nds[source].WalletList(tu.ctx)
 	require.NoError(tu.t, err)
 
@@ -250,13 +260,13 @@ func TestSyncSimple(t *testing.T) {
 	tu := prepSyncTest(t, H)
 
 	client := tu.addClientNode()
-	tu.checkHeight("client", client, 0)
+	//tu.checkHeight("client", client, 0)
 
 	require.NoError(t, tu.mn.LinkAll())
 	tu.connect(1, 0)
 	tu.waitUntilSync(0, client)
 
-	tu.checkHeight("client", client, H)
+	//tu.checkHeight("client", client, H)
 
 	tu.compareSourceState(client)
 }
@@ -266,7 +276,7 @@ func TestSyncMining(t *testing.T) {
 	tu := prepSyncTest(t, H)
 
 	client := tu.addClientNode()
-	tu.checkHeight("client", client, 0)
+	//tu.checkHeight("client", client, 0)
 
 	require.NoError(t, tu.mn.LinkAll())
 	tu.connect(client, 0)
@@ -275,11 +285,12 @@ func TestSyncMining(t *testing.T) {
 
 	fmt.Println("after wait until sync")
 
-	tu.checkHeight("client", client, H)
+	//tu.checkHeight("client", client, H)
 
 	tu.compareSourceState(client)
 
 	for i := 0; i < 5; i++ {
+		fmt.Println("MINE A NEW BLOCK")
 		tu.mineNewBlock(0)
 		tu.waitUntilSync(0, client)
 		tu.compareSourceState(client)
