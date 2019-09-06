@@ -2,6 +2,7 @@ package deals
 
 import (
 	"context"
+	"github.com/filecoin-project/go-lotus/chain/types"
 	"github.com/filecoin-project/go-lotus/storage/sectorblocks"
 	"math"
 
@@ -34,6 +35,8 @@ type MinerDeal struct {
 }
 
 type Handler struct {
+	pricePerByteBlock types.BigInt // how much we want for storing one byte for one block
+
 	secst *sectorblocks.SectorBlocks
 	full  api.FullNode
 
@@ -73,6 +76,8 @@ func NewHandler(ds dtypes.MetadataDS, secst *sectorblocks.SectorBlocks, dag dtyp
 		secst: secst,
 		dag:   dag,
 		full:  fullNode,
+
+		pricePerByteBlock: types.NewInt(3), // TODO: allow setting
 
 		conns: map[cid.Cid]inet.Stream{},
 

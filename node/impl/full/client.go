@@ -3,31 +3,32 @@ package full
 import (
 	"context"
 	"errors"
-	"github.com/filecoin-project/go-lotus/build"
-	"github.com/filecoin-project/go-lotus/retrieval"
-	"github.com/filecoin-project/go-lotus/retrieval/discovery"
-	"github.com/ipfs/go-blockservice"
-	offline "github.com/ipfs/go-ipfs-exchange-offline"
-	"github.com/ipfs/go-merkledag"
 	"os"
 
-	"github.com/filecoin-project/go-lotus/api"
-	"github.com/filecoin-project/go-lotus/chain/actors"
-	"github.com/filecoin-project/go-lotus/chain/address"
-	"github.com/filecoin-project/go-lotus/chain/deals"
-	"github.com/filecoin-project/go-lotus/chain/types"
-	"github.com/filecoin-project/go-lotus/node/modules/dtypes"
-
+	"github.com/ipfs/go-blockservice"
 	"github.com/ipfs/go-cid"
 	"github.com/ipfs/go-filestore"
 	chunker "github.com/ipfs/go-ipfs-chunker"
+	offline "github.com/ipfs/go-ipfs-exchange-offline"
 	files "github.com/ipfs/go-ipfs-files"
 	cbor "github.com/ipfs/go-ipld-cbor"
 	ipld "github.com/ipfs/go-ipld-format"
+	"github.com/ipfs/go-merkledag"
 	"github.com/ipfs/go-unixfs/importer/balanced"
 	ihelper "github.com/ipfs/go-unixfs/importer/helpers"
 	"github.com/libp2p/go-libp2p-core/peer"
 	"go.uber.org/fx"
+
+	"github.com/filecoin-project/go-lotus/api"
+	"github.com/filecoin-project/go-lotus/build"
+	"github.com/filecoin-project/go-lotus/chain/actors"
+	"github.com/filecoin-project/go-lotus/chain/address"
+	"github.com/filecoin-project/go-lotus/chain/deals"
+	"github.com/filecoin-project/go-lotus/chain/store"
+	"github.com/filecoin-project/go-lotus/chain/types"
+	"github.com/filecoin-project/go-lotus/node/modules/dtypes"
+	"github.com/filecoin-project/go-lotus/retrieval"
+	"github.com/filecoin-project/go-lotus/retrieval/discovery"
 )
 
 type ClientAPI struct {
@@ -40,6 +41,7 @@ type ClientAPI struct {
 	DealClient   *deals.Client
 	RetDiscovery discovery.PeerResolver
 	Retrieval    *retrieval.Client
+	Chain        *store.ChainStore
 
 	LocalDAG   dtypes.ClientDAG
 	Blockstore dtypes.ClientBlockstore
@@ -88,16 +90,18 @@ func (a *ClientAPI) ClientStartDeal(ctx context.Context, data cid.Cid, miner add
 		return nil, err
 	}
 
-	voucher := types.SignedVoucher{
-		// TimeLock:       0, // TODO: do we want to use this somehow?
+	head := a.Chain.GetHeaviestTipSet()
+
+	voucher := types.SignedVoucher{ // TODO: split into smaller payments
+		TimeLock: head.Height() + blocksDuration,
 		Extra: &types.ModVerifyParams{
 			Actor:  miner,
 			Method: actors.MAMethods.PaymentVerifyInclusion,
 			Data:   voucherData,
 		},
-		Lane:           0,
+		Lane:           0, // TODO: some api to make this easy
 		Amount:         total,
-		MinCloseHeight: blocksDuration, // TODO: some way to start this after initial piece inclusion by actor? (also, at least add current height)
+		MinCloseHeight: head.Height() + blocksDuration, // TODO: some way to start this after initial piece inclusion by actor? Using actors.PieceInclVoucherData?
 	}
 
 	sv, err := a.paychVoucherCreate(ctx, paych, voucher)
@@ -113,7 +117,7 @@ func (a *ClientAPI) ClientStartDeal(ctx context.Context, data cid.Cid, miner add
 			PayChActor:     paych,
 			Payer:          self,
 			ChannelMessage: paychMsg,
-			Vouchers:       []types.SignedVoucher{*sv},
+			Vouchers:       []*types.SignedVoucher{sv},
 		},
 		MinerAddress:  miner,
 		ClientAddress: self,

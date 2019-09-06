@@ -7,6 +7,8 @@ import (
 	unixfile "github.com/ipfs/go-unixfs/file"
 	"golang.org/x/xerrors"
 
+	"github.com/filecoin-project/go-lotus/chain/actors"
+	"github.com/filecoin-project/go-lotus/chain/types"
 	"github.com/filecoin-project/go-lotus/lib/sectorbuilder"
 	"github.com/filecoin-project/go-lotus/storage/sectorblocks"
 )
@@ -39,10 +41,58 @@ func (h *Handler) accept(ctx context.Context, deal MinerDeal) (func(*MinerDeal),
 		return nil, xerrors.Errorf("deal proposal with unsupported serialization: %s", deal.Proposal.SerializationMode)
 	}
 
-	// TODO: check payment
+	curHead, err := h.full.ChainHead(ctx)
+	if err != nil {
+		return nil, err
+	}
+
+	for i, voucher := range deal.Proposal.Payment.Vouchers {
+		err := h.full.PaychVoucherCheckValid(ctx, deal.Proposal.Payment.PayChActor, voucher)
+		if err != nil {
+			return nil, xerrors.Errorf("validating payment voucher %d: %w", i, err)
+		}
+
+		if voucher.Extra != nil { // TODO: should we reject vouchers with no extra params?
+			if voucher.Extra.Actor != deal.Proposal.MinerAddress {
+				return nil, xerrors.Errorf("validating payment voucher %d: extra params actor didn't match miner address in proposal: '%s' != '%s'", i, voucher.Extra.Actor, deal.Proposal.MinerAddress)
+			}
+			if voucher.Extra.Method != actors.MAMethods.PaymentVerifyInclusion {
+				return nil, xerrors.Errorf("validating payment voucher %d: expected extra method %d, got %d", i, actors.MAMethods.PaymentVerifyInclusion, voucher.Extra.Method)
+			}
+		}
+
+		if voucher.MinCloseHeight > curHead.Height() + deal.Proposal.Duration {
+			return nil, xerrors.Errorf("validating payment voucher %d: MinCloseHeight too high (%d), max expected: %d", i, voucher.MinCloseHeight, curHead.Height() + deal.Proposal.Duration)
+		}
+
+		if voucher.TimeLock > curHead.Height() + deal.Proposal.Duration {
+			return nil, xerrors.Errorf("validating payment voucher %d: TimeLock too high (%d), max expected: %d", i, voucher.TimeLock, curHead.Height() + deal.Proposal.Duration)
+		}
+
+		if len(voucher.Merges) > 0 {
+			return nil, xerrors.Errorf("validating payment voucher %d: didn't expect any merges", i)
+		}
+
+		// TODO: make sure that current laneStatus.Amount == 0
+
+		if types.BigCmp(voucher.Amount, deal.Proposal.TotalPrice) < 0 {
+			return nil, xerrors.Errorf("validating payment voucher %d: not enough funds in the voucher", i)
+		}
+
+		minPrice := types.BigMul(types.BigMul(h.pricePerByteBlock, types.NewInt(deal.Proposal.Size)), types.NewInt(deal.Proposal.Duration))
+		if types.BigCmp(minPrice, deal.Proposal.TotalPrice) > 0 {
+			return nil, xerrors.Errorf("validating payment voucher %d: minimum price: %s", i, minPrice)
+		}
+	}
+
+	for i, voucher := range deal.Proposal.Payment.Vouchers {
+		if err := h.full.PaychVoucherAdd(ctx, deal.Proposal.Payment.PayChActor, voucher); err != nil {
+			return nil, xerrors.Errorf("consuming payment voucher %d: %w", i, err)
+		}
+	}
 
 	log.Info("fetching data for a deal")
-	err := h.sendSignedResponse(StorageDealResponse{
+	err = h.sendSignedResponse(StorageDealResponse{
 		State:    Accepted,
 		Message:  "",
 		Proposal: deal.ProposalCid,

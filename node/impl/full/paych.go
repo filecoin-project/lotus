@@ -102,7 +102,14 @@ func (a *PaychAPI) PaychList(ctx context.Context) ([]address.Address, error) {
 }
 
 func (a *PaychAPI) PaychStatus(ctx context.Context, pch address.Address) (*api.PaychStatus, error) {
-	panic("nyi")
+	ci, err := a.PaychMgr.GetChannelInfo(pch)
+	if err != nil {
+		return nil, err
+	}
+	return &api.PaychStatus{
+		ControlAddr: ci.ControlAddr,
+		Direction:   api.PCHDir(ci.Direction),
+	}, nil
 }
 
 func (a *PaychAPI) PaychClose(ctx context.Context, addr address.Address) (cid.Cid, error) {
@@ -148,6 +155,8 @@ func (a *PaychAPI) PaychVoucherCheckSpendable(ctx context.Context, ch address.Ad
 }
 
 func (a *PaychAPI) PaychVoucherAdd(ctx context.Context, ch address.Address, sv *types.SignedVoucher) error {
+	_ = a.PaychMgr.TrackInboundChannel(ctx, ch)
+
 	if err := a.PaychVoucherCheckValid(ctx, ch, sv); err != nil {
 		return err
 	}

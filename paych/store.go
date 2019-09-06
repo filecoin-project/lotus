@@ -1,6 +1,7 @@
 package paych
 
 import (
+	"errors"
 	"fmt"
 	"strings"
 
@@ -13,6 +14,8 @@ import (
 	cbor "github.com/ipfs/go-ipld-cbor"
 	"golang.org/x/xerrors"
 )
+
+var ErrChannelNotTracked = errors.New("channel not tracked")
 
 func init() {
 	cbor.RegisterCborType(ChannelInfo{})
@@ -60,6 +63,9 @@ func (ps *Store) getChannelInfo(addr address.Address) (*ChannelInfo, error) {
 	k := dskeyForChannel(addr)
 
 	b, err := ps.ds.Get(k)
+	if err == datastore.ErrNotFound {
+		return nil, ErrChannelNotTracked
+	}
 	if err != nil {
 		return nil, err
 	}
@@ -79,7 +85,7 @@ func (ps *Store) TrackChannel(ch *ChannelInfo) error {
 		return err
 	case nil:
 		return fmt.Errorf("already tracking channel: %s", ch.Channel)
-	case datastore.ErrNotFound:
+	case ErrChannelNotTracked:
 		return ps.putChannelInfo(ch)
 	}
 }

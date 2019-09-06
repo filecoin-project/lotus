@@ -29,7 +29,7 @@ type PaymentInfo struct {
 	Payer          address.Address
 	ChannelMessage cid.Cid
 
-	Vouchers []types.SignedVoucher
+	Vouchers []*types.SignedVoucher
 }
 
 type LaneState struct {

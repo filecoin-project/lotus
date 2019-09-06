@@ -181,7 +181,18 @@ type ActorState struct {
 	State   interface{}
 }
 
-type PaychStatus struct{}
+type PCHDir int
+
+const (
+	PCHUndef PCHDir = iota
+	PCHInbound
+	PCHOutbound
+)
+
+type PaychStatus struct{
+	ControlAddr address.Address
+	Direction   PCHDir
+}
 
 type MinerPower struct {
 	MinerPower types.BigInt
