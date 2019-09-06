@@ -9,6 +9,7 @@ import (
 	cbor "github.com/ipfs/go-ipld-cbor"
 	"github.com/polydawn/refmt/obj/atlas"
 	cbg "github.com/whyrusleeping/cbor-gen"
+	"golang.org/x/xerrors"
 )
 
 const BigIntMaxSerializedLen = 128 // is this big enough? or too big?
@@ -93,7 +94,7 @@ func (bi *BigInt) UnmarshalJSON(b []byte) error {
 		if string(s) == "<nil>" {
 			return nil
 		}
-		return fmt.Errorf("failed to parse bigint string")
+		return xerrors.Errorf("failed to parse bigint string: '%s'", string(b))
 	}
 
 	bi.Int = i
