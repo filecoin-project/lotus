@@ -2,7 +2,6 @@ package gen
 
 import (
 	"context"
-	"fmt"
 
 	bls "github.com/filecoin-project/go-bls-sigs"
 	cid "github.com/ipfs/go-cid"
@@ -25,7 +24,6 @@ func MinerCreateBlock(ctx context.Context, sm *stmgr.StateManager, w *wallet.Wal
 		return nil, errors.Wrap(err, "failed to load tipset state")
 	}
 
-	fmt.Println("HEIGHT CALC: ", parents.Height(), len(tickets))
 	height := parents.Height() + uint64(len(tickets))
 
 	vmi, err := vm.NewVM(st, height, miner, sm.ChainStore())

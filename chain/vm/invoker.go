@@ -41,8 +41,6 @@ func (inv *invoker) Invoke(act *types.Actor, vmctx types.VMContext, method uint6
 
 	code, ok := inv.builtInCode[act.Code]
 	if !ok {
-		fmt.Println("bad code? ", act.Code)
-		fmt.Println("miner actor code cid: ", actors.StorageMinerCodeCid)
 		return nil, aerrors.Newf(255, "no code for actor %s", act.Code)
 	}
 	if method >= uint64(len(code)) || code[method] == nil {

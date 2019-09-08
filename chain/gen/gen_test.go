@@ -1,7 +1,6 @@
 package gen
 
 import (
-	"fmt"
 	"testing"
 )
 
@@ -15,7 +14,6 @@ func testGeneration(t testing.TB, n int, msgs int) {
 
 	var height int
 	for i := 0; i < n; i++ {
-		fmt.Println("LOOP: ", i)
 		mts, err := g.NextTipSet()
 		if err != nil {
 			t.Fatalf("error at H:%d, %s", i, err)

@@ -89,7 +89,6 @@ func (sm *StateManager) computeTipSetState(cids []cid.Cid) (cid.Cid, error) {
 
 		bms, sms, err := sm.cs.MessagesForBlock(b)
 		if err != nil {
-			panic("stop a sec: " + err.Error())
 			return cid.Undef, xerrors.Errorf("failed to get messages for block: %w", err)
 		}
 

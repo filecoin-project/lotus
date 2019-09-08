@@ -32,7 +32,7 @@ import (
 
 var log = logging.Logger("gen")
 
-const msgsPerBlock = 2
+const msgsPerBlock = 20
 
 type ChainGen struct {
 	accounts []address.Address
@@ -127,14 +127,6 @@ func NewGenerator() (*ChainGen, error) {
 		Owners:  []address.Address{worker, worker},
 		PeerIDs: []peer.ID{"peerID1", "peerID2"},
 	}
-
-	/*
-		minercfg := &GenMinerCfg{
-			Workers: []address.Address{worker},
-			Owners:  []address.Address{worker},
-			PeerIDs: []peer.ID{"peerID1"},
-		}
-	*/
 
 	genb, err := MakeGenesisBlock(bs, map[address.Address]types.BigInt{
 		worker: types.NewInt(50000),
@@ -286,7 +278,6 @@ func (cg *ChainGen) NextTipSet() (*MinedTipSet, error) {
 	}
 
 	cg.curTipset = store.NewFullTipSet(blks)
-	fmt.Printf("Mined tipset %s (%d) on top of %s (%d)\n", cg.curTipset.Cids(), cg.curTipset.TipSet().Height(), base.Cids(), base.Height())
 
 	return &MinedTipSet{
 		TipSet:   cg.curTipset,
@@ -298,7 +289,6 @@ func (cg *ChainGen) makeBlock(parents *types.TipSet, m address.Address, eproof t
 
 	ts := parents.MinTimestamp() + (uint64(len(tickets)) * build.BlockDelay)
 
-	fmt.Println("Make block: ", parents.Height(), len(tickets))
 	fblk, err := MinerCreateBlock(context.TODO(), cg.sm, cg.w, m, parents, tickets, eproof, msgs, ts)
 	if err != nil {
 		return nil, err
