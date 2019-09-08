@@ -125,8 +125,15 @@ func CidArrsEqual(a, b []cid.Cid) bool {
 	if len(a) != len(b) {
 		return false
 	}
-	for i, v := range a {
-		if b[i] != v {
+
+	// order ignoring compare...
+	s := make(map[cid.Cid]bool)
+	for _, c := range a {
+		s[c] = true
+	}
+
+	for _, c := range b {
+		if !s[c] {
 			return false
 		}
 	}

@@ -15,7 +15,7 @@ require (
 	github.com/gorilla/websocket v1.4.0
 	github.com/ipfs/go-bitswap v0.1.8
 	github.com/ipfs/go-block-format v0.0.2
-	github.com/ipfs/go-blockservice v0.1.2
+	github.com/ipfs/go-blockservice v0.1.3-0.20190908200855-f22eea50656c
 	github.com/ipfs/go-car v0.0.0-20190823083746-79984a8632b4
 	github.com/ipfs/go-cid v0.0.3
 	github.com/ipfs/go-datastore v0.1.0

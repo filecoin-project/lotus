@@ -46,6 +46,14 @@ func (ts *TipSet) UnmarshalJSON(b []byte) error {
 }
 
 func NewTipSet(blks []*BlockHeader) (*TipSet, error) {
+	/*
+		sort.Slice(blks, func(i, j int) bool {
+			a := blks[i].LastTicket()
+			b := blks[j].LastTicket()
+			return bytes.Compare(a.VDFResult, b.VDFResult) < 0
+		})
+	*/
+
 	var ts TipSet
 	ts.cids = []cid.Cid{blks[0].Cid()}
 	ts.blks = blks

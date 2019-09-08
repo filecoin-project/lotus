@@ -32,7 +32,7 @@ import (
 
 var log = logging.Logger("gen")
 
-const msgsPerBlock = 20
+const msgsPerBlock = 2
 
 type ChainGen struct {
 	accounts []address.Address
@@ -260,6 +260,8 @@ func (cg *ChainGen) NextTipSet() (*MinedTipSet, error) {
 		return nil, err
 	}
 
+	base := cg.curTipset.TipSet()
+
 	for len(blks) == 0 {
 		for i, m := range cg.miners {
 			proof, t, err := cg.nextBlockProof(context.TODO(), m, ticketSets[i])
@@ -269,7 +271,7 @@ func (cg *ChainGen) NextTipSet() (*MinedTipSet, error) {
 
 			ticketSets[i] = append(ticketSets[i], t)
 			if proof != nil {
-				fblk, err := cg.makeBlock(m, proof, ticketSets[i], msgs)
+				fblk, err := cg.makeBlock(base, m, proof, ticketSets[i], msgs)
 				if err != nil {
 					return nil, xerrors.Errorf("making a block for next tipset failed: %w", err)
 				}
@@ -284,6 +286,7 @@ func (cg *ChainGen) NextTipSet() (*MinedTipSet, error) {
 	}
 
 	cg.curTipset = store.NewFullTipSet(blks)
+	fmt.Printf("Mined tipset %s (%d) on top of %s (%d)\n", cg.curTipset.Cids(), cg.curTipset.TipSet().Height(), base.Cids(), base.Height())
 
 	return &MinedTipSet{
 		TipSet:   cg.curTipset,
@@ -291,9 +294,7 @@ func (cg *ChainGen) NextTipSet() (*MinedTipSet, error) {
 	}, nil
 }
 
-func (cg *ChainGen) makeBlock(m address.Address, eproof types.ElectionProof, tickets []*types.Ticket, msgs []*types.SignedMessage) (*types.FullBlock, error) {
-
-	parents := cg.curTipset.TipSet()
+func (cg *ChainGen) makeBlock(parents *types.TipSet, m address.Address, eproof types.ElectionProof, tickets []*types.Ticket, msgs []*types.SignedMessage) (*types.FullBlock, error) {
 
 	ts := parents.MinTimestamp() + (uint64(len(tickets)) * build.BlockDelay)
 

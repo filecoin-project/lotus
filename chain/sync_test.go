@@ -290,7 +290,6 @@ func TestSyncMining(t *testing.T) {
 	tu.compareSourceState(client)
 
 	for i := 0; i < 5; i++ {
-		fmt.Println("MINE A NEW BLOCK")
 		tu.mineNewBlock(0)
 		tu.waitUntilSync(0, client)
 		tu.compareSourceState(client)

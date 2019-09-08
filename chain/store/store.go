@@ -179,7 +179,13 @@ func (cs *ChainStore) PutTipSet(ts *FullTipSet) error {
 		}
 	}
 
-	if err := cs.MaybeTakeHeavierTipSet(ts.TipSet()); err != nil {
+	expanded, err := cs.expandTipset(ts.TipSet().Blocks()[0])
+	if err != nil {
+		return xerrors.Errorf("errored while expanding tipset: %w", err)
+	}
+	fmt.Printf("expanded %s into %s\n", ts.TipSet().Cids(), expanded.Cids())
+
+	if err := cs.MaybeTakeHeavierTipSet(expanded); err != nil {
 		return errors.Wrap(err, "MaybeTakeHeavierTipSet failed in PutTipSet")
 	}
 	return nil

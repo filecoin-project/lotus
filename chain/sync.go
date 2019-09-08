@@ -510,11 +510,6 @@ loop:
 		// NB: GetBlocks validates that the blocks are in-fact the ones we
 		// requested, and that they are correctly linked to eachother. It does
 		// not validate any state transitions
-		fmt.Println("Get blocks")
-		if len(at) == 0 {
-			fmt.Println("Weird situation, about to request blocks with empty tipset")
-			fmt.Println("info: ", len(blockSet), blockSet[len(blockSet)-1].Height(), untilHeight)
-		}
 		blks, err := syncer.Bsync.GetBlocks(context.TODO(), at, 10)
 		if err != nil {
 			// Most likely our peers aren't fully synced yet, but forwarded
@@ -537,13 +532,21 @@ loop:
 			blockSet = append(blockSet, b)
 		}
 
-		fmt.Println("AT CHILD: ", blks[len(blks)-1].Height())
 		at = blks[len(blks)-1].Parents()
 	}
 
+	// We have now ascertained that this is *not* a 'fast forward'
 	if !types.CidArrsEqual(blockSet[len(blockSet)-1].Parents(), to.Cids()) {
+		last := blockSet[len(blockSet)-1]
+		if types.CidArrsEqual(last.Parents(), to.Parents()) {
+			// common case: receiving a block thats potentially part of the same tipset as our best block
+			return blockSet, nil
+		}
+
 		// TODO: handle the case where we are on a fork and its not a simple fast forward
-		return nil, xerrors.Errorf("synced header chain does not link to our best block")
+		// need to walk back to either a common ancestor, or until we hit the fork length threshold.
+		return nil, xerrors.Errorf("(fork detected) synced header chain (%s - %d) does not link to our best block (%s - %d)", from.Cids(), from.Height(), to.Cids(), to.Height())
+
 	}
 
 	return blockSet, nil
