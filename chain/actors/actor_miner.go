@@ -382,7 +382,7 @@ func GetFromSectorSet(ctx context.Context, s types.Storage, ss cid.Cid, sectorID
 	var comms [][]byte
 	err = ssr.Get(sectorID, &comms)
 	if err != nil {
-		if _, ok := err.(amt.ErrNotFound); ok {
+		if _, ok := err.(*amt.ErrNotFound); ok {
 			return false, nil, nil, nil
 		}
 		return false, nil, nil, aerrors.Escalate(err, "failed to find sector in sector set")
