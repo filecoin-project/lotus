@@ -131,26 +131,17 @@ func (ps *Store) AddVoucher(ch address.Address, sv *types.SignedVoucher, proof [
 		return err
 	}
 
-	svs, err := sv.EncodedString()
-	if err != nil {
-		return err
-	}
-
 	// look for duplicates
 	for i, v := range ci.Vouchers {
-		osvs, err := v.Voucher.EncodedString()
-		if err != nil {
-			return err
-		}
-		if osvs != svs {
+		if !sv.Equals(v.Voucher) {
 			continue
 		}
 		if v.Proof != nil {
 			if !bytes.Equal(v.Proof, proof) {
-				log.Warnf("AddVoucher: multiple proofs for single voucher: v:'%s', storing both", svs)
+				log.Warnf("AddVoucher: multiple proofs for single voucher, storing both")
 				break
 			}
-			log.Warnf("AddVoucher: voucher re-added with matching proof: v:'%s'", svs)
+			log.Warnf("AddVoucher: voucher re-added with matching proof")
 			return nil
 		}
 

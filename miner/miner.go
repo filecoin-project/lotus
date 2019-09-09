@@ -336,7 +336,7 @@ func (m *Miner) createBlock(base *MiningBase, ticket *types.Ticket, proof types.
 
 	msgs := m.selectMessages(pending)
 
-	uts := time.Now().Unix() // TODO: review: is this what we want here?
+	uts := time.Now().Unix() // TODO: put smallest valid timestamp
 
 	// why even return this? that api call could just submit it for us
 	return m.api.MinerCreateBlock(context.TODO(), m.addresses[0], base.ts, append(base.tickets, ticket), proof, msgs, uint64(uts))
