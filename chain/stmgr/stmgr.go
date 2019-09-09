@@ -16,7 +16,7 @@ import (
 	logging "github.com/ipfs/go-log"
 )
 
-var log = logging.Logger("chainstore")
+var log = logging.Logger("statemgr")
 
 type StateManager struct {
 	cs *store.ChainStore
