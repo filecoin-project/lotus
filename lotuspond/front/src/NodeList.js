@@ -7,6 +7,7 @@ import StorageNode from "./StorageNode";
 import {Client} from "rpc-websockets";
 import pushMessage from "./chain/send";
 import Logs from "./Logs";
+import StorageNodeInit from "./StorageNodeInit";
 
 class NodeList extends React.Component {
   constructor(props) {
@@ -21,6 +22,7 @@ class NodeList extends React.Component {
 
     // This binding is necessary to make `this` work in the callback
     this.spawnNode = this.spawnNode.bind(this)
+    this.spawnStorageNode = this.spawnStorageNode.bind(this)
     this.connMgr = this.connMgr.bind(this)
     this.consensus = this.consensus.bind(this)
     this.transfer1kFrom1 = this.transfer1kFrom1.bind(this)
@@ -49,12 +51,18 @@ class NodeList extends React.Component {
                       client={client}
                       pondClient={this.props.client}
                       give1k={this.transfer1kFrom1}
-                      mountWindow={this.props.mountWindow}/>)
+                      mountWindow={this.props.mountWindow}
+                      spawnStorageNode={this.spawnStorageNode}
+            />)
       } else {
+        const fullId = await this.props.client.call('Pond.FullID', [node.ID])
+
         this.props.mountWindow((onClose) =>
             <StorageNode node={{...node}}
                          pondClient={this.props.client}
-                         mountWindow={this.props.mountWindow}/>)
+                         fullConn={this.state.nodes[fullId].conn}
+                         mountWindow={this.props.mountWindow}
+            />)
       }
     })
   }
@@ -94,6 +102,16 @@ class NodeList extends React.Component {
     await this.mountNode(node)
 
     this.setState(state => ({nodes: {...state.nodes, [node.ID]: node}}))
+  }
+
+  async spawnStorageNode(fullRepo, fullConn) {
+    let nodePromise = this.props.client.call('Pond.SpawnStorage', [fullRepo])
+
+    this.props.mountWindow((onClose) => <StorageNodeInit node={nodePromise} fullRepo={fullRepo} fullConn={fullConn} pondClient={this.props.client} onClose={onClose} mountWindow={this.props.mountWindow}/>)
+    let node = await nodePromise
+    await this.mountNode(node)
+
+    //this.setState(state => ({nodes: {...state.nodes, [node.ID]: node}}))
   }
 
   connMgr() {

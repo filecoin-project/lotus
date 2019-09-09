@@ -204,6 +204,27 @@ func (api *api) SpawnStorage(fullNodeRepo string) (nodeInfo, error) {
 	return info, nil
 }
 
+func (api *api) FullID(id int32) (int32, error) {
+	api.runningLk.Lock()
+	defer api.runningLk.Unlock()
+
+	stor, ok := api.running[id]
+	if !ok {
+		return 0, xerrors.New("storage node not found")
+	}
+
+	if !stor.meta.Storage {
+		return 0, xerrors.New("node is not a storage node")
+	}
+
+	for id, n := range api.running {
+		if n.meta.Repo == stor.meta.FullNode {
+			return id, nil
+		}
+	}
+	return 0, xerrors.New("node not found")
+}
+
 func (api *api) CreateRandomFile(size int64) (string, error) {
 	tf, err := ioutil.TempFile(os.TempDir(), "pond-random-")
 	if err != nil {

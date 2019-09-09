@@ -79,8 +79,8 @@ class FullNode extends React.Component {
     this.loadInfo()
   }
 
-  async startStorageMiner() {
-    this.props.mountWindow((onClose) => <StorageNodeInit fullRepo={this.props.node.Repo} fullConn={this.props.client} pondClient={this.props.pondClient} onClose={onClose} mountWindow={this.props.mountWindow}/>)
+  startStorageMiner() {
+    this.props.spawnStorageNode(this.props.node.Repo, this.props.client)
   }
 
   async add1k(to) {
