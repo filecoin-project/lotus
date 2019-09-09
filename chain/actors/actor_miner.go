@@ -558,7 +558,7 @@ func (sma StorageMinerActor) PaymentVerifyInclusion(act *types.Actor, vmctx type
 		return nil, aerrors.New(1, "miner does not have required sector")
 	}
 
-	ok, err := sectorbuilder.VerifyPieceInclusionProof(mi.SectorSize.Uint64(), voucherData.PieceSize.Uint64(), voucherData.CommP, commD, params.Proof)
+	ok, err := sectorbuilder.VerifyPieceInclusionProof(mi.SectorSize.Uint64(), voucherData.PieceSize.Uint64(), voucherData.CommP, commD, proof.Proof)
 	if err != nil {
 		return nil, aerrors.Escalate(err, "verify piece inclusion proof failed")
 	}
