@@ -1,6 +1,7 @@
 package types
 
 import (
+	"bytes"
 	"encoding/base64"
 
 	"github.com/filecoin-project/go-lotus/chain/address"
@@ -40,6 +41,24 @@ func (sv *SignedVoucher) EncodedString() (string, error) {
 	}
 
 	return base64.RawURLEncoding.EncodeToString(data), nil
+}
+
+func (sv *SignedVoucher) Equals(other *SignedVoucher) bool {
+	// TODO: make this less bad
+
+	selfB, err := cbor.DumpObject(sv)
+	if err != nil {
+		log.Errorf("SignedVoucher.Equals: dump self: %s", err)
+		return false
+	}
+
+	otherB, err := cbor.DumpObject(other)
+	if err != nil {
+		log.Errorf("SignedVoucher.Equals: dump other: %s", err)
+		return false
+	}
+
+	return bytes.Equal(selfB, otherB)
 }
 
 func DecodeSignedVoucher(s string) (*SignedVoucher, error) {

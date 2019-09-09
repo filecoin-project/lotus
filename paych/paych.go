@@ -4,15 +4,18 @@ import (
 	"context"
 	"fmt"
 
+	hamt "github.com/ipfs/go-hamt-ipld"
+	logging "github.com/ipfs/go-log"
+
 	"github.com/filecoin-project/go-lotus/chain/actors"
 	"github.com/filecoin-project/go-lotus/chain/address"
 	"github.com/filecoin-project/go-lotus/chain/state"
 	"github.com/filecoin-project/go-lotus/chain/store"
 	"github.com/filecoin-project/go-lotus/chain/types"
 	"github.com/filecoin-project/go-lotus/chain/vm"
-
-	hamt "github.com/ipfs/go-hamt-ipld"
 )
+
+var log = logging.Logger("paych")
 
 type Manager struct {
 	chain *store.ChainStore
@@ -118,6 +121,24 @@ func (pm *Manager) CheckVoucherSpendable(ctx context.Context, ch address.Address
 		return false, err
 	}
 
+	if sv.Extra != nil && proof == nil {
+		known, err := pm.ListVouchers(ctx, ch)
+		if err != nil {
+			return false, err
+		}
+
+		for _, v := range known {
+			if v.Proof != nil && v.Voucher.Equals(sv) {
+				log.Info("CheckVoucherSpendable: using stored proof")
+				proof = v.Proof
+				break
+			}
+		}
+		if proof == nil {
+			log.Warn("CheckVoucherSpendable: nil proof for voucher with validation")
+		}
+	}
+
 	enc, err := actors.SerializeParams(&actors.PCAUpdateChannelStateParams{
 		Sv:     *sv,
 		Secret: secret,
@@ -186,15 +207,15 @@ func (pm *Manager) getPaychOwner(ctx context.Context, ch address.Address) (addre
 	return address.NewFromBytes(ret.Return)
 }
 
-func (pm *Manager) AddVoucher(ctx context.Context, ch address.Address, sv *types.SignedVoucher) error {
+func (pm *Manager) AddVoucher(ctx context.Context, ch address.Address, sv *types.SignedVoucher, proof []byte) error {
 	if err := pm.CheckVoucherValid(ctx, ch, sv); err != nil {
 		return err
 	}
 
-	return pm.store.AddVoucher(ch, sv)
+	return pm.store.AddVoucher(ch, sv, proof)
 }
 
-func (pm *Manager) ListVouchers(ctx context.Context, ch address.Address) ([]*types.SignedVoucher, error) {
+func (pm *Manager) ListVouchers(ctx context.Context, ch address.Address) ([]*VoucherInfo, error) {
 	// TODO: just having a passthrough method like this feels odd. Seems like
 	// there should be some filtering we're doing here
 	return pm.store.VouchersForPaych(ch)
@@ -208,9 +229,9 @@ func (pm *Manager) NextNonceForLane(ctx context.Context, ch address.Address, lan
 
 	var maxnonce uint64
 	for _, v := range vouchers {
-		if v.Lane == lane {
-			if v.Nonce > maxnonce {
-				maxnonce = v.Nonce
+		if v.Voucher.Lane == lane {
+			if v.Voucher.Nonce > maxnonce {
+				maxnonce = v.Voucher.Nonce
 			}
 		}
 	}

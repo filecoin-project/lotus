@@ -1,6 +1,7 @@
 package paych
 
 import (
+	"bytes"
 	"errors"
 	"fmt"
 	"strings"
@@ -18,6 +19,7 @@ import (
 var ErrChannelNotTracked = errors.New("channel not tracked")
 
 func init() {
+	cbor.RegisterCborType(VoucherInfo{})
 	cbor.RegisterCborType(ChannelInfo{})
 }
 
@@ -37,11 +39,16 @@ const (
 	DirOutbound = 2
 )
 
+type VoucherInfo struct {
+	Voucher *types.SignedVoucher
+	Proof   []byte
+}
+
 type ChannelInfo struct {
 	Channel     address.Address
 	ControlAddr address.Address
 	Direction   int
-	Vouchers    []*types.SignedVoucher
+	Vouchers    []*VoucherInfo
 }
 
 func dskeyForChannel(addr address.Address) datastore.Key {
@@ -118,18 +125,53 @@ func (ps *Store) ListChannels() ([]address.Address, error) {
 	return out, nil
 }
 
-func (ps *Store) AddVoucher(ch address.Address, sv *types.SignedVoucher) error {
+func (ps *Store) AddVoucher(ch address.Address, sv *types.SignedVoucher, proof []byte) error {
 	ci, err := ps.getChannelInfo(ch)
 	if err != nil {
 		return err
 	}
 
-	ci.Vouchers = append(ci.Vouchers, sv)
+	svs, err := sv.EncodedString()
+	if err != nil {
+		return err
+	}
+
+	// look for duplicates
+	for i, v := range ci.Vouchers {
+		osvs, err := v.Voucher.EncodedString()
+		if err != nil {
+			return err
+		}
+		if osvs != svs {
+			continue
+		}
+		if v.Proof != nil {
+			if !bytes.Equal(v.Proof, proof) {
+				log.Warnf("AddVoucher: multiple proofs for single voucher: v:'%s', storing both", svs)
+				break
+			}
+			log.Warnf("AddVoucher: voucher re-added with matching proof: v:'%s'", svs)
+			return nil
+		}
+
+		log.Warnf("AddVoucher: adding proof to stored voucher")
+		ci.Vouchers[i] = &VoucherInfo{
+			Voucher: v.Voucher,
+			Proof:   proof,
+		}
+
+		return ps.putChannelInfo(ci)
+	}
+
+	ci.Vouchers = append(ci.Vouchers, &VoucherInfo{
+		Voucher: sv,
+		Proof:   proof,
+	})
 
 	return ps.putChannelInfo(ci)
 }
 
-func (ps *Store) VouchersForPaych(ch address.Address) ([]*types.SignedVoucher, error) {
+func (ps *Store) VouchersForPaych(ch address.Address) ([]*VoucherInfo, error) {
 	ci, err := ps.getChannelInfo(ch)
 	if err != nil {
 		return nil, err
