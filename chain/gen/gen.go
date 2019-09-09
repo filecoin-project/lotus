@@ -15,7 +15,6 @@ import (
 
 	"github.com/filecoin-project/go-lotus/api"
 	"github.com/filecoin-project/go-lotus/build"
-	"github.com/filecoin-project/go-lotus/chain"
 	"github.com/filecoin-project/go-lotus/chain/address"
 	"github.com/filecoin-project/go-lotus/chain/stmgr"
 	"github.com/filecoin-project/go-lotus/chain/store"
@@ -364,7 +363,7 @@ func (mca mca) ChainGetRandomness(ctx context.Context, pts *types.TipSet, ticks 
 }
 
 func (mca mca) StateMinerPower(ctx context.Context, maddr address.Address, ts *types.TipSet) (api.MinerPower, error) {
-	mpow, tpow, err := chain.GetPower(ctx, mca.sm, ts, maddr)
+	mpow, tpow, err := stmgr.GetPower(ctx, mca.sm, ts, maddr)
 	if err != nil {
 		return api.MinerPower{}, err
 	}

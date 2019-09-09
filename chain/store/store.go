@@ -705,7 +705,8 @@ func (cs *ChainStore) TryFillTipSet(ts *types.TipSet) (*FullTipSet, error) {
 
 func (cs *ChainStore) GetRandomness(ctx context.Context, pts *types.TipSet, tickets []*types.Ticket, lb int) ([]byte, error) {
 	if lb < len(tickets) {
-		panic("self sampling is bad")
+		log.Warn("self sampling randomness. this should be extremely rare, if you see this often it may be a bug")
+
 		t := tickets[len(tickets)-(1+lb)]
 
 		return t.VDFResult, nil

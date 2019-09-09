@@ -153,44 +153,10 @@ func (a *StateAPI) StateMinerProvingSet(ctx context.Context, addr address.Addres
 }
 
 func (a *StateAPI) StateMinerPower(ctx context.Context, maddr address.Address, ts *types.TipSet) (api.MinerPower, error) {
-	var err error
-	enc, err := actors.SerializeParams(&actors.PowerLookupParams{maddr})
+	mpow, tpow, err := stmgr.GetPower(ctx, a.StateManager, ts, maddr)
 	if err != nil {
 		return api.MinerPower{}, err
 	}
-
-	var mpow types.BigInt
-
-	if maddr != address.Undef {
-		ret, err := stmgr.Call(ctx, a.StateManager, &types.Message{
-			From:   maddr,
-			To:     actors.StorageMarketAddress,
-			Method: actors.SMAMethods.PowerLookup,
-			Params: enc,
-		}, ts)
-		if err != nil {
-			return api.MinerPower{}, xerrors.Errorf("failed to get miner power from chain: %w", err)
-		}
-		if ret.ExitCode != 0 {
-			return api.MinerPower{}, xerrors.Errorf("failed to get miner power from chain (exit code %d)", ret.ExitCode)
-		}
-
-		mpow = types.BigFromBytes(ret.Return)
-	}
-
-	ret, err := stmgr.Call(ctx, a.StateManager, &types.Message{
-		From:   actors.StorageMarketAddress,
-		To:     actors.StorageMarketAddress,
-		Method: actors.SMAMethods.GetTotalStorage,
-	}, ts)
-	if err != nil {
-		return api.MinerPower{}, xerrors.Errorf("failed to get total power from chain: %w", err)
-	}
-	if ret.ExitCode != 0 {
-		return api.MinerPower{}, xerrors.Errorf("failed to get total power from chain (exit code %d)", ret.ExitCode)
-	}
-
-	tpow := types.BigFromBytes(ret.Return)
 
 	return api.MinerPower{
 		MinerPower: mpow,
@@ -199,7 +165,7 @@ func (a *StateAPI) StateMinerPower(ctx context.Context, maddr address.Address, t
 }
 
 func (a *StateAPI) StateMinerWorker(ctx context.Context, m address.Address, ts *types.TipSet) (address.Address, error) {
-	ret, err := stmgr.Call(ctx, a.StateManager, &types.Message{
+	ret, err := a.StateManager.Call(ctx, &types.Message{
 		From:   m,
 		To:     m,
 		Method: actors.MAMethods.GetWorkerAddr,
@@ -221,7 +187,7 @@ func (a *StateAPI) StateMinerWorker(ctx context.Context, m address.Address, ts *
 }
 
 func (a *StateAPI) StateCall(ctx context.Context, msg *types.Message, ts *types.TipSet) (*types.MessageReceipt, error) {
-	return stmgr.Call(ctx, a.StateManager, msg, ts)
+	return a.StateManager.Call(ctx, msg, ts)
 }
 
 func (a *StateAPI) stateForTs(ts *types.TipSet) (*state.StateTree, error) {

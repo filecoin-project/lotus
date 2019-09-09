@@ -325,7 +325,7 @@ func (syncer *Syncer) minerIsValid(ctx context.Context, maddr address.Address, b
 		return err
 	}
 
-	ret, err := stmgr.Call(ctx, syncer.sm, &types.Message{
+	ret, err := syncer.sm.Call(ctx, &types.Message{
 		To:     actors.StorageMarketAddress,
 		From:   maddr,
 		Method: actors.SMAMethods.IsMiner,
@@ -417,7 +417,7 @@ func (syncer *Syncer) ValidateBlock(ctx context.Context, b *types.FullBlock) err
 		return xerrors.Errorf("checking eproof failed: %w", err)
 	}
 
-	mpow, tpow, err := GetPower(ctx, syncer.sm, baseTs, h.Miner)
+	mpow, tpow, err := stmgr.GetPower(ctx, syncer.sm, baseTs, h.Miner)
 	if err != nil {
 		return xerrors.Errorf("failed getting power: %w", err)
 	}
@@ -510,7 +510,11 @@ loop:
 		// NB: GetBlocks validates that the blocks are in-fact the ones we
 		// requested, and that they are correctly linked to eachother. It does
 		// not validate any state transitions
-		blks, err := syncer.Bsync.GetBlocks(context.TODO(), at, 10)
+		window := 10
+		if gap := int(blockSet[len(blockSet)-1].Height() - untilHeight); gap < window {
+			window = gap
+		}
+		blks, err := syncer.Bsync.GetBlocks(context.TODO(), at, window)
 		if err != nil {
 			// Most likely our peers aren't fully synced yet, but forwarded
 			// new block message (ideally we'd find better peers)
@@ -523,10 +527,6 @@ loop:
 
 		for _, b := range blks {
 			if b.Height() < untilHeight {
-				// REVIEW: this was an existing bug I think, if this got hit
-				// we would not append the remaining blocks to our blockset, but
-				// we would keep looping, and the outer for loop condition wouldnt trigger
-				// causing us to request the parents of the genesis block (aka, an empty cid set)
 				break loop
 			}
 			blockSet = append(blockSet, b)
@@ -687,47 +687,4 @@ func VerifyElectionProof(ctx context.Context, eproof []byte, rand []byte, worker
 	}
 
 	return nil
-}
-
-func GetPower(ctx context.Context, sm *stmgr.StateManager, ts *types.TipSet, maddr address.Address) (types.BigInt, types.BigInt, error) {
-	var err error
-	enc, err := actors.SerializeParams(&actors.PowerLookupParams{maddr})
-	if err != nil {
-		return types.EmptyInt, types.EmptyInt, err
-	}
-
-	var mpow types.BigInt
-
-	if maddr != address.Undef {
-		ret, err := stmgr.Call(ctx, sm, &types.Message{
-			From:   maddr,
-			To:     actors.StorageMarketAddress,
-			Method: actors.SMAMethods.PowerLookup,
-			Params: enc,
-		}, ts)
-		if err != nil {
-			return types.EmptyInt, types.EmptyInt, xerrors.Errorf("failed to get miner power from chain: %w", err)
-		}
-		if ret.ExitCode != 0 {
-			return types.EmptyInt, types.EmptyInt, xerrors.Errorf("failed to get miner power from chain (exit code %d)", ret.ExitCode)
-		}
-
-		mpow = types.BigFromBytes(ret.Return)
-	}
-
-	ret, err := stmgr.Call(ctx, sm, &types.Message{
-		From:   actors.StorageMarketAddress,
-		To:     actors.StorageMarketAddress,
-		Method: actors.SMAMethods.GetTotalStorage,
-	}, ts)
-	if err != nil {
-		return types.EmptyInt, types.EmptyInt, xerrors.Errorf("failed to get total power from chain: %w", err)
-	}
-	if ret.ExitCode != 0 {
-		return types.EmptyInt, types.EmptyInt, xerrors.Errorf("failed to get total power from chain (exit code %d)", ret.ExitCode)
-	}
-
-	tpow := types.BigFromBytes(ret.Return)
-
-	return mpow, tpow, nil
 }

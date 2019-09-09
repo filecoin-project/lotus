@@ -145,7 +145,7 @@ func (pm *Manager) CheckVoucherSpendable(ctx context.Context, ch address.Address
 		return false, err
 	}
 
-	ret, err := stmgr.Call(ctx, pm.sm, &types.Message{
+	ret, err := pm.sm.Call(ctx, &types.Message{
 		From:   owner,
 		To:     ch,
 		Method: actors.PCAMethods.UpdateChannelState,
@@ -173,7 +173,7 @@ func (pm *Manager) loadPaychState(ctx context.Context, ch address.Address) (*typ
 }
 
 func (pm *Manager) getPaychOwner(ctx context.Context, ch address.Address) (address.Address, error) {
-	ret, err := stmgr.Call(ctx, pm.sm, &types.Message{
+	ret, err := pm.sm.Call(ctx, &types.Message{
 		From:   ch,
 		To:     ch,
 		Method: actors.PCAMethods.GetOwner,

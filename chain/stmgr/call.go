@@ -11,7 +11,7 @@ import (
 	"golang.org/x/xerrors"
 )
 
-func CallRaw(ctx context.Context, sm *StateManager, msg *types.Message, bstate cid.Cid, bheight uint64) (*types.MessageReceipt, error) {
+func (sm *StateManager) CallRaw(ctx context.Context, msg *types.Message, bstate cid.Cid, bheight uint64) (*types.MessageReceipt, error) {
 	vmi, err := vm.NewVM(bstate, bheight, actors.NetworkAddress, sm.cs)
 	if err != nil {
 		return nil, xerrors.Errorf("failed to set up vm: %w", err)
@@ -53,7 +53,7 @@ func CallRaw(ctx context.Context, sm *StateManager, msg *types.Message, bstate c
 
 }
 
-func Call(ctx context.Context, sm *StateManager, msg *types.Message, ts *types.TipSet) (*types.MessageReceipt, error) {
+func (sm *StateManager) Call(ctx context.Context, msg *types.Message, ts *types.TipSet) (*types.MessageReceipt, error) {
 	if ts == nil {
 		ts = sm.cs.GetHeaviestTipSet()
 	}
@@ -63,5 +63,5 @@ func Call(ctx context.Context, sm *StateManager, msg *types.Message, ts *types.T
 		return nil, err
 	}
 
-	return CallRaw(ctx, sm, msg, state, ts.Height())
+	return sm.CallRaw(ctx, msg, state, ts.Height())
 }

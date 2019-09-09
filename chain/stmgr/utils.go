@@ -11,7 +11,7 @@ import (
 )
 
 func GetMinerWorker(ctx context.Context, sm *StateManager, st cid.Cid, maddr address.Address) (address.Address, error) {
-	recp, err := CallRaw(ctx, sm, &types.Message{
+	recp, err := sm.CallRaw(ctx, &types.Message{
 		To:     maddr,
 		From:   maddr,
 		Method: actors.MAMethods.GetWorkerAddr,
@@ -37,7 +37,7 @@ func GetMinerWorker(ctx context.Context, sm *StateManager, st cid.Cid, maddr add
 }
 
 func GetMinerOwner(ctx context.Context, sm *StateManager, st cid.Cid, maddr address.Address) (address.Address, error) {
-	recp, err := CallRaw(ctx, sm, &types.Message{
+	recp, err := sm.CallRaw(ctx, &types.Message{
 		To:     maddr,
 		From:   maddr,
 		Method: actors.MAMethods.GetOwner,
@@ -60,4 +60,47 @@ func GetMinerOwner(ctx context.Context, sm *StateManager, st cid.Cid, maddr addr
 	}
 
 	return owner, nil
+}
+
+func GetPower(ctx context.Context, sm *StateManager, ts *types.TipSet, maddr address.Address) (types.BigInt, types.BigInt, error) {
+	var err error
+	enc, err := actors.SerializeParams(&actors.PowerLookupParams{maddr})
+	if err != nil {
+		return types.EmptyInt, types.EmptyInt, err
+	}
+
+	var mpow types.BigInt
+
+	if maddr != address.Undef {
+		ret, err := sm.Call(ctx, &types.Message{
+			From:   maddr,
+			To:     actors.StorageMarketAddress,
+			Method: actors.SMAMethods.PowerLookup,
+			Params: enc,
+		}, ts)
+		if err != nil {
+			return types.EmptyInt, types.EmptyInt, xerrors.Errorf("failed to get miner power from chain: %w", err)
+		}
+		if ret.ExitCode != 0 {
+			return types.EmptyInt, types.EmptyInt, xerrors.Errorf("failed to get miner power from chain (exit code %d)", ret.ExitCode)
+		}
+
+		mpow = types.BigFromBytes(ret.Return)
+	}
+
+	ret, err := sm.Call(ctx, &types.Message{
+		From:   actors.StorageMarketAddress,
+		To:     actors.StorageMarketAddress,
+		Method: actors.SMAMethods.GetTotalStorage,
+	}, ts)
+	if err != nil {
+		return types.EmptyInt, types.EmptyInt, xerrors.Errorf("failed to get total power from chain: %w", err)
+	}
+	if ret.ExitCode != 0 {
+		return types.EmptyInt, types.EmptyInt, xerrors.Errorf("failed to get total power from chain (exit code %d)", ret.ExitCode)
+	}
+
+	tpow := types.BigFromBytes(ret.Return)
+
+	return mpow, tpow, nil
 }
