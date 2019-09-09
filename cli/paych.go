@@ -216,8 +216,8 @@ var paychVoucherListCmd = &cli.Command{
 	Usage: "List stored vouchers for a given payment channel",
 	Flags: []cli.Flag{
 		&cli.BoolFlag{
-			Name:        "export",
-			Usage:       "Print export strings",
+			Name:  "export",
+			Usage: "Print export strings",
 		},
 	},
 	Action: func(cctx *cli.Context) error {

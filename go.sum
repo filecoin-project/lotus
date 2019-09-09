@@ -168,8 +168,6 @@ github.com/ipfs/go-filestore v0.0.2 h1:pcYwpjtXXwirtbjBXKVJM9CTa9F7/8v1EkfnDaHTO
 github.com/ipfs/go-filestore v0.0.2/go.mod h1:KnZ41qJsCt2OX2mxZS0xsK3Psr0/oB93HMMssLujjVc=
 github.com/ipfs/go-fs-lock v0.0.1 h1:XHX8uW4jQBYWHj59XXcjg7BHlHxV9ZOYs6Y43yb7/l0=
 github.com/ipfs/go-fs-lock v0.0.1/go.mod h1:DNBekbboPKcxs1aukPSaOtFA3QfSdi5C855v0i9XJ8Y=
-github.com/ipfs/go-hamt-ipld v0.0.12-0.20190822003241-7ff276389cbf h1:P9Kkd8YCG4gCvfi8O839HHK2c+p5sdtyXMHcc1rjp2M=
-github.com/ipfs/go-hamt-ipld v0.0.12-0.20190822003241-7ff276389cbf/go.mod h1:gaK14QN1GOlYGgq+o+t5+WTExZZogkMt0k0IIBNjXsM=
 github.com/ipfs/go-hamt-ipld v0.0.12-0.20190830015840-8aabc0c74ac6 h1:qVk+425ErvzJEz/9f38lhjPfmmu0GAj/BSNt56SW4xQ=
 github.com/ipfs/go-hamt-ipld v0.0.12-0.20190830015840-8aabc0c74ac6/go.mod h1:UPmViPxLn1GGxxnllIww8yWUVO60qEYLFFfF9e3ojgo=
 github.com/ipfs/go-ipfs-blockstore v0.0.1/go.mod h1:d3WClOmRQKFnJ0Jz/jj/zmksX0ma1gROTlovZKBmN08=
@@ -526,7 +524,6 @@ github.com/whyrusleeping/base32 v0.0.0-20170828182744-c30ac30633cc h1:BCPnHtcboa
 github.com/whyrusleeping/base32 v0.0.0-20170828182744-c30ac30633cc/go.mod h1:r45hJU7yEoA81k6MWNhpMj/kms0n14dkzkxYHoB96UM=
 github.com/whyrusleeping/bencher v0.0.0-20190829221104-bb6607aa8bba h1:X4n8JG2e2biEZZXdBKt9HX7DN3bYGFUqljqqy0DqgnY=
 github.com/whyrusleeping/bencher v0.0.0-20190829221104-bb6607aa8bba/go.mod h1:CHQnYnQUEPydYCwuy8lmTHfGmdw9TKrhWV0xLx8l0oM=
-github.com/whyrusleeping/cbor-gen v0.0.0-20190822002707-4e02357de5c1/go.mod h1:xdlJQaiqipF0HW+Mzpg7XRM3fWbGvfgFlcppuvlkIvY=
 github.com/whyrusleeping/cbor-gen v0.0.0-20190822231004-8db835b09a5a h1:9oEQR9eq2H2JDmglMcrCa+TxUEYy3HKSiNoLIkPNy/U=
 github.com/whyrusleeping/cbor-gen v0.0.0-20190822231004-8db835b09a5a/go.mod h1:xdlJQaiqipF0HW+Mzpg7XRM3fWbGvfgFlcppuvlkIvY=
 github.com/whyrusleeping/cbor-gen v0.0.0-20190906235522-125fcd082c67 h1:1JDNlhJZDMCdB/8KH7w7Aq0yvBYRA8pVdhzPZluDBHU=

@@ -74,12 +74,12 @@ func (h *Handler) accept(ctx context.Context, deal MinerDeal) (func(*MinerDeal),
 			}
 		}
 
-		if voucher.MinCloseHeight > curHead.Height() + deal.Proposal.Duration {
-			return nil, xerrors.Errorf("validating payment voucher %d: MinCloseHeight too high (%d), max expected: %d", i, voucher.MinCloseHeight, curHead.Height() + deal.Proposal.Duration)
+		if voucher.MinCloseHeight > curHead.Height()+deal.Proposal.Duration {
+			return nil, xerrors.Errorf("validating payment voucher %d: MinCloseHeight too high (%d), max expected: %d", i, voucher.MinCloseHeight, curHead.Height()+deal.Proposal.Duration)
 		}
 
-		if voucher.TimeLock > curHead.Height() + deal.Proposal.Duration {
-			return nil, xerrors.Errorf("validating payment voucher %d: TimeLock too high (%d), max expected: %d", i, voucher.TimeLock, curHead.Height() + deal.Proposal.Duration)
+		if voucher.TimeLock > curHead.Height()+deal.Proposal.Duration {
+			return nil, xerrors.Errorf("validating payment voucher %d: TimeLock too high (%d), max expected: %d", i, voucher.TimeLock, curHead.Height()+deal.Proposal.Duration)
 		}
 
 		if len(voucher.Merges) > 0 {

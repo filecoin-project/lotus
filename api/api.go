@@ -189,7 +189,7 @@ const (
 	PCHOutbound
 )
 
-type PaychStatus struct{
+type PaychStatus struct {
 	ControlAddr address.Address
 	Direction   PCHDir
 }

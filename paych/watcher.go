@@ -8,7 +8,7 @@ import (
 
 type watchedLane struct {
 	bestVoucher *types.SignedVoucher
-	closed bool
+	closed      bool
 }
 
 type inboundWatcher struct {
@@ -20,10 +20,7 @@ type inboundWatcher struct {
 
 	lanes map[uint64]*watchedLane
 
-	closeAt uint64 // at what H do we plan to call close
+	closeAt   uint64 // at what H do we plan to call close
 	collectAt uint64 // at what H do we plan to call collect
 
 }
-
-
-
