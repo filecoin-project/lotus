@@ -1,10 +1,10 @@
 import React from 'react';
-import { Client } from 'rpc-websockets'
 import Cristal from 'react-cristal'
 import { BlockLinks } from "./BlockLink";
 import StorageNodeInit from "./StorageNodeInit";
 import Address from "./Address";
 import ChainExplorer from "./ChainExplorer";
+import Client from "./Client";
 
 class FullNode extends React.Component {
   constructor(props) {
@@ -18,6 +18,7 @@ class FullNode extends React.Component {
     this.startStorageMiner = this.startStorageMiner.bind(this)
     this.add1k = this.add1k.bind(this)
     this.explorer = this.explorer.bind(this)
+    this.client = this.client.bind(this)
 
     this.loadInfo()
     setInterval(this.loadInfo, 2050)
@@ -46,11 +47,15 @@ class FullNode extends React.Component {
 
     let minerList = await this.props.client.call('Filecoin.MinerAddresses', [])
 
+    let mpoolPending = (await this.props.client.call('Filecoin.MpoolPending', [tipset])).length
+
     this.setState(() => ({
       id: id,
       version: version,
       peers: peers.length,
       tipset: tipset,
+
+      mpoolPending: mpoolPending,
 
       addrs: addrs,
       paychs: paychs,
@@ -74,8 +79,8 @@ class FullNode extends React.Component {
     this.loadInfo()
   }
 
-  async startStorageMiner() {
-    this.props.mountWindow((onClose) => <StorageNodeInit fullRepo={this.props.node.Repo} fullConn={this.props.client} pondClient={this.props.pondClient} onClose={onClose} mountWindow={this.props.mountWindow}/>)
+  startStorageMiner() {
+    this.props.spawnStorageNode(this.props.node.Repo, this.props.client)
   }
 
   async add1k(to) {
@@ -84,6 +89,10 @@ class FullNode extends React.Component {
 
   explorer() {
     this.props.mountWindow((onClose) => <ChainExplorer onClose={onClose} ts={this.state.tipset} client={this.props.client} mountWindow={this.props.mountWindow}/>)
+  }
+
+  client() {
+    this.props.mountWindow((onClose) => <Client onClose={onClose} node={this.props.node} client={this.props.client} pondClient={this.props.pondClient} mountWindow={this.props.mountWindow}/>)
   }
 
   render() {
@@ -96,7 +105,7 @@ class FullNode extends React.Component {
           <div>
             Head: {
             <BlockLinks cids={this.state.tipset.Cids} conn={this.props.client} mountWindow={this.props.mountWindow} />
-          } H:{this.state.tipset.Height} <a href="#" onClick={this.explorer}>[Explore]</a>
+          } H:{this.state.tipset.Height} Mp:{this.state.mpoolPending} <a href="#" onClick={this.explorer}>[Explore]</a> <a href="#" onClick={this.client}>[Client]</a>
           </div>
         )
       }
@@ -109,14 +118,14 @@ class FullNode extends React.Component {
       let storageMine = <a href="#" onClick={this.startStorageMiner}>[Spawn Storage Miner]</a>
 
       let addresses = this.state.addrs.map((addr) => {
-        let line = <Address client={this.props.client} add1k={this.add1k} addr={addr} mountWindow={this.props.mountWindow}/>
+        let line = <Address client={this.props.client} add1k={this.add1k} add10k={true} nonce={true} addr={addr} mountWindow={this.props.mountWindow}/>
         if (this.state.defaultAddr === addr) {
           line = <b>{line}</b>
         }
         return <div key={addr}>{line}</div>
       })
       let paychannels = this.state.paychs.map((addr, ak) => {
-        const line = <Address client={this.props.client} add1k={this.add1k} addr={addr} mountWindow={this.props.mountWindow}/>
+        const line = <Address client={this.props.client} add1k={this.add1k} add10k={true} addr={addr} mountWindow={this.props.mountWindow}/>
         const vouchers = this.state.vouchers[ak].map(voucher => {
           let extra = <span></span>
           if(voucher.Extra) {

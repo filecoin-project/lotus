@@ -114,7 +114,7 @@ type FullNode interface {
 	PaychVoucherCheckValid(context.Context, address.Address, *types.SignedVoucher) error
 	PaychVoucherCheckSpendable(context.Context, address.Address, *types.SignedVoucher, []byte, []byte) (bool, error)
 	PaychVoucherCreate(context.Context, address.Address, types.BigInt, uint64) (*types.SignedVoucher, error)
-	PaychVoucherAdd(context.Context, address.Address, *types.SignedVoucher) error
+	PaychVoucherAdd(context.Context, address.Address, *types.SignedVoucher, []byte) error
 	PaychVoucherList(context.Context, address.Address) ([]*types.SignedVoucher, error)
 	PaychVoucherSubmit(context.Context, address.Address, *types.SignedVoucher) (cid.Cid, error)
 }
@@ -181,7 +181,18 @@ type ActorState struct {
 	State   interface{}
 }
 
-type PaychStatus struct{}
+type PCHDir int
+
+const (
+	PCHUndef PCHDir = iota
+	PCHInbound
+	PCHOutbound
+)
+
+type PaychStatus struct {
+	ControlAddr address.Address
+	Direction   PCHDir
+}
 
 type MinerPower struct {
 	MinerPower types.BigInt

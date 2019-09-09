@@ -53,7 +53,7 @@ func (a *PaychAPI) paychCreate(ctx context.Context, from, to address.Address, am
 		Nonce:    nonce,
 		Method:   actors.IAMethods.Exec,
 		Params:   enc,
-		GasLimit: types.NewInt(1000),
+		GasLimit: types.NewInt(1000000),
 		GasPrice: types.NewInt(0),
 	}
 
@@ -102,7 +102,14 @@ func (a *PaychAPI) PaychList(ctx context.Context) ([]address.Address, error) {
 }
 
 func (a *PaychAPI) PaychStatus(ctx context.Context, pch address.Address) (*api.PaychStatus, error) {
-	panic("nyi")
+	ci, err := a.PaychMgr.GetChannelInfo(pch)
+	if err != nil {
+		return nil, err
+	}
+	return &api.PaychStatus{
+		ControlAddr: ci.ControlAddr,
+		Direction:   api.PCHDir(ci.Direction),
+	}, nil
 }
 
 func (a *PaychAPI) PaychClose(ctx context.Context, addr address.Address) (cid.Cid, error) {
@@ -147,12 +154,14 @@ func (a *PaychAPI) PaychVoucherCheckSpendable(ctx context.Context, ch address.Ad
 	return a.PaychMgr.CheckVoucherSpendable(ctx, ch, sv, secret, proof)
 }
 
-func (a *PaychAPI) PaychVoucherAdd(ctx context.Context, ch address.Address, sv *types.SignedVoucher) error {
+func (a *PaychAPI) PaychVoucherAdd(ctx context.Context, ch address.Address, sv *types.SignedVoucher, proof []byte) error {
+	_ = a.PaychMgr.TrackInboundChannel(ctx, ch) // TODO: expose those calls
+
 	if err := a.PaychVoucherCheckValid(ctx, ch, sv); err != nil {
 		return err
 	}
 
-	return a.PaychMgr.AddVoucher(ctx, ch, sv)
+	return a.PaychMgr.AddVoucher(ctx, ch, sv, proof)
 }
 
 // PaychVoucherCreate creates a new signed voucher on the given payment channel
@@ -190,7 +199,7 @@ func (a *PaychAPI) paychVoucherCreate(ctx context.Context, pch address.Address, 
 
 	sv.Signature = sig
 
-	if err := a.PaychMgr.AddVoucher(ctx, pch, sv); err != nil {
+	if err := a.PaychMgr.AddVoucher(ctx, pch, sv, nil); err != nil {
 		return nil, xerrors.Errorf("failed to persist voucher: %w", err)
 	}
 
@@ -198,7 +207,17 @@ func (a *PaychAPI) paychVoucherCreate(ctx context.Context, pch address.Address, 
 }
 
 func (a *PaychAPI) PaychVoucherList(ctx context.Context, pch address.Address) ([]*types.SignedVoucher, error) {
-	return a.PaychMgr.ListVouchers(ctx, pch)
+	vi, err := a.PaychMgr.ListVouchers(ctx, pch)
+	if err != nil {
+		return nil, err
+	}
+
+	out := make([]*types.SignedVoucher, len(vi))
+	for k, v := range vi {
+		out[k] = v.Voucher
+	}
+
+	return out, nil
 }
 
 func (a *PaychAPI) PaychVoucherSubmit(ctx context.Context, ch address.Address, sv *types.SignedVoucher) (cid.Cid, error) {

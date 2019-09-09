@@ -2,12 +2,11 @@ package gen
 
 import (
 	"context"
-
-	bls "github.com/filecoin-project/go-bls-sigs"
-	cid "github.com/ipfs/go-cid"
-	hamt "github.com/ipfs/go-hamt-ipld"
+	"github.com/filecoin-project/go-bls-sigs"
+	"github.com/ipfs/go-cid"
+	"github.com/ipfs/go-hamt-ipld"
 	"github.com/pkg/errors"
-	sharray "github.com/whyrusleeping/sharray"
+	"github.com/whyrusleeping/sharray"
 	"golang.org/x/xerrors"
 
 	"github.com/filecoin-project/go-lotus/chain/actors"

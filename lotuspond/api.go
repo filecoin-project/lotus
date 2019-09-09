@@ -1,6 +1,7 @@
 package main
 
 import (
+	"crypto/rand"
 	"fmt"
 	"github.com/filecoin-project/go-lotus/lib/jsonrpc"
 	"io"
@@ -201,6 +202,45 @@ func (api *api) SpawnStorage(fullNodeRepo string) (nodeInfo, error) {
 	time.Sleep(time.Millisecond * 750) // TODO: Something less terrible
 
 	return info, nil
+}
+
+func (api *api) FullID(id int32) (int32, error) {
+	api.runningLk.Lock()
+	defer api.runningLk.Unlock()
+
+	stor, ok := api.running[id]
+	if !ok {
+		return 0, xerrors.New("storage node not found")
+	}
+
+	if !stor.meta.Storage {
+		return 0, xerrors.New("node is not a storage node")
+	}
+
+	for id, n := range api.running {
+		if n.meta.Repo == stor.meta.FullNode {
+			return id, nil
+		}
+	}
+	return 0, xerrors.New("node not found")
+}
+
+func (api *api) CreateRandomFile(size int64) (string, error) {
+	tf, err := ioutil.TempFile(os.TempDir(), "pond-random-")
+	if err != nil {
+		return "", err
+	}
+
+	_, err = io.CopyN(tf, rand.Reader, size)
+	if err != nil {
+		return "", err
+	}
+
+	if err := tf.Close(); err != nil {
+		return "", err
+	}
+
+	return tf.Name(), nil
 }
 
 type client struct {

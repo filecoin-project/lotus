@@ -2,15 +2,13 @@ package actors
 
 import (
 	"context"
-
 	"github.com/filecoin-project/go-lotus/chain/actors/aerrors"
 	"github.com/filecoin-project/go-lotus/chain/address"
 	"github.com/filecoin-project/go-lotus/chain/types"
 	"github.com/filecoin-project/go-lotus/lib/sectorbuilder"
 
-	amt "github.com/filecoin-project/go-amt-ipld"
-	cid "github.com/ipfs/go-cid"
-	hamt "github.com/ipfs/go-hamt-ipld"
+	"github.com/filecoin-project/go-amt-ipld"
+	"github.com/ipfs/go-cid"
 	cbor "github.com/ipfs/go-ipld-cbor"
 	"github.com/libp2p/go-libp2p-core/peer"
 	"golang.org/x/xerrors"
@@ -181,13 +179,14 @@ func (sma StorageMinerActor) StorageMinerConstructor(act *types.Actor, vmctx typ
 	}
 
 	var self StorageMinerActorState
-	nd := hamt.NewNode(vmctx.Ipld())
-	sectors, nerr := vmctx.Ipld().Put(context.TODO(), nd)
-	if nerr != nil {
-		return nil, aerrors.Escalate(nerr, "could not put in storage")
+	sectors := amt.NewAMT(types.WrapStorage(vmctx.Storage()))
+	scid, serr := sectors.Flush()
+	if serr != nil {
+		return nil, aerrors.Escalate(serr, "initializing AMT")
 	}
-	self.Sectors = sectors
-	self.ProvingSet = sectors
+
+	self.Sectors = scid
+	self.ProvingSet = scid
 	self.Info = minfocid
 
 	storage := vmctx.Storage()
@@ -383,7 +382,7 @@ func GetFromSectorSet(ctx context.Context, s types.Storage, ss cid.Cid, sectorID
 	var comms [][]byte
 	err = ssr.Get(sectorID, &comms)
 	if err != nil {
-		if _, ok := err.(amt.ErrNotFound); ok {
+		if _, ok := err.(*amt.ErrNotFound); ok {
 			return false, nil, nil, nil
 		}
 		return false, nil, nil, aerrors.Escalate(err, "failed to find sector in sector set")
@@ -559,7 +558,7 @@ func (sma StorageMinerActor) PaymentVerifyInclusion(act *types.Actor, vmctx type
 		return nil, aerrors.New(1, "miner does not have required sector")
 	}
 
-	ok, err := sectorbuilder.VerifyPieceInclusionProof(mi.SectorSize.Uint64(), voucherData.PieceSize.Uint64(), voucherData.CommP, commD, params.Proof)
+	ok, err := sectorbuilder.VerifyPieceInclusionProof(mi.SectorSize.Uint64(), voucherData.PieceSize.Uint64(), voucherData.CommP, commD, proof.Proof)
 	if err != nil {
 		return nil, aerrors.Escalate(err, "verify piece inclusion proof failed")
 	}

@@ -202,7 +202,8 @@ var paychVoucherAddCmd = &cli.Command{
 
 		ctx := ReqContext(cctx)
 
-		if err := api.PaychVoucherAdd(ctx, ch, sv); err != nil {
+		// TODO: allow passing proof bytes
+		if err := api.PaychVoucherAdd(ctx, ch, sv, nil); err != nil {
 			return err
 		}
 
@@ -213,6 +214,12 @@ var paychVoucherAddCmd = &cli.Command{
 var paychVoucherListCmd = &cli.Command{
 	Name:  "list",
 	Usage: "List stored vouchers for a given payment channel",
+	Flags: []cli.Flag{
+		&cli.BoolFlag{
+			Name:  "export",
+			Usage: "Print export strings",
+		},
+	},
 	Action: func(cctx *cli.Context) error {
 		if cctx.Args().Len() != 1 {
 			return fmt.Errorf("must pass payment channel address")
@@ -236,7 +243,16 @@ var paychVoucherListCmd = &cli.Command{
 		}
 
 		for _, v := range vouchers {
-			fmt.Printf("Lane %d, Nonce %d: %s\n", v.Lane, v.Nonce, v.Amount.String())
+			if cctx.Bool("export") {
+				enc, err := v.EncodedString()
+				if err != nil {
+					return err
+				}
+
+				fmt.Printf("Lane %d, Nonce %d: %s; %s\n", v.Lane, v.Nonce, v.Amount.String(), enc)
+			} else {
+				fmt.Printf("Lane %d, Nonce %d: %s\n", v.Lane, v.Nonce, v.Amount.String())
+			}
 		}
 
 		return nil

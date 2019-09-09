@@ -1,6 +1,8 @@
 package paych
 
 import (
+	"bytes"
+	"errors"
 	"fmt"
 	"strings"
 
@@ -14,7 +16,10 @@ import (
 	"golang.org/x/xerrors"
 )
 
+var ErrChannelNotTracked = errors.New("channel not tracked")
+
 func init() {
+	cbor.RegisterCborType(VoucherInfo{})
 	cbor.RegisterCborType(ChannelInfo{})
 }
 
@@ -34,11 +39,16 @@ const (
 	DirOutbound = 2
 )
 
+type VoucherInfo struct {
+	Voucher *types.SignedVoucher
+	Proof   []byte
+}
+
 type ChannelInfo struct {
 	Channel     address.Address
 	ControlAddr address.Address
 	Direction   int
-	Vouchers    []*types.SignedVoucher
+	Vouchers    []*VoucherInfo
 }
 
 func dskeyForChannel(addr address.Address) datastore.Key {
@@ -60,6 +70,9 @@ func (ps *Store) getChannelInfo(addr address.Address) (*ChannelInfo, error) {
 	k := dskeyForChannel(addr)
 
 	b, err := ps.ds.Get(k)
+	if err == datastore.ErrNotFound {
+		return nil, ErrChannelNotTracked
+	}
 	if err != nil {
 		return nil, err
 	}
@@ -79,7 +92,7 @@ func (ps *Store) TrackChannel(ch *ChannelInfo) error {
 		return err
 	case nil:
 		return fmt.Errorf("already tracking channel: %s", ch.Channel)
-	case datastore.ErrNotFound:
+	case ErrChannelNotTracked:
 		return ps.putChannelInfo(ch)
 	}
 }
@@ -112,18 +125,44 @@ func (ps *Store) ListChannels() ([]address.Address, error) {
 	return out, nil
 }
 
-func (ps *Store) AddVoucher(ch address.Address, sv *types.SignedVoucher) error {
+func (ps *Store) AddVoucher(ch address.Address, sv *types.SignedVoucher, proof []byte) error {
 	ci, err := ps.getChannelInfo(ch)
 	if err != nil {
 		return err
 	}
 
-	ci.Vouchers = append(ci.Vouchers, sv)
+	// look for duplicates
+	for i, v := range ci.Vouchers {
+		if !sv.Equals(v.Voucher) {
+			continue
+		}
+		if v.Proof != nil {
+			if !bytes.Equal(v.Proof, proof) {
+				log.Warnf("AddVoucher: multiple proofs for single voucher, storing both")
+				break
+			}
+			log.Warnf("AddVoucher: voucher re-added with matching proof")
+			return nil
+		}
+
+		log.Warnf("AddVoucher: adding proof to stored voucher")
+		ci.Vouchers[i] = &VoucherInfo{
+			Voucher: v.Voucher,
+			Proof:   proof,
+		}
+
+		return ps.putChannelInfo(ci)
+	}
+
+	ci.Vouchers = append(ci.Vouchers, &VoucherInfo{
+		Voucher: sv,
+		Proof:   proof,
+	})
 
 	return ps.putChannelInfo(ci)
 }
 
-func (ps *Store) VouchersForPaych(ch address.Address) ([]*types.SignedVoucher, error) {
+func (ps *Store) VouchersForPaych(ch address.Address) ([]*VoucherInfo, error) {
 	ci, err := ps.getChannelInfo(ch)
 	if err != nil {
 		return nil, err

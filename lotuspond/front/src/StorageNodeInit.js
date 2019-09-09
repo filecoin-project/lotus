@@ -4,10 +4,10 @@ import StorageNode from "./StorageNode";
 
 class StorageNodeInit extends React.Component {
   async componentDidMount() {
-    const info = await this.props.pondClient.call('Pond.SpawnStorage', [this.props.fullRepo])
+    const info = await this.props.node
 
     this.props.onClose()
-    this.props.mountWindow((onClose) => <StorageNode node={info} fullRepo={this.props.fullRepo} fullConn={this.props.fullConn} pondClient={this.props.pondClient} onClose={onClose} mountWindow={this.props.mountWindow}/>)
+    //this.props.mountWindow((onClose) => <StorageNode node={info} fullRepo={this.props.fullRepo} fullConn={this.props.fullConn} pondClient={this.props.pondClient} onClose={onClose} mountWindow={this.props.mountWindow}/>)
   }
 
   render() {

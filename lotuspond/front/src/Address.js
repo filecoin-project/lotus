@@ -11,6 +11,9 @@ function truncAddr(addr, len) {
   return addr
 }
 
+let sheet = document.createElement('style')
+document.body.appendChild(sheet);
+
 class Address extends React.Component {
   constructor(props) {
     super(props)
@@ -32,6 +35,7 @@ class Address extends React.Component {
     let actor = {}
     let actorInfo
     let minerInfo
+    let nonce
 
     try {
       balance = await this.props.client.call('Filecoin.WalletBalance', [this.props.addr])
@@ -41,11 +45,14 @@ class Address extends React.Component {
       if(this.props.miner) {
         minerInfo = await this.props.client.call('Filecoin.StateMinerPower', [this.props.addr, this.props.ts || null])
       }
+      if(this.props.nonce) {
+        nonce = await this.props.client.call('Filecoin.MpoolGetNonce', [this.props.addr])
+      }
     } catch (err) {
       console.log(err)
       balance = -1
     }
-    this.setState({balance, actor, actorInfo, minerInfo})
+    this.setState({balance, actor, actorInfo, minerInfo, nonce})
   }
 
   openState() {
@@ -71,10 +78,17 @@ class Address extends React.Component {
     return info
   }
 
+  add10k = async () => {
+    [...Array(10).keys()].map(() => async () => await this.props.add1k(this.props.addr)).reduce(async (p, c) => [await p, await c()], Promise.resolve(null))
+  }
+
   render() {
     let add1k = <span/>
     if(this.props.add1k) {
       add1k = <span>&nbsp;<a href="#" onClick={() => this.props.add1k(this.props.addr)}>[+1k]</a></span>
+      if (this.props.add10k) {
+        add1k = <span>{add1k}&nbsp;<a href="#" onClick={this.add10k}>[+10k]</a></span>
+      }
     }
     let addr = truncAddr(this.props.addr, this.props.short ? 12 : 17)
 
@@ -82,6 +96,16 @@ class Address extends React.Component {
     if(this.state.balance >= 0) {
       actInfo = this.state.actorInfo
       addr = <a href="#" onClick={this.openState}>{addr}</a>
+    }
+
+    addr = <span className={`pondaddr-${this.props.addr}`}
+                 onMouseEnter={() => sheet.sheet.insertRule(`.pondaddr-${this.props.addr}, .pondaddr-${this.props.addr} * { color: #11ee11; }`, 0)}
+                 onMouseLeave={() => sheet.sheet.deleteRule(0)}
+                 >{addr}</span>
+
+    let nonce = <span/>
+    if(this.props.nonce) {
+      nonce = <span>&nbsp;<abbr title={"Next nonce"}>Nc:{this.state.nonce}</abbr>{nonce}</span>
     }
 
     let balance = <span>:&nbsp;{this.state.balance}&nbsp;</span>
@@ -103,7 +127,7 @@ class Address extends React.Component {
       minerInfo = <span>&nbsp;Power: {this.state.minerInfo.MinerPower} ({this.state.minerInfo.MinerPower/this.state.minerInfo.TotalPower*100}%)</span>
     }
 
-    return <span>{addr}{balance}{actInfo}{add1k}{transfer}{minerInfo}</span>
+    return <span>{addr}{balance}{actInfo}{nonce}{add1k}{transfer}{minerInfo}</span>
   }
 }
 

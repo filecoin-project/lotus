@@ -7,12 +7,11 @@ import (
 	"github.com/ipfs/go-cid"
 	cbor "github.com/ipfs/go-ipld-cbor"
 
+	"github.com/filecoin-project/go-lotus/build"
 	"github.com/filecoin-project/go-lotus/chain/actors/aerrors"
 	"github.com/filecoin-project/go-lotus/chain/address"
 	"github.com/filecoin-project/go-lotus/chain/types"
 )
-
-const ChannelClosingDelay = 6 * 60 * 2 // six hours
 
 func init() {
 	cbor.RegisterCborType(PaymentChannelActorState{})
@@ -29,7 +28,7 @@ type PaymentInfo struct {
 	Payer          address.Address
 	ChannelMessage cid.Cid
 
-	Vouchers []types.SignedVoucher
+	Vouchers []*types.SignedVoucher
 }
 
 type LaneState struct {
@@ -132,19 +131,19 @@ func (pca PaymentChannelActor) UpdateChannelState(act *types.Actor, vmctx types.
 
 	if sv.SecretPreimage != nil {
 		if !bytes.Equal(hash(params.Secret), sv.SecretPreimage) {
-			return nil, aerrors.New(3, "Incorrect secret!")
+			return nil, aerrors.New(3, "incorrect secret!")
 		}
 	}
 
 	if sv.Extra != nil {
-		encoded, err := SerializeParams([]interface{}{sv.Extra.Data, params.Proof})
+		encoded, err := SerializeParams(PaymentVerifyParams{sv.Extra.Data, params.Proof})
 		if err != nil {
 			return nil, err
 		}
 
 		_, err = vmctx.Send(sv.Extra.Actor, sv.Extra.Method, types.NewInt(0), encoded)
 		if err != nil {
-			return nil, aerrors.New(4, "spend voucher verification failed")
+			return nil, aerrors.Newf(4, "spend voucher verification failed: %s", err)
 		}
 	}
 
@@ -231,7 +230,7 @@ func (pca PaymentChannelActor) Close(act *types.Actor, vmctx types.VMContext, pa
 		return nil, aerrors.New(2, "channel already closing")
 	}
 
-	self.ClosingAt = vmctx.BlockHeight() + ChannelClosingDelay
+	self.ClosingAt = vmctx.BlockHeight() + build.PaymentChannelClosingDelay
 	if self.ClosingAt < self.MinCloseHeight {
 		self.ClosingAt = self.MinCloseHeight
 	}

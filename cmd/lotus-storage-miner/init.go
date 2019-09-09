@@ -179,7 +179,7 @@ func configureStorageMiner(ctx context.Context, api api.FullNode, addr address.A
 		Nonce:    nonce,
 		Value:    types.NewInt(0),
 		GasPrice: types.NewInt(0),
-		GasLimit: types.NewInt(1000),
+		GasLimit: types.NewInt(1000000),
 	}
 
 	smsg, err := api.WalletSignMessage(ctx, waddr, msg)
