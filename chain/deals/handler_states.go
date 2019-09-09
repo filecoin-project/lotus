@@ -1,8 +1,10 @@
 package deals
 
 import (
+	"bytes"
 	"context"
 
+	cbor "github.com/ipfs/go-ipld-cbor"
 	"github.com/ipfs/go-merkledag"
 	unixfile "github.com/ipfs/go-unixfs/file"
 	"golang.org/x/xerrors"
@@ -59,6 +61,17 @@ func (h *Handler) accept(ctx context.Context, deal MinerDeal) (func(*MinerDeal),
 			if voucher.Extra.Method != actors.MAMethods.PaymentVerifyInclusion {
 				return nil, xerrors.Errorf("validating payment voucher %d: expected extra method %d, got %d", i, actors.MAMethods.PaymentVerifyInclusion, voucher.Extra.Method)
 			}
+
+			var inclChallenge actors.PieceInclVoucherData
+			if err := cbor.DecodeInto(voucher.Extra.Data, &inclChallenge); err != nil {
+				return nil, xerrors.Errorf("validating payment voucher %d: failed to decode storage voucher data for verification: %w", i, err)
+			}
+			if inclChallenge.PieceSize.Uint64() != deal.Proposal.Size {
+				return nil, xerrors.Errorf("validating payment voucher %d: paych challenge piece size didn't match deal proposal size: %d != %d", i, inclChallenge.PieceSize.Uint64(), deal.Proposal.Size)
+			}
+			if !bytes.Equal(inclChallenge.CommP, deal.Proposal.CommP) {
+				return nil, xerrors.Errorf("validating payment voucher %d: paych challenge commP didn't match deal proposal", i)
+			}
 		}
 
 		if voucher.MinCloseHeight > curHead.Height() + deal.Proposal.Duration {
@@ -86,7 +99,7 @@ func (h *Handler) accept(ctx context.Context, deal MinerDeal) (func(*MinerDeal),
 	}
 
 	for i, voucher := range deal.Proposal.Payment.Vouchers {
-		if err := h.full.PaychVoucherAdd(ctx, deal.Proposal.Payment.PayChActor, voucher); err != nil {
+		if err := h.full.PaychVoucherAdd(ctx, deal.Proposal.Payment.PayChActor, voucher, nil); err != nil {
 			return nil, xerrors.Errorf("consuming payment voucher %d: %w", i, err)
 		}
 	}
@@ -188,6 +201,24 @@ func (h *Handler) sealing(ctx context.Context, deal MinerDeal) (func(*MinerDeal)
 	ip, err := getInclusionProof(string(sectorblocks.SerializationUnixfs0)+deal.Ref.String(), status)
 	if err != nil {
 		return nil, err
+	}
+
+	proof := &actors.InclusionProof{
+		Sector: deal.SectorID,
+		Proof:  ip.ProofElements,
+	}
+	proofB, err := cbor.DumpObject(proof)
+	if err != nil {
+		return nil, err
+	}
+
+	// store proofs for channels
+	for i, v := range deal.Proposal.Payment.Vouchers {
+		if v.Extra.Method == actors.MAMethods.PaymentVerifyInclusion {
+			if err := h.full.PaychVoucherAdd(ctx, deal.Proposal.Payment.PayChActor, v, proofB); err != nil {
+				return nil, xerrors.Errorf("storing payment voucher %d proof: %w", i, err)
+			}
+		}
 	}
 
 	err = h.sendSignedResponse(StorageDealResponse{
