@@ -35,7 +35,7 @@ func (h *Handler) failDeal(id cid.Cid, cerr error) {
 
 	s, ok := h.conns[id]
 	if ok {
-		_ = s.Close()
+		_ = s.Reset()
 		delete(h.conns, id)
 	}
 

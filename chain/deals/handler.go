@@ -2,19 +2,20 @@ package deals
 
 import (
 	"context"
-	"github.com/filecoin-project/go-lotus/chain/types"
-	"github.com/filecoin-project/go-lotus/storage/sectorblocks"
 	"math"
 
-	"github.com/filecoin-project/go-lotus/api"
-	"github.com/filecoin-project/go-lotus/chain/address"
-	"github.com/filecoin-project/go-lotus/node/modules/dtypes"
 	"github.com/ipfs/go-cid"
 	"github.com/ipfs/go-datastore"
 	"github.com/ipfs/go-datastore/namespace"
 	cbor "github.com/ipfs/go-ipld-cbor"
 	inet "github.com/libp2p/go-libp2p-core/network"
 	"github.com/libp2p/go-libp2p-core/peer"
+
+	"github.com/filecoin-project/go-lotus/api"
+	"github.com/filecoin-project/go-lotus/chain/address"
+	"github.com/filecoin-project/go-lotus/chain/types"
+	"github.com/filecoin-project/go-lotus/node/modules/dtypes"
+	"github.com/filecoin-project/go-lotus/storage/sectorblocks"
 )
 
 func init() {
@@ -50,12 +51,12 @@ type Handler struct {
 	actor address.Address
 
 	incoming chan MinerDeal
-	updated  chan dealUpdate
+	updated  chan minerDealUpdate
 	stop     chan struct{}
 	stopped  chan struct{}
 }
 
-type dealUpdate struct {
+type minerDealUpdate struct {
 	newState DealState
 	id       cid.Cid
 	err      error
@@ -82,7 +83,7 @@ func NewHandler(ds dtypes.MetadataDS, secst *sectorblocks.SectorBlocks, dag dtyp
 		conns: map[cid.Cid]inet.Stream{},
 
 		incoming: make(chan MinerDeal),
-		updated:  make(chan dealUpdate),
+		updated:  make(chan minerDealUpdate),
 		stop:     make(chan struct{}),
 		stopped:  make(chan struct{}),
 
@@ -125,7 +126,7 @@ func (h *Handler) onIncoming(deal MinerDeal) {
 	}
 
 	go func() {
-		h.updated <- dealUpdate{
+		h.updated <- minerDealUpdate{
 			newState: Accepted,
 			id:       deal.ProposalCid,
 			err:      nil,
@@ -133,7 +134,7 @@ func (h *Handler) onIncoming(deal MinerDeal) {
 	}()
 }
 
-func (h *Handler) onUpdated(ctx context.Context, update dealUpdate) {
+func (h *Handler) onUpdated(ctx context.Context, update minerDealUpdate) {
 	log.Infof("Deal %s updated state to %d", update.id, update.newState)
 	if update.err != nil {
 		log.Errorf("deal %s failed: %s", update.id, update.err)

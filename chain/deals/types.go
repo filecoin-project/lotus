@@ -19,6 +19,8 @@ func init() {
 	cbor.RegisterCborType(SignedStorageDealResponse{})
 }
 
+const ProtocolID = "/fil/storage/mk/1.0.0"
+
 type SerializationMode string
 
 const (
@@ -77,6 +79,7 @@ type StorageDealResponse struct {
 
 	// Sealing
 	PieceInclusionProof PieceInclusionProof
+	CommD               []byte // TODO: not in spec
 
 	// Complete
 	SectorCommitMessage *cid.Cid

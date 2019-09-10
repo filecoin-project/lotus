@@ -16,13 +16,13 @@ import (
 	"github.com/filecoin-project/go-lotus/storage/sectorblocks"
 )
 
-type handlerFunc func(ctx context.Context, deal MinerDeal) (func(*MinerDeal), error)
+type minerHandlerFunc func(ctx context.Context, deal MinerDeal) (func(*MinerDeal), error)
 
-func (h *Handler) handle(ctx context.Context, deal MinerDeal, cb handlerFunc, next DealState) {
+func (h *Handler) handle(ctx context.Context, deal MinerDeal, cb minerHandlerFunc, next DealState) {
 	go func() {
 		mut, err := cb(ctx, deal)
 		select {
-		case h.updated <- dealUpdate{
+		case h.updated <- minerDealUpdate{
 			newState: next,
 			id:       deal.ProposalCid,
 			err:      err,
@@ -237,6 +237,7 @@ func (h *Handler) sealing(ctx context.Context, deal MinerDeal) (func(*MinerDeal)
 		State:               Sealing,
 		Proposal:            deal.ProposalCid,
 		PieceInclusionProof: ip,
+		CommD:               status.CommD[:],
 	})
 	if err != nil {
 		log.Warnf("Sending deal response failed: %s", err)

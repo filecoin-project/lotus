@@ -4,25 +4,20 @@ import (
 	"context"
 	"math"
 
-	sectorbuilder "github.com/filecoin-project/go-sectorbuilder"
 	"github.com/ipfs/go-cid"
 	"github.com/ipfs/go-datastore"
 	"github.com/ipfs/go-datastore/namespace"
-	files "github.com/ipfs/go-ipfs-files"
 	cbor "github.com/ipfs/go-ipld-cbor"
 	logging "github.com/ipfs/go-log"
-	unixfile "github.com/ipfs/go-unixfs/file"
 	"github.com/libp2p/go-libp2p-core/host"
 	inet "github.com/libp2p/go-libp2p-core/network"
 	"github.com/libp2p/go-libp2p-core/peer"
-	"golang.org/x/xerrors"
 
 	"github.com/filecoin-project/go-lotus/chain/actors"
 	"github.com/filecoin-project/go-lotus/chain/address"
 	"github.com/filecoin-project/go-lotus/chain/store"
 	"github.com/filecoin-project/go-lotus/chain/types"
 	"github.com/filecoin-project/go-lotus/chain/wallet"
-	"github.com/filecoin-project/go-lotus/lib/cborrpc"
 	"github.com/filecoin-project/go-lotus/node/modules/dtypes"
 	"github.com/filecoin-project/go-lotus/retrieval/discovery"
 )
@@ -33,18 +28,13 @@ func init() {
 
 var log = logging.Logger("deals")
 
-const ProtocolID = "/fil/storage/mk/1.0.0"
-
-type DealStatus int
-
-const (
-	DealResolvingMiner = DealStatus(iota)
-)
-
 type ClientDeal struct {
 	ProposalCid cid.Cid
-	Status      DealStatus
+	Proposal    StorageDealProposal
+	State       DealState
 	Miner       peer.ID
+
+	s inet.Stream
 }
 
 type Client struct {
@@ -55,11 +45,19 @@ type Client struct {
 	discovery *discovery.Local
 
 	deals StateStore
+	conns map[cid.Cid]inet.Stream
 
 	incoming chan ClientDeal
+	updated  chan clientDealUpdate
 
 	stop    chan struct{}
 	stopped chan struct{}
+}
+
+type clientDealUpdate struct {
+	newState DealState
+	id       cid.Cid
+	err      error
 }
 
 func NewClient(cs *store.ChainStore, h host.Host, w *wallet.Wallet, ds dtypes.MetadataDS, dag dtypes.ClientDAG, discovery *discovery.Local) *Client {
@@ -71,8 +69,10 @@ func NewClient(cs *store.ChainStore, h host.Host, w *wallet.Wallet, ds dtypes.Me
 		discovery: discovery,
 
 		deals: StateStore{ds: namespace.Wrap(ds, datastore.NewKey("/deals/client"))},
+		conns: map[cid.Cid]inet.Stream{},
 
 		incoming: make(chan ClientDeal, 16),
+		updated:  make(chan clientDealUpdate, 16),
 
 		stop:    make(chan struct{}),
 		stopped: make(chan struct{}),
@@ -81,21 +81,16 @@ func NewClient(cs *store.ChainStore, h host.Host, w *wallet.Wallet, ds dtypes.Me
 	return c
 }
 
-func (c *Client) Run() {
+func (c *Client) Run(ctx context.Context) {
 	go func() {
 		defer close(c.stopped)
 
 		for {
 			select {
 			case deal := <-c.incoming:
-				log.Info("incoming deal")
-
-				// TODO: track in datastore
-				if err := c.deals.Begin(deal.ProposalCid, deal); err != nil {
-					log.Errorf("deal state begin failed: %s", err)
-					continue
-				}
-
+				c.onIncoming(deal)
+			case update := <-c.updated:
+				c.onUpdated(ctx, update)
 			case <-c.stop:
 				return
 			}
@@ -103,87 +98,59 @@ func (c *Client) Run() {
 	}()
 }
 
-func (c *Client) commP(ctx context.Context, data cid.Cid) ([]byte, int64, error) {
-	root, err := c.dag.Get(ctx, data)
-	if err != nil {
-		log.Errorf("failed to get file root for deal: %s", err)
-		return nil, 0, err
+func (c *Client) onIncoming(deal ClientDeal) {
+	log.Info("incoming deal")
+
+	if _, ok := c.conns[deal.ProposalCid]; ok {
+		log.Errorf("tracking deal connection: already tracking connection for deal %s", deal.ProposalCid)
+		return
+	}
+	c.conns[deal.ProposalCid] = deal.s
+
+	if err := c.deals.Begin(deal.ProposalCid, deal); err != nil {
+		// We may have re-sent the proposal
+		log.Errorf("deal tracking failed: %s", err)
+		c.failDeal(deal.ProposalCid, err)
+		return
 	}
 
-	n, err := unixfile.NewUnixfsFile(ctx, c.dag, root)
-	if err != nil {
-		log.Errorf("cannot open unixfs file: %s", err)
-		return nil, 0, err
-	}
+	go func() {
+		c.updated <- clientDealUpdate{
+			newState: Unknown,
+			id:       deal.ProposalCid,
+			err:      nil,
+		}
+	}()
+}
 
-	uf, ok := n.(files.File)
-	if !ok {
-		// TODO: we probably got directory, how should we handle this in unixfs mode?
-		return nil, 0, xerrors.New("unsupported unixfs type")
+func (c *Client) onUpdated(ctx context.Context, update clientDealUpdate) {
+	log.Infof("Deal %s updated state to %d", update.id, update.newState)
+	if update.err != nil {
+		log.Errorf("deal %s failed: %s", update.id, update.err)
+		c.failDeal(update.id, update.err)
+		return
 	}
-
-	size, err := uf.Size()
-	if err != nil {
-		return nil, 0, err
-	}
-
-	var commP [sectorbuilder.CommitmentBytesLen]byte
-	err = withTemp(uf, func(f string) error {
-		commP, err = sectorbuilder.GeneratePieceCommitment(f, uint64(size))
-		return err
+	var deal ClientDeal
+	err := c.deals.MutateClient(update.id, func(d *ClientDeal) error {
+		d.State = update.newState
+		deal = *d
+		return nil
 	})
-	return commP[:], size, err
-}
-
-func (c *Client) sendProposal(s inet.Stream, proposal StorageDealProposal, from address.Address) error {
-	log.Info("Sending deal proposal")
-
-	msg, err := cbor.DumpObject(proposal)
 	if err != nil {
-		return err
-	}
-	sig, err := c.w.Sign(context.TODO(), from, msg)
-	if err != nil {
-		return err
+		c.failDeal(update.id, err)
+		return
 	}
 
-	signedProposal := &SignedStorageDealProposal{
-		Proposal:  proposal,
-		Signature: sig,
+	switch update.newState {
+	case Unknown: // new
+		c.handle(ctx, deal, c.new, Accepted)
+	case Accepted:
+		c.handle(ctx, deal, c.accepted, Staged)
+	case Staged:
+		c.handle(ctx, deal, c.staged, Sealing)
+	case Sealing:
+		c.handle(ctx, deal, c.sealing, Complete)
 	}
-
-	return cborrpc.WriteCborRPC(s, signedProposal)
-}
-
-func (c *Client) waitAccept(s inet.Stream, proposal StorageDealProposal, minerID peer.ID) (ClientDeal, error) {
-	log.Info("Waiting for response")
-
-	var resp SignedStorageDealResponse
-	if err := cborrpc.ReadCborRPC(s, &resp); err != nil {
-		log.Errorw("failed to read StorageDealResponse message", "error", err)
-		return ClientDeal{}, err
-	}
-
-	// TODO: verify signature
-
-	if resp.Response.State != Accepted {
-		return ClientDeal{}, xerrors.Errorf("Deal wasn't accepted (State=%d)", resp.Response.State)
-	}
-
-	proposalNd, err := cbor.WrapObject(proposal, math.MaxUint64, -1)
-	if err != nil {
-		return ClientDeal{}, err
-	}
-
-	if resp.Response.Proposal != proposalNd.Cid() {
-		return ClientDeal{}, xerrors.New("miner responded to a wrong proposal")
-	}
-
-	return ClientDeal{
-		ProposalCid: proposalNd.Cid(),
-		Status:      DealResolvingMiner,
-		Miner:       minerID,
-	}, nil
 }
 
 type ClientDealProposal struct {
@@ -228,21 +195,27 @@ func (c *Client) Start(ctx context.Context, p ClientDealProposal, vd *actors.Pie
 	if err != nil {
 		return cid.Undef, err
 	}
-	defer s.Reset() // TODO: handle other updates
 
 	if err := c.sendProposal(s, proposal, p.ClientAddress); err != nil {
 		return cid.Undef, err
 	}
 
-	deal, err := c.waitAccept(s, proposal, p.MinerID)
+	proposalNd, err := cbor.WrapObject(proposal, math.MaxUint64, -1)
 	if err != nil {
 		return cid.Undef, err
 	}
 
-	log.Info("DEAL ACCEPTED!")
+	deal := ClientDeal{
+		ProposalCid: proposalNd.Cid(),
+		Proposal:    proposal,
+		State:       Unknown,
+		Miner:       p.MinerID,
+
+		s: s,
+	}
 
 	// TODO: actually care about what happens with the deal after it was accepted
-	//c.incoming <- deal
+	c.incoming <- deal
 
 	// TODO: start tracking after the deal is sealed
 	return deal.ProposalCid, c.discovery.AddPeer(p.Data, discovery.RetrievalPeer{
