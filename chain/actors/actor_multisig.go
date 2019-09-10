@@ -2,24 +2,13 @@ package actors
 
 import (
 	"github.com/ipfs/go-cid"
-	cbor "github.com/ipfs/go-ipld-cbor"
 
 	"github.com/filecoin-project/go-lotus/chain/actors/aerrors"
 	"github.com/filecoin-project/go-lotus/chain/address"
 	"github.com/filecoin-project/go-lotus/chain/types"
-)
 
-func init() {
-	cbor.RegisterCborType(MultiSigActorState{})
-	cbor.RegisterCborType(MultiSigConstructorParams{})
-	cbor.RegisterCborType(MultiSigProposeParams{})
-	cbor.RegisterCborType(MultiSigTxID{})
-	cbor.RegisterCborType(MultiSigSwapSignerParams{})
-	cbor.RegisterCborType(MultiSigChangeReqParams{})
-	cbor.RegisterCborType(MTransaction{})
-	cbor.RegisterCborType(MultiSigRemoveSignerParam{})
-	cbor.RegisterCborType(MultiSigAddSignerParam{})
-}
+	cbg "github.com/whyrusleeping/cbor-gen"
+)
 
 type MultiSigActor struct{}
 type MultiSigActorState struct {
@@ -203,7 +192,9 @@ func (msa MultiSigActor) Propose(act *types.Actor, vmctx types.VMContext,
 		return nil, aerrors.Wrap(err, "saving state")
 	}
 
-	return SerializeParams(tx.TxID)
+	// REVIEW: On one hand, I like being very explicit about how we're doing the serialization
+	// on the other, maybe we shouldnt do direct calls to underlying serialization libs?
+	return cbg.CborEncodeMajorType(cbg.MajUnsignedInt, tx.TxID), nil
 }
 
 type MultiSigTxID struct {

@@ -10,17 +10,9 @@ import (
 
 	cid "github.com/ipfs/go-cid"
 	hamt "github.com/ipfs/go-hamt-ipld"
-	cbor "github.com/ipfs/go-ipld-cbor"
 	"github.com/libp2p/go-libp2p-core/peer"
+	cbg "github.com/whyrusleeping/cbor-gen"
 )
-
-func init() {
-	cbor.RegisterCborType(StorageMarketState{})
-	cbor.RegisterCborType(CreateStorageMinerParams{})
-	cbor.RegisterCborType(IsMinerParam{})
-	cbor.RegisterCborType(PowerLookupParams{})
-	cbor.RegisterCborType(UpdateStorageParams{})
-}
 
 type StorageMarketActor struct{}
 
@@ -98,7 +90,7 @@ func (sma StorageMarketActor) CreateStorageMiner(act *types.Actor, vmctx types.V
 	}
 	self.Miners = ncid
 
-	nroot, err := vmctx.Storage().Put(self)
+	nroot, err := vmctx.Storage().Put(&self)
 	if err != nil {
 		return nil, err
 	}
@@ -139,7 +131,7 @@ func (sma StorageMarketActor) UpdateStorage(act *types.Actor, vmctx types.VMCont
 
 	self.TotalStorage = types.BigAdd(self.TotalStorage, params.Delta)
 
-	nroot, err := vmctx.Storage().Put(self)
+	nroot, err := vmctx.Storage().Put(&self)
 	if err != nil {
 		return nil, err
 	}
@@ -179,7 +171,7 @@ func (sma StorageMarketActor) PowerLookup(act *types.Actor, vmctx types.VMContex
 		return nil, aerrors.New(1, "miner not registered with storage market")
 	}
 
-	ret, err := vmctx.Send(params.Miner, MAMethods.GetPower, types.NewInt(0), EmptyStructCBOR)
+	ret, err := vmctx.Send(params.Miner, MAMethods.GetPower, types.NewInt(0), nil)
 	if err != nil {
 		return nil, aerrors.Wrap(err, "invoke Miner.GetPower")
 	}
@@ -202,11 +194,7 @@ func (sma StorageMarketActor) IsMiner(act *types.Actor, vmctx types.VMContext, p
 		return nil, err
 	}
 
-	out, err := SerializeParams(has)
-	if err != nil {
-		return nil, err
-	}
-	return out, nil
+	return cbg.EncodeBool(has), nil
 }
 
 func MinerSetHas(ctx context.Context, vmctx types.VMContext, rcid cid.Cid, maddr address.Address) (bool, aerrors.ActorError) {
@@ -215,7 +203,7 @@ func MinerSetHas(ctx context.Context, vmctx types.VMContext, rcid cid.Cid, maddr
 		return false, aerrors.Escalate(err, "failed to load miner set")
 	}
 
-	_, err = nd.Find(context.TODO(), string(maddr.Bytes()))
+	err = nd.Find(context.TODO(), string(maddr.Bytes()), nil)
 	switch err {
 	case hamt.ErrNotFound:
 		return false, nil

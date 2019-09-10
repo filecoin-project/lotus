@@ -5,9 +5,11 @@ import (
 	"context"
 	"encoding/binary"
 	"fmt"
+
 	"github.com/filecoin-project/go-lotus/chain/actors/aerrors"
 	"github.com/filecoin-project/go-lotus/chain/address"
 	"github.com/filecoin-project/go-lotus/chain/types"
+	cbg "github.com/whyrusleeping/cbor-gen"
 	"golang.org/x/xerrors"
 
 	"github.com/ipfs/go-cid"
@@ -26,8 +28,6 @@ const (
 )
 
 func init() {
-	cbor.RegisterCborType(ExecParams{})
-	cbor.RegisterCborType(struct{}{})
 
 	n, err := cbor.WrapObject(map[string]string{}, mh.SHA2_256, -1)
 	if err != nil {
@@ -64,17 +64,16 @@ type ExecParams struct {
 	Params []byte
 }
 
-func CreateExecParams(act cid.Cid, obj interface{}) ([]byte, aerrors.ActorError) {
+func CreateExecParams(act cid.Cid, obj cbg.CBORMarshaler) ([]byte, aerrors.ActorError) {
 	encparams, err := SerializeParams(obj)
 	if err != nil {
 		return nil, aerrors.Wrap(err, "creating ExecParams")
 	}
 
-	var ep ExecParams
-	ep.Code = act
-	ep.Params = encparams
-
-	return SerializeParams(ep)
+	return SerializeParams(&ExecParams{
+		Code:   act,
+		Params: encparams,
+	})
 }
 
 func (ia InitActor) Exec(act *types.Actor, vmctx types.VMContext, p *ExecParams) ([]byte, aerrors.ActorError) {
@@ -117,10 +116,12 @@ func (ia InitActor) Exec(act *types.Actor, vmctx types.VMContext, p *ExecParams)
 		Head:    EmptyCBOR,
 		Nonce:   0,
 	}
-	_, err = vmctx.Storage().Put(struct{}{})
-	if err != nil {
-		return nil, err
-	}
+	/*
+		_, err = vmctx.Storage().Put(struct{}{})
+		if err != nil {
+			return nil, err
+		}
+	*/
 
 	// The call to the actors constructor will set up the initial state
 	// from the given parameters, setting `actor.Head` to a new value when successful.
@@ -153,7 +154,7 @@ func (ia InitActor) Exec(act *types.Actor, vmctx types.VMContext, p *ExecParams)
 		return nil, err
 	}
 
-	c, err := vmctx.Storage().Put(self)
+	c, err := vmctx.Storage().Put(&self)
 	if err != nil {
 		return nil, err
 	}
@@ -213,7 +214,7 @@ func (ias *InitActorState) Lookup(cst *hamt.CborIpldStore, addr address.Address)
 	var val interface{}
 	err = amap.Find(context.TODO(), string(addr.Bytes()), &val)
 	if err != nil {
-		return address.Undef, xerrors.Errorf("ias lookup failed to do lookup: %w", err)
+		return address.Undef, xerrors.Errorf("ias lookup failed to do find: %w", err)
 	}
 
 	ival, ok := val.(uint64)

@@ -90,10 +90,10 @@ func (st *StateTree) GetActor(addr address.Address) (*types.Actor, error) {
 	if addr.Protocol() != address.ID {
 		iaddr, err := st.lookupID(addr)
 		if err != nil {
-			if err == hamt.ErrNotFound {
-				return nil, types.ErrActorNotFound
+			if xerrors.Is(err, hamt.ErrNotFound) {
+				return nil, xerrors.Errorf("lookup failed: %w", types.ErrActorNotFound)
 			}
-			return nil, err
+			return nil, xerrors.Errorf("address resolution: %w", err)
 		}
 		addr = iaddr
 	}

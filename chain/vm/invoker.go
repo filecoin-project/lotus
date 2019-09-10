@@ -1,11 +1,13 @@
 package vm
 
 import (
+	"bytes"
 	"fmt"
 	"reflect"
 
 	"github.com/ipfs/go-cid"
 	cbor "github.com/ipfs/go-ipld-cbor"
+	cbg "github.com/whyrusleeping/cbor-gen"
 	"golang.org/x/xerrors"
 
 	actors "github.com/filecoin-project/go-lotus/chain/actors"
@@ -121,8 +123,7 @@ func (*invoker) transform(instance Invokee) (nativeCode, error) {
 
 				inBytes := in[2].Interface().([]byte)
 				if len(inBytes) > 0 {
-					err := cbor.DecodeInto(inBytes, param.Interface())
-					if err != nil {
+					if err := DecodeParams(inBytes, param.Interface()); err != nil {
 						aerr := aerrors.Absorb(err, 1, "failed to decode parameters")
 						return []reflect.Value{
 							reflect.ValueOf([]byte{}),
@@ -140,6 +141,15 @@ func (*invoker) transform(instance Invokee) (nativeCode, error) {
 
 	}
 	return code, nil
+}
+
+func DecodeParams(b []byte, out interface{}) error {
+	um, ok := out.(cbg.CBORUnmarshaler)
+	if !ok {
+		return fmt.Errorf("type %T does not implement UnmarshalCBOR", out)
+	}
+
+	return um.UnmarshalCBOR(bytes.NewReader(b))
 }
 
 func DumpActorState(code cid.Cid, b []byte) (interface{}, error) {

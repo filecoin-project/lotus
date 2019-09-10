@@ -6,11 +6,12 @@ import (
 	"github.com/filecoin-project/go-lotus/chain/address"
 	"github.com/ipfs/go-cid"
 	"github.com/ipfs/go-hamt-ipld"
+	cbg "github.com/whyrusleeping/cbor-gen"
 )
 
 type Storage interface {
-	Put(interface{}) (cid.Cid, aerrors.ActorError)
-	Get(cid.Cid, interface{}) aerrors.ActorError
+	Put(cbg.CBORMarshaler) (cid.Cid, aerrors.ActorError)
+	Get(cid.Cid, cbg.CBORUnmarshaler) aerrors.ActorError
 
 	GetHead() cid.Cid
 
@@ -42,7 +43,7 @@ type storageWrapper struct {
 }
 
 func (sw *storageWrapper) Put(i interface{}) (cid.Cid, error) {
-	c, err := sw.s.Put(i)
+	c, err := sw.s.Put(i.(cbg.CBORMarshaler))
 	if err != nil {
 		return cid.Undef, err
 	}
@@ -51,7 +52,7 @@ func (sw *storageWrapper) Put(i interface{}) (cid.Cid, error) {
 }
 
 func (sw *storageWrapper) Get(c cid.Cid, out interface{}) error {
-	if err := sw.s.Get(c, out); err != nil {
+	if err := sw.s.Get(c, out.(cbg.CBORUnmarshaler)); err != nil {
 		return err
 	}
 

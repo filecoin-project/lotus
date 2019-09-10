@@ -18,6 +18,7 @@ import (
 	hamt "github.com/ipfs/go-hamt-ipld"
 	bstore "github.com/ipfs/go-ipfs-blockstore"
 	peer "github.com/libp2p/go-libp2p-peer"
+	cbg "github.com/whyrusleeping/cbor-gen"
 	sharray "github.com/whyrusleeping/sharray"
 )
 
@@ -161,7 +162,7 @@ type GenMinerCfg struct {
 	PeerIDs []peer.ID
 }
 
-func mustEnc(i interface{}) []byte {
+func mustEnc(i cbg.CBORMarshaler) []byte {
 	enc, err := actors.SerializeParams(i)
 	if err != nil {
 		panic(err)
@@ -180,7 +181,7 @@ func SetupStorageMiners(ctx context.Context, cs *store.ChainStore, sroot cid.Cid
 		worker := gmcfg.Workers[i]
 		pid := gmcfg.PeerIDs[i]
 
-		params := mustEnc(actors.CreateStorageMinerParams{
+		params := mustEnc(&actors.CreateStorageMinerParams{
 			Owner:      owner,
 			Worker:     worker,
 			SectorSize: types.NewInt(build.SectorSize),
@@ -199,7 +200,7 @@ func SetupStorageMiners(ctx context.Context, cs *store.ChainStore, sroot cid.Cid
 
 		gmcfg.MinerAddrs = append(gmcfg.MinerAddrs, maddr)
 
-		params = mustEnc(actors.UpdateStorageParams{Delta: types.NewInt(5000)})
+		params = mustEnc(&actors.UpdateStorageParams{Delta: types.NewInt(5000)})
 
 		_, err = doExec(ctx, vm, actors.StorageMarketAddress, maddr, actors.SMAMethods.UpdateStorage, params)
 		if err != nil {
@@ -226,7 +227,7 @@ func SetupStorageMiners(ctx context.Context, cs *store.ChainStore, sroot cid.Cid
 		}
 		mstate.Power = types.NewInt(5000)
 
-		nstate, err := cst.Put(ctx, mstate)
+		nstate, err := cst.Put(ctx, &mstate)
 		if err != nil {
 			return cid.Undef, err
 		}
@@ -258,7 +259,7 @@ func doExec(ctx context.Context, vm *vm.VM, to, from address.Address, method uin
 		Nonce:    act.Nonce,
 	})
 	if err != nil {
-		return nil, err
+		return nil, xerrors.Errorf("doExec apply message failed: %w", err)
 	}
 
 	if ret.ExitCode != 0 {

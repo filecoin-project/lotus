@@ -39,7 +39,7 @@ func (t *InitActorState) UnmarshalCBOR(br io.Reader) error {
 		return err
 	}
 	if maj != cbg.MajArray {
-		return fmt.Errorf("cbor input should be of type array")
+		return fmt.Errorf("cbor input should be of type array (got %d, %d)", maj, extra)
 	}
 
 	if extra != 2 {
@@ -2007,7 +2007,7 @@ func (t *PaymentInfo) UnmarshalCBOR(br io.Reader) error {
 		return fmt.Errorf("expected cbor array")
 	}
 	if extra > 0 {
-		t.Vouchers = make([]types.SignedVoucher, extra)
+		t.Vouchers = make([]*types.SignedVoucher, extra)
 	}
 	for i := 0; i < int(extra); i++ {
 		var v types.SignedVoucher
@@ -2015,7 +2015,7 @@ func (t *PaymentInfo) UnmarshalCBOR(br io.Reader) error {
 			return err
 		}
 
-		t.Vouchers[i] = v
+		t.Vouchers[i] = &v
 	}
 
 	return nil

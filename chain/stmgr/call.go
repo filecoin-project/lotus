@@ -26,12 +26,6 @@ func (sm *StateManager) CallRaw(ctx context.Context, msg *types.Message, bstate 
 	if msg.Value == types.EmptyInt {
 		msg.Value = types.NewInt(0)
 	}
-	if msg.Params == nil {
-		msg.Params, err = actors.SerializeParams(struct{}{})
-		if err != nil {
-			return nil, err
-		}
-	}
 
 	fromActor, err := vmi.StateTree().GetActor(msg.From)
 	if err != nil {

@@ -4,14 +4,8 @@ import (
 	"github.com/filecoin-project/go-lotus/chain/address"
 
 	"github.com/ipfs/go-cid"
-	cbor "github.com/ipfs/go-ipld-cbor"
 	mh "github.com/multiformats/go-multihash"
 )
-
-func init() {
-	cbor.RegisterCborType(InitActorState{})
-	cbor.RegisterCborType(AccountActorState{})
-}
 
 var AccountActorCodeCid cid.Cid
 var StorageMarketActorCodeCid cid.Cid

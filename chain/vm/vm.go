@@ -11,6 +11,7 @@ import (
 	"github.com/filecoin-project/go-lotus/chain/store"
 	"github.com/filecoin-project/go-lotus/chain/types"
 	"github.com/filecoin-project/go-lotus/lib/bufbstore"
+	cbg "github.com/whyrusleeping/cbor-gen"
 	"go.opencensus.io/trace"
 
 	block "github.com/ipfs/go-block-format"
@@ -67,18 +68,19 @@ func (vmc *VMContext) Message() *types.Message {
 
 // Storage interface
 
-func (vmc *VMContext) Put(i interface{}) (cid.Cid, aerrors.ActorError) {
+func (vmc *VMContext) Put(i cbg.CBORMarshaler) (cid.Cid, aerrors.ActorError) {
 	c, err := vmc.cst.Put(context.TODO(), i)
 	if err != nil {
 		if aerr := vmc.ChargeGas(0); aerr != nil {
 			return cid.Undef, aerrors.Absorb(err, outOfGasErrCode, "Put out of gas")
 		}
-		return cid.Undef, aerrors.Escalate(err, "putting cid")
+		panic("no u")
+		return cid.Undef, aerrors.Escalate(err, fmt.Sprintf("putting object %T", i))
 	}
 	return c, nil
 }
 
-func (vmc *VMContext) Get(c cid.Cid, out interface{}) aerrors.ActorError {
+func (vmc *VMContext) Get(c cid.Cid, out cbg.CBORUnmarshaler) aerrors.ActorError {
 	err := vmc.cst.Get(context.TODO(), c, out)
 	if err != nil {
 		if aerr := vmc.ChargeGas(0); aerr != nil {
