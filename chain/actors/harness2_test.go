@@ -1,6 +1,7 @@
 package actors_test
 
 import (
+	"bytes"
 	"context"
 	"testing"
 
@@ -9,7 +10,7 @@ import (
 	hamt "github.com/ipfs/go-hamt-ipld"
 	blockstore "github.com/ipfs/go-ipfs-blockstore"
 	bstore "github.com/ipfs/go-ipfs-blockstore"
-	cbor "github.com/ipfs/go-ipld-cbor"
+	cbg "github.com/whyrusleeping/cbor-gen"
 	"golang.org/x/xerrors"
 
 	"github.com/filecoin-project/go-lotus/chain/actors"
@@ -91,7 +92,7 @@ func HarnessMiner(addr *address.Address) HarnessOpt {
 	}
 }
 
-func HarnessActor(actor *address.Address, creator *address.Address, code cid.Cid, params func() interface{}) HarnessOpt {
+func HarnessActor(actor *address.Address, creator *address.Address, code cid.Cid, params func() cbg.CBORMarshaler) HarnessOpt {
 	return func(t testing.TB, h *Harness) error {
 		if h.Stage != HarnessPostInit {
 			return nil
@@ -205,7 +206,7 @@ func (h *Harness) Apply(t testing.TB, msg types.Message) (*vm.ApplyRet, *state.S
 }
 
 func (h *Harness) CreateActor(t testing.TB, from address.Address,
-	code cid.Cid, params interface{}) (*vm.ApplyRet, *state.StateTree) {
+	code cid.Cid, params cbg.CBORMarshaler) (*vm.ApplyRet, *state.StateTree) {
 	t.Helper()
 
 	return h.Apply(t, types.Message{
@@ -237,7 +238,7 @@ func (h *Harness) SendFunds(t testing.TB, from address.Address, to address.Addre
 }
 
 func (h *Harness) Invoke(t testing.TB, from address.Address, to address.Address,
-	method uint64, params interface{}) (*vm.ApplyRet, *state.StateTree) {
+	method uint64, params cbg.CBORMarshaler) (*vm.ApplyRet, *state.StateTree) {
 	t.Helper()
 	return h.Apply(t, types.Message{
 		To:       to,
@@ -297,11 +298,14 @@ func (h *Harness) AssertBalanceChange(t testing.TB, addr address.Address, amt in
 	}
 }
 
-func DumpObject(t testing.TB, obj interface{}) []byte {
+func DumpObject(t testing.TB, obj cbg.CBORMarshaler) []byte {
+	if obj == nil {
+		return nil
+	}
 	t.Helper()
-	enc, err := cbor.DumpObject(obj)
-	if err != nil {
+	b := new(bytes.Buffer)
+	if err := obj.MarshalCBOR(b); err != nil {
 		t.Fatalf("dumping params: %+v", err)
 	}
-	return enc
+	return b.Bytes()
 }

@@ -16,6 +16,10 @@ import (
 var _ = xerrors.Errorf
 
 func (t *InitActorState) MarshalCBOR(w io.Writer) error {
+	if t == nil {
+		_, err := w.Write(cbg.CborNull)
+		return err
+	}
 	if _, err := w.Write([]byte{130}); err != nil {
 		return err
 	}
@@ -32,14 +36,15 @@ func (t *InitActorState) MarshalCBOR(w io.Writer) error {
 	return nil
 }
 
-func (t *InitActorState) UnmarshalCBOR(br io.Reader) error {
+func (t *InitActorState) UnmarshalCBOR(r io.Reader) error {
+	br := cbg.GetPeeker(r)
 
 	maj, extra, err := cbg.CborReadHeader(br)
 	if err != nil {
 		return err
 	}
 	if maj != cbg.MajArray {
-		return fmt.Errorf("cbor input should be of type array (got %d, %d)", maj, extra)
+		return fmt.Errorf("cbor input should be of type array")
 	}
 
 	if extra != 2 {
@@ -69,6 +74,10 @@ func (t *InitActorState) UnmarshalCBOR(br io.Reader) error {
 }
 
 func (t *ExecParams) MarshalCBOR(w io.Writer) error {
+	if t == nil {
+		_, err := w.Write(cbg.CborNull)
+		return err
+	}
 	if _, err := w.Write([]byte{130}); err != nil {
 		return err
 	}
@@ -88,7 +97,8 @@ func (t *ExecParams) MarshalCBOR(w io.Writer) error {
 	return nil
 }
 
-func (t *ExecParams) UnmarshalCBOR(br io.Reader) error {
+func (t *ExecParams) UnmarshalCBOR(r io.Reader) error {
+	br := cbg.GetPeeker(r)
 
 	maj, extra, err := cbg.CborReadHeader(br)
 	if err != nil {
@@ -132,6 +142,10 @@ func (t *ExecParams) UnmarshalCBOR(br io.Reader) error {
 }
 
 func (t *AccountActorState) MarshalCBOR(w io.Writer) error {
+	if t == nil {
+		_, err := w.Write(cbg.CborNull)
+		return err
+	}
 	if _, err := w.Write([]byte{129}); err != nil {
 		return err
 	}
@@ -143,7 +157,8 @@ func (t *AccountActorState) MarshalCBOR(w io.Writer) error {
 	return nil
 }
 
-func (t *AccountActorState) UnmarshalCBOR(br io.Reader) error {
+func (t *AccountActorState) UnmarshalCBOR(r io.Reader) error {
+	br := cbg.GetPeeker(r)
 
 	maj, extra, err := cbg.CborReadHeader(br)
 	if err != nil {
@@ -159,13 +174,21 @@ func (t *AccountActorState) UnmarshalCBOR(br io.Reader) error {
 
 	// t.t.Address (address.Address)
 
-	if err := t.Address.UnmarshalCBOR(br); err != nil {
-		return err
+	{
+
+		if err := t.Address.UnmarshalCBOR(br); err != nil {
+			return err
+		}
+
 	}
 	return nil
 }
 
 func (t *StorageMinerActorState) MarshalCBOR(w io.Writer) error {
+	if t == nil {
+		_, err := w.Write(cbg.CborNull)
+		return err
+	}
 	if _, err := w.Write([]byte{139}); err != nil {
 		return err
 	}
@@ -227,7 +250,8 @@ func (t *StorageMinerActorState) MarshalCBOR(w io.Writer) error {
 	return nil
 }
 
-func (t *StorageMinerActorState) UnmarshalCBOR(br io.Reader) error {
+func (t *StorageMinerActorState) UnmarshalCBOR(r io.Reader) error {
+	br := cbg.GetPeeker(r)
 
 	maj, extra, err := cbg.CborReadHeader(br)
 	if err != nil {
@@ -252,13 +276,21 @@ func (t *StorageMinerActorState) UnmarshalCBOR(br io.Reader) error {
 	}
 	// t.t.DePledgedCollateral (types.BigInt)
 
-	if err := t.DePledgedCollateral.UnmarshalCBOR(br); err != nil {
-		return err
+	{
+
+		if err := t.DePledgedCollateral.UnmarshalCBOR(br); err != nil {
+			return err
+		}
+
 	}
 	// t.t.DePledgeTime (types.BigInt)
 
-	if err := t.DePledgeTime.UnmarshalCBOR(br); err != nil {
-		return err
+	{
+
+		if err := t.DePledgeTime.UnmarshalCBOR(br); err != nil {
+			return err
+		}
+
 	}
 	// t.t.Sectors (cid.Cid)
 
@@ -300,18 +332,30 @@ func (t *StorageMinerActorState) UnmarshalCBOR(br io.Reader) error {
 	t.ProvingSetSize = extra
 	// t.t.Power (types.BigInt)
 
-	if err := t.Power.UnmarshalCBOR(br); err != nil {
-		return err
+	{
+
+		if err := t.Power.UnmarshalCBOR(br); err != nil {
+			return err
+		}
+
 	}
 	// t.t.SlashedAt (types.BigInt)
 
-	if err := t.SlashedAt.UnmarshalCBOR(br); err != nil {
-		return err
+	{
+
+		if err := t.SlashedAt.UnmarshalCBOR(br); err != nil {
+			return err
+		}
+
 	}
 	// t.t.OwedStorageCollateral (types.BigInt)
 
-	if err := t.OwedStorageCollateral.UnmarshalCBOR(br); err != nil {
-		return err
+	{
+
+		if err := t.OwedStorageCollateral.UnmarshalCBOR(br); err != nil {
+			return err
+		}
+
 	}
 	// t.t.ProvingPeriodEnd (uint64)
 
@@ -327,6 +371,10 @@ func (t *StorageMinerActorState) UnmarshalCBOR(br io.Reader) error {
 }
 
 func (t *StorageMinerConstructorParams) MarshalCBOR(w io.Writer) error {
+	if t == nil {
+		_, err := w.Write(cbg.CborNull)
+		return err
+	}
 	if _, err := w.Write([]byte{132}); err != nil {
 		return err
 	}
@@ -356,7 +404,8 @@ func (t *StorageMinerConstructorParams) MarshalCBOR(w io.Writer) error {
 	return nil
 }
 
-func (t *StorageMinerConstructorParams) UnmarshalCBOR(br io.Reader) error {
+func (t *StorageMinerConstructorParams) UnmarshalCBOR(r io.Reader) error {
+	br := cbg.GetPeeker(r)
 
 	maj, extra, err := cbg.CborReadHeader(br)
 	if err != nil {
@@ -372,18 +421,30 @@ func (t *StorageMinerConstructorParams) UnmarshalCBOR(br io.Reader) error {
 
 	// t.t.Owner (address.Address)
 
-	if err := t.Owner.UnmarshalCBOR(br); err != nil {
-		return err
+	{
+
+		if err := t.Owner.UnmarshalCBOR(br); err != nil {
+			return err
+		}
+
 	}
 	// t.t.Worker (address.Address)
 
-	if err := t.Worker.UnmarshalCBOR(br); err != nil {
-		return err
+	{
+
+		if err := t.Worker.UnmarshalCBOR(br); err != nil {
+			return err
+		}
+
 	}
 	// t.t.SectorSize (types.BigInt)
 
-	if err := t.SectorSize.UnmarshalCBOR(br); err != nil {
-		return err
+	{
+
+		if err := t.SectorSize.UnmarshalCBOR(br); err != nil {
+			return err
+		}
+
 	}
 	// t.t.PeerID (peer.ID)
 
@@ -399,6 +460,10 @@ func (t *StorageMinerConstructorParams) UnmarshalCBOR(br io.Reader) error {
 }
 
 func (t *CommitSectorParams) MarshalCBOR(w io.Writer) error {
+	if t == nil {
+		_, err := w.Write(cbg.CborNull)
+		return err
+	}
 	if _, err := w.Write([]byte{133}); err != nil {
 		return err
 	}
@@ -442,7 +507,8 @@ func (t *CommitSectorParams) MarshalCBOR(w io.Writer) error {
 	return nil
 }
 
-func (t *CommitSectorParams) UnmarshalCBOR(br io.Reader) error {
+func (t *CommitSectorParams) UnmarshalCBOR(r io.Reader) error {
+	br := cbg.GetPeeker(r)
 
 	maj, extra, err := cbg.CborReadHeader(br)
 	if err != nil {
@@ -538,6 +604,10 @@ func (t *CommitSectorParams) UnmarshalCBOR(br io.Reader) error {
 }
 
 func (t *MinerInfo) MarshalCBOR(w io.Writer) error {
+	if t == nil {
+		_, err := w.Write(cbg.CborNull)
+		return err
+	}
 	if _, err := w.Write([]byte{132}); err != nil {
 		return err
 	}
@@ -567,7 +637,8 @@ func (t *MinerInfo) MarshalCBOR(w io.Writer) error {
 	return nil
 }
 
-func (t *MinerInfo) UnmarshalCBOR(br io.Reader) error {
+func (t *MinerInfo) UnmarshalCBOR(r io.Reader) error {
+	br := cbg.GetPeeker(r)
 
 	maj, extra, err := cbg.CborReadHeader(br)
 	if err != nil {
@@ -583,13 +654,21 @@ func (t *MinerInfo) UnmarshalCBOR(br io.Reader) error {
 
 	// t.t.Owner (address.Address)
 
-	if err := t.Owner.UnmarshalCBOR(br); err != nil {
-		return err
+	{
+
+		if err := t.Owner.UnmarshalCBOR(br); err != nil {
+			return err
+		}
+
 	}
 	// t.t.Worker (address.Address)
 
-	if err := t.Worker.UnmarshalCBOR(br); err != nil {
-		return err
+	{
+
+		if err := t.Worker.UnmarshalCBOR(br); err != nil {
+			return err
+		}
+
 	}
 	// t.t.PeerID (peer.ID)
 
@@ -603,20 +682,29 @@ func (t *MinerInfo) UnmarshalCBOR(br io.Reader) error {
 	}
 	// t.t.SectorSize (types.BigInt)
 
-	if err := t.SectorSize.UnmarshalCBOR(br); err != nil {
-		return err
+	{
+
+		if err := t.SectorSize.UnmarshalCBOR(br); err != nil {
+			return err
+		}
+
 	}
 	return nil
 }
 
 func (t *SubmitPoStParams) MarshalCBOR(w io.Writer) error {
+	if t == nil {
+		_, err := w.Write(cbg.CborNull)
+		return err
+	}
 	if _, err := w.Write([]byte{128}); err != nil {
 		return err
 	}
 	return nil
 }
 
-func (t *SubmitPoStParams) UnmarshalCBOR(br io.Reader) error {
+func (t *SubmitPoStParams) UnmarshalCBOR(r io.Reader) error {
+	br := cbg.GetPeeker(r)
 
 	maj, extra, err := cbg.CborReadHeader(br)
 	if err != nil {
@@ -634,6 +722,10 @@ func (t *SubmitPoStParams) UnmarshalCBOR(br io.Reader) error {
 }
 
 func (t *PieceInclVoucherData) MarshalCBOR(w io.Writer) error {
+	if t == nil {
+		_, err := w.Write(cbg.CborNull)
+		return err
+	}
 	if _, err := w.Write([]byte{130}); err != nil {
 		return err
 	}
@@ -653,7 +745,8 @@ func (t *PieceInclVoucherData) MarshalCBOR(w io.Writer) error {
 	return nil
 }
 
-func (t *PieceInclVoucherData) UnmarshalCBOR(br io.Reader) error {
+func (t *PieceInclVoucherData) UnmarshalCBOR(r io.Reader) error {
+	br := cbg.GetPeeker(r)
 
 	maj, extra, err := cbg.CborReadHeader(br)
 	if err != nil {
@@ -686,13 +779,21 @@ func (t *PieceInclVoucherData) UnmarshalCBOR(br io.Reader) error {
 	}
 	// t.t.PieceSize (types.BigInt)
 
-	if err := t.PieceSize.UnmarshalCBOR(br); err != nil {
-		return err
+	{
+
+		if err := t.PieceSize.UnmarshalCBOR(br); err != nil {
+			return err
+		}
+
 	}
 	return nil
 }
 
 func (t *InclusionProof) MarshalCBOR(w io.Writer) error {
+	if t == nil {
+		_, err := w.Write(cbg.CborNull)
+		return err
+	}
 	if _, err := w.Write([]byte{130}); err != nil {
 		return err
 	}
@@ -712,7 +813,8 @@ func (t *InclusionProof) MarshalCBOR(w io.Writer) error {
 	return nil
 }
 
-func (t *InclusionProof) UnmarshalCBOR(br io.Reader) error {
+func (t *InclusionProof) UnmarshalCBOR(r io.Reader) error {
+	br := cbg.GetPeeker(r)
 
 	maj, extra, err := cbg.CborReadHeader(br)
 	if err != nil {
@@ -757,6 +859,10 @@ func (t *InclusionProof) UnmarshalCBOR(br io.Reader) error {
 }
 
 func (t *PaymentVerifyParams) MarshalCBOR(w io.Writer) error {
+	if t == nil {
+		_, err := w.Write(cbg.CborNull)
+		return err
+	}
 	if _, err := w.Write([]byte{130}); err != nil {
 		return err
 	}
@@ -779,7 +885,8 @@ func (t *PaymentVerifyParams) MarshalCBOR(w io.Writer) error {
 	return nil
 }
 
-func (t *PaymentVerifyParams) UnmarshalCBOR(br io.Reader) error {
+func (t *PaymentVerifyParams) UnmarshalCBOR(r io.Reader) error {
+	br := cbg.GetPeeker(r)
 
 	maj, extra, err := cbg.CborReadHeader(br)
 	if err != nil {
@@ -831,6 +938,10 @@ func (t *PaymentVerifyParams) UnmarshalCBOR(br io.Reader) error {
 }
 
 func (t *UpdatePeerIDParams) MarshalCBOR(w io.Writer) error {
+	if t == nil {
+		_, err := w.Write(cbg.CborNull)
+		return err
+	}
 	if _, err := w.Write([]byte{129}); err != nil {
 		return err
 	}
@@ -845,7 +956,8 @@ func (t *UpdatePeerIDParams) MarshalCBOR(w io.Writer) error {
 	return nil
 }
 
-func (t *UpdatePeerIDParams) UnmarshalCBOR(br io.Reader) error {
+func (t *UpdatePeerIDParams) UnmarshalCBOR(r io.Reader) error {
+	br := cbg.GetPeeker(r)
 
 	maj, extra, err := cbg.CborReadHeader(br)
 	if err != nil {
@@ -873,6 +985,10 @@ func (t *UpdatePeerIDParams) UnmarshalCBOR(br io.Reader) error {
 }
 
 func (t *MultiSigActorState) MarshalCBOR(w io.Writer) error {
+	if t == nil {
+		_, err := w.Write(cbg.CborNull)
+		return err
+	}
 	if _, err := w.Write([]byte{132}); err != nil {
 		return err
 	}
@@ -909,7 +1025,8 @@ func (t *MultiSigActorState) MarshalCBOR(w io.Writer) error {
 	return nil
 }
 
-func (t *MultiSigActorState) UnmarshalCBOR(br io.Reader) error {
+func (t *MultiSigActorState) UnmarshalCBOR(r io.Reader) error {
+	br := cbg.GetPeeker(r)
 
 	maj, extra, err := cbg.CborReadHeader(br)
 	if err != nil {
@@ -997,6 +1114,10 @@ func (t *MultiSigActorState) UnmarshalCBOR(br io.Reader) error {
 }
 
 func (t *MultiSigConstructorParams) MarshalCBOR(w io.Writer) error {
+	if t == nil {
+		_, err := w.Write(cbg.CborNull)
+		return err
+	}
 	if _, err := w.Write([]byte{130}); err != nil {
 		return err
 	}
@@ -1018,7 +1139,8 @@ func (t *MultiSigConstructorParams) MarshalCBOR(w io.Writer) error {
 	return nil
 }
 
-func (t *MultiSigConstructorParams) UnmarshalCBOR(br io.Reader) error {
+func (t *MultiSigConstructorParams) UnmarshalCBOR(r io.Reader) error {
+	br := cbg.GetPeeker(r)
 
 	maj, extra, err := cbg.CborReadHeader(br)
 	if err != nil {
@@ -1071,6 +1193,10 @@ func (t *MultiSigConstructorParams) UnmarshalCBOR(br io.Reader) error {
 }
 
 func (t *MultiSigProposeParams) MarshalCBOR(w io.Writer) error {
+	if t == nil {
+		_, err := w.Write(cbg.CborNull)
+		return err
+	}
 	if _, err := w.Write([]byte{132}); err != nil {
 		return err
 	}
@@ -1100,7 +1226,8 @@ func (t *MultiSigProposeParams) MarshalCBOR(w io.Writer) error {
 	return nil
 }
 
-func (t *MultiSigProposeParams) UnmarshalCBOR(br io.Reader) error {
+func (t *MultiSigProposeParams) UnmarshalCBOR(r io.Reader) error {
+	br := cbg.GetPeeker(r)
 
 	maj, extra, err := cbg.CborReadHeader(br)
 	if err != nil {
@@ -1116,13 +1243,21 @@ func (t *MultiSigProposeParams) UnmarshalCBOR(br io.Reader) error {
 
 	// t.t.To (address.Address)
 
-	if err := t.To.UnmarshalCBOR(br); err != nil {
-		return err
+	{
+
+		if err := t.To.UnmarshalCBOR(br); err != nil {
+			return err
+		}
+
 	}
 	// t.t.Value (types.BigInt)
 
-	if err := t.Value.UnmarshalCBOR(br); err != nil {
-		return err
+	{
+
+		if err := t.Value.UnmarshalCBOR(br); err != nil {
+			return err
+		}
+
 	}
 	// t.t.Method (uint64)
 
@@ -1155,6 +1290,10 @@ func (t *MultiSigProposeParams) UnmarshalCBOR(br io.Reader) error {
 }
 
 func (t *MultiSigTxID) MarshalCBOR(w io.Writer) error {
+	if t == nil {
+		_, err := w.Write(cbg.CborNull)
+		return err
+	}
 	if _, err := w.Write([]byte{129}); err != nil {
 		return err
 	}
@@ -1166,7 +1305,8 @@ func (t *MultiSigTxID) MarshalCBOR(w io.Writer) error {
 	return nil
 }
 
-func (t *MultiSigTxID) UnmarshalCBOR(br io.Reader) error {
+func (t *MultiSigTxID) UnmarshalCBOR(r io.Reader) error {
+	br := cbg.GetPeeker(r)
 
 	maj, extra, err := cbg.CborReadHeader(br)
 	if err != nil {
@@ -1194,6 +1334,10 @@ func (t *MultiSigTxID) UnmarshalCBOR(br io.Reader) error {
 }
 
 func (t *MultiSigSwapSignerParams) MarshalCBOR(w io.Writer) error {
+	if t == nil {
+		_, err := w.Write(cbg.CborNull)
+		return err
+	}
 	if _, err := w.Write([]byte{130}); err != nil {
 		return err
 	}
@@ -1210,7 +1354,8 @@ func (t *MultiSigSwapSignerParams) MarshalCBOR(w io.Writer) error {
 	return nil
 }
 
-func (t *MultiSigSwapSignerParams) UnmarshalCBOR(br io.Reader) error {
+func (t *MultiSigSwapSignerParams) UnmarshalCBOR(r io.Reader) error {
+	br := cbg.GetPeeker(r)
 
 	maj, extra, err := cbg.CborReadHeader(br)
 	if err != nil {
@@ -1226,18 +1371,30 @@ func (t *MultiSigSwapSignerParams) UnmarshalCBOR(br io.Reader) error {
 
 	// t.t.From (address.Address)
 
-	if err := t.From.UnmarshalCBOR(br); err != nil {
-		return err
+	{
+
+		if err := t.From.UnmarshalCBOR(br); err != nil {
+			return err
+		}
+
 	}
 	// t.t.To (address.Address)
 
-	if err := t.To.UnmarshalCBOR(br); err != nil {
-		return err
+	{
+
+		if err := t.To.UnmarshalCBOR(br); err != nil {
+			return err
+		}
+
 	}
 	return nil
 }
 
 func (t *MultiSigChangeReqParams) MarshalCBOR(w io.Writer) error {
+	if t == nil {
+		_, err := w.Write(cbg.CborNull)
+		return err
+	}
 	if _, err := w.Write([]byte{129}); err != nil {
 		return err
 	}
@@ -1249,7 +1406,8 @@ func (t *MultiSigChangeReqParams) MarshalCBOR(w io.Writer) error {
 	return nil
 }
 
-func (t *MultiSigChangeReqParams) UnmarshalCBOR(br io.Reader) error {
+func (t *MultiSigChangeReqParams) UnmarshalCBOR(r io.Reader) error {
+	br := cbg.GetPeeker(r)
 
 	maj, extra, err := cbg.CborReadHeader(br)
 	if err != nil {
@@ -1277,6 +1435,10 @@ func (t *MultiSigChangeReqParams) UnmarshalCBOR(br io.Reader) error {
 }
 
 func (t *MTransaction) MarshalCBOR(w io.Writer) error {
+	if t == nil {
+		_, err := w.Write(cbg.CborNull)
+		return err
+	}
 	if _, err := w.Write([]byte{138}); err != nil {
 		return err
 	}
@@ -1341,7 +1503,8 @@ func (t *MTransaction) MarshalCBOR(w io.Writer) error {
 	return nil
 }
 
-func (t *MTransaction) UnmarshalCBOR(br io.Reader) error {
+func (t *MTransaction) UnmarshalCBOR(r io.Reader) error {
+	br := cbg.GetPeeker(r)
 
 	maj, extra, err := cbg.CborReadHeader(br)
 	if err != nil {
@@ -1377,13 +1540,21 @@ func (t *MTransaction) UnmarshalCBOR(br io.Reader) error {
 	t.TxID = extra
 	// t.t.To (address.Address)
 
-	if err := t.To.UnmarshalCBOR(br); err != nil {
-		return err
+	{
+
+		if err := t.To.UnmarshalCBOR(br); err != nil {
+			return err
+		}
+
 	}
 	// t.t.Value (types.BigInt)
 
-	if err := t.Value.UnmarshalCBOR(br); err != nil {
-		return err
+	{
+
+		if err := t.Value.UnmarshalCBOR(br); err != nil {
+			return err
+		}
+
 	}
 	// t.t.Method (uint64)
 
@@ -1485,6 +1656,10 @@ func (t *MTransaction) UnmarshalCBOR(br io.Reader) error {
 }
 
 func (t *MultiSigRemoveSignerParam) MarshalCBOR(w io.Writer) error {
+	if t == nil {
+		_, err := w.Write(cbg.CborNull)
+		return err
+	}
 	if _, err := w.Write([]byte{130}); err != nil {
 		return err
 	}
@@ -1501,7 +1676,8 @@ func (t *MultiSigRemoveSignerParam) MarshalCBOR(w io.Writer) error {
 	return nil
 }
 
-func (t *MultiSigRemoveSignerParam) UnmarshalCBOR(br io.Reader) error {
+func (t *MultiSigRemoveSignerParam) UnmarshalCBOR(r io.Reader) error {
+	br := cbg.GetPeeker(r)
 
 	maj, extra, err := cbg.CborReadHeader(br)
 	if err != nil {
@@ -1517,8 +1693,12 @@ func (t *MultiSigRemoveSignerParam) UnmarshalCBOR(br io.Reader) error {
 
 	// t.t.Signer (address.Address)
 
-	if err := t.Signer.UnmarshalCBOR(br); err != nil {
-		return err
+	{
+
+		if err := t.Signer.UnmarshalCBOR(br); err != nil {
+			return err
+		}
+
 	}
 	// t.t.Decrease (bool)
 
@@ -1541,6 +1721,10 @@ func (t *MultiSigRemoveSignerParam) UnmarshalCBOR(br io.Reader) error {
 }
 
 func (t *MultiSigAddSignerParam) MarshalCBOR(w io.Writer) error {
+	if t == nil {
+		_, err := w.Write(cbg.CborNull)
+		return err
+	}
 	if _, err := w.Write([]byte{130}); err != nil {
 		return err
 	}
@@ -1557,7 +1741,8 @@ func (t *MultiSigAddSignerParam) MarshalCBOR(w io.Writer) error {
 	return nil
 }
 
-func (t *MultiSigAddSignerParam) UnmarshalCBOR(br io.Reader) error {
+func (t *MultiSigAddSignerParam) UnmarshalCBOR(r io.Reader) error {
+	br := cbg.GetPeeker(r)
 
 	maj, extra, err := cbg.CborReadHeader(br)
 	if err != nil {
@@ -1573,8 +1758,12 @@ func (t *MultiSigAddSignerParam) UnmarshalCBOR(br io.Reader) error {
 
 	// t.t.Signer (address.Address)
 
-	if err := t.Signer.UnmarshalCBOR(br); err != nil {
-		return err
+	{
+
+		if err := t.Signer.UnmarshalCBOR(br); err != nil {
+			return err
+		}
+
 	}
 	// t.t.Increase (bool)
 
@@ -1597,6 +1786,10 @@ func (t *MultiSigAddSignerParam) UnmarshalCBOR(br io.Reader) error {
 }
 
 func (t *PaymentChannelActorState) MarshalCBOR(w io.Writer) error {
+	if t == nil {
+		_, err := w.Write(cbg.CborNull)
+		return err
+	}
 	if _, err := w.Write([]byte{134}); err != nil {
 		return err
 	}
@@ -1648,7 +1841,8 @@ func (t *PaymentChannelActorState) MarshalCBOR(w io.Writer) error {
 	return nil
 }
 
-func (t *PaymentChannelActorState) UnmarshalCBOR(br io.Reader) error {
+func (t *PaymentChannelActorState) UnmarshalCBOR(r io.Reader) error {
+	br := cbg.GetPeeker(r)
 
 	maj, extra, err := cbg.CborReadHeader(br)
 	if err != nil {
@@ -1664,18 +1858,30 @@ func (t *PaymentChannelActorState) UnmarshalCBOR(br io.Reader) error {
 
 	// t.t.From (address.Address)
 
-	if err := t.From.UnmarshalCBOR(br); err != nil {
-		return err
+	{
+
+		if err := t.From.UnmarshalCBOR(br); err != nil {
+			return err
+		}
+
 	}
 	// t.t.To (address.Address)
 
-	if err := t.To.UnmarshalCBOR(br); err != nil {
-		return err
+	{
+
+		if err := t.To.UnmarshalCBOR(br); err != nil {
+			return err
+		}
+
 	}
 	// t.t.ToSend (types.BigInt)
 
-	if err := t.ToSend.UnmarshalCBOR(br); err != nil {
-		return err
+	{
+
+		if err := t.ToSend.UnmarshalCBOR(br); err != nil {
+			return err
+		}
+
 	}
 	// t.t.ClosingAt (uint64)
 
@@ -1727,10 +1933,24 @@ func (t *PaymentChannelActorState) UnmarshalCBOR(br io.Reader) error {
 
 		var v *LaneState
 
-		v = new(LaneState)
+		{
 
-		if err := v.UnmarshalCBOR(br); err != nil {
-			return err
+			pb, err := br.PeekByte()
+			if err != nil {
+				return err
+			}
+			if pb == cbg.CborNull[0] {
+				var nbuf [1]byte
+				if _, err := br.Read(nbuf[:]); err != nil {
+					return err
+				}
+			} else {
+				v = new(LaneState)
+				if err := v.UnmarshalCBOR(br); err != nil {
+					return err
+				}
+			}
+
 		}
 
 		t.LaneStates[k] = v
@@ -1740,6 +1960,10 @@ func (t *PaymentChannelActorState) UnmarshalCBOR(br io.Reader) error {
 }
 
 func (t *PCAConstructorParams) MarshalCBOR(w io.Writer) error {
+	if t == nil {
+		_, err := w.Write(cbg.CborNull)
+		return err
+	}
 	if _, err := w.Write([]byte{129}); err != nil {
 		return err
 	}
@@ -1751,7 +1975,8 @@ func (t *PCAConstructorParams) MarshalCBOR(w io.Writer) error {
 	return nil
 }
 
-func (t *PCAConstructorParams) UnmarshalCBOR(br io.Reader) error {
+func (t *PCAConstructorParams) UnmarshalCBOR(r io.Reader) error {
+	br := cbg.GetPeeker(r)
 
 	maj, extra, err := cbg.CborReadHeader(br)
 	if err != nil {
@@ -1767,13 +1992,21 @@ func (t *PCAConstructorParams) UnmarshalCBOR(br io.Reader) error {
 
 	// t.t.To (address.Address)
 
-	if err := t.To.UnmarshalCBOR(br); err != nil {
-		return err
+	{
+
+		if err := t.To.UnmarshalCBOR(br); err != nil {
+			return err
+		}
+
 	}
 	return nil
 }
 
 func (t *LaneState) MarshalCBOR(w io.Writer) error {
+	if t == nil {
+		_, err := w.Write(cbg.CborNull)
+		return err
+	}
 	if _, err := w.Write([]byte{131}); err != nil {
 		return err
 	}
@@ -1795,7 +2028,8 @@ func (t *LaneState) MarshalCBOR(w io.Writer) error {
 	return nil
 }
 
-func (t *LaneState) UnmarshalCBOR(br io.Reader) error {
+func (t *LaneState) UnmarshalCBOR(r io.Reader) error {
+	br := cbg.GetPeeker(r)
 
 	maj, extra, err := cbg.CborReadHeader(br)
 	if err != nil {
@@ -1828,8 +2062,12 @@ func (t *LaneState) UnmarshalCBOR(br io.Reader) error {
 	}
 	// t.t.Redeemed (types.BigInt)
 
-	if err := t.Redeemed.UnmarshalCBOR(br); err != nil {
-		return err
+	{
+
+		if err := t.Redeemed.UnmarshalCBOR(br); err != nil {
+			return err
+		}
+
 	}
 	// t.t.Nonce (uint64)
 
@@ -1845,6 +2083,10 @@ func (t *LaneState) UnmarshalCBOR(br io.Reader) error {
 }
 
 func (t *PCAUpdateChannelStateParams) MarshalCBOR(w io.Writer) error {
+	if t == nil {
+		_, err := w.Write(cbg.CborNull)
+		return err
+	}
 	if _, err := w.Write([]byte{131}); err != nil {
 		return err
 	}
@@ -1872,7 +2114,8 @@ func (t *PCAUpdateChannelStateParams) MarshalCBOR(w io.Writer) error {
 	return nil
 }
 
-func (t *PCAUpdateChannelStateParams) UnmarshalCBOR(br io.Reader) error {
+func (t *PCAUpdateChannelStateParams) UnmarshalCBOR(r io.Reader) error {
+	br := cbg.GetPeeker(r)
 
 	maj, extra, err := cbg.CborReadHeader(br)
 	if err != nil {
@@ -1888,8 +2131,12 @@ func (t *PCAUpdateChannelStateParams) UnmarshalCBOR(br io.Reader) error {
 
 	// t.t.Sv (types.SignedVoucher)
 
-	if err := t.Sv.UnmarshalCBOR(br); err != nil {
-		return err
+	{
+
+		if err := t.Sv.UnmarshalCBOR(br); err != nil {
+			return err
+		}
+
 	}
 	// t.t.Secret ([]uint8)
 
@@ -1929,6 +2176,10 @@ func (t *PCAUpdateChannelStateParams) UnmarshalCBOR(br io.Reader) error {
 }
 
 func (t *PaymentInfo) MarshalCBOR(w io.Writer) error {
+	if t == nil {
+		_, err := w.Write(cbg.CborNull)
+		return err
+	}
 	if _, err := w.Write([]byte{132}); err != nil {
 		return err
 	}
@@ -1948,7 +2199,7 @@ func (t *PaymentInfo) MarshalCBOR(w io.Writer) error {
 		return xerrors.Errorf("failed to write cid field t.ChannelMessage: %w", err)
 	}
 
-	// t.t.Vouchers ([]types.SignedVoucher)
+	// t.t.Vouchers ([]*types.SignedVoucher)
 	if _, err := w.Write(cbg.CborEncodeMajorType(cbg.MajArray, uint64(len(t.Vouchers)))); err != nil {
 		return err
 	}
@@ -1960,7 +2211,8 @@ func (t *PaymentInfo) MarshalCBOR(w io.Writer) error {
 	return nil
 }
 
-func (t *PaymentInfo) UnmarshalCBOR(br io.Reader) error {
+func (t *PaymentInfo) UnmarshalCBOR(r io.Reader) error {
+	br := cbg.GetPeeker(r)
 
 	maj, extra, err := cbg.CborReadHeader(br)
 	if err != nil {
@@ -1976,13 +2228,21 @@ func (t *PaymentInfo) UnmarshalCBOR(br io.Reader) error {
 
 	// t.t.PayChActor (address.Address)
 
-	if err := t.PayChActor.UnmarshalCBOR(br); err != nil {
-		return err
+	{
+
+		if err := t.PayChActor.UnmarshalCBOR(br); err != nil {
+			return err
+		}
+
 	}
 	// t.t.Payer (address.Address)
 
-	if err := t.Payer.UnmarshalCBOR(br); err != nil {
-		return err
+	{
+
+		if err := t.Payer.UnmarshalCBOR(br); err != nil {
+			return err
+		}
+
 	}
 	// t.t.ChannelMessage (cid.Cid)
 
@@ -1993,7 +2253,7 @@ func (t *PaymentInfo) UnmarshalCBOR(br io.Reader) error {
 		}
 		t.ChannelMessage = c
 	}
-	// t.t.Vouchers ([]types.SignedVoucher)
+	// t.t.Vouchers ([]*types.SignedVoucher)
 
 	maj, extra, err = cbg.CborReadHeader(br)
 	if err != nil {
@@ -2022,6 +2282,10 @@ func (t *PaymentInfo) UnmarshalCBOR(br io.Reader) error {
 }
 
 func (t *StorageMarketState) MarshalCBOR(w io.Writer) error {
+	if t == nil {
+		_, err := w.Write(cbg.CborNull)
+		return err
+	}
 	if _, err := w.Write([]byte{130}); err != nil {
 		return err
 	}
@@ -2038,7 +2302,8 @@ func (t *StorageMarketState) MarshalCBOR(w io.Writer) error {
 	return nil
 }
 
-func (t *StorageMarketState) UnmarshalCBOR(br io.Reader) error {
+func (t *StorageMarketState) UnmarshalCBOR(r io.Reader) error {
+	br := cbg.GetPeeker(r)
 
 	maj, extra, err := cbg.CborReadHeader(br)
 	if err != nil {
@@ -2063,13 +2328,21 @@ func (t *StorageMarketState) UnmarshalCBOR(br io.Reader) error {
 	}
 	// t.t.TotalStorage (types.BigInt)
 
-	if err := t.TotalStorage.UnmarshalCBOR(br); err != nil {
-		return err
+	{
+
+		if err := t.TotalStorage.UnmarshalCBOR(br); err != nil {
+			return err
+		}
+
 	}
 	return nil
 }
 
 func (t *CreateStorageMinerParams) MarshalCBOR(w io.Writer) error {
+	if t == nil {
+		_, err := w.Write(cbg.CborNull)
+		return err
+	}
 	if _, err := w.Write([]byte{132}); err != nil {
 		return err
 	}
@@ -2099,7 +2372,8 @@ func (t *CreateStorageMinerParams) MarshalCBOR(w io.Writer) error {
 	return nil
 }
 
-func (t *CreateStorageMinerParams) UnmarshalCBOR(br io.Reader) error {
+func (t *CreateStorageMinerParams) UnmarshalCBOR(r io.Reader) error {
+	br := cbg.GetPeeker(r)
 
 	maj, extra, err := cbg.CborReadHeader(br)
 	if err != nil {
@@ -2115,18 +2389,30 @@ func (t *CreateStorageMinerParams) UnmarshalCBOR(br io.Reader) error {
 
 	// t.t.Owner (address.Address)
 
-	if err := t.Owner.UnmarshalCBOR(br); err != nil {
-		return err
+	{
+
+		if err := t.Owner.UnmarshalCBOR(br); err != nil {
+			return err
+		}
+
 	}
 	// t.t.Worker (address.Address)
 
-	if err := t.Worker.UnmarshalCBOR(br); err != nil {
-		return err
+	{
+
+		if err := t.Worker.UnmarshalCBOR(br); err != nil {
+			return err
+		}
+
 	}
 	// t.t.SectorSize (types.BigInt)
 
-	if err := t.SectorSize.UnmarshalCBOR(br); err != nil {
-		return err
+	{
+
+		if err := t.SectorSize.UnmarshalCBOR(br); err != nil {
+			return err
+		}
+
 	}
 	// t.t.PeerID (peer.ID)
 
@@ -2142,6 +2428,10 @@ func (t *CreateStorageMinerParams) UnmarshalCBOR(br io.Reader) error {
 }
 
 func (t *IsMinerParam) MarshalCBOR(w io.Writer) error {
+	if t == nil {
+		_, err := w.Write(cbg.CborNull)
+		return err
+	}
 	if _, err := w.Write([]byte{129}); err != nil {
 		return err
 	}
@@ -2153,7 +2443,8 @@ func (t *IsMinerParam) MarshalCBOR(w io.Writer) error {
 	return nil
 }
 
-func (t *IsMinerParam) UnmarshalCBOR(br io.Reader) error {
+func (t *IsMinerParam) UnmarshalCBOR(r io.Reader) error {
+	br := cbg.GetPeeker(r)
 
 	maj, extra, err := cbg.CborReadHeader(br)
 	if err != nil {
@@ -2169,13 +2460,21 @@ func (t *IsMinerParam) UnmarshalCBOR(br io.Reader) error {
 
 	// t.t.Addr (address.Address)
 
-	if err := t.Addr.UnmarshalCBOR(br); err != nil {
-		return err
+	{
+
+		if err := t.Addr.UnmarshalCBOR(br); err != nil {
+			return err
+		}
+
 	}
 	return nil
 }
 
 func (t *PowerLookupParams) MarshalCBOR(w io.Writer) error {
+	if t == nil {
+		_, err := w.Write(cbg.CborNull)
+		return err
+	}
 	if _, err := w.Write([]byte{129}); err != nil {
 		return err
 	}
@@ -2187,7 +2486,8 @@ func (t *PowerLookupParams) MarshalCBOR(w io.Writer) error {
 	return nil
 }
 
-func (t *PowerLookupParams) UnmarshalCBOR(br io.Reader) error {
+func (t *PowerLookupParams) UnmarshalCBOR(r io.Reader) error {
+	br := cbg.GetPeeker(r)
 
 	maj, extra, err := cbg.CborReadHeader(br)
 	if err != nil {
@@ -2203,13 +2503,21 @@ func (t *PowerLookupParams) UnmarshalCBOR(br io.Reader) error {
 
 	// t.t.Miner (address.Address)
 
-	if err := t.Miner.UnmarshalCBOR(br); err != nil {
-		return err
+	{
+
+		if err := t.Miner.UnmarshalCBOR(br); err != nil {
+			return err
+		}
+
 	}
 	return nil
 }
 
 func (t *UpdateStorageParams) MarshalCBOR(w io.Writer) error {
+	if t == nil {
+		_, err := w.Write(cbg.CborNull)
+		return err
+	}
 	if _, err := w.Write([]byte{129}); err != nil {
 		return err
 	}
@@ -2221,7 +2529,8 @@ func (t *UpdateStorageParams) MarshalCBOR(w io.Writer) error {
 	return nil
 }
 
-func (t *UpdateStorageParams) UnmarshalCBOR(br io.Reader) error {
+func (t *UpdateStorageParams) UnmarshalCBOR(r io.Reader) error {
+	br := cbg.GetPeeker(r)
 
 	maj, extra, err := cbg.CborReadHeader(br)
 	if err != nil {
@@ -2237,8 +2546,12 @@ func (t *UpdateStorageParams) UnmarshalCBOR(br io.Reader) error {
 
 	// t.t.Delta (types.BigInt)
 
-	if err := t.Delta.UnmarshalCBOR(br); err != nil {
-		return err
+	{
+
+		if err := t.Delta.UnmarshalCBOR(br); err != nil {
+			return err
+		}
+
 	}
 	return nil
 }

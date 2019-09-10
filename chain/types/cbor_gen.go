@@ -14,6 +14,10 @@ import (
 var _ = xerrors.Errorf
 
 func (t *BlockHeader) MarshalCBOR(w io.Writer) error {
+	if t == nil {
+		_, err := w.Write(cbg.CborNull)
+		return err
+	}
 	if _, err := w.Write([]byte{140}); err != nil {
 		return err
 	}
@@ -23,7 +27,7 @@ func (t *BlockHeader) MarshalCBOR(w io.Writer) error {
 		return err
 	}
 
-	// t.t.Tickets ([]*Ticket)
+	// t.t.Tickets ([]*types.Ticket)
 	if _, err := w.Write(cbg.CborEncodeMajorType(cbg.MajArray, uint64(len(t.Tickets)))); err != nil {
 		return err
 	}
@@ -51,7 +55,7 @@ func (t *BlockHeader) MarshalCBOR(w io.Writer) error {
 		}
 	}
 
-	// t.t.ParentWeight (BigInt)
+	// t.t.ParentWeight (types.BigInt)
 	if err := t.ParentWeight.MarshalCBOR(w); err != nil {
 		return err
 	}
@@ -71,7 +75,7 @@ func (t *BlockHeader) MarshalCBOR(w io.Writer) error {
 		return xerrors.Errorf("failed to write cid field t.Messages: %w", err)
 	}
 
-	// t.t.BLSAggregate (Signature)
+	// t.t.BLSAggregate (types.Signature)
 	if err := t.BLSAggregate.MarshalCBOR(w); err != nil {
 		return err
 	}
@@ -86,14 +90,15 @@ func (t *BlockHeader) MarshalCBOR(w io.Writer) error {
 		return err
 	}
 
-	// t.t.BlockSig (Signature)
+	// t.t.BlockSig (types.Signature)
 	if err := t.BlockSig.MarshalCBOR(w); err != nil {
 		return err
 	}
 	return nil
 }
 
-func (t *BlockHeader) UnmarshalCBOR(br io.Reader) error {
+func (t *BlockHeader) UnmarshalCBOR(r io.Reader) error {
+	br := cbg.GetPeeker(r)
 
 	maj, extra, err := cbg.CborReadHeader(br)
 	if err != nil {
@@ -109,10 +114,14 @@ func (t *BlockHeader) UnmarshalCBOR(br io.Reader) error {
 
 	// t.t.Miner (address.Address)
 
-	if err := t.Miner.UnmarshalCBOR(br); err != nil {
-		return err
+	{
+
+		if err := t.Miner.UnmarshalCBOR(br); err != nil {
+			return err
+		}
+
 	}
-	// t.t.Tickets ([]*Ticket)
+	// t.t.Tickets ([]*types.Ticket)
 
 	maj, extra, err = cbg.CborReadHeader(br)
 	if err != nil {
@@ -179,10 +188,14 @@ func (t *BlockHeader) UnmarshalCBOR(br io.Reader) error {
 		t.Parents[i] = c
 	}
 
-	// t.t.ParentWeight (BigInt)
+	// t.t.ParentWeight (types.BigInt)
 
-	if err := t.ParentWeight.UnmarshalCBOR(br); err != nil {
-		return err
+	{
+
+		if err := t.ParentWeight.UnmarshalCBOR(br); err != nil {
+			return err
+		}
+
 	}
 	// t.t.Height (uint64)
 
@@ -212,10 +225,14 @@ func (t *BlockHeader) UnmarshalCBOR(br io.Reader) error {
 		}
 		t.Messages = c
 	}
-	// t.t.BLSAggregate (Signature)
+	// t.t.BLSAggregate (types.Signature)
 
-	if err := t.BLSAggregate.UnmarshalCBOR(br); err != nil {
-		return err
+	{
+
+		if err := t.BLSAggregate.UnmarshalCBOR(br); err != nil {
+			return err
+		}
+
 	}
 	// t.t.MessageReceipts (cid.Cid)
 
@@ -236,15 +253,23 @@ func (t *BlockHeader) UnmarshalCBOR(br io.Reader) error {
 		return fmt.Errorf("wrong type for uint64 field")
 	}
 	t.Timestamp = extra
-	// t.t.BlockSig (Signature)
+	// t.t.BlockSig (types.Signature)
 
-	if err := t.BlockSig.UnmarshalCBOR(br); err != nil {
-		return err
+	{
+
+		if err := t.BlockSig.UnmarshalCBOR(br); err != nil {
+			return err
+		}
+
 	}
 	return nil
 }
 
 func (t *Ticket) MarshalCBOR(w io.Writer) error {
+	if t == nil {
+		_, err := w.Write(cbg.CborNull)
+		return err
+	}
 	if _, err := w.Write([]byte{131}); err != nil {
 		return err
 	}
@@ -275,7 +300,8 @@ func (t *Ticket) MarshalCBOR(w io.Writer) error {
 	return nil
 }
 
-func (t *Ticket) UnmarshalCBOR(br io.Reader) error {
+func (t *Ticket) UnmarshalCBOR(r io.Reader) error {
+	br := cbg.GetPeeker(r)
 
 	maj, extra, err := cbg.CborReadHeader(br)
 	if err != nil {
@@ -344,6 +370,10 @@ func (t *Ticket) UnmarshalCBOR(br io.Reader) error {
 }
 
 func (t *Message) MarshalCBOR(w io.Writer) error {
+	if t == nil {
+		_, err := w.Write(cbg.CborNull)
+		return err
+	}
 	if _, err := w.Write([]byte{136}); err != nil {
 		return err
 	}
@@ -363,17 +393,17 @@ func (t *Message) MarshalCBOR(w io.Writer) error {
 		return err
 	}
 
-	// t.t.Value (BigInt)
+	// t.t.Value (types.BigInt)
 	if err := t.Value.MarshalCBOR(w); err != nil {
 		return err
 	}
 
-	// t.t.GasPrice (BigInt)
+	// t.t.GasPrice (types.BigInt)
 	if err := t.GasPrice.MarshalCBOR(w); err != nil {
 		return err
 	}
 
-	// t.t.GasLimit (BigInt)
+	// t.t.GasLimit (types.BigInt)
 	if err := t.GasLimit.MarshalCBOR(w); err != nil {
 		return err
 	}
@@ -393,7 +423,8 @@ func (t *Message) MarshalCBOR(w io.Writer) error {
 	return nil
 }
 
-func (t *Message) UnmarshalCBOR(br io.Reader) error {
+func (t *Message) UnmarshalCBOR(r io.Reader) error {
+	br := cbg.GetPeeker(r)
 
 	maj, extra, err := cbg.CborReadHeader(br)
 	if err != nil {
@@ -409,13 +440,21 @@ func (t *Message) UnmarshalCBOR(br io.Reader) error {
 
 	// t.t.To (address.Address)
 
-	if err := t.To.UnmarshalCBOR(br); err != nil {
-		return err
+	{
+
+		if err := t.To.UnmarshalCBOR(br); err != nil {
+			return err
+		}
+
 	}
 	// t.t.From (address.Address)
 
-	if err := t.From.UnmarshalCBOR(br); err != nil {
-		return err
+	{
+
+		if err := t.From.UnmarshalCBOR(br); err != nil {
+			return err
+		}
+
 	}
 	// t.t.Nonce (uint64)
 
@@ -427,20 +466,32 @@ func (t *Message) UnmarshalCBOR(br io.Reader) error {
 		return fmt.Errorf("wrong type for uint64 field")
 	}
 	t.Nonce = extra
-	// t.t.Value (BigInt)
+	// t.t.Value (types.BigInt)
 
-	if err := t.Value.UnmarshalCBOR(br); err != nil {
-		return err
+	{
+
+		if err := t.Value.UnmarshalCBOR(br); err != nil {
+			return err
+		}
+
 	}
-	// t.t.GasPrice (BigInt)
+	// t.t.GasPrice (types.BigInt)
 
-	if err := t.GasPrice.UnmarshalCBOR(br); err != nil {
-		return err
+	{
+
+		if err := t.GasPrice.UnmarshalCBOR(br); err != nil {
+			return err
+		}
+
 	}
-	// t.t.GasLimit (BigInt)
+	// t.t.GasLimit (types.BigInt)
 
-	if err := t.GasLimit.UnmarshalCBOR(br); err != nil {
-		return err
+	{
+
+		if err := t.GasLimit.UnmarshalCBOR(br); err != nil {
+			return err
+		}
+
 	}
 	// t.t.Method (uint64)
 
@@ -473,23 +524,28 @@ func (t *Message) UnmarshalCBOR(br io.Reader) error {
 }
 
 func (t *SignedMessage) MarshalCBOR(w io.Writer) error {
+	if t == nil {
+		_, err := w.Write(cbg.CborNull)
+		return err
+	}
 	if _, err := w.Write([]byte{130}); err != nil {
 		return err
 	}
 
-	// t.t.Message (Message)
+	// t.t.Message (types.Message)
 	if err := t.Message.MarshalCBOR(w); err != nil {
 		return err
 	}
 
-	// t.t.Signature (Signature)
+	// t.t.Signature (types.Signature)
 	if err := t.Signature.MarshalCBOR(w); err != nil {
 		return err
 	}
 	return nil
 }
 
-func (t *SignedMessage) UnmarshalCBOR(br io.Reader) error {
+func (t *SignedMessage) UnmarshalCBOR(r io.Reader) error {
+	br := cbg.GetPeeker(r)
 
 	maj, extra, err := cbg.CborReadHeader(br)
 	if err != nil {
@@ -503,20 +559,32 @@ func (t *SignedMessage) UnmarshalCBOR(br io.Reader) error {
 		return fmt.Errorf("cbor input had wrong number of fields")
 	}
 
-	// t.t.Message (Message)
+	// t.t.Message (types.Message)
 
-	if err := t.Message.UnmarshalCBOR(br); err != nil {
-		return err
+	{
+
+		if err := t.Message.UnmarshalCBOR(br); err != nil {
+			return err
+		}
+
 	}
-	// t.t.Signature (Signature)
+	// t.t.Signature (types.Signature)
 
-	if err := t.Signature.UnmarshalCBOR(br); err != nil {
-		return err
+	{
+
+		if err := t.Signature.UnmarshalCBOR(br); err != nil {
+			return err
+		}
+
 	}
 	return nil
 }
 
 func (t *MsgMeta) MarshalCBOR(w io.Writer) error {
+	if t == nil {
+		_, err := w.Write(cbg.CborNull)
+		return err
+	}
 	if _, err := w.Write([]byte{130}); err != nil {
 		return err
 	}
@@ -533,7 +601,8 @@ func (t *MsgMeta) MarshalCBOR(w io.Writer) error {
 	return nil
 }
 
-func (t *MsgMeta) UnmarshalCBOR(br io.Reader) error {
+func (t *MsgMeta) UnmarshalCBOR(r io.Reader) error {
+	br := cbg.GetPeeker(r)
 
 	maj, extra, err := cbg.CborReadHeader(br)
 	if err != nil {
@@ -569,6 +638,10 @@ func (t *MsgMeta) UnmarshalCBOR(br io.Reader) error {
 }
 
 func (t *SignedVoucher) MarshalCBOR(w io.Writer) error {
+	if t == nil {
+		_, err := w.Write(cbg.CborNull)
+		return err
+	}
 	if _, err := w.Write([]byte{137}); err != nil {
 		return err
 	}
@@ -586,7 +659,7 @@ func (t *SignedVoucher) MarshalCBOR(w io.Writer) error {
 		return err
 	}
 
-	// t.t.Extra (ModVerifyParams)
+	// t.t.Extra (types.ModVerifyParams)
 	if err := t.Extra.MarshalCBOR(w); err != nil {
 		return err
 	}
@@ -601,7 +674,7 @@ func (t *SignedVoucher) MarshalCBOR(w io.Writer) error {
 		return err
 	}
 
-	// t.t.Amount (BigInt)
+	// t.t.Amount (types.BigInt)
 	if err := t.Amount.MarshalCBOR(w); err != nil {
 		return err
 	}
@@ -611,7 +684,7 @@ func (t *SignedVoucher) MarshalCBOR(w io.Writer) error {
 		return err
 	}
 
-	// t.t.Merges ([]Merge)
+	// t.t.Merges ([]types.Merge)
 	if _, err := w.Write(cbg.CborEncodeMajorType(cbg.MajArray, uint64(len(t.Merges)))); err != nil {
 		return err
 	}
@@ -621,14 +694,15 @@ func (t *SignedVoucher) MarshalCBOR(w io.Writer) error {
 		}
 	}
 
-	// t.t.Signature (Signature)
+	// t.t.Signature (types.Signature)
 	if err := t.Signature.MarshalCBOR(w); err != nil {
 		return err
 	}
 	return nil
 }
 
-func (t *SignedVoucher) UnmarshalCBOR(br io.Reader) error {
+func (t *SignedVoucher) UnmarshalCBOR(r io.Reader) error {
+	br := cbg.GetPeeker(r)
 
 	maj, extra, err := cbg.CborReadHeader(br)
 	if err != nil {
@@ -669,12 +743,26 @@ func (t *SignedVoucher) UnmarshalCBOR(br io.Reader) error {
 	if _, err := io.ReadFull(br, t.SecretPreimage); err != nil {
 		return err
 	}
-	// t.t.Extra (ModVerifyParams)
+	// t.t.Extra (types.ModVerifyParams)
 
-	t.Extra = new(ModVerifyParams)
+	{
 
-	if err := t.Extra.UnmarshalCBOR(br); err != nil {
-		return err
+		pb, err := br.PeekByte()
+		if err != nil {
+			return err
+		}
+		if pb == cbg.CborNull[0] {
+			var nbuf [1]byte
+			if _, err := br.Read(nbuf[:]); err != nil {
+				return err
+			}
+		} else {
+			t.Extra = new(ModVerifyParams)
+			if err := t.Extra.UnmarshalCBOR(br); err != nil {
+				return err
+			}
+		}
+
 	}
 	// t.t.Lane (uint64)
 
@@ -696,10 +784,14 @@ func (t *SignedVoucher) UnmarshalCBOR(br io.Reader) error {
 		return fmt.Errorf("wrong type for uint64 field")
 	}
 	t.Nonce = extra
-	// t.t.Amount (BigInt)
+	// t.t.Amount (types.BigInt)
 
-	if err := t.Amount.UnmarshalCBOR(br); err != nil {
-		return err
+	{
+
+		if err := t.Amount.UnmarshalCBOR(br); err != nil {
+			return err
+		}
+
 	}
 	// t.t.MinCloseHeight (uint64)
 
@@ -711,7 +803,7 @@ func (t *SignedVoucher) UnmarshalCBOR(br io.Reader) error {
 		return fmt.Errorf("wrong type for uint64 field")
 	}
 	t.MinCloseHeight = extra
-	// t.t.Merges ([]Merge)
+	// t.t.Merges ([]types.Merge)
 
 	maj, extra, err = cbg.CborReadHeader(br)
 	if err != nil {
@@ -736,17 +828,35 @@ func (t *SignedVoucher) UnmarshalCBOR(br io.Reader) error {
 		t.Merges[i] = v
 	}
 
-	// t.t.Signature (Signature)
+	// t.t.Signature (types.Signature)
 
-	t.Signature = new(Signature)
+	{
 
-	if err := t.Signature.UnmarshalCBOR(br); err != nil {
-		return err
+		pb, err := br.PeekByte()
+		if err != nil {
+			return err
+		}
+		if pb == cbg.CborNull[0] {
+			var nbuf [1]byte
+			if _, err := br.Read(nbuf[:]); err != nil {
+				return err
+			}
+		} else {
+			t.Signature = new(Signature)
+			if err := t.Signature.UnmarshalCBOR(br); err != nil {
+				return err
+			}
+		}
+
 	}
 	return nil
 }
 
 func (t *ModVerifyParams) MarshalCBOR(w io.Writer) error {
+	if t == nil {
+		_, err := w.Write(cbg.CborNull)
+		return err
+	}
 	if _, err := w.Write([]byte{131}); err != nil {
 		return err
 	}
@@ -771,7 +881,8 @@ func (t *ModVerifyParams) MarshalCBOR(w io.Writer) error {
 	return nil
 }
 
-func (t *ModVerifyParams) UnmarshalCBOR(br io.Reader) error {
+func (t *ModVerifyParams) UnmarshalCBOR(r io.Reader) error {
+	br := cbg.GetPeeker(r)
 
 	maj, extra, err := cbg.CborReadHeader(br)
 	if err != nil {
@@ -787,8 +898,12 @@ func (t *ModVerifyParams) UnmarshalCBOR(br io.Reader) error {
 
 	// t.t.Actor (address.Address)
 
-	if err := t.Actor.UnmarshalCBOR(br); err != nil {
-		return err
+	{
+
+		if err := t.Actor.UnmarshalCBOR(br); err != nil {
+			return err
+		}
+
 	}
 	// t.t.Method (uint64)
 
@@ -821,6 +936,10 @@ func (t *ModVerifyParams) UnmarshalCBOR(br io.Reader) error {
 }
 
 func (t *Merge) MarshalCBOR(w io.Writer) error {
+	if t == nil {
+		_, err := w.Write(cbg.CborNull)
+		return err
+	}
 	if _, err := w.Write([]byte{130}); err != nil {
 		return err
 	}
@@ -837,7 +956,8 @@ func (t *Merge) MarshalCBOR(w io.Writer) error {
 	return nil
 }
 
-func (t *Merge) UnmarshalCBOR(br io.Reader) error {
+func (t *Merge) UnmarshalCBOR(r io.Reader) error {
+	br := cbg.GetPeeker(r)
 
 	maj, extra, err := cbg.CborReadHeader(br)
 	if err != nil {

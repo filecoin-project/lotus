@@ -8,12 +8,6 @@ import (
 	cbor "github.com/ipfs/go-ipld-cbor"
 )
 
-func init() {
-	cbor.RegisterCborType(Merge{})
-	cbor.RegisterCborType(SignedVoucher{})
-	cbor.RegisterCborType(ModVerifyParams{})
-}
-
 type SignedVoucher struct {
 	TimeLock       uint64
 	SecretPreimage []byte
@@ -31,16 +25,22 @@ type SignedVoucher struct {
 func (sv *SignedVoucher) SigningBytes() ([]byte, error) {
 	osv := *sv
 	osv.Signature = nil
-	return cbor.DumpObject(osv)
+
+	buf := new(bytes.Buffer)
+	if err := osv.MarshalCBOR(buf); err != nil {
+		return nil, err
+	}
+
+	return buf.Bytes(), nil
 }
 
 func (sv *SignedVoucher) EncodedString() (string, error) {
-	data, err := cbor.DumpObject(sv)
-	if err != nil {
+	buf := new(bytes.Buffer)
+	if err := sv.MarshalCBOR(buf); err != nil {
 		return "", err
 	}
 
-	return base64.RawURLEncoding.EncodeToString(data), nil
+	return base64.RawURLEncoding.EncodeToString(buf.Bytes()), nil
 }
 
 func (sv *SignedVoucher) Equals(other *SignedVoucher) bool {

@@ -319,6 +319,7 @@ func (vm *VM) send(ctx context.Context, msg *types.Message, parent *VMContext,
 	toActor, err := st.GetActor(msg.To)
 	if err != nil {
 		if xerrors.Is(err, types.ErrActorNotFound) {
+			fmt.Println("actor not found on send: ", msg.To.String())
 			a, err := TryCreateAccountActor(st, msg.To)
 			if err != nil {
 				return nil, aerrors.Absorb(err, 1, "could not create account"), nil

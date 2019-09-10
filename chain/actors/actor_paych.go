@@ -113,6 +113,7 @@ func (pca PaymentChannelActor) UpdateChannelState(act *types.Actor, vmctx types.
 	}
 
 	if err := vmctx.VerifySignature(sv.Signature, self.From, vb); err != nil {
+		fmt.Printf("bad bits: %x", vb)
 		return nil, err
 	}
 
@@ -120,7 +121,7 @@ func (pca PaymentChannelActor) UpdateChannelState(act *types.Actor, vmctx types.
 		return nil, aerrors.New(2, "cannot use this voucher yet!")
 	}
 
-	if sv.SecretPreimage != nil {
+	if len(sv.SecretPreimage) > 0 {
 		if !bytes.Equal(hash(params.Secret), sv.SecretPreimage) {
 			return nil, aerrors.New(3, "incorrect secret!")
 		}

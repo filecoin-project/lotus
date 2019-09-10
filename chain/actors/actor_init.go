@@ -183,6 +183,8 @@ func (ias *InitActorState) AddActor(cst *hamt.CborIpldStore, addr address.Addres
 	nid := ias.NextID
 	ias.NextID++
 
+	fmt.Println("ADD ACTOR: ", addr.String())
+
 	amap, err := hamt.LoadNode(context.TODO(), cst, ias.AddressMap)
 	if err != nil {
 		return address.Undef, err

@@ -224,7 +224,7 @@ func createStorageMiner(ctx context.Context, api api.FullNode, peerid peer.ID) (
 
 	collateral := types.NewInt(1000) // TODO: Get this from params
 
-	params, err := actors.SerializeParams(actors.CreateStorageMinerParams{
+	params, err := actors.SerializeParams(&actors.CreateStorageMinerParams{
 		Owner:      defOwner,
 		Worker:     k,
 		SectorSize: types.NewInt(build.SectorSize),

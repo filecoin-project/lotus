@@ -61,8 +61,6 @@ func (st *StateTree) SetActor(addr address.Address, act *types.Actor) error {
 		if act == cact {
 			return nil
 		}
-	} else {
-		st.actorcache[addr] = act
 	}
 
 	return st.root.Set(context.TODO(), string(addr.Bytes()), act)
@@ -91,7 +89,7 @@ func (st *StateTree) GetActor(addr address.Address) (*types.Actor, error) {
 		iaddr, err := st.lookupID(addr)
 		if err != nil {
 			if xerrors.Is(err, hamt.ErrNotFound) {
-				return nil, xerrors.Errorf("lookup failed: %w", types.ErrActorNotFound)
+				return nil, xerrors.Errorf("resolution lookup failed (%s): %w", addr, types.ErrActorNotFound)
 			}
 			return nil, xerrors.Errorf("address resolution: %w", err)
 		}

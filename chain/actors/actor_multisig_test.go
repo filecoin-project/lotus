@@ -5,6 +5,7 @@ import (
 
 	cbor "github.com/ipfs/go-ipld-cbor"
 	"github.com/stretchr/testify/assert"
+	cbg "github.com/whyrusleeping/cbor-gen"
 
 	"github.com/filecoin-project/go-lotus/chain/actors"
 	"github.com/filecoin-project/go-lotus/chain/address"
@@ -23,7 +24,7 @@ func TestMultiSigCreate(t *testing.T) {
 
 	h := NewHarness(t, opts...)
 	ret, _ := h.CreateActor(t, creatorAddr, actors.MultisigActorCodeCid,
-		actors.MultiSigConstructorParams{
+		&actors.MultiSigConstructorParams{
 			Signers:  []address.Address{creatorAddr, sig1Addr, sig2Addr},
 			Required: 2,
 		})
@@ -49,8 +50,8 @@ func TestMultiSigOps(t *testing.T) {
 		HarnessAddr(&sig2Addr, 100000),
 		HarnessAddr(&outsideAddr, 100000),
 		HarnessActor(&multSigAddr, &creatorAddr, actors.MultisigActorCodeCid,
-			func() interface{} {
-				return actors.MultiSigConstructorParams{
+			func() cbg.CBORMarshaler {
+				return &actors.MultiSigConstructorParams{
 					Signers:  []address.Address{creatorAddr, sig1Addr, sig2Addr},
 					Required: 2,
 				}
@@ -71,8 +72,7 @@ func TestMultiSigOps(t *testing.T) {
 		// Transfer funds outside of multsig
 		const sendVal = 1000
 		ret, _ := h.Invoke(t, creatorAddr, multSigAddr, actors.MultiSigMethods.Propose,
-
-			actors.MultiSigProposeParams{
+			&actors.MultiSigProposeParams{
 				To:    outsideAddr,
 				Value: types.NewInt(sendVal),
 			})
@@ -82,12 +82,12 @@ func TestMultiSigOps(t *testing.T) {
 		assert.NoError(t, err, "decoding txid")
 
 		ret, _ = h.Invoke(t, outsideAddr, multSigAddr, actors.MultiSigMethods.Approve,
-			txIDParam)
+			&txIDParam)
 		assert.Equal(t, uint8(1), ret.ExitCode, "outsideAddr should not approve")
 		h.AssertBalanceChange(t, multSigAddr, 0)
 
 		ret2, _ := h.Invoke(t, sig1Addr, multSigAddr, actors.MultiSigMethods.Approve,
-			txIDParam)
+			&txIDParam)
 		ApplyOK(t, ret2)
 
 		h.AssertBalanceChange(t, outsideAddr, sendVal)

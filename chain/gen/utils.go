@@ -55,8 +55,6 @@ func SetupInitActor(bs bstore.Blockstore, addrs []address.Address) (*types.Actor
 		return nil, err
 	}
 
-	fmt.Println("INIT ACTOR HEAD: ", statecid)
-
 	act := &types.Actor{
 		Code: actors.InitActorCodeCid,
 		Head: statecid,

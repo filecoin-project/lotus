@@ -2,6 +2,7 @@ package actors_test
 
 import (
 	"context"
+	"fmt"
 	"testing"
 
 	"github.com/filecoin-project/go-lotus/chain/actors"
@@ -19,7 +20,7 @@ func TestPaychCreate(t *testing.T) {
 
 	h := NewHarness(t, opts...)
 	ret, _ := h.CreateActor(t, creatorAddr, actors.PaymentChannelActorCodeCid,
-		actors.PCAConstructorParams{
+		&actors.PCAConstructorParams{
 			To: targetAddr,
 		})
 	ApplyOK(t, ret)
@@ -36,6 +37,7 @@ func signVoucher(t *testing.T, w *wallet.Wallet, addr address.Address, sv *types
 		t.Fatal(err)
 	}
 
+	fmt.Printf("SIGNING: %x\n", vb)
 	sv.Signature = sig
 }
 
@@ -48,7 +50,7 @@ func TestPaychUpdate(t *testing.T) {
 
 	h := NewHarness(t, opts...)
 	ret, _ := h.CreateActor(t, creatorAddr, actors.PaymentChannelActorCodeCid,
-		actors.PCAConstructorParams{
+		&actors.PCAConstructorParams{
 			To: targetAddr,
 		})
 	ApplyOK(t, ret)
@@ -66,12 +68,12 @@ func TestPaychUpdate(t *testing.T) {
 	}
 	signVoucher(t, h.w, creatorAddr, sv)
 
-	ret, _ = h.Invoke(t, targetAddr, pch, actors.PCAMethods.UpdateChannelState, actors.PCAUpdateChannelStateParams{
+	ret, _ = h.Invoke(t, targetAddr, pch, actors.PCAMethods.UpdateChannelState, &actors.PCAUpdateChannelStateParams{
 		Sv: *sv,
 	})
 	ApplyOK(t, ret)
 
-	ret, _ = h.Invoke(t, targetAddr, pch, actors.PCAMethods.GetToSend, struct{}{})
+	ret, _ = h.Invoke(t, targetAddr, pch, actors.PCAMethods.GetToSend, nil)
 	ApplyOK(t, ret)
 
 	bi := types.BigFromBytes(ret.Return)
@@ -79,13 +81,13 @@ func TestPaychUpdate(t *testing.T) {
 		t.Fatal("toSend amount was wrong: ", bi.String())
 	}
 
-	ret, _ = h.Invoke(t, targetAddr, pch, actors.PCAMethods.Close, struct{}{})
+	ret, _ = h.Invoke(t, targetAddr, pch, actors.PCAMethods.Close, nil)
 	ApplyOK(t, ret)
 
 	// now we have to 'wait' for the chain to advance.
 	h.vm.SetBlockHeight(1000)
 
-	ret, _ = h.Invoke(t, targetAddr, pch, actors.PCAMethods.Collect, struct{}{})
+	ret, _ = h.Invoke(t, targetAddr, pch, actors.PCAMethods.Collect, nil)
 	ApplyOK(t, ret)
 
 	h.AssertBalanceChange(t, targetAddr, 100)
