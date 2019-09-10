@@ -2,6 +2,7 @@ package deals
 
 import (
 	"context"
+	"github.com/filecoin-project/go-lotus/api"
 
 	"golang.org/x/xerrors"
 
@@ -11,7 +12,7 @@ import (
 
 type clientHandlerFunc func(ctx context.Context, deal ClientDeal) error
 
-func (c *Client) handle(ctx context.Context, deal ClientDeal, cb clientHandlerFunc, next DealState) {
+func (c *Client) handle(ctx context.Context, deal ClientDeal, cb clientHandlerFunc, next api.DealState) {
 	go func() {
 		err := cb(ctx, deal)
 		select {
@@ -31,7 +32,7 @@ func (c *Client) new(ctx context.Context, deal ClientDeal) error {
 		return err
 	}
 
-	if resp.State != Accepted {
+	if resp.State != api.DealAccepted {
 		return xerrors.Errorf("deal wasn't accepted (State=%d)", resp.State)
 	}
 
@@ -48,7 +49,7 @@ func (c *Client) accepted(ctx context.Context, deal ClientDeal) error {
 		return err
 	}
 
-	if resp.State != Staged {
+	if resp.State != api.DealStaged {
 		return xerrors.Errorf("deal wasn't staged (State=%d)", resp.State)
 	}
 
@@ -65,7 +66,7 @@ func (c *Client) staged(ctx context.Context, deal ClientDeal) error {
 		return err
 	}
 
-	if resp.State != Sealing {
+	if resp.State != api.DealSealing {
 		return xerrors.Errorf("deal wasn't sealed (State=%d)", resp.State)
 	}
 
@@ -88,7 +89,7 @@ func (c *Client) sealing(ctx context.Context, deal ClientDeal) error {
 		return err
 	}
 
-	if resp.State != Complete {
+	if resp.State != api.DealComplete {
 		return xerrors.Errorf("deal wasn't complete (State=%d)", resp.State)
 	}
 

@@ -3,6 +3,7 @@ package deals
 import (
 	"bytes"
 	"context"
+	"github.com/filecoin-project/go-lotus/api"
 	"github.com/filecoin-project/go-lotus/build"
 
 	cbor "github.com/ipfs/go-ipld-cbor"
@@ -18,7 +19,7 @@ import (
 
 type minerHandlerFunc func(ctx context.Context, deal MinerDeal) (func(*MinerDeal), error)
 
-func (h *Handler) handle(ctx context.Context, deal MinerDeal, cb minerHandlerFunc, next DealState) {
+func (h *Handler) handle(ctx context.Context, deal MinerDeal, cb minerHandlerFunc, next api.DealState) {
 	go func() {
 		mut, err := cb(ctx, deal)
 		select {
@@ -118,7 +119,7 @@ func (h *Handler) accept(ctx context.Context, deal MinerDeal) (func(*MinerDeal),
 
 	log.Info("fetching data for a deal")
 	err := h.sendSignedResponse(StorageDealResponse{
-		State:    Accepted,
+		State:    api.DealAccepted,
 		Message:  "",
 		Proposal: deal.ProposalCid,
 	})
@@ -133,7 +134,7 @@ func (h *Handler) accept(ctx context.Context, deal MinerDeal) (func(*MinerDeal),
 
 func (h *Handler) staged(ctx context.Context, deal MinerDeal) (func(*MinerDeal), error) {
 	err := h.sendSignedResponse(StorageDealResponse{
-		State:    Staged,
+		State:    api.DealStaged,
 		Proposal: deal.ProposalCid,
 	})
 	if err != nil {
@@ -234,7 +235,7 @@ func (h *Handler) sealing(ctx context.Context, deal MinerDeal) (func(*MinerDeal)
 	}
 
 	err = h.sendSignedResponse(StorageDealResponse{
-		State:               Sealing,
+		State:               api.DealSealing,
 		Proposal:            deal.ProposalCid,
 		PieceInclusionProof: ip,
 		CommD:               status.CommD[:],

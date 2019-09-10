@@ -70,6 +70,7 @@ type FullNodeStruct struct {
 		ClientHasLocal    func(ctx context.Context, root cid.Cid) (bool, error)                                                                       `perm:"write"`
 		ClientFindData    func(ctx context.Context, root cid.Cid) ([]QueryOffer, error)                                                               `perm:"read"`
 		ClientStartDeal   func(ctx context.Context, data cid.Cid, miner address.Address, price types.BigInt, blocksDuration uint64) (*cid.Cid, error) `perm:"admin"`
+		ClientListDeals   func(ctx context.Context) ([]DealInfo, error)                                                                               `perm:"write"`
 		ClientRetrieve    func(ctx context.Context, order RetrievalOrder, path string) error                                                          `perm:"admin"`
 
 		StateMinerSectors    func(context.Context, address.Address) ([]*SectorInfo, error)                       `perm:"read"`
@@ -167,6 +168,10 @@ func (c *FullNodeStruct) ClientFindData(ctx context.Context, root cid.Cid) ([]Qu
 
 func (c *FullNodeStruct) ClientStartDeal(ctx context.Context, data cid.Cid, miner address.Address, price types.BigInt, blocksDuration uint64) (*cid.Cid, error) {
 	return c.Internal.ClientStartDeal(ctx, data, miner, price, blocksDuration)
+}
+
+func (c *FullNodeStruct) ClientListDeals(ctx context.Context) ([]DealInfo, error) {
+	return c.Internal.ClientListDeals(ctx)
 }
 
 func (c *FullNodeStruct) ClientRetrieve(ctx context.Context, order RetrievalOrder, path string) error {

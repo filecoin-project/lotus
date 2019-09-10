@@ -2,6 +2,7 @@ package deals
 
 import (
 	"context"
+	"github.com/filecoin-project/go-lotus/api"
 	"math"
 
 	"github.com/ipfs/go-cid"
@@ -31,7 +32,7 @@ var log = logging.Logger("deals")
 type ClientDeal struct {
 	ProposalCid cid.Cid
 	Proposal    StorageDealProposal
-	State       DealState
+	State       api.DealState
 	Miner       peer.ID
 
 	s inet.Stream
@@ -55,7 +56,7 @@ type Client struct {
 }
 
 type clientDealUpdate struct {
-	newState DealState
+	newState api.DealState
 	id       cid.Cid
 	err      error
 }
@@ -116,7 +117,7 @@ func (c *Client) onIncoming(deal ClientDeal) {
 
 	go func() {
 		c.updated <- clientDealUpdate{
-			newState: Unknown,
+			newState: api.DealUnknown,
 			id:       deal.ProposalCid,
 			err:      nil,
 		}
@@ -142,14 +143,14 @@ func (c *Client) onUpdated(ctx context.Context, update clientDealUpdate) {
 	}
 
 	switch update.newState {
-	case Unknown: // new
-		c.handle(ctx, deal, c.new, Accepted)
-	case Accepted:
-		c.handle(ctx, deal, c.accepted, Staged)
-	case Staged:
-		c.handle(ctx, deal, c.staged, Sealing)
-	case Sealing:
-		c.handle(ctx, deal, c.sealing, Complete)
+	case api.DealUnknown: // new
+		c.handle(ctx, deal, c.new, api.DealAccepted)
+	case api.DealAccepted:
+		c.handle(ctx, deal, c.accepted, api.DealStaged)
+	case api.DealStaged:
+		c.handle(ctx, deal, c.staged, api.DealSealing)
+	case api.DealSealing:
+		c.handle(ctx, deal, c.sealing, api.DealComplete)
 	}
 }
 
@@ -208,7 +209,7 @@ func (c *Client) Start(ctx context.Context, p ClientDealProposal, vd *actors.Pie
 	deal := ClientDeal{
 		ProposalCid: proposalNd.Cid(),
 		Proposal:    proposal,
-		State:       Unknown,
+		State:       api.DealUnknown,
 		Miner:       p.MinerID,
 
 		s: s,
@@ -222,6 +223,10 @@ func (c *Client) Start(ctx context.Context, p ClientDealProposal, vd *actors.Pie
 		Address: proposal.MinerAddress,
 		ID:      deal.Miner,
 	})
+}
+
+func (c *Client) List() ([]ClientDeal, error) {
+	return c.deals.ListClient()
 }
 
 func (c *Client) Stop() {

@@ -2,6 +2,7 @@ package deals
 
 import (
 	"context"
+	"github.com/filecoin-project/go-lotus/api"
 	"runtime"
 
 	"github.com/filecoin-project/go-lotus/chain/actors"
@@ -28,7 +29,7 @@ func (h *Handler) failDeal(id cid.Cid, cerr error) {
 	log.Errorf("deal %s failed: %s", id, cerr)
 
 	err := h.sendSignedResponse(StorageDealResponse{
-		State:    Failed,
+		State:    api.DealFailed,
 		Message:  cerr.Error(),
 		Proposal: id,
 	})

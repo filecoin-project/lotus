@@ -117,6 +117,24 @@ func (a *ClientAPI) ClientStartDeal(ctx context.Context, data cid.Cid, miner add
 	return &c, err
 }
 
+func (a *ClientAPI) ClientListDeals(ctx context.Context) ([]api.DealInfo, error) {
+	deals, err := a.DealClient.List()
+	if err != nil {
+		return nil, err
+	}
+
+	out := make([]api.DealInfo, len(deals))
+	for k, v := range deals {
+		out[k] = api.DealInfo{
+			ProposalCid: v.ProposalCid,
+			State:       v.State,
+			Miner:       v.Miner,
+		}
+	}
+
+	return out, nil
+}
+
 func (a *ClientAPI) ClientHasLocal(ctx context.Context, root cid.Cid) (bool, error) {
 	// TODO: check if we have the ENTIRE dag
 

@@ -3,6 +3,7 @@ package deals
 import (
 	"github.com/ipfs/go-cid"
 	"github.com/ipfs/go-datastore"
+	"github.com/ipfs/go-datastore/query"
 	cbor "github.com/ipfs/go-ipld-cbor"
 	"golang.org/x/xerrors"
 )
@@ -105,4 +106,31 @@ func (st *StateStore) mutate(i cid.Cid, mutator func([]byte) ([]byte, error)) er
 	}
 
 	return st.ds.Put(k, mutated)
+}
+
+func (st *StateStore) ListClient() ([]ClientDeal, error) {
+	var out []ClientDeal
+
+	res, err := st.ds.Query(query.Query{})
+	if err != nil {
+		return nil, err
+	}
+	defer res.Close()
+
+	for {
+		res, ok := res.NextSync()
+		if !ok {
+			break
+		}
+
+		var deal ClientDeal
+		err := cbor.DecodeInto(res.Value, &deal)
+		if err != nil {
+			return nil, err
+		}
+
+		out = append(out, deal)
+	}
+
+	return out, nil
 }
