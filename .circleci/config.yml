@@ -13,6 +13,24 @@ commands:
       - checkout
       - run: git submodule sync
       - run: git submodule update --init
+  download-params:
+    steps:
+      - restore_cache:
+          name: Restore parameters cache
+          keys: 
+            - 'v2-lotus-params-{{ checksum "build/proof-params/parameters.json" }}'
+            - 'v2-lotus-params-'
+          paths:
+            - /var/tmp/filecoin-proof-parameters/
+      - run:
+          command: GO111MODULE=on go get github.com/ipfs/ipget@c0cbd7d9d1925965a5aa0895d5ff32dbdb4a009e
+          working_directory: "~"
+      - run:  make build/.params-1024
+      - save_cache:
+          name: Save parameters cache
+          key: 'v2-lotus-params-{{ checksum "build/proof-params/parameters.json" }}'
+          paths:
+            - /var/tmp/filecoin-proof-parameters/
 
 
 jobs:
@@ -62,10 +80,8 @@ jobs:
       - install-deps
       - prepare
       - go/mod-download
-      - run:
-          command: GO111MODULE=on go get github.com/ipfs/ipget@c0cbd7d9d1925965a5aa0895d5ff32dbdb4a009e
-          working_directory: "~"
       - run: echo 'export PATH=$HOME/.cargo/bin:$PATH' >> $BASH_ENV
+      - download-params
       - run:
           command: make deps
           no_output_timeout: 30m
@@ -120,9 +136,7 @@ jobs:
       - install-deps
       - prepare
       - go/mod-download
-      - run:
-          command: GO111MODULE=on go get github.com/ipfs/ipget@c0cbd7d9d1925965a5aa0895d5ff32dbdb4a009e
-          working_directory: "~"
+      - download-params
       - run:
           command: make deps
           no_output_timeout: 30m
