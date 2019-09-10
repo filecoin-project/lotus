@@ -4,8 +4,6 @@ import (
 	"bytes"
 	"fmt"
 
-	"github.com/ipfs/go-cid"
-
 	"github.com/filecoin-project/go-lotus/build"
 	"github.com/filecoin-project/go-lotus/chain/actors/aerrors"
 	"github.com/filecoin-project/go-lotus/chain/address"
@@ -15,9 +13,9 @@ import (
 type PaymentChannelActor struct{}
 
 type PaymentInfo struct {
-	PayChActor     address.Address
-	Payer          address.Address
-	ChannelMessage cid.Cid
+	PayChActor address.Address
+	Payer      address.Address
+	// TODO: update spec to not include channel msg
 
 	Vouchers []*types.SignedVoucher
 }

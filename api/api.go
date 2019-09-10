@@ -111,6 +111,7 @@ type FullNode interface {
 	PaychList(context.Context) ([]address.Address, error)
 	PaychStatus(context.Context, address.Address) (*PaychStatus, error)
 	PaychClose(context.Context, address.Address) (cid.Cid, error)
+	PaychNewPayment(ctx context.Context, from, to address.Address, amount types.BigInt, extra *types.ModVerifyParams, tl uint64, minClose uint64) (*PaymentInfo, error)
 	PaychVoucherCheckValid(context.Context, address.Address, *types.SignedVoucher) error
 	PaychVoucherCheckSpendable(context.Context, address.Address, *types.SignedVoucher, []byte, []byte) (bool, error)
 	PaychVoucherCreate(context.Context, address.Address, types.BigInt, uint64) (*types.SignedVoucher, error)
@@ -192,6 +193,11 @@ const (
 type PaychStatus struct {
 	ControlAddr address.Address
 	Direction   PCHDir
+}
+
+type PaymentInfo struct {
+	Channel address.Address
+	Voucher *types.SignedVoucher
 }
 
 type MinerPower struct {
