@@ -5,7 +5,7 @@ import (
 	"sync"
 
 	"github.com/filecoin-project/go-lotus/chain/address"
-	"github.com/filecoin-project/go-lotus/chain/store"
+	"github.com/filecoin-project/go-lotus/chain/stmgr"
 	"github.com/filecoin-project/go-lotus/chain/types"
 	"github.com/pkg/errors"
 )
@@ -15,7 +15,7 @@ type MessagePool struct {
 
 	pending map[address.Address]*msgSet
 
-	cs *store.ChainStore
+	sm *stmgr.StateManager
 }
 
 type msgSet struct {
@@ -36,12 +36,12 @@ func (ms *msgSet) add(m *types.SignedMessage) {
 	ms.msgs[m.Message.Nonce] = m
 }
 
-func NewMessagePool(cs *store.ChainStore) *MessagePool {
+func NewMessagePool(sm *stmgr.StateManager) *MessagePool {
 	mp := &MessagePool{
 		pending: make(map[address.Address]*msgSet),
-		cs:      cs,
+		sm:      sm,
 	}
-	cs.SubscribeHeadChanges(mp.HeadChange)
+	sm.ChainStore().SubscribeHeadChanges(mp.HeadChange)
 
 	return mp
 }
@@ -61,7 +61,7 @@ func (mp *MessagePool) Add(m *types.SignedMessage) error {
 		return err
 	}
 
-	if _, err := mp.cs.PutMessage(m); err != nil {
+	if _, err := mp.sm.ChainStore().PutMessage(m); err != nil {
 		return err
 	}
 
@@ -84,7 +84,7 @@ func (mp *MessagePool) GetNonce(addr address.Address) (uint64, error) {
 		return mset.startNonce + uint64(len(mset.msgs)), nil
 	}
 
-	act, err := mp.cs.GetActor(addr)
+	act, err := mp.sm.GetActor(addr)
 	if err != nil {
 		return 0, err
 	}
@@ -130,7 +130,7 @@ func (mp *MessagePool) Pending() []*types.SignedMessage {
 func (mp *MessagePool) HeadChange(revert []*types.TipSet, apply []*types.TipSet) error {
 	for _, ts := range revert {
 		for _, b := range ts.Blocks() {
-			bmsgs, smsgs, err := mp.cs.MessagesForBlock(b)
+			bmsgs, smsgs, err := mp.sm.ChainStore().MessagesForBlock(b)
 			if err != nil {
 				return errors.Wrapf(err, "failed to get messages for revert block %s(height %d)", b.Cid(), b.Height)
 			}
@@ -155,7 +155,7 @@ func (mp *MessagePool) HeadChange(revert []*types.TipSet, apply []*types.TipSet)
 
 	for _, ts := range apply {
 		for _, b := range ts.Blocks() {
-			bmsgs, smsgs, err := mp.cs.MessagesForBlock(b)
+			bmsgs, smsgs, err := mp.sm.ChainStore().MessagesForBlock(b)
 			if err != nil {
 				return errors.Wrapf(err, "failed to get messages for apply block %s(height %d) (msgroot = %s)", b.Cid(), b.Height, b.Messages)
 			}

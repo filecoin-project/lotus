@@ -2,40 +2,41 @@ package gen
 
 import (
 	"context"
-	"github.com/filecoin-project/go-bls-sigs"
-	"github.com/ipfs/go-cid"
-	"github.com/ipfs/go-hamt-ipld"
+
+	bls "github.com/filecoin-project/go-bls-sigs"
+	cid "github.com/ipfs/go-cid"
+	hamt "github.com/ipfs/go-hamt-ipld"
 	"github.com/pkg/errors"
 	"github.com/whyrusleeping/sharray"
 	"golang.org/x/xerrors"
 
 	"github.com/filecoin-project/go-lotus/chain/actors"
 	"github.com/filecoin-project/go-lotus/chain/address"
-	"github.com/filecoin-project/go-lotus/chain/store"
+	"github.com/filecoin-project/go-lotus/chain/stmgr"
 	"github.com/filecoin-project/go-lotus/chain/types"
 	"github.com/filecoin-project/go-lotus/chain/vm"
 	"github.com/filecoin-project/go-lotus/chain/wallet"
 )
 
-func MinerCreateBlock(ctx context.Context, cs *store.ChainStore, w *wallet.Wallet, miner address.Address, parents *types.TipSet, tickets []*types.Ticket, proof types.ElectionProof, msgs []*types.SignedMessage, timestamp uint64) (*types.FullBlock, error) {
-	st, err := cs.TipSetState(parents.Cids())
+func MinerCreateBlock(ctx context.Context, sm *stmgr.StateManager, w *wallet.Wallet, miner address.Address, parents *types.TipSet, tickets []*types.Ticket, proof types.ElectionProof, msgs []*types.SignedMessage, timestamp uint64) (*types.FullBlock, error) {
+	st, err := sm.TipSetState(parents.Cids())
 	if err != nil {
 		return nil, errors.Wrap(err, "failed to load tipset state")
 	}
 
 	height := parents.Height() + uint64(len(tickets))
 
-	vmi, err := vm.NewVM(st, height, miner, cs)
+	vmi, err := vm.NewVM(st, height, miner, sm.ChainStore())
 	if err != nil {
 		return nil, err
 	}
 
-	owner, err := getMinerOwner(ctx, cs, st, miner)
+	owner, err := stmgr.GetMinerOwner(ctx, sm, st, miner)
 	if err != nil {
 		return nil, xerrors.Errorf("failed to get miner owner: %w", err)
 	}
 
-	worker, err := getMinerWorker(ctx, cs, st, miner)
+	worker, err := stmgr.GetMinerWorker(ctx, sm, st, miner)
 	if err != nil {
 		return nil, xerrors.Errorf("failed to get miner worker: %w", err)
 	}
@@ -46,11 +47,12 @@ func MinerCreateBlock(ctx context.Context, cs *store.ChainStore, w *wallet.Walle
 	}
 
 	next := &types.BlockHeader{
-		Miner:     miner,
-		Parents:   parents.Cids(),
-		Tickets:   tickets,
-		Height:    height,
-		Timestamp: timestamp,
+		Miner:         miner,
+		Parents:       parents.Cids(),
+		Tickets:       tickets,
+		Height:        height,
+		Timestamp:     timestamp,
+		ElectionProof: proof,
 	}
 
 	var blsMessages []*types.Message
@@ -63,7 +65,7 @@ func MinerCreateBlock(ctx context.Context, cs *store.ChainStore, w *wallet.Walle
 			blsSigs = append(blsSigs, msg.Signature)
 			blsMessages = append(blsMessages, &msg.Message)
 
-			c, err := cs.PutMessage(&msg.Message)
+			c, err := sm.ChainStore().PutMessage(&msg.Message)
 			if err != nil {
 				return nil, err
 			}
@@ -93,7 +95,7 @@ func MinerCreateBlock(ctx context.Context, cs *store.ChainStore, w *wallet.Walle
 		receipts = append(receipts, rec.MessageReceipt)
 	}
 
-	cst := hamt.CSTFromBstore(cs.Blockstore())
+	cst := hamt.CSTFromBstore(sm.ChainStore().Blockstore())
 	blsmsgroot, err := sharray.Build(context.TODO(), 4, toIfArr(blsMsgCids), cst)
 	if err != nil {
 		return nil, err
@@ -130,7 +132,7 @@ func MinerCreateBlock(ctx context.Context, cs *store.ChainStore, w *wallet.Walle
 
 	next.BLSAggregate = aggSig
 	next.StateRoot = stateRoot
-	pweight := cs.Weight(parents)
+	pweight := sm.ChainStore().Weight(parents)
 	next.ParentWeight = types.NewInt(pweight)
 
 	// TODO: set timestamp
@@ -159,40 +161,6 @@ func MinerCreateBlock(ctx context.Context, cs *store.ChainStore, w *wallet.Walle
 	}
 
 	return fullBlock, nil
-}
-
-func getMinerWorker(ctx context.Context, cs *store.ChainStore, state cid.Cid, maddr address.Address) (address.Address, error) {
-	rec, err := vm.CallRaw(ctx, cs, &types.Message{
-		To:     maddr,
-		From:   maddr,
-		Method: actors.MAMethods.GetWorkerAddr,
-	}, state, 0)
-	if err != nil {
-		return address.Undef, err
-	}
-
-	if rec.ExitCode != 0 {
-		return address.Undef, xerrors.Errorf("getWorker failed with exit code %d", rec.ExitCode)
-	}
-
-	return address.NewFromBytes(rec.Return)
-}
-
-func getMinerOwner(ctx context.Context, cs *store.ChainStore, state cid.Cid, maddr address.Address) (address.Address, error) {
-	rec, err := vm.CallRaw(ctx, cs, &types.Message{
-		To:     maddr,
-		From:   maddr,
-		Method: actors.MAMethods.GetOwner,
-	}, state, 0)
-	if err != nil {
-		return address.Undef, err
-	}
-
-	if rec.ExitCode != 0 {
-		return address.Undef, xerrors.Errorf("getOwner failed with exit code %d", rec.ExitCode)
-	}
-
-	return address.NewFromBytes(rec.Return)
 }
 
 func aggregateSignatures(sigs []types.Signature) (types.Signature, error) {

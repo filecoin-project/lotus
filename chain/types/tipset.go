@@ -96,19 +96,13 @@ func (ts *TipSet) Equals(ots *TipSet) bool {
 	return true
 }
 
-func (ts *TipSet) MinTicket() *Ticket {
-	if len(ts.Blocks()) == 0 {
-		panic("tipset has no blocks!")
-	}
-	var minTicket *Ticket
-	for _, b := range ts.Blocks() {
-		lastTicket := b.Tickets[len(b.Tickets)-1]
-		if minTicket == nil || bytes.Compare(lastTicket.VDFResult, minTicket.VDFResult) < 0 {
-			minTicket = lastTicket
-		}
-	}
+func (t *Ticket) Less(o *Ticket) bool {
+	return bytes.Compare(t.VDFResult, o.VDFResult) < 0
+}
 
-	return minTicket
+func (ts *TipSet) MinTicket() *Ticket {
+	b := ts.MinTicketBlock()
+	return b.Tickets[len(b.Tickets)-1]
 }
 
 func (ts *TipSet) MinTimestamp() uint64 {
@@ -119,4 +113,18 @@ func (ts *TipSet) MinTimestamp() uint64 {
 		}
 	}
 	return minTs
+}
+
+func (ts *TipSet) MinTicketBlock() *BlockHeader {
+	blks := ts.Blocks()
+
+	min := blks[0]
+
+	for _, b := range blks[1:] {
+		if b.LastTicket().Less(min.LastTicket()) {
+			min = b
+		}
+	}
+
+	return min
 }

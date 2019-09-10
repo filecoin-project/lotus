@@ -77,7 +77,7 @@ func (h *Handler) sendSignedResponse(resp StorageDealResponse) error {
 		From:   h.actor,
 		Method: actors.MAMethods.GetWorkerAddr,
 	}
-	r, err := h.full.ChainCall(context.TODO(), getworker, nil)
+	r, err := h.full.StateCall(context.TODO(), getworker, nil)
 	if err != nil {
 		return xerrors.Errorf("getting worker address: %w", err)
 	}

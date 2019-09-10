@@ -2,8 +2,6 @@ package miner
 
 import (
 	"context"
-	"crypto/sha256"
-	"math/big"
 	"sync"
 	"time"
 
@@ -200,7 +198,7 @@ func (m *Miner) mineOne(ctx context.Context, base *MiningBase) (*chain.BlockMsg,
 		return nil, errors.Wrap(err, "scratching ticket failed")
 	}
 
-	win, proof, err := m.isWinnerNextRound(ctx, base)
+	win, proof, err := gen.IsRoundWinner(ctx, base.ts, base.tickets, m.addresses[0], &m.api)
 	if err != nil {
 		return nil, errors.Wrap(err, "failed to check if we win next round")
 	}
@@ -234,7 +232,7 @@ func (m *Miner) computeVRF(ctx context.Context, input []byte) ([]byte, error) {
 }
 
 func (m *Miner) getMinerWorker(ctx context.Context, addr address.Address, ts *types.TipSet) (address.Address, error) {
-	ret, err := m.api.ChainCall(ctx, &types.Message{
+	ret, err := m.api.StateCall(ctx, &types.Message{
 		From:   addr,
 		To:     addr,
 		Method: actors.MAMethods.GetWorkerAddr,
@@ -253,43 +251,6 @@ func (m *Miner) getMinerWorker(ctx context.Context, addr address.Address, ts *ty
 	}
 
 	return w, nil
-}
-
-func (m *Miner) isWinnerNextRound(ctx context.Context, base *MiningBase) (bool, types.ElectionProof, error) {
-	r, err := m.api.ChainGetRandomness(context.TODO(), base.ts)
-	if err != nil {
-		return false, nil, err
-	}
-
-	vrfout, err := m.computeVRF(ctx, r)
-	if err != nil {
-		return false, nil, xerrors.Errorf("failed to compute VRF: %w", err)
-	}
-
-	pow, err := m.api.StateMinerPower(ctx, m.addresses[0], base.ts)
-	if err != nil {
-		return false, nil, xerrors.Errorf("failed to check power: %w", err)
-	}
-
-	return powerCmp(vrfout, pow.MinerPower, pow.TotalPower), vrfout, nil
-}
-
-func powerCmp(vrfout []byte, mpow, totpow types.BigInt) bool {
-
-	/*
-		Need to check that
-		h(vrfout) / 2^256 < minerPower / totalPower
-	*/
-
-	h := sha256.Sum256(vrfout)
-
-	// 2^256
-	rden := types.BigInt{big.NewInt(0).Exp(big.NewInt(2), big.NewInt(256), nil)}
-
-	top := types.BigMul(rden, mpow)
-	out := types.BigDiv(top, totpow)
-
-	return types.BigCmp(types.BigFromBytes(h[:]), out) < 0
 }
 
 func (m *Miner) runVDF(ctx context.Context, input []byte) ([]byte, []byte, error) {

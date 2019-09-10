@@ -1,17 +1,18 @@
-package vm
+package stmgr
 
 import (
 	"context"
 
 	"github.com/filecoin-project/go-lotus/chain/actors"
-	"github.com/filecoin-project/go-lotus/chain/store"
 	"github.com/filecoin-project/go-lotus/chain/types"
+	"github.com/filecoin-project/go-lotus/chain/vm"
+
 	cid "github.com/ipfs/go-cid"
 	"golang.org/x/xerrors"
 )
 
-func CallRaw(ctx context.Context, cs *store.ChainStore, msg *types.Message, bstate cid.Cid, bheight uint64) (*types.MessageReceipt, error) {
-	vmi, err := NewVM(bstate, bheight, actors.NetworkAddress, cs)
+func (sm *StateManager) CallRaw(ctx context.Context, msg *types.Message, bstate cid.Cid, bheight uint64) (*types.MessageReceipt, error) {
+	vmi, err := vm.NewVM(bstate, bheight, actors.NetworkAddress, sm.cs)
 	if err != nil {
 		return nil, xerrors.Errorf("failed to set up vm: %w", err)
 	}
@@ -32,7 +33,7 @@ func CallRaw(ctx context.Context, cs *store.ChainStore, msg *types.Message, bsta
 		}
 	}
 
-	fromActor, err := vmi.cstate.GetActor(msg.From)
+	fromActor, err := vmi.StateTree().GetActor(msg.From)
 	if err != nil {
 		return nil, err
 	}
@@ -52,15 +53,15 @@ func CallRaw(ctx context.Context, cs *store.ChainStore, msg *types.Message, bsta
 
 }
 
-func Call(ctx context.Context, cs *store.ChainStore, msg *types.Message, ts *types.TipSet) (*types.MessageReceipt, error) {
+func (sm *StateManager) Call(ctx context.Context, msg *types.Message, ts *types.TipSet) (*types.MessageReceipt, error) {
 	if ts == nil {
-		ts = cs.GetHeaviestTipSet()
+		ts = sm.cs.GetHeaviestTipSet()
 	}
 
-	state, err := cs.TipSetState(ts.Cids())
+	state, err := sm.TipSetState(ts.Cids())
 	if err != nil {
 		return nil, err
 	}
 
-	return CallRaw(ctx, cs, msg, state, ts.Height())
+	return sm.CallRaw(ctx, msg, state, ts.Height())
 }

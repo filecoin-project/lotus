@@ -2,6 +2,8 @@ package types
 
 import (
 	"bytes"
+	"crypto/sha256"
+	"math/big"
 
 	block "github.com/ipfs/go-block-format"
 	"github.com/ipfs/go-cid"
@@ -87,6 +89,10 @@ func (blk *BlockHeader) Serialize() ([]byte, error) {
 	return buf.Bytes(), nil
 }
 
+func (blk *BlockHeader) LastTicket() *Ticket {
+	return blk.Tickets[len(blk.Tickets)-1]
+}
+
 type MsgMeta struct {
 	BlsMessages   cid.Cid
 	SecpkMessages cid.Cid
@@ -113,4 +119,41 @@ func (mm *MsgMeta) ToStorageBlock() (block.Block, error) {
 	}
 
 	return block.NewBlockWithCid(buf.Bytes(), c)
+}
+
+func CidArrsEqual(a, b []cid.Cid) bool {
+	if len(a) != len(b) {
+		return false
+	}
+
+	// order ignoring compare...
+	s := make(map[cid.Cid]bool)
+	for _, c := range a {
+		s[c] = true
+	}
+
+	for _, c := range b {
+		if !s[c] {
+			return false
+		}
+	}
+	return true
+}
+
+func PowerCmp(eproof ElectionProof, mpow, totpow BigInt) bool {
+
+	/*
+		Need to check that
+		h(vrfout) / 2^256 < minerPower / totalPower
+	*/
+
+	h := sha256.Sum256(eproof)
+
+	// 2^256
+	rden := BigInt{big.NewInt(0).Exp(big.NewInt(2), big.NewInt(256), nil)}
+
+	top := BigMul(rden, mpow)
+	out := BigDiv(top, totpow)
+
+	return BigCmp(BigFromBytes(h[:]), out) < 0
 }

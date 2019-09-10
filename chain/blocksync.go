@@ -245,8 +245,10 @@ func (bs *BlockSync) processStatus(req *BlockSyncRequest, res *BlockSyncResponse
 		panic("not handled")
 	case 203: // Internal Error
 		return fmt.Errorf("block sync peer errored: %s", res.Message)
+	case 204:
+		return fmt.Errorf("block sync request invalid: %s", res.Message)
 	default:
-		return fmt.Errorf("unrecognized response code")
+		return fmt.Errorf("unrecognized response code: %d", res.Status)
 	}
 }
 
@@ -261,10 +263,11 @@ func (bs *BlockSync) GetBlocks(ctx context.Context, tipset []cid.Cid, count int)
 		Options:       BSOptBlocks,
 	}
 
-	var err error
+	var oerr error
 	for _, p := range perm {
 		res, err := bs.sendRequestToPeer(ctx, peers[p], req)
 		if err != nil {
+			oerr = err
 			log.Warnf("BlockSync request failed for peer %s: %s", peers[p].String(), err)
 			continue
 		}
@@ -272,12 +275,12 @@ func (bs *BlockSync) GetBlocks(ctx context.Context, tipset []cid.Cid, count int)
 		if res.Status == 0 {
 			return bs.processBlocksResponse(req, res)
 		}
-		err = bs.processStatus(req, res)
-		if err != nil {
+		oerr = bs.processStatus(req, res)
+		if oerr != nil {
 			log.Warnf("BlockSync peer %s response was an error: %s", peers[p].String(), err)
 		}
 	}
-	return nil, xerrors.Errorf("GetBlocks failed with all peers: %w", err)
+	return nil, xerrors.Errorf("GetBlocks failed with all peers: %w", oerr)
 }
 
 func (bs *BlockSync) GetFullTipSet(ctx context.Context, p peer.ID, h []cid.Cid) (*store.FullTipSet, error) {
@@ -396,7 +399,7 @@ func (bs *BlockSync) processBlocksResponse(req *BlockSyncRequest, res *BlockSync
 			return nil, err
 		}
 
-		if !cidArrsEqual(cur.Parents(), nts.Cids()) {
+		if !types.CidArrsEqual(cur.Parents(), nts.Cids()) {
 			return nil, fmt.Errorf("parents of tipset[%d] were not tipset[%d]", bi-1, bi)
 		}
 
@@ -404,18 +407,6 @@ func (bs *BlockSync) processBlocksResponse(req *BlockSyncRequest, res *BlockSync
 		cur = nts
 	}
 	return out, nil
-}
-
-func cidArrsEqual(a, b []cid.Cid) bool {
-	if len(a) != len(b) {
-		return false
-	}
-	for i, v := range a {
-		if b[i] != v {
-			return false
-		}
-	}
-	return true
 }
 
 func (bs *BlockSync) GetBlock(ctx context.Context, c cid.Cid) (*types.BlockHeader, error) {

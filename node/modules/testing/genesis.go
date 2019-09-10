@@ -12,6 +12,7 @@ import (
 	offline "github.com/ipfs/go-ipfs-exchange-offline"
 	logging "github.com/ipfs/go-log"
 	"github.com/ipfs/go-merkledag"
+	peer "github.com/libp2p/go-libp2p-peer"
 
 	"github.com/filecoin-project/go-lotus/chain/address"
 	"github.com/filecoin-project/go-lotus/chain/gen"
@@ -34,8 +35,9 @@ func MakeGenesisMem(out io.Writer) func(bs dtypes.ChainBlockstore, w *wallet.Wal
 			}
 
 			gmc := &gen.GenMinerCfg{
-				Owner:  w,
-				Worker: w,
+				Owners:  []address.Address{w},
+				Workers: []address.Address{w},
+				PeerIDs: []peer.ID{"peerID 1"},
 			}
 			alloc := map[address.Address]types.BigInt{
 				w: types.NewInt(100000),
@@ -68,8 +70,9 @@ func MakeGenesis(outFile string) func(bs dtypes.ChainBlockstore, w *wallet.Walle
 			}
 
 			gmc := &gen.GenMinerCfg{
-				Owner:  minerAddr,
-				Worker: minerAddr,
+				Owners:  []address.Address{minerAddr},
+				Workers: []address.Address{minerAddr},
+				PeerIDs: []peer.ID{"peer ID 1"},
 			}
 
 			addrs := map[address.Address]types.BigInt{
@@ -81,7 +84,7 @@ func MakeGenesis(outFile string) func(bs dtypes.ChainBlockstore, w *wallet.Walle
 				return nil, err
 			}
 
-			fmt.Println("GENESIS MINER ADDRESS: ", gmc.MinerAddr.String())
+			fmt.Println("GENESIS MINER ADDRESS: ", gmc.MinerAddrs[0].String())
 
 			f, err := os.OpenFile(outFile, os.O_CREATE|os.O_WRONLY, 0644)
 			if err != nil {

@@ -2,13 +2,13 @@ package store
 
 import (
 	"context"
+	"crypto/sha256"
 	"encoding/json"
 	"fmt"
 	"sync"
 
-	"github.com/filecoin-project/go-lotus/chain/address"
-	"github.com/filecoin-project/go-lotus/chain/state"
 	"github.com/filecoin-project/go-lotus/chain/types"
+	"golang.org/x/xerrors"
 
 	block "github.com/ipfs/go-block-format"
 	"github.com/ipfs/go-cid"
@@ -35,6 +35,9 @@ type ChainStore struct {
 
 	bestTips *pubsub.PubSub
 
+	tstLk   sync.Mutex
+	tipsets map[uint64][]cid.Cid
+
 	headChangeNotifs []func(rev, app []*types.TipSet) error
 }
 
@@ -43,6 +46,7 @@ func NewChainStore(bs bstore.Blockstore, ds dstore.Batching) *ChainStore {
 		bs:       bs,
 		ds:       ds,
 		bestTips: pubsub.New(64),
+		tipsets:  make(map[uint64][]cid.Cid),
 	}
 
 	hcnf := func(rev, app []*types.TipSet) error {
@@ -175,7 +179,13 @@ func (cs *ChainStore) PutTipSet(ts *FullTipSet) error {
 		}
 	}
 
-	if err := cs.MaybeTakeHeavierTipSet(ts.TipSet()); err != nil {
+	expanded, err := cs.expandTipset(ts.TipSet().Blocks()[0])
+	if err != nil {
+		return xerrors.Errorf("errored while expanding tipset: %w", err)
+	}
+	fmt.Printf("expanded %s into %s\n", ts.TipSet().Cids(), expanded.Cids())
+
+	if err := cs.MaybeTakeHeavierTipSet(expanded); err != nil {
 		return errors.Wrap(err, "MaybeTakeHeavierTipSet failed in PutTipSet")
 	}
 	return nil
@@ -317,10 +327,33 @@ func (cs *ChainStore) GetHeaviestTipSet() *types.TipSet {
 	return cs.heaviest
 }
 
+func (cs *ChainStore) addToTipSetTracker(b *types.BlockHeader) error {
+	cs.tstLk.Lock()
+	defer cs.tstLk.Unlock()
+
+	tss := cs.tipsets[b.Height]
+	for _, oc := range tss {
+		if oc == b.Cid() {
+			log.Warn("tried to add block to tipset tracker that was already there")
+			return nil
+		}
+	}
+
+	cs.tipsets[b.Height] = append(tss, b.Cid())
+
+	// TODO: do we want to look for slashable submissions here? might as well...
+
+	return nil
+}
+
 func (cs *ChainStore) PersistBlockHeader(b *types.BlockHeader) error {
 	sb, err := b.ToStorageBlock()
 	if err != nil {
 		return err
+	}
+
+	if err := cs.addToTipSetTracker(b); err != nil {
+		return xerrors.Errorf("failed to insert new block (%s) into tipset tracker: %w", b.Cid(), err)
 	}
 
 	return cs.bs.Put(sb)
@@ -365,12 +398,49 @@ func (cs *ChainStore) PutMessage(m storable) (cid.Cid, error) {
 	return PutMessage(cs.bs, m)
 }
 
+func (cs *ChainStore) expandTipset(b *types.BlockHeader) (*types.TipSet, error) {
+	// Hold lock for the whole function for now, if it becomes a problem we can
+	// fix pretty easily
+	cs.tstLk.Lock()
+	defer cs.tstLk.Unlock()
+
+	all := []*types.BlockHeader{b}
+
+	tsets, ok := cs.tipsets[b.Height]
+	if !ok {
+		return types.NewTipSet(all)
+	}
+
+	for _, bhc := range tsets {
+		if bhc == b.Cid() {
+			continue
+		}
+
+		h, err := cs.GetBlock(bhc)
+		if err != nil {
+			return nil, xerrors.Errorf("failed to load block (%s) for tipset expansion: %w", bhc, err)
+		}
+
+		if types.CidArrsEqual(h.Parents, b.Parents) {
+			all = append(all, h)
+		}
+	}
+
+	// TODO: other validation...?
+
+	return types.NewTipSet(all)
+}
+
 func (cs *ChainStore) AddBlock(b *types.BlockHeader) error {
 	if err := cs.PersistBlockHeader(b); err != nil {
 		return err
 	}
 
-	ts, _ := types.NewTipSet([]*types.BlockHeader{b})
+	ts, err := cs.expandTipset(b)
+	if err != nil {
+		return err
+	}
+
 	if err := cs.MaybeTakeHeavierTipSet(ts); err != nil {
 		return errors.Wrap(err, "MaybeTakeHeavierTipSet failed")
 	}
@@ -395,21 +465,6 @@ func (cs *ChainStore) GetGenesis() (*types.BlockHeader, error) {
 	}
 
 	return types.DecodeBlock(genb.RawData())
-}
-
-func (cs *ChainStore) TipSetState(cids []cid.Cid) (cid.Cid, error) {
-	ts, err := cs.LoadTipSet(cids)
-	if err != nil {
-		log.Error("failed loading tipset: ", cids)
-		return cid.Undef, err
-	}
-
-	if len(ts.Blocks()) == 1 {
-		return ts.Blocks()[0].StateRoot, nil
-	}
-
-	panic("cant handle multiblock tipsets yet")
-
 }
 
 func (cs *ChainStore) GetMessage(c cid.Cid) (*types.Message, error) {
@@ -460,7 +515,7 @@ func (cs *ChainStore) MessagesForBlock(b *types.BlockHeader) ([]*types.Message, 
 	cst := hamt.CSTFromBstore(cs.bs)
 	var msgmeta types.MsgMeta
 	if err := cst.Get(context.TODO(), b.Messages, &msgmeta); err != nil {
-		return nil, nil, err
+		return nil, nil, xerrors.Errorf("failed to load msgmeta: %w", err)
 	}
 
 	blscids, err := cs.readSharrayCids(msgmeta.BlsMessages)
@@ -537,31 +592,6 @@ func (cs *ChainStore) LoadSignedMessagesFromCids(cids []cid.Cid) ([]*types.Signe
 	}
 
 	return msgs, nil
-}
-
-func (cs *ChainStore) GetBalance(addr address.Address) (types.BigInt, error) {
-	act, err := cs.GetActor(addr)
-	if err != nil {
-		return types.BigInt{}, err
-	}
-
-	return act.Balance, nil
-}
-
-func (cs *ChainStore) GetActor(addr address.Address) (*types.Actor, error) {
-	ts := cs.GetHeaviestTipSet()
-	stcid, err := cs.TipSetState(ts.Cids())
-	if err != nil {
-		return nil, err
-	}
-
-	cst := hamt.CSTFromBstore(cs.bs)
-	state, err := state.LoadStateTree(cst, stcid)
-	if err != nil {
-		return nil, err
-	}
-
-	return state.GetActor(addr)
 }
 
 func (cs *ChainStore) WaitForMessage(ctx context.Context, mcid cid.Cid) (cid.Cid, *types.MessageReceipt, error) {
@@ -671,4 +701,48 @@ func (cs *ChainStore) TryFillTipSet(ts *types.TipSet) (*FullTipSet, error) {
 		out = append(out, fb)
 	}
 	return NewFullTipSet(out), nil
+}
+
+func (cs *ChainStore) GetRandomness(ctx context.Context, pts *types.TipSet, tickets []*types.Ticket, lb int) ([]byte, error) {
+	if lb < len(tickets) {
+		log.Warn("self sampling randomness. this should be extremely rare, if you see this often it may be a bug")
+
+		t := tickets[len(tickets)-(1+lb)]
+
+		return t.VDFResult, nil
+	}
+
+	nv := lb - len(tickets)
+
+	nextCids := pts.Cids()
+	for {
+		nts, err := cs.LoadTipSet(nextCids)
+		if err != nil {
+			return nil, err
+		}
+
+		mtb := nts.MinTicketBlock()
+		if nv < len(mtb.Tickets) {
+			t := mtb.Tickets[len(mtb.Tickets)-(1+nv)]
+			return t.VDFResult, nil
+		}
+
+		nv -= len(mtb.Tickets)
+
+		// special case for lookback behind genesis block
+		// TODO(spec): this is not in the spec, need to sync that
+		if mtb.Height == 0 {
+
+			t := mtb.Tickets[0]
+
+			rval := t.VDFResult
+			for i := 0; i < nv; i++ {
+				h := sha256.Sum256(rval)
+				rval = h[:]
+			}
+			return rval, nil
+		}
+
+		nextCids = mtb.Parents
+	}
 }

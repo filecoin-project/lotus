@@ -39,17 +39,14 @@ type FullNodeStruct struct {
 	CommonStruct
 
 	Internal struct {
-		ChainNotify           func(context.Context) (<-chan *store.HeadChange, error)                             `perm:"read"`
-		ChainSubmitBlock      func(ctx context.Context, blk *chain.BlockMsg) error                                `perm:"write"`
-		ChainHead             func(context.Context) (*types.TipSet, error)                                        `perm:"read"`
-		ChainGetRandomness    func(context.Context, *types.TipSet) ([]byte, error)                                `perm:"read"`
-		ChainWaitMsg          func(context.Context, cid.Cid) (*MsgWait, error)                                    `perm:"read"`
-		ChainGetBlock         func(context.Context, cid.Cid) (*types.BlockHeader, error)                          `perm:"read"`
-		ChainGetBlockMessages func(context.Context, cid.Cid) (*BlockMessages, error)                              `perm:"read"`
-		ChainGetBlockReceipts func(context.Context, cid.Cid) ([]*types.MessageReceipt, error)                     `perm:"read"`
-		ChainCall             func(context.Context, *types.Message, *types.TipSet) (*types.MessageReceipt, error) `perm:"read"`
-		ChainGetActor         func(context.Context, address.Address, *types.TipSet) (*types.Actor, error)         `perm:"read"`
-		ChainReadState        func(context.Context, *types.Actor, *types.TipSet) (*ActorState, error)             `perm:"read"`
+		ChainNotify           func(context.Context) (<-chan *store.HeadChange, error)                    `perm:"read"`
+		ChainSubmitBlock      func(ctx context.Context, blk *chain.BlockMsg) error                       `perm:"write"`
+		ChainHead             func(context.Context) (*types.TipSet, error)                               `perm:"read"`
+		ChainGetRandomness    func(context.Context, *types.TipSet, []*types.Ticket, int) ([]byte, error) `perm:"read"`
+		ChainWaitMsg          func(context.Context, cid.Cid) (*MsgWait, error)                           `perm:"read"`
+		ChainGetBlock         func(context.Context, cid.Cid) (*types.BlockHeader, error)                 `perm:"read"`
+		ChainGetBlockMessages func(context.Context, cid.Cid) (*BlockMessages, error)                     `perm:"read"`
+		ChainGetBlockReceipts func(context.Context, cid.Cid) ([]*types.MessageReceipt, error)            `perm:"read"`
 
 		MpoolPending func(context.Context, *types.TipSet) ([]*types.SignedMessage, error) `perm:"read"`
 		MpoolPush    func(context.Context, *types.SignedMessage) error                    `perm:"write"`
@@ -75,9 +72,13 @@ type FullNodeStruct struct {
 		ClientStartDeal   func(ctx context.Context, data cid.Cid, miner address.Address, price types.BigInt, blocksDuration uint64) (*cid.Cid, error) `perm:"admin"`
 		ClientRetrieve    func(ctx context.Context, order RetrievalOrder, path string) error                                                          `perm:"admin"`
 
-		StateMinerSectors    func(context.Context, address.Address) ([]*SectorInfo, error)             `perm:"read"`
-		StateMinerProvingSet func(context.Context, address.Address) ([]*SectorInfo, error)             `perm:"read"`
-		StateMinerPower      func(context.Context, address.Address, *types.TipSet) (MinerPower, error) `perm:"read"`
+		StateMinerSectors    func(context.Context, address.Address) ([]*SectorInfo, error)                       `perm:"read"`
+		StateMinerProvingSet func(context.Context, address.Address) ([]*SectorInfo, error)                       `perm:"read"`
+		StateMinerPower      func(context.Context, address.Address, *types.TipSet) (MinerPower, error)           `perm:"read"`
+		StateMinerWorker     func(context.Context, address.Address, *types.TipSet) (address.Address, error)      `perm:"read"`
+		StateCall            func(context.Context, *types.Message, *types.TipSet) (*types.MessageReceipt, error) `perm:"read"`
+		StateGetActor        func(context.Context, address.Address, *types.TipSet) (*types.Actor, error)         `perm:"read"`
+		StateReadState       func(context.Context, *types.Actor, *types.TipSet) (*ActorState, error)             `perm:"read"`
 
 		PaychCreate                func(ctx context.Context, from, to address.Address, amt types.BigInt) (address.Address, error) `perm:"sign"`
 		PaychList                  func(context.Context) ([]address.Address, error)                                               `perm:"read"`
@@ -203,24 +204,12 @@ func (c *FullNodeStruct) ChainHead(ctx context.Context) (*types.TipSet, error) {
 	return c.Internal.ChainHead(ctx)
 }
 
-func (c *FullNodeStruct) ChainGetRandomness(ctx context.Context, pts *types.TipSet) ([]byte, error) {
-	return c.Internal.ChainGetRandomness(ctx, pts)
+func (c *FullNodeStruct) ChainGetRandomness(ctx context.Context, pts *types.TipSet, ticks []*types.Ticket, lb int) ([]byte, error) {
+	return c.Internal.ChainGetRandomness(ctx, pts, ticks, lb)
 }
 
 func (c *FullNodeStruct) ChainWaitMsg(ctx context.Context, msgc cid.Cid) (*MsgWait, error) {
 	return c.Internal.ChainWaitMsg(ctx, msgc)
-}
-
-func (c *FullNodeStruct) ChainCall(ctx context.Context, msg *types.Message, ts *types.TipSet) (*types.MessageReceipt, error) {
-	return c.Internal.ChainCall(ctx, msg, ts)
-}
-
-func (c *FullNodeStruct) ChainGetActor(ctx context.Context, actor address.Address, ts *types.TipSet) (*types.Actor, error) {
-	return c.Internal.ChainGetActor(ctx, actor, ts)
-}
-
-func (c *FullNodeStruct) ChainReadState(ctx context.Context, act *types.Actor, ts *types.TipSet) (*ActorState, error) {
-	return c.Internal.ChainReadState(ctx, act, ts)
 }
 
 func (c *FullNodeStruct) WalletNew(ctx context.Context, typ string) (address.Address, error) {
@@ -281,6 +270,22 @@ func (c *FullNodeStruct) StateMinerProvingSet(ctx context.Context, addr address.
 
 func (c *FullNodeStruct) StateMinerPower(ctx context.Context, a address.Address, ts *types.TipSet) (MinerPower, error) {
 	return c.Internal.StateMinerPower(ctx, a, ts)
+}
+
+func (c *FullNodeStruct) StateMinerWorker(ctx context.Context, m address.Address, ts *types.TipSet) (address.Address, error) {
+	return c.Internal.StateMinerWorker(ctx, m, ts)
+}
+
+func (c *FullNodeStruct) StateCall(ctx context.Context, msg *types.Message, ts *types.TipSet) (*types.MessageReceipt, error) {
+	return c.Internal.StateCall(ctx, msg, ts)
+}
+
+func (c *FullNodeStruct) StateGetActor(ctx context.Context, actor address.Address, ts *types.TipSet) (*types.Actor, error) {
+	return c.Internal.StateGetActor(ctx, actor, ts)
+}
+
+func (c *FullNodeStruct) StateReadState(ctx context.Context, act *types.Actor, ts *types.TipSet) (*ActorState, error) {
+	return c.Internal.StateReadState(ctx, act, ts)
 }
 
 func (c *FullNodeStruct) PaychCreate(ctx context.Context, from, to address.Address, amt types.BigInt) (address.Address, error) {

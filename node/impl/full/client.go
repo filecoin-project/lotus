@@ -35,6 +35,7 @@ type ClientAPI struct {
 	fx.In
 
 	ChainAPI
+	StateAPI
 	WalletAPI
 	PaychAPI
 
@@ -62,7 +63,7 @@ func (a *ClientAPI) ClientStartDeal(ctx context.Context, data cid.Cid, miner add
 		Method: actors.MAMethods.GetPeerID,
 	}
 
-	r, err := a.ChainCall(ctx, msg, nil)
+	r, err := a.StateCall(ctx, msg, nil)
 	if err != nil {
 		return nil, err
 	}

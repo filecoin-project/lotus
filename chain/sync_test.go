@@ -12,26 +12,27 @@ import (
 	"github.com/filecoin-project/go-lotus/api"
 	"github.com/filecoin-project/go-lotus/chain"
 	"github.com/filecoin-project/go-lotus/chain/gen"
+	"github.com/filecoin-project/go-lotus/chain/store"
 	"github.com/filecoin-project/go-lotus/chain/types"
 	"github.com/filecoin-project/go-lotus/node"
-	"github.com/filecoin-project/go-lotus/node/impl"
 	"github.com/filecoin-project/go-lotus/node/modules"
 	"github.com/filecoin-project/go-lotus/node/repo"
 )
 
 const source = 0
 
-func (tu *syncTestUtil) repoWithChain(t testing.TB, h int) (repo.Repo, []byte, []*types.FullBlock) {
-	blks := make([]*types.FullBlock, h)
+func (tu *syncTestUtil) repoWithChain(t testing.TB, h int) (repo.Repo, []byte, []*store.FullTipSet) {
+	blks := make([]*store.FullTipSet, h)
 
 	for i := 0; i < h; i++ {
-		var err error
-		blks[i], _, err = tu.g.NextBlock()
+		mts, err := tu.g.NextTipSet()
 		require.NoError(t, err)
 
-		fmt.Printf("block at H:%d: %s\n", blks[i].Header.Height, blks[i].Cid())
+		blks[i] = mts.TipSet
 
-		require.Equal(t, uint64(i+1), blks[i].Header.Height, "wrong height")
+		ts := mts.TipSet.TipSet()
+		fmt.Printf("tipset at H:%d: %s\n", ts.Height(), ts.Cids())
+
 	}
 
 	r, err := tu.g.YieldRepo()
@@ -54,7 +55,7 @@ type syncTestUtil struct {
 	g *gen.ChainGen
 
 	genesis []byte
-	blocks  []*types.FullBlock
+	blocks  []*store.FullTipSet
 
 	nds []api.FullNode
 }
@@ -79,7 +80,7 @@ func prepSyncTest(t testing.TB, h int) *syncTestUtil {
 	}
 
 	tu.addSourceNode(h)
-	tu.checkHeight("source", source, h)
+	//tu.checkHeight("source", source, h)
 
 	// separate logs
 	fmt.Println("\x1b[31m///////////////////////////////////////////////////\x1b[39b")
@@ -92,14 +93,16 @@ func (tu *syncTestUtil) Shutdown() {
 }
 
 func (tu *syncTestUtil) mineNewBlock(src int) {
-	fblk, msgs, err := tu.g.NextBlock()
+	mts, err := tu.g.NextTipSet()
 	require.NoError(tu.t, err)
 
-	for _, msg := range msgs {
+	for _, msg := range mts.Messages {
 		require.NoError(tu.t, tu.nds[src].MpoolPush(context.TODO(), msg))
 	}
 
-	require.NoError(tu.t, tu.nds[src].ChainSubmitBlock(context.TODO(), fblkToBlkMsg(fblk)))
+	for _, fblk := range mts.TipSet.Blocks {
+		require.NoError(tu.t, tu.nds[src].ChainSubmitBlock(context.TODO(), fblkToBlkMsg(fblk)))
+	}
 }
 
 func fblkToBlkMsg(fb *types.FullBlock) *chain.BlockMsg {
@@ -177,6 +180,17 @@ func (tu *syncTestUtil) checkHeight(name string, n int, h int) {
 }
 
 func (tu *syncTestUtil) compareSourceState(with int) {
+	sourceHead, err := tu.nds[source].ChainHead(tu.ctx)
+	require.NoError(tu.t, err)
+
+	targetHead, err := tu.nds[with].ChainHead(tu.ctx)
+	require.NoError(tu.t, err)
+
+	if !sourceHead.Equals(targetHead) {
+		fmt.Println("different chains: ", sourceHead.Height(), targetHead.Height())
+		tu.t.Fatalf("nodes were not synced correctly: %s != %s", sourceHead.Cids(), targetHead.Cids())
+	}
+
 	sourceAccounts, err := tu.nds[source].WalletList(tu.ctx)
 	require.NoError(tu.t, err)
 
@@ -215,6 +229,7 @@ func (tu *syncTestUtil) waitUntilSync(from, to int) {
 	}
 }
 
+/*
 func (tu *syncTestUtil) submitSourceBlock(to int, h int) {
 	// utility to simulate incoming blocks without miner process
 	// TODO: should call syncer directly, this won't work correctly in all cases
@@ -238,29 +253,30 @@ func (tu *syncTestUtil) submitSourceBlocks(to int, h int, n int) {
 		tu.submitSourceBlock(to, h+i)
 	}
 }
+*/
 
 func TestSyncSimple(t *testing.T) {
 	H := 50
 	tu := prepSyncTest(t, H)
 
 	client := tu.addClientNode()
-	tu.checkHeight("client", client, 0)
+	//tu.checkHeight("client", client, 0)
 
 	require.NoError(t, tu.mn.LinkAll())
 	tu.connect(1, 0)
 	tu.waitUntilSync(0, client)
 
-	tu.checkHeight("client", client, H)
+	//tu.checkHeight("client", client, H)
 
 	tu.compareSourceState(client)
 }
 
 func TestSyncMining(t *testing.T) {
-	H := 100
+	H := 50
 	tu := prepSyncTest(t, H)
 
 	client := tu.addClientNode()
-	tu.checkHeight("client", client, 0)
+	//tu.checkHeight("client", client, 0)
 
 	require.NoError(t, tu.mn.LinkAll())
 	tu.connect(client, 0)
@@ -269,7 +285,7 @@ func TestSyncMining(t *testing.T) {
 
 	fmt.Println("after wait until sync")
 
-	tu.checkHeight("client", client, H)
+	//tu.checkHeight("client", client, H)
 
 	tu.compareSourceState(client)
 

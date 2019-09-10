@@ -41,7 +41,7 @@ type storageMinerApi interface {
 	//ReadState(ctx context.Context, addr address.Address) (????, error)
 
 	// Call a read only method on actors (no interaction with the chain required)
-	ChainCall(ctx context.Context, msg *types.Message, ts *types.TipSet) (*types.MessageReceipt, error)
+	StateCall(ctx context.Context, msg *types.Message, ts *types.TipSet) (*types.MessageReceipt, error)
 
 	MpoolPush(context.Context, *types.SignedMessage) error
 	MpoolGetNonce(context.Context, address.Address) (uint64, error)
@@ -201,7 +201,7 @@ func (m *Miner) getWorkerAddr(ctx context.Context) (address.Address, error) {
 		Params: actors.EmptyStructCBOR,
 	}
 
-	recpt, err := m.api.ChainCall(ctx, msg, nil)
+	recpt, err := m.api.StateCall(ctx, msg, nil)
 	if err != nil {
 		return address.Undef, errors.Wrapf(err, "calling getWorker(%s)", m.maddr)
 	}
