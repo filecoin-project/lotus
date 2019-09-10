@@ -7,4 +7,18 @@ OUT_DIR="/var/tmp/filecoin-proof-parameters"
 PARAMS="build/proof-params/parameters.json"
 
 mkdir -p $OUT_DIR
-jq '. | to_entries | map("-o '$OUT_DIR'/\(.key) \(.value.cid)") | .[]' --raw-output $PARAMS | xargs -t -L1 ipget --progress $IPGET_PARAMS
+jq '. | to_entries | map("'$OUT_DIR'/\(.key) \(.value.cid) \(.value.digest)") | .[]' --raw-output $PARAMS | \
+	while read -r dest cid digest; do
+		if [[ -f "$dest" ]]; then
+			b2=$(b2sum "$dest" | head -c 32)
+			if [[ "$digest" == "$b2" ]]; then
+				echo "$dest exists and has correct hash"
+				continue
+			else
+				echo "$dest has incorrect hash"
+				rm -f "$dest"
+			fi
+		fi
+		echo "downloading $dest"
+		ipget --progress $IPGET_PARAMS -o "$dest" "$cid"
+	done
