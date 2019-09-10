@@ -128,7 +128,14 @@ func (a *ClientAPI) ClientListDeals(ctx context.Context) ([]api.DealInfo, error)
 		out[k] = api.DealInfo{
 			ProposalCid: v.ProposalCid,
 			State:       v.State,
-			Miner:       v.Miner,
+			Miner:       v.Proposal.MinerAddress,
+
+			PieceRef: v.Proposal.PieceRef,
+			CommP:    v.Proposal.CommP,
+			Size:     v.Proposal.Size,
+
+			TotalPrice: v.Proposal.TotalPrice,
+			Duration:   v.Proposal.Duration,
 		}
 	}
 

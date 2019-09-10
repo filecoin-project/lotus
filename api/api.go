@@ -2,7 +2,6 @@ package api
 
 import (
 	"context"
-
 	"github.com/ipfs/go-cid"
 	"github.com/ipfs/go-filestore"
 	cbor "github.com/ipfs/go-ipld-cbor"
@@ -165,7 +164,14 @@ type Import struct {
 type DealInfo struct {
 	ProposalCid cid.Cid
 	State       DealState
-	Miner       peer.ID
+	Miner       address.Address
+
+	PieceRef cid.Cid
+	CommP    []byte
+	Size     uint64
+
+	TotalPrice types.BigInt
+	Duration   uint64
 }
 
 type MsgWait struct {

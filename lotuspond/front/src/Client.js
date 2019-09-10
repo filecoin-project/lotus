@@ -1,5 +1,18 @@
 import React from 'react';
 import Cristal from 'react-cristal'
+import Address from "./Address";
+
+const dealStates = [
+  "Unknown",
+  "Rejected",
+  "Accepted",
+  "Started",
+  "Failed",
+  "Staged",
+  "Sealing",
+  "Complete",
+]
+
 
 class Client extends React.Component {
   constructor(props) {
@@ -9,8 +22,20 @@ class Client extends React.Component {
       kbs: 1,
       blocks: 12,
       total: 36000,
-      miner: "t0101"
+      miner: "t0101",
+
+      deals: []
     }
+  }
+
+  componentDidMount() {
+    this.getDeals()
+    setInterval(this.getDeals, 1325)
+  }
+
+  getDeals = async () => {
+    let deals = await this.props.client.call('Filecoin.ClientListDeals', [])
+    this.setState({deals})
   }
 
   update = (name) => (e) => this.setState({ [name]: e.target.value });
@@ -18,7 +43,7 @@ class Client extends React.Component {
   makeDeal = async () => {
     let file = await this.props.pondClient.call('Pond.CreateRandomFile', [this.state.kbs * 1000]) // 1024 won't fit in 1k blocks :(
     let cid = await this.props.client.call('Filecoin.ClientImport', [file])
-    let dealcid = await this.props.client.call('Filecoin.ClientStartDeal', [cid, this.state.miner, `${Math.round(this.state.total / this.state.blocks)}`, this.state.blocks])
+    let dealcid = await this.props.client.call('Filecoin.ClientStartDeal', [cid, this.state.miner, `${Math.round(this.state.total / this.state.blocks)}`, Number(this.state.blocks)])
     console.log("deal cid: ", dealcid)
   }
 
@@ -37,8 +62,23 @@ class Client extends React.Component {
       <button onClick={this.makeDeal}>Deal!</button>
     </div>
 
+    let deals = this.state.deals.map((deal, i) => <div key={i}>
+      <ul>
+        <li>{i}. Proposal: {deal.ProposalCid['/'].substr(0, 18)}... <Address nobalance={true} client={this.props.client} addr={deal.Miner} mountWindow={this.props.mountWindow}/>: <b>{dealStates[deal.State]}</b>
+          <ul>
+            <li>Data: {deal.PieceRef['/']}, <b>{deal.Size}</b>B; Duration: <b>{deal.Duration}</b>Blocks</li>
+            <li>Total: <b>{deal.TotalPrice}</b>FIL; Per Block: <b>{Math.round(deal.TotalPrice / deal.Duration * 100) / 100}</b>FIL; PerMbyteByteBlock: <b>{Math.round(deal.TotalPrice / deal.Duration / (deal.Size / 1000000) * 100) / 100}</b>FIL</li>
+          </ul>
+        </li>
+      </ul>
+
+    </div>)
+
     return <Cristal title={"Client - Node " + this.props.node.ID}>
-      <div>{dealMaker}</div>
+      <div className="Client">
+        <div>{dealMaker}</div>
+        <div>{deals}</div>
+      </div>
     </Cristal>
   }
 }
