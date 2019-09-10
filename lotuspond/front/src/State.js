@@ -10,7 +10,7 @@ class State extends React.Component {
 
   async componentDidMount() {
     const tipset = await this.props.client.call("Filecoin.ChainHead", []) // TODO: from props
-    const actstate = await this.props.client.call('Filecoin.ChainReadState', [this.props.actor, tipset])
+    const actstate = await this.props.client.call('Filecoin.StateReadState', [this.props.actor, tipset])
     this.setState(actstate)
   }
 

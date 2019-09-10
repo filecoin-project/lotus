@@ -39,7 +39,7 @@ class Address extends React.Component {
 
     try {
       balance = await this.props.client.call('Filecoin.WalletBalance', [this.props.addr])
-      actor = await this.props.client.call('Filecoin.ChainGetActor', [this.props.addr, this.props.ts || null])
+      actor = await this.props.client.call('Filecoin.StateGetActor', [this.props.addr, this.props.ts || null])
 
       actorInfo = await this.actorInfo(actor)
       if(this.props.miner) {
@@ -71,7 +71,7 @@ class Address extends React.Component {
     let info = <span>({mh.digest.toString()}{method})</span>
     switch(mh.digest.toString()) {
       case 'paych':
-        const actstate = await this.props.client.call('Filecoin.ChainReadState', [actor, this.props.ts || null])
+        const actstate = await this.props.client.call('Filecoin.StateReadState', [actor, this.props.ts || null])
         info = <span>({mh.digest.toString()}{method} to <Address nobalance={true} client={this.props.client} addr={actstate.State.To} mountWindow={this.props.mountWindow}/>)</span>
     }
 
