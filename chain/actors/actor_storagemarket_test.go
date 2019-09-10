@@ -1,8 +1,9 @@
 package actors_test
 
 import (
-	"github.com/filecoin-project/go-lotus/build"
 	"testing"
+
+	"github.com/filecoin-project/go-lotus/build"
 
 	. "github.com/filecoin-project/go-lotus/chain/actors"
 	"github.com/filecoin-project/go-lotus/chain/address"

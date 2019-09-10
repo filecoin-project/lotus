@@ -67,7 +67,7 @@ require (
 	github.com/polydawn/refmt v0.0.0-20190809202753-05966cbd336a
 	github.com/stretchr/testify v1.4.0
 	github.com/whyrusleeping/bencher v0.0.0-20190829221104-bb6607aa8bba
-	github.com/whyrusleeping/cbor-gen v0.0.0-20190909033959-82a1eed23149
+	github.com/whyrusleeping/cbor-gen v0.0.0-20190909233408-ae6265959798
 	github.com/whyrusleeping/multiaddr-filter v0.0.0-20160516205228-e903e4adabd7
 	github.com/whyrusleeping/pubsub v0.0.0-20131020042734-02de8aa2db3d
 	github.com/whyrusleeping/sharray v0.0.0-20190718051354-e41931821e33

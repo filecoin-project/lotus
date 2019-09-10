@@ -207,13 +207,13 @@ func (ias *InitActorState) AddActor(cst *hamt.CborIpldStore, addr address.Addres
 func (ias *InitActorState) Lookup(cst *hamt.CborIpldStore, addr address.Address) (address.Address, error) {
 	amap, err := hamt.LoadNode(context.TODO(), cst, ias.AddressMap)
 	if err != nil {
-		return address.Undef, err
+		return address.Undef, xerrors.Errorf("ias lookup failed loading hamt node: %w", err)
 	}
 
 	var val interface{}
 	err = amap.Find(context.TODO(), string(addr.Bytes()), &val)
 	if err != nil {
-		return address.Undef, err
+		return address.Undef, xerrors.Errorf("ias lookup failed to do lookup: %w", err)
 	}
 
 	ival, ok := val.(uint64)
