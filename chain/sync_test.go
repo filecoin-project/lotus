@@ -256,7 +256,7 @@ func (tu *syncTestUtil) submitSourceBlocks(to int, h int, n int) {
 */
 
 func TestSyncSimple(t *testing.T) {
-	H := 15
+	H := 50
 	tu := prepSyncTest(t, H)
 
 	client := tu.addClientNode()

@@ -67,7 +67,8 @@ func (m mybs) Get(c cid.Cid) (block.Block, error) {
 	b, err := m.Blockstore.Get(c)
 	if err != nil {
 		// change to error for stacktraces, don't commit with that pls
-		//log.Warnf("Get failed: %s %s", c, err)
+		// TODO: debug why we get so many not founds in tests
+		log.Warnf("Get failed: %s %s", c, err)
 		return nil, err
 	}
 
@@ -119,7 +120,6 @@ func NewGenerator() (*ChainGen, error) {
 		if err != nil {
 			return nil, xerrors.Errorf("failed to generate receiver key: %w", err)
 		}
-		fmt.Println("RECEIVER KEY: ", receievers[r].String())
 	}
 
 	minercfg := &GenMinerCfg{

@@ -74,7 +74,6 @@ func (vmc *VMContext) Put(i cbg.CBORMarshaler) (cid.Cid, aerrors.ActorError) {
 		if aerr := vmc.ChargeGas(0); aerr != nil {
 			return cid.Undef, aerrors.Absorb(err, outOfGasErrCode, "Put out of gas")
 		}
-		panic("no u")
 		return cid.Undef, aerrors.Escalate(err, fmt.Sprintf("putting object %T", i))
 	}
 	return c, nil
@@ -319,7 +318,6 @@ func (vm *VM) send(ctx context.Context, msg *types.Message, parent *VMContext,
 	toActor, err := st.GetActor(msg.To)
 	if err != nil {
 		if xerrors.Is(err, types.ErrActorNotFound) {
-			fmt.Println("actor not found on send: ", msg.To.String())
 			a, err := TryCreateAccountActor(st, msg.To)
 			if err != nil {
 				return nil, aerrors.Absorb(err, 1, "could not create account"), nil

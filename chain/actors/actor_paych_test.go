@@ -2,7 +2,6 @@ package actors_test
 
 import (
 	"context"
-	"fmt"
 	"testing"
 
 	"github.com/filecoin-project/go-lotus/chain/actors"
@@ -37,7 +36,6 @@ func signVoucher(t *testing.T, w *wallet.Wallet, addr address.Address, sv *types
 		t.Fatal(err)
 	}
 
-	fmt.Printf("SIGNING: %x\n", vb)
 	sv.Signature = sig
 }
 

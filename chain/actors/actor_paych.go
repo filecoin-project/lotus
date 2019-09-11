@@ -113,7 +113,6 @@ func (pca PaymentChannelActor) UpdateChannelState(act *types.Actor, vmctx types.
 	}
 
 	if err := vmctx.VerifySignature(sv.Signature, self.From, vb); err != nil {
-		fmt.Printf("bad bits: %x", vb)
 		return nil, err
 	}
 

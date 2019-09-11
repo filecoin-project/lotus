@@ -116,12 +116,6 @@ func (ia InitActor) Exec(act *types.Actor, vmctx types.VMContext, p *ExecParams)
 		Head:    EmptyCBOR,
 		Nonce:   0,
 	}
-	/*
-		_, err = vmctx.Storage().Put(struct{}{})
-		if err != nil {
-			return nil, err
-		}
-	*/
 
 	// The call to the actors constructor will set up the initial state
 	// from the given parameters, setting `actor.Head` to a new value when successful.
@@ -182,8 +176,6 @@ func IsSingletonActor(code cid.Cid) bool {
 func (ias *InitActorState) AddActor(cst *hamt.CborIpldStore, addr address.Address) (address.Address, error) {
 	nid := ias.NextID
 	ias.NextID++
-
-	fmt.Println("ADD ACTOR: ", addr.String())
 
 	amap, err := hamt.LoadNode(context.TODO(), cst, ias.AddressMap)
 	if err != nil {

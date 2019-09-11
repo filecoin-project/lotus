@@ -198,12 +198,12 @@ func (sma StorageMarketActor) IsMiner(act *types.Actor, vmctx types.VMContext, p
 }
 
 func MinerSetHas(ctx context.Context, vmctx types.VMContext, rcid cid.Cid, maddr address.Address) (bool, aerrors.ActorError) {
-	nd, err := hamt.LoadNode(context.TODO(), vmctx.Ipld(), rcid)
+	nd, err := hamt.LoadNode(ctx, vmctx.Ipld(), rcid)
 	if err != nil {
 		return false, aerrors.Escalate(err, "failed to load miner set")
 	}
 
-	err = nd.Find(context.TODO(), string(maddr.Bytes()), nil)
+	err = nd.Find(ctx, string(maddr.Bytes()), nil)
 	switch err {
 	case hamt.ErrNotFound:
 		return false, nil
