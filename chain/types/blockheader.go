@@ -93,6 +93,13 @@ func (blk *BlockHeader) LastTicket() *Ticket {
 	return blk.Tickets[len(blk.Tickets)-1]
 }
 
+func (blk *BlockHeader) SigningBytes() ([]byte, error) {
+	blkcopy := *blk
+	blkcopy.BlockSig = Signature{}
+
+	return blkcopy.Serialize()
+}
+
 type MsgMeta struct {
 	BlsMessages   cid.Cid
 	SecpkMessages cid.Cid
