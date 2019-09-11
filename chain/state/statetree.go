@@ -8,6 +8,7 @@ import (
 	hamt "github.com/ipfs/go-hamt-ipld"
 	cbor "github.com/ipfs/go-ipld-cbor"
 	logging "github.com/ipfs/go-log"
+	"golang.org/x/xerrors"
 
 	"github.com/filecoin-project/go-lotus/chain/actors"
 	"github.com/filecoin-project/go-lotus/chain/address"
@@ -50,7 +51,7 @@ func (st *StateTree) SetActor(addr address.Address, act *types.Actor) error {
 	if addr.Protocol() != address.ID {
 		iaddr, err := st.lookupID(addr)
 		if err != nil {
-			return err
+			return xerrors.Errorf("ID lookup failed: %w", err)
 		}
 		addr = iaddr
 	}
@@ -68,12 +69,12 @@ func (st *StateTree) SetActor(addr address.Address, act *types.Actor) error {
 func (st *StateTree) lookupID(addr address.Address) (address.Address, error) {
 	act, err := st.GetActor(actors.InitActorAddress)
 	if err != nil {
-		return address.Undef, err
+		return address.Undef, xerrors.Errorf("getting init actor: %w", err)
 	}
 
 	var ias actors.InitActorState
 	if err := st.Store.Get(context.TODO(), act.Head, &ias); err != nil {
-		return address.Undef, err
+		return address.Undef, xerrors.Errorf("loading init actor state: %w", err)
 	}
 
 	return ias.Lookup(st.Store, addr)
@@ -87,10 +88,10 @@ func (st *StateTree) GetActor(addr address.Address) (*types.Actor, error) {
 	if addr.Protocol() != address.ID {
 		iaddr, err := st.lookupID(addr)
 		if err != nil {
-			if err == hamt.ErrNotFound {
-				return nil, types.ErrActorNotFound
+			if xerrors.Is(err, hamt.ErrNotFound) {
+				return nil, xerrors.Errorf("resolution lookup failed (%s): %w", addr, types.ErrActorNotFound)
 			}
-			return nil, err
+			return nil, xerrors.Errorf("address resolution: %w", err)
 		}
 		addr = iaddr
 	}

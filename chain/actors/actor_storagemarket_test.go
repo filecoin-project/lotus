@@ -1,8 +1,9 @@
 package actors_test
 
 import (
-	"github.com/filecoin-project/go-lotus/build"
 	"testing"
+
+	"github.com/filecoin-project/go-lotus/build"
 
 	. "github.com/filecoin-project/go-lotus/chain/actors"
 	"github.com/filecoin-project/go-lotus/chain/address"
@@ -11,11 +12,6 @@ import (
 	cbor "github.com/ipfs/go-ipld-cbor"
 	"github.com/stretchr/testify/assert"
 )
-
-func TestDumpEmpyStruct(t *testing.T) {
-	res, err := SerializeParams(struct{}{})
-	t.Logf("res: %x, err: %+v", res, err)
-}
 
 func TestStorageMarketCreateMiner(t *testing.T) {
 	var ownerAddr, workerAddr address.Address
@@ -30,7 +26,7 @@ func TestStorageMarketCreateMiner(t *testing.T) {
 	var minerAddr address.Address
 	{
 		ret, _ := h.Invoke(t, ownerAddr, StorageMarketAddress, SMAMethods.CreateStorageMiner,
-			CreateStorageMinerParams{
+			&CreateStorageMinerParams{
 				Owner:      ownerAddr,
 				Worker:     workerAddr,
 				SectorSize: types.NewInt(build.SectorSize),
@@ -44,7 +40,7 @@ func TestStorageMarketCreateMiner(t *testing.T) {
 
 	{
 		ret, _ := h.Invoke(t, ownerAddr, StorageMarketAddress, SMAMethods.IsMiner,
-			IsMinerParam{Addr: minerAddr})
+			&IsMinerParam{Addr: minerAddr})
 		ApplyOK(t, ret)
 
 		var output bool
@@ -60,7 +56,7 @@ func TestStorageMarketCreateMiner(t *testing.T) {
 
 	{
 		ret, _ := h.Invoke(t, ownerAddr, StorageMarketAddress, SMAMethods.PowerLookup,
-			PowerLookupParams{Miner: minerAddr})
+			&PowerLookupParams{Miner: minerAddr})
 		ApplyOK(t, ret)
 		power := types.BigFromBytes(ret.Return)
 

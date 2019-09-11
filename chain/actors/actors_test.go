@@ -3,8 +3,9 @@ package actors_test
 import (
 	"context"
 	"encoding/binary"
-	"github.com/filecoin-project/go-lotus/build"
 	"testing"
+
+	"github.com/filecoin-project/go-lotus/build"
 
 	. "github.com/filecoin-project/go-lotus/chain/actors"
 	"github.com/filecoin-project/go-lotus/chain/address"
@@ -14,7 +15,6 @@ import (
 	"github.com/filecoin-project/go-lotus/chain/vm"
 	dstore "github.com/ipfs/go-datastore"
 	bstore "github.com/ipfs/go-ipfs-blockstore"
-	cbor "github.com/ipfs/go-ipld-cbor"
 )
 
 func blsaddr(n uint64) address.Address {
@@ -62,7 +62,8 @@ func TestVMInvokeMethod(t *testing.T) {
 	vm, addrs := setupVMTestEnv(t)
 	from := addrs[0]
 
-	cenc, err := cbor.DumpObject(StorageMinerConstructorParams{})
+	var err error
+	cenc, err := SerializeParams(&StorageMinerConstructorParams{})
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -71,7 +72,7 @@ func TestVMInvokeMethod(t *testing.T) {
 		Code:   StorageMinerCodeCid,
 		Params: cenc,
 	}
-	enc, err := cbor.DumpObject(execparams)
+	enc, err := SerializeParams(execparams)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -115,7 +116,8 @@ func TestStorageMarketActorCreateMiner(t *testing.T) {
 		SectorSize: types.NewInt(build.SectorSize),
 		PeerID:     "fakepeerid",
 	}
-	enc, err := cbor.DumpObject(params)
+	var err error
+	enc, err := SerializeParams(params)
 	if err != nil {
 		t.Fatal(err)
 	}

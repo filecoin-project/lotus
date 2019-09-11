@@ -2,6 +2,7 @@ package actors
 
 import (
 	"context"
+
 	"github.com/filecoin-project/go-lotus/chain/actors/aerrors"
 	"github.com/filecoin-project/go-lotus/chain/address"
 	"github.com/filecoin-project/go-lotus/chain/types"
@@ -13,18 +14,6 @@ import (
 	"github.com/libp2p/go-libp2p-core/peer"
 	"golang.org/x/xerrors"
 )
-
-func init() {
-	cbor.RegisterCborType(StorageMinerActorState{})
-	cbor.RegisterCborType(StorageMinerConstructorParams{})
-	cbor.RegisterCborType(CommitSectorParams{})
-	cbor.RegisterCborType(MinerInfo{})
-	cbor.RegisterCborType(SubmitPoStParams{})
-	cbor.RegisterCborType(PieceInclVoucherData{})
-	cbor.RegisterCborType(InclusionProof{})
-	cbor.RegisterCborType(PaymentVerifyParams{})
-	cbor.RegisterCborType(UpdatePeerIDParams{})
-}
 
 var ProvingPeriodDuration = uint64(2 * 60) // an hour, for now
 const POST_SECTORS_COUNT = 8192
@@ -190,7 +179,7 @@ func (sma StorageMinerActor) StorageMinerConstructor(act *types.Actor, vmctx typ
 	self.Info = minfocid
 
 	storage := vmctx.Storage()
-	c, err := storage.Put(self)
+	c, err := storage.Put(&self)
 	if err != nil {
 		return nil, err
 	}

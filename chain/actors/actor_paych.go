@@ -5,21 +5,12 @@ import (
 	"fmt"
 
 	"github.com/ipfs/go-cid"
-	cbor "github.com/ipfs/go-ipld-cbor"
 
 	"github.com/filecoin-project/go-lotus/build"
 	"github.com/filecoin-project/go-lotus/chain/actors/aerrors"
 	"github.com/filecoin-project/go-lotus/chain/address"
 	"github.com/filecoin-project/go-lotus/chain/types"
 )
-
-func init() {
-	cbor.RegisterCborType(PaymentChannelActorState{})
-	cbor.RegisterCborType(PCAConstructorParams{})
-	cbor.RegisterCborType(LaneState{})
-	cbor.RegisterCborType(PCAUpdateChannelStateParams{})
-	cbor.RegisterCborType(PaymentInfo{})
-}
 
 type PaymentChannelActor struct{}
 
@@ -84,7 +75,7 @@ func (pca PaymentChannelActor) Constructor(act *types.Actor, vmctx types.VMConte
 	self.LaneStates = make(map[string]*LaneState)
 
 	storage := vmctx.Storage()
-	c, err := storage.Put(self)
+	c, err := storage.Put(&self)
 	if err != nil {
 		return nil, err
 	}
@@ -129,14 +120,14 @@ func (pca PaymentChannelActor) UpdateChannelState(act *types.Actor, vmctx types.
 		return nil, aerrors.New(2, "cannot use this voucher yet!")
 	}
 
-	if sv.SecretPreimage != nil {
+	if len(sv.SecretPreimage) > 0 {
 		if !bytes.Equal(hash(params.Secret), sv.SecretPreimage) {
 			return nil, aerrors.New(3, "incorrect secret!")
 		}
 	}
 
 	if sv.Extra != nil {
-		encoded, err := SerializeParams(PaymentVerifyParams{sv.Extra.Data, params.Proof})
+		encoded, err := SerializeParams(&PaymentVerifyParams{sv.Extra.Data, params.Proof})
 		if err != nil {
 			return nil, err
 		}
@@ -203,7 +194,7 @@ func (pca PaymentChannelActor) UpdateChannelState(act *types.Actor, vmctx types.
 		}
 	}
 
-	ncid, err := storage.Put(self)
+	ncid, err := storage.Put(&self)
 	if err != nil {
 		return nil, err
 	}
@@ -235,7 +226,7 @@ func (pca PaymentChannelActor) Close(act *types.Actor, vmctx types.VMContext, pa
 		self.ClosingAt = self.MinCloseHeight
 	}
 
-	ncid, err := storage.Put(self)
+	ncid, err := storage.Put(&self)
 	if err != nil {
 		return nil, err
 	}
@@ -272,7 +263,7 @@ func (pca PaymentChannelActor) Collect(act *types.Actor, vmctx types.VMContext, 
 
 	self.ToSend = types.NewInt(0)
 
-	ncid, err := storage.Put(self)
+	ncid, err := storage.Put(&self)
 	if err != nil {
 		return nil, err
 	}

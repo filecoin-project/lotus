@@ -2,9 +2,9 @@ package vm
 
 import (
 	"context"
-	"fmt"
 
 	"github.com/filecoin-project/go-lotus/chain/actors"
+	"github.com/filecoin-project/go-lotus/chain/actors/aerrors"
 	"github.com/filecoin-project/go-lotus/chain/address"
 	"github.com/filecoin-project/go-lotus/chain/state"
 	"github.com/filecoin-project/go-lotus/chain/types"
@@ -27,42 +27,41 @@ func init() {
 
 var EmptyObjectCid cid.Cid
 
-func TryCreateAccountActor(st *state.StateTree, addr address.Address) (*types.Actor, error) {
+func TryCreateAccountActor(st *state.StateTree, addr address.Address) (*types.Actor, aerrors.ActorError) {
 	act, err := makeActor(st, addr)
 	if err != nil {
 		return nil, err
 	}
 
-	_, err = st.RegisterNewAddress(addr, act)
-	if err != nil {
-		return nil, err
+	if _, err := st.RegisterNewAddress(addr, act); err != nil {
+		return nil, aerrors.Escalate(err, "registering actor address")
 	}
 
 	return act, nil
 }
 
-func makeActor(st *state.StateTree, addr address.Address) (*types.Actor, error) {
+func makeActor(st *state.StateTree, addr address.Address) (*types.Actor, aerrors.ActorError) {
 	switch addr.Protocol() {
 	case address.BLS:
 		return NewBLSAccountActor(st, addr)
 	case address.SECP256K1:
 		return NewSecp256k1AccountActor(st, addr)
 	case address.ID:
-		return nil, fmt.Errorf("no actor with given ID")
+		return nil, aerrors.New(1, "no actor with given ID")
 	case address.Actor:
-		return nil, fmt.Errorf("no such actor: %s", addr)
+		return nil, aerrors.Newf(1, "no such actor: %s", addr)
 	default:
-		return nil, fmt.Errorf("address has unsupported protocol: %d", addr.Protocol())
+		return nil, aerrors.Newf(1, "address has unsupported protocol: %d", addr.Protocol())
 	}
 }
 
-func NewBLSAccountActor(st *state.StateTree, addr address.Address) (*types.Actor, error) {
+func NewBLSAccountActor(st *state.StateTree, addr address.Address) (*types.Actor, aerrors.ActorError) {
 	var acstate actors.AccountActorState
 	acstate.Address = addr
 
-	c, err := st.Store.Put(context.TODO(), acstate)
+	c, err := st.Store.Put(context.TODO(), &acstate)
 	if err != nil {
-		return nil, err
+		return nil, aerrors.Escalate(err, "serializing account actor state")
 	}
 
 	nact := &types.Actor{
@@ -74,7 +73,7 @@ func NewBLSAccountActor(st *state.StateTree, addr address.Address) (*types.Actor
 	return nact, nil
 }
 
-func NewSecp256k1AccountActor(st *state.StateTree, addr address.Address) (*types.Actor, error) {
+func NewSecp256k1AccountActor(st *state.StateTree, addr address.Address) (*types.Actor, aerrors.ActorError) {
 	nact := &types.Actor{
 		Code:    actors.AccountActorCodeCid,
 		Balance: types.NewInt(0),

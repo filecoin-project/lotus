@@ -22,7 +22,7 @@ require (
 	github.com/ipfs/go-ds-badger v0.0.5
 	github.com/ipfs/go-filestore v0.0.2
 	github.com/ipfs/go-fs-lock v0.0.1
-	github.com/ipfs/go-hamt-ipld v0.0.12-0.20190830015840-8aabc0c74ac6
+	github.com/ipfs/go-hamt-ipld v0.0.12-0.20190910032255-ee6e898f0456
 	github.com/ipfs/go-ipfs-blockstore v0.1.0
 	github.com/ipfs/go-ipfs-chunker v0.0.1
 	github.com/ipfs/go-ipfs-ds-help v0.0.1
@@ -67,7 +67,7 @@ require (
 	github.com/polydawn/refmt v0.0.0-20190809202753-05966cbd336a
 	github.com/stretchr/testify v1.4.0
 	github.com/whyrusleeping/bencher v0.0.0-20190829221104-bb6607aa8bba
-	github.com/whyrusleeping/cbor-gen v0.0.0-20190906235522-125fcd082c67
+	github.com/whyrusleeping/cbor-gen v0.0.0-20190910224804-fde80d83b106
 	github.com/whyrusleeping/multiaddr-filter v0.0.0-20160516205228-e903e4adabd7
 	github.com/whyrusleeping/pubsub v0.0.0-20131020042734-02de8aa2db3d
 	github.com/whyrusleeping/sharray v0.0.0-20190718051354-e41931821e33

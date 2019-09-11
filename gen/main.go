@@ -4,66 +4,75 @@ import (
 	"fmt"
 	"os"
 
-	"github.com/filecoin-project/go-lotus/chain"
+	"github.com/filecoin-project/go-lotus/chain/actors"
 	"github.com/filecoin-project/go-lotus/chain/types"
 	gen "github.com/whyrusleeping/cbor-gen"
 )
 
 func main() {
-	{
-		fi, err := os.Create("./chain/types/cbor_gen.go")
-		if err != nil {
-			fmt.Println("failed to open file: ", err)
-			os.Exit(1)
-		}
-		defer fi.Close()
-
-		if err := gen.PrintHeaderAndUtilityMethods(fi, "types"); err != nil {
-			fmt.Println("failed to write header: ", err)
-			os.Exit(1)
-		}
-
-		types := []interface{}{
-			types.BlockHeader{},
-			types.Ticket{},
-			types.Message{},
-			types.SignedMessage{},
-			types.MsgMeta{},
-		}
-
-		for _, t := range types {
-			if err := gen.GenTupleEncodersForType(t, fi); err != nil {
-				fmt.Println("failed to generate encoders: ", err)
-				os.Exit(1)
-			}
-		}
+	err := gen.WriteTupleEncodersToFile("./chain/types/cbor_gen.go", "types",
+		types.BlockHeader{},
+		types.Ticket{},
+		types.Message{},
+		types.SignedMessage{},
+		types.MsgMeta{},
+		types.SignedVoucher{},
+		types.ModVerifyParams{},
+		types.Merge{},
+	)
+	if err != nil {
+		fmt.Println(err)
+		os.Exit(1)
 	}
 
-	{
-		fi, err := os.Create("./chain/cbor_gen.go")
-		if err != nil {
-			fmt.Println("failed to open file: ", err)
-			os.Exit(1)
-		}
-		defer fi.Close()
-
-		if err := gen.PrintHeaderAndUtilityMethods(fi, "chain"); err != nil {
-			fmt.Println("failed to write header: ", err)
-			os.Exit(1)
-		}
-
-		types := []interface{}{
+	/*
+		err = gen.WriteTupleEncodersToFile("./chain/cbor_gen.go", "chain",
 			chain.BlockSyncRequest{},
 			chain.BlockSyncResponse{},
 			chain.BSTipSet{},
 			chain.BlockMsg{},
+		)
+		if err != nil {
+			fmt.Println(err)
+			os.Exit(1)
 		}
+	*/
 
-		for _, t := range types {
-			if err := gen.GenTupleEncodersForType(t, fi); err != nil {
-				fmt.Println("failed to generate encoders: ", err)
-				os.Exit(1)
-			}
-		}
+	err = gen.WriteTupleEncodersToFile("./chain/actors/cbor_gen.go", "actors",
+		actors.InitActorState{},
+		actors.ExecParams{},
+		actors.AccountActorState{},
+		actors.StorageMinerActorState{},
+		actors.StorageMinerConstructorParams{},
+		actors.CommitSectorParams{},
+		actors.MinerInfo{},
+		actors.SubmitPoStParams{},
+		actors.PieceInclVoucherData{},
+		actors.InclusionProof{},
+		actors.PaymentVerifyParams{},
+		actors.UpdatePeerIDParams{},
+		actors.MultiSigActorState{},
+		actors.MultiSigConstructorParams{},
+		actors.MultiSigProposeParams{},
+		actors.MultiSigTxID{},
+		actors.MultiSigSwapSignerParams{},
+		actors.MultiSigChangeReqParams{},
+		actors.MTransaction{},
+		actors.MultiSigRemoveSignerParam{},
+		actors.MultiSigAddSignerParam{},
+		actors.PaymentChannelActorState{},
+		actors.PCAConstructorParams{},
+		actors.LaneState{},
+		actors.PCAUpdateChannelStateParams{},
+		actors.PaymentInfo{},
+		actors.StorageMarketState{},
+		actors.CreateStorageMinerParams{},
+		actors.IsMinerParam{},
+		actors.PowerLookupParams{},
+		actors.UpdateStorageParams{},
+	)
+	if err != nil {
+		fmt.Println(err)
+		os.Exit(1)
 	}
 }

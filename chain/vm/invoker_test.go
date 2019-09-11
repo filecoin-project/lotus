@@ -1,11 +1,15 @@
 package vm
 
 import (
+	"fmt"
+	"io"
 	"testing"
 
 	cbor "github.com/ipfs/go-ipld-cbor"
 	"github.com/stretchr/testify/assert"
+	cbg "github.com/whyrusleeping/cbor-gen"
 
+	"github.com/filecoin-project/go-lotus/chain/actors"
 	"github.com/filecoin-project/go-lotus/chain/actors/aerrors"
 	"github.com/filecoin-project/go-lotus/chain/types"
 )
@@ -13,6 +17,25 @@ import (
 type basicContract struct{}
 type basicParams struct {
 	B byte
+}
+
+func (b *basicParams) MarshalCBOR(w io.Writer) error {
+	_, err := w.Write(cbg.CborEncodeMajorType(cbg.MajUnsignedInt, uint64(b.B)))
+	return err
+}
+
+func (b *basicParams) UnmarshalCBOR(r io.Reader) error {
+	maj, val, err := cbg.CborReadHeader(r)
+	if err != nil {
+		return err
+	}
+
+	if maj != cbg.MajUnsignedInt {
+		return fmt.Errorf("bad cbor type")
+	}
+
+	b.B = byte(val)
+	return nil
 }
 
 func init() {
@@ -39,6 +62,7 @@ func (basicContract) InvokeSomething0(act *types.Actor, vmctx types.VMContext,
 	params *basicParams) ([]byte, aerrors.ActorError) {
 	return nil, aerrors.New(params.B, "params.B")
 }
+
 func (basicContract) BadParam(act *types.Actor, vmctx types.VMContext,
 	params *basicParams) ([]byte, aerrors.ActorError) {
 	return nil, aerrors.New(255, "bad params")
@@ -55,7 +79,7 @@ func TestInvokerBasic(t *testing.T) {
 	assert.NoError(t, err)
 
 	{
-		bParam, err := cbor.DumpObject(basicParams{B: 1})
+		bParam, err := actors.SerializeParams(&basicParams{B: 1})
 		assert.NoError(t, err)
 
 		_, aerr := code[0](nil, &VMContext{}, bParam)
@@ -67,7 +91,7 @@ func TestInvokerBasic(t *testing.T) {
 	}
 
 	{
-		bParam, err := cbor.DumpObject(basicParams{B: 2})
+		bParam, err := actors.SerializeParams(&basicParams{B: 2})
 		assert.NoError(t, err)
 
 		_, aerr := code[10](nil, &VMContext{}, bParam)
@@ -77,7 +101,7 @@ func TestInvokerBasic(t *testing.T) {
 		}
 	}
 
-	_, aerr := code[1](nil, &VMContext{}, []byte{0})
+	_, aerr := code[1](nil, &VMContext{}, []byte{99})
 	if aerrors.IsFatal(aerr) {
 		t.Fatal("err should not be fatal")
 	}

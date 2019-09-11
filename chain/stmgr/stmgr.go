@@ -124,13 +124,13 @@ func (sm *StateManager) GetActor(addr address.Address) (*types.Actor, error) {
 	ts := sm.cs.GetHeaviestTipSet()
 	stcid, err := sm.TipSetState(ts.Cids())
 	if err != nil {
-		return nil, err
+		return nil, xerrors.Errorf("tipset state: %w", err)
 	}
 
 	cst := hamt.CSTFromBstore(sm.cs.Blockstore())
 	state, err := state.LoadStateTree(cst, stcid)
 	if err != nil {
-		return nil, err
+		return nil, xerrors.Errorf("load state tree: %w", err)
 	}
 
 	return state.GetActor(addr)
@@ -139,7 +139,7 @@ func (sm *StateManager) GetActor(addr address.Address) (*types.Actor, error) {
 func (sm *StateManager) GetBalance(addr address.Address) (types.BigInt, error) {
 	act, err := sm.GetActor(addr)
 	if err != nil {
-		return types.BigInt{}, err
+		return types.BigInt{}, xerrors.Errorf("get actor: %w", err)
 	}
 
 	return act.Balance, nil

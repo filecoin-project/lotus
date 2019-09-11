@@ -6,8 +6,6 @@ import (
 	"fmt"
 	"io"
 
-	cbor "github.com/ipfs/go-ipld-cbor"
-	"github.com/polydawn/refmt/obj/atlas"
 	cbg "github.com/whyrusleeping/cbor-gen"
 )
 
@@ -24,21 +22,6 @@ const (
 	IKTSecp256k1 = iota
 	IKTBLS
 )
-
-func init() {
-	cbor.RegisterCborType(atlas.BuildEntry(Signature{}).Transform().
-		TransformMarshal(atlas.MakeMarshalTransformFunc(
-			func(s Signature) ([]byte, error) {
-				buf := make([]byte, 4)
-				n := binary.PutUvarint(buf, uint64(s.TypeCode()))
-				return append(buf[:n], s.Data...), nil
-			})).
-		TransformUnmarshal(atlas.MakeUnmarshalTransformFunc(
-			func(x []byte) (Signature, error) {
-				return SignatureFromBytes(x)
-			})).
-		Complete())
-}
 
 type Signature struct {
 	Type string
@@ -80,6 +63,11 @@ func (s *Signature) TypeCode() int {
 }
 
 func (s *Signature) MarshalCBOR(w io.Writer) error {
+	if s == nil {
+		_, err := w.Write(cbg.CborNull)
+		return err
+	}
+
 	header := cbg.CborEncodeMajorType(cbg.MajByteString, uint64(len(s.Data)+1))
 
 	if _, err := w.Write(header); err != nil {

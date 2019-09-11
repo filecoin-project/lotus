@@ -2,29 +2,18 @@ package actors
 
 import (
 	"github.com/ipfs/go-cid"
-	cbor "github.com/ipfs/go-ipld-cbor"
 
 	"github.com/filecoin-project/go-lotus/chain/actors/aerrors"
 	"github.com/filecoin-project/go-lotus/chain/address"
 	"github.com/filecoin-project/go-lotus/chain/types"
-)
 
-func init() {
-	cbor.RegisterCborType(MultiSigActorState{})
-	cbor.RegisterCborType(MultiSigConstructorParams{})
-	cbor.RegisterCborType(MultiSigProposeParams{})
-	cbor.RegisterCborType(MultiSigTxID{})
-	cbor.RegisterCborType(MultiSigSwapSignerParams{})
-	cbor.RegisterCborType(MultiSigChangeReqParams{})
-	cbor.RegisterCborType(MTransaction{})
-	cbor.RegisterCborType(MultiSigRemoveSignerParam{})
-	cbor.RegisterCborType(MultiSigAddSignerParam{})
-}
+	cbg "github.com/whyrusleeping/cbor-gen"
+)
 
 type MultiSigActor struct{}
 type MultiSigActorState struct {
 	Signers  []address.Address
-	Required uint32
+	Required uint64
 	NextTxID uint64
 
 	//TODO: make this map/sharray/whatever
@@ -59,7 +48,7 @@ type MTransaction struct {
 	Approved []address.Address
 	Complete bool
 	Canceled bool
-	RetCode  uint8
+	RetCode  uint64
 }
 
 func (tx MTransaction) Active() ActorError {
@@ -102,7 +91,7 @@ func (msa MultiSigActor) Exports() []interface{} {
 
 type MultiSigConstructorParams struct {
 	Signers  []address.Address
-	Required uint32
+	Required uint64
 }
 
 func (MultiSigActor) MultiSigConstructor(act *types.Actor, vmctx types.VMContext,
@@ -194,7 +183,7 @@ func (msa MultiSigActor) Propose(act *types.Actor, vmctx types.VMContext,
 		if aerrors.IsFatal(err) {
 			return nil, err
 		}
-		tx.RetCode = aerrors.RetCode(err)
+		tx.RetCode = uint64(aerrors.RetCode(err))
 		tx.Complete = true
 	}
 
@@ -203,7 +192,9 @@ func (msa MultiSigActor) Propose(act *types.Actor, vmctx types.VMContext,
 		return nil, aerrors.Wrap(err, "saving state")
 	}
 
-	return SerializeParams(tx.TxID)
+	// REVIEW: On one hand, I like being very explicit about how we're doing the serialization
+	// on the other, maybe we shouldnt do direct calls to underlying serialization libs?
+	return cbg.CborEncodeMajorType(cbg.MajUnsignedInt, tx.TxID), nil
 }
 
 type MultiSigTxID struct {
@@ -229,12 +220,12 @@ func (msa MultiSigActor) Approve(act *types.Actor, vmctx types.VMContext,
 		}
 	}
 	tx.Approved = append(tx.Approved, vmctx.Message().From)
-	if uint32(len(tx.Approved)) >= self.Required {
+	if uint64(len(tx.Approved)) >= self.Required {
 		_, err := vmctx.Send(tx.To, tx.Method, tx.Value, tx.Params)
 		if aerrors.IsFatal(err) {
 			return nil, err
 		}
-		tx.RetCode = aerrors.RetCode(err)
+		tx.RetCode = uint64(aerrors.RetCode(err))
 		tx.Complete = true
 	}
 
@@ -319,7 +310,7 @@ func (msa MultiSigActor) RemoveSigner(act *types.Actor, vmctx types.VMContext,
 			newSigners = append(newSigners, s)
 		}
 	}
-	if params.Decrease || uint32(len(self.Signers)-1) < self.Required {
+	if params.Decrease || uint64(len(self.Signers)-1) < self.Required {
 		self.Required = self.Required - 1
 	}
 
@@ -366,7 +357,7 @@ func (msa MultiSigActor) SwapSigner(act *types.Actor, vmctx types.VMContext,
 }
 
 type MultiSigChangeReqParams struct {
-	Req uint32
+	Req uint64
 }
 
 func (msa MultiSigActor) ChangeRequirement(act *types.Actor, vmctx types.VMContext,

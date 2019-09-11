@@ -62,7 +62,7 @@ var createMinerCmd = &cli.Command{
 			return xerrors.Errorf("failed to get default address: %w", err)
 		}
 
-		params, err := actors.SerializeParams(createMinerArgs)
+		params, err := actors.SerializeParams(&createMinerArgs)
 		if err != nil {
 			return err
 		}
