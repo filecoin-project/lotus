@@ -6,6 +6,7 @@ import (
 	"testing"
 
 	"github.com/filecoin-project/go-lotus/build"
+	cbg "github.com/whyrusleeping/cbor-gen"
 
 	. "github.com/filecoin-project/go-lotus/chain/actors"
 	"github.com/filecoin-project/go-lotus/chain/address"
@@ -13,6 +14,7 @@ import (
 	"github.com/filecoin-project/go-lotus/chain/wallet"
 
 	cid "github.com/ipfs/go-cid"
+	hamt "github.com/ipfs/go-hamt-ipld"
 	cbor "github.com/ipfs/go-ipld-cbor"
 	mh "github.com/multiformats/go-multihash"
 	"github.com/stretchr/testify/assert"
@@ -22,7 +24,7 @@ func TestStorageMarketCreateAndSlashMiner(t *testing.T) {
 	var ownerAddr, workerAddr address.Address
 
 	opts := []HarnessOpt{
-		HarnessAddr(&ownerAddr, 100000),
+		HarnessAddr(&ownerAddr, 1000000),
 		HarnessAddr(&workerAddr, 100000),
 	}
 
@@ -30,7 +32,11 @@ func TestStorageMarketCreateAndSlashMiner(t *testing.T) {
 
 	var minerAddr address.Address
 	{
-		ret, _ := h.Invoke(t, ownerAddr, StorageMarketAddress, SMAMethods.CreateStorageMiner,
+		// cheating the bootstrapping problem
+		cheatStorageMarketTotal(t, h)
+
+		ret, _ := h.InvokeWithValue(t, ownerAddr, StorageMarketAddress, SMAMethods.CreateStorageMiner,
+			types.NewInt(500000),
 			&CreateStorageMinerParams{
 				Owner:      ownerAddr,
 				Worker:     workerAddr,
@@ -91,6 +97,47 @@ func TestStorageMarketCreateAndSlashMiner(t *testing.T) {
 				Block2: b2,
 			})
 		ApplyOK(t, ret)
+	}
+
+	{
+		ret, _ := h.Invoke(t, ownerAddr, StorageMarketAddress, SMAMethods.PowerLookup,
+			&PowerLookupParams{Miner: minerAddr})
+		assert.Equal(t, ret.ExitCode, byte(1))
+	}
+
+	{
+		ret, _ := h.Invoke(t, ownerAddr, StorageMarketAddress, SMAMethods.IsMiner, &IsMinerParam{minerAddr})
+		ApplyOK(t, ret)
+		assert.Equal(t, ret.Return, cbg.CborBoolFalse)
+	}
+}
+
+func cheatStorageMarketTotal(t *testing.T, h *Harness) {
+	t.Helper()
+
+	sma, err := h.vm.StateTree().GetActor(StorageMarketAddress)
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	cst := hamt.CSTFromBstore(h.cs.Blockstore())
+
+	var smastate StorageMarketState
+	if err := cst.Get(context.TODO(), sma.Head, &smastate); err != nil {
+		t.Fatal(err)
+	}
+
+	smastate.TotalStorage = types.NewInt(10000)
+
+	c, err := cst.Put(context.TODO(), &smastate)
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	sma.Head = c
+
+	if err := h.vm.StateTree().SetActor(StorageMarketAddress, sma); err != nil {
+		t.Fatal(err)
 	}
 }
 

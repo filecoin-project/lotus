@@ -3,6 +3,7 @@ package actors
 import (
 	"context"
 	"fmt"
+	"math"
 
 	"github.com/filecoin-project/go-lotus/build"
 	"github.com/filecoin-project/go-lotus/chain/actors/aerrors"
@@ -121,9 +122,10 @@ type maMethods struct {
 	PaymentVerifyInclusion uint64
 	PaymentVerifySector    uint64
 	AddFaults              uint64
+	SlashConsensusFault    uint64
 }
 
-var MAMethods = maMethods{1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16, 17, 18, 19}
+var MAMethods = maMethods{1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16, 17, 18, 19, 20}
 
 func (sma StorageMinerActor) Exports() []interface{} {
 	return []interface{}{
@@ -146,6 +148,7 @@ func (sma StorageMinerActor) Exports() []interface{} {
 		17: sma.PaymentVerifyInclusion,
 		18: sma.PaymentVerifySector,
 		19: nil,
+		20: sma.SlashConsensusFault,
 	}
 }
 
@@ -699,6 +702,60 @@ func (sma StorageMinerActor) PaymentVerifySector(act *types.Actor, vmctx types.V
 	if !ok {
 		return nil, aerrors.New(2, "miner does not have required sector")
 	}
+
+	return nil, nil
+}
+
+type MinerSlashConsensusFault struct {
+	Slasher           address.Address
+	AtHeight          uint64
+	SlashedCollateral types.BigInt
+}
+
+func (sma StorageMinerActor) SlashConsensusFault(act *types.Actor, vmctx types.VMContext, params *MinerSlashConsensusFault) ([]byte, ActorError) {
+	if vmctx.Message().From != StorageMarketAddress {
+		return nil, aerrors.New(1, "SlashConsensusFault may only be called by the storage market actor")
+	}
+
+	slashedCollateral := params.SlashedCollateral
+	if types.BigCmp(slashedCollateral, act.Balance) < 0 {
+		slashedCollateral = act.Balance
+	}
+
+	// Some of the slashed collateral should be paid to the slasher
+	// GROWTH_RATE determines how fast the slasher share of slashed collateral will increase as block elapses
+	// current GROWTH_RATE results in SLASHER_SHARE reaches 1 after 30 blocks
+	// TODO: define arithmetic precision and rounding for this operation
+	blockElapsed := vmctx.BlockHeight() - params.AtHeight
+	growthRate := 1.26
+	initialShare := 0.001
+
+	// REVIEW: floating point precision loss anyone?
+	slasherPortion := initialShare * math.Pow(growthRate, float64(blockElapsed))
+	if slasherPortion > 1 {
+		slasherPortion = 1
+	}
+
+	const precision = 1000000
+	slasherShare := types.BigDiv(types.BigMul(types.NewInt(uint64(precision*slasherPortion)), slashedCollateral), types.NewInt(precision))
+	burnPortion := types.BigSub(slashedCollateral, slasherShare)
+
+	_, err := vmctx.Send(vmctx.Message().From, 0, slasherShare, nil)
+	if err != nil {
+		return nil, aerrors.Wrap(err, "failed to pay slasher")
+	}
+
+	_, err = vmctx.Send(BurntFundsAddress, 0, burnPortion, nil)
+	if err != nil {
+		return nil, aerrors.Wrap(err, "failed to burn funds")
+	}
+
+	// TODO: this still allows the miner to commit sectors and submit posts,
+	// their users could potentially be unaffected, but the miner will never be
+	// able to mine a block again
+	// One potential issue: the miner will have to pay back the slashed
+	// collateral to continue submitting PoSts, which includes pledge
+	// collateral that they no longer really 'need'
 
 	return nil, nil
 }

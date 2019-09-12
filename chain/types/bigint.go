@@ -6,6 +6,8 @@ import (
 	"io"
 	"math/big"
 
+	"github.com/filecoin-project/go-lotus/build"
+
 	cbor "github.com/ipfs/go-ipld-cbor"
 	"github.com/polydawn/refmt/obj/atlas"
 	cbg "github.com/whyrusleeping/cbor-gen"
@@ -39,6 +41,10 @@ type BigInt struct {
 
 func NewInt(i uint64) BigInt {
 	return BigInt{big.NewInt(0).SetUint64(i)}
+}
+
+func Fil(i BigInt) BigInt {
+	return BigMul(i, NewInt(build.FilecoinPrecision))
 }
 
 func BigFromBytes(b []byte) BigInt {

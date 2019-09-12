@@ -47,6 +47,22 @@ func Newf(retCode uint8, format string, args ...interface{}) ActorError {
 	}
 }
 
+func Fatal(message string, args ...interface{}) ActorError {
+	return &actorError{
+		fatal: true,
+		msg:   message,
+		frame: xerrors.Caller(1),
+	}
+}
+
+func Fatalf(format string, args ...interface{}) ActorError {
+	return &actorError{
+		fatal: true,
+		msg:   fmt.Sprintf(format, args...),
+		frame: xerrors.Caller(1),
+	}
+}
+
 // Wrap extens chain of errors with a message
 func Wrap(err ActorError, message string) ActorError {
 	if err == nil {
