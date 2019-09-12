@@ -17,4 +17,7 @@ const RandomnessLookback = 20
 const ProvingPeriodDuration = 2 * 60 // an hour, for now
 const PoSTChallangeTime = 1 * 60
 
+const PowerCollateralProportion = 0.2
+const PerCapitaCollateralProportion = 0.05
+
 // TODO: Move other important consts here

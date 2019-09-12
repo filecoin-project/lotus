@@ -5,7 +5,6 @@ import (
 	"os"
 
 	"github.com/filecoin-project/go-lotus/chain/actors"
-	"github.com/filecoin-project/go-lotus/chain/types"
 	gen "github.com/whyrusleeping/cbor-gen"
 )
 
@@ -72,6 +71,8 @@ func main() {
 		actors.IsMinerParam{},
 		actors.PowerLookupParams{},
 		actors.UpdateStorageParams{},
+		actors.SlashConsensusFaultParams{},
+		actors.PledgeCollateralParams{},
 	)
 	if err != nil {
 		fmt.Println(err)

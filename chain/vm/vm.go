@@ -225,6 +225,19 @@ func ResolveToKeyAddr(state types.StateTree, cst *hamt.CborIpldStore, addr addre
 	return aast.Address, nil
 }
 
+func (vmctx *VMContext) GetBalance(a address.Address) (types.BigInt, aerrors.ActorError) {
+	act, err := vmctx.state.GetActor(a)
+	switch err {
+	default:
+		return types.EmptyInt, aerrors.Escalate(err, "failed to look up actor balance")
+	case hamt.ErrNotFound:
+		// REVIEW: should we just say 'account doesnt exist' == '0 balance'?
+		return types.NewInt(0), nil
+	case nil:
+		return act.Balance, nil
+	}
+}
+
 type hBlocks interface {
 	GetBlock(context.Context, cid.Cid) (block.Block, error)
 	AddBlock(block.Block) error

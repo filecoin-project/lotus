@@ -100,6 +100,15 @@ func (blk *BlockHeader) SigningBytes() ([]byte, error) {
 	return blkcopy.Serialize()
 }
 
+func (blk *BlockHeader) CheckBlockSignature(worker address.Address) error {
+	sigb, err := blk.SigningBytes()
+	if err != nil {
+		return xerrors.Errorf("failed to get block signing bytes: %w", err)
+	}
+
+	return blk.BlockSig.Verify(worker, sigb)
+}
+
 type MsgMeta struct {
 	BlsMessages   cid.Cid
 	SecpkMessages cid.Cid
