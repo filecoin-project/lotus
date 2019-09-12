@@ -98,13 +98,27 @@ func MakeInitialStateTree(bs bstore.Blockstore, actmap map[address.Address]types
 		return nil, xerrors.Errorf("set storage market actor: %w", err)
 	}
 
+	netAmt := types.Fil(types.NewInt(build.TotalFilecoin))
+	for _, amt := range actmap {
+		netAmt = types.BigSub(netAmt, amt)
+	}
+
 	err = state.SetActor(actors.NetworkAddress, &types.Actor{
 		Code:    actors.AccountActorCodeCid,
-		Balance: types.NewInt(100000000000),
+		Balance: netAmt,
 		Head:    emptyobject,
 	})
 	if err != nil {
 		return nil, xerrors.Errorf("set network account actor: %w", err)
+	}
+
+	err = state.SetActor(actors.BurntFundsAddress, &types.Actor{
+		Code:    actors.AccountActorCodeCid,
+		Balance: types.NewInt(0),
+		Head:    emptyobject,
+	})
+	if err != nil {
+		return nil, xerrors.Errorf("set burnt funds account actor: %w", err)
 	}
 
 	for a, v := range actmap {

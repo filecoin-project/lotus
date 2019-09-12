@@ -72,6 +72,7 @@ func main() {
 		actors.UpdateStorageParams{},
 		actors.SlashConsensusFaultParams{},
 		actors.PledgeCollateralParams{},
+		actors.MinerSlashConsensusFault{},
 	)
 	if err != nil {
 		fmt.Println(err)

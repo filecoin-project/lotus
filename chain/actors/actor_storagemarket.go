@@ -3,18 +3,17 @@ package actors
 import (
 	"context"
 	"fmt"
-	"math"
 
 	"github.com/filecoin-project/go-lotus/build"
 	"github.com/filecoin-project/go-lotus/chain/actors/aerrors"
 	"github.com/filecoin-project/go-lotus/chain/address"
 	"github.com/filecoin-project/go-lotus/chain/types"
-	xerrors "golang.org/x/xerrors"
 
 	cid "github.com/ipfs/go-cid"
 	hamt "github.com/ipfs/go-hamt-ipld"
 	"github.com/libp2p/go-libp2p-core/peer"
 	cbg "github.com/whyrusleeping/cbor-gen"
+	xerrors "golang.org/x/xerrors"
 )
 
 type StorageMarketActor struct{}
@@ -64,6 +63,21 @@ func (sma StorageMarketActor) CreateStorageMiner(act *types.Actor, vmctx types.V
 		return nil, aerrors.New(1, "Unsupported sector size")
 	}
 
+	var self StorageMarketState
+	old := vmctx.Storage().GetHead()
+	if err := vmctx.Storage().Get(old, &self); err != nil {
+		return nil, err
+	}
+
+	reqColl, err := pledgeCollateralForSize(vmctx, types.NewInt(0), self.TotalStorage, self.MinerCount+1)
+	if err != nil {
+		return nil, err
+	}
+
+	if types.BigCmp(vmctx.Message().Value, reqColl) < 0 {
+		return nil, aerrors.Newf(1, "not enough funds passed to cover required miner collateral (needed %s, got %s)", reqColl, vmctx.Message().Value)
+	}
+
 	encoded, err := CreateExecParams(StorageMinerCodeCid, &StorageMinerConstructorParams{
 		Owner:      params.Owner,
 		Worker:     params.Worker,
@@ -81,13 +95,7 @@ func (sma StorageMarketActor) CreateStorageMiner(act *types.Actor, vmctx types.V
 
 	naddr, nerr := address.NewFromBytes(ret)
 	if nerr != nil {
-		return nil, aerrors.Absorb(nerr, 1, "could not read address of new actor")
-	}
-
-	var self StorageMarketState
-	old := vmctx.Storage().GetHead()
-	if err := vmctx.Storage().Get(old, &self); err != nil {
-		return nil, err
+		return nil, aerrors.Absorb(nerr, 2, "could not read address of new actor")
 	}
 
 	ncid, err := MinerSetAdd(context.TODO(), vmctx, self.Miners, naddr)
@@ -178,21 +186,21 @@ func (sma StorageMarketActor) SlashConsensusFault(act *types.Actor, vmctx types.
 	worker, oerr := address.NewFromBytes(rval)
 	if oerr != nil {
 		// REVIEW: should this be fatal? i can't think of a real situation that would get us here
-		return nil, aerrors.Escalate(oerr, "response from 'GetWorkerAddr' was not a valid address")
+		return nil, aerrors.Absorb(oerr, 3, "response from 'GetWorkerAddr' was not a valid address")
 	}
 
 	if err := params.Block1.CheckBlockSignature(worker); err != nil {
-		return nil, aerrors.Absorb(err, 3, "block1 did not have valid signature")
+		return nil, aerrors.Absorb(err, 4, "block1 did not have valid signature")
 	}
 
 	if err := params.Block2.CheckBlockSignature(worker); err != nil {
-		return nil, aerrors.Absorb(err, 4, "block2 did not have valid signature")
+		return nil, aerrors.Absorb(err, 5, "block2 did not have valid signature")
 	}
 
 	// see the "Consensus Faults" section of the faults spec (faults.md)
 	// for details on these slashing conditions.
 	if !shouldSlash(params.Block1, params.Block2) {
-		return nil, aerrors.New(5, "blocks do not prove a slashable offense")
+		return nil, aerrors.New(6, "blocks do not prove a slashable offense")
 	}
 
 	var self StorageMarketState
@@ -209,12 +217,7 @@ func (sma StorageMarketActor) SlashConsensusFault(act *types.Actor, vmctx types.
 	if has, err := MinerSetHas(context.TODO(), vmctx, self.Miners, miner); err != nil {
 		return nil, aerrors.Wrapf(err, "failed to check miner in set")
 	} else if !has {
-		return nil, aerrors.New(6, "either already slashed or not a miner")
-	}
-
-	minerBalance, err := vmctx.GetBalance(miner)
-	if err != nil {
-		return nil, err
+		return nil, aerrors.New(7, "either already slashed or not a miner")
 	}
 
 	minerPower, err := powerLookup(context.TODO(), vmctx, &self, miner)
@@ -222,36 +225,23 @@ func (sma StorageMarketActor) SlashConsensusFault(act *types.Actor, vmctx types.
 		return nil, err
 	}
 
-	slashedCollateral := pledgeCollateralForSize(minerPower, self.TotalStorage, self.MinerCount)
-	if types.BigCmp(slashedCollateral, minerBalance) < 0 {
-		slashedCollateral = minerBalance
-	}
-
-	// Some of the slashed collateral should be paid to the slasher
-	// GROWTH_RATE determines how fast the slasher share of slashed collateral will increase as block elapses
-	// current GROWTH_RATE results in SLASHER_SHARE reaches 1 after 30 blocks
-	// TODO: define arithmetic precision and rounding for this operation
-	blockElapsed := vmctx.BlockHeight() - params.Block1.Height
-	growthRate := 1.26
-	initialShare := 0.001
-
-	// REVIEW: floating point precision loss anyone?
-	slasherPortion := initialShare * math.Pow(growthRate, float64(blockElapsed))
-	if slasherPortion > 1 {
-		slasherPortion = 1
-	}
-
-	slasherShare := types.BigDiv(types.BigMul(types.NewInt(uint64(1000000*slasherPortion)), slashedCollateral), types.NewInt(1000000))
-	burnPortion := types.BigSub(slashedCollateral, slasherShare)
-
-	_, err = vmctx.Send(vmctx.Message().From, 0, slasherShare, nil)
+	slashedCollateral, err := pledgeCollateralForSize(vmctx, minerPower, self.TotalStorage, self.MinerCount)
 	if err != nil {
-		return nil, aerrors.Wrap(err, "failed to pay slasher")
+		return nil, err
 	}
 
-	_, err = vmctx.Send(BurntFundsAddress, 0, burnPortion, nil)
+	enc, err := SerializeParams(&MinerSlashConsensusFault{
+		Slasher:           vmctx.Message().From,
+		AtHeight:          params.Block1.Height,
+		SlashedCollateral: slashedCollateral,
+	})
 	if err != nil {
-		return nil, aerrors.Wrap(err, "failed to burn funds")
+		return nil, err
+	}
+
+	_, err = vmctx.Send(miner, MAMethods.SlashConsensusFault, types.NewInt(0), enc)
+	if err != nil {
+		return nil, err
 	}
 
 	// Remove the miner from the list of network miners
@@ -263,6 +253,15 @@ func (sma StorageMarketActor) SlashConsensusFault(act *types.Actor, vmctx types.
 	self.MinerCount--
 
 	self.TotalStorage = types.BigSub(self.TotalStorage, minerPower)
+
+	nroot, err := vmctx.Storage().Put(&self)
+	if err != nil {
+		return nil, err
+	}
+
+	if err := vmctx.Storage().Commit(old, nroot); err != nil {
+		return nil, err
+	}
 
 	return nil, nil
 }
@@ -374,22 +373,59 @@ func (sma StorageMarketActor) PledgeCollateralForSize(act *types.Actor, vmctx ty
 		return nil, err
 	}
 
-	totalCollateral := pledgeCollateralForSize(param.Size, self.TotalStorage, self.MinerCount)
+	totalCollateral, err := pledgeCollateralForSize(vmctx, param.Size, self.TotalStorage, self.MinerCount)
+	if err != nil {
+		return nil, err
+	}
 
 	return totalCollateral.Bytes(), nil
 }
 
-func pledgeCollateralForSize(size, totalStorage types.BigInt, minerCount uint64) types.BigInt {
+func pledgeCollateralForSize(vmctx types.VMContext, size, totalStorage types.BigInt, minerCount uint64) (types.BigInt, aerrors.ActorError) {
+	netBalance, err := vmctx.GetBalance(NetworkAddress)
+	if err != nil {
+		return types.EmptyInt, err
+	}
 
-	availableFilecoin := types.NewInt(5000000) // TODO: get actual available filecoin amount
+	// TODO: the spec says to also grab 'total vested filecoin' and include it as available
+	// If we don't factor that in, we effectively assume all of the locked up filecoin is 'available'
+	// the blocker on that right now is that its hard to tell how much filecoin is unlocked
 
-	totalPowerCollateral := types.BigDiv(types.BigMul(availableFilecoin, types.NewInt(uint64(float64(100*build.PowerCollateralProportion)))), types.NewInt(100))
-	totalPerCapitaCollateral := types.BigDiv(types.BigMul(availableFilecoin, types.NewInt(uint64(float64(100*build.PowerCollateralProportion)))), types.NewInt(100))
+	availableFilecoin := types.BigSub(
+		types.BigMul(types.NewInt(build.TotalFilecoin), types.NewInt(build.FilecoinPrecision)),
+		netBalance,
+	)
 
-	powerCollateral := types.BigDiv(types.BigMul(totalPowerCollateral, size), totalStorage)
-	perCapCollateral := types.BigDiv(totalPerCapitaCollateral, types.NewInt(minerCount))
+	totalPowerCollateral := types.BigDiv(
+		types.BigMul(
+			availableFilecoin,
+			types.NewInt(build.PowerCollateralProportion),
+		),
+		types.NewInt(build.CollateralPrecision),
+	)
 
-	return types.BigAdd(powerCollateral, perCapCollateral)
+	totalPerCapitaCollateral := types.BigDiv(
+		types.BigMul(
+			availableFilecoin,
+			types.NewInt(build.PerCapitaCollateralProportion),
+		),
+		types.NewInt(build.CollateralPrecision),
+	)
+
+	powerCollateral := types.BigDiv(
+		types.BigMul(
+			totalPowerCollateral,
+			size,
+		),
+		totalStorage,
+	)
+
+	perCapCollateral := types.BigDiv(
+		totalPerCapitaCollateral,
+		types.NewInt(minerCount),
+	)
+
+	return types.BigAdd(powerCollateral, perCapCollateral), nil
 }
 
 func MinerSetHas(ctx context.Context, vmctx types.VMContext, rcid cid.Cid, maddr address.Address) (bool, aerrors.ActorError) {
