@@ -14,4 +14,7 @@ const DealVoucherSkewLimit = 10
 const ForkLengthThreshold = 20
 const RandomnessLookback = 20
 
+const PowerCollateralProportion = 0.2
+const PerCapitaCollateralProportion = 0.05
+
 // TODO: Move other important consts here
