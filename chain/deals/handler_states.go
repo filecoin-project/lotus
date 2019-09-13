@@ -107,6 +107,11 @@ func (h *Handler) accept(ctx context.Context, deal MinerDeal) (func(*MinerDeal),
 		return nil, xerrors.Errorf("deal proposal with unsupported serialization: %s", deal.Proposal.SerializationMode)
 	}
 
+	if deal.Proposal.Payment.ChannelMessage != nil {
+		log.Info("waiting for channel message to appear on chain")
+		h.full.ChainWaitMsg(ctx, *deal.Proposal.Payment.ChannelMessage)
+	}
+
 	if err := h.validateVouchers(ctx, deal); err != nil {
 		return nil, err
 	}

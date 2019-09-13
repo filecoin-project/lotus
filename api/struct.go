@@ -81,7 +81,7 @@ type FullNodeStruct struct {
 		StateGetActor        func(context.Context, address.Address, *types.TipSet) (*types.Actor, error)         `perm:"read"`
 		StateReadState       func(context.Context, *types.Actor, *types.TipSet) (*ActorState, error)             `perm:"read"`
 
-		PaychCreate                func(ctx context.Context, from, to address.Address, amt types.BigInt) (address.Address, error)                                                           `perm:"sign"`
+		PaychCreate                func(ctx context.Context, from, to address.Address, amt types.BigInt) (*ChannelInfo, error)                                                              `perm:"sign"`
 		PaychList                  func(context.Context) ([]address.Address, error)                                                                                                         `perm:"read"`
 		PaychStatus                func(context.Context, address.Address) (*PaychStatus, error)                                                                                             `perm:"read"`
 		PaychClose                 func(context.Context, address.Address) (cid.Cid, error)                                                                                                  `perm:"sign"`
@@ -294,7 +294,7 @@ func (c *FullNodeStruct) StateReadState(ctx context.Context, act *types.Actor, t
 	return c.Internal.StateReadState(ctx, act, ts)
 }
 
-func (c *FullNodeStruct) PaychCreate(ctx context.Context, from, to address.Address, amt types.BigInt) (address.Address, error) {
+func (c *FullNodeStruct) PaychCreate(ctx context.Context, from, to address.Address, amt types.BigInt) (*ChannelInfo, error) {
 	return c.Internal.PaychCreate(ctx, from, to, amt)
 }
 

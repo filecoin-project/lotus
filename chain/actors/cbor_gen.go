@@ -2195,7 +2195,7 @@ func (t *PaymentInfo) MarshalCBOR(w io.Writer) error {
 	}
 
 	// t.t.ChannelMessage (cid.Cid)
-	if err := cbg.WriteCid(w, t.ChannelMessage); err != nil {
+	if err := cbg.WriteCid(w, *t.ChannelMessage); err != nil {
 		return xerrors.Errorf("failed to write cid field t.ChannelMessage: %w", err)
 	}
 
@@ -2251,7 +2251,7 @@ func (t *PaymentInfo) UnmarshalCBOR(r io.Reader) error {
 		if err != nil {
 			return xerrors.Errorf("failed to read cid field t.ChannelMessage: %w", err)
 		}
-		t.ChannelMessage = c
+		t.ChannelMessage = &c
 	}
 	// t.t.Vouchers ([]*types.SignedVoucher)
 

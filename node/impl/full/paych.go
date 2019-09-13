@@ -25,15 +25,15 @@ type PaychAPI struct {
 	PaychMgr *paych.Manager
 }
 
-func (a *PaychAPI) PaychCreate(ctx context.Context, from, to address.Address, amt types.BigInt) (address.Address, error) {
+func (a *PaychAPI) PaychCreate(ctx context.Context, from, to address.Address, amt types.BigInt) (*api.ChannelInfo, error) {
 	params, aerr := actors.SerializeParams(&actors.PCAConstructorParams{To: to})
 	if aerr != nil {
-		return address.Undef, aerr
+		return nil, aerr
 	}
 
 	nonce, err := a.MpoolGetNonce(ctx, from)
 	if err != nil {
-		return address.Undef, err
+		return nil, err
 	}
 
 	enc, err := actors.SerializeParams(&actors.ExecParams{
@@ -54,32 +54,36 @@ func (a *PaychAPI) PaychCreate(ctx context.Context, from, to address.Address, am
 
 	smsg, err := a.WalletSignMessage(ctx, from, msg)
 	if err != nil {
-		return address.Address{}, err
+		return nil, err
 	}
 
 	if err := a.MpoolPush(ctx, smsg); err != nil {
-		return address.Undef, err
+		return nil, err
 	}
 
-	mwait, err := a.ChainWaitMsg(ctx, smsg.Cid())
+	mcid := smsg.Cid()
+	mwait, err := a.ChainWaitMsg(ctx, mcid)
 	if err != nil {
-		return address.Undef, err
+		return nil, err
 	}
 
 	if mwait.Receipt.ExitCode != 0 {
-		return address.Undef, fmt.Errorf("payment channel creation failed (exit code %d)", mwait.Receipt.ExitCode)
+		return nil, fmt.Errorf("payment channel creation failed (exit code %d)", mwait.Receipt.ExitCode)
 	}
 
 	paychaddr, err := address.NewFromBytes(mwait.Receipt.Return)
 	if err != nil {
-		return address.Undef, err
+		return nil, err
 	}
 
 	if err := a.PaychMgr.TrackOutboundChannel(ctx, paychaddr); err != nil {
-		return address.Undef, err
+		return nil, err
 	}
 
-	return paychaddr, nil
+	return &api.ChannelInfo{
+		Channel:        paychaddr,
+		ChannelMessage: mcid,
+	}, nil
 }
 
 func (a *PaychAPI) PaychNewPayment(ctx context.Context, from, to address.Address, amount types.BigInt, extra *types.ModVerifyParams, tl uint64, minClose uint64) (*api.PaymentInfo, error) {
@@ -87,14 +91,17 @@ func (a *PaychAPI) PaychNewPayment(ctx context.Context, from, to address.Address
 	if err != nil {
 		return nil, err
 	}
+	var chMsg *cid.Cid
 	if ch == address.Undef {
 		// don't have matching channel, open new
 
 		// TODO: this should be more atomic
-		ch, err = a.PaychCreate(ctx, from, to, amount)
+		chInfo, err := a.PaychCreate(ctx, from, to, amount)
 		if err != nil {
 			return nil, err
 		}
+		ch = chInfo.Channel
+		chMsg = &chInfo.ChannelMessage
 	} else {
 		// already have chanel to the destination, add funds, and open a new lane
 		// TODO: track free funds in channel
@@ -151,8 +158,9 @@ func (a *PaychAPI) PaychNewPayment(ctx context.Context, from, to address.Address
 	}
 
 	return &api.PaymentInfo{
-		Channel: ch,
-		Voucher: sv,
+		Channel:        ch,
+		ChannelMessage: chMsg,
+		Voucher:        sv,
 	}, nil
 }
 

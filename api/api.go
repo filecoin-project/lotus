@@ -107,7 +107,7 @@ type FullNode interface {
 	StateGetActor(ctx context.Context, actor address.Address, ts *types.TipSet) (*types.Actor, error)
 	StateReadState(ctx context.Context, act *types.Actor, ts *types.TipSet) (*ActorState, error)
 
-	PaychCreate(ctx context.Context, from, to address.Address, amt types.BigInt) (address.Address, error)
+	PaychCreate(ctx context.Context, from, to address.Address, amt types.BigInt) (*ChannelInfo, error)
 	PaychList(context.Context) ([]address.Address, error)
 	PaychStatus(context.Context, address.Address) (*PaychStatus, error)
 	PaychClose(context.Context, address.Address) (cid.Cid, error)
@@ -208,9 +208,15 @@ type PaychStatus struct {
 	Direction   PCHDir
 }
 
+type ChannelInfo struct {
+	Channel        address.Address
+	ChannelMessage cid.Cid
+}
+
 type PaymentInfo struct {
-	Channel address.Address
-	Voucher *types.SignedVoucher
+	Channel        address.Address
+	ChannelMessage *cid.Cid
+	Voucher        *types.SignedVoucher
 }
 
 type MinerPower struct {

@@ -103,9 +103,10 @@ func (a *ClientAPI) ClientStartDeal(ctx context.Context, data cid.Cid, miner add
 		TotalPrice: total,
 		Duration:   blocksDuration,
 		Payment: actors.PaymentInfo{
-			PayChActor: payment.Channel,
-			Payer:      self,
-			Vouchers:   []*types.SignedVoucher{payment.Voucher},
+			PayChActor:     payment.Channel,
+			Payer:          self,
+			ChannelMessage: payment.ChannelMessage,
+			Vouchers:       []*types.SignedVoucher{payment.Voucher},
 		},
 		MinerAddress:  miner,
 		ClientAddress: self,
