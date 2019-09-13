@@ -21,7 +21,7 @@ type StorageMarketActor struct{}
 type smaMethods struct {
 	Constructor             uint64
 	CreateStorageMiner      uint64
-	SlashConsensusFault     uint64
+	ArbitrateConsensusFault uint64
 	UpdateStorage           uint64
 	GetTotalStorage         uint64
 	PowerLookup             uint64
@@ -35,7 +35,7 @@ func (sma StorageMarketActor) Exports() []interface{} {
 	return []interface{}{
 		//1: sma.StorageMarketConstructor,
 		2: sma.CreateStorageMiner,
-		3: sma.SlashConsensusFault,
+		3: sma.ArbitrateConsensusFault,
 		4: sma.UpdateStorage,
 		5: sma.GetTotalStorage,
 		6: sma.PowerLookup,
@@ -124,56 +124,12 @@ func SupportedSectorSize(ssize types.BigInt) bool {
 	return false
 }
 
-type SlashConsensusFaultParams struct {
+type ArbitrateConsensusFaultParams struct {
 	Block1 *types.BlockHeader
 	Block2 *types.BlockHeader
 }
 
-func cidArrContains(a []cid.Cid, b cid.Cid) bool {
-	for _, c := range a {
-		if b == c {
-			return true
-		}
-	}
-
-	return false
-}
-
-func shouldSlash(block1, block2 *types.BlockHeader) bool {
-	// First slashing condition, blocks have the same ticket round
-	if block1.Height == block2.Height {
-		return true
-	}
-
-	/* Second slashing condition requires having access to the parent tipset blocks
-	// This might not always be available, needs some thought on the best way to deal with this
-
-
-	// Second slashing condition, miner ignored own block when mining
-	// Case A: block2 could have been in block1's parent set but is not
-	b1ParentHeight := block1.Height - len(block1.Tickets)
-
-	block1ParentTipSet := block1.Parents
-	if !cidArrContains(block1.Parents, block2.Cid()) &&
-		b1ParentHeight == block2.Height &&
-		block1ParentTipSet.ParentCids == block2.ParentCids {
-		return true
-	}
-
-	// Case B: block1 could have been in block2's parent set but is not
-	block2ParentTipSet := parentOf(block2)
-	if !block2Parent.contains(block1) &&
-		block2ParentTipSet.Height == block1.Height &&
-		block2ParentTipSet.ParentCids == block1.ParentCids {
-		return true
-	}
-
-	*/
-
-	return false
-}
-
-func (sma StorageMarketActor) SlashConsensusFault(act *types.Actor, vmctx types.VMContext, params *SlashConsensusFaultParams) ([]byte, ActorError) {
+func (sma StorageMarketActor) ArbitrateConsensusFault(act *types.Actor, vmctx types.VMContext, params *ArbitrateConsensusFaultParams) ([]byte, ActorError) {
 	if params.Block1.Miner != params.Block2.Miner {
 		return nil, aerrors.New(2, "blocks must be from the same miner")
 	}
@@ -264,6 +220,50 @@ func (sma StorageMarketActor) SlashConsensusFault(act *types.Actor, vmctx types.
 	}
 
 	return nil, nil
+}
+
+func cidArrContains(a []cid.Cid, b cid.Cid) bool {
+	for _, c := range a {
+		if b == c {
+			return true
+		}
+	}
+
+	return false
+}
+
+func shouldSlash(block1, block2 *types.BlockHeader) bool {
+	// First slashing condition, blocks have the same ticket round
+	if block1.Height == block2.Height {
+		return true
+	}
+
+	/* Second slashing condition requires having access to the parent tipset blocks
+	// This might not always be available, needs some thought on the best way to deal with this
+
+
+	// Second slashing condition, miner ignored own block when mining
+	// Case A: block2 could have been in block1's parent set but is not
+	b1ParentHeight := block1.Height - len(block1.Tickets)
+
+	block1ParentTipSet := block1.Parents
+	if !cidArrContains(block1.Parents, block2.Cid()) &&
+		b1ParentHeight == block2.Height &&
+		block1ParentTipSet.ParentCids == block2.ParentCids {
+		return true
+	}
+
+	// Case B: block1 could have been in block2's parent set but is not
+	block2ParentTipSet := parentOf(block2)
+	if !block2Parent.contains(block1) &&
+		block2ParentTipSet.Height == block1.Height &&
+		block2ParentTipSet.ParentCids == block1.ParentCids {
+		return true
+	}
+
+	*/
+
+	return false
 }
 
 type UpdateStorageParams struct {
@@ -412,13 +412,18 @@ func pledgeCollateralForSize(vmctx types.VMContext, size, totalStorage types.Big
 		types.NewInt(build.CollateralPrecision),
 	)
 
-	powerCollateral := types.BigDiv(
-		types.BigMul(
-			totalPowerCollateral,
-			size,
-		),
-		totalStorage,
-	)
+	// REVIEW: for bootstrapping purposes, we skip the power portion of the
+	// collateral if there is no collateral in the network yet
+	powerCollateral := types.NewInt(0)
+	if types.BigCmp(totalStorage, types.NewInt(0)) != 0 {
+		powerCollateral = types.BigDiv(
+			types.BigMul(
+				totalPowerCollateral,
+				size,
+			),
+			totalStorage,
+		)
+	}
 
 	perCapCollateral := types.BigDiv(
 		totalPerCapitaCollateral,

@@ -72,7 +72,7 @@ func main() {
 		actors.IsMinerParam{},
 		actors.PowerLookupParams{},
 		actors.UpdateStorageParams{},
-		actors.SlashConsensusFaultParams{},
+		actors.ArbitrateConsensusFaultParams{},
 		actors.PledgeCollateralParams{},
 		actors.MinerSlashConsensusFault{},
 	)
