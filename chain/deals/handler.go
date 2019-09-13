@@ -45,7 +45,7 @@ type Handler struct {
 	// TODO: GC
 	dag dtypes.StagingDAG
 
-	deals StateStore
+	deals MinerStateStore
 	conns map[cid.Cid]inet.Stream
 
 	actor address.Address
@@ -89,7 +89,7 @@ func NewHandler(ds dtypes.MetadataDS, secst *sectorblocks.SectorBlocks, dag dtyp
 
 		actor: minerAddress,
 
-		deals: StateStore{ds: namespace.Wrap(ds, datastore.NewKey("/deals/client"))},
+		deals: MinerStateStore{StateStore{ds: namespace.Wrap(ds, datastore.NewKey("/deals/client"))}},
 	}, nil
 }
 

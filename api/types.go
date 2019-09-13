@@ -9,7 +9,7 @@ import (
 type DealState int
 
 const (
-	DealUnknown = iota
+	DealUnknown = DealState(iota)
 	DealRejected
 	DealAccepted
 	DealStarted

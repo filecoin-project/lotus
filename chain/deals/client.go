@@ -51,7 +51,7 @@ type Client struct {
 	dag       dtypes.ClientDAG
 	discovery *discovery.Local
 
-	deals StateStore
+	deals ClientStateStore
 	conns map[cid.Cid]inet.Stream
 
 	incoming chan ClientDeal
@@ -75,7 +75,7 @@ func NewClient(cs *store.ChainStore, h host.Host, w *wallet.Wallet, ds dtypes.Me
 		dag:       dag,
 		discovery: discovery,
 
-		deals: StateStore{ds: namespace.Wrap(ds, datastore.NewKey("/deals/client"))},
+		deals: ClientStateStore{StateStore{ds: namespace.Wrap(ds, datastore.NewKey("/deals/client"))}},
 		conns: map[cid.Cid]inet.Stream{},
 
 		incoming: make(chan ClientDeal, 16),
