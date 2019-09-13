@@ -18,6 +18,7 @@ board](https://github.com/filecoin-project/go-lotus/projects/1).
 - rust (version?)
 - git
 - bzr (some go dependency needs this)
+- b2sum
 
 *Building:*
 ```

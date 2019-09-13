@@ -20,5 +20,5 @@ jq '. | to_entries | map("'$OUT_DIR'/\(.key) \(.value.cid) \(.value.digest)") | 
 			fi
 		fi
 		echo "downloading $dest"
-		ipget --progress $IPGET_PARAMS -o "$dest" "$cid"
+		./bin/ipget $IPGET_PARAMS -o "$dest" "$cid"
 	done
