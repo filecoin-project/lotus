@@ -2,7 +2,6 @@ package deals
 
 import (
 	"context"
-	"github.com/filecoin-project/go-lotus/api"
 	"math"
 
 	"github.com/ipfs/go-cid"
@@ -14,6 +13,7 @@ import (
 	inet "github.com/libp2p/go-libp2p-core/network"
 	"github.com/libp2p/go-libp2p-core/peer"
 
+	"github.com/filecoin-project/go-lotus/api"
 	"github.com/filecoin-project/go-lotus/chain/actors"
 	"github.com/filecoin-project/go-lotus/chain/address"
 	"github.com/filecoin-project/go-lotus/chain/store"
@@ -25,6 +25,12 @@ import (
 
 func init() {
 	cbor.RegisterCborType(ClientDeal{})
+	cbor.RegisterCborType(actors.PieceInclVoucherData{}) // TODO: USE CBORGEN!
+	cbor.RegisterCborType(types.SignedVoucher{})
+	cbor.RegisterCborType(types.ModVerifyParams{})
+	cbor.RegisterCborType(types.Signature{})
+	cbor.RegisterCborType(actors.PaymentInfo{})
+	cbor.RegisterCborType(actors.InclusionProof{})
 }
 
 var log = logging.Logger("deals")
