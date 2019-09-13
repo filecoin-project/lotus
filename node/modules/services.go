@@ -59,10 +59,12 @@ func HandleIncomingMessages(mctx helpers.MetricsCtx, lc fx.Lifecycle, pubsub *pu
 	go sub.HandleIncomingMessages(ctx, mpool, msgsub)
 }
 
-func RunDealClient(lc fx.Lifecycle, c *deals.Client) {
+func RunDealClient(mctx helpers.MetricsCtx, lc fx.Lifecycle, c *deals.Client) {
+	ctx := helpers.LifecycleCtx(mctx, lc)
+
 	lc.Append(fx.Hook{
 		OnStart: func(context.Context) error {
-			c.Run()
+			c.Run(ctx)
 			return nil
 		},
 		OnStop: func(context.Context) error {

@@ -48,12 +48,12 @@ var paychCreateCmd = &cli.Command{
 
 		ctx := ReqContext(cctx)
 
-		addr, err := api.PaychCreate(ctx, from, to, amt)
+		info, err := api.PaychCreate(ctx, from, to, amt)
 		if err != nil {
 			return err
 		}
 
-		fmt.Println(addr.String())
+		fmt.Println(info.Channel.String())
 		return nil
 	},
 }

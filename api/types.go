@@ -6,6 +6,24 @@ import (
 	ma "github.com/multiformats/go-multiaddr"
 )
 
+type DealState int
+
+const (
+	DealUnknown = DealState(iota)
+	DealRejected
+	DealAccepted
+	DealStarted
+	DealFailed
+	DealStaged
+	DealSealing
+	DealComplete
+
+	// Client specific
+
+	DealError // deal failed with an unexpected error
+	DealExpired
+)
+
 // TODO: check if this exists anywhere else
 type MultiaddrSlice []ma.Multiaddr
 

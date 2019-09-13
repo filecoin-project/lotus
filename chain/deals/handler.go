@@ -2,19 +2,20 @@ package deals
 
 import (
 	"context"
-	"github.com/filecoin-project/go-lotus/chain/types"
-	"github.com/filecoin-project/go-lotus/storage/sectorblocks"
 	"math"
 
-	"github.com/filecoin-project/go-lotus/api"
-	"github.com/filecoin-project/go-lotus/chain/address"
-	"github.com/filecoin-project/go-lotus/node/modules/dtypes"
 	"github.com/ipfs/go-cid"
 	"github.com/ipfs/go-datastore"
 	"github.com/ipfs/go-datastore/namespace"
 	cbor "github.com/ipfs/go-ipld-cbor"
 	inet "github.com/libp2p/go-libp2p-core/network"
 	"github.com/libp2p/go-libp2p-core/peer"
+
+	"github.com/filecoin-project/go-lotus/api"
+	"github.com/filecoin-project/go-lotus/chain/address"
+	"github.com/filecoin-project/go-lotus/chain/types"
+	"github.com/filecoin-project/go-lotus/node/modules/dtypes"
+	"github.com/filecoin-project/go-lotus/storage/sectorblocks"
 )
 
 func init() {
@@ -25,11 +26,11 @@ type MinerDeal struct {
 	Client      peer.ID
 	Proposal    StorageDealProposal
 	ProposalCid cid.Cid
-	State       DealState
+	State       api.DealState
 
 	Ref cid.Cid
 
-	SectorID uint64 // Set when State >= Staged
+	SectorID uint64 // Set when State >= DealStaged
 
 	s inet.Stream
 }
@@ -44,19 +45,19 @@ type Handler struct {
 	// TODO: GC
 	dag dtypes.StagingDAG
 
-	deals StateStore
+	deals MinerStateStore
 	conns map[cid.Cid]inet.Stream
 
 	actor address.Address
 
 	incoming chan MinerDeal
-	updated  chan dealUpdate
+	updated  chan minerDealUpdate
 	stop     chan struct{}
 	stopped  chan struct{}
 }
 
-type dealUpdate struct {
-	newState DealState
+type minerDealUpdate struct {
+	newState api.DealState
 	id       cid.Cid
 	err      error
 	mut      func(*MinerDeal)
@@ -82,13 +83,13 @@ func NewHandler(ds dtypes.MetadataDS, secst *sectorblocks.SectorBlocks, dag dtyp
 		conns: map[cid.Cid]inet.Stream{},
 
 		incoming: make(chan MinerDeal),
-		updated:  make(chan dealUpdate),
+		updated:  make(chan minerDealUpdate),
 		stop:     make(chan struct{}),
 		stopped:  make(chan struct{}),
 
 		actor: minerAddress,
 
-		deals: StateStore{ds: namespace.Wrap(ds, datastore.NewKey("/deals/client"))},
+		deals: MinerStateStore{StateStore{ds: namespace.Wrap(ds, datastore.NewKey("/deals/client"))}},
 	}, nil
 }
 
@@ -101,9 +102,9 @@ func (h *Handler) Run(ctx context.Context) {
 
 		for {
 			select {
-			case deal := <-h.incoming: // Accepted
+			case deal := <-h.incoming: // DealAccepted
 				h.onIncoming(deal)
-			case update := <-h.updated: // Staged
+			case update := <-h.updated: // DealStaged
 				h.onUpdated(ctx, update)
 			case <-h.stop:
 				return
@@ -125,15 +126,15 @@ func (h *Handler) onIncoming(deal MinerDeal) {
 	}
 
 	go func() {
-		h.updated <- dealUpdate{
-			newState: Accepted,
+		h.updated <- minerDealUpdate{
+			newState: api.DealAccepted,
 			id:       deal.ProposalCid,
 			err:      nil,
 		}
 	}()
 }
 
-func (h *Handler) onUpdated(ctx context.Context, update dealUpdate) {
+func (h *Handler) onUpdated(ctx context.Context, update minerDealUpdate) {
 	log.Infof("Deal %s updated state to %d", update.id, update.newState)
 	if update.err != nil {
 		log.Errorf("deal %s failed: %s", update.id, update.err)
@@ -155,12 +156,12 @@ func (h *Handler) onUpdated(ctx context.Context, update dealUpdate) {
 	}
 
 	switch update.newState {
-	case Accepted:
-		h.handle(ctx, deal, h.accept, Staged)
-	case Staged:
-		h.handle(ctx, deal, h.staged, Sealing)
-	case Sealing:
-		h.handle(ctx, deal, h.sealing, Complete)
+	case api.DealAccepted:
+		h.handle(ctx, deal, h.accept, api.DealStaged)
+	case api.DealStaged:
+		h.handle(ctx, deal, h.staged, api.DealSealing)
+	case api.DealSealing:
+		h.handle(ctx, deal, h.sealing, api.DealComplete)
 	}
 }
 
@@ -180,7 +181,7 @@ func (h *Handler) newDeal(s inet.Stream, proposal StorageDealProposal) (MinerDea
 		Client:      s.Conn().RemotePeer(),
 		Proposal:    proposal,
 		ProposalCid: proposalNd.Cid(),
-		State:       Unknown,
+		State:       api.DealUnknown,
 
 		Ref: ref,
 

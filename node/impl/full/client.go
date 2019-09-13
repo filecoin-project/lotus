@@ -86,26 +86,14 @@ func (a *ClientAPI) ClientStartDeal(ctx context.Context, data cid.Cid, miner add
 	total := types.BigMul(price, types.NewInt(blocksDuration))
 
 	// TODO: at least ping the miner before creating paych / locking the money
-	paych, paychMsg, err := a.paychCreate(ctx, self, miner, total)
-	if err != nil {
-		return nil, err
+	extra := &types.ModVerifyParams{
+		Actor:  miner,
+		Method: actors.MAMethods.PaymentVerifyInclusion,
+		Data:   voucherData,
 	}
 
 	head := a.Chain.GetHeaviestTipSet()
-
-	voucher := types.SignedVoucher{ // TODO: split into smaller payments
-		TimeLock: head.Height() + blocksDuration,
-		Extra: &types.ModVerifyParams{
-			Actor:  miner,
-			Method: actors.MAMethods.PaymentVerifyInclusion,
-			Data:   voucherData,
-		},
-		Lane:           0, // TODO: some api to make this easy
-		Amount:         total,
-		MinCloseHeight: head.Height() + blocksDuration, // TODO: some way to start this after initial piece inclusion by actor? Using actors.PieceInclVoucherData?
-	}
-
-	sv, err := a.paychVoucherCreate(ctx, paych, voucher)
+	payment, err := a.PaychNewPayment(ctx, self, miner, total, extra, head.Height()+blocksDuration, head.Height()+blocksDuration)
 	if err != nil {
 		return nil, err
 	}
@@ -115,10 +103,10 @@ func (a *ClientAPI) ClientStartDeal(ctx context.Context, data cid.Cid, miner add
 		TotalPrice: total,
 		Duration:   blocksDuration,
 		Payment: actors.PaymentInfo{
-			PayChActor:     paych,
+			PayChActor:     payment.Channel,
 			Payer:          self,
-			ChannelMessage: paychMsg,
-			Vouchers:       []*types.SignedVoucher{sv},
+			ChannelMessage: payment.ChannelMessage,
+			Vouchers:       []*types.SignedVoucher{payment.Voucher},
 		},
 		MinerAddress:  miner,
 		ClientAddress: self,
@@ -128,6 +116,31 @@ func (a *ClientAPI) ClientStartDeal(ctx context.Context, data cid.Cid, miner add
 	c, err := a.DealClient.Start(ctx, proposal, vd)
 	// TODO: send updated voucher with PaymentVerifySector for cheaper validation (validate the sector the miner sent us first!)
 	return &c, err
+}
+
+func (a *ClientAPI) ClientListDeals(ctx context.Context) ([]api.DealInfo, error) {
+	deals, err := a.DealClient.List()
+	if err != nil {
+		return nil, err
+	}
+
+	out := make([]api.DealInfo, len(deals))
+	for k, v := range deals {
+		out[k] = api.DealInfo{
+			ProposalCid: v.ProposalCid,
+			State:       v.State,
+			Miner:       v.Proposal.MinerAddress,
+
+			PieceRef: v.Proposal.PieceRef,
+			CommP:    v.Proposal.CommP,
+			Size:     v.Proposal.Size,
+
+			TotalPrice: v.Proposal.TotalPrice,
+			Duration:   v.Proposal.Duration,
+		}
+	}
+
+	return out, nil
 }
 
 func (a *ClientAPI) ClientHasLocal(ctx context.Context, root cid.Cid) (bool, error) {

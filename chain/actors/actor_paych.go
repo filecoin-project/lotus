@@ -17,7 +17,7 @@ type PaymentChannelActor struct{}
 type PaymentInfo struct {
 	PayChActor     address.Address
 	Payer          address.Address
-	ChannelMessage cid.Cid
+	ChannelMessage *cid.Cid
 
 	Vouchers []*types.SignedVoucher
 }

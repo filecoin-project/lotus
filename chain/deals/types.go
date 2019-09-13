@@ -1,6 +1,7 @@
 package deals
 
 import (
+	"github.com/filecoin-project/go-lotus/api"
 	"github.com/ipfs/go-cid"
 	cbor "github.com/ipfs/go-ipld-cbor"
 
@@ -19,25 +20,14 @@ func init() {
 	cbor.RegisterCborType(SignedStorageDealResponse{})
 }
 
+const ProtocolID = "/fil/storage/mk/1.0.0"
+
 type SerializationMode string
 
 const (
 	SerializationUnixFs = "UnixFs"
 	SerializationRaw    = "Raw"
 	SerializationIPLD   = "IPLD"
-)
-
-type DealState int
-
-const (
-	Unknown = iota
-	Rejected
-	Accepted
-	Started
-	Failed
-	Staged
-	Sealing
-	Complete
 )
 
 type StorageDealProposal struct {
@@ -69,16 +59,17 @@ type PieceInclusionProof struct {
 }
 
 type StorageDealResponse struct {
-	State DealState
+	State api.DealState
 
-	// Rejected / Accepted / Failed / Staged
+	// DealRejected / DealAccepted / DealFailed / DealStaged
 	Message  string
 	Proposal cid.Cid
 
-	// Sealing
+	// DealSealing
 	PieceInclusionProof PieceInclusionProof
+	CommD               []byte // TODO: not in spec
 
-	// Complete
+	// DealComplete
 	SectorCommitMessage *cid.Cid
 }
 

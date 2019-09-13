@@ -25,20 +25,15 @@ type PaychAPI struct {
 	PaychMgr *paych.Manager
 }
 
-func (a *PaychAPI) PaychCreate(ctx context.Context, from, to address.Address, amt types.BigInt) (address.Address, error) {
-	act, _, err := a.paychCreate(ctx, from, to, amt)
-	return act, err
-}
-
-func (a *PaychAPI) paychCreate(ctx context.Context, from, to address.Address, amt types.BigInt) (address.Address, cid.Cid, error) {
+func (a *PaychAPI) PaychCreate(ctx context.Context, from, to address.Address, amt types.BigInt) (*api.ChannelInfo, error) {
 	params, aerr := actors.SerializeParams(&actors.PCAConstructorParams{To: to})
 	if aerr != nil {
-		return address.Undef, cid.Undef, aerr
+		return nil, aerr
 	}
 
 	nonce, err := a.MpoolGetNonce(ctx, from)
 	if err != nil {
-		return address.Undef, cid.Undef, err
+		return nil, err
 	}
 
 	enc, err := actors.SerializeParams(&actors.ExecParams{
@@ -57,44 +52,116 @@ func (a *PaychAPI) paychCreate(ctx context.Context, from, to address.Address, am
 		GasPrice: types.NewInt(0),
 	}
 
-	ser, err := msg.Serialize()
+	smsg, err := a.WalletSignMessage(ctx, from, msg)
 	if err != nil {
-		return address.Undef, cid.Undef, err
-	}
-
-	sig, err := a.WalletSign(ctx, from, ser)
-	if err != nil {
-		return address.Undef, cid.Undef, err
-	}
-
-	smsg := &types.SignedMessage{
-		Message:   *msg,
-		Signature: *sig,
+		return nil, err
 	}
 
 	if err := a.MpoolPush(ctx, smsg); err != nil {
-		return address.Undef, cid.Undef, err
+		return nil, err
 	}
 
-	mwait, err := a.ChainWaitMsg(ctx, smsg.Cid())
+	mcid := smsg.Cid()
+	mwait, err := a.ChainWaitMsg(ctx, mcid)
 	if err != nil {
-		return address.Undef, cid.Undef, err
+		return nil, err
 	}
 
 	if mwait.Receipt.ExitCode != 0 {
-		return address.Undef, cid.Undef, fmt.Errorf("payment channel creation failed (exit code %d)", mwait.Receipt.ExitCode)
+		return nil, fmt.Errorf("payment channel creation failed (exit code %d)", mwait.Receipt.ExitCode)
 	}
 
 	paychaddr, err := address.NewFromBytes(mwait.Receipt.Return)
 	if err != nil {
-		return address.Undef, cid.Undef, err
+		return nil, err
 	}
 
 	if err := a.PaychMgr.TrackOutboundChannel(ctx, paychaddr); err != nil {
-		return address.Undef, cid.Undef, err
+		return nil, err
 	}
 
-	return paychaddr, msg.Cid(), nil
+	return &api.ChannelInfo{
+		Channel:        paychaddr,
+		ChannelMessage: mcid,
+	}, nil
+}
+
+func (a *PaychAPI) PaychNewPayment(ctx context.Context, from, to address.Address, amount types.BigInt, extra *types.ModVerifyParams, tl uint64, minClose uint64) (*api.PaymentInfo, error) {
+	ch, err := a.PaychMgr.OutboundChanTo(from, to)
+	if err != nil {
+		return nil, err
+	}
+	var chMsg *cid.Cid
+	if ch == address.Undef {
+		// don't have matching channel, open new
+
+		// TODO: this should be more atomic
+		chInfo, err := a.PaychCreate(ctx, from, to, amount)
+		if err != nil {
+			return nil, err
+		}
+		ch = chInfo.Channel
+		chMsg = &chInfo.ChannelMessage
+	} else {
+		// already have chanel to the destination, add funds, and open a new lane
+		// TODO: track free funds in channel
+
+		nonce, err := a.MpoolGetNonce(ctx, from)
+		if err != nil {
+			return nil, err
+		}
+
+		msg := &types.Message{
+			To:       ch,
+			From:     from,
+			Value:    amount,
+			Nonce:    nonce,
+			Method:   0,
+			GasLimit: types.NewInt(1000000),
+			GasPrice: types.NewInt(0),
+		}
+
+		smsg, err := a.WalletSignMessage(ctx, from, msg)
+		if err != nil {
+			return nil, err
+		}
+
+		if err := a.MpoolPush(ctx, smsg); err != nil {
+			return nil, err
+		}
+
+		mwait, err := a.ChainWaitMsg(ctx, smsg.Cid())
+		if err != nil {
+			return nil, err
+		}
+
+		if mwait.Receipt.ExitCode != 0 {
+			return nil, fmt.Errorf("voucher channel creation failed: adding funds (exit code %d)", mwait.Receipt.ExitCode)
+		}
+	}
+
+	lane, err := a.PaychMgr.AllocateLane(ch)
+	if err != nil {
+		return nil, err
+	}
+
+	sv, err := a.paychVoucherCreate(ctx, ch, types.SignedVoucher{
+		Amount: amount,
+		Lane:   lane,
+
+		Extra:          extra,
+		TimeLock:       tl,
+		MinCloseHeight: minClose,
+	})
+	if err != nil {
+		return nil, err
+	}
+
+	return &api.PaymentInfo{
+		Channel:        ch,
+		ChannelMessage: chMsg,
+		Voucher:        sv,
+	}, nil
 }
 
 func (a *PaychAPI) PaychList(ctx context.Context) ([]address.Address, error) {
@@ -107,7 +174,7 @@ func (a *PaychAPI) PaychStatus(ctx context.Context, pch address.Address) (*api.P
 		return nil, err
 	}
 	return &api.PaychStatus{
-		ControlAddr: ci.ControlAddr,
+		ControlAddr: ci.Control,
 		Direction:   api.PCHDir(ci.Direction),
 	}, nil
 }
@@ -118,14 +185,14 @@ func (a *PaychAPI) PaychClose(ctx context.Context, addr address.Address) (cid.Ci
 		return cid.Undef, err
 	}
 
-	nonce, err := a.MpoolGetNonce(ctx, ci.ControlAddr)
+	nonce, err := a.MpoolGetNonce(ctx, ci.Control)
 	if err != nil {
 		return cid.Undef, err
 	}
 
 	msg := &types.Message{
 		To:     addr,
-		From:   ci.ControlAddr,
+		From:   ci.Control,
 		Value:  types.NewInt(0),
 		Method: actors.PCAMethods.Close,
 		Nonce:  nonce,
@@ -134,7 +201,7 @@ func (a *PaychAPI) PaychClose(ctx context.Context, addr address.Address) (cid.Ci
 		GasPrice: types.NewInt(0),
 	}
 
-	smsg, err := a.WalletSignMessage(ctx, ci.ControlAddr, msg)
+	smsg, err := a.WalletSignMessage(ctx, ci.Control, msg)
 	if err != nil {
 		return cid.Undef, err
 	}
@@ -192,7 +259,7 @@ func (a *PaychAPI) paychVoucherCreate(ctx context.Context, pch address.Address, 
 		return nil, err
 	}
 
-	sig, err := a.WalletSign(ctx, ci.ControlAddr, vb)
+	sig, err := a.WalletSign(ctx, ci.Control, vb)
 	if err != nil {
 		return nil, err
 	}
@@ -226,7 +293,7 @@ func (a *PaychAPI) PaychVoucherSubmit(ctx context.Context, ch address.Address, s
 		return cid.Undef, err
 	}
 
-	nonce, err := a.MpoolGetNonce(ctx, ci.ControlAddr)
+	nonce, err := a.MpoolGetNonce(ctx, ci.Control)
 	if err != nil {
 		return cid.Undef, err
 	}
@@ -243,7 +310,7 @@ func (a *PaychAPI) PaychVoucherSubmit(ctx context.Context, ch address.Address, s
 	}
 
 	msg := &types.Message{
-		From:     ci.ControlAddr,
+		From:     ci.Control,
 		To:       ch,
 		Value:    types.NewInt(0),
 		Nonce:    nonce,
@@ -253,7 +320,7 @@ func (a *PaychAPI) PaychVoucherSubmit(ctx context.Context, ch address.Address, s
 		GasPrice: types.NewInt(0),
 	}
 
-	smsg, err := a.WalletSignMessage(ctx, ci.ControlAddr, msg)
+	smsg, err := a.WalletSignMessage(ctx, ci.Control, msg)
 	if err != nil {
 		return cid.Undef, err
 	}

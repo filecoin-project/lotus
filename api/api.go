@@ -2,7 +2,6 @@ package api
 
 import (
 	"context"
-
 	"github.com/ipfs/go-cid"
 	"github.com/ipfs/go-filestore"
 	cbor "github.com/ipfs/go-ipld-cbor"
@@ -86,6 +85,7 @@ type FullNode interface {
 	// ClientImport imports file under the specified path into filestore
 	ClientImport(ctx context.Context, path string) (cid.Cid, error)
 	ClientStartDeal(ctx context.Context, data cid.Cid, miner address.Address, price types.BigInt, blocksDuration uint64) (*cid.Cid, error)
+	ClientListDeals(ctx context.Context) ([]DealInfo, error)
 	ClientHasLocal(ctx context.Context, root cid.Cid) (bool, error)
 	ClientFindData(ctx context.Context, root cid.Cid) ([]QueryOffer, error) // TODO: specify serialization mode we want (defaults to unixfs for now)
 	ClientRetrieve(ctx context.Context, order RetrievalOrder, path string) error
@@ -107,10 +107,11 @@ type FullNode interface {
 	StateGetActor(ctx context.Context, actor address.Address, ts *types.TipSet) (*types.Actor, error)
 	StateReadState(ctx context.Context, act *types.Actor, ts *types.TipSet) (*ActorState, error)
 
-	PaychCreate(ctx context.Context, from, to address.Address, amt types.BigInt) (address.Address, error)
+	PaychCreate(ctx context.Context, from, to address.Address, amt types.BigInt) (*ChannelInfo, error)
 	PaychList(context.Context) ([]address.Address, error)
 	PaychStatus(context.Context, address.Address) (*PaychStatus, error)
 	PaychClose(context.Context, address.Address) (cid.Cid, error)
+	PaychNewPayment(ctx context.Context, from, to address.Address, amount types.BigInt, extra *types.ModVerifyParams, tl uint64, minClose uint64) (*PaymentInfo, error)
 	PaychVoucherCheckValid(context.Context, address.Address, *types.SignedVoucher) error
 	PaychVoucherCheckSpendable(context.Context, address.Address, *types.SignedVoucher, []byte, []byte) (bool, error)
 	PaychVoucherCreate(context.Context, address.Address, types.BigInt, uint64) (*types.SignedVoucher, error)
@@ -160,6 +161,19 @@ type Import struct {
 	Size     uint64
 }
 
+type DealInfo struct {
+	ProposalCid cid.Cid
+	State       DealState
+	Miner       address.Address
+
+	PieceRef cid.Cid
+	CommP    []byte
+	Size     uint64
+
+	TotalPrice types.BigInt
+	Duration   uint64
+}
+
 type MsgWait struct {
 	InBlock cid.Cid
 	Receipt types.MessageReceipt
@@ -192,6 +206,17 @@ const (
 type PaychStatus struct {
 	ControlAddr address.Address
 	Direction   PCHDir
+}
+
+type ChannelInfo struct {
+	Channel        address.Address
+	ChannelMessage cid.Cid
+}
+
+type PaymentInfo struct {
+	Channel        address.Address
+	ChannelMessage *cid.Cid
+	Voucher        *types.SignedVoucher
 }
 
 type MinerPower struct {

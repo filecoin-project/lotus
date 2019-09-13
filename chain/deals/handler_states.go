@@ -3,6 +3,7 @@ package deals
 import (
 	"bytes"
 	"context"
+	"github.com/filecoin-project/go-lotus/api"
 	"github.com/filecoin-project/go-lotus/build"
 
 	cbor "github.com/ipfs/go-ipld-cbor"
@@ -16,13 +17,13 @@ import (
 	"github.com/filecoin-project/go-lotus/storage/sectorblocks"
 )
 
-type handlerFunc func(ctx context.Context, deal MinerDeal) (func(*MinerDeal), error)
+type minerHandlerFunc func(ctx context.Context, deal MinerDeal) (func(*MinerDeal), error)
 
-func (h *Handler) handle(ctx context.Context, deal MinerDeal, cb handlerFunc, next DealState) {
+func (h *Handler) handle(ctx context.Context, deal MinerDeal, cb minerHandlerFunc, next api.DealState) {
 	go func() {
 		mut, err := cb(ctx, deal)
 		select {
-		case h.updated <- dealUpdate{
+		case h.updated <- minerDealUpdate{
 			newState: next,
 			id:       deal.ProposalCid,
 			err:      err,
@@ -106,6 +107,13 @@ func (h *Handler) accept(ctx context.Context, deal MinerDeal) (func(*MinerDeal),
 		return nil, xerrors.Errorf("deal proposal with unsupported serialization: %s", deal.Proposal.SerializationMode)
 	}
 
+	if deal.Proposal.Payment.ChannelMessage != nil {
+		log.Info("waiting for channel message to appear on chain")
+		if _, err := h.full.ChainWaitMsg(ctx, *deal.Proposal.Payment.ChannelMessage); err != nil {
+			return nil, xerrors.Errorf("waiting for paych message: %w", err)
+		}
+	}
+
 	if err := h.validateVouchers(ctx, deal); err != nil {
 		return nil, err
 	}
@@ -118,7 +126,7 @@ func (h *Handler) accept(ctx context.Context, deal MinerDeal) (func(*MinerDeal),
 
 	log.Info("fetching data for a deal")
 	err := h.sendSignedResponse(StorageDealResponse{
-		State:    Accepted,
+		State:    api.DealAccepted,
 		Message:  "",
 		Proposal: deal.ProposalCid,
 	})
@@ -133,7 +141,7 @@ func (h *Handler) accept(ctx context.Context, deal MinerDeal) (func(*MinerDeal),
 
 func (h *Handler) staged(ctx context.Context, deal MinerDeal) (func(*MinerDeal), error) {
 	err := h.sendSignedResponse(StorageDealResponse{
-		State:    Staged,
+		State:    api.DealStaged,
 		Proposal: deal.ProposalCid,
 	})
 	if err != nil {
@@ -234,9 +242,10 @@ func (h *Handler) sealing(ctx context.Context, deal MinerDeal) (func(*MinerDeal)
 	}
 
 	err = h.sendSignedResponse(StorageDealResponse{
-		State:               Sealing,
+		State:               api.DealSealing,
 		Proposal:            deal.ProposalCid,
 		PieceInclusionProof: ip,
+		CommD:               status.CommD[:],
 	})
 	if err != nil {
 		log.Warnf("Sending deal response failed: %s", err)

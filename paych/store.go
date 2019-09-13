@@ -5,6 +5,7 @@ import (
 	"errors"
 	"fmt"
 	"strings"
+	"sync"
 
 	"github.com/filecoin-project/go-lotus/chain/address"
 	"github.com/filecoin-project/go-lotus/chain/types"
@@ -24,6 +25,8 @@ func init() {
 }
 
 type Store struct {
+	lk sync.Mutex // TODO: this can be split per paych
+
 	ds datastore.Batching
 }
 
@@ -45,10 +48,13 @@ type VoucherInfo struct {
 }
 
 type ChannelInfo struct {
-	Channel     address.Address
-	ControlAddr address.Address
-	Direction   int
-	Vouchers    []*VoucherInfo
+	Channel address.Address
+	Control address.Address
+	Target  address.Address
+
+	Direction int
+	Vouchers  []*VoucherInfo
+	NextLane  uint64
 }
 
 func dskeyForChannel(addr address.Address) datastore.Key {
@@ -86,6 +92,9 @@ func (ps *Store) getChannelInfo(addr address.Address) (*ChannelInfo, error) {
 }
 
 func (ps *Store) TrackChannel(ch *ChannelInfo) error {
+	ps.lk.Lock()
+	defer ps.lk.Unlock()
+
 	_, err := ps.getChannelInfo(ch.Channel)
 	switch err {
 	default:
@@ -98,10 +107,14 @@ func (ps *Store) TrackChannel(ch *ChannelInfo) error {
 }
 
 func (ps *Store) ListChannels() ([]address.Address, error) {
+	ps.lk.Lock()
+	defer ps.lk.Unlock()
+
 	res, err := ps.ds.Query(dsq.Query{KeysOnly: true})
 	if err != nil {
 		return nil, err
 	}
+	defer res.Close()
 
 	var out []address.Address
 	for {
@@ -125,7 +138,51 @@ func (ps *Store) ListChannels() ([]address.Address, error) {
 	return out, nil
 }
 
+func (ps *Store) findChan(filter func(*ChannelInfo) bool) (address.Address, error) {
+	ps.lk.Lock()
+	defer ps.lk.Unlock()
+
+	res, err := ps.ds.Query(dsq.Query{})
+	if err != nil {
+		return address.Undef, err
+	}
+	defer res.Close()
+
+	var ci ChannelInfo
+
+	for {
+		res, ok := res.NextSync()
+		if !ok {
+			break
+		}
+
+		if res.Error != nil {
+			return address.Undef, err
+		}
+
+		if err := cbor.DecodeInto(res.Value, &ci); err != nil {
+			return address.Undef, err
+		}
+
+		if !filter(&ci) {
+			continue
+		}
+
+		addr, err := address.NewFromString(strings.TrimPrefix(res.Key, "/"))
+		if err != nil {
+			return address.Undef, xerrors.Errorf("failed reading paych key (%q) from datastore: %w", res.Key, err)
+		}
+
+		return addr, nil
+	}
+
+	return address.Undef, nil
+}
+
 func (ps *Store) AddVoucher(ch address.Address, sv *types.SignedVoucher, proof []byte) error {
+	ps.lk.Lock()
+	defer ps.lk.Unlock()
+
 	ci, err := ps.getChannelInfo(ch)
 	if err != nil {
 		return err
@@ -159,7 +216,26 @@ func (ps *Store) AddVoucher(ch address.Address, sv *types.SignedVoucher, proof [
 		Proof:   proof,
 	})
 
+	if ci.NextLane <= sv.Lane {
+		ci.NextLane = sv.Lane + 1
+	}
+
 	return ps.putChannelInfo(ci)
+}
+
+func (ps *Store) AllocateLane(ch address.Address) (uint64, error) {
+	ps.lk.Lock()
+	defer ps.lk.Unlock()
+
+	ci, err := ps.getChannelInfo(ch)
+	if err != nil {
+		return 0, err
+	}
+
+	out := ci.NextLane
+	ci.NextLane++
+
+	return out, ps.putChannelInfo(ci)
 }
 
 func (ps *Store) VouchersForPaych(ch address.Address) ([]*VoucherInfo, error) {

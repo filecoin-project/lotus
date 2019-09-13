@@ -198,7 +198,7 @@ func (m *Miner) getWorkerAddr(ctx context.Context) (address.Address, error) {
 		To:     m.maddr,
 		From:   m.maddr, // it doesnt like it if we dont give it a from... probably should fix that
 		Method: actors.MAMethods.GetWorkerAddr,
-		Params: actors.EmptyStructCBOR,
+		Params: nil,
 	}
 
 	recpt, err := m.api.StateCall(ctx, msg, nil)

@@ -3,6 +3,8 @@ package paych
 import (
 	"context"
 	"fmt"
+	"math"
+	"strconv"
 
 	logging "github.com/ipfs/go-log"
 
@@ -26,16 +28,38 @@ func NewManager(sm *stmgr.StateManager, pchstore *Store) *Manager {
 	}
 }
 
+func maxLaneFromState(st *actors.PaymentChannelActorState) (uint64, error) {
+	maxLane := uint64(math.MaxUint64)
+	for lane := range st.LaneStates {
+		ilane, err := strconv.ParseUint(lane, 10, 64)
+		if err != nil {
+			return 0, err
+		}
+		if ilane+1 > maxLane+1 {
+			maxLane = ilane
+		}
+	}
+	return maxLane, nil
+}
+
 func (pm *Manager) TrackInboundChannel(ctx context.Context, ch address.Address) error {
 	_, st, err := pm.loadPaychState(ctx, ch)
 	if err != nil {
 		return err
 	}
 
+	maxLane, err := maxLaneFromState(st)
+	if err != nil {
+		return err
+	}
+
 	return pm.store.TrackChannel(&ChannelInfo{
-		Channel:     ch,
-		Direction:   DirInbound,
-		ControlAddr: st.To,
+		Channel: ch,
+		Control: st.To,
+		Target:  st.From,
+
+		Direction: DirInbound,
+		NextLane:  maxLane + 1,
 	})
 }
 
@@ -45,10 +69,18 @@ func (pm *Manager) TrackOutboundChannel(ctx context.Context, ch address.Address)
 		return err
 	}
 
+	maxLane, err := maxLaneFromState(st)
+	if err != nil {
+		return err
+	}
+
 	return pm.store.TrackChannel(&ChannelInfo{
-		Channel:     ch,
-		Direction:   DirOutbound,
-		ControlAddr: st.From,
+		Channel: ch,
+		Control: st.From,
+		Target:  st.To,
+
+		Direction: DirOutbound,
+		NextLane:  maxLane + 1,
 	})
 }
 
@@ -197,10 +229,23 @@ func (pm *Manager) AddVoucher(ctx context.Context, ch address.Address, sv *types
 	return pm.store.AddVoucher(ch, sv, proof)
 }
 
+func (pm *Manager) AllocateLane(ch address.Address) (uint64, error) {
+	return pm.store.AllocateLane(ch)
+}
+
 func (pm *Manager) ListVouchers(ctx context.Context, ch address.Address) ([]*VoucherInfo, error) {
 	// TODO: just having a passthrough method like this feels odd. Seems like
 	// there should be some filtering we're doing here
 	return pm.store.VouchersForPaych(ch)
+}
+
+func (pm *Manager) OutboundChanTo(from, to address.Address) (address.Address, error) {
+	return pm.store.findChan(func(ci *ChannelInfo) bool {
+		if ci.Direction != DirOutbound {
+			return false
+		}
+		return ci.Control == from && ci.Target == to
+	})
 }
 
 func (pm *Manager) NextNonceForLane(ctx context.Context, ch address.Address, lane uint64) (uint64, error) {

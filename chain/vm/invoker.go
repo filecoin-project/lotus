@@ -6,11 +6,10 @@ import (
 	"reflect"
 
 	"github.com/ipfs/go-cid"
-	cbor "github.com/ipfs/go-ipld-cbor"
 	cbg "github.com/whyrusleeping/cbor-gen"
 	"golang.org/x/xerrors"
 
-	actors "github.com/filecoin-project/go-lotus/chain/actors"
+	"github.com/filecoin-project/go-lotus/chain/actors"
 	"github.com/filecoin-project/go-lotus/chain/actors/aerrors"
 	"github.com/filecoin-project/go-lotus/chain/types"
 )
@@ -161,7 +160,12 @@ func DumpActorState(code cid.Cid, b []byte) (interface{}, error) {
 	}
 
 	rv := reflect.New(typ)
-	if err := cbor.DecodeInto(b, rv.Interface()); err != nil {
+	um, ok := rv.Interface().(cbg.CBORUnmarshaler)
+	if !ok {
+		return nil, xerrors.New("state type does not implement CBORUnmarshaler")
+	}
+
+	if err := um.UnmarshalCBOR(bytes.NewReader(b)); err != nil {
 		return nil, err
 	}
 
