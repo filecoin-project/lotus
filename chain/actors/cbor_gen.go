@@ -2576,7 +2576,7 @@ func (t *UpdateStorageParams) UnmarshalCBOR(r io.Reader) error {
 	return nil
 }
 
-func (t *SlashConsensusFaultParams) MarshalCBOR(w io.Writer) error {
+func (t *ArbitrateConsensusFaultParams) MarshalCBOR(w io.Writer) error {
 	if t == nil {
 		_, err := w.Write(cbg.CborNull)
 		return err
@@ -2597,7 +2597,7 @@ func (t *SlashConsensusFaultParams) MarshalCBOR(w io.Writer) error {
 	return nil
 }
 
-func (t *SlashConsensusFaultParams) UnmarshalCBOR(r io.Reader) error {
+func (t *ArbitrateConsensusFaultParams) UnmarshalCBOR(r io.Reader) error {
 	br := cbg.GetPeeker(r)
 
 	maj, extra, err := cbg.CborReadHeader(br)

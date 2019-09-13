@@ -40,7 +40,7 @@ func MakeGenesisMem(out io.Writer) func(bs dtypes.ChainBlockstore, w *wallet.Wal
 				PeerIDs: []peer.ID{"peerID 1"},
 			}
 			alloc := map[address.Address]types.BigInt{
-				w: types.NewInt(100000),
+				w: types.NewInt(10000000),
 			}
 
 			b, err := gen.MakeGenesisBlock(bs, alloc, gmc, 100000)

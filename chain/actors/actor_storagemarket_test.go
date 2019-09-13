@@ -11,10 +11,12 @@ import (
 	. "github.com/filecoin-project/go-lotus/chain/actors"
 	"github.com/filecoin-project/go-lotus/chain/address"
 	"github.com/filecoin-project/go-lotus/chain/types"
+	"github.com/filecoin-project/go-lotus/chain/vm"
 	"github.com/filecoin-project/go-lotus/chain/wallet"
 
 	cid "github.com/ipfs/go-cid"
 	hamt "github.com/ipfs/go-hamt-ipld"
+	bstore "github.com/ipfs/go-ipfs-blockstore"
 	cbor "github.com/ipfs/go-ipld-cbor"
 	mh "github.com/multiformats/go-multihash"
 	"github.com/stretchr/testify/assert"
@@ -33,7 +35,7 @@ func TestStorageMarketCreateAndSlashMiner(t *testing.T) {
 	var minerAddr address.Address
 	{
 		// cheating the bootstrapping problem
-		cheatStorageMarketTotal(t, h)
+		cheatStorageMarketTotal(t, h.vm, h.cs.Blockstore())
 
 		ret, _ := h.InvokeWithValue(t, ownerAddr, StorageMarketAddress, SMAMethods.CreateStorageMiner,
 			types.NewInt(500000),
@@ -91,8 +93,8 @@ func TestStorageMarketCreateAndSlashMiner(t *testing.T) {
 		signBlock(t, h.w, workerAddr, b1)
 		signBlock(t, h.w, workerAddr, b2)
 
-		ret, _ := h.Invoke(t, ownerAddr, StorageMarketAddress, SMAMethods.SlashConsensusFault,
-			&SlashConsensusFaultParams{
+		ret, _ := h.Invoke(t, ownerAddr, StorageMarketAddress, SMAMethods.ArbitrateConsensusFault,
+			&ArbitrateConsensusFaultParams{
 				Block1: b1,
 				Block2: b2,
 			})
@@ -112,15 +114,15 @@ func TestStorageMarketCreateAndSlashMiner(t *testing.T) {
 	}
 }
 
-func cheatStorageMarketTotal(t *testing.T, h *Harness) {
+func cheatStorageMarketTotal(t *testing.T, vm *vm.VM, bs bstore.Blockstore) {
 	t.Helper()
 
-	sma, err := h.vm.StateTree().GetActor(StorageMarketAddress)
+	sma, err := vm.StateTree().GetActor(StorageMarketAddress)
 	if err != nil {
 		t.Fatal(err)
 	}
 
-	cst := hamt.CSTFromBstore(h.cs.Blockstore())
+	cst := hamt.CSTFromBstore(bs)
 
 	var smastate StorageMarketState
 	if err := cst.Get(context.TODO(), sma.Head, &smastate); err != nil {
@@ -136,7 +138,7 @@ func cheatStorageMarketTotal(t *testing.T, h *Harness) {
 
 	sma.Head = c
 
-	if err := h.vm.StateTree().SetActor(StorageMarketAddress, sma); err != nil {
+	if err := vm.StateTree().SetActor(StorageMarketAddress, sma); err != nil {
 		t.Fatal(err)
 	}
 }
