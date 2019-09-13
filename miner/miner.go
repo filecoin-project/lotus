@@ -198,7 +198,7 @@ func (m *Miner) mineOne(ctx context.Context, base *MiningBase) (*chain.BlockMsg,
 		return nil, errors.Wrap(err, "scratching ticket failed")
 	}
 
-	win, proof, err := gen.IsRoundWinner(ctx, base.ts, base.tickets, m.addresses[0], &m.api)
+	win, proof, err := gen.IsRoundWinner(ctx, base.ts, append(base.tickets, ticket), m.addresses[0], &m.api)
 	if err != nil {
 		return nil, errors.Wrap(err, "failed to check if we win next round")
 	}
