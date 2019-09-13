@@ -15,6 +15,9 @@ type clientHandlerFunc func(ctx context.Context, deal ClientDeal) error
 func (c *Client) handle(ctx context.Context, deal ClientDeal, cb clientHandlerFunc, next api.DealState) {
 	go func() {
 		err := cb(ctx, deal)
+		if err != nil {
+			next = api.DealError
+		}
 		select {
 		case c.updated <- clientDealUpdate{
 			newState: next,

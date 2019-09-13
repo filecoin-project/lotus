@@ -11,6 +11,8 @@ const dealStates = [
   "Staged",
   "Sealing",
   "Complete",
+  "Error",
+  "Expired"
 ]
 
 

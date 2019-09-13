@@ -132,17 +132,17 @@ func (c *Client) onIncoming(deal ClientDeal) {
 
 func (c *Client) onUpdated(ctx context.Context, update clientDealUpdate) {
 	log.Infof("Deal %s updated state to %d", update.id, update.newState)
-	if update.err != nil {
-		log.Errorf("deal %s failed: %s", update.id, update.err)
-		c.failDeal(update.id, update.err)
-		return
-	}
 	var deal ClientDeal
 	err := c.deals.MutateClient(update.id, func(d *ClientDeal) error {
 		d.State = update.newState
 		deal = *d
 		return nil
 	})
+	if update.err != nil {
+		log.Errorf("deal %s failed: %s", update.id, update.err)
+		c.failDeal(update.id, update.err)
+		return
+	}
 	if err != nil {
 		c.failDeal(update.id, err)
 		return

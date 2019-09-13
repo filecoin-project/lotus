@@ -17,6 +17,11 @@ const (
 	DealStaged
 	DealSealing
 	DealComplete
+
+	// Client specific
+
+	DealError // deal failed with an unexpected error
+	DealExpired
 )
 
 // TODO: check if this exists anywhere else

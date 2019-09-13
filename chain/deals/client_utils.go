@@ -17,10 +17,6 @@ import (
 )
 
 func (c *Client) failDeal(id cid.Cid, cerr error) {
-	if err := c.deals.End(id); err != nil {
-		log.Warnf("deals.End: %s", err)
-	}
-
 	if cerr == nil {
 		_, f, l, _ := runtime.Caller(1)
 		cerr = xerrors.Errorf("unknown error (fail called at %s:%d)", f, l)
