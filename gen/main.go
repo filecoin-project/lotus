@@ -5,6 +5,7 @@ import (
 	"os"
 
 	"github.com/filecoin-project/go-lotus/chain/actors"
+	"github.com/filecoin-project/go-lotus/chain/types"
 	gen "github.com/whyrusleeping/cbor-gen"
 )
 
