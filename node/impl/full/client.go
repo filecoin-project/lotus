@@ -251,3 +251,7 @@ func (a *ClientAPI) ClientRetrieve(ctx context.Context, order api.RetrievalOrder
 
 	return outFile.Close()
 }
+
+func (a *ClientAPI) ClientQueryAsk(ctx context.Context, p peer.ID, miner address.Address) (*types.SignedStorageAsk, error) {
+	return a.DealClient.QueryAsk(ctx, p, miner)
+}

@@ -104,6 +104,7 @@ func HandleDeals(mctx helpers.MetricsCtx, lc fx.Lifecycle, host host.Host, h *de
 		OnStart: func(context.Context) error {
 			h.Run(ctx)
 			host.SetStreamHandler(deals.ProtocolID, h.HandleStream)
+			host.SetStreamHandler(deals.AskProtocolID, h.HandleAskStream)
 			return nil
 		},
 		OnStop: func(context.Context) error {

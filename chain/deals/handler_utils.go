@@ -2,8 +2,9 @@ package deals
 
 import (
 	"context"
-	"github.com/filecoin-project/go-lotus/api"
 	"runtime"
+
+	"github.com/filecoin-project/go-lotus/api"
 
 	"github.com/filecoin-project/go-lotus/chain/actors"
 	"github.com/filecoin-project/go-lotus/chain/address"
@@ -73,16 +74,7 @@ func (h *Handler) sendSignedResponse(resp StorageDealResponse) error {
 		return xerrors.Errorf("serializing response: %w", err)
 	}
 
-	getworker := &types.Message{
-		To:     h.actor,
-		From:   h.actor,
-		Method: actors.MAMethods.GetWorkerAddr,
-	}
-	r, err := h.full.StateCall(context.TODO(), getworker, nil)
-	if err != nil {
-		return xerrors.Errorf("getting worker address: %w", err)
-	}
-	worker, err := address.NewFromBytes(r.Return)
+	worker, err := h.getWorker(h.actor)
 	if err != nil {
 		return err
 	}
@@ -104,4 +96,22 @@ func (h *Handler) sendSignedResponse(resp StorageDealResponse) error {
 		delete(h.conns, resp.Proposal)
 	}
 	return err
+}
+
+func (h *Handler) getWorker(miner address.Address) (address.Address, error) {
+	getworker := &types.Message{
+		To:     miner,
+		From:   miner,
+		Method: actors.MAMethods.GetWorkerAddr,
+	}
+	r, err := h.full.StateCall(context.TODO(), getworker, nil)
+	if err != nil {
+		return address.Undef, xerrors.Errorf("getting worker address: %w", err)
+	}
+
+	if r.ExitCode != 0 {
+		return address.Undef, xerrors.Errorf("getWorker call failed: %d", r.ExitCode)
+	}
+
+	return address.NewFromBytes(r.Return)
 }
