@@ -373,6 +373,15 @@ func (syncer *Syncer) validateTickets(ctx context.Context, mworker address.Addre
 	return nil
 }
 
+func checkBlockSignature(blk *types.BlockHeader, worker address.Address) error {
+	sigb, err := blk.SigningBytes()
+	if err != nil {
+		return xerrors.Errorf("failed to get block signing bytes: %w", err)
+	}
+
+	return blk.BlockSig.Verify(worker, sigb)
+}
+
 // Should match up with 'Semantical Validation' in validation.md in the spec
 func (syncer *Syncer) ValidateBlock(ctx context.Context, b *types.FullBlock) error {
 	h := b.Header
@@ -402,6 +411,10 @@ func (syncer *Syncer) ValidateBlock(ctx context.Context, b *types.FullBlock) err
 	waddr, err := stmgr.GetMinerWorker(ctx, syncer.sm, stateroot, h.Miner)
 	if err != nil {
 		return xerrors.Errorf("GetMinerWorker failed: %w", err)
+	}
+
+	if err := checkBlockSignature(h, waddr); err != nil {
+		return xerrors.Errorf("check block signature failed: %w", err)
 	}
 
 	if err := syncer.validateTickets(ctx, waddr, h.Tickets, baseTs); err != nil {

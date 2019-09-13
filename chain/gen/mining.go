@@ -137,9 +137,9 @@ func MinerCreateBlock(ctx context.Context, sm *stmgr.StateManager, w *wallet.Wal
 
 	// TODO: set timestamp
 
-	nosigbytes, err := next.Serialize()
+	nosigbytes, err := next.SigningBytes()
 	if err != nil {
-		return nil, xerrors.Errorf("failed to serialize block header with no signature: %w", err)
+		return nil, xerrors.Errorf("failed to get signing bytes for block: %w", err)
 	}
 
 	waddr, err := vm.ResolveToKeyAddr(vmi.StateTree(), cst, worker)
