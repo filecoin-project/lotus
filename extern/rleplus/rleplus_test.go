@@ -6,14 +6,12 @@ import (
 	"sort"
 	"testing"
 
-	"github.com/filecoin-project/go-filecoin/rleplus"
-	"github.com/filecoin-project/go-filecoin/rleplus/internal"
-	tf "github.com/filecoin-project/go-filecoin/testhelpers/testflags"
+	"github.com/filecoin-project/go-lotus/extern/rleplus"
+	bitvector "github.com/filecoin-project/go-lotus/extern/rleplus/internal"
 	"gotest.tools/assert"
 )
 
 func TestRleplus(t *testing.T) {
-	tf.UnitTest(t)
 
 	t.Run("Encode", func(t *testing.T) {
 		// Encode an intset

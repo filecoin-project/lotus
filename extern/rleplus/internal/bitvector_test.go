@@ -3,14 +3,12 @@ package bitvector_test
 import (
 	"testing"
 
-	"github.com/filecoin-project/go-filecoin/rleplus/internal"
-	tf "github.com/filecoin-project/go-filecoin/testhelpers/testflags"
 	"github.com/stretchr/testify/assert"
+
+	bitvector "github.com/filecoin-project/go-lotus/extern/rleplus/internal"
 )
 
 func TestBitVector(t *testing.T) {
-	tf.UnitTest(t)
-
 	t.Run("zero value", func(t *testing.T) {
 		var v bitvector.BitVector
 

@@ -6,7 +6,7 @@ import (
 	"fmt"
 	"sort"
 
-	"github.com/filecoin-project/go-filecoin/rleplus/internal"
+	bitvector "github.com/filecoin-project/go-lotus/extern/rleplus/internal"
 )
 
 // Version is the 2 lowest bits of this constant
