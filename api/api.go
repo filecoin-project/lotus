@@ -2,6 +2,7 @@ package api
 
 import (
 	"context"
+
 	"github.com/ipfs/go-cid"
 	"github.com/ipfs/go-filestore"
 	cbor "github.com/ipfs/go-ipld-cbor"
@@ -89,6 +90,7 @@ type FullNode interface {
 	ClientHasLocal(ctx context.Context, root cid.Cid) (bool, error)
 	ClientFindData(ctx context.Context, root cid.Cid) ([]QueryOffer, error) // TODO: specify serialization mode we want (defaults to unixfs for now)
 	ClientRetrieve(ctx context.Context, order RetrievalOrder, path string) error
+	ClientQueryAsk(ctx context.Context, p peer.ID, miner address.Address) (*types.SignedStorageAsk, error)
 
 	// ClientUnimport removes references to the specified file from filestore
 	//ClientUnimport(path string)

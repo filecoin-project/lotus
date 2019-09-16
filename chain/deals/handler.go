@@ -3,13 +3,15 @@ package deals
 import (
 	"context"
 	"math"
+	"sync"
 
-	"github.com/ipfs/go-cid"
-	"github.com/ipfs/go-datastore"
+	cid "github.com/ipfs/go-cid"
+	datastore "github.com/ipfs/go-datastore"
 	"github.com/ipfs/go-datastore/namespace"
 	cbor "github.com/ipfs/go-ipld-cbor"
 	inet "github.com/libp2p/go-libp2p-core/network"
 	"github.com/libp2p/go-libp2p-core/peer"
+	"golang.org/x/xerrors"
 
 	"github.com/filecoin-project/go-lotus/api"
 	"github.com/filecoin-project/go-lotus/chain/address"
@@ -37,6 +39,10 @@ type MinerDeal struct {
 
 type Handler struct {
 	pricePerByteBlock types.BigInt // how much we want for storing one byte for one block
+	minPieceSize      uint64
+
+	ask   *types.SignedStorageAsk
+	askLk sync.Mutex
 
 	secst *sectorblocks.SectorBlocks
 	full  api.FullNode
@@ -46,6 +52,8 @@ type Handler struct {
 	dag dtypes.StagingDAG
 
 	deals MinerStateStore
+	ds    dtypes.MetadataDS
+
 	conns map[cid.Cid]inet.Stream
 
 	actor address.Address
@@ -73,12 +81,13 @@ func NewHandler(ds dtypes.MetadataDS, secst *sectorblocks.SectorBlocks, dag dtyp
 		return nil, err
 	}
 
-	return &Handler{
+	h := &Handler{
 		secst: secst,
 		dag:   dag,
 		full:  fullNode,
 
 		pricePerByteBlock: types.NewInt(3), // TODO: allow setting
+		minPieceSize:      1,
 
 		conns: map[cid.Cid]inet.Stream{},
 
@@ -90,7 +99,22 @@ func NewHandler(ds dtypes.MetadataDS, secst *sectorblocks.SectorBlocks, dag dtyp
 		actor: minerAddress,
 
 		deals: MinerStateStore{StateStore{ds: namespace.Wrap(ds, datastore.NewKey("/deals/client"))}},
-	}, nil
+		ds:    ds,
+	}
+
+	if err := h.tryLoadAsk(); err != nil {
+		return nil, err
+	}
+
+	if h.ask == nil {
+		// TODO: we should be fine with this state, and just say it means 'not actively accepting deals'
+		// for now... lets just set a price
+		if err := h.SetPrice(types.NewInt(3), 1000000); err != nil {
+			return nil, xerrors.Errorf("failed setting a default price: %w", err)
+		}
+	}
+
+	return h, nil
 }
 
 func (h *Handler) Run(ctx context.Context) {

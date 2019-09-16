@@ -5,9 +5,11 @@ import (
 	"strconv"
 
 	"github.com/ipfs/go-cid"
+	"github.com/libp2p/go-libp2p-core/peer"
 	"golang.org/x/xerrors"
 	"gopkg.in/urfave/cli.v2"
 
+	actors "github.com/filecoin-project/go-lotus/chain/actors"
 	"github.com/filecoin-project/go-lotus/chain/address"
 	"github.com/filecoin-project/go-lotus/chain/types"
 )
@@ -21,6 +23,7 @@ var clientCmd = &cli.Command{
 		clientDealCmd,
 		clientFindCmd,
 		clientRetrieveCmd,
+		clientQueryAskCmd,
 	},
 }
 
@@ -204,5 +207,71 @@ var clientRetrieveCmd = &cli.Command{
 			fmt.Println("Success")
 		}
 		return err
+	},
+}
+
+var clientQueryAskCmd = &cli.Command{
+	Name:  "query-ask",
+	Usage: "find a miners ask",
+	Flags: []cli.Flag{
+		&cli.StringFlag{
+			Name:  "peerid",
+			Usage: "specify peer ID of node to make query against",
+		},
+	},
+	Action: func(cctx *cli.Context) error {
+		if cctx.NArg() != 1 {
+			fmt.Println("Usage: query-ask [address]")
+			return nil
+		}
+
+		maddr, err := address.NewFromString(cctx.Args().First())
+		if err != nil {
+			return err
+		}
+
+		api, err := GetFullNodeAPI(cctx)
+		if err != nil {
+			return err
+		}
+		ctx := ReqContext(cctx)
+
+		var pid peer.ID
+		if pidstr := cctx.String("peerid"); pidstr != "" {
+			p, err := peer.IDFromString(pidstr)
+			if err != nil {
+				return err
+			}
+			pid = p
+		} else {
+			ret, err := api.StateCall(ctx, &types.Message{
+				To:     maddr,
+				From:   maddr,
+				Method: actors.MAMethods.GetPeerID,
+			}, nil)
+			if err != nil {
+				return xerrors.Errorf("failed to get peerID for miner: %w", err)
+			}
+
+			if ret.ExitCode != 0 {
+				return fmt.Errorf("call to GetPeerID was unsuccesful (exit code %d)", ret.ExitCode)
+			}
+
+			p, err := peer.IDFromBytes(ret.Return)
+			if err != nil {
+				return err
+			}
+
+			pid = p
+		}
+
+		ask, err := api.ClientQueryAsk(ctx, pid, maddr)
+		if err != nil {
+			return err
+		}
+
+		fmt.Printf("Ask: %s\n", maddr)
+		fmt.Printf("Price: %s\n", ask.Ask.Price)
+		return nil
 	},
 }

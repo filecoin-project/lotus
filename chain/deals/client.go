@@ -12,13 +12,15 @@ import (
 	"github.com/libp2p/go-libp2p-core/host"
 	inet "github.com/libp2p/go-libp2p-core/network"
 	"github.com/libp2p/go-libp2p-core/peer"
+	"golang.org/x/xerrors"
 
 	"github.com/filecoin-project/go-lotus/api"
 	"github.com/filecoin-project/go-lotus/chain/actors"
 	"github.com/filecoin-project/go-lotus/chain/address"
-	"github.com/filecoin-project/go-lotus/chain/store"
+	"github.com/filecoin-project/go-lotus/chain/stmgr"
 	"github.com/filecoin-project/go-lotus/chain/types"
 	"github.com/filecoin-project/go-lotus/chain/wallet"
+	"github.com/filecoin-project/go-lotus/lib/cborrpc"
 	"github.com/filecoin-project/go-lotus/node/modules/dtypes"
 	"github.com/filecoin-project/go-lotus/retrieval/discovery"
 )
@@ -45,7 +47,7 @@ type ClientDeal struct {
 }
 
 type Client struct {
-	cs        *store.ChainStore
+	sm        *stmgr.StateManager
 	h         host.Host
 	w         *wallet.Wallet
 	dag       dtypes.ClientDAG
@@ -67,9 +69,9 @@ type clientDealUpdate struct {
 	err      error
 }
 
-func NewClient(cs *store.ChainStore, h host.Host, w *wallet.Wallet, ds dtypes.MetadataDS, dag dtypes.ClientDAG, discovery *discovery.Local) *Client {
+func NewClient(sm *stmgr.StateManager, h host.Host, w *wallet.Wallet, ds dtypes.MetadataDS, dag dtypes.ClientDAG, discovery *discovery.Local) *Client {
 	c := &Client{
-		cs:        cs,
+		sm:        sm,
 		h:         h,
 		w:         w,
 		dag:       dag,
@@ -229,6 +231,39 @@ func (c *Client) Start(ctx context.Context, p ClientDealProposal, vd *actors.Pie
 		Address: proposal.MinerAddress,
 		ID:      deal.Miner,
 	})
+}
+
+func (c *Client) QueryAsk(ctx context.Context, p peer.ID, a address.Address) (*types.SignedStorageAsk, error) {
+	s, err := c.h.NewStream(ctx, p, AskProtocolID)
+	if err != nil {
+		return nil, err
+	}
+
+	req := &AskRequest{
+		Miner: a,
+	}
+	if err := cborrpc.WriteCborRPC(s, req); err != nil {
+		return nil, xerrors.Errorf("failed to send ask request: %w", err)
+	}
+
+	var out AskResponse
+	if err := cborrpc.ReadCborRPC(s, &out); err != nil {
+		return nil, xerrors.Errorf("failed to read ask response: %w", err)
+	}
+
+	if out.Ask == nil {
+		return nil, xerrors.Errorf("got no ask back")
+	}
+
+	if out.Ask.Ask.Miner != a {
+		return nil, xerrors.Errorf("got back ask for wrong miner")
+	}
+
+	if err := c.checkAskSignature(out.Ask); err != nil {
+		return nil, xerrors.Errorf("ask was not properly signed")
+	}
+
+	return out.Ask, nil
 }
 
 func (c *Client) List() ([]ClientDeal, error) {
