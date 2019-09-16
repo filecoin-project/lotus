@@ -105,6 +105,7 @@ type FullNode interface {
 	StateMinerProvingSet(context.Context, address.Address) ([]*SectorInfo, error)
 	StateMinerPower(context.Context, address.Address, *types.TipSet) (MinerPower, error)
 	StateMinerWorker(context.Context, address.Address, *types.TipSet) (address.Address, error)
+	StateMinerPeerID(ctx context.Context, m address.Address, ts *types.TipSet) (peer.ID, error)
 	// if tipset is nil, we'll use heaviest
 	StateCall(context.Context, *types.Message, *types.TipSet) (*types.MessageReceipt, error)
 	StateGetActor(ctx context.Context, actor address.Address, ts *types.TipSet) (*types.Actor, error)

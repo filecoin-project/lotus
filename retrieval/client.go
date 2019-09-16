@@ -33,8 +33,8 @@ type Client struct {
 	payapi payapi.PaychAPI
 }
 
-func NewClient(h host.Host) *Client {
-	return &Client{h: h}
+func NewClient(h host.Host, pmgr *paych.Manager, payapi payapi.PaychAPI) *Client {
+	return &Client{h: h, pmgr: pmgr, payapi: payapi}
 }
 
 func (c *Client) Query(ctx context.Context, p discovery.RetrievalPeer, data cid.Cid) api.QueryOffer {

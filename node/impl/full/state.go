@@ -5,24 +5,24 @@ import (
 	"fmt"
 	"strconv"
 
+	"github.com/ipfs/go-hamt-ipld"
+	cbor "github.com/ipfs/go-ipld-cbor"
+	"github.com/libp2p/go-libp2p-core/peer"
+	"go.uber.org/fx"
+	"golang.org/x/xerrors"
+
+	"github.com/filecoin-project/go-lotus/api"
 	"github.com/filecoin-project/go-lotus/chain"
+	"github.com/filecoin-project/go-lotus/chain/actors"
+	"github.com/filecoin-project/go-lotus/chain/address"
 	"github.com/filecoin-project/go-lotus/chain/gen"
+	"github.com/filecoin-project/go-lotus/chain/state"
 	"github.com/filecoin-project/go-lotus/chain/stmgr"
 	"github.com/filecoin-project/go-lotus/chain/store"
 	"github.com/filecoin-project/go-lotus/chain/types"
 	"github.com/filecoin-project/go-lotus/chain/vm"
 	"github.com/filecoin-project/go-lotus/chain/wallet"
 	"github.com/filecoin-project/go-lotus/lib/bufbstore"
-	"golang.org/x/xerrors"
-
-	"github.com/filecoin-project/go-lotus/api"
-	"github.com/filecoin-project/go-lotus/chain/actors"
-	"github.com/filecoin-project/go-lotus/chain/address"
-	"github.com/filecoin-project/go-lotus/chain/state"
-
-	"github.com/ipfs/go-hamt-ipld"
-	cbor "github.com/ipfs/go-ipld-cbor"
-	"go.uber.org/fx"
 )
 
 type StateAPI struct {
@@ -184,6 +184,23 @@ func (a *StateAPI) StateMinerWorker(ctx context.Context, m address.Address, ts *
 	}
 
 	return w, nil
+}
+
+func (a *StateAPI) StateMinerPeerID(ctx context.Context, m address.Address, ts *types.TipSet) (peer.ID, error) {
+	ret, err := a.StateManager.Call(ctx, &types.Message{
+		From:   m,
+		To:     m,
+		Method: actors.MAMethods.GetPeerID,
+	}, ts)
+	if err != nil {
+		return "", xerrors.Errorf("failed to get miner worker addr: %w", err)
+	}
+
+	if ret.ExitCode != 0 {
+		return "", xerrors.Errorf("failed to get miner worker addr (exit code %d)", ret.ExitCode)
+	}
+
+	return peer.IDFromBytes(ret.Return)
 }
 
 func (a *StateAPI) StateCall(ctx context.Context, msg *types.Message, ts *types.TipSet) (*types.MessageReceipt, error) {

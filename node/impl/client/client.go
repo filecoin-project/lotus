@@ -241,6 +241,15 @@ func (a *API) ClientListImports(ctx context.Context) ([]api.Import, error) {
 }
 
 func (a *API) ClientRetrieve(ctx context.Context, order api.RetrievalOrder, path string) error {
+	if order.MinerPeerID == "" {
+		pid, err := a.StateMinerPeerID(ctx, order.Miner, nil)
+		if err != nil {
+			return err
+		}
+
+		order.MinerPeerID = pid
+	}
+
 	outFile, err := os.OpenFile(path, os.O_TRUNC|os.O_CREATE|os.O_WRONLY, 0777)
 	if err != nil {
 		return err

@@ -79,6 +79,7 @@ type FullNodeStruct struct {
 		StateMinerProvingSet func(context.Context, address.Address) ([]*SectorInfo, error)                       `perm:"read"`
 		StateMinerPower      func(context.Context, address.Address, *types.TipSet) (MinerPower, error)           `perm:"read"`
 		StateMinerWorker     func(context.Context, address.Address, *types.TipSet) (address.Address, error)      `perm:"read"`
+		StateMinerPeerID     func(ctx context.Context, m address.Address, ts *types.TipSet) (peer.ID, error)`perm:"read"`
 		StateCall            func(context.Context, *types.Message, *types.TipSet) (*types.MessageReceipt, error) `perm:"read"`
 		StateGetActor        func(context.Context, address.Address, *types.TipSet) (*types.Actor, error)         `perm:"read"`
 		StateReadState       func(context.Context, *types.Actor, *types.TipSet) (*ActorState, error)             `perm:"read"`
@@ -291,6 +292,10 @@ func (c *FullNodeStruct) StateMinerPower(ctx context.Context, a address.Address,
 
 func (c *FullNodeStruct) StateMinerWorker(ctx context.Context, m address.Address, ts *types.TipSet) (address.Address, error) {
 	return c.Internal.StateMinerWorker(ctx, m, ts)
+}
+
+func (c *FullNodeStruct) StateMinerPeerID(ctx context.Context, m address.Address, ts *types.TipSet) (peer.ID, error) {
+	return c.Internal.StateMinerPeerID(ctx, m, ts)
 }
 
 func (c *FullNodeStruct) StateCall(ctx context.Context, msg *types.Message, ts *types.TipSet) (*types.MessageReceipt, error) {
