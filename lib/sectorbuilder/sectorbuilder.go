@@ -81,10 +81,10 @@ func (sb *SectorBuilder) GetAllStagedSectors() ([]StagedSectorMetadata, error) {
 	return sectorbuilder.GetAllStagedSectors(sb.handle)
 }
 
-func (sb *SectorBuilder) GeneratePoSt(sortedCommRs [][CommLen]byte, challengeSeed [CommLen]byte) ([][]byte, []uint64, error) {
+func (sb *SectorBuilder) GeneratePoSt(sectorInfo sectorbuilder.SortedSectorInfo, challengeSeed [CommLen]byte, faults []uint64) ([]byte, error) {
 	// Wait, this is a blocking method with no way of interrupting it?
 	// does it checkpoint itself?
-	return sectorbuilder.GeneratePoSt(sb.handle, sortedCommRs, challengeSeed)
+	return sectorbuilder.GeneratePoSt(sb.handle, sectorInfo, challengeSeed, faults)
 }
 
 var UserBytesForSectorSize = sectorbuilder.GetMaxUserBytesPerStagedSector
@@ -95,9 +95,8 @@ func VerifySeal(sectorSize uint64, commR, commD, commRStar []byte, proverID addr
 	copy(commDa[:], commD)
 	copy(commRStara[:], commRStar)
 	proverIDa := addressToProverID(proverID)
-	sectorIDa := sectorIDtoBytes(sectorID)
 
-	return sectorbuilder.VerifySeal(sectorSize, commRa, commDa, commRStara, proverIDa, sectorIDa, proof)
+	return sectorbuilder.VerifySeal(sectorSize, commRa, commDa, commRStara, proverIDa, sectorID, proof)
 }
 
 func VerifyPieceInclusionProof(sectorSize uint64, pieceSize uint64, commP []byte, commD []byte, proof []byte) (bool, error) {

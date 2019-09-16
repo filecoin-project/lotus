@@ -11,3 +11,5 @@ build/.*
 
 *-fuzz.zip
 /chain/types/work_msg/
+bin/ipget
+bin/tmp/*
