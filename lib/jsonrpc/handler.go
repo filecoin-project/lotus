@@ -212,7 +212,7 @@ func (h handlers) handle(ctx context.Context, req request, w func(func(io.Writer
 	if handler.errOut != -1 {
 		err := callResult[handler.errOut].Interface()
 		if err != nil {
-			log.Warnf("error in RPC call: %s", err)
+			log.Warnf("error in RPC call to '%s': %s", req.Method, err)
 			resp.Error = &respError{
 				Code:    1,
 				Message: err.(error).Error(),
