@@ -36,6 +36,7 @@ class Block extends React.Component {
         <div>
           <Address client={this.props.conn} addr={m.From} mountWindow={this.props.mountWindow}/><b>&nbsp;=>&nbsp;</b>
           <Address client={this.props.conn} addr={m.To} mountWindow={this.props.mountWindow} transfer={m.Value} method={m.Method}/>
+          <span>&nbsp;N{m.Nonce}</span>
           <span>&nbsp;{m.receipt.GasUsed}Gas</span>
           {m.receipt.ExitCode !== 0 ? <span>&nbsp;<b>EXIT:{m.receipt.ExitCode}</b></span> : <span/>}
         </div>
@@ -56,7 +57,7 @@ class Block extends React.Component {
       )
     }
 
-    return (<Cristal initialSize={{width: 700, height: 200}} onClose={this.props.onClose} title={`Block ${this.props.cid['/']}`}>
+    return (<Cristal className="CristalScroll" initialSize={{width: 700, height: 400}} onClose={this.props.onClose} title={`Block ${this.props.cid['/']}`}>
       {content}
     </Cristal>)
   }
