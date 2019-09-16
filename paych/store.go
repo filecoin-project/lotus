@@ -7,14 +7,15 @@ import (
 	"strings"
 	"sync"
 
-	"github.com/filecoin-project/go-lotus/chain/address"
-	"github.com/filecoin-project/go-lotus/chain/types"
 	"github.com/ipfs/go-datastore"
 	"github.com/ipfs/go-datastore/namespace"
 	dsq "github.com/ipfs/go-datastore/query"
-
 	cbor "github.com/ipfs/go-ipld-cbor"
 	"golang.org/x/xerrors"
+
+	"github.com/filecoin-project/go-lotus/chain/address"
+	"github.com/filecoin-project/go-lotus/chain/types"
+	"github.com/filecoin-project/go-lotus/node/modules/dtypes"
 )
 
 var ErrChannelNotTracked = errors.New("channel not tracked")
@@ -30,7 +31,7 @@ type Store struct {
 	ds datastore.Batching
 }
 
-func NewStore(ds datastore.Batching) *Store {
+func NewStore(ds dtypes.MetadataDS) *Store {
 	ds = namespace.Wrap(ds, datastore.NewKey("/paych/"))
 	return &Store{
 		ds: ds,

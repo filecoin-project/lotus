@@ -3,33 +3,46 @@ package paych
 import (
 	"context"
 	"fmt"
-	"github.com/filecoin-project/go-lotus/node/impl/full"
 	"math"
 	"strconv"
 
 	logging "github.com/ipfs/go-log"
+	"go.uber.org/fx"
 
 	"github.com/filecoin-project/go-lotus/chain/actors"
 	"github.com/filecoin-project/go-lotus/chain/address"
 	"github.com/filecoin-project/go-lotus/chain/stmgr"
 	"github.com/filecoin-project/go-lotus/chain/types"
+	"github.com/filecoin-project/go-lotus/node/impl/full"
 )
 
 var log = logging.Logger("paych")
+
+type ManagerApi struct {
+	fx.In
+
+	full.MpoolAPI
+	full.WalletAPI
+	full.ChainAPI
+}
 
 type Manager struct {
 	store *Store
 	sm    *stmgr.StateManager
 
-	mpool  *full.MpoolAPI
-	wallet *full.WalletAPI
-	chain  *full.ChainAPI
+	mpool  full.MpoolAPI
+	wallet full.WalletAPI
+	chain  full.ChainAPI
 }
 
-func NewManager(sm *stmgr.StateManager, pchstore *Store) *Manager {
+func NewManager(sm *stmgr.StateManager, pchstore *Store, api ManagerApi) *Manager {
 	return &Manager{
 		store: pchstore,
 		sm:    sm,
+
+		mpool: api.MpoolAPI,
+		wallet: api.WalletAPI,
+		chain: api.ChainAPI,
 	}
 }
 

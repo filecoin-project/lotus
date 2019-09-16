@@ -39,6 +39,7 @@ import (
 	"github.com/filecoin-project/go-lotus/retrieval"
 	"github.com/filecoin-project/go-lotus/retrieval/discovery"
 	"github.com/filecoin-project/go-lotus/storage"
+	"github.com/filecoin-project/go-lotus/storage/commitment"
 	"github.com/filecoin-project/go-lotus/storage/sector"
 	"github.com/filecoin-project/go-lotus/storage/sectorblocks"
 )
@@ -232,8 +233,8 @@ func Online() Option {
 			Override(new(*deals.Client), deals.NewClient),
 			Override(RunDealClientKey, modules.RunDealClient),
 
-			Override(new(*paych.Store), modules.PaychStore),
-			Override(new(*paych.Manager), modules.PaymentChannelManager),
+			Override(new(*paych.Store), paych.NewStore),
+			Override(new(*paych.Manager), paych.NewManager),
 
 			Override(new(*miner.Miner), miner.NewMiner),
 		),
@@ -243,6 +244,7 @@ func Online() Option {
 			Override(new(*sectorbuilder.SectorBuilder), sectorbuilder.New),
 			Override(new(*sector.Store), sector.NewStore),
 			Override(new(*sectorblocks.SectorBlocks), sectorblocks.NewSectorBlocks),
+			Override(new(*commitment.Tracker), commitment.NewTracker),
 			Override(new(*storage.Miner), modules.StorageMiner),
 
 			Override(new(dtypes.StagingDAG), modules.StagingDAG),

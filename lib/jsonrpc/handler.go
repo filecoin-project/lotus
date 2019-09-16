@@ -115,10 +115,10 @@ func (h handlers) handleReader(ctx context.Context, r io.Reader, w io.Writer, rp
 	h.handle(ctx, req, wf, rpcError, func(bool) {}, nil)
 }
 
-func doCall(f reflect.Value, params []reflect.Value) (out []reflect.Value, err error) {
+func doCall(methodName string, f reflect.Value, params []reflect.Value) (out []reflect.Value, err error) {
 	defer func() {
 		if i := recover(); i != nil {
-			err = xerrors.Errorf("panic in rpc method: %s", i)
+			err = xerrors.Errorf("panic in rpc method '%s': %s", methodName, i)
 			log.Error(err)
 		}
 	}()
@@ -193,7 +193,7 @@ func (h handlers) handle(ctx context.Context, req request, w func(func(io.Writer
 
 	///////////////////
 
-	callResult, err := doCall(handler.handlerFunc, callParams)
+	callResult, err := doCall(req.Method, handler.handlerFunc, callParams)
 	if err != nil {
 		rpcError(w, &req, 0, xerrors.Errorf("fatal error calling '%s': %w", req.Method, err))
 		return

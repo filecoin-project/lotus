@@ -17,6 +17,7 @@ import (
 	"github.com/filecoin-project/go-lotus/chain/address"
 	"github.com/filecoin-project/go-lotus/chain/types"
 	"github.com/filecoin-project/go-lotus/node/modules/dtypes"
+	"github.com/filecoin-project/go-lotus/storage/commitment"
 	"github.com/filecoin-project/go-lotus/storage/sectorblocks"
 )
 
@@ -45,6 +46,7 @@ type Handler struct {
 	askLk sync.Mutex
 
 	secst *sectorblocks.SectorBlocks
+	commt *commitment.Tracker
 	full  api.FullNode
 
 	// TODO: Use a custom protocol or graphsync in the future
@@ -71,7 +73,7 @@ type minerDealUpdate struct {
 	mut      func(*MinerDeal)
 }
 
-func NewHandler(ds dtypes.MetadataDS, secst *sectorblocks.SectorBlocks, dag dtypes.StagingDAG, fullNode api.FullNode) (*Handler, error) {
+func NewHandler(ds dtypes.MetadataDS, secst *sectorblocks.SectorBlocks, commt *commitment.Tracker, dag dtypes.StagingDAG, fullNode api.FullNode) (*Handler, error) {
 	addr, err := ds.Get(datastore.NewKey("miner-address"))
 	if err != nil {
 		return nil, err
@@ -83,6 +85,7 @@ func NewHandler(ds dtypes.MetadataDS, secst *sectorblocks.SectorBlocks, dag dtyp
 
 	h := &Handler{
 		secst: secst,
+		commt: commt,
 		dag:   dag,
 		full:  fullNode,
 

@@ -190,8 +190,8 @@ func getInclusionProof(ref string, status sectorbuilder.SectorSealingStatus) (Pi
 	return PieceInclusionProof{}, xerrors.Errorf("pieceInclusionProof for %s in sector %d not found", ref, status.SectorID)
 }
 
-func (h *Handler) waitSealed(deal MinerDeal) (sectorbuilder.SectorSealingStatus, error) {
-	status, err := h.secst.WaitSeal(context.TODO(), deal.SectorID)
+func (h *Handler) waitSealed(ctx context.Context, deal MinerDeal) (sectorbuilder.SectorSealingStatus, error) {
+	status, err := h.secst.WaitSeal(ctx, deal.SectorID)
 	if err != nil {
 		return sectorbuilder.SectorSealingStatus{}, err
 	}
@@ -212,7 +212,7 @@ func (h *Handler) waitSealed(deal MinerDeal) (sectorbuilder.SectorSealingStatus,
 }
 
 func (h *Handler) sealing(ctx context.Context, deal MinerDeal) (func(*MinerDeal), error) {
-	status, err := h.waitSealed(deal)
+	status, err := h.waitSealed(ctx, deal)
 	if err != nil {
 		return nil, err
 	}
@@ -246,6 +246,25 @@ func (h *Handler) sealing(ctx context.Context, deal MinerDeal) (func(*MinerDeal)
 		Proposal:            deal.ProposalCid,
 		PieceInclusionProof: ip,
 		CommD:               status.CommD[:],
+	})
+	if err != nil {
+		log.Warnf("Sending deal response failed: %s", err)
+	}
+
+	return nil, nil
+}
+
+func (h *Handler) complete(ctx context.Context, deal MinerDeal) (func(*MinerDeal), error) {
+	mcid, err := h.commt.WaitCommit(ctx, deal.Proposal.MinerAddress, deal.SectorID)
+	if err != nil {
+		log.Warnf("Waiting for sector commitment message: %s", err)
+	}
+
+	err = h.sendSignedResponse(StorageDealResponse{
+		State:               api.DealComplete,
+		Proposal:            deal.ProposalCid,
+
+		SectorCommitMessage: &mcid,
 	})
 	if err != nil {
 		log.Warnf("Sending deal response failed: %s", err)
