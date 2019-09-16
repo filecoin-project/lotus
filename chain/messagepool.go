@@ -43,7 +43,7 @@ func NewMessagePool(sm *stmgr.StateManager, ps *pubsub.PubSub) *MessagePool {
 	mp := &MessagePool{
 		pending: make(map[address.Address]*msgSet),
 		sm:      sm,
-		ps: ps,
+		ps:      ps,
 	}
 	sm.ChainStore().SubscribeHeadChanges(mp.HeadChange)
 

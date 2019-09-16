@@ -15,7 +15,7 @@ type MpoolAPI struct {
 
 	WalletAPI
 
-	Mpool  *chain.MessagePool
+	Mpool *chain.MessagePool
 }
 
 func (a *MpoolAPI) MpoolPending(ctx context.Context, ts *types.TipSet) ([]*types.SignedMessage, error) {
@@ -38,7 +38,6 @@ func (a *MpoolAPI) MpoolPushMessage(ctx context.Context, msg *types.Message) err
 		return a.WalletSignMessage(ctx, msg.From, msg)
 	})
 }
-
 
 func (a *MpoolAPI) MpoolGetNonce(ctx context.Context, addr address.Address) (uint64, error) {
 	return a.Mpool.GetNonce(addr)

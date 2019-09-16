@@ -20,7 +20,7 @@ import (
 
 type Miner struct {
 	sectorBlocks *sectorblocks.SectorBlocks
-	full api.FullNode
+	full         api.FullNode
 
 	pricePerByte types.BigInt
 	// TODO: Unseal price

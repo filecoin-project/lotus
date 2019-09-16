@@ -48,9 +48,9 @@ type FullNodeStruct struct {
 		ChainGetBlockMessages func(context.Context, cid.Cid) (*BlockMessages, error)                     `perm:"read"`
 		ChainGetBlockReceipts func(context.Context, cid.Cid) ([]*types.MessageReceipt, error)            `perm:"read"`
 
-		MpoolPending func(context.Context, *types.TipSet) ([]*types.SignedMessage, error) `perm:"read"`
-		MpoolPush    func(context.Context, *types.SignedMessage) error                    `perm:"write"`
-		MpoolPushMessage func(context.Context, *types.Message) error`perm:"sign"`
+		MpoolPending     func(context.Context, *types.TipSet) ([]*types.SignedMessage, error) `perm:"read"`
+		MpoolPush        func(context.Context, *types.SignedMessage) error                    `perm:"write"`
+		MpoolPushMessage func(context.Context, *types.Message) error                          `perm:"sign"`
 
 		MinerRegister    func(context.Context, address.Address) error                                                                                                         `perm:"admin"`
 		MinerUnregister  func(context.Context, address.Address) error                                                                                                         `perm:"admin"`
@@ -79,7 +79,7 @@ type FullNodeStruct struct {
 		StateMinerProvingSet func(context.Context, address.Address) ([]*SectorInfo, error)                       `perm:"read"`
 		StateMinerPower      func(context.Context, address.Address, *types.TipSet) (MinerPower, error)           `perm:"read"`
 		StateMinerWorker     func(context.Context, address.Address, *types.TipSet) (address.Address, error)      `perm:"read"`
-		StateMinerPeerID     func(ctx context.Context, m address.Address, ts *types.TipSet) (peer.ID, error)`perm:"read"`
+		StateMinerPeerID     func(ctx context.Context, m address.Address, ts *types.TipSet) (peer.ID, error)     `perm:"read"`
 		StateCall            func(context.Context, *types.Message, *types.TipSet) (*types.MessageReceipt, error) `perm:"read"`
 		StateGetActor        func(context.Context, address.Address, *types.TipSet) (*types.Actor, error)         `perm:"read"`
 		StateReadState       func(context.Context, *types.Actor, *types.TipSet) (*ActorState, error)             `perm:"read"`

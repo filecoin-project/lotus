@@ -52,9 +52,9 @@ func (m *outmux) msgsToChan(r *io.PipeReader, ch chan []byte) {
 		if err != nil {
 			return
 		}
-		out := make([]byte, len(buf) + 1)
+		out := make([]byte, len(buf)+1)
 		copy(out, buf)
-		out[len(out) - 1] = '\n'
+		out[len(out)-1] = '\n'
 
 		select {
 		case ch <- out:

@@ -35,7 +35,7 @@ type Tracker struct {
 func NewTracker(ds dtypes.MetadataDS) *Tracker {
 	return &Tracker{
 		commitDs: namespace.Wrap(ds, commitmentDsPrefix),
-		waits: map[datastore.Key]chan struct{}{},
+		waits:    map[datastore.Key]chan struct{}{},
 	}
 }
 
@@ -72,7 +72,7 @@ func (ct *Tracker) TrackCommitSectorMsg(miner address.Address, sectorId uint64, 
 		return nil
 	}
 
-	comm := &commitment{Msg:mcid}
+	comm := &commitment{Msg: mcid}
 	commB, err := cbor.DumpObject(comm)
 	if err != nil {
 		return err

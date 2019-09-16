@@ -196,7 +196,7 @@ func (ps *Store) AddVoucher(ch address.Address, sv *types.SignedVoucher, proof [
 
 	// look for duplicates
 	for i, v := range ci.Vouchers {
-		if v.Voucher.Lane == sv.Lane && v.Voucher.Nonce + 1 > bestNonce + 1 {
+		if v.Voucher.Lane == sv.Lane && v.Voucher.Nonce+1 > bestNonce+1 {
 			bestNonce = v.Voucher.Nonce
 			bestAmount = v.Voucher.Amount
 		}

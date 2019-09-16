@@ -268,8 +268,8 @@ func (h *Handler) complete(ctx context.Context, deal MinerDeal) (func(*MinerDeal
 	}
 
 	err = h.sendSignedResponse(StorageDealResponse{
-		State:               api.DealComplete,
-		Proposal:            deal.ProposalCid,
+		State:    api.DealComplete,
+		Proposal: deal.ProposalCid,
 
 		SectorCommitMessage: &mcid,
 	})

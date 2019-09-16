@@ -40,9 +40,9 @@ func NewManager(sm *stmgr.StateManager, pchstore *Store, api ManagerApi) *Manage
 		store: pchstore,
 		sm:    sm,
 
-		mpool: api.MpoolAPI,
+		mpool:  api.MpoolAPI,
 		wallet: api.WalletAPI,
-		chain: api.ChainAPI,
+		chain:  api.ChainAPI,
 	}
 }
 
