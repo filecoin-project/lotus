@@ -57,7 +57,7 @@ class Client extends React.Component {
       Root: deal.PieceRef,
       Size: deal.Size,
       // TODO: support offset
-      Total: "900",
+      Total: String(deal.Size * 2),
 
       Client: client,
       Miner: deal.Miner

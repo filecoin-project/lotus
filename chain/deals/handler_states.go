@@ -124,7 +124,8 @@ func (h *Handler) accept(ctx context.Context, deal MinerDeal) (func(*MinerDeal),
 	}
 
 	for i, voucher := range deal.Proposal.Payment.Vouchers {
-		if err := h.full.PaychVoucherAdd(ctx, deal.Proposal.Payment.PayChActor, voucher, nil); err != nil {
+		// TODO: Set correct minAmount
+		if _, err := h.full.PaychVoucherAdd(ctx, deal.Proposal.Payment.PayChActor, voucher, nil, types.NewInt(0)); err != nil {
 			return nil, xerrors.Errorf("consuming payment voucher %d: %w", i, err)
 		}
 	}
@@ -240,7 +241,8 @@ func (h *Handler) sealing(ctx context.Context, deal MinerDeal) (func(*MinerDeal)
 	// store proofs for channels
 	for i, v := range deal.Proposal.Payment.Vouchers {
 		if v.Extra.Method == actors.MAMethods.PaymentVerifyInclusion {
-			if err := h.full.PaychVoucherAdd(ctx, deal.Proposal.Payment.PayChActor, v, proofB); err != nil {
+			// TODO: Set correct minAmount
+			if _, err := h.full.PaychVoucherAdd(ctx, deal.Proposal.Payment.PayChActor, v, proofB, types.NewInt(0)); err != nil {
 				return nil, xerrors.Errorf("storing payment voucher %d proof: %w", i, err)
 			}
 		}

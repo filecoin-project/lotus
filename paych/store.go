@@ -4,6 +4,7 @@ import (
 	"bytes"
 	"errors"
 	"fmt"
+	"math"
 	"strings"
 	"sync"
 
@@ -181,17 +182,24 @@ func (ps *Store) findChan(filter func(*ChannelInfo) bool) (address.Address, erro
 	return address.Undef, nil
 }
 
-func (ps *Store) AddVoucher(ch address.Address, sv *types.SignedVoucher, proof []byte) error {
+func (ps *Store) AddVoucher(ch address.Address, sv *types.SignedVoucher, proof []byte, minDelta types.BigInt) (types.BigInt, error) {
 	ps.lk.Lock()
 	defer ps.lk.Unlock()
 
 	ci, err := ps.getChannelInfo(ch)
 	if err != nil {
-		return err
+		return types.NewInt(0), err
 	}
+
+	var bestAmount types.BigInt
+	var bestNonce uint64 = math.MaxUint64
 
 	// look for duplicates
 	for i, v := range ci.Vouchers {
+		if v.Voucher.Lane == sv.Lane && v.Voucher.Nonce + 1 > bestNonce + 1 {
+			bestNonce = v.Voucher.Nonce
+			bestAmount = v.Voucher.Amount
+		}
 		if !sv.Equals(v.Voucher) {
 			continue
 		}
@@ -201,7 +209,7 @@ func (ps *Store) AddVoucher(ch address.Address, sv *types.SignedVoucher, proof [
 				break
 			}
 			log.Warnf("AddVoucher: voucher re-added with matching proof")
-			return nil
+			return types.NewInt(0), nil
 		}
 
 		log.Warnf("AddVoucher: adding proof to stored voucher")
@@ -210,7 +218,16 @@ func (ps *Store) AddVoucher(ch address.Address, sv *types.SignedVoucher, proof [
 			Proof:   proof,
 		}
 
-		return ps.putChannelInfo(ci)
+		return types.NewInt(0), ps.putChannelInfo(ci)
+	}
+
+	if bestAmount == (types.BigInt{}) {
+		bestAmount = types.NewInt(0)
+	}
+
+	delta := types.BigSub(sv.Amount, bestAmount)
+	if types.BigCmp(minDelta, delta) > 0 {
+		return delta, xerrors.Errorf("addVoucher: supplied token amount too low; minD=%s, D=%s; bestAmt=%s; v.Amt=%s", minDelta, delta, bestAmount, sv.Amount)
 	}
 
 	ci.Vouchers = append(ci.Vouchers, &VoucherInfo{
@@ -222,7 +239,7 @@ func (ps *Store) AddVoucher(ch address.Address, sv *types.SignedVoucher, proof [
 		ci.NextLane = sv.Lane + 1
 	}
 
-	return ps.putChannelInfo(ci)
+	return delta, ps.putChannelInfo(ci)
 }
 
 func (ps *Store) AllocateLane(ch address.Address) (uint64, error) {

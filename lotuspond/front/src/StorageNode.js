@@ -104,11 +104,11 @@ class StorageNode extends React.Component {
           <div>
             <Address client={this.props.fullConn} addr={this.state.actor} mountWindow={this.props.mountWindow}/>
           </div>
-          <div>{this.state.statusCounts.map((c, i) => <span>{sealCodes[i]}: {c} | </span>)}</div>
+          <div>{this.state.statusCounts.map((c, i) => <span key={i}>{sealCodes[i]}: {c} | </span>)}</div>
           <div>
-            {this.state.staged ? this.state.staged.map(s => (
-              <div>{s.SectorID} {sealCodes[s.SealStatusCode]}</div>
-            )) : <div></div>}
+            {this.state.staged ? this.state.staged.map((s, i) => (
+              <div key={i}>{s.SectorID} {sealCodes[s.SealStatusCode]}</div>
+            )) : <div/>}
           </div>
 
         </div>

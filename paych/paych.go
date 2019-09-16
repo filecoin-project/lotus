@@ -248,12 +248,12 @@ func (pm *Manager) getPaychOwner(ctx context.Context, ch address.Address) (addre
 	return address.NewFromBytes(ret.Return)
 }
 
-func (pm *Manager) AddVoucher(ctx context.Context, ch address.Address, sv *types.SignedVoucher, proof []byte) error {
+func (pm *Manager) AddVoucher(ctx context.Context, ch address.Address, sv *types.SignedVoucher, proof []byte, minDelta types.BigInt) (types.BigInt, error) {
 	if err := pm.CheckVoucherValid(ctx, ch, sv); err != nil {
-		return err
+		return types.NewInt(0), err
 	}
 
-	return pm.store.AddVoucher(ch, sv, proof)
+	return pm.store.AddVoucher(ch, sv, proof, minDelta)
 }
 
 func (pm *Manager) AllocateLane(ch address.Address) (uint64, error) {

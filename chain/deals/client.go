@@ -32,6 +32,7 @@ func init() {
 	cbor.RegisterCborType(types.ModVerifyParams{})
 	cbor.RegisterCborType(types.Signature{})
 	cbor.RegisterCborType(actors.PaymentInfo{})
+	cbor.RegisterCborType(api.PaymentInfo{})
 	cbor.RegisterCborType(actors.InclusionProof{})
 }
 

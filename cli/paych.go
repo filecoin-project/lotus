@@ -203,7 +203,7 @@ var paychVoucherAddCmd = &cli.Command{
 		ctx := ReqContext(cctx)
 
 		// TODO: allow passing proof bytes
-		if err := api.PaychVoucherAdd(ctx, ch, sv, nil); err != nil {
+		if _, err := api.PaychVoucherAdd(ctx, ch, sv, nil, types.NewInt(0)); err != nil {
 			return err
 		}
 
