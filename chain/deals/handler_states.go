@@ -22,6 +22,11 @@ type minerHandlerFunc func(ctx context.Context, deal MinerDeal) (func(*MinerDeal
 func (h *Handler) handle(ctx context.Context, deal MinerDeal, cb minerHandlerFunc, next api.DealState) {
 	go func() {
 		mut, err := cb(ctx, deal)
+
+		if err == nil && next == api.DealNoUpdate {
+			return
+		}
+
 		select {
 		case h.updated <- minerDealUpdate{
 			newState: next,

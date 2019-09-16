@@ -189,6 +189,8 @@ func (h *Handler) onUpdated(ctx context.Context, update minerDealUpdate) {
 		h.handle(ctx, deal, h.staged, api.DealSealing)
 	case api.DealSealing:
 		h.handle(ctx, deal, h.sealing, api.DealComplete)
+	case api.DealComplete:
+		h.handle(ctx, deal, h.complete, api.DealNoUpdate)
 	}
 }
 
