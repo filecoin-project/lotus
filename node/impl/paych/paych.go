@@ -65,10 +65,14 @@ func (a *PaychAPI) PaychNewPayment(ctx context.Context, from, to address.Address
 	if err != nil {
 		return nil, err
 	}
+	var pchCid *cid.Cid
+	if ch.ChannelMessage != cid.Undef {
+		pchCid = &ch.ChannelMessage
+	}
 
 	return &api.PaymentInfo{
 		Channel:        ch.Channel,
-		ChannelMessage: &ch.ChannelMessage,
+		ChannelMessage: pchCid,
 		Voucher:        sv,
 	}, nil
 }
