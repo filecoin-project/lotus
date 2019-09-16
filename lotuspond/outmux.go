@@ -1,6 +1,7 @@
 package main
 
 import (
+	"bufio"
 	"fmt"
 	"github.com/gorilla/websocket"
 	"github.com/opentracing/opentracing-go/log"
@@ -44,14 +45,19 @@ func newWsMux() *outmux {
 
 func (m *outmux) msgsToChan(r *io.PipeReader, ch chan []byte) {
 	defer close(ch)
+	br := bufio.NewReader(r)
+
 	for {
-		buf := make([]byte, 1)
-		n, err := r.Read(buf)
+		buf, _, err := br.ReadLine()
 		if err != nil {
 			return
 		}
+		out := make([]byte, len(buf) + 1)
+		copy(out, buf)
+		out[len(out) - 1] = '\n'
+
 		select {
-		case ch <- buf[:n]:
+		case ch <- out:
 		case <-m.stop:
 			return
 		}
