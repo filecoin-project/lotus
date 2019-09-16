@@ -43,8 +43,8 @@ func NewInt(i uint64) BigInt {
 	return BigInt{big.NewInt(0).SetUint64(i)}
 }
 
-func Fil(i BigInt) BigInt {
-	return BigMul(i, NewInt(build.FilecoinPrecision))
+func FromFil(i uint64) BigInt {
+	return BigMul(NewInt(i), NewInt(build.FilecoinPrecision))
 }
 
 func BigFromBytes(b []byte) BigInt {
