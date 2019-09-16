@@ -19,8 +19,6 @@ async function pushMessage(client, from, inmsg) {
         inmsg.Method = 0
     }
 
-    inmsg.Nonce = await client.call('Filecoin.MpoolGetNonce', [from])
-
 /*    const msg = [
         inmsg.To,
         inmsg.From,
@@ -36,11 +34,9 @@ async function pushMessage(client, from, inmsg) {
         Buffer.from(inmsg.Params, 'base64'),
     ]*/
 
-    const signed = await client.call('Filecoin.WalletSignMessage', [from, inmsg])
+    console.log(inmsg)
 
-    console.log(signed)
-
-    await client.call('Filecoin.MpoolPush', [signed])
+    await client.call('Filecoin.MpoolPushMessage', [inmsg])
 }
 
 export default pushMessage

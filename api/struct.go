@@ -50,6 +50,7 @@ type FullNodeStruct struct {
 
 		MpoolPending func(context.Context, *types.TipSet) ([]*types.SignedMessage, error) `perm:"read"`
 		MpoolPush    func(context.Context, *types.SignedMessage) error                    `perm:"write"`
+		MpoolPushMessage func(context.Context, *types.Message) error`perm:"sign"`
 
 		MinerRegister    func(context.Context, address.Address) error                                                                                                         `perm:"admin"`
 		MinerUnregister  func(context.Context, address.Address) error                                                                                                         `perm:"admin"`
@@ -190,6 +191,10 @@ func (c *FullNodeStruct) MpoolPending(ctx context.Context, ts *types.TipSet) ([]
 
 func (c *FullNodeStruct) MpoolPush(ctx context.Context, smsg *types.SignedMessage) error {
 	return c.Internal.MpoolPush(ctx, smsg)
+}
+
+func (c *FullNodeStruct) MpoolPushMessage(ctx context.Context, msg *types.Message) error {
+	return c.Internal.MpoolPushMessage(ctx, msg)
 }
 
 func (c *FullNodeStruct) MinerRegister(ctx context.Context, addr address.Address) error {

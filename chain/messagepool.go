@@ -2,6 +2,7 @@ package chain
 
 import (
 	"encoding/base64"
+	pubsub "github.com/libp2p/go-libp2p-pubsub"
 	"sync"
 
 	"github.com/filecoin-project/go-lotus/chain/address"
@@ -16,6 +17,8 @@ type MessagePool struct {
 	pending map[address.Address]*msgSet
 
 	sm *stmgr.StateManager
+
+	ps *pubsub.PubSub
 }
 
 type msgSet struct {
@@ -36,20 +39,38 @@ func (ms *msgSet) add(m *types.SignedMessage) {
 	ms.msgs[m.Message.Nonce] = m
 }
 
-func NewMessagePool(sm *stmgr.StateManager) *MessagePool {
+func NewMessagePool(sm *stmgr.StateManager, ps *pubsub.PubSub) *MessagePool {
 	mp := &MessagePool{
 		pending: make(map[address.Address]*msgSet),
 		sm:      sm,
+		ps: ps,
 	}
 	sm.ChainStore().SubscribeHeadChanges(mp.HeadChange)
 
 	return mp
 }
 
+func (mp *MessagePool) Push(m *types.SignedMessage) error {
+	msgb, err := m.Serialize()
+	if err != nil {
+		return err
+	}
+
+	if err := mp.Add(m); err != nil {
+		return err
+	}
+
+	return mp.ps.Publish("/fil/messages", msgb)
+}
+
 func (mp *MessagePool) Add(m *types.SignedMessage) error {
 	mp.lk.Lock()
 	defer mp.lk.Unlock()
 
+	return mp.addLocked(m)
+}
+
+func (mp *MessagePool) addLocked(m *types.SignedMessage) error {
 	data, err := m.Message.Serialize()
 	if err != nil {
 		return err
@@ -79,6 +100,10 @@ func (mp *MessagePool) GetNonce(addr address.Address) (uint64, error) {
 	mp.lk.Lock()
 	defer mp.lk.Unlock()
 
+	return mp.getNonceLocked(addr)
+}
+
+func (mp *MessagePool) getNonceLocked(addr address.Address) (uint64, error) {
 	mset, ok := mp.pending[addr]
 	if ok {
 		return mset.startNonce + uint64(len(mset.msgs)), nil
@@ -90,6 +115,32 @@ func (mp *MessagePool) GetNonce(addr address.Address) (uint64, error) {
 	}
 
 	return act.Nonce, nil
+}
+
+func (mp *MessagePool) PushWithNonce(addr address.Address, cb func(uint64) (*types.SignedMessage, error)) error {
+	mp.lk.Lock()
+	defer mp.lk.Unlock()
+
+	nonce, err := mp.getNonceLocked(addr)
+	if err != nil {
+		return err
+	}
+
+	msg, err := cb(nonce)
+	if err != nil {
+		return err
+	}
+
+	msgb, err := msg.Serialize()
+	if err != nil {
+		return err
+	}
+
+	if err := mp.addLocked(msg); err != nil {
+		return err
+	}
+
+	return mp.ps.Publish("/fil/messages", msgb)
 }
 
 func (mp *MessagePool) Remove(from address.Address, nonce uint64) {
