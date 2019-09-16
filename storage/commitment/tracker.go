@@ -119,6 +119,9 @@ func (ct *Tracker) WaitCommit(ctx context.Context, miner address.Address, sector
 		wait = make(chan struct{})
 		ct.waits[key] = wait
 	}
+
+	ct.lk.Unlock()
+
 	select {
 	case <-wait:
 		tracking, err := ct.commitDs.Get(key)
