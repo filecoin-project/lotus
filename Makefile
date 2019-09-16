@@ -88,7 +88,6 @@ clean:
 	rm -rf $(CLEAN)
 	-$(MAKE) -C $(BLS_PATH) clean
 	-$(MAKE) -C $(SECTOR_BUILDER_PATH) clean
-	-$(MAKE) -C $(PROOFS_PATH) clean
 .PHONY: clean
 
 dist-clean:
