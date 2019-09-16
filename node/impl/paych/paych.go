@@ -43,8 +43,8 @@ func (a *PaychAPI) PaychAllocateLane(ctx context.Context, ch address.Address) (u
 }
 
 func (a *PaychAPI) PaychNewPayment(ctx context.Context, from, to address.Address, amount types.BigInt, extra *types.ModVerifyParams, tl uint64, minClose uint64) (*api.PaymentInfo, error) {
-	// TODO: Fix free fund tracking in PaychGet, pass amount
-	ch, err := a.PaychGet(ctx, from, to, types.NewInt(0))
+	// TODO: Fix free fund tracking in PaychGet
+	ch, err := a.PaychGet(ctx, from, to, amount)
 	if err != nil {
 		return nil, err
 	}

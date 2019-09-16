@@ -65,7 +65,12 @@ func (pm *Manager) createPaych(ctx context.Context, from, to address.Address, am
 		return address.Undef, cid.Undef, err
 	}
 
-	if err := pm.TrackOutboundChannel(ctx, paychaddr); err != nil {
+	ci, err := pm.loadOutboundChannelInfo(ctx, paychaddr)
+	if err != nil {
+		return address.Undef, cid.Undef, err
+	}
+
+	if err := pm.store.trackChannel(ci); err != nil {
 		return address.Undef, cid.Undef, err
 	}
 

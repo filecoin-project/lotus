@@ -96,6 +96,10 @@ func (ps *Store) TrackChannel(ch *ChannelInfo) error {
 	ps.lk.Lock()
 	defer ps.lk.Unlock()
 
+	return ps.trackChannel(ch)
+}
+
+func (ps *Store) trackChannel(ch *ChannelInfo) error {
 	_, err := ps.getChannelInfo(ch.Channel)
 	switch err {
 	default:

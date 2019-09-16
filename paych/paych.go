@@ -81,25 +81,34 @@ func (pm *Manager) TrackInboundChannel(ctx context.Context, ch address.Address) 
 	})
 }
 
-func (pm *Manager) TrackOutboundChannel(ctx context.Context, ch address.Address) error {
+func (pm *Manager) loadOutboundChannelInfo(ctx context.Context, ch address.Address) (*ChannelInfo, error) {
 	_, st, err := pm.loadPaychState(ctx, ch)
 	if err != nil {
-		return err
+		return nil, err
 	}
 
 	maxLane, err := maxLaneFromState(st)
 	if err != nil {
-		return err
+		return nil, err
 	}
 
-	return pm.store.TrackChannel(&ChannelInfo{
+	return &ChannelInfo{
 		Channel: ch,
 		Control: st.From,
 		Target:  st.To,
 
 		Direction: DirOutbound,
 		NextLane:  maxLane + 1,
-	})
+	}, nil
+}
+
+func (pm *Manager) TrackOutboundChannel(ctx context.Context, ch address.Address) error {
+	ci, err := pm.loadOutboundChannelInfo(ctx, ch)
+	if err != nil {
+		return err
+	}
+
+	return pm.store.TrackChannel(ci)
 }
 
 func (pm *Manager) ListChannels() ([]address.Address, error) {

@@ -95,6 +95,7 @@ func (a *API) ClientStartDeal(ctx context.Context, data cid.Cid, miner address.A
 	}
 
 	head := a.Chain.GetHeaviestTipSet()
+
 	payment, err := a.PaychNewPayment(ctx, self, miner, total, extra, head.Height()+blocksDuration, head.Height()+blocksDuration)
 	if err != nil {
 		return nil, err
