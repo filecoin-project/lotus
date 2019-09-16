@@ -1,4 +1,4 @@
-package full
+package client
 
 import (
 	"context"
@@ -26,18 +26,20 @@ import (
 	"github.com/filecoin-project/go-lotus/chain/deals"
 	"github.com/filecoin-project/go-lotus/chain/store"
 	"github.com/filecoin-project/go-lotus/chain/types"
+	"github.com/filecoin-project/go-lotus/node/impl/full"
+	"github.com/filecoin-project/go-lotus/node/impl/paych"
 	"github.com/filecoin-project/go-lotus/node/modules/dtypes"
 	"github.com/filecoin-project/go-lotus/retrieval"
 	"github.com/filecoin-project/go-lotus/retrieval/discovery"
 )
 
-type ClientAPI struct {
+type API struct {
 	fx.In
 
-	ChainAPI
-	StateAPI
-	WalletAPI
-	PaychAPI
+	full.ChainAPI
+	full.StateAPI
+	full.WalletAPI
+	paych.PaychAPI
 
 	DealClient   *deals.Client
 	RetDiscovery discovery.PeerResolver
@@ -49,7 +51,7 @@ type ClientAPI struct {
 	Filestore  dtypes.ClientFilestore `optional:"true"`
 }
 
-func (a *ClientAPI) ClientStartDeal(ctx context.Context, data cid.Cid, miner address.Address, price types.BigInt, blocksDuration uint64) (*cid.Cid, error) {
+func (a *API) ClientStartDeal(ctx context.Context, data cid.Cid, miner address.Address, price types.BigInt, blocksDuration uint64) (*cid.Cid, error) {
 	// TODO: make this a param
 	self, err := a.WalletDefaultAddress(ctx)
 	if err != nil {
@@ -118,7 +120,7 @@ func (a *ClientAPI) ClientStartDeal(ctx context.Context, data cid.Cid, miner add
 	return &c, err
 }
 
-func (a *ClientAPI) ClientListDeals(ctx context.Context) ([]api.DealInfo, error) {
+func (a *API) ClientListDeals(ctx context.Context) ([]api.DealInfo, error) {
 	deals, err := a.DealClient.List()
 	if err != nil {
 		return nil, err
@@ -143,7 +145,7 @@ func (a *ClientAPI) ClientListDeals(ctx context.Context) ([]api.DealInfo, error)
 	return out, nil
 }
 
-func (a *ClientAPI) ClientHasLocal(ctx context.Context, root cid.Cid) (bool, error) {
+func (a *API) ClientHasLocal(ctx context.Context, root cid.Cid) (bool, error) {
 	// TODO: check if we have the ENTIRE dag
 
 	offExch := merkledag.NewDAGService(blockservice.New(a.Blockstore, offline.Exchange(a.Blockstore)))
@@ -157,7 +159,7 @@ func (a *ClientAPI) ClientHasLocal(ctx context.Context, root cid.Cid) (bool, err
 	return true, nil
 }
 
-func (a *ClientAPI) ClientFindData(ctx context.Context, root cid.Cid) ([]api.QueryOffer, error) {
+func (a *API) ClientFindData(ctx context.Context, root cid.Cid) ([]api.QueryOffer, error) {
 	peers, err := a.RetDiscovery.GetPeers(root)
 	if err != nil {
 		return nil, err
@@ -171,7 +173,7 @@ func (a *ClientAPI) ClientFindData(ctx context.Context, root cid.Cid) ([]api.Que
 	return out, nil
 }
 
-func (a *ClientAPI) ClientImport(ctx context.Context, path string) (cid.Cid, error) {
+func (a *API) ClientImport(ctx context.Context, path string) (cid.Cid, error) {
 	f, err := os.Open(path)
 	if err != nil {
 		return cid.Undef, err
@@ -208,7 +210,7 @@ func (a *ClientAPI) ClientImport(ctx context.Context, path string) (cid.Cid, err
 	return nd.Cid(), bufferedDS.Commit()
 }
 
-func (a *ClientAPI) ClientListImports(ctx context.Context) ([]api.Import, error) {
+func (a *API) ClientListImports(ctx context.Context) ([]api.Import, error) {
 	if a.Filestore == nil {
 		return nil, errors.New("listing imports is not supported with in-memory dag yet")
 	}
@@ -237,13 +239,13 @@ func (a *ClientAPI) ClientListImports(ctx context.Context) ([]api.Import, error)
 	}
 }
 
-func (a *ClientAPI) ClientRetrieve(ctx context.Context, order api.RetrievalOrder, path string) error {
+func (a *API) ClientRetrieve(ctx context.Context, order api.RetrievalOrder, path string) error {
 	outFile, err := os.OpenFile(path, os.O_TRUNC|os.O_CREATE|os.O_WRONLY, 0777)
 	if err != nil {
 		return err
 	}
 
-	err = a.Retrieval.RetrieveUnixfs(ctx, order.Root, order.Size, order.MinerPeerID, order.Miner, outFile)
+	err = a.Retrieval.RetrieveUnixfs(ctx, order.Root, order.Size, order.Total, order.MinerPeerID, order.Client, order.Miner, outFile)
 	if err != nil {
 		_ = outFile.Close()
 		return err

@@ -2,12 +2,15 @@ package impl
 
 import (
 	"context"
+	"github.com/filecoin-project/go-lotus/node/impl/client"
+	"github.com/filecoin-project/go-lotus/node/impl/paych"
+
+	logging "github.com/ipfs/go-log"
 
 	"github.com/filecoin-project/go-lotus/api"
 	"github.com/filecoin-project/go-lotus/chain/address"
 	"github.com/filecoin-project/go-lotus/miner"
 	"github.com/filecoin-project/go-lotus/node/impl/full"
-	logging "github.com/ipfs/go-log"
 )
 
 var log = logging.Logger("node")
@@ -15,9 +18,9 @@ var log = logging.Logger("node")
 type FullNodeAPI struct {
 	CommonAPI
 	full.ChainAPI
-	full.ClientAPI
+	client.API
 	full.MpoolAPI
-	full.PaychAPI
+	paych.PaychAPI
 	full.StateAPI
 	full.WalletAPI
 

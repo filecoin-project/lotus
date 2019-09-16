@@ -166,12 +166,17 @@ var clientRetrieveCmd = &cli.Command{
 	Name:  "retrieve",
 	Usage: "retrieve data from network",
 	Action: func(cctx *cli.Context) error {
-		if cctx.NArg() != 2 {
-			fmt.Println("Usage: retrieve [CID] [outfile]")
+		if cctx.NArg() != 3 {
+			fmt.Println("Usage: retrieve [client address] [CID] [outfile]")
 			return nil
 		}
 
-		file, err := cid.Parse(cctx.Args().First())
+		payer, err := address.NewFromString(cctx.Args().Get(0))
+		if err != nil {
+			return err
+		}
+
+		file, err := cid.Parse(cctx.Args().Get(1))
 		if err != nil {
 			return err
 		}
@@ -202,7 +207,9 @@ var clientRetrieveCmd = &cli.Command{
 		// TODO: parse offer strings from `client find`, make this smarter
 
 		order := offers[0].Order()
-		err = api.ClientRetrieve(ctx, order, cctx.Args().Get(1))
+		order.Client = payer
+
+		err = api.ClientRetrieve(ctx, order, cctx.Args().Get(2))
 		if err == nil {
 			fmt.Println("Success")
 		}

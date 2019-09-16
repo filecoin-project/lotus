@@ -1,151 +1,60 @@
-package full
+package paych
 
 import (
 	"context"
 	"fmt"
 
+	"github.com/ipfs/go-cid"
+	"go.uber.org/fx"
+	"golang.org/x/xerrors"
+
 	"github.com/filecoin-project/go-lotus/api"
 	"github.com/filecoin-project/go-lotus/chain/actors"
 	"github.com/filecoin-project/go-lotus/chain/address"
 	"github.com/filecoin-project/go-lotus/chain/types"
+	full "github.com/filecoin-project/go-lotus/node/impl/full"
 	"github.com/filecoin-project/go-lotus/paych"
-
-	"github.com/ipfs/go-cid"
-	"go.uber.org/fx"
-	"golang.org/x/xerrors"
 )
 
 type PaychAPI struct {
 	fx.In
 
-	MpoolAPI
-	WalletAPI
-	ChainAPI
+	full.MpoolAPI
+	full.WalletAPI
+	full.ChainAPI
 
 	PaychMgr *paych.Manager
 }
 
-func (a *PaychAPI) PaychCreate(ctx context.Context, from, to address.Address, amt types.BigInt) (*api.ChannelInfo, error) {
-	params, aerr := actors.SerializeParams(&actors.PCAConstructorParams{To: to})
-	if aerr != nil {
-		return nil, aerr
-	}
-
-	nonce, err := a.MpoolGetNonce(ctx, from)
+func (a *PaychAPI) PaychGet(ctx context.Context, from, to address.Address, ensureFunds types.BigInt) (*api.ChannelInfo, error) {
+	ch, mcid, err := a.PaychMgr.GetPaych(ctx, from, to, ensureFunds)
 	if err != nil {
-		return nil, err
-	}
-
-	enc, err := actors.SerializeParams(&actors.ExecParams{
-		Params: params,
-		Code:   actors.PaymentChannelActorCodeCid,
-	})
-
-	msg := &types.Message{
-		To:       actors.InitActorAddress,
-		From:     from,
-		Value:    amt,
-		Nonce:    nonce,
-		Method:   actors.IAMethods.Exec,
-		Params:   enc,
-		GasLimit: types.NewInt(1000000),
-		GasPrice: types.NewInt(0),
-	}
-
-	smsg, err := a.WalletSignMessage(ctx, from, msg)
-	if err != nil {
-		return nil, err
-	}
-
-	if err := a.MpoolPush(ctx, smsg); err != nil {
-		return nil, err
-	}
-
-	mcid := smsg.Cid()
-	mwait, err := a.ChainWaitMsg(ctx, mcid)
-	if err != nil {
-		return nil, err
-	}
-
-	if mwait.Receipt.ExitCode != 0 {
-		return nil, fmt.Errorf("payment channel creation failed (exit code %d)", mwait.Receipt.ExitCode)
-	}
-
-	paychaddr, err := address.NewFromBytes(mwait.Receipt.Return)
-	if err != nil {
-		return nil, err
-	}
-
-	if err := a.PaychMgr.TrackOutboundChannel(ctx, paychaddr); err != nil {
 		return nil, err
 	}
 
 	return &api.ChannelInfo{
-		Channel:        paychaddr,
+		Channel:        ch,
 		ChannelMessage: mcid,
 	}, nil
 }
 
+func (a *PaychAPI) PaychAllocateLane(ctx context.Context, ch address.Address) (uint64, error) {
+	return a.PaychMgr.AllocateLane(ch)
+}
+
 func (a *PaychAPI) PaychNewPayment(ctx context.Context, from, to address.Address, amount types.BigInt, extra *types.ModVerifyParams, tl uint64, minClose uint64) (*api.PaymentInfo, error) {
-	ch, err := a.PaychMgr.OutboundChanTo(from, to)
-	if err != nil {
-		return nil, err
-	}
-	var chMsg *cid.Cid
-	if ch == address.Undef {
-		// don't have matching channel, open new
-
-		// TODO: this should be more atomic
-		chInfo, err := a.PaychCreate(ctx, from, to, amount)
-		if err != nil {
-			return nil, err
-		}
-		ch = chInfo.Channel
-		chMsg = &chInfo.ChannelMessage
-	} else {
-		// already have chanel to the destination, add funds, and open a new lane
-		// TODO: track free funds in channel
-
-		nonce, err := a.MpoolGetNonce(ctx, from)
-		if err != nil {
-			return nil, err
-		}
-
-		msg := &types.Message{
-			To:       ch,
-			From:     from,
-			Value:    amount,
-			Nonce:    nonce,
-			Method:   0,
-			GasLimit: types.NewInt(1000000),
-			GasPrice: types.NewInt(0),
-		}
-
-		smsg, err := a.WalletSignMessage(ctx, from, msg)
-		if err != nil {
-			return nil, err
-		}
-
-		if err := a.MpoolPush(ctx, smsg); err != nil {
-			return nil, err
-		}
-
-		mwait, err := a.ChainWaitMsg(ctx, smsg.Cid())
-		if err != nil {
-			return nil, err
-		}
-
-		if mwait.Receipt.ExitCode != 0 {
-			return nil, fmt.Errorf("voucher channel creation failed: adding funds (exit code %d)", mwait.Receipt.ExitCode)
-		}
-	}
-
-	lane, err := a.PaychMgr.AllocateLane(ch)
+	// TODO: Fix free fund tracking in PaychGet, pass amount
+	ch, err := a.PaychGet(ctx, from, to, types.NewInt(0))
 	if err != nil {
 		return nil, err
 	}
 
-	sv, err := a.paychVoucherCreate(ctx, ch, types.SignedVoucher{
+	lane, err := a.PaychMgr.AllocateLane(ch.Channel)
+	if err != nil {
+		return nil, err
+	}
+
+	sv, err := a.paychVoucherCreate(ctx, ch.Channel, types.SignedVoucher{
 		Amount: amount,
 		Lane:   lane,
 
@@ -158,8 +67,8 @@ func (a *PaychAPI) PaychNewPayment(ctx context.Context, from, to address.Address
 	}
 
 	return &api.PaymentInfo{
-		Channel:        ch,
-		ChannelMessage: chMsg,
+		Channel:        ch.Channel,
+		ChannelMessage: &ch.ChannelMessage,
 		Voucher:        sv,
 	}, nil
 }

@@ -82,10 +82,11 @@ type FullNodeStruct struct {
 		StateGetActor        func(context.Context, address.Address, *types.TipSet) (*types.Actor, error)         `perm:"read"`
 		StateReadState       func(context.Context, *types.Actor, *types.TipSet) (*ActorState, error)             `perm:"read"`
 
-		PaychCreate                func(ctx context.Context, from, to address.Address, amt types.BigInt) (*ChannelInfo, error)                                                              `perm:"sign"`
+		PaychGet                   func(ctx context.Context, from, to address.Address, ensureFunds types.BigInt) (*ChannelInfo, error)                                                      `perm:"sign"`
 		PaychList                  func(context.Context) ([]address.Address, error)                                                                                                         `perm:"read"`
 		PaychStatus                func(context.Context, address.Address) (*PaychStatus, error)                                                                                             `perm:"read"`
 		PaychClose                 func(context.Context, address.Address) (cid.Cid, error)                                                                                                  `perm:"sign"`
+		PaychAllocateLane          func(context.Context, address.Address) (uint64, error)                                                                                                   `perm:"sign"`
 		PaychNewPayment            func(ctx context.Context, from, to address.Address, amount types.BigInt, extra *types.ModVerifyParams, tl uint64, minClose uint64) (*PaymentInfo, error) `perm:"sign"`
 		PaychVoucherCheck          func(context.Context, *types.SignedVoucher) error                                                                                                        `perm:"read"`
 		PaychVoucherCheckValid     func(context.Context, address.Address, *types.SignedVoucher) error                                                                                       `perm:"read"`
@@ -299,8 +300,8 @@ func (c *FullNodeStruct) StateReadState(ctx context.Context, act *types.Actor, t
 	return c.Internal.StateReadState(ctx, act, ts)
 }
 
-func (c *FullNodeStruct) PaychCreate(ctx context.Context, from, to address.Address, amt types.BigInt) (*ChannelInfo, error) {
-	return c.Internal.PaychCreate(ctx, from, to, amt)
+func (c *FullNodeStruct) PaychGet(ctx context.Context, from, to address.Address, ensureFunds types.BigInt) (*ChannelInfo, error) {
+	return c.Internal.PaychGet(ctx, from, to, ensureFunds)
 }
 
 func (c *FullNodeStruct) PaychList(ctx context.Context) ([]address.Address, error) {
@@ -333,6 +334,10 @@ func (c *FullNodeStruct) PaychVoucherList(ctx context.Context, pch address.Addre
 
 func (c *FullNodeStruct) PaychClose(ctx context.Context, a address.Address) (cid.Cid, error) {
 	return c.Internal.PaychClose(ctx, a)
+}
+
+func (c *FullNodeStruct) PaychAllocateLane(ctx context.Context, ch address.Address) (uint64, error) {
+	return c.Internal.PaychAllocateLane(ctx, ch)
 }
 
 func (c *FullNodeStruct) PaychNewPayment(ctx context.Context, from, to address.Address, amount types.BigInt, extra *types.ModVerifyParams, tl uint64, minClose uint64) (*PaymentInfo, error) {

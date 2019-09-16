@@ -17,7 +17,10 @@ import (
 	"github.com/filecoin-project/go-lotus/api"
 	"github.com/filecoin-project/go-lotus/build"
 	"github.com/filecoin-project/go-lotus/chain/address"
+	"github.com/filecoin-project/go-lotus/chain/types"
 	"github.com/filecoin-project/go-lotus/lib/cborrpc"
+	payapi "github.com/filecoin-project/go-lotus/node/impl/paych"
+	"github.com/filecoin-project/go-lotus/paych"
 	"github.com/filecoin-project/go-lotus/retrieval/discovery"
 )
 
@@ -25,6 +28,9 @@ var log = logging.Logger("retrieval")
 
 type Client struct {
 	h host.Host
+
+	pmgr   *paych.Manager
+	payapi payapi.PaychAPI
 }
 
 func NewClient(h host.Host) *Client {
@@ -70,10 +76,17 @@ func (c *Client) Query(ctx context.Context, p discovery.RetrievalPeer, data cid.
 }
 
 type clientStream struct {
+	payapi payapi.PaychAPI
 	stream network.Stream
 
 	root   cid.Cid
+	size   types.BigInt
 	offset uint64
+
+	paych       address.Address
+	lane        uint64
+	total       types.BigInt
+	transferred types.BigInt
 
 	windowSize uint64 // how much we "trust" the peer
 	verifier   BlockVerifier
@@ -91,7 +104,7 @@ type clientStream struct {
 // < ..Blocks
 // > DealProposal(...)
 // < ...
-func (c *Client) RetrieveUnixfs(ctx context.Context, root cid.Cid, size uint64, miner peer.ID, minerAddr address.Address, out io.Writer) error {
+func (c *Client) RetrieveUnixfs(ctx context.Context, root cid.Cid, size uint64, total types.BigInt, miner peer.ID, client, minerAddr address.Address, out io.Writer) error {
 	s, err := c.h.NewStream(ctx, miner, ProtocolID)
 	if err != nil {
 		return err
@@ -102,11 +115,27 @@ func (c *Client) RetrieveUnixfs(ctx context.Context, root cid.Cid, size uint64, 
 	// TODO: Support in handler
 	// TODO: Allow client to specify this
 
+	paych, _, err := c.pmgr.GetPaych(ctx, client, minerAddr, total)
+	if err != nil {
+		return err
+	}
+	lane, err := c.pmgr.AllocateLane(paych)
+	if err != nil {
+		return err
+	}
+
 	cst := clientStream{
+		payapi: c.payapi,
 		stream: s,
 
 		root:   root,
+		size:   types.NewInt(size),
 		offset: initialOffset,
+
+		paych:       paych,
+		lane:        lane,
+		total:       total,
+		transferred: types.NewInt(0),
 
 		windowSize: build.UnixfsChunkSize,
 		verifier:   &UnixFs0Verifier{Root: root},
@@ -119,7 +148,7 @@ func (c *Client) RetrieveUnixfs(ctx context.Context, root cid.Cid, size uint64, 
 		}
 		log.Infof("Retrieve %dB @%d", toFetch, cst.offset)
 
-		err := cst.doOneExchange(toFetch, out)
+		err := cst.doOneExchange(ctx, toFetch, out)
 		if err != nil {
 			return err
 		}
@@ -130,9 +159,17 @@ func (c *Client) RetrieveUnixfs(ctx context.Context, root cid.Cid, size uint64, 
 	return nil
 }
 
-func (cst *clientStream) doOneExchange(toFetch uint64, out io.Writer) error {
+func (cst *clientStream) doOneExchange(ctx context.Context, toFetch uint64, out io.Writer) error {
+	payAmount := types.BigDiv(types.BigMul(cst.total, types.NewInt(toFetch)), cst.size)
+
+	payment, err := cst.setupPayment(ctx, payAmount)
+	if err != nil {
+		return err
+	}
+
 	deal := DealProposal{
-		Ref: cst.root,
+		Payment: payment,
+		Ref:     cst.root,
 		Params: RetParams{
 			Unixfs0: &Unixfs0Offer{
 				Offset: cst.offset,
@@ -220,4 +257,21 @@ func (cst *clientStream) consumeBlockMessage(block Block, out io.Writer) (uint64
 	}
 
 	return 1, nil
+}
+
+func (cst *clientStream) setupPayment(ctx context.Context, toSend types.BigInt) (api.PaymentInfo, error) {
+	amount := types.BigAdd(cst.transferred, toSend)
+
+	sv, err := cst.payapi.PaychVoucherCreate(ctx, cst.paych, amount, cst.lane)
+	if err != nil {
+		return api.PaymentInfo{}, err
+	}
+
+	cst.transferred = amount
+
+	return api.PaymentInfo{
+		Channel:        cst.paych,
+		ChannelMessage: nil,
+		Voucher:        sv,
+	}, nil
 }

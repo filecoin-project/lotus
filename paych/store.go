@@ -139,9 +139,6 @@ func (ps *Store) ListChannels() ([]address.Address, error) {
 }
 
 func (ps *Store) findChan(filter func(*ChannelInfo) bool) (address.Address, error) {
-	ps.lk.Lock()
-	defer ps.lk.Unlock()
-
 	res, err := ps.ds.Query(dsq.Query{})
 	if err != nil {
 		return address.Undef, err

@@ -3,6 +3,7 @@ package paych
 import (
 	"context"
 	"fmt"
+	"github.com/filecoin-project/go-lotus/node/impl/full"
 	"math"
 	"strconv"
 
@@ -19,6 +20,10 @@ var log = logging.Logger("paych")
 type Manager struct {
 	store *Store
 	sm    *stmgr.StateManager
+
+	mpool  *full.MpoolAPI
+	wallet *full.WalletAPI
+	chain  *full.ChainAPI
 }
 
 func NewManager(sm *stmgr.StateManager, pchstore *Store) *Manager {
@@ -240,6 +245,9 @@ func (pm *Manager) ListVouchers(ctx context.Context, ch address.Address) ([]*Vou
 }
 
 func (pm *Manager) OutboundChanTo(from, to address.Address) (address.Address, error) {
+	pm.store.lk.Lock()
+	defer pm.store.lk.Unlock()
+
 	return pm.store.findChan(func(ci *ChannelInfo) bool {
 		if ci.Direction != DirOutbound {
 			return false

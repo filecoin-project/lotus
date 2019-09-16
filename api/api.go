@@ -109,10 +109,11 @@ type FullNode interface {
 	StateGetActor(ctx context.Context, actor address.Address, ts *types.TipSet) (*types.Actor, error)
 	StateReadState(ctx context.Context, act *types.Actor, ts *types.TipSet) (*ActorState, error)
 
-	PaychCreate(ctx context.Context, from, to address.Address, amt types.BigInt) (*ChannelInfo, error)
+	PaychGet(ctx context.Context, from, to address.Address, ensureFunds types.BigInt) (*ChannelInfo, error)
 	PaychList(context.Context) ([]address.Address, error)
 	PaychStatus(context.Context, address.Address) (*PaychStatus, error)
 	PaychClose(context.Context, address.Address) (cid.Cid, error)
+	PaychAllocateLane(ctx context.Context, ch address.Address) (uint64, error)
 	PaychNewPayment(ctx context.Context, from, to address.Address, amount types.BigInt, extra *types.ModVerifyParams, tl uint64, minClose uint64) (*PaymentInfo, error)
 	PaychVoucherCheckValid(context.Context, address.Address, *types.SignedVoucher) error
 	PaychVoucherCheckSpendable(context.Context, address.Address, *types.SignedVoucher, []byte, []byte) (bool, error)
@@ -246,8 +247,10 @@ type QueryOffer struct {
 
 func (o *QueryOffer) Order() RetrievalOrder {
 	return RetrievalOrder{
-		Root:        o.Root,
-		Size:        o.Size,
+		Root:  o.Root,
+		Size:  o.Size,
+		Total: o.MinPrice,
+
 		Miner:       o.Miner,
 		MinerPeerID: o.MinerPeerID,
 	}
@@ -258,7 +261,9 @@ type RetrievalOrder struct {
 	Root cid.Cid
 	Size uint64
 	// TODO: support offset
+	Total types.BigInt
 
+	Client      address.Address
 	Miner       address.Address
 	MinerPeerID peer.ID
 }
