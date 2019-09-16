@@ -13,7 +13,6 @@ import (
 	"golang.org/x/xerrors"
 
 	"github.com/filecoin-project/go-lotus/chain/address"
-	"github.com/filecoin-project/go-lotus/chain/types"
 	"github.com/filecoin-project/go-lotus/node/modules/dtypes"
 )
 
@@ -48,9 +47,8 @@ func commitmentKey(miner address.Address, sectorId uint64) datastore.Key {
 	return commitmentDsPrefix.ChildString(miner.String()).ChildString(fmt.Sprintf("%d", sectorId))
 }
 
-func (ct *Tracker) TrackCommitSectorMsg(sectorId uint64, smsg *types.SignedMessage) error {
-	mcid := smsg.Cid()
-	key := commitmentKey(smsg.Message.From, sectorId)
+func (ct *Tracker) TrackCommitSectorMsg(miner address.Address, sectorId uint64, mcid cid.Cid) error {
+	key := commitmentKey(miner, sectorId)
 
 	ct.lk.Lock()
 	defer ct.lk.Unlock()
@@ -67,10 +65,10 @@ func (ct *Tracker) TrackCommitSectorMsg(sectorId uint64, smsg *types.SignedMessa
 		}
 
 		if !comm.Msg.Equals(mcid) {
-			return xerrors.Errorf("commitment tracking for miner %s, sector %d: already tracking %s, got another commitment message: %s", smsg.Message.From, sectorId, comm.Msg, mcid)
+			return xerrors.Errorf("commitment tracking for miner %s, sector %d: already tracking %s, got another commitment message: %s", miner, sectorId, comm.Msg, mcid)
 		}
 
-		log.Warnf("commitment.TrackCommitSectorMsg called more than once for miner %s, sector %d, message %s", smsg.Message.From, sectorId, mcid)
+		log.Warnf("commitment.TrackCommitSectorMsg called more than once for miner %s, sector %d, message %s", miner, sectorId, mcid)
 		return nil
 	}
 

@@ -162,7 +162,7 @@ func (m *Miner) commitSector(ctx context.Context, sinfo sectorbuilder.SectorSeal
 		return errors.Wrap(err, "pushing commit sector message to mpool")
 	}
 
-	if err := m.commt.TrackCommitSectorMsg(sinfo.SectorID, smsg); err != nil {
+	if err := m.commt.TrackCommitSectorMsg(m.maddr, sinfo.SectorID, smsg.Cid()); err != nil {
 		return errors.Wrap(err, "tracking sector commitment")
 	}
 
