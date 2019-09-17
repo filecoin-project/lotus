@@ -54,11 +54,8 @@ func (ct *Tracker) TrackCommitSectorMsg(miner address.Address, sectorId uint64, 
 	defer ct.lk.Unlock()
 
 	tracking, err := ct.commitDs.Get(key)
-	if err != datastore.ErrNotFound {
-		if err != nil {
-			return err
-		}
-
+	switch err {
+	case datastore.ErrNotFound:
 		var comm commitment
 		if err := cbor.DecodeInto(tracking, &comm); err != nil {
 			return err
@@ -70,6 +67,10 @@ func (ct *Tracker) TrackCommitSectorMsg(miner address.Address, sectorId uint64, 
 
 		log.Warnf("commitment.TrackCommitSectorMsg called more than once for miner %s, sector %d, message %s", miner, sectorId, mcid)
 		return nil
+	case nil:
+		break
+	default:
+		return err
 	}
 
 	comm := &commitment{Msg: mcid}
