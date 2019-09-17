@@ -39,10 +39,20 @@ type StorageMinerActorState struct {
 	ProvingSet     cid.Cid
 	ProvingSetSize uint64
 
-	// Sectors reported during the last PoSt submission as being 'done'. The collateral
-	// for them is still being held until the next PoSt submission in case early sector
+	// Faulty sectors reported since last SubmitPost,
+	// up to the current proving period's challenge time.
+	CurrentFaultSet types.BitField
+
+	// Faults submitted after the current proving period's challenge time,
+	// but before the PoSt for that period is submitted.
+	// These become the currentFaultSet when a PoSt is submitted.
+	NextFaultSet types.BitField
+
+	// Sectors reported during the last PoSt submission as being 'done'.
+	// The collateral for them is still being held until
+	// the next PoSt submission in case early sector
 	// removal penalization is needed.
-	//NextDoneSet BitField
+	NextDoneSet types.BitField
 
 	// Deals this miner has been slashed for since the last post submission.
 	//TODO: unsupported map key type "Cid" (if you want to use struct keys, your atlas needs a transform to string)
