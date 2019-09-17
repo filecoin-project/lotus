@@ -110,7 +110,7 @@ func GetMinerPeerID(ctx context.Context, sm *StateManager, ts *types.TipSet, mad
 	recp, err := sm.Call(ctx, &types.Message{
 		To:     maddr,
 		From:   maddr,
-		Method: actors.MAMethods.GetWorkerAddr,
+		Method: actors.MAMethods.GetPeerID,
 	}, ts)
 	if err != nil {
 		return "", xerrors.Errorf("callRaw failed: %w", err)

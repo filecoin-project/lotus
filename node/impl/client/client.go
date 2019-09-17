@@ -3,6 +3,7 @@ package client
 import (
 	"context"
 	"errors"
+	"golang.org/x/xerrors"
 	"os"
 
 	"github.com/ipfs/go-blockservice"
@@ -258,7 +259,7 @@ func (a *API) ClientRetrieve(ctx context.Context, order api.RetrievalOrder, path
 	err = a.Retrieval.RetrieveUnixfs(ctx, order.Root, order.Size, order.Total, order.MinerPeerID, order.Client, order.Miner, outFile)
 	if err != nil {
 		_ = outFile.Close()
-		return err
+		return xerrors.Errorf("RetrieveUnixfs: %w", err)
 	}
 
 	return outFile.Close()

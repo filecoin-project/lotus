@@ -117,11 +117,11 @@ func (c *Client) RetrieveUnixfs(ctx context.Context, root cid.Cid, size uint64, 
 
 	paych, _, err := c.pmgr.GetPaych(ctx, client, minerAddr, total)
 	if err != nil {
-		return err
+		return xerrors.Errorf("getting payment channel: %w", err)
 	}
 	lane, err := c.pmgr.AllocateLane(paych)
 	if err != nil {
-		return err
+		return xerrors.Errorf("allocating payment lane: %w", err)
 	}
 
 	cst := clientStream{
@@ -150,7 +150,7 @@ func (c *Client) RetrieveUnixfs(ctx context.Context, root cid.Cid, size uint64, 
 
 		err := cst.doOneExchange(ctx, toFetch, out)
 		if err != nil {
-			return err
+			return xerrors.Errorf("retrieval exchange: %w", err)
 		}
 
 		cst.offset += toFetch
@@ -164,7 +164,7 @@ func (cst *clientStream) doOneExchange(ctx context.Context, toFetch uint64, out 
 
 	payment, err := cst.setupPayment(ctx, payAmount)
 	if err != nil {
-		return err
+		return xerrors.Errorf("setting up retrieval payment: %w", err)
 	}
 
 	deal := DealProposal{
@@ -216,12 +216,12 @@ func (cst *clientStream) fetchBlocks(toFetch uint64, out io.Writer) error {
 
 		var block Block
 		if err := cborrpc.ReadCborRPC(cst.stream, &block); err != nil {
-			return err
+			return xerrors.Errorf("reading fetchBlock response: %w", err)
 		}
 
 		dataBlocks, err := cst.consumeBlockMessage(block, out)
 		if err != nil {
-			return err
+			return xerrors.Errorf("consuming retrieved blocks: %w", err)
 		}
 
 		i += dataBlocks
