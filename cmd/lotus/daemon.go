@@ -6,14 +6,13 @@ import (
 	"context"
 	"io/ioutil"
 
-	"github.com/filecoin-project/go-lotus/api"
-	"github.com/filecoin-project/go-lotus/node/modules"
-	"github.com/filecoin-project/go-lotus/node/modules/testing"
-
 	"github.com/multiformats/go-multiaddr"
 	"gopkg.in/urfave/cli.v2"
 
+	"github.com/filecoin-project/go-lotus/api"
 	"github.com/filecoin-project/go-lotus/node"
+	"github.com/filecoin-project/go-lotus/node/modules"
+	"github.com/filecoin-project/go-lotus/node/modules/testing"
 	"github.com/filecoin-project/go-lotus/node/repo"
 )
 
@@ -65,7 +64,7 @@ var DaemonCmd = &cli.Command{
 		}
 
 		var api api.FullNode
-		err = node.New(ctx,
+		stop, err := node.New(ctx,
 			node.FullAPI(&api),
 
 			node.Online(),
@@ -86,6 +85,6 @@ var DaemonCmd = &cli.Command{
 		}
 
 		// TODO: properly parse api endpoint (or make it a URL)
-		return serveRPC(api, "127.0.0.1:"+cctx.String("api"))
+		return serveRPC(api, stop, "127.0.0.1:"+cctx.String("api"))
 	},
 }

@@ -36,7 +36,8 @@ func builder(t *testing.T, n int) []api.FullNode {
 		}
 
 		var err error
-		err = node.New(ctx,
+		// TODO: Don't ignore stop
+		_, err = node.New(ctx,
 			node.FullAPI(&out[i]),
 			node.Online(),
 			node.Repo(repo.NewMemory(nil)),

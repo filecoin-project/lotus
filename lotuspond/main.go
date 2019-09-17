@@ -130,7 +130,7 @@ var runCmd = &cli.Command{
 	Usage: "run lotuspond daemon",
 	Action: func(cctx *cli.Context) error {
 		rpcServer := jsonrpc.NewServer()
-		a := &api{running: map[int32]runningNode{}}
+		a := &api{running: map[int32]*runningNode{}}
 		rpcServer.Register("Pond", a)
 
 		http.Handle("/", http.FileServer(http.Dir("lotuspond/front/build")))

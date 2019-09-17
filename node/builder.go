@@ -337,8 +337,10 @@ func FullAPI(out *api.FullNode) Option {
 	}
 }
 
+type StopFunc func(context.Context) error
+
 // New builds and starts new Filecoin node
-func New(ctx context.Context, opts ...Option) error {
+func New(ctx context.Context, opts ...Option) (StopFunc, error) {
 	settings := Settings{
 		modules: map[interface{}]fx.Option{},
 		invokes: make([]fx.Option, _nInvokes),
@@ -346,7 +348,7 @@ func New(ctx context.Context, opts ...Option) error {
 
 	// apply module options in the right order
 	if err := Options(Options(defaults()...), Options(opts...))(&settings); err != nil {
-		return err
+		return nil, err
 	}
 
 	// gather constructors for fx.Options
@@ -374,10 +376,10 @@ func New(ctx context.Context, opts ...Option) error {
 	//  correctly
 	if err := app.Start(ctx); err != nil {
 		// comment fx.NopLogger few lines above for easier debugging
-		return err
+		return nil, err
 	}
 
-	return nil
+	return app.Stop, nil
 }
 
 // In-memory / testing

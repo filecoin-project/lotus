@@ -1,8 +1,11 @@
 package main
 
 import (
+	"context"
 	"net/http"
 	"os"
+	"os/signal"
+	"syscall"
 
 	"github.com/multiformats/go-multiaddr"
 	"golang.org/x/xerrors"
@@ -32,14 +35,7 @@ var runCmd = &cli.Command{
 		if err != nil {
 			return err
 		}
-		ctx := lcli.ReqContext(cctx)
-
-		go func() {
-			// a hack for now to handle sigint
-
-			<-ctx.Done()
-			os.Exit(0)
-		}()
+		ctx := lcli.DaemonContext(cctx)
 
 		v, err := nodeApi.Version(ctx)
 		if err != nil {
@@ -61,7 +57,7 @@ var runCmd = &cli.Command{
 		}
 
 		var minerapi api.StorageMiner
-		err = node.New(ctx,
+		stop, err := node.New(ctx,
 			node.StorageMiner(&minerapi),
 			node.Online(),
 			node.Repo(r),
@@ -101,6 +97,23 @@ var runCmd = &cli.Command{
 		}
 
 		http.Handle("/rpc/v0", ah)
-		return http.ListenAndServe("127.0.0.1:"+cctx.String("api"), http.DefaultServeMux)
+
+		srv := &http.Server{Addr: "127.0.0.1:" + cctx.String("api"), Handler: http.DefaultServeMux}
+
+		sigChan := make(chan os.Signal, 2)
+		go func() {
+			<-sigChan
+			log.Warn("Shutting down..")
+			if err := stop(context.TODO()); err != nil {
+				log.Errorf("graceful shutting down failed: %s", err)
+			}
+			if err := srv.Shutdown(context.TODO()); err != nil {
+				log.Errorf("shutting down RPC server failed: %s", err)
+			}
+			log.Warn("Graceful shutdown successful")
+		}()
+		signal.Notify(sigChan, syscall.SIGTERM, syscall.SIGINT)
+
+		return srv.ListenAndServe()
 	},
 }

@@ -127,7 +127,8 @@ func (tu *syncTestUtil) addSourceNode(gen int) {
 	sourceRepo, genesis, blocks := tu.repoWithChain(tu.t, gen)
 	var out api.FullNode
 
-	err := node.New(tu.ctx,
+	// TODO: Don't ignore stop
+	_, err := node.New(tu.ctx,
 		node.FullAPI(&out),
 		node.Online(),
 		node.Repo(sourceRepo),
@@ -149,7 +150,8 @@ func (tu *syncTestUtil) addClientNode() int {
 
 	var out api.FullNode
 
-	err := node.New(tu.ctx,
+	// TODO: Don't ignore stop
+	_, err := node.New(tu.ctx,
 		node.FullAPI(&out),
 		node.Online(),
 		node.Repo(repo.NewMemory(nil)),

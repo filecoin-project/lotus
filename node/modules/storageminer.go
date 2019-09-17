@@ -147,8 +147,12 @@ func RegisterMiner(lc fx.Lifecycle, ds dtypes.MetadataDS, api api.FullNode) erro
 
 	lc.Append(fx.Hook{
 		OnStart: func(ctx context.Context) error {
-			log.Infof("registering miner '%s' with full node", minerAddr)
+			log.Infof("Registering miner '%s' with full node", minerAddr)
 			return api.MinerRegister(ctx, minerAddr)
+		},
+		OnStop: func(ctx context.Context) error {
+			log.Infof("Unregistering miner '%s' from full node", minerAddr)
+			return api.MinerUnregister(ctx, minerAddr)
 		},
 	})
 	return nil

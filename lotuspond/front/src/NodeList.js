@@ -9,6 +9,8 @@ import pushMessage from "./chain/send";
 import Logs from "./Logs";
 import StorageNodeInit from "./StorageNodeInit";
 
+const [NodeUnknown, NodeRunning, NodeStopped] = [0, 1, 2]
+
 class NodeList extends React.Component {
   constructor(props) {
     super(props)
@@ -53,6 +55,7 @@ class NodeList extends React.Component {
                       give1k={this.transfer1kFrom1}
                       mountWindow={this.props.mountWindow}
                       spawnStorageNode={this.spawnStorageNode}
+                      stop={this.stopNode(node.ID, onClose)}
             />)
       } else {
         const fullId = await this.props.client.call('Pond.FullID', [node.ID])
@@ -62,6 +65,7 @@ class NodeList extends React.Component {
                          pondClient={this.props.client}
                          fullConn={this.state.nodes[fullId].conn}
                          mountWindow={this.props.mountWindow}
+                         stop={this.stopNode(node.ID, onClose)}
             />)
       }
     })
@@ -72,7 +76,7 @@ class NodeList extends React.Component {
     const nodes = nds.reduce((o, i) => {o[i.ID] = i; return o}, {})
     console.log('nds', nodes)
 
-    Object.keys(nodes).map(n => nodes[n]).forEach(n => this.mountNode(n))
+    Object.keys(nodes).map(n => nodes[n]).filter(n => n.State === NodeRunning).forEach(n => this.mountNode(n))
 
     this.setState({existingLoaded: true, nodes: nodes})
   }
@@ -112,6 +116,23 @@ class NodeList extends React.Component {
     await this.mountNode(node)
 
     //this.setState(state => ({nodes: {...state.nodes, [node.ID]: node}}))
+  }
+
+  stopNode = (id, closeWindow) => async () => {
+    this.state.nodes[id].conn.close()
+    await this.props.client.call('Pond.Stop', [id])
+    closeWindow()
+    this.setState(prev => ({
+      nodes: {
+        ...prev.nodes,
+        [id]: {...(prev.nodes[id]), State: NodeStopped, conn: undefined}
+      }
+    }))
+  }
+
+  startNode = (id) => async () => {
+    let node = await this.props.client.call('Pond.RestartNode', [Number(id)])
+    await this.mountNode(node)
   }
 
   connMgr() {
@@ -154,6 +175,9 @@ class NodeList extends React.Component {
               if (nd.conn) {
                 info = <span>{nd.peerid}</span>
                 logs = <a href='#' onClick={() => this.props.mountWindow(cl => <Logs node={nd.ID} onClose={cl}/>)}>[logs]</a>
+              }
+              if (nd.State === NodeStopped) {
+                info = <span>[stopped] <a href="#" onClick={this.startNode(n)}>[START]</a></span>
               }
 
               return <div key={n}>
