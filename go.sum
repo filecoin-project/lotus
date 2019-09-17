@@ -68,10 +68,6 @@ github.com/eapache/go-resiliency v1.1.0/go.mod h1:kFI+JgMyC7bLPUVY133qvEBtVayf5m
 github.com/eapache/go-xerial-snappy v0.0.0-20180814174437-776d5712da21/go.mod h1:+020luEh2TKB4/GOp8oxxtq0Daoen/Cii55CzbTV6DU=
 github.com/eapache/queue v1.1.0/go.mod h1:6eCeP0CKFpHLu8blIFXhExK/dRa7WDZfr6jVFPTqq+I=
 github.com/fatih/color v1.6.0/go.mod h1:Zm6kSWBoL9eyXnKyktHP6abPY2pDugNf5KwzbycvMj4=
-github.com/filecoin-project/go-amt-ipld v0.0.0-20190828233303-a41bd0b6f985 h1:rpid5Xgp6GnDACqZvugxWvJ8L1HpyttUkzpUk/4BPXk=
-github.com/filecoin-project/go-amt-ipld v0.0.0-20190828233303-a41bd0b6f985/go.mod h1:muo8IeR187EUiX5AcMmIb0XSgpSU3qrszgh+pGWf3rY=
-github.com/filecoin-project/go-amt-ipld v0.0.0-20190917005524-72dd39686a4b h1:T/musj3r/pgi4RqGNmzPJMxYsbpS7zW+c8p3AABK5h4=
-github.com/filecoin-project/go-amt-ipld v0.0.0-20190917005524-72dd39686a4b/go.mod h1:lKjJYPg2kwbav5f78i5YA8kGccnZn18IySbpneXvaQs=
 github.com/filecoin-project/go-amt-ipld v0.0.0-20190917010905-40ffeec492ae h1:rSg6wenxKdXby0piY57Vv5gOJR6Eibqq/4PxEk6KjvE=
 github.com/filecoin-project/go-amt-ipld v0.0.0-20190917010905-40ffeec492ae/go.mod h1:lKjJYPg2kwbav5f78i5YA8kGccnZn18IySbpneXvaQs=
 github.com/filecoin-project/go-leb128 v0.0.0-20190212224330-8d79a5489543 h1:aMJGfgqe1QDhAVwxRg5fjCRF533xHidiKsugk7Vvzug=
@@ -604,17 +600,10 @@ github.com/whyrusleeping/base32 v0.0.0-20170828182744-c30ac30633cc h1:BCPnHtcboa
 github.com/whyrusleeping/base32 v0.0.0-20170828182744-c30ac30633cc/go.mod h1:r45hJU7yEoA81k6MWNhpMj/kms0n14dkzkxYHoB96UM=
 github.com/whyrusleeping/bencher v0.0.0-20190829221104-bb6607aa8bba h1:X4n8JG2e2biEZZXdBKt9HX7DN3bYGFUqljqqy0DqgnY=
 github.com/whyrusleeping/bencher v0.0.0-20190829221104-bb6607aa8bba/go.mod h1:CHQnYnQUEPydYCwuy8lmTHfGmdw9TKrhWV0xLx8l0oM=
-github.com/whyrusleeping/cbor-gen v0.0.0-20190822231004-8db835b09a5a/go.mod h1:xdlJQaiqipF0HW+Mzpg7XRM3fWbGvfgFlcppuvlkIvY=
 github.com/whyrusleeping/cbor-gen v0.0.0-20190910031516-c1cbffdb01bb h1:8yBVx6dgk1GfkiWOQ+RbeDDBLCOZxOtmZ949O2uj5H4=
 github.com/whyrusleeping/cbor-gen v0.0.0-20190910031516-c1cbffdb01bb/go.mod h1:xdlJQaiqipF0HW+Mzpg7XRM3fWbGvfgFlcppuvlkIvY=
-github.com/whyrusleeping/cbor-gen v0.0.0-20190910224804-fde80d83b106 h1:PRWDVakEjB5ju0toKWbXSExfi5BB+oU87/8GhBKXIWE=
-github.com/whyrusleeping/cbor-gen v0.0.0-20190910224804-fde80d83b106/go.mod h1:xdlJQaiqipF0HW+Mzpg7XRM3fWbGvfgFlcppuvlkIvY=
-github.com/whyrusleeping/cbor-gen v0.0.0-20190916225017-0e9e4fe27bad h1:rRuESO0E5MwFkbmM6BzG25rPNNUSgEJRITEuzvBQRoM=
-github.com/whyrusleeping/cbor-gen v0.0.0-20190916225017-0e9e4fe27bad/go.mod h1:xdlJQaiqipF0HW+Mzpg7XRM3fWbGvfgFlcppuvlkIvY=
 github.com/whyrusleeping/cbor-gen v0.0.0-20190917003517-d78d67427694 h1:Bjfm012LwDvjZvjPDU/oHwm7uX5U/yRHZaQt6gtbGlI=
 github.com/whyrusleeping/cbor-gen v0.0.0-20190917003517-d78d67427694/go.mod h1:xdlJQaiqipF0HW+Mzpg7XRM3fWbGvfgFlcppuvlkIvY=
-github.com/whyrusleeping/cbor-gen v0.0.0-20190917010459-657bcab76e7c h1:h3Y1puapIP2wIsGSz5wtI8mr9YWsK/KaBUz4M29kOj8=
-github.com/whyrusleeping/cbor-gen v0.0.0-20190917010459-657bcab76e7c/go.mod h1:xdlJQaiqipF0HW+Mzpg7XRM3fWbGvfgFlcppuvlkIvY=
 github.com/whyrusleeping/cbor-gen v0.0.0-20190917010546-c55df54645cb h1:Lc5MOczpVOeI/KwFoib6BMBQ1PfFxMzm/yOUfEeQP+o=
 github.com/whyrusleeping/cbor-gen v0.0.0-20190917010546-c55df54645cb/go.mod h1:xdlJQaiqipF0HW+Mzpg7XRM3fWbGvfgFlcppuvlkIvY=
 github.com/whyrusleeping/chunker v0.0.0-20181014151217-fe64bd25879f h1:jQa4QT2UP9WYv2nzyawpKMOCl+Z/jW7djv2/J50lj9E=
@@ -632,8 +621,6 @@ github.com/whyrusleeping/multiaddr-filter v0.0.0-20160516205228-e903e4adabd7 h1:
 github.com/whyrusleeping/multiaddr-filter v0.0.0-20160516205228-e903e4adabd7/go.mod h1:X2c0RVCI1eSUFI8eLcY3c0423ykwiUdxLJtkDvruhjI=
 github.com/whyrusleeping/pubsub v0.0.0-20131020042734-02de8aa2db3d h1:wnjWu1N8UTNf2zzF5FWlEyNNbNw5GMVHaHaaLdvdTdA=
 github.com/whyrusleeping/pubsub v0.0.0-20131020042734-02de8aa2db3d/go.mod h1:g7ckxrjiFh8mi1AY7ox23PZD0g6QU/TxW3U3unX7I3A=
-github.com/whyrusleeping/sharray v0.0.0-20190718051354-e41931821e33 h1:7Bsg3GZnFAhdadeyRie9ReenkK2XbC2FlOpJQgTzpbA=
-github.com/whyrusleeping/sharray v0.0.0-20190718051354-e41931821e33/go.mod h1:c1pwhNePDPlcYJZinQlfLTOKwTmVf45nfdTg73yOOcA=
 github.com/whyrusleeping/timecache v0.0.0-20160911033111-cfcb2f1abfee h1:lYbXeSvJi5zk5GLKVuid9TVjS9a0OmLIDKTfoZBL6Ow=
 github.com/whyrusleeping/timecache v0.0.0-20160911033111-cfcb2f1abfee/go.mod h1:m2aV4LZI4Aez7dP5PMyVKEHhUyEJ/RjmPEDOpDvudHg=
 github.com/x-cray/logrus-prefixed-formatter v0.5.2/go.mod h1:2duySbKsL6M18s5GU7VPsoEPHyzalCE06qoARUCeBBE=
