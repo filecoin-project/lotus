@@ -67,7 +67,7 @@ func main() {
 	}
 
 	if err := app.Run(os.Args); err != nil {
-		log.Error(err)
+		log.Warn(err)
 		return
 	}
 }

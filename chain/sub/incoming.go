@@ -2,8 +2,6 @@ package sub
 
 import (
 	"context"
-	"fmt"
-
 	logging "github.com/ipfs/go-log"
 	pubsub "github.com/libp2p/go-libp2p-pubsub"
 
@@ -17,6 +15,10 @@ func HandleIncomingBlocks(ctx context.Context, bsub *pubsub.Subscription, s *cha
 	for {
 		msg, err := bsub.Next(ctx)
 		if err != nil {
+			if ctx.Err() != nil {
+				log.Warn("quitting HandleIncomingBlocks loop")
+				return
+			}
 			log.Error("error from block subscription: ", err)
 			continue
 		}
@@ -55,7 +57,11 @@ func HandleIncomingMessages(ctx context.Context, mpool *chain.MessagePool, msub 
 	for {
 		msg, err := msub.Next(ctx)
 		if err != nil {
-			fmt.Println("error from message subscription: ", err)
+			log.Warn("error from message subscription: ", err)
+			if ctx.Err() != nil {
+				log.Warn("quitting HandleIncomingMessages loop")
+				return
+			}
 			continue
 		}
 

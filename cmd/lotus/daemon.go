@@ -65,7 +65,7 @@ var DaemonCmd = &cli.Command{
 		}
 
 		var api api.FullNode
-		err = node.New(ctx,
+		stop, err := node.New(ctx,
 			node.FullAPI(&api),
 
 			node.Online(),
@@ -86,6 +86,6 @@ var DaemonCmd = &cli.Command{
 		}
 
 		// TODO: properly parse api endpoint (or make it a URL)
-		return serveRPC(api, "127.0.0.1:"+cctx.String("api"))
+		return serveRPC(api, stop, "127.0.0.1:"+cctx.String("api"))
 	},
 }

@@ -2,7 +2,6 @@ package main
 
 import (
 	"context"
-	"log"
 	"os"
 
 	logging "github.com/ipfs/go-log"
@@ -65,7 +64,7 @@ func main() {
 			Code:    trace.StatusCodeFailedPrecondition,
 			Message: err.Error(),
 		})
-		log.Printf("%+v\n", err)
+		log.Warn(err)
 	}
 	return
 }
