@@ -19,9 +19,11 @@ class FullNode extends React.Component {
     this.add1k = this.add1k.bind(this)
     this.explorer = this.explorer.bind(this)
     this.client = this.client.bind(this)
+    this.stop = this.stop.bind(this)
 
     this.loadInfo()
-    setInterval(this.loadInfo, 2050)
+    let updates = setInterval(this.loadInfo, 2050)
+    this.props.client.on('close', () => clearInterval(updates))
   }
 
   async loadInfo() {
@@ -95,6 +97,10 @@ class FullNode extends React.Component {
     this.props.mountWindow((onClose) => <Client onClose={onClose} node={this.props.node} client={this.props.client} pondClient={this.props.pondClient} mountWindow={this.props.mountWindow}/>)
   }
 
+  async stop() {
+    await this.props.stop()
+  }
+
   render() {
     let runtime = <div></div>
 
@@ -165,7 +171,8 @@ class FullNode extends React.Component {
       <Cristal
         title={"Node " + this.props.node.ID}
         initialPosition={{x: this.props.node.ID*30, y: this.props.node.ID * 30}}
-        initialSize={{width: 690, height: 300}} >
+        initialSize={{width: 690, height: 300}}
+        onClose={this.stop} >
         <div className="CristalScroll">
           <div className="FullNode">
             {runtime}

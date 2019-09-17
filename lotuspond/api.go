@@ -17,9 +17,17 @@ import (
 	"golang.org/x/xerrors"
 )
 
+type NodeState int
+
+const (
+	NodeUnknown = iota
+	NodeRunning
+	NodeStopped
+)
+
 type api struct {
 	cmds      int32
-	running   map[int32]runningNode
+	running   map[int32]*runningNode
 	runningLk sync.Mutex
 	genesis   string
 }
@@ -28,6 +36,7 @@ type nodeInfo struct {
 	Repo    string
 	ID      int32
 	ApiPort int32
+	State   NodeState
 
 	FullNode string // only for storage nodes
 	Storage  bool
@@ -80,18 +89,27 @@ func (api *api) Spawn() (nodeInfo, error) {
 		Repo:    dir,
 		ID:      id,
 		ApiPort: 2500 + id,
+		State:   NodeRunning,
 	}
 
 	api.runningLk.Lock()
-	api.running[id] = runningNode{
+	api.running[id] = &runningNode{
 		cmd:  cmd,
 		meta: info,
 
 		mux: mux,
 		stop: func() {
-			defer close(mux.stop)
-			defer errlogfile.Close()
-			defer logfile.Close()
+			cmd.Process.Signal(os.Interrupt)
+			cmd.Process.Wait()
+
+			api.runningLk.Lock()
+			api.running[id].meta.State = NodeStopped
+			api.runningLk.Unlock()
+
+			logfile.Close()
+			errlogfile.Close()
+
+			close(mux.stop)
 		},
 	}
 	api.runningLk.Unlock()
@@ -180,21 +198,30 @@ func (api *api) SpawnStorage(fullNodeRepo string) (nodeInfo, error) {
 		Repo:    dir,
 		ID:      id,
 		ApiPort: 2500 + id,
+		State:   NodeRunning,
 
 		FullNode: fullNodeRepo,
 		Storage:  true,
 	}
 
 	api.runningLk.Lock()
-	api.running[id] = runningNode{
+	api.running[id] = &runningNode{
 		cmd:  cmd,
 		meta: info,
 
 		mux: mux,
 		stop: func() {
-			defer close(mux.stop)
-			defer errlogfile.Close()
-			defer logfile.Close()
+			cmd.Process.Signal(os.Interrupt)
+			cmd.Process.Wait()
+
+			api.runningLk.Lock()
+			api.running[id].meta.State = NodeStopped
+			api.runningLk.Unlock()
+
+			logfile.Close()
+			errlogfile.Close()
+
+			close(mux.stop)
 		},
 	}
 	api.runningLk.Unlock()
@@ -241,6 +268,19 @@ func (api *api) CreateRandomFile(size int64) (string, error) {
 	}
 
 	return tf.Name(), nil
+}
+
+func (api *api) Stop(node int32) error {
+	api.runningLk.Lock()
+	nd, ok := api.running[node]
+	api.runningLk.Unlock()
+
+	if !ok {
+		return nil
+	}
+
+	nd.stop()
+	return nil
 }
 
 type client struct {
