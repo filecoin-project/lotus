@@ -181,6 +181,11 @@ func (fsr *fsLockedRepo) Close() error {
 	if err != nil && !os.IsNotExist(err) {
 		return xerrors.Errorf("could not remove API file: %w", err)
 	}
+	if fsr.ds != nil {
+		if err := fsr.ds.Close(); err != nil {
+			return xerrors.Errorf("could not close datastore: %w", err)
+		}
+	}
 
 	err = fsr.closer.Close()
 	fsr.closer = nil

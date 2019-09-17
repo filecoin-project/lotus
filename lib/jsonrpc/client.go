@@ -57,7 +57,7 @@ type clientRequest struct {
 // ClientCloser is used to close Client from further use
 type ClientCloser func()
 
-// NewClient creates new josnrpc 2.0 client
+// NewClient creates new jsonrpc 2.0 client
 //
 // handler must be pointer to a struct with function fields
 // Returned value closes the client connection
