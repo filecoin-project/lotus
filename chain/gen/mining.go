@@ -3,11 +3,12 @@ package gen
 import (
 	"context"
 
+	amt "github.com/filecoin-project/go-amt-ipld"
 	bls "github.com/filecoin-project/go-bls-sigs"
 	cid "github.com/ipfs/go-cid"
 	hamt "github.com/ipfs/go-hamt-ipld"
 	"github.com/pkg/errors"
-	"github.com/whyrusleeping/sharray"
+	cbg "github.com/whyrusleeping/cbor-gen"
 	"golang.org/x/xerrors"
 
 	"github.com/filecoin-project/go-lotus/chain/actors"
@@ -77,14 +78,14 @@ func MinerCreateBlock(ctx context.Context, sm *stmgr.StateManager, w *wallet.Wal
 		}
 	}
 
-	var receipts []interface{}
+	var receipts []cbg.CBORMarshaler
 	for _, msg := range blsMessages {
 		rec, err := vmi.ApplyMessage(ctx, msg)
 		if err != nil {
 			return nil, errors.Wrap(err, "apply message failure")
 		}
 
-		receipts = append(receipts, rec.MessageReceipt)
+		receipts = append(receipts, &rec.MessageReceipt)
 	}
 	for _, msg := range secpkMessages {
 		rec, err := vmi.ApplyMessage(ctx, &msg.Message)
@@ -92,20 +93,20 @@ func MinerCreateBlock(ctx context.Context, sm *stmgr.StateManager, w *wallet.Wal
 			return nil, errors.Wrap(err, "apply message failure")
 		}
 
-		receipts = append(receipts, rec.MessageReceipt)
+		receipts = append(receipts, &rec.MessageReceipt)
 	}
 
-	cst := hamt.CSTFromBstore(sm.ChainStore().Blockstore())
-	blsmsgroot, err := sharray.Build(context.TODO(), 4, toIfArr(blsMsgCids), cst)
+	bs := amt.WrapBlockstore(sm.ChainStore().Blockstore())
+	blsmsgroot, err := amt.FromArray(bs, toIfArr(blsMsgCids))
 	if err != nil {
-		return nil, err
+		return nil, xerrors.Errorf("building bls amt: %w", err)
 	}
-	secpkmsgroot, err := sharray.Build(context.TODO(), 4, toIfArr(secpkMsgCids), cst)
+	secpkmsgroot, err := amt.FromArray(bs, toIfArr(secpkMsgCids))
 	if err != nil {
-		return nil, err
+		return nil, xerrors.Errorf("building secpk amt: %w", err)
 	}
 
-	mmcid, err := cst.Put(context.TODO(), &types.MsgMeta{
+	mmcid, err := bs.Put(&types.MsgMeta{
 		BlsMessages:   blsmsgroot,
 		SecpkMessages: secpkmsgroot,
 	})
@@ -114,9 +115,9 @@ func MinerCreateBlock(ctx context.Context, sm *stmgr.StateManager, w *wallet.Wal
 	}
 	next.Messages = mmcid
 
-	rectroot, err := sharray.Build(context.TODO(), 4, receipts, cst)
+	rectroot, err := amt.FromArray(bs, receipts)
 	if err != nil {
-		return nil, err
+		return nil, xerrors.Errorf("failed to build receipts amt: %w", err)
 	}
 	next.MessageReceipts = rectroot
 
@@ -142,6 +143,7 @@ func MinerCreateBlock(ctx context.Context, sm *stmgr.StateManager, w *wallet.Wal
 		return nil, xerrors.Errorf("failed to get signing bytes for block: %w", err)
 	}
 
+	cst := hamt.CSTFromBstore(sm.ChainStore().Blockstore())
 	waddr, err := vm.ResolveToKeyAddr(vmi.StateTree(), cst, worker)
 	if err != nil {
 		return nil, xerrors.Errorf("failed to resolve miner address to key address: %w", err)
@@ -178,10 +180,11 @@ func aggregateSignatures(sigs []types.Signature) (types.Signature, error) {
 	}, nil
 }
 
-func toIfArr(cids []cid.Cid) []interface{} {
-	out := make([]interface{}, 0, len(cids))
+func toIfArr(cids []cid.Cid) []cbg.CBORMarshaler {
+	out := make([]cbg.CBORMarshaler, 0, len(cids))
 	for _, c := range cids {
-		out = append(out, c)
+		oc := cbg.CborCid(c)
+		out = append(out, &oc)
 	}
 	return out
 }

@@ -6,8 +6,6 @@ import (
 	"sync"
 	"time"
 
-	"golang.org/x/xerrors"
-
 	"github.com/filecoin-project/go-lotus/build"
 	"github.com/filecoin-project/go-lotus/chain/actors"
 	"github.com/filecoin-project/go-lotus/chain/address"
@@ -17,14 +15,15 @@ import (
 	"github.com/filecoin-project/go-lotus/chain/vm"
 	"github.com/filecoin-project/go-lotus/lib/vdf"
 
+	amt "github.com/filecoin-project/go-amt-ipld"
 	"github.com/ipfs/go-cid"
 	dstore "github.com/ipfs/go-datastore"
-	"github.com/ipfs/go-hamt-ipld"
 	bstore "github.com/ipfs/go-ipfs-blockstore"
 	logging "github.com/ipfs/go-log"
 	"github.com/libp2p/go-libp2p-core/peer"
 	"github.com/pkg/errors"
-	"github.com/whyrusleeping/sharray"
+	cbg "github.com/whyrusleeping/cbor-gen"
+	"golang.org/x/xerrors"
 )
 
 var log = logging.Logger("chain")
@@ -153,7 +152,7 @@ func copyBlockstore(from, to bstore.Blockstore) error {
 // either validate it here, or ensure that its validated elsewhere (maybe make
 // sure the blocksync code checks it?)
 // maybe this code should actually live in blocksync??
-func zipTipSetAndMessages(cst *hamt.CborIpldStore, ts *types.TipSet, allbmsgs []*types.Message, allsmsgs []*types.SignedMessage, bmi, smi [][]uint64) (*store.FullTipSet, error) {
+func zipTipSetAndMessages(bs amt.Blocks, ts *types.TipSet, allbmsgs []*types.Message, allsmsgs []*types.SignedMessage, bmi, smi [][]uint64) (*store.FullTipSet, error) {
 	if len(ts.Blocks()) != len(smi) || len(ts.Blocks()) != len(bmi) {
 		return nil, fmt.Errorf("msgincl length didnt match tipset size")
 	}
@@ -161,30 +160,32 @@ func zipTipSetAndMessages(cst *hamt.CborIpldStore, ts *types.TipSet, allbmsgs []
 	fts := &store.FullTipSet{}
 	for bi, b := range ts.Blocks() {
 		var smsgs []*types.SignedMessage
-		var smsgCids []interface{}
+		var smsgCids []cbg.CBORMarshaler
 		for _, m := range smi[bi] {
 			smsgs = append(smsgs, allsmsgs[m])
-			smsgCids = append(smsgCids, allsmsgs[m].Cid())
+			c := cbg.CborCid(allsmsgs[m].Cid())
+			smsgCids = append(smsgCids, &c)
 		}
 
-		smroot, err := sharray.Build(context.TODO(), 4, smsgCids, cst)
+		smroot, err := amt.FromArray(bs, smsgCids)
 		if err != nil {
 			return nil, err
 		}
 
 		var bmsgs []*types.Message
-		var bmsgCids []interface{}
+		var bmsgCids []cbg.CBORMarshaler
 		for _, m := range bmi[bi] {
 			bmsgs = append(bmsgs, allbmsgs[m])
-			bmsgCids = append(bmsgCids, allbmsgs[m].Cid())
+			c := cbg.CborCid(allbmsgs[m].Cid())
+			bmsgCids = append(bmsgCids, &c)
 		}
 
-		bmroot, err := sharray.Build(context.TODO(), 4, bmsgCids, cst)
+		bmroot, err := amt.FromArray(bs, bmsgCids)
 		if err != nil {
 			return nil, err
 		}
 
-		mrcid, err := cst.Put(context.TODO(), &types.MsgMeta{
+		mrcid, err := bs.Put(&types.MsgMeta{
 			BlsMessages:   bmroot,
 			SecpkMessages: smroot,
 		})
@@ -453,14 +454,14 @@ func (syncer *Syncer) ValidateBlock(ctx context.Context, b *types.FullBlock) err
 		return xerrors.Errorf("fund transfer failed: %w", err)
 	}
 
-	var receipts []interface{}
+	var receipts []cbg.CBORMarshaler
 	for i, m := range b.BlsMessages {
 		receipt, err := vmi.ApplyMessage(ctx, m)
 		if err != nil {
 			return xerrors.Errorf("failed executing bls message %d in block %s: %w", i, b.Header.Cid(), err)
 		}
 
-		receipts = append(receipts, receipt.MessageReceipt)
+		receipts = append(receipts, &receipt.MessageReceipt)
 	}
 
 	for i, m := range b.SecpkMessages {
@@ -469,13 +470,13 @@ func (syncer *Syncer) ValidateBlock(ctx context.Context, b *types.FullBlock) err
 			return xerrors.Errorf("failed executing secpk message %d in block %s: %w", i, b.Header.Cid(), err)
 		}
 
-		receipts = append(receipts, receipt.MessageReceipt)
+		receipts = append(receipts, &receipt.MessageReceipt)
 	}
 
-	cst := hamt.CSTFromBstore(syncer.store.Blockstore())
-	recptRoot, err := sharray.Build(context.TODO(), 4, receipts, cst)
+	bs := amt.WrapBlockstore(syncer.store.Blockstore())
+	recptRoot, err := amt.FromArray(bs, receipts)
 	if err != nil {
-		return xerrors.Errorf("building receipts sharray failed: %w", err)
+		return xerrors.Errorf("building receipts amt failed: %w", err)
 	}
 	if recptRoot != b.Header.MessageReceipts {
 		return fmt.Errorf("receipts mismatched")
@@ -614,11 +615,11 @@ func (syncer *Syncer) iterFullTipsets(headers []*types.TipSet, cb func(*store.Fu
 			// temp storage so we don't persist data we dont want to
 			ds := dstore.NewMapDatastore()
 			bs := bstore.NewBlockstore(ds)
-			cst := hamt.CSTFromBstore(bs)
+			blks := amt.WrapBlockstore(bs)
 
 			this := headers[i-bsi]
 			bstip := bstips[len(bstips)-(bsi+1)]
-			fts, err := zipTipSetAndMessages(cst, this, bstip.BlsMessages, bstip.SecpkMessages, bstip.BlsMsgIncludes, bstip.SecpkMsgIncludes)
+			fts, err := zipTipSetAndMessages(blks, this, bstip.BlsMessages, bstip.SecpkMessages, bstip.BlsMsgIncludes, bstip.SecpkMsgIncludes)
 			if err != nil {
 				log.Warn("zipping failed: ", err, bsi, i)
 				log.Warn("height: ", this.Height())

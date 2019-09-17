@@ -7,8 +7,8 @@ import (
 	"fmt"
 	"sync"
 
+	amt "github.com/filecoin-project/go-amt-ipld"
 	"github.com/filecoin-project/go-lotus/chain/types"
-	"golang.org/x/xerrors"
 
 	block "github.com/ipfs/go-block-format"
 	"github.com/ipfs/go-cid"
@@ -18,8 +18,9 @@ import (
 	bstore "github.com/ipfs/go-ipfs-blockstore"
 	logging "github.com/ipfs/go-log"
 	"github.com/pkg/errors"
+	cbg "github.com/whyrusleeping/cbor-gen"
 	pubsub "github.com/whyrusleeping/pubsub"
-	sharray "github.com/whyrusleeping/sharray"
+	"golang.org/x/xerrors"
 )
 
 var log = logging.Logger("chainstore")
@@ -487,25 +488,21 @@ func (cs *ChainStore) GetSignedMessage(c cid.Cid) (*types.SignedMessage, error) 
 	return types.DecodeSignedMessage(sb.RawData())
 }
 
-func (cs *ChainStore) readSharrayCids(root cid.Cid) ([]cid.Cid, error) {
-	cst := hamt.CSTFromBstore(cs.bs)
-	shar, err := sharray.Load(context.TODO(), root, 4, cst)
+func (cs *ChainStore) readAMTCids(root cid.Cid) ([]cid.Cid, error) {
+	bs := amt.WrapBlockstore(cs.bs)
+	a, err := amt.LoadAMT(bs, root)
 	if err != nil {
-		return nil, errors.Wrap(err, "sharray load")
+		return nil, xerrors.Errorf("amt load: %w", err)
 	}
 
 	var cids []cid.Cid
-	err = shar.ForEach(context.TODO(), func(i interface{}) error {
-		c, ok := i.(cid.Cid)
-		if !ok {
-			return fmt.Errorf("value in message sharray was not a cid")
+	for i := uint64(0); i < a.Count; i++ {
+		var c cbg.CborCid
+		if err := a.Get(i, &c); err != nil {
+			return nil, xerrors.Errorf("failed to load cid from amt: %w", err)
 		}
 
-		cids = append(cids, c)
-		return nil
-	})
-	if err != nil {
-		return nil, err
+		cids = append(cids, cid.Cid(c))
 	}
 
 	return cids, nil
@@ -518,12 +515,12 @@ func (cs *ChainStore) MessagesForBlock(b *types.BlockHeader) ([]*types.Message, 
 		return nil, nil, xerrors.Errorf("failed to load msgmeta: %w", err)
 	}
 
-	blscids, err := cs.readSharrayCids(msgmeta.BlsMessages)
+	blscids, err := cs.readAMTCids(msgmeta.BlsMessages)
 	if err != nil {
 		return nil, nil, errors.Wrap(err, "loading bls message cids for block")
 	}
 
-	secpkcids, err := cs.readSharrayCids(msgmeta.SecpkMessages)
+	secpkcids, err := cs.readAMTCids(msgmeta.SecpkMessages)
 	if err != nil {
 		return nil, nil, errors.Wrap(err, "loading secpk message cids for block")
 	}
@@ -542,24 +539,14 @@ func (cs *ChainStore) MessagesForBlock(b *types.BlockHeader) ([]*types.Message, 
 }
 
 func (cs *ChainStore) GetReceipt(b *types.BlockHeader, i int) (*types.MessageReceipt, error) {
-	cst := hamt.CSTFromBstore(cs.bs)
-	shar, err := sharray.Load(context.TODO(), b.MessageReceipts, 4, cst)
+	bs := amt.WrapBlockstore(cs.bs)
+	a, err := amt.LoadAMT(bs, b.MessageReceipts)
 	if err != nil {
-		return nil, errors.Wrap(err, "sharray load")
+		return nil, errors.Wrap(err, "amt load")
 	}
 
-	ival, err := shar.Get(context.TODO(), i)
-	if err != nil {
-		return nil, err
-	}
-
-	// @warpfork, @EricMyhre help me. save me.
-	out, err := json.Marshal(ival)
-	if err != nil {
-		return nil, err
-	}
 	var r types.MessageReceipt
-	if err := json.Unmarshal(out, &r); err != nil {
+	if err := a.Get(uint64(i), &r); err != nil {
 		return nil, err
 	}
 
@@ -652,7 +639,7 @@ func (cs *ChainStore) blockContainsMsg(blk *types.BlockHeader, msg cid.Cid) (*ty
 		return nil, err
 	}
 
-	blscids, err := cs.readSharrayCids(msgmeta.BlsMessages)
+	blscids, err := cs.readAMTCids(msgmeta.BlsMessages)
 	if err != nil {
 		return nil, errors.Wrap(err, "loading bls message cids for block")
 	}
@@ -663,7 +650,7 @@ func (cs *ChainStore) blockContainsMsg(blk *types.BlockHeader, msg cid.Cid) (*ty
 		}
 	}
 
-	secpkcids, err := cs.readSharrayCids(msgmeta.SecpkMessages)
+	secpkcids, err := cs.readAMTCids(msgmeta.SecpkMessages)
 	if err != nil {
 		return nil, errors.Wrap(err, "loading secpk message cids for block")
 	}

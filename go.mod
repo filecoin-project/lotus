@@ -6,7 +6,7 @@ require (
 	contrib.go.opencensus.io/exporter/jaeger v0.1.0
 	github.com/BurntSushi/toml v0.3.1
 	github.com/StackExchange/wmi v0.0.0-20190523213315-cbe66965904d // indirect
-	github.com/filecoin-project/go-amt-ipld v0.0.0-20190828233303-a41bd0b6f985
+	github.com/filecoin-project/go-amt-ipld v0.0.0-20190917010905-40ffeec492ae
 	github.com/filecoin-project/go-bls-sigs v0.0.0-20190718224239-4bc4b8a7bbf8
 	github.com/filecoin-project/go-leb128 v0.0.0-20190212224330-8d79a5489543
 	github.com/filecoin-project/go-sectorbuilder v0.0.0-00010101000000-000000000000
@@ -67,10 +67,9 @@ require (
 	github.com/polydawn/refmt v0.0.0-20190809202753-05966cbd336a
 	github.com/stretchr/testify v1.4.0
 	github.com/whyrusleeping/bencher v0.0.0-20190829221104-bb6607aa8bba
-	github.com/whyrusleeping/cbor-gen v0.0.0-20190910224804-fde80d83b106
+	github.com/whyrusleeping/cbor-gen v0.0.0-20190917010546-c55df54645cb
 	github.com/whyrusleeping/multiaddr-filter v0.0.0-20160516205228-e903e4adabd7
 	github.com/whyrusleeping/pubsub v0.0.0-20131020042734-02de8aa2db3d
-	github.com/whyrusleeping/sharray v0.0.0-20190718051354-e41931821e33
 	go.opencensus.io v0.22.0
 	go.uber.org/dig v1.7.0 // indirect
 	go.uber.org/fx v1.9.0

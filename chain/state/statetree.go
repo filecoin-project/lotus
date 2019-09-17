@@ -6,7 +6,6 @@ import (
 
 	"github.com/ipfs/go-cid"
 	hamt "github.com/ipfs/go-hamt-ipld"
-	cbor "github.com/ipfs/go-ipld-cbor"
 	logging "github.com/ipfs/go-log"
 	"golang.org/x/xerrors"
 
@@ -101,22 +100,12 @@ func (st *StateTree) GetActor(addr address.Address) (*types.Actor, error) {
 		return cact, nil
 	}
 
-	var thing interface{}
-	err := st.root.Find(context.TODO(), string(addr.Bytes()), &thing)
+	var act types.Actor
+	err := st.root.Find(context.TODO(), string(addr.Bytes()), &act)
 	if err != nil {
 		if err == hamt.ErrNotFound {
 			return nil, types.ErrActorNotFound
 		}
-		return nil, err
-	}
-
-	var act types.Actor
-	badout, err := cbor.DumpObject(thing)
-	if err != nil {
-		return nil, err
-	}
-
-	if err := cbor.DecodeInto(badout, &act); err != nil {
 		return nil, err
 	}
 
