@@ -130,7 +130,8 @@ class NodeList extends React.Component {
   }
 
   startNode = (id) => async () => {
-
+    let node = await this.props.client.call('Pond.RestartNode', [Number(id)])
+    await this.mountNode(node)
   }
 
   connMgr() {

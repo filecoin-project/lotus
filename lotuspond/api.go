@@ -2,17 +2,12 @@ package main
 
 import (
 	"crypto/rand"
-	"fmt"
 	"github.com/filecoin-project/go-lotus/lib/jsonrpc"
+	"github.com/filecoin-project/go-lotus/node/repo"
 	"io"
 	"io/ioutil"
 	"os"
-	"os/exec"
 	"sync"
-	"sync/atomic"
-	"time"
-
-	"github.com/filecoin-project/go-lotus/node/repo"
 
 	"golang.org/x/xerrors"
 )
@@ -40,83 +35,6 @@ type nodeInfo struct {
 
 	FullNode string // only for storage nodes
 	Storage  bool
-}
-
-func (api *api) Spawn() (nodeInfo, error) {
-	dir, err := ioutil.TempDir(os.TempDir(), "lotus-")
-	if err != nil {
-		return nodeInfo{}, err
-	}
-
-	genParam := "--genesis=" + api.genesis
-	id := atomic.AddInt32(&api.cmds, 1)
-	if id == 1 {
-		// make genesis
-		genf, err := ioutil.TempFile(os.TempDir(), "lotus-genesis-")
-		if err != nil {
-			return nodeInfo{}, err
-		}
-
-		api.genesis = genf.Name()
-		genParam = "--lotus-make-random-genesis=" + api.genesis
-
-		if err := genf.Close(); err != nil {
-			return nodeInfo{}, err
-		}
-
-	}
-
-	errlogfile, err := os.OpenFile(dir+".err.log", os.O_CREATE|os.O_WRONLY, 0644)
-	if err != nil {
-		return nodeInfo{}, err
-	}
-	logfile, err := os.OpenFile(dir+".out.log", os.O_CREATE|os.O_WRONLY, 0644)
-	if err != nil {
-		return nodeInfo{}, err
-	}
-
-	mux := newWsMux()
-
-	cmd := exec.Command("./lotus", "daemon", genParam, "--api", fmt.Sprintf("%d", 2500+id))
-	cmd.Stderr = io.MultiWriter(os.Stderr, errlogfile, mux.errpw)
-	cmd.Stdout = io.MultiWriter(os.Stdout, logfile, mux.outpw)
-	cmd.Env = []string{"LOTUS_PATH=" + dir}
-	if err := cmd.Start(); err != nil {
-		return nodeInfo{}, err
-	}
-
-	info := nodeInfo{
-		Repo:    dir,
-		ID:      id,
-		ApiPort: 2500 + id,
-		State:   NodeRunning,
-	}
-
-	api.runningLk.Lock()
-	api.running[id] = &runningNode{
-		cmd:  cmd,
-		meta: info,
-
-		mux: mux,
-		stop: func() {
-			cmd.Process.Signal(os.Interrupt)
-			cmd.Process.Wait()
-
-			api.runningLk.Lock()
-			api.running[id].meta.State = NodeStopped
-			api.runningLk.Unlock()
-
-			logfile.Close()
-			errlogfile.Close()
-
-			close(mux.stop)
-		},
-	}
-	api.runningLk.Unlock()
-
-	time.Sleep(time.Millisecond * 750) // TODO: Something less terrible
-
-	return info, nil
 }
 
 func (api *api) Nodes() []nodeInfo {
@@ -151,84 +69,6 @@ func (api *api) TokenFor(id int32) (string, error) {
 	}
 
 	return string(t), nil
-}
-
-func (api *api) SpawnStorage(fullNodeRepo string) (nodeInfo, error) {
-	dir, err := ioutil.TempDir(os.TempDir(), "lotus-storage-")
-	if err != nil {
-		return nodeInfo{}, err
-	}
-
-	errlogfile, err := os.OpenFile(dir+".err.log", os.O_CREATE|os.O_WRONLY, 0644)
-	if err != nil {
-		return nodeInfo{}, err
-	}
-	logfile, err := os.OpenFile(dir+".out.log", os.O_CREATE|os.O_WRONLY, 0644)
-	if err != nil {
-		return nodeInfo{}, err
-	}
-
-	initArgs := []string{"init"}
-	if fullNodeRepo == api.running[1].meta.Repo {
-		initArgs = []string{"init", "--actor=t0101", "--genesis-miner"}
-	}
-
-	id := atomic.AddInt32(&api.cmds, 1)
-	cmd := exec.Command("./lotus-storage-miner", initArgs...)
-	cmd.Stderr = io.MultiWriter(os.Stderr, errlogfile)
-	cmd.Stdout = io.MultiWriter(os.Stdout, logfile)
-	cmd.Env = []string{"LOTUS_STORAGE_PATH=" + dir, "LOTUS_PATH=" + fullNodeRepo}
-	if err := cmd.Run(); err != nil {
-		return nodeInfo{}, err
-	}
-
-	time.Sleep(time.Millisecond * 300)
-
-	mux := newWsMux()
-
-	cmd = exec.Command("./lotus-storage-miner", "run", "--api", fmt.Sprintf("%d", 2500+id))
-	cmd.Stderr = io.MultiWriter(os.Stderr, errlogfile, mux.errpw)
-	cmd.Stdout = io.MultiWriter(os.Stdout, logfile, mux.outpw)
-	cmd.Env = []string{"LOTUS_STORAGE_PATH=" + dir, "LOTUS_PATH=" + fullNodeRepo}
-	if err := cmd.Start(); err != nil {
-		return nodeInfo{}, err
-	}
-
-	info := nodeInfo{
-		Repo:    dir,
-		ID:      id,
-		ApiPort: 2500 + id,
-		State:   NodeRunning,
-
-		FullNode: fullNodeRepo,
-		Storage:  true,
-	}
-
-	api.runningLk.Lock()
-	api.running[id] = &runningNode{
-		cmd:  cmd,
-		meta: info,
-
-		mux: mux,
-		stop: func() {
-			cmd.Process.Signal(os.Interrupt)
-			cmd.Process.Wait()
-
-			api.runningLk.Lock()
-			api.running[id].meta.State = NodeStopped
-			api.runningLk.Unlock()
-
-			logfile.Close()
-			errlogfile.Close()
-
-			close(mux.stop)
-		},
-	}
-	api.runningLk.Unlock()
-
-	time.Sleep(time.Millisecond * 750) // TODO: Something less terrible
-
-	return info, nil
 }
 
 func (api *api) FullID(id int32) (int32, error) {
