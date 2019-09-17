@@ -38,13 +38,6 @@ var runCmd = &cli.Command{
 		}
 		ctx := &valctx.Context{Parent: lcli.ReqContext(cctx)}
 
-		go func() {
-			// a hack for now to handle sigint
-
-			<-ctx.Done()
-			os.Exit(0)
-		}()
-
 		v, err := nodeApi.Version(ctx)
 		if err != nil {
 			return err
