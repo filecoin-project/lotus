@@ -197,7 +197,7 @@ func (t *StorageMinerActorState) MarshalCBOR(w io.Writer) error {
 		_, err := w.Write(cbg.CborNull)
 		return err
 	}
-	if _, err := w.Write([]byte{139}); err != nil {
+	if _, err := w.Write([]byte{142}); err != nil {
 		return err
 	}
 
@@ -239,6 +239,21 @@ func (t *StorageMinerActorState) MarshalCBOR(w io.Writer) error {
 		return err
 	}
 
+	// t.t.CurrentFaultSet (types.BitField)
+	if err := t.CurrentFaultSet.MarshalCBOR(w); err != nil {
+		return err
+	}
+
+	// t.t.NextFaultSet (types.BitField)
+	if err := t.NextFaultSet.MarshalCBOR(w); err != nil {
+		return err
+	}
+
+	// t.t.NextDoneSet (types.BitField)
+	if err := t.NextDoneSet.MarshalCBOR(w); err != nil {
+		return err
+	}
+
 	// t.t.Power (types.BigInt)
 	if err := t.Power.MarshalCBOR(w); err != nil {
 		return err
@@ -272,7 +287,7 @@ func (t *StorageMinerActorState) UnmarshalCBOR(r io.Reader) error {
 		return fmt.Errorf("cbor input should be of type array")
 	}
 
-	if extra != 11 {
+	if extra != 14 {
 		return fmt.Errorf("cbor input had wrong number of fields")
 	}
 
@@ -350,6 +365,33 @@ func (t *StorageMinerActorState) UnmarshalCBOR(r io.Reader) error {
 		return fmt.Errorf("wrong type for uint64 field")
 	}
 	t.ProvingSetSize = extra
+	// t.t.CurrentFaultSet (types.BitField)
+
+	{
+
+		if err := t.CurrentFaultSet.UnmarshalCBOR(br); err != nil {
+			return err
+		}
+
+	}
+	// t.t.NextFaultSet (types.BitField)
+
+	{
+
+		if err := t.NextFaultSet.UnmarshalCBOR(br); err != nil {
+			return err
+		}
+
+	}
+	// t.t.NextDoneSet (types.BitField)
+
+	{
+
+		if err := t.NextDoneSet.UnmarshalCBOR(br); err != nil {
+			return err
+		}
+
+	}
 	// t.t.Power (types.BigInt)
 
 	{
