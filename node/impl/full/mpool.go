@@ -3,19 +3,19 @@ package full
 import (
 	"context"
 	"go.uber.org/fx"
+	"golang.org/x/xerrors"
 
 	"github.com/filecoin-project/go-lotus/chain"
 	"github.com/filecoin-project/go-lotus/chain/address"
 	"github.com/filecoin-project/go-lotus/chain/types"
-
-	pubsub "github.com/libp2p/go-libp2p-pubsub"
 )
 
 type MpoolAPI struct {
 	fx.In
 
-	PubSub *pubsub.PubSub
-	Mpool  *chain.MessagePool
+	WalletAPI
+
+	Mpool *chain.MessagePool
 }
 
 func (a *MpoolAPI) MpoolPending(ctx context.Context, ts *types.TipSet) ([]*types.SignedMessage, error) {
@@ -25,15 +25,18 @@ func (a *MpoolAPI) MpoolPending(ctx context.Context, ts *types.TipSet) ([]*types
 }
 
 func (a *MpoolAPI) MpoolPush(ctx context.Context, smsg *types.SignedMessage) error {
-	msgb, err := smsg.Serialize()
-	if err != nil {
-		return err
-	}
-	if err := a.Mpool.Add(smsg); err != nil {
-		return err
+	return a.Mpool.Push(smsg)
+}
+
+func (a *MpoolAPI) MpoolPushMessage(ctx context.Context, msg *types.Message) (*types.SignedMessage, error) {
+	if msg.Nonce != 0 {
+		return nil, xerrors.Errorf("MpoolPushMessage expects message nonce to be 0, was %d", msg.Nonce)
 	}
 
-	return a.PubSub.Publish("/fil/messages", msgb)
+	return a.Mpool.PushWithNonce(msg.From, func(nonce uint64) (*types.SignedMessage, error) {
+		msg.Nonce = nonce
+		return a.WalletSignMessage(ctx, msg.From, msg)
+	})
 }
 
 func (a *MpoolAPI) MpoolGetNonce(ctx context.Context, addr address.Address) (uint64, error) {

@@ -22,6 +22,11 @@ type minerHandlerFunc func(ctx context.Context, deal MinerDeal) (func(*MinerDeal
 func (h *Handler) handle(ctx context.Context, deal MinerDeal, cb minerHandlerFunc, next api.DealState) {
 	go func() {
 		mut, err := cb(ctx, deal)
+
+		if err == nil && next == api.DealNoUpdate {
+			return
+		}
+
 		select {
 		case h.updated <- minerDealUpdate{
 			newState: next,
@@ -119,7 +124,8 @@ func (h *Handler) accept(ctx context.Context, deal MinerDeal) (func(*MinerDeal),
 	}
 
 	for i, voucher := range deal.Proposal.Payment.Vouchers {
-		if err := h.full.PaychVoucherAdd(ctx, deal.Proposal.Payment.PayChActor, voucher, nil); err != nil {
+		// TODO: Set correct minAmount
+		if _, err := h.full.PaychVoucherAdd(ctx, deal.Proposal.Payment.PayChActor, voucher, nil, types.NewInt(0)); err != nil {
 			return nil, xerrors.Errorf("consuming payment voucher %d: %w", i, err)
 		}
 	}
@@ -190,8 +196,8 @@ func getInclusionProof(ref string, status sectorbuilder.SectorSealingStatus) (Pi
 	return PieceInclusionProof{}, xerrors.Errorf("pieceInclusionProof for %s in sector %d not found", ref, status.SectorID)
 }
 
-func (h *Handler) waitSealed(deal MinerDeal) (sectorbuilder.SectorSealingStatus, error) {
-	status, err := h.secst.WaitSeal(context.TODO(), deal.SectorID)
+func (h *Handler) waitSealed(ctx context.Context, deal MinerDeal) (sectorbuilder.SectorSealingStatus, error) {
+	status, err := h.secst.WaitSeal(ctx, deal.SectorID)
 	if err != nil {
 		return sectorbuilder.SectorSealingStatus{}, err
 	}
@@ -212,7 +218,7 @@ func (h *Handler) waitSealed(deal MinerDeal) (sectorbuilder.SectorSealingStatus,
 }
 
 func (h *Handler) sealing(ctx context.Context, deal MinerDeal) (func(*MinerDeal), error) {
-	status, err := h.waitSealed(deal)
+	status, err := h.waitSealed(ctx, deal)
 	if err != nil {
 		return nil, err
 	}
@@ -235,7 +241,8 @@ func (h *Handler) sealing(ctx context.Context, deal MinerDeal) (func(*MinerDeal)
 	// store proofs for channels
 	for i, v := range deal.Proposal.Payment.Vouchers {
 		if v.Extra.Method == actors.MAMethods.PaymentVerifyInclusion {
-			if err := h.full.PaychVoucherAdd(ctx, deal.Proposal.Payment.PayChActor, v, proofB); err != nil {
+			// TODO: Set correct minAmount
+			if _, err := h.full.PaychVoucherAdd(ctx, deal.Proposal.Payment.PayChActor, v, proofB, types.NewInt(0)); err != nil {
 				return nil, xerrors.Errorf("storing payment voucher %d proof: %w", i, err)
 			}
 		}
@@ -246,6 +253,25 @@ func (h *Handler) sealing(ctx context.Context, deal MinerDeal) (func(*MinerDeal)
 		Proposal:            deal.ProposalCid,
 		PieceInclusionProof: ip,
 		CommD:               status.CommD[:],
+	})
+	if err != nil {
+		log.Warnf("Sending deal response failed: %s", err)
+	}
+
+	return nil, nil
+}
+
+func (h *Handler) complete(ctx context.Context, deal MinerDeal) (func(*MinerDeal), error) {
+	mcid, err := h.commt.WaitCommit(ctx, deal.Proposal.MinerAddress, deal.SectorID)
+	if err != nil {
+		log.Warnf("Waiting for sector commitment message: %s", err)
+	}
+
+	err = h.sendSignedResponse(StorageDealResponse{
+		State:    api.DealComplete,
+		Proposal: deal.ProposalCid,
+
+		SectorCommitMessage: &mcid,
 	})
 	if err != nil {
 		log.Warnf("Sending deal response failed: %s", err)

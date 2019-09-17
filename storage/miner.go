@@ -17,6 +17,7 @@ import (
 	"github.com/filecoin-project/go-lotus/chain/store"
 	"github.com/filecoin-project/go-lotus/chain/types"
 	"github.com/filecoin-project/go-lotus/lib/sectorbuilder"
+	"github.com/filecoin-project/go-lotus/storage/commitment"
 	"github.com/filecoin-project/go-lotus/storage/sector"
 )
 
@@ -26,6 +27,7 @@ type Miner struct {
 	api storageMinerApi
 
 	secst *sector.Store
+	commt *commitment.Tracker
 
 	maddr address.Address
 
@@ -54,13 +56,14 @@ type storageMinerApi interface {
 	WalletHas(context.Context, address.Address) (bool, error)
 }
 
-func NewMiner(api storageMinerApi, addr address.Address, h host.Host, ds datastore.Batching, secst *sector.Store) (*Miner, error) {
+func NewMiner(api storageMinerApi, addr address.Address, h host.Host, ds datastore.Batching, secst *sector.Store, commt *commitment.Tracker) (*Miner, error) {
 	return &Miner{
 		api:   api,
 		maddr: addr,
 		h:     h,
 		ds:    ds,
 		secst: secst,
+		commt: commt,
 	}, nil
 }
 
@@ -159,13 +162,11 @@ func (m *Miner) commitSector(ctx context.Context, sinfo sectorbuilder.SectorSeal
 		return errors.Wrap(err, "pushing commit sector message to mpool")
 	}
 
-	m.trackCommitSectorMessage(smsg)
-	return nil
-}
+	if err := m.commt.TrackCommitSectorMsg(m.maddr, sinfo.SectorID, smsg.Cid()); err != nil {
+		return errors.Wrap(err, "tracking sector commitment")
+	}
 
-// make sure the message gets included in the chain successfully
-func (m *Miner) trackCommitSectorMessage(smsg *types.SignedMessage) {
-	log.Warning("not currently tracking commit sector messages")
+	return nil
 }
 
 func (m *Miner) runPoSt(ctx context.Context) {

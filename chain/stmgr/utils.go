@@ -2,6 +2,7 @@ package stmgr
 
 import (
 	"context"
+	"github.com/libp2p/go-libp2p-core/peer"
 
 	"github.com/filecoin-project/go-lotus/chain/actors"
 	"github.com/filecoin-project/go-lotus/chain/address"
@@ -103,4 +104,21 @@ func GetPower(ctx context.Context, sm *StateManager, ts *types.TipSet, maddr add
 	tpow := types.BigFromBytes(ret.Return)
 
 	return mpow, tpow, nil
+}
+
+func GetMinerPeerID(ctx context.Context, sm *StateManager, ts *types.TipSet, maddr address.Address) (peer.ID, error) {
+	recp, err := sm.Call(ctx, &types.Message{
+		To:     maddr,
+		From:   maddr,
+		Method: actors.MAMethods.GetPeerID,
+	}, ts)
+	if err != nil {
+		return "", xerrors.Errorf("callRaw failed: %w", err)
+	}
+
+	if recp.ExitCode != 0 {
+		return "", xerrors.Errorf("getting miner peer ID failed (exit code %d)", recp.ExitCode)
+	}
+
+	return peer.IDFromBytes(recp.Return)
 }

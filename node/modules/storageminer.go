@@ -25,6 +25,7 @@ import (
 	"github.com/filecoin-project/go-lotus/node/repo"
 	"github.com/filecoin-project/go-lotus/retrieval"
 	"github.com/filecoin-project/go-lotus/storage"
+	"github.com/filecoin-project/go-lotus/storage/commitment"
 	"github.com/filecoin-project/go-lotus/storage/sector"
 )
 
@@ -65,13 +66,13 @@ func SectorBuilderConfig(storagePath string) func(dtypes.MetadataDS) (*sectorbui
 	}
 }
 
-func StorageMiner(mctx helpers.MetricsCtx, lc fx.Lifecycle, api api.FullNode, h host.Host, ds dtypes.MetadataDS, secst *sector.Store) (*storage.Miner, error) {
+func StorageMiner(mctx helpers.MetricsCtx, lc fx.Lifecycle, api api.FullNode, h host.Host, ds dtypes.MetadataDS, secst *sector.Store, commt *commitment.Tracker) (*storage.Miner, error) {
 	maddr, err := minerAddrFromDS(ds)
 	if err != nil {
 		return nil, err
 	}
 
-	sm, err := storage.NewMiner(api, maddr, h, ds, secst)
+	sm, err := storage.NewMiner(api, maddr, h, ds, secst, commt)
 	if err != nil {
 		return nil, err
 	}

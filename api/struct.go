@@ -48,8 +48,9 @@ type FullNodeStruct struct {
 		ChainGetBlockMessages func(context.Context, cid.Cid) (*BlockMessages, error)                     `perm:"read"`
 		ChainGetBlockReceipts func(context.Context, cid.Cid) ([]*types.MessageReceipt, error)            `perm:"read"`
 
-		MpoolPending func(context.Context, *types.TipSet) ([]*types.SignedMessage, error) `perm:"read"`
-		MpoolPush    func(context.Context, *types.SignedMessage) error                    `perm:"write"`
+		MpoolPending     func(context.Context, *types.TipSet) ([]*types.SignedMessage, error) `perm:"read"`
+		MpoolPush        func(context.Context, *types.SignedMessage) error                    `perm:"write"`
+		MpoolPushMessage func(context.Context, *types.Message) (*types.SignedMessage, error)  `perm:"sign"`
 
 		MinerRegister    func(context.Context, address.Address) error                                                                                                         `perm:"admin"`
 		MinerUnregister  func(context.Context, address.Address) error                                                                                                         `perm:"admin"`
@@ -78,19 +79,21 @@ type FullNodeStruct struct {
 		StateMinerProvingSet func(context.Context, address.Address) ([]*SectorInfo, error)                       `perm:"read"`
 		StateMinerPower      func(context.Context, address.Address, *types.TipSet) (MinerPower, error)           `perm:"read"`
 		StateMinerWorker     func(context.Context, address.Address, *types.TipSet) (address.Address, error)      `perm:"read"`
+		StateMinerPeerID     func(ctx context.Context, m address.Address, ts *types.TipSet) (peer.ID, error)     `perm:"read"`
 		StateCall            func(context.Context, *types.Message, *types.TipSet) (*types.MessageReceipt, error) `perm:"read"`
 		StateGetActor        func(context.Context, address.Address, *types.TipSet) (*types.Actor, error)         `perm:"read"`
 		StateReadState       func(context.Context, *types.Actor, *types.TipSet) (*ActorState, error)             `perm:"read"`
 
-		PaychCreate                func(ctx context.Context, from, to address.Address, amt types.BigInt) (*ChannelInfo, error)                                                              `perm:"sign"`
+		PaychGet                   func(ctx context.Context, from, to address.Address, ensureFunds types.BigInt) (*ChannelInfo, error)                                                      `perm:"sign"`
 		PaychList                  func(context.Context) ([]address.Address, error)                                                                                                         `perm:"read"`
 		PaychStatus                func(context.Context, address.Address) (*PaychStatus, error)                                                                                             `perm:"read"`
 		PaychClose                 func(context.Context, address.Address) (cid.Cid, error)                                                                                                  `perm:"sign"`
+		PaychAllocateLane          func(context.Context, address.Address) (uint64, error)                                                                                                   `perm:"sign"`
 		PaychNewPayment            func(ctx context.Context, from, to address.Address, amount types.BigInt, extra *types.ModVerifyParams, tl uint64, minClose uint64) (*PaymentInfo, error) `perm:"sign"`
 		PaychVoucherCheck          func(context.Context, *types.SignedVoucher) error                                                                                                        `perm:"read"`
 		PaychVoucherCheckValid     func(context.Context, address.Address, *types.SignedVoucher) error                                                                                       `perm:"read"`
 		PaychVoucherCheckSpendable func(context.Context, address.Address, *types.SignedVoucher, []byte, []byte) (bool, error)                                                               `perm:"read"`
-		PaychVoucherAdd            func(context.Context, address.Address, *types.SignedVoucher, []byte) error                                                                               `perm:"write"`
+		PaychVoucherAdd            func(context.Context, address.Address, *types.SignedVoucher, []byte, types.BigInt) (types.BigInt, error)                                                 `perm:"write"`
 		PaychVoucherCreate         func(context.Context, address.Address, types.BigInt, uint64) (*types.SignedVoucher, error)                                                               `perm:"sign"`
 		PaychVoucherList           func(context.Context, address.Address) ([]*types.SignedVoucher, error)                                                                                   `perm:"write"`
 		PaychVoucherSubmit         func(context.Context, address.Address, *types.SignedVoucher) (cid.Cid, error)                                                                            `perm:"sign"`
@@ -191,6 +194,10 @@ func (c *FullNodeStruct) MpoolPush(ctx context.Context, smsg *types.SignedMessag
 	return c.Internal.MpoolPush(ctx, smsg)
 }
 
+func (c *FullNodeStruct) MpoolPushMessage(ctx context.Context, msg *types.Message) (*types.SignedMessage, error) {
+	return c.Internal.MpoolPushMessage(ctx, msg)
+}
+
 func (c *FullNodeStruct) MinerRegister(ctx context.Context, addr address.Address) error {
 	return c.Internal.MinerRegister(ctx, addr)
 }
@@ -287,6 +294,10 @@ func (c *FullNodeStruct) StateMinerWorker(ctx context.Context, m address.Address
 	return c.Internal.StateMinerWorker(ctx, m, ts)
 }
 
+func (c *FullNodeStruct) StateMinerPeerID(ctx context.Context, m address.Address, ts *types.TipSet) (peer.ID, error) {
+	return c.Internal.StateMinerPeerID(ctx, m, ts)
+}
+
 func (c *FullNodeStruct) StateCall(ctx context.Context, msg *types.Message, ts *types.TipSet) (*types.MessageReceipt, error) {
 	return c.Internal.StateCall(ctx, msg, ts)
 }
@@ -299,8 +310,8 @@ func (c *FullNodeStruct) StateReadState(ctx context.Context, act *types.Actor, t
 	return c.Internal.StateReadState(ctx, act, ts)
 }
 
-func (c *FullNodeStruct) PaychCreate(ctx context.Context, from, to address.Address, amt types.BigInt) (*ChannelInfo, error) {
-	return c.Internal.PaychCreate(ctx, from, to, amt)
+func (c *FullNodeStruct) PaychGet(ctx context.Context, from, to address.Address, ensureFunds types.BigInt) (*ChannelInfo, error) {
+	return c.Internal.PaychGet(ctx, from, to, ensureFunds)
 }
 
 func (c *FullNodeStruct) PaychList(ctx context.Context) ([]address.Address, error) {
@@ -319,8 +330,8 @@ func (c *FullNodeStruct) PaychVoucherCheckSpendable(ctx context.Context, addr ad
 	return c.Internal.PaychVoucherCheckSpendable(ctx, addr, sv, secret, proof)
 }
 
-func (c *FullNodeStruct) PaychVoucherAdd(ctx context.Context, addr address.Address, sv *types.SignedVoucher, proof []byte) error {
-	return c.Internal.PaychVoucherAdd(ctx, addr, sv, proof)
+func (c *FullNodeStruct) PaychVoucherAdd(ctx context.Context, addr address.Address, sv *types.SignedVoucher, proof []byte, minDelta types.BigInt) (types.BigInt, error) {
+	return c.Internal.PaychVoucherAdd(ctx, addr, sv, proof, minDelta)
 }
 
 func (c *FullNodeStruct) PaychVoucherCreate(ctx context.Context, pch address.Address, amt types.BigInt, lane uint64) (*types.SignedVoucher, error) {
@@ -333,6 +344,10 @@ func (c *FullNodeStruct) PaychVoucherList(ctx context.Context, pch address.Addre
 
 func (c *FullNodeStruct) PaychClose(ctx context.Context, a address.Address) (cid.Cid, error) {
 	return c.Internal.PaychClose(ctx, a)
+}
+
+func (c *FullNodeStruct) PaychAllocateLane(ctx context.Context, ch address.Address) (uint64, error) {
+	return c.Internal.PaychAllocateLane(ctx, ch)
 }
 
 func (c *FullNodeStruct) PaychNewPayment(ctx context.Context, from, to address.Address, amount types.BigInt, extra *types.ModVerifyParams, tl uint64, minClose uint64) (*PaymentInfo, error) {

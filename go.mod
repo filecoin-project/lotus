@@ -85,6 +85,8 @@ require (
 	launchpad.net/gocheck v0.0.0-20140225173054-000000000087 // indirect
 )
 
+replace github.com/golangci/golangci-lint => github.com/golangci/golangci-lint v1.18.0
+
 replace github.com/filecoin-project/go-bls-sigs => ./extern/go-bls-sigs
 
 replace github.com/filecoin-project/go-sectorbuilder => ./extern/go-sectorbuilder

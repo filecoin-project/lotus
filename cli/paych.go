@@ -12,18 +12,18 @@ var paychCmd = &cli.Command{
 	Name:  "paych",
 	Usage: "Manage payment channels",
 	Subcommands: []*cli.Command{
-		paychCreateCmd,
+		paychGetCmd,
 		paychListCmd,
 		paychVoucherCmd,
 	},
 }
 
-var paychCreateCmd = &cli.Command{
-	Name:  "create",
-	Usage: "Create a new payment channel",
+var paychGetCmd = &cli.Command{
+	Name:  "get",
+	Usage: "Create a new payment channel or get existing one",
 	Action: func(cctx *cli.Context) error {
 		if cctx.Args().Len() != 3 {
-			return fmt.Errorf("must pass three arguments: <from> <to> <amount>")
+			return fmt.Errorf("must pass three arguments: <from> <to> <available funds>")
 		}
 
 		from, err := address.NewFromString(cctx.Args().Get(0))
@@ -48,7 +48,7 @@ var paychCreateCmd = &cli.Command{
 
 		ctx := ReqContext(cctx)
 
-		info, err := api.PaychCreate(ctx, from, to, amt)
+		info, err := api.PaychGet(ctx, from, to, amt)
 		if err != nil {
 			return err
 		}
@@ -203,7 +203,7 @@ var paychVoucherAddCmd = &cli.Command{
 		ctx := ReqContext(cctx)
 
 		// TODO: allow passing proof bytes
-		if err := api.PaychVoucherAdd(ctx, ch, sv, nil); err != nil {
+		if _, err := api.PaychVoucherAdd(ctx, ch, sv, nil, types.NewInt(0)); err != nil {
 			return err
 		}
 

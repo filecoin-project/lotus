@@ -11,6 +11,7 @@ import (
 	"github.com/libp2p/go-libp2p-core/network"
 	"golang.org/x/xerrors"
 
+	"github.com/filecoin-project/go-lotus/api"
 	"github.com/filecoin-project/go-lotus/build"
 	"github.com/filecoin-project/go-lotus/chain/types"
 	"github.com/filecoin-project/go-lotus/lib/cborrpc"
@@ -19,14 +20,17 @@ import (
 
 type Miner struct {
 	sectorBlocks *sectorblocks.SectorBlocks
+	full         api.FullNode
 
 	pricePerByte types.BigInt
 	// TODO: Unseal price
 }
 
-func NewMiner(sblks *sectorblocks.SectorBlocks) *Miner {
+func NewMiner(sblks *sectorblocks.SectorBlocks, full api.FullNode) *Miner {
 	return &Miner{
 		sectorBlocks: sblks,
+		full:         full,
+
 		pricePerByte: types.NewInt(2), // TODO: allow setting
 	}
 }
@@ -118,8 +122,10 @@ func (hnd *handlerDeal) handleNext() (bool, error) {
 
 	unixfs0 := deal.Params.Unixfs0
 
-	// TODO: Verify payment, check how much we can send based on that
-	//  Or reject (possibly returning the payment to retain reputation with the client)
+	expPayment := types.BigMul(hnd.m.pricePerByte, types.NewInt(deal.Params.Unixfs0.Size))
+	if _, err := hnd.m.full.PaychVoucherAdd(context.TODO(), deal.Payment.Channel, deal.Payment.Voucher, nil, expPayment); err != nil {
+		return false, xerrors.Errorf("processing retrieval payment: %w", err)
+	}
 
 	// If the file isn't open (new deal stream), isn't the right file, or isn't
 	// at the right offset, (re)open it

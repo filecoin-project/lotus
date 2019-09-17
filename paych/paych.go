@@ -7,24 +7,42 @@ import (
 	"strconv"
 
 	logging "github.com/ipfs/go-log"
+	"go.uber.org/fx"
 
 	"github.com/filecoin-project/go-lotus/chain/actors"
 	"github.com/filecoin-project/go-lotus/chain/address"
 	"github.com/filecoin-project/go-lotus/chain/stmgr"
 	"github.com/filecoin-project/go-lotus/chain/types"
+	"github.com/filecoin-project/go-lotus/node/impl/full"
 )
 
 var log = logging.Logger("paych")
 
+type ManagerApi struct {
+	fx.In
+
+	full.MpoolAPI
+	full.WalletAPI
+	full.ChainAPI
+}
+
 type Manager struct {
 	store *Store
 	sm    *stmgr.StateManager
+
+	mpool  full.MpoolAPI
+	wallet full.WalletAPI
+	chain  full.ChainAPI
 }
 
-func NewManager(sm *stmgr.StateManager, pchstore *Store) *Manager {
+func NewManager(sm *stmgr.StateManager, pchstore *Store, api ManagerApi) *Manager {
 	return &Manager{
 		store: pchstore,
 		sm:    sm,
+
+		mpool:  api.MpoolAPI,
+		wallet: api.WalletAPI,
+		chain:  api.ChainAPI,
 	}
 }
 
@@ -63,25 +81,34 @@ func (pm *Manager) TrackInboundChannel(ctx context.Context, ch address.Address) 
 	})
 }
 
-func (pm *Manager) TrackOutboundChannel(ctx context.Context, ch address.Address) error {
+func (pm *Manager) loadOutboundChannelInfo(ctx context.Context, ch address.Address) (*ChannelInfo, error) {
 	_, st, err := pm.loadPaychState(ctx, ch)
 	if err != nil {
-		return err
+		return nil, err
 	}
 
 	maxLane, err := maxLaneFromState(st)
 	if err != nil {
-		return err
+		return nil, err
 	}
 
-	return pm.store.TrackChannel(&ChannelInfo{
+	return &ChannelInfo{
 		Channel: ch,
 		Control: st.From,
 		Target:  st.To,
 
 		Direction: DirOutbound,
 		NextLane:  maxLane + 1,
-	})
+	}, nil
+}
+
+func (pm *Manager) TrackOutboundChannel(ctx context.Context, ch address.Address) error {
+	ci, err := pm.loadOutboundChannelInfo(ctx, ch)
+	if err != nil {
+		return err
+	}
+
+	return pm.store.TrackChannel(ci)
 }
 
 func (pm *Manager) ListChannels() ([]address.Address, error) {
@@ -221,12 +248,12 @@ func (pm *Manager) getPaychOwner(ctx context.Context, ch address.Address) (addre
 	return address.NewFromBytes(ret.Return)
 }
 
-func (pm *Manager) AddVoucher(ctx context.Context, ch address.Address, sv *types.SignedVoucher, proof []byte) error {
+func (pm *Manager) AddVoucher(ctx context.Context, ch address.Address, sv *types.SignedVoucher, proof []byte, minDelta types.BigInt) (types.BigInt, error) {
 	if err := pm.CheckVoucherValid(ctx, ch, sv); err != nil {
-		return err
+		return types.NewInt(0), err
 	}
 
-	return pm.store.AddVoucher(ch, sv, proof)
+	return pm.store.AddVoucher(ch, sv, proof, minDelta)
 }
 
 func (pm *Manager) AllocateLane(ch address.Address) (uint64, error) {
@@ -240,6 +267,9 @@ func (pm *Manager) ListVouchers(ctx context.Context, ch address.Address) ([]*Vou
 }
 
 func (pm *Manager) OutboundChanTo(from, to address.Address) (address.Address, error) {
+	pm.store.lk.Lock()
+	defer pm.store.lk.Unlock()
+
 	return pm.store.findChan(func(ci *ChannelInfo) bool {
 		if ci.Direction != DirOutbound {
 			return false

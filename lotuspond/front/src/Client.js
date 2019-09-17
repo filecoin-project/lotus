@@ -49,6 +49,23 @@ class Client extends React.Component {
     console.log("deal cid: ", dealcid)
   }
 
+  retrieve = (deal) => async () => {
+    console.log(deal)
+    let client = await this.props.client.call('Filecoin.WalletDefaultAddress', [])
+
+    let order = {
+      Root: deal.PieceRef,
+      Size: deal.Size,
+      // TODO: support offset
+      Total: String(deal.Size * 2),
+
+      Client: client,
+      Miner: deal.Miner
+    }
+
+    await this.props.client.call('Filecoin.ClientRetrieve', [order, '/dev/null'])
+  }
+
   render() {
     let ppb = Math.round(this.state.total / this.state.blocks * 100) / 100
     let ppmbb = Math.round(ppb / (this.state.kbs / 1000) * 100) / 100
@@ -67,6 +84,7 @@ class Client extends React.Component {
     let deals = this.state.deals.map((deal, i) => <div key={i}>
       <ul>
         <li>{i}. Proposal: {deal.ProposalCid['/'].substr(0, 18)}... <Address nobalance={true} client={this.props.client} addr={deal.Miner} mountWindow={this.props.mountWindow}/>: <b>{dealStates[deal.State]}</b>
+          {dealStates[deal.State] === 'Complete' ? <span>&nbsp;<a href="#" onClick={this.retrieve(deal)}>[Retrieve]</a></span> : <span/> }
           <ul>
             <li>Data: {deal.PieceRef['/']}, <b>{deal.Size}</b>B; Duration: <b>{deal.Duration}</b>Blocks</li>
             <li>Total: <b>{deal.TotalPrice}</b>FIL; Per Block: <b>{Math.round(deal.TotalPrice / deal.Duration * 100) / 100}</b>FIL; PerMbyteByteBlock: <b>{Math.round(deal.TotalPrice / deal.Duration / (deal.Size / 1000000) * 100) / 100}</b>FIL</li>

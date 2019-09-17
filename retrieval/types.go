@@ -1,6 +1,7 @@
 package retrieval
 
 import (
+	"github.com/filecoin-project/go-lotus/api"
 	"github.com/ipfs/go-cid"
 	cbor "github.com/ipfs/go-ipld-cbor"
 
@@ -61,9 +62,10 @@ type RetParams struct {
 }
 
 type DealProposal struct {
+	Payment api.PaymentInfo
+
 	Ref    cid.Cid
 	Params RetParams
-	// TODO: payment
 }
 
 type DealResponse struct {

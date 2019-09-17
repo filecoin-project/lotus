@@ -18,10 +18,12 @@ const (
 	DealSealing
 	DealComplete
 
-	// Client specific
+	// Internal
 
 	DealError // deal failed with an unexpected error
 	DealExpired
+
+	DealNoUpdate = DealUnknown
 )
 
 // TODO: check if this exists anywhere else

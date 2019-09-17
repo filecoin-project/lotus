@@ -2,9 +2,8 @@ package cli
 
 import (
 	"fmt"
-
 	"github.com/filecoin-project/go-lotus/chain/address"
-	types "github.com/filecoin-project/go-lotus/chain/types"
+	"github.com/filecoin-project/go-lotus/chain/types"
 	"gopkg.in/urfave/cli.v2"
 )
 
@@ -56,36 +55,16 @@ var sendCmd = &cli.Command{
 			fromAddr = addr
 		}
 
-		nonce, err := api.MpoolGetNonce(ctx, fromAddr)
-		if err != nil {
-			return err
-		}
-
 		msg := &types.Message{
 			From:     fromAddr,
 			To:       toAddr,
 			Value:    val,
-			Nonce:    nonce,
 			GasLimit: types.NewInt(1000),
 			GasPrice: types.NewInt(0),
 		}
 
-		sermsg, err := msg.Serialize()
+		_, err = api.MpoolPushMessage(ctx, msg)
 		if err != nil {
-			return err
-		}
-
-		sig, err := api.WalletSign(ctx, fromAddr, sermsg)
-		if err != nil {
-			return err
-		}
-
-		smsg := &types.SignedMessage{
-			Message:   *msg,
-			Signature: *sig,
-		}
-
-		if err := api.MpoolPush(ctx, smsg); err != nil {
 			return err
 		}
 

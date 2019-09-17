@@ -132,7 +132,7 @@ class FullNode extends React.Component {
             extra = <span>Verif: &lt;<b><Address nobalance={true} client={this.props.client} addr={voucher.Extra.Actor} method={voucher.Extra.Method} mountWindow={this.props.mountWindow}/></b>&gt;</span>
           }
 
-          return <div key={voucher.Nonce} className="FullNode-voucher">
+          return <div key={`${addr} ${voucher.Lane} ${voucher.Nonce}`} className="FullNode-voucher">
             Voucher Nonce:<b>{voucher.Nonce}</b> Lane:<b>{voucher.Lane}</b> Amt:<b>{voucher.Amount}</b> TL:<b>{voucher.TimeLock}</b> MinCl:<b>{voucher.MinCloseHeight}</b> {extra}
           </div>
         })
