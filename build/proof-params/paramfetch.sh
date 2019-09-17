@@ -67,7 +67,7 @@ fetch_gateway() {
   local dest="$1"
   local cid="$2"
 
-  local url="https://198.211.99.118/ipfs/$cid"
+  local url="http://198.211.99.118/ipfs/$cid"
 
   download "$url" "$dest"
 }
