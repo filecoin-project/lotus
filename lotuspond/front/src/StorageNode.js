@@ -29,6 +29,7 @@ class StorageNode extends React.Component {
 
     this.loadInfo = this.loadInfo.bind(this)
     this.sealGarbage = this.sealGarbage.bind(this)
+    this.stop = this.stop.bind(this)
 
     this.connect()
   }
@@ -59,7 +60,8 @@ class StorageNode extends React.Component {
       // this.props.onConnect(client, id) // TODO: dedupe connecting part
 
       this.loadInfo()
-      setInterval(this.loadInfo, 1050)
+      let updates = setInterval(this.loadInfo, 1050)
+      client.on('close', () => clearInterval(updates))
     })
 
     console.log(token) // todo: use
@@ -87,6 +89,10 @@ class StorageNode extends React.Component {
 
   async sealGarbage() {
     await this.state.client.call("Filecoin.StoreGarbageData", [])
+  }
+
+  async stop() {
+    await this.props.stop()
   }
 
   render() {
@@ -117,7 +123,8 @@ class StorageNode extends React.Component {
 
     return <Cristal
       title={"Storage Miner Node " + this.props.node.ID}
-      initialPosition={{x: this.props.node.ID*30, y: this.props.node.ID * 30}}>
+      initialPosition={{x: this.props.node.ID*30, y: this.props.node.ID * 30}}
+      onClose={this.stop} >
       <div className="CristalScroll">
         <div className="StorageNode">
           {runtime}

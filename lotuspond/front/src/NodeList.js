@@ -65,6 +65,7 @@ class NodeList extends React.Component {
                          pondClient={this.props.client}
                          fullConn={this.state.nodes[fullId].conn}
                          mountWindow={this.props.mountWindow}
+                         stop={this.stopNode(node.ID, onClose)}
             />)
       }
     })

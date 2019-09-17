@@ -27,9 +27,13 @@ class Address extends React.Component {
   componentDidMount() {
     this.refresh()
     if(!this.props.ts) {
-      let updates = setInterval(this.refresh, 2050)
-      this.props.client.on('close', () => clearInterval(updates))
+      this.updates = setInterval(this.refresh, 2050)
+      this.props.client.on('close', () => clearInterval(this.updates))
     }
+  }
+
+  componentWillUnmount() {
+    clearInterval(this.updates)
   }
 
   async refresh() {
