@@ -6,8 +6,6 @@ import (
 	"sync"
 	"time"
 
-	"golang.org/x/xerrors"
-
 	"github.com/filecoin-project/go-lotus/build"
 	"github.com/filecoin-project/go-lotus/chain/actors"
 	"github.com/filecoin-project/go-lotus/chain/address"
@@ -16,7 +14,6 @@ import (
 	"github.com/filecoin-project/go-lotus/chain/types"
 	"github.com/filecoin-project/go-lotus/chain/vm"
 	"github.com/filecoin-project/go-lotus/lib/vdf"
-	cbg "github.com/whyrusleeping/cbor-gen"
 
 	amt "github.com/filecoin-project/go-amt-ipld"
 	"github.com/ipfs/go-cid"
@@ -25,6 +22,8 @@ import (
 	logging "github.com/ipfs/go-log"
 	"github.com/libp2p/go-libp2p-core/peer"
 	"github.com/pkg/errors"
+	cbg "github.com/whyrusleeping/cbor-gen"
+	"golang.org/x/xerrors"
 )
 
 var log = logging.Logger("chain")
