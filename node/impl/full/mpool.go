@@ -28,9 +28,9 @@ func (a *MpoolAPI) MpoolPush(ctx context.Context, smsg *types.SignedMessage) err
 	return a.Mpool.Push(smsg)
 }
 
-func (a *MpoolAPI) MpoolPushMessage(ctx context.Context, msg *types.Message) error {
+func (a *MpoolAPI) MpoolPushMessage(ctx context.Context, msg *types.Message) (*types.SignedMessage, error) {
 	if msg.Nonce != 0 {
-		return xerrors.Errorf("MpoolPushMessage expects message nonce to be 0, was %d", msg.Nonce)
+		return nil, xerrors.Errorf("MpoolPushMessage expects message nonce to be 0, was %d", msg.Nonce)
 	}
 
 	return a.Mpool.PushWithNonce(msg.From, func(nonce uint64) (*types.SignedMessage, error) {

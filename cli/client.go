@@ -2,7 +2,6 @@ package cli
 
 import (
 	"fmt"
-	"github.com/filecoin-project/go-lotus/api"
 	"strconv"
 
 	"github.com/ipfs/go-cid"

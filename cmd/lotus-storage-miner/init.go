@@ -166,28 +166,18 @@ func configureStorageMiner(ctx context.Context, api api.FullNode, addr address.A
 		return err
 	}
 
-	nonce, err := api.MpoolGetNonce(ctx, waddr)
-	if err != nil {
-		return err
-	}
-
 	msg := &types.Message{
 		To:       addr,
 		From:     waddr,
 		Method:   actors.MAMethods.UpdatePeerID,
 		Params:   enc,
-		Nonce:    nonce,
 		Value:    types.NewInt(0),
 		GasPrice: types.NewInt(0),
 		GasLimit: types.NewInt(1000000),
 	}
 
-	smsg, err := api.WalletSignMessage(ctx, waddr, msg)
+	smsg, err := api.MpoolPushMessage(ctx, msg)
 	if err != nil {
-		return err
-	}
-
-	if err := api.MpoolPush(ctx, smsg); err != nil {
 		return err
 	}
 
@@ -212,11 +202,6 @@ func createStorageMiner(ctx context.Context, api api.FullNode, peerid peer.ID) (
 		return address.Undef, err
 	}
 
-	nonce, err := api.MpoolGetNonce(ctx, defOwner)
-	if err != nil {
-		return address.Undef, err
-	}
-
 	k, err := api.WalletNew(ctx, types.KTBLS)
 	if err != nil {
 		return address.Undef, err
@@ -234,10 +219,9 @@ func createStorageMiner(ctx context.Context, api api.FullNode, peerid peer.ID) (
 		return address.Undef, err
 	}
 
-	createStorageMinerMsg := types.Message{
+	createStorageMinerMsg := &types.Message{
 		To:    actors.StorageMarketAddress,
 		From:  defOwner,
-		Nonce: nonce,
 		Value: collateral,
 
 		Method: actors.SMAMethods.CreateStorageMiner,
@@ -247,30 +231,12 @@ func createStorageMiner(ctx context.Context, api api.FullNode, peerid peer.ID) (
 		GasPrice: types.NewInt(0),
 	}
 
-	unsigned, err := createStorageMinerMsg.Serialize()
+	signed, err := api.MpoolPushMessage(ctx, createStorageMinerMsg)
 	if err != nil {
 		return address.Undef, err
 	}
 
-	log.Info("Signing StorageMarket.CreateStorageMiner")
-
-	sig, err := api.WalletSign(ctx, defOwner, unsigned)
-	if err != nil {
-		return address.Undef, err
-	}
-
-	signed := &types.SignedMessage{
-		Message:   createStorageMinerMsg,
-		Signature: *sig,
-	}
-
-	log.Infof("Pushing %s to Mpool", signed.Cid())
-
-	err = api.MpoolPush(ctx, signed)
-	if err != nil {
-		return address.Undef, err
-	}
-
+	log.Infof("Pushed StorageMarket.CreateStorageMiner, %s to Mpool", signed.Cid())
 	log.Infof("Waiting for confirmation")
 
 	mw, err := api.ChainWaitMsg(ctx, signed.Cid())

@@ -58,7 +58,7 @@ type FullNode interface {
 
 	MpoolPending(context.Context, *types.TipSet) ([]*types.SignedMessage, error)
 	MpoolPush(context.Context, *types.SignedMessage) error
-	MpoolPushMessage(context.Context, *types.Message) error // get nonce, sign, push
+	MpoolPushMessage(context.Context, *types.Message) (*types.SignedMessage, error) // get nonce, sign, push
 	MpoolGetNonce(context.Context, address.Address) (uint64, error)
 
 	// FullNodeStruct

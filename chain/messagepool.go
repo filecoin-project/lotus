@@ -117,30 +117,30 @@ func (mp *MessagePool) getNonceLocked(addr address.Address) (uint64, error) {
 	return act.Nonce, nil
 }
 
-func (mp *MessagePool) PushWithNonce(addr address.Address, cb func(uint64) (*types.SignedMessage, error)) error {
+func (mp *MessagePool) PushWithNonce(addr address.Address, cb func(uint64) (*types.SignedMessage, error)) (*types.SignedMessage, error) {
 	mp.lk.Lock()
 	defer mp.lk.Unlock()
 
 	nonce, err := mp.getNonceLocked(addr)
 	if err != nil {
-		return err
+		return nil, err
 	}
 
 	msg, err := cb(nonce)
 	if err != nil {
-		return err
+		return nil, err
 	}
 
 	msgb, err := msg.Serialize()
 	if err != nil {
-		return err
+		return nil, err
 	}
 
 	if err := mp.addLocked(msg); err != nil {
-		return err
+		return nil, err
 	}
 
-	return mp.ps.Publish("/fil/messages", msgb)
+	return msg, mp.ps.Publish("/fil/messages", msgb)
 }
 
 func (mp *MessagePool) Remove(from address.Address, nonce uint64) {

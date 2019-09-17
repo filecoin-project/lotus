@@ -17,33 +17,26 @@ func (pm *Manager) createPaych(ctx context.Context, from, to address.Address, am
 		return address.Undef, cid.Undef, aerr
 	}
 
-	nonce, err := pm.mpool.MpoolGetNonce(ctx, from)
-	if err != nil {
-		return address.Undef, cid.Undef, err
-	}
-
-	enc, err := actors.SerializeParams(&actors.ExecParams{
+	enc, aerr := actors.SerializeParams(&actors.ExecParams{
 		Params: params,
 		Code:   actors.PaymentChannelActorCodeCid,
 	})
+	if aerr != nil {
+		return address.Undef, cid.Undef, aerr
+	}
 
 	msg := &types.Message{
 		To:       actors.InitActorAddress,
 		From:     from,
 		Value:    amt,
-		Nonce:    nonce,
 		Method:   actors.IAMethods.Exec,
 		Params:   enc,
 		GasLimit: types.NewInt(1000000),
 		GasPrice: types.NewInt(0),
 	}
 
-	smsg, err := pm.wallet.WalletSignMessage(ctx, from, msg)
+	smsg, err := pm.mpool.MpoolPushMessage(ctx, msg)
 	if err != nil {
-		return address.Undef, cid.Undef, err
-	}
-
-	if err := pm.mpool.MpoolPush(ctx, smsg); err != nil {
 		return address.Undef, cid.Undef, err
 	}
 
@@ -78,27 +71,17 @@ func (pm *Manager) createPaych(ctx context.Context, from, to address.Address, am
 }
 
 func (pm *Manager) addFunds(ctx context.Context, ch address.Address, from address.Address, amt types.BigInt) error {
-	nonce, err := pm.mpool.MpoolGetNonce(ctx, from)
-	if err != nil {
-		return err
-	}
-
 	msg := &types.Message{
 		To:       ch,
 		From:     from,
 		Value:    amt,
-		Nonce:    nonce,
 		Method:   0,
 		GasLimit: types.NewInt(1000000),
 		GasPrice: types.NewInt(0),
 	}
 
-	smsg, err := pm.wallet.WalletSignMessage(ctx, from, msg)
+	smsg, err := pm.mpool.MpoolPushMessage(ctx, msg)
 	if err != nil {
-		return err
-	}
-
-	if err := pm.mpool.MpoolPush(ctx, smsg); err != nil {
 		return err
 	}
 
