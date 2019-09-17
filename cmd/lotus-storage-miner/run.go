@@ -2,7 +2,6 @@ package main
 
 import (
 	"context"
-	"github.com/filecoin-project/go-lotus/lib/valctx"
 	"net/http"
 	"os"
 	"os/signal"
@@ -36,7 +35,7 @@ var runCmd = &cli.Command{
 		if err != nil {
 			return err
 		}
-		ctx := &valctx.Context{Parent: lcli.ReqContext(cctx)}
+		ctx := lcli.DaemonContext(cctx)
 
 		v, err := nodeApi.Version(ctx)
 		if err != nil {

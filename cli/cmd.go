@@ -21,7 +21,6 @@ var log = logging.Logger("cli")
 
 const (
 	metadataTraceConetxt = "traceContext"
-	metadataContext      = "context"
 )
 
 // ApiConnector returns API instance
@@ -85,22 +84,19 @@ func GetStorageMinerAPI(ctx *cli.Context) (api.StorageMiner, error) {
 	return client.NewStorageMinerRPC(addr, headers)
 }
 
+func DaemonContext(cctx *cli.Context) context.Context {
+	if mtCtx, ok := cctx.App.Metadata[metadataTraceConetxt]; ok {
+		return mtCtx.(context.Context)
+	}
+
+	return context.Background()
+}
+
 // ReqContext returns context for cli execution. Calling it for the first time
 // installs SIGTERM handler that will close returned context.
 // Not safe for concurrent execution.
 func ReqContext(cctx *cli.Context) context.Context {
-	if uctx, ok := cctx.App.Metadata[metadataContext]; ok {
-		// unchecked cast as if something else is in there
-		// it is crash worthy either way
-		return uctx.(context.Context)
-	}
-	var tCtx context.Context
-
-	if mtCtx, ok := cctx.App.Metadata[metadataTraceConetxt]; ok {
-		tCtx = mtCtx.(context.Context)
-	} else {
-		tCtx = context.Background()
-	}
+	tCtx := DaemonContext(cctx)
 
 	ctx, done := context.WithCancel(tCtx)
 	sigChan := make(chan os.Signal, 2)
