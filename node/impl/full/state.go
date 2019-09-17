@@ -187,20 +187,7 @@ func (a *StateAPI) StateMinerWorker(ctx context.Context, m address.Address, ts *
 }
 
 func (a *StateAPI) StateMinerPeerID(ctx context.Context, m address.Address, ts *types.TipSet) (peer.ID, error) {
-	ret, err := a.StateManager.Call(ctx, &types.Message{
-		From:   m,
-		To:     m,
-		Method: actors.MAMethods.GetPeerID,
-	}, ts)
-	if err != nil {
-		return "", xerrors.Errorf("failed to get miner worker addr: %w", err)
-	}
-
-	if ret.ExitCode != 0 {
-		return "", xerrors.Errorf("failed to get miner worker addr (exit code %d)", ret.ExitCode)
-	}
-
-	return peer.IDFromBytes(ret.Return)
+	return stmgr.GetMinerPeerID(ctx, a.StateManager, ts, m)
 }
 
 func (a *StateAPI) StateCall(ctx context.Context, msg *types.Message, ts *types.TipSet) (*types.MessageReceipt, error) {
