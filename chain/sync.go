@@ -477,7 +477,7 @@ func (syncer *Syncer) ValidateBlock(ctx context.Context, b *types.FullBlock) err
 	bs := amt.WrapBlockstore(syncer.store.Blockstore())
 	recptRoot, err := amt.FromArray(bs, receipts)
 	if err != nil {
-		return xerrors.Errorf("building receipts hamt failed: %w", err)
+		return xerrors.Errorf("building receipts amt failed: %w", err)
 	}
 	if recptRoot != b.Header.MessageReceipts {
 		return fmt.Errorf("receipts mismatched")
