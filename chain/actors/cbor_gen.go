@@ -25,6 +25,7 @@ func (t *InitActorState) MarshalCBOR(w io.Writer) error {
 	}
 
 	// t.t.AddressMap (cid.Cid)
+
 	if err := cbg.WriteCid(w, t.AddressMap); err != nil {
 		return xerrors.Errorf("failed to write cid field t.AddressMap: %w", err)
 	}
@@ -54,11 +55,14 @@ func (t *InitActorState) UnmarshalCBOR(r io.Reader) error {
 	// t.t.AddressMap (cid.Cid)
 
 	{
+
 		c, err := cbg.ReadCid(br)
 		if err != nil {
 			return xerrors.Errorf("failed to read cid field t.AddressMap: %w", err)
 		}
+
 		t.AddressMap = c
+
 	}
 	// t.t.NextID (uint64)
 
@@ -83,6 +87,7 @@ func (t *ExecParams) MarshalCBOR(w io.Writer) error {
 	}
 
 	// t.t.Code (cid.Cid)
+
 	if err := cbg.WriteCid(w, t.Code); err != nil {
 		return xerrors.Errorf("failed to write cid field t.Code: %w", err)
 	}
@@ -115,11 +120,14 @@ func (t *ExecParams) UnmarshalCBOR(r io.Reader) error {
 	// t.t.Code (cid.Cid)
 
 	{
+
 		c, err := cbg.ReadCid(br)
 		if err != nil {
 			return xerrors.Errorf("failed to read cid field t.Code: %w", err)
 		}
+
 		t.Code = c
+
 	}
 	// t.t.Params ([]uint8)
 
@@ -194,6 +202,7 @@ func (t *StorageMinerActorState) MarshalCBOR(w io.Writer) error {
 	}
 
 	// t.t.Info (cid.Cid)
+
 	if err := cbg.WriteCid(w, t.Info); err != nil {
 		return xerrors.Errorf("failed to write cid field t.Info: %w", err)
 	}
@@ -209,6 +218,7 @@ func (t *StorageMinerActorState) MarshalCBOR(w io.Writer) error {
 	}
 
 	// t.t.Sectors (cid.Cid)
+
 	if err := cbg.WriteCid(w, t.Sectors); err != nil {
 		return xerrors.Errorf("failed to write cid field t.Sectors: %w", err)
 	}
@@ -219,6 +229,7 @@ func (t *StorageMinerActorState) MarshalCBOR(w io.Writer) error {
 	}
 
 	// t.t.ProvingSet (cid.Cid)
+
 	if err := cbg.WriteCid(w, t.ProvingSet); err != nil {
 		return xerrors.Errorf("failed to write cid field t.ProvingSet: %w", err)
 	}
@@ -268,11 +279,14 @@ func (t *StorageMinerActorState) UnmarshalCBOR(r io.Reader) error {
 	// t.t.Info (cid.Cid)
 
 	{
+
 		c, err := cbg.ReadCid(br)
 		if err != nil {
 			return xerrors.Errorf("failed to read cid field t.Info: %w", err)
 		}
+
 		t.Info = c
+
 	}
 	// t.t.DePledgedCollateral (types.BigInt)
 
@@ -295,11 +309,14 @@ func (t *StorageMinerActorState) UnmarshalCBOR(r io.Reader) error {
 	// t.t.Sectors (cid.Cid)
 
 	{
+
 		c, err := cbg.ReadCid(br)
 		if err != nil {
 			return xerrors.Errorf("failed to read cid field t.Sectors: %w", err)
 		}
+
 		t.Sectors = c
+
 	}
 	// t.t.SectorSetSize (uint64)
 
@@ -314,11 +331,14 @@ func (t *StorageMinerActorState) UnmarshalCBOR(r io.Reader) error {
 	// t.t.ProvingSet (cid.Cid)
 
 	{
+
 		c, err := cbg.ReadCid(br)
 		if err != nil {
 			return xerrors.Errorf("failed to read cid field t.ProvingSet: %w", err)
 		}
+
 		t.ProvingSet = c
+
 	}
 	// t.t.ProvingSetSize (uint64)
 
@@ -1057,6 +1077,7 @@ func (t *MultiSigActorState) UnmarshalCBOR(r io.Reader) error {
 		t.Signers = make([]address.Address, extra)
 	}
 	for i := 0; i < int(extra); i++ {
+
 		var v address.Address
 		if err := v.UnmarshalCBOR(br); err != nil {
 			return err
@@ -1102,6 +1123,7 @@ func (t *MultiSigActorState) UnmarshalCBOR(r io.Reader) error {
 		t.Transactions = make([]MTransaction, extra)
 	}
 	for i := 0; i < int(extra); i++ {
+
 		var v MTransaction
 		if err := v.UnmarshalCBOR(br); err != nil {
 			return err
@@ -1171,6 +1193,7 @@ func (t *MultiSigConstructorParams) UnmarshalCBOR(r io.Reader) error {
 		t.Signers = make([]address.Address, extra)
 	}
 	for i := 0; i < int(extra); i++ {
+
 		var v address.Address
 		if err := v.UnmarshalCBOR(br); err != nil {
 			return err
@@ -1600,6 +1623,7 @@ func (t *MTransaction) UnmarshalCBOR(r io.Reader) error {
 		t.Approved = make([]address.Address, extra)
 	}
 	for i := 0; i < int(extra); i++ {
+
 		var v address.Address
 		if err := v.UnmarshalCBOR(br); err != nil {
 			return err
@@ -2195,8 +2219,15 @@ func (t *PaymentInfo) MarshalCBOR(w io.Writer) error {
 	}
 
 	// t.t.ChannelMessage (cid.Cid)
-	if err := cbg.WriteCid(w, *t.ChannelMessage); err != nil {
-		return xerrors.Errorf("failed to write cid field t.ChannelMessage: %w", err)
+
+	if t.ChannelMessage == nil {
+		if _, err := w.Write(cbg.CborNull); err != nil {
+			return err
+		}
+	} else {
+		if err := cbg.WriteCid(w, *t.ChannelMessage); err != nil {
+			return xerrors.Errorf("failed to write cid field t.ChannelMessage: %w", err)
+		}
 	}
 
 	// t.t.Vouchers ([]*types.SignedVoucher)
@@ -2247,11 +2278,26 @@ func (t *PaymentInfo) UnmarshalCBOR(r io.Reader) error {
 	// t.t.ChannelMessage (cid.Cid)
 
 	{
-		c, err := cbg.ReadCid(br)
+
+		pb, err := br.PeekByte()
 		if err != nil {
-			return xerrors.Errorf("failed to read cid field t.ChannelMessage: %w", err)
+			return err
 		}
-		t.ChannelMessage = &c
+		if pb == cbg.CborNull[0] {
+			var nbuf [1]byte
+			if _, err := br.Read(nbuf[:]); err != nil {
+				return err
+			}
+		} else {
+
+			c, err := cbg.ReadCid(br)
+			if err != nil {
+				return xerrors.Errorf("failed to read cid field t.ChannelMessage: %w", err)
+			}
+
+			t.ChannelMessage = &c
+		}
+
 	}
 	// t.t.Vouchers ([]*types.SignedVoucher)
 
@@ -2270,6 +2316,7 @@ func (t *PaymentInfo) UnmarshalCBOR(r io.Reader) error {
 		t.Vouchers = make([]*types.SignedVoucher, extra)
 	}
 	for i := 0; i < int(extra); i++ {
+
 		var v types.SignedVoucher
 		if err := v.UnmarshalCBOR(br); err != nil {
 			return err
@@ -2291,6 +2338,7 @@ func (t *StorageMarketState) MarshalCBOR(w io.Writer) error {
 	}
 
 	// t.t.Miners (cid.Cid)
+
 	if err := cbg.WriteCid(w, t.Miners); err != nil {
 		return xerrors.Errorf("failed to write cid field t.Miners: %w", err)
 	}
@@ -2320,11 +2368,14 @@ func (t *StorageMarketState) UnmarshalCBOR(r io.Reader) error {
 	// t.t.Miners (cid.Cid)
 
 	{
+
 		c, err := cbg.ReadCid(br)
 		if err != nil {
 			return xerrors.Errorf("failed to read cid field t.Miners: %w", err)
 		}
+
 		t.Miners = c
+
 	}
 	// t.t.TotalStorage (types.BigInt)
 

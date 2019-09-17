@@ -2,13 +2,7 @@ package types
 
 import (
 	"bytes"
-
-	cbor "github.com/ipfs/go-ipld-cbor"
 )
-
-func init() {
-	cbor.RegisterCborType(MessageReceipt{})
-}
 
 type MessageReceipt struct {
 	ExitCode uint8

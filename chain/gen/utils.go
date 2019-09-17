@@ -4,6 +4,7 @@ import (
 	"context"
 	"fmt"
 
+	amt "github.com/filecoin-project/go-amt-ipld"
 	"github.com/filecoin-project/go-lotus/build"
 	actors "github.com/filecoin-project/go-lotus/chain/actors"
 	"github.com/filecoin-project/go-lotus/chain/address"
@@ -19,7 +20,6 @@ import (
 	bstore "github.com/ipfs/go-ipfs-blockstore"
 	peer "github.com/libp2p/go-libp2p-peer"
 	cbg "github.com/whyrusleeping/cbor-gen"
-	sharray "github.com/whyrusleeping/sharray"
 )
 
 type GenesisBootstrap struct {
@@ -287,11 +287,11 @@ func MakeGenesisBlock(bs bstore.Blockstore, balances map[address.Address]types.B
 		return nil, xerrors.Errorf("setup storage miners failed: %w", err)
 	}
 
-	cst := hamt.CSTFromBstore(bs)
+	blks := amt.WrapBlockstore(bs)
 
-	emptyroot, err := sharray.Build(context.TODO(), 4, []interface{}{}, cst)
+	emptyroot, err := amt.FromArray(blks, nil)
 	if err != nil {
-		return nil, xerrors.Errorf("sharray build failed: %w", err)
+		return nil, xerrors.Errorf("amt build failed: %w", err)
 	}
 
 	mm := &types.MsgMeta{

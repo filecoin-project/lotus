@@ -19,6 +19,8 @@ func main() {
 		types.SignedVoucher{},
 		types.ModVerifyParams{},
 		types.Merge{},
+		types.Actor{},
+		types.MessageReceipt{},
 	)
 	if err != nil {
 		fmt.Println(err)
