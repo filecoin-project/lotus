@@ -35,6 +35,7 @@ type ChainStore struct {
 	heaviest   *types.TipSet
 
 	bestTips *pubsub.PubSub
+	pubLk    sync.Mutex
 
 	tstLk   sync.Mutex
 	tipsets map[uint64][]cid.Cid
@@ -51,6 +52,8 @@ func NewChainStore(bs bstore.Blockstore, ds dstore.Batching) *ChainStore {
 	}
 
 	hcnf := func(rev, app []*types.TipSet) error {
+		cs.pubLk.Lock()
+		defer cs.pubLk.Unlock()
 		for _, r := range rev {
 			cs.bestTips.Pub(&HeadChange{
 				Type: HCRevert,
@@ -122,8 +125,9 @@ func (cs *ChainStore) SubNewTips() chan *types.TipSet {
 }
 
 const (
-	HCRevert = "revert"
-	HCApply  = "apply"
+	HCRevert  = "revert"
+	HCApply   = "apply"
+	HCCurrent = "current"
 )
 
 type HeadChange struct {
@@ -132,8 +136,17 @@ type HeadChange struct {
 }
 
 func (cs *ChainStore) SubHeadChanges(ctx context.Context) chan *HeadChange {
+	cs.pubLk.Lock()
 	subch := cs.bestTips.Sub("headchange")
+	head := cs.GetHeaviestTipSet()
+	cs.pubLk.Unlock()
+
 	out := make(chan *HeadChange, 16)
+	out <- &HeadChange{
+		Type: HCCurrent,
+		Val:  head,
+	}
+
 	go func() {
 		defer close(out)
 		for {

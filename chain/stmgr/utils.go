@@ -2,12 +2,16 @@ package stmgr
 
 import (
 	"context"
-	"github.com/libp2p/go-libp2p-core/peer"
 
 	"github.com/filecoin-project/go-lotus/chain/actors"
 	"github.com/filecoin-project/go-lotus/chain/address"
 	"github.com/filecoin-project/go-lotus/chain/types"
+
+	amt "github.com/filecoin-project/go-amt-ipld"
 	cid "github.com/ipfs/go-cid"
+	cbor "github.com/ipfs/go-ipld-cbor"
+	"github.com/libp2p/go-libp2p-core/peer"
+	cbg "github.com/whyrusleeping/cbor-gen"
 	"golang.org/x/xerrors"
 )
 
@@ -121,4 +125,52 @@ func GetMinerPeerID(ctx context.Context, sm *StateManager, ts *types.TipSet, mad
 	}
 
 	return peer.IDFromBytes(recp.Return)
+}
+
+func GetMinerProvingPeriodEnd(ctx context.Context, sm *StateManager, ts *types.TipSet, maddr address.Address) (uint64, error) {
+	var mas actors.StorageMinerActorState
+	_, err := sm.LoadActorState(ctx, maddr, &mas, ts)
+	if err != nil {
+		return 0, xerrors.Errorf("failed to load miner actor state: %w", err)
+	}
+
+	return mas.ProvingPeriodEnd, nil
+}
+
+type SectorSetEntry struct {
+	SectorID uint64
+	CommR    []byte
+	CommD    []byte
+}
+
+func GetMinerProvingSet(ctx context.Context, sm *StateManager, ts *types.TipSet, maddr address.Address) ([]SectorSetEntry, error) {
+	var mas actors.StorageMinerActorState
+	_, err := sm.LoadActorState(ctx, maddr, &mas, ts)
+	if err != nil {
+		return nil, xerrors.Errorf("failed to load miner actor state: %w", err)
+	}
+
+	bs := amt.WrapBlockstore(sm.ChainStore().Blockstore())
+	a, err := amt.LoadAMT(bs, mas.ProvingSet)
+	if err != nil {
+		return nil, err
+	}
+
+	var sset []SectorSetEntry
+	if err := a.ForEach(func(i uint64, v *cbg.Deferred) error {
+		var comms [][]byte
+		if err := cbor.DecodeInto(v.Raw, &comms); err != nil {
+			return err
+		}
+		sset = append(sset, SectorSetEntry{
+			SectorID: i,
+			CommR:    comms[0],
+			CommD:    comms[1],
+		})
+		return nil
+	}); err != nil {
+		return nil, err
+	}
+
+	return sset, nil
 }

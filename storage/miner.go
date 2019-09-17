@@ -170,7 +170,42 @@ func (m *Miner) commitSector(ctx context.Context, sinfo sectorbuilder.SectorSeal
 }
 
 func (m *Miner) runPoSt(ctx context.Context) {
-	log.Warning("dont care about posts yet")
+	notifs, err := m.api.ChainNotify(ctx)
+	if err != nil {
+		// TODO: this is probably 'crash the node' level serious
+		log.Errorf("POST ROUTINE FAILED: failed to get chain notifications stream: %s", err)
+		return
+	}
+
+	curhead := <-notifs
+	if curhead.Type != store.HCCurrent {
+		// TODO: this is probably 'crash the node' level serious
+		log.Warning("expected to get current best tipset from chain notifications stream")
+		return
+	}
+
+	postCtx, cancel := context.WithCancel(ctx)
+	postWaitCh, onBlock := m.maybeDoPost(postCtx, curhead)
+
+	for {
+		select {
+		case <-ctx.Done():
+		case ch, ok := <-notifs:
+			if !ok {
+				log.Warning("chain notifications stream terminated")
+				// TODO: attempt to restart it if the context isnt cancelled
+				return
+			}
+
+			if ch.Type == store.HCApply {
+				m.maybeDoPost(ch.Val)
+			}
+		}
+	}
+}
+
+func (m *Miner) maybeDoPost(ctx context.Context, ts *types.TipSet) (<-chan error, *types.BlockHeader) {
+
 }
 
 func (m *Miner) runPreflightChecks(ctx context.Context) error {
