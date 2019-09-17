@@ -2,6 +2,7 @@ package cli
 
 import (
 	"fmt"
+	"github.com/filecoin-project/go-lotus/api"
 	"strconv"
 
 	"github.com/ipfs/go-cid"
@@ -165,20 +166,16 @@ var clientFindCmd = &cli.Command{
 var clientRetrieveCmd = &cli.Command{
 	Name:  "retrieve",
 	Usage: "retrieve data from network",
+	Flags: []cli.Flag{
+		&cli.StringFlag{
+			Name:  "address",
+			Usage: "address to use for transactions",
+		},
+	},
 	Action: func(cctx *cli.Context) error {
-		if cctx.NArg() != 3 {
-			fmt.Println("Usage: retrieve [client address] [CID] [outfile]")
+		if cctx.NArg() != 2 {
+			fmt.Println("Usage: retrieve [CID] [outfile]")
 			return nil
-		}
-
-		payer, err := address.NewFromString(cctx.Args().Get(0))
-		if err != nil {
-			return err
-		}
-
-		file, err := cid.Parse(cctx.Args().Get(1))
-		if err != nil {
-			return err
 		}
 
 		api, err := GetFullNodeAPI(cctx)
@@ -186,6 +183,21 @@ var clientRetrieveCmd = &cli.Command{
 			return err
 		}
 		ctx := ReqContext(cctx)
+
+		var payer address.Address
+		if cctx.String("address") != "" {
+			payer, err = address.NewFromString(cctx.String("address"))
+		} else {
+			payer, err = api.WalletDefaultAddress(ctx)
+		}
+		if err != nil {
+			return err
+		}
+
+		file, err := cid.Parse(cctx.Args().Get(0))
+		if err != nil {
+			return err
+		}
 
 		// Check if we already have this data locally
 
@@ -209,7 +221,7 @@ var clientRetrieveCmd = &cli.Command{
 		order := offers[0].Order()
 		order.Client = payer
 
-		err = api.ClientRetrieve(ctx, order, cctx.Args().Get(2))
+		err = api.ClientRetrieve(ctx, order, cctx.Args().Get(1))
 		if err == nil {
 			fmt.Println("Success")
 		}
