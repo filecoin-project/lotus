@@ -12,10 +12,13 @@ import (
 	"github.com/ipfs/go-cid"
 	cbor "github.com/ipfs/go-ipld-cbor"
 	"github.com/libp2p/go-libp2p-core/peer"
+	cbg "github.com/whyrusleeping/cbor-gen"
 	"golang.org/x/xerrors"
 )
 
 var ProvingPeriodDuration = uint64(2 * 60) // an hour, for now
+var PoSTChallangeTime = uint64(1 * 60)
+
 const POST_SECTORS_COUNT = 8192
 
 type StorageMinerActor struct{}
@@ -118,9 +121,10 @@ type maMethods struct {
 	IsLate                 uint64
 	PaymentVerifyInclusion uint64
 	PaymentVerifySector    uint64
+	AddFaults              uint64
 }
 
-var MAMethods = maMethods{1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16, 17, 18}
+var MAMethods = maMethods{1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16, 17, 18, 19}
 
 func (sma StorageMinerActor) Exports() []interface{} {
 	return []interface{}{
@@ -142,6 +146,7 @@ func (sma StorageMinerActor) Exports() []interface{} {
 		//16: sma.IsLate,
 		17: sma.PaymentVerifyInclusion,
 		18: sma.PaymentVerifySector,
+		19: nil,
 	}
 }
 
@@ -247,11 +252,6 @@ func (sma StorageMinerActor) CommitSector(act *types.Actor, vmctx types.VMContex
 		return nil, aerrors.New(3, "not enough collateral")
 	}
 
-	// ensure that the miner cannot commit more sectors than can be proved with a single PoSt
-	if self.SectorSetSize >= POST_SECTORS_COUNT {
-		return nil, aerrors.New(4, "too many sectors")
-	}
-
 	// Note: There must exist a unique index in the miner's sector set for each
 	// sector ID. The `faults`, `recovered`, and `done` parameters of the
 	// SubmitPoSt method express indices into this sector set.
@@ -287,6 +287,8 @@ func (sma StorageMinerActor) CommitSector(act *types.Actor, vmctx types.VMContex
 }
 
 type SubmitPoStParams struct {
+	Proof   []byte
+	DoneSet types.BitField
 	// TODO: once the spec changes finish, we have more work to do here...
 }
 
@@ -307,13 +309,99 @@ func (sma StorageMinerActor) SubmitPoSt(act *types.Actor, vmctx types.VMContext,
 		return nil, aerrors.New(1, "not authorized to submit post for miner")
 	}
 
-	oldProvingSetSize := self.ProvingSetSize
+	feesRequired := types.NewInt(0)
+	nextProvingPeriodEnd := self.ProvingPeriodEnd + ProvingPeriodDuration
+	if vmctx.BlockHeight() > nextProvingPeriodEnd {
+		return nil, aerrors.New(1, "PoSt submited too late")
+	}
 
-	self.ProvingSet = self.Sectors
-	self.ProvingSetSize = self.SectorSetSize
+	var lateSubmission bool
+	if vmctx.BlockHeight() > self.ProvingPeriodEnd {
+		//TODO late fee calc
+		lateSubmission = true
+		feesRequired = types.BigAdd(feesRequired, types.NewInt(1000))
+	}
+
+	//TODO temporary sector failure fees
+
+	msgVal := vmctx.Message().Value
+	if types.BigCmp(msgVal, feesRequired) < 0 {
+		return nil, aerrors.New(2, "not enough funds to pay post submission fees")
+	}
+
+	if types.BigCmp(msgVal, feesRequired) > 0 {
+		_, err := vmctx.Send(vmctx.Message().From, 0,
+			types.BigSub(msgVal, feesRequired), nil)
+		if err != nil {
+			return nil, aerrors.Wrap(err, "could not refund excess fees")
+		}
+	}
+
+	var seed [sectorbuilder.CommLen]byte
+	//TODO
+	if !lateSubmission {
+		//GetChainRandom(self.ProvingPeriodEnd-PoSTChallangeTime)
+	} else {
+		//GetChainRandom(nextProvingPeriodEnd-PoSTChallangeTime)
+	}
+
+	pss, lerr := amt.LoadAMT(types.WrapStorage(vmctx.Storage()), self.ProvingSet)
+	if lerr != nil {
+		return nil, aerrors.Escalate(lerr, "could not load sector set node")
+	}
+
+	var sectorInfos []sectorbuilder.SectorInfo
+	if err := pss.ForEach(func(id uint64, v *cbg.Deferred) error {
+		var comms [][]byte
+		if err := cbor.DecodeInto(v.Raw, &comms); err != nil {
+			return xerrors.New("could not decode comms")
+		}
+		si := sectorbuilder.SectorInfo{
+			SectorID: id,
+		}
+		commR := comms[0]
+		if len(commR) != len(si.CommR) {
+			return xerrors.Errorf("commR length is wrong: %d", len(commR))
+		}
+		copy(si.CommR[:], commR)
+
+		sectorInfos = append(sectorInfos, si)
+
+		return nil
+	}); err != nil {
+		return nil, aerrors.Absorb(err, 3, "could not decode sectorset")
+	}
+
+	faults := self.CurrentFaultSet.All()
+
+	if ok, lerr := sectorbuilder.VerifyPost(mi.SectorSize.Uint64(),
+		sectorbuilder.NewSortedSectorInfo(sectorInfos), seed, params.Proof,
+		faults); !ok || lerr != nil {
+		if !ok {
+			return nil, aerrors.New(4, "PoST invalid")
+		}
+		if lerr != nil {
+			return nil, aerrors.Absorb(lerr, 4, "PoST error")
+		}
+	}
+	self.CurrentFaultSet = self.NextFaultSet
+	self.NextFaultSet = types.NewBitField()
+
+	ss, lerr := amt.LoadAMT(types.WrapStorage(vmctx.Storage()), self.ProvingSet)
+	if lerr != nil {
+		return nil, aerrors.Escalate(lerr, "could not load sector set node")
+	}
+
+	_ = ss
+	//TODO: Remove done sectors from SectorSet
+	self.ProvingSet, lerr = ss.Flush()
+	if lerr != nil {
+		return nil, aerrors.Escalate(lerr, "could not flish AMT")
+	}
 
 	oldPower := self.Power
-	self.Power = types.BigMul(types.NewInt(oldProvingSetSize), mi.SectorSize)
+	self.Power = types.BigMul(types.NewInt(self.ProvingSetSize-uint64(len(faults))),
+		mi.SectorSize)
 
 	enc, err := SerializeParams(&UpdateStorageParams{Delta: types.BigSub(self.Power, oldPower)})
 	if err != nil {
@@ -324,6 +412,10 @@ func (sma StorageMinerActor) SubmitPoSt(act *types.Actor, vmctx types.VMContext,
 	if err != nil {
 		return nil, err
 	}
+
+	self.ProvingSet = self.Sectors
+	self.ProvingSetSize = self.SectorSetSize
+	self.NextDoneSet = params.DoneSet
 
 	c, err := vmctx.Storage().Put(self)
 	if err != nil {

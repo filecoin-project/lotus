@@ -107,7 +107,13 @@ func VerifyPieceInclusionProof(sectorSize uint64, pieceSize uint64, commP []byte
 	return sectorbuilder.VerifyPieceInclusionProof(sectorSize, pieceSize, commPa, commDa, proof)
 }
 
-func VerifyPost(sectorSize uint64, sortedCommRs [][CommLen]byte, challengeSeed [CommLen]byte, proofs [][]byte, faults []uint64) (bool, error) {
-	// sectorbuilder.VerifyPost()
-	panic("no")
+type SortedSectorInfo = sectorbuilder.SortedSectorInfo
+type SectorInfo = sectorbuilder.SectorInfo
+
+func NewSortedSectorInfo(sectors []SectorInfo) SortedSectorInfo {
+	return sectorbuilder.NewSortedSectorInfo(sectors...)
+}
+
+func VerifyPost(sectorSize uint64, sectorInfo SortedSectorInfo, challengeSeed [CommLen]byte, proof []byte, faults []uint64) (bool, error) {
+	return sectorbuilder.VerifyPoSt(sectorSize, sectorInfo, challengeSeed, proof, faults)
 }
