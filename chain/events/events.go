@@ -31,6 +31,7 @@ type heightHandler struct {
 type eventApi interface {
 	ChainNotify(context.Context) (<-chan []*store.HeadChange, error)
 	ChainGetBlockMessages(context.Context, cid.Cid) (*api.BlockMessages, error)
+	ChainGetTipSetByHeight(context.Context, uint64, *types.TipSet) (*types.TipSet, error)
 }
 
 type Events struct {
@@ -49,7 +50,7 @@ type Events struct {
 func NewEvents(api eventApi) *Events {
 	gcConfidence := 2 * build.ForkLengthThreshold
 
-	tsc := newTSCache(gcConfidence)
+	tsc := newTSCache(gcConfidence, api.ChainGetTipSetByHeight)
 
 	e := &Events{
 		api: api,

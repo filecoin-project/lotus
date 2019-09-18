@@ -2,11 +2,10 @@ package storage
 
 import (
 	"context"
-
 	"github.com/ipfs/go-cid"
 	"github.com/ipfs/go-datastore"
 	logging "github.com/ipfs/go-log"
-	host "github.com/libp2p/go-libp2p-core/host"
+	"github.com/libp2p/go-libp2p-core/host"
 	"github.com/pkg/errors"
 	"golang.org/x/xerrors"
 
@@ -23,6 +22,8 @@ import (
 )
 
 var log = logging.Logger("storageminer")
+
+const PoStConfidence = 0
 
 type Miner struct {
 	api    storageMinerApi
@@ -53,6 +54,7 @@ type storageMinerApi interface {
 	MpoolPush(context.Context, *types.SignedMessage) error
 	MpoolGetNonce(context.Context, address.Address) (uint64, error)
 
+	ChainHead(context.Context) (*types.TipSet, error)
 	ChainWaitMsg(context.Context, cid.Cid) (*api.MsgWait, error)
 	ChainNotify(context.Context) (<-chan []*store.HeadChange, error)
 	ChainGetRandomness(context.Context, *types.TipSet, []*types.Ticket, int) ([]byte, error)
@@ -82,8 +84,13 @@ func (m *Miner) Run(ctx context.Context) error {
 		return errors.Wrap(err, "miner preflight checks failed")
 	}
 
+	ts, err := m.api.ChainHead(ctx)
+	if err != nil {
+		return err
+	}
+
 	go m.handlePostingSealedSectors(ctx)
-	go m.runPoSt(ctx)
+	go m.schedulePoSt(ctx, ts)
 	return nil
 }
 
@@ -179,70 +186,54 @@ func (m *Miner) commitSector(ctx context.Context, sinfo sectorbuilder.SectorSeal
 	return nil
 }
 
-func (m *Miner) runPoSt(ctx context.Context) {
-	// TODO: most of this method can probably be replaced by the events module once it works on top of the api
-	notifs, err := m.api.ChainNotify(ctx)
+func (m *Miner) schedulePoSt(ctx context.Context, baseTs *types.TipSet) {
+	ppe, err := m.api.StateMinerProvingPeriodEnd(ctx, m.maddr, baseTs)
 	if err != nil {
-		// TODO: this is probably 'crash the node' level serious
-		log.Errorf("POST ROUTINE FAILED: failed to get chain notifications stream: %s", err)
+		log.Errorf("failed to get proving period end for miner: %s", err)
 		return
 	}
 
-	curhead := <-notifs
-	if curhead[0].Type != store.HCCurrent {
-		// TODO: this is probably 'crash the node' level serious
-		log.Warning("expected to get current best tipset from chain notifications stream")
+	if ppe == 0 {
+		log.Errorf("Proving period end == 0")
+		// TODO: we probably want to call schedulePoSt after the first commitSector call
 		return
 	}
 
-	postCtx, cancel := context.WithCancel(ctx)
-	postWaitCh, onBlock, err := m.maybeDoPost(postCtx, curhead[0].Val)
+	log.Infof("Scheduling post at height %d", ppe)
+	// TODO: Should we set confidence to randomness lookback?
+	err = m.events.ChainAt(m.startPost, func(ts *types.TipSet) error { // Revert
+		// TODO: Cancel post
+		return nil
+	}, PoStConfidence, ppe)
 	if err != nil {
-		log.Errorf("initial 'maybeDoPost' call failed: %s", err)
+		// TODO: This is BAD, figure something out
+		log.Errorf("scheduling PoSt failed: %s", err)
 		return
 	}
+}
 
-	for {
-		select {
-		case <-ctx.Done():
-		case notif, ok := <-notifs:
-			for _, ch := range notif {
-				if !ok {
-					log.Warning("chain notifications stream terminated")
-					// TODO: attempt to restart it if the context isnt cancelled
-					return
-				}
+func (m *Miner) startPost(ts *types.TipSet, curH uint64) error {
+	postWaitCh, _, err := m.maybeDoPost(context.TODO(), ts)
+	if err != nil {
+		return err
+	}
 
-				switch ch.Type {
-				case store.HCApply:
-					postWaitCh, onBlock, err = m.maybeDoPost(postCtx, ch.Val)
-					if err != nil {
-						log.Errorf("maybeDoPost failed: %s", err)
-						return
-					}
-				case store.HCRevert:
-					if onBlock != nil {
-						if ch.Val.Contains(onBlock.Cid()) {
-							// Our post may now be invalid!
-							cancel() // probably the right thing to do?
-						}
-					}
-				case store.HCCurrent:
-					log.Warn("got 'current' chain notification in middle of stream")
-				}
-			}
-		case perr := <-postWaitCh:
-			if perr != nil {
-				log.Errorf("got error back from postWaitCh: %s", err)
-				// TODO: what do we even do here?
-				return
-			}
-			postWaitCh = nil
-			onBlock = nil
-			// yay?
-			log.Infof("post successfully submitted")
+	if postWaitCh == nil {
+		return errors.New("PoSt didn't start")
+	}
+
+	go func() {
+		err := <-postWaitCh
+		if err != nil {
+			log.Errorf("got error back from postWaitCh: %s", err)
+			return
 		}
-	}
+
+		log.Infof("post successfully submitted")
+
+		m.schedulePoSt(context.TODO(), ts)
+	}()
+	return nil
 }
 
 func (m *Miner) maybeDoPost(ctx context.Context, ts *types.TipSet) (<-chan error, *types.BlockHeader, error) {
@@ -252,6 +243,7 @@ func (m *Miner) maybeDoPost(ctx context.Context, ts *types.TipSet) (<-chan error
 	}
 
 	if ppe < ts.Height() {
+		log.Warnf("skipping post, supplied tipset too high: ppe=%d, ts.H=%d", ppe, ts.Height())
 		return nil, nil, nil
 	}
 

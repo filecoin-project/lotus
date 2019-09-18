@@ -39,6 +39,10 @@ type fakeCS struct {
 	sub func(rev, app []*types.TipSet)
 }
 
+func (fcs *fakeCS) ChainGetTipSetByHeight(context.Context, uint64, *types.TipSet) (*types.TipSet, error) {
+	panic("Not Implemented")
+}
+
 func makeTs(t *testing.T, h uint64, msgcid cid.Cid) *types.TipSet {
 	ts, err := types.NewTipSet([]*types.BlockHeader{
 		{
@@ -152,7 +156,7 @@ func TestAt(t *testing.T) {
 	fcs := &fakeCS{
 		t:   t,
 		h:   1,
-		tsc: newTSCache(2 * build.ForkLengthThreshold),
+		tsc: newTSCache(2*build.ForkLengthThreshold, nil),
 	}
 	require.NoError(t, fcs.tsc.add(makeTs(t, 1, dummyCid)))
 
@@ -211,7 +215,7 @@ func TestAtStart(t *testing.T) {
 	fcs := &fakeCS{
 		t:   t,
 		h:   1,
-		tsc: newTSCache(2 * build.ForkLengthThreshold),
+		tsc: newTSCache(2*build.ForkLengthThreshold, nil),
 	}
 	require.NoError(t, fcs.tsc.add(makeTs(t, 1, dummyCid)))
 
@@ -245,7 +249,7 @@ func TestAtStartConfidence(t *testing.T) {
 	fcs := &fakeCS{
 		t:   t,
 		h:   1,
-		tsc: newTSCache(2 * build.ForkLengthThreshold),
+		tsc: newTSCache(2*build.ForkLengthThreshold, nil),
 	}
 	require.NoError(t, fcs.tsc.add(makeTs(t, 1, dummyCid)))
 
@@ -278,7 +282,7 @@ func TestCalled(t *testing.T) {
 
 		msgs:    map[cid.Cid]fakeMsg{},
 		blkMsgs: map[cid.Cid]cid.Cid{},
-		tsc:     newTSCache(2 * build.ForkLengthThreshold),
+		tsc:     newTSCache(2*build.ForkLengthThreshold, nil),
 	}
 	require.NoError(t, fcs.tsc.add(makeTs(t, 1, dummyCid)))
 
@@ -476,7 +480,7 @@ func TestCalledTimeout(t *testing.T) {
 
 		msgs:    map[cid.Cid]fakeMsg{},
 		blkMsgs: map[cid.Cid]cid.Cid{},
-		tsc:     newTSCache(2 * build.ForkLengthThreshold),
+		tsc:     newTSCache(2*build.ForkLengthThreshold, nil),
 	}
 	require.NoError(t, fcs.tsc.add(makeTs(t, 1, dummyCid)))
 
@@ -516,7 +520,7 @@ func TestCalledTimeout(t *testing.T) {
 
 		msgs:    map[cid.Cid]fakeMsg{},
 		blkMsgs: map[cid.Cid]cid.Cid{},
-		tsc:     newTSCache(2 * build.ForkLengthThreshold),
+		tsc:     newTSCache(2*build.ForkLengthThreshold, nil),
 	}
 	require.NoError(t, fcs.tsc.add(makeTs(t, 1, dummyCid)))
 
@@ -550,7 +554,7 @@ func TestCalledOrder(t *testing.T) {
 
 		msgs:    map[cid.Cid]fakeMsg{},
 		blkMsgs: map[cid.Cid]cid.Cid{},
-		tsc:     newTSCache(2 * build.ForkLengthThreshold),
+		tsc:     newTSCache(2*build.ForkLengthThreshold, nil),
 	}
 	require.NoError(t, fcs.tsc.add(makeTs(t, 1, dummyCid)))
 
