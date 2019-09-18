@@ -22,7 +22,7 @@ type ChainAPI struct {
 	PubSub *pubsub.PubSub
 }
 
-func (a *ChainAPI) ChainNotify(ctx context.Context) (<-chan *store.HeadChange, error) {
+func (a *ChainAPI) ChainNotify(ctx context.Context) (<-chan []*store.HeadChange, error) {
 	return a.Chain.SubHeadChanges(ctx), nil
 }
 
@@ -109,5 +109,5 @@ func (a *ChainAPI) ChainGetBlockReceipts(ctx context.Context, bcid cid.Cid) ([]*
 }
 
 func (a *ChainAPI) ChainGetTipSetByHeight(ctx context.Context, h uint64, ts *types.TipSet) (*types.TipSet, error) {
-	panic("NYI")
+	return a.Chain.GetTipsetByHeight(ctx, h, ts)
 }

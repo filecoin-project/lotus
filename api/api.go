@@ -44,7 +44,10 @@ type FullNode interface {
 	Common
 
 	// chain
-	ChainNotify(context.Context) (<-chan *store.HeadChange, error)
+
+	// ChainNotify returns channel with chain head updates
+	// First message is guaranteed to be of len == 1, and type == 'current'
+	ChainNotify(context.Context) (<-chan []*store.HeadChange, error)
 	ChainHead(context.Context) (*types.TipSet, error)                // TODO: check serialization
 	ChainSubmitBlock(ctx context.Context, blk *types.BlockMsg) error // TODO: check serialization
 	ChainGetRandomness(context.Context, *types.TipSet, []*types.Ticket, int) ([]byte, error)

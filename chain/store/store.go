@@ -54,18 +54,23 @@ func NewChainStore(bs bstore.Blockstore, ds dstore.Batching) *ChainStore {
 	hcnf := func(rev, app []*types.TipSet) error {
 		cs.pubLk.Lock()
 		defer cs.pubLk.Unlock()
-		for _, r := range rev {
-			cs.bestTips.Pub(&HeadChange{
+
+		notif := make([]*HeadChange, len(rev)+len(app))
+
+		for i, r := range rev {
+			notif[i] = &HeadChange{
 				Type: HCRevert,
 				Val:  r,
-			}, "headchange")
+			}
 		}
-		for _, r := range app {
-			cs.bestTips.Pub(&HeadChange{
+		for i, r := range app {
+			notif[i+len(rev)] = &HeadChange{
 				Type: HCApply,
 				Val:  r,
-			}, "headchange")
+			}
 		}
+
+		cs.bestTips.Pub(notif, "headchange")
 		return nil
 	}
 
@@ -112,18 +117,6 @@ func (cs *ChainStore) writeHead(ts *types.TipSet) error {
 	return nil
 }
 
-func (cs *ChainStore) SubNewTips() chan *types.TipSet {
-	subch := cs.bestTips.Sub("best")
-	out := make(chan *types.TipSet)
-	go func() {
-		defer close(out)
-		for val := range subch {
-			out <- val.(*types.TipSet)
-		}
-	}()
-	return out
-}
-
 const (
 	HCRevert  = "revert"
 	HCApply   = "apply"
@@ -135,17 +128,17 @@ type HeadChange struct {
 	Val  *types.TipSet
 }
 
-func (cs *ChainStore) SubHeadChanges(ctx context.Context) chan *HeadChange {
+func (cs *ChainStore) SubHeadChanges(ctx context.Context) chan []*HeadChange {
 	cs.pubLk.Lock()
 	subch := cs.bestTips.Sub("headchange")
 	head := cs.GetHeaviestTipSet()
 	cs.pubLk.Unlock()
 
-	out := make(chan *HeadChange, 16)
-	out <- &HeadChange{
+	out := make(chan []*HeadChange, 16)
+	out <- []*HeadChange{{
 		Type: HCCurrent,
 		Val:  head,
-	}
+	}}
 
 	go func() {
 		defer close(out)
@@ -156,8 +149,11 @@ func (cs *ChainStore) SubHeadChanges(ctx context.Context) chan *HeadChange {
 					log.Warn("chain head sub exit loop")
 					return
 				}
+				if len(out) > 0 {
+					log.Warnf("head change sub is slow, has %d buffered entries", len(out))
+				}
 				select {
-				case out <- val.(*HeadChange):
+				case out <- val.([]*HeadChange):
 				case <-ctx.Done():
 				}
 			case <-ctx.Done():
@@ -610,20 +606,22 @@ func (cs *ChainStore) WaitForMessage(ctx context.Context, mcid cid.Cid) (cid.Cid
 
 	for {
 		select {
-		case val, ok := <-tsub:
+		case notif, ok := <-tsub:
 			if !ok {
 				return cid.Undef, nil, ctx.Err()
 			}
-			switch val.Type {
-			case HCRevert:
-				continue
-			case HCApply:
-				bc, r, err := cs.tipsetContainsMsg(val.Val, mcid)
-				if err != nil {
-					return cid.Undef, nil, err
-				}
-				if r != nil {
-					return bc, r, nil
+			for _, val := range notif {
+				switch val.Type {
+				case HCRevert:
+					continue
+				case HCApply:
+					bc, r, err := cs.tipsetContainsMsg(val.Val, mcid)
+					if err != nil {
+						return cid.Undef, nil, err
+					}
+					if r != nil {
+						return bc, r, nil
+					}
 				}
 			}
 		case <-ctx.Done():

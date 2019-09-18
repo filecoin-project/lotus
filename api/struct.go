@@ -38,7 +38,7 @@ type FullNodeStruct struct {
 	CommonStruct
 
 	Internal struct {
-		ChainNotify            func(context.Context) (<-chan *store.HeadChange, error)                    `perm:"read"`
+		ChainNotify            func(context.Context) (<-chan []*store.HeadChange, error)                  `perm:"read"`
 		ChainSubmitBlock       func(ctx context.Context, blk *types.BlockMsg) error                       `perm:"write"`
 		ChainHead              func(context.Context) (*types.TipSet, error)                               `perm:"read"`
 		ChainGetRandomness     func(context.Context, *types.TipSet, []*types.Ticket, int) ([]byte, error) `perm:"read"`
@@ -279,7 +279,7 @@ func (c *FullNodeStruct) ChainGetBlockReceipts(ctx context.Context, b cid.Cid) (
 	return c.Internal.ChainGetBlockReceipts(ctx, b)
 }
 
-func (c *FullNodeStruct) ChainNotify(ctx context.Context) (<-chan *store.HeadChange, error) {
+func (c *FullNodeStruct) ChainNotify(ctx context.Context) (<-chan []*store.HeadChange, error) {
 	return c.Internal.ChainNotify(ctx)
 }
 

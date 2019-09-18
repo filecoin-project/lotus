@@ -1,8 +1,12 @@
 package events
 
 import (
+	"context"
 	"fmt"
+	"github.com/filecoin-project/go-lotus/api"
+	"github.com/filecoin-project/go-lotus/chain/store"
 	"testing"
+	"time"
 
 	"github.com/ipfs/go-cid"
 	"github.com/multiformats/go-multihash"
@@ -29,9 +33,14 @@ type fakeCS struct {
 	h   uint64
 	tsc *tipSetCache
 
-	msgs map[cid.Cid]fakeMsg
+	msgs    map[cid.Cid]fakeMsg
+	blkMsgs map[cid.Cid]cid.Cid
 
-	sub func(rev, app []*types.TipSet) error
+	sub func(rev, app []*types.TipSet)
+}
+
+func (fcs *fakeCS) ChainGetTipSetByHeight(context.Context, uint64, *types.TipSet) (*types.TipSet, error) {
+	panic("Not Implemented")
 }
 
 func makeTs(t *testing.T, h uint64, msgcid cid.Cid) *types.TipSet {
@@ -50,24 +59,44 @@ func makeTs(t *testing.T, h uint64, msgcid cid.Cid) *types.TipSet {
 	return ts
 }
 
-func (fcs *fakeCS) SubscribeHeadChanges(f func(rev, app []*types.TipSet) error) {
-	if fcs.sub != nil {
-		fcs.t.Fatal("sub should be nil")
+func (fcs *fakeCS) ChainNotify(context.Context) (<-chan []*store.HeadChange, error) {
+	out := make(chan []*store.HeadChange, 1)
+	out <- []*store.HeadChange{{Type: store.HCCurrent, Val: fcs.tsc.best()}}
+
+	fcs.sub = func(rev, app []*types.TipSet) {
+		notif := make([]*store.HeadChange, len(rev)+len(app))
+
+		for i, r := range rev {
+			notif[i] = &store.HeadChange{
+				Type: store.HCRevert,
+				Val:  r,
+			}
+		}
+		for i, r := range app {
+			notif[i+len(rev)] = &store.HeadChange{
+				Type: store.HCApply,
+				Val:  r,
+			}
+		}
+
+		out <- notif
 	}
-	fcs.sub = f
+
+	return out, nil
 }
 
-func (fcs *fakeCS) GetHeaviestTipSet() *types.TipSet {
-	return fcs.tsc.best()
-}
-
-func (fcs *fakeCS) MessagesForBlock(b *types.BlockHeader) ([]*types.Message, []*types.SignedMessage, error) {
-	ms, ok := fcs.msgs[b.Messages]
-	if ok {
-		return ms.bmsgs, ms.smsgs, nil
+func (fcs *fakeCS) ChainGetBlockMessages(ctx context.Context, blk cid.Cid) (*api.BlockMessages, error) {
+	messages, ok := fcs.blkMsgs[blk]
+	if !ok {
+		return &api.BlockMessages{}, nil
 	}
 
-	return []*types.Message{}, []*types.SignedMessage{}, nil
+	ms, ok := fcs.msgs[messages]
+	if !ok {
+		return &api.BlockMessages{}, nil
+	}
+	return &api.BlockMessages{BlsMessages: ms.bmsgs, SecpkMessages: ms.smsgs}, nil
+
 }
 
 func (fcs *fakeCS) fakeMsgs(m fakeMsg) cid.Cid {
@@ -102,32 +131,36 @@ func (fcs *fakeCS) advance(rev, app int, msgs map[int]cid.Cid) { // todo: allow 
 	for i := 0; i < app; i++ {
 		fcs.h++
 
-		mc, _ := msgs[i]
-		if mc == cid.Undef {
+		mc, hasMsgs := msgs[i]
+		if !hasMsgs {
 			mc = dummyCid
 		}
 
 		ts := makeTs(fcs.t, fcs.h, mc)
 		require.NoError(fcs.t, fcs.tsc.add(ts))
 
+		if hasMsgs {
+			fcs.blkMsgs[ts.Blocks()[0].Cid()] = mc
+		}
+
 		apps[app-i-1] = ts
 	}
 
-	err := fcs.sub(revs, apps)
-	require.NoError(fcs.t, err)
+	fcs.sub(revs, apps)
+	time.Sleep(100 * time.Millisecond) // TODO: :c
 }
 
-var _ eventChainStore = &fakeCS{}
+var _ eventApi = &fakeCS{}
 
 func TestAt(t *testing.T) {
 	fcs := &fakeCS{
 		t:   t,
 		h:   1,
-		tsc: newTSCache(2 * build.ForkLengthThreshold),
+		tsc: newTSCache(2*build.ForkLengthThreshold, nil),
 	}
 	require.NoError(t, fcs.tsc.add(makeTs(t, 1, dummyCid)))
 
-	events := NewEvents(fcs)
+	events := NewEvents(context.Background(), fcs)
 
 	var applied bool
 	var reverted bool
@@ -178,17 +211,82 @@ func TestAt(t *testing.T) {
 	require.Equal(t, false, reverted)
 }
 
+func TestAtStart(t *testing.T) {
+	fcs := &fakeCS{
+		t:   t,
+		h:   1,
+		tsc: newTSCache(2*build.ForkLengthThreshold, nil),
+	}
+	require.NoError(t, fcs.tsc.add(makeTs(t, 1, dummyCid)))
+
+	events := NewEvents(context.Background(), fcs)
+
+	fcs.advance(0, 5, nil) // 6
+
+	var applied bool
+	var reverted bool
+
+	err := events.ChainAt(func(ts *types.TipSet, curH uint64) error {
+		require.Equal(t, 5, int(ts.Height()))
+		require.Equal(t, 8, int(curH))
+		applied = true
+		return nil
+	}, func(ts *types.TipSet) error {
+		reverted = true
+		return nil
+	}, 3, 5)
+	require.NoError(t, err)
+
+	require.Equal(t, false, applied)
+	require.Equal(t, false, reverted)
+
+	fcs.advance(0, 5, nil) // 11
+	require.Equal(t, true, applied)
+	require.Equal(t, false, reverted)
+}
+
+func TestAtStartConfidence(t *testing.T) {
+	fcs := &fakeCS{
+		t:   t,
+		h:   1,
+		tsc: newTSCache(2*build.ForkLengthThreshold, nil),
+	}
+	require.NoError(t, fcs.tsc.add(makeTs(t, 1, dummyCid)))
+
+	events := NewEvents(context.Background(), fcs)
+
+	fcs.advance(0, 10, nil) // 11
+
+	var applied bool
+	var reverted bool
+
+	err := events.ChainAt(func(ts *types.TipSet, curH uint64) error {
+		require.Equal(t, 5, int(ts.Height()))
+		require.Equal(t, 11, int(curH))
+		applied = true
+		return nil
+	}, func(ts *types.TipSet) error {
+		reverted = true
+		return nil
+	}, 3, 5)
+	require.NoError(t, err)
+
+	require.Equal(t, true, applied)
+	require.Equal(t, false, reverted)
+}
+
 func TestCalled(t *testing.T) {
 	fcs := &fakeCS{
 		t: t,
 		h: 1,
 
-		msgs: map[cid.Cid]fakeMsg{},
-		tsc:  newTSCache(2 * build.ForkLengthThreshold),
+		msgs:    map[cid.Cid]fakeMsg{},
+		blkMsgs: map[cid.Cid]cid.Cid{},
+		tsc:     newTSCache(2*build.ForkLengthThreshold, nil),
 	}
 	require.NoError(t, fcs.tsc.add(makeTs(t, 1, dummyCid)))
 
-	events := NewEvents(fcs)
+	events := NewEvents(context.Background(), fcs)
 
 	t0123, err := address.NewFromString("t0123")
 	require.NoError(t, err)
@@ -380,12 +478,13 @@ func TestCalledTimeout(t *testing.T) {
 		t: t,
 		h: 1,
 
-		msgs: map[cid.Cid]fakeMsg{},
-		tsc:  newTSCache(2 * build.ForkLengthThreshold),
+		msgs:    map[cid.Cid]fakeMsg{},
+		blkMsgs: map[cid.Cid]cid.Cid{},
+		tsc:     newTSCache(2*build.ForkLengthThreshold, nil),
 	}
 	require.NoError(t, fcs.tsc.add(makeTs(t, 1, dummyCid)))
 
-	events := NewEvents(fcs)
+	events := NewEvents(context.Background(), fcs)
 
 	t0123, err := address.NewFromString("t0123")
 	require.NoError(t, err)
@@ -419,12 +518,13 @@ func TestCalledTimeout(t *testing.T) {
 		t: t,
 		h: 1,
 
-		msgs: map[cid.Cid]fakeMsg{},
-		tsc:  newTSCache(2 * build.ForkLengthThreshold),
+		msgs:    map[cid.Cid]fakeMsg{},
+		blkMsgs: map[cid.Cid]cid.Cid{},
+		tsc:     newTSCache(2*build.ForkLengthThreshold, nil),
 	}
 	require.NoError(t, fcs.tsc.add(makeTs(t, 1, dummyCid)))
 
-	events = NewEvents(fcs)
+	events = NewEvents(context.Background(), fcs)
 
 	err = events.Called(func(ts *types.TipSet) (d bool, m bool, e error) {
 		return true, true, nil
@@ -452,12 +552,13 @@ func TestCalledOrder(t *testing.T) {
 		t: t,
 		h: 1,
 
-		msgs: map[cid.Cid]fakeMsg{},
-		tsc:  newTSCache(2 * build.ForkLengthThreshold),
+		msgs:    map[cid.Cid]fakeMsg{},
+		blkMsgs: map[cid.Cid]cid.Cid{},
+		tsc:     newTSCache(2*build.ForkLengthThreshold, nil),
 	}
 	require.NoError(t, fcs.tsc.add(makeTs(t, 1, dummyCid)))
 
-	events := NewEvents(fcs)
+	events := NewEvents(context.Background(), fcs)
 
 	t0123, err := address.NewFromString("t0123")
 	require.NoError(t, err)
