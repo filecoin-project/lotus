@@ -746,3 +746,26 @@ func (cs *ChainStore) GetRandomness(ctx context.Context, pts *types.TipSet, tick
 		nextCids = mtb.Parents
 	}
 }
+
+func (cs *ChainStore) GetTipsetByHeight(ctx context.Context, h uint64, ts *types.TipSet) (*types.TipSet, error) {
+	if ts == nil {
+		ts = cs.GetHeaviestTipSet()
+	}
+
+	if h > ts.Height() {
+		return nil, xerrors.Errorf("looking for tipset with height less than start point")
+	}
+
+	for {
+		mtb := ts.MinTicketBlock()
+		if h >= ts.Height()-uint64(len(mtb.Tickets)) {
+			return ts, nil
+		}
+
+		pts, err := cs.LoadTipSet(ts.Parents())
+		if err != nil {
+			return nil, err
+		}
+		ts = pts
+	}
+}
