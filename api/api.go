@@ -53,6 +53,7 @@ type FullNode interface {
 	ChainGetBlock(context.Context, cid.Cid) (*types.BlockHeader, error)
 	ChainGetBlockMessages(context.Context, cid.Cid) (*BlockMessages, error)
 	ChainGetBlockReceipts(context.Context, cid.Cid) ([]*types.MessageReceipt, error)
+	ChainGetTipSetByHeight(context.Context, uint64, *types.TipSet) (*types.TipSet, error)
 
 	// messages
 
@@ -101,15 +102,18 @@ type FullNode interface {
 
 	//ClientListAsks() []Ask
 
+	// if tipset is nil, we'll use heaviest
+	StateCall(context.Context, *types.Message, *types.TipSet) (*types.MessageReceipt, error)
+	StateGetActor(ctx context.Context, actor address.Address, ts *types.TipSet) (*types.Actor, error)
+	StateReadState(ctx context.Context, act *types.Actor, ts *types.TipSet) (*ActorState, error)
+
 	StateMinerSectors(context.Context, address.Address) ([]*SectorInfo, error)
 	StateMinerProvingSet(context.Context, address.Address) ([]*SectorInfo, error)
 	StateMinerPower(context.Context, address.Address, *types.TipSet) (MinerPower, error)
 	StateMinerWorker(context.Context, address.Address, *types.TipSet) (address.Address, error)
 	StateMinerPeerID(ctx context.Context, m address.Address, ts *types.TipSet) (peer.ID, error)
-	// if tipset is nil, we'll use heaviest
-	StateCall(context.Context, *types.Message, *types.TipSet) (*types.MessageReceipt, error)
-	StateGetActor(ctx context.Context, actor address.Address, ts *types.TipSet) (*types.Actor, error)
-	StateReadState(ctx context.Context, act *types.Actor, ts *types.TipSet) (*ActorState, error)
+	StateMinerProvingPeriodEnd(ctx context.Context, actor address.Address, ts *types.TipSet) (uint64, error)
+	StateMinerProvingSet(ctx context.Context, actor address.Address, ts *types.TipSet) ([]SectorSetEntry, error)
 
 	PaychGet(ctx context.Context, from, to address.Address, ensureFunds types.BigInt) (*ChannelInfo, error)
 	PaychList(context.Context) ([]address.Address, error)
@@ -268,4 +272,10 @@ type RetrievalOrder struct {
 	Client      address.Address
 	Miner       address.Address
 	MinerPeerID peer.ID
+}
+
+type SectorSetEntry struct {
+	SectorID uint64
+	CommR    []byte
+	CommD    []byte
 }

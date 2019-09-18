@@ -190,6 +190,13 @@ func (a *StateAPI) StateMinerPeerID(ctx context.Context, m address.Address, ts *
 	return stmgr.GetMinerPeerID(ctx, a.StateManager, ts, m)
 }
 
+func (a *StateAPI) StateMinerProvingPeriodEnd(ctx context.Context, actor address.Address, ts *types.TipSet) (uint64, error) {
+	return stmgr.GetMinerProvingPeriodEnd(ctx, a.StateManager, ts, actor)
+}
+
+func (a *StateAPI) StateMinerProvingSet(ctx context.Context, actor address.Address, ts *types.TipSet) ([]api.SectorSetEntry, error) {
+	return stmgr.GetMinerProvingSet(ctx, a.StateManager, ts, actor)
+}
 func (a *StateAPI) StateCall(ctx context.Context, msg *types.Message, ts *types.TipSet) (*types.MessageReceipt, error) {
 	return a.StateManager.Call(ctx, msg, ts)
 }

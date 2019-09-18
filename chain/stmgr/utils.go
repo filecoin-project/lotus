@@ -137,13 +137,7 @@ func GetMinerProvingPeriodEnd(ctx context.Context, sm *StateManager, ts *types.T
 	return mas.ProvingPeriodEnd, nil
 }
 
-type SectorSetEntry struct {
-	SectorID uint64
-	CommR    []byte
-	CommD    []byte
-}
-
-func GetMinerProvingSet(ctx context.Context, sm *StateManager, ts *types.TipSet, maddr address.Address) ([]SectorSetEntry, error) {
+func GetMinerProvingSet(ctx context.Context, sm *StateManager, ts *types.TipSet, maddr address.Address) ([]api.SectorSetEntry, error) {
 	var mas actors.StorageMinerActorState
 	_, err := sm.LoadActorState(ctx, maddr, &mas, ts)
 	if err != nil {
@@ -156,13 +150,13 @@ func GetMinerProvingSet(ctx context.Context, sm *StateManager, ts *types.TipSet,
 		return nil, err
 	}
 
-	var sset []SectorSetEntry
+	var sset []api.SectorSetEntry
 	if err := a.ForEach(func(i uint64, v *cbg.Deferred) error {
 		var comms [][]byte
 		if err := cbor.DecodeInto(v.Raw, &comms); err != nil {
 			return err
 		}
-		sset = append(sset, SectorSetEntry{
+		sset = append(sset, api.SectorSetEntry{
 			SectorID: i,
 			CommR:    comms[0],
 			CommD:    comms[1],

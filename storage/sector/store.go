@@ -8,6 +8,7 @@ import (
 	"sync"
 	"time"
 
+	"github.com/filecoin-project/go-lotus/api"
 	"github.com/filecoin-project/go-lotus/lib/sectorbuilder"
 
 	logging "github.com/ipfs/go-log"
@@ -160,6 +161,10 @@ func (s *Store) WaitSeal(ctx context.Context, sector uint64) (sectorbuilder.Sect
 	}
 
 	return s.sb.SealStatus(sector)
+}
+
+func (s *Store) RunPoSt(ctx context.Context, sectors []api.SectorSetEntry, r []byte) ([]byte, error) {
+	panic("NYI")
 }
 
 func (s *Store) Stop() {

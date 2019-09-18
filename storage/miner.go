@@ -44,12 +44,17 @@ type storageMinerApi interface {
 
 	// Call a read only method on actors (no interaction with the chain required)
 	StateCall(ctx context.Context, msg *types.Message, ts *types.TipSet) (*types.MessageReceipt, error)
+	StateMinerWorker(ctx context.Context, address.Address, ts *types.TipSet) (address.Address, error)
+	StateMinerProvingPeriodEnd(ctx context.Context, actor address.Address, ts *types.TipSet) (uint64, error)
+	StateMinerProvingSet(ctx context.Context, actor address.Address, ts *types.TipSet) ([]api.SectorSetEntry, error)
 
 	MpoolPush(context.Context, *types.SignedMessage) error
 	MpoolGetNonce(context.Context, address.Address) (uint64, error)
 
 	ChainWaitMsg(context.Context, cid.Cid) (*api.MsgWait, error)
 	ChainNotify(context.Context) (<-chan *store.HeadChange, error)
+	ChainGetRandomness(context.Context, ts *types.TipSet, []*types.Ticket, int) ([]byte, error)
+	ChainGetTipSetByHeight(context.Context, uint64, *types.TipSet) (*types.TipSet, error)
 
 	WalletBalance(context.Context, address.Address) (types.BigInt, error)
 	WalletSign(context.Context, address.Address, []byte) (*types.Signature, error)
@@ -204,12 +209,47 @@ func (m *Miner) runPoSt(ctx context.Context) {
 	}
 }
 
-func (m *Miner) maybeDoPost(ctx context.Context, ts *types.TipSet) (<-chan error, *types.BlockHeader) {
+func (m *Miner) maybeDoPost(ctx context.Context, ts *types.TipSet) (<-chan error, *types.BlockHeader, error) {
+	ppe, err := m.api.StateMinerProvingPeriodEnd(ctx, m.actor, ts)
+	if err != nil {
+		return nil, nil, xerrors.Errorf("failed to get proving period end for miner: %w", err)
+	}
 
+	if ppe < ts.Height() {
+		return nil, nil, nil
+	}
+
+	sset, err := m.api.StateMinerProvingSet(ctx, m.actor, ts)
+	if err != nil {
+		return nil, nil, xerrors.Errorf("failed to get proving set for miner: %w", err)
+	}
+
+	r, err := m.api.ChainGetRandomness(ctx, ts, nil,  ts.Height() - ppe)
+	if err != nil {
+		return nil, nil, xerrors.Errorf("failed to get chain randomness for post: %w", err)
+	}
+
+	sourceTs, err := m.api.ChainGetTipSetByHeight(ctx, ppe, ts)
+	if err != nil {
+		return nil, nil, xerrors.Errorf("failed to get post start tipset: %w", err)
+	}
+
+	ret := make(chan error, 1)
+	go func() {
+	proof, err := s.secst.RunPoSt(ctx, sset, r)
+	if err != nil {
+		ret <- xerrors.Errorf("running post failed: %w", err)
+		return
+	}
+
+	panic("submit post maybe?")
+}()
+
+	return ret, sourceTs.MinTicketBlock(), nil
 }
 
 func (m *Miner) runPreflightChecks(ctx context.Context) error {
-	worker, err := m.getWorkerAddr(ctx)
+	worker, err := m.api.StateMinerWorker(ctx, m.maddr, nil)
 	if err != nil {
 		return err
 	}
@@ -229,22 +269,3 @@ func (m *Miner) runPreflightChecks(ctx context.Context) error {
 	return nil
 }
 
-func (m *Miner) getWorkerAddr(ctx context.Context) (address.Address, error) {
-	msg := &types.Message{
-		To:     m.maddr,
-		From:   m.maddr, // it doesnt like it if we dont give it a from... probably should fix that
-		Method: actors.MAMethods.GetWorkerAddr,
-		Params: nil,
-	}
-
-	recpt, err := m.api.StateCall(ctx, msg, nil)
-	if err != nil {
-		return address.Undef, errors.Wrapf(err, "calling getWorker(%s)", m.maddr)
-	}
-
-	if recpt.ExitCode != 0 {
-		return address.Undef, fmt.Errorf("failed to call getWorker(%s): return %d", m.maddr, recpt.ExitCode)
-	}
-
-	return address.NewFromBytes(recpt.Return)
-}
