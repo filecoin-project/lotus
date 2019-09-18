@@ -223,9 +223,11 @@ func (tu *syncTestUtil) waitUntilSync(from, to int) {
 	}
 
 	// TODO: some sort of timeout?
-	for c := range hc {
-		if c.Val.Equals(target) {
-			return
+	for n := range hc {
+		for _, c := range n {
+			if c.Val.Equals(target) {
+				return
+			}
 		}
 	}
 }

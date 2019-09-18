@@ -1,12 +1,17 @@
 package events
 
 import (
+	"context"
 	"sync"
+	"time"
 
+	"github.com/ipfs/go-cid"
 	logging "github.com/ipfs/go-log"
 	"golang.org/x/xerrors"
 
+	"github.com/filecoin-project/go-lotus/api"
 	"github.com/filecoin-project/go-lotus/build"
+	"github.com/filecoin-project/go-lotus/chain/store"
 	"github.com/filecoin-project/go-lotus/chain/types"
 )
 
@@ -23,30 +28,31 @@ type heightHandler struct {
 	revert RevertHandler
 }
 
-type eventChainStore interface {
-	SubscribeHeadChanges(f func(rev, app []*types.TipSet) error)
-
-	GetHeaviestTipSet() *types.TipSet
-	MessagesForBlock(b *types.BlockHeader) ([]*types.Message, []*types.SignedMessage, error)
+type eventApi interface {
+	ChainNotify(context.Context) (<-chan []*store.HeadChange, error)
+	ChainGetBlockMessages(context.Context, cid.Cid) (*api.BlockMessages, error)
 }
 
 type Events struct {
-	cs eventChainStore
+	api eventApi
 
 	tsc *tipSetCache
 	lk  sync.Mutex
+
+	ready     sync.WaitGroup
+	readyOnce sync.Once
 
 	heightEvents
 	calledEvents
 }
 
-func NewEvents(cs eventChainStore) *Events {
+func NewEvents(api eventApi) *Events {
 	gcConfidence := 2 * build.ForkLengthThreshold
 
 	tsc := newTSCache(gcConfidence)
 
 	e := &Events{
-		cs: cs,
+		api: api,
 
 		tsc: tsc,
 
@@ -60,7 +66,7 @@ func NewEvents(cs eventChainStore) *Events {
 		},
 
 		calledEvents: calledEvents{
-			cs:           cs,
+			cs:           api,
 			tsc:          tsc,
 			gcConfidence: uint64(gcConfidence),
 
@@ -72,12 +78,85 @@ func NewEvents(cs eventChainStore) *Events {
 		},
 	}
 
-	_ = e.tsc.add(cs.GetHeaviestTipSet())
-	cs.SubscribeHeadChanges(e.headChange)
+	e.ready.Add(1)
+
+	go e.listenHeadChanges(context.TODO())
+
+	e.ready.Wait()
 
 	// TODO: cleanup/gc goroutine
 
 	return e
+}
+
+func (e *Events) restartHeadChanges(ctx context.Context) {
+	go func() {
+		if ctx.Err() != nil {
+			log.Warnf("not restarting listenHeadChanges: context error: %s", ctx.Err())
+			return
+		}
+		time.Sleep(time.Second)
+		log.Info("restarting listenHeadChanges")
+		e.listenHeadChanges(ctx)
+	}()
+}
+
+func (e *Events) listenHeadChanges(ctx context.Context) {
+	notifs, err := e.api.ChainNotify(ctx)
+	if err != nil {
+		// TODO: retry
+		log.Errorf("listenHeadChanges ChainNotify call failed: %s", err)
+		e.restartHeadChanges(ctx)
+		return
+	}
+
+	cur, ok := <-notifs // TODO: timeout?
+	if !ok {
+		log.Error("notification channel closed")
+		e.restartHeadChanges(ctx)
+		return
+	}
+
+	if len(cur) != 1 {
+		log.Errorf("unexpected initial head notification length: %d", len(cur))
+		e.restartHeadChanges(ctx)
+		return
+	}
+
+	if cur[0].Type != store.HCCurrent {
+		log.Errorf("expected first head notification type to be 'current', was '%s'", cur[0].Type)
+		e.restartHeadChanges(ctx)
+		return
+	}
+
+	if err := e.tsc.add(cur[0].Val); err != nil {
+		log.Warn("tsc.add: adding current tipset failed: %s", err)
+	}
+
+	e.readyOnce.Do(func() {
+		e.ready.Done()
+	})
+
+	for notif := range notifs {
+		var rev, app []*types.TipSet
+		for _, notif := range notif {
+			switch notif.Type {
+			case store.HCRevert:
+				rev = append(rev, notif.Val)
+			case store.HCApply:
+				app = append(app, notif.Val)
+			default:
+				log.Warnf("unexpected head change notification type: '%s'", notif.Type)
+			}
+		}
+
+		if err := e.headChange(rev, app); err != nil {
+			log.Warnf("headChange failed: %s", err)
+		}
+	}
+
+	log.Warn("listenHeadChanges loop quit")
+	e.restartHeadChanges(ctx)
 }
 
 func (e *Events) headChange(rev, app []*types.TipSet) error {

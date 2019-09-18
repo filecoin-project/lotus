@@ -52,7 +52,7 @@ type storageMinerApi interface {
 	MpoolGetNonce(context.Context, address.Address) (uint64, error)
 
 	ChainWaitMsg(context.Context, cid.Cid) (*api.MsgWait, error)
-	ChainNotify(context.Context) (<-chan *store.HeadChange, error)
+	ChainNotify(context.Context) (<-chan []*store.HeadChange, error)
 	ChainGetRandomness(context.Context, *types.TipSet, []*types.Ticket, int) ([]byte, error)
 	ChainGetTipSetByHeight(context.Context, uint64, *types.TipSet) (*types.TipSet, error)
 
@@ -184,14 +184,14 @@ func (m *Miner) runPoSt(ctx context.Context) {
 	}
 
 	curhead := <-notifs
-	if curhead.Type != store.HCCurrent {
+	if curhead[0].Type != store.HCCurrent {
 		// TODO: this is probably 'crash the node' level serious
 		log.Warning("expected to get current best tipset from chain notifications stream")
 		return
 	}
 
 	postCtx, cancel := context.WithCancel(ctx)
-	postWaitCh, onBlock, err := m.maybeDoPost(postCtx, curhead.Val)
+	postWaitCh, onBlock, err := m.maybeDoPost(postCtx, curhead[0].Val)
 	if err != nil {
 		log.Errorf("initial 'maybeDoPost' call failed: %s", err)
 		return
@@ -200,29 +200,31 @@ func (m *Miner) runPoSt(ctx context.Context) {
 	for {
 		select {
 		case <-ctx.Done():
-		case ch, ok := <-notifs:
-			if !ok {
-				log.Warning("chain notifications stream terminated")
-				// TODO: attempt to restart it if the context isnt cancelled
-				return
-			}
-
-			switch ch.Type {
-			case store.HCApply:
-				postWaitCh, onBlock, err = m.maybeDoPost(postCtx, ch.Val)
-				if err != nil {
-					log.Errorf("maybeDoPost failed: %s", err)
+		case notif, ok := <-notifs:
+			for _, ch := range notif {
+				if !ok {
+					log.Warning("chain notifications stream terminated")
+					// TODO: attempt to restart it if the context isnt cancelled
 					return
 				}
-			case store.HCRevert:
-				if onBlock != nil {
-					if ch.Val.Contains(onBlock.Cid()) {
-						// Our post may now be invalid!
-						cancel() // probably the right thing to do?
+
+				switch ch.Type {
+				case store.HCApply:
+					postWaitCh, onBlock, err = m.maybeDoPost(postCtx, ch.Val)
+					if err != nil {
+						log.Errorf("maybeDoPost failed: %s", err)
+						return
 					}
+				case store.HCRevert:
+					if onBlock != nil {
+						if ch.Val.Contains(onBlock.Cid()) {
+							// Our post may now be invalid!
+							cancel() // probably the right thing to do?
+						}
+					}
+				case store.HCCurrent:
+					log.Warn("got 'current' chain notification in middle of stream")
 				}
-			case store.HCCurrent:
-				log.Warn("got 'current' chain notification in middle of stream")
 			}
 		case perr := <-postWaitCh:
 			if perr != nil {

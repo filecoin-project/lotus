@@ -1,8 +1,12 @@
 package events
 
 import (
+	"context"
 	"fmt"
+	"github.com/filecoin-project/go-lotus/api"
+	"github.com/filecoin-project/go-lotus/chain/store"
 	"testing"
+	"time"
 
 	"github.com/ipfs/go-cid"
 	"github.com/multiformats/go-multihash"
@@ -31,7 +35,7 @@ type fakeCS struct {
 
 	msgs map[cid.Cid]fakeMsg
 
-	sub func(rev, app []*types.TipSet) error
+	sub func(rev, app []*types.TipSet)
 }
 
 func makeTs(t *testing.T, h uint64, msgcid cid.Cid) *types.TipSet {
@@ -50,24 +54,39 @@ func makeTs(t *testing.T, h uint64, msgcid cid.Cid) *types.TipSet {
 	return ts
 }
 
-func (fcs *fakeCS) SubscribeHeadChanges(f func(rev, app []*types.TipSet) error) {
-	if fcs.sub != nil {
-		fcs.t.Fatal("sub should be nil")
+func (fcs *fakeCS) ChainNotify(context.Context) (<-chan []*store.HeadChange, error) {
+	out := make(chan []*store.HeadChange, 1)
+	out <- []*store.HeadChange{{Type: store.HCCurrent, Val: fcs.tsc.best()}}
+
+	fcs.sub = func(rev, app []*types.TipSet) {
+		notif := make([]*store.HeadChange, len(rev)+len(app))
+
+		for i, r := range rev {
+			notif[i] = &store.HeadChange{
+				Type: store.HCRevert,
+				Val:  r,
+			}
+		}
+		for i, r := range app {
+			notif[i+len(rev)] = &store.HeadChange{
+				Type: store.HCApply,
+				Val:  r,
+			}
+		}
+
+		out <- notif
 	}
-	fcs.sub = f
+
+	return out, nil
 }
 
-func (fcs *fakeCS) GetHeaviestTipSet() *types.TipSet {
-	return fcs.tsc.best()
-}
-
-func (fcs *fakeCS) MessagesForBlock(b *types.BlockHeader) ([]*types.Message, []*types.SignedMessage, error) {
-	ms, ok := fcs.msgs[b.Messages]
+func (fcs *fakeCS) ChainGetBlockMessages(ctx context.Context, messages cid.Cid) (*api.BlockMessages, error) {
+	ms, ok := fcs.msgs[messages]
 	if ok {
-		return ms.bmsgs, ms.smsgs, nil
+		return &api.BlockMessages{BlsMessages: ms.bmsgs, SecpkMessages: ms.smsgs}, nil
 	}
 
-	return []*types.Message{}, []*types.SignedMessage{}, nil
+	return &api.BlockMessages{}, nil
 }
 
 func (fcs *fakeCS) fakeMsgs(m fakeMsg) cid.Cid {
@@ -113,11 +132,11 @@ func (fcs *fakeCS) advance(rev, app int, msgs map[int]cid.Cid) { // todo: allow 
 		apps[app-i-1] = ts
 	}
 
-	err := fcs.sub(revs, apps)
-	require.NoError(fcs.t, err)
+	fcs.sub(revs, apps)
+	time.Sleep(100 * time.Millisecond) // TODO: :c
 }
 
-var _ eventChainStore = &fakeCS{}
+var _ eventApi = &fakeCS{}
 
 func TestAt(t *testing.T) {
 	fcs := &fakeCS{

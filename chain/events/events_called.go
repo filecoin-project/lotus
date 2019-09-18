@@ -1,6 +1,7 @@
 package events
 
 import (
+	"context"
 	"math"
 	"sync"
 
@@ -53,7 +54,7 @@ type queuedEvent struct {
 }
 
 type calledEvents struct {
-	cs           eventChainStore
+	cs           eventApi
 	tsc          *tipSetCache
 	gcConfidence uint64
 
@@ -235,14 +236,15 @@ func (e *calledEvents) messagesForTs(ts *types.TipSet, consume func(*types.Messa
 	seen := map[cid.Cid]struct{}{}
 
 	for _, tsb := range ts.Blocks() {
-		bmsgs, smsgs, err := e.cs.MessagesForBlock(tsb)
+
+		msgs, err := e.cs.ChainGetBlockMessages(context.TODO(), tsb.Messages)
 		if err != nil {
 			log.Errorf("messagesForTs MessagesForBlock failed (ts.H=%d, Bcid:%s, B.Mcid:%s): %s", ts.Height(), tsb.Cid(), tsb.Messages, err)
 			// this is quite bad, but probably better than missing all the other updates
 			continue
 		}
 
-		for _, m := range bmsgs {
+		for _, m := range msgs.BlsMessages {
 			_, ok := seen[m.Cid()]
 			if ok {
 				continue
@@ -252,7 +254,7 @@ func (e *calledEvents) messagesForTs(ts *types.TipSet, consume func(*types.Messa
 			consume(m)
 		}
 
-		for _, m := range smsgs {
+		for _, m := range msgs.SecpkMessages {
 			_, ok := seen[m.Message.Cid()]
 			if ok {
 				continue

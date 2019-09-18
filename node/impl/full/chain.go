@@ -22,7 +22,7 @@ type ChainAPI struct {
 	PubSub *pubsub.PubSub
 }
 
-func (a *ChainAPI) ChainNotify(ctx context.Context) (<-chan *store.HeadChange, error) {
+func (a *ChainAPI) ChainNotify(ctx context.Context) (<-chan []*store.HeadChange, error) {
 	return a.Chain.SubHeadChanges(ctx), nil
 }
 
