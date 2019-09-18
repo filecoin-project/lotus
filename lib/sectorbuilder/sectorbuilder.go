@@ -17,6 +17,8 @@ type SectorSealingStatus = sectorbuilder.SectorSealingStatus
 
 type StagedSectorMetadata = sectorbuilder.StagedSectorMetadata
 
+type SortedSectorInfo = sectorbuilder.SortedSectorInfo
+
 const CommLen = sectorbuilder.CommitmentBytesLen
 
 type SectorBuilder struct {
@@ -81,7 +83,7 @@ func (sb *SectorBuilder) GetAllStagedSectors() ([]StagedSectorMetadata, error) {
 	return sectorbuilder.GetAllStagedSectors(sb.handle)
 }
 
-func (sb *SectorBuilder) GeneratePoSt(sectorInfo sectorbuilder.SortedSectorInfo, challengeSeed [CommLen]byte, faults []uint64) ([]byte, error) {
+func (sb *SectorBuilder) GeneratePoSt(sectorInfo SortedSectorInfo, challengeSeed [CommLen]byte, faults []uint64) ([]byte, error) {
 	// Wait, this is a blocking method with no way of interrupting it?
 	// does it checkpoint itself?
 	return sectorbuilder.GeneratePoSt(sb.handle, sectorInfo, challengeSeed, faults)

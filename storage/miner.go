@@ -265,7 +265,8 @@ func (m *Miner) maybeDoPost(ctx context.Context, ts *types.TipSet) (<-chan error
 
 	ret := make(chan error, 1)
 	go func() {
-		proof, err := m.secst.RunPoSt(ctx, sset, r)
+		var faults []uint64
+		proof, err := m.secst.RunPoSt(ctx, sset, r, faults)
 		if err != nil {
 			ret <- xerrors.Errorf("running post failed: %w", err)
 			return

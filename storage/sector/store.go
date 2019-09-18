@@ -163,8 +163,8 @@ func (s *Store) WaitSeal(ctx context.Context, sector uint64) (sectorbuilder.Sect
 	return s.sb.SealStatus(sector)
 }
 
-func (s *Store) RunPoSt(ctx context.Context, sectors []*api.SectorInfo, r []byte) ([]byte, error) {
-	panic("NYI")
+func (s *Store) RunPoSt(ctx context.Context, sectors []*api.SectorInfo, r []byte, faults []uint64) ([]byte, error) {
+	panic("TODO")
 }
 
 func (s *Store) Stop() {
