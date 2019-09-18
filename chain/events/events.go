@@ -47,7 +47,7 @@ type Events struct {
 	calledEvents
 }
 
-func NewEvents(api eventApi) *Events {
+func NewEvents(ctx context.Context, api eventApi) *Events {
 	gcConfidence := 2 * build.ForkLengthThreshold
 
 	tsc := newTSCache(gcConfidence, api.ChainGetTipSetByHeight)
@@ -81,7 +81,7 @@ func NewEvents(api eventApi) *Events {
 
 	e.ready.Add(1)
 
-	go e.listenHeadChanges(context.TODO())
+	go e.listenHeadChanges(ctx)
 
 	e.ready.Wait()
 
@@ -90,48 +90,44 @@ func NewEvents(api eventApi) *Events {
 	return e
 }
 
-func (e *Events) restartHeadChanges(ctx context.Context) {
-	go func() {
+func (e *Events) listenHeadChanges(ctx context.Context) {
+	for {
+		if err := e.listenHeadChangesOnce(ctx); err != nil {
+			log.Errorf("listen head changes errored: %s", err)
+		} else {
+			log.Warn("listenHeadChanges quit")
+		}
 		if ctx.Err() != nil {
 			log.Warnf("not restarting listenHeadChanges: context error: %s", ctx.Err())
 			return
 		}
 		time.Sleep(time.Second)
 		log.Info("restarting listenHeadChanges")
-		e.listenHeadChanges(ctx)
-	}()
+	}
 }
 
-func (e *Events) listenHeadChanges(ctx context.Context) {
+func (e *Events) listenHeadChangesOnce(ctx context.Context) error {
 	notifs, err := e.api.ChainNotify(ctx)
 	if err != nil {
 		// TODO: retry
-		log.Errorf("listenHeadChanges ChainNotify call failed: %s", err)
-		e.restartHeadChanges(ctx)
-		return
+		return xerrors.Errorf("listenHeadChanges ChainNotify call failed: %w", err)
 	}
 
 	cur, ok := <-notifs // TODO: timeout?
 	if !ok {
-		log.Error("notification channel closed")
-		e.restartHeadChanges(ctx)
-		return
+		return xerrors.Errorf("notification channel closed")
 	}
 
 	if len(cur) != 1 {
-		log.Errorf("unexpected initial head notification length: %d", len(cur))
-		e.restartHeadChanges(ctx)
-		return
+		return xerrors.Errorf("unexpected initial head notification length: %d", len(cur))
 	}
 
 	if cur[0].Type != store.HCCurrent {
-		log.Errorf("expected first head notification type to be 'current', was '%s'", cur[0].Type)
-		e.restartHeadChanges(ctx)
-		return
+		return xerrors.Errorf("expected first head notification type to be 'current', was '%s'", cur[0].Type)
 	}
 
 	if err := e.tsc.add(cur[0].Val); err != nil {
-		log.Warn("tsc.add: adding current tipset failed: %s", err)
+		log.Warn("tsc.add: adding current tipset failed: %w", err)
 	}
 
 	e.readyOnce.Do(func() {
@@ -156,8 +152,7 @@ func (e *Events) listenHeadChanges(ctx context.Context) {
 		}
 	}
 
-	log.Warn("listenHeadChanges loop quit")
-	e.restartHeadChanges(ctx)
+	return nil
 }
 
 func (e *Events) headChange(rev, app []*types.TipSet) error {

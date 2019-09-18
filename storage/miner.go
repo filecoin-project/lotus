@@ -68,8 +68,7 @@ type storageMinerApi interface {
 
 func NewMiner(api storageMinerApi, addr address.Address, h host.Host, ds datastore.Batching, secst *sector.Store, commt *commitment.Tracker) (*Miner, error) {
 	return &Miner{
-		api:    api,
-		events: events.NewEvents(api),
+		api: api,
 
 		maddr: addr,
 		h:     h,
@@ -83,6 +82,8 @@ func (m *Miner) Run(ctx context.Context) error {
 	if err := m.runPreflightChecks(ctx); err != nil {
 		return errors.Wrap(err, "miner preflight checks failed")
 	}
+
+	m.events = events.NewEvents(ctx, m.api)
 
 	ts, err := m.api.ChainHead(ctx)
 	if err != nil {

@@ -160,7 +160,7 @@ func TestAt(t *testing.T) {
 	}
 	require.NoError(t, fcs.tsc.add(makeTs(t, 1, dummyCid)))
 
-	events := NewEvents(fcs)
+	events := NewEvents(context.Background(), fcs)
 
 	var applied bool
 	var reverted bool
@@ -219,7 +219,7 @@ func TestAtStart(t *testing.T) {
 	}
 	require.NoError(t, fcs.tsc.add(makeTs(t, 1, dummyCid)))
 
-	events := NewEvents(fcs)
+	events := NewEvents(context.Background(), fcs)
 
 	fcs.advance(0, 5, nil) // 6
 
@@ -253,7 +253,7 @@ func TestAtStartConfidence(t *testing.T) {
 	}
 	require.NoError(t, fcs.tsc.add(makeTs(t, 1, dummyCid)))
 
-	events := NewEvents(fcs)
+	events := NewEvents(context.Background(), fcs)
 
 	fcs.advance(0, 10, nil) // 11
 
@@ -286,7 +286,7 @@ func TestCalled(t *testing.T) {
 	}
 	require.NoError(t, fcs.tsc.add(makeTs(t, 1, dummyCid)))
 
-	events := NewEvents(fcs)
+	events := NewEvents(context.Background(), fcs)
 
 	t0123, err := address.NewFromString("t0123")
 	require.NoError(t, err)
@@ -484,7 +484,7 @@ func TestCalledTimeout(t *testing.T) {
 	}
 	require.NoError(t, fcs.tsc.add(makeTs(t, 1, dummyCid)))
 
-	events := NewEvents(fcs)
+	events := NewEvents(context.Background(), fcs)
 
 	t0123, err := address.NewFromString("t0123")
 	require.NoError(t, err)
@@ -524,7 +524,7 @@ func TestCalledTimeout(t *testing.T) {
 	}
 	require.NoError(t, fcs.tsc.add(makeTs(t, 1, dummyCid)))
 
-	events = NewEvents(fcs)
+	events = NewEvents(context.Background(), fcs)
 
 	err = events.Called(func(ts *types.TipSet) (d bool, m bool, e error) {
 		return true, true, nil
@@ -558,7 +558,7 @@ func TestCalledOrder(t *testing.T) {
 	}
 	require.NoError(t, fcs.tsc.add(makeTs(t, 1, dummyCid)))
 
-	events := NewEvents(fcs)
+	events := NewEvents(context.Background(), fcs)
 
 	t0123, err := address.NewFromString("t0123")
 	require.NoError(t, err)
