@@ -197,6 +197,70 @@ func TestAt(t *testing.T) {
 	require.Equal(t, false, reverted)
 }
 
+func TestAtStart(t *testing.T) {
+	fcs := &fakeCS{
+		t:   t,
+		h:   1,
+		tsc: newTSCache(2 * build.ForkLengthThreshold),
+	}
+	require.NoError(t, fcs.tsc.add(makeTs(t, 1, dummyCid)))
+
+	events := NewEvents(fcs)
+
+	fcs.advance(0, 5, nil) // 6
+
+	var applied bool
+	var reverted bool
+
+	err := events.ChainAt(func(ts *types.TipSet, curH uint64) error {
+		require.Equal(t, 5, int(ts.Height()))
+		require.Equal(t, 8, int(curH))
+		applied = true
+		return nil
+	}, func(ts *types.TipSet) error {
+		reverted = true
+		return nil
+	}, 3, 5)
+	require.NoError(t, err)
+
+	require.Equal(t, false, applied)
+	require.Equal(t, false, reverted)
+
+	fcs.advance(0, 5, nil) // 11
+	require.Equal(t, true, applied)
+	require.Equal(t, false, reverted)
+}
+
+func TestAtStartConfidence(t *testing.T) {
+	fcs := &fakeCS{
+		t:   t,
+		h:   1,
+		tsc: newTSCache(2 * build.ForkLengthThreshold),
+	}
+	require.NoError(t, fcs.tsc.add(makeTs(t, 1, dummyCid)))
+
+	events := NewEvents(fcs)
+
+	fcs.advance(0, 10, nil) // 11
+
+	var applied bool
+	var reverted bool
+
+	err := events.ChainAt(func(ts *types.TipSet, curH uint64) error {
+		require.Equal(t, 5, int(ts.Height()))
+		require.Equal(t, 11, int(curH))
+		applied = true
+		return nil
+	}, func(ts *types.TipSet) error {
+		reverted = true
+		return nil
+	}, 3, 5)
+	require.NoError(t, err)
+
+	require.Equal(t, true, applied)
+	require.Equal(t, false, reverted)
+}
+
 func TestCalled(t *testing.T) {
 	fcs := &fakeCS{
 		t: t,
