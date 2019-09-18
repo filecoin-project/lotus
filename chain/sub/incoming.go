@@ -2,6 +2,7 @@ package sub
 
 import (
 	"context"
+
 	logging "github.com/ipfs/go-log"
 	pubsub "github.com/libp2p/go-libp2p-pubsub"
 
@@ -23,7 +24,7 @@ func HandleIncomingBlocks(ctx context.Context, bsub *pubsub.Subscription, s *cha
 			continue
 		}
 
-		blk, err := chain.DecodeBlockMsg(msg.GetData())
+		blk, err := types.DecodeBlockMsg(msg.GetData())
 		if err != nil {
 			log.Error("got invalid block over pubsub: ", err)
 			continue

@@ -9,7 +9,6 @@ import (
 	"github.com/libp2p/go-libp2p-core/network"
 	"github.com/libp2p/go-libp2p-core/peer"
 
-	"github.com/filecoin-project/go-lotus/chain"
 	"github.com/filecoin-project/go-lotus/chain/address"
 	"github.com/filecoin-project/go-lotus/chain/store"
 	"github.com/filecoin-project/go-lotus/chain/types"
@@ -47,7 +46,7 @@ type FullNode interface {
 	// chain
 	ChainNotify(context.Context) (<-chan *store.HeadChange, error)
 	ChainHead(context.Context) (*types.TipSet, error)                // TODO: check serialization
-	ChainSubmitBlock(ctx context.Context, blk *chain.BlockMsg) error // TODO: check serialization
+	ChainSubmitBlock(ctx context.Context, blk *types.BlockMsg) error // TODO: check serialization
 	ChainGetRandomness(context.Context, *types.TipSet, []*types.Ticket, int) ([]byte, error)
 	ChainWaitMsg(context.Context, cid.Cid) (*MsgWait, error)
 	ChainGetBlock(context.Context, cid.Cid) (*types.BlockHeader, error)
@@ -69,7 +68,7 @@ type FullNode interface {
 	MinerRegister(context.Context, address.Address) error
 	MinerUnregister(context.Context, address.Address) error
 	MinerAddresses(context.Context) ([]address.Address, error)
-	MinerCreateBlock(context.Context, address.Address, *types.TipSet, []*types.Ticket, types.ElectionProof, []*types.SignedMessage, uint64) (*chain.BlockMsg, error)
+	MinerCreateBlock(context.Context, address.Address, *types.TipSet, []*types.Ticket, types.ElectionProof, []*types.SignedMessage, uint64) (*types.BlockMsg, error)
 
 	// // UX ?
 
@@ -108,12 +107,11 @@ type FullNode interface {
 	StateReadState(ctx context.Context, act *types.Actor, ts *types.TipSet) (*ActorState, error)
 
 	StateMinerSectors(context.Context, address.Address) ([]*SectorInfo, error)
-	StateMinerProvingSet(context.Context, address.Address) ([]*SectorInfo, error)
+	StateMinerProvingSet(context.Context, address.Address, *types.TipSet) ([]*SectorInfo, error)
 	StateMinerPower(context.Context, address.Address, *types.TipSet) (MinerPower, error)
 	StateMinerWorker(context.Context, address.Address, *types.TipSet) (address.Address, error)
 	StateMinerPeerID(ctx context.Context, m address.Address, ts *types.TipSet) (peer.ID, error)
 	StateMinerProvingPeriodEnd(ctx context.Context, actor address.Address, ts *types.TipSet) (uint64, error)
-	StateMinerProvingSet(ctx context.Context, actor address.Address, ts *types.TipSet) ([]SectorSetEntry, error)
 
 	PaychGet(ctx context.Context, from, to address.Address, ensureFunds types.BigInt) (*ChannelInfo, error)
 	PaychList(context.Context) ([]address.Address, error)
@@ -272,10 +270,4 @@ type RetrievalOrder struct {
 	Client      address.Address
 	Miner       address.Address
 	MinerPeerID peer.ID
-}
-
-type SectorSetEntry struct {
-	SectorID uint64
-	CommR    []byte
-	CommD    []byte
 }

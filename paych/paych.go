@@ -223,7 +223,7 @@ func (pm *Manager) CheckVoucherSpendable(ctx context.Context, ch address.Address
 
 func (pm *Manager) loadPaychState(ctx context.Context, ch address.Address) (*types.Actor, *actors.PaymentChannelActorState, error) {
 	var pcast actors.PaymentChannelActorState
-	act, err := pm.sm.LoadActorState(ctx, ch, &pcast)
+	act, err := pm.sm.LoadActorState(ctx, ch, &pcast, nil)
 	if err != nil {
 		return nil, nil, err
 	}

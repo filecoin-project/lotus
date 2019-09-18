@@ -4,7 +4,6 @@ import (
 	"context"
 
 	"github.com/filecoin-project/go-lotus/api"
-	"github.com/filecoin-project/go-lotus/chain"
 	"github.com/filecoin-project/go-lotus/chain/store"
 	"github.com/filecoin-project/go-lotus/chain/types"
 	"golang.org/x/xerrors"
@@ -27,7 +26,7 @@ func (a *ChainAPI) ChainNotify(ctx context.Context) (<-chan *store.HeadChange, e
 	return a.Chain.SubHeadChanges(ctx), nil
 }
 
-func (a *ChainAPI) ChainSubmitBlock(ctx context.Context, blk *chain.BlockMsg) error {
+func (a *ChainAPI) ChainSubmitBlock(ctx context.Context, blk *types.BlockMsg) error {
 	if err := a.Chain.AddBlock(blk.Header); err != nil {
 		return xerrors.Errorf("AddBlock failed: %w", err)
 	}

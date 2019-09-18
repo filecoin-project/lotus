@@ -21,6 +21,7 @@ func main() {
 		types.Merge{},
 		types.Actor{},
 		types.MessageReceipt{},
+		types.BlockMsg{},
 	)
 	if err != nil {
 		fmt.Println(err)
@@ -32,7 +33,6 @@ func main() {
 			chain.BlockSyncRequest{},
 			chain.BlockSyncResponse{},
 			chain.BSTipSet{},
-			chain.BlockMsg{},
 		)
 		if err != nil {
 			fmt.Println(err)

@@ -2,8 +2,9 @@ package chain
 
 import (
 	"encoding/base64"
-	pubsub "github.com/libp2p/go-libp2p-pubsub"
 	"sync"
+
+	pubsub "github.com/libp2p/go-libp2p-pubsub"
 
 	"github.com/filecoin-project/go-lotus/chain/address"
 	"github.com/filecoin-project/go-lotus/chain/stmgr"
@@ -109,7 +110,7 @@ func (mp *MessagePool) getNonceLocked(addr address.Address) (uint64, error) {
 		return mset.startNonce + uint64(len(mset.msgs)), nil
 	}
 
-	act, err := mp.sm.GetActor(addr)
+	act, err := mp.sm.GetActor(addr, nil)
 	if err != nil {
 		return 0, err
 	}

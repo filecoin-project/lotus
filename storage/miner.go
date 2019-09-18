@@ -2,13 +2,13 @@ package storage
 
 import (
 	"context"
-	"fmt"
 
 	"github.com/ipfs/go-cid"
 	"github.com/ipfs/go-datastore"
 	logging "github.com/ipfs/go-log"
 	host "github.com/libp2p/go-libp2p-core/host"
 	"github.com/pkg/errors"
+	"golang.org/x/xerrors"
 
 	"github.com/filecoin-project/go-lotus/api"
 	"github.com/filecoin-project/go-lotus/build"
@@ -44,16 +44,16 @@ type storageMinerApi interface {
 
 	// Call a read only method on actors (no interaction with the chain required)
 	StateCall(ctx context.Context, msg *types.Message, ts *types.TipSet) (*types.MessageReceipt, error)
-	StateMinerWorker(ctx context.Context, address.Address, ts *types.TipSet) (address.Address, error)
-	StateMinerProvingPeriodEnd(ctx context.Context, actor address.Address, ts *types.TipSet) (uint64, error)
-	StateMinerProvingSet(ctx context.Context, actor address.Address, ts *types.TipSet) ([]api.SectorSetEntry, error)
+	StateMinerWorker(context.Context, address.Address, *types.TipSet) (address.Address, error)
+	StateMinerProvingPeriodEnd(context.Context, address.Address, *types.TipSet) (uint64, error)
+	StateMinerProvingSet(context.Context, address.Address, *types.TipSet) ([]*api.SectorInfo, error)
 
 	MpoolPush(context.Context, *types.SignedMessage) error
 	MpoolGetNonce(context.Context, address.Address) (uint64, error)
 
 	ChainWaitMsg(context.Context, cid.Cid) (*api.MsgWait, error)
 	ChainNotify(context.Context) (<-chan *store.HeadChange, error)
-	ChainGetRandomness(context.Context, ts *types.TipSet, []*types.Ticket, int) ([]byte, error)
+	ChainGetRandomness(context.Context, *types.TipSet, []*types.Ticket, int) ([]byte, error)
 	ChainGetTipSetByHeight(context.Context, uint64, *types.TipSet) (*types.TipSet, error)
 
 	WalletBalance(context.Context, address.Address) (types.BigInt, error)
@@ -175,6 +175,7 @@ func (m *Miner) commitSector(ctx context.Context, sinfo sectorbuilder.SectorSeal
 }
 
 func (m *Miner) runPoSt(ctx context.Context) {
+	// TODO: most of this method can probably be replaced by the events module once it works on top of the api
 	notifs, err := m.api.ChainNotify(ctx)
 	if err != nil {
 		// TODO: this is probably 'crash the node' level serious
@@ -190,7 +191,11 @@ func (m *Miner) runPoSt(ctx context.Context) {
 	}
 
 	postCtx, cancel := context.WithCancel(ctx)
-	postWaitCh, onBlock := m.maybeDoPost(postCtx, curhead)
+	postWaitCh, onBlock, err := m.maybeDoPost(postCtx, curhead.Val)
+	if err != nil {
+		log.Errorf("initial 'maybeDoPost' call failed: %s", err)
+		return
+	}
 
 	for {
 		select {
@@ -202,15 +207,39 @@ func (m *Miner) runPoSt(ctx context.Context) {
 				return
 			}
 
-			if ch.Type == store.HCApply {
-				m.maybeDoPost(ch.Val)
+			switch ch.Type {
+			case store.HCApply:
+				postWaitCh, onBlock, err = m.maybeDoPost(postCtx, ch.Val)
+				if err != nil {
+					log.Errorf("maybeDoPost failed: %s", err)
+					return
+				}
+			case store.HCRevert:
+				if onBlock != nil {
+					if ch.Val.Contains(onBlock.Cid()) {
+						// Our post may now be invalid!
+						cancel() // probably the right thing to do?
+					}
+				}
+			case store.HCCurrent:
+				log.Warn("got 'current' chain notification in middle of stream")
 			}
+		case perr := <-postWaitCh:
+			if perr != nil {
+				log.Errorf("got error back from postWaitCh: %s", err)
+				// TODO: what do we even do here?
+				return
+			}
+			postWaitCh = nil
+			onBlock = nil
+			// yay?
+			log.Infof("post successfully submitted")
 		}
 	}
 }
 
 func (m *Miner) maybeDoPost(ctx context.Context, ts *types.TipSet) (<-chan error, *types.BlockHeader, error) {
-	ppe, err := m.api.StateMinerProvingPeriodEnd(ctx, m.actor, ts)
+	ppe, err := m.api.StateMinerProvingPeriodEnd(ctx, m.maddr, ts)
 	if err != nil {
 		return nil, nil, xerrors.Errorf("failed to get proving period end for miner: %w", err)
 	}
@@ -219,12 +248,12 @@ func (m *Miner) maybeDoPost(ctx context.Context, ts *types.TipSet) (<-chan error
 		return nil, nil, nil
 	}
 
-	sset, err := m.api.StateMinerProvingSet(ctx, m.actor, ts)
+	sset, err := m.api.StateMinerProvingSet(ctx, m.maddr, ts)
 	if err != nil {
 		return nil, nil, xerrors.Errorf("failed to get proving set for miner: %w", err)
 	}
 
-	r, err := m.api.ChainGetRandomness(ctx, ts, nil,  ts.Height() - ppe)
+	r, err := m.api.ChainGetRandomness(ctx, ts, nil, int(ts.Height()-ppe))
 	if err != nil {
 		return nil, nil, xerrors.Errorf("failed to get chain randomness for post: %w", err)
 	}
@@ -236,14 +265,19 @@ func (m *Miner) maybeDoPost(ctx context.Context, ts *types.TipSet) (<-chan error
 
 	ret := make(chan error, 1)
 	go func() {
-	proof, err := s.secst.RunPoSt(ctx, sset, r)
-	if err != nil {
-		ret <- xerrors.Errorf("running post failed: %w", err)
-		return
-	}
+		proof, err := m.secst.RunPoSt(ctx, sset, r)
+		if err != nil {
+			ret <- xerrors.Errorf("running post failed: %w", err)
+			return
+		}
 
-	panic("submit post maybe?")
-}()
+		// TODO: submit post...
+		_ = proof
+
+		// make sure it succeeds...
+		// m.api.ChainWaitMsg()
+
+	}()
 
 	return ret, sourceTs.MinTicketBlock(), nil
 }
@@ -268,4 +302,3 @@ func (m *Miner) runPreflightChecks(ctx context.Context) error {
 	log.Infof("starting up miner %s, worker addr %s", m.maddr, m.worker)
 	return nil
 }
-

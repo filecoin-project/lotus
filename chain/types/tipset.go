@@ -128,3 +128,12 @@ func (ts *TipSet) MinTicketBlock() *BlockHeader {
 
 	return min
 }
+
+func (ts *TipSet) Contains(oc cid.Cid) bool {
+	for _, c := range ts.cids {
+		if c == oc {
+			return true
+		}
+	}
+	return false
+}

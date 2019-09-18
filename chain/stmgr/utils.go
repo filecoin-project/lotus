@@ -3,6 +3,7 @@ package stmgr
 import (
 	"context"
 
+	"github.com/filecoin-project/go-lotus/api"
 	"github.com/filecoin-project/go-lotus/chain/actors"
 	"github.com/filecoin-project/go-lotus/chain/address"
 	"github.com/filecoin-project/go-lotus/chain/types"
@@ -137,7 +138,7 @@ func GetMinerProvingPeriodEnd(ctx context.Context, sm *StateManager, ts *types.T
 	return mas.ProvingPeriodEnd, nil
 }
 
-func GetMinerProvingSet(ctx context.Context, sm *StateManager, ts *types.TipSet, maddr address.Address) ([]api.SectorSetEntry, error) {
+func GetMinerProvingSet(ctx context.Context, sm *StateManager, ts *types.TipSet, maddr address.Address) ([]*api.SectorInfo, error) {
 	var mas actors.StorageMinerActorState
 	_, err := sm.LoadActorState(ctx, maddr, &mas, ts)
 	if err != nil {
@@ -150,13 +151,13 @@ func GetMinerProvingSet(ctx context.Context, sm *StateManager, ts *types.TipSet,
 		return nil, err
 	}
 
-	var sset []api.SectorSetEntry
+	var sset []*api.SectorInfo
 	if err := a.ForEach(func(i uint64, v *cbg.Deferred) error {
 		var comms [][]byte
 		if err := cbor.DecodeInto(v.Raw, &comms); err != nil {
 			return err
 		}
-		sset = append(sset, api.SectorSetEntry{
+		sset = append(sset, &api.SectorInfo{
 			SectorID: i,
 			CommR:    comms[0],
 			CommD:    comms[1],

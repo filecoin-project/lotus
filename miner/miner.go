@@ -6,7 +6,6 @@ import (
 	"time"
 
 	"github.com/filecoin-project/go-lotus/build"
-	chain "github.com/filecoin-project/go-lotus/chain"
 	"github.com/filecoin-project/go-lotus/chain/actors"
 	"github.com/filecoin-project/go-lotus/chain/address"
 	"github.com/filecoin-project/go-lotus/chain/gen"
@@ -191,7 +190,7 @@ func (m *Miner) GetBestMiningCandidate() (*MiningBase, error) {
 	}, nil
 }
 
-func (m *Miner) mineOne(ctx context.Context, base *MiningBase) (*chain.BlockMsg, error) {
+func (m *Miner) mineOne(ctx context.Context, base *MiningBase) (*types.BlockMsg, error) {
 	log.Debug("attempting to mine a block on:", base.ts.Cids())
 	ticket, err := m.scratchTicket(ctx, base)
 	if err != nil {
@@ -288,7 +287,7 @@ func (m *Miner) scratchTicket(ctx context.Context, base *MiningBase) (*types.Tic
 	}, nil
 }
 
-func (m *Miner) createBlock(base *MiningBase, ticket *types.Ticket, proof types.ElectionProof) (*chain.BlockMsg, error) {
+func (m *Miner) createBlock(base *MiningBase, ticket *types.Ticket, proof types.ElectionProof) (*types.BlockMsg, error) {
 
 	pending, err := m.api.MpoolPending(context.TODO(), base.ts)
 	if err != nil {
