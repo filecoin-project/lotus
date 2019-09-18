@@ -121,7 +121,7 @@ class FullNode extends React.Component {
         miners = this.state.minerList.map((a, k) => <div key={k}><Address miner={true} client={this.props.client} addr={a} mountWindow={this.props.mountWindow}/></div>)
       }
 
-      let storageMine = <a href="#" onClick={this.startStorageMiner}>[Spawn Storage Miner]</a>
+      let storageMine = <a href="#" onClick={this.startStorageMiner} hidden={!this.props.spawnStorageNode}>[Spawn Storage Miner]</a>
 
       let addresses = this.state.addrs.map((addr) => {
         let line = <Address client={this.props.client} add1k={this.add1k} add10k={true} nonce={true} addr={addr} mountWindow={this.props.mountWindow}/>
@@ -167,10 +167,13 @@ class FullNode extends React.Component {
       )
     }
 
+    let nodeID = this.props.node.ID ? this.props.node.ID : ''
+    let nodePos = this.props.node.ID ? {x: this.props.node.ID*30, y: this.props.node.ID * 30} : undefined
+
     return (
       <Cristal
-        title={"Node " + this.props.node.ID}
-        initialPosition={{x: this.props.node.ID*30, y: this.props.node.ID * 30}}
+        title={"Node " + nodeID}
+        initialPosition={nodePos}
         initialSize={{width: 690, height: 300}}
         onClose={this.stop} >
         <div className="CristalScroll">

@@ -70,7 +70,7 @@ class Client extends React.Component {
     let ppb = Math.round(this.state.total / this.state.blocks * 100) / 100
     let ppmbb = Math.round(ppb / (this.state.kbs / 1000) * 100) / 100
 
-    let dealMaker = <div>
+    let dealMaker = <div hidden={!this.props.pondClient}>
       <span>Make Deal: </span>
       <select><option>t0101</option></select>
       <abbr title="Data length">L:</abbr> <input placeholder="KBs" defaultValue={1} onChange={this.update("kbs")}/>
@@ -94,7 +94,7 @@ class Client extends React.Component {
 
     </div>)
 
-    return <Cristal title={"Client - Node " + this.props.node.ID}>
+    return <Cristal title={"Client - Node " + this.props.node.ID} onClose={this.props.onClose}>
       <div className="Client">
         <div>{dealMaker}</div>
         <div>{deals}</div>
