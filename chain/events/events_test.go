@@ -33,7 +33,8 @@ type fakeCS struct {
 	h   uint64
 	tsc *tipSetCache
 
-	msgs map[cid.Cid]fakeMsg
+	msgs    map[cid.Cid]fakeMsg
+	blkMsgs map[cid.Cid]cid.Cid
 
 	sub func(rev, app []*types.TipSet)
 }
@@ -80,13 +81,18 @@ func (fcs *fakeCS) ChainNotify(context.Context) (<-chan []*store.HeadChange, err
 	return out, nil
 }
 
-func (fcs *fakeCS) ChainGetBlockMessages(ctx context.Context, messages cid.Cid) (*api.BlockMessages, error) {
-	ms, ok := fcs.msgs[messages]
-	if ok {
-		return &api.BlockMessages{BlsMessages: ms.bmsgs, SecpkMessages: ms.smsgs}, nil
+func (fcs *fakeCS) ChainGetBlockMessages(ctx context.Context, blk cid.Cid) (*api.BlockMessages, error) {
+	messages, ok := fcs.blkMsgs[blk]
+	if !ok {
+		return &api.BlockMessages{}, nil
 	}
 
-	return &api.BlockMessages{}, nil
+	ms, ok := fcs.msgs[messages]
+	if !ok {
+		return &api.BlockMessages{}, nil
+	}
+	return &api.BlockMessages{BlsMessages: ms.bmsgs, SecpkMessages: ms.smsgs}, nil
+
 }
 
 func (fcs *fakeCS) fakeMsgs(m fakeMsg) cid.Cid {
@@ -121,13 +127,17 @@ func (fcs *fakeCS) advance(rev, app int, msgs map[int]cid.Cid) { // todo: allow 
 	for i := 0; i < app; i++ {
 		fcs.h++
 
-		mc, _ := msgs[i]
-		if mc == cid.Undef {
+		mc, hasMsgs := msgs[i]
+		if !hasMsgs {
 			mc = dummyCid
 		}
 
 		ts := makeTs(fcs.t, fcs.h, mc)
 		require.NoError(fcs.t, fcs.tsc.add(ts))
+
+		if hasMsgs {
+			fcs.blkMsgs[ts.Blocks()[0].Cid()] = mc
+		}
 
 		apps[app-i-1] = ts
 	}
@@ -266,8 +276,9 @@ func TestCalled(t *testing.T) {
 		t: t,
 		h: 1,
 
-		msgs: map[cid.Cid]fakeMsg{},
-		tsc:  newTSCache(2 * build.ForkLengthThreshold),
+		msgs:    map[cid.Cid]fakeMsg{},
+		blkMsgs: map[cid.Cid]cid.Cid{},
+		tsc:     newTSCache(2 * build.ForkLengthThreshold),
 	}
 	require.NoError(t, fcs.tsc.add(makeTs(t, 1, dummyCid)))
 
@@ -463,8 +474,9 @@ func TestCalledTimeout(t *testing.T) {
 		t: t,
 		h: 1,
 
-		msgs: map[cid.Cid]fakeMsg{},
-		tsc:  newTSCache(2 * build.ForkLengthThreshold),
+		msgs:    map[cid.Cid]fakeMsg{},
+		blkMsgs: map[cid.Cid]cid.Cid{},
+		tsc:     newTSCache(2 * build.ForkLengthThreshold),
 	}
 	require.NoError(t, fcs.tsc.add(makeTs(t, 1, dummyCid)))
 
@@ -502,8 +514,9 @@ func TestCalledTimeout(t *testing.T) {
 		t: t,
 		h: 1,
 
-		msgs: map[cid.Cid]fakeMsg{},
-		tsc:  newTSCache(2 * build.ForkLengthThreshold),
+		msgs:    map[cid.Cid]fakeMsg{},
+		blkMsgs: map[cid.Cid]cid.Cid{},
+		tsc:     newTSCache(2 * build.ForkLengthThreshold),
 	}
 	require.NoError(t, fcs.tsc.add(makeTs(t, 1, dummyCid)))
 
@@ -535,8 +548,9 @@ func TestCalledOrder(t *testing.T) {
 		t: t,
 		h: 1,
 
-		msgs: map[cid.Cid]fakeMsg{},
-		tsc:  newTSCache(2 * build.ForkLengthThreshold),
+		msgs:    map[cid.Cid]fakeMsg{},
+		blkMsgs: map[cid.Cid]cid.Cid{},
+		tsc:     newTSCache(2 * build.ForkLengthThreshold),
 	}
 	require.NoError(t, fcs.tsc.add(makeTs(t, 1, dummyCid)))
 

@@ -14,6 +14,7 @@ import (
 	"github.com/filecoin-project/go-lotus/build"
 	"github.com/filecoin-project/go-lotus/chain/actors"
 	"github.com/filecoin-project/go-lotus/chain/address"
+	"github.com/filecoin-project/go-lotus/chain/events"
 	"github.com/filecoin-project/go-lotus/chain/store"
 	"github.com/filecoin-project/go-lotus/chain/types"
 	"github.com/filecoin-project/go-lotus/lib/sectorbuilder"
@@ -24,7 +25,8 @@ import (
 var log = logging.Logger("storageminer")
 
 type Miner struct {
-	api storageMinerApi
+	api    storageMinerApi
+	events *events.Events
 
 	secst *sector.Store
 	commt *commitment.Tracker
@@ -55,6 +57,7 @@ type storageMinerApi interface {
 	ChainNotify(context.Context) (<-chan []*store.HeadChange, error)
 	ChainGetRandomness(context.Context, *types.TipSet, []*types.Ticket, int) ([]byte, error)
 	ChainGetTipSetByHeight(context.Context, uint64, *types.TipSet) (*types.TipSet, error)
+	ChainGetBlockMessages(context.Context, cid.Cid) (*api.BlockMessages, error)
 
 	WalletBalance(context.Context, address.Address) (types.BigInt, error)
 	WalletSign(context.Context, address.Address, []byte) (*types.Signature, error)
@@ -63,7 +66,9 @@ type storageMinerApi interface {
 
 func NewMiner(api storageMinerApi, addr address.Address, h host.Host, ds datastore.Batching, secst *sector.Store, commt *commitment.Tracker) (*Miner, error) {
 	return &Miner{
-		api:   api,
+		api:    api,
+		events: events.NewEvents(api),
+
 		maddr: addr,
 		h:     h,
 		ds:    ds,

@@ -237,7 +237,7 @@ func (e *calledEvents) messagesForTs(ts *types.TipSet, consume func(*types.Messa
 
 	for _, tsb := range ts.Blocks() {
 
-		msgs, err := e.cs.ChainGetBlockMessages(context.TODO(), tsb.Messages)
+		msgs, err := e.cs.ChainGetBlockMessages(context.TODO(), tsb.Cid())
 		if err != nil {
 			log.Errorf("messagesForTs MessagesForBlock failed (ts.H=%d, Bcid:%s, B.Mcid:%s): %s", ts.Height(), tsb.Cid(), tsb.Messages, err)
 			// this is quite bad, but probably better than missing all the other updates
