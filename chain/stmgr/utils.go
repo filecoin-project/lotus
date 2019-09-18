@@ -10,6 +10,7 @@ import (
 
 	amt "github.com/filecoin-project/go-amt-ipld"
 	cid "github.com/ipfs/go-cid"
+	blockstore "github.com/ipfs/go-ipfs-blockstore"
 	cbor "github.com/ipfs/go-ipld-cbor"
 	"github.com/libp2p/go-libp2p-core/peer"
 	cbg "github.com/whyrusleeping/cbor-gen"
@@ -145,8 +146,22 @@ func GetMinerProvingSet(ctx context.Context, sm *StateManager, ts *types.TipSet,
 		return nil, xerrors.Errorf("failed to load miner actor state: %w", err)
 	}
 
-	bs := amt.WrapBlockstore(sm.ChainStore().Blockstore())
-	a, err := amt.LoadAMT(bs, mas.ProvingSet)
+	return LoadSectorsFromSet(ctx, sm.ChainStore().Blockstore(), mas.ProvingSet)
+}
+
+func GetMinerSectorSet(ctx context.Context, sm *StateManager, ts *types.TipSet, maddr address.Address) ([]*api.SectorInfo, error) {
+	var mas actors.StorageMinerActorState
+	_, err := sm.LoadActorState(ctx, maddr, &mas, ts)
+	if err != nil {
+		return nil, xerrors.Errorf("failed to load miner actor state: %w", err)
+	}
+
+	return LoadSectorsFromSet(ctx, sm.ChainStore().Blockstore(), mas.Sectors)
+}
+
+func LoadSectorsFromSet(ctx context.Context, bs blockstore.Blockstore, ssc cid.Cid) ([]*api.SectorInfo, error) {
+	blks := amt.WrapBlockstore(bs)
+	a, err := amt.LoadAMT(blks, ssc)
 	if err != nil {
 		return nil, err
 	}

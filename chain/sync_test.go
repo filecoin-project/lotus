@@ -10,7 +10,6 @@ import (
 	"github.com/stretchr/testify/require"
 
 	"github.com/filecoin-project/go-lotus/api"
-	"github.com/filecoin-project/go-lotus/chain"
 	"github.com/filecoin-project/go-lotus/chain/gen"
 	"github.com/filecoin-project/go-lotus/chain/store"
 	"github.com/filecoin-project/go-lotus/chain/types"
@@ -105,8 +104,8 @@ func (tu *syncTestUtil) mineNewBlock(src int) {
 	}
 }
 
-func fblkToBlkMsg(fb *types.FullBlock) *chain.BlockMsg {
-	out := &chain.BlockMsg{
+func fblkToBlkMsg(fb *types.FullBlock) *types.BlockMsg {
+	out := &types.BlockMsg{
 		Header: fb.Header,
 	}
 
