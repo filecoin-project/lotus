@@ -2,7 +2,9 @@ package actors
 
 import (
 	"context"
+	"fmt"
 
+	"github.com/filecoin-project/go-lotus/build"
 	"github.com/filecoin-project/go-lotus/chain/actors/aerrors"
 	"github.com/filecoin-project/go-lotus/chain/address"
 	"github.com/filecoin-project/go-lotus/chain/types"
@@ -15,9 +17,6 @@ import (
 	cbg "github.com/whyrusleeping/cbor-gen"
 	"golang.org/x/xerrors"
 )
-
-var ProvingPeriodDuration = uint64(2 * 60) // an hour, for now
-var PoSTChallangeTime = uint64(1 * 60)
 
 const POST_SECTORS_COUNT = 8192
 
@@ -272,7 +271,7 @@ func (sma StorageMinerActor) CommitSector(act *types.Actor, vmctx types.VMContex
 	if self.ProvingSetSize == 0 {
 		self.ProvingSet = self.Sectors
 		self.ProvingSetSize = self.SectorSetSize
-		self.ProvingPeriodEnd = vmctx.BlockHeight() + ProvingPeriodDuration
+		self.ProvingPeriodEnd = vmctx.BlockHeight() + build.ProvingPeriodDuration
 	}
 
 	nstate, err := vmctx.Storage().Put(self)
@@ -310,7 +309,7 @@ func (sma StorageMinerActor) SubmitPoSt(act *types.Actor, vmctx types.VMContext,
 	}
 
 	feesRequired := types.NewInt(0)
-	nextProvingPeriodEnd := self.ProvingPeriodEnd + ProvingPeriodDuration
+	nextProvingPeriodEnd := self.ProvingPeriodEnd + build.ProvingPeriodDuration
 	if vmctx.BlockHeight() > nextProvingPeriodEnd {
 		return nil, aerrors.New(1, "PoSt submited too late")
 	}
@@ -338,11 +337,22 @@ func (sma StorageMinerActor) SubmitPoSt(act *types.Actor, vmctx types.VMContext,
 	}
 
 	var seed [sectorbuilder.CommLen]byte
-	//TODO
-	if !lateSubmission {
-		//GetChainRandom(self.ProvingPeriodEnd-PoSTChallangeTime)
-	} else {
-		//GetChainRandom(nextProvingPeriodEnd-PoSTChallangeTime)
+	{
+		var rand []byte
+		var err ActorError
+		if !lateSubmission {
+			rand, err = vmctx.GetRandomness(self.ProvingPeriodEnd - build.PoSTChallangeTime)
+		} else {
+			rand, err = vmctx.GetRandomness(nextProvingPeriodEnd - build.PoSTChallangeTime)
+		}
+		if err != nil {
+			return nil, aerrors.Wrap(err, "could not get randomness for PoST")
+		}
+		if len(rand) < len(seed) {
+			return nil, aerrors.Escalate(fmt.Errorf("randomness too small (%d < %d)",
+				len(rand), len(seed)), "improper randomness")
+		}
+		copy(seed[:], rand)
 	}
 
 	pss, lerr := amt.LoadAMT(types.WrapStorage(vmctx.Storage()), self.ProvingSet)
@@ -399,8 +409,6 @@ func (sma StorageMinerActor) SubmitPoSt(act *types.Actor, vmctx types.VMContext,
 		return nil, aerrors.Escalate(err, "failed to delete sectors in done set")
 	}
 
-	_ = ss
-	//TODO: Remove done sectors from SectorSet
 	self.ProvingSet, lerr = ss.Flush()
 	if lerr != nil {
 		return nil, aerrors.Escalate(lerr, "could not flish AMT")
