@@ -194,7 +194,7 @@ func (m *Miner) schedulePoSt(ctx context.Context, baseTs *types.TipSet) {
 	m.schedLk.Lock()
 
 	if m.postSched >= ppe {
-		log.Warn("schedulePoSt already called for proving period >= %d", m.postSched)
+		log.Warnf("schedulePoSt already called for proving period >= %d", m.postSched)
 		m.schedLk.Unlock()
 		return
 	}

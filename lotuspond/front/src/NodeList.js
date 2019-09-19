@@ -27,7 +27,7 @@ class NodeList extends React.Component {
     this.spawnStorageNode = this.spawnStorageNode.bind(this)
     this.connMgr = this.connMgr.bind(this)
     this.consensus = this.consensus.bind(this)
-    this.transfer1kFrom1 = this.transfer1kFrom1.bind(this)
+    this.transfer20kFrom1 = this.transfer20kFrom1.bind(this)
 
     this.getNodes()
   }
@@ -52,7 +52,7 @@ class NodeList extends React.Component {
                       node={{...node}}
                       client={client}
                       pondClient={this.props.client}
-                      give1k={this.transfer1kFrom1}
+                      give20k={this.transfer20kFrom1}
                       mountWindow={this.props.mountWindow}
                       spawnStorageNode={this.spawnStorageNode}
                       stop={this.stopNode(node.ID, onClose)}
@@ -81,7 +81,7 @@ class NodeList extends React.Component {
     this.setState({existingLoaded: true, nodes: nodes})
   }
 
-  async transfer1kFrom1(to) {
+  async transfer20kFrom1(to) {
     const addrss = await this.state.nodes[1].conn.call('Filecoin.WalletList', [])
     const [bestaddr, bal] = await addrss.map(async addr => {
       let balance = 0
@@ -96,7 +96,7 @@ class NodeList extends React.Component {
     await pushMessage(this.state.nodes[1].conn, bestaddr, {
       To: to,
       From: bestaddr,
-      Value: "1000",
+      Value: "20000",
     })
   }
 

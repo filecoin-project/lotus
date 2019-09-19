@@ -70,13 +70,14 @@ func (tsc *tipSetCache) get(height uint64) (*types.TipSet, error) {
 		return nil, xerrors.Errorf("tipSetCache.get: requested tipset not in cache (req: %d, cache head: %d)", height, headH)
 	}
 
-	tailH := tsc.cache[(tsc.start-tsc.len+1)%len(tsc.cache)].Height()
+	clen := len(tsc.cache)
+	tailH := tsc.cache[((tsc.start-tsc.len+1)% clen + clen) % clen].Height()
 
 	if height < tailH {
 		return tsc.storage(context.TODO(), height, tsc.cache[tailH])
 	}
 
-	return tsc.cache[int(height-tailH+1)%len(tsc.cache)], nil
+	return tsc.cache[(int(height-tailH+1) % clen + clen) % clen], nil
 }
 
 func (tsc *tipSetCache) best() *types.TipSet {
