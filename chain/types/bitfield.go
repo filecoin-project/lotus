@@ -13,6 +13,10 @@ type BitField struct {
 	bits map[uint64]struct{}
 }
 
+func NewBitField() BitField {
+	return BitField{bits: make(map[uint64]struct{})}
+}
+
 // Set ...s bit in the BitField
 func (bf BitField) Set(bit uint64) {
 	bf.bits[bit] = struct{}{}
@@ -27,6 +31,15 @@ func (bf BitField) Clear(bit uint64) {
 func (bf BitField) Has(bit uint64) bool {
 	_, ok := bf.bits[bit]
 	return ok
+}
+
+// All returns all set bits, in random order
+func (bf BitField) All() []uint64 {
+	res := make([]uint64, 0, len(bf.bits))
+	for i := range bf.bits {
+		res = append(res, i)
+	}
+	return res
 }
 
 func (bf BitField) MarshalCBOR(w io.Writer) error {

@@ -66,6 +66,15 @@ func (vmc *VMContext) Message() *types.Message {
 	return vmc.msg
 }
 
+func (vmc *VMContext) GetRandomness(height uint64) ([]byte, aerrors.ActorError) {
+	relHeight := int(vmc.BlockHeight()) - int(height)
+	res, err := vmc.vm.cs.GetRandomness(vmc.ctx, vmc.vm.cs.GetHeaviestTipSet(), nil, relHeight)
+	if err != nil {
+		return nil, aerrors.Escalate(err, "could not get randomness")
+	}
+	return res, nil
+}
+
 // Storage interface
 
 func (vmc *VMContext) Put(i cbg.CBORMarshaler) (cid.Cid, aerrors.ActorError) {
