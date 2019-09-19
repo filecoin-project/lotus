@@ -108,6 +108,7 @@ type FullNode interface {
 	StateMinerPeerID(ctx context.Context, m address.Address, ts *types.TipSet) (peer.ID, error)
 	// if tipset is nil, we'll use heaviest
 	StateCall(context.Context, *types.Message, *types.TipSet) (*types.MessageReceipt, error)
+	StateReplay(context.Context, *types.TipSet, cid.Cid) (*ReplayResults, error)
 	StateGetActor(ctx context.Context, actor address.Address, ts *types.TipSet) (*types.Actor, error)
 	StateReadState(ctx context.Context, act *types.Actor, ts *types.TipSet) (*ActorState, error)
 
@@ -268,4 +269,10 @@ type RetrievalOrder struct {
 	Client      address.Address
 	Miner       address.Address
 	MinerPeerID peer.ID
+}
+
+type ReplayResults struct {
+	Msg     *types.Message
+	Receipt *types.MessageReceipt
+	Error   string
 }
