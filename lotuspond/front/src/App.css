@@ -1,11 +1,129 @@
+.Index {
+  width: 100vw;
+  height: 100vh;
+  background: #1a1a1a;
+  color: #f0f0f0;
+  font-family: monospace;
+
+  display: grid;
+  grid-template-columns: auto 40vw auto;
+  grid-template-rows: auto auto auto 3em;
+  grid-template-areas:
+    ". . ."
+    ". main ."
+    ". . ."
+    "footer footer footer";
+}
+
+.Index-footer {
+  background: #2a2a2a;
+  grid-area: footer;
+}
+
+.Index-footer > div {
+  padding-left: 0.7em;
+  padding-top: 0.7em;
+}
+
+.Index-nodes {
+  grid-area: main;
+  background: #2a2a2a;
+}
+
+.Index-node {
+  margin: 5px;
+  padding: 15px;
+  background: #1f1f1f;
+}
+
+.Index-addwrap {
+  margin-top: 5px;
+}
+
+/* SingleNode */
+
+
+.SingleNode-connecting {
+  width: 100vw;
+  height: 100vh;
+
+  background: #1a1a1a;
+  color: #ffffff;
+  font-family: monospace;
+
+  display: grid;
+  grid-template-columns: auto min-content auto;
+  grid-template-rows: auto min-content auto;
+  grid-template-areas:
+          ". . ."
+          ". main ."
+          ". . ."
+}
+
+.SingleNode-connecting > div {
+  grid-area: main;
+  padding: 15px;
+  white-space: nowrap;
+  background: #2a2a2a;
+}
+
+
+
+/*****/
+
+a:link {
+  color: #50f020;
+}
+
+a:visited {
+  color: #50f020;
+}
+
+a:hover {
+  color: #30a00a;
+}
+
+.Button {
+  display: inline-block;
+  padding: 15px;
+  background: #1f1f1f;
+  margin-left: 5px;
+}
+
+.Window {
+  background: #2a2a2a !important;
+  color: #e0e0e0;
+}
+
+.Window b {
+  color: #f0f0f0;
+}
+
+.Window > :first-child > :nth-child(2)::before {
+  background: #f0f0f0;
+}
+
+.Window > :first-child > :nth-child(2)::after {
+  background: #f0f0f0;
+}
+
+.Window a:link {
+  color: #30a015;
+}
+
+.Window a:visited {
+  color: #30a015;
+}
+
+/* POND */
+
 .App {
   min-height: 100vh;
-  background: #b7c4cd;
+  background: #1a1a1a;
   font-family: monospace;
 }
 
 .NodeList {
-  background: #f9be77;
   user-select: text;
   font-family: monospace;
   min-width: 40em;
@@ -13,7 +131,6 @@
 }
 
 .FullNode {
-  background: #f9be77;
   user-select: text;
   font-family: monospace;
   min-width: 50em;
@@ -25,7 +142,6 @@
 }
 
 .StorageNode {
-  background: #f9be77;
   user-select: text;
   font-family: monospace;
   min-width: 40em;
@@ -33,7 +149,6 @@
 }
 
 .Block {
-  background: #f9be77;
   user-select: text;
   font-family: monospace;
   min-width: 50em;
@@ -41,7 +156,6 @@
 }
 
 .State {
-  background: #f9be77;
   user-select: text;
   font-family: monospace;
   min-width: 40em;
@@ -49,7 +163,6 @@
 }
 
 .Client {
-  background: #f9be77;
   user-select: text;
   font-family: monospace;
   display: inline-block;
@@ -68,19 +181,20 @@
 
 .ChainExplorer {
   font-family: monospace;
+  color: #d0d0d0;
 }
 
 .ChainExplorer-at {
   min-width: 40em;
-  background: #77ff77;
+  background: #222222;
 }
 
 .ChainExplorer-after {
-  background: #cc9c44
+  background: #440000
 }
 
 .ChainExplorer-before {
-  background: #cccc00
+  background: #444400
 }
 
 .Logs {

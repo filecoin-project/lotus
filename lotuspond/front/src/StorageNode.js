@@ -1,7 +1,7 @@
 import React from 'react';
-import {Cristal} from "react-cristal";
 import { Client } from 'rpc-websockets'
 import Address from "./Address";
+import Window from "./Window";
 
 const stateConnected = 'connected'
 const stateConnecting = 'connecting'
@@ -121,7 +121,7 @@ class StorageNode extends React.Component {
       )
     }
 
-    return <Cristal
+    return <Window
       title={"Storage Miner Node " + this.props.node.ID}
       initialPosition={{x: this.props.node.ID*30, y: this.props.node.ID * 30}}
       onClose={this.stop} >
@@ -130,7 +130,7 @@ class StorageNode extends React.Component {
           {runtime}
         </div>
       </div>
-    </Cristal>
+    </Window>
   }
 }
 

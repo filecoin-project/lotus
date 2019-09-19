@@ -1,9 +1,9 @@
 import React from 'react'
-import {Cristal} from "react-cristal";
 import { Terminal } from 'xterm';
 import { AttachAddon } from "xterm-addon-attach";
 import 'xterm/dist/xterm.css';
 import * as fit from 'xterm/lib/addons/fit/fit';
+import Window from "./Window";
 
 class Logs extends React.Component {
   constructor(props) {
@@ -22,9 +22,9 @@ class Logs extends React.Component {
   }
 
   render() {
-    return <Cristal className="Logs-window" onClose={this.props.onClose} initialSize={{width: 1000, height: 480}} title={`Node ${this.props.node} Logs`}>
+    return <Window className="Logs-window" onClose={this.props.onClose} initialSize={{width: 1000, height: 480}} title={`Node ${this.props.node} Logs`}>
       <div ref={this.termRef} className="Logs"/>
-    </Cristal>
+    </Window>
   }
 }
 

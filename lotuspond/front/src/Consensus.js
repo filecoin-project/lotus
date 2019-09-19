@@ -1,6 +1,6 @@
 import React from 'react';
-import {Cristal} from "react-cristal";
 import {BlockLinks} from "./BlockLink";
+import Window from "./Window";
 
 function styleForHDiff(max, act) {
   switch (max - act) {
@@ -42,7 +42,7 @@ class Consensus extends React.Component {
   }
 
   render() {
-    return (<Cristal title={`Consensus`}>
+    return (<Window title={`Consensus`}>
       <div className='Consensus'>
         <div>Max Height: {this.state.maxH}</div>
         <div>
@@ -62,7 +62,7 @@ class Consensus extends React.Component {
           </table>
         </div>
       </div>
-    </Cristal>)
+    </Window>)
   }
 }
 

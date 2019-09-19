@@ -1,5 +1,5 @@
 import React from 'react'
-import {Cristal} from "react-cristal";
+import Window from "./Window";
 
 class State extends React.Component {
   constructor(props) {
@@ -21,9 +21,9 @@ class State extends React.Component {
       <div>{Object.keys(this.state.State).map(k => <div key={k}>{k}: <span>{JSON.stringify(this.state.State[k])}</span></div>)}</div>
     </div>
 
-    return <Cristal onClose={this.props.onClose} title={`Actor ${this.props.addr} @{this.props.ts.Height}`}>
+    return <Window onClose={this.props.onClose} title={`Actor ${this.props.addr} @{this.props.ts.Height}`}>
       {content}
-    </Cristal>
+    </Window>
   }
 }
 

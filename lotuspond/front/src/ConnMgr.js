@@ -1,5 +1,5 @@
 import React from 'react';
-import Cristal from 'react-cristal'
+import Window from "./Window";
 
 async function awaitReducer(prev, c) {
   return {...await prev, ...await c}
@@ -107,7 +107,7 @@ class ConnMgr extends React.Component {
     })
 
     return(
-      <Cristal title={`Connection Manager${this.state.lock ? ' (syncing)' : ''}`}>
+      <Window title={`Connection Manager${this.state.lock ? ' (syncing)' : ''}`}>
         <table>
           <thead><tr><td></td>{keys.slice(0, -1).map((i) => (<td key={i}>{i}</td>))}</tr></thead>
           <tbody>{rows}</tbody>
@@ -118,7 +118,7 @@ class ConnMgr extends React.Component {
           <button onClick={this.connect1}>Conn1</button>
           <button onClick={this.connectChain}>ConnChain</button>
         </div>
-      </Cristal>
+      </Window>
     )
   }
 }
