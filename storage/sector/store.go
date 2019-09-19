@@ -2,6 +2,7 @@ package sector
 
 import (
 	"context"
+	"golang.org/x/xerrors"
 	"io"
 	"io/ioutil"
 	"os"
@@ -41,7 +42,7 @@ func (s *Store) Service() {
 }
 
 func (s *Store) poll() {
-	log.Info("polling for sealed sectors...")
+	log.Debug("polling for sealed sectors...")
 
 	// get a list of sectors to poll
 	s.lk.Lock()
@@ -164,7 +165,27 @@ func (s *Store) WaitSeal(ctx context.Context, sector uint64) (sectorbuilder.Sect
 }
 
 func (s *Store) RunPoSt(ctx context.Context, sectors []*api.SectorInfo, r []byte, faults []uint64) ([]byte, error) {
-	panic("TODO")
+	sbsi := make([]sectorbuilder.SectorInfo, len(sectors))
+	for k, sector := range sectors {
+		var commR [sectorbuilder.CommLen]byte
+		if copy(commR[:], sector.CommR) != sectorbuilder.CommLen {
+			return nil, xerrors.Errorf("commR too short, %d bytes", len(sector.CommR))
+		}
+
+		sbsi[k] = sectorbuilder.SectorInfo{
+			SectorID: sector.SectorID,
+			CommR:    commR,
+		}
+	}
+
+	ssi := sectorbuilder.NewSortedSectorInfo(sbsi)
+
+	var seed [sectorbuilder.CommLen]byte
+	if copy(seed[:], r) != sectorbuilder.CommLen {
+		return nil, xerrors.Errorf("random seed too short, %d bytes", len(r))
+	}
+
+	return s.sb.GeneratePoSt(ssi, seed, faults)
 }
 
 func (s *Store) Stop() {

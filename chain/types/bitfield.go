@@ -17,6 +17,14 @@ func NewBitField() BitField {
 	return BitField{bits: make(map[uint64]struct{})}
 }
 
+func BitFieldFromSet(setBits []uint64) BitField {
+	res := BitField{bits: make(map[uint64]struct{})}
+	for _, b := range setBits {
+		res.bits[b] = struct{}{}
+	}
+	return res
+}
+
 // Set ...s bit in the BitField
 func (bf BitField) Set(bit uint64) {
 	bf.bits[bit] = struct{}{}

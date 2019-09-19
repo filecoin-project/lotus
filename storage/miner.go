@@ -8,6 +8,7 @@ import (
 	"github.com/libp2p/go-libp2p-core/host"
 	"github.com/pkg/errors"
 	"golang.org/x/xerrors"
+	"sync"
 
 	"github.com/filecoin-project/go-lotus/api"
 	"github.com/filecoin-project/go-lotus/build"
@@ -23,7 +24,7 @@ import (
 
 var log = logging.Logger("storageminer")
 
-const PoStConfidence = 0
+const PoStConfidence = 1
 
 type Miner struct {
 	api    storageMinerApi
@@ -39,6 +40,9 @@ type Miner struct {
 	h host.Host
 
 	ds datastore.Batching
+
+	schedLk   sync.Mutex
+	postSched uint64
 }
 
 type storageMinerApi interface {
@@ -51,8 +55,7 @@ type storageMinerApi interface {
 	StateMinerProvingPeriodEnd(context.Context, address.Address, *types.TipSet) (uint64, error)
 	StateMinerProvingSet(context.Context, address.Address, *types.TipSet) ([]*api.SectorInfo, error)
 
-	MpoolPush(context.Context, *types.SignedMessage) error
-	MpoolGetNonce(context.Context, address.Address) (uint64, error)
+	MpoolPushMessage(context.Context, *types.Message) (*types.SignedMessage, error)
 
 	ChainHead(context.Context) (*types.TipSet, error)
 	ChainWaitMsg(context.Context, cid.Cid) (*api.MsgWait, error)
@@ -62,7 +65,6 @@ type storageMinerApi interface {
 	ChainGetBlockMessages(context.Context, cid.Cid) (*api.BlockMessages, error)
 
 	WalletBalance(context.Context, address.Address) (types.BigInt, error)
-	WalletSign(context.Context, address.Address, []byte) (*types.Signature, error)
 	WalletHas(context.Context, address.Address) (bool, error)
 }
 
@@ -144,7 +146,7 @@ func (m *Miner) commitSector(ctx context.Context, sinfo sectorbuilder.SectorSeal
 		return errors.Wrap(aerr, "could not serialize commit sector parameters")
 	}
 
-	msg := types.Message{
+	msg := &types.Message{
 		To:       m.maddr,
 		From:     m.worker,
 		Method:   actors.MAMethods.CommitSector,
@@ -154,35 +156,23 @@ func (m *Miner) commitSector(ctx context.Context, sinfo sectorbuilder.SectorSeal
 		GasPrice: types.NewInt(1),
 	}
 
-	nonce, err := m.api.MpoolGetNonce(ctx, m.worker)
+	smsg, err := m.api.MpoolPushMessage(ctx, msg)
 	if err != nil {
-		return errors.Wrap(err, "failed to get nonce")
-	}
-
-	msg.Nonce = nonce
-
-	data, err := msg.Serialize()
-	if err != nil {
-		return errors.Wrap(err, "serializing commit sector message")
-	}
-
-	sig, err := m.api.WalletSign(ctx, m.worker, data)
-	if err != nil {
-		return errors.Wrap(err, "signing commit sector message")
-	}
-
-	smsg := &types.SignedMessage{
-		Message:   msg,
-		Signature: *sig,
-	}
-
-	if err := m.api.MpoolPush(ctx, smsg); err != nil {
-		return errors.Wrap(err, "pushing commit sector message to mpool")
+		return errors.Wrap(err, "pushing message to mpool")
 	}
 
 	if err := m.commt.TrackCommitSectorMsg(m.maddr, sinfo.SectorID, smsg.Cid()); err != nil {
 		return errors.Wrap(err, "tracking sector commitment")
 	}
+
+	go func() {
+		_, err := m.api.ChainWaitMsg(ctx, smsg.Cid())
+		if err != nil {
+			return
+		}
+
+		m.schedulePoSt(ctx, nil)
+	}()
 
 	return nil
 }
@@ -200,12 +190,21 @@ func (m *Miner) schedulePoSt(ctx context.Context, baseTs *types.TipSet) {
 		return
 	}
 
-	log.Infof("Scheduling post at height %d", ppe)
-	// TODO: Should we set confidence to randomness lookback?
+	m.schedLk.Lock()
+
+	if m.postSched >= ppe {
+		log.Warn("schedulePoSt already called for proving period >= %d", m.postSched)
+		m.schedLk.Unlock()
+		return
+	}
+	m.postSched = ppe
+	m.schedLk.Unlock()
+
+	log.Infof("Scheduling post at height %d", ppe-build.PoSTChallangeTime)
 	err = m.events.ChainAt(m.startPost, func(ts *types.TipSet) error { // Revert
 		// TODO: Cancel post
 		return nil
-	}, PoStConfidence, ppe)
+	}, PoStConfidence, ppe-build.PoSTChallangeTime)
 	if err != nil {
 		// TODO: This is BAD, figure something out
 		log.Errorf("scheduling PoSt failed: %s", err)
@@ -214,7 +213,14 @@ func (m *Miner) schedulePoSt(ctx context.Context, baseTs *types.TipSet) {
 }
 
 func (m *Miner) startPost(ts *types.TipSet, curH uint64) error {
-	postWaitCh, _, err := m.maybeDoPost(context.TODO(), ts)
+	log.Info("starting PoSt computation")
+
+	head, err := m.api.ChainHead(context.TODO())
+	if err != nil {
+		return err
+	}
+
+	postWaitCh, _, err := m.maybeDoPost(context.TODO(), head)
 	if err != nil {
 		return err
 	}
@@ -253,18 +259,19 @@ func (m *Miner) maybeDoPost(ctx context.Context, ts *types.TipSet) (<-chan error
 		return nil, nil, xerrors.Errorf("failed to get proving set for miner: %w", err)
 	}
 
-	r, err := m.api.ChainGetRandomness(ctx, ts, nil, int(ts.Height()-ppe))
+	r, err := m.api.ChainGetRandomness(ctx, ts, nil, int(ts.Height()-ppe+build.ProvingPeriodDuration)) // TODO: review: check math
 	if err != nil {
 		return nil, nil, xerrors.Errorf("failed to get chain randomness for post: %w", err)
 	}
 
-	sourceTs, err := m.api.ChainGetTipSetByHeight(ctx, ppe, ts)
+	sourceTs, err := m.api.ChainGetTipSetByHeight(ctx, ppe-build.ProvingPeriodDuration, ts)
 	if err != nil {
 		return nil, nil, xerrors.Errorf("failed to get post start tipset: %w", err)
 	}
 
 	ret := make(chan error, 1)
 	go func() {
+		log.Info("running PoSt computation")
 		var faults []uint64
 		proof, err := m.secst.RunPoSt(ctx, sset, r, faults)
 		if err != nil {
@@ -272,8 +279,34 @@ func (m *Miner) maybeDoPost(ctx context.Context, ts *types.TipSet) (<-chan error
 			return
 		}
 
-		// TODO: submit post...
-		_ = proof
+		log.Info("submitting PoSt")
+
+		params := &actors.SubmitPoStParams{
+			Proof:   proof,
+			DoneSet: types.BitFieldFromSet(sectorIdList(sset)),
+		}
+
+		enc, aerr := actors.SerializeParams(params)
+		if aerr != nil {
+			ret <- xerrors.Errorf("could not serialize submit post parameters: %w", err)
+			return
+		}
+
+		msg := &types.Message{
+			To:       m.maddr,
+			From:     m.worker,
+			Method:   actors.MAMethods.SubmitPoSt,
+			Params:   enc,
+			Value:    types.NewInt(0),
+			GasLimit: types.NewInt(100000 /* i dont know help */),
+			GasPrice: types.NewInt(1),
+		}
+
+		_, err = m.api.MpoolPushMessage(ctx, msg)
+		if err != nil {
+			ret <- xerrors.Errorf("pushing message to mpool: %w", err)
+			return
+		}
 
 		// make sure it succeeds...
 		// m.api.ChainWaitMsg()
@@ -281,6 +314,14 @@ func (m *Miner) maybeDoPost(ctx context.Context, ts *types.TipSet) (<-chan error
 	}()
 
 	return ret, sourceTs.MinTicketBlock(), nil
+}
+
+func sectorIdList(si []*api.SectorInfo) []uint64 {
+	out := make([]uint64, len(si))
+	for i, s := range si {
+		out[i] = s.SectorID
+	}
+	return out
 }
 
 func (m *Miner) runPreflightChecks(ctx context.Context) error {

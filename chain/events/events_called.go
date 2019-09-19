@@ -82,9 +82,6 @@ type callTuple struct {
 }
 
 func (e *calledEvents) headChangeCalled(rev, app []*types.TipSet) error {
-	e.lk.Lock()
-	defer e.lk.Unlock()
-
 	for _, ts := range rev {
 		e.handleReverts(ts)
 	}
