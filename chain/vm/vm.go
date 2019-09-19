@@ -70,6 +70,10 @@ func (vmc *VMContext) GetRandomness(height uint64) ([]byte, aerrors.ActorError) 
 	hts := vmc.vm.cs.GetHeaviestTipSet()
 
 	relHeight := int(hts.Height() - height)
+	if relHeight < 0 {
+		return nil, aerrors.Newf(1, "negative relHeight in GetRandomness: %d", relHeight)
+	}
+
 	res, err := vmc.vm.cs.GetRandomness(vmc.ctx, hts, nil, relHeight)
 	if err != nil {
 		return nil, aerrors.Escalate(err, "could not get randomness")

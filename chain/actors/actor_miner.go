@@ -33,7 +33,7 @@ type StorageMinerActorState struct {
 	DePledgeTime types.BigInt
 
 	// All sectors this miner has committed.
-	Sectors cid.Cid // TODO: Using a HAMT for now, needs to be an AMT once we implement it
+	Sectors cid.Cid
 
 	// Sectors this miner is currently mining. It is only updated
 	// when a PoSt is submitted (not as each new sector commitment is added).
@@ -295,7 +295,7 @@ type SubmitPoStParams struct {
 
 // TODO: this is a dummy method that allows us to plumb in other parts of the
 // system for now.
-func (sma StorageMinerActor) SubmitPoSt(act *types.Actor, vmctx types.VMContext, params *SubmitPoStParams) (_ []byte, paerr ActorError) {
+func (sma StorageMinerActor) SubmitPoSt(act *types.Actor, vmctx types.VMContext, params *SubmitPoStParams) ([]byte, ActorError) {
 	oldstate, self, err := loadState(vmctx)
 	if err != nil {
 		return nil, err

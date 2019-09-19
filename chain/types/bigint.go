@@ -107,7 +107,10 @@ func (bi *BigInt) MarshalCBOR(w io.Writer) error {
 		return zero.MarshalCBOR(w)
 	}
 
-	tag := uint64(^(bi.Sign()|1)+6) >> 1
+	tag := uint64(2)
+	if bi.Sign() < 0 {
+		tag = 3
+	}
 
 	header := cbg.CborEncodeMajorType(cbg.MajTag, tag)
 	if _, err := w.Write(header); err != nil {
