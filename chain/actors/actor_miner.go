@@ -445,6 +445,7 @@ func (sma StorageMinerActor) SubmitPoSt(act *types.Actor, vmctx types.VMContext,
 	}
 
 	self.ProvingSet = self.Sectors
+	self.ProvingPeriodEnd = nextProvingPeriodEnd
 	self.NextDoneSet = params.DoneSet
 
 	c, err := vmctx.Storage().Put(self)

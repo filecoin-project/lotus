@@ -303,15 +303,20 @@ func (m *Miner) maybeDoPost(ctx context.Context, ts *types.TipSet) (<-chan error
 			GasPrice: types.NewInt(1),
 		}
 
-		_, err = m.api.MpoolPushMessage(ctx, msg)
+		smsg, err := m.api.MpoolPushMessage(ctx, msg)
 		if err != nil {
 			ret <- xerrors.Errorf("pushing message to mpool: %w", err)
 			return
 		}
 
 		// make sure it succeeds...
-		// m.api.ChainWaitMsg()
+		_, err = m.api.ChainWaitMsg(ctx, smsg.Cid())
+		if err != nil {
+			return
+		}
+		// TODO: check receipt
 
+		m.schedulePoSt(ctx, nil)
 	}()
 
 	return ret, sourceTs.MinTicketBlock(), nil
