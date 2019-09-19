@@ -107,13 +107,9 @@ func (bi *BigInt) MarshalCBOR(w io.Writer) error {
 		return zero.MarshalCBOR(w)
 	}
 
-	if bi.Sign() < 0 {
-		// right now we don't support negative integers.
-		// In the spec, everything is listed as a Uint.
-		return fmt.Errorf("BigInt does not support negative integers")
-	}
+	tag := uint64(^(bi.Sign()|1)+6) >> 1
 
-	header := cbg.CborEncodeMajorType(cbg.MajTag, 2)
+	header := cbg.CborEncodeMajorType(cbg.MajTag, tag)
 	if _, err := w.Write(header); err != nil {
 		return err
 	}
@@ -138,9 +134,11 @@ func (bi *BigInt) UnmarshalCBOR(br io.Reader) error {
 		return err
 	}
 
-	if maj != cbg.MajTag && extra != 2 {
+	if maj != cbg.MajTag && extra != 2 && extra != 3 {
 		return fmt.Errorf("cbor input for big int was not a tagged big int")
 	}
+
+	minus := extra & 1
 
 	maj, extra, err = cbg.CborReadHeader(br)
 	if err != nil {
@@ -161,6 +159,9 @@ func (bi *BigInt) UnmarshalCBOR(br io.Reader) error {
 	}
 
 	bi.Int = big.NewInt(0).SetBytes(buf)
+	if minus > 0 {
+		bi.Int.Neg(bi.Int)
+	}
 
 	return nil
 }

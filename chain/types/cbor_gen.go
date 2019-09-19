@@ -1199,6 +1199,10 @@ func (t *MessageReceipt) UnmarshalCBOR(r io.Reader) error {
 }
 
 func (t *BlockMsg) MarshalCBOR(w io.Writer) error {
+	if t == nil {
+		_, err := w.Write(cbg.CborNull)
+		return err
+	}
 	if _, err := w.Write([]byte{131}); err != nil {
 		return err
 	}
@@ -1230,7 +1234,8 @@ func (t *BlockMsg) MarshalCBOR(w io.Writer) error {
 	return nil
 }
 
-func (t *BlockMsg) UnmarshalCBOR(br io.Reader) error {
+func (t *BlockMsg) UnmarshalCBOR(r io.Reader) error {
+	br := cbg.GetPeeker(r)
 
 	maj, extra, err := cbg.CborReadHeader(br)
 	if err != nil {
@@ -1246,10 +1251,24 @@ func (t *BlockMsg) UnmarshalCBOR(br io.Reader) error {
 
 	// t.t.Header (types.BlockHeader)
 
-	t.Header = new(BlockHeader)
+	{
 
-	if err := t.Header.UnmarshalCBOR(br); err != nil {
-		return err
+		pb, err := br.PeekByte()
+		if err != nil {
+			return err
+		}
+		if pb == cbg.CborNull[0] {
+			var nbuf [1]byte
+			if _, err := br.Read(nbuf[:]); err != nil {
+				return err
+			}
+		} else {
+			t.Header = new(BlockHeader)
+			if err := t.Header.UnmarshalCBOR(br); err != nil {
+				return err
+			}
+		}
+
 	}
 	// t.t.BlsMessages ([]cid.Cid)
 

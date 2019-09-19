@@ -294,7 +294,13 @@ type SubmitPoStParams struct {
 
 // TODO: this is a dummy method that allows us to plumb in other parts of the
 // system for now.
-func (sma StorageMinerActor) SubmitPoSt(act *types.Actor, vmctx types.VMContext, params *SubmitPoStParams) ([]byte, ActorError) {
+func (sma StorageMinerActor) SubmitPoSt(act *types.Actor, vmctx types.VMContext, params *SubmitPoStParams) (_ []byte, paerr ActorError) {
+	defer func() {
+		if paerr != nil {
+			log.Error(paerr)
+		}
+	}()
+
 	oldstate, self, err := loadState(vmctx)
 	if err != nil {
 		return nil, err
