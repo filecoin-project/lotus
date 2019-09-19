@@ -5,6 +5,7 @@ import (
 	"crypto/sha256"
 	"encoding/json"
 	"fmt"
+	"github.com/filecoin-project/go-lotus/build"
 	"sync"
 
 	amt "github.com/filecoin-project/go-amt-ipld"
@@ -753,6 +754,10 @@ func (cs *ChainStore) GetTipsetByHeight(ctx context.Context, h uint64, ts *types
 
 	if h > ts.Height() {
 		return nil, xerrors.Errorf("looking for tipset with height less than start point")
+	}
+
+	if ts.Height()-h > build.ForkLengthThreshold {
+		log.Warnf("expensive call to GetTipsetByHeight, seeking %d levels", ts.Height()-h)
 	}
 
 	for {

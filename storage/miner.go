@@ -250,7 +250,7 @@ func (m *Miner) maybeDoPost(ctx context.Context, ts *types.TipSet) (<-chan error
 		return nil, nil, xerrors.Errorf("failed to get proving period end for miner: %w", err)
 	}
 
-	if ppe < ts.Height() {
+	if ts.Height() > ppe {
 		log.Warnf("skipping post, supplied tipset too high: ppe=%d, ts.H=%d", ppe, ts.Height())
 		return nil, nil, nil
 	}
