@@ -2,7 +2,6 @@ package actors
 
 import (
 	"context"
-	"encoding/base64"
 	"fmt"
 
 	"github.com/filecoin-project/go-lotus/build"
@@ -297,12 +296,6 @@ type SubmitPoStParams struct {
 // TODO: this is a dummy method that allows us to plumb in other parts of the
 // system for now.
 func (sma StorageMinerActor) SubmitPoSt(act *types.Actor, vmctx types.VMContext, params *SubmitPoStParams) (_ []byte, paerr ActorError) {
-	defer func() {
-		if paerr != nil {
-			log.Error(paerr)
-		}
-	}()
-
 	oldstate, self, err := loadState(vmctx)
 	if err != nil {
 		return nil, err
@@ -345,16 +338,13 @@ func (sma StorageMinerActor) SubmitPoSt(act *types.Actor, vmctx types.VMContext,
 		}
 	}
 
-	var dbgRandH uint64
 	var seed [sectorbuilder.CommLen]byte
 	{
 		var rand []byte
 		var err ActorError
 		if !lateSubmission {
-			dbgRandH = self.ProvingPeriodEnd - build.PoSTChallangeTime
 			rand, err = vmctx.GetRandomness(self.ProvingPeriodEnd - build.PoSTChallangeTime)
 		} else {
-			dbgRandH = nextProvingPeriodEnd - build.PoSTChallangeTime
 			rand, err = vmctx.GetRandomness(nextProvingPeriodEnd - build.PoSTChallangeTime)
 		}
 		if err != nil {
@@ -396,17 +386,14 @@ func (sma StorageMinerActor) SubmitPoSt(act *types.Actor, vmctx types.VMContext,
 
 	faults := self.CurrentFaultSet.All()
 
-	log.Infof("VerifyPost; rh=%d r=%s pLen=%d", dbgRandH, base64.StdEncoding.EncodeToString(seed[:]), len(params.Proof))
 	if ok, lerr := sectorbuilder.VerifyPost(mi.SectorSize.Uint64(),
 		sectorbuilder.NewSortedSectorInfo(sectorInfos), seed, params.Proof,
 		faults); !ok || lerr != nil {
 		if lerr != nil {
 			// TODO: study PoST errors
-			log.Infof("Post Verify Error: %s", lerr)
 			return nil, aerrors.Absorb(lerr, 4, "PoST error")
 		}
 		if !ok {
-			log.Info("post verification FAILED")
 			return nil, aerrors.New(4, "PoST invalid")
 		}
 	}
