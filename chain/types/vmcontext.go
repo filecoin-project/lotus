@@ -36,6 +36,7 @@ type VMContext interface {
 	StateTree() (StateTree, aerrors.ActorError)
 	VerifySignature(sig *Signature, from address.Address, data []byte) aerrors.ActorError
 	ChargeGas(uint64) aerrors.ActorError
+	GetRandomness(height uint64) ([]byte, aerrors.ActorError)
 }
 
 type storageWrapper struct {

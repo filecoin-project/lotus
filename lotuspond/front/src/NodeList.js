@@ -2,12 +2,12 @@ import React from 'react';
 import FullNode from "./FullNode";
 import ConnMgr from "./ConnMgr";
 import Consensus from "./Consensus";
-import {Cristal} from "react-cristal";
 import StorageNode from "./StorageNode";
 import {Client} from "rpc-websockets";
 import pushMessage from "./chain/send";
 import Logs from "./Logs";
 import StorageNodeInit from "./StorageNodeInit";
+import Window from "./Window";
 
 const [NodeUnknown, NodeRunning, NodeStopped] = [0, 1, 2]
 
@@ -155,7 +155,7 @@ class NodeList extends React.Component {
     }
 
     return (
-      <Cristal title={"Node List"} initialPosition="bottom-left">
+      <Window title={"Node List"} initialPosition="bottom-left">
         <div className={'NodeList'}>
           <div>
             <button onClick={this.spawnNode} disabled={!this.state.existingLoaded}>Spawn Node</button>
@@ -190,7 +190,7 @@ class NodeList extends React.Component {
           {connMgr}
           {consensus}
         </div>
-      </Cristal>
+      </Window>
     );
   }
 }
