@@ -37,8 +37,11 @@ class SingleNode extends React.Component {
   render() {
     if (this.state.client === undefined) {
       return (
-        <div>
-          Connecting to Node RPC: <code>{`${this.state.addr}?token=****`}</code>
+        <div className="SingleNode-connecting">
+          <div>
+            <div>Connecting to Node RPC:</div>
+            <div>{`${this.state.addr}?token=****`}</div>
+          </div>
         </div>
       )
     }

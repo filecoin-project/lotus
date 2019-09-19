@@ -49,25 +49,29 @@ class Index extends React.Component {
 
   render() {
     return (
-      <div>
-        <div><Link to={"/app/pond"}>Open Pond</Link></div>
-        <div>----------------</div>
-        <div>
-          <div>Managed Nodes:</div>
-          {
-            this.state.nodes.map((node, i) => <div>
-              <span>{i}. {node.addr} <Link to={`/app/node/${i}`}>[OPEN UI]</Link></span>
-            </div>)
-          }
-        </div>
-        <a hidden={this.state.addingNode} href='#' onClick={this.onAdd}>[Add]</a>
-        <div hidden={!this.state.addingNode}>
-          <div>---------------</div>
+      <div className="Index">
+        <div className="Index-nodes">
           <div>
-            + RPC:<input value={"ws://127.0.0.1:1234/rpc/v0"} onChange={this.update("rpcUrl")}/>
+            {
+              this.state.nodes.map((node, i) => <div className="Index-node">
+                <span>{i}. {node.addr} <Link to={`/app/node/${i}`}>[OPEN UI]</Link></span>
+              </div>)
+            }
           </div>
+          <a hidden={this.state.addingNode} href='#' onClick={this.onAdd} className="Button">[Add Node]</a>
+          <div hidden={!this.state.addingNode}>
+            <div>---------------</div>
+            <div>
+              + RPC:<input defaultValue={"ws://127.0.0.1:1234/rpc/v0"} onChange={this.update("rpcUrl")}/>
+            </div>
+            <div>
+              Token (<code>lotus auth create-admin-token</code>): <input onChange={this.update("rpcToken")}/>{this.tokenOk()}
+            </div>
+          </div>
+        </div>
+        <div className="Index-footer">
           <div>
-            Token (<code>lotus auth create-admin-token</code>): <input onChange={this.update("rpcToken")}/>{this.tokenOk()}
+            <Link to={"/app/pond"}>Open Pond</Link>
           </div>
         </div>
       </div>

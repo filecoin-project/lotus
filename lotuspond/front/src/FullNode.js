@@ -1,10 +1,9 @@
 import React from 'react';
-import Cristal from 'react-cristal'
 import { BlockLinks } from "./BlockLink";
-import StorageNodeInit from "./StorageNodeInit";
 import Address from "./Address";
 import ChainExplorer from "./ChainExplorer";
 import Client from "./Client";
+import Window from "./Window";
 
 class FullNode extends React.Component {
   constructor(props) {
@@ -168,10 +167,10 @@ class FullNode extends React.Component {
     }
 
     let nodeID = this.props.node.ID ? this.props.node.ID : ''
-    let nodePos = this.props.node.ID ? {x: this.props.node.ID*30, y: this.props.node.ID * 30} : undefined
+    let nodePos = this.props.node.ID ? {x: this.props.node.ID*30, y: this.props.node.ID * 30} : 'center'
 
     return (
-      <Cristal
+      <Window
         title={"Node " + nodeID}
         initialPosition={nodePos}
         initialSize={{width: 690, height: 300}}
@@ -181,7 +180,7 @@ class FullNode extends React.Component {
             {runtime}
           </div>
         </div>
-      </Cristal>
+      </Window>
     )
   }
 }
