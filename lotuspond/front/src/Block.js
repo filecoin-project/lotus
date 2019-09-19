@@ -1,7 +1,7 @@
 import React from 'react';
-import {Cristal} from "react-cristal";
 import {BlockLinks} from "./BlockLink";
 import Address from "./Address";
+import Window from "./Window";
 
 class Block extends React.Component {
   constructor(props) {
@@ -57,9 +57,9 @@ class Block extends React.Component {
       )
     }
 
-    return (<Cristal className="CristalScroll" initialSize={{width: 700, height: 400}} onClose={this.props.onClose} title={`Block ${this.props.cid['/']}`}>
+    return (<Window className="CristalScroll" initialSize={{width: 700, height: 400}} onClose={this.props.onClose} title={`Block ${this.props.cid['/']}`}>
       {content}
-    </Cristal>)
+    </Window>)
   }
 }
 

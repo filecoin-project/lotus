@@ -1,6 +1,5 @@
 import React from 'react';
-import {Cristal} from "react-cristal";
-import StorageNode from "./StorageNode";
+import Window from "./Window";
 
 class StorageNodeInit extends React.Component {
   async componentDidMount() {
@@ -11,7 +10,7 @@ class StorageNodeInit extends React.Component {
   }
 
   render() {
-    return <Cristal
+    return <Window
       title={"Storage miner initializing"}
       initialPosition={'center'}>
       <div className="CristalScroll">
@@ -19,7 +18,7 @@ class StorageNodeInit extends React.Component {
           Waiting for init, make sure at least one miner is enabled
         </div>
       </div>
-    </Cristal>
+    </Window>
   }
 }
 

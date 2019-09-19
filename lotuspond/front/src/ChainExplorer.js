@@ -1,6 +1,6 @@
 import React from 'react';
-import {Cristal} from "react-cristal";
 import {BlockLinks} from "./BlockLink";
+import Window from "./Window";
 
 const rows = 32
 
@@ -132,9 +132,9 @@ class ChainExplorer extends React.Component {
       return <div key={row} className={className}>@{row} {info}</div>
     })}</div>
 
-    return (<Cristal onClose={this.props.onClose} title={`Chain Explorer ${this.state.follow ? '(Following)' : ''}`}>
+    return (<Window onClose={this.props.onClose} title={`Chain Explorer ${this.state.follow ? '(Following)' : ''}`}>
       {content}
-    </Cristal>)
+    </Window>)
   }
 }
 

@@ -1,6 +1,6 @@
 import React from 'react';
-import Cristal from 'react-cristal'
 import Address from "./Address";
+import Window from "./Window";
 
 const dealStates = [
   "Unknown",
@@ -94,12 +94,12 @@ class Client extends React.Component {
 
     </div>)
 
-    return <Cristal title={"Client - Node " + this.props.node.ID} onClose={this.props.onClose}>
+    return <Window title={"Client - Node " + this.props.node.ID} onClose={this.props.onClose}>
       <div className="Client">
         <div>{dealMaker}</div>
         <div>{deals}</div>
       </div>
-    </Cristal>
+    </Window>
   }
 }
 

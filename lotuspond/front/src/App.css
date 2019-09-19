@@ -80,7 +80,7 @@ a:visited {
 }
 
 a:hover {
-  color: #10a010;
+  color: #30a00a;
 }
 
 .Button {
@@ -92,6 +92,10 @@ a:hover {
 
 .Window {
   background: #2a2a2a !important;
+  color: #e0e0e0;
+}
+
+.Window b {
   color: #f0f0f0;
 }
 
@@ -101,6 +105,14 @@ a:hover {
 
 .Window > :first-child > :nth-child(2)::after {
   background: #f0f0f0;
+}
+
+.Window a:link {
+  color: #30a015;
+}
+
+.Window a:visited {
+  color: #30a015;
 }
 
 /* POND */
@@ -169,19 +181,20 @@ a:hover {
 
 .ChainExplorer {
   font-family: monospace;
+  color: #d0d0d0;
 }
 
 .ChainExplorer-at {
   min-width: 40em;
-  background: #77ff77;
+  background: #222222;
 }
 
 .ChainExplorer-after {
-  background: #cc9c44
+  background: #440000
 }
 
 .ChainExplorer-before {
-  background: #cccc00
+  background: #444400
 }
 
 .Logs {

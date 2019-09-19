@@ -105,7 +105,7 @@ class Address extends React.Component {
     }
 
     addr = <span className={`pondaddr-${this.props.addr}`}
-                 onMouseEnter={() => sheet.sheet.insertRule(`.pondaddr-${this.props.addr}, .pondaddr-${this.props.addr} * { color: #11ee11; }`, 0)}
+                 onMouseEnter={() => sheet.sheet.insertRule(`.pondaddr-${this.props.addr}, .pondaddr-${this.props.addr} * { color: #11ee11 !important; }`, 0)}
                  onMouseLeave={() => sheet.sheet.deleteRule(0)}
                  >{addr}</span>
 
