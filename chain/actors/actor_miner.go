@@ -387,11 +387,12 @@ func (sma StorageMinerActor) SubmitPoSt(act *types.Actor, vmctx types.VMContext,
 	if ok, lerr := sectorbuilder.VerifyPost(mi.SectorSize.Uint64(),
 		sectorbuilder.NewSortedSectorInfo(sectorInfos), seed, params.Proof,
 		faults); !ok || lerr != nil {
+		if lerr != nil {
+			// TODO: study PoST errors
+			return nil, aerrors.Absorb(lerr, 4, "PoST error")
+		}
 		if !ok {
 			return nil, aerrors.New(4, "PoST invalid")
-		}
-		if lerr != nil {
-			return nil, aerrors.Absorb(lerr, 4, "PoST error")
 		}
 	}
 	self.CurrentFaultSet = self.NextFaultSet
