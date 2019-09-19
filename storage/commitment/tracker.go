@@ -56,6 +56,23 @@ func (ct *Tracker) TrackCommitSectorMsg(miner address.Address, sectorId uint64, 
 	tracking, err := ct.commitDs.Get(key)
 	switch err {
 	case datastore.ErrNotFound:
+		comm := &commitment{Msg: mcid}
+		commB, err := cbor.DumpObject(comm)
+		if err != nil {
+			return err
+		}
+
+		if err := ct.commitDs.Put(key, commB); err != nil {
+			return err
+		}
+
+		waits, ok := ct.waits[key]
+		if ok {
+			close(waits)
+			delete(ct.waits, key)
+		}
+		return nil
+	case nil:
 		var comm commitment
 		if err := cbor.DecodeInto(tracking, &comm); err != nil {
 			return err
@@ -67,29 +84,9 @@ func (ct *Tracker) TrackCommitSectorMsg(miner address.Address, sectorId uint64, 
 
 		log.Warnf("commitment.TrackCommitSectorMsg called more than once for miner %s, sector %d, message %s", miner, sectorId, mcid)
 		return nil
-	case nil:
-		break
 	default:
 		return err
 	}
-
-	comm := &commitment{Msg: mcid}
-	commB, err := cbor.DumpObject(comm)
-	if err != nil {
-		return err
-	}
-
-	if err := ct.commitDs.Put(key, commB); err != nil {
-		return err
-	}
-
-	waits, ok := ct.waits[key]
-	if ok {
-		close(waits)
-		delete(ct.waits, key)
-	}
-
-	return nil
 }
 
 func (ct *Tracker) WaitCommit(ctx context.Context, miner address.Address, sectorId uint64) (cid.Cid, error) {
