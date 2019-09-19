@@ -411,7 +411,7 @@ func (sma StorageMinerActor) SubmitPoSt(act *types.Actor, vmctx types.VMContext,
 
 	self.ProvingSet, lerr = ss.Flush()
 	if lerr != nil {
-		return nil, aerrors.Escalate(lerr, "could not flish AMT")
+		return nil, aerrors.Escalate(lerr, "could not flush AMT")
 	}
 
 	oldPower := self.Power
