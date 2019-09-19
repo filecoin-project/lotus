@@ -392,6 +392,13 @@ func (sma StorageMinerActor) SubmitPoSt(act *types.Actor, vmctx types.VMContext,
 		return nil, aerrors.Escalate(lerr, "could not load sector set node")
 	}
 
+	if err := ss.BatchDelete(params.DoneSet.All()); err != nil {
+		// TODO: this could fail for system reasons (block not found) or for
+		// bad user input reasons (e.g. bad doneset). The latter should be a
+		// non-fatal error
+		return nil, aerrors.Escalate(err, "failed to delete sectors in done set")
+	}
+
 	_ = ss
 	//TODO: Remove done sectors from SectorSet
 	self.ProvingSet, lerr = ss.Flush()
