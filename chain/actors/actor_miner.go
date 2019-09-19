@@ -34,13 +34,11 @@ type StorageMinerActorState struct {
 	DePledgeTime types.BigInt
 
 	// All sectors this miner has committed.
-	Sectors       cid.Cid // TODO: Using a HAMT for now, needs to be an AMT once we implement it
-	SectorSetSize uint64  // TODO: the AMT should be able to tell us how many items are in it. This field won't be needed at that point
+	Sectors cid.Cid // TODO: Using a HAMT for now, needs to be an AMT once we implement it
 
 	// Sectors this miner is currently mining. It is only updated
 	// when a PoSt is submitted (not as each new sector commitment is added).
-	ProvingSet     cid.Cid
-	ProvingSetSize uint64
+	ProvingSet cid.Cid
 
 	// Faulty sectors reported since last SubmitPost,
 	// up to the current proving period's challenge time.
@@ -269,9 +267,13 @@ func (sma StorageMinerActor) CommitSector(act *types.Actor, vmctx types.VMContex
 	//
 	// Note: Proving period is a function of sector size; small sectors take less
 	// time to prove than large sectors do. Sector size is selected when pledging.
-	if self.ProvingSetSize == 0 {
+	pss, lerr := amt.LoadAMT(types.WrapStorage(vmctx.Storage()), self.ProvingSet)
+	if lerr != nil {
+		return nil, aerrors.Escalate(lerr, "could not load proving set node")
+	}
+
+	if pss.Count == 0 {
 		self.ProvingSet = self.Sectors
-		self.ProvingSetSize = self.SectorSetSize
 		self.ProvingPeriodEnd = vmctx.BlockHeight() + build.ProvingPeriodDuration
 	}
 
@@ -367,7 +369,7 @@ func (sma StorageMinerActor) SubmitPoSt(act *types.Actor, vmctx types.VMContext,
 
 	pss, lerr := amt.LoadAMT(types.WrapStorage(vmctx.Storage()), self.ProvingSet)
 	if lerr != nil {
-		return nil, aerrors.Escalate(lerr, "could not load sector set node")
+		return nil, aerrors.Escalate(lerr, "could not load proving set node")
 	}
 
 	var sectorInfos []sectorbuilder.SectorInfo
@@ -413,7 +415,7 @@ func (sma StorageMinerActor) SubmitPoSt(act *types.Actor, vmctx types.VMContext,
 
 	ss, lerr := amt.LoadAMT(types.WrapStorage(vmctx.Storage()), self.ProvingSet)
 	if lerr != nil {
-		return nil, aerrors.Escalate(lerr, "could not load sector set node")
+		return nil, aerrors.Escalate(lerr, "could not load proving set node")
 	}
 
 	if err := ss.BatchDelete(params.DoneSet.All()); err != nil {
@@ -429,7 +431,7 @@ func (sma StorageMinerActor) SubmitPoSt(act *types.Actor, vmctx types.VMContext,
 	}
 
 	oldPower := self.Power
-	self.Power = types.BigMul(types.NewInt(self.ProvingSetSize-uint64(len(faults))),
+	self.Power = types.BigMul(types.NewInt(pss.Count-uint64(len(faults))),
 		mi.SectorSize)
 
 	enc, err := SerializeParams(&UpdateStorageParams{Delta: types.BigSub(self.Power, oldPower)})
@@ -443,7 +445,6 @@ func (sma StorageMinerActor) SubmitPoSt(act *types.Actor, vmctx types.VMContext,
 	}
 
 	self.ProvingSet = self.Sectors
-	self.ProvingSetSize = self.SectorSetSize
 	self.NextDoneSet = params.DoneSet
 
 	c, err := vmctx.Storage().Put(self)
