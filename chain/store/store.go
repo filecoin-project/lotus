@@ -722,6 +722,7 @@ func (cs *ChainStore) GetRandomness(ctx context.Context, pts *types.TipSet, tick
 		mtb := nts.MinTicketBlock()
 		if nv < len(mtb.Tickets) {
 			t := mtb.Tickets[len(mtb.Tickets)-(1+nv)]
+			log.Infof("Returning randomness: H:%d, t:%d, mtb:%s", nts.Height(), len(mtb.Tickets)-(1+nv), mtb.Cid())
 			return t.VDFResult, nil
 		}
 

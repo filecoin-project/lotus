@@ -20,7 +20,7 @@ const ForkLengthThreshold = 20
 const RandomnessLookback = 20
 
 // Blocks
-const ProvingPeriodDuration = 20
-const PoSTChallangeTime = 10
+const ProvingPeriodDuration = 10
+const PoSTChallangeTime = 5
 
 // TODO: Move other important consts here

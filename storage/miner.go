@@ -2,6 +2,7 @@ package storage
 
 import (
 	"context"
+	"encoding/base64"
 	"github.com/ipfs/go-cid"
 	"github.com/ipfs/go-datastore"
 	logging "github.com/ipfs/go-log"
@@ -259,19 +260,19 @@ func (m *Miner) maybeDoPost(ctx context.Context, ts *types.TipSet) (<-chan error
 		return nil, nil, xerrors.Errorf("failed to get proving set for miner: %w", err)
 	}
 
-	r, err := m.api.ChainGetRandomness(ctx, ts, nil, int(ts.Height()-ppe+build.ProvingPeriodDuration)) // TODO: review: check math
+	r, err := m.api.ChainGetRandomness(ctx, ts, nil, int(int64(ts.Height())-int64(ppe)+int64(build.PoSTChallangeTime))) // TODO: review: check math
 	if err != nil {
 		return nil, nil, xerrors.Errorf("failed to get chain randomness for post: %w", err)
 	}
 
-	sourceTs, err := m.api.ChainGetTipSetByHeight(ctx, ppe-build.ProvingPeriodDuration, ts)
+	sourceTs, err := m.api.ChainGetTipSetByHeight(ctx, ppe-build.PoSTChallangeTime, ts)
 	if err != nil {
 		return nil, nil, xerrors.Errorf("failed to get post start tipset: %w", err)
 	}
 
 	ret := make(chan error, 1)
 	go func() {
-		log.Info("running PoSt computation")
+		log.Infof("running PoSt computation, rh=%d r=%s, ppe=%d, h=%d", ts.Height()-(ts.Height()-ppe+build.PoSTChallangeTime), base64.StdEncoding.EncodeToString(r), ppe, ts.Height())
 		var faults []uint64
 		proof, err := m.secst.RunPoSt(ctx, sset, r, faults)
 		if err != nil {
@@ -279,7 +280,7 @@ func (m *Miner) maybeDoPost(ctx context.Context, ts *types.TipSet) (<-chan error
 			return
 		}
 
-		log.Info("submitting PoSt")
+		log.Infof("submitting PoSt pLen=%d", len(proof))
 
 		params := &actors.SubmitPoStParams{
 			Proof:   proof,

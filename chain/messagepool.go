@@ -77,7 +77,7 @@ func (mp *MessagePool) addLocked(m *types.SignedMessage) error {
 		return err
 	}
 
-	log.Info("mpooladd: %s", base64.StdEncoding.EncodeToString(data))
+	log.Infof("mpooladd: %s", base64.StdEncoding.EncodeToString(data))
 
 	if err := m.Signature.Verify(m.Message.From, data); err != nil {
 		return err
