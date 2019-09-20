@@ -360,7 +360,7 @@ type mca struct {
 }
 
 func (mca mca) ChainGetRandomness(ctx context.Context, pts *types.TipSet, ticks []*types.Ticket, lb int) ([]byte, error) {
-	return mca.sm.ChainStore().GetRandomness(ctx, pts, ticks, lb)
+	return mca.sm.ChainStore().GetRandomness(ctx, pts, ticks, int64(lb))
 }
 
 func (mca mca) StateMinerPower(ctx context.Context, maddr address.Address, ts *types.TipSet) (api.MinerPower, error) {

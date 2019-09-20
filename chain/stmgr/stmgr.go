@@ -78,7 +78,9 @@ func (sm *StateManager) computeTipSetState(cids []cid.Cid) (cid.Cid, error) {
 		return cid.Undef, xerrors.Errorf("recursive TipSetState failed: %w", err)
 	}
 
-	vmi, err := vm.NewVM(pstate, ts.Height(), address.Undef, sm.cs)
+	r := vm.NewChainRand(sm.cs, ts, nil)
+
+	vmi, err := vm.NewVM(pstate, ts.Height(), r, address.Undef, sm.cs)
 	if err != nil {
 		return cid.Undef, xerrors.Errorf("instantiating VM failed: %w", err)
 	}

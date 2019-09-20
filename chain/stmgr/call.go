@@ -11,8 +11,8 @@ import (
 	"golang.org/x/xerrors"
 )
 
-func (sm *StateManager) CallRaw(ctx context.Context, msg *types.Message, bstate cid.Cid, bheight uint64) (*types.MessageReceipt, error) {
-	vmi, err := vm.NewVM(bstate, bheight, actors.NetworkAddress, sm.cs)
+func (sm *StateManager) CallRaw(ctx context.Context, msg *types.Message, bstate cid.Cid, r vm.Rand, bheight uint64) (*types.MessageReceipt, error) {
+	vmi, err := vm.NewVM(bstate, bheight, r, actors.NetworkAddress, sm.cs)
 	if err != nil {
 		return nil, xerrors.Errorf("failed to set up vm: %w", err)
 	}
@@ -57,5 +57,7 @@ func (sm *StateManager) Call(ctx context.Context, msg *types.Message, ts *types.
 		return nil, err
 	}
 
-	return sm.CallRaw(ctx, msg, state, ts.Height())
+	r := vm.NewChainRand(sm.cs, ts, nil)
+
+	return sm.CallRaw(ctx, msg, state, r, ts.Height())
 }

@@ -67,14 +67,8 @@ func (vmc *VMContext) Message() *types.Message {
 }
 
 func (vmc *VMContext) GetRandomness(height uint64) ([]byte, aerrors.ActorError) {
-	hts := vmc.vm.cs.GetHeaviestTipSet()
 
-	relHeight := int(hts.Height() - height)
-	if relHeight < 0 {
-		return nil, aerrors.Newf(1, "negative relHeight in GetRandomness: %d", relHeight)
-	}
-
-	res, err := vmc.vm.cs.GetRandomness(vmc.ctx, hts, nil, relHeight)
+	res, err := vmc.vm.rand.GetRandomness(vmc.ctx, int64(height))
 	if err != nil {
 		return nil, aerrors.Escalate(err, "could not get randomness")
 	}
@@ -294,9 +288,10 @@ type VM struct {
 	blockHeight uint64
 	blockMiner  address.Address
 	inv         *invoker
+	rand        Rand
 }
 
-func NewVM(base cid.Cid, height uint64, maddr address.Address, cs *store.ChainStore) (*VM, error) {
+func NewVM(base cid.Cid, height uint64, r Rand, maddr address.Address, cs *store.ChainStore) (*VM, error) {
 	buf := bufbstore.NewBufferedBstore(cs.Blockstore())
 	cst := hamt.CSTFromBstore(buf)
 	state, err := state.LoadStateTree(cst, base)
@@ -313,7 +308,31 @@ func NewVM(base cid.Cid, height uint64, maddr address.Address, cs *store.ChainSt
 		blockHeight: height,
 		blockMiner:  maddr,
 		inv:         newInvoker(),
+		rand:        r,
 	}, nil
+}
+
+type Rand interface {
+	GetRandomness(ctx context.Context, h int64) ([]byte, error)
+}
+
+type chainRand struct {
+	cs      *store.ChainStore
+	pts     *types.TipSet
+	tickets []*types.Ticket
+}
+
+func NewChainRand(cs *store.ChainStore, pts *types.TipSet, tickets []*types.Ticket) Rand {
+	return &chainRand{
+		cs:      cs,
+		pts:     pts,
+		tickets: tickets,
+	}
+}
+
+func (cr *chainRand) GetRandomness(ctx context.Context, h int64) ([]byte, error) {
+	lb := (int64(cr.pts.Height()) + int64(len(cr.tickets))) - h
+	return cr.cs.GetRandomness(ctx, cr.pts, cr.tickets, lb)
 }
 
 type ApplyRet struct {
