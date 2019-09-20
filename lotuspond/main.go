@@ -134,6 +134,10 @@ var runCmd = &cli.Command{
 		rpcServer.Register("Pond", a)
 
 		http.Handle("/", http.FileServer(http.Dir("lotuspond/front/build")))
+		http.HandleFunc("/app/", func(w http.ResponseWriter, r *http.Request) {
+			http.ServeFile(w, r, "lotuspond/front/build/index.html")
+		})
+
 		http.Handle("/rpc/v0", rpcServer)
 		http.HandleFunc("/logs/", logHandler(a))
 
