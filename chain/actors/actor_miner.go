@@ -318,12 +318,11 @@ func (sma StorageMinerActor) SubmitPoSt(act *types.Actor, vmctx types.VMContext,
 		return nil, aerrors.New(1, "not authorized to submit post for miner")
 	}
 
-	feesRequired := types.NewInt(0)
-	nextProvingPeriodEnd := self.ProvingPeriodEnd + build.ProvingPeriodDuration
-	if vmctx.BlockHeight() > nextProvingPeriodEnd {
+	if vmctx.BlockHeight() > self.ProvingPeriodEnd+NoPostSlashThreshold {
 		return nil, aerrors.New(1, "PoSt submited too late")
 	}
 
+	feesRequired := types.NewInt(0)
 	var lateSubmission bool
 	if vmctx.BlockHeight() > self.ProvingPeriodEnd {
 		//TODO late fee calc
@@ -354,11 +353,12 @@ func (sma StorageMinerActor) SubmitPoSt(act *types.Actor, vmctx types.VMContext,
 		}
 	}
 
+	nextProvingPeriodEnd := self.ProvingPeriodEnd + build.ProvingPeriodDuration
 	var seed [sectorbuilder.CommLen]byte
 	{
-		randSrc := self.ProvingPeriodEnd - build.PoSTChallangeTime
+		randSrc := self.ProvingPeriodEnd - build.PoStChallengeTime
 		if lateSubmission {
-			randSrc = nextProvingPeriodEnd - build.PoSTChallangeTime
+			randSrc = nextProvingPeriodEnd - build.PoStChallengeTime
 		}
 
 		rand, err := vmctx.GetRandomness(randSrc)
@@ -484,6 +484,7 @@ func computeTempFaultSectorFee(nsectors uint64, ssize types.BigInt) types.BigInt
 
 const NoPostSlashThreshold = build.ProvingPeriodDuration * 3
 
+// Slash this miner for not having submitted their post for a while
 func (sma StorageMinerActor) SlashStorageFault(act *types.Actor, vmctx types.VMContext, params *struct{}) ([]byte, ActorError) {
 	oldstate, self, err := loadState(vmctx)
 	if err != nil {
@@ -525,8 +526,12 @@ func (sma StorageMinerActor) SlashStorageFault(act *types.Actor, vmctx types.VMC
 		return nil, aerrors.Wrap(err, "failed to cut miners storage")
 	}
 
+	// Miner has no more power
 	self.Power = types.NewInt(0)
 
+	// All sectors in the proving set are now slashed.
+	// Note: sectors added since this proving period began are not included
+	// in the slashing.
 	self.SlashedSet = self.ProvingSet
 
 	// remove proving set from our sectors
@@ -549,6 +554,9 @@ func (sma StorageMinerActor) SlashStorageFault(act *types.Actor, vmctx types.VMC
 
 	self.OwedStorageCollateral = types.BigMul(types.NewInt(ss.Count), mi.StorageCollateral)
 	self.SlashedAt = vmctx.BlockHeight()
+
+	// TODO: should we reset their proving period? otherwise i don't see how
+	// they can resume mining after this
 
 	ncid, err := vmctx.Storage().Put(self)
 	if err != nil {

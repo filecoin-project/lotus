@@ -21,7 +21,7 @@ const RandomnessLookback = 20
 
 // Blocks
 const ProvingPeriodDuration = 10
-const PoSTChallangeTime = 5
+const PoStChallengeTime = 5
 
 const PowerCollateralProportion = 20
 const PerCapitaCollateralProportion = 5
