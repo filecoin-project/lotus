@@ -318,6 +318,11 @@ func (sma StorageMinerActor) SubmitPoSt(act *types.Actor, vmctx types.VMContext,
 		return nil, aerrors.New(1, "not authorized to submit post for miner")
 	}
 
+	if self.SlashedAt != 0 {
+		// TODO: the miner is restarting after being slashed, what do we do?
+		return nil, aerrors.New(99, "HELP. MINER TRYING TO RESTART")
+	}
+
 	if vmctx.BlockHeight() > self.ProvingPeriodEnd+NoPostSlashThreshold {
 		return nil, aerrors.New(1, "PoSt submited too late")
 	}
