@@ -41,6 +41,8 @@ func cidsToKey(cids []cid.Cid) string {
 }
 
 func (sm *StateManager) TipSetState(cids []cid.Cid) (cid.Cid, error) {
+	ctx := context.TODO()
+
 	ck := cidsToKey(cids)
 	sm.stlk.Lock()
 	cached, ok := sm.stCache[ck]
@@ -49,7 +51,12 @@ func (sm *StateManager) TipSetState(cids []cid.Cid) (cid.Cid, error) {
 		return cached, nil
 	}
 
-	out, err := sm.computeTipSetState(cids)
+	ts, err := sm.cs.LoadTipSet(cids)
+	if err != nil {
+		return cid.Undef, err
+	}
+
+	out, err := sm.computeTipSetState(ctx, ts.Blocks(), nil)
 	if err != nil {
 		return cid.Undef, err
 	}
@@ -60,33 +67,25 @@ func (sm *StateManager) TipSetState(cids []cid.Cid) (cid.Cid, error) {
 	return out, nil
 }
 
-func (sm *StateManager) computeTipSetState(cids []cid.Cid) (cid.Cid, error) {
-	ctx := context.TODO()
-
-	ts, err := sm.cs.LoadTipSet(cids)
-	if err != nil {
-		log.Error("failed loading tipset: ", cids)
-		return cid.Undef, err
+func (sm *StateManager) computeTipSetState(ctx context.Context, blks []*types.BlockHeader, cb func(cid.Cid, *types.Message, *vm.ApplyRet) error) (cid.Cid, error) {
+	if len(blks) == 1 && cb == nil {
+		return blks[0].StateRoot, nil
 	}
 
-	if len(ts.Blocks()) == 1 {
-		return ts.Blocks()[0].StateRoot, nil
-	}
-
-	pstate, err := sm.TipSetState(ts.Parents())
+	pstate, err := sm.TipSetState(blks[0].Parents)
 	if err != nil {
 		return cid.Undef, xerrors.Errorf("recursive TipSetState failed: %w", err)
 	}
 
-	r := vm.NewChainRand(sm.cs, ts, nil)
+	r := vm.NewChainRand(sm.cs, blks[0], nil)
 
-	vmi, err := vm.NewVM(pstate, ts.Height(), r, address.Undef, sm.cs)
+	vmi, err := vm.NewVM(pstate, blks[0].Height, r, address.Undef, sm.cs)
 	if err != nil {
 		return cid.Undef, xerrors.Errorf("instantiating VM failed: %w", err)
 	}
 
 	applied := make(map[cid.Cid]bool)
-	for _, b := range ts.Blocks() {
+	for _, b := range blks {
 		vmi.SetBlockMiner(b.Miner)
 
 		bms, sms, err := sm.cs.MessagesForBlock(b)
@@ -100,9 +99,15 @@ func (sm *StateManager) computeTipSetState(cids []cid.Cid) (cid.Cid, error) {
 			}
 			applied[m.Cid()] = true
 
-			_, err := vmi.ApplyMessage(ctx, m)
+			r, err := vmi.ApplyMessage(ctx, m)
 			if err != nil {
 				return cid.Undef, err
+			}
+
+			if cb != nil {
+				if err := cb(m.Cid(), m, r); err != nil {
+					return cid.Undef, err
+				}
 			}
 		}
 
@@ -112,9 +117,15 @@ func (sm *StateManager) computeTipSetState(cids []cid.Cid) (cid.Cid, error) {
 			}
 			applied[sm.Cid()] = true
 
-			_, err := vmi.ApplyMessage(ctx, &sm.Message)
+			r, err := vmi.ApplyMessage(ctx, &sm.Message)
 			if err != nil {
 				return cid.Undef, err
+			}
+
+			if cb != nil {
+				if err := cb(sm.Cid(), &sm.Message, r); err != nil {
+					return cid.Undef, err
+				}
 			}
 		}
 	}

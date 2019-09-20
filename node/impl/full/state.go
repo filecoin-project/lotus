@@ -3,6 +3,7 @@ package full
 import (
 	"context"
 
+	cid "github.com/ipfs/go-cid"
 	"github.com/ipfs/go-hamt-ipld"
 	"github.com/libp2p/go-libp2p-core/peer"
 	"go.uber.org/fx"
@@ -84,6 +85,24 @@ func (a *StateAPI) StateMinerProvingPeriodEnd(ctx context.Context, actor address
 
 func (a *StateAPI) StateCall(ctx context.Context, msg *types.Message, ts *types.TipSet) (*types.MessageReceipt, error) {
 	return a.StateManager.Call(ctx, msg, ts)
+}
+
+func (a *StateAPI) StateReplay(ctx context.Context, ts *types.TipSet, mc cid.Cid) (*api.ReplayResults, error) {
+	m, r, err := a.StateManager.Replay(ctx, ts, mc)
+	if err != nil {
+		return nil, err
+	}
+
+	var errstr string
+	if r.ActorErr != nil {
+		errstr = r.ActorErr.Error()
+	}
+
+	return &api.ReplayResults{
+		Msg:     m,
+		Receipt: &r.MessageReceipt,
+		Error:   errstr,
+	}, nil
 }
 
 func (a *StateAPI) stateForTs(ts *types.TipSet) (*state.StateTree, error) {
