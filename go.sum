@@ -70,6 +70,8 @@ github.com/eapache/queue v1.1.0/go.mod h1:6eCeP0CKFpHLu8blIFXhExK/dRa7WDZfr6jVFP
 github.com/fatih/color v1.6.0/go.mod h1:Zm6kSWBoL9eyXnKyktHP6abPY2pDugNf5KwzbycvMj4=
 github.com/filecoin-project/go-amt-ipld v0.0.0-20190919045431-3650716fff16 h1:NzojcJU1VbS6zdLG13JMYis/cQy/MrN3rxmZRq56jKA=
 github.com/filecoin-project/go-amt-ipld v0.0.0-20190919045431-3650716fff16/go.mod h1:lKjJYPg2kwbav5f78i5YA8kGccnZn18IySbpneXvaQs=
+github.com/filecoin-project/go-amt-ipld v0.0.0-20190920035751-ae3c37184616 h1:e0P1b9Lam9oA7TC/YBoR23uMsDuMLQU3iTvUJXmDaqM=
+github.com/filecoin-project/go-amt-ipld v0.0.0-20190920035751-ae3c37184616/go.mod h1:lKjJYPg2kwbav5f78i5YA8kGccnZn18IySbpneXvaQs=
 github.com/filecoin-project/go-leb128 v0.0.0-20190212224330-8d79a5489543 h1:aMJGfgqe1QDhAVwxRg5fjCRF533xHidiKsugk7Vvzug=
 github.com/filecoin-project/go-leb128 v0.0.0-20190212224330-8d79a5489543/go.mod h1:mjrHv1cDGJWDlGmC0eDc1E5VJr8DmL9XMUcaFwiuKg8=
 github.com/fsnotify/fsnotify v1.4.7 h1:IXs+QLmnXW2CcXuY+8Mzv/fWEsPGWxqefPtCP5CnV9I=

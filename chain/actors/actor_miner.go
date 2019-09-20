@@ -62,10 +62,10 @@ type StorageMinerActorState struct {
 	Power types.BigInt
 
 	// List of sectors that this miner was slashed for.
-	//SlashedSet SectorSet
+	SlashedSet cid.Cid
 
 	// The height at which this miner was slashed at.
-	SlashedAt types.BigInt
+	SlashedAt uint64
 
 	// The amount of storage collateral that is owed to clients, and cannot be used for collateral anymore.
 	OwedStorageCollateral types.BigInt
@@ -129,7 +129,7 @@ func (sma StorageMinerActor) Exports() []interface{} {
 		1: sma.StorageMinerConstructor,
 		2: sma.CommitSector,
 		3: sma.SubmitPoSt,
-		//4:  sma.SlashStorageFault,
+		4: sma.SlashStorageFault,
 		//5: sma.GetCurrentProvingSet,
 		//6:  sma.ArbitrateDeal,
 		//7:  sma.DePledge,
@@ -447,6 +447,73 @@ func (sma StorageMinerActor) SubmitPoSt(act *types.Actor, vmctx types.VMContext,
 	}
 
 	return nil, nil
+}
+
+const NoPostSlashThreshold = build.ProvingPeriodDuration * 3
+
+func (sma StorageMinerActor) SlashStorageFault(act *types.Actor, vmctx types.VMContext, params *struct{}) ([]byte, ActorError) {
+	oldstate, self, err := loadState(vmctx)
+	if err != nil {
+		return nil, err
+	}
+
+	// You can only be slashed once for missing your PoSt.
+	if self.SlashedAt > 0 {
+		return nil, aerrors.New(1, "miner already slashed")
+	}
+
+	// Only if the miner is actually late, they can be slashed.
+	if chain.Now() <= self.ProvingPeriodEnd+NoPostSlashThreshold {
+		return nil, aerrors.New(2, "miner is not yet tardy")
+	}
+
+	// Only a miner who is expected to prove, can be slashed.
+	bs := types.WrapStorage(vmctx.Storage())
+	ss, lerr := amt.LoadAMT(bs, self.ProvingSet)
+	if lerr != nil {
+		return nil, aerrors.Escalate(lerr, "could not load proving set node")
+	}
+
+	if ss.Count == 0 {
+		return nil, aerrors.New(3, "miner is inactive")
+	}
+
+	// Strip the miner of their power.
+	_, err := vmctx.Send(StorageMarketAddress, SMAMethods.UpdateStorage, types.NewInt(0), enc)
+	if err != nil {
+		return nil, aerrors.Wrap(err, "failed to cut miners storage")
+	}
+
+	self.Power = 0
+
+	self.SlashedSet = self.ProvingSet
+
+	// remove proving set from our sectors
+	// TODO: this might actually be pretty expensive, maybe reconsider?
+	sectors, err := amt.LoadAMT(bs, self.Sectors)
+	if err != nil {
+		return nil, aerrors.Escalate(err, "failed to load miners sector set")
+	}
+
+	if err := sectors.Subtract(ss); err != nil {
+		return nil, aerrors.Escalate(err, "failed to remove slashed sectors from proving set")
+	}
+
+	// clear proving set
+	emptySet, err := amt.NewAMT(bs).Flush()
+	if err != nil {
+		return nil, aerrors.Escalate(err, "failed to get cid for empty AMT")
+	}
+	self.ProvingSet = emptySet
+
+	vmctx.Send(StorageMarketAddress, SMAMethods.Constructor
+	CollateralForPower()
+	self.owedStorageCollateral = StorageMarketActor.StorageCollateralForSize(
+		self.slashedSet.Size() * self.SectorSize,
+	)
+
+	self.SlashedAt = CurrentBlockHeight
+
 }
 
 func (sma StorageMinerActor) GetPower(act *types.Actor, vmctx types.VMContext, params *struct{}) ([]byte, ActorError) {
