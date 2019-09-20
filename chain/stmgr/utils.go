@@ -22,7 +22,7 @@ func GetMinerWorker(ctx context.Context, sm *StateManager, st cid.Cid, maddr add
 		To:     maddr,
 		From:   maddr,
 		Method: actors.MAMethods.GetWorkerAddr,
-	}, st, 0)
+	}, st, nil, 0)
 	if err != nil {
 		return address.Undef, xerrors.Errorf("callRaw failed: %w", err)
 	}
@@ -48,7 +48,7 @@ func GetMinerOwner(ctx context.Context, sm *StateManager, st cid.Cid, maddr addr
 		To:     maddr,
 		From:   maddr,
 		Method: actors.MAMethods.GetOwner,
-	}, st, 0)
+	}, st, nil, 0)
 	if err != nil {
 		return address.Undef, xerrors.Errorf("callRaw failed: %w", err)
 	}

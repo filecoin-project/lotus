@@ -701,16 +701,20 @@ func (cs *ChainStore) TryFillTipSet(ts *types.TipSet) (*FullTipSet, error) {
 	return NewFullTipSet(out), nil
 }
 
-func (cs *ChainStore) GetRandomness(ctx context.Context, pts *types.TipSet, tickets []*types.Ticket, lb int) ([]byte, error) {
-	if lb < len(tickets) {
+func (cs *ChainStore) GetRandomness(ctx context.Context, pts *types.TipSet, tickets []*types.Ticket, lb int64) ([]byte, error) {
+	if lb < 0 {
+		return nil, fmt.Errorf("negative lookback parameters are not valid (got %d)", lb)
+	}
+	lt := int64(len(tickets))
+	if lb < lt {
 		log.Warn("self sampling randomness. this should be extremely rare, if you see this often it may be a bug")
 
-		t := tickets[len(tickets)-(1+lb)]
+		t := tickets[lt-(1+lb)]
 
 		return t.VDFResult, nil
 	}
 
-	nv := lb - len(tickets)
+	nv := lb - lt
 
 	nextCids := pts.Cids()
 	for {
@@ -720,13 +724,14 @@ func (cs *ChainStore) GetRandomness(ctx context.Context, pts *types.TipSet, tick
 		}
 
 		mtb := nts.MinTicketBlock()
-		if nv < len(mtb.Tickets) {
-			t := mtb.Tickets[len(mtb.Tickets)-(1+nv)]
-			log.Infof("Returning randomness: H:%d, t:%d, mtb:%s", nts.Height(), len(mtb.Tickets)-(1+nv), mtb.Cid())
+		lt := int64(len(mtb.Tickets))
+		if nv < lt {
+			t := mtb.Tickets[lt-(1+nv)]
+			log.Infof("Returning randomness: H:%d, t:%d, mtb:%s", nts.Height(), lt-(1+nv), mtb.Cid())
 			return t.VDFResult, nil
 		}
 
-		nv -= len(mtb.Tickets)
+		nv -= lt
 
 		// special case for lookback behind genesis block
 		// TODO(spec): this is not in the spec, need to sync that
@@ -735,7 +740,7 @@ func (cs *ChainStore) GetRandomness(ctx context.Context, pts *types.TipSet, tick
 			t := mtb.Tickets[0]
 
 			rval := t.VDFResult
-			for i := 0; i < nv; i++ {
+			for i := int64(0); i < nv; i++ {
 				h := sha256.Sum256(rval)
 				rval = h[:]
 			}

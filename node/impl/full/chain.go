@@ -45,7 +45,7 @@ func (a *ChainAPI) ChainHead(context.Context) (*types.TipSet, error) {
 }
 
 func (a *ChainAPI) ChainGetRandomness(ctx context.Context, pts *types.TipSet, tickets []*types.Ticket, lb int) ([]byte, error) {
-	return a.Chain.GetRandomness(ctx, pts, tickets, lb)
+	return a.Chain.GetRandomness(ctx, pts, tickets, int64(lb))
 }
 
 func (a *ChainAPI) ChainWaitMsg(ctx context.Context, msg cid.Cid) (*api.MsgWait, error) {

@@ -313,7 +313,7 @@ func (syncer *Syncer) ValidateTipSet(ctx context.Context, fts *store.FullTipSet)
 
 	for _, b := range fts.Blocks {
 		if err := syncer.ValidateBlock(ctx, b); err != nil {
-			return err
+			return xerrors.Errorf("validating block %s: %w", b.Cid(), err)
 		}
 	}
 	return nil
@@ -440,7 +440,8 @@ func (syncer *Syncer) ValidateBlock(ctx context.Context, b *types.FullBlock) err
 		return xerrors.Errorf("miner created a block but was not a winner")
 	}
 
-	vmi, err := vm.NewVM(stateroot, h.Height, h.Miner, syncer.store)
+	r := vm.NewChainRand(syncer.store, baseTs, h.Tickets)
+	vmi, err := vm.NewVM(stateroot, h.Height, r, h.Miner, syncer.store)
 	if err != nil {
 		return xerrors.Errorf("failed to instantiate VM: %w", err)
 	}
