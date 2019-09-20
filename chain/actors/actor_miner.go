@@ -119,9 +119,10 @@ type maMethods struct {
 	PaymentVerifyInclusion uint64
 	PaymentVerifySector    uint64
 	AddFaults              uint64
+	SlashConsensusFault    uint64
 }
 
-var MAMethods = maMethods{1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16, 17, 18, 19}
+var MAMethods = maMethods{1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16, 17, 18, 19, 20}
 
 func (sma StorageMinerActor) Exports() []interface{} {
 	return []interface{}{
@@ -144,6 +145,7 @@ func (sma StorageMinerActor) Exports() []interface{} {
 		17: sma.PaymentVerifyInclusion,
 		18: sma.PaymentVerifySector,
 		19: nil,
+		20: sma.SlashConsensusFault,
 	}
 }
 
@@ -703,4 +705,71 @@ func (sma StorageMinerActor) PaymentVerifySector(act *types.Actor, vmctx types.V
 	}
 
 	return nil, nil
+}
+
+type MinerSlashConsensusFault struct {
+	Slasher           address.Address
+	AtHeight          uint64
+	SlashedCollateral types.BigInt
+}
+
+func (sma StorageMinerActor) SlashConsensusFault(act *types.Actor, vmctx types.VMContext, params *MinerSlashConsensusFault) ([]byte, ActorError) {
+	if vmctx.Message().From != StorageMarketAddress {
+		return nil, aerrors.New(1, "SlashConsensusFault may only be called by the storage market actor")
+	}
+
+	slashedCollateral := params.SlashedCollateral
+	if types.BigCmp(slashedCollateral, act.Balance) < 0 {
+		slashedCollateral = act.Balance
+	}
+
+	// Some of the slashed collateral should be paid to the slasher
+	// GROWTH_RATE determines how fast the slasher share of slashed collateral will increase as block elapses
+	// current GROWTH_RATE results in SLASHER_SHARE reaches 1 after 30 blocks
+	// TODO: define arithmetic precision and rounding for this operation
+	blockElapsed := vmctx.BlockHeight() - params.AtHeight
+
+	slasherShare := slasherShare(params.SlashedCollateral, blockElapsed)
+
+	burnPortion := types.BigSub(slashedCollateral, slasherShare)
+
+	_, err := vmctx.Send(vmctx.Message().From, 0, slasherShare, nil)
+	if err != nil {
+		return nil, aerrors.Wrap(err, "failed to pay slasher")
+	}
+
+	_, err = vmctx.Send(BurntFundsAddress, 0, burnPortion, nil)
+	if err != nil {
+		return nil, aerrors.Wrap(err, "failed to burn funds")
+	}
+
+	// TODO: this still allows the miner to commit sectors and submit posts,
+	// their users could potentially be unaffected, but the miner will never be
+	// able to mine a block again
+	// One potential issue: the miner will have to pay back the slashed
+	// collateral to continue submitting PoSts, which includes pledge
+	// collateral that they no longer really 'need'
+
+	return nil, nil
+}
+
+func slasherShare(total types.BigInt, elapsed uint64) types.BigInt {
+	// [int(pow(1.26, n) * 10) for n in range(30)]
+	fracs := []uint64{10, 12, 15, 20, 25, 31, 40, 50, 63, 80, 100, 127, 160, 201, 254, 320, 403, 508, 640, 807, 1017, 1281, 1614, 2034, 2563, 3230, 4070, 5128, 6462, 8142}
+	const precision = 10000
+
+	var frac uint64
+	if elapsed >= uint64(len(fracs)) {
+		return total
+	} else {
+		frac = fracs[elapsed]
+	}
+
+	return types.BigDiv(
+		types.BigMul(
+			types.NewInt(frac),
+			total,
+		),
+		types.NewInt(precision),
+	)
 }

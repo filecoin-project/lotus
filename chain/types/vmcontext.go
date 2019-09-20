@@ -1,11 +1,11 @@
 package types
 
 import (
-	"github.com/filecoin-project/go-amt-ipld"
+	amt "github.com/filecoin-project/go-amt-ipld"
 	"github.com/filecoin-project/go-lotus/chain/actors/aerrors"
 	"github.com/filecoin-project/go-lotus/chain/address"
-	"github.com/ipfs/go-cid"
-	"github.com/ipfs/go-hamt-ipld"
+	cid "github.com/ipfs/go-cid"
+	hamt "github.com/ipfs/go-hamt-ipld"
 	cbg "github.com/whyrusleeping/cbor-gen"
 )
 
@@ -37,6 +37,7 @@ type VMContext interface {
 	VerifySignature(sig *Signature, from address.Address, data []byte) aerrors.ActorError
 	ChargeGas(uint64) aerrors.ActorError
 	GetRandomness(height uint64) ([]byte, aerrors.ActorError)
+	GetBalance(address.Address) (BigInt, aerrors.ActorError)
 }
 
 type storageWrapper struct {

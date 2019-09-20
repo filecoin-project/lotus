@@ -240,11 +240,17 @@ func (h *Harness) SendFunds(t testing.TB, from address.Address, to address.Addre
 func (h *Harness) Invoke(t testing.TB, from address.Address, to address.Address,
 	method uint64, params cbg.CBORMarshaler) (*vm.ApplyRet, *state.StateTree) {
 	t.Helper()
+	return h.InvokeWithValue(t, from, to, method, types.NewInt(0), params)
+}
+
+func (h *Harness) InvokeWithValue(t testing.TB, from address.Address, to address.Address,
+	method uint64, value types.BigInt, params cbg.CBORMarshaler) (*vm.ApplyRet, *state.StateTree) {
+	t.Helper()
 	return h.Apply(t, types.Message{
 		To:       to,
 		From:     from,
 		Method:   method,
-		Value:    types.NewInt(0),
+		Value:    value,
 		Params:   DumpObject(t, params),
 		GasPrice: types.NewInt(1),
 		GasLimit: types.NewInt(testGasLimit),

@@ -17,6 +17,7 @@ var PaymentChannelActorCodeCid cid.Cid
 var InitActorAddress = mustIDAddress(0)
 var NetworkAddress = mustIDAddress(1)
 var StorageMarketAddress = mustIDAddress(2)
+var BurntFundsAddress = mustIDAddress(99)
 
 func mustIDAddress(i uint64) address.Address {
 	a, err := address.NewIDAddress(i)

@@ -23,4 +23,11 @@ const RandomnessLookback = 20
 const ProvingPeriodDuration = 10
 const PoSTChallangeTime = 5
 
+const PowerCollateralProportion = 20
+const PerCapitaCollateralProportion = 5
+const CollateralPrecision = 100
+
+const TotalFilecoin = 2000000000
+const FilecoinPrecision = 1000000000000000000
+
 // TODO: Move other important consts here

@@ -98,13 +98,27 @@ func MakeInitialStateTree(bs bstore.Blockstore, actmap map[address.Address]types
 		return nil, xerrors.Errorf("set storage market actor: %w", err)
 	}
 
+	netAmt := types.FromFil(build.TotalFilecoin)
+	for _, amt := range actmap {
+		netAmt = types.BigSub(netAmt, amt)
+	}
+
 	err = state.SetActor(actors.NetworkAddress, &types.Actor{
 		Code:    actors.AccountActorCodeCid,
-		Balance: types.NewInt(100000000000),
+		Balance: netAmt,
 		Head:    emptyobject,
 	})
 	if err != nil {
 		return nil, xerrors.Errorf("set network account actor: %w", err)
+	}
+
+	err = state.SetActor(actors.BurntFundsAddress, &types.Actor{
+		Code:    actors.AccountActorCodeCid,
+		Balance: types.NewInt(0),
+		Head:    emptyobject,
+	})
+	if err != nil {
+		return nil, xerrors.Errorf("set burnt funds account actor: %w", err)
 	}
 
 	for a, v := range actmap {
@@ -186,7 +200,9 @@ func SetupStorageMiners(ctx context.Context, cs *store.ChainStore, sroot cid.Cid
 			PeerID:     pid,
 		})
 
-		rval, err := doExec(ctx, vm, actors.StorageMarketAddress, owner, actors.SMAMethods.CreateStorageMiner, params)
+		// TODO: hardcoding 7000000 here is a little fragile, it changes any
+		// time anyone changes the initial account allocations
+		rval, err := doExecValue(ctx, vm, actors.StorageMarketAddress, owner, types.NewInt(7000000), actors.SMAMethods.CreateStorageMiner, params)
 		if err != nil {
 			return cid.Undef, xerrors.Errorf("failed to create genesis miner: %w", err)
 		}
@@ -241,6 +257,10 @@ func SetupStorageMiners(ctx context.Context, cs *store.ChainStore, sroot cid.Cid
 }
 
 func doExec(ctx context.Context, vm *vm.VM, to, from address.Address, method uint64, params []byte) ([]byte, error) {
+	return doExecValue(ctx, vm, to, from, types.NewInt(0), method, params)
+}
+
+func doExecValue(ctx context.Context, vm *vm.VM, to, from address.Address, value types.BigInt, method uint64, params []byte) ([]byte, error) {
 	act, err := vm.StateTree().GetActor(from)
 	if err != nil {
 		return nil, xerrors.Errorf("doExec failed to get from actor: %w", err)
@@ -253,7 +273,7 @@ func doExec(ctx context.Context, vm *vm.VM, to, from address.Address, method uin
 		Params:   params,
 		GasLimit: types.NewInt(1000000),
 		GasPrice: types.NewInt(0),
-		Value:    types.NewInt(0),
+		Value:    value,
 		Nonce:    act.Nonce,
 	})
 	if err != nil {

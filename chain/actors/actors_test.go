@@ -3,6 +3,7 @@ package actors_test
 import (
 	"context"
 	"encoding/binary"
+	"fmt"
 	"testing"
 
 	"github.com/filecoin-project/go-lotus/build"
@@ -29,7 +30,7 @@ func blsaddr(n uint64) address.Address {
 	return addr
 }
 
-func setupVMTestEnv(t *testing.T) (*vm.VM, []address.Address) {
+func setupVMTestEnv(t *testing.T) (*vm.VM, []address.Address, bstore.Blockstore) {
 	bs := bstore.NewBlockstore(dstore.NewMapDatastore())
 
 	from := blsaddr(0)
@@ -56,11 +57,11 @@ func setupVMTestEnv(t *testing.T) (*vm.VM, []address.Address) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	return vm, []address.Address{from, maddr}
+	return vm, []address.Address{from, maddr}, bs
 }
 
 func TestVMInvokeMethod(t *testing.T) {
-	vm, addrs := setupVMTestEnv(t)
+	vm, addrs, _ := setupVMTestEnv(t)
 	from := addrs[0]
 
 	var err error
@@ -108,9 +109,11 @@ func TestVMInvokeMethod(t *testing.T) {
 }
 
 func TestStorageMarketActorCreateMiner(t *testing.T) {
-	vm, addrs := setupVMTestEnv(t)
+	vm, addrs, bs := setupVMTestEnv(t)
 	from := addrs[0]
 	maddr := addrs[1]
+
+	cheatStorageMarketTotal(t, vm, bs)
 
 	params := &StorageMinerConstructorParams{
 		Worker:     maddr,
@@ -130,7 +133,7 @@ func TestStorageMarketActorCreateMiner(t *testing.T) {
 		Params:   enc,
 		GasPrice: types.NewInt(1),
 		GasLimit: types.NewInt(10000),
-		Value:    types.NewInt(0),
+		Value:    types.NewInt(50000),
 	}
 
 	ret, err := vm.ApplyMessage(context.TODO(), msg)
@@ -139,6 +142,7 @@ func TestStorageMarketActorCreateMiner(t *testing.T) {
 	}
 
 	if ret.ExitCode != 0 {
+		fmt.Println(ret.ActorErr)
 		t.Fatal("invocation failed: ", ret.ExitCode)
 	}
 

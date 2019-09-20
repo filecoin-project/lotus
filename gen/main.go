@@ -72,6 +72,9 @@ func main() {
 		actors.IsMinerParam{},
 		actors.PowerLookupParams{},
 		actors.UpdateStorageParams{},
+		actors.ArbitrateConsensusFaultParams{},
+		actors.PledgeCollateralParams{},
+		actors.MinerSlashConsensusFault{},
 	)
 	if err != nil {
 		fmt.Println(err)

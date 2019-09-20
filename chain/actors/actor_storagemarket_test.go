@@ -1,23 +1,32 @@
 package actors_test
 
 import (
+	"context"
+	"fmt"
 	"testing"
 
 	"github.com/filecoin-project/go-lotus/build"
+	cbg "github.com/whyrusleeping/cbor-gen"
 
 	. "github.com/filecoin-project/go-lotus/chain/actors"
 	"github.com/filecoin-project/go-lotus/chain/address"
 	"github.com/filecoin-project/go-lotus/chain/types"
+	"github.com/filecoin-project/go-lotus/chain/vm"
+	"github.com/filecoin-project/go-lotus/chain/wallet"
 
+	cid "github.com/ipfs/go-cid"
+	hamt "github.com/ipfs/go-hamt-ipld"
+	bstore "github.com/ipfs/go-ipfs-blockstore"
 	cbor "github.com/ipfs/go-ipld-cbor"
+	mh "github.com/multiformats/go-multihash"
 	"github.com/stretchr/testify/assert"
 )
 
-func TestStorageMarketCreateMiner(t *testing.T) {
+func TestStorageMarketCreateAndSlashMiner(t *testing.T) {
 	var ownerAddr, workerAddr address.Address
 
 	opts := []HarnessOpt{
-		HarnessAddr(&ownerAddr, 100000),
+		HarnessAddr(&ownerAddr, 1000000),
 		HarnessAddr(&workerAddr, 100000),
 	}
 
@@ -25,7 +34,11 @@ func TestStorageMarketCreateMiner(t *testing.T) {
 
 	var minerAddr address.Address
 	{
-		ret, _ := h.Invoke(t, ownerAddr, StorageMarketAddress, SMAMethods.CreateStorageMiner,
+		// cheating the bootstrapping problem
+		cheatStorageMarketTotal(t, h.vm, h.cs.Blockstore())
+
+		ret, _ := h.InvokeWithValue(t, ownerAddr, StorageMarketAddress, SMAMethods.CreateStorageMiner,
+			types.NewInt(500000),
 			&CreateStorageMinerParams{
 				Owner:      ownerAddr,
 				Worker:     workerAddr,
@@ -72,4 +85,90 @@ func TestStorageMarketCreateMiner(t *testing.T) {
 		assert.NoError(t, err)
 		assert.Equal(t, ownerAddr, oA, "return from GetOwner should be equal to the owner")
 	}
+
+	{
+		b1 := fakeBlock(t, minerAddr, 100)
+		b2 := fakeBlock(t, minerAddr, 101)
+
+		signBlock(t, h.w, workerAddr, b1)
+		signBlock(t, h.w, workerAddr, b2)
+
+		ret, _ := h.Invoke(t, ownerAddr, StorageMarketAddress, SMAMethods.ArbitrateConsensusFault,
+			&ArbitrateConsensusFaultParams{
+				Block1: b1,
+				Block2: b2,
+			})
+		ApplyOK(t, ret)
+	}
+
+	{
+		ret, _ := h.Invoke(t, ownerAddr, StorageMarketAddress, SMAMethods.PowerLookup,
+			&PowerLookupParams{Miner: minerAddr})
+		assert.Equal(t, ret.ExitCode, byte(1))
+	}
+
+	{
+		ret, _ := h.Invoke(t, ownerAddr, StorageMarketAddress, SMAMethods.IsMiner, &IsMinerParam{minerAddr})
+		ApplyOK(t, ret)
+		assert.Equal(t, ret.Return, cbg.CborBoolFalse)
+	}
+}
+
+func cheatStorageMarketTotal(t *testing.T, vm *vm.VM, bs bstore.Blockstore) {
+	t.Helper()
+
+	sma, err := vm.StateTree().GetActor(StorageMarketAddress)
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	cst := hamt.CSTFromBstore(bs)
+
+	var smastate StorageMarketState
+	if err := cst.Get(context.TODO(), sma.Head, &smastate); err != nil {
+		t.Fatal(err)
+	}
+
+	smastate.TotalStorage = types.NewInt(10000)
+
+	c, err := cst.Put(context.TODO(), &smastate)
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	sma.Head = c
+
+	if err := vm.StateTree().SetActor(StorageMarketAddress, sma); err != nil {
+		t.Fatal(err)
+	}
+}
+
+func fakeBlock(t *testing.T, minerAddr address.Address, ts uint64) *types.BlockHeader {
+	c := fakeCid(t, 1)
+	return &types.BlockHeader{Height: 5, Miner: minerAddr, Timestamp: ts, StateRoot: c, Messages: c, MessageReceipts: c, BLSAggregate: types.Signature{Type: types.KTBLS}}
+}
+
+func fakeCid(t *testing.T, s int) cid.Cid {
+	t.Helper()
+	c, err := cid.NewPrefixV1(cid.Raw, mh.IDENTITY).Sum([]byte(fmt.Sprintf("%d", s)))
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	return c
+}
+
+func signBlock(t *testing.T, w *wallet.Wallet, worker address.Address, blk *types.BlockHeader) {
+	t.Helper()
+	sb, err := blk.SigningBytes()
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	sig, err := w.Sign(context.TODO(), worker, sb)
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	blk.BlockSig = *sig
 }
