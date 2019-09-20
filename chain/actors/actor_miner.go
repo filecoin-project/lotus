@@ -90,13 +90,17 @@ type MinerInfo struct {
 
 	// Amount of space in each sector committed to the network by this miner.
 	SectorSize types.BigInt
+
+	// Amount of filecoin the miner puts up as storage collateral for each sector
+	StorageCollateral types.BigInt
 }
 
 type StorageMinerConstructorParams struct {
-	Owner      address.Address
-	Worker     address.Address
-	SectorSize types.BigInt
-	PeerID     peer.ID
+	Owner             address.Address
+	Worker            address.Address
+	SectorSize        types.BigInt
+	PeerID            peer.ID
+	StorageCollateral types.BigInt
 }
 
 type maMethods struct {
@@ -169,11 +173,13 @@ func loadMinerInfo(vmctx types.VMContext, m *StorageMinerActorState) (*MinerInfo
 }
 
 func (sma StorageMinerActor) StorageMinerConstructor(act *types.Actor, vmctx types.VMContext, params *StorageMinerConstructorParams) ([]byte, ActorError) {
+	fmt.Println("MINER CONSTRUCTOR")
 	minerInfo := &MinerInfo{
-		Owner:      params.Owner,
-		Worker:     params.Worker,
-		PeerID:     params.PeerID,
-		SectorSize: params.SectorSize,
+		Owner:             params.Owner,
+		Worker:            params.Worker,
+		PeerID:            params.PeerID,
+		SectorSize:        params.SectorSize,
+		StorageCollateral: params.StorageCollateral,
 	}
 
 	minfocid, err := vmctx.Storage().Put(minerInfo)
@@ -191,6 +197,7 @@ func (sma StorageMinerActor) StorageMinerConstructor(act *types.Actor, vmctx typ
 	self.Sectors = scid
 	self.ProvingSet = scid
 	self.Info = minfocid
+	self.SlashedSet = scid
 
 	storage := vmctx.Storage()
 	c, err := storage.Put(&self)
@@ -456,6 +463,10 @@ func (sma StorageMinerActor) SlashStorageFault(act *types.Actor, vmctx types.VMC
 	if err != nil {
 		return nil, err
 	}
+	mi, err := loadMinerInfo(vmctx, self)
+	if err != nil {
+		return nil, err
+	}
 
 	// You can only be slashed once for missing your PoSt.
 	if self.SlashedAt > 0 {
@@ -463,7 +474,7 @@ func (sma StorageMinerActor) SlashStorageFault(act *types.Actor, vmctx types.VMC
 	}
 
 	// Only if the miner is actually late, they can be slashed.
-	if chain.Now() <= self.ProvingPeriodEnd+NoPostSlashThreshold {
+	if vmctx.BlockHeight() <= self.ProvingPeriodEnd+NoPostSlashThreshold {
 		return nil, aerrors.New(2, "miner is not yet tardy")
 	}
 
@@ -479,20 +490,24 @@ func (sma StorageMinerActor) SlashStorageFault(act *types.Actor, vmctx types.VMC
 	}
 
 	// Strip the miner of their power.
-	_, err := vmctx.Send(StorageMarketAddress, SMAMethods.UpdateStorage, types.NewInt(0), enc)
+	enc, err := SerializeParams(&UpdateStorageParams{Delta: self.Power})
+	if err != nil {
+		return nil, aerrors.Escalate(err, "failed to serialize update storage parameters")
+	}
+	_, err = vmctx.Send(StorageMarketAddress, SMAMethods.UpdateStorage, types.NewInt(0), enc)
 	if err != nil {
 		return nil, aerrors.Wrap(err, "failed to cut miners storage")
 	}
 
-	self.Power = 0
+	self.Power = types.NewInt(0)
 
 	self.SlashedSet = self.ProvingSet
 
 	// remove proving set from our sectors
 	// TODO: this might actually be pretty expensive, maybe reconsider?
-	sectors, err := amt.LoadAMT(bs, self.Sectors)
-	if err != nil {
-		return nil, aerrors.Escalate(err, "failed to load miners sector set")
+	sectors, lerr := amt.LoadAMT(bs, self.Sectors)
+	if lerr != nil {
+		return nil, aerrors.Escalate(lerr, "failed to load miners sector set")
 	}
 
 	if err := sectors.Subtract(ss); err != nil {
@@ -500,20 +515,24 @@ func (sma StorageMinerActor) SlashStorageFault(act *types.Actor, vmctx types.VMC
 	}
 
 	// clear proving set
-	emptySet, err := amt.NewAMT(bs).Flush()
-	if err != nil {
-		return nil, aerrors.Escalate(err, "failed to get cid for empty AMT")
+	emptySet, lerr := amt.NewAMT(bs).Flush()
+	if lerr != nil {
+		return nil, aerrors.Escalate(lerr, "failed to get cid for empty AMT")
 	}
 	self.ProvingSet = emptySet
 
-	vmctx.Send(StorageMarketAddress, SMAMethods.Constructor
-	CollateralForPower()
-	self.owedStorageCollateral = StorageMarketActor.StorageCollateralForSize(
-		self.slashedSet.Size() * self.SectorSize,
-	)
+	self.OwedStorageCollateral = types.BigMul(types.NewInt(ss.Count), mi.StorageCollateral)
+	self.SlashedAt = vmctx.BlockHeight()
 
-	self.SlashedAt = CurrentBlockHeight
+	ncid, err := vmctx.Storage().Put(self)
+	if err != nil {
+		return nil, err
+	}
+	if err := vmctx.Storage().Commit(oldstate, ncid); err != nil {
+		return nil, err
+	}
 
+	return nil, nil
 }
 
 func (sma StorageMinerActor) GetPower(act *types.Actor, vmctx types.VMContext, params *struct{}) ([]byte, ActorError) {

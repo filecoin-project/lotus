@@ -52,13 +52,15 @@ type StorageMarketState struct {
 }
 
 type CreateStorageMinerParams struct {
-	Owner      address.Address
-	Worker     address.Address
-	SectorSize types.BigInt
-	PeerID     peer.ID
+	Owner             address.Address
+	Worker            address.Address
+	SectorSize        types.BigInt
+	PeerID            peer.ID
+	StorageCollateral types.BigInt
 }
 
 func (sma StorageMarketActor) CreateStorageMiner(act *types.Actor, vmctx types.VMContext, params *CreateStorageMinerParams) ([]byte, ActorError) {
+	fmt.Println("CREATE STORAGE MINER")
 	if !SupportedSectorSize(params.SectorSize) {
 		return nil, aerrors.New(1, "Unsupported sector size")
 	}
@@ -79,13 +81,14 @@ func (sma StorageMarketActor) CreateStorageMiner(act *types.Actor, vmctx types.V
 	}
 
 	encoded, err := CreateExecParams(StorageMinerCodeCid, &StorageMinerConstructorParams{
-		Owner:      params.Owner,
-		Worker:     params.Worker,
-		SectorSize: params.SectorSize,
-		PeerID:     params.PeerID,
+		Owner:             params.Owner,
+		Worker:            params.Worker,
+		SectorSize:        params.SectorSize,
+		PeerID:            params.PeerID,
+		StorageCollateral: params.StorageCollateral,
 	})
 	if err != nil {
-		return nil, err
+		return nil, aerrors.Wrap(err, "failed to create exec parameters")
 	}
 
 	ret, err := vmctx.Send(InitActorAddress, IAMethods.Exec, vmctx.Message().Value, encoded)

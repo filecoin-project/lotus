@@ -197,7 +197,7 @@ func (t *StorageMinerActorState) MarshalCBOR(w io.Writer) error {
 		_, err := w.Write(cbg.CborNull)
 		return err
 	}
-	if _, err := w.Write([]byte{140}); err != nil {
+	if _, err := w.Write([]byte{141}); err != nil {
 		return err
 	}
 
@@ -249,8 +249,14 @@ func (t *StorageMinerActorState) MarshalCBOR(w io.Writer) error {
 		return err
 	}
 
-	// t.t.SlashedAt (types.BigInt)
-	if err := t.SlashedAt.MarshalCBOR(w); err != nil {
+	// t.t.SlashedSet (cid.Cid)
+
+	if err := cbg.WriteCid(w, t.SlashedSet); err != nil {
+		return xerrors.Errorf("failed to write cid field t.SlashedSet: %w", err)
+	}
+
+	// t.t.SlashedAt (uint64)
+	if _, err := w.Write(cbg.CborEncodeMajorType(cbg.MajUnsignedInt, t.SlashedAt)); err != nil {
 		return err
 	}
 
@@ -277,7 +283,7 @@ func (t *StorageMinerActorState) UnmarshalCBOR(r io.Reader) error {
 		return fmt.Errorf("cbor input should be of type array")
 	}
 
-	if extra != 12 {
+	if extra != 13 {
 		return fmt.Errorf("cbor input had wrong number of fields")
 	}
 
@@ -371,15 +377,28 @@ func (t *StorageMinerActorState) UnmarshalCBOR(r io.Reader) error {
 		}
 
 	}
-	// t.t.SlashedAt (types.BigInt)
+	// t.t.SlashedSet (cid.Cid)
 
 	{
 
-		if err := t.SlashedAt.UnmarshalCBOR(br); err != nil {
-			return err
+		c, err := cbg.ReadCid(br)
+		if err != nil {
+			return xerrors.Errorf("failed to read cid field t.SlashedSet: %w", err)
 		}
 
+		t.SlashedSet = c
+
 	}
+	// t.t.SlashedAt (uint64)
+
+	maj, extra, err = cbg.CborReadHeader(br)
+	if err != nil {
+		return err
+	}
+	if maj != cbg.MajUnsignedInt {
+		return fmt.Errorf("wrong type for uint64 field")
+	}
+	t.SlashedAt = extra
 	// t.t.OwedStorageCollateral (types.BigInt)
 
 	{
@@ -407,7 +426,7 @@ func (t *StorageMinerConstructorParams) MarshalCBOR(w io.Writer) error {
 		_, err := w.Write(cbg.CborNull)
 		return err
 	}
-	if _, err := w.Write([]byte{132}); err != nil {
+	if _, err := w.Write([]byte{133}); err != nil {
 		return err
 	}
 
@@ -433,6 +452,11 @@ func (t *StorageMinerConstructorParams) MarshalCBOR(w io.Writer) error {
 	if _, err := w.Write([]byte(t.PeerID)); err != nil {
 		return err
 	}
+
+	// t.t.StorageCollateral (types.BigInt)
+	if err := t.StorageCollateral.MarshalCBOR(w); err != nil {
+		return err
+	}
 	return nil
 }
 
@@ -447,7 +471,7 @@ func (t *StorageMinerConstructorParams) UnmarshalCBOR(r io.Reader) error {
 		return fmt.Errorf("cbor input should be of type array")
 	}
 
-	if extra != 4 {
+	if extra != 5 {
 		return fmt.Errorf("cbor input had wrong number of fields")
 	}
 
@@ -487,6 +511,15 @@ func (t *StorageMinerConstructorParams) UnmarshalCBOR(r io.Reader) error {
 		}
 
 		t.PeerID = peer.ID(sval)
+	}
+	// t.t.StorageCollateral (types.BigInt)
+
+	{
+
+		if err := t.StorageCollateral.UnmarshalCBOR(br); err != nil {
+			return err
+		}
+
 	}
 	return nil
 }
@@ -640,7 +673,7 @@ func (t *MinerInfo) MarshalCBOR(w io.Writer) error {
 		_, err := w.Write(cbg.CborNull)
 		return err
 	}
-	if _, err := w.Write([]byte{132}); err != nil {
+	if _, err := w.Write([]byte{133}); err != nil {
 		return err
 	}
 
@@ -666,6 +699,11 @@ func (t *MinerInfo) MarshalCBOR(w io.Writer) error {
 	if err := t.SectorSize.MarshalCBOR(w); err != nil {
 		return err
 	}
+
+	// t.t.StorageCollateral (types.BigInt)
+	if err := t.StorageCollateral.MarshalCBOR(w); err != nil {
+		return err
+	}
 	return nil
 }
 
@@ -680,7 +718,7 @@ func (t *MinerInfo) UnmarshalCBOR(r io.Reader) error {
 		return fmt.Errorf("cbor input should be of type array")
 	}
 
-	if extra != 4 {
+	if extra != 5 {
 		return fmt.Errorf("cbor input had wrong number of fields")
 	}
 
@@ -717,6 +755,15 @@ func (t *MinerInfo) UnmarshalCBOR(r io.Reader) error {
 	{
 
 		if err := t.SectorSize.UnmarshalCBOR(br); err != nil {
+			return err
+		}
+
+	}
+	// t.t.StorageCollateral (types.BigInt)
+
+	{
+
+		if err := t.StorageCollateral.UnmarshalCBOR(br); err != nil {
 			return err
 		}
 
@@ -2460,7 +2507,7 @@ func (t *CreateStorageMinerParams) MarshalCBOR(w io.Writer) error {
 		_, err := w.Write(cbg.CborNull)
 		return err
 	}
-	if _, err := w.Write([]byte{132}); err != nil {
+	if _, err := w.Write([]byte{133}); err != nil {
 		return err
 	}
 
@@ -2486,6 +2533,11 @@ func (t *CreateStorageMinerParams) MarshalCBOR(w io.Writer) error {
 	if _, err := w.Write([]byte(t.PeerID)); err != nil {
 		return err
 	}
+
+	// t.t.StorageCollateral (types.BigInt)
+	if err := t.StorageCollateral.MarshalCBOR(w); err != nil {
+		return err
+	}
 	return nil
 }
 
@@ -2500,7 +2552,7 @@ func (t *CreateStorageMinerParams) UnmarshalCBOR(r io.Reader) error {
 		return fmt.Errorf("cbor input should be of type array")
 	}
 
-	if extra != 4 {
+	if extra != 5 {
 		return fmt.Errorf("cbor input had wrong number of fields")
 	}
 
@@ -2540,6 +2592,15 @@ func (t *CreateStorageMinerParams) UnmarshalCBOR(r io.Reader) error {
 		}
 
 		t.PeerID = peer.ID(sval)
+	}
+	// t.t.StorageCollateral (types.BigInt)
+
+	{
+
+		if err := t.StorageCollateral.UnmarshalCBOR(br); err != nil {
+			return err
+		}
+
 	}
 	return nil
 }

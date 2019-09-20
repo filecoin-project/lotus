@@ -3,7 +3,6 @@ package actors_test
 import (
 	"context"
 	"encoding/binary"
-	"fmt"
 	"testing"
 
 	"github.com/filecoin-project/go-lotus/build"
@@ -142,8 +141,7 @@ func TestStorageMarketActorCreateMiner(t *testing.T) {
 	}
 
 	if ret.ExitCode != 0 {
-		fmt.Println(ret.ActorErr)
-		t.Fatal("invocation failed: ", ret.ExitCode)
+		t.Fatalf("invocation failed: %d: %s", ret.ExitCode, ret.ActorErr)
 	}
 
 	outaddr, err := address.NewFromBytes(ret.Return)

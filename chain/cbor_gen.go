@@ -15,6 +15,10 @@ import (
 var _ = xerrors.Errorf
 
 func (t *BlockSyncRequest) MarshalCBOR(w io.Writer) error {
+	if t == nil {
+		_, err := w.Write(cbg.CborNull)
+		return err
+	}
 	if _, err := w.Write([]byte{131}); err != nil {
 		return err
 	}
@@ -41,7 +45,8 @@ func (t *BlockSyncRequest) MarshalCBOR(w io.Writer) error {
 	return nil
 }
 
-func (t *BlockSyncRequest) UnmarshalCBOR(br io.Reader) error {
+func (t *BlockSyncRequest) UnmarshalCBOR(r io.Reader) error {
+	br := cbg.GetPeeker(r)
 
 	maj, extra, err := cbg.CborReadHeader(br)
 	if err != nil {
@@ -104,6 +109,10 @@ func (t *BlockSyncRequest) UnmarshalCBOR(br io.Reader) error {
 }
 
 func (t *BlockSyncResponse) MarshalCBOR(w io.Writer) error {
+	if t == nil {
+		_, err := w.Write(cbg.CborNull)
+		return err
+	}
 	if _, err := w.Write([]byte{131}); err != nil {
 		return err
 	}
@@ -133,7 +142,8 @@ func (t *BlockSyncResponse) MarshalCBOR(w io.Writer) error {
 	return nil
 }
 
-func (t *BlockSyncResponse) UnmarshalCBOR(br io.Reader) error {
+func (t *BlockSyncResponse) UnmarshalCBOR(r io.Reader) error {
+	br := cbg.GetPeeker(r)
 
 	maj, extra, err := cbg.CborReadHeader(br)
 	if err != nil {
@@ -164,6 +174,7 @@ func (t *BlockSyncResponse) UnmarshalCBOR(br io.Reader) error {
 		t.Chain = make([]*BSTipSet, extra)
 	}
 	for i := 0; i < int(extra); i++ {
+
 		var v BSTipSet
 		if err := v.UnmarshalCBOR(br); err != nil {
 			return err
@@ -184,31 +195,22 @@ func (t *BlockSyncResponse) UnmarshalCBOR(br io.Reader) error {
 	t.Status = extra
 	// t.t.Message (string)
 
-	maj, extra, err = cbg.CborReadHeader(br)
-	if err != nil {
-		return err
-	}
-
-	if maj != cbg.MajTextString {
-		return fmt.Errorf("expected cbor type 'text string' in input")
-	}
-
-	if extra > 256*1024 {
-		return fmt.Errorf("string in cbor input too long")
-	}
-
 	{
-		buf := make([]byte, extra)
-		if _, err := io.ReadFull(br, buf); err != nil {
+		sval, err := cbg.ReadString(br)
+		if err != nil {
 			return err
 		}
 
-		t.Message = string(buf)
+		t.Message = string(sval)
 	}
 	return nil
 }
 
 func (t *BSTipSet) MarshalCBOR(w io.Writer) error {
+	if t == nil {
+		_, err := w.Write(cbg.CborNull)
+		return err
+	}
 	if _, err := w.Write([]byte{133}); err != nil {
 		return err
 	}
@@ -275,7 +277,8 @@ func (t *BSTipSet) MarshalCBOR(w io.Writer) error {
 	return nil
 }
 
-func (t *BSTipSet) UnmarshalCBOR(br io.Reader) error {
+func (t *BSTipSet) UnmarshalCBOR(r io.Reader) error {
+	br := cbg.GetPeeker(r)
 
 	maj, extra, err := cbg.CborReadHeader(br)
 	if err != nil {
@@ -306,6 +309,7 @@ func (t *BSTipSet) UnmarshalCBOR(br io.Reader) error {
 		t.Blocks = make([]*types.BlockHeader, extra)
 	}
 	for i := 0; i < int(extra); i++ {
+
 		var v types.BlockHeader
 		if err := v.UnmarshalCBOR(br); err != nil {
 			return err
@@ -331,6 +335,7 @@ func (t *BSTipSet) UnmarshalCBOR(br io.Reader) error {
 		t.BlsMessages = make([]*types.Message, extra)
 	}
 	for i := 0; i < int(extra); i++ {
+
 		var v types.Message
 		if err := v.UnmarshalCBOR(br); err != nil {
 			return err
@@ -409,6 +414,7 @@ func (t *BSTipSet) UnmarshalCBOR(br io.Reader) error {
 		t.SecpkMessages = make([]*types.SignedMessage, extra)
 	}
 	for i := 0; i < int(extra); i++ {
+
 		var v types.SignedMessage
 		if err := v.UnmarshalCBOR(br); err != nil {
 			return err
