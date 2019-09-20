@@ -173,7 +173,6 @@ func loadMinerInfo(vmctx types.VMContext, m *StorageMinerActorState) (*MinerInfo
 }
 
 func (sma StorageMinerActor) StorageMinerConstructor(act *types.Actor, vmctx types.VMContext, params *StorageMinerConstructorParams) ([]byte, ActorError) {
-	fmt.Println("MINER CONSTRUCTOR")
 	minerInfo := &MinerInfo{
 		Owner:             params.Owner,
 		Worker:            params.Worker,
@@ -332,33 +331,41 @@ func (sma StorageMinerActor) SubmitPoSt(act *types.Actor, vmctx types.VMContext,
 		feesRequired = types.BigAdd(feesRequired, types.NewInt(1000))
 	}
 
-	//TODO temporary sector failure fees
+	tempFaultFee := computeTempFaultSectorFee(self.CurrentFaultSet.Count(), mi.SectorSize)
 
-	msgVal := vmctx.Message().Value
-	if types.BigCmp(msgVal, feesRequired) < 0 {
-		return nil, aerrors.New(2, "not enough funds to pay post submission fees")
-	}
+	feesRequired = types.BigAdd(feesRequired, tempFaultFee)
 
-	if types.BigCmp(msgVal, feesRequired) > 0 {
+	// If we have fees to pay
+	if types.BigCmp(feesRequired, types.NewInt(0)) > 0 {
+		msgVal := vmctx.Message().Value
+		if types.BigCmp(msgVal, feesRequired) < 0 {
+			return nil, aerrors.New(2, "not enough funds to pay post submission fees")
+		}
+
 		_, err := vmctx.Send(vmctx.Message().From, 0,
 			types.BigSub(msgVal, feesRequired), nil)
 		if err != nil {
 			return nil, aerrors.Wrap(err, "could not refund excess fees")
 		}
+
+		_, err = vmctx.Send(BurntFundsAddress, 0, feesRequired, nil)
+		if err != nil {
+			return nil, aerrors.Wrap(err, "failed to burn funds")
+		}
 	}
 
 	var seed [sectorbuilder.CommLen]byte
 	{
-		var rand []byte
-		var err ActorError
-		if !lateSubmission {
-			rand, err = vmctx.GetRandomness(self.ProvingPeriodEnd - build.PoSTChallangeTime)
-		} else {
-			rand, err = vmctx.GetRandomness(nextProvingPeriodEnd - build.PoSTChallangeTime)
+		randSrc := self.ProvingPeriodEnd - build.PoSTChallangeTime
+		if lateSubmission {
+			randSrc = nextProvingPeriodEnd - build.PoSTChallangeTime
 		}
+
+		rand, err := vmctx.GetRandomness(randSrc)
 		if err != nil {
 			return nil, aerrors.Wrap(err, "could not get randomness for PoST")
 		}
+
 		if len(rand) < len(seed) {
 			return nil, aerrors.Escalate(fmt.Errorf("randomness too small (%d < %d)",
 				len(rand), len(seed)), "improper randomness")
@@ -371,26 +378,9 @@ func (sma StorageMinerActor) SubmitPoSt(act *types.Actor, vmctx types.VMContext,
 		return nil, aerrors.Escalate(lerr, "could not load proving set node")
 	}
 
-	var sectorInfos []sectorbuilder.SectorInfo
-	if err := pss.ForEach(func(id uint64, v *cbg.Deferred) error {
-		var comms [][]byte
-		if err := cbor.DecodeInto(v.Raw, &comms); err != nil {
-			return xerrors.New("could not decode comms")
-		}
-		si := sectorbuilder.SectorInfo{
-			SectorID: id,
-		}
-		commR := comms[0]
-		if len(commR) != len(si.CommR) {
-			return xerrors.Errorf("commR length is wrong: %d", len(commR))
-		}
-		copy(si.CommR[:], commR)
-
-		sectorInfos = append(sectorInfos, si)
-
-		return nil
-	}); err != nil {
-		return nil, aerrors.Absorb(err, 3, "could not decode sectorset")
+	sectorInfos, lerr := loadSectorSet(pss)
+	if lerr != nil {
+		return nil, aerrors.Escalate(lerr, "could not decode sectorset")
 	}
 
 	faults := self.CurrentFaultSet.All()
@@ -454,6 +444,42 @@ func (sma StorageMinerActor) SubmitPoSt(act *types.Actor, vmctx types.VMContext,
 	}
 
 	return nil, nil
+}
+
+func loadSectorSet(pss *amt.Root) ([]sectorbuilder.SectorInfo, error) {
+	var sectorInfos []sectorbuilder.SectorInfo
+	if err := pss.ForEach(func(id uint64, v *cbg.Deferred) error {
+		var comms [][]byte
+		if err := cbor.DecodeInto(v.Raw, &comms); err != nil {
+			return xerrors.New("could not decode comms")
+		}
+		si := sectorbuilder.SectorInfo{
+			SectorID: id,
+		}
+		commR := comms[0]
+		if len(commR) != len(si.CommR) {
+			return xerrors.Errorf("commR length is wrong: %d", len(commR))
+		}
+		copy(si.CommR[:], commR)
+
+		sectorInfos = append(sectorInfos, si)
+
+		return nil
+	}); err != nil {
+		return nil, err
+	}
+	return sectorInfos, nil
+}
+
+func computeTempFaultSectorFee(nsectors uint64, ssize types.BigInt) types.BigInt {
+	faultedPower := types.BigMul(
+		types.NewInt(nsectors),
+		ssize,
+	)
+	return types.BigMul(
+		faultedPower,
+		types.NewInt(5), // 5 AttoFil per faulted byte? seems fair, i guess.
+	)
 }
 
 const NoPostSlashThreshold = build.ProvingPeriodDuration * 3

@@ -50,6 +50,10 @@ func (bf BitField) All() []uint64 {
 	return res
 }
 
+func (bf BitField) Count() uint64 {
+	return uint64(len(bf.bits))
+}
+
 func (bf BitField) MarshalCBOR(w io.Writer) error {
 	ints := make([]uint64, 0, len(bf.bits))
 	for i := range bf.bits {
