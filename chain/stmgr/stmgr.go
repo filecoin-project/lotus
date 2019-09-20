@@ -77,7 +77,12 @@ func (sm *StateManager) computeTipSetState(ctx context.Context, blks []*types.Bl
 		return cid.Undef, xerrors.Errorf("recursive TipSetState failed: %w", err)
 	}
 
-	r := vm.NewChainRand(sm.cs, blks[0], nil)
+	cids := make([]cid.Cid, len(blks))
+	for i, v := range blks {
+		cids[i] = v.Cid()
+	}
+
+	r := vm.NewChainRand(sm.cs, cids, blks[0].Height, nil)
 
 	vmi, err := vm.NewVM(pstate, blks[0].Height, r, address.Undef, sm.cs)
 	if err != nil {

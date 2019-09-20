@@ -82,7 +82,7 @@ type FullNodeStruct struct {
 		StateMinerPeerID           func(ctx context.Context, m address.Address, ts *types.TipSet) (peer.ID, error)     `perm:"read"`
 		StateMinerProvingPeriodEnd func(ctx context.Context, actor address.Address, ts *types.TipSet) (uint64, error)  `perm:"read"`
 		StateCall                  func(context.Context, *types.Message, *types.TipSet) (*types.MessageReceipt, error) `perm:"read"`
-		StateReplay          func(context.Context, *types.TipSet, cid.Cid) (*ReplayResults, error)               `perm:"read"`
+		StateReplay                func(context.Context, *types.TipSet, cid.Cid) (*ReplayResults, error)               `perm:"read"`
 		StateGetActor              func(context.Context, address.Address, *types.TipSet) (*types.Actor, error)         `perm:"read"`
 		StateReadState             func(context.Context, *types.Actor, *types.TipSet) (*ActorState, error)             `perm:"read"`
 

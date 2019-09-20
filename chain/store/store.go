@@ -702,7 +702,7 @@ func (cs *ChainStore) TryFillTipSet(ts *types.TipSet) (*FullTipSet, error) {
 	return NewFullTipSet(out), nil
 }
 
-func (cs *ChainStore) GetRandomness(ctx context.Context, pts *types.TipSet, tickets []*types.Ticket, lb int64) ([]byte, error) {
+func (cs *ChainStore) GetRandomness(ctx context.Context, blks []cid.Cid, tickets []*types.Ticket, lb int64) ([]byte, error) {
 	if lb < 0 {
 		return nil, fmt.Errorf("negative lookback parameters are not valid (got %d)", lb)
 	}
@@ -717,9 +717,8 @@ func (cs *ChainStore) GetRandomness(ctx context.Context, pts *types.TipSet, tick
 
 	nv := lb - lt
 
-	nextCids := pts.Cids()
 	for {
-		nts, err := cs.LoadTipSet(nextCids)
+		nts, err := cs.LoadTipSet(blks)
 		if err != nil {
 			return nil, err
 		}
@@ -748,7 +747,7 @@ func (cs *ChainStore) GetRandomness(ctx context.Context, pts *types.TipSet, tick
 			return rval, nil
 		}
 
-		nextCids = mtb.Parents
+		blks = mtb.Parents
 	}
 }
 

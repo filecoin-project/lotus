@@ -318,21 +318,23 @@ type Rand interface {
 
 type chainRand struct {
 	cs      *store.ChainStore
-	pts     *types.TipSet
+	blks    []cid.Cid
+	bh      uint64
 	tickets []*types.Ticket
 }
 
-func NewChainRand(cs *store.ChainStore, pts *types.TipSet, tickets []*types.Ticket) Rand {
+func NewChainRand(cs *store.ChainStore, blks []cid.Cid, bheight uint64, tickets []*types.Ticket) Rand {
 	return &chainRand{
 		cs:      cs,
-		pts:     pts,
+		blks:    blks,
+		bh:      bheight,
 		tickets: tickets,
 	}
 }
 
 func (cr *chainRand) GetRandomness(ctx context.Context, h int64) ([]byte, error) {
-	lb := (int64(cr.pts.Height()) + int64(len(cr.tickets))) - h
-	return cr.cs.GetRandomness(ctx, cr.pts, cr.tickets, lb)
+	lb := (int64(cr.bh) + int64(len(cr.tickets))) - h
+	return cr.cs.GetRandomness(ctx, cr.blks, cr.tickets, lb)
 }
 
 type ApplyRet struct {

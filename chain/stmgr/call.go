@@ -58,7 +58,7 @@ func (sm *StateManager) Call(ctx context.Context, msg *types.Message, ts *types.
 		return nil, err
 	}
 
-	r := vm.NewChainRand(sm.cs, ts, nil)
+	r := vm.NewChainRand(sm.cs, ts.Cids(), ts.Height(), nil)
 
 	return sm.CallRaw(ctx, msg, state, r, ts.Height())
 }

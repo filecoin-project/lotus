@@ -27,7 +27,7 @@ func MinerCreateBlock(ctx context.Context, sm *stmgr.StateManager, w *wallet.Wal
 
 	height := parents.Height() + uint64(len(tickets))
 
-	r := vm.NewChainRand(sm.ChainStore(), parents, tickets)
+	r := vm.NewChainRand(sm.ChainStore(), parents.Cids(), parents.Height(), tickets)
 	vmi, err := vm.NewVM(st, height, r, miner, sm.ChainStore())
 	if err != nil {
 		return nil, err
