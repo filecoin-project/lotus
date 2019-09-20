@@ -5,6 +5,7 @@ import (
 	"crypto/sha256"
 	"encoding/json"
 	"fmt"
+	"github.com/filecoin-project/go-lotus/build"
 	"sync"
 
 	amt "github.com/filecoin-project/go-amt-ipld"
@@ -35,6 +36,7 @@ type ChainStore struct {
 	heaviest   *types.TipSet
 
 	bestTips *pubsub.PubSub
+	pubLk    sync.Mutex
 
 	tstLk   sync.Mutex
 	tipsets map[uint64][]cid.Cid
@@ -51,18 +53,25 @@ func NewChainStore(bs bstore.Blockstore, ds dstore.Batching) *ChainStore {
 	}
 
 	hcnf := func(rev, app []*types.TipSet) error {
-		for _, r := range rev {
-			cs.bestTips.Pub(&HeadChange{
+		cs.pubLk.Lock()
+		defer cs.pubLk.Unlock()
+
+		notif := make([]*HeadChange, len(rev)+len(app))
+
+		for i, r := range rev {
+			notif[i] = &HeadChange{
 				Type: HCRevert,
 				Val:  r,
-			}, "headchange")
+			}
 		}
-		for _, r := range app {
-			cs.bestTips.Pub(&HeadChange{
+		for i, r := range app {
+			notif[i+len(rev)] = &HeadChange{
 				Type: HCApply,
 				Val:  r,
-			}, "headchange")
+			}
 		}
+
+		cs.bestTips.Pub(notif, "headchange")
 		return nil
 	}
 
@@ -109,21 +118,10 @@ func (cs *ChainStore) writeHead(ts *types.TipSet) error {
 	return nil
 }
 
-func (cs *ChainStore) SubNewTips() chan *types.TipSet {
-	subch := cs.bestTips.Sub("best")
-	out := make(chan *types.TipSet)
-	go func() {
-		defer close(out)
-		for val := range subch {
-			out <- val.(*types.TipSet)
-		}
-	}()
-	return out
-}
-
 const (
-	HCRevert = "revert"
-	HCApply  = "apply"
+	HCRevert  = "revert"
+	HCApply   = "apply"
+	HCCurrent = "current"
 )
 
 type HeadChange struct {
@@ -131,9 +129,18 @@ type HeadChange struct {
 	Val  *types.TipSet
 }
 
-func (cs *ChainStore) SubHeadChanges(ctx context.Context) chan *HeadChange {
+func (cs *ChainStore) SubHeadChanges(ctx context.Context) chan []*HeadChange {
+	cs.pubLk.Lock()
 	subch := cs.bestTips.Sub("headchange")
-	out := make(chan *HeadChange, 16)
+	head := cs.GetHeaviestTipSet()
+	cs.pubLk.Unlock()
+
+	out := make(chan []*HeadChange, 16)
+	out <- []*HeadChange{{
+		Type: HCCurrent,
+		Val:  head,
+	}}
+
 	go func() {
 		defer close(out)
 		for {
@@ -143,8 +150,11 @@ func (cs *ChainStore) SubHeadChanges(ctx context.Context) chan *HeadChange {
 					log.Warn("chain head sub exit loop")
 					return
 				}
+				if len(out) > 0 {
+					log.Warnf("head change sub is slow, has %d buffered entries", len(out))
+				}
 				select {
-				case out <- val.(*HeadChange):
+				case out <- val.([]*HeadChange):
 				case <-ctx.Done():
 				}
 			case <-ctx.Done():
@@ -597,20 +607,22 @@ func (cs *ChainStore) WaitForMessage(ctx context.Context, mcid cid.Cid) (cid.Cid
 
 	for {
 		select {
-		case val, ok := <-tsub:
+		case notif, ok := <-tsub:
 			if !ok {
 				return cid.Undef, nil, ctx.Err()
 			}
-			switch val.Type {
-			case HCRevert:
-				continue
-			case HCApply:
-				bc, r, err := cs.tipsetContainsMsg(val.Val, mcid)
-				if err != nil {
-					return cid.Undef, nil, err
-				}
-				if r != nil {
-					return bc, r, nil
+			for _, val := range notif {
+				switch val.Type {
+				case HCRevert:
+					continue
+				case HCApply:
+					bc, r, err := cs.tipsetContainsMsg(val.Val, mcid)
+					if err != nil {
+						return cid.Undef, nil, err
+					}
+					if r != nil {
+						return bc, r, nil
+					}
 				}
 			}
 		case <-ctx.Done():
@@ -690,31 +702,36 @@ func (cs *ChainStore) TryFillTipSet(ts *types.TipSet) (*FullTipSet, error) {
 	return NewFullTipSet(out), nil
 }
 
-func (cs *ChainStore) GetRandomness(ctx context.Context, pts *types.TipSet, tickets []*types.Ticket, lb int) ([]byte, error) {
-	if lb < len(tickets) {
+func (cs *ChainStore) GetRandomness(ctx context.Context, blks []cid.Cid, tickets []*types.Ticket, lb int64) ([]byte, error) {
+	if lb < 0 {
+		return nil, fmt.Errorf("negative lookback parameters are not valid (got %d)", lb)
+	}
+	lt := int64(len(tickets))
+	if lb < lt {
 		log.Warn("self sampling randomness. this should be extremely rare, if you see this often it may be a bug")
 
-		t := tickets[len(tickets)-(1+lb)]
+		t := tickets[lt-(1+lb)]
 
 		return t.VDFResult, nil
 	}
 
-	nv := lb - len(tickets)
+	nv := lb - lt
 
-	nextCids := pts.Cids()
 	for {
-		nts, err := cs.LoadTipSet(nextCids)
+		nts, err := cs.LoadTipSet(blks)
 		if err != nil {
 			return nil, err
 		}
 
 		mtb := nts.MinTicketBlock()
-		if nv < len(mtb.Tickets) {
-			t := mtb.Tickets[len(mtb.Tickets)-(1+nv)]
+		lt := int64(len(mtb.Tickets))
+		if nv < lt {
+			t := mtb.Tickets[lt-(1+nv)]
+			log.Infof("Returning randomness: H:%d, t:%d, mtb:%s", nts.Height(), lt-(1+nv), mtb.Cid())
 			return t.VDFResult, nil
 		}
 
-		nv -= len(mtb.Tickets)
+		nv -= lt
 
 		// special case for lookback behind genesis block
 		// TODO(spec): this is not in the spec, need to sync that
@@ -723,13 +740,40 @@ func (cs *ChainStore) GetRandomness(ctx context.Context, pts *types.TipSet, tick
 			t := mtb.Tickets[0]
 
 			rval := t.VDFResult
-			for i := 0; i < nv; i++ {
+			for i := int64(0); i < nv; i++ {
 				h := sha256.Sum256(rval)
 				rval = h[:]
 			}
 			return rval, nil
 		}
 
-		nextCids = mtb.Parents
+		blks = mtb.Parents
+	}
+}
+
+func (cs *ChainStore) GetTipsetByHeight(ctx context.Context, h uint64, ts *types.TipSet) (*types.TipSet, error) {
+	if ts == nil {
+		ts = cs.GetHeaviestTipSet()
+	}
+
+	if h > ts.Height() {
+		return nil, xerrors.Errorf("looking for tipset with height less than start point")
+	}
+
+	if ts.Height()-h > build.ForkLengthThreshold {
+		log.Warnf("expensive call to GetTipsetByHeight, seeking %d levels", ts.Height()-h)
+	}
+
+	for {
+		mtb := ts.MinTicketBlock()
+		if h >= ts.Height()-uint64(len(mtb.Tickets)) {
+			return ts, nil
+		}
+
+		pts, err := cs.LoadTipSet(ts.Parents())
+		if err != nil {
+			return nil, err
+		}
+		ts = pts
 	}
 }

@@ -20,10 +20,7 @@ type heightEvents struct {
 }
 
 func (e *heightEvents) headChangeAt(rev, app []*types.TipSet) error {
-	e.lk.Lock()
-	defer e.lk.Unlock()
-
-	// highest tipset is always the first (see cs.ReorgOps)
+	// highest tipset is always the first (see api.ReorgOps)
 	newH := app[0].Height()
 
 	for _, ts := range rev {

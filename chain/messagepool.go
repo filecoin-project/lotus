@@ -122,7 +122,7 @@ func (mp *MessagePool) getNonceLocked(addr address.Address) (uint64, error) {
 		return mset.nextNonce, nil
 	}
 
-	act, err := mp.sm.GetActor(addr)
+	act, err := mp.sm.GetActor(addr, nil)
 	if err != nil {
 		return 0, err
 	}

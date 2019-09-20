@@ -77,7 +77,14 @@ func (sm *StateManager) computeTipSetState(ctx context.Context, blks []*types.Bl
 		return cid.Undef, xerrors.Errorf("recursive TipSetState failed: %w", err)
 	}
 
-	vmi, err := vm.NewVM(pstate, blks[0].Height, address.Undef, sm.cs)
+	cids := make([]cid.Cid, len(blks))
+	for i, v := range blks {
+		cids[i] = v.Cid()
+	}
+
+	r := vm.NewChainRand(sm.cs, cids, blks[0].Height, nil)
+
+	vmi, err := vm.NewVM(pstate, blks[0].Height, r, address.Undef, sm.cs)
 	if err != nil {
 		return cid.Undef, xerrors.Errorf("instantiating VM failed: %w", err)
 	}
@@ -131,8 +138,11 @@ func (sm *StateManager) computeTipSetState(ctx context.Context, blks []*types.Bl
 	return vmi.Flush(ctx)
 }
 
-func (sm *StateManager) GetActor(addr address.Address) (*types.Actor, error) {
-	ts := sm.cs.GetHeaviestTipSet()
+func (sm *StateManager) GetActor(addr address.Address, ts *types.TipSet) (*types.Actor, error) {
+	if ts == nil {
+		ts = sm.cs.GetHeaviestTipSet()
+	}
+
 	stcid, err := sm.TipSetState(ts.Cids())
 	if err != nil {
 		return nil, xerrors.Errorf("tipset state: %w", err)
@@ -147,8 +157,8 @@ func (sm *StateManager) GetActor(addr address.Address) (*types.Actor, error) {
 	return state.GetActor(addr)
 }
 
-func (sm *StateManager) GetBalance(addr address.Address) (types.BigInt, error) {
-	act, err := sm.GetActor(addr)
+func (sm *StateManager) GetBalance(addr address.Address, ts *types.TipSet) (types.BigInt, error) {
+	act, err := sm.GetActor(addr, ts)
 	if err != nil {
 		return types.BigInt{}, xerrors.Errorf("get actor: %w", err)
 	}
@@ -160,8 +170,8 @@ func (sm *StateManager) ChainStore() *store.ChainStore {
 	return sm.cs
 }
 
-func (sm *StateManager) LoadActorState(ctx context.Context, a address.Address, out interface{}) (*types.Actor, error) {
-	act, err := sm.GetActor(a)
+func (sm *StateManager) LoadActorState(ctx context.Context, a address.Address, out interface{}, ts *types.TipSet) (*types.Actor, error) {
+	act, err := sm.GetActor(a, ts)
 	if err != nil {
 		return nil, err
 	}

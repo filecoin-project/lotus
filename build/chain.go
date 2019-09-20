@@ -1,5 +1,7 @@
 package build
 
-const BlockDelay = 5
+// Seconds
+const BlockDelay = 3
 
+// Seconds
 const AllowableClockDrift = BlockDelay * 2

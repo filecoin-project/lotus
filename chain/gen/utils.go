@@ -169,7 +169,7 @@ func mustEnc(i cbg.CBORMarshaler) []byte {
 }
 
 func SetupStorageMiners(ctx context.Context, cs *store.ChainStore, sroot cid.Cid, gmcfg *GenMinerCfg) (cid.Cid, error) {
-	vm, err := vm.NewVM(sroot, 0, actors.NetworkAddress, cs)
+	vm, err := vm.NewVM(sroot, 0, nil, actors.NetworkAddress, cs)
 	if err != nil {
 		return cid.Undef, xerrors.Errorf("failed to create NewVM: %w", err)
 	}

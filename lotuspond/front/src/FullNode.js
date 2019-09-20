@@ -15,7 +15,7 @@ class FullNode extends React.Component {
     this.newSecpAddr = this.newSecpAddr.bind(this)
     this.newBLSAddr = this.newBLSAddr.bind(this)
     this.startStorageMiner = this.startStorageMiner.bind(this)
-    this.add1k = this.add1k.bind(this)
+    this.add20k = this.add20k.bind(this)
     this.explorer = this.explorer.bind(this)
     this.client = this.client.bind(this)
     this.stop = this.stop.bind(this)
@@ -84,8 +84,8 @@ class FullNode extends React.Component {
     this.props.spawnStorageNode(this.props.node.Repo, this.props.client)
   }
 
-  async add1k(to) {
-    await this.props.give1k(to)
+  async add20k(to) {
+    await this.props.give20k(to)
   }
 
   explorer() {
@@ -123,14 +123,14 @@ class FullNode extends React.Component {
       let storageMine = <a href="#" onClick={this.startStorageMiner} hidden={!this.props.spawnStorageNode}>[Spawn Storage Miner]</a>
 
       let addresses = this.state.addrs.map((addr) => {
-        let line = <Address client={this.props.client} add1k={this.add1k} add10k={true} nonce={true} addr={addr} mountWindow={this.props.mountWindow}/>
+        let line = <Address client={this.props.client} add20k={this.add20k} add10k={true} nonce={true} addr={addr} mountWindow={this.props.mountWindow}/>
         if (this.state.defaultAddr === addr) {
           line = <b>{line}</b>
         }
         return <div key={addr}>{line}</div>
       })
       let paychannels = this.state.paychs.map((addr, ak) => {
-        const line = <Address client={this.props.client} add1k={this.add1k} add10k={true} addr={addr} mountWindow={this.props.mountWindow}/>
+        const line = <Address client={this.props.client} add20k={this.add20k} add10k={true} addr={addr} mountWindow={this.props.mountWindow}/>
         const vouchers = this.state.vouchers[ak].map(voucher => {
           let extra = <span></span>
           if(voucher.Extra) {

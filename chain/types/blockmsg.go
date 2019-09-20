@@ -1,15 +1,13 @@
-package chain
+package types
 
 import (
 	"bytes"
 
 	"github.com/ipfs/go-cid"
-
-	"github.com/filecoin-project/go-lotus/chain/types"
 )
 
 type BlockMsg struct {
-	Header        *types.BlockHeader
+	Header        *BlockHeader
 	BlsMessages   []cid.Cid
 	SecpkMessages []cid.Cid
 }

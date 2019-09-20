@@ -84,16 +84,16 @@ class Address extends React.Component {
     return info
   }
 
-  add10k = async () => {
-    [...Array(10).keys()].map(() => async () => await this.props.add1k(this.props.addr)).reduce(async (p, c) => [await p, await c()], Promise.resolve(null))
+  add200k = async () => {
+    [...Array(10).keys()].map(() => async () => await this.props.add20k(this.props.addr)).reduce(async (p, c) => [await p, await c()], Promise.resolve(null))
   }
 
   render() {
-    let add1k = <span/>
-    if(this.props.add1k) {
-      add1k = <span>&nbsp;<a href="#" onClick={() => this.props.add1k(this.props.addr)}>[+1k]</a></span>
+    let add20k = <span/>
+    if(this.props.add20k) {
+      add20k = <span>&nbsp;<a href="#" onClick={() => this.props.add20k(this.props.addr)}>[+20k]</a></span>
       if (this.props.add10k) {
-        add1k = <span>{add1k}&nbsp;<a href="#" onClick={this.add10k}>[+10k]</a></span>
+        add20k = <span>{add20k}&nbsp;<a href="#" onClick={this.add200k}>[+200k]</a></span>
       }
     }
     let addr = truncAddr(this.props.addr, this.props.short ? 12 : 17)
@@ -133,7 +133,7 @@ class Address extends React.Component {
       minerInfo = <span>&nbsp;Power: {this.state.minerInfo.MinerPower} ({this.state.minerInfo.MinerPower/this.state.minerInfo.TotalPower*100}%)</span>
     }
 
-    return <span>{addr}{balance}{actInfo}{nonce}{add1k}{transfer}{minerInfo}</span>
+    return <span>{addr}{balance}{actInfo}{nonce}{add20k}{transfer}{minerInfo}</span>
   }
 }
 

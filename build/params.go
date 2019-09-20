@@ -7,14 +7,20 @@ const UnixfsLinksPerLevel = 1024
 
 const SectorSize = 1024
 
+// Blocks
 const PaymentChannelClosingDelay = 6 * 60 * 2 // six hours
 
+// Blocks
 const DealVoucherSkewLimit = 10
 
+// Blocks
 const ForkLengthThreshold = 20
+
+// Blocks
 const RandomnessLookback = 20
 
-const ProvingPeriodDuration = 2 * 60 // an hour, for now
-const PoSTChallangeTime = 1 * 60
+// Blocks
+const ProvingPeriodDuration = 10
+const PoSTChallangeTime = 5
 
 // TODO: Move other important consts here

@@ -2,12 +2,18 @@ package stmgr
 
 import (
 	"context"
-	"github.com/libp2p/go-libp2p-core/peer"
 
+	"github.com/filecoin-project/go-lotus/api"
 	"github.com/filecoin-project/go-lotus/chain/actors"
 	"github.com/filecoin-project/go-lotus/chain/address"
 	"github.com/filecoin-project/go-lotus/chain/types"
+
+	amt "github.com/filecoin-project/go-amt-ipld"
 	cid "github.com/ipfs/go-cid"
+	blockstore "github.com/ipfs/go-ipfs-blockstore"
+	cbor "github.com/ipfs/go-ipld-cbor"
+	"github.com/libp2p/go-libp2p-core/peer"
+	cbg "github.com/whyrusleeping/cbor-gen"
 	"golang.org/x/xerrors"
 )
 
@@ -16,7 +22,7 @@ func GetMinerWorker(ctx context.Context, sm *StateManager, st cid.Cid, maddr add
 		To:     maddr,
 		From:   maddr,
 		Method: actors.MAMethods.GetWorkerAddr,
-	}, st, 0)
+	}, st, nil, 0)
 	if err != nil {
 		return address.Undef, xerrors.Errorf("callRaw failed: %w", err)
 	}
@@ -42,7 +48,7 @@ func GetMinerOwner(ctx context.Context, sm *StateManager, st cid.Cid, maddr addr
 		To:     maddr,
 		From:   maddr,
 		Method: actors.MAMethods.GetOwner,
-	}, st, 0)
+	}, st, nil, 0)
 	if err != nil {
 		return address.Undef, xerrors.Errorf("callRaw failed: %w", err)
 	}
@@ -121,4 +127,60 @@ func GetMinerPeerID(ctx context.Context, sm *StateManager, ts *types.TipSet, mad
 	}
 
 	return peer.IDFromBytes(recp.Return)
+}
+
+func GetMinerProvingPeriodEnd(ctx context.Context, sm *StateManager, ts *types.TipSet, maddr address.Address) (uint64, error) {
+	var mas actors.StorageMinerActorState
+	_, err := sm.LoadActorState(ctx, maddr, &mas, ts)
+	if err != nil {
+		return 0, xerrors.Errorf("failed to load miner actor state: %w", err)
+	}
+
+	return mas.ProvingPeriodEnd, nil
+}
+
+func GetMinerProvingSet(ctx context.Context, sm *StateManager, ts *types.TipSet, maddr address.Address) ([]*api.SectorInfo, error) {
+	var mas actors.StorageMinerActorState
+	_, err := sm.LoadActorState(ctx, maddr, &mas, ts)
+	if err != nil {
+		return nil, xerrors.Errorf("failed to load miner actor state: %w", err)
+	}
+
+	return LoadSectorsFromSet(ctx, sm.ChainStore().Blockstore(), mas.ProvingSet)
+}
+
+func GetMinerSectorSet(ctx context.Context, sm *StateManager, ts *types.TipSet, maddr address.Address) ([]*api.SectorInfo, error) {
+	var mas actors.StorageMinerActorState
+	_, err := sm.LoadActorState(ctx, maddr, &mas, ts)
+	if err != nil {
+		return nil, xerrors.Errorf("failed to load miner actor state: %w", err)
+	}
+
+	return LoadSectorsFromSet(ctx, sm.ChainStore().Blockstore(), mas.Sectors)
+}
+
+func LoadSectorsFromSet(ctx context.Context, bs blockstore.Blockstore, ssc cid.Cid) ([]*api.SectorInfo, error) {
+	blks := amt.WrapBlockstore(bs)
+	a, err := amt.LoadAMT(blks, ssc)
+	if err != nil {
+		return nil, err
+	}
+
+	var sset []*api.SectorInfo
+	if err := a.ForEach(func(i uint64, v *cbg.Deferred) error {
+		var comms [][]byte
+		if err := cbor.DecodeInto(v.Raw, &comms); err != nil {
+			return err
+		}
+		sset = append(sset, &api.SectorInfo{
+			SectorID: i,
+			CommR:    comms[0],
+			CommD:    comms[1],
+		})
+		return nil
+	}); err != nil {
+		return nil, err
+	}
+
+	return sset, nil
 }

@@ -2,18 +2,14 @@ package full
 
 import (
 	"context"
-	"fmt"
-	"strconv"
 
 	cid "github.com/ipfs/go-cid"
 	"github.com/ipfs/go-hamt-ipld"
-	cbor "github.com/ipfs/go-ipld-cbor"
 	"github.com/libp2p/go-libp2p-core/peer"
 	"go.uber.org/fx"
 	"golang.org/x/xerrors"
 
 	"github.com/filecoin-project/go-lotus/api"
-	"github.com/filecoin-project/go-lotus/chain"
 	"github.com/filecoin-project/go-lotus/chain/actors"
 	"github.com/filecoin-project/go-lotus/chain/address"
 	"github.com/filecoin-project/go-lotus/chain/gen"
@@ -38,119 +34,11 @@ type StateAPI struct {
 }
 
 func (a *StateAPI) StateMinerSectors(ctx context.Context, addr address.Address) ([]*api.SectorInfo, error) {
-	ts := a.StateManager.ChainStore().GetHeaviestTipSet()
-
-	stc, err := a.StateManager.TipSetState(ts.Cids())
-	if err != nil {
-		return nil, err
-	}
-
-	cst := hamt.CSTFromBstore(a.StateManager.ChainStore().Blockstore())
-
-	st, err := state.LoadStateTree(cst, stc)
-	if err != nil {
-		return nil, err
-	}
-
-	act, err := st.GetActor(addr)
-	if err != nil {
-		return nil, err
-	}
-
-	var minerState actors.StorageMinerActorState
-	if err := cst.Get(ctx, act.Head, &minerState); err != nil {
-		return nil, err
-	}
-
-	nd, err := hamt.LoadNode(ctx, cst, minerState.Sectors)
-	if err != nil {
-		return nil, err
-	}
-
-	var sinfos []*api.SectorInfo
-	// Note to self: the hamt isnt a great data structure to use here... need to implement the sector set
-	err = nd.ForEach(ctx, func(k string, val interface{}) error {
-		sid, err := strconv.ParseUint(k, 10, 64)
-		if err != nil {
-			return err
-		}
-
-		bval, ok := val.([]byte)
-		if !ok {
-			return fmt.Errorf("expected to get bytes in sector set hamt")
-		}
-
-		var comms [][]byte
-		if err := cbor.DecodeInto(bval, &comms); err != nil {
-			return err
-		}
-
-		sinfos = append(sinfos, &api.SectorInfo{
-			SectorID: sid,
-			CommR:    comms[0],
-			CommD:    comms[1],
-		})
-		return nil
-	})
-	return sinfos, nil
+	return stmgr.GetMinerSectorSet(ctx, a.StateManager, nil, addr)
 }
 
-func (a *StateAPI) StateMinerProvingSet(ctx context.Context, addr address.Address) ([]*api.SectorInfo, error) {
-	ts := a.Chain.GetHeaviestTipSet()
-
-	stc, err := a.StateManager.TipSetState(ts.Cids())
-	if err != nil {
-		return nil, err
-	}
-
-	cst := hamt.CSTFromBstore(a.Chain.Blockstore())
-
-	st, err := state.LoadStateTree(cst, stc)
-	if err != nil {
-		return nil, err
-	}
-
-	act, err := st.GetActor(addr)
-	if err != nil {
-		return nil, err
-	}
-
-	var minerState actors.StorageMinerActorState
-	if err := cst.Get(ctx, act.Head, &minerState); err != nil {
-		return nil, err
-	}
-
-	nd, err := hamt.LoadNode(ctx, cst, minerState.ProvingSet)
-	if err != nil {
-		return nil, err
-	}
-
-	var sinfos []*api.SectorInfo
-	// Note to self: the hamt isnt a great data structure to use here... need to implement the sector set
-	err = nd.ForEach(ctx, func(k string, val interface{}) error {
-		sid, err := strconv.ParseUint(k, 10, 64)
-		if err != nil {
-			return err
-		}
-
-		bval, ok := val.([]byte)
-		if !ok {
-			return fmt.Errorf("expected to get bytes in sector set hamt")
-		}
-
-		var comms [][]byte
-		if err := cbor.DecodeInto(bval, &comms); err != nil {
-			return err
-		}
-
-		sinfos = append(sinfos, &api.SectorInfo{
-			SectorID: sid,
-			CommR:    comms[0],
-			CommD:    comms[1],
-		})
-		return nil
-	})
-	return sinfos, nil
+func (a *StateAPI) StateMinerProvingSet(ctx context.Context, addr address.Address, ts *types.TipSet) ([]*api.SectorInfo, error) {
+	return stmgr.GetMinerProvingSet(ctx, a.StateManager, ts, addr)
 }
 
 func (a *StateAPI) StateMinerPower(ctx context.Context, maddr address.Address, ts *types.TipSet) (api.MinerPower, error) {
@@ -189,6 +77,10 @@ func (a *StateAPI) StateMinerWorker(ctx context.Context, m address.Address, ts *
 
 func (a *StateAPI) StateMinerPeerID(ctx context.Context, m address.Address, ts *types.TipSet) (peer.ID, error) {
 	return stmgr.GetMinerPeerID(ctx, a.StateManager, ts, m)
+}
+
+func (a *StateAPI) StateMinerProvingPeriodEnd(ctx context.Context, actor address.Address, ts *types.TipSet) (uint64, error) {
+	return stmgr.GetMinerProvingPeriodEnd(ctx, a.StateManager, ts, actor)
 }
 
 func (a *StateAPI) StateCall(ctx context.Context, msg *types.Message, ts *types.TipSet) (*types.MessageReceipt, error) {
@@ -260,13 +152,13 @@ func (a *StateAPI) StateReadState(ctx context.Context, act *types.Actor, ts *typ
 }
 
 // This is on StateAPI because miner.Miner requires this, and MinerAPI requires miner.Miner
-func (a *StateAPI) MinerCreateBlock(ctx context.Context, addr address.Address, parents *types.TipSet, tickets []*types.Ticket, proof types.ElectionProof, msgs []*types.SignedMessage, ts uint64) (*chain.BlockMsg, error) {
+func (a *StateAPI) MinerCreateBlock(ctx context.Context, addr address.Address, parents *types.TipSet, tickets []*types.Ticket, proof types.ElectionProof, msgs []*types.SignedMessage, ts uint64) (*types.BlockMsg, error) {
 	fblk, err := gen.MinerCreateBlock(ctx, a.StateManager, a.Wallet, addr, parents, tickets, proof, msgs, ts)
 	if err != nil {
 		return nil, err
 	}
 
-	var out chain.BlockMsg
+	var out types.BlockMsg
 	out.Header = fblk.Header
 	for _, msg := range fblk.BlsMessages {
 		out.BlsMessages = append(out.BlsMessages, msg.Cid())

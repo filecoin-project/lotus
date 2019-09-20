@@ -4,7 +4,6 @@ import (
 	"context"
 
 	"github.com/filecoin-project/go-lotus/api"
-	"github.com/filecoin-project/go-lotus/chain"
 	"github.com/filecoin-project/go-lotus/chain/store"
 	"github.com/filecoin-project/go-lotus/chain/types"
 	"golang.org/x/xerrors"
@@ -23,11 +22,11 @@ type ChainAPI struct {
 	PubSub *pubsub.PubSub
 }
 
-func (a *ChainAPI) ChainNotify(ctx context.Context) (<-chan *store.HeadChange, error) {
+func (a *ChainAPI) ChainNotify(ctx context.Context) (<-chan []*store.HeadChange, error) {
 	return a.Chain.SubHeadChanges(ctx), nil
 }
 
-func (a *ChainAPI) ChainSubmitBlock(ctx context.Context, blk *chain.BlockMsg) error {
+func (a *ChainAPI) ChainSubmitBlock(ctx context.Context, blk *types.BlockMsg) error {
 	if err := a.Chain.AddBlock(blk.Header); err != nil {
 		return xerrors.Errorf("AddBlock failed: %w", err)
 	}
@@ -46,7 +45,7 @@ func (a *ChainAPI) ChainHead(context.Context) (*types.TipSet, error) {
 }
 
 func (a *ChainAPI) ChainGetRandomness(ctx context.Context, pts *types.TipSet, tickets []*types.Ticket, lb int) ([]byte, error) {
-	return a.Chain.GetRandomness(ctx, pts, tickets, lb)
+	return a.Chain.GetRandomness(ctx, pts.Cids(), tickets, int64(lb))
 }
 
 func (a *ChainAPI) ChainWaitMsg(ctx context.Context, msg cid.Cid) (*api.MsgWait, error) {
@@ -107,4 +106,8 @@ func (a *ChainAPI) ChainGetBlockReceipts(ctx context.Context, bcid cid.Cid) ([]*
 	}
 
 	return out, nil
+}
+
+func (a *ChainAPI) ChainGetTipSetByHeight(ctx context.Context, h uint64, ts *types.TipSet) (*types.TipSet, error) {
+	return a.Chain.GetTipsetByHeight(ctx, h, ts)
 }

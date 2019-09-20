@@ -59,7 +59,6 @@ class StorageNode extends React.Component {
 
       // this.props.onConnect(client, id) // TODO: dedupe connecting part
 
-      this.loadInfo()
       let updates = setInterval(this.loadInfo, 1050)
       client.on('close', () => clearInterval(updates))
     })
@@ -72,7 +71,10 @@ class StorageNode extends React.Component {
     const peers = await this.state.client.call("Filecoin.NetPeers", [])
     const [actor] = await this.state.client.call("Filecoin.ActorAddresses", [])
 
-    this.setState({version: version, peers: peers.length, actor: actor})
+    const stActor = await this.props.fullConn.call('Filecoin.StateGetActor', [actor, null])
+    const actorState = await this.props.fullConn.call('Filecoin.StateReadState', [stActor, null])
+
+    this.setState({version: version, peers: peers.length, actor: actor, actorState: actorState})
     await this.stagedList()
   }
 
@@ -109,6 +111,7 @@ class StorageNode extends React.Component {
           </div>
           <div>
             <Address client={this.props.fullConn} addr={this.state.actor} mountWindow={this.props.mountWindow}/>
+            <span>&nbsp;<abbr title="Proving period end">PPE:</abbr> <b>{this.state.actorState.State.ProvingPeriodEnd}</b></span>
           </div>
           <div>{this.state.statusCounts.map((c, i) => <span key={i}>{sealCodes[i]}: {c} | </span>)}</div>
           <div>
