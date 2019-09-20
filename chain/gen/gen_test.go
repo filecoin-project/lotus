@@ -1,6 +1,7 @@
 package gen
 
 import (
+	"fmt"
 	"testing"
 )
 
@@ -32,19 +33,32 @@ func TestChainGeneration(t *testing.T) {
 }
 
 func BenchmarkChainGeneration(b *testing.B) {
-	b.Run("0-messages", func(b *testing.B) {
-		testGeneration(b, b.N, 0)
-	})
+	nMessages := []int{0, 10, 100, 1000, 10_000, 100_000}
+	nEmptyBlocks := []int{1, 10, 100, 1000, 10_000, 100_000}
+	n100kChainMsgs := []int{1, 10, 100, 10_000}
 
-	b.Run("10-messages", func(b *testing.B) {
-		testGeneration(b, b.N, 10)
-	})
+	for _, n := range nMessages {
+		b.Run(fmt.Sprintf("%d-messages", n), func(b *testing.B) {
+			testGeneration(b, b.N, n)
+		})
+	}
 
-	b.Run("100-messages", func(b *testing.B) {
-		testGeneration(b, b.N, 100)
-	})
+	for _, n := range nEmptyBlocks {
+		b.Run(fmt.Sprintf("%d-empty-blocks", n), func(b *testing.B) {
+			b.N = n
+			testGeneration(b, n, 0)
+		})
+	}
 
-	b.Run("1000-messages", func(b *testing.B) {
-		testGeneration(b, b.N, 1000)
-	})
+	for _, n := range n100kChainMsgs {
+		b.Run(fmt.Sprintf("%d-tx-blocks", n), func(b *testing.B) {
+			b.N = n
+			testGeneration(b, 100_000, n)
+		})
+	}
+
+	// TODO: tx blocks for secp vs bls
+	// TODO: sector commitment processing
+	// TODO: paych processing
+
 }
