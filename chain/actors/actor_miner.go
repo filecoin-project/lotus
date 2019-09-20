@@ -758,7 +758,7 @@ func slasherShare(total types.BigInt, elapsed uint64) types.BigInt {
 
 	var frac uint64
 	if elapsed >= uint64(len(fracs)) {
-		frac = precision
+		return total
 	} else {
 		frac = fracs[elapsed]
 	}
