@@ -3,11 +3,11 @@ package cli
 import (
 	"fmt"
 
-	"gopkg.in/urfave/cli.v2"
-
 	"github.com/filecoin-project/go-lotus/chain/address"
 	"github.com/filecoin-project/go-lotus/chain/types"
+
 	"github.com/ipfs/go-cid"
+	"gopkg.in/urfave/cli.v2"
 )
 
 var stateCmd = &cli.Command{
