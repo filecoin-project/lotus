@@ -44,7 +44,7 @@ func MinerCreateBlock(ctx context.Context, sm *stmgr.StateManager, w *wallet.Wal
 	}
 
 	// apply miner reward
-	if err := vmi.TransferFunds(actors.NetworkAddress, owner, vm.MiningRewardForBlock(parents)); err != nil {
+	if err := vmi.TransferFunds(actors.NetworkAddress, owner, vm.MiningRewardForBlock(height)); err != nil {
 		return nil, err
 	}
 

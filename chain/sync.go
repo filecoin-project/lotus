@@ -442,7 +442,7 @@ func (syncer *Syncer) ValidateBlock(ctx context.Context, b *types.FullBlock) err
 		return xerrors.Errorf("getting miner owner for block miner failed: %w", err)
 	}
 
-	if err := vmi.TransferFunds(actors.NetworkAddress, owner, vm.MiningRewardForBlock(baseTs)); err != nil {
+	if err := vmi.TransferFunds(actors.NetworkAddress, owner, vm.MiningRewardForBlock(h.Height)); err != nil {
 		return xerrors.Errorf("fund transfer failed: %w", err)
 	}
 
