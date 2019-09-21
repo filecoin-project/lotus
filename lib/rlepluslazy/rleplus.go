@@ -37,6 +37,67 @@ func (rle *RLE) check() error {
 	return nil
 }
 
+func (rle *RLE) RunIterator() (RunIterator, error) {
+	vit := rle.vec.Iterator(bitvector.LSB0)
+	vit(2) // Take version
+
+	it := &rleIterator{next: vit}
+	// next run is previous in relation to prep
+	// so we invert the value
+	it.nextRun.Val = vit(1) != 1
+	if err := it.prep(); err != nil {
+		return nil, err
+	}
+	return it, nil
+}
+
+type rleIterator struct {
+	next func(uint) byte
+
+	nextRun Run
+}
+
+func (it *rleIterator) HasNext() bool {
+	return it.nextRun.Valid()
+}
+
+func (it *rleIterator) NextRun() (Run, error) {
+	ret := it.nextRun
+	return ret, it.prep()
+}
+
+func (it *rleIterator) prep() error {
+	x := it.next(1)
+
+	switch x {
+	case 1:
+		it.nextRun.Len = 1
+
+	case 0:
+		y := it.next(1)
+		switch y {
+		case 1:
+			it.nextRun.Len = uint64(it.next(4))
+		case 0:
+			var buf = make([]byte, 0, 10)
+			for {
+				b := it.next(8)
+				buf = append(buf, b)
+				if b&0x80 == 0 {
+					break
+				}
+				if len(buf) > 10 {
+					return xerrors.Errorf("run too long: %w", ErrDecode)
+				}
+			}
+			it.nextRun.Len, _ = binary.Uvarint(buf)
+		}
+	}
+
+	it.nextRun.Val = !it.nextRun.Val
+	return nil
+}
+
 func (rle *RLE) Iterator() (*iterator, error) {
 	vit := rle.vec.Iterator(bitvector.LSB0)
 	vit(2) // Take version

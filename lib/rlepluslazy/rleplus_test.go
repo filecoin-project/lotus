@@ -1,6 +1,8 @@
 package rlepluslazy
 
 import (
+	"math/rand"
+	"runtime"
 	"testing"
 
 	"github.com/filecoin-project/go-lotus/extern/rleplus"
@@ -30,7 +32,10 @@ func TestDecode(t *testing.T) {
 	assert.NoError(t, err)
 	decoded := make([]uint64, 0, len(expectedNumbers))
 
-	it, err := rle.Iterator()
+	rit, err := rle.RunIterator()
+	assert.NoError(t, err)
+
+	it, err := BitsFromRuns(rit)
 	assert.NoError(t, err)
 	for it.HasNext() {
 		bit, err := it.Next()
@@ -40,5 +45,74 @@ func TestDecode(t *testing.T) {
 
 	// Our decoded integers are the same as expected
 	assert.Equal(t, expectedNumbers, decoded)
+}
 
+func TestGolden(t *testing.T) {
+	t.SkipNow()
+	N := 1000
+	mod := uint32(1) << 16
+	runExProp := float32(0.9)
+
+	bits := make([]uint64, N)
+
+	for i := 0; i < N; i++ {
+		x := rand.Uint32() % mod
+		bits[i] = uint64(x)
+		for rand.Float32() < runExProp && i+1 < N {
+			i++
+			x = (x + 1) % mod
+			bits[i] = uint64(x)
+		}
+	}
+
+	out, _, err := rleplus.Encode(bits)
+	assert.NoError(t, err)
+	t.Logf("%#v", out)
+	_, runs := rleplus.RunLengths(bits)
+	t.Logf("runs: %v", runs)
+}
+
+func BenchmarkIterator(b *testing.B) {
+	decoded := make([]uint64, 0, 1000)
+
+	for i := 0; i < b.N; i++ {
+		decoded = decoded[:0]
+		rle, _ := FromBuf(goldenRLE)
+		it, _ := rle.Iterator()
+		for it.HasNext() {
+			bit, _ := it.Next()
+			decoded = append(decoded, bit)
+		}
+		runtime.KeepAlive(decoded)
+	}
+}
+
+func BenchmarkRunIterator(b *testing.B) {
+	runs := make([]Run, 0, 1000)
+	for i := 0; i < b.N; i++ {
+		runs = runs[:0]
+		rle, _ := FromBuf(goldenRLE)
+		rit, _ := rle.RunIterator()
+		for rit.HasNext() {
+			run, _ := rit.NextRun()
+			runs = append(runs, run)
+		}
+		runtime.KeepAlive(runs)
+	}
+}
+
+func BenchmarkRunsToBits(b *testing.B) {
+	decoded := make([]uint64, 0, 1000)
+
+	for i := 0; i < b.N; i++ {
+		decoded = decoded[:0]
+		rle, _ := FromBuf(goldenRLE)
+		rit, _ := rle.RunIterator()
+		it, _ := BitsFromRuns(rit)
+		for it.HasNext() {
+			bit, _ := it.Next()
+			decoded = append(decoded, bit)
+		}
+		runtime.KeepAlive(decoded)
+	}
 }
