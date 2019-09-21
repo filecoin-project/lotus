@@ -1,6 +1,7 @@
 package bitvector_test
 
 import (
+	"runtime"
 	"testing"
 
 	"github.com/stretchr/testify/assert"
@@ -100,7 +101,7 @@ func TestBitVector(t *testing.T) {
 
 		// make a bitvector of 256 sample bits
 		for i := 0; i < 32; i++ {
-			buf = append(buf, 128+32)
+			buf = append(buf, byte(128+i))
 		}
 
 		v := bitvector.NewBitVector(buf, bitvector.LSB0)
@@ -110,7 +111,7 @@ func TestBitVector(t *testing.T) {
 		// compare to Get()
 		for i := uint(0); i < v.Len; i++ {
 			expected, _ := v.Get(i)
-			assert.Equal(t, expected, next(1))
+			assert.Equal(t, expected, next(1), "at index %d", i)
 		}
 
 		// out of range should return zero
@@ -132,5 +133,21 @@ func assertBitVector(t *testing.T, expectedBits []byte, actual bitvector.BitVect
 		actualBit, err := actual.Get(uint(idx))
 		assert.NoError(t, err)
 		assert.Equal(t, bit, actualBit)
+	}
+}
+
+func BenchmarkTake(b *testing.B) {
+	buf := make([]byte, 0, 128)
+	for i := 0; i < 128; i++ {
+		buf = append(buf, byte(128+i))
+	}
+
+	v := bitvector.NewBitVector(buf, bitvector.LSB0)
+	b.ReportAllocs()
+	b.ResetTimer()
+
+	next := v.Iterator(bitvector.LSB0)
+	for i := 0; i < b.N; i++ {
+		runtime.KeepAlive(next(8))
 	}
 }

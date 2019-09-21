@@ -73,46 +73,36 @@ func TestGolden(t *testing.T) {
 }
 
 func BenchmarkIterator(b *testing.B) {
-	decoded := make([]uint64, 0, 1000)
-
 	for i := 0; i < b.N; i++ {
-		decoded = decoded[:0]
 		rle, _ := FromBuf(goldenRLE)
 		it, _ := rle.Iterator()
 		for it.HasNext() {
 			bit, _ := it.Next()
-			decoded = append(decoded, bit)
+			runtime.KeepAlive(bit)
 		}
-		runtime.KeepAlive(decoded)
 	}
 }
 
 func BenchmarkRunIterator(b *testing.B) {
-	runs := make([]Run, 0, 1000)
 	for i := 0; i < b.N; i++ {
-		runs = runs[:0]
 		rle, _ := FromBuf(goldenRLE)
 		rit, _ := rle.RunIterator()
 		for rit.HasNext() {
 			run, _ := rit.NextRun()
-			runs = append(runs, run)
+			runtime.KeepAlive(run)
 		}
-		runtime.KeepAlive(runs)
 	}
 }
 
 func BenchmarkRunsToBits(b *testing.B) {
-	decoded := make([]uint64, 0, 1000)
 
 	for i := 0; i < b.N; i++ {
-		decoded = decoded[:0]
 		rle, _ := FromBuf(goldenRLE)
 		rit, _ := rle.RunIterator()
 		it, _ := BitsFromRuns(rit)
 		for it.HasNext() {
 			bit, _ := it.Next()
-			decoded = append(decoded, bit)
+			runtime.KeepAlive(bit)
 		}
-		runtime.KeepAlive(decoded)
 	}
 }

@@ -121,6 +121,22 @@ func (v *BitVector) Take(index uint, count uint, order BitNumbering) (out byte) 
 		log.Panicf("invalid count")
 	}
 
+	if order == LSB0 && v.BytePacking == LSB0 {
+		x := index >> 3
+		r := index & 7
+		var o uint16
+		l := uint(len(v.Buf))
+
+		if x+1 < l {
+			o = uint16(v.Buf[x]) | uint16(v.Buf[x+1])<<8
+		} else if x < l {
+			o = uint16(v.Buf[x])
+		}
+
+		o = o >> r
+		return byte(o & (0xFF >> (8 - count)))
+	}
+
 	for i := uint(0); i < count; i++ {
 		val, _ := v.Get(index + i)
 
@@ -134,6 +150,18 @@ func (v *BitVector) Take(index uint, count uint, order BitNumbering) (out byte) 
 	return
 }
 
+var masks = [9]byte{
+	0x0,
+	0x1,
+	0x3,
+	0x7,
+	0xF,
+	0x1F,
+	0x3F,
+	0x7F,
+	0xFF,
+}
+
 // Iterator returns a function, which when invoked, returns the number
 // of bits requested, and increments an internal cursor.
 //
@@ -141,14 +169,60 @@ func (v *BitVector) Take(index uint, count uint, order BitNumbering) (out byte) 
 //
 // Panics if count is out of range
 func (v *BitVector) Iterator(order BitNumbering) func(uint) byte {
-	cursor := uint(0)
-	return func(count uint) (out byte) {
-		if count > 8 {
-			log.Panicf("invalid count")
+	if order == LSB0 && v.BytePacking == LSB0 {
+		// Here be dragons
+		// This is about 10x faster
+		index := int(0)
+		bitIdx := uint(0)
+
+		var rest uint64
+		for n := 7; n >= 0; n-- {
+			var o uint64
+			if len(v.Buf) > n {
+				o = uint64(v.Buf[n])
+			}
+
+			rest = rest<<8 | o
+			index++
 		}
 
-		out = v.Take(cursor, count, order)
-		cursor += count
-		return
+		return func(bits uint) (out byte) {
+			if bits > 8 {
+				log.Panicf("invalid count")
+			}
+			res := byte(rest) & masks[bits]
+			rest = rest >> bits
+			bitIdx = bitIdx + bits
+
+			if bitIdx > (64 - 8) {
+				bitIdx = bitIdx & 7
+				var add uint64
+
+				for n := 6; n >= 0; n-- {
+					var o uint64
+					if len(v.Buf) > index+n {
+						o = uint64(v.Buf[index+n])
+					}
+
+					add = add<<8 | o
+				}
+				index = index + 7
+				rest = rest | add<<(8-bitIdx)
+			}
+
+			return res
+		}
+
+	} else {
+		cursor := uint(0)
+		return func(count uint) (out byte) {
+			if count > 8 {
+				log.Panicf("invalid count")
+			}
+
+			out = v.Take(cursor, count, order)
+			cursor += count
+			return
+		}
 	}
 }
