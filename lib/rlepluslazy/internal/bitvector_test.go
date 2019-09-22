@@ -100,8 +100,8 @@ func TestBitVector(t *testing.T) {
 		var buf []byte
 
 		// make a bitvector of 256 sample bits
-		for i := 0; i < 32; i++ {
-			buf = append(buf, byte(128+i))
+		for i := 0; i < 1000; i++ {
+			buf = append(buf, byte(i))
 		}
 
 		v := bitvector.NewBitVector(buf, bitvector.LSB0)

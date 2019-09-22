@@ -2,7 +2,6 @@ package rlepluslazy
 
 import (
 	"math/rand"
-	"runtime"
 	"testing"
 
 	"github.com/filecoin-project/go-lotus/extern/rleplus"
@@ -47,11 +46,11 @@ func TestDecode(t *testing.T) {
 	assert.Equal(t, expectedNumbers, decoded)
 }
 
-func TestGolden(t *testing.T) {
+func TestGoldenGen(t *testing.T) {
 	t.SkipNow()
-	N := 1000
-	mod := uint32(1) << 16
-	runExProp := float32(0.9)
+	N := 10000
+	mod := uint32(1) << 20
+	runExProp := float32(0.93)
 
 	bits := make([]uint64, N)
 
@@ -70,39 +69,85 @@ func TestGolden(t *testing.T) {
 	t.Logf("%#v", out)
 	_, runs := rleplus.RunLengths(bits)
 	t.Logf("runs: %v", runs)
+	t.Logf("len: %d", len(out))
 }
 
+func TestGolden(t *testing.T) {
+	expected, _ := rleplus.Decode(goldenRLE)
+	res := make([]uint64, 0, len(expected))
+
+	rle, err := FromBuf(goldenRLE)
+	assert.NoError(t, err)
+	rit, err := rle.RunIterator()
+	assert.NoError(t, err)
+	it, err := BitsFromRuns(rit)
+	assert.NoError(t, err)
+	for it.HasNext() {
+		bit, err := it.Next()
+		assert.NoError(t, err)
+		res = append(res, bit)
+	}
+	assert.Equal(t, expected, res)
+
+}
+
+var Res uint64 = 0
+
 func BenchmarkIterator(b *testing.B) {
+	b.ReportAllocs()
+	var r uint64
 	for i := 0; i < b.N; i++ {
 		rle, _ := FromBuf(goldenRLE)
 		it, _ := rle.Iterator()
 		for it.HasNext() {
 			bit, _ := it.Next()
-			runtime.KeepAlive(bit)
+			if bit < 1<<63 {
+				r++
+			}
 		}
 	}
+	Res = Res + r
 }
 
 func BenchmarkRunIterator(b *testing.B) {
+	b.ReportAllocs()
+	var r uint64
 	for i := 0; i < b.N; i++ {
 		rle, _ := FromBuf(goldenRLE)
 		rit, _ := rle.RunIterator()
 		for rit.HasNext() {
 			run, _ := rit.NextRun()
-			runtime.KeepAlive(run)
+			if run.Val {
+				r = r + run.Len
+			}
 		}
 	}
+	Res = Res + r
 }
 
 func BenchmarkRunsToBits(b *testing.B) {
-
+	b.ReportAllocs()
+	var r uint64
 	for i := 0; i < b.N; i++ {
 		rle, _ := FromBuf(goldenRLE)
 		rit, _ := rle.RunIterator()
 		it, _ := BitsFromRuns(rit)
 		for it.HasNext() {
 			bit, _ := it.Next()
-			runtime.KeepAlive(bit)
+			if bit < 1<<63 {
+				r++
+			}
 		}
 	}
+	Res = Res + r
+}
+
+func BenchmarkOldRLE(b *testing.B) {
+	b.ReportAllocs()
+	var r uint64
+	for i := 0; i < b.N; i++ {
+		rle, _ := rleplus.Decode(goldenRLE)
+		r = r + uint64(len(rle))
+	}
+	Res = Res + r
 }

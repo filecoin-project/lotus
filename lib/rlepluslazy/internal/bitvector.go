@@ -173,7 +173,6 @@ func (v *BitVector) Iterator(order BitNumbering) func(uint) byte {
 		// Here be dragons
 		// This is about 10x faster
 		index := int(0)
-		bitIdx := uint(0)
 
 		var rest uint64
 		for n := 7; n >= 0; n-- {
@@ -186,16 +185,17 @@ func (v *BitVector) Iterator(order BitNumbering) func(uint) byte {
 			index++
 		}
 
+		bitCap := uint(64)
+
 		return func(bits uint) (out byte) {
 			if bits > 8 {
 				log.Panicf("invalid count")
 			}
 			res := byte(rest) & masks[bits]
 			rest = rest >> bits
-			bitIdx = bitIdx + bits
+			bitCap = bitCap - bits
 
-			if bitIdx > (64 - 8) {
-				bitIdx = bitIdx & 7
+			if bitCap < 8 {
 				var add uint64
 
 				for n := 6; n >= 0; n-- {
@@ -207,7 +207,8 @@ func (v *BitVector) Iterator(order BitNumbering) func(uint) byte {
 					add = add<<8 | o
 				}
 				index = index + 7
-				rest = rest | add<<(8-bitIdx)
+				rest = rest | add<<(bitCap)
+				bitCap = bitCap + 7*8
 			}
 
 			return res
