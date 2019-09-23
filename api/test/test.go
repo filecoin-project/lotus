@@ -9,9 +9,22 @@ import (
 	"github.com/stretchr/testify/assert"
 )
 
+type TestNode struct {
+	api.FullNode
+
+	MineOne func(context.Context) error
+}
+
+type TestStorageNode struct {
+	api.StorageMiner
+}
+
 // APIBuilder is a function which is invoked in test suite to provide
 // test nodes and networks
-type APIBuilder func(t *testing.T, n int) []api.FullNode
+//
+// storage array defines storage nodes, numbers in the array specify full node
+// index the storage node 'belongs' to
+type APIBuilder func(t *testing.T, nFull int, storage []int) ([]TestNode, []TestStorageNode)
 type testSuite struct {
 	makeNodes APIBuilder
 }
@@ -25,12 +38,13 @@ func TestApis(t *testing.T, b APIBuilder) {
 	t.Run("version", ts.testVersion)
 	t.Run("id", ts.testID)
 	t.Run("testConnectTwo", ts.testConnectTwo)
-
+	t.Run("testMining", ts.testMining)
 }
 
 func (ts *testSuite) testVersion(t *testing.T) {
 	ctx := context.Background()
-	api := ts.makeNodes(t, 1)[0]
+	apis, _ := ts.makeNodes(t, 1, []int{})
+	api := apis[0]
 
 	v, err := api.Version(ctx)
 	if err != nil {
@@ -43,7 +57,8 @@ func (ts *testSuite) testVersion(t *testing.T) {
 
 func (ts *testSuite) testID(t *testing.T) {
 	ctx := context.Background()
-	api := ts.makeNodes(t, 1)[0]
+	apis, _ := ts.makeNodes(t, 1, []int{})
+	api := apis[0]
 
 	id, err := api.ID(ctx)
 	if err != nil {
@@ -54,7 +69,7 @@ func (ts *testSuite) testID(t *testing.T) {
 
 func (ts *testSuite) testConnectTwo(t *testing.T) {
 	ctx := context.Background()
-	apis := ts.makeNodes(t, 2)
+	apis, _ := ts.makeNodes(t, 2, []int{})
 
 	p, err := apis[0].NetPeers(ctx)
 	if err != nil {

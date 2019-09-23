@@ -22,6 +22,8 @@ import (
 
 var log = logging.Logger("miner")
 
+type vdfFunc func(ctx context.Context, input []byte) ([]byte, []byte, error)
+
 type api struct {
 	fx.In
 
@@ -33,8 +35,10 @@ type api struct {
 
 func NewMiner(api api) *Miner {
 	return &Miner{
-		api:   api,
-		Delay: build.BlockDelay * time.Second,
+		api: api,
+
+		// time between blocks, network parameter
+		runVDF: delayVDF(build.BlockDelay * time.Second),
 	}
 }
 
@@ -46,8 +50,7 @@ type Miner struct {
 	stop      chan struct{}
 	stopping  chan struct{}
 
-	// time between blocks, network parameter
-	Delay time.Duration
+	runVDF vdfFunc
 
 	lastWork *MiningBase
 }
@@ -252,14 +255,16 @@ func (m *Miner) getMinerWorker(ctx context.Context, addr address.Address, ts *ty
 	return w, nil
 }
 
-func (m *Miner) runVDF(ctx context.Context, input []byte) ([]byte, []byte, error) {
-	select {
-	case <-ctx.Done():
-		return nil, nil, ctx.Err()
-	case <-time.After(m.Delay):
-	}
+func delayVDF(delay time.Duration) func(ctx context.Context, input []byte) ([]byte, []byte, error) {
+	return func(ctx context.Context, input []byte) ([]byte, []byte, error) {
+		select {
+		case <-ctx.Done():
+			return nil, nil, ctx.Err()
+		case <-time.After(delay):
+		}
 
-	return vdf.Run(input)
+		return vdf.Run(input)
+	}
 }
 
 func (m *Miner) scratchTicket(ctx context.Context, base *MiningBase) (*types.Ticket, error) {
