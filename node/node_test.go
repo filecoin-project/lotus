@@ -3,31 +3,105 @@ package node_test
 import (
 	"bytes"
 	"context"
+	"io/ioutil"
 	"net/http/httptest"
+	"os"
 	"testing"
 
+	"github.com/ipfs/go-datastore"
+	"github.com/libp2p/go-libp2p-core/peer"
 	mocknet "github.com/libp2p/go-libp2p/p2p/net/mock"
-
-	"github.com/filecoin-project/go-lotus/node"
-	"github.com/filecoin-project/go-lotus/node/modules"
-	modtest "github.com/filecoin-project/go-lotus/node/modules/testing"
-	"github.com/filecoin-project/go-lotus/node/repo"
+	"github.com/stretchr/testify/require"
 
 	"github.com/filecoin-project/go-lotus/api"
 	"github.com/filecoin-project/go-lotus/api/client"
 	"github.com/filecoin-project/go-lotus/api/test"
+	"github.com/filecoin-project/go-lotus/chain/actors"
+	"github.com/filecoin-project/go-lotus/chain/address"
+	"github.com/filecoin-project/go-lotus/chain/types"
 	"github.com/filecoin-project/go-lotus/lib/jsonrpc"
+	"github.com/filecoin-project/go-lotus/lib/sectorbuilder"
+	"github.com/filecoin-project/go-lotus/miner"
+	"github.com/filecoin-project/go-lotus/node"
+	"github.com/filecoin-project/go-lotus/node/modules"
+	modtest "github.com/filecoin-project/go-lotus/node/modules/testing"
+	"github.com/filecoin-project/go-lotus/node/repo"
 )
 
-func builder(t *testing.T, n int) []api.FullNode {
+func testStorageNode(ctx context.Context, t *testing.T, waddr address.Address, act address.Address, tnd test.TestNode) test.TestStorageNode {
+	r := repo.NewMemory(nil)
+
+	lr, err := r.Lock()
+	require.NoError(t, err)
+
+	p2pSk, err := lr.Libp2pIdentity()
+	require.NoError(t, err)
+
+	ds, err := lr.Datastore("/metadata")
+	require.NoError(t, err)
+	err = ds.Put(datastore.NewKey("miner-address"), act.Bytes())
+	require.NoError(t, err)
+
+	err = lr.Close()
+	require.NoError(t, err)
+
+	peerid, err := peer.IDFromPrivateKey(p2pSk)
+	require.NoError(t, err)
+
+	enc, err := actors.SerializeParams(&actors.UpdatePeerIDParams{PeerID: peerid})
+	require.NoError(t, err)
+
+	msg := &types.Message{
+		To:       act,
+		From:     waddr,
+		Method:   actors.MAMethods.UpdatePeerID,
+		Params:   enc,
+		Value:    types.NewInt(0),
+		GasPrice: types.NewInt(0),
+		GasLimit: types.NewInt(1000000),
+	}
+
+	_, err = tnd.MpoolPushMessage(ctx, msg)
+	require.NoError(t, err)
+
+	// start node
+
+	secbpath, err := ioutil.TempDir(os.TempDir(), "lotust-stortest-sb-")
+	require.NoError(t, err)
+
+	var minerapi api.StorageMiner
+
+	// TODO: use stop
+	_, err = node.New(ctx,
+		node.StorageMiner(&minerapi),
+		node.Online(),
+		node.Repo(r),
+
+		node.Override(new(*sectorbuilder.SectorBuilderConfig), modules.SectorBuilderConfig(secbpath)),
+		node.Override(new(api.FullNode), tnd),
+	)
+	require.NoError(t, err)
+
+	/*// Bootstrap with full node
+	remoteAddrs, err := tnd.NetAddrsListen(ctx)
+	require.NoError(t, err)
+
+	err = minerapi.NetConnect(ctx, remoteAddrs)
+	require.NoError(t, err)*/
+
+	return test.TestStorageNode{minerapi}
+}
+
+func builder(t *testing.T, nFull int, storage []int) ([]test.TestNode, []test.TestStorageNode) {
 	ctx := context.Background()
 	mn := mocknet.New(ctx)
 
-	out := make([]api.FullNode, n)
+	fulls := make([]test.TestNode, nFull)
+	storers := make([]test.TestStorageNode, len(storage))
 
 	var genbuf bytes.Buffer
 
-	for i := 0; i < n; i++ {
+	for i := 0; i < nFull; i++ {
 		var genesis node.Option
 		if i == 0 {
 			genesis = node.Override(new(modules.Genesis), modtest.MakeGenesisMem(&genbuf))
@@ -35,50 +109,96 @@ func builder(t *testing.T, n int) []api.FullNode {
 			genesis = node.Override(new(modules.Genesis), modules.LoadGenesis(genbuf.Bytes()))
 		}
 
+		mineBlock := make(chan struct{})
+
 		var err error
 		// TODO: Don't ignore stop
 		_, err = node.New(ctx,
-			node.FullAPI(&out[i]),
+			node.FullAPI(&fulls[i].FullNode),
 			node.Online(),
 			node.Repo(repo.NewMemory(nil)),
 			node.MockHost(mn),
+
+			node.Override(new(*miner.Miner), miner.NewTestMiner(mineBlock)),
 
 			genesis,
 		)
 		if err != nil {
 			t.Fatal(err)
 		}
+
+		fulls[i].MineOne = func(ctx context.Context) error {
+			select {
+			case mineBlock <- struct{}{}:
+				return nil
+			case <-ctx.Done():
+				return ctx.Err()
+			}
+		}
+	}
+
+	for i, full := range storage {
+		// TODO: support non-bootstrap miners
+		if i != 0 {
+			t.Fatal("only one storage node supported")
+		}
+		if full != 0 {
+			t.Fatal("storage nodes only supported on the first full node")
+		}
+
+		f := fulls[full]
+
+		wa, err := f.WalletDefaultAddress(ctx)
+		require.NoError(t, err)
+
+		genMiner, err := address.NewFromString("t0101")
+		require.NoError(t, err)
+
+		storers[i] = testStorageNode(ctx, t, wa, genMiner, f)
 	}
 
 	if err := mn.LinkAll(); err != nil {
 		t.Fatal(err)
 	}
 
-	return out
+	return fulls, storers
 }
 
 func TestAPI(t *testing.T) {
 	test.TestApis(t, builder)
 }
 
-var nextApi int
+func rpcBuilder(t *testing.T, nFull int, storage []int) ([]test.TestNode, []test.TestStorageNode) {
+	fullApis, storaApis := builder(t, nFull, storage)
+	fulls := make([]test.TestNode, nFull)
+	storers := make([]test.TestStorageNode, len(storage))
 
-func rpcBuilder(t *testing.T, n int) []api.FullNode {
-	nodeApis := builder(t, n)
-	out := make([]api.FullNode, n)
-
-	for i, a := range nodeApis {
+	for i, a := range fullApis {
 		rpcServer := jsonrpc.NewServer()
 		rpcServer.Register("Filecoin", a)
 		testServ := httptest.NewServer(rpcServer) //  todo: close
 
 		var err error
-		out[i], err = client.NewFullNodeRPC("ws://"+testServ.Listener.Addr().String(), nil)
+		fulls[i].FullNode, err = client.NewFullNodeRPC("ws://"+testServ.Listener.Addr().String(), nil)
+		if err != nil {
+			t.Fatal(err)
+		}
+		fulls[i].MineOne = a.MineOne
+	}
+
+	for i, a := range storaApis {
+		rpcServer := jsonrpc.NewServer()
+		rpcServer.Register("Filecoin", a)
+		testServ := httptest.NewServer(rpcServer) //  todo: close
+
+		var err error
+		storers[i].StorageMiner, err = client.NewStorageMinerRPC("ws://"+testServ.Listener.Addr().String(), nil)
 		if err != nil {
 			t.Fatal(err)
 		}
 	}
-	return out
+
+	return fulls, storers
 }
 
 func TestAPIRPC(t *testing.T) {
