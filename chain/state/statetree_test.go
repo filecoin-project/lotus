@@ -107,3 +107,39 @@ func BenchmarkStateTree10kGetActor(b *testing.B) {
 		}
 	}
 }
+
+func TestSetCache(t *testing.T) {
+	cst := hamt.NewCborStore()
+	st, err := NewStateTree(cst)
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	a, err := address.NewIDAddress(uint64(222))
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	act := &types.Actor{
+		Balance: types.NewInt(0),
+		Code:    actors.StorageMinerCodeCid,
+		Head:    actors.AccountActorCodeCid,
+		Nonce:   0,
+	}
+
+	err = st.SetActor(a, act)
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	act.Nonce = 1
+
+	outact, err := st.GetActor(a)
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	if outact.Nonce != act.Nonce {
+		t.Error("nonce didn't match")
+	}
+}
