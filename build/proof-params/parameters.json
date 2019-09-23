@@ -1,4 +1,24 @@
 {
+  "v12-proof-of-spacetime-rational-535d1050e3adca2a0dfe6c3c0c4fa12097c9a7835fb969042f82a507b13310e0.params": {
+    "cid": "QmZ6Y88jRbRjjYQzhh8o85bcUeChj7NGyo9yK6VbywhJ9F",
+    "digest": "3d245479d9b5fc668d58c493da5f3ee1",
+    "sector_size": 16777216
+  },
+  "v12-proof-of-spacetime-rational-535d1050e3adca2a0dfe6c3c0c4fa12097c9a7835fb969042f82a507b13310e0.vk": {
+    "cid": "QmbGgBLMTCnRc1E1fsUCPyZE4SYzrtAYEWCqCtL55AgxE2",
+    "digest": "29bd4c152096f878f41257b433159d81",
+    "sector_size": 16777216
+  },
+  "v12-proof-of-spacetime-rational-b99f15d0bdaaf4ffb68b2ca72b69ea8d915f66a2a56f667430ad69d87aa5febd.params": {
+    "cid": "Qmdm8vhWeRsZUUaHdysDr91gv6u6RFeC18hHxGnnzPrwcW",
+    "digest": "c67fd415a65e6d1caf4278597cf3462e",
+    "sector_size": 1073741824
+  },
+  "v12-proof-of-spacetime-rational-b99f15d0bdaaf4ffb68b2ca72b69ea8d915f66a2a56f667430ad69d87aa5febd.vk": {
+    "cid": "Qmc3xssw1syaZDZKmiM7TbCRnoDPfmD6V8ec1eTESidJQS",
+    "digest": "870355c10000010b9a4ece80892acca2",
+    "sector_size": 1073741824
+  },
   "v12-proof-of-spacetime-rational-ba14a058a9dea194f68596f8ecf6537074f038a15c8d1a8550e10e31d4728912.params": {
     "cid": "QmZBvF2F9wTYKLBxWSCQKe34D3M7vkNNc7ou8mxnNhZkZc",
     "digest": "5d854e0ecfbd12cb7fa1247a6e6a0315",
@@ -19,6 +39,16 @@
     "digest": "c83eca165ba94233861227578d658a22",
     "sector_size": 268435456
   },
+  "v12-zigzag-proof-of-replication-0ed875801b4a99e4a6b46e58703e6857277ce020510fc9080041f6cfd5e0d286.params": {
+    "cid": "QmTkeyz3mfec4MqCbbiwuVWAQicY231zpdxSjdxN5U84PD",
+    "digest": "cf7118ac2273e2ccb6b451a5acd5f6e0",
+    "sector_size": 1073741824
+  },
+  "v12-zigzag-proof-of-replication-0ed875801b4a99e4a6b46e58703e6857277ce020510fc9080041f6cfd5e0d286.vk": {
+    "cid": "QmaGzJCwJNpQAD63QAKb8y4MKS1AMHeKyYzg3C5WyRSRRM",
+    "digest": "288c792f4fe09c85f8f35673fb9d5ed0",
+    "sector_size": 1073741824
+  },
   "v12-zigzag-proof-of-replication-5efcf852a15bd74808bc65d6f2df146de817baea96c96e3b752e6a3349957644.params": {
     "cid": "QmNSuxq15JPFCTehxVpgJydNZ79rpLoNwnLzQMGA9EziXg",
     "digest": "818cd9cc2e0e47210a05bd073847ab5a",
@@ -28,6 +58,16 @@
     "cid": "Qmbc8LcydZXsVqQrkNMeLEu31Vxi1VigQGJ2ehytxWPALH",
     "digest": "a6636e2ee1a176161e022296bc045e79",
     "sector_size": 268435456
+  },
+  "v12-zigzag-proof-of-replication-6496c180c2eab89ee0638bc73879ced01daf512486eb38b9e1c9402ba578e010.params": {
+    "cid": "QmUBpwbVwu5uzjTS8n1yesJ2QUaVbWJ8D9p2VaSsfjgAUr",
+    "digest": "e7aa73a1b06290d30f567bfac8324bf1",
+    "sector_size": 16777216
+  },
+  "v12-zigzag-proof-of-replication-6496c180c2eab89ee0638bc73879ced01daf512486eb38b9e1c9402ba578e010.vk": {
+    "cid": "Qme2uK8sQJUT3DzF291p2b91eFQzn7cKSJFiKVBsvrjTgt",
+    "digest": "d318cd116803c8ccbd3ac4cded9400ad",
+    "sector_size": 16777216
   },
   "v12-zigzag-proof-of-replication-a09b5cf44f640589b1b02cf823fa28269850342bcefa4878189b9b5c9ec4d2bb.params": {
     "cid": "QmTfhTnkFvbpFfw8UydFdnPCDfxgAxEcw4fRdGsELpcFnh",

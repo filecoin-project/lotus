@@ -171,5 +171,6 @@ func PowerCmp(eproof ElectionProof, mpow, totpow BigInt) bool {
 	top := BigMul(rden, mpow)
 	out := BigDiv(top, totpow)
 
-	return BigCmp(BigFromBytes(h[:]), out) < 0
+	hp := BigFromBytes(h[:])
+	return hp.LessThan(out)
 }

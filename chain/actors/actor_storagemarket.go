@@ -74,7 +74,7 @@ func (sma StorageMarketActor) CreateStorageMiner(act *types.Actor, vmctx types.V
 		return nil, err
 	}
 
-	if types.BigCmp(vmctx.Message().Value, reqColl) < 0 {
+	if vmctx.Message().Value.LessThan(reqColl) {
 		return nil, aerrors.Newf(1, "not enough funds passed to cover required miner collateral (needed %s, got %s)", reqColl, vmctx.Message().Value)
 	}
 

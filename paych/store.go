@@ -226,7 +226,7 @@ func (ps *Store) AddVoucher(ch address.Address, sv *types.SignedVoucher, proof [
 	}
 
 	delta := types.BigSub(sv.Amount, bestAmount)
-	if types.BigCmp(minDelta, delta) > 0 {
+	if minDelta.GreaterThan(delta) {
 		return delta, xerrors.Errorf("addVoucher: supplied token amount too low; minD=%s, D=%s; bestAmt=%s; v.Amt=%s", minDelta, delta, bestAmount, sv.Amount)
 	}
 

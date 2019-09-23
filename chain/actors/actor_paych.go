@@ -173,12 +173,12 @@ func (pca PaymentChannelActor) UpdateChannelState(act *types.Actor, vmctx types.
 	ls.Redeemed = sv.Amount
 
 	newSendBalance := types.BigAdd(self.ToSend, balanceDelta)
-	if types.BigCmp(newSendBalance, types.NewInt(0)) < 0 {
+	if newSendBalance.LessThan(types.NewInt(0)) {
 		// TODO: is this impossible?
 		return nil, aerrors.New(9, "voucher would leave channel balance negative")
 	}
 
-	if types.BigCmp(newSendBalance, act.Balance) > 0 {
+	if newSendBalance.GreaterThan(act.Balance) {
 		return nil, aerrors.New(10, "not enough funds in channel to cover voucher")
 	}
 

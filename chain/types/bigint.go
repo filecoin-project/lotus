@@ -85,6 +85,16 @@ func (bi *BigInt) Nil() bool {
 	return bi.Int == nil
 }
 
+// LessThan returns true if bi < o
+func (bi *BigInt) LessThan(o BigInt) bool {
+	return BigCmp(*bi, o) < 0
+}
+
+// LessThan returns true if bi > o
+func (bi *BigInt) GreaterThan(o BigInt) bool {
+	return BigCmp(*bi, o) > 0
+}
+
 func (bi *BigInt) MarshalJSON() ([]byte, error) {
 	return json.Marshal(bi.String())
 }

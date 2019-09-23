@@ -34,15 +34,9 @@ func TestSealAndVerify(t *testing.T) {
 		t.Fatal(err)
 	}
 
-	fi, err := ioutil.TempFile("", "sbtestfi")
-	if err != nil {
-		t.Fatal(err)
-	}
-	defer fi.Close()
+	r := io.LimitReader(rand.New(rand.NewSource(42)), 1016)
 
-	io.CopyN(fi, rand.New(rand.NewSource(42)), 1016)
-
-	if _, err := sb.AddPiece("foo", 1016, fi.Name()); err != nil {
+	if _, err := sb.AddPiece("foo", 1016, r); err != nil {
 		t.Fatal(err)
 	}
 

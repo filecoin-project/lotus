@@ -35,9 +35,11 @@ class Pond extends React.Component {
   render() {
     if (this.state.client === undefined) {
       return (
+        <div className="Pond-connecting">
           <div>
-            Connecting to RPC
+            <div>Connecting to Pond RPC</div>
           </div>
+        </div>
       )
     }
 
