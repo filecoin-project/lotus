@@ -2,13 +2,11 @@ package rlepluslazy
 
 import (
 	"encoding/binary"
-
-	bitvector "github.com/filecoin-project/go-lotus/lib/rlepluslazy/internal"
 )
 
 func EncodeRuns(rit RunIterator, buf []byte) ([]byte, error) {
-	v := bitvector.NewBitVector(buf[:0], bitvector.LSB0)
-	v.Extend(0, 2, bitvector.LSB0) // Version
+	bv := writeBitvec(buf)
+	bv.Put(0, 2)
 
 	first := true
 	varBuf := make([]byte, binary.MaxVarintLen64)
@@ -21,35 +19,33 @@ func EncodeRuns(rit RunIterator, buf []byte) ([]byte, error) {
 
 		if first {
 			if run.Val {
-				v.Push(1)
+				bv.Put(1, 1)
 			} else {
-				v.Push(0)
+				bv.Put(0, 1)
 			}
 			first = false
 		}
 
 		switch {
 		case run.Len == 1:
-			v.Push(1)
+			bv.Put(1, 1)
 		case run.Len < 16:
-			v.Push(0)
-			v.Push(1)
-			v.Extend(byte(run.Len), 4, bitvector.LSB0)
+			bv.Put(2, 2)
+			bv.Put(byte(run.Len), 4)
 		case run.Len >= 16:
-			v.Push(0)
-			v.Push(0)
+			bv.Put(0, 2)
 			numBytes := binary.PutUvarint(varBuf, run.Len)
 			for i := 0; i < numBytes; i++ {
-				v.Extend(varBuf[i], 8, bitvector.LSB0)
+				bv.Put(varBuf[i], 8)
 			}
 		}
 
 	}
 
 	if first {
-		v.Push(0)
+		bv.Put(0, 1)
 	}
 
-	return v.Buf, nil
+	return bv.Out(), nil
 
 }

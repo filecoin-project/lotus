@@ -27,7 +27,7 @@ func TestDecode(t *testing.T) {
 	assert.Equal(t, len(referenceEncoding), len(encoded))
 	assert.Equal(t, referenceEncoding, encoded)
 
-	rle, err := FromBuf(referenceEncoding)
+	rle, err := FromBuf(encoded)
 	assert.NoError(t, err)
 	decoded := make([]uint64, 0, len(expectedNumbers))
 
@@ -105,22 +105,6 @@ func TestGoldenLoop(t *testing.T) {
 
 var Res uint64 = 0
 
-func BenchmarkIterator(b *testing.B) {
-	b.ReportAllocs()
-	var r uint64
-	for i := 0; i < b.N; i++ {
-		rle, _ := FromBuf(goldenRLE)
-		it, _ := rle.Iterator()
-		for it.HasNext() {
-			bit, _ := it.Next()
-			if bit < 1<<63 {
-				r++
-			}
-		}
-	}
-	Res = Res + r
-}
-
 func BenchmarkRunIterator(b *testing.B) {
 	b.ReportAllocs()
 	var r uint64
@@ -167,20 +151,20 @@ func BenchmarkOldRLE(b *testing.B) {
 func BenchmarkDecodeEncode(b *testing.B) {
 	b.ReportAllocs()
 	var r uint64
-	out := make([]byte, 0, len(goldenRLE))
-	for i := 0; i < b.N; i++ {
-		rle, _ := FromBuf(goldenRLE)
-		rit, _ := rle.RunIterator()
-		out, _ = EncodeRuns(rit, out)
-		r = r + uint64(len(out))
-	}
-
 	/*
+		out := make([]byte, 0, len(goldenRLE))
 		for i := 0; i < b.N; i++ {
-			rle, _ := rleplus.Decode(goldenRLE)
-			out, _, _ := rleplus.Encode(rle)
+			rle, _ := FromBuf(goldenRLE)
+			rit, _ := rle.RunIterator()
+			out, _ = EncodeRuns(rit, out)
 			r = r + uint64(len(out))
 		}
 	*/
+
+	for i := 0; i < b.N; i++ {
+		rle, _ := rleplus.Decode(goldenRLE)
+		out, _, _ := rleplus.Encode(rle)
+		r = r + uint64(len(out))
+	}
 	Res = Res + r
 }
