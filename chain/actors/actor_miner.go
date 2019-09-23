@@ -247,7 +247,7 @@ func (sma StorageMinerActor) CommitSector(act *types.Actor, vmctx types.VMContex
 	futurePower := types.BigAdd(self.Power, mi.SectorSize)
 	collateralRequired := CollateralForPower(futurePower)
 
-	if types.BigCmp(collateralRequired, act.Balance) < 0 {
+	if types.BigCmp(act.Balance, collateralRequired) < 0 {
 		return nil, aerrors.New(3, "not enough collateral")
 	}
 
