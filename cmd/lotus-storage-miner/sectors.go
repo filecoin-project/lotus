@@ -65,7 +65,7 @@ var sectorsStatusCmd = &cli.Command{
 		}
 
 		fmt.Printf("SectorID:\t%d\n", status.SectorID)
-		fmt.Printf("SealStatusCode:\t%d\n", status.SealStatusCode)
+		fmt.Printf("Status:\t%s\n", status.State.String())
 		fmt.Printf("SealErrorMsg:\t%q\n", status.SealErrorMsg)
 		fmt.Printf("CommD:\t\t%x\n", status.CommD)
 		fmt.Printf("CommR:\t\t%x\n", status.CommR)

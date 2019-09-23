@@ -5,6 +5,7 @@ import (
 	"context"
 	"github.com/filecoin-project/go-lotus/api"
 	"github.com/filecoin-project/go-lotus/build"
+	"github.com/filecoin-project/go-sectorbuilder/sealing_state"
 
 	cbor "github.com/ipfs/go-ipld-cbor"
 	"github.com/ipfs/go-merkledag"
@@ -202,13 +203,13 @@ func (h *Handler) waitSealed(ctx context.Context, deal MinerDeal) (sectorbuilder
 		return sectorbuilder.SectorSealingStatus{}, err
 	}
 
-	switch status.SealStatusCode {
-	case 0: // sealed
-	case 2: // failed
+	switch status.State {
+	case sealing_state.Sealed:
+	case sealing_state.Failed:
 		return sectorbuilder.SectorSealingStatus{}, xerrors.Errorf("sealing sector %d for deal %s (ref=%s) failed: %s", deal.SectorID, deal.ProposalCid, deal.Ref, status.SealErrorMsg)
-	case 1: // pending
+	case sealing_state.Pending:
 		return sectorbuilder.SectorSealingStatus{}, xerrors.Errorf("sector status was 'pending' after call to WaitSeal (for sector %d)", deal.SectorID)
-	case 3: // sealing
+	case sealing_state.Sealing:
 		return sectorbuilder.SectorSealingStatus{}, xerrors.Errorf("sector status was 'wait' after call to WaitSeal (for sector %d)", deal.SectorID)
 	default:
 		return sectorbuilder.SectorSealingStatus{}, xerrors.Errorf("unknown SealStatusCode: %d", status.SectorID)

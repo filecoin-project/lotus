@@ -2,10 +2,9 @@ package sector
 
 import (
 	"context"
+	"github.com/filecoin-project/go-sectorbuilder/sealing_state"
 	"golang.org/x/xerrors"
 	"io"
-	"io/ioutil"
-	"os"
 	"sync"
 	"time"
 
@@ -63,7 +62,7 @@ func (s *Store) poll() {
 			continue
 		}
 
-		if status.SealStatusCode == 0 { // constant pls, zero implies the last step?
+		if status.State == sealing_state.Sealed {
 			done = append(done, status)
 		}
 	}
@@ -102,10 +101,8 @@ func (s *Store) service() {
 }
 
 func (s *Store) AddPiece(ref string, size uint64, r io.Reader) (sectorID uint64, err error) {
-	err = withTemp(r, func(f string) (err error) {
-		sectorID, err = s.sb.AddPiece(ref, size, f)
-		return err
-	})
+	sectorID, err = s.sb.AddPiece(ref, size, r)
+
 	if err != nil {
 		return 0, err
 	}
@@ -190,27 +187,4 @@ func (s *Store) RunPoSt(ctx context.Context, sectors []*api.SectorInfo, r []byte
 
 func (s *Store) Stop() {
 	close(s.closeCh)
-}
-
-func withTemp(r io.Reader, cb func(string) error) error {
-	f, err := ioutil.TempFile(os.TempDir(), "lotus-temp-")
-	if err != nil {
-		return err
-	}
-	if _, err := io.Copy(f, r); err != nil {
-		return err
-	}
-	if err := f.Close(); err != nil {
-		return err
-	}
-
-	err = cb(f.Name())
-	if err != nil {
-		if err := os.Remove(f.Name()); err != nil {
-			log.Errorf("couldn't remove temp file '%s'", f.Name())
-		}
-		return err
-	}
-
-	return os.Remove(f.Name())
 }

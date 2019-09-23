@@ -53,7 +53,7 @@ build/.update-modules:
 bin/ipget:
 	./bin/dist_get /ipns/dist.ipfs.io ipget bin/ipget v0.4.0
 
-PARAM_SECTOR_SIZES:=1024 268435456
+PARAM_SECTOR_SIZES:=1024 16777216 268435456 1073741824
 PARAM_SECTOR_SIZES:=$(addprefix build/.params-,$(PARAM_SECTOR_SIZES))
 
 $(PARAM_SECTOR_SIZES): build/proof-params/parameters.json bin/ipget

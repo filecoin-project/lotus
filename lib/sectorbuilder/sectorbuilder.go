@@ -2,6 +2,9 @@ package sectorbuilder
 
 import (
 	"encoding/binary"
+	"io"
+	"os"
+	"sync"
 	"unsafe"
 
 	sectorbuilder "github.com/filecoin-project/go-sectorbuilder"
@@ -64,8 +67,18 @@ func (sb *SectorBuilder) Destroy() {
 	sectorbuilder.DestroySectorBuilder(sb.handle)
 }
 
-func (sb *SectorBuilder) AddPiece(pieceKey string, pieceSize uint64, piecePath string) (uint64, error) {
-	return sectorbuilder.AddPiece(sb.handle, pieceKey, pieceSize, piecePath)
+func (sb *SectorBuilder) AddPiece(pieceKey string, pieceSize uint64, file io.Reader) (uint64, error) {
+	f, werr, err := toReadableFile(file, int64(pieceSize))
+	if err != nil {
+		return 0, err
+	}
+
+	sectorID, err := sectorbuilder.AddPieceFromFile(sb.handle, pieceKey, pieceSize, f)
+	if err != nil {
+		return 0, err
+	}
+
+	return sectorID, werr()
 }
 
 // TODO: should *really really* return an io.ReadCloser
@@ -117,4 +130,52 @@ func NewSortedSectorInfo(sectors []SectorInfo) SortedSectorInfo {
 
 func VerifyPost(sectorSize uint64, sectorInfo SortedSectorInfo, challengeSeed [CommLen]byte, proof []byte, faults []uint64) (bool, error) {
 	return sectorbuilder.VerifyPoSt(sectorSize, sectorInfo, challengeSeed, proof, faults)
+}
+
+func GeneratePieceCommitment(piece io.Reader, pieceSize uint64) (commP [CommLen]byte, err error) {
+	f, werr, err := toReadableFile(piece, int64(pieceSize))
+	if err != nil {
+		return [32]byte{}, err
+	}
+
+	commP, err = sectorbuilder.GeneratePieceCommitmentFromFile(f, pieceSize)
+	if err != nil {
+		return [32]byte{}, err
+	}
+
+	return commP, werr()
+}
+
+func toReadableFile(r io.Reader, n int64) (*os.File, func() error, error) {
+	f, ok := r.(*os.File)
+	if ok {
+		return f, func() error { return nil }, nil
+	}
+
+	var w *os.File
+
+	f, w, err := os.Pipe()
+	if err != nil {
+		return nil, nil, err
+	}
+
+	var copyWait sync.WaitGroup
+	copyWait.Add(1)
+	var werr error
+
+	go func() {
+		defer copyWait.Done()
+
+		_, werr = io.CopyN(w, r, n)
+
+		err := w.Close()
+		if werr == nil {
+			werr = err
+		}
+	}()
+
+	return f, func() error {
+		copyWait.Wait()
+		return nil
+	}, nil
 }

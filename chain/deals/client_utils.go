@@ -2,9 +2,9 @@ package deals
 
 import (
 	"context"
+	"github.com/filecoin-project/go-lotus/lib/sectorbuilder"
 	"runtime"
 
-	sectorbuilder "github.com/filecoin-project/go-sectorbuilder"
 	"github.com/ipfs/go-cid"
 	files "github.com/ipfs/go-ipfs-files"
 	cbor "github.com/ipfs/go-ipld-cbor"
@@ -56,11 +56,11 @@ func (c *Client) commP(ctx context.Context, data cid.Cid) ([]byte, int64, error)
 		return nil, 0, err
 	}
 
-	var commP [sectorbuilder.CommitmentBytesLen]byte
-	err = withTemp(uf, func(f string) error {
-		commP, err = sectorbuilder.GeneratePieceCommitment(f, uint64(size))
-		return err
-	})
+	commP, err := sectorbuilder.GeneratePieceCommitment(uf, uint64(size))
+	if err != nil {
+		return nil, 0, err
+	}
+
 	return commP[:], size, err
 }
 
