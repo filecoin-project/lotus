@@ -468,6 +468,9 @@ func (vm *VM) ApplyMessage(ctx context.Context, msg *types.Message) (*ApplyRet, 
 	if aerrors.IsFatal(actorErr) {
 		return nil, xerrors.Errorf("fatal error: %w", actorErr)
 	}
+	if actorErr != nil {
+		log.Warn("Send actor error: %s", actorErr)
+	}
 
 	var errcode uint8
 	var gasUsed types.BigInt

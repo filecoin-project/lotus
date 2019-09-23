@@ -62,6 +62,8 @@ func (st *StateTree) SetActor(addr address.Address, act *types.Actor) error {
 		}
 	}
 
+	st.actorcache[addr] = act
+
 	return st.root.Set(context.TODO(), string(addr.Bytes()), act)
 }
 
