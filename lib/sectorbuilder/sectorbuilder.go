@@ -159,12 +159,12 @@ func toReadableFile(r io.Reader, n int64) (*os.File, func() error, error) {
 		return nil, nil, err
 	}
 
-	var copyWait sync.WaitGroup
-	copyWait.Add(1)
+	var wait sync.Mutex
 	var werr error
 
+	wait.Lock()
 	go func() {
-		defer copyWait.Done()
+		defer wait.Unlock()
 
 		_, werr = io.CopyN(w, r, n)
 
@@ -175,7 +175,7 @@ func toReadableFile(r io.Reader, n int64) (*os.File, func() error, error) {
 	}()
 
 	return f, func() error {
-		copyWait.Wait()
-		return nil
+		wait.Lock()
+		return werr
 	}, nil
 }

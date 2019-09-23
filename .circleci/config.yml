@@ -2,6 +2,10 @@ version: 2.1
 orbs:
   go: gotest/tools@0.0.9
 
+executors:
+  golang:
+    docker:
+      - image: circleci/golang:1.13
 
 commands:
   install-deps:
@@ -22,9 +26,6 @@ commands:
             - 'v2-lotus-params-'
           paths:
             - /var/tmp/filecoin-proof-parameters/
-      - run:
-          command: GO111MODULE=on go get github.com/ipfs/ipget@c0cbd7d9d1925965a5aa0895d5ff32dbdb4a009e
-          working_directory: "~"
       - run:  make build/.params-1024
       - save_cache:
           name: Save parameters cache
@@ -35,7 +36,7 @@ commands:
 
 jobs:
   mod-tidy-check:
-    executor: go/circleci-golang
+    executor: golang
     steps:
       - install-deps
       - prepare
@@ -48,7 +49,7 @@ jobs:
     parameters:
       executor:
         type: executor
-        default: go/circleci-golang
+        default: golang
       go-test-flags:
         type: string
         default: ""
@@ -116,7 +117,7 @@ jobs:
     parameters:
       executor:
         type: executor
-        default: go/circleci-golang
+        default: golang
       golangci-lint-version:
         type: string
         default: 1.17.1
