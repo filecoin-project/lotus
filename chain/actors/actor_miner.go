@@ -247,7 +247,7 @@ func (sma StorageMinerActor) CommitSector(act *types.Actor, vmctx types.VMContex
 	futurePower := types.BigAdd(self.Power, mi.SectorSize)
 	collateralRequired := CollateralForPower(futurePower)
 
-	if types.BigCmp(act.Balance, collateralRequired) < 0 {
+	if act.Balance.LessThan(collateralRequired) {
 		return nil, aerrors.New(3, "not enough collateral")
 	}
 
@@ -328,11 +328,11 @@ func (sma StorageMinerActor) SubmitPoSt(act *types.Actor, vmctx types.VMContext,
 	//TODO temporary sector failure fees
 
 	msgVal := vmctx.Message().Value
-	if types.BigCmp(msgVal, feesRequired) < 0 {
+	if msgVal.LessThan(feesRequired) {
 		return nil, aerrors.New(2, "not enough funds to pay post submission fees")
 	}
 
-	if types.BigCmp(msgVal, feesRequired) > 0 {
+	if msgVal.GreaterThan(feesRequired) {
 		_, err := vmctx.Send(vmctx.Message().From, 0,
 			types.BigSub(msgVal, feesRequired), nil)
 		if err != nil {
@@ -719,7 +719,7 @@ func (sma StorageMinerActor) SlashConsensusFault(act *types.Actor, vmctx types.V
 	}
 
 	slashedCollateral := params.SlashedCollateral
-	if types.BigCmp(slashedCollateral, act.Balance) < 0 {
+	if slashedCollateral.LessThan(act.Balance) {
 		slashedCollateral = act.Balance
 	}
 

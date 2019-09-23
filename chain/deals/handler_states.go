@@ -91,7 +91,7 @@ func (h *Handler) validateVouchers(ctx context.Context, deal MinerDeal) error {
 
 		// TODO: make sure that current laneStatus.Amount == 0
 
-		if types.BigCmp(voucher.Amount, deal.Proposal.TotalPrice) < 0 {
+		if voucher.Amount.LessThan(deal.Proposal.TotalPrice) {
 			return xerrors.Errorf("validating payment voucher %d: not enough funds in the voucher", i)
 		}
 

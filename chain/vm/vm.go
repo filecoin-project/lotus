@@ -167,7 +167,7 @@ func (vmc *VMContext) GasUsed() types.BigInt {
 func (vmc *VMContext) ChargeGas(amount uint64) aerrors.ActorError {
 	toUse := types.NewInt(amount)
 	vmc.gasUsed = types.BigAdd(vmc.gasUsed, toUse)
-	if types.BigCmp(vmc.gasUsed, vmc.gasAvailable) > 0 {
+	if vmc.gasUsed.GreaterThan(vmc.gasAvailable) {
 		return aerrors.Newf(outOfGasErrCode, "not enough gas: used=%s, available=%s", vmc.gasUsed, vmc.gasAvailable)
 	}
 	return nil
@@ -451,7 +451,7 @@ func (vm *VM) ApplyMessage(ctx context.Context, msg *types.Message) (*ApplyRet, 
 
 	gascost := types.BigMul(msg.GasLimit, msg.GasPrice)
 	totalCost := types.BigAdd(gascost, msg.Value)
-	if types.BigCmp(fromActor.Balance, totalCost) < 0 {
+	if fromActor.Balance.LessThan(totalCost) {
 		return nil, xerrors.Errorf("not enough funds (%s < %s)", fromActor.Balance, totalCost)
 	}
 	if err := DeductFunds(fromActor, gascost); err != nil {
@@ -619,7 +619,7 @@ func (vm *VM) Invoke(act *types.Actor, vmctx *VMContext, method uint64, params [
 }
 
 func DeductFunds(act *types.Actor, amt types.BigInt) error {
-	if types.BigCmp(act.Balance, amt) < 0 {
+	if act.Balance.LessThan(amt) {
 		return fmt.Errorf("not enough funds")
 	}
 

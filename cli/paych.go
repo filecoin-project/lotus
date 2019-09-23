@@ -291,7 +291,7 @@ var paychVoucherBestSpendableCmd = &cli.Command{
 				return err
 			}
 			if spendable {
-				if best == nil || types.BigCmp(v.Amount, best.Amount) > 0 {
+				if best == nil || v.Amount.GreaterThan(best.Amount) {
 					best = v
 				}
 			}

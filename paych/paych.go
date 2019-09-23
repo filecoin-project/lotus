@@ -159,7 +159,7 @@ func (pm *Manager) CheckVoucherValid(ctx context.Context, ch address.Address, sv
 
 	// TODO: also account for vouchers on other lanes we've received
 	newTotal := types.BigAdd(sendAmount, pca.ToSend)
-	if types.BigCmp(act.Balance, newTotal) < 0 {
+	if act.Balance.LessThan(newTotal) {
 		return fmt.Errorf("not enough funds in channel to cover voucher")
 	}
 
