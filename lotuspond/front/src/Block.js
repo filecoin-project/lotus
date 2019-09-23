@@ -17,12 +17,25 @@ class Block extends React.Component {
     let messages = await this.props.conn.call('Filecoin.ChainGetBlockMessages', [this.props.cid])
     let receipts = await this.props.conn.call('Filecoin.ChainGetBlockReceipts', [this.props.cid])
 
+    const mcids = messages.Cids
+
     messages = [
       ...(messages.BlsMessages.map(m => ({...m, type: 'BLS'}))),
       ...(messages.SecpkMessages.map(m => ({...(m.Message), type: 'Secpk'})))
     ]
 
     messages = messages.map((msg, k) => ({...msg, receipt: receipts[k]}))
+
+    messages = await Promise.all(messages.map(async (msg, i) => {
+      if (msg.receipt.ExitCode !== 0) {
+        let reply = await this.props.conn.call('Filecoin.StateReplay', [{Cids: [this.props.cid], Blocks: [header], Height: header.Height}, mcids[i]])
+        if(!reply.Error) {
+          reply.Error = "reply: no error"
+        }
+        msg.Error = reply.Error
+      }
+      return msg
+    }))
 
     this.setState({header: header, messages: messages})
   }
@@ -34,11 +47,14 @@ class Block extends React.Component {
 
       const messages = this.state.messages.map(m => (
         <div>
-          <Address client={this.props.conn} addr={m.From} mountWindow={this.props.mountWindow}/><b>&nbsp;=>&nbsp;</b>
-          <Address client={this.props.conn} addr={m.To} mountWindow={this.props.mountWindow} transfer={m.Value} method={m.Method}/>
-          <span>&nbsp;N{m.Nonce}</span>
-          <span>&nbsp;{m.receipt.GasUsed}Gas</span>
-          {m.receipt.ExitCode !== 0 ? <span>&nbsp;<b>EXIT:{m.receipt.ExitCode}</b></span> : <span/>}
+          <div>
+            <Address client={this.props.conn} addr={m.From} mountWindow={this.props.mountWindow}/><b>&nbsp;=>&nbsp;</b>
+            <Address client={this.props.conn} addr={m.To} mountWindow={this.props.mountWindow} transfer={m.Value} method={m.Method}/>
+            <span>&nbsp;N{m.Nonce}</span>
+            <span>&nbsp;{m.receipt.GasUsed}Gas</span>
+            {m.receipt.ExitCode !== 0 ? <span>&nbsp;<b>EXIT:{m.receipt.ExitCode}</b></span> : <span/>}
+          </div>
+          {m.receipt.ExitCode !== 0 ? <div>&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;Error: <b>{m.Error}</b></div> : <span/>}
         </div>
       ))
 

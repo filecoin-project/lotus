@@ -77,9 +77,20 @@ func (a *ChainAPI) ChainGetBlockMessages(ctx context.Context, msg cid.Cid) (*api
 		return nil, err
 	}
 
+	cids := make([]cid.Cid, len(bmsgs)+len(smsgs))
+
+	for i, m := range bmsgs {
+		cids[i] = m.Cid()
+	}
+
+	for i, m := range smsgs {
+		cids[i+len(bmsgs)] = m.Cid()
+	}
+
 	return &api.BlockMessages{
 		BlsMessages:   bmsgs,
 		SecpkMessages: smsgs,
+		Cids:          cids,
 	}, nil
 }
 

@@ -193,6 +193,8 @@ type MsgWait struct {
 type BlockMessages struct {
 	BlsMessages   []*types.Message
 	SecpkMessages []*types.SignedMessage
+
+	Cids []cid.Cid
 }
 
 type SectorInfo struct {

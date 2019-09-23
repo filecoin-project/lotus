@@ -117,6 +117,23 @@ a:hover {
 
 /* POND */
 
+.Pond-connecting {
+  width: 100vw;
+  height: 100vh;
+
+  background: #1a1a1a;
+  color: #ffffff;
+  font-family: monospace;
+
+  display: grid;
+  grid-template-columns: auto min-content auto;
+  grid-template-rows: auto min-content auto;
+  grid-template-areas:
+          ". . ."
+          ". main ."
+          ". . ."
+}
+
 .App {
   min-height: 100vh;
   background: #1a1a1a;
