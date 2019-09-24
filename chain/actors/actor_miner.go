@@ -144,7 +144,7 @@ func (sma StorageMinerActor) Exports() []interface{} {
 		//16: sma.IsLate,
 		17: sma.PaymentVerifyInclusion,
 		18: sma.PaymentVerifySector,
-		19: nil,
+		19: sma.AddFaults,
 		20: sma.SlashConsensusFault,
 	}
 }
@@ -702,6 +702,40 @@ func (sma StorageMinerActor) PaymentVerifySector(act *types.Actor, vmctx types.V
 	}
 	if !ok {
 		return nil, aerrors.New(2, "miner does not have required sector")
+	}
+
+	return nil, nil
+}
+
+type AddFaultsParams struct {
+	Faults types.BitField
+}
+
+func (sma StorageMinerActor) AddFaults(act *types.Actor, vmctx types.VMContext, params *AddFaultsParams) ([]byte, ActorError) {
+	oldstate, self, aerr := loadState(vmctx)
+	if aerr != nil {
+		return nil, aerr
+	}
+
+	challengeHeight := self.ProvingPeriodEnd - build.PoSTChallangeTime
+
+	if vmctx.BlockHeight() < challengeHeight {
+		// TODO: optimized bitfield methods
+		for _, v := range params.Faults.All() {
+			self.CurrentFaultSet.Set(v)
+		}
+	} else {
+		for _, v := range params.Faults.All() {
+			self.NextFaultSet.Set(v)
+		}
+	}
+
+	nstate, err := vmctx.Storage().Put(self)
+	if err != nil {
+		return nil, err
+	}
+	if err := vmctx.Storage().Commit(oldstate, nstate); err != nil {
+		return nil, err
 	}
 
 	return nil, nil
