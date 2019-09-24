@@ -637,15 +637,20 @@ func DepositFunds(act *types.Actor, amt types.BigInt) {
 func MiningRewardForBlock(height uint64) types.BigInt {
 
 	//decay := e^(ln(0.5) / (HalvingPeriodBlocks / AdjustmentPeriod)
-	decay := 0.9977869135615522
+	decay := 0.9977808404048861
 
 	totalMiningReward := types.FromFil(build.MiningRewardTotal)
 
 	dval := big.NewFloat(math.Pow(decay, float64(uint64(height/build.AdjustmentPeriod))))
 
-	iv := big.NewFloat(0).Mul(big.NewFloat(0).SetInt(totalMiningReward.Int), big.NewFloat(1-decay))
+	iv := big.NewFloat(0).Mul(
+		big.NewFloat(0).SetInt(totalMiningReward.Int),
+		big.NewFloat(1-decay),
+	)
 
-	reward, _ := iv.Mul(iv, dval).Int(nil)
+	//return (InitialReward * Math.pow(decay, Math.floor(height / adjustmentPeriod))) / adjustmentPeriod
+
+	reward, _ := big.NewFloat(0).Quo(iv.Mul(iv, dval), big.NewFloat(build.AdjustmentPeriod)).Int(nil)
 
 	return types.BigInt{reward}
 }
