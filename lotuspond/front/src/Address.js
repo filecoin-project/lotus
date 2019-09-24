@@ -84,16 +84,13 @@ class Address extends React.Component {
     return info
   }
 
-  add200k = async () => {
-    [...Array(10).keys()].map(() => async () => await this.props.add20k(this.props.addr)).reduce(async (p, c) => [await p, await c()], Promise.resolve(null))
-  }
-
   render() {
     let add20k = <span/>
-    if(this.props.add20k) {
-      add20k = <span>&nbsp;<a href="#" onClick={() => this.props.add20k(this.props.addr)}>[+20k]</a></span>
+    if(this.props.addN) {
+      add20k = <span>&nbsp;<a href="#" onClick={() => this.props.addN(this.props.addr, 200000)}>[+200k]</a></span>
       if (this.props.add10k) {
-        add20k = <span>{add20k}&nbsp;<a href="#" onClick={this.add200k}>[+200k]</a></span>
+        add20k = <span>{add20k}&nbsp;<a href="#" onClick={() => this.props.addN(this.props.addr, 2000000)}>[+2M]</a></span>
+        add20k = <span>{add20k}&nbsp;<a href="#" onClick={() => this.props.addN(this.props.addr, 20000000)}>[+20M]</a></span>
       }
     }
     let addr = truncAddr(this.props.addr, this.props.short ? 12 : 17)
