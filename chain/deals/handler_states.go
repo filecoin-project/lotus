@@ -3,16 +3,17 @@ package deals
 import (
 	"bytes"
 	"context"
-	"github.com/filecoin-project/go-lotus/api"
-	"github.com/filecoin-project/go-lotus/build"
-	"github.com/filecoin-project/go-sectorbuilder/sealing_state"
 
+	"github.com/filecoin-project/go-sectorbuilder/sealing_state"
 	cbor "github.com/ipfs/go-ipld-cbor"
 	"github.com/ipfs/go-merkledag"
 	unixfile "github.com/ipfs/go-unixfs/file"
 	"golang.org/x/xerrors"
 
+	"github.com/filecoin-project/go-lotus/api"
+	"github.com/filecoin-project/go-lotus/build"
 	"github.com/filecoin-project/go-lotus/chain/actors"
+	"github.com/filecoin-project/go-lotus/chain/address"
 	"github.com/filecoin-project/go-lotus/chain/types"
 	"github.com/filecoin-project/go-lotus/lib/sectorbuilder"
 	"github.com/filecoin-project/go-lotus/storage/sectorblocks"
@@ -42,11 +43,25 @@ func (h *Handler) handle(ctx context.Context, deal MinerDeal, cb minerHandlerFun
 
 // ACCEPTED
 
-func (h *Handler) validateVouchers(ctx context.Context, deal MinerDeal) error {
+func (h *Handler) validateVouchers(ctx context.Context, deal MinerDeal, paych address.Address) error {
 	curHead, err := h.full.ChainHead(ctx)
 	if err != nil {
 		return err
 	}
+	if len(deal.Proposal.Payment.Vouchers) == 0 {
+		return xerrors.Errorf("no payment vouchers for deal")
+	}
+
+	increments := deal.Proposal.Duration / uint64(len(deal.Proposal.Payment.Vouchers))
+
+	startH := deal.Proposal.Payment.Vouchers[0].TimeLock - (deal.Proposal.Duration / increments)
+	if startH > curHead.Height()+build.DealVoucherSkewLimit {
+		return xerrors.Errorf("deal starts too far into the future")
+	}
+
+	vspec := VoucherSpec(deal.Proposal.Duration, deal.Proposal.TotalPrice, startH, nil)
+
+	lane := deal.Proposal.Payment.Vouchers[0].Lane
 
 	for i, voucher := range deal.Proposal.Payment.Vouchers {
 		err := h.full.PaychVoucherCheckValid(ctx, deal.Proposal.Payment.PayChActor, voucher)
@@ -76,7 +91,7 @@ func (h *Handler) validateVouchers(ctx context.Context, deal MinerDeal) error {
 			return xerrors.Errorf("validating payment voucher %d: paych challenge commP didn't match deal proposal", i)
 		}
 
-		maxClose := curHead.Height() + deal.Proposal.Duration + build.DealVoucherSkewLimit
+		maxClose := curHead.Height() + (increments * uint64(i+1)) + build.DealVoucherSkewLimit
 		if voucher.MinCloseHeight > maxClose {
 			return xerrors.Errorf("validating payment voucher %d: MinCloseHeight too high (%d), max expected: %d", i, voucher.MinCloseHeight, maxClose)
 		}
@@ -88,17 +103,33 @@ func (h *Handler) validateVouchers(ctx context.Context, deal MinerDeal) error {
 		if len(voucher.Merges) > 0 {
 			return xerrors.Errorf("validating payment voucher %d: didn't expect any merges", i)
 		}
-
-		// TODO: make sure that current laneStatus.Amount == 0
-
-		if voucher.Amount.LessThan(deal.Proposal.TotalPrice) {
-			return xerrors.Errorf("validating payment voucher %d: not enough funds in the voucher", i)
+		if voucher.Amount.LessThan(vspec[i].Amount) {
+			return xerrors.Errorf("validating payment voucher %d: not enough funds in the voucher: %s < %s; vl=%d vsl=%d", i, voucher.Amount, vspec[i].Amount, len(deal.Proposal.Payment.Vouchers), len(vspec))
 		}
+	}
 
-		minPrice := types.BigMul(types.BigMul(h.pricePerByteBlock, types.NewInt(deal.Proposal.Size)), types.NewInt(deal.Proposal.Duration))
-		if types.BigCmp(minPrice, deal.Proposal.TotalPrice) > 0 {
-			return xerrors.Errorf("validating payment voucher %d: minimum price: %s", i, minPrice)
-		}
+	minPrice := types.BigMul(types.BigMul(h.pricePerByteBlock, types.NewInt(deal.Proposal.Size)), types.NewInt(deal.Proposal.Duration))
+	if types.BigCmp(minPrice, deal.Proposal.TotalPrice) > 0 {
+		return xerrors.Errorf("minimum price: %s", minPrice)
+	}
+
+	// TODO: This is mildly racy, we need a way to check lane and submit voucher
+	//  atomically
+	laneState, err := h.full.PaychLaneState(ctx, paych, lane)
+	if err != nil {
+		return xerrors.Errorf("looking up payment channel lane: %w", err)
+	}
+
+	if laneState.Closed {
+		return xerrors.New("lane closed")
+	}
+
+	if laneState.Redeemed.GreaterThan(types.NewInt(0)) {
+		return xerrors.New("used lanes unsupported")
+	}
+
+	if laneState.Nonce > 0 {
+		return xerrors.New("used lanes unsupported")
 	}
 
 	return nil
@@ -120,7 +151,7 @@ func (h *Handler) accept(ctx context.Context, deal MinerDeal) (func(*MinerDeal),
 		}
 	}
 
-	if err := h.validateVouchers(ctx, deal); err != nil {
+	if err := h.validateVouchers(ctx, deal, deal.Proposal.Payment.PayChActor); err != nil {
 		return nil, err
 	}
 

@@ -19,6 +19,11 @@ const PaymentChannelClosingDelay = 6 * 60 * 2 // six hours
 // Blocks
 const DealVoucherSkewLimit = 10
 
+// Blocks
+const MinDealVoucherIncrement = ProvingPeriodDuration
+
+const MaxVouchersPerDeal = 768 // roughly one voucher per 10h over a year
+
 // /////
 // Consensus / Network
 

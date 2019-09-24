@@ -9,6 +9,7 @@ import (
 	"github.com/libp2p/go-libp2p-core/network"
 	"github.com/libp2p/go-libp2p-core/peer"
 
+	"github.com/filecoin-project/go-lotus/chain/actors"
 	"github.com/filecoin-project/go-lotus/chain/address"
 	"github.com/filecoin-project/go-lotus/chain/store"
 	"github.com/filecoin-project/go-lotus/chain/types"
@@ -122,7 +123,8 @@ type FullNode interface {
 	PaychStatus(context.Context, address.Address) (*PaychStatus, error)
 	PaychClose(context.Context, address.Address) (cid.Cid, error)
 	PaychAllocateLane(ctx context.Context, ch address.Address) (uint64, error)
-	PaychNewPayment(ctx context.Context, from, to address.Address, amount types.BigInt, extra *types.ModVerifyParams, tl uint64, minClose uint64) (*PaymentInfo, error)
+	PaychLaneState(ctx context.Context, ch address.Address, lane uint64) (actors.LaneState, error)
+	PaychNewPayment(ctx context.Context, from, to address.Address, vouchers []VoucherSpec) (*PaymentInfo, error)
 	PaychVoucherCheckValid(context.Context, address.Address, *types.SignedVoucher) error
 	PaychVoucherCheckSpendable(context.Context, address.Address, *types.SignedVoucher, []byte, []byte) (bool, error)
 	PaychVoucherCreate(context.Context, address.Address, types.BigInt, uint64) (*types.SignedVoucher, error)
@@ -229,7 +231,15 @@ type ChannelInfo struct {
 type PaymentInfo struct {
 	Channel        address.Address
 	ChannelMessage *cid.Cid
-	Voucher        *types.SignedVoucher
+	Vouchers       []*types.SignedVoucher
+}
+
+type VoucherSpec struct {
+	Amount   types.BigInt
+	TimeLock uint64
+	MinClose uint64
+
+	Extra *types.ModVerifyParams
 }
 
 type MinerPower struct {

@@ -272,6 +272,6 @@ func (cst *clientStream) setupPayment(ctx context.Context, toSend types.BigInt) 
 	return api.PaymentInfo{
 		Channel:        cst.paych,
 		ChannelMessage: nil,
-		Voucher:        sv,
+		Vouchers:       []*types.SignedVoucher{sv},
 	}, nil
 }

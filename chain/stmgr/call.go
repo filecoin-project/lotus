@@ -3,12 +3,11 @@ package stmgr
 import (
 	"context"
 	"fmt"
-
 	"github.com/filecoin-project/go-lotus/chain/actors"
 	"github.com/filecoin-project/go-lotus/chain/types"
 	"github.com/filecoin-project/go-lotus/chain/vm"
 
-	cid "github.com/ipfs/go-cid"
+	"github.com/ipfs/go-cid"
 	"golang.org/x/xerrors"
 )
 

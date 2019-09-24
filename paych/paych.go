@@ -221,16 +221,6 @@ func (pm *Manager) CheckVoucherSpendable(ctx context.Context, ch address.Address
 	return true, nil
 }
 
-func (pm *Manager) loadPaychState(ctx context.Context, ch address.Address) (*types.Actor, *actors.PaymentChannelActorState, error) {
-	var pcast actors.PaymentChannelActorState
-	act, err := pm.sm.LoadActorState(ctx, ch, &pcast, nil)
-	if err != nil {
-		return nil, nil, err
-	}
-
-	return act, &pcast, nil
-}
-
 func (pm *Manager) getPaychOwner(ctx context.Context, ch address.Address) (address.Address, error) {
 	ret, err := pm.sm.Call(ctx, &types.Message{
 		From:   ch,
