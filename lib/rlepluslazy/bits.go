@@ -129,6 +129,23 @@ func (it *it2r) init() error {
 	return nil
 }
 
+func SliceFromRuns(source RunIterator) ([]uint64, error) {
+	rit, err := BitsFromRuns(source)
+	if err != nil {
+		return nil, err
+	}
+
+	res := make([]uint64, 0)
+	for rit.HasNext() {
+		bit, err := rit.Next()
+		if err != nil {
+			return nil, err
+		}
+		res = append(res, bit)
+	}
+	return res, nil
+}
+
 func RunsFromBits(source BitIterator) (RunIterator, error) {
 	it := &it2r{source: source}
 
@@ -136,4 +153,8 @@ func RunsFromBits(source BitIterator) (RunIterator, error) {
 		return nil, err
 	}
 	return it, nil
+}
+
+func RunsFromSlice(slice []uint64) (RunIterator, error) {
+	return RunsFromBits(BitsFromSlice(slice))
 }

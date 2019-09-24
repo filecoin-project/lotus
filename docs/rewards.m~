@@ -1,0 +1,30 @@
+
+HalvingPeriod = vpa(6 * 365 * 24 * 60 * 2);
+AdjusmentPeriod = vpa(20160);
+Decay = exp(log(vpa(0.5)) / HalvingPeriod * AdjusmentPeriod);
+Total = vpa(1400e6);
+IV = Total * (1-Decay) / AdjusmentPeriod;
+
+
+
+syms R(x)
+R(x) = IV * (Decay.^floor(x/AdjusmentPeriod));
+
+Hmax = HalvingPeriod*10;
+heights = linspace(0, Hmax, HalvingPeriod/AdjusmentPeriod);
+Rewards = R(heights);
+
+plot(heights/2/60/24/365, Rewards, 'r-')
+
+R2 = zeros(size(heights));
+
+coffer = Total;
+for h = 1:size(heights,2)
+  
+  k = IV*(coffer/Total);
+  coffer = coffer - k*AdjusmentPeriod;
+  R2(h) = k;
+  
+end
+hYears = heights/2/60/24/365;
+plot(hYears, Rewards, 'r-', hYears, R2, 'g-')
