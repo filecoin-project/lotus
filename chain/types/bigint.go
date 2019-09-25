@@ -7,9 +7,9 @@ import (
 	"math/big"
 
 	"github.com/filecoin-project/go-lotus/build"
-
 	cbor "github.com/ipfs/go-ipld-cbor"
 	"github.com/polydawn/refmt/obj/atlas"
+
 	cbg "github.com/whyrusleeping/cbor-gen"
 	"golang.org/x/xerrors"
 )
@@ -123,24 +123,21 @@ func (bi *BigInt) MarshalCBOR(w io.Writer) error {
 		return zero.MarshalCBOR(w)
 	}
 
-	tag := uint64(2)
-	if bi.Sign() < 0 {
-		tag = 3
+	var enc []byte
+	switch {
+	case bi.Sign() == 0:
+	case bi.Sign() > 0:
+		enc = append([]byte{0}, bi.Bytes()...)
+	case bi.Sign() < 0:
+		enc = append([]byte{1}, bi.Bytes()...)
 	}
 
-	header := cbg.CborEncodeMajorType(cbg.MajTag, tag)
+	header := cbg.CborEncodeMajorType(cbg.MajByteString, uint64(len(enc)))
 	if _, err := w.Write(header); err != nil {
 		return err
 	}
 
-	b := bi.Bytes()
-
-	header = cbg.CborEncodeMajorType(cbg.MajByteString, uint64(len(b)))
-	if _, err := w.Write(header); err != nil {
-		return err
-	}
-
-	if _, err := w.Write(b); err != nil {
+	if _, err := w.Write(enc); err != nil {
 		return err
 	}
 
@@ -153,19 +150,13 @@ func (bi *BigInt) UnmarshalCBOR(br io.Reader) error {
 		return err
 	}
 
-	if maj != cbg.MajTag && extra != 2 && extra != 3 {
-		return fmt.Errorf("cbor input for big int was not a tagged big int")
-	}
-
-	minus := extra & 1
-
-	maj, extra, err = cbg.CborReadHeader(br)
-	if err != nil {
-		return err
-	}
-
 	if maj != cbg.MajByteString {
-		return fmt.Errorf("cbor input for big int was not a tagged byte string")
+		return fmt.Errorf("cbor input for fil big int was not a byte string")
+	}
+
+	if extra == 0 {
+		bi.Int = big.NewInt(0)
+		return nil
 	}
 
 	if extra > BigIntMaxSerializedLen {
@@ -177,8 +168,18 @@ func (bi *BigInt) UnmarshalCBOR(br io.Reader) error {
 		return err
 	}
 
-	bi.Int = big.NewInt(0).SetBytes(buf)
-	if minus > 0 {
+	var negative bool
+	switch buf[0] {
+	case 0:
+		negative = false
+	case 1:
+		negative = true
+	default:
+		return fmt.Errorf("big int prefix should be either 0 or 1, got %d", buf[0])
+	}
+
+	bi.Int = big.NewInt(0).SetBytes(buf[1:])
+	if negative {
 		bi.Int.Neg(bi.Int)
 	}
 
