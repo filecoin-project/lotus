@@ -125,11 +125,11 @@ func (h *Handler) validateVouchers(ctx context.Context, deal MinerDeal, paych ad
 	}
 
 	if laneState.Redeemed.GreaterThan(types.NewInt(0)) {
-		return xerrors.New("used lanes unsupported")
+		return xerrors.New("used lanes unsupported: lane redeemed amount was non-zero")
 	}
 
 	if laneState.Nonce > 0 {
-		return xerrors.New("used lanes unsupported")
+		return xerrors.New("used lanes unsupported: nonce higher than zero")
 	}
 
 	return nil
