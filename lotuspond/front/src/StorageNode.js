@@ -25,7 +25,7 @@ class StorageNode extends React.Component {
 
       mining: false,
 
-      statusCounts: [0, 0, 0, 0]
+      statusCounts: [0, 0, 0, 0, 0]
     }
 
     this.loadInfo = this.loadInfo.bind(this)
@@ -85,13 +85,17 @@ class StorageNode extends React.Component {
       .map(sector => this.state.client.call("Filecoin.SectorsStatus", [sector.SectorID]))
       .reduce(async (p, n) => [...await p, await n], Promise.resolve([]))
 
-    let statusCounts = staged.reduce((p, n) => p.map((e, i) => e + (i === n.SealStatusCode ? 1 : 0) ), [0, 0, 0, 0])
+    let statusCounts = staged.reduce((p, n) => p.map((e, i) => e + (i === n.State ? 1 : 0) ), [0, 0, 0, 0, 0])
 
     this.setState({staged, statusCounts})
   }
 
   async sealGarbage() {
     await this.state.client.call("Filecoin.StoreGarbageData", [])
+  }
+
+  sealStaged = async () => {
+    await this.state.client.call("Filecoin.SectorsStagedSeal", [])
   }
 
   async stop() {
@@ -102,13 +106,14 @@ class StorageNode extends React.Component {
     let runtime = <div></div>
     if (this.state.actor) {
       const sealGarbage = <a href="#" onClick={this.sealGarbage}>[Seal Garbage]</a>
+      const sealStaged = <a href="#" onClick={this.sealStaged}>[Seal Staged]</a>
 
       runtime = (
         <div>
           <div>v{this.state.version.Version}, <abbr title={this.state.id}>{this.state.id.substr(-8)}</abbr>, {this.state.peers} peers</div>
           <div>Repo: LOTUS_STORAGE_PATH={this.props.node.Repo}</div>
           <div>
-            {sealGarbage}
+            {sealGarbage} {sealStaged}
           </div>
           <div>
             <Address client={this.props.fullConn} addr={this.state.actor} mountWindow={this.props.mountWindow}/>
