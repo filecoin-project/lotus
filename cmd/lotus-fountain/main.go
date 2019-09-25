@@ -19,7 +19,7 @@ import (
 
 var log = logging.Logger("main")
 
-var sendPerRequest = types.NewInt(5_000_000)
+var sendPerRequest = types.NewInt(500_000_000)
 
 func main() {
 	logging.SetLogLevel("*", "INFO")

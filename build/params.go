@@ -28,7 +28,7 @@ const MaxVouchersPerDeal = 768 // roughly one voucher per 10h over a year
 // Consensus / Network
 
 // Seconds
-const BlockDelay = 3
+const BlockDelay = 6
 
 // Seconds
 const AllowableClockDrift = BlockDelay * 2
@@ -43,10 +43,10 @@ const ForkLengthThreshold = 20
 const RandomnessLookback = 20
 
 // Blocks
-const ProvingPeriodDuration = 10
+const ProvingPeriodDuration = 40
 
 // Blocks
-const PoSTChallangeTime = 5
+const PoSTChallangeTime = 20
 
 const PowerCollateralProportion = 20
 const PerCapitaCollateralProportion = 5
