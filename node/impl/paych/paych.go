@@ -136,10 +136,6 @@ func (a *PaychAPI) PaychClose(ctx context.Context, addr address.Address) (cid.Ci
 	return smsg.Cid(), nil
 }
 
-func (a *PaychAPI) PaychLaneState(ctx context.Context, ch address.Address, lane uint64) (actors.LaneState, error) {
-	return a.PaychMgr.LaneState(ctx, ch, lane)
-}
-
 func (a *PaychAPI) PaychVoucherCheckValid(ctx context.Context, ch address.Address, sv *types.SignedVoucher) error {
 	return a.PaychMgr.CheckVoucherValid(ctx, ch, sv)
 }
@@ -150,10 +146,6 @@ func (a *PaychAPI) PaychVoucherCheckSpendable(ctx context.Context, ch address.Ad
 
 func (a *PaychAPI) PaychVoucherAdd(ctx context.Context, ch address.Address, sv *types.SignedVoucher, proof []byte, minDelta types.BigInt) (types.BigInt, error) {
 	_ = a.PaychMgr.TrackInboundChannel(ctx, ch) // TODO: expose those calls
-
-	if err := a.PaychVoucherCheckValid(ctx, ch, sv); err != nil {
-		return types.NewInt(0), err
-	}
 
 	return a.PaychMgr.AddVoucher(ctx, ch, sv, proof, minDelta)
 }

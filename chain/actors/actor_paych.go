@@ -37,7 +37,7 @@ type PaymentChannelActorState struct {
 	ClosingAt      uint64
 	MinCloseHeight uint64
 
-	// TODO: needs to be map[uint64]*LaneState
+	// TODO: needs to be map[uint64]*laneState
 	// waiting on refmt#35 to be fixed
 	LaneStates map[string]*LaneState
 }

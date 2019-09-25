@@ -9,7 +9,6 @@ import (
 	"github.com/libp2p/go-libp2p-core/network"
 	"github.com/libp2p/go-libp2p-core/peer"
 
-	"github.com/filecoin-project/go-lotus/chain/actors"
 	"github.com/filecoin-project/go-lotus/chain/address"
 	"github.com/filecoin-project/go-lotus/chain/store"
 	"github.com/filecoin-project/go-lotus/chain/types"
@@ -123,7 +122,6 @@ type FullNode interface {
 	PaychStatus(context.Context, address.Address) (*PaychStatus, error)
 	PaychClose(context.Context, address.Address) (cid.Cid, error)
 	PaychAllocateLane(ctx context.Context, ch address.Address) (uint64, error)
-	PaychLaneState(ctx context.Context, ch address.Address, lane uint64) (actors.LaneState, error)
 	PaychNewPayment(ctx context.Context, from, to address.Address, vouchers []VoucherSpec) (*PaymentInfo, error)
 	PaychVoucherCheckValid(context.Context, address.Address, *types.SignedVoucher) error
 	PaychVoucherCheckSpendable(context.Context, address.Address, *types.SignedVoucher, []byte, []byte) (bool, error)

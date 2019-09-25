@@ -1894,7 +1894,7 @@ func (t *PaymentChannelActorState) MarshalCBOR(w io.Writer) error {
 		return err
 	}
 
-	// t.t.LaneStates (map[string]*actors.LaneState)
+	// t.t.LaneStates (map[string]*actors.laneState)
 	if err := cbg.CborWriteHeader(w, cbg.MajMap, uint64(len(t.LaneStates))); err != nil {
 		return err
 	}
@@ -1978,7 +1978,7 @@ func (t *PaymentChannelActorState) UnmarshalCBOR(r io.Reader) error {
 		return fmt.Errorf("wrong type for uint64 field")
 	}
 	t.MinCloseHeight = extra
-	// t.t.LaneStates (map[string]*actors.LaneState)
+	// t.t.LaneStates (map[string]*actors.laneState)
 
 	maj, extra, err = cbg.CborReadHeader(br)
 	if err != nil {

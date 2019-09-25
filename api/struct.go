@@ -8,7 +8,6 @@ import (
 	"github.com/libp2p/go-libp2p-core/network"
 	"github.com/libp2p/go-libp2p-core/peer"
 
-	"github.com/filecoin-project/go-lotus/chain/actors"
 	"github.com/filecoin-project/go-lotus/chain/address"
 	"github.com/filecoin-project/go-lotus/chain/store"
 	"github.com/filecoin-project/go-lotus/chain/types"
@@ -92,7 +91,6 @@ type FullNodeStruct struct {
 		PaychClose                 func(context.Context, address.Address) (cid.Cid, error)                                                  `perm:"sign"`
 		PaychAllocateLane          func(context.Context, address.Address) (uint64, error)                                                   `perm:"sign"`
 		PaychNewPayment            func(ctx context.Context, from, to address.Address, vouchers []VoucherSpec) (*PaymentInfo, error)        `perm:"sign"`
-		PaychLaneState             func(ctx context.Context, ch address.Address, lane uint64) (actors.LaneState, error)                     `perm:"write"`
 		PaychVoucherCheck          func(context.Context, *types.SignedVoucher) error                                                        `perm:"read"`
 		PaychVoucherCheckValid     func(context.Context, address.Address, *types.SignedVoucher) error                                       `perm:"read"`
 		PaychVoucherCheckSpendable func(context.Context, address.Address, *types.SignedVoucher, []byte, []byte) (bool, error)               `perm:"read"`
@@ -366,10 +364,6 @@ func (c *FullNodeStruct) PaychAllocateLane(ctx context.Context, ch address.Addre
 
 func (c *FullNodeStruct) PaychNewPayment(ctx context.Context, from, to address.Address, vouchers []VoucherSpec) (*PaymentInfo, error) {
 	return c.Internal.PaychNewPayment(ctx, from, to, vouchers)
-}
-
-func (c *FullNodeStruct) PaychLaneState(ctx context.Context, ch address.Address, lane uint64) (actors.LaneState, error) {
-	return c.Internal.PaychLaneState(ctx, ch, lane)
 }
 
 func (c *FullNodeStruct) PaychVoucherSubmit(ctx context.Context, ch address.Address, sv *types.SignedVoucher) (cid.Cid, error) {

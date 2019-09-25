@@ -19,7 +19,7 @@ func (pm *Manager) loadPaychState(ctx context.Context, ch address.Address) (*typ
 	return act, &pcast, nil
 }
 
-func (pm *Manager) LaneState(ctx context.Context, ch address.Address, lane uint64) (actors.LaneState, error) {
+func (pm *Manager) laneState(ctx context.Context, ch address.Address, lane uint64) (actors.LaneState, error) {
 	_, state, err := pm.loadPaychState(ctx, ch)
 	if err != nil {
 		return actors.LaneState{}, err
@@ -39,7 +39,7 @@ func (pm *Manager) LaneState(ctx context.Context, ch address.Address, lane uint6
 	}
 
 	if ls.Closed {
-		return actors.LaneState{}, nil
+		return *ls, nil
 	}
 
 	vouchers, err := pm.store.VouchersForPaych(ch)
@@ -52,7 +52,7 @@ func (pm *Manager) LaneState(ctx context.Context, ch address.Address, lane uint6
 
 	for _, v := range vouchers {
 		for range v.Voucher.Merges {
-			panic("merges todo")
+			panic("merges todo") // TODO: nonce check
 		}
 
 		if v.Voucher.Lane != lane {

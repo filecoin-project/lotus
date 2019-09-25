@@ -13,7 +13,6 @@ import (
 	"github.com/filecoin-project/go-lotus/api"
 	"github.com/filecoin-project/go-lotus/build"
 	"github.com/filecoin-project/go-lotus/chain/actors"
-	"github.com/filecoin-project/go-lotus/chain/address"
 	"github.com/filecoin-project/go-lotus/chain/types"
 	"github.com/filecoin-project/go-lotus/lib/sectorbuilder"
 	"github.com/filecoin-project/go-lotus/storage/sectorblocks"
@@ -43,7 +42,61 @@ func (h *Handler) handle(ctx context.Context, deal MinerDeal, cb minerHandlerFun
 
 // ACCEPTED
 
-func (h *Handler) validateVouchers(ctx context.Context, deal MinerDeal, paych address.Address) error {
+func (h *Handler) checkVoucher(ctx context.Context, deal MinerDeal, voucher *types.SignedVoucher, lane uint64, maxClose uint64, amount types.BigInt) error {
+	err := h.full.PaychVoucherCheckValid(ctx, deal.Proposal.Payment.PayChActor, voucher)
+	if err != nil {
+		return err
+	}
+
+	if voucher.Extra == nil {
+		return xerrors.New("voucher.Extra not set")
+	}
+
+	if voucher.Extra.Actor != deal.Proposal.MinerAddress {
+		return xerrors.Errorf("extra params actor didn't match miner address in proposal: '%s' != '%s'", voucher.Extra.Actor, deal.Proposal.MinerAddress)
+	}
+
+	if voucher.Extra.Method != actors.MAMethods.PaymentVerifyInclusion {
+		return xerrors.Errorf("expected extra method %d, got %d", actors.MAMethods.PaymentVerifyInclusion, voucher.Extra.Method)
+	}
+
+	var inclChallenge actors.PieceInclVoucherData
+	if err := cbor.DecodeInto(voucher.Extra.Data, &inclChallenge); err != nil {
+		return xerrors.Errorf("failed to decode storage voucher data for verification: %w", err)
+	}
+
+	if inclChallenge.PieceSize.Uint64() != deal.Proposal.Size {
+		return xerrors.Errorf("paych challenge piece size didn't match deal proposal size: %d != %d", inclChallenge.PieceSize.Uint64(), deal.Proposal.Size)
+	}
+
+	if !bytes.Equal(inclChallenge.CommP, deal.Proposal.CommP) {
+		return xerrors.New("paych challenge commP didn't match deal proposal")
+	}
+
+	if voucher.MinCloseHeight > maxClose {
+		return xerrors.Errorf("MinCloseHeight too high (%d), max expected: %d", voucher.MinCloseHeight, maxClose)
+	}
+
+	if voucher.TimeLock > maxClose {
+		return xerrors.Errorf("TimeLock too high (%d), max expected: %d", voucher.TimeLock, maxClose)
+	}
+
+	if len(voucher.Merges) > 0 {
+		return xerrors.New("didn't expect any merges")
+	}
+
+	if voucher.Amount.LessThan(amount) {
+		return xerrors.Errorf("not enough funds in the voucher: %s < %s; vl=%d", voucher.Amount, amount, len(deal.Proposal.Payment.Vouchers))
+	}
+
+	if voucher.Lane != lane {
+		return xerrors.Errorf("expected all vouchers on lane %d, found voucher on lane %d", lane, voucher.Lane)
+	}
+
+	return nil
+}
+
+func (h *Handler) consumeVouchers(ctx context.Context, deal MinerDeal) error {
 	curHead, err := h.full.ChainHead(ctx)
 	if err != nil {
 		return err
@@ -64,47 +117,10 @@ func (h *Handler) validateVouchers(ctx context.Context, deal MinerDeal, paych ad
 	lane := deal.Proposal.Payment.Vouchers[0].Lane
 
 	for i, voucher := range deal.Proposal.Payment.Vouchers {
-		err := h.full.PaychVoucherCheckValid(ctx, deal.Proposal.Payment.PayChActor, voucher)
-		if err != nil {
-			return xerrors.Errorf("validating payment voucher %d: %w", i, err)
-		}
-
-		if voucher.Extra == nil {
-			return xerrors.Errorf("validating payment voucher %d: voucher.Extra not set")
-		}
-
-		if voucher.Extra.Actor != deal.Proposal.MinerAddress {
-			return xerrors.Errorf("validating payment voucher %d: extra params actor didn't match miner address in proposal: '%s' != '%s'", i, voucher.Extra.Actor, deal.Proposal.MinerAddress)
-		}
-		if voucher.Extra.Method != actors.MAMethods.PaymentVerifyInclusion {
-			return xerrors.Errorf("validating payment voucher %d: expected extra method %d, got %d", i, actors.MAMethods.PaymentVerifyInclusion, voucher.Extra.Method)
-		}
-
-		var inclChallenge actors.PieceInclVoucherData
-		if err := cbor.DecodeInto(voucher.Extra.Data, &inclChallenge); err != nil {
-			return xerrors.Errorf("validating payment voucher %d: failed to decode storage voucher data for verification: %w", i, err)
-		}
-		if inclChallenge.PieceSize.Uint64() != deal.Proposal.Size {
-			return xerrors.Errorf("validating payment voucher %d: paych challenge piece size didn't match deal proposal size: %d != %d", i, inclChallenge.PieceSize.Uint64(), deal.Proposal.Size)
-		}
-		if !bytes.Equal(inclChallenge.CommP, deal.Proposal.CommP) {
-			return xerrors.Errorf("validating payment voucher %d: paych challenge commP didn't match deal proposal", i)
-		}
-
 		maxClose := curHead.Height() + (increments * uint64(i+1)) + build.DealVoucherSkewLimit
-		if voucher.MinCloseHeight > maxClose {
-			return xerrors.Errorf("validating payment voucher %d: MinCloseHeight too high (%d), max expected: %d", i, voucher.MinCloseHeight, maxClose)
-		}
 
-		if voucher.TimeLock > maxClose {
-			return xerrors.Errorf("validating payment voucher %d: TimeLock too high (%d), max expected: %d", i, voucher.TimeLock, maxClose)
-		}
-
-		if len(voucher.Merges) > 0 {
-			return xerrors.Errorf("validating payment voucher %d: didn't expect any merges", i)
-		}
-		if voucher.Amount.LessThan(vspec[i].Amount) {
-			return xerrors.Errorf("validating payment voucher %d: not enough funds in the voucher: %s < %s; vl=%d vsl=%d", i, voucher.Amount, vspec[i].Amount, len(deal.Proposal.Payment.Vouchers), len(vspec))
+		if err := h.checkVoucher(ctx, deal, voucher, lane, maxClose, vspec[i].Amount); err != nil {
+			return xerrors.Errorf("validating payment voucher %d: %w", i, err)
 		}
 	}
 
@@ -113,23 +129,14 @@ func (h *Handler) validateVouchers(ctx context.Context, deal MinerDeal, paych ad
 		return xerrors.Errorf("minimum price: %s", minPrice)
 	}
 
-	// TODO: This is mildly racy, we need a way to check lane and submit voucher
-	//  atomically
-	laneState, err := h.full.PaychLaneState(ctx, paych, lane)
-	if err != nil {
-		return xerrors.Errorf("looking up payment channel lane: %w", err)
-	}
+	prevAmt := types.NewInt(0)
 
-	if laneState.Closed {
-		return xerrors.New("lane closed")
-	}
-
-	if laneState.Redeemed.GreaterThan(types.NewInt(0)) {
-		return xerrors.New("used lanes unsupported: lane redeemed amount was non-zero")
-	}
-
-	if laneState.Nonce > 0 {
-		return xerrors.New("used lanes unsupported: nonce higher than zero")
+	for i, voucher := range deal.Proposal.Payment.Vouchers {
+		delta, err := h.full.PaychVoucherAdd(ctx, deal.Proposal.Payment.PayChActor, voucher, nil, types.BigSub(vspec[i].Amount, prevAmt))
+		if err != nil {
+			return xerrors.Errorf("consuming payment voucher %d: %w", i, err)
+		}
+		prevAmt = types.BigAdd(prevAmt, delta)
 	}
 
 	return nil
@@ -151,15 +158,8 @@ func (h *Handler) accept(ctx context.Context, deal MinerDeal) (func(*MinerDeal),
 		}
 	}
 
-	if err := h.validateVouchers(ctx, deal, deal.Proposal.Payment.PayChActor); err != nil {
+	if err := h.consumeVouchers(ctx, deal); err != nil {
 		return nil, err
-	}
-
-	for i, voucher := range deal.Proposal.Payment.Vouchers {
-		// TODO: Set correct minAmount
-		if _, err := h.full.PaychVoucherAdd(ctx, deal.Proposal.Payment.PayChActor, voucher, nil, types.NewInt(0)); err != nil {
-			return nil, xerrors.Errorf("consuming payment voucher %d: %w", i, err)
-		}
 	}
 
 	log.Info("fetching data for a deal")

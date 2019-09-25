@@ -1,8 +1,10 @@
 package paych
 
 import (
+	"bytes"
 	"context"
 	"fmt"
+	"golang.org/x/xerrors"
 	"math"
 	"strconv"
 
@@ -243,7 +245,65 @@ func (pm *Manager) AddVoucher(ctx context.Context, ch address.Address, sv *types
 		return types.NewInt(0), err
 	}
 
-	return pm.store.AddVoucher(ch, sv, proof, minDelta)
+	pm.store.lk.Lock()
+	defer pm.store.lk.Unlock()
+
+	ci, err := pm.store.getChannelInfo(ch)
+	if err != nil {
+		return types.NewInt(0), err
+	}
+
+	laneState, err := pm.laneState(ctx, ch, sv.Lane)
+	if err != nil {
+		return types.NewInt(0), err
+	}
+
+	if laneState.Closed {
+		return types.NewInt(0), xerrors.New("lane closed")
+	}
+
+	if laneState.Nonce > sv.Nonce {
+		return types.NewInt(0), xerrors.Errorf("already storing voucher with higher nonce; %d > %d", laneState.Nonce, sv.Nonce)
+	}
+
+	// look for duplicates
+	for i, v := range ci.Vouchers {
+		if !sv.Equals(v.Voucher) {
+			continue
+		}
+		if v.Proof != nil {
+			if !bytes.Equal(v.Proof, proof) {
+				log.Warnf("AddVoucher: multiple proofs for single voucher, storing both")
+				break
+			}
+			log.Warnf("AddVoucher: voucher re-added with matching proof")
+			return types.NewInt(0), nil
+		}
+
+		log.Warnf("AddVoucher: adding proof to stored voucher")
+		ci.Vouchers[i] = &VoucherInfo{
+			Voucher: v.Voucher,
+			Proof:   proof,
+		}
+
+		return types.NewInt(0), pm.store.putChannelInfo(ci)
+	}
+
+	delta := types.BigSub(sv.Amount, laneState.Redeemed)
+	if minDelta.GreaterThan(delta) {
+		return delta, xerrors.Errorf("addVoucher: supplied token amount too low; minD=%s, D=%s; laneAmt=%s; v.Amt=%s", minDelta, delta, laneState.Redeemed, sv.Amount)
+	}
+
+	ci.Vouchers = append(ci.Vouchers, &VoucherInfo{
+		Voucher: sv,
+		Proof:   proof,
+	})
+
+	if ci.NextLane <= sv.Lane {
+		ci.NextLane = sv.Lane + 1
+	}
+
+	return delta, pm.store.putChannelInfo(ci)
 }
 
 func (pm *Manager) AllocateLane(ch address.Address) (uint64, error) {
