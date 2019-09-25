@@ -194,7 +194,7 @@ func (cs *ChainStore) PutTipSet(ts *FullTipSet) error {
 	if err != nil {
 		return xerrors.Errorf("errored while expanding tipset: %w", err)
 	}
-	fmt.Printf("expanded %s into %s\n", ts.TipSet().Cids(), expanded.Cids())
+	log.Debugf("expanded %s into %s\n", ts.TipSet().Cids(), expanded.Cids())
 
 	if err := cs.MaybeTakeHeavierTipSet(expanded); err != nil {
 		return errors.Wrap(err, "MaybeTakeHeavierTipSet failed in PutTipSet")
@@ -223,7 +223,7 @@ func (cs *ChainStore) MaybeTakeHeavierTipSet(ts *types.TipSet) error {
 			log.Warn("no heaviest tipset found, using %s", ts.Cids())
 		}
 
-		log.Infof("New heaviest tipset! %s", ts.Cids())
+		log.Debugf("New heaviest tipset! %s", ts.Cids())
 		cs.heaviest = ts
 
 		if err := cs.writeHead(ts); err != nil {
@@ -345,7 +345,7 @@ func (cs *ChainStore) addToTipSetTracker(b *types.BlockHeader) error {
 	tss := cs.tipsets[b.Height]
 	for _, oc := range tss {
 		if oc == b.Cid() {
-			log.Warn("tried to add block to tipset tracker that was already there")
+			log.Debug("tried to add block to tipset tracker that was already there")
 			return nil
 		}
 	}
@@ -727,7 +727,6 @@ func (cs *ChainStore) GetRandomness(ctx context.Context, blks []cid.Cid, tickets
 		lt := int64(len(mtb.Tickets))
 		if nv < lt {
 			t := mtb.Tickets[lt-(1+nv)]
-			log.Infof("Returning randomness: H:%d, t:%d, mtb:%s", nts.Height(), lt-(1+nv), mtb.Cid())
 			return t.VDFResult, nil
 		}
 
