@@ -454,6 +454,9 @@ func (sma StorageMinerActor) GetPower(act *types.Actor, vmctx types.VMContext, p
 	if err != nil {
 		return nil, err
 	}
+	if vmctx.BlockHeight() > self.ProvingPeriodEnd {
+		return []byte{}, nil
+	}
 	return self.Power.Bytes(), nil
 }
 
