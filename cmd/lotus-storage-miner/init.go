@@ -233,7 +233,10 @@ func createStorageMiner(ctx context.Context, api api.FullNode, peerid peer.ID, c
 		return address.Undef, err
 	}
 
-	collateral := types.NewInt(1000) // TODO: Get this from params
+	collateral, err := api.StatePledgeCollateral(ctx, nil)
+	if err != nil {
+		return address.Undef, err
+	}
 
 	params, err := actors.SerializeParams(&actors.CreateStorageMinerParams{
 		Owner:      owner,
