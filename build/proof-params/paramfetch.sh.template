@@ -2,6 +2,8 @@
 
 set -euo pipefail
 
+PARAMS='{{PARAMSJSON}}'
+
 die() {
 	echo "$@" >&2
 	exit 1
@@ -73,10 +75,9 @@ fetch_gateway() {
 }
 
 OUT_DIR="/var/tmp/filecoin-proof-parameters"
-PARAMS="build/proof-params/parameters.json"
 
 mkdir -p $OUT_DIR
-jq '. | to_entries | map("'$OUT_DIR'/\(.key) \(.value.cid) \(.value.digest)") | .[]' --raw-output $PARAMS | \
+printf $PARAMS | base64 -d | jq '. | to_entries | map("'$OUT_DIR'/\(.key) \(.value.cid) \(.value.digest)") | .[]' --raw-output | \
 	while read -r dest cid digest; do
 		if [[ -f "$dest" ]]; then
 			b2=$(b2sum "$dest" | head -c 32)

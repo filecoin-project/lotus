@@ -7,6 +7,7 @@
 **/*.a
 **/*.pc
 build/.*
+build/paramfetch.sh
 /vendor
 
 *-fuzz.zip

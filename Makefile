@@ -56,8 +56,11 @@ bin/ipget:
 PARAM_SECTOR_SIZES:=1024 16777216 268435456 1073741824
 PARAM_SECTOR_SIZES:=$(addprefix build/.params-,$(PARAM_SECTOR_SIZES))
 
-$(PARAM_SECTOR_SIZES): build/proof-params/parameters.json bin/ipget
-	./build/proof-params/paramfetch.sh
+./build/paramfetch.sh: build/proof-params/parameters.json
+	build/proof-params/mkparamfetch.sh
+
+$(PARAM_SECTOR_SIZES): ./build/paramfetch.sh build/proof-params/parameters.json bin/ipget
+	./build/paramfetch.sh
 	touch $@
 
 BUILD_DEPS+=build/.params-1024
