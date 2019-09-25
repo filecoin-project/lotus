@@ -262,7 +262,7 @@ func (pm *Manager) AddVoucher(ctx context.Context, ch address.Address, sv *types
 		return types.NewInt(0), xerrors.New("lane closed")
 	}
 
-	if laneState.Nonce > sv.Nonce {
+	if minDelta.GreaterThan(types.NewInt(0)) && laneState.Nonce > sv.Nonce {
 		return types.NewInt(0), xerrors.Errorf("already storing voucher with higher nonce; %d > %d", laneState.Nonce, sv.Nonce)
 	}
 
