@@ -83,6 +83,30 @@ func (a *StateAPI) StateMinerProvingPeriodEnd(ctx context.Context, actor address
 	return stmgr.GetMinerProvingPeriodEnd(ctx, a.StateManager, ts, actor)
 }
 
+func (a *StateAPI) StatePledgeCollateral(ctx context.Context, ts *types.TipSet) (types.BigInt, error) {
+	param, err := actors.SerializeParams(&actors.PledgeCollateralParams{Size: types.NewInt(0)})
+	if err != nil {
+		return types.NewInt(0), err
+	}
+
+	ret, aerr := a.StateManager.Call(ctx, &types.Message{
+		From:   actors.StorageMarketAddress,
+		To:     actors.StorageMarketAddress,
+		Method: actors.SMAMethods.PledgeCollateralForSize,
+
+		Params: param,
+	}, ts)
+	if aerr != nil {
+		return types.NewInt(0), xerrors.Errorf("failed to get miner worker addr: %w", err)
+	}
+
+	if ret.ExitCode != 0 {
+		return types.NewInt(0), xerrors.Errorf("failed to get miner worker addr (exit code %d)", ret.ExitCode)
+	}
+
+	return types.BigFromBytes(ret.Return), nil
+}
+
 func (a *StateAPI) StateCall(ctx context.Context, msg *types.Message, ts *types.TipSet) (*types.MessageReceipt, error) {
 	return a.StateManager.Call(ctx, msg, ts)
 }

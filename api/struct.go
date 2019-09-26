@@ -84,6 +84,7 @@ type FullNodeStruct struct {
 		StateReplay                func(context.Context, *types.TipSet, cid.Cid) (*ReplayResults, error)               `perm:"read"`
 		StateGetActor              func(context.Context, address.Address, *types.TipSet) (*types.Actor, error)         `perm:"read"`
 		StateReadState             func(context.Context, *types.Actor, *types.TipSet) (*ActorState, error)             `perm:"read"`
+		StatePledgeCollateral      func(context.Context, *types.TipSet) (types.BigInt, error)                          `perm:"read"`
 
 		PaychGet                   func(ctx context.Context, from, to address.Address, ensureFunds types.BigInt) (*ChannelInfo, error)      `perm:"sign"`
 		PaychList                  func(context.Context) ([]address.Address, error)                                                         `perm:"read"`
@@ -320,6 +321,10 @@ func (c *FullNodeStruct) StateGetActor(ctx context.Context, actor address.Addres
 
 func (c *FullNodeStruct) StateReadState(ctx context.Context, act *types.Actor, ts *types.TipSet) (*ActorState, error) {
 	return c.Internal.StateReadState(ctx, act, ts)
+}
+
+func (c *FullNodeStruct) StatePledgeCollateral(ctx context.Context, ts *types.TipSet) (types.BigInt, error) {
+	return c.Internal.StatePledgeCollateral(ctx, ts)
 }
 
 func (c *FullNodeStruct) PaychGet(ctx context.Context, from, to address.Address, ensureFunds types.BigInt) (*ChannelInfo, error) {
