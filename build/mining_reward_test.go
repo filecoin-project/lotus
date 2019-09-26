@@ -7,6 +7,6 @@ import (
 
 func TestEncodeMiningRewardInitial(t *testing.T) {
 	i := &big.Int{}
-	i.SetString("153686558225539943338", 10)
+	i.SetString("153856870367821447423", 10)
 	t.Logf("%#v", i.Bytes())
 }
