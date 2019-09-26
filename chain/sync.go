@@ -516,7 +516,7 @@ loop:
 		// NB: GetBlocks validates that the blocks are in-fact the ones we
 		// requested, and that they are correctly linked to eachother. It does
 		// not validate any state transitions
-		window := 10
+		window := 500
 		if gap := int(blockSet[len(blockSet)-1].Height() - untilHeight); gap < window {
 			window = gap
 		}
@@ -530,6 +530,7 @@ loop:
 			// This error will only be logged above,
 			return nil, xerrors.Errorf("failed to get blocks: %w", err)
 		}
+		log.Info("Got blocks: ", blks[0].Height(), len(blks))
 
 		for _, b := range blks {
 			if b.Height() < untilHeight {
@@ -588,7 +589,7 @@ func (syncer *Syncer) iterFullTipsets(headers []*types.TipSet, cb func(*store.Fu
 	}
 	headers = headers[:beg+1]
 
-	windowSize := 10
+	windowSize := 200
 
 	for i := len(headers) - 1; i >= 0; i -= windowSize {
 
