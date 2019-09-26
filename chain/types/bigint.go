@@ -17,18 +17,14 @@ import (
 const BigIntMaxSerializedLen = 128 // is this big enough? or too big?
 
 func init() {
-	cbor.RegisterCborType(atlas.BuildEntry(BigInt{}).UseTag(2).Transform().
+	cbor.RegisterCborType(atlas.BuildEntry(BigInt{}).Transform().
 		TransformMarshal(atlas.MakeMarshalTransformFunc(
 			func(i BigInt) ([]byte, error) {
-				if i.Int == nil {
-					return []byte{}, nil
-				}
-
-				return i.Bytes(), nil
+				return i.cborBytes(), nil
 			})).
 		TransformUnmarshal(atlas.MakeUnmarshalTransformFunc(
 			func(x []byte) (BigInt, error) {
-				return BigFromBytes(x), nil
+				return fromCborBytes(x)
 			})).
 		Complete())
 }
@@ -117,20 +113,49 @@ func (bi *BigInt) UnmarshalJSON(b []byte) error {
 	return nil
 }
 
+func (bi *BigInt) cborBytes() []byte {
+	if bi.Int == nil {
+		return []byte{}
+	}
+
+	switch {
+	case bi.Sign() == 0:
+		return []byte{}
+	case bi.Sign() > 0:
+		return append([]byte{0}, bi.Bytes()...)
+	case bi.Sign() < 0:
+		return append([]byte{1}, bi.Bytes()...)
+	}
+
+	panic("unreachable")
+}
+
+func fromCborBytes(buf []byte) (BigInt, error) {
+	var negative bool
+	switch buf[0] {
+	case 0:
+		negative = false
+	case 1:
+		negative = true
+	default:
+		return EmptyInt, fmt.Errorf("big int prefix should be either 0 or 1, got %d", buf[0])
+	}
+
+	i := big.NewInt(0).SetBytes(buf[1:])
+	if negative {
+		i.Neg(i)
+	}
+
+	return BigInt{i}, nil
+}
+
 func (bi *BigInt) MarshalCBOR(w io.Writer) error {
 	if bi.Int == nil {
 		zero := NewInt(0)
 		return zero.MarshalCBOR(w)
 	}
 
-	var enc []byte
-	switch {
-	case bi.Sign() == 0:
-	case bi.Sign() > 0:
-		enc = append([]byte{0}, bi.Bytes()...)
-	case bi.Sign() < 0:
-		enc = append([]byte{1}, bi.Bytes()...)
-	}
+	enc := bi.cborBytes()
 
 	header := cbg.CborEncodeMajorType(cbg.MajByteString, uint64(len(enc)))
 	if _, err := w.Write(header); err != nil {
@@ -168,20 +193,12 @@ func (bi *BigInt) UnmarshalCBOR(br io.Reader) error {
 		return err
 	}
 
-	var negative bool
-	switch buf[0] {
-	case 0:
-		negative = false
-	case 1:
-		negative = true
-	default:
-		return fmt.Errorf("big int prefix should be either 0 or 1, got %d", buf[0])
+	i, err := fromCborBytes(buf)
+	if err != nil {
+		return err
 	}
 
-	bi.Int = big.NewInt(0).SetBytes(buf[1:])
-	if negative {
-		bi.Int.Neg(bi.Int)
-	}
+	*bi = i
 
 	return nil
 }
