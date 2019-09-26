@@ -2,7 +2,6 @@ package vm
 
 import (
 	"fmt"
-	"os"
 	"testing"
 
 	"github.com/filecoin-project/go-lotus/build"
@@ -14,10 +13,6 @@ func TestBlockReward(t *testing.T) {
 	sum := types.NewInt(0)
 	N := build.HalvingPeriodBlocks
 	for i := 0; i < N; i++ {
-		if i%20000 == 0 {
-			fmt.Fprintf(os.Stderr, "%.1f%%\r", float64(i)/float64(N)*100)
-		}
-
 		a := MiningReward(coffer)
 		sum = types.BigAdd(sum, a)
 		coffer = types.BigSub(coffer, a)
@@ -26,21 +21,6 @@ func TestBlockReward(t *testing.T) {
 	//sum = types.BigMul(sum, types.NewInt(60))
 
 	fmt.Println("After a halving period")
-	fmt.Printf("Total reward: %d\n", build.MiningRewardTotal)
-	fmt.Printf("Remaining: %s\n", types.BigDiv(coffer, types.NewInt(build.FilecoinPrecision)))
-	fmt.Printf("Given out: %s\n", types.BigDiv(sum, types.NewInt(build.FilecoinPrecision)))
-
-	for i := 0; i < N; i++ {
-		if i%20000 == 0 {
-			fmt.Fprintf(os.Stderr, "%.1f%%\r", float64(i)/float64(N)*100)
-		}
-
-		a := MiningReward(coffer)
-		sum = types.BigAdd(sum, a)
-		coffer = types.BigSub(coffer, a)
-	}
-
-	fmt.Println("Next halving period")
 	fmt.Printf("Total reward: %d\n", build.MiningRewardTotal)
 	fmt.Printf("Remaining: %s\n", types.BigDiv(coffer, types.NewInt(build.FilecoinPrecision)))
 	fmt.Printf("Given out: %s\n", types.BigDiv(sum, types.NewInt(build.FilecoinPrecision)))

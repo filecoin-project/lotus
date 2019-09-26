@@ -633,36 +633,14 @@ func DepositFunds(act *types.Actor, amt types.BigInt) {
 	act.Balance = types.BigAdd(act.Balance, amt)
 }
 
+var IV = types.BigInt{big.NewInt(0).SetBytes(build.MiningRewardInitialAttoFilBytes)}
+var miningRewardTotal = types.FromFil(build.MiningRewardTotal)
+
 // MiningReward returns correct mining reward
 //   coffer is amount of FIL in NetworkAddress
 func MiningReward(coffer types.BigInt) types.BigInt {
-	i := &big.Int{}
-	i.SetBytes(build.MiningRewardInitialAttoFilBytes)
-	IV := types.BigInt{i}
-	res := types.BigMul(IV, coffer)
-	res = types.BigDiv(res, types.FromFil(build.MiningRewardTotal))
-	return res
+	ci := big.NewInt(0).Set(coffer.Int)
+	res := ci.Mul(ci, IV.Int)
+	res = res.Div(res, miningRewardTotal.Int)
+	return types.BigInt{res}
 }
-
-/*
-func MiningRewardForBlock(height uint64) types.BigInt {
-
-	//decay := e^(ln(0.5) / (HalvingPeriodBlocks / AdjustmentPeriod)
-	decay := 0.9977808404048861
-
-	totalMiningReward := types.FromFil(build.MiningRewardTotal)
-
-	dval := big.NewFloat(math.Pow(decay, float64(uint64(height/build.AdjustmentPeriod))))
-
-	iv := big.NewFloat(0).Mul(
-		big.NewFloat(0).SetInt(totalMiningReward.Int),
-		big.NewFloat(1-decay),
-	)
-
-	//return (InitialReward * Math.pow(decay, Math.floor(height / adjustmentPeriod))) / adjustmentPeriod
-
-	reward, _ := big.NewFloat(0).Quo(iv.Mul(iv, dval), big.NewFloat(build.AdjustmentPeriod)).Int(nil)
-
-	return types.BigInt{reward}
-}
-*/
