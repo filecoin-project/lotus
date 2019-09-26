@@ -1,10 +1,8 @@
 package paych
 
 import (
-	"bytes"
 	"errors"
 	"fmt"
-	"math"
 	"strings"
 	"sync"
 
@@ -180,66 +178,6 @@ func (ps *Store) findChan(filter func(*ChannelInfo) bool) (address.Address, erro
 	}
 
 	return address.Undef, nil
-}
-
-func (ps *Store) AddVoucher(ch address.Address, sv *types.SignedVoucher, proof []byte, minDelta types.BigInt) (types.BigInt, error) {
-	ps.lk.Lock()
-	defer ps.lk.Unlock()
-
-	ci, err := ps.getChannelInfo(ch)
-	if err != nil {
-		return types.NewInt(0), err
-	}
-
-	var bestAmount types.BigInt
-	var bestNonce uint64 = math.MaxUint64
-
-	// look for duplicates
-	for i, v := range ci.Vouchers {
-		if v.Voucher.Lane == sv.Lane && v.Voucher.Nonce+1 > bestNonce+1 {
-			bestNonce = v.Voucher.Nonce
-			bestAmount = v.Voucher.Amount
-		}
-		if !sv.Equals(v.Voucher) {
-			continue
-		}
-		if v.Proof != nil {
-			if !bytes.Equal(v.Proof, proof) {
-				log.Warnf("AddVoucher: multiple proofs for single voucher, storing both")
-				break
-			}
-			log.Warnf("AddVoucher: voucher re-added with matching proof")
-			return types.NewInt(0), nil
-		}
-
-		log.Warnf("AddVoucher: adding proof to stored voucher")
-		ci.Vouchers[i] = &VoucherInfo{
-			Voucher: v.Voucher,
-			Proof:   proof,
-		}
-
-		return types.NewInt(0), ps.putChannelInfo(ci)
-	}
-
-	if bestAmount == (types.BigInt{}) {
-		bestAmount = types.NewInt(0)
-	}
-
-	delta := types.BigSub(sv.Amount, bestAmount)
-	if minDelta.GreaterThan(delta) {
-		return delta, xerrors.Errorf("addVoucher: supplied token amount too low; minD=%s, D=%s; bestAmt=%s; v.Amt=%s", minDelta, delta, bestAmount, sv.Amount)
-	}
-
-	ci.Vouchers = append(ci.Vouchers, &VoucherInfo{
-		Voucher: sv,
-		Proof:   proof,
-	})
-
-	if ci.NextLane <= sv.Lane {
-		ci.NextLane = sv.Lane + 1
-	}
-
-	return delta, ps.putChannelInfo(ci)
 }
 
 func (ps *Store) AllocateLane(ch address.Address) (uint64, error) {

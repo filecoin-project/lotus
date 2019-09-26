@@ -42,8 +42,11 @@ func (a *PaychAPI) PaychAllocateLane(ctx context.Context, ch address.Address) (u
 	return a.PaychMgr.AllocateLane(ch)
 }
 
-func (a *PaychAPI) PaychNewPayment(ctx context.Context, from, to address.Address, amount types.BigInt, extra *types.ModVerifyParams, tl uint64, minClose uint64) (*api.PaymentInfo, error) {
+func (a *PaychAPI) PaychNewPayment(ctx context.Context, from, to address.Address, vouchers []api.VoucherSpec) (*api.PaymentInfo, error) {
+	amount := vouchers[len(vouchers)-1].Amount
+
 	// TODO: Fix free fund tracking in PaychGet
+	// TODO: validate voucher spec before locking funds
 	ch, err := a.PaychGet(ctx, from, to, amount)
 	if err != nil {
 		return nil, err
@@ -54,17 +57,24 @@ func (a *PaychAPI) PaychNewPayment(ctx context.Context, from, to address.Address
 		return nil, err
 	}
 
-	sv, err := a.paychVoucherCreate(ctx, ch.Channel, types.SignedVoucher{
-		Amount: amount,
-		Lane:   lane,
+	svs := make([]*types.SignedVoucher, len(vouchers))
 
-		Extra:          extra,
-		TimeLock:       tl,
-		MinCloseHeight: minClose,
-	})
-	if err != nil {
-		return nil, err
+	for i, v := range vouchers {
+		sv, err := a.paychVoucherCreate(ctx, ch.Channel, types.SignedVoucher{
+			Amount: v.Amount,
+			Lane:   lane,
+
+			Extra:          v.Extra,
+			TimeLock:       v.TimeLock,
+			MinCloseHeight: v.MinClose,
+		})
+		if err != nil {
+			return nil, err
+		}
+
+		svs[i] = sv
 	}
+
 	var pchCid *cid.Cid
 	if ch.ChannelMessage != cid.Undef {
 		pchCid = &ch.ChannelMessage
@@ -73,7 +83,7 @@ func (a *PaychAPI) PaychNewPayment(ctx context.Context, from, to address.Address
 	return &api.PaymentInfo{
 		Channel:        ch.Channel,
 		ChannelMessage: pchCid,
-		Voucher:        sv,
+		Vouchers:       svs,
 	}, nil
 }
 
@@ -136,10 +146,6 @@ func (a *PaychAPI) PaychVoucherCheckSpendable(ctx context.Context, ch address.Ad
 
 func (a *PaychAPI) PaychVoucherAdd(ctx context.Context, ch address.Address, sv *types.SignedVoucher, proof []byte, minDelta types.BigInt) (types.BigInt, error) {
 	_ = a.PaychMgr.TrackInboundChannel(ctx, ch) // TODO: expose those calls
-
-	if err := a.PaychVoucherCheckValid(ctx, ch, sv); err != nil {
-		return types.NewInt(0), err
-	}
 
 	return a.PaychMgr.AddVoucher(ctx, ch, sv, proof, minDelta)
 }

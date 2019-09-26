@@ -3,15 +3,14 @@ package api
 import (
 	"context"
 
+	sectorbuilder "github.com/filecoin-project/go-sectorbuilder"
+	"github.com/ipfs/go-cid"
 	"github.com/libp2p/go-libp2p-core/network"
+	"github.com/libp2p/go-libp2p-core/peer"
 
 	"github.com/filecoin-project/go-lotus/chain/address"
 	"github.com/filecoin-project/go-lotus/chain/store"
 	"github.com/filecoin-project/go-lotus/chain/types"
-	sectorbuilder "github.com/filecoin-project/go-sectorbuilder"
-
-	"github.com/ipfs/go-cid"
-	"github.com/libp2p/go-libp2p-core/peer"
 )
 
 // All permissions are listed in permissioned.go
@@ -86,19 +85,19 @@ type FullNodeStruct struct {
 		StateGetActor              func(context.Context, address.Address, *types.TipSet) (*types.Actor, error)         `perm:"read"`
 		StateReadState             func(context.Context, *types.Actor, *types.TipSet) (*ActorState, error)             `perm:"read"`
 
-		PaychGet                   func(ctx context.Context, from, to address.Address, ensureFunds types.BigInt) (*ChannelInfo, error)                                                      `perm:"sign"`
-		PaychList                  func(context.Context) ([]address.Address, error)                                                                                                         `perm:"read"`
-		PaychStatus                func(context.Context, address.Address) (*PaychStatus, error)                                                                                             `perm:"read"`
-		PaychClose                 func(context.Context, address.Address) (cid.Cid, error)                                                                                                  `perm:"sign"`
-		PaychAllocateLane          func(context.Context, address.Address) (uint64, error)                                                                                                   `perm:"sign"`
-		PaychNewPayment            func(ctx context.Context, from, to address.Address, amount types.BigInt, extra *types.ModVerifyParams, tl uint64, minClose uint64) (*PaymentInfo, error) `perm:"sign"`
-		PaychVoucherCheck          func(context.Context, *types.SignedVoucher) error                                                                                                        `perm:"read"`
-		PaychVoucherCheckValid     func(context.Context, address.Address, *types.SignedVoucher) error                                                                                       `perm:"read"`
-		PaychVoucherCheckSpendable func(context.Context, address.Address, *types.SignedVoucher, []byte, []byte) (bool, error)                                                               `perm:"read"`
-		PaychVoucherAdd            func(context.Context, address.Address, *types.SignedVoucher, []byte, types.BigInt) (types.BigInt, error)                                                 `perm:"write"`
-		PaychVoucherCreate         func(context.Context, address.Address, types.BigInt, uint64) (*types.SignedVoucher, error)                                                               `perm:"sign"`
-		PaychVoucherList           func(context.Context, address.Address) ([]*types.SignedVoucher, error)                                                                                   `perm:"write"`
-		PaychVoucherSubmit         func(context.Context, address.Address, *types.SignedVoucher) (cid.Cid, error)                                                                            `perm:"sign"`
+		PaychGet                   func(ctx context.Context, from, to address.Address, ensureFunds types.BigInt) (*ChannelInfo, error)      `perm:"sign"`
+		PaychList                  func(context.Context) ([]address.Address, error)                                                         `perm:"read"`
+		PaychStatus                func(context.Context, address.Address) (*PaychStatus, error)                                             `perm:"read"`
+		PaychClose                 func(context.Context, address.Address) (cid.Cid, error)                                                  `perm:"sign"`
+		PaychAllocateLane          func(context.Context, address.Address) (uint64, error)                                                   `perm:"sign"`
+		PaychNewPayment            func(ctx context.Context, from, to address.Address, vouchers []VoucherSpec) (*PaymentInfo, error)        `perm:"sign"`
+		PaychVoucherCheck          func(context.Context, *types.SignedVoucher) error                                                        `perm:"read"`
+		PaychVoucherCheckValid     func(context.Context, address.Address, *types.SignedVoucher) error                                       `perm:"read"`
+		PaychVoucherCheckSpendable func(context.Context, address.Address, *types.SignedVoucher, []byte, []byte) (bool, error)               `perm:"read"`
+		PaychVoucherAdd            func(context.Context, address.Address, *types.SignedVoucher, []byte, types.BigInt) (types.BigInt, error) `perm:"write"`
+		PaychVoucherCreate         func(context.Context, address.Address, types.BigInt, uint64) (*types.SignedVoucher, error)               `perm:"sign"`
+		PaychVoucherList           func(context.Context, address.Address) ([]*types.SignedVoucher, error)                                   `perm:"write"`
+		PaychVoucherSubmit         func(context.Context, address.Address, *types.SignedVoucher) (cid.Cid, error)                            `perm:"sign"`
 	}
 }
 
@@ -363,8 +362,8 @@ func (c *FullNodeStruct) PaychAllocateLane(ctx context.Context, ch address.Addre
 	return c.Internal.PaychAllocateLane(ctx, ch)
 }
 
-func (c *FullNodeStruct) PaychNewPayment(ctx context.Context, from, to address.Address, amount types.BigInt, extra *types.ModVerifyParams, tl uint64, minClose uint64) (*PaymentInfo, error) {
-	return c.Internal.PaychNewPayment(ctx, from, to, amount, extra, tl, minClose)
+func (c *FullNodeStruct) PaychNewPayment(ctx context.Context, from, to address.Address, vouchers []VoucherSpec) (*PaymentInfo, error) {
+	return c.Internal.PaychNewPayment(ctx, from, to, vouchers)
 }
 
 func (c *FullNodeStruct) PaychVoucherSubmit(ctx context.Context, ch address.Address, sv *types.SignedVoucher) (cid.Cid, error) {

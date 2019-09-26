@@ -560,7 +560,7 @@ loop:
 
 func (syncer *Syncer) syncMessagesAndCheckState(headers []*types.TipSet) error {
 	return syncer.iterFullTipsets(headers, func(fts *store.FullTipSet) error {
-		log.Warnf("validating tipset (heigt=%d, size=%d)", fts.TipSet().Height(), len(fts.TipSet().Cids()))
+		log.Debugf("validating tipset (heigt=%d, size=%d)", fts.TipSet().Height(), len(fts.TipSet().Cids()))
 		if err := syncer.ValidateTipSet(context.TODO(), fts); err != nil {
 			log.Errorf("failed to validate tipset: %s", err)
 			return xerrors.Errorf("message processing failed: %w", err)

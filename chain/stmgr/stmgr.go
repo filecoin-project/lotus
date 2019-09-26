@@ -182,5 +182,4 @@ func (sm *StateManager) LoadActorState(ctx context.Context, a address.Address, o
 	}
 
 	return act, nil
-
 }

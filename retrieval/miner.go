@@ -122,8 +122,12 @@ func (hnd *handlerDeal) handleNext() (bool, error) {
 
 	unixfs0 := deal.Params.Unixfs0
 
+	if len(deal.Payment.Vouchers) != 1 {
+		return false, xerrors.Errorf("expected one signed voucher, got %d", len(deal.Payment.Vouchers))
+	}
+
 	expPayment := types.BigMul(hnd.m.pricePerByte, types.NewInt(deal.Params.Unixfs0.Size))
-	if _, err := hnd.m.full.PaychVoucherAdd(context.TODO(), deal.Payment.Channel, deal.Payment.Voucher, nil, expPayment); err != nil {
+	if _, err := hnd.m.full.PaychVoucherAdd(context.TODO(), deal.Payment.Channel, deal.Payment.Vouchers[0], nil, expPayment); err != nil {
 		return false, xerrors.Errorf("processing retrieval payment: %w", err)
 	}
 

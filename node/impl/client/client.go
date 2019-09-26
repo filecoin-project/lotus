@@ -96,8 +96,9 @@ func (a *API) ClientStartDeal(ctx context.Context, data cid.Cid, miner address.A
 	}
 
 	head := a.Chain.GetHeaviestTipSet()
+	vouchers := deals.VoucherSpec(blocksDuration, total, head.Height(), extra)
 
-	payment, err := a.PaychNewPayment(ctx, self, miner, total, extra, head.Height()+blocksDuration, head.Height()+blocksDuration)
+	payment, err := a.PaychNewPayment(ctx, self, miner, vouchers)
 	if err != nil {
 		return nil, err
 	}
@@ -110,7 +111,7 @@ func (a *API) ClientStartDeal(ctx context.Context, data cid.Cid, miner address.A
 			PayChActor:     payment.Channel,
 			Payer:          self,
 			ChannelMessage: payment.ChannelMessage,
-			Vouchers:       []*types.SignedVoucher{payment.Voucher},
+			Vouchers:       payment.Vouchers,
 		},
 		MinerAddress:  miner,
 		ClientAddress: self,
