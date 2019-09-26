@@ -299,7 +299,10 @@ func (m *Miner) createBlock(base *MiningBase, ticket *types.Ticket, proof types.
 		return nil, errors.Wrapf(err, "failed to get pending messages")
 	}
 
-	msgs := m.selectMessages(pending)
+	msgs, err := m.selectMessages(context.TODO(), base, pending)
+	if err != nil {
+		return nil, xerrors.Errorf("message filtering failed: %w", err)
+	}
 
 	uts := time.Now().Unix() // TODO: put smallest valid timestamp
 
@@ -307,7 +310,20 @@ func (m *Miner) createBlock(base *MiningBase, ticket *types.Ticket, proof types.
 	return m.api.MinerCreateBlock(context.TODO(), m.addresses[0], base.ts, append(base.tickets, ticket), proof, msgs, uint64(uts))
 }
 
-func (m *Miner) selectMessages(msgs []*types.SignedMessage) []*types.SignedMessage {
-	// TODO: filter and select 'best' message if too many to fit in one block
-	return msgs
+func (m *Miner) selectMessages(ctx context.Context, base *MiningBase, msgs []*types.SignedMessage) ([]*types.SignedMessage, error) {
+	out := make([]*types.SignedMessage, 0, len(msgs))
+	for _, msg := range msgs {
+		act, err := m.api.StateGetActor(ctx, msg.Message.From, base.ts)
+		if err != nil {
+			return nil, xerrors.Errorf("failed to check message sender balance: %w", err)
+		}
+
+		if act.Balance.LessThan(msg.Message.RequiredFunds()) {
+			log.Warningf("message in mempool does not have enough funds: %s", msg.Cid())
+			continue
+		}
+
+		out = append(out, msg)
+	}
+	return out, nil
 }

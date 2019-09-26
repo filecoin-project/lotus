@@ -66,3 +66,10 @@ func (m *Message) Cid() cid.Cid {
 
 	return b.Cid()
 }
+
+func (m *Message) RequiredFunds() BigInt {
+	return BigAdd(
+		m.Value,
+		BigMul(m.GasPrice, m.GasLimit),
+	)
+}
