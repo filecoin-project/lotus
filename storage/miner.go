@@ -312,7 +312,7 @@ func (m *Miner) maybeDoPost(ctx context.Context, ts *types.TipSet) (<-chan error
 			From:     m.worker,
 			Method:   actors.MAMethods.SubmitPoSt,
 			Params:   enc,
-			Value:    types.NewInt(0),
+			Value:    types.NewInt(1000), // currently hard-coded late fee in actor, returned if not late
 			GasLimit: types.NewInt(100000 /* i dont know help */),
 			GasPrice: types.NewInt(1),
 		}
