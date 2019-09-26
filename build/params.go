@@ -29,6 +29,9 @@ const CollateralPrecision = 100
 
 const TotalFilecoin = 2000000000
 const MiningRewardTotal = 1400000000
+
+var MiningRewardInitialAttoFilBytes = []byte{0x8, 0x54, 0xd4, 0x56, 0x70, 0x99, 0xb2, 0x4b, 0xaa}
+
 const FilecoinPrecision = 1000000000000000000
 
 // six years

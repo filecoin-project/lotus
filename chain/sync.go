@@ -441,8 +441,13 @@ func (syncer *Syncer) ValidateBlock(ctx context.Context, b *types.FullBlock) err
 	if err != nil {
 		return xerrors.Errorf("getting miner owner for block miner failed: %w", err)
 	}
+	networkBalance, err := vmi.ActorBalance(actors.NetworkAddress)
+	if err != nil {
+		return xerrors.Errorf("getting network balance")
+	}
 
-	if err := vmi.TransferFunds(actors.NetworkAddress, owner, vm.MiningRewardForBlock(h.Height)); err != nil {
+	if err := vmi.TransferFunds(actors.NetworkAddress, owner,
+		vm.MiningReward(networkBalance)); err != nil {
 		return xerrors.Errorf("fund transfer failed: %w", err)
 	}
 
