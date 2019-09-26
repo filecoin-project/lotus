@@ -28,10 +28,21 @@ var initCmd = &cli.Command{
 		&cli.BoolFlag{
 			Name:  "genesis-miner",
 			Usage: "enable genesis mining (DON'T USE ON BOOTSTRAPPED NETWORK)",
+			Hidden: true,
 		},
 		&cli.BoolFlag{
 			Name:  "create-worker-key",
 			Usage: "create separate worker key",
+		},
+		&cli.StringFlag{
+			Name:  "worker",
+			Aliases: []string{"w"},
+			Usage: "worker key to use (overrides --create-worker-key)",
+		},
+		&cli.StringFlag{
+			Name:  "owner",
+			Aliases: []string{"o"},
+			Usage: "owner key to use",
 		},
 	},
 	Action: func(cctx *cli.Context) error {
@@ -107,7 +118,7 @@ var initCmd = &cli.Command{
 
 			addr = a
 		} else {
-			a, err := createStorageMiner(ctx, api, peerid, cctx.Bool("create-worker-key"))
+			a, err := createStorageMiner(ctx, api, peerid, cctx)
 			if err != nil {
 				return err
 			}
@@ -198,29 +209,35 @@ func configureStorageMiner(ctx context.Context, api api.FullNode, addr address.A
 	return nil
 }
 
-func createStorageMiner(ctx context.Context, api api.FullNode, peerid peer.ID, createWorker bool) (address.Address, error) {
+func createStorageMiner(ctx context.Context, api api.FullNode, peerid peer.ID, cctx *cli.Context) (addr address.Address, err error) {
 	log.Info("Creating StorageMarket.CreateStorageMiner message")
 
-	defOwner, err := api.WalletDefaultAddress(ctx)
+	var owner address.Address
+	if cctx.String("owner") != "" {
+		owner, err = address.NewFromString(cctx.String("owner"))
+	} else {
+		owner, err = api.WalletDefaultAddress(ctx)
+	}
 	if err != nil {
 		return address.Undef, err
 	}
 
-	k := defOwner
-	if createWorker { // TODO: Do we need to force this if defOwner is Secpk?
-		k, err = api.WalletNew(ctx, types.KTBLS)
-		if err != nil {
-			return address.Undef, err
-		}
-
-		// TODO: Transfer some initial funds
+	worker := owner
+	if cctx.String("worker") != "" {
+		worker, err = address.NewFromString(cctx.String("worker"))
+	} else if cctx.Bool("create-worker-key") { // TODO: Do we need to force this if owner is Secpk?
+		worker, err = api.WalletNew(ctx, types.KTBLS)
+	}
+	// TODO: Transfer some initial funds to worker
+	if err != nil {
+		return address.Undef, err
 	}
 
 	collateral := types.NewInt(1000) // TODO: Get this from params
 
 	params, err := actors.SerializeParams(&actors.CreateStorageMinerParams{
-		Owner:      defOwner,
-		Worker:     k,
+		Owner:      owner,
+		Worker:     worker,
 		SectorSize: types.NewInt(build.SectorSize),
 		PeerID:     peerid,
 	})
@@ -230,7 +247,7 @@ func createStorageMiner(ctx context.Context, api api.FullNode, peerid peer.ID, c
 
 	createStorageMinerMsg := &types.Message{
 		To:    actors.StorageMarketAddress,
-		From:  defOwner,
+		From:  owner,
 		Value: collateral,
 
 		Method: actors.SMAMethods.CreateStorageMiner,
@@ -253,7 +270,7 @@ func createStorageMiner(ctx context.Context, api api.FullNode, peerid peer.ID, c
 		return address.Undef, err
 	}
 
-	addr, err := address.NewFromBytes(mw.Receipt.Return)
+	addr, err = address.NewFromBytes(mw.Receipt.Return)
 	if err != nil {
 		return address.Undef, err
 	}
