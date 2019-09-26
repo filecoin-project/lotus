@@ -312,16 +312,14 @@ func (sma StorageMinerActor) SubmitPoSt(act *types.Actor, vmctx types.VMContext,
 		return nil, aerrors.New(1, "not authorized to submit post for miner")
 	}
 
-	feesRequired := types.NewInt(0)
-	nextProvingPeriodEnd := self.ProvingPeriodEnd + build.ProvingPeriodDuration
-	if vmctx.BlockHeight() > nextProvingPeriodEnd {
-		return nil, aerrors.New(1, "PoSt submited too late")
-	}
+	provingPeriodOffset := self.ProvingPeriodEnd % build.ProvingPeriodDuration
+	provingPeriod := (vmctx.BlockHeight() - provingPeriodOffset - 1) / build.ProvingPeriodDuration + 1
+	currentProvingPeriodEnd := provingPeriod * build.ProvingPeriodDuration + provingPeriodOffset
 
-	var lateSubmission bool
-	if vmctx.BlockHeight() > self.ProvingPeriodEnd {
+	feesRequired := types.NewInt(0)
+
+	if currentProvingPeriodEnd > self.ProvingPeriodEnd {
 		//TODO late fee calc
-		lateSubmission = true
 		feesRequired = types.BigAdd(feesRequired, types.NewInt(1000))
 	}
 
@@ -342,13 +340,14 @@ func (sma StorageMinerActor) SubmitPoSt(act *types.Actor, vmctx types.VMContext,
 
 	var seed [sectorbuilder.CommLen]byte
 	{
-		var rand []byte
-		var err ActorError
-		if !lateSubmission {
-			rand, err = vmctx.GetRandomness(self.ProvingPeriodEnd - build.PoSTChallangeTime)
-		} else {
-			rand, err = vmctx.GetRandomness(nextProvingPeriodEnd - build.PoSTChallangeTime)
+		randHeight := currentProvingPeriodEnd - build.PoSTChallangeTime
+		if vmctx.BlockHeight() <= randHeight {
+			// TODO: spec, retcode
+			return nil, aerrors.New(1, "submit PoSt called outside submission window")
 		}
+
+		rand, err := vmctx.GetRandomness(randHeight)
+
 		if err != nil {
 			return nil, aerrors.Wrap(err, "could not get randomness for PoST")
 		}
@@ -434,7 +433,7 @@ func (sma StorageMinerActor) SubmitPoSt(act *types.Actor, vmctx types.VMContext,
 	}
 
 	self.ProvingSet = self.Sectors
-	self.ProvingPeriodEnd = nextProvingPeriodEnd
+	self.ProvingPeriodEnd = currentProvingPeriodEnd + build.ProvingPeriodDuration
 	self.NextDoneSet = params.DoneSet
 
 	c, err := vmctx.Storage().Put(self)
