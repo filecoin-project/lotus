@@ -129,8 +129,8 @@ func NewGenerator() (*ChainGen, error) {
 	}
 
 	genb, err := MakeGenesisBlock(bs, map[address.Address]types.BigInt{
-		worker: types.NewInt(50000000),
-		banker: types.NewInt(90000000),
+		worker: types.NewInt(5000000000),
+		banker: types.NewInt(9000000000),
 	}, minercfg, 100000)
 	if err != nil {
 		return nil, xerrors.Errorf("make genesis block failed: %w", err)
