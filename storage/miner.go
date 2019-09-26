@@ -10,6 +10,7 @@ import (
 	"github.com/pkg/errors"
 	"golang.org/x/xerrors"
 	"sync"
+	"time"
 
 	"github.com/filecoin-project/go-lotus/api"
 	"github.com/filecoin-project/go-lotus/build"
@@ -94,7 +95,7 @@ func (m *Miner) Run(ctx context.Context) error {
 	}
 
 	go m.handlePostingSealedSectors(ctx)
-	go m.schedulePoSt(ctx, ts)
+	go m.schedulePoSt(ctx, ts, false)
 	return nil
 }
 
@@ -172,13 +173,13 @@ func (m *Miner) commitSector(ctx context.Context, sinfo sectorbuilder.SectorSeal
 			return
 		}
 
-		m.schedulePoSt(ctx, nil)
+		m.schedulePoSt(ctx, nil, false)
 	}()
 
 	return nil
 }
 
-func (m *Miner) schedulePoSt(ctx context.Context, baseTs *types.TipSet) {
+func (m *Miner) schedulePoSt(ctx context.Context, baseTs *types.TipSet, force bool) {
 	ppe, err := m.api.StateMinerProvingPeriodEnd(ctx, m.maddr, baseTs)
 	if err != nil {
 		log.Errorf("failed to get proving period end for miner: %s", err)
@@ -194,9 +195,11 @@ func (m *Miner) schedulePoSt(ctx context.Context, baseTs *types.TipSet) {
 	m.schedLk.Lock()
 
 	if m.postSched >= ppe {
-		log.Warnf("schedulePoSt already called for proving period >= %d", m.postSched)
-		m.schedLk.Unlock()
-		return
+		if !force || m.postSched > ppe {
+			log.Warnf("schedulePoSt already called for proving period >= %d", m.postSched)
+			m.schedLk.Unlock()
+			return
+		}
 	}
 	m.postSched = ppe
 	m.schedLk.Unlock()
@@ -213,33 +216,44 @@ func (m *Miner) schedulePoSt(ctx context.Context, baseTs *types.TipSet) {
 	}
 }
 
+func (m *Miner) restartPost(ts *types.TipSet) {
+	time.Sleep(400 * time.Millisecond)
+	log.Warn("Restarting PoSt after failure")
+	m.schedulePoSt(context.TODO(), ts, true)
+}
+
 func (m *Miner) startPost(ts *types.TipSet, curH uint64) error {
 	log.Info("starting PoSt computation")
 
 	head, err := m.api.ChainHead(context.TODO())
 	if err != nil {
+		m.restartPost(ts)
 		return err
 	}
 
 	postWaitCh, _, err := m.maybeDoPost(context.TODO(), head)
 	if err != nil {
+		m.restartPost(ts)
 		return err
 	}
 
 	if postWaitCh == nil {
-		return errors.New("PoSt didn't start")
+		log.Errorf("PoSt didn't start")
+		m.restartPost(ts)
+		return nil
 	}
 
 	go func() {
 		err := <-postWaitCh
 		if err != nil {
 			log.Errorf("got error back from postWaitCh: %s", err)
+			m.restartPost(ts)
 			return
 		}
 
 		log.Infof("post successfully submitted")
 
-		m.schedulePoSt(context.TODO(), ts)
+		m.schedulePoSt(context.TODO(), ts, false)
 	}()
 	return nil
 }
@@ -316,7 +330,7 @@ func (m *Miner) maybeDoPost(ctx context.Context, ts *types.TipSet) (<-chan error
 		}
 		// TODO: check receipt
 
-		m.schedulePoSt(ctx, nil)
+		m.schedulePoSt(ctx, nil, true)
 	}()
 
 	return ret, sourceTs.MinTicketBlock(), nil
