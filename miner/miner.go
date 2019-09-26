@@ -312,16 +312,29 @@ func (m *Miner) createBlock(base *MiningBase, ticket *types.Ticket, proof types.
 
 func (m *Miner) selectMessages(ctx context.Context, base *MiningBase, msgs []*types.SignedMessage) ([]*types.SignedMessage, error) {
 	out := make([]*types.SignedMessage, 0, len(msgs))
+	inclNonces := make(map[address.Address]uint64)
 	for _, msg := range msgs {
-		act, err := m.api.StateGetActor(ctx, msg.Message.From, base.ts)
+		from := msg.Message.From
+		act, err := m.api.StateGetActor(ctx, from, base.ts)
 		if err != nil {
 			return nil, xerrors.Errorf("failed to check message sender balance: %w", err)
+		}
+
+		if _, ok := inclNonces[from]; !ok {
+			inclNonces[from] = act.Nonce
 		}
 
 		if act.Balance.LessThan(msg.Message.RequiredFunds()) {
 			log.Warningf("message in mempool does not have enough funds: %s", msg.Cid())
 			continue
 		}
+
+		if msg.Message.Nonce > inclNonces[from] {
+			log.Warningf("message in mempool has too high of a nonce: %s", msg.Cid())
+			continue
+		}
+
+		inclNonces[from] = msg.Message.Nonce
 
 		out = append(out, msg)
 	}
