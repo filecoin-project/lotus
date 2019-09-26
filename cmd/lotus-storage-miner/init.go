@@ -29,6 +29,10 @@ var initCmd = &cli.Command{
 			Name:  "genesis-miner",
 			Usage: "enable genesis mining (DON'T USE ON BOOTSTRAPPED NETWORK)",
 		},
+		&cli.BoolFlag{
+			Name:  "create-worker-key",
+			Usage: "create separate worker key",
+		},
 	},
 	Action: func(cctx *cli.Context) error {
 		log.Info("Initializing lotus storage miner")
@@ -103,7 +107,7 @@ var initCmd = &cli.Command{
 
 			addr = a
 		} else {
-			a, err := createStorageMiner(ctx, api, peerid)
+			a, err := createStorageMiner(ctx, api, peerid, cctx.Bool("create-worker-key"))
 			if err != nil {
 				return err
 			}
@@ -194,7 +198,7 @@ func configureStorageMiner(ctx context.Context, api api.FullNode, addr address.A
 	return nil
 }
 
-func createStorageMiner(ctx context.Context, api api.FullNode, peerid peer.ID) (address.Address, error) {
+func createStorageMiner(ctx context.Context, api api.FullNode, peerid peer.ID, createWorker bool) (address.Address, error) {
 	log.Info("Creating StorageMarket.CreateStorageMiner message")
 
 	defOwner, err := api.WalletDefaultAddress(ctx)
@@ -202,9 +206,14 @@ func createStorageMiner(ctx context.Context, api api.FullNode, peerid peer.ID) (
 		return address.Undef, err
 	}
 
-	k, err := api.WalletNew(ctx, types.KTBLS)
-	if err != nil {
-		return address.Undef, err
+	k := defOwner
+	if createWorker { // TODO: Do we need to force this if defOwner is Secpk?
+		k, err = api.WalletNew(ctx, types.KTBLS)
+		if err != nil {
+			return address.Undef, err
+		}
+
+		// TODO: Transfer some initial funds
 	}
 
 	collateral := types.NewInt(1000) // TODO: Get this from params
