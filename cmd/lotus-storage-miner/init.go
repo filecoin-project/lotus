@@ -26,8 +26,8 @@ var initCmd = &cli.Command{
 			Usage: "specify the address of an already created miner actor",
 		},
 		&cli.BoolFlag{
-			Name:  "genesis-miner",
-			Usage: "enable genesis mining (DON'T USE ON BOOTSTRAPPED NETWORK)",
+			Name:   "genesis-miner",
+			Usage:  "enable genesis mining (DON'T USE ON BOOTSTRAPPED NETWORK)",
 			Hidden: true,
 		},
 		&cli.BoolFlag{
@@ -35,14 +35,14 @@ var initCmd = &cli.Command{
 			Usage: "create separate worker key",
 		},
 		&cli.StringFlag{
-			Name:  "worker",
+			Name:    "worker",
 			Aliases: []string{"w"},
-			Usage: "worker key to use (overrides --create-worker-key)",
+			Usage:   "worker key to use (overrides --create-worker-key)",
 		},
 		&cli.StringFlag{
-			Name:  "owner",
+			Name:    "owner",
 			Aliases: []string{"o"},
-			Usage: "owner key to use",
+			Usage:   "owner key to use",
 		},
 	},
 	Action: func(cctx *cli.Context) error {

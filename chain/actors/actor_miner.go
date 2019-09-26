@@ -313,8 +313,8 @@ func (sma StorageMinerActor) SubmitPoSt(act *types.Actor, vmctx types.VMContext,
 	}
 
 	provingPeriodOffset := self.ProvingPeriodEnd % build.ProvingPeriodDuration
-	provingPeriod := (vmctx.BlockHeight() - provingPeriodOffset - 1) / build.ProvingPeriodDuration + 1
-	currentProvingPeriodEnd := provingPeriod * build.ProvingPeriodDuration + provingPeriodOffset
+	provingPeriod := (vmctx.BlockHeight()-provingPeriodOffset-1)/build.ProvingPeriodDuration + 1
+	currentProvingPeriodEnd := provingPeriod*build.ProvingPeriodDuration + provingPeriodOffset
 
 	feesRequired := types.NewInt(0)
 
