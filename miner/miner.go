@@ -299,7 +299,10 @@ func (m *Miner) createBlock(base *MiningBase, ticket *types.Ticket, proof types.
 		return nil, errors.Wrapf(err, "failed to get pending messages")
 	}
 
-	msgs := m.selectMessages(pending)
+	msgs, err := selectMessages(context.TODO(), m.api.StateGetActor, base, pending)
+	if err != nil {
+		return nil, xerrors.Errorf("message filtering failed: %w", err)
+	}
 
 	uts := time.Now().Unix() // TODO: put smallest valid timestamp
 
@@ -307,7 +310,43 @@ func (m *Miner) createBlock(base *MiningBase, ticket *types.Ticket, proof types.
 	return m.api.MinerCreateBlock(context.TODO(), m.addresses[0], base.ts, append(base.tickets, ticket), proof, msgs, uint64(uts))
 }
 
-func (m *Miner) selectMessages(msgs []*types.SignedMessage) []*types.SignedMessage {
-	// TODO: filter and select 'best' message if too many to fit in one block
-	return msgs
+type actorLookup func(context.Context, address.Address, *types.TipSet) (*types.Actor, error)
+
+func selectMessages(ctx context.Context, al actorLookup, base *MiningBase, msgs []*types.SignedMessage) ([]*types.SignedMessage, error) {
+	out := make([]*types.SignedMessage, 0, len(msgs))
+	inclNonces := make(map[address.Address]uint64)
+	inclBalances := make(map[address.Address]types.BigInt)
+	for _, msg := range msgs {
+		from := msg.Message.From
+		act, err := al(ctx, from, base.ts)
+		if err != nil {
+			return nil, xerrors.Errorf("failed to check message sender balance: %w", err)
+		}
+
+		if _, ok := inclNonces[from]; !ok {
+			inclNonces[from] = act.Nonce
+			inclBalances[from] = act.Balance
+		}
+
+		if inclBalances[from].LessThan(msg.Message.RequiredFunds()) {
+			log.Warnf("message in mempool does not have enough funds: %s", msg.Cid())
+			continue
+		}
+
+		if msg.Message.Nonce > inclNonces[from] {
+			log.Warnf("message in mempool has too high of a nonce (%d > %d) %s", msg.Message.Nonce, inclNonces[from], msg.Cid())
+			continue
+		}
+
+		if msg.Message.Nonce < inclNonces[from] {
+			log.Warnf("message in mempool has already used nonce (%d < %d) %s", msg.Message.Nonce, inclNonces[from], msg.Cid())
+			continue
+		}
+
+		inclNonces[from] = msg.Message.Nonce + 1
+		inclBalances[from] = types.BigSub(inclBalances[from], msg.Message.RequiredFunds())
+
+		out = append(out, msg)
+	}
+	return out, nil
 }
