@@ -240,6 +240,8 @@ func SetupStorageMiners(ctx context.Context, cs *store.ChainStore, sroot cid.Cid
 			return cid.Undef, xerrors.Errorf("getting miner actor state failed: %w", err)
 		}
 		mstate.Power = types.NewInt(5000)
+		// Note: unless tests are doing posts, they will fail if they try to mine past this length
+		mstate.ProvingPeriodEnd = 1000
 
 		nstate, err := cst.Put(ctx, &mstate)
 		if err != nil {
