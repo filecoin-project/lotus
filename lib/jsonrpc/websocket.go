@@ -420,7 +420,7 @@ func (c *wsConn) handleWsConn(ctx context.Context) {
 		case r, ok := <-c.incoming:
 			if !ok {
 				if c.incomingErr != nil {
-					log.Debugf("websocket error", "error", c.incomingErr)
+					log.Warnw("websocket error", "error", c.incomingErr)
 				}
 				return // remote closed
 			}
@@ -443,7 +443,7 @@ func (c *wsConn) handleWsConn(ctx context.Context) {
 			c.sendRequest(req.req)
 		case <-c.stop:
 			if err := c.conn.Close(); err != nil {
-				log.Debugf("websocket close error", "error", err)
+				log.Warnw("websocket close error", "error", err)
 			}
 			return
 		}
