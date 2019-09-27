@@ -295,6 +295,14 @@ type SubmitPoStParams struct {
 	// TODO: once the spec changes finish, we have more work to do here...
 }
 
+func ProvingPeriodEnd(setPeriodEnd, height uint64) (uint64, uint64) {
+	offset := setPeriodEnd % build.ProvingPeriodDuration
+	period := ((height - offset - 1) / build.ProvingPeriodDuration) + 1
+	end := (period * build.ProvingPeriodDuration) + offset
+
+	return end, period
+}
+
 // TODO: this is a dummy method that allows us to plumb in other parts of the
 // system for now.
 func (sma StorageMinerActor) SubmitPoSt(act *types.Actor, vmctx types.VMContext, params *SubmitPoStParams) ([]byte, ActorError) {
@@ -312,9 +320,7 @@ func (sma StorageMinerActor) SubmitPoSt(act *types.Actor, vmctx types.VMContext,
 		return nil, aerrors.New(1, "not authorized to submit post for miner")
 	}
 
-	provingPeriodOffset := self.ProvingPeriodEnd % build.ProvingPeriodDuration
-	provingPeriod := (vmctx.BlockHeight()-provingPeriodOffset-1)/build.ProvingPeriodDuration + 1
-	currentProvingPeriodEnd := provingPeriod*build.ProvingPeriodDuration + provingPeriodOffset
+	currentProvingPeriodEnd, _ := ProvingPeriodEnd(self.ProvingPeriodEnd, vmctx.BlockHeight())
 
 	feesRequired := types.NewInt(0)
 

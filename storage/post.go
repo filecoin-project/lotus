@@ -37,9 +37,7 @@ func (m *Miner) beginPosting(ctx context.Context) {
 		return
 	}
 
-	provingPeriodOffset := ppe % build.ProvingPeriodDuration
-	provingPeriod := (ts.Height()-provingPeriodOffset)/build.ProvingPeriodDuration + 1
-	m.schedPost = provingPeriod*build.ProvingPeriodDuration + provingPeriodOffset
+	m.schedPost, _ = actors.ProvingPeriodEnd(ppe, ts.Height())
 
 	m.schedLk.Unlock()
 
@@ -64,9 +62,7 @@ func (m *Miner) scheduleNextPost(ppe uint64) {
 		return
 	}
 
-	provingPeriodOffset := ppe % build.ProvingPeriodDuration
-	provingPeriod := (ts.Height()-provingPeriodOffset-1)/build.ProvingPeriodDuration + 1
-	headPPE := provingPeriod*build.ProvingPeriodDuration + provingPeriodOffset
+	headPPE, provingPeriod := actors.ProvingPeriodEnd(ppe, ts.Height())
 	if headPPE > ppe {
 		log.Warn("PoSt computation running behind chain")
 		ppe = headPPE
