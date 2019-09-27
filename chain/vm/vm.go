@@ -639,7 +639,7 @@ var miningRewardTotal = types.FromFil(build.MiningRewardTotal)
 //   coffer is amount of FIL in NetworkAddress
 func MiningReward(remainingReward types.BigInt) types.BigInt {
 	ci := big.NewInt(0).Set(remainingReward.Int)
-	res := ci.Mul(ci, build.MiningRewardInitialAttoFil)
+	res := ci.Mul(ci, build.InitialReward)
 	res = res.Div(res, miningRewardTotal.Int)
 	return types.BigInt{res}
 }

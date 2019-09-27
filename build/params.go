@@ -32,9 +32,9 @@ const CollateralPrecision = 100
 const TotalFilecoin = 2000000000
 const MiningRewardTotal = 1400000000
 
-const MiningRewardInitialAttoFilString = "153856870367821447423"
+const InitialRewardStr = "153856870367821447423"
 
-var MiningRewardInitialAttoFil *big.Int
+var InitialReward *big.Int
 
 const FilecoinPrecision = 1000000000000000000
 
@@ -48,12 +48,12 @@ const AdjustmentPeriod = 7 * 24 * 60 * 2
 // TODO: Move other important consts here
 
 func init() {
-	MiningRewardInitialAttoFil = new(big.Int)
+	InitialReward = new(big.Int)
 
 	var ok bool
-	MiningRewardInitialAttoFil, ok = MiningRewardInitialAttoFil.
-		SetString(MiningRewardInitialAttoFilString, 10)
+	InitialReward, ok = InitialReward.
+		SetString(InitialRewardStr, 10)
 	if !ok {
-		panic("could not parse MiningRewardInitialAttoFilString")
+		panic("could not parse InitialRewardStr")
 	}
 }
