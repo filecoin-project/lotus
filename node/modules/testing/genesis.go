@@ -76,7 +76,7 @@ func MakeGenesis(outFile string) func(bs dtypes.ChainBlockstore, w *wallet.Walle
 			}
 
 			addrs := map[address.Address]types.BigInt{
-				minerAddr: types.NewInt(5000000000000000000),
+				minerAddr: types.FromFil(100000),
 			}
 
 			b, err := gen.MakeGenesisBlock(bs, addrs, gmc, 100000)
