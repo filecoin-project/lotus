@@ -37,7 +37,9 @@ func (m *Miner) beginPosting(ctx context.Context) {
 		return
 	}
 
-	m.schedPost, _ = actors.ProvingPeriodEnd(ppe, ts.Height())
+	// height needs to be +1, because otherwise we'd be trying to schedule PoSt
+	// at current block height
+	m.schedPost, _ = actors.ProvingPeriodEnd(ppe, ts.Height()+1)
 
 	m.schedLk.Unlock()
 

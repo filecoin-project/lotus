@@ -26,6 +26,113 @@ board](https://github.com/filecoin-project/go-lotus/projects/1).
 $ make
 ```
 
+## Devnet
+
+### Node setup
+
+Download genesis, and parameters
+```sh
+$ wget https://ipfs.io/ipfs/QmXg1SGdZ4WPkJcWnEVhxp7Jw4AQEfCwYDGwiMkXciCsUT/lotus.car
+$ wget https://ipfs.io/ipfs/QmXg1SGdZ4WPkJcWnEVhxp7Jw4AQEfCwYDGwiMkXciCsUT/paramfetch.sh
+$ chmod +x paramfetch.sh
+$ ./paramfetch.sh
+```
+
+Start full node daemon
+```sh
+$ lotus daemon --genesis=lotus.car
+```
+
+Connect to the network:
+```sh
+$ wget https://ipfs.io/ipfs/QmXg1SGdZ4WPkJcWnEVhxp7Jw4AQEfCwYDGwiMkXciCsUT/bootstrap.sh
+$ chmod +x bootstrap.sh
+$ ./bootstrap.sh
+```
+
+[wait for the chain to finish syncing]
+
+You can see current chain height with
+```sh
+lotus chain getblock $(lotus chain head) | jq .Height
+```
+
+### Basics
+
+Create new address
+```sh
+$ lotus wallet new bls
+t3...
+```
+
+Grab some funds from faucet - go to http://147.75.80.29:777/, paste the address
+you just created, and press Send
+
+See wallet balance:
+```sh
+$ lotus wallet balance [optional address (t3...)]
+```
+(NOTE: If you see an error like `actor not found` after executing this command,
+it means that either there are no transactions to this address on chain - using
+faucet should 'fix' this, or your node isn't fully synced)
+
+### Mining
+
+Ensure that at least one BLS address (`t3..`) in your wallet has enough funds to
+cover pledge collateral:
+```sh
+$ lotus state pledge-collateral
+1234
+$ lotus wallet balance t3...
+8999
+```
+(Balance must be higher than the returned pledge collateral for the next step to work)
+
+Initialize storage miner:
+```sh
+$ lotus-storage-miner init --owner=t3...  
+```
+This command should return successfully after miner is setup on-chain (30-60s)
+
+Start mining:
+```sh
+$ lotus-storage-miner run
+```
+
+Seal random data to start producing PoSts:
+```sh
+$ lotus-storage-miner store-garbage
+```
+
+### Making deals
+
+TODO: see `$ lotus client` commands
+
+### Pond UI
+
+Build:
+```
+$ make pond
+```
+
+Run:
+```
+$ ./pond run
+Listening on http://127.0.0.1:2222
+```
+
+Now go to http://127.0.0.1:2222, basic usage should be rather intuitive
+
+Note: don't leave unattended for long periods of time (10h+), the web-ui tends to
+eventually consume all the available RAM
+
+### Troubleshooting
+
+* Turn it off
+* `rm -rf ~/.lotus ~/.lotusstorage/`
+* "Turn it on" - Start at the top
+* If that didn't help, open a new issue
+
 ## Architecture
 Lotus is architected modularly, and aims to keep clean api boundaries between
 everything, even if they are in the same process. Notably, the 'lotus full node'
