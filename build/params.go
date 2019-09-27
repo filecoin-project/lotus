@@ -35,8 +35,10 @@ var MiningRewardInitialAttoFilBytes = []byte{0x8, 0x57, 0x31, 0x68, 0x6e, 0x4f, 
 const FilecoinPrecision = 1000000000000000000
 
 // six years
+// Blocks
 const HalvingPeriodBlocks = 6 * 365 * 24 * 60 * 2
 
+// Blocks
 const AdjustmentPeriod = 7 * 24 * 60 * 2
 
 // TODO: Move other important consts here

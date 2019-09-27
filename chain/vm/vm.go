@@ -633,12 +633,12 @@ func DepositFunds(act *types.Actor, amt types.BigInt) {
 	act.Balance = types.BigAdd(act.Balance, amt)
 }
 
-var IV = types.BigInt{big.NewInt(0).SetBytes(build.MiningRewardInitialAttoFilBytes)}
+var initialReward = types.BigInt{big.NewInt(0).SetBytes(build.MiningRewardInitialAttoFilBytes)}
 var miningRewardTotal = types.FromFil(build.MiningRewardTotal)
 
 // MiningReward returns correct mining reward
 //   coffer is amount of FIL in NetworkAddress
-func MiningReward(coffer types.BigInt) types.BigInt {
+func MiningReward(remainingReward types.BigInt) types.BigInt {
 	ci := big.NewInt(0).Set(coffer.Int)
 	res := ci.Mul(ci, IV.Int)
 	res = res.Div(res, miningRewardTotal.Int)
