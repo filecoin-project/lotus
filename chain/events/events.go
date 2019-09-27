@@ -107,6 +107,9 @@ func (e *Events) listenHeadChanges(ctx context.Context) {
 }
 
 func (e *Events) listenHeadChangesOnce(ctx context.Context) error {
+	ctx, cancel := context.WithCancel(ctx)
+	defer cancel()
+
 	notifs, err := e.api.ChainNotify(ctx)
 	if err != nil {
 		// TODO: retry
