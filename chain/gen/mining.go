@@ -42,9 +42,13 @@ func MinerCreateBlock(ctx context.Context, sm *stmgr.StateManager, w *wallet.Wal
 	if err != nil {
 		return nil, xerrors.Errorf("failed to get miner worker: %w", err)
 	}
+	networkBalance, err := vmi.ActorBalance(actors.NetworkAddress)
+	if err != nil {
+		return nil, xerrors.Errorf("failed to get network balance: %w", err)
+	}
 
 	// apply miner reward
-	if err := vmi.TransferFunds(actors.NetworkAddress, owner, vm.MiningRewardForBlock(parents)); err != nil {
+	if err := vmi.TransferFunds(actors.NetworkAddress, owner, vm.MiningReward(networkBalance)); err != nil {
 		return nil, err
 	}
 

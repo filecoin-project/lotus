@@ -3,7 +3,9 @@ package vm
 import (
 	"context"
 	"fmt"
+	"math/big"
 
+	"github.com/filecoin-project/go-lotus/build"
 	"github.com/filecoin-project/go-lotus/chain/actors"
 	"github.com/filecoin-project/go-lotus/chain/actors/aerrors"
 	"github.com/filecoin-project/go-lotus/chain/address"
@@ -631,6 +633,13 @@ func DepositFunds(act *types.Actor, amt types.BigInt) {
 	act.Balance = types.BigAdd(act.Balance, amt)
 }
 
-func MiningRewardForBlock(base *types.TipSet) types.BigInt {
-	return types.NewInt(10000)
+var miningRewardTotal = types.FromFil(build.MiningRewardTotal)
+
+// MiningReward returns correct mining reward
+//   coffer is amount of FIL in NetworkAddress
+func MiningReward(remainingReward types.BigInt) types.BigInt {
+	ci := big.NewInt(0).Set(remainingReward.Int)
+	res := ci.Mul(ci, build.InitialReward)
+	res = res.Div(res, miningRewardTotal.Int)
+	return types.BigInt{res}
 }

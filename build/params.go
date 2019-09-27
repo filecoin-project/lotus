@@ -1,5 +1,7 @@
 package build
 
+import "math/big"
+
 // Core network constants
 
 // /////
@@ -56,6 +58,30 @@ const CollateralPrecision = 100
 // Devnet settings
 
 const TotalFilecoin = 2000000000
+const MiningRewardTotal = 1400000000
+
+const InitialRewardStr = "153856870367821447423"
+
+var InitialReward *big.Int
+
 const FilecoinPrecision = 1000000000000000000
 
+// six years
+// Blocks
+const HalvingPeriodBlocks = 6 * 365 * 24 * 60 * 2
+
+// Blocks
+const AdjustmentPeriod = 7 * 24 * 60 * 2
+
 // TODO: Move other important consts here
+
+func init() {
+	InitialReward = new(big.Int)
+
+	var ok bool
+	InitialReward, ok = InitialReward.
+		SetString(InitialRewardStr, 10)
+	if !ok {
+		panic("could not parse InitialRewardStr")
+	}
+}
