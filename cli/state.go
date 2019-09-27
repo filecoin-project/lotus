@@ -17,6 +17,7 @@ var stateCmd = &cli.Command{
 		statePowerCmd,
 		stateSectorsCmd,
 		stateProvingSetCmd,
+		statePledgeCollateralCmd,
 	},
 }
 
@@ -169,6 +170,27 @@ var stateReplaySetCmd = &cli.Command{
 
 		api.StateReplay(ctx, ts, mcid)
 
+		return nil
+	},
+}
+
+var statePledgeCollateralCmd = &cli.Command{
+	Name:  "pledge-collateral",
+	Usage: "Get minimum miner pledge collateral",
+	Action: func(cctx *cli.Context) error {
+		api, err := GetFullNodeAPI(cctx)
+		if err != nil {
+			return err
+		}
+
+		ctx := ReqContext(cctx)
+
+		coll, err := api.StatePledgeCollateral(ctx, nil)
+		if err != nil {
+			return err
+		}
+
+		fmt.Println(coll.String())
 		return nil
 	},
 }
