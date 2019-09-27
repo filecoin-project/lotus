@@ -36,7 +36,7 @@ func (tsc *tipSetCache) add(ts *types.TipSet) error {
 		}
 	}
 
-	tsc.start = (tsc.start + 1) % len(tsc.cache)
+	tsc.start = normalModulo(tsc.start+1, len(tsc.cache))
 	tsc.cache[tsc.start] = ts
 	if tsc.len < len(tsc.cache) {
 		tsc.len++
@@ -54,7 +54,7 @@ func (tsc *tipSetCache) revert(ts *types.TipSet) error {
 	}
 
 	tsc.cache[tsc.start] = nil
-	tsc.start = (tsc.start - 1) % len(tsc.cache)
+	tsc.start = normalModulo(tsc.start-1, len(tsc.cache))
 	tsc.len--
 	return nil
 }
@@ -71,15 +71,20 @@ func (tsc *tipSetCache) get(height uint64) (*types.TipSet, error) {
 	}
 
 	clen := len(tsc.cache)
-	tailH := tsc.cache[((tsc.start-tsc.len+1)%clen+clen)%clen].Height()
+	tailH := tsc.cache[normalModulo(tsc.start-tsc.len+1, clen)].Height()
 
 	if height < tailH {
+		log.Warnf("tipSetCache.get: requested tipset not in cache, requesting from storage (h=%d; tail=%d)", height, tailH)
 		return tsc.storage(context.TODO(), height, tsc.cache[tailH])
 	}
 
-	return tsc.cache[(int(height-tailH+1)%clen+clen)%clen], nil
+	return tsc.cache[normalModulo(tsc.start-int(headH-height), clen)], nil
 }
 
 func (tsc *tipSetCache) best() *types.TipSet {
 	return tsc.cache[tsc.start]
+}
+
+func normalModulo(n, m int) int {
+	return (n%m + m) % m
 }

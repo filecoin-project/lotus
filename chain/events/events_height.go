@@ -64,8 +64,7 @@ func (e *heightEvents) headChangeAt(rev, app []*types.TipSet) error {
 			}
 
 			if err := hnd.handle(incTs, ts.Height()); err != nil {
-				msgInfo := ""
-				log.Errorf("chain trigger (%s@H %d, called @ %d) failed: %s", msgInfo, triggerH, ts.Height(), err)
+				log.Errorf("chain trigger (@H %d, called @ %d) failed: %s", triggerH, ts.Height(), err)
 			}
 		}
 	}

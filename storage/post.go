@@ -83,7 +83,7 @@ func (m *Miner) scheduleNextPost(ppe uint64) {
 	m.schedPost = ppe
 	m.schedLk.Unlock()
 
-	log.Infof("Scheduling post at height %d", ppe-build.PoSTChallangeTime)
+	log.Infof("Scheduling post at height %d (head=%d; ppe=%d, period=%d)", ppe-build.PoSTChallangeTime, ts.Height(), ppe, provingPeriod)
 	err = m.events.ChainAt(m.computePost(ppe), func(ts *types.TipSet) error { // Revert
 		// TODO: Cancel post
 		log.Errorf("TODO: Cancel PoSt, re-run")
@@ -108,7 +108,7 @@ func (m *Miner) computePost(ppe uint64) func(ts *types.TipSet, curH uint64) erro
 
 		r, err := m.api.ChainGetRandomness(ctx, ts, nil, int(int64(ts.Height())-int64(ppe)+int64(build.PoSTChallangeTime))) // TODO: review: check math
 		if err != nil {
-			return xerrors.Errorf("failed to get chain randomness for post: %w", err)
+			return xerrors.Errorf("failed to get chain randomness for post (ts=%d; ppe=%d): %w", ts.Height(), ppe, err)
 		}
 
 		log.Infof("running PoSt computation, rh=%d r=%s, ppe=%d, h=%d", int64(ts.Height())-int64(ppe)+int64(build.PoSTChallangeTime), base64.StdEncoding.EncodeToString(r), ppe, ts.Height())
@@ -147,7 +147,7 @@ func (m *Miner) computePost(ppe uint64) func(ts *types.TipSet, curH uint64) erro
 			return xerrors.Errorf("pushing message to mpool: %w", err)
 		}
 
-		log.Info("Waiting for post %s to appear on chain", smsg.Cid())
+		log.Infof("Waiting for post %s to appear on chain", smsg.Cid())
 
 		// make sure it succeeds...
 		rec, err := m.api.ChainWaitMsg(ctx, smsg.Cid())
