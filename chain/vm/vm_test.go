@@ -2,6 +2,7 @@ package vm
 
 import (
 	"fmt"
+	"math/big"
 	"testing"
 
 	"github.com/filecoin-project/go-lotus/build"
@@ -9,19 +10,19 @@ import (
 )
 
 func TestBlockReward(t *testing.T) {
-	coffer := types.FromFil(build.MiningRewardTotal)
-	sum := types.NewInt(0)
+	coffer := types.FromFil(build.MiningRewardTotal).Int
+	sum := new(big.Int)
 	N := build.HalvingPeriodBlocks
 	for i := 0; i < N; i++ {
-		a := MiningReward(coffer)
-		sum = types.BigAdd(sum, a)
-		coffer = types.BigSub(coffer, a)
+		a := MiningReward(types.BigInt{coffer})
+		sum = sum.Add(sum, a.Int)
+		coffer = coffer.Sub(coffer, a.Int)
 	}
 
 	//sum = types.BigMul(sum, types.NewInt(60))
 
 	fmt.Println("After a halving period")
 	fmt.Printf("Total reward: %d\n", build.MiningRewardTotal)
-	fmt.Printf("Remaining: %s\n", types.BigDiv(coffer, types.NewInt(build.FilecoinPrecision)))
-	fmt.Printf("Given out: %s\n", types.BigDiv(sum, types.NewInt(build.FilecoinPrecision)))
+	fmt.Printf("Remaining: %s\n", types.BigDiv(types.BigInt{coffer}, types.NewInt(build.FilecoinPrecision)))
+	fmt.Printf("Given out: %s\n", types.BigDiv(types.BigInt{sum}, types.NewInt(build.FilecoinPrecision)))
 }
