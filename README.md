@@ -32,8 +32,8 @@ $ make
 
 Download genesis, and parameters
 ```sh
-$ wget https://ipfs.io/ipfs/QmQdj5bTUSaegqxahn5uhXY1Eb11fi3S9mZWmhFs6iTh3T/lotus.car
-$ wget https://ipfs.io/ipfs/QmQdj5bTUSaegqxahn5uhXY1Eb11fi3S9mZWmhFs6iTh3T/paramfetch.sh
+$ wget https://ipfs.io/ipfs/QmXg1SGdZ4WPkJcWnEVhxp7Jw4AQEfCwYDGwiMkXciCsUT/lotus.car
+$ wget https://ipfs.io/ipfs/QmXg1SGdZ4WPkJcWnEVhxp7Jw4AQEfCwYDGwiMkXciCsUT/paramfetch.sh
 $ chmod +x paramfetch.sh
 $ ./paramfetch.sh
 ```
@@ -45,10 +45,17 @@ $ lotus daemon --genesis=lotus.car
 
 Connect to the network:
 ```sh
-$ lotus net connect /ip4/147.75.80.29/tcp/41537/p2p/12D3KooWRXFamRyM924hPfEpogHLpGYx6Hdd6pHukL26iLiWRZBM
+$ wget https://ipfs.io/ipfs/QmXg1SGdZ4WPkJcWnEVhxp7Jw4AQEfCwYDGwiMkXciCsUT/bootstrap.sh
+$ chmod +x bootstrap.sh
+$ ./bootstrap.sh
 ```
 
 [wait for the chain to finish syncing]
+
+You can see current chain height with
+```sh
+lotus chain getblock $(lotus chain head) | jq .Height
+```
 
 ### Basics
 
