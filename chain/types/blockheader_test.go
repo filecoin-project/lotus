@@ -32,14 +32,14 @@ func testBlockHeader(t testing.TB) *BlockHeader {
 				VDFProof:  []byte("vrf proof"),
 			},
 		},
-		Parents:         []cid.Cid{c, c},
-		MessageReceipts: c,
-		BLSAggregate:    Signature{Type: KTBLS, Data: []byte("boo! im a signature")},
-		ParentWeight:    NewInt(123125126212),
-		Messages:        c,
-		Height:          85919298723,
-		StateRoot:       c,
-		BlockSig:        Signature{Type: KTBLS, Data: []byte("boo! im a signature")},
+		Parents:               []cid.Cid{c, c},
+		ParentMessageReceipts: c,
+		BLSAggregate:          Signature{Type: KTBLS, Data: []byte("boo! im a signature")},
+		ParentWeight:          NewInt(123125126212),
+		Messages:              c,
+		Height:                85919298723,
+		ParentStateRoot:       c,
+		BlockSig:              Signature{Type: KTBLS, Data: []byte("boo! im a signature")},
 	}
 }
 

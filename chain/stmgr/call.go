@@ -53,7 +53,7 @@ func (sm *StateManager) Call(ctx context.Context, msg *types.Message, ts *types.
 		ts = sm.cs.GetHeaviestTipSet()
 	}
 
-	state, err := sm.TipSetState(ts.Cids())
+	state, _, err := sm.TipSetState(ts.Cids())
 	if err != nil {
 		return nil, xerrors.Errorf("getting tipset state: %w", err)
 	}
@@ -69,7 +69,7 @@ func (sm *StateManager) Replay(ctx context.Context, ts *types.TipSet, mcid cid.C
 	var outm *types.Message
 	var outr *vm.ApplyRet
 
-	_, err := sm.computeTipSetState(ctx, ts.Blocks(), func(c cid.Cid, m *types.Message, ret *vm.ApplyRet) error {
+	_, _, err := sm.computeTipSetState(ctx, ts.Blocks(), func(c cid.Cid, m *types.Message, ret *vm.ApplyRet) error {
 		if c == mcid {
 			outm = m
 			outr = ret

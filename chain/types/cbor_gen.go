@@ -5,7 +5,7 @@ import (
 	"io"
 	"math"
 
-	"github.com/ipfs/go-cid"
+	cid "github.com/ipfs/go-cid"
 	cbg "github.com/whyrusleeping/cbor-gen"
 	xerrors "golang.org/x/xerrors"
 )
@@ -66,10 +66,16 @@ func (t *BlockHeader) MarshalCBOR(w io.Writer) error {
 		return err
 	}
 
-	// t.t.StateRoot (cid.Cid)
+	// t.t.ParentStateRoot (cid.Cid)
 
-	if err := cbg.WriteCid(w, t.StateRoot); err != nil {
-		return xerrors.Errorf("failed to write cid field t.StateRoot: %w", err)
+	if err := cbg.WriteCid(w, t.ParentStateRoot); err != nil {
+		return xerrors.Errorf("failed to write cid field t.ParentStateRoot: %w", err)
+	}
+
+	// t.t.ParentMessageReceipts (cid.Cid)
+
+	if err := cbg.WriteCid(w, t.ParentMessageReceipts); err != nil {
+		return xerrors.Errorf("failed to write cid field t.ParentMessageReceipts: %w", err)
 	}
 
 	// t.t.Messages (cid.Cid)
@@ -81,12 +87,6 @@ func (t *BlockHeader) MarshalCBOR(w io.Writer) error {
 	// t.t.BLSAggregate (types.Signature)
 	if err := t.BLSAggregate.MarshalCBOR(w); err != nil {
 		return err
-	}
-
-	// t.t.MessageReceipts (cid.Cid)
-
-	if err := cbg.WriteCid(w, t.MessageReceipts); err != nil {
-		return xerrors.Errorf("failed to write cid field t.MessageReceipts: %w", err)
 	}
 
 	// t.t.Timestamp (uint64)
@@ -212,16 +212,28 @@ func (t *BlockHeader) UnmarshalCBOR(r io.Reader) error {
 		return fmt.Errorf("wrong type for uint64 field")
 	}
 	t.Height = extra
-	// t.t.StateRoot (cid.Cid)
+	// t.t.ParentStateRoot (cid.Cid)
 
 	{
 
 		c, err := cbg.ReadCid(br)
 		if err != nil {
-			return xerrors.Errorf("failed to read cid field t.StateRoot: %w", err)
+			return xerrors.Errorf("failed to read cid field t.ParentStateRoot: %w", err)
 		}
 
-		t.StateRoot = c
+		t.ParentStateRoot = c
+
+	}
+	// t.t.ParentMessageReceipts (cid.Cid)
+
+	{
+
+		c, err := cbg.ReadCid(br)
+		if err != nil {
+			return xerrors.Errorf("failed to read cid field t.ParentMessageReceipts: %w", err)
+		}
+
+		t.ParentMessageReceipts = c
 
 	}
 	// t.t.Messages (cid.Cid)
@@ -243,18 +255,6 @@ func (t *BlockHeader) UnmarshalCBOR(r io.Reader) error {
 		if err := t.BLSAggregate.UnmarshalCBOR(br); err != nil {
 			return err
 		}
-
-	}
-	// t.t.MessageReceipts (cid.Cid)
-
-	{
-
-		c, err := cbg.ReadCid(br)
-		if err != nil {
-			return xerrors.Errorf("failed to read cid field t.MessageReceipts: %w", err)
-		}
-
-		t.MessageReceipts = c
 
 	}
 	// t.t.Timestamp (uint64)

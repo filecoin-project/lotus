@@ -201,7 +201,7 @@ func (cg *ChainGen) nextBlockProof(ctx context.Context, m address.Address, ticks
 		lastTicket = ticks[len(ticks)-1]
 	}
 
-	st, err := cg.sm.TipSetState(pts.Cids())
+	st, _, err := cg.sm.TipSetState(pts.Cids())
 	if err != nil {
 		return nil, nil, err
 	}
@@ -376,7 +376,7 @@ func (mca mca) StateMinerPower(ctx context.Context, maddr address.Address, ts *t
 }
 
 func (mca mca) StateMinerWorker(ctx context.Context, maddr address.Address, ts *types.TipSet) (address.Address, error) {
-	st, err := mca.sm.TipSetState(ts.Cids())
+	st, _, err := mca.sm.TipSetState(ts.Cids())
 	if err != nil {
 		return address.Undef, err
 	}

@@ -551,7 +551,7 @@ func (cs *ChainStore) MessagesForBlock(b *types.BlockHeader) ([]*types.Message, 
 
 func (cs *ChainStore) GetReceipt(b *types.BlockHeader, i int) (*types.MessageReceipt, error) {
 	bs := amt.WrapBlockstore(cs.bs)
-	a, err := amt.LoadAMT(bs, b.MessageReceipts)
+	a, err := amt.LoadAMT(bs, b.ParentMessageReceipts)
 	if err != nil {
 		return nil, errors.Wrap(err, "amt load")
 	}

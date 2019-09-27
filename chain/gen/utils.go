@@ -335,18 +335,18 @@ func MakeGenesisBlock(bs bstore.Blockstore, balances map[address.Address]types.B
 	}
 
 	b := &types.BlockHeader{
-		Miner:           actors.InitActorAddress,
-		Tickets:         []*types.Ticket{genesisticket},
-		ElectionProof:   []byte("the Genesis block"),
-		Parents:         []cid.Cid{},
-		Height:          0,
-		ParentWeight:    types.NewInt(0),
-		StateRoot:       stateroot,
-		Messages:        mmb.Cid(),
-		MessageReceipts: emptyroot,
-		BLSAggregate:    types.Signature{Type: types.KTBLS, Data: []byte("signatureeee")},
-		BlockSig:        types.Signature{Type: types.KTBLS, Data: []byte("block signatureeee")},
-		Timestamp:       ts,
+		Miner:                 actors.InitActorAddress,
+		Tickets:               []*types.Ticket{genesisticket},
+		ElectionProof:         []byte("the Genesis block"),
+		Parents:               []cid.Cid{},
+		Height:                0,
+		ParentWeight:          types.NewInt(0),
+		ParentStateRoot:       stateroot,
+		Messages:              mmb.Cid(),
+		ParentMessageReceipts: emptyroot,
+		BLSAggregate:          types.Signature{Type: types.KTBLS, Data: []byte("signatureeee")},
+		BlockSig:              types.Signature{Type: types.KTBLS, Data: []byte("block signatureeee")},
+		Timestamp:             ts,
 	}
 
 	sb, err := b.ToStorageBlock()

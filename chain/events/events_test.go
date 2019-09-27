@@ -3,10 +3,11 @@ package events
 import (
 	"context"
 	"fmt"
-	"github.com/filecoin-project/go-lotus/api"
-	"github.com/filecoin-project/go-lotus/chain/store"
 	"testing"
 	"time"
+
+	"github.com/filecoin-project/go-lotus/api"
+	"github.com/filecoin-project/go-lotus/chain/store"
 
 	"github.com/ipfs/go-cid"
 	"github.com/multiformats/go-multihash"
@@ -48,9 +49,9 @@ func makeTs(t *testing.T, h uint64, msgcid cid.Cid) *types.TipSet {
 		{
 			Height: h,
 
-			StateRoot:       dummyCid,
-			Messages:        msgcid,
-			MessageReceipts: dummyCid,
+			ParentStateRoot:       dummyCid,
+			Messages:              msgcid,
+			ParentMessageReceipts: dummyCid,
 		},
 	})
 
@@ -608,5 +609,4 @@ func TestCalledOrder(t *testing.T) {
 	})
 
 	fcs.advance(9, 1, nil)
-
 }
