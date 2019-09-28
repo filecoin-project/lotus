@@ -15,11 +15,12 @@ board](https://github.com/filecoin-project/go-lotus/projects/1).
 
 *Dependencies:*
 - go1.12 or higher
-- rust (version?)
+- gcc
 - git
 - bzr (some go dependency needs this)
 - b2sum
 - jq
+- pkg-config
 
 *Building:*
 ```
