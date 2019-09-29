@@ -191,7 +191,6 @@ type DealInfo struct {
 }
 
 type MsgWait struct {
-	InBlock cid.Cid
 	Receipt types.MessageReceipt
 }
 

@@ -69,11 +69,6 @@ func (sm *StateManager) TipSetState(cids []cid.Cid) (cid.Cid, cid.Cid, error) {
 	return st, rec, nil
 }
 
-type ChainMsg interface {
-	Cid() cid.Cid
-	VMMessage() *types.Message
-}
-
 func (sm *StateManager) computeTipSetState(ctx context.Context, blks []*types.BlockHeader, cb func(cid.Cid, *types.Message, *vm.ApplyRet) error) (cid.Cid, cid.Cid, error) {
 	pstate := blks[0].ParentStateRoot
 
@@ -98,6 +93,7 @@ func (sm *StateManager) computeTipSetState(ctx context.Context, blks []*types.Bl
 	vm.MiningRewardForBlock(netbalance)
 	*/
 
+	// TODO: can't use method from chainstore because it doesnt let us know who the block miners were
 	applied := make(map[address.Address]uint64)
 	balances := make(map[address.Address]types.BigInt)
 
@@ -123,7 +119,7 @@ func (sm *StateManager) computeTipSetState(ctx context.Context, blks []*types.Bl
 			return cid.Undef, cid.Undef, xerrors.Errorf("failed to get messages for block: %w", err)
 		}
 
-		cmsgs := make([]ChainMsg, 0, len(bms)+len(sms))
+		cmsgs := make([]store.ChainMsg, 0, len(bms)+len(sms))
 		for _, m := range bms {
 			cmsgs = append(cmsgs, m)
 		}

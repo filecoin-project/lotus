@@ -8,6 +8,8 @@ import (
 	"sync"
 
 	"github.com/filecoin-project/go-lotus/build"
+	"github.com/filecoin-project/go-lotus/chain/address"
+	"github.com/filecoin-project/go-lotus/chain/state"
 
 	amt "github.com/filecoin-project/go-amt-ipld"
 	"github.com/filecoin-project/go-lotus/chain/types"
@@ -519,6 +521,72 @@ func (cs *ChainStore) readAMTCids(root cid.Cid) ([]cid.Cid, error) {
 	return cids, nil
 }
 
+type ChainMsg interface {
+	Cid() cid.Cid
+	VMMessage() *types.Message
+}
+
+func (cs *ChainStore) MessagesForTipset(ts *types.TipSet) ([]ChainMsg, error) {
+	applied := make(map[address.Address]uint64)
+	balances := make(map[address.Address]types.BigInt)
+
+	cst := hamt.CSTFromBstore(cs.bs)
+	st, err := state.LoadStateTree(cst, ts.Blocks()[0].ParentStateRoot)
+	if err != nil {
+		return nil, xerrors.Errorf("failed to load state tree")
+	}
+
+	preloadAddr := func(a address.Address) error {
+		if _, ok := applied[a]; !ok {
+			act, err := st.GetActor(a)
+			if err != nil {
+				return err
+			}
+
+			applied[a] = act.Nonce
+			balances[a] = act.Balance
+		}
+		return nil
+	}
+
+	var out []ChainMsg
+	for _, b := range ts.Blocks() {
+		bms, sms, err := cs.MessagesForBlock(b)
+		if err != nil {
+			return nil, xerrors.Errorf("failed to get messages for block: %w", err)
+		}
+
+		cmsgs := make([]ChainMsg, 0, len(bms)+len(sms))
+		for _, m := range bms {
+			cmsgs = append(cmsgs, m)
+		}
+		for _, sm := range sms {
+			cmsgs = append(cmsgs, sm)
+		}
+
+		for _, cm := range cmsgs {
+			m := cm.VMMessage()
+			if err := preloadAddr(m.From); err != nil {
+				return nil, err
+			}
+
+			if applied[m.From] != m.Nonce {
+				continue
+			}
+			applied[m.From]++
+
+			if balances[m.From].LessThan(m.RequiredFunds()) {
+				continue
+			}
+			balances[m.From] = types.BigSub(balances[m.From], m.RequiredFunds())
+
+			out = append(out, cm)
+		}
+	}
+
+	return out, nil
+}
+
 func (cs *ChainStore) MessagesForBlock(b *types.BlockHeader) ([]*types.Message, []*types.SignedMessage, error) {
 	cst := hamt.CSTFromBstore(cs.bs)
 	var msgmeta types.MsgMeta
@@ -592,57 +660,64 @@ func (cs *ChainStore) LoadSignedMessagesFromCids(cids []cid.Cid) ([]*types.Signe
 	return msgs, nil
 }
 
-func (cs *ChainStore) WaitForMessage(ctx context.Context, mcid cid.Cid) (cid.Cid, *types.MessageReceipt, error) {
+func (cs *ChainStore) WaitForMessage(ctx context.Context, mcid cid.Cid) (*types.MessageReceipt, error) {
 	tsub := cs.SubHeadChanges(ctx)
 
 	head := cs.GetHeaviestTipSet()
 
-	bc, r, err := cs.tipsetContainsMsg(head, mcid)
+	r, err := cs.tipsetExecutedMessage(head, mcid)
 	if err != nil {
-		return cid.Undef, nil, err
+		return nil, err
 	}
 
 	if r != nil {
-		return bc, r, nil
+		return r, nil
 	}
 
 	for {
 		select {
 		case notif, ok := <-tsub:
 			if !ok {
-				return cid.Undef, nil, ctx.Err()
+				return nil, ctx.Err()
 			}
 			for _, val := range notif {
 				switch val.Type {
 				case HCRevert:
 					continue
 				case HCApply:
-					bc, r, err := cs.tipsetContainsMsg(val.Val, mcid)
+					bc, r, err := cs.tipsetExecutedMessage(val.Val, mcid)
 					if err != nil {
-						return cid.Undef, nil, err
+						return nil, err
 					}
 					if r != nil {
-						return bc, r, nil
+						return r, nil
 					}
 				}
 			}
 		case <-ctx.Done():
-			return cid.Undef, nil, ctx.Err()
+			return nil, ctx.Err()
 		}
 	}
 }
 
-func (cs *ChainStore) tipsetContainsMsg(ts *types.TipSet, msg cid.Cid) (cid.Cid, *types.MessageReceipt, error) {
-	for _, b := range ts.Blocks() {
-		r, err := cs.blockContainsMsg(b, msg)
-		if err != nil {
-			return cid.Undef, nil, err
-		}
-		if r != nil {
-			return b.Cid(), r, nil
+func (cs *ChainStore) tipsetExecutedMessage(ts *types.TipSet, msg cid.Cid) (*types.MessageReceipt, error) {
+	pts, err := cs.LoadTipSet(ts.Parents())
+	if err != nil {
+		return nil, err
+	}
+
+	cm, err := cs.MessagesForTipset(pts)
+	if err != nil {
+		return nil, err
+	}
+
+	for i, m := range cm {
+		if m.Cid() == msg {
+			return cs.GetReceipt(ts.Blocks()[0], i)
 		}
 	}
-	return cid.Undef, nil, nil
+
+	return nil, nil
 }
 
 func (cs *ChainStore) blockContainsMsg(blk *types.BlockHeader, msg cid.Cid) (*types.MessageReceipt, error) {
