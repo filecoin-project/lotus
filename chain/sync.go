@@ -50,6 +50,8 @@ type Syncer struct {
 
 	self peer.ID
 
+	syncState SyncerState
+
 	// peer heads
 	// Note: clear cache on disconnects
 	peerHeads   map[peer.ID]*types.TipSet
@@ -516,6 +518,8 @@ func (syncer *Syncer) collectHeaders(from *types.TipSet, to *types.TipSet) ([]*t
 		at = ts.Parents()
 	}
 
+	syncer.syncState.SetHeight(blockSet[len(blockSet)-1].Height())
+
 loop:
 	for blockSet[len(blockSet)-1].Height() > untilHeight {
 		// NB: GetBlocks validates that the blocks are in-fact the ones we
@@ -544,6 +548,7 @@ loop:
 			blockSet = append(blockSet, b)
 		}
 
+		syncer.syncState.SetHeight(blks[len(blockSet)-1].Height())
 		at = blks[len(blks)-1].Parents()
 	}
 
@@ -565,12 +570,15 @@ loop:
 }
 
 func (syncer *Syncer) syncMessagesAndCheckState(headers []*types.TipSet) error {
+	syncer.syncState.SetHeight(0)
 	return syncer.iterFullTipsets(headers, func(fts *store.FullTipSet) error {
 		log.Debugf("validating tipset (heigt=%d, size=%d)", fts.TipSet().Height(), len(fts.TipSet().Cids()))
 		if err := syncer.ValidateTipSet(context.TODO(), fts); err != nil {
 			log.Errorf("failed to validate tipset: %s", err)
 			return xerrors.Errorf("message processing failed: %w", err)
 		}
+
+		syncer.syncState.SetHeight(fts.TipSet().Height())
 
 		return nil
 	})
@@ -668,10 +676,14 @@ func persistMessages(bs bstore.Blockstore, bst *BSTipSet) error {
 }
 
 func (syncer *Syncer) collectChain(fts *store.FullTipSet) error {
+	syncer.syncState.Init(syncer.store.GetHeaviestTipSet(), fts.TipSet())
+
 	headers, err := syncer.collectHeaders(fts.TipSet(), syncer.store.GetHeaviestTipSet())
 	if err != nil {
 		return err
 	}
+
+	syncer.syncState.SetStage(StagePersistHeaders)
 
 	for _, ts := range headers {
 		for _, b := range ts.Blocks() {
@@ -681,9 +693,13 @@ func (syncer *Syncer) collectChain(fts *store.FullTipSet) error {
 		}
 	}
 
+	syncer.syncState.SetStage(StageMessages)
+
 	if err := syncer.syncMessagesAndCheckState(headers); err != nil {
 		return xerrors.Errorf("collectChain syncMessages: %w", err)
 	}
+
+	syncer.syncState.SetStage(StageSyncComplete)
 
 	return nil
 }
@@ -699,4 +715,8 @@ func VerifyElectionProof(ctx context.Context, eproof []byte, rand []byte, worker
 	}
 
 	return nil
+}
+
+func (syncer *Syncer) State() SyncerState {
+	return syncer.syncState.Snapshot()
 }

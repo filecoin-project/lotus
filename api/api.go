@@ -57,6 +57,9 @@ type FullNode interface {
 	ChainGetBlockReceipts(context.Context, cid.Cid) ([]*types.MessageReceipt, error)
 	ChainGetTipSetByHeight(context.Context, uint64, *types.TipSet) (*types.TipSet, error)
 
+	// syncer
+	SyncState(context.Context) (*SyncState, error)
+
 	// messages
 
 	MpoolPending(context.Context, *types.TipSet) ([]*types.SignedMessage, error)
@@ -291,4 +294,12 @@ type ReplayResults struct {
 	Msg     *types.Message
 	Receipt *types.MessageReceipt
 	Error   string
+}
+
+type SyncState struct {
+	Base   *types.TipSet
+	Target *types.TipSet
+
+	Stage  int
+	Height uint64
 }

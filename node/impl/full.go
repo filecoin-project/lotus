@@ -2,6 +2,7 @@ package impl
 
 import (
 	"context"
+
 	"github.com/filecoin-project/go-lotus/node/impl/client"
 	"github.com/filecoin-project/go-lotus/node/impl/paych"
 
@@ -23,6 +24,7 @@ type FullNodeAPI struct {
 	paych.PaychAPI
 	full.StateAPI
 	full.WalletAPI
+	full.SyncAPI
 
 	Miner *miner.Miner
 }
