@@ -105,11 +105,11 @@ func (h *Handler) consumeVouchers(ctx context.Context, deal MinerDeal) error {
 		return xerrors.Errorf("no payment vouchers for deal")
 	}
 
-	increments := deal.Proposal.Duration / uint64(len(deal.Proposal.Payment.Vouchers))
+	increment := deal.Proposal.Duration / uint64(len(deal.Proposal.Payment.Vouchers))
 
-	startH := deal.Proposal.Payment.Vouchers[0].TimeLock - (deal.Proposal.Duration / increments)
+	startH := deal.Proposal.Payment.Vouchers[0].TimeLock - increment
 	if startH > curHead.Height()+build.DealVoucherSkewLimit {
-		return xerrors.Errorf("deal starts too far into the future")
+		return xerrors.Errorf("deal starts too far into the future: start=%d; h=%d; max=%d; inc=%d", startH, curHead.Height(), curHead.Height()+build.DealVoucherSkewLimit, increment)
 	}
 
 	vspec := VoucherSpec(deal.Proposal.Duration, deal.Proposal.TotalPrice, startH, nil)
@@ -117,7 +117,7 @@ func (h *Handler) consumeVouchers(ctx context.Context, deal MinerDeal) error {
 	lane := deal.Proposal.Payment.Vouchers[0].Lane
 
 	for i, voucher := range deal.Proposal.Payment.Vouchers {
-		maxClose := curHead.Height() + (increments * uint64(i+1)) + build.DealVoucherSkewLimit
+		maxClose := curHead.Height() + (increment * uint64(i+1)) + build.DealVoucherSkewLimit
 
 		if err := h.checkVoucher(ctx, deal, voucher, lane, maxClose, vspec[i].Amount); err != nil {
 			return xerrors.Errorf("validating payment voucher %d: %w", i, err)
