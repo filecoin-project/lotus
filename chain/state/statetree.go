@@ -108,7 +108,7 @@ func (st *StateTree) GetActor(addr address.Address) (*types.Actor, error) {
 		if err == hamt.ErrNotFound {
 			return nil, types.ErrActorNotFound
 		}
-		return nil, err
+		return nil, xerrors.Errorf("hamt find failed: %w", err)
 	}
 
 	st.actorcache[addr] = &act

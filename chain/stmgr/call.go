@@ -3,6 +3,7 @@ package stmgr
 import (
 	"context"
 	"fmt"
+
 	"github.com/filecoin-project/go-lotus/chain/actors"
 	"github.com/filecoin-project/go-lotus/chain/types"
 	"github.com/filecoin-project/go-lotus/chain/vm"
@@ -29,7 +30,7 @@ func (sm *StateManager) CallRaw(ctx context.Context, msg *types.Message, bstate 
 
 	fromActor, err := vmi.StateTree().GetActor(msg.From)
 	if err != nil {
-		return nil, err
+		return nil, xerrors.Errorf("call raw get actor: %s", err)
 	}
 
 	msg.Nonce = fromActor.Nonce
@@ -54,7 +55,7 @@ func (sm *StateManager) Call(ctx context.Context, msg *types.Message, ts *types.
 
 	state, err := sm.TipSetState(ts.Cids())
 	if err != nil {
-		return nil, err
+		return nil, xerrors.Errorf("getting tipset state: %w", err)
 	}
 
 	r := vm.NewChainRand(sm.cs, ts.Cids(), ts.Height(), nil)

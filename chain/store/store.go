@@ -5,8 +5,9 @@ import (
 	"crypto/sha256"
 	"encoding/json"
 	"fmt"
-	"github.com/filecoin-project/go-lotus/build"
 	"sync"
+
+	"github.com/filecoin-project/go-lotus/build"
 
 	amt "github.com/filecoin-project/go-amt-ipld"
 	"github.com/filecoin-project/go-lotus/chain/types"
@@ -97,7 +98,7 @@ func (cs *ChainStore) Load() error {
 
 	ts, err := cs.LoadTipSet(tscids)
 	if err != nil {
-		return err
+		return xerrors.Errorf("loading tipset: %w", err)
 	}
 
 	cs.heaviest = ts
@@ -262,7 +263,7 @@ func (cs *ChainStore) LoadTipSet(cids []cid.Cid) (*types.TipSet, error) {
 	for _, c := range cids {
 		b, err := cs.GetBlock(c)
 		if err != nil {
-			return nil, err
+			return nil, xerrors.Errorf("get block %s: %w", c, err)
 		}
 
 		blks = append(blks, b)
