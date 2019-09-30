@@ -6,6 +6,7 @@ import (
 	"sync"
 	"time"
 
+	"github.com/filecoin-project/go-lotus/api"
 	"github.com/filecoin-project/go-lotus/build"
 	"github.com/filecoin-project/go-lotus/chain/actors"
 	"github.com/filecoin-project/go-lotus/chain/address"
@@ -683,7 +684,7 @@ func (syncer *Syncer) collectChain(fts *store.FullTipSet) error {
 		return err
 	}
 
-	syncer.syncState.SetStage(StagePersistHeaders)
+	syncer.syncState.SetStage(api.StagePersistHeaders)
 
 	for _, ts := range headers {
 		for _, b := range ts.Blocks() {
@@ -693,13 +694,13 @@ func (syncer *Syncer) collectChain(fts *store.FullTipSet) error {
 		}
 	}
 
-	syncer.syncState.SetStage(StageMessages)
+	syncer.syncState.SetStage(api.StageMessages)
 
 	if err := syncer.syncMessagesAndCheckState(headers); err != nil {
 		return xerrors.Errorf("collectChain syncMessages: %w", err)
 	}
 
-	syncer.syncState.SetStage(StageSyncComplete)
+	syncer.syncState.SetStage(api.StageSyncComplete)
 
 	return nil
 }

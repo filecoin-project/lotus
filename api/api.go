@@ -300,6 +300,16 @@ type SyncState struct {
 	Base   *types.TipSet
 	Target *types.TipSet
 
-	Stage  int
+	Stage  SyncStateStage
 	Height uint64
 }
+
+type SyncStateStage int
+
+const (
+	StageIdle = SyncStateStage(iota)
+	StageHeaders
+	StagePersistHeaders
+	StageMessages
+	StageSyncComplete
+)

@@ -4,26 +4,19 @@ import (
 	"fmt"
 	"sync"
 
+	"github.com/filecoin-project/go-lotus/api"
 	"github.com/filecoin-project/go-lotus/chain/types"
 )
 
-const (
-	StageIdle = iota
-	StageHeaders
-	StagePersistHeaders
-	StageMessages
-	StageSyncComplete
-)
-
-func SyncStageString(v int) string {
+func SyncStageString(v api.SyncStateStage) string {
 	switch v {
-	case StageHeaders:
+	case api.StageHeaders:
 		return "header sync"
-	case StagePersistHeaders:
+	case api.StagePersistHeaders:
 		return "persisting headers"
-	case StageMessages:
+	case api.StageMessages:
 		return "message sync"
-	case StageSyncComplete:
+	case api.StageSyncComplete:
 		return "complete"
 	default:
 		return fmt.Sprintf("<unknown: %d>", v)
@@ -34,11 +27,11 @@ type SyncerState struct {
 	lk     sync.Mutex
 	Target *types.TipSet
 	Base   *types.TipSet
-	Stage  int
+	Stage  api.SyncStateStage
 	Height uint64
 }
 
-func (ss *SyncerState) SetStage(v int) {
+func (ss *SyncerState) SetStage(v api.SyncStateStage) {
 	ss.lk.Lock()
 	defer ss.lk.Unlock()
 	ss.Stage = v
@@ -49,7 +42,7 @@ func (ss *SyncerState) Init(base, target *types.TipSet) {
 	defer ss.lk.Unlock()
 	ss.Target = target
 	ss.Base = base
-	ss.Stage = StageHeaders
+	ss.Stage = api.StageHeaders
 	ss.Height = 0
 }
 
