@@ -86,5 +86,5 @@ func (tsc *tipSetCache) best() *types.TipSet {
 }
 
 func normalModulo(n, m int) int {
-	return (n%m + m) % m
+	return ((n % m) + m) % m
 }

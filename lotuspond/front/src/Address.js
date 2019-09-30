@@ -84,6 +84,11 @@ class Address extends React.Component {
     return info
   }
 
+  addColl = async () => {
+    const coll = await this.props.client.call('Filecoin.StatePledgeCollateral', [null])
+    this.props.addN(this.props.addr, coll)
+  }
+
   render() {
     let add20k = <span/>
     if(this.props.addN) {
@@ -91,6 +96,7 @@ class Address extends React.Component {
       if (this.props.add10k) {
         add20k = <span>{add20k}&nbsp;<a href="#" onClick={() => this.props.addN(this.props.addr, 2000000)}>[+2M]</a></span>
         add20k = <span>{add20k}&nbsp;<a href="#" onClick={() => this.props.addN(this.props.addr, 20000000)}>[+20M]</a></span>
+        add20k = <span>{add20k}&nbsp;<a href="#" onClick={() => this.addColl()}>[<abbr title="min collateral">+C</abbr>]</a></span>
       }
     }
     let addr = truncAddr(this.props.addr, this.props.short ? 12 : 17)
