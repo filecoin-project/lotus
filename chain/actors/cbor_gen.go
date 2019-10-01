@@ -136,7 +136,7 @@ func (t *ExecParams) UnmarshalCBOR(r io.Reader) error {
 		return err
 	}
 	if extra > 8192 {
-		return fmt.Errorf("array too large")
+		return fmt.Errorf("t.Params: array too large (%d)", extra)
 	}
 
 	if maj != cbg.MajByteString {
@@ -571,7 +571,7 @@ func (t *CommitSectorParams) UnmarshalCBOR(r io.Reader) error {
 		return err
 	}
 	if extra > 8192 {
-		return fmt.Errorf("array too large")
+		return fmt.Errorf("t.CommD: array too large (%d)", extra)
 	}
 
 	if maj != cbg.MajByteString {
@@ -588,7 +588,7 @@ func (t *CommitSectorParams) UnmarshalCBOR(r io.Reader) error {
 		return err
 	}
 	if extra > 8192 {
-		return fmt.Errorf("array too large")
+		return fmt.Errorf("t.CommR: array too large (%d)", extra)
 	}
 
 	if maj != cbg.MajByteString {
@@ -605,7 +605,7 @@ func (t *CommitSectorParams) UnmarshalCBOR(r io.Reader) error {
 		return err
 	}
 	if extra > 8192 {
-		return fmt.Errorf("array too large")
+		return fmt.Errorf("t.CommRStar: array too large (%d)", extra)
 	}
 
 	if maj != cbg.MajByteString {
@@ -622,7 +622,7 @@ func (t *CommitSectorParams) UnmarshalCBOR(r io.Reader) error {
 		return err
 	}
 	if extra > 8192 {
-		return fmt.Errorf("array too large")
+		return fmt.Errorf("t.Proof: array too large (%d)", extra)
 	}
 
 	if maj != cbg.MajByteString {
@@ -770,7 +770,7 @@ func (t *SubmitPoStParams) UnmarshalCBOR(r io.Reader) error {
 		return err
 	}
 	if extra > 8192 {
-		return fmt.Errorf("array too large")
+		return fmt.Errorf("t.Proof: array too large (%d)", extra)
 	}
 
 	if maj != cbg.MajByteString {
@@ -838,7 +838,7 @@ func (t *PieceInclVoucherData) UnmarshalCBOR(r io.Reader) error {
 		return err
 	}
 	if extra > 8192 {
-		return fmt.Errorf("array too large")
+		return fmt.Errorf("t.CommP: array too large (%d)", extra)
 	}
 
 	if maj != cbg.MajByteString {
@@ -916,7 +916,7 @@ func (t *InclusionProof) UnmarshalCBOR(r io.Reader) error {
 		return err
 	}
 	if extra > 8192 {
-		return fmt.Errorf("array too large")
+		return fmt.Errorf("t.Proof: array too large (%d)", extra)
 	}
 
 	if maj != cbg.MajByteString {
@@ -978,7 +978,7 @@ func (t *PaymentVerifyParams) UnmarshalCBOR(r io.Reader) error {
 		return err
 	}
 	if extra > 8192 {
-		return fmt.Errorf("array too large")
+		return fmt.Errorf("t.Extra: array too large (%d)", extra)
 	}
 
 	if maj != cbg.MajByteString {
@@ -995,7 +995,7 @@ func (t *PaymentVerifyParams) UnmarshalCBOR(r io.Reader) error {
 		return err
 	}
 	if extra > 8192 {
-		return fmt.Errorf("array too large")
+		return fmt.Errorf("t.Proof: array too large (%d)", extra)
 	}
 
 	if maj != cbg.MajByteString {
@@ -1118,7 +1118,7 @@ func (t *MultiSigActorState) UnmarshalCBOR(r io.Reader) error {
 		return err
 	}
 	if extra > 8192 {
-		return fmt.Errorf("array too large")
+		return fmt.Errorf("t.Signers: array too large (%d)", extra)
 	}
 
 	if maj != cbg.MajArray {
@@ -1164,7 +1164,7 @@ func (t *MultiSigActorState) UnmarshalCBOR(r io.Reader) error {
 		return err
 	}
 	if extra > 8192 {
-		return fmt.Errorf("array too large")
+		return fmt.Errorf("t.Transactions: array too large (%d)", extra)
 	}
 
 	if maj != cbg.MajArray {
@@ -1234,7 +1234,7 @@ func (t *MultiSigConstructorParams) UnmarshalCBOR(r io.Reader) error {
 		return err
 	}
 	if extra > 8192 {
-		return fmt.Errorf("array too large")
+		return fmt.Errorf("t.Signers: array too large (%d)", extra)
 	}
 
 	if maj != cbg.MajArray {
@@ -1350,7 +1350,7 @@ func (t *MultiSigProposeParams) UnmarshalCBOR(r io.Reader) error {
 		return err
 	}
 	if extra > 8192 {
-		return fmt.Errorf("array too large")
+		return fmt.Errorf("t.Params: array too large (%d)", extra)
 	}
 
 	if maj != cbg.MajByteString {
@@ -1647,7 +1647,7 @@ func (t *MTransaction) UnmarshalCBOR(r io.Reader) error {
 		return err
 	}
 	if extra > 8192 {
-		return fmt.Errorf("array too large")
+		return fmt.Errorf("t.Params: array too large (%d)", extra)
 	}
 
 	if maj != cbg.MajByteString {
@@ -1664,7 +1664,7 @@ func (t *MTransaction) UnmarshalCBOR(r io.Reader) error {
 		return err
 	}
 	if extra > 8192 {
-		return fmt.Errorf("array too large")
+		return fmt.Errorf("t.Approved: array too large (%d)", extra)
 	}
 
 	if maj != cbg.MajArray {
@@ -1894,7 +1894,7 @@ func (t *PaymentChannelActorState) MarshalCBOR(w io.Writer) error {
 		return err
 	}
 
-	// t.t.LaneStates (map[string]*actors.laneState)
+	// t.t.LaneStates (map[string]*actors.LaneState)
 	if err := cbg.CborWriteHeader(w, cbg.MajMap, uint64(len(t.LaneStates))); err != nil {
 		return err
 	}
@@ -1978,7 +1978,7 @@ func (t *PaymentChannelActorState) UnmarshalCBOR(r io.Reader) error {
 		return fmt.Errorf("wrong type for uint64 field")
 	}
 	t.MinCloseHeight = extra
-	// t.t.LaneStates (map[string]*actors.laneState)
+	// t.t.LaneStates (map[string]*actors.LaneState)
 
 	maj, extra, err = cbg.CborReadHeader(br)
 	if err != nil {
@@ -1988,7 +1988,7 @@ func (t *PaymentChannelActorState) UnmarshalCBOR(r io.Reader) error {
 		return fmt.Errorf("expected a map (major type 5)")
 	}
 	if extra > 4096 {
-		return fmt.Errorf("map too large")
+		return fmt.Errorf("t.LaneStates: map too large")
 	}
 
 	t.LaneStates = make(map[string]*LaneState, extra)
@@ -2220,7 +2220,7 @@ func (t *PCAUpdateChannelStateParams) UnmarshalCBOR(r io.Reader) error {
 		return err
 	}
 	if extra > 8192 {
-		return fmt.Errorf("array too large")
+		return fmt.Errorf("t.Secret: array too large (%d)", extra)
 	}
 
 	if maj != cbg.MajByteString {
@@ -2237,7 +2237,7 @@ func (t *PCAUpdateChannelStateParams) UnmarshalCBOR(r io.Reader) error {
 		return err
 	}
 	if extra > 8192 {
-		return fmt.Errorf("array too large")
+		return fmt.Errorf("t.Proof: array too large (%d)", extra)
 	}
 
 	if maj != cbg.MajByteString {
@@ -2357,7 +2357,7 @@ func (t *PaymentInfo) UnmarshalCBOR(r io.Reader) error {
 		return err
 	}
 	if extra > 8192 {
-		return fmt.Errorf("array too large")
+		return fmt.Errorf("t.Vouchers: array too large (%d)", extra)
 	}
 
 	if maj != cbg.MajArray {
