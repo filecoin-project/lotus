@@ -174,3 +174,7 @@ func PowerCmp(eproof ElectionProof, mpow, totpow BigInt) bool {
 	hp := BigFromBytes(h[:])
 	return hp.LessThan(out)
 }
+
+func (t *Ticket) Equals(ot *Ticket) bool {
+	return bytes.Equal(t.VDFResult, ot.VDFResult)
+}

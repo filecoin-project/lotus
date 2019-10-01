@@ -4,6 +4,7 @@ import (
 	"bytes"
 	"encoding/json"
 	"fmt"
+	"sort"
 
 	"github.com/ipfs/go-cid"
 	logging "github.com/ipfs/go-log"
@@ -39,13 +40,33 @@ func (ts *TipSet) UnmarshalJSON(b []byte) error {
 		return err
 	}
 
-	ts.cids = ets.Cids
-	ts.blks = ets.Blocks
-	ts.height = ets.Height
+	ots, err := NewTipSet(ets.Blocks)
+	if err != nil {
+		return err
+	}
+
+	*ts = *ots
+
 	return nil
 }
 
+func tipsetSortFunc(blks []*BlockHeader) func(i, j int) bool {
+	return func(i, j int) bool {
+		ti := blks[i].LastTicket()
+		tj := blks[j].LastTicket()
+
+		if ti.Equals(tj) {
+			log.Warn("blocks have same ticket")
+			return blks[i].Cid().KeyString() < blks[j].Cid().KeyString()
+		}
+
+		return ti.Less(tj)
+	}
+}
+
 func NewTipSet(blks []*BlockHeader) (*TipSet, error) {
+	sort.Slice(blks, tipsetSortFunc(blks))
+
 	var ts TipSet
 	ts.cids = []cid.Cid{blks[0].Cid()}
 	ts.blks = blks
