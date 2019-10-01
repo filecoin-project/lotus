@@ -122,3 +122,12 @@ func (a *ChainAPI) ChainGetBlockReceipts(ctx context.Context, bcid cid.Cid) ([]*
 func (a *ChainAPI) ChainGetTipSetByHeight(ctx context.Context, h uint64, ts *types.TipSet) (*types.TipSet, error) {
 	return a.Chain.GetTipsetByHeight(ctx, h, ts)
 }
+
+func (a *ChainAPI) ChainReadObj(ctx context.Context, obj cid.Cid) ([]byte, error) {
+	blk, err := a.Chain.Blockstore().Get(obj)
+	if err != nil {
+		return nil, xerrors.Errorf("blockstore get: %w", err)
+	}
+
+	return blk.RawData(), nil
+}
