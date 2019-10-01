@@ -125,7 +125,7 @@ var chainReadObjCmd = &cli.Command{
 		}
 		ctx := ReqContext(cctx)
 
-		c, err := cid.Parse(cctx.Args().First)
+		c, err := cid.Decode(cctx.Args().First())
 		if err != nil {
 			return fmt.Errorf("failed to parse cid input: %s", err)
 		}
