@@ -507,7 +507,7 @@ func (syncer *Syncer) collectHeaders(from *types.TipSet, to *types.TipSet) ([]*t
 		log.Warn("syncing local: ", at)
 		ts, err := syncer.store.LoadTipSet(at)
 		if err != nil {
-			if err == bstore.ErrNotFound {
+			if xerrors.Is(err, bstore.ErrNotFound) {
 				log.Info("tipset not found locally, starting sync: ", at)
 				break
 			}
