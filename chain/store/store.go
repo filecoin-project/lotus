@@ -685,7 +685,7 @@ func (cs *ChainStore) WaitForMessage(ctx context.Context, mcid cid.Cid) (*types.
 				case HCRevert:
 					continue
 				case HCApply:
-					bc, r, err := cs.tipsetExecutedMessage(val.Val, mcid)
+					r, err := cs.tipsetExecutedMessage(val.Val, mcid)
 					if err != nil {
 						return nil, err
 					}

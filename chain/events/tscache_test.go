@@ -3,8 +3,9 @@ package events
 import (
 	"context"
 	"fmt"
-	"github.com/filecoin-project/go-lotus/chain/types"
 	"testing"
+
+	"github.com/filecoin-project/go-lotus/chain/types"
 )
 
 func TestTsCache(t *testing.T) {
@@ -17,10 +18,10 @@ func TestTsCache(t *testing.T) {
 
 	add := func() {
 		ts, err := types.NewTipSet([]*types.BlockHeader{{
-			Height:          h,
-			StateRoot:       dummyCid,
-			Messages:        dummyCid,
-			MessageReceipts: dummyCid,
+			Height:                h,
+			ParentStateRoot:       dummyCid,
+			Messages:              dummyCid,
+			ParentMessageReceipts: dummyCid,
 		}})
 		if err != nil {
 			t.Fatal(err)
