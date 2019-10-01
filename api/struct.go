@@ -47,6 +47,8 @@ type FullNodeStruct struct {
 		ChainGetBlockReceipts  func(context.Context, cid.Cid) ([]*types.MessageReceipt, error)            `perm:"read"`
 		ChainGetTipSetByHeight func(context.Context, uint64, *types.TipSet) (*types.TipSet, error)        `perm:"read"`
 
+		SyncState func(context.Context) (*SyncState, error) `perm:"read"`
+
 		MpoolPending     func(context.Context, *types.TipSet) ([]*types.SignedMessage, error) `perm:"read"`
 		MpoolPush        func(context.Context, *types.SignedMessage) error                    `perm:"write"`
 		MpoolPushMessage func(context.Context, *types.Message) (*types.SignedMessage, error)  `perm:"sign"`
@@ -282,6 +284,10 @@ func (c *FullNodeStruct) ChainGetBlockReceipts(ctx context.Context, b cid.Cid) (
 
 func (c *FullNodeStruct) ChainNotify(ctx context.Context) (<-chan []*store.HeadChange, error) {
 	return c.Internal.ChainNotify(ctx)
+}
+
+func (c *FullNodeStruct) SyncState(ctx context.Context) (*SyncState, error) {
+	return c.Internal.SyncState(ctx)
 }
 
 func (c *FullNodeStruct) StateMinerSectors(ctx context.Context, addr address.Address) ([]*SectorInfo, error) {

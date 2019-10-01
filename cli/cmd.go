@@ -119,6 +119,7 @@ var Commands = []*cli.Command{
 	paychCmd,
 	sendCmd,
 	stateCmd,
+	syncCmd,
 	versionCmd,
 	walletCmd,
 }
