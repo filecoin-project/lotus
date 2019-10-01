@@ -16,6 +16,7 @@ var chainCmd = &cli.Command{
 	Subcommands: []*cli.Command{
 		chainHeadCmd,
 		chainGetBlock,
+		chainReadObjCmd,
 	},
 }
 
@@ -111,5 +112,30 @@ var chainGetBlock = &cli.Command{
 		fmt.Println(string(out))
 		return nil
 
+	},
+}
+
+var chainReadObjCmd = &cli.Command{
+	Name:  "read-obj",
+	Usage: "Read the raw bytes of an object",
+	Action: func(cctx *cli.Context) error {
+		api, err := GetFullNodeAPI(cctx)
+		if err != nil {
+			return err
+		}
+		ctx := ReqContext(cctx)
+
+		c, err := cid.Parse(cctx.Args().First)
+		if err != nil {
+			return fmt.Errorf("failed to parse cid input: %s", err)
+		}
+
+		obj, err := api.ChainReadObj(ctx, c)
+		if err != nil {
+			return err
+		}
+
+		fmt.Printf("%x\n", obj)
+		return nil
 	},
 }

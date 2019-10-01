@@ -56,6 +56,7 @@ type FullNode interface {
 	ChainGetBlockMessages(context.Context, cid.Cid) (*BlockMessages, error)
 	ChainGetBlockReceipts(context.Context, cid.Cid) ([]*types.MessageReceipt, error)
 	ChainGetTipSetByHeight(context.Context, uint64, *types.TipSet) (*types.TipSet, error)
+	ChainReadObj(context.Context, cid.Cid) ([]byte, error)
 
 	// syncer
 	SyncState(context.Context) (*SyncState, error)
