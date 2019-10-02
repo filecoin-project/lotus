@@ -381,7 +381,13 @@ func (syncer *Syncer) validateTickets(ctx context.Context, mworker address.Addre
 // Should match up with 'Semantical Validation' in validation.md in the spec
 func (syncer *Syncer) ValidateBlock(ctx context.Context, b *types.FullBlock) error {
 	h := b.Header
-	stateroot, precp, err := syncer.sm.TipSetState(h.Parents)
+
+	baseTs, err := syncer.store.LoadTipSet(h.Parents)
+	if err != nil {
+		return xerrors.Errorf("load tipset failed: %w", err)
+	}
+
+	stateroot, precp, err := syncer.sm.TipSetState(baseTs)
 	if err != nil {
 		return xerrors.Errorf("get tipsetstate(%d, %s) failed: %w", h.Height, h.Parents, err)
 	}
@@ -392,11 +398,6 @@ func (syncer *Syncer) ValidateBlock(ctx context.Context, b *types.FullBlock) err
 
 	if precp != h.ParentMessageReceipts {
 		return xerrors.Errorf("parent receipts root did not match computed value (%s != %s)", precp, h.ParentMessageReceipts)
-	}
-
-	baseTs, err := syncer.store.LoadTipSet(h.Parents)
-	if err != nil {
-		return xerrors.Errorf("load tipset failed: %w", err)
 	}
 
 	if h.Timestamp > uint64(time.Now().Unix()+build.AllowableClockDrift) {

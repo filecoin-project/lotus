@@ -20,7 +20,7 @@ import (
 )
 
 func MinerCreateBlock(ctx context.Context, sm *stmgr.StateManager, w *wallet.Wallet, miner address.Address, parents *types.TipSet, tickets []*types.Ticket, proof types.ElectionProof, msgs []*types.SignedMessage, timestamp uint64) (*types.FullBlock, error) {
-	st, recpts, err := sm.TipSetState(parents.Cids())
+	st, recpts, err := sm.TipSetState(parents)
 	if err != nil {
 		return nil, errors.Wrap(err, "failed to load tipset state")
 	}

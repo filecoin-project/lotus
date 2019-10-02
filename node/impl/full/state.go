@@ -134,7 +134,7 @@ func (a *StateAPI) stateForTs(ts *types.TipSet) (*state.StateTree, error) {
 		ts = a.Chain.GetHeaviestTipSet()
 	}
 
-	st, _, err := a.StateManager.TipSetState(ts.Cids())
+	st, _, err := a.StateManager.TipSetState(ts)
 	if err != nil {
 		return nil, err
 	}

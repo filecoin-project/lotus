@@ -43,20 +43,15 @@ func cidsToKey(cids []cid.Cid) string {
 	return out
 }
 
-func (sm *StateManager) TipSetState(cids []cid.Cid) (cid.Cid, cid.Cid, error) {
+func (sm *StateManager) TipSetState(ts *types.TipSet) (cid.Cid, cid.Cid, error) {
 	ctx := context.TODO()
 
-	ck := cidsToKey(cids)
+	ck := cidsToKey(ts.Cids())
 	sm.stlk.Lock()
 	cached, ok := sm.stCache[ck]
 	sm.stlk.Unlock()
 	if ok {
 		return cached[0], cached[1], nil
-	}
-
-	ts, err := sm.cs.LoadTipSet(cids)
-	if err != nil {
-		return cid.Undef, cid.Undef, err
 	}
 
 	if ts.Height() == 0 {
@@ -198,10 +193,7 @@ func (sm *StateManager) GetActor(addr address.Address, ts *types.TipSet) (*types
 		ts = sm.cs.GetHeaviestTipSet()
 	}
 
-	stcid, _, err := sm.TipSetState(ts.Cids())
-	if err != nil {
-		return nil, xerrors.Errorf("tipset state: %w", err)
-	}
+	stcid := ts.ParentState()
 
 	cst := hamt.CSTFromBstore(sm.cs.Blockstore())
 	state, err := state.LoadStateTree(cst, stcid)

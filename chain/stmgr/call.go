@@ -53,10 +53,7 @@ func (sm *StateManager) Call(ctx context.Context, msg *types.Message, ts *types.
 		ts = sm.cs.GetHeaviestTipSet()
 	}
 
-	state, _, err := sm.TipSetState(ts.Cids())
-	if err != nil {
-		return nil, xerrors.Errorf("getting tipset state: %w", err)
-	}
+	state := ts.ParentState()
 
 	r := vm.NewChainRand(sm.cs, ts.Cids(), ts.Height(), nil)
 
