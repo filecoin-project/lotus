@@ -546,7 +546,7 @@ loop:
 			blockSet = append(blockSet, b)
 		}
 
-		syncer.syncState.SetHeight(blks[len(blockSet)-1].Height())
+		syncer.syncState.SetHeight(blks[len(blks)-1].Height())
 		at = blks[len(blks)-1].Parents()
 	}
 
