@@ -701,6 +701,11 @@ func (cs *ChainStore) WaitForMessage(ctx context.Context, mcid cid.Cid) (*types.
 }
 
 func (cs *ChainStore) tipsetExecutedMessage(ts *types.TipSet, msg cid.Cid) (*types.MessageReceipt, error) {
+	// The genesis block did not execute any messages
+	if ts.Height() == 0 {
+		return nil, nil
+	}
+
 	pts, err := cs.LoadTipSet(ts.Parents())
 	if err != nil {
 		return nil, err
