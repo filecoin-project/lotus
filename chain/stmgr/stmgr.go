@@ -59,6 +59,11 @@ func (sm *StateManager) TipSetState(cids []cid.Cid) (cid.Cid, cid.Cid, error) {
 		return cid.Undef, cid.Undef, err
 	}
 
+	if ts.Height() == 0 {
+		// NB: Genesis block is a weird case here...
+		return ts.Blocks()[0].ParentStateRoot, ts.Blocks()[0].ParentMessageReceipts, nil
+	}
+
 	st, rec, err := sm.computeTipSetState(ctx, ts.Blocks(), nil)
 	if err != nil {
 		return cid.Undef, cid.Undef, err
