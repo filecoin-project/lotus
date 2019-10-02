@@ -201,10 +201,7 @@ func (cg *ChainGen) nextBlockProof(ctx context.Context, m address.Address, ticks
 		lastTicket = ticks[len(ticks)-1]
 	}
 
-	st, err := cg.sm.TipSetState(pts.Cids())
-	if err != nil {
-		return nil, nil, err
-	}
+	st := cg.curTipset.TipSet().ParentState()
 
 	worker, err := stmgr.GetMinerWorker(ctx, cg.sm, st, m)
 	if err != nil {
@@ -258,7 +255,7 @@ func (cg *ChainGen) NextTipSet() (*MinedTipSet, error) {
 		for i, m := range cg.miners {
 			proof, t, err := cg.nextBlockProof(context.TODO(), m, ticketSets[i])
 			if err != nil {
-				return nil, err
+				return nil, xerrors.Errorf("next block proof: %w", err)
 			}
 
 			ticketSets[i] = append(ticketSets[i], t)
@@ -269,7 +266,7 @@ func (cg *ChainGen) NextTipSet() (*MinedTipSet, error) {
 				}
 
 				if err := cg.cs.AddBlock(fblk.Header); err != nil {
-					return nil, err
+					return nil, xerrors.Errorf("chainstore AddBlock: %w", err)
 				}
 
 				blks = append(blks, fblk)
@@ -376,12 +373,7 @@ func (mca mca) StateMinerPower(ctx context.Context, maddr address.Address, ts *t
 }
 
 func (mca mca) StateMinerWorker(ctx context.Context, maddr address.Address, ts *types.TipSet) (address.Address, error) {
-	st, err := mca.sm.TipSetState(ts.Cids())
-	if err != nil {
-		return address.Undef, err
-	}
-
-	return stmgr.GetMinerWorker(ctx, mca.sm, st, maddr)
+	return stmgr.GetMinerWorker(ctx, mca.sm, ts.ParentState(), maddr)
 }
 
 func (mca mca) WalletSign(ctx context.Context, a address.Address, v []byte) (*types.Signature, error) {

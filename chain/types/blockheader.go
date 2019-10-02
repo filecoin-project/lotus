@@ -34,13 +34,13 @@ type BlockHeader struct {
 
 	Height uint64
 
-	StateRoot cid.Cid
+	ParentStateRoot cid.Cid
+
+	ParentMessageReceipts cid.Cid
 
 	Messages cid.Cid
 
 	BLSAggregate Signature
-
-	MessageReceipts cid.Cid
 
 	Timestamp uint64
 

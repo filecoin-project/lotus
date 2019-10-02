@@ -143,10 +143,7 @@ func (h *Handler) saveAsk(a *types.SignedStorageAsk) error {
 }
 
 func (c *Client) checkAskSignature(ask *types.SignedStorageAsk) error {
-	tss, err := c.sm.TipSetState(c.sm.ChainStore().GetHeaviestTipSet().Cids())
-	if err != nil {
-		return xerrors.Errorf("failed to get tipsetstate to query for miner worker: %w", err)
-	}
+	tss := c.sm.ChainStore().GetHeaviestTipSet().ParentState()
 
 	w, err := stmgr.GetMinerWorker(context.TODO(), c.sm, tss, ask.Ask.Miner)
 	if err != nil {

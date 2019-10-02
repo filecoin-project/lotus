@@ -10,15 +10,16 @@ import (
 	"github.com/filecoin-project/go-lotus/build"
 	"github.com/filecoin-project/go-lotus/chain/actors"
 	"github.com/filecoin-project/go-lotus/chain/address"
+	"github.com/filecoin-project/go-lotus/chain/state"
 	"github.com/filecoin-project/go-lotus/chain/stmgr"
 	"github.com/filecoin-project/go-lotus/chain/store"
 	"github.com/filecoin-project/go-lotus/chain/types"
-	"github.com/filecoin-project/go-lotus/chain/vm"
 	"github.com/filecoin-project/go-lotus/lib/vdf"
 
 	amt "github.com/filecoin-project/go-amt-ipld"
 	"github.com/ipfs/go-cid"
 	dstore "github.com/ipfs/go-datastore"
+	hamt "github.com/ipfs/go-hamt-ipld"
 	bstore "github.com/ipfs/go-ipfs-blockstore"
 	logging "github.com/ipfs/go-log"
 	"github.com/libp2p/go-libp2p-core/peer"
@@ -380,14 +381,23 @@ func (syncer *Syncer) validateTickets(ctx context.Context, mworker address.Addre
 // Should match up with 'Semantical Validation' in validation.md in the spec
 func (syncer *Syncer) ValidateBlock(ctx context.Context, b *types.FullBlock) error {
 	h := b.Header
-	stateroot, err := syncer.sm.TipSetState(h.Parents)
-	if err != nil {
-		return xerrors.Errorf("get tipsetstate(%d, %s) failed: %w", h.Height, h.Parents, err)
-	}
 
 	baseTs, err := syncer.store.LoadTipSet(h.Parents)
 	if err != nil {
 		return xerrors.Errorf("load tipset failed: %w", err)
+	}
+
+	stateroot, precp, err := syncer.sm.TipSetState(baseTs)
+	if err != nil {
+		return xerrors.Errorf("get tipsetstate(%d, %s) failed: %w", h.Height, h.Parents, err)
+	}
+
+	if stateroot != h.ParentStateRoot {
+		return xerrors.Errorf("parent state root did not match computed state (%s != %s)", stateroot, h.ParentStateRoot)
+	}
+
+	if precp != h.ParentMessageReceipts {
+		return xerrors.Errorf("parent receipts root did not match computed value (%s != %s)", precp, h.ParentMessageReceipts)
 	}
 
 	if h.Timestamp > uint64(time.Now().Unix()+build.AllowableClockDrift) {
@@ -434,61 +444,48 @@ func (syncer *Syncer) ValidateBlock(ctx context.Context, b *types.FullBlock) err
 		return xerrors.Errorf("miner created a block but was not a winner")
 	}
 
-	r := vm.NewChainRand(syncer.store, baseTs.Cids(), baseTs.Height(), h.Tickets)
-	vmi, err := vm.NewVM(stateroot, h.Height, r, h.Miner, syncer.store)
+	nonces := make(map[address.Address]uint64)
+	balances := make(map[address.Address]types.BigInt)
+
+	cst := hamt.CSTFromBstore(syncer.store.Blockstore())
+	st, err := state.LoadStateTree(cst, stateroot)
 	if err != nil {
-		return xerrors.Errorf("failed to instantiate VM: %w", err)
+		return xerrors.Errorf("failed to load base state tree: %w", err)
 	}
 
-	owner, err := stmgr.GetMinerOwner(ctx, syncer.sm, stateroot, b.Header.Miner)
-	if err != nil {
-		return xerrors.Errorf("getting miner owner for block miner failed: %w", err)
-	}
-	networkBalance, err := vmi.ActorBalance(actors.NetworkAddress)
-	if err != nil {
-		return xerrors.Errorf("getting network balance")
-	}
-
-	if err := vmi.TransferFunds(actors.NetworkAddress, owner,
-		vm.MiningReward(networkBalance)); err != nil {
-		return xerrors.Errorf("fund transfer failed: %w", err)
-	}
-
-	var receipts []cbg.CBORMarshaler
-	for i, m := range b.BlsMessages {
-		receipt, err := vmi.ApplyMessage(ctx, m)
-		if err != nil {
-			return xerrors.Errorf("failed executing bls message %d in block %s: %w", i, b.Header.Cid(), err)
+	checkMsg := func(m *types.Message) error {
+		if _, ok := nonces[m.From]; !ok {
+			act, err := st.GetActor(m.From)
+			if err != nil {
+				return xerrors.Errorf("failed to get actor: %w", err)
+			}
+			nonces[m.From] = act.Nonce
+			balances[m.From] = act.Balance
 		}
 
-		receipts = append(receipts, &receipt.MessageReceipt)
+		if nonces[m.From] != m.Nonce {
+			return xerrors.Errorf("wrong nonce")
+		}
+		nonces[m.From]++
+
+		if balances[m.From].LessThan(m.RequiredFunds()) {
+			return xerrors.Errorf("not enough funds for message execution")
+		}
+
+		balances[m.From] = types.BigSub(balances[m.From], m.RequiredFunds())
+		return nil
+	}
+
+	for i, m := range b.BlsMessages {
+		if err := checkMsg(m); err != nil {
+			xerrors.Errorf("block had invalid bls message at index %d: %w", i, err)
+		}
 	}
 
 	for i, m := range b.SecpkMessages {
-		receipt, err := vmi.ApplyMessage(ctx, &m.Message)
-		if err != nil {
-			return xerrors.Errorf("failed executing secpk message %d in block %s: %w", i, b.Header.Cid(), err)
+		if err := checkMsg(&m.Message); err != nil {
+			xerrors.Errorf("block had invalid secpk message at index %d: %w", i, err)
 		}
-
-		receipts = append(receipts, &receipt.MessageReceipt)
-	}
-
-	bs := amt.WrapBlockstore(syncer.store.Blockstore())
-	recptRoot, err := amt.FromArray(bs, receipts)
-	if err != nil {
-		return xerrors.Errorf("building receipts amt failed: %w", err)
-	}
-	if recptRoot != b.Header.MessageReceipts {
-		return fmt.Errorf("receipts mismatched")
-	}
-
-	final, err := vmi.Flush(context.TODO())
-	if err != nil {
-		return xerrors.Errorf("failed to flush VM state: %w", err)
-	}
-
-	if b.Header.StateRoot != final {
-		return fmt.Errorf("final state root does not match block")
 	}
 
 	return nil
@@ -549,7 +546,7 @@ loop:
 			blockSet = append(blockSet, b)
 		}
 
-		syncer.syncState.SetHeight(blks[len(blockSet)-1].Height())
+		syncer.syncState.SetHeight(blks[len(blks)-1].Height())
 		at = blks[len(blks)-1].Parents()
 	}
 

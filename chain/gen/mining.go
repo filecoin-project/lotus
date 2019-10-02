@@ -20,7 +20,7 @@ import (
 )
 
 func MinerCreateBlock(ctx context.Context, sm *stmgr.StateManager, w *wallet.Wallet, miner address.Address, parents *types.TipSet, tickets []*types.Ticket, proof types.ElectionProof, msgs []*types.SignedMessage, timestamp uint64) (*types.FullBlock, error) {
-	st, err := sm.TipSetState(parents.Cids())
+	st, recpts, err := sm.TipSetState(parents)
 	if err != nil {
 		return nil, errors.Wrap(err, "failed to load tipset state")
 	}
@@ -53,12 +53,14 @@ func MinerCreateBlock(ctx context.Context, sm *stmgr.StateManager, w *wallet.Wal
 	}
 
 	next := &types.BlockHeader{
-		Miner:         miner,
-		Parents:       parents.Cids(),
-		Tickets:       tickets,
-		Height:        height,
-		Timestamp:     timestamp,
-		ElectionProof: proof,
+		Miner:                 miner,
+		Parents:               parents.Cids(),
+		Tickets:               tickets,
+		Height:                height,
+		Timestamp:             timestamp,
+		ElectionProof:         proof,
+		ParentStateRoot:       st,
+		ParentMessageReceipts: recpts,
 	}
 
 	var blsMessages []*types.Message
@@ -83,24 +85,6 @@ func MinerCreateBlock(ctx context.Context, sm *stmgr.StateManager, w *wallet.Wal
 		}
 	}
 
-	var receipts []cbg.CBORMarshaler
-	for _, msg := range blsMessages {
-		rec, err := vmi.ApplyMessage(ctx, msg)
-		if err != nil {
-			return nil, errors.Wrap(err, "apply message failure")
-		}
-
-		receipts = append(receipts, &rec.MessageReceipt)
-	}
-	for _, msg := range secpkMessages {
-		rec, err := vmi.ApplyMessage(ctx, &msg.Message)
-		if err != nil {
-			return nil, errors.Wrap(err, "apply message failure")
-		}
-
-		receipts = append(receipts, &rec.MessageReceipt)
-	}
-
 	bs := amt.WrapBlockstore(sm.ChainStore().Blockstore())
 	blsmsgroot, err := amt.FromArray(bs, toIfArr(blsMsgCids))
 	if err != nil {
@@ -120,24 +104,12 @@ func MinerCreateBlock(ctx context.Context, sm *stmgr.StateManager, w *wallet.Wal
 	}
 	next.Messages = mmcid
 
-	rectroot, err := amt.FromArray(bs, receipts)
-	if err != nil {
-		return nil, xerrors.Errorf("failed to build receipts amt: %w", err)
-	}
-	next.MessageReceipts = rectroot
-
-	stateRoot, err := vmi.Flush(context.TODO())
-	if err != nil {
-		return nil, errors.Wrap(err, "flushing state tree failed")
-	}
-
 	aggSig, err := aggregateSignatures(blsSigs)
 	if err != nil {
 		return nil, err
 	}
 
 	next.BLSAggregate = aggSig
-	next.StateRoot = stateRoot
 	pweight := sm.ChainStore().Weight(parents)
 	next.ParentWeight = types.NewInt(pweight)
 

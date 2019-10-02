@@ -73,3 +73,7 @@ func (m *Message) RequiredFunds() BigInt {
 		BigMul(m.GasPrice, m.GasLimit),
 	)
 }
+
+func (m *Message) VMMessage() *Message {
+	return m
+}

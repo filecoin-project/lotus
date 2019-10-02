@@ -57,3 +57,7 @@ func (sm *SignedMessage) Serialize() ([]byte, error) {
 	}
 	return buf.Bytes(), nil
 }
+
+func (sm *SignedMessage) VMMessage() *Message {
+	return &sm.Message
+}

@@ -51,13 +51,12 @@ func (a *ChainAPI) ChainGetRandomness(ctx context.Context, pts *types.TipSet, ti
 func (a *ChainAPI) ChainWaitMsg(ctx context.Context, msg cid.Cid) (*api.MsgWait, error) {
 	// TODO: consider using event system for this, expose confidence
 
-	blkcid, recpt, err := a.Chain.WaitForMessage(ctx, msg)
+	recpt, err := a.Chain.WaitForMessage(ctx, msg)
 	if err != nil {
 		return nil, err
 	}
 
 	return &api.MsgWait{
-		InBlock: blkcid,
 		Receipt: *recpt,
 	}, nil
 }
