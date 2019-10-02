@@ -2,6 +2,7 @@ package main
 
 import (
 	"context"
+	"github.com/filecoin-project/go-lotus/build"
 	"net/http"
 	"os"
 	"os/signal"
@@ -31,6 +32,10 @@ var runCmd = &cli.Command{
 		},
 	},
 	Action: func(cctx *cli.Context) error {
+		if err := build.GetParams(true); err != nil {
+			return xerrors.Errorf("fetching proof parameters: %w", err)
+		}
+
 		nodeApi, err := lcli.GetFullNodeAPI(cctx)
 		if err != nil {
 			return err

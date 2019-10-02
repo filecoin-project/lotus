@@ -5,6 +5,7 @@ go 1.13
 require (
 	contrib.go.opencensus.io/exporter/jaeger v0.1.0
 	github.com/BurntSushi/toml v0.3.1
+	github.com/GeertJohan/go.rice v1.0.0
 	github.com/StackExchange/wmi v0.0.0-20190523213315-cbe66965904d // indirect
 	github.com/filecoin-project/go-amt-ipld v0.0.0-20190919045431-3650716fff16
 	github.com/filecoin-project/go-bls-sigs v0.0.0-20190718224239-4bc4b8a7bbf8
@@ -54,6 +55,7 @@ require (
 	github.com/libp2p/go-libp2p-tls v0.1.0
 	github.com/libp2p/go-libp2p-yamux v0.2.1
 	github.com/libp2p/go-maddr-filter v0.0.5
+	github.com/mattn/go-runewidth v0.0.4 // indirect
 	github.com/miekg/dns v1.1.16 // indirect
 	github.com/minio/blake2b-simd v0.0.0-20160723061019-3f5f724cb5b1
 	github.com/mitchellh/go-homedir v1.1.0
@@ -79,6 +81,7 @@ require (
 	golang.org/x/sys v0.0.0-20190904154756-749cb33beabd // indirect
 	golang.org/x/xerrors v0.0.0-20190717185122-a985d3407aa7
 	google.golang.org/api v0.9.0 // indirect
+	gopkg.in/cheggaaa/pb.v1 v1.0.28
 	gopkg.in/urfave/cli.v2 v2.0.0-20180128182452-d3ae77c26ac8
 	gotest.tools v2.2.0+incompatible
 	launchpad.net/gocheck v0.0.0-20140225173054-000000000087 // indirect

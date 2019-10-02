@@ -7,9 +7,11 @@ import (
 	"io/ioutil"
 
 	"github.com/multiformats/go-multiaddr"
+	"golang.org/x/xerrors"
 	"gopkg.in/urfave/cli.v2"
 
 	"github.com/filecoin-project/go-lotus/api"
+	"github.com/filecoin-project/go-lotus/build"
 	"github.com/filecoin-project/go-lotus/node"
 	"github.com/filecoin-project/go-lotus/node/modules"
 	"github.com/filecoin-project/go-lotus/node/modules/testing"
@@ -50,17 +52,26 @@ var DaemonCmd = &cli.Command{
 			return err
 		}
 
-		genesis := node.Options()
-		if cctx.String(makeGenFlag) != "" {
-			genesis = node.Override(new(modules.Genesis), testing.MakeGenesis(cctx.String(makeGenFlag)))
+		if err := build.GetParams(false); err != nil {
+			return xerrors.Errorf("fetching proof parameters: %w", err)
 		}
+
+		genBytes := build.MaybeGenesis()
+
 		if cctx.String("genesis") != "" {
-			genBytes, err := ioutil.ReadFile(cctx.String("genesis"))
+			genBytes, err = ioutil.ReadFile(cctx.String("genesis"))
 			if err != nil {
 				return err
 			}
 
+		}
+
+		genesis := node.Options()
+		if len(genBytes) > 0 {
 			genesis = node.Override(new(modules.Genesis), modules.LoadGenesis(genBytes))
+		}
+		if cctx.String(makeGenFlag) != "" {
+			genesis = node.Override(new(modules.Genesis), testing.MakeGenesis(cctx.String(makeGenFlag)))
 		}
 
 		var api api.FullNode

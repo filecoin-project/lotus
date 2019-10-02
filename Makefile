@@ -72,8 +72,11 @@ deps: $(BUILD_DEPS)
 .PHONY: deps
 
 build: $(BUILD_DEPS)
+	rm -f lotus lotus-storage-miner
 	go build -o lotus ./cmd/lotus
 	go build -o lotus-storage-miner ./cmd/lotus-storage-miner
+	go run github.com/GeertJohan/go.rice/rice append --exec lotus -i ./build
+	go run github.com/GeertJohan/go.rice/rice append --exec lotus-storage-miner -i ./build
 .PHONY: build
 
 benchmarks:

@@ -47,6 +47,12 @@ var initCmd = &cli.Command{
 	},
 	Action: func(cctx *cli.Context) error {
 		log.Info("Initializing lotus storage miner")
+
+		log.Info("Checking proof parameters")
+		if err := build.GetParams(true); err != nil {
+			return xerrors.Errorf("fetching proof parameters: %w", err)
+		}
+
 		log.Info("Checking if repo exists")
 
 		r, err := repo.NewFS(cctx.String(FlagStorageRepo))
