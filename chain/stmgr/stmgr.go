@@ -5,6 +5,7 @@ import (
 	"sync"
 
 	amt "github.com/filecoin-project/go-amt-ipld"
+	"github.com/filecoin-project/go-lotus/chain/actors"
 	"github.com/filecoin-project/go-lotus/chain/address"
 	"github.com/filecoin-project/go-lotus/chain/state"
 	"github.com/filecoin-project/go-lotus/chain/store"
@@ -84,14 +85,29 @@ func (sm *StateManager) computeTipSetState(ctx context.Context, blks []*types.Bl
 		return cid.Undef, cid.Undef, xerrors.Errorf("instantiating VM failed: %w", err)
 	}
 
-	/* TODO: apply mining reward
-	netbalance, err := vmi.ActorBalance(actors.NetworkAddress)
+	netact, err := vmi.StateTree().GetActor(actors.NetworkAddress)
 	if err != nil {
-		return cid.Undef, xerrors.Errorf("failed to get network actor balance: %w", err)
+		return cid.Undef, cid.Undef, xerrors.Errorf("failed to get network actor: %w", err)
 	}
 
-	vm.MiningRewardForBlock(netbalance)
-	*/
+	reward := vm.MiningReward(netact.Balance)
+	for _, b := range blks {
+		owner, err := GetMinerOwner(ctx, sm, pstate, b.Miner)
+		if err != nil {
+			return cid.Undef, cid.Undef, xerrors.Errorf("failed to get owner for miner %s: %w", b.Miner, err)
+		}
+
+		act, err := vmi.StateTree().GetActor(owner)
+		if err != nil {
+			return cid.Undef, cid.Undef, xerrors.Errorf("failed to get miner owner actor")
+		}
+
+		if err := vm.DeductFunds(netact, reward); err != nil {
+			return cid.Undef, cid.Undef, xerrors.Errorf("failed to deduct funds from network actor: %w", err)
+		}
+
+		vm.DepositFunds(act, reward)
+	}
 
 	// TODO: can't use method from chainstore because it doesnt let us know who the block miners were
 	applied := make(map[address.Address]uint64)
