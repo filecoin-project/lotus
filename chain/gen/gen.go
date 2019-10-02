@@ -255,7 +255,7 @@ func (cg *ChainGen) NextTipSet() (*MinedTipSet, error) {
 		for i, m := range cg.miners {
 			proof, t, err := cg.nextBlockProof(context.TODO(), m, ticketSets[i])
 			if err != nil {
-				return nil, err
+				return nil, xerrors.Errorf("next block proof: %w", err)
 			}
 
 			ticketSets[i] = append(ticketSets[i], t)
@@ -266,7 +266,7 @@ func (cg *ChainGen) NextTipSet() (*MinedTipSet, error) {
 				}
 
 				if err := cg.cs.AddBlock(fblk.Header); err != nil {
-					return nil, err
+					return nil, xerrors.Errorf("chainstore AddBlock: %w", err)
 				}
 
 				blks = append(blks, fblk)

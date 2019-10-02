@@ -112,8 +112,6 @@ var createMinerCmd = &cli.Command{
 			return err
 		}
 
-		// TODO: do we really want this?
-		//fmt.Printf("miner created in block %s\n", mwait.InBlock)
 		fmt.Printf("new miner address: %s\n", maddr)
 
 		return nil

@@ -55,7 +55,10 @@ func (sm *StateManager) TipSetState(ts *types.TipSet) (cid.Cid, cid.Cid, error) 
 	}
 
 	if ts.Height() == 0 {
-		// NB: Genesis block is a weird case here...
+		// NB: This is here because the process that executes blocks requires that the
+		// block miner reference a valid miner in the state tree. Unless we create some
+		// magical genesis miner, this won't work properly, so we short circuit here
+		// This avoids the question of 'who gets paid the genesis block reward'
 		return ts.Blocks()[0].ParentStateRoot, ts.Blocks()[0].ParentMessageReceipts, nil
 	}
 
