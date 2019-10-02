@@ -4,8 +4,11 @@ package main
 
 import (
 	"context"
+	"github.com/filecoin-project/go-lotus/build"
+	"golang.org/x/xerrors"
 	"io/ioutil"
 
+	rice "github.com/GeertJohan/go.rice"
 	"github.com/multiformats/go-multiaddr"
 	"gopkg.in/urfave/cli.v2"
 
@@ -50,17 +53,33 @@ var DaemonCmd = &cli.Command{
 			return err
 		}
 
-		genesis := node.Options()
-		if cctx.String(makeGenFlag) != "" {
-			genesis = node.Override(new(modules.Genesis), testing.MakeGenesis(cctx.String(makeGenFlag)))
+		if err := build.GetParams(false); err != nil {
+			return xerrors.Errorf("fetching proof parameters: %w", err)
 		}
+
+		builtinGen, err := rice.FindBox("../../build/genesis")
+		if err != nil {
+			log.Warn("loading built-in genesis: %s", err)
+		}
+		genBytes, err := builtinGen.Bytes("devnet.car")
+		if err != nil {
+			log.Warn("loading built-in genesis: %s", err)
+		}
+
 		if cctx.String("genesis") != "" {
-			genBytes, err := ioutil.ReadFile(cctx.String("genesis"))
+			genBytes, err = ioutil.ReadFile(cctx.String("genesis"))
 			if err != nil {
 				return err
 			}
 
+		}
+
+		genesis := node.Options()
+		if len(genBytes) > 0 {
 			genesis = node.Override(new(modules.Genesis), modules.LoadGenesis(genBytes))
+		}
+		if cctx.String(makeGenFlag) != "" {
+			genesis = node.Override(new(modules.Genesis), testing.MakeGenesis(cctx.String(makeGenFlag)))
 		}
 
 		var api api.FullNode
