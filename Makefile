@@ -75,7 +75,7 @@ build: $(BUILD_DEPS)
 	rm -f lotus lotus-storage-miner
 	go build -o lotus ./cmd/lotus
 	go build -o lotus-storage-miner ./cmd/lotus-storage-miner
-	rice append --exec lotus -i ./cmd/lotus -i ./build
+	rice append --exec lotus -i ./build
 	rice append --exec lotus-storage-miner -i ./build
 .PHONY: build
 

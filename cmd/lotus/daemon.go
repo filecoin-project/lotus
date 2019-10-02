@@ -4,15 +4,14 @@ package main
 
 import (
 	"context"
-	"github.com/filecoin-project/go-lotus/build"
-	"golang.org/x/xerrors"
 	"io/ioutil"
 
-	rice "github.com/GeertJohan/go.rice"
 	"github.com/multiformats/go-multiaddr"
+	"golang.org/x/xerrors"
 	"gopkg.in/urfave/cli.v2"
 
 	"github.com/filecoin-project/go-lotus/api"
+	"github.com/filecoin-project/go-lotus/build"
 	"github.com/filecoin-project/go-lotus/node"
 	"github.com/filecoin-project/go-lotus/node/modules"
 	"github.com/filecoin-project/go-lotus/node/modules/testing"
@@ -57,14 +56,7 @@ var DaemonCmd = &cli.Command{
 			return xerrors.Errorf("fetching proof parameters: %w", err)
 		}
 
-		builtinGen, err := rice.FindBox("../../build/genesis")
-		if err != nil {
-			log.Warn("loading built-in genesis: %s", err)
-		}
-		genBytes, err := builtinGen.Bytes("devnet.car")
-		if err != nil {
-			log.Warn("loading built-in genesis: %s", err)
-		}
+		genBytes := build.MaybeGenesis()
 
 		if cctx.String("genesis") != "" {
 			genBytes, err = ioutil.ReadFile(cctx.String("genesis"))

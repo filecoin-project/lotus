@@ -15,14 +15,14 @@ import (
 	pb "gopkg.in/cheggaaa/pb.v1"
 )
 
-var log = logging.Logger("miner")
+var log = logging.Logger("build")
 
 const gateway = "http://198.211.99.118/ipfs/"
 const paramdir = "/var/tmp/filecoin-proof-parameters"
 
-type paramFile struct{
-	Cid string `json:"cid"`
-	Digest string `json:"digest"`
+type paramFile struct {
+	Cid        string `json:"cid"`
+	Digest     string `json:"digest"`
 	SectorSize uint64 `json:"sector_size"`
 }
 
@@ -79,25 +79,25 @@ func doFetch(out string, info paramFile) error {
 	log.Infof("Fetching %s", out)
 
 	resp, err := http.Get(gateway + info.Cid)
-    if err != nil {
-        return err
-    }
-    defer resp.Body.Close()
+	if err != nil {
+		return err
+	}
+	defer resp.Body.Close()
 
-    outf, err := os.Create(out)
-    if err != nil {
-        return err
-    }
-    defer outf.Close()
+	outf, err := os.Create(out)
+	if err != nil {
+		return err
+	}
+	defer outf.Close()
 
-    bar := pb.New64(resp.ContentLength)
+	bar := pb.New64(resp.ContentLength)
 	bar.Units = pb.U_BYTES
 	bar.ShowSpeed = true
 	bar.Start()
 
-    _, err = io.Copy(outf, bar.NewProxyReader(resp.Body))
+	_, err = io.Copy(outf, bar.NewProxyReader(resp.Body))
 
-    bar.Finish()
+	bar.Finish()
 
 	return err
 }
