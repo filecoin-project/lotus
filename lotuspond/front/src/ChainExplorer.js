@@ -123,9 +123,13 @@ class ChainExplorer extends React.Component {
         if(msgc > 0) {
           msgc = <b>{msgc}</b>
         }
+        let time = '?'
+        if(this.state.cache[row - 1]){
+          time = <span>{ts.Blocks[0].Timestamp - this.state.cache[row - 1].Blocks[0].Timestamp}s</span>
+        }
 
         info = <span>
-          <BlockLinks cids={ts.Cids} blocks={ts.Blocks} conn={this.props.client} mountWindow={this.props.mountWindow} /> Msgs: {msgc}
+          <BlockLinks cids={ts.Cids} blocks={ts.Blocks} conn={this.props.client} mountWindow={this.props.mountWindow} /> Msgs: {msgc} ΔT:{time}
         </span>
       }
 
