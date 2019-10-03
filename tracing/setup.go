@@ -1,6 +1,8 @@
 package tracing
 
 import (
+	"os"
+
 	"contrib.go.opencensus.io/exporter/jaeger"
 	logging "github.com/ipfs/go-log"
 	"go.opencensus.io/trace"
@@ -10,7 +12,10 @@ var log = logging.Logger("tracing")
 
 func SetupJaegerTracing(serviceName string) *jaeger.Exporter {
 
-	agentEndpointURI := "localhost:6831"
+	if _, ok := os.LookupEnv("LOTUS_JAEGER"); !ok {
+		return nil
+	}
+	agentEndpointURI := os.Getenv("LOTUS_JAEGER")
 
 	je, err := jaeger.NewExporter(jaeger.Options{
 		AgentEndpoint: agentEndpointURI,
