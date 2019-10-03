@@ -11,8 +11,8 @@ import (
 	cbg "github.com/whyrusleeping/cbor-gen"
 	"golang.org/x/xerrors"
 
-	"github.com/filecoin-project/go-lotus/chain/actors"
 	"github.com/filecoin-project/go-lotus/chain/address"
+	"github.com/filecoin-project/go-lotus/chain/state"
 	"github.com/filecoin-project/go-lotus/chain/stmgr"
 	"github.com/filecoin-project/go-lotus/chain/types"
 	"github.com/filecoin-project/go-lotus/chain/vm"
@@ -27,29 +27,9 @@ func MinerCreateBlock(ctx context.Context, sm *stmgr.StateManager, w *wallet.Wal
 
 	height := parents.Height() + uint64(len(tickets))
 
-	r := vm.NewChainRand(sm.ChainStore(), parents.Cids(), parents.Height(), tickets)
-	vmi, err := vm.NewVM(st, height, r, miner, sm.ChainStore())
-	if err != nil {
-		return nil, err
-	}
-
-	owner, err := stmgr.GetMinerOwner(ctx, sm, st, miner)
-	if err != nil {
-		return nil, xerrors.Errorf("failed to get miner owner: %w", err)
-	}
-
 	worker, err := stmgr.GetMinerWorker(ctx, sm, st, miner)
 	if err != nil {
 		return nil, xerrors.Errorf("failed to get miner worker: %w", err)
-	}
-	networkBalance, err := vmi.ActorBalance(actors.NetworkAddress)
-	if err != nil {
-		return nil, xerrors.Errorf("failed to get network balance: %w", err)
-	}
-
-	// apply miner reward
-	if err := vmi.TransferFunds(actors.NetworkAddress, owner, vm.MiningReward(networkBalance)); err != nil {
-		return nil, err
 	}
 
 	next := &types.BlockHeader{
@@ -113,17 +93,20 @@ func MinerCreateBlock(ctx context.Context, sm *stmgr.StateManager, w *wallet.Wal
 	pweight := sm.ChainStore().Weight(parents)
 	next.ParentWeight = types.NewInt(pweight)
 
-	// TODO: set timestamp
+	cst := hamt.CSTFromBstore(sm.ChainStore().Blockstore())
+	tree, err := state.LoadStateTree(cst, st)
+	if err != nil {
+		return nil, xerrors.Errorf("failed to load state tree: %w", err)
+	}
+
+	waddr, err := vm.ResolveToKeyAddr(tree, cst, worker)
+	if err != nil {
+		return nil, xerrors.Errorf("failed to resolve miner address to key address: %w", err)
+	}
 
 	nosigbytes, err := next.SigningBytes()
 	if err != nil {
 		return nil, xerrors.Errorf("failed to get signing bytes for block: %w", err)
-	}
-
-	cst := hamt.CSTFromBstore(sm.ChainStore().Blockstore())
-	waddr, err := vm.ResolveToKeyAddr(vmi.StateTree(), cst, worker)
-	if err != nil {
-		return nil, xerrors.Errorf("failed to resolve miner address to key address: %w", err)
 	}
 
 	sig, err := w.Sign(ctx, waddr, nosigbytes)
