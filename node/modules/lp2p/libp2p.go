@@ -1,6 +1,10 @@
 package lp2p
 
 import (
+	"crypto/rand"
+	"github.com/filecoin-project/go-lotus/chain/types"
+	"github.com/filecoin-project/go-lotus/node/repo"
+	"golang.org/x/xerrors"
 	"time"
 
 	logging "github.com/ipfs/go-log"
@@ -14,10 +18,47 @@ import (
 
 var log = logging.Logger("p2pnode")
 
+const kstorePrivkey = "libp2p-host"
+
 type Libp2pOpts struct {
 	fx.Out
 
 	Opts []libp2p.Option `group:"libp2p"`
+}
+
+func PrivKey(ks types.KeyStore) (crypto.PrivKey, error) {
+	k, err := ks.Get(kstorePrivkey)
+	if err == nil {
+		return crypto.UnmarshalPrivateKey(k.PrivateKey)
+	}
+	if !xerrors.Is(err, repo.ErrKeyNotFound) {
+		return nil, err
+	}
+	pk, err := genLibp2pKey()
+	if err != nil {
+		return nil, err
+	}
+	kbytes, err := pk.Bytes()
+	if err != nil {
+		return nil, err
+	}
+
+	if err := ks.Put(kstorePrivkey, types.KeyInfo{
+		Type:       kstorePrivkey,
+		PrivateKey: kbytes,
+	}); err != nil {
+		return nil, err
+	}
+
+	return pk, nil
+}
+
+func genLibp2pKey() (crypto.PrivKey, error) {
+	pk, _, err := crypto.GenerateEd25519Key(rand.Reader)
+	if err != nil {
+		return nil, err
+	}
+	return pk, nil
 }
 
 // Misc options

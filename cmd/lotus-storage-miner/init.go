@@ -2,6 +2,8 @@ package main
 
 import (
 	"context"
+	"crypto/rand"
+	"github.com/libp2p/go-libp2p-core/crypto"
 
 	"github.com/ipfs/go-datastore"
 	"github.com/libp2p/go-libp2p-core/peer"
@@ -101,7 +103,7 @@ var initCmd = &cli.Command{
 
 		log.Info("Initializing libp2p identity")
 
-		p2pSk, err := lr.Libp2pIdentity()
+		p2pSk, err := makeHostKey(lr)
 		if err != nil {
 			return err
 		}
@@ -145,6 +147,32 @@ var initCmd = &cli.Command{
 
 		return nil
 	},
+}
+
+func makeHostKey(lr repo.LockedRepo) (crypto.PrivKey, error) {
+	pk, _, err := crypto.GenerateEd25519Key(rand.Reader)
+	if err != nil {
+		return nil, err
+	}
+
+	ks, err := lr.KeyStore()
+	if err != nil {
+		return nil, err
+	}
+
+	kbytes, err := pk.Bytes()
+	if err != nil {
+		return nil, err
+	}
+
+	if err := ks.Put("libp2p-host", types.KeyInfo{
+		Type:       "libp2p-host",
+		PrivateKey: kbytes,
+	}); err != nil {
+		return nil, err
+	}
+
+	return pk, nil
 }
 
 func configureStorageMiner(ctx context.Context, api api.FullNode, addr address.Address, peerid peer.ID, genmine bool) error {

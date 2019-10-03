@@ -27,7 +27,7 @@ type paramFile struct {
 }
 
 func GetParams(storage bool) error {
-	if err := os.Mkdir(paramdir, 0755); err != nil {
+	if err := os.Mkdir(paramdir, 0755); err != nil && !os.IsExist(err) {
 		return err
 	}
 

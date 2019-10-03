@@ -47,10 +47,6 @@ func basicTest(t *testing.T, repo Repo) {
 	assert.NoError(t, err, "setting multiaddr shouldn't error")
 	assert.Equal(t, ma, apima, "returned API multiaddr should be the same")
 
-	iden, err := lrepo.Libp2pIdentity()
-	assert.NotNil(t, iden, "identity is not nil")
-	assert.NoError(t, err, "identity should not error")
-
 	cfg, err := lrepo.Config()
 	assert.Equal(t, config.Default(), cfg, "there should be a default config")
 	assert.NoError(t, err, "config should not error")

@@ -3,6 +3,8 @@ package node_test
 import (
 	"bytes"
 	"context"
+	"crypto/rand"
+	"github.com/libp2p/go-libp2p-core/crypto"
 	"io/ioutil"
 	"net/http/httptest"
 	"os"
@@ -34,7 +36,19 @@ func testStorageNode(ctx context.Context, t *testing.T, waddr address.Address, a
 	lr, err := r.Lock()
 	require.NoError(t, err)
 
-	p2pSk, err := lr.Libp2pIdentity()
+	pk, _, err := crypto.GenerateEd25519Key(rand.Reader)
+	require.NoError(t, err)
+
+	ks, err := lr.KeyStore()
+	require.NoError(t, err)
+
+	kbytes, err := pk.Bytes()
+	require.NoError(t, err)
+
+	err = ks.Put("libp2p-host", types.KeyInfo{
+		Type:       "libp2p-host",
+		PrivateKey: kbytes,
+	})
 	require.NoError(t, err)
 
 	ds, err := lr.Datastore("/metadata")
@@ -45,7 +59,7 @@ func testStorageNode(ctx context.Context, t *testing.T, waddr address.Address, a
 	err = lr.Close()
 	require.NoError(t, err)
 
-	peerid, err := peer.IDFromPrivateKey(p2pSk)
+	peerid, err := peer.IDFromPrivateKey(pk)
 	require.NoError(t, err)
 
 	enc, err := actors.SerializeParams(&actors.UpdatePeerIDParams{PeerID: peerid})

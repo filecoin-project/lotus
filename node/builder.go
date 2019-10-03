@@ -302,10 +302,6 @@ func Repo(r repo.Repo) Option {
 	if err != nil {
 		return Error(err)
 	}
-	pk, err := lr.Libp2pIdentity()
-	if err != nil {
-		return Error(err)
-	}
 
 	return Options(
 		Config(cfg),
@@ -318,7 +314,7 @@ func Repo(r repo.Repo) Option {
 		Override(new(dtypes.ClientBlockstore), modules.ClientBlockstore),
 		Override(new(dtypes.ClientDAG), modules.ClientDAG),
 
-		Override(new(ci.PrivKey), pk),
+		Override(new(ci.PrivKey), lp2p.PrivKey),
 		Override(new(ci.PubKey), ci.PrivKey.GetPublic),
 		Override(new(peer.ID), peer.IDFromPublicKey),
 

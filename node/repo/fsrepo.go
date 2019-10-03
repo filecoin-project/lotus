@@ -14,7 +14,6 @@ import (
 	badger "github.com/ipfs/go-ds-badger"
 	fslock "github.com/ipfs/go-fs-lock"
 	logging "github.com/ipfs/go-log"
-	"github.com/libp2p/go-libp2p-core/crypto"
 	"github.com/mitchellh/go-homedir"
 	"github.com/multiformats/go-base32"
 	"github.com/multiformats/go-multiaddr"
@@ -222,58 +221,6 @@ func (fsr *fsLockedRepo) Config() (*config.Root, error) {
 		return nil, err
 	}
 	return config.FromFile(fsr.join(fsConfig))
-}
-
-func (fsr *fsLockedRepo) Libp2pIdentity() (crypto.PrivKey, error) {
-	if err := fsr.stillValid(); err != nil {
-		return nil, err
-	}
-	kpath := fsr.join(fsLibp2pKey)
-	stat, err := os.Stat(kpath)
-
-	if os.IsNotExist(err) {
-		pk, err := genLibp2pKey()
-		if err != nil {
-			return nil, xerrors.Errorf("could not generate private key: %w", err)
-		}
-		pkb, err := pk.Bytes()
-		if err != nil {
-			return nil, xerrors.Errorf("could not serialize private key: %w", err)
-		}
-		err = ioutil.WriteFile(kpath, pkb, 0600)
-		if err != nil {
-			return nil, xerrors.Errorf("could not write private key: %w", err)
-		}
-	} else if err != nil {
-		return nil, err
-	}
-
-	stat, err = os.Stat(kpath)
-	if err != nil {
-		return nil, err
-	}
-
-	if stat.Mode()&0066 != 0 {
-		return nil, xerrors.New("libp2p identity has too wide access permissions, " +
-			fsLibp2pKey + " should have permission 0600")
-	}
-
-	f, err := os.Open(kpath)
-	if err != nil {
-		return nil, xerrors.Errorf("could not open private key file: %w", err)
-	}
-	defer f.Close() //nolint: errcheck // read-only op
-
-	pkbytes, err := ioutil.ReadAll(f)
-	if err != nil {
-		return nil, xerrors.Errorf("could not read private key file: %w", err)
-	}
-
-	pk, err := crypto.UnmarshalPrivateKey(pkbytes)
-	if err != nil {
-		return nil, xerrors.Errorf("could not unmarshal private key: %w", err)
-	}
-	return pk, nil
 }
 
 func (fsr *fsLockedRepo) SetAPIEndpoint(ma multiaddr.Multiaddr) error {
