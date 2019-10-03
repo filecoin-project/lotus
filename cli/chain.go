@@ -25,10 +25,11 @@ var chainHeadCmd = &cli.Command{
 	Name:  "head",
 	Usage: "Print chain head",
 	Action: func(cctx *cli.Context) error {
-		api, err := GetFullNodeAPI(cctx)
+		api, closer, err := GetFullNodeAPI(cctx)
 		if err != nil {
 			return err
 		}
+		defer closer()
 		ctx := ReqContext(cctx)
 
 		head, err := api.ChainHead(ctx)
@@ -53,10 +54,11 @@ var chainGetBlock = &cli.Command{
 		},
 	},
 	Action: func(cctx *cli.Context) error {
-		api, err := GetFullNodeAPI(cctx)
+		api, closer, err := GetFullNodeAPI(cctx)
 		if err != nil {
 			return err
 		}
+		defer closer()
 		ctx := ReqContext(cctx)
 
 		if !cctx.Args().Present() {
@@ -128,10 +130,11 @@ var chainReadObjCmd = &cli.Command{
 	Name:  "read-obj",
 	Usage: "Read the raw bytes of an object",
 	Action: func(cctx *cli.Context) error {
-		api, err := GetFullNodeAPI(cctx)
+		api, closer, err := GetFullNodeAPI(cctx)
 		if err != nil {
 			return err
 		}
+		defer closer()
 		ctx := ReqContext(cctx)
 
 		c, err := cid.Decode(cctx.Args().First())

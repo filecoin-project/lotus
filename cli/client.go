@@ -31,10 +31,11 @@ var clientImportCmd = &cli.Command{
 	Name:  "import",
 	Usage: "Import data",
 	Action: func(cctx *cli.Context) error {
-		api, err := GetFullNodeAPI(cctx)
+		api, closer, err := GetFullNodeAPI(cctx)
 		if err != nil {
 			return err
 		}
+		defer closer()
 		ctx := ReqContext(cctx)
 
 		c, err := api.ClientImport(ctx, cctx.Args().First())
@@ -50,10 +51,11 @@ var clientLocalCmd = &cli.Command{
 	Name:  "local",
 	Usage: "List locally imported data",
 	Action: func(cctx *cli.Context) error {
-		api, err := GetFullNodeAPI(cctx)
+		api, closer, err := GetFullNodeAPI(cctx)
 		if err != nil {
 			return err
 		}
+		defer closer()
 		ctx := ReqContext(cctx)
 
 		list, err := api.ClientListImports(ctx)
@@ -71,10 +73,11 @@ var clientDealCmd = &cli.Command{
 	Name:  "deal",
 	Usage: "Initialize storage deal with a miner",
 	Action: func(cctx *cli.Context) error {
-		api, err := GetFullNodeAPI(cctx)
+		api, closer, err := GetFullNodeAPI(cctx)
 		if err != nil {
 			return err
 		}
+		defer closer()
 		ctx := ReqContext(cctx)
 
 		if cctx.NArg() != 4 {
@@ -128,10 +131,11 @@ var clientFindCmd = &cli.Command{
 			return err
 		}
 
-		api, err := GetFullNodeAPI(cctx)
+		api, closer, err := GetFullNodeAPI(cctx)
 		if err != nil {
 			return err
 		}
+		defer closer()
 		ctx := ReqContext(cctx)
 
 		// Check if we already have this data locally
@@ -177,10 +181,11 @@ var clientRetrieveCmd = &cli.Command{
 			return nil
 		}
 
-		api, err := GetFullNodeAPI(cctx)
+		api, closer, err := GetFullNodeAPI(cctx)
 		if err != nil {
 			return err
 		}
+		defer closer()
 		ctx := ReqContext(cctx)
 
 		var payer address.Address
@@ -248,10 +253,11 @@ var clientQueryAskCmd = &cli.Command{
 			return err
 		}
 
-		api, err := GetFullNodeAPI(cctx)
+		api, closer, err := GetFullNodeAPI(cctx)
 		if err != nil {
 			return err
 		}
+		defer closer()
 		ctx := ReqContext(cctx)
 
 		var pid peer.ID

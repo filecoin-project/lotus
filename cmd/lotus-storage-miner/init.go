@@ -72,10 +72,11 @@ var initCmd = &cli.Command{
 
 		log.Info("Trying to connect to full node RPC")
 
-		api, err := lcli.GetFullNodeAPI(cctx) // TODO: consider storing full node address in config
+		api, closer, err := lcli.GetFullNodeAPI(cctx) // TODO: consider storing full node address in config
 		if err != nil {
 			return err
 		}
+		defer closer()
 		ctx := lcli.ReqContext(cctx)
 
 		log.Info("Checking full node version")

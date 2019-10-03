@@ -41,10 +41,11 @@ var paychGetCmd = &cli.Command{
 			return fmt.Errorf("parsing amount failed: %s", err)
 		}
 
-		api, err := GetFullNodeAPI(cctx)
+		api, closer, err := GetFullNodeAPI(cctx)
 		if err != nil {
 			return err
 		}
+		defer closer()
 
 		ctx := ReqContext(cctx)
 
@@ -62,10 +63,11 @@ var paychListCmd = &cli.Command{
 	Name:  "list",
 	Usage: "List all locally registered payment channels",
 	Action: func(cctx *cli.Context) error {
-		api, err := GetFullNodeAPI(cctx)
+		api, closer, err := GetFullNodeAPI(cctx)
 		if err != nil {
 			return err
 		}
+		defer closer()
 
 		ctx := ReqContext(cctx)
 
@@ -121,10 +123,11 @@ var paychVoucherCreateCmd = &cli.Command{
 
 		lane := cctx.Int("lane")
 
-		api, err := GetFullNodeAPI(cctx)
+		api, closer, err := GetFullNodeAPI(cctx)
 		if err != nil {
 			return err
 		}
+		defer closer()
 
 		ctx := ReqContext(cctx)
 
@@ -161,10 +164,11 @@ var paychVoucherCheckCmd = &cli.Command{
 			return err
 		}
 
-		api, err := GetFullNodeAPI(cctx)
+		api, closer, err := GetFullNodeAPI(cctx)
 		if err != nil {
 			return err
 		}
+		defer closer()
 
 		ctx := ReqContext(cctx)
 
@@ -195,10 +199,11 @@ var paychVoucherAddCmd = &cli.Command{
 			return err
 		}
 
-		api, err := GetFullNodeAPI(cctx)
+		api, closer, err := GetFullNodeAPI(cctx)
 		if err != nil {
 			return err
 		}
+		defer closer()
 
 		ctx := ReqContext(cctx)
 
@@ -230,10 +235,11 @@ var paychVoucherListCmd = &cli.Command{
 			return err
 		}
 
-		api, err := GetFullNodeAPI(cctx)
+		api, closer, err := GetFullNodeAPI(cctx)
 		if err != nil {
 			return err
 		}
+		defer closer()
 
 		ctx := ReqContext(cctx)
 
@@ -272,10 +278,11 @@ var paychVoucherBestSpendableCmd = &cli.Command{
 			return err
 		}
 
-		api, err := GetFullNodeAPI(cctx)
+		api, closer, err := GetFullNodeAPI(cctx)
 		if err != nil {
 			return err
 		}
+		defer closer()
 
 		ctx := ReqContext(cctx)
 
@@ -330,10 +337,11 @@ var paychVoucherSubmitCmd = &cli.Command{
 			return err
 		}
 
-		api, err := GetFullNodeAPI(cctx)
+		api, closer, err := GetFullNodeAPI(cctx)
 		if err != nil {
 			return err
 		}
+		defer closer()
 
 		ctx := ReqContext(cctx)
 

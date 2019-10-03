@@ -25,10 +25,11 @@ var statePowerCmd = &cli.Command{
 	Name:  "power",
 	Usage: "Query network or miner power",
 	Action: func(cctx *cli.Context) error {
-		api, err := GetFullNodeAPI(cctx)
+		api, closer, err := GetFullNodeAPI(cctx)
 		if err != nil {
 			return err
 		}
+		defer closer()
 
 		ctx := ReqContext(cctx)
 
@@ -58,10 +59,11 @@ var stateSectorsCmd = &cli.Command{
 	Name:  "sectors",
 	Usage: "Query the sector set of a miner",
 	Action: func(cctx *cli.Context) error {
-		api, err := GetFullNodeAPI(cctx)
+		api, closer, err := GetFullNodeAPI(cctx)
 		if err != nil {
 			return err
 		}
+		defer closer()
 
 		ctx := ReqContext(cctx)
 
@@ -91,10 +93,11 @@ var stateProvingSetCmd = &cli.Command{
 	Name:  "proving",
 	Usage: "Query the proving set of a miner",
 	Action: func(cctx *cli.Context) error {
-		api, err := GetFullNodeAPI(cctx)
+		api, closer, err := GetFullNodeAPI(cctx)
 		if err != nil {
 			return err
 		}
+		defer closer()
 
 		ctx := ReqContext(cctx)
 
@@ -146,10 +149,11 @@ var stateReplaySetCmd = &cli.Command{
 			tscids = append(tscids, c)
 		}
 
-		api, err := GetFullNodeAPI(cctx)
+		api, closer, err := GetFullNodeAPI(cctx)
 		if err != nil {
 			return err
 		}
+		defer closer()
 
 		ctx := ReqContext(cctx)
 
@@ -178,10 +182,11 @@ var statePledgeCollateralCmd = &cli.Command{
 	Name:  "pledge-collateral",
 	Usage: "Get minimum miner pledge collateral",
 	Action: func(cctx *cli.Context) error {
-		api, err := GetFullNodeAPI(cctx)
+		api, closer, err := GetFullNodeAPI(cctx)
 		if err != nil {
 			return err
 		}
+		defer closer()
 
 		ctx := ReqContext(cctx)
 

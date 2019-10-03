@@ -21,10 +21,11 @@ var walletNew = &cli.Command{
 	Name:  "new",
 	Usage: "Generate a new key of the given type (bls or secp256k1)",
 	Action: func(cctx *cli.Context) error {
-		api, err := GetFullNodeAPI(cctx)
+		api, closer, err := GetFullNodeAPI(cctx)
 		if err != nil {
 			return err
 		}
+		defer closer()
 		ctx := ReqContext(cctx)
 
 		t := cctx.Args().First()
@@ -47,10 +48,11 @@ var walletList = &cli.Command{
 	Name:  "list",
 	Usage: "List wallet address",
 	Action: func(cctx *cli.Context) error {
-		api, err := GetFullNodeAPI(cctx)
+		api, closer, err := GetFullNodeAPI(cctx)
 		if err != nil {
 			return err
 		}
+		defer closer()
 		ctx := ReqContext(cctx)
 
 		addrs, err := api.WalletList(ctx)
@@ -69,10 +71,11 @@ var walletBalance = &cli.Command{
 	Name:  "balance",
 	Usage: "get account balance",
 	Action: func(cctx *cli.Context) error {
-		api, err := GetFullNodeAPI(cctx)
+		api, closer, err := GetFullNodeAPI(cctx)
 		if err != nil {
 			return err
 		}
+		defer closer()
 		ctx := ReqContext(cctx)
 
 		var addr address.Address

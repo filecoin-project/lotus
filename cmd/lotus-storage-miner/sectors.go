@@ -13,10 +13,11 @@ var storeGarbageCmd = &cli.Command{
 	Name:  "store-garbage",
 	Usage: "store random data in a sector",
 	Action: func(cctx *cli.Context) error {
-		nodeApi, err := lcli.GetStorageMinerAPI(cctx)
+		nodeApi, closer, err := lcli.GetStorageMinerAPI(cctx)
 		if err != nil {
 			return err
 		}
+		defer closer()
 		ctx := lcli.ReqContext(cctx)
 
 		sectorId, err := nodeApi.StoreGarbageData(ctx)
@@ -44,10 +45,11 @@ var sectorsStatusCmd = &cli.Command{
 	Name:  "status",
 	Usage: "Get the seal status of a sector by its ID",
 	Action: func(cctx *cli.Context) error {
-		nodeApi, err := lcli.GetStorageMinerAPI(cctx)
+		nodeApi, closer, err := lcli.GetStorageMinerAPI(cctx)
 		if err != nil {
 			return err
 		}
+		defer closer()
 		ctx := lcli.ReqContext(cctx)
 
 		if !cctx.Args().Present() {
@@ -80,10 +82,11 @@ var sectorsStagedListCmd = &cli.Command{
 	Name:  "list-staged", // TODO: nest this under a 'staged' subcommand? idk
 	Usage: "List staged sectors",
 	Action: func(cctx *cli.Context) error {
-		nodeApi, err := lcli.GetStorageMinerAPI(cctx)
+		nodeApi, closer, err := lcli.GetStorageMinerAPI(cctx)
 		if err != nil {
 			return err
 		}
+		defer closer()
 		ctx := lcli.ReqContext(cctx)
 
 		staged, err := nodeApi.SectorsStagedList(ctx)
@@ -102,10 +105,11 @@ var sectorsStagedSealCmd = &cli.Command{
 	Name:  "seal-staged", // TODO: nest this under a 'staged' subcommand? idk
 	Usage: "Seal staged sectors",
 	Action: func(cctx *cli.Context) error {
-		nodeApi, err := lcli.GetStorageMinerAPI(cctx)
+		nodeApi, closer, err := lcli.GetStorageMinerAPI(cctx)
 		if err != nil {
 			return err
 		}
+		defer closer()
 		ctx := lcli.ReqContext(cctx)
 
 		return nodeApi.SectorsStagedSeal(ctx)
@@ -116,10 +120,11 @@ var sectorsRefsCmd = &cli.Command{
 	Name:  "refs",
 	Usage: "List References to sectors",
 	Action: func(cctx *cli.Context) error {
-		nodeApi, err := lcli.GetStorageMinerAPI(cctx)
+		nodeApi, closer, err := lcli.GetStorageMinerAPI(cctx)
 		if err != nil {
 			return err
 		}
+		defer closer()
 		ctx := lcli.ReqContext(cctx)
 
 		refs, err := nodeApi.SectorsRefs(ctx)

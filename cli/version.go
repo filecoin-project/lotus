@@ -10,10 +10,11 @@ var versionCmd = &cli.Command{
 	Name:  "version",
 	Usage: "Print version",
 	Action: func(cctx *cli.Context) error {
-		api, err := GetAPI(cctx)
+		api, closer, err := GetAPI(cctx)
 		if err != nil {
 			return err
 		}
+		defer closer()
 
 		ctx := ReqContext(cctx)
 		// TODO: print more useful things

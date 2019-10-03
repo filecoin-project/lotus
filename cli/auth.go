@@ -20,10 +20,12 @@ var authCreateAdminToken = &cli.Command{
 	Name:  "create-admin-token",
 	Usage: "Create admin token",
 	Action: func(cctx *cli.Context) error {
-		napi, err := GetFullNodeAPI(cctx)
+		napi, closer, err := GetFullNodeAPI(cctx)
 		if err != nil {
 			return err
 		}
+		defer closer()
+
 		ctx := ReqContext(cctx)
 
 		// TODO: Probably tell the user how powerful this token is
