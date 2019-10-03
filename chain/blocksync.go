@@ -349,7 +349,7 @@ func (bs *BlockSync) GetChainMessages(ctx context.Context, h *types.TipSet, coun
 	}
 
 	// TODO: What if we have no peers (and err is nil)?
-	return nil, xerrors.Errorf("GetChainMessages failed with all peers: %w", err)
+	return nil, xerrors.Errorf("GetChainMessages failed with all peers(%d): %w", len(peers), err)
 }
 
 func bstsToFullTipSet(bts *BSTipSet) (*store.FullTipSet, error) {

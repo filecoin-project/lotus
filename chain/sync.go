@@ -99,7 +99,7 @@ func (syncer *Syncer) InformNewHead(from peer.ID, fts *store.FullTipSet) {
 		log.Debug("got block from ourselves")
 
 		if err := syncer.Sync(fts); err != nil {
-			log.Errorf("failed to sync our own block: %s", err)
+			log.Errorf("failed to sync our own block: %+v", err)
 		}
 
 		return
@@ -111,7 +111,7 @@ func (syncer *Syncer) InformNewHead(from peer.ID, fts *store.FullTipSet) {
 
 	go func() {
 		if err := syncer.Sync(fts); err != nil {
-			log.Errorf("sync error: %s", err)
+			log.Errorf("sync error: %+v", err)
 		}
 	}()
 }
@@ -532,7 +532,7 @@ loop:
 			// Most likely our peers aren't fully synced yet, but forwarded
 			// new block message (ideally we'd find better peers)
 
-			log.Error("failed to get blocks: ", err)
+			log.Errorf("failed to get blocks: %+v", err)
 
 			// This error will only be logged above,
 			return nil, xerrors.Errorf("failed to get blocks: %w", err)
@@ -570,9 +570,9 @@ loop:
 func (syncer *Syncer) syncMessagesAndCheckState(headers []*types.TipSet) error {
 	syncer.syncState.SetHeight(0)
 	return syncer.iterFullTipsets(headers, func(fts *store.FullTipSet) error {
-		log.Debugf("validating tipset (heigt=%d, size=%d)", fts.TipSet().Height(), len(fts.TipSet().Cids()))
+		log.Debugw("validating tipset", "height", fts.TipSet().Height(), "size", len(fts.TipSet().Cids()))
 		if err := syncer.ValidateTipSet(context.TODO(), fts); err != nil {
-			log.Errorf("failed to validate tipset: %s", err)
+			log.Errorf("failed to validate tipset: %+v", err)
 			return xerrors.Errorf("message processing failed: %w", err)
 		}
 
@@ -625,11 +625,9 @@ func (syncer *Syncer) iterFullTipsets(headers []*types.TipSet, cb func(*store.Fu
 			bstip := bstips[len(bstips)-(bsi+1)]
 			fts, err := zipTipSetAndMessages(blks, this, bstip.BlsMessages, bstip.SecpkMessages, bstip.BlsMsgIncludes, bstip.SecpkMsgIncludes)
 			if err != nil {
-				log.Warn("zipping failed: ", err, bsi, i)
-				log.Warn("height: ", this.Height())
-				log.Warn("bstip height: ", bstip.Blocks[0].Height)
-				log.Warn("bstips: ", bstips)
-				log.Warn("next height: ", i+batchSize)
+				log.Warnw("zipping failed", "error", err, "bsi", bsi, "i", i,
+					"height", this.Height(), "bstip-height", bstip.Blocks[0].Height,
+					"bstips", bstips, "next-height", i+batchSize)
 				return xerrors.Errorf("message processing failed: %w", err)
 			}
 
@@ -655,7 +653,7 @@ func persistMessages(bs bstore.Blockstore, bst *BSTipSet) error {
 	for _, m := range bst.BlsMessages {
 		//log.Infof("putting BLS message: %s", m.Cid())
 		if _, err := store.PutMessage(bs, m); err != nil {
-			log.Error("failed to persist messages: ", err)
+			log.Errorf("failed to persist messages: %+v", err)
 			return xerrors.Errorf("BLS message processing failed: %w", err)
 		}
 	}
@@ -665,7 +663,7 @@ func persistMessages(bs bstore.Blockstore, bst *BSTipSet) error {
 		}
 		//log.Infof("putting secp256k1 message: %s", m.Cid())
 		if _, err := store.PutMessage(bs, m); err != nil {
-			log.Error("failed to persist messages: ", err)
+			log.Errorf("failed to persist messages: %+v", err)
 			return xerrors.Errorf("secp256k1 message processing failed: %w", err)
 		}
 	}
