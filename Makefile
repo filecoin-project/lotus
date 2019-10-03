@@ -79,6 +79,8 @@ build: $(BUILD_DEPS)
 	go run github.com/GeertJohan/go.rice/rice append --exec lotus-storage-miner -i ./build
 .PHONY: build
 
+CLEAN+= lotus lotus-storage-miner
+
 benchmarks:
 	go run github.com/whyrusleeping/bencher ./... > bench.json
 	@echo Submitting results
