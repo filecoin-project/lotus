@@ -31,24 +31,15 @@ $ make
 
 ### Node setup
 
-Download genesis, and parameters
-```sh
-$ wget https://ipfs.io/ipfs/QmXg1SGdZ4WPkJcWnEVhxp7Jw4AQEfCwYDGwiMkXciCsUT/lotus.car
-$ wget https://ipfs.io/ipfs/QmXg1SGdZ4WPkJcWnEVhxp7Jw4AQEfCwYDGwiMkXciCsUT/paramfetch.sh
-$ chmod +x paramfetch.sh
-$ ./paramfetch.sh
-```
-
 Start full node daemon
 ```sh
-$ lotus daemon --genesis=lotus.car
+$ lotus daemon
 ```
 
 Connect to the network:
 ```sh
-$ wget https://ipfs.io/ipfs/QmXg1SGdZ4WPkJcWnEVhxp7Jw4AQEfCwYDGwiMkXciCsUT/bootstrap.sh
-$ chmod +x bootstrap.sh
-$ ./bootstrap.sh
+$ lotus net connect /ip4/147.75.80.29/tcp/1347/p2p/12D3KooWCVHT8n1fJJSW9aQk7UMisBQuW5fmGR9mp4gMKv8jsEA6
+$ lotus net connect /ip4/147.75.80.17/tcp/1347/p2p/12D3KooWFoAx81Vgec5XsRhYWWX3oNkxRdwpmXpgDhaGK27aaqGk
 ```
 
 [wait for the chain to finish syncing]
