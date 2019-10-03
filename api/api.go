@@ -54,7 +54,8 @@ type FullNode interface {
 	ChainWaitMsg(context.Context, cid.Cid) (*MsgWait, error)
 	ChainGetBlock(context.Context, cid.Cid) (*types.BlockHeader, error)
 	ChainGetBlockMessages(context.Context, cid.Cid) (*BlockMessages, error)
-	ChainGetBlockReceipts(context.Context, cid.Cid) ([]*types.MessageReceipt, error)
+	ChainGetParentReceipts(context.Context, cid.Cid) ([]*types.MessageReceipt, error)
+	ChainGetParentMessages(context.Context, cid.Cid) ([]cid.Cid, error)
 	ChainGetTipSetByHeight(context.Context, uint64, *types.TipSet) (*types.TipSet, error)
 	ChainReadObj(context.Context, cid.Cid) ([]byte, error)
 

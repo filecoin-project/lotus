@@ -44,7 +44,8 @@ type FullNodeStruct struct {
 		ChainWaitMsg           func(context.Context, cid.Cid) (*MsgWait, error)                           `perm:"read"`
 		ChainGetBlock          func(context.Context, cid.Cid) (*types.BlockHeader, error)                 `perm:"read"`
 		ChainGetBlockMessages  func(context.Context, cid.Cid) (*BlockMessages, error)                     `perm:"read"`
-		ChainGetBlockReceipts  func(context.Context, cid.Cid) ([]*types.MessageReceipt, error)            `perm:"read"`
+		ChainGetParentReceipts func(context.Context, cid.Cid) ([]*types.MessageReceipt, error)            `perm:"read"`
+		ChainGetParentMessages func(context.Context, cid.Cid) ([]cid.Cid, error)                          `perm:"read"`
 		ChainGetTipSetByHeight func(context.Context, uint64, *types.TipSet) (*types.TipSet, error)        `perm:"read"`
 		ChainReadObj           func(context.Context, cid.Cid) ([]byte, error)                             `perm:"read"`
 
@@ -279,8 +280,12 @@ func (c *FullNodeStruct) ChainGetBlockMessages(ctx context.Context, b cid.Cid) (
 	return c.Internal.ChainGetBlockMessages(ctx, b)
 }
 
-func (c *FullNodeStruct) ChainGetBlockReceipts(ctx context.Context, b cid.Cid) ([]*types.MessageReceipt, error) {
-	return c.Internal.ChainGetBlockReceipts(ctx, b)
+func (c *FullNodeStruct) ChainGetParentReceipts(ctx context.Context, b cid.Cid) ([]*types.MessageReceipt, error) {
+	return c.Internal.ChainGetParentReceipts(ctx, b)
+}
+
+func (c *FullNodeStruct) ChainGetParentMessages(ctx context.Context, b cid.Cid) ([]cid.Cid, error) {
+	return c.Internal.ChainGetParentMessages(ctx, b)
 }
 
 func (c *FullNodeStruct) ChainNotify(ctx context.Context) (<-chan []*store.HeadChange, error) {

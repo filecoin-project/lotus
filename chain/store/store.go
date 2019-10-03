@@ -617,7 +617,7 @@ func (cs *ChainStore) MessagesForBlock(b *types.BlockHeader) ([]*types.Message, 
 	return blsmsgs, secpkmsgs, nil
 }
 
-func (cs *ChainStore) GetReceipt(b *types.BlockHeader, i int) (*types.MessageReceipt, error) {
+func (cs *ChainStore) GetParentReceipt(b *types.BlockHeader, i int) (*types.MessageReceipt, error) {
 	bs := amt.WrapBlockstore(cs.bs)
 	a, err := amt.LoadAMT(bs, b.ParentMessageReceipts)
 	if err != nil {
@@ -718,39 +718,7 @@ func (cs *ChainStore) tipsetExecutedMessage(ts *types.TipSet, msg cid.Cid) (*typ
 
 	for i, m := range cm {
 		if m.Cid() == msg {
-			return cs.GetReceipt(ts.Blocks()[0], i)
-		}
-	}
-
-	return nil, nil
-}
-
-func (cs *ChainStore) blockContainsMsg(blk *types.BlockHeader, msg cid.Cid) (*types.MessageReceipt, error) {
-	cst := hamt.CSTFromBstore(cs.bs)
-	var msgmeta types.MsgMeta
-	if err := cst.Get(context.TODO(), blk.Messages, &msgmeta); err != nil {
-		return nil, err
-	}
-
-	blscids, err := cs.readAMTCids(msgmeta.BlsMessages)
-	if err != nil {
-		return nil, errors.Wrap(err, "loading bls message cids for block")
-	}
-
-	for i, c := range blscids {
-		if c == msg {
-			return cs.GetReceipt(blk, i)
-		}
-	}
-
-	secpkcids, err := cs.readAMTCids(msgmeta.SecpkMessages)
-	if err != nil {
-		return nil, errors.Wrap(err, "loading secpk message cids for block")
-	}
-
-	for i, c := range secpkcids {
-		if c == msg {
-			return cs.GetReceipt(blk, i+len(blscids))
+			return cs.GetParentReceipt(ts.Blocks()[0], i)
 		}
 	}
 

@@ -4,6 +4,7 @@ import (
 	"encoding/json"
 	"fmt"
 
+	"golang.org/x/xerrors"
 	"gopkg.in/urfave/cli.v2"
 
 	types "github.com/filecoin-project/go-lotus/chain/types"
@@ -69,7 +70,7 @@ var chainGetBlock = &cli.Command{
 
 		blk, err := api.ChainGetBlock(ctx, bcid)
 		if err != nil {
-			return err
+			return xerrors.Errorf("get block failed: %w", err)
 		}
 
 		if cctx.Bool("raw") {
@@ -84,25 +85,33 @@ var chainGetBlock = &cli.Command{
 
 		msgs, err := api.ChainGetBlockMessages(ctx, bcid)
 		if err != nil {
-			return err
+			return xerrors.Errorf("failed to get messages: %w", err)
 		}
 
-		recpts, err := api.ChainGetBlockReceipts(ctx, bcid)
+		pmsgs, err := api.ChainGetParentMessages(ctx, bcid)
 		if err != nil {
-			return err
+			return xerrors.Errorf("failed to get parent messages: %w", err)
+		}
+
+		recpts, err := api.ChainGetParentReceipts(ctx, bcid)
+		if err != nil {
+			log.Warn(err)
+			//return xerrors.Errorf("failed to get receipts: %w", err)
 		}
 
 		cblock := struct {
 			types.BlockHeader
-			BlsMessages     []*types.Message
-			SecpkMessages   []*types.SignedMessage
-			MessageReceipts []*types.MessageReceipt
+			BlsMessages    []*types.Message
+			SecpkMessages  []*types.SignedMessage
+			ParentReceipts []*types.MessageReceipt
+			ParentMessages []cid.Cid
 		}{}
 
 		cblock.BlockHeader = *blk
 		cblock.BlsMessages = msgs.BlsMessages
 		cblock.SecpkMessages = msgs.SecpkMessages
-		cblock.MessageReceipts = recpts
+		cblock.ParentReceipts = recpts
+		cblock.ParentMessages = pmsgs
 
 		out, err := json.MarshalIndent(cblock, "", "  ")
 		if err != nil {
