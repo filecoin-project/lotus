@@ -4,7 +4,6 @@ import (
 	"errors"
 
 	"github.com/ipfs/go-datastore"
-	"github.com/libp2p/go-libp2p-core/crypto"
 	"github.com/multiformats/go-multiaddr"
 
 	"github.com/filecoin-project/go-lotus/chain/types"
@@ -41,9 +40,6 @@ type LockedRepo interface {
 
 	// Returns config in this repo
 	Config() (*config.Root, error)
-
-	// Libp2pIdentity returns private key for libp2p indentity
-	Libp2pIdentity() (crypto.PrivKey, error)
 
 	// SetAPIEndpoint sets the endpoint of the current API
 	// so it can be read by API clients

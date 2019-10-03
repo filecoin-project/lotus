@@ -1,13 +1,11 @@
 package repo
 
 import (
-	"crypto/rand"
 	"sync"
 
 	"github.com/ipfs/go-datastore"
 	"github.com/ipfs/go-datastore/namespace"
 	dssync "github.com/ipfs/go-datastore/sync"
-	"github.com/libp2p/go-libp2p-core/crypto"
 	"github.com/multiformats/go-multiaddr"
 	"golang.org/x/xerrors"
 
@@ -27,7 +25,6 @@ type MemRepo struct {
 
 	datastore datastore.Datastore
 	configF   func() *config.Root
-	libp2pKey crypto.PrivKey
 	keystore  map[string]types.KeyInfo
 }
 
@@ -46,18 +43,9 @@ var _ Repo = &MemRepo{}
 
 // MemRepoOptions contains options for memory repo
 type MemRepoOptions struct {
-	Ds        datastore.Datastore
-	ConfigF   func() *config.Root
-	Libp2pKey crypto.PrivKey
-	KeyStore  map[string]types.KeyInfo
-}
-
-func genLibp2pKey() (crypto.PrivKey, error) {
-	pk, _, err := crypto.GenerateEd25519Key(rand.Reader)
-	if err != nil {
-		return nil, err
-	}
-	return pk, nil
+	Ds       datastore.Datastore
+	ConfigF  func() *config.Root
+	KeyStore map[string]types.KeyInfo
 }
 
 // NewMemory creates new memory based repo with provided options.
@@ -73,13 +61,6 @@ func NewMemory(opts *MemRepoOptions) *MemRepo {
 	if opts.Ds == nil {
 		opts.Ds = dssync.MutexWrap(datastore.NewMapDatastore())
 	}
-	if opts.Libp2pKey == nil {
-		pk, err := genLibp2pKey()
-		if err != nil {
-			panic(err)
-		}
-		opts.Libp2pKey = pk
-	}
 	if opts.KeyStore == nil {
 		opts.KeyStore = make(map[string]types.KeyInfo)
 	}
@@ -89,7 +70,6 @@ func NewMemory(opts *MemRepoOptions) *MemRepo {
 
 		datastore: opts.Ds,
 		configF:   opts.ConfigF,
-		libp2pKey: opts.Libp2pKey,
 		keystore:  opts.KeyStore,
 	}
 }
@@ -168,13 +148,6 @@ func (lmem *lockedMemRepo) Config() (*config.Root, error) {
 		return nil, err
 	}
 	return lmem.mem.configF(), nil
-}
-
-func (lmem *lockedMemRepo) Libp2pIdentity() (crypto.PrivKey, error) {
-	if err := lmem.checkToken(); err != nil {
-		return nil, err
-	}
-	return lmem.mem.libp2pKey, nil
 }
 
 func (lmem *lockedMemRepo) SetAPIEndpoint(ma multiaddr.Multiaddr) error {
