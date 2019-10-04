@@ -38,8 +38,8 @@ $ lotus daemon
 
 Connect to the network:
 ```sh
-$ lotus net connect /ip4/147.75.80.29/tcp/1347/p2p/12D3KooWCVHT8n1fJJSW9aQk7UMisBQuW5fmGR9mp4gMKv8jsEA6
-$ lotus net connect /ip4/147.75.80.17/tcp/1347/p2p/12D3KooWFoAx81Vgec5XsRhYWWX3oNkxRdwpmXpgDhaGK27aaqGk
+$ lotus net connect /ip4/147.75.80.29/tcp/1347/p2p/12D3KooWGThG7Ct5aX4tTRkgvjr3pT2JyCyyvK77GhXVQ9Cfjzj2
+$ lotus net connect /ip4/147.75.80.17/tcp/1347/p2p/12D3KooWRNm4a6ESBr9bbTpSC2CfLfoWKRpABJi7FR3GhHw7usKW
 ```
 
 [wait for the chain to finish syncing]
