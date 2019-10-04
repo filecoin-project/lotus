@@ -64,10 +64,11 @@ var runCmd = &cli.Command{
 		},
 	},
 	Action: func(cctx *cli.Context) error {
-		nodeApi, err := lcli.GetFullNodeAPI(cctx)
+		nodeApi, closer,  err := lcli.GetFullNodeAPI(cctx)
 		if err != nil {
 			return err
 		}
+		defer closer()
 		ctx := lcli.ReqContext(cctx)
 
 		v, err := nodeApi.Version(ctx)

@@ -4,11 +4,12 @@ import (
 	"bytes"
 	"context"
 	"crypto/rand"
-	"github.com/libp2p/go-libp2p-core/crypto"
 	"io/ioutil"
 	"net/http/httptest"
 	"os"
 	"testing"
+
+	"github.com/libp2p/go-libp2p-core/crypto"
 
 	"github.com/ipfs/go-datastore"
 	"github.com/libp2p/go-libp2p-core/peer"
@@ -193,7 +194,7 @@ func rpcBuilder(t *testing.T, nFull int, storage []int) ([]test.TestNode, []test
 		testServ := httptest.NewServer(rpcServer) //  todo: close
 
 		var err error
-		fulls[i].FullNode, err = client.NewFullNodeRPC("ws://"+testServ.Listener.Addr().String(), nil)
+		fulls[i].FullNode, _, err = client.NewFullNodeRPC("ws://"+testServ.Listener.Addr().String(), nil)
 		if err != nil {
 			t.Fatal(err)
 		}
@@ -206,7 +207,7 @@ func rpcBuilder(t *testing.T, nFull int, storage []int) ([]test.TestNode, []test
 		testServ := httptest.NewServer(rpcServer) //  todo: close
 
 		var err error
-		storers[i].StorageMiner, err = client.NewStorageMinerRPC("ws://"+testServ.Listener.Addr().String(), nil)
+		storers[i].StorageMiner, _, err = client.NewStorageMinerRPC("ws://"+testServ.Listener.Addr().String(), nil)
 		if err != nil {
 			t.Fatal(err)
 		}

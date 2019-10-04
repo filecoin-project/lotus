@@ -444,6 +444,7 @@ func (c *wsConn) handleWsConn(ctx context.Context) {
 			}
 			c.sendRequest(req.req)
 		case <-c.stop:
+			c.writeLk.Lock()
 			cmsg := websocket.FormatCloseMessage(websocket.CloseNormalClosure, "")
 			if err := c.conn.WriteMessage(websocket.CloseMessage, cmsg); err != nil {
 				log.Warn("failed to write close message: ", err)
@@ -451,6 +452,7 @@ func (c *wsConn) handleWsConn(ctx context.Context) {
 			if err := c.conn.Close(); err != nil {
 				log.Warnw("websocket close error", "error", err)
 			}
+			c.writeLk.Unlock()
 			return
 		}
 	}
