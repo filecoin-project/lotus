@@ -88,7 +88,13 @@ func (tsc *tipSetCache) get(height uint64) (*types.TipSet, error) {
 	}
 
 	clen := len(tsc.cache)
-	tail := tsc.cache[normalModulo(tsc.start-tsc.len+1, clen)]
+	var tail *types.TipSet
+	for i := 1; i <= tsc.len; i++ {
+		tail = tsc.cache[normalModulo(tsc.start-tsc.len+i, clen)]
+		if tail != nil {
+			break
+		}
+	}
 
 	if height < tail.Height() {
 		log.Warnf("tipSetCache.get: requested tipset not in cache, requesting from storage (h=%d; tail=%d)", height, tail.Height())

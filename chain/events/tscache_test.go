@@ -99,4 +99,11 @@ func TestTsCacheNulls(t *testing.T) {
 	require.NoError(t, tsc.revert(tsc.best()))
 	require.NoError(t, tsc.revert(tsc.best()))
 	require.Equal(t, h-8, tsc.best().Height())
+
+	h += 50
+	add()
+
+	ts, err = tsc.get(h - 1)
+	require.NoError(t, err)
+	require.Equal(t, h-1, ts.Height())
 }
