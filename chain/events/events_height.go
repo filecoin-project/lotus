@@ -53,7 +53,7 @@ func (e *heightEvents) headChangeAt(rev, app []*types.TipSet) error {
 				break
 			}
 
-			revert(subh, nil)
+			revert(subh, ts)
 			subh--
 		}
 
@@ -103,7 +103,7 @@ func (e *heightEvents) headChangeAt(rev, app []*types.TipSet) error {
 				break
 			}
 
-			if err := apply(subh, nil); err != nil {
+			if err := apply(subh, ts); err != nil {
 				return err
 			}
 
@@ -118,6 +118,8 @@ func (e *heightEvents) headChangeAt(rev, app []*types.TipSet) error {
 // ChainAt invokes the specified `HeightHandler` when the chain reaches the
 //  specified height+confidence threshold. If the chain is rolled-back under the
 //  specified height, `RevertHandler` will be called.
+//
+// ts passed to handlers is the tipset at the specified, or above, if lower tipsets were null
 func (e *heightEvents) ChainAt(hnd HeightHandler, rev RevertHandler, confidence int, h uint64) error {
 	e.lk.Lock()
 	defer e.lk.Unlock()
