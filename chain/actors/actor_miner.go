@@ -349,7 +349,7 @@ func (sma StorageMinerActor) SubmitPoSt(act *types.Actor, vmctx types.VMContext,
 		randHeight := currentProvingPeriodEnd - build.PoSTChallangeTime
 		if vmctx.BlockHeight() <= randHeight {
 			// TODO: spec, retcode
-			return nil, aerrors.New(1, "submit PoSt called outside submission window")
+			return nil, aerrors.Newf(1, "submit PoSt called outside submission window (%d < %d)", vmctx.BlockHeight(), randHeight)
 		}
 
 		rand, err := vmctx.GetRandomness(randHeight)
