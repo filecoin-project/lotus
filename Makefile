@@ -50,36 +50,32 @@ build/.update-modules:
 
 ## PROOFS
 
-bin/ipget:
-	./bin/dist_get /ipns/dist.ipfs.io ipget bin/ipget v0.5.0
-
-PARAM_SECTOR_SIZES:=1024 16777216 268435456 1073741824
-PARAM_SECTOR_SIZES:=$(addprefix build/.params-,$(PARAM_SECTOR_SIZES))
-
-./build/paramfetch.sh: build/proof-params/parameters.json
-	build/proof-params/mkparamfetch.sh
-
-$(PARAM_SECTOR_SIZES): ./build/paramfetch.sh build/proof-params/parameters.json bin/ipget
-	./build/paramfetch.sh
-	touch $@
-
-BUILD_DEPS+=build/.params-1024
-CLEAN+=build/.params-1024
-
 CLEAN+=build/.update-modules
 
 deps: $(BUILD_DEPS)
 .PHONY: deps
 
-build: $(BUILD_DEPS)
-	rm -f lotus lotus-storage-miner
+lotus: $(BUILD_DEPS)
+	rm -f lotus
 	go build -o lotus ./cmd/lotus
-	go build -o lotus-storage-miner ./cmd/lotus-storage-miner
 	go run github.com/GeertJohan/go.rice/rice append --exec lotus -i ./build
+
+.PHONY: lotus
+CLEAN+=lotus
+
+lotus-sotrage-miner: $(BUILD_DEPS)
+	rm -f lotus-storage-miner
+	go build -o lotus-storage-miner ./cmd/lotus-storage-miner
 	go run github.com/GeertJohan/go.rice/rice append --exec lotus-storage-miner -i ./build
+
+.PHONY: lotus-storage-miner
+
+CLEAN+=lotus-storage-miner
+
+build: lotus lotus-sotrage-miner
+
 .PHONY: build
 
-CLEAN+= lotus lotus-storage-miner
 
 benchmarks:
 	go run github.com/whyrusleeping/bencher ./... > bench.json
