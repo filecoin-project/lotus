@@ -3,6 +3,7 @@ package types
 import (
 	"fmt"
 	"io"
+	"sort"
 
 	"github.com/filecoin-project/go-lotus/extern/rleplus"
 	cbg "github.com/whyrusleeping/cbor-gen"
@@ -47,6 +48,8 @@ func (bf BitField) All() []uint64 {
 	for i := range bf.bits {
 		res = append(res, i)
 	}
+
+	sort.Slice(res, func(i, j int) bool { return res[i] < res[j] })
 	return res
 }
 
