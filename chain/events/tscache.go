@@ -31,9 +31,24 @@ func newTSCache(cap int, storage tsByHFunc) *tipSetCache {
 
 func (tsc *tipSetCache) add(ts *types.TipSet) error {
 	if tsc.len > 0 {
-		if tsc.cache[tsc.start].Height()+1 != ts.Height() {
-			return xerrors.Errorf("tipSetCache.add: expected new tipset height to be %d, was %d", tsc.cache[tsc.start].Height()+1, ts.Height())
+		if tsc.cache[tsc.start].Height() >= ts.Height() {
+			return xerrors.Errorf("tipSetCache.add: expected new tipset height to be at least %d, was %d", tsc.cache[tsc.start].Height()+1, ts.Height())
 		}
+	}
+
+	nextH := ts.Height()
+	if tsc.len > 0 {
+		nextH = tsc.cache[tsc.start].Height() + 1
+	}
+
+	// fill null blocks
+	for nextH != ts.Height() {
+		tsc.start = normalModulo(tsc.start+1, len(tsc.cache))
+		tsc.cache[tsc.start] = nil
+		if tsc.len < len(tsc.cache) {
+			tsc.len++
+		}
+		nextH++
 	}
 
 	tsc.start = normalModulo(tsc.start+1, len(tsc.cache))
@@ -56,6 +71,8 @@ func (tsc *tipSetCache) revert(ts *types.TipSet) error {
 	tsc.cache[tsc.start] = nil
 	tsc.start = normalModulo(tsc.start-1, len(tsc.cache))
 	tsc.len--
+
+	_ = tsc.revert(nil) // revert null block gap
 	return nil
 }
 

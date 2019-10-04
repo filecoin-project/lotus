@@ -114,27 +114,38 @@ func (fcs *fakeCS) fakeMsgs(m fakeMsg) cid.Cid {
 	return c
 }
 
-func (fcs *fakeCS) advance(rev, app int, msgs map[int]cid.Cid) { // todo: allow msgs
+func (fcs *fakeCS) advance(rev, app int, msgs map[int]cid.Cid, nulls ...int) { // todo: allow msgs
 	if fcs.sub == nil {
 		fcs.t.Fatal("sub not be nil")
+	}
+
+	nullm := map[int]struct{}{}
+	for _, v := range nulls {
+		nullm[v] = struct{}{}
 	}
 
 	var revs []*types.TipSet
 	for i := 0; i < rev; i++ {
 		ts := fcs.tsc.best()
 
-		revs = append(revs, ts)
+		if _, ok := nullm[int(ts.Height())]; !ok {
+			revs = append(revs, ts)
+			require.NoError(fcs.t, fcs.tsc.revert(ts))
+		}
 		fcs.h--
-		require.NoError(fcs.t, fcs.tsc.revert(ts))
 	}
 
-	apps := make([]*types.TipSet, app)
+	var apps []*types.TipSet
 	for i := 0; i < app; i++ {
 		fcs.h++
 
 		mc, hasMsgs := msgs[i]
 		if !hasMsgs {
 			mc = dummyCid
+		}
+
+		if _, ok := nullm[int(fcs.h)]; ok {
+			continue
 		}
 
 		ts := makeTs(fcs.t, fcs.h, mc)
@@ -144,7 +155,11 @@ func (fcs *fakeCS) advance(rev, app int, msgs map[int]cid.Cid) { // todo: allow 
 			fcs.blkMsgs[ts.Blocks()[0].Cid()] = mc
 		}
 
-		apps[app-i-1] = ts
+		apps = append(apps, ts)
+	}
+
+	for i, j := 0, len(apps)-1; i < j; i, j = i+1, j-1 {
+		apps[i], apps[j] = apps[j], apps[i]
 	}
 
 	fcs.sub(revs, apps)
@@ -210,6 +225,79 @@ func TestAt(t *testing.T) {
 	fcs.advance(0, 1, nil) // 8
 	require.Equal(t, true, applied)
 	require.Equal(t, false, reverted)
+}
+
+func TestAtNullTrigger(t *testing.T) {
+	fcs := &fakeCS{
+		t:   t,
+		h:   1,
+		tsc: newTSCache(2*build.ForkLengthThreshold, nil),
+	}
+	require.NoError(t, fcs.tsc.add(makeTs(t, 1, dummyCid)))
+
+	events := NewEvents(context.Background(), fcs)
+
+	var applied bool
+	var reverted bool
+
+	err := events.ChainAt(func(ts *types.TipSet, curH uint64) error {
+		require.Nil(t, ts)
+		require.Equal(t, 8, int(curH))
+		applied = true
+		return nil
+	}, func(ts *types.TipSet) error {
+		reverted = true
+		return nil
+	}, 3, 5)
+	require.NoError(t, err)
+
+	fcs.advance(0, 6, nil, 5)
+	require.Equal(t, false, applied)
+	require.Equal(t, false, reverted)
+
+	fcs.advance(0, 3, nil)
+	require.Equal(t, true, applied)
+	require.Equal(t, false, reverted)
+	applied = false
+}
+
+func TestAtNullConf(t *testing.T) {
+	fcs := &fakeCS{
+		t:   t,
+		h:   1,
+		tsc: newTSCache(2*build.ForkLengthThreshold, nil),
+	}
+	require.NoError(t, fcs.tsc.add(makeTs(t, 1, dummyCid)))
+
+	events := NewEvents(context.Background(), fcs)
+
+	var applied bool
+	var reverted bool
+
+	err := events.ChainAt(func(ts *types.TipSet, curH uint64) error {
+		require.Equal(t, 5, int(ts.Height()))
+		require.Equal(t, 8, int(curH))
+		applied = true
+		return nil
+	}, func(ts *types.TipSet) error {
+		reverted = true
+		return nil
+	}, 3, 5)
+	require.NoError(t, err)
+
+	fcs.advance(0, 6, nil)
+	require.Equal(t, false, applied)
+	require.Equal(t, false, reverted)
+
+	fcs.advance(0, 3, nil, 8)
+	require.Equal(t, true, applied)
+	require.Equal(t, false, reverted)
+	applied = false
+
+	fcs.advance(7, 1, nil)
+	require.Equal(t, false, applied)
+	require.Equal(t, true, reverted)
+	reverted = false
 }
 
 func TestAtStart(t *testing.T) {
