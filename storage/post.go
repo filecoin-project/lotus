@@ -121,7 +121,7 @@ func (m *Miner) computePost(ppe uint64) func(ts *types.TipSet, curH uint64) erro
 
 		params := &actors.SubmitPoStParams{
 			Proof:   proof,
-			DoneSet: types.BitFieldFromSet(sectorIdList(sset)),
+			DoneSet: types.BitFieldFromSet(nil),
 		}
 
 		enc, aerr := actors.SerializeParams(params)
