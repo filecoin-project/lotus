@@ -50,22 +50,6 @@ build/.update-modules:
 
 ## PROOFS
 
-bin/ipget:
-	./bin/dist_get /ipns/dist.ipfs.io ipget bin/ipget v0.5.0
-
-PARAM_SECTOR_SIZES:=1024 16777216 268435456 1073741824
-PARAM_SECTOR_SIZES:=$(addprefix build/.params-,$(PARAM_SECTOR_SIZES))
-
-./build/paramfetch.sh: build/proof-params/parameters.json
-	build/proof-params/mkparamfetch.sh
-
-$(PARAM_SECTOR_SIZES): ./build/paramfetch.sh build/proof-params/parameters.json bin/ipget
-	./build/paramfetch.sh
-	touch $@
-
-BUILD_DEPS+=build/.params-1024
-CLEAN+=build/.params-1024
-
 CLEAN+=build/.update-modules
 
 deps: $(BUILD_DEPS)
