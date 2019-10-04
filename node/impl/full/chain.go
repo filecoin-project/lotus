@@ -93,21 +93,51 @@ func (a *ChainAPI) ChainGetBlockMessages(ctx context.Context, msg cid.Cid) (*api
 	}, nil
 }
 
-func (a *ChainAPI) ChainGetBlockReceipts(ctx context.Context, bcid cid.Cid) ([]*types.MessageReceipt, error) {
+func (a *ChainAPI) ChainGetParentMessages(ctx context.Context, bcid cid.Cid) ([]cid.Cid, error) {
 	b, err := a.Chain.GetBlock(bcid)
 	if err != nil {
 		return nil, err
 	}
 
 	// TODO: need to get the number of messages better than this
-	bm, sm, err := a.Chain.MessagesForBlock(b)
+	pts, err := a.Chain.LoadTipSet(b.Parents)
+	if err != nil {
+		return nil, err
+	}
+
+	cm, err := a.Chain.MessagesForTipset(pts)
+	if err != nil {
+		return nil, err
+	}
+
+	var out []cid.Cid
+	for _, m := range cm {
+		out = append(out, m.Cid())
+	}
+
+	return out, nil
+}
+
+func (a *ChainAPI) ChainGetParentReceipts(ctx context.Context, bcid cid.Cid) ([]*types.MessageReceipt, error) {
+	b, err := a.Chain.GetBlock(bcid)
+	if err != nil {
+		return nil, err
+	}
+
+	// TODO: need to get the number of messages better than this
+	pts, err := a.Chain.LoadTipSet(b.Parents)
+	if err != nil {
+		return nil, err
+	}
+
+	cm, err := a.Chain.MessagesForTipset(pts)
 	if err != nil {
 		return nil, err
 	}
 
 	var out []*types.MessageReceipt
-	for i := 0; i < len(bm)+len(sm); i++ {
-		r, err := a.Chain.GetReceipt(b, i)
+	for i := 0; i < len(cm); i++ {
+		r, err := a.Chain.GetParentReceipt(b, i)
 		if err != nil {
 			return nil, err
 		}
