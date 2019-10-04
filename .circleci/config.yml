@@ -26,7 +26,7 @@ commands:
             - 'v2-lotus-params-'
           paths:
             - /var/tmp/filecoin-proof-parameters/
-      - run:  make build/.params-1024
+      - run:  ./lotus fetch-params
       - save_cache:
           name: Save parameters cache
           key: 'v2-lotus-params-{{ checksum "build/proof-params/parameters.json" }}'
@@ -81,11 +81,10 @@ jobs:
       - install-deps
       - prepare
       - go/mod-download
-      - run: echo 'export PATH=$HOME/.cargo/bin:$PATH' >> $BASH_ENV
-      - download-params
       - run:
-          command: make deps
+          command: make deps lotus
           no_output_timeout: 30m
+      - download-params
       - go/install-gotestsum:
           gobin: $HOME/.local/bin
       - run:
@@ -137,7 +136,6 @@ jobs:
       - install-deps
       - prepare
       - go/mod-download
-      - download-params
       - run:
           command: make deps
           no_output_timeout: 30m

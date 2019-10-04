@@ -55,15 +55,27 @@ CLEAN+=build/.update-modules
 deps: $(BUILD_DEPS)
 .PHONY: deps
 
-build: $(BUILD_DEPS)
-	rm -f lotus lotus-storage-miner
+lotus: $(BUILD_DEPS)
+	rm -f lotus
 	go build -o lotus ./cmd/lotus
-	go build -o lotus-storage-miner ./cmd/lotus-storage-miner
 	go run github.com/GeertJohan/go.rice/rice append --exec lotus -i ./build
+
+.PHONY: lotus
+CLEAN+=lotus
+
+lotus-sotrage-miner: $(BUILD_DEPS)
+	rm -f lotus-storage-miner
+	go build -o lotus-storage-miner ./cmd/lotus-storage-miner
 	go run github.com/GeertJohan/go.rice/rice append --exec lotus-storage-miner -i ./build
+
+.PHONY: lotus-storage-miner
+
+CLEAN+=lotus-storage-miner
+
+build: lotus lotus-sotrage-miner
+
 .PHONY: build
 
-CLEAN+= lotus lotus-storage-miner
 
 benchmarks:
 	go run github.com/whyrusleeping/bencher ./... > bench.json
