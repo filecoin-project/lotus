@@ -14,6 +14,7 @@ import (
 
 	"github.com/filecoin-project/go-lotus/api"
 	"github.com/filecoin-project/go-lotus/api/client"
+	"github.com/filecoin-project/go-lotus/lib/jsonrpc"
 	"github.com/filecoin-project/go-lotus/node/repo"
 )
 
@@ -52,7 +53,7 @@ func getAPI(ctx *cli.Context, repoFlag string) (string, http.Header, error) {
 	return "ws://" + addr + "/rpc/v0", headers, nil
 }
 
-func GetAPI(ctx *cli.Context) (api.Common, error) {
+func GetAPI(ctx *cli.Context) (api.Common, jsonrpc.ClientCloser, error) {
 	f := "repo"
 	if ctx.String("storagerepo") != "" {
 		f = "storagerepo"
@@ -60,25 +61,25 @@ func GetAPI(ctx *cli.Context) (api.Common, error) {
 
 	addr, headers, err := getAPI(ctx, f)
 	if err != nil {
-		return nil, err
+		return nil, nil, err
 	}
 
 	return client.NewCommonRPC(addr, headers)
 }
 
-func GetFullNodeAPI(ctx *cli.Context) (api.FullNode, error) {
+func GetFullNodeAPI(ctx *cli.Context) (api.FullNode, jsonrpc.ClientCloser, error) {
 	addr, headers, err := getAPI(ctx, "repo")
 	if err != nil {
-		return nil, err
+		return nil, nil, err
 	}
 
 	return client.NewFullNodeRPC(addr, headers)
 }
 
-func GetStorageMinerAPI(ctx *cli.Context) (api.StorageMiner, error) {
+func GetStorageMinerAPI(ctx *cli.Context) (api.StorageMiner, jsonrpc.ClientCloser, error) {
 	addr, headers, err := getAPI(ctx, "storagerepo")
 	if err != nil {
-		return nil, err
+		return nil, nil, err
 	}
 
 	return client.NewStorageMinerRPC(addr, headers)

@@ -2,6 +2,7 @@ package cli
 
 import (
 	"fmt"
+
 	"github.com/filecoin-project/go-lotus/chain/address"
 	"github.com/filecoin-project/go-lotus/chain/types"
 	"gopkg.in/urfave/cli.v2"
@@ -17,10 +18,11 @@ var sendCmd = &cli.Command{
 		},
 	},
 	Action: func(cctx *cli.Context) error {
-		api, err := GetFullNodeAPI(cctx)
+		api, closer, err := GetFullNodeAPI(cctx)
 		if err != nil {
 			return err
 		}
+		defer closer()
 
 		ctx := ReqContext(cctx)
 

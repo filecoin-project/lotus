@@ -21,10 +21,11 @@ var syncStatusCmd = &cli.Command{
 	Name:  "status",
 	Usage: "check sync status",
 	Action: func(cctx *cli.Context) error {
-		api, err := GetFullNodeAPI(cctx)
+		api, closer, err := GetFullNodeAPI(cctx)
 		if err != nil {
 			return err
 		}
+		defer closer()
 		ctx := ReqContext(cctx)
 
 		ss, err := api.SyncState(ctx)

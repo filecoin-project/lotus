@@ -2,11 +2,12 @@ package main
 
 import (
 	"context"
-	"github.com/filecoin-project/go-lotus/build"
 	"net/http"
 	"os"
 	"os/signal"
 	"syscall"
+
+	"github.com/filecoin-project/go-lotus/build"
 
 	"github.com/multiformats/go-multiaddr"
 	"golang.org/x/xerrors"
@@ -36,10 +37,11 @@ var runCmd = &cli.Command{
 			return xerrors.Errorf("fetching proof parameters: %w", err)
 		}
 
-		nodeApi, err := lcli.GetFullNodeAPI(cctx)
+		nodeApi, ncloser, err := lcli.GetFullNodeAPI(cctx)
 		if err != nil {
 			return err
 		}
+		defer ncloser()
 		ctx := lcli.DaemonContext(cctx)
 
 		v, err := nodeApi.Version(ctx)
