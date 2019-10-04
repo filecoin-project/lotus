@@ -642,25 +642,25 @@ func (cs *ChainStore) LoadSignedMessagesFromCids(cids []cid.Cid) ([]*types.Signe
 	return msgs, nil
 }
 
-func (cs *ChainStore) WaitForMessage(ctx context.Context, mcid cid.Cid) (*types.MessageReceipt, error) {
+func (cs *ChainStore) WaitForMessage(ctx context.Context, mcid cid.Cid) (*types.TipSet, *types.MessageReceipt, error) {
 	tsub := cs.SubHeadChanges(ctx)
 
 	head := cs.GetHeaviestTipSet()
 
 	r, err := cs.tipsetExecutedMessage(head, mcid)
 	if err != nil {
-		return nil, err
+		return nil, nil, err
 	}
 
 	if r != nil {
-		return r, nil
+		return head, r, nil
 	}
 
 	for {
 		select {
 		case notif, ok := <-tsub:
 			if !ok {
-				return nil, ctx.Err()
+				return nil, nil, ctx.Err()
 			}
 			for _, val := range notif {
 				switch val.Type {
@@ -669,15 +669,15 @@ func (cs *ChainStore) WaitForMessage(ctx context.Context, mcid cid.Cid) (*types.
 				case HCApply:
 					r, err := cs.tipsetExecutedMessage(val.Val, mcid)
 					if err != nil {
-						return nil, err
+						return nil, nil, err
 					}
 					if r != nil {
-						return r, nil
+						return val.Val, r, nil
 					}
 				}
 			}
 		case <-ctx.Done():
-			return nil, ctx.Err()
+			return nil, nil, ctx.Err()
 		}
 	}
 }

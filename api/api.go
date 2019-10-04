@@ -195,6 +195,7 @@ type DealInfo struct {
 
 type MsgWait struct {
 	Receipt types.MessageReceipt
+	TipSet  *types.TipSet
 }
 
 type BlockMessages struct {
