@@ -241,7 +241,7 @@ func TestAtNullTrigger(t *testing.T) {
 	var reverted bool
 
 	err := events.ChainAt(func(ts *types.TipSet, curH uint64) error {
-		require.Nil(t, ts)
+		require.Equal(t, uint64(6), ts.Height())
 		require.Equal(t, 8, int(curH))
 		applied = true
 		return nil

@@ -77,7 +77,7 @@ func (e *heightEvents) headChangeAt(rev, app []*types.TipSet) error {
 				hnd := e.heightTriggers[tid]
 				triggerH := h - uint64(hnd.confidence)
 
-				incTs, err := e.tsc.get(triggerH)
+				incTs, err := e.tsc.getNonNull(triggerH)
 				if err != nil {
 					return err
 				}

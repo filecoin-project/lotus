@@ -76,6 +76,19 @@ func (tsc *tipSetCache) revert(ts *types.TipSet) error {
 	return nil
 }
 
+func (tsc *tipSetCache) getNonNull(height uint64) (*types.TipSet, error) {
+	for {
+		ts, err := tsc.get(height)
+		if err != nil {
+			return nil, err
+		}
+		if ts != nil {
+			return ts, nil
+		}
+		height++
+	}
+}
+
 func (tsc *tipSetCache) get(height uint64) (*types.TipSet, error) {
 	if tsc.len == 0 {
 		return nil, xerrors.New("tipSetCache.get: cache is empty")
