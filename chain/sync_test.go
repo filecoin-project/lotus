@@ -10,6 +10,7 @@ import (
 	"github.com/stretchr/testify/require"
 
 	"github.com/filecoin-project/go-lotus/api"
+	"github.com/filecoin-project/go-lotus/chain/address"
 	"github.com/filecoin-project/go-lotus/chain/gen"
 	"github.com/filecoin-project/go-lotus/chain/store"
 	"github.com/filecoin-project/go-lotus/chain/types"
@@ -91,8 +92,19 @@ func (tu *syncTestUtil) Shutdown() {
 	tu.cancel()
 }
 
-func (tu *syncTestUtil) mineNewBlock(src int) {
-	mts, err := tu.g.NextTipSet()
+func (tu *syncTestUtil) mineNewBlock(src int, miners []int) {
+	if miners == nil {
+		for i := range tu.g.Miners {
+			miners = append(miners, i)
+		}
+	}
+
+	var maddrs []address.Address
+	for i := range miners {
+		maddrs = append(maddrs, tu.g.Miners[i])
+	}
+
+	mts, err := tu.g.NextTipSetFromMiners(maddrs)
 	require.NoError(tu.t, err)
 
 	for _, msg := range mts.Messages {
@@ -290,10 +302,36 @@ func TestSyncMining(t *testing.T) {
 	tu.compareSourceState(client)
 
 	for i := 0; i < 5; i++ {
-		tu.mineNewBlock(0)
+		tu.mineNewBlock(0, nil)
 		tu.waitUntilSync(0, client)
 		tu.compareSourceState(client)
 	}
+}
+
+func TestSyncFork(t *testing.T) {
+	H := 50
+	tu := prepSyncTest(t, H)
+
+	client := tu.addClientNode()
+	//tu.checkHeight("client", client, 0)
+
+	tu.mineNewBlock(0, []int{0})
+	tu.mineNewBlock(0, []int{0})
+	tu.mineNewBlock(0, []int{0})
+	tu.mineNewBlock(0, []int{0})
+
+	tu.mineNewBlock(1, []int{1})
+	tu.mineNewBlock(1, []int{1})
+	tu.mineNewBlock(1, []int{1})
+	tu.mineNewBlock(1, []int{1})
+
+	require.NoError(t, tu.mn.LinkAll())
+	tu.connect(client, 0)
+	tu.waitUntilSync(0, client)
+
+	//tu.checkHeight("client", client, H)
+
+	tu.compareSourceState(client)
 }
 
 func BenchmarkSyncBasic(b *testing.B) {

@@ -49,7 +49,7 @@ type ChainGen struct {
 
 	w *wallet.Wallet
 
-	miners      []address.Address
+	Miners      []address.Address
 	mworkers    []address.Address
 	receivers   []address.Address
 	banker      address.Address
@@ -159,7 +159,7 @@ func NewGenerator() (*ChainGen, error) {
 		genesis:      genb.Genesis,
 		w:            w,
 
-		miners:    minercfg.MinerAddrs,
+		Miners:    minercfg.MinerAddrs,
 		mworkers:  minercfg.Workers,
 		banker:    banker,
 		receivers: receievers,
@@ -241,18 +241,26 @@ type MinedTipSet struct {
 }
 
 func (cg *ChainGen) NextTipSet() (*MinedTipSet, error) {
+	mts, err := cg.NextTipSetFromMiners(cg.curTipset.TipSet(), cg.Miners)
+	if err != nil {
+		return nil, err
+	}
+
+	cg.curTipset = mts.TipSet
+	return mts, nil
+}
+
+func (cg *ChainGen) NextTipSetFromMiners(base *types.TipSet, miners []address.Address) (*MinedTipSet, error) {
 	var blks []*types.FullBlock
-	ticketSets := make([][]*types.Ticket, len(cg.miners))
+	ticketSets := make([][]*types.Ticket, len(miners))
 
 	msgs, err := cg.getRandomMessages()
 	if err != nil {
 		return nil, err
 	}
 
-	base := cg.curTipset.TipSet()
-
 	for len(blks) == 0 {
-		for i, m := range cg.miners {
+		for i, m := range miners {
 			proof, t, err := cg.nextBlockProof(context.TODO(), m, ticketSets[i])
 			if err != nil {
 				return nil, xerrors.Errorf("next block proof: %w", err)
@@ -274,10 +282,10 @@ func (cg *ChainGen) NextTipSet() (*MinedTipSet, error) {
 		}
 	}
 
-	cg.curTipset = store.NewFullTipSet(blks)
+	fts := store.NewFullTipSet(blks)
 
 	return &MinedTipSet{
-		TipSet:   cg.curTipset,
+		TipSet:   fts,
 		Messages: msgs,
 	}, nil
 }

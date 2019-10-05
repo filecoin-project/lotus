@@ -99,6 +99,11 @@ func (a *ChainAPI) ChainGetParentMessages(ctx context.Context, bcid cid.Cid) ([]
 		return nil, err
 	}
 
+	// genesis block has no parent messages...
+	if b.Height == 0 {
+		return nil, nil
+	}
+
 	// TODO: need to get the number of messages better than this
 	pts, err := a.Chain.LoadTipSet(b.Parents)
 	if err != nil {
@@ -122,6 +127,10 @@ func (a *ChainAPI) ChainGetParentReceipts(ctx context.Context, bcid cid.Cid) ([]
 	b, err := a.Chain.GetBlock(bcid)
 	if err != nil {
 		return nil, err
+	}
+
+	if b.Height == 0 {
+		return nil, nil
 	}
 
 	// TODO: need to get the number of messages better than this
