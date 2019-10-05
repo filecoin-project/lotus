@@ -27,9 +27,7 @@ func (a *ChainAPI) ChainNotify(ctx context.Context) (<-chan []*store.HeadChange,
 }
 
 func (a *ChainAPI) ChainSubmitBlock(ctx context.Context, blk *types.BlockMsg) error {
-	if err := a.Chain.AddBlock(blk.Header); err != nil {
-		return xerrors.Errorf("AddBlock failed: %w", err)
-	}
+	// TODO: should we have some sort of fast path to adding a local block?
 
 	b, err := blk.Serialize()
 	if err != nil {

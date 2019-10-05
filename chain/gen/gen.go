@@ -45,7 +45,7 @@ type ChainGen struct {
 	sm *stmgr.StateManager
 
 	genesis   *types.BlockHeader
-	curTipset *store.FullTipSet
+	CurTipset *store.FullTipSet
 
 	w *wallet.Wallet
 
@@ -164,7 +164,7 @@ func NewGenerator() (*ChainGen, error) {
 		banker:    banker,
 		receivers: receievers,
 
-		curTipset: gents,
+		CurTipset: gents,
 
 		r:  mr,
 		lr: lr,
@@ -192,7 +192,7 @@ func (cg *ChainGen) GenesisCar() ([]byte, error) {
 }
 
 func (cg *ChainGen) nextBlockProof(ctx context.Context, m address.Address, ticks []*types.Ticket) (types.ElectionProof, *types.Ticket, error) {
-	pts := cg.curTipset.TipSet()
+	pts := cg.CurTipset.TipSet()
 
 	var lastTicket *types.Ticket
 	if len(ticks) == 0 {
@@ -201,7 +201,7 @@ func (cg *ChainGen) nextBlockProof(ctx context.Context, m address.Address, ticks
 		lastTicket = ticks[len(ticks)-1]
 	}
 
-	st := cg.curTipset.TipSet().ParentState()
+	st := cg.CurTipset.TipSet().ParentState()
 
 	worker, err := stmgr.GetMinerWorker(ctx, cg.sm, st, m)
 	if err != nil {
@@ -241,12 +241,12 @@ type MinedTipSet struct {
 }
 
 func (cg *ChainGen) NextTipSet() (*MinedTipSet, error) {
-	mts, err := cg.NextTipSetFromMiners(cg.curTipset.TipSet(), cg.Miners)
+	mts, err := cg.NextTipSetFromMiners(cg.CurTipset.TipSet(), cg.Miners)
 	if err != nil {
 		return nil, err
 	}
 
-	cg.curTipset = mts.TipSet
+	cg.CurTipset = mts.TipSet
 	return mts, nil
 }
 
@@ -273,7 +273,7 @@ func (cg *ChainGen) NextTipSetFromMiners(base *types.TipSet, miners []address.Ad
 					return nil, xerrors.Errorf("making a block for next tipset failed: %w", err)
 				}
 
-				if err := cg.cs.AddBlock(fblk.Header); err != nil {
+				if err := cg.cs.PersistBlockHeader(fblk.Header); err != nil {
 					return nil, xerrors.Errorf("chainstore AddBlock: %w", err)
 				}
 
@@ -332,10 +332,6 @@ func (cg *ChainGen) getRandomMessages() ([]*types.SignedMessage, error) {
 		msgs[m] = &types.SignedMessage{
 			Message:   msg,
 			Signature: *sig,
-		}
-
-		if _, err := cg.cs.PutMessage(msgs[m]); err != nil {
-			return nil, err
 		}
 	}
 

@@ -6,6 +6,7 @@ import (
 	"testing"
 
 	logging "github.com/ipfs/go-log"
+	"github.com/libp2p/go-libp2p-core/peer"
 	mocknet "github.com/libp2p/go-libp2p/p2p/net/mock"
 	"github.com/stretchr/testify/require"
 
@@ -15,6 +16,7 @@ import (
 	"github.com/filecoin-project/go-lotus/chain/store"
 	"github.com/filecoin-project/go-lotus/chain/types"
 	"github.com/filecoin-project/go-lotus/node"
+	"github.com/filecoin-project/go-lotus/node/impl"
 	"github.com/filecoin-project/go-lotus/node/modules"
 	"github.com/filecoin-project/go-lotus/node/repo"
 )
@@ -32,7 +34,6 @@ func (tu *syncTestUtil) repoWithChain(t testing.TB, h int) (repo.Repo, []byte, [
 
 		ts := mts.TipSet.TipSet()
 		fmt.Printf("tipset at H:%d: %s\n", ts.Height(), ts.Cids())
-
 	}
 
 	r, err := tu.g.YieldRepo()
@@ -92,7 +93,7 @@ func (tu *syncTestUtil) Shutdown() {
 	tu.cancel()
 }
 
-func (tu *syncTestUtil) mineNewBlock(src int, miners []int) {
+func (tu *syncTestUtil) mineOnBlock(blk *store.FullTipSet, src int, miners []int) *store.FullTipSet {
 	if miners == nil {
 		for i := range tu.g.Miners {
 			miners = append(miners, i)
@@ -104,7 +105,7 @@ func (tu *syncTestUtil) mineNewBlock(src int, miners []int) {
 		maddrs = append(maddrs, tu.g.Miners[i])
 	}
 
-	mts, err := tu.g.NextTipSetFromMiners(maddrs)
+	mts, err := tu.g.NextTipSetFromMiners(blk.TipSet(), maddrs)
 	require.NoError(tu.t, err)
 
 	for _, msg := range mts.Messages {
@@ -114,6 +115,13 @@ func (tu *syncTestUtil) mineNewBlock(src int, miners []int) {
 	for _, fblk := range mts.TipSet.Blocks {
 		require.NoError(tu.t, tu.nds[src].ChainSubmitBlock(context.TODO(), fblkToBlkMsg(fblk)))
 	}
+
+	return mts.TipSet
+}
+
+func (tu *syncTestUtil) mineNewBlock(src int, miners []int) {
+	mts := tu.mineOnBlock(tu.g.CurTipset, src, miners)
+	tu.g.CurTipset = mts
 }
 
 func fblkToBlkMsg(fb *types.FullBlock) *types.BlockMsg {
@@ -149,6 +157,12 @@ func (tu *syncTestUtil) addSourceNode(gen int) {
 	)
 	require.NoError(tu.t, err)
 
+	lastTs := blocks[len(blocks)-1].Blocks
+	for _, lastB := range lastTs {
+		err = out.(*impl.FullNodeAPI).ChainAPI.Chain.AddBlock(lastB.Header)
+		require.NoError(tu.t, err)
+	}
+
 	tu.genesis = genesis
 	tu.blocks = blocks
 	tu.nds = append(tu.nds, out) // always at 0
@@ -176,11 +190,26 @@ func (tu *syncTestUtil) addClientNode() int {
 	return len(tu.nds) - 1
 }
 
+func (tu *syncTestUtil) pid(n int) peer.ID {
+	nal, err := tu.nds[n].NetAddrsListen(tu.ctx)
+	require.NoError(tu.t, err)
+
+	return nal.ID
+}
+
 func (tu *syncTestUtil) connect(from, to int) {
 	toPI, err := tu.nds[to].NetAddrsListen(tu.ctx)
 	require.NoError(tu.t, err)
 
 	err = tu.nds[from].NetConnect(tu.ctx, toPI)
+	require.NoError(tu.t, err)
+}
+
+func (tu *syncTestUtil) disconnect(from, to int) {
+	toPI, err := tu.nds[to].NetAddrsListen(tu.ctx)
+	require.NoError(tu.t, err)
+
+	err = tu.nds[from].NetDisconnect(tu.ctx, toPI.ID)
 	require.NoError(tu.t, err)
 }
 
@@ -244,32 +273,6 @@ func (tu *syncTestUtil) waitUntilSync(from, to int) {
 	}
 }
 
-/*
-func (tu *syncTestUtil) submitSourceBlock(to int, h int) {
-	// utility to simulate incoming blocks without miner process
-	// TODO: should call syncer directly, this won't work correctly in all cases
-
-	var b chain.BlockMsg
-
-	// -1 to match block.Height
-	b.Header = tu.blocks[h-1].Header
-	for _, msg := range tu.blocks[h-1].SecpkMessages {
-		c, err := tu.nds[to].(*impl.FullNodeAPI).ChainAPI.Chain.PutMessage(msg)
-		require.NoError(tu.t, err)
-
-		b.SecpkMessages = append(b.SecpkMessages, c)
-	}
-
-	require.NoError(tu.t, tu.nds[to].ChainSubmitBlock(tu.ctx, &b))
-}
-
-func (tu *syncTestUtil) submitSourceBlocks(to int, h int, n int) {
-	for i := 0; i < n; i++ {
-		tu.submitSourceBlock(to, h+i)
-	}
-}
-*/
-
 func TestSyncSimple(t *testing.T) {
 	H := 50
 	tu := prepSyncTest(t, H)
@@ -308,32 +311,6 @@ func TestSyncMining(t *testing.T) {
 	}
 }
 
-func TestSyncFork(t *testing.T) {
-	H := 50
-	tu := prepSyncTest(t, H)
-
-	client := tu.addClientNode()
-	//tu.checkHeight("client", client, 0)
-
-	tu.mineNewBlock(0, []int{0})
-	tu.mineNewBlock(0, []int{0})
-	tu.mineNewBlock(0, []int{0})
-	tu.mineNewBlock(0, []int{0})
-
-	tu.mineNewBlock(1, []int{1})
-	tu.mineNewBlock(1, []int{1})
-	tu.mineNewBlock(1, []int{1})
-	tu.mineNewBlock(1, []int{1})
-
-	require.NoError(t, tu.mn.LinkAll())
-	tu.connect(client, 0)
-	tu.waitUntilSync(0, client)
-
-	//tu.checkHeight("client", client, H)
-
-	tu.compareSourceState(client)
-}
-
 func BenchmarkSyncBasic(b *testing.B) {
 	for i := 0; i < b.N; i++ {
 		runSyncBenchLength(b, 100)
@@ -353,44 +330,3 @@ func runSyncBenchLength(b *testing.B, l int) {
 
 	tu.waitUntilSync(0, client)
 }
-
-/*
-TODO: this is broken because of how tu.submitSourceBlock works now
-func TestSyncManual(t *testing.T) {
-	H := 20
-	tu := prepSyncTest(t, H)
-
-	client := tu.addClientNode()
-	tu.checkHeight("client", client, 0)
-
-	tu.submitSourceBlocks(client, 1, H)
-
-	time.Sleep(time.Second * 1)
-
-	tu.checkHeight("client", client, H)
-
-	tu.compareSourceState(client)
-}
-
-func TestSyncIncoming(t *testing.T) {
-	H := 1
-	tu := prepSyncTest(t, H)
-
-	producer := tu.addClientNode()
-	client := tu.addClientNode()
-
-	tu.mn.LinkAll()
-	tu.connect(client, producer)
-
-	for h := 0; h < H; h++ {
-		tu.submitSourceBlock(producer, h + 1)
-
-		time.Sleep(time.Millisecond * 200)
-
-	}
-	tu.checkHeight("client", client, H)
-	tu.checkHeight("producer", producer, H)
-
-	tu.compareSourceState(client)
-}
-*/

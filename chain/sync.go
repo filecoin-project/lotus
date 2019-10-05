@@ -96,7 +96,7 @@ func (syncer *Syncer) InformNewHead(from peer.ID, fts *store.FullTipSet) {
 	}
 	if from == syncer.self {
 		// TODO: this is kindof a hack...
-		log.Debug("got block from ourselves")
+		log.Info("got block from ourselves")
 
 		if err := syncer.Sync(fts); err != nil {
 			log.Errorf("failed to sync our own block: %+v", err)

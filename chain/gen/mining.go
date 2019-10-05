@@ -60,8 +60,14 @@ func MinerCreateBlock(ctx context.Context, sm *stmgr.StateManager, w *wallet.Wal
 
 			blsMsgCids = append(blsMsgCids, c)
 		} else {
-			secpkMsgCids = append(secpkMsgCids, msg.Cid())
+			c, err := sm.ChainStore().PutMessage(msg)
+			if err != nil {
+				return nil, err
+			}
+
+			secpkMsgCids = append(secpkMsgCids, c)
 			secpkMessages = append(secpkMessages, msg)
+
 		}
 	}
 
