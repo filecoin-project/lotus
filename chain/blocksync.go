@@ -277,7 +277,7 @@ func (bs *BlockSync) GetBlocks(ctx context.Context, tipset []cid.Cid, count int)
 		}
 		oerr = bs.processStatus(req, res)
 		if oerr != nil {
-			log.Warnf("BlockSync peer %s response was an error: %s", peers[p].String(), err)
+			log.Warnf("BlockSync peer %s response was an error: %s", peers[p].String(), oerr)
 		}
 	}
 	return nil, xerrors.Errorf("GetBlocks failed with all peers: %w", oerr)

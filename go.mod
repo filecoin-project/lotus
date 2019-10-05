@@ -76,6 +76,7 @@ require (
 	go.uber.org/dig v1.7.0 // indirect
 	go.uber.org/fx v1.9.0
 	go.uber.org/goleak v0.10.0 // indirect
+	go.uber.org/zap v1.10.0
 	go4.org v0.0.0-20190313082347-94abd6928b1d // indirect
 	golang.org/x/crypto v0.0.0-20190829043050-9756ffdc2472 // indirect
 	golang.org/x/sys v0.0.0-20190904154756-749cb33beabd // indirect

@@ -10,6 +10,7 @@ import (
 	"github.com/filecoin-project/go-lotus/build"
 	"github.com/filecoin-project/go-lotus/chain/address"
 	"github.com/filecoin-project/go-lotus/chain/state"
+	"go.uber.org/zap"
 
 	amt "github.com/filecoin-project/go-amt-ipld"
 	"github.com/filecoin-project/go-lotus/chain/types"
@@ -757,7 +758,7 @@ func (cs *ChainStore) GetRandomness(ctx context.Context, blks []cid.Cid, tickets
 	}
 	lt := int64(len(tickets))
 	if lb < lt {
-		log.Warn("self sampling randomness. this should be extremely rare, if you see this often it may be a bug")
+		log.Desugar().Warn("self sampling randomness. this should be extremely rare, if you see this often it may be a bug", zap.Stack("call-stack"))
 
 		t := tickets[lt-(1+lb)]
 
