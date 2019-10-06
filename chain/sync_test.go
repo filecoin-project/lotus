@@ -288,13 +288,17 @@ func (tu *syncTestUtil) compareSourceState(with int) {
 }
 
 func (tu *syncTestUtil) waitUntilSync(from, to int) {
-	ctx, cancel := context.WithCancel(context.Background())
-	defer cancel()
-
-	target, err := tu.nds[from].ChainHead(ctx)
+	target, err := tu.nds[from].ChainHead(tu.ctx)
 	if err != nil {
 		tu.t.Fatal(err)
 	}
+
+	tu.waitUntilSyncTarget(to, target)
+}
+
+func (tu *syncTestUtil) waitUntilSyncTarget(to int, target *types.TipSet) {
+	ctx, cancel := context.WithCancel(context.Background())
+	defer cancel()
 
 	hc, err := tu.nds[to].ChainNotify(ctx)
 	if err != nil {
@@ -389,17 +393,18 @@ func TestSyncFork(t *testing.T) {
 
 	base := tu.g.CurTipset
 	fmt.Println("Mining base: ", base.TipSet().Cids(), base.TipSet().Height())
-	a := tu.mineOnBlock(base, p1, []int{0})
+
+	// The two nodes fork at this point into 'a' and 'b'
+	a1 := tu.mineOnBlock(base, p1, []int{0})
+	a := tu.mineOnBlock(a1, p1, []int{0})
+	a = tu.mineOnBlock(a, p1, []int{0})
+
+	tu.g.ResyncBankerNonce(a1.TipSet())
+	// chain B will now be heaviest
 	b := tu.mineOnBlock(base, p2, []int{1})
-	phead()
-
-	a = tu.mineOnBlock(a, p1, []int{0})
 	b = tu.mineOnBlock(b, p2, []int{1})
-	phead()
-
-	a = tu.mineOnBlock(a, p1, []int{0})
 	b = tu.mineOnBlock(b, p2, []int{1})
-	phead()
+	b = tu.mineOnBlock(b, p2, []int{1})
 
 	fmt.Println("A: ", a.Cids(), a.TipSet().Height())
 	fmt.Println("B: ", b.Cids(), b.TipSet().Height())
@@ -408,7 +413,8 @@ func TestSyncFork(t *testing.T) {
 
 	require.NoError(t, tu.mn.LinkAll())
 	tu.connect(p1, p2)
-	tu.waitUntilSync(p1, p2)
+	tu.waitUntilSyncTarget(p1, b.TipSet())
+	tu.waitUntilSyncTarget(p2, b.TipSet())
 
 	phead()
 }

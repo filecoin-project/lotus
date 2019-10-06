@@ -31,7 +31,7 @@ import (
 
 var log = logging.Logger("gen")
 
-const msgsPerBlock = 0
+const msgsPerBlock = 5
 
 type ChainGen struct {
 	accounts []address.Address
@@ -306,6 +306,18 @@ func (cg *ChainGen) makeBlock(parents *types.TipSet, m address.Address, eproof t
 	}
 
 	return fblk, err
+}
+
+// This function is awkward. It's used to deal with messages made when
+// simulating forks
+func (cg *ChainGen) ResyncBankerNonce(ts *types.TipSet) error {
+	act, err := cg.sm.GetActor(cg.banker, ts)
+	if err != nil {
+		return err
+	}
+
+	cg.bankerNonce = act.Nonce
+	return nil
 }
 
 func (cg *ChainGen) getRandomMessages() ([]*types.SignedMessage, error) {

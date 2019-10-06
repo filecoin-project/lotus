@@ -23,7 +23,6 @@ import (
 	bstore "github.com/ipfs/go-ipfs-blockstore"
 	logging "github.com/ipfs/go-log"
 	"github.com/libp2p/go-libp2p-core/peer"
-	"github.com/pkg/errors"
 	cbg "github.com/whyrusleeping/cbor-gen"
 	"golang.org/x/xerrors"
 )
@@ -333,6 +332,7 @@ func (syncer *Syncer) tryLoadFullTipSet(cids []cid.Cid) (*store.FullTipSet, erro
 
 func (syncer *Syncer) Sync(maybeHead *types.TipSet) error {
 
+	ctx := context.TODO()
 	syncer.syncLock.Lock()
 	defer syncer.syncLock.Unlock()
 
@@ -340,12 +340,12 @@ func (syncer *Syncer) Sync(maybeHead *types.TipSet) error {
 		return nil
 	}
 
-	if err := syncer.collectChain(maybeHead); err != nil {
+	if err := syncer.collectChain(ctx, maybeHead); err != nil {
 		return xerrors.Errorf("collectChain failed: %w", err)
 	}
 
 	if err := syncer.store.PutTipSet(maybeHead); err != nil {
-		return errors.Wrap(err, "failed to put synced tipset to chainstore")
+		return xerrors.Errorf("failed to put synced tipset to chainstore: %w", err)
 	}
 
 	return nil
@@ -506,7 +506,7 @@ func (syncer *Syncer) ValidateBlock(ctx context.Context, b *types.FullBlock) err
 		}
 
 		if nonces[m.From] != m.Nonce {
-			return xerrors.Errorf("wrong nonce")
+			return xerrors.Errorf("wrong nonce (exp: %d, got: %d)", nonces[m.From], m.Nonce)
 		}
 		nonces[m.From]++
 
@@ -560,7 +560,7 @@ func (syncer *Syncer) ValidateBlock(ctx context.Context, b *types.FullBlock) err
 	return nil
 }
 
-func (syncer *Syncer) collectHeaders(from *types.TipSet, to *types.TipSet) ([]*types.TipSet, error) {
+func (syncer *Syncer) collectHeaders(ctx context.Context, from *types.TipSet, to *types.TipSet) ([]*types.TipSet, error) {
 	blockSet := []*types.TipSet{from}
 
 	at := from.Parents()
@@ -629,11 +629,46 @@ loop:
 
 		// TODO: handle the case where we are on a fork and its not a simple fast forward
 		// need to walk back to either a common ancestor, or until we hit the fork length threshold.
-		return nil, xerrors.Errorf("(fork detected) synced header chain (%s - %d) does not link to our best block (%s - %d)", from.Cids(), from.Height(), to.Cids(), to.Height())
 
+		log.Warnf("(fork detected) synced header chain (%s - %d) does not link to our best block (%s - %d)", from.Cids(), from.Height(), to.Cids(), to.Height())
+		fork, err := syncer.syncFork(ctx, last, to)
+		if err != nil {
+			return nil, xerrors.Errorf("failed to sync fork: %w", err)
+		}
+
+		blockSet = append(blockSet, fork...)
 	}
 
 	return blockSet, nil
+}
+
+func (syncer *Syncer) syncFork(ctx context.Context, from *types.TipSet, to *types.TipSet) ([]*types.TipSet, error) {
+	tips, err := syncer.Bsync.GetBlocks(ctx, from.Parents(), 100)
+	if err != nil {
+		return nil, err
+	}
+
+	nts, err := syncer.store.LoadTipSet(to.Parents())
+	if err != nil {
+		return nil, xerrors.Errorf("failed to load next local tipset: %w", err)
+	}
+
+	for cur := 0; cur < len(tips); {
+
+		if nts.Equals(tips[cur]) {
+			return tips[:cur+1], nil
+		}
+
+		if nts.Height() < tips[cur].Height() {
+			cur++
+		} else {
+			nts, err = syncer.store.LoadTipSet(nts.Parents())
+			if err != nil {
+				return nil, xerrors.Errorf("loading next local tipset: %w", err)
+			}
+		}
+	}
+	return nil, xerrors.Errorf("fork was longer than our threshold")
 }
 
 func (syncer *Syncer) syncMessagesAndCheckState(headers []*types.TipSet) error {
@@ -661,7 +696,6 @@ func (syncer *Syncer) iterFullTipsets(headers []*types.TipSet, cb func(*store.Fu
 			return err
 		}
 		if fts == nil {
-			fmt.Println("Failed to fill tipset for: ", beg, headers[beg].Cids(), headers[beg].Height())
 			break
 		}
 		if err := cb(fts); err != nil {
@@ -741,10 +775,10 @@ func persistMessages(bs bstore.Blockstore, bst *BSTipSet) error {
 	return nil
 }
 
-func (syncer *Syncer) collectChain(ts *types.TipSet) error {
+func (syncer *Syncer) collectChain(ctx context.Context, ts *types.TipSet) error {
 	syncer.syncState.Init(syncer.store.GetHeaviestTipSet(), ts)
 
-	headers, err := syncer.collectHeaders(ts, syncer.store.GetHeaviestTipSet())
+	headers, err := syncer.collectHeaders(ctx, ts, syncer.store.GetHeaviestTipSet())
 	if err != nil {
 		return err
 	}
