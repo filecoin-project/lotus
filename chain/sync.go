@@ -94,11 +94,19 @@ func (syncer *Syncer) InformNewHead(from peer.ID, fts *store.FullTipSet) {
 	if fts == nil {
 		panic("bad")
 	}
+
+	for _, b := range fts.Blocks {
+		if err := syncer.validateMsgMeta(b); err != nil {
+			log.Warnf("invalid block received: %s", err)
+			return
+		}
+	}
+
 	if from == syncer.self {
 		// TODO: this is kindof a hack...
 		log.Info("got block from ourselves")
 
-		if err := syncer.Sync(fts); err != nil {
+		if err := syncer.Sync(fts.TipSet()); err != nil {
 			log.Errorf("failed to sync our own block: %+v", err)
 		}
 
@@ -110,10 +118,35 @@ func (syncer *Syncer) InformNewHead(from peer.ID, fts *store.FullTipSet) {
 	syncer.Bsync.AddPeer(from)
 
 	go func() {
-		if err := syncer.Sync(fts); err != nil {
+		if err := syncer.Sync(fts.TipSet()); err != nil {
 			log.Errorf("sync error: %+v", err)
 		}
 	}()
+}
+
+func (syncer *Syncer) validateMsgMeta(fblk *types.FullBlock) error {
+	var bcids, scids []cbg.CBORMarshaler
+	for _, m := range fblk.BlsMessages {
+		c := cbg.CborCid(m.Cid())
+		bcids = append(bcids, &c)
+	}
+
+	for _, m := range fblk.SecpkMessages {
+		c := cbg.CborCid(m.Cid())
+		scids = append(scids, &c)
+	}
+
+	bs := amt.WrapBlockstore(syncer.store.Blockstore())
+	smroot, err := computeMsgMeta(bs, bcids, scids)
+	if err != nil {
+		return xerrors.Errorf("validating msgmeta, compute failed: %w", err)
+	}
+
+	if fblk.Header.Messages != smroot {
+		return xerrors.Errorf("messages in full block did not match msgmeta root in header (%s != %s)", fblk.Header.Messages, smroot)
+	}
+
+	return nil
 }
 
 func (syncer *Syncer) InformNewBlock(from peer.ID, blk *types.FullBlock) {
@@ -171,11 +204,6 @@ func zipTipSetAndMessages(bs amt.Blocks, ts *types.TipSet, allbmsgs []*types.Mes
 			smsgCids = append(smsgCids, &c)
 		}
 
-		smroot, err := amt.FromArray(bs, smsgCids)
-		if err != nil {
-			return nil, err
-		}
-
 		var bmsgs []*types.Message
 		var bmsgCids []cbg.CBORMarshaler
 		for _, m := range bmi[bi] {
@@ -184,15 +212,7 @@ func zipTipSetAndMessages(bs amt.Blocks, ts *types.TipSet, allbmsgs []*types.Mes
 			bmsgCids = append(bmsgCids, &c)
 		}
 
-		bmroot, err := amt.FromArray(bs, bmsgCids)
-		if err != nil {
-			return nil, err
-		}
-
-		mrcid, err := bs.Put(&types.MsgMeta{
-			BlsMessages:   bmroot,
-			SecpkMessages: smroot,
-		})
+		mrcid, err := computeMsgMeta(bs, bmsgCids, smsgCids)
 		if err != nil {
 			return nil, err
 		}
@@ -211,6 +231,28 @@ func zipTipSetAndMessages(bs amt.Blocks, ts *types.TipSet, allbmsgs []*types.Mes
 	}
 
 	return fts, nil
+}
+
+func computeMsgMeta(bs amt.Blocks, bmsgCids, smsgCids []cbg.CBORMarshaler) (cid.Cid, error) {
+	bmroot, err := amt.FromArray(bs, bmsgCids)
+	if err != nil {
+		return cid.Undef, err
+	}
+
+	smroot, err := amt.FromArray(bs, smsgCids)
+	if err != nil {
+		return cid.Undef, err
+	}
+
+	mrcid, err := bs.Put(&types.MsgMeta{
+		BlsMessages:   bmroot,
+		SecpkMessages: smroot,
+	})
+	if err != nil {
+		return cid.Undef, xerrors.Errorf("failed to put msgmeta: %w", err)
+	}
+
+	return mrcid, nil
 }
 
 func (syncer *Syncer) selectHead(heads map[peer.ID]*types.TipSet) (*types.TipSet, error) {
@@ -289,12 +331,12 @@ func (syncer *Syncer) tryLoadFullTipSet(cids []cid.Cid) (*store.FullTipSet, erro
 	return fts, nil
 }
 
-func (syncer *Syncer) Sync(maybeHead *store.FullTipSet) error {
+func (syncer *Syncer) Sync(maybeHead *types.TipSet) error {
+
 	syncer.syncLock.Lock()
 	defer syncer.syncLock.Unlock()
 
-	ts := maybeHead.TipSet()
-	if syncer.Genesis.Equals(ts) || syncer.store.GetHeaviestTipSet().Equals(ts) {
+	if syncer.Genesis.Equals(maybeHead) || syncer.store.GetHeaviestTipSet().Equals(maybeHead) {
 		return nil
 	}
 
@@ -384,7 +426,7 @@ func (syncer *Syncer) ValidateBlock(ctx context.Context, b *types.FullBlock) err
 
 	baseTs, err := syncer.store.LoadTipSet(h.Parents)
 	if err != nil {
-		return xerrors.Errorf("load tipset failed: %w", err)
+		return xerrors.Errorf("load parent tipset failed (%s): %w", h.Parents, err)
 	}
 
 	stateroot, precp, err := syncer.sm.TipSetState(baseTs)
@@ -476,16 +518,43 @@ func (syncer *Syncer) ValidateBlock(ctx context.Context, b *types.FullBlock) err
 		return nil
 	}
 
+	bs := amt.WrapBlockstore(syncer.store.Blockstore())
+	var blsCids []cbg.CBORMarshaler
 	for i, m := range b.BlsMessages {
 		if err := checkMsg(m); err != nil {
-			xerrors.Errorf("block had invalid bls message at index %d: %w", i, err)
+			return xerrors.Errorf("block had invalid bls message at index %d: %w", i, err)
 		}
+		c := cbg.CborCid(m.Cid())
+		blsCids = append(blsCids, &c)
+	}
+	bmroot, err := amt.FromArray(bs, blsCids)
+	if err != nil {
+		return xerrors.Errorf("failed to build amt from bls msg cids: %w", err)
 	}
 
+	var secpkCids []cbg.CBORMarshaler
 	for i, m := range b.SecpkMessages {
 		if err := checkMsg(&m.Message); err != nil {
-			xerrors.Errorf("block had invalid secpk message at index %d: %w", i, err)
+			return xerrors.Errorf("block had invalid secpk message at index %d: %w", i, err)
 		}
+		c := cbg.CborCid(m.Cid())
+		secpkCids = append(secpkCids, &c)
+	}
+	smroot, err := amt.FromArray(bs, secpkCids)
+	if err != nil {
+		return xerrors.Errorf("failed to build amt from bls msg cids: %w", err)
+	}
+
+	mrcid, err := bs.Put(&types.MsgMeta{
+		BlsMessages:   bmroot,
+		SecpkMessages: smroot,
+	})
+	if err != nil {
+		return err
+	}
+
+	if h.Messages != mrcid {
+		return fmt.Errorf("messages didnt match message root in header")
 	}
 
 	return nil
@@ -592,6 +661,7 @@ func (syncer *Syncer) iterFullTipsets(headers []*types.TipSet, cb func(*store.Fu
 			return err
 		}
 		if fts == nil {
+			fmt.Println("Failed to fill tipset for: ", beg, headers[beg].Cids(), headers[beg].Height())
 			break
 		}
 		if err := cb(fts); err != nil {
@@ -671,10 +741,10 @@ func persistMessages(bs bstore.Blockstore, bst *BSTipSet) error {
 	return nil
 }
 
-func (syncer *Syncer) collectChain(fts *store.FullTipSet) error {
-	syncer.syncState.Init(syncer.store.GetHeaviestTipSet(), fts.TipSet())
+func (syncer *Syncer) collectChain(ts *types.TipSet) error {
+	syncer.syncState.Init(syncer.store.GetHeaviestTipSet(), ts)
 
-	headers, err := syncer.collectHeaders(fts.TipSet(), syncer.store.GetHeaviestTipSet())
+	headers, err := syncer.collectHeaders(ts, syncer.store.GetHeaviestTipSet())
 	if err != nil {
 		return err
 	}

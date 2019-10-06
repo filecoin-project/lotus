@@ -56,7 +56,7 @@ func tipsetSortFunc(blks []*BlockHeader) func(i, j int) bool {
 		tj := blks[j].LastTicket()
 
 		if ti.Equals(tj) {
-			log.Warn("blocks have same ticket")
+			//log.Warn("blocks have same ticket")
 			return blks[i].Cid().KeyString() < blks[j].Cid().KeyString()
 		}
 

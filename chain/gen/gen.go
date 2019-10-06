@@ -31,7 +31,7 @@ import (
 
 var log = logging.Logger("gen")
 
-const msgsPerBlock = 20
+const msgsPerBlock = 0
 
 type ChainGen struct {
 	accounts []address.Address
@@ -104,7 +104,12 @@ func NewGenerator() (*ChainGen, error) {
 		return nil, xerrors.Errorf("creating memrepo wallet failed: %w", err)
 	}
 
-	worker, err := w.GenerateKey(types.KTBLS)
+	worker1, err := w.GenerateKey(types.KTBLS)
+	if err != nil {
+		return nil, xerrors.Errorf("failed to generate worker key: %w", err)
+	}
+
+	worker2, err := w.GenerateKey(types.KTBLS)
 	if err != nil {
 		return nil, xerrors.Errorf("failed to generate worker key: %w", err)
 	}
@@ -123,18 +128,20 @@ func NewGenerator() (*ChainGen, error) {
 	}
 
 	minercfg := &GenMinerCfg{
-		Workers: []address.Address{worker, worker},
-		Owners:  []address.Address{worker, worker},
+		Workers: []address.Address{worker1, worker2},
+		Owners:  []address.Address{worker1, worker2},
 		PeerIDs: []peer.ID{"peerID1", "peerID2"},
 	}
 
 	genb, err := MakeGenesisBlock(bs, map[address.Address]types.BigInt{
-		worker: types.FromFil(40000),
-		banker: types.FromFil(50000),
+		worker1: types.FromFil(40000),
+		worker2: types.FromFil(40000),
+		banker:  types.FromFil(50000),
 	}, minercfg, 100000)
 	if err != nil {
 		return nil, xerrors.Errorf("make genesis block failed: %w", err)
 	}
+	fmt.Println("MINER CFG ADDRESSES: ", minercfg.MinerAddrs)
 
 	cs := store.NewChainStore(bs, ds)
 
@@ -191,8 +198,7 @@ func (cg *ChainGen) GenesisCar() ([]byte, error) {
 	return out.Bytes(), nil
 }
 
-func (cg *ChainGen) nextBlockProof(ctx context.Context, m address.Address, ticks []*types.Ticket) (types.ElectionProof, *types.Ticket, error) {
-	pts := cg.CurTipset.TipSet()
+func (cg *ChainGen) nextBlockProof(ctx context.Context, pts *types.TipSet, m address.Address, ticks []*types.Ticket) (types.ElectionProof, *types.Ticket, error) {
 
 	var lastTicket *types.Ticket
 	if len(ticks) == 0 {
@@ -201,7 +207,7 @@ func (cg *ChainGen) nextBlockProof(ctx context.Context, m address.Address, ticks
 		lastTicket = ticks[len(ticks)-1]
 	}
 
-	st := cg.CurTipset.TipSet().ParentState()
+	st := pts.ParentState()
 
 	worker, err := stmgr.GetMinerWorker(ctx, cg.sm, st, m)
 	if err != nil {
@@ -261,7 +267,7 @@ func (cg *ChainGen) NextTipSetFromMiners(base *types.TipSet, miners []address.Ad
 
 	for len(blks) == 0 {
 		for i, m := range miners {
-			proof, t, err := cg.nextBlockProof(context.TODO(), m, ticketSets[i])
+			proof, t, err := cg.nextBlockProof(context.TODO(), base, m, ticketSets[i])
 			if err != nil {
 				return nil, xerrors.Errorf("next block proof: %w", err)
 			}
