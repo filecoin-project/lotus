@@ -38,7 +38,7 @@ class ChainExplorer extends React.Component {
   }
 
   async updateMessages(cids, msgcache) {
-    const msgs = await Promise.all(cids.map(async cid => [cid['/'], await this.props.client.call('Filecoin.ChainGetBlockMessages', [cid])]))
+    const msgs = await Promise.all(cids.map(async cid => [cid['/'], await this.props.client.call('Filecoin.ChainGetParentMessages', [cid])]))
     msgs.forEach(([cid, msg]) => msgcache[cid] = msg)
   }
 
@@ -118,7 +118,7 @@ class ChainExplorer extends React.Component {
 
         let msgc = -1
         if(ts.Cids[0] && this.state.messages[ts.Cids[0]['/']]) { // TODO: get from all blks
-          msgc = this.state.messages[ts.Cids[0]['/']].SecpkMessages.length + this.state.messages[ts.Cids[0]['/']].BlsMessages.length
+          msgc = this.state.messages[ts.Cids[0]['/']].length
         }
         if(msgc > 0) {
           msgc = <b>{msgc}</b>

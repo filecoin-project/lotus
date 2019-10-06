@@ -91,7 +91,7 @@ func (a *ChainAPI) ChainGetBlockMessages(ctx context.Context, msg cid.Cid) (*api
 	}, nil
 }
 
-func (a *ChainAPI) ChainGetParentMessages(ctx context.Context, bcid cid.Cid) ([]cid.Cid, error) {
+func (a *ChainAPI) ChainGetParentMessages(ctx context.Context, bcid cid.Cid) ([]api.Message, error) {
 	b, err := a.Chain.GetBlock(bcid)
 	if err != nil {
 		return nil, err
@@ -113,9 +113,12 @@ func (a *ChainAPI) ChainGetParentMessages(ctx context.Context, bcid cid.Cid) ([]
 		return nil, err
 	}
 
-	var out []cid.Cid
+	var out []api.Message
 	for _, m := range cm {
-		out = append(out, m.Cid())
+		out = append(out, api.Message{
+			Cid:     m.Cid(),
+			Message: m.VMMessage(),
+		})
 	}
 
 	return out, nil
