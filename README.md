@@ -15,7 +15,7 @@ board](https://github.com/filecoin-project/go-lotus/projects/1).
 
 *Dependencies:*
 - go1.12 or higher
-- gcc
+- gcc (v7.4.0 or higher)
 - git
 - bzr (some go dependency needs this)
 - b2sum
