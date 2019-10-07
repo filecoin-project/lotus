@@ -31,6 +31,8 @@ $ make
 
 ### Node setup
 
+(If you have run lotus before and want to remove all previous data: `rm -rf ~/.lotusstorage`)
+
 Start full node daemon
 ```sh
 $ lotus daemon
