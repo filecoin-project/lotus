@@ -361,6 +361,10 @@ func bstsToFullTipSet(bts *BSTipSet) (*store.FullTipSet, error) {
 		for _, mi := range bts.BlsMsgIncludes[i] {
 			fb.BlsMessages = append(fb.BlsMessages, bts.BlsMessages[mi])
 		}
+		for _, mi := range bts.SecpkMsgIncludes[i] {
+			fb.SecpkMessages = append(fb.SecpkMessages, bts.SecpkMessages[mi])
+		}
+
 		fts.Blocks = append(fts.Blocks, fb)
 	}
 

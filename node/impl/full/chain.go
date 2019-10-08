@@ -27,9 +27,7 @@ func (a *ChainAPI) ChainNotify(ctx context.Context) (<-chan []*store.HeadChange,
 }
 
 func (a *ChainAPI) ChainSubmitBlock(ctx context.Context, blk *types.BlockMsg) error {
-	if err := a.Chain.AddBlock(blk.Header); err != nil {
-		return xerrors.Errorf("AddBlock failed: %w", err)
-	}
+	// TODO: should we have some sort of fast path to adding a local block?
 
 	b, err := blk.Serialize()
 	if err != nil {
@@ -99,6 +97,11 @@ func (a *ChainAPI) ChainGetParentMessages(ctx context.Context, bcid cid.Cid) ([]
 		return nil, err
 	}
 
+	// genesis block has no parent messages...
+	if b.Height == 0 {
+		return nil, nil
+	}
+
 	// TODO: need to get the number of messages better than this
 	pts, err := a.Chain.LoadTipSet(b.Parents)
 	if err != nil {
@@ -122,6 +125,10 @@ func (a *ChainAPI) ChainGetParentReceipts(ctx context.Context, bcid cid.Cid) ([]
 	b, err := a.Chain.GetBlock(bcid)
 	if err != nil {
 		return nil, err
+	}
+
+	if b.Height == 0 {
+		return nil, nil
 	}
 
 	// TODO: need to get the number of messages better than this

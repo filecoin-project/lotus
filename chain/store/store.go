@@ -174,31 +174,30 @@ func (cs *ChainStore) SubscribeHeadChanges(f func(rev, app []*types.TipSet) erro
 }
 
 func (cs *ChainStore) SetGenesis(b *types.BlockHeader) error {
-	fts := &FullTipSet{
-		Blocks: []*types.FullBlock{
-			{Header: b},
-		},
+	ts, err := types.NewTipSet([]*types.BlockHeader{b})
+	if err != nil {
+		return err
 	}
 
-	if err := cs.PutTipSet(fts); err != nil {
+	if err := cs.PutTipSet(ts); err != nil {
 		return err
 	}
 
 	return cs.ds.Put(dstore.NewKey("0"), b.Cid().Bytes())
 }
 
-func (cs *ChainStore) PutTipSet(ts *FullTipSet) error {
-	for _, b := range ts.Blocks {
-		if err := cs.persistBlock(b); err != nil {
+func (cs *ChainStore) PutTipSet(ts *types.TipSet) error {
+	for _, b := range ts.Blocks() {
+		if err := cs.PersistBlockHeader(b); err != nil {
 			return err
 		}
 	}
 
-	expanded, err := cs.expandTipset(ts.TipSet().Blocks()[0])
+	expanded, err := cs.expandTipset(ts.Blocks()[0])
 	if err != nil {
 		return xerrors.Errorf("errored while expanding tipset: %w", err)
 	}
-	log.Debugf("expanded %s into %s\n", ts.TipSet().Cids(), expanded.Cids())
+	log.Debugf("expanded %s into %s\n", ts.Cids(), expanded.Cids())
 
 	if err := cs.MaybeTakeHeavierTipSet(expanded); err != nil {
 		return errors.Wrap(err, "MaybeTakeHeavierTipSet failed in PutTipSet")
@@ -372,24 +371,6 @@ func (cs *ChainStore) PersistBlockHeader(b *types.BlockHeader) error {
 	}
 
 	return cs.bs.Put(sb)
-}
-
-func (cs *ChainStore) persistBlock(b *types.FullBlock) error {
-	if err := cs.PersistBlockHeader(b.Header); err != nil {
-		return err
-	}
-
-	for _, m := range b.BlsMessages {
-		if _, err := cs.PutMessage(m); err != nil {
-			return err
-		}
-	}
-	for _, m := range b.SecpkMessages {
-		if _, err := cs.PutMessage(m); err != nil {
-			return err
-		}
-	}
-	return nil
 }
 
 type storable interface {
