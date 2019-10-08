@@ -2,7 +2,7 @@ package events
 
 import (
 	"context"
-	"fmt"
+	"github.com/stretchr/testify/require"
 	"testing"
 
 	"github.com/filecoin-project/go-lotus/chain/types"
@@ -33,8 +33,6 @@ func TestTsCache(t *testing.T) {
 	}
 
 	for i := 0; i < 9000; i++ {
-		fmt.Printf("i=%d; tl=%d; tcl=%d\n", i, tsc.len, len(tsc.cache))
-
 		if i%90 > 60 {
 			if err := tsc.revert(tsc.best()); err != nil {
 				t.Fatal(err, "; i:", i)
@@ -46,4 +44,66 @@ func TestTsCache(t *testing.T) {
 		}
 	}
 
+}
+
+func TestTsCacheNulls(t *testing.T) {
+	tsc := newTSCache(50, func(context.Context, uint64, *types.TipSet) (*types.TipSet, error) {
+		t.Fatal("storage call")
+		return &types.TipSet{}, nil
+	})
+
+	h := uint64(75)
+
+	add := func() {
+		ts, err := types.NewTipSet([]*types.BlockHeader{{
+			Height:                h,
+			ParentStateRoot:       dummyCid,
+			Messages:              dummyCid,
+			ParentMessageReceipts: dummyCid,
+		}})
+		if err != nil {
+			t.Fatal(err)
+		}
+		if err := tsc.add(ts); err != nil {
+			t.Fatal(err)
+		}
+		h++
+	}
+
+	add()
+	add()
+	add()
+	h += 5
+
+	add()
+	add()
+
+	require.Equal(t, h-1, tsc.best().Height())
+
+	ts, err := tsc.get(h - 1)
+	require.NoError(t, err)
+	require.Equal(t, h-1, ts.Height())
+
+	ts, err = tsc.get(h - 2)
+	require.NoError(t, err)
+	require.Equal(t, h-2, ts.Height())
+
+	ts, err = tsc.get(h - 3)
+	require.NoError(t, err)
+	require.Nil(t, ts)
+
+	ts, err = tsc.get(h - 8)
+	require.NoError(t, err)
+	require.Equal(t, h-8, ts.Height())
+
+	require.NoError(t, tsc.revert(tsc.best()))
+	require.NoError(t, tsc.revert(tsc.best()))
+	require.Equal(t, h-8, tsc.best().Height())
+
+	h += 50
+	add()
+
+	ts, err = tsc.get(h - 1)
+	require.NoError(t, err)
+	require.Equal(t, h-1, ts.Height())
 }

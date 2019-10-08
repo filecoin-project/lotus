@@ -27,16 +27,34 @@ func (e *heightEvents) headChangeAt(rev, app []*types.TipSet) error {
 		// TODO: log error if h below gcconfidence
 		// revert height-based triggers
 
-		for _, tid := range e.htHeights[ts.Height()] {
-			// don't revert if newH is above this ts
-			if newH >= ts.Height() {
-				continue
+		revert := func(h uint64, ts *types.TipSet) {
+			for _, tid := range e.htHeights[h] {
+				// don't revert if newH is above this ts
+				if newH >= h {
+					continue
+				}
+
+				err := e.heightTriggers[tid].revert(ts)
+				if err != nil {
+					log.Errorf("reverting chain trigger (@H %d): %s", h, err)
+				}
+			}
+		}
+		revert(ts.Height(), ts)
+
+		subh := ts.Height() - 1
+		for {
+			cts, err := e.tsc.get(subh)
+			if err != nil {
+				return err
 			}
 
-			err := e.heightTriggers[tid].revert(ts)
-			if err != nil {
-				log.Errorf("reverting chain trigger (@H %d): %s", ts.Height(), err)
+			if cts != nil {
+				break
 			}
+
+			revert(subh, ts)
+			subh--
 		}
 
 		if err := e.tsc.revert(ts); err != nil {
@@ -54,19 +72,44 @@ func (e *heightEvents) headChangeAt(rev, app []*types.TipSet) error {
 
 		// height triggers
 
-		for _, tid := range e.htTriggerHeights[ts.Height()] {
-			hnd := e.heightTriggers[tid]
-			triggerH := ts.Height() - uint64(hnd.confidence)
+		apply := func(h uint64, ts *types.TipSet) error {
+			for _, tid := range e.htTriggerHeights[h] {
+				hnd := e.heightTriggers[tid]
+				triggerH := h - uint64(hnd.confidence)
 
-			incTs, err := e.tsc.get(triggerH)
+				incTs, err := e.tsc.getNonNull(triggerH)
+				if err != nil {
+					return err
+				}
+
+				if err := hnd.handle(incTs, h); err != nil {
+					log.Errorf("chain trigger (@H %d, called @ %d) failed: %s", triggerH, ts.Height(), err)
+				}
+			}
+			return nil
+		}
+
+		if err := apply(ts.Height(), ts); err != nil {
+			return err
+		}
+		subh := ts.Height() - 1
+		for {
+			cts, err := e.tsc.get(subh)
 			if err != nil {
 				return err
 			}
 
-			if err := hnd.handle(incTs, ts.Height()); err != nil {
-				log.Errorf("chain trigger (@H %d, called @ %d) failed: %s", triggerH, ts.Height(), err)
+			if cts != nil {
+				break
 			}
+
+			if err := apply(subh, ts); err != nil {
+				return err
+			}
+
+			subh--
 		}
+
 	}
 
 	return nil
@@ -75,6 +118,8 @@ func (e *heightEvents) headChangeAt(rev, app []*types.TipSet) error {
 // ChainAt invokes the specified `HeightHandler` when the chain reaches the
 //  specified height+confidence threshold. If the chain is rolled-back under the
 //  specified height, `RevertHandler` will be called.
+//
+// ts passed to handlers is the tipset at the specified, or above, if lower tipsets were null
 func (e *heightEvents) ChainAt(hnd HeightHandler, rev RevertHandler, confidence int, h uint64) error {
 	e.lk.Lock()
 	defer e.lk.Unlock()
