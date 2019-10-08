@@ -31,7 +31,7 @@ import (
 
 var log = logging.Logger("gen")
 
-const msgsPerBlock = 5
+const msgsPerBlock = 20
 
 type ChainGen struct {
 	accounts []address.Address
@@ -141,7 +141,6 @@ func NewGenerator() (*ChainGen, error) {
 	if err != nil {
 		return nil, xerrors.Errorf("make genesis block failed: %w", err)
 	}
-	fmt.Println("MINER CFG ADDRESSES: ", minercfg.MinerAddrs)
 
 	cs := store.NewChainStore(bs, ds)
 

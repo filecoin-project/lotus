@@ -643,7 +643,7 @@ loop:
 }
 
 func (syncer *Syncer) syncFork(ctx context.Context, from *types.TipSet, to *types.TipSet) ([]*types.TipSet, error) {
-	tips, err := syncer.Bsync.GetBlocks(ctx, from.Parents(), 100)
+	tips, err := syncer.Bsync.GetBlocks(ctx, from.Parents(), build.ForkLengthThreshold)
 	if err != nil {
 		return nil, err
 	}
