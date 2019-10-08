@@ -463,6 +463,15 @@ func (cs *ChainStore) GetGenesis() (*types.BlockHeader, error) {
 	return types.DecodeBlock(genb.RawData())
 }
 
+func (cs *ChainStore) GetCMessage(c cid.Cid) (ChainMsg, error) {
+	m, err := cs.GetMessage(c)
+	if err == nil {
+		return m, nil
+	}
+
+	return cs.GetSignedMessage(c)
+}
+
 func (cs *ChainStore) GetMessage(c cid.Cid) (*types.Message, error) {
 	sb, err := cs.bs.Get(c)
 	if err != nil {
@@ -640,71 +649,6 @@ func (cs *ChainStore) LoadSignedMessagesFromCids(cids []cid.Cid) ([]*types.Signe
 	}
 
 	return msgs, nil
-}
-
-func (cs *ChainStore) WaitForMessage(ctx context.Context, mcid cid.Cid) (*types.TipSet, *types.MessageReceipt, error) {
-	tsub := cs.SubHeadChanges(ctx)
-
-	head := cs.GetHeaviestTipSet()
-
-	r, err := cs.tipsetExecutedMessage(head, mcid)
-	if err != nil {
-		return nil, nil, err
-	}
-
-	if r != nil {
-		return head, r, nil
-	}
-
-	for {
-		select {
-		case notif, ok := <-tsub:
-			if !ok {
-				return nil, nil, ctx.Err()
-			}
-			for _, val := range notif {
-				switch val.Type {
-				case HCRevert:
-					continue
-				case HCApply:
-					r, err := cs.tipsetExecutedMessage(val.Val, mcid)
-					if err != nil {
-						return nil, nil, err
-					}
-					if r != nil {
-						return val.Val, r, nil
-					}
-				}
-			}
-		case <-ctx.Done():
-			return nil, nil, ctx.Err()
-		}
-	}
-}
-
-func (cs *ChainStore) tipsetExecutedMessage(ts *types.TipSet, msg cid.Cid) (*types.MessageReceipt, error) {
-	// The genesis block did not execute any messages
-	if ts.Height() == 0 {
-		return nil, nil
-	}
-
-	pts, err := cs.LoadTipSet(ts.Parents())
-	if err != nil {
-		return nil, err
-	}
-
-	cm, err := cs.MessagesForTipset(pts)
-	if err != nil {
-		return nil, err
-	}
-
-	for i, m := range cm {
-		if m.Cid() == msg {
-			return cs.GetParentReceipt(ts.Blocks()[0], i)
-		}
-	}
-
-	return nil, nil
 }
 
 func (cs *ChainStore) Blockstore() blockstore.Blockstore {

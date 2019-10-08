@@ -149,7 +149,7 @@ func (m *Miner) computePost(ppe uint64) func(ts *types.TipSet, curH uint64) erro
 		log.Infof("Waiting for post %s to appear on chain", smsg.Cid())
 
 		// make sure it succeeds...
-		rec, err := m.api.ChainWaitMsg(ctx, smsg.Cid())
+		rec, err := m.api.StateWaitMsg(ctx, smsg.Cid())
 		if err != nil {
 			return err
 		}

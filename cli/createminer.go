@@ -83,7 +83,7 @@ var createMinerCmd = &cli.Command{
 			return xerrors.Errorf("failed to push signed message: %w", err)
 		}
 
-		mwait, err := api.ChainWaitMsg(ctx, smsg.Cid())
+		mwait, err := api.StateWaitMsg(ctx, smsg.Cid())
 		if err != nil {
 			return xerrors.Errorf("failed waiting for message inclusion: %w", err)
 		}
