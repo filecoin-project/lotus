@@ -1,6 +1,7 @@
 package cli
 
 import (
+	"encoding/hex"
 	"fmt"
 
 	"github.com/filecoin-project/go-lotus/chain/address"
@@ -14,6 +15,8 @@ var walletCmd = &cli.Command{
 		walletNew,
 		walletList,
 		walletBalance,
+		walletExport,
+		walletImport,
 	},
 }
 
@@ -94,6 +97,66 @@ var walletBalance = &cli.Command{
 		}
 
 		fmt.Printf("%s\n", balance.String())
+		return nil
+	},
+}
+
+var walletExport = &cli.Command{
+	Name:  "export",
+	Usage: "export keys",
+	Action: func(cctx *cli.Context) error {
+		api, closer, err := GetFullNodeAPI(cctx)
+		if err != nil {
+			return err
+		}
+		defer closer()
+		ctx := ReqContext(cctx)
+
+		if !cctx.Args().Present() {
+			return fmt.Errorf("must specify key to export")
+		}
+
+		addr, err := address.NewFromString(cctx.Args().First())
+		if err != nil {
+			return err
+		}
+
+		b, err := api.WalletExport(ctx, addr)
+		if err != nil {
+			return err
+		}
+
+		fmt.Println(hex.EncodeToString(b))
+		return nil
+	},
+}
+
+var walletImport = &cli.Command{
+	Name:  "import",
+	Usage: "import keys",
+	Action: func(cctx *cli.Context) error {
+		api, closer, err := GetFullNodeAPI(cctx)
+		if err != nil {
+			return err
+		}
+		defer closer()
+		ctx := ReqContext(cctx)
+
+		if !cctx.Args().Present() {
+			return fmt.Errorf("must specify key import data")
+		}
+
+		data, err := hex.DecodeString(cctx.Args().First())
+		if err != nil {
+			return err
+		}
+
+		addr, err := api.WalletImport(ctx, data)
+		if err != nil {
+			return err
+		}
+
+		fmt.Printf("imported key %s successfully!", addr)
 		return nil
 	},
 }
