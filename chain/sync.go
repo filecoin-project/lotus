@@ -627,9 +627,6 @@ loop:
 			return blockSet, nil
 		}
 
-		// TODO: handle the case where we are on a fork and its not a simple fast forward
-		// need to walk back to either a common ancestor, or until we hit the fork length threshold.
-
 		log.Warnf("(fork detected) synced header chain (%s - %d) does not link to our best block (%s - %d)", from.Cids(), from.Height(), to.Cids(), to.Height())
 		fork, err := syncer.syncFork(ctx, last, to)
 		if err != nil {
