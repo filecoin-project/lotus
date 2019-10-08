@@ -2,7 +2,6 @@ package wallet
 
 import (
 	"context"
-	"encoding/json"
 	"sort"
 	"strings"
 	"sync"
@@ -97,24 +96,26 @@ func (w *Wallet) findKey(addr address.Address) (*Key, error) {
 	return k, nil
 }
 
-func (w *Wallet) Export(addr address.Address) ([]byte, error) {
+func (w *Wallet) Export(addr address.Address) (*types.KeyInfo, error) {
 	k, err := w.findKey(addr)
 	if err != nil {
 		return nil, xerrors.Errorf("failed to find key to export: %w", err)
 	}
 
-	return json.Marshal(k)
+	return &k.KeyInfo, nil
 }
 
-func (w *Wallet) Import(kdata []byte) (address.Address, error) {
-	var ki types.KeyInfo
-	if err := json.Unmarshal(kdata, &ki); err != nil {
-		return address.Undef, xerrors.Errorf("failed to unmarshal input data: %w", err)
-	}
+func (w *Wallet) Import(ki *types.KeyInfo) (address.Address, error) {
+	w.lk.Lock()
+	defer w.lk.Unlock()
 
-	k, err := NewKey(ki)
+	k, err := NewKey(*ki)
 	if err != nil {
 		return address.Undef, xerrors.Errorf("failed to make key: %w", err)
+	}
+
+	if err := w.keystore.Put(KNamePrefix+k.Address.String(), k.KeyInfo); err != nil {
+		return address.Undef, xerrors.Errorf("saving to keystore: %w", err)
 	}
 
 	return k.Address, nil

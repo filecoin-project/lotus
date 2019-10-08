@@ -2,9 +2,11 @@ package cli
 
 import (
 	"encoding/hex"
+	"encoding/json"
 	"fmt"
 
 	"github.com/filecoin-project/go-lotus/chain/address"
+	types "github.com/filecoin-project/go-lotus/chain/types"
 	"gopkg.in/urfave/cli.v2"
 )
 
@@ -121,7 +123,12 @@ var walletExport = &cli.Command{
 			return err
 		}
 
-		b, err := api.WalletExport(ctx, addr)
+		ki, err := api.WalletExport(ctx, addr)
+		if err != nil {
+			return err
+		}
+
+		b, err := json.Marshal(ki)
 		if err != nil {
 			return err
 		}
@@ -151,7 +158,12 @@ var walletImport = &cli.Command{
 			return err
 		}
 
-		addr, err := api.WalletImport(ctx, data)
+		var ki types.KeyInfo
+		if err := json.Unmarshal(data, &ki); err != nil {
+			return err
+		}
+
+		addr, err := api.WalletImport(ctx, &ki)
 		if err != nil {
 			return err
 		}
