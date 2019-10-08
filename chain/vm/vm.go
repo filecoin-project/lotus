@@ -471,7 +471,7 @@ func (vm *VM) ApplyMessage(ctx context.Context, msg *types.Message) (*ApplyRet, 
 		return nil, xerrors.Errorf("fatal error: %w", actorErr)
 	}
 	if actorErr != nil {
-		log.Warn("[%d] Send actor error: %s", vm.blockHeight, actorErr)
+		log.Warnf("[%d] Send actor error: %+v", vm.blockHeight, actorErr)
 	}
 
 	var errcode uint8
