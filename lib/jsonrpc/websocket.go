@@ -43,6 +43,7 @@ type wsConn struct {
 	handler  handlers
 	requests <-chan clientRequest
 	stop     <-chan struct{}
+	exiting  chan struct{}
 
 	// incoming messages
 	incoming    chan io.Reader
@@ -389,6 +390,7 @@ func (c *wsConn) handleWsConn(ctx context.Context) {
 
 	c.registerCh = make(chan outChanReg)
 	defer close(c.registerCh)
+	defer close(c.exiting)
 
 	// ////
 

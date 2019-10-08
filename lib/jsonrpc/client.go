@@ -88,6 +88,7 @@ func NewMergeClient(addr string, namespace string, outs []interface{}, requestHe
 	}
 
 	stop := make(chan struct{})
+	exiting := make(chan struct{})
 	c.requests = make(chan clientRequest)
 
 	handlers := map[string]rpcHandler{}
@@ -96,6 +97,7 @@ func NewMergeClient(addr string, namespace string, outs []interface{}, requestHe
 		handler:  handlers,
 		requests: c.requests,
 		stop:     stop,
+		exiting:  exiting,
 	}).handleWsConn(context.TODO())
 
 	for _, handler := range outs {
@@ -122,6 +124,7 @@ func NewMergeClient(addr string, namespace string, outs []interface{}, requestHe
 
 	return func() {
 		close(stop)
+		<-exiting
 	}, nil
 }
 
