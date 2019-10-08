@@ -4,11 +4,12 @@ import (
 	"encoding/json"
 	"fmt"
 
+	cid "github.com/ipfs/go-cid"
 	"golang.org/x/xerrors"
 	"gopkg.in/urfave/cli.v2"
 
+	"github.com/filecoin-project/go-lotus/api"
 	types "github.com/filecoin-project/go-lotus/chain/types"
-	cid "github.com/ipfs/go-cid"
 )
 
 var chainCmd = &cli.Command{
@@ -113,7 +114,7 @@ var chainGetBlock = &cli.Command{
 		cblock.BlsMessages = msgs.BlsMessages
 		cblock.SecpkMessages = msgs.SecpkMessages
 		cblock.ParentReceipts = recpts
-		cblock.ParentMessages = pmsgs
+		cblock.ParentMessages = apiMsgCids(pmsgs)
 
 		out, err := json.MarshalIndent(cblock, "", "  ")
 		if err != nil {
@@ -124,6 +125,14 @@ var chainGetBlock = &cli.Command{
 		return nil
 
 	},
+}
+
+func apiMsgCids(in []api.Message) []cid.Cid {
+	out := make([]cid.Cid, len(in))
+	for k, v := range in {
+		out[k] = v.Cid
+	}
+	return out
 }
 
 var chainReadObjCmd = &cli.Command{

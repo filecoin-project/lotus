@@ -45,7 +45,7 @@ type FullNodeStruct struct {
 		ChainGetBlock          func(context.Context, cid.Cid) (*types.BlockHeader, error)                 `perm:"read"`
 		ChainGetBlockMessages  func(context.Context, cid.Cid) (*BlockMessages, error)                     `perm:"read"`
 		ChainGetParentReceipts func(context.Context, cid.Cid) ([]*types.MessageReceipt, error)            `perm:"read"`
-		ChainGetParentMessages func(context.Context, cid.Cid) ([]cid.Cid, error)                          `perm:"read"`
+		ChainGetParentMessages func(context.Context, cid.Cid) ([]Message, error)                          `perm:"read"`
 		ChainGetTipSetByHeight func(context.Context, uint64, *types.TipSet) (*types.TipSet, error)        `perm:"read"`
 		ChainReadObj           func(context.Context, cid.Cid) ([]byte, error)                             `perm:"read"`
 
@@ -284,7 +284,7 @@ func (c *FullNodeStruct) ChainGetParentReceipts(ctx context.Context, b cid.Cid) 
 	return c.Internal.ChainGetParentReceipts(ctx, b)
 }
 
-func (c *FullNodeStruct) ChainGetParentMessages(ctx context.Context, b cid.Cid) ([]cid.Cid, error) {
+func (c *FullNodeStruct) ChainGetParentMessages(ctx context.Context, b cid.Cid) ([]Message, error) {
 	return c.Internal.ChainGetParentMessages(ctx, b)
 }
 

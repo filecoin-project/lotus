@@ -55,7 +55,7 @@ type FullNode interface {
 	ChainGetBlock(context.Context, cid.Cid) (*types.BlockHeader, error)
 	ChainGetBlockMessages(context.Context, cid.Cid) (*BlockMessages, error)
 	ChainGetParentReceipts(context.Context, cid.Cid) ([]*types.MessageReceipt, error)
-	ChainGetParentMessages(context.Context, cid.Cid) ([]cid.Cid, error)
+	ChainGetParentMessages(context.Context, cid.Cid) ([]Message, error)
 	ChainGetTipSetByHeight(context.Context, uint64, *types.TipSet) (*types.TipSet, error)
 	ChainReadObj(context.Context, cid.Cid) ([]byte, error)
 
@@ -200,6 +200,11 @@ type BlockMessages struct {
 	SecpkMessages []*types.SignedMessage
 
 	Cids []cid.Cid
+}
+
+type Message struct {
+	Cid     cid.Cid
+	Message *types.Message
 }
 
 type SectorInfo struct {

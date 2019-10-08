@@ -168,7 +168,7 @@ a:hover {
 .Block {
   user-select: text;
   font-family: monospace;
-  min-width: 50em;
+  min-width: 60em;
   display: inline-block;
 }
 
