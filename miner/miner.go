@@ -164,12 +164,12 @@ func (m *Miner) mine(ctx context.Context) {
 			continue
 		}
 
-		btime := time.Unix(int64(b.Header.Timestamp), 0)
-		if time.Now().Before(btime) {
-			time.Sleep(time.Until(btime))
-		}
-
 		if b != nil {
+			btime := time.Unix(int64(b.Header.Timestamp), 0)
+			if time.Now().Before(btime) {
+				time.Sleep(time.Until(btime))
+			}
+
 			if err := m.api.ChainSubmitBlock(ctx, b); err != nil {
 				log.Errorf("failed to submit newly mined block: %s", err)
 			}
