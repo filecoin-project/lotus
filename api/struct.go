@@ -41,7 +41,6 @@ type FullNodeStruct struct {
 		ChainSubmitBlock       func(ctx context.Context, blk *types.BlockMsg) error                       `perm:"write"`
 		ChainHead              func(context.Context) (*types.TipSet, error)                               `perm:"read"`
 		ChainGetRandomness     func(context.Context, *types.TipSet, []*types.Ticket, int) ([]byte, error) `perm:"read"`
-		ChainWaitMsg           func(context.Context, cid.Cid) (*MsgWait, error)                           `perm:"read"`
 		ChainGetBlock          func(context.Context, cid.Cid) (*types.BlockHeader, error)                 `perm:"read"`
 		ChainGetBlockMessages  func(context.Context, cid.Cid) (*BlockMessages, error)                     `perm:"read"`
 		ChainGetParentReceipts func(context.Context, cid.Cid) ([]*types.MessageReceipt, error)            `perm:"read"`
@@ -92,6 +91,7 @@ type FullNodeStruct struct {
 		StateGetActor              func(context.Context, address.Address, *types.TipSet) (*types.Actor, error)         `perm:"read"`
 		StateReadState             func(context.Context, *types.Actor, *types.TipSet) (*ActorState, error)             `perm:"read"`
 		StatePledgeCollateral      func(context.Context, *types.TipSet) (types.BigInt, error)                          `perm:"read"`
+		StateWaitMsg               func(context.Context, cid.Cid) (*MsgWait, error)                                    `perm:"read"`
 
 		PaychGet                   func(ctx context.Context, from, to address.Address, ensureFunds types.BigInt) (*ChannelInfo, error)      `perm:"sign"`
 		PaychList                  func(context.Context) ([]address.Address, error)                                                         `perm:"read"`
@@ -235,10 +235,6 @@ func (c *FullNodeStruct) ChainGetRandomness(ctx context.Context, pts *types.TipS
 	return c.Internal.ChainGetRandomness(ctx, pts, ticks, lb)
 }
 
-func (c *FullNodeStruct) ChainWaitMsg(ctx context.Context, msgc cid.Cid) (*MsgWait, error) {
-	return c.Internal.ChainWaitMsg(ctx, msgc)
-}
-
 func (c *FullNodeStruct) ChainGetTipSetByHeight(ctx context.Context, h uint64, ts *types.TipSet) (*types.TipSet, error) {
 	return c.Internal.ChainGetTipSetByHeight(ctx, h, ts)
 }
@@ -352,6 +348,10 @@ func (c *FullNodeStruct) StateReadState(ctx context.Context, act *types.Actor, t
 
 func (c *FullNodeStruct) StatePledgeCollateral(ctx context.Context, ts *types.TipSet) (types.BigInt, error) {
 	return c.Internal.StatePledgeCollateral(ctx, ts)
+}
+
+func (c *FullNodeStruct) StateWaitMsg(ctx context.Context, msgc cid.Cid) (*MsgWait, error) {
+	return c.Internal.StateWaitMsg(ctx, msgc)
 }
 
 func (c *FullNodeStruct) PaychGet(ctx context.Context, from, to address.Address, ensureFunds types.BigInt) (*ChannelInfo, error) {

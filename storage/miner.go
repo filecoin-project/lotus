@@ -54,11 +54,11 @@ type storageMinerApi interface {
 	StateMinerWorker(context.Context, address.Address, *types.TipSet) (address.Address, error)
 	StateMinerProvingPeriodEnd(context.Context, address.Address, *types.TipSet) (uint64, error)
 	StateMinerProvingSet(context.Context, address.Address, *types.TipSet) ([]*api.SectorInfo, error)
+	StateWaitMsg(context.Context, cid.Cid) (*api.MsgWait, error)
 
 	MpoolPushMessage(context.Context, *types.Message) (*types.SignedMessage, error)
 
 	ChainHead(context.Context) (*types.TipSet, error)
-	ChainWaitMsg(context.Context, cid.Cid) (*api.MsgWait, error)
 	ChainNotify(context.Context) (<-chan []*store.HeadChange, error)
 	ChainGetRandomness(context.Context, *types.TipSet, []*types.Ticket, int) ([]byte, error)
 	ChainGetTipSetByHeight(context.Context, uint64, *types.TipSet) (*types.TipSet, error)
@@ -161,7 +161,7 @@ func (m *Miner) commitSector(ctx context.Context, sinfo sectorbuilder.SectorSeal
 	}
 
 	go func() {
-		_, err := m.api.ChainWaitMsg(ctx, smsg.Cid())
+		_, err := m.api.StateWaitMsg(ctx, smsg.Cid())
 		if err != nil {
 			return
 		}

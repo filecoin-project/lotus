@@ -46,19 +46,6 @@ func (a *ChainAPI) ChainGetRandomness(ctx context.Context, pts *types.TipSet, ti
 	return a.Chain.GetRandomness(ctx, pts.Cids(), tickets, int64(lb))
 }
 
-func (a *ChainAPI) ChainWaitMsg(ctx context.Context, msg cid.Cid) (*api.MsgWait, error) {
-	// TODO: consider using event system for this, expose confidence
-
-	recpt, err := a.Chain.WaitForMessage(ctx, msg)
-	if err != nil {
-		return nil, err
-	}
-
-	return &api.MsgWait{
-		Receipt: *recpt,
-	}, nil
-}
-
 func (a *ChainAPI) ChainGetBlock(ctx context.Context, msg cid.Cid) (*types.BlockHeader, error) {
 	return a.Chain.GetBlock(msg)
 }

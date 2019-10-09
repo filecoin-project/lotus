@@ -51,7 +51,6 @@ type FullNode interface {
 	ChainHead(context.Context) (*types.TipSet, error)                // TODO: check serialization
 	ChainSubmitBlock(ctx context.Context, blk *types.BlockMsg) error // TODO: check serialization
 	ChainGetRandomness(context.Context, *types.TipSet, []*types.Ticket, int) ([]byte, error)
-	ChainWaitMsg(context.Context, cid.Cid) (*MsgWait, error)
 	ChainGetBlock(context.Context, cid.Cid) (*types.BlockHeader, error)
 	ChainGetBlockMessages(context.Context, cid.Cid) (*BlockMessages, error)
 	ChainGetParentReceipts(context.Context, cid.Cid) ([]*types.MessageReceipt, error)
@@ -124,6 +123,7 @@ type FullNode interface {
 	StateMinerPeerID(ctx context.Context, m address.Address, ts *types.TipSet) (peer.ID, error)
 	StateMinerProvingPeriodEnd(ctx context.Context, actor address.Address, ts *types.TipSet) (uint64, error)
 	StatePledgeCollateral(context.Context, *types.TipSet) (types.BigInt, error)
+	StateWaitMsg(context.Context, cid.Cid) (*MsgWait, error)
 
 	PaychGet(ctx context.Context, from, to address.Address, ensureFunds types.BigInt) (*ChannelInfo, error)
 	PaychList(context.Context) ([]address.Address, error)
@@ -195,6 +195,7 @@ type DealInfo struct {
 
 type MsgWait struct {
 	Receipt types.MessageReceipt
+	TipSet  *types.TipSet
 }
 
 type BlockMessages struct {
