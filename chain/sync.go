@@ -44,7 +44,7 @@ type Syncer struct {
 	syncLock sync.Mutex
 
 	// TipSets known to be invalid
-	bad BadTipSetCache
+	bad *BadBlockCache
 
 	// handle to the block sync service
 	Bsync *BlockSync
@@ -71,6 +71,7 @@ func NewSyncer(sm *stmgr.StateManager, bsync *BlockSync, self peer.ID) (*Syncer,
 	}
 
 	return &Syncer{
+		bad:       NewBadBlockCache(),
 		Genesis:   gent,
 		Bsync:     bsync,
 		peerHeads: make(map[peer.ID]*types.TipSet),
@@ -78,10 +79,6 @@ func NewSyncer(sm *stmgr.StateManager, bsync *BlockSync, self peer.ID) (*Syncer,
 		sm:        sm,
 		self:      self,
 	}, nil
-}
-
-type BadTipSetCache struct {
-	badBlocks map[cid.Cid]struct{}
 }
 
 const BootstrapPeerThreshold = 1
@@ -359,6 +356,7 @@ func (syncer *Syncer) ValidateTipSet(ctx context.Context, fts *store.FullTipSet)
 
 	for _, b := range fts.Blocks {
 		if err := syncer.ValidateBlock(ctx, b); err != nil {
+			syncer.bad.Add(b.Cid())
 			return xerrors.Errorf("validating block %s: %w", b.Cid(), err)
 		}
 	}
@@ -610,6 +608,12 @@ func (syncer *Syncer) collectHeaders(ctx context.Context, from *types.TipSet, to
 	// If, for some reason, we have a suffix of the chain locally, handle that here
 	for blockSet[len(blockSet)-1].Height() > untilHeight {
 		log.Warn("syncing local: ", at)
+		for _, bc := range at {
+			if syncer.bad.Has(bc) {
+				return nil, xerrors.Errorf("chain contained block marked previously as bad (%s, %s)", from.Cids(), bc)
+			}
+		}
+
 		ts, err := syncer.store.LoadTipSet(at)
 		if err != nil {
 			if xerrors.Is(err, bstore.ErrNotFound) {
@@ -650,6 +654,11 @@ loop:
 		for _, b := range blks {
 			if b.Height() < untilHeight {
 				break loop
+			}
+			for _, bc := range b.Cids() {
+				if syncer.bad.Has(bc) {
+					return nil, xerrors.Errorf("chain contained block marked previously as bad (%s, %s)", from.Cids(), bc)
+				}
 			}
 			blockSet = append(blockSet, b)
 		}
