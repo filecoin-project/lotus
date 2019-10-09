@@ -6,6 +6,7 @@ import (
 	"sync"
 	"time"
 
+	"github.com/filecoin-project/go-bls-sigs"
 	"github.com/filecoin-project/go-lotus/api"
 	"github.com/filecoin-project/go-lotus/build"
 	"github.com/filecoin-project/go-lotus/chain/actors"
@@ -520,16 +521,28 @@ func (syncer *Syncer) ValidateBlock(ctx context.Context, b *types.FullBlock) err
 
 	bs := amt.WrapBlockstore(syncer.store.Blockstore())
 	var blsCids []cbg.CBORMarshaler
+	var sigCids []cid.Cid // this is what we get for people not wanting the marshalcbor method on the cid type
+
+	var pubks []bls.PublicKey
 	for i, m := range b.BlsMessages {
 		if err := checkMsg(m); err != nil {
 			return xerrors.Errorf("block had invalid bls message at index %d: %w", i, err)
 		}
+
+		sigCids = append(sigCids, m.Cid())
 		c := cbg.CborCid(m.Cid())
 		blsCids = append(blsCids, &c)
+
+		pubk, err := syncer.sm.GetBlsPublicKey(ctx, m.From, baseTs)
+		if err != nil {
+			return xerrors.Errorf("failed to load bls public to validate block: %w", err)
+		}
+
+		pubks = append(pubks, pubk)
 	}
-	bmroot, err := amt.FromArray(bs, blsCids)
-	if err != nil {
-		return xerrors.Errorf("failed to build amt from bls msg cids: %w", err)
+
+	if err := syncer.verifyBlsAggregate(h.BLSAggregate, sigCids, pubks); err != nil {
+		return xerrors.Errorf("bls aggregate signature was invalid: %w", err)
 	}
 
 	var secpkCids []cbg.CBORMarshaler
@@ -537,9 +550,25 @@ func (syncer *Syncer) ValidateBlock(ctx context.Context, b *types.FullBlock) err
 		if err := checkMsg(&m.Message); err != nil {
 			return xerrors.Errorf("block had invalid secpk message at index %d: %w", i, err)
 		}
+
+		kaddr, err := syncer.sm.ResolveToKeyAddress(ctx, m.Message.From, baseTs)
+		if err != nil {
+			return xerrors.Errorf("failed to resolve key addr: %w", err)
+		}
+
+		if err := m.Signature.Verify(kaddr, m.Message.Cid().Bytes()); err != nil {
+			return xerrors.Errorf("secpk message %s has invalid signature: %w", m.Cid(), err)
+		}
+
 		c := cbg.CborCid(m.Cid())
 		secpkCids = append(secpkCids, &c)
 	}
+
+	bmroot, err := amt.FromArray(bs, blsCids)
+	if err != nil {
+		return xerrors.Errorf("failed to build amt from bls msg cids: %w", err)
+	}
+
 	smroot, err := amt.FromArray(bs, secpkCids)
 	if err != nil {
 		return xerrors.Errorf("failed to build amt from bls msg cids: %w", err)
@@ -555,6 +584,21 @@ func (syncer *Syncer) ValidateBlock(ctx context.Context, b *types.FullBlock) err
 
 	if h.Messages != mrcid {
 		return fmt.Errorf("messages didnt match message root in header")
+	}
+
+	return nil
+}
+
+func (syncer *Syncer) verifyBlsAggregate(sig types.Signature, msgs []cid.Cid, pubks []bls.PublicKey) error {
+	var digests []bls.Digest
+	for _, c := range msgs {
+		digests = append(digests, bls.Hash(bls.Message(c.Bytes())))
+	}
+
+	var bsig bls.Signature
+	copy(bsig[:], sig.Data)
+	if !bls.Verify(bsig, digests, pubks) {
+		return xerrors.New("bls aggregate signature failed to verify")
 	}
 
 	return nil

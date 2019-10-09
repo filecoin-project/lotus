@@ -14,6 +14,7 @@ import (
 	cbg "github.com/whyrusleeping/cbor-gen"
 	"golang.org/x/xerrors"
 
+	bls "github.com/filecoin-project/go-bls-sigs"
 	"github.com/ipfs/go-cid"
 	hamt "github.com/ipfs/go-hamt-ipld"
 	logging "github.com/ipfs/go-log"
@@ -232,4 +233,44 @@ func (sm *StateManager) LoadActorState(ctx context.Context, a address.Address, o
 	}
 
 	return act, nil
+}
+func (sm *StateManager) ResolveToKeyAddress(ctx context.Context, addr address.Address, ts *types.TipSet) (address.Address, error) {
+	switch addr.Protocol() {
+	case address.BLS, address.SECP256K1:
+		return addr, nil
+	case address.Actor:
+		return address.Undef, xerrors.New("cannot resolve actor address to key address")
+	default:
+	}
+
+	if ts == nil {
+		ts = sm.cs.GetHeaviestTipSet()
+	}
+
+	st, _, err := sm.TipSetState(ts)
+	if err != nil {
+		return address.Undef, xerrors.Errorf("resolve address failed to get tipset state: %w", err)
+	}
+
+	cst := hamt.CSTFromBstore(sm.cs.Blockstore())
+	tree, err := state.LoadStateTree(cst, st)
+	if err != nil {
+		return address.Undef, xerrors.Errorf("failed to load state tree")
+	}
+
+	return vm.ResolveToKeyAddr(tree, cst, addr)
+}
+
+func (sm *StateManager) GetBlsPublicKey(ctx context.Context, addr address.Address, ts *types.TipSet) (pubk bls.PublicKey, err error) {
+	kaddr, err := sm.ResolveToKeyAddress(ctx, addr, ts)
+	if err != nil {
+		return pubk, xerrors.Errorf("failed to resolve address to key address: %w", err)
+	}
+
+	if kaddr.Protocol() != address.BLS {
+		return pubk, xerrors.Errorf("address must be BLS address to load bls public key")
+	}
+
+	copy(pubk[:], kaddr.Payload())
+	return pubk, nil
 }
