@@ -1,6 +1,7 @@
 package cli
 
 import (
+	"encoding/json"
 	"fmt"
 
 	"gopkg.in/urfave/cli.v2"
@@ -32,7 +33,11 @@ var mpoolPending = &cli.Command{
 		}
 
 		for _, msg := range msgs {
-			fmt.Println(msg)
+			out, err := json.MarshalIndent(msg, "", "  ")
+			if err != nil {
+				return err
+			}
+			fmt.Println(string(out))
 		}
 
 		return nil
