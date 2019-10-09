@@ -36,10 +36,10 @@ Start full node daemon
 $ lotus daemon
 ```
 
-Connect to the network:
+Check that you are connected to the network
 ```sh
-$ lotus net connect /ip4/147.75.80.29/tcp/1347/p2p/12D3KooWGThG7Ct5aX4tTRkgvjr3pT2JyCyyvK77GhXVQ9Cfjzj2
-$ lotus net connect /ip4/147.75.80.17/tcp/1347/p2p/12D3KooWRNm4a6ESBr9bbTpSC2CfLfoWKRpABJi7FR3GhHw7usKW
+$ lotus net peers | wc -l
+2 # number of peers
 ```
 
 [wait for the chain to finish syncing]
