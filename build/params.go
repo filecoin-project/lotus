@@ -85,3 +85,6 @@ func init() {
 		panic("could not parse InitialRewardStr")
 	}
 }
+
+// Sync
+const BadBlockCacheSize = 8192

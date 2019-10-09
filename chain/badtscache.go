@@ -1,6 +1,7 @@
 package chain
 
 import (
+	"github.com/filecoin-project/go-lotus/build"
 	lru "github.com/hashicorp/golang-lru"
 	"github.com/ipfs/go-cid"
 )
@@ -10,7 +11,7 @@ type BadBlockCache struct {
 }
 
 func NewBadBlockCache() *BadBlockCache {
-	cache, err := lru.NewARC(8192)
+	cache, err := lru.NewARC(build.BadBlockCacheSize)
 	if err != nil {
 		panic(err)
 	}
