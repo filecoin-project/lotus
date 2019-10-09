@@ -5,6 +5,8 @@ import Window from "./Window";
 const rows = 32
 
 class ChainExplorer extends React.Component {
+  fetching = []
+
   constructor(props) {
     super(props)
 
@@ -57,11 +59,30 @@ class ChainExplorer extends React.Component {
     await this.fetchVisible()
   }
 
-  async fetch(h, cache, msgcache) {
+  async fetch(h, base, cache, msgcache) {
+    console.log(h, base, cache)
+
+    if (this.fetching[h]) {
+      return
+    }
+    this.fetching[h] = true
+
     if (h < 0) {
       return
     }
-    const cids = cache[h + 1].Blocks.map(b => b.Parents).reduce((acc, val) => acc.concat(val), [])
+    if(!base.Blocks) {
+      console.log("base for H is nll blk", h, base)
+      return
+    }
+    let cids = base.Blocks.map(b => b.Parents)
+        .reduce((acc, val) => {
+          let out = {...acc}
+          val.forEach(c => out[c['/']] = 8)
+          return out
+        }, {})
+    cids = Object.keys(cids).map(k => ({'/': k}))
+    console.log("parents", cids)
+
     const blocks = await Promise.all(cids.map(cid => this.props.client.call('Filecoin.ChainGetBlock', [cid])))
 
     cache[h] = {
@@ -71,6 +92,8 @@ class ChainExplorer extends React.Component {
     }
 
     await this.updateMessages(cids, msgcache)
+
+    return cache[h]
   }
 
   async fetchVisible() {
@@ -93,7 +116,11 @@ class ChainExplorer extends React.Component {
     let cache = {...this.state.cache}
     let msgcache = {...this.state.messages}
 
-    await tofetch.reduce(async (prev, next) => [...await prev, await this.fetch(next, cache, msgcache)], Promise.resolve([]))
+    await tofetch.reduce(async (prev, next) => {
+      let prevts = await prev
+      let newts = await this.fetch(next, prevts, cache, msgcache)
+      return newts ? newts : prevts
+    }, Promise.resolve(cache[top]))
     this.setState({cache: cache, messages: msgcache})
   }
 
