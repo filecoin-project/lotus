@@ -30,7 +30,6 @@ func (s *Signature) Verify(addr address.Address, msg []byte) error {
 		}
 
 		if addr != maybeaddr {
-			panic("stop here")
 			return fmt.Errorf("signature did not match")
 		}
 
@@ -46,7 +45,6 @@ func (s *Signature) Verify(addr address.Address, msg []byte) error {
 		copy(sig[:], s.Data)
 
 		if !bls.Verify(sig, digests, pubkeys) {
-			panic("stop here")
 			return fmt.Errorf("bls signature failed to verify")
 		}
 
