@@ -5,7 +5,7 @@ import (
 	"io"
 	"math"
 
-	cid "github.com/ipfs/go-cid"
+	"github.com/ipfs/go-cid"
 	cbg "github.com/whyrusleeping/cbor-gen"
 	xerrors "golang.org/x/xerrors"
 )
@@ -284,7 +284,7 @@ func (t *Ticket) MarshalCBOR(w io.Writer) error {
 		_, err := w.Write(cbg.CborNull)
 		return err
 	}
-	if _, err := w.Write([]byte{131}); err != nil {
+	if _, err := w.Write([]byte{129}); err != nil {
 		return err
 	}
 
@@ -293,22 +293,6 @@ func (t *Ticket) MarshalCBOR(w io.Writer) error {
 		return err
 	}
 	if _, err := w.Write(t.VRFProof); err != nil {
-		return err
-	}
-
-	// t.t.VDFResult ([]uint8)
-	if _, err := w.Write(cbg.CborEncodeMajorType(cbg.MajByteString, uint64(len(t.VDFResult)))); err != nil {
-		return err
-	}
-	if _, err := w.Write(t.VDFResult); err != nil {
-		return err
-	}
-
-	// t.t.VDFProof ([]uint8)
-	if _, err := w.Write(cbg.CborEncodeMajorType(cbg.MajByteString, uint64(len(t.VDFProof)))); err != nil {
-		return err
-	}
-	if _, err := w.Write(t.VDFProof); err != nil {
 		return err
 	}
 	return nil
@@ -325,7 +309,7 @@ func (t *Ticket) UnmarshalCBOR(r io.Reader) error {
 		return fmt.Errorf("cbor input should be of type array")
 	}
 
-	if extra != 3 {
+	if extra != 1 {
 		return fmt.Errorf("cbor input had wrong number of fields")
 	}
 
@@ -344,40 +328,6 @@ func (t *Ticket) UnmarshalCBOR(r io.Reader) error {
 	}
 	t.VRFProof = make([]byte, extra)
 	if _, err := io.ReadFull(br, t.VRFProof); err != nil {
-		return err
-	}
-	// t.t.VDFResult ([]uint8)
-
-	maj, extra, err = cbg.CborReadHeader(br)
-	if err != nil {
-		return err
-	}
-	if extra > 8192 {
-		return fmt.Errorf("t.VDFResult: array too large (%d)", extra)
-	}
-
-	if maj != cbg.MajByteString {
-		return fmt.Errorf("expected byte array")
-	}
-	t.VDFResult = make([]byte, extra)
-	if _, err := io.ReadFull(br, t.VDFResult); err != nil {
-		return err
-	}
-	// t.t.VDFProof ([]uint8)
-
-	maj, extra, err = cbg.CborReadHeader(br)
-	if err != nil {
-		return err
-	}
-	if extra > 8192 {
-		return fmt.Errorf("t.VDFProof: array too large (%d)", extra)
-	}
-
-	if maj != cbg.MajByteString {
-		return fmt.Errorf("expected byte array")
-	}
-	t.VDFProof = make([]byte, extra)
-	if _, err := io.ReadFull(br, t.VDFProof); err != nil {
 		return err
 	}
 	return nil

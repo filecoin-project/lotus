@@ -125,7 +125,7 @@ func (ts *TipSet) Equals(ots *TipSet) bool {
 }
 
 func (t *Ticket) Less(o *Ticket) bool {
-	return bytes.Compare(t.VDFResult, o.VDFResult) < 0
+	return bytes.Compare(t.VRFProof, o.VRFProof) < 0
 }
 
 func (ts *TipSet) MinTicket() *Ticket {

@@ -329,9 +329,7 @@ func MakeGenesisBlock(bs bstore.Blockstore, balances map[address.Address]types.B
 	log.Infof("Empty Genesis root: %s", emptyroot)
 
 	genesisticket := &types.Ticket{
-		VRFProof:  []byte("vrf proof"),
-		VDFResult: []byte("i am a vdf result"),
-		VDFProof:  []byte("vdf proof"),
+		VRFProof: []byte("vrf proof"),
 	}
 
 	b := &types.BlockHeader{
