@@ -687,7 +687,7 @@ func (cs *ChainStore) GetRandomness(ctx context.Context, blks []cid.Cid, tickets
 
 		t := tickets[lt-(1+lb)]
 
-		return t.VDFResult, nil
+		return t.VRFProof, nil
 	}
 
 	nv := lb - lt
@@ -702,7 +702,7 @@ func (cs *ChainStore) GetRandomness(ctx context.Context, blks []cid.Cid, tickets
 		lt := int64(len(mtb.Tickets))
 		if nv < lt {
 			t := mtb.Tickets[lt-(1+nv)]
-			return t.VDFResult, nil
+			return t.VRFProof, nil
 		}
 
 		nv -= lt
@@ -713,7 +713,7 @@ func (cs *ChainStore) GetRandomness(ctx context.Context, blks []cid.Cid, tickets
 
 			t := mtb.Tickets[0]
 
-			rval := t.VDFResult
+			rval := t.VRFProof
 			for i := int64(0); i < nv; i++ {
 				h := sha256.Sum256(rval)
 				rval = h[:]

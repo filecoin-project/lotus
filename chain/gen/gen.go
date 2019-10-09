@@ -20,7 +20,6 @@ import (
 	"github.com/filecoin-project/go-lotus/chain/store"
 	"github.com/filecoin-project/go-lotus/chain/types"
 	"github.com/filecoin-project/go-lotus/chain/wallet"
-	"github.com/filecoin-project/go-lotus/lib/vdf"
 	"github.com/filecoin-project/go-lotus/node/repo"
 
 	block "github.com/ipfs/go-block-format"
@@ -213,20 +212,13 @@ func (cg *ChainGen) nextBlockProof(ctx context.Context, pts *types.TipSet, m add
 		return nil, nil, err
 	}
 
-	vrfout, err := ComputeVRF(ctx, cg.w.Sign, worker, lastTicket.VDFResult)
-	if err != nil {
-		return nil, nil, err
-	}
-
-	out, proof, err := vdf.Run(vrfout)
+	vrfout, err := ComputeVRF(ctx, cg.w.Sign, worker, lastTicket.VRFProof)
 	if err != nil {
 		return nil, nil, err
 	}
 
 	tick := &types.Ticket{
-		VRFProof:  vrfout,
-		VDFProof:  proof,
-		VDFResult: out,
+		VRFProof: vrfout,
 	}
 
 	win, eproof, err := IsRoundWinner(ctx, pts, append(ticks, tick), m, &mca{w: cg.w, sm: cg.sm})

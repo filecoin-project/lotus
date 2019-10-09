@@ -10,7 +10,6 @@ import (
 	"github.com/filecoin-project/go-lotus/chain/address"
 	"github.com/filecoin-project/go-lotus/chain/gen"
 	"github.com/filecoin-project/go-lotus/chain/types"
-	"github.com/filecoin-project/go-lotus/lib/vdf"
 	"github.com/filecoin-project/go-lotus/node/impl/full"
 
 	logging "github.com/ipfs/go-log"
@@ -22,7 +21,7 @@ import (
 
 var log = logging.Logger("miner")
 
-type vdfFunc func(ctx context.Context, input []byte) ([]byte, []byte, error)
+type waitFunc func(ctx context.Context) error
 
 type api struct {
 	fx.In
@@ -36,9 +35,11 @@ type api struct {
 func NewMiner(api api) *Miner {
 	return &Miner{
 		api: api,
-
-		// time between blocks, network parameter
-		runVDF: delayVDF(build.BlockDelay * time.Second),
+		waitFunc: func(ctx context.Context) error {
+			// Wait around for half the block time in case other parents come in
+			time.Sleep(build.BlockDelay * time.Second / 2)
+			return nil
+		},
 	}
 }
 
@@ -50,7 +51,7 @@ type Miner struct {
 	stop      chan struct{}
 	stopping  chan struct{}
 
-	runVDF vdfFunc
+	waitFunc waitFunc
 
 	lastWork *MiningBase
 }
@@ -144,6 +145,10 @@ func (m *Miner) mine(ctx context.Context) {
 			return
 		default:
 		}
+		if err := m.waitFunc(ctx); err != nil {
+			log.Error(err)
+			return
+		}
 
 		base, err := m.GetBestMiningCandidate()
 		if err != nil {
@@ -157,6 +162,11 @@ func (m *Miner) mine(ctx context.Context) {
 			log.Warn("waiting 400ms before attempting to mine a block")
 			time.Sleep(400 * time.Millisecond)
 			continue
+		}
+
+		btime := time.Unix(int64(b.Header.Timestamp), 0)
+		if time.Now().Before(btime) {
+			time.Sleep(time.Until(btime))
 		}
 
 		if b != nil {
@@ -255,18 +265,6 @@ func (m *Miner) getMinerWorker(ctx context.Context, addr address.Address, ts *ty
 	return w, nil
 }
 
-func delayVDF(delay time.Duration) func(ctx context.Context, input []byte) ([]byte, []byte, error) {
-	return func(ctx context.Context, input []byte) ([]byte, []byte, error) {
-		select {
-		case <-ctx.Done():
-			return nil, nil, ctx.Err()
-		case <-time.After(delay):
-		}
-
-		return vdf.Run(input)
-	}
-}
-
 func (m *Miner) scratchTicket(ctx context.Context, base *MiningBase) (*types.Ticket, error) {
 	var lastTicket *types.Ticket
 	if len(base.tickets) > 0 {
@@ -275,20 +273,13 @@ func (m *Miner) scratchTicket(ctx context.Context, base *MiningBase) (*types.Tic
 		lastTicket = base.ts.MinTicket()
 	}
 
-	vrfOut, err := m.computeVRF(ctx, lastTicket.VDFResult)
-	if err != nil {
-		return nil, err
-	}
-
-	res, proof, err := m.runVDF(ctx, vrfOut)
+	vrfOut, err := m.computeVRF(ctx, lastTicket.VRFProof)
 	if err != nil {
 		return nil, err
 	}
 
 	return &types.Ticket{
-		VRFProof:  vrfOut,
-		VDFResult: res,
-		VDFProof:  proof,
+		VRFProof: vrfOut,
 	}, nil
 }
 
@@ -304,7 +295,7 @@ func (m *Miner) createBlock(base *MiningBase, ticket *types.Ticket, proof types.
 		return nil, xerrors.Errorf("message filtering failed: %w", err)
 	}
 
-	uts := time.Now().Unix() // TODO: put smallest valid timestamp
+	uts := base.ts.MinTimestamp() + uint64(build.BlockDelay*(len(base.tickets)+1))
 
 	// why even return this? that api call could just submit it for us
 	return m.api.MinerCreateBlock(context.TODO(), m.addresses[0], base.ts, append(base.tickets, ticket), proof, msgs, uint64(uts))

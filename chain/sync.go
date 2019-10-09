@@ -15,7 +15,6 @@ import (
 	"github.com/filecoin-project/go-lotus/chain/stmgr"
 	"github.com/filecoin-project/go-lotus/chain/store"
 	"github.com/filecoin-project/go-lotus/chain/types"
-	"github.com/filecoin-project/go-lotus/lib/vdf"
 
 	amt "github.com/filecoin-project/go-amt-ipld"
 	"github.com/ipfs/go-cid"
@@ -406,13 +405,9 @@ func (syncer *Syncer) validateTickets(ctx context.Context, mworker address.Addre
 			Data: next.VRFProof,
 		}
 
-		if err := sig.Verify(mworker, cur.VDFResult); err != nil {
+		// TODO: ticket signatures should also include miner address
+		if err := sig.Verify(mworker, cur.VRFProof); err != nil {
 			return xerrors.Errorf("invalid ticket, VRFProof invalid: %w", err)
-		}
-
-		// now verify the VDF
-		if err := vdf.Verify(next.VRFProof, next.VDFResult, next.VDFProof); err != nil {
-			return xerrors.Errorf("ticket %d had invalid VDF: %w", err)
 		}
 
 		cur = next
