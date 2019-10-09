@@ -9,6 +9,10 @@ import (
 )
 
 func (m *SignedMessage) ToStorageBlock() (block.Block, error) {
+	if m.Signature.Type == KTBLS {
+		return m.Message.ToStorageBlock()
+	}
+
 	data, err := m.Serialize()
 	if err != nil {
 		return nil, err
