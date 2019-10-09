@@ -4,6 +4,7 @@ import (
 	"context"
 	"sort"
 	"strings"
+	"sync"
 
 	"github.com/filecoin-project/go-bls-sigs"
 	"github.com/filecoin-project/go-lotus/node/repo"
@@ -23,6 +24,8 @@ const (
 type Wallet struct {
 	keys     map[address.Address]*Key
 	keystore types.KeyStore
+
+	lk sync.Mutex
 }
 
 func NewWallet(keystore types.KeyStore) (*Wallet, error) {
@@ -71,6 +74,9 @@ func (w *Wallet) Sign(ctx context.Context, addr address.Address, msg []byte) (*t
 }
 
 func (w *Wallet) findKey(addr address.Address) (*Key, error) {
+	w.lk.Lock()
+	defer w.lk.Unlock()
+
 	k, ok := w.keys[addr]
 	if ok {
 		return k, nil
@@ -90,12 +96,29 @@ func (w *Wallet) findKey(addr address.Address) (*Key, error) {
 	return k, nil
 }
 
-func (w *Wallet) Export(addr address.Address) ([]byte, error) {
-	panic("nyi")
+func (w *Wallet) Export(addr address.Address) (*types.KeyInfo, error) {
+	k, err := w.findKey(addr)
+	if err != nil {
+		return nil, xerrors.Errorf("failed to find key to export: %w", err)
+	}
+
+	return &k.KeyInfo, nil
 }
 
-func (w *Wallet) Import(kdata []byte) (address.Address, error) {
-	panic("nyi")
+func (w *Wallet) Import(ki *types.KeyInfo) (address.Address, error) {
+	w.lk.Lock()
+	defer w.lk.Unlock()
+
+	k, err := NewKey(*ki)
+	if err != nil {
+		return address.Undef, xerrors.Errorf("failed to make key: %w", err)
+	}
+
+	if err := w.keystore.Put(KNamePrefix+k.Address.String(), k.KeyInfo); err != nil {
+		return address.Undef, xerrors.Errorf("saving to keystore: %w", err)
+	}
+
+	return k.Address, nil
 }
 
 func (w *Wallet) ListAddrs() ([]address.Address, error) {
@@ -148,6 +171,9 @@ func GenerateKey(typ string) (*Key, error) {
 }
 
 func (w *Wallet) GenerateKey(typ string) (address.Address, error) {
+	w.lk.Lock()
+	defer w.lk.Unlock()
+
 	k, err := GenerateKey(typ)
 	if err != nil {
 		return address.Undef, err

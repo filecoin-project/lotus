@@ -67,7 +67,10 @@ type FullNodeStruct struct {
 		WalletSign           func(context.Context, address.Address, []byte) (*types.Signature, error)             `perm:"sign"`
 		WalletSignMessage    func(context.Context, address.Address, *types.Message) (*types.SignedMessage, error) `perm:"sign"`
 		WalletDefaultAddress func(context.Context) (address.Address, error)                                       `perm:"write"`
-		MpoolGetNonce        func(context.Context, address.Address) (uint64, error)                               `perm:"read"`
+		WalletExport         func(context.Context, address.Address) (*types.KeyInfo, error)                       `perm:"admin"`
+		WalletImport         func(context.Context, *types.KeyInfo) (address.Address, error)                       `perm:"admin"`
+
+		MpoolGetNonce func(context.Context, address.Address) (uint64, error) `perm:"read"`
 
 		ClientImport      func(ctx context.Context, path string) (cid.Cid, error)                                                                     `perm:"write"`
 		ClientListImports func(ctx context.Context) ([]Import, error)                                                                                 `perm:"write"`
@@ -266,6 +269,14 @@ func (c *FullNodeStruct) WalletSignMessage(ctx context.Context, k address.Addres
 
 func (c *FullNodeStruct) WalletDefaultAddress(ctx context.Context) (address.Address, error) {
 	return c.Internal.WalletDefaultAddress(ctx)
+}
+
+func (c *FullNodeStruct) WalletExport(ctx context.Context, a address.Address) (*types.KeyInfo, error) {
+	return c.Internal.WalletExport(ctx, a)
+}
+
+func (c *FullNodeStruct) WalletImport(ctx context.Context, ki *types.KeyInfo) (address.Address, error) {
+	return c.Internal.WalletImport(ctx, ki)
 }
 
 func (c *FullNodeStruct) MpoolGetNonce(ctx context.Context, addr address.Address) (uint64, error) {

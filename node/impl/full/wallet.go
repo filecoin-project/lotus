@@ -68,3 +68,11 @@ func (a *WalletAPI) WalletDefaultAddress(ctx context.Context) (address.Address, 
 	// TODO: store a default address in the config or 'wallet' portion of the repo
 	return addrs[0], nil
 }
+
+func (a *WalletAPI) WalletExport(ctx context.Context, addr address.Address) (*types.KeyInfo, error) {
+	return a.Wallet.Export(addr)
+}
+
+func (a *WalletAPI) WalletImport(ctx context.Context, ki *types.KeyInfo) (address.Address, error) {
+	return a.Wallet.Import(ki)
+}
