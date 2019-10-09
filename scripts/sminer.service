@@ -1,0 +1,9 @@
+[Unit]
+Description=Lotus Storage Miner
+After=network.target
+
+[Service]
+ExecStart=/usr/local/bin/lotus-storage-miner run
+
+[Install]
+WantedBy=multiuser.target
