@@ -140,8 +140,11 @@ class ChainExplorer extends React.Component {
       const base = this.state.at - this.state.at % rows
       const className = row === this.state.at ? 'ChainExplorer-at' : (row < base ? 'ChainExplorer-after' : 'ChainExplorer-before')
       let info = <span>(fetching)</span>
+        let h = <i>{row}</i>
       if(this.state.cache[row]) {
         const ts = this.state.cache[row]
+
+        h = ts.Height
 
         let msgc = -1
         if(ts.Cids[0] && this.state.messages[ts.Cids[0]['/']]) { // TODO: get from all blks
@@ -160,7 +163,7 @@ class ChainExplorer extends React.Component {
         </span>
       }
 
-      return <div key={row} className={className}>@{row} {info}</div>
+      return <div key={row} className={className}>@{h} {info}</div>
     })}</div>
 
     return (<Window onClose={this.props.onClose} title={`Chain Explorer ${this.state.follow ? '(Following)' : ''}`}>
