@@ -85,7 +85,8 @@ func (a *CommonAPI) ID(context.Context) (peer.ID, error) {
 
 func (a *CommonAPI) Version(context.Context) (api.Version, error) {
 	return api.Version{
-		Version: build.Version,
+		Version:    build.Version,
+		APIVersion: build.APIVersion,
 	}, nil
 }
 
