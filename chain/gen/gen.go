@@ -336,12 +336,7 @@ func (cg *ChainGen) getRandomMessages() ([]*types.SignedMessage, error) {
 			GasPrice: types.NewInt(0),
 		}
 
-		unsigned, err := msg.Serialize()
-		if err != nil {
-			return nil, err
-		}
-
-		sig, err := cg.w.Sign(context.TODO(), cg.banker, unsigned)
+		sig, err := cg.w.Sign(context.TODO(), cg.banker, msg.Cid().Bytes())
 		if err != nil {
 			return nil, err
 		}
