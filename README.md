@@ -2,13 +2,13 @@
 
 Lotus is an experimental implementation of the Filecoin Distributed Storage
 Network. For more details, check out the
-[spec](https://github.com/filecoin-project/spec).
+[spec](https://github.com/filecoin-project/specs).
 
 ## Development
 
-All work is tracked via issues, and an attempt to keep an up to date view on
-this exists in the [lotus testnet github project
-board](https://github.com/filecoin-project/go-lotus/projects/1).
+All work is tracked via issues. An attempt at keeping an up-to-date view on
+remaining work is in the [lotus testnet github project
+board](https://github.com/filecoin-project/lotus/projects/1).
 
 
 ## Building
