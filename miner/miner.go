@@ -145,6 +145,8 @@ func (m *Miner) mine(ctx context.Context) {
 			return
 		default:
 		}
+
+		// Sleep a small amount in order to wait for other blocks to arrive
 		if err := m.waitFunc(ctx); err != nil {
 			log.Error(err)
 			return
@@ -164,15 +166,18 @@ func (m *Miner) mine(ctx context.Context) {
 			continue
 		}
 
-		btime := time.Unix(int64(b.Header.Timestamp), 0)
-		if time.Now().Before(btime) {
-			time.Sleep(time.Until(btime))
-		}
-
 		if b != nil {
+			btime := time.Unix(int64(b.Header.Timestamp), 0)
+			if time.Now().Before(btime) {
+				time.Sleep(time.Until(btime))
+			}
+
 			if err := m.api.ChainSubmitBlock(ctx, b); err != nil {
 				log.Errorf("failed to submit newly mined block: %s", err)
 			}
+		} else {
+			nextRound := time.Unix(int64(base.ts.MinTimestamp()+uint64(build.BlockDelay*len(base.tickets))), 0)
+			time.Sleep(time.Until(nextRound))
 		}
 	}
 }
