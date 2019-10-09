@@ -19,6 +19,7 @@ var chainCmd = &cli.Command{
 		chainHeadCmd,
 		chainGetBlock,
 		chainReadObjCmd,
+		chainGetMsgCmd,
 	},
 }
 
@@ -157,6 +158,49 @@ var chainReadObjCmd = &cli.Command{
 		}
 
 		fmt.Printf("%x\n", obj)
+		return nil
+	},
+}
+
+var chainGetMsgCmd = &cli.Command{
+	Name:  "getmessage",
+	Usage: "Get and print a message by its cid",
+	Action: func(cctx *cli.Context) error {
+		api, closer, err := GetFullNodeAPI(cctx)
+		if err != nil {
+			return err
+		}
+		defer closer()
+		ctx := ReqContext(cctx)
+
+		c, err := cid.Decode(cctx.Args().First())
+		if err != nil {
+			return xerrors.Errorf("failed to parse cid input: %w", err)
+		}
+
+		mb, err := api.ChainReadObj(ctx, c)
+		if err != nil {
+			return xerrors.Errorf("failed to read object: %w", err)
+		}
+
+		var i interface{}
+		m, err := types.DecodeMessage(mb)
+		if err != nil {
+			sm, err := types.DecodeSignedMessage(mb)
+			if err != nil {
+				return xerrors.Errorf("failed to decode object as a message: %w", err)
+			}
+			i = sm
+		} else {
+			i = m
+		}
+
+		enc, err := json.MarshalIndent(i, "", "  ")
+		if err != nil {
+			return err
+		}
+
+		fmt.Println(string(enc))
 		return nil
 	},
 }
