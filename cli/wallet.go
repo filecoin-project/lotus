@@ -4,6 +4,9 @@ import (
 	"encoding/hex"
 	"encoding/json"
 	"fmt"
+	"io/ioutil"
+	"os"
+	"strings"
 
 	"github.com/filecoin-project/go-lotus/chain/address"
 	types "github.com/filecoin-project/go-lotus/chain/types"
@@ -149,13 +152,24 @@ var walletImport = &cli.Command{
 		defer closer()
 		ctx := ReqContext(cctx)
 
-		if !cctx.Args().Present() {
-			return fmt.Errorf("must specify key import data")
-		}
+		var data []byte
+		if !cctx.Args().Present() || cctx.Args().First() == "-" {
+			indata, err := ioutil.ReadAll(os.Stdin)
+			if err != nil {
+				return err
+			}
+			dec, err := hex.DecodeString(strings.TrimSpace(string(indata)))
+			if err != nil {
+				return err
+			}
 
-		data, err := hex.DecodeString(cctx.Args().First())
-		if err != nil {
-			return err
+			data = dec
+		} else {
+			fdata, err := ioutil.ReadFile(cctx.Args().First())
+			if err != nil {
+				return err
+			}
+			data = fdata
 		}
 
 		var ki types.KeyInfo
