@@ -359,6 +359,11 @@ func (sm *StateManager) searchBackForMsg(ctx context.Context, from *types.TipSet
 
 	cur := from
 	for {
+		if cur.Height() == 0 {
+			// it ain't here!
+			return nil, nil, nil
+		}
+
 		select {
 		case <-ctx.Done():
 			return nil, nil, nil
@@ -388,11 +393,6 @@ func (sm *StateManager) searchBackForMsg(ctx context.Context, from *types.TipSet
 
 		if r != nil {
 			return ts, r, nil
-		}
-
-		if ts.Height() == 0 {
-			// it ain't here!
-			return nil, nil, nil
 		}
 
 		cur = ts
