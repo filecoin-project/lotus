@@ -63,7 +63,7 @@ lotus: $(BUILD_DEPS)
 .PHONY: lotus
 CLEAN+=lotus
 
-lotus-sotrage-miner: $(BUILD_DEPS)
+lotus-storage-miner: $(BUILD_DEPS)
 	rm -f lotus-storage-miner
 	go build -o lotus-storage-miner ./cmd/lotus-storage-miner
 	go run github.com/GeertJohan/go.rice/rice append --exec lotus-storage-miner -i ./build
@@ -72,7 +72,7 @@ lotus-sotrage-miner: $(BUILD_DEPS)
 
 CLEAN+=lotus-storage-miner
 
-build: lotus lotus-sotrage-miner
+build: lotus lotus-storage-miner
 
 .PHONY: build
 
