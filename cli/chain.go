@@ -1,6 +1,7 @@
 package cli
 
 import (
+	"context"
 	"encoding/json"
 	"fmt"
 
@@ -203,4 +204,51 @@ var chainGetMsgCmd = &cli.Command{
 		fmt.Println(string(enc))
 		return nil
 	},
+}
+
+var chainSetHead = &cli.Command{
+	Name:  "sethead",
+	Usage: "manually set the local nodes head tipset (Caution: normally only used for recovery)",
+	Action: func(cctx *cli.Context) error {
+		api, closer, err := GetFullNodeAPI(cctx)
+		if err != nil {
+			return err
+		}
+		defer closer()
+		ctx := ReqContext(cctx)
+
+		if !cctx.Args().Present() {
+			return fmt.Errorf("must pass cids for tipset to set as head")
+		}
+
+		ts, err := parseTipSet(api, ctx, cctx.Args().Slice())
+		if err != nil {
+			return err
+		}
+
+		if err := api.ChainSetHead(ctx, ts); err != nil {
+			return err
+		}
+
+		return nil
+	},
+}
+
+func parseTipSet(api api.FullNode, ctx context.Context, vals []string) (*types.TipSet, error) {
+	var headers []*types.BlockHeader
+	for _, c := range vals {
+		blkc, err := cid.Decode(c)
+		if err != nil {
+			return nil, err
+		}
+
+		bh, err := api.ChainGetBlock(ctx, blkc)
+		if err != nil {
+			return nil, err
+		}
+
+		headers = append(headers, bh)
+	}
+
+	return types.NewTipSet(headers)
 }

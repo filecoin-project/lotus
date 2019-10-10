@@ -212,29 +212,43 @@ func (cs *ChainStore) MaybeTakeHeavierTipSet(ts *types.TipSet) error {
 		// TODO: don't do this for initial sync. Now that we don't have a
 		// difference between 'bootstrap sync' and 'caught up' sync, we need
 		// some other heuristic.
-		if cs.heaviest != nil {
-			revert, apply, err := cs.ReorgOps(cs.heaviest, ts)
-			if err != nil {
-				return errors.Wrap(err, "computing reorg ops failed")
-			}
-			for _, hcf := range cs.headChangeNotifs {
-				if err := hcf(revert, apply); err != nil {
-					return errors.Wrap(err, "head change func errored (BAD)")
-				}
-			}
-		} else {
-			log.Warn("no heaviest tipset found, using %s", ts.Cids())
-		}
-
-		log.Debugf("New heaviest tipset! %s", ts.Cids())
-		cs.heaviest = ts
-
-		if err := cs.writeHead(ts); err != nil {
-			log.Errorf("failed to write chain head: %s", err)
-			return nil
-		}
+		return cs.takeHeaviestTipSet(ts)
 	}
 	return nil
+}
+
+func (cs *ChainStore) takeHeaviestTipSet(ts *types.TipSet) error {
+	if cs.heaviest != nil {
+		revert, apply, err := cs.ReorgOps(cs.heaviest, ts)
+		if err != nil {
+			return errors.Wrap(err, "computing reorg ops failed")
+		}
+		for _, hcf := range cs.headChangeNotifs {
+			if err := hcf(revert, apply); err != nil {
+				return errors.Wrap(err, "head change func errored (BAD)")
+			}
+		}
+	} else {
+		log.Warn("no heaviest tipset found, using %s", ts.Cids())
+	}
+
+	log.Debugf("New heaviest tipset! %s", ts.Cids())
+	cs.heaviest = ts
+
+	if err := cs.writeHead(ts); err != nil {
+		log.Errorf("failed to write chain head: %s", err)
+		return nil
+	}
+
+	return nil
+}
+
+// SetHead sets the chainstores current 'best' head node.
+// This should only be called if something is broken and needs fixing
+func (cs *ChainStore) SetHead(ts *types.TipSet) error {
+	cs.heaviestLk.Lock()
+	defer cs.heaviestLk.Unlock()
+	return cs.takeHeaviestTipSet(ts)
 }
 
 func (cs *ChainStore) Contains(ts *types.TipSet) (bool, error) {
