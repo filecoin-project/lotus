@@ -170,6 +170,8 @@ func (m *Miner) mine(ctx context.Context) {
 			btime := time.Unix(int64(b.Header.Timestamp), 0)
 			if time.Now().Before(btime) {
 				time.Sleep(time.Until(btime))
+			} else {
+				log.Warnf("Mined block in the past: b.T: %s, T: %s, dT: %s", btime, time.Now(), time.Now().Sub(btime))
 			}
 
 			if err := m.api.ChainSubmitBlock(ctx, b); err != nil {
