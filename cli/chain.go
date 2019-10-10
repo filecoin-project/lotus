@@ -1,14 +1,16 @@
 package cli
 
 import (
+	"context"
 	"encoding/json"
 	"fmt"
 
+	cid "github.com/ipfs/go-cid"
 	"golang.org/x/xerrors"
 	"gopkg.in/urfave/cli.v2"
 
+	"github.com/filecoin-project/go-lotus/api"
 	types "github.com/filecoin-project/go-lotus/chain/types"
-	cid "github.com/ipfs/go-cid"
 )
 
 var chainCmd = &cli.Command{
@@ -18,6 +20,8 @@ var chainCmd = &cli.Command{
 		chainHeadCmd,
 		chainGetBlock,
 		chainReadObjCmd,
+		chainGetMsgCmd,
+		chainSetHeadCmd,
 	},
 }
 
@@ -113,7 +117,7 @@ var chainGetBlock = &cli.Command{
 		cblock.BlsMessages = msgs.BlsMessages
 		cblock.SecpkMessages = msgs.SecpkMessages
 		cblock.ParentReceipts = recpts
-		cblock.ParentMessages = pmsgs
+		cblock.ParentMessages = apiMsgCids(pmsgs)
 
 		out, err := json.MarshalIndent(cblock, "", "  ")
 		if err != nil {
@@ -124,6 +128,14 @@ var chainGetBlock = &cli.Command{
 		return nil
 
 	},
+}
+
+func apiMsgCids(in []api.Message) []cid.Cid {
+	out := make([]cid.Cid, len(in))
+	for k, v := range in {
+		out[k] = v.Cid
+	}
+	return out
 }
 
 var chainReadObjCmd = &cli.Command{
@@ -150,4 +162,94 @@ var chainReadObjCmd = &cli.Command{
 		fmt.Printf("%x\n", obj)
 		return nil
 	},
+}
+
+var chainGetMsgCmd = &cli.Command{
+	Name:  "getmessage",
+	Usage: "Get and print a message by its cid",
+	Action: func(cctx *cli.Context) error {
+		api, closer, err := GetFullNodeAPI(cctx)
+		if err != nil {
+			return err
+		}
+		defer closer()
+		ctx := ReqContext(cctx)
+
+		c, err := cid.Decode(cctx.Args().First())
+		if err != nil {
+			return xerrors.Errorf("failed to parse cid input: %w", err)
+		}
+
+		mb, err := api.ChainReadObj(ctx, c)
+		if err != nil {
+			return xerrors.Errorf("failed to read object: %w", err)
+		}
+
+		var i interface{}
+		m, err := types.DecodeMessage(mb)
+		if err != nil {
+			sm, err := types.DecodeSignedMessage(mb)
+			if err != nil {
+				return xerrors.Errorf("failed to decode object as a message: %w", err)
+			}
+			i = sm
+		} else {
+			i = m
+		}
+
+		enc, err := json.MarshalIndent(i, "", "  ")
+		if err != nil {
+			return err
+		}
+
+		fmt.Println(string(enc))
+		return nil
+	},
+}
+
+var chainSetHeadCmd = &cli.Command{
+	Name:  "sethead",
+	Usage: "manually set the local nodes head tipset (Caution: normally only used for recovery)",
+	Action: func(cctx *cli.Context) error {
+		api, closer, err := GetFullNodeAPI(cctx)
+		if err != nil {
+			return err
+		}
+		defer closer()
+		ctx := ReqContext(cctx)
+
+		if !cctx.Args().Present() {
+			return fmt.Errorf("must pass cids for tipset to set as head")
+		}
+
+		ts, err := parseTipSet(api, ctx, cctx.Args().Slice())
+		if err != nil {
+			return err
+		}
+
+		if err := api.ChainSetHead(ctx, ts); err != nil {
+			return err
+		}
+
+		return nil
+	},
+}
+
+func parseTipSet(api api.FullNode, ctx context.Context, vals []string) (*types.TipSet, error) {
+	var headers []*types.BlockHeader
+	for _, c := range vals {
+		blkc, err := cid.Decode(c)
+		if err != nil {
+			return nil, err
+		}
+
+		bh, err := api.ChainGetBlock(ctx, blkc)
+		if err != nil {
+			return nil, err
+		}
+
+		headers = append(headers, bh)
+	}
+
+	return types.NewTipSet(headers)
 }

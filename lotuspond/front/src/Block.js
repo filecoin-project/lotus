@@ -14,21 +14,19 @@ class Block extends React.Component {
 
   async loadHeader() {
     const header = await this.props.conn.call('Filecoin.ChainGetBlock', [this.props.cid])
-    let messages = await this.props.conn.call('Filecoin.ChainGetBlockMessages', [this.props.cid])
-    let receipts = await this.props.conn.call('Filecoin.ChainGetBlockReceipts', [this.props.cid])
+    let messages = await this.props.conn.call('Filecoin.ChainGetParentMessages', [this.props.cid])
+    let receipts = await this.props.conn.call('Filecoin.ChainGetParentReceipts', [this.props.cid])
 
-    const mcids = messages.Cids
+    if (!messages) {
+      messages = []
+    }
 
-    messages = [
-      ...(messages.BlsMessages.map(m => ({...m, type: 'BLS'}))),
-      ...(messages.SecpkMessages.map(m => ({...(m.Message), type: 'Secpk'})))
-    ]
 
-    messages = messages.map((msg, k) => ({...msg, receipt: receipts[k]}))
+    messages = messages.map((msg, k) => ({...msg.Message, cid: msg.Cid, receipt: receipts[k]}))
 
     messages = await Promise.all(messages.map(async (msg, i) => {
       if (msg.receipt.ExitCode !== 0) {
-        let reply = await this.props.conn.call('Filecoin.StateReplay', [{Cids: [this.props.cid], Blocks: [header], Height: header.Height}, mcids[i]])
+        let reply = await this.props.conn.call('Filecoin.StateReplay', [{Cids: [this.props.cid], Blocks: [header], Height: header.Height}, msg.Cid])
         if(!reply.Error) {
           reply.Error = "reply: no error"
         }
@@ -45,8 +43,8 @@ class Block extends React.Component {
     if (this.state.header) {
       let head = this.state.header
 
-      const messages = this.state.messages.map(m => (
-        <div>
+      const messages = this.state.messages.map((m, k) => (
+        <div key={k}>
           <div>
             <Address client={this.props.conn} addr={m.From} mountWindow={this.props.mountWindow}/><b>&nbsp;=>&nbsp;</b>
             <Address client={this.props.conn} addr={m.To} mountWindow={this.props.mountWindow} transfer={m.Value} method={m.Method}/>
@@ -65,15 +63,15 @@ class Block extends React.Component {
           <div>Weight: {head.ParentWeight}</div>
           <div>Miner: {<Address client={this.props.conn} addr={head.Miner} mountWindow={this.props.mountWindow}/>}</div>
           <div>Messages: {head.Messages['/']} {/*TODO: link to message explorer */}</div>
-          <div>Receipts: {head.MessageReceipts['/']}</div>
-          <div>State Root:&nbsp;{head.StateRoot['/']}</div>
+          <div>Parent Receipts: {head.ParentMessageReceipts['/']}</div>
+          <div>Parent State Root:&nbsp;{head.ParentStateRoot['/']}</div>
           <div>----</div>
           <div>{messages}</div>
         </div>
       )
     }
 
-    return (<Window className="CristalScroll" initialSize={{width: 700, height: 400}} onClose={this.props.onClose} title={`Block ${this.props.cid['/']}`}>
+    return (<Window className="CristalScroll" initialSize={{width: 950, height: 400}} onClose={this.props.onClose} title={`Block ${this.props.cid['/']}`}>
       {content}
     </Window>)
   }

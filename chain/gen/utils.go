@@ -202,7 +202,7 @@ func SetupStorageMiners(ctx context.Context, cs *store.ChainStore, sroot cid.Cid
 
 		// TODO: hardcoding 7000000 here is a little fragile, it changes any
 		// time anyone changes the initial account allocations
-		rval, err := doExecValue(ctx, vm, actors.StorageMarketAddress, owner, types.FromFil(6000), actors.SMAMethods.CreateStorageMiner, params)
+		rval, err := doExecValue(ctx, vm, actors.StorageMarketAddress, owner, types.FromFil(6500), actors.SMAMethods.CreateStorageMiner, params)
 		if err != nil {
 			return cid.Undef, xerrors.Errorf("failed to create genesis miner: %w", err)
 		}
@@ -329,9 +329,7 @@ func MakeGenesisBlock(bs bstore.Blockstore, balances map[address.Address]types.B
 	log.Infof("Empty Genesis root: %s", emptyroot)
 
 	genesisticket := &types.Ticket{
-		VRFProof:  []byte("vrf proof"),
-		VDFResult: []byte("i am a vdf result"),
-		VDFProof:  []byte("vdf proof"),
+		VRFProof: []byte("vrf proof"),
 	}
 
 	b := &types.BlockHeader{

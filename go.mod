@@ -14,6 +14,7 @@ require (
 	github.com/gbrlsnchs/jwt/v3 v3.0.0-beta.1
 	github.com/go-ole/go-ole v1.2.4 // indirect
 	github.com/gorilla/websocket v1.4.0
+	github.com/hashicorp/golang-lru v0.5.3
 	github.com/ipfs/go-bitswap v0.1.8
 	github.com/ipfs/go-block-format v0.0.2
 	github.com/ipfs/go-blockservice v0.1.3-0.20190908200855-f22eea50656c
@@ -76,6 +77,7 @@ require (
 	go.uber.org/dig v1.7.0 // indirect
 	go.uber.org/fx v1.9.0
 	go.uber.org/goleak v0.10.0 // indirect
+	go.uber.org/zap v1.10.0
 	go4.org v0.0.0-20190313082347-94abd6928b1d // indirect
 	golang.org/x/crypto v0.0.0-20190829043050-9756ffdc2472 // indirect
 	golang.org/x/sys v0.0.0-20190904154756-749cb33beabd // indirect

@@ -56,7 +56,7 @@ func tipsetSortFunc(blks []*BlockHeader) func(i, j int) bool {
 		tj := blks[j].LastTicket()
 
 		if ti.Equals(tj) {
-			log.Warn("blocks have same ticket")
+			log.Warnf("blocks have same ticket (%s %s)", blks[i].Miner, blks[j].Miner)
 			return blks[i].Cid().KeyString() < blks[j].Cid().KeyString()
 		}
 
@@ -104,6 +104,13 @@ func (ts *TipSet) Blocks() []*BlockHeader {
 }
 
 func (ts *TipSet) Equals(ots *TipSet) bool {
+	if ts == nil && ots == nil {
+		return true
+	}
+	if ts == nil || ots == nil {
+		return false
+	}
+
 	if len(ts.blks) != len(ots.blks) {
 		return false
 	}
@@ -118,7 +125,7 @@ func (ts *TipSet) Equals(ots *TipSet) bool {
 }
 
 func (t *Ticket) Less(o *Ticket) bool {
-	return bytes.Compare(t.VDFResult, o.VDFResult) < 0
+	return bytes.Compare(t.VRFProof, o.VRFProof) < 0
 }
 
 func (ts *TipSet) MinTicket() *Ticket {

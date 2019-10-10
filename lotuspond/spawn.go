@@ -46,7 +46,7 @@ func (api *api) Spawn() (nodeInfo, error) {
 
 	mux := newWsMux()
 
-	cmd := exec.Command("./lotus", "daemon", genParam, "--api", fmt.Sprintf("%d", 2500+id))
+	cmd := exec.Command("./lotus", "daemon", "--bootstrap=false", genParam, "--api", fmt.Sprintf("%d", 2500+id))
 	cmd.Stderr = io.MultiWriter(os.Stderr, errlogfile, mux.errpw)
 	cmd.Stdout = io.MultiWriter(os.Stdout, logfile, mux.outpw)
 	cmd.Env = []string{"LOTUS_PATH=" + dir}

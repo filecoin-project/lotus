@@ -41,13 +41,13 @@ type FullNodeStruct struct {
 		ChainSubmitBlock       func(ctx context.Context, blk *types.BlockMsg) error                       `perm:"write"`
 		ChainHead              func(context.Context) (*types.TipSet, error)                               `perm:"read"`
 		ChainGetRandomness     func(context.Context, *types.TipSet, []*types.Ticket, int) ([]byte, error) `perm:"read"`
-		ChainWaitMsg           func(context.Context, cid.Cid) (*MsgWait, error)                           `perm:"read"`
 		ChainGetBlock          func(context.Context, cid.Cid) (*types.BlockHeader, error)                 `perm:"read"`
 		ChainGetBlockMessages  func(context.Context, cid.Cid) (*BlockMessages, error)                     `perm:"read"`
 		ChainGetParentReceipts func(context.Context, cid.Cid) ([]*types.MessageReceipt, error)            `perm:"read"`
-		ChainGetParentMessages func(context.Context, cid.Cid) ([]cid.Cid, error)                          `perm:"read"`
+		ChainGetParentMessages func(context.Context, cid.Cid) ([]Message, error)                          `perm:"read"`
 		ChainGetTipSetByHeight func(context.Context, uint64, *types.TipSet) (*types.TipSet, error)        `perm:"read"`
 		ChainReadObj           func(context.Context, cid.Cid) ([]byte, error)                             `perm:"read"`
+		ChainSetHead           func(context.Context, *types.TipSet) error                                 `perm:"admin"`
 
 		SyncState func(context.Context) (*SyncState, error) `perm:"read"`
 
@@ -67,7 +67,10 @@ type FullNodeStruct struct {
 		WalletSign           func(context.Context, address.Address, []byte) (*types.Signature, error)             `perm:"sign"`
 		WalletSignMessage    func(context.Context, address.Address, *types.Message) (*types.SignedMessage, error) `perm:"sign"`
 		WalletDefaultAddress func(context.Context) (address.Address, error)                                       `perm:"write"`
-		MpoolGetNonce        func(context.Context, address.Address) (uint64, error)                               `perm:"read"`
+		WalletExport         func(context.Context, address.Address) (*types.KeyInfo, error)                       `perm:"admin"`
+		WalletImport         func(context.Context, *types.KeyInfo) (address.Address, error)                       `perm:"admin"`
+
+		MpoolGetNonce func(context.Context, address.Address) (uint64, error) `perm:"read"`
 
 		ClientImport      func(ctx context.Context, path string) (cid.Cid, error)                                                                     `perm:"write"`
 		ClientListImports func(ctx context.Context) ([]Import, error)                                                                                 `perm:"write"`
@@ -89,6 +92,7 @@ type FullNodeStruct struct {
 		StateGetActor              func(context.Context, address.Address, *types.TipSet) (*types.Actor, error)         `perm:"read"`
 		StateReadState             func(context.Context, *types.Actor, *types.TipSet) (*ActorState, error)             `perm:"read"`
 		StatePledgeCollateral      func(context.Context, *types.TipSet) (types.BigInt, error)                          `perm:"read"`
+		StateWaitMsg               func(context.Context, cid.Cid) (*MsgWait, error)                                    `perm:"read"`
 
 		PaychGet                   func(ctx context.Context, from, to address.Address, ensureFunds types.BigInt) (*ChannelInfo, error)      `perm:"sign"`
 		PaychList                  func(context.Context) ([]address.Address, error)                                                         `perm:"read"`
@@ -232,10 +236,6 @@ func (c *FullNodeStruct) ChainGetRandomness(ctx context.Context, pts *types.TipS
 	return c.Internal.ChainGetRandomness(ctx, pts, ticks, lb)
 }
 
-func (c *FullNodeStruct) ChainWaitMsg(ctx context.Context, msgc cid.Cid) (*MsgWait, error) {
-	return c.Internal.ChainWaitMsg(ctx, msgc)
-}
-
 func (c *FullNodeStruct) ChainGetTipSetByHeight(ctx context.Context, h uint64, ts *types.TipSet) (*types.TipSet, error) {
 	return c.Internal.ChainGetTipSetByHeight(ctx, h, ts)
 }
@@ -268,6 +268,14 @@ func (c *FullNodeStruct) WalletDefaultAddress(ctx context.Context) (address.Addr
 	return c.Internal.WalletDefaultAddress(ctx)
 }
 
+func (c *FullNodeStruct) WalletExport(ctx context.Context, a address.Address) (*types.KeyInfo, error) {
+	return c.Internal.WalletExport(ctx, a)
+}
+
+func (c *FullNodeStruct) WalletImport(ctx context.Context, ki *types.KeyInfo) (address.Address, error) {
+	return c.Internal.WalletImport(ctx, ki)
+}
+
 func (c *FullNodeStruct) MpoolGetNonce(ctx context.Context, addr address.Address) (uint64, error) {
 	return c.Internal.MpoolGetNonce(ctx, addr)
 }
@@ -284,7 +292,7 @@ func (c *FullNodeStruct) ChainGetParentReceipts(ctx context.Context, b cid.Cid) 
 	return c.Internal.ChainGetParentReceipts(ctx, b)
 }
 
-func (c *FullNodeStruct) ChainGetParentMessages(ctx context.Context, b cid.Cid) ([]cid.Cid, error) {
+func (c *FullNodeStruct) ChainGetParentMessages(ctx context.Context, b cid.Cid) ([]Message, error) {
 	return c.Internal.ChainGetParentMessages(ctx, b)
 }
 
@@ -294,6 +302,10 @@ func (c *FullNodeStruct) ChainNotify(ctx context.Context) (<-chan []*store.HeadC
 
 func (c *FullNodeStruct) ChainReadObj(ctx context.Context, obj cid.Cid) ([]byte, error) {
 	return c.Internal.ChainReadObj(ctx, obj)
+}
+
+func (c *FullNodeStruct) ChainSetHead(ctx context.Context, ts *types.TipSet) error {
+	return c.Internal.ChainSetHead(ctx, ts)
 }
 
 func (c *FullNodeStruct) SyncState(ctx context.Context) (*SyncState, error) {
@@ -341,6 +353,10 @@ func (c *FullNodeStruct) StateReadState(ctx context.Context, act *types.Actor, t
 
 func (c *FullNodeStruct) StatePledgeCollateral(ctx context.Context, ts *types.TipSet) (types.BigInt, error) {
 	return c.Internal.StatePledgeCollateral(ctx, ts)
+}
+
+func (c *FullNodeStruct) StateWaitMsg(ctx context.Context, msgc cid.Cid) (*MsgWait, error) {
+	return c.Internal.StateWaitMsg(ctx, msgc)
 }
 
 func (c *FullNodeStruct) PaychGet(ctx context.Context, from, to address.Address, ensureFunds types.BigInt) (*ChannelInfo, error) {

@@ -68,42 +68,22 @@ var createMinerCmd = &cli.Command{
 			return err
 		}
 
-		nonce, err := api.MpoolGetNonce(ctx, addr)
-		if err != nil {
-			return xerrors.Errorf("failed to get account nonce: %w", err)
-		}
-
-		msg := types.Message{
+		msg := &types.Message{
 			To:       actors.StorageMarketAddress,
 			From:     addr,
 			Method:   actors.SMAMethods.CreateStorageMiner,
 			Params:   params,
 			Value:    types.NewInt(0),
-			Nonce:    nonce,
-			GasPrice: types.NewInt(1),
-			GasLimit: types.NewInt(1),
+			GasPrice: types.NewInt(0),
+			GasLimit: types.NewInt(10000),
 		}
 
-		msgbytes, err := msg.Serialize()
+		smsg, err := api.MpoolPushMessage(ctx, msg)
 		if err != nil {
-			return err
-		}
-
-		sig, err := api.WalletSign(ctx, addr, msgbytes)
-		if err != nil {
-			return xerrors.Errorf("failed to sign message: %w", err)
-		}
-
-		smsg := &types.SignedMessage{
-			Message:   msg,
-			Signature: *sig,
-		}
-
-		if err := api.MpoolPush(ctx, smsg); err != nil {
 			return xerrors.Errorf("failed to push signed message: %w", err)
 		}
 
-		mwait, err := api.ChainWaitMsg(ctx, smsg.Cid())
+		mwait, err := api.StateWaitMsg(ctx, smsg.Cid())
 		if err != nil {
 			return xerrors.Errorf("failed waiting for message inclusion: %w", err)
 		}

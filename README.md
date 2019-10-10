@@ -2,13 +2,13 @@
 
 Lotus is an experimental implementation of the Filecoin Distributed Storage
 Network. For more details, check out the
-[spec](https://github.com/filecoin-project/spec).
+[spec](https://github.com/filecoin-project/specs).
 
 ## Development
 
-All work is tracked via issues, and an attempt to keep an up to date view on
-this exists in the [lotus testnet github project
-board](https://github.com/filecoin-project/go-lotus/projects/1).
+All work is tracked via issues. An attempt at keeping an up-to-date view on
+remaining work is in the [lotus testnet github project
+board](https://github.com/filecoin-project/lotus/projects/1).
 
 
 ## Building
@@ -38,10 +38,10 @@ Start full node daemon
 $ lotus daemon
 ```
 
-Connect to the network:
+Check that you are connected to the network
 ```sh
-$ lotus net connect /ip4/147.75.80.29/tcp/1347/p2p/12D3KooWGThG7Ct5aX4tTRkgvjr3pT2JyCyyvK77GhXVQ9Cfjzj2
-$ lotus net connect /ip4/147.75.80.17/tcp/1347/p2p/12D3KooWRNm4a6ESBr9bbTpSC2CfLfoWKRpABJi7FR3GhHw7usKW
+$ lotus net peers | wc -l
+2 # number of peers
 ```
 
 [wait for the chain to finish syncing]
@@ -190,4 +190,4 @@ open up localhost:16686 in your browser.
 For more details, see [this document](./docs/tracing.md).
 
 ## License
-MIT + Apache
+Dual-licensed under [MIT](https://github.com/filecoin-project/lotus/blob/master/LICENSE-MIT) + [Apache 2.0](https://github.com/filecoin-project/lotus/blob/master/LICENSE-APACHE)

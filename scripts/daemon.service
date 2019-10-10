@@ -1,0 +1,9 @@
+[Unit]
+Description=Lotus Daemon
+After=network.target
+
+[Service]
+ExecStart=/usr/local/bin/lotus daemon
+
+[Install]
+WantedBy=multiuser.target

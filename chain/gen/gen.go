@@ -20,7 +20,6 @@ import (
 	"github.com/filecoin-project/go-lotus/chain/store"
 	"github.com/filecoin-project/go-lotus/chain/types"
 	"github.com/filecoin-project/go-lotus/chain/wallet"
-	"github.com/filecoin-project/go-lotus/lib/vdf"
 	"github.com/filecoin-project/go-lotus/node/repo"
 
 	block "github.com/ipfs/go-block-format"
@@ -45,11 +44,13 @@ type ChainGen struct {
 	sm *stmgr.StateManager
 
 	genesis   *types.BlockHeader
-	curTipset *store.FullTipSet
+	CurTipset *store.FullTipSet
+
+	Timestamper func(*types.TipSet, int) uint64
 
 	w *wallet.Wallet
 
-	miners      []address.Address
+	Miners      []address.Address
 	mworkers    []address.Address
 	receivers   []address.Address
 	banker      address.Address
@@ -104,7 +105,12 @@ func NewGenerator() (*ChainGen, error) {
 		return nil, xerrors.Errorf("creating memrepo wallet failed: %w", err)
 	}
 
-	worker, err := w.GenerateKey(types.KTBLS)
+	worker1, err := w.GenerateKey(types.KTBLS)
+	if err != nil {
+		return nil, xerrors.Errorf("failed to generate worker key: %w", err)
+	}
+
+	worker2, err := w.GenerateKey(types.KTBLS)
 	if err != nil {
 		return nil, xerrors.Errorf("failed to generate worker key: %w", err)
 	}
@@ -123,14 +129,15 @@ func NewGenerator() (*ChainGen, error) {
 	}
 
 	minercfg := &GenMinerCfg{
-		Workers: []address.Address{worker, worker},
-		Owners:  []address.Address{worker, worker},
+		Workers: []address.Address{worker1, worker2},
+		Owners:  []address.Address{worker1, worker2},
 		PeerIDs: []peer.ID{"peerID1", "peerID2"},
 	}
 
 	genb, err := MakeGenesisBlock(bs, map[address.Address]types.BigInt{
-		worker: types.FromFil(40000),
-		banker: types.FromFil(50000),
+		worker1: types.FromFil(40000),
+		worker2: types.FromFil(40000),
+		banker:  types.FromFil(50000),
 	}, minercfg, 100000)
 	if err != nil {
 		return nil, xerrors.Errorf("make genesis block failed: %w", err)
@@ -159,12 +166,12 @@ func NewGenerator() (*ChainGen, error) {
 		genesis:      genb.Genesis,
 		w:            w,
 
-		miners:    minercfg.MinerAddrs,
+		Miners:    minercfg.MinerAddrs,
 		mworkers:  minercfg.Workers,
 		banker:    banker,
 		receivers: receievers,
 
-		curTipset: gents,
+		CurTipset: gents,
 
 		r:  mr,
 		lr: lr,
@@ -191,8 +198,7 @@ func (cg *ChainGen) GenesisCar() ([]byte, error) {
 	return out.Bytes(), nil
 }
 
-func (cg *ChainGen) nextBlockProof(ctx context.Context, m address.Address, ticks []*types.Ticket) (types.ElectionProof, *types.Ticket, error) {
-	pts := cg.curTipset.TipSet()
+func (cg *ChainGen) nextBlockProof(ctx context.Context, pts *types.TipSet, m address.Address, ticks []*types.Ticket) (types.ElectionProof, *types.Ticket, error) {
 
 	var lastTicket *types.Ticket
 	if len(ticks) == 0 {
@@ -201,27 +207,20 @@ func (cg *ChainGen) nextBlockProof(ctx context.Context, m address.Address, ticks
 		lastTicket = ticks[len(ticks)-1]
 	}
 
-	st := cg.curTipset.TipSet().ParentState()
+	st := pts.ParentState()
 
 	worker, err := stmgr.GetMinerWorker(ctx, cg.sm, st, m)
 	if err != nil {
 		return nil, nil, err
 	}
 
-	vrfout, err := ComputeVRF(ctx, cg.w.Sign, worker, lastTicket.VDFResult)
-	if err != nil {
-		return nil, nil, err
-	}
-
-	out, proof, err := vdf.Run(vrfout)
+	vrfout, err := ComputeVRF(ctx, cg.w.Sign, worker, lastTicket.VRFProof)
 	if err != nil {
 		return nil, nil, err
 	}
 
 	tick := &types.Ticket{
-		VRFProof:  vrfout,
-		VDFProof:  proof,
-		VDFResult: out,
+		VRFProof: vrfout,
 	}
 
 	win, eproof, err := IsRoundWinner(ctx, pts, append(ticks, tick), m, &mca{w: cg.w, sm: cg.sm})
@@ -241,19 +240,27 @@ type MinedTipSet struct {
 }
 
 func (cg *ChainGen) NextTipSet() (*MinedTipSet, error) {
+	mts, err := cg.NextTipSetFromMiners(cg.CurTipset.TipSet(), cg.Miners)
+	if err != nil {
+		return nil, err
+	}
+
+	cg.CurTipset = mts.TipSet
+	return mts, nil
+}
+
+func (cg *ChainGen) NextTipSetFromMiners(base *types.TipSet, miners []address.Address) (*MinedTipSet, error) {
 	var blks []*types.FullBlock
-	ticketSets := make([][]*types.Ticket, len(cg.miners))
+	ticketSets := make([][]*types.Ticket, len(miners))
 
 	msgs, err := cg.getRandomMessages()
 	if err != nil {
 		return nil, err
 	}
 
-	base := cg.curTipset.TipSet()
-
 	for len(blks) == 0 {
-		for i, m := range cg.miners {
-			proof, t, err := cg.nextBlockProof(context.TODO(), m, ticketSets[i])
+		for i, m := range miners {
+			proof, t, err := cg.nextBlockProof(context.TODO(), base, m, ticketSets[i])
 			if err != nil {
 				return nil, xerrors.Errorf("next block proof: %w", err)
 			}
@@ -265,7 +272,7 @@ func (cg *ChainGen) NextTipSet() (*MinedTipSet, error) {
 					return nil, xerrors.Errorf("making a block for next tipset failed: %w", err)
 				}
 
-				if err := cg.cs.AddBlock(fblk.Header); err != nil {
+				if err := cg.cs.PersistBlockHeader(fblk.Header); err != nil {
 					return nil, xerrors.Errorf("chainstore AddBlock: %w", err)
 				}
 
@@ -274,17 +281,22 @@ func (cg *ChainGen) NextTipSet() (*MinedTipSet, error) {
 		}
 	}
 
-	cg.curTipset = store.NewFullTipSet(blks)
+	fts := store.NewFullTipSet(blks)
 
 	return &MinedTipSet{
-		TipSet:   cg.curTipset,
+		TipSet:   fts,
 		Messages: msgs,
 	}, nil
 }
 
 func (cg *ChainGen) makeBlock(parents *types.TipSet, m address.Address, eproof types.ElectionProof, tickets []*types.Ticket, msgs []*types.SignedMessage) (*types.FullBlock, error) {
 
-	ts := parents.MinTimestamp() + (uint64(len(tickets)) * build.BlockDelay)
+	var ts uint64
+	if cg.Timestamper != nil {
+		ts = cg.Timestamper(parents, len(tickets))
+	} else {
+		ts = parents.MinTimestamp() + (uint64(len(tickets)) * build.BlockDelay)
+	}
 
 	fblk, err := MinerCreateBlock(context.TODO(), cg.sm, cg.w, m, parents, tickets, eproof, msgs, ts)
 	if err != nil {
@@ -292,6 +304,18 @@ func (cg *ChainGen) makeBlock(parents *types.TipSet, m address.Address, eproof t
 	}
 
 	return fblk, err
+}
+
+// This function is awkward. It's used to deal with messages made when
+// simulating forks
+func (cg *ChainGen) ResyncBankerNonce(ts *types.TipSet) error {
+	act, err := cg.sm.GetActor(cg.banker, ts)
+	if err != nil {
+		return err
+	}
+
+	cg.bankerNonce = act.Nonce
+	return nil
 }
 
 func (cg *ChainGen) getRandomMessages() ([]*types.SignedMessage, error) {
@@ -311,12 +335,7 @@ func (cg *ChainGen) getRandomMessages() ([]*types.SignedMessage, error) {
 			GasPrice: types.NewInt(0),
 		}
 
-		unsigned, err := msg.Serialize()
-		if err != nil {
-			return nil, err
-		}
-
-		sig, err := cg.w.Sign(context.TODO(), cg.banker, unsigned)
+		sig, err := cg.w.Sign(context.TODO(), cg.banker, msg.Cid().Bytes())
 		if err != nil {
 			return nil, err
 		}
@@ -324,10 +343,6 @@ func (cg *ChainGen) getRandomMessages() ([]*types.SignedMessage, error) {
 		msgs[m] = &types.SignedMessage{
 			Message:   msg,
 			Signature: *sig,
-		}
-
-		if _, err := cg.cs.PutMessage(msgs[m]); err != nil {
-			return nil, err
 		}
 	}
 

@@ -10,7 +10,6 @@ import (
 	"github.com/filecoin-project/go-lotus/chain/address"
 	"github.com/filecoin-project/go-lotus/chain/gen"
 	"github.com/filecoin-project/go-lotus/chain/types"
-	"github.com/filecoin-project/go-lotus/lib/vdf"
 	"github.com/filecoin-project/go-lotus/node/impl/full"
 
 	logging "github.com/ipfs/go-log"
@@ -22,7 +21,7 @@ import (
 
 var log = logging.Logger("miner")
 
-type vdfFunc func(ctx context.Context, input []byte) ([]byte, []byte, error)
+type waitFunc func(ctx context.Context) error
 
 type api struct {
 	fx.In
@@ -36,9 +35,11 @@ type api struct {
 func NewMiner(api api) *Miner {
 	return &Miner{
 		api: api,
-
-		// time between blocks, network parameter
-		runVDF: delayVDF(build.BlockDelay * time.Second),
+		waitFunc: func(ctx context.Context) error {
+			// Wait around for half the block time in case other parents come in
+			time.Sleep(build.BlockDelay * time.Second / 2)
+			return nil
+		},
 	}
 }
 
@@ -50,7 +51,7 @@ type Miner struct {
 	stop      chan struct{}
 	stopping  chan struct{}
 
-	runVDF vdfFunc
+	waitFunc waitFunc
 
 	lastWork *MiningBase
 }
@@ -130,6 +131,8 @@ func (m *Miner) mine(ctx context.Context) {
 	ctx, span := trace.StartSpan(ctx, "/mine")
 	defer span.End()
 
+	var lastBase MiningBase
+
 	for {
 		select {
 		case <-m.stop:
@@ -145,11 +148,23 @@ func (m *Miner) mine(ctx context.Context) {
 		default:
 		}
 
+		// Sleep a small amount in order to wait for other blocks to arrive
+		if err := m.waitFunc(ctx); err != nil {
+			log.Error(err)
+			return
+		}
+
 		base, err := m.GetBestMiningCandidate()
 		if err != nil {
 			log.Errorf("failed to get best mining candidate: %s", err)
 			continue
 		}
+		if base.ts.Equals(lastBase.ts) && len(lastBase.tickets) == len(base.tickets) {
+			log.Error("BestMiningCandidate from the previous round: %s (tkts:%d)", lastBase.ts.Cids(), len(lastBase.tickets))
+			time.Sleep(build.BlockDelay * time.Second)
+			continue
+		}
+		lastBase = *base
 
 		b, err := m.mineOne(ctx, base)
 		if err != nil {
@@ -160,9 +175,19 @@ func (m *Miner) mine(ctx context.Context) {
 		}
 
 		if b != nil {
+			btime := time.Unix(int64(b.Header.Timestamp), 0)
+			if time.Now().Before(btime) {
+				time.Sleep(time.Until(btime))
+			} else {
+				log.Warnf("Mined block in the past: b.T: %s, T: %s, dT: %s", btime, time.Now(), time.Now().Sub(btime))
+			}
+
 			if err := m.api.ChainSubmitBlock(ctx, b); err != nil {
 				log.Errorf("failed to submit newly mined block: %s", err)
 			}
+		} else {
+			nextRound := time.Unix(int64(base.ts.MinTimestamp()+uint64(build.BlockDelay*len(base.tickets))), 0)
+			time.Sleep(time.Until(nextRound))
 		}
 	}
 }
@@ -194,7 +219,7 @@ func (m *Miner) GetBestMiningCandidate() (*MiningBase, error) {
 }
 
 func (m *Miner) mineOne(ctx context.Context, base *MiningBase) (*types.BlockMsg, error) {
-	log.Debug("attempting to mine a block on:", base.ts.Cids())
+	log.Info("attempting to mine a block on:", base.ts.Cids())
 	ticket, err := m.scratchTicket(ctx, base)
 	if err != nil {
 		return nil, errors.Wrap(err, "scratching ticket failed")
@@ -255,18 +280,6 @@ func (m *Miner) getMinerWorker(ctx context.Context, addr address.Address, ts *ty
 	return w, nil
 }
 
-func delayVDF(delay time.Duration) func(ctx context.Context, input []byte) ([]byte, []byte, error) {
-	return func(ctx context.Context, input []byte) ([]byte, []byte, error) {
-		select {
-		case <-ctx.Done():
-			return nil, nil, ctx.Err()
-		case <-time.After(delay):
-		}
-
-		return vdf.Run(input)
-	}
-}
-
 func (m *Miner) scratchTicket(ctx context.Context, base *MiningBase) (*types.Ticket, error) {
 	var lastTicket *types.Ticket
 	if len(base.tickets) > 0 {
@@ -275,20 +288,13 @@ func (m *Miner) scratchTicket(ctx context.Context, base *MiningBase) (*types.Tic
 		lastTicket = base.ts.MinTicket()
 	}
 
-	vrfOut, err := m.computeVRF(ctx, lastTicket.VDFResult)
-	if err != nil {
-		return nil, err
-	}
-
-	res, proof, err := m.runVDF(ctx, vrfOut)
+	vrfOut, err := m.computeVRF(ctx, lastTicket.VRFProof)
 	if err != nil {
 		return nil, err
 	}
 
 	return &types.Ticket{
-		VRFProof:  vrfOut,
-		VDFResult: res,
-		VDFProof:  proof,
+		VRFProof: vrfOut,
 	}, nil
 }
 
@@ -304,7 +310,7 @@ func (m *Miner) createBlock(base *MiningBase, ticket *types.Ticket, proof types.
 		return nil, xerrors.Errorf("message filtering failed: %w", err)
 	}
 
-	uts := time.Now().Unix() // TODO: put smallest valid timestamp
+	uts := base.ts.MinTimestamp() + uint64(build.BlockDelay*(len(base.tickets)+1))
 
 	// why even return this? that api call could just submit it for us
 	return m.api.MinerCreateBlock(context.TODO(), m.addresses[0], base.ts, append(base.tickets, ticket), proof, msgs, uint64(uts))

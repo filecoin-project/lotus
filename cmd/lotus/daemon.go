@@ -40,6 +40,10 @@ var DaemonCmd = &cli.Command{
 			Name:  "genesis",
 			Usage: "genesis file to use for first node run",
 		},
+		&cli.BoolFlag{
+			Name:  "bootstrap",
+			Value: true,
+		},
 	},
 	Action: func(cctx *cli.Context) error {
 		ctx := context.Background()
@@ -95,7 +99,32 @@ var DaemonCmd = &cli.Command{
 			return err
 		}
 
+		go func() {
+			if !cctx.Bool("bootstrap") {
+				return
+			}
+			err := bootstrap(ctx, api)
+			if err != nil {
+				log.Error("Bootstrap failed: ", err)
+			}
+		}()
+
 		// TODO: properly parse api endpoint (or make it a URL)
 		return serveRPC(api, stop, "127.0.0.1:"+cctx.String("api"))
 	},
+}
+
+func bootstrap(ctx context.Context, api api.FullNode) error {
+	pis, err := build.BuiltinBootstrap()
+	if err != nil {
+		return err
+	}
+
+	for _, pi := range pis {
+		if err := api.NetConnect(ctx, pi); err != nil {
+			return err
+		}
+	}
+
+	return nil
 }

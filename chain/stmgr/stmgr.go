@@ -2,6 +2,7 @@ package stmgr
 
 import (
 	"context"
+	"fmt"
 	"sync"
 
 	amt "github.com/filecoin-project/go-amt-ipld"
@@ -14,6 +15,7 @@ import (
 	cbg "github.com/whyrusleeping/cbor-gen"
 	"golang.org/x/xerrors"
 
+	bls "github.com/filecoin-project/go-bls-sigs"
 	"github.com/ipfs/go-cid"
 	hamt "github.com/ipfs/go-hamt-ipld"
 	logging "github.com/ipfs/go-log"
@@ -232,4 +234,192 @@ func (sm *StateManager) LoadActorState(ctx context.Context, a address.Address, o
 	}
 
 	return act, nil
+}
+func (sm *StateManager) ResolveToKeyAddress(ctx context.Context, addr address.Address, ts *types.TipSet) (address.Address, error) {
+	switch addr.Protocol() {
+	case address.BLS, address.SECP256K1:
+		return addr, nil
+	case address.Actor:
+		return address.Undef, xerrors.New("cannot resolve actor address to key address")
+	default:
+	}
+
+	if ts == nil {
+		ts = sm.cs.GetHeaviestTipSet()
+	}
+
+	st, _, err := sm.TipSetState(ts)
+	if err != nil {
+		return address.Undef, xerrors.Errorf("resolve address failed to get tipset state: %w", err)
+	}
+
+	cst := hamt.CSTFromBstore(sm.cs.Blockstore())
+	tree, err := state.LoadStateTree(cst, st)
+	if err != nil {
+		return address.Undef, xerrors.Errorf("failed to load state tree")
+	}
+
+	return vm.ResolveToKeyAddr(tree, cst, addr)
+}
+
+func (sm *StateManager) GetBlsPublicKey(ctx context.Context, addr address.Address, ts *types.TipSet) (pubk bls.PublicKey, err error) {
+	kaddr, err := sm.ResolveToKeyAddress(ctx, addr, ts)
+	if err != nil {
+		return pubk, xerrors.Errorf("failed to resolve address to key address: %w", err)
+	}
+
+	if kaddr.Protocol() != address.BLS {
+		return pubk, xerrors.Errorf("address must be BLS address to load bls public key")
+	}
+
+	copy(pubk[:], kaddr.Payload())
+	return pubk, nil
+}
+
+func (sm *StateManager) WaitForMessage(ctx context.Context, mcid cid.Cid) (*types.TipSet, *types.MessageReceipt, error) {
+	ctx, cancel := context.WithCancel(ctx)
+	defer cancel()
+
+	msg, err := sm.cs.GetCMessage(mcid)
+	if err != nil {
+		return nil, nil, fmt.Errorf("failed to load message: %w", err)
+	}
+
+	tsub := sm.cs.SubHeadChanges(ctx)
+
+	head, ok := <-tsub
+	if !ok {
+		return nil, nil, fmt.Errorf("SubHeadChanges stream was invalid")
+	}
+
+	if len(head) != 1 {
+		return nil, nil, fmt.Errorf("SubHeadChanges first entry should have been one item")
+	}
+
+	if head[0].Type != store.HCCurrent {
+		return nil, nil, fmt.Errorf("expected current head on SHC stream (got %s)", head[0].Type)
+	}
+
+	r, err := sm.tipsetExecutedMessage(head[0].Val, mcid)
+	if err != nil {
+		return nil, nil, err
+	}
+
+	if r != nil {
+		return head[0].Val, r, nil
+	}
+
+	var backTs *types.TipSet
+	var backRcp *types.MessageReceipt
+	backSearchWait := make(chan struct{})
+	go func() {
+		fts, r, err := sm.searchBackForMsg(ctx, head[0].Val, msg)
+		if err != nil {
+			log.Warnf("failed to look back through chain for message: %w", err)
+			return
+		}
+
+		backTs = fts
+		backRcp = r
+		close(backSearchWait)
+	}()
+
+	for {
+		select {
+		case notif, ok := <-tsub:
+			if !ok {
+				return nil, nil, ctx.Err()
+			}
+			for _, val := range notif {
+				switch val.Type {
+				case store.HCRevert:
+					continue
+				case store.HCApply:
+					r, err := sm.tipsetExecutedMessage(val.Val, mcid)
+					if err != nil {
+						return nil, nil, err
+					}
+					if r != nil {
+						return val.Val, r, nil
+					}
+				}
+			}
+		case <-backSearchWait:
+			if backTs != nil {
+				return backTs, backRcp, nil
+			}
+			backSearchWait = nil
+		case <-ctx.Done():
+			return nil, nil, ctx.Err()
+		}
+	}
+}
+
+func (sm *StateManager) searchBackForMsg(ctx context.Context, from *types.TipSet, m store.ChainMsg) (*types.TipSet, *types.MessageReceipt, error) {
+
+	cur := from
+	for {
+		if cur.Height() == 0 {
+			// it ain't here!
+			return nil, nil, nil
+		}
+
+		select {
+		case <-ctx.Done():
+			return nil, nil, nil
+		default:
+		}
+
+		act, err := sm.GetActor(m.VMMessage().From, cur)
+		if err != nil {
+			return nil, nil, err
+		}
+
+		if act.Nonce < m.VMMessage().Nonce {
+			// nonce on chain is before message nonce we're looking for, its
+			// not going to be here
+			return nil, nil, nil
+		}
+
+		ts, err := sm.cs.LoadTipSet(cur.Parents())
+		if err != nil {
+			return nil, nil, fmt.Errorf("failed to load tipset during msg wait searchback: %w", err)
+		}
+
+		r, err := sm.tipsetExecutedMessage(ts, m.Cid())
+		if err != nil {
+			return nil, nil, fmt.Errorf("checking for message execution during lookback: %w", err)
+		}
+
+		if r != nil {
+			return ts, r, nil
+		}
+
+		cur = ts
+	}
+}
+
+func (sm *StateManager) tipsetExecutedMessage(ts *types.TipSet, msg cid.Cid) (*types.MessageReceipt, error) {
+	// The genesis block did not execute any messages
+	if ts.Height() == 0 {
+		return nil, nil
+	}
+
+	pts, err := sm.cs.LoadTipSet(ts.Parents())
+	if err != nil {
+		return nil, err
+	}
+
+	cm, err := sm.cs.MessagesForTipset(pts)
+	if err != nil {
+		return nil, err
+	}
+
+	for i, m := range cm {
+		if m.Cid() == msg {
+			return sm.cs.GetParentReceipt(ts.Blocks()[0], i)
+		}
+	}
+
+	return nil, nil
 }

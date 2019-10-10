@@ -3,6 +3,7 @@ package main
 import (
 	"context"
 	"crypto/rand"
+
 	"github.com/libp2p/go-libp2p-core/crypto"
 
 	"github.com/ipfs/go-datastore"
@@ -232,7 +233,7 @@ func configureStorageMiner(ctx context.Context, api api.FullNode, addr address.A
 	}
 
 	log.Info("Waiting for message: ", smsg.Cid())
-	ret, err := api.ChainWaitMsg(ctx, smsg.Cid())
+	ret, err := api.StateWaitMsg(ctx, smsg.Cid())
 	if err != nil {
 		return err
 	}
@@ -303,7 +304,7 @@ func createStorageMiner(ctx context.Context, api api.FullNode, peerid peer.ID, c
 	log.Infof("Pushed StorageMarket.CreateStorageMiner, %s to Mpool", signed.Cid())
 	log.Infof("Waiting for confirmation")
 
-	mw, err := api.ChainWaitMsg(ctx, signed.Cid())
+	mw, err := api.StateWaitMsg(ctx, signed.Cid())
 	if err != nil {
 		return address.Undef, err
 	}

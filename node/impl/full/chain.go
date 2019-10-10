@@ -27,9 +27,7 @@ func (a *ChainAPI) ChainNotify(ctx context.Context) (<-chan []*store.HeadChange,
 }
 
 func (a *ChainAPI) ChainSubmitBlock(ctx context.Context, blk *types.BlockMsg) error {
-	if err := a.Chain.AddBlock(blk.Header); err != nil {
-		return xerrors.Errorf("AddBlock failed: %w", err)
-	}
+	// TODO: should we have some sort of fast path to adding a local block?
 
 	b, err := blk.Serialize()
 	if err != nil {
@@ -46,19 +44,6 @@ func (a *ChainAPI) ChainHead(context.Context) (*types.TipSet, error) {
 
 func (a *ChainAPI) ChainGetRandomness(ctx context.Context, pts *types.TipSet, tickets []*types.Ticket, lb int) ([]byte, error) {
 	return a.Chain.GetRandomness(ctx, pts.Cids(), tickets, int64(lb))
-}
-
-func (a *ChainAPI) ChainWaitMsg(ctx context.Context, msg cid.Cid) (*api.MsgWait, error) {
-	// TODO: consider using event system for this, expose confidence
-
-	recpt, err := a.Chain.WaitForMessage(ctx, msg)
-	if err != nil {
-		return nil, err
-	}
-
-	return &api.MsgWait{
-		Receipt: *recpt,
-	}, nil
 }
 
 func (a *ChainAPI) ChainGetBlock(ctx context.Context, msg cid.Cid) (*types.BlockHeader, error) {
@@ -93,10 +78,15 @@ func (a *ChainAPI) ChainGetBlockMessages(ctx context.Context, msg cid.Cid) (*api
 	}, nil
 }
 
-func (a *ChainAPI) ChainGetParentMessages(ctx context.Context, bcid cid.Cid) ([]cid.Cid, error) {
+func (a *ChainAPI) ChainGetParentMessages(ctx context.Context, bcid cid.Cid) ([]api.Message, error) {
 	b, err := a.Chain.GetBlock(bcid)
 	if err != nil {
 		return nil, err
+	}
+
+	// genesis block has no parent messages...
+	if b.Height == 0 {
+		return nil, nil
 	}
 
 	// TODO: need to get the number of messages better than this
@@ -110,9 +100,12 @@ func (a *ChainAPI) ChainGetParentMessages(ctx context.Context, bcid cid.Cid) ([]
 		return nil, err
 	}
 
-	var out []cid.Cid
+	var out []api.Message
 	for _, m := range cm {
-		out = append(out, m.Cid())
+		out = append(out, api.Message{
+			Cid:     m.Cid(),
+			Message: m.VMMessage(),
+		})
 	}
 
 	return out, nil
@@ -122,6 +115,10 @@ func (a *ChainAPI) ChainGetParentReceipts(ctx context.Context, bcid cid.Cid) ([]
 	b, err := a.Chain.GetBlock(bcid)
 	if err != nil {
 		return nil, err
+	}
+
+	if b.Height == 0 {
+		return nil, nil
 	}
 
 	// TODO: need to get the number of messages better than this
@@ -159,4 +156,8 @@ func (a *ChainAPI) ChainReadObj(ctx context.Context, obj cid.Cid) ([]byte, error
 	}
 
 	return blk.RawData(), nil
+}
+
+func (a *ChainAPI) ChainSetHead(ctx context.Context, ts *types.TipSet) error {
+	return a.Chain.SetHead(ts)
 }

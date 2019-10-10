@@ -27,9 +27,7 @@ func testBlockHeader(t testing.TB) *BlockHeader {
 		ElectionProof: []byte("cats won the election"),
 		Tickets: []*Ticket{
 			&Ticket{
-				VRFProof:  []byte("vrf proof"),
-				VDFResult: []byte("vdf result"),
-				VDFProof:  []byte("vrf proof"),
+				VRFProof: []byte("vrf proof"),
 			},
 		},
 		Parents:               []cid.Cid{c, c},

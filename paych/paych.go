@@ -4,9 +4,10 @@ import (
 	"bytes"
 	"context"
 	"fmt"
-	"golang.org/x/xerrors"
 	"math"
 	"strconv"
+
+	"golang.org/x/xerrors"
 
 	logging "github.com/ipfs/go-log"
 	"go.uber.org/fx"
@@ -25,7 +26,7 @@ type ManagerApi struct {
 
 	full.MpoolAPI
 	full.WalletAPI
-	full.ChainAPI
+	full.StateAPI
 }
 
 type Manager struct {
@@ -34,7 +35,7 @@ type Manager struct {
 
 	mpool  full.MpoolAPI
 	wallet full.WalletAPI
-	chain  full.ChainAPI
+	state  full.StateAPI
 }
 
 func NewManager(sm *stmgr.StateManager, pchstore *Store, api ManagerApi) *Manager {
@@ -44,7 +45,7 @@ func NewManager(sm *stmgr.StateManager, pchstore *Store, api ManagerApi) *Manage
 
 		mpool:  api.MpoolAPI,
 		wallet: api.WalletAPI,
-		chain:  api.ChainAPI,
+		state:  api.StateAPI,
 	}
 }
 

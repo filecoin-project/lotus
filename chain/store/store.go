@@ -10,6 +10,7 @@ import (
 	"github.com/filecoin-project/go-lotus/build"
 	"github.com/filecoin-project/go-lotus/chain/address"
 	"github.com/filecoin-project/go-lotus/chain/state"
+	"go.uber.org/zap"
 
 	amt "github.com/filecoin-project/go-amt-ipld"
 	"github.com/filecoin-project/go-lotus/chain/types"
@@ -173,31 +174,30 @@ func (cs *ChainStore) SubscribeHeadChanges(f func(rev, app []*types.TipSet) erro
 }
 
 func (cs *ChainStore) SetGenesis(b *types.BlockHeader) error {
-	fts := &FullTipSet{
-		Blocks: []*types.FullBlock{
-			{Header: b},
-		},
+	ts, err := types.NewTipSet([]*types.BlockHeader{b})
+	if err != nil {
+		return err
 	}
 
-	if err := cs.PutTipSet(fts); err != nil {
+	if err := cs.PutTipSet(ts); err != nil {
 		return err
 	}
 
 	return cs.ds.Put(dstore.NewKey("0"), b.Cid().Bytes())
 }
 
-func (cs *ChainStore) PutTipSet(ts *FullTipSet) error {
-	for _, b := range ts.Blocks {
-		if err := cs.persistBlock(b); err != nil {
+func (cs *ChainStore) PutTipSet(ts *types.TipSet) error {
+	for _, b := range ts.Blocks() {
+		if err := cs.PersistBlockHeader(b); err != nil {
 			return err
 		}
 	}
 
-	expanded, err := cs.expandTipset(ts.TipSet().Blocks()[0])
+	expanded, err := cs.expandTipset(ts.Blocks()[0])
 	if err != nil {
 		return xerrors.Errorf("errored while expanding tipset: %w", err)
 	}
-	log.Debugf("expanded %s into %s\n", ts.TipSet().Cids(), expanded.Cids())
+	log.Debugf("expanded %s into %s\n", ts.Cids(), expanded.Cids())
 
 	if err := cs.MaybeTakeHeavierTipSet(expanded); err != nil {
 		return errors.Wrap(err, "MaybeTakeHeavierTipSet failed in PutTipSet")
@@ -212,29 +212,43 @@ func (cs *ChainStore) MaybeTakeHeavierTipSet(ts *types.TipSet) error {
 		// TODO: don't do this for initial sync. Now that we don't have a
 		// difference between 'bootstrap sync' and 'caught up' sync, we need
 		// some other heuristic.
-		if cs.heaviest != nil {
-			revert, apply, err := cs.ReorgOps(cs.heaviest, ts)
-			if err != nil {
-				return errors.Wrap(err, "computing reorg ops failed")
-			}
-			for _, hcf := range cs.headChangeNotifs {
-				if err := hcf(revert, apply); err != nil {
-					return errors.Wrap(err, "head change func errored (BAD)")
-				}
-			}
-		} else {
-			log.Warn("no heaviest tipset found, using %s", ts.Cids())
-		}
-
-		log.Debugf("New heaviest tipset! %s", ts.Cids())
-		cs.heaviest = ts
-
-		if err := cs.writeHead(ts); err != nil {
-			log.Errorf("failed to write chain head: %s", err)
-			return nil
-		}
+		return cs.takeHeaviestTipSet(ts)
 	}
 	return nil
+}
+
+func (cs *ChainStore) takeHeaviestTipSet(ts *types.TipSet) error {
+	if cs.heaviest != nil {
+		revert, apply, err := cs.ReorgOps(cs.heaviest, ts)
+		if err != nil {
+			return errors.Wrap(err, "computing reorg ops failed")
+		}
+		for _, hcf := range cs.headChangeNotifs {
+			if err := hcf(revert, apply); err != nil {
+				return errors.Wrap(err, "head change func errored (BAD)")
+			}
+		}
+	} else {
+		log.Warn("no heaviest tipset found, using %s", ts.Cids())
+	}
+
+	log.Debugf("New heaviest tipset! %s", ts.Cids())
+	cs.heaviest = ts
+
+	if err := cs.writeHead(ts); err != nil {
+		log.Errorf("failed to write chain head: %s", err)
+		return nil
+	}
+
+	return nil
+}
+
+// SetHead sets the chainstores current 'best' head node.
+// This should only be called if something is broken and needs fixing
+func (cs *ChainStore) SetHead(ts *types.TipSet) error {
+	cs.heaviestLk.Lock()
+	defer cs.heaviestLk.Unlock()
+	return cs.takeHeaviestTipSet(ts)
 }
 
 func (cs *ChainStore) Contains(ts *types.TipSet) (bool, error) {
@@ -341,7 +355,7 @@ func (cs *ChainStore) GetHeaviestTipSet() *types.TipSet {
 	return cs.heaviest
 }
 
-func (cs *ChainStore) addToTipSetTracker(b *types.BlockHeader) error {
+func (cs *ChainStore) AddToTipSetTracker(b *types.BlockHeader) error {
 	cs.tstLk.Lock()
 	defer cs.tstLk.Unlock()
 
@@ -366,29 +380,7 @@ func (cs *ChainStore) PersistBlockHeader(b *types.BlockHeader) error {
 		return err
 	}
 
-	if err := cs.addToTipSetTracker(b); err != nil {
-		return xerrors.Errorf("failed to insert new block (%s) into tipset tracker: %w", b.Cid(), err)
-	}
-
 	return cs.bs.Put(sb)
-}
-
-func (cs *ChainStore) persistBlock(b *types.FullBlock) error {
-	if err := cs.PersistBlockHeader(b.Header); err != nil {
-		return err
-	}
-
-	for _, m := range b.BlsMessages {
-		if _, err := cs.PutMessage(m); err != nil {
-			return err
-		}
-	}
-	for _, m := range b.SecpkMessages {
-		if _, err := cs.PutMessage(m); err != nil {
-			return err
-		}
-	}
-	return nil
 }
 
 type storable interface {
@@ -479,6 +471,15 @@ func (cs *ChainStore) GetGenesis() (*types.BlockHeader, error) {
 	}
 
 	return types.DecodeBlock(genb.RawData())
+}
+
+func (cs *ChainStore) GetCMessage(c cid.Cid) (ChainMsg, error) {
+	m, err := cs.GetMessage(c)
+	if err == nil {
+		return m, nil
+	}
+
+	return cs.GetSignedMessage(c)
 }
 
 func (cs *ChainStore) GetMessage(c cid.Cid) (*types.Message, error) {
@@ -660,71 +661,6 @@ func (cs *ChainStore) LoadSignedMessagesFromCids(cids []cid.Cid) ([]*types.Signe
 	return msgs, nil
 }
 
-func (cs *ChainStore) WaitForMessage(ctx context.Context, mcid cid.Cid) (*types.MessageReceipt, error) {
-	tsub := cs.SubHeadChanges(ctx)
-
-	head := cs.GetHeaviestTipSet()
-
-	r, err := cs.tipsetExecutedMessage(head, mcid)
-	if err != nil {
-		return nil, err
-	}
-
-	if r != nil {
-		return r, nil
-	}
-
-	for {
-		select {
-		case notif, ok := <-tsub:
-			if !ok {
-				return nil, ctx.Err()
-			}
-			for _, val := range notif {
-				switch val.Type {
-				case HCRevert:
-					continue
-				case HCApply:
-					r, err := cs.tipsetExecutedMessage(val.Val, mcid)
-					if err != nil {
-						return nil, err
-					}
-					if r != nil {
-						return r, nil
-					}
-				}
-			}
-		case <-ctx.Done():
-			return nil, ctx.Err()
-		}
-	}
-}
-
-func (cs *ChainStore) tipsetExecutedMessage(ts *types.TipSet, msg cid.Cid) (*types.MessageReceipt, error) {
-	// The genesis block did not execute any messages
-	if ts.Height() == 0 {
-		return nil, nil
-	}
-
-	pts, err := cs.LoadTipSet(ts.Parents())
-	if err != nil {
-		return nil, err
-	}
-
-	cm, err := cs.MessagesForTipset(pts)
-	if err != nil {
-		return nil, err
-	}
-
-	for i, m := range cm {
-		if m.Cid() == msg {
-			return cs.GetParentReceipt(ts.Blocks()[0], i)
-		}
-	}
-
-	return nil, nil
-}
-
 func (cs *ChainStore) Blockstore() blockstore.Blockstore {
 	return cs.bs
 }
@@ -757,11 +693,11 @@ func (cs *ChainStore) GetRandomness(ctx context.Context, blks []cid.Cid, tickets
 	}
 	lt := int64(len(tickets))
 	if lb < lt {
-		log.Warn("self sampling randomness. this should be extremely rare, if you see this often it may be a bug")
+		log.Desugar().Warn("self sampling randomness. this should be extremely rare, if you see this often it may be a bug", zap.Stack("call-stack"))
 
 		t := tickets[lt-(1+lb)]
 
-		return t.VDFResult, nil
+		return t.VRFProof, nil
 	}
 
 	nv := lb - lt
@@ -776,7 +712,7 @@ func (cs *ChainStore) GetRandomness(ctx context.Context, blks []cid.Cid, tickets
 		lt := int64(len(mtb.Tickets))
 		if nv < lt {
 			t := mtb.Tickets[lt-(1+nv)]
-			return t.VDFResult, nil
+			return t.VRFProof, nil
 		}
 
 		nv -= lt
@@ -787,7 +723,7 @@ func (cs *ChainStore) GetRandomness(ctx context.Context, blks []cid.Cid, tickets
 
 			t := mtb.Tickets[0]
 
-			rval := t.VDFResult
+			rval := t.VRFProof
 			for i := int64(0); i < nv; i++ {
 				h := sha256.Sum256(rval)
 				rval = h[:]

@@ -5,6 +5,7 @@ import (
 	"fmt"
 	"io"
 	"os"
+	"time"
 
 	"github.com/ipfs/go-blockservice"
 	"github.com/ipfs/go-car"
@@ -79,7 +80,7 @@ func MakeGenesis(outFile string) func(bs dtypes.ChainBlockstore, w *wallet.Walle
 				minerAddr: types.FromFil(100000),
 			}
 
-			b, err := gen.MakeGenesisBlock(bs, addrs, gmc, 100000)
+			b, err := gen.MakeGenesisBlock(bs, addrs, gmc, uint64(time.Now().Unix()))
 			if err != nil {
 				return nil, err
 			}

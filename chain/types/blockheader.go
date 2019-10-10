@@ -14,9 +14,7 @@ import (
 )
 
 type Ticket struct {
-	VRFProof  []byte
-	VDFResult []byte
-	VDFProof  []byte
+	VRFProof []byte
 }
 
 type ElectionProof []byte
@@ -176,5 +174,5 @@ func PowerCmp(eproof ElectionProof, mpow, totpow BigInt) bool {
 }
 
 func (t *Ticket) Equals(ot *Ticket) bool {
-	return bytes.Equal(t.VDFResult, ot.VDFResult)
+	return bytes.Equal(t.VRFProof, ot.VRFProof)
 }

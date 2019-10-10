@@ -40,12 +40,9 @@ func (a *WalletAPI) WalletSign(ctx context.Context, k address.Address, msg []byt
 }
 
 func (a *WalletAPI) WalletSignMessage(ctx context.Context, k address.Address, msg *types.Message) (*types.SignedMessage, error) {
-	msgbytes, err := msg.Serialize()
-	if err != nil {
-		return nil, err
-	}
+	mcid := msg.Cid()
 
-	sig, err := a.WalletSign(ctx, k, msgbytes)
+	sig, err := a.WalletSign(ctx, k, mcid.Bytes())
 	if err != nil {
 		return nil, xerrors.Errorf("failed to sign message: %w", err)
 	}
@@ -67,4 +64,12 @@ func (a *WalletAPI) WalletDefaultAddress(ctx context.Context) (address.Address, 
 
 	// TODO: store a default address in the config or 'wallet' portion of the repo
 	return addrs[0], nil
+}
+
+func (a *WalletAPI) WalletExport(ctx context.Context, addr address.Address) (*types.KeyInfo, error) {
+	return a.Wallet.Export(addr)
+}
+
+func (a *WalletAPI) WalletImport(ctx context.Context, ki *types.KeyInfo) (address.Address, error) {
+	return a.Wallet.Import(ki)
 }

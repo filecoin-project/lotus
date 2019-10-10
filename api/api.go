@@ -2,6 +2,7 @@ package api
 
 import (
 	"context"
+	"fmt"
 
 	"github.com/ipfs/go-cid"
 	"github.com/ipfs/go-filestore"
@@ -9,6 +10,7 @@ import (
 	"github.com/libp2p/go-libp2p-core/network"
 	"github.com/libp2p/go-libp2p-core/peer"
 
+	"github.com/filecoin-project/go-lotus/build"
 	"github.com/filecoin-project/go-lotus/chain/address"
 	"github.com/filecoin-project/go-lotus/chain/store"
 	"github.com/filecoin-project/go-lotus/chain/types"
@@ -51,13 +53,13 @@ type FullNode interface {
 	ChainHead(context.Context) (*types.TipSet, error)                // TODO: check serialization
 	ChainSubmitBlock(ctx context.Context, blk *types.BlockMsg) error // TODO: check serialization
 	ChainGetRandomness(context.Context, *types.TipSet, []*types.Ticket, int) ([]byte, error)
-	ChainWaitMsg(context.Context, cid.Cid) (*MsgWait, error)
 	ChainGetBlock(context.Context, cid.Cid) (*types.BlockHeader, error)
 	ChainGetBlockMessages(context.Context, cid.Cid) (*BlockMessages, error)
 	ChainGetParentReceipts(context.Context, cid.Cid) ([]*types.MessageReceipt, error)
-	ChainGetParentMessages(context.Context, cid.Cid) ([]cid.Cid, error)
+	ChainGetParentMessages(context.Context, cid.Cid) ([]Message, error)
 	ChainGetTipSetByHeight(context.Context, uint64, *types.TipSet) (*types.TipSet, error)
 	ChainReadObj(context.Context, cid.Cid) ([]byte, error)
+	ChainSetHead(context.Context, *types.TipSet) error
 
 	// syncer
 	SyncState(context.Context) (*SyncState, error)
@@ -65,7 +67,7 @@ type FullNode interface {
 	// messages
 
 	MpoolPending(context.Context, *types.TipSet) ([]*types.SignedMessage, error)
-	MpoolPush(context.Context, *types.SignedMessage) error
+	MpoolPush(context.Context, *types.SignedMessage) error                          // TODO: remove
 	MpoolPushMessage(context.Context, *types.Message) (*types.SignedMessage, error) // get nonce, sign, push
 	MpoolGetNonce(context.Context, address.Address) (uint64, error)
 
@@ -89,6 +91,8 @@ type FullNode interface {
 	WalletSign(context.Context, address.Address, []byte) (*types.Signature, error)
 	WalletSignMessage(context.Context, address.Address, *types.Message) (*types.SignedMessage, error)
 	WalletDefaultAddress(context.Context) (address.Address, error)
+	WalletExport(context.Context, address.Address) (*types.KeyInfo, error)
+	WalletImport(context.Context, *types.KeyInfo) (address.Address, error)
 
 	// Other
 
@@ -122,6 +126,7 @@ type FullNode interface {
 	StateMinerPeerID(ctx context.Context, m address.Address, ts *types.TipSet) (peer.ID, error)
 	StateMinerProvingPeriodEnd(ctx context.Context, actor address.Address, ts *types.TipSet) (uint64, error)
 	StatePledgeCollateral(context.Context, *types.TipSet) (types.BigInt, error)
+	StateWaitMsg(context.Context, cid.Cid) (*MsgWait, error)
 
 	PaychGet(ctx context.Context, from, to address.Address, ensureFunds types.BigInt) (*ChannelInfo, error)
 	PaychList(context.Context) ([]address.Address, error)
@@ -171,6 +176,11 @@ type Version struct {
 	// TODO: git commit / os / genesis cid?
 }
 
+func (v Version) String() string {
+	vM, vm, vp := build.VersionInts(v.APIVersion)
+	return fmt.Sprintf("%s+api%d.%d.%d", v.Version, vM, vm, vp)
+}
+
 type Import struct {
 	Status   filestore.Status
 	Key      cid.Cid
@@ -193,6 +203,7 @@ type DealInfo struct {
 
 type MsgWait struct {
 	Receipt types.MessageReceipt
+	TipSet  *types.TipSet
 }
 
 type BlockMessages struct {
@@ -200,6 +211,11 @@ type BlockMessages struct {
 	SecpkMessages []*types.SignedMessage
 
 	Cids []cid.Cid
+}
+
+type Message struct {
+	Cid     cid.Cid
+	Message *types.Message
 }
 
 type SectorInfo struct {

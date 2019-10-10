@@ -193,3 +193,17 @@ func (a *StateAPI) MinerCreateBlock(ctx context.Context, addr address.Address, p
 
 	return &out, nil
 }
+
+func (a *StateAPI) StateWaitMsg(ctx context.Context, msg cid.Cid) (*api.MsgWait, error) {
+	// TODO: consider using event system for this, expose confidence
+
+	ts, recpt, err := a.StateManager.WaitForMessage(ctx, msg)
+	if err != nil {
+		return nil, err
+	}
+
+	return &api.MsgWait{
+		Receipt: *recpt,
+		TipSet:  ts,
+	}, nil
+}

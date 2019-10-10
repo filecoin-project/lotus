@@ -1,7 +1,6 @@
 package chain
 
 import (
-	"encoding/base64"
 	"sync"
 
 	pubsub "github.com/libp2p/go-libp2p-pubsub"
@@ -82,14 +81,9 @@ func (mp *MessagePool) Add(m *types.SignedMessage) error {
 }
 
 func (mp *MessagePool) addLocked(m *types.SignedMessage) error {
-	data, err := m.Message.Serialize()
-	if err != nil {
-		return err
-	}
+	log.Debugf("mpooladd: %s %s", m.Message.From, m.Message.Nonce)
 
-	log.Infof("mpooladd: %d %s", m.Message.Nonce, base64.StdEncoding.EncodeToString(data))
-
-	if err := m.Signature.Verify(m.Message.From, data); err != nil {
+	if err := m.Signature.Verify(m.Message.From, m.Message.Cid().Bytes()); err != nil {
 		log.Warnf("mpooladd signature verification failed: %s", err)
 		return err
 	}

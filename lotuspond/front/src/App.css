@@ -168,7 +168,7 @@ a:hover {
 .Block {
   user-select: text;
   font-family: monospace;
-  min-width: 50em;
+  min-width: 60em;
   display: inline-block;
 }
 
@@ -210,8 +210,16 @@ a:hover {
   background: #440000
 }
 
+.ChainExplorer-after:hover {
+  background: #770000
+}
+
 .ChainExplorer-before {
   background: #444400
+}
+
+.ChainExplorer-before:hover {
+  background: #777700
 }
 
 .Logs {

@@ -44,7 +44,7 @@ func (pm *Manager) createPaych(ctx context.Context, from, to address.Address, am
 
 	// TODO: wait outside the store lock!
 	//  (tricky because we need to setup channel tracking before we know it's address)
-	mwait, err := pm.chain.ChainWaitMsg(ctx, mcid)
+	mwait, err := pm.state.StateWaitMsg(ctx, mcid)
 	if err != nil {
 		return address.Undef, cid.Undef, err
 	}
@@ -85,7 +85,7 @@ func (pm *Manager) addFunds(ctx context.Context, ch address.Address, from addres
 		return err
 	}
 
-	mwait, err := pm.chain.ChainWaitMsg(ctx, smsg.Cid()) // TODO: wait outside the store lock!
+	mwait, err := pm.state.StateWaitMsg(ctx, smsg.Cid()) // TODO: wait outside the store lock!
 	if err != nil {
 		return err
 	}

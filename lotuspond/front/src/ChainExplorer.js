@@ -5,6 +5,8 @@ import Window from "./Window";
 const rows = 32
 
 class ChainExplorer extends React.Component {
+  fetching = []
+
   constructor(props) {
     super(props)
 
@@ -38,7 +40,7 @@ class ChainExplorer extends React.Component {
   }
 
   async updateMessages(cids, msgcache) {
-    const msgs = await Promise.all(cids.map(async cid => [cid['/'], await this.props.client.call('Filecoin.ChainGetBlockMessages', [cid])]))
+    const msgs = await Promise.all(cids.map(async cid => [cid['/'], await this.props.client.call('Filecoin.ChainGetParentMessages', [cid])]))
     msgs.forEach(([cid, msg]) => msgcache[cid] = msg)
   }
 
@@ -57,20 +59,41 @@ class ChainExplorer extends React.Component {
     await this.fetchVisible()
   }
 
-  async fetch(h, cache, msgcache) {
+  async fetch(h, base, cache, msgcache) {
+    console.log(h, base, cache)
+
+    if (this.fetching[h]) {
+      return
+    }
+    this.fetching[h] = true
+
     if (h < 0) {
       return
     }
-    const cids = cache[h + 1].Blocks.map(b => b.Parents).reduce((acc, val) => acc.concat(val), [])
+    if(!base.Blocks) {
+      console.log("base for H is nll blk", h, base)
+      return
+    }
+    let cids = base.Blocks.map(b => b.Parents)
+        .reduce((acc, val) => {
+          let out = {...acc}
+          val.forEach(c => out[c['/']] = 8)
+          return out
+        }, {})
+    cids = Object.keys(cids).map(k => ({'/': k}))
+    console.log("parents", cids)
+
     const blocks = await Promise.all(cids.map(cid => this.props.client.call('Filecoin.ChainGetBlock', [cid])))
 
     cache[h] = {
-      Height: h,
+      Height: blocks[0].Height,
       Cids: cids,
       Blocks: blocks,
     }
 
     await this.updateMessages(cids, msgcache)
+
+    return cache[h]
   }
 
   async fetchVisible() {
@@ -93,7 +116,11 @@ class ChainExplorer extends React.Component {
     let cache = {...this.state.cache}
     let msgcache = {...this.state.messages}
 
-    await tofetch.reduce(async (prev, next) => [...await prev, await this.fetch(next, cache, msgcache)], Promise.resolve([]))
+    await tofetch.reduce(async (prev, next) => {
+      let prevts = await prev
+      let newts = await this.fetch(next, prevts, cache, msgcache)
+      return newts ? newts : prevts
+    }, Promise.resolve(cache[top]))
     this.setState({cache: cache, messages: msgcache})
   }
 
@@ -113,23 +140,30 @@ class ChainExplorer extends React.Component {
       const base = this.state.at - this.state.at % rows
       const className = row === this.state.at ? 'ChainExplorer-at' : (row < base ? 'ChainExplorer-after' : 'ChainExplorer-before')
       let info = <span>(fetching)</span>
+        let h = <i>{row}</i>
       if(this.state.cache[row]) {
         const ts = this.state.cache[row]
 
+        h = ts.Height
+
         let msgc = -1
         if(ts.Cids[0] && this.state.messages[ts.Cids[0]['/']]) { // TODO: get from all blks
-          msgc = this.state.messages[ts.Cids[0]['/']].SecpkMessages.length + this.state.messages[ts.Cids[0]['/']].BlsMessages.length
+          msgc = this.state.messages[ts.Cids[0]['/']].length
         }
         if(msgc > 0) {
           msgc = <b>{msgc}</b>
         }
+        let time = '?'
+        if(this.state.cache[row - 1]){
+          time = <span>{ts.Blocks[0].Timestamp - this.state.cache[row - 1].Blocks[0].Timestamp}s</span>
+        }
 
         info = <span>
-          <BlockLinks cids={ts.Cids} blocks={ts.Blocks} conn={this.props.client} mountWindow={this.props.mountWindow} /> Msgs: {msgc}
+          <BlockLinks cids={ts.Cids} blocks={ts.Blocks} conn={this.props.client} mountWindow={this.props.mountWindow} /> Msgs: {msgc} ΔT:{time}
         </span>
       }
 
-      return <div key={row} className={className}>@{row} {info}</div>
+      return <div key={row} className={className}>@{h} {info}</div>
     })}</div>
 
     return (<Window onClose={this.props.onClose} title={`Chain Explorer ${this.state.follow ? '(Following)' : ''}`}>
