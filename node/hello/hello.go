@@ -71,6 +71,7 @@ func (hs *Service) HandleStream(s inet.Stream) {
 		return
 	}
 
+	log.Infof("Got new tipset through Hello: %s from %s", ts.Cids(), s.Conn().RemotePeer())
 	hs.syncer.InformNewHead(s.Conn().RemotePeer(), ts)
 }
 

@@ -359,6 +359,10 @@ func (syncer *Syncer) ValidateTipSet(ctx context.Context, fts *store.FullTipSet)
 			syncer.bad.Add(b.Cid())
 			return xerrors.Errorf("validating block %s: %w", b.Cid(), err)
 		}
+
+		if err := syncer.sm.ChainStore().AddToTipSetTracker(b.Header); err != nil {
+			return xerrors.Errorf("failed to add validated header to tipset tracker: %w", err)
+		}
 	}
 	return nil
 }
@@ -657,7 +661,7 @@ loop:
 			}
 			for _, bc := range b.Cids() {
 				if syncer.bad.Has(bc) {
-					return nil, xerrors.Errorf("chain contained block marked previously as bad (%s, %s)", from.Cids(), bc)
+					return nil, xerrors.Errorf("(chain contained block marked previously as bad (%s, %s)", from.Cids(), bc)
 				}
 			}
 			blockSet = append(blockSet, b)
@@ -792,7 +796,6 @@ func (syncer *Syncer) iterFullTipsets(headers []*types.TipSet, cb func(*store.Fu
 				return xerrors.Errorf("message processing failed: %w", err)
 			}
 		}
-
 	}
 
 	return nil
@@ -826,6 +829,10 @@ func (syncer *Syncer) collectChain(ctx context.Context, ts *types.TipSet) error 
 	headers, err := syncer.collectHeaders(ctx, ts, syncer.store.GetHeaviestTipSet())
 	if err != nil {
 		return err
+	}
+
+	if !headers[0].Equals(ts) {
+		log.Errorf("collectChain headers[0] should be equal to sync target. Its not: %s != %s", headers[0].Cids(), ts.Cids())
 	}
 
 	syncer.syncState.SetStage(api.StagePersistHeaders)
