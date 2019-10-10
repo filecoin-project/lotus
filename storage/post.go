@@ -2,7 +2,7 @@ package storage
 
 import (
 	"context"
-	"encoding/base64"
+	"time"
 
 	"golang.org/x/xerrors"
 
@@ -67,14 +67,14 @@ func (m *Miner) scheduleNextPost(ppe uint64) {
 
 	headPPE, provingPeriod := actors.ProvingPeriodEnd(ppe, ts.Height())
 	if headPPE > ppe {
-		log.Warn("PoSt computation running behind chain")
+		log.Warnw("PoSt computation running behind chain", "headPPE", headPPE, "ppe", ppe)
 		ppe = headPPE
 	}
 
 	m.schedLk.Lock()
 	if m.schedPost >= ppe {
 		// this probably can't happen
-		log.Error("PoSt already scheduled: %d >= %d", m.schedPost, ppe)
+		log.Errorw("PoSt already scheduled", "schedPost", m.schedPost, "ppe", ppe)
 		m.schedLk.Unlock()
 		return
 	}
@@ -82,7 +82,8 @@ func (m *Miner) scheduleNextPost(ppe uint64) {
 	m.schedPost = ppe
 	m.schedLk.Unlock()
 
-	log.Infof("Scheduling post at height %d (head=%d; ppe=%d, period=%d)", ppe-build.PoSTChallangeTime, ts.Height(), ppe, provingPeriod)
+	log.Infow("scheduling PoSt", "post-height", ppe-build.PoSTChallangeTime,
+		"height", ts.Height(), "ppe", ppe, "proving-period", provingPeriod)
 	err = m.events.ChainAt(m.computePost(ppe), func(ts *types.TipSet) error { // Revert
 		// TODO: Cancel post
 		log.Errorf("TODO: Cancel PoSt, re-run")
@@ -90,7 +91,7 @@ func (m *Miner) scheduleNextPost(ppe uint64) {
 	}, PoStConfidence, ppe-build.PoSTChallangeTime)
 	if err != nil {
 		// TODO: This is BAD, figure something out
-		log.Errorf("scheduling PoSt failed: %s", err)
+		log.Errorf("scheduling PoSt failed: %+v", err)
 		return
 	}
 }
@@ -110,14 +111,19 @@ func (m *Miner) computePost(ppe uint64) func(ts *types.TipSet, curH uint64) erro
 			return xerrors.Errorf("failed to get chain randomness for post (ts=%d; ppe=%d): %w", ts.Height(), ppe, err)
 		}
 
-		log.Infof("running PoSt computation, rh=%d r=%s, ppe=%d, h=%d", int64(ts.Height())-int64(ppe)+int64(build.PoSTChallangeTime), base64.StdEncoding.EncodeToString(r), ppe, ts.Height())
+		log.Infow("running PoSt", "delayed-by",
+			int64(ts.Height())-(int64(ppe)-int64(build.PoSTChallangeTime)),
+			"chain-random", r, "ppe", ppe, "height", ts.Height())
+
+		tsStart := time.Now()
 		var faults []uint64
 		proof, err := m.secst.RunPoSt(ctx, sset, r, faults)
 		if err != nil {
 			return xerrors.Errorf("running post failed: %w", err)
 		}
+		elapsed := time.Since(tsStart)
 
-		log.Infof("submitting PoSt pLen=%d", len(proof))
+		log.Infow("submitting PoSt", "pLen", len(proof), "elapsed", elapsed)
 
 		params := &actors.SubmitPoStParams{
 			Proof:   proof,
