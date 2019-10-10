@@ -34,7 +34,7 @@ require (
 	github.com/ipfs/go-ipfs-routing v0.1.0
 	github.com/ipfs/go-ipld-cbor v0.0.3
 	github.com/ipfs/go-ipld-format v0.0.2
-	github.com/ipfs/go-log v0.0.2-0.20190905183954-62f287c7db59
+	github.com/ipfs/go-log v0.0.2-0.20190920042044-a609c1ae5144
 	github.com/ipfs/go-merkledag v0.2.3
 	github.com/ipfs/go-unixfs v0.2.2-0.20190827150610-868af2e9e5cb
 	github.com/ipsn/go-secp256k1 v0.0.0-20180726113642-9d62b9f0bc52

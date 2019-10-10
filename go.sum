@@ -254,8 +254,8 @@ github.com/ipfs/go-ipld-format v0.0.1/go.mod h1:kyJtbkDALmFHv3QR6et67i35QzO3S0dC
 github.com/ipfs/go-ipld-format v0.0.2 h1:OVAGlyYT6JPZ0pEfGntFPS40lfrDmaDbQwNHEY2G9Zs=
 github.com/ipfs/go-ipld-format v0.0.2/go.mod h1:4B6+FM2u9OJ9zCV+kSbgFAZlOrv1Hqbf0INGQgiKf9k=
 github.com/ipfs/go-log v0.0.1/go.mod h1:kL1d2/hzSpI0thNYjiKfjanbVNU+IIGA/WnNESY9leM=
-github.com/ipfs/go-log v0.0.2-0.20190905183954-62f287c7db59 h1:gUmFTK1r79usWs8LQJsoMw+yba2qs/EVj9kmPRvSrYM=
-github.com/ipfs/go-log v0.0.2-0.20190905183954-62f287c7db59/go.mod h1:azGN5dH7ailfREknDDNYB0Eq4qZ/4I4Y3gO0ivjJNyM=
+github.com/ipfs/go-log v0.0.2-0.20190920042044-a609c1ae5144 h1:5WM8S1nwquWQ3zEuNhK82NE5Di6Pd41qz9JxxvxTAIA=
+github.com/ipfs/go-log v0.0.2-0.20190920042044-a609c1ae5144/go.mod h1:azGN5dH7ailfREknDDNYB0Eq4qZ/4I4Y3gO0ivjJNyM=
 github.com/ipfs/go-merkledag v0.1.0/go.mod h1:SQiXrtSts3KGNmgOzMICy5c0POOpUNQLvB3ClKnBAlk=
 github.com/ipfs/go-merkledag v0.2.3 h1:aMdkK9G1hEeNvn3VXfiEMLY0iJnbiQQUHnM0HFJREsE=
 github.com/ipfs/go-merkledag v0.2.3/go.mod h1:SQiXrtSts3KGNmgOzMICy5c0POOpUNQLvB3ClKnBAlk=
