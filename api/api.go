@@ -59,6 +59,7 @@ type FullNode interface {
 	ChainGetParentMessages(context.Context, cid.Cid) ([]Message, error)
 	ChainGetTipSetByHeight(context.Context, uint64, *types.TipSet) (*types.TipSet, error)
 	ChainReadObj(context.Context, cid.Cid) ([]byte, error)
+	ChainSetHead(context.Context, *types.TipSet) error
 
 	// syncer
 	SyncState(context.Context) (*SyncState, error)

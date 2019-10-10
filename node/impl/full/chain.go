@@ -157,3 +157,7 @@ func (a *ChainAPI) ChainReadObj(ctx context.Context, obj cid.Cid) ([]byte, error
 
 	return blk.RawData(), nil
 }
+
+func (a *ChainAPI) ChainSetHead(ctx context.Context, ts *types.TipSet) error {
+	return a.Chain.SetHead(ts)
+}
