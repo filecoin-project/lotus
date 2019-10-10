@@ -21,6 +21,7 @@ var chainCmd = &cli.Command{
 		chainGetBlock,
 		chainReadObjCmd,
 		chainGetMsgCmd,
+		chainSetHeadCmd,
 	},
 }
 
@@ -206,7 +207,7 @@ var chainGetMsgCmd = &cli.Command{
 	},
 }
 
-var chainSetHead = &cli.Command{
+var chainSetHeadCmd = &cli.Command{
 	Name:  "sethead",
 	Usage: "manually set the local nodes head tipset (Caution: normally only used for recovery)",
 	Action: func(cctx *cli.Context) error {
