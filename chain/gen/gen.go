@@ -46,6 +46,8 @@ type ChainGen struct {
 	genesis   *types.BlockHeader
 	CurTipset *store.FullTipSet
 
+	Timestamper func(*types.TipSet, int) uint64
+
 	w *wallet.Wallet
 
 	Miners      []address.Address
@@ -289,7 +291,12 @@ func (cg *ChainGen) NextTipSetFromMiners(base *types.TipSet, miners []address.Ad
 
 func (cg *ChainGen) makeBlock(parents *types.TipSet, m address.Address, eproof types.ElectionProof, tickets []*types.Ticket, msgs []*types.SignedMessage) (*types.FullBlock, error) {
 
-	ts := parents.MinTimestamp() + (uint64(len(tickets)) * build.BlockDelay)
+	var ts uint64
+	if cg.Timestamper != nil {
+		ts = cg.Timestamper(parents, len(tickets))
+	} else {
+		ts = parents.MinTimestamp() + (uint64(len(tickets)) * build.BlockDelay)
+	}
 
 	fblk, err := MinerCreateBlock(context.TODO(), cg.sm, cg.w, m, parents, tickets, eproof, msgs, ts)
 	if err != nil {

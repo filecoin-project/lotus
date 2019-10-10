@@ -341,7 +341,7 @@ func (cs *ChainStore) GetHeaviestTipSet() *types.TipSet {
 	return cs.heaviest
 }
 
-func (cs *ChainStore) addToTipSetTracker(b *types.BlockHeader) error {
+func (cs *ChainStore) AddToTipSetTracker(b *types.BlockHeader) error {
 	cs.tstLk.Lock()
 	defer cs.tstLk.Unlock()
 
@@ -364,10 +364,6 @@ func (cs *ChainStore) PersistBlockHeader(b *types.BlockHeader) error {
 	sb, err := b.ToStorageBlock()
 	if err != nil {
 		return err
-	}
-
-	if err := cs.addToTipSetTracker(b); err != nil {
-		return xerrors.Errorf("failed to insert new block (%s) into tipset tracker: %w", b.Cid(), err)
 	}
 
 	return cs.bs.Put(sb)
