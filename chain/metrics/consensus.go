@@ -3,10 +3,9 @@ package metrics
 import (
 	"context"
 	"encoding/json"
-	"go.uber.org/fx"
-
 	logging "github.com/ipfs/go-log"
 	pubsub "github.com/libp2p/go-libp2p-pubsub"
+	"go.uber.org/fx"
 
 	"github.com/filecoin-project/go-lotus/node/impl/full"
 	"github.com/filecoin-project/go-lotus/node/modules/helpers"
@@ -23,35 +22,40 @@ type Update struct {
 func SendHeadNotifs(mctx helpers.MetricsCtx, lc fx.Lifecycle, ps *pubsub.PubSub, chain full.ChainAPI) error {
 	ctx := helpers.LifecycleCtx(mctx, lc)
 
-	gen, err := chain.Chain.GetGenesis()
-	if err != nil {
-		return err
-	}
-
-	topic := baseTopic + gen.Cid().String()
-
-	go func() {
-		if err := sendHeadNotifs(ctx, ps, topic, chain); err != nil {
-			log.Error("consensus metrics error", err)
-			return
-		}
-	}()
-	go func() {
-		sub, err := ps.Subscribe(topic)
-		if err != nil {
-			return
-		}
-		defer sub.Cancel()
-
-		for {
-			if _, err := sub.Next(ctx); err != nil {
-				return
+	lc.Append(fx.Hook{
+		OnStart: func(_ context.Context) error {
+			gen, err := chain.Chain.GetGenesis()
+			if err != nil {
+				return err
 			}
-		}
 
-	}()
+			topic := baseTopic + gen.Cid().String()
 
-	return err
+			go func() {
+				if err := sendHeadNotifs(ctx, ps, topic, chain); err != nil {
+					log.Error("consensus metrics error", err)
+					return
+				}
+			}()
+			go func() {
+				sub, err := ps.Subscribe(topic)
+				if err != nil {
+					return
+				}
+				defer sub.Cancel()
+
+				for {
+					if _, err := sub.Next(ctx); err != nil {
+						return
+					}
+				}
+
+			}()
+			return nil
+		},
+	})
+
+	return nil
 }
 
 func sendHeadNotifs(ctx context.Context, ps *pubsub.PubSub, topic string, chain full.ChainAPI) error {
