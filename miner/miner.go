@@ -131,6 +131,8 @@ func (m *Miner) mine(ctx context.Context) {
 	ctx, span := trace.StartSpan(ctx, "/mine")
 	defer span.End()
 
+	var lastBase MiningBase
+
 	for {
 		select {
 		case <-m.stop:
@@ -157,6 +159,12 @@ func (m *Miner) mine(ctx context.Context) {
 			log.Errorf("failed to get best mining candidate: %s", err)
 			continue
 		}
+		if base.ts.Equals(lastBase.ts) && len(lastBase.tickets) == len(base.tickets) {
+			log.Error("BestMiningCandidate from the previous round: %s (tkts:%d)", lastBase.ts.Cids(), len(lastBase.tickets))
+			time.Sleep(build.BlockDelay * time.Second)
+			continue
+		}
+		lastBase = *base
 
 		b, err := m.mineOne(ctx, base)
 		if err != nil {
@@ -170,6 +178,8 @@ func (m *Miner) mine(ctx context.Context) {
 			btime := time.Unix(int64(b.Header.Timestamp), 0)
 			if time.Now().Before(btime) {
 				time.Sleep(time.Until(btime))
+			} else {
+				log.Warnf("Mined block in the past: b.T: %s, T: %s, dT: %s", btime, time.Now(), time.Now().Sub(btime))
 			}
 
 			if err := m.api.ChainSubmitBlock(ctx, b); err != nil {
@@ -209,7 +219,7 @@ func (m *Miner) GetBestMiningCandidate() (*MiningBase, error) {
 }
 
 func (m *Miner) mineOne(ctx context.Context, base *MiningBase) (*types.BlockMsg, error) {
-	log.Debug("attempting to mine a block on:", base.ts.Cids())
+	log.Info("attempting to mine a block on:", base.ts.Cids())
 	ticket, err := m.scratchTicket(ctx, base)
 	if err != nil {
 		return nil, errors.Wrap(err, "scratching ticket failed")
