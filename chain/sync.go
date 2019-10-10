@@ -661,7 +661,7 @@ loop:
 			}
 			for _, bc := range b.Cids() {
 				if syncer.bad.Has(bc) {
-					return nil, xerrors.Errorf("(chain contained block marked previously as bad (%s, %s)", from.Cids(), bc)
+					return nil, xerrors.Errorf("chain contained block marked previously as bad (%s, %s)", from.Cids(), bc)
 				}
 			}
 			blockSet = append(blockSet, b)
