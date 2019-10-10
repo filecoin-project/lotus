@@ -131,6 +131,8 @@ func (m *Miner) mine(ctx context.Context) {
 	ctx, span := trace.StartSpan(ctx, "/mine")
 	defer span.End()
 
+	var lastBase *types.TipSet
+
 	for {
 		select {
 		case <-m.stop:
@@ -157,6 +159,12 @@ func (m *Miner) mine(ctx context.Context) {
 			log.Errorf("failed to get best mining candidate: %s", err)
 			continue
 		}
+		if base.ts.Equals(lastBase) {
+			log.Error("BestMiningCandidate from the previous round: %s", lastBase.Cids())
+			time.Sleep(build.BlockDelay)
+			continue
+		}
+		lastBase = base.ts
 
 		b, err := m.mineOne(ctx, base)
 		if err != nil {
