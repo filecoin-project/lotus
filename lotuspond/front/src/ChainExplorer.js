@@ -86,7 +86,7 @@ class ChainExplorer extends React.Component {
     const blocks = await Promise.all(cids.map(cid => this.props.client.call('Filecoin.ChainGetBlock', [cid])))
 
     cache[h] = {
-      Height: h,
+      Height: blocks[0].Height,
       Cids: cids,
       Blocks: blocks,
     }

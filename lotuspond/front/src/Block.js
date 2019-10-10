@@ -17,6 +17,11 @@ class Block extends React.Component {
     let messages = await this.props.conn.call('Filecoin.ChainGetParentMessages', [this.props.cid])
     let receipts = await this.props.conn.call('Filecoin.ChainGetParentReceipts', [this.props.cid])
 
+    if (!messages) {
+      messages = []
+    }
+
+
     messages = messages.map((msg, k) => ({...msg.Message, cid: msg.Cid, receipt: receipts[k]}))
 
     messages = await Promise.all(messages.map(async (msg, i) => {
@@ -38,8 +43,8 @@ class Block extends React.Component {
     if (this.state.header) {
       let head = this.state.header
 
-      const messages = this.state.messages.map(m => (
-        <div>
+      const messages = this.state.messages.map((m, k) => (
+        <div key={k}>
           <div>
             <Address client={this.props.conn} addr={m.From} mountWindow={this.props.mountWindow}/><b>&nbsp;=>&nbsp;</b>
             <Address client={this.props.conn} addr={m.To} mountWindow={this.props.mountWindow} transfer={m.Value} method={m.Method}/>
@@ -66,7 +71,7 @@ class Block extends React.Component {
       )
     }
 
-    return (<Window className="CristalScroll" initialSize={{width: 850, height: 400}} onClose={this.props.onClose} title={`Block ${this.props.cid['/']}`}>
+    return (<Window className="CristalScroll" initialSize={{width: 950, height: 400}} onClose={this.props.onClose} title={`Block ${this.props.cid['/']}`}>
       {content}
     </Window>)
   }
