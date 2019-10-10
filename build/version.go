@@ -19,3 +19,8 @@ const (
 	MinorMask = 0xffff00
 	PatchMask = 0xffffff
 )
+
+// VersionInts returns (major, minor, patch) versions
+func VersionInts(version uint32) (uint32, uint32, uint32) {
+	return (version & MajorMask) >> 16, (version & MinorMask) >> 8, version & PatchMask
+}

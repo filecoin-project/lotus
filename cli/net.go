@@ -66,8 +66,9 @@ var netListen = &cli.Command{
 }
 
 var netConnect = &cli.Command{
-	Name:  "connect",
-	Usage: "Connect to a peer",
+	Name:      "connect",
+	Usage:     "Connect to a peer",
+	ArgsUsage: "<peer multiaddr>",
 	Action: func(cctx *cli.Context) error {
 		api, closer, err := GetAPI(cctx)
 		if err != nil {

@@ -102,7 +102,7 @@ func (m *Miner) handlePostingSealedSectors(ctx context.Context) {
 			if !ok {
 				// TODO: set some state variable so that this state can be
 				// visible via some status command
-				log.Warning("sealed sector channel closed, aborting process")
+				log.Warn("sealed sector channel closed, aborting process")
 				return
 			}
 
@@ -112,7 +112,7 @@ func (m *Miner) handlePostingSealedSectors(ctx context.Context) {
 			}
 
 		case <-ctx.Done():
-			log.Warning("exiting seal posting routine")
+			log.Warn("exiting seal posting routine")
 			return
 		}
 	}

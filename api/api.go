@@ -2,6 +2,7 @@ package api
 
 import (
 	"context"
+	"fmt"
 
 	"github.com/ipfs/go-cid"
 	"github.com/ipfs/go-filestore"
@@ -9,6 +10,7 @@ import (
 	"github.com/libp2p/go-libp2p-core/network"
 	"github.com/libp2p/go-libp2p-core/peer"
 
+	"github.com/filecoin-project/go-lotus/build"
 	"github.com/filecoin-project/go-lotus/chain/address"
 	"github.com/filecoin-project/go-lotus/chain/store"
 	"github.com/filecoin-project/go-lotus/chain/types"
@@ -171,6 +173,11 @@ type Version struct {
 	APIVersion uint32
 
 	// TODO: git commit / os / genesis cid?
+}
+
+func (v Version) String() string {
+	vM, vm, vp := build.VersionInts(v.APIVersion)
+	return fmt.Sprintf("%s+api%d.%d.%d", v.Version, vM, vm, vp)
 }
 
 type Import struct {
