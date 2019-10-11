@@ -22,6 +22,7 @@ var chainCmd = &cli.Command{
 		chainReadObjCmd,
 		chainGetMsgCmd,
 		chainSetHeadCmd,
+		chainListCmd,
 	},
 }
 
@@ -270,4 +271,47 @@ func parseTipSet(api api.FullNode, ctx context.Context, vals []string) (*types.T
 	}
 
 	return types.NewTipSet(headers)
+}
+
+var chainListCmd = &cli.Command{
+	Name:  "list",
+	Usage: "View a segment of the chain",
+	Action: func(cctx *cli.Context) error {
+		api, closer, err := GetFullNodeAPI(cctx)
+		if err != nil {
+			return err
+		}
+		defer closer()
+		ctx := ReqContext(cctx)
+
+		head, err := api.ChainHead(ctx)
+		if err != nil {
+			return err
+		}
+
+		tss := []*types.TipSet{head}
+		cur := head
+		for i := 1; i < 30; i++ {
+			if cur.Height() == 0 {
+				break
+			}
+
+			next, err := api.ChainGetTipSet(ctx, cur.Parents())
+			if err != nil {
+				return err
+			}
+
+			tss = append(tss, next)
+			cur = next
+		}
+
+		for i := len(tss) - 1; i >= 0; i-- {
+			fmt.Printf("%d [ ", tss[i].Height())
+			for _, b := range tss[i].Blocks() {
+				fmt.Printf("%s: %s,", b.Cid(), b.Miner)
+			}
+			fmt.Println("]")
+		}
+		return nil
+	},
 }

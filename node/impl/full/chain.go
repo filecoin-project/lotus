@@ -50,6 +50,10 @@ func (a *ChainAPI) ChainGetBlock(ctx context.Context, msg cid.Cid) (*types.Block
 	return a.Chain.GetBlock(msg)
 }
 
+func (a *ChainAPI) ChainGetTipSet(ctx context.Context, cids []cid.Cid) (*types.TipSet, error) {
+	return a.Chain.LoadTipSet(cids)
+}
+
 func (a *ChainAPI) ChainGetBlockMessages(ctx context.Context, msg cid.Cid) (*api.BlockMessages, error) {
 	b, err := a.Chain.GetBlock(msg)
 	if err != nil {
