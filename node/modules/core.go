@@ -1,15 +1,20 @@
 package modules
 
 import (
+	"context"
 	"crypto/rand"
-	"io"
-	"io/ioutil"
-
+	"github.com/filecoin-project/go-lotus/build"
+	"github.com/filecoin-project/go-lotus/node/modules/helpers"
 	"github.com/gbrlsnchs/jwt/v3"
 	logging "github.com/ipfs/go-log"
+	"github.com/libp2p/go-libp2p-core/host"
 	"github.com/libp2p/go-libp2p-core/peerstore"
 	record "github.com/libp2p/go-libp2p-record"
+	"go.uber.org/fx"
 	"golang.org/x/xerrors"
+	"io"
+	"io/ioutil"
+	"time"
 
 	"github.com/filecoin-project/go-lotus/api"
 	"github.com/filecoin-project/go-lotus/chain/types"
@@ -69,4 +74,47 @@ func APISecret(keystore types.KeyStore, lr repo.LockedRepo) (*dtypes.APIAlg, err
 	}
 
 	return (*dtypes.APIAlg)(jwt.NewHS256(key.PrivateKey)), nil
+}
+
+func Bootstrap(mctx helpers.MetricsCtx, lc fx.Lifecycle, host host.Host) {
+	ctx, cancel := context.WithCancel(mctx)
+
+	lc.Append(fx.Hook{
+		OnStart: func(_ context.Context) error {
+			go func() {
+				for {
+					sctx, cancel := context.WithTimeout(ctx, build.BlockDelay*time.Second/2)
+					<-sctx.Done()
+					cancel()
+
+					if ctx.Err() != nil {
+						return
+					}
+
+					if len(host.Network().Conns()) > 0 {
+						continue
+					}
+
+					log.Warn("No peers connected, performing automatic bootstrap")
+
+					pis, err := build.BuiltinBootstrap()
+					if err != nil {
+						log.Error("Getting bootstrap addrs: ", err)
+						return
+					}
+
+					for _, pi := range pis {
+						if err := host.Connect(ctx, pi); err != nil {
+							log.Warn("bootstrap connect failed: ", err)
+						}
+					}
+				}
+			}()
+			return nil
+		},
+		OnStop: func(_ context.Context) error {
+			cancel()
+			return nil
+		},
+	})
 }
