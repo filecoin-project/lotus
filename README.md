@@ -108,6 +108,14 @@ Seal random data to start producing PoSts:
 $ lotus-storage-miner store-garbage
 ```
 
+Check your Miner's power and sector usage using:
+
+```sh
+$ lotus-storage-miner state power
+
+$ lotus-storage-miner state sectors <miner>
+```
+
 ### Stage Data
 
 Import some data:
