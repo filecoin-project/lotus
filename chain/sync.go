@@ -598,7 +598,7 @@ func (syncer *Syncer) verifyBlsAggregate(sig types.Signature, msgs []cid.Cid, pu
 
 	var bsig bls.Signature
 	copy(bsig[:], sig.Data)
-	if !bls.Verify(bsig, digests, pubks) {
+	if !bls.Verify(&bsig, digests, pubks) {
 		return xerrors.New("bls aggregate signature failed to verify")
 	}
 
