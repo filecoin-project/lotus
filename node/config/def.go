@@ -6,6 +6,8 @@ import "time"
 type Root struct {
 	API    API
 	Libp2p Libp2p
+
+	Metrics Metrics
 }
 
 // API contains configs for API endpoint
@@ -17,6 +19,10 @@ type API struct {
 // Libp2p contains configs for libp2p
 type Libp2p struct {
 	ListenAddresses []string
+}
+
+type Metrics struct {
+	Nickname string
 }
 
 // Default returns the default config
