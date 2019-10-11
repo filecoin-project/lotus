@@ -15,7 +15,6 @@ import (
 	"github.com/filecoin-project/go-lotus/chain/stmgr"
 	"github.com/filecoin-project/go-lotus/chain/store"
 	"github.com/filecoin-project/go-lotus/chain/types"
-	"go.opencensus.io/trace"
 
 	amt "github.com/filecoin-project/go-amt-ipld"
 	"github.com/ipfs/go-cid"
@@ -25,6 +24,7 @@ import (
 	logging "github.com/ipfs/go-log"
 	"github.com/libp2p/go-libp2p-core/peer"
 	cbg "github.com/whyrusleeping/cbor-gen"
+	"go.opencensus.io/trace"
 	"golang.org/x/xerrors"
 )
 
