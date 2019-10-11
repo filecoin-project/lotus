@@ -856,6 +856,7 @@ func (syncer *Syncer) collectChain(ctx context.Context, ts *types.TipSet) error 
 	}
 
 	syncer.syncState.SetStage(api.StageSyncComplete)
+	log.Infow("new tipset", "height", ts.Height(), "tipset", types.LogCids(ts.Cids()))
 
 	return nil
 }
