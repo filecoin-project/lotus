@@ -42,6 +42,7 @@ type FullNodeStruct struct {
 		ChainHead              func(context.Context) (*types.TipSet, error)                               `perm:"read"`
 		ChainGetRandomness     func(context.Context, *types.TipSet, []*types.Ticket, int) ([]byte, error) `perm:"read"`
 		ChainGetBlock          func(context.Context, cid.Cid) (*types.BlockHeader, error)                 `perm:"read"`
+		ChainGetTipSet         func(context.Context, []cid.Cid) (*types.TipSet, error)                    `perm:"read"`
 		ChainGetBlockMessages  func(context.Context, cid.Cid) (*BlockMessages, error)                     `perm:"read"`
 		ChainGetParentReceipts func(context.Context, cid.Cid) ([]*types.MessageReceipt, error)            `perm:"read"`
 		ChainGetParentMessages func(context.Context, cid.Cid) ([]Message, error)                          `perm:"read"`
@@ -283,6 +284,10 @@ func (c *FullNodeStruct) MpoolGetNonce(ctx context.Context, addr address.Address
 
 func (c *FullNodeStruct) ChainGetBlock(ctx context.Context, b cid.Cid) (*types.BlockHeader, error) {
 	return c.Internal.ChainGetBlock(ctx, b)
+}
+
+func (c *FullNodeStruct) ChainGetTipSet(ctx context.Context, cids []cid.Cid) (*types.TipSet, error) {
+	return c.Internal.ChainGetTipSet(ctx, cids)
 }
 
 func (c *FullNodeStruct) ChainGetBlockMessages(ctx context.Context, b cid.Cid) (*BlockMessages, error) {
