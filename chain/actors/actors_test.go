@@ -130,7 +130,7 @@ func TestStorageMarketActorCreateMiner(t *testing.T) {
 	msg := &types.Message{
 		To:       StorageMarketAddress,
 		From:     from,
-		Method:   SMAMethods.CreateStorageMiner,
+		Method:   SPAMethods.CreateStorageMiner,
 		Params:   enc,
 		GasPrice: types.NewInt(1),
 		GasLimit: types.NewInt(10000),

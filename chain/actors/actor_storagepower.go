@@ -15,9 +15,9 @@ import (
 	xerrors "golang.org/x/xerrors"
 )
 
-type StorageMarketActor struct{}
+type StoragePowerActor struct{}
 
-type smaMethods struct {
+type spaMethods struct {
 	Constructor             uint64
 	CreateStorageMiner      uint64
 	ArbitrateConsensusFault uint64
@@ -28,22 +28,22 @@ type smaMethods struct {
 	PledgeCollateralForSize uint64
 }
 
-var SMAMethods = smaMethods{1, 2, 3, 4, 5, 6, 7, 8}
+var SPAMethods = spaMethods{1, 2, 3, 4, 5, 6, 7, 8}
 
-func (sma StorageMarketActor) Exports() []interface{} {
+func (spa StoragePowerActor) Exports() []interface{} {
 	return []interface{}{
-		//1: sma.StorageMarketConstructor,
-		2: sma.CreateStorageMiner,
-		3: sma.ArbitrateConsensusFault,
-		4: sma.UpdateStorage,
-		5: sma.GetTotalStorage,
-		6: sma.PowerLookup,
-		7: sma.IsMiner,
-		8: sma.PledgeCollateralForSize,
+		//1: spa.StoragePowerConstructor,
+		2: spa.CreateStorageMiner,
+		3: spa.ArbitrateConsensusFault,
+		4: spa.UpdateStorage,
+		5: spa.GetTotalStorage,
+		6: spa.PowerLookup,
+		7: spa.IsMiner,
+		8: spa.PledgeCollateralForSize,
 	}
 }
 
-type StorageMarketState struct {
+type StoragePowerState struct {
 	Miners     cid.Cid
 	MinerCount uint64
 
@@ -57,12 +57,12 @@ type CreateStorageMinerParams struct {
 	PeerID     peer.ID
 }
 
-func (sma StorageMarketActor) CreateStorageMiner(act *types.Actor, vmctx types.VMContext, params *CreateStorageMinerParams) ([]byte, ActorError) {
+func (spa StoragePowerActor) CreateStorageMiner(act *types.Actor, vmctx types.VMContext, params *CreateStorageMinerParams) ([]byte, ActorError) {
 	if !SupportedSectorSize(params.SectorSize) {
 		return nil, aerrors.New(1, "Unsupported sector size")
 	}
 
-	var self StorageMarketState
+	var self StoragePowerState
 	old := vmctx.Storage().GetHead()
 	if err := vmctx.Storage().Get(old, &self); err != nil {
 		return nil, err
@@ -128,7 +128,7 @@ type ArbitrateConsensusFaultParams struct {
 	Block2 *types.BlockHeader
 }
 
-func (sma StorageMarketActor) ArbitrateConsensusFault(act *types.Actor, vmctx types.VMContext, params *ArbitrateConsensusFaultParams) ([]byte, ActorError) {
+func (spa StoragePowerActor) ArbitrateConsensusFault(act *types.Actor, vmctx types.VMContext, params *ArbitrateConsensusFaultParams) ([]byte, ActorError) {
 	if params.Block1.Miner != params.Block2.Miner {
 		return nil, aerrors.New(2, "blocks must be from the same miner")
 	}
@@ -158,14 +158,14 @@ func (sma StorageMarketActor) ArbitrateConsensusFault(act *types.Actor, vmctx ty
 		return nil, aerrors.New(6, "blocks do not prove a slashable offense")
 	}
 
-	var self StorageMarketState
+	var self StoragePowerState
 	old := vmctx.Storage().GetHead()
 	if err := vmctx.Storage().Get(old, &self); err != nil {
 		return nil, err
 	}
 
 	if types.BigCmp(self.TotalStorage, types.NewInt(0)) == 0 {
-		return nil, aerrors.Fatal("invalid state, storage market actor has zero total storage")
+		return nil, aerrors.Fatal("invalid state, storage power actor has zero total storage")
 	}
 
 	miner := params.Block1.Miner
@@ -269,8 +269,8 @@ type UpdateStorageParams struct {
 	Delta types.BigInt
 }
 
-func (sma StorageMarketActor) UpdateStorage(act *types.Actor, vmctx types.VMContext, params *UpdateStorageParams) ([]byte, ActorError) {
-	var self StorageMarketState
+func (spa StoragePowerActor) UpdateStorage(act *types.Actor, vmctx types.VMContext, params *UpdateStorageParams) ([]byte, ActorError) {
+	var self StoragePowerState
 	old := vmctx.Storage().GetHead()
 	if err := vmctx.Storage().Get(old, &self); err != nil {
 		return nil, err
@@ -299,8 +299,8 @@ func (sma StorageMarketActor) UpdateStorage(act *types.Actor, vmctx types.VMCont
 	return nil, nil
 }
 
-func (sma StorageMarketActor) GetTotalStorage(act *types.Actor, vmctx types.VMContext, params *struct{}) ([]byte, ActorError) {
-	var self StorageMarketState
+func (spa StoragePowerActor) GetTotalStorage(act *types.Actor, vmctx types.VMContext, params *struct{}) ([]byte, ActorError) {
+	var self StoragePowerState
 	if err := vmctx.Storage().Get(vmctx.Storage().GetHead(), &self); err != nil {
 		return nil, err
 	}
@@ -312,8 +312,8 @@ type PowerLookupParams struct {
 	Miner address.Address
 }
 
-func (sma StorageMarketActor) PowerLookup(act *types.Actor, vmctx types.VMContext, params *PowerLookupParams) ([]byte, ActorError) {
-	var self StorageMarketState
+func (spa StoragePowerActor) PowerLookup(act *types.Actor, vmctx types.VMContext, params *PowerLookupParams) ([]byte, ActorError) {
+	var self StoragePowerState
 	if err := vmctx.Storage().Get(vmctx.Storage().GetHead(), &self); err != nil {
 		return nil, aerrors.Wrap(err, "getting head")
 	}
@@ -326,14 +326,14 @@ func (sma StorageMarketActor) PowerLookup(act *types.Actor, vmctx types.VMContex
 	return pow.Bytes(), nil
 }
 
-func powerLookup(ctx context.Context, vmctx types.VMContext, self *StorageMarketState, miner address.Address) (types.BigInt, ActorError) {
+func powerLookup(ctx context.Context, vmctx types.VMContext, self *StoragePowerState, miner address.Address) (types.BigInt, ActorError) {
 	has, err := MinerSetHas(context.TODO(), vmctx, self.Miners, miner)
 	if err != nil {
 		return types.EmptyInt, err
 	}
 
 	if !has {
-		return types.EmptyInt, aerrors.New(1, "miner not registered with storage market")
+		return types.EmptyInt, aerrors.New(1, "miner not registered with storage power actor")
 	}
 
 	ret, err := vmctx.Send(miner, MAMethods.GetPower, types.NewInt(0), nil)
@@ -348,8 +348,8 @@ type IsMinerParam struct {
 	Addr address.Address
 }
 
-func (sma StorageMarketActor) IsMiner(act *types.Actor, vmctx types.VMContext, param *IsMinerParam) ([]byte, ActorError) {
-	var self StorageMarketState
+func (spa StoragePowerActor) IsMiner(act *types.Actor, vmctx types.VMContext, param *IsMinerParam) ([]byte, ActorError) {
+	var self StoragePowerState
 	if err := vmctx.Storage().Get(vmctx.Storage().GetHead(), &self); err != nil {
 		return nil, err
 	}
@@ -366,8 +366,8 @@ type PledgeCollateralParams struct {
 	Size types.BigInt
 }
 
-func (sma StorageMarketActor) PledgeCollateralForSize(act *types.Actor, vmctx types.VMContext, param *PledgeCollateralParams) ([]byte, ActorError) {
-	var self StorageMarketState
+func (spa StoragePowerActor) PledgeCollateralForSize(act *types.Actor, vmctx types.VMContext, param *PledgeCollateralParams) ([]byte, ActorError) {
+	var self StoragePowerState
 	if err := vmctx.Storage().Get(vmctx.Storage().GetHead(), &self); err != nil {
 		return nil, err
 	}

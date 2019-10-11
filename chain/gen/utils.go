@@ -143,7 +143,7 @@ func SetupStorageMarketActor(bs bstore.Blockstore) (*types.Actor, error) {
 		return nil, err
 	}
 
-	sms := &actors.StorageMarketState{
+	sms := &actors.StoragePowerState{
 		Miners:       emptyhamt,
 		TotalStorage: types.NewInt(0),
 	}
@@ -202,7 +202,7 @@ func SetupStorageMiners(ctx context.Context, cs *store.ChainStore, sroot cid.Cid
 
 		// TODO: hardcoding 7000000 here is a little fragile, it changes any
 		// time anyone changes the initial account allocations
-		rval, err := doExecValue(ctx, vm, actors.StorageMarketAddress, owner, types.FromFil(6500), actors.SMAMethods.CreateStorageMiner, params)
+		rval, err := doExecValue(ctx, vm, actors.StorageMarketAddress, owner, types.FromFil(6500), actors.SPAMethods.CreateStorageMiner, params)
 		if err != nil {
 			return cid.Undef, xerrors.Errorf("failed to create genesis miner: %w", err)
 		}
@@ -216,7 +216,7 @@ func SetupStorageMiners(ctx context.Context, cs *store.ChainStore, sroot cid.Cid
 
 		params = mustEnc(&actors.UpdateStorageParams{Delta: types.NewInt(5000)})
 
-		_, err = doExec(ctx, vm, actors.StorageMarketAddress, maddr, actors.SMAMethods.UpdateStorage, params)
+		_, err = doExec(ctx, vm, actors.StorageMarketAddress, maddr, actors.SPAMethods.UpdateStorage, params)
 		if err != nil {
 			return cid.Undef, xerrors.Errorf("failed to update total storage: %w", err)
 		}

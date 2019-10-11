@@ -391,7 +391,7 @@ func (syncer *Syncer) minerIsValid(ctx context.Context, maddr address.Address, b
 	ret, err := syncer.sm.Call(ctx, &types.Message{
 		To:     actors.StorageMarketAddress,
 		From:   maddr,
-		Method: actors.SMAMethods.IsMiner,
+		Method: actors.SPAMethods.IsMiner,
 		Params: enc,
 	}, baseTs)
 	if err != nil {

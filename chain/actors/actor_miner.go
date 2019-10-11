@@ -433,7 +433,7 @@ func (sma StorageMinerActor) SubmitPoSt(act *types.Actor, vmctx types.VMContext,
 		return nil, err
 	}
 
-	_, err = vmctx.Send(StorageMarketAddress, SMAMethods.UpdateStorage, types.NewInt(0), enc)
+	_, err = vmctx.Send(StorageMarketAddress, SPAMethods.UpdateStorage, types.NewInt(0), enc)
 	if err != nil {
 		return nil, err
 	}

@@ -92,7 +92,7 @@ func (a *StateAPI) StatePledgeCollateral(ctx context.Context, ts *types.TipSet) 
 	ret, aerr := a.StateManager.Call(ctx, &types.Message{
 		From:   actors.StorageMarketAddress,
 		To:     actors.StorageMarketAddress,
-		Method: actors.SMAMethods.PledgeCollateralForSize,
+		Method: actors.SPAMethods.PledgeCollateralForSize,
 
 		Params: param,
 	}, ts)
