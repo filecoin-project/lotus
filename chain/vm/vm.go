@@ -430,6 +430,13 @@ func checkMessage(msg *types.Message) error {
 func (vm *VM) ApplyMessage(ctx context.Context, msg *types.Message) (*ApplyRet, error) {
 	ctx, span := trace.StartSpan(ctx, "vm.ApplyMessage")
 	defer span.End()
+	if span.IsRecordingEvents() {
+		span.AddAttributes(
+			trace.StringAttribute("to", msg.To.String()),
+			trace.Int64Attribute("method", int64(msg.Method)),
+			trace.StringAttribute("value", msg.Value.String()),
+		)
+	}
 
 	if err := checkMessage(msg); err != nil {
 		return nil, err
@@ -605,6 +612,7 @@ func (vm *VM) SetBlockHeight(h uint64) {
 func (vm *VM) Invoke(act *types.Actor, vmctx *VMContext, method uint64, params []byte) ([]byte, aerrors.ActorError) {
 	ctx, span := trace.StartSpan(vmctx.ctx, "vm.Invoke")
 	defer span.End()
+
 	var oldCtx context.Context
 	oldCtx, vmctx.ctx = vmctx.ctx, ctx
 	defer func() {
