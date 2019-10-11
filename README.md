@@ -99,7 +99,7 @@ Start mining:
 $ lotus-storage-miner run
 ```
 
-In the Miner's startup log  will be the miner address used for deals: 
+In the Miner's startup log will be the miner id used for deals: 
 e.g.  `Registering miner 't0111' with full node.` 
 
 Seal random data to start producing PoSts:
@@ -108,10 +108,13 @@ Seal random data to start producing PoSts:
 $ lotus-storage-miner store-garbage
 ```
 
-Check your Miner's power and sector usage using:
+You can check Miner power and sector usage with the miner id:
 
 ```sh
+# Total Power of the network
 $ lotus-storage-miner state power
+
+$ lotus-storage-miner state power <miner>
 
 $ lotus-storage-miner state sectors <miner>
 ```
