@@ -30,7 +30,7 @@ $ make
 
 If you have run lotus before and want to remove all previous data: `rm -rf ~/.lotus ~/.lotusstorage`
 
-[You can copy `lotus` and `lotus-storage-miner` to your `$GOPATH/bin` or `$PATH/bin`, or reference all lotus commands below from your local build directory with `./lotus`]
+[You can copy `lotus` and `lotus-storage-miner` to your `$GOPATH/bin` or `$PATH`, or reference all lotus commands below from your local build directory with `./lotus`]
 
 The following sections describe how to use the lotus CLI. Alternately you can running nodes and miners using the [Pond GUI](#pond).
 
