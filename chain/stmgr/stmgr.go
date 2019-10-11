@@ -110,11 +110,10 @@ func (sm *StateManager) computeTipSetState(ctx context.Context, blks []*types.Bl
 			return cid.Undef, cid.Undef, xerrors.Errorf("failed to get miner owner actor")
 		}
 
-		if err := vm.DeductFunds(netact, reward); err != nil {
+		if err := vm.Transfer(netact, act, reward); err != nil {
 			return cid.Undef, cid.Undef, xerrors.Errorf("failed to deduct funds from network actor: %w", err)
 		}
 
-		vm.DepositFunds(act, reward)
 	}
 
 	// TODO: can't use method from chainstore because it doesnt let us know who the block miners were
