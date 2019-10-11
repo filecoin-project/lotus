@@ -99,7 +99,8 @@ Start mining:
 $ lotus-storage-miner run
 ```
 
-In the Miner's startup log  will be the miner address used for deals: e.g.  `Registering miner 't0111' with full node.` 
+In the Miner's startup log  will be the miner address used for deals: 
+e.g.  `Registering miner 't0111' with full node.` 
 
 Seal random data to start producing PoSts:
 
@@ -164,7 +165,7 @@ This will initiate a retrieval deal and write the data to the outfile. (This pro
 
 -----
 
-Alternative to using the CLI commands above you can also use Pond, a graphical testbed for lotus.  It can be used to spin up nodes, connect them in a given topology, start them mining, and observe how they function over time.
+As an alternative to the CLI you can use Pond, a graphical testbed for lotus. It can be used to spin up nodes, connect them in a given topology, start them mining, and observe how they function over time.
 
 Build:
 
@@ -182,7 +183,7 @@ Now go to http://127.0.0.1:2222.
 
 **Things to try:**
 
-- Use `Spawn Node` to start a new lotus Node in a new draggable window.
+- The `Spawn Node` button starts a new lotus Node in a new draggable window.
 - Click `[Spawn Storage Miner]` to start mining (make sure the Node's wallet has funds).
 - Click on `[Client]` to open the Node's client interface and propose a deal with an existing Miner. If successful you'll see a payment channel open up with that Miner.
 
@@ -194,7 +195,7 @@ Now go to http://127.0.0.1:2222.
 * Turn it off and on - Start at the top
 * `rm -rf ~/.lotus ~/.lotusstorage/`
 * Verify you have the correct versions of dependencies
-* If that didn't help, open a new issue, ask in the [Community Forum]([https://discuss.filecoin.io](https://discuss.filecoin.io/)) or reach out to us via [Community chat](https://github.com/filecoin-project/community#chat).
+* If that didn't help, open a new issue, ask in the [Community Forum](https://discuss.filecoin.io) or reach out via [Community chat](https://github.com/filecoin-project/community#chat).
 
 
 
