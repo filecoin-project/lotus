@@ -11,6 +11,8 @@ filebeat.inputs:
     type: lotus-miner
   fields_under_root: true
   json.keys_under_root: false
+  json.message_key: msg
+
   encoding: utf-8
   ignore_older: 3h
 - type: log
@@ -22,6 +24,7 @@ filebeat.inputs:
     type: lotus-daemon
   fields_under_root: true
   json.keys_under_root: false
+  json.message_key: msg
   encoding: utf-8
   ignore_older: 3h
 
@@ -55,6 +58,13 @@ processors:
           - '2019-10-10T22:37:48.297+0200'
     - drop_fields:
         fields: ['json.ts']
+- if:
+    has_fields: ['json.msg']
+  then:
+    - rename:
+        fields:
+          - from: 'json.msg'
+            to: 'message'
 
 
 ############################# Output ##########################################

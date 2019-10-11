@@ -163,7 +163,7 @@ func (c *client) makeOutChan(ctx context.Context, ftyp reflect.Type, valOut int)
 			buf.PushBack(val)
 
 			if buf.Len() > 1 {
-				log.Warnf("rpc output channel has %d buffered messages", buf.Len())
+				log.Warnw("rpc output message buffer", "n", buf.Len())
 				bufLk.Unlock()
 				return
 			}
