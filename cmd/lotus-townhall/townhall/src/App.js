@@ -24,14 +24,17 @@ class App extends React.Component {
         let best = Object.keys(this.state).map(k => this.state[k]).reduce((p, n) => p > n.Height ? p : n.Height, -1)
         console.log(best)
 
-        return Object.keys(this.state).map(k => [k, this.state[k]]).map(([k, v]) => {
-            let l = <span>{k} {v.Height}</span>
-            if(best !== v.Height) {
-                l = <span style={{color: '#f00'}}>{l}</span>
+        return <table>{Object.keys(this.state).map(k => [k, this.state[k]]).map(([k, v]) => {
+            let l = [<td>{k}</td>, <td>{v.NodeName}</td>, <td>{v.Height}</td>]
+            if (best !== v.Height) {
+                l = <tr style={{color: '#f00'}}>{l}</tr>
+            } else {
+                l = <tr>{l}</tr>
             }
 
-            return <div>{l}</div>
+            return l
         })
+        }</table>
     }
 }
 export default App;

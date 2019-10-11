@@ -3,10 +3,13 @@ package metrics
 import (
 	"context"
 	"encoding/json"
+
+	"github.com/ipfs/go-cid"
 	logging "github.com/ipfs/go-log"
 	pubsub "github.com/libp2p/go-libp2p-pubsub"
 	"go.uber.org/fx"
 
+	"github.com/filecoin-project/go-lotus/chain/types"
 	"github.com/filecoin-project/go-lotus/node/impl/full"
 	"github.com/filecoin-project/go-lotus/node/modules/helpers"
 )
@@ -19,46 +22,60 @@ type Update struct {
 	Type string
 }
 
-func SendHeadNotifs(mctx helpers.MetricsCtx, lc fx.Lifecycle, ps *pubsub.PubSub, chain full.ChainAPI) error {
-	ctx := helpers.LifecycleCtx(mctx, lc)
+func SendHeadNotifs(nickname string) func(mctx helpers.MetricsCtx, lc fx.Lifecycle, ps *pubsub.PubSub, chain full.ChainAPI) error {
+	return func(mctx helpers.MetricsCtx, lc fx.Lifecycle, ps *pubsub.PubSub, chain full.ChainAPI) error {
+		ctx := helpers.LifecycleCtx(mctx, lc)
 
-	lc.Append(fx.Hook{
-		OnStart: func(_ context.Context) error {
-			gen, err := chain.Chain.GetGenesis()
-			if err != nil {
-				return err
-			}
-
-			topic := baseTopic + gen.Cid().String()
-
-			go func() {
-				if err := sendHeadNotifs(ctx, ps, topic, chain); err != nil {
-					log.Error("consensus metrics error", err)
-					return
-				}
-			}()
-			go func() {
-				sub, err := ps.Subscribe(topic)
+		lc.Append(fx.Hook{
+			OnStart: func(_ context.Context) error {
+				gen, err := chain.Chain.GetGenesis()
 				if err != nil {
-					return
+					return err
 				}
-				defer sub.Cancel()
 
-				for {
-					if _, err := sub.Next(ctx); err != nil {
+				topic := baseTopic + gen.Cid().String()
+
+				go func() {
+					if err := sendHeadNotifs(ctx, ps, topic, chain, nickname); err != nil {
+						log.Error("consensus metrics error", err)
 						return
 					}
-				}
+				}()
+				go func() {
+					sub, err := ps.Subscribe(topic)
+					if err != nil {
+						return
+					}
+					defer sub.Cancel()
 
-			}()
-			return nil
-		},
-	})
+					for {
+						if _, err := sub.Next(ctx); err != nil {
+							return
+						}
+					}
 
-	return nil
+				}()
+				return nil
+			},
+		})
+
+		return nil
+	}
 }
 
-func sendHeadNotifs(ctx context.Context, ps *pubsub.PubSub, topic string, chain full.ChainAPI) error {
+type message struct {
+	// TipSet
+	Cids   []cid.Cid
+	Blocks []*types.BlockHeader
+	Height uint64
+	Weight types.BigInt
+
+	// Meta
+
+	NodeName string
+}
+
+func sendHeadNotifs(ctx context.Context, ps *pubsub.PubSub, topic string, chain full.ChainAPI, nickname string) error {
 	ctx, cancel := context.WithCancel(ctx)
 	defer cancel()
 
@@ -72,7 +89,15 @@ func sendHeadNotifs(ctx context.Context, ps *pubsub.PubSub, topic string, chain 
 		case notif := <-notifs:
 			n := notif[len(notif)-1]
 
-			b, err := json.Marshal(n.Val)
+			m := message{
+				Cids:     n.Val.Cids(),
+				Blocks:   n.Val.Blocks(),
+				Height:   n.Val.Height(),
+				Weight:   n.Val.Weight(),
+				NodeName: nickname,
+			}
+
+			b, err := json.Marshal(m)
 			if err != nil {
 				return err
 			}
