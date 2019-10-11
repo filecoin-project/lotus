@@ -70,6 +70,7 @@ const (
 
 	PstoreAddSelfKeysKey = invoke(iota)
 	StartListeningKey
+	BootstrapKey
 
 	// filecoin
 	SetGenesisKey
