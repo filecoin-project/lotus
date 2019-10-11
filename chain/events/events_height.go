@@ -132,9 +132,12 @@ func (e *heightEvents) ChainAt(hnd HeightHandler, rev RevertHandler, confidence 
 			log.Warnf("events.ChainAt: calling HandleFunc with nil tipset, not found in cache: %s", err)
 		}
 
+		e.lk.Unlock()
 		if err := hnd(ts, bestH); err != nil {
 			return err
 		}
+		e.lk.Lock()
+		bestH = e.tsc.best().Height()
 	}
 
 	if bestH >= h+uint64(confidence)+e.gcConfidence {
