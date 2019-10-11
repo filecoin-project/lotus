@@ -48,6 +48,7 @@ type FullNodeStruct struct {
 		ChainGetTipSetByHeight func(context.Context, uint64, *types.TipSet) (*types.TipSet, error)        `perm:"read"`
 		ChainReadObj           func(context.Context, cid.Cid) ([]byte, error)                             `perm:"read"`
 		ChainSetHead           func(context.Context, *types.TipSet) error                                 `perm:"admin"`
+		ChainGetGenesis        func(context.Context) (*types.TipSet, error)                               `perm:"read"`
 
 		SyncState func(context.Context) (*SyncState, error) `perm:"read"`
 
@@ -306,6 +307,10 @@ func (c *FullNodeStruct) ChainReadObj(ctx context.Context, obj cid.Cid) ([]byte,
 
 func (c *FullNodeStruct) ChainSetHead(ctx context.Context, ts *types.TipSet) error {
 	return c.Internal.ChainSetHead(ctx, ts)
+}
+
+func (c *FullNodeStruct) ChainGetGenesis(ctx context.Context) (*types.TipSet, error) {
+	return c.Internal.ChainGetGenesis(ctx)
 }
 
 func (c *FullNodeStruct) SyncState(ctx context.Context) (*SyncState, error) {
