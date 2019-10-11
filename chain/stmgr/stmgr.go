@@ -19,6 +19,7 @@ import (
 	"github.com/ipfs/go-cid"
 	hamt "github.com/ipfs/go-hamt-ipld"
 	logging "github.com/ipfs/go-log"
+	"go.opencensus.io/trace"
 )
 
 var log = logging.Logger("statemgr")
@@ -45,8 +46,7 @@ func cidsToKey(cids []cid.Cid) string {
 	return out
 }
 
-func (sm *StateManager) TipSetState(ts *types.TipSet) (cid.Cid, cid.Cid, error) {
-	ctx := context.TODO()
+func (sm *StateManager) TipSetState(ctx context.Context, ts *types.TipSet) (cid.Cid, cid.Cid, error) {
 
 	ck := cidsToKey(ts.Cids())
 	sm.stlk.Lock()
@@ -76,6 +76,9 @@ func (sm *StateManager) TipSetState(ts *types.TipSet) (cid.Cid, cid.Cid, error) 
 }
 
 func (sm *StateManager) computeTipSetState(ctx context.Context, blks []*types.BlockHeader, cb func(cid.Cid, *types.Message, *vm.ApplyRet) error) (cid.Cid, cid.Cid, error) {
+	ctx, span := trace.StartSpan(ctx, "computeTipSetState")
+	defer span.End()
+
 	pstate := blks[0].ParentStateRoot
 
 	cids := make([]cid.Cid, len(blks))
@@ -248,7 +251,7 @@ func (sm *StateManager) ResolveToKeyAddress(ctx context.Context, addr address.Ad
 		ts = sm.cs.GetHeaviestTipSet()
 	}
 
-	st, _, err := sm.TipSetState(ts)
+	st, _, err := sm.TipSetState(ctx, ts)
 	if err != nil {
 		return address.Undef, xerrors.Errorf("resolve address failed to get tipset state: %w", err)
 	}

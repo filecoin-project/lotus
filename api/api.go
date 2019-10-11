@@ -54,12 +54,14 @@ type FullNode interface {
 	ChainSubmitBlock(ctx context.Context, blk *types.BlockMsg) error // TODO: check serialization
 	ChainGetRandomness(context.Context, *types.TipSet, []*types.Ticket, int) ([]byte, error)
 	ChainGetBlock(context.Context, cid.Cid) (*types.BlockHeader, error)
+	ChainGetTipSet(context.Context, []cid.Cid) (*types.TipSet, error)
 	ChainGetBlockMessages(context.Context, cid.Cid) (*BlockMessages, error)
 	ChainGetParentReceipts(context.Context, cid.Cid) ([]*types.MessageReceipt, error)
 	ChainGetParentMessages(context.Context, cid.Cid) ([]Message, error)
 	ChainGetTipSetByHeight(context.Context, uint64, *types.TipSet) (*types.TipSet, error)
 	ChainReadObj(context.Context, cid.Cid) ([]byte, error)
 	ChainSetHead(context.Context, *types.TipSet) error
+	ChainGetGenesis(context.Context) (*types.TipSet, error)
 
 	// syncer
 	SyncState(context.Context) (*SyncState, error)

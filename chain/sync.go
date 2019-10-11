@@ -24,6 +24,7 @@ import (
 	logging "github.com/ipfs/go-log"
 	"github.com/libp2p/go-libp2p-core/peer"
 	cbg "github.com/whyrusleeping/cbor-gen"
+	"go.opencensus.io/trace"
 	"golang.org/x/xerrors"
 )
 
@@ -87,6 +88,7 @@ const BootstrapPeerThreshold = 1
 // This should be called when connecting to new peers, and additionally
 // when receiving new blocks from the network
 func (syncer *Syncer) InformNewHead(from peer.ID, fts *store.FullTipSet) {
+	ctx := context.Background()
 	if fts == nil {
 		panic("bad")
 	}
@@ -102,7 +104,7 @@ func (syncer *Syncer) InformNewHead(from peer.ID, fts *store.FullTipSet) {
 		// TODO: this is kindof a hack...
 		log.Info("got block from ourselves")
 
-		if err := syncer.Sync(fts.TipSet()); err != nil {
+		if err := syncer.Sync(ctx, fts.TipSet()); err != nil {
 			log.Errorf("failed to sync our own block %s: %+v", fts.TipSet().Cids(), err)
 		}
 
@@ -114,7 +116,7 @@ func (syncer *Syncer) InformNewHead(from peer.ID, fts *store.FullTipSet) {
 	syncer.Bsync.AddPeer(from)
 
 	go func() {
-		if err := syncer.Sync(fts.TipSet()); err != nil {
+		if err := syncer.Sync(ctx, fts.TipSet()); err != nil {
 			log.Errorf("sync error: %+v", err)
 		}
 	}()
@@ -327,9 +329,10 @@ func (syncer *Syncer) tryLoadFullTipSet(cids []cid.Cid) (*store.FullTipSet, erro
 	return fts, nil
 }
 
-func (syncer *Syncer) Sync(maybeHead *types.TipSet) error {
+func (syncer *Syncer) Sync(ctx context.Context, maybeHead *types.TipSet) error {
+	ctx, span := trace.StartSpan(ctx, "chain.Sync")
+	defer span.End()
 
-	ctx := context.TODO()
 	syncer.syncLock.Lock()
 	defer syncer.syncLock.Unlock()
 
@@ -420,6 +423,7 @@ func (syncer *Syncer) validateTickets(ctx context.Context, mworker address.Addre
 
 // Should match up with 'Semantical Validation' in validation.md in the spec
 func (syncer *Syncer) ValidateBlock(ctx context.Context, b *types.FullBlock) error {
+
 	h := b.Header
 
 	baseTs, err := syncer.store.LoadTipSet(h.Parents)
@@ -427,7 +431,7 @@ func (syncer *Syncer) ValidateBlock(ctx context.Context, b *types.FullBlock) err
 		return xerrors.Errorf("load parent tipset failed (%s): %w", h.Parents, err)
 	}
 
-	stateroot, precp, err := syncer.sm.TipSetState(baseTs)
+	stateroot, precp, err := syncer.sm.TipSetState(ctx, baseTs)
 	if err != nil {
 		return xerrors.Errorf("get tipsetstate(%d, %s) failed: %w", h.Height, h.Parents, err)
 	}
@@ -594,7 +598,7 @@ func (syncer *Syncer) verifyBlsAggregate(sig types.Signature, msgs []cid.Cid, pu
 
 	var bsig bls.Signature
 	copy(bsig[:], sig.Data)
-	if !bls.Verify(bsig, digests, pubks) {
+	if !bls.Verify(&bsig, digests, pubks) {
 		return xerrors.New("bls aggregate signature failed to verify")
 	}
 
@@ -720,11 +724,11 @@ func (syncer *Syncer) syncFork(ctx context.Context, from *types.TipSet, to *type
 	return nil, xerrors.Errorf("fork was longer than our threshold")
 }
 
-func (syncer *Syncer) syncMessagesAndCheckState(headers []*types.TipSet) error {
+func (syncer *Syncer) syncMessagesAndCheckState(ctx context.Context, headers []*types.TipSet) error {
 	syncer.syncState.SetHeight(0)
 	return syncer.iterFullTipsets(headers, func(fts *store.FullTipSet) error {
 		log.Debugw("validating tipset", "height", fts.TipSet().Height(), "size", len(fts.TipSet().Cids()))
-		if err := syncer.ValidateTipSet(context.TODO(), fts); err != nil {
+		if err := syncer.ValidateTipSet(ctx, fts); err != nil {
 			log.Errorf("failed to validate tipset: %+v", err)
 			return xerrors.Errorf("message processing failed: %w", err)
 		}
@@ -847,11 +851,12 @@ func (syncer *Syncer) collectChain(ctx context.Context, ts *types.TipSet) error 
 
 	syncer.syncState.SetStage(api.StageMessages)
 
-	if err := syncer.syncMessagesAndCheckState(headers); err != nil {
+	if err := syncer.syncMessagesAndCheckState(ctx, headers); err != nil {
 		return xerrors.Errorf("collectChain syncMessages: %w", err)
 	}
 
 	syncer.syncState.SetStage(api.StageSyncComplete)
+	log.Infow("new tipset", "height", ts.Height(), "tipset", types.LogCids(ts.Cids()))
 
 	return nil
 }

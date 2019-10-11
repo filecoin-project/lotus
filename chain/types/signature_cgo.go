@@ -44,7 +44,7 @@ func (s *Signature) Verify(addr address.Address, msg []byte) error {
 		var sig bls.Signature
 		copy(sig[:], s.Data)
 
-		if !bls.Verify(sig, digests, pubkeys) {
+		if !bls.Verify(&sig, digests, pubkeys) {
 			return fmt.Errorf("bls signature failed to verify")
 		}
 

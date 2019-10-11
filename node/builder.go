@@ -20,6 +20,7 @@ import (
 	"github.com/filecoin-project/go-lotus/api"
 	"github.com/filecoin-project/go-lotus/chain"
 	"github.com/filecoin-project/go-lotus/chain/deals"
+	"github.com/filecoin-project/go-lotus/chain/metrics"
 	"github.com/filecoin-project/go-lotus/chain/stmgr"
 	"github.com/filecoin-project/go-lotus/chain/store"
 	"github.com/filecoin-project/go-lotus/chain/types"
@@ -70,6 +71,7 @@ const (
 
 	PstoreAddSelfKeysKey = invoke(iota)
 	StartListeningKey
+	BootstrapKey
 
 	// filecoin
 	SetGenesisKey
@@ -90,6 +92,7 @@ const (
 
 	// daemon
 	ExtractApiKey
+	HeadMetricsKey
 
 	SetApiEndpointKey
 
@@ -225,6 +228,7 @@ func Online() Option {
 			Override(RunHelloKey, modules.RunHello),
 			Override(RunBlockSyncKey, modules.RunBlockSync),
 			Override(HandleIncomingBlocksKey, modules.HandleIncomingBlocks),
+			Override(HeadMetricsKey, metrics.SendHeadNotifs("")),
 
 			Override(new(*discovery.Local), discovery.NewLocal),
 			Override(new(discovery.PeerResolver), modules.RetrievalResolver),
@@ -289,6 +293,10 @@ func Config(cfg *config.Root) Option {
 
 		ApplyIf(func(s *Settings) bool { return s.Online },
 			Override(StartListeningKey, lp2p.StartListening(cfg.Libp2p.ListenAddresses)),
+
+			ApplyIf(func(s *Settings) bool { return s.nodeType == nodeFull },
+				Override(HeadMetricsKey, metrics.SendHeadNotifs(cfg.Metrics.Nickname)),
+			),
 		),
 	)
 }

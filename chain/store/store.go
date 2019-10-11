@@ -45,6 +45,7 @@ type ChainStore struct {
 	tstLk   sync.Mutex
 	tipsets map[uint64][]cid.Cid
 
+	reorgCh          chan<- reorg
 	headChangeNotifs []func(rev, app []*types.TipSet) error
 }
 
@@ -55,6 +56,8 @@ func NewChainStore(bs bstore.Blockstore, ds dstore.Batching) *ChainStore {
 		bestTips: pubsub.New(64),
 		tipsets:  make(map[uint64][]cid.Cid),
 	}
+
+	cs.reorgCh = cs.reorgWorker(context.TODO())
 
 	hcnf := func(rev, app []*types.TipSet) error {
 		cs.pubLk.Lock()
@@ -217,16 +220,45 @@ func (cs *ChainStore) MaybeTakeHeavierTipSet(ts *types.TipSet) error {
 	return nil
 }
 
-func (cs *ChainStore) takeHeaviestTipSet(ts *types.TipSet) error {
-	if cs.heaviest != nil {
-		revert, apply, err := cs.ReorgOps(cs.heaviest, ts)
-		if err != nil {
-			return errors.Wrap(err, "computing reorg ops failed")
-		}
-		for _, hcf := range cs.headChangeNotifs {
-			if err := hcf(revert, apply); err != nil {
-				return errors.Wrap(err, "head change func errored (BAD)")
+type reorg struct {
+	old *types.TipSet
+	new *types.TipSet
+}
+
+func (cs *ChainStore) reorgWorker(ctx context.Context) chan<- reorg {
+	out := make(chan reorg, 32)
+	go func() {
+		defer log.Warn("reorgWorker quit")
+
+		for {
+			select {
+			case r := <-out:
+				revert, apply, err := cs.ReorgOps(r.old, r.new)
+				if err != nil {
+					log.Error("computing reorg ops failed: ", err)
+					continue
+				}
+				for _, hcf := range cs.headChangeNotifs {
+					if err := hcf(revert, apply); err != nil {
+						log.Error("head change func errored (BAD): ", err)
+					}
+				}
+			case <-ctx.Done():
+				return
 			}
+		}
+	}()
+	return out
+}
+
+func (cs *ChainStore) takeHeaviestTipSet(ts *types.TipSet) error {
+	if cs.heaviest != nil { // buf
+		if len(cs.reorgCh) > 0 {
+			log.Warnf("Reorg channel running behind, %d reorgs buffered", len(cs.reorgCh))
+		}
+		cs.reorgCh <- reorg{
+			old: cs.heaviest,
+			new: ts,
 		}
 	} else {
 		log.Warn("no heaviest tipset found, using %s", ts.Cids())
@@ -693,7 +725,7 @@ func (cs *ChainStore) GetRandomness(ctx context.Context, blks []cid.Cid, tickets
 	}
 	lt := int64(len(tickets))
 	if lb < lt {
-		log.Desugar().Warn("self sampling randomness. this should be extremely rare, if you see this often it may be a bug", zap.Stack("call-stack"))
+		log.Desugar().Warn("self sampling randomness. this should be extremely rare, if you see this often it may be a bug", zap.Stack("stacktrace"))
 
 		t := tickets[lt-(1+lb)]
 

@@ -1,0 +1,66 @@
+############################# Filebeat #####################################
+
+filebeat.inputs:
+
+- type: log
+  paths:
+    - /root/.lotusstorage/logs
+  fields:
+    logzio_codec: json
+    token: <API TOKEN>
+    type: lotus-miner
+  fields_under_root: true
+  json.keys_under_root: false
+  encoding: utf-8
+  ignore_older: 3h
+- type: log
+  paths:
+    - /root/.lotus/logs
+  fields:
+    logzio_codec: json
+    token: <API TOKEN>
+    type: lotus-daemon
+  fields_under_root: true
+  json.keys_under_root: false
+  encoding: utf-8
+  ignore_older: 3h
+
+#For version 6.x and lower
+#filebeat.registry_file: /var/lib/filebeat/registry
+
+#For version 7 and higher
+filebeat.registry.path: /var/lib/filebeat
+
+#The following processors are to ensure compatibility with version 7
+processors:
+- rename:
+    fields:
+     - from: "agent"
+       to: "beat_agent"
+    ignore_missing: true
+- rename:
+    fields:
+     - from: "log.file.path"
+       to: "source"
+    ignore_missing: true
+
+- if:
+    has_fields: ['json.ts']
+  then:
+    - timestamp:
+        field: 'json.ts'
+        layouts:
+          - '2006-01-02T15:04:05.000Z0700'
+        test:
+          - '2019-10-10T22:37:48.297+0200'
+    - drop_fields:
+        fields: ['json.ts']
+
+
+############################# Output ##########################################
+
+output:
+  logstash:
+    hosts: ["listener.logz.io:5015"]
+    ssl:
+      certificate_authorities: ['/etc/pki/tls/certs/COMODORSADomainValidationSecureServerCA.crt']

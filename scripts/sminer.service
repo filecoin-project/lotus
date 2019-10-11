@@ -4,6 +4,8 @@ After=network.target
 
 [Service]
 ExecStart=/usr/local/bin/lotus-storage-miner run
+Environment=GOLOG_FILE="/root/.lotusstorage/logs"
+Environment=GOLOG_LOG_FMT="json"
 
 [Install]
 WantedBy=multiuser.target
