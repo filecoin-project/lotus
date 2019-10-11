@@ -161,3 +161,12 @@ func (a *ChainAPI) ChainReadObj(ctx context.Context, obj cid.Cid) ([]byte, error
 func (a *ChainAPI) ChainSetHead(ctx context.Context, ts *types.TipSet) error {
 	return a.Chain.SetHead(ts)
 }
+
+func (a *ChainAPI) ChainGetGenesis(ctx context.Context) (*types.TipSet, error) {
+	genb, err := a.Chain.GetGenesis()
+	if err != nil {
+		return nil, err
+	}
+
+	return types.NewTipSet([]*types.BlockHeader{genb})
+}

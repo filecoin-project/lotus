@@ -210,6 +210,12 @@ var chainGetMsgCmd = &cli.Command{
 var chainSetHeadCmd = &cli.Command{
 	Name:  "sethead",
 	Usage: "manually set the local nodes head tipset (Caution: normally only used for recovery)",
+	Flags: []cli.Flag{
+		&cli.BoolFlag{
+			Name:  "genesis",
+			Usage: "reset head to genesis",
+		},
+	},
 	Action: func(cctx *cli.Context) error {
 		api, closer, err := GetFullNodeAPI(cctx)
 		if err != nil {
@@ -218,13 +224,25 @@ var chainSetHeadCmd = &cli.Command{
 		defer closer()
 		ctx := ReqContext(cctx)
 
-		if !cctx.Args().Present() {
+		gen := cctx.Bool("genesis")
+
+		if !cctx.Args().Present() && !gen {
 			return fmt.Errorf("must pass cids for tipset to set as head")
 		}
 
-		ts, err := parseTipSet(api, ctx, cctx.Args().Slice())
-		if err != nil {
-			return err
+		var ts *types.TipSet
+		if gen {
+			gents, err := api.ChainGetGenesis(ctx)
+			if err != nil {
+				return err
+			}
+			ts = gents
+		} else {
+			parsedts, err := parseTipSet(api, ctx, cctx.Args().Slice())
+			if err != nil {
+				return err
+			}
+			ts = parsedts
 		}
 
 		if err := api.ChainSetHead(ctx, ts); err != nil {
