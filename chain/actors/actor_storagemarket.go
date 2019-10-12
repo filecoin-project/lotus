@@ -450,6 +450,28 @@ func MinerSetHas(ctx context.Context, vmctx types.VMContext, rcid cid.Cid, maddr
 	}
 }
 
+func MinerSetList(ctx context.Context, cst *hamt.CborIpldStore, rcid cid.Cid) ([]address.Address, error) {
+	nd, err := hamt.LoadNode(ctx, cst, rcid)
+	if err != nil {
+		return nil, xerrors.Errorf("failed to load miner set: %w", err)
+	}
+
+	var out []address.Address
+	err = nd.ForEach(ctx, func(k string, val interface{}) error {
+		addr, err := address.NewFromBytes([]byte(k))
+		if err != nil {
+			return err
+		}
+		out = append(out, addr)
+		return nil
+	})
+	if err != nil {
+		return nil, err
+	}
+
+	return out, nil
+}
+
 func MinerSetAdd(ctx context.Context, vmctx types.VMContext, rcid cid.Cid, maddr address.Address) (cid.Cid, aerrors.ActorError) {
 	nd, err := hamt.LoadNode(ctx, vmctx.Ipld(), rcid)
 	if err != nil {

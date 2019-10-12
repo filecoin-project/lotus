@@ -129,6 +129,8 @@ type FullNode interface {
 	StateMinerProvingPeriodEnd(ctx context.Context, actor address.Address, ts *types.TipSet) (uint64, error)
 	StatePledgeCollateral(context.Context, *types.TipSet) (types.BigInt, error)
 	StateWaitMsg(context.Context, cid.Cid) (*MsgWait, error)
+	StateListMiners(context.Context, *types.TipSet) ([]address.Address, error)
+	StateListActors(context.Context, *types.TipSet) ([]address.Address, error)
 
 	PaychGet(ctx context.Context, from, to address.Address, ensureFunds types.BigInt) (*ChannelInfo, error)
 	PaychList(context.Context) ([]address.Address, error)

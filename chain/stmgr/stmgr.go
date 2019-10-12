@@ -425,3 +425,34 @@ func (sm *StateManager) tipsetExecutedMessage(ts *types.TipSet, msg cid.Cid) (*t
 
 	return nil, nil
 }
+
+func (sm *StateManager) ListAllActors(ctx context.Context, ts *types.TipSet) ([]address.Address, error) {
+	if ts == nil {
+		ts = sm.ChainStore().GetHeaviestTipSet()
+	}
+	st, _, err := sm.TipSetState(ctx, ts)
+	if err != nil {
+		return nil, err
+	}
+
+	cst := hamt.CSTFromBstore(sm.ChainStore().Blockstore())
+	r, err := hamt.LoadNode(ctx, cst, st)
+	if err != nil {
+		return nil, err
+	}
+
+	var out []address.Address
+	err = r.ForEach(ctx, func(k string, val interface{}) error {
+		addr, err := address.NewFromBytes([]byte(k))
+		if err != nil {
+			return xerrors.Errorf("address in state tree was not valid: %w", err)
+		}
+		out = append(out, addr)
+		return nil
+	})
+	if err != nil {
+		return nil, err
+	}
+
+	return out, nil
+}
