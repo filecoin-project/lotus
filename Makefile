@@ -88,6 +88,13 @@ pond: build
 	(cd lotuspond/front && npm i && npm run build)
 .PHONY: pond
 
+townhall:
+	rm -f townhall
+	go build -o townhall ./cmd/lotus-townhall
+	(cd ./cmd/lotus-townhall/townhall && npm i && npm run build)
+	go run github.com/GeertJohan/go.rice/rice append --exec townhall -i ./cmd/lotus-townhall
+.PHONY: townhall
+
 clean:
 	rm -rf $(CLEAN)
 	-$(MAKE) -C $(BLS_PATH) clean

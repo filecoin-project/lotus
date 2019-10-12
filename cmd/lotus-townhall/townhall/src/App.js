@@ -5,8 +5,8 @@ class App extends React.Component {
     constructor(props) {
         super(props);
 
-        //let ws = new WebSocket("ws://" + window.location.host + "/sub")
-        let ws = new WebSocket("ws://127.0.0.1:2975/sub")
+        let ws = new WebSocket("ws://" + window.location.host + "/sub")
+        //let ws = new WebSocket("ws://127.0.0.1:2975/sub")
 
         ws.onmessage = (ev) => {
             console.log(ev)
