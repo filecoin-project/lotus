@@ -396,10 +396,9 @@ func (vm *VM) send(ctx context.Context, msg *types.Message, parent *VMContext,
 			return nil, aerrors.Wrap(aerr, "sending funds"), nil
 		}
 
-		if err := DeductFunds(fromActor, msg.Value); err != nil {
-			return nil, aerrors.Absorb(err, 1, "failed to deduct funds"), nil
+		if err := Transfer(fromActor, toActor, msg.Value); err != nil {
+			return nil, aerrors.Absorb(err, 1, "failed to transfer funds"), nil
 		}
-		DepositFunds(toActor, msg.Value)
 	}
 
 	if msg.Method != 0 {
@@ -463,8 +462,10 @@ func (vm *VM) ApplyMessage(ctx context.Context, msg *types.Message) (*ApplyRet, 
 	if fromActor.Balance.LessThan(totalCost) {
 		return nil, xerrors.Errorf("not enough funds (%s < %s)", fromActor.Balance, totalCost)
 	}
-	if err := DeductFunds(fromActor, gascost); err != nil {
-		return nil, xerrors.Errorf("failed to deduct funds: %w", err)
+
+	gasHolder := &types.Actor{Balance: types.NewInt(0)}
+	if err := Transfer(fromActor, gasHolder, gascost); err != nil {
+		return nil, xerrors.Errorf("failed to withdraw gas funds: %w", err)
 	}
 
 	if msg.Nonce != fromActor.Nonce {
@@ -494,7 +495,9 @@ func (vm *VM) ApplyMessage(ctx context.Context, msg *types.Message) (*ApplyRet, 
 		// refund unused gas
 		gasUsed = vmctx.GasUsed()
 		refund := types.BigMul(types.BigSub(msg.GasLimit, gasUsed), msg.GasPrice)
-		DepositFunds(fromActor, refund)
+		if err := Transfer(gasHolder, fromActor, refund); err != nil {
+			return nil, xerrors.Errorf("failed to refund gas")
+		}
 	}
 
 	miner, err := st.GetActor(vm.blockMiner)
@@ -503,7 +506,13 @@ func (vm *VM) ApplyMessage(ctx context.Context, msg *types.Message) (*ApplyRet, 
 	}
 
 	gasReward := types.BigMul(msg.GasPrice, gasUsed)
-	DepositFunds(miner, gasReward)
+	if err := Transfer(gasHolder, miner, gasReward); err != nil {
+		return nil, xerrors.Errorf("failed to give miner gas reward: %w", err)
+	}
+
+	if types.BigCmp(types.NewInt(0), gasHolder.Balance) != 0 {
+		return nil, xerrors.Errorf("gas handling math is wrong")
+	}
 
 	return &ApplyRet{
 		MessageReceipt: types.MessageReceipt{
@@ -597,10 +606,9 @@ func (vm *VM) TransferFunds(from, to address.Address, amt types.BigInt) error {
 		return err
 	}
 
-	if err := DeductFunds(fromAct, amt); err != nil {
+	if err := Transfer(fromAct, toAct, amt); err != nil {
 		return xerrors.Errorf("failed to deduct funds: %w", err)
 	}
-	DepositFunds(toAct, amt)
 
 	return nil
 }
@@ -628,7 +636,19 @@ func (vm *VM) Invoke(act *types.Actor, vmctx *VMContext, method uint64, params [
 	return ret, nil
 }
 
-func DeductFunds(act *types.Actor, amt types.BigInt) error {
+func Transfer(from, to *types.Actor, amt types.BigInt) error {
+	if amt.LessThan(types.NewInt(0)) {
+		return xerrors.Errorf("attempted to transfer negative value")
+	}
+
+	if err := deductFunds(from, amt); err != nil {
+		return err
+	}
+	depositFunds(to, amt)
+	return nil
+}
+
+func deductFunds(act *types.Actor, amt types.BigInt) error {
 	if act.Balance.LessThan(amt) {
 		return fmt.Errorf("not enough funds")
 	}
@@ -637,7 +657,7 @@ func DeductFunds(act *types.Actor, amt types.BigInt) error {
 	return nil
 }
 
-func DepositFunds(act *types.Actor, amt types.BigInt) {
+func depositFunds(act *types.Actor, amt types.BigInt) {
 	act.Balance = types.BigAdd(act.Balance, amt)
 }
 
