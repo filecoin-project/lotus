@@ -637,6 +637,10 @@ func (vm *VM) Invoke(act *types.Actor, vmctx *VMContext, method uint64, params [
 }
 
 func Transfer(from, to *types.Actor, amt types.BigInt) error {
+	if amt.LessThan(types.NewInt(0)) {
+		return xerrors.Errorf("attempted to transfer negative value")
+	}
+
 	if err := deductFunds(from, amt); err != nil {
 		return err
 	}
