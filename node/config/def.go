@@ -19,6 +19,7 @@ type API struct {
 // Libp2p contains configs for libp2p
 type Libp2p struct {
 	ListenAddresses []string
+	BootstrapPeers  []string
 }
 
 type Metrics struct {

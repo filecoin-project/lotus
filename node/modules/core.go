@@ -4,6 +4,7 @@ import (
 	"context"
 	"crypto/rand"
 	"github.com/filecoin-project/go-lotus/build"
+	"github.com/filecoin-project/go-lotus/lib/addrutil"
 	"github.com/filecoin-project/go-lotus/node/modules/helpers"
 	"github.com/gbrlsnchs/jwt/v3"
 	logging "github.com/ipfs/go-log"
@@ -76,7 +77,17 @@ func APISecret(keystore types.KeyStore, lr repo.LockedRepo) (*dtypes.APIAlg, err
 	return (*dtypes.APIAlg)(jwt.NewHS256(key.PrivateKey)), nil
 }
 
-func Bootstrap(mctx helpers.MetricsCtx, lc fx.Lifecycle, host host.Host) {
+func ConfigBootstrap(peers []string) func() (dtypes.BootstrapPeers, error) {
+	return func() (dtypes.BootstrapPeers, error) {
+		return addrutil.ParseAddresses(context.TODO(), peers)
+	}
+}
+
+func BuiltinBootstrap() (dtypes.BootstrapPeers, error) {
+	return build.BuiltinBootstrap()
+}
+
+func Bootstrap(mctx helpers.MetricsCtx, lc fx.Lifecycle, host host.Host, pinfos dtypes.BootstrapPeers) {
 	ctx, cancel := context.WithCancel(mctx)
 
 	lc.Append(fx.Hook{
@@ -97,13 +108,7 @@ func Bootstrap(mctx helpers.MetricsCtx, lc fx.Lifecycle, host host.Host) {
 
 					log.Warn("No peers connected, performing automatic bootstrap")
 
-					pis, err := build.BuiltinBootstrap()
-					if err != nil {
-						log.Error("Getting bootstrap addrs: ", err)
-						return
-					}
-
-					for _, pi := range pis {
+					for _, pi := range pinfos {
 						if err := host.Connect(ctx, pi); err != nil {
 							log.Warn("bootstrap connect failed: ", err)
 						}

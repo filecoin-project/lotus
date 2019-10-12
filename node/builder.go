@@ -203,6 +203,8 @@ func Online() Option {
 		ApplyIf(func(s *Settings) bool { return s.nodeType == nodeFull },
 			// TODO: Fix offline mode
 
+			Override(new(dtypes.BootstrapPeers), modules.BuiltinBootstrap),
+
 			Override(HandleIncomingMessagesKey, modules.HandleIncomingMessages),
 
 			Override(new(*store.ChainStore), modules.ChainStore),
@@ -293,6 +295,10 @@ func Config(cfg *config.Root) Option {
 
 		ApplyIf(func(s *Settings) bool { return s.Online },
 			Override(StartListeningKey, lp2p.StartListening(cfg.Libp2p.ListenAddresses)),
+
+			ApplyIf(func(s *Settings) bool { return len(cfg.Libp2p.BootstrapPeers) > 0 },
+				Override(new(dtypes.BootstrapPeers), modules.ConfigBootstrap(cfg.Libp2p.BootstrapPeers)),
+			),
 
 			ApplyIf(func(s *Settings) bool { return s.nodeType == nodeFull },
 				Override(HeadMetricsKey, metrics.SendHeadNotifs(cfg.Metrics.Nickname)),
