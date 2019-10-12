@@ -10,6 +10,7 @@ import (
 	bserv "github.com/ipfs/go-blockservice"
 	"github.com/libp2p/go-libp2p-core/host"
 	"github.com/libp2p/go-libp2p-core/protocol"
+	"go.opencensus.io/trace"
 	"golang.org/x/xerrors"
 
 	"github.com/filecoin-project/go-lotus/chain/store"
@@ -86,6 +87,9 @@ func NewBlockSyncService(cs *store.ChainStore) *BlockSyncService {
 }
 
 func (bss *BlockSyncService) HandleStream(s inet.Stream) {
+	ctx, span := trace.StartSpan(context.Background(), "blocksync.HandleStream")
+	defer span.End()
+
 	defer s.Close()
 
 	var req BlockSyncRequest
@@ -95,7 +99,7 @@ func (bss *BlockSyncService) HandleStream(s inet.Stream) {
 	}
 	log.Infof("block sync request for: %s %d", req.Start, req.RequestLength)
 
-	resp, err := bss.processRequest(&req)
+	resp, err := bss.processRequest(ctx, &req)
 	if err != nil {
 		log.Error("failed to process block sync request: ", err)
 		return
@@ -107,13 +111,23 @@ func (bss *BlockSyncService) HandleStream(s inet.Stream) {
 	}
 }
 
-func (bss *BlockSyncService) processRequest(req *BlockSyncRequest) (*BlockSyncResponse, error) {
+func (bss *BlockSyncService) processRequest(ctx context.Context, req *BlockSyncRequest) (*BlockSyncResponse, error) {
+	ctx, span := trace.StartSpan(ctx, "blocksync.ProcessRequest")
+	defer span.End()
+
 	opts := ParseBSOptions(req.Options)
 	if len(req.Start) == 0 {
 		return &BlockSyncResponse{
 			Status:  204,
 			Message: "no cids given in blocksync request",
 		}, nil
+	}
+
+	if span.IsRecordingEvents() {
+		span.AddAttributes(
+			trace.BoolAttribute("blocks", opts.IncludeBlocks),
+			trace.BoolAttribute("messages", opts.IncludeMessages),
+		)
 	}
 
 	chain, err := bss.collectChainSegment(req.Start, req.RequestLength, opts)
@@ -253,6 +267,15 @@ func (bs *BlockSync) processStatus(req *BlockSyncRequest, res *BlockSyncResponse
 }
 
 func (bs *BlockSync) GetBlocks(ctx context.Context, tipset []cid.Cid, count int) ([]*types.TipSet, error) {
+	ctx, span := trace.StartSpan(ctx, "bsync.GetBlocks")
+	defer span.End()
+	if span.IsRecordingEvents() {
+		span.AddAttributes(
+			trace.StringAttribute("tipset", fmt.Sprint(tipset)),
+			trace.Int64Attribute("count", int64(count)),
+		)
+	}
+
 	peers := bs.getPeers()
 	perm := rand.Perm(len(peers))
 	// TODO: round robin through these peers on error
@@ -321,6 +344,9 @@ func (bs *BlockSync) GetFullTipSet(ctx context.Context, p peer.ID, h []cid.Cid) 
 }
 
 func (bs *BlockSync) GetChainMessages(ctx context.Context, h *types.TipSet, count uint64) ([]*BSTipSet, error) {
+	ctx, span := trace.StartSpan(ctx, "GetChainMessages")
+	defer span.End()
+
 	peers := bs.getPeers()
 	perm := rand.Perm(len(peers))
 	// TODO: round robin through these peers on error
