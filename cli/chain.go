@@ -276,6 +276,10 @@ func parseTipSet(api api.FullNode, ctx context.Context, vals []string) (*types.T
 var chainListCmd = &cli.Command{
 	Name:  "list",
 	Usage: "View a segment of the chain",
+	Flags: []cli.Flag{
+		&cli.Uint64Flag{Name: "height"},
+		&cli.UintFlag{Name: "count", Value: 30},
+	},
 	Action: func(cctx *cli.Context) error {
 		api, closer, err := GetFullNodeAPI(cctx)
 		if err != nil {
@@ -289,9 +293,22 @@ var chainListCmd = &cli.Command{
 			return err
 		}
 
-		tss := []*types.TipSet{head}
 		cur := head
-		for i := 1; i < 30; i++ {
+
+		for cctx.IsSet("height") && cur.Height() > cctx.Uint64("height") {
+			if cur.Height() == 0 {
+				break
+			}
+			var err error
+			cur, err = api.ChainGetTipSet(ctx, cur.Parents())
+			if err != nil {
+				return err
+			}
+		}
+
+		tss := []*types.TipSet{cur}
+
+		for i := uint(1); i < cctx.Uint("count"); i++ {
 			if cur.Height() == 0 {
 				break
 			}
