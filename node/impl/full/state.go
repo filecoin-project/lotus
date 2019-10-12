@@ -207,3 +207,22 @@ func (a *StateAPI) StateWaitMsg(ctx context.Context, msg cid.Cid) (*api.MsgWait,
 		TipSet:  ts,
 	}, nil
 }
+
+func (a *StateAPI) StateListMiners(ctx context.Context, ts *types.TipSet) ([]address.Address, error) {
+	var state actors.StorageMarketState
+	if _, err := a.StateManager.LoadActorState(ctx, actors.StorageMarketAddress, &state, ts); err != nil {
+		return nil, err
+	}
+
+	cst := hamt.CSTFromBstore(a.StateManager.ChainStore().Blockstore())
+	miners, err := actors.MinerSetList(ctx, cst, state.Miners)
+	if err != nil {
+		return nil, err
+	}
+
+	return miners, nil
+}
+
+func (a *StateAPI) StateListActors(ctx context.Context, ts *types.TipSet) ([]address.Address, error) {
+	return a.StateManager.ListAllActors(ctx, ts)
+}

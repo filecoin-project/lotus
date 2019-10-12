@@ -95,6 +95,8 @@ type FullNodeStruct struct {
 		StateReadState             func(context.Context, *types.Actor, *types.TipSet) (*ActorState, error)             `perm:"read"`
 		StatePledgeCollateral      func(context.Context, *types.TipSet) (types.BigInt, error)                          `perm:"read"`
 		StateWaitMsg               func(context.Context, cid.Cid) (*MsgWait, error)                                    `perm:"read"`
+		StateListMiners            func(context.Context, *types.TipSet) ([]address.Address, error)                     `perm:"read"`
+		StateListActors            func(context.Context, *types.TipSet) ([]address.Address, error)                     `perm:"read"`
 
 		PaychGet                   func(ctx context.Context, from, to address.Address, ensureFunds types.BigInt) (*ChannelInfo, error)      `perm:"sign"`
 		PaychList                  func(context.Context) ([]address.Address, error)                                                         `perm:"read"`
@@ -367,6 +369,13 @@ func (c *FullNodeStruct) StatePledgeCollateral(ctx context.Context, ts *types.Ti
 
 func (c *FullNodeStruct) StateWaitMsg(ctx context.Context, msgc cid.Cid) (*MsgWait, error) {
 	return c.Internal.StateWaitMsg(ctx, msgc)
+}
+func (c *FullNodeStruct) StateListMiners(ctx context.Context, ts *types.TipSet) ([]address.Address, error) {
+	return c.Internal.StateListMiners(ctx, ts)
+}
+
+func (c *FullNodeStruct) StateListActors(ctx context.Context, ts *types.TipSet) ([]address.Address, error) {
+	return c.Internal.StateListActors(ctx, ts)
 }
 
 func (c *FullNodeStruct) PaychGet(ctx context.Context, from, to address.Address, ensureFunds types.BigInt) (*ChannelInfo, error) {
