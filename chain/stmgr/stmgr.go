@@ -55,9 +55,7 @@ func (sm *StateManager) TipSetState(ctx context.Context, ts *types.TipSet) (cid.
 	cached, ok := sm.stCache[ck]
 	sm.stlk.Unlock()
 	if ok {
-		if span.IsRecordingEvents() {
-			span.AddAttributes(trace.BoolAttribute("cache", true))
-		}
+		span.AddAttributes(trace.BoolAttribute("cache", true))
 		return cached[0], cached[1], nil
 	}
 

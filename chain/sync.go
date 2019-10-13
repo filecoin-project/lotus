@@ -613,12 +613,11 @@ func (syncer *Syncer) verifyBlsAggregate(sig types.Signature, msgs []cid.Cid, pu
 func (syncer *Syncer) collectHeaders(ctx context.Context, from *types.TipSet, to *types.TipSet) ([]*types.TipSet, error) {
 	ctx, span := trace.StartSpan(ctx, "collectHeaders")
 	defer span.End()
-	if span.IsRecordingEvents() {
-		span.AddAttributes(
-			trace.Int64Attribute("fromHeight", int64(from.Height())),
-			trace.Int64Attribute("toHeight", int64(to.Height())),
-		)
-	}
+
+	span.AddAttributes(
+		trace.Int64Attribute("fromHeight", int64(from.Height())),
+		trace.Int64Attribute("toHeight", int64(to.Height())),
+	)
 
 	blockSet := []*types.TipSet{from}
 
