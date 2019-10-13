@@ -95,6 +95,12 @@ townhall:
 	go run github.com/GeertJohan/go.rice/rice append --exec townhall -i ./cmd/lotus-townhall
 .PHONY: townhall
 
+fountain:
+	rm -f fountain
+	go build -o fountain ./cmd/lotus-fountain
+	go run github.com/GeertJohan/go.rice/rice append --exec fountain -i ./cmd/lotus-fountain
+.PHONY: fountain
+
 clean:
 	rm -rf $(CLEAN)
 	-$(MAKE) -C $(BLS_PATH) clean

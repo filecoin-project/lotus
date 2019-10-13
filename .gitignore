@@ -2,8 +2,11 @@
 /lotus-storage-miner
 /pond
 /townhall
+/fountain
 /lotuspond/front/node_modules
 /lotuspond/front/build
+/cmd/lotus-townhall/townhall/node_modules
+/cmd/lotus-townhall/townhall/build
 **/*.h
 **/*.a
 **/*.pc
