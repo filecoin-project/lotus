@@ -62,6 +62,16 @@ func (sm *SignedMessage) Serialize() ([]byte, error) {
 	return buf.Bytes(), nil
 }
 
+func (sm *SignedMessage) Size() int {
+	serdata, err := sm.Serialize()
+	if err != nil {
+		log.Errorf("serializing message failed: %s", err)
+		return 0
+	}
+
+	return len(serdata)
+}
+
 func (sm *SignedMessage) VMMessage() *Message {
 	return &sm.Message
 }
