@@ -47,12 +47,15 @@ func cidsToKey(cids []cid.Cid) string {
 }
 
 func (sm *StateManager) TipSetState(ctx context.Context, ts *types.TipSet) (cid.Cid, cid.Cid, error) {
+	ctx, span := trace.StartSpan(ctx, "tipSetState")
+	defer span.End()
 
 	ck := cidsToKey(ts.Cids())
 	sm.stlk.Lock()
 	cached, ok := sm.stCache[ck]
 	sm.stlk.Unlock()
 	if ok {
+		span.AddAttributes(trace.BoolAttribute("cache", true))
 		return cached[0], cached[1], nil
 	}
 

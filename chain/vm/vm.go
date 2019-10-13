@@ -538,6 +538,9 @@ func (vm *VM) ActorBalance(addr address.Address) (types.BigInt, aerrors.ActorErr
 }
 
 func (vm *VM) Flush(ctx context.Context) (cid.Cid, error) {
+	ctx, span := trace.StartSpan(ctx, "vm.Flush")
+	defer span.End()
+
 	from := dag.NewDAGService(bserv.New(vm.buf, nil))
 	to := dag.NewDAGService(bserv.New(vm.buf.Read(), nil))
 
