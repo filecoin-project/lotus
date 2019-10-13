@@ -288,38 +288,36 @@ var chainListCmd = &cli.Command{
 		defer closer()
 		ctx := ReqContext(cctx)
 
-		head, err := api.ChainHead(ctx)
+		var head *types.TipSet
+
+		if cctx.IsSet("height") {
+			head, err = api.ChainGetTipSetByHeight(ctx, cctx.Uint64("height"), nil)
+		} else {
+			head, err = api.ChainHead(ctx)
+		}
 		if err != nil {
 			return err
 		}
 
-		cur := head
-
-		for cctx.IsSet("height") && cur.Height() > cctx.Uint64("height") {
-			if cur.Height() == 0 {
-				break
-			}
-			var err error
-			cur, err = api.ChainGetTipSet(ctx, cur.Parents())
-			if err != nil {
-				return err
-			}
+		count := cctx.Uint("count")
+		if count < 1 {
+			return nil
 		}
 
-		tss := []*types.TipSet{cur}
+		tss := make([]*types.TipSet, count)
+		tss[0] = head
 
-		for i := uint(1); i < cctx.Uint("count"); i++ {
-			if cur.Height() == 0 {
+		for i := 1; i < len(tss); i++ {
+			if head.Height() == 0 {
 				break
 			}
 
-			next, err := api.ChainGetTipSet(ctx, cur.Parents())
+			head, err = api.ChainGetTipSet(ctx, head.Parents())
 			if err != nil {
 				return err
 			}
 
-			tss = append(tss, next)
-			cur = next
+			tss[i] = head
 		}
 
 		for i := len(tss) - 1; i >= 0; i-- {
