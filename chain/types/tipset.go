@@ -75,6 +75,8 @@ func NewTipSet(blks []*BlockHeader) (*TipSet, error) {
 			return nil, fmt.Errorf("cannot create tipset with mismatching heights")
 		}
 		ts.cids = append(ts.cids, b.Cid())
+
+		// TODO: ensure the same parents
 	}
 	ts.height = blks[0].Height
 
