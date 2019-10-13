@@ -2,7 +2,6 @@ package stmgr
 
 import (
 	"context"
-
 	"github.com/filecoin-project/go-lotus/api"
 	"github.com/filecoin-project/go-lotus/chain/actors"
 	"github.com/filecoin-project/go-lotus/chain/address"

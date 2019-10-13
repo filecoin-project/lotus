@@ -97,6 +97,7 @@ type FullNodeStruct struct {
 		StateWaitMsg               func(context.Context, cid.Cid) (*MsgWait, error)                                    `perm:"read"`
 		StateListMiners            func(context.Context, *types.TipSet) ([]address.Address, error)                     `perm:"read"`
 		StateListActors            func(context.Context, *types.TipSet) ([]address.Address, error)                     `perm:"read"`
+		StateTipSetWeight          func(context.Context, *types.TipSet) (types.BigInt, error)                          `perm:"read"`
 
 		PaychGet                   func(ctx context.Context, from, to address.Address, ensureFunds types.BigInt) (*ChannelInfo, error)      `perm:"sign"`
 		PaychList                  func(context.Context) ([]address.Address, error)                                                         `perm:"read"`

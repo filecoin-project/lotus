@@ -209,7 +209,7 @@ func (a *StateAPI) StateWaitMsg(ctx context.Context, msg cid.Cid) (*api.MsgWait,
 }
 
 func (a *StateAPI) StateListMiners(ctx context.Context, ts *types.TipSet) ([]address.Address, error) {
-	var state actors.StorageMarketState
+	var state actors.StoragePowerState
 	if _, err := a.StateManager.LoadActorState(ctx, actors.StorageMarketAddress, &state, ts); err != nil {
 		return nil, err
 	}
@@ -225,4 +225,8 @@ func (a *StateAPI) StateListMiners(ctx context.Context, ts *types.TipSet) ([]add
 
 func (a *StateAPI) StateListActors(ctx context.Context, ts *types.TipSet) ([]address.Address, error) {
 	return a.StateManager.ListAllActors(ctx, ts)
+}
+
+func (a *StateAPI) StateTipSetWeight(ctx context.Context, ts *types.TipSet) (types.BigInt, error) {
+	return a.Chain.Weight(ctx, ts)
 }

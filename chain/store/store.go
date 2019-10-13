@@ -377,10 +377,6 @@ func (cs *ChainStore) ReorgOps(a, b *types.TipSet) ([]*types.TipSet, []*types.Ti
 	return leftChain, rightChain, nil
 }
 
-func (cs *ChainStore) Weight(ts *types.TipSet) uint64 {
-	return ts.Blocks()[0].ParentWeight.Uint64() + uint64(len(ts.Cids()))
-}
-
 func (cs *ChainStore) GetHeaviestTipSet() *types.TipSet {
 	cs.heaviestLk.Lock()
 	defer cs.heaviestLk.Unlock()

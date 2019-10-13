@@ -91,12 +91,6 @@ func (ts *TipSet) Height() uint64 {
 	return ts.height
 }
 
-func (ts *TipSet) Weight() BigInt {
-	// TODO: implement correctly
-	log.Warn("Called TipSet.Weight: TODO: correct implementation")
-	return BigAdd(ts.blks[0].ParentWeight, NewInt(1))
-}
-
 func (ts *TipSet) Parents() []cid.Cid {
 	return ts.blks[0].Parents
 }
