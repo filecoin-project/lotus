@@ -123,12 +123,10 @@ func (bss *BlockSyncService) processRequest(ctx context.Context, req *BlockSyncR
 		}, nil
 	}
 
-	if span.IsRecordingEvents() {
-		span.AddAttributes(
-			trace.BoolAttribute("blocks", opts.IncludeBlocks),
-			trace.BoolAttribute("messages", opts.IncludeMessages),
-		)
-	}
+	span.AddAttributes(
+		trace.BoolAttribute("blocks", opts.IncludeBlocks),
+		trace.BoolAttribute("messages", opts.IncludeMessages),
+	)
 
 	chain, err := bss.collectChainSegment(req.Start, req.RequestLength, opts)
 	if err != nil {
