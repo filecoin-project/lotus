@@ -64,7 +64,7 @@ func (c *Client) commP(ctx context.Context, data cid.Cid) ([]byte, int64, error)
 	return commP[:], size, err
 }
 
-func (c *Client) sendProposal(s inet.Stream, proposal StorageDealProposal, from address.Address) error {
+func (c *Client) sendProposal(s inet.Stream, proposal UnsignedStorageDealProposal, from address.Address) error {
 	log.Info("Sending deal proposal")
 
 	msg, err := cbor.DumpObject(proposal)
@@ -76,7 +76,7 @@ func (c *Client) sendProposal(s inet.Stream, proposal StorageDealProposal, from 
 		return err
 	}
 
-	signedProposal := &SignedStorageDealProposal{
+	signedProposal := &StorageDealProposal{
 		Proposal:  proposal,
 		Signature: sig,
 	}

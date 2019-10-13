@@ -40,7 +40,7 @@ var log = logging.Logger("deals")
 
 type ClientDeal struct {
 	ProposalCid cid.Cid
-	Proposal    StorageDealProposal
+	Proposal    UnsignedStorageDealProposal
 	State       api.DealState
 	Miner       peer.ID
 
@@ -189,7 +189,7 @@ func (c *Client) VerifyParams(ctx context.Context, data cid.Cid) (*actors.PieceI
 }
 
 func (c *Client) Start(ctx context.Context, p ClientDealProposal, vd *actors.PieceInclVoucherData) (cid.Cid, error) {
-	proposal := StorageDealProposal{
+	proposal := UnsignedStorageDealProposal{
 		PieceRef:          p.Data,
 		SerializationMode: SerializationUnixFs,
 		CommP:             vd.CommP[:],
@@ -197,8 +197,8 @@ func (c *Client) Start(ctx context.Context, p ClientDealProposal, vd *actors.Pie
 		TotalPrice:        p.TotalPrice,
 		Duration:          p.Duration,
 		Payment:           p.Payment,
-		MinerAddress:      p.MinerAddress,
-		ClientAddress:     p.ClientAddress,
+		Provider:          p.MinerAddress,
+		Client:            p.ClientAddress,
 	}
 
 	s, err := c.h.NewStream(ctx, p.MinerID, ProtocolID)
@@ -229,7 +229,7 @@ func (c *Client) Start(ctx context.Context, p ClientDealProposal, vd *actors.Pie
 
 	// TODO: start tracking after the deal is sealed
 	return deal.ProposalCid, c.discovery.AddPeer(p.Data, discovery.RetrievalPeer{
-		Address: proposal.MinerAddress,
+		Address: proposal.Provider,
 		ID:      deal.Miner,
 	})
 }

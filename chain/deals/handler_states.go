@@ -52,8 +52,8 @@ func (h *Handler) checkVoucher(ctx context.Context, deal MinerDeal, voucher *typ
 		return xerrors.New("voucher.Extra not set")
 	}
 
-	if voucher.Extra.Actor != deal.Proposal.MinerAddress {
-		return xerrors.Errorf("extra params actor didn't match miner address in proposal: '%s' != '%s'", voucher.Extra.Actor, deal.Proposal.MinerAddress)
+	if voucher.Extra.Actor != deal.Proposal.Provider {
+		return xerrors.Errorf("extra params actor didn't match miner address in proposal: '%s' != '%s'", voucher.Extra.Actor, deal.Proposal.Provider)
 	}
 
 	if voucher.Extra.Method != actors.MAMethods.PaymentVerifyInclusion {
@@ -294,7 +294,7 @@ func (h *Handler) sealing(ctx context.Context, deal MinerDeal) (func(*MinerDeal)
 }
 
 func (h *Handler) complete(ctx context.Context, deal MinerDeal) (func(*MinerDeal), error) {
-	mcid, err := h.commt.WaitCommit(ctx, deal.Proposal.MinerAddress, deal.SectorID)
+	mcid, err := h.commt.WaitCommit(ctx, deal.Proposal.Provider, deal.SectorID)
 	if err != nil {
 		log.Warnf("Waiting for sector commitment message: %s", err)
 	}
