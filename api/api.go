@@ -50,8 +50,7 @@ type FullNode interface {
 	// ChainNotify returns channel with chain head updates
 	// First message is guaranteed to be of len == 1, and type == 'current'
 	ChainNotify(context.Context) (<-chan []*store.HeadChange, error)
-	ChainHead(context.Context) (*types.TipSet, error)                // TODO: check serialization
-	ChainSubmitBlock(ctx context.Context, blk *types.BlockMsg) error // TODO: check serialization
+	ChainHead(context.Context) (*types.TipSet, error)
 	ChainGetRandomness(context.Context, *types.TipSet, []*types.Ticket, int) ([]byte, error)
 	ChainGetBlock(context.Context, cid.Cid) (*types.BlockHeader, error)
 	ChainGetTipSet(context.Context, []cid.Cid) (*types.TipSet, error)
@@ -65,9 +64,9 @@ type FullNode interface {
 
 	// syncer
 	SyncState(context.Context) (*SyncState, error)
+	SyncSubmitBlock(ctx context.Context, blk *types.BlockMsg) error
 
 	// messages
-
 	MpoolPending(context.Context, *types.TipSet) ([]*types.SignedMessage, error)
 	MpoolPush(context.Context, *types.SignedMessage) error                          // TODO: remove
 	MpoolPushMessage(context.Context, *types.Message) (*types.SignedMessage, error) // get nonce, sign, push

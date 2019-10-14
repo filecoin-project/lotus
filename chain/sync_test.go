@@ -115,8 +115,7 @@ func (tu *syncTestUtil) pushFtsAndWait(to int, fts *store.FullTipSet, wait bool)
 			b.BlsMessages = append(b.BlsMessages, c)
 		}
 
-		require.NoError(tu.t, tu.nds[to].ChainSubmitBlock(tu.ctx, &b))
-
+		require.NoError(tu.t, tu.nds[to].SyncSubmitBlock(tu.ctx, &b))
 	}
 
 	if wait {

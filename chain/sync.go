@@ -147,6 +147,14 @@ func (syncer *Syncer) validateMsgMeta(fblk *types.FullBlock) error {
 	return nil
 }
 
+func (syncer *Syncer) LocalPeer() peer.ID {
+	return syncer.self
+}
+
+func (syncer *Syncer) ChainStore() *store.ChainStore {
+	return syncer.store
+}
+
 func (syncer *Syncer) InformNewBlock(from peer.ID, blk *types.FullBlock) {
 	// TODO: search for other blocks that could form a tipset with this block
 	// and then send that tipset to InformNewHead
