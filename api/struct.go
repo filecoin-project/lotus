@@ -118,12 +118,12 @@ type StorageMinerStruct struct {
 	CommonStruct
 
 	Internal struct {
-		ActorAddresses func(context.Context) ([]address.Address, error) `perm:"read"`
+		ActorAddress func(context.Context) (address.Address, error) `perm:"read"`
 
 		StoreGarbageData func(context.Context) (uint64, error) `perm:"write"`
 
 		SectorsStatus     func(context.Context, uint64) (sectorbuilder.SectorSealingStatus, error) `perm:"read"`
-		SectorsStagedList func(context.Context) ([]sectorbuilder.StagedSectorMetadata, error)      `perm:"read"`
+		SectorsList       func(context.Context) ([]uint64, error)                                  `perm:"read"`
 		SectorsStagedSeal func(context.Context) error                                              `perm:"write"`
 
 		SectorsRefs func(context.Context) (map[string][]SealedRef, error) `perm:"read"`
@@ -426,8 +426,8 @@ func (c *FullNodeStruct) PaychVoucherSubmit(ctx context.Context, ch address.Addr
 	return c.Internal.PaychVoucherSubmit(ctx, ch, sv)
 }
 
-func (c *StorageMinerStruct) ActorAddresses(ctx context.Context) ([]address.Address, error) {
-	return c.Internal.ActorAddresses(ctx)
+func (c *StorageMinerStruct) ActorAddress(ctx context.Context) (address.Address, error) {
+	return c.Internal.ActorAddress(ctx)
 }
 
 func (c *StorageMinerStruct) StoreGarbageData(ctx context.Context) (uint64, error) {
@@ -440,8 +440,8 @@ func (c *StorageMinerStruct) SectorsStatus(ctx context.Context, sid uint64) (sec
 }
 
 // List all staged sectors
-func (c *StorageMinerStruct) SectorsStagedList(ctx context.Context) ([]sectorbuilder.StagedSectorMetadata, error) {
-	return c.Internal.SectorsStagedList(ctx)
+func (c *StorageMinerStruct) SectorsList(ctx context.Context) ([]uint64, error) {
+	return c.Internal.SectorsList(ctx)
 }
 
 // Seal all staged sectors

@@ -26,8 +26,8 @@ type StorageMinerAPI struct {
 	Miner *storage.Miner
 }
 
-func (sm *StorageMinerAPI) ActorAddresses(context.Context) ([]address.Address, error) {
-	return []address.Address{sm.SectorBuilderConfig.Miner}, nil
+func (sm *StorageMinerAPI) ActorAddress(context.Context) (address.Address, error) {
+	return sm.SectorBuilderConfig.Miner, nil
 }
 
 func (sm *StorageMinerAPI) StoreGarbageData(ctx context.Context) (uint64, error) {
@@ -47,7 +47,7 @@ func (sm *StorageMinerAPI) SectorsStatus(ctx context.Context, sid uint64) (secto
 }
 
 // List all staged sectors
-func (sm *StorageMinerAPI) SectorsStagedList(context.Context) ([]sectorbuilder.StagedSectorMetadata, error) {
+func (sm *StorageMinerAPI) SectorsList(context.Context) ([]uint64, error) {
 	return sm.SectorBuilder.GetAllStagedSectors()
 }
 

@@ -4,6 +4,7 @@ import (
 	"encoding/binary"
 	"io"
 	"os"
+	"sort"
 	"sync"
 	"unsafe"
 
@@ -13,6 +14,8 @@ import (
 
 	"github.com/filecoin-project/go-lotus/chain/address"
 )
+
+const ()
 
 var log = logging.Logger("sectorbuilder")
 
@@ -94,8 +97,22 @@ func (sb *SectorBuilder) SealStatus(sector uint64) (SectorSealingStatus, error) 
 	return sectorbuilder.GetSectorSealingStatusByID(sb.handle, sector)
 }
 
-func (sb *SectorBuilder) GetAllStagedSectors() ([]StagedSectorMetadata, error) {
-	return sectorbuilder.GetAllStagedSectors(sb.handle)
+func (sb *SectorBuilder) GetAllStagedSectors() ([]uint64, error) {
+	sectors, err := sectorbuilder.GetAllStagedSectors(sb.handle)
+	if err != nil {
+		return nil, err
+	}
+
+	out := make([]uint64, len(sectors))
+	for i, v := range sectors {
+		out[i] = v.SectorID
+	}
+
+	sort.Slice(out, func(i, j int) bool {
+		return out[i] < out[j]
+	})
+
+	return out, nil
 }
 
 func (sb *SectorBuilder) GeneratePoSt(sectorInfo SortedSectorInfo, challengeSeed [CommLen]byte, faults []uint64) ([]byte, error) {
