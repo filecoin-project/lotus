@@ -97,7 +97,13 @@ func (m *Miner) scheduleNextPost(ppe uint64) {
 }
 
 func (m *Miner) computePost(ppe uint64) func(ts *types.TipSet, curH uint64) error {
+	called := 0
 	return func(ts *types.TipSet, curH uint64) error {
+		if called > 0 {
+			log.Errorw("BUG: computePost callback called again", "ppe", ppe,
+				"height", ts.Height(), "curH", curH, "called", called)
+		}
+		called++
 
 		ctx := context.TODO()
 
