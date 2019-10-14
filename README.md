@@ -220,6 +220,7 @@ Now go to http://127.0.0.1:2222.
 * Turn it off and on - Start at the top
 * `rm -rf ~/.lotus ~/.lotusstorage/`
 * Verify you have the correct versions of dependencies
+* If stuck on a bad fork, try `lotus chain sethead --genesis`
 * If that didn't help, open a new issue, ask in the [Community Forum](https://discuss.filecoin.io) or reach out via [Community chat](https://github.com/filecoin-project/community#chat).
 
 
