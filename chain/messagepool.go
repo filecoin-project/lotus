@@ -21,6 +21,8 @@ var (
 	ErrNonceTooLow = fmt.Errorf("message nonce too low")
 
 	ErrNotEnoughFunds = fmt.Errorf("not enough funds to execute transaction")
+
+	ErrInvalidToAddr = fmt.Errorf("message had invalid to address")
 )
 
 type MessagePool struct {
@@ -96,6 +98,10 @@ func (mp *MessagePool) Add(m *types.SignedMessage) error {
 	// big messages are bad, anti DOS
 	if m.Size() > 32*1024 {
 		return ErrMessageTooBig
+	}
+
+	if m.Message.To == address.Undef {
+		return ErrInvalidToAddr
 	}
 
 	if !m.Message.Value.LessThan(types.TotalFilecoinInt) {

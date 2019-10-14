@@ -493,8 +493,21 @@ func (syncer *Syncer) ValidateBlock(ctx context.Context, b *types.FullBlock) err
 		return xerrors.Errorf("miner created a block but was not a winner")
 	}
 
+	if err := syncer.checkBlockMessages(ctx, b, baseTs); err != nil {
+		return xerrors.Errorf("block had invalid messages: %w", err)
+	}
+
+	return nil
+}
+
+func (syncer *Syncer) checkBlockMessages(ctx context.Context, b *types.FullBlock, baseTs *types.TipSet) error {
 	nonces := make(map[address.Address]uint64)
 	balances := make(map[address.Address]types.BigInt)
+
+	stateroot, _, err := syncer.sm.TipSetState(ctx, baseTs)
+	if err != nil {
+		return err
+	}
 
 	cst := hamt.CSTFromBstore(syncer.store.Blockstore())
 	st, err := state.LoadStateTree(cst, stateroot)
@@ -503,6 +516,10 @@ func (syncer *Syncer) ValidateBlock(ctx context.Context, b *types.FullBlock) err
 	}
 
 	checkMsg := func(m *types.Message) error {
+		if m.To == address.Undef {
+			return xerrors.New("'To' address cannot be empty")
+		}
+
 		if _, ok := nonces[m.From]; !ok {
 			act, err := st.GetActor(m.From)
 			if err != nil {
@@ -547,7 +564,7 @@ func (syncer *Syncer) ValidateBlock(ctx context.Context, b *types.FullBlock) err
 		pubks = append(pubks, pubk)
 	}
 
-	if err := syncer.verifyBlsAggregate(h.BLSAggregate, sigCids, pubks); err != nil {
+	if err := syncer.verifyBlsAggregate(b.Header.BLSAggregate, sigCids, pubks); err != nil {
 		return xerrors.Errorf("bls aggregate signature was invalid: %w", err)
 	}
 
@@ -588,7 +605,7 @@ func (syncer *Syncer) ValidateBlock(ctx context.Context, b *types.FullBlock) err
 		return err
 	}
 
-	if h.Messages != mrcid {
+	if b.Header.Messages != mrcid {
 		return fmt.Errorf("messages didnt match message root in header")
 	}
 

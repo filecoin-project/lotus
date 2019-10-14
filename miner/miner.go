@@ -323,6 +323,11 @@ func selectMessages(ctx context.Context, al actorLookup, base *MiningBase, msgs 
 	inclNonces := make(map[address.Address]uint64)
 	inclBalances := make(map[address.Address]types.BigInt)
 	for _, msg := range msgs {
+		if msg.Message.To == address.Undef {
+			log.Warnf("message in mempool had bad 'To' address")
+			continue
+		}
+
 		from := msg.Message.From
 		act, err := al(ctx, from, base.ts)
 		if err != nil {
