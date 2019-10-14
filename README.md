@@ -33,7 +33,7 @@ If you have run lotus before and want to remove all previous data: `rm -rf ~/.lo
 
 The following sections describe how to use the lotus CLI. Alternately you can run lotus nodes and miners using the [Pond GUI](#pond).
 
-### lotus Devnet
+### Genesis & Bootstrap
 
 The current lotus build will automatically join the lotus Devnet using the genesis and bootstrap files in the `build/` directory. No configuration is needed.
 
