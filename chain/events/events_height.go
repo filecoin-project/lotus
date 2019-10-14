@@ -121,8 +121,8 @@ func (e *heightEvents) headChangeAt(rev, app []*types.TipSet) error {
 //
 // ts passed to handlers is the tipset at the specified, or above, if lower tipsets were null
 func (e *heightEvents) ChainAt(hnd HeightHandler, rev RevertHandler, confidence int, h uint64) error {
-	e.lk.Lock()
-	defer e.lk.Unlock()
+
+	e.lk.Lock() // Tricky locking, check your locks if you modify this function!
 
 	bestH := e.tsc.best().Height()
 
@@ -139,6 +139,8 @@ func (e *heightEvents) ChainAt(hnd HeightHandler, rev RevertHandler, confidence 
 		e.lk.Lock()
 		bestH = e.tsc.best().Height()
 	}
+
+	defer e.lk.Unlock()
 
 	if bestH >= h+uint64(confidence)+e.gcConfidence {
 		return nil
