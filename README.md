@@ -15,7 +15,6 @@ All work is tracked via issues. An attempt at keeping an up-to-date view on rema
 - gcc (7.4.0 or higher)
 - git
 - bzr (some go dependency needs this)
-- b2sum (In Linux in coreutils)
 - jq
 - pkg-config
 
@@ -32,7 +31,7 @@ If you have run lotus before and want to remove all previous data: `rm -rf ~/.lo
 
 [You can copy `lotus` and `lotus-storage-miner` to your `$GOPATH/bin` or `$PATH`, or reference all lotus commands below from your local build directory with `./lotus`]
 
-The following sections describe how to use the lotus CLI. Alternately you can running nodes and miners using the [Pond GUI](#pond).
+The following sections describe how to use the lotus CLI. Alternately you can run lotus nodes and miners using the [Pond GUI](#pond).
 
 ### Start Daemon
 
@@ -48,18 +47,15 @@ $ lotus net peers | wc -l
 
 [wait for the chain to finish syncing]
 
-You can see current chain height with
+You can follow sync status with:
 ```sh
-$ lotus sync status
+$ watch lotus sync status
 ```
-or use
-```sh
-$ lotus chain getblock $(lotus chain head) | jq .Height
-```
+
 
 ### Basics
 
-Create new address
+Create a new address:
 ```sh
 $ lotus wallet new bls
 t3...
@@ -68,7 +64,10 @@ t3...
 Grab some funds from faucet - go to http://147.75.80.29:777/, paste the address
 you just created, and press Send.
 
-See wallet balance:
+(You can also generate a public key address using secp256k1 with `lotus wallet new secp256k1`.
+BLS signatures use less space so will have lower fees.)
+
+Check the wallet balance:
 ```sh
 $ lotus wallet balance [optional address (t3...)]
 ```
@@ -99,8 +98,13 @@ Start mining:
 $ lotus-storage-miner run
 ```
 
-In the Miner's startup log will be the miner id used for deals: 
-e.g.  `Registering miner 't0111' with full node.` 
+To view the miner id used for deals: 
+
+```sh
+$ lotus-storage-miner info
+```
+
+e.g. miner id `t0111`
 
 Seal random data to start producing PoSts:
 
@@ -108,15 +112,21 @@ Seal random data to start producing PoSts:
 $ lotus-storage-miner store-garbage
 ```
 
-You can check Miner power and sector usage with the miner id:
+You can check miner power and sector usage with the miner id:
 
 ```sh
-# Total Power of the network
+# Total power of the network
 $ lotus-storage-miner state power
 
 $ lotus-storage-miner state power <miner>
 
 $ lotus-storage-miner state sectors <miner>
+```
+
+If you create multiple miners view them with:
+
+```sh
+$ lotus state list-miners
 ```
 
 ### Stage Data
