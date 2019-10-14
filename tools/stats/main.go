@@ -7,8 +7,6 @@ import (
 	"log"
 	"os"
 	"time"
-
-	"github.com/filecoin-project/go-lotus/chain/address"
 )
 
 const (
@@ -69,32 +67,22 @@ func main() {
 
 	for tipset := range tipsetsCh {
 		pl := NewPointList()
+		height := tipset.Height()
 
-		RecordTipsetPoints(pl, tipset)
-
-		for _, blockheader := range tipset.Blocks() {
-			RecordBlockHeaderPoints(pl, blockheader)
-
-			blkmsgs, err := api.ChainGetBlockMessages(ctx, blockheader.Cid())
-			if err != nil {
-				log.Fatal(err)
-			}
-
-			msgs := blkmsgs.BlsMessages
-			for _, msg := range blkmsgs.SecpkMessages {
-				msgs = append(msgs, msg.VMMessage())
-			}
-
-			RecordBlockMessagesPoints(pl, msgs)
+		if err := RecordTipsetPoints(ctx, api, pl, tipset); err != nil {
+			log.Printf("Failed to record tipset at height %d: %w", height, err)
+			continue
 		}
 
-		power, err := api.StateMinerPower(ctx, address.Address{}, tipset)
-		if err != nil {
-			log.Fatal(err)
+		if err := RecordTipsetMessagesPoints(ctx, api, pl, tipset); err != nil {
+			log.Printf("Failed to record messages at height %d: %w", height, err)
+			continue
 		}
 
-		p := NewPoint("chain.power", power.TotalPower.Int64())
-		pl.AddPoint(p)
+		if err := RecordTipsetStatePoints(ctx, api, pl, tipset); err != nil {
+			log.Printf("Failed to record state at height %d: %w", height, err)
+			continue
+		}
 
 		// Instead of having to pass around a bunch of generic stuff we want for each point
 		// we will just add them at the end.

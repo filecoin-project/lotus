@@ -1,12 +1,16 @@
 package main
 
 import (
+	"context"
 	"encoding/json"
 	"fmt"
 	"log"
 	"strings"
 	"time"
 
+	"github.com/filecoin-project/go-lotus/api"
+	"github.com/filecoin-project/go-lotus/build"
+	"github.com/filecoin-project/go-lotus/chain/address"
 	"github.com/filecoin-project/go-lotus/chain/types"
 
 	_ "github.com/influxdata/influxdb1-client"
@@ -51,7 +55,7 @@ func NewPointFrom(p models.Point) *client.Point {
 	return client.NewPointFrom(p)
 }
 
-func RecordTipsetPoints(pl *PointList, tipset *types.TipSet) error {
+func RecordTipsetPoints(ctx context.Context, api api.FullNode, pl *PointList, tipset *types.TipSet) error {
 	cids := []string{}
 	for _, cid := range tipset.Cids() {
 		cids = append(cids, cid.String())
@@ -68,37 +72,93 @@ func RecordTipsetPoints(pl *PointList, tipset *types.TipSet) error {
 	p = NewPoint("chain.blocktime", tsTime.Unix())
 	pl.AddPoint(p)
 
+	for _, blockheader := range tipset.Blocks() {
+		bs, err := blockheader.Serialize()
+		if err != nil {
+			return err
+		}
+
+		p := NewPoint("chain.blockheader_size", len(bs))
+		pl.AddPoint(p)
+	}
+
 	return nil
 }
 
-func RecordBlockHeaderPoints(pl *PointList, bh *types.BlockHeader) error {
-	bs, err := bh.Serialize()
+func RecordTipsetStatePoints(ctx context.Context, api api.FullNode, pl *PointList, tipset *types.TipSet) error {
+	pc, err := api.StatePledgeCollateral(ctx, tipset)
 	if err != nil {
 		return err
 	}
 
-	p := NewPoint("chain.blockheader_size", len(bs))
+	pcfil := types.BigDiv(pc, types.NewInt(uint64(build.FilecoinPrecision)))
+	p := NewPoint("chain.pledge_collateral", pcfil.Int64())
 	pl.AddPoint(p)
+
+	power, err := api.StateMinerPower(ctx, address.Address{}, tipset)
+	if err != nil {
+		return err
+	}
+
+	p = NewPoint("chain.power", power.TotalPower.Int64())
+	pl.AddPoint(p)
+
+	miners, err := api.StateListMiners(ctx, tipset)
+	for _, miner := range miners {
+		power, err := api.StateMinerPower(ctx, miner, tipset)
+		if err != nil {
+			return err
+		}
+
+		p = NewPoint("chain.miner_power", power.MinerPower.Int64())
+		p.AddTag("miner", miner.String())
+		pl.AddPoint(p)
+	}
 
 	return nil
 }
 
-func RecordBlockMessagesPoints(pl *PointList, msgs []*types.Message) error {
-	p := NewPoint("chain.message_count", len(msgs))
-	pl.AddPoint(p)
+func RecordTipsetMessagesPoints(ctx context.Context, api api.FullNode, pl *PointList, tipset *types.TipSet) error {
+	cids := tipset.Cids()
+	if len(cids) == 0 {
+		return fmt.Errorf("no cids in tipset")
+	}
 
-	for _, msg := range msgs {
-		p := NewPoint("chain.message_gasprice", msg.GasPrice.Int64())
+	msgs, err := api.ChainGetParentMessages(ctx, cids[0])
+	if err != nil {
+		return err
+	}
+
+	recp, err := api.ChainGetParentReceipts(ctx, cids[0])
+	if err != nil {
+		return err
+	}
+
+	for i, msg := range msgs {
+		p := NewPoint("chain.message_gasprice", msg.Message.GasPrice.Int64())
 		pl.AddPoint(p)
 
-		bs, err := msg.Serialize()
+		bs, err := msg.Message.Serialize()
 		if err != nil {
 			return err
 		}
 
 		p = NewPoint("chain.message_size", len(bs))
 		pl.AddPoint(p)
+
+		actor, err := api.StateGetActor(ctx, msg.Message.To, tipset)
+		if err != nil {
+			return err
+		}
+
+		p = NewPoint("chain.message_count", 1)
+		p.AddTag("actor", actor.Code.String())
+		p.AddTag("method", fmt.Sprintf("%d", msg.Message.Method))
+		p.AddTag("exitcode", fmt.Sprintf("%d", recp[i].ExitCode))
+		pl.AddPoint(p)
+
 	}
+
 	return nil
 }
 

@@ -62,37 +62,10 @@ func GetTips(ctx context.Context, api api.FullNode, lastHeight uint64) (<-chan *
 
 					switch change.Type {
 					case store.HCCurrent:
-						tipsets := []*types.TipSet{}
-						curr := change.Val
-
-						for {
-							if curr.Height() == 0 {
-								break
-							}
-
-							if curr.Height() <= lastHeight {
-								break
-							}
-
-							log.Printf("Walking back { height:%d }", curr.Height())
-							tipsets = append(tipsets, curr)
-
-							ph := ParentTipsetHeight(curr)
-							if ph == 0 {
-								break
-							}
-
-							prev, err := api.ChainGetTipSetByHeight(ctx, ph, curr)
-							if err != nil {
-								log.Fatal(err)
-								return
-							}
-
-							curr = prev
-						}
-
-						for i, j := 0, len(tipsets)-1; i < j; i, j = i+1, j-1 {
-							tipsets[i], tipsets[j] = tipsets[j], tipsets[i]
+						tipsets, err := loadTipsets(ctx, api, change.Val, lastHeight)
+						if err != nil {
+							log.Print(err)
+							return
 						}
 
 						for _, tipset := range tipsets {
@@ -109,6 +82,40 @@ func GetTips(ctx context.Context, api api.FullNode, lastHeight uint64) (<-chan *
 	}()
 
 	return chmain, nil
+}
+
+func loadTipsets(ctx context.Context, api api.FullNode, curr *types.TipSet, lowestHeight uint64) ([]*types.TipSet, error) {
+	tipsets := []*types.TipSet{}
+	for {
+		if curr.Height() == 0 {
+			break
+		}
+
+		if curr.Height() <= lowestHeight {
+			break
+		}
+
+		log.Printf("Walking back { height:%d }", curr.Height())
+		tipsets = append(tipsets, curr)
+
+		ph := ParentTipsetHeight(curr)
+		if ph == 0 {
+			break
+		}
+
+		prev, err := api.ChainGetTipSetByHeight(ctx, ph, curr)
+		if err != nil {
+			return tipsets, err
+		}
+
+		curr = prev
+	}
+
+	for i, j := 0, len(tipsets)-1; i < j; i, j = i+1, j-1 {
+		tipsets[i], tipsets[j] = tipsets[j], tipsets[i]
+	}
+
+	return tipsets, nil
 }
 
 func ParentTipsetHeight(tipset *types.TipSet) uint64 {
