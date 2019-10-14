@@ -67,9 +67,6 @@ type mybs struct {
 func (m mybs) Get(c cid.Cid) (block.Block, error) {
 	b, err := m.Blockstore.Get(c)
 	if err != nil {
-		// change to error for stacktraces, don't commit with that pls
-		// TODO: debug why we get so many not founds in tests
-		log.Warnf("Get failed: %s %s", c, err)
 		return nil, err
 	}
 

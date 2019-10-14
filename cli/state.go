@@ -18,6 +18,8 @@ var stateCmd = &cli.Command{
 		stateSectorsCmd,
 		stateProvingSetCmd,
 		statePledgeCollateralCmd,
+		stateListActorsCmd,
+		stateListMinersCmd,
 	},
 }
 
@@ -196,6 +198,56 @@ var statePledgeCollateralCmd = &cli.Command{
 		}
 
 		fmt.Println(coll.String())
+		return nil
+	},
+}
+
+var stateListMinersCmd = &cli.Command{
+	Name:  "list-miners",
+	Usage: "list all miners in the network",
+	Action: func(cctx *cli.Context) error {
+		api, closer, err := GetFullNodeAPI(cctx)
+		if err != nil {
+			return err
+		}
+		defer closer()
+
+		ctx := ReqContext(cctx)
+
+		miners, err := api.StateListMiners(ctx, nil)
+		if err != nil {
+			return err
+		}
+
+		for _, m := range miners {
+			fmt.Println(m.String())
+		}
+
+		return nil
+	},
+}
+
+var stateListActorsCmd = &cli.Command{
+	Name:  "list-actors",
+	Usage: "list all actors in the network",
+	Action: func(cctx *cli.Context) error {
+		api, closer, err := GetFullNodeAPI(cctx)
+		if err != nil {
+			return err
+		}
+		defer closer()
+
+		ctx := ReqContext(cctx)
+
+		actors, err := api.StateListActors(ctx, nil)
+		if err != nil {
+			return err
+		}
+
+		for _, a := range actors {
+			fmt.Println(a.String())
+		}
+
 		return nil
 	},
 }

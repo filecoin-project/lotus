@@ -179,7 +179,8 @@ func (m *Miner) mine(ctx context.Context) {
 			if time.Now().Before(btime) {
 				time.Sleep(time.Until(btime))
 			} else {
-				log.Warnf("Mined block in the past: b.T: %s, T: %s, dT: %s", btime, time.Now(), time.Now().Sub(btime))
+				log.Warnw("mined block in the past", "block-time", btime,
+					"time", time.Now(), "duration", time.Now().Sub(btime))
 			}
 
 			if err := m.api.ChainSubmitBlock(ctx, b); err != nil {
@@ -323,6 +324,11 @@ func selectMessages(ctx context.Context, al actorLookup, base *MiningBase, msgs 
 	inclNonces := make(map[address.Address]uint64)
 	inclBalances := make(map[address.Address]types.BigInt)
 	for _, msg := range msgs {
+		if msg.Message.To == address.Undef {
+			log.Warnf("message in mempool had bad 'To' address")
+			continue
+		}
+
 		from := msg.Message.From
 		act, err := al(ctx, from, base.ts)
 		if err != nil {

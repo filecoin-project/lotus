@@ -47,12 +47,15 @@ func cidsToKey(cids []cid.Cid) string {
 }
 
 func (sm *StateManager) TipSetState(ctx context.Context, ts *types.TipSet) (cid.Cid, cid.Cid, error) {
+	ctx, span := trace.StartSpan(ctx, "tipSetState")
+	defer span.End()
 
 	ck := cidsToKey(ts.Cids())
 	sm.stlk.Lock()
 	cached, ok := sm.stCache[ck]
 	sm.stlk.Unlock()
 	if ok {
+		span.AddAttributes(trace.BoolAttribute("cache", true))
 		return cached[0], cached[1], nil
 	}
 
@@ -110,11 +113,10 @@ func (sm *StateManager) computeTipSetState(ctx context.Context, blks []*types.Bl
 			return cid.Undef, cid.Undef, xerrors.Errorf("failed to get miner owner actor")
 		}
 
-		if err := vm.DeductFunds(netact, reward); err != nil {
+		if err := vm.Transfer(netact, act, reward); err != nil {
 			return cid.Undef, cid.Undef, xerrors.Errorf("failed to deduct funds from network actor: %w", err)
 		}
 
-		vm.DepositFunds(act, reward)
 	}
 
 	// TODO: can't use method from chainstore because it doesnt let us know who the block miners were
@@ -425,4 +427,35 @@ func (sm *StateManager) tipsetExecutedMessage(ts *types.TipSet, msg cid.Cid) (*t
 	}
 
 	return nil, nil
+}
+
+func (sm *StateManager) ListAllActors(ctx context.Context, ts *types.TipSet) ([]address.Address, error) {
+	if ts == nil {
+		ts = sm.ChainStore().GetHeaviestTipSet()
+	}
+	st, _, err := sm.TipSetState(ctx, ts)
+	if err != nil {
+		return nil, err
+	}
+
+	cst := hamt.CSTFromBstore(sm.ChainStore().Blockstore())
+	r, err := hamt.LoadNode(ctx, cst, st)
+	if err != nil {
+		return nil, err
+	}
+
+	var out []address.Address
+	err = r.ForEach(ctx, func(k string, val interface{}) error {
+		addr, err := address.NewFromBytes([]byte(k))
+		if err != nil {
+			return xerrors.Errorf("address in state tree was not valid: %w", err)
+		}
+		out = append(out, addr)
+		return nil
+	})
+	if err != nil {
+		return nil, err
+	}
+
+	return out, nil
 }

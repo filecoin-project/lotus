@@ -1,6 +1,7 @@
 package chain
 
 import (
+	"fmt"
 	"sync"
 
 	pubsub "github.com/libp2p/go-libp2p-pubsub"
@@ -12,19 +13,37 @@ import (
 	"github.com/filecoin-project/go-lotus/chain/types"
 )
 
+var (
+	ErrMessageTooBig = fmt.Errorf("message too big")
+
+	ErrMessageValueTooHigh = fmt.Errorf("cannot send more filecoin than will ever exist")
+
+	ErrNonceTooLow = fmt.Errorf("message nonce too low")
+
+	ErrNotEnoughFunds = fmt.Errorf("not enough funds to execute transaction")
+
+	ErrInvalidToAddr = fmt.Errorf("message had invalid to address")
+)
+
 type MessagePool struct {
 	lk sync.Mutex
 
-	pending map[address.Address]*msgSet
+	pending      map[address.Address]*msgSet
+	pendingCount int
 
 	sm *stmgr.StateManager
 
 	ps *pubsub.PubSub
+
+	minGasPrice types.BigInt
+
+	maxTxPoolSize int
 }
 
 type msgSet struct {
-	msgs      map[uint64]*types.SignedMessage
-	nextNonce uint64
+	msgs       map[uint64]*types.SignedMessage
+	nextNonce  uint64
+	curBalance types.BigInt
 }
 
 func newMsgSet() *msgSet {
@@ -51,9 +70,11 @@ func (ms *msgSet) add(m *types.SignedMessage) error {
 
 func NewMessagePool(sm *stmgr.StateManager, ps *pubsub.PubSub) *MessagePool {
 	mp := &MessagePool{
-		pending: make(map[address.Address]*msgSet),
-		sm:      sm,
-		ps:      ps,
+		pending:       make(map[address.Address]*msgSet),
+		sm:            sm,
+		ps:            ps,
+		minGasPrice:   types.NewInt(0),
+		maxTxPoolSize: 100000,
 	}
 	sm.ChainStore().SubscribeHeadChanges(mp.HeadChange)
 
@@ -74,6 +95,42 @@ func (mp *MessagePool) Push(m *types.SignedMessage) error {
 }
 
 func (mp *MessagePool) Add(m *types.SignedMessage) error {
+	// big messages are bad, anti DOS
+	if m.Size() > 32*1024 {
+		return ErrMessageTooBig
+	}
+
+	if m.Message.To == address.Undef {
+		return ErrInvalidToAddr
+	}
+
+	if !m.Message.Value.LessThan(types.TotalFilecoinInt) {
+		return ErrMessageValueTooHigh
+	}
+
+	if err := m.Signature.Verify(m.Message.From, m.Message.Cid().Bytes()); err != nil {
+		log.Warnf("mpooladd signature verification failed: %s", err)
+		return err
+	}
+
+	snonce, err := mp.getStateNonce(m.Message.From)
+	if err != nil {
+		return xerrors.Errorf("failed to look up actor state nonce: %w", err)
+	}
+
+	if snonce > m.Message.Nonce {
+		return ErrNonceTooLow
+	}
+
+	balance, err := mp.getStateBalance(m.Message.From)
+	if err != nil {
+		return xerrors.Errorf("failed to check sender balance: %w", err)
+	}
+
+	if balance.LessThan(m.Message.RequiredFunds()) {
+		return ErrNotEnoughFunds
+	}
+
 	mp.lk.Lock()
 	defer mp.lk.Unlock()
 
@@ -82,11 +139,6 @@ func (mp *MessagePool) Add(m *types.SignedMessage) error {
 
 func (mp *MessagePool) addLocked(m *types.SignedMessage) error {
 	log.Debugf("mpooladd: %s %s", m.Message.From, m.Message.Nonce)
-
-	if err := m.Signature.Verify(m.Message.From, m.Message.Cid().Bytes()); err != nil {
-		log.Warnf("mpooladd signature verification failed: %s", err)
-		return err
-	}
 
 	if _, err := mp.sm.ChainStore().PutMessage(m); err != nil {
 		log.Warnf("mpooladd cs.PutMessage failed: %s", err)
@@ -116,12 +168,25 @@ func (mp *MessagePool) getNonceLocked(addr address.Address) (uint64, error) {
 		return mset.nextNonce, nil
 	}
 
+	return mp.getStateNonce(addr)
+}
+
+func (mp *MessagePool) getStateNonce(addr address.Address) (uint64, error) {
 	act, err := mp.sm.GetActor(addr, nil)
 	if err != nil {
 		return 0, err
 	}
 
 	return act.Nonce, nil
+}
+
+func (mp *MessagePool) getStateBalance(addr address.Address) (types.BigInt, error) {
+	act, err := mp.sm.GetActor(addr, nil)
+	if err != nil {
+		return types.EmptyInt, err
+	}
+
+	return act.Balance, nil
 }
 
 func (mp *MessagePool) PushWithNonce(addr address.Address, cb func(uint64) (*types.SignedMessage, error)) (*types.SignedMessage, error) {

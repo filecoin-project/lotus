@@ -352,6 +352,9 @@ func (syncer *Syncer) Sync(ctx context.Context, maybeHead *types.TipSet) error {
 }
 
 func (syncer *Syncer) ValidateTipSet(ctx context.Context, fts *store.FullTipSet) error {
+	ctx, span := trace.StartSpan(ctx, "validateTipSet")
+	defer span.End()
+
 	ts := fts.TipSet()
 	if ts.Equals(syncer.Genesis) {
 		return nil
@@ -423,6 +426,8 @@ func (syncer *Syncer) validateTickets(ctx context.Context, mworker address.Addre
 
 // Should match up with 'Semantical Validation' in validation.md in the spec
 func (syncer *Syncer) ValidateBlock(ctx context.Context, b *types.FullBlock) error {
+	ctx, span := trace.StartSpan(ctx, "validateBlock")
+	defer span.End()
 
 	h := b.Header
 
@@ -488,8 +493,21 @@ func (syncer *Syncer) ValidateBlock(ctx context.Context, b *types.FullBlock) err
 		return xerrors.Errorf("miner created a block but was not a winner")
 	}
 
+	if err := syncer.checkBlockMessages(ctx, b, baseTs); err != nil {
+		return xerrors.Errorf("block had invalid messages: %w", err)
+	}
+
+	return nil
+}
+
+func (syncer *Syncer) checkBlockMessages(ctx context.Context, b *types.FullBlock, baseTs *types.TipSet) error {
 	nonces := make(map[address.Address]uint64)
 	balances := make(map[address.Address]types.BigInt)
+
+	stateroot, _, err := syncer.sm.TipSetState(ctx, baseTs)
+	if err != nil {
+		return err
+	}
 
 	cst := hamt.CSTFromBstore(syncer.store.Blockstore())
 	st, err := state.LoadStateTree(cst, stateroot)
@@ -498,6 +516,10 @@ func (syncer *Syncer) ValidateBlock(ctx context.Context, b *types.FullBlock) err
 	}
 
 	checkMsg := func(m *types.Message) error {
+		if m.To == address.Undef {
+			return xerrors.New("'To' address cannot be empty")
+		}
+
 		if _, ok := nonces[m.From]; !ok {
 			act, err := st.GetActor(m.From)
 			if err != nil {
@@ -542,7 +564,7 @@ func (syncer *Syncer) ValidateBlock(ctx context.Context, b *types.FullBlock) err
 		pubks = append(pubks, pubk)
 	}
 
-	if err := syncer.verifyBlsAggregate(h.BLSAggregate, sigCids, pubks); err != nil {
+	if err := syncer.verifyBlsAggregate(b.Header.BLSAggregate, sigCids, pubks); err != nil {
 		return xerrors.Errorf("bls aggregate signature was invalid: %w", err)
 	}
 
@@ -583,7 +605,7 @@ func (syncer *Syncer) ValidateBlock(ctx context.Context, b *types.FullBlock) err
 		return err
 	}
 
-	if h.Messages != mrcid {
+	if b.Header.Messages != mrcid {
 		return fmt.Errorf("messages didnt match message root in header")
 	}
 
@@ -606,6 +628,14 @@ func (syncer *Syncer) verifyBlsAggregate(sig types.Signature, msgs []cid.Cid, pu
 }
 
 func (syncer *Syncer) collectHeaders(ctx context.Context, from *types.TipSet, to *types.TipSet) ([]*types.TipSet, error) {
+	ctx, span := trace.StartSpan(ctx, "collectHeaders")
+	defer span.End()
+
+	span.AddAttributes(
+		trace.Int64Attribute("fromHeight", int64(from.Height())),
+		trace.Int64Attribute("toHeight", int64(to.Height())),
+	)
+
 	blockSet := []*types.TipSet{from}
 
 	at := from.Parents()
@@ -647,7 +677,7 @@ loop:
 		if gap := int(blockSet[len(blockSet)-1].Height() - untilHeight); gap < window {
 			window = gap
 		}
-		blks, err := syncer.Bsync.GetBlocks(context.TODO(), at, window)
+		blks, err := syncer.Bsync.GetBlocks(ctx, at, window)
 		if err != nil {
 			// Most likely our peers aren't fully synced yet, but forwarded
 			// new block message (ideally we'd find better peers)
@@ -726,7 +756,7 @@ func (syncer *Syncer) syncFork(ctx context.Context, from *types.TipSet, to *type
 
 func (syncer *Syncer) syncMessagesAndCheckState(ctx context.Context, headers []*types.TipSet) error {
 	syncer.syncState.SetHeight(0)
-	return syncer.iterFullTipsets(headers, func(fts *store.FullTipSet) error {
+	return syncer.iterFullTipsets(ctx, headers, func(ctx context.Context, fts *store.FullTipSet) error {
 		log.Debugw("validating tipset", "height", fts.TipSet().Height(), "size", len(fts.TipSet().Cids()))
 		if err := syncer.ValidateTipSet(ctx, fts); err != nil {
 			log.Errorf("failed to validate tipset: %+v", err)
@@ -740,7 +770,10 @@ func (syncer *Syncer) syncMessagesAndCheckState(ctx context.Context, headers []*
 }
 
 // fills out each of the given tipsets with messages and calls the callback with it
-func (syncer *Syncer) iterFullTipsets(headers []*types.TipSet, cb func(*store.FullTipSet) error) error {
+func (syncer *Syncer) iterFullTipsets(ctx context.Context, headers []*types.TipSet, cb func(context.Context, *store.FullTipSet) error) error {
+	ctx, span := trace.StartSpan(ctx, "iterFullTipsets")
+	defer span.End()
+
 	beg := len(headers) - 1
 	// handle case where we have a prefix of these locally
 	for ; beg >= 0; beg-- {
@@ -751,7 +784,7 @@ func (syncer *Syncer) iterFullTipsets(headers []*types.TipSet, cb func(*store.Fu
 		if fts == nil {
 			break
 		}
-		if err := cb(fts); err != nil {
+		if err := cb(ctx, fts); err != nil {
 			return err
 		}
 	}
@@ -767,7 +800,7 @@ func (syncer *Syncer) iterFullTipsets(headers []*types.TipSet, cb func(*store.Fu
 		}
 
 		next := headers[i-batchSize]
-		bstips, err := syncer.Bsync.GetChainMessages(context.TODO(), next, uint64(batchSize+1))
+		bstips, err := syncer.Bsync.GetChainMessages(ctx, next, uint64(batchSize+1))
 		if err != nil {
 			return xerrors.Errorf("message processing failed: %w", err)
 		}
@@ -788,7 +821,7 @@ func (syncer *Syncer) iterFullTipsets(headers []*types.TipSet, cb func(*store.Fu
 				return xerrors.Errorf("message processing failed: %w", err)
 			}
 
-			if err := cb(fts); err != nil {
+			if err := cb(ctx, fts); err != nil {
 				return err
 			}
 
@@ -828,6 +861,9 @@ func persistMessages(bs bstore.Blockstore, bst *BSTipSet) error {
 }
 
 func (syncer *Syncer) collectChain(ctx context.Context, ts *types.TipSet) error {
+	ctx, span := trace.StartSpan(ctx, "collectChain")
+	defer span.End()
+
 	syncer.syncState.Init(syncer.store.GetHeaviestTipSet(), ts)
 
 	headers, err := syncer.collectHeaders(ctx, ts, syncer.store.GetHeaviestTipSet())

@@ -7,6 +7,7 @@ import (
 	"net/http"
 	"strings"
 
+	rice "github.com/GeertJohan/go.rice"
 	"github.com/gorilla/websocket"
 	"github.com/libp2p/go-libp2p"
 	"github.com/libp2p/go-libp2p-core/peer"
@@ -59,8 +60,9 @@ func main() {
 	}
 
 	http.HandleFunc("/sub", handler(ps))
+	http.Handle("/", http.FileServer(rice.MustFindBox("townhall/build").HTTPBox()))
 
-	fmt.Println("listening")
+	fmt.Println("listening on http://localhost:2975")
 
 	if err := http.ListenAndServe("0.0.0.0:2975", nil); err != nil {
 		panic(err)

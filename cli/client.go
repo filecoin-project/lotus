@@ -241,6 +241,14 @@ var clientQueryAskCmd = &cli.Command{
 			Name:  "peerid",
 			Usage: "specify peer ID of node to make query against",
 		},
+		&cli.Int64Flag{
+			Name:  "size",
+			Usage: "data size in bytes",
+		},
+		&cli.Int64Flag{
+			Name:  "duration",
+			Usage: "deal duration",
+		},
 	},
 	Action: func(cctx *cli.Context) error {
 		if cctx.NArg() != 1 {
@@ -295,7 +303,20 @@ var clientQueryAskCmd = &cli.Command{
 		}
 
 		fmt.Printf("Ask: %s\n", maddr)
-		fmt.Printf("Price: %s\n", ask.Ask.Price)
+		fmt.Printf("Price per Byte: %s\n", ask.Ask.Price)
+
+		size := cctx.Int64("size")
+		if size == 0 {
+			return nil
+		}
+		fmt.Printf("Price per Block: %s\n", types.BigMul(ask.Ask.Price, types.NewInt(uint64(size))))
+
+		duration := cctx.Int64("duration")
+		if duration == 0 {
+			return nil
+		}
+		fmt.Printf("Total Price: %s\n", types.BigMul(types.BigMul(ask.Ask.Price, types.NewInt(uint64(size))), types.NewInt(uint64(duration))))
+
 		return nil
 	},
 }

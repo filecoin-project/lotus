@@ -16,6 +16,8 @@ import (
 
 const BigIntMaxSerializedLen = 128 // is this big enough? or too big?
 
+var TotalFilecoinInt = FromFil(build.TotalFilecoin)
+
 func init() {
 	cbor.RegisterCborType(atlas.BuildEntry(BigInt{}).Transform().
 		TransformMarshal(atlas.MakeMarshalTransformFunc(

@@ -4,6 +4,7 @@ import (
 	"context"
 	"encoding/json"
 	"fmt"
+	"time"
 
 	cid "github.com/ipfs/go-cid"
 	"golang.org/x/xerrors"
@@ -276,6 +277,10 @@ func parseTipSet(api api.FullNode, ctx context.Context, vals []string) (*types.T
 var chainListCmd = &cli.Command{
 	Name:  "list",
 	Usage: "View a segment of the chain",
+	Flags: []cli.Flag{
+		&cli.Uint64Flag{Name: "height"},
+		&cli.UintFlag{Name: "count", Value: 30},
+	},
 	Action: func(cctx *cli.Context) error {
 		api, closer, err := GetFullNodeAPI(cctx)
 		if err != nil {
@@ -284,29 +289,42 @@ var chainListCmd = &cli.Command{
 		defer closer()
 		ctx := ReqContext(cctx)
 
-		head, err := api.ChainHead(ctx)
+		var head *types.TipSet
+
+		if cctx.IsSet("height") {
+			head, err = api.ChainGetTipSetByHeight(ctx, cctx.Uint64("height"), nil)
+		} else {
+			head, err = api.ChainHead(ctx)
+		}
 		if err != nil {
 			return err
 		}
 
-		tss := []*types.TipSet{head}
-		cur := head
-		for i := 1; i < 30; i++ {
-			if cur.Height() == 0 {
+		count := cctx.Uint("count")
+		if count < 1 {
+			return nil
+		}
+
+		tss := make([]*types.TipSet, count)
+		tss[0] = head
+
+		for i := 1; i < len(tss); i++ {
+			if head.Height() == 0 {
 				break
 			}
 
-			next, err := api.ChainGetTipSet(ctx, cur.Parents())
+			head, err = api.ChainGetTipSet(ctx, head.Parents())
 			if err != nil {
 				return err
 			}
 
-			tss = append(tss, next)
-			cur = next
+			tss[i] = head
 		}
 
 		for i := len(tss) - 1; i >= 0; i-- {
-			fmt.Printf("%d [ ", tss[i].Height())
+			mints := tss[i].MinTimestamp()
+			t := time.Unix(int64(mints), 0)
+			fmt.Printf("%d: (%s) [ ", tss[i].Height(), t.Format(time.Stamp))
 			for _, b := range tss[i].Blocks() {
 				fmt.Printf("%s: %s,", b.Cid(), b.Miner)
 			}

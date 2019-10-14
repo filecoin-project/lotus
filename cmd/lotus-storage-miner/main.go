@@ -21,6 +21,7 @@ func main() {
 	local := []*cli.Command{
 		runCmd,
 		initCmd,
+		infoCmd,
 		storeGarbageCmd,
 		sectorsCmd,
 	}

@@ -5,8 +5,8 @@ class App extends React.Component {
     constructor(props) {
         super(props);
 
-        //let ws = new WebSocket("ws://" + window.location.host + "/sub")
-        let ws = new WebSocket("ws://127.0.0.1:2975/sub")
+        let ws = new WebSocket("ws://" + window.location.host + "/sub")
+        //let ws = new WebSocket("ws://127.0.0.1:2975/sub")
 
         ws.onmessage = (ev) => {
             console.log(ev)
@@ -25,7 +25,9 @@ class App extends React.Component {
         console.log(best)
 
         return <table>{Object.keys(this.state).map(k => [k, this.state[k]]).map(([k, v]) => {
-            let l = [<td>{k}</td>, <td>{v.NodeName}</td>, <td>{v.Height}</td>]
+
+            let mnrs = v.Blocks.map(b => <span>&nbsp;m:{b.Miner}</span>)
+            let l = [<td>{k}</td>, <td>{v.NodeName}</td>, <td>{v.Height}</td>, <td>{mnrs}</td>]
             if (best !== v.Height) {
                 l = <tr style={{color: '#f00'}}>{l}</tr>
             } else {
