@@ -40,6 +40,7 @@ func TestMessageFiltering(t *testing.T) {
 	msgs := []types.Message{
 		types.Message{
 			From:     a1,
+			To:       a1,
 			Nonce:    3,
 			Value:    types.NewInt(500),
 			GasLimit: types.NewInt(50),
@@ -47,6 +48,7 @@ func TestMessageFiltering(t *testing.T) {
 		},
 		types.Message{
 			From:     a1,
+			To:       a1,
 			Nonce:    4,
 			Value:    types.NewInt(500),
 			GasLimit: types.NewInt(50),
@@ -54,6 +56,7 @@ func TestMessageFiltering(t *testing.T) {
 		},
 		types.Message{
 			From:     a2,
+			To:       a1,
 			Nonce:    1,
 			Value:    types.NewInt(800),
 			GasLimit: types.NewInt(100),
@@ -61,6 +64,7 @@ func TestMessageFiltering(t *testing.T) {
 		},
 		types.Message{
 			From:     a2,
+			To:       a1,
 			Nonce:    0,
 			Value:    types.NewInt(800),
 			GasLimit: types.NewInt(100),
@@ -68,6 +72,7 @@ func TestMessageFiltering(t *testing.T) {
 		},
 		types.Message{
 			From:     a2,
+			To:       a1,
 			Nonce:    2,
 			Value:    types.NewInt(150),
 			GasLimit: types.NewInt(100),
