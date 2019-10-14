@@ -4,6 +4,7 @@ import (
 	"context"
 	"encoding/json"
 	"fmt"
+	"time"
 
 	cid "github.com/ipfs/go-cid"
 	"golang.org/x/xerrors"
@@ -321,7 +322,9 @@ var chainListCmd = &cli.Command{
 		}
 
 		for i := len(tss) - 1; i >= 0; i-- {
-			fmt.Printf("%d [ ", tss[i].Height())
+			mints := tss[i].MinTimestamp()
+			t := time.Unix(int64(mints), 0)
+			fmt.Printf("%d: (%s) [ ", tss[i].Height(), t.Format(time.Stamp))
 			for _, b := range tss[i].Blocks() {
 				fmt.Printf("%s: %s,", b.Cid(), b.Miner)
 			}
