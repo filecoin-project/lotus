@@ -127,7 +127,7 @@ $ lotus-storage-miner state power <miner>
 $ lotus-storage-miner state sectors <miner>
 ```
 
-If you create multiple miners view them with:
+You can view a list of miners with:
 
 ```sh
 $ lotus state list-miners
