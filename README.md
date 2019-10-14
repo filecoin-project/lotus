@@ -31,17 +31,19 @@ If you have run lotus before and want to remove all previous data: `rm -rf ~/.lo
 
 [You can copy `lotus` and `lotus-storage-miner` to your `$GOPATH/bin` or `$PATH`, or reference all lotus commands below from your local build directory with `./lotus`]
 
-The following sections describe how to use the lotus CLI. Alternately you can run lotus nodes and miners using the [Pond GUI](#pond).
+The following sections describe how to use the lotus CLI. All these commands should be run from within the directory containing lotus source files. Alternately you can run lotus nodes and miners using the [Pond GUI](#pond).
 
 ### Start Daemon
 
+From within the lotus source directory:
+
 ```sh
-$ lotus daemon
+$ ./lotus daemon
 ```
 
 In another window check that you are connected to the network:
 ```sh
-$ lotus net peers | wc -l
+$ ./lotus net peers | wc -l
 2 # number of peers
 ```
 
@@ -49,15 +51,17 @@ $ lotus net peers | wc -l
 
 You can follow sync status with:
 ```sh
-$ watch lotus sync status
+$ watch ./lotus sync status
 ```
+
+[It may take a few minutes for the chain to finish syncing. You will see `Height: 0` until the full chain is synced and validated.]
 
 
 ### Basics
 
 Create a new address:
 ```sh
-$ lotus wallet new bls
+$ ./lotus wallet new bls
 t3...
 ```
 
@@ -69,39 +73,38 @@ BLS signatures use less space so will have lower fees.)
 
 Check the wallet balance:
 ```sh
-$ lotus wallet balance [optional address (t3...)]
+$ ./lotus wallet balance [optional address (t3...)]
 ```
 (NOTE: If you see an error like `actor not found` after executing this command,
-it means that either there are no transactions to this address on chain - using
-faucet should 'fix' this, or your node isn't fully synced).
+it means that either your node isn't fully synced or there are no transactions to this address yet on chain. If the latter, using the faucet should 'fix' this).
 
 ### Mining
 
 Ensure that at least one BLS address (`t3..`) in your wallet has enough funds to
 cover pledge collateral:
 ```sh
-$ lotus state pledge-collateral
+$ ./lotus state pledge-collateral
 1234
-$ lotus wallet balance t3...
+$ ./lotus wallet balance [t3...]
 8999
 ```
 (Balance must be higher than the returned pledge collateral for the next step to work)
 
 Initialize storage miner:
 ```sh
-$ lotus-storage-miner init --owner=t3...  
+$ ./lotus-storage-miner init --owner=t3...  
 ```
 This command should return successfully after miner is setup on-chain (30-60s)
 
 Start mining:
 ```sh
-$ lotus-storage-miner run
+$ ./lotus-storage-miner run
 ```
 
 To view the miner id used for deals: 
 
 ```sh
-$ lotus-storage-miner info
+$ ./lotus-storage-miner info
 ```
 
 e.g. miner id `t0111`
@@ -109,25 +112,20 @@ e.g. miner id `t0111`
 Seal random data to start producing PoSts:
 
 ```sh
-$ lotus-storage-miner store-garbage
+$ ./lotus-storage-miner store-garbage
 ```
 
 You can check miner power and sector usage with the miner id:
 
 ```sh
 # Total power of the network
-$ lotus-storage-miner state power
+$ ./lotus-storage-miner state power
 
-$ lotus-storage-miner state power <miner>
+$ ./lotus-storage-miner state power <miner>
 
-$ lotus-storage-miner state sectors <miner>
+$ ./lotus-storage-miner state sectors <miner>
 ```
 
-If you create multiple miners view them with:
-
-```sh
-$ lotus state list-miners
-```
 
 ### Stage Data
 
@@ -138,11 +136,11 @@ Import some data:
 $ echo "Hi my name is $USER" > hello.txt
 
 # Import the file into lotus & get a Data CID
-$ lotus client import ./hello.txt
+$ ./lotus client import ./hello.txt
 <Data CID>
 
 # List imported files by CID, name, size, status
-$ lotus client local
+$ ./lotus client local
 ```
 
 (CID is short for Content Identifier, a self describing content address used throughout the IPFS ecosystem. It is a cryptographic hash that uniquely maps to the data and verifies it has not changed.)
@@ -152,14 +150,17 @@ $ lotus client local
 (It is possible for a Client to make a deal with a Miner on the same lotus Node.)
 
 ```sh
+# List all miners in the system. Choose one to make a deal with.
+$ ./lotus state list-miners
+
 # List asks proposed by a miner
-$ lotus client query-ask <miner>
+$ ./lotus client query-ask <miner>
 
 # Propose a deal with a miner
-$ lotus client deal <Data CID> <miner> <price> <duration>
+$ ./lotus client deal <Data CID> <miner> <price> <duration>
 ```
 
-For example `$ lotus client deal bafkre...qvtjsi t0111 36000 12` proposes a deal to store CID `bafkre...qvtjsi` with miner `t0111` at price `36000` for a duration of `12` blocks.
+For example `$ ./lotus client deal bafkre...qvtjsi t0111 36000 12` proposes a deal to store CID `bafkre...qvtjsi` with miner `t0111` at price `36000` for a duration of `12` blocks.
 
 ### Search & Retrieval
 
@@ -167,7 +168,7 @@ If you've stored data with a miner in the network, you can search for it by CID:
 
 ```sh
 # Search for data by CID
-$ lotus client find <Data CID>
+$ ./lotus client find <Data CID>
 LOCAL
 RETRIEVAL <miner>@<miner peerId>-<deal funds>-<size>
 ```
@@ -175,7 +176,7 @@ RETRIEVAL <miner>@<miner peerId>-<deal funds>-<size>
 To retrieve data from a miner:
 
 ```sh
-$ lotus client retrieve <Data CID> <outfile>
+$ ./lotus client retrieve <Data CID> <outfile>
 ```
 
 This will initiate a retrieval deal and write the data to the outfile. (This process may take some time.)
