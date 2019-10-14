@@ -33,6 +33,10 @@ If you have run lotus before and want to remove all previous data: `rm -rf ~/.lo
 
 The following sections describe how to use the lotus CLI. Alternately you can run lotus nodes and miners using the [Pond GUI](#pond).
 
+### lotus Devnet
+
+The current lotus build will automatically join the lotus Devnet using the genesis and bootstrap files in the `build/` directory. No configuration is needed.
+
 ### Start Daemon
 
 ```sh
@@ -64,8 +68,8 @@ t3...
 Grab some funds from faucet - go to http://147.75.80.29:777/, paste the address
 you just created, and press Send.
 
-(You can also generate a public key address using secp256k1 with `lotus wallet new secp256k1`.
-BLS signatures use less space so will have lower fees.)
+(You can also generate a public key address using secp256k1 with 
+`lotus wallet new secp256k1`. BLS signatures use less space so will have lower fees.)
 
 Check the wallet balance:
 ```sh
