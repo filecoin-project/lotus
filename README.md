@@ -11,7 +11,7 @@ All work is tracked via issues. An attempt at keeping an up-to-date view on rema
 
 *Dependencies:*
 
-- go (1.12 or higher)
+- go (1.13 or higher)
 - gcc (7.4.0 or higher)
 - git
 - bzr (some go dependency needs this)
