@@ -9,7 +9,6 @@ import (
 	"golang.org/x/xerrors"
 
 	"github.com/ipfs/go-cid"
-	pubsub "github.com/libp2p/go-libp2p-pubsub"
 	"go.uber.org/fx"
 )
 
@@ -18,24 +17,11 @@ type ChainAPI struct {
 
 	WalletAPI
 
-	Chain  *store.ChainStore
-	PubSub *pubsub.PubSub
+	Chain *store.ChainStore
 }
 
 func (a *ChainAPI) ChainNotify(ctx context.Context) (<-chan []*store.HeadChange, error) {
 	return a.Chain.SubHeadChanges(ctx), nil
-}
-
-func (a *ChainAPI) ChainSubmitBlock(ctx context.Context, blk *types.BlockMsg) error {
-	// TODO: should we have some sort of fast path to adding a local block?
-
-	b, err := blk.Serialize()
-	if err != nil {
-		return xerrors.Errorf("serializing block for pubsub publishing failed: %w", err)
-	}
-
-	// TODO: anything else to do here?
-	return a.PubSub.Publish("/fil/blocks", b)
 }
 
 func (a *ChainAPI) ChainHead(context.Context) (*types.TipSet, error) {

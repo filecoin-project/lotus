@@ -27,6 +27,7 @@ type api struct {
 	fx.In
 
 	full.ChainAPI
+	full.SyncAPI
 	full.MpoolAPI
 	full.WalletAPI
 	full.StateAPI
@@ -183,7 +184,7 @@ func (m *Miner) mine(ctx context.Context) {
 					"time", time.Now(), "duration", time.Now().Sub(btime))
 			}
 
-			if err := m.api.ChainSubmitBlock(ctx, b); err != nil {
+			if err := m.api.SyncSubmitBlock(ctx, b); err != nil {
 				log.Errorf("failed to submit newly mined block: %s", err)
 			}
 		} else {

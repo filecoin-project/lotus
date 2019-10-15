@@ -94,7 +94,7 @@ func (syncer *Syncer) InformNewHead(from peer.ID, fts *store.FullTipSet) {
 	}
 
 	for _, b := range fts.Blocks {
-		if err := syncer.validateMsgMeta(b); err != nil {
+		if err := syncer.ValidateMsgMeta(b); err != nil {
 			log.Warnf("invalid block received: %s", err)
 			return
 		}
@@ -122,7 +122,7 @@ func (syncer *Syncer) InformNewHead(from peer.ID, fts *store.FullTipSet) {
 	}()
 }
 
-func (syncer *Syncer) validateMsgMeta(fblk *types.FullBlock) error {
+func (syncer *Syncer) ValidateMsgMeta(fblk *types.FullBlock) error {
 	var bcids, scids []cbg.CBORMarshaler
 	for _, m := range fblk.BlsMessages {
 		c := cbg.CborCid(m.Cid())
@@ -145,6 +145,14 @@ func (syncer *Syncer) validateMsgMeta(fblk *types.FullBlock) error {
 	}
 
 	return nil
+}
+
+func (syncer *Syncer) LocalPeer() peer.ID {
+	return syncer.self
+}
+
+func (syncer *Syncer) ChainStore() *store.ChainStore {
+	return syncer.store
 }
 
 func (syncer *Syncer) InformNewBlock(from peer.ID, blk *types.FullBlock) {
