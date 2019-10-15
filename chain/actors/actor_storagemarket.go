@@ -2,7 +2,6 @@ package actors
 
 import (
 	"context"
-	"fmt"
 
 	"github.com/filecoin-project/go-lotus/build"
 	"github.com/filecoin-project/go-lotus/chain/actors/aerrors"
@@ -436,7 +435,7 @@ func pledgeCollateralForSize(vmctx types.VMContext, size, totalStorage types.Big
 func MinerSetHas(ctx context.Context, vmctx types.VMContext, rcid cid.Cid, maddr address.Address) (bool, aerrors.ActorError) {
 	nd, err := hamt.LoadNode(ctx, vmctx.Ipld(), rcid)
 	if err != nil {
-		return false, aerrors.Escalate(err, "failed to load miner set")
+		return false, aerrors.HandleExternalError(err, "failed to load miner set")
 	}
 
 	err = nd.Find(ctx, string(maddr.Bytes()), nil)
@@ -446,7 +445,7 @@ func MinerSetHas(ctx context.Context, vmctx types.VMContext, rcid cid.Cid, maddr
 	case nil:
 		return true, nil
 	default:
-		return false, aerrors.Escalate(err, "failed to do set lookup")
+		return false, aerrors.HandleExternalError(err, "failed to do set lookup")
 	}
 }
 
@@ -475,30 +474,30 @@ func MinerSetList(ctx context.Context, cst *hamt.CborIpldStore, rcid cid.Cid) ([
 func MinerSetAdd(ctx context.Context, vmctx types.VMContext, rcid cid.Cid, maddr address.Address) (cid.Cid, aerrors.ActorError) {
 	nd, err := hamt.LoadNode(ctx, vmctx.Ipld(), rcid)
 	if err != nil {
-		return cid.Undef, aerrors.Escalate(err, "failed to load miner set")
+		return cid.Undef, aerrors.HandleExternalError(err, "failed to load miner set")
 	}
 
 	mkey := string(maddr.Bytes())
 	err = nd.Find(ctx, mkey, nil)
 	if err == nil {
-		return cid.Undef, aerrors.Escalate(fmt.Errorf("miner already found"), "miner set add failed")
+		return cid.Undef, aerrors.New(20, "miner already in set")
 	}
 
 	if !xerrors.Is(err, hamt.ErrNotFound) {
-		return cid.Undef, aerrors.Escalate(err, "failed to do miner set check")
+		return cid.Undef, aerrors.HandleExternalError(err, "failed to do miner set check")
 	}
 
 	if err := nd.Set(ctx, mkey, uint64(1)); err != nil {
-		return cid.Undef, aerrors.Escalate(err, "adding miner address to set failed")
+		return cid.Undef, aerrors.HandleExternalError(err, "adding miner address to set failed")
 	}
 
 	if err := nd.Flush(ctx); err != nil {
-		return cid.Undef, aerrors.Escalate(err, "failed to flush miner set")
+		return cid.Undef, aerrors.HandleExternalError(err, "failed to flush miner set")
 	}
 
 	c, err := vmctx.Ipld().Put(ctx, nd)
 	if err != nil {
-		return cid.Undef, aerrors.Escalate(err, "failed to persist miner set to storage")
+		return cid.Undef, aerrors.HandleExternalError(err, "failed to persist miner set to storage")
 	}
 
 	return c, nil
@@ -507,7 +506,7 @@ func MinerSetAdd(ctx context.Context, vmctx types.VMContext, rcid cid.Cid, maddr
 func MinerSetRemove(ctx context.Context, vmctx types.VMContext, rcid cid.Cid, maddr address.Address) (cid.Cid, aerrors.ActorError) {
 	nd, err := hamt.LoadNode(ctx, vmctx.Ipld(), rcid)
 	if err != nil {
-		return cid.Undef, aerrors.Escalate(err, "failed to load miner set")
+		return cid.Undef, aerrors.HandleExternalError(err, "failed to load miner set")
 	}
 
 	mkey := string(maddr.Bytes())
@@ -515,17 +514,17 @@ func MinerSetRemove(ctx context.Context, vmctx types.VMContext, rcid cid.Cid, ma
 	case hamt.ErrNotFound:
 		return cid.Undef, aerrors.New(1, "miner not found in set on delete")
 	default:
-		return cid.Undef, aerrors.Escalate(err, "failed to delete miner from set")
+		return cid.Undef, aerrors.HandleExternalError(err, "failed to delete miner from set")
 	case nil:
 	}
 
 	if err := nd.Flush(ctx); err != nil {
-		return cid.Undef, aerrors.Escalate(err, "failed to flush miner set")
+		return cid.Undef, aerrors.HandleExternalError(err, "failed to flush miner set")
 	}
 
 	c, err := vmctx.Ipld().Put(ctx, nd)
 	if err != nil {
-		return cid.Undef, aerrors.Escalate(err, "failed to persist miner set to storage")
+		return cid.Undef, aerrors.HandleExternalError(err, "failed to persist miner set to storage")
 	}
 
 	return c, nil
