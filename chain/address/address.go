@@ -325,6 +325,10 @@ func hash(ingest []byte, cfg *blake2b.Config) []byte {
 }
 
 func (a Address) MarshalCBOR(w io.Writer) error {
+	if a == Undef {
+		return fmt.Errorf("cannot marshal undefined address")
+	}
+
 	abytes := a.Bytes()
 	if _, err := w.Write(cbg.CborEncodeMajorType(cbg.MajByteString, uint64(len(abytes)))); err != nil {
 		return err
@@ -359,6 +363,9 @@ func (a *Address) UnmarshalCBOR(br io.Reader) error {
 	addr, err := NewFromBytes(buf)
 	if err != nil {
 		return err
+	}
+	if addr == Undef {
+		return fmt.Errorf("cbor input should not contain empty addresses")
 	}
 
 	*a = addr

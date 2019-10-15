@@ -2,9 +2,11 @@ package events
 
 import (
 	"context"
-	"github.com/stretchr/testify/require"
 	"testing"
 
+	"github.com/stretchr/testify/require"
+
+	"github.com/filecoin-project/go-lotus/chain/address"
 	"github.com/filecoin-project/go-lotus/chain/types"
 )
 
@@ -16,8 +18,11 @@ func TestTsCache(t *testing.T) {
 
 	h := uint64(75)
 
+	a, _ := address.NewFromString("t00")
+
 	add := func() {
 		ts, err := types.NewTipSet([]*types.BlockHeader{{
+			Miner:                 a,
 			Height:                h,
 			ParentStateRoot:       dummyCid,
 			Messages:              dummyCid,
@@ -54,8 +59,10 @@ func TestTsCacheNulls(t *testing.T) {
 
 	h := uint64(75)
 
+	a, _ := address.NewFromString("t00")
 	add := func() {
 		ts, err := types.NewTipSet([]*types.BlockHeader{{
+			Miner:                 a,
 			Height:                h,
 			ParentStateRoot:       dummyCid,
 			Messages:              dummyCid,
