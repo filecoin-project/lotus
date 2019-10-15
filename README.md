@@ -7,10 +7,12 @@ Lotus is an experimental implementation of the Filecoin Distributed Storage Netw
 All work is tracked via issues. An attempt at keeping an up-to-date view on remaining work is in the [lotus testnet github project board](https://github.com/filecoin-project/lotus/projects/1).
 
 
-## Building
+## Build & install
 
-*Dependencies:*
+We currently only provide the option to build lotus from source. Binary installation options are coming soon!
 
+In order to run lotus, please do the following:
+1. Make sure you have these dependencies installed:
 - go (1.13 or higher)
 - gcc (7.4.0 or higher)
 - git
@@ -18,10 +20,19 @@ All work is tracked via issues. An attempt at keeping an up-to-date view on rema
 - jq
 - pkg-config
 
-*Building:*
+
+2. Clone this repo & `cd` into it
+```
+$ git clone https://github.com/filecoin-project/lotus.git
+$ cd lotus/
+```
+
+3. Build the source code
 ```
 $ make
 ```
+
+Now, you should be able to perform the commands listed below.
 
 ## Devnet
 
