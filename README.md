@@ -71,7 +71,7 @@ you just created, and press Send.
 (You can also generate a public key address using secp256k1 with `lotus wallet new secp256k1`.
 BLS signatures use less space so will have lower fees.)
 
-Check the wallet balance:
+Check the wallet balance (balance is listed in attoFIL, where 1 attoFIL = 10^-18 FIL):
 ```sh
 $ ./lotus wallet balance [optional address (t3...)]
 ```
@@ -156,11 +156,11 @@ $ ./lotus state list-miners
 # List asks proposed by a miner
 $ ./lotus client query-ask <miner>
 
-# Propose a deal with a miner
+# Propose a deal with a miner. Price is in attoFIL/byte/block. Duration is # of blocks.
 $ ./lotus client deal <Data CID> <miner> <price> <duration>
 ```
 
-For example `$ ./lotus client deal bafkre...qvtjsi t0111 36000 12` proposes a deal to store CID `bafkre...qvtjsi` with miner `t0111` at price `36000` for a duration of `12` blocks.
+For example `$ ./lotus client deal bafkre...qvtjsi t0111 36000 12` proposes a deal to store CID `bafkre...qvtjsi` with miner `t0111` at price `36000` for a duration of `12` blocks. If successful, the `client deal` command will return a deal CID.
 
 ### Search & Retrieval
 
