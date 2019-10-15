@@ -6,6 +6,7 @@ import (
 	"net/http"
 	"os"
 
+	rice "github.com/GeertJohan/go.rice"
 	logging "github.com/ipfs/go-log"
 	"golang.org/x/xerrors"
 	"gopkg.in/urfave/cli.v2"
@@ -89,8 +90,9 @@ var runCmd = &cli.Command{
 			from: from,
 		}
 
-		http.HandleFunc("/", h.index)
+		http.Handle("/", http.FileServer(rice.MustFindBox("site").HTTPBox()))
 		http.HandleFunc("/send", h.send)
+		http.HandleFunc("/sendcoll", h.sendColl)
 
 		fmt.Printf("Open http://%s\n", cctx.String("front"))
 
@@ -110,13 +112,6 @@ type handler struct {
 	from address.Address
 }
 
-func (h *handler) index(w http.ResponseWriter, r *http.Request) {
-	fmt.Fprintf(w, "<!DOCTYPE html>\n<html><head><title>Lotus Fountain</title><style>body {font-family: 'monospace';}</style></head><body>")
-	fmt.Fprintf(w, "<form action='/send' method='get'>Enter destination address: ")
-	fmt.Fprintf(w, "<input type='text' name='address'><br><button type='submit'>Send</button>")
-	fmt.Fprintf(w, "</form></body></html>")
-}
-
 func (h *handler) send(w http.ResponseWriter, r *http.Request) {
 	to, err := address.NewFromString(r.FormValue("address"))
 	if err != nil {
@@ -127,6 +122,36 @@ func (h *handler) send(w http.ResponseWriter, r *http.Request) {
 
 	smsg, err := h.api.MpoolPushMessage(h.ctx, &types.Message{
 		Value: sendPerRequest,
+		From:  h.from,
+		To:    to,
+
+		GasPrice: types.NewInt(0),
+		GasLimit: types.NewInt(1000),
+	})
+	if err != nil {
+		w.WriteHeader(400)
+		w.Write([]byte(err.Error()))
+		return
+	}
+
+	w.Write([]byte(smsg.Cid().String()))
+}
+
+func (h *handler) sendColl(w http.ResponseWriter, r *http.Request) {
+	to, err := address.NewFromString(r.FormValue("address"))
+	if err != nil {
+		w.WriteHeader(400)
+		w.Write([]byte(err.Error()))
+		return
+	}
+
+	coll, err := h.api.StatePledgeCollateral(h.ctx, nil)
+	if err != nil {
+		return
+	}
+
+	smsg, err := h.api.MpoolPushMessage(h.ctx, &types.Message{
+		Value: coll,
 		From:  h.from,
 		To:    to,
 
