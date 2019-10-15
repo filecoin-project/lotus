@@ -65,7 +65,7 @@ func TestVMInvokeMethod(t *testing.T) {
 	from := addrs[0]
 
 	var err error
-	cenc, err := SerializeParams(&StorageMinerConstructorParams{})
+	cenc, err := SerializeParams(&StorageMinerConstructorParams{Owner: from, Worker: from})
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -116,6 +116,7 @@ func TestStorageMarketActorCreateMiner(t *testing.T) {
 	cheatStorageMarketTotal(t, vm, bs)
 
 	params := &StorageMinerConstructorParams{
+		Owner:      maddr,
 		Worker:     maddr,
 		SectorSize: types.NewInt(build.SectorSize),
 		PeerID:     "fakepeerid",

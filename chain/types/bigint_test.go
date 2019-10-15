@@ -7,7 +7,7 @@ import (
 
 func TestBigIntSerializationRoundTrip(t *testing.T) {
 	testValues := []string{
-		"0", "1", "10", "9999", "12345678901234567891234567890123456789012345678901234567890",
+		"0", "1", "10", "-10", "9999", "12345678901234567891234567890123456789012345678901234567890",
 	}
 
 	for _, v := range testValues {
@@ -29,5 +29,6 @@ func TestBigIntSerializationRoundTrip(t *testing.T) {
 		if BigCmp(out, bi) != 0 {
 			t.Fatal("failed to round trip BigInt through cbor")
 		}
+
 	}
 }

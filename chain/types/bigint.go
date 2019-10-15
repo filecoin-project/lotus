@@ -133,6 +133,10 @@ func (bi *BigInt) cborBytes() []byte {
 }
 
 func fromCborBytes(buf []byte) (BigInt, error) {
+	if len(buf) == 0 {
+		return NewInt(0), nil
+	}
+
 	var negative bool
 	switch buf[0] {
 	case 0:
