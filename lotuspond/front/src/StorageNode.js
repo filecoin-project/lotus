@@ -70,7 +70,7 @@ class StorageNode extends React.Component {
   async loadInfo() {
     const version = await this.state.client.call("Filecoin.Version", [])
     const peers = await this.state.client.call("Filecoin.NetPeers", [])
-    const [actor] = await this.state.client.call("Filecoin.ActorAddresses", [])
+    const actor = await this.state.client.call("Filecoin.ActorAddress", [])
 
     const stActor = await this.props.fullConn.call('Filecoin.StateGetActor', [actor, null])
     const actorState = await this.props.fullConn.call('Filecoin.StateReadState', [stActor, null])
@@ -80,9 +80,9 @@ class StorageNode extends React.Component {
   }
 
   async stagedList() {
-    let stagedList = await this.state.client.call("Filecoin.SectorsStagedList", [])
+    let stagedList = await this.state.client.call("Filecoin.SectorsList", [])
     let staged = await stagedList
-      .map(sector => this.state.client.call("Filecoin.SectorsStatus", [sector.SectorID]))
+      .map(sector => this.state.client.call("Filecoin.SectorsStatus", [sector]))
       .reduce(async (p, n) => [...await p, await n], Promise.resolve([]))
 
     let statusCounts = staged.reduce((p, n) => p.map((e, i) => e + (i === n.State ? 1 : 0) ), [0, 0, 0, 0, 0])

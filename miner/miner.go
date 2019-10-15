@@ -161,7 +161,7 @@ func (m *Miner) mine(ctx context.Context) {
 			continue
 		}
 		if base.ts.Equals(lastBase.ts) && len(lastBase.tickets) == len(base.tickets) {
-			log.Error("BestMiningCandidate from the previous round: %s (tkts:%d)", lastBase.ts.Cids(), len(lastBase.tickets))
+			log.Errorf("BestMiningCandidate from the previous round: %s (tkts:%d)", lastBase.ts.Cids(), len(lastBase.tickets))
 			time.Sleep(build.BlockDelay * time.Second)
 			continue
 		}
