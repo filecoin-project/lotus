@@ -65,6 +65,9 @@ func main() {
 		log.Fatal(err)
 	}
 
+	wq := NewInfluxWriteQueue(ctx, influx)
+	defer wq.Close()
+
 	for tipset := range tipsetsCh {
 		pl := NewPointList()
 		height := tipset.Height()
@@ -106,8 +109,6 @@ func main() {
 
 		log.Printf("Writing %d points for height %d", len(nb.Points()), tipset.Height())
 
-		if err := influx.Write(nb); err != nil {
-			log.Fatal(err)
-		}
+		wq.AddBatch(nb)
 	}
 }

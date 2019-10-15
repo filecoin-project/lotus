@@ -34,6 +34,51 @@ func (pl *PointList) Points() []models.Point {
 	return pl.points
 }
 
+type InfluxWriteQueue struct {
+	influx client.Client
+	ch     chan client.BatchPoints
+}
+
+func NewInfluxWriteQueue(ctx context.Context, influx client.Client) *InfluxWriteQueue {
+	ch := make(chan client.BatchPoints, 128)
+
+	maxRetries := 10
+
+	go func() {
+	main:
+		for {
+			select {
+			case <-ctx.Done():
+				return
+			case batch := <-ch:
+				for i := 0; i < maxRetries; i++ {
+					if err := influx.Write(batch); err != nil {
+						log.Printf("Failed to write batch: %w", err)
+						time.Sleep(time.Second * 15)
+						continue
+					}
+
+					continue main
+				}
+
+				log.Printf("Dropping batch due to failure to write")
+			}
+		}
+	}()
+
+	return &InfluxWriteQueue{
+		ch: ch,
+	}
+}
+
+func (i *InfluxWriteQueue) AddBatch(bp client.BatchPoints) {
+	i.ch <- bp
+}
+
+func (i *InfluxWriteQueue) Close() {
+	close(i.ch)
+}
+
 func InfluxClient(addr, user, pass string) (client.Client, error) {
 	return client.NewHTTPClient(client.HTTPConfig{
 		Addr:     addr,
