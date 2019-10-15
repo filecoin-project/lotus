@@ -5,13 +5,14 @@ import (
 	"github.com/ipfs/go-cid"
 	cbor "github.com/ipfs/go-ipld-cbor"
 
+	"github.com/filecoin-project/go-lotus/chain/actors"
 	"github.com/filecoin-project/go-lotus/chain/address"
 	"github.com/filecoin-project/go-lotus/chain/types"
 )
 
 func init() {
-	cbor.RegisterCborType(UnsignedStorageDealProposal{})
 	cbor.RegisterCborType(StorageDealProposal{})
+	cbor.RegisterCborType(SignedStorageDealProposal{})
 
 	cbor.RegisterCborType(PieceInclusionProof{})
 
@@ -33,26 +34,25 @@ const (
 	SerializationIPLD   = "IPLD"
 )
 
-type UnsignedStorageDealProposal struct {
-	PieceRef  cid.Cid // TODO: port to spec
-	PieceSize uint64
+type StorageDealProposal struct {
+	PieceRef          cid.Cid // TODO: port to spec
+	SerializationMode SerializationMode
+	CommP             []byte
 
-	Client   address.Address
-	Provider address.Address
+	Size       uint64
+	TotalPrice types.BigInt
+	Duration   uint64
 
-	ProposalExpiryEpoch uint64
-	DealExpiryEpoch     uint64
+	Payment actors.PaymentInfo
 
-	StoragePrice      types.BigInt
-	StorageCollateral types.BigInt
-
-	ProposerSignature *types.Signature
+	MinerAddress  address.Address
+	ClientAddress address.Address
 }
 
-type StorageDealProposal struct {
-	UnsignedStorageDealProposal // TODO: check bytes
+type SignedStorageDealProposal struct {
+	Proposal StorageDealProposal
 
-	ProposerSignature *types.Signature
+	Signature *types.Signature
 }
 
 // response

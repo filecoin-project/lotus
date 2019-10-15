@@ -134,7 +134,7 @@ func (a *API) ClientListDeals(ctx context.Context) ([]api.DealInfo, error) {
 		out[k] = api.DealInfo{
 			ProposalCid: v.ProposalCid,
 			State:       v.State,
-			Miner:       v.Proposal.Provider,
+			Miner:       v.Proposal.MinerAddress,
 
 			PieceRef: v.Proposal.PieceRef,
 			CommP:    v.Proposal.CommP,

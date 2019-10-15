@@ -27,7 +27,7 @@ func init() {
 
 type MinerDeal struct {
 	Client      peer.ID
-	Proposal    UnsignedStorageDealProposal
+	Proposal    StorageDealProposal
 	ProposalCid cid.Cid
 	State       api.DealState
 
@@ -194,7 +194,7 @@ func (h *Handler) onUpdated(ctx context.Context, update minerDealUpdate) {
 	}
 }
 
-func (h *Handler) newDeal(s inet.Stream, proposal UnsignedStorageDealProposal) (MinerDeal, error) {
+func (h *Handler) newDeal(s inet.Stream, proposal StorageDealProposal) (MinerDeal, error) {
 	// TODO: Review: Not signed?
 	proposalNd, err := cbor.WrapObject(proposal, math.MaxUint64, -1)
 	if err != nil {

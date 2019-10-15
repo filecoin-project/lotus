@@ -46,18 +46,18 @@ func (h *Handler) failDeal(id cid.Cid, cerr error) {
 	}
 }
 
-func (h *Handler) readProposal(s inet.Stream) (proposal StorageDealProposal, err error) {
+func (h *Handler) readProposal(s inet.Stream) (proposal SignedStorageDealProposal, err error) {
 	if err := cborrpc.ReadCborRPC(s, &proposal); err != nil {
 		log.Errorw("failed to read proposal message", "error", err)
-		return StorageDealProposal{}, err
+		return SignedStorageDealProposal{}, err
 	}
 
 	// TODO: Validate proposal maybe
 	// (and signature, obviously)
 
-	if proposal.Proposal.Provider != h.actor {
-		log.Errorf("proposal with wrong Provider: %s", proposal.Proposal.Provider)
-		return StorageDealProposal{}, err
+	if proposal.Proposal.MinerAddress != h.actor {
+		log.Errorf("proposal with wrong MinerAddress: %s", proposal.Proposal.MinerAddress)
+		return SignedStorageDealProposal{}, err
 	}
 
 	return
