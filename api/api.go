@@ -150,7 +150,7 @@ type FullNode interface {
 type StorageMiner interface {
 	Common
 
-	ActorAddresses(context.Context) ([]address.Address, error)
+	ActorAddress(context.Context) (address.Address, error)
 
 	// Temp api for testing
 	StoreGarbageData(context.Context) (uint64, error)
@@ -159,7 +159,7 @@ type StorageMiner interface {
 	SectorsStatus(context.Context, uint64) (sectorbuilder.SectorSealingStatus, error)
 
 	// List all staged sectors
-	SectorsStagedList(context.Context) ([]sectorbuilder.StagedSectorMetadata, error)
+	SectorsList(context.Context) ([]uint64, error)
 
 	// Seal all staged sectors
 	SectorsStagedSeal(context.Context) error
