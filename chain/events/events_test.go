@@ -434,6 +434,35 @@ func TestAtChainedConfidence(t *testing.T) {
 	require.Equal(t, false, reverted)
 }
 
+func TestAtChainedConfidenceNull(t *testing.T) {
+	fcs := &fakeCS{
+		t:   t,
+		h:   1,
+		tsc: newTSCache(2*build.ForkLengthThreshold, nil),
+	}
+	require.NoError(t, fcs.tsc.add(makeTs(t, 1, dummyCid)))
+
+	events := NewEvents(context.Background(), fcs)
+
+	fcs.advance(0, 15, nil, 5)
+
+	var applied bool
+	var reverted bool
+
+	err := events.ChainAt(func(ts *types.TipSet, curH uint64) error {
+		applied = true
+		require.Equal(t, 6, int(ts.Height()))
+		return nil
+	}, func(ts *types.TipSet) error {
+		reverted = true
+		return nil
+	}, 3, 5)
+	require.NoError(t, err)
+
+	require.Equal(t, true, applied)
+	require.Equal(t, false, reverted)
+}
+
 func TestCalled(t *testing.T) {
 	fcs := &fakeCS{
 		t: t,
