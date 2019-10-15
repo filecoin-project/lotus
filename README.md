@@ -44,6 +44,10 @@ If you have run lotus before and want to remove all previous data: `rm -rf ~/.lo
 
 The following sections describe how to use the lotus CLI. All these commands should be run from within the directory containing lotus source files. Alternately you can run lotus nodes and miners using the [Pond GUI](#pond).
 
+### Genesis & Bootstrap
+
+The current lotus build will automatically join the lotus Devnet using the genesis and bootstrap files in the `build/` directory. No configuration is needed.
+
 ### Start Daemon
 
 From within the lotus source directory:
@@ -79,8 +83,8 @@ t3...
 Grab some funds from faucet - go to http://147.75.80.29:777/, paste the address
 you just created, and press Send.
 
-(You can also generate a public key address using secp256k1 with `lotus wallet new secp256k1`.
-BLS signatures use less space so will have lower fees.)
+(You can also generate a public key address using secp256k1 with 
+`lotus wallet new secp256k1`. BLS signatures use less space so will have lower fees.)
 
 Check the wallet balance (balance is listed in attoFIL, where 1 attoFIL = 10^-18 FIL):
 ```sh
@@ -136,7 +140,6 @@ $ ./lotus-storage-miner state power <miner>
 
 $ ./lotus-storage-miner state sectors <miner>
 ```
-
 
 ### Stage Data
 
@@ -228,6 +231,7 @@ Now go to http://127.0.0.1:2222.
 * Turn it off and on - Start at the top
 * `rm -rf ~/.lotus ~/.lotusstorage/`
 * Verify you have the correct versions of dependencies
+* If stuck on a bad fork, try `lotus chain sethead --genesis`
 * If that didn't help, open a new issue, ask in the [Community Forum](https://discuss.filecoin.io) or reach out via [Community chat](https://github.com/filecoin-project/community#chat).
 
 
