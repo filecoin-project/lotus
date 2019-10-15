@@ -1,13 +1,13 @@
- package deals
+package deals
 
- import (
-	 "github.com/filecoin-project/go-lotus/api"
-	 "github.com/ipfs/go-cid"
-	 cbor "github.com/ipfs/go-ipld-cbor"
+import (
+	"github.com/filecoin-project/go-lotus/api"
+	"github.com/ipfs/go-cid"
+	cbor "github.com/ipfs/go-ipld-cbor"
 
-	 "github.com/filecoin-project/go-lotus/chain/address"
-	 "github.com/filecoin-project/go-lotus/chain/types"
- )
+	"github.com/filecoin-project/go-lotus/chain/address"
+	"github.com/filecoin-project/go-lotus/chain/types"
+)
 
 func init() {
 	cbor.RegisterCborType(UnsignedStorageDealProposal{})
@@ -34,19 +34,19 @@ const (
 )
 
 type UnsignedStorageDealProposal struct {
-	PieceRef          cid.Cid // TODO: port to spec
-	PieceSize       uint64
+	PieceRef  cid.Cid // TODO: port to spec
+	PieceSize uint64
 
 	Client   address.Address
 	Provider address.Address
 
 	ProposalExpiryEpoch uint64
-	DealExpiryEpoch uint64
+	DealExpiryEpoch     uint64
 
-	StoragePrice         types.BigInt
-	StorageCollateral    types.BigInt
+	StoragePrice      types.BigInt
+	StorageCollateral types.BigInt
 
-	ProposerSignature    *types.Signature
+	ProposerSignature *types.Signature
 }
 
 type StorageDealProposal struct {

@@ -10,6 +10,9 @@ import (
 )
 
 func (cs *ChainStore) Weight(ctx context.Context, ts *types.TipSet) (types.BigInt, error) {
+	if ts == nil {
+		return types.NewInt(0), nil
+	}
 	// w[r+1] = w[r] + wFunction(totalPowerAtTipset(ts)) * 2^8 + (wFunction(totalPowerAtTipset(ts)) * len(ts.blocks) * wRatio_num * 2^8) / (e * wRatio_den)
 
 	// wr = wRatio_num(0.5) * 2^8 / wRatio_den(2)
@@ -44,7 +47,6 @@ func (cs *ChainStore) Weight(ctx context.Context, ts *types.TipSet) (types.BigIn
 	eWeight := types.BigMul(types.BigMul(types.NewInt(uint64(totalPowerAtTipsetL2)), types.NewInt(uint64(len(ts.Blocks())))), wr)
 	eWeight = types.BigDiv(eWeight, types.NewInt(build.BlocksPerEpoch))
 
-
 	return types.BigAdd(out, eWeight), nil
 }
 
@@ -52,9 +54,9 @@ func (cs *ChainStore) Weight(ctx context.Context, ts *types.TipSet) (types.BigIn
 func (cs *ChainStore) call(ctx context.Context, msg *types.Message, ts *types.TipSet) (*types.MessageReceipt, error) {
 	bstate := ts.ParentState()
 
-	r := vm.NewChainRand(cs, ts.Cids(), ts.Height(), nil)
+	r := NewChainRand(cs, ts.Cids(), ts.Height(), nil)
 
-	vmi, err := vm.NewVM(bstate, ts.Height(), r, actors.NetworkAddress, cs)
+	vmi, err := vm.NewVM(bstate, ts.Height(), r, actors.NetworkAddress, cs.bs)
 	if err != nil {
 		return nil, xerrors.Errorf("failed to set up vm: %w", err)
 	}

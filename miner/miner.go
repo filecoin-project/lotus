@@ -210,8 +210,6 @@ func (m *Miner) GetBestMiningCandidate() (*MiningBase, error) {
 			return m.lastWork, nil
 		}
 
-
-
 		if types.BigCmp(bts.Weight(), m.lastWork.ts.Weight()) <= 0 {
 			return m.lastWork, nil
 		}

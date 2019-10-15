@@ -5,6 +5,7 @@ import (
 	"crypto/sha256"
 	"encoding/json"
 	"fmt"
+	"github.com/filecoin-project/go-lotus/chain/vm"
 	"sync"
 
 	"github.com/filecoin-project/go-lotus/build"
@@ -182,14 +183,14 @@ func (cs *ChainStore) SetGenesis(b *types.BlockHeader) error {
 		return err
 	}
 
-	if err := cs.PutTipSet(ts); err != nil {
+	if err := cs.PutTipSet(context.TODO(), ts); err != nil {
 		return err
 	}
 
 	return cs.ds.Put(dstore.NewKey("0"), b.Cid().Bytes())
 }
 
-func (cs *ChainStore) PutTipSet(ts *types.TipSet) error {
+func (cs *ChainStore) PutTipSet(ctx context.Context, ts *types.TipSet) error {
 	for _, b := range ts.Blocks() {
 		if err := cs.PersistBlockHeader(b); err != nil {
 			return err
@@ -202,16 +203,25 @@ func (cs *ChainStore) PutTipSet(ts *types.TipSet) error {
 	}
 	log.Debugf("expanded %s into %s\n", ts.Cids(), expanded.Cids())
 
-	if err := cs.MaybeTakeHeavierTipSet(expanded); err != nil {
+	if err := cs.MaybeTakeHeavierTipSet(ctx, expanded); err != nil {
 		return errors.Wrap(err, "MaybeTakeHeavierTipSet failed in PutTipSet")
 	}
 	return nil
 }
 
-func (cs *ChainStore) MaybeTakeHeavierTipSet(ts *types.TipSet) error {
+func (cs *ChainStore) MaybeTakeHeavierTipSet(ctx context.Context, ts *types.TipSet) error {
 	cs.heaviestLk.Lock()
 	defer cs.heaviestLk.Unlock()
-	if cs.heaviest == nil || cs.Weight(ts) > cs.Weight(cs.heaviest) {
+	w, err := cs.Weight(ctx, ts)
+	if err != nil {
+		return err
+	}
+	heaviestW, err := cs.Weight(ctx, cs.heaviest)
+	if err != nil {
+		return err
+	}
+
+	if w.GreaterThan(heaviestW) {
 		// TODO: don't do this for initial sync. Now that we don't have a
 		// difference between 'bootstrap sync' and 'caught up' sync, we need
 		// some other heuristic.
@@ -465,7 +475,7 @@ func (cs *ChainStore) expandTipset(b *types.BlockHeader) (*types.TipSet, error) 
 	return types.NewTipSet(all)
 }
 
-func (cs *ChainStore) AddBlock(b *types.BlockHeader) error {
+func (cs *ChainStore) AddBlock(ctx context.Context, b *types.BlockHeader) error {
 	if err := cs.PersistBlockHeader(b); err != nil {
 		return err
 	}
@@ -475,7 +485,7 @@ func (cs *ChainStore) AddBlock(b *types.BlockHeader) error {
 		return err
 	}
 
-	if err := cs.MaybeTakeHeavierTipSet(ts); err != nil {
+	if err := cs.MaybeTakeHeavierTipSet(ctx, ts); err != nil {
 		return errors.Wrap(err, "MaybeTakeHeavierTipSet failed")
 	}
 
@@ -788,4 +798,25 @@ func (cs *ChainStore) GetTipsetByHeight(ctx context.Context, h uint64, ts *types
 		}
 		ts = pts
 	}
+}
+
+type chainRand struct {
+	cs      *ChainStore
+	blks    []cid.Cid
+	bh      uint64
+	tickets []*types.Ticket
+}
+
+func NewChainRand(cs *ChainStore, blks []cid.Cid, bheight uint64, tickets []*types.Ticket) vm.Rand {
+	return &chainRand{
+		cs:      cs,
+		blks:    blks,
+		bh:      bheight,
+		tickets: tickets,
+	}
+}
+
+func (cr *chainRand) GetRandomness(ctx context.Context, h int64) ([]byte, error) {
+	lb := (int64(cr.bh) + int64(len(cr.tickets))) - h
+	return cr.cs.GetRandomness(ctx, cr.blks, cr.tickets, lb)
 }

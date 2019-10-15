@@ -379,6 +379,10 @@ func (c *FullNodeStruct) StateListActors(ctx context.Context, ts *types.TipSet) 
 	return c.Internal.StateListActors(ctx, ts)
 }
 
+func (c *FullNodeStruct) StateTipSetWeight(ctx context.Context, ts *types.TipSet) (types.BigInt, error) {
+	return c.Internal.StateTipSetWeight(ctx, ts)
+}
+
 func (c *FullNodeStruct) PaychGet(ctx context.Context, from, to address.Address, ensureFunds types.BigInt) (*ChannelInfo, error) {
 	return c.Internal.PaychGet(ctx, from, to, ensureFunds)
 }
