@@ -151,7 +151,7 @@ Import some data:
 $ echo "Hi my name is $USER" > hello.txt
 
 # Import the file into lotus & get a Data CID
-$ lotus client import hello.txt
+$ lotus client import ./hello.txt
 <Data CID>
 
 # List imported files by CID, name, size, status
@@ -212,7 +212,7 @@ $ make pond
 
 Run:
 ```
-$ pond run
+$ ./pond run
 Listening on http://127.0.0.1:2222
 ```
 
@@ -273,13 +273,13 @@ The storage miner logic. This package also interfaces with the full node through
 ## Pond
 Pond is a graphical testbed for lotus. It can be used to spin up nodes, connect them in a given topology, start them mining, and observe how they function over time.
 
-To try it out, run `make pond`, then run `pond run`. 
+To try it out, run `make pond`, then run `./pond run`. 
 Once it is running, visit localhost:2222 in your browser.
 
 ## Tracing
 Lotus has tracing built into many of its internals. To view the traces, first download jaeger](https://www.jaegertracing.io/download/) (Choose the 'all-in-one' binary). Then run it somewhere, start up the lotus daemon, and open up localhost:16686 in your browser.
 
-For more details, see [this document](docs/tracing.md).
+For more details, see [this document](./docs/tracing.md).
 
 ## License
 Dual-licensed under [MIT](https://github.com/filecoin-project/lotus/blob/master/LICENSE-MIT) + [Apache 2.0](https://github.com/filecoin-project/lotus/blob/master/LICENSE-APACHE)
