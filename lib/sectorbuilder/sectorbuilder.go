@@ -15,8 +15,6 @@ import (
 	"github.com/filecoin-project/go-lotus/chain/address"
 )
 
-const ()
-
 var log = logging.Logger("sectorbuilder")
 
 type SectorSealingStatus = sectorbuilder.SectorSealingStatus
