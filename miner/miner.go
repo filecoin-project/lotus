@@ -155,13 +155,13 @@ func (m *Miner) mine(ctx context.Context) {
 			return
 		}
 
-		base, err := m.GetBestMiningCandidate()
+		base, err := m.GetBestMiningCandidate(ctx)
 		if err != nil {
 			log.Errorf("failed to get best mining candidate: %s", err)
 			continue
 		}
 		if base.ts.Equals(lastBase.ts) && len(lastBase.tickets) == len(base.tickets) {
-			log.Error("BestMiningCandidate from the previous round: %s (tkts:%d)", lastBase.ts.Cids(), len(lastBase.tickets))
+			log.Errorf("BestMiningCandidate from the previous round: %s (tkts:%d)", lastBase.ts.Cids(), len(lastBase.tickets))
 			time.Sleep(build.BlockDelay * time.Second)
 			continue
 		}
@@ -199,8 +199,8 @@ type MiningBase struct {
 	tickets []*types.Ticket
 }
 
-func (m *Miner) GetBestMiningCandidate() (*MiningBase, error) {
-	bts, err := m.api.ChainHead(context.TODO())
+func (m *Miner) GetBestMiningCandidate(ctx context.Context) (*MiningBase, error) {
+	bts, err := m.api.ChainHead(ctx)
 	if err != nil {
 		return nil, err
 	}
@@ -210,7 +210,16 @@ func (m *Miner) GetBestMiningCandidate() (*MiningBase, error) {
 			return m.lastWork, nil
 		}
 
-		if types.BigCmp(bts.Weight(), m.lastWork.ts.Weight()) <= 0 {
+		btsw, err := m.api.ChainTipSetWeight(ctx, bts)
+		if err != nil {
+			return nil, err
+		}
+		ltsw, err := m.api.ChainTipSetWeight(ctx, m.lastWork.ts)
+		if err != nil {
+			return nil, err
+		}
+
+		if types.BigCmp(btsw, ltsw) <= 0 {
 			return m.lastWork, nil
 		}
 	}

@@ -158,7 +158,7 @@ func NewHarness(t *testing.T, options ...HarnessOpt) *Harness {
 		t.Fatal(err)
 	}
 	h.cs = store.NewChainStore(h.bs, nil)
-	h.vm, err = vm.NewVM(stateroot, 1, nil, h.HI.Miner, h.cs)
+	h.vm, err = vm.NewVM(stateroot, 1, nil, h.HI.Miner, h.cs.Blockstore())
 	if err != nil {
 		t.Fatal(err)
 	}

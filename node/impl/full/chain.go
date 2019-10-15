@@ -160,3 +160,7 @@ func (a *ChainAPI) ChainGetGenesis(ctx context.Context) (*types.TipSet, error) {
 
 	return types.NewTipSet([]*types.BlockHeader{genb})
 }
+
+func (a *ChainAPI) ChainTipSetWeight(ctx context.Context, ts *types.TipSet) (types.BigInt, error) {
+	return a.Chain.Weight(ctx, ts)
+}

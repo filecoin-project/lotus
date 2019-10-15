@@ -75,6 +75,8 @@ func NewTipSet(blks []*BlockHeader) (*TipSet, error) {
 			return nil, fmt.Errorf("cannot create tipset with mismatching heights")
 		}
 		ts.cids = append(ts.cids, b.Cid())
+
+		// TODO: ensure the same parents
 	}
 	ts.height = blks[0].Height
 
@@ -87,12 +89,6 @@ func (ts *TipSet) Cids() []cid.Cid {
 
 func (ts *TipSet) Height() uint64 {
 	return ts.height
-}
-
-func (ts *TipSet) Weight() BigInt {
-	// TODO: implement correctly
-	log.Warn("Called TipSet.Weight: TODO: correct implementation")
-	return BigAdd(ts.blks[0].ParentWeight, NewInt(1))
 }
 
 func (ts *TipSet) Parents() []cid.Cid {

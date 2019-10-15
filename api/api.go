@@ -61,6 +61,7 @@ type FullNode interface {
 	ChainReadObj(context.Context, cid.Cid) ([]byte, error)
 	ChainSetHead(context.Context, *types.TipSet) error
 	ChainGetGenesis(context.Context) (*types.TipSet, error)
+	ChainTipSetWeight(context.Context, *types.TipSet) (types.BigInt, error)
 
 	// syncer
 	SyncState(context.Context) (*SyncState, error)

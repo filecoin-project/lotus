@@ -2,7 +2,6 @@ package stmgr
 
 import (
 	"context"
-
 	"github.com/filecoin-project/go-lotus/api"
 	"github.com/filecoin-project/go-lotus/chain/actors"
 	"github.com/filecoin-project/go-lotus/chain/address"
@@ -82,7 +81,7 @@ func GetPower(ctx context.Context, sm *StateManager, ts *types.TipSet, maddr add
 		ret, err := sm.Call(ctx, &types.Message{
 			From:   maddr,
 			To:     actors.StorageMarketAddress,
-			Method: actors.SMAMethods.PowerLookup,
+			Method: actors.SPAMethods.PowerLookup,
 			Params: enc,
 		}, ts)
 		if err != nil {
@@ -98,7 +97,7 @@ func GetPower(ctx context.Context, sm *StateManager, ts *types.TipSet, maddr add
 	ret, err := sm.Call(ctx, &types.Message{
 		From:   actors.StorageMarketAddress,
 		To:     actors.StorageMarketAddress,
-		Method: actors.SMAMethods.GetTotalStorage,
+		Method: actors.SPAMethods.GetTotalStorage,
 	}, ts)
 	if err != nil {
 		return types.EmptyInt, types.EmptyInt, xerrors.Errorf("failed to get total power from chain: %w", err)

@@ -38,6 +38,9 @@ const AllowableClockDrift = BlockDelay * 2
 // Blocks
 const ForkLengthThreshold = 100
 
+// Blocks (e)
+const BlocksPerEpoch = 1
+
 // /////
 // Proofs / Mining
 

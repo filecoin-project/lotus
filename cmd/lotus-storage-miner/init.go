@@ -289,7 +289,7 @@ func createStorageMiner(ctx context.Context, api api.FullNode, peerid peer.ID, c
 		From:  owner,
 		Value: collateral,
 
-		Method: actors.SMAMethods.CreateStorageMiner,
+		Method: actors.SPAMethods.CreateStorageMiner,
 		Params: params,
 
 		GasLimit: types.NewInt(10000),
