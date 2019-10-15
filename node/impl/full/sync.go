@@ -46,7 +46,18 @@ func (a *SyncAPI) SyncSubmitBlock(ctx context.Context, blk *types.BlockMsg) erro
 		BlsMessages:   bmsgs,
 		SecpkMessages: smsgs,
 	}
-	a.Syncer.InformNewBlock(a.Syncer.LocalPeer(), fb)
+
+	if err := a.Syncer.ValidateMsgMeta(fb); err != nil {
+		xerrors.Errorf("provided messages did not match block: %w", err)
+	}
+
+	ts, err := types.NewTipSet([]*types.BlockHeader{blk.Header})
+	if err != nil {
+		return xerrors.Errorf("somehow failed to make a tipset out of a single block: %w", err)
+	}
+	if err := a.Syncer.Sync(ctx, ts); err != nil {
+		return xerrors.Errorf("sync to submitted block failed: %w", err)
+	}
 
 	b, err := blk.Serialize()
 	if err != nil {
