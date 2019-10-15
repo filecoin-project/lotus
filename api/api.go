@@ -61,6 +61,7 @@ type FullNode interface {
 	ChainReadObj(context.Context, cid.Cid) ([]byte, error)
 	ChainSetHead(context.Context, *types.TipSet) error
 	ChainGetGenesis(context.Context) (*types.TipSet, error)
+	ChainTipSetWeight(context.Context, *types.TipSet) (types.BigInt, error)
 
 	// syncer
 	SyncState(context.Context) (*SyncState, error)
@@ -130,7 +131,6 @@ type FullNode interface {
 	StateWaitMsg(context.Context, cid.Cid) (*MsgWait, error)
 	StateListMiners(context.Context, *types.TipSet) ([]address.Address, error)
 	StateListActors(context.Context, *types.TipSet) ([]address.Address, error)
-	StateTipSetWeight(context.Context, *types.TipSet) (types.BigInt, error)
 
 	PaychGet(ctx context.Context, from, to address.Address, ensureFunds types.BigInt) (*ChannelInfo, error)
 	PaychList(context.Context) ([]address.Address, error)

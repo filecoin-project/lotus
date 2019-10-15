@@ -49,6 +49,7 @@ type FullNodeStruct struct {
 		ChainReadObj           func(context.Context, cid.Cid) ([]byte, error)                             `perm:"read"`
 		ChainSetHead           func(context.Context, *types.TipSet) error                                 `perm:"admin"`
 		ChainGetGenesis        func(context.Context) (*types.TipSet, error)                               `perm:"read"`
+		ChainTipSetWeight      func(context.Context, *types.TipSet) (types.BigInt, error)                 `perm:"read"`
 
 		SyncState       func(context.Context) (*SyncState, error)            `perm:"read"`
 		SyncSubmitBlock func(ctx context.Context, blk *types.BlockMsg) error `perm:"write"`
@@ -97,7 +98,6 @@ type FullNodeStruct struct {
 		StateWaitMsg               func(context.Context, cid.Cid) (*MsgWait, error)                                    `perm:"read"`
 		StateListMiners            func(context.Context, *types.TipSet) ([]address.Address, error)                     `perm:"read"`
 		StateListActors            func(context.Context, *types.TipSet) ([]address.Address, error)                     `perm:"read"`
-		StateTipSetWeight          func(context.Context, *types.TipSet) (types.BigInt, error)                          `perm:"read"`
 
 		PaychGet                   func(ctx context.Context, from, to address.Address, ensureFunds types.BigInt) (*ChannelInfo, error)      `perm:"sign"`
 		PaychList                  func(context.Context) ([]address.Address, error)                                                         `perm:"read"`
@@ -317,6 +317,10 @@ func (c *FullNodeStruct) ChainGetGenesis(ctx context.Context) (*types.TipSet, er
 	return c.Internal.ChainGetGenesis(ctx)
 }
 
+func (c *FullNodeStruct) ChainTipSetWeight(ctx context.Context, ts *types.TipSet) (types.BigInt, error) {
+	return c.Internal.ChainTipSetWeight(ctx, ts)
+}
+
 func (c *FullNodeStruct) SyncState(ctx context.Context) (*SyncState, error) {
 	return c.Internal.SyncState(ctx)
 }
@@ -377,10 +381,6 @@ func (c *FullNodeStruct) StateListMiners(ctx context.Context, ts *types.TipSet) 
 
 func (c *FullNodeStruct) StateListActors(ctx context.Context, ts *types.TipSet) ([]address.Address, error) {
 	return c.Internal.StateListActors(ctx, ts)
-}
-
-func (c *FullNodeStruct) StateTipSetWeight(ctx context.Context, ts *types.TipSet) (types.BigInt, error) {
-	return c.Internal.StateTipSetWeight(ctx, ts)
 }
 
 func (c *FullNodeStruct) PaychGet(ctx context.Context, from, to address.Address, ensureFunds types.BigInt) (*ChannelInfo, error) {

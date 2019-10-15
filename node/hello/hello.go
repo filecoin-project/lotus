@@ -3,6 +3,7 @@ package hello
 import (
 	"context"
 	"fmt"
+	"github.com/filecoin-project/go-lotus/chain/types"
 
 	"github.com/ipfs/go-cid"
 	cbor "github.com/ipfs/go-ipld-cbor"
@@ -26,7 +27,7 @@ func init() {
 
 type Message struct {
 	HeaviestTipSet       []cid.Cid
-	HeaviestTipSetWeight uint64
+	HeaviestTipSetWeight types.BigInt
 	GenesisHash          cid.Cid
 }
 
@@ -83,7 +84,10 @@ func (hs *Service) SayHello(ctx context.Context, pid peer.ID) error {
 	defer s.Close()
 
 	hts := hs.cs.GetHeaviestTipSet()
-	weight := hs.cs.Weight(hts)
+	weight, err := hs.cs.Weight(ctx, hts)
+	if err != nil {
+		return err
+	}
 	gen, err := hs.cs.GetGenesis()
 	if err != nil {
 		return err

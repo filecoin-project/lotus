@@ -226,7 +226,3 @@ func (a *StateAPI) StateListMiners(ctx context.Context, ts *types.TipSet) ([]add
 func (a *StateAPI) StateListActors(ctx context.Context, ts *types.TipSet) ([]address.Address, error) {
 	return a.StateManager.ListAllActors(ctx, ts)
 }
-
-func (a *StateAPI) StateTipSetWeight(ctx context.Context, ts *types.TipSet) (types.BigInt, error) {
-	return a.Chain.Weight(ctx, ts)
-}

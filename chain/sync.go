@@ -261,7 +261,7 @@ func computeMsgMeta(bs amt.Blocks, bmsgCids, smsgCids []cbg.CBORMarshaler) (cid.
 	return mrcid, nil
 }
 
-func (syncer *Syncer) selectHead(heads map[peer.ID]*types.TipSet) (*types.TipSet, error) {
+func (syncer *Syncer) selectHead(ctx context.Context, heads map[peer.ID]*types.TipSet) (*types.TipSet, error) {
 	var headsArr []*types.TipSet
 	for _, ts := range heads {
 		headsArr = append(headsArr, ts)
@@ -298,7 +298,16 @@ func (syncer *Syncer) selectHead(heads map[peer.ID]*types.TipSet) (*types.TipSet
 			return nil, fmt.Errorf("Conflict exists in heads set")
 		}
 
-		if syncer.store.Weight(cur) > syncer.store.Weight(sel) {
+		curw, err := syncer.store.Weight(ctx, cur)
+		if err != nil {
+			return nil, err
+		}
+		selw, err := syncer.store.Weight(ctx, sel)
+		if err != nil {
+			return nil, err
+		}
+
+		if curw.GreaterThan(selw) {
 			sel = cur
 		}
 	}
@@ -352,7 +361,7 @@ func (syncer *Syncer) Sync(ctx context.Context, maybeHead *types.TipSet) error {
 		return xerrors.Errorf("collectChain failed: %w", err)
 	}
 
-	if err := syncer.store.PutTipSet(maybeHead); err != nil {
+	if err := syncer.store.PutTipSet(ctx, maybeHead); err != nil {
 		return xerrors.Errorf("failed to put synced tipset to chainstore: %w", err)
 	}
 

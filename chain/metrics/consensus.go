@@ -89,11 +89,16 @@ func sendHeadNotifs(ctx context.Context, ps *pubsub.PubSub, topic string, chain 
 		case notif := <-notifs:
 			n := notif[len(notif)-1]
 
+			w, err := chain.ChainTipSetWeight(ctx, n.Val)
+			if err != nil {
+				return err
+			}
+
 			m := message{
 				Cids:     n.Val.Cids(),
 				Blocks:   n.Val.Blocks(),
 				Height:   n.Val.Height(),
-				Weight:   n.Val.Weight(),
+				Weight:   w,
 				NodeName: nickname,
 			}
 
