@@ -7,7 +7,7 @@ Lotus is an experimental implementation of the Filecoin Distributed Storage Netw
 All work is tracked via issues. An attempt at keeping an up-to-date view on remaining work is in the [lotus testnet github project board](https://github.com/filecoin-project/lotus/projects/1).
 
 
-## Build & install
+## Building
 
 We currently only provide the option to build lotus from source. Binary installation options are coming soon!
 
@@ -27,9 +27,10 @@ $ git clone https://github.com/filecoin-project/lotus.git
 $ cd lotus/
 ```
 
-3. Build the source code
+3. Build and install the source code
 ```
 $ make
+$ sudo make install
 ```
 
 Now, you should be able to perform the commands listed below.
@@ -40,9 +41,7 @@ Now, you should be able to perform the commands listed below.
 
 If you have run lotus before and want to remove all previous data: `rm -rf ~/.lotus ~/.lotusstorage`
 
-[You can copy `lotus` and `lotus-storage-miner` to your `$GOPATH/bin` or `$PATH`, or reference all lotus commands below from your local build directory with `./lotus`]
-
-The following sections describe how to use the lotus CLI. All these commands should be run from within the directory containing lotus source files. Alternately you can run lotus nodes and miners using the [Pond GUI](#pond).
+The following sections describe how to use the lotus CLI. All these commands should be run from within the `lotus/` directory. Alternately you can run lotus nodes and miners using the [Pond GUI](#pond).
 
 ### Genesis & Bootstrap
 
@@ -54,15 +53,15 @@ The current lotus build will automatically join the lotus Devnet using the genes
 
 ### Start Daemon
 
-From within the lotus source directory:
+From within the `lotus/` directory:
 
 ```sh
-$ ./lotus daemon
+$ lotus daemon
 ```
 
 In another window check that you are connected to the network:
 ```sh
-$ ./lotus net peers | wc -l
+$ lotus net peers | wc -l
 2 # number of peers
 ```
 
@@ -70,7 +69,7 @@ $ ./lotus net peers | wc -l
 
 You can follow sync status with:
 ```sh
-$ watch ./lotus sync status
+$ watch lotus sync status
 ```
 
 [It may take a few minutes for the chain to finish syncing. You will see `Height: 0` until the full chain is synced and validated.]
@@ -80,11 +79,11 @@ $ watch ./lotus sync status
 
 Create a new address:
 ```sh
-$ ./lotus wallet new bls
+$ lotus wallet new bls
 t3...
 ```
 
-Grab some funds from faucet - go to http://147.75.80.29:777/, paste the address
+Grab some funds from faucet - go to http://lotus-faucet.kittyhawk.wtf:777/, paste the address
 you just created, and press Send.
 
 (You can also generate a public key address using secp256k1 with 
@@ -92,7 +91,7 @@ you just created, and press Send.
 
 Check the wallet balance (balance is listed in attoFIL, where 1 attoFIL = 10^-18 FIL):
 ```sh
-$ ./lotus wallet balance [optional address (t3...)]
+$ lotus wallet balance [optional address (t3...)]
 ```
 (NOTE: If you see an error like `actor not found` after executing this command,
 it means that either your node isn't fully synced or there are no transactions to this address yet on chain. If the latter, using the faucet should 'fix' this).
@@ -102,28 +101,28 @@ it means that either your node isn't fully synced or there are no transactions t
 Ensure that at least one BLS address (`t3..`) in your wallet has enough funds to
 cover pledge collateral:
 ```sh
-$ ./lotus state pledge-collateral
+$ lotus state pledge-collateral
 1234
-$ ./lotus wallet balance [t3...]
+$ lotus wallet balance [t3...]
 8999
 ```
 (Balance must be higher than the returned pledge collateral for the next step to work)
 
 Initialize storage miner:
 ```sh
-$ ./lotus-storage-miner init --owner=t3...  
+$ lotus-storage-miner init --owner=t3...  
 ```
 This command should return successfully after miner is setup on-chain (30-60s)
 
 Start mining:
 ```sh
-$ ./lotus-storage-miner run
+$ lotus-storage-miner run
 ```
 
 To view the miner id used for deals: 
 
 ```sh
-$ ./lotus-storage-miner info
+$ lotus-storage-miner info
 ```
 
 e.g. miner id `t0111`
@@ -131,18 +130,18 @@ e.g. miner id `t0111`
 Seal random data to start producing PoSts:
 
 ```sh
-$ ./lotus-storage-miner store-garbage
+$ lotus-storage-miner store-garbage
 ```
 
 You can check miner power and sector usage with the miner id:
 
 ```sh
 # Total power of the network
-$ ./lotus-storage-miner state power
+$ lotus-storage-miner state power
 
-$ ./lotus-storage-miner state power <miner>
+$ lotus-storage-miner state power <miner>
 
-$ ./lotus-storage-miner state sectors <miner>
+$ lotus-storage-miner state sectors <miner>
 ```
 
 ### Stage Data
@@ -154,11 +153,11 @@ Import some data:
 $ echo "Hi my name is $USER" > hello.txt
 
 # Import the file into lotus & get a Data CID
-$ ./lotus client import ./hello.txt
+$ lotus client import hello.txt
 <Data CID>
 
 # List imported files by CID, name, size, status
-$ ./lotus client local
+$ lotus client local
 ```
 
 (CID is short for Content Identifier, a self describing content address used throughout the IPFS ecosystem. It is a cryptographic hash that uniquely maps to the data and verifies it has not changed.)
@@ -169,16 +168,16 @@ $ ./lotus client local
 
 ```sh
 # List all miners in the system. Choose one to make a deal with.
-$ ./lotus state list-miners
+$ lotus state list-miners
 
 # List asks proposed by a miner
-$ ./lotus client query-ask <miner>
+$ lotus client query-ask <miner>
 
 # Propose a deal with a miner. Price is in attoFIL/byte/block. Duration is # of blocks.
-$ ./lotus client deal <Data CID> <miner> <price> <duration>
+$ lotus client deal <Data CID> <miner> <price> <duration>
 ```
 
-For example `$ ./lotus client deal bafkre...qvtjsi t0111 36000 12` proposes a deal to store CID `bafkre...qvtjsi` with miner `t0111` at price `36000` for a duration of `12` blocks. If successful, the `client deal` command will return a deal CID.
+For example `$ lotus client deal bafkre...qvtjsi t0111 36000 12` proposes a deal to store CID `bafkre...qvtjsi` with miner `t0111` at price `36000` for a duration of `12` blocks. If successful, the `client deal` command will return a deal CID.
 
 ### Search & Retrieval
 
@@ -186,7 +185,7 @@ If you've stored data with a miner in the network, you can search for it by CID:
 
 ```sh
 # Search for data by CID
-$ ./lotus client find <Data CID>
+$ lotus client find <Data CID>
 LOCAL
 RETRIEVAL <miner>@<miner peerId>-<deal funds>-<size>
 ```
@@ -194,7 +193,7 @@ RETRIEVAL <miner>@<miner peerId>-<deal funds>-<size>
 To retrieve data from a miner:
 
 ```sh
-$ ./lotus client retrieve <Data CID> <outfile>
+$ lotus client retrieve <Data CID> <outfile>
 ```
 
 This will initiate a retrieval deal and write the data to the outfile. (This process may take some time.)
@@ -215,7 +214,7 @@ $ make pond
 
 Run:
 ```
-$ ./pond run
+$ pond run
 Listening on http://127.0.0.1:2222
 ```
 
@@ -276,13 +275,13 @@ The storage miner logic. This package also interfaces with the full node through
 ## Pond
 Pond is a graphical testbed for lotus. It can be used to spin up nodes, connect them in a given topology, start them mining, and observe how they function over time.
 
-To try it out, run `make pond`, then run `./pond run`. 
+To try it out, run `make pond`, then run `pond run`. 
 Once it is running, visit localhost:2222 in your browser.
 
 ## Tracing
 Lotus has tracing built into many of its internals. To view the traces, first download jaeger](https://www.jaegertracing.io/download/) (Choose the 'all-in-one' binary). Then run it somewhere, start up the lotus daemon, and open up localhost:16686 in your browser.
 
-For more details, see [this document](./docs/tracing.md).
+For more details, see [this document](docs/tracing.md).
 
 ## License
 Dual-licensed under [MIT](https://github.com/filecoin-project/lotus/blob/master/LICENSE-MIT) + [Apache 2.0](https://github.com/filecoin-project/lotus/blob/master/LICENSE-APACHE)
