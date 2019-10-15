@@ -220,7 +220,7 @@ func (tu *syncTestUtil) addSourceNode(gen int) {
 	for _, lastB := range lastTs {
 		cs := out.(*impl.FullNodeAPI).ChainAPI.Chain
 		require.NoError(tu.t, cs.AddToTipSetTracker(lastB.Header))
-		err = cs.AddBlock(lastB.Header)
+		err = cs.AddBlock(tu.ctx, lastB.Header)
 		require.NoError(tu.t, err)
 	}
 
