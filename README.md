@@ -47,10 +47,6 @@ The following sections describe how to use the lotus CLI. Alternately you can ru
 
 The current lotus build will automatically join the lotus Devnet using the genesis and bootstrap files in the `build/` directory. No configuration is needed.
 
-### Genesis & Bootstrap
-
-The current lotus build will automatically join the lotus Devnet using the genesis and bootstrap files in the `build/` directory. No configuration is needed.
-
 ### Start Daemon
 
 ```sh
