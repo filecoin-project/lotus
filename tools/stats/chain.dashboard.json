@@ -14,7 +14,7 @@
       "type": "grafana",
       "id": "grafana",
       "name": "Grafana",
-      "version": "6.4.2"
+      "version": "6.5.0-pre"
     },
     {
       "type": "panel",
@@ -42,7 +42,17 @@
     }
   ],
   "annotations": {
-    "list": []
+    "list": [
+      {
+        "builtIn": 1,
+        "datasource": "-- Grafana --",
+        "enable": true,
+        "hide": true,
+        "iconColor": "rgba(0, 211, 255, 1)",
+        "name": "Annotations & Alerts",
+        "type": "dashboard"
+      }
+    ]
   },
   "editable": true,
   "gnetId": null,
@@ -1462,7 +1472,7 @@
       "dashLength": 10,
       "dashes": false,
       "datasource": "${DS_INFLUXDB}",
-      "fill": 1,
+      "fill": 5,
       "fillGradient": 0,
       "gridPos": {
         "h": 8,
@@ -1499,7 +1509,7 @@
       "renderer": "flot",
       "seriesOverrides": [],
       "spaceLength": 10,
-      "stack": false,
+      "stack": true,
       "steppedLine": false,
       "targets": [
         {
@@ -1558,7 +1568,7 @@
       "tooltip": {
         "shared": true,
         "sort": 2,
-        "value_type": "cumulative"
+        "value_type": "individual"
       },
       "type": "graph",
       "xaxis": {
@@ -1570,11 +1580,12 @@
       },
       "yaxes": [
         {
+          "decimals": 2,
           "format": "bytes",
           "label": "Power",
           "logBase": 1,
-          "max": null,
-          "min": null,
+          "max": "100",
+          "min": "0",
           "show": true
         },
         {
@@ -2103,5 +2114,5 @@
   "timezone": "",
   "title": "Chain",
   "uid": "z6FtI92Zz",
-  "version": 10
+  "version": 4
 }
