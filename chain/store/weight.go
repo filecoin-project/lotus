@@ -18,7 +18,7 @@ func (cs *ChainStore) Weight(ctx context.Context, ts *types.TipSet) (types.BigIn
 	}
 	// >>> w[r] <<< + wFunction(totalPowerAtTipset(ts)) * 2^8 + (wFunction(totalPowerAtTipset(ts)) * len(ts.blocks) * wRatio_num * 2^8) / (e * wRatio_den)
 
-	var out = *ts.Blocks()[0].ParentWeight.Int
+	var out = new(big.Int).Set(ts.Blocks()[0].ParentWeight.Int)
 
 	// >>> wFunction(totalPowerAtTipset(ts)) * 2^8 <<< + (wFunction(totalPowerAtTipset(ts)) * len(ts.blocks) * wRatio_num * 2^8) / (e * wRatio_den)
 
@@ -39,7 +39,7 @@ func (cs *ChainStore) Weight(ctx context.Context, ts *types.TipSet) (types.BigIn
 		log2P = int64(tpow.BitLen() - 1)
 	}
 
-	out.Add(&out, big.NewInt(log2P*256))
+	out.Add(out, big.NewInt(log2P*256))
 
 	// (wFunction(totalPowerAtTipset(ts)) * len(ts.blocks) * wRatio_num * 2^8) / (e * wRatio_den)
 
@@ -48,9 +48,9 @@ func (cs *ChainStore) Weight(ctx context.Context, ts *types.TipSet) (types.BigIn
 
 	eWeight := big.NewInt((log2P * int64(len(ts.Blocks())) * wRatioNum) << 8)
 	eWeight.Div(eWeight, big.NewInt(int64(build.BlocksPerEpoch*wRatioDen)))
-	out.Add(&out, eWeight)
+	out.Add(out, eWeight)
 
-	return types.BigInt{Int: &out}, nil
+	return types.BigInt{Int: out}, nil
 }
 
 // todo: dedupe with state manager
