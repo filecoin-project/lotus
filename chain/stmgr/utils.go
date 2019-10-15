@@ -70,14 +70,14 @@ func GetMinerOwner(ctx context.Context, sm *StateManager, st cid.Cid, maddr addr
 
 func GetPower(ctx context.Context, sm *StateManager, ts *types.TipSet, maddr address.Address) (types.BigInt, types.BigInt, error) {
 	var err error
-	enc, err := actors.SerializeParams(&actors.PowerLookupParams{maddr})
-	if err != nil {
-		return types.EmptyInt, types.EmptyInt, err
-	}
 
 	var mpow types.BigInt
 
 	if maddr != address.Undef {
+		enc, aerr := actors.SerializeParams(&actors.PowerLookupParams{maddr})
+		if aerr != nil {
+			return types.EmptyInt, types.EmptyInt, aerr
+		}
 		ret, err := sm.Call(ctx, &types.Message{
 			From:   maddr,
 			To:     actors.StorageMarketAddress,
