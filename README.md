@@ -1,3 +1,5 @@
+![Lotus](docs/images/lotus_logo_h.png)
+
 # project lotus - 莲
 
 Lotus is an experimental implementation of the Filecoin Distributed Storage Network. For more details about Filecoin, check out the [Filecoin Spec](https://github.com/filecoin-project/specs).
