@@ -41,7 +41,7 @@ Now, you should be able to perform the commands listed below.
 
 If you have run lotus before and want to remove all previous data: `rm -rf ~/.lotus ~/.lotusstorage`
 
-The following sections describe how to use the lotus CLI. All these commands should be run from within the `lotus/` directory. Alternately you can run lotus nodes and miners using the [Pond GUI](#pond).
+The following sections describe how to use the lotus CLI. Alternately you can run lotus nodes and miners using the [Pond GUI](#pond).
 
 ### Genesis & Bootstrap
 
@@ -52,8 +52,6 @@ The current lotus build will automatically join the lotus Devnet using the genes
 The current lotus build will automatically join the lotus Devnet using the genesis and bootstrap files in the `build/` directory. No configuration is needed.
 
 ### Start Daemon
-
-From within the `lotus/` directory:
 
 ```sh
 $ lotus daemon
