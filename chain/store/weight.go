@@ -7,21 +7,20 @@ import (
 	"github.com/filecoin-project/go-lotus/chain/types"
 	"github.com/filecoin-project/go-lotus/chain/vm"
 	"golang.org/x/xerrors"
+	"math/big"
 )
+
+var zero = types.NewInt(0)
 
 func (cs *ChainStore) Weight(ctx context.Context, ts *types.TipSet) (types.BigInt, error) {
 	if ts == nil {
 		return types.NewInt(0), nil
 	}
-	// w[r+1] = w[r] + wFunction(totalPowerAtTipset(ts)) * 2^8 + (wFunction(totalPowerAtTipset(ts)) * len(ts.blocks) * wRatio_num * 2^8) / (e * wRatio_den)
+	// >>> w[r] <<< + wFunction(totalPowerAtTipset(ts)) * 2^8 + (wFunction(totalPowerAtTipset(ts)) * len(ts.blocks) * wRatio_num * 2^8) / (e * wRatio_den)
 
-	// wr = wRatio_num(0.5) * 2^8 / wRatio_den(2)
-	wr := types.NewInt(256)
+	var out = *ts.Blocks()[0].ParentWeight.Int
 
-	// wFunction(totalPowerAtTipset(ts)) * 2^8 + (wFunction(totalPowerAtTipset(ts)) * len(ts.blocks) * wr ) / e
-
-	// /////
-	// wFunction(totalPowerAtTipset(ts))
+	// >>> wFunction(totalPowerAtTipset(ts)) * 2^8 <<< + (wFunction(totalPowerAtTipset(ts)) * len(ts.blocks) * wRatio_num * 2^8) / (e * wRatio_den)
 
 	ret, err := cs.call(ctx, &types.Message{
 		From:   actors.StorageMarketAddress,
@@ -34,20 +33,24 @@ func (cs *ChainStore) Weight(ctx context.Context, ts *types.TipSet) (types.BigIn
 	if ret.ExitCode != 0 {
 		return types.EmptyInt, xerrors.Errorf("failed to get total power from chain (exit code %d)", ret.ExitCode)
 	}
+	log2P := int64(0)
+	tpow := types.BigFromBytes(ret.Return)
+	if tpow.GreaterThan(zero) {
+		log2P = int64(tpow.BitLen() - 1)
+	}
 
-	totalPowerAtTipsetL2 := types.BigFromBytes(ret.Return).BitLen()
+	out.Add(&out, big.NewInt(log2P*256))
 
-	// //////
-	// w[r] + wFunction(totalPowerAtTipset(ts)) * 2^8
+	// (wFunction(totalPowerAtTipset(ts)) * len(ts.blocks) * wRatio_num * 2^8) / (e * wRatio_den)
 
-	out := types.BigAdd(ts.Blocks()[0].ParentWeight, types.NewInt(uint64(totalPowerAtTipsetL2*256)))
+	wRatioNum := int64(1)
+	wRatioDen := 2
 
-	// //////
-	// (wFunction(totalPowerAtTipset(ts)) * len(ts.blocks) * wr)
-	eWeight := types.BigMul(types.BigMul(types.NewInt(uint64(totalPowerAtTipsetL2)), types.NewInt(uint64(len(ts.Blocks())))), wr)
-	eWeight = types.BigDiv(eWeight, types.NewInt(build.BlocksPerEpoch))
+	eWeight := big.NewInt((log2P * int64(len(ts.Blocks())) * wRatioNum) << 8)
+	eWeight.Div(eWeight, big.NewInt(int64(build.BlocksPerEpoch*wRatioDen)))
+	out.Add(&out, eWeight)
 
-	return types.BigAdd(out, eWeight), nil
+	return types.BigInt{Int: &out}, nil
 }
 
 // todo: dedupe with state manager
