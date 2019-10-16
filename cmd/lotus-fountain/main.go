@@ -5,6 +5,7 @@ import (
 	"fmt"
 	"net/http"
 	"os"
+	"time"
 
 	rice "github.com/GeertJohan/go.rice"
 	logging "github.com/ipfs/go-log"
@@ -88,6 +89,14 @@ var runCmd = &cli.Command{
 			ctx:  ctx,
 			api:  nodeApi,
 			from: from,
+			limiter: NewLimiter(LimiterConfig{
+				TotalRate:   time.Second,
+				TotalBurst:  20,
+				IPRate:      5 * time.Minute,
+				IPBurst:     5,
+				WalletRate:  time.Hour,
+				WalletBurst: 1,
+			}),
 		}
 
 		http.Handle("/", http.FileServer(rice.MustFindBox("site").HTTPBox()))
@@ -110,13 +119,35 @@ type handler struct {
 	api api.FullNode
 
 	from address.Address
+
+	limiter *Limiter
 }
 
 func (h *handler) send(w http.ResponseWriter, r *http.Request) {
+	// General limiter to allow throttling all messages that can make it into the mpool
+	if !h.limiter.Allow() {
+		http.Error(w, http.StatusText(http.StatusTooManyRequests), http.StatusTooManyRequests)
+		return
+	}
+
+	// Limit based on IP
+	limiter := h.limiter.GetIPLimiter(r.RemoteAddr)
+	if !limiter.Allow() {
+		http.Error(w, http.StatusText(http.StatusTooManyRequests), http.StatusTooManyRequests)
+		return
+	}
+
 	to, err := address.NewFromString(r.FormValue("address"))
 	if err != nil {
 		w.WriteHeader(400)
 		w.Write([]byte(err.Error()))
+		return
+	}
+
+	// Limit based on wallet address
+	limiter = h.limiter.GetWalletLimiter(to.String())
+	if !limiter.Allow() {
+		http.Error(w, http.StatusText(http.StatusTooManyRequests), http.StatusTooManyRequests)
 		return
 	}
 
