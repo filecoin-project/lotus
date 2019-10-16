@@ -309,6 +309,10 @@ func createStorageMiner(ctx context.Context, api api.FullNode, peerid peer.ID, c
 		return address.Undef, err
 	}
 
+	if mw.Receipt.ExitCode != 0 {
+		return address.Undef, xerrors.Errorf("create storage miner failed: exit code %d", mw.Receipt.ExitCode)
+	}
+
 	addr, err = address.NewFromBytes(mw.Receipt.Return)
 	if err != nil {
 		return address.Undef, err
