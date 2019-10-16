@@ -4,16 +4,17 @@ import (
 	"context"
 	"fmt"
 
-	"github.com/filecoin-project/go-lotus/chain/actors"
-	"github.com/filecoin-project/go-lotus/chain/types"
-	"github.com/filecoin-project/go-lotus/chain/vm"
-
 	"github.com/ipfs/go-cid"
 	"golang.org/x/xerrors"
+
+	"github.com/filecoin-project/go-lotus/chain/actors"
+	"github.com/filecoin-project/go-lotus/chain/store"
+	"github.com/filecoin-project/go-lotus/chain/types"
+	"github.com/filecoin-project/go-lotus/chain/vm"
 )
 
 func (sm *StateManager) CallRaw(ctx context.Context, msg *types.Message, bstate cid.Cid, r vm.Rand, bheight uint64) (*types.MessageReceipt, error) {
-	vmi, err := vm.NewVM(bstate, bheight, r, actors.NetworkAddress, sm.cs)
+	vmi, err := vm.NewVM(bstate, bheight, r, actors.NetworkAddress, sm.cs.Blockstore())
 	if err != nil {
 		return nil, xerrors.Errorf("failed to set up vm: %w", err)
 	}
@@ -55,7 +56,7 @@ func (sm *StateManager) Call(ctx context.Context, msg *types.Message, ts *types.
 
 	state := ts.ParentState()
 
-	r := vm.NewChainRand(sm.cs, ts.Cids(), ts.Height(), nil)
+	r := store.NewChainRand(sm.cs, ts.Cids(), ts.Height(), nil)
 
 	return sm.CallRaw(ctx, msg, state, r, ts.Height())
 }

@@ -45,9 +45,11 @@ func (fcs *fakeCS) ChainGetTipSetByHeight(context.Context, uint64, *types.TipSet
 }
 
 func makeTs(t *testing.T, h uint64, msgcid cid.Cid) *types.TipSet {
+	a, _ := address.NewFromString("t00")
 	ts, err := types.NewTipSet([]*types.BlockHeader{
 		{
 			Height: h,
+			Miner:  a,
 
 			ParentStateRoot:       dummyCid,
 			Messages:              msgcid,
@@ -432,6 +434,35 @@ func TestAtChainedConfidence(t *testing.T) {
 	require.Equal(t, false, reverted)
 }
 
+func TestAtChainedConfidenceNull(t *testing.T) {
+	fcs := &fakeCS{
+		t:   t,
+		h:   1,
+		tsc: newTSCache(2*build.ForkLengthThreshold, nil),
+	}
+	require.NoError(t, fcs.tsc.add(makeTs(t, 1, dummyCid)))
+
+	events := NewEvents(context.Background(), fcs)
+
+	fcs.advance(0, 15, nil, 5)
+
+	var applied bool
+	var reverted bool
+
+	err := events.ChainAt(func(ts *types.TipSet, curH uint64) error {
+		applied = true
+		require.Equal(t, 6, int(ts.Height()))
+		return nil
+	}, func(ts *types.TipSet) error {
+		reverted = true
+		return nil
+	}, 3, 5)
+	require.NoError(t, err)
+
+	require.Equal(t, true, applied)
+	require.Equal(t, false, reverted)
+}
+
 func TestCalled(t *testing.T) {
 	fcs := &fakeCS{
 		t: t,
@@ -479,7 +510,7 @@ func TestCalled(t *testing.T) {
 	fcs.advance(0, 3, map[int]cid.Cid{ // msg at H=6; H=8 (confidence=2)
 		0: fcs.fakeMsgs(fakeMsg{
 			bmsgs: []*types.Message{
-				{To: t0123, Method: 5, Nonce: 1},
+				{To: t0123, From: t0123, Method: 5, Nonce: 1},
 			},
 		}),
 	})
@@ -520,7 +551,7 @@ func TestCalled(t *testing.T) {
 
 	n2msg := fcs.fakeMsgs(fakeMsg{
 		bmsgs: []*types.Message{
-			{To: t0123, Method: 5, Nonce: 2},
+			{To: t0123, From: t0123, Method: 5, Nonce: 2},
 		},
 	})
 
@@ -574,7 +605,7 @@ func TestCalled(t *testing.T) {
 	fcs.advance(0, 1, map[int]cid.Cid{ // msg at H=16; H=16
 		0: fcs.fakeMsgs(fakeMsg{
 			bmsgs: []*types.Message{
-				{To: t0123, Method: 5, Nonce: 3},
+				{To: t0123, From: t0123, Method: 5, Nonce: 3},
 			},
 		}),
 	})
@@ -597,7 +628,7 @@ func TestCalled(t *testing.T) {
 	fcs.advance(0, 4, map[int]cid.Cid{ // msg at H=26; H=29
 		0: fcs.fakeMsgs(fakeMsg{
 			bmsgs: []*types.Message{
-				{To: t0123, Method: 5, Nonce: 4}, // this signals we don't want more
+				{To: t0123, From: t0123, Method: 5, Nonce: 4}, // this signals we don't want more
 			},
 		}),
 	})
@@ -609,7 +640,7 @@ func TestCalled(t *testing.T) {
 	fcs.advance(0, 4, map[int]cid.Cid{ // msg at H=26; H=29
 		0: fcs.fakeMsgs(fakeMsg{
 			bmsgs: []*types.Message{
-				{To: t0123, Method: 5, Nonce: 5},
+				{To: t0123, From: t0123, Method: 5, Nonce: 5},
 			},
 		}),
 	})
@@ -754,12 +785,12 @@ func TestCalledOrder(t *testing.T) {
 	fcs.advance(0, 10, map[int]cid.Cid{
 		1: fcs.fakeMsgs(fakeMsg{
 			bmsgs: []*types.Message{
-				{To: t0123, Method: 5, Nonce: 1},
+				{To: t0123, From: t0123, Method: 5, Nonce: 1},
 			},
 		}),
 		2: fcs.fakeMsgs(fakeMsg{
 			bmsgs: []*types.Message{
-				{To: t0123, Method: 5, Nonce: 2},
+				{To: t0123, From: t0123, Method: 5, Nonce: 2},
 			},
 		}),
 	})

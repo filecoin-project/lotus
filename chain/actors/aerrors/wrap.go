@@ -103,7 +103,7 @@ func Absorb(err error, retCode uint8, msg string) ActorError {
 			fatal:   true,
 			retCode: 0,
 
-			msg:   "tried absorbing an error that is alreay an fatal error",
+			msg:   "tried absorbing an error that is already a fatal error",
 			frame: xerrors.Caller(1),
 			err:   err,
 		}
@@ -134,6 +134,31 @@ func Escalate(err error, msg string) ActorError {
 	if err == nil {
 		return nil
 	}
+	return &actorError{
+		fatal: true,
+
+		msg:   msg,
+		frame: xerrors.Caller(1),
+		err:   err,
+	}
+}
+
+func HandleExternalError(err error, msg string) ActorError {
+	if err == nil {
+		return nil
+	}
+
+	if aerr, ok := err.(ActorError); ok {
+		return &actorError{
+			fatal:   IsFatal(aerr),
+			retCode: RetCode(aerr),
+
+			msg:   msg,
+			frame: xerrors.Caller(1),
+			err:   aerr,
+		}
+	}
+
 	return &actorError{
 		fatal: true,
 

@@ -96,8 +96,11 @@ func MinerCreateBlock(ctx context.Context, sm *stmgr.StateManager, w *wallet.Wal
 	}
 
 	next.BLSAggregate = aggSig
-	pweight := sm.ChainStore().Weight(parents)
-	next.ParentWeight = types.NewInt(pweight)
+	pweight, err := sm.ChainStore().Weight(ctx, parents)
+	if err != nil {
+		return nil, err
+	}
+	next.ParentWeight = pweight
 
 	cst := hamt.CSTFromBstore(sm.ChainStore().Blockstore())
 	tree, err := state.LoadStateTree(cst, st)

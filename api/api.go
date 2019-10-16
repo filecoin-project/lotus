@@ -50,8 +50,7 @@ type FullNode interface {
 	// ChainNotify returns channel with chain head updates
 	// First message is guaranteed to be of len == 1, and type == 'current'
 	ChainNotify(context.Context) (<-chan []*store.HeadChange, error)
-	ChainHead(context.Context) (*types.TipSet, error)                // TODO: check serialization
-	ChainSubmitBlock(ctx context.Context, blk *types.BlockMsg) error // TODO: check serialization
+	ChainHead(context.Context) (*types.TipSet, error)
 	ChainGetRandomness(context.Context, *types.TipSet, []*types.Ticket, int) ([]byte, error)
 	ChainGetBlock(context.Context, cid.Cid) (*types.BlockHeader, error)
 	ChainGetTipSet(context.Context, []cid.Cid) (*types.TipSet, error)
@@ -62,12 +61,13 @@ type FullNode interface {
 	ChainReadObj(context.Context, cid.Cid) ([]byte, error)
 	ChainSetHead(context.Context, *types.TipSet) error
 	ChainGetGenesis(context.Context) (*types.TipSet, error)
+	ChainTipSetWeight(context.Context, *types.TipSet) (types.BigInt, error)
 
 	// syncer
 	SyncState(context.Context) (*SyncState, error)
+	SyncSubmitBlock(ctx context.Context, blk *types.BlockMsg) error
 
 	// messages
-
 	MpoolPending(context.Context, *types.TipSet) ([]*types.SignedMessage, error)
 	MpoolPush(context.Context, *types.SignedMessage) error                          // TODO: remove
 	MpoolPushMessage(context.Context, *types.Message) (*types.SignedMessage, error) // get nonce, sign, push
@@ -150,7 +150,7 @@ type FullNode interface {
 type StorageMiner interface {
 	Common
 
-	ActorAddresses(context.Context) ([]address.Address, error)
+	ActorAddress(context.Context) (address.Address, error)
 
 	// Temp api for testing
 	StoreGarbageData(context.Context) (uint64, error)
@@ -159,7 +159,7 @@ type StorageMiner interface {
 	SectorsStatus(context.Context, uint64) (sectorbuilder.SectorSealingStatus, error)
 
 	// List all staged sectors
-	SectorsStagedList(context.Context) ([]sectorbuilder.StagedSectorMetadata, error)
+	SectorsList(context.Context) ([]uint64, error)
 
 	// Seal all staged sectors
 	SectorsStagedSeal(context.Context) error

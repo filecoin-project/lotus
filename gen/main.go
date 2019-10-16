@@ -67,7 +67,7 @@ func main() {
 		actors.LaneState{},
 		actors.PCAUpdateChannelStateParams{},
 		actors.PaymentInfo{},
-		actors.StorageMarketState{},
+		actors.StoragePowerState{},
 		actors.CreateStorageMinerParams{},
 		actors.IsMinerParam{},
 		actors.PowerLookupParams{},

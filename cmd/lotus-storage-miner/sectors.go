@@ -89,7 +89,7 @@ var sectorsStagedListCmd = &cli.Command{
 		defer closer()
 		ctx := lcli.ReqContext(cctx)
 
-		staged, err := nodeApi.SectorsStagedList(ctx)
+		staged, err := nodeApi.SectorsList(ctx)
 		if err != nil {
 			return err
 		}

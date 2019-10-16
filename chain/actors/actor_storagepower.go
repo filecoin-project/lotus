@@ -2,7 +2,6 @@ package actors
 
 import (
 	"context"
-	"fmt"
 
 	"github.com/filecoin-project/go-lotus/build"
 	"github.com/filecoin-project/go-lotus/chain/actors/aerrors"
@@ -16,9 +15,9 @@ import (
 	xerrors "golang.org/x/xerrors"
 )
 
-type StorageMarketActor struct{}
+type StoragePowerActor struct{}
 
-type smaMethods struct {
+type spaMethods struct {
 	Constructor             uint64
 	CreateStorageMiner      uint64
 	ArbitrateConsensusFault uint64
@@ -29,22 +28,22 @@ type smaMethods struct {
 	PledgeCollateralForSize uint64
 }
 
-var SMAMethods = smaMethods{1, 2, 3, 4, 5, 6, 7, 8}
+var SPAMethods = spaMethods{1, 2, 3, 4, 5, 6, 7, 8}
 
-func (sma StorageMarketActor) Exports() []interface{} {
+func (spa StoragePowerActor) Exports() []interface{} {
 	return []interface{}{
-		//1: sma.StorageMarketConstructor,
-		2: sma.CreateStorageMiner,
-		3: sma.ArbitrateConsensusFault,
-		4: sma.UpdateStorage,
-		5: sma.GetTotalStorage,
-		6: sma.PowerLookup,
-		7: sma.IsMiner,
-		8: sma.PledgeCollateralForSize,
+		//1: spa.StoragePowerConstructor,
+		2: spa.CreateStorageMiner,
+		3: spa.ArbitrateConsensusFault,
+		4: spa.UpdateStorage,
+		5: spa.GetTotalStorage,
+		6: spa.PowerLookup,
+		7: spa.IsMiner,
+		8: spa.PledgeCollateralForSize,
 	}
 }
 
-type StorageMarketState struct {
+type StoragePowerState struct {
 	Miners     cid.Cid
 	MinerCount uint64
 
@@ -58,12 +57,12 @@ type CreateStorageMinerParams struct {
 	PeerID     peer.ID
 }
 
-func (sma StorageMarketActor) CreateStorageMiner(act *types.Actor, vmctx types.VMContext, params *CreateStorageMinerParams) ([]byte, ActorError) {
+func (spa StoragePowerActor) CreateStorageMiner(act *types.Actor, vmctx types.VMContext, params *CreateStorageMinerParams) ([]byte, ActorError) {
 	if !SupportedSectorSize(params.SectorSize) {
 		return nil, aerrors.New(1, "Unsupported sector size")
 	}
 
-	var self StorageMarketState
+	var self StoragePowerState
 	old := vmctx.Storage().GetHead()
 	if err := vmctx.Storage().Get(old, &self); err != nil {
 		return nil, err
@@ -129,7 +128,7 @@ type ArbitrateConsensusFaultParams struct {
 	Block2 *types.BlockHeader
 }
 
-func (sma StorageMarketActor) ArbitrateConsensusFault(act *types.Actor, vmctx types.VMContext, params *ArbitrateConsensusFaultParams) ([]byte, ActorError) {
+func (spa StoragePowerActor) ArbitrateConsensusFault(act *types.Actor, vmctx types.VMContext, params *ArbitrateConsensusFaultParams) ([]byte, ActorError) {
 	if params.Block1.Miner != params.Block2.Miner {
 		return nil, aerrors.New(2, "blocks must be from the same miner")
 	}
@@ -145,11 +144,11 @@ func (sma StorageMarketActor) ArbitrateConsensusFault(act *types.Actor, vmctx ty
 		return nil, aerrors.Absorb(oerr, 3, "response from 'GetWorkerAddr' was not a valid address")
 	}
 
-	if err := params.Block1.CheckBlockSignature(worker); err != nil {
+	if err := params.Block1.CheckBlockSignature(vmctx.Context(), worker); err != nil {
 		return nil, aerrors.Absorb(err, 4, "block1 did not have valid signature")
 	}
 
-	if err := params.Block2.CheckBlockSignature(worker); err != nil {
+	if err := params.Block2.CheckBlockSignature(vmctx.Context(), worker); err != nil {
 		return nil, aerrors.Absorb(err, 5, "block2 did not have valid signature")
 	}
 
@@ -159,18 +158,18 @@ func (sma StorageMarketActor) ArbitrateConsensusFault(act *types.Actor, vmctx ty
 		return nil, aerrors.New(6, "blocks do not prove a slashable offense")
 	}
 
-	var self StorageMarketState
+	var self StoragePowerState
 	old := vmctx.Storage().GetHead()
 	if err := vmctx.Storage().Get(old, &self); err != nil {
 		return nil, err
 	}
 
 	if types.BigCmp(self.TotalStorage, types.NewInt(0)) == 0 {
-		return nil, aerrors.Fatal("invalid state, storage market actor has zero total storage")
+		return nil, aerrors.Fatal("invalid state, storage power actor has zero total storage")
 	}
 
 	miner := params.Block1.Miner
-	if has, err := MinerSetHas(context.TODO(), vmctx, self.Miners, miner); err != nil {
+	if has, err := MinerSetHas(vmctx, self.Miners, miner); err != nil {
 		return nil, aerrors.Wrapf(err, "failed to check miner in set")
 	} else if !has {
 		return nil, aerrors.New(7, "either already slashed or not a miner")
@@ -270,14 +269,14 @@ type UpdateStorageParams struct {
 	Delta types.BigInt
 }
 
-func (sma StorageMarketActor) UpdateStorage(act *types.Actor, vmctx types.VMContext, params *UpdateStorageParams) ([]byte, ActorError) {
-	var self StorageMarketState
+func (spa StoragePowerActor) UpdateStorage(act *types.Actor, vmctx types.VMContext, params *UpdateStorageParams) ([]byte, ActorError) {
+	var self StoragePowerState
 	old := vmctx.Storage().GetHead()
 	if err := vmctx.Storage().Get(old, &self); err != nil {
 		return nil, err
 	}
 
-	has, err := MinerSetHas(context.TODO(), vmctx, self.Miners, vmctx.Message().From)
+	has, err := MinerSetHas(vmctx, self.Miners, vmctx.Message().From)
 	if err != nil {
 		return nil, err
 	}
@@ -300,8 +299,8 @@ func (sma StorageMarketActor) UpdateStorage(act *types.Actor, vmctx types.VMCont
 	return nil, nil
 }
 
-func (sma StorageMarketActor) GetTotalStorage(act *types.Actor, vmctx types.VMContext, params *struct{}) ([]byte, ActorError) {
-	var self StorageMarketState
+func (spa StoragePowerActor) GetTotalStorage(act *types.Actor, vmctx types.VMContext, params *struct{}) ([]byte, ActorError) {
+	var self StoragePowerState
 	if err := vmctx.Storage().Get(vmctx.Storage().GetHead(), &self); err != nil {
 		return nil, err
 	}
@@ -313,8 +312,8 @@ type PowerLookupParams struct {
 	Miner address.Address
 }
 
-func (sma StorageMarketActor) PowerLookup(act *types.Actor, vmctx types.VMContext, params *PowerLookupParams) ([]byte, ActorError) {
-	var self StorageMarketState
+func (spa StoragePowerActor) PowerLookup(act *types.Actor, vmctx types.VMContext, params *PowerLookupParams) ([]byte, ActorError) {
+	var self StoragePowerState
 	if err := vmctx.Storage().Get(vmctx.Storage().GetHead(), &self); err != nil {
 		return nil, aerrors.Wrap(err, "getting head")
 	}
@@ -327,14 +326,14 @@ func (sma StorageMarketActor) PowerLookup(act *types.Actor, vmctx types.VMContex
 	return pow.Bytes(), nil
 }
 
-func powerLookup(ctx context.Context, vmctx types.VMContext, self *StorageMarketState, miner address.Address) (types.BigInt, ActorError) {
-	has, err := MinerSetHas(context.TODO(), vmctx, self.Miners, miner)
+func powerLookup(ctx context.Context, vmctx types.VMContext, self *StoragePowerState, miner address.Address) (types.BigInt, ActorError) {
+	has, err := MinerSetHas(vmctx, self.Miners, miner)
 	if err != nil {
 		return types.EmptyInt, err
 	}
 
 	if !has {
-		return types.EmptyInt, aerrors.New(1, "miner not registered with storage market")
+		return types.EmptyInt, aerrors.New(1, "miner not registered with storage power actor")
 	}
 
 	ret, err := vmctx.Send(miner, MAMethods.GetPower, types.NewInt(0), nil)
@@ -349,13 +348,13 @@ type IsMinerParam struct {
 	Addr address.Address
 }
 
-func (sma StorageMarketActor) IsMiner(act *types.Actor, vmctx types.VMContext, param *IsMinerParam) ([]byte, ActorError) {
-	var self StorageMarketState
+func (spa StoragePowerActor) IsMiner(act *types.Actor, vmctx types.VMContext, param *IsMinerParam) ([]byte, ActorError) {
+	var self StoragePowerState
 	if err := vmctx.Storage().Get(vmctx.Storage().GetHead(), &self); err != nil {
 		return nil, err
 	}
 
-	has, err := MinerSetHas(context.TODO(), vmctx, self.Miners, param.Addr)
+	has, err := MinerSetHas(vmctx, self.Miners, param.Addr)
 	if err != nil {
 		return nil, err
 	}
@@ -367,8 +366,8 @@ type PledgeCollateralParams struct {
 	Size types.BigInt
 }
 
-func (sma StorageMarketActor) PledgeCollateralForSize(act *types.Actor, vmctx types.VMContext, param *PledgeCollateralParams) ([]byte, ActorError) {
-	var self StorageMarketState
+func (spa StoragePowerActor) PledgeCollateralForSize(act *types.Actor, vmctx types.VMContext, param *PledgeCollateralParams) ([]byte, ActorError) {
+	var self StoragePowerState
 	if err := vmctx.Storage().Get(vmctx.Storage().GetHead(), &self); err != nil {
 		return nil, err
 	}
@@ -433,20 +432,20 @@ func pledgeCollateralForSize(vmctx types.VMContext, size, totalStorage types.Big
 	return types.BigAdd(powerCollateral, perCapCollateral), nil
 }
 
-func MinerSetHas(ctx context.Context, vmctx types.VMContext, rcid cid.Cid, maddr address.Address) (bool, aerrors.ActorError) {
-	nd, err := hamt.LoadNode(ctx, vmctx.Ipld(), rcid)
+func MinerSetHas(vmctx types.VMContext, rcid cid.Cid, maddr address.Address) (bool, aerrors.ActorError) {
+	nd, err := hamt.LoadNode(vmctx.Context(), vmctx.Ipld(), rcid)
 	if err != nil {
-		return false, aerrors.Escalate(err, "failed to load miner set")
+		return false, aerrors.HandleExternalError(err, "failed to load miner set")
 	}
 
-	err = nd.Find(ctx, string(maddr.Bytes()), nil)
+	err = nd.Find(vmctx.Context(), string(maddr.Bytes()), nil)
 	switch err {
 	case hamt.ErrNotFound:
 		return false, nil
 	case nil:
 		return true, nil
 	default:
-		return false, aerrors.Escalate(err, "failed to do set lookup")
+		return false, aerrors.HandleExternalError(err, "failed to do set lookup")
 	}
 }
 
@@ -475,30 +474,30 @@ func MinerSetList(ctx context.Context, cst *hamt.CborIpldStore, rcid cid.Cid) ([
 func MinerSetAdd(ctx context.Context, vmctx types.VMContext, rcid cid.Cid, maddr address.Address) (cid.Cid, aerrors.ActorError) {
 	nd, err := hamt.LoadNode(ctx, vmctx.Ipld(), rcid)
 	if err != nil {
-		return cid.Undef, aerrors.Escalate(err, "failed to load miner set")
+		return cid.Undef, aerrors.HandleExternalError(err, "failed to load miner set")
 	}
 
 	mkey := string(maddr.Bytes())
 	err = nd.Find(ctx, mkey, nil)
 	if err == nil {
-		return cid.Undef, aerrors.Escalate(fmt.Errorf("miner already found"), "miner set add failed")
+		return cid.Undef, aerrors.New(20, "miner already in set")
 	}
 
 	if !xerrors.Is(err, hamt.ErrNotFound) {
-		return cid.Undef, aerrors.Escalate(err, "failed to do miner set check")
+		return cid.Undef, aerrors.HandleExternalError(err, "failed to do miner set check")
 	}
 
 	if err := nd.Set(ctx, mkey, uint64(1)); err != nil {
-		return cid.Undef, aerrors.Escalate(err, "adding miner address to set failed")
+		return cid.Undef, aerrors.HandleExternalError(err, "adding miner address to set failed")
 	}
 
 	if err := nd.Flush(ctx); err != nil {
-		return cid.Undef, aerrors.Escalate(err, "failed to flush miner set")
+		return cid.Undef, aerrors.HandleExternalError(err, "failed to flush miner set")
 	}
 
 	c, err := vmctx.Ipld().Put(ctx, nd)
 	if err != nil {
-		return cid.Undef, aerrors.Escalate(err, "failed to persist miner set to storage")
+		return cid.Undef, aerrors.HandleExternalError(err, "failed to persist miner set to storage")
 	}
 
 	return c, nil
@@ -507,7 +506,7 @@ func MinerSetAdd(ctx context.Context, vmctx types.VMContext, rcid cid.Cid, maddr
 func MinerSetRemove(ctx context.Context, vmctx types.VMContext, rcid cid.Cid, maddr address.Address) (cid.Cid, aerrors.ActorError) {
 	nd, err := hamt.LoadNode(ctx, vmctx.Ipld(), rcid)
 	if err != nil {
-		return cid.Undef, aerrors.Escalate(err, "failed to load miner set")
+		return cid.Undef, aerrors.HandleExternalError(err, "failed to load miner set")
 	}
 
 	mkey := string(maddr.Bytes())
@@ -515,17 +514,17 @@ func MinerSetRemove(ctx context.Context, vmctx types.VMContext, rcid cid.Cid, ma
 	case hamt.ErrNotFound:
 		return cid.Undef, aerrors.New(1, "miner not found in set on delete")
 	default:
-		return cid.Undef, aerrors.Escalate(err, "failed to delete miner from set")
+		return cid.Undef, aerrors.HandleExternalError(err, "failed to delete miner from set")
 	case nil:
 	}
 
 	if err := nd.Flush(ctx); err != nil {
-		return cid.Undef, aerrors.Escalate(err, "failed to flush miner set")
+		return cid.Undef, aerrors.HandleExternalError(err, "failed to flush miner set")
 	}
 
 	c, err := vmctx.Ipld().Put(ctx, nd)
 	if err != nil {
-		return cid.Undef, aerrors.Escalate(err, "failed to persist miner set to storage")
+		return cid.Undef, aerrors.HandleExternalError(err, "failed to persist miner set to storage")
 	}
 
 	return c, nil

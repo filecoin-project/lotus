@@ -11,8 +11,10 @@ All work is tracked via issues. An attempt at keeping an up-to-date view on rema
 
 ## Building
 
-*Dependencies:*
+We currently only provide the option to build lotus from source. Binary installation options are coming soon!
 
+In order to run lotus, please do the following:
+1. Make sure you have these dependencies installed:
 - go (1.13 or higher)
 - gcc (7.4.0 or higher)
 - git
@@ -20,18 +22,26 @@ All work is tracked via issues. An attempt at keeping an up-to-date view on rema
 - jq
 - pkg-config
 
-*Building:*
+
+2. Clone this repo & `cd` into it
+```
+$ git clone https://github.com/filecoin-project/lotus.git
+$ cd lotus/
+```
+
+3. Build and install the source code
 ```
 $ make
+$ sudo make install
 ```
+
+Now, you should be able to perform the commands listed below.
 
 ## Devnet
 
 ### Node setup
 
 If you have run lotus before and want to remove all previous data: `rm -rf ~/.lotus ~/.lotusstorage`
-
-[You can copy `lotus` and `lotus-storage-miner` to your `$GOPATH/bin` or `$PATH`, or reference all lotus commands below from your local build directory with `./lotus`]
 
 The following sections describe how to use the lotus CLI. Alternately you can run lotus nodes and miners using the [Pond GUI](#pond).
 
@@ -58,6 +68,9 @@ You can follow sync status with:
 $ watch lotus sync status
 ```
 
+You can view the latest block height along with other network metrics at the [lotus Devnet dashboard](https://lotus-metrics.kittyhawk.wtf/d/z6FtI92Zz/chain?orgId=1&refresh=5s&kiosk).
+
+[It may take a few minutes for the chain to finish syncing. You will see `Height: 0` until the full chain is synced and validated.]
 
 ### Basics
 
@@ -67,19 +80,15 @@ $ lotus wallet new bls
 t3...
 ```
 
-Grab some funds from faucet - go to http://147.75.80.29:777/, paste the address
+Grab some funds from faucet - go to https://lotus-faucet.kittyhawk.wtf, paste the address
 you just created, and press Send.
 
-(You can also generate a public key address using secp256k1 with 
-`lotus wallet new secp256k1`. BLS signatures use less space so will have lower fees.)
-
-Check the wallet balance:
+Check the wallet balance (balance is listed in attoFIL, where 1 attoFIL = 10^-18 FIL):
 ```sh
 $ lotus wallet balance [optional address (t3...)]
 ```
-(NOTE: If you see an error like `actor not found` after executing this command,
-it means that either there are no transactions to this address on chain - using
-faucet should 'fix' this, or your node isn't fully synced).
+
+(NOTE: If you see an error like `actor not found` after executing this command, it means that either your node isn't fully synced or there are no transactions to this address yet on chain. If the latter, using the faucet should 'fix' this).
 
 ### Mining
 
@@ -88,7 +97,7 @@ cover pledge collateral:
 ```sh
 $ lotus state pledge-collateral
 1234
-$ lotus wallet balance t3...
+$ lotus wallet balance [t3...]
 8999
 ```
 (Balance must be higher than the returned pledge collateral for the next step to work)
@@ -129,12 +138,6 @@ $ lotus-storage-miner state power <miner>
 $ lotus-storage-miner state sectors <miner>
 ```
 
-You can view a list of miners with:
-
-```sh
-$ lotus state list-miners
-```
-
 ### Stage Data
 
 Import some data:
@@ -158,14 +161,17 @@ $ lotus client local
 (It is possible for a Client to make a deal with a Miner on the same lotus Node.)
 
 ```sh
+# List all miners in the system. Choose one to make a deal with.
+$ lotus state list-miners
+
 # List asks proposed by a miner
 $ lotus client query-ask <miner>
 
-# Propose a deal with a miner
+# Propose a deal with a miner. Price is in attoFIL/byte/block. Duration is # of blocks.
 $ lotus client deal <Data CID> <miner> <price> <duration>
 ```
 
-For example `$ lotus client deal bafkre...qvtjsi t0111 36000 12` proposes a deal to store CID `bafkre...qvtjsi` with miner `t0111` at price `36000` for a duration of `12` blocks.
+For example `$ lotus client deal bafkre...qvtjsi t0111 36000 12` proposes a deal to store CID `bafkre...qvtjsi` with miner `t0111` at price `36000` for a duration of `12` blocks. If successful, the `client deal` command will return a deal CID.
 
 ### Search & Retrieval
 

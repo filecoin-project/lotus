@@ -185,7 +185,7 @@ func (sma StorageMinerActor) StorageMinerConstructor(act *types.Actor, vmctx typ
 	sectors := amt.NewAMT(types.WrapStorage(vmctx.Storage()))
 	scid, serr := sectors.Flush()
 	if serr != nil {
-		return nil, aerrors.Escalate(serr, "initializing AMT")
+		return nil, aerrors.HandleExternalError(serr, "initializing AMT")
 	}
 
 	self.Sectors = scid
@@ -270,7 +270,7 @@ func (sma StorageMinerActor) CommitSector(act *types.Actor, vmctx types.VMContex
 	// time to prove than large sectors do. Sector size is selected when pledging.
 	pss, lerr := amt.LoadAMT(types.WrapStorage(vmctx.Storage()), self.ProvingSet)
 	if lerr != nil {
-		return nil, aerrors.Escalate(lerr, "could not load proving set node")
+		return nil, aerrors.HandleExternalError(lerr, "could not load proving set node")
 	}
 
 	if pss.Count == 0 {
@@ -366,7 +366,7 @@ func (sma StorageMinerActor) SubmitPoSt(act *types.Actor, vmctx types.VMContext,
 
 	pss, lerr := amt.LoadAMT(types.WrapStorage(vmctx.Storage()), self.ProvingSet)
 	if lerr != nil {
-		return nil, aerrors.Escalate(lerr, "could not load proving set node")
+		return nil, aerrors.HandleExternalError(lerr, "could not load proving set node")
 	}
 
 	var sectorInfos []sectorbuilder.SectorInfo
@@ -409,19 +409,19 @@ func (sma StorageMinerActor) SubmitPoSt(act *types.Actor, vmctx types.VMContext,
 
 	ss, lerr := amt.LoadAMT(types.WrapStorage(vmctx.Storage()), self.ProvingSet)
 	if lerr != nil {
-		return nil, aerrors.Escalate(lerr, "could not load proving set node")
+		return nil, aerrors.HandleExternalError(lerr, "could not load proving set node")
 	}
 
 	if err := ss.BatchDelete(params.DoneSet.All()); err != nil {
 		// TODO: this could fail for system reasons (block not found) or for
 		// bad user input reasons (e.g. bad doneset). The latter should be a
 		// non-fatal error
-		return nil, aerrors.Escalate(err, "failed to delete sectors in done set")
+		return nil, aerrors.HandleExternalError(err, "failed to delete sectors in done set")
 	}
 
 	self.ProvingSet, lerr = ss.Flush()
 	if lerr != nil {
-		return nil, aerrors.Escalate(lerr, "could not flush AMT")
+		return nil, aerrors.HandleExternalError(lerr, "could not flush AMT")
 	}
 
 	oldPower := self.Power
@@ -433,7 +433,7 @@ func (sma StorageMinerActor) SubmitPoSt(act *types.Actor, vmctx types.VMContext,
 		return nil, err
 	}
 
-	_, err = vmctx.Send(StorageMarketAddress, SMAMethods.UpdateStorage, types.NewInt(0), enc)
+	_, err = vmctx.Send(StorageMarketAddress, SPAMethods.UpdateStorage, types.NewInt(0), enc)
 	if err != nil {
 		return nil, err
 	}
@@ -474,16 +474,16 @@ func SectorIsUnique(ctx context.Context, s types.Storage, sroot cid.Cid, sid uin
 func AddToSectorSet(ctx context.Context, s types.Storage, ss cid.Cid, sectorID uint64, commR, commD []byte) (cid.Cid, ActorError) {
 	ssr, err := amt.LoadAMT(types.WrapStorage(s), ss)
 	if err != nil {
-		return cid.Undef, aerrors.Escalate(err, "could not load sector set node")
+		return cid.Undef, aerrors.HandleExternalError(err, "could not load sector set node")
 	}
 
 	if err := ssr.Set(sectorID, [][]byte{commR, commD}); err != nil {
-		return cid.Undef, aerrors.Escalate(err, "failed to set commitment in sector set")
+		return cid.Undef, aerrors.HandleExternalError(err, "failed to set commitment in sector set")
 	}
 
 	ncid, err := ssr.Flush()
 	if err != nil {
-		return cid.Undef, aerrors.Escalate(err, "failed to flush sector set")
+		return cid.Undef, aerrors.HandleExternalError(err, "failed to flush sector set")
 	}
 
 	return ncid, nil
@@ -492,7 +492,7 @@ func AddToSectorSet(ctx context.Context, s types.Storage, ss cid.Cid, sectorID u
 func GetFromSectorSet(ctx context.Context, s types.Storage, ss cid.Cid, sectorID uint64) (bool, []byte, []byte, ActorError) {
 	ssr, err := amt.LoadAMT(types.WrapStorage(s), ss)
 	if err != nil {
-		return false, nil, nil, aerrors.Escalate(err, "could not load sector set node")
+		return false, nil, nil, aerrors.HandleExternalError(err, "could not load sector set node")
 	}
 
 	var comms [][]byte
@@ -501,11 +501,11 @@ func GetFromSectorSet(ctx context.Context, s types.Storage, ss cid.Cid, sectorID
 		if _, ok := err.(*amt.ErrNotFound); ok {
 			return false, nil, nil, nil
 		}
-		return false, nil, nil, aerrors.Escalate(err, "failed to find sector in sector set")
+		return false, nil, nil, aerrors.HandleExternalError(err, "failed to find sector in sector set")
 	}
 
 	if len(comms) != 2 {
-		return false, nil, nil, aerrors.Escalate(xerrors.New("sector set entry should only have 2 elements"), "")
+		return false, nil, nil, aerrors.Newf(20, "sector set entry should only have 2 elements")
 	}
 
 	return true, comms[0], comms[1], nil
@@ -514,7 +514,7 @@ func GetFromSectorSet(ctx context.Context, s types.Storage, ss cid.Cid, sectorID
 func ValidatePoRep(maddr address.Address, ssize types.BigInt, params *CommitSectorParams) (bool, ActorError) {
 	ok, err := sectorbuilder.VerifySeal(ssize.Uint64(), params.CommR, params.CommD, params.CommRStar, maddr, params.SectorID, params.Proof)
 	if err != nil {
-		return false, aerrors.Escalate(err, "verify seal failed")
+		return false, aerrors.Absorb(err, 25, "verify seal failed")
 	}
 
 	return ok, nil
@@ -659,11 +659,11 @@ func (sma StorageMinerActor) PaymentVerifyInclusion(act *types.Actor, vmctx type
 
 	var voucherData PieceInclVoucherData
 	if err := cbor.DecodeInto(params.Extra, &voucherData); err != nil {
-		return nil, aerrors.Escalate(err, "failed to decode storage voucher data for verification")
+		return nil, aerrors.Absorb(err, 2, "failed to decode storage voucher data for verification")
 	}
 	var proof InclusionProof
 	if err := cbor.DecodeInto(params.Proof, &proof); err != nil {
-		return nil, aerrors.Escalate(err, "failed to decode storage payment proof")
+		return nil, aerrors.Absorb(err, 3, "failed to decode storage payment proof")
 	}
 
 	ok, _, commD, aerr := GetFromSectorSet(context.TODO(), vmctx.Storage(), self.Sectors, proof.Sector)
@@ -671,15 +671,15 @@ func (sma StorageMinerActor) PaymentVerifyInclusion(act *types.Actor, vmctx type
 		return nil, aerr
 	}
 	if !ok {
-		return nil, aerrors.New(1, "miner does not have required sector")
+		return nil, aerrors.New(4, "miner does not have required sector")
 	}
 
 	ok, err := sectorbuilder.VerifyPieceInclusionProof(mi.SectorSize.Uint64(), voucherData.PieceSize.Uint64(), voucherData.CommP, commD, proof.Proof)
 	if err != nil {
-		return nil, aerrors.Escalate(err, "verify piece inclusion proof failed")
+		return nil, aerrors.Absorb(err, 5, "verify piece inclusion proof failed")
 	}
 	if !ok {
-		return nil, aerrors.New(2, "piece inclusion proof was invalid")
+		return nil, aerrors.New(6, "piece inclusion proof was invalid")
 	}
 
 	return nil, nil

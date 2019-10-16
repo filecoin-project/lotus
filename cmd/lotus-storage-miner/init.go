@@ -289,7 +289,7 @@ func createStorageMiner(ctx context.Context, api api.FullNode, peerid peer.ID, c
 		From:  owner,
 		Value: collateral,
 
-		Method: actors.SMAMethods.CreateStorageMiner,
+		Method: actors.SPAMethods.CreateStorageMiner,
 		Params: params,
 
 		GasLimit: types.NewInt(10000),
@@ -307,6 +307,10 @@ func createStorageMiner(ctx context.Context, api api.FullNode, peerid peer.ID, c
 	mw, err := api.StateWaitMsg(ctx, signed.Cid())
 	if err != nil {
 		return address.Undef, err
+	}
+
+	if mw.Receipt.ExitCode != 0 {
+		return address.Undef, xerrors.Errorf("create storage miner failed: exit code %d", mw.Receipt.ExitCode)
 	}
 
 	addr, err = address.NewFromBytes(mw.Receipt.Return)

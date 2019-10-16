@@ -38,7 +38,6 @@ type FullNodeStruct struct {
 
 	Internal struct {
 		ChainNotify            func(context.Context) (<-chan []*store.HeadChange, error)                  `perm:"read"`
-		ChainSubmitBlock       func(ctx context.Context, blk *types.BlockMsg) error                       `perm:"write"`
 		ChainHead              func(context.Context) (*types.TipSet, error)                               `perm:"read"`
 		ChainGetRandomness     func(context.Context, *types.TipSet, []*types.Ticket, int) ([]byte, error) `perm:"read"`
 		ChainGetBlock          func(context.Context, cid.Cid) (*types.BlockHeader, error)                 `perm:"read"`
@@ -50,8 +49,10 @@ type FullNodeStruct struct {
 		ChainReadObj           func(context.Context, cid.Cid) ([]byte, error)                             `perm:"read"`
 		ChainSetHead           func(context.Context, *types.TipSet) error                                 `perm:"admin"`
 		ChainGetGenesis        func(context.Context) (*types.TipSet, error)                               `perm:"read"`
+		ChainTipSetWeight      func(context.Context, *types.TipSet) (types.BigInt, error)                 `perm:"read"`
 
-		SyncState func(context.Context) (*SyncState, error) `perm:"read"`
+		SyncState       func(context.Context) (*SyncState, error)            `perm:"read"`
+		SyncSubmitBlock func(ctx context.Context, blk *types.BlockMsg) error `perm:"write"`
 
 		MpoolPending     func(context.Context, *types.TipSet) ([]*types.SignedMessage, error) `perm:"read"`
 		MpoolPush        func(context.Context, *types.SignedMessage) error                    `perm:"write"`
@@ -118,12 +119,12 @@ type StorageMinerStruct struct {
 	CommonStruct
 
 	Internal struct {
-		ActorAddresses func(context.Context) ([]address.Address, error) `perm:"read"`
+		ActorAddress func(context.Context) (address.Address, error) `perm:"read"`
 
 		StoreGarbageData func(context.Context) (uint64, error) `perm:"write"`
 
 		SectorsStatus     func(context.Context, uint64) (sectorbuilder.SectorSealingStatus, error) `perm:"read"`
-		SectorsStagedList func(context.Context) ([]sectorbuilder.StagedSectorMetadata, error)      `perm:"read"`
+		SectorsList       func(context.Context) ([]uint64, error)                                  `perm:"read"`
 		SectorsStagedSeal func(context.Context) error                                              `perm:"write"`
 
 		SectorsRefs func(context.Context) (map[string][]SealedRef, error) `perm:"read"`
@@ -228,10 +229,6 @@ func (c *FullNodeStruct) MinerCreateBlock(ctx context.Context, addr address.Addr
 	return c.Internal.MinerCreateBlock(ctx, addr, base, tickets, eproof, msgs, ts)
 }
 
-func (c *FullNodeStruct) ChainSubmitBlock(ctx context.Context, blk *types.BlockMsg) error {
-	return c.Internal.ChainSubmitBlock(ctx, blk)
-}
-
 func (c *FullNodeStruct) ChainHead(ctx context.Context) (*types.TipSet, error) {
 	return c.Internal.ChainHead(ctx)
 }
@@ -320,8 +317,16 @@ func (c *FullNodeStruct) ChainGetGenesis(ctx context.Context) (*types.TipSet, er
 	return c.Internal.ChainGetGenesis(ctx)
 }
 
+func (c *FullNodeStruct) ChainTipSetWeight(ctx context.Context, ts *types.TipSet) (types.BigInt, error) {
+	return c.Internal.ChainTipSetWeight(ctx, ts)
+}
+
 func (c *FullNodeStruct) SyncState(ctx context.Context) (*SyncState, error) {
 	return c.Internal.SyncState(ctx)
+}
+
+func (c *FullNodeStruct) SyncSubmitBlock(ctx context.Context, blk *types.BlockMsg) error {
+	return c.Internal.SyncSubmitBlock(ctx, blk)
 }
 
 func (c *FullNodeStruct) StateMinerSectors(ctx context.Context, addr address.Address) ([]*SectorInfo, error) {
@@ -426,8 +431,8 @@ func (c *FullNodeStruct) PaychVoucherSubmit(ctx context.Context, ch address.Addr
 	return c.Internal.PaychVoucherSubmit(ctx, ch, sv)
 }
 
-func (c *StorageMinerStruct) ActorAddresses(ctx context.Context) ([]address.Address, error) {
-	return c.Internal.ActorAddresses(ctx)
+func (c *StorageMinerStruct) ActorAddress(ctx context.Context) (address.Address, error) {
+	return c.Internal.ActorAddress(ctx)
 }
 
 func (c *StorageMinerStruct) StoreGarbageData(ctx context.Context) (uint64, error) {
@@ -440,8 +445,8 @@ func (c *StorageMinerStruct) SectorsStatus(ctx context.Context, sid uint64) (sec
 }
 
 // List all staged sectors
-func (c *StorageMinerStruct) SectorsStagedList(ctx context.Context) ([]sectorbuilder.StagedSectorMetadata, error) {
-	return c.Internal.SectorsStagedList(ctx)
+func (c *StorageMinerStruct) SectorsList(ctx context.Context) ([]uint64, error) {
+	return c.Internal.SectorsList(ctx)
 }
 
 // Seal all staged sectors

@@ -37,7 +37,7 @@ func TestStorageMarketCreateAndSlashMiner(t *testing.T) {
 		// cheating the bootstrapping problem
 		cheatStorageMarketTotal(t, h.vm, h.cs.Blockstore())
 
-		ret, _ := h.InvokeWithValue(t, ownerAddr, StorageMarketAddress, SMAMethods.CreateStorageMiner,
+		ret, _ := h.InvokeWithValue(t, ownerAddr, StorageMarketAddress, SPAMethods.CreateStorageMiner,
 			types.NewInt(500000),
 			&CreateStorageMinerParams{
 				Owner:      ownerAddr,
@@ -52,7 +52,7 @@ func TestStorageMarketCreateAndSlashMiner(t *testing.T) {
 	}
 
 	{
-		ret, _ := h.Invoke(t, ownerAddr, StorageMarketAddress, SMAMethods.IsMiner,
+		ret, _ := h.Invoke(t, ownerAddr, StorageMarketAddress, SPAMethods.IsMiner,
 			&IsMinerParam{Addr: minerAddr})
 		ApplyOK(t, ret)
 
@@ -68,7 +68,7 @@ func TestStorageMarketCreateAndSlashMiner(t *testing.T) {
 	}
 
 	{
-		ret, _ := h.Invoke(t, ownerAddr, StorageMarketAddress, SMAMethods.PowerLookup,
+		ret, _ := h.Invoke(t, ownerAddr, StorageMarketAddress, SPAMethods.PowerLookup,
 			&PowerLookupParams{Miner: minerAddr})
 		ApplyOK(t, ret)
 		power := types.BigFromBytes(ret.Return)
@@ -93,7 +93,7 @@ func TestStorageMarketCreateAndSlashMiner(t *testing.T) {
 		signBlock(t, h.w, workerAddr, b1)
 		signBlock(t, h.w, workerAddr, b2)
 
-		ret, _ := h.Invoke(t, ownerAddr, StorageMarketAddress, SMAMethods.ArbitrateConsensusFault,
+		ret, _ := h.Invoke(t, ownerAddr, StorageMarketAddress, SPAMethods.ArbitrateConsensusFault,
 			&ArbitrateConsensusFaultParams{
 				Block1: b1,
 				Block2: b2,
@@ -102,13 +102,13 @@ func TestStorageMarketCreateAndSlashMiner(t *testing.T) {
 	}
 
 	{
-		ret, _ := h.Invoke(t, ownerAddr, StorageMarketAddress, SMAMethods.PowerLookup,
+		ret, _ := h.Invoke(t, ownerAddr, StorageMarketAddress, SPAMethods.PowerLookup,
 			&PowerLookupParams{Miner: minerAddr})
 		assert.Equal(t, ret.ExitCode, byte(1))
 	}
 
 	{
-		ret, _ := h.Invoke(t, ownerAddr, StorageMarketAddress, SMAMethods.IsMiner, &IsMinerParam{minerAddr})
+		ret, _ := h.Invoke(t, ownerAddr, StorageMarketAddress, SPAMethods.IsMiner, &IsMinerParam{minerAddr})
 		ApplyOK(t, ret)
 		assert.Equal(t, ret.Return, cbg.CborBoolFalse)
 	}
@@ -124,7 +124,7 @@ func cheatStorageMarketTotal(t *testing.T, vm *vm.VM, bs bstore.Blockstore) {
 
 	cst := hamt.CSTFromBstore(bs)
 
-	var smastate StorageMarketState
+	var smastate StoragePowerState
 	if err := cst.Get(context.TODO(), sma.Head, &smastate); err != nil {
 		t.Fatal(err)
 	}

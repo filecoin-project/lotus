@@ -1,6 +1,8 @@
 package types
 
 import (
+	"context"
+
 	amt "github.com/filecoin-project/go-amt-ipld"
 	"github.com/filecoin-project/go-lotus/chain/actors/aerrors"
 	"github.com/filecoin-project/go-lotus/chain/address"
@@ -38,6 +40,8 @@ type VMContext interface {
 	ChargeGas(uint64) aerrors.ActorError
 	GetRandomness(height uint64) ([]byte, aerrors.ActorError)
 	GetBalance(address.Address) (BigInt, aerrors.ActorError)
+
+	Context() context.Context
 }
 
 type storageWrapper struct {

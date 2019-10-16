@@ -3,6 +3,7 @@ package vm
 import (
 	"context"
 	"fmt"
+	blockstore "github.com/ipfs/go-ipfs-blockstore"
 	"math/big"
 
 	"github.com/filecoin-project/go-lotus/build"
@@ -10,7 +11,6 @@ import (
 	"github.com/filecoin-project/go-lotus/chain/actors/aerrors"
 	"github.com/filecoin-project/go-lotus/chain/address"
 	"github.com/filecoin-project/go-lotus/chain/state"
-	"github.com/filecoin-project/go-lotus/chain/store"
 	"github.com/filecoin-project/go-lotus/chain/types"
 	"github.com/filecoin-project/go-lotus/lib/bufbstore"
 	cbg "github.com/whyrusleeping/cbor-gen"
@@ -239,6 +239,10 @@ func (vmctx *VMContext) GetBalance(a address.Address) (types.BigInt, aerrors.Act
 	}
 }
 
+func (vmctx *VMContext) Context() context.Context {
+	return vmctx.ctx
+}
+
 type hBlocks interface {
 	GetBlock(context.Context, cid.Cid) (block.Block, error)
 	AddBlock(block.Block) error
@@ -296,7 +300,6 @@ func (vm *VM) makeVMContext(ctx context.Context, sroot cid.Cid, msg *types.Messa
 type VM struct {
 	cstate      *state.StateTree
 	base        cid.Cid
-	cs          *store.ChainStore
 	cst         *hamt.CborIpldStore
 	buf         *bufbstore.BufferedBS
 	blockHeight uint64
@@ -305,8 +308,8 @@ type VM struct {
 	rand        Rand
 }
 
-func NewVM(base cid.Cid, height uint64, r Rand, maddr address.Address, cs *store.ChainStore) (*VM, error) {
-	buf := bufbstore.NewBufferedBstore(cs.Blockstore())
+func NewVM(base cid.Cid, height uint64, r Rand, maddr address.Address, cbs blockstore.Blockstore) (*VM, error) {
+	buf := bufbstore.NewBufferedBstore(cbs)
 	cst := hamt.CSTFromBstore(buf)
 	state, err := state.LoadStateTree(cst, base)
 	if err != nil {
@@ -316,7 +319,6 @@ func NewVM(base cid.Cid, height uint64, r Rand, maddr address.Address, cs *store
 	return &VM{
 		cstate:      state,
 		base:        base,
-		cs:          cs,
 		cst:         cst,
 		buf:         buf,
 		blockHeight: height,
@@ -328,27 +330,6 @@ func NewVM(base cid.Cid, height uint64, r Rand, maddr address.Address, cs *store
 
 type Rand interface {
 	GetRandomness(ctx context.Context, h int64) ([]byte, error)
-}
-
-type chainRand struct {
-	cs      *store.ChainStore
-	blks    []cid.Cid
-	bh      uint64
-	tickets []*types.Ticket
-}
-
-func NewChainRand(cs *store.ChainStore, blks []cid.Cid, bheight uint64, tickets []*types.Ticket) Rand {
-	return &chainRand{
-		cs:      cs,
-		blks:    blks,
-		bh:      bheight,
-		tickets: tickets,
-	}
-}
-
-func (cr *chainRand) GetRandomness(ctx context.Context, h int64) ([]byte, error) {
-	lb := (int64(cr.bh) + int64(len(cr.tickets))) - h
-	return cr.cs.GetRandomness(ctx, cr.blks, cr.tickets, lb)
 }
 
 type ApplyRet struct {

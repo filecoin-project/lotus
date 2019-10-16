@@ -92,7 +92,7 @@ func (a *StateAPI) StatePledgeCollateral(ctx context.Context, ts *types.TipSet) 
 	ret, aerr := a.StateManager.Call(ctx, &types.Message{
 		From:   actors.StorageMarketAddress,
 		To:     actors.StorageMarketAddress,
-		Method: actors.SMAMethods.PledgeCollateralForSize,
+		Method: actors.SPAMethods.PledgeCollateralForSize,
 
 		Params: param,
 	}, ts)
@@ -209,7 +209,7 @@ func (a *StateAPI) StateWaitMsg(ctx context.Context, msg cid.Cid) (*api.MsgWait,
 }
 
 func (a *StateAPI) StateListMiners(ctx context.Context, ts *types.TipSet) ([]address.Address, error) {
-	var state actors.StorageMarketState
+	var state actors.StoragePowerState
 	if _, err := a.StateManager.LoadActorState(ctx, actors.StorageMarketAddress, &state, ts); err != nil {
 		return nil, err
 	}

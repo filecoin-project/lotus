@@ -76,6 +76,9 @@ build: lotus lotus-storage-miner
 
 .PHONY: build
 
+install:
+	install -C ./lotus /usr/local/bin/lotus
+	install -C ./lotus /usr/local/bin/lotus-storage-miner
 
 benchmarks:
 	go run github.com/whyrusleeping/bencher ./... > bench.json
@@ -94,6 +97,12 @@ townhall:
 	(cd ./cmd/lotus-townhall/townhall && npm i && npm run build)
 	go run github.com/GeertJohan/go.rice/rice append --exec townhall -i ./cmd/lotus-townhall
 .PHONY: townhall
+
+fountain:
+	rm -f fountain
+	go build -o fountain ./cmd/lotus-fountain
+	go run github.com/GeertJohan/go.rice/rice append --exec fountain -i ./cmd/lotus-fountain
+.PHONY: fountain
 
 clean:
 	rm -rf $(CLEAN)

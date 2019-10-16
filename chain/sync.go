@@ -94,7 +94,7 @@ func (syncer *Syncer) InformNewHead(from peer.ID, fts *store.FullTipSet) {
 	}
 
 	for _, b := range fts.Blocks {
-		if err := syncer.validateMsgMeta(b); err != nil {
+		if err := syncer.ValidateMsgMeta(b); err != nil {
 			log.Warnf("invalid block received: %s", err)
 			return
 		}
@@ -122,7 +122,7 @@ func (syncer *Syncer) InformNewHead(from peer.ID, fts *store.FullTipSet) {
 	}()
 }
 
-func (syncer *Syncer) validateMsgMeta(fblk *types.FullBlock) error {
+func (syncer *Syncer) ValidateMsgMeta(fblk *types.FullBlock) error {
 	var bcids, scids []cbg.CBORMarshaler
 	for _, m := range fblk.BlsMessages {
 		c := cbg.CborCid(m.Cid())
@@ -145,6 +145,14 @@ func (syncer *Syncer) validateMsgMeta(fblk *types.FullBlock) error {
 	}
 
 	return nil
+}
+
+func (syncer *Syncer) LocalPeer() peer.ID {
+	return syncer.self
+}
+
+func (syncer *Syncer) ChainStore() *store.ChainStore {
+	return syncer.store
 }
 
 func (syncer *Syncer) InformNewBlock(from peer.ID, blk *types.FullBlock) {
@@ -253,7 +261,7 @@ func computeMsgMeta(bs amt.Blocks, bmsgCids, smsgCids []cbg.CBORMarshaler) (cid.
 	return mrcid, nil
 }
 
-func (syncer *Syncer) selectHead(heads map[peer.ID]*types.TipSet) (*types.TipSet, error) {
+func (syncer *Syncer) selectHead(ctx context.Context, heads map[peer.ID]*types.TipSet) (*types.TipSet, error) {
 	var headsArr []*types.TipSet
 	for _, ts := range heads {
 		headsArr = append(headsArr, ts)
@@ -290,7 +298,16 @@ func (syncer *Syncer) selectHead(heads map[peer.ID]*types.TipSet) (*types.TipSet
 			return nil, fmt.Errorf("Conflict exists in heads set")
 		}
 
-		if syncer.store.Weight(cur) > syncer.store.Weight(sel) {
+		curw, err := syncer.store.Weight(ctx, cur)
+		if err != nil {
+			return nil, err
+		}
+		selw, err := syncer.store.Weight(ctx, sel)
+		if err != nil {
+			return nil, err
+		}
+
+		if curw.GreaterThan(selw) {
 			sel = cur
 		}
 	}
@@ -344,7 +361,7 @@ func (syncer *Syncer) Sync(ctx context.Context, maybeHead *types.TipSet) error {
 		return xerrors.Errorf("collectChain failed: %w", err)
 	}
 
-	if err := syncer.store.PutTipSet(maybeHead); err != nil {
+	if err := syncer.store.PutTipSet(ctx, maybeHead); err != nil {
 		return xerrors.Errorf("failed to put synced tipset to chainstore: %w", err)
 	}
 
@@ -383,7 +400,7 @@ func (syncer *Syncer) minerIsValid(ctx context.Context, maddr address.Address, b
 	ret, err := syncer.sm.Call(ctx, &types.Message{
 		To:     actors.StorageMarketAddress,
 		From:   maddr,
-		Method: actors.SMAMethods.IsMiner,
+		Method: actors.SPAMethods.IsMiner,
 		Params: enc,
 	}, baseTs)
 	if err != nil {
@@ -467,7 +484,7 @@ func (syncer *Syncer) ValidateBlock(ctx context.Context, b *types.FullBlock) err
 		return xerrors.Errorf("GetMinerWorker failed: %w", err)
 	}
 
-	if err := h.CheckBlockSignature(waddr); err != nil {
+	if err := h.CheckBlockSignature(ctx, waddr); err != nil {
 		return xerrors.Errorf("check block signature failed: %w", err)
 	}
 
@@ -564,7 +581,7 @@ func (syncer *Syncer) checkBlockMessages(ctx context.Context, b *types.FullBlock
 		pubks = append(pubks, pubk)
 	}
 
-	if err := syncer.verifyBlsAggregate(b.Header.BLSAggregate, sigCids, pubks); err != nil {
+	if err := syncer.verifyBlsAggregate(ctx, b.Header.BLSAggregate, sigCids, pubks); err != nil {
 		return xerrors.Errorf("bls aggregate signature was invalid: %w", err)
 	}
 
@@ -612,7 +629,13 @@ func (syncer *Syncer) checkBlockMessages(ctx context.Context, b *types.FullBlock
 	return nil
 }
 
-func (syncer *Syncer) verifyBlsAggregate(sig types.Signature, msgs []cid.Cid, pubks []bls.PublicKey) error {
+func (syncer *Syncer) verifyBlsAggregate(ctx context.Context, sig types.Signature, msgs []cid.Cid, pubks []bls.PublicKey) error {
+	ctx, span := trace.StartSpan(ctx, "syncer.verifyBlsAggregate")
+	defer span.End()
+	span.AddAttributes(
+		trace.Int64Attribute("msgCount", int64(len(msgs))),
+	)
+
 	var digests []bls.Digest
 	for _, c := range msgs {
 		digests = append(digests, bls.Hash(bls.Message(c.Bytes())))
