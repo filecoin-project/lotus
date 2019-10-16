@@ -97,6 +97,14 @@ var runCmd = &cli.Command{
 				WalletRate:  time.Hour,
 				WalletBurst: 1,
 			}),
+			colLimiter: NewLimiter(LimiterConfig{
+				TotalRate:   time.Second,
+				TotalBurst:  20,
+				IPRate:      24 * time.Hour,
+				IPBurst:     1,
+				WalletRate:  24 * 364 * time.Hour,
+				WalletBurst: 1,
+			}),
 		}
 
 		http.Handle("/", http.FileServer(rice.MustFindBox("site").HTTPBox()))
@@ -120,7 +128,8 @@ type handler struct {
 
 	from address.Address
 
-	limiter *Limiter
+	limiter    *Limiter
+	colLimiter *Limiter
 }
 
 func (h *handler) send(w http.ResponseWriter, r *http.Request) {
@@ -169,10 +178,30 @@ func (h *handler) send(w http.ResponseWriter, r *http.Request) {
 }
 
 func (h *handler) sendColl(w http.ResponseWriter, r *http.Request) {
+	// General limiter to allow throttling all messages that can make it into the mpool
+	if !h.colLimiter.Allow() {
+		http.Error(w, http.StatusText(http.StatusTooManyRequests), http.StatusTooManyRequests)
+		return
+	}
+
+	// Limit based on IP
+	limiter := h.colLimiter.GetIPLimiter(r.RemoteAddr)
+	if !limiter.Allow() {
+		http.Error(w, http.StatusText(http.StatusTooManyRequests), http.StatusTooManyRequests)
+		return
+	}
+
 	to, err := address.NewFromString(r.FormValue("address"))
 	if err != nil {
 		w.WriteHeader(400)
 		w.Write([]byte(err.Error()))
+		return
+	}
+
+	// Limit based on wallet address
+	limiter = h.colLimiter.GetWalletLimiter(to.String())
+	if !limiter.Allow() {
+		http.Error(w, http.StatusText(http.StatusTooManyRequests), http.StatusTooManyRequests)
 		return
 	}
 
