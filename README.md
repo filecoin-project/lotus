@@ -68,7 +68,7 @@ You can follow sync status with:
 $ watch lotus sync status
 ```
 
-You can view the latest block height along with other network metrics at the [lotus Devnet dashboard](https://lotus-metrics.kittyhawk.wtf/d/z6FtI92Zz/chain?orgId=1&refresh=5s&kiosk).
+You can view the latest block height along with other network metrics at the [lotus Devnet dashboard](https://lotus-metrics-test.kittyhawk.wtf/chain).
 
 [It may take a few minutes for the chain to finish syncing. You will see `Height: 0` until the full chain is synced and validated.]
 
@@ -80,7 +80,7 @@ $ lotus wallet new bls
 t3...
 ```
 
-Grab some funds from faucet - go to https://lotus-faucet.kittyhawk.wtf, paste the address
+Grab some funds from the faucet - go to https://lotus-faucet.kittyhawk.wtf, paste the address
 you just created, and press Send.
 
 Check the wallet balance (balance is listed in attoFIL, where 1 attoFIL = 10^-18 FIL):
