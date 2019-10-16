@@ -12,7 +12,6 @@ import (
 	"golang.org/x/xerrors"
 
 	"github.com/filecoin-project/lotus/api"
-	"github.com/filecoin-project/lotus/build"
 	"github.com/filecoin-project/lotus/chain/actors"
 	"github.com/filecoin-project/lotus/chain/address"
 	"github.com/filecoin-project/lotus/chain/events"
@@ -55,6 +54,7 @@ type storageMinerApi interface {
 	StateMinerWorker(context.Context, address.Address, *types.TipSet) (address.Address, error)
 	StateMinerProvingPeriodEnd(context.Context, address.Address, *types.TipSet) (uint64, error)
 	StateMinerProvingSet(context.Context, address.Address, *types.TipSet) ([]*api.SectorInfo, error)
+	StateMinerSectorSize(context.Context, address.Address, *types.TipSet) (uint64, error)
 	StateWaitMsg(context.Context, cid.Cid) (*api.MsgWait, error)
 
 	MpoolPushMessage(context.Context, *types.Message) (*types.SignedMessage, error)
@@ -122,7 +122,12 @@ func (m *Miner) handlePostingSealedSectors(ctx context.Context) {
 func (m *Miner) commitSector(ctx context.Context, sinfo sectorbuilder.SectorSealingStatus) error {
 	log.Info("committing sector")
 
-	ok, err := sectorbuilder.VerifySeal(build.SectorSize, sinfo.CommR[:], sinfo.CommD[:], sinfo.CommRStar[:], m.maddr, sinfo.SectorID, sinfo.Proof)
+	ssize, err := m.SectorSize(ctx)
+	if err != nil {
+		return xerrors.Errorf("failed to check out own sector size: %w", err)
+	}
+
+	ok, err := sectorbuilder.VerifySeal(ssize, sinfo.CommR[:], sinfo.CommD[:], sinfo.CommRStar[:], m.maddr, sinfo.SectorID, sinfo.Proof)
 	if err != nil {
 		log.Error("failed to verify seal we just created: ", err)
 	}
@@ -199,4 +204,9 @@ func (m *Miner) runPreflightChecks(ctx context.Context) error {
 
 	log.Infof("starting up miner %s, worker addr %s", m.maddr, m.worker)
 	return nil
+}
+
+func (m *Miner) SectorSize(ctx context.Context) (uint64, error) {
+	// TODO: cache this
+	return m.api.StateMinerSectorSize(ctx, m.maddr, nil)
 }

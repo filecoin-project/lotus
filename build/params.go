@@ -1,6 +1,8 @@
 package build
 
-import "math/big"
+import (
+	"math/big"
+)
 
 // Core network constants
 
@@ -10,7 +12,19 @@ import "math/big"
 const UnixfsChunkSize uint64 = 1 << 20
 const UnixfsLinksPerLevel = 1024
 
-const SectorSize = 16 << 20
+var SectorSizes = []uint64{
+	16 << 20,
+	1 << 30,
+}
+
+func SupportedSectorSize(ssize uint64) bool {
+	for _, ss := range SectorSizes {
+		if ssize == ss {
+			return true
+		}
+	}
+	return false
+}
 
 // /////
 // Payments

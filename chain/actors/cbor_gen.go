@@ -421,8 +421,8 @@ func (t *StorageMinerConstructorParams) MarshalCBOR(w io.Writer) error {
 		return err
 	}
 
-	// t.t.SectorSize (types.BigInt)
-	if err := t.SectorSize.MarshalCBOR(w); err != nil {
+	// t.t.SectorSize (uint64)
+	if _, err := w.Write(cbg.CborEncodeMajorType(cbg.MajUnsignedInt, t.SectorSize)); err != nil {
 		return err
 	}
 
@@ -469,15 +469,16 @@ func (t *StorageMinerConstructorParams) UnmarshalCBOR(r io.Reader) error {
 		}
 
 	}
-	// t.t.SectorSize (types.BigInt)
+	// t.t.SectorSize (uint64)
 
-	{
-
-		if err := t.SectorSize.UnmarshalCBOR(br); err != nil {
-			return err
-		}
-
+	maj, extra, err = cbg.CborReadHeader(br)
+	if err != nil {
+		return err
 	}
+	if maj != cbg.MajUnsignedInt {
+		return fmt.Errorf("wrong type for uint64 field")
+	}
+	t.SectorSize = extra
 	// t.t.PeerID (peer.ID)
 
 	{
@@ -702,8 +703,8 @@ func (t *MinerInfo) MarshalCBOR(w io.Writer) error {
 		return err
 	}
 
-	// t.t.SectorSize (types.BigInt)
-	if err := t.SectorSize.MarshalCBOR(w); err != nil {
+	// t.t.SectorSize (uint64)
+	if _, err := w.Write(cbg.CborEncodeMajorType(cbg.MajUnsignedInt, t.SectorSize)); err != nil {
 		return err
 	}
 	return nil
@@ -752,15 +753,16 @@ func (t *MinerInfo) UnmarshalCBOR(r io.Reader) error {
 
 		t.PeerID = peer.ID(sval)
 	}
-	// t.t.SectorSize (types.BigInt)
+	// t.t.SectorSize (uint64)
 
-	{
-
-		if err := t.SectorSize.UnmarshalCBOR(br); err != nil {
-			return err
-		}
-
+	maj, extra, err = cbg.CborReadHeader(br)
+	if err != nil {
+		return err
 	}
+	if maj != cbg.MajUnsignedInt {
+		return fmt.Errorf("wrong type for uint64 field")
+	}
+	t.SectorSize = extra
 	return nil
 }
 
@@ -2377,8 +2379,8 @@ func (t *CreateStorageMinerParams) MarshalCBOR(w io.Writer) error {
 		return err
 	}
 
-	// t.t.SectorSize (types.BigInt)
-	if err := t.SectorSize.MarshalCBOR(w); err != nil {
+	// t.t.SectorSize (uint64)
+	if _, err := w.Write(cbg.CborEncodeMajorType(cbg.MajUnsignedInt, t.SectorSize)); err != nil {
 		return err
 	}
 
@@ -2425,15 +2427,16 @@ func (t *CreateStorageMinerParams) UnmarshalCBOR(r io.Reader) error {
 		}
 
 	}
-	// t.t.SectorSize (types.BigInt)
+	// t.t.SectorSize (uint64)
 
-	{
-
-		if err := t.SectorSize.UnmarshalCBOR(br); err != nil {
-			return err
-		}
-
+	maj, extra, err = cbg.CborReadHeader(br)
+	if err != nil {
+		return err
 	}
+	if maj != cbg.MajUnsignedInt {
+		return fmt.Errorf("wrong type for uint64 field")
+	}
+	t.SectorSize = extra
 	// t.t.PeerID (peer.ID)
 
 	{

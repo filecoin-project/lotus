@@ -2,11 +2,12 @@ package deals
 
 import (
 	"context"
+
+	"golang.org/x/xerrors"
+
 	"github.com/filecoin-project/lotus/api"
 	"github.com/filecoin-project/lotus/chain/actors"
 	"github.com/filecoin-project/lotus/chain/stmgr"
-
-	"golang.org/x/xerrors"
 )
 
 type clientHandlerFunc func(ctx context.Context, deal ClientDeal) error
@@ -108,7 +109,12 @@ func (c *Client) staged(ctx context.Context, deal ClientDeal) error {
 	log.Info("DEAL SEALED!")
 
 	// TODO: want?
-	/*ok, err := sectorbuilder.VerifyPieceInclusionProof(build.SectorSize, deal.Proposal.PieceSize, deal.Proposal.CommP, resp.CommD, resp.PieceInclusionProof.ProofElements)
+	/*ssize, err := stmgr.GetMinerSectorSize(ctx, c.sm, nil, deal.Proposal.MinerAddress)
+	if err != nil {
+		return xerrors.Errorf("failed to get miner sector size: %w", err)
+	}
+
+	ok, err := sectorbuilder.VerifyPieceInclusionProof(ssize, deal.Proposal.Size, deal.Proposal.CommP, resp.CommD, resp.PieceInclusionProof.ProofElements)
 	if err != nil {
 		return xerrors.Errorf("verifying piece inclusion proof in staged deal %s: %w", deal.ProposalCid, err)
 	}

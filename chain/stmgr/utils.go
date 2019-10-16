@@ -2,6 +2,7 @@ package stmgr
 
 import (
 	"context"
+
 	"github.com/filecoin-project/lotus/api"
 	"github.com/filecoin-project/lotus/chain/actors"
 	"github.com/filecoin-project/lotus/chain/address"
@@ -9,6 +10,7 @@ import (
 
 	amt "github.com/filecoin-project/go-amt-ipld"
 	cid "github.com/ipfs/go-cid"
+	hamt "github.com/ipfs/go-hamt-ipld"
 	blockstore "github.com/ipfs/go-ipfs-blockstore"
 	cbor "github.com/ipfs/go-ipld-cbor"
 	"github.com/libp2p/go-libp2p-core/peer"
@@ -173,6 +175,22 @@ func GetMinerSectorSet(ctx context.Context, sm *StateManager, ts *types.TipSet, 
 	}
 
 	return LoadSectorsFromSet(ctx, sm.ChainStore().Blockstore(), mas.Sectors)
+}
+
+func GetMinerSectorSize(ctx context.Context, sm *StateManager, ts *types.TipSet, maddr address.Address) (uint64, error) {
+	var mas actors.StorageMinerActorState
+	_, err := sm.LoadActorState(ctx, maddr, &mas, ts)
+	if err != nil {
+		return 0, xerrors.Errorf("failed to load miner actor state: %w", err)
+	}
+
+	cst := hamt.CSTFromBstore(sm.cs.Blockstore())
+	var minfo actors.MinerInfo
+	if err := cst.Get(ctx, mas.Info, &minfo); err != nil {
+		return 0, xerrors.Errorf("failed to read miner info: %w", err)
+	}
+
+	return minfo.SectorSize, nil
 }
 
 func LoadSectorsFromSet(ctx context.Context, bs blockstore.Blockstore, ssc cid.Cid) ([]*api.SectorInfo, error) {

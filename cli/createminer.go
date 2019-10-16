@@ -53,7 +53,7 @@ var createMinerCmd = &cli.Command{
 		createMinerArgs := actors.CreateStorageMinerParams{
 			Worker:     worker,
 			Owner:      owner,
-			SectorSize: types.NewInt(ssize),
+			SectorSize: ssize,
 			PeerID:     pid,
 		}
 

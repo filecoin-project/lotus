@@ -239,7 +239,7 @@ func SetupStorageMiners(ctx context.Context, cs *store.ChainStore, sroot cid.Cid
 		params := mustEnc(&actors.CreateStorageMinerParams{
 			Owner:      owner,
 			Worker:     worker,
-			SectorSize: types.NewInt(build.SectorSize),
+			SectorSize: build.SectorSizes[0],
 			PeerID:     pid,
 		})
 

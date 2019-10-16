@@ -53,12 +53,12 @@ type StoragePowerState struct {
 type CreateStorageMinerParams struct {
 	Owner      address.Address
 	Worker     address.Address
-	SectorSize types.BigInt
+	SectorSize uint64
 	PeerID     peer.ID
 }
 
 func (spa StoragePowerActor) CreateStorageMiner(act *types.Actor, vmctx types.VMContext, params *CreateStorageMinerParams) ([]byte, ActorError) {
-	if !SupportedSectorSize(params.SectorSize) {
+	if !build.SupportedSectorSize(params.SectorSize) {
 		return nil, aerrors.New(1, "Unsupported sector size")
 	}
 
@@ -114,13 +114,6 @@ func (spa StoragePowerActor) CreateStorageMiner(act *types.Actor, vmctx types.VM
 	}
 
 	return naddr.Bytes(), nil
-}
-
-func SupportedSectorSize(ssize types.BigInt) bool {
-	if ssize.Uint64() == build.SectorSize {
-		return true
-	}
-	return false
 }
 
 type ArbitrateConsensusFaultParams struct {

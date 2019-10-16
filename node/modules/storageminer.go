@@ -16,7 +16,6 @@ import (
 	"go.uber.org/fx"
 
 	"github.com/filecoin-project/lotus/api"
-	"github.com/filecoin-project/lotus/build"
 	"github.com/filecoin-project/lotus/chain/address"
 	"github.com/filecoin-project/lotus/chain/deals"
 	"github.com/filecoin-project/lotus/lib/sectorbuilder"
@@ -38,9 +37,14 @@ func minerAddrFromDS(ds dtypes.MetadataDS) (address.Address, error) {
 	return address.NewFromBytes(maddrb)
 }
 
-func SectorBuilderConfig(storagePath string) func(dtypes.MetadataDS) (*sectorbuilder.SectorBuilderConfig, error) {
-	return func(ds dtypes.MetadataDS) (*sectorbuilder.SectorBuilderConfig, error) {
+func SectorBuilderConfig(storagePath string) func(dtypes.MetadataDS, api.FullNode) (*sectorbuilder.SectorBuilderConfig, error) {
+	return func(ds dtypes.MetadataDS, api api.FullNode) (*sectorbuilder.SectorBuilderConfig, error) {
 		minerAddr, err := minerAddrFromDS(ds)
+		if err != nil {
+			return nil, err
+		}
+
+		ssize, err := api.StateMinerSectorSize(context.TODO(), minerAddr, nil)
 		if err != nil {
 			return nil, err
 		}
@@ -56,7 +60,7 @@ func SectorBuilderConfig(storagePath string) func(dtypes.MetadataDS) (*sectorbui
 
 		sb := &sectorbuilder.SectorBuilderConfig{
 			Miner:       minerAddr,
-			SectorSize:  build.SectorSize,
+			SectorSize:  ssize,
 			MetadataDir: metadata,
 			SealedDir:   sealed,
 			StagedDir:   staging,

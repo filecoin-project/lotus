@@ -42,7 +42,7 @@ func TestStorageMarketCreateAndSlashMiner(t *testing.T) {
 			&CreateStorageMinerParams{
 				Owner:      ownerAddr,
 				Worker:     workerAddr,
-				SectorSize: types.NewInt(build.SectorSize),
+				SectorSize: build.SectorSizes[0],
 				PeerID:     "fakepeerid",
 			})
 		ApplyOK(t, ret)

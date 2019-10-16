@@ -39,7 +39,7 @@ func GetParams(storage bool) error {
 	}
 
 	for name, info := range params {
-		if info.SectorSize != SectorSize {
+		if !SupportedSectorSize(info.SectorSize) {
 			continue
 		}
 		if !storage && strings.HasSuffix(name, ".params") {
