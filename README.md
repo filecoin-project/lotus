@@ -68,7 +68,7 @@ You can follow sync status with:
 $ watch lotus sync status
 ```
 
-You can view the latest block height along with other network metrics at the [lotus Devnet dashboard](https://lotus-metrics-test.kittyhawk.wtf/chain).
+then view latest block height along with other network metrics at the https://lotus-metrics.kittyhawk.wtf/chain.
 
 [It may take a few minutes for the chain to finish syncing. You will see `Height: 0` until the full chain is synced and validated.]
 
@@ -229,7 +229,7 @@ Now go to http://127.0.0.1:2222.
 * `rm -rf ~/.lotus ~/.lotusstorage/`
 * Verify you have the correct versions of dependencies
 * If stuck on a bad fork, try `lotus chain sethead --genesis`
-* If that didn't help, open a new issue, ask in the [Community Forum](https://discuss.filecoin.io) or reach out via [Community chat](https://github.com/filecoin-project/community#chat).
+* If that didn't help, open a new issue, ask in the [Community forum](https://discuss.filecoin.io) or reach out via [Community chat](https://github.com/filecoin-project/community#chat).
 
 
 
