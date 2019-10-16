@@ -61,7 +61,6 @@ func (ms *msgSet) add(m *types.SignedMessage) error {
 			log.Error("Add with duplicate nonce")
 			return xerrors.Errorf("message to %s with nonce %d already in mpool")
 		}
-		log.Warn("Add called with the same message multiple times")
 	}
 	ms.msgs[m.Message.Nonce] = m
 

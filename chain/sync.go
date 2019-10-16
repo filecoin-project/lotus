@@ -484,7 +484,7 @@ func (syncer *Syncer) ValidateBlock(ctx context.Context, b *types.FullBlock) err
 		return xerrors.Errorf("GetMinerWorker failed: %w", err)
 	}
 
-	if err := h.CheckBlockSignature(waddr); err != nil {
+	if err := h.CheckBlockSignature(ctx, waddr); err != nil {
 		return xerrors.Errorf("check block signature failed: %w", err)
 	}
 
@@ -581,7 +581,7 @@ func (syncer *Syncer) checkBlockMessages(ctx context.Context, b *types.FullBlock
 		pubks = append(pubks, pubk)
 	}
 
-	if err := syncer.verifyBlsAggregate(b.Header.BLSAggregate, sigCids, pubks); err != nil {
+	if err := syncer.verifyBlsAggregate(ctx, b.Header.BLSAggregate, sigCids, pubks); err != nil {
 		return xerrors.Errorf("bls aggregate signature was invalid: %w", err)
 	}
 
@@ -629,7 +629,13 @@ func (syncer *Syncer) checkBlockMessages(ctx context.Context, b *types.FullBlock
 	return nil
 }
 
-func (syncer *Syncer) verifyBlsAggregate(sig types.Signature, msgs []cid.Cid, pubks []bls.PublicKey) error {
+func (syncer *Syncer) verifyBlsAggregate(ctx context.Context, sig types.Signature, msgs []cid.Cid, pubks []bls.PublicKey) error {
+	ctx, span := trace.StartSpan(ctx, "syncer.verifyBlsAggregate")
+	defer span.End()
+	span.AddAttributes(
+		trace.Int64Attribute("msgCount", int64(len(msgs))),
+	)
+
 	var digests []bls.Digest
 	for _, c := range msgs {
 		digests = append(digests, bls.Hash(bls.Message(c.Bytes())))

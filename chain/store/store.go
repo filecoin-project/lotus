@@ -12,6 +12,7 @@ import (
 	"github.com/filecoin-project/go-lotus/build"
 	"github.com/filecoin-project/go-lotus/chain/address"
 	"github.com/filecoin-project/go-lotus/chain/state"
+	"go.opencensus.io/trace"
 	"go.uber.org/zap"
 
 	amt "github.com/filecoin-project/go-amt-ipld"
@@ -727,6 +728,9 @@ func (cs *ChainStore) TryFillTipSet(ts *types.TipSet) (*FullTipSet, error) {
 }
 
 func (cs *ChainStore) GetRandomness(ctx context.Context, blks []cid.Cid, tickets []*types.Ticket, lb int64) ([]byte, error) {
+	ctx, span := trace.StartSpan(ctx, "store.GetRandomness")
+	defer span.End()
+
 	if lb < 0 {
 		return nil, fmt.Errorf("negative lookback parameters are not valid (got %d)", lb)
 	}

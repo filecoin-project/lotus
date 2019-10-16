@@ -239,6 +239,10 @@ func (vmctx *VMContext) GetBalance(a address.Address) (types.BigInt, aerrors.Act
 	}
 }
 
+func (vmctx *VMContext) Context() context.Context {
+	return vmctx.ctx
+}
+
 type hBlocks interface {
 	GetBlock(context.Context, cid.Cid) (block.Block, error)
 	AddBlock(block.Block) error

@@ -144,11 +144,11 @@ func (spa StoragePowerActor) ArbitrateConsensusFault(act *types.Actor, vmctx typ
 		return nil, aerrors.Absorb(oerr, 3, "response from 'GetWorkerAddr' was not a valid address")
 	}
 
-	if err := params.Block1.CheckBlockSignature(worker); err != nil {
+	if err := params.Block1.CheckBlockSignature(vmctx.Context(), worker); err != nil {
 		return nil, aerrors.Absorb(err, 4, "block1 did not have valid signature")
 	}
 
-	if err := params.Block2.CheckBlockSignature(worker); err != nil {
+	if err := params.Block2.CheckBlockSignature(vmctx.Context(), worker); err != nil {
 		return nil, aerrors.Absorb(err, 5, "block2 did not have valid signature")
 	}
 
@@ -169,7 +169,7 @@ func (spa StoragePowerActor) ArbitrateConsensusFault(act *types.Actor, vmctx typ
 	}
 
 	miner := params.Block1.Miner
-	if has, err := MinerSetHas(context.TODO(), vmctx, self.Miners, miner); err != nil {
+	if has, err := MinerSetHas(vmctx, self.Miners, miner); err != nil {
 		return nil, aerrors.Wrapf(err, "failed to check miner in set")
 	} else if !has {
 		return nil, aerrors.New(7, "either already slashed or not a miner")
@@ -276,7 +276,7 @@ func (spa StoragePowerActor) UpdateStorage(act *types.Actor, vmctx types.VMConte
 		return nil, err
 	}
 
-	has, err := MinerSetHas(context.TODO(), vmctx, self.Miners, vmctx.Message().From)
+	has, err := MinerSetHas(vmctx, self.Miners, vmctx.Message().From)
 	if err != nil {
 		return nil, err
 	}
@@ -327,7 +327,7 @@ func (spa StoragePowerActor) PowerLookup(act *types.Actor, vmctx types.VMContext
 }
 
 func powerLookup(ctx context.Context, vmctx types.VMContext, self *StoragePowerState, miner address.Address) (types.BigInt, ActorError) {
-	has, err := MinerSetHas(context.TODO(), vmctx, self.Miners, miner)
+	has, err := MinerSetHas(vmctx, self.Miners, miner)
 	if err != nil {
 		return types.EmptyInt, err
 	}
@@ -354,7 +354,7 @@ func (spa StoragePowerActor) IsMiner(act *types.Actor, vmctx types.VMContext, pa
 		return nil, err
 	}
 
-	has, err := MinerSetHas(context.TODO(), vmctx, self.Miners, param.Addr)
+	has, err := MinerSetHas(vmctx, self.Miners, param.Addr)
 	if err != nil {
 		return nil, err
 	}
@@ -432,13 +432,13 @@ func pledgeCollateralForSize(vmctx types.VMContext, size, totalStorage types.Big
 	return types.BigAdd(powerCollateral, perCapCollateral), nil
 }
 
-func MinerSetHas(ctx context.Context, vmctx types.VMContext, rcid cid.Cid, maddr address.Address) (bool, aerrors.ActorError) {
-	nd, err := hamt.LoadNode(ctx, vmctx.Ipld(), rcid)
+func MinerSetHas(vmctx types.VMContext, rcid cid.Cid, maddr address.Address) (bool, aerrors.ActorError) {
+	nd, err := hamt.LoadNode(vmctx.Context(), vmctx.Ipld(), rcid)
 	if err != nil {
 		return false, aerrors.HandleExternalError(err, "failed to load miner set")
 	}
 
-	err = nd.Find(ctx, string(maddr.Bytes()), nil)
+	err = nd.Find(vmctx.Context(), string(maddr.Bytes()), nil)
 	switch err {
 	case hamt.ErrNotFound:
 		return false, nil

@@ -2,12 +2,14 @@ package types
 
 import (
 	"bytes"
+	"context"
 	"crypto/sha256"
 	"math/big"
 
 	block "github.com/ipfs/go-block-format"
 	"github.com/ipfs/go-cid"
 	"github.com/multiformats/go-multihash"
+	"go.opencensus.io/trace"
 	xerrors "golang.org/x/xerrors"
 
 	"github.com/filecoin-project/go-lotus/chain/address"
@@ -98,7 +100,10 @@ func (blk *BlockHeader) SigningBytes() ([]byte, error) {
 	return blkcopy.Serialize()
 }
 
-func (blk *BlockHeader) CheckBlockSignature(worker address.Address) error {
+func (blk *BlockHeader) CheckBlockSignature(ctx context.Context, worker address.Address) error {
+	ctx, span := trace.StartSpan(ctx, "checkBlockSignature")
+	defer span.End()
+
 	sigb, err := blk.SigningBytes()
 	if err != nil {
 		return xerrors.Errorf("failed to get block signing bytes: %w", err)
