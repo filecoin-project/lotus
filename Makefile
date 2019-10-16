@@ -104,6 +104,11 @@ fountain:
 	go run github.com/GeertJohan/go.rice/rice append --exec fountain -i ./cmd/lotus-fountain
 .PHONY: fountain
 
+stats:
+	rm -f stats
+	go build -o stats ./tools/stats
+.PHONY: stats
+
 clean:
 	rm -rf $(CLEAN)
 	-$(MAKE) -C $(BLS_PATH) clean
