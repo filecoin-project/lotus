@@ -14,6 +14,7 @@ const UnixfsLinksPerLevel = 1024
 
 var SectorSizes = []uint64{
 	16 << 20,
+	256 << 20,
 	1 << 30,
 }
 
