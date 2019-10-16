@@ -5,8 +5,9 @@ import (
 	"crypto/sha256"
 	"encoding/json"
 	"fmt"
-	"github.com/filecoin-project/go-lotus/chain/vm"
 	"sync"
+
+	"github.com/filecoin-project/go-lotus/chain/vm"
 
 	"github.com/filecoin-project/go-lotus/build"
 	"github.com/filecoin-project/go-lotus/chain/address"
@@ -271,7 +272,7 @@ func (cs *ChainStore) takeHeaviestTipSet(ts *types.TipSet) error {
 			new: ts,
 		}
 	} else {
-		log.Warn("no heaviest tipset found, using %s", ts.Cids())
+		log.Warnf("no heaviest tipset found, using %s", ts.Cids())
 	}
 
 	log.Debugf("New heaviest tipset! %s", ts.Cids())

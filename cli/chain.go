@@ -4,6 +4,7 @@ import (
 	"context"
 	"encoding/json"
 	"fmt"
+	"strings"
 	"time"
 
 	cid "github.com/ipfs/go-cid"
@@ -279,7 +280,12 @@ var chainListCmd = &cli.Command{
 	Usage: "View a segment of the chain",
 	Flags: []cli.Flag{
 		&cli.Uint64Flag{Name: "height"},
-		&cli.UintFlag{Name: "count", Value: 30},
+		&cli.IntFlag{Name: "count", Value: 30},
+		&cli.StringFlag{
+			Name:  "format",
+			Usage: "specify the format to print out tipsets",
+			Value: "<height>: (<time>) <blocks>",
+		},
 	},
 	Action: func(cctx *cli.Context) error {
 		api, closer, err := GetFullNodeAPI(cctx)
@@ -300,15 +306,15 @@ var chainListCmd = &cli.Command{
 			return err
 		}
 
-		count := cctx.Uint("count")
+		count := cctx.Int("count")
 		if count < 1 {
 			return nil
 		}
 
-		tss := make([]*types.TipSet, count)
-		tss[0] = head
+		tss := make([]*types.TipSet, 0, count)
+		tss = append(tss, head)
 
-		for i := 1; i < len(tss); i++ {
+		for i := 1; i < count; i++ {
 			if head.Height() == 0 {
 				break
 			}
@@ -318,18 +324,26 @@ var chainListCmd = &cli.Command{
 				return err
 			}
 
-			tss[i] = head
+			tss = append(tss, head)
 		}
 
 		for i := len(tss) - 1; i >= 0; i-- {
-			mints := tss[i].MinTimestamp()
-			t := time.Unix(int64(mints), 0)
-			fmt.Printf("%d: (%s) [ ", tss[i].Height(), t.Format(time.Stamp))
-			for _, b := range tss[i].Blocks() {
-				fmt.Printf("%s: %s,", b.Cid(), b.Miner)
-			}
-			fmt.Println("]")
+			printTipSet(cctx.String("format"), tss[i])
 		}
 		return nil
 	},
+}
+
+func printTipSet(format string, ts *types.TipSet) {
+	format = strings.ReplaceAll(format, "<height>", fmt.Sprint(ts.Height()))
+	format = strings.ReplaceAll(format, "<time>", time.Unix(int64(ts.MinTimestamp()), 0).Format(time.Stamp))
+	blks := "[ "
+	for _, b := range ts.Blocks() {
+		blks += fmt.Sprintf("%s: %s,", b.Cid(), b.Miner)
+	}
+	blks += " ]"
+	format = strings.ReplaceAll(format, "<blocks>", blks)
+	format = strings.ReplaceAll(format, "<weight>", fmt.Sprint(ts.Blocks()[0].ParentWeight))
+
+	fmt.Println(format)
 }
