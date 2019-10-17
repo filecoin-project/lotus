@@ -24,7 +24,7 @@ import (
 
 var log = logging.Logger("storageminer")
 
-const PoStConfidence = 1
+const PoStConfidence = 3
 
 type Miner struct {
 	api    storageMinerApi
