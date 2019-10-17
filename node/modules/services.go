@@ -13,6 +13,7 @@ import (
 	"github.com/filecoin-project/lotus/chain/sub"
 	"github.com/filecoin-project/lotus/node/hello"
 	"github.com/filecoin-project/lotus/node/modules/helpers"
+	"github.com/filecoin-project/lotus/peermgr"
 	"github.com/filecoin-project/lotus/retrieval/discovery"
 	"github.com/filecoin-project/lotus/storage/sector"
 )
@@ -31,6 +32,10 @@ func RunHello(mctx helpers.MetricsCtx, lc fx.Lifecycle, h host.Host, svc *hello.
 		},
 	}
 	h.Network().Notify(&bundle)
+}
+
+func RunPeerMgr(mctx helpers.MetricsCtx, lc fx.Lifecycle, pmgr *peermgr.PeerMgr) {
+	go pmgr.Run(helpers.LifecycleCtx(mctx, lc))
 }
 
 func RunBlockSync(h host.Host, svc *chain.BlockSyncService) {

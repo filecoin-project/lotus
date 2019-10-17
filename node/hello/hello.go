@@ -3,7 +3,6 @@ package hello
 import (
 	"context"
 	"fmt"
-	"github.com/filecoin-project/lotus/chain/types"
 
 	"github.com/ipfs/go-cid"
 	cbor "github.com/ipfs/go-ipld-cbor"
@@ -14,7 +13,9 @@ import (
 
 	"github.com/filecoin-project/lotus/chain"
 	"github.com/filecoin-project/lotus/chain/store"
+	"github.com/filecoin-project/lotus/chain/types"
 	"github.com/filecoin-project/lotus/lib/cborrpc"
+	"github.com/filecoin-project/lotus/peermgr"
 )
 
 const ProtocolID = "/fil/hello/1.0.0"
@@ -36,14 +37,16 @@ type Service struct {
 
 	cs     *store.ChainStore
 	syncer *chain.Syncer
+	pmgr   *peermgr.PeerMgr
 }
 
-func NewHelloService(h host.Host, cs *store.ChainStore, syncer *chain.Syncer) *Service {
+func NewHelloService(h host.Host, cs *store.ChainStore, syncer *chain.Syncer, pmgr *peermgr.PeerMgr) *Service {
 	return &Service{
 		newStream: h.NewStream,
 
 		cs:     cs,
 		syncer: syncer,
+		pmgr:   pmgr,
 	}
 }
 
@@ -74,6 +77,7 @@ func (hs *Service) HandleStream(s inet.Stream) {
 
 	log.Infof("Got new tipset through Hello: %s from %s", ts.Cids(), s.Conn().RemotePeer())
 	hs.syncer.InformNewHead(s.Conn().RemotePeer(), ts)
+	hs.pmgr.AddFilecoinPeer(s.Conn().RemotePeer())
 }
 
 func (hs *Service) SayHello(ctx context.Context, pid peer.ID) error {
@@ -88,6 +92,7 @@ func (hs *Service) SayHello(ctx context.Context, pid peer.ID) error {
 	if err != nil {
 		return err
 	}
+
 	gen, err := hs.cs.GetGenesis()
 	if err != nil {
 		return err

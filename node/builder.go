@@ -37,6 +37,7 @@ import (
 	"github.com/filecoin-project/lotus/node/modules/testing"
 	"github.com/filecoin-project/lotus/node/repo"
 	"github.com/filecoin-project/lotus/paych"
+	"github.com/filecoin-project/lotus/peermgr"
 	"github.com/filecoin-project/lotus/retrieval"
 	"github.com/filecoin-project/lotus/retrieval/discovery"
 	"github.com/filecoin-project/lotus/storage"
@@ -78,6 +79,7 @@ const (
 
 	RunHelloKey
 	RunBlockSyncKey
+	RunPeerMgrKey
 
 	HandleIncomingBlocksKey
 	HandleIncomingMessagesKey
@@ -227,8 +229,11 @@ func Online() Option {
 
 			Override(new(*hello.Service), hello.NewHelloService),
 			Override(new(*chain.BlockSyncService), chain.NewBlockSyncService),
+			Override(new(*peermgr.PeerMgr), peermgr.NewPeerMgr),
+
 			Override(RunHelloKey, modules.RunHello),
 			Override(RunBlockSyncKey, modules.RunBlockSync),
+			Override(RunPeerMgrKey, modules.RunPeerMgr),
 			Override(HandleIncomingBlocksKey, modules.HandleIncomingBlocks),
 			Override(HeadMetricsKey, metrics.SendHeadNotifs("")),
 
