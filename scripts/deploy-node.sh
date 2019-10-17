@@ -16,9 +16,9 @@ FILES_TO_SEND=(
 	scripts/louts-miner.service
 )
 
-rsync -P "${FILES_TO_SEND[@]} $HOST:~/lotus-stage/
+rsync -P "${FILES_TO_SEND[@]}" "$HOST:~/lotus-stage/"
 
-ssh "$HOST" 'bash -s' << EOF
+ssh "$HOST" 'bash -s' << 'EOF'
 set -euo pipefail
 
 systemctl stop lotus-storage-miner
