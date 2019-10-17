@@ -78,7 +78,7 @@ build: lotus lotus-storage-miner
 
 install:
 	install -C ./lotus /usr/local/bin/lotus
-	install -C ./lotus /usr/local/bin/lotus-storage-miner
+	install -C ./lotus-storage-miner /usr/local/bin/lotus-storage-miner
 
 benchmarks:
 	go run github.com/whyrusleeping/bencher ./... > bench.json
