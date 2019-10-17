@@ -194,7 +194,9 @@ $ lotus client retrieve <Data CID> <outfile>
 
 This will initiate a retrieval deal and write the data to the outfile. (This process may take some time.)
 
+### Monitoring Dashboard
 
+To see the latest network activity, including chain block height, blocktime, total network power, largest miners, and more, check out the monitoring dashboard at https://lotus-metrics.kittyhawk.wtf.
 
 ### Pond UI
 
