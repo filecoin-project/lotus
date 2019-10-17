@@ -11,8 +11,8 @@ ssh "$HOST" 'systemctl stop lotus-daemon'
 ssh "$HOST" 'mkdir -p .lotus .lotusstorage' &
 scp "./lotus"  "$HOST:/usr/local/bin" &
 scp "./lotus-storage-miner"  "$HOST:/usr/local/bin" &
-scp -C scripts/daemon.service "${HOST}:/etc/systemd/system/lotus-daemon.service" &
-scp -C scripts/sminer.service "${HOST}:/etc/systemd/system/lotus-storage-miner.service" &
+scp -C scripts/lotus-daemon.service "${HOST}:/etc/systemd/system/lotus-daemon.service" &
+scp -C scripts/louts-miner.service "${HOST}:/etc/systemd/system/lotus-storage-miner.service" &
 wait
 
 ssh "$HOST" 'systemctl daemon-reload'
