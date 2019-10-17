@@ -94,7 +94,7 @@ func Bootstrap(mctx helpers.MetricsCtx, lc fx.Lifecycle, host host.Host, pinfos 
 		OnStart: func(_ context.Context) error {
 			go func() {
 				for {
-					sctx, cancel := context.WithTimeout(ctx, build.BlockDelay*time.Second/2)
+					sctx, cancel := context.WithTimeout(ctx, 2*time.Second)
 					<-sctx.Done()
 					cancel()
 

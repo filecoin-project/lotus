@@ -80,7 +80,7 @@ $ lotus wallet new bls
 t3...
 ```
 
-Grab some funds from the faucet - go to https://lotus-faucet.kittyhawk.wtf, paste the address
+Grab some funds from faucet - go to https://lotus-faucet.kittyhawk.wtf/, paste the address
 you just created, and press Send.
 
 Check the wallet balance (balance is listed in attoFIL, where 1 attoFIL = 10^-18 FIL):
@@ -192,7 +192,9 @@ $ lotus client retrieve <Data CID> <outfile>
 
 This will initiate a retrieval deal and write the data to the outfile. (This process may take some time.)
 
+### Monitoring Dashboard
 
+To see the latest network activity, including chain block height, blocktime, total network power, largest miners, and more, check out the monitoring dashboard at https://lotus-metrics.kittyhawk.wtf.
 
 ### Pond UI
 

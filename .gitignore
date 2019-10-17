@@ -18,3 +18,4 @@ build/paramfetch.sh
 /chain/types/work_msg/
 bin/ipget
 bin/tmp/*
+.idea

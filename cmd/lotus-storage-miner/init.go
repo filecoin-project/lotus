@@ -224,7 +224,7 @@ func configureStorageMiner(ctx context.Context, api api.FullNode, addr address.A
 		Params:   enc,
 		Value:    types.NewInt(0),
 		GasPrice: types.NewInt(0),
-		GasLimit: types.NewInt(1000000),
+		GasLimit: types.NewInt(100000000),
 	}
 
 	smsg, err := api.MpoolPushMessage(ctx, msg)
@@ -292,7 +292,7 @@ func createStorageMiner(ctx context.Context, api api.FullNode, peerid peer.ID, c
 		Method: actors.SPAMethods.CreateStorageMiner,
 		Params: params,
 
-		GasLimit: types.NewInt(10000),
+		GasLimit: types.NewInt(10000000),
 		GasPrice: types.NewInt(0),
 	}
 
