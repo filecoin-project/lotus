@@ -60,10 +60,10 @@ class ChainExplorer extends React.Component {
   }
 
   async fetch(h, base, cache, msgcache) {
-    console.log(h, base, cache)
+    //console.log(h, base, cache)
 
     if (this.fetching[h]) {
-      return
+      return cache[h]
     }
     this.fetching[h] = true
 
@@ -110,17 +110,16 @@ class ChainExplorer extends React.Component {
       await this.fetchN(h)
     }
 
-    const tofetch = Array(rows).fill(0).map((_, i) => top - i)
-      .filter(v => !this.state.cache[v])
-
     let cache = {...this.state.cache}
     let msgcache = {...this.state.messages}
 
-    await tofetch.reduce(async (prev, next) => {
-      let prevts = await prev
-      let newts = await this.fetch(next, prevts, cache, msgcache)
-      return newts ? newts : prevts
-    }, Promise.resolve(cache[top]))
+    console.log("top", top)
+
+    let parent = cache[top]
+    for(let i = 0; i < rows; i++) {
+      let newts = await this.fetch(top - i, parent, cache, msgcache)
+      parent = newts ? newts : parent
+    }
     this.setState({cache: cache, messages: msgcache})
   }
 
