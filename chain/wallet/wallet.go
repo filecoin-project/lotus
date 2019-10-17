@@ -7,7 +7,6 @@ import (
 	"sync"
 
 	"github.com/filecoin-project/go-bls-sigs"
-	"github.com/filecoin-project/go-lotus/node/repo"
 
 	"github.com/minio/blake2b-simd"
 	"golang.org/x/xerrors"
@@ -19,6 +18,7 @@ import (
 
 const (
 	KNamePrefix = "wallet-"
+	KDefault    = "default"
 )
 
 type Wallet struct {
@@ -43,7 +43,7 @@ func (w *Wallet) Sign(ctx context.Context, addr address.Address, msg []byte) (*t
 		return nil, err
 	}
 	if ki == nil {
-		return nil, xerrors.Errorf("signing using key '%s': %w", addr.String(), repo.ErrKeyNotFound)
+		return nil, xerrors.Errorf("signing using key '%s': %w", addr.String(), types.ErrKeyInfoNotFound)
 	}
 
 	switch ki.Type {
@@ -83,7 +83,7 @@ func (w *Wallet) findKey(addr address.Address) (*Key, error) {
 	}
 	ki, err := w.keystore.Get(KNamePrefix + addr.String())
 	if err != nil {
-		if xerrors.Is(err, repo.ErrKeyNotFound) {
+		if xerrors.Is(err, types.ErrKeyInfoNotFound) {
 			return nil, nil
 		}
 		return nil, xerrors.Errorf("getting from keystore: %w", err)
@@ -144,6 +144,39 @@ func (w *Wallet) ListAddrs() ([]address.Address, error) {
 	return out, nil
 }
 
+func (w *Wallet) GetDefault() (address.Address, error) {
+	w.lk.Lock()
+	defer w.lk.Unlock()
+
+	ki, err := w.keystore.Get(KDefault)
+	if err != nil {
+		return address.Undef, xerrors.Errorf("failed to get default key: %w", err)
+	}
+
+	k, err := NewKey(ki)
+	if err != nil {
+		return address.Undef, xerrors.Errorf("failed to read default key from keystore: %w", err)
+	}
+
+	return k.Address, nil
+}
+
+func (w *Wallet) SetDefault(a address.Address) error {
+	w.lk.Lock()
+	defer w.lk.Unlock()
+
+	ki, err := w.keystore.Get(KNamePrefix + a.String())
+	if err != nil {
+		return err
+	}
+
+	if err := w.keystore.Put(KDefault, ki); err != nil {
+		return err
+	}
+
+	return nil
+}
+
 func GenerateKey(typ string) (*Key, error) {
 	switch typ {
 	case types.KTSecp256k1:
@@ -183,6 +216,18 @@ func (w *Wallet) GenerateKey(typ string) (address.Address, error) {
 		return address.Undef, xerrors.Errorf("saving to keystore: %w", err)
 	}
 	w.keys[k.Address] = k
+
+	_, err = w.keystore.Get(KDefault)
+	if err != nil {
+		if !xerrors.Is(err, types.ErrKeyInfoNotFound) {
+			return address.Undef, err
+		}
+
+		if err := w.keystore.Put(KDefault, k.KeyInfo); err != nil {
+			return address.Undef, xerrors.Errorf("failed to set new key as default: %w", err)
+		}
+	}
+
 	return k.Address, nil
 }
 

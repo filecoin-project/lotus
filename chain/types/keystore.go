@@ -1,5 +1,11 @@
 package types
 
+import (
+	"fmt"
+)
+
+var ErrKeyInfoNotFound = fmt.Errorf("key info not found")
+
 // KeyInfo is used for storing keys in KeyStore
 type KeyInfo struct {
 	Type       string

@@ -2,7 +2,6 @@ package wallet
 
 import (
 	"github.com/filecoin-project/go-lotus/chain/types"
-	"github.com/filecoin-project/go-lotus/node/repo"
 )
 
 type MemKeyStore struct {
@@ -28,7 +27,7 @@ func (mks *MemKeyStore) List() ([]string, error) {
 func (mks *MemKeyStore) Get(k string) (types.KeyInfo, error) {
 	ki, ok := mks.m[k]
 	if !ok {
-		return types.KeyInfo{}, repo.ErrKeyNotFound
+		return types.KeyInfo{}, types.ErrKeyInfoNotFound
 	}
 
 	return ki, nil

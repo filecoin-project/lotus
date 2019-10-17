@@ -16,8 +16,7 @@ var (
 	ErrRepoAlreadyLocked = errors.New("repo is already locked")
 	ErrClosedRepo        = errors.New("repo is no longer open")
 
-	ErrKeyExists   = errors.New("key already exists")
-	ErrKeyNotFound = errors.New("key not found")
+	ErrKeyExists = errors.New("key already exists")
 )
 
 type Repo interface {

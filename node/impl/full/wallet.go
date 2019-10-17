@@ -54,16 +54,11 @@ func (a *WalletAPI) WalletSignMessage(ctx context.Context, k address.Address, ms
 }
 
 func (a *WalletAPI) WalletDefaultAddress(ctx context.Context) (address.Address, error) {
-	addrs, err := a.Wallet.ListAddrs()
-	if err != nil {
-		return address.Undef, err
-	}
-	if len(addrs) == 0 {
-		return address.Undef, xerrors.New("no addresses in wallet")
-	}
+	return a.Wallet.GetDefault()
+}
 
-	// TODO: store a default address in the config or 'wallet' portion of the repo
-	return addrs[0], nil
+func (a *WalletAPI) WalletSetDefault(ctx context.Context, addr address.Address) error {
+	return a.Wallet.SetDefault(addr)
 }
 
 func (a *WalletAPI) WalletExport(ctx context.Context, addr address.Address) (*types.KeyInfo, error) {

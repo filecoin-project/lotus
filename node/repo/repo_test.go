@@ -90,7 +90,7 @@ func basicTest(t *testing.T, repo Repo) {
 
 	k2prim, err := kstr.Get("k2")
 	if assert.Error(t, err, "should not be able to get k2") {
-		assert.True(t, xerrors.Is(err, ErrKeyNotFound), "returned error is ErrKeyNotFound")
+		assert.True(t, xerrors.Is(err, types.ErrKeyInfoNotFound), "returned error is ErrKeyNotFound")
 	}
 	assert.Empty(t, k2prim, "there should be no output for k2")
 
@@ -110,6 +110,6 @@ func basicTest(t *testing.T, repo Repo) {
 
 	err = kstr.Delete("k2")
 	if assert.Error(t, err) {
-		assert.True(t, xerrors.Is(err, ErrKeyNotFound), "returned errror is ErrKeyNotFound")
+		assert.True(t, xerrors.Is(err, types.ErrKeyInfoNotFound), "returned errror is ErrKeyNotFound")
 	}
 }

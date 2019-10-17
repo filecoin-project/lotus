@@ -2,10 +2,10 @@ package lp2p
 
 import (
 	"crypto/rand"
-	"github.com/filecoin-project/go-lotus/chain/types"
-	"github.com/filecoin-project/go-lotus/node/repo"
-	"golang.org/x/xerrors"
 	"time"
+
+	"github.com/filecoin-project/go-lotus/chain/types"
+	"golang.org/x/xerrors"
 
 	logging "github.com/ipfs/go-log"
 	"github.com/libp2p/go-libp2p"
@@ -31,7 +31,7 @@ func PrivKey(ks types.KeyStore) (crypto.PrivKey, error) {
 	if err == nil {
 		return crypto.UnmarshalPrivateKey(k.PrivateKey)
 	}
-	if !xerrors.Is(err, repo.ErrKeyNotFound) {
+	if !xerrors.Is(err, types.ErrKeyInfoNotFound) {
 		return nil, err
 	}
 	pk, err := genLibp2pKey()
