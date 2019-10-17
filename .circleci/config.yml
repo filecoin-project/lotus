@@ -82,7 +82,7 @@ jobs:
       - prepare
       - go/mod-download
       - run:
-          command: make deps lotus
+          command: make -j2 deps lotus
           no_output_timeout: 30m
       - download-params
       - go/install-gotestsum:
@@ -116,7 +116,7 @@ jobs:
       - prepare
       - go/mod-download
       - run:
-          command: make build
+          command: make -j2 build
       - store_artifacts:
           path: lotus
           destination: output
