@@ -119,10 +119,10 @@ jobs:
           command: make -j2 build
       - store_artifacts:
           path: lotus
-          destination: output
+          destination: lotus
       - store_artifacts:
           path: lotus-storage-miner
-          destination: output
+          destination: lotus-storage-miner
 
   lint: &lint
     description: |
