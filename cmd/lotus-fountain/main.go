@@ -92,7 +92,7 @@ var runCmd = &cli.Command{
 
 		http.Handle("/", http.FileServer(rice.MustFindBox("site").HTTPBox()))
 		http.HandleFunc("/send", h.send)
-		http.HandleFunc("/sendcoll", h.sendColl)
+		http.HandleFunc("/mkminer", h.mkminer)
 
 		fmt.Printf("Open http://%s\n", cctx.String("front"))
 
@@ -137,32 +137,7 @@ func (h *handler) send(w http.ResponseWriter, r *http.Request) {
 	w.Write([]byte(smsg.Cid().String()))
 }
 
-func (h *handler) sendColl(w http.ResponseWriter, r *http.Request) {
-	to, err := address.NewFromString(r.FormValue("address"))
-	if err != nil {
-		w.WriteHeader(400)
-		w.Write([]byte(err.Error()))
-		return
-	}
-
-	coll, err := h.api.StatePledgeCollateral(h.ctx, nil)
-	if err != nil {
-		return
-	}
-
-	smsg, err := h.api.MpoolPushMessage(h.ctx, &types.Message{
-		Value: coll,
-		From:  h.from,
-		To:    to,
-
-		GasPrice: types.NewInt(0),
-		GasLimit: types.NewInt(1000),
-	})
-	if err != nil {
-		w.WriteHeader(400)
-		w.Write([]byte(err.Error()))
-		return
-	}
-
-	w.Write([]byte(smsg.Cid().String()))
+func (h *handler) mkminer(w http.ResponseWriter, r *http.Request) {
+	w.WriteHeader(400)
+	// todo
 }
