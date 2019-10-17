@@ -79,7 +79,7 @@ $ lotus wallet new bls
 t3...
 ```
 
-Grab some funds from faucet - go to http://lotus-faucet.kittyhawk.wtf:777/, paste the address
+Grab some funds from faucet - go to https://lotus-faucet.kittyhawk.wtf/, paste the address
 you just created, and press Send.
 
 (You can also generate a public key address using secp256k1 with 
