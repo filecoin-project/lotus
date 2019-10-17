@@ -94,17 +94,17 @@ var runCmd = &cli.Command{
 			limiter: NewLimiter(LimiterConfig{
 				TotalRate:   time.Second,
 				TotalBurst:  20,
-				IPRate:      5 * time.Minute,
+				IPRate:      time.Minute,
 				IPBurst:     5,
-				WalletRate:  time.Hour,
+				WalletRate:  15 * time.Minute,
 				WalletBurst: 1,
 			}),
 			colLimiter: NewLimiter(LimiterConfig{
 				TotalRate:   time.Second,
 				TotalBurst:  20,
-				IPRate:      24 * time.Hour,
+				IPRate:      10 * time.Minute,
 				IPBurst:     1,
-				WalletRate:  24 * 364 * time.Hour,
+				WalletRate:  1 * time.Hour,
 				WalletBurst: 1,
 			}),
 		}
@@ -206,7 +206,7 @@ func (h *handler) mkminer(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	log.Infof("mkactoer on %s", owner)
+	log.Infof("mkactor on %s", owner)
 
 	// Limit based on wallet address
 	limiter = h.colLimiter.GetWalletLimiter(owner.String())
@@ -307,5 +307,5 @@ func (h *handler) mkminer(w http.ResponseWriter, r *http.Request) {
 	w.Header().Set("Content-Type", "text/plain")
 	w.WriteHeader(200)
 	fmt.Fprintf(w, "New storage miners address is: %s\n", addr)
-	fmt.Fprintf(w, "Run lotus-storage-miner init --actor=%s -owner=%s", addr, owner)
+	fmt.Fprintf(w, "Run lotus-storage-miner init --actor=%s --owner=%s", addr, owner)
 }
