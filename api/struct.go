@@ -70,6 +70,7 @@ type FullNodeStruct struct {
 		WalletSign           func(context.Context, address.Address, []byte) (*types.Signature, error)             `perm:"sign"`
 		WalletSignMessage    func(context.Context, address.Address, *types.Message) (*types.SignedMessage, error) `perm:"sign"`
 		WalletDefaultAddress func(context.Context) (address.Address, error)                                       `perm:"write"`
+		WalletSetDefault     func(context.Context, address.Address) error                                         `perm:"admin"`
 		WalletExport         func(context.Context, address.Address) (*types.KeyInfo, error)                       `perm:"admin"`
 		WalletImport         func(context.Context, *types.KeyInfo) (address.Address, error)                       `perm:"admin"`
 
@@ -267,6 +268,10 @@ func (c *FullNodeStruct) WalletSignMessage(ctx context.Context, k address.Addres
 
 func (c *FullNodeStruct) WalletDefaultAddress(ctx context.Context) (address.Address, error) {
 	return c.Internal.WalletDefaultAddress(ctx)
+}
+
+func (c *FullNodeStruct) WalletSetDefault(ctx context.Context, a address.Address) error {
+	return c.Internal.WalletSetDefault(ctx, a)
 }
 
 func (c *FullNodeStruct) WalletExport(ctx context.Context, a address.Address) (*types.KeyInfo, error) {

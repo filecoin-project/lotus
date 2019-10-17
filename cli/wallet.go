@@ -22,6 +22,8 @@ var walletCmd = &cli.Command{
 		walletBalance,
 		walletExport,
 		walletImport,
+		walletGetDefault,
+		walletSetDefault,
 	},
 }
 
@@ -105,6 +107,51 @@ var walletBalance = &cli.Command{
 
 		fmt.Printf("%s\n", balance.String())
 		return nil
+	},
+}
+
+var walletGetDefault = &cli.Command{
+	Name:  "default",
+	Usage: "Get default wallet address",
+	Action: func(cctx *cli.Context) error {
+		api, closer, err := GetFullNodeAPI(cctx)
+		if err != nil {
+			return err
+		}
+		defer closer()
+		ctx := ReqContext(cctx)
+
+		addr, err := api.WalletDefaultAddress(ctx)
+		if err != nil {
+			return err
+		}
+
+		fmt.Printf("%s\n", addr.String())
+		return nil
+	},
+}
+
+var walletSetDefault = &cli.Command{
+	Name:  "set-default",
+	Usage: "Set default wallet address",
+	Action: func(cctx *cli.Context) error {
+		api, closer, err := GetFullNodeAPI(cctx)
+		if err != nil {
+			return err
+		}
+		defer closer()
+		ctx := ReqContext(cctx)
+
+		if !cctx.Args().Present() {
+			return fmt.Errorf("must pass address to set as default")
+		}
+
+		addr, err := address.NewFromString(cctx.Args().First())
+		if err != nil {
+			return err
+		}
+
+		return api.WalletSetDefault(ctx, addr)
 	},
 }
 

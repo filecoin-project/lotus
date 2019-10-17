@@ -287,7 +287,7 @@ func (fsr *fsLockedRepo) Get(name string) (types.KeyInfo, error) {
 
 	fstat, err := os.Stat(keyPath)
 	if os.IsNotExist(err) {
-		return types.KeyInfo{}, xerrors.Errorf("opening key '%s': %w", name, ErrKeyNotFound)
+		return types.KeyInfo{}, xerrors.Errorf("opening key '%s': %w", name, types.ErrKeyInfoNotFound)
 	} else if err != nil {
 		return types.KeyInfo{}, xerrors.Errorf("opening key '%s': %w", name, err)
 	}
@@ -354,7 +354,7 @@ func (fsr *fsLockedRepo) Delete(name string) error {
 
 	_, err := os.Stat(keyPath)
 	if os.IsNotExist(err) {
-		return xerrors.Errorf("checking key before delete '%s': %w", name, ErrKeyNotFound)
+		return xerrors.Errorf("checking key before delete '%s': %w", name, types.ErrKeyInfoNotFound)
 	} else if err != nil {
 		return xerrors.Errorf("checking key before delete '%s': %w", name, err)
 	}
