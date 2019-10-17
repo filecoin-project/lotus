@@ -1,23 +1,38 @@
 #!/usr/bin/env bash
 
+set -euo pipefail
+IFS=$'\n\t'
+
+
 HOST=$1
 
 # upload binaries
 # TODO: destroy
 
-ssh "$HOST" 'systemctl stop lotus-storage-miner'
-ssh "$HOST" 'systemctl stop lotus-daemon'
+FILES_TO_SEND=(
+	./louts
+	./lotus-storage-miner
+	scripts/lotus-daemon.service
+	scripts/louts-miner.service
+)
 
-ssh "$HOST" 'mkdir -p .lotus .lotusstorage' &
-scp "./lotus"  "$HOST:/usr/local/bin" &
-scp "./lotus-storage-miner"  "$HOST:/usr/local/bin" &
-scp -C scripts/daemon.service "${HOST}:/etc/systemd/system/lotus-daemon.service" &
-scp -C scripts/sminer.service "${HOST}:/etc/systemd/system/lotus-storage-miner.service" &
-wait
+rsync -P "${FILES_TO_SEND[@]}" "$HOST:~/lotus-stage/"
 
-ssh "$HOST" 'systemctl daemon-reload'
-ssh "$HOST" 'systemctl start lotus-daemon' &
-wait
+ssh "$HOST" 'bash -s' << 'EOF'
+set -euo pipefail
+
+systemctl stop lotus-storage-miner
+systemctl stop lotus-daemon
+mkdir -p .lotus .lotusstorage
+
+cd "$HOME/lotus-stage/"
+cp -f louts lotus-storage-miner /usr/local/bin
+cp -f lotus-daemon.service /etc/systemd/system/lotus-daemon.service
+cp -f lotus-miner.service /etc/systemd/system/lotus-storage-miner.service
+
+systemctl daemon-reload
+systemctl start lotus-daemon
+EOF
 
 
 # setup miner actor

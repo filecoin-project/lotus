@@ -4,7 +4,7 @@ After=network.target
 
 [Service]
 ExecStart=/usr/local/bin/lotus daemon
-Environment=GOLOG_FILE="/root/.lotus/logs"
+Environment=GOLOG_FILE="/var/log/lotus-daemon"
 Environment=GOLOG_LOG_FMT="json"
 
 [Install]
