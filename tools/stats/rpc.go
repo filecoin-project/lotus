@@ -76,6 +76,8 @@ func GetTips(ctx context.Context, api api.FullNode, lastHeight uint64) (<-chan *
 	go func() {
 		defer close(chmain)
 
+		ping := time.Tick(30 * time.Second)
+
 		for {
 			select {
 			case changes := <-notif:
@@ -97,6 +99,18 @@ func GetTips(ctx context.Context, api api.FullNode, lastHeight uint64) (<-chan *
 						chmain <- change.Val
 					}
 				}
+			case <-ping:
+				log.Print("Running health check")
+
+				cctx, cancel := context.WithTimeout(ctx, 5*time.Second)
+				if _, err := api.ID(cctx); err != nil {
+					log.Print("Health check failed")
+					return
+				}
+
+				cancel()
+
+				log.Print("Node online")
 			case <-ctx.Done():
 				return
 			}
