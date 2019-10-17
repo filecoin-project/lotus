@@ -68,8 +68,9 @@ You can follow sync status with:
 $ watch lotus sync status
 ```
 
-[It may take a few minutes for the chain to finish syncing. You will see `Height: 0` until the full chain is synced and validated.]
+then view latest block height along with other network metrics at the https://lotus-metrics.kittyhawk.wtf/chain.
 
+[It may take a few minutes for the chain to finish syncing. You will see `Height: 0` until the full chain is synced and validated.]
 
 ### Basics
 
@@ -82,15 +83,12 @@ t3...
 Grab some funds from faucet - go to https://lotus-faucet.kittyhawk.wtf/, paste the address
 you just created, and press Send.
 
-(You can also generate a public key address using secp256k1 with 
-`lotus wallet new secp256k1`. BLS signatures use less space so will have lower fees.)
-
 Check the wallet balance (balance is listed in attoFIL, where 1 attoFIL = 10^-18 FIL):
 ```sh
 $ lotus wallet balance [optional address (t3...)]
 ```
-(NOTE: If you see an error like `actor not found` after executing this command,
-it means that either your node isn't fully synced or there are no transactions to this address yet on chain. If the latter, using the faucet should 'fix' this).
+
+(NOTE: If you see an error like `actor not found` after executing this command, it means that either your node isn't fully synced or there are no transactions to this address yet on chain. If the latter, using the faucet should 'fix' this).
 
 ### Mining
 
@@ -233,7 +231,7 @@ Now go to http://127.0.0.1:2222.
 * `rm -rf ~/.lotus ~/.lotusstorage/`
 * Verify you have the correct versions of dependencies
 * If stuck on a bad fork, try `lotus chain sethead --genesis`
-* If that didn't help, open a new issue, ask in the [Community Forum](https://discuss.filecoin.io) or reach out via [Community chat](https://github.com/filecoin-project/community#chat).
+* If that didn't help, open a new issue, ask in the [Community forum](https://discuss.filecoin.io) or reach out via [Community chat](https://github.com/filecoin-project/community#chat).
 
 
 
