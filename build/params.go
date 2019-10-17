@@ -30,7 +30,7 @@ const MaxVouchersPerDeal = 768 // roughly one voucher per 10h over a year
 // Consensus / Network
 
 // Seconds
-const BlockDelay = 6
+const BlockDelay = 30
 
 // Seconds
 const AllowableClockDrift = BlockDelay * 2
@@ -53,9 +53,9 @@ const ProvingPeriodDuration = 40
 // Blocks
 const PoSTChallangeTime = 20
 
-const PowerCollateralProportion = 20
-const PerCapitaCollateralProportion = 5
-const CollateralPrecision = 100
+const PowerCollateralProportion = 5
+const PerCapitaCollateralProportion = 1
+const CollateralPrecision = 1000
 
 // /////
 // Devnet settings

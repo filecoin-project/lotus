@@ -18,7 +18,7 @@ import (
 	"github.com/filecoin-project/go-lotus/node/modules/lp2p"
 )
 
-const topic = "/fil/headnotifs/bafy2bzacecyfz2wfi5a6d4epch6nmedrlan3mdfswgv3y74an5aeqxaq5gqlu"
+const topic = "/fil/headnotifs/bafy2bzacea77zxnepp7wuqqgpj7xcw2ywwmmcmtrbjghhv4g2dildogpv6roi"
 
 var upgrader = websocket.Upgrader{
 	WriteBufferSize: 1024,
@@ -49,7 +49,7 @@ func main() {
 	}
 
 	pi, err := addrutil.ParseAddresses(ctx, []string{
-		"/ip4/147.75.80.29/tcp/1347/p2p/12D3KooWGdsbvHwscFKT1kqBeeooPe6EneJvjXzTrWSzwKhc1ssn",
+		"/ip4/147.75.80.29/tcp/1347/p2p/12D3KooWGU8C1mFsEtz4bXmHUH3kQTnQnxVy8cigwGV94qCpYJw7",
 	})
 	if err != nil {
 		panic(err)
