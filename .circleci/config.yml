@@ -109,6 +109,20 @@ jobs:
                 shell: /bin/bash -eo pipefail
                 command: |
                   bash <(curl -s https://codecov.io/bash)
+  build:
+    executor: golang
+    steps:
+      - install-deps
+      - prepare
+      - go/mod-download
+      - run:
+          command: make build
+      - store_artifacts:
+          path: lotus
+          destanation: lotus
+      - store_artifacts:
+          path: lotus-storage-miner
+          destanation: lotus-storage-miner
 
   lint: &lint
     description: |
@@ -163,3 +177,5 @@ workflows:
       - test:
           codecov-upload: true
       - mod-tidy-check
+      - build
+
