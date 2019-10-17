@@ -7,11 +7,10 @@ import (
 	"fmt"
 	"sync"
 
-	"github.com/filecoin-project/go-lotus/chain/vm"
-
 	"github.com/filecoin-project/go-lotus/build"
 	"github.com/filecoin-project/go-lotus/chain/address"
 	"github.com/filecoin-project/go-lotus/chain/state"
+	"github.com/filecoin-project/go-lotus/chain/vm"
 	"go.opencensus.io/trace"
 	"go.uber.org/zap"
 
