@@ -119,10 +119,12 @@ func (MultiSigActor) MultiSigConstructor(act *types.Actor, vmctx types.VMContext
 	self := &MultiSigActorState{
 		Signers:  params.Signers,
 		Required: params.Required,
+	}
 
-		InitialBalance: vmctx.Message().Value,
-		UnlockDuration: params.UnlockDuration,
-		StartingBlock:  vmctx.BlockHeight(),
+	if params.UnlockDuration != 0 {
+		self.InitialBalance = vmctx.Message().Value
+		self.UnlockDuration = params.UnlockDuration
+		self.StartingBlock = vmctx.BlockHeight()
 	}
 
 	head, err := vmctx.Storage().Put(self)
