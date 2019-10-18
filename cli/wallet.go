@@ -105,7 +105,7 @@ var walletBalance = &cli.Command{
 			return err
 		}
 
-		fmt.Printf("%s\n", balance.String())
+		fmt.Printf("%s\n", types.FIL(balance).String())
 		return nil
 	},
 }

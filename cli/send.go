@@ -36,7 +36,7 @@ var sendCmd = &cli.Command{
 			return err
 		}
 
-		val, err := types.BigFromString(cctx.Args().Get(1))
+		val, err := types.ParseFIL(cctx.Args().Get(1))
 		if err != nil {
 			return err
 		}
@@ -61,7 +61,7 @@ var sendCmd = &cli.Command{
 		msg := &types.Message{
 			From:     fromAddr,
 			To:       toAddr,
-			Value:    val,
+			Value:    types.BigInt(val),
 			GasLimit: types.NewInt(1000),
 			GasPrice: types.NewInt(0),
 		}
