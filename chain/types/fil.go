@@ -11,12 +11,12 @@ import (
 type FIL BigInt
 
 func (f FIL) String() string {
-	r := big.NewRat(1, 1).SetFrac(f.Int, big.NewInt(build.FilecoinPrecision))
-	return strings.TrimRight(r.FloatString(30), "0")
+	r := new(big.Rat).SetFrac(f.Int, big.NewInt(build.FilecoinPrecision))
+	return strings.TrimRight(r.FloatString(18), "0")
 }
 
 func ParseFIL(s string) (FIL, error) {
-	r, ok := big.NewRat(1, 1).SetString(s)
+	r, ok := new(big.Rat).SetString(s)
 	if !ok {
 		return FIL{}, fmt.Errorf("failed to parse %q as a decimal number", s)
 	}
