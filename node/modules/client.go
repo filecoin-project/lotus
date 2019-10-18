@@ -2,7 +2,7 @@ package modules
 
 import (
 	"context"
-	"github.com/filecoin-project/go-lotus/node/modules/helpers"
+	"github.com/filecoin-project/lotus/node/modules/helpers"
 	"github.com/ipfs/go-bitswap"
 	"github.com/ipfs/go-bitswap/network"
 	"github.com/libp2p/go-libp2p-core/host"
@@ -17,8 +17,8 @@ import (
 	"github.com/ipfs/go-merkledag"
 	"go.uber.org/fx"
 
-	"github.com/filecoin-project/go-lotus/node/modules/dtypes"
-	"github.com/filecoin-project/go-lotus/node/repo"
+	"github.com/filecoin-project/lotus/node/modules/dtypes"
+	"github.com/filecoin-project/lotus/node/repo"
 )
 
 func ClientFstore(r repo.LockedRepo) (dtypes.ClientFilestore, error) {

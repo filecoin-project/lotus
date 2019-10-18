@@ -13,10 +13,10 @@ import (
 	"go.opencensus.io/trace"
 	"golang.org/x/xerrors"
 
-	"github.com/filecoin-project/go-lotus/chain/store"
-	"github.com/filecoin-project/go-lotus/chain/types"
-	"github.com/filecoin-project/go-lotus/lib/cborrpc"
-	"github.com/filecoin-project/go-lotus/node/modules/dtypes"
+	"github.com/filecoin-project/lotus/chain/store"
+	"github.com/filecoin-project/lotus/chain/types"
+	"github.com/filecoin-project/lotus/lib/cborrpc"
+	"github.com/filecoin-project/lotus/node/modules/dtypes"
 
 	blocks "github.com/ipfs/go-block-format"
 	"github.com/ipfs/go-cid"

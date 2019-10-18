@@ -6,8 +6,8 @@ import (
 	logging "github.com/ipfs/go-log"
 	pubsub "github.com/libp2p/go-libp2p-pubsub"
 
-	"github.com/filecoin-project/go-lotus/chain"
-	"github.com/filecoin-project/go-lotus/chain/types"
+	"github.com/filecoin-project/lotus/chain"
+	"github.com/filecoin-project/lotus/chain/types"
 )
 
 var log = logging.Logger("sub")

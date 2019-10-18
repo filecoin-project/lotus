@@ -3,9 +3,9 @@ package full
 import (
 	"context"
 
-	"github.com/filecoin-project/go-lotus/api"
-	"github.com/filecoin-project/go-lotus/chain/store"
-	"github.com/filecoin-project/go-lotus/chain/types"
+	"github.com/filecoin-project/lotus/api"
+	"github.com/filecoin-project/lotus/chain/store"
+	"github.com/filecoin-project/lotus/chain/types"
 	"golang.org/x/xerrors"
 
 	"github.com/ipfs/go-cid"

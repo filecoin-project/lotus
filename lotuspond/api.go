@@ -2,8 +2,8 @@ package main
 
 import (
 	"crypto/rand"
-	"github.com/filecoin-project/go-lotus/lib/jsonrpc"
-	"github.com/filecoin-project/go-lotus/node/repo"
+	"github.com/filecoin-project/lotus/lib/jsonrpc"
+	"github.com/filecoin-project/lotus/node/repo"
 	"io"
 	"io/ioutil"
 	"os"

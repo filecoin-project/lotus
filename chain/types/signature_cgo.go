@@ -6,8 +6,8 @@ import (
 	"fmt"
 
 	bls "github.com/filecoin-project/go-bls-sigs"
-	"github.com/filecoin-project/go-lotus/chain/address"
-	"github.com/filecoin-project/go-lotus/lib/crypto"
+	"github.com/filecoin-project/lotus/chain/address"
+	"github.com/filecoin-project/lotus/lib/crypto"
 	"github.com/minio/blake2b-simd"
 )
 

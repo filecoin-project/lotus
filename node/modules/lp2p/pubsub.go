@@ -5,7 +5,7 @@ import (
 	pubsub "github.com/libp2p/go-libp2p-pubsub"
 	"go.uber.org/fx"
 
-	"github.com/filecoin-project/go-lotus/node/modules/helpers"
+	"github.com/filecoin-project/lotus/node/modules/helpers"
 )
 
 func FloodSub(pubsubOptions ...pubsub.Option) interface{} {

@@ -6,9 +6,9 @@ import (
 	"math/rand"
 	"testing"
 
-	"github.com/filecoin-project/go-lotus/chain/address"
-	"github.com/filecoin-project/go-lotus/lib/sectorbuilder"
-	"github.com/filecoin-project/go-lotus/storage/sector"
+	"github.com/filecoin-project/lotus/chain/address"
+	"github.com/filecoin-project/lotus/lib/sectorbuilder"
+	"github.com/filecoin-project/lotus/storage/sector"
 )
 
 func TestSealAndVerify(t *testing.T) {

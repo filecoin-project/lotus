@@ -4,8 +4,8 @@ import (
 	"context"
 	"testing"
 
-	"github.com/filecoin-project/go-lotus/api"
-	"github.com/filecoin-project/go-lotus/build"
+	"github.com/filecoin-project/lotus/api"
+	"github.com/filecoin-project/lotus/build"
 	"github.com/stretchr/testify/assert"
 )
 

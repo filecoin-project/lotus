@@ -3,15 +3,15 @@ package impl
 import (
 	"context"
 
-	"github.com/filecoin-project/go-lotus/node/impl/client"
-	"github.com/filecoin-project/go-lotus/node/impl/paych"
+	"github.com/filecoin-project/lotus/node/impl/client"
+	"github.com/filecoin-project/lotus/node/impl/paych"
 
 	logging "github.com/ipfs/go-log"
 
-	"github.com/filecoin-project/go-lotus/api"
-	"github.com/filecoin-project/go-lotus/chain/address"
-	"github.com/filecoin-project/go-lotus/miner"
-	"github.com/filecoin-project/go-lotus/node/impl/full"
+	"github.com/filecoin-project/lotus/api"
+	"github.com/filecoin-project/lotus/chain/address"
+	"github.com/filecoin-project/lotus/miner"
+	"github.com/filecoin-project/lotus/node/impl/full"
 )
 
 var log = logging.Logger("node")

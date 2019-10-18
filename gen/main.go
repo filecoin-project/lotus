@@ -4,8 +4,8 @@ import (
 	"fmt"
 	"os"
 
-	"github.com/filecoin-project/go-lotus/chain/actors"
-	"github.com/filecoin-project/go-lotus/chain/types"
+	"github.com/filecoin-project/lotus/chain/actors"
+	"github.com/filecoin-project/lotus/chain/types"
 	gen "github.com/whyrusleeping/cbor-gen"
 )
 

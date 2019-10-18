@@ -8,10 +8,10 @@ import (
 	"os/signal"
 	"syscall"
 
-	"github.com/filecoin-project/go-lotus/api"
-	"github.com/filecoin-project/go-lotus/lib/auth"
-	"github.com/filecoin-project/go-lotus/lib/jsonrpc"
-	"github.com/filecoin-project/go-lotus/node"
+	"github.com/filecoin-project/lotus/api"
+	"github.com/filecoin-project/lotus/lib/auth"
+	"github.com/filecoin-project/lotus/lib/jsonrpc"
+	"github.com/filecoin-project/lotus/node"
 	logging "github.com/ipfs/go-log"
 )
 

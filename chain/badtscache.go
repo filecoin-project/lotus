@@ -1,7 +1,7 @@
 package chain
 
 import (
-	"github.com/filecoin-project/go-lotus/build"
+	"github.com/filecoin-project/lotus/build"
 	lru "github.com/hashicorp/golang-lru"
 	"github.com/ipfs/go-cid"
 )

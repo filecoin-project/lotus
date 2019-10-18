@@ -12,7 +12,7 @@ import (
 
 	logging "github.com/ipfs/go-log"
 
-	"github.com/filecoin-project/go-lotus/chain/address"
+	"github.com/filecoin-project/lotus/chain/address"
 )
 
 var log = logging.Logger("sectorbuilder")

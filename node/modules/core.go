@@ -3,9 +3,9 @@ package modules
 import (
 	"context"
 	"crypto/rand"
-	"github.com/filecoin-project/go-lotus/build"
-	"github.com/filecoin-project/go-lotus/lib/addrutil"
-	"github.com/filecoin-project/go-lotus/node/modules/helpers"
+	"github.com/filecoin-project/lotus/build"
+	"github.com/filecoin-project/lotus/lib/addrutil"
+	"github.com/filecoin-project/lotus/node/modules/helpers"
 	"github.com/gbrlsnchs/jwt/v3"
 	logging "github.com/ipfs/go-log"
 	"github.com/libp2p/go-libp2p-core/host"
@@ -17,10 +17,10 @@ import (
 	"io/ioutil"
 	"time"
 
-	"github.com/filecoin-project/go-lotus/api"
-	"github.com/filecoin-project/go-lotus/chain/types"
-	"github.com/filecoin-project/go-lotus/node/modules/dtypes"
-	"github.com/filecoin-project/go-lotus/node/repo"
+	"github.com/filecoin-project/lotus/api"
+	"github.com/filecoin-project/lotus/chain/types"
+	"github.com/filecoin-project/lotus/node/modules/dtypes"
+	"github.com/filecoin-project/lotus/node/repo"
 )
 
 var log = logging.Logger("modules")

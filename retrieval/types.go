@@ -1,11 +1,11 @@
 package retrieval
 
 import (
-	"github.com/filecoin-project/go-lotus/api"
+	"github.com/filecoin-project/lotus/api"
 	"github.com/ipfs/go-cid"
 	cbor "github.com/ipfs/go-ipld-cbor"
 
-	"github.com/filecoin-project/go-lotus/chain/types"
+	"github.com/filecoin-project/lotus/chain/types"
 )
 
 const ProtocolID = "/fil/retrieval/-1.0.0"          // TODO: spec

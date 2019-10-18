@@ -13,7 +13,7 @@ import (
 
 	"github.com/ipfs/go-ipfs/repo"
 
-	"github.com/filecoin-project/go-lotus/node/modules/helpers"
+	"github.com/filecoin-project/lotus/node/modules/helpers"
 )
 
 func AutoNATService(quic bool) func(repo repo.Repo, mctx helpers.MetricsCtx, lc fx.Lifecycle, host host.Host) error {

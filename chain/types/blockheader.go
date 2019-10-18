@@ -12,7 +12,7 @@ import (
 	"go.opencensus.io/trace"
 	xerrors "golang.org/x/xerrors"
 
-	"github.com/filecoin-project/go-lotus/chain/address"
+	"github.com/filecoin-project/lotus/chain/address"
 )
 
 type Ticket struct {

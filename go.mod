@@ -1,4 +1,4 @@
-module github.com/filecoin-project/go-lotus
+module github.com/filecoin-project/lotus
 
 go 1.13
 

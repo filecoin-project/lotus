@@ -3,9 +3,9 @@ package state
 import (
 	"testing"
 
-	actors "github.com/filecoin-project/go-lotus/chain/actors"
-	address "github.com/filecoin-project/go-lotus/chain/address"
-	"github.com/filecoin-project/go-lotus/chain/types"
+	actors "github.com/filecoin-project/lotus/chain/actors"
+	address "github.com/filecoin-project/lotus/chain/address"
+	"github.com/filecoin-project/lotus/chain/types"
 	hamt "github.com/ipfs/go-hamt-ipld"
 )
 

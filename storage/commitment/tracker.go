@@ -12,8 +12,8 @@ import (
 	logging "github.com/ipfs/go-log"
 	"golang.org/x/xerrors"
 
-	"github.com/filecoin-project/go-lotus/chain/address"
-	"github.com/filecoin-project/go-lotus/node/modules/dtypes"
+	"github.com/filecoin-project/lotus/chain/address"
+	"github.com/filecoin-project/lotus/node/modules/dtypes"
 )
 
 var log = logging.Logger("commitment")

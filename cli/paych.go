@@ -3,8 +3,8 @@ package cli
 import (
 	"fmt"
 
-	"github.com/filecoin-project/go-lotus/chain/address"
-	types "github.com/filecoin-project/go-lotus/chain/types"
+	"github.com/filecoin-project/lotus/chain/address"
+	types "github.com/filecoin-project/lotus/chain/types"
 	"gopkg.in/urfave/cli.v2"
 )
 

@@ -1,9 +1,9 @@
 package deals
 
 import (
-	"github.com/filecoin-project/go-lotus/api"
-	"github.com/filecoin-project/go-lotus/build"
-	"github.com/filecoin-project/go-lotus/chain/types"
+	"github.com/filecoin-project/lotus/api"
+	"github.com/filecoin-project/lotus/build"
+	"github.com/filecoin-project/lotus/chain/types"
 )
 
 func VoucherSpec(blocksDuration uint64, price types.BigInt, start uint64, extra *types.ModVerifyParams) []api.VoucherSpec {

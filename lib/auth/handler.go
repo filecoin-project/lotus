@@ -5,7 +5,7 @@ import (
 	"net/http"
 	"strings"
 
-	"github.com/filecoin-project/go-lotus/api"
+	"github.com/filecoin-project/lotus/api"
 	logging "github.com/ipfs/go-log"
 )
 

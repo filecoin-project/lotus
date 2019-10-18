@@ -4,7 +4,7 @@ import (
 	"crypto/rand"
 	"time"
 
-	"github.com/filecoin-project/go-lotus/chain/types"
+	"github.com/filecoin-project/lotus/chain/types"
 	"golang.org/x/xerrors"
 
 	logging "github.com/ipfs/go-log"

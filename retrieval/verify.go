@@ -12,7 +12,7 @@ import (
 	pb "github.com/ipfs/go-unixfs/pb"
 	"golang.org/x/xerrors"
 
-	"github.com/filecoin-project/go-lotus/build"
+	"github.com/filecoin-project/lotus/build"
 )
 
 type BlockVerifier interface {

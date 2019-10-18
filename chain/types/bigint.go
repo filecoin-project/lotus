@@ -6,7 +6,7 @@ import (
 	"io"
 	"math/big"
 
-	"github.com/filecoin-project/go-lotus/build"
+	"github.com/filecoin-project/lotus/build"
 	cbor "github.com/ipfs/go-ipld-cbor"
 	"github.com/polydawn/refmt/obj/atlas"
 

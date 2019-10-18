@@ -11,8 +11,8 @@ import (
 	"golang.org/x/xerrors"
 	"gopkg.in/urfave/cli.v2"
 
-	"github.com/filecoin-project/go-lotus/api"
-	types "github.com/filecoin-project/go-lotus/chain/types"
+	"github.com/filecoin-project/lotus/api"
+	types "github.com/filecoin-project/lotus/chain/types"
 )
 
 var chainCmd = &cli.Command{

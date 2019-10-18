@@ -7,15 +7,15 @@ import (
 	"fmt"
 	"sync"
 
-	"github.com/filecoin-project/go-lotus/build"
-	"github.com/filecoin-project/go-lotus/chain/address"
-	"github.com/filecoin-project/go-lotus/chain/state"
-	"github.com/filecoin-project/go-lotus/chain/vm"
+	"github.com/filecoin-project/lotus/build"
+	"github.com/filecoin-project/lotus/chain/address"
+	"github.com/filecoin-project/lotus/chain/state"
+	"github.com/filecoin-project/lotus/chain/vm"
 	"go.opencensus.io/trace"
 	"go.uber.org/zap"
 
 	amt "github.com/filecoin-project/go-amt-ipld"
-	"github.com/filecoin-project/go-lotus/chain/types"
+	"github.com/filecoin-project/lotus/chain/types"
 
 	block "github.com/ipfs/go-block-format"
 	"github.com/ipfs/go-cid"

@@ -6,13 +6,13 @@ import (
 	"io"
 	"math/rand"
 
-	"github.com/filecoin-project/go-lotus/api"
-	"github.com/filecoin-project/go-lotus/build"
-	"github.com/filecoin-project/go-lotus/chain/address"
-	"github.com/filecoin-project/go-lotus/lib/sectorbuilder"
-	"github.com/filecoin-project/go-lotus/storage"
-	"github.com/filecoin-project/go-lotus/storage/sector"
-	"github.com/filecoin-project/go-lotus/storage/sectorblocks"
+	"github.com/filecoin-project/lotus/api"
+	"github.com/filecoin-project/lotus/build"
+	"github.com/filecoin-project/lotus/chain/address"
+	"github.com/filecoin-project/lotus/lib/sectorbuilder"
+	"github.com/filecoin-project/lotus/storage"
+	"github.com/filecoin-project/lotus/storage/sector"
+	"github.com/filecoin-project/lotus/storage/sectorblocks"
 )
 
 type StorageMinerAPI struct {

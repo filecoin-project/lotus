@@ -1,7 +1,7 @@
 package cli
 
 import (
-	"github.com/filecoin-project/go-lotus/build"
+	"github.com/filecoin-project/lotus/build"
 	"golang.org/x/xerrors"
 	"gopkg.in/urfave/cli.v2"
 )

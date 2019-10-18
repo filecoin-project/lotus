@@ -3,9 +3,9 @@ package sectorblocks
 import (
 	"context"
 	"errors"
-	"github.com/filecoin-project/go-lotus/api"
-	"github.com/filecoin-project/go-lotus/lib/sectorbuilder"
-	"github.com/filecoin-project/go-lotus/node/modules/dtypes"
+	"github.com/filecoin-project/lotus/api"
+	"github.com/filecoin-project/lotus/lib/sectorbuilder"
+	"github.com/filecoin-project/lotus/node/modules/dtypes"
 	"github.com/ipfs/go-datastore/namespace"
 	"github.com/ipfs/go-datastore/query"
 	blockstore "github.com/ipfs/go-ipfs-blockstore"
@@ -19,7 +19,7 @@ import (
 	files "github.com/ipfs/go-ipfs-files"
 	cbor "github.com/ipfs/go-ipld-cbor"
 
-	"github.com/filecoin-project/go-lotus/storage/sector"
+	"github.com/filecoin-project/lotus/storage/sector"
 )
 
 type SealSerialization uint8
