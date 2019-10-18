@@ -4,7 +4,10 @@ import (
 	"fmt"
 )
 
-var ErrKeyInfoNotFound = fmt.Errorf("key info not found")
+var (
+	ErrKeyInfoNotFound = fmt.Errorf("key info not found")
+	ErrKeyExists       = fmt.Errorf("key already exists")
+)
 
 // KeyInfo is used for storing keys in KeyStore
 type KeyInfo struct {

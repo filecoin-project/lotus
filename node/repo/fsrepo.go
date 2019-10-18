@@ -327,7 +327,7 @@ func (fsr *fsLockedRepo) Put(name string, info types.KeyInfo) error {
 
 	_, err := os.Stat(keyPath)
 	if err == nil {
-		return xerrors.Errorf("checking key before put '%s': %w", name, ErrKeyExists)
+		return xerrors.Errorf("checking key before put '%s': %w", name, types.ErrKeyExists)
 	} else if !os.IsNotExist(err) {
 		return xerrors.Errorf("checking key before put '%s': %w", name, err)
 	}

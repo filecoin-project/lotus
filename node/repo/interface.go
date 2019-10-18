@@ -15,8 +15,6 @@ var (
 	ErrNoAPIToken        = errors.New("API token not set")
 	ErrRepoAlreadyLocked = errors.New("repo is already locked")
 	ErrClosedRepo        = errors.New("repo is no longer open")
-
-	ErrKeyExists = errors.New("key already exists")
 )
 
 type Repo interface {
