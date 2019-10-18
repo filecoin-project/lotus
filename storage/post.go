@@ -148,7 +148,7 @@ func (m *Miner) computePost(ppe uint64) func(ts *types.TipSet, curH uint64) erro
 			Method:   actors.MAMethods.SubmitPoSt,
 			Params:   enc,
 			Value:    types.NewInt(1000), // currently hard-coded late fee in actor, returned if not late
-			GasLimit: types.NewInt(100000 /* i dont know help */),
+			GasLimit: types.NewInt(1000000 /* i dont know help */),
 			GasPrice: types.NewInt(1),
 		}
 
