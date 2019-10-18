@@ -14,7 +14,7 @@
       "type": "grafana",
       "id": "grafana",
       "name": "Grafana",
-      "version": "6.5.0-pre"
+      "version": "6.4.2"
     },
     {
       "type": "panel",
@@ -1395,7 +1395,7 @@
       "pageSize": null,
       "showHeader": true,
       "sort": {
-        "col": 2,
+        "col": 1,
         "desc": true
       },
       "styles": [
@@ -1442,7 +1442,7 @@
           "measurement": "chain.miner_power",
           "orderByTime": "ASC",
           "policy": "default",
-          "query": "SELECT last(\"value\") as \"power\" FROM \"chain.miner_power\" WHERE $timeFilter GROUP BY \"miner\" SLIMIT 20",
+          "query": "SELECT top(\"value\", \"miner\", 20) as \"power\" FROM \"chain.miner_power\" WHERE $timeFilter",
           "rawQuery": true,
           "refId": "A",
           "resultFormat": "table",
@@ -1481,6 +1481,7 @@
         "y": 10
       },
       "id": 26,
+      "interval": "",
       "legend": {
         "alignAsTable": true,
         "avg": false,
@@ -1539,7 +1540,7 @@
           "orderByTime": "ASC",
           "policy": "default",
           "query": "SELECT mean(\"value\") FROM \"chain.miner_power\" WHERE $timeFilter GROUP BY time($__interval), \"miner\" fill(previous)",
-          "rawQuery": false,
+          "rawQuery": true,
           "refId": "A",
           "resultFormat": "time_series",
           "select": [
@@ -1551,12 +1552,14 @@
                 "type": "field"
               },
               {
-                "params": [],
-                "type": "mean"
+                "params": [
+                  "\"miner\",20"
+                ],
+                "type": "top"
               }
             ]
           ],
-          "slimit": "20",
+          "slimit": "",
           "tags": []
         }
       ],
@@ -2114,5 +2117,5 @@
   "timezone": "",
   "title": "Chain",
   "uid": "z6FtI92Zz",
-  "version": 4
+  "version": 12
 }
