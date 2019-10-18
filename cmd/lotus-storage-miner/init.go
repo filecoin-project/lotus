@@ -3,6 +3,8 @@ package main
 import (
 	"context"
 	"crypto/rand"
+	"fmt"
+	"os"
 
 	"github.com/libp2p/go-libp2p-core/crypto"
 
@@ -58,7 +60,8 @@ var initCmd = &cli.Command{
 
 		log.Info("Checking if repo exists")
 
-		r, err := repo.NewFS(cctx.String(FlagStorageRepo))
+		repoPath := cctx.String(FlagStorageRepo)
+		r, err := repo.NewFS(repoPath)
 		if err != nil {
 			return err
 		}
@@ -97,51 +100,13 @@ var initCmd = &cli.Command{
 			return err
 		}
 
-		lr, err := r.Lock()
-		if err != nil {
-			return err
-		}
-		defer lr.Close()
-
-		log.Info("Initializing libp2p identity")
-
-		p2pSk, err := makeHostKey(lr)
-		if err != nil {
-			return err
-		}
-
-		peerid, err := peer.IDFromPrivateKey(p2pSk)
-		if err != nil {
-			return err
-		}
-
-		var addr address.Address
-		if act := cctx.String("actor"); act != "" {
-			a, err := address.NewFromString(act)
-			if err != nil {
-				return err
+		if err := storageMinerInit(ctx, cctx, api, r); err != nil {
+			fmt.Printf("ERROR: failed to initialize lotus-storage-miner: %s\n", err)
+			fmt.Println("Cleaning up after attempt...")
+			if err := os.RemoveAll(repoPath); err != nil {
+				fmt.Println("ERROR: failed to clean up failed storage repo: ", err)
 			}
-
-			if err := configureStorageMiner(ctx, api, a, peerid, cctx.Bool("genesis-miner")); err != nil {
-				return xerrors.Errorf("failed to configure storage miner: %w", err)
-			}
-
-			addr = a
-		} else {
-			a, err := createStorageMiner(ctx, api, peerid, cctx)
-			if err != nil {
-				return err
-			}
-
-			addr = a
-		}
-
-		ds, err := lr.Datastore("/metadata")
-		if err != nil {
-			return err
-		}
-		if err := ds.Put(datastore.NewKey("miner-address"), addr.Bytes()); err != nil {
-			return err
+			return fmt.Errorf("storage-miner init failed")
 		}
 
 		// TODO: Point to setting storage price, maybe do it interactively or something
@@ -149,6 +114,59 @@ var initCmd = &cli.Command{
 
 		return nil
 	},
+}
+
+func storageMinerInit(ctx context.Context, cctx *cli.Context, api api.FullNode, r repo.Repo) error {
+	lr, err := r.Lock()
+	if err != nil {
+		return err
+	}
+	defer lr.Close()
+
+	log.Info("Initializing libp2p identity")
+
+	p2pSk, err := makeHostKey(lr)
+	if err != nil {
+		return err
+	}
+
+	peerid, err := peer.IDFromPrivateKey(p2pSk)
+	if err != nil {
+		return err
+	}
+
+	var addr address.Address
+	if act := cctx.String("actor"); act != "" {
+		a, err := address.NewFromString(act)
+		if err != nil {
+			return err
+		}
+
+		if err := configureStorageMiner(ctx, api, a, peerid, cctx.Bool("genesis-miner")); err != nil {
+			return xerrors.Errorf("failed to configure storage miner: %w", err)
+		}
+
+		addr = a
+	} else {
+		a, err := createStorageMiner(ctx, api, peerid, cctx)
+		if err != nil {
+			return err
+		}
+
+		addr = a
+	}
+
+	log.Infof("Created new storage miner: %s", addr)
+
+	ds, err := lr.Datastore("/metadata")
+	if err != nil {
+		return err
+	}
+	if err := ds.Put(datastore.NewKey("miner-address"), addr.Bytes()); err != nil {
+		return err
+	}
+
+	return nil
 }
 
 func makeHostKey(lr repo.LockedRepo) (crypto.PrivKey, error) {
