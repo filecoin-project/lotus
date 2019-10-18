@@ -98,7 +98,7 @@ func MakeInitialStateTree(bs bstore.Blockstore, actmap map[address.Address]types
 		return nil, xerrors.Errorf("set storage market actor: %w", err)
 	}
 
-	netAmt := types.FromFil(build.TotalFilecoin)
+	netAmt := types.FromFil(build.MiningRewardTotal)
 	for _, amt := range actmap {
 		netAmt = types.BigSub(netAmt, amt)
 	}
