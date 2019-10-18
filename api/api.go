@@ -147,7 +147,7 @@ type FullNode interface {
 	PaychVoucherSubmit(context.Context, address.Address, *types.SignedVoucher) (cid.Cid, error)
 }
 
-// Full API is a low-level interface to the Filecoin network storage miner node
+// StorageMiner is a low-level interface to the Filecoin network storage miner node
 type StorageMiner interface {
 	Common
 
