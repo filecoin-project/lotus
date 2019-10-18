@@ -81,7 +81,7 @@ func basicTest(t *testing.T, repo Repo) {
 
 	err = kstr.Put("k1", k1)
 	if assert.Error(t, err, "putting key under the same name should error") {
-		assert.True(t, xerrors.Is(err, ErrKeyExists), "returned error is ErrKeyExists")
+		assert.True(t, xerrors.Is(err, types.ErrKeyExists), "returned error is ErrKeyExists")
 	}
 
 	k1prim, err := kstr.Get("k1")

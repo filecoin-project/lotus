@@ -3,7 +3,6 @@ package vm
 import (
 	"context"
 	"fmt"
-	blockstore "github.com/ipfs/go-ipfs-blockstore"
 	"math/big"
 
 	"github.com/filecoin-project/lotus/build"
@@ -13,6 +12,7 @@ import (
 	"github.com/filecoin-project/lotus/chain/state"
 	"github.com/filecoin-project/lotus/chain/types"
 	"github.com/filecoin-project/lotus/lib/bufbstore"
+
 	cbg "github.com/whyrusleeping/cbor-gen"
 	"go.opencensus.io/trace"
 
@@ -20,6 +20,7 @@ import (
 	bserv "github.com/ipfs/go-blockservice"
 	cid "github.com/ipfs/go-cid"
 	hamt "github.com/ipfs/go-hamt-ipld"
+	blockstore "github.com/ipfs/go-ipfs-blockstore"
 	ipld "github.com/ipfs/go-ipld-format"
 	logging "github.com/ipfs/go-log"
 	dag "github.com/ipfs/go-merkledag"
@@ -460,7 +461,7 @@ func (vm *VM) ApplyMessage(ctx context.Context, msg *types.Message) (*ApplyRet, 
 		return nil, xerrors.Errorf("fatal error: %w", actorErr)
 	}
 	if actorErr != nil {
-		log.Warnf("[%d] Send actor error: %+v", vm.blockHeight, actorErr)
+		log.Warnf("[from=%s,n=%d,h=%d] Send actor error: %+v", msg.From, msg.Nonce, vm.blockHeight, actorErr)
 	}
 
 	var errcode uint8

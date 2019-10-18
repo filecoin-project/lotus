@@ -8,6 +8,7 @@ import (
 
 	"github.com/filecoin-project/go-bls-sigs"
 
+	logging "github.com/ipfs/go-log"
 	"github.com/minio/blake2b-simd"
 	"golang.org/x/xerrors"
 
@@ -15,6 +16,8 @@ import (
 	"github.com/filecoin-project/lotus/chain/types"
 	"github.com/filecoin-project/lotus/lib/crypto"
 )
+
+var log = logging.Logger("wallet")
 
 const (
 	KNamePrefix = "wallet-"
@@ -168,6 +171,12 @@ func (w *Wallet) SetDefault(a address.Address) error {
 	ki, err := w.keystore.Get(KNamePrefix + a.String())
 	if err != nil {
 		return err
+	}
+
+	if err := w.keystore.Delete(KDefault); err != nil {
+		if !xerrors.Is(err, types.ErrKeyInfoNotFound) {
+			log.Warnf("failed to unregister current default key: %s", err)
+		}
 	}
 
 	if err := w.keystore.Put(KDefault, ki); err != nil {

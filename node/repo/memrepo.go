@@ -219,7 +219,7 @@ func (lmem *lockedMemRepo) Put(name string, key types.KeyInfo) error {
 
 	_, isThere := lmem.mem.keystore[name]
 	if isThere {
-		return xerrors.Errorf("putting key '%s': %w", name, ErrKeyExists)
+		return xerrors.Errorf("putting key '%s': %w", name, types.ErrKeyExists)
 	}
 
 	lmem.mem.keystore[name] = key
