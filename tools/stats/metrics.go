@@ -5,13 +5,15 @@ import (
 	"encoding/json"
 	"fmt"
 	"log"
+	"math/big"
 	"strings"
 	"time"
 
-	"github.com/filecoin-project/go-lotus/api"
-	"github.com/filecoin-project/go-lotus/build"
-	"github.com/filecoin-project/go-lotus/chain/address"
-	"github.com/filecoin-project/go-lotus/chain/types"
+	"github.com/filecoin-project/lotus/api"
+	"github.com/filecoin-project/lotus/build"
+	"github.com/filecoin-project/lotus/chain/actors"
+	"github.com/filecoin-project/lotus/chain/address"
+	"github.com/filecoin-project/lotus/chain/types"
 
 	_ "github.com/influxdata/influxdb1-client"
 	models "github.com/influxdata/influxdb1-client/models"
@@ -136,8 +138,21 @@ func RecordTipsetStatePoints(ctx context.Context, api api.FullNode, pl *PointLis
 		return err
 	}
 
-	pcfil := types.BigDiv(pc, types.NewInt(uint64(build.FilecoinPrecision)))
-	p := NewPoint("chain.pledge_collateral", pcfil.Int64())
+	attoFil := types.NewInt(build.FilecoinPrecision).Int
+
+	pcFil := new(big.Rat).SetFrac(pc.Int, attoFil)
+	pcFilFloat, _ := pcFil.Float64()
+	p := NewPoint("chain.pledge_collateral", pcFilFloat)
+	pl.AddPoint(p)
+
+	netBal, err := api.WalletBalance(ctx, actors.NetworkAddress)
+	if err != nil {
+		return err
+	}
+
+	netBalFil := new(big.Rat).SetFrac(netBal.Int, attoFil)
+	netBalFilFloat, _ := netBalFil.Float64()
+	p = NewPoint("network.balance", netBalFilFloat)
 	pl.AddPoint(p)
 
 	power, err := api.StateMinerPower(ctx, address.Address{}, tipset)

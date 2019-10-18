@@ -10,13 +10,13 @@ import (
 
 	"golang.org/x/xerrors"
 
-	"github.com/filecoin-project/go-lotus/api"
-	"github.com/filecoin-project/go-lotus/api/client"
-	"github.com/filecoin-project/go-lotus/chain"
-	"github.com/filecoin-project/go-lotus/chain/store"
-	"github.com/filecoin-project/go-lotus/chain/types"
-	"github.com/filecoin-project/go-lotus/lib/jsonrpc"
-	"github.com/filecoin-project/go-lotus/node/repo"
+	"github.com/filecoin-project/lotus/api"
+	"github.com/filecoin-project/lotus/api/client"
+	"github.com/filecoin-project/lotus/chain"
+	"github.com/filecoin-project/lotus/chain/store"
+	"github.com/filecoin-project/lotus/chain/types"
+	"github.com/filecoin-project/lotus/lib/jsonrpc"
+	"github.com/filecoin-project/lotus/node/repo"
 )
 
 func getAPI(path string) (string, http.Header, error) {
