@@ -5,14 +5,14 @@ import (
 	"fmt"
 	"testing"
 
-	"github.com/filecoin-project/go-lotus/build"
+	"github.com/filecoin-project/lotus/build"
 	cbg "github.com/whyrusleeping/cbor-gen"
 
-	. "github.com/filecoin-project/go-lotus/chain/actors"
-	"github.com/filecoin-project/go-lotus/chain/address"
-	"github.com/filecoin-project/go-lotus/chain/types"
-	"github.com/filecoin-project/go-lotus/chain/vm"
-	"github.com/filecoin-project/go-lotus/chain/wallet"
+	. "github.com/filecoin-project/lotus/chain/actors"
+	"github.com/filecoin-project/lotus/chain/address"
+	"github.com/filecoin-project/lotus/chain/types"
+	"github.com/filecoin-project/lotus/chain/vm"
+	"github.com/filecoin-project/lotus/chain/wallet"
 
 	cid "github.com/ipfs/go-cid"
 	hamt "github.com/ipfs/go-hamt-ipld"

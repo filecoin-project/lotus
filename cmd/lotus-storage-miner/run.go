@@ -8,20 +8,20 @@ import (
 	"os/signal"
 	"syscall"
 
-	"github.com/filecoin-project/go-lotus/build"
+	"github.com/filecoin-project/lotus/build"
 
 	"github.com/multiformats/go-multiaddr"
 	"golang.org/x/xerrors"
 	"gopkg.in/urfave/cli.v2"
 
-	"github.com/filecoin-project/go-lotus/api"
-	lcli "github.com/filecoin-project/go-lotus/cli"
-	"github.com/filecoin-project/go-lotus/lib/auth"
-	"github.com/filecoin-project/go-lotus/lib/jsonrpc"
-	"github.com/filecoin-project/go-lotus/lib/sectorbuilder"
-	"github.com/filecoin-project/go-lotus/node"
-	"github.com/filecoin-project/go-lotus/node/modules"
-	"github.com/filecoin-project/go-lotus/node/repo"
+	"github.com/filecoin-project/lotus/api"
+	lcli "github.com/filecoin-project/lotus/cli"
+	"github.com/filecoin-project/lotus/lib/auth"
+	"github.com/filecoin-project/lotus/lib/jsonrpc"
+	"github.com/filecoin-project/lotus/lib/sectorbuilder"
+	"github.com/filecoin-project/lotus/node"
+	"github.com/filecoin-project/lotus/node/modules"
+	"github.com/filecoin-project/lotus/node/repo"
 )
 
 var runCmd = &cli.Command{

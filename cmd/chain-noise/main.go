@@ -7,10 +7,10 @@ import (
 	"os"
 	"time"
 
-	"github.com/filecoin-project/go-lotus/api"
-	"github.com/filecoin-project/go-lotus/chain/address"
-	"github.com/filecoin-project/go-lotus/chain/types"
-	lcli "github.com/filecoin-project/go-lotus/cli"
+	"github.com/filecoin-project/lotus/api"
+	"github.com/filecoin-project/lotus/chain/address"
+	"github.com/filecoin-project/lotus/chain/types"
+	lcli "github.com/filecoin-project/lotus/cli"
 
 	"gopkg.in/urfave/cli.v2"
 )

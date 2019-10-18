@@ -14,14 +14,14 @@ import (
 	"github.com/libp2p/go-libp2p-core/peer"
 	"golang.org/x/xerrors"
 
-	"github.com/filecoin-project/go-lotus/api"
-	"github.com/filecoin-project/go-lotus/build"
-	"github.com/filecoin-project/go-lotus/chain/address"
-	"github.com/filecoin-project/go-lotus/chain/types"
-	"github.com/filecoin-project/go-lotus/lib/cborrpc"
-	payapi "github.com/filecoin-project/go-lotus/node/impl/paych"
-	"github.com/filecoin-project/go-lotus/paych"
-	"github.com/filecoin-project/go-lotus/retrieval/discovery"
+	"github.com/filecoin-project/lotus/api"
+	"github.com/filecoin-project/lotus/build"
+	"github.com/filecoin-project/lotus/chain/address"
+	"github.com/filecoin-project/lotus/chain/types"
+	"github.com/filecoin-project/lotus/lib/cborrpc"
+	payapi "github.com/filecoin-project/lotus/node/impl/paych"
+	"github.com/filecoin-project/lotus/paych"
+	"github.com/filecoin-project/lotus/retrieval/discovery"
 )
 
 var log = logging.Logger("retrieval")

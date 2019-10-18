@@ -7,9 +7,9 @@ import (
 	"go.opencensus.io/trace"
 	"gopkg.in/urfave/cli.v2"
 
-	"github.com/filecoin-project/go-lotus/build"
-	lcli "github.com/filecoin-project/go-lotus/cli"
-	"github.com/filecoin-project/go-lotus/tracing"
+	"github.com/filecoin-project/lotus/build"
+	lcli "github.com/filecoin-project/lotus/cli"
+	"github.com/filecoin-project/lotus/tracing"
 )
 
 var log = logging.Logger("main")

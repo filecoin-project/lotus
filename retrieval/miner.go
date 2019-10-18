@@ -11,11 +11,11 @@ import (
 	"github.com/libp2p/go-libp2p-core/network"
 	"golang.org/x/xerrors"
 
-	"github.com/filecoin-project/go-lotus/api"
-	"github.com/filecoin-project/go-lotus/build"
-	"github.com/filecoin-project/go-lotus/chain/types"
-	"github.com/filecoin-project/go-lotus/lib/cborrpc"
-	"github.com/filecoin-project/go-lotus/storage/sectorblocks"
+	"github.com/filecoin-project/lotus/api"
+	"github.com/filecoin-project/lotus/build"
+	"github.com/filecoin-project/lotus/chain/types"
+	"github.com/filecoin-project/lotus/lib/cborrpc"
+	"github.com/filecoin-project/lotus/storage/sectorblocks"
 )
 
 type Miner struct {

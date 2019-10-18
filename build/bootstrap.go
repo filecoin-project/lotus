@@ -2,7 +2,7 @@ package build
 
 import (
 	"context"
-	"github.com/filecoin-project/go-lotus/lib/addrutil"
+	"github.com/filecoin-project/lotus/lib/addrutil"
 	"os"
 	"strings"
 

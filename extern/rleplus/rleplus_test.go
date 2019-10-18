@@ -6,8 +6,8 @@ import (
 	"sort"
 	"testing"
 
-	"github.com/filecoin-project/go-lotus/extern/rleplus"
-	bitvector "github.com/filecoin-project/go-lotus/extern/rleplus/internal"
+	"github.com/filecoin-project/lotus/extern/rleplus"
+	bitvector "github.com/filecoin-project/lotus/extern/rleplus/internal"
 	"gotest.tools/assert"
 )
 

@@ -2,12 +2,12 @@ package deals
 
 import (
 	"context"
-	"github.com/filecoin-project/go-lotus/api"
+	"github.com/filecoin-project/lotus/api"
 
 	"golang.org/x/xerrors"
 
-	"github.com/filecoin-project/go-lotus/build"
-	"github.com/filecoin-project/go-lotus/lib/sectorbuilder"
+	"github.com/filecoin-project/lotus/build"
+	"github.com/filecoin-project/lotus/lib/sectorbuilder"
 )
 
 type clientHandlerFunc func(ctx context.Context, deal ClientDeal) error

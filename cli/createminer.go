@@ -7,9 +7,9 @@ import (
 	"golang.org/x/xerrors"
 	"gopkg.in/urfave/cli.v2"
 
-	actors "github.com/filecoin-project/go-lotus/chain/actors"
-	address "github.com/filecoin-project/go-lotus/chain/address"
-	types "github.com/filecoin-project/go-lotus/chain/types"
+	actors "github.com/filecoin-project/lotus/chain/actors"
+	address "github.com/filecoin-project/lotus/chain/address"
+	types "github.com/filecoin-project/lotus/chain/types"
 
 	"github.com/libp2p/go-libp2p-core/peer"
 )

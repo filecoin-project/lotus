@@ -8,7 +8,7 @@ import (
 	"github.com/ipfs/go-cid"
 	"github.com/multiformats/go-multihash"
 
-	"github.com/filecoin-project/go-lotus/chain/address"
+	"github.com/filecoin-project/lotus/chain/address"
 )
 
 type Message struct {

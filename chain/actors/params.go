@@ -3,7 +3,7 @@ package actors
 import (
 	"bytes"
 
-	"github.com/filecoin-project/go-lotus/chain/actors/aerrors"
+	"github.com/filecoin-project/lotus/chain/actors/aerrors"
 	cbg "github.com/whyrusleeping/cbor-gen"
 )
 

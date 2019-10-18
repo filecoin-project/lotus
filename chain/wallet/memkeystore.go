@@ -1,7 +1,7 @@
 package wallet
 
 import (
-	"github.com/filecoin-project/go-lotus/chain/types"
+	"github.com/filecoin-project/lotus/chain/types"
 )
 
 type MemKeyStore struct {

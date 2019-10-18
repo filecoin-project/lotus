@@ -8,13 +8,13 @@ import (
 	pubsub "github.com/libp2p/go-libp2p-pubsub"
 	"go.uber.org/fx"
 
-	"github.com/filecoin-project/go-lotus/chain"
-	"github.com/filecoin-project/go-lotus/chain/deals"
-	"github.com/filecoin-project/go-lotus/chain/sub"
-	"github.com/filecoin-project/go-lotus/node/hello"
-	"github.com/filecoin-project/go-lotus/node/modules/helpers"
-	"github.com/filecoin-project/go-lotus/retrieval/discovery"
-	"github.com/filecoin-project/go-lotus/storage/sector"
+	"github.com/filecoin-project/lotus/chain"
+	"github.com/filecoin-project/lotus/chain/deals"
+	"github.com/filecoin-project/lotus/chain/sub"
+	"github.com/filecoin-project/lotus/node/hello"
+	"github.com/filecoin-project/lotus/node/modules/helpers"
+	"github.com/filecoin-project/lotus/retrieval/discovery"
+	"github.com/filecoin-project/lotus/storage/sector"
 )
 
 func RunHello(mctx helpers.MetricsCtx, lc fx.Lifecycle, h host.Host, svc *hello.Service) {

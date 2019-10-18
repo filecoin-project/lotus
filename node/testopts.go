@@ -5,7 +5,7 @@ import (
 
 	mocknet "github.com/libp2p/go-libp2p/p2p/net/mock"
 
-	"github.com/filecoin-project/go-lotus/node/modules/lp2p"
+	"github.com/filecoin-project/lotus/node/modules/lp2p"
 )
 
 func MockHost(mn mocknet.Mocknet) Option {

@@ -7,8 +7,8 @@ import (
 	cid "github.com/ipfs/go-cid"
 	"gopkg.in/urfave/cli.v2"
 
-	"github.com/filecoin-project/go-lotus/api"
-	"github.com/filecoin-project/go-lotus/chain"
+	"github.com/filecoin-project/lotus/api"
+	"github.com/filecoin-project/lotus/chain"
 )
 
 var syncCmd = &cli.Command{

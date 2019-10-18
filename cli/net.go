@@ -5,7 +5,7 @@ import (
 
 	"gopkg.in/urfave/cli.v2"
 
-	"github.com/filecoin-project/go-lotus/lib/addrutil"
+	"github.com/filecoin-project/lotus/lib/addrutil"
 )
 
 var netCmd = &cli.Command{

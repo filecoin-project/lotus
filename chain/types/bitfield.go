@@ -5,7 +5,7 @@ import (
 	"io"
 	"sort"
 
-	"github.com/filecoin-project/go-lotus/extern/rleplus"
+	"github.com/filecoin-project/lotus/extern/rleplus"
 	cbg "github.com/whyrusleeping/cbor-gen"
 	"golang.org/x/xerrors"
 )

@@ -1,7 +1,7 @@
 package types
 
 import (
-	"github.com/filecoin-project/go-lotus/chain/address"
+	"github.com/filecoin-project/lotus/chain/address"
 	cbor "github.com/ipfs/go-ipld-cbor"
 )
 

@@ -5,8 +5,8 @@ import (
 	"math/big"
 	"testing"
 
-	"github.com/filecoin-project/go-lotus/build"
-	"github.com/filecoin-project/go-lotus/chain/types"
+	"github.com/filecoin-project/lotus/build"
+	"github.com/filecoin-project/lotus/chain/types"
 )
 
 func TestBlockReward(t *testing.T) {

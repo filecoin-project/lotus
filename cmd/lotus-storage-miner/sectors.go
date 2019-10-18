@@ -6,7 +6,7 @@ import (
 
 	"gopkg.in/urfave/cli.v2"
 
-	lcli "github.com/filecoin-project/go-lotus/cli"
+	lcli "github.com/filecoin-project/lotus/cli"
 )
 
 var storeGarbageCmd = &cli.Command{

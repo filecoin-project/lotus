@@ -8,7 +8,7 @@ import (
 	"path"
 	"strconv"
 
-	"github.com/filecoin-project/go-lotus/lib/jsonrpc"
+	"github.com/filecoin-project/lotus/lib/jsonrpc"
 
 	"gopkg.in/urfave/cli.v2"
 )

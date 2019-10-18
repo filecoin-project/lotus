@@ -14,8 +14,8 @@ import (
 	pnet "github.com/libp2p/go-libp2p-pnet"
 	pubsub "github.com/libp2p/go-libp2p-pubsub"
 
-	"github.com/filecoin-project/go-lotus/lib/addrutil"
-	"github.com/filecoin-project/go-lotus/node/modules/lp2p"
+	"github.com/filecoin-project/lotus/lib/addrutil"
+	"github.com/filecoin-project/lotus/node/modules/lp2p"
 )
 
 const topic = "/fil/headnotifs/bafy2bzacea77zxnepp7wuqqgpj7xcw2ywwmmcmtrbjghhv4g2dildogpv6roi"

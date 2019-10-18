@@ -2,7 +2,7 @@ package deals
 
 import (
 	"context"
-	"github.com/filecoin-project/go-lotus/lib/sectorbuilder"
+	"github.com/filecoin-project/lotus/lib/sectorbuilder"
 	"runtime"
 
 	"github.com/ipfs/go-cid"
@@ -12,8 +12,8 @@ import (
 	inet "github.com/libp2p/go-libp2p-core/network"
 	"golang.org/x/xerrors"
 
-	"github.com/filecoin-project/go-lotus/chain/address"
-	"github.com/filecoin-project/go-lotus/lib/cborrpc"
+	"github.com/filecoin-project/lotus/chain/address"
+	"github.com/filecoin-project/lotus/lib/cborrpc"
 )
 
 func (c *Client) failDeal(id cid.Cid, cerr error) {

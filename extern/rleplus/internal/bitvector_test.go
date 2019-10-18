@@ -5,7 +5,7 @@ import (
 
 	"github.com/stretchr/testify/assert"
 
-	bitvector "github.com/filecoin-project/go-lotus/extern/rleplus/internal"
+	bitvector "github.com/filecoin-project/lotus/extern/rleplus/internal"
 )
 
 func TestBitVector(t *testing.T) {

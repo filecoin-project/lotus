@@ -12,7 +12,7 @@ import (
 	relay "github.com/libp2p/go-libp2p/p2p/host/relay"
 	"go.uber.org/fx"
 
-	"github.com/filecoin-project/go-lotus/node/modules/helpers"
+	"github.com/filecoin-project/lotus/node/modules/helpers"
 )
 
 func Relay(disable, enableHop bool) func() (opts Libp2pOpts, err error) {
