@@ -16,8 +16,27 @@ type MultiSigActorState struct {
 	Required uint64
 	NextTxID uint64
 
+	InitialBalance types.BigInt
+	StartingBlock  uint64
+	UnlockDuration uint64
+
 	//TODO: make this map/sharray/whatever
 	Transactions []MTransaction
+}
+
+func (msas MultiSigActorState) canSpend(act *types.Actor, amnt types.BigInt, height uint64) bool {
+	if msas.UnlockDuration == 0 {
+		return true
+	}
+
+	offset := height - msas.StartingBlock
+	if offset > msas.UnlockDuration {
+		return true
+	}
+
+	minBalance := types.BigDiv(msas.InitialBalance, types.NewInt(msas.UnlockDuration))
+	minBalance = types.BigMul(minBalance, types.NewInt(offset))
+	return !minBalance.LessThan(types.BigSub(act.Balance, amnt))
 }
 
 func (msas MultiSigActorState) isSigner(addr address.Address) bool {
@@ -90,8 +109,9 @@ func (msa MultiSigActor) Exports() []interface{} {
 }
 
 type MultiSigConstructorParams struct {
-	Signers  []address.Address
-	Required uint64
+	Signers        []address.Address
+	Required       uint64
+	UnlockDuration uint64
 }
 
 func (MultiSigActor) MultiSigConstructor(act *types.Actor, vmctx types.VMContext,
@@ -99,7 +119,12 @@ func (MultiSigActor) MultiSigConstructor(act *types.Actor, vmctx types.VMContext
 	self := &MultiSigActorState{
 		Signers:  params.Signers,
 		Required: params.Required,
+
+		InitialBalance: vmctx.Message().Value,
+		UnlockDuration: params.UnlockDuration,
+		StartingBlock:  vmctx.BlockHeight(),
 	}
+
 	head, err := vmctx.Storage().Put(self)
 	if err != nil {
 		return nil, aerrors.Wrap(err, "could not put new head")
@@ -179,6 +204,9 @@ func (msa MultiSigActor) Propose(act *types.Actor, vmctx types.VMContext,
 	tx := self.getTransaction(txid)
 
 	if self.Required == 1 {
+		if !self.canSpend(act, tx.Value, vmctx.BlockHeight()) {
+			return nil, aerrors.New(100, "transaction amount exceeds available")
+		}
 		_, err := vmctx.Send(tx.To, tx.Method, tx.Value, tx.Params)
 		if aerrors.IsFatal(err) {
 			return nil, err
@@ -221,6 +249,9 @@ func (msa MultiSigActor) Approve(act *types.Actor, vmctx types.VMContext,
 	}
 	tx.Approved = append(tx.Approved, vmctx.Message().From)
 	if uint64(len(tx.Approved)) >= self.Required {
+		if !self.canSpend(act, tx.Value, vmctx.BlockHeight()) {
+			return nil, aerrors.New(100, "transaction amount exceeds available")
+		}
 		_, err := vmctx.Send(tx.To, tx.Method, tx.Value, tx.Params)
 		if aerrors.IsFatal(err) {
 			return nil, err
