@@ -2868,3 +2868,169 @@ func (t *MinerSlashConsensusFault) UnmarshalCBOR(r io.Reader) error {
 	}
 	return nil
 }
+
+func (t *StorageParticipantBalance) MarshalCBOR(w io.Writer) error {
+	if t == nil {
+		_, err := w.Write(cbg.CborNull)
+		return err
+	}
+	if _, err := w.Write([]byte{130}); err != nil {
+		return err
+	}
+
+	// t.t.Locked (types.BigInt)
+	if err := t.Locked.MarshalCBOR(w); err != nil {
+		return err
+	}
+
+	// t.t.Available (types.BigInt)
+	if err := t.Available.MarshalCBOR(w); err != nil {
+		return err
+	}
+	return nil
+}
+
+func (t *StorageParticipantBalance) UnmarshalCBOR(r io.Reader) error {
+	br := cbg.GetPeeker(r)
+
+	maj, extra, err := cbg.CborReadHeader(br)
+	if err != nil {
+		return err
+	}
+	if maj != cbg.MajArray {
+		return fmt.Errorf("cbor input should be of type array")
+	}
+
+	if extra != 2 {
+		return fmt.Errorf("cbor input had wrong number of fields")
+	}
+
+	// t.t.Locked (types.BigInt)
+
+	{
+
+		if err := t.Locked.UnmarshalCBOR(br); err != nil {
+			return err
+		}
+
+	}
+	// t.t.Available (types.BigInt)
+
+	{
+
+		if err := t.Available.UnmarshalCBOR(br); err != nil {
+			return err
+		}
+
+	}
+	return nil
+}
+
+func (t *StorageMarketState) MarshalCBOR(w io.Writer) error {
+	if t == nil {
+		_, err := w.Write(cbg.CborNull)
+		return err
+	}
+	if _, err := w.Write([]byte{130}); err != nil {
+		return err
+	}
+
+	// t.t.Balances (cid.Cid)
+
+	if err := cbg.WriteCid(w, t.Balances); err != nil {
+		return xerrors.Errorf("failed to write cid field t.Balances: %w", err)
+	}
+
+	// t.t.Deals (cid.Cid)
+
+	if err := cbg.WriteCid(w, t.Deals); err != nil {
+		return xerrors.Errorf("failed to write cid field t.Deals: %w", err)
+	}
+
+	return nil
+}
+
+func (t *StorageMarketState) UnmarshalCBOR(r io.Reader) error {
+	br := cbg.GetPeeker(r)
+
+	maj, extra, err := cbg.CborReadHeader(br)
+	if err != nil {
+		return err
+	}
+	if maj != cbg.MajArray {
+		return fmt.Errorf("cbor input should be of type array")
+	}
+
+	if extra != 2 {
+		return fmt.Errorf("cbor input had wrong number of fields")
+	}
+
+	// t.t.Balances (cid.Cid)
+
+	{
+
+		c, err := cbg.ReadCid(br)
+		if err != nil {
+			return xerrors.Errorf("failed to read cid field t.Balances: %w", err)
+		}
+
+		t.Balances = c
+
+	}
+	// t.t.Deals (cid.Cid)
+
+	{
+
+		c, err := cbg.ReadCid(br)
+		if err != nil {
+			return xerrors.Errorf("failed to read cid field t.Deals: %w", err)
+		}
+
+		t.Deals = c
+
+	}
+	return nil
+}
+
+func (t *WithdrawBalanceParams) MarshalCBOR(w io.Writer) error {
+	if t == nil {
+		_, err := w.Write(cbg.CborNull)
+		return err
+	}
+	if _, err := w.Write([]byte{129}); err != nil {
+		return err
+	}
+
+	// t.t.Balance (types.BigInt)
+	if err := t.Balance.MarshalCBOR(w); err != nil {
+		return err
+	}
+	return nil
+}
+
+func (t *WithdrawBalanceParams) UnmarshalCBOR(r io.Reader) error {
+	br := cbg.GetPeeker(r)
+
+	maj, extra, err := cbg.CborReadHeader(br)
+	if err != nil {
+		return err
+	}
+	if maj != cbg.MajArray {
+		return fmt.Errorf("cbor input should be of type array")
+	}
+
+	if extra != 1 {
+		return fmt.Errorf("cbor input had wrong number of fields")
+	}
+
+	// t.t.Balance (types.BigInt)
+
+	{
+
+		if err := t.Balance.UnmarshalCBOR(br); err != nil {
+			return err
+		}
+
+	}
+	return nil
+}

@@ -75,6 +75,9 @@ func main() {
 		actors.ArbitrateConsensusFaultParams{},
 		actors.PledgeCollateralParams{},
 		actors.MinerSlashConsensusFault{},
+		actors.StorageParticipantBalance{},
+		actors.StorageMarketState{},
+		actors.WithdrawBalanceParams{},
 	)
 	if err != nil {
 		fmt.Println(err)
