@@ -1,6 +1,9 @@
 package actors
 
 import (
+	"bytes"
+
+	"github.com/filecoin-project/go-amt-ipld"
 	"github.com/ipfs/go-cid"
 	"github.com/ipfs/go-hamt-ipld"
 
@@ -28,10 +31,10 @@ var SMAMethods = smaMethods{1, 2, 3, 4, 5, 6, 7, 8, 9, 10}
 
 func (sma StorageMarketActor) Exports() []interface{} {
 	return []interface{}{
-		// 2: sma.WithdrawBalance,
-		// 3: sma.AddBalance,
+		2: sma.WithdrawBalance,
+		3: sma.AddBalance,
 		// 4: sma.CheckLockedBalance,
-		// 5: sma.PublishStorageDeals,
+		5: sma.PublishStorageDeals,
 		// 6: sma.HandleCronAction,
 		// 7: sma.SettleExpiredDeals,
 		// 8: sma.ProcessStorageDealsPayment,
@@ -46,8 +49,26 @@ type StorageParticipantBalance struct {
 }
 
 type StorageMarketState struct {
-	Balances cid.Cid // hamt
-	Deals    cid.Cid // amt
+	Balances   cid.Cid // hamt<StorageParticipantBalance>
+	Deals      cid.Cid // amt
+	NextDealID uint64  // TODO: amt.LastIndex()
+}
+
+type StorageDealProposal struct {
+	PieceRef           cid.Cid // can this mess anything up? Should this just be cid bytes
+	PieceSize          uint64
+	Client             address.Address
+	Provider           address.Address
+	ProposalExpiration uint64
+	DealExpiration     uint64
+	StoragePrice       types.BigInt
+	StorageCollateral  types.BigInt
+	ProposerSignature  types.Signature
+}
+
+type StorageDeal struct {
+	Proposal         StorageDealProposal
+	CounterSignature types.Signature
 }
 
 type WithdrawBalanceParams struct {
@@ -61,7 +82,7 @@ func (sma StorageMarketActor) WithdrawBalance(act *types.Actor, vmctx types.VMCo
 		return nil, err
 	}
 
-	b, bnd, err := sma.getBalances(vmctx, self.Balances, []address.Address{vmctx.Message().From})
+	b, bnd, err := getMarketBalances(vmctx, self.Balances, []address.Address{vmctx.Message().From})
 	if err != nil {
 		return nil, aerrors.Wrap(err, "could not get balance")
 	}
@@ -79,7 +100,7 @@ func (sma StorageMarketActor) WithdrawBalance(act *types.Actor, vmctx types.VMCo
 		return nil, aerrors.Wrap(err, "sending funds failed")
 	}
 
-	bcid, err := sma.setBalances(vmctx, bnd, map[address.Address]StorageParticipantBalance{
+	bcid, err := setMarketBalances(vmctx, bnd, map[address.Address]StorageParticipantBalance{
 		vmctx.Message().From: balance,
 	})
 	if err != nil {
@@ -103,7 +124,7 @@ func (sma StorageMarketActor) AddBalance(act *types.Actor, vmctx types.VMContext
 		return nil, err
 	}
 
-	b, bnd, err := sma.getBalances(vmctx, self.Balances, []address.Address{vmctx.Message().From})
+	b, bnd, err := getMarketBalances(vmctx, self.Balances, []address.Address{vmctx.Message().From})
 	if err != nil {
 		return nil, aerrors.Wrap(err, "could not get balance")
 	}
@@ -112,7 +133,7 @@ func (sma StorageMarketActor) AddBalance(act *types.Actor, vmctx types.VMContext
 
 	balance.Available = types.BigAdd(balance.Available, vmctx.Message().Value)
 
-	bcid, err := sma.setBalances(vmctx, bnd, map[address.Address]StorageParticipantBalance{
+	bcid, err := setMarketBalances(vmctx, bnd, map[address.Address]StorageParticipantBalance{
 		vmctx.Message().From: balance,
 	})
 	if err != nil {
@@ -129,7 +150,7 @@ func (sma StorageMarketActor) AddBalance(act *types.Actor, vmctx types.VMContext
 	return nil, vmctx.Storage().Commit(old, nroot)
 }
 
-func (sma StorageMarketActor) setBalances(vmctx types.VMContext, nd *hamt.Node, set map[address.Address]StorageParticipantBalance) (cid.Cid, ActorError) {
+func setMarketBalances(vmctx types.VMContext, nd *hamt.Node, set map[address.Address]StorageParticipantBalance) (cid.Cid, ActorError) {
 	for addr, b := range set {
 		if err := nd.Set(vmctx.Context(), string(addr.Bytes()), b); err != nil {
 			return cid.Undef, aerrors.HandleExternalError(err, "setting new balance")
@@ -146,7 +167,7 @@ func (sma StorageMarketActor) setBalances(vmctx types.VMContext, nd *hamt.Node, 
 	return c, nil
 }
 
-func (sma StorageMarketActor) getBalances(vmctx types.VMContext, rcid cid.Cid, addrs []address.Address) ([]StorageParticipantBalance, *hamt.Node, ActorError) {
+func getMarketBalances(vmctx types.VMContext, rcid cid.Cid, addrs []address.Address) ([]StorageParticipantBalance, *hamt.Node, ActorError) {
 	nd, err := hamt.LoadNode(vmctx.Context(), vmctx.Ipld(), rcid)
 	if err != nil {
 		return nil, nil, aerrors.HandleExternalError(err, "failed to load miner set")
@@ -178,11 +199,161 @@ func (sma StorageMarketActor) getBalances(vmctx types.VMContext, rcid cid.Cid, a
 func (sma StorageMarketActor) CheckLockedBalance(act *types.Actor, vmctx types.VMContext, params *struct{}) ([]byte, ActorError) {
 
 }
+*/
 
-func (sma StorageMarketActor) PublishStorageDeals(act *types.Actor, vmctx types.VMContext, params *struct{}) ([]byte, ActorError) {
-
+type PublishStorageDealsParams struct {
+	Deals []StorageDeal
 }
 
+type PublishStorageDealResponse struct {
+	DealIDs []uint64
+}
+
+func (sma StorageMarketActor) PublishStorageDeals(act *types.Actor, vmctx types.VMContext, params *PublishStorageDealsParams) ([]byte, ActorError) {
+	var self StorageMarketState
+	old := vmctx.Storage().GetHead()
+	if err := vmctx.Storage().Get(old, &self); err != nil {
+		return nil, err
+	}
+
+	deals, err := amt.LoadAMT(types.WrapStorage(vmctx.Storage()), self.Deals)
+	if err != nil {
+		// TODO: kind of annoying that this can be caused by gas, otherwise could be fatal
+		return nil, aerrors.HandleExternalError(err, "loading deals amt")
+	}
+
+	// todo: handle duplicate deals
+
+	out := PublishStorageDealResponse{
+		DealIDs: make([]uint64, len(params.Deals)),
+	}
+
+	for i, deal := range params.Deals {
+		if err := self.validateDeal(vmctx, deal); err != nil {
+			return nil, err
+		}
+
+		err := deals.Set(self.NextDealID, deal)
+		if err != nil {
+			return nil, aerrors.HandleExternalError(err, "setting deal in deal AMT")
+		}
+		out.DealIDs[i] = self.NextDealID
+
+		self.NextDealID++
+	}
+
+	dealsCid, err := deals.Flush()
+	if err != nil {
+		return nil, aerrors.HandleExternalError(err, "saving deals AMT")
+	}
+
+	self.Deals = dealsCid
+
+	nroot, err := vmctx.Storage().Put(&self)
+	if err != nil {
+		return nil, aerrors.HandleExternalError(err, "storing state failed")
+	}
+
+	aerr := vmctx.Storage().Commit(old, nroot)
+	if aerr != nil {
+		return nil, aerr
+	}
+
+	var outBuf bytes.Buffer
+	if err := out.MarshalCBOR(&outBuf); err != nil {
+		return nil, aerrors.HandleExternalError(err, "serialising output")
+	}
+
+	return outBuf.Bytes(), nil
+}
+
+func (self *StorageMarketState) validateDeal(vmctx types.VMContext, deal StorageDeal) aerrors.ActorError {
+	// REVIEW: just > ?
+	if vmctx.BlockHeight() >= deal.Proposal.ProposalExpiration {
+		return aerrors.New(1, "deal proposal already expired")
+	}
+	if vmctx.BlockHeight() >= deal.Proposal.DealExpiration {
+		return aerrors.New(2, "deal proposal already expired")
+	}
+
+	var proposalBuf bytes.Buffer
+	err := deal.Proposal.MarshalCBOR(&proposalBuf)
+	if err != nil {
+		return aerrors.HandleExternalError(err, "serializing deal proposal failed")
+	}
+
+	err = deal.Proposal.ProposerSignature.Verify(deal.Proposal.Client, proposalBuf.Bytes())
+	if err != nil {
+		return aerrors.HandleExternalError(err, "verifying proposer signature")
+	}
+
+	var dealBuf bytes.Buffer
+	err = deal.MarshalCBOR(&dealBuf)
+	if err != nil {
+		return aerrors.HandleExternalError(err, "serializing deal failed")
+	}
+
+	err = deal.CounterSignature.Verify(deal.Proposal.Provider, dealBuf.Bytes())
+	if err != nil {
+		return aerrors.HandleExternalError(err, "verifying provider signature")
+	}
+
+	// TODO: maybe this is actually fine
+	if vmctx.Message().From != deal.Proposal.Provider && vmctx.Message().From != deal.Proposal.Client {
+		return aerrors.New(3, "message not sent by deal participant")
+	}
+
+	// TODO: REVIEW: Do we want to check if provider exists in the power actor?
+
+	// TODO: do some caching (changes gas so needs to be in spec too)
+	b, bnd, aerr := getMarketBalances(vmctx, self.Balances, []address.Address{
+		deal.Proposal.Client,
+		deal.Proposal.Provider,
+	})
+	if aerr != nil {
+		return aerrors.Wrap(aerr, "getting client, and provider balances")
+	}
+	clientBalance := b[0]
+	providerBalance := b[1]
+
+	if clientBalance.Available.LessThan(deal.Proposal.StoragePrice) {
+		return aerrors.Newf(4, "client doesn't have enough available funds to cover StoragePrice; %d < %d", clientBalance.Available, deal.Proposal.StoragePrice)
+	}
+
+	clientBalance = lockFunds(clientBalance, deal.Proposal.StoragePrice)
+
+	// TODO: REVIEW: Not clear who pays for this
+	if providerBalance.Available.LessThan(deal.Proposal.StorageCollateral) {
+		return aerrors.Newf(5, "provider doesn't have enough available funds to cover StorageCollateral; %d < %d", providerBalance.Available, deal.Proposal.StorageCollateral)
+	}
+
+	providerBalance = lockFunds(providerBalance, deal.Proposal.StorageCollateral)
+
+	// TODO: piece checks (e.g. size > sectorSize)?
+
+	bcid, aerr := setMarketBalances(vmctx, bnd, map[address.Address]StorageParticipantBalance{
+		deal.Proposal.Client:   clientBalance,
+		deal.Proposal.Provider: providerBalance,
+	})
+	if aerr != nil {
+		return aerr
+	}
+
+	self.Balances = bcid
+
+	return nil
+}
+
+func lockFunds(p StorageParticipantBalance, amt types.BigInt) StorageParticipantBalance {
+	p.Available, p.Locked = transferFunds(p.Available, p.Locked, amt)
+	return p
+}
+
+func transferFunds(from, to, amt types.BigInt) (types.BigInt, types.BigInt) {
+	return types.BigSub(from, amt), types.BigAdd(to, amt)
+}
+
+/*
 func (sma StorageMarketActor) HandleCronAction(act *types.Actor, vmctx types.VMContext, params *struct{}) ([]byte, ActorError) {
 
 }

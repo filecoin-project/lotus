@@ -78,6 +78,10 @@ func main() {
 		actors.StorageParticipantBalance{},
 		actors.StorageMarketState{},
 		actors.WithdrawBalanceParams{},
+		actors.StorageDealProposal{},
+		actors.StorageDeal{},
+		actors.PublishStorageDealsParams{},
+		actors.PublishStorageDealResponse{},
 	)
 	if err != nil {
 		fmt.Println(err)
