@@ -69,7 +69,7 @@ var createMinerCmd = &cli.Command{
 		}
 
 		msg := &types.Message{
-			To:       actors.StorageMarketAddress,
+			To:       actors.StoragePowerAddress,
 			From:     addr,
 			Method:   actors.SPAMethods.CreateStorageMiner,
 			Params:   params,

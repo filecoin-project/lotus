@@ -30,7 +30,8 @@ func newInvoker() *invoker {
 
 	// add builtInCode using: register(cid, singleton)
 	inv.register(actors.InitActorCodeCid, actors.InitActor{}, actors.InitActorState{})
-	inv.register(actors.StorageMarketActorCodeCid, actors.StoragePowerActor{}, actors.StoragePowerState{})
+	inv.register(actors.StoragePowerActorCodeCid, actors.StoragePowerActor{}, actors.StoragePowerState{})
+	inv.register(actors.StorageMarketActorCodeCid, actors.StorageMarketActor{}, actors.StorageMarketState{})
 	inv.register(actors.StorageMinerCodeCid, actors.StorageMinerActor{}, actors.StorageMinerActorState{})
 	inv.register(actors.MultisigActorCodeCid, actors.MultiSigActor{}, actors.MultiSigActorState{})
 	inv.register(actors.PaymentChannelActorCodeCid, actors.PaymentChannelActor{}, actors.PaymentChannelActorState{})

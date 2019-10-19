@@ -8,6 +8,7 @@ import (
 )
 
 var AccountActorCodeCid cid.Cid
+var StoragePowerActorCodeCid cid.Cid
 var StorageMarketActorCodeCid cid.Cid
 var StorageMinerCodeCid cid.Cid
 var MultisigActorCodeCid cid.Cid
@@ -16,7 +17,8 @@ var PaymentChannelActorCodeCid cid.Cid
 
 var InitActorAddress = mustIDAddress(0)
 var NetworkAddress = mustIDAddress(1)
-var StorageMarketAddress = mustIDAddress(2)
+var StoragePowerAddress = mustIDAddress(2)
+var StorageMarketAddress = mustIDAddress(3) // TODO: missing from spec
 var BurntFundsAddress = mustIDAddress(99)
 
 func mustIDAddress(i uint64) address.Address {
@@ -37,10 +39,11 @@ func init() {
 		return c
 	}
 
-	AccountActorCodeCid = mustSum("account")
-	StorageMarketActorCodeCid = mustSum("smarket")
-	StorageMinerCodeCid = mustSum("sminer")
-	MultisigActorCodeCid = mustSum("multisig")
-	InitActorCodeCid = mustSum("init")
-	PaymentChannelActorCodeCid = mustSum("paych")
+	AccountActorCodeCid = mustSum("filecoin/1.0/AccountActor")
+	StoragePowerActorCodeCid = mustSum("filecoin/1.0/StoragePowerActor")
+	StorageMarketActorCodeCid = mustSum("filecoin/1.0/StorageMarketActor")
+	StorageMinerCodeCid = mustSum("filecoin/1.0/StorageMinerActor")
+	MultisigActorCodeCid = mustSum("filecoin/1.0/MultisigActor")
+	InitActorCodeCid = mustSum("filecoin/1.0/InitActor")
+	PaymentChannelActorCodeCid = mustSum("filecoin/1.0/PaymentChannelActor")
 }

@@ -94,7 +94,7 @@ func MakeInitialStateTree(bs bstore.Blockstore, actmap map[address.Address]types
 		return nil, xerrors.Errorf("setup storage market actor: %w", err)
 	}
 
-	if err := state.SetActor(actors.StorageMarketAddress, smact); err != nil {
+	if err := state.SetActor(actors.StoragePowerAddress, smact); err != nil {
 		return nil, xerrors.Errorf("set storage market actor: %w", err)
 	}
 
@@ -154,7 +154,7 @@ func SetupStorageMarketActor(bs bstore.Blockstore) (*types.Actor, error) {
 	}
 
 	return &types.Actor{
-		Code:    actors.StorageMarketActorCodeCid,
+		Code:    actors.StoragePowerActorCodeCid,
 		Head:    stcid,
 		Nonce:   0,
 		Balance: types.NewInt(0),
@@ -202,7 +202,7 @@ func SetupStorageMiners(ctx context.Context, cs *store.ChainStore, sroot cid.Cid
 
 		// TODO: hardcoding 7000000 here is a little fragile, it changes any
 		// time anyone changes the initial account allocations
-		rval, err := doExecValue(ctx, vm, actors.StorageMarketAddress, owner, types.FromFil(6500), actors.SPAMethods.CreateStorageMiner, params)
+		rval, err := doExecValue(ctx, vm, actors.StoragePowerAddress, owner, types.FromFil(6500), actors.SPAMethods.CreateStorageMiner, params)
 		if err != nil {
 			return cid.Undef, xerrors.Errorf("failed to create genesis miner: %w", err)
 		}
@@ -216,7 +216,7 @@ func SetupStorageMiners(ctx context.Context, cs *store.ChainStore, sroot cid.Cid
 
 		params = mustEnc(&actors.UpdateStorageParams{Delta: types.NewInt(5000)})
 
-		_, err = doExec(ctx, vm, actors.StorageMarketAddress, maddr, actors.SPAMethods.UpdateStorage, params)
+		_, err = doExec(ctx, vm, actors.StoragePowerAddress, maddr, actors.SPAMethods.UpdateStorage, params)
 		if err != nil {
 			return cid.Undef, xerrors.Errorf("failed to update total storage: %w", err)
 		}

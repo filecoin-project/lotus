@@ -80,7 +80,7 @@ func GetPower(ctx context.Context, sm *StateManager, ts *types.TipSet, maddr add
 		}
 		ret, err := sm.Call(ctx, &types.Message{
 			From:   maddr,
-			To:     actors.StorageMarketAddress,
+			To:     actors.StoragePowerAddress,
 			Method: actors.SPAMethods.PowerLookup,
 			Params: enc,
 		}, ts)
@@ -95,8 +95,8 @@ func GetPower(ctx context.Context, sm *StateManager, ts *types.TipSet, maddr add
 	}
 
 	ret, err := sm.Call(ctx, &types.Message{
-		From:   actors.StorageMarketAddress,
-		To:     actors.StorageMarketAddress,
+		From:   actors.StoragePowerAddress,
+		To:     actors.StoragePowerAddress,
 		Method: actors.SPAMethods.GetTotalStorage,
 	}, ts)
 	if err != nil {

@@ -433,7 +433,7 @@ func (sma StorageMinerActor) SubmitPoSt(act *types.Actor, vmctx types.VMContext,
 		return nil, err
 	}
 
-	_, err = vmctx.Send(StorageMarketAddress, SPAMethods.UpdateStorage, types.NewInt(0), enc)
+	_, err = vmctx.Send(StoragePowerAddress, SPAMethods.UpdateStorage, types.NewInt(0), enc)
 	if err != nil {
 		return nil, err
 	}
@@ -753,7 +753,7 @@ type MinerSlashConsensusFault struct {
 }
 
 func (sma StorageMinerActor) SlashConsensusFault(act *types.Actor, vmctx types.VMContext, params *MinerSlashConsensusFault) ([]byte, ActorError) {
-	if vmctx.Message().From != StorageMarketAddress {
+	if vmctx.Message().From != StoragePowerAddress {
 		return nil, aerrors.New(1, "SlashConsensusFault may only be called by the storage market actor")
 	}
 

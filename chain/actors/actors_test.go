@@ -128,7 +128,7 @@ func TestStorageMarketActorCreateMiner(t *testing.T) {
 	}
 
 	msg := &types.Message{
-		To:       StorageMarketAddress,
+		To:       StoragePowerAddress,
 		From:     from,
 		Method:   SPAMethods.CreateStorageMiner,
 		Params:   enc,
