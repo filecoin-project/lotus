@@ -82,6 +82,8 @@ func main() {
 		actors.StorageDeal{},
 		actors.PublishStorageDealsParams{},
 		actors.PublishStorageDealResponse{},
+		actors.ActivateStorageDealsParams{},
+		actors.ProcessStorageDealsPaymentParams{},
 	)
 	if err != nil {
 		fmt.Println(err)

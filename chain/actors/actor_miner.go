@@ -213,6 +213,14 @@ type CommitSectorParams struct {
 	Proof     []byte
 }
 
+type OnChainSealVerifyInfo struct {
+	SealedCID    cid.Cid // CommR .. TODO: spec says cid, but it feela weird
+	Epoch        uint64
+	Proof        []byte
+	DealIDs      []uint64
+	SectorNumber uint64
+}
+
 func (sma StorageMinerActor) CommitSector(act *types.Actor, vmctx types.VMContext, params *CommitSectorParams) ([]byte, ActorError) {
 	ctx := context.TODO()
 	oldstate, self, err := loadState(vmctx)
