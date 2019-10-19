@@ -17,7 +17,7 @@ In order to run lotus, please do the following:
 1. Make sure you have these dependencies installed:
 - go (1.13 or higher)
 - gcc (7.4.0 or higher)
-- git
+- git (version 2 or higher)
 - bzr (some go dependency needs this)
 - jq
 - pkg-config
