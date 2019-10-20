@@ -33,11 +33,11 @@ func serveRPC(a api.FullNode, stop node.StopFunc, addr string) error {
 	sigChan := make(chan os.Signal, 2)
 	go func() {
 		<-sigChan
-		if err := stop(context.TODO()); err != nil {
-			log.Errorf("graceful shutting down failed: %s", err)
-		}
 		if err := srv.Shutdown(context.TODO()); err != nil {
 			log.Errorf("shutting down RPC server failed: %s", err)
+		}
+		if err := stop(context.TODO()); err != nil {
+			log.Errorf("graceful shutting down failed: %s", err)
 		}
 	}()
 	signal.Notify(sigChan, syscall.SIGTERM, syscall.SIGINT)
