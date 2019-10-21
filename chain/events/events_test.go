@@ -211,6 +211,12 @@ func TestAt(t *testing.T) {
 	require.Equal(t, false, applied)
 	require.Equal(t, false, reverted)
 
+	fcs.advance(10, 10, nil)
+	require.Equal(t, true, applied)
+	require.Equal(t, true, reverted)
+	applied = false
+	reverted = false
+
 	fcs.advance(10, 1, nil)
 	require.Equal(t, false, applied)
 	require.Equal(t, true, reverted)
