@@ -20,20 +20,12 @@ type heightEvents struct {
 }
 
 func (e *heightEvents) headChangeAt(rev, app []*types.TipSet) error {
-	// highest tipset is always the first (see api.ReorgOps)
-	newH := app[0].Height()
-
 	for _, ts := range rev {
 		// TODO: log error if h below gcconfidence
 		// revert height-based triggers
 
 		revert := func(h uint64, ts *types.TipSet) {
 			for _, tid := range e.htHeights[h] {
-				// don't revert if newH is above this ts
-				if newH >= h {
-					continue
-				}
-
 				err := e.heightTriggers[tid].revert(ts)
 				if err != nil {
 					log.Errorf("reverting chain trigger (@H %d): %s", h, err)
