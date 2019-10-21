@@ -18,15 +18,15 @@ func TestMessageFactory(t *testing.T) {
 	wallet, err := wallet.NewWallet(ks)
 	require.NoError(t, err)
 	factory := NewMessageFactory(wallet)
-	p := chain.NewMessageProducer(factory)
 
 	gasPrice := big.NewInt(1)
 	gasLimit := state.GasUnit(1000)
+	p := chain.NewMessageProducer(factory, gasLimit, gasPrice)
 
 	sender, err := wallet.GenerateKey(types.KTSecp256k1)
 
 	require.NoError(t, err)
-	m, err := p.Transfer(state.Address(sender.Bytes()), state.BurntFundsAddress, big.NewInt(1), gasPrice, gasLimit)
+	m, err := p.Transfer(state.Address(sender.Bytes()), state.BurntFundsAddress,0, 1)
 	require.NoError(t, err)
 
 	messages := p.Messages()
@@ -34,6 +34,6 @@ func TestMessageFactory(t *testing.T) {
 	msg := m.(*types.Message)
 	assert.Equal(t, m, msg)
 	assert.Equal(t, sender, msg.From)
-	assert.Equal(t, state.BurntFundsAddress, msg.To)
+	assert.Equal(t, state.BurntFundsAddress, state.Address(msg.To.Bytes()))
 	assert.Equal(t, types.NewInt(1), msg.Value)
 }
