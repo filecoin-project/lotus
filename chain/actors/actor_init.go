@@ -162,7 +162,7 @@ func (ia InitActor) Exec(act *types.Actor, vmctx types.VMContext, p *ExecParams)
 
 func IsBuiltinActor(code cid.Cid) bool {
 	switch code {
-	case StorageMinerCodeCid, StorageMinerCodeCid, AccountActorCodeCid, InitActorCodeCid, MultisigActorCodeCid, PaymentChannelActorCodeCid:
+	case StorageMarketActorCodeCid, StorageMinerCodeCid, AccountActorCodeCid, InitActorCodeCid, MultisigActorCodeCid, PaymentChannelActorCodeCid:
 		return true
 	default:
 		return false
