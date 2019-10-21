@@ -3058,10 +3058,12 @@ func (t *StorageDealProposal) MarshalCBOR(w io.Writer) error {
 		return err
 	}
 
-	// t.t.PieceRef (cid.Cid)
-
-	if err := cbg.WriteCid(w, t.PieceRef); err != nil {
-		return xerrors.Errorf("failed to write cid field t.PieceRef: %w", err)
+	// t.t.PieceRef ([]uint8)
+	if _, err := w.Write(cbg.CborEncodeMajorType(cbg.MajByteString, uint64(len(t.PieceRef)))); err != nil {
+		return err
+	}
+	if _, err := w.Write(t.PieceRef); err != nil {
+		return err
 	}
 
 	// t.t.PieceSize (uint64)
@@ -3121,17 +3123,22 @@ func (t *StorageDealProposal) UnmarshalCBOR(r io.Reader) error {
 		return fmt.Errorf("cbor input had wrong number of fields")
 	}
 
-	// t.t.PieceRef (cid.Cid)
+	// t.t.PieceRef ([]uint8)
 
-	{
+	maj, extra, err = cbg.CborReadHeader(br)
+	if err != nil {
+		return err
+	}
+	if extra > 8192 {
+		return fmt.Errorf("t.PieceRef: array too large (%d)", extra)
+	}
 
-		c, err := cbg.ReadCid(br)
-		if err != nil {
-			return xerrors.Errorf("failed to read cid field t.PieceRef: %w", err)
-		}
-
-		t.PieceRef = c
-
+	if maj != cbg.MajByteString {
+		return fmt.Errorf("expected byte array")
+	}
+	t.PieceRef = make([]byte, extra)
+	if _, err := io.ReadFull(br, t.PieceRef); err != nil {
+		return err
 	}
 	// t.t.PieceSize (uint64)
 

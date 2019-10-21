@@ -60,7 +60,7 @@ type StorageMarketState struct {
 }
 
 type StorageDealProposal struct {
-	PieceRef           cid.Cid // can this mess anything up? Should this just be cid bytes
+	PieceRef           []byte // cid bytes // TODO: spec says to use cid.Cid, probably not a good idea
 	PieceSize          uint64
 	Client             address.Address
 	Provider           address.Address
