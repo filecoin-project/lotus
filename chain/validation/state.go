@@ -1,73 +1,97 @@
 package validation
 
 import (
+	"context"
 	"fmt"
 	"math/rand"
 
+	"github.com/ipfs/go-cid"
 	"github.com/ipfs/go-datastore"
 	"github.com/ipfs/go-hamt-ipld"
 	blockstore "github.com/ipfs/go-ipfs-blockstore"
-	"github.com/ipfs/go-cid"
 
-	"github.com/filecoin-project/go-lotus/lib/crypto"
 	"github.com/filecoin-project/go-lotus/chain/address"
-	"github.com/filecoin-project/go-lotus/chain/types"
 	"github.com/filecoin-project/go-lotus/chain/state"
+	"github.com/filecoin-project/go-lotus/chain/types"
 	"github.com/filecoin-project/go-lotus/chain/wallet"
+	"github.com/filecoin-project/go-lotus/lib/crypto"
 
 	vstate "github.com/filecoin-project/chain-validation/pkg/state"
 )
-type StateFactory struct {
+
+type StateWrapper struct {
+	bs   blockstore.Blockstore
 	keys *keyStore
+
+	*state.StateTree
+	*directStorage
 }
 
-var _ vstate.Factory = &StateFactory{}
+var _ vstate.Wrapper = &StateWrapper{}
 
-func NewStateFactory() *StateFactory {
-	return &StateFactory{newKeyStore()}
+func NewState() *StateWrapper {
+	bs := blockstore.NewBlockstore(datastore.NewMapDatastore())
+	cst := hamt.CSTFromBstore(bs)
+	treeImpl, err := state.NewStateTree(cst)
+	if err != nil {
+		panic(err) // Never returns error, the error return should be removed.
+	}
+	storageImpl := &directStorage{cst}
+	return &StateWrapper{bs, newKeyStore(), treeImpl, storageImpl}
 }
 
-func (s *StateFactory) Signer() *keyStore {
-	return s.keys
+func (s *StateWrapper) Cid() cid.Cid {
+	panic("implement me")
 }
 
-func (s StateFactory) NewAddress() (vstate.Address, error) {
+func (s *StateWrapper) Actor(addr vstate.Address) (vstate.Actor, error) {
+	vaddr, err := address.NewFromBytes([]byte(addr))
+	if err != nil {
+		return nil, err
+	}
+	fcActor, err := s.StateTree.GetActor(vaddr)
+	if err != nil {
+		return nil, err
+	}
+	return &actorWrapper{*fcActor}, nil
+}
+
+func (s *StateWrapper) Storage(addr vstate.Address) (vstate.Storage, error) {
+	return s.directStorage, nil
+}
+
+func (s *StateWrapper) NewAccountAddress() (vstate.Address, error) {
 	return s.keys.NewAddress()
 }
 
-func (s StateFactory) NewActor(code cid.Cid, balance vstate.AttoFIL) vstate.Actor {
-	return &actorWrapper{types.Actor{
+func (s *StateWrapper) SetActor(addr vstate.Address, code cid.Cid, balance vstate.AttoFIL) (vstate.Actor, vstate.Storage, error) {
+	addrInt, err := address.NewFromBytes([]byte(addr))
+	if err != nil {
+		return nil, nil, err
+	}
+	actr := &actorWrapper{types.Actor{
 		Code:    code,
 		Balance: types.BigInt{balance},
 	}}
+
+	// The ID-based address is dropped here, but should be reported back to the caller.
+	// FIXME Lotus state tree requires the InitActor to be installed in order to resolve other
+	// actor addresses
+	_, err = s.StateTree.RegisterNewAddress(addrInt, &actr.Actor)
+	if err != nil {
+		return nil, nil, err
+	}
+
+	_, err = s.StateTree.Flush()
+	if err != nil {
+		return nil, nil, err
+	}
+
+	return actr, s.directStorage, nil
 }
 
-func (s StateFactory) NewState(actors []vstate.ActorAndAddress) (vstate.Tree, vstate.StorageMap, error) {
-	bs := blockstore.NewBlockstore(datastore.NewMapDatastore())
-	cst := hamt.CSTFromBstore(bs)
-	// TODO it might be better to use gen.MakeInitialStateTree() here, not sure.
-	// more or less following what go-filecoin driver does for the time being.
-	treeImpl, err := state.NewStateTree(cst)
-	if err != nil {
-		return nil, nil, err
-	}
-
-	for _, a := range actors {
-		actAddr, err := address.NewFromBytes([]byte(a.Address))
-		if err != nil {
-			return nil, nil, err
-		}
-		actw := a.Actor.(*actorWrapper)
-		if err := treeImpl.SetActor(actAddr, &actw.Actor); err != nil {
-			return nil, nil, err
-		}
-	}
-
-	_, err = treeImpl.Flush()
-	if err != nil {
-		return nil, nil, err
-	}
-	return &stateTreeWrapper{treeImpl}, nil, nil
+func (s *StateWrapper) Signer() *keyStore {
+	return s.keys
 }
 
 //
@@ -96,7 +120,7 @@ func (s *keyStore) NewAddress() (vstate.Address, error) {
 
 	ki := types.KeyInfo{
 		PrivateKey: prv,
-		Type:      types.KTSecp256k1,
+		Type:       types.KTSecp256k1,
 	}
 	key, err := wallet.NewKey(ki)
 	if err != nil {
@@ -107,21 +131,20 @@ func (s *keyStore) NewAddress() (vstate.Address, error) {
 	return vstate.Address(key.Address.Bytes()), nil
 }
 
-func (as *keyStore) Sign(addr address.Address, data []byte) (types.Signature, error) {
+func (as *keyStore) Sign(ctx context.Context, addr address.Address, data []byte) (*types.Signature, error) {
 	ki, ok := as.keys[addr]
 	if !ok {
-		return types.Signature{}, fmt.Errorf("unknown address %v", addr)
+		return &types.Signature{}, fmt.Errorf("unknown address %v", addr)
 	}
 	digest, err := crypto.Sign(ki.PrivateKey, data)
 	if err != nil {
-		return types.Signature{}, err
+		return &types.Signature{}, err
 	}
-	return types.Signature{
+	return &types.Signature{
 		Type: types.KTSecp256k1,
 		Data: digest,
 	}, nil
 }
-
 
 //
 // Actor Wrapper
@@ -149,31 +172,13 @@ func (a *actorWrapper) Balance() vstate.AttoFIL {
 }
 
 //
-// State Tree Wrapper
+// Storage
 //
 
-type stateTreeWrapper struct {
-	*state.StateTree
+type directStorage struct {
+	cst *hamt.CborIpldStore
 }
 
-func (s *stateTreeWrapper) Actor(addr vstate.Address) (vstate.Actor, error) {
-	vaddr, err := address.NewFromBytes([]byte(addr))
-	if err != nil {
-		return nil, err
-	}
-	fcActor, err := s.GetActor(vaddr)
-	if err != nil {
-		return nil, err
-	}
-	return &actorWrapper{*fcActor}, nil
-}
-
-func (s *stateTreeWrapper) Cid() cid.Cid {
+func (d *directStorage) Get(cid cid.Cid) ([]byte, error) {
 	panic("implement me")
 }
-
-func (s *stateTreeWrapper) ActorStorage(vstate.Address) (vstate.Storage, error) {
-	panic("implement me")
-}
-
-

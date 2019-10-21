@@ -7,6 +7,6 @@ import (
 )
 
 func TestExample(t *testing.T) {
-	driver := NewDriver()
-	suites.Example(t, driver)
+	factories := NewFactories()
+	suites.Example(t, factories)
 }
