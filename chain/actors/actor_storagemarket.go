@@ -2,16 +2,17 @@ package actors
 
 import (
 	"bytes"
-
+	"context"
 	"github.com/filecoin-project/go-amt-ipld"
 	"github.com/ipfs/go-cid"
 	"github.com/ipfs/go-hamt-ipld"
 	cbg "github.com/whyrusleeping/cbor-gen"
+	"golang.org/x/xerrors"
 
-	"github.com/filecoin-project/go-lotus/build"
-	"github.com/filecoin-project/go-lotus/chain/actors/aerrors"
-	"github.com/filecoin-project/go-lotus/chain/address"
-	"github.com/filecoin-project/go-lotus/chain/types"
+	"github.com/filecoin-project/lotus/build"
+	"github.com/filecoin-project/lotus/chain/actors/aerrors"
+	"github.com/filecoin-project/lotus/chain/address"
+	"github.com/filecoin-project/lotus/chain/types"
 )
 
 type StorageMarketActor struct{}
@@ -59,16 +60,64 @@ type StorageMarketState struct {
 	NextDealID uint64 // TODO: amt.LastIndex()
 }
 
+// TODO: serialization mode spec
+type SerializationMode uint64
+
+const (
+	SerializationUnixFSv0 = iota
+	// IPLD / car
+)
+
 type StorageDealProposal struct {
 	PieceRef           []byte // cid bytes // TODO: spec says to use cid.Cid, probably not a good idea
 	PieceSize          uint64
-	Client             address.Address
-	Provider           address.Address
+	PieceSerialization SerializationMode // Needs to be here as it tells how data in the sector maps to PieceRef cid
+
+	Client   address.Address
+	Provider address.Address
+
 	ProposalExpiration uint64
-	DealExpiration     uint64
-	StoragePrice       types.BigInt
-	StorageCollateral  types.BigInt
-	ProposerSignature  types.Signature
+	Duration           uint64 // TODO: spec proposes 'DealExpiration', but that's awkward as it
+	//  doesn't tell when the deal actually starts, so the price per block is impossible to
+	//  calculate. It also doesn't incentivize the miner to seal / activate sooner, as he
+	//  still get's paid the full amount specified in the deal
+	//
+	//  Changing to duration makes sure that the price-per-block is defined, and the miner
+	//  doesn't get paid when not storing the sector
+
+	StoragePrice      types.BigInt
+	StorageCollateral types.BigInt
+
+	ProposerSignature *types.Signature
+}
+
+type SignFunc = func(context.Context, []byte) (*types.Signature, error)
+
+func (sdp *StorageDealProposal) Sign(ctx context.Context, sign SignFunc) error {
+	if sdp.ProposerSignature != nil {
+		return xerrors.New("signature already present in StorageDealProposal")
+	}
+	var buf bytes.Buffer
+	if err := sdp.MarshalCBOR(&buf); err != nil {
+		return err
+	}
+	sig, err := sign(ctx, buf.Bytes())
+	if err != nil {
+		return err
+	}
+	sdp.ProposerSignature = sig
+	return nil
+}
+
+func (sdp *StorageDealProposal) Verify() error {
+	unsigned := *sdp
+	unsigned.ProposerSignature = nil
+	var buf bytes.Buffer
+	if err := sdp.MarshalCBOR(&buf); err != nil {
+		return err
+	}
+
+	return sdp.ProposerSignature.Verify(sdp.Client, buf.Bytes())
 }
 
 type StorageDeal struct {
@@ -86,6 +135,8 @@ type WithdrawBalanceParams struct {
 }
 
 func (sma StorageMarketActor) WithdrawBalance(act *types.Actor, vmctx types.VMContext, params *WithdrawBalanceParams) ([]byte, ActorError) {
+	// TODO: (spec) this should be 2-stage
+
 	var self StorageMarketState
 	old := vmctx.Storage().GetHead()
 	if err := vmctx.Storage().Get(old, &self); err != nil {
@@ -524,10 +575,6 @@ func (sma StorageMarketActor) HandleCronAction(act *types.Actor, vmctx types.VMC
 }
 
 func (sma StorageMarketActor) SettleExpiredDeals(act *types.Actor, vmctx types.VMContext, params *struct{}) ([]byte, ActorError) {
-
-}
-
-func (sma StorageMarketActor) ProcessStorageDealsPayment(act *types.Actor, vmctx types.VMContext, params *struct{}) ([]byte, ActorError) {
 
 }
 

@@ -87,7 +87,7 @@ func (spa StoragePowerActor) CreateStorageMiner(act *types.Actor, vmctx types.VM
 		return nil, err
 	}
 
-	ret, err := vmctx.Send(InitActorAddress, IAMethods.Exec, vmctx.Message().Value, encoded)
+	ret, err := vmctx.Send(InitAddress, IAMethods.Exec, vmctx.Message().Value, encoded)
 	if err != nil {
 		return nil, err
 	}

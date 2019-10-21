@@ -7,15 +7,15 @@ import (
 	mh "github.com/multiformats/go-multihash"
 )
 
-var AccountActorCodeCid cid.Cid
-var StoragePowerActorCodeCid cid.Cid
-var StorageMarketActorCodeCid cid.Cid
+var AccountCodeCid cid.Cid
+var StoragePowerCodeCid cid.Cid
+var StorageMarketCodeCid cid.Cid
 var StorageMinerCodeCid cid.Cid
-var MultisigActorCodeCid cid.Cid
-var InitActorCodeCid cid.Cid
-var PaymentChannelActorCodeCid cid.Cid
+var MultisigCodeCid cid.Cid
+var InitCodeCid cid.Cid
+var PaymentChannelCodeCid cid.Cid
 
-var InitActorAddress = mustIDAddress(0)
+var InitAddress = mustIDAddress(0)
 var NetworkAddress = mustIDAddress(1)
 var StoragePowerAddress = mustIDAddress(2)
 var StorageMarketAddress = mustIDAddress(3) // TODO: missing from spec
@@ -39,11 +39,11 @@ func init() {
 		return c
 	}
 
-	AccountActorCodeCid = mustSum("filecoin/1.0/AccountActor")
-	StoragePowerActorCodeCid = mustSum("filecoin/1.0/StoragePowerActor")
-	StorageMarketActorCodeCid = mustSum("filecoin/1.0/StorageMarketActor")
+	AccountCodeCid = mustSum("filecoin/1.0/AccountActor")
+	StoragePowerCodeCid = mustSum("filecoin/1.0/StoragePowerActor")
+	StorageMarketCodeCid = mustSum("filecoin/1.0/StorageMarketActor")
 	StorageMinerCodeCid = mustSum("filecoin/1.0/StorageMinerActor")
-	MultisigActorCodeCid = mustSum("filecoin/1.0/MultisigActor")
-	InitActorCodeCid = mustSum("filecoin/1.0/InitActor")
-	PaymentChannelActorCodeCid = mustSum("filecoin/1.0/PaymentChannelActor")
+	MultisigCodeCid = mustSum("filecoin/1.0/MultisigActor")
+	InitCodeCid = mustSum("filecoin/1.0/InitActor")
+	PaymentChannelCodeCid = mustSum("filecoin/1.0/PaymentChannelActor")
 }

@@ -2,6 +2,7 @@ package deals
 
 import (
 	"context"
+	"github.com/filecoin-project/lotus/chain/store"
 	"math"
 
 	"github.com/ipfs/go-cid"
@@ -27,20 +28,16 @@ import (
 
 func init() {
 	cbor.RegisterCborType(ClientDeal{})
-	cbor.RegisterCborType(actors.PieceInclVoucherData{}) // TODO: USE CBORGEN!
 	cbor.RegisterCborType(types.SignedVoucher{})
 	cbor.RegisterCborType(types.ModVerifyParams{})
 	cbor.RegisterCborType(types.Signature{})
-	cbor.RegisterCborType(actors.PaymentInfo{})
-	cbor.RegisterCborType(api.PaymentInfo{})
-	cbor.RegisterCborType(actors.InclusionProof{})
 }
 
 var log = logging.Logger("deals")
 
 type ClientDeal struct {
 	ProposalCid cid.Cid
-	Proposal    StorageDealProposal
+	Proposal    actors.StorageDealProposal
 	State       api.DealState
 	Miner       peer.ID
 
@@ -49,6 +46,7 @@ type ClientDeal struct {
 
 type Client struct {
 	sm        *stmgr.StateManager
+	chain *store.ChainStore
 	h         host.Host
 	w         *wallet.Wallet
 	dag       dtypes.ClientDAG
@@ -70,9 +68,10 @@ type clientDealUpdate struct {
 	err      error
 }
 
-func NewClient(sm *stmgr.StateManager, h host.Host, w *wallet.Wallet, ds dtypes.MetadataDS, dag dtypes.ClientDAG, discovery *discovery.Local) *Client {
+func NewClient(sm *stmgr.StateManager, chain *store.ChainStore, h host.Host, w *wallet.Wallet, ds dtypes.MetadataDS, dag dtypes.ClientDAG, discovery *discovery.Local) *Client {
 	c := &Client{
 		sm:        sm,
+		chain: chain,
 		h:         h,
 		w:         w,
 		dag:       dag,
@@ -164,54 +163,48 @@ func (c *Client) onUpdated(ctx context.Context, update clientDealUpdate) {
 }
 
 type ClientDealProposal struct {
-	Data cid.Cid
+	Data     cid.Cid
+	DataSize uint64
 
-	TotalPrice types.BigInt
-	Duration   uint64
+	TotalPrice         types.BigInt
+	ProposalExpiration uint64
+	Duration           uint64
 
-	Payment actors.PaymentInfo
-
-	MinerAddress  address.Address
-	ClientAddress address.Address
-	MinerID       peer.ID
+	ProviderAddress address.Address
+	Client          address.Address
+	MinerID         peer.ID
 }
 
-func (c *Client) VerifyParams(ctx context.Context, data cid.Cid) (*actors.PieceInclVoucherData, error) {
-	commP, size, err := c.commP(ctx, data)
-	if err != nil {
-		return nil, err
+func (c *Client) Start(ctx context.Context, p ClientDealProposal) (cid.Cid, error) {
+	proposal := actors.StorageDealProposal{
+		PieceRef:           p.Data.Bytes(),
+		PieceSize:          p.DataSize,
+		PieceSerialization: actors.SerializationUnixFSv0,
+		Client:             p.Client,
+		Provider:           p.ProviderAddress,
+		ProposalExpiration: p.ProposalExpiration,
+		Duration:           p.Duration,
+		StoragePrice:       p.TotalPrice,
+		StorageCollateral:  types.NewInt(p.DataSize), // TODO: real calc
 	}
 
-	return &actors.PieceInclVoucherData{
-		CommP:     commP,
-		PieceSize: types.NewInt(uint64(size)),
-	}, nil
-}
-
-func (c *Client) Start(ctx context.Context, p ClientDealProposal, vd *actors.PieceInclVoucherData) (cid.Cid, error) {
-	proposal := StorageDealProposal{
-		PieceRef:          p.Data,
-		SerializationMode: SerializationUnixFs,
-		CommP:             vd.CommP[:],
-		Size:              vd.PieceSize.Uint64(),
-		TotalPrice:        p.TotalPrice,
-		Duration:          p.Duration,
-		Payment:           p.Payment,
-		MinerAddress:      p.MinerAddress,
-		ClientAddress:     p.ClientAddress,
-	}
-
-	s, err := c.h.NewStream(ctx, p.MinerID, ProtocolID)
-	if err != nil {
-		return cid.Undef, err
-	}
-
-	if err := c.sendProposal(s, proposal, p.ClientAddress); err != nil {
+	if err := api.SignWith(ctx, c.w.Sign, p.Client, &proposal); err != nil {
 		return cid.Undef, err
 	}
 
 	proposalNd, err := cbor.WrapObject(proposal, math.MaxUint64, -1)
 	if err != nil {
+		return cid.Undef, err
+	}
+
+	s, err := c.h.NewStream(ctx, p.MinerID, DealProtocolID)
+	if err != nil {
+		s.Reset()
+		return cid.Undef, err
+	}
+
+	if err := cborrpc.WriteCborRPC(s, proposal); err != nil {
+		s.Reset()
 		return cid.Undef, err
 	}
 
@@ -224,12 +217,10 @@ func (c *Client) Start(ctx context.Context, p ClientDealProposal, vd *actors.Pie
 		s: s,
 	}
 
-	// TODO: actually care about what happens with the deal after it was accepted
 	c.incoming <- deal
 
-	// TODO: start tracking after the deal is sealed
 	return deal.ProposalCid, c.discovery.AddPeer(p.Data, discovery.RetrievalPeer{
-		Address: proposal.MinerAddress,
+		Address: proposal.Provider,
 		ID:      deal.Miner,
 	})
 }

@@ -56,7 +56,7 @@ func SetupInitActor(bs bstore.Blockstore, addrs []address.Address) (*types.Actor
 	}
 
 	act := &types.Actor{
-		Code: actors.InitActorCodeCid,
+		Code: actors.InitCodeCid,
 		Head: statecid,
 	}
 
@@ -85,7 +85,7 @@ func MakeInitialStateTree(bs bstore.Blockstore, actmap map[address.Address]types
 		return nil, xerrors.Errorf("setup init actor: %w", err)
 	}
 
-	if err := state.SetActor(actors.InitActorAddress, initact); err != nil {
+	if err := state.SetActor(actors.InitAddress, initact); err != nil {
 		return nil, xerrors.Errorf("set init actor: %w", err)
 	}
 
@@ -104,7 +104,7 @@ func MakeInitialStateTree(bs bstore.Blockstore, actmap map[address.Address]types
 	}
 
 	err = state.SetActor(actors.NetworkAddress, &types.Actor{
-		Code:    actors.AccountActorCodeCid,
+		Code:    actors.AccountCodeCid,
 		Balance: netAmt,
 		Head:    emptyobject,
 	})
@@ -113,7 +113,7 @@ func MakeInitialStateTree(bs bstore.Blockstore, actmap map[address.Address]types
 	}
 
 	err = state.SetActor(actors.BurntFundsAddress, &types.Actor{
-		Code:    actors.AccountActorCodeCid,
+		Code:    actors.AccountCodeCid,
 		Balance: types.NewInt(0),
 		Head:    emptyobject,
 	})
@@ -123,7 +123,7 @@ func MakeInitialStateTree(bs bstore.Blockstore, actmap map[address.Address]types
 
 	for a, v := range actmap {
 		err = state.SetActor(a, &types.Actor{
-			Code:    actors.AccountActorCodeCid,
+			Code:    actors.AccountCodeCid,
 			Balance: v,
 			Head:    emptyobject,
 		})
@@ -154,7 +154,7 @@ func SetupStorageMarketActor(bs bstore.Blockstore) (*types.Actor, error) {
 	}
 
 	return &types.Actor{
-		Code:    actors.StoragePowerActorCodeCid,
+		Code:    actors.StoragePowerCodeCid,
 		Head:    stcid,
 		Nonce:   0,
 		Balance: types.NewInt(0),
@@ -333,7 +333,7 @@ func MakeGenesisBlock(bs bstore.Blockstore, balances map[address.Address]types.B
 	}
 
 	b := &types.BlockHeader{
-		Miner:                 actors.InitActorAddress,
+		Miner:                 actors.InitAddress,
 		Tickets:               []*types.Ticket{genesisticket},
 		ElectionProof:         []byte("the Genesis block"),
 		Parents:               []cid.Cid{},

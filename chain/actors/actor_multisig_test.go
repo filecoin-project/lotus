@@ -23,7 +23,7 @@ func TestMultiSigCreate(t *testing.T) {
 	}
 
 	h := NewHarness(t, opts...)
-	ret, _ := h.CreateActor(t, creatorAddr, actors.MultisigActorCodeCid,
+	ret, _ := h.CreateActor(t, creatorAddr, actors.MultisigCodeCid,
 		&actors.MultiSigConstructorParams{
 			Signers:  []address.Address{creatorAddr, sig1Addr, sig2Addr},
 			Required: 2,
@@ -49,7 +49,7 @@ func TestMultiSigOps(t *testing.T) {
 		HarnessAddr(&sig1Addr, 100000),
 		HarnessAddr(&sig2Addr, 100000),
 		HarnessAddr(&outsideAddr, 100000),
-		HarnessActor(&multSigAddr, &creatorAddr, actors.MultisigActorCodeCid,
+		HarnessActor(&multSigAddr, &creatorAddr, actors.MultisigCodeCid,
 			func() cbg.CBORMarshaler {
 				return &actors.MultiSigConstructorParams{
 					Signers:  []address.Address{creatorAddr, sig1Addr, sig2Addr},

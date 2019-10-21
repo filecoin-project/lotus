@@ -210,7 +210,7 @@ func (h *Harness) CreateActor(t testing.TB, from address.Address,
 	t.Helper()
 
 	return h.Apply(t, types.Message{
-		To:     actors.InitActorAddress,
+		To:     actors.InitAddress,
 		From:   from,
 		Method: actors.IAMethods.Exec,
 		Params: DumpObject(t,

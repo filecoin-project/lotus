@@ -80,7 +80,7 @@ func TestVMInvokeMethod(t *testing.T) {
 	}
 
 	msg := &types.Message{
-		To:       InitActorAddress,
+		To:       InitAddress,
 		From:     from,
 		Method:   IAMethods.Exec,
 		Params:   enc,

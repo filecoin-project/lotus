@@ -177,7 +177,7 @@ func (vmc *VMContext) ChargeGas(amount uint64) aerrors.ActorError {
 }
 
 func (vmc *VMContext) StateTree() (types.StateTree, aerrors.ActorError) {
-	if vmc.msg.To != actors.InitActorAddress {
+	if vmc.msg.To != actors.InitAddress {
 		return nil, aerrors.Escalate(fmt.Errorf("only init actor can access state tree directly"), "invalid use of StateTree")
 	}
 
@@ -216,7 +216,7 @@ func ResolveToKeyAddr(state types.StateTree, cst *hamt.CborIpldStore, addr addre
 		return address.Undef, aerrors.Newf(1, "failed to find actor: %s", addr)
 	}
 
-	if act.Code != actors.AccountActorCodeCid {
+	if act.Code != actors.AccountCodeCid {
 		return address.Undef, aerrors.New(1, "address was not for an account actor")
 	}
 

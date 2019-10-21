@@ -114,9 +114,9 @@ func (a *API) ClientStartDeal(ctx context.Context, data cid.Cid, miner address.A
 			ChannelMessage: payment.ChannelMessage,
 			Vouchers:       payment.Vouchers,
 		},
-		MinerAddress:  miner,
-		ClientAddress: self,
-		MinerID:       pid,
+		ProviderAddress: miner,
+		Client:          self,
+		MinerID:         pid,
 	}
 
 	c, err := a.DealClient.Start(ctx, proposal, vd)

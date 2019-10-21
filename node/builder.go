@@ -256,7 +256,7 @@ func Online() Option {
 			Override(new(dtypes.StagingDAG), modules.StagingDAG),
 
 			Override(new(*retrieval.Miner), retrieval.NewMiner),
-			Override(new(*deals.Handler), deals.NewHandler),
+			Override(new(*deals.Provider), deals.NewProvider),
 			Override(HandleRetrievalKey, modules.HandleRetrieval),
 			Override(HandleDealsKey, modules.HandleDeals),
 			Override(RunSectorServiceKey, modules.RunSectorService),

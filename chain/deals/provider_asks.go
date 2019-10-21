@@ -14,44 +14,44 @@ import (
 	"golang.org/x/xerrors"
 )
 
-func (h *Handler) SetPrice(p types.BigInt, ttlsecs int64) error {
-	h.askLk.Lock()
-	defer h.askLk.Unlock()
+func (p *Provider) SetPrice(price types.BigInt, ttlsecs int64) error {
+	p.askLk.Lock()
+	defer p.askLk.Unlock()
 
 	var seqno uint64
-	if h.ask != nil {
-		seqno = h.ask.Ask.SeqNo + 1
+	if p.ask != nil {
+		seqno = p.ask.Ask.SeqNo + 1
 	}
 
 	now := time.Now().Unix()
 	ask := &types.StorageAsk{
-		Price:        p,
+		Price:        price,
 		Timestamp:    now,
 		Expiry:       now + ttlsecs,
-		Miner:        h.actor,
+		Miner:        p.actor,
 		SeqNo:        seqno,
-		MinPieceSize: h.minPieceSize,
+		MinPieceSize: p.minPieceSize,
 	}
 
-	ssa, err := h.signAsk(ask)
+	ssa, err := p.signAsk(ask)
 	if err != nil {
 		return err
 	}
 
-	return h.saveAsk(ssa)
+	return p.saveAsk(ssa)
 }
 
-func (h *Handler) getAsk(m address.Address) *types.SignedStorageAsk {
-	h.askLk.Lock()
-	defer h.askLk.Unlock()
-	if m != h.actor {
+func (p *Provider) getAsk(m address.Address) *types.SignedStorageAsk {
+	p.askLk.Lock()
+	defer p.askLk.Unlock()
+	if m != p.actor {
 		return nil
 	}
 
-	return h.ask
+	return p.ask
 }
 
-func (h *Handler) HandleAskStream(s inet.Stream) {
+func (p *Provider) HandleAskStream(s inet.Stream) {
 	defer s.Close()
 	var ar AskRequest
 	if err := cborrpc.ReadCborRPC(s, &ar); err != nil {
@@ -59,7 +59,7 @@ func (h *Handler) HandleAskStream(s inet.Stream) {
 		return
 	}
 
-	resp := h.processAskRequest(&ar)
+	resp := p.processAskRequest(&ar)
 
 	if err := cborrpc.WriteCborRPC(s, resp); err != nil {
 		log.Errorf("failed to write ask response: %s", err)
@@ -67,19 +67,19 @@ func (h *Handler) HandleAskStream(s inet.Stream) {
 	}
 }
 
-func (h *Handler) processAskRequest(ar *AskRequest) *AskResponse {
+func (p *Provider) processAskRequest(ar *AskRequest) *AskResponse {
 	return &AskResponse{
-		Ask: h.getAsk(ar.Miner),
+		Ask: p.getAsk(ar.Miner),
 	}
 }
 
 var bestAskKey = datastore.NewKey("latest-ask")
 
-func (h *Handler) tryLoadAsk() error {
-	h.askLk.Lock()
-	defer h.askLk.Unlock()
+func (p *Provider) tryLoadAsk() error {
+	p.askLk.Lock()
+	defer p.askLk.Unlock()
 
-	err := h.loadAsk()
+	err := p.loadAsk()
 	if err != nil {
 		if xerrors.Is(err, datastore.ErrNotFound) {
 			log.Warn("no previous ask found, miner will not accept deals until a price is set")
@@ -91,8 +91,8 @@ func (h *Handler) tryLoadAsk() error {
 	return nil
 }
 
-func (h *Handler) loadAsk() error {
-	askb, err := h.ds.Get(datastore.NewKey("latest-ask"))
+func (p *Provider) loadAsk() error {
+	askb, err := p.ds.Get(datastore.NewKey("latest-ask"))
 	if err != nil {
 		return xerrors.Errorf("failed to load most recent ask from disk: %w", err)
 	}
@@ -102,22 +102,22 @@ func (h *Handler) loadAsk() error {
 		return err
 	}
 
-	h.ask = &ssa
+	p.ask = &ssa
 	return nil
 }
 
-func (h *Handler) signAsk(a *types.StorageAsk) (*types.SignedStorageAsk, error) {
+func (p *Provider) signAsk(a *types.StorageAsk) (*types.SignedStorageAsk, error) {
 	b, err := cbor.DumpObject(a)
 	if err != nil {
 		return nil, err
 	}
 
-	worker, err := h.getWorker(h.actor)
+	worker, err := p.getWorker(p.actor)
 	if err != nil {
 		return nil, xerrors.Errorf("failed to get worker to sign ask: %w", err)
 	}
 
-	sig, err := h.full.WalletSign(context.TODO(), worker, b)
+	sig, err := p.full.WalletSign(context.TODO(), worker, b)
 	if err != nil {
 		return nil, err
 	}
@@ -128,17 +128,17 @@ func (h *Handler) signAsk(a *types.StorageAsk) (*types.SignedStorageAsk, error) 
 	}, nil
 }
 
-func (h *Handler) saveAsk(a *types.SignedStorageAsk) error {
+func (p *Provider) saveAsk(a *types.SignedStorageAsk) error {
 	b, err := cbor.DumpObject(a)
 	if err != nil {
 		return err
 	}
 
-	if err := h.ds.Put(bestAskKey, b); err != nil {
+	if err := p.ds.Put(bestAskKey, b); err != nil {
 		return err
 	}
 
-	h.ask = a
+	p.ask = a
 	return nil
 }
 
