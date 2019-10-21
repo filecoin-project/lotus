@@ -3,6 +3,10 @@ package validation
 import (
 	"context"
 	"fmt"
+	"github.com/filecoin-project/go-lotus/chain/actors"
+	"github.com/filecoin-project/go-lotus/chain/gen"
+	"github.com/filecoin-project/go-lotus/chain/vm"
+	"github.com/pkg/errors"
 	"math/rand"
 
 	"github.com/ipfs/go-cid"
@@ -41,7 +45,12 @@ func NewState() *StateWrapper {
 }
 
 func (s *StateWrapper) Cid() cid.Cid {
-	panic("implement me")
+	// FIXME this isn't how we should be getting the state cid since calling flush here could have side effects.
+	c, err := s.Flush()
+	if err != nil {
+		panic(err)
+	}
+	return c
 }
 
 func (s *StateWrapper) Actor(addr vstate.Address) (vstate.Actor, error) {
@@ -69,25 +78,39 @@ func (s *StateWrapper) SetActor(addr vstate.Address, code cid.Cid, balance vstat
 	if err != nil {
 		return nil, nil, err
 	}
-	actr := &actorWrapper{types.Actor{
-		Code:    code,
-		Balance: types.BigInt{balance},
-	}}
-
-	// The ID-based address is dropped here, but should be reported back to the caller.
-	// FIXME Lotus state tree requires the InitActor to be installed in order to resolve other
-	// actor addresses
-	_, err = s.StateTree.RegisterNewAddress(addrInt, &actr.Actor)
-	if err != nil {
-		return nil, nil, err
+	// singleton actors get special handling
+	switch addrInt {
+	case actors.InitActorAddress:
+		initact, err := gen.SetupInitActor(s.bs, nil)
+		if err != nil{
+			return nil, nil, err
+		}
+		if err := s.StateTree.SetActor(actors.InitActorAddress, initact); err != nil{
+			return nil, nil, errors.Errorf("set init actor actor: %w", err)
+		}
+		return &actorWrapper{*initact}, s.directStorage, nil
+	case actors.StorageMarketAddress:
+		smact, err := gen.SetupStorageMarketActor(s.bs)
+		if err != nil{
+			return nil, nil, err
+		}
+		if err := s.StateTree.SetActor(actors.StorageMarketAddress, smact); err != nil{
+			return nil, nil, errors.Errorf("set network storage market actor: %w", err)
+		}
+		return &actorWrapper{*smact}, s.directStorage, nil
+	default:
+		actr := &actorWrapper{types.Actor{
+			Code:    code,
+			Balance: types.BigInt{balance},
+			Head:    vm.EmptyObjectCid,
+		}}
+		// The ID-based address is dropped here, but should be reported back to the caller.
+		_, err = s.StateTree.RegisterNewAddress(addrInt, &actr.Actor)
+		if err != nil{
+			return nil, nil, errors.Errorf("register new address for actor: %w", err)
+		}
+		return actr, s.directStorage, nil
 	}
-
-	_, err = s.StateTree.Flush()
-	if err != nil {
-		return nil, nil, err
-	}
-
-	return actr, s.directStorage, nil
 }
 
 func (s *StateWrapper) Signer() *keyStore {
