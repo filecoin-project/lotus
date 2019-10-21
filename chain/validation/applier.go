@@ -5,8 +5,6 @@ import (
 
 	vchain "github.com/filecoin-project/chain-validation/pkg/chain"
 	vstate "github.com/filecoin-project/chain-validation/pkg/state"
-	"github.com/ipfs/go-cid"
-
 	"github.com/filecoin-project/go-lotus/chain/address"
 	"github.com/filecoin-project/go-lotus/chain/types"
 	"github.com/filecoin-project/go-lotus/chain/vm"
@@ -26,7 +24,7 @@ func (a *Applier) ApplyMessage(eCtx *vchain.ExecutionContext, state vstate.Wrapp
 	ctx := context.TODO()
 	st := state.(*StateWrapper)
 
-	base := cid.Undef // unused
+	base := state.Cid()
 	randSrc := &vmRand{eCtx}
 	minerAddr, err := address.NewFromBytes([]byte(eCtx.MinerOwner))
 	if err != nil {
