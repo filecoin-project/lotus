@@ -1,8 +1,6 @@
 package validation
 
 import (
-	"context"
-
 	"github.com/pkg/errors"
 
 	"github.com/filecoin-project/go-lotus/chain/actors"
@@ -14,7 +12,7 @@ import (
 )
 
 type Signer interface {
-	Sign(ctx context.Context, addr address.Address, msg []byte) (*types.Signature, error)
+	Sign(addr address.Address, msg []byte) (types.Signature, error)
 }
 
 type MessageFactory struct {
@@ -27,7 +25,7 @@ func NewMessageFactory(signer Signer) *MessageFactory {
 	return &MessageFactory{signer}
 }
 
-func (mf *MessageFactory) MakeMessage(from, to state.Address, method chain.MethodID, nonce uint64, value state.AttoFIL, params ...interface{}) (interface{}, error) {
+func (mf *MessageFactory) MakeMessage(from, to state.Address, method chain.MethodID, nonce uint64, value, gasPrice state.AttoFIL, gasLimit state.GasUnit, params ...interface{}) (interface{}, error) {
 	fromDec, err := address.NewFromBytes([]byte(from))
 	if err != nil {
 		return nil, err
@@ -42,15 +40,13 @@ func (mf *MessageFactory) MakeMessage(from, to state.Address, method chain.Metho
 		return nil, err
 	}
 
-	gasPrice := types.NewInt(1)
-	gasLimit := types.NewInt(1000)
 	if int(method) >= len(methods) {
 		return nil, errors.Errorf("No method name for method %v", method)
 	}
 	methodId := methods[method]
 	msg := &types.Message{
 		toDec, fromDec, nonce, valueDec,
-		gasPrice, gasLimit,
+		types.BigInt{gasPrice}, types.NewInt(uint64(gasLimit)),
 
 		methodId,
 		paramsDec,
@@ -60,11 +56,11 @@ func (mf *MessageFactory) MakeMessage(from, to state.Address, method chain.Metho
 	if err != nil {
 		return nil, err
 	}
-	signature, err := mf.signer.Sign(context.TODO(), fromDec, serialized)
+	signature, err := mf.signer.Sign(fromDec, serialized)
 	if err != nil {
 		return nil, err
 	}
-	return &types.SignedMessage{Message: *msg, Signature: *signature}, nil
+	return &types.SignedMessage{Message: *msg, Signature: signature}, nil
 }
 
 // Maps method enumeration values to method names.
