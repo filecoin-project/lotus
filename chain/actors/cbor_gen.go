@@ -517,11 +517,8 @@ func (t *OnChainSealVerifyInfo) MarshalCBOR(w io.Writer) error {
 		return err
 	}
 
-	// t.t.CommRStar ([]uint8)
-	if _, err := w.Write(cbg.CborEncodeMajorType(cbg.MajByteString, uint64(len(t.CommRStar)))); err != nil {
-		return err
-	}
-	if _, err := w.Write(t.CommRStar); err != nil {
+	// t.t.Epoch (uint64)
+	if _, err := w.Write(cbg.CborEncodeMajorType(cbg.MajUnsignedInt, t.Epoch)); err != nil {
 		return err
 	}
 
@@ -599,23 +596,16 @@ func (t *OnChainSealVerifyInfo) UnmarshalCBOR(r io.Reader) error {
 	if _, err := io.ReadFull(br, t.CommR); err != nil {
 		return err
 	}
-	// t.t.CommRStar ([]uint8)
+	// t.t.Epoch (uint64)
 
 	maj, extra, err = cbg.CborReadHeader(br)
 	if err != nil {
 		return err
 	}
-	if extra > 8192 {
-		return fmt.Errorf("t.CommRStar: array too large (%d)", extra)
+	if maj != cbg.MajUnsignedInt {
+		return fmt.Errorf("wrong type for uint64 field")
 	}
-
-	if maj != cbg.MajByteString {
-		return fmt.Errorf("expected byte array")
-	}
-	t.CommRStar = make([]byte, extra)
-	if _, err := io.ReadFull(br, t.CommRStar); err != nil {
-		return err
-	}
+	t.Epoch = extra
 	// t.t.Proof ([]uint8)
 
 	maj, extra, err = cbg.CborReadHeader(br)

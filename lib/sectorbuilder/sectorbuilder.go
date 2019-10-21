@@ -52,8 +52,8 @@ func New(cfg *SectorBuilderConfig) (*SectorBuilder, error) {
 	}, nil
 }
 
-func addressToProverID(a address.Address) [31]byte {
-	var proverId [31]byte
+func addressToProverID(a address.Address) [32]byte {
+	var proverId [32]byte
 	copy(proverId[:], a.Payload())
 	return proverId
 }
@@ -88,7 +88,9 @@ func (sb *SectorBuilder) ReadPieceFromSealedSector(pieceKey string) ([]byte, err
 }
 
 func (sb *SectorBuilder) SealAllStagedSectors() error {
-	return sectorbuilder.SealAllStagedSectors(sb.handle)
+	panic("dont call this")
+	_, err := sectorbuilder.SealAllStagedSectors(sb.handle, sectorbuilder.SealTicket{})
+	return err
 }
 
 func (sb *SectorBuilder) SealStatus(sector uint64) (SectorSealingStatus, error) {
@@ -121,14 +123,14 @@ func (sb *SectorBuilder) GeneratePoSt(sectorInfo SortedSectorInfo, challengeSeed
 
 var UserBytesForSectorSize = sectorbuilder.GetMaxUserBytesPerStagedSector
 
-func VerifySeal(sectorSize uint64, commR, commD, commRStar []byte, proverID address.Address, sectorID uint64, proof []byte) (bool, error) {
-	var commRa, commDa, commRStara [32]byte
+func VerifySeal(sectorSize uint64, commR, commD []byte, proverID address.Address, ticket []byte, sectorID uint64, proof []byte) (bool, error) {
+	var commRa, commDa, ticketa [32]byte
 	copy(commRa[:], commR)
 	copy(commDa[:], commD)
-	copy(commRStara[:], commRStar)
+	copy(ticketa[:], ticket)
 	proverIDa := addressToProverID(proverID)
 
-	return sectorbuilder.VerifySeal(sectorSize, commRa, commDa, commRStara, proverIDa, sectorID, proof)
+	return sectorbuilder.VerifySeal(sectorSize, commRa, commDa, proverIDa, ticketa, sectorID, proof)
 }
 
 func VerifyPieceInclusionProof(sectorSize uint64, pieceSize uint64, commP []byte, commD []byte, proof []byte) (bool, error) {

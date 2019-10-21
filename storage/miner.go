@@ -127,7 +127,7 @@ func (m *Miner) commitSector(ctx context.Context, sinfo sectorbuilder.SectorSeal
 		return xerrors.Errorf("failed to check out own sector size: %w", err)
 	}
 
-	ok, err := sectorbuilder.VerifySeal(ssize, sinfo.CommR[:], sinfo.CommD[:], sinfo.CommRStar[:], m.maddr, sinfo.SectorID, sinfo.Proof)
+	ok, err := sectorbuilder.VerifySeal(ssize, sinfo.CommR[:], sinfo.CommD[:], m.maddr, sinfo.Ticket.TicketBytes[:], sinfo.SectorID, sinfo.Proof)
 	if err != nil {
 		log.Error("failed to verify seal we just created: ", err)
 	}
@@ -141,10 +141,9 @@ func (m *Miner) commitSector(ctx context.Context, sinfo sectorbuilder.SectorSeal
 	}
 
 	params := &actors.OnChainSealVerifyInfo{
-		CommD:     sinfo.CommD[:],
-		CommR:     sinfo.CommR[:],
-		CommRStar: sinfo.CommRStar[:],
-		Proof:     sinfo.Proof,
+		CommD: sinfo.CommD[:],
+		CommR: sinfo.CommR[:],
+		Proof: sinfo.Proof,
 
 		DealIDs:      deals,
 		SectorNumber: sinfo.SectorID,

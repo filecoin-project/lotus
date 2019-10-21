@@ -71,7 +71,8 @@ var sectorsStatusCmd = &cli.Command{
 		fmt.Printf("SealErrorMsg:\t%q\n", status.SealErrorMsg)
 		fmt.Printf("CommD:\t\t%x\n", status.CommD)
 		fmt.Printf("CommR:\t\t%x\n", status.CommR)
-		fmt.Printf("CommR*:\t\t%x\n", status.CommRStar)
+		fmt.Printf("Ticket:\t\t%x\n", status.Ticket.TicketBytes)
+		fmt.Printf("TicketH:\t\t%d\n", status.Ticket.BlockHeight)
 		fmt.Printf("Proof:\t\t%x\n", status.Proof)
 		fmt.Printf("Pieces:\t\t%v\n", status.Pieces)
 		return nil
