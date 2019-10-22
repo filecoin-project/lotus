@@ -29,7 +29,7 @@ func (p *Provider) failDeal(id cid.Cid, cerr error) {
 
 	log.Errorf("deal %s failed: %s", id, cerr)
 
-	err := p.sendSignedResponse(StorageDealResponse{
+	err := p.sendSignedResponse(Response{
 		State:    api.DealFailed,
 		Message:  cerr.Error(),
 		Proposal: id,
@@ -67,7 +67,7 @@ func (p *Provider) readProposal(s inet.Stream) (proposal actors.StorageDealPropo
 	return
 }
 
-func (p *Provider) sendSignedResponse(resp StorageDealResponse) error {
+func (p *Provider) sendSignedResponse(resp Response) error {
 	s, ok := p.conns[resp.Proposal]
 	if !ok {
 		return xerrors.New("couldn't send response: not connected")
@@ -88,7 +88,7 @@ func (p *Provider) sendSignedResponse(resp StorageDealResponse) error {
 		return xerrors.Errorf("failed to sign response message: %w", err)
 	}
 
-	signedResponse := SignedStorageDealResponse{
+	signedResponse := SignedResponse{
 		Response:  resp,
 		Signature: sig,
 	}

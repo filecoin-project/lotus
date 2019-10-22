@@ -26,13 +26,6 @@ import (
 	"github.com/filecoin-project/lotus/retrieval/discovery"
 )
 
-func init() {
-	cbor.RegisterCborType(ClientDeal{})
-	cbor.RegisterCborType(types.SignedVoucher{})
-	cbor.RegisterCborType(types.ModVerifyParams{})
-	cbor.RegisterCborType(types.Signature{})
-}
-
 var log = logging.Logger("deals")
 
 type ClientDeal struct {

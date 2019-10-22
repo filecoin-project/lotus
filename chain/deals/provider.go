@@ -22,10 +22,6 @@ import (
 	"github.com/filecoin-project/lotus/storage/sectorblocks"
 )
 
-func init() {
-	cbor.RegisterCborType(MinerDeal{})
-}
-
 type MinerDeal struct {
 	Client      peer.ID
 	Proposal    actors.StorageDealProposal

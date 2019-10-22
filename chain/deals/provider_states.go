@@ -124,7 +124,7 @@ func (p *Provider) accept(ctx context.Context, deal MinerDeal) (func(*MinerDeal)
 	}
 
 	log.Info("fetching data for a deal")
-	err = p.sendSignedResponse(StorageDealResponse{
+	err = p.sendSignedResponse(Response{
 		State:          api.DealAccepted,
 		Message:        "",
 		Proposal:       deal.ProposalCid,
@@ -140,7 +140,7 @@ func (p *Provider) accept(ctx context.Context, deal MinerDeal) (func(*MinerDeal)
 // STAGED
 
 func (p *Provider) staged(ctx context.Context, deal MinerDeal) (func(*MinerDeal), error) {
-	err := p.sendSignedResponse(StorageDealResponse{
+	err := p.sendSignedResponse(Response{
 		State:    api.DealStaged,
 		Proposal: deal.ProposalCid,
 	})
@@ -205,7 +205,7 @@ func (p *Provider) waitSealed(ctx context.Context, deal MinerDeal) (sectorbuilde
 }
 
 func (p *Provider) sealing(ctx context.Context, deal MinerDeal) (func(*MinerDeal), error) {
-	err := p.sendSignedResponse(StorageDealResponse{
+	err := p.sendSignedResponse(Response{
 		State:    api.DealSealing,
 		Proposal: deal.ProposalCid,
 	})
@@ -231,7 +231,7 @@ func (p *Provider) complete(ctx context.Context, deal MinerDeal) (func(*MinerDea
 		log.Warnf("Waiting for sector commitment message: %s", err)
 	}
 
-	err = p.sendSignedResponse(StorageDealResponse{
+	err = p.sendSignedResponse(Response{
 		State:    api.DealComplete,
 		Proposal: deal.ProposalCid,
 

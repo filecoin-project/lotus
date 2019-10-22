@@ -1,22 +1,12 @@
 package deals
 
 import (
-	"github.com/ipfs/go-cid"
-	cbor "github.com/ipfs/go-ipld-cbor"
-
 	"github.com/filecoin-project/lotus/api"
 	"github.com/filecoin-project/lotus/chain/actors"
 	"github.com/filecoin-project/lotus/chain/address"
 	"github.com/filecoin-project/lotus/chain/types"
+	"github.com/ipfs/go-cid"
 )
-
-func init() {
-	cbor.RegisterCborType(StorageDealResponse{})
-	cbor.RegisterCborType(SignedStorageDealResponse{})
-
-	cbor.RegisterCborType(AskRequest{})
-	cbor.RegisterCborType(AskResponse{})
-}
 
 const DealProtocolID = "/fil/storage/mk/1.0.0"
 const AskProtocolID = "/fil/storage/ask/1.0.0"
@@ -25,7 +15,7 @@ type Proposal struct {
 	DealProposal actors.StorageDealProposal
 }
 
-type StorageDealResponse struct {
+type Response struct {
 	State api.DealState
 
 	// DealProposalRejected
@@ -41,8 +31,8 @@ type StorageDealResponse struct {
 }
 
 // TODO: Do we actually need this to be signed?
-type SignedStorageDealResponse struct {
-	Response StorageDealResponse
+type SignedResponse struct {
+	Response Response
 
 	Signature *types.Signature
 }

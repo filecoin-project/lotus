@@ -26,8 +26,8 @@ func (p *Provider) SetPrice(price types.BigInt, ttlsecs int64) error {
 	now := time.Now().Unix()
 	ask := &types.StorageAsk{
 		Price:        price,
-		Timestamp:    now,
-		Expiry:       now + ttlsecs,
+		Timestamp:    uint64(now),
+		Expiry:       uint64(now + ttlsecs),
 		Miner:        p.actor,
 		SeqNo:        seqno,
 		MinPieceSize: p.minPieceSize,

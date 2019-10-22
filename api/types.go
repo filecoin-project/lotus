@@ -6,7 +6,7 @@ import (
 	ma "github.com/multiformats/go-multiaddr"
 )
 
-type DealState int
+type DealState = uint64
 
 const (
 	DealUnknown  = DealState(iota)

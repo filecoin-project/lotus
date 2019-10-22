@@ -61,7 +61,7 @@ type StorageMarketState struct {
 }
 
 // TODO: serialization mode spec
-type SerializationMode uint64
+type SerializationMode = uint64
 
 const (
 	SerializationUnixFSv0 = iota

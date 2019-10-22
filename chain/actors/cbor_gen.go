@@ -2917,7 +2917,7 @@ func (t *StorageDealProposal) MarshalCBOR(w io.Writer) error {
 		_, err := w.Write(cbg.CborNull)
 		return err
 	}
-	if _, err := w.Write([]byte{137}); err != nil {
+	if _, err := w.Write([]byte{138}); err != nil {
 		return err
 	}
 
@@ -2931,6 +2931,11 @@ func (t *StorageDealProposal) MarshalCBOR(w io.Writer) error {
 
 	// t.t.PieceSize (uint64)
 	if _, err := w.Write(cbg.CborEncodeMajorType(cbg.MajUnsignedInt, t.PieceSize)); err != nil {
+		return err
+	}
+
+	// t.t.PieceSerialization (actors.SerializationMode)
+	if _, err := w.Write(cbg.CborEncodeMajorType(cbg.MajUnsignedInt, t.PieceSerialization)); err != nil {
 		return err
 	}
 
@@ -2949,7 +2954,10 @@ func (t *StorageDealProposal) MarshalCBOR(w io.Writer) error {
 		return err
 	}
 
-	// t.t.DealExpiration (uint64)
+	// t.t.Duration (uint64)
+	if _, err := w.Write(cbg.CborEncodeMajorType(cbg.MajUnsignedInt, t.Duration)); err != nil {
+		return err
+	}
 
 	// t.t.StoragePrice (types.BigInt)
 	if err := t.StoragePrice.MarshalCBOR(w); err != nil {
@@ -2979,7 +2987,7 @@ func (t *StorageDealProposal) UnmarshalCBOR(r io.Reader) error {
 		return fmt.Errorf("cbor input should be of type array")
 	}
 
-	if extra != 9 {
+	if extra != 10 {
 		return fmt.Errorf("cbor input had wrong number of fields")
 	}
 
@@ -3010,6 +3018,16 @@ func (t *StorageDealProposal) UnmarshalCBOR(r io.Reader) error {
 		return fmt.Errorf("wrong type for uint64 field")
 	}
 	t.PieceSize = extra
+	// t.t.PieceSerialization (actors.SerializationMode)
+
+	maj, extra, err = cbg.CborReadHeader(br)
+	if err != nil {
+		return err
+	}
+	if maj != cbg.MajUnsignedInt {
+		return fmt.Errorf("wrong type for uint64 field")
+	}
+	t.PieceSerialization = extra
 	// t.t.Client (address.Address)
 
 	{
@@ -3038,7 +3056,7 @@ func (t *StorageDealProposal) UnmarshalCBOR(r io.Reader) error {
 		return fmt.Errorf("wrong type for uint64 field")
 	}
 	t.ProposalExpiration = extra
-	// t.t.DealExpiration (uint64)
+	// t.t.Duration (uint64)
 
 	maj, extra, err = cbg.CborReadHeader(br)
 	if err != nil {
@@ -3047,6 +3065,7 @@ func (t *StorageDealProposal) UnmarshalCBOR(r io.Reader) error {
 	if maj != cbg.MajUnsignedInt {
 		return fmt.Errorf("wrong type for uint64 field")
 	}
+	t.Duration = extra
 	// t.t.StoragePrice (types.BigInt)
 
 	{
@@ -3069,8 +3088,20 @@ func (t *StorageDealProposal) UnmarshalCBOR(r io.Reader) error {
 
 	{
 
-		if err := t.ProposerSignature.UnmarshalCBOR(br); err != nil {
+		pb, err := br.PeekByte()
+		if err != nil {
 			return err
+		}
+		if pb == cbg.CborNull[0] {
+			var nbuf [1]byte
+			if _, err := br.Read(nbuf[:]); err != nil {
+				return err
+			}
+		} else {
+			t.ProposerSignature = new(types.Signature)
+			if err := t.ProposerSignature.UnmarshalCBOR(br); err != nil {
+				return err
+			}
 		}
 
 	}

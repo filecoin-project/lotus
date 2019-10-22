@@ -25,16 +25,16 @@ func (c *Client) failDeal(id cid.Cid, cerr error) {
 	log.Errorf("deal %s failed: %s", id, cerr)
 }
 
-func (c *Client) readStorageDealResp(deal ClientDeal) (*StorageDealResponse, error) {
+func (c *Client) readStorageDealResp(deal ClientDeal) (*Response, error) {
 	s, ok := c.conns[deal.ProposalCid]
 	if !ok {
 		// TODO: Try to re-establish the connection using query protocol
 		return nil, xerrors.Errorf("no connection to miner")
 	}
 
-	var resp SignedStorageDealResponse
+	var resp SignedResponse
 	if err := cborrpc.ReadCborRPC(s, &resp); err != nil {
-		log.Errorw("failed to read StorageDealResponse message", "error", err)
+		log.Errorw("failed to read Response message", "error", err)
 		return nil, err
 	}
 
