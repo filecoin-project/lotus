@@ -578,28 +578,6 @@ func (vm *VM) StateTree() types.StateTree {
 	return vm.cstate
 }
 
-func (vm *VM) TransferFunds(from, to address.Address, amt types.BigInt) error {
-	if from == to {
-		return nil
-	}
-
-	fromAct, err := vm.cstate.GetActor(from)
-	if err != nil {
-		return err
-	}
-
-	toAct, err := vm.cstate.GetActor(from)
-	if err != nil {
-		return err
-	}
-
-	if err := Transfer(fromAct, toAct, amt); err != nil {
-		return xerrors.Errorf("failed to deduct funds: %w", err)
-	}
-
-	return nil
-}
-
 func (vm *VM) SetBlockHeight(h uint64) {
 	vm.blockHeight = h
 }
@@ -624,6 +602,10 @@ func (vm *VM) Invoke(act *types.Actor, vmctx *VMContext, method uint64, params [
 }
 
 func Transfer(from, to *types.Actor, amt types.BigInt) error {
+	if from == to {
+		return nil
+	}
+
 	if amt.LessThan(types.NewInt(0)) {
 		return xerrors.Errorf("attempted to transfer negative value")
 	}
