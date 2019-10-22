@@ -18,8 +18,6 @@ import (
 	"golang.org/x/xerrors"
 )
 
-const POST_SECTORS_COUNT = 8192
-
 type StorageMinerActor struct{}
 
 type StorageMinerActorState struct {
@@ -201,23 +199,18 @@ func (sma StorageMinerActor) StorageMinerConstructor(act *types.Actor, vmctx typ
 	return nil, nil
 }
 
-type CommitSectorParams struct {
-	SectorID  uint64
-	CommD     []byte
+type OnChainSealVerifyInfo struct {
+	CommD     []byte // TODO: update proofs code
 	CommR     []byte
 	CommRStar []byte
-	Proof     []byte
-}
 
-type OnChainSealVerifyInfo struct {
-	SealedCID    cid.Cid // CommR .. TODO: spec says cid, but it feels weird
-	Epoch        uint64
+	//Epoch        uint64
 	Proof        []byte
 	DealIDs      []uint64
 	SectorNumber uint64
 }
 
-func (sma StorageMinerActor) CommitSector(act *types.Actor, vmctx types.VMContext, params *CommitSectorParams) ([]byte, ActorError) {
+func (sma StorageMinerActor) CommitSector(act *types.Actor, vmctx types.VMContext, params *OnChainSealVerifyInfo) ([]byte, ActorError) {
 	ctx := context.TODO()
 	oldstate, self, err := loadState(vmctx)
 	if err != nil {
@@ -239,7 +232,7 @@ func (sma StorageMinerActor) CommitSector(act *types.Actor, vmctx types.VMContex
 	}
 
 	// make sure the miner isnt trying to submit a pre-existing sector
-	unique, err := SectorIsUnique(ctx, vmctx.Storage(), self.Sectors, params.SectorID)
+	unique, err := SectorIsUnique(ctx, vmctx.Storage(), self.Sectors, params.SectorNumber)
 	if err != nil {
 		return nil, err
 	}
@@ -251,6 +244,7 @@ func (sma StorageMinerActor) CommitSector(act *types.Actor, vmctx types.VMContex
 	futurePower := types.BigAdd(self.Power, mi.SectorSize)
 	collateralRequired := CollateralForPower(futurePower)
 
+	// TODO: grab from market?
 	if act.Balance.LessThan(collateralRequired) {
 		return nil, aerrors.New(3, "not enough collateral")
 	}
@@ -258,7 +252,7 @@ func (sma StorageMinerActor) CommitSector(act *types.Actor, vmctx types.VMContex
 	// Note: There must exist a unique index in the miner's sector set for each
 	// sector ID. The `faults`, `recovered`, and `done` parameters of the
 	// SubmitPoSt method express indices into this sector set.
-	nssroot, err := AddToSectorSet(ctx, vmctx.Storage(), self.Sectors, params.SectorID, params.CommR, params.CommD)
+	nssroot, err := AddToSectorSet(ctx, vmctx.Storage(), self.Sectors, params.SectorNumber, params.CommR, params.CommD)
 	if err != nil {
 		return nil, err
 	}
@@ -290,7 +284,15 @@ func (sma StorageMinerActor) CommitSector(act *types.Actor, vmctx types.VMContex
 		return nil, err
 	}
 
-	return nil, nil
+	activateParams, err := SerializeParams(&ActivateStorageDealsParams{
+		Deals: params.DealIDs,
+	})
+	if err != nil {
+		return nil, err
+	}
+
+	_, err = vmctx.Send(StorageMarketAddress, SMAMethods.ActivateStorageDeals, types.NewInt(0), activateParams)
+	return nil, err
 }
 
 type SubmitPoStParams struct {
@@ -515,8 +517,8 @@ func GetFromSectorSet(ctx context.Context, s types.Storage, ss cid.Cid, sectorID
 	return true, comms[0], comms[1], nil
 }
 
-func ValidatePoRep(maddr address.Address, ssize types.BigInt, params *CommitSectorParams) (bool, ActorError) {
-	ok, err := sectorbuilder.VerifySeal(ssize.Uint64(), params.CommR, params.CommD, params.CommRStar, maddr, params.SectorID, params.Proof)
+func ValidatePoRep(maddr address.Address, ssize types.BigInt, params *OnChainSealVerifyInfo) (bool, ActorError) {
+	ok, err := sectorbuilder.VerifySeal(ssize.Uint64(), params.CommR, params.CommD, params.CommRStar, maddr, params.SectorNumber, params.Proof)
 	if err != nil {
 		return false, aerrors.Absorb(err, 25, "verify seal failed")
 	}

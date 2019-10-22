@@ -1,6 +1,7 @@
 package deals
 
 import (
+	"bytes"
 	"context"
 	"time"
 
@@ -9,7 +10,6 @@ import (
 	"github.com/filecoin-project/lotus/chain/types"
 	"github.com/filecoin-project/lotus/lib/cborrpc"
 	datastore "github.com/ipfs/go-datastore"
-	cbor "github.com/ipfs/go-ipld-cbor"
 	inet "github.com/libp2p/go-libp2p-core/network"
 	"golang.org/x/xerrors"
 )
@@ -98,7 +98,7 @@ func (p *Provider) loadAsk() error {
 	}
 
 	var ssa types.SignedStorageAsk
-	if err := cbor.DecodeInto(askb, &ssa); err != nil {
+	if err := cborrpc.ReadCborRPC(bytes.NewReader(askb), &ssa); err != nil {
 		return err
 	}
 
@@ -107,7 +107,7 @@ func (p *Provider) loadAsk() error {
 }
 
 func (p *Provider) signAsk(a *types.StorageAsk) (*types.SignedStorageAsk, error) {
-	b, err := cbor.DumpObject(a)
+	b, err := cborrpc.Dump(a)
 	if err != nil {
 		return nil, err
 	}
@@ -129,7 +129,7 @@ func (p *Provider) signAsk(a *types.StorageAsk) (*types.SignedStorageAsk, error)
 }
 
 func (p *Provider) saveAsk(a *types.SignedStorageAsk) error {
-	b, err := cbor.DumpObject(a)
+	b, err := cborrpc.Dump(a)
 	if err != nil {
 		return err
 	}
@@ -150,7 +150,7 @@ func (c *Client) checkAskSignature(ask *types.SignedStorageAsk) error {
 		return xerrors.Errorf("failed to get worker for miner in ask", err)
 	}
 
-	sigb, err := cbor.DumpObject(ask.Ask)
+	sigb, err := cborrpc.Dump(ask.Ask)
 	if err != nil {
 		return xerrors.Errorf("failed to re-serialize ask")
 	}

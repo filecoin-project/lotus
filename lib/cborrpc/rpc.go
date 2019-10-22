@@ -1,6 +1,7 @@
 package cborrpc
 
 import (
+	"bytes"
 	"encoding/hex"
 	"io"
 
@@ -42,4 +43,12 @@ func ReadCborRPC(r io.Reader, out interface{}) error {
 		return um.UnmarshalCBOR(r)
 	}
 	return cbor.DecodeReader(r, out)
+}
+
+func Dump(obj interface{}) ([]byte, error) {
+	var out bytes.Buffer
+	if err := WriteCborRPC(&out, obj); err != nil {
+		return nil, err
+	}
+	return out.Bytes(), nil
 }

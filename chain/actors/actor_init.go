@@ -170,7 +170,7 @@ func IsBuiltinActor(code cid.Cid) bool {
 }
 
 func IsSingletonActor(code cid.Cid) bool {
-	return code == StoragePowerCodeCid || code == InitCodeCid
+	return code == StoragePowerCodeCid || code == StorageMarketCodeCid || code == InitCodeCid
 }
 
 func (ias *InitActorState) AddActor(cst *hamt.CborIpldStore, addr address.Address) (address.Address, error) {

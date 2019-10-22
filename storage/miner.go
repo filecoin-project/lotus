@@ -129,12 +129,12 @@ func (m *Miner) commitSector(ctx context.Context, sinfo sectorbuilder.SectorSeal
 		log.Error("seal we just created failed verification")
 	}
 
-	params := &actors.CommitSectorParams{
-		SectorID:  sinfo.SectorID,
-		CommD:     sinfo.CommD[:],
-		CommR:     sinfo.CommR[:],
-		CommRStar: sinfo.CommRStar[:],
-		Proof:     sinfo.Proof,
+	params := &actors.OnChainSealVerifyInfo{
+		SectorNumber: sinfo.SectorID,
+		CommD:        sinfo.CommD[:],
+		CommR:        sinfo.CommR[:],
+		CommRStar:    sinfo.CommRStar[:],
+		Proof:        sinfo.Proof,
 	}
 	enc, aerr := actors.SerializeParams(params)
 	if aerr != nil {

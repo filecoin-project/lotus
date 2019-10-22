@@ -89,12 +89,21 @@ func MakeInitialStateTree(bs bstore.Blockstore, actmap map[address.Address]types
 		return nil, xerrors.Errorf("set init actor: %w", err)
 	}
 
+	spact, err := SetupStoragePowerActor(bs)
+	if err != nil {
+		return nil, xerrors.Errorf("setup storage market actor: %w", err)
+	}
+
+	if err := state.SetActor(actors.StoragePowerAddress, spact); err != nil {
+		return nil, xerrors.Errorf("set storage market actor: %w", err)
+	}
+
 	smact, err := SetupStorageMarketActor(bs)
 	if err != nil {
 		return nil, xerrors.Errorf("setup storage market actor: %w", err)
 	}
 
-	if err := state.SetActor(actors.StoragePowerAddress, smact); err != nil {
+	if err := state.SetActor(actors.StorageMarketAddress, smact); err != nil {
 		return nil, xerrors.Errorf("set storage market actor: %w", err)
 	}
 
@@ -135,7 +144,7 @@ func MakeInitialStateTree(bs bstore.Blockstore, actmap map[address.Address]types
 	return state, nil
 }
 
-func SetupStorageMarketActor(bs bstore.Blockstore) (*types.Actor, error) {
+func SetupStoragePowerActor(bs bstore.Blockstore) (*types.Actor, error) {
 	cst := hamt.CSTFromBstore(bs)
 	nd := hamt.NewNode(cst)
 	emptyhamt, err := cst.Put(context.TODO(), nd)
@@ -155,6 +164,40 @@ func SetupStorageMarketActor(bs bstore.Blockstore) (*types.Actor, error) {
 
 	return &types.Actor{
 		Code:    actors.StoragePowerCodeCid,
+		Head:    stcid,
+		Nonce:   0,
+		Balance: types.NewInt(0),
+	}, nil
+}
+
+func SetupStorageMarketActor(bs bstore.Blockstore) (*types.Actor, error) {
+	cst := hamt.CSTFromBstore(bs)
+	nd := hamt.NewNode(cst)
+	emptyHAMT, err := cst.Put(context.TODO(), nd)
+	if err != nil {
+		return nil, err
+	}
+
+	blks := amt.WrapBlockstore(bs)
+
+	emptyAMT, err := amt.FromArray(blks, nil)
+	if err != nil {
+		return nil, xerrors.Errorf("amt build failed: %w", err)
+	}
+
+	sms := &actors.StorageMarketState{
+		Balances:   emptyHAMT,
+		Deals:      emptyAMT,
+		NextDealID: 0,
+	}
+
+	stcid, err := cst.Put(context.TODO(), sms)
+	if err != nil {
+		return nil, err
+	}
+
+	return &types.Actor{
+		Code:    actors.StorageMarketCodeCid,
 		Head:    stcid,
 		Nonce:   0,
 		Balance: types.NewInt(0),
