@@ -2,10 +2,11 @@ package validation
 
 import (
 	"context"
-
 	vchain "github.com/filecoin-project/chain-validation/pkg/chain"
 	vstate "github.com/filecoin-project/chain-validation/pkg/state"
+
 	"github.com/filecoin-project/go-lotus/chain/address"
+	lstate "github.com/filecoin-project/go-lotus/chain/state"
 	"github.com/filecoin-project/go-lotus/chain/types"
 	"github.com/filecoin-project/go-lotus/chain/vm"
 )
@@ -24,7 +25,7 @@ func (a *Applier) ApplyMessage(eCtx *vchain.ExecutionContext, state vstate.Wrapp
 	ctx := context.TODO()
 	st := state.(*StateWrapper)
 
-	base := state.Cid()
+	base := st.Cid()
 	randSrc := &vmRand{eCtx}
 	minerAddr, err := address.NewFromBytes([]byte(eCtx.MinerOwner))
 	if err != nil {
@@ -39,6 +40,10 @@ func (a *Applier) ApplyMessage(eCtx *vchain.ExecutionContext, state vstate.Wrapp
 	if err != nil {
 		return vchain.MessageReceipt{}, err
 	}
+
+	// FIXME this is pretty hacky (it works), flushing the lotusVM fails becasue the root of lotusVM.StateTree is not
+	// its buffered blockstore.
+	st.StateTree = lotusVM.StateTree().(*lstate.StateTree)
 
 	mr := vchain.MessageReceipt{
 		ExitCode:    ret.ExitCode,

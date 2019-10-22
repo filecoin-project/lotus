@@ -27,8 +27,10 @@ type StateWrapper struct {
 	bs   blockstore.Blockstore
 	keys *keyStore
 
+
 	*state.StateTree
 	*directStorage
+	stateRoot cid.Cid
 }
 
 var _ vstate.Wrapper = &StateWrapper{}
@@ -41,16 +43,25 @@ func NewState() *StateWrapper {
 		panic(err) // Never returns error, the error return should be removed.
 	}
 	storageImpl := &directStorage{cst}
-	return &StateWrapper{bs, newKeyStore(), treeImpl, storageImpl}
-}
 
-func (s *StateWrapper) Cid() cid.Cid {
-	// FIXME this isn't how we should be getting the state cid since calling flush here could have side effects.
-	c, err := s.Flush()
+	sr, err := treeImpl.Flush()
 	if err != nil {
 		panic(err)
 	}
-	return c
+	return &StateWrapper{bs, newKeyStore(), treeImpl, storageImpl, sr}
+}
+
+func (s *StateWrapper) Cid() cid.Cid {
+	return s.stateRoot
+}
+
+// TODO very unsure about this, corrently its the easiest way to handle updating the statewrappers CID.
+func (s *StateWrapper) updateStateRoot() {
+	newRoot, err := s.StateTree.Flush()
+	if err != nil {
+		panic(err)
+	}
+	s.stateRoot = newRoot
 }
 
 func (s *StateWrapper) Actor(addr vstate.Address) (vstate.Actor, error) {
@@ -80,6 +91,7 @@ func (s *StateWrapper) SetActor(addr vstate.Address, code cid.Cid, balance vstat
 	}
 	// singleton actors get special handling
 	switch addrInt {
+
 	case actors.InitActorAddress:
 		initact, err := gen.SetupInitActor(s.bs, nil)
 		if err != nil{
@@ -88,7 +100,9 @@ func (s *StateWrapper) SetActor(addr vstate.Address, code cid.Cid, balance vstat
 		if err := s.StateTree.SetActor(actors.InitActorAddress, initact); err != nil{
 			return nil, nil, errors.Errorf("set init actor actor: %w", err)
 		}
+		s.updateStateRoot()
 		return &actorWrapper{*initact}, s.directStorage, nil
+
 	case actors.StorageMarketAddress:
 		smact, err := gen.SetupStorageMarketActor(s.bs)
 		if err != nil{
@@ -97,7 +111,21 @@ func (s *StateWrapper) SetActor(addr vstate.Address, code cid.Cid, balance vstat
 		if err := s.StateTree.SetActor(actors.StorageMarketAddress, smact); err != nil{
 			return nil, nil, errors.Errorf("set network storage market actor: %w", err)
 		}
+		s.updateStateRoot()
 		return &actorWrapper{*smact}, s.directStorage, nil
+
+	case actors.NetworkAddress:
+		ntwkact := &types.Actor{
+			Code:    code,
+			Balance: types.BigInt{balance},
+			Head:    vm.EmptyObjectCid,
+		}
+		if err := s.StateTree.SetActor(actors.NetworkAddress, ntwkact); err != nil {
+			return nil, nil, errors.Errorf("set network actor: %w", err)
+		}
+		s.updateStateRoot()
+		return &actorWrapper{*ntwkact}, s.directStorage, nil
+
 	default:
 		actr := &actorWrapper{types.Actor{
 			Code:    code,
@@ -109,6 +137,7 @@ func (s *StateWrapper) SetActor(addr vstate.Address, code cid.Cid, balance vstat
 		if err != nil{
 			return nil, nil, errors.Errorf("register new address for actor: %w", err)
 		}
+		s.updateStateRoot()
 		return actr, s.directStorage, nil
 	}
 }
