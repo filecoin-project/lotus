@@ -3,6 +3,7 @@ package cli
 import (
 	"encoding/hex"
 	"encoding/json"
+	"errors"
 	"fmt"
 	"io/ioutil"
 	"os"
@@ -101,7 +102,10 @@ var walletBalance = &cli.Command{
 		}
 
 		balance, err := api.WalletBalance(ctx, addr)
-		if err != nil {
+
+		if errors.Is(err, types.ErrActorNotFound) {
+			log.Warnf("actor not found with address: %s", addr)
+		} else if err != nil {
 			return err
 		}
 
