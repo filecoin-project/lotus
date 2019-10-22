@@ -60,7 +60,7 @@ type VMContext struct {
 	// root cid of the state of the actor this invocation will be on
 	sroot cid.Cid
 
-	// address that started invokation chain
+	// address that started invoke chain
 	origin address.Address
 }
 
