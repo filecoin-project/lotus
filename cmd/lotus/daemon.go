@@ -30,10 +30,6 @@ var DaemonCmd = &cli.Command{
 	Usage: "Start a lotus daemon process",
 	Flags: []cli.Flag{
 		&cli.StringFlag{
-			Name:  "api",
-			Value: "1234",
-		},
-		&cli.StringFlag{
 			Name:   makeGenFlag,
 			Value:  "",
 			Hidden: true,
@@ -81,6 +77,8 @@ var DaemonCmd = &cli.Command{
 		}
 
 		var api api.FullNode
+		var endpoint multiaddr.Multiaddr
+
 		stop, err := node.New(ctx,
 			node.FullAPI(&api),
 
@@ -90,10 +88,16 @@ var DaemonCmd = &cli.Command{
 			genesis,
 
 			node.Override(node.SetApiEndpointKey, func(lr repo.LockedRepo) error {
-				apima, err := multiaddr.NewMultiaddr("/ip4/127.0.0.1/tcp/" + cctx.String("api"))
+				cfg, err := lr.Config()
+				if err != nil {
+					return xerrors.Errorf("could not get config: %w", err)
+				}
+
+				apima, err := multiaddr.NewMultiaddr(cfg.API.ListenAddress)
 				if err != nil {
 					return err
 				}
+				endpoint = apima
 				return lr.SetAPIEndpoint(apima)
 			}),
 
@@ -107,6 +111,6 @@ var DaemonCmd = &cli.Command{
 		}
 
 		// TODO: properly parse api endpoint (or make it a URL)
-		return serveRPC(api, stop, "127.0.0.1:"+cctx.String("api"))
+		return serveRPC(api, stop, endpoint)
 	},
 }

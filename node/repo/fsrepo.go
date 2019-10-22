@@ -78,7 +78,7 @@ func NewFS(path string) (*FsRepo, error) {
 }
 
 func (fsr *FsRepo) Exists() (bool, error) {
-	_, err := os.Stat(filepath.Join(fsr.path, fsConfig))
+	_, err := os.Stat(filepath.Join(fsr.path, fsDatastore))
 	notexist := os.IsNotExist(err)
 	if notexist {
 		err = nil

@@ -2,13 +2,15 @@ package main
 
 import (
 	"fmt"
-	"golang.org/x/xerrors"
 	"io"
 	"io/ioutil"
 	"os"
 	"os/exec"
+	"path/filepath"
 	"sync/atomic"
 	"time"
+
+	"golang.org/x/xerrors"
 )
 
 func (api *api) Spawn() (nodeInfo, error) {
@@ -45,8 +47,15 @@ func (api *api) Spawn() (nodeInfo, error) {
 	}
 
 	mux := newWsMux()
+	confStr := fmt.Sprintf("[API]\nListenAddress = \"/ip6/::1/tcp/%d/http\"\n", 2500+id)
 
-	cmd := exec.Command("./lotus", "daemon", "--bootstrap=false", genParam, "--api", fmt.Sprintf("%d", 2500+id))
+	err = ioutil.WriteFile(filepath.Join(dir, "config.toml"), []byte(confStr), 0700)
+	if err != nil {
+		return nodeInfo{}, err
+	}
+
+	cmd := exec.Command("./lotus", "daemon", "--bootstrap=false", genParam)
+
 	cmd.Stderr = io.MultiWriter(os.Stderr, errlogfile, mux.errpw)
 	cmd.Stdout = io.MultiWriter(os.Stdout, logfile, mux.outpw)
 	cmd.Env = append(os.Environ(), "LOTUS_PATH="+dir)
