@@ -1,10 +1,11 @@
 package deals
 
 import (
+	"bytes"
+	"github.com/filecoin-project/lotus/lib/cborrpc"
 	"github.com/ipfs/go-cid"
 	"github.com/ipfs/go-datastore"
 	"github.com/ipfs/go-datastore/query"
-	cbor "github.com/ipfs/go-ipld-cbor"
 	"golang.org/x/xerrors"
 )
 
@@ -22,7 +23,7 @@ func (st *StateStore) Begin(i cid.Cid, state interface{}) error {
 		return xerrors.Errorf("Already tracking state for %s", i)
 	}
 
-	b, err := cbor.DumpObject(state)
+	b, err := cborrpc.Dump(state)
 	if err != nil {
 		return err
 	}
@@ -76,7 +77,7 @@ func (st *MinerStateStore) MutateMiner(i cid.Cid, mutator func(*MinerDeal) error
 func minerMutator(m func(*MinerDeal) error) func([]byte) ([]byte, error) {
 	return func(in []byte) ([]byte, error) {
 		var deal MinerDeal
-		err := cbor.DecodeInto(in, &deal)
+		err := cborrpc.ReadCborRPC(bytes.NewReader(in), &deal)
 		if err != nil {
 			return nil, err
 		}
@@ -85,7 +86,7 @@ func minerMutator(m func(*MinerDeal) error) func([]byte) ([]byte, error) {
 			return nil, err
 		}
 
-		return cbor.DumpObject(deal)
+		return cborrpc.Dump(deal)
 	}
 }
 
@@ -100,7 +101,7 @@ func (st *ClientStateStore) MutateClient(i cid.Cid, mutator func(*ClientDeal) er
 func clientMutator(m func(*ClientDeal) error) func([]byte) ([]byte, error) {
 	return func(in []byte) ([]byte, error) {
 		var deal ClientDeal
-		err := cbor.DecodeInto(in, &deal)
+		err := cborrpc.ReadCborRPC(bytes.NewReader(in), &deal)
 		if err != nil {
 			return nil, err
 		}
@@ -109,7 +110,7 @@ func clientMutator(m func(*ClientDeal) error) func([]byte) ([]byte, error) {
 			return nil, err
 		}
 
-		return cbor.DumpObject(deal)
+		return cborrpc.Dump(deal)
 	}
 }
 
@@ -129,7 +130,7 @@ func (st *ClientStateStore) ListClient() ([]ClientDeal, error) {
 		}
 
 		var deal ClientDeal
-		err := cbor.DecodeInto(res.Value, &deal)
+		err := cborrpc.ReadCborRPC(bytes.NewReader(res.Value), &deal)
 		if err != nil {
 			return nil, err
 		}
