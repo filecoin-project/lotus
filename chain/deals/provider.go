@@ -2,13 +2,11 @@ package deals
 
 import (
 	"context"
-	"math"
 	"sync"
 
 	cid "github.com/ipfs/go-cid"
 	datastore "github.com/ipfs/go-datastore"
 	"github.com/ipfs/go-datastore/namespace"
-	cbor "github.com/ipfs/go-ipld-cbor"
 	inet "github.com/libp2p/go-libp2p-core/network"
 	"github.com/libp2p/go-libp2p-core/peer"
 	"golang.org/x/xerrors"
@@ -17,6 +15,7 @@ import (
 	"github.com/filecoin-project/lotus/chain/actors"
 	"github.com/filecoin-project/lotus/chain/address"
 	"github.com/filecoin-project/lotus/chain/types"
+	"github.com/filecoin-project/lotus/lib/cborrpc"
 	"github.com/filecoin-project/lotus/node/modules/dtypes"
 	"github.com/filecoin-project/lotus/storage/commitment"
 	"github.com/filecoin-project/lotus/storage/sectorblocks"
@@ -192,7 +191,7 @@ func (p *Provider) onUpdated(ctx context.Context, update minerDealUpdate) {
 }
 
 func (p *Provider) newDeal(s inet.Stream, proposal actors.StorageDealProposal) (MinerDeal, error) {
-	proposalNd, err := cbor.WrapObject(proposal, math.MaxUint64, -1)
+	proposalNd, err := cborrpc.AsIpld(proposal)
 	if err != nil {
 		return MinerDeal{}, err
 	}

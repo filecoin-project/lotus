@@ -5,6 +5,14 @@ import (
 	"fmt"
 
 	amt "github.com/filecoin-project/go-amt-ipld"
+	"github.com/ipfs/go-cid"
+	"github.com/ipfs/go-datastore"
+	hamt "github.com/ipfs/go-hamt-ipld"
+	bstore "github.com/ipfs/go-ipfs-blockstore"
+	peer "github.com/libp2p/go-libp2p-peer"
+	cbg "github.com/whyrusleeping/cbor-gen"
+	"golang.org/x/xerrors"
+
 	"github.com/filecoin-project/lotus/build"
 	actors "github.com/filecoin-project/lotus/chain/actors"
 	"github.com/filecoin-project/lotus/chain/address"
@@ -12,14 +20,6 @@ import (
 	"github.com/filecoin-project/lotus/chain/store"
 	"github.com/filecoin-project/lotus/chain/types"
 	"github.com/filecoin-project/lotus/chain/vm"
-	"golang.org/x/xerrors"
-
-	"github.com/ipfs/go-cid"
-	"github.com/ipfs/go-datastore"
-	hamt "github.com/ipfs/go-hamt-ipld"
-	bstore "github.com/ipfs/go-ipfs-blockstore"
-	peer "github.com/libp2p/go-libp2p-peer"
-	cbg "github.com/whyrusleeping/cbor-gen"
 )
 
 type GenesisBootstrap struct {

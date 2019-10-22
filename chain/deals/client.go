@@ -2,12 +2,10 @@ package deals
 
 import (
 	"context"
-	"math"
 
 	"github.com/ipfs/go-cid"
 	"github.com/ipfs/go-datastore"
 	"github.com/ipfs/go-datastore/namespace"
-	cbor "github.com/ipfs/go-ipld-cbor"
 	logging "github.com/ipfs/go-log"
 	"github.com/libp2p/go-libp2p-core/host"
 	inet "github.com/libp2p/go-libp2p-core/network"
@@ -185,7 +183,7 @@ func (c *Client) Start(ctx context.Context, p ClientDealProposal) (cid.Cid, erro
 		return cid.Undef, err
 	}
 
-	proposalNd, err := cbor.WrapObject(proposal, math.MaxUint64, -1)
+	proposalNd, err := cborrpc.AsIpld(proposal)
 	if err != nil {
 		return cid.Undef, err
 	}

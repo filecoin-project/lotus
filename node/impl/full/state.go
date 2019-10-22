@@ -1,11 +1,15 @@
 package full
 
 import (
+	"bytes"
 	"context"
+	"github.com/filecoin-project/go-amt-ipld"
+	"strconv"
 
 	cid "github.com/ipfs/go-cid"
 	"github.com/ipfs/go-hamt-ipld"
 	"github.com/libp2p/go-libp2p-core/peer"
+	cbg "github.com/whyrusleeping/cbor-gen"
 	"go.uber.org/fx"
 	"golang.org/x/xerrors"
 
@@ -239,4 +243,63 @@ func (a *StateAPI) StateMarketBalance(ctx context.Context, addr address.Address,
 	}
 
 	return b[0], nil
+}
+
+func (a *StateAPI) StateMarketParticipants(ctx context.Context, ts *types.TipSet) (map[string]actors.StorageParticipantBalance, error) {
+	out := map[string]actors.StorageParticipantBalance{}
+
+	var state actors.StorageMarketState
+	if _, err := a.StateManager.LoadActorState(ctx, actors.StoragePowerAddress, &state, ts); err != nil {
+		return nil, err
+	}
+	cst := hamt.CSTFromBstore(a.StateManager.ChainStore().Blockstore())
+	nd, err := hamt.LoadNode(ctx, cst, state.Balances)
+	if err != nil {
+		return nil, err
+	}
+
+	err = nd.ForEach(ctx, func(k string, val interface{}) error {
+		cv := val.(*cbg.Deferred)
+		a, err := address.NewFromBytes([]byte(k))
+		if err != nil {
+			return err
+		}
+		var b actors.StorageParticipantBalance
+		if err := b.UnmarshalCBOR(bytes.NewReader(cv.Raw)); err != nil {
+			return err
+		}
+		out[a.String()] = b
+		return nil
+	})
+	if err != nil {
+		return nil, err
+	}
+	return out, nil
+}
+
+func (a *StateAPI) StateMarketDeals(ctx context.Context, ts *types.TipSet) (map[string]actors.OnChainDeal, error) {
+	out := map[string]actors.OnChainDeal{}
+
+	var state actors.StorageMarketState
+	if _, err := a.StateManager.LoadActorState(ctx, actors.StoragePowerAddress, &state, ts); err != nil {
+		return nil, err
+	}
+
+	blks := amt.WrapBlockstore(a.StateManager.ChainStore().Blockstore())
+	da, err := amt.LoadAMT(blks, state.Deals)
+	if err != nil {
+		return nil, err
+	}
+
+	if err := da.ForEach(func(i uint64, v *cbg.Deferred) error {
+		var d actors.OnChainDeal
+		if err := d.UnmarshalCBOR(bytes.NewReader(v.Raw)); err != nil {
+			return err
+		}
+		out[strconv.FormatInt(int64(i), 10)] = d
+		return nil
+	}); err != nil {
+		return nil, err
+	}
+	return out, nil
 }

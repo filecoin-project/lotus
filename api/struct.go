@@ -101,6 +101,8 @@ type FullNodeStruct struct {
 		StateListMiners            func(context.Context, *types.TipSet) ([]address.Address, error)                                 `perm:"read"`
 		StateListActors            func(context.Context, *types.TipSet) ([]address.Address, error)                                 `perm:"read"`
 		StateMarketBalance         func(context.Context, address.Address, *types.TipSet) (actors.StorageParticipantBalance, error) `perm:"read"`
+		StateMarketParticipants    func(context.Context, *types.TipSet) (map[string]actors.StorageParticipantBalance, error)       `perm:"read"`
+		StateMarketDeals           func(context.Context, *types.TipSet) (map[string]actors.OnChainDeal, error)                     `perm:"read"`
 
 		PaychGet                   func(ctx context.Context, from, to address.Address, ensureFunds types.BigInt) (*ChannelInfo, error)      `perm:"sign"`
 		PaychList                  func(context.Context) ([]address.Address, error)                                                         `perm:"read"`
@@ -392,6 +394,14 @@ func (c *FullNodeStruct) StateListActors(ctx context.Context, ts *types.TipSet) 
 
 func (c *FullNodeStruct) StateMarketBalance(ctx context.Context, addr address.Address, ts *types.TipSet) (actors.StorageParticipantBalance, error) {
 	return c.Internal.StateMarketBalance(ctx, addr, ts)
+}
+
+func (c *FullNodeStruct) StateMarketParticipants(ctx context.Context, ts *types.TipSet) (map[string]actors.StorageParticipantBalance, error) {
+	return c.Internal.StateMarketParticipants(ctx, ts)
+}
+
+func (c *FullNodeStruct) StateMarketDeals(ctx context.Context, ts *types.TipSet) (map[string]actors.OnChainDeal, error) {
+	return c.Internal.StateMarketDeals(ctx, ts)
 }
 
 func (c *FullNodeStruct) PaychGet(ctx context.Context, from, to address.Address, ensureFunds types.BigInt) (*ChannelInfo, error) {

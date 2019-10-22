@@ -3476,3 +3476,61 @@ func (t *ProcessStorageDealsPaymentParams) UnmarshalCBOR(r io.Reader) error {
 
 	return nil
 }
+
+func (t *OnChainDeal) MarshalCBOR(w io.Writer) error {
+	if t == nil {
+		_, err := w.Write(cbg.CborNull)
+		return err
+	}
+	if _, err := w.Write([]byte{130}); err != nil {
+		return err
+	}
+
+	// t.t.Deal (actors.StorageDeal)
+	if err := t.Deal.MarshalCBOR(w); err != nil {
+		return err
+	}
+
+	// t.t.ActivationEpoch (uint64)
+	if _, err := w.Write(cbg.CborEncodeMajorType(cbg.MajUnsignedInt, t.ActivationEpoch)); err != nil {
+		return err
+	}
+	return nil
+}
+
+func (t *OnChainDeal) UnmarshalCBOR(r io.Reader) error {
+	br := cbg.GetPeeker(r)
+
+	maj, extra, err := cbg.CborReadHeader(br)
+	if err != nil {
+		return err
+	}
+	if maj != cbg.MajArray {
+		return fmt.Errorf("cbor input should be of type array")
+	}
+
+	if extra != 2 {
+		return fmt.Errorf("cbor input had wrong number of fields")
+	}
+
+	// t.t.Deal (actors.StorageDeal)
+
+	{
+
+		if err := t.Deal.UnmarshalCBOR(br); err != nil {
+			return err
+		}
+
+	}
+	// t.t.ActivationEpoch (uint64)
+
+	maj, extra, err = cbg.CborReadHeader(br)
+	if err != nil {
+		return err
+	}
+	if maj != cbg.MajUnsignedInt {
+		return fmt.Errorf("wrong type for uint64 field")
+	}
+	t.ActivationEpoch = extra
+	return nil
+}
