@@ -385,7 +385,9 @@ func (vm *VM) send(ctx context.Context, msg *types.Message, parent *VMContext,
 
 	if msg.Method != 0 {
 		ret, err := vm.Invoke(toActor, vmctx, msg.Method, msg.Params)
-		toActor.Head = vmctx.Storage().GetHead()
+		if !aerrors.IsFatal(err) {
+			toActor.Head = vmctx.Storage().GetHead()
+		}
 		return ret, err, vmctx
 	}
 
