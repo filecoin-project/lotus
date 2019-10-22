@@ -210,7 +210,7 @@ type CommitSectorParams struct {
 }
 
 type OnChainSealVerifyInfo struct {
-	SealedCID    cid.Cid // CommR .. TODO: spec says cid, but it feela weird
+	SealedCID    cid.Cid // CommR .. TODO: spec says cid, but it feels weird
 	Epoch        uint64
 	Proof        []byte
 	DealIDs      []uint64
