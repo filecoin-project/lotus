@@ -78,7 +78,7 @@ func (p *Provider) accept(ctx context.Context, deal MinerDeal) (func(*MinerDeal)
 	// TODO: check StorageCollateral / StoragePrice
 
 	// check market funds
-	clientMarketBalance, err := p.full.StateMarketBalance(ctx, deal.Proposal.Client)
+	clientMarketBalance, err := p.full.StateMarketBalance(ctx, deal.Proposal.Client, nil)
 	if err != nil {
 		return nil, err
 	}
@@ -89,7 +89,7 @@ func (p *Provider) accept(ctx context.Context, deal MinerDeal) (func(*MinerDeal)
 		return nil, xerrors.New("clientMarketBalance.Available too small")
 	}
 
-	providerMarketBalance, err := p.full.StateMarketBalance(ctx, deal.Proposal.Client)
+	providerMarketBalance, err := p.full.StateMarketBalance(ctx, deal.Proposal.Client, nil)
 	if err != nil {
 		return nil, err
 	}
@@ -125,9 +125,9 @@ func (p *Provider) accept(ctx context.Context, deal MinerDeal) (func(*MinerDeal)
 
 	log.Info("fetching data for a deal")
 	err = p.sendSignedResponse(StorageDealResponse{
-		State:    api.DealAccepted,
-		Message:  "",
-		Proposal: deal.ProposalCid,
+		State:          api.DealAccepted,
+		Message:        "",
+		Proposal:       deal.ProposalCid,
 		PublishMessage: smsg.Cid(),
 	})
 	if err != nil {
@@ -206,8 +206,8 @@ func (p *Provider) waitSealed(ctx context.Context, deal MinerDeal) (sectorbuilde
 
 func (p *Provider) sealing(ctx context.Context, deal MinerDeal) (func(*MinerDeal), error) {
 	err := p.sendSignedResponse(StorageDealResponse{
-		State:               api.DealSealing,
-		Proposal:            deal.ProposalCid,
+		State:    api.DealSealing,
+		Proposal: deal.ProposalCid,
 	})
 	if err != nil {
 		log.Warnf("Sending deal response failed: %s", err)

@@ -9,11 +9,11 @@ import (
 type DealState int
 
 const (
-	DealUnknown = DealState(iota)
+	DealUnknown  = DealState(iota)
 	DealRejected // Provider didn't like the proposal
 	DealAccepted // Proposal accepted, data moved
-	DealStaged // Data put into the sector
-	DealSealing // Data in process of being sealed
+	DealStaged   // Data put into the sector
+	DealSealing  // Data in process of being sealed
 
 	DealFailed
 

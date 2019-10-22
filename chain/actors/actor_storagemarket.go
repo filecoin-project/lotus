@@ -143,7 +143,7 @@ func (sma StorageMarketActor) WithdrawBalance(act *types.Actor, vmctx types.VMCo
 		return nil, err
 	}
 
-	b, bnd, err := getMarketBalances(vmctx, self.Balances, []address.Address{vmctx.Message().From})
+	b, bnd, err := GetMarketBalances(vmctx.Context(), vmctx.Ipld(), self.Balances, vmctx.Message().From)
 	if err != nil {
 		return nil, aerrors.Wrap(err, "could not get balance")
 	}
@@ -185,7 +185,7 @@ func (sma StorageMarketActor) AddBalance(act *types.Actor, vmctx types.VMContext
 		return nil, err
 	}
 
-	b, bnd, err := getMarketBalances(vmctx, self.Balances, []address.Address{vmctx.Message().From})
+	b, bnd, err := GetMarketBalances(vmctx.Context(), vmctx.Ipld(), self.Balances, vmctx.Message().From)
 	if err != nil {
 		return nil, aerrors.Wrap(err, "could not get balance")
 	}
@@ -228,8 +228,8 @@ func setMarketBalances(vmctx types.VMContext, nd *hamt.Node, set map[address.Add
 	return c, nil
 }
 
-func getMarketBalances(vmctx types.VMContext, rcid cid.Cid, addrs []address.Address) ([]StorageParticipantBalance, *hamt.Node, ActorError) {
-	nd, err := hamt.LoadNode(vmctx.Context(), vmctx.Ipld(), rcid)
+func GetMarketBalances(ctx context.Context, store *hamt.CborIpldStore, rcid cid.Cid, addrs ...address.Address) ([]StorageParticipantBalance, *hamt.Node, ActorError) {
+	nd, err := hamt.LoadNode(ctx, store, rcid)
 	if err != nil {
 		return nil, nil, aerrors.HandleExternalError(err, "failed to load miner set")
 	}
@@ -238,7 +238,7 @@ func getMarketBalances(vmctx types.VMContext, rcid cid.Cid, addrs []address.Addr
 
 	for i, a := range addrs {
 		var balance StorageParticipantBalance
-		err = nd.Find(vmctx.Context(), string(a.Bytes()), &balance)
+		err = nd.Find(ctx, string(a.Bytes()), &balance)
 		switch err {
 		case hamt.ErrNotFound:
 			out[i] = StorageParticipantBalance{
@@ -336,12 +336,6 @@ func (self *StorageMarketState) validateDeal(vmctx types.VMContext, deal Storage
 	if vmctx.BlockHeight() >= deal.Proposal.ProposalExpiration {
 		return aerrors.New(1, "deal proposal already expired")
 	}
-	if vmctx.BlockHeight() >= deal.Proposal.DealExpiration {
-		return aerrors.New(2, "deal proposal already expired")
-	}
-	if deal.Proposal.ProposalExpiration > deal.Proposal.DealExpiration {
-		return aerrors.New(3, "ProposalExpiration > DealExpiration")
-	}
 
 	var proposalBuf bytes.Buffer
 	err := deal.Proposal.MarshalCBOR(&proposalBuf)
@@ -373,10 +367,7 @@ func (self *StorageMarketState) validateDeal(vmctx types.VMContext, deal Storage
 	// TODO: REVIEW: Do we want to check if provider exists in the power actor?
 
 	// TODO: do some caching (changes gas so needs to be in spec too)
-	b, bnd, aerr := getMarketBalances(vmctx, self.Balances, []address.Address{
-		deal.Proposal.Client,
-		deal.Proposal.Provider,
-	})
+	b, bnd, aerr := GetMarketBalances(vmctx.Context(), vmctx.Ipld(), self.Balances, deal.Proposal.Client, deal.Proposal.Provider)
 	if aerr != nil {
 		return aerrors.Wrap(aerr, "getting client, and provider balances")
 	}
@@ -518,17 +509,11 @@ func (sma StorageMarketActor) ProcessStorageDealsPayment(act *types.Actor, vmctx
 			return nil, nil
 		}
 
-		// TODO: clients probably want this to be fixed
-		dealDuration := dealInfo.Deal.Proposal.DealExpiration - dealInfo.ActivationEpoch
-
 		// todo: check math (written on a plane, also tired)
 		// TODO: division is hard, this more than likely has some off-by-one issue
-		toPay := types.BigDiv(types.BigMul(dealInfo.Deal.Proposal.StoragePrice, types.NewInt(build.ProvingPeriodDuration)), types.NewInt(dealDuration))
+		toPay := types.BigDiv(types.BigMul(dealInfo.Deal.Proposal.StoragePrice, types.NewInt(build.ProvingPeriodDuration)), types.NewInt(dealInfo.Deal.Proposal.Duration))
 
-		b, bnd, err := getMarketBalances(vmctx, self.Balances, []address.Address{
-			dealInfo.Deal.Proposal.Client,
-			dealInfo.Deal.Proposal.Provider,
-		})
+		b, bnd, err := GetMarketBalances(vmctx.Context(), vmctx.Ipld(), self.Balances, dealInfo.Deal.Proposal.Client, dealInfo.Deal.Proposal.Provider)
 		clientBal := b[0]
 		providerBal := b[1]
 

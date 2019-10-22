@@ -792,143 +792,6 @@ func (t *SubmitPoStParams) UnmarshalCBOR(r io.Reader) error {
 	return nil
 }
 
-func (t *PieceInclVoucherData) MarshalCBOR(w io.Writer) error {
-	if t == nil {
-		_, err := w.Write(cbg.CborNull)
-		return err
-	}
-	if _, err := w.Write([]byte{130}); err != nil {
-		return err
-	}
-
-	// t.t.CommP ([]uint8)
-	if _, err := w.Write(cbg.CborEncodeMajorType(cbg.MajByteString, uint64(len(t.CommP)))); err != nil {
-		return err
-	}
-	if _, err := w.Write(t.CommP); err != nil {
-		return err
-	}
-
-	// t.t.PieceSize (types.BigInt)
-	if err := t.PieceSize.MarshalCBOR(w); err != nil {
-		return err
-	}
-	return nil
-}
-
-func (t *PieceInclVoucherData) UnmarshalCBOR(r io.Reader) error {
-	br := cbg.GetPeeker(r)
-
-	maj, extra, err := cbg.CborReadHeader(br)
-	if err != nil {
-		return err
-	}
-	if maj != cbg.MajArray {
-		return fmt.Errorf("cbor input should be of type array")
-	}
-
-	if extra != 2 {
-		return fmt.Errorf("cbor input had wrong number of fields")
-	}
-
-	// t.t.CommP ([]uint8)
-
-	maj, extra, err = cbg.CborReadHeader(br)
-	if err != nil {
-		return err
-	}
-	if extra > 8192 {
-		return fmt.Errorf("t.CommP: array too large (%d)", extra)
-	}
-
-	if maj != cbg.MajByteString {
-		return fmt.Errorf("expected byte array")
-	}
-	t.CommP = make([]byte, extra)
-	if _, err := io.ReadFull(br, t.CommP); err != nil {
-		return err
-	}
-	// t.t.PieceSize (types.BigInt)
-
-	{
-
-		if err := t.PieceSize.UnmarshalCBOR(br); err != nil {
-			return err
-		}
-
-	}
-	return nil
-}
-
-func (t *InclusionProof) MarshalCBOR(w io.Writer) error {
-	if t == nil {
-		_, err := w.Write(cbg.CborNull)
-		return err
-	}
-	if _, err := w.Write([]byte{130}); err != nil {
-		return err
-	}
-
-	// t.t.Sector (uint64)
-	if _, err := w.Write(cbg.CborEncodeMajorType(cbg.MajUnsignedInt, t.Sector)); err != nil {
-		return err
-	}
-
-	// t.t.Proof ([]uint8)
-	if _, err := w.Write(cbg.CborEncodeMajorType(cbg.MajByteString, uint64(len(t.Proof)))); err != nil {
-		return err
-	}
-	if _, err := w.Write(t.Proof); err != nil {
-		return err
-	}
-	return nil
-}
-
-func (t *InclusionProof) UnmarshalCBOR(r io.Reader) error {
-	br := cbg.GetPeeker(r)
-
-	maj, extra, err := cbg.CborReadHeader(br)
-	if err != nil {
-		return err
-	}
-	if maj != cbg.MajArray {
-		return fmt.Errorf("cbor input should be of type array")
-	}
-
-	if extra != 2 {
-		return fmt.Errorf("cbor input had wrong number of fields")
-	}
-
-	// t.t.Sector (uint64)
-
-	maj, extra, err = cbg.CborReadHeader(br)
-	if err != nil {
-		return err
-	}
-	if maj != cbg.MajUnsignedInt {
-		return fmt.Errorf("wrong type for uint64 field")
-	}
-	t.Sector = extra
-	// t.t.Proof ([]uint8)
-
-	maj, extra, err = cbg.CborReadHeader(br)
-	if err != nil {
-		return err
-	}
-	if extra > 8192 {
-		return fmt.Errorf("t.Proof: array too large (%d)", extra)
-	}
-
-	if maj != cbg.MajByteString {
-		return fmt.Errorf("expected byte array")
-	}
-	t.Proof = make([]byte, extra)
-	if _, err := io.ReadFull(br, t.Proof); err != nil {
-		return err
-	}
-	return nil
-}
-
 func (t *PaymentVerifyParams) MarshalCBOR(w io.Writer) error {
 	if t == nil {
 		_, err := w.Write(cbg.CborNull)
@@ -3087,9 +2950,6 @@ func (t *StorageDealProposal) MarshalCBOR(w io.Writer) error {
 	}
 
 	// t.t.DealExpiration (uint64)
-	if _, err := w.Write(cbg.CborEncodeMajorType(cbg.MajUnsignedInt, t.DealExpiration)); err != nil {
-		return err
-	}
 
 	// t.t.StoragePrice (types.BigInt)
 	if err := t.StoragePrice.MarshalCBOR(w); err != nil {
@@ -3187,7 +3047,6 @@ func (t *StorageDealProposal) UnmarshalCBOR(r io.Reader) error {
 	if maj != cbg.MajUnsignedInt {
 		return fmt.Errorf("wrong type for uint64 field")
 	}
-	t.DealExpiration = extra
 	// t.t.StoragePrice (types.BigInt)
 
 	{

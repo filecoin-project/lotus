@@ -226,3 +226,17 @@ func (a *StateAPI) StateListMiners(ctx context.Context, ts *types.TipSet) ([]add
 func (a *StateAPI) StateListActors(ctx context.Context, ts *types.TipSet) ([]address.Address, error) {
 	return a.StateManager.ListAllActors(ctx, ts)
 }
+
+func (a *StateAPI) StateMarketBalance(ctx context.Context, addr address.Address, ts *types.TipSet) (actors.StorageParticipantBalance, error) {
+	var state actors.StorageMarketState
+	if _, err := a.StateManager.LoadActorState(ctx, actors.StoragePowerAddress, &state, ts); err != nil {
+		return actors.StorageParticipantBalance{}, err
+	}
+	cst := hamt.CSTFromBstore(a.StateManager.ChainStore().Blockstore())
+	b, _, err := actors.GetMarketBalances(ctx, cst, state.Balances, addr)
+	if err != nil {
+		return actors.StorageParticipantBalance{}, err
+	}
+
+	return b[0], nil
+}

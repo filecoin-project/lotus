@@ -134,7 +134,7 @@ type FullNode interface {
 	StateWaitMsg(context.Context, cid.Cid) (*MsgWait, error)
 	StateListMiners(context.Context, *types.TipSet) ([]address.Address, error)
 	StateListActors(context.Context, *types.TipSet) ([]address.Address, error)
-	StateMarketBalance(context.Context, address.Address) (actors.StorageParticipantBalance, error)
+	StateMarketBalance(context.Context, address.Address, *types.TipSet) (actors.StorageParticipantBalance, error)
 
 	PaychGet(ctx context.Context, from, to address.Address, ensureFunds types.BigInt) (*ChannelInfo, error)
 	PaychList(context.Context) ([]address.Address, error)
@@ -199,10 +199,9 @@ type Import struct {
 type DealInfo struct {
 	ProposalCid cid.Cid
 	State       DealState
-	Miner       address.Address
+	Provider    address.Address
 
-	PieceRef cid.Cid
-	CommP    []byte
+	PieceRef []byte // cid bytes
 	Size     uint64
 
 	TotalPrice types.BigInt

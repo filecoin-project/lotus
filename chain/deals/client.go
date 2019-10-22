@@ -46,7 +46,7 @@ type ClientDeal struct {
 
 type Client struct {
 	sm        *stmgr.StateManager
-	chain *store.ChainStore
+	chain     *store.ChainStore
 	h         host.Host
 	w         *wallet.Wallet
 	dag       dtypes.ClientDAG
@@ -71,7 +71,7 @@ type clientDealUpdate struct {
 func NewClient(sm *stmgr.StateManager, chain *store.ChainStore, h host.Host, w *wallet.Wallet, ds dtypes.MetadataDS, dag dtypes.ClientDAG, discovery *discovery.Local) *Client {
 	c := &Client{
 		sm:        sm,
-		chain: chain,
+		chain:     chain,
 		h:         h,
 		w:         w,
 		dag:       dag,

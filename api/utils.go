@@ -24,4 +24,5 @@ func SignWith(ctx context.Context, signer Signer, addr address.Address, signable
 			return err
 		}
 	}
+	return nil
 }

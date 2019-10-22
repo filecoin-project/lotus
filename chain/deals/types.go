@@ -33,7 +33,7 @@ type StorageDealResponse struct {
 	Proposal cid.Cid
 
 	// DealAccepted
-	StorageDeal actors.StorageDeal
+	StorageDeal    actors.StorageDeal
 	PublishMessage cid.Cid
 
 	// DealComplete
