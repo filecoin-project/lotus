@@ -154,8 +154,8 @@ func (s *keyStore) NewAddress() (vstate.Address, error) {
 	return vstate.Address(key.Address.Bytes()), nil
 }
 
-func (as *keyStore) Sign(ctx context.Context, addr address.Address, data []byte) (*types.Signature, error) {
-	ki, ok := as.keys[addr]
+func (s *keyStore) Sign(ctx context.Context, addr address.Address, data []byte) (*types.Signature, error) {
+	ki, ok := s.keys[addr]
 	if !ok {
 		return &types.Signature{}, fmt.Errorf("unknown address %v", addr)
 	}
