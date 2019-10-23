@@ -80,13 +80,13 @@ func (a *API) ClientStartDeal(ctx context.Context, data cid.Cid, miner address.A
 	total := types.BigMul(price, types.NewInt(blocksDuration))
 
 	proposal := deals.ClientDealProposal{
-		Data:            data,
-		TotalPrice:      total,
+		Data:               data,
+		TotalPrice:         total,
 		ProposalExpiration: math.MaxUint64, // TODO: set something reasonable
-		Duration:        blocksDuration,
-		ProviderAddress: miner,
-		Client:          self,
-		MinerID:         pid,
+		Duration:           blocksDuration,
+		ProviderAddress:    miner,
+		Client:             self,
+		MinerID:            pid,
 	}
 
 	c, err := a.DealClient.Start(ctx, proposal)

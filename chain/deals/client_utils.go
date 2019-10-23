@@ -1,9 +1,12 @@
 package deals
 
 import (
+	"context"
 	"runtime"
 
 	"github.com/ipfs/go-cid"
+	files "github.com/ipfs/go-ipfs-files"
+	unixfile "github.com/ipfs/go-unixfs/file"
 	"golang.org/x/xerrors"
 
 	"github.com/filecoin-project/lotus/lib/cborrpc"
@@ -23,6 +26,28 @@ func (c *Client) failDeal(id cid.Cid, cerr error) {
 
 	// TODO: store in some sort of audit log
 	log.Errorf("deal %s failed: %s", id, cerr)
+}
+
+func (c *Client) dataSize(ctx context.Context, data cid.Cid) (int64, error) {
+	root, err := c.dag.Get(ctx, data)
+	if err != nil {
+		log.Errorf("failed to get file root for deal: %s", err)
+		return 0, err
+	}
+
+	n, err := unixfile.NewUnixfsFile(ctx, c.dag, root)
+	if err != nil {
+		log.Errorf("cannot open unixfs file: %s", err)
+		return 0, err
+	}
+
+	uf, ok := n.(files.File)
+	if !ok {
+		// TODO: we probably got directory, how should we handle this in unixfs mode?
+		return 0, xerrors.New("unsupported unixfs type")
+	}
+
+	return uf.Size()
 }
 
 func (c *Client) readStorageDealResp(deal ClientDeal) (*Response, error) {

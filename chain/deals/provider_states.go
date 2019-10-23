@@ -195,6 +195,16 @@ func (p *Provider) staged(ctx context.Context, deal MinerDeal) (func(*MinerDeal)
 		return nil, xerrors.Errorf("unsupported unixfs file type")
 	}
 
+	// TODO: uf.Size() is user input, not trusted
+	// This won't be useful / here after we migrate to putting CARs into sectors
+	size, err := uf.Size()
+	if err != nil {
+		return nil, xerrors.Errorf("getting unixfs file size: %w", err)
+	}
+	if uint64(size) != deal.Proposal.PieceSize {
+		return nil, xerrors.Errorf("deal.Proposal.PieceSize didn't match unixfs file size")
+	}
+
 	pcid, err := cid.Cast(deal.Proposal.PieceRef)
 	if err != nil {
 		return nil, err

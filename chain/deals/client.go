@@ -157,8 +157,7 @@ func (c *Client) onUpdated(ctx context.Context, update clientDealUpdate) {
 }
 
 type ClientDealProposal struct {
-	Data     cid.Cid
-	DataSize uint64
+	Data cid.Cid
 
 	TotalPrice         types.BigInt
 	ProposalExpiration uint64
@@ -201,16 +200,18 @@ func (c *Client) Start(ctx context.Context, p ClientDealProposal) (cid.Cid, erro
 		}
 	}
 
+	dataSize, err := c.dataSize(ctx, p.Data)
+
 	proposal := &actors.StorageDealProposal{
 		PieceRef:           p.Data.Bytes(),
-		PieceSize:          p.DataSize,
+		PieceSize:          uint64(dataSize),
 		PieceSerialization: actors.SerializationUnixFSv0,
 		Client:             p.Client,
 		Provider:           p.ProviderAddress,
 		ProposalExpiration: p.ProposalExpiration,
 		Duration:           p.Duration,
 		StoragePrice:       p.TotalPrice,
-		StorageCollateral:  types.NewInt(p.DataSize), // TODO: real calc
+		StorageCollateral:  types.NewInt(uint64(dataSize)), // TODO: real calc
 	}
 
 	if err := api.SignWith(ctx, c.w.Sign, p.Client, proposal); err != nil {
