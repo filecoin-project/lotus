@@ -2,6 +2,7 @@ package cli
 
 import (
 	"fmt"
+	"path/filepath"
 	"strconv"
 
 	"github.com/ipfs/go-cid"
@@ -37,8 +38,12 @@ var clientImportCmd = &cli.Command{
 		}
 		defer closer()
 		ctx := ReqContext(cctx)
+		absPath, err := filepath.Abs(cctx.Args().First())
+		if err != nil {
+			return err
+		}
 
-		c, err := api.ClientImport(ctx, cctx.Args().First())
+		c, err := api.ClientImport(ctx, absPath)
 		if err != nil {
 			return err
 		}
