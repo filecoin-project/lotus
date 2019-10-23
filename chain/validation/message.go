@@ -2,7 +2,7 @@ package validation
 
 import (
 	"context"
-
+	"github.com/libp2p/go-libp2p-core/peer"
 	"github.com/pkg/errors"
 
 	"github.com/filecoin-project/go-lotus/chain/actors"
@@ -37,24 +37,65 @@ func (mf *MessageFactory) MakeMessage(from, to state.Address, method chain.Metho
 		return nil, err
 	}
 	valueDec := types.BigInt{value}
-	paramsDec, err := []byte{}, nil // FIXME encode params as CBOR tuple byte[] using reflection
-	if err != nil {
-		return nil, err
-	}
+	var paramsDec []byte
+		paramsDec, err = DecodeParams(method, params...)
+		if err != nil {
+			return nil, err
+		}
 
 	if int(method) >= len(methods) {
 		return nil, errors.Errorf("No method name for method %v", method)
 	}
 	methodId := methods[method]
 	msg := &types.Message{
-		toDec, fromDec, nonce, valueDec,
-		types.BigInt{gasPrice}, types.NewInt(uint64(gasLimit)),
-
-		methodId,
-		paramsDec,
+		To:       toDec,
+		From:     fromDec,
+		Nonce:    nonce,
+		Value:    valueDec,
+		GasPrice: types.BigInt{gasPrice},
+		GasLimit: types.NewInt(uint64(gasLimit)),
+		Method:   methodId,
+		Params:   paramsDec,
 	}
-
 	return msg, nil
+}
+
+// FIXME wrote this when I thought we needed the actor code to compute the params, I understand I am wrong now if we use reflection.
+func DecodeParams(method chain.MethodID, params ...interface{}) ([]byte, error) {
+	if len(params) == 0 {
+		return []byte{}, nil
+	}
+	// TODO use ToEncodedValues() in validation/types.go and remove this switch
+	switch method {
+	case chain.StoragePowerCreateStorageMiner:
+		return decodeStorageMarketParams(method, params...)
+	default:
+		panic("nyi")
+	}
+}
+
+func decodeStorageMarketParams(method chain.MethodID, params ...interface{}) ([]byte, error ) {
+	switch method {
+	case chain.StoragePowerCreateStorageMiner:
+		ownerAddr, err := address.NewFromBytes([]byte(params[0].(state.Address)))
+		if err != nil {
+			return []byte{}, err
+		}
+		sectorSize := types.BigInt{params[2].(state.BytesAmount)}
+		peerID, err := peer.IDFromBytes(params[3].(state.PeerID))
+		if err != nil {
+			panic(err)
+		}
+		p := actors.CreateStorageMinerParams{
+			Owner:      ownerAddr,
+			Worker:     ownerAddr,
+			SectorSize: sectorSize,
+			PeerID:     peerID,
+		}
+		return actors.SerializeParams(&p)
+	default:
+		panic("nyi")
+	}
 }
 
 func (mf *MessageFactory) FromSingletonAddress(addr state.SingletonActorAddress) (state.Address, error) {
