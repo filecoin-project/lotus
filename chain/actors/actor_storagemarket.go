@@ -121,9 +121,31 @@ func (sdp *StorageDealProposal) Verify() error {
 	return sdp.ProposerSignature.Verify(sdp.Client, buf.Bytes())
 }
 
+func (d *StorageDeal) Sign(ctx context.Context, sign SignFunc) error {
+	var buf bytes.Buffer
+	if err := d.Proposal.MarshalCBOR(&buf); err != nil {
+		return err
+	}
+	sig, err := sign(ctx, buf.Bytes())
+	if err != nil {
+		return err
+	}
+	d.CounterSignature = sig
+	return nil
+}
+
+func (d *StorageDeal) Verify(proposerWorker address.Address) error {
+	var buf bytes.Buffer
+	if err := d.Proposal.MarshalCBOR(&buf); err != nil {
+		return err
+	}
+
+	return d.CounterSignature.Verify(proposerWorker, buf.Bytes())
+}
+
 type StorageDeal struct {
 	Proposal         StorageDealProposal
-	CounterSignature types.Signature
+	CounterSignature *types.Signature
 }
 
 type OnChainDeal struct {
@@ -214,7 +236,7 @@ func (sma StorageMarketActor) AddBalance(act *types.Actor, vmctx types.VMContext
 
 func setMarketBalances(vmctx types.VMContext, nd *hamt.Node, set map[address.Address]StorageParticipantBalance) (cid.Cid, ActorError) {
 	for addr, b := range set {
-		if err := nd.Set(vmctx.Context(), string(addr.Bytes()), b); err != nil {
+		if err := nd.Set(vmctx.Context(), string(addr.Bytes()), &b); err != nil {
 			return cid.Undef, aerrors.HandleExternalError(err, "setting new balance")
 		}
 	}
@@ -283,7 +305,6 @@ func (sma StorageMarketActor) PublishStorageDeals(act *types.Actor, vmctx types.
 
 	deals, err := amt.LoadAMT(types.WrapStorage(vmctx.Storage()), self.Deals)
 	if err != nil {
-		// TODO: kind of annoying that this can be caused by gas, otherwise could be fatal
 		return nil, aerrors.HandleExternalError(err, "loading deals amt")
 	}
 
@@ -298,7 +319,7 @@ func (sma StorageMarketActor) PublishStorageDeals(act *types.Actor, vmctx types.
 			return nil, err
 		}
 
-		err := deals.Set(self.NextDealID, OnChainDeal{Deal: deal})
+		err := deals.Set(self.NextDealID, &OnChainDeal{Deal: deal})
 		if err != nil {
 			return nil, aerrors.HandleExternalError(err, "setting deal in deal AMT")
 		}
@@ -338,37 +359,33 @@ func (self *StorageMarketState) validateDeal(vmctx types.VMContext, deal Storage
 		return aerrors.New(1, "deal proposal already expired")
 	}
 
-	var proposalBuf bytes.Buffer
-	err := deal.Proposal.MarshalCBOR(&proposalBuf)
-	if err != nil {
-		return aerrors.HandleExternalError(err, "serializing deal proposal failed")
+	if err := deal.Proposal.Verify(); err != nil {
+		return aerrors.Absorb(err, 2, "verifying proposer signature")
 	}
 
-	err = deal.Proposal.ProposerSignature.Verify(deal.Proposal.Client, proposalBuf.Bytes())
+	workerBytes, aerr := vmctx.Send(deal.Proposal.Provider, MAMethods.GetWorkerAddr, types.NewInt(0), nil)
+	if aerr != nil {
+		return aerr
+	}
+	providerWorker, err := address.NewFromBytes(workerBytes)
 	if err != nil {
-		return aerrors.HandleExternalError(err, "verifying proposer signature")
+		return aerrors.HandleExternalError(err, "parsing provider worker address bytes")
 	}
 
-	var dealBuf bytes.Buffer
-	err = deal.MarshalCBOR(&dealBuf)
+	err = deal.Verify(providerWorker)
 	if err != nil {
-		return aerrors.HandleExternalError(err, "serializing deal failed")
-	}
-
-	err = deal.CounterSignature.Verify(deal.Proposal.Provider, dealBuf.Bytes())
-	if err != nil {
-		return aerrors.HandleExternalError(err, "verifying provider signature")
+		return aerrors.Absorb(err, 2, "verifying provider signature")
 	}
 
 	// TODO: maybe this is actually fine
-	if vmctx.Message().From != deal.Proposal.Provider && vmctx.Message().From != deal.Proposal.Client {
+	if vmctx.Message().From != providerWorker && vmctx.Message().From != deal.Proposal.Client {
 		return aerrors.New(4, "message not sent by deal participant")
 	}
 
 	// TODO: REVIEW: Do we want to check if provider exists in the power actor?
 
 	// TODO: do some caching (changes gas so needs to be in spec too)
-	b, bnd, aerr := GetMarketBalances(vmctx.Context(), vmctx.Ipld(), self.Balances, deal.Proposal.Client, deal.Proposal.Provider)
+	b, bnd, aerr := GetMarketBalances(vmctx.Context(), vmctx.Ipld(), self.Balances, deal.Proposal.Client, providerWorker)
 	if aerr != nil {
 		return aerrors.Wrap(aerr, "getting client, and provider balances")
 	}
@@ -426,7 +443,16 @@ func (sma StorageMarketActor) ActivateStorageDeals(act *types.Actor, vmctx types
 			return nil, aerrors.HandleExternalError(err, "getting del info failed")
 		}
 
-		if vmctx.Message().From != dealInfo.Deal.Proposal.Provider {
+		workerBytes, err := vmctx.Send(dealInfo.Deal.Proposal.Provider, MAMethods.GetWorkerAddr, types.NewInt(0), nil)
+		if err != nil {
+			return nil, err
+		}
+		providerWorker, eerr := address.NewFromBytes(workerBytes)
+		if eerr != nil {
+			return nil, aerrors.HandleExternalError(eerr, "parsing provider worker address bytes")
+		}
+
+		if vmctx.Message().From != providerWorker {
 			return nil, aerrors.New(1, "ActivateStorageDeals can only be called by deal provider")
 		}
 

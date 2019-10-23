@@ -6,6 +6,9 @@ import State from "./State"
 import methods from "./chain/methods"
 
 function truncAddr(addr, len) {
+  if (!addr) {
+    return "<!nil>"
+  }
   if (addr.length > len) {
     return <abbr title={addr}>{addr.substr(0, len - 3) + '..'}</abbr>
   }

@@ -2,15 +2,16 @@ package deals
 
 import (
 	"context"
-	"github.com/ipfs/go-cid"
 
 	"github.com/filecoin-project/go-sectorbuilder/sealing_state"
+	"github.com/ipfs/go-cid"
 	"github.com/ipfs/go-merkledag"
 	unixfile "github.com/ipfs/go-unixfs/file"
 	"golang.org/x/xerrors"
 
 	"github.com/filecoin-project/lotus/api"
 	"github.com/filecoin-project/lotus/chain/actors"
+	"github.com/filecoin-project/lotus/chain/address"
 	"github.com/filecoin-project/lotus/chain/types"
 	"github.com/filecoin-project/lotus/lib/sectorbuilder"
 	"github.com/filecoin-project/lotus/storage/sectorblocks"
@@ -40,11 +41,11 @@ func (p *Provider) handle(ctx context.Context, deal MinerDeal, cb providerHandle
 
 // ACCEPTED
 
-func (p *Provider) addMarketFunds(ctx context.Context, deal MinerDeal) error {
+func (p *Provider) addMarketFunds(ctx context.Context, worker address.Address, deal MinerDeal) error {
 	log.Info("Adding market funds for storage collateral")
 	smsg, err := p.full.MpoolPushMessage(ctx, &types.Message{
 		To:       actors.StorageMarketAddress,
-		From:     deal.Proposal.Provider,
+		From:     worker,
 		Value:    deal.Proposal.StorageCollateral,
 		GasPrice: types.NewInt(0),
 		GasLimit: types.NewInt(1000000),
@@ -75,6 +76,14 @@ func (p *Provider) accept(ctx context.Context, deal MinerDeal) (func(*MinerDeal)
 		return nil, xerrors.Errorf("deal proposal with unsupported serialization: %s", deal.Proposal.PieceSerialization)
 	}
 
+	head, err := p.full.ChainHead(ctx)
+	if err != nil {
+		return nil, err
+	}
+	if head.Height() >= deal.Proposal.ProposalExpiration {
+		return nil, xerrors.Errorf("deal proposal already expired")
+	}
+
 	// TODO: check StorageCollateral / StoragePrice
 
 	// check market funds
@@ -89,28 +98,48 @@ func (p *Provider) accept(ctx context.Context, deal MinerDeal) (func(*MinerDeal)
 		return nil, xerrors.New("clientMarketBalance.Available too small")
 	}
 
-	providerMarketBalance, err := p.full.StateMarketBalance(ctx, deal.Proposal.Provider, nil)
+	waddr, err := p.full.StateMinerWorker(ctx, deal.Proposal.Provider, nil)
+	if err != nil {
+		return nil, err
+	}
+
+	providerMarketBalance, err := p.full.StateMarketBalance(ctx, waddr, nil)
 	if err != nil {
 		return nil, xerrors.Errorf("getting provider market balance failed: %w", err)
 	}
 
 	// TODO: this needs to be atomic
 	if providerMarketBalance.Available.LessThan(deal.Proposal.StorageCollateral) {
-		if err := p.addMarketFunds(ctx, deal); err != nil {
+		if err := p.addMarketFunds(ctx, waddr, deal); err != nil {
 			return nil, err
 		}
 	}
 
 	log.Info("publishing deal")
 
+	storageDeal := actors.StorageDeal{
+		Proposal: deal.Proposal,
+	}
+	if err := api.SignWith(ctx, p.full.WalletSign, waddr, &storageDeal); err != nil {
+		return nil, xerrors.Errorf("signing storage deal failed: ", err)
+	}
+
+	params, err := actors.SerializeParams(&actors.PublishStorageDealsParams{
+		Deals: []actors.StorageDeal{storageDeal},
+	})
+	if err != nil {
+		return nil, xerrors.Errorf("serializing PublishStorageDeals params failed: ", err)
+	}
+
 	// TODO: We may want this to happen after fetching data
 	smsg, err := p.full.MpoolPushMessage(ctx, &types.Message{
 		To:       actors.StorageMarketAddress,
-		From:     deal.Proposal.Provider,
+		From:     waddr,
 		Value:    types.NewInt(0),
 		GasPrice: types.NewInt(0),
 		GasLimit: types.NewInt(1000000),
 		Method:   actors.SMAMethods.PublishStorageDeals,
+		Params:   params,
 	})
 	if err != nil {
 		return nil, err

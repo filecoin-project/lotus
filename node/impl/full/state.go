@@ -58,25 +58,7 @@ func (a *StateAPI) StateMinerPower(ctx context.Context, maddr address.Address, t
 }
 
 func (a *StateAPI) StateMinerWorker(ctx context.Context, m address.Address, ts *types.TipSet) (address.Address, error) {
-	ret, err := a.StateManager.Call(ctx, &types.Message{
-		From:   m,
-		To:     m,
-		Method: actors.MAMethods.GetWorkerAddr,
-	}, ts)
-	if err != nil {
-		return address.Undef, xerrors.Errorf("failed to get miner worker addr: %w", err)
-	}
-
-	if ret.ExitCode != 0 {
-		return address.Undef, xerrors.Errorf("failed to get miner worker addr (exit code %d)", ret.ExitCode)
-	}
-
-	w, err := address.NewFromBytes(ret.Return)
-	if err != nil {
-		return address.Undef, xerrors.Errorf("GetWorkerAddr returned malformed address: %w", err)
-	}
-
-	return w, nil
+	return stmgr.GetMinerWorker(ctx, a.StateManager, ts, m)
 }
 
 func (a *StateAPI) StateMinerPeerID(ctx context.Context, m address.Address, ts *types.TipSet) (peer.ID, error) {
@@ -232,17 +214,7 @@ func (a *StateAPI) StateListActors(ctx context.Context, ts *types.TipSet) ([]add
 }
 
 func (a *StateAPI) StateMarketBalance(ctx context.Context, addr address.Address, ts *types.TipSet) (actors.StorageParticipantBalance, error) {
-	var state actors.StorageMarketState
-	if _, err := a.StateManager.LoadActorState(ctx, actors.StorageMarketAddress, &state, ts); err != nil {
-		return actors.StorageParticipantBalance{}, err
-	}
-	cst := hamt.CSTFromBstore(a.StateManager.ChainStore().Blockstore())
-	b, _, err := actors.GetMarketBalances(ctx, cst, state.Balances, addr)
-	if err != nil {
-		return actors.StorageParticipantBalance{}, err
-	}
-
-	return b[0], nil
+	return a.StateManager.MarketBalance(ctx, addr, ts)
 }
 
 func (a *StateAPI) StateMarketParticipants(ctx context.Context, ts *types.TipSet) (map[string]actors.StorageParticipantBalance, error) {

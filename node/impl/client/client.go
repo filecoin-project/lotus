@@ -5,6 +5,7 @@ import (
 	"errors"
 	"golang.org/x/xerrors"
 	"io"
+	"math"
 	"os"
 
 	"github.com/ipfs/go-blockservice"
@@ -81,6 +82,7 @@ func (a *API) ClientStartDeal(ctx context.Context, data cid.Cid, miner address.A
 	proposal := deals.ClientDealProposal{
 		Data:            data,
 		TotalPrice:      total,
+		ProposalExpiration: math.MaxUint64, // TODO: set something reasonable
 		Duration:        blocksDuration,
 		ProviderAddress: miner,
 		Client:          self,

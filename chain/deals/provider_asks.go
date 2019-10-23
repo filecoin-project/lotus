@@ -145,7 +145,7 @@ func (p *Provider) saveAsk(a *types.SignedStorageAsk) error {
 func (c *Client) checkAskSignature(ask *types.SignedStorageAsk) error {
 	tss := c.sm.ChainStore().GetHeaviestTipSet().ParentState()
 
-	w, err := stmgr.GetMinerWorker(context.TODO(), c.sm, tss, ask.Ask.Miner)
+	w, err := stmgr.GetMinerWorkerRaw(context.TODO(), c.sm, tss, ask.Ask.Miner)
 	if err != nil {
 		return xerrors.Errorf("failed to get worker for miner in ask", err)
 	}

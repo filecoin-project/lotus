@@ -4,6 +4,7 @@ import (
 	"context"
 	"github.com/filecoin-project/lotus/api"
 	"github.com/filecoin-project/lotus/chain/actors"
+	"github.com/filecoin-project/lotus/chain/stmgr"
 
 	"golang.org/x/xerrors"
 )
@@ -43,22 +44,27 @@ func (c *Client) new(ctx context.Context, deal ClientDeal) error {
 		return xerrors.Errorf("getting deal pubsish message: %w", err)
 	}
 
-	if pubmsg.From != deal.Proposal.Provider {
-		return xerrors.Errorf("Deal wasn't published by storage provider: from=%s, provider=%s", pubmsg.From, deal.Proposal.Provider)
+	pw, err := stmgr.GetMinerWorker(ctx, c.sm, nil, deal.Proposal.Provider)
+	if err != nil {
+		return xerrors.Errorf("getting miner worker failed: %w", err)
+	}
+
+	if pubmsg.From != pw {
+		return xerrors.Errorf("deal wasn't published by storage provider: from=%s, provider=%s", pubmsg.From, deal.Proposal.Provider)
 	}
 
 	if pubmsg.To != actors.StorageMarketAddress {
-		return xerrors.Errorf("Deal publish message wasn't set to StorageMarket actor (to=%s)", pubmsg.To)
+		return xerrors.Errorf("deal publish message wasn't set to StorageMarket actor (to=%s)", pubmsg.To)
 	}
 
 	if pubmsg.Method != actors.SMAMethods.PublishStorageDeals {
-		return xerrors.Errorf("Deal publish message called incorrect method (method=%s)", pubmsg.Method)
+		return xerrors.Errorf("deal publish message called incorrect method (method=%s)", pubmsg.Method)
 	}
 
 	// TODO: timeout
 	_, ret, err := c.sm.WaitForMessage(ctx, *resp.PublishMessage)
 	if err != nil {
-		return xerrors.Errorf("Waiting for deal publish message: %w", err)
+		return xerrors.Errorf("waiting for deal publish message: %w", err)
 	}
 	if ret.ExitCode != 0 {
 		return xerrors.Errorf("deal publish failed: exit=%d", ret.ExitCode)

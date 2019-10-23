@@ -2,6 +2,7 @@ package deals
 
 import (
 	"context"
+	"github.com/filecoin-project/lotus/node/impl/full"
 
 	"github.com/ipfs/go-cid"
 	"github.com/ipfs/go-datastore"
@@ -42,6 +43,7 @@ type Client struct {
 	w         *wallet.Wallet
 	dag       dtypes.ClientDAG
 	discovery *discovery.Local
+	mpool     full.MpoolAPI
 
 	deals ClientStateStore
 	conns map[cid.Cid]inet.Stream
@@ -59,7 +61,7 @@ type clientDealUpdate struct {
 	err      error
 }
 
-func NewClient(sm *stmgr.StateManager, chain *store.ChainStore, h host.Host, w *wallet.Wallet, ds dtypes.MetadataDS, dag dtypes.ClientDAG, discovery *discovery.Local) *Client {
+func NewClient(sm *stmgr.StateManager, chain *store.ChainStore, h host.Host, w *wallet.Wallet, ds dtypes.MetadataDS, dag dtypes.ClientDAG, discovery *discovery.Local, mpool full.MpoolAPI) *Client {
 	c := &Client{
 		sm:        sm,
 		chain:     chain,
@@ -67,6 +69,7 @@ func NewClient(sm *stmgr.StateManager, chain *store.ChainStore, h host.Host, w *
 		w:         w,
 		dag:       dag,
 		discovery: discovery,
+		mpool:     mpool,
 
 		deals: ClientStateStore{StateStore{ds: namespace.Wrap(ds, datastore.NewKey("/deals/client"))}},
 		conns: map[cid.Cid]inet.Stream{},
@@ -167,6 +170,37 @@ type ClientDealProposal struct {
 }
 
 func (c *Client) Start(ctx context.Context, p ClientDealProposal) (cid.Cid, error) {
+	// check market funds
+	clientMarketBalance, err := c.sm.MarketBalance(ctx, p.Client, nil)
+	if err != nil {
+		return cid.Undef, xerrors.Errorf("getting client market balance failed: %w", err)
+	}
+
+	if clientMarketBalance.Available.LessThan(p.TotalPrice) {
+		// TODO: move to a smarter market funds manager
+
+		smsg, err := c.mpool.MpoolPushMessage(ctx, &types.Message{
+			To:       actors.StorageMarketAddress,
+			From:     p.Client,
+			Value:    p.TotalPrice,
+			GasPrice: types.NewInt(0),
+			GasLimit: types.NewInt(1000000),
+			Method:   actors.SMAMethods.AddBalance,
+		})
+		if err != nil {
+			return cid.Undef, err
+		}
+
+		_, r, err := c.sm.WaitForMessage(ctx, smsg.Cid())
+		if err != nil {
+			return cid.Undef, err
+		}
+
+		if r.ExitCode != 0 {
+			return cid.Undef, xerrors.Errorf("adding funds to storage miner market actor failed: exit %d", r.ExitCode)
+		}
+	}
+
 	proposal := &actors.StorageDealProposal{
 		PieceRef:           p.Data.Bytes(),
 		PieceSize:          p.DataSize,

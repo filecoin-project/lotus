@@ -104,11 +104,19 @@ class MarketState extends React.Component {
     return <div>
       <div>
         <div>Participants:</div>
-        {Object.keys(this.state.participants).map(p => <span>{p}</span>)}
+        <table>
+          <tr><td>Address</td><td>Available</td><td>Locked</td></tr>
+          {Object.keys(this.state.participants).map(p => <tr>
+            <td><Address addr={p} client={this.props.client} mountWindow={this.props.mountWindow}/></td>
+            <td>{this.state.participants[p].Available}</td>
+            <td>{this.state.participants[p].Locked}</td>
+          </tr>)}
+        </table>
       </div>
       <div>
+        <div>---</div>
         <div>Deals:</div>
-        {this.state.deals.map(d => <span>{d}</span>)}
+        {Object.keys(this.state.deals).map(d => <div>{d}</div>)}
       </div>
     </div>
   }

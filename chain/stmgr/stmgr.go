@@ -459,3 +459,17 @@ func (sm *StateManager) ListAllActors(ctx context.Context, ts *types.TipSet) ([]
 
 	return out, nil
 }
+
+func (sm *StateManager) MarketBalance(ctx context.Context, addr address.Address, ts *types.TipSet) (actors.StorageParticipantBalance, error) {
+	var state actors.StorageMarketState
+	if _, err := sm.LoadActorState(ctx, actors.StorageMarketAddress, &state, ts); err != nil {
+		return actors.StorageParticipantBalance{}, err
+	}
+	cst := hamt.CSTFromBstore(sm.ChainStore().Blockstore())
+	b, _, err := actors.GetMarketBalances(ctx, cst, state.Balances, addr)
+	if err != nil {
+		return actors.StorageParticipantBalance{}, err
+	}
+
+	return b[0], nil
+}
