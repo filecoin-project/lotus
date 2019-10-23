@@ -4,6 +4,7 @@ import (
 	"context"
 	"fmt"
 
+	sectorbuilder "github.com/filecoin-project/go-sectorbuilder"
 	"github.com/ipfs/go-cid"
 	"github.com/ipfs/go-filestore"
 	cbor "github.com/ipfs/go-ipld-cbor"
@@ -14,7 +15,6 @@ import (
 	"github.com/filecoin-project/lotus/chain/address"
 	"github.com/filecoin-project/lotus/chain/store"
 	"github.com/filecoin-project/lotus/chain/types"
-	sectorbuilder "github.com/filecoin-project/go-sectorbuilder"
 )
 
 func init() {
@@ -23,8 +23,8 @@ func init() {
 
 type Common interface {
 	// Auth
-	AuthVerify(ctx context.Context, token string) ([]string, error)
-	AuthNew(ctx context.Context, perms []string) ([]byte, error)
+	AuthVerify(ctx context.Context, token string) ([]Permission, error)
+	AuthNew(ctx context.Context, perms []Permission) ([]byte, error)
 
 	// network
 

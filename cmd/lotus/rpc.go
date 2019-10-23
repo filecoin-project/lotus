@@ -2,17 +2,21 @@ package main
 
 import (
 	"context"
+	"encoding/json"
 	"net/http"
 	_ "net/http/pprof"
 	"os"
 	"os/signal"
 	"syscall"
 
+	"github.com/ipfs/go-cid"
+	logging "github.com/ipfs/go-log"
+
 	"github.com/filecoin-project/lotus/api"
 	"github.com/filecoin-project/lotus/lib/auth"
 	"github.com/filecoin-project/lotus/lib/jsonrpc"
 	"github.com/filecoin-project/lotus/node"
-	logging "github.com/ipfs/go-log"
+	"github.com/filecoin-project/lotus/node/impl"
 )
 
 var log = logging.Logger("main")
@@ -27,6 +31,13 @@ func serveRPC(a api.FullNode, stop node.StopFunc, addr string) error {
 	}
 
 	http.Handle("/rpc/v0", ah)
+
+	importAH := &auth.Handler{
+		Verify: a.AuthVerify,
+		Next:   handleImport(a.(*impl.FullNodeAPI)),
+	}
+
+	http.Handle("/rest/v0/import", importAH)
 
 	srv := &http.Server{Addr: addr, Handler: http.DefaultServeMux}
 
@@ -43,4 +54,31 @@ func serveRPC(a api.FullNode, stop node.StopFunc, addr string) error {
 	signal.Notify(sigChan, syscall.SIGTERM, syscall.SIGINT)
 
 	return srv.ListenAndServe()
+}
+
+func handleImport(a *impl.FullNodeAPI) func(w http.ResponseWriter, r *http.Request) {
+	return func(w http.ResponseWriter, r *http.Request) {
+		if r.Method != "PUT" {
+			w.WriteHeader(404)
+			return
+		}
+		if !api.HasPerm(r.Context(), api.PermWrite) {
+			w.WriteHeader(401)
+			json.NewEncoder(w).Encode(struct{ Error string }{"unauthorized: missing write permission"})
+			return
+		}
+
+		c, err := a.ClientImportLocal(r.Context(), r.Body)
+		if err != nil {
+			w.WriteHeader(500)
+			json.NewEncoder(w).Encode(struct{ Error string }{err.Error()})
+			return
+		}
+		w.WriteHeader(200)
+		err = json.NewEncoder(w).Encode(struct{ Cid cid.Cid }{c})
+		if err != nil {
+			log.Errorf("/rest/v0/import: Writing response failed: %+v", err)
+			return
+		}
+	}
 }

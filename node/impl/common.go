@@ -27,7 +27,7 @@ type jwtPayload struct {
 	Allow []string
 }
 
-func (a *CommonAPI) AuthVerify(ctx context.Context, token string) ([]string, error) {
+func (a *CommonAPI) AuthVerify(ctx context.Context, token string) ([]api.Permission, error) {
 	var payload jwtPayload
 	if _, err := jwt.Verify([]byte(token), (*jwt.HMACSHA)(a.APISecret), &payload); err != nil {
 		return nil, xerrors.Errorf("JWT Verification failed: %w", err)
@@ -36,7 +36,7 @@ func (a *CommonAPI) AuthVerify(ctx context.Context, token string) ([]string, err
 	return payload.Allow, nil
 }
 
-func (a *CommonAPI) AuthNew(ctx context.Context, perms []string) ([]byte, error) {
+func (a *CommonAPI) AuthNew(ctx context.Context, perms []api.Permission) ([]byte, error) {
 	p := jwtPayload{
 		Allow: perms, // TODO: consider checking validity
 	}

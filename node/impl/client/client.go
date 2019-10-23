@@ -4,6 +4,7 @@ import (
 	"context"
 	"errors"
 	"golang.org/x/xerrors"
+	"io"
 	"os"
 
 	"github.com/ipfs/go-blockservice"
@@ -199,6 +200,30 @@ func (a *API) ClientImport(ctx context.Context, path string) (cid.Cid, error) {
 		CidBuilder: nil,
 		Dagserv:    bufferedDS,
 		NoCopy:     true,
+	}
+
+	db, err := params.New(chunker.NewSizeSplitter(file, int64(build.UnixfsChunkSize)))
+	if err != nil {
+		return cid.Undef, err
+	}
+	nd, err := balanced.Layout(db)
+	if err != nil {
+		return cid.Undef, err
+	}
+
+	return nd.Cid(), bufferedDS.Commit()
+}
+
+func (a *API) ClientImportLocal(ctx context.Context, f io.Reader) (cid.Cid, error) {
+	file := files.NewReaderFile(f)
+
+	bufferedDS := ipld.NewBufferedDAG(ctx, a.LocalDAG)
+
+	params := ihelper.DagBuilderParams{
+		Maxlinks:   build.UnixfsLinksPerLevel,
+		RawLeaves:  true,
+		CidBuilder: nil,
+		Dagserv:    bufferedDS,
 	}
 
 	db, err := params.New(chunker.NewSizeSplitter(file, int64(build.UnixfsChunkSize)))
