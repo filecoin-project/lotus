@@ -18,8 +18,8 @@ var _ = AllPermissions
 
 type CommonStruct struct {
 	Internal struct {
-		AuthVerify func(ctx context.Context, token string) ([]string, error) `perm:"read"`
-		AuthNew    func(ctx context.Context, perms []string) ([]byte, error) `perm:"admin"`
+		AuthVerify func(ctx context.Context, token string) ([]Permission, error) `perm:"read"`
+		AuthNew    func(ctx context.Context, perms []Permission) ([]byte, error) `perm:"admin"`
 
 		NetConnectedness func(context.Context, peer.ID) (network.Connectedness, error) `perm:"read"`
 		NetPeers         func(context.Context) ([]peer.AddrInfo, error)                `perm:"read"`
@@ -76,7 +76,7 @@ type FullNodeStruct struct {
 
 		MpoolGetNonce func(context.Context, address.Address) (uint64, error) `perm:"read"`
 
-		ClientImport      func(ctx context.Context, path string) (cid.Cid, error)                                                                     `perm:"write"`
+		ClientImport      func(ctx context.Context, path string) (cid.Cid, error)                                                                     `perm:"admin"`
 		ClientListImports func(ctx context.Context) ([]Import, error)                                                                                 `perm:"write"`
 		ClientHasLocal    func(ctx context.Context, root cid.Cid) (bool, error)                                                                       `perm:"write"`
 		ClientFindData    func(ctx context.Context, root cid.Cid) ([]QueryOffer, error)                                                               `perm:"read"`
@@ -132,11 +132,11 @@ type StorageMinerStruct struct {
 	}
 }
 
-func (c *CommonStruct) AuthVerify(ctx context.Context, token string) ([]string, error) {
+func (c *CommonStruct) AuthVerify(ctx context.Context, token string) ([]Permission, error) {
 	return c.Internal.AuthVerify(ctx, token)
 }
 
-func (c *CommonStruct) AuthNew(ctx context.Context, perms []string) ([]byte, error) {
+func (c *CommonStruct) AuthNew(ctx context.Context, perms []Permission) ([]byte, error) {
 	return c.Internal.AuthNew(ctx, perms)
 }
 

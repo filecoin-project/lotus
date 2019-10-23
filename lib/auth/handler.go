@@ -12,7 +12,7 @@ import (
 var log = logging.Logger("auth")
 
 type Handler struct {
-	Verify func(ctx context.Context, token string) ([]string, error)
+	Verify func(ctx context.Context, token string) ([]api.Permission, error)
 	Next   http.HandlerFunc
 }
 
