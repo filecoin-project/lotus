@@ -2,6 +2,7 @@ package peermgr
 
 import (
 	"context"
+	"github.com/filecoin-project/lotus/node/modules/dtypes"
 	"sync"
 	"time"
 
@@ -41,12 +42,16 @@ type PeerMgr struct {
 	notifee *net.NotifyBundle
 }
 
-func NewPeerMgr(h host.Host, dht *dht.IpfsDHT) *PeerMgr {
+func NewPeerMgr(h host.Host, dht *dht.IpfsDHT, bootstrap dtypes.BootstrapPeers) *PeerMgr {
 	pm := &PeerMgr{
-		peers:       make(map[peer.ID]struct{}),
+		h:             h,
+		dht:           dht,
+		bootstrappers: bootstrap,
+
+		peers: make(map[peer.ID]struct{}),
+
 		maxFilPeers: MaxFilPeers,
 		minFilPeers: MinFilPeers,
-		h:           h,
 	}
 
 	pm.notifee = &net.NotifyBundle{
