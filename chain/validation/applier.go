@@ -2,11 +2,11 @@ package validation
 
 import (
 	"context"
+
 	vchain "github.com/filecoin-project/chain-validation/pkg/chain"
 	vstate "github.com/filecoin-project/chain-validation/pkg/state"
 
 	"github.com/filecoin-project/go-lotus/chain/address"
-	lstate "github.com/filecoin-project/go-lotus/chain/state"
 	"github.com/filecoin-project/go-lotus/chain/types"
 	"github.com/filecoin-project/go-lotus/chain/vm"
 )
@@ -41,9 +41,10 @@ func (a *Applier) ApplyMessage(eCtx *vchain.ExecutionContext, state vstate.Wrapp
 		return vchain.MessageReceipt{}, err
 	}
 
-	// FIXME this is pretty hacky (it works), flushing the lotusVM fails becasue the root of lotusVM.StateTree is not
-	// its buffered blockstore.
-	st.StateTree = lotusVM.StateTree().(*lstate.StateTree)
+	st.stateRoot, err = lotusVM.Flush(ctx)
+	if err != nil {
+		return vchain.MessageReceipt{}, err
+	}
 
 	mr := vchain.MessageReceipt{
 		ExitCode:    ret.ExitCode,

@@ -86,6 +86,7 @@ require (
 	github.com/stretchr/testify v1.4.0
 	github.com/whyrusleeping/bencher v0.0.0-20190829221104-bb6607aa8bba
 	github.com/whyrusleeping/cbor-gen v0.0.0-20191001154818-b4b5288fcb86
+	github.com/whyrusleeping/go-smux-yamux v2.0.9+incompatible // indirect
 	github.com/whyrusleeping/multiaddr-filter v0.0.0-20160516205228-e903e4adabd7
 	github.com/whyrusleeping/pubsub v0.0.0-20131020042734-02de8aa2db3d
 	go.opencensus.io v0.22.0

@@ -3,11 +3,13 @@ package validation
 import (
 	"context"
 	"fmt"
+	"math/rand"
+
+	"github.com/pkg/errors"
+
 	"github.com/filecoin-project/go-lotus/chain/actors"
 	"github.com/filecoin-project/go-lotus/chain/gen"
 	"github.com/filecoin-project/go-lotus/chain/vm"
-	"github.com/pkg/errors"
-	"math/rand"
 
 	"github.com/ipfs/go-cid"
 	"github.com/ipfs/go-datastore"
@@ -24,13 +26,19 @@ import (
 )
 
 type StateWrapper struct {
-	bs   blockstore.Blockstore
+	// The blockstore underlying the state tree and storage.
+	bs blockstore.Blockstore
+	// HAMT-CBOR store on top of the blockstore.
+	cst *hamt.CborIpldStore
+	// A store for encryption keys.
 	keys *keyStore
 
-
-	*state.StateTree
-	*directStorage
+	// CID of the root of the state tree.
 	stateRoot cid.Cid
+	// The root node of the state tree, essentially a cache of LoadStateTree(cst, stateRoot)
+	//tree *state.StateTree
+	// A look-through storage implementation.
+	storage *directStorage
 }
 
 var _ vstate.Wrapper = &StateWrapper{}
@@ -42,26 +50,16 @@ func NewState() *StateWrapper {
 	if err != nil {
 		panic(err) // Never returns error, the error return should be removed.
 	}
-	storageImpl := &directStorage{cst}
-
-	sr, err := treeImpl.Flush()
+	root, err := treeImpl.Flush()
 	if err != nil {
 		panic(err)
 	}
-	return &StateWrapper{bs, newKeyStore(), treeImpl, storageImpl, sr}
+	storageImpl := &directStorage{cst}
+	return &StateWrapper{bs, cst, newKeyStore(), root, storageImpl}
 }
 
 func (s *StateWrapper) Cid() cid.Cid {
 	return s.stateRoot
-}
-
-// TODO very unsure about this, corrently its the easiest way to handle updating the statewrappers CID.
-func (s *StateWrapper) updateStateRoot() {
-	newRoot, err := s.StateTree.Flush()
-	if err != nil {
-		panic(err)
-	}
-	s.stateRoot = newRoot
 }
 
 func (s *StateWrapper) Actor(addr vstate.Address) (vstate.Actor, error) {
@@ -69,7 +67,11 @@ func (s *StateWrapper) Actor(addr vstate.Address) (vstate.Actor, error) {
 	if err != nil {
 		return nil, err
 	}
-	fcActor, err := s.StateTree.GetActor(vaddr)
+	tree, err := state.LoadStateTree(s.cst, s.stateRoot)
+	if err != nil {
+		return nil, err
+	}
+	fcActor, err := tree.GetActor(vaddr)
 	if err != nil {
 		return nil, err
 	}
@@ -77,7 +79,7 @@ func (s *StateWrapper) Actor(addr vstate.Address) (vstate.Actor, error) {
 }
 
 func (s *StateWrapper) Storage(addr vstate.Address) (vstate.Storage, error) {
-	return s.directStorage, nil
+	return s.storage, nil
 }
 
 func (s *StateWrapper) NewAccountAddress() (vstate.Address, error) {
@@ -89,43 +91,41 @@ func (s *StateWrapper) SetActor(addr vstate.Address, code cid.Cid, balance vstat
 	if err != nil {
 		return nil, nil, err
 	}
+	tree, err := state.LoadStateTree(s.cst, s.stateRoot)
+	if err != nil {
+		return nil, nil, err
+	}
 	// singleton actors get special handling
 	switch addrInt {
-
 	case actors.InitActorAddress:
 		initact, err := gen.SetupInitActor(s.bs, nil)
-		if err != nil{
+		if err != nil {
 			return nil, nil, err
 		}
-		if err := s.StateTree.SetActor(actors.InitActorAddress, initact); err != nil{
-			return nil, nil, errors.Errorf("set init actor actor: %w", err)
+		if err := tree.SetActor(actors.InitActorAddress, initact); err != nil {
+			return nil, nil, errors.Wrapf(err, "set init actor")
 		}
-		s.updateStateRoot()
-		return &actorWrapper{*initact}, s.directStorage, nil
 
+		return &actorWrapper{*initact}, s.storage, s.flush(tree)
 	case actors.StorageMarketAddress:
 		smact, err := gen.SetupStorageMarketActor(s.bs)
-		if err != nil{
+		if err != nil {
 			return nil, nil, err
 		}
-		if err := s.StateTree.SetActor(actors.StorageMarketAddress, smact); err != nil{
-			return nil, nil, errors.Errorf("set network storage market actor: %w", err)
+		if err := tree.SetActor(actors.StorageMarketAddress, smact); err != nil {
+			return nil, nil, errors.Wrapf(err, "set network storage market actor")
 		}
-		s.updateStateRoot()
-		return &actorWrapper{*smact}, s.directStorage, nil
-
+		return &actorWrapper{*smact}, s.storage, s.flush(tree)
 	case actors.NetworkAddress:
 		ntwkact := &types.Actor{
 			Code:    code,
 			Balance: types.BigInt{balance},
 			Head:    vm.EmptyObjectCid,
 		}
-		if err := s.StateTree.SetActor(actors.NetworkAddress, ntwkact); err != nil {
-			return nil, nil, errors.Errorf("set network actor: %w", err)
+		if err := tree.SetActor(actors.NetworkAddress, ntwkact); err != nil {
+			return nil, nil, errors.Wrapf(err, "set network actor")
 		}
-		s.updateStateRoot()
-		return &actorWrapper{*ntwkact}, s.directStorage, nil
-
+		return &actorWrapper{*ntwkact}, s.storage, s.flush(tree)
 	default:
 		actr := &actorWrapper{types.Actor{
 			Code:    code,
@@ -133,17 +133,22 @@ func (s *StateWrapper) SetActor(addr vstate.Address, code cid.Cid, balance vstat
 			Head:    vm.EmptyObjectCid,
 		}}
 		// The ID-based address is dropped here, but should be reported back to the caller.
-		_, err = s.StateTree.RegisterNewAddress(addrInt, &actr.Actor)
-		if err != nil{
-			return nil, nil, errors.Errorf("register new address for actor: %w", err)
+		_, err = tree.RegisterNewAddress(addrInt, &actr.Actor)
+		if err != nil {
+			return nil, nil, errors.Wrapf(err, "register new address for actor")
 		}
-		s.updateStateRoot()
-		return actr, s.directStorage, nil
+		return actr, s.storage, s.flush(tree)
 	}
 }
 
 func (s *StateWrapper) Signer() *keyStore {
 	return s.keys
+}
+
+// Flushes a state tree to storage and sets this state's root to that tree's root CID.
+func (s *StateWrapper) flush(tree *state.StateTree) (err error) {
+	s.stateRoot, err = tree.Flush()
+	return
 }
 
 //
