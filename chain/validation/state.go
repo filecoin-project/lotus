@@ -94,7 +94,7 @@ func (s *StateWrapper) NewAccountAddress() (vstate.Address, error) {
 	return s.keys.NewAddress()
 }
 
-func (s *StateWrapper) SetActor(addr vstate.Address, code vstate.ActorCodeCid, balance vstate.AttoFIL) (vstate.Actor, vstate.Storage, error) {
+func (s *StateWrapper) SetActor(addr vstate.Address, code vstate.ActorCodeID, balance vstate.AttoFIL) (vstate.Actor, vstate.Storage, error) {
 	addrInt, err := address.NewFromBytes([]byte(addr))
 	if err != nil {
 		return nil, nil, err
@@ -120,7 +120,7 @@ func (s *StateWrapper) SetActor(addr vstate.Address, code vstate.ActorCodeCid, b
 	return actr, s.storage, s.flush(tree)
 }
 
-func (s *StateWrapper) SetSingletonActor(addr vstate.SingletonActorAddress, balance vstate.AttoFIL) (vstate.Actor, vstate.Storage, error){
+func (s *StateWrapper) SetSingletonActor(addr vstate.SingletonActorID, balance vstate.AttoFIL) (vstate.Actor, vstate.Storage, error){
 	vaddr, err := fromSingletonAddress(addr)
 	if err != nil {
 		return nil, nil, err
@@ -277,7 +277,7 @@ func (d *directStorage) Get(cid cid.Cid) ([]byte, error) {
 	panic("implement me")
 }
 
-func fromActorCode(code vstate.ActorCodeCid) (cid.Cid, error) {
+func fromActorCode(code vstate.ActorCodeID) (cid.Cid, error) {
 	switch code {
 	case vstate.AccountActorCodeCid:
 		return actors.AccountActorCodeCid, nil
@@ -292,7 +292,7 @@ func fromActorCode(code vstate.ActorCodeCid) (cid.Cid, error) {
 	}
 }
 
-func fromSingletonAddress(addr vstate.SingletonActorAddress) (vstate.Address, error) {
+func fromSingletonAddress(addr vstate.SingletonActorID) (vstate.Address, error) {
 	switch addr {
 	case vstate.InitAddress:
 		return vstate.Address(actors.InitActorAddress.Bytes()), nil
