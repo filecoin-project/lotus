@@ -127,7 +127,6 @@ func (st *StateTree) Flush() (cid.Cid, error) {
 	if err := st.root.Flush(context.TODO()); err != nil {
 		return cid.Undef, err
 	}
-
 	return st.Store.Put(context.TODO(), st.root)
 }
 

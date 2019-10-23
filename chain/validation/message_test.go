@@ -9,6 +9,7 @@ import (
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 
+	"github.com/filecoin-project/go-lotus/chain/actors"
 	"github.com/filecoin-project/go-lotus/chain/types"
 	"github.com/filecoin-project/go-lotus/chain/wallet"
 )
@@ -34,6 +35,6 @@ func TestMessageFactory(t *testing.T) {
 	msg := m.(*types.Message)
 	assert.Equal(t, m, msg)
 	assert.Equal(t, sender, msg.From)
-	assert.Equal(t, state.BurntFundsAddress, state.Address(msg.To.Bytes()))
+	assert.Equal(t, actors.BurntFundsAddress, msg.To)
 	assert.Equal(t, types.NewInt(1), msg.Value)
 }
