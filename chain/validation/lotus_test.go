@@ -18,10 +18,7 @@ func TestLotusExample(t *testing.T) {
 	factory := NewFactories()
 	drv := suites.NewStateDriver(t, factory.NewState())
 
-	// create the init actor
-	initActorAddress, err := state.NewIDAddress(0)
-	require.NoError(t, err)
-	_, _, err = drv.State().SetActor(initActorAddress, state.InitActorCodeCid, state.AttoFIL(big.NewInt(0)))
+	_, _, err := drv.State().SetSingletonActor(state.InitAddress, big.NewInt(0))
 	require.NoError(t, err)
 
 	alice := drv.NewAccountActor(2000)

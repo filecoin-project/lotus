@@ -25,9 +25,12 @@ func TestMessageFactory(t *testing.T) {
 	p := chain.NewMessageProducer(factory, gasLimit, gasPrice)
 
 	sender, err := wallet.GenerateKey(types.KTSecp256k1)
-
 	require.NoError(t, err)
-	m, err := p.Transfer(state.Address(sender.Bytes()), state.BurntFundsAddress,0, 1)
+
+	bfAddr, err := factory.FromSingletonAddress(state.BurntFundsAddress)
+	require.NoError(t, err)
+
+	m, err := p.Transfer(state.Address(sender.Bytes()), bfAddr,0, 1)
 	require.NoError(t, err)
 
 	messages := p.Messages()

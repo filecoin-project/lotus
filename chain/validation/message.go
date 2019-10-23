@@ -57,6 +57,10 @@ func (mf *MessageFactory) MakeMessage(from, to state.Address, method chain.Metho
 	return msg, nil
 }
 
+func (mf *MessageFactory) FromSingletonAddress(addr state.SingletonActorAddress) (state.Address, error) {
+	return fromSingletonAddress(addr)
+}
+
 // Maps method enumeration values to method names.
 // This will change to a mapping to method ids when method dispatch is updated to use integers.
 var methods = []uint64{
