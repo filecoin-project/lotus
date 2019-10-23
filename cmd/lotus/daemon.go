@@ -4,6 +4,7 @@ package main
 
 import (
 	"context"
+	"github.com/filecoin-project/lotus/peermgr"
 	"io/ioutil"
 
 	"github.com/multiformats/go-multiaddr"
@@ -95,8 +96,9 @@ var DaemonCmd = &cli.Command{
 				return lr.SetAPIEndpoint(apima)
 			}),
 
-			node.ApplyIf(func(s *node.Settings) bool { return cctx.Bool("bootstrap") },
-				node.Override(node.BootstrapKey, modules.Bootstrap),
+			node.ApplyIf(func(s *node.Settings) bool { return !cctx.Bool("bootstrap") },
+				node.Unset(node.RunPeerMgrKey),
+				node.Unset(new(*peermgr.PeerMgr)),
 			),
 		)
 		if err != nil {

@@ -3,24 +3,19 @@ package modules
 import (
 	"context"
 	"crypto/rand"
+	"github.com/filecoin-project/lotus/api"
 	"github.com/filecoin-project/lotus/build"
+	"github.com/filecoin-project/lotus/chain/types"
 	"github.com/filecoin-project/lotus/lib/addrutil"
-	"github.com/filecoin-project/lotus/node/modules/helpers"
+	"github.com/filecoin-project/lotus/node/modules/dtypes"
+	"github.com/filecoin-project/lotus/node/repo"
 	"github.com/gbrlsnchs/jwt/v3"
 	logging "github.com/ipfs/go-log"
-	"github.com/libp2p/go-libp2p-core/host"
 	"github.com/libp2p/go-libp2p-core/peerstore"
 	record "github.com/libp2p/go-libp2p-record"
-	"go.uber.org/fx"
 	"golang.org/x/xerrors"
 	"io"
 	"io/ioutil"
-	"time"
-
-	"github.com/filecoin-project/lotus/api"
-	"github.com/filecoin-project/lotus/chain/types"
-	"github.com/filecoin-project/lotus/node/modules/dtypes"
-	"github.com/filecoin-project/lotus/node/repo"
 )
 
 var log = logging.Logger("modules")
@@ -85,41 +80,4 @@ func ConfigBootstrap(peers []string) func() (dtypes.BootstrapPeers, error) {
 
 func BuiltinBootstrap() (dtypes.BootstrapPeers, error) {
 	return build.BuiltinBootstrap()
-}
-
-func Bootstrap(mctx helpers.MetricsCtx, lc fx.Lifecycle, host host.Host, pinfos dtypes.BootstrapPeers) {
-	ctx, cancel := context.WithCancel(mctx)
-
-	lc.Append(fx.Hook{
-		OnStart: func(_ context.Context) error {
-			go func() {
-				for {
-					sctx, cancel := context.WithTimeout(ctx, 2*time.Second)
-					<-sctx.Done()
-					cancel()
-
-					if ctx.Err() != nil {
-						return
-					}
-
-					if len(host.Network().Conns()) > 0 {
-						continue
-					}
-
-					log.Warn("No peers connected, performing automatic bootstrap")
-
-					for _, pi := range pinfos {
-						if err := host.Connect(ctx, pi); err != nil {
-							log.Warn("bootstrap connect failed: ", err)
-						}
-					}
-				}
-			}()
-			return nil
-		},
-		OnStop: func(_ context.Context) error {
-			cancel()
-			return nil
-		},
-	})
 }
