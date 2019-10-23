@@ -94,7 +94,7 @@ func (ia InitActor) Exec(act *types.Actor, vmctx types.VMContext, p *ExecParams)
 			"cannot launch actor instance that is not a builtin actor")
 	}
 
-	// Ensure that singeltons can be only launched once.
+	// Ensure that singletons can be only launched once.
 	// TODO: do we want to enforce this? If so how should actors be marked as such?
 	if IsSingletonActor(p.Code) {
 		return nil, aerrors.New(1, "cannot launch another actor of this type")
