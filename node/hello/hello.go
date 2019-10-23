@@ -3,6 +3,7 @@ package hello
 import (
 	"context"
 	"fmt"
+	"go.uber.org/fx"
 
 	"github.com/ipfs/go-cid"
 	cbor "github.com/ipfs/go-ipld-cbor"
@@ -40,13 +41,23 @@ type Service struct {
 	pmgr   *peermgr.PeerMgr
 }
 
-func NewHelloService(h host.Host, cs *store.ChainStore, syncer *chain.Syncer, pmgr *peermgr.PeerMgr) *Service {
+type MaybePeerMgr struct {
+	fx.In
+
+	Mgr *peermgr.PeerMgr `optional:"true"`
+}
+
+func NewHelloService(h host.Host, cs *store.ChainStore, syncer *chain.Syncer, pmgr MaybePeerMgr) *Service {
+	if pmgr.Mgr == nil {
+		log.Warn("running without peer manager")
+	}
+
 	return &Service{
 		newStream: h.NewStream,
 
 		cs:     cs,
 		syncer: syncer,
-		pmgr:   pmgr,
+		pmgr:   pmgr.Mgr,
 	}
 }
 
@@ -77,7 +88,9 @@ func (hs *Service) HandleStream(s inet.Stream) {
 
 	log.Infof("Got new tipset through Hello: %s from %s", ts.Cids(), s.Conn().RemotePeer())
 	hs.syncer.InformNewHead(s.Conn().RemotePeer(), ts)
-	hs.pmgr.AddFilecoinPeer(s.Conn().RemotePeer())
+	if hs.pmgr != nil {
+		hs.pmgr.AddFilecoinPeer(s.Conn().RemotePeer())
+	}
 }
 
 func (hs *Service) SayHello(ctx context.Context, pid peer.ID) error {

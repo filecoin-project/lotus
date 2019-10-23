@@ -3,7 +3,6 @@ package node
 import (
 	"context"
 	"errors"
-	"reflect"
 	"time"
 
 	blockstore "github.com/ipfs/go-ipfs-blockstore"
@@ -122,26 +121,6 @@ type Settings struct {
 
 	Online bool // Online option applied
 	Config bool // Config option applied
-}
-
-// Override option changes constructor for a given type
-func Override(typ, constructor interface{}) Option {
-	return func(s *Settings) error {
-		if i, ok := typ.(invoke); ok {
-			s.invokes[i] = fx.Invoke(constructor)
-			return nil
-		}
-
-		if c, ok := typ.(special); ok {
-			s.modules[c] = fx.Provide(constructor)
-			return nil
-		}
-		ctor := as(constructor, typ)
-		rt := reflect.TypeOf(typ).Elem()
-
-		s.modules[rt] = fx.Provide(ctor)
-		return nil
-	}
 }
 
 var defConf = config.Default()
@@ -399,15 +378,9 @@ func New(ctx context.Context, opts ...Option) (StopFunc, error) {
 
 // In-memory / testing
 
-func randomIdentity() Option {
-	sk, pk, err := ci.GenerateKeyPair(ci.RSA, 512)
-	if err != nil {
-		return Error(err)
-	}
-
+func Test() Option {
 	return Options(
-		Override(new(ci.PrivKey), sk),
-		Override(new(ci.PubKey), pk),
-		Override(new(peer.ID), peer.IDFromPublicKey),
+		Unset(RunPeerMgrKey),
+		Unset(new(*peermgr.PeerMgr)),
 	)
 }

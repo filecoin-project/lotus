@@ -211,6 +211,7 @@ func (tu *syncTestUtil) addSourceNode(gen int) {
 		node.Online(),
 		node.Repo(sourceRepo),
 		node.MockHost(tu.mn),
+		node.Test(),
 
 		node.Override(new(modules.Genesis), modules.LoadGenesis(genesis)),
 	)
@@ -242,6 +243,7 @@ func (tu *syncTestUtil) addClientNode() int {
 		node.Online(),
 		node.Repo(repo.NewMemory(nil)),
 		node.MockHost(tu.mn),
+		node.Test(),
 
 		node.Override(new(modules.Genesis), modules.LoadGenesis(tu.genesis)),
 	)

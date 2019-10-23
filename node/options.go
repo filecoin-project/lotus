@@ -1,6 +1,7 @@
 package node
 
 import (
+	"go.uber.org/fx"
 	"reflect"
 )
 
@@ -34,6 +35,44 @@ func ApplyIf(check func(s *Settings) bool, opts ...Option) Option {
 		if check(s) {
 			return Options(opts...)(s)
 		}
+		return nil
+	}
+}
+
+// Override option changes constructor for a given type
+func Override(typ, constructor interface{}) Option {
+	return func(s *Settings) error {
+		if i, ok := typ.(invoke); ok {
+			s.invokes[i] = fx.Invoke(constructor)
+			return nil
+		}
+
+		if c, ok := typ.(special); ok {
+			s.modules[c] = fx.Provide(constructor)
+			return nil
+		}
+		ctor := as(constructor, typ)
+		rt := reflect.TypeOf(typ).Elem()
+
+		s.modules[rt] = fx.Provide(ctor)
+		return nil
+	}
+}
+
+func Unset(typ interface{}) Option {
+	return func(s *Settings) error {
+		if i, ok := typ.(invoke); ok {
+			s.invokes[i] = nil
+			return nil
+		}
+
+		if c, ok := typ.(special); ok {
+			delete(s.modules, c)
+			return nil
+		}
+		rt := reflect.TypeOf(typ).Elem()
+
+		delete(s.modules, rt)
 		return nil
 	}
 }

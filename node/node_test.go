@@ -91,6 +91,7 @@ func testStorageNode(ctx context.Context, t *testing.T, waddr address.Address, a
 		node.StorageMiner(&minerapi),
 		node.Online(),
 		node.Repo(r),
+		node.Test(),
 
 		node.Override(new(*sectorbuilder.SectorBuilderConfig), modules.SectorBuilderConfig(secbpath)),
 		node.Override(new(api.FullNode), tnd),
@@ -133,6 +134,7 @@ func builder(t *testing.T, nFull int, storage []int) ([]test.TestNode, []test.Te
 			node.Online(),
 			node.Repo(repo.NewMemory(nil)),
 			node.MockHost(mn),
+			node.Test(),
 
 			node.Override(new(*miner.Miner), miner.NewTestMiner(mineBlock)),
 
