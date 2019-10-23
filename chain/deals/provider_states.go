@@ -80,7 +80,7 @@ func (p *Provider) accept(ctx context.Context, deal MinerDeal) (func(*MinerDeal)
 	// check market funds
 	clientMarketBalance, err := p.full.StateMarketBalance(ctx, deal.Proposal.Client, nil)
 	if err != nil {
-		return nil, err
+		return nil, xerrors.Errorf("getting client market balance failed: %w", err)
 	}
 
 	// This doesn't guarantee that the client won't withdraw / lock those funds
@@ -89,9 +89,9 @@ func (p *Provider) accept(ctx context.Context, deal MinerDeal) (func(*MinerDeal)
 		return nil, xerrors.New("clientMarketBalance.Available too small")
 	}
 
-	providerMarketBalance, err := p.full.StateMarketBalance(ctx, deal.Proposal.Client, nil)
+	providerMarketBalance, err := p.full.StateMarketBalance(ctx, deal.Proposal.Provider, nil)
 	if err != nil {
-		return nil, err
+		return nil, xerrors.Errorf("getting provider market balance failed: %w", err)
 	}
 
 	// TODO: this needs to be atomic
@@ -124,11 +124,12 @@ func (p *Provider) accept(ctx context.Context, deal MinerDeal) (func(*MinerDeal)
 	}
 
 	log.Info("fetching data for a deal")
-	err = p.sendSignedResponse(Response{
+	mcid := smsg.Cid()
+	err = p.sendSignedResponse(&Response{
 		State:          api.DealAccepted,
 		Message:        "",
 		Proposal:       deal.ProposalCid,
-		PublishMessage: smsg.Cid(),
+		PublishMessage: &mcid,
 	})
 	if err != nil {
 		return nil, err
@@ -140,7 +141,7 @@ func (p *Provider) accept(ctx context.Context, deal MinerDeal) (func(*MinerDeal)
 // STAGED
 
 func (p *Provider) staged(ctx context.Context, deal MinerDeal) (func(*MinerDeal), error) {
-	err := p.sendSignedResponse(Response{
+	err := p.sendSignedResponse(&Response{
 		State:    api.DealStaged,
 		Proposal: deal.ProposalCid,
 	})
@@ -205,7 +206,7 @@ func (p *Provider) waitSealed(ctx context.Context, deal MinerDeal) (sectorbuilde
 }
 
 func (p *Provider) sealing(ctx context.Context, deal MinerDeal) (func(*MinerDeal), error) {
-	err := p.sendSignedResponse(Response{
+	err := p.sendSignedResponse(&Response{
 		State:    api.DealSealing,
 		Proposal: deal.ProposalCid,
 	})
@@ -231,11 +232,11 @@ func (p *Provider) complete(ctx context.Context, deal MinerDeal) (func(*MinerDea
 		log.Warnf("Waiting for sector commitment message: %s", err)
 	}
 
-	err = p.sendSignedResponse(Response{
+	err = p.sendSignedResponse(&Response{
 		State:    api.DealComplete,
 		Proposal: deal.ProposalCid,
 
-		CommitMessage: mcid,
+		CommitMessage: &mcid,
 	})
 	if err != nil {
 		log.Warnf("Sending deal response failed: %s", err)

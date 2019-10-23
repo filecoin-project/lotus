@@ -38,7 +38,7 @@ func (c *Client) new(ctx context.Context, deal ClientDeal) error {
 	}
 
 	// TODO: spec says it's optional
-	pubmsg, err := c.chain.GetMessage(resp.PublishMessage)
+	pubmsg, err := c.chain.GetMessage(*resp.PublishMessage)
 	if err != nil {
 		return xerrors.Errorf("getting deal pubsish message: %w", err)
 	}
@@ -56,7 +56,7 @@ func (c *Client) new(ctx context.Context, deal ClientDeal) error {
 	}
 
 	// TODO: timeout
-	_, ret, err := c.sm.WaitForMessage(ctx, resp.PublishMessage)
+	_, ret, err := c.sm.WaitForMessage(ctx, *resp.PublishMessage)
 	if err != nil {
 		return xerrors.Errorf("Waiting for deal publish message: %w", err)
 	}

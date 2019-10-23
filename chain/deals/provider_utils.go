@@ -12,7 +12,6 @@ import (
 	"github.com/filecoin-project/lotus/lib/cborrpc"
 
 	"github.com/ipfs/go-cid"
-	cbor "github.com/ipfs/go-ipld-cbor"
 	inet "github.com/libp2p/go-libp2p-core/network"
 	"golang.org/x/xerrors"
 )
@@ -29,7 +28,7 @@ func (p *Provider) failDeal(id cid.Cid, cerr error) {
 
 	log.Errorf("deal %s failed: %s", id, cerr)
 
-	err := p.sendSignedResponse(Response{
+	err := p.sendSignedResponse(&Response{
 		State:    api.DealFailed,
 		Message:  cerr.Error(),
 		Proposal: id,
@@ -67,13 +66,13 @@ func (p *Provider) readProposal(s inet.Stream) (proposal actors.StorageDealPropo
 	return
 }
 
-func (p *Provider) sendSignedResponse(resp Response) error {
+func (p *Provider) sendSignedResponse(resp *Response) error {
 	s, ok := p.conns[resp.Proposal]
 	if !ok {
 		return xerrors.New("couldn't send response: not connected")
 	}
 
-	msg, err := cbor.DumpObject(&resp)
+	msg, err := cborrpc.Dump(resp)
 	if err != nil {
 		return xerrors.Errorf("serializing response: %w", err)
 	}
@@ -88,8 +87,8 @@ func (p *Provider) sendSignedResponse(resp Response) error {
 		return xerrors.Errorf("failed to sign response message: %w", err)
 	}
 
-	signedResponse := SignedResponse{
-		Response:  resp,
+	signedResponse := &SignedResponse{
+		Response:  *resp,
 		Signature: sig,
 	}
 

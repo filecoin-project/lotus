@@ -46,7 +46,7 @@ type Client struct {
 	deals ClientStateStore
 	conns map[cid.Cid]inet.Stream
 
-	incoming chan ClientDeal
+	incoming chan *ClientDeal
 	updated  chan clientDealUpdate
 
 	stop    chan struct{}
@@ -71,7 +71,7 @@ func NewClient(sm *stmgr.StateManager, chain *store.ChainStore, h host.Host, w *
 		deals: ClientStateStore{StateStore{ds: namespace.Wrap(ds, datastore.NewKey("/deals/client"))}},
 		conns: map[cid.Cid]inet.Stream{},
 
-		incoming: make(chan ClientDeal, 16),
+		incoming: make(chan *ClientDeal, 16),
 		updated:  make(chan clientDealUpdate, 16),
 
 		stop:    make(chan struct{}),
@@ -98,7 +98,7 @@ func (c *Client) Run(ctx context.Context) {
 	}()
 }
 
-func (c *Client) onIncoming(deal ClientDeal) {
+func (c *Client) onIncoming(deal *ClientDeal) {
 	log.Info("incoming deal")
 
 	if _, ok := c.conns[deal.ProposalCid]; ok {
@@ -167,7 +167,7 @@ type ClientDealProposal struct {
 }
 
 func (c *Client) Start(ctx context.Context, p ClientDealProposal) (cid.Cid, error) {
-	proposal := actors.StorageDealProposal{
+	proposal := &actors.StorageDealProposal{
 		PieceRef:           p.Data.Bytes(),
 		PieceSize:          p.DataSize,
 		PieceSerialization: actors.SerializationUnixFSv0,
@@ -179,7 +179,7 @@ func (c *Client) Start(ctx context.Context, p ClientDealProposal) (cid.Cid, erro
 		StorageCollateral:  types.NewInt(p.DataSize), // TODO: real calc
 	}
 
-	if err := api.SignWith(ctx, c.w.Sign, p.Client, &proposal); err != nil {
+	if err := api.SignWith(ctx, c.w.Sign, p.Client, proposal); err != nil {
 		return cid.Undef, xerrors.Errorf("signing deal proposal failed: %w", err)
 	}
 
@@ -199,9 +199,9 @@ func (c *Client) Start(ctx context.Context, p ClientDealProposal) (cid.Cid, erro
 		return cid.Undef, xerrors.Errorf("sending proposal to storage provider failed: %w", err)
 	}
 
-	deal := ClientDeal{
+	deal := &ClientDeal{
 		ProposalCid: proposalNd.Cid(),
-		Proposal:    proposal,
+		Proposal:    *proposal,
 		State:       api.DealUnknown,
 		Miner:       p.MinerID,
 

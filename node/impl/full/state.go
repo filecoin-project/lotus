@@ -233,7 +233,7 @@ func (a *StateAPI) StateListActors(ctx context.Context, ts *types.TipSet) ([]add
 
 func (a *StateAPI) StateMarketBalance(ctx context.Context, addr address.Address, ts *types.TipSet) (actors.StorageParticipantBalance, error) {
 	var state actors.StorageMarketState
-	if _, err := a.StateManager.LoadActorState(ctx, actors.StoragePowerAddress, &state, ts); err != nil {
+	if _, err := a.StateManager.LoadActorState(ctx, actors.StorageMarketAddress, &state, ts); err != nil {
 		return actors.StorageParticipantBalance{}, err
 	}
 	cst := hamt.CSTFromBstore(a.StateManager.ChainStore().Blockstore())
@@ -249,7 +249,7 @@ func (a *StateAPI) StateMarketParticipants(ctx context.Context, ts *types.TipSet
 	out := map[string]actors.StorageParticipantBalance{}
 
 	var state actors.StorageMarketState
-	if _, err := a.StateManager.LoadActorState(ctx, actors.StoragePowerAddress, &state, ts); err != nil {
+	if _, err := a.StateManager.LoadActorState(ctx, actors.StorageMarketAddress, &state, ts); err != nil {
 		return nil, err
 	}
 	cst := hamt.CSTFromBstore(a.StateManager.ChainStore().Blockstore())
@@ -281,7 +281,7 @@ func (a *StateAPI) StateMarketDeals(ctx context.Context, ts *types.TipSet) (map[
 	out := map[string]actors.OnChainDeal{}
 
 	var state actors.StorageMarketState
-	if _, err := a.StateManager.LoadActorState(ctx, actors.StoragePowerAddress, &state, ts); err != nil {
+	if _, err := a.StateManager.LoadActorState(ctx, actors.StorageMarketAddress, &state, ts); err != nil {
 		return nil, err
 	}
 

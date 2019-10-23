@@ -76,13 +76,13 @@ func (st *MinerStateStore) MutateMiner(i cid.Cid, mutator func(*MinerDeal) error
 
 func minerMutator(m func(*MinerDeal) error) func([]byte) ([]byte, error) {
 	return func(in []byte) ([]byte, error) {
-		var deal MinerDeal
-		err := cborrpc.ReadCborRPC(bytes.NewReader(in), &deal)
+		deal := new(MinerDeal)
+		err := cborrpc.ReadCborRPC(bytes.NewReader(in), deal)
 		if err != nil {
 			return nil, err
 		}
 
-		if err := m(&deal); err != nil {
+		if err := m(deal); err != nil {
 			return nil, err
 		}
 
@@ -100,13 +100,13 @@ func (st *ClientStateStore) MutateClient(i cid.Cid, mutator func(*ClientDeal) er
 
 func clientMutator(m func(*ClientDeal) error) func([]byte) ([]byte, error) {
 	return func(in []byte) ([]byte, error) {
-		var deal ClientDeal
-		err := cborrpc.ReadCborRPC(bytes.NewReader(in), &deal)
+		deal := new(ClientDeal)
+		err := cborrpc.ReadCborRPC(bytes.NewReader(in), deal)
 		if err != nil {
 			return nil, err
 		}
 
-		if err := m(&deal); err != nil {
+		if err := m(deal); err != nil {
 			return nil, err
 		}
 

@@ -114,7 +114,7 @@ func (sdp *StorageDealProposal) Verify() error {
 	unsigned := *sdp
 	unsigned.ProposerSignature = nil
 	var buf bytes.Buffer
-	if err := sdp.MarshalCBOR(&buf); err != nil {
+	if err := unsigned.MarshalCBOR(&buf); err != nil {
 		return err
 	}
 

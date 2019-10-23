@@ -141,7 +141,7 @@ func (p *Provider) onIncoming(deal MinerDeal) {
 
 	p.conns[deal.ProposalCid] = deal.s
 
-	if err := p.deals.Begin(deal.ProposalCid, deal); err != nil {
+	if err := p.deals.Begin(deal.ProposalCid, &deal); err != nil {
 		// This can happen when client re-sends proposal
 		p.failDeal(deal.ProposalCid, err)
 		log.Errorf("deal tracking failed: %s", err)
@@ -191,7 +191,7 @@ func (p *Provider) onUpdated(ctx context.Context, update minerDealUpdate) {
 }
 
 func (p *Provider) newDeal(s inet.Stream, proposal actors.StorageDealProposal) (MinerDeal, error) {
-	proposalNd, err := cborrpc.AsIpld(proposal)
+	proposalNd, err := cborrpc.AsIpld(&proposal)
 	if err != nil {
 		return MinerDeal{}, err
 	}

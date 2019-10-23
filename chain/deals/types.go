@@ -23,11 +23,11 @@ type Response struct {
 	Proposal cid.Cid
 
 	// DealAccepted
-	StorageDeal    actors.StorageDeal
-	PublishMessage cid.Cid
+	StorageDeal    *actors.StorageDeal
+	PublishMessage *cid.Cid
 
 	// DealComplete
-	CommitMessage cid.Cid
+	CommitMessage *cid.Cid
 }
 
 // TODO: Do we actually need this to be signed?
