@@ -180,23 +180,23 @@ func (c *Client) Start(ctx context.Context, p ClientDealProposal) (cid.Cid, erro
 	}
 
 	if err := api.SignWith(ctx, c.w.Sign, p.Client, &proposal); err != nil {
-		return cid.Undef, err
+		return cid.Undef, xerrors.Errorf("signing deal proposal failed: %w", err)
 	}
 
 	proposalNd, err := cborrpc.AsIpld(proposal)
 	if err != nil {
-		return cid.Undef, err
+		return cid.Undef, xerrors.Errorf("getting proposal node failed: %w", err)
 	}
 
 	s, err := c.h.NewStream(ctx, p.MinerID, DealProtocolID)
 	if err != nil {
 		s.Reset()
-		return cid.Undef, err
+		return cid.Undef, xerrors.Errorf("connecting to storage provider failed: %w", err)
 	}
 
 	if err := cborrpc.WriteCborRPC(s, proposal); err != nil {
 		s.Reset()
-		return cid.Undef, err
+		return cid.Undef, xerrors.Errorf("sending proposal to storage provider failed: %w", err)
 	}
 
 	deal := ClientDeal{
