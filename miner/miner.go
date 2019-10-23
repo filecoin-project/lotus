@@ -38,7 +38,7 @@ func NewMiner(api api) *Miner {
 		api: api,
 		waitFunc: func(ctx context.Context) error {
 			// Wait around for half the block time in case other parents come in
-			time.Sleep(build.BlockDelay * time.Second / 2)
+			time.Sleep(build.BlockWait * time.Second)
 			return nil
 		},
 	}

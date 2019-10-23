@@ -32,6 +32,9 @@ const MaxVouchersPerDeal = 768 // roughly one voucher per 10h over a year
 // Seconds
 const BlockDelay = 30
 
+// Wait around for half the block time in case other parents come in
+const BlockWait = BlockDelay / 2
+
 // Seconds
 const AllowableClockDrift = BlockDelay * 2
 

@@ -473,7 +473,10 @@ func (syncer *Syncer) ValidateBlock(ctx context.Context, b *types.FullBlock) err
 		return xerrors.Errorf("block was from the future")
 	}
 
-	if h.Timestamp < baseTs.MinTimestamp()+uint64(build.BlockDelay*len(h.Tickets)) {
+	//totalBlockWait and totalNullblocksMineDelay depends on the numbers of null blocks
+	totalBlockWait := uint64(build.BlockWait * len(h.Tickets))
+	totalNullblocksMineDelay := uint64(build.BlockDelay * len(h.Tickets) * (len(h.Tickets) - 1) / 2)
+	if h.Timestamp < baseTs.MinTimestamp()+totalBlockWait+totalNullblocksMineDelay {
 		log.Warn("timestamp funtimes: ", h.Timestamp, baseTs.MinTimestamp(), len(h.Tickets))
 		return xerrors.Errorf("block was generated too soon (h.ts:%d < base.mints:%d + BLOCK_DELAY:%d * tkts.len:%d)", h.Timestamp, baseTs.MinTimestamp(), build.BlockDelay, len(h.Tickets))
 	}
