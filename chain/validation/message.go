@@ -57,7 +57,7 @@ func (mf *MessageFactory) MakeMessage(from, to state.Address, method chain.Metho
 	return msg, nil
 }
 
-func (mf *MessageFactory) FromSingletonAddress(addr state.SingletonActorAddress) (state.Address) {
+func (mf *MessageFactory) FromSingletonAddress(addr state.SingletonActorID) (state.Address) {
 	return fromSingletonAddress(addr)
 }
 

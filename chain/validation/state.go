@@ -47,8 +47,6 @@ func NewState() *StateWrapper {
 	bs := blockstore.NewBlockstore(datastore.NewMapDatastore())
 	cst := hamt.CSTFromBstore(bs)
 	// Put EmptyObjectCid value in the store. When an actor is initially created its Head is set to this value.
-	// Normally this happens in chain/vm/mkactor.go's init function. Without this flushing the state tree fails as this
-	// CID is not found in the store.
 	_, err := cst.Put(context.TODO(), map[string]string{})
 	if err != nil {
 		panic(err)
@@ -118,9 +116,6 @@ func (s *StateWrapper) SetActor(addr vstate.Address, code vstate.ActorCodeID, ba
 
 func (s *StateWrapper) SetSingletonActor(addr vstate.SingletonActorID, balance vstate.AttoFIL) (vstate.Actor, vstate.Storage, error){
 	vaddr := fromSingletonAddress(addr)
-	if err != nil {
-		return nil, nil, err
-	}
 	tree, err := state.LoadStateTree(s.cst, s.stateRoot)
 	if err != nil {
 		return nil, nil, err
