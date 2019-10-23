@@ -16,6 +16,7 @@ import (
 	"github.com/filecoin-project/lotus/chain/store"
 	"github.com/filecoin-project/lotus/chain/types"
 
+	"github.com/Gurpartap/async"
 	amt "github.com/filecoin-project/go-amt-ipld"
 	"github.com/ipfs/go-cid"
 	dstore "github.com/ipfs/go-datastore"
@@ -456,19 +457,7 @@ func (syncer *Syncer) ValidateBlock(ctx context.Context, b *types.FullBlock) err
 		return xerrors.Errorf("load parent tipset failed (%s): %w", h.Parents, err)
 	}
 
-	stateroot, precp, err := syncer.sm.TipSetState(ctx, baseTs)
-	if err != nil {
-		return xerrors.Errorf("get tipsetstate(%d, %s) failed: %w", h.Height, h.Parents, err)
-	}
-
-	if stateroot != h.ParentStateRoot {
-		return xerrors.Errorf("parent state root did not match computed state (%s != %s)", stateroot, h.ParentStateRoot)
-	}
-
-	if precp != h.ParentMessageReceipts {
-		return xerrors.Errorf("parent receipts root did not match computed value (%s != %s)", precp, h.ParentMessageReceipts)
-	}
-
+	// fast checks first
 	if h.Timestamp > uint64(time.Now().Unix()+build.AllowableClockDrift) {
 		return xerrors.Errorf("block was from the future")
 	}
@@ -478,43 +467,97 @@ func (syncer *Syncer) ValidateBlock(ctx context.Context, b *types.FullBlock) err
 		return xerrors.Errorf("block was generated too soon (h.ts:%d < base.mints:%d + BLOCK_DELAY:%d * tkts.len:%d)", h.Timestamp, baseTs.MinTimestamp(), build.BlockDelay, len(h.Tickets))
 	}
 
-	if err := syncer.minerIsValid(ctx, h.Miner, baseTs); err != nil {
-		return xerrors.Errorf("minerIsValid failed: %w", err)
-	}
+	waddrPromise := async.Any(func() (interface{}, error) {
+		stateroot, precp, err := syncer.sm.TipSetState(ctx, baseTs)
+		if err != nil {
+			return nil, xerrors.Errorf("get tipsetstate(%d, %s) failed: %w", h.Height, h.Parents, err)
+		}
 
-	waddr, err := stmgr.GetMinerWorker(ctx, syncer.sm, stateroot, h.Miner)
+		if stateroot != h.ParentStateRoot {
+			return nil, xerrors.Errorf("parent state root did not match computed state (%s != %s)", stateroot, h.ParentStateRoot)
+		}
+
+		if precp != h.ParentMessageReceipts {
+			return nil, xerrors.Errorf("parent receipts root did not match computed value (%s != %s)", precp, h.ParentMessageReceipts)
+		}
+
+		waddr, err := stmgr.GetMinerWorker(ctx, syncer.sm, stateroot, h.Miner)
+		if err != nil {
+			return nil, xerrors.Errorf("GetMinerWorker failed: %w", err)
+		}
+		return waddr, nil
+	})
+
+	minerCheck := async.Err(func() error {
+		if err := syncer.minerIsValid(ctx, h.Miner, baseTs); err != nil {
+			return xerrors.Errorf("minerIsValid failed: %w", err)
+		}
+		return nil
+	})
+
+	waddri, err := waddrPromise.AwaitContext(ctx)
 	if err != nil {
-		return xerrors.Errorf("GetMinerWorker failed: %w", err)
+		return err
 	}
+	waddr := waddri.(address.Address)
 
-	if err := h.CheckBlockSignature(ctx, waddr); err != nil {
-		return xerrors.Errorf("check block signature failed: %w", err)
+	blockSigCheck := async.Err(func() error {
+		if err := h.CheckBlockSignature(ctx, waddr); err != nil {
+			return xerrors.Errorf("check block signature failed: %w", err)
+		}
+		return nil
+	})
+
+	tktsCheck := async.Err(func() error {
+		if err := syncer.validateTickets(ctx, waddr, h.Tickets, baseTs); err != nil {
+			return xerrors.Errorf("validating block tickets failed: %w", err)
+		}
+		return nil
+	})
+
+	eproofCheck := async.Err(func() error {
+		rand, err := syncer.sm.ChainStore().GetRandomness(ctx, baseTs.Cids(), h.Tickets, build.RandomnessLookback)
+		if err != nil {
+			return xerrors.Errorf("failed to get randomness for verifying election proof: %w", err)
+		}
+
+		if err := VerifyElectionProof(ctx, h.ElectionProof, rand, waddr); err != nil {
+			return xerrors.Errorf("checking eproof failed: %w", err)
+		}
+		return nil
+	})
+
+	winnerCheck := async.Err(func() error {
+		mpow, tpow, err := stmgr.GetPower(ctx, syncer.sm, baseTs, h.Miner)
+		if err != nil {
+			return xerrors.Errorf("failed getting power: %w", err)
+		}
+
+		if !types.PowerCmp(h.ElectionProof, mpow, tpow) {
+			return xerrors.Errorf("miner created a block but was not a winner")
+		}
+		return nil
+	})
+
+	msgsCheck := async.Err(func() error {
+		if err := syncer.checkBlockMessages(ctx, b, baseTs); err != nil {
+			return xerrors.Errorf("block had invalid messages: %w", err)
+		}
+		return nil
+	})
+
+	await := []async.ErrorFuture{
+		minerCheck,
+		tktsCheck,
+		blockSigCheck,
+		eproofCheck,
+		winnerCheck,
+		msgsCheck,
 	}
-
-	if err := syncer.validateTickets(ctx, waddr, h.Tickets, baseTs); err != nil {
-		return xerrors.Errorf("validating block tickets failed: %w", err)
-	}
-
-	rand, err := syncer.sm.ChainStore().GetRandomness(ctx, baseTs.Cids(), h.Tickets, build.RandomnessLookback)
-	if err != nil {
-		return xerrors.Errorf("failed to get randomness for verifying election proof: %w", err)
-	}
-
-	if err := VerifyElectionProof(ctx, h.ElectionProof, rand, waddr); err != nil {
-		return xerrors.Errorf("checking eproof failed: %w", err)
-	}
-
-	mpow, tpow, err := stmgr.GetPower(ctx, syncer.sm, baseTs, h.Miner)
-	if err != nil {
-		return xerrors.Errorf("failed getting power: %w", err)
-	}
-
-	if !types.PowerCmp(h.ElectionProof, mpow, tpow) {
-		return xerrors.Errorf("miner created a block but was not a winner")
-	}
-
-	if err := syncer.checkBlockMessages(ctx, b, baseTs); err != nil {
-		return xerrors.Errorf("block had invalid messages: %w", err)
+	for _, fut := range await {
+		if err := fut.AwaitContext(ctx); err != nil {
+			return err
+		}
 	}
 
 	return nil
@@ -776,6 +819,7 @@ func (syncer *Syncer) syncFork(ctx context.Context, from *types.TipSet, to *type
 
 func (syncer *Syncer) syncMessagesAndCheckState(ctx context.Context, headers []*types.TipSet) error {
 	syncer.syncState.SetHeight(0)
+
 	return syncer.iterFullTipsets(ctx, headers, func(ctx context.Context, fts *store.FullTipSet) error {
 		log.Debugw("validating tipset", "height", fts.TipSet().Height(), "size", len(fts.TipSet().Cids()))
 		if err := syncer.ValidateTipSet(ctx, fts); err != nil {
