@@ -13,7 +13,8 @@ curl -s -XPOST http://admin:admin@$GRAFANA_HOST/api/datasources -H 'Content-Type
 }
 EOF
 
-curl -s -XPOST http://admin:admin@$GRAFANA_HOST/api/dashboards/import -H 'Content-Type: text/json' --data-binary @- << EOF | jq -r "\"http://$GRAFANA_HOST\" + .importedUrl"
+curl -s -XPOST http://admin:admin@$GRAFANA_HOST/api/dashboards/import -H 'Content-Type: text/json' --data-binary @- << EOF
+| jq -r "\"http://$GRAFANA_HOST\" + .importedUrl"
 {
   "dashboard": $(cat ./chain.dashboard.json),
   "overwrite": true,
