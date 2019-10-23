@@ -669,33 +669,27 @@ func (syncer *Syncer) collectHeaders(ctx context.Context, from *types.TipSet, to
 	// we want to sync all the blocks until the height above the block we have
 	untilHeight := to.Height() + 1
 
-	// If, for some reason, we have a suffix of the chain locally, handle that here
+	syncer.syncState.SetHeight(blockSet[len(blockSet)-1].Height())
+
+loop:
 	for blockSet[len(blockSet)-1].Height() > untilHeight {
-		log.Warn("syncing local: ", at)
 		for _, bc := range at {
 			if syncer.bad.Has(bc) {
 				return nil, xerrors.Errorf("chain contained block marked previously as bad (%s, %s)", from.Cids(), bc)
 			}
 		}
 
+		// If, for some reason, we have a suffix of the chain locally, handle that here
 		ts, err := syncer.store.LoadTipSet(at)
-		if err != nil {
-			if xerrors.Is(err, bstore.ErrNotFound) {
-				log.Info("tipset not found locally, starting sync: ", at)
-				break
-			}
+		if err == nil {
+			blockSet = append(blockSet, ts)
+			at = ts.Parents()
+			continue
+		}
+		if !xerrors.Is(err, bstore.ErrNotFound) {
 			log.Warn("loading local tipset: %s", err)
-			continue // TODO: verify
 		}
 
-		blockSet = append(blockSet, ts)
-		at = ts.Parents()
-	}
-
-	syncer.syncState.SetHeight(blockSet[len(blockSet)-1].Height())
-
-loop:
-	for blockSet[len(blockSet)-1].Height() > untilHeight {
 		// NB: GetBlocks validates that the blocks are in-fact the ones we
 		// requested, and that they are correctly linked to eachother. It does
 		// not validate any state transitions
@@ -800,25 +794,19 @@ func (syncer *Syncer) iterFullTipsets(ctx context.Context, headers []*types.TipS
 	ctx, span := trace.StartSpan(ctx, "iterFullTipsets")
 	defer span.End()
 
-	beg := len(headers) - 1
-	// handle case where we have a prefix of these locally
-	for ; beg >= 0; beg-- {
-		fts, err := syncer.store.TryFillTipSet(headers[beg])
+	windowSize := 200
+	for i := len(headers) - 1; i >= 0; {
+		fts, err := syncer.store.TryFillTipSet(headers[i])
 		if err != nil {
 			return err
 		}
-		if fts == nil {
-			break
+		if fts != nil {
+			if err := cb(ctx, fts); err != nil {
+				return err
+			}
+			i--
+			continue
 		}
-		if err := cb(ctx, fts); err != nil {
-			return err
-		}
-	}
-	headers = headers[:beg+1]
-
-	windowSize := 200
-
-	for i := len(headers) - 1; i >= 0; i -= windowSize {
 
 		batchSize := windowSize
 		if i < batchSize {
@@ -859,6 +847,7 @@ func (syncer *Syncer) iterFullTipsets(ctx context.Context, headers []*types.TipS
 				return xerrors.Errorf("message processing failed: %w", err)
 			}
 		}
+		i -= windowSize
 	}
 
 	return nil
