@@ -27,9 +27,7 @@ func TestMessageFactory(t *testing.T) {
 	sender, err := wallet.GenerateKey(types.KTSecp256k1)
 	require.NoError(t, err)
 
-	bfAddr, err := factory.FromSingletonAddress(state.BurntFundsAddress)
-	require.NoError(t, err)
-
+	bfAddr := factory.FromSingletonAddress(state.BurntFundsAddress)
 	m, err := p.Transfer(state.Address(sender.Bytes()), bfAddr,0, 1)
 	require.NoError(t, err)
 

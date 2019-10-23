@@ -99,16 +99,12 @@ func (s *StateWrapper) SetActor(addr vstate.Address, code vstate.ActorCodeID, ba
 	if err != nil {
 		return nil, nil, err
 	}
-	lotusCode, err := fromActorCode(code)
-	if err != nil {
-		return nil, nil, err
-	}
 	tree, err := state.LoadStateTree(s.cst, s.stateRoot)
 	if err != nil {
 		return nil, nil, err
 	}
 	actr := &actorWrapper{types.Actor{
-		Code:    lotusCode,
+		Code:    fromActorCode(code),
 		Balance: types.BigInt{balance},
 		Head:    vm.EmptyObjectCid,
 	}}
@@ -121,7 +117,7 @@ func (s *StateWrapper) SetActor(addr vstate.Address, code vstate.ActorCodeID, ba
 }
 
 func (s *StateWrapper) SetSingletonActor(addr vstate.SingletonActorID, balance vstate.AttoFIL) (vstate.Actor, vstate.Storage, error){
-	vaddr, err := fromSingletonAddress(addr)
+	vaddr := fromSingletonAddress(addr)
 	if err != nil {
 		return nil, nil, err
 	}
@@ -277,32 +273,32 @@ func (d *directStorage) Get(cid cid.Cid) ([]byte, error) {
 	panic("implement me")
 }
 
-func fromActorCode(code vstate.ActorCodeID) (cid.Cid, error) {
+func fromActorCode(code vstate.ActorCodeID) cid.Cid {
 	switch code {
 	case vstate.AccountActorCodeCid:
-		return actors.AccountActorCodeCid, nil
+		return actors.AccountActorCodeCid
 	case vstate.StorageMinerCodeCid:
-		return actors.StorageMinerCodeCid, nil
+		return actors.StorageMinerCodeCid
 	case vstate.MultisigActorCodeCid:
-		return actors.MultisigActorCodeCid, nil
+		return actors.MultisigActorCodeCid
 	case vstate.PaymentChannelActorCodeCid:
-		return actors.PaymentChannelActorCodeCid, nil
+		return actors.PaymentChannelActorCodeCid
 	default:
-		return cid.Undef, errors.Errorf("Unknown actor code: %v", code)
+		panic(fmt.Errorf("unknown actor code: %v", code))
 	}
 }
 
-func fromSingletonAddress(addr vstate.SingletonActorID) (vstate.Address, error) {
+func fromSingletonAddress(addr vstate.SingletonActorID) vstate.Address {
 	switch addr {
 	case vstate.InitAddress:
-		return vstate.Address(actors.InitActorAddress.Bytes()), nil
+		return vstate.Address(actors.InitActorAddress.Bytes())
 	case vstate.NetworkAddress:
-		return vstate.Address(actors.NetworkAddress.Bytes()), nil
+		return vstate.Address(actors.NetworkAddress.Bytes())
 	case vstate.StorageMarketAddress:
-		return vstate.Address(actors.StorageMarketAddress.Bytes()), nil
+		return vstate.Address(actors.StorageMarketAddress.Bytes())
 	case vstate.BurntFundsAddress:
-		return vstate.Address(actors.BurntFundsAddress.Bytes()), nil
+		return vstate.Address(actors.BurntFundsAddress.Bytes())
 	default:
-		return "", errors.Errorf("Unknown singleton actor address: %v", addr)
+		panic(fmt.Errorf("unknown singleton actor address: %v", addr))
 	}
 }
