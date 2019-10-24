@@ -440,7 +440,10 @@ func (sma StorageMarketActor) ActivateStorageDeals(act *types.Actor, vmctx types
 	for _, deal := range params.Deals {
 		var dealInfo OnChainDeal
 		if err := deals.Get(deal, &dealInfo); err != nil {
-			return nil, aerrors.HandleExternalError(err, "getting del info failed")
+			if _, is := err.(*amt.ErrNotFound); is {
+				return nil, aerrors.New(3, "deal not found")
+			}
+			return nil, aerrors.HandleExternalError(err, "getting deal info failed")
 		}
 
 		if vmctx.Message().From != dealInfo.Deal.Proposal.Provider {
@@ -513,16 +516,19 @@ func (sma StorageMarketActor) ProcessStorageDealsPayment(act *types.Actor, vmctx
 	for _, deal := range params.DealIDs {
 		var dealInfo OnChainDeal
 		if err := deals.Get(deal, &dealInfo); err != nil {
+			if _, is := err.(*amt.ErrNotFound); is {
+				return nil, aerrors.New(2, "deal not found")
+			}
 			return nil, aerrors.HandleExternalError(err, "getting deal info failed")
 		}
 
 		if dealInfo.Deal.Proposal.Provider != vmctx.Message().From {
-			return nil, aerrors.New(1, "ProcessStorageDealsPayment can only be called by deal provider")
+			return nil, aerrors.New(3, "ProcessStorageDealsPayment can only be called by deal provider")
 		}
 
 		if vmctx.BlockHeight() < dealInfo.ActivationEpoch {
 			// TODO: This is probably fatal
-			return nil, aerrors.New(1, "ActivationEpoch lower than block height")
+			return nil, aerrors.New(4, "ActivationEpoch lower than block height")
 		}
 
 		if vmctx.BlockHeight() > dealInfo.ActivationEpoch+dealInfo.Deal.Proposal.Duration {
