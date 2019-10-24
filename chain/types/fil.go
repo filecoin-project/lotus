@@ -12,7 +12,7 @@ type FIL BigInt
 
 func (f FIL) String() string {
 	r := new(big.Rat).SetFrac(f.Int, big.NewInt(build.FilecoinPrecision))
-	return strings.TrimRight(r.FloatString(18), "0")
+	return strings.TrimRight(r.FloatString(18), "0.")
 }
 
 func ParseFIL(s string) (FIL, error) {

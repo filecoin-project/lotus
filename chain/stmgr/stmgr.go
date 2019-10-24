@@ -217,7 +217,10 @@ func (sm *StateManager) GetActor(addr address.Address, ts *types.TipSet) (*types
 func (sm *StateManager) GetBalance(addr address.Address, ts *types.TipSet) (types.BigInt, error) {
 	act, err := sm.GetActor(addr, ts)
 	if err != nil {
-		return types.BigInt{}, xerrors.Errorf("get actor: %w", err)
+		if xerrors.Is(err, types.ErrActorNotFound) {
+			return types.NewInt(0), nil
+		}
+		return types.EmptyInt, xerrors.Errorf("get actor: %w", err)
 	}
 
 	return act.Balance, nil
