@@ -16,13 +16,11 @@ const (
 	DealSealing  // Data in process of being sealed
 
 	DealFailed
-
 	DealComplete
 
 	// Internal
 
 	DealError // deal failed with an unexpected error
-	DealExpired
 
 	DealNoUpdate = DealUnknown
 )

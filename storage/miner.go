@@ -9,6 +9,7 @@ import (
 	logging "github.com/ipfs/go-log"
 	"github.com/libp2p/go-libp2p-core/host"
 	"github.com/pkg/errors"
+	"golang.org/x/xerrors"
 
 	"github.com/filecoin-project/lotus/api"
 	"github.com/filecoin-project/lotus/build"
@@ -129,12 +130,19 @@ func (m *Miner) commitSector(ctx context.Context, sinfo sectorbuilder.SectorSeal
 		log.Error("seal we just created failed verification")
 	}
 
+	deals, err := m.secst.DealsForCommit(sinfo.SectorID)
+	if err != nil {
+		return xerrors.Errorf("getting sector deals failed: %w", err)
+	}
+
 	params := &actors.OnChainSealVerifyInfo{
+		CommD:     sinfo.CommD[:],
+		CommR:     sinfo.CommR[:],
+		CommRStar: sinfo.CommRStar[:],
+		Proof:     sinfo.Proof,
+
+		DealIDs:      deals,
 		SectorNumber: sinfo.SectorID,
-		CommD:        sinfo.CommD[:],
-		CommR:        sinfo.CommR[:],
-		CommRStar:    sinfo.CommRStar[:],
-		Proof:        sinfo.Proof,
 	}
 	enc, aerr := actors.SerializeParams(params)
 	if aerr != nil {

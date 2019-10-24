@@ -33,8 +33,9 @@ func (sm *StorageMinerAPI) ActorAddress(context.Context) (address.Address, error
 func (sm *StorageMinerAPI) StoreGarbageData(ctx context.Context) (uint64, error) {
 	size := sectorbuilder.UserBytesForSectorSize(build.SectorSize)
 
+	// TODO: create a deal
 	name := fmt.Sprintf("fake-file-%d", rand.Intn(100000000))
-	sectorId, err := sm.Sectors.AddPiece(name, size, io.LimitReader(rand.New(rand.NewSource(42)), int64(size)))
+	sectorId, err := sm.Sectors.AddPiece(name, size, io.LimitReader(rand.New(rand.NewSource(42)), int64(size)), 0)
 	if err != nil {
 		return 0, err
 	}

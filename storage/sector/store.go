@@ -2,24 +2,44 @@ package sector
 
 import (
 	"context"
-	"github.com/filecoin-project/go-sectorbuilder/sealing_state"
-	"golang.org/x/xerrors"
+	"fmt"
 	"io"
 	"sync"
 	"time"
 
+	"github.com/filecoin-project/go-sectorbuilder/sealing_state"
+	"github.com/ipfs/go-datastore"
+	"github.com/ipfs/go-datastore/namespace"
+	cbor "github.com/ipfs/go-ipld-cbor"
+	logging "github.com/ipfs/go-log"
+	"golang.org/x/xerrors"
+
 	"github.com/filecoin-project/lotus/api"
 	"github.com/filecoin-project/lotus/lib/sectorbuilder"
-
-	logging "github.com/ipfs/go-log"
+	"github.com/filecoin-project/lotus/node/modules/dtypes"
 )
+
+func init() {
+	cbor.RegisterCborType(dealMapping{})
+}
 
 var log = logging.Logger("sectorstore")
 
+var sectorDealsPrefix = datastore.NewKey("/sectordeals")
+
+type dealMapping struct {
+	DealIDs   []uint64
+	Committed bool
+}
+
 // TODO: eventually handle sector storage here instead of in rust-sectorbuilder
 type Store struct {
-	lk sync.Mutex
+	waitingLk sync.Mutex
+
 	sb *sectorbuilder.SectorBuilder
+
+	dealsLk sync.Mutex
+	deals   datastore.Datastore
 
 	waiting  map[uint64]chan struct{}
 	incoming []chan sectorbuilder.SectorSealingStatus
@@ -28,9 +48,10 @@ type Store struct {
 	closeCh chan struct{}
 }
 
-func NewStore(sb *sectorbuilder.SectorBuilder) *Store {
+func NewStore(sb *sectorbuilder.SectorBuilder, ds dtypes.MetadataDS) *Store {
 	return &Store{
 		sb:      sb,
+		deals:   namespace.Wrap(ds, sectorDealsPrefix),
 		waiting: map[uint64]chan struct{}{},
 		closeCh: make(chan struct{}),
 	}
@@ -44,13 +65,13 @@ func (s *Store) poll() {
 	log.Debug("polling for sealed sectors...")
 
 	// get a list of sectors to poll
-	s.lk.Lock()
+	s.waitingLk.Lock()
 	toPoll := make([]uint64, 0, len(s.waiting))
 
 	for id := range s.waiting {
 		toPoll = append(toPoll, id)
 	}
-	s.lk.Unlock()
+	s.waitingLk.Unlock()
 
 	var done []sectorbuilder.SectorSealingStatus
 
@@ -68,7 +89,7 @@ func (s *Store) poll() {
 	}
 
 	// send updates
-	s.lk.Lock()
+	s.waitingLk.Lock()
 	for _, sector := range done {
 		watch, ok := s.waiting[sector.SectorID]
 		if ok {
@@ -79,7 +100,7 @@ func (s *Store) poll() {
 			c <- sector // TODO: ctx!
 		}
 	}
-	s.lk.Unlock()
+	s.waitingLk.Unlock()
 }
 
 func (s *Store) service() {
@@ -90,35 +111,97 @@ func (s *Store) service() {
 		case <-poll:
 			s.poll()
 		case <-s.closeCh:
-			s.lk.Lock()
+			s.waitingLk.Lock()
 			for _, c := range s.incoming {
 				close(c)
 			}
-			s.lk.Unlock()
+			s.waitingLk.Unlock()
 			return
 		}
 	}
 }
 
-func (s *Store) AddPiece(ref string, size uint64, r io.Reader) (sectorID uint64, err error) {
+func (s *Store) AddPiece(ref string, size uint64, r io.Reader, dealID uint64) (sectorID uint64, err error) {
 	sectorID, err = s.sb.AddPiece(ref, size, r)
-
 	if err != nil {
 		return 0, err
 	}
 
-	s.lk.Lock()
+	s.waitingLk.Lock()
 	_, exists := s.waiting[sectorID]
 	if !exists { // pieces can share sectors
 		s.waiting[sectorID] = make(chan struct{})
 	}
-	s.lk.Unlock()
+	s.waitingLk.Unlock()
+
+	s.dealsLk.Lock()
+	defer s.dealsLk.Unlock()
+
+	k := datastore.NewKey(fmt.Sprint(sectorID))
+	e, err := s.deals.Get(k)
+	var deals dealMapping
+	switch err {
+	case nil:
+		if err := cbor.DecodeInto(e, &deals); err != nil {
+			return 0, err
+		}
+		if deals.Committed {
+			return 0, xerrors.Errorf("sector %d already committed", sectorID)
+		}
+		fallthrough
+	case datastore.ErrNotFound:
+		deals.DealIDs = append(deals.DealIDs, dealID)
+		d, err := cbor.DumpObject(&deals)
+		if err != nil {
+			return 0, err
+		}
+		if err := s.deals.Put(k, d); err != nil {
+			return 0, err
+		}
+	default:
+		return 0, err
+	}
 
 	return sectorID, nil
 }
 
+func (s *Store) DealsForCommit(sectorID uint64) ([]uint64, error) {
+	s.dealsLk.Lock()
+	defer s.dealsLk.Unlock()
+
+	k := datastore.NewKey(fmt.Sprint(sectorID))
+	e, err := s.deals.Get(k)
+
+	switch err {
+	case nil:
+		var deals dealMapping
+		if err := cbor.DecodeInto(e, &deals); err != nil {
+			return nil, err
+		}
+		if deals.Committed {
+			log.Errorf("getting deal IDs for sector %d: sector already marked as committed", sectorID)
+		}
+
+		deals.Committed = true
+		d, err := cbor.DumpObject(&deals)
+		if err != nil {
+			return nil, err
+		}
+		if err := s.deals.Put(k, d); err != nil {
+			return nil, err
+		}
+
+		return deals.DealIDs, nil
+	case datastore.ErrNotFound:
+		log.Errorf("getting deal IDs for sector %d failed: %s", err)
+		return []uint64{}, nil
+	default:
+		return nil, err
+	}
+}
+
 func (s *Store) CloseIncoming(c <-chan sectorbuilder.SectorSealingStatus) {
-	s.lk.Lock()
+	s.waitingLk.Lock()
 	var at = -1
 	for i, ch := range s.incoming {
 		if ch == c {
@@ -126,7 +209,7 @@ func (s *Store) CloseIncoming(c <-chan sectorbuilder.SectorSealingStatus) {
 		}
 	}
 	if at == -1 {
-		s.lk.Unlock()
+		s.waitingLk.Unlock()
 		return
 	}
 	if len(s.incoming) > 1 {
@@ -135,21 +218,21 @@ func (s *Store) CloseIncoming(c <-chan sectorbuilder.SectorSealingStatus) {
 		s.incoming[last] = nil
 	}
 	s.incoming = s.incoming[:len(s.incoming)-1]
-	s.lk.Unlock()
+	s.waitingLk.Unlock()
 }
 
 func (s *Store) Incoming() <-chan sectorbuilder.SectorSealingStatus {
 	ch := make(chan sectorbuilder.SectorSealingStatus, 8)
-	s.lk.Lock()
+	s.waitingLk.Lock()
 	s.incoming = append(s.incoming, ch)
-	s.lk.Unlock()
+	s.waitingLk.Unlock()
 	return ch
 }
 
 func (s *Store) WaitSeal(ctx context.Context, sector uint64) (sectorbuilder.SectorSealingStatus, error) {
-	s.lk.Lock()
+	s.waitingLk.Lock()
 	watch, ok := s.waiting[sector]
-	s.lk.Unlock()
+	s.waitingLk.Unlock()
 	if ok {
 		select {
 		case <-watch:

@@ -408,8 +408,8 @@ func (self *StorageMarketState) validateDeal(vmctx types.VMContext, deal Storage
 	// TODO: piece checks (e.g. size > sectorSize)?
 
 	bcid, aerr := setMarketBalances(vmctx, bnd, map[address.Address]StorageParticipantBalance{
-		deal.Proposal.Client:   clientBalance,
-		deal.Proposal.Provider: providerBalance,
+		deal.Proposal.Client: clientBalance,
+		providerWorker:       providerBalance,
 	})
 	if aerr != nil {
 		return aerr
@@ -443,17 +443,8 @@ func (sma StorageMarketActor) ActivateStorageDeals(act *types.Actor, vmctx types
 			return nil, aerrors.HandleExternalError(err, "getting del info failed")
 		}
 
-		workerBytes, err := vmctx.Send(dealInfo.Deal.Proposal.Provider, MAMethods.GetWorkerAddr, types.NewInt(0), nil)
-		if err != nil {
-			return nil, err
-		}
-		providerWorker, eerr := address.NewFromBytes(workerBytes)
-		if eerr != nil {
-			return nil, aerrors.HandleExternalError(eerr, "parsing provider worker address bytes")
-		}
-
-		if vmctx.Message().From != providerWorker {
-			return nil, aerrors.New(1, "ActivateStorageDeals can only be called by deal provider")
+		if vmctx.Message().From != dealInfo.Deal.Proposal.Provider {
+			return nil, aerrors.New(1, "ActivateStorageDeals can only be called by the deal provider")
 		}
 
 		if vmctx.BlockHeight() > dealInfo.Deal.Proposal.ProposalExpiration {
@@ -467,7 +458,7 @@ func (sma StorageMarketActor) ActivateStorageDeals(act *types.Actor, vmctx types
 
 		dealInfo.ActivationEpoch = vmctx.BlockHeight()
 
-		if err := deals.Set(deal, dealInfo); err != nil {
+		if err := deals.Set(deal, &dealInfo); err != nil {
 			return nil, aerrors.HandleExternalError(err, "setting deal info in AMT failed")
 		}
 	}
@@ -540,7 +531,17 @@ func (sma StorageMarketActor) ProcessStorageDealsPayment(act *types.Actor, vmctx
 		// TODO: division is hard, this more than likely has some off-by-one issue
 		toPay := types.BigDiv(types.BigMul(dealInfo.Deal.Proposal.StoragePrice, types.NewInt(build.ProvingPeriodDuration)), types.NewInt(dealInfo.Deal.Proposal.Duration))
 
-		b, bnd, err := GetMarketBalances(vmctx.Context(), vmctx.Ipld(), self.Balances, dealInfo.Deal.Proposal.Client, dealInfo.Deal.Proposal.Provider)
+		// TODO: cache somehow to conserve gas
+		workerBytes, err := vmctx.Send(dealInfo.Deal.Proposal.Provider, MAMethods.GetWorkerAddr, types.NewInt(0), nil)
+		if err != nil {
+			return nil, err
+		}
+		providerWorker, eerr := address.NewFromBytes(workerBytes)
+		if eerr != nil {
+			return nil, aerrors.HandleExternalError(eerr, "parsing provider worker address bytes")
+		}
+
+		b, bnd, err := GetMarketBalances(vmctx.Context(), vmctx.Ipld(), self.Balances, dealInfo.Deal.Proposal.Client, providerWorker)
 		clientBal := b[0]
 		providerBal := b[1]
 
@@ -548,8 +549,8 @@ func (sma StorageMarketActor) ProcessStorageDealsPayment(act *types.Actor, vmctx
 
 		// TODO: call set once
 		bcid, aerr := setMarketBalances(vmctx, bnd, map[address.Address]StorageParticipantBalance{
-			dealInfo.Deal.Proposal.Client:   clientBal,
-			dealInfo.Deal.Proposal.Provider: providerBal,
+			dealInfo.Deal.Proposal.Client: clientBal,
+			providerWorker:                providerBal,
 		})
 		if aerr != nil {
 			return nil, aerr

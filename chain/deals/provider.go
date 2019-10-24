@@ -29,6 +29,7 @@ type MinerDeal struct {
 
 	Ref cid.Cid
 
+	DealID   uint64
 	SectorID uint64 // Set when State >= DealStaged
 
 	s inet.Stream

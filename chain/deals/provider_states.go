@@ -1,6 +1,7 @@
 package deals
 
 import (
+	"bytes"
 	"context"
 
 	"github.com/filecoin-project/go-sectorbuilder/sealing_state"
@@ -151,6 +152,13 @@ func (p *Provider) accept(ctx context.Context, deal MinerDeal) (func(*MinerDeal)
 	if r.Receipt.ExitCode != 0 {
 		return nil, xerrors.Errorf("publishing deal failed: exit %d", r.Receipt.ExitCode)
 	}
+	var resp actors.PublishStorageDealResponse
+	if err := resp.UnmarshalCBOR(bytes.NewReader(r.Receipt.Return)); err != nil {
+		return nil, err
+	}
+	if len(resp.DealIDs) != 1 {
+		return nil, xerrors.Errorf("got unexpected number of DealIDs from")
+	}
 
 	log.Info("fetching data for a deal")
 	mcid := smsg.Cid()
@@ -164,7 +172,9 @@ func (p *Provider) accept(ctx context.Context, deal MinerDeal) (func(*MinerDeal)
 		return nil, err
 	}
 
-	return nil, merkledag.FetchGraph(ctx, deal.Ref, p.dag)
+	return func(deal *MinerDeal) {
+		deal.DealID = resp.DealIDs[0]
+	}, merkledag.FetchGraph(ctx, deal.Ref, p.dag)
 }
 
 // STAGED
@@ -210,7 +220,7 @@ func (p *Provider) staged(ctx context.Context, deal MinerDeal) (func(*MinerDeal)
 		return nil, err
 	}
 
-	sectorID, err := p.secst.AddUnixfsPiece(pcid, uf, deal.Proposal.Duration)
+	sectorID, err := p.secst.AddUnixfsPiece(pcid, uf, deal.DealID)
 	if err != nil {
 		return nil, xerrors.Errorf("AddPiece failed: %s", err)
 	}
