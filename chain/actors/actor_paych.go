@@ -189,9 +189,6 @@ func (pca PaymentChannelActor) UpdateChannelState(act *types.Actor, vmctx types.
 		if self.ClosingAt != 0 && self.ClosingAt < sv.MinCloseHeight {
 			self.ClosingAt = sv.MinCloseHeight
 		}
-		if self.MinCloseHeight < sv.MinCloseHeight {
-			self.MinCloseHeight = sv.MinCloseHeight
-		}
 	}
 
 	ncid, err := storage.Put(&self)
