@@ -235,7 +235,8 @@ func (sma StorageMarketActor) AddBalance(act *types.Actor, vmctx types.VMContext
 
 func setMarketBalances(vmctx types.VMContext, nd *hamt.Node, set map[address.Address]StorageParticipantBalance) (cid.Cid, ActorError) {
 	for addr, b := range set {
-		if err := nd.Set(vmctx.Context(), string(addr.Bytes()), &b); err != nil {
+		balance := b // to stop linter complaining
+		if err := nd.Set(vmctx.Context(), string(addr.Bytes()), &balance); err != nil {
 			return cid.Undef, aerrors.HandleExternalError(err, "setting new balance")
 		}
 	}
@@ -364,7 +365,7 @@ func (sma StorageMarketActor) PublishStorageDeals(act *types.Actor, vmctx types.
 	return outBuf.Bytes(), nil
 }
 
-func (self *StorageMarketState) validateDeal(vmctx types.VMContext, deal StorageDeal, providerWorker address.Address) aerrors.ActorError {
+func (st *StorageMarketState) validateDeal(vmctx types.VMContext, deal StorageDeal, providerWorker address.Address) aerrors.ActorError {
 	if vmctx.BlockHeight() > deal.Proposal.ProposalExpiration {
 		return aerrors.New(1, "deal proposal already expired")
 	}
@@ -384,7 +385,7 @@ func (self *StorageMarketState) validateDeal(vmctx types.VMContext, deal Storage
 	}
 
 	// TODO: do some caching (changes gas so needs to be in spec too)
-	b, bnd, aerr := GetMarketBalances(vmctx.Context(), vmctx.Ipld(), self.Balances, deal.Proposal.Client, providerWorker)
+	b, bnd, aerr := GetMarketBalances(vmctx.Context(), vmctx.Ipld(), st.Balances, deal.Proposal.Client, providerWorker)
 	if aerr != nil {
 		return aerrors.Wrap(aerr, "getting client, and provider balances")
 	}
@@ -414,7 +415,7 @@ func (self *StorageMarketState) validateDeal(vmctx types.VMContext, deal Storage
 		return aerr
 	}
 
-	self.Balances = bcid
+	st.Balances = bcid
 
 	return nil
 }
