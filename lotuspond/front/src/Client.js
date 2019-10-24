@@ -6,13 +6,11 @@ const dealStates = [
   "Unknown",
   "Rejected",
   "Accepted",
-  "Started",
-  "Failed",
   "Staged",
   "Sealing",
+  "Failed",
   "Complete",
   "Error",
-  "Expired"
 ]
 
 
@@ -83,7 +81,7 @@ class Client extends React.Component {
 
     let deals = this.state.deals.map((deal, i) => <div key={i}>
       <ul>
-        <li>{i}. Proposal: {deal.ProposalCid['/'].substr(0, 18)}... <Address nobalance={true} client={this.props.client} addr={deal.Miner} mountWindow={this.props.mountWindow}/>: <b>{dealStates[deal.State]}</b>
+        <li>{i}. Proposal: {deal.ProposalCid['/'].substr(0, 18)}... <Address nobalance={true} client={this.props.client} addr={deal.Provider} mountWindow={this.props.mountWindow}/>: <b>{dealStates[deal.State]}</b>
           {dealStates[deal.State] === 'Complete' ? <span>&nbsp;<a href="#" onClick={this.retrieve(deal)}>[Retrieve]</a></span> : <span/> }
           <ul>
             <li>Data: {deal.PieceRef['/']}, <b>{deal.Size}</b>B; Duration: <b>{deal.Duration}</b>Blocks</li>
