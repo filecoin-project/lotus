@@ -39,11 +39,11 @@ func init() {
 		return c
 	}
 
-	AccountCodeCid = mustSum("filecoin/1.0/AccountActor")
-	StoragePowerCodeCid = mustSum("filecoin/1.0/StoragePowerActor")
-	StorageMarketCodeCid = mustSum("filecoin/1.0/StorageMarketActor")
-	StorageMinerCodeCid = mustSum("filecoin/1.0/StorageMinerActor")
-	MultisigCodeCid = mustSum("filecoin/1.0/MultisigActor")
-	InitCodeCid = mustSum("filecoin/1.0/InitActor")
-	PaymentChannelCodeCid = mustSum("filecoin/1.0/PaymentChannelActor")
+	AccountCodeCid = mustSum("fil/1/account") // TODO: spec
+	StoragePowerCodeCid = mustSum("fil/1/power")
+	StorageMarketCodeCid = mustSum("fil/1/market")
+	StorageMinerCodeCid = mustSum("fil/1/miner")
+	MultisigCodeCid = mustSum("fil/1/multisig")
+	InitCodeCid = mustSum("fil/1/init")
+	PaymentChannelCodeCid = mustSum("fil/1/paych")
 }

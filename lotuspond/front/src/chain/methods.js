@@ -1,10 +1,12 @@
+import code from "./code";
+
 export default {
-  "filecoin/1.0/AccountActor": [
+  [code.account]: [
     "Send",
     "Constructor",
     "GetAddress",
   ],
-  "filecoin/1.0/StoragePowerActor": [
+  [code.power]: [
     "Send",
     "Constructor",
     "CreateStorageMiner",
@@ -15,7 +17,7 @@ export default {
     "IsMiner",
     "StorageCollateralForSize"
   ],
-  "filecoin/1.0/StorageMarketActor": [
+  [code.market]: [
     "Send",
     "Constructor",
     "WithdrawBalance",
@@ -29,7 +31,7 @@ export default {
     "GetLastExpirationFromDealIDs",
     "ActivateStorageDeals",
   ],
-  "filecoin/1.0/StorageMinerActor": [
+  [code.miner]: [
     "Send",
     "Constructor",
     "CommitSector",
@@ -50,7 +52,7 @@ export default {
     "PaymentVerifyInclusion",
     "PaymentVerifySector",
   ],
-  "filecoin/1.0/MultisigActor": [
+  [code.multisig]: [
     "Send",
     "Constructor",
     "Propose",
@@ -62,13 +64,13 @@ export default {
     "SwapSigner",
     "ChangeRequirement",
   ],
-  "filecoin/1.0/InitActor": [
+  [code.init]: [
     "Send",
     "Constructor",
     "Exec",
     "GetIdForAddress"
   ],
-  "filecoin/1.0/PaymentChannelActor": [
+  [code.paych]: [
     "Send",
     "Constructor",
     "UpdateChannelState",
