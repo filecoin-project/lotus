@@ -29,11 +29,11 @@ func (msas MultiSigActorState) isSigner(addr address.Address) bool {
 	return false
 }
 
-func (msas MultiSigActorState) getTransaction(txid uint64) *MTransaction {
-	if txid > uint64(len(msas.Transactions)) {
-		return nil
+func (msas MultiSigActorState) getTransaction(txid uint64) (*MTransaction, ActorError) {
+	if txid >= uint64(len(msas.Transactions)) {
+		return nil, aerrors.Newf(1, "could not get transaction (numbers of tx %d,want to get txid %d)", len(msas.Transactions), txid)
 	}
-	return &msas.Transactions[txid]
+	return &msas.Transactions[txid], nil
 }
 
 type MTransaction struct {
@@ -176,7 +176,10 @@ func (msa MultiSigActor) Propose(act *types.Actor, vmctx types.VMContext,
 		}
 		self.Transactions = append(self.Transactions, tx)
 	}
-	tx := self.getTransaction(txid)
+	tx, err := self.getTransaction(txid)
+	if err != nil {
+		return nil, err
+	}
 
 	if self.Required == 1 {
 		_, err := vmctx.Send(tx.To, tx.Method, tx.Value, tx.Params)
@@ -209,7 +212,11 @@ func (msa MultiSigActor) Approve(act *types.Actor, vmctx types.VMContext,
 		return nil, err
 	}
 
-	tx := self.getTransaction(params.TxID)
+	tx, err := self.getTransaction(params.TxID)
+	if err != nil {
+		return nil, err
+	}
+
 	if err := tx.Active(); err != nil {
 		return nil, aerrors.Wrap(err, "could not approve")
 	}
@@ -240,7 +247,11 @@ func (msa MultiSigActor) Cancel(act *types.Actor, vmctx types.VMContext,
 		return nil, err
 	}
 
-	tx := self.getTransaction(params.TxID)
+	tx, err := self.getTransaction(params.TxID)
+	if err != nil {
+		return nil, err
+	}
+
 	if err := tx.Active(); err != nil {
 		return nil, aerrors.Wrap(err, "could not cancel")
 	}
@@ -376,6 +387,11 @@ func (msa MultiSigActor) ChangeRequirement(act *types.Actor, vmctx types.VMConte
 	if params.Req < 1 {
 		return nil, aerrors.New(5, "requirement must be at least 1")
 	}
+
+	if params.Req > uint64(len(self.Signers)) {
+		return nil, aerrors.New(6, "requirement must be at most the numbers of signers")
+	}
+
 	self.Required = params.Req
 	return nil, msa.save(vmctx, head, self)
 }
