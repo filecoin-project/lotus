@@ -51,6 +51,7 @@ func main() {
 		actors.StorageMinerActorState{},
 		actors.StorageMinerConstructorParams{},
 		actors.OnChainSealVerifyInfo{},
+		actors.UnprovenSector{},
 		actors.MinerInfo{},
 		actors.SubmitPoStParams{},
 		actors.PaymentVerifyParams{},

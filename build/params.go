@@ -81,6 +81,9 @@ const PowerCollateralProportion = 5
 const PerCapitaCollateralProportion = 1
 const CollateralPrecision = 1000
 
+// Blocks
+const InteractivePoRepDelay = 10
+
 // /////
 // Devnet settings
 
