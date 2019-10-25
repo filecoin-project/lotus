@@ -85,7 +85,17 @@ func (p *Provider) accept(ctx context.Context, deal MinerDeal) (func(*MinerDeal)
 		return nil, xerrors.Errorf("deal proposal already expired")
 	}
 
-	// TODO: check StorageCollateral / StoragePrice
+	// TODO: check StorageCollateral
+
+	// TODO:
+	minPrice := types.BigMul(p.ask.Ask.Price, types.BigMul(types.NewInt(deal.Proposal.Duration), types.NewInt(deal.Proposal.PieceSize)))
+	if deal.Proposal.StoragePrice.LessThan(minPrice) {
+		return nil, xerrors.Errorf("storage price less than asking price: %s < %s", deal.Proposal.StoragePrice, minPrice)
+	}
+
+	if deal.Proposal.PieceSize < p.ask.Ask.MinPieceSize {
+		return nil, xerrors.Errorf("piece size less than minimum required size: %d < %d", deal.Proposal.PieceSize, p.ask.Ask.MinPieceSize)
+	}
 
 	// check market funds
 	clientMarketBalance, err := p.full.StateMarketBalance(ctx, deal.Proposal.Client, nil)
