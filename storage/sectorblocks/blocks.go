@@ -153,7 +153,7 @@ func (r *refStorer) Read(p []byte) (n int, err error) {
 	}
 }
 
-func (st *SectorBlocks) AddUnixfsPiece(ref cid.Cid, r UnixfsReader, keepAtLeast uint64) (sectorID uint64, err error) {
+func (st *SectorBlocks) AddUnixfsPiece(ref cid.Cid, r UnixfsReader, dealID uint64) (sectorID uint64, err error) {
 	size, err := r.Size()
 	if err != nil {
 		return 0, err
@@ -166,7 +166,7 @@ func (st *SectorBlocks) AddUnixfsPiece(ref cid.Cid, r UnixfsReader, keepAtLeast 
 		intermediate: st.intermediate,
 	}
 
-	return st.Store.AddPiece(refst.pieceRef, uint64(size), refst)
+	return st.Store.AddPiece(refst.pieceRef, uint64(size), refst, dealID)
 }
 
 func (st *SectorBlocks) List() (map[cid.Cid][]api.SealedRef, error) {

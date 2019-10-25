@@ -12,13 +12,12 @@ import (
 	"github.com/filecoin-project/lotus/lib/cborrpc"
 
 	"github.com/ipfs/go-cid"
-	cbor "github.com/ipfs/go-ipld-cbor"
 	inet "github.com/libp2p/go-libp2p-core/network"
 	"golang.org/x/xerrors"
 )
 
-func (h *Handler) failDeal(id cid.Cid, cerr error) {
-	if err := h.deals.End(id); err != nil {
+func (p *Provider) failDeal(id cid.Cid, cerr error) {
+	if err := p.deals.End(id); err != nil {
 		log.Warnf("deals.End: %s", err)
 	}
 
@@ -29,16 +28,16 @@ func (h *Handler) failDeal(id cid.Cid, cerr error) {
 
 	log.Errorf("deal %s failed: %s", id, cerr)
 
-	err := h.sendSignedResponse(StorageDealResponse{
+	err := p.sendSignedResponse(&Response{
 		State:    api.DealFailed,
 		Message:  cerr.Error(),
 		Proposal: id,
 	})
 
-	s, ok := h.conns[id]
+	s, ok := p.conns[id]
 	if ok {
 		_ = s.Reset()
-		delete(h.conns, id)
+		delete(p.conns, id)
 	}
 
 	if err != nil {
@@ -46,46 +45,50 @@ func (h *Handler) failDeal(id cid.Cid, cerr error) {
 	}
 }
 
-func (h *Handler) readProposal(s inet.Stream) (proposal SignedStorageDealProposal, err error) {
+func (p *Provider) readProposal(s inet.Stream) (proposal actors.StorageDealProposal, err error) {
 	if err := cborrpc.ReadCborRPC(s, &proposal); err != nil {
 		log.Errorw("failed to read proposal message", "error", err)
-		return SignedStorageDealProposal{}, err
+		return proposal, err
+	}
+
+	if err := proposal.Verify(); err != nil {
+		return proposal, xerrors.Errorf("verifying StorageDealProposal: %w", err)
 	}
 
 	// TODO: Validate proposal maybe
 	// (and signature, obviously)
 
-	if proposal.Proposal.MinerAddress != h.actor {
-		log.Errorf("proposal with wrong MinerAddress: %s", proposal.Proposal.MinerAddress)
-		return SignedStorageDealProposal{}, err
+	if proposal.Provider != p.actor {
+		log.Errorf("proposal with wrong ProviderAddress: %s", proposal.Provider)
+		return proposal, err
 	}
 
 	return
 }
 
-func (h *Handler) sendSignedResponse(resp StorageDealResponse) error {
-	s, ok := h.conns[resp.Proposal]
+func (p *Provider) sendSignedResponse(resp *Response) error {
+	s, ok := p.conns[resp.Proposal]
 	if !ok {
 		return xerrors.New("couldn't send response: not connected")
 	}
 
-	msg, err := cbor.DumpObject(&resp)
+	msg, err := cborrpc.Dump(resp)
 	if err != nil {
 		return xerrors.Errorf("serializing response: %w", err)
 	}
 
-	worker, err := h.getWorker(h.actor)
+	worker, err := p.getWorker(p.actor)
 	if err != nil {
 		return err
 	}
 
-	sig, err := h.full.WalletSign(context.TODO(), worker, msg)
+	sig, err := p.full.WalletSign(context.TODO(), worker, msg)
 	if err != nil {
 		return xerrors.Errorf("failed to sign response message: %w", err)
 	}
 
-	signedResponse := SignedStorageDealResponse{
-		Response:  resp,
+	signedResponse := &SignedResponse{
+		Response:  *resp,
 		Signature: sig,
 	}
 
@@ -93,18 +96,18 @@ func (h *Handler) sendSignedResponse(resp StorageDealResponse) error {
 	if err != nil {
 		// Assume client disconnected
 		s.Close()
-		delete(h.conns, resp.Proposal)
+		delete(p.conns, resp.Proposal)
 	}
 	return err
 }
 
-func (h *Handler) getWorker(miner address.Address) (address.Address, error) {
+func (p *Provider) getWorker(miner address.Address) (address.Address, error) {
 	getworker := &types.Message{
 		To:     miner,
 		From:   miner,
 		Method: actors.MAMethods.GetWorkerAddr,
 	}
-	r, err := h.full.StateCall(context.TODO(), getworker, nil)
+	r, err := p.full.StateCall(context.TODO(), getworker, nil)
 	if err != nil {
 		return address.Undef, xerrors.Errorf("getting worker address: %w", err)
 	}

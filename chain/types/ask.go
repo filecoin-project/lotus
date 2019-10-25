@@ -19,7 +19,7 @@ type StorageAsk struct {
 	Price        BigInt
 	MinPieceSize uint64
 	Miner        address.Address
-	Timestamp    int64
-	Expiry       int64
+	Timestamp    uint64
+	Expiry       uint64
 	SeqNo        uint64
 }

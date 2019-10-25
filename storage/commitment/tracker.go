@@ -25,7 +25,7 @@ func init() {
 var commitmentDsPrefix = datastore.NewKey("/commitments")
 
 type Tracker struct {
-	commitDs datastore.Datastore
+	commitments datastore.Datastore
 
 	lk sync.Mutex
 
@@ -34,35 +34,36 @@ type Tracker struct {
 
 func NewTracker(ds dtypes.MetadataDS) *Tracker {
 	return &Tracker{
-		commitDs: namespace.Wrap(ds, commitmentDsPrefix),
-		waits:    map[datastore.Key]chan struct{}{},
+		commitments: namespace.Wrap(ds, commitmentDsPrefix),
+		waits:       map[datastore.Key]chan struct{}{},
 	}
 }
 
 type commitment struct {
-	Msg cid.Cid
+	DealIDs []uint64
+	Msg     cid.Cid
 }
 
 func commitmentKey(miner address.Address, sectorId uint64) datastore.Key {
 	return commitmentDsPrefix.ChildString(miner.String()).ChildString(fmt.Sprintf("%d", sectorId))
 }
 
-func (ct *Tracker) TrackCommitSectorMsg(miner address.Address, sectorId uint64, mcid cid.Cid) error {
+func (ct *Tracker) TrackCommitSectorMsg(miner address.Address, sectorId uint64, commitMsg cid.Cid) error {
 	key := commitmentKey(miner, sectorId)
 
 	ct.lk.Lock()
 	defer ct.lk.Unlock()
 
-	tracking, err := ct.commitDs.Get(key)
+	tracking, err := ct.commitments.Get(key)
 	switch err {
 	case datastore.ErrNotFound:
-		comm := &commitment{Msg: mcid}
+		comm := &commitment{Msg: commitMsg}
 		commB, err := cbor.DumpObject(comm)
 		if err != nil {
 			return err
 		}
 
-		if err := ct.commitDs.Put(key, commB); err != nil {
+		if err := ct.commitments.Put(key, commB); err != nil {
 			return err
 		}
 
@@ -78,11 +79,11 @@ func (ct *Tracker) TrackCommitSectorMsg(miner address.Address, sectorId uint64, 
 			return err
 		}
 
-		if !comm.Msg.Equals(mcid) {
-			return xerrors.Errorf("commitment tracking for miner %s, sector %d: already tracking %s, got another commitment message: %s", miner, sectorId, comm.Msg, mcid)
+		if !comm.Msg.Equals(commitMsg) {
+			return xerrors.Errorf("commitment tracking for miner %s, sector %d: already tracking %s, got another commitment message: %s", miner, sectorId, comm.Msg, commitMsg)
 		}
 
-		log.Warnf("commitment.TrackCommitSectorMsg called more than once for miner %s, sector %d, message %s", miner, sectorId, mcid)
+		log.Warnf("commitment.TrackCommitSectorMsg called more than once for miner %s, sector %d, message %s", miner, sectorId, commitMsg)
 		return nil
 	default:
 		return err
@@ -94,7 +95,7 @@ func (ct *Tracker) WaitCommit(ctx context.Context, miner address.Address, sector
 
 	ct.lk.Lock()
 
-	tracking, err := ct.commitDs.Get(key)
+	tracking, err := ct.commitments.Get(key)
 	if err != datastore.ErrNotFound {
 		ct.lk.Unlock()
 
@@ -120,7 +121,7 @@ func (ct *Tracker) WaitCommit(ctx context.Context, miner address.Address, sector
 
 	select {
 	case <-wait:
-		tracking, err := ct.commitDs.Get(key)
+		tracking, err := ct.commitments.Get(key)
 		if err != nil {
 			return cid.Undef, xerrors.Errorf("failed to get commitment after waiting: %w", err)
 		}

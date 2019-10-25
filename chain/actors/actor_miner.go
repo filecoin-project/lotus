@@ -18,8 +18,6 @@ import (
 	"golang.org/x/xerrors"
 )
 
-const POST_SECTORS_COUNT = 8192
-
 type StorageMinerActor struct{}
 
 type StorageMinerActorState struct {
@@ -100,29 +98,27 @@ type StorageMinerConstructorParams struct {
 }
 
 type maMethods struct {
-	Constructor            uint64
-	CommitSector           uint64
-	SubmitPoSt             uint64
-	SlashStorageFault      uint64
-	GetCurrentProvingSet   uint64
-	ArbitrateDeal          uint64
-	DePledge               uint64
-	GetOwner               uint64
-	GetWorkerAddr          uint64
-	GetPower               uint64
-	GetPeerID              uint64
-	GetSectorSize          uint64
-	UpdatePeerID           uint64
-	ChangeWorker           uint64
-	IsSlashed              uint64
-	IsLate                 uint64
-	PaymentVerifyInclusion uint64
-	PaymentVerifySector    uint64
-	AddFaults              uint64
-	SlashConsensusFault    uint64
+	Constructor          uint64
+	CommitSector         uint64
+	SubmitPoSt           uint64
+	SlashStorageFault    uint64
+	GetCurrentProvingSet uint64
+	ArbitrateDeal        uint64
+	DePledge             uint64
+	GetOwner             uint64
+	GetWorkerAddr        uint64
+	GetPower             uint64
+	GetPeerID            uint64
+	GetSectorSize        uint64
+	UpdatePeerID         uint64
+	ChangeWorker         uint64
+	IsSlashed            uint64
+	IsLate               uint64
+	AddFaults            uint64
+	SlashConsensusFault  uint64
 }
 
-var MAMethods = maMethods{1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16, 17, 18, 19, 20}
+var MAMethods = maMethods{1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16, 17, 18}
 
 func (sma StorageMinerActor) Exports() []interface{} {
 	return []interface{}{
@@ -142,10 +138,8 @@ func (sma StorageMinerActor) Exports() []interface{} {
 		//14: sma.ChangeWorker,
 		//15: sma.IsSlashed,
 		//16: sma.IsLate,
-		17: sma.PaymentVerifyInclusion,
-		18: sma.PaymentVerifySector,
-		19: sma.AddFaults,
-		20: sma.SlashConsensusFault,
+		17: sma.AddFaults,
+		18: sma.SlashConsensusFault,
 	}
 }
 
@@ -205,15 +199,18 @@ func (sma StorageMinerActor) StorageMinerConstructor(act *types.Actor, vmctx typ
 	return nil, nil
 }
 
-type CommitSectorParams struct {
-	SectorID  uint64
-	CommD     []byte
+type OnChainSealVerifyInfo struct {
+	CommD     []byte // TODO: update proofs code
 	CommR     []byte
 	CommRStar []byte
-	Proof     []byte
+
+	//Epoch        uint64
+	Proof        []byte
+	DealIDs      []uint64
+	SectorNumber uint64
 }
 
-func (sma StorageMinerActor) CommitSector(act *types.Actor, vmctx types.VMContext, params *CommitSectorParams) ([]byte, ActorError) {
+func (sma StorageMinerActor) CommitSector(act *types.Actor, vmctx types.VMContext, params *OnChainSealVerifyInfo) ([]byte, ActorError) {
 	ctx := context.TODO()
 	oldstate, self, err := loadState(vmctx)
 	if err != nil {
@@ -235,7 +232,7 @@ func (sma StorageMinerActor) CommitSector(act *types.Actor, vmctx types.VMContex
 	}
 
 	// make sure the miner isnt trying to submit a pre-existing sector
-	unique, err := SectorIsUnique(ctx, vmctx.Storage(), self.Sectors, params.SectorID)
+	unique, err := SectorIsUnique(ctx, vmctx.Storage(), self.Sectors, params.SectorNumber)
 	if err != nil {
 		return nil, err
 	}
@@ -247,6 +244,7 @@ func (sma StorageMinerActor) CommitSector(act *types.Actor, vmctx types.VMContex
 	futurePower := types.BigAdd(self.Power, mi.SectorSize)
 	collateralRequired := CollateralForPower(futurePower)
 
+	// TODO: grab from market?
 	if act.Balance.LessThan(collateralRequired) {
 		return nil, aerrors.New(3, "not enough collateral")
 	}
@@ -254,7 +252,7 @@ func (sma StorageMinerActor) CommitSector(act *types.Actor, vmctx types.VMContex
 	// Note: There must exist a unique index in the miner's sector set for each
 	// sector ID. The `faults`, `recovered`, and `done` parameters of the
 	// SubmitPoSt method express indices into this sector set.
-	nssroot, err := AddToSectorSet(ctx, vmctx.Storage(), self.Sectors, params.SectorID, params.CommR, params.CommD)
+	nssroot, err := AddToSectorSet(ctx, vmctx.Storage(), self.Sectors, params.SectorNumber, params.CommR, params.CommD)
 	if err != nil {
 		return nil, err
 	}
@@ -286,7 +284,15 @@ func (sma StorageMinerActor) CommitSector(act *types.Actor, vmctx types.VMContex
 		return nil, err
 	}
 
-	return nil, nil
+	activateParams, err := SerializeParams(&ActivateStorageDealsParams{
+		Deals: params.DealIDs,
+	})
+	if err != nil {
+		return nil, err
+	}
+
+	_, err = vmctx.Send(StorageMarketAddress, SMAMethods.ActivateStorageDeals, types.NewInt(0), activateParams)
+	return nil, err
 }
 
 type SubmitPoStParams struct {
@@ -433,7 +439,7 @@ func (sma StorageMinerActor) SubmitPoSt(act *types.Actor, vmctx types.VMContext,
 		return nil, err
 	}
 
-	_, err = vmctx.Send(StorageMarketAddress, SPAMethods.UpdateStorage, types.NewInt(0), enc)
+	_, err = vmctx.Send(StoragePowerAddress, SPAMethods.UpdateStorage, types.NewInt(0), enc)
 	if err != nil {
 		return nil, err
 	}
@@ -511,8 +517,8 @@ func GetFromSectorSet(ctx context.Context, s types.Storage, ss cid.Cid, sectorID
 	return true, comms[0], comms[1], nil
 }
 
-func ValidatePoRep(maddr address.Address, ssize types.BigInt, params *CommitSectorParams) (bool, ActorError) {
-	ok, err := sectorbuilder.VerifySeal(ssize.Uint64(), params.CommR, params.CommD, params.CommRStar, maddr, params.SectorID, params.Proof)
+func ValidatePoRep(maddr address.Address, ssize types.BigInt, params *OnChainSealVerifyInfo) (bool, ActorError) {
+	ok, err := sectorbuilder.VerifySeal(ssize.Uint64(), params.CommR, params.CommD, params.CommRStar, maddr, params.SectorNumber, params.Proof)
 	if err != nil {
 		return false, aerrors.Absorb(err, 25, "verify seal failed")
 	}
@@ -634,84 +640,6 @@ type PaymentVerifyParams struct {
 	Proof []byte
 }
 
-type PieceInclVoucherData struct { // TODO: Update spec at https://github.com/filecoin-project/specs/blob/master/actors.md#paymentverify
-	CommP     []byte
-	PieceSize types.BigInt
-}
-
-type InclusionProof struct {
-	Sector uint64 // for CommD, also verifies the sector is in sector set
-	Proof  []byte
-}
-
-func (sma StorageMinerActor) PaymentVerifyInclusion(act *types.Actor, vmctx types.VMContext, params *PaymentVerifyParams) ([]byte, ActorError) {
-	// params.Extra - PieceInclVoucherData
-	// params.Proof - InclusionProof
-
-	_, self, aerr := loadState(vmctx)
-	if aerr != nil {
-		return nil, aerr
-	}
-	mi, aerr := loadMinerInfo(vmctx, self)
-	if aerr != nil {
-		return nil, aerr
-	}
-
-	var voucherData PieceInclVoucherData
-	if err := cbor.DecodeInto(params.Extra, &voucherData); err != nil {
-		return nil, aerrors.Absorb(err, 2, "failed to decode storage voucher data for verification")
-	}
-	var proof InclusionProof
-	if err := cbor.DecodeInto(params.Proof, &proof); err != nil {
-		return nil, aerrors.Absorb(err, 3, "failed to decode storage payment proof")
-	}
-
-	ok, _, commD, aerr := GetFromSectorSet(context.TODO(), vmctx.Storage(), self.Sectors, proof.Sector)
-	if aerr != nil {
-		return nil, aerr
-	}
-	if !ok {
-		return nil, aerrors.New(4, "miner does not have required sector")
-	}
-
-	ok, err := sectorbuilder.VerifyPieceInclusionProof(mi.SectorSize.Uint64(), voucherData.PieceSize.Uint64(), voucherData.CommP, commD, proof.Proof)
-	if err != nil {
-		return nil, aerrors.Absorb(err, 5, "verify piece inclusion proof failed")
-	}
-	if !ok {
-		return nil, aerrors.New(6, "piece inclusion proof was invalid")
-	}
-
-	return nil, nil
-}
-
-func (sma StorageMinerActor) PaymentVerifySector(act *types.Actor, vmctx types.VMContext, params *PaymentVerifyParams) ([]byte, ActorError) {
-	// params.Extra - BigInt - sector id
-	// params.Proof - nil
-
-	_, self, aerr := loadState(vmctx)
-	if aerr != nil {
-		return nil, aerr
-	}
-
-	// TODO: ensure no sector ID reusability within related deal lifetime
-	sector := types.BigFromBytes(params.Extra)
-
-	if len(params.Proof) > 0 {
-		return nil, aerrors.New(1, "unexpected proof bytes")
-	}
-
-	ok, _, _, aerr := GetFromSectorSet(context.TODO(), vmctx.Storage(), self.Sectors, sector.Uint64())
-	if aerr != nil {
-		return nil, aerr
-	}
-	if !ok {
-		return nil, aerrors.New(2, "miner does not have required sector")
-	}
-
-	return nil, nil
-}
-
 type AddFaultsParams struct {
 	Faults types.BitField
 }
@@ -753,7 +681,7 @@ type MinerSlashConsensusFault struct {
 }
 
 func (sma StorageMinerActor) SlashConsensusFault(act *types.Actor, vmctx types.VMContext, params *MinerSlashConsensusFault) ([]byte, ActorError) {
-	if vmctx.Message().From != StorageMarketAddress {
+	if vmctx.Message().From != StoragePowerAddress {
 		return nil, aerrors.New(1, "SlashConsensusFault may only be called by the storage market actor")
 	}
 

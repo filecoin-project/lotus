@@ -162,7 +162,7 @@ func (ia InitActor) Exec(act *types.Actor, vmctx types.VMContext, p *ExecParams)
 
 func IsBuiltinActor(code cid.Cid) bool {
 	switch code {
-	case StorageMarketActorCodeCid, StorageMinerCodeCid, AccountActorCodeCid, InitActorCodeCid, MultisigActorCodeCid, PaymentChannelActorCodeCid:
+	case StorageMarketCodeCid, StoragePowerCodeCid, StorageMinerCodeCid, AccountCodeCid, InitCodeCid, MultisigCodeCid, PaymentChannelCodeCid:
 		return true
 	default:
 		return false
@@ -170,7 +170,7 @@ func IsBuiltinActor(code cid.Cid) bool {
 }
 
 func IsSingletonActor(code cid.Cid) bool {
-	return code == StorageMarketActorCodeCid || code == InitActorCodeCid
+	return code == StoragePowerCodeCid || code == StorageMarketCodeCid || code == InitCodeCid
 }
 
 func (ias *InitActorState) AddActor(cst *hamt.CborIpldStore, addr address.Address) (address.Address, error) {

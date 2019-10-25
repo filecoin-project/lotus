@@ -206,7 +206,7 @@ func (cg *ChainGen) nextBlockProof(ctx context.Context, pts *types.TipSet, m add
 
 	st := pts.ParentState()
 
-	worker, err := stmgr.GetMinerWorker(ctx, cg.sm, st, m)
+	worker, err := stmgr.GetMinerWorkerRaw(ctx, cg.sm, st, m)
 	if err != nil {
 		return nil, nil, err
 	}
@@ -385,7 +385,7 @@ func (mca mca) StateMinerPower(ctx context.Context, maddr address.Address, ts *t
 }
 
 func (mca mca) StateMinerWorker(ctx context.Context, maddr address.Address, ts *types.TipSet) (address.Address, error) {
-	return stmgr.GetMinerWorker(ctx, mca.sm, ts.ParentState(), maddr)
+	return stmgr.GetMinerWorkerRaw(ctx, mca.sm, ts.ParentState(), maddr)
 }
 
 func (mca mca) WalletSign(ctx context.Context, a address.Address, v []byte) (*types.Signature, error) {

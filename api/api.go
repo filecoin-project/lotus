@@ -12,6 +12,7 @@ import (
 	"github.com/libp2p/go-libp2p-core/peer"
 
 	"github.com/filecoin-project/lotus/build"
+	"github.com/filecoin-project/lotus/chain/actors"
 	"github.com/filecoin-project/lotus/chain/address"
 	"github.com/filecoin-project/lotus/chain/store"
 	"github.com/filecoin-project/lotus/chain/types"
@@ -132,6 +133,9 @@ type FullNode interface {
 	StateWaitMsg(context.Context, cid.Cid) (*MsgWait, error)
 	StateListMiners(context.Context, *types.TipSet) ([]address.Address, error)
 	StateListActors(context.Context, *types.TipSet) ([]address.Address, error)
+	StateMarketBalance(context.Context, address.Address, *types.TipSet) (actors.StorageParticipantBalance, error)
+	StateMarketParticipants(context.Context, *types.TipSet) (map[string]actors.StorageParticipantBalance, error)
+	StateMarketDeals(context.Context, *types.TipSet) (map[string]actors.OnChainDeal, error)
 
 	PaychGet(ctx context.Context, from, to address.Address, ensureFunds types.BigInt) (*ChannelInfo, error)
 	PaychList(context.Context) ([]address.Address, error)
@@ -179,6 +183,9 @@ type Version struct {
 	APIVersion uint32
 
 	// TODO: git commit / os / genesis cid?
+
+	// Seconds
+	BlockDelay uint64
 }
 
 func (v Version) String() string {
@@ -196,10 +203,9 @@ type Import struct {
 type DealInfo struct {
 	ProposalCid cid.Cid
 	State       DealState
-	Miner       address.Address
+	Provider    address.Address
 
-	PieceRef cid.Cid
-	CommP    []byte
+	PieceRef []byte // cid bytes
 	Size     uint64
 
 	TotalPrice types.BigInt

@@ -98,13 +98,13 @@ func HandleRetrieval(host host.Host, lc fx.Lifecycle, m *retrieval.Miner) {
 	})
 }
 
-func HandleDeals(mctx helpers.MetricsCtx, lc fx.Lifecycle, host host.Host, h *deals.Handler) {
+func HandleDeals(mctx helpers.MetricsCtx, lc fx.Lifecycle, host host.Host, h *deals.Provider) {
 	ctx := helpers.LifecycleCtx(mctx, lc)
 
 	lc.Append(fx.Hook{
 		OnStart: func(context.Context) error {
 			h.Run(ctx)
-			host.SetStreamHandler(deals.ProtocolID, h.HandleStream)
+			host.SetStreamHandler(deals.DealProtocolID, h.HandleStream)
 			host.SetStreamHandler(deals.AskProtocolID, h.HandleAskStream)
 			return nil
 		},

@@ -5,6 +5,7 @@ import (
 	"errors"
 	"golang.org/x/xerrors"
 	"io"
+	"math"
 	"os"
 
 	"github.com/ipfs/go-blockservice"
@@ -13,7 +14,6 @@ import (
 	chunker "github.com/ipfs/go-ipfs-chunker"
 	offline "github.com/ipfs/go-ipfs-exchange-offline"
 	files "github.com/ipfs/go-ipfs-files"
-	cbor "github.com/ipfs/go-ipld-cbor"
 	ipld "github.com/ipfs/go-ipld-format"
 	"github.com/ipfs/go-merkledag"
 	"github.com/ipfs/go-unixfs/importer/balanced"
@@ -76,50 +76,20 @@ func (a *API) ClientStartDeal(ctx context.Context, data cid.Cid, miner address.A
 		return nil, err
 	}
 
-	vd, err := a.DealClient.VerifyParams(ctx, data)
-	if err != nil {
-		return nil, err
-	}
-
-	voucherData, err := cbor.DumpObject(vd)
-	if err != nil {
-		return nil, err
-	}
-
 	// setup payments
 	total := types.BigMul(price, types.NewInt(blocksDuration))
 
-	// TODO: at least ping the miner before creating paych / locking the money
-	extra := &types.ModVerifyParams{
-		Actor:  miner,
-		Method: actors.MAMethods.PaymentVerifyInclusion,
-		Data:   voucherData,
-	}
-
-	head := a.Chain.GetHeaviestTipSet()
-	vouchers := deals.VoucherSpec(blocksDuration, total, head.Height(), extra)
-
-	payment, err := a.PaychNewPayment(ctx, self, miner, vouchers)
-	if err != nil {
-		return nil, err
-	}
-
 	proposal := deals.ClientDealProposal{
-		Data:       data,
-		TotalPrice: total,
-		Duration:   blocksDuration,
-		Payment: actors.PaymentInfo{
-			PayChActor:     payment.Channel,
-			Payer:          self,
-			ChannelMessage: payment.ChannelMessage,
-			Vouchers:       payment.Vouchers,
-		},
-		MinerAddress:  miner,
-		ClientAddress: self,
-		MinerID:       pid,
+		Data:               data,
+		TotalPrice:         total,
+		ProposalExpiration: math.MaxUint64, // TODO: set something reasonable
+		Duration:           blocksDuration,
+		ProviderAddress:    miner,
+		Client:             self,
+		MinerID:            pid,
 	}
 
-	c, err := a.DealClient.Start(ctx, proposal, vd)
+	c, err := a.DealClient.Start(ctx, proposal)
 	// TODO: send updated voucher with PaymentVerifySector for cheaper validation (validate the sector the miner sent us first!)
 	return &c, err
 }
@@ -135,13 +105,12 @@ func (a *API) ClientListDeals(ctx context.Context) ([]api.DealInfo, error) {
 		out[k] = api.DealInfo{
 			ProposalCid: v.ProposalCid,
 			State:       v.State,
-			Miner:       v.Proposal.MinerAddress,
+			Provider:    v.Proposal.Provider,
 
 			PieceRef: v.Proposal.PieceRef,
-			CommP:    v.Proposal.CommP,
-			Size:     v.Proposal.Size,
+			Size:     v.Proposal.PieceSize,
 
-			TotalPrice: v.Proposal.TotalPrice,
+			TotalPrice: v.Proposal.StoragePrice,
 			Duration:   v.Proposal.Duration,
 		}
 	}

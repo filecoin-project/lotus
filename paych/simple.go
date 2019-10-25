@@ -19,14 +19,14 @@ func (pm *Manager) createPaych(ctx context.Context, from, to address.Address, am
 
 	enc, aerr := actors.SerializeParams(&actors.ExecParams{
 		Params: params,
-		Code:   actors.PaymentChannelActorCodeCid,
+		Code:   actors.PaymentChannelCodeCid,
 	})
 	if aerr != nil {
 		return address.Undef, cid.Undef, aerr
 	}
 
 	msg := &types.Message{
-		To:       actors.InitActorAddress,
+		To:       actors.InitAddress,
 		From:     from,
 		Value:    amt,
 		Method:   actors.IAMethods.Exec,

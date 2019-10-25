@@ -2,43 +2,40 @@ package deals
 
 import (
 	"context"
-	"math"
 	"sync"
 
 	cid "github.com/ipfs/go-cid"
 	datastore "github.com/ipfs/go-datastore"
 	"github.com/ipfs/go-datastore/namespace"
-	cbor "github.com/ipfs/go-ipld-cbor"
 	inet "github.com/libp2p/go-libp2p-core/network"
 	"github.com/libp2p/go-libp2p-core/peer"
 	"golang.org/x/xerrors"
 
 	"github.com/filecoin-project/lotus/api"
+	"github.com/filecoin-project/lotus/chain/actors"
 	"github.com/filecoin-project/lotus/chain/address"
 	"github.com/filecoin-project/lotus/chain/types"
+	"github.com/filecoin-project/lotus/lib/cborrpc"
 	"github.com/filecoin-project/lotus/node/modules/dtypes"
 	"github.com/filecoin-project/lotus/storage/commitment"
 	"github.com/filecoin-project/lotus/storage/sectorblocks"
 )
 
-func init() {
-	cbor.RegisterCborType(MinerDeal{})
-}
-
 type MinerDeal struct {
 	Client      peer.ID
-	Proposal    StorageDealProposal
+	Proposal    actors.StorageDealProposal
 	ProposalCid cid.Cid
 	State       api.DealState
 
 	Ref cid.Cid
 
+	DealID   uint64
 	SectorID uint64 // Set when State >= DealStaged
 
 	s inet.Stream
 }
 
-type Handler struct {
+type Provider struct {
 	pricePerByteBlock types.BigInt // how much we want for storing one byte for one block
 	minPieceSize      uint64
 
@@ -73,7 +70,7 @@ type minerDealUpdate struct {
 	mut      func(*MinerDeal)
 }
 
-func NewHandler(ds dtypes.MetadataDS, secst *sectorblocks.SectorBlocks, commt *commitment.Tracker, dag dtypes.StagingDAG, fullNode api.FullNode) (*Handler, error) {
+func NewProvider(ds dtypes.MetadataDS, secst *sectorblocks.SectorBlocks, commt *commitment.Tracker, dag dtypes.StagingDAG, fullNode api.FullNode) (*Provider, error) {
 	addr, err := ds.Get(datastore.NewKey("miner-address"))
 	if err != nil {
 		return nil, err
@@ -83,7 +80,7 @@ func NewHandler(ds dtypes.MetadataDS, secst *sectorblocks.SectorBlocks, commt *c
 		return nil, err
 	}
 
-	h := &Handler{
+	h := &Provider{
 		secst: secst,
 		commt: commt,
 		dag:   dag,
@@ -120,40 +117,40 @@ func NewHandler(ds dtypes.MetadataDS, secst *sectorblocks.SectorBlocks, commt *c
 	return h, nil
 }
 
-func (h *Handler) Run(ctx context.Context) {
+func (p *Provider) Run(ctx context.Context) {
 	// TODO: restore state
 
 	go func() {
-		defer log.Warn("quitting deal handler loop")
-		defer close(h.stopped)
+		defer log.Warn("quitting deal provider loop")
+		defer close(p.stopped)
 
 		for {
 			select {
-			case deal := <-h.incoming: // DealAccepted
-				h.onIncoming(deal)
-			case update := <-h.updated: // DealStaged
-				h.onUpdated(ctx, update)
-			case <-h.stop:
+			case deal := <-p.incoming: // DealAccepted
+				p.onIncoming(deal)
+			case update := <-p.updated: // DealStaged
+				p.onUpdated(ctx, update)
+			case <-p.stop:
 				return
 			}
 		}
 	}()
 }
 
-func (h *Handler) onIncoming(deal MinerDeal) {
+func (p *Provider) onIncoming(deal MinerDeal) {
 	log.Info("incoming deal")
 
-	h.conns[deal.ProposalCid] = deal.s
+	p.conns[deal.ProposalCid] = deal.s
 
-	if err := h.deals.Begin(deal.ProposalCid, deal); err != nil {
+	if err := p.deals.Begin(deal.ProposalCid, &deal); err != nil {
 		// This can happen when client re-sends proposal
-		h.failDeal(deal.ProposalCid, err)
+		p.failDeal(deal.ProposalCid, err)
 		log.Errorf("deal tracking failed: %s", err)
 		return
 	}
 
 	go func() {
-		h.updated <- minerDealUpdate{
+		p.updated <- minerDealUpdate{
 			newState: api.DealAccepted,
 			id:       deal.ProposalCid,
 			err:      nil,
@@ -161,15 +158,15 @@ func (h *Handler) onIncoming(deal MinerDeal) {
 	}()
 }
 
-func (h *Handler) onUpdated(ctx context.Context, update minerDealUpdate) {
+func (p *Provider) onUpdated(ctx context.Context, update minerDealUpdate) {
 	log.Infof("Deal %s updated state to %d", update.id, update.newState)
 	if update.err != nil {
-		log.Errorf("deal %s failed: %s", update.id, update.err)
-		h.failDeal(update.id, update.err)
+		log.Errorf("deal %s (newSt: %d) failed: %s", update.id, update.newState, update.err)
+		p.failDeal(update.id, update.err)
 		return
 	}
 	var deal MinerDeal
-	err := h.deals.MutateMiner(update.id, func(d *MinerDeal) error {
+	err := p.deals.MutateMiner(update.id, func(d *MinerDeal) error {
 		d.State = update.newState
 		if update.mut != nil {
 			update.mut(d)
@@ -178,30 +175,29 @@ func (h *Handler) onUpdated(ctx context.Context, update minerDealUpdate) {
 		return nil
 	})
 	if err != nil {
-		h.failDeal(update.id, err)
+		p.failDeal(update.id, err)
 		return
 	}
 
 	switch update.newState {
 	case api.DealAccepted:
-		h.handle(ctx, deal, h.accept, api.DealStaged)
+		p.handle(ctx, deal, p.accept, api.DealStaged)
 	case api.DealStaged:
-		h.handle(ctx, deal, h.staged, api.DealSealing)
+		p.handle(ctx, deal, p.staged, api.DealSealing)
 	case api.DealSealing:
-		h.handle(ctx, deal, h.sealing, api.DealComplete)
+		p.handle(ctx, deal, p.sealing, api.DealComplete)
 	case api.DealComplete:
-		h.handle(ctx, deal, h.complete, api.DealNoUpdate)
+		p.handle(ctx, deal, p.complete, api.DealNoUpdate)
 	}
 }
 
-func (h *Handler) newDeal(s inet.Stream, proposal StorageDealProposal) (MinerDeal, error) {
-	// TODO: Review: Not signed?
-	proposalNd, err := cbor.WrapObject(proposal, math.MaxUint64, -1)
+func (p *Provider) newDeal(s inet.Stream, proposal actors.StorageDealProposal) (MinerDeal, error) {
+	proposalNd, err := cborrpc.AsIpld(&proposal)
 	if err != nil {
 		return MinerDeal{}, err
 	}
 
-	ref, err := cid.Parse(proposal.PieceRef)
+	ref, err := cid.Cast(proposal.PieceRef)
 	if err != nil {
 		return MinerDeal{}, err
 	}
@@ -218,27 +214,27 @@ func (h *Handler) newDeal(s inet.Stream, proposal StorageDealProposal) (MinerDea
 	}, nil
 }
 
-func (h *Handler) HandleStream(s inet.Stream) {
+func (p *Provider) HandleStream(s inet.Stream) {
 	log.Info("Handling storage deal proposal!")
 
-	proposal, err := h.readProposal(s)
+	proposal, err := p.readProposal(s)
 	if err != nil {
 		log.Error(err)
 		s.Close()
 		return
 	}
 
-	deal, err := h.newDeal(s, proposal.Proposal)
+	deal, err := p.newDeal(s, proposal)
 	if err != nil {
 		log.Error(err)
 		s.Close()
 		return
 	}
 
-	h.incoming <- deal
+	p.incoming <- deal
 }
 
-func (h *Handler) Stop() {
-	close(h.stop)
-	<-h.stopped
+func (p *Provider) Stop() {
+	close(p.stop)
+	<-p.stopped
 }

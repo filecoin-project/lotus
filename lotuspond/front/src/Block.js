@@ -64,7 +64,14 @@ class Block extends React.Component {
           <div>Miner: {<Address client={this.props.conn} addr={head.Miner} mountWindow={this.props.mountWindow}/>}</div>
           <div>Messages: {head.Messages['/']} {/*TODO: link to message explorer */}</div>
           <div>Parent Receipts: {head.ParentMessageReceipts['/']}</div>
-          <div>Parent State Root:&nbsp;{head.ParentStateRoot['/']}</div>
+          <div>
+            <span>Parent State Root:&nbsp;{head.ParentStateRoot['/']}</span>
+            <span>&nbsp;<Address client={this.props.conn} short={true} addr="t00" mountWindow={this.props.mountWindow}/></span>
+            <span>&nbsp;<Address client={this.props.conn} short={true} addr="t01" mountWindow={this.props.mountWindow}/></span>
+            <span>&nbsp;<Address client={this.props.conn} short={true} addr="t02" mountWindow={this.props.mountWindow}/></span>
+            <span>&nbsp;<Address client={this.props.conn} short={true} addr="t03" mountWindow={this.props.mountWindow}/></span>
+            <span>&nbsp;<Address client={this.props.conn} short={true} addr="t099" mountWindow={this.props.mountWindow}/></span>
+          </div>
           <div>----</div>
           <div>{messages}</div>
         </div>

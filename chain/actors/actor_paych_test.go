@@ -18,7 +18,7 @@ func TestPaychCreate(t *testing.T) {
 	}
 
 	h := NewHarness(t, opts...)
-	ret, _ := h.CreateActor(t, creatorAddr, actors.PaymentChannelActorCodeCid,
+	ret, _ := h.CreateActor(t, creatorAddr, actors.PaymentChannelCodeCid,
 		&actors.PCAConstructorParams{
 			To: targetAddr,
 		})
@@ -47,7 +47,7 @@ func TestPaychUpdate(t *testing.T) {
 	}
 
 	h := NewHarness(t, opts...)
-	ret, _ := h.CreateActor(t, creatorAddr, actors.PaymentChannelActorCodeCid,
+	ret, _ := h.CreateActor(t, creatorAddr, actors.PaymentChannelCodeCid,
 		&actors.PCAConstructorParams{
 			To: targetAddr,
 		})

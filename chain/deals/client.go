@@ -2,12 +2,11 @@ package deals
 
 import (
 	"context"
-	"math"
+	"github.com/filecoin-project/lotus/node/impl/full"
 
 	"github.com/ipfs/go-cid"
 	"github.com/ipfs/go-datastore"
 	"github.com/ipfs/go-datastore/namespace"
-	cbor "github.com/ipfs/go-ipld-cbor"
 	logging "github.com/ipfs/go-log"
 	"github.com/libp2p/go-libp2p-core/host"
 	inet "github.com/libp2p/go-libp2p-core/network"
@@ -18,6 +17,7 @@ import (
 	"github.com/filecoin-project/lotus/chain/actors"
 	"github.com/filecoin-project/lotus/chain/address"
 	"github.com/filecoin-project/lotus/chain/stmgr"
+	"github.com/filecoin-project/lotus/chain/store"
 	"github.com/filecoin-project/lotus/chain/types"
 	"github.com/filecoin-project/lotus/chain/wallet"
 	"github.com/filecoin-project/lotus/lib/cborrpc"
@@ -25,22 +25,11 @@ import (
 	"github.com/filecoin-project/lotus/retrieval/discovery"
 )
 
-func init() {
-	cbor.RegisterCborType(ClientDeal{})
-	cbor.RegisterCborType(actors.PieceInclVoucherData{}) // TODO: USE CBORGEN!
-	cbor.RegisterCborType(types.SignedVoucher{})
-	cbor.RegisterCborType(types.ModVerifyParams{})
-	cbor.RegisterCborType(types.Signature{})
-	cbor.RegisterCborType(actors.PaymentInfo{})
-	cbor.RegisterCborType(api.PaymentInfo{})
-	cbor.RegisterCborType(actors.InclusionProof{})
-}
-
 var log = logging.Logger("deals")
 
 type ClientDeal struct {
 	ProposalCid cid.Cid
-	Proposal    StorageDealProposal
+	Proposal    actors.StorageDealProposal
 	State       api.DealState
 	Miner       peer.ID
 
@@ -49,15 +38,17 @@ type ClientDeal struct {
 
 type Client struct {
 	sm        *stmgr.StateManager
+	chain     *store.ChainStore
 	h         host.Host
 	w         *wallet.Wallet
 	dag       dtypes.ClientDAG
 	discovery *discovery.Local
+	mpool     full.MpoolAPI
 
 	deals ClientStateStore
 	conns map[cid.Cid]inet.Stream
 
-	incoming chan ClientDeal
+	incoming chan *ClientDeal
 	updated  chan clientDealUpdate
 
 	stop    chan struct{}
@@ -70,18 +61,20 @@ type clientDealUpdate struct {
 	err      error
 }
 
-func NewClient(sm *stmgr.StateManager, h host.Host, w *wallet.Wallet, ds dtypes.MetadataDS, dag dtypes.ClientDAG, discovery *discovery.Local) *Client {
+func NewClient(sm *stmgr.StateManager, chain *store.ChainStore, h host.Host, w *wallet.Wallet, ds dtypes.MetadataDS, dag dtypes.ClientDAG, discovery *discovery.Local, mpool full.MpoolAPI) *Client {
 	c := &Client{
 		sm:        sm,
+		chain:     chain,
 		h:         h,
 		w:         w,
 		dag:       dag,
 		discovery: discovery,
+		mpool:     mpool,
 
 		deals: ClientStateStore{StateStore{ds: namespace.Wrap(ds, datastore.NewKey("/deals/client"))}},
 		conns: map[cid.Cid]inet.Stream{},
 
-		incoming: make(chan ClientDeal, 16),
+		incoming: make(chan *ClientDeal, 16),
 		updated:  make(chan clientDealUpdate, 16),
 
 		stop:    make(chan struct{}),
@@ -108,7 +101,7 @@ func (c *Client) Run(ctx context.Context) {
 	}()
 }
 
-func (c *Client) onIncoming(deal ClientDeal) {
+func (c *Client) onIncoming(deal *ClientDeal) {
 	log.Info("incoming deal")
 
 	if _, ok := c.conns[deal.ProposalCid]; ok {
@@ -166,70 +159,94 @@ func (c *Client) onUpdated(ctx context.Context, update clientDealUpdate) {
 type ClientDealProposal struct {
 	Data cid.Cid
 
-	TotalPrice types.BigInt
-	Duration   uint64
+	TotalPrice         types.BigInt
+	ProposalExpiration uint64
+	Duration           uint64
 
-	Payment actors.PaymentInfo
-
-	MinerAddress  address.Address
-	ClientAddress address.Address
-	MinerID       peer.ID
+	ProviderAddress address.Address
+	Client          address.Address
+	MinerID         peer.ID
 }
 
-func (c *Client) VerifyParams(ctx context.Context, data cid.Cid) (*actors.PieceInclVoucherData, error) {
-	commP, size, err := c.commP(ctx, data)
+func (c *Client) Start(ctx context.Context, p ClientDealProposal) (cid.Cid, error) {
+	// check market funds
+	clientMarketBalance, err := c.sm.MarketBalance(ctx, p.Client, nil)
 	if err != nil {
-		return nil, err
+		return cid.Undef, xerrors.Errorf("getting client market balance failed: %w", err)
 	}
 
-	return &actors.PieceInclVoucherData{
-		CommP:     commP,
-		PieceSize: types.NewInt(uint64(size)),
-	}, nil
-}
+	if clientMarketBalance.Available.LessThan(p.TotalPrice) {
+		// TODO: move to a smarter market funds manager
 
-func (c *Client) Start(ctx context.Context, p ClientDealProposal, vd *actors.PieceInclVoucherData) (cid.Cid, error) {
-	proposal := StorageDealProposal{
-		PieceRef:          p.Data,
-		SerializationMode: SerializationUnixFs,
-		CommP:             vd.CommP[:],
-		Size:              vd.PieceSize.Uint64(),
-		TotalPrice:        p.TotalPrice,
-		Duration:          p.Duration,
-		Payment:           p.Payment,
-		MinerAddress:      p.MinerAddress,
-		ClientAddress:     p.ClientAddress,
+		smsg, err := c.mpool.MpoolPushMessage(ctx, &types.Message{
+			To:       actors.StorageMarketAddress,
+			From:     p.Client,
+			Value:    p.TotalPrice,
+			GasPrice: types.NewInt(0),
+			GasLimit: types.NewInt(1000000),
+			Method:   actors.SMAMethods.AddBalance,
+		})
+		if err != nil {
+			return cid.Undef, err
+		}
+
+		_, r, err := c.sm.WaitForMessage(ctx, smsg.Cid())
+		if err != nil {
+			return cid.Undef, err
+		}
+
+		if r.ExitCode != 0 {
+			return cid.Undef, xerrors.Errorf("adding funds to storage miner market actor failed: exit %d", r.ExitCode)
+		}
 	}
 
-	s, err := c.h.NewStream(ctx, p.MinerID, ProtocolID)
+	dataSize, err := c.dataSize(ctx, p.Data)
+
+	proposal := &actors.StorageDealProposal{
+		PieceRef:           p.Data.Bytes(),
+		PieceSize:          uint64(dataSize),
+		PieceSerialization: actors.SerializationUnixFSv0,
+		Client:             p.Client,
+		Provider:           p.ProviderAddress,
+		ProposalExpiration: p.ProposalExpiration,
+		Duration:           p.Duration,
+		StoragePrice:       p.TotalPrice,
+		StorageCollateral:  types.NewInt(uint64(dataSize)), // TODO: real calc
+	}
+
+	if err := api.SignWith(ctx, c.w.Sign, p.Client, proposal); err != nil {
+		return cid.Undef, xerrors.Errorf("signing deal proposal failed: %w", err)
+	}
+
+	proposalNd, err := cborrpc.AsIpld(proposal)
 	if err != nil {
-		return cid.Undef, err
+		return cid.Undef, xerrors.Errorf("getting proposal node failed: %w", err)
 	}
 
-	if err := c.sendProposal(s, proposal, p.ClientAddress); err != nil {
-		return cid.Undef, err
-	}
-
-	proposalNd, err := cbor.WrapObject(proposal, math.MaxUint64, -1)
+	s, err := c.h.NewStream(ctx, p.MinerID, DealProtocolID)
 	if err != nil {
-		return cid.Undef, err
+		s.Reset()
+		return cid.Undef, xerrors.Errorf("connecting to storage provider failed: %w", err)
 	}
 
-	deal := ClientDeal{
+	if err := cborrpc.WriteCborRPC(s, proposal); err != nil {
+		s.Reset()
+		return cid.Undef, xerrors.Errorf("sending proposal to storage provider failed: %w", err)
+	}
+
+	deal := &ClientDeal{
 		ProposalCid: proposalNd.Cid(),
-		Proposal:    proposal,
+		Proposal:    *proposal,
 		State:       api.DealUnknown,
 		Miner:       p.MinerID,
 
 		s: s,
 	}
 
-	// TODO: actually care about what happens with the deal after it was accepted
 	c.incoming <- deal
 
-	// TODO: start tracking after the deal is sealed
 	return deal.ProposalCid, c.discovery.AddPeer(p.Data, discovery.RetrievalPeer{
-		Address: proposal.MinerAddress,
+		Address: proposal.Provider,
 		ID:      deal.Miner,
 	})
 }

@@ -27,7 +27,7 @@ func MinerCreateBlock(ctx context.Context, sm *stmgr.StateManager, w *wallet.Wal
 
 	height := parents.Height() + uint64(len(tickets))
 
-	worker, err := stmgr.GetMinerWorker(ctx, sm, st, miner)
+	worker, err := stmgr.GetMinerWorkerRaw(ctx, sm, st, miner)
 	if err != nil {
 		return nil, xerrors.Errorf("failed to get miner worker: %w", err)
 	}

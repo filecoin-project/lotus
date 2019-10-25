@@ -6,6 +6,8 @@ import (
 	"math/rand"
 	"testing"
 
+	"github.com/ipfs/go-datastore"
+
 	"github.com/filecoin-project/lotus/chain/address"
 	"github.com/filecoin-project/lotus/lib/sectorbuilder"
 	"github.com/filecoin-project/lotus/storage/sector"
@@ -40,7 +42,7 @@ func TestSealAndVerify(t *testing.T) {
 		t.Fatal(err)
 	}
 
-	store := sector.NewStore(sb)
+	store := sector.NewStore(sb, datastore.NewMapDatastore())
 	store.Service()
 	ssinfo := <-store.Incoming()
 
