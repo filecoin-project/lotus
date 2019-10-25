@@ -4,6 +4,7 @@ import ReactTooltip from 'react-tooltip'
 import * as multihash from "multihashes"
 import State from "./State"
 import methods from "./chain/methods"
+import Fil from "./Fil";
 
 function truncAddr(addr, len) {
   if (!addr) {
@@ -13,17 +14,6 @@ function truncAddr(addr, len) {
     return <abbr title={addr}>{addr.substr(0, len - 3) + '..'}</abbr>
   }
   return addr
-}
-
-function filStr(raw) {
-  if(typeof raw !== 'string') {
-    return raw
-  }
-  if(raw.length < 18) {
-    raw = '0'.repeat(18 - raw.length)
-  }
-  let out = (raw.substring(0, raw.length - 18) + '.' + raw.substring(raw.length - 18, raw.length)).replace(/\.0+|0+$/g, '');
-  return out ? out : '0'
 }
 
 let sheet = document.createElement('style')
@@ -132,12 +122,12 @@ class Address extends React.Component {
       nonce = <span>&nbsp;<abbr title={"Next nonce"}>Nc:{this.state.nonce}</abbr>{nonce}</span>
     }
 
-    let balance = <span>:&nbsp;{filStr(this.state.balance)}&nbsp;</span>
+    let balance = <span>:&nbsp;{<Fil>{this.state.balance}</Fil>}&nbsp;</span>
     if(this.props.nobalance) {
       balance = <span/>
     }
     if(this.props.short) {
-      actInfo = <ReactTooltip id={this.props.addr} place="top" type="dark" effect="solid">{actInfo}: {filStr(this.state.balance)}</ReactTooltip>
+      actInfo = <ReactTooltip id={this.props.addr} place="top" type="dark" effect="solid">{actInfo}: {<Fil>this.state.balance</Fil>}</ReactTooltip>
       balance = <span/>
     }
 

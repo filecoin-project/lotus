@@ -183,6 +183,9 @@ type Version struct {
 	APIVersion uint32
 
 	// TODO: git commit / os / genesis cid?
+
+	// Seconds
+	BlockDelay uint64
 }
 
 func (v Version) String() string {
