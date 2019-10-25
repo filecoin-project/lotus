@@ -118,7 +118,7 @@ func TestStorageMarketActorCreateMiner(t *testing.T) {
 	params := &StorageMinerConstructorParams{
 		Owner:      maddr,
 		Worker:     maddr,
-		SectorSize: types.NewInt(build.SectorSize),
+		SectorSize: build.SectorSizes[0],
 		PeerID:     "fakepeerid",
 	}
 	var err error

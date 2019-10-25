@@ -208,12 +208,12 @@ func (cg *ChainGen) nextBlockProof(ctx context.Context, pts *types.TipSet, m add
 
 	worker, err := stmgr.GetMinerWorkerRaw(ctx, cg.sm, st, m)
 	if err != nil {
-		return nil, nil, err
+		return nil, nil, xerrors.Errorf("get miner worker: %w", err)
 	}
 
 	vrfout, err := ComputeVRF(ctx, cg.w.Sign, worker, lastTicket.VRFProof)
 	if err != nil {
-		return nil, nil, err
+		return nil, nil, xerrors.Errorf("compute VRF: %w", err)
 	}
 
 	tick := &types.Ticket{
@@ -252,7 +252,7 @@ func (cg *ChainGen) NextTipSetFromMiners(base *types.TipSet, miners []address.Ad
 
 	msgs, err := cg.getRandomMessages()
 	if err != nil {
-		return nil, err
+		return nil, xerrors.Errorf("get random messages: %w", err)
 	}
 
 	for len(blks) == 0 {
@@ -279,6 +279,12 @@ func (cg *ChainGen) NextTipSetFromMiners(base *types.TipSet, miners []address.Ad
 	}
 
 	fts := store.NewFullTipSet(blks)
+	fmt.Println("Made a block: ", fts.TipSet().Cids())
+	if len(fts.TipSet().Cids()) > 1 {
+		for _, b := range blks {
+			fmt.Printf("block %s: %#v\n", b.Cid(), b.Header)
+		}
+	}
 
 	return &MinedTipSet{
 		TipSet:   fts,
@@ -395,7 +401,7 @@ func (mca mca) WalletSign(ctx context.Context, a address.Address, v []byte) (*ty
 func IsRoundWinner(ctx context.Context, ts *types.TipSet, ticks []*types.Ticket, miner address.Address, a MiningCheckAPI) (bool, types.ElectionProof, error) {
 	r, err := a.ChainGetRandomness(ctx, ts, ticks, build.RandomnessLookback)
 	if err != nil {
-		return false, nil, err
+		return false, nil, xerrors.Errorf("chain get randomness: %w", err)
 	}
 
 	mworker, err := a.StateMinerWorker(ctx, miner, ts)

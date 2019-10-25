@@ -92,6 +92,7 @@ type FullNodeStruct struct {
 		StateMinerWorker           func(context.Context, address.Address, *types.TipSet) (address.Address, error)                  `perm:"read"`
 		StateMinerPeerID           func(ctx context.Context, m address.Address, ts *types.TipSet) (peer.ID, error)                 `perm:"read"`
 		StateMinerProvingPeriodEnd func(ctx context.Context, actor address.Address, ts *types.TipSet) (uint64, error)              `perm:"read"`
+		StateMinerSectorSize       func(context.Context, address.Address, *types.TipSet) (uint64, error)                           `perm:"read"`
 		StateCall                  func(context.Context, *types.Message, *types.TipSet) (*types.MessageReceipt, error)             `perm:"read"`
 		StateReplay                func(context.Context, *types.TipSet, cid.Cid) (*ReplayResults, error)                           `perm:"read"`
 		StateGetActor              func(context.Context, address.Address, *types.TipSet) (*types.Actor, error)                     `perm:"read"`
@@ -357,8 +358,13 @@ func (c *FullNodeStruct) StateMinerWorker(ctx context.Context, m address.Address
 func (c *FullNodeStruct) StateMinerPeerID(ctx context.Context, m address.Address, ts *types.TipSet) (peer.ID, error) {
 	return c.Internal.StateMinerPeerID(ctx, m, ts)
 }
+
 func (c *FullNodeStruct) StateMinerProvingPeriodEnd(ctx context.Context, actor address.Address, ts *types.TipSet) (uint64, error) {
 	return c.Internal.StateMinerProvingPeriodEnd(ctx, actor, ts)
+}
+
+func (c *FullNodeStruct) StateMinerSectorSize(ctx context.Context, actor address.Address, ts *types.TipSet) (uint64, error) {
+	return c.Internal.StateMinerSectorSize(ctx, actor, ts)
 }
 
 func (c *FullNodeStruct) StateCall(ctx context.Context, msg *types.Message, ts *types.TipSet) (*types.MessageReceipt, error) {
