@@ -222,13 +222,17 @@ func (sma StorageMinerActor) CommitSector(act *types.Actor, vmctx types.VMContex
 		return nil, err
 	}
 
+	if vmctx.Message().From != mi.Worker {
+		return nil, aerrors.New(1, "not authorized to commit sector for miner")
+	}
+
 	// TODO: this needs to get normalized to either the ID address or the actor address
 	maddr := vmctx.Message().To
 
 	if ok, err := ValidatePoRep(maddr, mi.SectorSize, params); err != nil {
 		return nil, err
 	} else if !ok {
-		return nil, aerrors.New(1, "bad proof!")
+		return nil, aerrors.New(2, "bad proof!")
 	}
 
 	// make sure the miner isnt trying to submit a pre-existing sector
@@ -237,7 +241,7 @@ func (sma StorageMinerActor) CommitSector(act *types.Actor, vmctx types.VMContex
 		return nil, err
 	}
 	if !unique {
-		return nil, aerrors.New(2, "sector already committed!")
+		return nil, aerrors.New(3, "sector already committed!")
 	}
 
 	// Power of the miner after adding this sector
@@ -246,7 +250,7 @@ func (sma StorageMinerActor) CommitSector(act *types.Actor, vmctx types.VMContex
 
 	// TODO: grab from market?
 	if act.Balance.LessThan(collateralRequired) {
-		return nil, aerrors.New(3, "not enough collateral")
+		return nil, aerrors.New(4, "not enough collateral")
 	}
 
 	// Note: There must exist a unique index in the miner's sector set for each
