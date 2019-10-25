@@ -1,0 +1,56 @@
+body {
+    font-family: 'monospace';
+    background: #1f1f1f;
+    color: #f0f0f0;
+    padding: 0;
+    margin: 0;
+}
+
+.Index {
+    width: 100vw;
+    height: 100vh;
+    background: #1a1a1a;
+    color: #f0f0f0;
+    font-family: monospace;
+
+    display: grid;
+    grid-template-columns: auto 40vw auto;
+    grid-template-rows: auto auto auto 3em;
+    grid-template-areas:
+            ". . ."
+            ". main ."
+            ". . ."
+            "footer footer footer";
+}
+.Index-footer {
+    background: #2a2a2a;
+    grid-area: footer;
+}
+
+.Index-footer > div {
+    padding-left: 0.7em;
+    padding-top: 0.7em;
+}
+
+.Index-nodes {
+    grid-area: main;
+    background: #2a2a2a;
+}
+
+.Index-node {
+    margin: 5px;
+    padding: 15px;
+    background: #1f1f1f;
+}
+
+a:link {
+    color: #50f020;
+}
+
+a:visited {
+    color: #50f020;
+}
+
+a:hover {
+    color: #30a00a;
+}
