@@ -175,7 +175,6 @@ func IsSingletonActor(code cid.Cid) bool {
 
 func (ias *InitActorState) AddActor(cst *hamt.CborIpldStore, addr address.Address) (address.Address, error) {
 	nid := ias.NextID
-	ias.NextID++
 
 	amap, err := hamt.LoadNode(context.TODO(), cst, ias.AddressMap)
 	if err != nil {
@@ -195,6 +194,7 @@ func (ias *InitActorState) AddActor(cst *hamt.CborIpldStore, addr address.Addres
 		return address.Undef, err
 	}
 	ias.AddressMap = ncid
+	ias.NextID++
 
 	return NewIDAddress(nid)
 }
