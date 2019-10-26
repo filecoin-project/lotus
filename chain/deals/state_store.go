@@ -13,6 +13,10 @@ type StateStore struct {
 	ds datastore.Datastore
 }
 
+func NewStateStore(ds datastore.Datastore) StateStore {
+	return StateStore{ds}
+}
+
 func (st *StateStore) Begin(i cid.Cid, state interface{}) error {
 	k := datastore.NewKey(i.String())
 	has, err := st.ds.Has(k)
