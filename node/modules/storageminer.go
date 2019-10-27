@@ -181,7 +181,6 @@ func SealTicketGen(api api.FullNode) sector.TicketFn {
 			return nil, xerrors.Errorf("unexpected randomness len: %d (expected %d)", n, sectorbuilder.CommLen)
 		}
 
-
 		return &sectorbuilder.SealTicket{
 			BlockHeight: ts.Height(),
 			TicketBytes: tkt,

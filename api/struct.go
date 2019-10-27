@@ -129,8 +129,8 @@ type StorageMinerStruct struct {
 
 		StoreGarbageData func(context.Context) (uint64, error) `perm:"write"`
 
-		SectorsStatus     func(context.Context, uint64) (sectorbuilder.SectorSealingStatus, error) `perm:"read"`
-		SectorsList       func(context.Context) ([]uint64, error)                                  `perm:"read"`
+		SectorsStatus func(context.Context, uint64) (sectorbuilder.SectorSealingStatus, error) `perm:"read"`
+		SectorsList   func(context.Context) ([]uint64, error)                                  `perm:"read"`
 
 		SectorsRefs func(context.Context) (map[string][]SealedRef, error) `perm:"read"`
 	}

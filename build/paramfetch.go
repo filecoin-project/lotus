@@ -8,10 +8,13 @@ import (
 	"os"
 	"path/filepath"
 	"strings"
+	"sync"
 
 	rice "github.com/GeertJohan/go.rice"
 	logging "github.com/ipfs/go-log"
 	"github.com/minio/blake2b-simd"
+	"go.uber.org/multierr"
+	"golang.org/x/xerrors"
 	pb "gopkg.in/cheggaaa/pb.v1"
 )
 
@@ -27,6 +30,13 @@ type paramFile struct {
 	SectorSize uint64 `json:"sector_size"`
 }
 
+type fetch struct {
+	wg      sync.WaitGroup
+	fetchLk sync.Mutex
+
+	errs []error
+}
+
 func GetParams(storage bool) error {
 	if err := os.Mkdir(paramdir, 0755); err != nil && !os.IsExist(err) {
 		return err
@@ -39,6 +49,8 @@ func GetParams(storage bool) error {
 		return err
 	}
 
+	ft := &fetch{}
+
 	for name, info := range params {
 		if !SupportedSectorSize(info.SectorSize) {
 			continue
@@ -47,35 +59,61 @@ func GetParams(storage bool) error {
 			continue
 		}
 
-		if err := maybeFetch(name, info); err != nil {
-			return err
-		}
+		ft.maybeFetchAsync(name, info)
 	}
 
-	return nil
+	return ft.wait()
 }
 
-func maybeFetch(name string, info paramFile) error {
-	path := filepath.Join(paramdir, name)
+func (ft *fetch) maybeFetchAsync(name string, info paramFile) {
+	ft.wg.Add(1)
+
+	go func() {
+		defer ft.wg.Done()
+
+		path := filepath.Join(paramdir, name)
+
+		err := ft.checkFile(path, info)
+		if !os.IsNotExist(err) && err != nil {
+			log.Warn(err)
+		}
+		if err == nil {
+			return
+		}
+
+		ft.fetchLk.Lock()
+		defer ft.fetchLk.Unlock()
+
+		if err := doFetch(path, info); err != nil {
+			ft.errs = append(ft.errs, xerrors.Errorf("fetching file %s: %w", path, err))
+		}
+	}()
+}
+
+func (ft *fetch) checkFile(path string, info paramFile) error {
 	f, err := os.Open(path)
-	if err == nil {
-		defer f.Close()
+	if err != nil {
+		return err
+	}
+	defer f.Close()
 
-		h := blake2b.New512()
-		if _, err := io.Copy(h, f); err != nil {
-			return err
-		}
-
-		sum := h.Sum(nil)
-		strSum := hex.EncodeToString(sum[:16])
-		if strSum == info.Digest {
-			return nil
-		}
-
-		log.Warnf("Checksum mismatch in param file %s, %s != %s", name, strSum, info.Digest)
+	h := blake2b.New512()
+	if _, err := io.Copy(h, f); err != nil {
+		return err
 	}
 
-	return doFetch(path, info)
+	sum := h.Sum(nil)
+	strSum := hex.EncodeToString(sum[:16])
+	if strSum == info.Digest {
+		return nil
+	}
+
+	return xerrors.Errorf("checksum mismatch in param file %s, %s != %s", path, strSum, info.Digest)
+}
+
+func (ft *fetch) wait() error {
+	ft.wg.Wait()
+	return multierr.Combine(ft.errs...)
 }
 
 func doFetch(out string, info paramFile) error {

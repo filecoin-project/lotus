@@ -38,7 +38,7 @@ type TicketFn func(context.Context) (*sectorbuilder.SealTicket, error)
 type Store struct {
 	waitingLk sync.Mutex
 
-	sb *sectorbuilder.SectorBuilder
+	sb    *sectorbuilder.SectorBuilder
 	tktFn TicketFn
 
 	dealsLk sync.Mutex
@@ -54,7 +54,7 @@ type Store struct {
 func NewStore(sb *sectorbuilder.SectorBuilder, ds dtypes.MetadataDS, tktFn TicketFn) *Store {
 	return &Store{
 		sb:      sb,
-		tktFn:tktFn,
+		tktFn:   tktFn,
 		deals:   namespace.Wrap(ds, sectorDealsPrefix),
 		waiting: map[uint64]chan struct{}{},
 		closeCh: make(chan struct{}),
