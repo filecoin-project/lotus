@@ -171,7 +171,7 @@ func SealTicketGen(api api.FullNode) sector.TicketFn {
 			return nil, xerrors.Errorf("getting head ts for SealTicket failed: %w", err)
 		}
 
-		r, err := api.ChainGetRandomness(ctx, ts, nil, build.PoSTChallangeTime)
+		r, err := api.ChainGetRandomness(ctx, ts, nil, build.RandomnessLookback)
 		if err != nil {
 			return nil, xerrors.Errorf("getting randomness for SealTicket failed: %w", err)
 		}
@@ -182,7 +182,7 @@ func SealTicketGen(api api.FullNode) sector.TicketFn {
 		}
 
 		return &sectorbuilder.SealTicket{
-			BlockHeight: ts.Height(),
+			BlockHeight: ts.Height() - build.RandomnessLookback,
 			TicketBytes: tkt,
 		}, nil
 	}
