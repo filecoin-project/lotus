@@ -1,7 +1,6 @@
 package sectorbuilder
 
 import (
-	"encoding/binary"
 	"io"
 	"os"
 	"sort"
@@ -46,7 +45,7 @@ type SectorBuilderConfig struct {
 func New(cfg *SectorBuilderConfig) (*SectorBuilder, error) {
 	proverId := addressToProverID(cfg.Miner)
 
-	sbp, err := sectorbuilder.InitSectorBuilder(cfg.SectorSize, 2, 1, 1, cfg.MetadataDir, proverId, cfg.SealedDir, cfg.StagedDir, 16)
+	sbp, err := sectorbuilder.InitSectorBuilder(cfg.SectorSize, 2, 1, 0, cfg.MetadataDir, proverId, cfg.SealedDir, cfg.StagedDir, 16)
 	if err != nil {
 		return nil, err
 	}
@@ -60,12 +59,6 @@ func addressToProverID(a address.Address) [32]byte {
 	var proverId [32]byte
 	copy(proverId[:], a.Payload())
 	return proverId
-}
-
-func sectorIDtoBytes(sid uint64) [31]byte {
-	var out [31]byte
-	binary.LittleEndian.PutUint64(out[:], sid)
-	return out
 }
 
 func (sb *SectorBuilder) Destroy() {
