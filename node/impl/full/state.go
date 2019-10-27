@@ -37,8 +37,8 @@ type StateAPI struct {
 	Chain        *store.ChainStore
 }
 
-func (a *StateAPI) StateMinerSectors(ctx context.Context, addr address.Address) ([]*api.SectorInfo, error) {
-	return stmgr.GetMinerSectorSet(ctx, a.StateManager, nil, addr)
+func (a *StateAPI) StateMinerSectors(ctx context.Context, addr address.Address, ts *types.TipSet) ([]*api.SectorInfo, error) {
+	return stmgr.GetMinerSectorSet(ctx, a.StateManager, ts, addr)
 }
 
 func (a *StateAPI) StateMinerProvingSet(ctx context.Context, addr address.Address, ts *types.TipSet) ([]*api.SectorInfo, error) {

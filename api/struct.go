@@ -86,7 +86,7 @@ type FullNodeStruct struct {
 		ClientRetrieve    func(ctx context.Context, order RetrievalOrder, path string) error                                                          `perm:"admin"`
 		ClientQueryAsk    func(ctx context.Context, p peer.ID, miner address.Address) (*types.SignedStorageAsk, error)                                `perm:"read"`
 
-		StateMinerSectors          func(context.Context, address.Address) ([]*SectorInfo, error)                                   `perm:"read"`
+		StateMinerSectors          func(context.Context, address.Address, *types.TipSet) ([]*SectorInfo, error)                    `perm:"read"`
 		StateMinerProvingSet       func(context.Context, address.Address, *types.TipSet) ([]*SectorInfo, error)                    `perm:"read"`
 		StateMinerPower            func(context.Context, address.Address, *types.TipSet) (MinerPower, error)                       `perm:"read"`
 		StateMinerWorker           func(context.Context, address.Address, *types.TipSet) (address.Address, error)                  `perm:"read"`
@@ -338,8 +338,8 @@ func (c *FullNodeStruct) SyncSubmitBlock(ctx context.Context, blk *types.BlockMs
 	return c.Internal.SyncSubmitBlock(ctx, blk)
 }
 
-func (c *FullNodeStruct) StateMinerSectors(ctx context.Context, addr address.Address) ([]*SectorInfo, error) {
-	return c.Internal.StateMinerSectors(ctx, addr)
+func (c *FullNodeStruct) StateMinerSectors(ctx context.Context, addr address.Address, ts *types.TipSet) ([]*SectorInfo, error) {
+	return c.Internal.StateMinerSectors(ctx, addr, ts)
 }
 
 func (c *FullNodeStruct) StateMinerProvingSet(ctx context.Context, addr address.Address, ts *types.TipSet) ([]*SectorInfo, error) {
