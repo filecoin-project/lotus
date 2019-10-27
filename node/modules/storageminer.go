@@ -14,8 +14,10 @@ import (
 	"github.com/libp2p/go-libp2p-core/routing"
 	"github.com/mitchellh/go-homedir"
 	"go.uber.org/fx"
+	"golang.org/x/xerrors"
 
 	"github.com/filecoin-project/lotus/api"
+	"github.com/filecoin-project/lotus/build"
 	"github.com/filecoin-project/lotus/chain/address"
 	"github.com/filecoin-project/lotus/chain/deals"
 	"github.com/filecoin-project/lotus/lib/sectorbuilder"
@@ -160,4 +162,29 @@ func RegisterMiner(lc fx.Lifecycle, ds dtypes.MetadataDS, api api.FullNode) erro
 		},
 	})
 	return nil
+}
+
+func SealTicketGen(api api.FullNode) sector.TicketFn {
+	return func(ctx context.Context) (*sectorbuilder.SealTicket, error) {
+		ts, err := api.ChainHead(ctx)
+		if err != nil {
+			return nil, xerrors.Errorf("getting head ts for SealTicket failed: %w", err)
+		}
+
+		r, err := api.ChainGetRandomness(ctx, ts, nil, build.PoSTChallangeTime)
+		if err != nil {
+			return nil, xerrors.Errorf("getting randomness for SealTicket failed: %w", err)
+		}
+
+		var tkt [sectorbuilder.CommLen]byte
+		if n := copy(tkt[:], r); n != sectorbuilder.CommLen {
+			return nil, xerrors.Errorf("unexpected randomness len: %d (expected %d)", n, sectorbuilder.CommLen)
+		}
+
+
+		return &sectorbuilder.SealTicket{
+			BlockHeight: ts.Height(),
+			TicketBytes: tkt,
+		}, nil
+	}
 }

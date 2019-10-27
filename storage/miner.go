@@ -144,6 +144,7 @@ func (m *Miner) commitSector(ctx context.Context, sinfo sectorbuilder.SectorSeal
 		CommD: sinfo.CommD[:],
 		CommR: sinfo.CommR[:],
 		Proof: sinfo.Proof,
+		Epoch: sinfo.Ticket.BlockHeight,
 
 		DealIDs:      deals,
 		SectorNumber: sinfo.SectorID,

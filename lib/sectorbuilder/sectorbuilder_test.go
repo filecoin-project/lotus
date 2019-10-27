@@ -47,7 +47,8 @@ func TestSealAndVerify(t *testing.T) {
 		t.Fatal(err)
 	}
 
-	store := sector.NewStore(sb, datastore.NewMapDatastore())
+	// TODO: Consider fixing
+	store := sector.NewStore(sb, datastore.NewMapDatastore(), nil)
 	store.Service()
 	ssinfo := <-store.Incoming()
 

@@ -25,6 +25,10 @@ type SortedSectorInfo = sectorbuilder.SortedSectorInfo
 
 type SectorInfo = sectorbuilder.SectorInfo
 
+type SealTicket = sectorbuilder.SealTicket
+
+type SealedSectorMetadata = sectorbuilder.SealedSectorMetadata
+
 const CommLen = sectorbuilder.CommitmentBytesLen
 
 type SectorBuilder struct {
@@ -87,10 +91,8 @@ func (sb *SectorBuilder) ReadPieceFromSealedSector(pieceKey string) ([]byte, err
 	return sectorbuilder.ReadPieceFromSealedSector(sb.handle, pieceKey)
 }
 
-func (sb *SectorBuilder) SealAllStagedSectors() error {
-	panic("dont call this")
-	_, err := sectorbuilder.SealAllStagedSectors(sb.handle, sectorbuilder.SealTicket{})
-	return err
+func (sb *SectorBuilder) SealSector(sectorID uint64, ticket SealTicket) (SealedSectorMetadata, error) {
+	return sectorbuilder.SealSector(sb.handle, sectorID, ticket)
 }
 
 func (sb *SectorBuilder) SealStatus(sector uint64) (SectorSealingStatus, error) {

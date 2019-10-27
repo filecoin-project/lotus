@@ -36,7 +36,6 @@ var sectorsCmd = &cli.Command{
 	Subcommands: []*cli.Command{
 		sectorsStatusCmd,
 		sectorsStagedListCmd,
-		sectorsStagedSealCmd,
 		sectorsRefsCmd,
 	},
 }
@@ -99,21 +98,6 @@ var sectorsStagedListCmd = &cli.Command{
 			fmt.Println(s)
 		}
 		return nil
-	},
-}
-
-var sectorsStagedSealCmd = &cli.Command{
-	Name:  "seal-staged", // TODO: nest this under a 'staged' subcommand? idk
-	Usage: "Seal staged sectors",
-	Action: func(cctx *cli.Context) error {
-		nodeApi, closer, err := lcli.GetStorageMinerAPI(cctx)
-		if err != nil {
-			return err
-		}
-		defer closer()
-		ctx := lcli.ReqContext(cctx)
-
-		return nodeApi.SectorsStagedSeal(ctx)
 	},
 }
 

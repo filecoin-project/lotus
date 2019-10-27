@@ -40,9 +40,13 @@ func (sm *StorageMinerAPI) StoreGarbageData(ctx context.Context) (uint64, error)
 
 	// TODO: create a deal
 	name := fmt.Sprintf("fake-file-%d", rand.Intn(100000000))
-	sectorId, err := sm.Sectors.AddPiece(name, size, io.LimitReader(rand.New(rand.NewSource(42)), int64(size)), 0)
+	sectorId, err := sm.Sectors.AddPiece(name, size, io.LimitReader(rand.New(rand.NewSource(42)), int64(size)))
 	if err != nil {
 		return 0, err
+	}
+
+	if err := sm.Sectors.SealSector(ctx, sectorId); err != nil {
+		return sectorId, err
 	}
 
 	return sectorId, err
@@ -55,11 +59,6 @@ func (sm *StorageMinerAPI) SectorsStatus(ctx context.Context, sid uint64) (secto
 // List all staged sectors
 func (sm *StorageMinerAPI) SectorsList(context.Context) ([]uint64, error) {
 	return sm.SectorBuilder.GetAllStagedSectors()
-}
-
-// Seal all staged sectors
-func (sm *StorageMinerAPI) SectorsStagedSeal(context.Context) error {
-	return sm.SectorBuilder.SealAllStagedSectors()
 }
 
 func (sm *StorageMinerAPI) SectorsRefs(context.Context) (map[string][]api.SealedRef, error) {

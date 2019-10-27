@@ -167,9 +167,6 @@ type StorageMiner interface {
 	// List all staged sectors
 	SectorsList(context.Context) ([]uint64, error)
 
-	// Seal all staged sectors
-	SectorsStagedSeal(context.Context) error
-
 	SectorsRefs(context.Context) (map[string][]SealedRef, error)
 }
 

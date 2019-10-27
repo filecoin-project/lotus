@@ -131,7 +131,6 @@ type StorageMinerStruct struct {
 
 		SectorsStatus     func(context.Context, uint64) (sectorbuilder.SectorSealingStatus, error) `perm:"read"`
 		SectorsList       func(context.Context) ([]uint64, error)                                  `perm:"read"`
-		SectorsStagedSeal func(context.Context) error                                              `perm:"write"`
 
 		SectorsRefs func(context.Context) (map[string][]SealedRef, error) `perm:"read"`
 	}
@@ -474,11 +473,6 @@ func (c *StorageMinerStruct) SectorsStatus(ctx context.Context, sid uint64) (sec
 // List all staged sectors
 func (c *StorageMinerStruct) SectorsList(ctx context.Context) ([]uint64, error) {
 	return c.Internal.SectorsList(ctx)
-}
-
-// Seal all staged sectors
-func (c *StorageMinerStruct) SectorsStagedSeal(ctx context.Context) error {
-	return c.Internal.SectorsStagedSeal(ctx)
 }
 
 func (c *StorageMinerStruct) SectorsRefs(ctx context.Context) (map[string][]SealedRef, error) {
