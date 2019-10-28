@@ -495,7 +495,7 @@ func (syncer *Syncer) ValidateBlock(ctx context.Context, b *types.FullBlock) err
 		return xerrors.Errorf("validating block tickets failed: %w", err)
 	}
 
-	rand, err := syncer.sm.ChainStore().GetRandomness(ctx, baseTs.Cids(), h.Tickets, build.RandomnessLookback)
+	rand, err := syncer.sm.ChainStore().GetRandomness(ctx, baseTs.Cids(), h.Tickets, build.EcRandomnessLookback)
 	if err != nil {
 		return xerrors.Errorf("failed to get randomness for verifying election proof: %w", err)
 	}

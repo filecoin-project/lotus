@@ -169,7 +169,7 @@ class ChainExplorer extends React.Component {
       return <div key={row} className={className}>@{h} {info}</div>
     })}</div>
 
-    return (<Window onClose={this.props.onClose} title={`Chain Explorer ${this.state.follow ? '(Following)' : ''}`}>
+    return (<Window initialSize={{width: 800}} onClose={this.props.onClose} title={`Chain Explorer ${this.state.follow ? '(Following)' : ''}`}>
       {content}
     </Window>)
   }

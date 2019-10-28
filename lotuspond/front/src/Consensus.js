@@ -5,7 +5,7 @@ import Window from "./Window";
 function styleForHDiff(max, act) {
   switch (max - act) {
     case 0:
-      return {background: '#00aa00'}
+      return {background: '#004400'}
     case 1:
       return {background: '#aaaa00'}
     default:

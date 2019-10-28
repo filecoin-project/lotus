@@ -61,6 +61,7 @@ require (
 	github.com/mattn/go-runewidth v0.0.4 // indirect
 	github.com/miekg/dns v1.1.16 // indirect
 	github.com/minio/blake2b-simd v0.0.0-20160723061019-3f5f724cb5b1
+	github.com/minio/sha256-simd v0.1.0
 	github.com/mitchellh/go-homedir v1.1.0
 	github.com/multiformats/go-base32 v0.0.3
 	github.com/multiformats/go-multiaddr v0.0.4
