@@ -12,6 +12,7 @@ import (
 	"go.opencensus.io/trace"
 	xerrors "golang.org/x/xerrors"
 
+	"github.com/filecoin-project/lotus/build"
 	"github.com/filecoin-project/lotus/chain/address"
 )
 
@@ -159,6 +160,8 @@ func CidArrsEqual(a, b []cid.Cid) bool {
 	return true
 }
 
+var blocksPerEpoch = NewInt(build.BlocksPerEpoch)
+
 func PowerCmp(eproof ElectionProof, mpow, totpow BigInt) bool {
 
 	/*
@@ -171,7 +174,7 @@ func PowerCmp(eproof ElectionProof, mpow, totpow BigInt) bool {
 	// 2^256
 	rden := BigInt{big.NewInt(0).Exp(big.NewInt(2), big.NewInt(256), nil)}
 
-	top := BigMul(rden, mpow)
+	top := BigMul(BigMul(rden, mpow), blocksPerEpoch)
 	out := BigDiv(top, totpow)
 
 	hp := BigFromBytes(h[:])

@@ -488,6 +488,9 @@ func (vm *VM) ApplyMessage(ctx context.Context, msg *types.Message) (*ApplyRet, 
 		return nil, xerrors.Errorf("getting block miner actor (%s) failed: %w", vm.blockMiner, err)
 	}
 
+
+	// TODO: support multiple blocks in a tipset
+	// TODO: actually wire this up (miner is undef for now)
 	gasReward := types.BigMul(msg.GasPrice, gasUsed)
 	if err := Transfer(gasHolder, miner, gasReward); err != nil {
 		return nil, xerrors.Errorf("failed to give miner gas reward: %w", err)
@@ -630,6 +633,7 @@ func depositFunds(act *types.Actor, amt types.BigInt) {
 }
 
 var miningRewardTotal = types.FromFil(build.MiningRewardTotal)
+var blocksPerEpoch = types.NewInt(build.BlocksPerEpoch)
 
 // MiningReward returns correct mining reward
 //   coffer is amount of FIL in NetworkAddress
@@ -637,5 +641,6 @@ func MiningReward(remainingReward types.BigInt) types.BigInt {
 	ci := big.NewInt(0).Set(remainingReward.Int)
 	res := ci.Mul(ci, build.InitialReward)
 	res = res.Div(res, miningRewardTotal.Int)
+	res = res.Div(res, blocksPerEpoch.Int)
 	return types.BigInt{res}
 }

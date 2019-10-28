@@ -46,7 +46,7 @@ const AllowableClockDrift = BlockDelay * 2
 const ForkLengthThreshold = 100
 
 // Blocks (e)
-const BlocksPerEpoch = 1
+const BlocksPerEpoch = 3
 
 // Blocks
 const Finality = 500

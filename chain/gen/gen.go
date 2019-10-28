@@ -419,7 +419,7 @@ func IsRoundWinner(ctx context.Context, ts *types.TipSet, ticks []*types.Ticket,
 		return false, nil, xerrors.Errorf("failed to check power: %w", err)
 	}
 
-	return types.PowerCmp(vrfout, types.BigMul(pow.MinerPower, types.NewInt(build.BlocksPerEpoch)), pow.TotalPower), vrfout, nil
+	return types.PowerCmp(vrfout, pow.MinerPower, pow.TotalPower), vrfout, nil
 }
 
 type SignFunc func(context.Context, address.Address, []byte) (*types.Signature, error)
