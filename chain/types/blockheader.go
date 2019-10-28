@@ -3,11 +3,11 @@ package types
 import (
 	"bytes"
 	"context"
-	"crypto/sha256"
 	"math/big"
 
 	block "github.com/ipfs/go-block-format"
 	"github.com/ipfs/go-cid"
+	"github.com/minio/sha256-simd"
 	"github.com/multiformats/go-multihash"
 	"go.opencensus.io/trace"
 	xerrors "golang.org/x/xerrors"
@@ -166,19 +166,24 @@ func PowerCmp(eproof ElectionProof, mpow, totpow BigInt) bool {
 
 	/*
 		Need to check that
-		h(vrfout) / 2^256 < minerPower / totalPower
+		h(vrfout) / max(h) * e < minerPower / totalPower
+		max(h) == 2^256-1
+		which in terms of integer math means:
+		h(vrfout) * totalPower * e < minerPower * (2^256-1)
 	*/
 
 	h := sha256.Sum256(eproof)
 
-	// 2^256
-	rden := BigInt{big.NewInt(0).Exp(big.NewInt(2), big.NewInt(256), nil)}
+	lhs := BigFromBytes(h[:]).Int
+	lhs = lhs.Mul(lhs, blocksPerEpoch.Int)
+	lhs = lhs.Mul(lhs, totpow.Int)
 
-	top := BigMul(BigMul(rden, mpow), blocksPerEpoch)
-	out := BigDiv(top, totpow)
+	// rhs = minerPower * 2^256 - minerPower
+	// rhs = minerPower << 256 - minerPower
+	rhs := new(big.Int).Lsh(mpow.Int, 256)
+	rhs = rhs.Sub(rhs, mpow.Int)
 
-	hp := BigFromBytes(h[:])
-	return hp.LessThan(out)
+	return lhs.Cmp(rhs) == -1
 }
 
 func (t *Ticket) Equals(ot *Ticket) bool {
