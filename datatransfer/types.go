@@ -55,7 +55,7 @@ type Channel struct {
 	// an identifier for this channel shared by request and responder, set by requestor through protocol
 	transferID TransferID
 	// base CID for the piece being transferred
-	baseCid cid.Cid
+	pieceRef cid.Cid
 	// portion of Piece to return, spescified by an IPLD selector
 	selector ipld.Node
 	// used to verify this channel
@@ -184,3 +184,6 @@ type Manager interface {
 	// get all in progress transfers
 	InProgressChannels() map[ChannelID]ChannelState
 }
+
+type ClientDataTransfer Manager
+type ProviderDataTransfer Manager
