@@ -5,7 +5,10 @@ import (
 	"context"
 
 	"github.com/ipfs/go-cid"
-	"github.com/ipfs/go-merkledag"
+	ipldfree "github.com/ipld/go-ipld-prime/impl/free"
+	"github.com/ipld/go-ipld-prime/traversal/selector"
+	"github.com/ipld/go-ipld-prime/traversal/selector/builder"
+
 	unixfile "github.com/ipfs/go-unixfs/file"
 	"golang.org/x/xerrors"
 
@@ -180,9 +183,21 @@ func (p *Provider) accept(ctx context.Context, deal MinerDeal) (func(*MinerDeal)
 		return nil, err
 	}
 
+	ssb := builder.NewSelectorSpecBuilder(ipldfree.NodeBuilder())
+
+	// this is the selector for "get the whole DAG"
+	allSelector := ssb.ExploreRecursive(selector.RecursionLimitNone(),
+		ssb.ExploreAll(ssb.ExploreRecursiveEdge())).Node()
+
+	_, err = p.dataTransfer.OpenPullDataChannel(deal.Client,
+		StorageDataTransferVoucher{Proposal: deal.ProposalCid},
+		deal.Ref,
+		allSelector,
+	)
+
 	return func(deal *MinerDeal) {
 		deal.DealID = resp.DealIDs[0]
-	}, merkledag.FetchGraph(ctx, deal.Ref, p.dag)
+	}, nil
 }
 
 // STAGED

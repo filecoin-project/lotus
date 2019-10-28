@@ -25,6 +25,7 @@ import (
 	"github.com/filecoin-project/lotus/chain/store"
 	"github.com/filecoin-project/lotus/chain/types"
 	"github.com/filecoin-project/lotus/chain/wallet"
+	"github.com/filecoin-project/lotus/datatransfer"
 	"github.com/filecoin-project/lotus/lib/sectorbuilder"
 	"github.com/filecoin-project/lotus/miner"
 	"github.com/filecoin-project/lotus/node/config"
@@ -84,12 +85,14 @@ const (
 	HandleIncomingMessagesKey
 
 	RunDealClientKey
+	RegisterClientValidatorKey
 
 	// storage miner
 	HandleDealsKey
 	HandleRetrievalKey
 	RunSectorServiceKey
 	RegisterMinerKey
+	RegisterProviderValidatorKey
 
 	// daemon
 	ExtractApiKey
@@ -217,7 +220,10 @@ func Online() Option {
 			Override(new(discovery.PeerResolver), modules.RetrievalResolver),
 
 			Override(new(*retrieval.Client), retrieval.NewClient),
+			Override(new(datatransfer.ClientDataTransfer), datatransfer.NewClientDAGServiceDataTransfer),
+			Override(new(*deals.ClientRequestValidator), deals.NewClientRequestValidator),
 			Override(new(*deals.Client), deals.NewClient),
+			Override(RegisterClientValidatorKey, deals.RegisterClientValidator),
 			Override(RunDealClientKey, modules.RunDealClient),
 
 			Override(new(*paych.Store), paych.NewStore),
@@ -237,7 +243,10 @@ func Online() Option {
 			Override(new(dtypes.StagingDAG), modules.StagingDAG),
 
 			Override(new(*retrieval.Miner), retrieval.NewMiner),
+			Override(new(datatransfer.ProviderDataTransfer), datatransfer.NewProviderDAGServiceDataTransfer),
+			Override(new(*deals.ProviderRequestValidator), deals.NewProviderRequestValidator),
 			Override(new(*deals.Provider), deals.NewProvider),
+			Override(RegisterProviderValidatorKey, deals.RegisterProviderValidator),
 			Override(HandleRetrievalKey, modules.HandleRetrieval),
 			Override(HandleDealsKey, modules.HandleDeals),
 			Override(RegisterMinerKey, modules.RegisterMiner),
