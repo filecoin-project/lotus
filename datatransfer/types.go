@@ -4,7 +4,7 @@ import (
 	"reflect"
 
 	"github.com/ipfs/go-cid"
-	selector "github.com/ipld/go-ipld-prime/traversal/selector"
+	ipld "github.com/ipld/go-ipld-prime"
 	"github.com/libp2p/go-libp2p-core/peer"
 )
 
@@ -51,9 +51,9 @@ type Channel struct {
 	// an identifier for this channel shared by request and responder, set by requestor through protocol
 	transferID TransferID
 	// base CID for the piece being transferred
-	PieceRef cid.Cid
+	pieceRef cid.Cid
 	// portion of Piece to return, spescified by an IPLD selector
-	Selector selector.Selector
+	selector ipld.Node
 	// used to verify this channel
 	voucher Voucher
 	// the party that is sending the data (not who initiated the request)
@@ -64,6 +64,14 @@ type Channel struct {
 	totalSize uint64
 }
 
+func (c Channel) TranfersID() TransferID { return c.transferID }
+func (c Channel) PieceRef() cid.Cid      { return c.pieceRef }
+func (c Channel) Selector() ipld.Node    { return c.selector }
+func (c Channel) Voucher() Voucher       { return c.voucher }
+func (c Channel) Sender() peer.ID        { return c.sender }
+func (c Channel) Recipient() peer.ID     { return c.recipient }
+func (c Channel) TotalSize() uint64      { return c.totalSize }
+
 // ChannelState is immutable channel data plus mutable state
 type ChannelState struct {
 	Channel
@@ -72,6 +80,9 @@ type ChannelState struct {
 	// total bytes received by this node (0 if sender)
 	received uint64
 }
+
+func (c ChannelState) Sent() uint64     { return c.sent }
+func (c ChannelState) Received() uint64 { return c.received }
 
 // Event is a name for an event that occurs on a data transfer channel
 type Event string
@@ -100,12 +111,12 @@ type RequestValidator interface {
 		sender peer.ID,
 		voucher Voucher,
 		PieceRef cid.Cid,
-		Selector selector.Selector) error
+		Selector ipld.Node) error
 	ValidatePull(
 		receiver peer.ID,
 		voucher Voucher,
 		PieceRef cid.Cid,
-		Selector selector.Selector) error
+		Selector ipld.Node) error
 }
 
 // Manager is the core interface presented by all implementations of
@@ -119,11 +130,11 @@ type Manager interface {
 	// open a data transfer that will send data to the recipient peer and
 	// open a data transfer that will send data to the recipient peer and
 	// transfer parts of the piece that match the selector
-	OpenPushDataChannel(to peer.ID, voucher Voucher, PieceRef cid.Cid, Selector selector.Selector) ChannelID
+	OpenPushDataChannel(to peer.ID, voucher Voucher, PieceRef cid.Cid, Selector ipld.Node) (ChannelID, error)
 
 	// open a data transfer that will request data from the sending peer and
 	// transfer parts of the piece that match the selector
-	OpenPullDataChannel(to peer.ID, voucher Voucher, PieceRef cid.Cid, Selector selector.Selector) ChannelID
+	OpenPullDataChannel(to peer.ID, voucher Voucher, PieceRef cid.Cid, Selector ipld.Node) (ChannelID, error)
 
 	// close an open channel (effectively a cancel)
 	CloseDataTransferChannel(x ChannelID)
@@ -137,3 +148,6 @@ type Manager interface {
 	// get all in progress transfers
 	InProgressChannels() map[ChannelID]ChannelState
 }
+
+type ClientDataTransfer Manager
+type ProviderDataTransfer Manager
