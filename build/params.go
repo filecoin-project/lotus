@@ -48,6 +48,9 @@ const ForkLengthThreshold = 100
 // Blocks (e)
 const BlocksPerEpoch = 1
 
+// Blocks
+const Finality = 500
+
 // /////
 // Proofs
 
@@ -64,6 +67,9 @@ const PoStChallangeTime = ProvingPeriodDuration - 5
 //
 // Blocks
 const PoStRandomnessLookback = 1
+
+// Blocks
+const SealRandomnessLookback = Finality
 
 // /////
 // Mining
