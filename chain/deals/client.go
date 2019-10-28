@@ -21,11 +21,13 @@ import (
 	"github.com/filecoin-project/lotus/chain/store"
 	"github.com/filecoin-project/lotus/chain/types"
 	"github.com/filecoin-project/lotus/chain/wallet"
+	"github.com/filecoin-project/lotus/datatransfer"
 	"github.com/filecoin-project/lotus/lib/cborutil"
 	"github.com/filecoin-project/lotus/lib/statestore"
 	"github.com/filecoin-project/lotus/node/impl/full"
 	"github.com/filecoin-project/lotus/node/modules/dtypes"
 	"github.com/filecoin-project/lotus/retrieval/discovery"
+
 )
 
 var log = logging.Logger("deals")
@@ -44,14 +46,17 @@ type ClientDeal struct {
 }
 
 type Client struct {
-	sm        *stmgr.StateManager
-	chain     *store.ChainStore
-	h         host.Host
-	w         *wallet.Wallet
-	dag       dtypes.ClientDAG
-	discovery *discovery.Local
-	events    *events.Events
-	fm        *market.FundMgr
+	sm           *stmgr.StateManager
+	chain        *store.ChainStore
+	h            host.Host
+	w            *wallet.Wallet
+	// dataTransfer -- not quite sure how this is referenced directly on client
+	// side
+	dataTransfer datatransfer.ClientDataTransfer
+	dag          dtypes.ClientDAG
+	discovery    *discovery.Local
+	events       *events.Events
+	fm           *market.FundMgr
 
 	deals *statestore.StateStore
 	conns map[cid.Cid]inet.Stream
@@ -70,16 +75,17 @@ type clientDealUpdate struct {
 	mut      func(*ClientDeal)
 }
 
-func NewClient(sm *stmgr.StateManager, chain *store.ChainStore, h host.Host, w *wallet.Wallet, ds dtypes.MetadataDS, dag dtypes.ClientDAG, discovery *discovery.Local, fm *market.FundMgr, chainapi full.ChainAPI) *Client {
+func NewClient(sm *stmgr.StateManager, chain *store.ChainStore, h host.Host, w *wallet.Wallet, ds dtypes.MetadataDS, dag dtypes.ClientDAG, dataTransfer datatransfer.ClientDataTransfer, discovery *discovery.Local, fm *market.FundMgr, chainapi full.ChainAPI) *Client {
 	c := &Client{
-		sm:        sm,
-		chain:     chain,
-		h:         h,
-		w:         w,
-		dag:       dag,
-		discovery: discovery,
+		sm:           sm,
+		chain:        chain,
+		h:            h,
+		w:            w,
+		dataTransfer: dataTransfer,
+		dag:          dag,
+		discovery:    discovery,
 		fm:        fm,
-		events:    events.NewEvents(context.TODO(), &chainapi),
+		events:       events.NewEvents(context.TODO(), &chainapi),
 
 		deals: statestore.New(namespace.Wrap(ds, datastore.NewKey("/deals/client"))),
 		conns: map[cid.Cid]inet.Stream{},
