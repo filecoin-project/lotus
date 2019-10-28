@@ -9,7 +9,7 @@ import (
 	"github.com/ipfs/go-cid"
 	datastore "github.com/ipfs/go-datastore"
 	"github.com/ipfs/go-datastore/namespace"
-	"github.com/ipld/go-ipld-prime/traversal/selector"
+	"github.com/ipld/go-ipld-prime"
 	"github.com/libp2p/go-libp2p-core/peer"
 	"go.uber.org/fx"
 
@@ -73,7 +73,7 @@ type ClientRequestValidator struct {
 	deals ClientStateStore
 }
 
-func RegisterClientValidator(lc fx.Lifecycle, crv *ClientRequestValidator, dtm datatransfer.Manager) {
+func RegisterClientValidator(lc fx.Lifecycle, crv *ClientRequestValidator, dtm datatransfer.ClientDataTransfer) {
 	lc.Append(fx.Hook{
 		OnStart: func(ctx context.Context) error {
 			return dtm.RegisterVoucherType(reflect.TypeOf(StorageDataTransferVoucher{}), crv)
@@ -92,7 +92,7 @@ func (c *ClientRequestValidator) ValidatePush(
 	sender peer.ID,
 	voucher datatransfer.Voucher,
 	PieceRef cid.Cid,
-	Selector selector.Selector) error {
+	Selector ipld.Node) error {
 	return ErrNoPushAccepted
 }
 
@@ -100,7 +100,7 @@ func (c *ClientRequestValidator) ValidatePull(
 	receiver peer.ID,
 	voucher datatransfer.Voucher,
 	PieceRef cid.Cid,
-	Selector selector.Selector) error {
+	Selector ipld.Node) error {
 	dealVoucher, ok := voucher.(StorageDataTransferVoucher)
 	if !ok {
 		return ErrWrongVoucherType
@@ -134,7 +134,7 @@ type ProviderRequestValidator struct {
 	deals MinerStateStore
 }
 
-func RegisterProviderValidator(lc fx.Lifecycle, mrv *ProviderRequestValidator, dtm datatransfer.Manager) {
+func RegisterProviderValidator(lc fx.Lifecycle, mrv *ProviderRequestValidator, dtm datatransfer.ProviderDataTransfer) {
 	lc.Append(fx.Hook{
 		OnStart: func(ctx context.Context) error {
 			return dtm.RegisterVoucherType(reflect.TypeOf(StorageDataTransferVoucher{}), mrv)
@@ -152,7 +152,7 @@ func (m *ProviderRequestValidator) ValidatePush(
 	sender peer.ID,
 	voucher datatransfer.Voucher,
 	PieceRef cid.Cid,
-	Selector selector.Selector) error {
+	Selector ipld.Node) error {
 	dealVoucher, ok := voucher.(StorageDataTransferVoucher)
 	if !ok {
 		return ErrWrongVoucherType
@@ -185,6 +185,6 @@ func (m *ProviderRequestValidator) ValidatePull(
 	receiver peer.ID,
 	voucher datatransfer.Voucher,
 	PieceRef cid.Cid,
-	Selector selector.Selector) error {
+	Selector ipld.Node) error {
 	return ErrNoPullAccepted
 }

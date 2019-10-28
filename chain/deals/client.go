@@ -2,6 +2,8 @@ package deals
 
 import (
 	"context"
+
+	"github.com/filecoin-project/lotus/datatransfer"
 	"github.com/filecoin-project/lotus/node/impl/full"
 
 	"github.com/ipfs/go-cid"
@@ -37,13 +39,16 @@ type ClientDeal struct {
 }
 
 type Client struct {
-	sm        *stmgr.StateManager
-	chain     *store.ChainStore
-	h         host.Host
-	w         *wallet.Wallet
-	dag       dtypes.ClientDAG
-	discovery *discovery.Local
-	mpool     full.MpoolAPI
+	sm    *stmgr.StateManager
+	chain *store.ChainStore
+	h     host.Host
+	w     *wallet.Wallet
+	// dataTransfer -- not quite sure how this is referenced directly on client
+	// side
+	dataTransfer datatransfer.ClientDataTransfer
+	dag          dtypes.ClientDAG
+	discovery    *discovery.Local
+	mpool        full.MpoolAPI
 
 	deals ClientStateStore
 	conns map[cid.Cid]inet.Stream
@@ -61,15 +66,16 @@ type clientDealUpdate struct {
 	err      error
 }
 
-func NewClient(sm *stmgr.StateManager, chain *store.ChainStore, h host.Host, w *wallet.Wallet, ds dtypes.MetadataDS, dag dtypes.ClientDAG, discovery *discovery.Local, mpool full.MpoolAPI) *Client {
+func NewClient(sm *stmgr.StateManager, chain *store.ChainStore, h host.Host, w *wallet.Wallet, ds dtypes.MetadataDS, dag dtypes.ClientDAG, dataTransfer datatransfer.ClientDataTransfer, discovery *discovery.Local, mpool full.MpoolAPI) *Client {
 	c := &Client{
-		sm:        sm,
-		chain:     chain,
-		h:         h,
-		w:         w,
-		dag:       dag,
-		discovery: discovery,
-		mpool:     mpool,
+		sm:           sm,
+		chain:        chain,
+		h:            h,
+		w:            w,
+		dataTransfer: dataTransfer,
+		dag:          dag,
+		discovery:    discovery,
+		mpool:        mpool,
 
 		deals: ClientStateStore{StateStore{ds: namespace.Wrap(ds, datastore.NewKey("/deals/client"))}},
 		conns: map[cid.Cid]inet.Stream{},

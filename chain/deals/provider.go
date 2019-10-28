@@ -2,6 +2,7 @@ package deals
 
 import (
 	"context"
+	"errors"
 	"sync"
 
 	cid "github.com/ipfs/go-cid"
@@ -15,6 +16,7 @@ import (
 	"github.com/filecoin-project/lotus/chain/actors"
 	"github.com/filecoin-project/lotus/chain/address"
 	"github.com/filecoin-project/lotus/chain/types"
+	"github.com/filecoin-project/lotus/datatransfer"
 	"github.com/filecoin-project/lotus/lib/cborrpc"
 	"github.com/filecoin-project/lotus/node/modules/dtypes"
 	"github.com/filecoin-project/lotus/storage/commitment"
@@ -46,9 +48,11 @@ type Provider struct {
 	commt *commitment.Tracker
 	full  api.FullNode
 
-	// TODO: Use a custom protocol or graphsync in the future
-	// TODO: GC
+	// TODO: This will go away once the whole storage market module + CAR
+	// is implemented
 	dag dtypes.StagingDAG
+
+	dataTransfer datatransfer.ProviderDataTransfer
 
 	deals MinerStateStore
 	ds    dtypes.MetadataDS
@@ -70,7 +74,12 @@ type minerDealUpdate struct {
 	mut      func(*MinerDeal)
 }
 
-func NewProvider(ds dtypes.MetadataDS, secst *sectorblocks.SectorBlocks, commt *commitment.Tracker, dag dtypes.StagingDAG, fullNode api.FullNode) (*Provider, error) {
+var (
+	// ErrDataTransferFailed means a data transfer for a deal failed
+	ErrDataTransferFailed = errors.New("Deal data transfer failed")
+)
+
+func NewProvider(ds dtypes.MetadataDS, secst *sectorblocks.SectorBlocks, commt *commitment.Tracker, dag dtypes.StagingDAG, dataTransfer datatransfer.ProviderDataTransfer, fullNode api.FullNode) (*Provider, error) {
 	addr, err := ds.Get(datastore.NewKey("miner-address"))
 	if err != nil {
 		return nil, err
@@ -81,10 +90,11 @@ func NewProvider(ds dtypes.MetadataDS, secst *sectorblocks.SectorBlocks, commt *
 	}
 
 	h := &Provider{
-		secst: secst,
-		commt: commt,
-		dag:   dag,
-		full:  fullNode,
+		secst:        secst,
+		commt:        commt,
+		dag:          dag,
+		dataTransfer: dataTransfer,
+		full:         fullNode,
 
 		pricePerByteBlock: types.NewInt(3), // TODO: allow setting
 		minPieceSize:      1,
@@ -113,6 +123,8 @@ func NewProvider(ds dtypes.MetadataDS, secst *sectorblocks.SectorBlocks, commt *
 			return nil, xerrors.Errorf("failed setting a default price: %w", err)
 		}
 	}
+
+	h.dataTransfer.SubscribeToEvents(h.onDataTransferEvent)
 
 	return h, nil
 }
@@ -181,13 +193,46 @@ func (p *Provider) onUpdated(ctx context.Context, update minerDealUpdate) {
 
 	switch update.newState {
 	case api.DealAccepted:
-		p.handle(ctx, deal, p.accept, api.DealStaged)
+		p.handle(ctx, deal, p.accept, api.DealNoUpdate)
 	case api.DealStaged:
 		p.handle(ctx, deal, p.staged, api.DealSealing)
 	case api.DealSealing:
 		p.handle(ctx, deal, p.sealing, api.DealComplete)
 	case api.DealComplete:
 		p.handle(ctx, deal, p.complete, api.DealNoUpdate)
+	}
+}
+
+func (p *Provider) onDataTransferEvent(event datatransfer.Event, channelState datatransfer.ChannelState) {
+	voucher, ok := channelState.Voucher().(StorageDataTransferVoucher)
+	// if this event is for a transfer not related to storage, ignore
+	if !ok {
+		return
+	}
+
+	// data transfer events for opening and progress do not affect deal state
+	var next api.DealState
+	var err error
+	switch event {
+	case datatransfer.Complete:
+		next = api.DealStaged
+		err = nil
+	case datatransfer.Error:
+		next = api.DealFailed
+		err = ErrDataTransferFailed
+	default:
+		// the only events we care about are complete and error
+		return
+	}
+
+	select {
+	case p.updated <- minerDealUpdate{
+		newState: next,
+		id:       voucher.Proposal,
+		err:      err,
+		mut:      nil,
+	}:
+	case <-p.stop:
 	}
 }
 
