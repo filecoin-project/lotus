@@ -399,7 +399,7 @@ func (mca mca) WalletSign(ctx context.Context, a address.Address, v []byte) (*ty
 }
 
 func IsRoundWinner(ctx context.Context, ts *types.TipSet, ticks []*types.Ticket, miner address.Address, a MiningCheckAPI) (bool, types.ElectionProof, error) {
-	r, err := a.ChainGetRandomness(ctx, ts, ticks, build.RandomnessLookback)
+	r, err := a.ChainGetRandomness(ctx, ts, ticks, build.EcRandomnessLookback)
 	if err != nil {
 		return false, nil, xerrors.Errorf("chain get randomness: %w", err)
 	}

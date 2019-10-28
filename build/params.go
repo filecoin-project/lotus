@@ -33,14 +33,6 @@ func SupportedSectorSize(ssize uint64) bool {
 // Blocks
 const PaymentChannelClosingDelay = 6 * 60 * 2 // six hours
 
-// Blocks
-const DealVoucherSkewLimit = 10
-
-// Blocks
-const MinDealVoucherIncrement = ProvingPeriodDuration
-
-const MaxVouchersPerDeal = 768 // roughly one voucher per 10h over a year
-
 // /////
 // Consensus / Network
 
@@ -57,16 +49,27 @@ const ForkLengthThreshold = 100
 const BlocksPerEpoch = 1
 
 // /////
-// Proofs / Mining
-
-// Blocks
-const RandomnessLookback = 20
+// Proofs
 
 // Blocks
 const ProvingPeriodDuration = 40
 
+// PoStChallangeTime sets the window in which post computation should happen
 // Blocks
-const PoSTChallangeTime = 35
+const PoStChallangeTime = ProvingPeriodDuration - 5
+
+// PoStRandomnessLookback is additional randomness lookback for PoSt computation
+// To compute randomness epoch in a given proving period:
+// RandH = PPE - PoStChallangeTime - PoStRandomnessLookback
+//
+// Blocks
+const PoStRandomnessLookback = 1
+
+// /////
+// Mining
+
+// Blocks
+const EcRandomnessLookback = 300
 
 const PowerCollateralProportion = 5
 const PerCapitaCollateralProportion = 1

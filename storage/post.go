@@ -44,12 +44,12 @@ func (m *Miner) beginPosting(ctx context.Context) {
 
 	m.schedLk.Unlock()
 
-	log.Infof("Scheduling post at height %d", ppe-build.PoSTChallangeTime)
+	log.Infof("Scheduling post at height %d", ppe-build.PoStChallangeTime)
 	err = m.events.ChainAt(m.computePost(m.schedPost), func(ts *types.TipSet) error { // Revert
 		// TODO: Cancel post
 		log.Errorf("TODO: Cancel PoSt, re-run")
 		return nil
-	}, PoStConfidence, ppe-build.PoSTChallangeTime)
+	}, PoStConfidence, ppe-build.PoStChallangeTime)
 	if err != nil {
 		// TODO: This is BAD, figure something out
 		log.Errorf("scheduling PoSt failed: %s", err)
@@ -82,13 +82,13 @@ func (m *Miner) scheduleNextPost(ppe uint64) {
 	m.schedPost = ppe
 	m.schedLk.Unlock()
 
-	log.Infow("scheduling PoSt", "post-height", ppe-build.PoSTChallangeTime,
+	log.Infow("scheduling PoSt", "post-height", ppe-build.PoStChallangeTime,
 		"height", ts.Height(), "ppe", ppe, "proving-period", provingPeriod)
 	err = m.events.ChainAt(m.computePost(ppe), func(ts *types.TipSet) error { // Revert
 		// TODO: Cancel post
 		log.Errorf("TODO: Cancel PoSt, re-run")
 		return nil
-	}, PoStConfidence, ppe-build.PoSTChallangeTime)
+	}, PoStConfidence, ppe-build.PoStChallangeTime)
 	if err != nil {
 		// TODO: This is BAD, figure something out
 		log.Errorf("scheduling PoSt failed: %+v", err)
@@ -113,13 +113,13 @@ func (m *Miner) computePost(ppe uint64) func(ts *types.TipSet, curH uint64) erro
 			return xerrors.Errorf("failed to get proving set for miner: %w", err)
 		}
 
-		r, err := m.api.ChainGetRandomness(ctx, ts, nil, int(int64(ts.Height())-int64(ppe)+int64(build.PoSTChallangeTime))) // TODO: review: check math
+		r, err := m.api.ChainGetRandomness(ctx, ts, nil, int(int64(ts.Height())-int64(ppe)+int64(build.PoStChallangeTime)+int64(build.PoStRandomnessLookback))) // TODO: review: check math
 		if err != nil {
 			return xerrors.Errorf("failed to get chain randomness for post (ts=%d; ppe=%d): %w", ts.Height(), ppe, err)
 		}
 
 		log.Infow("running PoSt", "delayed-by",
-			int64(ts.Height())-(int64(ppe)-int64(build.PoSTChallangeTime)),
+			int64(ts.Height())-(int64(ppe)-int64(build.PoStChallangeTime)),
 			"chain-random", r, "ppe", ppe, "height", ts.Height())
 
 		tsStart := time.Now()
