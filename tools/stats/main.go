@@ -3,7 +3,6 @@ package main
 import (
 	"context"
 	"flag"
-	"fmt"
 	"log"
 	"os"
 	"time"
@@ -94,7 +93,6 @@ func main() {
 		// Instead of having to pass around a bunch of generic stuff we want for each point
 		// we will just add them at the end.
 
-		tsHeight := fmt.Sprintf("%d", tipset.Height())
 		tsTimestamp := time.Unix(int64(tipset.MinTimestamp()), int64(0))
 
 		nb, err := InfluxNewBatch()
@@ -103,7 +101,6 @@ func main() {
 		}
 
 		for _, pt := range pl.Points() {
-			pt.AddTag("height", tsHeight)
 			pt.SetTime(tsTimestamp)
 
 			nb.AddPoint(NewPointFrom(pt))
