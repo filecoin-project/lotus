@@ -78,7 +78,7 @@ class Block extends React.Component {
       )
     }
 
-    return (<Window className="CristalScroll" initialSize={{width: 950, height: 400}} onClose={this.props.onClose} title={`Block ${this.props.cid['/']}`}>
+    return (<Window className="CristalScroll" initialSize={{width: 1050, height: 400}} onClose={this.props.onClose} title={`Block ${this.props.cid['/']}`}>
       {content}
     </Window>)
   }

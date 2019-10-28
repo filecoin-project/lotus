@@ -123,7 +123,7 @@ type FullNode interface {
 	StateGetActor(ctx context.Context, actor address.Address, ts *types.TipSet) (*types.Actor, error)
 	StateReadState(ctx context.Context, act *types.Actor, ts *types.TipSet) (*ActorState, error)
 
-	StateMinerSectors(context.Context, address.Address) ([]*SectorInfo, error)
+	StateMinerSectors(context.Context, address.Address, *types.TipSet) ([]*SectorInfo, error)
 	StateMinerProvingSet(context.Context, address.Address, *types.TipSet) ([]*SectorInfo, error)
 	StateMinerPower(context.Context, address.Address, *types.TipSet) (MinerPower, error)
 	StateMinerWorker(context.Context, address.Address, *types.TipSet) (address.Address, error)
@@ -166,9 +166,6 @@ type StorageMiner interface {
 
 	// List all staged sectors
 	SectorsList(context.Context) ([]uint64, error)
-
-	// Seal all staged sectors
-	SectorsStagedSeal(context.Context) error
 
 	SectorsRefs(context.Context) (map[string][]SealedRef, error)
 }

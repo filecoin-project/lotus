@@ -1,7 +1,6 @@
 package sectorbuilder
 
 import (
-	"encoding/binary"
 	"io"
 	"os"
 	"sort"
@@ -25,6 +24,10 @@ type SortedSectorInfo = sectorbuilder.SortedSectorInfo
 
 type SectorInfo = sectorbuilder.SectorInfo
 
+type SealTicket = sectorbuilder.SealTicket
+
+type SealedSectorMetadata = sectorbuilder.SealedSectorMetadata
+
 const CommLen = sectorbuilder.CommitmentBytesLen
 
 type SectorBuilder struct {
@@ -42,7 +45,7 @@ type SectorBuilderConfig struct {
 func New(cfg *SectorBuilderConfig) (*SectorBuilder, error) {
 	proverId := addressToProverID(cfg.Miner)
 
-	sbp, err := sectorbuilder.InitSectorBuilder(cfg.SectorSize, 2, 1, 1, cfg.MetadataDir, proverId, cfg.SealedDir, cfg.StagedDir, 16)
+	sbp, err := sectorbuilder.InitSectorBuilder(cfg.SectorSize, 2, 1, 0, cfg.MetadataDir, proverId, cfg.SealedDir, cfg.StagedDir, 16)
 	if err != nil {
 		return nil, err
 	}
@@ -52,16 +55,10 @@ func New(cfg *SectorBuilderConfig) (*SectorBuilder, error) {
 	}, nil
 }
 
-func addressToProverID(a address.Address) [31]byte {
-	var proverId [31]byte
+func addressToProverID(a address.Address) [32]byte {
+	var proverId [32]byte
 	copy(proverId[:], a.Payload())
 	return proverId
-}
-
-func sectorIDtoBytes(sid uint64) [31]byte {
-	var out [31]byte
-	binary.LittleEndian.PutUint64(out[:], sid)
-	return out
 }
 
 func (sb *SectorBuilder) Destroy() {
@@ -87,8 +84,8 @@ func (sb *SectorBuilder) ReadPieceFromSealedSector(pieceKey string) ([]byte, err
 	return sectorbuilder.ReadPieceFromSealedSector(sb.handle, pieceKey)
 }
 
-func (sb *SectorBuilder) SealAllStagedSectors() error {
-	return sectorbuilder.SealAllStagedSectors(sb.handle)
+func (sb *SectorBuilder) SealSector(sectorID uint64, ticket SealTicket) (SealedSectorMetadata, error) {
+	return sectorbuilder.SealSector(sb.handle, sectorID, ticket)
 }
 
 func (sb *SectorBuilder) SealStatus(sector uint64) (SectorSealingStatus, error) {
@@ -121,14 +118,14 @@ func (sb *SectorBuilder) GeneratePoSt(sectorInfo SortedSectorInfo, challengeSeed
 
 var UserBytesForSectorSize = sectorbuilder.GetMaxUserBytesPerStagedSector
 
-func VerifySeal(sectorSize uint64, commR, commD, commRStar []byte, proverID address.Address, sectorID uint64, proof []byte) (bool, error) {
-	var commRa, commDa, commRStara [32]byte
+func VerifySeal(sectorSize uint64, commR, commD []byte, proverID address.Address, ticket []byte, sectorID uint64, proof []byte) (bool, error) {
+	var commRa, commDa, ticketa [32]byte
 	copy(commRa[:], commR)
 	copy(commDa[:], commD)
-	copy(commRStara[:], commRStar)
+	copy(ticketa[:], ticket)
 	proverIDa := addressToProverID(proverID)
 
-	return sectorbuilder.VerifySeal(sectorSize, commRa, commDa, commRStara, proverIDa, sectorID, proof)
+	return sectorbuilder.VerifySeal(sectorSize, commRa, commDa, proverIDa, ticketa, sectorID, proof)
 }
 
 func VerifyPieceInclusionProof(sectorSize uint64, pieceSize uint64, commP []byte, commD []byte, proof []byte) (bool, error) {

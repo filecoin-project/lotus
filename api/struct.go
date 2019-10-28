@@ -86,7 +86,7 @@ type FullNodeStruct struct {
 		ClientRetrieve    func(ctx context.Context, order RetrievalOrder, path string) error                                                          `perm:"admin"`
 		ClientQueryAsk    func(ctx context.Context, p peer.ID, miner address.Address) (*types.SignedStorageAsk, error)                                `perm:"read"`
 
-		StateMinerSectors          func(context.Context, address.Address) ([]*SectorInfo, error)                                   `perm:"read"`
+		StateMinerSectors          func(context.Context, address.Address, *types.TipSet) ([]*SectorInfo, error)                    `perm:"read"`
 		StateMinerProvingSet       func(context.Context, address.Address, *types.TipSet) ([]*SectorInfo, error)                    `perm:"read"`
 		StateMinerPower            func(context.Context, address.Address, *types.TipSet) (MinerPower, error)                       `perm:"read"`
 		StateMinerWorker           func(context.Context, address.Address, *types.TipSet) (address.Address, error)                  `perm:"read"`
@@ -129,9 +129,8 @@ type StorageMinerStruct struct {
 
 		StoreGarbageData func(context.Context) (uint64, error) `perm:"write"`
 
-		SectorsStatus     func(context.Context, uint64) (sectorbuilder.SectorSealingStatus, error) `perm:"read"`
-		SectorsList       func(context.Context) ([]uint64, error)                                  `perm:"read"`
-		SectorsStagedSeal func(context.Context) error                                              `perm:"write"`
+		SectorsStatus func(context.Context, uint64) (sectorbuilder.SectorSealingStatus, error) `perm:"read"`
+		SectorsList   func(context.Context) ([]uint64, error)                                  `perm:"read"`
 
 		SectorsRefs func(context.Context) (map[string][]SealedRef, error) `perm:"read"`
 	}
@@ -339,8 +338,8 @@ func (c *FullNodeStruct) SyncSubmitBlock(ctx context.Context, blk *types.BlockMs
 	return c.Internal.SyncSubmitBlock(ctx, blk)
 }
 
-func (c *FullNodeStruct) StateMinerSectors(ctx context.Context, addr address.Address) ([]*SectorInfo, error) {
-	return c.Internal.StateMinerSectors(ctx, addr)
+func (c *FullNodeStruct) StateMinerSectors(ctx context.Context, addr address.Address, ts *types.TipSet) ([]*SectorInfo, error) {
+	return c.Internal.StateMinerSectors(ctx, addr, ts)
 }
 
 func (c *FullNodeStruct) StateMinerProvingSet(ctx context.Context, addr address.Address, ts *types.TipSet) ([]*SectorInfo, error) {
@@ -474,11 +473,6 @@ func (c *StorageMinerStruct) SectorsStatus(ctx context.Context, sid uint64) (sec
 // List all staged sectors
 func (c *StorageMinerStruct) SectorsList(ctx context.Context) ([]uint64, error) {
 	return c.Internal.SectorsList(ctx)
-}
-
-// Seal all staged sectors
-func (c *StorageMinerStruct) SectorsStagedSeal(ctx context.Context) error {
-	return c.Internal.SectorsStagedSeal(ctx)
 }
 
 func (c *StorageMinerStruct) SectorsRefs(ctx context.Context) (map[string][]SealedRef, error) {

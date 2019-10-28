@@ -32,11 +32,14 @@ type dealMapping struct {
 	Committed bool
 }
 
+type TicketFn func(context.Context) (*sectorbuilder.SealTicket, error)
+
 // TODO: eventually handle sector storage here instead of in rust-sectorbuilder
 type Store struct {
 	waitingLk sync.Mutex
 
-	sb *sectorbuilder.SectorBuilder
+	sb    *sectorbuilder.SectorBuilder
+	tktFn TicketFn
 
 	dealsLk sync.Mutex
 	deals   datastore.Datastore
@@ -48,9 +51,10 @@ type Store struct {
 	closeCh chan struct{}
 }
 
-func NewStore(sb *sectorbuilder.SectorBuilder, ds dtypes.MetadataDS) *Store {
+func NewStore(sb *sectorbuilder.SectorBuilder, ds dtypes.MetadataDS, tktFn TicketFn) *Store {
 	return &Store{
 		sb:      sb,
+		tktFn:   tktFn,
 		deals:   namespace.Wrap(ds, sectorDealsPrefix),
 		waiting: map[uint64]chan struct{}{},
 		closeCh: make(chan struct{}),
@@ -121,7 +125,7 @@ func (s *Store) service() {
 	}
 }
 
-func (s *Store) AddPiece(ref string, size uint64, r io.Reader, dealID uint64) (sectorID uint64, err error) {
+func (s *Store) AddPiece(ref string, size uint64, r io.Reader, dealIDs ...uint64) (sectorID uint64, err error) {
 	sectorID, err = s.sb.AddPiece(ref, size, r)
 	if err != nil {
 		return 0, err
@@ -150,7 +154,7 @@ func (s *Store) AddPiece(ref string, size uint64, r io.Reader, dealID uint64) (s
 		}
 		fallthrough
 	case datastore.ErrNotFound:
-		deals.DealIDs = append(deals.DealIDs, dealID)
+		deals.DealIDs = append(deals.DealIDs, dealIDs...)
 		d, err := cbor.DumpObject(&deals)
 		if err != nil {
 			return 0, err
@@ -198,6 +202,21 @@ func (s *Store) DealsForCommit(sectorID uint64) ([]uint64, error) {
 	default:
 		return nil, err
 	}
+}
+
+func (s *Store) SealSector(ctx context.Context, sectorID uint64) error {
+	tkt, err := s.tktFn(ctx)
+	if err != nil {
+		return err
+	}
+
+	// TODO: That's not async, is it?
+	//  - If not then we probably can drop this wait-for-seal hack below
+	_, err = s.sb.SealSector(sectorID, *tkt)
+	if err != nil {
+		return err
+	}
+	return nil
 }
 
 func (s *Store) CloseIncoming(c <-chan sectorbuilder.SectorSealingStatus) {

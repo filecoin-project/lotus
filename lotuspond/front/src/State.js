@@ -4,12 +4,14 @@ import CID from "cids";
 import * as multihash from "multihashes";
 import code from "./chain/code";
 import Address from "./Address";
+import Fil from "./Fil";
 
 class State extends React.Component {
   byCode = {
     [code.init]: InitState,
     [code.power]: PowerState,
     [code.market]: MarketState,
+    [code.miner]: MinerState,
   }
 
   constructor(props) {
@@ -33,17 +35,17 @@ class State extends React.Component {
     let state
     if(this.byCode[this.state.code]) {
       const Stelem = this.byCode[this.state.code]
-      state = <Stelem client={this.props.client} mountWindow={this.props.mountWindow} tipset={this.props.tipset}/>
+      state = <Stelem addr={this.props.addr} actor={this.props.actor} client={this.props.client} mountWindow={this.props.mountWindow} tipset={this.props.tipset}/>
     } else {
       state = <div>{Object.keys(this.state.State).map(k => <div key={k}>{k}: <span>{JSON.stringify(this.state.State[k])}</span></div>)}</div>
     }
 
     const content = <div className="State">
-      <div>Balance: {this.state.Balance}</div>
+      <div>Balance: <Fil>{this.state.Balance}</Fil></div>
       <div>---</div>
       {state}
     </div>
-    return <Window initialSize={{width: 700, height: 400}} onClose={this.props.onClose} title={`Actor ${this.props.addr} ${this.props.tipset && this.props.tipset.Height || ''} ${this.state.code}`}>
+    return <Window initialSize={{width: 850, height: 400}} onClose={this.props.onClose} title={`Actor ${this.props.addr} ${this.props.tipset && this.props.tipset.Height || ''} ${this.state.code}`}>
       {content}
     </Window>
   }
@@ -127,6 +129,67 @@ class MarketState extends React.Component {
             <td>{this.state.deals[d].Deal.Proposal.StoragePrice}</td>
             <td>{this.state.deals[d].Deal.Proposal.Duration}</td>
           </tr>)}
+        </table>
+      </div>
+    </div>
+  }
+}
+
+class MinerState extends React.Component {
+  constructor(props) {
+    super(props)
+    this.state = {state: {}, sectorSize: -1, worker: "", networkPower: 0, sectors: {}}
+  }
+
+  async componentDidMount() {
+    const tipset = await this.props.client.call("Filecoin.ChainHead", []) // TODO: from props
+
+    const state = await this.props.client.call('Filecoin.StateReadState', [this.props.actor, tipset])
+    const sectorSize = await this.props.client.call("Filecoin.StateMinerSectorSize", [this.props.addr, tipset])
+    const worker = await this.props.client.call("Filecoin.StateMinerWorker", [this.props.addr, tipset])
+
+    const tpow = await this.props.client.call("Filecoin.StateMinerPower", [this.props.addr, tipset])
+    const networkPower = tpow.TotalPower
+
+    let sectors = {}
+
+    const sset = await this.props.client.call("Filecoin.StateMinerSectors", [this.props.addr, tipset]) || []
+    const pset = await this.props.client.call("Filecoin.StateMinerProvingSet", [this.props.addr, tipset]) || []
+
+    sset.forEach(s => sectors[s.SectorID] = {...s, sectorSet: true})
+    pset.forEach(s => sectors[s.SectorID] = {...(sectors[s.SectorID] || s), provingSet: true})
+
+    this.setState({state, sectorSize, worker, networkPower, sectors})
+  }
+
+  render() {
+    if (!this.state.worker) {
+      return <span>(...)</span>
+    }
+
+    let state = this.state.state.State
+
+    return <div>
+      <div>Worker: <Address addr={this.state.worker} client={this.props.client} mountWindow={this.props.mountWindow}/></div>
+      <div>Sector Size: <b>{this.state.sectorSize/1024}</b> KiB</div>
+      <div>Power: <b>{state.Power}</b> (<b>{state.Power/this.state.networkPower*100}</b>%)</div>
+      <div>Proving Period End: <b>{state.ProvingPeriodEnd}</b></div>
+      <div>
+        <div>----</div>
+        <div>Sectors:</div>
+        <table style={{overflowY: "scroll"}}>
+          <thead>
+            <tr><td>ID</td><td>CommD</td><td>CommR</td><td>SectorSet</td><td>Proving</td></tr>
+          </thead>
+          <tbody>
+            {Object.keys(this.state.sectors).map(sid => <tr key={sid} style={{whiteSpace: 'nowrap'}}>
+              <td>{sid}</td>
+              <td>{this.state.sectors[sid].CommD}</td>
+              <td>{this.state.sectors[sid].CommR}</td>
+              <td>{this.state.sectors[sid].sectorSet ? 'X' : ' '}</td>
+              <td>{this.state.sectors[sid].provingSet ? 'X' : ' '}</td>
+            </tr>)}
+          </tbody>
         </table>
       </div>
     </div>
