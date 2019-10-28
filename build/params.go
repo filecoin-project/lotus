@@ -37,7 +37,7 @@ const PaymentChannelClosingDelay = 6 * 60 * 2 // six hours
 // Consensus / Network
 
 // Seconds
-const BlockDelay = 3
+const BlockDelay = 10
 
 // Seconds
 const AllowableClockDrift = BlockDelay * 2
@@ -55,11 +55,11 @@ const Finality = 500
 // Proofs
 
 // Blocks
-const ProvingPeriodDuration = 40
+const ProvingPeriodDuration = 60
 
 // PoStChallangeTime sets the window in which post computation should happen
 // Blocks
-const PoStChallangeTime = ProvingPeriodDuration - 5
+const PoStChallangeTime = ProvingPeriodDuration - 6
 
 // PoStRandomnessLookback is additional randomness lookback for PoSt computation
 // To compute randomness epoch in a given proving period:
