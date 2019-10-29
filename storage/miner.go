@@ -213,10 +213,6 @@ func (m *Miner) commitSector(ctx context.Context, sinfo sectorbuilder.SectorSeal
 		return errors.Wrap(err, "pushing message to mpool")
 	}
 
-	if err := m.commt.TrackCommitSectorMsg(m.maddr, sinfo.SectorID, smsg.Cid()); err != nil {
-		return errors.Wrap(err, "tracking sector commitment")
-	}
-
 	go func() {
 		_, err := m.api.StateWaitMsg(ctx, smsg.Cid())
 		if err != nil {
@@ -225,6 +221,10 @@ func (m *Miner) commitSector(ctx context.Context, sinfo sectorbuilder.SectorSeal
 
 		m.beginPosting(ctx)
 	}()
+
+	if err := m.commt.TrackCommitSectorMsg(m.maddr, sinfo.SectorID, smsg.Cid()); err != nil {
+		return xerrors.Errorf("tracking sector commitment: %w", err)
+	}
 
 	return nil
 }
