@@ -136,3 +136,12 @@ func (ct *Tracker) WaitCommit(ctx context.Context, miner address.Address, sector
 		return cid.Undef, ctx.Err()
 	}
 }
+
+func (ct *Tracker) CheckCommitment(miner address.Address, sectorId uint64) (bool, error) {
+	key := commitmentKey(miner, sectorId)
+
+	ct.lk.Lock()
+	defer ct.lk.Unlock()
+
+	return ct.commitments.Has(key)
+}

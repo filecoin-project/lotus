@@ -263,6 +263,10 @@ func (s *Store) WaitSeal(ctx context.Context, sector uint64) (sectorbuilder.Sect
 	return s.sb.SealStatus(sector)
 }
 
+func (s *Store) Sealed() ([]sectorbuilder.SealedSectorMetadata, error) {
+	return s.sb.GetAllSealedSectors()
+}
+
 func (s *Store) RunPoSt(ctx context.Context, sectors []*api.SectorInfo, r []byte, faults []uint64) ([]byte, error) {
 	sbsi := make([]sectorbuilder.SectorInfo, len(sectors))
 	for k, sector := range sectors {

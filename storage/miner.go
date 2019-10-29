@@ -2,6 +2,7 @@ package storage
 
 import (
 	"context"
+	"github.com/filecoin-project/go-sectorbuilder/sealing_state"
 	"sync"
 
 	"github.com/ipfs/go-cid"
@@ -93,9 +94,46 @@ func (m *Miner) Run(ctx context.Context) error {
 	return nil
 }
 
+func (m *Miner) commitUntrackedSectors(ctx context.Context) error {
+	sealed, err := m.secst.Sealed()
+	if err != nil {
+		return err
+	}
+
+	for _, s := range sealed {
+		has, err := m.commt.CheckCommitment(m.maddr, s.SectorID)
+		if err != nil {
+			log.Error("checking commitment: ", err)
+		}
+
+		if has {
+			continue
+		}
+
+		log.Warnf("Missing commitment for sector %d, committing sector", s.SectorID)
+
+		if err := m.commitSector(ctx, sectorbuilder.SectorSealingStatus{
+			SectorID: s.SectorID,
+			State:    sealing_state.Sealed,
+			CommD:    s.CommD,
+			CommR:    s.CommR,
+			Proof:    s.Proof,
+			Pieces:   s.Pieces,
+			Ticket:   s.Ticket,
+		}); err != nil {
+			log.Error("Committing uncommitted sector failed: ", err)
+		}
+	}
+	return nil
+}
+
 func (m *Miner) handlePostingSealedSectors(ctx context.Context) {
 	incoming := m.secst.Incoming()
 	defer m.secst.CloseIncoming(incoming)
+
+	if err := m.commitUntrackedSectors(ctx); err != nil {
+		log.Error(err)
+	}
 
 	for {
 		select {
