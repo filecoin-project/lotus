@@ -77,13 +77,7 @@ type StorageDealProposal struct {
 	Provider address.Address
 
 	ProposalExpiration uint64
-	Duration           uint64 // TODO: spec proposes 'DealExpiration', but that's awkward as it
-	//  doesn't tell when the deal actually starts, so the price per block is impossible to
-	//  calculate. It also doesn't incentivize the miner to seal / activate sooner, as he
-	//  still get's paid the full amount specified in the deal
-	//
-	//  Changing to duration makes sure that the price-per-block is defined, and the miner
-	//  doesn't get paid when not storing the sector
+	Duration           uint64 // TODO: spec
 
 	StoragePricePerEpoch types.BigInt
 	StorageCollateral    types.BigInt
