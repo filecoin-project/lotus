@@ -7,6 +7,13 @@ BOOTSTRAPPERS=( root@147.75.80.17 )
 
 ############
 
+read -p "You are about to deploy new DevNet, killing bootstrap nodes. Proceed? (y/n)?" r
+case "$r" in
+  y|Y ) echo "Proceding";;
+  n|N ) exit 0;;
+  * ) exit 1;;
+esac
+
 log() {
   echo -e "\e[33m$1\e[39m"
 }
