@@ -31,25 +31,29 @@ func (sm *StorageMinerAPI) ActorAddress(context.Context) (address.Address, error
 	return sm.SectorBuilderConfig.Miner, nil
 }
 
-func (sm *StorageMinerAPI) StoreGarbageData(ctx context.Context) (uint64, error) {
+func (sm *StorageMinerAPI) StoreGarbageData(ctx context.Context) error {
 	ssize, err := sm.Miner.SectorSize(ctx)
 	if err != nil {
-		return 0, xerrors.Errorf("failed to get miner sector size: %w", err)
+		return xerrors.Errorf("failed to get miner sector size: %w", err)
 	}
-	size := sectorbuilder.UserBytesForSectorSize(ssize)
+	go func() {
+		size := sectorbuilder.UserBytesForSectorSize(ssize)
 
-	// TODO: create a deal
-	name := fmt.Sprintf("fake-file-%d", rand.Intn(100000000))
-	sectorId, err := sm.Sectors.AddPiece(name, size, io.LimitReader(rand.New(rand.NewSource(42)), int64(size)))
-	if err != nil {
-		return 0, err
-	}
+		// TODO: create a deal
+		name := fmt.Sprintf("fake-file-%d", rand.Intn(100000000))
+		sectorId, err := sm.Sectors.AddPiece(name, size, io.LimitReader(rand.New(rand.NewSource(42)), int64(size)))
+		if err != nil {
+			log.Error(err)
+			return
+		}
 
-	if err := sm.Sectors.SealSector(ctx, sectorId); err != nil {
-		return sectorId, err
-	}
+		if err := sm.Sectors.SealSector(ctx, sectorId); err != nil {
+			log.Error(err)
+			return
+		}
+	}()
 
-	return sectorId, err
+	return err
 }
 
 func (sm *StorageMinerAPI) SectorsStatus(ctx context.Context, sid uint64) (sectorbuilder.SectorSealingStatus, error) {

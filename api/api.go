@@ -159,7 +159,7 @@ type StorageMiner interface {
 	ActorAddress(context.Context) (address.Address, error)
 
 	// Temp api for testing
-	StoreGarbageData(context.Context) (uint64, error)
+	StoreGarbageData(context.Context) error
 
 	// Get the status of a given sector by ID
 	SectorsStatus(context.Context, uint64) (sectorbuilder.SectorSealingStatus, error)
