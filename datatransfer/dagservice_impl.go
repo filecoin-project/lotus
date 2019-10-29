@@ -58,14 +58,16 @@ func (impl *dagserviceImpl) OpenPushDataChannel(to peer.ID, voucher Voucher, bas
 // open a data transfer that will request data from the sending peer and
 // transfer parts of the piece that match the selector
 func (impl *dagserviceImpl) OpenPullDataChannel(to peer.ID, voucher Voucher, baseCid cid.Cid, Selector ipld.Node) (ChannelID, error) {
-	err := merkledag.FetchGraph(context.TODO(), baseCid, impl.dag)
-	var event Event
-	if err != nil {
-		event = Error
-	} else {
-		event = Complete
-	}
-	impl.subscriber(event, ChannelState{Channel: Channel{voucher: voucher}})
+	go func() {
+		err := merkledag.FetchGraph(context.TODO(), baseCid, impl.dag)
+		var event Event
+		if err != nil {
+			event = Error
+		} else {
+			event = Complete
+		}
+		impl.subscriber(event, ChannelState{Channel: Channel{voucher: voucher}})
+	}()
 	return ChannelID{}, nil
 }
 
