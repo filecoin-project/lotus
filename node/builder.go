@@ -235,12 +235,13 @@ func Online() Option {
 			Override(new(*sector.Store), sector.NewStore),
 			Override(new(*sectorblocks.SectorBlocks), sectorblocks.NewSectorBlocks),
 			Override(new(*commitment.Tracker), commitment.NewTracker),
+			Override(new(sector.TicketFn), modules.SealTicketGen),
 			Override(new(*storage.Miner), modules.StorageMiner),
 
 			Override(new(dtypes.StagingDAG), modules.StagingDAG),
 
 			Override(new(*retrieval.Miner), retrieval.NewMiner),
-			Override(new(*deals.Handler), deals.NewHandler),
+			Override(new(*deals.Provider), deals.NewProvider),
 			Override(HandleRetrievalKey, modules.HandleRetrieval),
 			Override(HandleDealsKey, modules.HandleDeals),
 			Override(RunSectorServiceKey, modules.RunSectorService),

@@ -53,7 +53,7 @@ var createMinerCmd = &cli.Command{
 		createMinerArgs := actors.CreateStorageMinerParams{
 			Worker:     worker,
 			Owner:      owner,
-			SectorSize: types.NewInt(ssize),
+			SectorSize: ssize,
 			PeerID:     pid,
 		}
 
@@ -69,7 +69,7 @@ var createMinerCmd = &cli.Command{
 		}
 
 		msg := &types.Message{
-			To:       actors.StorageMarketAddress,
+			To:       actors.StoragePowerAddress,
 			From:     addr,
 			Method:   actors.SPAMethods.CreateStorageMiner,
 			Params:   params,

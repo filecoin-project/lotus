@@ -101,8 +101,7 @@ var clientDealCmd = &cli.Command{
 			return err
 		}
 
-		// TODO: parse bigint
-		price, err := strconv.ParseInt(cctx.Args().Get(2), 10, 32)
+		price, err := types.ParseFIL(cctx.Args().Get(2))
 		if err != nil {
 			return err
 		}
@@ -112,7 +111,7 @@ var clientDealCmd = &cli.Command{
 			return err
 		}
 
-		proposal, err := api.ClientStartDeal(ctx, data, miner, types.NewInt(uint64(price)), uint64(dur))
+		proposal, err := api.ClientStartDeal(ctx, data, miner, types.BigInt(price), uint64(dur))
 		if err != nil {
 			return err
 		}
@@ -164,7 +163,7 @@ var clientFindCmd = &cli.Command{
 				fmt.Printf("ERR %s@%s: %s\n", offer.Miner, offer.MinerPeerID, offer.Err)
 				continue
 			}
-			fmt.Printf("RETRIEVAL %s@%s-%sfil-%db\n", offer.Miner, offer.MinerPeerID, offer.MinPrice, offer.Size)
+			fmt.Printf("RETRIEVAL %s@%s-%sfil-%db\n", offer.Miner, offer.MinerPeerID, types.FIL(offer.MinPrice), offer.Size)
 		}
 
 		return nil
@@ -308,19 +307,20 @@ var clientQueryAskCmd = &cli.Command{
 		}
 
 		fmt.Printf("Ask: %s\n", maddr)
-		fmt.Printf("Price per Byte: %s\n", ask.Ask.Price)
+		fmt.Printf("Price per Byte: %s\n", types.FIL(ask.Ask.Price))
 
 		size := cctx.Int64("size")
 		if size == 0 {
 			return nil
 		}
-		fmt.Printf("Price per Block: %s\n", types.BigMul(ask.Ask.Price, types.NewInt(uint64(size))))
+		perEpoch := types.BigDiv(types.BigMul(ask.Ask.Price, types.NewInt(uint64(size))), types.NewInt(1<<30))
+		fmt.Printf("Price per Block: %s\n", types.FIL(perEpoch))
 
 		duration := cctx.Int64("duration")
 		if duration == 0 {
 			return nil
 		}
-		fmt.Printf("Total Price: %s\n", types.BigMul(types.BigMul(ask.Ask.Price, types.NewInt(uint64(size))), types.NewInt(uint64(duration))))
+		fmt.Printf("Total Price: %s\n", types.FIL(types.BigMul(perEpoch, types.NewInt(uint64(duration)))))
 
 		return nil
 	},

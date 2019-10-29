@@ -6,22 +6,21 @@ import (
 	ma "github.com/multiformats/go-multiaddr"
 )
 
-type DealState int
+type DealState = uint64
 
 const (
-	DealUnknown = DealState(iota)
-	DealRejected
-	DealAccepted
-	DealStarted
+	DealUnknown  = DealState(iota)
+	DealRejected // Provider didn't like the proposal
+	DealAccepted // Proposal accepted, data moved
+	DealStaged   // Data put into the sector
+	DealSealing  // Data in process of being sealed
+
 	DealFailed
-	DealStaged
-	DealSealing
 	DealComplete
 
 	// Internal
 
 	DealError // deal failed with an unexpected error
-	DealExpired
 
 	DealNoUpdate = DealUnknown
 )

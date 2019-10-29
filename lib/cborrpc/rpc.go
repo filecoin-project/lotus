@@ -1,10 +1,13 @@
 package cborrpc
 
 import (
+	"bytes"
 	"encoding/hex"
 	"io"
+	"math"
 
 	cbor "github.com/ipfs/go-ipld-cbor"
+	ipld "github.com/ipfs/go-ipld-format"
 	logging "github.com/ipfs/go-log"
 	cbg "github.com/whyrusleeping/cbor-gen"
 )
@@ -42,4 +45,24 @@ func ReadCborRPC(r io.Reader, out interface{}) error {
 		return um.UnmarshalCBOR(r)
 	}
 	return cbor.DecodeReader(r, out)
+}
+
+func Dump(obj interface{}) ([]byte, error) {
+	var out bytes.Buffer
+	if err := WriteCborRPC(&out, obj); err != nil {
+		return nil, err
+	}
+	return out.Bytes(), nil
+}
+
+// TODO: this is a bit ugly, and this package is not exactly the best place
+func AsIpld(obj interface{}) (ipld.Node, error) {
+	if m, ok := obj.(cbg.CBORMarshaler); ok {
+		b, err := Dump(m)
+		if err != nil {
+			return nil, err
+		}
+		return cbor.Decode(b, math.MaxUint64, -1)
+	}
+	return cbor.WrapObject(obj, math.MaxUint64, -1)
 }

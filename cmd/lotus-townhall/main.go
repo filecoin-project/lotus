@@ -1,9 +1,14 @@
 package main
 
 import (
+	"bytes"
 	"context"
 	"encoding/json"
 	"fmt"
+	"github.com/filecoin-project/lotus/build"
+	"github.com/ipfs/go-car"
+	"github.com/ipfs/go-datastore"
+	blockstore "github.com/ipfs/go-ipfs-blockstore"
 	"net/http"
 	"strings"
 
@@ -14,11 +19,26 @@ import (
 	pnet "github.com/libp2p/go-libp2p-pnet"
 	pubsub "github.com/libp2p/go-libp2p-pubsub"
 
-	"github.com/filecoin-project/lotus/lib/addrutil"
 	"github.com/filecoin-project/lotus/node/modules/lp2p"
 )
 
-const topic = "/fil/headnotifs/bafy2bzacea77zxnepp7wuqqgpj7xcw2ywwmmcmtrbjghhv4g2dildogpv6roi"
+var topic = "/fil/headnotifs/"
+
+func init() {
+	genBytes := build.MaybeGenesis()
+	bs := blockstore.NewBlockstore(datastore.NewMapDatastore())
+
+	c, err := car.LoadCar(bs, bytes.NewReader(genBytes))
+	if err != nil {
+		panic(err)
+	}
+	if len(c.Roots) != 1 {
+		panic("expected genesis file to have one root")
+	}
+
+	fmt.Printf("Genesis CID: %s\n", c.Roots[0])
+	topic = topic + c.Roots[0].String()
+}
 
 var upgrader = websocket.Upgrader{
 	WriteBufferSize: 1024,
@@ -48,9 +68,7 @@ func main() {
 		panic(err)
 	}
 
-	pi, err := addrutil.ParseAddresses(ctx, []string{
-		"/ip4/147.75.80.29/tcp/1347/p2p/12D3KooWGU8C1mFsEtz4bXmHUH3kQTnQnxVy8cigwGV94qCpYJw7",
-	})
+	pi, err := build.BuiltinBootstrap()
 	if err != nil {
 		panic(err)
 	}

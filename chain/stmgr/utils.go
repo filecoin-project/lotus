@@ -2,6 +2,7 @@ package stmgr
 
 import (
 	"context"
+
 	"github.com/filecoin-project/lotus/api"
 	"github.com/filecoin-project/lotus/chain/actors"
 	"github.com/filecoin-project/lotus/chain/address"
@@ -9,6 +10,7 @@ import (
 
 	amt "github.com/filecoin-project/go-amt-ipld"
 	cid "github.com/ipfs/go-cid"
+	hamt "github.com/ipfs/go-hamt-ipld"
 	blockstore "github.com/ipfs/go-ipfs-blockstore"
 	cbor "github.com/ipfs/go-ipld-cbor"
 	"github.com/libp2p/go-libp2p-core/peer"
@@ -16,7 +18,7 @@ import (
 	"golang.org/x/xerrors"
 )
 
-func GetMinerWorker(ctx context.Context, sm *StateManager, st cid.Cid, maddr address.Address) (address.Address, error) {
+func GetMinerWorkerRaw(ctx context.Context, sm *StateManager, st cid.Cid, maddr address.Address) (address.Address, error) {
 	recp, err := sm.CallRaw(ctx, &types.Message{
 		To:     maddr,
 		From:   maddr,
@@ -80,7 +82,7 @@ func GetPower(ctx context.Context, sm *StateManager, ts *types.TipSet, maddr add
 		}
 		ret, err := sm.Call(ctx, &types.Message{
 			From:   maddr,
-			To:     actors.StorageMarketAddress,
+			To:     actors.StoragePowerAddress,
 			Method: actors.SPAMethods.PowerLookup,
 			Params: enc,
 		}, ts)
@@ -95,8 +97,8 @@ func GetPower(ctx context.Context, sm *StateManager, ts *types.TipSet, maddr add
 	}
 
 	ret, err := sm.Call(ctx, &types.Message{
-		From:   actors.StorageMarketAddress,
-		To:     actors.StorageMarketAddress,
+		From:   actors.StoragePowerAddress,
+		To:     actors.StoragePowerAddress,
 		Method: actors.SPAMethods.GetTotalStorage,
 	}, ts)
 	if err != nil {
@@ -118,7 +120,7 @@ func GetMinerPeerID(ctx context.Context, sm *StateManager, ts *types.TipSet, mad
 		Method: actors.MAMethods.GetPeerID,
 	}, ts)
 	if err != nil {
-		return "", xerrors.Errorf("callRaw failed: %w", err)
+		return "", xerrors.Errorf("call failed: %w", err)
 	}
 
 	if recp.ExitCode != 0 {
@@ -126,6 +128,23 @@ func GetMinerPeerID(ctx context.Context, sm *StateManager, ts *types.TipSet, mad
 	}
 
 	return peer.IDFromBytes(recp.Return)
+}
+
+func GetMinerWorker(ctx context.Context, sm *StateManager, ts *types.TipSet, maddr address.Address) (address.Address, error) {
+	recp, err := sm.Call(ctx, &types.Message{
+		To:     maddr,
+		From:   maddr,
+		Method: actors.MAMethods.GetWorkerAddr,
+	}, ts)
+	if err != nil {
+		return address.Undef, xerrors.Errorf("call failed: %w", err)
+	}
+
+	if recp.ExitCode != 0 {
+		return address.Undef, xerrors.Errorf("getting miner peer ID failed (exit code %d)", recp.ExitCode)
+	}
+
+	return address.NewFromBytes(recp.Return)
 }
 
 func GetMinerProvingPeriodEnd(ctx context.Context, sm *StateManager, ts *types.TipSet, maddr address.Address) (uint64, error) {
@@ -156,6 +175,22 @@ func GetMinerSectorSet(ctx context.Context, sm *StateManager, ts *types.TipSet, 
 	}
 
 	return LoadSectorsFromSet(ctx, sm.ChainStore().Blockstore(), mas.Sectors)
+}
+
+func GetMinerSectorSize(ctx context.Context, sm *StateManager, ts *types.TipSet, maddr address.Address) (uint64, error) {
+	var mas actors.StorageMinerActorState
+	_, err := sm.LoadActorState(ctx, maddr, &mas, ts)
+	if err != nil {
+		return 0, xerrors.Errorf("failed to load miner actor state: %w", err)
+	}
+
+	cst := hamt.CSTFromBstore(sm.cs.Blockstore())
+	var minfo actors.MinerInfo
+	if err := cst.Get(ctx, mas.Info, &minfo); err != nil {
+		return 0, xerrors.Errorf("failed to read miner info: %w", err)
+	}
+
+	return minfo.SectorSize, nil
 }
 
 func LoadSectorsFromSet(ctx context.Context, bs blockstore.Blockstore, ssc cid.Cid) ([]*api.SectorInfo, error) {

@@ -12,6 +12,7 @@ import (
 	"github.com/libp2p/go-libp2p-core/peer"
 
 	"github.com/filecoin-project/lotus/build"
+	"github.com/filecoin-project/lotus/chain/actors"
 	"github.com/filecoin-project/lotus/chain/address"
 	"github.com/filecoin-project/lotus/chain/store"
 	"github.com/filecoin-project/lotus/chain/types"
@@ -101,7 +102,7 @@ type FullNode interface {
 
 	// ClientImport imports file under the specified path into filestore
 	ClientImport(ctx context.Context, path string) (cid.Cid, error)
-	ClientStartDeal(ctx context.Context, data cid.Cid, miner address.Address, price types.BigInt, blocksDuration uint64) (*cid.Cid, error)
+	ClientStartDeal(ctx context.Context, data cid.Cid, miner address.Address, epochPrice types.BigInt, blocksDuration uint64) (*cid.Cid, error)
 	ClientListDeals(ctx context.Context) ([]DealInfo, error)
 	ClientHasLocal(ctx context.Context, root cid.Cid) (bool, error)
 	ClientFindData(ctx context.Context, root cid.Cid) ([]QueryOffer, error) // TODO: specify serialization mode we want (defaults to unixfs for now)
@@ -122,16 +123,20 @@ type FullNode interface {
 	StateGetActor(ctx context.Context, actor address.Address, ts *types.TipSet) (*types.Actor, error)
 	StateReadState(ctx context.Context, act *types.Actor, ts *types.TipSet) (*ActorState, error)
 
-	StateMinerSectors(context.Context, address.Address) ([]*SectorInfo, error)
+	StateMinerSectors(context.Context, address.Address, *types.TipSet) ([]*SectorInfo, error)
 	StateMinerProvingSet(context.Context, address.Address, *types.TipSet) ([]*SectorInfo, error)
 	StateMinerPower(context.Context, address.Address, *types.TipSet) (MinerPower, error)
 	StateMinerWorker(context.Context, address.Address, *types.TipSet) (address.Address, error)
 	StateMinerPeerID(ctx context.Context, m address.Address, ts *types.TipSet) (peer.ID, error)
 	StateMinerProvingPeriodEnd(ctx context.Context, actor address.Address, ts *types.TipSet) (uint64, error)
+	StateMinerSectorSize(context.Context, address.Address, *types.TipSet) (uint64, error)
 	StatePledgeCollateral(context.Context, *types.TipSet) (types.BigInt, error)
 	StateWaitMsg(context.Context, cid.Cid) (*MsgWait, error)
 	StateListMiners(context.Context, *types.TipSet) ([]address.Address, error)
 	StateListActors(context.Context, *types.TipSet) ([]address.Address, error)
+	StateMarketBalance(context.Context, address.Address, *types.TipSet) (actors.StorageParticipantBalance, error)
+	StateMarketParticipants(context.Context, *types.TipSet) (map[string]actors.StorageParticipantBalance, error)
+	StateMarketDeals(context.Context, *types.TipSet) (map[string]actors.OnChainDeal, error)
 
 	PaychGet(ctx context.Context, from, to address.Address, ensureFunds types.BigInt) (*ChannelInfo, error)
 	PaychList(context.Context) ([]address.Address, error)
@@ -162,9 +167,6 @@ type StorageMiner interface {
 	// List all staged sectors
 	SectorsList(context.Context) ([]uint64, error)
 
-	// Seal all staged sectors
-	SectorsStagedSeal(context.Context) error
-
 	SectorsRefs(context.Context) (map[string][]SealedRef, error)
 }
 
@@ -179,6 +181,9 @@ type Version struct {
 	APIVersion uint32
 
 	// TODO: git commit / os / genesis cid?
+
+	// Seconds
+	BlockDelay uint64
 }
 
 func (v Version) String() string {
@@ -196,14 +201,13 @@ type Import struct {
 type DealInfo struct {
 	ProposalCid cid.Cid
 	State       DealState
-	Miner       address.Address
+	Provider    address.Address
 
-	PieceRef cid.Cid
-	CommP    []byte
+	PieceRef []byte // cid bytes
 	Size     uint64
 
-	TotalPrice types.BigInt
-	Duration   uint64
+	PricePerEpoch types.BigInt
+	Duration      uint64
 }
 
 type MsgWait struct {

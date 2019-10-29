@@ -71,10 +71,10 @@ class ChainExplorer extends React.Component {
       return
     }
     if(!base.Blocks) {
-      console.log("base for H is nll blk", h, base)
+      console.log("base for H is nil blk", h, base)
       return
     }
-    let cids = base.Blocks.map(b => b.Parents)
+    let cids = base.Blocks.map(b => (b.Parents || []))
         .reduce((acc, val) => {
           let out = {...acc}
           val.forEach(c => out[c['/']] = 8)
@@ -84,6 +84,10 @@ class ChainExplorer extends React.Component {
     console.log("parents", cids)
 
     const blocks = await Promise.all(cids.map(cid => this.props.client.call('Filecoin.ChainGetBlock', [cid])))
+
+    if (!blocks[0]) {
+      return
+    }
 
     cache[h] = {
       Height: blocks[0].Height,
@@ -165,7 +169,7 @@ class ChainExplorer extends React.Component {
       return <div key={row} className={className}>@{h} {info}</div>
     })}</div>
 
-    return (<Window onClose={this.props.onClose} title={`Chain Explorer ${this.state.follow ? '(Following)' : ''}`}>
+    return (<Window initialSize={{width: 800}} onClose={this.props.onClose} title={`Chain Explorer ${this.state.follow ? '(Following)' : ''}`}>
       {content}
     </Window>)
   }

@@ -100,7 +100,7 @@ townhall:
 	rm -f townhall
 	go build -o townhall ./cmd/lotus-townhall
 	(cd ./cmd/lotus-townhall/townhall && npm i && npm run build)
-	go run github.com/GeertJohan/go.rice/rice append --exec townhall -i ./cmd/lotus-townhall
+	go run github.com/GeertJohan/go.rice/rice append --exec townhall -i ./cmd/lotus-townhall -i ./build
 .PHONY: townhall
 
 fountain:

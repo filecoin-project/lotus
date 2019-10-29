@@ -1,10 +1,12 @@
+import code from "./code";
+
 export default {
-  "account": [
+  [code.account]: [
     "Send",
     "Constructor",
     "GetAddress",
   ],
-  "smarket": [
+  [code.power]: [
     "Send",
     "Constructor",
     "CreateStorageMiner",
@@ -15,7 +17,21 @@ export default {
     "IsMiner",
     "StorageCollateralForSize"
   ],
-  "sminer": [
+  [code.market]: [
+    "Send",
+    "Constructor",
+    "WithdrawBalance",
+    "AddBalance",
+    "CheckLockedBalance",
+    "PublishStorageDeals",
+    "HandleCronAction",
+    "SettleExpiredDeals",
+    "ProcessStorageDealsPayment",
+    "SlashStorageDealCollateral",
+    "GetLastExpirationFromDealIDs",
+    "ActivateStorageDeals",
+  ],
+  [code.miner]: [
     "Send",
     "Constructor",
     "CommitSector",
@@ -36,7 +52,7 @@ export default {
     "PaymentVerifyInclusion",
     "PaymentVerifySector",
   ],
-  "multisig": [
+  [code.multisig]: [
     "Send",
     "Constructor",
     "Propose",
@@ -48,13 +64,13 @@ export default {
     "SwapSigner",
     "ChangeRequirement",
   ],
-  "init": [
+  [code.init]: [
     "Send",
     "Constructor",
     "Exec",
     "GetIdForAddress"
   ],
-  "paych": [
+  [code.paych]: [
     "Send",
     "Constructor",
     "UpdateChannelState",

@@ -2,12 +2,12 @@ package deals
 
 import (
 	"context"
-	"github.com/filecoin-project/lotus/api"
 
 	"golang.org/x/xerrors"
 
-	"github.com/filecoin-project/lotus/build"
-	"github.com/filecoin-project/lotus/lib/sectorbuilder"
+	"github.com/filecoin-project/lotus/api"
+	"github.com/filecoin-project/lotus/chain/actors"
+	"github.com/filecoin-project/lotus/chain/stmgr"
 )
 
 type clientHandlerFunc func(ctx context.Context, deal ClientDeal) error
@@ -38,6 +38,39 @@ func (c *Client) new(ctx context.Context, deal ClientDeal) error {
 	if resp.State != api.DealAccepted {
 		return xerrors.Errorf("deal wasn't accepted (State=%d)", resp.State)
 	}
+
+	// TODO: spec says it's optional
+	pubmsg, err := c.chain.GetMessage(*resp.PublishMessage)
+	if err != nil {
+		return xerrors.Errorf("getting deal pubsish message: %w", err)
+	}
+
+	pw, err := stmgr.GetMinerWorker(ctx, c.sm, nil, deal.Proposal.Provider)
+	if err != nil {
+		return xerrors.Errorf("getting miner worker failed: %w", err)
+	}
+
+	if pubmsg.From != pw {
+		return xerrors.Errorf("deal wasn't published by storage provider: from=%s, provider=%s", pubmsg.From, deal.Proposal.Provider)
+	}
+
+	if pubmsg.To != actors.StorageMarketAddress {
+		return xerrors.Errorf("deal publish message wasn't set to StorageMarket actor (to=%s)", pubmsg.To)
+	}
+
+	if pubmsg.Method != actors.SMAMethods.PublishStorageDeals {
+		return xerrors.Errorf("deal publish message called incorrect method (method=%s)", pubmsg.Method)
+	}
+
+	// TODO: timeout
+	_, ret, err := c.sm.WaitForMessage(ctx, *resp.PublishMessage)
+	if err != nil {
+		return xerrors.Errorf("waiting for deal publish message: %w", err)
+	}
+	if ret.ExitCode != 0 {
+		return xerrors.Errorf("deal publish failed: exit=%d", ret.ExitCode)
+	}
+	// TODO: persist dealId
 
 	log.Info("DEAL ACCEPTED!")
 
@@ -75,13 +108,19 @@ func (c *Client) staged(ctx context.Context, deal ClientDeal) error {
 
 	log.Info("DEAL SEALED!")
 
-	ok, err := sectorbuilder.VerifyPieceInclusionProof(build.SectorSize, deal.Proposal.Size, deal.Proposal.CommP, resp.CommD, resp.PieceInclusionProof.ProofElements)
+	// TODO: want?
+	/*ssize, err := stmgr.GetMinerSectorSize(ctx, c.sm, nil, deal.Proposal.MinerAddress)
+	if err != nil {
+		return xerrors.Errorf("failed to get miner sector size: %w", err)
+	}
+
+	ok, err := sectorbuilder.VerifyPieceInclusionProof(ssize, deal.Proposal.Size, deal.Proposal.CommP, resp.CommD, resp.PieceInclusionProof.ProofElements)
 	if err != nil {
 		return xerrors.Errorf("verifying piece inclusion proof in staged deal %s: %w", deal.ProposalCid, err)
 	}
 	if !ok {
 		return xerrors.Errorf("verifying piece inclusion proof in staged deal %s failed", deal.ProposalCid)
-	}
+	}*/
 
 	return nil
 }

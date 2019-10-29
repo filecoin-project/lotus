@@ -14,6 +14,7 @@ import (
 	"github.com/libp2p/go-libp2p-core/routing"
 	"github.com/mitchellh/go-homedir"
 	"go.uber.org/fx"
+	"golang.org/x/xerrors"
 
 	"github.com/filecoin-project/lotus/api"
 	"github.com/filecoin-project/lotus/build"
@@ -38,9 +39,14 @@ func minerAddrFromDS(ds dtypes.MetadataDS) (address.Address, error) {
 	return address.NewFromBytes(maddrb)
 }
 
-func SectorBuilderConfig(storagePath string) func(dtypes.MetadataDS) (*sectorbuilder.SectorBuilderConfig, error) {
-	return func(ds dtypes.MetadataDS) (*sectorbuilder.SectorBuilderConfig, error) {
+func SectorBuilderConfig(storagePath string) func(dtypes.MetadataDS, api.FullNode) (*sectorbuilder.SectorBuilderConfig, error) {
+	return func(ds dtypes.MetadataDS, api api.FullNode) (*sectorbuilder.SectorBuilderConfig, error) {
 		minerAddr, err := minerAddrFromDS(ds)
+		if err != nil {
+			return nil, err
+		}
+
+		ssize, err := api.StateMinerSectorSize(context.TODO(), minerAddr, nil)
 		if err != nil {
 			return nil, err
 		}
@@ -56,7 +62,7 @@ func SectorBuilderConfig(storagePath string) func(dtypes.MetadataDS) (*sectorbui
 
 		sb := &sectorbuilder.SectorBuilderConfig{
 			Miner:       minerAddr,
-			SectorSize:  build.SectorSize,
+			SectorSize:  ssize,
 			MetadataDir: metadata,
 			SealedDir:   sealed,
 			StagedDir:   staging,
@@ -98,13 +104,13 @@ func HandleRetrieval(host host.Host, lc fx.Lifecycle, m *retrieval.Miner) {
 	})
 }
 
-func HandleDeals(mctx helpers.MetricsCtx, lc fx.Lifecycle, host host.Host, h *deals.Handler) {
+func HandleDeals(mctx helpers.MetricsCtx, lc fx.Lifecycle, host host.Host, h *deals.Provider) {
 	ctx := helpers.LifecycleCtx(mctx, lc)
 
 	lc.Append(fx.Hook{
 		OnStart: func(context.Context) error {
 			h.Run(ctx)
-			host.SetStreamHandler(deals.ProtocolID, h.HandleStream)
+			host.SetStreamHandler(deals.DealProtocolID, h.HandleStream)
 			host.SetStreamHandler(deals.AskProtocolID, h.HandleAskStream)
 			return nil
 		},
@@ -156,4 +162,28 @@ func RegisterMiner(lc fx.Lifecycle, ds dtypes.MetadataDS, api api.FullNode) erro
 		},
 	})
 	return nil
+}
+
+func SealTicketGen(api api.FullNode) sector.TicketFn {
+	return func(ctx context.Context) (*sectorbuilder.SealTicket, error) {
+		ts, err := api.ChainHead(ctx)
+		if err != nil {
+			return nil, xerrors.Errorf("getting head ts for SealTicket failed: %w", err)
+		}
+
+		r, err := api.ChainGetRandomness(ctx, ts, nil, build.SealRandomnessLookback)
+		if err != nil {
+			return nil, xerrors.Errorf("getting randomness for SealTicket failed: %w", err)
+		}
+
+		var tkt [sectorbuilder.CommLen]byte
+		if n := copy(tkt[:], r); n != sectorbuilder.CommLen {
+			return nil, xerrors.Errorf("unexpected randomness len: %d (expected %d)", n, sectorbuilder.CommLen)
+		}
+
+		return &sectorbuilder.SealTicket{
+			BlockHeight: ts.Height() - build.SealRandomnessLookback,
+			TicketBytes: tkt,
+		}, nil
+	}
 }

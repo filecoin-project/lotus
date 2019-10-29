@@ -176,7 +176,7 @@ func (vmc *VMContext) ChargeGas(amount uint64) aerrors.ActorError {
 }
 
 func (vmc *VMContext) StateTree() (types.StateTree, aerrors.ActorError) {
-	if vmc.msg.To != actors.InitActorAddress {
+	if vmc.msg.To != actors.InitAddress {
 		return nil, aerrors.Escalate(fmt.Errorf("only init actor can access state tree directly"), "invalid use of StateTree")
 	}
 
@@ -215,7 +215,7 @@ func ResolveToKeyAddr(state types.StateTree, cst *hamt.CborIpldStore, addr addre
 		return address.Undef, aerrors.Newf(1, "failed to find actor: %s", addr)
 	}
 
-	if act.Code != actors.AccountActorCodeCid {
+	if act.Code != actors.AccountCodeCid {
 		return address.Undef, aerrors.New(1, "address was not for an account actor")
 	}
 
@@ -488,6 +488,8 @@ func (vm *VM) ApplyMessage(ctx context.Context, msg *types.Message) (*ApplyRet, 
 		return nil, xerrors.Errorf("getting block miner actor (%s) failed: %w", vm.blockMiner, err)
 	}
 
+	// TODO: support multiple blocks in a tipset
+	// TODO: actually wire this up (miner is undef for now)
 	gasReward := types.BigMul(msg.GasPrice, gasUsed)
 	if err := Transfer(gasHolder, miner, gasReward); err != nil {
 		return nil, xerrors.Errorf("failed to give miner gas reward: %w", err)
@@ -630,6 +632,7 @@ func depositFunds(act *types.Actor, amt types.BigInt) {
 }
 
 var miningRewardTotal = types.FromFil(build.MiningRewardTotal)
+var blocksPerEpoch = types.NewInt(build.BlocksPerEpoch)
 
 // MiningReward returns correct mining reward
 //   coffer is amount of FIL in NetworkAddress
@@ -637,5 +640,6 @@ func MiningReward(remainingReward types.BigInt) types.BigInt {
 	ci := big.NewInt(0).Set(remainingReward.Int)
 	res := ci.Mul(ci, build.InitialReward)
 	res = res.Div(res, miningRewardTotal.Int)
+	res = res.Div(res, blocksPerEpoch.Int)
 	return types.BigInt{res}
 }

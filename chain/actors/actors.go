@@ -7,16 +7,18 @@ import (
 	mh "github.com/multiformats/go-multihash"
 )
 
-var AccountActorCodeCid cid.Cid
-var StorageMarketActorCodeCid cid.Cid
+var AccountCodeCid cid.Cid
+var StoragePowerCodeCid cid.Cid
+var StorageMarketCodeCid cid.Cid
 var StorageMinerCodeCid cid.Cid
-var MultisigActorCodeCid cid.Cid
-var InitActorCodeCid cid.Cid
-var PaymentChannelActorCodeCid cid.Cid
+var MultisigCodeCid cid.Cid
+var InitCodeCid cid.Cid
+var PaymentChannelCodeCid cid.Cid
 
-var InitActorAddress = mustIDAddress(0)
+var InitAddress = mustIDAddress(0)
 var NetworkAddress = mustIDAddress(1)
-var StorageMarketAddress = mustIDAddress(2)
+var StoragePowerAddress = mustIDAddress(2)
+var StorageMarketAddress = mustIDAddress(3) // TODO: missing from spec
 var BurntFundsAddress = mustIDAddress(99)
 
 func mustIDAddress(i uint64) address.Address {
@@ -37,10 +39,11 @@ func init() {
 		return c
 	}
 
-	AccountActorCodeCid = mustSum("account")
-	StorageMarketActorCodeCid = mustSum("smarket")
-	StorageMinerCodeCid = mustSum("sminer")
-	MultisigActorCodeCid = mustSum("multisig")
-	InitActorCodeCid = mustSum("init")
-	PaymentChannelActorCodeCid = mustSum("paych")
+	AccountCodeCid = mustSum("fil/1/account") // TODO: spec
+	StoragePowerCodeCid = mustSum("fil/1/power")
+	StorageMarketCodeCid = mustSum("fil/1/market")
+	StorageMinerCodeCid = mustSum("fil/1/miner")
+	MultisigCodeCid = mustSum("fil/1/multisig")
+	InitCodeCid = mustSum("fil/1/init")
+	PaymentChannelCodeCid = mustSum("fil/1/paych")
 }

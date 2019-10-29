@@ -4,9 +4,11 @@ import (
 	"fmt"
 	"os"
 
-	"github.com/filecoin-project/lotus/chain/actors"
-	"github.com/filecoin-project/lotus/chain/types"
 	gen "github.com/whyrusleeping/cbor-gen"
+
+	"github.com/filecoin-project/lotus/chain/actors"
+	"github.com/filecoin-project/lotus/chain/deals"
+	"github.com/filecoin-project/lotus/chain/types"
 )
 
 func main() {
@@ -22,6 +24,8 @@ func main() {
 		types.Actor{},
 		types.MessageReceipt{},
 		types.BlockMsg{},
+		types.SignedStorageAsk{},
+		types.StorageAsk{},
 	)
 	if err != nil {
 		fmt.Println(err)
@@ -46,11 +50,9 @@ func main() {
 		actors.AccountActorState{},
 		actors.StorageMinerActorState{},
 		actors.StorageMinerConstructorParams{},
-		actors.CommitSectorParams{},
+		actors.OnChainSealVerifyInfo{},
 		actors.MinerInfo{},
 		actors.SubmitPoStParams{},
-		actors.PieceInclVoucherData{},
-		actors.InclusionProof{},
 		actors.PaymentVerifyParams{},
 		actors.UpdatePeerIDParams{},
 		actors.MultiSigActorState{},
@@ -75,6 +77,31 @@ func main() {
 		actors.ArbitrateConsensusFaultParams{},
 		actors.PledgeCollateralParams{},
 		actors.MinerSlashConsensusFault{},
+		actors.StorageParticipantBalance{},
+		actors.StorageMarketState{},
+		actors.WithdrawBalanceParams{},
+		actors.StorageDealProposal{},
+		actors.StorageDeal{},
+		actors.PublishStorageDealsParams{},
+		actors.PublishStorageDealResponse{},
+		actors.ActivateStorageDealsParams{},
+		actors.ProcessStorageDealsPaymentParams{},
+		actors.OnChainDeal{},
+	)
+	if err != nil {
+		fmt.Println(err)
+		os.Exit(1)
+	}
+
+	err = gen.WriteTupleEncodersToFile("./chain/deals/cbor_gen.go", "deals",
+		deals.AskRequest{},
+		deals.AskResponse{},
+		deals.Proposal{},
+		deals.Response{},
+		deals.SignedResponse{},
+		deals.ClientDealProposal{},
+		deals.ClientDeal{},
+		deals.MinerDeal{},
 	)
 	if err != nil {
 		fmt.Println(err)

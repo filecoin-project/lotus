@@ -398,7 +398,7 @@ func (syncer *Syncer) minerIsValid(ctx context.Context, maddr address.Address, b
 	}
 
 	ret, err := syncer.sm.Call(ctx, &types.Message{
-		To:     actors.StorageMarketAddress,
+		To:     actors.StoragePowerAddress,
 		From:   maddr,
 		Method: actors.SPAMethods.IsMiner,
 		Params: enc,
@@ -482,9 +482,9 @@ func (syncer *Syncer) ValidateBlock(ctx context.Context, b *types.FullBlock) err
 		return xerrors.Errorf("minerIsValid failed: %w", err)
 	}
 
-	waddr, err := stmgr.GetMinerWorker(ctx, syncer.sm, stateroot, h.Miner)
+	waddr, err := stmgr.GetMinerWorkerRaw(ctx, syncer.sm, stateroot, h.Miner)
 	if err != nil {
-		return xerrors.Errorf("GetMinerWorker failed: %w", err)
+		return xerrors.Errorf("GetMinerWorkerRaw failed: %w", err)
 	}
 
 	if err := h.CheckBlockSignature(ctx, waddr); err != nil {
@@ -495,7 +495,7 @@ func (syncer *Syncer) ValidateBlock(ctx context.Context, b *types.FullBlock) err
 		return xerrors.Errorf("validating block tickets failed: %w", err)
 	}
 
-	rand, err := syncer.sm.ChainStore().GetRandomness(ctx, baseTs.Cids(), h.Tickets, build.RandomnessLookback)
+	rand, err := syncer.sm.ChainStore().GetRandomness(ctx, baseTs.Cids(), h.Tickets, build.EcRandomnessLookback)
 	if err != nil {
 		return xerrors.Errorf("failed to get randomness for verifying election proof: %w", err)
 	}
