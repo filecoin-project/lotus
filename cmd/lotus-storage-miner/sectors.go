@@ -20,13 +20,7 @@ var storeGarbageCmd = &cli.Command{
 		defer closer()
 		ctx := lcli.ReqContext(cctx)
 
-		sectorId, err := nodeApi.StoreGarbageData(ctx)
-		if err != nil {
-			return err
-		}
-
-		fmt.Println(sectorId)
-		return nil
+		return nodeApi.StoreGarbageData(ctx)
 	},
 }
 

@@ -127,7 +127,7 @@ type StorageMinerStruct struct {
 	Internal struct {
 		ActorAddress func(context.Context) (address.Address, error) `perm:"read"`
 
-		StoreGarbageData func(context.Context) (uint64, error) `perm:"write"`
+		StoreGarbageData func(context.Context) error `perm:"write"`
 
 		SectorsStatus func(context.Context, uint64) (sectorbuilder.SectorSealingStatus, error) `perm:"read"`
 		SectorsList   func(context.Context) ([]uint64, error)                                  `perm:"read"`
@@ -461,7 +461,7 @@ func (c *StorageMinerStruct) ActorAddress(ctx context.Context) (address.Address,
 	return c.Internal.ActorAddress(ctx)
 }
 
-func (c *StorageMinerStruct) StoreGarbageData(ctx context.Context) (uint64, error) {
+func (c *StorageMinerStruct) StoreGarbageData(ctx context.Context) error {
 	return c.Internal.StoreGarbageData(ctx)
 }
 
