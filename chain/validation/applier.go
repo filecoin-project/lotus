@@ -6,9 +6,9 @@ import (
 	vchain "github.com/filecoin-project/chain-validation/pkg/chain"
 	vstate "github.com/filecoin-project/chain-validation/pkg/state"
 
-	"github.com/filecoin-project/go-lotus/chain/address"
-	"github.com/filecoin-project/go-lotus/chain/types"
-	"github.com/filecoin-project/go-lotus/chain/vm"
+	"github.com/filecoin-project/lotus/chain/address"
+	"github.com/filecoin-project/lotus/chain/types"
+	"github.com/filecoin-project/lotus/chain/vm"
 )
 
 // Applier applies messages to state trees and storage.

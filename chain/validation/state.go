@@ -7,20 +7,20 @@ import (
 
 	"github.com/pkg/errors"
 
-	"github.com/filecoin-project/go-lotus/chain/actors"
-	"github.com/filecoin-project/go-lotus/chain/gen"
-	"github.com/filecoin-project/go-lotus/chain/vm"
+	"github.com/filecoin-project/lotus/chain/actors"
+	"github.com/filecoin-project/lotus/chain/gen"
+	"github.com/filecoin-project/lotus/chain/vm"
 
 	"github.com/ipfs/go-cid"
 	"github.com/ipfs/go-datastore"
 	"github.com/ipfs/go-hamt-ipld"
 	blockstore "github.com/ipfs/go-ipfs-blockstore"
 
-	"github.com/filecoin-project/go-lotus/chain/address"
-	"github.com/filecoin-project/go-lotus/chain/state"
-	"github.com/filecoin-project/go-lotus/chain/types"
-	"github.com/filecoin-project/go-lotus/chain/wallet"
-	"github.com/filecoin-project/go-lotus/lib/crypto"
+	"github.com/filecoin-project/lotus/chain/address"
+	"github.com/filecoin-project/lotus/chain/state"
+	"github.com/filecoin-project/lotus/chain/types"
+	"github.com/filecoin-project/lotus/chain/wallet"
+	"github.com/filecoin-project/lotus/lib/crypto"
 
 	vstate "github.com/filecoin-project/chain-validation/pkg/state"
 )
@@ -125,12 +125,12 @@ func (s *StateWrapper) SetSingletonActor(addr vstate.SingletonActorID, balance v
 		return nil, nil, err
 	}
 	switch lotusAddr {
-	case actors.InitActorAddress:
+	case actors.InitAddress:
 		initact, err := gen.SetupInitActor(s.bs, nil)
 		if err != nil {
 			return nil, nil, err
 		}
-		if err := tree.SetActor(actors.InitActorAddress, initact); err != nil {
+		if err := tree.SetActor(actors.InitAddress, initact); err != nil {
 			return nil, nil, errors.Wrapf(err, "set init actor")
 		}
 
@@ -146,7 +146,7 @@ func (s *StateWrapper) SetSingletonActor(addr vstate.SingletonActorID, balance v
 		return &actorWrapper{*smact}, s.storage, s.flush(tree)
 	case actors.NetworkAddress:
 		ntwkact := &types.Actor{
-			Code:    actors.AccountActorCodeCid,
+			Code:    actors.AccountCodeCid,
 			Balance: types.BigInt{balance},
 			Head:    vm.EmptyObjectCid,
 		}
@@ -156,7 +156,7 @@ func (s *StateWrapper) SetSingletonActor(addr vstate.SingletonActorID, balance v
 		return &actorWrapper{*ntwkact}, s.storage, s.flush(tree)
 	case actors.BurntFundsAddress:
 		ntwkact := &types.Actor{
-			Code:    actors.AccountActorCodeCid,
+			Code:    actors.AccountCodeCid,
 			Balance: types.BigInt{balance},
 			Head:    vm.EmptyObjectCid,
 		}
@@ -271,13 +271,13 @@ func (d *directStorage) Get(cid cid.Cid) ([]byte, error) {
 func fromActorCode(code vstate.ActorCodeID) cid.Cid {
 	switch code {
 	case vstate.AccountActorCodeCid:
-		return actors.AccountActorCodeCid
+		return actors.AccountCodeCid
 	case vstate.StorageMinerCodeCid:
 		return actors.StorageMinerCodeCid
 	case vstate.MultisigActorCodeCid:
-		return actors.MultisigActorCodeCid
+		return actors.MultisigCodeCid
 	case vstate.PaymentChannelActorCodeCid:
-		return actors.PaymentChannelActorCodeCid
+		return actors.PaymentChannelCodeCid
 	default:
 		panic(fmt.Errorf("unknown actor code: %v", code))
 	}
@@ -286,7 +286,7 @@ func fromActorCode(code vstate.ActorCodeID) cid.Cid {
 func fromSingletonAddress(addr vstate.SingletonActorID) vstate.Address {
 	switch addr {
 	case vstate.InitAddress:
-		return vstate.Address(actors.InitActorAddress.Bytes())
+		return vstate.Address(actors.InitAddress.Bytes())
 	case vstate.NetworkAddress:
 		return vstate.Address(actors.NetworkAddress.Bytes())
 	case vstate.StorageMarketAddress:
