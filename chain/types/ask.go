@@ -16,7 +16,9 @@ type SignedStorageAsk struct {
 }
 
 type StorageAsk struct {
-	Price        BigInt
+	// Price per GiB / Epoch
+	Price BigInt
+
 	MinPieceSize uint64
 	Miner        address.Address
 	Timestamp    uint64

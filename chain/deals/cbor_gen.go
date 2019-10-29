@@ -419,8 +419,8 @@ func (t *ClientDealProposal) MarshalCBOR(w io.Writer) error {
 		return xerrors.Errorf("failed to write cid field t.Data: %w", err)
 	}
 
-	// t.t.TotalPrice (types.BigInt)
-	if err := t.TotalPrice.MarshalCBOR(w); err != nil {
+	// t.t.PricePerEpoch (types.BigInt)
+	if err := t.PricePerEpoch.MarshalCBOR(w); err != nil {
 		return err
 	}
 
@@ -481,11 +481,11 @@ func (t *ClientDealProposal) UnmarshalCBOR(r io.Reader) error {
 		t.Data = c
 
 	}
-	// t.t.TotalPrice (types.BigInt)
+	// t.t.PricePerEpoch (types.BigInt)
 
 	{
 
-		if err := t.TotalPrice.UnmarshalCBOR(br); err != nil {
+		if err := t.PricePerEpoch.UnmarshalCBOR(br); err != nil {
 			return err
 		}
 

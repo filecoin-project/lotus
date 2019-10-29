@@ -88,9 +88,9 @@ func (p *Provider) accept(ctx context.Context, deal MinerDeal) (func(*MinerDeal)
 	// TODO: check StorageCollateral
 
 	// TODO:
-	minPrice := types.BigMul(p.ask.Ask.Price, types.BigMul(types.NewInt(deal.Proposal.Duration), types.NewInt(deal.Proposal.PieceSize)))
-	if deal.Proposal.StoragePrice.LessThan(minPrice) {
-		return nil, xerrors.Errorf("storage price less than asking price: %s < %s", deal.Proposal.StoragePrice, minPrice)
+	minPrice := types.BigDiv(types.BigMul(p.ask.Ask.Price, types.NewInt(deal.Proposal.PieceSize)), types.NewInt(1<<30))
+	if deal.Proposal.StoragePricePerEpoch.LessThan(minPrice) {
+		return nil, xerrors.Errorf("storage price per epoch less than asking price: %s < %s", deal.Proposal.StoragePricePerEpoch, minPrice)
 	}
 
 	if deal.Proposal.PieceSize < p.ask.Ask.MinPieceSize {
@@ -105,7 +105,7 @@ func (p *Provider) accept(ctx context.Context, deal MinerDeal) (func(*MinerDeal)
 
 	// This doesn't guarantee that the client won't withdraw / lock those funds
 	// but it's a decent first filter
-	if clientMarketBalance.Available.LessThan(deal.Proposal.StoragePrice) {
+	if clientMarketBalance.Available.LessThan(deal.Proposal.TotalStoragePrice()) {
 		return nil, xerrors.New("clientMarketBalance.Available too small")
 	}
 

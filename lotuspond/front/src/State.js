@@ -123,10 +123,10 @@ class MarketState extends React.Component {
           {Object.keys(this.state.deals).map(d => <tr>
             <td>{d}</td>
             <td>{this.state.deals[d].ActivationEpoch || "No"}</td>
-            <td><Address short={true} addr={this.state.deals[d].Deal.Proposal.Provider} client={this.props.client} mountWindow={this.props.mountWindow}/></td>
             <td><Address short={true} addr={this.state.deals[d].Deal.Proposal.Client} client={this.props.client} mountWindow={this.props.mountWindow}/></td>
+            <td><Address short={true} addr={this.state.deals[d].Deal.Proposal.Provider} client={this.props.client} mountWindow={this.props.mountWindow}/></td>
             <td>{this.state.deals[d].Deal.Proposal.PieceSize}B</td>
-            <td>{this.state.deals[d].Deal.Proposal.StoragePrice}</td>
+            <td>{this.state.deals[d].Deal.Proposal.StoragePricePerEpoch*this.state.deals[d].Deal.Proposal.Duration}</td>
             <td>{this.state.deals[d].Deal.Proposal.Duration}</td>
           </tr>)}
         </table>
