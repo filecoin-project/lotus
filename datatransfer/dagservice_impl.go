@@ -15,15 +15,28 @@ import (
 	"github.com/filecoin-project/lotus/node/modules/dtypes"
 )
 
+// This file implements a VERY simple, incomplete version of the data transfer
+// module that allows us to make the neccesary insertions of data transfer
+// functionality into the storage market
+// It does not:
+// -- actually validate requests
+// -- support Push requests
+// -- support multiple subscribers
+// -- do any actual network coordination or use Graphsync
+
 type dagserviceImpl struct {
 	dag        ipldformat.DAGService
 	subscriber Subscriber
 }
 
+// NewProviderDAGServiceDataTransfer returns a data transfer manager that just
+// uses the provider's Staging DAG service for transfers
 func NewProviderDAGServiceDataTransfer(dag dtypes.StagingDAG) Manager {
 	return &dagserviceImpl{dag, nil}
 }
 
+// NewClientDAGServiceDataTransfer returns a data transfer manager that just
+// uses the clients's Client DAG service for transfers
 func NewClientDAGServiceDataTransfer(dag dtypes.ClientDAG) Manager {
 	return &dagserviceImpl{dag, nil}
 }
@@ -38,14 +51,14 @@ func (impl *dagserviceImpl) RegisterVoucherType(voucherType reflect.Type, valida
 // open a data transfer that will send data to the recipient peer and
 // open a data transfer that will send data to the recipient peer and
 // transfer parts of the piece that match the selector
-func (impl *dagserviceImpl) OpenPushDataChannel(to peer.ID, voucher Voucher, PieceRef cid.Cid, Selector ipld.Node) (ChannelID, error) {
+func (impl *dagserviceImpl) OpenPushDataChannel(to peer.ID, voucher Voucher, baseCid cid.Cid, Selector ipld.Node) (ChannelID, error) {
 	return ChannelID{}, fmt.Errorf("not implemented")
 }
 
 // open a data transfer that will request data from the sending peer and
 // transfer parts of the piece that match the selector
-func (impl *dagserviceImpl) OpenPullDataChannel(to peer.ID, voucher Voucher, PieceRef cid.Cid, Selector ipld.Node) (ChannelID, error) {
-	err := merkledag.FetchGraph(context.TODO(), PieceRef, impl.dag)
+func (impl *dagserviceImpl) OpenPullDataChannel(to peer.ID, voucher Voucher, baseCid cid.Cid, Selector ipld.Node) (ChannelID, error) {
+	err := merkledag.FetchGraph(context.TODO(), baseCid, impl.dag)
 	var event Event
 	if err != nil {
 		event = Error

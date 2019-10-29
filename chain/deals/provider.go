@@ -49,10 +49,11 @@ type Provider struct {
 	sminer *storage.Miner
 	full   api.FullNode
 
-	// TODO: This will go away once the whole storage market module + CAR
+	// TODO: This will go away once storage market module + CAR
 	// is implemented
 	dag dtypes.StagingDAG
 
+	// dataTransfer is the manager of data transfers used by this storage provider
 	dataTransfer datatransfer.ProviderDataTransfer
 
 	deals *statestore.StateStore
@@ -124,6 +125,8 @@ func NewProvider(ds dtypes.MetadataDS, sminer *storage.Miner, secb *sectorblocks
 		}
 	}
 
+	// register a data transfer event handler -- this will move deals from
+	// accepted to staged
 	h.dataTransfer.SubscribeToEvents(h.onDataTransferEvent)
 
 	return h, nil
@@ -203,6 +206,11 @@ func (p *Provider) onUpdated(ctx context.Context, update minerDealUpdate) {
 	}
 }
 
+// onDataTransferEvent is the function called when an event occurs in a data
+// transfer -- it reads the voucher to verify this even occurred in a storage
+// market deal, then, based on the data transfer event that occurred, it generates
+// and update message for the deal -- either moving to staged for a completion
+// event or moving to error if a data transfer error occurs
 func (p *Provider) onDataTransferEvent(event datatransfer.Event, channelState datatransfer.ChannelState) {
 	voucher, ok := channelState.Voucher().(StorageDataTransferVoucher)
 	// if this event is for a transfer not related to storage, ignore
