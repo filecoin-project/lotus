@@ -86,7 +86,6 @@ require (
 	github.com/stretchr/testify v1.4.0
 	github.com/whyrusleeping/bencher v0.0.0-20190829221104-bb6607aa8bba
 	github.com/whyrusleeping/cbor-gen v0.0.0-20191001154818-b4b5288fcb86
-	github.com/whyrusleeping/go-smux-yamux v2.0.9+incompatible // indirect
 	github.com/whyrusleeping/multiaddr-filter v0.0.0-20160516205228-e903e4adabd7
 	github.com/whyrusleeping/pubsub v0.0.0-20131020042734-02de8aa2db3d
 	go.opencensus.io v0.22.0
@@ -98,7 +97,7 @@ require (
 	go4.org v0.0.0-20190313082347-94abd6928b1d // indirect
 	golang.org/x/crypto v0.0.0-20190829043050-9756ffdc2472 // indirect
 	golang.org/x/sys v0.0.0-20190904154756-749cb33beabd // indirect
-	golang.org/x/time v0.0.0-20181108054448-85acf8d2951c
+	golang.org/x/time v0.0.0-20190308202827-9d24e82272b4
 	golang.org/x/xerrors v0.0.0-20190717185122-a985d3407aa7
 	google.golang.org/api v0.9.0 // indirect
 	gopkg.in/cheggaaa/pb.v1 v1.0.28
