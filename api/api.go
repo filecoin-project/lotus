@@ -168,6 +168,8 @@ type StorageMiner interface {
 	SectorsList(context.Context) ([]uint64, error)
 
 	SectorsRefs(context.Context) (map[string][]SealedRef, error)
+
+	CommitmentsList(context.Context) ([]SectorCommitment, error)
 }
 
 // Version provides various build-time information
@@ -328,6 +330,14 @@ type SyncState struct {
 
 	Stage  SyncStateStage
 	Height uint64
+}
+
+type SectorCommitment struct {
+	SectorID uint64
+	Miner    address.Address
+
+	CommitMsg cid.Cid
+	DealIDs   []uint64
 }
 
 type SyncStateStage int

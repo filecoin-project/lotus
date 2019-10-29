@@ -2,9 +2,9 @@ package storage
 
 import (
 	"context"
-	"github.com/filecoin-project/go-sectorbuilder/sealing_state"
 	"sync"
 
+	"github.com/filecoin-project/go-sectorbuilder/sealing_state"
 	"github.com/ipfs/go-cid"
 	"github.com/ipfs/go-datastore"
 	logging "github.com/ipfs/go-log"
