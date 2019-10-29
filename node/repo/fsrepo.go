@@ -205,7 +205,10 @@ func (fsr *fsLockedRepo) stillValid() error {
 
 func (fsr *fsLockedRepo) Datastore(ns string) (datastore.Batching, error) {
 	fsr.dsOnce.Do(func() {
-		fsr.ds, fsr.dsErr = badger.NewDatastore(fsr.join(fsDatastore), nil)
+		opts := badger.DefaultOptions
+		opts.Truncate = true
+
+		fsr.ds, fsr.dsErr = badger.NewDatastore(fsr.join(fsDatastore), &opts)
 		/*if fsr.dsErr == nil {
 			fsr.ds = datastore.NewLogDatastore(fsr.ds, "fsrepo")
 		}*/
