@@ -5,6 +5,7 @@ import (
 	"fmt"
 	"net/http"
 	"os"
+	"strconv"
 	"time"
 
 	rice "github.com/GeertJohan/go.rice"
@@ -200,6 +201,11 @@ func (h *handler) mkminer(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
+	ssize, err := strconv.ParseInt(r.FormValue("sectorSize"), 10, 64)
+	if err != nil {
+		return
+	}
+
 	if owner.Protocol() != address.BLS {
 		w.WriteHeader(400)
 		w.Write([]byte("Miner address must use BLS"))
@@ -254,7 +260,7 @@ func (h *handler) mkminer(w http.ResponseWriter, r *http.Request) {
 	params, err := actors.SerializeParams(&actors.CreateStorageMinerParams{
 		Owner:      owner,
 		Worker:     owner,
-		SectorSize: 1 << 30, // build.SectorSizes[0], // TODO: dropdown allowing selection (1GiB for now)
+		SectorSize: uint64(ssize),
 		PeerID:     peer.ID("SETME"),
 	})
 	if err != nil {
