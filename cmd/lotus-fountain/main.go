@@ -254,7 +254,7 @@ func (h *handler) mkminer(w http.ResponseWriter, r *http.Request) {
 	params, err := actors.SerializeParams(&actors.CreateStorageMinerParams{
 		Owner:      owner,
 		Worker:     owner,
-		SectorSize: build.SectorSizes[0], // TODO: dropdown allowing selection
+		SectorSize: 1 << 30, // build.SectorSizes[0], // TODO: dropdown allowing selection (1GiB for now)
 		PeerID:     peer.ID("SETME"),
 	})
 	if err != nil {
