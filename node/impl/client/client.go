@@ -53,7 +53,7 @@ type API struct {
 	Filestore  dtypes.ClientFilestore `optional:"true"`
 }
 
-func (a *API) ClientStartDeal(ctx context.Context, data cid.Cid, miner address.Address, price types.BigInt, blocksDuration uint64) (*cid.Cid, error) {
+func (a *API) ClientStartDeal(ctx context.Context, data cid.Cid, miner address.Address, epochPrice types.BigInt, blocksDuration uint64) (*cid.Cid, error) {
 	// TODO: make this a param
 	self, err := a.WalletDefaultAddress(ctx)
 	if err != nil {
@@ -76,12 +76,9 @@ func (a *API) ClientStartDeal(ctx context.Context, data cid.Cid, miner address.A
 		return nil, err
 	}
 
-	// setup payments
-	total := types.BigMul(price, types.NewInt(blocksDuration))
-
 	proposal := deals.ClientDealProposal{
 		Data:               data,
-		TotalPrice:         total,
+		PricePerEpoch:      epochPrice,
 		ProposalExpiration: math.MaxUint64, // TODO: set something reasonable
 		Duration:           blocksDuration,
 		ProviderAddress:    miner,
@@ -110,8 +107,8 @@ func (a *API) ClientListDeals(ctx context.Context) ([]api.DealInfo, error) {
 			PieceRef: v.Proposal.PieceRef,
 			Size:     v.Proposal.PieceSize,
 
-			TotalPrice: v.Proposal.StoragePrice,
-			Duration:   v.Proposal.Duration,
+			PricePerEpoch: v.Proposal.StoragePricePerEpoch,
+			Duration:      v.Proposal.Duration,
 		}
 	}
 

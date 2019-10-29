@@ -3051,8 +3051,8 @@ func (t *StorageDealProposal) MarshalCBOR(w io.Writer) error {
 		return err
 	}
 
-	// t.t.StoragePrice (types.BigInt)
-	if err := t.StoragePrice.MarshalCBOR(w); err != nil {
+	// t.t.StoragePricePerEpoch (types.BigInt)
+	if err := t.StoragePricePerEpoch.MarshalCBOR(w); err != nil {
 		return err
 	}
 
@@ -3158,11 +3158,11 @@ func (t *StorageDealProposal) UnmarshalCBOR(r io.Reader) error {
 		return fmt.Errorf("wrong type for uint64 field")
 	}
 	t.Duration = extra
-	// t.t.StoragePrice (types.BigInt)
+	// t.t.StoragePricePerEpoch (types.BigInt)
 
 	{
 
-		if err := t.StoragePrice.UnmarshalCBOR(br); err != nil {
+		if err := t.StoragePricePerEpoch.UnmarshalCBOR(br); err != nil {
 			return err
 		}
 

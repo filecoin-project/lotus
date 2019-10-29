@@ -488,7 +488,6 @@ func (vm *VM) ApplyMessage(ctx context.Context, msg *types.Message) (*ApplyRet, 
 		return nil, xerrors.Errorf("getting block miner actor (%s) failed: %w", vm.blockMiner, err)
 	}
 
-
 	// TODO: support multiple blocks in a tipset
 	// TODO: actually wire this up (miner is undef for now)
 	gasReward := types.BigMul(msg.GasPrice, gasUsed)

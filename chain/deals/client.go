@@ -159,7 +159,7 @@ func (c *Client) onUpdated(ctx context.Context, update clientDealUpdate) {
 type ClientDealProposal struct {
 	Data cid.Cid
 
-	TotalPrice         types.BigInt
+	PricePerEpoch      types.BigInt
 	ProposalExpiration uint64
 	Duration           uint64
 
@@ -175,13 +175,13 @@ func (c *Client) Start(ctx context.Context, p ClientDealProposal) (cid.Cid, erro
 		return cid.Undef, xerrors.Errorf("getting client market balance failed: %w", err)
 	}
 
-	if clientMarketBalance.Available.LessThan(p.TotalPrice) {
+	if clientMarketBalance.Available.LessThan(types.BigMul(p.PricePerEpoch, types.NewInt(p.Duration))) {
 		// TODO: move to a smarter market funds manager
 
 		smsg, err := c.mpool.MpoolPushMessage(ctx, &types.Message{
 			To:       actors.StorageMarketAddress,
 			From:     p.Client,
-			Value:    p.TotalPrice,
+			Value:    types.BigMul(p.PricePerEpoch, types.NewInt(p.Duration)),
 			GasPrice: types.NewInt(0),
 			GasLimit: types.NewInt(1000000),
 			Method:   actors.SMAMethods.AddBalance,
@@ -203,15 +203,15 @@ func (c *Client) Start(ctx context.Context, p ClientDealProposal) (cid.Cid, erro
 	dataSize, err := c.dataSize(ctx, p.Data)
 
 	proposal := &actors.StorageDealProposal{
-		PieceRef:           p.Data.Bytes(),
-		PieceSize:          uint64(dataSize),
-		PieceSerialization: actors.SerializationUnixFSv0,
-		Client:             p.Client,
-		Provider:           p.ProviderAddress,
-		ProposalExpiration: p.ProposalExpiration,
-		Duration:           p.Duration,
-		StoragePrice:       p.TotalPrice,
-		StorageCollateral:  types.NewInt(uint64(dataSize)), // TODO: real calc
+		PieceRef:             p.Data.Bytes(),
+		PieceSize:            uint64(dataSize),
+		PieceSerialization:   actors.SerializationUnixFSv0,
+		Client:               p.Client,
+		Provider:             p.ProviderAddress,
+		ProposalExpiration:   p.ProposalExpiration,
+		Duration:             p.Duration,
+		StoragePricePerEpoch: p.PricePerEpoch,
+		StorageCollateral:    types.NewInt(uint64(dataSize)), // TODO: real calc
 	}
 
 	if err := api.SignWith(ctx, c.w.Sign, p.Client, proposal); err != nil {

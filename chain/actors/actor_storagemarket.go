@@ -85,10 +85,14 @@ type StorageDealProposal struct {
 	//  Changing to duration makes sure that the price-per-block is defined, and the miner
 	//  doesn't get paid when not storing the sector
 
-	StoragePrice      types.BigInt
-	StorageCollateral types.BigInt
+	StoragePricePerEpoch types.BigInt
+	StorageCollateral    types.BigInt
 
 	ProposerSignature *types.Signature
+}
+
+func (sdp *StorageDealProposal) TotalStoragePrice() types.BigInt {
+	return types.BigMul(sdp.StoragePricePerEpoch, types.NewInt(sdp.Duration))
 }
 
 type SignFunc = func(context.Context, []byte) (*types.Signature, error)
@@ -392,11 +396,13 @@ func (st *StorageMarketState) validateDeal(vmctx types.VMContext, deal StorageDe
 	clientBalance := b[0]
 	providerBalance := b[1]
 
-	if clientBalance.Available.LessThan(deal.Proposal.StoragePrice) {
-		return aerrors.Newf(5, "client doesn't have enough available funds to cover StoragePrice; %d < %d", clientBalance.Available, deal.Proposal.StoragePrice)
+	totalPrice := deal.Proposal.TotalStoragePrice()
+
+	if clientBalance.Available.LessThan(totalPrice) {
+		return aerrors.Newf(5, "client doesn't have enough available funds to cover storage price; %d < %d", clientBalance.Available, totalPrice)
 	}
 
-	clientBalance = lockFunds(clientBalance, deal.Proposal.StoragePrice)
+	clientBalance = lockFunds(clientBalance, totalPrice)
 
 	// TODO: REVIEW: Not clear who pays for this
 	if providerBalance.Available.LessThan(deal.Proposal.StorageCollateral) {
@@ -539,7 +545,7 @@ func (sma StorageMarketActor) ProcessStorageDealsPayment(act *types.Actor, vmctx
 
 		// todo: check math (written on a plane, also tired)
 		// TODO: division is hard, this more than likely has some off-by-one issue
-		toPay := types.BigDiv(types.BigMul(dealInfo.Deal.Proposal.StoragePrice, types.NewInt(build.ProvingPeriodDuration)), types.NewInt(dealInfo.Deal.Proposal.Duration))
+		toPay := types.BigMul(dealInfo.Deal.Proposal.StoragePricePerEpoch, types.NewInt(build.ProvingPeriodDuration))
 
 		b, bnd, aerr := GetMarketBalances(vmctx.Context(), vmctx.Ipld(), self.Balances, dealInfo.Deal.Proposal.Client, providerWorker)
 		if aerr != nil {
