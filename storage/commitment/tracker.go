@@ -141,15 +141,6 @@ func (ct *Tracker) WaitCommit(ctx context.Context, miner address.Address, sector
 	}
 }
 
-func (ct *Tracker) CheckCommitment(miner address.Address, sectorId uint64) (bool, error) {
-	key := commitmentKey(miner, sectorId)
-
-	ct.lk.Lock()
-	defer ct.lk.Unlock()
-
-	return ct.commitments.Has(key)
-}
-
 func (ct *Tracker) List() ([]api.SectorCommitment, error) {
 	out := make([]api.SectorCommitment, 0)
 

@@ -54,6 +54,7 @@ type storageMinerApi interface {
 	StateCall(ctx context.Context, msg *types.Message, ts *types.TipSet) (*types.MessageReceipt, error)
 	StateMinerWorker(context.Context, address.Address, *types.TipSet) (address.Address, error)
 	StateMinerProvingPeriodEnd(context.Context, address.Address, *types.TipSet) (uint64, error)
+	StateMinerSectors(context.Context, address.Address, *types.TipSet) ([]*api.SectorInfo, error)
 	StateMinerProvingSet(context.Context, address.Address, *types.TipSet) ([]*api.SectorInfo, error)
 	StateMinerSectorSize(context.Context, address.Address, *types.TipSet) (uint64, error)
 	StateWaitMsg(context.Context, cid.Cid) (*api.MsgWait, error)
@@ -100,13 +101,18 @@ func (m *Miner) commitUntrackedSectors(ctx context.Context) error {
 		return err
 	}
 
-	for _, s := range sealed {
-		has, err := m.commt.CheckCommitment(m.maddr, s.SectorID)
-		if err != nil {
-			log.Error("checking commitment: ", err)
-		}
+	chainSectors, err := m.api.StateMinerSectors(ctx, m.maddr, nil)
+	if err != nil {
+		return err
+	}
 
-		if has {
+	onchain := map[uint64]struct{}{}
+	for _, chainSector := range chainSectors {
+		onchain[chainSector.SectorID] = struct{}{}
+	}
+
+	for _, s := range sealed {
+		if _, ok := onchain[s.SectorID]; ok {
 			continue
 		}
 
