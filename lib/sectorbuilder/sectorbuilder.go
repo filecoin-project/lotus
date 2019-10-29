@@ -88,6 +88,10 @@ func (sb *SectorBuilder) SealSector(sectorID uint64, ticket SealTicket) (SealedS
 	return sectorbuilder.SealSector(sb.handle, sectorID, ticket)
 }
 
+func (sb *SectorBuilder) ResumeSealSector(sectorID uint64) (SealedSectorMetadata, error) {
+	return sectorbuilder.ResumeSealSector(sb.handle, sectorID)
+}
+
 func (sb *SectorBuilder) SealStatus(sector uint64) (SectorSealingStatus, error) {
 	return sectorbuilder.GetSectorSealingStatusByID(sb.handle, sector)
 }
