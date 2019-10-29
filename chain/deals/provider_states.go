@@ -186,9 +186,13 @@ func (p *Provider) accept(ctx context.Context, deal MinerDeal) (func(*MinerDeal)
 	ssb := builder.NewSelectorSpecBuilder(ipldfree.NodeBuilder())
 
 	// this is the selector for "get the whole DAG"
+	// TODO: support storage deals with custom payload selectors
 	allSelector := ssb.ExploreRecursive(selector.RecursionLimitNone(),
 		ssb.ExploreAll(ssb.ExploreRecursiveEdge())).Node()
 
+	// initiate a pull data transfer. This will complete asynchronously and the
+	// completion of the data transfer will trigger a change in deal state
+	// (see onDataTransferEvent)
 	_, err = p.dataTransfer.OpenPullDataChannel(deal.Client,
 		StorageDataTransferVoucher{Proposal: deal.ProposalCid},
 		deal.Ref,

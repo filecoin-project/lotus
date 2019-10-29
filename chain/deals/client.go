@@ -44,8 +44,11 @@ type Client struct {
 	chain *store.ChainStore
 	h     host.Host
 	w     *wallet.Wallet
-	// dataTransfer -- not quite sure how this is referenced directly on client
-	// side
+	// dataTransfer
+	// TODO: once the data transfer module is complete, the
+	// client will listen to events on the data transfer module
+	// Because we are using only a fake DAGService
+	// implementation, there's no validation or events on the client side
 	dataTransfer datatransfer.ClientDataTransfer
 	dag          dtypes.ClientDAG
 	discovery    *discovery.Local
