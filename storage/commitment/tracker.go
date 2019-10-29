@@ -60,6 +60,21 @@ func (ct *Tracker) TrackCommitSectorMsg(miner address.Address, sectorId uint64, 
 
 	tracking, err := ct.commitments.Get(key)
 	switch err {
+	case nil:
+		var comm commitment
+		if err := cbor.DecodeInto(tracking, &comm); err != nil {
+			return err
+		}
+
+		if !comm.Msg.Equals(commitMsg) {
+			log.Errorf("commitment tracking for miner %s, sector %d: already tracking %s, got another commitment message: %s", miner, sectorId, comm.Msg, commitMsg)
+		}
+
+		log.Warnf("commitment.TrackCommitSectorMsg called more than once for miner %s, sector %d, message %s", miner, sectorId, commitMsg)
+
+		// we still want to store it
+		fallthrough // TODO: ideally we'd keep around both (even though we'll
+		//              usually only need the new one)
 	case datastore.ErrNotFound:
 		comm := &commitment{Msg: commitMsg}
 		commB, err := cbor.DumpObject(comm)
@@ -76,18 +91,6 @@ func (ct *Tracker) TrackCommitSectorMsg(miner address.Address, sectorId uint64, 
 			close(waits)
 			delete(ct.waits, key)
 		}
-		return nil
-	case nil:
-		var comm commitment
-		if err := cbor.DecodeInto(tracking, &comm); err != nil {
-			return err
-		}
-
-		if !comm.Msg.Equals(commitMsg) {
-			return xerrors.Errorf("commitment tracking for miner %s, sector %d: already tracking %s, got another commitment message: %s", miner, sectorId, comm.Msg, commitMsg)
-		}
-
-		log.Warnf("commitment.TrackCommitSectorMsg called more than once for miner %s, sector %d, message %s", miner, sectorId, commitMsg)
 		return nil
 	default:
 		return err
