@@ -314,13 +314,14 @@ var clientQueryAskCmd = &cli.Command{
 		if size == 0 {
 			return nil
 		}
-		fmt.Printf("Price per Block: %s\n", types.BigMul(ask.Ask.Price, types.NewInt(uint64(size))))
+		perEpoch := types.BigDiv(types.BigMul(ask.Ask.Price, types.NewInt(uint64(size))), types.NewInt(1<<30))
+		fmt.Printf("Price per Block: %s\n", perEpoch)
 
 		duration := cctx.Int64("duration")
 		if duration == 0 {
 			return nil
 		}
-		fmt.Printf("Total Price: %s\n", types.BigMul(types.BigMul(ask.Ask.Price, types.NewInt(uint64(size))), types.NewInt(uint64(duration))))
+		fmt.Printf("Total Price: %s\n", types.BigMul(perEpoch, types.NewInt(uint64(duration))))
 
 		return nil
 	},

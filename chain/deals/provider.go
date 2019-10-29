@@ -109,7 +109,7 @@ func NewProvider(ds dtypes.MetadataDS, secst *sectorblocks.SectorBlocks, commt *
 	if h.ask == nil {
 		// TODO: we should be fine with this state, and just say it means 'not actively accepting deals'
 		// for now... lets just set a price
-		if err := h.SetPrice(types.NewInt(3), 1000000); err != nil {
+		if err := h.SetPrice(types.NewInt(500_000_000), 1000000); err != nil {
 			return nil, xerrors.Errorf("failed setting a default price: %w", err)
 		}
 	}

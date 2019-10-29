@@ -88,7 +88,7 @@ func (p *Provider) accept(ctx context.Context, deal MinerDeal) (func(*MinerDeal)
 	// TODO: check StorageCollateral
 
 	// TODO:
-	minPrice := types.BigMul(p.ask.Ask.Price, types.NewInt(deal.Proposal.PieceSize))
+	minPrice := types.BigDiv(types.BigMul(p.ask.Ask.Price, types.NewInt(deal.Proposal.PieceSize)), types.NewInt(1 << 30))
 	if deal.Proposal.StoragePricePerEpoch.LessThan(minPrice) {
 		return nil, xerrors.Errorf("storage price per epoch less than asking price: %s < %s", deal.Proposal.StoragePricePerEpoch, minPrice)
 	}
