@@ -7,7 +7,7 @@ BOOTSTRAPPERS=( root@147.75.80.17 )
 
 ############
 
-read -p "You are about to deploy new DevNet, killing bootstrap nodes. Proceed? (y/n)?" r
+read -p "You are about to deploy new DevNet, killing bootstrap nodes. Proceed? (y/n)? " r
 case "$r" in
   y|Y ) echo "Proceding";;
   n|N ) exit 0;;
@@ -81,7 +81,7 @@ ssh $GENESIS_HOST 'systemctl start lotus-storage-miner'
 
 log 'Getting genesis addr info'
 
-ssh $GENESIS_HOST './lotus net listen' | grep -v '/10' | grep -v '/127' > build/bootstrap/root.pi
+ssh $GENESIS_HOST 'lotus net listen' | grep -v '/10' | grep -v '/127' > build/bootstrap/root.pi
 
 log '> Creating bootstrap binaries'
 make
@@ -113,5 +113,5 @@ do
 
   log 'Extracting addr info'
 
-  ssh "$host" './lotus net listen' | grep -v '/10' | grep -v '/127' >> build/bootstrap/bootstrappers.pi
+  ssh "$host" 'lotus net listen' | grep -v '/10' | grep -v '/127' >> build/bootstrap/bootstrappers.pi
 done
