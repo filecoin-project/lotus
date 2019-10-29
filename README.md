@@ -92,19 +92,20 @@ $ lotus wallet balance [optional address (t3...)]
 
 ### Mining
 
-Ensure that at least one BLS address (`t3..`) in your wallet has enough funds to
-cover pledge collateral:
+Ensure that at least one BLS address (`t3..`) in your wallet exists
 ```sh
-$ lotus state pledge-collateral
-1234
-$ lotus wallet balance [t3...]
-8999
+$ lotus wallet list
+t3...
 ```
-(Balance must be higher than the returned pledge collateral for the next step to work)
+With this address, go to https://lotus-faucet.kittyhawk.wtf/miner.html, and
+click `Create Miner`
+
+Wait for a page telling you the address of the newly created storage miner to
+appear - It should be saying: `New storage miners address is: t0..`
 
 Initialize storage miner:
 ```sh
-$ lotus-storage-miner init --owner=t3...  
+$ lotus-storage-miner init --actor=t01.. --owner=t3....  
 ```
 This command should return successfully after miner is setup on-chain (30-60s)
 
