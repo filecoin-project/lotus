@@ -1,0 +1,27 @@
+sequenceDiagram
+
+  participant Requestor
+  participant ReqDT as Data Transfer Module (Requestor)
+  participant ReqSC as Scheduler (Requestor)
+  participant ReqGS as Graphsync (Requestor)
+  participant ResGS as Graphsync (Requestor)
+  participant ResSC as Scheduler (Requestor)
+  participant ResDT as Data Transfer Module (Responder)
+  participant Responder
+
+  Note over Requestor: Likely A Client
+  Note over Responder: Likely A Miner
+
+  Requestor ->> ReqDT : Initiate Pull
+  ReqDT ->> ReqSC : Schedule Transfer
+  ReqSC ->> ReqGS : Make Graphsync Request w/ Data Transfer Request Piggy Backed
+  ReqGS ->> ResGS : Send Graphsync Request (w/ Data Transfer Request)
+  ResGS ->> ResDT : Verify Request (validate & schedule)
+  ResDT ->> Responder : Validate Pull Request
+  Responder ->> ResDT : Pull Request validated
+  ResDT ->> ResSC : Schedule Transfer
+  ResSC ->> ResGS : Send response w/ DTR Accepted Piggy Backed
+  ResGS ->> ReqGS : Send response w/ DTR Accepted Piggy Backed
+  ReqGS ->> ReqSC : Response Progress (to end) (include DT Accepted)
+  ReqSC ->> ReqDT : Request Complete
+  ReqDT ->> Requestor : Request Completed (if listening)

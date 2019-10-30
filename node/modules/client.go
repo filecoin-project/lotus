@@ -21,7 +21,7 @@ import (
 	"go.uber.org/fx"
 
 	"github.com/filecoin-project/lotus/chain/deals"
-	"github.com/filecoin-project/lotus/datatransfer"
+	"github.com/filecoin-project/lotus/datatransfer/impl/dagservice"
 	"github.com/filecoin-project/lotus/node/modules/dtypes"
 	"github.com/filecoin-project/lotus/node/repo"
 )
