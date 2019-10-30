@@ -75,7 +75,7 @@ func (m mybs) Get(c cid.Cid) (block.Block, error) {
 
 func NewGenerator() (*ChainGen, error) {
 	mr := repo.NewMemory(nil)
-	lr, err := mr.Lock()
+	lr, err := mr.Lock(repo.RepoStorageMiner)
 	if err != nil {
 		return nil, xerrors.Errorf("taking mem-repo lock failed: %w", err)
 	}

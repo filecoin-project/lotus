@@ -15,6 +15,7 @@ import (
 	pubsub "github.com/libp2p/go-libp2p-pubsub"
 	record "github.com/libp2p/go-libp2p-record"
 	"go.uber.org/fx"
+	"golang.org/x/xerrors"
 
 	"github.com/filecoin-project/lotus/api"
 	"github.com/filecoin-project/lotus/chain"
@@ -100,11 +101,6 @@ const (
 	_nInvokes // keep this last
 )
 
-const (
-	nodeFull = iota
-	nodeStorageMiner
-)
-
 type Settings struct {
 	// modules is a map of constructors for DI
 	//
@@ -117,13 +113,11 @@ type Settings struct {
 	// type, and must be applied in correct order
 	invokes []fx.Option
 
-	nodeType int
+	nodeType repo.RepoType
 
 	Online bool // Online option applied
 	Config bool // Config option applied
 }
-
-var defConf = config.Default()
 
 func defaults() []Option {
 	return []Option{
@@ -161,8 +155,12 @@ func libp2p() Option {
 		Override(new(*pubsub.PubSub), lp2p.GossipSub()),
 
 		Override(PstoreAddSelfKeysKey, lp2p.PstoreAddSelfKeys),
-		Override(StartListeningKey, lp2p.StartListening(defConf.Libp2p.ListenAddresses)),
+		Override(StartListeningKey, lp2p.StartListening(config.DefaultFullNode().Libp2p.ListenAddresses)),
 	)
+}
+
+func isType(t repo.RepoType) func(s *Settings) bool {
+	return func(s *Settings) bool { return s.nodeType == t }
 }
 
 // Online sets up basic libp2p node
@@ -181,7 +179,7 @@ func Online() Option {
 
 		// Full node
 
-		ApplyIf(func(s *Settings) bool { return s.nodeType == nodeFull },
+		ApplyIf(isType(repo.RepoFullNode),
 			// TODO: Fix offline mode
 
 			Override(new(dtypes.BootstrapPeers), modules.BuiltinBootstrap),
@@ -230,7 +228,7 @@ func Online() Option {
 		),
 
 		// Storage miner
-		ApplyIf(func(s *Settings) bool { return s.nodeType == nodeStorageMiner },
+		ApplyIf(func(s *Settings) bool { return s.nodeType == repo.RepoStorageMiner },
 			Override(new(*sectorbuilder.SectorBuilder), sectorbuilder.New),
 			Override(new(*sector.Store), sector.NewStore),
 			Override(new(*sectorblocks.SectorBlocks), sectorblocks.NewSectorBlocks),
@@ -260,7 +258,7 @@ func StorageMiner(out *api.StorageMiner) Option {
 		),
 
 		func(s *Settings) error {
-			s.nodeType = nodeStorageMiner
+			s.nodeType = repo.RepoStorageMiner
 			return nil
 		},
 
@@ -274,7 +272,7 @@ func StorageMiner(out *api.StorageMiner) Option {
 }
 
 // Config sets up constructors based on the provided Config
-func Config(cfg *config.Root) Option {
+func ConfigCommon(cfg *config.Common) Option {
 	return Options(
 		func(s *Settings) error { s.Config = true; return nil },
 
@@ -284,27 +282,64 @@ func Config(cfg *config.Root) Option {
 			ApplyIf(func(s *Settings) bool { return len(cfg.Libp2p.BootstrapPeers) > 0 },
 				Override(new(dtypes.BootstrapPeers), modules.ConfigBootstrap(cfg.Libp2p.BootstrapPeers)),
 			),
-
-			ApplyIf(func(s *Settings) bool { return s.nodeType == nodeFull },
-				Override(HeadMetricsKey, metrics.SendHeadNotifs(cfg.Metrics.Nickname)),
-			),
 		),
 	)
 }
 
-func Repo(r repo.Repo) Option {
-	lr, err := r.Lock()
+func ConfigFullNode(cfg *config.FullNode) Option {
+	//ApplyIf(func(s *Settings) bool { return s.nodeType == repo.RepoFullNode }),
+	return Options(
+		ConfigCommon(&cfg.Common),
+		Override(HeadMetricsKey, metrics.SendHeadNotifs(cfg.Metrics.Nickname)),
+	)
+}
+
+func repoFull(r repo.Repo) Option {
+	lr, err := r.Lock(repo.RepoFullNode)
 	if err != nil {
 		return Error(err)
 	}
-	cfg, err := lr.Config()
+	c, err := lr.Config()
+	if err != nil {
+		return Error(err)
+	}
+	cfg, ok := c.(*config.FullNode)
+	if !ok {
+		return Error(xerrors.Errorf("invalid config from repo, got: %T", c))
+	}
+
+	return Options(
+		ConfigFullNode(cfg),
+		Override(new(repo.LockedRepo), modules.LockedRepo(lr)), // module handles closing
+	)
+}
+
+func repoMiner(r repo.Repo) Option {
+	lr, err := r.Lock(repo.RepoStorageMiner)
+	if err != nil {
+		return Error(err)
+	}
+	c, err := lr.Config()
 	if err != nil {
 		return Error(err)
 	}
 
+	cfg, ok := c.(*config.StorageMiner)
+	if !ok {
+		return Error(xerrors.Errorf("invalid config from repo, got: %T", c))
+	}
+
 	return Options(
-		Config(cfg),
+		ConfigCommon(&cfg.Common),
 		Override(new(repo.LockedRepo), modules.LockedRepo(lr)), // module handles closing
+	)
+}
+
+func Repo(r repo.Repo) Option {
+
+	return Options(
+		ApplyIf(isType(repo.RepoFullNode), repoFull(r)),
+		ApplyIf(isType(repo.RepoStorageMiner), repoMiner(r)),
 
 		Override(new(dtypes.MetadataDS), modules.Datastore),
 		Override(new(dtypes.ChainBlockstore), modules.ChainBlockstore),
@@ -337,8 +372,9 @@ type StopFunc func(context.Context) error
 // New builds and starts new Filecoin node
 func New(ctx context.Context, opts ...Option) (StopFunc, error) {
 	settings := Settings{
-		modules: map[interface{}]fx.Option{},
-		invokes: make([]fx.Option, _nInvokes),
+		modules:  map[interface{}]fx.Option{},
+		invokes:  make([]fx.Option, _nInvokes),
+		nodeType: repo.RepoFullNode,
 	}
 
 	// apply module options in the right order
