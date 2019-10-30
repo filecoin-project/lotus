@@ -15,6 +15,15 @@ func (f FIL) String() string {
 	return strings.TrimRight(r.FloatString(18), "0.")
 }
 
+func (f FIL) Format(s fmt.State, ch rune) {
+	switch ch {
+	case 's', 'v':
+		fmt.Fprint(s, f.String())
+	default:
+		f.Int.Format(s, ch)
+	}
+}
+
 func ParseFIL(s string) (FIL, error) {
 	r, ok := new(big.Rat).SetString(s)
 	if !ok {
