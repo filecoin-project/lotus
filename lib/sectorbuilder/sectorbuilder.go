@@ -114,10 +114,6 @@ func (sb *SectorBuilder) GetAllStagedSectors() ([]uint64, error) {
 	return out, nil
 }
 
-func (sb *SectorBuilder) GetAllSealedSectors() ([]SealedSectorMetadata, error) {
-	return sectorbuilder.GetAllSealedSectors(sb.handle)
-}
-
 func (sb *SectorBuilder) GeneratePoSt(sectorInfo SortedSectorInfo, challengeSeed [CommLen]byte, faults []uint64) ([]byte, error) {
 	// Wait, this is a blocking method with no way of interrupting it?
 	// does it checkpoint itself?

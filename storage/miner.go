@@ -4,7 +4,6 @@ import (
 	"context"
 	"sync"
 
-	"github.com/filecoin-project/go-sectorbuilder/sealing_state"
 	"github.com/ipfs/go-cid"
 	"github.com/ipfs/go-datastore"
 	logging "github.com/ipfs/go-log"
@@ -118,15 +117,7 @@ func (m *Miner) commitUntrackedSectors(ctx context.Context) error {
 
 		log.Warnf("Missing commitment for sector %d, committing sector", s.SectorID)
 
-		if err := m.commitSector(ctx, sectorbuilder.SectorSealingStatus{
-			SectorID: s.SectorID,
-			State:    sealing_state.Sealed,
-			CommD:    s.CommD,
-			CommR:    s.CommR,
-			Proof:    s.Proof,
-			Pieces:   s.Pieces,
-			Ticket:   s.Ticket,
-		}); err != nil {
+		if err := m.commitSector(ctx, s); err != nil {
 			log.Error("Committing uncommitted sector failed: ", err)
 		}
 	}
