@@ -1,7 +1,6 @@
 package deals
 
 import (
-	"bytes"
 	"context"
 	"runtime"
 
@@ -12,7 +11,7 @@ import (
 	"github.com/libp2p/go-libp2p-core/peer"
 	"golang.org/x/xerrors"
 
-	"github.com/filecoin-project/lotus/datatransfer"
+	"github.com/filecoin-project/go-fil-components/datatransfer"
 	"github.com/filecoin-project/lotus/lib/cborutil"
 	"github.com/filecoin-project/lotus/lib/padreader"
 	"github.com/filecoin-project/lotus/lib/sectorbuilder"
@@ -147,7 +146,7 @@ func (c *ClientRequestValidator) ValidatePull(
 	Selector ipld.Node) error {
 	dealVoucher, ok := voucher.(*StorageDataTransferVoucher)
 	if !ok {
-		return xerrors.Errorf("voucher type %s: %w", voucher.Identifier(), ErrWrongVoucherType)
+		return xerrors.Errorf("voucher type %s: %w", voucher.Type(), ErrWrongVoucherType)
 	}
 
 	var deal ClientDeal
@@ -158,7 +157,7 @@ func (c *ClientRequestValidator) ValidatePull(
 	if deal.Miner != receiver {
 		return xerrors.Errorf("Deal Peer %s, Data Transfer Peer %s: %w", deal.Miner.String(), receiver.String(), ErrWrongPeer)
 	}
-	if !bytes.Equal(deal.Proposal.PieceRef, baseCid.Bytes()) {
+	if !deal.PayloadCid.Equals(baseCid) {
 		return xerrors.Errorf("Deal Payload CID %s, Data Transfer CID %s: %w", string(deal.Proposal.PieceRef), baseCid.String(), ErrWrongPiece)
 	}
 	for _, state := range DataTransferStates {

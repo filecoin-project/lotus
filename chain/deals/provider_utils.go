@@ -1,12 +1,11 @@
 package deals
 
 import (
-	"bytes"
 	"context"
 	"runtime"
 
+	"github.com/filecoin-project/go-fil-components/datatransfer"
 	"github.com/filecoin-project/lotus/api"
-	"github.com/filecoin-project/lotus/datatransfer"
 	"github.com/filecoin-project/lotus/node/modules/dtypes"
 	"github.com/ipld/go-ipld-prime"
 
@@ -163,7 +162,7 @@ func (m *ProviderRequestValidator) ValidatePush(
 	Selector ipld.Node) error {
 	dealVoucher, ok := voucher.(*StorageDataTransferVoucher)
 	if !ok {
-		return xerrors.Errorf("voucher type %s: %w", voucher.Identifier(), ErrWrongVoucherType)
+		return xerrors.Errorf("voucher type %s: %w", voucher.Type(), ErrWrongVoucherType)
 	}
 
 	var deal MinerDeal
@@ -175,7 +174,7 @@ func (m *ProviderRequestValidator) ValidatePush(
 		return xerrors.Errorf("Deal Peer %s, Data Transfer Peer %s: %w", deal.Client.String(), sender.String(), ErrWrongPeer)
 	}
 
-	if !bytes.Equal(deal.Proposal.PieceRef, baseCid.Bytes()) {
+	if !deal.Ref.Equals(baseCid) {
 		return xerrors.Errorf("Deal Payload CID %s, Data Transfer CID %s: %w", string(deal.Proposal.PieceRef), baseCid.String(), ErrWrongPiece)
 	}
 	for _, state := range DataTransferStates {

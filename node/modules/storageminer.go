@@ -10,6 +10,10 @@ import (
 	"github.com/ipfs/go-blockservice"
 	"github.com/ipfs/go-datastore"
 	"github.com/ipfs/go-datastore/namespace"
+	graphsync "github.com/ipfs/go-graphsync/impl"
+	"github.com/ipfs/go-graphsync/ipldbridge"
+	gsnet "github.com/ipfs/go-graphsync/network"
+	"github.com/ipfs/go-graphsync/storeutil"
 	blockstore "github.com/ipfs/go-ipfs-blockstore"
 	"github.com/ipfs/go-merkledag"
 	"github.com/libp2p/go-libp2p-core/host"
@@ -18,12 +22,12 @@ import (
 	"go.uber.org/fx"
 	"golang.org/x/xerrors"
 
+	dtgraphsync "github.com/filecoin-project/go-fil-components/datatransfer/impl/graphsync"
 	"github.com/filecoin-project/lotus/api"
 	"github.com/filecoin-project/lotus/build"
 	"github.com/filecoin-project/lotus/chain/address"
 	"github.com/filecoin-project/lotus/chain/deals"
 	"github.com/filecoin-project/lotus/chain/gen"
-	"github.com/filecoin-project/lotus/datatransfer"
 	"github.com/filecoin-project/lotus/lib/sectorbuilder"
 	"github.com/filecoin-project/lotus/lib/statestore"
 	"github.com/filecoin-project/lotus/miner"
@@ -141,15 +145,15 @@ func HandleDeals(mctx helpers.MetricsCtx, lc fx.Lifecycle, host host.Host, h *de
 // request validator with the data transfer module as the validator for
 // StorageDataTransferVoucher types
 func RegisterProviderValidator(mrv *deals.ProviderRequestValidator, dtm dtypes.ProviderDataTransfer) {
-	if err := dtm.RegisterVoucherType(reflect.TypeOf(deals.StorageDataTransferVoucher{}), mrv); err != nil {
+	if err := dtm.RegisterVoucherType(reflect.TypeOf(&deals.StorageDataTransferVoucher{}), mrv); err != nil {
 		panic(err)
 	}
 }
 
 // NewProviderDAGServiceDataTransfer returns a data transfer manager that just
 // uses the provider's Staging DAG service for transfers
-func NewProviderDAGServiceDataTransfer(dag dtypes.StagingDAG) dtypes.ProviderDataTransfer {
-	return datatransfer.NewDAGServiceDataTransfer(dag)
+func NewProviderDAGServiceDataTransfer(h host.Host, gs dtypes.StagingGraphsync) dtypes.ProviderDataTransfer {
+	return dtgraphsync.NewGraphSyncDataTransfer(h, gs)
 }
 
 // NewProviderDealStore creates a statestore for the client to store its deals
@@ -157,7 +161,9 @@ func NewProviderDealStore(ds dtypes.MetadataDS) dtypes.ProviderDealStore {
 	return statestore.New(namespace.Wrap(ds, datastore.NewKey("/deals/client")))
 }
 
-func StagingDAG(mctx helpers.MetricsCtx, lc fx.Lifecycle, r repo.LockedRepo, rt routing.Routing, h host.Host) (dtypes.StagingDAG, error) {
+// StagingBlockstore creates a blockstore for staging blocks for a miner
+// in a storage deal, prior to sealing
+func StagingBlockstore(r repo.LockedRepo) (dtypes.StagingBlockstore, error) {
 	stagingds, err := r.Datastore("/staging")
 	if err != nil {
 		return nil, err
@@ -166,8 +172,14 @@ func StagingDAG(mctx helpers.MetricsCtx, lc fx.Lifecycle, r repo.LockedRepo, rt 
 	bs := blockstore.NewBlockstore(stagingds)
 	ibs := blockstore.NewIdStore(bs)
 
+	return ibs, nil
+}
+
+// StagingDAG is a DAGService for the StagingBlockstore
+func StagingDAG(mctx helpers.MetricsCtx, lc fx.Lifecycle, ibs dtypes.StagingBlockstore, rt routing.Routing, h host.Host) (dtypes.StagingDAG, error) {
+
 	bitswapNetwork := network.NewFromIpfsHost(h, rt)
-	exch := bitswap.New(helpers.LifecycleCtx(mctx, lc), bitswapNetwork, bs)
+	exch := bitswap.New(helpers.LifecycleCtx(mctx, lc), bitswapNetwork, ibs)
 
 	bsvc := blockservice.New(ibs, exch)
 	dag := merkledag.NewDAGService(bsvc)
@@ -179,6 +191,18 @@ func StagingDAG(mctx helpers.MetricsCtx, lc fx.Lifecycle, r repo.LockedRepo, rt 
 	})
 
 	return dag, nil
+}
+
+// StagingGraphsync creates a graphsync instance which reads and writes blocks
+// to the StagingBlockstore
+func StagingGraphsync(mctx helpers.MetricsCtx, lc fx.Lifecycle, ibs dtypes.StagingBlockstore, h host.Host) dtypes.StagingGraphsync {
+	graphsyncNetwork := gsnet.NewFromLibp2pHost(h)
+	ipldBridge := ipldbridge.NewIPLDBridge()
+	loader := storeutil.LoaderForBlockstore(ibs)
+	storer := storeutil.StorerForBlockstore(ibs)
+	gs := graphsync.New(helpers.LifecycleCtx(mctx, lc), graphsyncNetwork, ipldBridge, loader, storer)
+
+	return gs
 }
 
 func SetupBlockProducer(lc fx.Lifecycle, ds dtypes.MetadataDS, api api.FullNode, epp gen.ElectionPoStProver) (*miner.Miner, error) {
