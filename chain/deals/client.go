@@ -2,7 +2,6 @@ package deals
 
 import (
 	"context"
-	"github.com/filecoin-project/lotus/datatransfer"
 	"github.com/filecoin-project/lotus/lib/statestore"
 	"github.com/filecoin-project/lotus/node/impl/full"
 
@@ -25,6 +24,7 @@ import (
 	"github.com/filecoin-project/lotus/chain/wallet"
 	"github.com/filecoin-project/lotus/lib/cborutil"
 	"github.com/filecoin-project/lotus/node/modules/dtypes"
+
 	"github.com/filecoin-project/lotus/retrieval/discovery"
 
 )
@@ -54,7 +54,7 @@ type Client struct {
 	// client will listen to events on the data transfer module
 	// Because we are using only a fake DAGService
 	// implementation, there's no validation or events on the client side
-	dataTransfer datatransfer.ClientDataTransfer
+	dataTransfer dtypes.ClientDataTransfer
 	dag          dtypes.ClientDAG
 	discovery    *discovery.Local
 	mpool        full.MpoolAPI
@@ -77,7 +77,7 @@ type clientDealUpdate struct {
 	mut      func(*ClientDeal)
 }
 
-func NewClient(sm *stmgr.StateManager, chain *store.ChainStore, h host.Host, w *wallet.Wallet, ds dtypes.MetadataDS, dag dtypes.ClientDAG, dataTransfer datatransfer.ClientDataTransfer, discovery *discovery.Local, mpool full.MpoolAPI, chainapi full.ChainAPI) *Client {
+func NewClient(sm *stmgr.StateManager, chain *store.ChainStore, h host.Host, w *wallet.Wallet, ds dtypes.MetadataDS, dag dtypes.ClientDAG, dataTransfer dtypes.ClientDataTransfer, discovery *discovery.Local, mpool full.MpoolAPI, chainapi full.ChainAPI) *Client {
 	c := &Client{
 		sm:           sm,
 		chain:        chain,
