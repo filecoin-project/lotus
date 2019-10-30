@@ -54,21 +54,22 @@ type StorageDataTransferVoucher struct {
 }
 
 // ToBytes converts the StorageDataTransferVoucher to raw bytes
-func (dv StorageDataTransferVoucher) ToBytes() []byte {
+func (dv *StorageDataTransferVoucher) ToBytes() []byte {
 	return dv.Proposal.Bytes()
 }
 
 // FromBytes converts the StorageDataTransferVoucher to raw bytes
-func (dv StorageDataTransferVoucher) FromBytes(raw []byte) (datatransfer.Voucher, error) {
+func (dv *StorageDataTransferVoucher) FromBytes(raw []byte) error {
 	c, err := cid.Cast(raw)
 	if err != nil {
-		return nil, err
+		return err
 	}
-	return StorageDataTransferVoucher{c}, nil
+	dv.Proposal = c
+	return nil
 }
 
 // Identifier is the unique string identifier for a StorageDataTransferVoucher
-func (dv StorageDataTransferVoucher) Identifier() string {
+func (dv *StorageDataTransferVoucher) Identifier() string {
 	return "StorageDataTransferVoucher"
 }
 
@@ -83,7 +84,7 @@ type ClientRequestValidator struct {
 // RegisterClientValidator is an initialization hook that registers the client
 // request validator with the data transfer module as the validator for
 // StorageDataTransferVoucher types
-func RegisterClientValidator(lc fx.Lifecycle, crv *ClientRequestValidator, dtm datatransfer.ClientDataTransfer) {
+func RegisterClientValidator(lc fx.Lifecycle, crv *ClientRequestValidator, dtm dtypes.ClientDataTransfer) {
 	lc.Append(fx.Hook{
 		OnStart: func(ctx context.Context) error {
 			return dtm.RegisterVoucherType(reflect.TypeOf(StorageDataTransferVoucher{}), crv)
@@ -123,7 +124,7 @@ func (c *ClientRequestValidator) ValidatePull(
 	voucher datatransfer.Voucher,
 	baseCid cid.Cid,
 	Selector ipld.Node) error {
-	dealVoucher, ok := voucher.(StorageDataTransferVoucher)
+	dealVoucher, ok := voucher.(*StorageDataTransferVoucher)
 	if !ok {
 		return ErrWrongVoucherType
 	}
@@ -161,7 +162,7 @@ type ProviderRequestValidator struct {
 // RegisterProviderValidator is an initialization hook that registers the provider
 // request validator with the data transfer module as the validator for
 // StorageDataTransferVoucher types
-func RegisterProviderValidator(lc fx.Lifecycle, mrv *ProviderRequestValidator, dtm datatransfer.ProviderDataTransfer) {
+func RegisterProviderValidator(lc fx.Lifecycle, mrv *ProviderRequestValidator, dtm dtypes.ProviderDataTransfer) {
 	lc.Append(fx.Hook{
 		OnStart: func(ctx context.Context) error {
 			return dtm.RegisterVoucherType(reflect.TypeOf(StorageDataTransferVoucher{}), mrv)
@@ -189,7 +190,7 @@ func (m *ProviderRequestValidator) ValidatePush(
 	voucher datatransfer.Voucher,
 	baseCid cid.Cid,
 	Selector ipld.Node) error {
-	dealVoucher, ok := voucher.(StorageDataTransferVoucher)
+	dealVoucher, ok := voucher.(*StorageDataTransferVoucher)
 	if !ok {
 		return ErrWrongVoucherType
 	}

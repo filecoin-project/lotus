@@ -1,0 +1,9 @@
+syntax = "proto3";
+
+package datatransfer.message.pb;
+
+import "github.com/gogo/protobuf/gogoproto/gogo.proto";
+
+// TODO: fill in from design doc
+message Message {
+}

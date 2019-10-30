@@ -196,7 +196,7 @@ func (p *Provider) accept(ctx context.Context, deal MinerDeal) (func(*MinerDeal)
 	// completion of the data transfer will trigger a change in deal state
 	// (see onDataTransferEvent)
 	_, err = p.dataTransfer.OpenPullDataChannel(deal.Client,
-		StorageDataTransferVoucher{Proposal: deal.ProposalCid},
+		&StorageDataTransferVoucher{Proposal: deal.ProposalCid},
 		deal.Ref,
 		allSelector,
 	)

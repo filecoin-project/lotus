@@ -53,7 +53,7 @@ type Provider struct {
 	dag dtypes.StagingDAG
 
 	// dataTransfer is the manager of data transfers used by this storage provider
-	dataTransfer datatransfer.ProviderDataTransfer
+	dataTransfer dtypes.ProviderDataTransfer
 
 	deals MinerStateStore
 	ds    dtypes.MetadataDS
@@ -80,7 +80,7 @@ var (
 	ErrDataTransferFailed = errors.New("Deal data transfer failed")
 )
 
-func NewProvider(ds dtypes.MetadataDS, secst *sectorblocks.SectorBlocks, commt *commitment.Tracker, dag dtypes.StagingDAG, dataTransfer datatransfer.ProviderDataTransfer, fullNode api.FullNode) (*Provider, error) {
+func NewProvider(ds dtypes.MetadataDS, secst *sectorblocks.SectorBlocks, commt *commitment.Tracker, dag dtypes.StagingDAG, dataTransfer dtypes.ProviderDataTransfer, fullNode api.FullNode) (*Provider, error) {
 	addr, err := ds.Get(datastore.NewKey("miner-address"))
 	if err != nil {
 		return nil, err
@@ -212,7 +212,7 @@ func (p *Provider) onUpdated(ctx context.Context, update minerDealUpdate) {
 // and update message for the deal -- either moving to staged for a completion
 // event or moving to error if a data transfer error occurs
 func (p *Provider) onDataTransferEvent(event datatransfer.Event, channelState datatransfer.ChannelState) {
-	voucher, ok := channelState.Voucher().(StorageDataTransferVoucher)
+	voucher, ok := channelState.Voucher().(*StorageDataTransferVoucher)
 	// if this event is for a transfer not related to storage, ignore
 	if !ok {
 		return
