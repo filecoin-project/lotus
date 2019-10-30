@@ -3,6 +3,8 @@ package commitment
 import (
 	"context"
 	"fmt"
+	"strconv"
+	"strings"
 	"sync"
 
 	"github.com/ipfs/go-cid"
@@ -12,8 +14,10 @@ import (
 	logging "github.com/ipfs/go-log"
 	"golang.org/x/xerrors"
 
+	"github.com/filecoin-project/lotus/api"
 	"github.com/filecoin-project/lotus/chain/address"
 	"github.com/filecoin-project/lotus/node/modules/dtypes"
+	dsq "github.com/ipfs/go-datastore/query"
 )
 
 var log = logging.Logger("commitment")
@@ -56,6 +60,21 @@ func (ct *Tracker) TrackCommitSectorMsg(miner address.Address, sectorId uint64, 
 
 	tracking, err := ct.commitments.Get(key)
 	switch err {
+	case nil:
+		var comm commitment
+		if err := cbor.DecodeInto(tracking, &comm); err != nil {
+			return err
+		}
+
+		if !comm.Msg.Equals(commitMsg) {
+			log.Errorf("commitment tracking for miner %s, sector %d: already tracking %s, got another commitment message: %s", miner, sectorId, comm.Msg, commitMsg)
+		}
+
+		log.Warnf("commitment.TrackCommitSectorMsg called more than once for miner %s, sector %d, message %s", miner, sectorId, commitMsg)
+
+		// we still want to store it
+		fallthrough // TODO: ideally we'd keep around both (even though we'll
+		//              usually only need the new one)
 	case datastore.ErrNotFound:
 		comm := &commitment{Msg: commitMsg}
 		commB, err := cbor.DumpObject(comm)
@@ -72,18 +91,6 @@ func (ct *Tracker) TrackCommitSectorMsg(miner address.Address, sectorId uint64, 
 			close(waits)
 			delete(ct.waits, key)
 		}
-		return nil
-	case nil:
-		var comm commitment
-		if err := cbor.DecodeInto(tracking, &comm); err != nil {
-			return err
-		}
-
-		if !comm.Msg.Equals(commitMsg) {
-			return xerrors.Errorf("commitment tracking for miner %s, sector %d: already tracking %s, got another commitment message: %s", miner, sectorId, comm.Msg, commitMsg)
-		}
-
-		log.Warnf("commitment.TrackCommitSectorMsg called more than once for miner %s, sector %d, message %s", miner, sectorId, commitMsg)
 		return nil
 	default:
 		return err
@@ -135,4 +142,57 @@ func (ct *Tracker) WaitCommit(ctx context.Context, miner address.Address, sector
 	case <-ctx.Done():
 		return cid.Undef, ctx.Err()
 	}
+}
+
+func (ct *Tracker) List() ([]api.SectorCommitment, error) {
+	out := make([]api.SectorCommitment, 0)
+
+	ct.lk.Lock()
+	defer ct.lk.Unlock()
+
+	res, err := ct.commitments.Query(dsq.Query{})
+	if err != nil {
+		return nil, err
+	}
+	defer res.Close()
+
+	for {
+		res, ok := res.NextSync()
+		if !ok {
+			break
+		}
+
+		if res.Error != nil {
+			return nil, xerrors.Errorf("iterating commitments: %w", err)
+		}
+
+		parts := strings.Split(res.Key, "/")
+		if len(parts) != 4 {
+			return nil, xerrors.Errorf("expected commitment key to be 4 parts, Key %s", res.Key)
+		}
+
+		miner, err := address.NewFromString(parts[2])
+		if err != nil {
+			return nil, xerrors.Errorf("parsing miner address: %w", err)
+		}
+
+		sectorID, err := strconv.ParseInt(parts[3], 10, 64)
+		if err != nil {
+			return nil, xerrors.Errorf("parsing sector id: %w", err)
+		}
+
+		var comm commitment
+		if err := cbor.DecodeInto(res.Value, &comm); err != nil {
+			return nil, xerrors.Errorf("decoding commitment %s (`% X`): %w", res.Key, res.Value, err)
+		}
+
+		out = append(out, api.SectorCommitment{
+			SectorID:  uint64(sectorID),
+			Miner:     miner,
+			CommitMsg: comm.Msg,
+			DealIDs:   comm.DealIDs,
+		})
+	}
+
+	return out, nil
 }

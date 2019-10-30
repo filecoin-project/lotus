@@ -53,6 +53,7 @@ type storageMinerApi interface {
 	StateCall(ctx context.Context, msg *types.Message, ts *types.TipSet) (*types.MessageReceipt, error)
 	StateMinerWorker(context.Context, address.Address, *types.TipSet) (address.Address, error)
 	StateMinerProvingPeriodEnd(context.Context, address.Address, *types.TipSet) (uint64, error)
+	StateMinerSectors(context.Context, address.Address, *types.TipSet) ([]*api.SectorInfo, error)
 	StateMinerProvingSet(context.Context, address.Address, *types.TipSet) ([]*api.SectorInfo, error)
 	StateMinerSectorSize(context.Context, address.Address, *types.TipSet) (uint64, error)
 	StateWaitMsg(context.Context, cid.Cid) (*api.MsgWait, error)
@@ -93,9 +94,43 @@ func (m *Miner) Run(ctx context.Context) error {
 	return nil
 }
 
+func (m *Miner) commitUntrackedSectors(ctx context.Context) error {
+	sealed, err := m.secst.Sealed()
+	if err != nil {
+		return err
+	}
+
+	chainSectors, err := m.api.StateMinerSectors(ctx, m.maddr, nil)
+	if err != nil {
+		return err
+	}
+
+	onchain := map[uint64]struct{}{}
+	for _, chainSector := range chainSectors {
+		onchain[chainSector.SectorID] = struct{}{}
+	}
+
+	for _, s := range sealed {
+		if _, ok := onchain[s.SectorID]; ok {
+			continue
+		}
+
+		log.Warnf("Missing commitment for sector %d, committing sector", s.SectorID)
+
+		if err := m.commitSector(ctx, s); err != nil {
+			log.Error("Committing uncommitted sector failed: ", err)
+		}
+	}
+	return nil
+}
+
 func (m *Miner) handlePostingSealedSectors(ctx context.Context) {
 	incoming := m.secst.Incoming()
 	defer m.secst.CloseIncoming(incoming)
+
+	if err := m.commitUntrackedSectors(ctx); err != nil {
+		log.Error(err)
+	}
 
 	for {
 		select {
@@ -169,10 +204,6 @@ func (m *Miner) commitSector(ctx context.Context, sinfo sectorbuilder.SectorSeal
 		return errors.Wrap(err, "pushing message to mpool")
 	}
 
-	if err := m.commt.TrackCommitSectorMsg(m.maddr, sinfo.SectorID, smsg.Cid()); err != nil {
-		return errors.Wrap(err, "tracking sector commitment")
-	}
-
 	go func() {
 		_, err := m.api.StateWaitMsg(ctx, smsg.Cid())
 		if err != nil {
@@ -181,6 +212,10 @@ func (m *Miner) commitSector(ctx context.Context, sinfo sectorbuilder.SectorSeal
 
 		m.beginPosting(ctx)
 	}()
+
+	if err := m.commt.TrackCommitSectorMsg(m.maddr, sinfo.SectorID, smsg.Cid()); err != nil {
+		return xerrors.Errorf("tracking sector commitment: %w", err)
+	}
 
 	return nil
 }

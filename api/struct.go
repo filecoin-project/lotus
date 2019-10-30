@@ -133,6 +133,8 @@ type StorageMinerStruct struct {
 		SectorsList   func(context.Context) ([]uint64, error)                                  `perm:"read"`
 
 		SectorsRefs func(context.Context) (map[string][]SealedRef, error) `perm:"read"`
+
+		CommitmentsList func(context.Context) ([]SectorCommitment, error) `perm:"read"`
 	}
 }
 
@@ -477,6 +479,10 @@ func (c *StorageMinerStruct) SectorsList(ctx context.Context) ([]uint64, error) 
 
 func (c *StorageMinerStruct) SectorsRefs(ctx context.Context) (map[string][]SealedRef, error) {
 	return c.Internal.SectorsRefs(ctx)
+}
+
+func (c *StorageMinerStruct) CommitmentsList(ctx context.Context) ([]SectorCommitment, error) {
+	return c.Internal.CommitmentsList(ctx)
 }
 
 var _ Common = &CommonStruct{}

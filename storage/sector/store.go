@@ -107,8 +107,38 @@ func (s *Store) poll() {
 	s.waitingLk.Unlock()
 }
 
+func (s *Store) restartSealing() {
+	sectors, err := s.sb.GetAllStagedSectors()
+	if err != nil {
+		return
+	}
+
+	for _, sid := range sectors {
+		status, err := s.sb.SealStatus(sid)
+		if err != nil {
+			return
+		}
+
+		if status.State != sealing_state.Paused {
+			continue
+		}
+
+		log.Infof("Sector %d is in paused state, resuming sealing", sid)
+		go func() {
+			// TODO: when we refactor wait-for-seal below, care about this output too
+			//  (see SealSector below)
+			_, err := s.sb.ResumeSealSector(sid)
+			if err != nil {
+				return
+			}
+		}()
+	}
+}
+
 func (s *Store) service() {
 	poll := time.Tick(5 * time.Second)
+
+	s.restartSealing()
 
 	for {
 		select {
@@ -261,6 +291,28 @@ func (s *Store) WaitSeal(ctx context.Context, sector uint64) (sectorbuilder.Sect
 	}
 
 	return s.sb.SealStatus(sector)
+}
+
+func (s *Store) Sealed() ([]sectorbuilder.SectorSealingStatus, error) {
+	l, err := s.sb.GetAllStagedSectors()
+	if err != nil {
+		return nil, err
+	}
+
+	out := make([]sectorbuilder.SectorSealingStatus, 0)
+	for _, sid := range l {
+		status, err := s.sb.SealStatus(sid)
+		if err != nil {
+			return nil, err
+		}
+
+		if status.State != sealing_state.Sealed {
+			continue
+		}
+		out = append(out, status)
+	}
+
+	return out, nil
 }
 
 func (s *Store) RunPoSt(ctx context.Context, sectors []*api.SectorInfo, r []byte, faults []uint64) ([]byte, error) {
