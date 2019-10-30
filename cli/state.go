@@ -197,7 +197,7 @@ var statePledgeCollateralCmd = &cli.Command{
 			return err
 		}
 
-		fmt.Println(types.FIL(coll).String())
+		fmt.Println(types.FIL(coll))
 		return nil
 	},
 }
