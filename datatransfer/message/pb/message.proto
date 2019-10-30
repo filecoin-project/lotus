@@ -1,9 +1,30 @@
 syntax = "proto3";
 
-package datatransfer.message.pb;
+package pb;
 
 import "github.com/gogo/protobuf/gogoproto/gogo.proto";
 
 // TODO: fill in from design doc
 message Message {
+  message Request {
+    uint64 transferID = 1;
+    bool isPull = 2;
+    bytes voucher = 3;
+    bytes pieceID = 4;
+    bytes selector = 5;
+    bool isPartial = 6;
+    bool isCancel = 7;
+    string baseCid = 8;
+  }
+
+  message Response {
+    int32 channelID = 1;
+    bool accepted = 2;
+  }
+
+  bool isResponse = 1;
+  bool isRequest = 2;
+  Request request = 3;
+  Response response = 4;
+  string voucherID = 5;
 }
