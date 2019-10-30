@@ -197,24 +197,28 @@ func (t *StorageMinerActorState) MarshalCBOR(w io.Writer) error {
 		_, err := w.Write(cbg.CborNull)
 		return err
 	}
-	if _, err := w.Write([]byte{141}); err != nil {
+	if _, err := w.Write([]byte{139}); err != nil {
 		return err
 	}
 
-	// t.t.Info (cid.Cid)
-
-	if err := cbg.WriteCid(w, t.Info); err != nil {
-		return xerrors.Errorf("failed to write cid field t.Info: %w", err)
-	}
-
-	// t.t.DePledgedCollateral (types.BigInt)
-	if err := t.DePledgedCollateral.MarshalCBOR(w); err != nil {
+	// t.t.PreCommittedSectors (map[string]*actors.UnprovenSector)
+	if err := cbg.CborWriteHeader(w, cbg.MajMap, uint64(len(t.PreCommittedSectors))); err != nil {
 		return err
 	}
 
-	// t.t.DePledgeTime (types.BigInt)
-	if err := t.DePledgeTime.MarshalCBOR(w); err != nil {
-		return err
+	for k, v := range t.PreCommittedSectors {
+
+		if _, err := w.Write(cbg.CborEncodeMajorType(cbg.MajTextString, uint64(len(k)))); err != nil {
+			return err
+		}
+		if _, err := w.Write([]byte(k)); err != nil {
+			return err
+		}
+
+		if err := v.MarshalCBOR(w); err != nil {
+			return err
+		}
+
 	}
 
 	// t.t.Sectors (cid.Cid)
@@ -227,6 +231,12 @@ func (t *StorageMinerActorState) MarshalCBOR(w io.Writer) error {
 
 	if err := cbg.WriteCid(w, t.ProvingSet); err != nil {
 		return xerrors.Errorf("failed to write cid field t.ProvingSet: %w", err)
+	}
+
+	// t.t.Info (cid.Cid)
+
+	if err := cbg.WriteCid(w, t.Info); err != nil {
+		return xerrors.Errorf("failed to write cid field t.Info: %w", err)
 	}
 
 	// t.t.CurrentFaultSet (types.BitField)
@@ -242,26 +252,6 @@ func (t *StorageMinerActorState) MarshalCBOR(w io.Writer) error {
 	// t.t.NextDoneSet (types.BitField)
 	if err := t.NextDoneSet.MarshalCBOR(w); err != nil {
 		return err
-	}
-
-	// t.t.UnprovenSectors (map[string]*actors.UnprovenSector)
-	if err := cbg.CborWriteHeader(w, cbg.MajMap, uint64(len(t.UnprovenSectors))); err != nil {
-		return err
-	}
-
-	for k, v := range t.UnprovenSectors {
-
-		if _, err := w.Write(cbg.CborEncodeMajorType(cbg.MajTextString, uint64(len(k)))); err != nil {
-			return err
-		}
-		if _, err := w.Write([]byte(k)); err != nil {
-			return err
-		}
-
-		if err := v.MarshalCBOR(w); err != nil {
-			return err
-		}
-
 	}
 
 	// t.t.Power (types.BigInt)
@@ -297,92 +287,11 @@ func (t *StorageMinerActorState) UnmarshalCBOR(r io.Reader) error {
 		return fmt.Errorf("cbor input should be of type array")
 	}
 
-	if extra != 13 {
+	if extra != 11 {
 		return fmt.Errorf("cbor input had wrong number of fields")
 	}
 
-	// t.t.Info (cid.Cid)
-
-	{
-
-		c, err := cbg.ReadCid(br)
-		if err != nil {
-			return xerrors.Errorf("failed to read cid field t.Info: %w", err)
-		}
-
-		t.Info = c
-
-	}
-	// t.t.DePledgedCollateral (types.BigInt)
-
-	{
-
-		if err := t.DePledgedCollateral.UnmarshalCBOR(br); err != nil {
-			return err
-		}
-
-	}
-	// t.t.DePledgeTime (types.BigInt)
-
-	{
-
-		if err := t.DePledgeTime.UnmarshalCBOR(br); err != nil {
-			return err
-		}
-
-	}
-	// t.t.Sectors (cid.Cid)
-
-	{
-
-		c, err := cbg.ReadCid(br)
-		if err != nil {
-			return xerrors.Errorf("failed to read cid field t.Sectors: %w", err)
-		}
-
-		t.Sectors = c
-
-	}
-	// t.t.ProvingSet (cid.Cid)
-
-	{
-
-		c, err := cbg.ReadCid(br)
-		if err != nil {
-			return xerrors.Errorf("failed to read cid field t.ProvingSet: %w", err)
-		}
-
-		t.ProvingSet = c
-
-	}
-	// t.t.CurrentFaultSet (types.BitField)
-
-	{
-
-		if err := t.CurrentFaultSet.UnmarshalCBOR(br); err != nil {
-			return err
-		}
-
-	}
-	// t.t.NextFaultSet (types.BitField)
-
-	{
-
-		if err := t.NextFaultSet.UnmarshalCBOR(br); err != nil {
-			return err
-		}
-
-	}
-	// t.t.NextDoneSet (types.BitField)
-
-	{
-
-		if err := t.NextDoneSet.UnmarshalCBOR(br); err != nil {
-			return err
-		}
-
-	}
-	// t.t.UnprovenSectors (map[string]*actors.UnprovenSector)
+	// t.t.PreCommittedSectors (map[string]*actors.UnprovenSector)
 
 	maj, extra, err = cbg.CborReadHeader(br)
 	if err != nil {
@@ -392,10 +301,10 @@ func (t *StorageMinerActorState) UnmarshalCBOR(r io.Reader) error {
 		return fmt.Errorf("expected a map (major type 5)")
 	}
 	if extra > 4096 {
-		return fmt.Errorf("t.UnprovenSectors: map too large")
+		return fmt.Errorf("t.PreCommittedSectors: map too large")
 	}
 
-	t.UnprovenSectors = make(map[string]*UnprovenSector, extra)
+	t.PreCommittedSectors = make(map[string]*UnprovenSector, extra)
 
 	for i, l := 0, int(extra); i < l; i++ {
 
@@ -432,7 +341,70 @@ func (t *StorageMinerActorState) UnmarshalCBOR(r io.Reader) error {
 
 		}
 
-		t.UnprovenSectors[k] = v
+		t.PreCommittedSectors[k] = v
+
+	}
+	// t.t.Sectors (cid.Cid)
+
+	{
+
+		c, err := cbg.ReadCid(br)
+		if err != nil {
+			return xerrors.Errorf("failed to read cid field t.Sectors: %w", err)
+		}
+
+		t.Sectors = c
+
+	}
+	// t.t.ProvingSet (cid.Cid)
+
+	{
+
+		c, err := cbg.ReadCid(br)
+		if err != nil {
+			return xerrors.Errorf("failed to read cid field t.ProvingSet: %w", err)
+		}
+
+		t.ProvingSet = c
+
+	}
+	// t.t.Info (cid.Cid)
+
+	{
+
+		c, err := cbg.ReadCid(br)
+		if err != nil {
+			return xerrors.Errorf("failed to read cid field t.Info: %w", err)
+		}
+
+		t.Info = c
+
+	}
+	// t.t.CurrentFaultSet (types.BitField)
+
+	{
+
+		if err := t.CurrentFaultSet.UnmarshalCBOR(br); err != nil {
+			return err
+		}
+
+	}
+	// t.t.NextFaultSet (types.BitField)
+
+	{
+
+		if err := t.NextFaultSet.UnmarshalCBOR(br); err != nil {
+			return err
+		}
+
+	}
+	// t.t.NextDoneSet (types.BitField)
+
+	{
+
+		if err := t.NextDoneSet.UnmarshalCBOR(br); err != nil {
+			return err
+		}
 
 	}
 	// t.t.Power (types.BigInt)
@@ -565,7 +537,7 @@ func (t *StorageMinerConstructorParams) UnmarshalCBOR(r io.Reader) error {
 	return nil
 }
 
-func (t *OnChainSealVerifyInfo) MarshalCBOR(w io.Writer) error {
+func (t *SectorPreCommitInfo) MarshalCBOR(w io.Writer) error {
 	if t == nil {
 		_, err := w.Write(cbg.CborNull)
 		return err
@@ -610,7 +582,7 @@ func (t *OnChainSealVerifyInfo) MarshalCBOR(w io.Writer) error {
 	return nil
 }
 
-func (t *OnChainSealVerifyInfo) UnmarshalCBOR(r io.Reader) error {
+func (t *SectorPreCommitInfo) UnmarshalCBOR(r io.Reader) error {
 	br := cbg.GetPeeker(r)
 
 	maj, extra, err := cbg.CborReadHeader(br)

@@ -50,7 +50,7 @@ func main() {
 		actors.AccountActorState{},
 		actors.StorageMinerActorState{},
 		actors.StorageMinerConstructorParams{},
-		actors.OnChainSealVerifyInfo{},
+		actors.SectorPreCommitInfo{},
 		actors.UnprovenSector{},
 		actors.MinerInfo{},
 		actors.SubmitPoStParams{},

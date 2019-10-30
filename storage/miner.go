@@ -176,7 +176,7 @@ func (m *Miner) commitSector(ctx context.Context, sinfo sectorbuilder.SectorSeal
 		return xerrors.Errorf("getting sector deals failed: %w", err)
 	}
 	*/
-	params := &actors.OnChainSealVerifyInfo{
+	params := &actors.SectorPreCommitInfo{
 		CommD: sinfo.CommD[:],
 		CommR: sinfo.CommR[:],
 		Proof: sinfo.Proof,
@@ -193,7 +193,7 @@ func (m *Miner) commitSector(ctx context.Context, sinfo sectorbuilder.SectorSeal
 	msg := &types.Message{
 		To:       m.maddr,
 		From:     m.worker,
-		Method:   actors.MAMethods.CommitSector,
+		Method:   actors.MAMethods.PreCommitSector,
 		Params:   enc,
 		Value:    types.NewInt(0), // TODO: need to ensure sufficient collateral
 		GasLimit: types.NewInt(1000000 /* i dont know help */),
