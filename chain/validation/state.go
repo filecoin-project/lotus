@@ -144,6 +144,15 @@ func (s *StateWrapper) SetSingletonActor(addr vstate.SingletonActorID, balance v
 			return nil, nil, errors.Wrapf(err, "set network storage market actor")
 		}
 		return &actorWrapper{*smact}, s.storage, s.flush(tree)
+	case actors.StoragePowerAddress:
+		spact, err := gen.SetupStoragePowerActor(s.bs)
+		if err != nil {
+			return nil, nil, err
+		}
+		if err := tree.SetActor(actors.StoragePowerAddress, spact); err != nil {
+			return nil, nil, errors.Wrapf(err, "set network storage market actor")
+		}
+		return &actorWrapper{*spact}, s.storage, s.flush(tree)
 	case actors.NetworkAddress:
 		ntwkact := &types.Actor{
 			Code:    actors.AccountCodeCid,
@@ -293,6 +302,8 @@ func fromSingletonAddress(addr vstate.SingletonActorID) vstate.Address {
 		return vstate.Address(actors.StorageMarketAddress.Bytes())
 	case vstate.BurntFundsAddress:
 		return vstate.Address(actors.BurntFundsAddress.Bytes())
+	case vstate.StoragePowerAddress:
+		return vstate.Address(actors.StoragePowerAddress.Bytes())
 	default:
 		panic(fmt.Errorf("unknown singleton actor address: %v", addr))
 	}

@@ -2,6 +2,8 @@ package validation
 
 import (
 	"context"
+	"github.com/libp2p/go-libp2p-core/peer"
+	"math/big"
 
 	"github.com/pkg/errors"
 
@@ -37,7 +39,8 @@ func (mf *MessageFactory) MakeMessage(from, to state.Address, method chain.Metho
 		return nil, err
 	}
 	valueDec := types.BigInt{value}
-	paramsDec, err := []byte{}, nil // FIXME encode params as CBOR tuple byte[] using reflection
+	//paramsDec, err := []byte{}, nil // FIXME encode params as CBOR tuple byte[] using reflection
+	paramsDec, err := decodeMessageParams(method, params...)
 	if err != nil {
 		return nil, err
 	}
@@ -47,9 +50,12 @@ func (mf *MessageFactory) MakeMessage(from, to state.Address, method chain.Metho
 	}
 	methodId := methods[method]
 	msg := &types.Message{
-		toDec, fromDec, nonce, valueDec,
-		types.BigInt{gasPrice}, types.NewInt(uint64(gasLimit)),
-
+		toDec,
+		fromDec,
+		nonce,
+		valueDec,
+		types.BigInt{gasPrice},
+		types.NewInt(uint64(gasLimit)),
 		methodId,
 		paramsDec,
 	}
@@ -69,4 +75,36 @@ var methods = []uint64{
 	chain.StoragePowerConstructor: actors.SPAMethods.Constructor,
 	chain.StoragePowerCreateStorageMiner: actors.SPAMethods.CreateStorageMiner,
 	// More to follow...
+}
+
+func decodeMessageParams(methodID chain.MethodID, params ...interface{}) ([]byte, error){
+	if len(params) == 0 {
+		return []byte{}, nil
+	}
+	switch methodID {
+	case chain.StoragePowerCreateStorageMiner:
+		if len(params) != 4 {
+			return []byte{}, errors.Errorf("not enough params for methodID %d expected %d, got %d", methodID, 4, len(params))
+		}
+		ownerAddr, err := address.NewFromBytes([]byte(params[0].(state.Address)))
+		if err != nil {
+			panic(err)
+		}
+		rawSector := params[2].(state.BytesAmount)
+		sectorSize := big.Int(*rawSector)
+		rawPeer := params[3].(state.PeerID)
+		peerID, err := peer.IDFromBytes(rawPeer)
+		if err != nil {
+			panic(err)
+		}
+		return actors.SerializeParams(&actors.CreateStorageMinerParams{
+			Owner:      ownerAddr,
+			Worker:     ownerAddr,
+			SectorSize: sectorSize.Uint64(),
+			PeerID:     peerID,
+		})
+	default:
+		panic("not handled")
+	}
+
 }
