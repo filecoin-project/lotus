@@ -26,7 +26,11 @@ type SectorInfo = sectorbuilder.SectorInfo
 
 type SealTicket = sectorbuilder.SealTicket
 
-type SealedSectorMetadata = sectorbuilder.SealedSectorMetadata
+type SealSeed = sectorbuilder.SealSeed
+
+type SealCommitOutput = sectorbuilder.SealCommitOutput
+
+type PublicPieceInfo = sectorbuilder.PublicPieceInfo
 
 const CommLen = sectorbuilder.CommitmentBytesLen
 
@@ -37,6 +41,7 @@ type SectorBuilder struct {
 type SectorBuilderConfig struct {
 	SectorSize  uint64
 	Miner       address.Address
+	CacheDir string
 	SealedDir   string
 	StagedDir   string
 	MetadataDir string
@@ -44,8 +49,9 @@ type SectorBuilderConfig struct {
 
 func New(cfg *SectorBuilderConfig) (*SectorBuilder, error) {
 	proverId := addressToProverID(cfg.Miner)
+	nemWorkerThreads := uint8(5) // TODO: from config
 
-	sbp, err := sectorbuilder.InitSectorBuilder(cfg.SectorSize, 2, 1, 0, cfg.MetadataDir, proverId, cfg.SealedDir, cfg.StagedDir, 16)
+	sbp, err := sectorbuilder.InitSectorBuilder(cfg.SectorSize, 2, 0, cfg.MetadataDir, proverId, cfg.SealedDir, cfg.StagedDir, cfg.CacheDir, 16, nemWorkerThreads)
 	if err != nil {
 		return nil, err
 	}
@@ -84,12 +90,12 @@ func (sb *SectorBuilder) ReadPieceFromSealedSector(pieceKey string) ([]byte, err
 	return sectorbuilder.ReadPieceFromSealedSector(sb.handle, pieceKey)
 }
 
-func (sb *SectorBuilder) SealSector(sectorID uint64, ticket SealTicket) (SealedSectorMetadata, error) {
-	return sectorbuilder.SealSector(sb.handle, sectorID, ticket)
+func (sb *SectorBuilder) SealSector(sectorID uint64, seed SealSeed) (SealCommitOutput, error) {
+	return sectorbuilder.SealCommit(sb.handle, sectorID, seed)
 }
 
-func (sb *SectorBuilder) ResumeSealSector(sectorID uint64) (SealedSectorMetadata, error) {
-	return sectorbuilder.ResumeSealSector(sb.handle, sectorID)
+func (sb *SectorBuilder) ResumeSealCommit(sectorID uint64) (SealCommitOutput, error) {
+	return sectorbuilder.ResumeSealCommit(sb.handle, sectorID)
 }
 
 func (sb *SectorBuilder) SealStatus(sector uint64) (SectorSealingStatus, error) {
@@ -122,22 +128,15 @@ func (sb *SectorBuilder) GeneratePoSt(sectorInfo SortedSectorInfo, challengeSeed
 
 var UserBytesForSectorSize = sectorbuilder.GetMaxUserBytesPerStagedSector
 
-func VerifySeal(sectorSize uint64, commR, commD []byte, proverID address.Address, ticket []byte, sectorID uint64, proof []byte) (bool, error) {
-	var commRa, commDa, ticketa [32]byte
+func VerifySeal(sectorSize uint64, commR, commD []byte, proverID address.Address, ticket []byte, seed []byte, sectorID uint64, proof []byte, pieces []PublicPieceInfo) (bool, error) {
+	var commRa, commDa, ticketa, seeda [32]byte
 	copy(commRa[:], commR)
 	copy(commDa[:], commD)
 	copy(ticketa[:], ticket)
+	copy(seeda[:], seed)
 	proverIDa := addressToProverID(proverID)
 
-	return sectorbuilder.VerifySeal(sectorSize, commRa, commDa, proverIDa, ticketa, sectorID, proof)
-}
-
-func VerifyPieceInclusionProof(sectorSize uint64, pieceSize uint64, commP []byte, commD []byte, proof []byte) (bool, error) {
-	var commPa, commDa [32]byte
-	copy(commPa[:], commP)
-	copy(commDa[:], commD)
-
-	return sectorbuilder.VerifyPieceInclusionProof(sectorSize, pieceSize, commPa, commDa, proof)
+	return sectorbuilder.VerifySeal(sectorSize, commRa, commDa, proverIDa, ticketa, seeda, sectorID, proof, pieces)
 }
 
 func NewSortedSectorInfo(sectors []SectorInfo) SortedSectorInfo {

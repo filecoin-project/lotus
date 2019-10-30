@@ -55,6 +55,7 @@ func SectorBuilderConfig(storagePath string) func(dtypes.MetadataDS, api.FullNod
 			return nil, err
 		}
 
+		cache := filepath.Join(sp, "cache")
 		metadata := filepath.Join(sp, "meta")
 		sealed := filepath.Join(sp, "sealed")
 		staging := filepath.Join(sp, "staging")
@@ -62,6 +63,7 @@ func SectorBuilderConfig(storagePath string) func(dtypes.MetadataDS, api.FullNod
 		sb := &sectorbuilder.SectorBuilderConfig{
 			Miner:       minerAddr,
 			SectorSize:  ssize,
+			CacheDir:cache,
 			MetadataDir: metadata,
 			SealedDir:   sealed,
 			StagedDir:   staging,

@@ -32,7 +32,7 @@ type dealMapping struct {
 	Committed bool
 }
 
-type TicketFn func(context.Context) (*sectorbuilder.SealTicket, error)
+type TicketFn func(context.Context) (*sectorbuilder.SealSeed, error)
 
 // TODO: eventually handle sector storage here instead of in rust-sectorbuilder
 type Store struct {
@@ -65,7 +65,7 @@ func (s *Store) Service() {
 	go s.service()
 }
 
-func (s *Store) poll() {
+func (s *Store) poll() { // TODO: REMOVE ME (and just use the fact that sectorbuilder methods are now blocking)
 	log.Debug("polling for sealed sectors...")
 
 	// get a list of sectors to poll
@@ -87,7 +87,7 @@ func (s *Store) poll() {
 			continue
 		}
 
-		if status.State == sealing_state.Sealed {
+		if status.State == sealing_state.Committed {
 			done = append(done, status)
 		}
 	}
@@ -119,7 +119,7 @@ func (s *Store) restartSealing() {
 			return
 		}
 
-		if status.State != sealing_state.Paused {
+		if status.State != sealing_state.CommittingPaused { // TODO: Also handle PreCommit!
 			continue
 		}
 
@@ -127,7 +127,7 @@ func (s *Store) restartSealing() {
 		go func() {
 			// TODO: when we refactor wait-for-seal below, care about this output too
 			//  (see SealSector below)
-			_, err := s.sb.ResumeSealSector(sid)
+			_, err := s.sb.ResumeSealCommit(sid)
 			if err != nil {
 				return
 			}
@@ -293,7 +293,7 @@ func (s *Store) WaitSeal(ctx context.Context, sector uint64) (sectorbuilder.Sect
 	return s.sb.SealStatus(sector)
 }
 
-func (s *Store) Sealed() ([]sectorbuilder.SectorSealingStatus, error) {
+func (s *Store) Commited() ([]sectorbuilder.SectorSealingStatus, error) {
 	l, err := s.sb.GetAllStagedSectors()
 	if err != nil {
 		return nil, err
@@ -306,7 +306,7 @@ func (s *Store) Sealed() ([]sectorbuilder.SectorSealingStatus, error) {
 			return nil, err
 		}
 
-		if status.State != sealing_state.Sealed {
+		if status.State != sealing_state.Committed {
 			continue
 		}
 		out = append(out, status)

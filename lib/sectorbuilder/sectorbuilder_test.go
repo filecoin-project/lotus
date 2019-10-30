@@ -36,12 +36,14 @@ func TestSealAndVerify(t *testing.T) {
 		t.Fatal(err)
 	}
 
+	cache := filepath.Join(dir, "cache")
 	metadata := filepath.Join(dir, "meta")
 	sealed := filepath.Join(dir, "sealed")
 	staging := filepath.Join(dir, "staging")
 
 	sb, err := sectorbuilder.New(&sectorbuilder.SectorBuilderConfig{
 		SectorSize:  sectorSize,
+		CacheDir:cache,
 		SealedDir:   sealed,
 		StagedDir:   staging,
 		MetadataDir: metadata,

@@ -92,7 +92,7 @@ func (m *Miner) Run(ctx context.Context) error {
 }
 
 func (m *Miner) commitUntrackedSectors(ctx context.Context) error {
-	sealed, err := m.secst.Sealed()
+	sealed, err := m.secst.Commited()
 	if err != nil {
 		return err
 	}
@@ -158,6 +158,8 @@ func (m *Miner) commitSector(ctx context.Context, sinfo sectorbuilder.SectorSeal
 	if err != nil {
 		return xerrors.Errorf("failed to check out own sector size: %w", err)
 	}
+
+	// TODO: Interactive porep
 
 	ok, err := sectorbuilder.VerifySeal(ssize, sinfo.CommR[:], sinfo.CommD[:], m.maddr, sinfo.Ticket.TicketBytes[:], sinfo.SectorID, sinfo.Proof)
 	if err != nil {
