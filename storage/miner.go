@@ -18,7 +18,6 @@ import (
 	"github.com/filecoin-project/lotus/chain/store"
 	"github.com/filecoin-project/lotus/chain/types"
 	"github.com/filecoin-project/lotus/lib/sectorbuilder"
-	"github.com/filecoin-project/lotus/storage/commitment"
 	"github.com/filecoin-project/lotus/storage/sector"
 )
 
@@ -31,7 +30,6 @@ type Miner struct {
 	events *events.Events
 
 	secst *sector.Store
-	commt *commitment.Tracker
 
 	maddr address.Address
 
@@ -70,7 +68,7 @@ type storageMinerApi interface {
 	WalletHas(context.Context, address.Address) (bool, error)
 }
 
-func NewMiner(api storageMinerApi, addr address.Address, h host.Host, ds datastore.Batching, secst *sector.Store, commt *commitment.Tracker) (*Miner, error) {
+func NewMiner(api storageMinerApi, addr address.Address, h host.Host, ds datastore.Batching, secst *sector.Store) (*Miner, error) {
 	return &Miner{
 		api: api,
 
@@ -78,7 +76,6 @@ func NewMiner(api storageMinerApi, addr address.Address, h host.Host, ds datasto
 		h:     h,
 		ds:    ds,
 		secst: secst,
-		commt: commt,
 	}, nil
 }
 
@@ -213,10 +210,6 @@ func (m *Miner) commitSector(ctx context.Context, sinfo sectorbuilder.SectorSeal
 
 		m.beginPosting(ctx)
 	}()
-
-	if err := m.commt.TrackCommitSectorMsg(m.maddr, sinfo.SectorID, smsg.Cid()); err != nil {
-		return xerrors.Errorf("tracking sector commitment: %w", err)
-	}
 
 	return nil
 }

@@ -290,12 +290,14 @@ func (p *Provider) sealing(ctx context.Context, deal MinerDeal) (func(*MinerDeal
 
 func (p *Provider) complete(ctx context.Context, deal MinerDeal) (func(*MinerDeal), error) {
 	// TODO: Add dealID to commtracker (probably before sealing)
-	mcid, err := p.commt.WaitCommit(ctx, deal.Proposal.Provider, deal.SectorID)
+	/*mcid, err := p.commt.WaitCommit(ctx, deal.Proposal.Provider, deal.SectorID)
 	if err != nil {
 		log.Warnf("Waiting for sector commitment message: %s", err)
-	}
+	}*/
 
-	err = p.sendSignedResponse(&Response{
+	panic("fixme")
+
+	/*err = p.sendSignedResponse(&Response{
 		State:    api.DealComplete,
 		Proposal: deal.ProposalCid,
 
@@ -303,7 +305,7 @@ func (p *Provider) complete(ctx context.Context, deal MinerDeal) (func(*MinerDea
 	})
 	if err != nil {
 		log.Warnf("Sending deal response failed: %s", err)
-	}
+	}*/
 
 	return nil, nil
 }

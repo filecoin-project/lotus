@@ -10,7 +10,6 @@ import (
 	"github.com/filecoin-project/lotus/chain/address"
 	"github.com/filecoin-project/lotus/lib/sectorbuilder"
 	"github.com/filecoin-project/lotus/storage"
-	"github.com/filecoin-project/lotus/storage/commitment"
 	"github.com/filecoin-project/lotus/storage/sector"
 	"github.com/filecoin-project/lotus/storage/sectorblocks"
 
@@ -24,7 +23,6 @@ type StorageMinerAPI struct {
 	SectorBuilder       *sectorbuilder.SectorBuilder
 	Sectors             *sector.Store
 	SectorBlocks        *sectorblocks.SectorBlocks
-	CommitmentTracker   *commitment.Tracker
 
 	Miner *storage.Miner
 }
@@ -81,10 +79,6 @@ func (sm *StorageMinerAPI) SectorsRefs(context.Context) (map[string][]api.Sealed
 	}
 
 	return out, nil
-}
-
-func (sm *StorageMinerAPI) CommitmentsList(ctx context.Context) ([]api.SectorCommitment, error) {
-	return sm.CommitmentTracker.List()
 }
 
 var _ api.StorageMiner = &StorageMinerAPI{}

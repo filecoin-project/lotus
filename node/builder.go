@@ -40,7 +40,6 @@ import (
 	"github.com/filecoin-project/lotus/retrieval"
 	"github.com/filecoin-project/lotus/retrieval/discovery"
 	"github.com/filecoin-project/lotus/storage"
-	"github.com/filecoin-project/lotus/storage/commitment"
 	"github.com/filecoin-project/lotus/storage/sector"
 	"github.com/filecoin-project/lotus/storage/sectorblocks"
 )
@@ -234,7 +233,6 @@ func Online() Option {
 			Override(new(*sectorbuilder.SectorBuilder), sectorbuilder.New),
 			Override(new(*sector.Store), sector.NewStore),
 			Override(new(*sectorblocks.SectorBlocks), sectorblocks.NewSectorBlocks),
-			Override(new(*commitment.Tracker), commitment.NewTracker),
 			Override(new(sector.TicketFn), modules.SealTicketGen),
 			Override(new(*storage.Miner), modules.StorageMiner),
 

@@ -17,7 +17,6 @@ import (
 	"github.com/filecoin-project/lotus/chain/types"
 	"github.com/filecoin-project/lotus/lib/cborrpc"
 	"github.com/filecoin-project/lotus/node/modules/dtypes"
-	"github.com/filecoin-project/lotus/storage/commitment"
 	"github.com/filecoin-project/lotus/storage/sectorblocks"
 )
 
@@ -43,7 +42,6 @@ type Provider struct {
 	askLk sync.Mutex
 
 	secst *sectorblocks.SectorBlocks
-	commt *commitment.Tracker
 	full  api.FullNode
 
 	// TODO: Use a custom protocol or graphsync in the future
@@ -70,7 +68,7 @@ type minerDealUpdate struct {
 	mut      func(*MinerDeal)
 }
 
-func NewProvider(ds dtypes.MetadataDS, secst *sectorblocks.SectorBlocks, commt *commitment.Tracker, dag dtypes.StagingDAG, fullNode api.FullNode) (*Provider, error) {
+func NewProvider(ds dtypes.MetadataDS, secst *sectorblocks.SectorBlocks, dag dtypes.StagingDAG, fullNode api.FullNode) (*Provider, error) {
 	addr, err := ds.Get(datastore.NewKey("miner-address"))
 	if err != nil {
 		return nil, err
@@ -82,7 +80,6 @@ func NewProvider(ds dtypes.MetadataDS, secst *sectorblocks.SectorBlocks, commt *
 
 	h := &Provider{
 		secst: secst,
-		commt: commt,
 		dag:   dag,
 		full:  fullNode,
 
