@@ -75,10 +75,12 @@ var methods = []uint64{
 	chain.StoragePowerConstructor: actors.SPAMethods.Constructor,
 	chain.StoragePowerCreateStorageMiner: actors.SPAMethods.CreateStorageMiner,
 	chain.StoragePowerUpdatePower: actors.SPAMethods.UpdateStorage,
+	chain.StorageMinerUpdatePeerID: actors.MAMethods.UpdatePeerID,
 	chain.StorageMinerGetOwner: actors.MAMethods.GetOwner,
 	chain.StorageMinerGetPower: actors.MAMethods.GetPower,
 	chain.StorageMinerGetWorkerAddr: actors.MAMethods.GetWorkerAddr,
 	chain.StorageMinerGetPeerID: actors.MAMethods.GetPeerID,
+	chain.StorageMinerGetSectorSize: actors.MAMethods.GetSectorSize,
 	// More to follow...
 }
 
@@ -115,6 +117,17 @@ func decodeMessageParams(methodID chain.MethodID, params ...interface{}) ([]byte
 		rawDelta := params[0].(state.BytesAmount)
 		delta := big.Int(*rawDelta)
 		return actors.SerializeParams(&actors.UpdateStorageParams{Delta:types.BigInt{&delta}})
+	case chain.StorageMinerUpdatePeerID:
+		if len(params) != 1 {
+			return []byte{}, errors.Errorf("not enough params for methodID %d expected %d, got %d", methodID, 1, len(params))
+		}
+		rawPeerID := params[0].(state.PeerID)
+		peerID, err := peer.IDFromBytes(rawPeerID)
+		if err != nil {
+			panic(err)
+		}
+		return actors.SerializeParams(&actors.UpdatePeerIDParams{PeerID:peerID})
+
 	default:
 		panic("not handled")
 	}
