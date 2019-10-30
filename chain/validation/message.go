@@ -74,6 +74,7 @@ var methods = []uint64{
 	chain.InitExec: actors.IAMethods.Exec,
 	chain.StoragePowerConstructor: actors.SPAMethods.Constructor,
 	chain.StoragePowerCreateStorageMiner: actors.SPAMethods.CreateStorageMiner,
+	chain.StoragePowerUpdatePower: actors.SPAMethods.UpdateStorage,
 	// More to follow...
 }
 
@@ -103,6 +104,13 @@ func decodeMessageParams(methodID chain.MethodID, params ...interface{}) ([]byte
 			SectorSize: sectorSize.Uint64(),
 			PeerID:     peerID,
 		})
+	case chain.StoragePowerUpdatePower:
+		if len(params) != 1 {
+			return []byte{}, errors.Errorf("not enough params for methodID %d expected %d, got %d", methodID, 1, len(params))
+		}
+		rawDelta := params[0].(state.BytesAmount)
+		delta := big.Int(*rawDelta)
+		return actors.SerializeParams(&actors.UpdateStorageParams{Delta:types.BigInt{&delta}})
 	default:
 		panic("not handled")
 	}

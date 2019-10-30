@@ -2,6 +2,7 @@ package validation
 
 import (
 	"encoding/binary"
+	"github.com/filecoin-project/lotus/chain/address"
 	"math/big"
 	"testing"
 
@@ -77,28 +78,54 @@ func TestLotusCreateStorageMiner(t *testing.T) {
 	minerOwner := drv.NewAccountActor(20000000000)
 
 	producer := chain.NewMessageProducer(factory.NewMessageFactory(drv.State()), gasLimit, gasPrice)
-
-	sectorSize := big.NewInt(16 << 20)
-	publicKey := []byte{1} // lotus does not follow spec wrt miner publicKey
-
-	peerID := RequireIntPeerID(t, 1)
-	bpid, err := peerID.MarshalBinary()
-	require.NoError(t, err)
-
-	msg, err := producer.StoragePowerCreateStorageMiner(minerOwner, 0, minerOwner, publicKey, sectorSize, bpid, chain.Value(1000000))
-	require.NoError(t, err)
-
 	validator := chain.NewValidator(factory)
-	exeCtx := chain.NewExecutionContext(1, testMiner)
 
-	msgReceipt, err := validator.ApplyMessage(exeCtx, drv.State(), msg)
-	require.NoError(t, err)
-	require.NotNil(t, msgReceipt)
+	t.Run("create storage power miner", func(t *testing.T) {
+		sectorSize := big.NewInt(16 << 20)
+		publicKey := []byte{1} // lotus does not follow spec wrt miner publicKey
 
-	expectedGasUsed := 1703 // NB: should be derived from the size of the message + some other lotus VM bits. Got this value by running the test and inspecting output
-	assert.Equal(t, uint8(0), msgReceipt.ExitCode)
-	assert.Equal(t, []byte{0, 102}, msgReceipt.ReturnValue)
-	assert.Equal(t, state.GasUnit(expectedGasUsed), msgReceipt.GasUsed)
+		peerID := RequireIntPeerID(t, 1)
+		bpid, err := peerID.MarshalBinary()
+		require.NoError(t, err)
+
+		msg, err := producer.StoragePowerCreateStorageMiner(minerOwner, 0, minerOwner, publicKey, sectorSize, bpid, chain.Value(1002000))
+		require.NoError(t, err)
+
+		exeCtx := chain.NewExecutionContext(1, testMiner)
+
+		msgReceipt, err := validator.ApplyMessage(exeCtx, drv.State(), msg)
+		require.NoError(t, err)
+		require.NotNil(t, msgReceipt)
+
+		expectedGasUsed := 1703 // NB: should be derived from the size of the message + some other lotus VM bits. Got this value by running the test and inspecting output
+		assert.Equal(t, uint8(0), msgReceipt.ExitCode)
+		assert.Equal(t, []byte{0, 102}, msgReceipt.ReturnValue)
+		assert.Equal(t, state.GasUnit(expectedGasUsed), msgReceipt.GasUsed)
+
+		// TODO make assertions on the state tree to ensure the message application created a miner actor.
+	})
+
+	t.Run("update storage power miners storage", func(t *testing.T) {
+		// TODO the miner address returned above _could_ be used here instead
+		minerAddr, err := address.NewIDAddress(102)
+		require.NoError(t, err)
+
+		msg, err := producer.StoragePowerUpdateStorage(state.Address(minerAddr.Bytes()),0, big.NewInt(16<<20), chain.Value(1000000))
+		require.NoError(t, err)
+
+		exeCtx := chain.NewExecutionContext(2, testMiner)
+
+		msgReceipt, err := validator.ApplyMessage(exeCtx, drv.State(), msg)
+		require.NoError(t, err)
+		require.NotNil(t, msgReceipt)
+
+		expectedGasUsed := 327
+		assert.Equal(t, uint8(0), msgReceipt.ExitCode)
+		assert.Empty(t, msgReceipt.ReturnValue)
+		assert.Equal(t, state.GasUnit(expectedGasUsed), msgReceipt.GasUsed)
+
+		// TODO make assertions on the state tree to ensure the message application did something useful.
+	})
 }
 
 // RequireIntPeerID takes in an integer and creates a unique peer id for it.
