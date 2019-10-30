@@ -46,8 +46,8 @@ type TransferID uint64
 // ChannelID is a unique identifier for a channel, distinct by both the other
 // party's peer ID + the transfer ID
 type ChannelID struct {
-	to peer.ID
-	id TransferID
+	To peer.ID
+	ID TransferID
 }
 
 // Channel represents all the parameters for a single data transfer
@@ -67,6 +67,16 @@ type Channel struct {
 	// expected amount of data to be transferred
 	totalSize uint64
 }
+
+// NewChannel makes a new channel
+func NewChannel(transferID TransferID, baseCid cid.Cid,
+	selector ipld.Node,
+	voucher Voucher,
+	sender peer.ID,
+	recipient peer.ID,
+	totalSize uint64) Channel {
+		return Channel{transferID, baseCid, selector, voucher, sender, recipient, totalSize}
+	}
 
 // TransferID returns the transfer id for this channel
 func (c Channel) TransferID() TransferID { return c.transferID }
@@ -125,6 +135,9 @@ const (
 // Subscriber is a callback that is called when events are emitted
 type Subscriber func(event Event, channelState ChannelState)
 
+// Unsubscribe is a function that gets called to unsubscribe from data transfer events
+type Unsubscribe func()
+
 // RequestValidator is an interface implemented by the client of the
 // data transfer module to validate requests
 type RequestValidator interface {
@@ -166,7 +179,7 @@ type Manager interface {
 	TransferChannelStatus(x ChannelID) Status
 
 	// get notified when certain types of events happen
-	SubscribeToEvents(subscriber Subscriber)
+	SubscribeToEvents(subscriber Subscriber) Unsubscribe
 
 	// get all in progress transfers
 	InProgressChannels() map[ChannelID]ChannelState

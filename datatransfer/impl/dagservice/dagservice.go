@@ -10,6 +10,8 @@ import (
 	ipld "github.com/ipld/go-ipld-prime"
 	"github.com/libp2p/go-libp2p-core/peer"
 	"golang.org/x/xerrors"
+
+	datatransfer "github.com/filecoin-project/lotus/datatransfer"
 )
 
 // This file implements a VERY simple, incomplete version of the data transfer
@@ -23,57 +25,60 @@ import (
 
 type dagserviceImpl struct {
 	dag        ipldformat.DAGService
-	subscriber Subscriber
+	subscriber datatransfer.Subscriber
 }
 
 // NewDAGServiceDataTransfer returns a data transfer manager based on
 // an IPLD DAGService
-func NewDAGServiceDataTransfer(dag ipldformat.DAGService) Manager {
+func NewDAGServiceDataTransfer(dag ipldformat.DAGService) datatransfer.Manager {
 	return &dagserviceImpl{dag, nil}
 }
 
 // RegisterVoucherType registers a validator for the given voucher type
 // will error if voucher type does not implement voucher
 // or if there is a voucher type registered with an identical identifier
-func (impl *dagserviceImpl) RegisterVoucherType(voucherType reflect.Type, validator RequestValidator) error {
+func (impl *dagserviceImpl) RegisterVoucherType(voucherType reflect.Type, validator datatransfer.RequestValidator) error {
 	return nil
 }
 
 // open a data transfer that will send data to the recipient peer and
 // open a data transfer that will send data to the recipient peer and
 // transfer parts of the piece that match the selector
-func (impl *dagserviceImpl) OpenPushDataChannel(ctx context.Context, to peer.ID, voucher Voucher, baseCid cid.Cid, Selector ipld.Node) (ChannelID, error) {
-	return ChannelID{}, xerrors.Errorf("not implemented")
+func (impl *dagserviceImpl) OpenPushDataChannel(ctx context.Context, to peer.ID, voucher datatransfer.Voucher, baseCid cid.Cid, Selector ipld.Node) (datatransfer.ChannelID, error) {
+	return datatransfer.ChannelID{}, xerrors.Errorf("not implemented")
 }
 
 // open a data transfer that will request data from the sending peer and
 // transfer parts of the piece that match the selector
-func (impl *dagserviceImpl) OpenPullDataChannel(ctx context.Context, to peer.ID, voucher Voucher, baseCid cid.Cid, Selector ipld.Node) (ChannelID, error) {
+func (impl *dagserviceImpl) OpenPullDataChannel(ctx context.Context, to peer.ID, voucher datatransfer.Voucher, baseCid cid.Cid, Selector ipld.Node) (datatransfer.ChannelID, error) {
 	ctx, cancel := context.WithCancel(ctx)
 	go func() {
 		defer cancel()
 		err := merkledag.FetchGraph(ctx, baseCid, impl.dag)
-		var event Event
+		var event datatransfer.Event
 		if err != nil {
-			event = Error
+			event = datatransfer.Error
 		} else {
-			event = Complete
+			event = datatransfer.Complete
 		}
-		impl.subscriber(event, ChannelState{Channel: Channel{voucher: voucher}})
+		impl.subscriber(event, datatransfer.ChannelState{Channel: datatransfer.NewChannel(0, baseCid, Selector, voucher, to, peer.ID(""), 0)})
 	}()
-	return ChannelID{}, nil
+	return datatransfer.ChannelID{}, nil
 }
 
 // close an open channel (effectively a cancel)
-func (impl *dagserviceImpl) CloseDataTransferChannel(x ChannelID) {}
+func (impl *dagserviceImpl) CloseDataTransferChannel(x datatransfer.ChannelID) {}
 
 // get status of a transfer
-func (impl *dagserviceImpl) TransferChannelStatus(x ChannelID) Status { return ChannelNotFoundError }
+func (impl *dagserviceImpl) TransferChannelStatus(x datatransfer.ChannelID) datatransfer.Status {
+	return datatransfer.ChannelNotFoundError
+}
 
 // get notified when certain types of events happen
-func (impl *dagserviceImpl) SubscribeToEvents(subscriber Subscriber) {
+func (impl *dagserviceImpl) SubscribeToEvents(subscriber datatransfer.Subscriber) datatransfer.Unsubscribe {
 	impl.subscriber = subscriber
+	return func() {}
 }
 
 // get all in progress transfers
-func (impl *dagserviceImpl) InProgressChannels() map[ChannelID]ChannelState { return nil }
+func (impl *dagserviceImpl) InProgressChannels() map[datatransfer.ChannelID]datatransfer.ChannelState { return nil }
