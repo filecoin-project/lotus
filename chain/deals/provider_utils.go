@@ -140,7 +140,7 @@ type ProviderRequestValidator struct {
 // RegisterProviderValidator is an initialization hook that registers the provider
 // request validator with the data transfer module as the validator for
 // StorageDataTransferVoucher types
-func RegisterProviderValidator(lc fx.Lifecycle, mrv *ProviderRequestValidator, dtm datatransfer.ProviderDataTransfer) {
+func RegisterProviderValidator(lc fx.Lifecycle, mrv *ProviderRequestValidator, dtm dtypes.ProviderDataTransfer) {
 	lc.Append(fx.Hook{
 		OnStart: func(ctx context.Context) error {
 			return dtm.RegisterVoucherType(reflect.TypeOf(StorageDataTransferVoucher{}), mrv)

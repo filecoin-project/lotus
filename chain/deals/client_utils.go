@@ -93,7 +93,7 @@ type ClientRequestValidator struct {
 // RegisterClientValidator is an initialization hook that registers the client
 // request validator with the data transfer module as the validator for
 // StorageDataTransferVoucher types
-func RegisterClientValidator(lc fx.Lifecycle, crv *ClientRequestValidator, dtm datatransfer.ClientDataTransfer) {
+func RegisterClientValidator(lc fx.Lifecycle, crv *ClientRequestValidator, dtm dtypes.ClientDataTransfer) {
 	lc.Append(fx.Hook{
 		OnStart: func(ctx context.Context) error {
 			return dtm.RegisterVoucherType(reflect.TypeOf(StorageDataTransferVoucher{}), crv)

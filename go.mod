@@ -14,6 +14,7 @@ require (
 	github.com/filecoin-project/go-sectorbuilder v0.0.0-00010101000000-000000000000
 	github.com/gbrlsnchs/jwt/v3 v3.0.0-beta.1
 	github.com/go-ole/go-ole v1.2.4 // indirect
+	github.com/gogo/protobuf v1.2.1
 	github.com/gorilla/websocket v1.4.0
 	github.com/hashicorp/golang-lru v0.5.3
 	github.com/influxdata/influxdb1-client v0.0.0-20190809212627-fc22c7df067e
@@ -42,6 +43,7 @@ require (
 	github.com/ipfs/go-unixfs v0.2.2-0.20190827150610-868af2e9e5cb
 	github.com/ipld/go-ipld-prime v0.0.2-0.20191025154717-8dff1cbec43b
 	github.com/ipsn/go-secp256k1 v0.0.0-20180726113642-9d62b9f0bc52
+	github.com/jbenet/go-random v0.0.0-20190219211222-123a90aedc0c
 	github.com/libp2p/go-libp2p v0.3.0
 	github.com/libp2p/go-libp2p-circuit v0.1.1
 	github.com/libp2p/go-libp2p-connmgr v0.1.0

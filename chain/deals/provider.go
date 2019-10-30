@@ -54,7 +54,7 @@ type Provider struct {
 	dag dtypes.StagingDAG
 
 	// dataTransfer is the manager of data transfers used by this storage provider
-	dataTransfer datatransfer.ProviderDataTransfer
+	dataTransfer dtypes.ProviderDataTransfer
 
 	deals *statestore.StateStore
 	ds    dtypes.MetadataDS
@@ -80,7 +80,7 @@ var (
 	// ErrDataTransferFailed means a data transfer for a deal failed
 	ErrDataTransferFailed = errors.New("Deal data transfer failed")
 )
-func NewProvider(ds dtypes.MetadataDS, sminer *storage.Miner, secb *sectorblocks.SectorBlocks, dag dtypes.StagingDAG, dataTransfer datatransfer.ProviderDataTransfer, fullNode api.FullNode) (*Provider, error) {
+func NewProvider(ds dtypes.MetadataDS, sminer *storage.Miner, secb *sectorblocks.SectorBlocks, dag dtypes.StagingDAG, dataTransfer dtypes.ProviderDataTransfer, fullNode api.FullNode) (*Provider, error) {
 	addr, err := ds.Get(datastore.NewKey("miner-address"))
 	if err != nil {
 		return nil, err
