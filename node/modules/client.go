@@ -9,6 +9,10 @@ import (
 	"github.com/filecoin-project/lotus/node/modules/helpers"
 	"github.com/ipfs/go-bitswap"
 	"github.com/ipfs/go-bitswap/network"
+	graphsync "github.com/ipfs/go-graphsync/impl"
+	"github.com/ipfs/go-graphsync/ipldbridge"
+	gsnet "github.com/ipfs/go-graphsync/network"
+	"github.com/ipfs/go-graphsync/storeutil"
 	"github.com/libp2p/go-libp2p-core/host"
 	"github.com/libp2p/go-libp2p-core/routing"
 
@@ -20,8 +24,8 @@ import (
 	"github.com/ipfs/go-merkledag"
 	"go.uber.org/fx"
 
+	"github.com/filecoin-project/go-fil-components/datatransfer/impl/graphsync"
 	"github.com/filecoin-project/lotus/chain/deals"
-	"github.com/filecoin-project/lotus/datatransfer"
 	"github.com/filecoin-project/lotus/node/modules/dtypes"
 	"github.com/filecoin-project/lotus/node/repo"
 )
@@ -49,15 +53,15 @@ func ClientBlockstore(fstore dtypes.ClientFilestore) dtypes.ClientBlockstore {
 // request validator with the data transfer module as the validator for
 // StorageDataTransferVoucher types
 func RegisterClientValidator(crv *deals.ClientRequestValidator, dtm dtypes.ClientDataTransfer) {
-	if err := dtm.RegisterVoucherType(reflect.TypeOf(deals.StorageDataTransferVoucher{}), crv); err != nil {
+	if err := dtm.RegisterVoucherType(reflect.TypeOf(&deals.StorageDataTransferVoucher{}), crv); err != nil {
 		panic(err)
 	}
 }
 
 // NewClientDAGServiceDataTransfer returns a data transfer manager that just
 // uses the clients's Client DAG service for transfers
-func NewClientDAGServiceDataTransfer(dag dtypes.ClientDAG) dtypes.ClientDataTransfer {
-	return datatransfer.NewDAGServiceDataTransfer(dag)
+func NewClientDAGServiceDataTransfer(h host.Host, gs dtypes.ClientGraphsync) dtypes.ClientDataTransfer {
+	return graphsyncimpl.NewGraphSyncDataTransfer(h, gs)
 }
 
 // NewClientDealStore creates a statestore for the client to store its deals
@@ -65,6 +69,7 @@ func NewClientDealStore(ds dtypes.MetadataDS) dtypes.ClientDealStore {
 	return statestore.New(namespace.Wrap(ds, datastore.NewKey("/deals/client")))
 }
 
+// ClientDAG is a DAGService for the ClientBlockstore
 func ClientDAG(mctx helpers.MetricsCtx, lc fx.Lifecycle, ibs dtypes.ClientBlockstore, rt routing.Routing, h host.Host) dtypes.ClientDAG {
 	bitswapNetwork := network.NewFromIpfsHost(h, rt)
 	exch := bitswap.New(helpers.LifecycleCtx(mctx, lc), bitswapNetwork, ibs)
@@ -79,4 +84,16 @@ func ClientDAG(mctx helpers.MetricsCtx, lc fx.Lifecycle, ibs dtypes.ClientBlocks
 	})
 
 	return dag
+}
+
+// ClientGraphsync creates a graphsync instance which reads and writes blocks
+// to the ClientBlockstore
+func ClientGraphsync(mctx helpers.MetricsCtx, lc fx.Lifecycle, ibs dtypes.ClientBlockstore, h host.Host) dtypes.ClientGraphsync {
+	graphsyncNetwork := gsnet.NewFromLibp2pHost(h)
+	ipldBridge := ipldbridge.NewIPLDBridge()
+	loader := storeutil.LoaderForBlockstore(ibs)
+	storer := storeutil.StorerForBlockstore(ibs)
+	gs := graphsync.New(helpers.LifecycleCtx(mctx, lc), graphsyncNetwork, ipldBridge, loader, storer)
+
+	return gs
 }
