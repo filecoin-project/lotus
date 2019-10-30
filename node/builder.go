@@ -294,68 +294,57 @@ func ConfigFullNode(cfg *config.FullNode) Option {
 	)
 }
 
-func repoFull(r repo.Repo) Option {
-	lr, err := r.Lock(repo.RepoFullNode)
-	if err != nil {
-		return Error(err)
-	}
-	c, err := lr.Config()
-	if err != nil {
-		return Error(err)
-	}
+func configFull(c interface{}) Option {
 	cfg, ok := c.(*config.FullNode)
 	if !ok {
 		return Error(xerrors.Errorf("invalid config from repo, got: %T", c))
 	}
 
-	return Options(
-		ConfigFullNode(cfg),
-		Override(new(repo.LockedRepo), modules.LockedRepo(lr)), // module handles closing
-	)
+	return ConfigFullNode(cfg)
 }
 
-func repoMiner(r repo.Repo) Option {
-	lr, err := r.Lock(repo.RepoStorageMiner)
-	if err != nil {
-		return Error(err)
-	}
-	c, err := lr.Config()
-	if err != nil {
-		return Error(err)
-	}
-
+func configMiner(c interface{}) Option {
 	cfg, ok := c.(*config.StorageMiner)
 	if !ok {
 		return Error(xerrors.Errorf("invalid config from repo, got: %T", c))
 	}
 
-	return Options(
-		ConfigCommon(&cfg.Common),
-		Override(new(repo.LockedRepo), modules.LockedRepo(lr)), // module handles closing
-	)
+	return ConfigCommon(&cfg.Common)
 }
 
 func Repo(r repo.Repo) Option {
+	return func(settings *Settings) error {
+		lr, err := r.Lock(settings.nodeType)
+		if err != nil {
+			return err
+		}
+		c, err := lr.Config()
+		if err != nil {
+			return err
+		}
 
-	return Options(
-		ApplyIf(isType(repo.RepoFullNode), repoFull(r)),
-		ApplyIf(isType(repo.RepoStorageMiner), repoMiner(r)),
+		return Options(
+			Override(new(repo.LockedRepo), modules.LockedRepo(lr)), // module handles closing
 
-		Override(new(dtypes.MetadataDS), modules.Datastore),
-		Override(new(dtypes.ChainBlockstore), modules.ChainBlockstore),
+			ApplyIf(isType(repo.RepoFullNode), configFull(c)),
+			ApplyIf(isType(repo.RepoStorageMiner), configMiner(c)),
 
-		Override(new(dtypes.ClientFilestore), modules.ClientFstore),
-		Override(new(dtypes.ClientBlockstore), modules.ClientBlockstore),
-		Override(new(dtypes.ClientDAG), modules.ClientDAG),
+			Override(new(dtypes.MetadataDS), modules.Datastore),
+			Override(new(dtypes.ChainBlockstore), modules.ChainBlockstore),
 
-		Override(new(ci.PrivKey), lp2p.PrivKey),
-		Override(new(ci.PubKey), ci.PrivKey.GetPublic),
-		Override(new(peer.ID), peer.IDFromPublicKey),
+			Override(new(dtypes.ClientFilestore), modules.ClientFstore),
+			Override(new(dtypes.ClientBlockstore), modules.ClientBlockstore),
+			Override(new(dtypes.ClientDAG), modules.ClientDAG),
 
-		Override(new(types.KeyStore), modules.KeyStore),
+			Override(new(ci.PrivKey), lp2p.PrivKey),
+			Override(new(ci.PubKey), ci.PrivKey.GetPublic),
+			Override(new(peer.ID), peer.IDFromPublicKey),
 
-		Override(new(*dtypes.APIAlg), modules.APISecret),
-	)
+			Override(new(types.KeyStore), modules.KeyStore),
+
+			Override(new(*dtypes.APIAlg), modules.APISecret),
+		)(settings)
+	}
 }
 
 func FullAPI(out *api.FullNode) Option {
