@@ -2,7 +2,6 @@ package validation
 
 import (
 	"encoding/binary"
-	"github.com/filecoin-project/lotus/chain/address"
 	"math/big"
 	"testing"
 
@@ -16,6 +15,7 @@ import (
 	"github.com/filecoin-project/chain-validation/pkg/suites"
 
 	"github.com/filecoin-project/lotus/build"
+	"github.com/filecoin-project/lotus/chain/address"
 )
 
 // A basic example validation test.
@@ -57,11 +57,29 @@ func TestLotusExample(t *testing.T) {
 	drv.AssertBalance(miner, uint64(expectedGasUsed))
 
 }
+
+type testAddressWrapper struct {
+	lotusAddr address.Address
+	testAddr state.Address
+}
+
+func newTestAddressWrapper(addr state.Address) *testAddressWrapper {
+	la, err := address.NewFromBytes([]byte(addr))
+	if err != nil {
+		panic(err)
+	}
+	return &testAddressWrapper{
+		lotusAddr: la,
+		testAddr:  addr,
+	}
+}
+
 func TestLotusCreateStorageMiner(t *testing.T) {
 	factory := NewFactories()
 	drv := suites.NewStateDriver(t, factory.NewState())
 	gasPrice := big.NewInt(1)
-	gasLimit := state.GasUnit(2000) // needs to be over ~1100 for lotus operations
+	// gas prices will be inconsistent for a while, use a big value lotus team suggests using a large value here.
+	gasLimit := state.GasUnit(1000000)
 	TotalNetworkBalance := big.NewInt(1).Mul(big.NewInt(build.TotalFilecoin), big.NewInt(0).SetUint64(build.FilecoinPrecision))
 
 	_, _, err := drv.State().SetSingletonActor(state.InitAddress, big.NewInt(0))
@@ -72,58 +90,110 @@ func TestLotusCreateStorageMiner(t *testing.T) {
 	require.NoError(t, err)
 
 
-	// miner that mines in this test
-	testMiner := drv.NewAccountActor(0)
-	// account that will own the miner
-	minerOwner := drv.NewAccountActor(20000000000)
-
 	producer := chain.NewMessageProducer(factory.NewMessageFactory(drv.State()), gasLimit, gasPrice)
 	validator := chain.NewValidator(factory)
 
+	// miner that mines in this test
+	testMiner := newTestAddressWrapper(drv.NewAccountActor(0))
+	// account that will own the miner
+	minerOwner := newTestAddressWrapper(drv.NewAccountActor(20000000000))
+
+	// address of the miner created
+	maddr, err := state.NewIDAddress(102)
+	require.NoError(t, err)
+	minerAddr := newTestAddressWrapper(maddr)
+	// sector size of the miner created
+	sectorSize := big.NewInt(16 << 20)
+	// peerID of the miner created
+	peerID, err := RequireIntPeerID(t, 1).MarshalBinary()
+	require.NoError(t,err)
+
+	exeCtx := chain.NewExecutionContext(1, testMiner.testAddr)
+
 	t.Run("create storage power miner", func(t *testing.T) {
-		sectorSize := big.NewInt(16 << 20)
-		publicKey := []byte{1} // lotus does not follow spec wrt miner publicKey
 
-		peerID := RequireIntPeerID(t, 1)
-		bpid, err := peerID.MarshalBinary()
+		msg, err := producer.StoragePowerCreateStorageMiner(minerOwner.testAddr, 0, minerOwner.testAddr, minerOwner.testAddr, sectorSize, peerID, chain.Value(2000000))
 		require.NoError(t, err)
-
-		msg, err := producer.StoragePowerCreateStorageMiner(minerOwner, 0, minerOwner, publicKey, sectorSize, bpid, chain.Value(1002000))
-		require.NoError(t, err)
-
-		exeCtx := chain.NewExecutionContext(1, testMiner)
 
 		msgReceipt, err := validator.ApplyMessage(exeCtx, drv.State(), msg)
 		require.NoError(t, err)
-		require.NotNil(t, msgReceipt)
+		drv.AssertReceipt(msgReceipt, chain.MessageReceipt{
+			ExitCode:    0,
+			ReturnValue: []byte{0, 102},
+			GasUsed:     0,
+		})
+		exeCtx.Epoch++
 
-		expectedGasUsed := 1703 // NB: should be derived from the size of the message + some other lotus VM bits. Got this value by running the test and inspecting output
-		assert.Equal(t, uint8(0), msgReceipt.ExitCode)
-		assert.Equal(t, []byte{0, 102}, msgReceipt.ReturnValue)
-		assert.Equal(t, state.GasUnit(expectedGasUsed), msgReceipt.GasUsed)
 
-		// TODO make assertions on the state tree to ensure the message application created a miner actor.
+		msg, err = producer.StorageMinerGetOwner(minerAddr.testAddr, minerOwner.testAddr, 1,chain.Value(2000000))
+		require.NoError(t, err)
+
+		msgReceipt, err = validator.ApplyMessage(exeCtx, drv.State(), msg)
+		require.NoError(t, err)
+		drv.AssertReceipt(msgReceipt, chain.MessageReceipt{
+			ExitCode:    0,
+			ReturnValue: minerOwner.lotusAddr.Bytes(),
+			GasUsed:     0,
+		})
+
+		msg, err = producer.StorageMinerGetPower(minerAddr.testAddr, minerOwner.testAddr, 2, chain.Value(2000000))
+		require.NoError(t, err)
+
+		msgReceipt, err = validator.ApplyMessage(exeCtx, drv.State(), msg)
+		require.NoError(t, err)
+		drv.AssertReceipt(msgReceipt, chain.MessageReceipt{
+			ExitCode:    0,
+			ReturnValue: []byte{},
+			GasUsed:     0,
+		})
+		exeCtx.Epoch++
+
+
+		msg, err = producer.StorageMinerGetWorkerAddr(minerAddr.testAddr, minerOwner.testAddr, 3, chain.Value(2000000))
+		require.NoError(t, err)
+
+
+		msgReceipt, err = validator.ApplyMessage(exeCtx, drv.State(), msg)
+		require.NoError(t, err)
+		drv.AssertReceipt(msgReceipt, chain.MessageReceipt{
+			ExitCode:    0,
+			ReturnValue: minerOwner.lotusAddr.Bytes(),
+			GasUsed:     0,
+		})
+		exeCtx.Epoch++
+
+		msg, err = producer.StorageMinerGetPeerID(minerAddr.testAddr, minerOwner.testAddr, 4, chain.Value(2000000))
+		require.NoError(t, err)
+
+		msgReceipt, err = validator.ApplyMessage(exeCtx, drv.State(), msg)
+		require.NoError(t, err)
+		drv.AssertReceipt(msgReceipt, chain.MessageReceipt{
+			ExitCode:    0,
+			ReturnValue: peerID,
+			GasUsed:     0,
+		})
+		exeCtx.Epoch++
 	})
 
 	t.Run("update storage power miners storage", func(t *testing.T) {
 		// TODO the miner address returned above _could_ be used here instead
 		minerAddr, err := address.NewIDAddress(102)
 		require.NoError(t, err)
+		updateDelta := big.NewInt(16<<20)
+		msgValue := chain.Value(1000000)
 
-		msg, err := producer.StoragePowerUpdateStorage(state.Address(minerAddr.Bytes()),0, big.NewInt(16<<20), chain.Value(1000000))
+		msg, err := producer.StoragePowerUpdateStorage(state.Address(minerAddr.Bytes()),0, updateDelta, msgValue)
 		require.NoError(t, err)
 
-		exeCtx := chain.NewExecutionContext(2, testMiner)
+		exeCtx := chain.NewExecutionContext(2, testMiner.testAddr)
 
 		msgReceipt, err := validator.ApplyMessage(exeCtx, drv.State(), msg)
 		require.NoError(t, err)
 		require.NotNil(t, msgReceipt)
 
-		expectedGasUsed := 327
 		assert.Equal(t, uint8(0), msgReceipt.ExitCode)
 		assert.Empty(t, msgReceipt.ReturnValue)
-		assert.Equal(t, state.GasUnit(expectedGasUsed), msgReceipt.GasUsed)
-
+		// TODO assert on gas when its stable.
 		// TODO make assertions on the state tree to ensure the message application did something useful.
 	})
 }

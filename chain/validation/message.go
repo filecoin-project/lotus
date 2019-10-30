@@ -75,6 +75,10 @@ var methods = []uint64{
 	chain.StoragePowerConstructor: actors.SPAMethods.Constructor,
 	chain.StoragePowerCreateStorageMiner: actors.SPAMethods.CreateStorageMiner,
 	chain.StoragePowerUpdatePower: actors.SPAMethods.UpdateStorage,
+	chain.StorageMinerGetOwner: actors.MAMethods.GetOwner,
+	chain.StorageMinerGetPower: actors.MAMethods.GetPower,
+	chain.StorageMinerGetWorkerAddr: actors.MAMethods.GetWorkerAddr,
+	chain.StorageMinerGetPeerID: actors.MAMethods.GetPeerID,
 	// More to follow...
 }
 
