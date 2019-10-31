@@ -7,7 +7,6 @@ import (
 	"github.com/multiformats/go-multiaddr"
 
 	"github.com/filecoin-project/lotus/chain/types"
-	"github.com/filecoin-project/lotus/node/config"
 )
 
 var (
@@ -25,7 +24,7 @@ type Repo interface {
 	APIToken() ([]byte, error)
 
 	// Lock locks the repo for exclusive use.
-	Lock() (LockedRepo, error)
+	Lock(RepoType) (LockedRepo, error)
 }
 
 type LockedRepo interface {
@@ -36,7 +35,7 @@ type LockedRepo interface {
 	Datastore(namespace string) (datastore.Batching, error)
 
 	// Returns config in this repo
-	Config() (*config.Root, error)
+	Config() (interface{}, error)
 
 	// SetAPIEndpoint sets the endpoint of the current API
 	// so it can be read by API clients
