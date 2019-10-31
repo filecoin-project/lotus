@@ -2,8 +2,6 @@ package validation
 
 import (
 	"context"
-	"github.com/libp2p/go-libp2p-core/peer"
-	"math/big"
 
 	"github.com/pkg/errors"
 
@@ -39,8 +37,7 @@ func (mf *MessageFactory) MakeMessage(from, to state.Address, method chain.Metho
 		return nil, err
 	}
 	valueDec := types.BigInt{value}
-	//paramsDec, err := []byte{}, nil // FIXME encode params as CBOR tuple byte[] using reflection
-	paramsDec, err := decodeMessageParams(method, params...)
+	paramsDec, err := state.EncodeValues(params...)
 	if err != nil {
 		return nil, err
 	}
@@ -72,9 +69,11 @@ func (mf *MessageFactory) FromSingletonAddress(addr state.SingletonActorID) (sta
 var methods = []uint64{
 	chain.NoMethod: 0,
 	chain.InitExec: actors.IAMethods.Exec,
+
 	chain.StoragePowerConstructor: actors.SPAMethods.Constructor,
 	chain.StoragePowerCreateStorageMiner: actors.SPAMethods.CreateStorageMiner,
 	chain.StoragePowerUpdatePower: actors.SPAMethods.UpdateStorage,
+
 	chain.StorageMinerUpdatePeerID: actors.MAMethods.UpdatePeerID,
 	chain.StorageMinerGetOwner: actors.MAMethods.GetOwner,
 	chain.StorageMinerGetPower: actors.MAMethods.GetPower,
@@ -82,54 +81,4 @@ var methods = []uint64{
 	chain.StorageMinerGetPeerID: actors.MAMethods.GetPeerID,
 	chain.StorageMinerGetSectorSize: actors.MAMethods.GetSectorSize,
 	// More to follow...
-}
-
-func decodeMessageParams(methodID chain.MethodID, params ...interface{}) ([]byte, error){
-	if len(params) == 0 {
-		return []byte{}, nil
-	}
-	switch methodID {
-	case chain.StoragePowerCreateStorageMiner:
-		if len(params) != 4 {
-			return []byte{}, errors.Errorf("not enough params for methodID %d expected %d, got %d", methodID, 4, len(params))
-		}
-		ownerAddr, err := address.NewFromBytes([]byte(params[0].(state.Address)))
-		if err != nil {
-			panic(err)
-		}
-		rawSector := params[2].(state.BytesAmount)
-		sectorSize := big.Int(*rawSector)
-		rawPeer := params[3].(state.PeerID)
-		peerID, err := peer.IDFromBytes(rawPeer)
-		if err != nil {
-			panic(err)
-		}
-		return actors.SerializeParams(&actors.CreateStorageMinerParams{
-			Owner:      ownerAddr,
-			Worker:     ownerAddr,
-			SectorSize: sectorSize.Uint64(),
-			PeerID:     peerID,
-		})
-	case chain.StoragePowerUpdatePower:
-		if len(params) != 1 {
-			return []byte{}, errors.Errorf("not enough params for methodID %d expected %d, got %d", methodID, 1, len(params))
-		}
-		rawDelta := params[0].(state.BytesAmount)
-		delta := big.Int(*rawDelta)
-		return actors.SerializeParams(&actors.UpdateStorageParams{Delta:types.BigInt{&delta}})
-	case chain.StorageMinerUpdatePeerID:
-		if len(params) != 1 {
-			return []byte{}, errors.Errorf("not enough params for methodID %d expected %d, got %d", methodID, 1, len(params))
-		}
-		rawPeerID := params[0].(state.PeerID)
-		peerID, err := peer.IDFromBytes(rawPeerID)
-		if err != nil {
-			panic(err)
-		}
-		return actors.SerializeParams(&actors.UpdatePeerIDParams{PeerID:peerID})
-
-	default:
-		panic("not handled")
-	}
-
 }
