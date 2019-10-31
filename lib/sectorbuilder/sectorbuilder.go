@@ -134,7 +134,7 @@ func (sb *SectorBuilder) GeneratePoSt(sectorInfo SortedSectorInfo, challengeSeed
 
 var UserBytesForSectorSize = sectorbuilder.GetMaxUserBytesPerStagedSector
 
-func VerifySeal(sectorSize uint64, commR, commD []byte, proverID address.Address, ticket []byte, seed []byte, sectorID uint64, proof []byte, pieces []PublicPieceInfo) (bool, error) {
+func VerifySeal(sectorSize uint64, commR, commD []byte, proverID address.Address, ticket []byte, seed []byte, sectorID uint64, proof []byte) (bool, error) {
 	var commRa, commDa, ticketa, seeda [32]byte
 	copy(commRa[:], commR)
 	copy(commDa[:], commD)
@@ -142,7 +142,7 @@ func VerifySeal(sectorSize uint64, commR, commD []byte, proverID address.Address
 	copy(seeda[:], seed)
 	proverIDa := addressToProverID(proverID)
 
-	return sectorbuilder.VerifySeal(sectorSize, commRa, commDa, proverIDa, ticketa, seeda, sectorID, proof, pieces)
+	return sectorbuilder.VerifySeal(sectorSize, commRa, commDa, proverIDa, ticketa, seeda, sectorID, proof, nil)
 }
 
 func NewSortedSectorInfo(sectors []SectorInfo) SortedSectorInfo {

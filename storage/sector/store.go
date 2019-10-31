@@ -31,7 +31,7 @@ type dealMapping struct {
 	Committed bool
 }
 
-type TicketFn func(context.Context) (*sectorbuilder.SealSeed, error)
+type TicketFn func(context.Context) (*sectorbuilder.SealTicket, error)
 
 // TODO: eventually handle sector storage here instead of in rust-sectorbuilder
 type Store struct {
@@ -60,10 +60,6 @@ func NewStore(sb *sectorbuilder.SectorBuilder, ds dtypes.MetadataDS, tktFn Ticke
 	}
 }
 
-func (s *Store) Service() {
-	go s.service()
-}
-
 func (s *Store) restartSealing() {
 	sectors, err := s.sb.GetAllStagedSectors()
 	if err != nil {
@@ -90,6 +86,15 @@ func (s *Store) restartSealing() {
 			}
 		}()
 	}
+}
+
+func (s *Store) SectorStatus(sid uint64) (*sectorbuilder.SectorSealingStatus, error) {
+	status, err := s.sb.SealStatus(sid)
+	if err != nil {
+		return nil, err
+	}
+
+	return &status, nil
 }
 
 func (s *Store) AddPiece(ref string, size uint64, r io.Reader, dealIDs ...uint64) (sectorID uint64, err error) {
@@ -188,35 +193,6 @@ func (s *Store) SealPreCommit(ctx context.Context, sectorID uint64) error {
 
 func (s *Store) SealComputeProof(ctx context.Context, sectorID uint64, rand []byte) ([]byte, error) {
 	panic("TODO")
-}
-
-func (s *Store) CloseIncoming(c <-chan sectorbuilder.SectorSealingStatus) {
-	s.waitingLk.Lock()
-	var at = -1
-	for i, ch := range s.incoming {
-		if ch == c {
-			at = i
-		}
-	}
-	if at == -1 {
-		s.waitingLk.Unlock()
-		return
-	}
-	if len(s.incoming) > 1 {
-		last := len(s.incoming) - 1
-		s.incoming[at] = s.incoming[last]
-		s.incoming[last] = nil
-	}
-	s.incoming = s.incoming[:len(s.incoming)-1]
-	s.waitingLk.Unlock()
-}
-
-func (s *Store) Incoming() <-chan sectorbuilder.SectorSealingStatus {
-	ch := make(chan sectorbuilder.SectorSealingStatus, 8)
-	s.waitingLk.Lock()
-	s.incoming = append(s.incoming, ch)
-	s.waitingLk.Unlock()
-	return ch
 }
 
 func (s *Store) WaitSeal(ctx context.Context, sector uint64) (sectorbuilder.SectorSealingStatus, error) {

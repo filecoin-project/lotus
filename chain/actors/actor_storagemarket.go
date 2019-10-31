@@ -587,7 +587,7 @@ func transferFunds(from, to, amt types.BigInt) (types.BigInt, types.BigInt) {
 	return types.BigSub(from, amt), types.BigAdd(to, amt)
 }
 
-var ComputeDataCommitmentParams struct {
+type ComputeDataCommitmentParams struct {
 	DealIDs    []uint64
 	SectorSize uint64
 }

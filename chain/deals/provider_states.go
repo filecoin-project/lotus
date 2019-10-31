@@ -4,7 +4,6 @@ import (
 	"bytes"
 	"context"
 
-	"github.com/filecoin-project/go-sectorbuilder/sealing_state"
 	"github.com/ipfs/go-cid"
 	"github.com/ipfs/go-merkledag"
 	unixfile "github.com/ipfs/go-unixfs/file"
@@ -229,39 +228,48 @@ func (p *Provider) staged(ctx context.Context, deal MinerDeal) (func(*MinerDeal)
 	if err != nil {
 		return nil, err
 	}
+	_ = pcid
 
-	sectorID, err := p.secst.AddUnixfsPiece(pcid, uf, deal.DealID)
-	if err != nil {
-		return nil, xerrors.Errorf("AddPiece failed: %s", err)
-	}
+	/*
+				sectorID, err := p.sminer.AddUnixfsPiece(pcid, uf, deal.DealID)
+				if err != nil {
+					return nil, xerrors.Errorf("AddPiece failed: %s", err)
+				}
+			log.Warnf("New Sector: %d", sectorID)
 
-	log.Warnf("New Sector: %d", sectorID)
-	return func(deal *MinerDeal) {
-		deal.SectorID = sectorID
-	}, nil
+		return func(deal *MinerDeal) {
+			deal.SectorID = sectorID
+		}, nil
+	*/
+	panic("fixme")
 }
 
 // SEALING
 
 func (p *Provider) waitSealed(ctx context.Context, deal MinerDeal) (sectorbuilder.SectorSealingStatus, error) {
-	status, err := p.secst.WaitSeal(ctx, deal.SectorID)
-	if err != nil {
-		return sectorbuilder.SectorSealingStatus{}, err
-	}
+	panic("fixme")
 
-	switch status.State {
-	case sealing_state.Sealed:
-	case sealing_state.Failed:
-		return sectorbuilder.SectorSealingStatus{}, xerrors.Errorf("sealing sector %d for deal %s (ref=%s) failed: %s", deal.SectorID, deal.ProposalCid, deal.Ref, status.SealErrorMsg)
-	case sealing_state.Pending:
-		return sectorbuilder.SectorSealingStatus{}, xerrors.Errorf("sector status was 'pending' after call to WaitSeal (for sector %d)", deal.SectorID)
-	case sealing_state.Sealing:
-		return sectorbuilder.SectorSealingStatus{}, xerrors.Errorf("sector status was 'wait' after call to WaitSeal (for sector %d)", deal.SectorID)
-	default:
-		return sectorbuilder.SectorSealingStatus{}, xerrors.Errorf("unknown SealStatusCode: %d", status.SectorID)
-	}
+	/*
+		status, err := p.sminer.WaitSeal(ctx, deal.SectorID)
+		if err != nil {
+			return sectorbuilder.SectorSealingStatus{}, err
+		}
 
-	return status, nil
+			switch status.State {
+			case sealing_state.Sealed:
+			case sealing_state.Failed:
+				return sectorbuilder.SectorSealingStatus{}, xerrors.Errorf("sealing sector %d for deal %s (ref=%s) failed: %s", deal.SectorID, deal.ProposalCid, deal.Ref, status.SealErrorMsg)
+			case sealing_state.Pending:
+				return sectorbuilder.SectorSealingStatus{}, xerrors.Errorf("sector status was 'pending' after call to WaitSeal (for sector %d)", deal.SectorID)
+			case sealing_state.Sealing:
+				return sectorbuilder.SectorSealingStatus{}, xerrors.Errorf("sector status was 'wait' after call to WaitSeal (for sector %d)", deal.SectorID)
+			default:
+				return sectorbuilder.SectorSealingStatus{}, xerrors.Errorf("unknown SealStatusCode: %d", status.SectorID)
+			}
+
+		return status, nil
+	*/
+
 }
 
 func (p *Provider) sealing(ctx context.Context, deal MinerDeal) (func(*MinerDeal), error) {
@@ -273,7 +281,7 @@ func (p *Provider) sealing(ctx context.Context, deal MinerDeal) (func(*MinerDeal
 		log.Warnf("Sending deal response failed: %s", err)
 	}
 
-	if err := p.secst.SealSector(ctx, deal.SectorID); err != nil {
+	if err := p.sminer.SealSector(ctx, deal.SectorID); err != nil {
 		return nil, xerrors.Errorf("sealing sector failed: %w", err)
 	}
 

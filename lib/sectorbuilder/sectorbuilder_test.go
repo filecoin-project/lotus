@@ -1,19 +1,15 @@
 package sectorbuilder_test
 
 import (
-	"context"
 	"io"
 	"io/ioutil"
 	"math/rand"
 	"path/filepath"
 	"testing"
 
-	"github.com/ipfs/go-datastore"
-
 	"github.com/filecoin-project/lotus/build"
 	"github.com/filecoin-project/lotus/chain/address"
 	"github.com/filecoin-project/lotus/lib/sectorbuilder"
-	"github.com/filecoin-project/lotus/storage/sector"
 )
 
 const sectorSize = 1024
@@ -43,7 +39,7 @@ func TestSealAndVerify(t *testing.T) {
 
 	sb, err := sectorbuilder.New(&sectorbuilder.SectorBuilderConfig{
 		SectorSize:  sectorSize,
-		CacheDir:cache,
+		CacheDir:    cache,
 		SealedDir:   sealed,
 		StagedDir:   staging,
 		MetadataDir: metadata,
@@ -53,31 +49,35 @@ func TestSealAndVerify(t *testing.T) {
 		t.Fatal(err)
 	}
 
-	// TODO: Consider fixing
-	store := sector.NewStore(sb, datastore.NewMapDatastore(), func(ctx context.Context) (*sectorbuilder.SealTicket, error) {
-		return &sectorbuilder.SealTicket{
-			BlockHeight: 5,
-			TicketBytes: [32]byte{1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 1, 2},
-		}, nil
-	})
-
-	store.Service()
-
 	dlen := sectorbuilder.UserBytesForSectorSize(sectorSize)
 
 	r := io.LimitReader(rand.New(rand.NewSource(42)), int64(dlen))
-	sid, err := store.AddPiece("foo", dlen, r)
+	sid, err := sb.AddPiece("foo", dlen, r)
 	if err != nil {
 		t.Fatal(err)
 	}
 
-	if err := store.SealSector(context.TODO(), sid); err != nil {
+	ticket := sectorbuilder.SealTicket{
+		BlockHeight: 5,
+		TicketBytes: [32]byte{1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 1, 2},
+	}
+
+	pco, err := sb.SealPreCommit(sid, ticket)
+	if err != nil {
 		t.Fatal(err)
 	}
 
-	ssinfo := <-store.Incoming()
+	seed := sectorbuilder.SealSeed{
+		BlockHeight: 15,
+		TicketBytes: [32]byte{0, 9, 8, 7, 6, 5, 4, 3, 2, 1, 0, 9, 8, 7, 6, 45, 3, 2, 1, 0, 9, 8, 7, 6, 5, 4, 3, 2, 1, 0, 9, 8},
+	}
 
-	ok, err := sectorbuilder.VerifySeal(sectorSize, ssinfo.CommR[:], ssinfo.CommD[:], addr, ssinfo.Ticket.TicketBytes[:], ssinfo.SectorID, ssinfo.Proof)
+	sco, err := sb.SealCommit(sid, seed)
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	ok, err := sectorbuilder.VerifySeal(sectorSize, pco.CommR[:], pco.CommD[:], addr, ticket.TicketBytes[:], seed.TicketBytes[:], sid, sco.Proof)
 	if err != nil {
 		t.Fatal(err)
 	}

@@ -9,11 +9,8 @@ import (
 	logging "github.com/ipfs/go-log"
 	"github.com/libp2p/go-libp2p-core/host"
 	"github.com/pkg/errors"
-	"golang.org/x/xerrors"
 
 	"github.com/filecoin-project/lotus/api"
-	"github.com/filecoin-project/lotus/build"
-	"github.com/filecoin-project/lotus/chain/actors"
 	"github.com/filecoin-project/lotus/chain/address"
 	"github.com/filecoin-project/lotus/chain/events"
 	"github.com/filecoin-project/lotus/chain/store"
@@ -87,187 +84,12 @@ func (m *Miner) Run(ctx context.Context) error {
 
 	m.events = events.NewEvents(ctx, m.api)
 
-	go m.handlePostingSealedSectors(ctx)
 	go m.beginPosting(ctx)
 	return nil
 }
 
-func (m *Miner) commitUntrackedSectors(ctx context.Context) error {
-	sealed, err := m.secst.Commited()
-	if err != nil {
-		return err
-	}
-
-	chainSectors, err := m.api.StateMinerSectors(ctx, m.maddr, nil)
-	if err != nil {
-		return err
-	}
-
-	onchain := map[uint64]struct{}{}
-	for _, chainSector := range chainSectors {
-		onchain[chainSector.SectorID] = struct{}{}
-	}
-
-	for _, s := range sealed {
-		if _, ok := onchain[s.SectorID]; ok {
-			continue
-		}
-
-		log.Warnf("Missing commitment for sector %d, committing sector", s.SectorID)
-
-		if err := m.commitSector(ctx, s); err != nil {
-			log.Error("Committing uncommitted sector failed: ", err)
-		}
-	}
-	return nil
-}
-
-func (m *Miner) handlePostingSealedSectors(ctx context.Context) {
-	incoming := m.secst.Incoming()
-	defer m.secst.CloseIncoming(incoming)
-
-	if err := m.commitUntrackedSectors(ctx); err != nil {
-		log.Error(err)
-	}
-
-	for {
-		select {
-		case sinfo, ok := <-incoming:
-			if !ok {
-				// TODO: set some state variable so that this state can be
-				// visible via some status command
-				log.Warn("sealed sector channel closed, aborting process")
-				return
-			}
-
-			if err := m.commitSector(ctx, sinfo); err != nil {
-				log.Errorf("failed to commit sector: %s", err)
-				continue
-			}
-
-		case <-ctx.Done():
-			log.Warn("exiting seal posting routine")
-			return
-		}
-	}
-}
-
 func (m *Miner) commitSector(ctx context.Context, sinfo sectorbuilder.SectorSealingStatus) error {
-	log.Info("committing sector")
-
-	ssize, err := m.SectorSize(ctx)
-	if err != nil {
-		return xerrors.Errorf("failed to check out own sector size: %w", err)
-	}
-
-	_ = ssize
-
-	// TODO: 2 stage commit
-	/*deals, err := m.secst.DealsForCommit(sinfo.SectorID)
-	if err != nil {
-		return xerrors.Errorf("getting sector deals failed: %w", err)
-	}
-	*/
-	params := &actors.SectorPreCommitInfo{
-		CommD: sinfo.CommD[:],
-		CommR: sinfo.CommR[:],
-		Epoch: sinfo.Ticket.BlockHeight,
-
-		//DealIDs:      deals,
-		SectorNumber: sinfo.SectorID,
-	}
-	enc, aerr := actors.SerializeParams(params)
-	if aerr != nil {
-		return errors.Wrap(aerr, "could not serialize commit sector parameters")
-	}
-
-	msg := &types.Message{
-		To:       m.maddr,
-		From:     m.worker,
-		Method:   actors.MAMethods.PreCommitSector,
-		Params:   enc,
-		Value:    types.NewInt(0), // TODO: need to ensure sufficient collateral
-		GasLimit: types.NewInt(1000000 /* i dont know help */),
-		GasPrice: types.NewInt(1),
-	}
-
-	smsg, err := m.api.MpoolPushMessage(ctx, msg)
-	if err != nil {
-		return errors.Wrap(err, "pushing message to mpool")
-	}
-
-	go func() {
-		// TODO: maybe just mark this down in the datastore and handle it differently? This feels complicated to restart
-		mw, err := m.api.StateWaitMsg(ctx, smsg.Cid())
-		if err != nil {
-			return
-		}
-
-		randHeight := mw.TipSet.Height() + build.InteractivePoRepDelay
-
-		err = m.events.ChainAt(func(ts *types.TipSet, curH uint64) error {
-			go func() {
-				rand, err := m.api.ChainGetRandomness(ctx, ts, nil, ts.Height()-randHeight)
-				if err != nil {
-					log.Error(errors.Errorf("failed to get randomness for computing seal proof: %w", err))
-					return
-				}
-
-				// TODO: should this get scheduled to preserve proper resource consumption?
-				proof, err := m.secst.SealComputeProof(ctx, sinfo.SectorID, rand)
-				if err != nil {
-					log.Error(errors.Errorf("computing seal proof failed: %w", err))
-					return
-				}
-
-				params := &actors.SectorProveCommitInfo{
-					Proof:    proof,
-					SectorID: sinfo.SectorID,
-					//DealIDs:      deals,
-				}
-
-				enc, aerr := actors.SerializeParams(params)
-				if aerr != nil {
-					log.Errorf(errors.Wrap(aerr, "could not serialize commit sector parameters"))
-					return
-				}
-
-				msg := &types.Message{
-					To:       m.maddr,
-					From:     m.worker,
-					Method:   actors.MAMethods.ProveCommitSector,
-					Params:   enc,
-					Value:    types.NewInt(0), // TODO: need to ensure sufficient collateral
-					GasLimit: types.NewInt(1000000 /* i dont know help */),
-					GasPrice: types.NewInt(1),
-				}
-
-				smsg, err := m.api.MpoolPushMessage(ctx, msg)
-				if err != nil {
-					return errors.Wrap(err, "pushing message to mpool")
-				}
-
-				// TODO: now wait for this to get included and handle errors?
-				_, err := m.api.StateWaitMsg(ctx, smsg.Cid())
-				if err != nil {
-					log.Errorf("failed to wait for porep inclusion: %s", err)
-					return
-				}
-
-				m.beginPosting(ctx)
-			}()
-
-			return nil
-		}, func(ts *types.TipSet) error {
-			log.Warn("revert in interactive commit sector step")
-			return nil
-		}, 3, mw.TipSet.Height()+build.InteractivePoRepDelay)
-		if err != nil {
-			return
-		}
-	}()
-
-	return nil
+	return m.SealSector(ctx, sinfo.SectorID)
 }
 
 func (m *Miner) runPreflightChecks(ctx context.Context) error {

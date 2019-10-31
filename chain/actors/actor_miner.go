@@ -313,8 +313,6 @@ func (sma StorageMinerActor) ProveCommitSector(act *types.Actor, vmctx types.VMC
 	// TODO: ensure normalization to ID address
 	maddr := vmctx.Message().To
 
-	var pieces []sectorbuilder.PublicPieceInfo // TODO: GET ME FROM DEALS IN STORAGEMARKET
-
 	ticket, err := vmctx.GetRandomness(us.TicketEpoch)
 	if err != nil {
 		return nil, aerrors.Wrap(err, "failed to get ticket randomness")
@@ -325,7 +323,20 @@ func (sma StorageMinerActor) ProveCommitSector(act *types.Actor, vmctx types.VMC
 		return nil, aerrors.Wrap(err, "failed to get randomness for prove sector commitment")
 	}
 
-	if ok, err := ValidatePoRep(maddr, mi.SectorSize, us.CommD, us.CommR, ticket, params.Proof, seed, params.SectorID, pieces); err != nil {
+	enc, err := SerializeParams(&ComputeDataCommitmentParams{
+		DealIDs:    params.DealIDs,
+		SectorSize: mi.SectorSize,
+	})
+	if err != nil {
+		return nil, aerrors.Wrap(err, "failed to serialize ComputeDataCommitmentParams")
+	}
+
+	commD, err := vmctx.Send(StorageMarketAddress, SMAMethods.ComputeDataCommitment, types.NewInt(0), enc)
+	if err != nil {
+		return nil, aerrors.Wrap(err, "failed to compute data commitment")
+	}
+
+	if ok, err := ValidatePoRep(maddr, mi.SectorSize, commD, us.CommR, ticket, params.Proof, seed, params.SectorID); err != nil {
 		return nil, err
 	} else if !ok {
 		return nil, aerrors.New(2, "bad proof!")
@@ -599,8 +610,8 @@ func GetFromSectorSet(ctx context.Context, s types.Storage, ss cid.Cid, sectorID
 	return true, comms[0], comms[1], nil
 }
 
-func ValidatePoRep(maddr address.Address, ssize uint64, commD, commR, ticket, proof, seed []byte, sectorID uint64, pieces []sectorbuilder.PublicPieceInfo) (bool, ActorError) {
-	ok, err := sectorbuilder.VerifySeal(ssize, commR, commD, maddr, ticket, seed, sectorID, proof, pieces)
+func ValidatePoRep(maddr address.Address, ssize uint64, commD, commR, ticket, proof, seed []byte, sectorID uint64) (bool, ActorError) {
+	ok, err := sectorbuilder.VerifySeal(ssize, commR, commD, maddr, ticket, seed, sectorID, proof)
 	if err != nil {
 		return false, aerrors.Absorb(err, 25, "verify seal failed")
 	}
