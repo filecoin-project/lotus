@@ -189,12 +189,13 @@ func (c *client) makeOutChan(ctx context.Context, ftyp reflect.Type, valOut int)
 						},
 					}
 
-					switch chosen, _, _ := reflect.Select(cases); chosen {
+					chosen, _, _ := reflect.Select(cases)
+					bufLk.Lock()
+
+					switch chosen {
 					case 0:
-						bufLk.Lock()
 						buf.Init()
 					case 1:
-						bufLk.Lock()
 						buf.Remove(front)
 					}
 				}
