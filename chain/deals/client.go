@@ -2,6 +2,7 @@ package deals
 
 import (
 	"context"
+	"github.com/filecoin-project/lotus/lib/statestore"
 	"github.com/filecoin-project/lotus/node/impl/full"
 
 	"github.com/ipfs/go-cid"
@@ -71,7 +72,7 @@ func NewClient(sm *stmgr.StateManager, chain *store.ChainStore, h host.Host, w *
 		discovery: discovery,
 		mpool:     mpool,
 
-		deals: ClientStateStore{StateStore{ds: namespace.Wrap(ds, datastore.NewKey("/deals/client"))}},
+		deals: ClientStateStore{statestore.New(namespace.Wrap(ds, datastore.NewKey("/deals/client")))},
 		conns: map[cid.Cid]inet.Stream{},
 
 		incoming: make(chan *ClientDeal, 16),

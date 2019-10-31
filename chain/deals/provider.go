@@ -2,6 +2,7 @@ package deals
 
 import (
 	"context"
+	"github.com/filecoin-project/lotus/lib/statestore"
 	"sync"
 
 	cid "github.com/ipfs/go-cid"
@@ -95,7 +96,7 @@ func NewProvider(ds dtypes.MetadataDS, sminer *storage.Miner, dag dtypes.Staging
 
 		actor: minerAddress,
 
-		deals: MinerStateStore{StateStore{ds: namespace.Wrap(ds, datastore.NewKey("/deals/client"))}},
+		deals: MinerStateStore{statestore.New(namespace.Wrap(ds, datastore.NewKey("/deals/client")))},
 		ds:    ds,
 	}
 
