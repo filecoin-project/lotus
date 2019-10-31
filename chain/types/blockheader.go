@@ -166,24 +166,25 @@ func PowerCmp(eproof ElectionProof, mpow, totpow BigInt) bool {
 
 	/*
 		Need to check that
-		h(vrfout) / max(h) < e * minerPower / totalPower
+		(h(vrfout) + 1) / (max(h) + 1) <= e * minerPower / totalPower
 		max(h) == 2^256-1
 		which in terms of integer math means:
-		h(vrfout) * totalPower < e * minerPower * (2^256-1)
+		(h(vrfout) + 1) * totalPower <= e * minerPower * 2^256
 	*/
 
 	h := sha256.Sum256(eproof)
 
 	lhs := BigFromBytes(h[:]).Int
+	lhs := rhs.Add(rhs, mpow.Int)
 	lhs = lhs.Mul(lhs, totpow.Int)
 
-	// rhs = minerPower * 2^256 - minerPower
-	// rhs = minerPower << 256 - minerPower
+	// rhs = minerPower * 2^256
+	// rhs = minerPower << 256
 	rhs := new(big.Int).Lsh(mpow.Int, 256)
-	rhs = rhs.Sub(rhs, mpow.Int)
 	rhs = rhs.Mul(rhs, blocksPerEpoch.Int)
-
-	return lhs.Cmp(rhs) == -1
+	
+	// return true if lhs is less than or equal to rhs
+	return lhs.Cmp(rhs) < 1
 }
 
 func (t *Ticket) Equals(ot *Ticket) bool {
