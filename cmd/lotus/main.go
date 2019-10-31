@@ -55,11 +55,6 @@ func main() {
 				Hidden:  true,
 				Value:   "~/.lotus", // TODO: Consider XDG_DATA_HOME
 			},
-			&cli.StringFlag{
-				Name:    "gateway",
-				EnvVars: []string{"GATE_WAY"},
-				Value:   build.GateWay,
-			},
 		},
 
 		Commands: append(local, lcli.Commands...),

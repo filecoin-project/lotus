@@ -22,7 +22,7 @@ func TestSealAndVerify(t *testing.T) {
 	t.Skip("this is slow")
 	build.SectorSizes = []uint64{sectorSize}
 
-	if err := build.GetParams(true, build.GateWay); err != nil {
+	if err := build.GetParams(true); err != nil {
 		t.Fatal(err)
 	}
 

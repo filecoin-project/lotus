@@ -21,7 +21,7 @@ import (
 var log = logging.Logger("build")
 
 //const gateway = "http://198.211.99.118/ipfs/"
-const GateWay = "https://ipfs.io/ipfs/"
+const gateway = "https://ipfs.io/ipfs/"
 const paramdir = "/var/tmp/filecoin-proof-parameters"
 
 type paramFile struct {
@@ -37,7 +37,7 @@ type fetch struct {
 	errs []error
 }
 
-func GetParams(storage bool, gateway string) error {
+func GetParams(storage bool) error {
 	if err := os.Mkdir(paramdir, 0755); err != nil && !os.IsExist(err) {
 		return err
 	}
@@ -59,13 +59,13 @@ func GetParams(storage bool, gateway string) error {
 			continue
 		}
 
-		ft.maybeFetchAsync(name, info, gateway)
+		ft.maybeFetchAsync(name, info)
 	}
 
 	return ft.wait()
 }
 
-func (ft *fetch) maybeFetchAsync(name string, info paramFile, gateway string) {
+func (ft *fetch) maybeFetchAsync(name string, info paramFile) {
 	ft.wg.Add(1)
 
 	go func() {
@@ -84,7 +84,7 @@ func (ft *fetch) maybeFetchAsync(name string, info paramFile, gateway string) {
 		ft.fetchLk.Lock()
 		defer ft.fetchLk.Unlock()
 
-		if err := doFetch(path, info, gateway); err != nil {
+		if err := doFetch(path, info); err != nil {
 			ft.errs = append(ft.errs, xerrors.Errorf("fetching file %s: %w", path, err))
 		}
 	}()
@@ -116,10 +116,14 @@ func (ft *fetch) wait() error {
 	return multierr.Combine(ft.errs...)
 }
 
-func doFetch(out string, info paramFile, gateway string) error {
-	log.Infof("Fetching %s from %s", out, gateway)
+func doFetch(out string, info paramFile) error {
+	gw := os.Getenv("IPFS_GATEWAY")
+	if gw == "" {
+		gw = gateway
+	}
+	log.Infof("Fetching %s from %s", out, gw)
 
-	resp, err := http.Get(gateway + info.Cid)
+	resp, err := http.Get(gw + info.Cid)
 	if err != nil {
 		return err
 	}
