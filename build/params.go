@@ -97,9 +97,6 @@ const FilecoinPrecision = 1000000000000000000
 // Blocks
 const HalvingPeriodBlocks = 6 * 365 * 24 * 60 * 2
 
-// Blocks
-const AdjustmentPeriod = 7 * 24 * 60 * 2
-
 // TODO: Move other important consts here
 
 func init() {
