@@ -1,6 +1,7 @@
 package datatransfer
 
 import (
+	"context"
 	"reflect"
 
 	"github.com/ipfs/go-cid"
@@ -14,9 +15,9 @@ import (
 // from bytes, and has a string identifier type
 type Voucher interface {
 	// ToBytes converts the Voucher to raw bytes
-	ToBytes() []byte
+	ToBytes() ([]byte, error)
 	// FromBytes reads a Voucher from raw bytes
-	FromBytes([]byte) (Voucher, error)
+	FromBytes([]byte) error
 	// Identifier is a unique string identifier for this voucher type
 	Identifier() string
 }
@@ -152,11 +153,11 @@ type Manager interface {
 	// open a data transfer that will send data to the recipient peer and
 	// open a data transfer that will send data to the recipient peer and
 	// transfer parts of the piece that match the selector
-	OpenPushDataChannel(to peer.ID, voucher Voucher, baseCid cid.Cid, selector ipld.Node) (ChannelID, error)
+	OpenPushDataChannel(ctx context.Context, to peer.ID, voucher Voucher, baseCid cid.Cid, selector ipld.Node) (ChannelID, error)
 
 	// open a data transfer that will request data from the sending peer and
 	// transfer parts of the piece that match the selector
-	OpenPullDataChannel(to peer.ID, voucher Voucher, baseCid cid.Cid, selector ipld.Node) (ChannelID, error)
+	OpenPullDataChannel(ctx context.Context, to peer.ID, voucher Voucher, baseCid cid.Cid, selector ipld.Node) (ChannelID, error)
 
 	// close an open channel (effectively a cancel)
 	CloseDataTransferChannel(x ChannelID)

@@ -2,15 +2,14 @@ package datatransfer
 
 import (
 	"context"
-	"fmt"
 	"reflect"
 
 	"github.com/ipfs/go-cid"
 	ipldformat "github.com/ipfs/go-ipld-format"
 	"github.com/ipfs/go-merkledag"
 	ipld "github.com/ipld/go-ipld-prime"
-
 	"github.com/libp2p/go-libp2p-core/peer"
+	"golang.org/x/xerrors"
 
 	"github.com/filecoin-project/lotus/node/modules/dtypes"
 )
@@ -51,15 +50,17 @@ func (impl *dagserviceImpl) RegisterVoucherType(voucherType reflect.Type, valida
 // open a data transfer that will send data to the recipient peer and
 // open a data transfer that will send data to the recipient peer and
 // transfer parts of the piece that match the selector
-func (impl *dagserviceImpl) OpenPushDataChannel(to peer.ID, voucher Voucher, baseCid cid.Cid, Selector ipld.Node) (ChannelID, error) {
-	return ChannelID{}, fmt.Errorf("not implemented")
+func (impl *dagserviceImpl) OpenPushDataChannel(ctx context.Context, to peer.ID, voucher Voucher, baseCid cid.Cid, Selector ipld.Node) (ChannelID, error) {
+	return ChannelID{}, xerrors.Errorf("not implemented")
 }
 
 // open a data transfer that will request data from the sending peer and
 // transfer parts of the piece that match the selector
-func (impl *dagserviceImpl) OpenPullDataChannel(to peer.ID, voucher Voucher, baseCid cid.Cid, Selector ipld.Node) (ChannelID, error) {
+func (impl *dagserviceImpl) OpenPullDataChannel(ctx context.Context, to peer.ID, voucher Voucher, baseCid cid.Cid, Selector ipld.Node) (ChannelID, error) {
+	ctx, cancel := context.WithCancel(ctx)
 	go func() {
-		err := merkledag.FetchGraph(context.TODO(), baseCid, impl.dag)
+		defer cancel()
+		err := merkledag.FetchGraph(ctx, baseCid, impl.dag)
 		var event Event
 		if err != nil {
 			event = Error
