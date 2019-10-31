@@ -11,6 +11,8 @@ import (
 )
 
 var zero = types.NewInt(0)
+var wRatio_num = build.WRatioNum
+var wRatio_den = build.WRatioDen
 
 func (cs *ChainStore) Weight(ctx context.Context, ts *types.TipSet) (types.BigInt, error) {
 	if ts == nil {
@@ -37,17 +39,17 @@ func (cs *ChainStore) Weight(ctx context.Context, ts *types.TipSet) (types.BigIn
 	tpow := types.BigFromBytes(ret.Return)
 	if tpow.GreaterThan(zero) {
 		log2P = int64(tpow.BitLen() - 1)
+	} else {
+		// Not really expect to be here ... 
+		return types.EmptyInt, xerrors.Errorf("All power in the net is gone. The net is dead!")
 	}
 
-	out.Add(out, big.NewInt(log2P*256))
+	out.Add(out, big.NewInt(log2P << 8))
 
 	// (wFunction(totalPowerAtTipset(ts)) * len(ts.blocks) * wRatio_num * 2^8) / (e * wRatio_den)
 
-	wRatioNum := int64(1)
-	wRatioDen := 2
-
-	eWeight := big.NewInt((log2P * int64(len(ts.Blocks())) * wRatioNum) << 8)
-	eWeight.Div(eWeight, big.NewInt(int64(build.BlocksPerEpoch*wRatioDen)))
+	eWeight := big.NewInt((log2P * int64(len(ts.Blocks())) * wRatio_num) << 8)
+	eWeight.Div(eWeight, big.NewInt(int64(build.BlocksPerEpoch * wRatio_den)))
 	out.Add(out, eWeight)
 
 	return types.BigInt{Int: out}, nil

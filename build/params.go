@@ -97,6 +97,11 @@ const FilecoinPrecision = 1000000000000000000
 // Blocks
 const HalvingPeriodBlocks = 6 * 365 * 24 * 60 * 2
 
+// constants for Weight calculation
+// The ratio of weight contributed by short-term vs long-term factors in a given round
+const WRatioNum = int64(1)
+const WRatioDen = 2
+
 // TODO: Move other important consts here
 
 func init() {
