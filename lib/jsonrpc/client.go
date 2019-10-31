@@ -174,15 +174,26 @@ func (c *client) makeOutChan(ctx context.Context, ftyp reflect.Type, valOut int)
 
 			go func() {
 				for buf.Len() > 0 {
-					select {
-					case <- chCtx.Done():
+					front := buf.Front()
+					bufLk.Unlock()
+
+					cases :=  []reflect.SelectCase{
+						{
+							Dir: reflect.SelectRecv,
+							Chan: reflect.ValueOf(chCtx.Done()),
+						},
+						{
+							Dir:  reflect.SelectSend,
+							Chan: ch,
+							Send: front.Value.(reflect.Value).Elem(),
+						},
+					}
+
+					switch chosen, _, _ := reflect.Select(cases); chosen {
+					case 0:
+						bufLk.Lock()
 						buf.Init()
-					default:
-						front := buf.Front()
-						bufLk.Unlock()
-
-						ch.Send(front.Value.(reflect.Value).Elem())
-
+					case 1:
 						bufLk.Lock()
 						buf.Remove(front)
 					}
