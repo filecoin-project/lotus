@@ -184,7 +184,7 @@ func PowerCmp(eproof ElectionProof, mpow, totpow BigInt) bool {
 	rhs = rhs.Mul(rhs, blocksPerEpoch.Int)
 	
 	// return true if lhs is less than or equal to rhs
-	return lhs.Cmp(rhs) < 1
+	return lhs.Cmp(rhs) <= 0
 }
 
 func (t *Ticket) Equals(ot *Ticket) bool {
