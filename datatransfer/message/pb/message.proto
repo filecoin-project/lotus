@@ -2,8 +2,6 @@ syntax = "proto3";
 
 package pb;
 
-import "github.com/gogo/protobuf/gogoproto/gogo.proto";
-
 // TODO: fill in from design doc
 message Message {
   message Request {
@@ -15,6 +13,7 @@ message Message {
     bool isPartial = 6;
     bool isCancel = 7;
     string baseCid = 8;
+    string voucherID = 9;
   }
 
   message Response {
@@ -26,5 +25,4 @@ message Message {
   bool isRequest = 2;
   Request request = 3;
   Response response = 4;
-  string voucherID = 5;
 }

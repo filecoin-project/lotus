@@ -2,6 +2,7 @@ package message_test
 
 import (
 	"bytes"
+	"github.com/stretchr/testify/assert"
 	"math/rand"
 	"testing"
 
@@ -22,41 +23,41 @@ func TestRequests(t *testing.T) {
 	voucherIdentifier := "FakeVoucherType"
 	voucher := testutil.RandomBytes(100)
 	request := message.NewRequest(id, isPull, voucherIdentifier, voucher, baseCid, selector)
-	require.Equal(t, request.TransferID(), id)
-	require.False(t, request.IsCancel())
-	require.False(t, request.IsPull())
-	require.True(t, request.IsRequest())
-	require.Equal(t, request.BaseCid().String(), baseCid.String())
-	require.Equal(t, request.VoucherIdentifier(), voucherIdentifier)
-	require.Equal(t, request.Voucher(), voucher)
-	require.Equal(t, request.Selector(), selector)
+	assert.Equal(t, id, request.TransferID())
+	assert.False(t, request.IsCancel())
+	assert.False(t, request.IsPull())
+	assert.True(t, request.IsRequest())
+	assert.Equal(t, baseCid.String(), request.BaseCid())
+	assert.Equal(t,  voucherIdentifier, request.VoucherIdentifier())
+	assert.Equal(t, voucher, request.Voucher())
+	assert.Equal(t, selector, request.Selector())
 
 	pbMessage := request.ToProto()
 	// TODO: Uncomment once implemented
-	//require.True(t, pbMessage.IsRequest)
-	//pbRequest := pbMessage.Request
-	//require.Equal(t, pbRequest.TransferID, int32(id))
-	//require.False(t, pbRequest.Cancel)
-	//require.False(t, pbRequest.Pull)
-	//require.Equal(t, pbRequest.BaseCid, baseCid.Bytes())
-	//require.Equal(t, pbRequest.VoucherIdentifier, voucherIdentifier)
-	//require.Equal(t, pbRequest.Voucher, voucher)
-	//require.Equal(t, pbRequest.Selector, selector)
+	assert.True(t, pbMessage.IsRequest)  // IsRequest?
+	pbRequest := pbMessage.Request
+	assert.Equal(t, uint64(id), pbRequest.TransferID)
+	assert.False(t, pbRequest.IsCancel)
+	assert.False(t, pbRequest.IsPull)
+	assert.Equal(t, baseCid.Bytes(), pbRequest.BaseCid)
+	assert.Equal(t, pbRequest.TransferID, voucherIdentifier)
+	assert.Equal(t, voucher, pbRequest.Voucher)
+	assert.Equal(t, selector, pbRequest.Selector)
 
 	deserialized, err := message.NewMessageFromProto(*pbMessage)
-	require.NoError(t, err)
+	assert.NoError(t, err)
 
 	deserializedRequest, ok := deserialized.(message.DataTransferRequest)
-	require.True(t, ok)
+	assert.True(t, ok)
 
-	require.Equal(t, deserializedRequest.TransferID(), request.TransferID())
-	require.Equal(t, deserializedRequest.IsCancel(), request.IsCancel())
-	require.Equal(t, deserializedRequest.IsPull(), request.IsPull())
-	require.Equal(t, deserializedRequest.IsRequest(), request.IsRequest())
-	require.Equal(t, deserializedRequest.BaseCid().String(), request.BaseCid().String())
-	require.Equal(t, deserializedRequest.VoucherIdentifier(), request.VoucherIdentifier())
-	require.Equal(t, deserializedRequest.Voucher(), request.Voucher())
-	require.Equal(t, deserializedRequest.Selector(), request.Selector())
+	assert.Equal(t, request.TransferID(), deserializedRequest.TransferID())
+	assert.Equal(t, request.IsCancel(), deserializedRequest.IsCancel())
+	assert.Equal(t, request.IsPull(), deserializedRequest.IsPull())
+	assert.Equal(t, request.IsRequest(), deserializedRequest.IsRequest())
+	assert.Equal(t, request.BaseCid(), deserializedRequest.BaseCid())
+	assert.Equal(t, request.VoucherIdentifier(), deserializedRequest.VoucherIdentifier())
+	assert.Equal(t, request.Voucher(), deserializedRequest.Voucher())
+	assert.Equal(t, request.Selector(), deserializedRequest.Selector())
 
 }
 
@@ -66,13 +67,13 @@ func TestResponses(t *testing.T) {
 	accepted := false
 	id := datatransfer.TransferID(rand.Int31())
 	response := message.NewResponse(id, accepted)
-	require.Equal(t, response.TransferID(), id)
-	require.False(t, response.Accepted())
-	require.False(t, response.IsRequest())
+	assert.Equal(t, response.TransferID(), id)
+	assert.False(t, response.Accepted())
+	assert.False(t, response.IsRequest())
 
 	pbMessage := response.ToProto()
 	// TODO: Uncomment once implemented
-	//require.False(t, pbMessage.IsRequest)
+	//assert.False(t, pbMessage.IsRequest)
 	//pbResponse := pbMessage.Response
 	//require.Equal(t, pbResponse.TransferID, int32(id))
 	//require.False(t, pbResponse.Accepted
@@ -139,7 +140,7 @@ func TestToNetFromNetEquivalency(t *testing.T) {
 	require.Equal(t, deserializedRequest.IsCancel(), request.IsCancel())
 	require.Equal(t, deserializedRequest.IsPull(), request.IsPull())
 	require.Equal(t, deserializedRequest.IsRequest(), request.IsRequest())
-	require.Equal(t, deserializedRequest.BaseCid().String(), request.BaseCid().String())
+	require.Equal(t, deserializedRequest.BaseCid(), request.BaseCid())
 	require.Equal(t, deserializedRequest.VoucherIdentifier(), request.VoucherIdentifier())
 	require.Equal(t, deserializedRequest.Voucher(), request.Voucher())
 	require.Equal(t, deserializedRequest.Selector(), request.Selector())

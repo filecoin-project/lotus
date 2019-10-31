@@ -4,10 +4,10 @@ import (
 	"io"
 
 	ggio "github.com/gogo/protobuf/io"
-	cid "github.com/ipfs/go-cid"
+	"github.com/ipfs/go-cid"
 	"github.com/libp2p/go-libp2p-core/network"
 
-	datatransfer "github.com/filecoin-project/lotus/datatransfer"
+	"github.com/filecoin-project/lotus/datatransfer"
 	pb "github.com/filecoin-project/lotus/datatransfer/message/pb"
 )
 
@@ -24,13 +24,13 @@ type DataTransferMessage interface {
 	Loggable
 }
 
-// DataTransferRequest is a response message for the data transfer protocol
+// TransferRequest is a response message for the data transfer protocol
 type DataTransferRequest interface {
 	DataTransferMessage
 	IsPull() bool
 	VoucherIdentifier() string
 	Voucher() []byte
-	BaseCid() cid.Cid
+	BaseCid() string
 	Selector() []byte
 	IsCancel() bool
 }
@@ -55,7 +55,7 @@ type Loggable interface {
 // NewRequest generates a new request for the data transfer protocol
 // TODO: Write this method, and an implementation of the data transfer request interface
 func NewRequest(id datatransfer.TransferID, isPull bool, voucherIdentifier string, voucher []byte, baseCid cid.Cid, selector []byte) DataTransferRequest {
-	return nil
+	return NewTransferRequest(id,isPull,voucherIdentifier,voucher,baseCid,selector)
 }
 
 // CancelRequest request generates a request to cancel an in progress request
@@ -71,7 +71,7 @@ func NewResponse(id datatransfer.TransferID, accepted bool) DataTransferResponse
 }
 
 // NewMessageFromProto generates a new DataTransferMessage
-// which is either an underlying DataTransferRequest or DataTransferResponse
+// which is either an underlying TransferRequest or DataTransferResponse
 // type, from a protobuf
 // TODO: Write this method -- that can de serialize a protobuf message to
 // either a data transfer request or a data transfer response
