@@ -2,6 +2,7 @@ package deals
 
 import (
 	"bytes"
+
 	"github.com/filecoin-project/lotus/lib/cborrpc"
 	"github.com/ipfs/go-cid"
 	"github.com/ipfs/go-datastore"

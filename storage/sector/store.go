@@ -5,7 +5,6 @@ import (
 	"fmt"
 	"io"
 	"sync"
-	"time"
 
 	"github.com/filecoin-project/go-sectorbuilder/sealing_state"
 	"github.com/ipfs/go-datastore"
@@ -65,48 +64,6 @@ func (s *Store) Service() {
 	go s.service()
 }
 
-func (s *Store) poll() { // TODO: REMOVE ME (and just use the fact that sectorbuilder methods are now blocking)
-	log.Debug("polling for sealed sectors...")
-
-	// get a list of sectors to poll
-	s.waitingLk.Lock()
-	toPoll := make([]uint64, 0, len(s.waiting))
-
-	for id := range s.waiting {
-		toPoll = append(toPoll, id)
-	}
-	s.waitingLk.Unlock()
-
-	var done []sectorbuilder.SectorSealingStatus
-
-	// check status of each
-	for _, sec := range toPoll {
-		status, err := s.sb.SealStatus(sec)
-		if err != nil {
-			log.Errorf("getting seal status: %s", err)
-			continue
-		}
-
-		if status.State == sealing_state.Committed {
-			done = append(done, status)
-		}
-	}
-
-	// send updates
-	s.waitingLk.Lock()
-	for _, sector := range done {
-		watch, ok := s.waiting[sector.SectorID]
-		if ok {
-			close(watch)
-			delete(s.waiting, sector.SectorID)
-		}
-		for _, c := range s.incoming {
-			c <- sector // TODO: ctx!
-		}
-	}
-	s.waitingLk.Unlock()
-}
-
 func (s *Store) restartSealing() {
 	sectors, err := s.sb.GetAllStagedSectors()
 	if err != nil {
@@ -132,26 +89,6 @@ func (s *Store) restartSealing() {
 				return
 			}
 		}()
-	}
-}
-
-func (s *Store) service() {
-	poll := time.Tick(5 * time.Second)
-
-	s.restartSealing()
-
-	for {
-		select {
-		case <-poll:
-			s.poll()
-		case <-s.closeCh:
-			s.waitingLk.Lock()
-			for _, c := range s.incoming {
-				close(c)
-			}
-			s.waitingLk.Unlock()
-			return
-		}
 	}
 }
 
@@ -234,7 +171,7 @@ func (s *Store) DealsForCommit(sectorID uint64) ([]uint64, error) {
 	}
 }
 
-func (s *Store) SealSector(ctx context.Context, sectorID uint64) error {
+func (s *Store) SealPreCommit(ctx context.Context, sectorID uint64) error {
 	tkt, err := s.tktFn(ctx)
 	if err != nil {
 		return err
@@ -242,11 +179,15 @@ func (s *Store) SealSector(ctx context.Context, sectorID uint64) error {
 
 	// TODO: That's not async, is it?
 	//  - If not then we probably can drop this wait-for-seal hack below
-	_, err = s.sb.SealSector(sectorID, *tkt)
+	_, err = s.sb.SealPreCommit(sectorID, *tkt)
 	if err != nil {
 		return err
 	}
 	return nil
+}
+
+func (s *Store) SealComputeProof(ctx context.Context, sectorID uint64, rand []byte) ([]byte, error) {
+	panic("TODO")
 }
 
 func (s *Store) CloseIncoming(c <-chan sectorbuilder.SectorSealingStatus) {

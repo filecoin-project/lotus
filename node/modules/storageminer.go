@@ -63,7 +63,7 @@ func SectorBuilderConfig(storagePath string) func(dtypes.MetadataDS, api.FullNod
 		sb := &sectorbuilder.SectorBuilderConfig{
 			Miner:       minerAddr,
 			SectorSize:  ssize,
-			CacheDir:cache,
+			CacheDir:    cache,
 			MetadataDir: metadata,
 			SealedDir:   sealed,
 			StagedDir:   staging,

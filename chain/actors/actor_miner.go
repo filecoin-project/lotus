@@ -98,6 +98,7 @@ type UnprovenSector struct {
 	CommD        []byte
 	CommR        []byte
 	SubmitHeight uint64
+	TicketEpoch  uint64
 }
 
 type StorageMinerConstructorParams struct {
@@ -216,7 +217,6 @@ type SectorPreCommitInfo struct {
 	CommR []byte
 
 	Epoch        uint64
-	Proof        []byte
 	SectorNumber uint64
 }
 
@@ -225,6 +225,14 @@ func (sma StorageMinerActor) PreCommitSector(act *types.Actor, vmctx types.VMCon
 	oldstate, self, err := loadState(vmctx)
 	if err != nil {
 		return nil, err
+	}
+
+	if params.Epoch >= vmctx.BlockHeight() {
+		return nil, aerrors.New(1, "sector commitment must be based off past randomness")
+	}
+
+	if vmctx.BlockHeight()-params.Epoch > 1000 {
+		return nil, aerrors.New(2, "sector commitment must be recent enough")
 	}
 
 	mi, err := loadMinerInfo(vmctx, self)
@@ -258,6 +266,7 @@ func (sma StorageMinerActor) PreCommitSector(act *types.Actor, vmctx types.VMCon
 		CommR:        params.CommR,
 		CommD:        params.CommD,
 		SubmitHeight: vmctx.BlockHeight(),
+		TicketEpoch:  params.Epoch,
 	}
 
 	nstate, err := vmctx.Storage().Put(self)
@@ -305,10 +314,18 @@ func (sma StorageMinerActor) ProveCommitSector(act *types.Actor, vmctx types.VMC
 	maddr := vmctx.Message().To
 
 	var pieces []sectorbuilder.PublicPieceInfo // TODO: GET ME FROM DEALS IN STORAGEMARKET
-	var seed []byte // TODO: GET ME FROM SOMEWHERE
 
-	rand, err := vmctx.GetRandomness(us.SubmitHeight + build.InteractivePoRepDelay)
-	if ok, err := ValidatePoRep(maddr, mi.SectorSize, us.CommD, us.CommR, rand, seed, params.Proof, params.SectorID, pieces); err != nil {
+	ticket, err := vmctx.GetRandomness(us.TicketEpoch)
+	if err != nil {
+		return nil, aerrors.Wrap(err, "failed to get ticket randomness")
+	}
+
+	seed, err := vmctx.GetRandomness(us.SubmitHeight + build.InteractivePoRepDelay)
+	if err != nil {
+		return nil, aerrors.Wrap(err, "failed to get randomness for prove sector commitment")
+	}
+
+	if ok, err := ValidatePoRep(maddr, mi.SectorSize, us.CommD, us.CommR, ticket, params.Proof, seed, params.SectorID, pieces); err != nil {
 		return nil, err
 	} else if !ok {
 		return nil, aerrors.New(2, "bad proof!")

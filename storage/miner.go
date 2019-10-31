@@ -12,6 +12,7 @@ import (
 	"golang.org/x/xerrors"
 
 	"github.com/filecoin-project/lotus/api"
+	"github.com/filecoin-project/lotus/build"
 	"github.com/filecoin-project/lotus/chain/actors"
 	"github.com/filecoin-project/lotus/chain/address"
 	"github.com/filecoin-project/lotus/chain/events"
@@ -159,15 +160,7 @@ func (m *Miner) commitSector(ctx context.Context, sinfo sectorbuilder.SectorSeal
 		return xerrors.Errorf("failed to check out own sector size: %w", err)
 	}
 
-	// TODO: Interactive porep
-
-	ok, err := sectorbuilder.VerifySeal(ssize, sinfo.CommR[:], sinfo.CommD[:], m.maddr, sinfo.Ticket.TicketBytes[:], sinfo.SectorID, sinfo.Proof)
-	if err != nil {
-		log.Error("failed to verify seal we just created: ", err)
-	}
-	if !ok {
-		log.Error("seal we just created failed verification")
-	}
+	_ = ssize
 
 	// TODO: 2 stage commit
 	/*deals, err := m.secst.DealsForCommit(sinfo.SectorID)
@@ -178,7 +171,6 @@ func (m *Miner) commitSector(ctx context.Context, sinfo sectorbuilder.SectorSeal
 	params := &actors.SectorPreCommitInfo{
 		CommD: sinfo.CommD[:],
 		CommR: sinfo.CommR[:],
-		Proof: sinfo.Proof,
 		Epoch: sinfo.Ticket.BlockHeight,
 
 		//DealIDs:      deals,
@@ -205,12 +197,74 @@ func (m *Miner) commitSector(ctx context.Context, sinfo sectorbuilder.SectorSeal
 	}
 
 	go func() {
-		_, err := m.api.StateWaitMsg(ctx, smsg.Cid())
+		// TODO: maybe just mark this down in the datastore and handle it differently? This feels complicated to restart
+		mw, err := m.api.StateWaitMsg(ctx, smsg.Cid())
 		if err != nil {
 			return
 		}
 
-		m.beginPosting(ctx)
+		randHeight := mw.TipSet.Height() + build.InteractivePoRepDelay
+
+		err = m.events.ChainAt(func(ts *types.TipSet, curH uint64) error {
+			go func() {
+				rand, err := m.api.ChainGetRandomness(ctx, ts, nil, ts.Height()-randHeight)
+				if err != nil {
+					log.Error(errors.Errorf("failed to get randomness for computing seal proof: %w", err))
+					return
+				}
+
+				// TODO: should this get scheduled to preserve proper resource consumption?
+				proof, err := m.secst.SealComputeProof(ctx, sinfo.SectorID, rand)
+				if err != nil {
+					log.Error(errors.Errorf("computing seal proof failed: %w", err))
+					return
+				}
+
+				params := &actors.SectorProveCommitInfo{
+					Proof:    proof,
+					SectorID: sinfo.SectorID,
+					//DealIDs:      deals,
+				}
+
+				enc, aerr := actors.SerializeParams(params)
+				if aerr != nil {
+					log.Errorf(errors.Wrap(aerr, "could not serialize commit sector parameters"))
+					return
+				}
+
+				msg := &types.Message{
+					To:       m.maddr,
+					From:     m.worker,
+					Method:   actors.MAMethods.ProveCommitSector,
+					Params:   enc,
+					Value:    types.NewInt(0), // TODO: need to ensure sufficient collateral
+					GasLimit: types.NewInt(1000000 /* i dont know help */),
+					GasPrice: types.NewInt(1),
+				}
+
+				smsg, err := m.api.MpoolPushMessage(ctx, msg)
+				if err != nil {
+					return errors.Wrap(err, "pushing message to mpool")
+				}
+
+				// TODO: now wait for this to get included and handle errors?
+				_, err := m.api.StateWaitMsg(ctx, smsg.Cid())
+				if err != nil {
+					log.Errorf("failed to wait for porep inclusion: %s", err)
+					return
+				}
+
+				m.beginPosting(ctx)
+			}()
+
+			return nil
+		}, func(ts *types.TipSet) error {
+			log.Warn("revert in interactive commit sector step")
+			return nil
+		}, 3, mw.TipSet.Height()+build.InteractivePoRepDelay)
+		if err != nil {
+			return
+		}
 	}()
 
 	return nil

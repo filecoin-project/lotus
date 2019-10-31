@@ -28,6 +28,8 @@ type SealTicket = sectorbuilder.SealTicket
 
 type SealSeed = sectorbuilder.SealSeed
 
+type SealPreCommitOutput = sectorbuilder.SealPreCommitOutput
+
 type SealCommitOutput = sectorbuilder.SealCommitOutput
 
 type PublicPieceInfo = sectorbuilder.PublicPieceInfo
@@ -41,7 +43,7 @@ type SectorBuilder struct {
 type SectorBuilderConfig struct {
 	SectorSize  uint64
 	Miner       address.Address
-	CacheDir string
+	CacheDir    string
 	SealedDir   string
 	StagedDir   string
 	MetadataDir string
@@ -90,7 +92,11 @@ func (sb *SectorBuilder) ReadPieceFromSealedSector(pieceKey string) ([]byte, err
 	return sectorbuilder.ReadPieceFromSealedSector(sb.handle, pieceKey)
 }
 
-func (sb *SectorBuilder) SealSector(sectorID uint64, seed SealSeed) (SealCommitOutput, error) {
+func (sb *SectorBuilder) SealPreCommit(sectorID uint64, ticket SealTicket) (SealPreCommitOutput, error) {
+	return sectorbuilder.SealPreCommit(sb.handle, sectorID, ticket)
+}
+
+func (sb *SectorBuilder) SealCommit(sectorID uint64, seed SealSeed) (SealCommitOutput, error) {
 	return sectorbuilder.SealCommit(sb.handle, sectorID, seed)
 }
 
