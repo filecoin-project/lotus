@@ -2,6 +2,7 @@ package modules
 
 import (
 	"context"
+	"fmt"
 	"path/filepath"
 
 	"github.com/ipfs/go-bitswap"
@@ -154,7 +155,10 @@ func RegisterMiner(lc fx.Lifecycle, ds dtypes.MetadataDS, api api.FullNode) erro
 	lc.Append(fx.Hook{
 		OnStart: func(ctx context.Context) error {
 			log.Infof("Registering miner '%s' with full node", minerAddr)
-			return api.MinerRegister(ctx, minerAddr)
+			if err := api.MinerRegister(ctx, minerAddr); err != nil {
+				return fmt.Errorf("Failed to register miner: %s\nIf you are certain no other storage miner instance is running, try running 'lotus unregister-miner %s' and restarting the storage miner", err, minerAddr)
+			}
+			return nil
 		},
 		OnStop: func(ctx context.Context) error {
 			log.Infof("Unregistering miner '%s' from full node", minerAddr)
