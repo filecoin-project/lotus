@@ -4,8 +4,9 @@ package main
 
 import (
 	"context"
-	"github.com/filecoin-project/lotus/peermgr"
 	"io/ioutil"
+
+	"github.com/filecoin-project/lotus/peermgr"
 
 	"github.com/multiformats/go-multiaddr"
 	"golang.org/x/xerrors"
@@ -57,7 +58,7 @@ var DaemonCmd = &cli.Command{
 			return err
 		}
 
-		if err := build.GetParams(false); err != nil {
+		if err := build.GetParams(false, cctx.String("gateway")); err != nil {
 			return xerrors.Errorf("fetching proof parameters: %w", err)
 		}
 

@@ -10,7 +10,7 @@ var fetchParamCmd = &cli.Command{
 	Name:  "fetch-params",
 	Usage: "Fetch proving parameters",
 	Action: func(cctx *cli.Context) error {
-		if err := build.GetParams(true); err != nil {
+		if err := build.GetParams(true, cctx.String("gateway")); err != nil {
 			return xerrors.Errorf("fetching proof parameters: %w", err)
 		}
 
