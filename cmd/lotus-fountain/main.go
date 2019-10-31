@@ -136,19 +136,6 @@ type handler struct {
 }
 
 func (h *handler) send(w http.ResponseWriter, r *http.Request) {
-	// General limiter to allow throttling all messages that can make it into the mpool
-	if !h.limiter.Allow() {
-		http.Error(w, http.StatusText(http.StatusTooManyRequests), http.StatusTooManyRequests)
-		return
-	}
-
-	// Limit based on IP
-	limiter := h.limiter.GetIPLimiter(r.RemoteAddr)
-	if !limiter.Allow() {
-		http.Error(w, http.StatusText(http.StatusTooManyRequests), http.StatusTooManyRequests)
-		return
-	}
-
 	to, err := address.NewFromString(r.FormValue("address"))
 	if err != nil {
 		w.WriteHeader(400)
@@ -157,8 +144,21 @@ func (h *handler) send(w http.ResponseWriter, r *http.Request) {
 	}
 
 	// Limit based on wallet address
-	limiter = h.limiter.GetWalletLimiter(to.String())
+	limiter := h.limiter.GetWalletLimiter(to.String())
 	if !limiter.Allow() {
+		http.Error(w, http.StatusText(http.StatusTooManyRequests), http.StatusTooManyRequests)
+		return
+	}
+
+	// Limit based on IP
+	limiter = h.limiter.GetIPLimiter(r.RemoteAddr)
+	if !limiter.Allow() {
+		http.Error(w, http.StatusText(http.StatusTooManyRequests), http.StatusTooManyRequests)
+		return
+	}
+
+	// General limiter to allow throttling all messages that can make it into the mpool
+	if !h.limiter.Allow() {
 		http.Error(w, http.StatusText(http.StatusTooManyRequests), http.StatusTooManyRequests)
 		return
 	}
@@ -181,19 +181,6 @@ func (h *handler) send(w http.ResponseWriter, r *http.Request) {
 }
 
 func (h *handler) mkminer(w http.ResponseWriter, r *http.Request) {
-	// General limiter owner allow throttling all messages that can make it into the mpool
-	if !h.colLimiter.Allow() {
-		http.Error(w, http.StatusText(http.StatusTooManyRequests), http.StatusTooManyRequests)
-		return
-	}
-
-	// Limit based on IP
-	limiter := h.colLimiter.GetIPLimiter(r.RemoteAddr)
-	if !limiter.Allow() {
-		http.Error(w, http.StatusText(http.StatusTooManyRequests), http.StatusTooManyRequests)
-		return
-	}
-
 	owner, err := address.NewFromString(r.FormValue("address"))
 	if err != nil {
 		w.WriteHeader(400)
@@ -215,11 +202,25 @@ func (h *handler) mkminer(w http.ResponseWriter, r *http.Request) {
 	log.Infof("mkactor on %s", owner)
 
 	// Limit based on wallet address
-	limiter = h.colLimiter.GetWalletLimiter(owner.String())
+	limiter := h.colLimiter.GetWalletLimiter(owner.String())
 	if !limiter.Allow() {
 		http.Error(w, http.StatusText(http.StatusTooManyRequests), http.StatusTooManyRequests)
 		return
 	}
+
+	// Limit based on IP
+	limiter = h.colLimiter.GetIPLimiter(r.RemoteAddr)
+	if !limiter.Allow() {
+		http.Error(w, http.StatusText(http.StatusTooManyRequests), http.StatusTooManyRequests)
+		return
+	}
+
+	// General limiter owner allow throttling all messages that can make it into the mpool
+	if !h.colLimiter.Allow() {
+		http.Error(w, http.StatusText(http.StatusTooManyRequests), http.StatusTooManyRequests)
+		return
+	}
+
 	collateral, err := h.api.StatePledgeCollateral(r.Context(), nil)
 	if err != nil {
 		w.WriteHeader(400)
