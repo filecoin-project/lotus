@@ -117,9 +117,13 @@ func (ft *fetch) wait() error {
 }
 
 func doFetch(out string, info paramFile) error {
-	log.Infof("Fetching %s", out)
+	gw := os.Getenv("IPFS_GATEWAY")
+	if gw == "" {
+		gw = gateway
+	}
+	log.Infof("Fetching %s from %s", out, gw)
 
-	resp, err := http.Get(gateway + info.Cid)
+	resp, err := http.Get(gw + info.Cid)
 	if err != nil {
 		return err
 	}
