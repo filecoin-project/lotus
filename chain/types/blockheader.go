@@ -180,8 +180,8 @@ func PowerCmp(eproof ElectionProof, mpow, totpow BigInt) bool {
 	// rhs = minerPower * 2^256 - minerPower
 	// rhs = minerPower << 256 - minerPower
 	rhs := new(big.Int).Lsh(mpow.Int, 256)
-	rhs = rhs.Mul(rhs, blocksPerEpoch.Int)
 	rhs = rhs.Sub(rhs, mpow.Int)
+	rhs = rhs.Mul(rhs, blocksPerEpoch.Int)
 
 	return lhs.Cmp(rhs) == -1
 }
