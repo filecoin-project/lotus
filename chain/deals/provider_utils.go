@@ -1,17 +1,28 @@
 package deals
 
 import (
+	"bytes"
 	"context"
+	"reflect"
 	"runtime"
 
 	"github.com/filecoin-project/lotus/api"
+	"github.com/filecoin-project/lotus/datatransfer"
+	"github.com/filecoin-project/lotus/node/modules/dtypes"
+	"github.com/ipld/go-ipld-prime"
+	"go.uber.org/fx"
+
 	"github.com/filecoin-project/lotus/chain/actors"
 	"github.com/filecoin-project/lotus/chain/address"
 	"github.com/filecoin-project/lotus/chain/types"
 	"github.com/filecoin-project/lotus/lib/cborutil"
+	"github.com/filecoin-project/lotus/lib/statestore"
 
 	"github.com/ipfs/go-cid"
+	"github.com/ipfs/go-datastore"
+	"github.com/ipfs/go-datastore/namespace"
 	inet "github.com/libp2p/go-libp2p-core/network"
+	"github.com/libp2p/go-libp2p-core/peer"
 	"golang.org/x/xerrors"
 )
 
@@ -124,4 +135,82 @@ func (p *Provider) getWorker(miner address.Address) (address.Address, error) {
 	}
 
 	return address.NewFromBytes(r.Return)
+}
+
+var _ datatransfer.RequestValidator = &ProviderRequestValidator{}
+
+// ProviderRequestValidator validates data transfer requests for the provider
+// in a storage market
+type ProviderRequestValidator struct {
+	deals *statestore.StateStore
+}
+
+// RegisterProviderValidator is an initialization hook that registers the provider
+// request validator with the data transfer module as the validator for
+// StorageDataTransferVoucher types
+func RegisterProviderValidator(lc fx.Lifecycle, mrv *ProviderRequestValidator, dtm datatransfer.ProviderDataTransfer) {
+	lc.Append(fx.Hook{
+		OnStart: func(ctx context.Context) error {
+			return dtm.RegisterVoucherType(reflect.TypeOf(StorageDataTransferVoucher{}), mrv)
+		},
+	})
+}
+
+// NewProviderRequestValidator returns a new client request validator for the
+// given datastore
+func NewProviderRequestValidator(ds dtypes.MetadataDS) *ProviderRequestValidator {
+	return &ProviderRequestValidator{
+		deals: statestore.New(namespace.Wrap(ds, datastore.NewKey("/deals/client"))),
+	}
+}
+
+// ValidatePush validates a push request received from the peer that will send data
+// Will succeed only if:
+// - voucher has correct type
+// - voucher references an active deal
+// - referenced deal matches the client
+// - referenced deal matches the given base CID
+// - referenced deal is in an acceptable state
+func (m *ProviderRequestValidator) ValidatePush(
+	sender peer.ID,
+	voucher datatransfer.Voucher,
+	baseCid cid.Cid,
+	Selector ipld.Node) error {
+	dealVoucher, ok := voucher.(*StorageDataTransferVoucher)
+	if !ok {
+		return xerrors.Errorf("voucher type %s: %w", voucher.Identifier(), ErrWrongVoucherType)
+	}
+
+	var deal MinerDeal
+	err := m.deals.Mutate(dealVoucher.Proposal, func(d *MinerDeal) error {
+		deal = *d
+		return nil
+	})
+	if err != nil {
+		return xerrors.Errorf("Proposal CID %s: %w", dealVoucher.Proposal.String(), ErrNoDeal)
+	}
+	if deal.Client != sender {
+		return xerrors.Errorf("Deal Peer %s, Data Transfer Peer %s: %w", deal.Client.String(), sender.String(), ErrWrongPeer)
+	}
+
+	if !bytes.Equal(deal.Proposal.PieceRef, baseCid.Bytes()) {
+		return xerrors.Errorf("Deal Payload CID %s, Data Transfer CID %s: %w", string(deal.Proposal.PieceRef), baseCid.String(), ErrWrongPiece)
+	}
+	for _, state := range AcceptableDealStates {
+		if deal.State == state {
+			return nil
+		}
+	}
+	return xerrors.Errorf("Deal State %s: %w", deal.State, ErrInacceptableDealState)
+}
+
+// ValidatePull validates a pull request received from the peer that will receive data.
+// Will always error because providers should not accept pull requests from a client
+// in a storage deal (i.e. send data to client).
+func (m *ProviderRequestValidator) ValidatePull(
+	receiver peer.ID,
+	voucher datatransfer.Voucher,
+	baseCid cid.Cid,
+	Selector ipld.Node) error {
+	return ErrNoPullAccepted
 }

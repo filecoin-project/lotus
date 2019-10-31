@@ -163,8 +163,9 @@ func (p *Provider) accept(ctx context.Context, deal MinerDeal) (func(*MinerDeal)
 	// initiate a pull data transfer. This will complete asynchronously and the
 	// completion of the data transfer will trigger a change in deal state
 	// (see onDataTransferEvent)
-	_, err = p.dataTransfer.OpenPullDataChannel(deal.Client,
-		StorageDataTransferVoucher{Proposal: deal.ProposalCid},
+	_, err = p.dataTransfer.OpenPullDataChannel(ctx,
+		deal.Client,
+		&StorageDataTransferVoucher{Proposal: deal.ProposalCid},
 		deal.Ref,
 		allSelector,
 	)
