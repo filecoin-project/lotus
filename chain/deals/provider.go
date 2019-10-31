@@ -42,7 +42,7 @@ type Provider struct {
 	askLk sync.Mutex
 
 	sminer *storage.Miner
-	full  api.FullNode
+	full   api.FullNode
 
 	// TODO: Use a custom protocol or graphsync in the future
 	// TODO: GC
@@ -80,8 +80,8 @@ func NewProvider(ds dtypes.MetadataDS, sminer *storage.Miner, dag dtypes.Staging
 
 	h := &Provider{
 		sminer: sminer,
-		dag:   dag,
-		full:  fullNode,
+		dag:    dag,
+		full:   fullNode,
 
 		pricePerByteBlock: types.NewInt(3), // TODO: allow setting
 		minPieceSize:      1,

@@ -142,7 +142,10 @@ func VerifySeal(sectorSize uint64, commR, commD []byte, proverID address.Address
 	copy(seeda[:], seed)
 	proverIDa := addressToProverID(proverID)
 
-	return sectorbuilder.VerifySeal(sectorSize, commRa, commDa, proverIDa, ticketa, seeda, sectorID, proof, nil)
+	return sectorbuilder.VerifySeal(sectorSize, commRa, commDa, proverIDa, ticketa, seeda, sectorID, proof, []sectorbuilder.PublicPieceInfo{{
+		Size:  UserBytesForSectorSize(sectorSize), // TODO: Provide the real piece size?
+		CommP: commDa,
+	}})
 }
 
 func NewSortedSectorInfo(sectors []SectorInfo) SortedSectorInfo {
