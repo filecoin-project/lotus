@@ -308,6 +308,11 @@ func (sma StorageMinerActor) ProveCommitSector(act *types.Actor, vmctx types.VMC
 	if !ok {
 		return nil, aerrors.New(1, "no pre-commitment found for sector")
 	}
+
+	if us.SubmitHeight+build.InteractivePoRepDelay > vmctx.BlockHeight() {
+		return nil, aerrors.New(2, "too early for proof submission")
+	}
+
 	delete(self.PreCommittedSectors, uintToStringKey(params.SectorID))
 
 	// TODO: ensure normalization to ID address
