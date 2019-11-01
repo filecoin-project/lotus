@@ -9,12 +9,15 @@ const stateGettingToken = 'getting-token'
 
 let sealCodes = [
   "Unknown",
-  "Pending",
+  "AcceptingPieces",
+  "Committed",
+  "Committing",
+  "CommittingPaused",
   "Failed",
-  "Sealing",
-  "Sealed",
-  "Paused",
-  "ReadyForSealing",
+  "FullyPacked",
+  "PreCommitted",
+  "PreCommitting",
+  "PreCommittingPaused",
 ]
 
 class StorageNode extends React.Component {

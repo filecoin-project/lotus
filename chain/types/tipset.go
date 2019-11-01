@@ -9,6 +9,7 @@ import (
 
 	"github.com/ipfs/go-cid"
 	logging "github.com/ipfs/go-log"
+	cbg "github.com/whyrusleeping/cbor-gen"
 )
 
 var log = logging.Logger("types")
@@ -52,6 +53,10 @@ func (ts *TipSet) UnmarshalJSON(b []byte) error {
 }
 
 func (ts *TipSet) MarshalCBOR(w io.Writer) error {
+	if ts == nil {
+		_, err := w.Write(cbg.CborNull)
+		return err
+	}
 	return (&ExpTipSet{
 		Cids:   ts.cids,
 		Blocks: ts.blks,

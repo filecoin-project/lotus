@@ -80,6 +80,11 @@ func NewMiner(api storageMinerApi, addr address.Address, h host.Host, ds datasto
 		secst: secst,
 
 		sectors: statestore.New(namespace.Wrap(ds, datastore.NewKey("/sectors"))),
+
+		sectorIncoming: make(chan *SectorInfo),
+		sectorUpdated:  make(chan sectorUpdate),
+		stop:           make(chan struct{}),
+		stopped:        make(chan struct{}),
 	}, nil
 }
 

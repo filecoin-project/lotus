@@ -74,8 +74,8 @@ func cborMutator(mutator interface{}) func([]byte) ([]byte, error) {
 
 		out := rmut.Call([]reflect.Value{state})
 
-		if err := out[0].Interface().(error); err != nil {
-			return nil, err
+		if err := out[0].Interface(); err != nil {
+			return nil, err.(error)
 		}
 
 		return cborrpc.Dump(state.Interface())

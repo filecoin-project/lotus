@@ -228,7 +228,7 @@ func (sma StorageMinerActor) PreCommitSector(act *types.Actor, vmctx types.VMCon
 	}
 
 	if params.Epoch >= vmctx.BlockHeight() {
-		return nil, aerrors.New(1, "sector commitment must be based off past randomness")
+		return nil, aerrors.Newf(1, "sector commitment must be based off past randomness (%d >= %d)", params.Epoch, vmctx.BlockHeight())
 	}
 
 	if vmctx.BlockHeight()-params.Epoch > 1000 {

@@ -90,7 +90,7 @@ func (t *SectorInfo) MarshalCBOR(w io.Writer) error {
 		return err
 	}
 
-	// t.t.State (api.SectorState)
+	// t.t.State (uint64)
 	if _, err := w.Write(cbg.CborEncodeMajorType(cbg.MajUnsignedInt, t.State)); err != nil {
 		return err
 	}
@@ -173,7 +173,7 @@ func (t *SectorInfo) UnmarshalCBOR(r io.Reader) error {
 		return fmt.Errorf("cbor input had wrong number of fields")
 	}
 
-	// t.t.State (api.SectorState)
+	// t.t.State (uint64)
 
 	maj, extra, err = cbg.CborReadHeader(br)
 	if err != nil {

@@ -81,15 +81,18 @@ func (m *Miner) onSectorIncoming(sector *SectorInfo) {
 }
 
 func (m *Miner) onSectorUpdated(ctx context.Context, update sectorUpdate) {
-	log.Infof("Sector %s updated state to %s", update.id, api.SectorStateStr(update.newState))
+	log.Infof("Sector %d updated state to %s", update.id, api.SectorStateStr(update.newState))
 	var sector SectorInfo
 	err := m.sectors.Mutate(update.id, func(s *SectorInfo) error {
 		s.State = update.newState
+		if update.mut != nil {
+			update.mut(s)
+		}
 		sector = *s
 		return nil
 	})
 	if update.err != nil {
-		log.Errorf("deal %s failed: %s", update.id, update.err)
+		log.Errorf("sector %d failed: %s", update.id, update.err)
 		m.failSector(update.id, update.err)
 		return
 	}
@@ -111,10 +114,13 @@ func (m *Miner) onSectorUpdated(ctx context.Context, update sectorUpdate) {
 }
 
 func (m *Miner) failSector(id uint64, err error) {
+	log.Error(err)
 	panic(err) // todo: better error handling strategy
 }
 
 func (m *Miner) SealSector(ctx context.Context, sid uint64) error {
+	log.Infof("Begin sealing sector %d", sid)
+
 	si := &SectorInfo{
 		State:    api.UndefinedSectorState,
 		SectorID: sid,
