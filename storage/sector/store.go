@@ -35,56 +35,18 @@ type TicketFn func(context.Context) (*sectorbuilder.SealTicket, error)
 
 // TODO: eventually handle sector storage here instead of in rust-sectorbuilder
 type Store struct {
-	waitingLk sync.Mutex
-
 	sb    *sectorbuilder.SectorBuilder
 	tktFn TicketFn
 
 	dealsLk sync.Mutex
 	deals   datastore.Datastore
-
-	waiting  map[uint64]chan struct{}
-	incoming []chan sectorbuilder.SectorSealingStatus
-	// TODO: outdated chan
-
-	closeCh chan struct{}
 }
 
 func NewStore(sb *sectorbuilder.SectorBuilder, ds dtypes.MetadataDS, tktFn TicketFn) *Store {
 	return &Store{
-		sb:      sb,
-		tktFn:   tktFn,
-		deals:   namespace.Wrap(ds, sectorDealsPrefix),
-		waiting: map[uint64]chan struct{}{},
-		closeCh: make(chan struct{}),
-	}
-}
-
-func (s *Store) restartSealing() {
-	sectors, err := s.sb.GetAllStagedSectors()
-	if err != nil {
-		return
-	}
-
-	for _, sid := range sectors {
-		status, err := s.sb.SealStatus(sid)
-		if err != nil {
-			return
-		}
-
-		if status.State != sealing_state.CommittingPaused { // TODO: Also handle PreCommit!
-			continue
-		}
-
-		log.Infof("Sector %d is in paused state, resuming sealing", sid)
-		go func() {
-			// TODO: when we refactor wait-for-seal below, care about this output too
-			//  (see SealSector below)
-			_, err := s.sb.ResumeSealCommit(sid)
-			if err != nil {
-				return
-			}
-		}()
+		sb:    sb,
+		tktFn: tktFn,
+		deals: namespace.Wrap(ds, sectorDealsPrefix),
 	}
 }
 
@@ -102,13 +64,6 @@ func (s *Store) AddPiece(ref string, size uint64, r io.Reader, dealIDs ...uint64
 	if err != nil {
 		return 0, err
 	}
-
-	s.waitingLk.Lock()
-	_, exists := s.waiting[sectorID]
-	if !exists { // pieces can share sectors
-		s.waiting[sectorID] = make(chan struct{})
-	}
-	s.waitingLk.Unlock()
 
 	s.dealsLk.Lock()
 	defer s.dealsLk.Unlock()
@@ -205,21 +160,6 @@ func (s *Store) SealComputeProof(ctx context.Context, sectorID uint64, height ui
 	return sco.Proof, nil
 }
 
-func (s *Store) WaitSeal(ctx context.Context, sector uint64) (sectorbuilder.SectorSealingStatus, error) {
-	s.waitingLk.Lock()
-	watch, ok := s.waiting[sector]
-	s.waitingLk.Unlock()
-	if ok {
-		select {
-		case <-watch:
-		case <-ctx.Done():
-			return sectorbuilder.SectorSealingStatus{}, ctx.Err()
-		}
-	}
-
-	return s.sb.SealStatus(sector)
-}
-
 func (s *Store) Commited() ([]sectorbuilder.SectorSealingStatus, error) {
 	l, err := s.sb.GetAllStagedSectors()
 	if err != nil {
@@ -264,8 +204,4 @@ func (s *Store) RunPoSt(ctx context.Context, sectors []*api.SectorInfo, r []byte
 	}
 
 	return s.sb.GeneratePoSt(ssi, seed, faults)
-}
-
-func (s *Store) Stop() {
-	close(s.closeCh)
 }

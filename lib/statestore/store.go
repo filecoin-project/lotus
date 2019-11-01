@@ -13,7 +13,7 @@ type StateStore struct {
 }
 
 func New(ds datastore.Datastore) *StateStore {
-	return &StateStore{ds:ds}
+	return &StateStore{ds: ds}
 }
 
 func (st *StateStore) Begin(i cid.Cid, state interface{}) error {
@@ -92,4 +92,3 @@ func (st *StateStore) List() ([]query.Entry, error) {
 
 	return out, nil
 }
-
