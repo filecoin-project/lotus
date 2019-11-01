@@ -3,11 +3,13 @@ package statestore
 import (
 	"bytes"
 	"fmt"
-	"github.com/filecoin-project/lotus/lib/cborrpc"
+	"reflect"
+
 	"github.com/ipfs/go-datastore"
 	"github.com/ipfs/go-datastore/query"
 	"golang.org/x/xerrors"
-	"reflect"
+
+	"github.com/filecoin-project/lotus/lib/cborrpc"
 )
 
 type StateStore struct {
@@ -81,7 +83,7 @@ func cborMutator(mutator interface{}) func([]byte) ([]byte, error) {
 }
 
 // mutator func(*T) error
-func (st *StateStore) Mutate(i fmt.Stringer, mutator interface{}) error {
+func (st *StateStore) Mutate(i interface{}, mutator interface{}) error {
 	return st.mutate(i, cborMutator(mutator))
 }
 

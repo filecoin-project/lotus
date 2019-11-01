@@ -2,15 +2,17 @@ package api
 
 import (
 	"context"
+	"fmt"
 
 	"github.com/filecoin-project/lotus/chain/address"
 	"github.com/filecoin-project/lotus/lib/sectorbuilder"
 )
 
-type SectorState int
+// alias because cbor-gen doesn't like non-alias types
+type SectorState = uint64
 
 const (
-	Undefined SectorState = iota
+	UndefinedSectorState SectorState = iota
 
 	Empty   // TODO: Is this useful
 	Packing // sector not in sealStore, and not on chain
@@ -19,7 +21,32 @@ const (
 	PreCommitting // on chain pre-commit
 	PreCommitted  // waiting for seed
 	Committing
+	Proving
+
+	SectorNoUpdate = UndefinedSectorState
 )
+
+func SectorStateStr(s SectorState) string {
+	switch s {
+	case UndefinedSectorState:
+		return "UndefinedSectorState"
+	case Empty:
+		return "Empty"
+	case Packing:
+		return "Packing"
+	case Unsealed:
+		return "Unsealed"
+	case PreCommitting:
+		return "PreCommitting"
+	case PreCommitted:
+		return "PreCommitted"
+	case Committing:
+		return "Committing"
+	case Proving:
+		return "Proving"
+	}
+	return fmt.Sprintf("<Unknown %d>", s)
+}
 
 // StorageMiner is a low-level interface to the Filecoin network storage miner node
 type StorageMiner interface {

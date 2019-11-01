@@ -47,7 +47,7 @@ func (sm *StorageMinerAPI) StoreGarbageData(ctx context.Context) error {
 			return
 		}
 
-		if err := sm.Miner.SealSector(ctx, sectorId); err != nil {
+		if err := sm.Miner.SealSector(context.TODO(), sectorId); err != nil {
 			log.Error(err)
 			return
 		}

@@ -9,6 +9,7 @@ import (
 	"github.com/filecoin-project/lotus/chain/actors"
 	"github.com/filecoin-project/lotus/chain/deals"
 	"github.com/filecoin-project/lotus/chain/types"
+	"github.com/filecoin-project/lotus/storage"
 )
 
 func main() {
@@ -26,6 +27,7 @@ func main() {
 		types.BlockMsg{},
 		types.SignedStorageAsk{},
 		types.StorageAsk{},
+		types.ExpTipSet{},
 	)
 	if err != nil {
 		fmt.Println(err)
@@ -104,6 +106,15 @@ func main() {
 		deals.ClientDealProposal{},
 		deals.ClientDeal{},
 		deals.MinerDeal{},
+	)
+	if err != nil {
+		fmt.Println(err)
+		os.Exit(1)
+	}
+
+	err = gen.WriteTupleEncodersToFile("./storage/cbor_gen.go", "storage",
+		storage.SealTicket{},
+		storage.SectorInfo{},
 	)
 	if err != nil {
 		fmt.Println(err)

@@ -131,19 +131,13 @@ func (s *Store) DealsForCommit(sectorID uint64) ([]uint64, error) {
 	}
 }
 
-func (s *Store) SealPreCommit(ctx context.Context, sectorID uint64) error {
+func (s *Store) SealPreCommit(ctx context.Context, sectorID uint64) (sectorbuilder.SealPreCommitOutput, error) {
 	tkt, err := s.tktFn(ctx)
 	if err != nil {
-		return err
+		return sectorbuilder.SealPreCommitOutput{}, err
 	}
 
-	// TODO: That's not async, is it?
-	//  - If not then we probably can drop this wait-for-seal hack below
-	_, err = s.sb.SealPreCommit(sectorID, *tkt)
-	if err != nil {
-		return err
-	}
-	return nil
+	return s.sb.SealPreCommit(sectorID, *tkt)
 }
 
 func (s *Store) SealComputeProof(ctx context.Context, sectorID uint64, height uint64, rand []byte) ([]byte, error) {
@@ -160,7 +154,7 @@ func (s *Store) SealComputeProof(ctx context.Context, sectorID uint64, height ui
 	return sco.Proof, nil
 }
 
-func (s *Store) Commited() ([]sectorbuilder.SectorSealingStatus, error) {
+func (s *Store) Committed() ([]sectorbuilder.SectorSealingStatus, error) {
 	l, err := s.sb.GetAllStagedSectors()
 	if err != nil {
 		return nil, err

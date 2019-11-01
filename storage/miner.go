@@ -2,6 +2,8 @@ package storage
 
 import (
 	"context"
+	"github.com/filecoin-project/lotus/lib/statestore"
+	"github.com/ipfs/go-datastore/namespace"
 	"sync"
 
 	"github.com/ipfs/go-cid"
@@ -15,7 +17,6 @@ import (
 	"github.com/filecoin-project/lotus/chain/events"
 	"github.com/filecoin-project/lotus/chain/store"
 	"github.com/filecoin-project/lotus/chain/types"
-	"github.com/filecoin-project/lotus/lib/sectorbuilder"
 	"github.com/filecoin-project/lotus/storage/sector"
 )
 
@@ -26,19 +27,23 @@ const PoStConfidence = 3
 type Miner struct {
 	api    storageMinerApi
 	events *events.Events
+	h      host.Host
+	secst  *sector.Store
 
-	secst *sector.Store
-
-	maddr address.Address
-
+	maddr  address.Address
 	worker address.Address
 
-	h host.Host
-
-	ds datastore.Batching
-
-	schedLk   sync.Mutex
+	// PoSt
+	postLk    sync.Mutex
 	schedPost uint64
+
+	// Sealing
+	sectors *statestore.StateStore
+
+	sectorIncoming chan *SectorInfo
+	sectorUpdated  chan sectorUpdate
+	stop           chan struct{}
+	stopped        chan struct{}
 }
 
 type storageMinerApi interface {
@@ -72,8 +77,9 @@ func NewMiner(api storageMinerApi, addr address.Address, h host.Host, ds datasto
 
 		maddr: addr,
 		h:     h,
-		ds:    ds,
 		secst: secst,
+
+		sectors: statestore.New(namespace.Wrap(ds, datastore.NewKey("/sectors"))),
 	}, nil
 }
 
@@ -85,11 +91,18 @@ func (m *Miner) Run(ctx context.Context) error {
 	m.events = events.NewEvents(ctx, m.api)
 
 	go m.beginPosting(ctx)
+	go m.sectorStateLoop(ctx)
 	return nil
 }
 
-func (m *Miner) commitSector(ctx context.Context, sinfo sectorbuilder.SectorSealingStatus) error {
-	return m.SealSector(ctx, sinfo.SectorID)
+func (m *Miner) Stop(ctx context.Context) error {
+	close(m.stop)
+	select {
+	case <-m.stopped:
+		return nil
+	case <-ctx.Done():
+		return ctx.Err()
+	}
 }
 
 func (m *Miner) runPreflightChecks(ctx context.Context) error {

@@ -30,10 +30,10 @@ func (m *Miner) beginPosting(ctx context.Context) {
 		return
 	}
 
-	m.schedLk.Lock()
+	m.postLk.Lock()
 	if m.schedPost > 0 {
 		log.Warnf("PoSts already running %d", m.schedPost)
-		m.schedLk.Unlock()
+		m.postLk.Unlock()
 		return
 	}
 
@@ -42,7 +42,7 @@ func (m *Miner) beginPosting(ctx context.Context) {
 	ppe, _ = actors.ProvingPeriodEnd(ppe, ts.Height()+1)
 	m.schedPost = ppe
 
-	m.schedLk.Unlock()
+	m.postLk.Unlock()
 
 	log.Infof("Scheduling post at height %d", ppe-build.PoStChallangeTime)
 	err = m.events.ChainAt(m.computePost(m.schedPost), func(ts *types.TipSet) error { // Revert
@@ -71,16 +71,16 @@ func (m *Miner) scheduleNextPost(ppe uint64) {
 		ppe = headPPE
 	}
 
-	m.schedLk.Lock()
+	m.postLk.Lock()
 	if m.schedPost >= ppe {
 		// this probably can't happen
 		log.Errorw("PoSt already scheduled", "schedPost", m.schedPost, "ppe", ppe)
-		m.schedLk.Unlock()
+		m.postLk.Unlock()
 		return
 	}
 
 	m.schedPost = ppe
-	m.schedLk.Unlock()
+	m.postLk.Unlock()
 
 	log.Infow("scheduling PoSt", "post-height", ppe-build.PoStChallangeTime,
 		"height", ts.Height(), "ppe", ppe, "proving-period", provingPeriod)

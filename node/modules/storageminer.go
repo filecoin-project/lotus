@@ -90,6 +90,7 @@ func StorageMiner(mctx helpers.MetricsCtx, lc fx.Lifecycle, api api.FullNode, h 
 		OnStart: func(context.Context) error {
 			return sm.Run(ctx)
 		},
+		OnStop: sm.Stop,
 	})
 
 	return sm, nil
