@@ -42,12 +42,12 @@ func (p *Provider) handle(ctx context.Context, deal MinerDeal, cb providerHandle
 
 // ACCEPTED
 
-func (p *Provider) addMarketFunds(ctx context.Context, worker address.Address, deal MinerDeal) error {
+func (p *Provider) addMarketFunds(ctx context.Context, worker address.Address, value types.BigInt) error {
 	log.Info("Adding market funds for storage collateral")
 	smsg, err := p.full.MpoolPushMessage(ctx, &types.Message{
 		To:       actors.StorageMarketAddress,
 		From:     worker,
-		Value:    deal.Proposal.StorageCollateral,
+		Value:    value,
 		GasPrice: types.NewInt(0),
 		GasLimit: types.NewInt(1000000),
 		Method:   actors.SMAMethods.AddBalance,
@@ -121,7 +121,7 @@ func (p *Provider) accept(ctx context.Context, deal MinerDeal) (func(*MinerDeal)
 
 	// TODO: this needs to be atomic
 	if providerMarketBalance.Available.LessThan(deal.Proposal.StorageCollateral) {
-		if err := p.addMarketFunds(ctx, waddr, deal); err != nil {
+		if err := p.addMarketFunds(ctx, waddr, types.BigSub(deal.Proposal.StorageCollateral, providerMarketBalance.Available)); err != nil {
 			return nil, err
 		}
 	}
