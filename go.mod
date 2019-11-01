@@ -76,7 +76,7 @@ require (
 	github.com/multiformats/go-multihash v0.0.7
 	github.com/opentracing/opentracing-go v1.1.0
 	github.com/pkg/errors v0.8.1
-	github.com/polydawn/refmt v0.0.0-20190809202753-05966cbd336a
+	github.com/polydawn/refmt v0.0.0-20190807091052-3d65705ee9f1
 	github.com/stretchr/testify v1.4.0
 	github.com/whyrusleeping/bencher v0.0.0-20190829221104-bb6607aa8bba
 	github.com/whyrusleeping/cbor-gen v0.0.0-20191107223350-6fdade89d679
