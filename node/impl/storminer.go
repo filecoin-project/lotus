@@ -2,9 +2,6 @@ package impl
 
 import (
 	"context"
-	"fmt"
-	"io"
-	"math/rand"
 
 	"github.com/filecoin-project/lotus/api"
 	"github.com/filecoin-project/lotus/chain/address"
@@ -12,8 +9,6 @@ import (
 	"github.com/filecoin-project/lotus/storage"
 	"github.com/filecoin-project/lotus/storage/sector"
 	"github.com/filecoin-project/lotus/storage/sectorblocks"
-
-	"golang.org/x/xerrors"
 )
 
 type StorageMinerAPI struct {
@@ -25,6 +20,7 @@ type StorageMinerAPI struct {
 	SectorBlocks        *sectorblocks.SectorBlocks
 
 	Miner *storage.Miner
+	Full api.FullNode
 }
 
 func (sm *StorageMinerAPI) ActorAddress(context.Context) (address.Address, error) {
@@ -32,28 +28,7 @@ func (sm *StorageMinerAPI) ActorAddress(context.Context) (address.Address, error
 }
 
 func (sm *StorageMinerAPI) StoreGarbageData(ctx context.Context) error {
-	ssize, err := sm.Miner.SectorSize(ctx)
-	if err != nil {
-		return xerrors.Errorf("failed to get miner sector size: %w", err)
-	}
-	go func() {
-		size := sectorbuilder.UserBytesForSectorSize(ssize)
-
-		// TODO: create a deal
-		name := fmt.Sprintf("fake-file-%d", rand.Intn(100000000))
-		sectorId, err := sm.Sectors.AddPiece(name, size, io.LimitReader(rand.New(rand.NewSource(42)), int64(size)))
-		if err != nil {
-			log.Error(err)
-			return
-		}
-
-		if err := sm.Miner.SealSector(context.TODO(), sectorId); err != nil {
-			log.Error(err)
-			return
-		}
-	}()
-
-	return err
+	return sm.Miner.StoreGarbageData(ctx)
 }
 
 func (sm *StorageMinerAPI) SectorsStatus(ctx context.Context, sid uint64) (sectorbuilder.SectorSealingStatus, error) {

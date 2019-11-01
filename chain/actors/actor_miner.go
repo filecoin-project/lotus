@@ -227,11 +227,11 @@ func (sma StorageMinerActor) PreCommitSector(act *types.Actor, vmctx types.VMCon
 		return nil, err
 	}
 
-	if params.Epoch >= vmctx.BlockHeight() {
-		return nil, aerrors.Newf(1, "sector commitment must be based off past randomness (%d >= %d)", params.Epoch, vmctx.BlockHeight())
+	if params.Epoch >= vmctx.BlockHeight()+build.SealRandomnessLookback {
+		return nil, aerrors.Newf(1, "sector commitment must be based off past randomness (%d >= %d)", params.Epoch, vmctx.BlockHeight()+build.SealRandomnessLookback)
 	}
 
-	if vmctx.BlockHeight()-params.Epoch > 1000 {
+	if vmctx.BlockHeight()-params.Epoch+build.SealRandomnessLookback > 1000 {
 		return nil, aerrors.New(2, "sector commitment must be recent enough")
 	}
 
@@ -318,7 +318,7 @@ func (sma StorageMinerActor) ProveCommitSector(act *types.Actor, vmctx types.VMC
 	// TODO: ensure normalization to ID address
 	maddr := vmctx.Message().To
 
-	ticket, err := vmctx.GetRandomness(us.TicketEpoch)
+	ticket, err := vmctx.GetRandomness(us.TicketEpoch - build.SealRandomnessLookback)
 	if err != nil {
 		return nil, aerrors.Wrap(err, "failed to get ticket randomness")
 	}

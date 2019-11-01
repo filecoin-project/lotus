@@ -37,7 +37,7 @@ const PaymentChannelClosingDelay = 6 * 60 * 2 // six hours
 // Consensus / Network
 
 // Seconds
-const BlockDelay = 10
+const BlockDelay = 2
 
 // Seconds
 const AllowableClockDrift = BlockDelay * 2

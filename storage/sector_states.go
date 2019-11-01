@@ -135,14 +135,18 @@ func (m *Miner) committing(ctx context.Context, sector SectorInfo) (func(*Sector
 		return nil, xerrors.Errorf("computing seal proof failed: %w", err)
 	}
 
+	deals, err := m.secst.DealsForCommit(sector.SectorID)
+	if err != nil {
+		return nil, err
+	}
+
 	params := &actors.SectorProveCommitInfo{
 		Proof:    proof,
 		SectorID: sector.SectorID,
-		//DealIDs:      deals,
+		DealIDs:      deals,
 	}
 
-	_ = params
-	enc, aerr := actors.SerializeParams(nil)
+	enc, aerr := actors.SerializeParams(params)
 	if aerr != nil {
 		return nil, xerrors.Errorf("could not serialize commit sector parameters: %w", aerr)
 	}

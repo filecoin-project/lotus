@@ -184,7 +184,7 @@ func SealTicketGen(api api.FullNode) sector.TicketFn {
 		}
 
 		return &sectorbuilder.SealTicket{
-			BlockHeight: ts.Height() - build.SealRandomnessLookback,
+			BlockHeight: ts.Height(),
 			TicketBytes: tkt,
 		}, nil
 	}

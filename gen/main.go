@@ -91,6 +91,7 @@ func main() {
 		actors.ProcessStorageDealsPaymentParams{},
 		actors.OnChainDeal{},
 		actors.ComputeDataCommitmentParams{},
+		actors.SectorProveCommitInfo{},
 	)
 	if err != nil {
 		fmt.Println(err)
