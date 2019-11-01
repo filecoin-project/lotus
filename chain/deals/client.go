@@ -2,6 +2,7 @@ package deals
 
 import (
 	"context"
+
 	"github.com/filecoin-project/lotus/node/impl/full"
 
 	"github.com/ipfs/go-cid"
@@ -181,7 +182,7 @@ func (c *Client) Start(ctx context.Context, p ClientDealProposal) (cid.Cid, erro
 		smsg, err := c.mpool.MpoolPushMessage(ctx, &types.Message{
 			To:       actors.StorageMarketAddress,
 			From:     p.Client,
-			Value:    types.BigMul(p.PricePerEpoch, types.NewInt(p.Duration)),
+			Value:    types.BigSub(types.BigMul(p.PricePerEpoch, types.NewInt(p.Duration)), clientMarketBalance.Available),
 			GasPrice: types.NewInt(0),
 			GasLimit: types.NewInt(1000000),
 			Method:   actors.SMAMethods.AddBalance,
