@@ -46,7 +46,7 @@ type Client struct {
 	discovery *discovery.Local
 	mpool     full.MpoolAPI
 
-	deals ClientStateStore
+	deals *statestore.StateStore
 	conns map[cid.Cid]inet.Stream
 
 	incoming chan *ClientDeal
@@ -72,7 +72,7 @@ func NewClient(sm *stmgr.StateManager, chain *store.ChainStore, h host.Host, w *
 		discovery: discovery,
 		mpool:     mpool,
 
-		deals: ClientStateStore{statestore.New(namespace.Wrap(ds, datastore.NewKey("/deals/client")))},
+		deals: statestore.New(namespace.Wrap(ds, datastore.NewKey("/deals/client"))),
 		conns: map[cid.Cid]inet.Stream{},
 
 		incoming: make(chan *ClientDeal, 16),
@@ -130,7 +130,7 @@ func (c *Client) onIncoming(deal *ClientDeal) {
 func (c *Client) onUpdated(ctx context.Context, update clientDealUpdate) {
 	log.Infof("Deal %s updated state to %d", update.id, update.newState)
 	var deal ClientDeal
-	err := c.deals.MutateClient(update.id, func(d *ClientDeal) error {
+	err := c.deals.Mutate(update.id, func(d *ClientDeal) error {
 		d.State = update.newState
 		deal = *d
 		return nil
@@ -286,7 +286,11 @@ func (c *Client) QueryAsk(ctx context.Context, p peer.ID, a address.Address) (*t
 }
 
 func (c *Client) List() ([]ClientDeal, error) {
-	return c.deals.ListClient()
+	var out []ClientDeal
+	if err := c.deals.List(&out); err != nil {
+		return nil, err
+	}
+	return out, nil
 }
 
 func (c *Client) Stop() {

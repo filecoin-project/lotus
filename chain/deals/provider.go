@@ -49,7 +49,7 @@ type Provider struct {
 	// TODO: GC
 	dag dtypes.StagingDAG
 
-	deals MinerStateStore
+	deals *statestore.StateStore
 	ds    dtypes.MetadataDS
 
 	conns map[cid.Cid]inet.Stream
@@ -96,7 +96,7 @@ func NewProvider(ds dtypes.MetadataDS, sminer *storage.Miner, dag dtypes.Staging
 
 		actor: minerAddress,
 
-		deals: MinerStateStore{statestore.New(namespace.Wrap(ds, datastore.NewKey("/deals/client")))},
+		deals: statestore.New(namespace.Wrap(ds, datastore.NewKey("/deals/client"))),
 		ds:    ds,
 	}
 
@@ -164,7 +164,7 @@ func (p *Provider) onUpdated(ctx context.Context, update minerDealUpdate) {
 		return
 	}
 	var deal MinerDeal
-	err := p.deals.MutateMiner(update.id, func(d *MinerDeal) error {
+	err := p.deals.Mutate(update.id, func(d *MinerDeal) error {
 		d.State = update.newState
 		if update.mut != nil {
 			update.mut(d)

@@ -1,11 +1,13 @@
 package statestore
 
 import (
+	"bytes"
 	"github.com/filecoin-project/lotus/lib/cborrpc"
 	"github.com/ipfs/go-cid"
 	"github.com/ipfs/go-datastore"
 	"github.com/ipfs/go-datastore/query"
 	"golang.org/x/xerrors"
+	"reflect"
 )
 
 type StateStore struct {
@@ -46,7 +48,33 @@ func (st *StateStore) End(i cid.Cid) error {
 	return st.ds.Delete(k)
 }
 
-func (st *StateStore) Mutate(i cid.Cid, mutator func([]byte) ([]byte, error)) error {
+func cborMutator(mutator interface{}) func([]byte) ([]byte, error) {
+	rmut := reflect.ValueOf(mutator)
+
+	return func(in []byte) ([]byte, error) {
+		state := reflect.New(rmut.Type().In(0).Elem())
+
+		err := cborrpc.ReadCborRPC(bytes.NewReader(in), state.Interface())
+		if err != nil {
+			return nil, err
+		}
+
+		out := rmut.Call([]reflect.Value{state})
+
+		if err := out[0].Interface().(error); err != nil {
+			return nil, err
+		}
+
+		return cborrpc.Dump(state.Interface())
+	}
+}
+
+// mutator func(*T) error
+func (st *StateStore) Mutate(i cid.Cid, mutator interface{}) error {
+	return st.mutate(i, cborMutator(mutator))
+}
+
+func (st *StateStore) mutate(i cid.Cid, mutator func([]byte) ([]byte, error)) error {
 	k := datastore.NewKey(i.String())
 	has, err := st.ds.Has(k)
 	if err != nil {
@@ -69,14 +97,16 @@ func (st *StateStore) Mutate(i cid.Cid, mutator func([]byte) ([]byte, error)) er
 	return st.ds.Put(k, mutated)
 }
 
-func (st *StateStore) List() ([]query.Entry, error) {
-	var out []query.Entry
-
+// out: *[]T
+func (st *StateStore) List(out interface{}) error {
 	res, err := st.ds.Query(query.Query{})
 	if err != nil {
-		return nil, err
+		return err
 	}
 	defer res.Close()
+
+	outT := reflect.TypeOf(out).Elem().Elem()
+	rout := reflect.ValueOf(out)
 
 	for {
 		res, ok := res.NextSync()
@@ -84,11 +114,17 @@ func (st *StateStore) List() ([]query.Entry, error) {
 			break
 		}
 		if res.Error != nil {
-			return nil, res.Error
+			return res.Error
 		}
 
-		out = append(out, res.Entry)
+		elem := reflect.New(outT)
+		err := cborrpc.ReadCborRPC(bytes.NewReader(res.Value), elem.Interface())
+		if err != nil {
+			return err
+		}
+
+		rout.Set(reflect.Append(rout.Elem(), elem.Elem()))
 	}
 
-	return out, nil
+	return nil
 }
