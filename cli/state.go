@@ -20,6 +20,7 @@ var stateCmd = &cli.Command{
 		statePledgeCollateralCmd,
 		stateListActorsCmd,
 		stateListMinersCmd,
+		stateGetActorCmd,
 	},
 }
 
@@ -247,6 +248,42 @@ var stateListActorsCmd = &cli.Command{
 		for _, a := range actors {
 			fmt.Println(a.String())
 		}
+
+		return nil
+	},
+}
+
+var stateGetActorCmd = &cli.Command{
+	Name:  "get-actor",
+	Usage: "Print actor information",
+	Action: func(cctx *cli.Context) error {
+		api, closer, err := GetFullNodeAPI(cctx)
+		if err != nil {
+			return err
+		}
+		defer closer()
+
+		ctx := ReqContext(cctx)
+
+		if !cctx.Args().Present() {
+			return fmt.Errorf("must pass address of actor to get")
+		}
+
+		addr, err := address.NewFromString(cctx.Args().First())
+		if err != nil {
+			return err
+		}
+
+		a, err := api.StateGetActor(ctx, addr, nil)
+		if err != nil {
+			return err
+		}
+
+		fmt.Printf("Address:\t%s\n", addr)
+		fmt.Printf("Balance:\t%s\n", types.FIL(a.Balance))
+		fmt.Printf("Nonce:\t\t%d\n", a.Nonce)
+		fmt.Printf("Code:\t\t%s\n", a.Code)
+		fmt.Printf("Head:\t\t%s\n", a.Head)
 
 		return nil
 	},
