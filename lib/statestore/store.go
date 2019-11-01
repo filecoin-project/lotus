@@ -2,8 +2,8 @@ package statestore
 
 import (
 	"bytes"
+	"fmt"
 	"github.com/filecoin-project/lotus/lib/cborrpc"
-	"github.com/ipfs/go-cid"
 	"github.com/ipfs/go-datastore"
 	"github.com/ipfs/go-datastore/query"
 	"golang.org/x/xerrors"
@@ -18,8 +18,19 @@ func New(ds datastore.Datastore) *StateStore {
 	return &StateStore{ds: ds}
 }
 
-func (st *StateStore) Begin(i cid.Cid, state interface{}) error {
-	k := datastore.NewKey(i.String())
+func toKey(k interface{}) datastore.Key {
+	switch t := k.(type) {
+	case uint64:
+		return datastore.NewKey(fmt.Sprint(t))
+	case fmt.Stringer:
+		return datastore.NewKey(t.String())
+	default:
+		panic("unexpected key type")
+	}
+}
+
+func (st *StateStore) Begin(i interface{}, state interface{}) error {
+	k := toKey(i)
 	has, err := st.ds.Has(k)
 	if err != nil {
 		return err
@@ -36,8 +47,8 @@ func (st *StateStore) Begin(i cid.Cid, state interface{}) error {
 	return st.ds.Put(k, b)
 }
 
-func (st *StateStore) End(i cid.Cid) error {
-	k := datastore.NewKey(i.String())
+func (st *StateStore) End(i interface{}) error {
+	k := toKey(i)
 	has, err := st.ds.Has(k)
 	if err != nil {
 		return err
@@ -70,12 +81,12 @@ func cborMutator(mutator interface{}) func([]byte) ([]byte, error) {
 }
 
 // mutator func(*T) error
-func (st *StateStore) Mutate(i cid.Cid, mutator interface{}) error {
+func (st *StateStore) Mutate(i fmt.Stringer, mutator interface{}) error {
 	return st.mutate(i, cborMutator(mutator))
 }
 
-func (st *StateStore) mutate(i cid.Cid, mutator func([]byte) ([]byte, error)) error {
-	k := datastore.NewKey(i.String())
+func (st *StateStore) mutate(i interface{}, mutator func([]byte) ([]byte, error)) error {
+	k := toKey(i)
 	has, err := st.ds.Has(k)
 	if err != nil {
 		return err
