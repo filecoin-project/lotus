@@ -1,6 +1,7 @@
 package message
 
 import (
+	typegen "github.com/whyrusleeping/cbor-gen"
 	"io"
 
 	ggio "github.com/gogo/protobuf/io"
@@ -20,7 +21,8 @@ import (
 type DataTransferMessage interface {
 	IsRequest() bool
 	TransferID() datatransfer.TransferID
-	Exportable
+	typegen.CBORMarshaler
+	typegen.CBORUnmarshaler
 	Loggable
 }
 
@@ -41,12 +43,6 @@ type DataTransferResponse interface {
 	Accepted() bool
 }
 
-// Exportable is an interface that can serialize to a protobuf
-type Exportable interface {
-	ToProto() *pb.Message
-	ToNet(w io.Writer) error
-}
-
 // Loggable means the message supports the loggable interface
 type Loggable interface {
 	Loggable() map[string]interface{}
@@ -55,7 +51,14 @@ type Loggable interface {
 // NewRequest generates a new request for the data transfer protocol
 // TODO: Write this method, and an implementation of the data transfer request interface
 func NewRequest(id datatransfer.TransferID, isPull bool, voucherIdentifier string, voucher []byte, baseCid cid.Cid, selector []byte) DataTransferRequest {
-	return nil
+	return &TransferRequest{
+		XferID: uint64(id),
+		Pull:   isPull,
+		Vouch:  voucher,
+		Stor:   selector,
+		BCid:   baseCid.String(),
+		VID:    voucherIdentifier,
+	}
 }
 
 // CancelRequest request generates a request to cancel an in progress request
