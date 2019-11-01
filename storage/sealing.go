@@ -2,9 +2,11 @@ package storage
 
 import (
 	"context"
+
 	"github.com/filecoin-project/lotus/api"
 	"github.com/filecoin-project/lotus/chain/types"
 	cid "github.com/ipfs/go-cid"
+	xerrors "golang.org/x/xerrors"
 )
 
 type SealTicket struct {
@@ -67,9 +69,13 @@ func (m *Miner) onSectorIncoming(sector *SectorInfo) {
 	}
 
 	go func() {
-		m.sectorUpdated <- sectorUpdate{
+		select {
+		case m.sectorUpdated <- sectorUpdate{
 			newState: api.Unsealed,
 			id:       sector.SectorID,
+		}:
+		case <-m.stop:
+			log.Warn("failed to send incoming sector update, miner shutting down")
 		}
 	}()
 }
@@ -109,13 +115,14 @@ func (m *Miner) failSector(id uint64, err error) {
 }
 
 func (m *Miner) SealSector(ctx context.Context, sid uint64) error {
-	select {
-	case m.sectorIncoming <- &SectorInfo{
+	si := &SectorInfo{
 		State:    api.UndefinedSectorState,
 		SectorID: sid,
-	}:
+	}
+	select {
+	case m.sectorIncoming <- si:
 		return nil
 	case <-ctx.Done():
-		return ctx.Err()
+		return xerrors.Errorf("failed to submit sector for sealing, queue full: %w", ctx.Err())
 	}
 }
