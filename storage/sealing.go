@@ -2,6 +2,7 @@ package storage
 
 import (
 	"context"
+	"fmt"
 
 	"github.com/filecoin-project/lotus/build"
 	"github.com/filecoin-project/lotus/chain/actors"
@@ -12,7 +13,7 @@ import (
 )
 
 func (m *Miner) SealSector(ctx context.Context, sid uint64) error {
-	log.Info("committing sector")
+	log.Info("committing sector: ", sid)
 
 	ssize, err := m.SectorSize(ctx)
 	if err != nil {
@@ -20,6 +21,11 @@ func (m *Miner) SealSector(ctx context.Context, sid uint64) error {
 	}
 
 	_ = ssize
+
+	log.Info("performing sector replication...")
+	if err := m.secst.SealPreCommit(ctx, sid); err != nil {
+		return xerrors.Errorf("seal pre commit failed: %w", err)
+	}
 
 	sinfo, err := m.secst.SectorStatus(sid)
 	if err != nil {
@@ -49,6 +55,7 @@ func (m *Miner) SealSector(ctx context.Context, sid uint64) error {
 		GasPrice: types.NewInt(1),
 	}
 
+	log.Info("submitting precommit for sector: ", sid)
 	smsg, err := m.api.MpoolPushMessage(ctx, msg)
 	if err != nil {
 		return errors.Wrap(err, "pushing message to mpool")
@@ -67,7 +74,13 @@ func (m *Miner) waitForPreCommitMessage(ctx context.Context, sid uint64, mcid ci
 		return
 	}
 
+	if mw.Receipt.ExitCode != 0 {
+		log.Error("sector precommit failed: ", mw.Receipt.ExitCode)
+		return
+	}
+
 	randHeight := mw.TipSet.Height() + build.InteractivePoRepDelay
+	log.Infof("precommit for sector %d made it on chain, will start post computation at height %d", sid, randHeight)
 
 	err = m.events.ChainAt(func(ts *types.TipSet, curH uint64) error {
 		return m.scheduleComputeProof(ctx, sid, ts, randHeight)
@@ -81,16 +94,17 @@ func (m *Miner) waitForPreCommitMessage(ctx context.Context, sid uint64, mcid ci
 }
 
 func (m *Miner) scheduleComputeProof(ctx context.Context, sid uint64, ts *types.TipSet, rheight uint64) error {
+	log.Info("scheduling post computation...")
 	go func() {
 		rand, err := m.api.ChainGetRandomness(ctx, ts, nil, int(ts.Height()-rheight))
 		if err != nil {
-			log.Error(errors.Errorf("failed to get randomness for computing seal proof: %w", err))
+			log.Error(fmt.Errorf("failed to get randomness for computing seal proof: %w", err))
 			return
 		}
 
-		proof, err := m.secst.SealComputeProof(ctx, sid, rand)
+		proof, err := m.secst.SealComputeProof(ctx, sid, rheight, rand)
 		if err != nil {
-			log.Error(errors.Errorf("computing seal proof failed: %w", err))
+			log.Error(fmt.Errorf("computing seal proof failed: %w", err))
 			return
 		}
 

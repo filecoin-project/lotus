@@ -13,6 +13,7 @@ import (
 	"github.com/filecoin-project/lotus/chain/actors/aerrors"
 	"github.com/filecoin-project/lotus/chain/address"
 	"github.com/filecoin-project/lotus/chain/types"
+	"github.com/filecoin-project/lotus/lib/sectorbuilder"
 )
 
 type StorageMarketActor struct{}
@@ -605,6 +606,7 @@ func (sma StorageMarketActor) ComputeDataCommitment(act *types.Actor, vmctx type
 		return nil, aerrors.HandleExternalError(err, "loading deals amt")
 	}
 
+	var pieces []sectorbuilder.PublicPieceInfo
 	for _, deal := range params.DealIDs {
 		var dealInfo OnChainDeal
 		if err := deals.Get(deal, &dealInfo); err != nil {
@@ -614,13 +616,21 @@ func (sma StorageMarketActor) ComputeDataCommitment(act *types.Actor, vmctx type
 			return nil, aerrors.HandleExternalError(err, "getting deal info failed")
 		}
 
-		_ = dealInfo
+		var commP [32]byte
+		copy(commP[:], dealInfo.Deal.Proposal.PieceRef)
+
+		pieces = append(pieces, sectorbuilder.PublicPieceInfo{
+			Size:  dealInfo.Deal.Proposal.PieceSize,
+			CommP: commP,
+		})
 	}
 
-	// TODO: rust-fil-proofs-magic
-	var commDoutput [32]byte
+	commd, err := sectorbuilder.GenerateDataCommitment(params.SectorSize, pieces)
+	if err != nil {
+		return nil, aerrors.Absorb(err, 4, "failed to generate data commitment from pieces")
+	}
 
-	return commDoutput[:], nil
+	return commd[:], nil
 }
 
 /*

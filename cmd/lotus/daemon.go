@@ -4,8 +4,9 @@ package main
 
 import (
 	"context"
-	"github.com/filecoin-project/lotus/peermgr"
 	"io/ioutil"
+
+	"github.com/filecoin-project/lotus/peermgr"
 
 	"github.com/multiformats/go-multiaddr"
 	"golang.org/x/xerrors"

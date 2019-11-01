@@ -142,10 +142,7 @@ func VerifySeal(sectorSize uint64, commR, commD []byte, proverID address.Address
 	copy(seeda[:], seed)
 	proverIDa := addressToProverID(proverID)
 
-	return sectorbuilder.VerifySeal(sectorSize, commRa, commDa, proverIDa, ticketa, seeda, sectorID, proof, []sectorbuilder.PublicPieceInfo{{
-		Size:  UserBytesForSectorSize(sectorSize), // TODO: Provide the real piece size?
-		CommP: commDa,
-	}})
+	return sectorbuilder.VerifySeal(sectorSize, commRa, commDa, proverIDa, ticketa, seeda, sectorID, proof)
 }
 
 func NewSortedSectorInfo(sectors []SectorInfo) SortedSectorInfo {
@@ -168,6 +165,10 @@ func GeneratePieceCommitment(piece io.Reader, pieceSize uint64) (commP [CommLen]
 	}
 
 	return commP, werr()
+}
+
+func GenerateDataCommitment(ssize uint64, pieces []PublicPieceInfo) ([CommLen]byte, error) {
+	return sectorbuilder.GenerateDataCommitment(ssize, pieces)
 }
 
 func toReadableFile(r io.Reader, n int64) (*os.File, func() error, error) {

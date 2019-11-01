@@ -191,8 +191,18 @@ func (s *Store) SealPreCommit(ctx context.Context, sectorID uint64) error {
 	return nil
 }
 
-func (s *Store) SealComputeProof(ctx context.Context, sectorID uint64, rand []byte) ([]byte, error) {
-	panic("TODO")
+func (s *Store) SealComputeProof(ctx context.Context, sectorID uint64, height uint64, rand []byte) ([]byte, error) {
+	var tick [32]byte
+	copy(tick[:], rand)
+
+	sco, err := s.sb.SealCommit(sectorID, sectorbuilder.SealSeed{
+		BlockHeight: height,
+		TicketBytes: tick,
+	})
+	if err != nil {
+		return nil, err
+	}
+	return sco.Proof, nil
 }
 
 func (s *Store) WaitSeal(ctx context.Context, sector uint64) (sectorbuilder.SectorSealingStatus, error) {

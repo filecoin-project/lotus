@@ -2,9 +2,10 @@ package peermgr
 
 import (
 	"context"
-	"github.com/filecoin-project/lotus/node/modules/dtypes"
 	"sync"
 	"time"
+
+	"github.com/filecoin-project/lotus/node/modules/dtypes"
 
 	host "github.com/libp2p/go-libp2p-core/host"
 	net "github.com/libp2p/go-libp2p-core/network"
@@ -43,6 +44,7 @@ type PeerMgr struct {
 }
 
 func NewPeerMgr(h host.Host, dht *dht.IpfsDHT, bootstrap dtypes.BootstrapPeers) *PeerMgr {
+	bootstrap = nil
 	pm := &PeerMgr{
 		h:             h,
 		dht:           dht,

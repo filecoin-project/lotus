@@ -15,7 +15,6 @@ import (
 	"github.com/filecoin-project/lotus/node/modules/helpers"
 	"github.com/filecoin-project/lotus/peermgr"
 	"github.com/filecoin-project/lotus/retrieval/discovery"
-	"github.com/filecoin-project/lotus/storage/sector"
 )
 
 func RunHello(mctx helpers.MetricsCtx, lc fx.Lifecycle, h host.Host, svc *hello.Service) {
@@ -74,19 +73,6 @@ func RunDealClient(mctx helpers.MetricsCtx, lc fx.Lifecycle, c *deals.Client) {
 		},
 		OnStop: func(context.Context) error {
 			c.Stop()
-			return nil
-		},
-	})
-}
-
-func RunSectorService(lc fx.Lifecycle, secst *sector.Store) {
-	lc.Append(fx.Hook{
-		OnStart: func(context.Context) error {
-			secst.Service()
-			return nil
-		},
-		OnStop: func(context.Context) error {
-			secst.Stop()
 			return nil
 		},
 	})

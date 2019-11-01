@@ -6,7 +6,6 @@ import (
 
 	"gopkg.in/urfave/cli.v2"
 
-	sectorstate "github.com/filecoin-project/go-sectorbuilder/sealing_state"
 	"github.com/filecoin-project/lotus/api"
 	"github.com/filecoin-project/lotus/chain/types"
 	lcli "github.com/filecoin-project/lotus/cli"
@@ -50,10 +49,13 @@ var infoCmd = &cli.Command{
 			return err
 		}
 
-		fmt.Println("Sealed Sectors:\t", sinfo.SealedCount)
-		fmt.Println("Sealing Sectors:\t", sinfo.SealingCount)
-		fmt.Println("Pending Sectors:\t", sinfo.PendingCount)
-		fmt.Println("Failed Sectors:\t", sinfo.FailedCount)
+		/*
+			fmt.Println("Sealed Sectors:\t", sinfo.SealedCount)
+			fmt.Println("Sealing Sectors:\t", sinfo.SealingCount)
+			fmt.Println("Pending Sectors:\t", sinfo.PendingCount)
+			fmt.Println("Failed Sectors:\t", sinfo.FailedCount)
+		*/
+		fmt.Println(sinfo)
 
 		// TODO: grab actr state / info
 		//  * Sector size
@@ -63,22 +65,14 @@ var infoCmd = &cli.Command{
 	},
 }
 
-type SectorsInfo struct {
-	TotalCount   int
-	SealingCount int
-	FailedCount  int
-	SealedCount  int
-	PendingCount int
-}
-
-func sectorsInfo(ctx context.Context, napi api.StorageMiner) (*SectorsInfo, error) {
+func sectorsInfo(ctx context.Context, napi api.StorageMiner) (map[string]int, error) {
 	sectors, err := napi.SectorsList(ctx)
 	if err != nil {
 		return nil, err
 	}
 
-	out := SectorsInfo{
-		TotalCount: len(sectors),
+	out := map[string]int{
+		"Total": len(sectors),
 	}
 	for _, s := range sectors {
 		st, err := napi.SectorsStatus(ctx, s)
@@ -86,18 +80,8 @@ func sectorsInfo(ctx context.Context, napi api.StorageMiner) (*SectorsInfo, erro
 			return nil, err
 		}
 
-		switch st.State {
-		case sectorstate.Sealed:
-			out.SealedCount++
-		case sectorstate.Pending:
-			out.PendingCount++
-		case sectorstate.Sealing:
-			out.SealingCount++
-		case sectorstate.Failed:
-			out.FailedCount++
-		case sectorstate.Unknown:
-		}
+		out[st.State.String()]++
 	}
 
-	return &out, nil
+	return out, nil
 }

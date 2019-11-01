@@ -242,7 +242,6 @@ func Online() Option {
 			Override(new(*deals.Provider), deals.NewProvider),
 			Override(HandleRetrievalKey, modules.HandleRetrieval),
 			Override(HandleDealsKey, modules.HandleDeals),
-			Override(RunSectorServiceKey, modules.RunSectorService),
 			Override(RegisterMinerKey, modules.RegisterMiner),
 		),
 	)
