@@ -8,7 +8,7 @@ import (
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 
-	datatransfer "github.com/filecoin-project/lotus/datatransfer"
+	"github.com/filecoin-project/lotus/datatransfer"
 	. "github.com/filecoin-project/lotus/datatransfer/message"
 	"github.com/filecoin-project/lotus/datatransfer/testutil"
 )
@@ -20,21 +20,21 @@ func TestNewRequest(t *testing.T) {
 	selector := testutil.RandomBytes(100)
 	isPull := false
 	id := datatransfer.TransferID(rand.Int31())
-	voucherIdentifier := "FakeVoucherType"
+	VoucherTypeentifier := "FakeVoucherType"
 	voucher := testutil.RandomBytes(100)
 
-	request := NewRequest(id, isPull, voucherIdentifier, voucher, baseCid, selector)
+	request := NewRequest(id, isPull, VoucherTypeentifier, voucher, baseCid, selector)
 	assert.Equal(t, id, request.TransferID())
 	assert.False(t, request.IsCancel())
 	assert.False(t, request.IsPull())
 	assert.True(t, request.IsRequest())
 	assert.Equal(t, baseCid.String(), request.BaseCid().String())
-	assert.Equal(t, voucherIdentifier, request.VoucherIdentifier())
+	assert.Equal(t, VoucherTypeentifier, request.VoucherType())
 	assert.Equal(t, voucher, request.Voucher())
 	assert.Equal(t, selector, request.Selector())
 }
 func TestTransferRequest_MarshalCBOR(t *testing.T) {
-	req := NewTestTransferRequest().(*TransferRequest)
+	req := NewTestTransferRequest()
 
 	wbuf := new(bytes.Buffer)
 
@@ -50,7 +50,7 @@ func TestTransferRequest_UnmarshalCBOR(t *testing.T) {
 	//assert.Equal(t, request.IsPull(), deserializedRequest.IsPull())
 	//assert.Equal(t, request.IsRequest(), deserializedRequest.IsRequest())
 	//assert.Equal(t, request.BaseCid(), deserializedRequest.BaseCid())
-	//assert.Equal(t, request.VoucherIdentifier(), deserializedRequest.VoucherIdentifier())
+	//assert.Equal(t, request.VoucherType(), deserializedRequest.VoucherType())
 	//assert.Equal(t, request.Voucher(), deserializedRequest.Voucher())
 	//assert.Equal(t, request.Selector(), deserializedRequest.Selector())
 }
@@ -86,22 +86,20 @@ func TestResponses(t *testing.T) {
 // https://github.com/filecoin-project/go-data-transfer/issues/37
 func TestRequestCancel(t *testing.T) {
 	id := datatransfer.TransferID(rand.Int31())
-	request := CancelRequest(id)
-	require.Equal(t, request.TransferID(), id)
-	require.True(t, request.IsRequest())
-	require.True(t, request.IsCancel())
+	req := CancelRequest(id)
+	require.Equal(t, req.TransferID(), id)
+	require.True(t, req.IsRequest())
+	require.True(t, req.IsCancel())
 
-	//cborMessage := request.MarshalCBOR()
-	// TODO: Uncomment once implemented
-	//require.True(t, cborMessage.IsRequest)
-	//pbRequest := cborMessage.Request
-	//require.Equal(t, pbRequest.TransferID, int32(id))
-	//require.True(t, pbRequest.Cancel)
 
-	//deserialized, err := message.NewMessageFromCBOR(*cborMessage)
+	wbuf := new(bytes.Buffer)
+	require.NoError(t, req.MarshalCBOR(wbuf))
+
+
+	//deserialized, err := NewMessageFromCBOR(*cborMessage)
 	//require.NoError(t, err)
 	//
-	//deserializedRequest, ok := deserialized.(message.DataTransferRequest)
+	//deserializedRequest, ok := deserialized.(DataTransferRequest)
 	//require.True(t, ok)
 	//
 	//require.Equal(t, deserializedRequest.TransferID(), request.TransferID())
@@ -117,9 +115,9 @@ func TestToNetFromNetEquivalency(t *testing.T) {
 	isPull := false
 	id := datatransfer.TransferID(rand.Int31())
 	//accepted := false  // unused?
-	voucherIdentifier := "FakeVoucherType"
+	VoucherTypeentifier := "FakeVoucherType"
 	voucher := testutil.RandomBytes(100)
-	request := NewRequest(id, isPull, voucherIdentifier, voucher, baseCid, selector)
+	request := NewRequest(id, isPull, VoucherTypeentifier, voucher, baseCid, selector)
 	buf := new(bytes.Buffer)
 	err := request.MarshalCBOR(buf)
 	require.NoError(t, err)
@@ -134,7 +132,7 @@ func TestToNetFromNetEquivalency(t *testing.T) {
 	//require.Equal(t, deserializedRequest.IsPull(), request.IsPull())
 	//require.Equal(t, deserializedRequest.IsRequest(), request.IsRequest())
 	//require.Equal(t, deserializedRequest.BaseCid(), request.BaseCid())
-	//require.Equal(t, deserializedRequest.VoucherIdentifier(), request.VoucherIdentifier())
+	//require.Equal(t, deserializedRequest.VoucherType(), request.VoucherType())
 	//require.Equal(t, deserializedRequest.Voucher(), request.Voucher())
 	//require.Equal(t, deserializedRequest.Selector(), request.Selector())
 	//
@@ -170,7 +168,7 @@ func NewTestTransferRequest() DataTransferRequest{
 	selector := testutil.RandomBytes(100)
 	isPull := false
 	id := datatransfer.TransferID(rand.Int31())
-	voucherIdentifier := "FakeVoucherType"
+	VoucherTypeentifier := "FakeVoucherType"
 	voucher := testutil.RandomBytes(100)
-	return NewRequest(id, isPull, voucherIdentifier, voucher, baseCid, selector)
+	return NewRequest(id, isPull, VoucherTypeentifier, voucher, baseCid, selector)
 }

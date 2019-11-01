@@ -155,7 +155,7 @@ func TestDataTransferOneWay(t *testing.T) {
 		err = receivedVoucher.FromBytes(receivedRequest.Voucher())
 		require.NoError(t, err)
 		require.Equal(t, *receivedVoucher, voucher)
-		require.Equal(t, receivedRequest.VoucherIdentifier(), voucher.Identifier())
+		require.Equal(t, receivedRequest.VoucherID(), voucher.Identifier())
 	})
 
 	// TODO: get passing to complete https://github.com/filecoin-project/go-data-transfer/issues/16
@@ -198,7 +198,7 @@ func TestDataTransferOneWay(t *testing.T) {
 		err = receivedVoucher.FromBytes(receivedRequest.Voucher())
 		require.NoError(t, err)
 		require.Equal(t, *receivedVoucher, voucher)
-		require.Equal(t, receivedRequest.VoucherIdentifier(), voucher.Identifier())
+		require.Equal(t, receivedRequest.VoucherID(), voucher.Identifier())
 	})
 }
 
