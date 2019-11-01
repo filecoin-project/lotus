@@ -9,7 +9,6 @@ import (
 	"github.com/filecoin-project/lotus/chain/actors"
 	"github.com/filecoin-project/lotus/chain/deals"
 	"github.com/filecoin-project/lotus/chain/types"
-	"github.com/filecoin-project/lotus/datatransfer/message"
 )
 
 func main() {
@@ -103,14 +102,6 @@ func main() {
 		deals.ClientDealProposal{},
 		deals.ClientDeal{},
 		deals.MinerDeal{},
-	)
-	if err != nil {
-		fmt.Println(err)
-		os.Exit(1)
-	}
-
-	err = gen.WriteTupleEncodersToFile("./datatransfer/message/cbor_gen.go", "message",
-		message.TransferRequest{},
 	)
 	if err != nil {
 		fmt.Println(err)

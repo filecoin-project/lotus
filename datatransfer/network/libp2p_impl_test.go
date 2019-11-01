@@ -108,7 +108,7 @@ func TestMessageSendAndReceive(t *testing.T) {
 		require.Equal(t, receivedRequest.IsPull(), request.IsPull())
 		require.Equal(t, receivedRequest.IsRequest(), request.IsRequest())
 		require.Equal(t, receivedRequest.BaseCid().String(), request.BaseCid().String())
-		require.Equal(t, receivedRequest.VoucherIdentifier(), request.VoucherIdentifier())
+		require.Equal(t, receivedRequest.VoucherType(), request.VoucherType())
 		require.Equal(t, receivedRequest.Voucher(), request.Voucher())
 		require.Equal(t, receivedRequest.Selector(), request.Selector())
 	})

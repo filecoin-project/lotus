@@ -5,7 +5,9 @@ import (
 	"github.com/ipfs/go-cid"
 )
 
-type TransferRequest struct {
+// transferRequest is a struct that fulfills the DataTransferRequest interface.
+// its members are exported to be used by cbor-gen
+type transferRequest struct {
 	XferID uint64
 	Pull   bool
 	Vouch  []byte
@@ -14,58 +16,65 @@ type TransferRequest struct {
 	Part   bool
 	Canc   bool
 	BCid   string
-	VID    string
+	VTyp   string
 }
 
 // ========= DataTransferMessage interface
-
-func (trq *TransferRequest) IsRequest() bool {
+// IsRequest always returns true because this message is a data request
+func (trq *transferRequest) IsRequest() bool {
 	return true
 }
-func (trq *TransferRequest) IsResponse() bool {
+// IsResponse always returns false because this message is not a data response
+func (trq *transferRequest) IsResponse() bool {
 	return !trq.IsRequest()
 }
 
-// -------- Loggable interface
-
-func (trq *TransferRequest) Loggable() map[string]interface{} {
-	return make(map[string]interface{}, 0)
-}
-
 // ========= DataTransferRequest interface
-
-func (trq *TransferRequest) IsPull() bool {
+// IsPull returns true if this is a data pull request
+func (trq *transferRequest) IsPull() bool {
 	return trq.Pull
 }
-func (trq *TransferRequest) VoucherIdentifier() string {
-	return trq.VID
+// VoucherType returns the Voucher ID
+func (trq *transferRequest) VoucherType() string {
+	return trq.VTyp
 }
-func (trq *TransferRequest) Voucher() []byte {
+
+// Voucher returns the Voucher bytes
+func (trq *transferRequest) Voucher() []byte {
 	return trq.Vouch
 }
-func (trq *TransferRequest) BaseCid() cid.Cid {
+
+// BaseCid returns the Base CID
+func (trq *transferRequest) BaseCid() cid.Cid {
 	res, err := cid.Decode(trq.BCid)
 	if err != nil {
 		return cid.Undef
 	}
 	return res
 }
-func (trq *TransferRequest) Selector() []byte {
+
+// Selector returns the message Selector bytes
+func (trq *transferRequest) Selector() []byte {
 	return trq.Stor
 }
-func (trq *TransferRequest) IsCancel() bool {
+
+// IsCancel returns true if this is a cancel request
+func (trq *transferRequest) IsCancel() bool {
 	return trq.Canc
 }
 
-func (trq *TransferRequest) IsPartial() bool {
+// IsPartial returns true if this is a partial request
+func (trq *transferRequest) IsPartial() bool {
 	return trq.Part
 }
 
-func (trq *TransferRequest) TransferID() datatransfer.TransferID {
+// TransferID returns the message transfer ID
+func (trq *transferRequest) TransferID() datatransfer.TransferID {
 	return datatransfer.TransferID(trq.XferID)
 }
 
-func (trq *TransferRequest) Cancel() error {
+// Cancel cancels
+func (trq *transferRequest) Cancel() error {
 	// do other stuff ?
 	trq.Canc = true
 	return nil
