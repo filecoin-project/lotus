@@ -1,32 +1,20 @@
 package message
 
 import (
-	"github.com/filecoin-project/lotus/datatransfer"
 	"github.com/ipfs/go-cid"
 )
 
 // transferRequest is a struct that fulfills the DataTransferRequest interface.
 // its members are exported to be used by cbor-gen
 type transferRequest struct {
-	XferID uint64
-	Pull   bool
-	Vouch  []byte
-	PID    []byte
-	Stor   []byte
-	Part   bool
-	Canc   bool
-	BCid   string
-	VTyp   string
-}
-
-// ========= DataTransferMessage interface
-// IsRequest always returns true because this message is a data request
-func (trq *transferRequest) IsRequest() bool {
-	return true
-}
-// IsResponse always returns false because this message is not a data response
-func (trq *transferRequest) IsResponse() bool {
-	return !trq.IsRequest()
+	VTyp  string
+	Pull  bool
+	Vouch []byte
+	PID   []byte
+	Stor  []byte
+	Part  bool
+	Canc  bool
+	BCid  string
 }
 
 // ========= DataTransferRequest interface
@@ -34,6 +22,7 @@ func (trq *transferRequest) IsResponse() bool {
 func (trq *transferRequest) IsPull() bool {
 	return trq.Pull
 }
+
 // VoucherType returns the Voucher ID
 func (trq *transferRequest) VoucherType() string {
 	return trq.VTyp
@@ -66,11 +55,6 @@ func (trq *transferRequest) IsCancel() bool {
 // IsPartial returns true if this is a partial request
 func (trq *transferRequest) IsPartial() bool {
 	return trq.Part
-}
-
-// TransferID returns the message transfer ID
-func (trq *transferRequest) TransferID() datatransfer.TransferID {
-	return datatransfer.TransferID(trq.XferID)
 }
 
 // Cancel cancels
