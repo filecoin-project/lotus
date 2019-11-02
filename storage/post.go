@@ -112,8 +112,18 @@ func (m *Miner) computePost(ppe uint64) func(ts *types.TipSet, curH uint64) erro
 		if err != nil {
 			return xerrors.Errorf("failed to get proving set for miner: %w", err)
 		}
+		
+		if ts.Height() > ppe || ppe < build.PoStChallangeTime + build.PoStRandomnessLookback {
+			return xerrors.Errorf("BUG: computePost in the wrong window (ts=%d; ppe=%d)", ts.Height(), ppe)
+		}
 
-		r, err := m.api.ChainGetRandomness(ctx, ts, nil, int(int64(ts.Height())-int64(ppe)+int64(build.PoStChallangeTime)+int64(build.PoStRandomnessLookback))) // TODO: review: check math
+		randHeight := ppe - build.PoStChallangeTime - build.PoStRandomnessLookback
+		if randHeight > ts.Height() {
+			return xerrors.Errorf("BUG: computePost in the wrong window (ts=%d; ppe=%d)", ts.Height(), ppe)
+		}
+
+		lb := ts.Height() - randHeight
+		r, err := m.api.ChainGetRandomness(ctx, ts, nil, lb)
 		if err != nil {
 			return xerrors.Errorf("failed to get chain randomness for post (ts=%d; ppe=%d): %w", ts.Height(), ppe, err)
 		}

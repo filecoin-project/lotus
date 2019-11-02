@@ -40,7 +40,7 @@ type FullNodeStruct struct {
 	Internal struct {
 		ChainNotify            func(context.Context) (<-chan []*store.HeadChange, error)                  `perm:"read"`
 		ChainHead              func(context.Context) (*types.TipSet, error)                               `perm:"read"`
-		ChainGetRandomness     func(context.Context, *types.TipSet, []*types.Ticket, int) ([]byte, error) `perm:"read"`
+		ChainGetRandomness     func(context.Context, *types.TipSet, []*types.Ticket, uint64) ([]byte, error) `perm:"read"`
 		ChainGetBlock          func(context.Context, cid.Cid) (*types.BlockHeader, error)                 `perm:"read"`
 		ChainGetTipSet         func(context.Context, []cid.Cid) (*types.TipSet, error)                    `perm:"read"`
 		ChainGetBlockMessages  func(context.Context, cid.Cid) (*BlockMessages, error)                     `perm:"read"`
@@ -240,7 +240,7 @@ func (c *FullNodeStruct) ChainHead(ctx context.Context) (*types.TipSet, error) {
 	return c.Internal.ChainHead(ctx)
 }
 
-func (c *FullNodeStruct) ChainGetRandomness(ctx context.Context, pts *types.TipSet, ticks []*types.Ticket, lb int) ([]byte, error) {
+func (c *FullNodeStruct) ChainGetRandomness(ctx context.Context, pts *types.TipSet, ticks []*types.Ticket, lb uint64) ([]byte, error) {
 	return c.Internal.ChainGetRandomness(ctx, pts, ticks, lb)
 }
 
