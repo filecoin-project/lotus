@@ -20,7 +20,7 @@ type StorageMinerAPI struct {
 	SectorBlocks        *sectorblocks.SectorBlocks
 
 	Miner *storage.Miner
-	Full api.FullNode
+	Full  api.FullNode
 }
 
 func (sm *StorageMinerAPI) ActorAddress(context.Context) (address.Address, error) {

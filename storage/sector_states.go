@@ -143,7 +143,7 @@ func (m *Miner) committing(ctx context.Context, sector SectorInfo) (func(*Sector
 	params := &actors.SectorProveCommitInfo{
 		Proof:    proof,
 		SectorID: sector.SectorID,
-		DealIDs:      deals,
+		DealIDs:  deals,
 	}
 
 	enc, aerr := actors.SerializeParams(params)

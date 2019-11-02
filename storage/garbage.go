@@ -63,7 +63,7 @@ func (m *Miner) StoreGarbageData(_ context.Context) error {
 			PieceSize:            size,
 			PieceSerialization:   actors.SerializationUnixFSv0,
 			Client:               m.worker,
-			Provider:             m.worker,
+			Provider:             m.maddr,
 			ProposalExpiration:   math.MaxUint64,
 			Duration:             math.MaxUint64 / 2, // /2 because overflows
 			StoragePricePerEpoch: types.NewInt(0),
