@@ -97,7 +97,7 @@ func (m *Miner) preCommitted(ctx context.Context, sector SectorInfo) (func(*Sect
 		return nil, err
 	}
 
-	randHeight := mw.TipSet.Height() + build.InteractivePoRepDelay
+	randHeight := mw.TipSet.Height() + build.InteractivePoRepDelay - 1 // -1 because of how the messages are applied
 	log.Infof("precommit for sector %d made it on chain, will start post computation at height %d", sector.SectorID, randHeight)
 
 	err = m.events.ChainAt(func(ts *types.TipSet, curH uint64) error {
@@ -174,7 +174,7 @@ func (m *Miner) committing(ctx context.Context, sector SectorInfo) (func(*Sector
 	}
 
 	if mw.Receipt.ExitCode != 0 {
-		log.Error("UNHANDLED: submitting sector proof failed")
+		log.Errorf("UNHANDLED: submitting sector proof failed (t:%x; s:%x(%d); p:%x)", sector.Ticket.TicketBytes, rand, sector.RandHeight, params.Proof)
 		return nil, xerrors.New("UNHANDLED: submitting sector proof failed")
 	}
 

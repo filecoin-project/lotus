@@ -140,6 +140,7 @@ func VerifySeal(sectorSize uint64, commR, commD []byte, proverID address.Address
 	copy(commDa[:], commD)
 	copy(ticketa[:], ticket)
 	copy(seeda[:], seed)
+	seeda[31] = 0 // Temp Fr hack
 	proverIDa := addressToProverID(proverID)
 
 	return sectorbuilder.VerifySeal(sectorSize, commRa, commDa, proverIDa, ticketa, seeda, sectorID, proof)

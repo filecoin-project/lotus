@@ -344,7 +344,7 @@ func (sma StorageMinerActor) ProveCommitSector(act *types.Actor, vmctx types.VMC
 	if ok, err := ValidatePoRep(maddr, mi.SectorSize, commD, us.CommR, ticket, params.Proof, seed, params.SectorID); err != nil {
 		return nil, err
 	} else if !ok {
-		return nil, aerrors.New(2, "bad proof!")
+		return nil, aerrors.Newf(2, "bad proof! (t:%x; s:%x(%d); p:%x)", ticket, seed, us.SubmitHeight+build.InteractivePoRepDelay, params.Proof)
 	}
 
 	// Note: There must exist a unique index in the miner's sector set for each

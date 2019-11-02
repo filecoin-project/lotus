@@ -143,6 +143,7 @@ func (s *Store) SealPreCommit(ctx context.Context, sectorID uint64) (sectorbuild
 func (s *Store) SealComputeProof(ctx context.Context, sectorID uint64, height uint64, rand []byte) ([]byte, error) {
 	var tick [32]byte
 	copy(tick[:], rand)
+	tick[31] = 0
 
 	sco, err := s.sb.SealCommit(sectorID, sectorbuilder.SealSeed{
 		BlockHeight: height,

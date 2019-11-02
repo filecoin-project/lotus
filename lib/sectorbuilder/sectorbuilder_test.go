@@ -69,7 +69,7 @@ func TestSealAndVerify(t *testing.T) {
 
 	seed := sectorbuilder.SealSeed{
 		BlockHeight: 15,
-		TicketBytes: [32]byte{0, 9, 8, 7, 6, 5, 4, 3, 2, 1, 0, 9, 8, 7, 6, 45, 3, 2, 1, 0, 9, 8, 7, 6, 5, 4, 3, 2, 1, 0, 9, 8},
+		TicketBytes: [32]byte{0, 9, 8, 7, 6, 5, 4, 3, 2, 1, 0, 9, 8, 7, 6, 45, 3, 2, 1, 0, 9, 8, 7, 6, 5, 4, 3, 2, 1, 0, 9, 0},
 	}
 
 	sco, err := sb.SealCommit(sid, seed)
