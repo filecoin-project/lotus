@@ -41,7 +41,7 @@ func TestTransferRequest_MarshalCBOR(t *testing.T) {
 	require.NoError(t, req.MarshalCBOR(wbuf))
 
 	require.NotEmpty(t, wbuf)
-	assert.Equal(t, 278, wbuf.Len())
+	assert.Equal(t, 281, wbuf.Len())
 }
 func TestTransferRequest_UnmarshalCBOR(t *testing.T) {
 	// deserializedRequest := .....
@@ -71,7 +71,7 @@ func TestResponses(t *testing.T) {
 	//require.Equal(t, cborResponse.TransferID, int32(id))
 	//require.False(t, cborResponse.Accepted
 
-	//deserialized, err := message.NewMessageFromProto(*cborMessage)
+	//deserialized, err := message.NewMessageFromCBOR(*cborMessage)
 	//require.NoError(t, err)
 	//
 	//deserializedResponse, ok := deserialized.(message.DataTransferResponse)
@@ -91,10 +91,8 @@ func TestRequestCancel(t *testing.T) {
 	require.True(t, req.IsRequest())
 	require.True(t, req.IsCancel())
 
-
 	wbuf := new(bytes.Buffer)
 	require.NoError(t, req.MarshalCBOR(wbuf))
-
 
 	//deserialized, err := NewMessageFromCBOR(*cborMessage)
 	//require.NoError(t, err)
@@ -163,12 +161,12 @@ func TestToNetFromNetEquivalency(t *testing.T) {
 	//require.Equal(t, deserializedRequest.IsRequest(), request.IsRequest())
 }
 
-func NewTestTransferRequest() DataTransferRequest{
-	baseCid := testutil.GenerateCids(1)[0]
+func NewTestTransferRequest() DataTransferRequest {
+	bcid := testutil.GenerateCids(1)[0]
 	selector := testutil.RandomBytes(100)
 	isPull := false
 	id := datatransfer.TransferID(rand.Int31())
-	VoucherTypeentifier := "FakeVoucherType"
-	voucher := testutil.RandomBytes(100)
-	return NewRequest(id, isPull, VoucherTypeentifier, voucher, baseCid, selector)
+	vtype := "FakeVoucherType"
+	v := testutil.RandomBytes(100)
+	return NewRequest(id, isPull, vtype, v, bcid, selector)
 }
