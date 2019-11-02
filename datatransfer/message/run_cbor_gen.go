@@ -8,6 +8,7 @@ func RunCborGen() error {
 	return cborgen.WriteTupleEncodersToFile(
 		"./message/cbor_gen.go",
 		"message",
+		transferMessage{},
 		transferRequest{},
 		transferResponse{},
 	)
