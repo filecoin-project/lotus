@@ -15,7 +15,7 @@ import (
 const sectorSize = 1024
 
 func TestSealAndVerify(t *testing.T) {
-	t.Skip("this is slow")
+	//t.Skip("this is slow")
 	build.SectorSizes = []uint64{sectorSize}
 
 	if err := build.GetParams(true); err != nil {
@@ -69,7 +69,7 @@ func TestSealAndVerify(t *testing.T) {
 
 	seed := sectorbuilder.SealSeed{
 		BlockHeight: 15,
-		TicketBytes: [32]byte{0, 9, 8, 7, 6, 5, 4, 3, 2, 1, 0, 9, 8, 7, 6, 45, 3, 2, 1, 0, 9, 8, 7, 6, 5, 4, 3, 2, 1, 0, 9, 0},
+		TicketBytes: [32]byte{0, 9, 8, 7, 6, 5, 4, 3, 2, 1, 0, 9, 8, 7, 6, 45, 3, 2, 1, 0, 9, 8, 7, 6, 5, 4, 3, 2, 1, 0, 9, },
 	}
 
 	sco, err := sb.SealCommit(sid, seed)
