@@ -15,7 +15,7 @@ import (
 )
 
 // This file implements a VERY simple, incomplete version of the data transfer
-// module that allows us to make the neccesary insertions of data transfer
+// module that allows us to make the necessary insertions of data transfer
 // functionality into the storage market
 // It does not:
 // -- actually validate requests

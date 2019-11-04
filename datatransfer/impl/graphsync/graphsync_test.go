@@ -20,6 +20,7 @@ import (
 	"github.com/ipld/go-ipld-prime/traversal/selector/builder"
 	"github.com/libp2p/go-libp2p-core/peer"
 	mocknet "github.com/libp2p/go-libp2p/p2p/net/mock"
+	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 
 	datatransfer "github.com/filecoin-project/lotus/datatransfer"
@@ -119,12 +120,14 @@ func TestDataTransferOneWay(t *testing.T) {
 
 		// this is the selector for "get the whole DAG"
 		// TODO: support storage deals with custom payload selectors
-		selector := ssb.ExploreRecursive(selector.RecursionLimitNone(),
+		stor := ssb.ExploreRecursive(selector.RecursionLimitNone(),
 			ssb.ExploreAll(ssb.ExploreRecursiveEdge())).Node()
 
 		voucher := fakeDTType{"applesauce"}
 		baseCid := testutil.GenerateCids(1)[0]
-		channelID, err := dt.OpenPushDataChannel(host2.ID(), &voucher, baseCid, selector)
+		channelID, err := dt.OpenPushDataChannel(host2.ID(), &voucher, baseCid, stor)
+		require.NoError(t, err)
+		require.NotNil(t, channelID)
 		require.Equal(t, channelID.To, host2.ID())
 		require.NoError(t, err)
 
@@ -150,24 +153,26 @@ func TestDataTransferOneWay(t *testing.T) {
 		reader := bytes.NewReader(receivedRequest.Selector())
 		receivedSelector, err := dagcbor.Decoder(ipldfree.NodeBuilder(), reader)
 		require.NoError(t, err)
-		require.Equal(t, receivedSelector, selector)
+		require.Equal(t, receivedSelector, stor)
 		receivedVoucher := new(fakeDTType)
 		err = receivedVoucher.FromBytes(receivedRequest.Voucher())
 		require.NoError(t, err)
 		require.Equal(t, *receivedVoucher, voucher)
-		require.Equal(t, receivedRequest.VoucherID(), voucher.Identifier())
+		require.Equal(t, receivedRequest.VoucherType(), voucher.Identifier())
 	})
 
 	// TODO: get passing to complete https://github.com/filecoin-project/go-data-transfer/issues/16
 	t.Run("OpenPullDataTransfer", func(t *testing.T) {
 		ssb := builder.NewSelectorSpecBuilder(ipldfree.NodeBuilder())
 
-		selector := ssb.ExploreRecursive(selector.RecursionLimitNone(),
+		stor := ssb.ExploreRecursive(selector.RecursionLimitNone(),
 			ssb.ExploreAll(ssb.ExploreRecursiveEdge())).Node()
 
 		voucher := fakeDTType{"applesauce"}
 		baseCid := testutil.GenerateCids(1)[0]
-		channelID, err := dt.OpenPullDataChannel(host2.ID(), &voucher, baseCid, selector)
+		channelID, err := dt.OpenPullDataChannel(host2.ID(), &voucher, baseCid, stor)
+		require.NoError(t, err)
+		require.NotNil(t, channelID)
 		require.Equal(t, channelID.To, host2.ID())
 		require.NoError(t, err)
 
@@ -193,12 +198,12 @@ func TestDataTransferOneWay(t *testing.T) {
 		reader := bytes.NewReader(receivedRequest.Selector())
 		receivedSelector, err := dagcbor.Decoder(ipldfree.NodeBuilder(), reader)
 		require.NoError(t, err)
-		require.Equal(t, receivedSelector, selector)
+		require.Equal(t, receivedSelector, stor)
 		receivedVoucher := new(fakeDTType)
 		err = receivedVoucher.FromBytes(receivedRequest.Voucher())
 		require.NoError(t, err)
 		require.Equal(t, *receivedVoucher, voucher)
-		require.Equal(t, receivedRequest.VoucherID(), voucher.Identifier())
+		require.Equal(t, receivedRequest.VoucherType(), voucher.Identifier())
 	})
 }
 
@@ -274,14 +279,16 @@ func TestDataTransferValidation(t *testing.T) {
 
 		// this is the selector for "get the whole DAG"
 		// TODO: support storage deals with custom payload selectors
-		selector := ssb.ExploreRecursive(selector.RecursionLimitNone(),
+		stor := ssb.ExploreRecursive(selector.RecursionLimitNone(),
 			ssb.ExploreAll(ssb.ExploreRecursiveEdge())).Node()
 
 		voucher := fakeDTType{"applesauce"}
 		baseCid := testutil.GenerateCids(1)[0]
-		channelID, err := dt1.OpenPushDataChannel(host2.ID(), &voucher, baseCid, selector)
-		require.Equal(t, channelID.To, host2.ID())
+		channelID, err := dt1.OpenPushDataChannel(host2.ID(), &voucher, baseCid, stor)
 		require.NoError(t, err)
+
+		assert.Equal(t, channelID.To, host2.ID())
+		assert.NoError(t, err)
 
 		var validation receivedValidation
 		select {
@@ -290,11 +297,11 @@ func TestDataTransferValidation(t *testing.T) {
 		case validation = <-fv.validationsReceived:
 		}
 
-		require.False(t, validation.isPull)
-		require.Equal(t, validation.other, host1.ID())
-		require.Equal(t, validation.voucher, voucher)
-		require.Equal(t, validation.baseCid, baseCid)
-		require.Equal(t, validation.selector, selector)
+		assert.False(t, validation.isPull)
+		assert.Equal(t, validation.other, host1.ID())
+		assert.Equal(t, validation.voucher, voucher)
+		assert.Equal(t, validation.baseCid, baseCid)
+		assert.Equal(t, validation.selector, stor)
 	})
 
 	// TODO: get passing to complete https://github.com/filecoin-project/go-data-transfer/issues/18
@@ -303,14 +310,15 @@ func TestDataTransferValidation(t *testing.T) {
 
 		// this is the selector for "get the whole DAG"
 		// TODO: support storage deals with custom payload selectors
-		selector := ssb.ExploreRecursive(selector.RecursionLimitNone(),
+		stor := ssb.ExploreRecursive(selector.RecursionLimitNone(),
 			ssb.ExploreAll(ssb.ExploreRecursiveEdge())).Node()
 
 		voucher := fakeDTType{"applesauce"}
 		baseCid := testutil.GenerateCids(1)[0]
-		channelID, err := dt1.OpenPullDataChannel(host2.ID(), &voucher, baseCid, selector)
-		require.Equal(t, channelID.To, host2.ID())
+		channelID, err := dt1.OpenPullDataChannel(host2.ID(), &voucher, baseCid, stor)
 		require.NoError(t, err)
+
+		assert.Equal(t, channelID.To, host2.ID())
 
 		var validation receivedValidation
 		select {
@@ -319,11 +327,11 @@ func TestDataTransferValidation(t *testing.T) {
 		case validation = <-fv.validationsReceived:
 		}
 
-		require.True(t, validation.isPull)
-		require.Equal(t, validation.other, host1.ID())
-		require.Equal(t, validation.voucher, voucher)
-		require.Equal(t, validation.baseCid, baseCid)
-		require.Equal(t, validation.selector, selector)
+		assert.True(t, validation.isPull)
+		assert.Equal(t, validation.other, host1.ID())
+		assert.Equal(t, validation.voucher, voucher)
+		assert.Equal(t, validation.baseCid, baseCid)
+		assert.Equal(t, validation.selector, stor)
 	})
 }
 
@@ -430,13 +438,13 @@ func TestSendResponseToIncomingRequest(t *testing.T) {
 	dt := dtgraphsync.NewGraphSyncDataTransfer(ctx, host2, bs)
 	ssb := builder.NewSelectorSpecBuilder(ipldfree.NodeBuilder())
 
-	selector := ssb.ExploreRecursive(selector.RecursionLimitNone(),
+	stor := ssb.ExploreRecursive(selector.RecursionLimitNone(),
 		ssb.ExploreAll(ssb.ExploreRecursiveEdge())).Node()
 	voucher := fakeDTType{"applesauce"}
 	baseCid := testutil.GenerateCids(1)[0]
 	id := datatransfer.TransferID(rand.Int31())
 	var buffer bytes.Buffer
-	err = dagcbor.Encoder(selector, &buffer)
+	err = dagcbor.Encoder(stor, &buffer)
 	require.NoError(t, err)
 
 	// TODO: get passing to complete https://github.com/filecoin-project/go-data-transfer/issues/14
@@ -450,7 +458,9 @@ func TestSendResponseToIncomingRequest(t *testing.T) {
 		isPull := false
 
 		request := message.NewRequest(id, isPull, voucher.Identifier(), voucher.ToBytes(), baseCid, buffer.Bytes())
-		dtnet1.SendMessage(ctx, host2.ID(), request)
+		go func() {
+			require.NoError(t, dtnet1.SendMessage(ctx, host2.ID(), request))
+		}()
 
 		var messageReceived receivedMessage
 		select {
@@ -469,7 +479,7 @@ func TestSendResponseToIncomingRequest(t *testing.T) {
 		receivedResponse, ok := received.(message.DataTransferResponse)
 		require.True(t, ok)
 
-		require.Equal(t, receivedResponse.TransferID(), id)
+		assert.Equal(t, receivedResponse.TransferID(), id)
 		require.True(t, receivedResponse.Accepted())
 
 	})
@@ -485,7 +495,9 @@ func TestSendResponseToIncomingRequest(t *testing.T) {
 		isPull := false
 
 		request := message.NewRequest(id, isPull, voucher.Identifier(), voucher.ToBytes(), baseCid, buffer.Bytes())
-		dtnet1.SendMessage(ctx, host2.ID(), request)
+		go func() {
+			require.NoError(t, dtnet1.SendMessage(ctx, host2.ID(), request))
+		}()
 
 		var messageReceived receivedMessage
 		select {
@@ -519,7 +531,10 @@ func TestSendResponseToIncomingRequest(t *testing.T) {
 		isPull := true
 
 		request := message.NewRequest(id, isPull, voucher.Identifier(), voucher.ToBytes(), baseCid, buffer.Bytes())
-		dtnet1.SendMessage(ctx, host2.ID(), request)
+
+		go func() {
+			require.NoError(t, dtnet1.SendMessage(ctx, host2.ID(), request))
+		}()
 
 		var messageReceived receivedMessage
 		select {
@@ -554,7 +569,7 @@ func TestSendResponseToIncomingRequest(t *testing.T) {
 		isPull := true
 
 		request := message.NewRequest(id, isPull, voucher.Identifier(), voucher.ToBytes(), baseCid, buffer.Bytes())
-		dtnet1.SendMessage(ctx, host2.ID(), request)
+		require.NoError(t, dtnet1.SendMessage(ctx, host2.ID(), request))
 
 		var messageReceived receivedMessage
 		select {
