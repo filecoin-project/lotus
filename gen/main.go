@@ -9,6 +9,7 @@ import (
 	"github.com/filecoin-project/lotus/chain/actors"
 	"github.com/filecoin-project/lotus/chain/deals"
 	"github.com/filecoin-project/lotus/chain/types"
+	"github.com/filecoin-project/lotus/paych"
 )
 
 func main() {
@@ -26,6 +27,15 @@ func main() {
 		types.BlockMsg{},
 		types.SignedStorageAsk{},
 		types.StorageAsk{},
+	)
+	if err != nil {
+		fmt.Println(err)
+		os.Exit(1)
+	}
+
+	err = gen.WriteTupleEncodersToFile("./paych/cbor_gen.go", "paych",
+		paych.VoucherInfo{},
+		paych.ChannelInfo{},
 	)
 	if err != nil {
 		fmt.Println(err)

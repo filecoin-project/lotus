@@ -162,12 +162,12 @@ func (a *PaychAPI) PaychVoucherCreate(ctx context.Context, pch address.Address, 
 func (a *PaychAPI) paychVoucherCreate(ctx context.Context, pch address.Address, voucher types.SignedVoucher) (*types.SignedVoucher, error) {
 	ci, err := a.PaychMgr.GetChannelInfo(pch)
 	if err != nil {
-		return nil, err
+		return nil, xerrors.Errorf("get channel info: %w", err)
 	}
 
 	nonce, err := a.PaychMgr.NextNonceForLane(ctx, pch, voucher.Lane)
 	if err != nil {
-		return nil, err
+		return nil, xerrors.Errorf("getting next nonce for lane: %w", err)
 	}
 
 	sv := &voucher

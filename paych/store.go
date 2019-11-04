@@ -1,6 +1,7 @@
 package paych
 
 import (
+	"bytes"
 	"errors"
 	"fmt"
 	"strings"
@@ -9,7 +10,6 @@ import (
 	"github.com/ipfs/go-datastore"
 	"github.com/ipfs/go-datastore/namespace"
 	dsq "github.com/ipfs/go-datastore/query"
-	cbor "github.com/ipfs/go-ipld-cbor"
 	"golang.org/x/xerrors"
 
 	"github.com/filecoin-project/lotus/chain/address"
@@ -18,11 +18,6 @@ import (
 )
 
 var ErrChannelNotTracked = errors.New("channel not tracked")
-
-func init() {
-	cbor.RegisterCborType(VoucherInfo{})
-	cbor.RegisterCborType(ChannelInfo{})
-}
 
 type Store struct {
 	lk sync.Mutex // TODO: this can be split per paych
@@ -52,7 +47,7 @@ type ChannelInfo struct {
 	Control address.Address
 	Target  address.Address
 
-	Direction int
+	Direction uint64
 	Vouchers  []*VoucherInfo
 	NextLane  uint64
 }
@@ -64,12 +59,12 @@ func dskeyForChannel(addr address.Address) datastore.Key {
 func (ps *Store) putChannelInfo(ci *ChannelInfo) error {
 	k := dskeyForChannel(ci.Channel)
 
-	b, err := cbor.DumpObject(ci)
-	if err != nil {
+	buf := new(bytes.Buffer)
+	if err := ci.MarshalCBOR(buf); err != nil {
 		return err
 	}
 
-	return ps.ds.Put(k, b)
+	return ps.ds.Put(k, buf.Bytes())
 }
 
 func (ps *Store) getChannelInfo(addr address.Address) (*ChannelInfo, error) {
@@ -84,7 +79,7 @@ func (ps *Store) getChannelInfo(addr address.Address) (*ChannelInfo, error) {
 	}
 
 	var ci ChannelInfo
-	if err := cbor.DecodeInto(b, &ci); err != nil {
+	if err := ci.UnmarshalCBOR(bytes.NewReader(b)); err != nil {
 		return nil, err
 	}
 
@@ -161,7 +156,7 @@ func (ps *Store) findChan(filter func(*ChannelInfo) bool) (address.Address, erro
 			return address.Undef, err
 		}
 
-		if err := cbor.DecodeInto(res.Value, &ci); err != nil {
+		if err := ci.UnmarshalCBOR(bytes.NewReader(res.Value)); err != nil {
 			return address.Undef, err
 		}
 
