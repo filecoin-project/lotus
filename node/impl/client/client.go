@@ -27,13 +27,13 @@ import (
 	"github.com/filecoin-project/go-address"
 	"github.com/filecoin-project/lotus/api"
 	"github.com/filecoin-project/lotus/build"
-	"github.com/filecoin-project/lotus/chain/deals"
 	"github.com/filecoin-project/lotus/chain/store"
 	"github.com/filecoin-project/lotus/chain/types"
 	"github.com/filecoin-project/lotus/node/impl/full"
 	"github.com/filecoin-project/lotus/node/impl/paych"
 	"github.com/filecoin-project/lotus/node/modules/dtypes"
 	retrievalmarket "github.com/filecoin-project/lotus/retrieval"
+	"github.com/filecoin-project/lotus/storagemarket"
 )
 
 type API struct {
@@ -44,7 +44,7 @@ type API struct {
 	full.WalletAPI
 	paych.PaychAPI
 
-	DealClient   *deals.Client
+	SMDealClient storagemarket.StorageClient
 	RetDiscovery retrievalmarket.PeerResolver
 	Retrieval    retrievalmarket.RetrievalClient
 	Chain        *store.ChainStore
@@ -72,28 +72,30 @@ func (a *API) ClientStartDeal(ctx context.Context, data cid.Cid, addr address.Ad
 	if err != nil {
 		return nil, xerrors.Errorf("failed getting miner worker: %w", err)
 	}
-
-	proposal := deals.ClientDealProposal{
-		Data:               data,
-		PricePerEpoch:      epochPrice,
-		ProposalExpiration: math.MaxUint64, // TODO: set something reasonable
-		Duration:           blocksDuration,
-		Client:             addr,
-		ProviderAddress:    miner,
-		MinerWorker:        mw,
-		MinerID:            pid,
+	providerInfo := storagemarket.StorageProviderInfo{
+		Address: miner,
+		Worker:  mw,
+		PeerID:  pid,
 	}
+	result, err := a.SMDealClient.ProposeStorageDeal(
+		ctx,
+		addr,
+		&providerInfo,
+		data,
+		storagemarket.Epoch(math.MaxUint64),
+		storagemarket.Epoch(blocksDuration),
+		storagemarket.TokenAmount(epochPrice),
+		storagemarket.TokenAmount(storagemarket.EmptyInt))
 
-	c, err := a.DealClient.Start(ctx, proposal)
 	if err != nil {
 		return nil, xerrors.Errorf("failed to start deal: %w", err)
 	}
 
-	return &c, nil
+	return &result.ProposalCid, nil
 }
 
 func (a *API) ClientListDeals(ctx context.Context) ([]api.DealInfo, error) {
-	deals, err := a.DealClient.List()
+	deals, err := a.SMDealClient.ListInProgressDeals(ctx)
 	if err != nil {
 		return nil, err
 	}
@@ -117,10 +119,11 @@ func (a *API) ClientListDeals(ctx context.Context) ([]api.DealInfo, error) {
 }
 
 func (a *API) ClientGetDealInfo(ctx context.Context, d cid.Cid) (*api.DealInfo, error) {
-	v, err := a.DealClient.GetDeal(d)
+	v, err := a.SMDealClient.GetInProgressDeal(ctx, d)
 	if err != nil {
 		return nil, err
 	}
+
 	return &api.DealInfo{
 		ProposalCid:   v.ProposalCid,
 		State:         v.State,
@@ -315,5 +318,6 @@ func (a *API) ClientRetrieve(ctx context.Context, order api.RetrievalOrder, path
 }
 
 func (a *API) ClientQueryAsk(ctx context.Context, p peer.ID, miner address.Address) (*types.SignedStorageAsk, error) {
-	return a.DealClient.QueryAsk(ctx, p, miner)
+	info := storagemarket.StorageProviderInfo{Address: miner, PeerID: p}
+	return a.SMDealClient.GetAsk(ctx, info)
 }

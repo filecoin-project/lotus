@@ -2,6 +2,7 @@ package main
 
 import (
 	"fmt"
+	"github.com/filecoin-project/lotus/storagemarket"
 	"os"
 
 	gen "github.com/whyrusleeping/cbor-gen"
@@ -116,6 +117,15 @@ func main() {
 		actors.SectorProveCommitInfo{},
 		actors.CheckMinerParams{},
 		actors.CronActorState{},
+	)
+	if err != nil {
+		fmt.Println(err)
+		os.Exit(1)
+	}
+
+	err = gen.WriteTupleEncodersToFile("./storagemarket/cbor_gen.go", "storagemarket",
+		storagemarket.ClientDeal{},
+		storagemarket.MinerDeal{},
 	)
 	if err != nil {
 		fmt.Println(err)

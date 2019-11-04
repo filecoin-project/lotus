@@ -3,8 +3,8 @@ package retrievaladapter
 import (
 	"context"
 
-	"github.com/filecoin-project/lotus/api"
 	"github.com/filecoin-project/go-address"
+	"github.com/filecoin-project/lotus/api"
 	retrievalmarket "github.com/filecoin-project/lotus/retrieval"
 )
 

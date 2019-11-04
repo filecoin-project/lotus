@@ -4,12 +4,13 @@ import (
 	"bytes"
 	"errors"
 
+	"github.com/ipfs/go-cid"
+
 	"github.com/filecoin-project/go-address"
 	"github.com/filecoin-project/go-cbor-util"
 	"github.com/filecoin-project/lotus/api"
 	"github.com/filecoin-project/lotus/chain/actors"
 	"github.com/filecoin-project/lotus/chain/types"
-	"github.com/ipfs/go-cid"
 )
 
 var (
@@ -41,9 +42,6 @@ var (
 	DataTransferStates = []api.DealState{api.DealAccepted, api.DealUnknown}
 )
 
-const DealProtocolID = "/fil/storage/mk/1.0.1"
-const AskProtocolID = "/fil/storage/ask/1.0.1"
-
 type Proposal struct {
 	DealProposal *actors.StorageDealProposal
 
@@ -58,7 +56,7 @@ type Response struct {
 	Proposal cid.Cid
 
 	// DealAccepted
-	StorageDealSubmission *types.SignedMessage
+	PublishMessage *cid.Cid
 }
 
 // TODO: Do we actually need this to be signed?
