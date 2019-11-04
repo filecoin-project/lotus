@@ -20,6 +20,7 @@ type DataTransferMessage interface {
 	TransferID() datatransfer.TransferID
 	cborgen.CBORMarshaler
 	cborgen.CBORUnmarshaler
+	ToNet(w io.Writer) error
 }
 
 // DataTransferRequest is a response message for the data transfer protocol
@@ -85,13 +86,6 @@ func NewResponse(id datatransfer.TransferID, accepted bool) DataTransferResponse
 // FromNet can read a network stream to deserialize a GraphSyncMessage
 func FromNet(r io.Reader) (DataTransferMessage, error) {
 	tresp := transferMessage{}
-	//err := tresp.UnmarshalCBOR(r)
-	//if err != nil {
-	//	treq := transferRequest{}
-	//	err2 := treq.UnmarshalCBOR(r)
-	//	if err2 != nil {
-	//		return nil, nil
-	//	}
-	//}
-	return &tresp, nil
+	err := tresp.UnmarshalCBOR(r)
+	return &tresp, err
 }

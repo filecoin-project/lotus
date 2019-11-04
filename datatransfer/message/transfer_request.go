@@ -2,6 +2,7 @@ package message
 
 import (
 	"github.com/ipfs/go-cid"
+	"io"
 )
 
 // transferRequest is a struct that fulfills the DataTransferRequest interface.
@@ -57,9 +58,15 @@ func (trq *transferRequest) IsPartial() bool {
 	return trq.Part
 }
 
-// Cancel cancels
+// Cancel cancels a transfer request
 func (trq *transferRequest) Cancel() error {
 	// do other stuff ?
 	trq.Canc = true
 	return nil
+}
+
+// ToNet serializes a transfer request. It's a wrapper for MarshalCBOR to provide
+// symmetry with FromNet
+func (trq *transferRequest) ToNet(w io.Writer) error {
+	return trq.MarshalCBOR(w)
 }

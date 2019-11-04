@@ -6,7 +6,6 @@ import (
 	"io"
 	"time"
 
-	ggio "github.com/gogo/protobuf/io"
 	logging "github.com/ipfs/go-log"
 	"github.com/libp2p/go-libp2p-core/helpers"
 	"github.com/libp2p/go-libp2p-core/host"
@@ -106,12 +105,12 @@ func (dtnet *libp2pDataTransferNetwork) SendMessage(
 	}
 
 	if err = msgToStream(ctx, s, outgoing); err != nil {
-		s.Reset()
+		s.Reset() // nolint: errcheck
 		return err
 	}
 
 	// TODO(https://github.com/libp2p/go-libp2p-net/issues/28): Avoid this goroutine.
-	go helpers.AwaitEOF(s)
+	go helpers.AwaitEOF(s) // nolint: errcheck
 	return s.Close()
 
 }
@@ -127,19 +126,18 @@ func (dtnet *libp2pDataTransferNetwork) ConnectTo(ctx context.Context, p peer.ID
 
 // handleNewStream receives a new stream from the network.
 func (dtnet *libp2pDataTransferNetwork) handleNewStream(s network.Stream) {
-	defer s.Close()
+	defer s.Close() // nolint: errcheck
 
 	if dtnet.receiver == nil {
-		s.Reset()
+		s.Reset() // nolint: errcheck
 		return
 	}
 
-	reader := ggio.NewDelimitedReader(s, network.MessageSizeMax)
 	for {
-		received, err := message.FromPBReader(reader)
+		received, err := message.FromNet(s)
 		if err != nil {
 			if err != io.EOF {
-				s.Reset()
+				s.Reset() // nolint: errcheck
 				go dtnet.receiver.ReceiveError(err)
 				log.Debugf("graphsync net handleNewStream from %s error: %s", s.Conn().RemotePeer(), err)
 			}
