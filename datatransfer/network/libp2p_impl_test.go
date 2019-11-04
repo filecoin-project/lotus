@@ -8,6 +8,7 @@ import (
 
 	"github.com/libp2p/go-libp2p-core/peer"
 	mocknet "github.com/libp2p/go-libp2p/p2p/net/mock"
+	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 
 	datatransfer "github.com/filecoin-project/lotus/datatransfer"
@@ -90,7 +91,9 @@ func TestMessageSendAndReceive(t *testing.T) {
 		voucher := testutil.RandomBytes(100)
 		request := message.NewRequest(id, isPull, voucherIdentifier, voucher, baseCid, selector)
 
-		dtnet1.SendMessage(ctx, host2.ID(), request)
+		go func() {
+			require.NoError(t, dtnet1.SendMessage(ctx, host2.ID(), request))
+		}()
 
 		select {
 		case <-ctx.Done():
@@ -102,15 +105,16 @@ func TestMessageSendAndReceive(t *testing.T) {
 		require.Equal(t, sender, host1.ID())
 
 		receivedRequest := r.lastRequest
+		require.NotNil(t, receivedRequest)
 
-		require.Equal(t, receivedRequest.TransferID(), request.TransferID())
-		require.Equal(t, receivedRequest.IsCancel(), request.IsCancel())
-		require.Equal(t, receivedRequest.IsPull(), request.IsPull())
-		require.Equal(t, receivedRequest.IsRequest(), request.IsRequest())
-		require.Equal(t, receivedRequest.BaseCid().String(), request.BaseCid().String())
-		require.Equal(t, receivedRequest.VoucherType(), request.VoucherType())
-		require.Equal(t, receivedRequest.Voucher(), request.Voucher())
-		require.Equal(t, receivedRequest.Selector(), request.Selector())
+		assert.Equal(t, request.TransferID(), receivedRequest.TransferID())
+		assert.Equal(t, request.IsCancel(), receivedRequest.IsCancel())
+		assert.Equal(t, request.IsPull(), receivedRequest.IsPull())
+		assert.Equal(t, request.IsRequest(), receivedRequest.IsRequest())
+		assert.True(t, receivedRequest.BaseCid().Equals(request.BaseCid()))
+		assert.Equal(t, request.VoucherType(), receivedRequest.VoucherType())
+		assert.Equal(t, request.Voucher(), receivedRequest.Voucher())
+		assert.Equal(t, request.Selector(), receivedRequest.Selector())
 	})
 
 	t.Run("Send Response", func(t *testing.T) {
@@ -118,7 +122,9 @@ func TestMessageSendAndReceive(t *testing.T) {
 		id := datatransfer.TransferID(rand.Int31())
 		response := message.NewResponse(id, accepted)
 
-		dtnet2.SendMessage(ctx, host1.ID(), response)
+		go func() {
+			require.NoError(t, dtnet2.SendMessage(ctx, host1.ID(), response))
+		}()
 
 		select {
 		case <-ctx.Done():
@@ -127,13 +133,14 @@ func TestMessageSendAndReceive(t *testing.T) {
 		}
 
 		sender := r.lastSender
-		require.Equal(t, sender, host2.ID())
+		require.NotNil(t, sender)
+		assert.Equal(t, sender, host2.ID())
 
 		receivedResponse := r.lastResponse
 
-		require.Equal(t, receivedResponse.TransferID(), response.TransferID())
-		require.Equal(t, receivedResponse.Accepted(), response.Accepted())
-		require.Equal(t, receivedResponse.IsRequest(), response.IsRequest())
+		assert.Equal(t, response.TransferID(), receivedResponse.TransferID())
+		assert.Equal(t, response.Accepted(), receivedResponse.Accepted())
+		assert.Equal(t, response.IsRequest(), receivedResponse.IsRequest())
 
 	})
 }
