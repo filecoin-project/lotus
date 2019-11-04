@@ -4,12 +4,13 @@ import (
 	"bytes"
 	"errors"
 
+	"github.com/ipfs/go-cid"
+
 	"github.com/filecoin-project/lotus/api"
 	"github.com/filecoin-project/lotus/chain/actors"
 	"github.com/filecoin-project/lotus/chain/address"
 	"github.com/filecoin-project/lotus/chain/types"
 	"github.com/filecoin-project/lotus/lib/cborutil"
-	"github.com/ipfs/go-cid"
 )
 
 var (
@@ -40,9 +41,6 @@ var (
 	// DataTransferStates are the states in which it would make sense to actually start a data transfer
 	DataTransferStates = []api.DealState{api.DealAccepted, api.DealUnknown}
 )
-
-const DealProtocolID = "/fil/storage/mk/1.0.1"
-const AskProtocolID = "/fil/storage/ask/1.0.1"
 
 type Proposal struct {
 	DealProposal *actors.StorageDealProposal

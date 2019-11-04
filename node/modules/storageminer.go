@@ -40,6 +40,7 @@ import (
 	"github.com/filecoin-project/lotus/retrievaladapter"
 	"github.com/filecoin-project/lotus/storage"
 	"github.com/filecoin-project/lotus/storage/sectorblocks"
+	"github.com/filecoin-project/lotus/storagemarket"
 )
 
 func minerAddrFromDS(ds dtypes.MetadataDS) (address.Address, error) {
@@ -127,14 +128,12 @@ func HandleRetrieval(host host.Host, lc fx.Lifecycle, m retrievalmarket.Retrieva
 	})
 }
 
-func HandleDeals(mctx helpers.MetricsCtx, lc fx.Lifecycle, host host.Host, h *deals.Provider) {
+func HandleDeals(mctx helpers.MetricsCtx, lc fx.Lifecycle, host host.Host, h storagemarket.StorageProvider) {
 	ctx := helpers.LifecycleCtx(mctx, lc)
 
 	lc.Append(fx.Hook{
 		OnStart: func(context.Context) error {
-			h.Run(ctx)
-			host.SetStreamHandler(deals.DealProtocolID, h.HandleStream)
-			host.SetStreamHandler(deals.AskProtocolID, h.HandleAskStream)
+			h.Run(ctx, host)
 			return nil
 		},
 		OnStop: func(context.Context) error {
