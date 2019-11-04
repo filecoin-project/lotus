@@ -49,7 +49,7 @@ func (api *api) Spawn() (nodeInfo, error) {
 	cmd := exec.Command("./lotus", "daemon", "--bootstrap=false", genParam, "--api", fmt.Sprintf("%d", 2500+id))
 	cmd.Stderr = io.MultiWriter(os.Stderr, errlogfile, mux.errpw)
 	cmd.Stdout = io.MultiWriter(os.Stdout, logfile, mux.outpw)
-	cmd.Env = []string{"LOTUS_PATH=" + dir}
+	cmd.Env = append(os.Environ(), "LOTUS_PATH=" + dir)
 	if err := cmd.Start(); err != nil {
 		return nodeInfo{}, err
 	}
@@ -112,7 +112,7 @@ func (api *api) SpawnStorage(fullNodeRepo string) (nodeInfo, error) {
 	cmd := exec.Command("./lotus-storage-miner", initArgs...)
 	cmd.Stderr = io.MultiWriter(os.Stderr, errlogfile)
 	cmd.Stdout = io.MultiWriter(os.Stdout, logfile)
-	cmd.Env = []string{"LOTUS_STORAGE_PATH=" + dir, "LOTUS_PATH=" + fullNodeRepo}
+	cmd.Env = append(os.Environ(), "LOTUS_STORAGE_PATH=" + dir, "LOTUS_PATH=" + fullNodeRepo)
 	if err := cmd.Run(); err != nil {
 		return nodeInfo{}, err
 	}
@@ -124,7 +124,7 @@ func (api *api) SpawnStorage(fullNodeRepo string) (nodeInfo, error) {
 	cmd = exec.Command("./lotus-storage-miner", "run", "--api", fmt.Sprintf("%d", 2500+id))
 	cmd.Stderr = io.MultiWriter(os.Stderr, errlogfile, mux.errpw)
 	cmd.Stdout = io.MultiWriter(os.Stdout, logfile, mux.outpw)
-	cmd.Env = []string{"LOTUS_STORAGE_PATH=" + dir, "LOTUS_PATH=" + fullNodeRepo}
+	cmd.Env = append(os.Environ(), "LOTUS_STORAGE_PATH=" + dir, "LOTUS_PATH=" + fullNodeRepo)
 	if err := cmd.Start(); err != nil {
 		return nodeInfo{}, err
 	}

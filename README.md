@@ -21,6 +21,9 @@ In order to run lotus, please do the following:
 - bzr (some go dependency needs this)
 - jq
 - pkg-config
+- opencl-headers
+- opencl-driver
+- opencl-icd-loader
 
 
 2. Clone this repo & `cd` into it
