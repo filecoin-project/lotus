@@ -8,11 +8,13 @@ import (
 	"unsafe"
 
 	sectorbuilder "github.com/filecoin-project/go-sectorbuilder"
-
 	logging "github.com/ipfs/go-log"
+	"golang.org/x/xerrors"
 
 	"github.com/filecoin-project/lotus/chain/address"
 )
+
+const PoStReservedWorkers = 1
 
 var log = logging.Logger("sectorbuilder")
 
@@ -38,6 +40,8 @@ const CommLen = sectorbuilder.CommitmentBytesLen
 
 type SectorBuilder struct {
 	handle unsafe.Pointer
+
+	rateLimit chan struct{}
 }
 
 type Config struct {
@@ -53,6 +57,10 @@ type Config struct {
 }
 
 func New(cfg *Config) (*SectorBuilder, error) {
+	if cfg.WorkerThreads <= PoStReservedWorkers {
+		return nil, xerrors.Errorf("minimum worker threads is %d, specified %d", PoStReservedWorkers + 1, cfg.WorkerThreads)
+	}
+
 	proverId := addressToProverID(cfg.Miner)
 
 	sbp, err := sectorbuilder.InitSectorBuilder(cfg.SectorSize, 2, 0, cfg.MetadataDir, proverId, cfg.SealedDir, cfg.StagedDir, cfg.CacheDir, 16, cfg.WorkerThreads)
@@ -62,7 +70,19 @@ func New(cfg *Config) (*SectorBuilder, error) {
 
 	return &SectorBuilder{
 		handle: sbp,
+		rateLimit: make(chan struct{}, cfg.WorkerThreads - PoStReservedWorkers),
 	}, nil
+}
+
+func (sb *SectorBuilder) rlimit() func() {
+	if cap(sb.rateLimit) == len(sb.rateLimit) {
+		log.Warn("rate-limiting sectorbuilder call")
+	}
+	sb.rateLimit <- struct{}{}
+
+	return func() {
+		<-sb.rateLimit
+	}
 }
 
 func addressToProverID(a address.Address) [32]byte {
@@ -81,6 +101,9 @@ func (sb *SectorBuilder) AddPiece(pieceKey string, pieceSize uint64, file io.Rea
 		return 0, err
 	}
 
+	ret := sb.rlimit()
+	defer ret()
+
 	sectorID, err := sectorbuilder.AddPieceFromFile(sb.handle, pieceKey, pieceSize, f)
 	if err != nil {
 		return 0, err
@@ -91,18 +114,30 @@ func (sb *SectorBuilder) AddPiece(pieceKey string, pieceSize uint64, file io.Rea
 
 // TODO: should *really really* return an io.ReadCloser
 func (sb *SectorBuilder) ReadPieceFromSealedSector(pieceKey string) ([]byte, error) {
+	ret := sb.rlimit()
+	defer ret()
+
 	return sectorbuilder.ReadPieceFromSealedSector(sb.handle, pieceKey)
 }
 
 func (sb *SectorBuilder) SealPreCommit(sectorID uint64, ticket SealTicket) (SealPreCommitOutput, error) {
+	ret := sb.rlimit()
+	defer ret()
+
 	return sectorbuilder.SealPreCommit(sb.handle, sectorID, ticket)
 }
 
 func (sb *SectorBuilder) SealCommit(sectorID uint64, seed SealSeed) (SealCommitOutput, error) {
+	ret := sb.rlimit()
+	defer ret()
+
 	return sectorbuilder.SealCommit(sb.handle, sectorID, seed)
 }
 
 func (sb *SectorBuilder) ResumeSealCommit(sectorID uint64) (SealCommitOutput, error) {
+	ret := sb.rlimit()
+	defer ret()
+
 	return sectorbuilder.ResumeSealCommit(sb.handle, sectorID)
 }
 

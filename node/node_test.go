@@ -93,7 +93,7 @@ func testStorageNode(ctx context.Context, t *testing.T, waddr address.Address, a
 		node.Repo(r),
 		node.Test(),
 
-		node.Override(new(*sectorbuilder.Config), modules.SectorBuilderConfig(secbpath)),
+		node.Override(new(*sectorbuilder.Config), modules.SectorBuilderConfig(secbpath, 2)),
 		node.Override(new(api.FullNode), tnd),
 	)
 	require.NoError(t, err)
