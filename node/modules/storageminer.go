@@ -2,6 +2,7 @@ package modules
 
 import (
 	"context"
+	"math"
 	"path/filepath"
 
 	"github.com/ipfs/go-bitswap"
@@ -38,8 +39,8 @@ func minerAddrFromDS(ds dtypes.MetadataDS) (address.Address, error) {
 	return address.NewFromBytes(maddrb)
 }
 
-func SectorBuilderConfig(storagePath string) func(dtypes.MetadataDS, api.FullNode) (*sectorbuilder.SectorBuilderConfig, error) {
-	return func(ds dtypes.MetadataDS, api api.FullNode) (*sectorbuilder.SectorBuilderConfig, error) {
+func SectorBuilderConfig(storagePath string, threads uint) func(dtypes.MetadataDS, api.FullNode) (*sectorbuilder.Config, error) {
+	return func(ds dtypes.MetadataDS, api api.FullNode) (*sectorbuilder.Config, error) {
 		minerAddr, err := minerAddrFromDS(ds)
 		if err != nil {
 			return nil, err
@@ -55,14 +56,20 @@ func SectorBuilderConfig(storagePath string) func(dtypes.MetadataDS, api.FullNod
 			return nil, err
 		}
 
+		if threads > math.MaxUint8 {
+			return nil, xerrors.Errorf("too many sectorbuilder threads specified: %d, max allowed: %d", threads, math.MaxUint8)
+		}
+
 		cache := filepath.Join(sp, "cache")
 		metadata := filepath.Join(sp, "meta")
 		sealed := filepath.Join(sp, "sealed")
 		staging := filepath.Join(sp, "staging")
 
-		sb := &sectorbuilder.SectorBuilderConfig{
-			Miner:       minerAddr,
-			SectorSize:  ssize,
+		sb := &sectorbuilder.Config{
+			Miner:         minerAddr,
+			SectorSize:    ssize,
+			WorkerThreads: uint8(threads),
+
 			CacheDir:    cache,
 			MetadataDir: metadata,
 			SealedDir:   sealed,

@@ -37,13 +37,16 @@ func TestSealAndVerify(t *testing.T) {
 	sealed := filepath.Join(dir, "sealed")
 	staging := filepath.Join(dir, "staging")
 
-	sb, err := sectorbuilder.New(&sectorbuilder.SectorBuilderConfig{
-		SectorSize:  sectorSize,
+	sb, err := sectorbuilder.New(&sectorbuilder.Config{
+		SectorSize: sectorSize,
+		Miner:      addr,
+
+		WorkerThreads: 1,
+
 		CacheDir:    cache,
 		SealedDir:   sealed,
 		StagedDir:   staging,
 		MetadataDir: metadata,
-		Miner:       addr,
 	})
 	if err != nil {
 		t.Fatal(err)
@@ -69,7 +72,7 @@ func TestSealAndVerify(t *testing.T) {
 
 	seed := sectorbuilder.SealSeed{
 		BlockHeight: 15,
-		TicketBytes: [32]byte{0, 9, 8, 7, 6, 5, 4, 3, 2, 1, 0, 9, 8, 7, 6, 45, 3, 2, 1, 0, 9, 8, 7, 6, 5, 4, 3, 2, 1, 0, 9, },
+		TicketBytes: [32]byte{0, 9, 8, 7, 6, 5, 4, 3, 2, 1, 0, 9, 8, 7, 6, 45, 3, 2, 1, 0, 9, 8, 7, 6, 5, 4, 3, 2, 1, 0, 9},
 	}
 
 	sco, err := sb.SealCommit(sid, seed)

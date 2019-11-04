@@ -14,7 +14,7 @@ import (
 type StorageMinerAPI struct {
 	CommonAPI
 
-	SectorBuilderConfig *sectorbuilder.SectorBuilderConfig
+	SectorBuilderConfig *sectorbuilder.Config
 	SectorBuilder       *sectorbuilder.SectorBuilder
 	Sectors             *sector.Store
 	SectorBlocks        *sectorblocks.SectorBlocks

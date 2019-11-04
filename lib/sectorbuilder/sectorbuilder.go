@@ -40,20 +40,22 @@ type SectorBuilder struct {
 	handle unsafe.Pointer
 }
 
-type SectorBuilderConfig struct {
-	SectorSize  uint64
-	Miner       address.Address
+type Config struct {
+	SectorSize uint64
+	Miner      address.Address
+
+	WorkerThreads uint8
+
 	CacheDir    string
 	SealedDir   string
 	StagedDir   string
 	MetadataDir string
 }
 
-func New(cfg *SectorBuilderConfig) (*SectorBuilder, error) {
+func New(cfg *Config) (*SectorBuilder, error) {
 	proverId := addressToProverID(cfg.Miner)
-	nemWorkerThreads := uint8(5) // TODO: from config
 
-	sbp, err := sectorbuilder.InitSectorBuilder(cfg.SectorSize, 2, 0, cfg.MetadataDir, proverId, cfg.SealedDir, cfg.StagedDir, cfg.CacheDir, 16, nemWorkerThreads)
+	sbp, err := sectorbuilder.InitSectorBuilder(cfg.SectorSize, 2, 0, cfg.MetadataDir, proverId, cfg.SealedDir, cfg.StagedDir, cfg.CacheDir, 16, cfg.WorkerThreads)
 	if err != nil {
 		return nil, err
 	}
