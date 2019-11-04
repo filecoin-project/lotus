@@ -17,7 +17,7 @@ var seedSeq int64
 // RandomBytes returns a byte array of the given size with random values.
 func RandomBytes(n int64) []byte {
 	data := new(bytes.Buffer)
-	random.WritePseudoRandomBytes(n, data, seedSeq)
+	random.WritePseudoRandomBytes(n, data, seedSeq) // nolint: errcheck
 	seedSeq++
 	return data.Bytes()
 }
