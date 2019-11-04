@@ -3,6 +3,7 @@ package message
 import (
 	"github.com/filecoin-project/lotus/datatransfer"
 	"github.com/ipfs/go-cid"
+	"io"
 )
 
 type transferMessage struct {
@@ -11,20 +12,6 @@ type transferMessage struct {
 
 	Request  *transferRequest
 	Response *transferResponse
-}
-
-func NewTransferMessage(id uint64, req *transferRequest, resp *transferResponse) DataTransferMessage {
-
-	var isReq bool
-	if req != nil {
-		isReq = true
-	}
-	return &transferMessage{
-		XferID:   id,
-		IsRq:     isReq,
-		Request:  req,
-		Response: resp,
-	}
 }
 
 // ========= DataTransferMessage interface
@@ -89,4 +76,10 @@ func (tm *transferMessage) Accepted() bool {
 		return tm.Response.Accepted()
 	}
 	return false
+}
+
+// ToNet serializes a transfer message type. It's a wrapper for MarshalCBOR to provide
+// symmetry with FromNet
+func (tm *transferMessage) ToNet(w io.Writer) error {
+	return tm.MarshalCBOR(w)
 }
