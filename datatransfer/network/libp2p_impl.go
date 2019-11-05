@@ -62,7 +62,7 @@ func msgToStream(ctx context.Context, s network.Stream, msg message.DataTransfer
 		deadline = dl
 	}
 	if err := s.SetWriteDeadline(deadline); err != nil {
-		log.Warningf("error setting deadline: %s", err)
+		log.Warnf("error setting deadline: %s", err)
 	}
 
 	switch s.Protocol() {
@@ -76,7 +76,7 @@ func msgToStream(ctx context.Context, s network.Stream, msg message.DataTransfer
 	}
 
 	if err := s.SetWriteDeadline(time.Time{}); err != nil {
-		log.Warningf("error resetting deadline: %s", err)
+		log.Warnf("error resetting deadline: %s", err)
 	}
 	return nil
 }
@@ -105,12 +105,15 @@ func (dtnet *libp2pDataTransferNetwork) SendMessage(
 	}
 
 	if err = msgToStream(ctx, s, outgoing); err != nil {
-		s.Reset() // nolint: errcheck
+		if err2 := s.Reset(); err2 != nil {
+			log.Error(err)
+			return err2
+		}
 		return err
 	}
 
 	// TODO(https://github.com/libp2p/go-libp2p-net/issues/28): Avoid this goroutine.
-	go helpers.AwaitEOF(s) // nolint: errcheck
+	go helpers.AwaitEOF(s) // nolint: errcheck,gosec
 	return s.Close()
 
 }
@@ -126,10 +129,10 @@ func (dtnet *libp2pDataTransferNetwork) ConnectTo(ctx context.Context, p peer.ID
 
 // handleNewStream receives a new stream from the network.
 func (dtnet *libp2pDataTransferNetwork) handleNewStream(s network.Stream) {
-	defer s.Close() // nolint: errcheck
+	defer s.Close() // nolint: errcheck,gosec
 
 	if dtnet.receiver == nil {
-		s.Reset() // nolint: errcheck
+		s.Reset() // nolint: errcheck,gosec
 		return
 	}
 
@@ -137,7 +140,7 @@ func (dtnet *libp2pDataTransferNetwork) handleNewStream(s network.Stream) {
 		received, err := message.FromNet(s)
 		if err != nil {
 			if err != io.EOF {
-				s.Reset() // nolint: errcheck
+				s.Reset() // nolint: errcheck,gosec
 				go dtnet.receiver.ReceiveError(err)
 				log.Debugf("graphsync net handleNewStream from %s error: %s", s.Conn().RemotePeer(), err)
 			}

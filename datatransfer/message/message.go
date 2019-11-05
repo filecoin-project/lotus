@@ -42,47 +42,35 @@ type DataTransferResponse interface {
 
 // NewRequest generates a new request for the data transfer protocol
 func NewRequest(id datatransfer.TransferID, isPull bool, voucherIdentifier string, voucher []byte, baseCid cid.Cid, selector []byte) DataTransferRequest {
-	tr := transferRequest{
-		Pull:  isPull,
-		Vouch: voucher,
-		Stor:  selector,
-		BCid:  baseCid.String(),
-		VTyp:  voucherIdentifier,
-	}
-	return &transferMessage{
-		XferID:   uint64(id),
-		IsRq:     true,
-		Request:  &tr,
-		Response: nil,
+	return &transferRequest{
+		Pull:   isPull,
+		Vouch:  voucher,
+		Stor:   selector,
+		BCid:   baseCid.String(),
+		VTyp:   voucherIdentifier,
+		XferID: uint64(id),
 	}
 }
 
 // CancelRequest request generates a request to cancel an in progress request
 func CancelRequest(id datatransfer.TransferID) DataTransferRequest {
-	treq := transferRequest{
-		Canc: true,
-	}
-	return &transferMessage{
-		XferID:  uint64(id),
-		IsRq:    true,
-		Request: &treq,
+	return &transferRequest{
+		Canc:   true,
+		XferID: uint64(id),
 	}
 }
 
 // NewResponse builds a new Data Transfer response
 func NewResponse(id datatransfer.TransferID, accepted bool) DataTransferResponse {
-	tresp := transferResponse{Acpt: accepted}
-	return &transferMessage{
-		XferID:   uint64(id),
-		IsRq:     false,
-		Request:  nil,
-		Response: &tresp,
-	}
+	return &transferResponse{Acpt: accepted, XferID: uint64(id)}
 }
 
 // FromNet can read a network stream to deserialize a GraphSyncMessage
 func FromNet(r io.Reader) (DataTransferMessage, error) {
 	tresp := transferMessage{}
 	err := tresp.UnmarshalCBOR(r)
-	return &tresp, err
+	if tresp.IsRequest() {
+		return tresp.Request, nil
+	}
+	return tresp.Response, err
 }
