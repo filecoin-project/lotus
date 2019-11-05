@@ -24,9 +24,6 @@ const (
 	Unsealing
 )
 
-func init() {
-}
-
 type Query struct {
 	Piece cid.Cid
 	// TODO: payment
