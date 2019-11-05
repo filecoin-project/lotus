@@ -1480,7 +1480,7 @@ func (t *ExpTipSet) MarshalCBOR(w io.Writer) error {
 		return err
 	}
 
-	// t.t.Cids ([]cid.Cid)
+	// t.t.Cids ([]cid.Cid) (slice)
 	if _, err := w.Write(cbg.CborEncodeMajorType(cbg.MajArray, uint64(len(t.Cids)))); err != nil {
 		return err
 	}
@@ -1490,7 +1490,7 @@ func (t *ExpTipSet) MarshalCBOR(w io.Writer) error {
 		}
 	}
 
-	// t.t.Blocks ([]*types.BlockHeader)
+	// t.t.Blocks ([]*types.BlockHeader) (slice)
 	if _, err := w.Write(cbg.CborEncodeMajorType(cbg.MajArray, uint64(len(t.Blocks)))); err != nil {
 		return err
 	}
@@ -1500,8 +1500,8 @@ func (t *ExpTipSet) MarshalCBOR(w io.Writer) error {
 		}
 	}
 
-	// t.t.Height (uint64)
-	if _, err := w.Write(cbg.CborEncodeMajorType(cbg.MajUnsignedInt, t.Height)); err != nil {
+	// t.t.Height (uint64) (uint64)
+	if _, err := w.Write(cbg.CborEncodeMajorType(cbg.MajUnsignedInt, uint64(t.Height))); err != nil {
 		return err
 	}
 	return nil
@@ -1522,7 +1522,7 @@ func (t *ExpTipSet) UnmarshalCBOR(r io.Reader) error {
 		return fmt.Errorf("cbor input had wrong number of fields")
 	}
 
-	// t.t.Cids ([]cid.Cid)
+	// t.t.Cids ([]cid.Cid) (slice)
 
 	maj, extra, err = cbg.CborReadHeader(br)
 	if err != nil {
@@ -1547,7 +1547,7 @@ func (t *ExpTipSet) UnmarshalCBOR(r io.Reader) error {
 		t.Cids[i] = c
 	}
 
-	// t.t.Blocks ([]*types.BlockHeader)
+	// t.t.Blocks ([]*types.BlockHeader) (slice)
 
 	maj, extra, err = cbg.CborReadHeader(br)
 	if err != nil {
@@ -1573,7 +1573,7 @@ func (t *ExpTipSet) UnmarshalCBOR(r io.Reader) error {
 		t.Blocks[i] = &v
 	}
 
-	// t.t.Height (uint64)
+	// t.t.Height (uint64) (uint64)
 
 	maj, extra, err = cbg.CborReadHeader(br)
 	if err != nil {
@@ -1582,6 +1582,6 @@ func (t *ExpTipSet) UnmarshalCBOR(r io.Reader) error {
 	if maj != cbg.MajUnsignedInt {
 		return fmt.Errorf("wrong type for uint64 field")
 	}
-	t.Height = extra
+	t.Height = uint64(extra)
 	return nil
 }
