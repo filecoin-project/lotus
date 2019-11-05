@@ -58,7 +58,7 @@ type Config struct {
 
 func New(cfg *Config) (*SectorBuilder, error) {
 	if cfg.WorkerThreads <= PoStReservedWorkers {
-		return nil, xerrors.Errorf("minimum worker threads is %d, specified %d", PoStReservedWorkers + 1, cfg.WorkerThreads)
+		return nil, xerrors.Errorf("minimum worker threads is %d, specified %d", PoStReservedWorkers+1, cfg.WorkerThreads)
 	}
 
 	proverId := addressToProverID(cfg.Miner)
@@ -69,8 +69,8 @@ func New(cfg *Config) (*SectorBuilder, error) {
 	}
 
 	return &SectorBuilder{
-		handle: sbp,
-		rateLimit: make(chan struct{}, cfg.WorkerThreads - PoStReservedWorkers),
+		handle:    sbp,
+		rateLimit: make(chan struct{}, cfg.WorkerThreads-PoStReservedWorkers),
 	}, nil
 }
 

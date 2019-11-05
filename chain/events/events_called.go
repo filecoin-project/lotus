@@ -56,6 +56,7 @@ type queuedEvent struct {
 type calledEvents struct {
 	cs           eventApi
 	tsc          *tipSetCache
+	ctx          context.Context
 	gcConfidence uint64
 
 	lk sync.Mutex
@@ -114,7 +115,7 @@ func (e *calledEvents) handleReverts(ts *types.TipSet) {
 
 			trigger := e.triggers[event.trigger]
 
-			if err := trigger.revert(ts); err != nil {
+			if err := trigger.revert(e.ctx, ts); err != nil {
 				log.Errorf("reverting chain trigger (call %s.%d() @H %d, called @ %d) failed: %s", event.msg.To, event.msg.Method, ts.Height(), triggerH, err)
 			}
 		}

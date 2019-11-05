@@ -34,8 +34,9 @@ export default {
   [code.miner]: [
     "Send",
     "Constructor",
-    "CommitSector",
-    "SubmitPost",
+    "PreCommitSector",
+    "ProveCommitSector",
+    "SubmitPoSt",
     "SlashStorageFault",
     "GetCurrentProvingSet",
     "ArbitrateDeal",
@@ -49,8 +50,8 @@ export default {
     "ChangeWorker",
     "IsSlashed",
     "IsLate",
-    "PaymentVerifyInclusion",
-    "PaymentVerifySector",
+    "DeclareFaults",
+    "SlashConsensusFault",
   ],
   [code.multisig]: [
     "Send",

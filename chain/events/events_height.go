@@ -1,6 +1,7 @@
 package events
 
 import (
+	"context"
 	"sync"
 
 	"github.com/filecoin-project/lotus/chain/types"
@@ -17,6 +18,8 @@ type heightEvents struct {
 
 	htTriggerHeights map[triggerH][]triggerId
 	htHeights        map[msgH][]triggerId
+
+	ctx context.Context
 }
 
 func (e *heightEvents) headChangeAt(rev, app []*types.TipSet) error {
@@ -26,7 +29,7 @@ func (e *heightEvents) headChangeAt(rev, app []*types.TipSet) error {
 
 		revert := func(h uint64, ts *types.TipSet) {
 			for _, tid := range e.htHeights[h] {
-				err := e.heightTriggers[tid].revert(ts)
+				err := e.heightTriggers[tid].revert(e.ctx, ts)
 				if err != nil {
 					log.Errorf("reverting chain trigger (@H %d): %s", h, err)
 				}
@@ -74,7 +77,7 @@ func (e *heightEvents) headChangeAt(rev, app []*types.TipSet) error {
 					return err
 				}
 
-				if err := hnd.handle(incTs, h); err != nil {
+				if err := hnd.handle(e.ctx, incTs, h); err != nil {
 					log.Errorf("chain trigger (@H %d, called @ %d) failed: %s", triggerH, ts.Height(), err)
 				}
 			}
@@ -125,7 +128,7 @@ func (e *heightEvents) ChainAt(hnd HeightHandler, rev RevertHandler, confidence 
 		}
 
 		e.lk.Unlock()
-		if err := hnd(ts, bestH); err != nil {
+		if err := hnd(e.ctx, ts, bestH); err != nil {
 			return err
 		}
 		e.lk.Lock()

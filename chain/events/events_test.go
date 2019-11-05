@@ -183,12 +183,12 @@ func TestAt(t *testing.T) {
 	var applied bool
 	var reverted bool
 
-	err := events.ChainAt(func(ts *types.TipSet, curH uint64) error {
+	err := events.ChainAt(func(_ context.Context, ts *types.TipSet, curH uint64) error {
 		require.Equal(t, 5, int(ts.Height()))
 		require.Equal(t, 8, int(curH))
 		applied = true
 		return nil
-	}, func(ts *types.TipSet) error {
+	}, func(_ context.Context, ts *types.TipSet) error {
 		reverted = true
 		return nil
 	}, 3, 5)
@@ -248,12 +248,12 @@ func TestAtNullTrigger(t *testing.T) {
 	var applied bool
 	var reverted bool
 
-	err := events.ChainAt(func(ts *types.TipSet, curH uint64) error {
+	err := events.ChainAt(func(_ context.Context, ts *types.TipSet, curH uint64) error {
 		require.Equal(t, uint64(6), ts.Height())
 		require.Equal(t, 8, int(curH))
 		applied = true
 		return nil
-	}, func(ts *types.TipSet) error {
+	}, func(_ context.Context, ts *types.TipSet) error {
 		reverted = true
 		return nil
 	}, 3, 5)
@@ -282,12 +282,12 @@ func TestAtNullConf(t *testing.T) {
 	var applied bool
 	var reverted bool
 
-	err := events.ChainAt(func(ts *types.TipSet, curH uint64) error {
+	err := events.ChainAt(func(_ context.Context, ts *types.TipSet, curH uint64) error {
 		require.Equal(t, 5, int(ts.Height()))
 		require.Equal(t, 8, int(curH))
 		applied = true
 		return nil
-	}, func(ts *types.TipSet) error {
+	}, func(_ context.Context, ts *types.TipSet) error {
 		reverted = true
 		return nil
 	}, 3, 5)
@@ -323,12 +323,12 @@ func TestAtStart(t *testing.T) {
 	var applied bool
 	var reverted bool
 
-	err := events.ChainAt(func(ts *types.TipSet, curH uint64) error {
+	err := events.ChainAt(func(_ context.Context, ts *types.TipSet, curH uint64) error {
 		require.Equal(t, 5, int(ts.Height()))
 		require.Equal(t, 8, int(curH))
 		applied = true
 		return nil
-	}, func(ts *types.TipSet) error {
+	}, func(_ context.Context, ts *types.TipSet) error {
 		reverted = true
 		return nil
 	}, 3, 5)
@@ -357,12 +357,12 @@ func TestAtStartConfidence(t *testing.T) {
 	var applied bool
 	var reverted bool
 
-	err := events.ChainAt(func(ts *types.TipSet, curH uint64) error {
+	err := events.ChainAt(func(_ context.Context, ts *types.TipSet, curH uint64) error {
 		require.Equal(t, 5, int(ts.Height()))
 		require.Equal(t, 11, int(curH))
 		applied = true
 		return nil
-	}, func(ts *types.TipSet) error {
+	}, func(_ context.Context, ts *types.TipSet) error {
 		reverted = true
 		return nil
 	}, 3, 5)
@@ -385,16 +385,16 @@ func TestAtChained(t *testing.T) {
 	var applied bool
 	var reverted bool
 
-	err := events.ChainAt(func(ts *types.TipSet, curH uint64) error {
-		return events.ChainAt(func(ts *types.TipSet, curH uint64) error {
+	err := events.ChainAt(func(_ context.Context, ts *types.TipSet, curH uint64) error {
+		return events.ChainAt(func(_ context.Context, ts *types.TipSet, curH uint64) error {
 			require.Equal(t, 10, int(ts.Height()))
 			applied = true
 			return nil
-		}, func(ts *types.TipSet) error {
+		}, func(_ context.Context, ts *types.TipSet) error {
 			reverted = true
 			return nil
 		}, 3, 10)
-	}, func(ts *types.TipSet) error {
+	}, func(_ context.Context, ts *types.TipSet) error {
 		reverted = true
 		return nil
 	}, 3, 5)
@@ -421,16 +421,16 @@ func TestAtChainedConfidence(t *testing.T) {
 	var applied bool
 	var reverted bool
 
-	err := events.ChainAt(func(ts *types.TipSet, curH uint64) error {
-		return events.ChainAt(func(ts *types.TipSet, curH uint64) error {
+	err := events.ChainAt(func(_ context.Context, ts *types.TipSet, curH uint64) error {
+		return events.ChainAt(func(_ context.Context, ts *types.TipSet, curH uint64) error {
 			require.Equal(t, 10, int(ts.Height()))
 			applied = true
 			return nil
-		}, func(ts *types.TipSet) error {
+		}, func(_ context.Context, ts *types.TipSet) error {
 			reverted = true
 			return nil
 		}, 3, 10)
-	}, func(ts *types.TipSet) error {
+	}, func(_ context.Context, ts *types.TipSet) error {
 		reverted = true
 		return nil
 	}, 3, 5)
@@ -455,11 +455,11 @@ func TestAtChainedConfidenceNull(t *testing.T) {
 	var applied bool
 	var reverted bool
 
-	err := events.ChainAt(func(ts *types.TipSet, curH uint64) error {
+	err := events.ChainAt(func(_ context.Context, ts *types.TipSet, curH uint64) error {
 		applied = true
 		require.Equal(t, 6, int(ts.Height()))
 		return nil
-	}, func(ts *types.TipSet) error {
+	}, func(_ context.Context, ts *types.TipSet) error {
 		reverted = true
 		return nil
 	}, 3, 5)
@@ -499,7 +499,7 @@ func TestCalled(t *testing.T) {
 		appliedTs = ts
 		appliedH = curH
 		return more, nil
-	}, func(ts *types.TipSet) error {
+	}, func(_ context.Context, ts *types.TipSet) error {
 		reverted = true
 		return nil
 	}, 3, 20, t0123, 5)
@@ -693,7 +693,7 @@ func TestCalledTimeout(t *testing.T) {
 		require.Equal(t, uint64(20), ts.Height())
 		require.Equal(t, uint64(23), curH)
 		return false, nil
-	}, func(ts *types.TipSet) error {
+	}, func(_ context.Context, ts *types.TipSet) error {
 		t.Fatal("revert on timeout")
 		return nil
 	}, 3, 20, t0123, 5)
@@ -728,7 +728,7 @@ func TestCalledTimeout(t *testing.T) {
 		require.Equal(t, uint64(20), ts.Height())
 		require.Equal(t, uint64(23), curH)
 		return false, nil
-	}, func(ts *types.TipSet) error {
+	}, func(_ context.Context, ts *types.TipSet) error {
 		t.Fatal("revert on timeout")
 		return nil
 	}, 3, 20, t0123, 5)
@@ -774,7 +774,7 @@ func TestCalledOrder(t *testing.T) {
 		}
 		at++
 		return true, nil
-	}, func(ts *types.TipSet) error {
+	}, func(_ context.Context, ts *types.TipSet) error {
 		switch at {
 		case 2:
 			require.Equal(t, uint64(4), ts.Height())

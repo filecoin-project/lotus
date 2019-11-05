@@ -45,7 +45,7 @@ func (m *Miner) beginPosting(ctx context.Context) {
 	m.postLk.Unlock()
 
 	log.Infof("Scheduling post at height %d", ppe-build.PoStChallangeTime)
-	err = m.events.ChainAt(m.computePost(m.schedPost), func(ts *types.TipSet) error { // Revert
+	err = m.events.ChainAt(m.computePost(m.schedPost), func(ctx context.Context, ts *types.TipSet) error { // Revert
 		// TODO: Cancel post
 		log.Errorf("TODO: Cancel PoSt, re-run")
 		return nil
@@ -84,7 +84,7 @@ func (m *Miner) scheduleNextPost(ppe uint64) {
 
 	log.Infow("scheduling PoSt", "post-height", ppe-build.PoStChallangeTime,
 		"height", ts.Height(), "ppe", ppe, "proving-period", provingPeriod)
-	err = m.events.ChainAt(m.computePost(ppe), func(ts *types.TipSet) error { // Revert
+	err = m.events.ChainAt(m.computePost(ppe), func(ctx context.Context, ts *types.TipSet) error { // Revert
 		// TODO: Cancel post
 		log.Errorf("TODO: Cancel PoSt, re-run")
 		return nil
@@ -96,17 +96,15 @@ func (m *Miner) scheduleNextPost(ppe uint64) {
 	}
 }
 
-func (m *Miner) computePost(ppe uint64) func(ts *types.TipSet, curH uint64) error {
+func (m *Miner) computePost(ppe uint64) func(ctx context.Context, ts *types.TipSet, curH uint64) error {
 	called := 0
-	return func(ts *types.TipSet, curH uint64) error {
+	return func(ctx context.Context, ts *types.TipSet, curH uint64) error {
 		called++
 		if called > 1 {
 			log.Errorw("BUG: computePost callback called again", "ppe", ppe,
 				"height", ts.Height(), "curH", curH, "called", called-1)
 			return nil
 		}
-
-		ctx := context.TODO()
 
 		sset, err := m.api.StateMinerProvingSet(ctx, m.maddr, ts)
 		if err != nil {

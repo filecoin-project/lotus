@@ -98,9 +98,9 @@ func (m *Miner) preCommitted(ctx context.Context, sector SectorInfo) (func(*Sect
 	}
 
 	randHeight := mw.TipSet.Height() + build.InteractivePoRepDelay - 1 // -1 because of how the messages are applied
-	log.Infof("precommit for sector %d made it on chain, will start post computation at height %d", sector.SectorID, randHeight)
+	log.Infof("precommit for sector %d made it on chain, will start proof computation at height %d", sector.SectorID, randHeight)
 
-	err = m.events.ChainAt(func(ts *types.TipSet, curH uint64) error {
+	err = m.events.ChainAt(func(ctx context.Context, ts *types.TipSet, curH uint64) error {
 		m.sectorUpdated <- sectorUpdate{
 			newState: api.Committing,
 			id:       sector.SectorID,
@@ -111,7 +111,7 @@ func (m *Miner) preCommitted(ctx context.Context, sector SectorInfo) (func(*Sect
 		}
 
 		return nil
-	}, func(ts *types.TipSet) error {
+	}, func(ctx context.Context, ts *types.TipSet) error {
 		log.Warn("revert in interactive commit sector step")
 		return nil
 	}, 3, mw.TipSet.Height()+build.InteractivePoRepDelay)
