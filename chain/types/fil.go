@@ -12,7 +12,10 @@ type FIL BigInt
 
 func (f FIL) String() string {
 	r := new(big.Rat).SetFrac(f.Int, big.NewInt(build.FilecoinPrecision))
-	return strings.TrimRight(r.FloatString(18), "0.")
+	if r.Sign() == 0 {
+		return "0"
+	}
+	return strings.TrimRight(strings.TrimRight(r.FloatString(18), "0"), ".")
 }
 
 func (f FIL) Format(s fmt.State, ch rune) {
