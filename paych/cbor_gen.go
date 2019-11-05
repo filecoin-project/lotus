@@ -22,12 +22,12 @@ func (t *VoucherInfo) MarshalCBOR(w io.Writer) error {
 		return err
 	}
 
-	// t.t.Voucher (types.SignedVoucher)
+	// t.t.Voucher (types.SignedVoucher) (struct)
 	if err := t.Voucher.MarshalCBOR(w); err != nil {
 		return err
 	}
 
-	// t.t.Proof ([]uint8)
+	// t.t.Proof ([]uint8) (slice)
 	if _, err := w.Write(cbg.CborEncodeMajorType(cbg.MajByteString, uint64(len(t.Proof)))); err != nil {
 		return err
 	}
@@ -52,7 +52,7 @@ func (t *VoucherInfo) UnmarshalCBOR(r io.Reader) error {
 		return fmt.Errorf("cbor input had wrong number of fields")
 	}
 
-	// t.t.Voucher (types.SignedVoucher)
+	// t.t.Voucher (types.SignedVoucher) (struct)
 
 	{
 
@@ -73,7 +73,7 @@ func (t *VoucherInfo) UnmarshalCBOR(r io.Reader) error {
 		}
 
 	}
-	// t.t.Proof ([]uint8)
+	// t.t.Proof ([]uint8) (slice)
 
 	maj, extra, err = cbg.CborReadHeader(br)
 	if err != nil {
@@ -102,27 +102,27 @@ func (t *ChannelInfo) MarshalCBOR(w io.Writer) error {
 		return err
 	}
 
-	// t.t.Channel (address.Address)
+	// t.t.Channel (address.Address) (struct)
 	if err := t.Channel.MarshalCBOR(w); err != nil {
 		return err
 	}
 
-	// t.t.Control (address.Address)
+	// t.t.Control (address.Address) (struct)
 	if err := t.Control.MarshalCBOR(w); err != nil {
 		return err
 	}
 
-	// t.t.Target (address.Address)
+	// t.t.Target (address.Address) (struct)
 	if err := t.Target.MarshalCBOR(w); err != nil {
 		return err
 	}
 
-	// t.t.Direction (uint64)
-	if _, err := w.Write(cbg.CborEncodeMajorType(cbg.MajUnsignedInt, t.Direction)); err != nil {
+	// t.t.Direction (uint64) (uint64)
+	if _, err := w.Write(cbg.CborEncodeMajorType(cbg.MajUnsignedInt, uint64(t.Direction))); err != nil {
 		return err
 	}
 
-	// t.t.Vouchers ([]*paych.VoucherInfo)
+	// t.t.Vouchers ([]*paych.VoucherInfo) (slice)
 	if _, err := w.Write(cbg.CborEncodeMajorType(cbg.MajArray, uint64(len(t.Vouchers)))); err != nil {
 		return err
 	}
@@ -132,8 +132,8 @@ func (t *ChannelInfo) MarshalCBOR(w io.Writer) error {
 		}
 	}
 
-	// t.t.NextLane (uint64)
-	if _, err := w.Write(cbg.CborEncodeMajorType(cbg.MajUnsignedInt, t.NextLane)); err != nil {
+	// t.t.NextLane (uint64) (uint64)
+	if _, err := w.Write(cbg.CborEncodeMajorType(cbg.MajUnsignedInt, uint64(t.NextLane))); err != nil {
 		return err
 	}
 	return nil
@@ -154,7 +154,7 @@ func (t *ChannelInfo) UnmarshalCBOR(r io.Reader) error {
 		return fmt.Errorf("cbor input had wrong number of fields")
 	}
 
-	// t.t.Channel (address.Address)
+	// t.t.Channel (address.Address) (struct)
 
 	{
 
@@ -163,7 +163,7 @@ func (t *ChannelInfo) UnmarshalCBOR(r io.Reader) error {
 		}
 
 	}
-	// t.t.Control (address.Address)
+	// t.t.Control (address.Address) (struct)
 
 	{
 
@@ -172,7 +172,7 @@ func (t *ChannelInfo) UnmarshalCBOR(r io.Reader) error {
 		}
 
 	}
-	// t.t.Target (address.Address)
+	// t.t.Target (address.Address) (struct)
 
 	{
 
@@ -181,7 +181,7 @@ func (t *ChannelInfo) UnmarshalCBOR(r io.Reader) error {
 		}
 
 	}
-	// t.t.Direction (uint64)
+	// t.t.Direction (uint64) (uint64)
 
 	maj, extra, err = cbg.CborReadHeader(br)
 	if err != nil {
@@ -190,8 +190,8 @@ func (t *ChannelInfo) UnmarshalCBOR(r io.Reader) error {
 	if maj != cbg.MajUnsignedInt {
 		return fmt.Errorf("wrong type for uint64 field")
 	}
-	t.Direction = extra
-	// t.t.Vouchers ([]*paych.VoucherInfo)
+	t.Direction = uint64(extra)
+	// t.t.Vouchers ([]*paych.VoucherInfo) (slice)
 
 	maj, extra, err = cbg.CborReadHeader(br)
 	if err != nil {
@@ -217,7 +217,7 @@ func (t *ChannelInfo) UnmarshalCBOR(r io.Reader) error {
 		t.Vouchers[i] = &v
 	}
 
-	// t.t.NextLane (uint64)
+	// t.t.NextLane (uint64) (uint64)
 
 	maj, extra, err = cbg.CborReadHeader(br)
 	if err != nil {
@@ -226,6 +226,6 @@ func (t *ChannelInfo) UnmarshalCBOR(r io.Reader) error {
 	if maj != cbg.MajUnsignedInt {
 		return fmt.Errorf("wrong type for uint64 field")
 	}
-	t.NextLane = extra
+	t.NextLane = uint64(extra)
 	return nil
 }

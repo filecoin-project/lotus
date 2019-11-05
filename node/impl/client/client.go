@@ -3,10 +3,11 @@ package client
 import (
 	"context"
 	"errors"
-	"golang.org/x/xerrors"
 	"io"
 	"math"
 	"os"
+
+	"golang.org/x/xerrors"
 
 	"github.com/ipfs/go-blockservice"
 	"github.com/ipfs/go-cid"

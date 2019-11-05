@@ -6,10 +6,12 @@ import (
 
 	gen "github.com/whyrusleeping/cbor-gen"
 
+	"github.com/filecoin-project/lotus/api"
 	"github.com/filecoin-project/lotus/chain/actors"
 	"github.com/filecoin-project/lotus/chain/deals"
 	"github.com/filecoin-project/lotus/chain/types"
 	"github.com/filecoin-project/lotus/paych"
+	"github.com/filecoin-project/lotus/retrieval"
 )
 
 func main() {
@@ -36,6 +38,29 @@ func main() {
 	err = gen.WriteTupleEncodersToFile("./paych/cbor_gen.go", "paych",
 		paych.VoucherInfo{},
 		paych.ChannelInfo{},
+	)
+	if err != nil {
+		fmt.Println(err)
+		os.Exit(1)
+	}
+
+	err = gen.WriteTupleEncodersToFile("./api/cbor_gen.go", "api",
+		api.PaymentInfo{},
+	)
+	if err != nil {
+		fmt.Println(err)
+		os.Exit(1)
+	}
+
+	err = gen.WriteTupleEncodersToFile("./retrieval/cbor_gen.go", "retrieval",
+		retrieval.RetParams{},
+
+		retrieval.Query{},
+		retrieval.QueryResponse{},
+		retrieval.Unixfs0Offer{},
+		retrieval.DealProposal{},
+		retrieval.DealResponse{},
+		retrieval.Block{},
 	)
 	if err != nil {
 		fmt.Println(err)

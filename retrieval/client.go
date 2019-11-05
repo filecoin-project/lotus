@@ -3,11 +3,9 @@ package retrieval
 import (
 	"context"
 	"io"
-	"io/ioutil"
 
 	blocks "github.com/ipfs/go-block-format"
 	"github.com/ipfs/go-cid"
-	cbor "github.com/ipfs/go-ipld-cbor"
 	logging "github.com/ipfs/go-log"
 	"github.com/libp2p/go-libp2p-core/host"
 	"github.com/libp2p/go-libp2p-core/network"
@@ -45,7 +43,7 @@ func (c *Client) Query(ctx context.Context, p discovery.RetrievalPeer, data cid.
 	}
 	defer s.Close()
 
-	err = cborrpc.WriteCborRPC(s, Query{
+	err = cborrpc.WriteCborRPC(s, &Query{
 		Piece: data,
 	})
 	if err != nil {
@@ -53,15 +51,8 @@ func (c *Client) Query(ctx context.Context, p discovery.RetrievalPeer, data cid.
 		return api.QueryOffer{Err: err.Error(), Miner: p.Address, MinerPeerID: p.ID}
 	}
 
-	// TODO: read deadline
-	rawResp, err := ioutil.ReadAll(s)
-	if err != nil {
-		log.Warn(err)
-		return api.QueryOffer{Err: err.Error(), Miner: p.Address, MinerPeerID: p.ID}
-	}
-
 	var resp QueryResponse
-	if err := cbor.DecodeInto(rawResp, &resp); err != nil {
+	if err := resp.UnmarshalCBOR(s); err != nil {
 		log.Warn(err)
 		return api.QueryOffer{Err: err.Error(), Miner: p.Address, MinerPeerID: p.ID}
 	}
@@ -167,7 +158,7 @@ func (cst *clientStream) doOneExchange(ctx context.Context, toFetch uint64, out 
 		return xerrors.Errorf("setting up retrieval payment: %w", err)
 	}
 
-	deal := DealProposal{
+	deal := &DealProposal{
 		Payment: payment,
 		Ref:     cst.root,
 		Params: RetParams{
