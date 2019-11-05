@@ -5,7 +5,7 @@ import (
 	"reflect"
 
 	"github.com/ipfs/go-cid"
-	ipld "github.com/ipld/go-ipld-prime"
+	"github.com/ipld/go-ipld-prime"
 	"github.com/libp2p/go-libp2p-core/peer"
 )
 
@@ -75,8 +75,8 @@ func NewChannel(transferID TransferID, baseCid cid.Cid,
 	sender peer.ID,
 	recipient peer.ID,
 	totalSize uint64) Channel {
-		return Channel{transferID, baseCid, selector, voucher, sender, recipient, totalSize}
-	}
+	return Channel{transferID, baseCid, selector, voucher, sender, recipient, totalSize}
+}
 
 // TransferID returns the transfer id for this channel
 func (c Channel) TransferID() TransferID { return c.transferID }

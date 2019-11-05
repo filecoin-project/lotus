@@ -1,9 +1,11 @@
 package message
 
 import (
-	"github.com/filecoin-project/lotus/datatransfer"
-	"github.com/ipfs/go-cid"
 	"io"
+
+	"github.com/ipfs/go-cid"
+
+	"github.com/filecoin-project/lotus/datatransfer"
 )
 
 type transferMessage struct {
