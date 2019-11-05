@@ -3,7 +3,6 @@ package retrieval
 import (
 	"fmt"
 	"io"
-	"io/ioutil"
 
 	cbg "github.com/whyrusleeping/cbor-gen"
 	xerrors "golang.org/x/xerrors"
@@ -403,14 +402,11 @@ func (t *Block) MarshalCBOR(w io.Writer) error {
 	}
 
 	// t.t.Data ([]uint8) (slice)
-	dlen := len(t.Data)
-	if _, err := w.Write(cbg.CborEncodeMajorType(cbg.MajByteString, uint64(dlen))); err != nil {
+	if _, err := w.Write(cbg.CborEncodeMajorType(cbg.MajByteString, uint64(len(t.Data)))); err != nil {
 		return err
 	}
-	if n, err := w.Write(t.Data); err != nil {
+	if _, err := w.Write(t.Data); err != nil {
 		return err
-	} else if n != dlen {
-		return fmt.Errorf("somehow wrote the wrong number of bytes...")
 	}
 	return nil
 }
@@ -423,12 +419,7 @@ func (t *Block) UnmarshalCBOR(r io.Reader) error {
 		return err
 	}
 	if maj != cbg.MajArray {
-		data, err := ioutil.ReadAll(r)
-		if err != nil {
-			panic("piss")
-		}
-		fmt.Println("STRING DATA: ", string(data))
-		return fmt.Errorf("cbor input should be of type array (got %d)", maj)
+		return fmt.Errorf("cbor input should be of type array")
 	}
 
 	if extra != 2 {

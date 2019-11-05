@@ -14,14 +14,19 @@ import (
 
 	"github.com/filecoin-project/lotus/api"
 	"github.com/filecoin-project/lotus/build"
+	"github.com/filecoin-project/lotus/chain/address"
 	"github.com/filecoin-project/lotus/chain/types"
 	"github.com/filecoin-project/lotus/lib/cborrpc"
 	"github.com/filecoin-project/lotus/storage/sectorblocks"
 )
 
+type RetrMinerApi interface {
+	PaychVoucherAdd(context.Context, address.Address, *types.SignedVoucher, []byte, types.BigInt) (types.BigInt, error)
+}
+
 type Miner struct {
 	sectorBlocks *sectorblocks.SectorBlocks
-	full         api.FullNode
+	full         RetrMinerApi
 
 	pricePerByte types.BigInt
 	// TODO: Unseal price

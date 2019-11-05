@@ -279,12 +279,6 @@ func (cg *ChainGen) NextTipSetFromMiners(base *types.TipSet, miners []address.Ad
 	}
 
 	fts := store.NewFullTipSet(blks)
-	fmt.Println("Made a block: ", fts.TipSet().Cids())
-	if len(fts.TipSet().Cids()) > 1 {
-		for _, b := range blks {
-			fmt.Printf("block %s: %#v\n", b.Cid(), b.Header)
-		}
-	}
 
 	return &MinedTipSet{
 		TipSet:   fts,

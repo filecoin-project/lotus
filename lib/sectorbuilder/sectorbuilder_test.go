@@ -23,7 +23,7 @@ func TestSealAndVerify(t *testing.T) {
 		t.Fatal(err)
 	}
 
-	sb, cleanup, err := TempSectorbuilder(sectorSize)
+	sb, cleanup, err := sectorbuilder.TempSectorbuilder(sectorSize)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -53,7 +53,7 @@ func TestSealAndVerify(t *testing.T) {
 
 	ssinfo := <-store.Incoming()
 
-	ok, err := sectorbuilder.VerifySeal(sectorSize, ssinfo.CommR[:], ssinfo.CommD[:], addr, ssinfo.Ticket.TicketBytes[:], ssinfo.SectorID, ssinfo.Proof)
+	ok, err := sectorbuilder.VerifySeal(sectorSize, ssinfo.CommR[:], ssinfo.CommD[:], sb.Miner, ssinfo.Ticket.TicketBytes[:], ssinfo.SectorID, ssinfo.Proof)
 	if err != nil {
 		t.Fatal(err)
 	}

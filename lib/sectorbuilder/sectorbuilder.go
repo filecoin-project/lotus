@@ -32,6 +32,8 @@ const CommLen = sectorbuilder.CommitmentBytesLen
 
 type SectorBuilder struct {
 	handle unsafe.Pointer
+
+	Miner address.Address
 }
 
 type SectorBuilderConfig struct {
@@ -52,6 +54,7 @@ func New(cfg *SectorBuilderConfig) (*SectorBuilder, error) {
 
 	return &SectorBuilder{
 		handle: sbp,
+		Miner:  cfg.Miner,
 	}, nil
 }
 
