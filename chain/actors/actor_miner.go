@@ -231,8 +231,8 @@ func (sma StorageMinerActor) PreCommitSector(act *types.Actor, vmctx types.VMCon
 		return nil, aerrors.Newf(1, "sector commitment must be based off past randomness (%d >= %d)", params.Epoch, vmctx.BlockHeight()+build.SealRandomnessLookback)
 	}
 
-	if vmctx.BlockHeight()-params.Epoch+build.SealRandomnessLookback > 1000 {
-		return nil, aerrors.New(2, "sector commitment must be recent enough")
+	if vmctx.BlockHeight()-params.Epoch+build.SealRandomnessLookback > build.SealRandomnessLookbackLimit {
+		return nil, aerrors.Newf(2, "sector commitment must be recent enough (was %d)", vmctx.BlockHeight()-params.Epoch+build.SealRandomnessLookback)
 	}
 
 	mi, err := loadMinerInfo(vmctx, self)

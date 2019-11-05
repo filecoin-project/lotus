@@ -55,7 +55,7 @@ const Finality = 500
 // Proofs
 
 // Blocks
-const ProvingPeriodDuration = 60
+const ProvingPeriodDuration = 300
 
 // PoStChallangeTime sets the window in which post computation should happen
 // Blocks
@@ -70,6 +70,9 @@ const PoStRandomnessLookback = 1
 
 // Blocks
 const SealRandomnessLookback = Finality
+
+// Blocks
+const SealRandomnessLookbackLimit = SealRandomnessLookback + 2000
 
 // /////
 // Mining
