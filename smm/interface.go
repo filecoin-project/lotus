@@ -1,6 +1,11 @@
 package smm
 
-import "github.com/ipfs/go-cid"
+import (
+    "github.com/filecoin-project/lotus/api"
+    "github.com/filecoin-project/lotus/chain/address"
+    "github.com/filecoin-project/lotus/chain/types"
+    "github.com/ipfs/go-cid"
+)
 
 type SectorState int
 const (
@@ -49,29 +54,21 @@ type StateID cid.Cid  // an opaque unique state identifier (the state root CID)
 type SealSeed []byte
 type Proof []byte
 
-type StorageMiningEvents interface {
-    // Called when the chain state changes.
-    // Epoch may change by >1.
-    // In case of a re-org, state will always change back to the fork
-    // point before advancing down the new chain.
-    OnChainStateChanged(Epoch, StateID)
-}
-
 type ProvingPeriod struct {
-    Start        Epoch // First epoch in the period
-    End         Epoch // Last epoch in the period
-    ChallengeStart    Epoch // Epoch at which miner is challenged (or zero)
-    ChallengeEnd    Epoch    // Epoch by which PoSt is due (or zero)
-    ChallengeSeed    []byte // PoSt challenge seed (or empty)
+    Start          Epoch  // First epoch in the period
+    End            Epoch  // Last epoch in the period
+    ChallengeStart Epoch  // Epoch at which miner is challenged (or zero)
+    ChallengeEnd   Epoch  // Epoch by which PoSt is due (or zero)
+    ChallengeSeed  []byte // PoSt challenge seed (or empty)
 }
 
 type MinerChainState struct {
     // From StorageMinerActor
-    Info                   MinerInfo
-    PreCommittedSectors    map[uint64]PreCommittedSector
-    Sectors                map[uint64]SectorOnChainInfo
-    StagedCommittedSectors map[uint64]SectorOnChainInfo
-    ProvingSet             BitField
+    Address                address.Address
+    PreCommittedSectors    map[uint64]api.SectorInfo
+    Sectors                map[uint64]api.SectorInfo
+    StagedCommittedSectors map[uint64]api.SectorInfo
+    ProvingSet             types.BitField
 
     // From StoragePowerActor
     Power                  uint64
@@ -82,6 +79,7 @@ type MiningStateEvents interface {
     OnProvingPeriodChanged(provingPeriod ProvingPeriod)
 }
 
+// move out functions, transform to struct
 type StorageMiningModule interface {
     // Starts the mining state machine
     StartMining() (StorageMiningState, error)
