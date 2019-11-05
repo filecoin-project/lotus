@@ -1,8 +1,9 @@
 package message
 
 import (
-	"github.com/ipfs/go-cid"
 	"io"
+
+	"github.com/ipfs/go-cid"
 )
 
 // transferRequest is a struct that fulfills the DataTransferRequest interface.
