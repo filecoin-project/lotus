@@ -15,7 +15,9 @@ import (
 const sectorSize = 1024
 
 func TestSealAndVerify(t *testing.T) {
-	//t.Skip("this is slow")
+	t.Skip("this is slow")
+	//os.Setenv("BELLMAN_NO_GPU", "1")
+
 	build.SectorSizes = []uint64{sectorSize}
 
 	if err := build.GetParams(true); err != nil {
@@ -41,7 +43,7 @@ func TestSealAndVerify(t *testing.T) {
 		SectorSize: sectorSize,
 		Miner:      addr,
 
-		WorkerThreads: 1,
+		WorkerThreads: 2,
 
 		CacheDir:    cache,
 		SealedDir:   sealed,
