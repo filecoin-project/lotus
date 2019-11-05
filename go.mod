@@ -14,7 +14,6 @@ require (
 	github.com/filecoin-project/go-sectorbuilder v0.0.0-00010101000000-000000000000
 	github.com/gbrlsnchs/jwt/v3 v3.0.0-beta.1
 	github.com/go-ole/go-ole v1.2.4 // indirect
-	github.com/gogo/protobuf v1.2.1
 	github.com/gorilla/websocket v1.4.0
 	github.com/hashicorp/golang-lru v0.5.3
 	github.com/influxdata/influxdb1-client v0.0.0-20190809212627-fc22c7df067e
@@ -88,6 +87,7 @@ require (
 	go.uber.org/zap v1.10.0
 	go4.org v0.0.0-20190313082347-94abd6928b1d // indirect
 	golang.org/x/crypto v0.0.0-20190829043050-9756ffdc2472 // indirect
+	golang.org/x/sys v0.0.0-20190904154756-749cb33beabd // indirect
 	golang.org/x/time v0.0.0-20190308202827-9d24e82272b4
 	golang.org/x/xerrors v0.0.0-20190717185122-a985d3407aa7
 	google.golang.org/api v0.9.0 // indirect
