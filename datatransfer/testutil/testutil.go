@@ -11,13 +11,13 @@ import (
 )
 
 var blockGenerator = blocksutil.NewBlockGenerator()
-var prioritySeq int
+//var prioritySeq int
 var seedSeq int64
 
 // RandomBytes returns a byte array of the given size with random values.
 func RandomBytes(n int64) []byte {
 	data := new(bytes.Buffer)
-	random.WritePseudoRandomBytes(n, data, seedSeq) // nolint: errcheck
+	random.WritePseudoRandomBytes(n, data, seedSeq) // nolint: gosec,errcheck
 	seedSeq++
 	return data.Bytes()
 }
