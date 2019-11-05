@@ -3,15 +3,14 @@ package retrieval
 import (
 	"context"
 	"io"
-	"io/ioutil"
 
 	blocks "github.com/ipfs/go-block-format"
 	"github.com/ipfs/go-cid"
-	cbor "github.com/ipfs/go-ipld-cbor"
 	logging "github.com/ipfs/go-log"
 	"github.com/libp2p/go-libp2p-core/host"
 	"github.com/libp2p/go-libp2p-core/network"
 	"github.com/libp2p/go-libp2p-core/peer"
+	cbg "github.com/whyrusleeping/cbor-gen"
 	"golang.org/x/xerrors"
 
 	"github.com/filecoin-project/lotus/api"
@@ -45,7 +44,7 @@ func (c *Client) Query(ctx context.Context, p discovery.RetrievalPeer, data cid.
 	}
 	defer s.Close()
 
-	err = cborrpc.WriteCborRPC(s, Query{
+	err = cborrpc.WriteCborRPC(s, &Query{
 		Piece: data,
 	})
 	if err != nil {
@@ -53,15 +52,8 @@ func (c *Client) Query(ctx context.Context, p discovery.RetrievalPeer, data cid.
 		return api.QueryOffer{Err: err.Error(), Miner: p.Address, MinerPeerID: p.ID}
 	}
 
-	// TODO: read deadline
-	rawResp, err := ioutil.ReadAll(s)
-	if err != nil {
-		log.Warn(err)
-		return api.QueryOffer{Err: err.Error(), Miner: p.Address, MinerPeerID: p.ID}
-	}
-
 	var resp QueryResponse
-	if err := cbor.DecodeInto(rawResp, &resp); err != nil {
+	if err := resp.UnmarshalCBOR(s); err != nil {
 		log.Warn(err)
 		return api.QueryOffer{Err: err.Error(), Miner: p.Address, MinerPeerID: p.ID}
 	}
@@ -78,6 +70,7 @@ func (c *Client) Query(ctx context.Context, p discovery.RetrievalPeer, data cid.
 type clientStream struct {
 	payapi payapi.PaychAPI
 	stream network.Stream
+	peeker cbg.BytePeeker
 
 	root   cid.Cid
 	size   types.BigInt
@@ -127,6 +120,7 @@ func (c *Client) RetrieveUnixfs(ctx context.Context, root cid.Cid, size uint64, 
 	cst := clientStream{
 		payapi: c.payapi,
 		stream: s,
+		peeker: cbg.GetPeeker(s),
 
 		root:   root,
 		size:   types.NewInt(size),
@@ -167,7 +161,7 @@ func (cst *clientStream) doOneExchange(ctx context.Context, toFetch uint64, out 
 		return xerrors.Errorf("setting up retrieval payment: %w", err)
 	}
 
-	deal := DealProposal{
+	deal := &DealProposal{
 		Payment: payment,
 		Ref:     cst.root,
 		Params: RetParams{
@@ -183,7 +177,7 @@ func (cst *clientStream) doOneExchange(ctx context.Context, toFetch uint64, out 
 	}
 
 	var resp DealResponse
-	if err := cborrpc.ReadCborRPC(cst.stream, &resp); err != nil {
+	if err := cborrpc.ReadCborRPC(cst.peeker, &resp); err != nil {
 		log.Error(err)
 		return err
 	}
@@ -215,7 +209,7 @@ func (cst *clientStream) fetchBlocks(toFetch uint64, out io.Writer) error {
 		log.Infof("block %d of %d", i+1, blocksToFetch)
 
 		var block Block
-		if err := cborrpc.ReadCborRPC(cst.stream, &block); err != nil {
+		if err := cborrpc.ReadCborRPC(cst.peeker, &block); err != nil {
 			return xerrors.Errorf("reading fetchBlock response: %w", err)
 		}
 

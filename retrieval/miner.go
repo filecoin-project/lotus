@@ -13,14 +13,19 @@ import (
 
 	"github.com/filecoin-project/lotus/api"
 	"github.com/filecoin-project/lotus/build"
+	"github.com/filecoin-project/lotus/chain/address"
 	"github.com/filecoin-project/lotus/chain/types"
 	"github.com/filecoin-project/lotus/lib/cborrpc"
 	"github.com/filecoin-project/lotus/storage/sectorblocks"
 )
 
+type RetrMinerApi interface {
+	PaychVoucherAdd(context.Context, address.Address, *types.SignedVoucher, []byte, types.BigInt) (types.BigInt, error)
+}
+
 type Miner struct {
 	sectorBlocks *sectorblocks.SectorBlocks
-	full         api.FullNode
+	full         RetrMinerApi
 
 	pricePerByte types.BigInt
 	// TODO: Unseal price
@@ -37,7 +42,7 @@ func NewMiner(sblks *sectorblocks.SectorBlocks, full api.FullNode) *Miner {
 
 func writeErr(stream network.Stream, err error) {
 	log.Errorf("Retrieval deal error: %s", err)
-	_ = cborrpc.WriteCborRPC(stream, DealResponse{
+	_ = cborrpc.WriteCborRPC(stream, &DealResponse{
 		Status:  Error,
 		Message: err.Error(),
 	})
@@ -58,7 +63,7 @@ func (m *Miner) HandleQueryStream(stream network.Stream) {
 		return
 	}
 
-	answer := QueryResponse{
+	answer := &QueryResponse{
 		Status: Unavailable,
 	}
 	if err == nil {
@@ -134,7 +139,7 @@ func (hnd *handlerDeal) handleNext() (bool, error) {
 	// If the file isn't open (new deal stream), isn't the right file, or isn't
 	// at the right offset, (re)open it
 	if hnd.open != deal.Ref || hnd.at != unixfs0.Offset {
-		log.Infof("opening file for sending (open '%s') (@%d, want %d)", hnd.open, hnd.at, unixfs0.Offset)
+		log.Infof("opening file for sending (open '%s') (@%d, want %d)", deal.Ref, hnd.at, unixfs0.Offset)
 		if err := hnd.openFile(deal); err != nil {
 			return false, err
 		}
@@ -195,7 +200,7 @@ func (hnd *handlerDeal) openFile(deal DealProposal) error {
 func (hnd *handlerDeal) accept(deal DealProposal) error {
 	unixfs0 := deal.Params.Unixfs0
 
-	resp := DealResponse{
+	resp := &DealResponse{
 		Status: Accepted,
 	}
 	if err := cborrpc.WriteCborRPC(hnd.stream, resp); err != nil {
@@ -221,7 +226,7 @@ func (hnd *handlerDeal) accept(deal DealProposal) error {
 			return
 		}*/
 
-		block := Block{
+		block := &Block{
 			Prefix: nd.Cid().Prefix().Bytes(),
 			Data:   nd.RawData(),
 		}

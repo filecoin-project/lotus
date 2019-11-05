@@ -5,6 +5,7 @@ import (
 	"encoding/base64"
 
 	"github.com/filecoin-project/lotus/chain/address"
+	cborrpc "github.com/filecoin-project/lotus/lib/cborrpc"
 	cbor "github.com/ipfs/go-ipld-cbor"
 )
 
@@ -46,13 +47,13 @@ func (sv *SignedVoucher) EncodedString() (string, error) {
 func (sv *SignedVoucher) Equals(other *SignedVoucher) bool {
 	// TODO: make this less bad
 
-	selfB, err := cbor.DumpObject(sv)
+	selfB, err := cborrpc.Dump(sv)
 	if err != nil {
 		log.Errorf("SignedVoucher.Equals: dump self: %s", err)
 		return false
 	}
 
-	otherB, err := cbor.DumpObject(other)
+	otherB, err := cborrpc.Dump(other)
 	if err != nil {
 		log.Errorf("SignedVoucher.Equals: dump other: %s", err)
 		return false

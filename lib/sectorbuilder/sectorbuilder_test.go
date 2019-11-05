@@ -3,15 +3,12 @@ package sectorbuilder_test
 import (
 	"context"
 	"io"
-	"io/ioutil"
 	"math/rand"
-	"path/filepath"
 	"testing"
 
 	"github.com/ipfs/go-datastore"
 
 	"github.com/filecoin-project/lotus/build"
-	"github.com/filecoin-project/lotus/chain/address"
 	"github.com/filecoin-project/lotus/lib/sectorbuilder"
 	"github.com/filecoin-project/lotus/storage/sector"
 )
@@ -26,30 +23,11 @@ func TestSealAndVerify(t *testing.T) {
 		t.Fatal(err)
 	}
 
-	dir, err := ioutil.TempDir("", "sbtest")
+	sb, cleanup, err := sectorbuilder.TempSectorbuilder(sectorSize)
 	if err != nil {
 		t.Fatal(err)
 	}
-
-	addr, err := address.NewFromString("t3vfxagwiegrywptkbmyohqqbfzd7xzbryjydmxso4hfhgsnv6apddyihltsbiikjf3lm7x2myiaxhuc77capq")
-	if err != nil {
-		t.Fatal(err)
-	}
-
-	metadata := filepath.Join(dir, "meta")
-	sealed := filepath.Join(dir, "sealed")
-	staging := filepath.Join(dir, "staging")
-
-	sb, err := sectorbuilder.New(&sectorbuilder.SectorBuilderConfig{
-		SectorSize:  sectorSize,
-		SealedDir:   sealed,
-		StagedDir:   staging,
-		MetadataDir: metadata,
-		Miner:       addr,
-	})
-	if err != nil {
-		t.Fatal(err)
-	}
+	defer cleanup()
 
 	// TODO: Consider fixing
 	store := sector.NewStore(sb, datastore.NewMapDatastore(), func(ctx context.Context) (*sectorbuilder.SealTicket, error) {
@@ -75,7 +53,7 @@ func TestSealAndVerify(t *testing.T) {
 
 	ssinfo := <-store.Incoming()
 
-	ok, err := sectorbuilder.VerifySeal(sectorSize, ssinfo.CommR[:], ssinfo.CommD[:], addr, ssinfo.Ticket.TicketBytes[:], ssinfo.SectorID, ssinfo.Proof)
+	ok, err := sectorbuilder.VerifySeal(sectorSize, ssinfo.CommR[:], ssinfo.CommD[:], sb.Miner, ssinfo.Ticket.TicketBytes[:], ssinfo.SectorID, ssinfo.Proof)
 	if err != nil {
 		t.Fatal(err)
 	}
