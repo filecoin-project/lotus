@@ -14,6 +14,7 @@ import (
 
 	"github.com/filecoin-project/lotus/chain/address"
 	"github.com/filecoin-project/lotus/chain/types"
+	cborrpc "github.com/filecoin-project/lotus/lib/cborrpc"
 	"github.com/filecoin-project/lotus/node/modules/dtypes"
 )
 
@@ -59,12 +60,12 @@ func dskeyForChannel(addr address.Address) datastore.Key {
 func (ps *Store) putChannelInfo(ci *ChannelInfo) error {
 	k := dskeyForChannel(ci.Channel)
 
-	buf := new(bytes.Buffer)
-	if err := ci.MarshalCBOR(buf); err != nil {
+	b, err := cborrpc.Dump(ci)
+	if err != nil {
 		return err
 	}
 
-	return ps.ds.Put(k, buf.Bytes())
+	return ps.ds.Put(k, b)
 }
 
 func (ps *Store) getChannelInfo(addr address.Address) (*ChannelInfo, error) {

@@ -2,7 +2,6 @@ package retrieval
 
 import (
 	"context"
-	"fmt"
 	"io"
 
 	"github.com/ipfs/go-blockservice"
@@ -209,8 +208,6 @@ func (hnd *handlerDeal) accept(deal DealProposal) error {
 		return err
 	}
 
-	defer fmt.Println("leaving accept retrieval deal")
-
 	blocksToSend := (unixfs0.Size + build.UnixfsChunkSize - 1) / build.UnixfsChunkSize
 	for i := uint64(0); i < blocksToSend; {
 		data, offset, nd, err := hnd.ufsr.ReadBlock(context.TODO())
@@ -234,7 +231,6 @@ func (hnd *handlerDeal) accept(deal DealProposal) error {
 			Data:   nd.RawData(),
 		}
 
-		fmt.Println("retrieval sending block: ", i, blocksToSend, len(nd.RawData()))
 		if err := cborrpc.WriteCborRPC(hnd.stream, block); err != nil {
 			return err
 		}
