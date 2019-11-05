@@ -3,7 +3,7 @@ package message
 import (
 	"fmt"
 	cbg "github.com/whyrusleeping/cbor-gen"
-	"golang.org/x/xerrors"
+	xerrors "golang.org/x/xerrors"
 	"io"
 )
 
@@ -16,12 +16,7 @@ func (t *transferMessage) MarshalCBOR(w io.Writer) error {
 		_, err := w.Write(cbg.CborNull)
 		return err
 	}
-	if _, err := w.Write([]byte{132}); err != nil {
-		return err
-	}
-
-	// t.t.XferID (uint64)
-	if _, err := w.Write(cbg.CborEncodeMajorType(cbg.MajUnsignedInt, t.XferID)); err != nil {
+	if _, err := w.Write([]byte{131}); err != nil {
 		return err
 	}
 
@@ -53,20 +48,10 @@ func (t *transferMessage) UnmarshalCBOR(r io.Reader) error {
 		return fmt.Errorf("cbor input should be of type array")
 	}
 
-	if extra != 4 {
+	if extra != 3 {
 		return fmt.Errorf("cbor input had wrong number of fields")
 	}
 
-	// t.t.XferID (uint64)
-
-	maj, extra, err = cbg.CborReadHeader(br)
-	if err != nil {
-		return err
-	}
-	if maj != cbg.MajUnsignedInt {
-		return fmt.Errorf("wrong type for uint64 field")
-	}
-	t.XferID = extra
 	// t.t.IsRq (bool)
 
 	maj, extra, err = cbg.CborReadHeader(br)
@@ -134,28 +119,20 @@ func (t *transferRequest) MarshalCBOR(w io.Writer) error {
 		_, err := w.Write(cbg.CborNull)
 		return err
 	}
-	if _, err := w.Write([]byte{136}); err != nil {
+	if _, err := w.Write([]byte{137}); err != nil {
 		return err
 	}
 
-	// t.t.VTyp (string)
-	if _, err := w.Write(cbg.CborEncodeMajorType(cbg.MajTextString, uint64(len(t.VTyp)))); err != nil {
+	// t.t.BCid (string)
+	if _, err := w.Write(cbg.CborEncodeMajorType(cbg.MajTextString, uint64(len(t.BCid)))); err != nil {
 		return err
 	}
-	if _, err := w.Write([]byte(t.VTyp)); err != nil {
-		return err
-	}
-
-	// t.t.Pull (bool)
-	if err := cbg.WriteBool(w, t.Pull); err != nil {
+	if _, err := w.Write([]byte(t.BCid)); err != nil {
 		return err
 	}
 
-	// t.t.Vouch ([]uint8)
-	if _, err := w.Write(cbg.CborEncodeMajorType(cbg.MajByteString, uint64(len(t.Vouch)))); err != nil {
-		return err
-	}
-	if _, err := w.Write(t.Vouch); err != nil {
+	// t.t.Canc (bool)
+	if err := cbg.WriteBool(w, t.Canc); err != nil {
 		return err
 	}
 
@@ -167,6 +144,16 @@ func (t *transferRequest) MarshalCBOR(w io.Writer) error {
 		return err
 	}
 
+	// t.t.Part (bool)
+	if err := cbg.WriteBool(w, t.Part); err != nil {
+		return err
+	}
+
+	// t.t.Pull (bool)
+	if err := cbg.WriteBool(w, t.Pull); err != nil {
+		return err
+	}
+
 	// t.t.Stor ([]uint8)
 	if _, err := w.Write(cbg.CborEncodeMajorType(cbg.MajByteString, uint64(len(t.Stor)))); err != nil {
 		return err
@@ -175,21 +162,24 @@ func (t *transferRequest) MarshalCBOR(w io.Writer) error {
 		return err
 	}
 
-	// t.t.Part (bool)
-	if err := cbg.WriteBool(w, t.Part); err != nil {
+	// t.t.Vouch ([]uint8)
+	if _, err := w.Write(cbg.CborEncodeMajorType(cbg.MajByteString, uint64(len(t.Vouch)))); err != nil {
+		return err
+	}
+	if _, err := w.Write(t.Vouch); err != nil {
 		return err
 	}
 
-	// t.t.Canc (bool)
-	if err := cbg.WriteBool(w, t.Canc); err != nil {
+	// t.t.VTyp (string)
+	if _, err := w.Write(cbg.CborEncodeMajorType(cbg.MajTextString, uint64(len(t.VTyp)))); err != nil {
+		return err
+	}
+	if _, err := w.Write([]byte(t.VTyp)); err != nil {
 		return err
 	}
 
-	// t.t.BCid (string)
-	if _, err := w.Write(cbg.CborEncodeMajorType(cbg.MajTextString, uint64(len(t.BCid)))); err != nil {
-		return err
-	}
-	if _, err := w.Write([]byte(t.BCid)); err != nil {
+	// t.t.XferID (uint64)
+	if _, err := w.Write(cbg.CborEncodeMajorType(cbg.MajUnsignedInt, t.XferID)); err != nil {
 		return err
 	}
 	return nil
@@ -206,11 +196,11 @@ func (t *transferRequest) UnmarshalCBOR(r io.Reader) error {
 		return fmt.Errorf("cbor input should be of type array")
 	}
 
-	if extra != 8 {
+	if extra != 9 {
 		return fmt.Errorf("cbor input had wrong number of fields")
 	}
 
-	// t.t.VTyp (string)
+	// t.t.BCid (string)
 
 	{
 		sval, err := cbg.ReadString(br)
@@ -218,9 +208,9 @@ func (t *transferRequest) UnmarshalCBOR(r io.Reader) error {
 			return err
 		}
 
-		t.VTyp = string(sval)
+		t.BCid = string(sval)
 	}
-	// t.t.Pull (bool)
+	// t.t.Canc (bool)
 
 	maj, extra, err = cbg.CborReadHeader(br)
 	if err != nil {
@@ -231,28 +221,11 @@ func (t *transferRequest) UnmarshalCBOR(r io.Reader) error {
 	}
 	switch extra {
 	case 20:
-		t.Pull = false
+		t.Canc = false
 	case 21:
-		t.Pull = true
+		t.Canc = true
 	default:
 		return fmt.Errorf("booleans are either major type 7, value 20 or 21 (got %d)", extra)
-	}
-	// t.t.Vouch ([]uint8)
-
-	maj, extra, err = cbg.CborReadHeader(br)
-	if err != nil {
-		return err
-	}
-	if extra > 8192 {
-		return fmt.Errorf("t.Vouch: array too large (%d)", extra)
-	}
-
-	if maj != cbg.MajByteString {
-		return fmt.Errorf("expected byte array")
-	}
-	t.Vouch = make([]byte, extra)
-	if _, err := io.ReadFull(br, t.Vouch); err != nil {
-		return err
 	}
 	// t.t.PID ([]uint8)
 
@@ -269,23 +242,6 @@ func (t *transferRequest) UnmarshalCBOR(r io.Reader) error {
 	}
 	t.PID = make([]byte, extra)
 	if _, err := io.ReadFull(br, t.PID); err != nil {
-		return err
-	}
-	// t.t.Stor ([]uint8)
-
-	maj, extra, err = cbg.CborReadHeader(br)
-	if err != nil {
-		return err
-	}
-	if extra > 8192 {
-		return fmt.Errorf("t.Stor: array too large (%d)", extra)
-	}
-
-	if maj != cbg.MajByteString {
-		return fmt.Errorf("expected byte array")
-	}
-	t.Stor = make([]byte, extra)
-	if _, err := io.ReadFull(br, t.Stor); err != nil {
 		return err
 	}
 	// t.t.Part (bool)
@@ -305,7 +261,7 @@ func (t *transferRequest) UnmarshalCBOR(r io.Reader) error {
 	default:
 		return fmt.Errorf("booleans are either major type 7, value 20 or 21 (got %d)", extra)
 	}
-	// t.t.Canc (bool)
+	// t.t.Pull (bool)
 
 	maj, extra, err = cbg.CborReadHeader(br)
 	if err != nil {
@@ -316,13 +272,47 @@ func (t *transferRequest) UnmarshalCBOR(r io.Reader) error {
 	}
 	switch extra {
 	case 20:
-		t.Canc = false
+		t.Pull = false
 	case 21:
-		t.Canc = true
+		t.Pull = true
 	default:
 		return fmt.Errorf("booleans are either major type 7, value 20 or 21 (got %d)", extra)
 	}
-	// t.t.BCid (string)
+	// t.t.Stor ([]uint8)
+
+	maj, extra, err = cbg.CborReadHeader(br)
+	if err != nil {
+		return err
+	}
+	if extra > 8192 {
+		return fmt.Errorf("t.Stor: array too large (%d)", extra)
+	}
+
+	if maj != cbg.MajByteString {
+		return fmt.Errorf("expected byte array")
+	}
+	t.Stor = make([]byte, extra)
+	if _, err := io.ReadFull(br, t.Stor); err != nil {
+		return err
+	}
+	// t.t.Vouch ([]uint8)
+
+	maj, extra, err = cbg.CborReadHeader(br)
+	if err != nil {
+		return err
+	}
+	if extra > 8192 {
+		return fmt.Errorf("t.Vouch: array too large (%d)", extra)
+	}
+
+	if maj != cbg.MajByteString {
+		return fmt.Errorf("expected byte array")
+	}
+	t.Vouch = make([]byte, extra)
+	if _, err := io.ReadFull(br, t.Vouch); err != nil {
+		return err
+	}
+	// t.t.VTyp (string)
 
 	{
 		sval, err := cbg.ReadString(br)
@@ -330,8 +320,18 @@ func (t *transferRequest) UnmarshalCBOR(r io.Reader) error {
 			return err
 		}
 
-		t.BCid = string(sval)
+		t.VTyp = string(sval)
 	}
+	// t.t.XferID (uint64)
+
+	maj, extra, err = cbg.CborReadHeader(br)
+	if err != nil {
+		return err
+	}
+	if maj != cbg.MajUnsignedInt {
+		return fmt.Errorf("wrong type for uint64 field")
+	}
+	t.XferID = extra
 	return nil
 }
 
@@ -340,12 +340,17 @@ func (t *transferResponse) MarshalCBOR(w io.Writer) error {
 		_, err := w.Write(cbg.CborNull)
 		return err
 	}
-	if _, err := w.Write([]byte{129}); err != nil {
+	if _, err := w.Write([]byte{130}); err != nil {
 		return err
 	}
 
 	// t.t.Acpt (bool)
 	if err := cbg.WriteBool(w, t.Acpt); err != nil {
+		return err
+	}
+
+	// t.t.XferID (uint64)
+	if _, err := w.Write(cbg.CborEncodeMajorType(cbg.MajUnsignedInt, t.XferID)); err != nil {
 		return err
 	}
 	return nil
@@ -362,7 +367,7 @@ func (t *transferResponse) UnmarshalCBOR(r io.Reader) error {
 		return fmt.Errorf("cbor input should be of type array")
 	}
 
-	if extra != 1 {
+	if extra != 2 {
 		return fmt.Errorf("cbor input had wrong number of fields")
 	}
 
@@ -383,5 +388,15 @@ func (t *transferResponse) UnmarshalCBOR(r io.Reader) error {
 	default:
 		return fmt.Errorf("booleans are either major type 7, value 20 or 21 (got %d)", extra)
 	}
+	// t.t.XferID (uint64)
+
+	maj, extra, err = cbg.CborReadHeader(br)
+	if err != nil {
+		return err
+	}
+	if maj != cbg.MajUnsignedInt {
+		return fmt.Errorf("wrong type for uint64 field")
+	}
+	t.XferID = extra
 	return nil
 }
