@@ -53,9 +53,6 @@ func (r *receiver) ReceiveResponse(
 func (r *receiver) ReceiveError(err error) {
 }
 
-// TODO: get passing to complete
-// https://github.com/filecoin-project/go-data-transfer/issues/37
-// should pass as soon as message is implemented
 func TestMessageSendAndReceive(t *testing.T) {
 	// create network
 	ctx := context.Background()

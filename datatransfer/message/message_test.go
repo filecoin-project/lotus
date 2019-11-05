@@ -14,8 +14,6 @@ import (
 	"github.com/filecoin-project/lotus/datatransfer/testutil"
 )
 
-// TODO: get passing to complete
-// https://github.com/filecoin-project/go-data-transfer/issues/37
 func TestNewRequest(t *testing.T) {
 	baseCid := testutil.GenerateCids(1)[0]
 	selector := testutil.RandomBytes(100)
@@ -69,8 +67,6 @@ func TestTransferRequest_UnmarshalCBOR(t *testing.T) {
 	assert.Equal(t, req.Selector(), desReq.Selector())
 }
 
-// TODO: get passing to complete
-// https://github.com/filecoin-project/go-data-transfer/issues/37
 func TestResponses(t *testing.T) {
 	id := datatransfer.TransferID(rand.Int31())
 	response := NewResponse(id, false) // not accepted
@@ -136,8 +132,6 @@ func TestRequestResponseCast(t *testing.T) {
 	require.True(t, cast.IsRequest())
 }
 
-// TODO: get passing to complete
-// https://github.com/filecoin-project/go-data-transfer/issues/37
 func TestRequestCancel(t *testing.T) {
 	id := datatransfer.TransferID(rand.Int31())
 	req := CancelRequest(id)
@@ -158,8 +152,6 @@ func TestRequestCancel(t *testing.T) {
 	require.Equal(t, deserializedRequest.IsRequest(), req.IsRequest())
 }
 
-// TODO: get passing to complete
-// https://github.com/filecoin-project/go-data-transfer/issues/37
 func TestToNetFromNetEquivalency(t *testing.T) {
 	baseCid := testutil.GenerateCids(1)[0]
 	selector := testutil.RandomBytes(100)
