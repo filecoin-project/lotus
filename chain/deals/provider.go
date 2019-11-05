@@ -2,7 +2,6 @@ package deals
 
 import (
 	"context"
-	"github.com/filecoin-project/lotus/lib/statestore"
 	"sync"
 
 	cid "github.com/ipfs/go-cid"
@@ -17,8 +16,10 @@ import (
 	"github.com/filecoin-project/lotus/chain/address"
 	"github.com/filecoin-project/lotus/chain/types"
 	"github.com/filecoin-project/lotus/lib/cborrpc"
+	"github.com/filecoin-project/lotus/lib/statestore"
 	"github.com/filecoin-project/lotus/node/modules/dtypes"
 	"github.com/filecoin-project/lotus/storage"
+	"github.com/filecoin-project/lotus/storage/sectorblocks"
 )
 
 type MinerDeal struct {
@@ -42,6 +43,7 @@ type Provider struct {
 	ask   *types.SignedStorageAsk
 	askLk sync.Mutex
 
+	secb   *sectorblocks.SectorBlocks
 	sminer *storage.Miner
 	full   api.FullNode
 
@@ -69,7 +71,7 @@ type minerDealUpdate struct {
 	mut      func(*MinerDeal)
 }
 
-func NewProvider(ds dtypes.MetadataDS, sminer *storage.Miner, dag dtypes.StagingDAG, fullNode api.FullNode) (*Provider, error) {
+func NewProvider(ds dtypes.MetadataDS, sminer *storage.Miner, secb *sectorblocks.SectorBlocks, dag dtypes.StagingDAG, fullNode api.FullNode) (*Provider, error) {
 	addr, err := ds.Get(datastore.NewKey("miner-address"))
 	if err != nil {
 		return nil, err
@@ -83,6 +85,7 @@ func NewProvider(ds dtypes.MetadataDS, sminer *storage.Miner, dag dtypes.Staging
 		sminer: sminer,
 		dag:    dag,
 		full:   fullNode,
+		secb:   secb,
 
 		pricePerByteBlock: types.NewInt(3), // TODO: allow setting
 		minPieceSize:      1,

@@ -177,9 +177,9 @@ func (c *client) makeOutChan(ctx context.Context, ftyp reflect.Type, valOut int)
 					front := buf.Front()
 					bufLk.Unlock()
 
-					cases :=  []reflect.SelectCase{
+					cases := []reflect.SelectCase{
 						{
-							Dir: reflect.SelectRecv,
+							Dir:  reflect.SelectRecv,
 							Chan: reflect.ValueOf(chCtx.Done()),
 						},
 						{

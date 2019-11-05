@@ -21,7 +21,7 @@ func TestList(t *testing.T) {
 		t.Fatal(err)
 	}
 
-	st := &StateStore{ds:ds}
+	st := &StateStore{ds: ds}
 
 	var out []types.BigInt
 	if err := st.List(&out); err != nil {

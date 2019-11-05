@@ -71,8 +71,8 @@ func New(cfg *Config) (*SectorBuilder, error) {
 	}
 
 	return &SectorBuilder{
-		handle: sbp,
-		Miner:  cfg.Miner,
+		handle:    sbp,
+		Miner:     cfg.Miner,
 		rateLimit: make(chan struct{}, cfg.WorkerThreads-PoStReservedWorkers),
 	}, nil
 }

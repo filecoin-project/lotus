@@ -13,7 +13,6 @@ import (
 	"github.com/filecoin-project/lotus/chain/actors"
 	"github.com/filecoin-project/lotus/chain/address"
 	"github.com/filecoin-project/lotus/chain/types"
-	"github.com/filecoin-project/lotus/lib/sectorbuilder"
 	"github.com/filecoin-project/lotus/storage/sectorblocks"
 )
 
@@ -228,54 +227,26 @@ func (p *Provider) staged(ctx context.Context, deal MinerDeal) (func(*MinerDeal)
 	if err != nil {
 		return nil, err
 	}
-	_ = pcid
 
-	/*
-				sectorID, err := p.sminer.AddUnixfsPiece(pcid, uf, deal.DealID)
-				if err != nil {
-					return nil, xerrors.Errorf("AddPiece failed: %s", err)
-				}
-			log.Warnf("New Sector: %d", sectorID)
+	sectorID, err := p.secb.AddUnixfsPiece(pcid, uf, deal.DealID)
+	if err != nil {
+		return nil, xerrors.Errorf("AddPiece failed: %s", err)
+	}
+	log.Warnf("New Sector: %d", sectorID)
 
-		return func(deal *MinerDeal) {
-			deal.SectorID = sectorID
-		}, nil
-	*/
-	panic("fixme")
+	return func(deal *MinerDeal) {
+		deal.SectorID = sectorID
+	}, nil
+
 }
 
 // SEALING
-
-func (p *Provider) waitSealed(ctx context.Context, deal MinerDeal) (sectorbuilder.SectorSealingStatus, error) {
-	panic("fixme")
-
-	/*
-		status, err := p.sminer.WaitSeal(ctx, deal.SectorID)
-		if err != nil {
-			return sectorbuilder.SectorSealingStatus{}, err
-		}
-
-			switch status.State {
-			case sealing_state.Sealed:
-			case sealing_state.Failed:
-				return sectorbuilder.SectorSealingStatus{}, xerrors.Errorf("sealing sector %d for deal %s (ref=%s) failed: %s", deal.SectorID, deal.ProposalCid, deal.Ref, status.SealErrorMsg)
-			case sealing_state.Pending:
-				return sectorbuilder.SectorSealingStatus{}, xerrors.Errorf("sector status was 'pending' after call to WaitSeal (for sector %d)", deal.SectorID)
-			case sealing_state.Sealing:
-				return sectorbuilder.SectorSealingStatus{}, xerrors.Errorf("sector status was 'wait' after call to WaitSeal (for sector %d)", deal.SectorID)
-			default:
-				return sectorbuilder.SectorSealingStatus{}, xerrors.Errorf("unknown SealStatusCode: %d", status.SectorID)
-			}
-
-		return status, nil
-	*/
-
-}
 
 func (p *Provider) sealing(ctx context.Context, deal MinerDeal) (func(*MinerDeal), error) {
 	err := p.sendSignedResponse(&Response{
 		State:    api.DealSealing,
 		Proposal: deal.ProposalCid,
+		// TODO: Send sector ID
 	})
 	if err != nil {
 		log.Warnf("Sending deal response failed: %s", err)
@@ -284,11 +255,12 @@ func (p *Provider) sealing(ctx context.Context, deal MinerDeal) (func(*MinerDeal
 	if err := p.sminer.SealSector(ctx, deal.SectorID); err != nil {
 		return nil, xerrors.Errorf("sealing sector failed: %w", err)
 	}
+	// TODO: Let's not care after this point, for now at least, client can watch the chain
 
-	_, err = p.waitSealed(ctx, deal)
+	/*_, err = p.waitSealed(ctx, deal)
 	if err != nil {
 		return nil, err
-	}
+	}*/
 	// TODO: Spec doesn't say anything about inclusion proofs anywhere
 	//  Not sure what mechanisms prevents miner from storing data that isn't
 	//  clients' data
@@ -297,13 +269,12 @@ func (p *Provider) sealing(ctx context.Context, deal MinerDeal) (func(*MinerDeal
 }
 
 func (p *Provider) complete(ctx context.Context, deal MinerDeal) (func(*MinerDeal), error) {
-	// TODO: Add dealID to commtracker (probably before sealing)
 	/*mcid, err := p.commt.WaitCommit(ctx, deal.Proposal.Provider, deal.SectorID)
 	if err != nil {
 		log.Warnf("Waiting for sector commitment message: %s", err)
 	}*/
 
-	panic("fixme")
+	//panic("fixme")
 
 	/*err = p.sendSignedResponse(&Response{
 		State:    api.DealComplete,

@@ -32,7 +32,7 @@ func TempSectorbuilder(sectorSize uint64) (*SectorBuilder, func(), error) {
 		CacheDir:    cache,
 
 		WorkerThreads: 2,
-		Miner:       addr,
+		Miner:         addr,
 	})
 	if err != nil {
 		return nil, nil, err
