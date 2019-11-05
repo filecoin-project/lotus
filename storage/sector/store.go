@@ -4,6 +4,7 @@ import (
 	"context"
 	"fmt"
 	"io"
+	"math"
 	"sync"
 
 	"github.com/filecoin-project/go-sectorbuilder/sealing_state"
@@ -59,8 +60,33 @@ func (s *Store) SectorStatus(sid uint64) (*sectorbuilder.SectorSealingStatus, er
 	return &status, nil
 }
 
+func computePaddedSize(size uint64) uint64 {
+	// TODO: there is a better way to compute the log2 of an integer... i'm just lazy
+	logv := uint64(math.Log2(float64(size)))
+
+	sectSize := uint64(1 << (logv + 1))
+	bound := sectorbuilder.UserBytesForSectorSize(sectSize)
+	if size <= bound {
+		return bound
+	}
+
+	return sectorbuilder.UserBytesForSectorSize(1 << (logv + 2))
+}
+
+type nullReader struct{}
+
+func (nr nullReader) Read(b []byte) (int, error) {
+	for i := range b {
+		b[i] = 0
+	}
+	return len(b), nil
+}
+
 func (s *Store) AddPiece(ref string, size uint64, r io.Reader, dealIDs ...uint64) (sectorID uint64, err error) {
-	sectorID, err = s.sb.AddPiece(ref, size, r)
+	padSize := computePaddedSize(size)
+
+	r = io.MultiReader(r, io.LimitReader(nullReader{}, int64(padSize-size)))
+	sectorID, err = s.sb.AddPiece(ref, padSize, r)
 	if err != nil {
 		return 0, err
 	}
