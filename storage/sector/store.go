@@ -1,10 +1,11 @@
 package sector
 
 import (
+	"bytes"
 	"context"
 	"fmt"
 	"io"
-	"math"
+	"math/bits"
 	"sync"
 
 	"github.com/filecoin-project/go-sectorbuilder/sealing_state"
@@ -61,16 +62,15 @@ func (s *Store) SectorStatus(sid uint64) (*sectorbuilder.SectorSealingStatus, er
 }
 
 func computePaddedSize(size uint64) uint64 {
-	// TODO: there is a better way to compute the log2 of an integer... i'm just lazy
-	logv := uint64(math.Log2(float64(size)))
+	logv := 64 - bits.LeadingZeros64(size)
 
-	sectSize := uint64(1 << (logv + 1))
+	sectSize := uint64(1 << logv)
 	bound := sectorbuilder.UserBytesForSectorSize(sectSize)
 	if size <= bound {
 		return bound
 	}
 
-	return sectorbuilder.UserBytesForSectorSize(1 << (logv + 2))
+	return sectorbuilder.UserBytesForSectorSize(1 << (logv + 1))
 }
 
 type nullReader struct{}
