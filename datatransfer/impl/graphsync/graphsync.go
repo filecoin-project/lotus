@@ -7,11 +7,11 @@ import (
 
 	"github.com/ipfs/go-cid"
 	bstore "github.com/ipfs/go-ipfs-blockstore"
-	ipld "github.com/ipld/go-ipld-prime"
+	"github.com/ipld/go-ipld-prime"
 	"github.com/libp2p/go-libp2p-core/host"
 	"github.com/libp2p/go-libp2p-core/peer"
 
-	datatransfer "github.com/filecoin-project/lotus/datatransfer"
+	"github.com/filecoin-project/lotus/datatransfer"
 	"github.com/filecoin-project/lotus/datatransfer/message"
 	"github.com/filecoin-project/lotus/datatransfer/network"
 )
@@ -26,8 +26,8 @@ import (
 // -- do any actual network coordination or use Graphsync
 
 type validateType struct {
-	voucherType reflect.Type
-	validator   datatransfer.RequestValidator
+	voucherType reflect.Type                  // nolint: structcheck
+	validator   datatransfer.RequestValidator // nolint: structcheck
 }
 
 type graphsyncImpl struct {

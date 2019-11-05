@@ -8,10 +8,10 @@ import (
 	"github.com/ipfs/go-cid"
 	ipldformat "github.com/ipfs/go-ipld-format"
 	"github.com/ipfs/go-merkledag"
-	ipld "github.com/ipld/go-ipld-prime"
+	"github.com/ipld/go-ipld-prime"
 	"github.com/libp2p/go-libp2p-core/peer"
 
-	datatransfer "github.com/filecoin-project/lotus/datatransfer"
+	"github.com/filecoin-project/lotus/datatransfer"
 )
 
 // This file implements a VERY simple, incomplete version of the data transfer
@@ -79,4 +79,6 @@ func (impl *dagserviceImpl) SubscribeToEvents(subscriber datatransfer.Subscriber
 }
 
 // get all in progress transfers
-func (impl *dagserviceImpl) InProgressChannels() map[datatransfer.ChannelID]datatransfer.ChannelState { return nil }
+func (impl *dagserviceImpl) InProgressChannels() map[datatransfer.ChannelID]datatransfer.ChannelState {
+	return nil
+}

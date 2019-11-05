@@ -13,5 +13,5 @@ build:
 test:
 	go test ./...
 
-type-gen:
+type-gen: build
 	go run ./cbor-gen/main.go
