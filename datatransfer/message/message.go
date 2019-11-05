@@ -41,7 +41,6 @@ type DataTransferResponse interface {
 }
 
 // NewRequest generates a new request for the data transfer protocol
-// TODO: Write this method, and an implementation of the data transfer request interface
 func NewRequest(id datatransfer.TransferID, isPull bool, voucherIdentifier string, voucher []byte, baseCid cid.Cid, selector []byte) DataTransferRequest {
 	tr := transferRequest{
 		Pull:  isPull,
@@ -59,7 +58,6 @@ func NewRequest(id datatransfer.TransferID, isPull bool, voucherIdentifier strin
 }
 
 // CancelRequest request generates a request to cancel an in progress request
-// TODO: Write this method, and an implementation of the data transfer request interface
 func CancelRequest(id datatransfer.TransferID) DataTransferRequest {
 	treq := transferRequest{
 		Canc: true,
@@ -72,7 +70,6 @@ func CancelRequest(id datatransfer.TransferID) DataTransferRequest {
 }
 
 // NewResponse builds a new Data Transfer response
-// TODO: Write this method, and an implementation of the data transfer response interface
 func NewResponse(id datatransfer.TransferID, accepted bool) DataTransferResponse {
 	tresp := transferResponse{Acpt: accepted}
 	return &transferMessage{
