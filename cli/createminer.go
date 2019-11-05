@@ -16,7 +16,7 @@ import (
 
 var createMinerCmd = &cli.Command{
 	Name:  "createminer",
-	Usage: "Create a new storage market actor",
+	Usage: "Create a new storage miner actor",
 	Action: func(cctx *cli.Context) error {
 		if cctx.Args().Len() != 4 {
 			return fmt.Errorf("must pass four arguments: worker address, owner address, sector size, peer ID")
