@@ -10,7 +10,6 @@ import (
 	"golang.org/x/xerrors"
 
 	"github.com/filecoin-project/lotus/chain/types"
-	"github.com/filecoin-project/lotus/node/config"
 )
 
 type MemRepo struct {
@@ -24,12 +23,13 @@ type MemRepo struct {
 	token    *byte
 
 	datastore datastore.Datastore
-	configF   func() *config.Root
+	configF   func(t RepoType) interface{}
 	keystore  map[string]types.KeyInfo
 }
 
 type lockedMemRepo struct {
 	mem *MemRepo
+	t   RepoType
 	sync.RWMutex
 
 	token *byte
@@ -44,7 +44,7 @@ var _ Repo = &MemRepo{}
 // MemRepoOptions contains options for memory repo
 type MemRepoOptions struct {
 	Ds       datastore.Datastore
-	ConfigF  func() *config.Root
+	ConfigF  func(RepoType) interface{}
 	KeyStore map[string]types.KeyInfo
 }
 
@@ -56,7 +56,7 @@ func NewMemory(opts *MemRepoOptions) *MemRepo {
 		opts = &MemRepoOptions{}
 	}
 	if opts.ConfigF == nil {
-		opts.ConfigF = config.Default
+		opts.ConfigF = defConfForType
 	}
 	if opts.Ds == nil {
 		opts.Ds = dssync.MutexWrap(datastore.NewMapDatastore())
@@ -92,7 +92,7 @@ func (mem *MemRepo) APIToken() ([]byte, error) {
 	return mem.api.token, nil
 }
 
-func (mem *MemRepo) Lock() (LockedRepo, error) {
+func (mem *MemRepo) Lock(t RepoType) (LockedRepo, error) {
 	select {
 	case mem.repoLock <- struct{}{}:
 	default:
@@ -102,6 +102,7 @@ func (mem *MemRepo) Lock() (LockedRepo, error) {
 
 	return &lockedMemRepo{
 		mem:   mem,
+		t:     t,
 		token: mem.token,
 	}, nil
 }
@@ -143,11 +144,11 @@ func (lmem *lockedMemRepo) Datastore(ns string) (datastore.Batching, error) {
 	return namespace.Wrap(lmem.mem.datastore, datastore.NewKey(ns)), nil
 }
 
-func (lmem *lockedMemRepo) Config() (*config.Root, error) {
+func (lmem *lockedMemRepo) Config() (interface{}, error) {
 	if err := lmem.checkToken(); err != nil {
 		return nil, err
 	}
-	return lmem.mem.configF(), nil
+	return lmem.mem.configF(lmem.t), nil
 }
 
 func (lmem *lockedMemRepo) SetAPIEndpoint(ma multiaddr.Multiaddr) error {

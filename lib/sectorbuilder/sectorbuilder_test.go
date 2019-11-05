@@ -2,13 +2,10 @@ package sectorbuilder_test
 
 import (
 	"io"
-	"io/ioutil"
 	"math/rand"
-	"path/filepath"
 	"testing"
 
 	"github.com/filecoin-project/lotus/build"
-	"github.com/filecoin-project/lotus/chain/address"
 	"github.com/filecoin-project/lotus/lib/sectorbuilder"
 )
 
@@ -24,35 +21,11 @@ func TestSealAndVerify(t *testing.T) {
 		t.Fatal(err)
 	}
 
-	dir, err := ioutil.TempDir("", "sbtest")
+	sb, cleanup, err := sectorbuilder.TempSectorbuilder(sectorSize)
 	if err != nil {
 		t.Fatal(err)
 	}
-
-	addr, err := address.NewFromString("t3vfxagwiegrywptkbmyohqqbfzd7xzbryjydmxso4hfhgsnv6apddyihltsbiikjf3lm7x2myiaxhuc77capq")
-	if err != nil {
-		t.Fatal(err)
-	}
-
-	cache := filepath.Join(dir, "cache")
-	metadata := filepath.Join(dir, "meta")
-	sealed := filepath.Join(dir, "sealed")
-	staging := filepath.Join(dir, "staging")
-
-	sb, err := sectorbuilder.New(&sectorbuilder.Config{
-		SectorSize: sectorSize,
-		Miner:      addr,
-
-		WorkerThreads: 2,
-
-		CacheDir:    cache,
-		SealedDir:   sealed,
-		StagedDir:   staging,
-		MetadataDir: metadata,
-	})
-	if err != nil {
-		t.Fatal(err)
-	}
+	defer cleanup()
 
 	dlen := sectorbuilder.UserBytesForSectorSize(sectorSize)
 
@@ -82,7 +55,7 @@ func TestSealAndVerify(t *testing.T) {
 		t.Fatal(err)
 	}
 
-	ok, err := sectorbuilder.VerifySeal(sectorSize, pco.CommR[:], pco.CommD[:], addr, ticket.TicketBytes[:], seed.TicketBytes[:], sid, sco.Proof)
+	ok, err := sectorbuilder.VerifySeal(sectorSize, pco.CommR[:], pco.CommD[:], sb.Miner, ticket.TicketBytes[:], seed.TicketBytes[:], sid, sco.Proof)
 	if err != nil {
 		t.Fatal(err)
 	}

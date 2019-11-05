@@ -34,7 +34,7 @@ import (
 func testStorageNode(ctx context.Context, t *testing.T, waddr address.Address, act address.Address, tnd test.TestNode) test.TestStorageNode {
 	r := repo.NewMemory(nil)
 
-	lr, err := r.Lock()
+	lr, err := r.Lock(repo.RepoStorageMiner)
 	require.NoError(t, err)
 
 	pk, _, err := crypto.GenerateEd25519Key(rand.Reader)

@@ -229,11 +229,12 @@ var clientRetrieveCmd = &cli.Command{
 		order := offers[0].Order()
 		order.Client = payer
 
-		err = api.ClientRetrieve(ctx, order, cctx.Args().Get(1))
-		if err == nil {
-			fmt.Println("Success")
+		if err := api.ClientRetrieve(ctx, order, cctx.Args().Get(1)); err != nil {
+			return err
 		}
-		return err
+
+		fmt.Println("Success")
+		return nil
 	},
 }
 

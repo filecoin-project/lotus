@@ -14,16 +14,16 @@ func TestDecodeNothing(t *testing.T) {
 	assert := assert.New(t)
 
 	{
-		cfg, err := FromFile(os.DevNull)
+		cfg, err := FromFile(os.DevNull, DefaultFullNode())
 		assert.Nil(err, "error should be nil")
-		assert.Equal(Default(), cfg,
+		assert.Equal(DefaultFullNode(), cfg,
 			"config from empty file should be the same as default")
 	}
 
 	{
-		cfg, err := FromFile("./does-not-exist.toml")
+		cfg, err := FromFile("./does-not-exist.toml", DefaultFullNode())
 		assert.Nil(err, "error should be nil")
-		assert.Equal(Default(), cfg,
+		assert.Equal(DefaultFullNode(), cfg,
 			"config from not exisiting file should be the same as default")
 	}
 }
@@ -34,11 +34,11 @@ func TestParitalConfig(t *testing.T) {
 		[API]
 		Timeout = "10s"
 		`
-	expected := Default()
+	expected := DefaultFullNode()
 	expected.API.Timeout = Duration(10 * time.Second)
 
 	{
-		cfg, err := FromReader(bytes.NewReader([]byte(cfgString)))
+		cfg, err := FromReader(bytes.NewReader([]byte(cfgString)), DefaultFullNode())
 		assert.NoError(err, "error should be nil")
 		assert.Equal(expected, cfg,
 			"config from reader should contain changes")
@@ -55,7 +55,7 @@ func TestParitalConfig(t *testing.T) {
 		assert.NoError(err, "closing tmp file should not error")
 		defer os.Remove(fname) //nolint:errcheck
 
-		cfg, err := FromFile(fname)
+		cfg, err := FromFile(fname, DefaultFullNode())
 		assert.Nil(err, "error should be nil")
 		assert.Equal(expected, cfg,
 			"config from reader should contain changes")

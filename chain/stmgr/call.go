@@ -5,6 +5,7 @@ import (
 	"fmt"
 
 	"github.com/ipfs/go-cid"
+	"go.opencensus.io/trace"
 	"golang.org/x/xerrors"
 
 	"github.com/filecoin-project/lotus/chain/actors"
@@ -14,6 +15,9 @@ import (
 )
 
 func (sm *StateManager) CallRaw(ctx context.Context, msg *types.Message, bstate cid.Cid, r vm.Rand, bheight uint64) (*types.MessageReceipt, error) {
+	ctx, span := trace.StartSpan(ctx, "statemanager.CallRaw")
+	defer span.End()
+
 	vmi, err := vm.NewVM(bstate, bheight, r, actors.NetworkAddress, sm.cs.Blockstore())
 	if err != nil {
 		return nil, xerrors.Errorf("failed to set up vm: %w", err)
@@ -27,6 +31,14 @@ func (sm *StateManager) CallRaw(ctx context.Context, msg *types.Message, bstate 
 	}
 	if msg.Value == types.EmptyInt {
 		msg.Value = types.NewInt(0)
+	}
+
+	if span.IsRecordingEvents() {
+		span.AddAttributes(
+			trace.Int64Attribute("gas_limit", int64(msg.GasLimit.Uint64())),
+			trace.Int64Attribute("gas_price", int64(msg.GasPrice.Uint64())),
+			trace.StringAttribute("value", msg.Value.String()),
+		)
 	}
 
 	fromActor, err := vmi.StateTree().GetActor(msg.From)

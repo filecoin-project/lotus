@@ -101,7 +101,7 @@ var initCmd = &cli.Command{
 
 		log.Info("Initializing repo")
 
-		if err := r.Init(); err != nil {
+		if err := r.Init(repo.RepoStorageMiner); err != nil {
 			return err
 		}
 
@@ -122,7 +122,7 @@ var initCmd = &cli.Command{
 }
 
 func storageMinerInit(ctx context.Context, cctx *cli.Context, api api.FullNode, r repo.Repo) error {
-	lr, err := r.Lock()
+	lr, err := r.Lock(repo.RepoStorageMiner)
 	if err != nil {
 		return err
 	}

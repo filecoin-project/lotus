@@ -75,7 +75,7 @@ func (m mybs) Get(c cid.Cid) (block.Block, error) {
 
 func NewGenerator() (*ChainGen, error) {
 	mr := repo.NewMemory(nil)
-	lr, err := mr.Lock()
+	lr, err := mr.Lock(repo.RepoStorageMiner)
 	if err != nil {
 		return nil, xerrors.Errorf("taking mem-repo lock failed: %w", err)
 	}
@@ -279,12 +279,6 @@ func (cg *ChainGen) NextTipSetFromMiners(base *types.TipSet, miners []address.Ad
 	}
 
 	fts := store.NewFullTipSet(blks)
-	/*fmt.Println("Made a block: ", fts.TipSet().Cids())
-	if len(fts.TipSet().Cids()) > 1 {
-		for _, b := range blks {
-			fmt.Printf("block %s: %#v\n", b.Cid(), b.Header)
-		}
-	}*/
 
 	return &MinedTipSet{
 		TipSet:   fts,

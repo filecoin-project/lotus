@@ -18,12 +18,12 @@ func basicTest(t *testing.T, repo Repo) {
 	}
 	assert.Nil(t, apima, "with no api endpoint, return should be nil")
 
-	lrepo, err := repo.Lock()
+	lrepo, err := repo.Lock(RepoFullNode)
 	assert.NoError(t, err, "should be able to lock once")
 	assert.NotNil(t, lrepo, "locked repo shouldn't be nil")
 
 	{
-		lrepo2, err := repo.Lock()
+		lrepo2, err := repo.Lock(RepoFullNode)
 		if assert.Error(t, err) {
 			assert.Equal(t, ErrRepoAlreadyLocked, err)
 		}
@@ -33,7 +33,7 @@ func basicTest(t *testing.T, repo Repo) {
 	err = lrepo.Close()
 	assert.NoError(t, err, "should be able to unlock")
 
-	lrepo, err = repo.Lock()
+	lrepo, err = repo.Lock(RepoFullNode)
 	assert.NoError(t, err, "should be able to relock")
 	assert.NotNil(t, lrepo, "locked repo shouldn't be nil")
 
@@ -48,7 +48,7 @@ func basicTest(t *testing.T, repo Repo) {
 	assert.Equal(t, ma, apima, "returned API multiaddr should be the same")
 
 	cfg, err := lrepo.Config()
-	assert.Equal(t, config.Default(), cfg, "there should be a default config")
+	assert.Equal(t, config.DefaultFullNode(), cfg, "there should be a default config")
 	assert.NoError(t, err, "config should not error")
 
 	err = lrepo.Close()
@@ -64,7 +64,7 @@ func basicTest(t *testing.T, repo Repo) {
 	k1 := types.KeyInfo{Type: "foo"}
 	k2 := types.KeyInfo{Type: "bar"}
 
-	lrepo, err = repo.Lock()
+	lrepo, err = repo.Lock(RepoFullNode)
 	assert.NoError(t, err, "should be able to relock")
 	assert.NotNil(t, lrepo, "locked repo shouldn't be nil")
 
