@@ -19,16 +19,16 @@ func TestNewRequest(t *testing.T) {
 	selector := testutil.RandomBytes(100)
 	isPull := true
 	id := datatransfer.TransferID(rand.Int31())
-	VoucherTypeentifier := "FakeVoucherType"
+	vtype := "FakeVoucherType"
 	voucher := testutil.RandomBytes(100)
 
-	request := NewRequest(id, isPull, VoucherTypeentifier, voucher, baseCid, selector)
+	request := NewRequest(id, isPull, vtype, voucher, baseCid, selector)
 	assert.Equal(t, id, request.TransferID())
 	assert.False(t, request.IsCancel())
 	assert.True(t, request.IsPull())
 	assert.True(t, request.IsRequest())
 	assert.Equal(t, baseCid.String(), request.BaseCid().String())
-	assert.Equal(t, VoucherTypeentifier, request.VoucherType())
+	assert.Equal(t, vtype, request.VoucherType())
 	assert.Equal(t, voucher, request.Voucher())
 	assert.Equal(t, selector, request.Selector())
 
