@@ -3,20 +3,31 @@ package message
 import (
 	"io"
 
+	"github.com/filecoin-project/lotus/datatransfer"
 	"github.com/ipfs/go-cid"
 )
 
 // transferRequest is a struct that fulfills the DataTransferRequest interface.
 // its members are exported to be used by cbor-gen
 type transferRequest struct {
-	VTyp  string
-	Pull  bool
-	Vouch []byte
-	PID   []byte
-	Stor  []byte
-	Part  bool
-	Canc  bool
-	BCid  string
+	BCid   string
+	Canc   bool
+	PID    []byte
+	Part   bool
+	Pull   bool
+	Stor   []byte
+	Vouch  []byte
+	VTyp   string
+	XferID uint64
+}
+
+// IsRequest always returns true in this case because this is a transfer request
+func (trq *transferRequest) IsRequest() bool {
+	return true
+}
+
+func (trq *transferRequest) TransferID() datatransfer.TransferID {
+	return datatransfer.TransferID(trq.XferID)
 }
 
 // ========= DataTransferRequest interface
@@ -69,5 +80,10 @@ func (trq *transferRequest) Cancel() error {
 // ToNet serializes a transfer request. It's a wrapper for MarshalCBOR to provide
 // symmetry with FromNet
 func (trq *transferRequest) ToNet(w io.Writer) error {
-	return trq.MarshalCBOR(w)
+	msg := transferMessage{
+		IsRq:     true,
+		Request:  trq,
+		Response: nil,
+	}
+	return msg.MarshalCBOR(w)
 }
