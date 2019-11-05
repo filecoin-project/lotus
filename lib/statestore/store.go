@@ -136,7 +136,7 @@ func (st *StateStore) List(out interface{}) error {
 			return err
 		}
 
-		rout.Set(reflect.Append(rout.Elem(), elem.Elem()))
+		rout.Elem().Set(reflect.Append(rout.Elem(), elem.Elem()))
 	}
 
 	return nil
