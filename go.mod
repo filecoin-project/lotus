@@ -88,6 +88,7 @@ require (
 	go4.org v0.0.0-20190313082347-94abd6928b1d // indirect
 	golang.org/x/crypto v0.0.0-20190829043050-9756ffdc2472 // indirect
 	golang.org/x/time v0.0.0-20190308202827-9d24e82272b4
+	golang.org/x/tools v0.0.0-20191105231337-689d0f08e67a // indirect
 	golang.org/x/xerrors v0.0.0-20190717185122-a985d3407aa7
 	google.golang.org/api v0.9.0 // indirect
 	gopkg.in/cheggaaa/pb.v1 v1.0.28
