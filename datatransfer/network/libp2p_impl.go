@@ -67,7 +67,7 @@ func msgToStream(ctx context.Context, s network.Stream, msg message.DataTransfer
 
 	switch s.Protocol() {
 	case ProtocolDataTransfer:
-		if err := msg.MarshalCBOR(s); err != nil {
+		if err := msg.ToNet(s); err != nil {
 			log.Debugf("error: %s", err)
 			return err
 		}
