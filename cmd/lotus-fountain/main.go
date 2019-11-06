@@ -3,6 +3,7 @@ package main
 import (
 	"context"
 	"fmt"
+	"net"
 	"net/http"
 	"os"
 	"strconv"
@@ -24,7 +25,7 @@ import (
 
 var log = logging.Logger("main")
 
-var sendPerRequest = types.NewInt(500_000_000)
+var sendPerRequest, _ = types.ParseFIL("0.005")
 
 func main() {
 	logging.SetLogLevel("*", "INFO")
@@ -104,7 +105,7 @@ var runCmd = &cli.Command{
 				TotalRate:   time.Second,
 				TotalBurst:  20,
 				IPRate:      10 * time.Minute,
-				IPBurst:     1,
+				IPBurst:     2,
 				WalletRate:  1 * time.Hour,
 				WalletBurst: 1,
 			}),
@@ -151,7 +152,20 @@ func (h *handler) send(w http.ResponseWriter, r *http.Request) {
 	}
 
 	// Limit based on IP
-	limiter = h.limiter.GetIPLimiter(r.RemoteAddr)
+
+	reqIP := r.Header.Get("X-Real-IP")
+	if reqIP == "" {
+		h, _, err := net.SplitHostPort(r.RemoteAddr)
+		if err != nil {
+			log.Errorf("could not get ip from: %s, err: %s", r.RemoteAddr, err)
+		}
+		reqIP = h
+	}
+	if i := net.ParseIP(reqIP); i != nil && i.IsLoopback() {
+		log.Errorf("rate limiting localhost: %s", reqIP)
+	}
+
+	limiter = h.limiter.GetIPLimiter(reqIP)
 	if !limiter.Allow() {
 		http.Error(w, http.StatusText(http.StatusTooManyRequests), http.StatusTooManyRequests)
 		return
@@ -164,7 +178,7 @@ func (h *handler) send(w http.ResponseWriter, r *http.Request) {
 	}
 
 	smsg, err := h.api.MpoolPushMessage(h.ctx, &types.Message{
-		Value: sendPerRequest,
+		Value: types.BigInt(sendPerRequest),
 		From:  h.from,
 		To:    to,
 
@@ -229,7 +243,7 @@ func (h *handler) mkminer(w http.ResponseWriter, r *http.Request) {
 	}
 
 	smsg, err := h.api.MpoolPushMessage(h.ctx, &types.Message{
-		Value: sendPerRequest,
+		Value: types.BigInt(sendPerRequest),
 		From:  h.from,
 		To:    owner,
 
