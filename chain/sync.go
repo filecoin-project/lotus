@@ -369,6 +369,10 @@ func (syncer *Syncer) Sync(ctx context.Context, maybeHead *types.TipSet) error {
 	return nil
 }
 
+func isPermanent(err error) bool {
+	return !errors.Is(err, ErrTemporal)
+}
+
 func (syncer *Syncer) ValidateTipSet(ctx context.Context, fts *store.FullTipSet) error {
 	ctx, span := trace.StartSpan(ctx, "validateTipSet")
 	defer span.End()
@@ -380,7 +384,7 @@ func (syncer *Syncer) ValidateTipSet(ctx context.Context, fts *store.FullTipSet)
 
 	for _, b := range fts.Blocks {
 		if err := syncer.ValidateBlock(ctx, b); err != nil {
-			if !errors.Is(err, ErrTemporal) {
+			if isPermanent(err) {
 				syncer.bad.Add(b.Cid())
 			}
 			return xerrors.Errorf("validating block %s: %w", b.Cid(), err)
