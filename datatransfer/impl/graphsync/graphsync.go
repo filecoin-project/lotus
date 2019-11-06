@@ -141,7 +141,8 @@ func nodeAsBytes(node ipld.Node) ([]byte, error) {
 	return buffer.Bytes(), nil
 }
 
-// TODO: implement a real transfer ID generator
+// TODO: implement a real transfer ID generator.
+// https://github.com/filecoin-project/go-data-transfer/issues/38
 func (impl *graphsyncImpl) generateTransferID() datatransfer.TransferID {
 	return datatransfer.TransferID(rand.Int31())
 }
