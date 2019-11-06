@@ -11,6 +11,7 @@ import (
 	blockstore "github.com/ipfs/go-ipfs-blockstore"
 	ipld "github.com/ipfs/go-ipld-format"
 	"github.com/ipfs/go-unixfs"
+	"golang.org/x/xerrors"
 	"sync"
 
 	"github.com/ipfs/go-cid"
@@ -89,13 +90,13 @@ func (st *SectorBlocks) writeRef(cid cid.Cid, pieceRef string, offset uint64, si
 		err = nil
 	}
 	if err != nil {
-		return err
+		return xerrors.Errorf("getting existing refs: %w", err)
 	}
 
 	var refs []api.SealedRef
 	if len(v) > 0 {
 		if err := cbor.DecodeInto(v, &refs); err != nil {
-			return err
+			return xerrors.Errorf("decoding existing refs: %w", err)
 		}
 	}
 
@@ -107,7 +108,7 @@ func (st *SectorBlocks) writeRef(cid cid.Cid, pieceRef string, offset uint64, si
 
 	newRef, err := cbor.DumpObject(&refs)
 	if err != nil {
-		return err
+		return xerrors.Errorf("serializing refs: %w", err)
 	}
 	return st.keys.Put(dshelp.CidToDsKey(cid), newRef) // TODO: batch somehow
 }
@@ -128,20 +129,20 @@ func (r *refStorer) Read(p []byte) (n int, err error) {
 	for {
 		data, offset, nd, err := r.blockReader.ReadBlock(context.TODO())
 		if err != nil {
-			return 0, err
+			return 0, xerrors.Errorf("reading block: %w", err)
 		}
 
 		if len(data) == 0 {
 			// TODO: batch
 			// TODO: GC
 			if err := r.intermediate.Put(nd); err != nil {
-				return 0, err
+				return 0, xerrors.Errorf("storing intermediate node: %w", err)
 			}
 			continue
 		}
 
 		if err := r.writeRef(nd.Cid(), r.pieceRef, offset, uint32(len(data))); err != nil {
-			return 0, err
+			return 0, xerrors.Errorf("writing ref: %w", err)
 		}
 
 		read := copy(p, data)

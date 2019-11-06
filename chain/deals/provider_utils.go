@@ -26,7 +26,7 @@ func (p *Provider) failDeal(id cid.Cid, cerr error) {
 		cerr = xerrors.Errorf("unknown error (fail called at %s:%d)", f, l)
 	}
 
-	log.Errorf("deal %s failed: %s", id, cerr)
+	log.Warnf("deal %s failed: %s", id, cerr)
 
 	err := p.sendSignedResponse(&Response{
 		State:    api.DealFailed,

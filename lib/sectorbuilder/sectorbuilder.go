@@ -231,11 +231,20 @@ func toReadableFile(r io.Reader, n int64) (*os.File, func() error, error) {
 	go func() {
 		defer wait.Unlock()
 
-		_, werr = io.CopyN(w, r, n)
+		copied, werr := io.CopyN(w, r, n)
+		if werr != nil {
+			log.Warnf("toReadableFile: copy error: %+v", werr)
+		}
 
 		err := w.Close()
 		if werr == nil {
 			werr = err
+			log.Warnf("toReadableFile: close error: %+v", err)
+			return
+		}
+		if copied != n {
+			log.Warnf("copied different amount than expected: %d != %d", copied, n)
+			werr = xerrors.Errorf("copied different amount than expected: %d != %d", copied, n)
 		}
 	}()
 

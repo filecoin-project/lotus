@@ -25,7 +25,7 @@ func (c *Client) failDeal(id cid.Cid, cerr error) {
 	}
 
 	// TODO: store in some sort of audit log
-	log.Errorf("deal %s failed: %s", id, cerr)
+	log.Errorf("deal %s failed: %+v", id, cerr)
 }
 
 func (c *Client) dataSize(ctx context.Context, data cid.Cid) (int64, error) {

@@ -114,7 +114,7 @@ func (m *Miner) onSectorUpdated(ctx context.Context, update sectorUpdate) {
 }
 
 func (m *Miner) failSector(id uint64, err error) {
-	log.Error(err)
+	log.Errorf("sector %d error: %+v", id, err)
 	panic(err) // todo: better error handling strategy
 }
 
