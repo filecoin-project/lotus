@@ -80,7 +80,7 @@ func (c *Client) readStorageDealResp(deal ClientDeal) (*Response, error) {
 	// TODO: verify signature
 
 	if resp.Response.Proposal != deal.ProposalCid {
-		return nil, xerrors.New("miner responded to a wrong proposal")
+		return nil, xerrors.Errorf("miner responded to a wrong proposal: %s != %s", resp.Response.Proposal, deal.ProposalCid)
 	}
 
 	return &resp.Response, nil

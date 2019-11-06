@@ -13,6 +13,7 @@ import (
 	"github.com/filecoin-project/lotus/paych"
 	"github.com/filecoin-project/lotus/retrieval"
 	"github.com/filecoin-project/lotus/storage"
+	"github.com/filecoin-project/lotus/storage/sector"
 )
 
 func main() {
@@ -153,6 +154,14 @@ func main() {
 	err = gen.WriteTupleEncodersToFile("./storage/cbor_gen.go", "storage",
 		storage.SealTicket{},
 		storage.SectorInfo{},
+	)
+	if err != nil {
+		fmt.Println(err)
+		os.Exit(1)
+	}
+
+	err = gen.WriteTupleEncodersToFile("./storage/sector/cbor_gen.go", "sector",
+		sector.DealMapping{},
 	)
 	if err != nil {
 		fmt.Println(err)

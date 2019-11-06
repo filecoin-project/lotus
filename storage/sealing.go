@@ -71,7 +71,7 @@ func (m *Miner) onSectorIncoming(sector *SectorInfo) {
 	go func() {
 		select {
 		case m.sectorUpdated <- sectorUpdate{
-			newState: api.Unsealed,
+			newState: api.Packing,
 			id:       sector.SectorID,
 		}:
 		case <-m.stop:
@@ -102,6 +102,8 @@ func (m *Miner) onSectorUpdated(ctx context.Context, update sectorUpdate) {
 	}
 
 	switch update.newState {
+	case api.Packing:
+		m.handle(ctx, sector, m.finishPacking, api.Unsealed)
 	case api.Unsealed:
 		m.handle(ctx, sector, m.sealPreCommit, api.PreCommitting)
 	case api.PreCommitting:

@@ -33,6 +33,32 @@ func (m *Miner) handle(ctx context.Context, sector SectorInfo, cb providerHandle
 	}()
 }
 
+func (m *Miner) finishPacking(ctx context.Context, sector SectorInfo) (func(*SectorInfo), error) {
+	log.Infow("performing filling up rest of the sector...", "sector", sector.SectorID)
+
+	fillerSizes, err := m.secst.PieceSizesToFill(sector.SectorID)
+	if err != nil {
+		return nil, err
+	}
+
+	if len(fillerSizes) > 0 {
+		log.Warnf("Creating %d filler pieces for sector %d", len(fillerSizes), sector.SectorID)
+	}
+
+	ids, err := m.storeGarbage(ctx, fillerSizes...)
+	if err != nil {
+		return nil, xerrors.Errorf("filling up the sector (%v): %w", fillerSizes, err)
+	}
+
+	for _, id := range ids {
+		if id != sector.SectorID {
+			panic("todo: pass SectorID into storeGarbage")
+		}
+	}
+
+	return nil, nil
+}
+
 func (m *Miner) sealPreCommit(ctx context.Context, sector SectorInfo) (func(*SectorInfo), error) {
 	log.Infow("performing sector replication...", "sector", sector.SectorID)
 	sinfo, err := m.secst.SealPreCommit(ctx, sector.SectorID)
@@ -135,7 +161,7 @@ func (m *Miner) committing(ctx context.Context, sector SectorInfo) (func(*Sector
 		return nil, xerrors.Errorf("computing seal proof failed: %w", err)
 	}
 
-	deals, err := m.secst.DealsForCommit(sector.SectorID)
+	deals, err := m.secst.DealsForCommit(sector.SectorID, true)
 	if err != nil {
 		return nil, err
 	}

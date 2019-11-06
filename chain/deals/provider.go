@@ -88,7 +88,7 @@ func NewProvider(ds dtypes.MetadataDS, sminer *storage.Miner, secb *sectorblocks
 		secb:   secb,
 
 		pricePerByteBlock: types.NewInt(3), // TODO: allow setting
-		minPieceSize:      1,
+		minPieceSize:      256,             // TODO: allow setting (BUT KEEP MIN 256! (because of how we fill sectors up))
 
 		conns: map[cid.Cid]inet.Stream{},
 

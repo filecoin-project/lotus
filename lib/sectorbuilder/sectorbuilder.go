@@ -40,6 +40,7 @@ const CommLen = sectorbuilder.CommitmentBytesLen
 
 type SectorBuilder struct {
 	handle unsafe.Pointer
+	ssize  uint64
 
 	Miner address.Address
 
@@ -71,7 +72,9 @@ func New(cfg *Config) (*SectorBuilder, error) {
 	}
 
 	return &SectorBuilder{
-		handle:    sbp,
+		handle: sbp,
+		ssize:  cfg.SectorSize,
+
 		Miner:     cfg.Miner,
 		rateLimit: make(chan struct{}, cfg.WorkerThreads-PoStReservedWorkers),
 	}, nil
@@ -172,6 +175,10 @@ func (sb *SectorBuilder) GeneratePoSt(sectorInfo SortedSectorInfo, challengeSeed
 	return sectorbuilder.GeneratePoSt(sb.handle, sectorInfo, challengeSeed, faults)
 }
 
+func (sb *SectorBuilder) SectorSize() uint64 {
+	return sb.ssize
+}
+
 var UserBytesForSectorSize = sectorbuilder.GetMaxUserBytesPerStagedSector
 
 func VerifySeal(sectorSize uint64, commR, commD []byte, proverID address.Address, ticket []byte, seed []byte, sectorID uint64, proof []byte) (bool, error) {
@@ -237,7 +244,7 @@ func toReadableFile(r io.Reader, n int64) (*os.File, func() error, error) {
 		}
 
 		err := w.Close()
-		if werr == nil {
+		if werr == nil && err != nil {
 			werr = err
 			log.Warnf("toReadableFile: close error: %+v", err)
 			return

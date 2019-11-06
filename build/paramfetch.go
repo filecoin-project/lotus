@@ -93,6 +93,7 @@ func (ft *fetch) maybeFetchAsync(name string, info paramFile) {
 func (ft *fetch) checkFile(path string, info paramFile) error {
 	if os.Getenv("TRUST_PARAMS") == "1" {
 		log.Warn("Assuming parameter files are ok. DO NOT USE IN PRODUCTION")
+		return nil
 	}
 
 	f, err := os.Open(path)

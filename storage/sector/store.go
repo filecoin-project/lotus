@@ -1,33 +1,32 @@
 package sector
 
 import (
+	"bytes"
 	"context"
 	"fmt"
 	"io"
+	"math/bits"
 	"sync"
 
 	"github.com/filecoin-project/go-sectorbuilder/sealing_state"
 	"github.com/ipfs/go-datastore"
 	"github.com/ipfs/go-datastore/namespace"
-	cbor "github.com/ipfs/go-ipld-cbor"
 	logging "github.com/ipfs/go-log"
 	"golang.org/x/xerrors"
 
 	"github.com/filecoin-project/lotus/api"
+	"github.com/filecoin-project/lotus/lib/cborrpc"
 	"github.com/filecoin-project/lotus/lib/sectorbuilder"
 	"github.com/filecoin-project/lotus/node/modules/dtypes"
 )
-
-func init() {
-	cbor.RegisterCborType(dealMapping{})
-}
 
 var log = logging.Logger("sectorstore")
 
 var sectorDealsPrefix = datastore.NewKey("/sectordeals")
 
-type dealMapping struct {
+type DealMapping struct {
 	DealIDs   []uint64
+	Allocated uint64
 	Committed bool
 }
 
@@ -70,10 +69,10 @@ func (s *Store) AddPiece(ref string, size uint64, r io.Reader, dealIDs ...uint64
 
 	k := datastore.NewKey(fmt.Sprint(sectorID))
 	e, err := s.deals.Get(k)
-	var deals dealMapping
+	var deals DealMapping
 	switch err {
 	case nil:
-		if err := cbor.DecodeInto(e, &deals); err != nil {
+		if err := cborrpc.ReadCborRPC(bytes.NewReader(e), &deals); err != nil {
 			return 0, err
 		}
 		if deals.Committed {
@@ -82,7 +81,9 @@ func (s *Store) AddPiece(ref string, size uint64, r io.Reader, dealIDs ...uint64
 		fallthrough
 	case datastore.ErrNotFound:
 		deals.DealIDs = append(deals.DealIDs, dealIDs...)
-		d, err := cbor.DumpObject(&deals)
+		deals.Allocated += size
+
+		d, err := cborrpc.Dump(&deals)
 		if err != nil {
 			return 0, err
 		}
@@ -96,7 +97,40 @@ func (s *Store) AddPiece(ref string, size uint64, r io.Reader, dealIDs ...uint64
 	return sectorID, nil
 }
 
-func (s *Store) DealsForCommit(sectorID uint64) ([]uint64, error) {
+func (s *Store) PieceSizesToFill(sectorID uint64) ([]uint64, error) {
+	s.dealsLk.Lock()
+	defer s.dealsLk.Unlock()
+
+	k := datastore.NewKey(fmt.Sprint(sectorID))
+	e, err := s.deals.Get(k)
+	if err != nil {
+		return nil, err
+	}
+	var info DealMapping
+	if err := cborrpc.ReadCborRPC(bytes.NewReader(e), &info); err != nil {
+		return nil, err
+	}
+	if info.Allocated > s.sb.SectorSize() {
+		return nil, xerrors.Errorf("more data allocated in sector than should be able to fit: %d > %d", info.Allocated, s.sb.SectorSize())
+	}
+
+	return fillersFromRem(sectorbuilder.UserBytesForSectorSize(s.sb.SectorSize()) - info.Allocated)
+}
+
+func fillersFromRem(toFill uint64) ([]uint64, error) {
+	toFill += toFill / 127 // convert to in-sector bytes for easier math
+
+	out := make([]uint64, bits.OnesCount64(toFill))
+	for i := range out {
+		next := bits.TrailingZeros64(toFill)
+		psize := uint64(1) << next
+		toFill ^= psize
+		out[i] = sectorbuilder.UserBytesForSectorSize(psize)
+	}
+	return out, nil
+}
+
+func (s *Store) DealsForCommit(sectorID uint64, commit bool) ([]uint64, error) {
 	s.dealsLk.Lock()
 	defer s.dealsLk.Unlock()
 
@@ -105,16 +139,20 @@ func (s *Store) DealsForCommit(sectorID uint64) ([]uint64, error) {
 
 	switch err {
 	case nil:
-		var deals dealMapping
-		if err := cbor.DecodeInto(e, &deals); err != nil {
+		var deals DealMapping
+		if err := cborrpc.ReadCborRPC(bytes.NewReader(e), &deals); err != nil {
 			return nil, err
 		}
+		if !commit {
+			return nil, nil
+		}
+
 		if deals.Committed {
 			log.Errorf("getting deal IDs for sector %d: sector already marked as committed", sectorID)
 		}
 
 		deals.Committed = true
-		d, err := cbor.DumpObject(&deals)
+		d, err := cborrpc.Dump(&deals)
 		if err != nil {
 			return nil, err
 		}
