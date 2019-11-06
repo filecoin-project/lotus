@@ -298,6 +298,14 @@ func (c *Client) List() ([]ClientDeal, error) {
 	return out, nil
 }
 
+func (c *Client) GetDeal(d cid.Cid) (*ClientDeal, error) {
+	var out ClientDeal
+	if err := c.deals.Get(d, &out); err != nil {
+		return nil, err
+	}
+	return &out, nil
+}
+
 func (c *Client) Stop() {
 	close(c.stop)
 	<-c.stopped

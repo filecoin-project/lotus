@@ -82,6 +82,7 @@ type FullNodeStruct struct {
 		ClientHasLocal    func(ctx context.Context, root cid.Cid) (bool, error)                                                                       `perm:"write"`
 		ClientFindData    func(ctx context.Context, root cid.Cid) ([]QueryOffer, error)                                                               `perm:"read"`
 		ClientStartDeal   func(ctx context.Context, data cid.Cid, miner address.Address, price types.BigInt, blocksDuration uint64) (*cid.Cid, error) `perm:"admin"`
+		ClientGetDealInfo func(context.Context, cid.Cid) (*DealInfo, error)                                                                           `perm:"read"`
 		ClientListDeals   func(ctx context.Context) ([]DealInfo, error)                                                                               `perm:"write"`
 		ClientRetrieve    func(ctx context.Context, order RetrievalOrder, path string) error                                                          `perm:"admin"`
 		ClientQueryAsk    func(ctx context.Context, p peer.ID, miner address.Address) (*types.SignedStorageAsk, error)                                `perm:"read"`
@@ -192,6 +193,9 @@ func (c *FullNodeStruct) ClientFindData(ctx context.Context, root cid.Cid) ([]Qu
 
 func (c *FullNodeStruct) ClientStartDeal(ctx context.Context, data cid.Cid, miner address.Address, price types.BigInt, blocksDuration uint64) (*cid.Cid, error) {
 	return c.Internal.ClientStartDeal(ctx, data, miner, price, blocksDuration)
+}
+func (c *FullNodeStruct) ClientGetDealInfo(ctx context.Context, deal cid.Cid) (*DealInfo, error) {
+	return c.Internal.ClientGetDealInfo(ctx, deal)
 }
 
 func (c *FullNodeStruct) ClientListDeals(ctx context.Context) ([]DealInfo, error) {

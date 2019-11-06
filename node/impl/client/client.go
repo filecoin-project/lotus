@@ -124,6 +124,22 @@ func (a *API) ClientListDeals(ctx context.Context) ([]api.DealInfo, error) {
 	return out, nil
 }
 
+func (a *API) ClientGetDealInfo(ctx context.Context, d cid.Cid) (*api.DealInfo, error) {
+	v, err := a.DealClient.GetDeal(d)
+	if err != nil {
+		return nil, err
+	}
+	return &api.DealInfo{
+		ProposalCid:   v.ProposalCid,
+		State:         v.State,
+		Provider:      v.Proposal.Provider,
+		PieceRef:      v.Proposal.PieceRef,
+		Size:          v.Proposal.PieceSize,
+		PricePerEpoch: v.Proposal.StoragePricePerEpoch,
+		Duration:      v.Proposal.Duration,
+	}, nil
+}
+
 func (a *API) ClientHasLocal(ctx context.Context, root cid.Cid) (bool, error) {
 	// TODO: check if we have the ENTIRE dag
 

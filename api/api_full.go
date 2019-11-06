@@ -2,6 +2,7 @@ package api
 
 import (
 	"context"
+
 	"github.com/ipfs/go-cid"
 	"github.com/ipfs/go-filestore"
 	"github.com/libp2p/go-libp2p-core/peer"
@@ -73,6 +74,7 @@ type FullNode interface {
 	// ClientImport imports file under the specified path into filestore
 	ClientImport(ctx context.Context, path string) (cid.Cid, error)
 	ClientStartDeal(ctx context.Context, data cid.Cid, miner address.Address, epochPrice types.BigInt, blocksDuration uint64) (*cid.Cid, error)
+	ClientGetDealInfo(context.Context, cid.Cid) (*DealInfo, error)
 	ClientListDeals(ctx context.Context) ([]DealInfo, error)
 	ClientHasLocal(ctx context.Context, root cid.Cid) (bool, error)
 	ClientFindData(ctx context.Context, root cid.Cid) ([]QueryOffer, error) // TODO: specify serialization mode we want (defaults to unixfs for now)
