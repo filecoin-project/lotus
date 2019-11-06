@@ -67,7 +67,6 @@ func (impl *graphsyncImpl) OpenPushDataChannel(ctx context.Context, to peer.ID, 
 	if err != nil {
 		return datatransfer.ChannelID{}, err
 	}
-	// do some more stuff
 	return datatransfer.ChannelID{To: to, ID: tid}, nil
 }
 
@@ -78,7 +77,6 @@ func (impl *graphsyncImpl) OpenPullDataChannel(ctx context.Context, to peer.ID, 
 	if err != nil {
 		return datatransfer.ChannelID{}, err
 	}
-	// do some more stuff
 	return datatransfer.ChannelID{To: to, ID: tid}, nil
 }
 
