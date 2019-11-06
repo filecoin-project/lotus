@@ -459,9 +459,7 @@ func TestSendResponseToIncomingRequest(t *testing.T) {
 		voucherBytes, err := voucher.ToBytes()
 		require.NoError(t, err)
 		request := message.NewRequest(id, isPull, voucher.Identifier(), voucherBytes, baseCid, buffer.Bytes())
-		go func() {
-			require.NoError(t, dtnet1.SendMessage(ctx, host2.ID(), request))
-		}()
+		require.NoError(t, dtnet1.SendMessage(ctx, host2.ID(), request))
 		var messageReceived receivedMessage
 		select {
 		case <-ctx.Done():
@@ -497,7 +495,7 @@ func TestSendResponseToIncomingRequest(t *testing.T) {
 		voucherBytes, err := voucher.ToBytes()
 		require.NoError(t, err)
 		request := message.NewRequest(id, isPull, voucher.Identifier(), voucherBytes, baseCid, buffer.Bytes())
-		dtnet1.SendMessage(ctx, host2.ID(), request)
+		require.NoError(t, dtnet1.SendMessage(ctx, host2.ID(), request))
 
 		var messageReceived receivedMessage
 		select {
@@ -534,9 +532,7 @@ func TestSendResponseToIncomingRequest(t *testing.T) {
 		require.NoError(t, err)
 		request := message.NewRequest(id, isPull, voucher.Identifier(), voucherBytes, baseCid, buffer.Bytes())
 
-		go func() {
-			require.NoError(t, dtnet1.SendMessage(ctx, host2.ID(), request))
-		}()
+		require.NoError(t, dtnet1.SendMessage(ctx, host2.ID(), request))
 		var messageReceived receivedMessage
 		select {
 		case <-ctx.Done():
