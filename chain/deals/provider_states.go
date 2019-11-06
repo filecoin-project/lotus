@@ -12,6 +12,7 @@ import (
 	"github.com/filecoin-project/lotus/chain/actors"
 	"github.com/filecoin-project/lotus/chain/address"
 	"github.com/filecoin-project/lotus/chain/types"
+	"github.com/filecoin-project/lotus/lib/padreader"
 	"github.com/filecoin-project/lotus/storage/sectorblocks"
 )
 
@@ -218,8 +219,8 @@ func (p *Provider) staged(ctx context.Context, deal MinerDeal) (func(*MinerDeal)
 	if err != nil {
 		return nil, xerrors.Errorf("getting unixfs file size: %w", err)
 	}
-	if uint64(size) != deal.Proposal.PieceSize {
-		return nil, xerrors.Errorf("deal.Proposal.PieceSize didn't match unixfs file size")
+	if padreader.PaddedSize(uint64(size)) != deal.Proposal.PieceSize {
+		return nil, xerrors.Errorf("deal.Proposal.PieceSize didn't match padded unixfs file size")
 	}
 
 	sectorID, err := p.secb.AddUnixfsPiece(deal.Ref, uf, deal.DealID)
