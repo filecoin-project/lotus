@@ -48,6 +48,8 @@ func main() {
 
 	err = gen.WriteTupleEncodersToFile("./api/cbor_gen.go", "api",
 		api.PaymentInfo{},
+		api.SealedRef{},
+		api.SealedRefs{},
 	)
 	if err != nil {
 		fmt.Println(err)

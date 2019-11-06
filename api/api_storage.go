@@ -69,5 +69,9 @@ type StorageMiner interface {
 type SealedRef struct {
 	Piece  string
 	Offset uint64
-	Size   uint32
+	Size   uint64
+}
+
+type SealedRefs struct {
+	Refs []SealedRef
 }

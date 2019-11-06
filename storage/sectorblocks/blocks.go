@@ -1,25 +1,26 @@
 package sectorblocks
 
 import (
+	"bytes"
 	"context"
 	"errors"
-	"github.com/filecoin-project/lotus/api"
-	"github.com/filecoin-project/lotus/lib/sectorbuilder"
-	"github.com/filecoin-project/lotus/node/modules/dtypes"
-	"github.com/ipfs/go-datastore/namespace"
-	"github.com/ipfs/go-datastore/query"
-	blockstore "github.com/ipfs/go-ipfs-blockstore"
-	ipld "github.com/ipfs/go-ipld-format"
-	"github.com/ipfs/go-unixfs"
-	"golang.org/x/xerrors"
 	"sync"
 
 	"github.com/ipfs/go-cid"
 	"github.com/ipfs/go-datastore"
+	"github.com/ipfs/go-datastore/namespace"
+	"github.com/ipfs/go-datastore/query"
+	blockstore "github.com/ipfs/go-ipfs-blockstore"
 	dshelp "github.com/ipfs/go-ipfs-ds-help"
 	files "github.com/ipfs/go-ipfs-files"
-	cbor "github.com/ipfs/go-ipld-cbor"
+	ipld "github.com/ipfs/go-ipld-format"
+	"github.com/ipfs/go-unixfs"
+	"golang.org/x/xerrors"
 
+	"github.com/filecoin-project/lotus/api"
+	"github.com/filecoin-project/lotus/lib/cborrpc"
+	"github.com/filecoin-project/lotus/lib/sectorbuilder"
+	"github.com/filecoin-project/lotus/node/modules/dtypes"
 	"github.com/filecoin-project/lotus/storage/sector"
 )
 
@@ -74,14 +75,14 @@ type UnixfsReader interface {
 
 type refStorer struct {
 	blockReader  UnixfsReader
-	writeRef     func(cid cid.Cid, pieceRef string, offset uint64, size uint32) error
+	writeRef     func(cid cid.Cid, pieceRef string, offset uint64, size uint64) error
 	intermediate blockstore.Blockstore
 
 	pieceRef  string
 	remaining []byte
 }
 
-func (st *SectorBlocks) writeRef(cid cid.Cid, pieceRef string, offset uint64, size uint32) error {
+func (st *SectorBlocks) writeRef(cid cid.Cid, pieceRef string, offset uint64, size uint64) error {
 	st.keyLk.Lock() // TODO: make this multithreaded
 	defer st.keyLk.Unlock()
 
@@ -93,20 +94,20 @@ func (st *SectorBlocks) writeRef(cid cid.Cid, pieceRef string, offset uint64, si
 		return xerrors.Errorf("getting existing refs: %w", err)
 	}
 
-	var refs []api.SealedRef
+	var refs api.SealedRefs
 	if len(v) > 0 {
-		if err := cbor.DecodeInto(v, &refs); err != nil {
+		if err := cborrpc.ReadCborRPC(bytes.NewReader(v), &refs); err != nil {
 			return xerrors.Errorf("decoding existing refs: %w", err)
 		}
 	}
 
-	refs = append(refs, api.SealedRef{
+	refs.Refs = append(refs.Refs, api.SealedRef{
 		Piece:  pieceRef,
 		Offset: offset,
 		Size:   size,
 	})
 
-	newRef, err := cbor.DumpObject(&refs)
+	newRef, err := cborrpc.Dump(&refs)
 	if err != nil {
 		return xerrors.Errorf("serializing refs: %w", err)
 	}
@@ -141,7 +142,7 @@ func (r *refStorer) Read(p []byte) (n int, err error) {
 			continue
 		}
 
-		if err := r.writeRef(nd.Cid(), r.pieceRef, offset, uint32(len(data))); err != nil {
+		if err := r.writeRef(nd.Cid(), r.pieceRef, offset, uint64(len(data))); err != nil {
 			return 0, xerrors.Errorf("writing ref: %w", err)
 		}
 
@@ -188,12 +189,12 @@ func (st *SectorBlocks) List() (map[cid.Cid][]api.SealedRef, error) {
 			return nil, err
 		}
 
-		var refs []api.SealedRef
-		if err := cbor.DecodeInto(ent.Value, &refs); err != nil {
+		var refs api.SealedRefs
+		if err := cborrpc.ReadCborRPC(bytes.NewReader(ent.Value), &refs); err != nil {
 			return nil, err
 		}
 
-		out[refCid] = refs
+		out[refCid] = refs.Refs
 	}
 
 	return out, nil
@@ -208,12 +209,12 @@ func (st *SectorBlocks) GetRefs(k cid.Cid) ([]api.SealedRef, error) { // TODO: t
 		return nil, err
 	}
 
-	var refs []api.SealedRef
-	if err := cbor.DecodeInto(ent, &refs); err != nil {
+	var refs api.SealedRefs
+	if err := cborrpc.ReadCborRPC(bytes.NewReader(ent), &refs); err != nil {
 		return nil, err
 	}
 
-	return refs, nil
+	return refs.Refs, nil
 }
 
 func (st *SectorBlocks) GetSize(k cid.Cid) (uint64, error) {
