@@ -2,6 +2,7 @@ package chain
 
 import (
 	"context"
+	"errors"
 	"fmt"
 	"sync"
 	"time"
@@ -379,7 +380,9 @@ func (syncer *Syncer) ValidateTipSet(ctx context.Context, fts *store.FullTipSet)
 
 	for _, b := range fts.Blocks {
 		if err := syncer.ValidateBlock(ctx, b); err != nil {
-			syncer.bad.Add(b.Cid())
+			if !errors.Is(err, ErrTemporal) {
+				syncer.bad.Add(b.Cid())
+			}
 			return xerrors.Errorf("validating block %s: %w", b.Cid(), err)
 		}
 
@@ -444,6 +447,8 @@ func (syncer *Syncer) validateTickets(ctx context.Context, mworker address.Addre
 	return nil
 }
 
+var ErrTemporal = errors.New("temporal error")
+
 // Should match up with 'Semantical Validation' in validation.md in the spec
 func (syncer *Syncer) ValidateBlock(ctx context.Context, b *types.FullBlock) error {
 	ctx, span := trace.StartSpan(ctx, "validateBlock")
@@ -470,7 +475,7 @@ func (syncer *Syncer) ValidateBlock(ctx context.Context, b *types.FullBlock) err
 	}
 
 	if h.Timestamp > uint64(time.Now().Unix()+build.AllowableClockDrift) {
-		return xerrors.Errorf("block was from the future")
+		return xerrors.Errorf("block was from the future: %w", ErrTemporal)
 	}
 
 	if h.Timestamp < baseTs.MinTimestamp()+uint64(build.BlockDelay*len(h.Tickets)) {
