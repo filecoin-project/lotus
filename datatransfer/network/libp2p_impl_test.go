@@ -70,7 +70,7 @@ func TestMessageSendAndReceive(t *testing.T) {
 	dtnet1 := network.NewFromLibp2pHost(host1)
 	dtnet2 := network.NewFromLibp2pHost(host2)
 	r := &receiver{
-		messageReceived: make(chan struct{}),
+		messageReceived: make(chan struct{}, 2),
 		connectedPeers:  make(chan peer.ID, 2),
 	}
 	dtnet1.SetDelegate(r)
@@ -87,10 +87,7 @@ func TestMessageSendAndReceive(t *testing.T) {
 		voucherIdentifier := "FakeVoucherType"
 		voucher := testutil.RandomBytes(100)
 		request := message.NewRequest(id, isPull, voucherIdentifier, voucher, baseCid, selector)
-
-		go func() {
-			require.NoError(t, dtnet1.SendMessage(ctx, host2.ID(), request))
-		}()
+		dtnet1.SendMessage(ctx, host2.ID(), request)
 
 		select {
 		case <-ctx.Done():
@@ -119,9 +116,7 @@ func TestMessageSendAndReceive(t *testing.T) {
 		id := datatransfer.TransferID(rand.Int31())
 		response := message.NewResponse(id, accepted)
 
-		go func() {
-			require.NoError(t, dtnet2.SendMessage(ctx, host1.ID(), response))
-		}()
+		dtnet2.SendMessage(ctx, host1.ID(), response)
 
 		select {
 		case <-ctx.Done():
