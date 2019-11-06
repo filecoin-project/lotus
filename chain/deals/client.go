@@ -2,6 +2,7 @@ package deals
 
 import (
 	"context"
+
 	"github.com/filecoin-project/lotus/lib/statestore"
 	"github.com/filecoin-project/lotus/node/impl/full"
 
@@ -226,7 +227,6 @@ func (c *Client) Start(ctx context.Context, p ClientDealProposal) (cid.Cid, erro
 
 	s, err := c.h.NewStream(ctx, p.MinerID, DealProtocolID)
 	if err != nil {
-		s.Reset()
 		return cid.Undef, xerrors.Errorf("connecting to storage provider failed: %w", err)
 	}
 

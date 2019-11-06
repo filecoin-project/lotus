@@ -7,6 +7,7 @@ import (
 	"io"
 	"math/bits"
 	"sync"
+	"testing/iotest"
 
 	"github.com/filecoin-project/go-sectorbuilder/sealing_state"
 	"github.com/ipfs/go-datastore"
@@ -59,9 +60,24 @@ func (s *Store) SectorStatus(sid uint64) (*sectorbuilder.SectorSealingStatus, er
 }
 
 func (s *Store) AddPiece(ref string, size uint64, r io.Reader, dealIDs ...uint64) (sectorID uint64, err error) {
-	sectorID, err = s.sb.AddPiece(ref, size, r)
+	padSize := computePaddedSize(size)
+
+	buf := make([]byte, padSize)
+	r = iotest.NewReadLogger("UNIX FILE", r)
+	n, err := io.ReadFull(r, buf)
 	if err != nil {
-		return 0, err
+		return 0, xerrors.Errorf("failed a bad thing: %w", err)
+	}
+	if uint64(n) != size {
+		panic("bad bad")
+	}
+
+	bufr := bytes.NewReader(buf)
+	//r = io.MultiReader(r, io.LimitReader(nullReader{}, int64(padSize-size)))
+
+	sectorID, err = s.sb.AddPiece(ref, padSize, bufr)
+	if err != nil {
+		return 0, xerrors.Errorf("sector store AddPiece call failed: %w", err)
 	}
 
 	s.dealsLk.Lock()

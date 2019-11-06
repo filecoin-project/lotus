@@ -2,9 +2,10 @@ package storage
 
 import (
 	"context"
+	"sync"
+
 	"github.com/filecoin-project/lotus/lib/statestore"
 	"github.com/ipfs/go-datastore/namespace"
-	"sync"
 
 	"github.com/ipfs/go-cid"
 	"github.com/ipfs/go-datastore"

@@ -8,13 +8,12 @@ import (
 	"os/signal"
 	"syscall"
 
-	"github.com/filecoin-project/lotus/build"
-
 	"github.com/multiformats/go-multiaddr"
 	"golang.org/x/xerrors"
 	"gopkg.in/urfave/cli.v2"
 
 	"github.com/filecoin-project/lotus/api"
+	"github.com/filecoin-project/lotus/build"
 	lcli "github.com/filecoin-project/lotus/cli"
 	"github.com/filecoin-project/lotus/lib/auth"
 	"github.com/filecoin-project/lotus/lib/jsonrpc"

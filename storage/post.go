@@ -2,9 +2,10 @@ package storage
 
 import (
 	"context"
+	"time"
+
 	"github.com/ipfs/go-cid"
 	"go.opencensus.io/trace"
-	"time"
 
 	"golang.org/x/xerrors"
 
