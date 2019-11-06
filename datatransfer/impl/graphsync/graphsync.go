@@ -63,7 +63,7 @@ func (impl *graphsyncImpl) RegisterVoucherType(voucherType reflect.Type, validat
 // open a data transfer that will send data to the recipient peer and
 // transfer parts of the piece that match the selector
 func (impl *graphsyncImpl) OpenPushDataChannel(ctx context.Context, to peer.ID, voucher datatransfer.Voucher, baseCid cid.Cid, selector ipld.Node) (datatransfer.ChannelID, error) {
-	tid, err := impl.makeDataChannel(selector, false, voucher, baseCid, to)
+	tid, err := impl.sendMessage(selector, false, voucher, baseCid, to)
 	if err != nil {
 		return datatransfer.ChannelID{}, err
 	}
@@ -74,7 +74,7 @@ func (impl *graphsyncImpl) OpenPushDataChannel(ctx context.Context, to peer.ID, 
 // open a data transfer that will request data from the sending peer and
 // transfer parts of the piece that match the selector
 func (impl *graphsyncImpl) OpenPullDataChannel(ctx context.Context, to peer.ID, voucher datatransfer.Voucher, baseCid cid.Cid, selector ipld.Node) (datatransfer.ChannelID, error) {
-	tid, err := impl.makeDataChannel(selector, true, voucher, baseCid, to)
+	tid, err := impl.sendMessage(selector, true, voucher, baseCid, to)
 	if err != nil {
 		return datatransfer.ChannelID{}, err
 	}
@@ -82,7 +82,7 @@ func (impl *graphsyncImpl) OpenPullDataChannel(ctx context.Context, to peer.ID, 
 	return datatransfer.ChannelID{To: to, ID: tid}, nil
 }
 
-func (impl *graphsyncImpl) makeDataChannel(selector ipld.Node, isPull bool, voucher datatransfer.Voucher, baseCid cid.Cid, to peer.ID) (datatransfer.TransferID, error) {
+func (impl *graphsyncImpl) sendMessage(selector ipld.Node, isPull bool, voucher datatransfer.Voucher, baseCid cid.Cid, to peer.ID) (datatransfer.TransferID, error) {
 	sbytes, err := nodeAsBytes(selector)
 	if err != nil {
 		return 0, err

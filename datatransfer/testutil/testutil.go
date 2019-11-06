@@ -11,6 +11,7 @@ import (
 )
 
 var blockGenerator = blocksutil.NewBlockGenerator()
+
 //var prioritySeq int
 var seedSeq int64
 
