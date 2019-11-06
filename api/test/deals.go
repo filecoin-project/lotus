@@ -10,6 +10,7 @@ import (
 
 	logging "github.com/ipfs/go-log"
 
+	"github.com/filecoin-project/lotus/api"
 	"github.com/filecoin-project/lotus/chain/address"
 	"github.com/filecoin-project/lotus/chain/types"
 	"github.com/filecoin-project/lotus/node/impl"
@@ -54,7 +55,7 @@ func TestDealFlow(t *testing.T, b APIBuilder) {
 			}
 		}
 	}()
-	deal, err := client.ClientStartDeal(ctx, fcid, maddr, types.NewInt(200), 100)
+	deal, err := client.ClientStartDeal(ctx, fcid, maddr, types.NewInt(400), 100)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -66,10 +67,15 @@ func TestDealFlow(t *testing.T, b APIBuilder) {
 		if err != nil {
 			t.Fatal(err)
 		}
-		fmt.Println("DEAL STATE: ", *deal, di.State)
+		switch di.State {
+		case api.DealRejected:
+			t.Fatal("deal rejected")
+		case api.DealFailed:
+			t.Fatal("deal failed")
+		case api.DealComplete:
+			fmt.Println("COMPLETE", di)
+			break
+		}
 		time.Sleep(time.Second / 2)
 	}
-	fmt.Println("Deal done!", deal)
-
-	time.Sleep(time.Second * 10)
 }
