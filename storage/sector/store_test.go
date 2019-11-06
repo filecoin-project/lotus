@@ -3,6 +3,7 @@ package sector
 import (
 	"context"
 	"fmt"
+	"github.com/filecoin-project/lotus/lib/padreader"
 	"io"
 	"math/rand"
 	"testing"
@@ -74,7 +75,9 @@ func TestSectorStore(t *testing.T) {
 	store := NewStore(sb, ds, tktFn)
 
 	pr := io.LimitReader(rand.New(rand.NewSource(17)), 300)
-	sid, err := store.AddPiece("a", 300, pr, 1)
+	pr, n := padreader.New(pr, 300)
+
+	sid, err := store.AddPiece("a", n, pr, 1)
 	if err != nil {
 		t.Fatal(err)
 	}
