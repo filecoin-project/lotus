@@ -1,7 +1,6 @@
 package sector
 
 import (
-	"bytes"
 	"context"
 	"fmt"
 	"io"
