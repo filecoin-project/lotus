@@ -72,10 +72,13 @@ func TestDealFlow(t *testing.T, b APIBuilder) {
 			t.Fatal("deal rejected")
 		case api.DealFailed:
 			t.Fatal("deal failed")
+		case api.DealError:
+			t.Fatal("deal errored")
 		case api.DealComplete:
 			fmt.Println("COMPLETE", di)
 			break
 		}
+		fmt.Println("Deal state: ", di.State)
 		time.Sleep(time.Second / 2)
 	}
 }

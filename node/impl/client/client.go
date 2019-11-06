@@ -92,7 +92,6 @@ func (a *API) ClientStartDeal(ctx context.Context, data cid.Cid, miner address.A
 	}
 
 	c, err := a.DealClient.Start(ctx, proposal)
-	// TODO: send updated voucher with PaymentVerifySector for cheaper validation (validate the sector the miner sent us first!)
 	if err != nil {
 		return nil, xerrors.Errorf("failed to start deal: %w", err)
 	}
