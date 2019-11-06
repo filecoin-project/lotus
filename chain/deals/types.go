@@ -8,11 +8,13 @@ import (
 	"github.com/ipfs/go-cid"
 )
 
-const DealProtocolID = "/fil/storage/mk/1.0.0"
-const AskProtocolID = "/fil/storage/ask/1.0.0"
+const DealProtocolID = "/fil/storage/mk/1.0.1"
+const AskProtocolID = "/fil/storage/ask/1.0.1"
 
 type Proposal struct {
-	DealProposal actors.StorageDealProposal
+	DealProposal *actors.StorageDealProposal
+
+	Piece cid.Cid // Used for retrieving from the client
 }
 
 type Response struct {

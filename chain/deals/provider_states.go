@@ -4,7 +4,6 @@ import (
 	"bytes"
 	"context"
 
-	"github.com/ipfs/go-cid"
 	"github.com/ipfs/go-merkledag"
 	unixfile "github.com/ipfs/go-unixfs/file"
 	"golang.org/x/xerrors"
@@ -223,12 +222,7 @@ func (p *Provider) staged(ctx context.Context, deal MinerDeal) (func(*MinerDeal)
 		return nil, xerrors.Errorf("deal.Proposal.PieceSize didn't match unixfs file size")
 	}
 
-	pcid, err := cid.Cast(deal.Proposal.PieceRef)
-	if err != nil {
-		return nil, err
-	}
-
-	sectorID, err := p.secb.AddUnixfsPiece(pcid, uf, deal.DealID)
+	sectorID, err := p.secb.AddUnixfsPiece(deal.Ref, uf, deal.DealID)
 	if err != nil {
 		return nil, xerrors.Errorf("AddPiece failed: %s", err)
 	}

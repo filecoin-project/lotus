@@ -10,6 +10,8 @@ import (
 	"golang.org/x/xerrors"
 
 	"github.com/filecoin-project/lotus/lib/cborrpc"
+	"github.com/filecoin-project/lotus/lib/padreader"
+	"github.com/filecoin-project/lotus/lib/sectorbuilder"
 )
 
 func (c *Client) failDeal(id cid.Cid, cerr error) {
@@ -28,26 +30,38 @@ func (c *Client) failDeal(id cid.Cid, cerr error) {
 	log.Errorf("deal %s failed: %+v", id, cerr)
 }
 
-func (c *Client) dataSize(ctx context.Context, data cid.Cid) (int64, error) {
+func (c *Client) commP(ctx context.Context, data cid.Cid) ([]byte, uint64, error) {
 	root, err := c.dag.Get(ctx, data)
 	if err != nil {
 		log.Errorf("failed to get file root for deal: %s", err)
-		return 0, err
+		return nil, 0, err
 	}
 
 	n, err := unixfile.NewUnixfsFile(ctx, c.dag, root)
 	if err != nil {
 		log.Errorf("cannot open unixfs file: %s", err)
-		return 0, err
+		return nil, 0, err
 	}
 
 	uf, ok := n.(files.File)
 	if !ok {
 		// TODO: we probably got directory, how should we handle this in unixfs mode?
-		return 0, xerrors.New("unsupported unixfs type")
+		return nil, 0, xerrors.New("unsupported unixfs type")
 	}
 
-	return uf.Size()
+	s, err := uf.Size()
+	if err != nil {
+		return nil, 0, err
+	}
+
+	pr, psize := padreader.New(uf, uint64(s))
+
+	commp, err := sectorbuilder.GeneratePieceCommitment(pr, psize)
+	if err != nil {
+		return nil, 0, xerrors.Errorf("generating CommP: %w", err)
+	}
+
+	return commp[:], psize, nil
 }
 
 func (c *Client) readStorageDealResp(deal ClientDeal) (*Response, error) {

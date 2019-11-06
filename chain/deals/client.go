@@ -201,25 +201,25 @@ func (c *Client) Start(ctx context.Context, p ClientDealProposal) (cid.Cid, erro
 		}
 	}
 
-	dataSize, err := c.dataSize(ctx, p.Data)
+	commP, pieceSize, err := c.commP(ctx, p.Data)
 
-	proposal := &actors.StorageDealProposal{
-		PieceRef:             p.Data.Bytes(),
-		PieceSize:            uint64(dataSize),
+	dealProposal := &actors.StorageDealProposal{
+		PieceRef:             commP,
+		PieceSize:            uint64(pieceSize),
 		PieceSerialization:   actors.SerializationUnixFSv0,
 		Client:               p.Client,
 		Provider:             p.ProviderAddress,
 		ProposalExpiration:   p.ProposalExpiration,
 		Duration:             p.Duration,
 		StoragePricePerEpoch: p.PricePerEpoch,
-		StorageCollateral:    types.NewInt(uint64(dataSize)), // TODO: real calc
+		StorageCollateral:    types.NewInt(uint64(pieceSize)), // TODO: real calc
 	}
 
-	if err := api.SignWith(ctx, c.w.Sign, p.Client, proposal); err != nil {
+	if err := api.SignWith(ctx, c.w.Sign, p.Client, dealProposal); err != nil {
 		return cid.Undef, xerrors.Errorf("signing deal proposal failed: %w", err)
 	}
 
-	proposalNd, err := cborrpc.AsIpld(proposal)
+	proposalNd, err := cborrpc.AsIpld(dealProposal)
 	if err != nil {
 		return cid.Undef, xerrors.Errorf("getting proposal node failed: %w", err)
 	}
@@ -230,6 +230,11 @@ func (c *Client) Start(ctx context.Context, p ClientDealProposal) (cid.Cid, erro
 		return cid.Undef, xerrors.Errorf("connecting to storage provider failed: %w", err)
 	}
 
+	proposal := &Proposal{
+		DealProposal: dealProposal,
+		Piece:        p.Data,
+	}
+
 	if err := cborrpc.WriteCborRPC(s, proposal); err != nil {
 		s.Reset()
 		return cid.Undef, xerrors.Errorf("sending proposal to storage provider failed: %w", err)
@@ -237,7 +242,7 @@ func (c *Client) Start(ctx context.Context, p ClientDealProposal) (cid.Cid, erro
 
 	deal := &ClientDeal{
 		ProposalCid: proposalNd.Cid(),
-		Proposal:    *proposal,
+		Proposal:    *dealProposal,
 		State:       api.DealUnknown,
 		Miner:       p.MinerID,
 
@@ -247,7 +252,7 @@ func (c *Client) Start(ctx context.Context, p ClientDealProposal) (cid.Cid, erro
 	c.incoming <- deal
 
 	return deal.ProposalCid, c.discovery.AddPeer(p.Data, discovery.RetrievalPeer{
-		Address: proposal.Provider,
+		Address: dealProposal.Provider,
 		ID:      deal.Miner,
 	})
 }

@@ -4,6 +4,7 @@ import (
 	"bytes"
 	"context"
 	"errors"
+	"io"
 	"sync"
 
 	"github.com/ipfs/go-cid"
@@ -130,6 +131,9 @@ func (r *refStorer) Read(p []byte) (n int, err error) {
 	for {
 		data, offset, nd, err := r.blockReader.ReadBlock(context.TODO())
 		if err != nil {
+			if err == io.EOF {
+				return 0, io.EOF
+			}
 			return 0, xerrors.Errorf("reading block: %w", err)
 		}
 

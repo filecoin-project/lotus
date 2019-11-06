@@ -192,24 +192,19 @@ func (p *Provider) onUpdated(ctx context.Context, update minerDealUpdate) {
 	}
 }
 
-func (p *Provider) newDeal(s inet.Stream, proposal actors.StorageDealProposal) (MinerDeal, error) {
+func (p *Provider) newDeal(s inet.Stream, proposal Proposal) (MinerDeal, error) {
 	proposalNd, err := cborrpc.AsIpld(&proposal)
-	if err != nil {
-		return MinerDeal{}, err
-	}
-
-	ref, err := cid.Cast(proposal.PieceRef)
 	if err != nil {
 		return MinerDeal{}, err
 	}
 
 	return MinerDeal{
 		Client:      s.Conn().RemotePeer(),
-		Proposal:    proposal,
+		Proposal:    *proposal.DealProposal,
 		ProposalCid: proposalNd.Cid(),
 		State:       api.DealUnknown,
 
-		Ref: ref,
+		Ref: proposal.Piece,
 
 		s: s,
 	}, nil

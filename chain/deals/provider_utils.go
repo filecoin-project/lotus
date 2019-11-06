@@ -5,7 +5,6 @@ import (
 	"runtime"
 
 	"github.com/filecoin-project/lotus/api"
-
 	"github.com/filecoin-project/lotus/chain/actors"
 	"github.com/filecoin-project/lotus/chain/address"
 	"github.com/filecoin-project/lotus/chain/types"
@@ -45,21 +44,21 @@ func (p *Provider) failDeal(id cid.Cid, cerr error) {
 	}
 }
 
-func (p *Provider) readProposal(s inet.Stream) (proposal actors.StorageDealProposal, err error) {
+func (p *Provider) readProposal(s inet.Stream) (proposal Proposal, err error) {
 	if err := cborrpc.ReadCborRPC(s, &proposal); err != nil {
 		log.Errorw("failed to read proposal message", "error", err)
 		return proposal, err
 	}
 
-	if err := proposal.Verify(); err != nil {
+	if err := proposal.DealProposal.Verify(); err != nil {
 		return proposal, xerrors.Errorf("verifying StorageDealProposal: %w", err)
 	}
 
 	// TODO: Validate proposal maybe
 	// (and signature, obviously)
 
-	if proposal.Provider != p.actor {
-		log.Errorf("proposal with wrong ProviderAddress: %s", proposal.Provider)
+	if proposal.DealProposal.Provider != p.actor {
+		log.Errorf("proposal with wrong ProviderAddress: %s", proposal.DealProposal.Provider)
 		return proposal, err
 	}
 

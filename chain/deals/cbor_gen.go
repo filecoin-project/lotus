@@ -118,7 +118,7 @@ func (t *Proposal) MarshalCBOR(w io.Writer) error {
 		_, err := w.Write(cbg.CborNull)
 		return err
 	}
-	if _, err := w.Write([]byte{129}); err != nil {
+	if _, err := w.Write([]byte{130}); err != nil {
 		return err
 	}
 
@@ -126,6 +126,13 @@ func (t *Proposal) MarshalCBOR(w io.Writer) error {
 	if err := t.DealProposal.MarshalCBOR(w); err != nil {
 		return err
 	}
+
+	// t.t.Piece (cid.Cid) (struct)
+
+	if err := cbg.WriteCid(w, t.Piece); err != nil {
+		return xerrors.Errorf("failed to write cid field t.Piece: %w", err)
+	}
+
 	return nil
 }
 
@@ -140,7 +147,7 @@ func (t *Proposal) UnmarshalCBOR(r io.Reader) error {
 		return fmt.Errorf("cbor input should be of type array")
 	}
 
-	if extra != 1 {
+	if extra != 2 {
 		return fmt.Errorf("cbor input had wrong number of fields")
 	}
 
@@ -148,9 +155,33 @@ func (t *Proposal) UnmarshalCBOR(r io.Reader) error {
 
 	{
 
-		if err := t.DealProposal.UnmarshalCBOR(br); err != nil {
+		pb, err := br.PeekByte()
+		if err != nil {
 			return err
 		}
+		if pb == cbg.CborNull[0] {
+			var nbuf [1]byte
+			if _, err := br.Read(nbuf[:]); err != nil {
+				return err
+			}
+		} else {
+			t.DealProposal = new(actors.StorageDealProposal)
+			if err := t.DealProposal.UnmarshalCBOR(br); err != nil {
+				return err
+			}
+		}
+
+	}
+	// t.t.Piece (cid.Cid) (struct)
+
+	{
+
+		c, err := cbg.ReadCid(br)
+		if err != nil {
+			return xerrors.Errorf("failed to read cid field t.Piece: %w", err)
+		}
+
+		t.Piece = c
 
 	}
 	return nil
