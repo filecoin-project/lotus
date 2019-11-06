@@ -24,7 +24,6 @@ func TestDealFlow(t *testing.T, b APIBuilder) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	addrinfo.Addrs = nil
 
 	if err := miner.NetConnect(ctx, addrinfo); err != nil {
 		t.Fatal(err)

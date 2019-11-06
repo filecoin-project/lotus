@@ -31,7 +31,7 @@ import (
 	"github.com/filecoin-project/lotus/node/repo"
 )
 
-func testStorageNode(ctx context.Context, t *testing.T, waddr address.Address, act address.Address, pk crypto.PrivKey, tnd test.TestNode) test.TestStorageNode {
+func testStorageNode(ctx context.Context, t *testing.T, waddr address.Address, act address.Address, pk crypto.PrivKey, tnd test.TestNode, mn mocknet.Mocknet) test.TestStorageNode {
 	r := repo.NewMemory(nil)
 
 	lr, err := r.Lock(repo.RepoStorageMiner)
@@ -89,6 +89,8 @@ func testStorageNode(ctx context.Context, t *testing.T, waddr address.Address, a
 		node.Online(),
 		node.Repo(r),
 		node.Test(),
+
+		node.MockHost(mn),
 
 		node.Override(new(*sectorbuilder.Config), modules.SectorBuilderConfig(secbpath, 2)),
 		node.Override(new(api.FullNode), tnd),
@@ -174,7 +176,7 @@ func builder(t *testing.T, nFull int, storage []int) ([]test.TestNode, []test.Te
 		genMiner, err := address.NewFromString("t0101")
 		require.NoError(t, err)
 
-		storers[i] = testStorageNode(ctx, t, wa, genMiner, pk, f)
+		storers[i] = testStorageNode(ctx, t, wa, genMiner, pk, f, mn)
 	}
 
 	if err := mn.LinkAll(); err != nil {
