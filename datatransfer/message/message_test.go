@@ -49,7 +49,7 @@ func TestTransferRequest_MarshalCBOR(t *testing.T) {
 func TestTransferRequest_UnmarshalCBOR(t *testing.T) {
 	req := NewTestTransferRequest()
 	wbuf := new(bytes.Buffer)
-	require.NoError(t, req.MarshalCBOR(wbuf))
+	require.NoError(t, req.ToNet(wbuf))
 
 	desMsg, err := FromNet(strings.NewReader(wbuf.String()))
 	require.NoError(t, err)
@@ -97,7 +97,7 @@ func TestTransferResponse_UnmarshalCBOR(t *testing.T) {
 	response := NewResponse(id, true) // accepted
 
 	wbuf := new(bytes.Buffer)
-	require.NoError(t, response.MarshalCBOR(wbuf))
+	require.NoError(t, response.ToNet(wbuf))
 
 	// verify round trip
 	desMsg, err := FromNet(strings.NewReader(wbuf.String()))
@@ -119,8 +119,7 @@ func TestRequestResponseCast(t *testing.T) {
 	cast, ok := response.(DataTransferMessage)
 	require.True(t, ok)
 	cast, ok = cast.(DataTransferRequest)
-	require.True(t, ok)
-	require.False(t, cast.IsRequest())
+	require.False(t, ok)
 
 	// have to do this first or else it won't compile b/c DataTransferRequest
 	// doesn't implement the DataTransferResponse interface. This also
@@ -128,8 +127,7 @@ func TestRequestResponseCast(t *testing.T) {
 	cast, ok = request.(DataTransferMessage)
 	require.True(t, ok)
 	cast, ok = cast.(DataTransferResponse)
-	require.True(t, ok)
-	require.True(t, cast.IsRequest())
+	require.False(t, ok)
 }
 
 func TestRequestCancel(t *testing.T) {
@@ -140,7 +138,7 @@ func TestRequestCancel(t *testing.T) {
 	require.True(t, req.IsCancel())
 
 	wbuf := new(bytes.Buffer)
-	require.NoError(t, req.MarshalCBOR(wbuf))
+	require.NoError(t, req.ToNet(wbuf))
 
 	deserialized, err := FromNet(strings.NewReader(wbuf.String()))
 	require.NoError(t, err)
