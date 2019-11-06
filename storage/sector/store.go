@@ -4,16 +4,14 @@ import (
 	"bytes"
 	"context"
 	"fmt"
-	"io"
-	"math/bits"
-	"sync"
-	"testing/iotest"
-
 	"github.com/filecoin-project/go-sectorbuilder/sealing_state"
 	"github.com/ipfs/go-datastore"
 	"github.com/ipfs/go-datastore/namespace"
 	logging "github.com/ipfs/go-log"
 	"golang.org/x/xerrors"
+	"io"
+	"math/bits"
+	"sync"
 
 	"github.com/filecoin-project/lotus/api"
 	"github.com/filecoin-project/lotus/lib/cborrpc"
@@ -59,44 +57,10 @@ func (s *Store) SectorStatus(sid uint64) (*sectorbuilder.SectorSealingStatus, er
 	return &status, nil
 }
 
-func computePaddedSize(size uint64) uint64 {
-	logv := 64 - bits.LeadingZeros64(size)
-	sectSize := uint64(1 << logv)
-	bound := sectorbuilder.UserBytesForSectorSize(sectSize)
-	if size <= bound {
-		return bound
-	}
-	return sectorbuilder.UserBytesForSectorSize(1 << (logv + 1))
-}
-
-type nullReader struct{}
-
-func (nr nullReader) Read(b []byte) (int, error) {
-	for i := range b {
-		b[i] = 0
-	}
-	return len(b), nil
-}
-
 func (s *Store) AddPiece(ref string, size uint64, r io.Reader, dealIDs ...uint64) (sectorID uint64, err error) {
-	padSize := computePaddedSize(size)
-
-	buf := make([]byte, padSize)
-	r = iotest.NewReadLogger("UNIX FILE", r)
-	n, err := io.ReadFull(r, buf)
+	sectorID, err = s.sb.AddPiece(ref, size, r)
 	if err != nil {
-		return 0, xerrors.Errorf("failed a bad thing: %w", err)
-	}
-	if uint64(n) != size {
-		panic("bad bad")
-	}
-
-	bufr := bytes.NewReader(buf)
-	//r = io.MultiReader(r, io.LimitReader(nullReader{}, int64(padSize-size)))
-
-	sectorID, err = s.sb.AddPiece(ref, padSize, bufr)
-	if err != nil {
-		return 0, xerrors.Errorf("sector store AddPiece call failed: %w", err)
+		return 0, err
 	}
 
 	s.dealsLk.Lock()

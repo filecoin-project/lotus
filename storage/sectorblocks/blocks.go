@@ -4,6 +4,7 @@ import (
 	"bytes"
 	"context"
 	"errors"
+	"io"
 	"sync"
 
 	"github.com/ipfs/go-cid"
@@ -19,6 +20,7 @@ import (
 
 	"github.com/filecoin-project/lotus/api"
 	"github.com/filecoin-project/lotus/lib/cborrpc"
+	"github.com/filecoin-project/lotus/lib/padreader"
 	"github.com/filecoin-project/lotus/lib/sectorbuilder"
 	"github.com/filecoin-project/lotus/node/modules/dtypes"
 	"github.com/filecoin-project/lotus/storage/sector"
@@ -130,6 +132,9 @@ func (r *refStorer) Read(p []byte) (n int, err error) {
 	for {
 		data, offset, nd, err := r.blockReader.ReadBlock(context.TODO())
 		if err != nil {
+			if err == io.EOF {
+				return 0, io.EOF
+			}
 			return 0, xerrors.Errorf("reading block: %w", err)
 		}
 
@@ -168,7 +173,9 @@ func (st *SectorBlocks) AddUnixfsPiece(ref cid.Cid, r UnixfsReader, dealID uint6
 		intermediate: st.intermediate,
 	}
 
-	return st.Store.AddPiece(refst.pieceRef, uint64(size), refst, dealID)
+	pr, psize := padreader.New(r, uint64(size))
+
+	return st.Store.AddPiece(refst.pieceRef, psize, pr, dealID)
 }
 
 func (st *SectorBlocks) List() (map[cid.Cid][]api.SealedRef, error) {
