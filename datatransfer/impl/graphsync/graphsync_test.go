@@ -13,7 +13,7 @@ import (
 	"github.com/ipfs/go-datastore"
 	dss "github.com/ipfs/go-datastore/sync"
 	bstore "github.com/ipfs/go-ipfs-blockstore"
-	ipld "github.com/ipld/go-ipld-prime"
+	"github.com/ipld/go-ipld-prime"
 	"github.com/ipld/go-ipld-prime/encoding/dagcbor"
 	ipldfree "github.com/ipld/go-ipld-prime/impl/free"
 	"github.com/ipld/go-ipld-prime/traversal/selector"
@@ -23,7 +23,7 @@ import (
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 
-	datatransfer "github.com/filecoin-project/lotus/datatransfer"
+	"github.com/filecoin-project/lotus/datatransfer"
 	dtgraphsync "github.com/filecoin-project/lotus/datatransfer/impl/graphsync"
 	"github.com/filecoin-project/lotus/datatransfer/message"
 	"github.com/filecoin-project/lotus/datatransfer/network"
@@ -84,7 +84,7 @@ func (ft *fakeDTType) FromBytes(data []byte) error {
 	return nil
 }
 
-func (ft *fakeDTType) Identifier() string {
+func (ft *fakeDTType) Type() string {
 	return "FakeDTType"
 }
 
@@ -114,7 +114,6 @@ func TestDataTransferOneWay(t *testing.T) {
 
 	dt := dtgraphsync.NewGraphSyncDataTransfer(ctx, host1, bs)
 
-	// TODO: get passing to complete https://github.com/filecoin-project/go-data-transfer/issues/13
 	t.Run("OpenPushDataTransfer", func(t *testing.T) {
 		ssb := builder.NewSelectorSpecBuilder(ipldfree.NodeBuilder())
 
@@ -125,7 +124,7 @@ func TestDataTransferOneWay(t *testing.T) {
 
 		voucher := fakeDTType{"applesauce"}
 		baseCid := testutil.GenerateCids(1)[0]
-		channelID, err := dt.OpenPushDataChannel(ctx, host2.ID(), &voucher, baseCid, stor)
+		channelID, err := dt.OpenPushDataChannel(context.Background(), host2.ID(), &voucher, baseCid, stor)
 		require.NoError(t, err)
 		require.NotNil(t, channelID)
 		require.Equal(t, channelID.To, host2.ID())
@@ -158,7 +157,7 @@ func TestDataTransferOneWay(t *testing.T) {
 		err = receivedVoucher.FromBytes(receivedRequest.Voucher())
 		require.NoError(t, err)
 		require.Equal(t, *receivedVoucher, voucher)
-		require.Equal(t, receivedRequest.VoucherType(), voucher.Identifier())
+		require.Equal(t, receivedRequest.VoucherType(), voucher.Type())
 	})
 
 	// TODO: get passing to complete https://github.com/filecoin-project/go-data-transfer/issues/16
@@ -170,7 +169,7 @@ func TestDataTransferOneWay(t *testing.T) {
 
 		voucher := fakeDTType{"applesauce"}
 		baseCid := testutil.GenerateCids(1)[0]
-		channelID, err := dt.OpenPullDataChannel(ctx, host2.ID(), &voucher, baseCid, stor)
+		channelID, err := dt.OpenPullDataChannel(context.Background(), host2.ID(), &voucher, baseCid, stor)
 		require.NoError(t, err)
 		require.NotNil(t, channelID)
 		require.Equal(t, channelID.To, host2.ID())
@@ -203,7 +202,7 @@ func TestDataTransferOneWay(t *testing.T) {
 		err = receivedVoucher.FromBytes(receivedRequest.Voucher())
 		require.NoError(t, err)
 		require.Equal(t, *receivedVoucher, voucher)
-		require.Equal(t, receivedRequest.VoucherType(), voucher.Identifier())
+		require.Equal(t, receivedRequest.VoucherType(), voucher.Type())
 	})
 }
 
@@ -284,7 +283,7 @@ func TestDataTransferValidation(t *testing.T) {
 
 		voucher := fakeDTType{"applesauce"}
 		baseCid := testutil.GenerateCids(1)[0]
-		channelID, err := dt1.OpenPushDataChannel(ctx, host2.ID(), &voucher, baseCid, stor)
+		channelID, err := dt1.OpenPushDataChannel(context.Background(), host2.ID(), &voucher, baseCid, stor)
 		require.NoError(t, err)
 
 		assert.Equal(t, channelID.To, host2.ID())
@@ -315,7 +314,7 @@ func TestDataTransferValidation(t *testing.T) {
 
 		voucher := fakeDTType{"applesauce"}
 		baseCid := testutil.GenerateCids(1)[0]
-		channelID, err := dt1.OpenPullDataChannel(ctx, host2.ID(), &voucher, baseCid, stor)
+		channelID, err := dt1.OpenPullDataChannel(context.Background(), host2.ID(), &voucher, baseCid, stor)
 		require.NoError(t, err)
 
 		assert.Equal(t, channelID.To, host2.ID())
@@ -367,7 +366,7 @@ func (sv *stubbedValidator) ValidatePull(
 }
 
 func (sv *stubbedValidator) stubErrorPush() {
-	sv.pushError = errors.New("Something went wrong")
+	sv.pushError = errors.New("something went wrong")
 }
 
 func (sv *stubbedValidator) stubSuccessPush() {
@@ -385,7 +384,7 @@ func (sv *stubbedValidator) expectErrorPush() {
 }
 
 func (sv *stubbedValidator) stubErrorPull() {
-	sv.pullError = errors.New("Something went wrong")
+	sv.pullError = errors.New("something went wrong")
 }
 
 func (sv *stubbedValidator) stubSuccessPull() {
@@ -458,7 +457,7 @@ func TestSendResponseToIncomingRequest(t *testing.T) {
 		isPull := false
 		voucherBytes, err := voucher.ToBytes()
 		require.NoError(t, err)
-		request := message.NewRequest(id, isPull, voucher.Identifier(), voucherBytes, baseCid, buffer.Bytes())
+		request := message.NewRequest(id, isPull, voucher.Type(), voucherBytes, baseCid, buffer.Bytes())
 		require.NoError(t, dtnet1.SendMessage(ctx, host2.ID(), request))
 		var messageReceived receivedMessage
 		select {
@@ -494,7 +493,7 @@ func TestSendResponseToIncomingRequest(t *testing.T) {
 
 		voucherBytes, err := voucher.ToBytes()
 		require.NoError(t, err)
-		request := message.NewRequest(id, isPull, voucher.Identifier(), voucherBytes, baseCid, buffer.Bytes())
+		request := message.NewRequest(id, isPull, voucher.Type(), voucherBytes, baseCid, buffer.Bytes())
 		require.NoError(t, dtnet1.SendMessage(ctx, host2.ID(), request))
 
 		var messageReceived receivedMessage
@@ -530,7 +529,7 @@ func TestSendResponseToIncomingRequest(t *testing.T) {
 
 		voucherBytes, err := voucher.ToBytes()
 		require.NoError(t, err)
-		request := message.NewRequest(id, isPull, voucher.Identifier(), voucherBytes, baseCid, buffer.Bytes())
+		request := message.NewRequest(id, isPull, voucher.Type(), voucherBytes, baseCid, buffer.Bytes())
 
 		require.NoError(t, dtnet1.SendMessage(ctx, host2.ID(), request))
 		var messageReceived receivedMessage
@@ -567,7 +566,7 @@ func TestSendResponseToIncomingRequest(t *testing.T) {
 		isPull := true
 		voucherBytes, err := voucher.ToBytes()
 		require.NoError(t, err)
-		request := message.NewRequest(id, isPull, voucher.Identifier(), voucherBytes, baseCid, buffer.Bytes())
+		request := message.NewRequest(id, isPull, voucher.Type(), voucherBytes, baseCid, buffer.Bytes())
 		require.NoError(t, dtnet1.SendMessage(ctx, host2.ID(), request))
 
 		var messageReceived receivedMessage

@@ -1,13 +1,15 @@
 package graphsync
 
 import (
+	"bytes"
 	"context"
-	"fmt"
+	"math/rand"
 	"reflect"
 
 	"github.com/ipfs/go-cid"
 	bstore "github.com/ipfs/go-ipfs-blockstore"
 	"github.com/ipld/go-ipld-prime"
+	"github.com/ipld/go-ipld-prime/encoding/dagcbor"
 	"github.com/libp2p/go-libp2p-core/host"
 	"github.com/libp2p/go-libp2p-core/peer"
 
@@ -59,18 +61,42 @@ func (impl *graphsyncImpl) RegisterVoucherType(voucherType reflect.Type, validat
 }
 
 // open a data transfer that will send data to the recipient peer and
-// open a data transfer that will send data to the recipient peer and
 // transfer parts of the piece that match the selector
-// TODO: implement for https://github.com/filecoin-project/go-data-transfer/issues/13
-func (impl *graphsyncImpl) OpenPushDataChannel(ctx context.Context, to peer.ID, voucher datatransfer.Voucher, baseCid cid.Cid, Selector ipld.Node) (datatransfer.ChannelID, error) {
-	return datatransfer.ChannelID{}, fmt.Errorf("not implemented")
+func (impl *graphsyncImpl) OpenPushDataChannel(ctx context.Context, to peer.ID, voucher datatransfer.Voucher, baseCid cid.Cid, selector ipld.Node) (datatransfer.ChannelID, error) {
+	tid, err := impl.makeDataChannel(selector, false, voucher, baseCid, to)
+	if err != nil {
+		return datatransfer.ChannelID{}, err
+	}
+	// do some more stuff
+	return datatransfer.ChannelID{To: to, ID: tid}, nil
 }
 
 // open a data transfer that will request data from the sending peer and
 // transfer parts of the piece that match the selector
-// TODO: implement for https://github.com/filecoin-project/go-data-transfer/issues/16
-func (impl *graphsyncImpl) OpenPullDataChannel(ctx context.Context, to peer.ID, voucher datatransfer.Voucher, baseCid cid.Cid, Selector ipld.Node) (datatransfer.ChannelID, error) {
-	return datatransfer.ChannelID{}, nil
+func (impl *graphsyncImpl) OpenPullDataChannel(ctx context.Context, to peer.ID, voucher datatransfer.Voucher, baseCid cid.Cid, selector ipld.Node) (datatransfer.ChannelID, error) {
+	tid, err := impl.makeDataChannel(selector, true, voucher, baseCid, to)
+	if err != nil {
+		return datatransfer.ChannelID{}, err
+	}
+	// do some more stuff
+	return datatransfer.ChannelID{To: to, ID: tid}, nil
+}
+
+func (impl *graphsyncImpl) makeDataChannel(selector ipld.Node, isPull bool, voucher datatransfer.Voucher, baseCid cid.Cid, to peer.ID) (datatransfer.TransferID, error) {
+	sbytes, err := nodeAsBytes(selector)
+	if err != nil {
+		return 0, err
+	}
+	vbytes, err := voucher.ToBytes()
+	if err != nil {
+		return 0, err
+	}
+	tid := impl.generateTransferID()
+	req := message.NewRequest(tid, isPull, voucher.Type(), vbytes, baseCid, sbytes)
+	if err := impl.dataTransferNetwork.SendMessage(context.TODO(), to, req); err != nil {
+		return 0, err
+	}
+	return tid, nil
 }
 
 // close an open channel (effectively a cancel)
@@ -105,3 +131,17 @@ func (receiver *graphsyncReceiver) ReceiveResponse(
 }
 
 func (receiver *graphsyncReceiver) ReceiveError(error) {}
+
+func nodeAsBytes(node ipld.Node) ([]byte, error) {
+	var buffer bytes.Buffer
+	err := dagcbor.Encoder(node, &buffer)
+	if err != nil {
+		return nil, err
+	}
+	return buffer.Bytes(), nil
+}
+
+// TODO: implement a real transfer ID generator
+func (impl *graphsyncImpl) generateTransferID() datatransfer.TransferID {
+	return datatransfer.TransferID(rand.Int31())
+}
