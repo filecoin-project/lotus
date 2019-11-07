@@ -5,6 +5,7 @@ import (
 	"fmt"
 	"io"
 	"math/rand"
+	"os"
 	"testing"
 	"time"
 
@@ -17,6 +18,8 @@ import (
 )
 
 func TestDealFlow(t *testing.T, b APIBuilder) {
+	os.Setenv("BELLMAN_NO_GPU", "1")
+
 	logging.SetAllLoggers(logging.LevelInfo)
 	ctx := context.TODO()
 	n, sn := b(t, 1, []int{0})
@@ -46,10 +49,14 @@ func TestDealFlow(t *testing.T, b APIBuilder) {
 
 	fmt.Println("FILE CID: ", fcid)
 
+	mine := true
+	done := make(chan struct{})
+
 	go func() {
-		for i := 0; i < 4; i++ {
+		defer close(done)
+		for mine {
 			time.Sleep(time.Second)
-			fmt.Println("mining a block now", i)
+			fmt.Println("mining a block now")
 			if err := n[0].MineOne(ctx); err != nil {
 				t.Fatal(err)
 			}
@@ -62,6 +69,7 @@ func TestDealFlow(t *testing.T, b APIBuilder) {
 
 	// TODO: this sleep is only necessary because deals don't immediately get logged in the dealstore, we should fix this
 	time.Sleep(time.Second)
+	loop:
 	for {
 		di, err := client.ClientGetDealInfo(ctx, *deal)
 		if err != nil {
@@ -76,9 +84,13 @@ func TestDealFlow(t *testing.T, b APIBuilder) {
 			t.Fatal("deal errored")
 		case api.DealComplete:
 			fmt.Println("COMPLETE", di)
-			break
+			break loop
 		}
-		fmt.Println("Deal state: ", di.State)
+		fmt.Println("Deal state: ", api.DealStates[di.State])
 		time.Sleep(time.Second / 2)
 	}
+
+	mine = false
+	fmt.Println("shutting down mining")
+	<-done
 }
