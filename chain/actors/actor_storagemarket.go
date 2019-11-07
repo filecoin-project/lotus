@@ -436,7 +436,6 @@ func (sma StorageMarketActor) ActivateStorageDeals(act *types.Actor, vmctx types
 
 	deals, err := amt.LoadAMT(types.WrapStorage(vmctx.Storage()), self.Deals)
 	if err != nil {
-		// TODO: kind of annoying that this can be caused by gas, otherwise could be fatal
 		return nil, aerrors.HandleExternalError(err, "loading deals amt")
 	}
 
@@ -502,7 +501,6 @@ func (sma StorageMarketActor) ProcessStorageDealsPayment(act *types.Actor, vmctx
 
 	deals, err := amt.LoadAMT(types.WrapStorage(vmctx.Storage()), self.Deals)
 	if err != nil {
-		// TODO: kind of annoying that this can be caused by gas, otherwise could be fatal
 		return nil, aerrors.HandleExternalError(err, "loading deals amt")
 	}
 
@@ -602,7 +600,6 @@ func (sma StorageMarketActor) ComputeDataCommitment(act *types.Actor, vmctx type
 
 	deals, err := amt.LoadAMT(types.WrapStorage(vmctx.Storage()), self.Deals)
 	if err != nil {
-		// TODO: kind of annoying that this can be caused by gas, otherwise could be fatal
 		return nil, aerrors.HandleExternalError(err, "loading deals amt")
 	}
 

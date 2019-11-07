@@ -77,7 +77,7 @@ type FullNode interface {
 	ClientGetDealInfo(context.Context, cid.Cid) (*DealInfo, error)
 	ClientListDeals(ctx context.Context) ([]DealInfo, error)
 	ClientHasLocal(ctx context.Context, root cid.Cid) (bool, error)
-	ClientFindData(ctx context.Context, root cid.Cid) ([]QueryOffer, error) // TODO: specify serialization mode we want (defaults to unixfs for now)
+	ClientFindData(ctx context.Context, root cid.Cid) ([]QueryOffer, error)
 	ClientRetrieve(ctx context.Context, order RetrievalOrder, path string) error
 	ClientQueryAsk(ctx context.Context, p peer.ID, miner address.Address) (*types.SignedStorageAsk, error)
 
