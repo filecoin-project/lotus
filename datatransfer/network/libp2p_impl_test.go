@@ -11,7 +11,7 @@ import (
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 
-	datatransfer "github.com/filecoin-project/lotus/datatransfer"
+	"github.com/filecoin-project/lotus/datatransfer"
 	"github.com/filecoin-project/lotus/datatransfer/message"
 	"github.com/filecoin-project/lotus/datatransfer/network"
 	"github.com/filecoin-project/lotus/datatransfer/testutil"
@@ -70,7 +70,7 @@ func TestMessageSendAndReceive(t *testing.T) {
 	dtnet1 := network.NewFromLibp2pHost(host1)
 	dtnet2 := network.NewFromLibp2pHost(host2)
 	r := &receiver{
-		messageReceived: make(chan struct{}, 2),
+		messageReceived: make(chan struct{}),
 		connectedPeers:  make(chan peer.ID, 2),
 	}
 	dtnet1.SetDelegate(r)
@@ -84,10 +84,10 @@ func TestMessageSendAndReceive(t *testing.T) {
 		selector := testutil.RandomBytes(100)
 		isPull := false
 		id := datatransfer.TransferID(rand.Int31())
-		voucherIdentifier := "FakeVoucherType"
+		vType := "FakeVoucherType"
 		voucher := testutil.RandomBytes(100)
-		request := message.NewRequest(id, isPull, voucherIdentifier, voucher, baseCid, selector)
-		dtnet1.SendMessage(ctx, host2.ID(), request)
+		request := message.NewRequest(id, isPull, vType, voucher, baseCid, selector)
+		require.NoError(t, dtnet1.SendMessage(ctx, host2.ID(), request))
 
 		select {
 		case <-ctx.Done():
@@ -115,8 +115,7 @@ func TestMessageSendAndReceive(t *testing.T) {
 		accepted := false
 		id := datatransfer.TransferID(rand.Int31())
 		response := message.NewResponse(id, accepted)
-
-		dtnet2.SendMessage(ctx, host1.ID(), response)
+		require.NoError(t, dtnet2.SendMessage(ctx, host1.ID(), response))
 
 		select {
 		case <-ctx.Done():

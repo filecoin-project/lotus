@@ -18,8 +18,8 @@ type Voucher interface {
 	ToBytes() ([]byte, error)
 	// FromBytes reads a Voucher from raw bytes
 	FromBytes([]byte) error
-	// Identifier is a unique string identifier for this voucher type
-	Identifier() string
+	// Type is a unique string identifier for this voucher type
+	Type() string
 }
 
 // Status is the status of transfer for a given channel
@@ -163,7 +163,6 @@ type Manager interface {
 	// or if there is a voucher type registered with an identical identifier
 	RegisterVoucherType(voucherType reflect.Type, validator RequestValidator) error
 
-	// open a data transfer that will send data to the recipient peer and
 	// open a data transfer that will send data to the recipient peer and
 	// transfer parts of the piece that match the selector
 	OpenPushDataChannel(ctx context.Context, to peer.ID, voucher Voucher, baseCid cid.Cid, selector ipld.Node) (ChannelID, error)
