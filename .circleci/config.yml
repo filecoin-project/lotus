@@ -15,8 +15,6 @@ commands:
   prepare:
     steps:
       - checkout
-      - run: sudo apt-get update
-      - run: sudo apt-get install ocl-icd-opencl-dev
       - run: git submodule sync
       - run: git submodule update --init
   download-params:
