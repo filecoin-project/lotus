@@ -1,75 +1,130 @@
 package smm
 
 import (
+    "bytes"
     "context"
+    "encoding/binary"
     "github.com/filecoin-project/lotus/api"
-    "github.com/filecoin-project/lotus/chain/address"
+    "github.com/filecoin-project/lotus/build"
+    laddress "github.com/filecoin-project/lotus/chain/address"
     "github.com/filecoin-project/lotus/chain/store"
     "github.com/filecoin-project/lotus/chain/types"
     "github.com/ipfs/go-cid"
-    "time"
 )
 
 type lotusAdapter struct {
-    // missing: ticket chain
-    address address.Address
-    fullNode api.FullNode
-    listeners map[StorageMiningEvents]bool
-    headChanges <-chan[]*store.HeadChange
-    currentState StateID
-    context context.Context
+    address      laddress.Address
+    fullNode     api.FullNode
+    listeners    map[StorageMiningEvents]struct{}
+    headChanges  <-chan[]*store.HeadChange
+    context      context.Context
 }
 
-func NewNode(ctx context.Context, fullNode api.FullNode, address address.Address) Node {
+func NewNode(ctx context.Context, fullNode api.FullNode, address Address) (Node, error) {
     adapter := lotusAdapter{
-        address: address,
         fullNode: fullNode,
-        listeners: make(map[StorageMiningEvents]bool), // this needs synchronization
+        listeners: make(map[StorageMiningEvents]struct{}), // this needs synchronization
         context: ctx,
     }
-
+    var err error
+    adapter.address, err = laddress.NewFromString(string(address))
+    if err != nil {
+        return nil, err
+    }
     adapter.headChanges, _ = fullNode.ChainNotify(ctx)
-    // ChainNotify is guaranteed to provide at least one notification
-    initialState := <-adapter.headChanges
-    adapter.currentState = readState(initialState)
     go adapter.eventHandler()
-    return adapter
+    return adapter, nil
 }
 
-func readState(headChanges []*store.HeadChange) (stateID StateID) {
+func readState(headChanges []*store.HeadChange) (stateKey StateKey) {
     // TODO: Implement
     return
 }
 
-func lotusStateID(ts *types.TipSet) (stateID StateID) {
-    // TODO: Implement
+func tipset2statekey(ts *types.TipSet) (stateKey *StateKey, err error) {
+    buffer := new(bytes.Buffer)
+    cids := ts.Cids()
+    length := uint32(len(cids))
+    err = binary.Write(buffer, binary.LittleEndian, length)
+    if err != nil {
+        return
+    }
+    for _, blkcid := range cids {
+        b := blkcid.Bytes()
+        l := uint32(len(b))
+        err = binary.Write(buffer, binary.LittleEndian, l)
+        if err != nil {
+            return
+        }
+        var cidbytes []byte
+        cidbytes, err = blkcid.MarshalBinary()
+        if err != nil {
+            return
+        }
+        err = binary.Write(buffer, binary.LittleEndian, cidbytes)
+        if err != nil {
+            return
+        }
+    }
+    state := StateKey(buffer.Bytes())
+    stateKey = &state
+    return
+}
+// This belongs in statekey2tipset.
+// It was factored out for ease of unit testing (no FullNode calls)
+func statekey2cids(stateKey *StateKey) (output []cid.Cid, err error) {
+    buffer := bytes.NewReader([]byte(*stateKey))
+    var length uint32
+    err = binary.Read(buffer, binary.LittleEndian, &length)
+    if err != nil {
+        return
+    }
+
+    for idx := uint32(0); idx < length; idx++ {
+        var l uint32
+        err = binary.Read(buffer, binary.LittleEndian, &l)
+        if err != nil {
+            return
+        }
+        cidbuffer := make([]byte, l)
+        err = binary.Read(buffer, binary.LittleEndian, &cidbuffer)
+        if err != nil {
+            return
+        }
+        var blockCid cid.Cid
+        err = blockCid.UnmarshalBinary(cidbuffer)
+        if err != nil {
+            return
+        }
+        output = append(output, blockCid)
+    }
     return
 }
 
-func stateID2TipSet(stateid StateID) (ts types.TipSet) {
-    // TODO: Implement and rename
+func statekey2tipset(ctx context.Context, stateKey *StateKey, fullNode api.FullNode) (ts *types.TipSet, err error) {
+    cids, err := statekey2cids(stateKey)
+    if err != nil {
+        return
+    }
+    blockHeaders := make([]*types.BlockHeader, 0, len(cids))
+    for idx, blockCid := range cids {
+        block, apiErr := fullNode.ChainGetBlock(ctx, blockCid)
+        if apiErr != nil {
+            err = apiErr
+            return
+        }
+        blockHeaders[idx] = block
+    }
+    ts, err = types.NewTipSet(blockHeaders)
     return
 }
 
 func (adapter lotusAdapter) eventHandler() {
-    var bufferState StateID
-    stableDuration := 500 * time.Millisecond
-    var timer *time.Timer
-
     for {
         select {
         case changes := <-adapter.headChanges:
-            if timer != nil {
-                timer.Reset(stableDuration)
-            } else {
-                timer = time.NewTimer(stableDuration)
-            }
-            bufferState = readState(changes)
-
-        case <-timer.C:
-            timer.Stop()
-            adapter.currentState = bufferState
-            go adapter.notifyListeners()
+            stateKey := readState(changes)
+            adapter.notifyListeners(stateKey)
 
         case <-adapter.context.Done():
             return
@@ -77,16 +132,16 @@ func (adapter lotusAdapter) eventHandler() {
     }
 }
 
-func (adapter lotusAdapter) notifyListeners() {
+func (adapter lotusAdapter) notifyListeners(stateKey StateKey) {
     for listener, _ := range adapter.listeners {
         // TODO: Send the proper epoch
-        listener.OnChainStateChanged(Epoch(10), adapter.currentState)
+        listener.OnChainStateChanged(Epoch(10), stateKey)
     }
 }
 
 
 func (adapter lotusAdapter) SubscribeMiner(ctx context.Context, cb StorageMiningEvents) error {
-    adapter.listeners[cb] = true
+    adapter.listeners[cb] = struct{}{}
     return nil
 }
 
@@ -98,61 +153,103 @@ func (adapter lotusAdapter) UnsubscribeMiner(ctx context.Context, cb StorageMini
     return nil
 }
 
-func (adapter lotusAdapter) MostRecentStateId(ctx context.Context) (StateID, Epoch) {
-    return adapter.currentState, Epoch(10)
-    //var ts *types.TipSet
-    //// TODO: Handle errors
-    //ts, _ = adapter.fullNode.ChainHead(ctx)
-    //return lotusStateID(ts), Epoch(ts.Height())
-}
-
-func (adapter lotusAdapter) GetMinerState(ctx context.Context, stateID StateID) (state MinerChainState) {
-    ts := stateID2TipSet(stateID)
-    sectors, _ := adapter.fullNode.StateMinerSectors(ctx, adapter.address, &ts)
-    for idx, _ := range sectors {
-        _ = sectors[idx]
-        // update the state
+func (adapter lotusAdapter) MostRecentState(ctx context.Context) (stateKey *StateKey, epoch Epoch, err error) {
+    var ts *types.TipSet
+    ts, err = adapter.fullNode.ChainHead(ctx)
+    if err != nil {
+        return
     }
+    epoch = Epoch(ts.Height())
+    stateKey, err = tipset2statekey(ts)
     return
 }
 
-func (adapter lotusAdapter) GetRandomness(ctx context.Context, stateid StateID, e Epoch, offset uint) []byte {
-    // TODO: Keep track of the ticket chain
-    tickets := make([]*types.Ticket, 0)
-    ts := stateID2TipSet(stateid)
-    // TODO: Handle errors
-    result, _ := adapter.fullNode.ChainGetRandomness(ctx, &ts, tickets, int(offset))
-    return result
+func (adapter lotusAdapter) GetMinerState(ctx context.Context, stateKey *StateKey) (state MinerChainState, err error) {
+    var ts *types.TipSet
+    ts, err = statekey2tipset(ctx, stateKey, adapter.fullNode)
+    if err != nil {
+        return
+    }
+    sectors, apiErr := adapter.fullNode.StateMinerSectors(ctx, adapter.address, ts)
+    if apiErr != nil {
+        err = apiErr
+        return
+    }
+    provingSectors, apiErr := adapter.fullNode.StateMinerProvingSet(ctx, adapter.address, ts)
+    if apiErr != nil {
+        err = apiErr
+        return
+    }
+    state.Sectors = make(map[uint64]api.SectorInfo)
+    for _, sectorInfo := range sectors {
+        state.Sectors[sectorInfo.SectorID] = *sectorInfo
+    }
+    for _, sectorInfo := range provingSectors {
+        state.ProvingSet[sectorInfo.SectorID] = struct{}{}
+    }
+    state.Address = Address(adapter.address.String())
+    // fill in this information
+    state.PreCommittedSectors = make(map[uint64]api.SectorInfo)
+    state.StagedCommittedSectors = make(map[uint64]api.SectorInfo)
+
+    return
 }
 
-func (adapter lotusAdapter) GetProvingPeriod(ctx context.Context, miner address.Address, state StateID) ProvingPeriod {
-    panic("implement me")
+func (adapter lotusAdapter) GetRandomness(ctx context.Context, stateKey *StateKey, e Epoch, offset uint) (buffer []byte, err error) {
+    var ts *types.TipSet
+    ts, err = statekey2tipset(ctx, stateKey, adapter.fullNode)
+    if err != nil {
+        return
+    }
+    buffer, err = adapter.fullNode.ChainGetRandomness(ctx, ts, ts.Blocks()[0].Tickets, int(offset))
+    return
+}
+
+func (adapter lotusAdapter) GetProvingPeriod(ctx context.Context, stateKey *StateKey) (pp ProvingPeriod, err error) {
+    var ts *types.TipSet
+    ts, err = statekey2tipset(ctx, stateKey, adapter.fullNode)
+    if err != nil {
+        return
+    }
+    end, apiErr := adapter.fullNode.StateMinerProvingPeriodEnd(ctx, adapter.address, ts)
+    if apiErr != nil {
+        err = apiErr
+        return
+    }
+    pp.End = Epoch(end)
+    pp.Start = Epoch(end - build.ProvingPeriodDuration)
+    // Not sure what goes in these fields
+    _ = pp.ChallengeSeed
+    _ = pp.ChallengeStart
+    _ = pp.ChallengeEnd
+
+    return
 }
 
 func (adapter lotusAdapter) SubmitSelfDeal(ctx context.Context, size uint64) error {
     panic("implement me")
 }
 
-func (adapter lotusAdapter) SubmitSectorPreCommitment(ctx context.Context, miner address.Address, id SectorID, commR cid.Cid, deals []cid.Cid) {
+func (adapter lotusAdapter) SubmitSectorPreCommitment(ctx context.Context, miner Address, id SectorID, commR cid.Cid, deals []cid.Cid) {
     panic("implement me")
 }
 
-func (adapter lotusAdapter) GetSealSeed(ctx context.Context, miner address.Address, state StateID, id SectorID) SealSeed {
+func (adapter lotusAdapter) GetSealSeed(ctx context.Context, miner Address, state StateKey, id SectorID) SealSeed {
     panic("implement me")
 }
 
-func (adapter lotusAdapter) SubmitSectorCommitment(ctx context.Context, miner address.Address, id SectorID, proof Proof) {
+func (adapter lotusAdapter) SubmitSectorCommitment(ctx context.Context, miner Address, id SectorID, proof Proof) {
     panic("implement me")
 }
 
-func (adapter lotusAdapter) SubmitPoSt(ctx context.Context, miner address.Address, proof Proof) {
+func (adapter lotusAdapter) SubmitPoSt(ctx context.Context, miner Address, proof Proof) {
     panic("implement me")
 }
 
-func (adapter lotusAdapter) SubmitDeclaredFaults(ctx context.Context, miner address.Address, faults types.BitField) {
+func (adapter lotusAdapter) SubmitDeclaredFaults(ctx context.Context, miner Address, faults types.BitField) {
     panic("implement me")
 }
 
-func (adapter lotusAdapter) SubmitDeclaredRecoveries(ctx context.Context, miner address.Address, recovered types.BitField) {
+func (adapter lotusAdapter) SubmitDeclaredRecoveries(ctx context.Context, miner Address, recovered types.BitField) {
     panic("implement me")
 }

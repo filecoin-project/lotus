@@ -2,10 +2,11 @@ package smm
 
 import (
     "github.com/filecoin-project/lotus/api"
-    "github.com/filecoin-project/lotus/chain/address"
-    "github.com/filecoin-project/lotus/chain/types"
     "github.com/ipfs/go-cid"
 )
+
+type Address string
+type BitField map[uint64]struct{}
 
 type SectorState int
 const (
@@ -26,8 +27,8 @@ type SectorStateInfo struct {
     State    SectorState
     Error    error
     Progress uint
-    MaxBytes    uint64  // the max. quantity of bit-padded bytes that this sector can contain
-    RemBytes uint64     // the quantity of additional bit-padded bytes that can fit into this sector
+    MaxBytes uint64 // the max. quantity of bit-padded bytes that this sector can contain
+    RemBytes uint64 // the quantity of additional bit-padded bytes that can fit into this sector
 }
 
 type Sector struct {
@@ -49,8 +50,8 @@ type StorageDealInfo struct {
     Expiry   uint64    // unix epoch
 }
 
-type Epoch uint64 // aka “height” or “round number”
-type StateID cid.Cid  // an opaque unique state identifier (the state root CID)
+type Epoch uint64    // aka “height” or “round number”
+type StateKey []byte // an opaque unique state identifier (the state root CID)
 type SealSeed []byte
 type Proof []byte
 
@@ -64,11 +65,11 @@ type ProvingPeriod struct {
 
 type MinerChainState struct {
     // From StorageMinerActor
-    Address                address.Address
+    Address                Address
     PreCommittedSectors    map[uint64]api.SectorInfo
     Sectors                map[uint64]api.SectorInfo
     StagedCommittedSectors map[uint64]api.SectorInfo
-    ProvingSet             types.BitField
+    ProvingSet             BitField
 
     // From StoragePowerActor
     Power                  uint64
