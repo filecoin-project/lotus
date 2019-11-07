@@ -18,7 +18,7 @@ import (
 	"github.com/filecoin-project/lotus/chain/address"
 	"github.com/filecoin-project/lotus/chain/deals"
 	"github.com/filecoin-project/lotus/chain/types"
-	"github.com/filecoin-project/lotus/lib/cborrpc"
+	"github.com/filecoin-project/lotus/lib/cborutil"
 	"github.com/filecoin-project/lotus/lib/statestore"
 )
 
@@ -59,19 +59,22 @@ func uniqueStorageDealProposal() (actors.StorageDealProposal, error) {
 	}, nil
 }
 
-func newClientDeal(minerId peer.ID, state api.DealState) (deals.ClientDeal, error) {
+func newClientDeal(minerID peer.ID, state api.DealState) (deals.ClientDeal, error) {
 	newProposal, err := uniqueStorageDealProposal()
 	if err != nil {
 		return deals.ClientDeal{}, err
 	}
-	proposalNd, err := cborrpc.AsIpld(&newProposal)
+	proposalNd, err := cborutil.AsIpld(&newProposal)
 	if err != nil {
 		return deals.ClientDeal{}, err
 	}
+	minerAddr, err := address.NewIDAddress(uint64(rand.Int()))
+
 	return deals.ClientDeal{
 		Proposal:    newProposal,
 		ProposalCid: proposalNd.Cid(),
-		Miner:       minerId,
+		Miner:       minerID,
+		MinerWorker: minerAddr,
 		State:       state,
 	}, nil
 }
@@ -81,7 +84,7 @@ func newMinerDeal(clientID peer.ID, state api.DealState) (deals.MinerDeal, error
 	if err != nil {
 		return deals.MinerDeal{}, err
 	}
-	proposalNd, err := cborrpc.AsIpld(&newProposal)
+	proposalNd, err := cborutil.AsIpld(&newProposal)
 	if err != nil {
 		return deals.MinerDeal{}, err
 	}
@@ -89,6 +92,7 @@ func newMinerDeal(clientID peer.ID, state api.DealState) (deals.MinerDeal, error
 	if err != nil {
 		return deals.MinerDeal{}, err
 	}
+
 	return deals.MinerDeal{
 		Proposal:    newProposal,
 		ProposalCid: proposalNd.Cid(),
@@ -103,10 +107,10 @@ func TestClientRequestValidation(t *testing.T) {
 	state := statestore.New(namespace.Wrap(ds, datastore.NewKey("/deals/client")))
 
 	crv := deals.NewClientRequestValidator(ds)
-	minerId := peer.ID("fakepeerid")
+	minerID := peer.ID("fakepeerid")
 	block := blockGenerator.Next()
 	t.Run("ValidatePush fails", func(t *testing.T) {
-		if !xerrors.Is(crv.ValidatePush(minerId, wrongDTType{}, block.Cid(), nil), deals.ErrNoPushAccepted) {
+		if !xerrors.Is(crv.ValidatePush(minerID, wrongDTType{}, block.Cid(), nil), deals.ErrNoPushAccepted) {
 			t.Fatal("Push should fail for the client request validator for storage deals")
 		}
 	})
@@ -115,7 +119,7 @@ func TestClientRequestValidation(t *testing.T) {
 		if err != nil {
 			t.Fatal("error creating proposal")
 		}
-		proposalNd, err := cborrpc.AsIpld(&proposal)
+		proposalNd, err := cborutil.AsIpld(&proposal)
 		if err != nil {
 			t.Fatal("error serializing proposal")
 		}
@@ -123,7 +127,7 @@ func TestClientRequestValidation(t *testing.T) {
 		if err != nil {
 			t.Fatal("unable to construct piece cid")
 		}
-		if !xerrors.Is(crv.ValidatePull(minerId, &deals.StorageDataTransferVoucher{proposalNd.Cid()}, pieceRef, nil), deals.ErrNoDeal) {
+		if !xerrors.Is(crv.ValidatePull(minerID, &deals.StorageDataTransferVoucher{proposalNd.Cid()}, pieceRef, nil), deals.ErrNoDeal) {
 			t.Fatal("Pull should fail if there is no deal stored")
 		}
 	})
@@ -140,24 +144,24 @@ func TestClientRequestValidation(t *testing.T) {
 		if err != nil {
 			t.Fatal("unable to construct piece cid")
 		}
-		if !xerrors.Is(crv.ValidatePull(minerId, &deals.StorageDataTransferVoucher{clientDeal.ProposalCid}, pieceRef, nil), deals.ErrWrongPeer) {
+		if !xerrors.Is(crv.ValidatePull(minerID, &deals.StorageDataTransferVoucher{clientDeal.ProposalCid}, pieceRef, nil), deals.ErrWrongPeer) {
 			t.Fatal("Pull should fail if miner address is incorrect")
 		}
 	})
 	t.Run("ValidatePull fails wrong piece ref", func(t *testing.T) {
-		clientDeal, err := newClientDeal(minerId, api.DealAccepted)
+		clientDeal, err := newClientDeal(minerID, api.DealAccepted)
 		if err != nil {
 			t.Fatal("error creating client deal")
 		}
 		if err := state.Begin(clientDeal.ProposalCid, &clientDeal); err != nil {
 			t.Fatal("deal tracking failed")
 		}
-		if !xerrors.Is(crv.ValidatePull(minerId, &deals.StorageDataTransferVoucher{clientDeal.ProposalCid}, blockGenerator.Next().Cid(), nil), deals.ErrWrongPiece) {
+		if !xerrors.Is(crv.ValidatePull(minerID, &deals.StorageDataTransferVoucher{clientDeal.ProposalCid}, blockGenerator.Next().Cid(), nil), deals.ErrWrongPiece) {
 			t.Fatal("Pull should fail if piece ref is incorrect")
 		}
 	})
 	t.Run("ValidatePull fails wrong deal state", func(t *testing.T) {
-		clientDeal, err := newClientDeal(minerId, api.DealComplete)
+		clientDeal, err := newClientDeal(minerID, api.DealComplete)
 		if err != nil {
 			t.Fatal("error creating client deal")
 		}
@@ -168,12 +172,12 @@ func TestClientRequestValidation(t *testing.T) {
 		if err != nil {
 			t.Fatal("unable to construct piece cid")
 		}
-		if !xerrors.Is(crv.ValidatePull(minerId, &deals.StorageDataTransferVoucher{clientDeal.ProposalCid}, pieceRef, nil), deals.ErrInacceptableDealState) {
+		if !xerrors.Is(crv.ValidatePull(minerID, &deals.StorageDataTransferVoucher{clientDeal.ProposalCid}, pieceRef, nil), deals.ErrInacceptableDealState) {
 			t.Fatal("Pull should fail if deal is in a state that cannot be data transferred")
 		}
 	})
 	t.Run("ValidatePull succeeds", func(t *testing.T) {
-		clientDeal, err := newClientDeal(minerId, api.DealAccepted)
+		clientDeal, err := newClientDeal(minerID, api.DealAccepted)
 		if err != nil {
 			t.Fatal("error creating client deal")
 		}
@@ -184,7 +188,7 @@ func TestClientRequestValidation(t *testing.T) {
 		if err != nil {
 			t.Fatal("unable to construct piece cid")
 		}
-		if crv.ValidatePull(minerId, &deals.StorageDataTransferVoucher{clientDeal.ProposalCid}, pieceRef, nil) != nil {
+		if crv.ValidatePull(minerID, &deals.StorageDataTransferVoucher{clientDeal.ProposalCid}, pieceRef, nil) != nil {
 			t.Fatal("Pull should should succeed when all parameters are correct")
 		}
 	})
@@ -208,7 +212,7 @@ func TestProviderRequestValidation(t *testing.T) {
 		if err != nil {
 			t.Fatal("error creating proposal")
 		}
-		proposalNd, err := cborrpc.AsIpld(&proposal)
+		proposalNd, err := cborutil.AsIpld(&proposal)
 		if err != nil {
 			t.Fatal("error serializing proposal")
 		}
