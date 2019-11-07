@@ -7,6 +7,7 @@ import (
 
 	"github.com/ipfs/go-datastore"
 	"github.com/ipfs/go-datastore/query"
+	cbg "github.com/whyrusleeping/cbor-gen"
 	"golang.org/x/xerrors"
 
 	"github.com/filecoin-project/lotus/lib/cborrpc"
@@ -108,6 +109,19 @@ func (st *StateStore) mutate(i interface{}, mutator func([]byte) ([]byte, error)
 	}
 
 	return st.ds.Put(k, mutated)
+}
+
+func (st *StateStore) Get(i interface{}, out cbg.CBORUnmarshaler) error {
+	k := toKey(i)
+	val, err := st.ds.Get(k)
+	if err != nil {
+		if xerrors.Is(err, datastore.ErrNotFound) {
+			return xerrors.Errorf("No state for %s", i)
+		}
+		return err
+	}
+
+	return out.UnmarshalCBOR(bytes.NewReader(val))
 }
 
 // out: *[]T

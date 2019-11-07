@@ -4,15 +4,14 @@ import (
 	"bytes"
 	"context"
 	"fmt"
-	"io"
-	"math/bits"
-	"sync"
-
 	"github.com/filecoin-project/go-sectorbuilder/sealing_state"
 	"github.com/ipfs/go-datastore"
 	"github.com/ipfs/go-datastore/namespace"
 	logging "github.com/ipfs/go-log"
 	"golang.org/x/xerrors"
+	"io"
+	"math/bits"
+	"sync"
 
 	"github.com/filecoin-project/lotus/api"
 	"github.com/filecoin-project/lotus/lib/cborrpc"

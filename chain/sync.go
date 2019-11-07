@@ -102,7 +102,7 @@ func (syncer *Syncer) InformNewHead(from peer.ID, fts *store.FullTipSet) {
 
 	if from == syncer.self {
 		// TODO: this is kindof a hack...
-		log.Info("got block from ourselves")
+		log.Debug("got block from ourselves")
 
 		if err := syncer.Sync(ctx, fts.TipSet()); err != nil {
 			log.Errorf("failed to sync our own block %s: %+v", fts.TipSet().Cids(), err)
@@ -907,7 +907,7 @@ func (syncer *Syncer) collectChain(ctx context.Context, ts *types.TipSet) error 
 	}
 
 	syncer.syncState.SetStage(api.StageSyncComplete)
-	log.Infow("new tipset", "height", ts.Height(), "tipset", types.LogCids(ts.Cids()))
+	log.Debugw("new tipset", "height", ts.Height(), "tipset", types.LogCids(ts.Cids()))
 
 	return nil
 }

@@ -193,7 +193,7 @@ func (p *Provider) onUpdated(ctx context.Context, update minerDealUpdate) {
 }
 
 func (p *Provider) newDeal(s inet.Stream, proposal Proposal) (MinerDeal, error) {
-	proposalNd, err := cborrpc.AsIpld(&proposal)
+	proposalNd, err := cborrpc.AsIpld(proposal.DealProposal)
 	if err != nil {
 		return MinerDeal{}, err
 	}
@@ -222,7 +222,7 @@ func (p *Provider) HandleStream(s inet.Stream) {
 
 	deal, err := p.newDeal(s, proposal)
 	if err != nil {
-		log.Error(err)
+		log.Errorf("%+v", err)
 		s.Close()
 		return
 	}

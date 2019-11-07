@@ -58,7 +58,7 @@ func (a *API) ClientStartDeal(ctx context.Context, data cid.Cid, miner address.A
 	// TODO: make this a param
 	self, err := a.WalletDefaultAddress(ctx)
 	if err != nil {
-		return nil, err
+		return nil, xerrors.Errorf("failed to get default address: %w", err)
 	}
 
 	// get miner peerID
@@ -70,11 +70,15 @@ func (a *API) ClientStartDeal(ctx context.Context, data cid.Cid, miner address.A
 
 	r, err := a.StateCall(ctx, msg, nil)
 	if err != nil {
-		return nil, err
+		return nil, xerrors.Errorf("failed getting peer ID: %w", err)
 	}
+	if r.ExitCode != 0 {
+		return nil, xerrors.Errorf("call to get peer ID for miner failed: exit code %d", r.ExitCode)
+	}
+
 	pid, err := peer.IDFromBytes(r.Return)
 	if err != nil {
-		return nil, err
+		return nil, xerrors.Errorf("parsing peer ID wrong: %w", err)
 	}
 
 	proposal := deals.ClientDealProposal{
@@ -88,7 +92,11 @@ func (a *API) ClientStartDeal(ctx context.Context, data cid.Cid, miner address.A
 	}
 
 	c, err := a.DealClient.Start(ctx, proposal)
-	return &c, err
+	if err != nil {
+		return nil, xerrors.Errorf("failed to start deal: %w", err)
+	}
+
+	return &c, nil
 }
 
 func (a *API) ClientListDeals(ctx context.Context) ([]api.DealInfo, error) {
@@ -113,6 +121,22 @@ func (a *API) ClientListDeals(ctx context.Context) ([]api.DealInfo, error) {
 	}
 
 	return out, nil
+}
+
+func (a *API) ClientGetDealInfo(ctx context.Context, d cid.Cid) (*api.DealInfo, error) {
+	v, err := a.DealClient.GetDeal(d)
+	if err != nil {
+		return nil, err
+	}
+	return &api.DealInfo{
+		ProposalCid:   v.ProposalCid,
+		State:         v.State,
+		Provider:      v.Proposal.Provider,
+		PieceRef:      v.Proposal.PieceRef,
+		Size:          v.Proposal.PieceSize,
+		PricePerEpoch: v.Proposal.StoragePricePerEpoch,
+		Duration:      v.Proposal.Duration,
+	}, nil
 }
 
 func (a *API) ClientHasLocal(ctx context.Context, root cid.Cid) (bool, error) {
@@ -177,7 +201,11 @@ func (a *API) ClientImport(ctx context.Context, path string) (cid.Cid, error) {
 		return cid.Undef, err
 	}
 
-	return nd.Cid(), bufferedDS.Commit()
+	if err := bufferedDS.Commit(); err != nil {
+		return cid.Undef, err
+	}
+
+	return nd.Cid(), nil
 }
 
 func (a *API) ClientImportLocal(ctx context.Context, f io.Reader) (cid.Cid, error) {
