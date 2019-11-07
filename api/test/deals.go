@@ -12,6 +12,7 @@ import (
 	logging "github.com/ipfs/go-log"
 
 	"github.com/filecoin-project/lotus/api"
+	"github.com/filecoin-project/lotus/build"
 	"github.com/filecoin-project/lotus/chain/address"
 	"github.com/filecoin-project/lotus/chain/types"
 	"github.com/filecoin-project/lotus/node/impl"
@@ -19,6 +20,8 @@ import (
 
 func TestDealFlow(t *testing.T, b APIBuilder) {
 	os.Setenv("BELLMAN_NO_GPU", "1")
+
+	build.SectorSizes = []uint64{1024}
 
 	logging.SetAllLoggers(logging.LevelInfo)
 	ctx := context.Background()
@@ -36,7 +39,7 @@ func TestDealFlow(t *testing.T, b APIBuilder) {
 	}
 	time.Sleep(time.Second)
 
-	r := io.LimitReader(rand.New(rand.NewSource(17)), 350)
+	r := io.LimitReader(rand.New(rand.NewSource(17)), 257)
 	fcid, err := client.ClientImportLocal(ctx, r)
 	if err != nil {
 		t.Fatal(err)

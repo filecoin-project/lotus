@@ -38,9 +38,9 @@ type Miner struct {
 	schedPost uint64
 
 	// Sealing
-	sb    *sectorbuilder.SectorBuilder
+	sb      *sectorbuilder.SectorBuilder
 	sectors *statestore.StateStore
-	tktFn TicketFn
+	tktFn   TicketFn
 
 	sectorIncoming chan *SectorInfo
 	sectorUpdated  chan sectorUpdate
@@ -80,7 +80,7 @@ func NewMiner(api storageMinerApi, addr address.Address, h host.Host, ds datasto
 
 		maddr: addr,
 		h:     h,
-		sb: sb,
+		sb:    sb,
 		tktFn: tktFn,
 
 		sectors: statestore.New(namespace.Wrap(ds, datastore.NewKey("/sectors"))),

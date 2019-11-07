@@ -7,9 +7,9 @@ import (
 	cid "github.com/ipfs/go-cid"
 	xerrors "golang.org/x/xerrors"
 
-	"github.com/filecoin-project/lotus/lib/sectorbuilder"
 	"github.com/filecoin-project/lotus/api"
 	"github.com/filecoin-project/lotus/chain/types"
+	"github.com/filecoin-project/lotus/lib/sectorbuilder"
 )
 
 type TicketFn func(context.Context) (*sectorbuilder.SealTicket, error)
@@ -27,9 +27,9 @@ func (t *SealTicket) sb() sectorbuilder.SealTicket {
 
 type Piece struct {
 	DealID uint64
-	Ref string
+	Ref    string
 
-	Size uint64
+	Size  uint64
 	CommP []byte
 }
 
@@ -52,7 +52,7 @@ type SectorInfo struct {
 	CommD     []byte
 	CommR     []byte
 	CommRLast []byte
-	Ticket SealTicket
+	Ticket    SealTicket
 
 	PreCommitMessage *cid.Cid
 
@@ -219,10 +219,10 @@ func (m *Miner) newSector(ctx context.Context, sid uint64, dealID uint64, ref st
 		Pieces: []Piece{
 			{
 				DealID: dealID,
-				Ref:ref,
+				Ref:    ref,
 
-				Size:   ppi.Size,
-				CommP:  ppi.CommP[:],
+				Size:  ppi.Size,
+				CommP: ppi.CommP[:],
 			},
 		},
 	}

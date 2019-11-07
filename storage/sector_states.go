@@ -43,11 +43,13 @@ func (m *Miner) finishPacking(ctx context.Context, sector SectorInfo) (func(*Sec
 		allocated += piece.Size
 	}
 
-	if allocated > m.sb.SectorSize() {
-		return nil, xerrors.Errorf("too much data in sector: %d > %d", allocated, m.sb.SectorSize())
+	ubytes := sectorbuilder.UserBytesForSectorSize(m.sb.SectorSize())
+
+	if allocated > ubytes {
+		return nil, xerrors.Errorf("too much data in sector: %d > %d", allocated, ubytes)
 	}
 
-	fillerSizes, err := fillersFromRem(m.sb.SectorSize() - allocated)
+	fillerSizes, err := fillersFromRem(ubytes - allocated)
 	if err != nil {
 		return nil, err
 	}
