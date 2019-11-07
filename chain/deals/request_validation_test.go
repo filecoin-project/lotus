@@ -35,7 +35,7 @@ func (wrongDTType) FromBytes([]byte) error {
 	return fmt.Errorf("not implemented")
 }
 
-func (wrongDTType) Identifier() string {
+func (wrongDTType) Type() string {
 	return "WrongDTTYPE"
 }
 

@@ -49,6 +49,7 @@ func TestTransferRequest_MarshalCBOR(t *testing.T) {
 func TestTransferRequest_UnmarshalCBOR(t *testing.T) {
 	req := NewTestTransferRequest()
 	wbuf := new(bytes.Buffer)
+	// use ToNet / FromNet
 	require.NoError(t, req.ToNet(wbuf))
 
 	desMsg, err := FromNet(strings.NewReader(wbuf.String()))
@@ -88,7 +89,7 @@ func TestTransferResponse_MarshalCBOR(t *testing.T) {
 
 	// sanity check that we can marshal data
 	wbuf := new(bytes.Buffer)
-	require.NoError(t, response.MarshalCBOR(wbuf))
+	require.NoError(t, response.ToNet(wbuf))
 	assert.Greater(t, wbuf.Len(), 0)
 }
 
@@ -108,26 +109,6 @@ func TestTransferResponse_UnmarshalCBOR(t *testing.T) {
 	desResp, ok := desMsg.(DataTransferResponse)
 	require.True(t, ok)
 	assert.True(t, desResp.Accepted())
-}
-
-func TestRequestResponseCast(t *testing.T) {
-	// Verify that we gracefully handle a mis-cast
-	id := datatransfer.TransferID(rand.Int31())
-	response := NewResponse(id, true) // accepted
-	request := NewTestTransferRequest()
-
-	cast, ok := response.(DataTransferMessage)
-	require.True(t, ok)
-	cast, ok = cast.(DataTransferRequest)
-	require.False(t, ok)
-
-	// have to do this first or else it won't compile b/c DataTransferRequest
-	// doesn't implement the DataTransferResponse interface. This also
-	// simulates steps for deserializing a message from the net
-	cast, ok = request.(DataTransferMessage)
-	require.True(t, ok)
-	cast, ok = cast.(DataTransferResponse)
-	require.False(t, ok)
 }
 
 func TestRequestCancel(t *testing.T) {
