@@ -2,6 +2,7 @@ package deals
 
 import (
 	"context"
+	"github.com/filecoin-project/lotus/build"
 
 	"golang.org/x/xerrors"
 
@@ -19,6 +20,11 @@ func (c *Client) handle(ctx context.Context, deal ClientDeal, cb clientHandlerFu
 		if err != nil {
 			next = api.DealError
 		}
+
+		if err == nil && next == api.DealNoUpdate {
+			return
+		}
+
 		select {
 		case c.updated <- clientDealUpdate{
 			newState: next,
@@ -127,16 +133,25 @@ func (c *Client) staged(ctx context.Context, deal ClientDeal) error {
 }
 
 func (c *Client) sealing(ctx context.Context, deal ClientDeal) error {
-	//func (e *calledEvents) Called(check CheckFunc, hnd CalledHandler, rev RevertHandler, confidence int, timeout uint64, actor address.Address, method uint64) error {
+
+	// TODO: disconnect
+
 	checkFunc := func(ts *types.TipSet) (done bool, more bool, err error) {
-		sd, err := stmgr.GetStorageDeal(ctx, c.stmgr, deal.DealID, ts)
+		sd, err := stmgr.GetStorageDeal(ctx, c.sm, deal.DealID, ts)
 		if err != nil {
+			// TODO: This may be fine for some errors
 			return false, false, xerrors.Errorf("failed to look up deal on chain: %w", err)
 		}
 
 		if sd.ActivationEpoch > 0 {
-			// Deal is active already!
-			panic("handle me")
+			select {
+			case c.updated <- clientDealUpdate{
+				newState: api.DealComplete,
+				id:       deal.ProposalCid,
+			}:
+			case <-c.stop:
+			}
+
 			return true, false, nil
 		}
 
@@ -144,8 +159,7 @@ func (c *Client) sealing(ctx context.Context, deal ClientDeal) error {
 	}
 
 	called := func(msg *types.Message, ts *types.TipSet, curH uint64) (bool, error) {
-		// To ask Magik: Does this trigger when the message in question is part of the parent state execution? Or just when its included in the block (aka, not executed)
-		// main thing i want to ensure is that ts.ParentState is the result of the execution of msg
+		// TODO: handle errors
 
 		if msg == nil {
 			log.Error("timed out waiting for deal activation... what now?")
@@ -154,34 +168,37 @@ func (c *Client) sealing(ctx context.Context, deal ClientDeal) error {
 
 		// TODO: can check msg.Params to see if we should even bother checking the state
 
-		sd, err := stmgr.GetStorageDeal(ctx, c.stmgr, deal.DealID, ts)
+		sd, err := stmgr.GetStorageDeal(ctx, c.sm, deal.DealID, ts)
 		if err != nil {
-			return false, false, xerrors.Errorf("failed to look up deal on chain: %w", err)
+			return false, xerrors.Errorf("failed to look up deal on chain: %w", err)
 		}
 
 		if sd.ActivationEpoch == 0 {
 			return true, nil
 		}
 
-		// Deal is active!
-		panic("handle me")
+		log.Info("Storage deal %d activated at epoch %d", deal.DealID, sd.ActivationEpoch)
+
+		select {
+		case c.updated <- clientDealUpdate{
+			newState: api.DealComplete,
+			id:       deal.ProposalCid,
+		}:
+		case <-c.stop:
+		}
 
 		return false, nil
 	}
 
-	if err := c.events.Called(checkFunc, handler, rev, 3, 100, actors.StorageMarketAddress, actors.SMAMethods.ActivateStorageDeals); err != nil {
+	revert := func(ctx context.Context, ts *types.TipSet) error {
+		log.Warn("deal activation reverted; TODO: actually handle this!")
+		// TODO: Just go back to DealSealing?
+		return nil
+	}
+
+	if err := c.events.Called(checkFunc, called, revert, 3, build.SealRandomnessLookbackLimit, deal.Proposal.Provider, actors.MAMethods.ProveCommitSector); err != nil {
 		return xerrors.Errorf("failed to set up called handler")
 	}
-	resp, err := c.readStorageDealResp(deal)
-	if err != nil {
-		return err
-	}
-
-	if resp.State != api.DealComplete {
-		return xerrors.Errorf("deal wasn't complete (State=%d)", resp.State)
-	}
-
-	// TODO: look for the commit message on chain, negotiate better payment vouchers
 
 	log.Info("DEAL COMPLETE!!")
 	return nil

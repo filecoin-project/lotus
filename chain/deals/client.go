@@ -66,7 +66,7 @@ type clientDealUpdate struct {
 	err      error
 }
 
-func NewClient(sm *stmgr.StateManager, chain *store.ChainStore, h host.Host, w *wallet.Wallet, ds dtypes.MetadataDS, dag dtypes.ClientDAG, discovery *discovery.Local, mpool full.MpoolAPI) *Client {
+func NewClient(sm *stmgr.StateManager, chain *store.ChainStore, h host.Host, w *wallet.Wallet, ds dtypes.MetadataDS, dag dtypes.ClientDAG, discovery *discovery.Local, mpool full.MpoolAPI, chainapi full.ChainAPI) *Client {
 	c := &Client{
 		sm:        sm,
 		chain:     chain,
@@ -75,6 +75,7 @@ func NewClient(sm *stmgr.StateManager, chain *store.ChainStore, h host.Host, w *
 		dag:       dag,
 		discovery: discovery,
 		mpool:     mpool,
+		events:    events.NewEvents(context.TODO(), &chainapi),
 
 		deals: statestore.New(namespace.Wrap(ds, datastore.NewKey("/deals/client"))),
 		conns: map[cid.Cid]inet.Stream{},
@@ -157,7 +158,8 @@ func (c *Client) onUpdated(ctx context.Context, update clientDealUpdate) {
 	case api.DealStaged:
 		c.handle(ctx, deal, c.staged, api.DealSealing)
 	case api.DealSealing:
-		c.handle(ctx, deal, c.sealing, api.DealComplete)
+		c.handle(ctx, deal, c.sealing, api.DealNoUpdate)
+		// TODO: DealComplete -> watch for faults, expiration, etc.
 	}
 }
 

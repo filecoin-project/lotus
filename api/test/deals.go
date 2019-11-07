@@ -69,7 +69,7 @@ func TestDealFlow(t *testing.T, b APIBuilder) {
 
 	// TODO: this sleep is only necessary because deals don't immediately get logged in the dealstore, we should fix this
 	time.Sleep(time.Second)
-	loop:
+loop:
 	for {
 		di, err := client.ClientGetDealInfo(ctx, *deal)
 		if err != nil {

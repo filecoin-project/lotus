@@ -282,5 +282,5 @@ func (a *StateAPI) StateMarketDeals(ctx context.Context, ts *types.TipSet) (map[
 }
 
 func (a *StateAPI) StateMarketStorageDeal(ctx context.Context, dealId uint64, ts *types.TipSet) (*actors.OnChainDeal, error) {
-	return stmgr.GetStorageDeal(ctx, s.StateManager, dealId, ts)
+	return stmgr.GetStorageDeal(ctx, a.StateManager, dealId, ts)
 }
