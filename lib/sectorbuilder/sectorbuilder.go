@@ -2,6 +2,7 @@ package sectorbuilder
 
 import (
 	"io"
+	"os"
 	"sort"
 	"unsafe"
 
@@ -70,6 +71,15 @@ func New(cfg *Config) (*SectorBuilder, error) {
 	}
 
 	proverId := addressToProverID(cfg.Miner)
+
+	for _, dir := range []string{cfg.StagedDir, cfg.SealedDir, cfg.CacheDir, cfg.MetadataDir} {
+		if err := os.Mkdir(dir, 0755); err != nil {
+			if os.IsExist(err) {
+				continue
+			}
+			return nil, err
+		}
+	}
 
 	sbp, err := sectorbuilder.InitSectorBuilder(cfg.SectorSize, PoRepProofPartitions, 0, cfg.MetadataDir, proverId, cfg.SealedDir, cfg.StagedDir, cfg.CacheDir, 16, cfg.WorkerThreads)
 	if err != nil {
