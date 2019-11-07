@@ -24,8 +24,15 @@ func TempSectorbuilder(sectorSize uint64) (*SectorBuilder, func(), error) {
 	staging := filepath.Join(dir, "staging")
 	cache := filepath.Join(dir, "cache")
 
+	for _, dir := range []string{metadata, sealed, staging, cache} {
+		if err := os.Mkdir(dir, 0755); err != nil {
+			return nil, nil, err
+		}
+	}
+
 	sb, err := New(&Config{
-		SectorSize:  sectorSize,
+		SectorSize: sectorSize,
+
 		SealedDir:   sealed,
 		StagedDir:   staging,
 		MetadataDir: metadata,

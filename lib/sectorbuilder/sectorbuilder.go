@@ -2,9 +2,7 @@ package sectorbuilder
 
 import (
 	"io"
-	"os"
 	"sort"
-	"sync"
 	"unsafe"
 
 	sectorbuilder "github.com/filecoin-project/go-sectorbuilder"
@@ -15,6 +13,7 @@ import (
 )
 
 const PoStReservedWorkers = 1
+const PoRepProofPartitions = 2
 
 var log = logging.Logger("sectorbuilder")
 
@@ -36,6 +35,8 @@ type SealCommitOutput = sectorbuilder.SealCommitOutput
 
 type PublicPieceInfo = sectorbuilder.PublicPieceInfo
 
+type RawSealPreCommitOutput = sectorbuilder.RawSealPreCommitOutput
+
 const CommLen = sectorbuilder.CommitmentBytesLen
 
 type SectorBuilder struct {
@@ -43,6 +44,10 @@ type SectorBuilder struct {
 	ssize  uint64
 
 	Miner address.Address
+
+	stagedDir string
+	sealedDir string
+	cacheDir  string
 
 	rateLimit chan struct{}
 }
@@ -66,7 +71,7 @@ func New(cfg *Config) (*SectorBuilder, error) {
 
 	proverId := addressToProverID(cfg.Miner)
 
-	sbp, err := sectorbuilder.InitSectorBuilder(cfg.SectorSize, 2, 0, cfg.MetadataDir, proverId, cfg.SealedDir, cfg.StagedDir, cfg.CacheDir, 16, cfg.WorkerThreads)
+	sbp, err := sectorbuilder.InitSectorBuilder(cfg.SectorSize, PoRepProofPartitions, 0, cfg.MetadataDir, proverId, cfg.SealedDir, cfg.StagedDir, cfg.CacheDir, 16, cfg.WorkerThreads)
 	if err != nil {
 		return nil, err
 	}
@@ -74,6 +79,10 @@ func New(cfg *Config) (*SectorBuilder, error) {
 	return &SectorBuilder{
 		handle: sbp,
 		ssize:  cfg.SectorSize,
+
+		stagedDir: cfg.StagedDir,
+		sealedDir: cfg.SealedDir,
+		cacheDir:  cfg.CacheDir,
 
 		Miner:     cfg.Miner,
 		rateLimit: make(chan struct{}, cfg.WorkerThreads-PoStReservedWorkers),
@@ -101,21 +110,44 @@ func (sb *SectorBuilder) Destroy() {
 	sectorbuilder.DestroySectorBuilder(sb.handle)
 }
 
-func (sb *SectorBuilder) AddPiece(pieceKey string, pieceSize uint64, file io.Reader) (uint64, error) {
+func (sb *SectorBuilder) AcquireSectorId() (uint64, error) {
+	return sectorbuilder.AcquireSectorId(sb.handle)
+}
+
+func (sb *SectorBuilder) AddPiece(pieceSize uint64, sectorId uint64, file io.Reader) (PublicPieceInfo, error) {
 	f, werr, err := toReadableFile(file, int64(pieceSize))
 	if err != nil {
-		return 0, err
+		return PublicPieceInfo{}, err
 	}
 
 	ret := sb.rlimit()
 	defer ret()
 
-	sectorID, err := sectorbuilder.AddPieceFromFile(sb.handle, pieceKey, pieceSize, f)
+	stagedFile, err := sb.stagedSectorFile(sectorId)
 	if err != nil {
-		return 0, err
+		return PublicPieceInfo{}, err
 	}
 
-	return sectorID, werr()
+	writeUnpadded, commP, err := sectorbuilder.StandaloneWriteWithoutAlignment(f, pieceSize, stagedFile)
+	if err != nil {
+		return PublicPieceInfo{}, err
+	}
+	if writeUnpadded != pieceSize {
+		return PublicPieceInfo{}, xerrors.Errorf("writeUnpadded != pieceSize: %d != %d", writeUnpadded, pieceSize)
+	}
+
+	if err := stagedFile.Close(); err != nil {
+		return PublicPieceInfo{}, err
+	}
+
+	if err := f.Close(); err != nil {
+		return PublicPieceInfo{}, err
+	}
+
+	return PublicPieceInfo{
+		Size:  pieceSize,
+		CommP: commP,
+	}, werr()
 }
 
 // TODO: should *really really* return an io.ReadCloser
@@ -126,25 +158,89 @@ func (sb *SectorBuilder) ReadPieceFromSealedSector(pieceKey string) ([]byte, err
 	return sectorbuilder.ReadPieceFromSealedSector(sb.handle, pieceKey)
 }
 
-func (sb *SectorBuilder) SealPreCommit(sectorID uint64, ticket SealTicket) (SealPreCommitOutput, error) {
+func (sb *SectorBuilder) SealPreCommit(sectorID uint64, ticket SealTicket, pieces []PublicPieceInfo) (RawSealPreCommitOutput, error) {
 	ret := sb.rlimit()
 	defer ret()
 
-	return sectorbuilder.SealPreCommit(sb.handle, sectorID, ticket)
+	cacheDir, err := sb.sectorCacheDir(sectorID)
+	if err != nil {
+		return RawSealPreCommitOutput{}, err
+	}
+
+	sealedPath, err := sb.sealedSectorPath(sectorID)
+	if err != nil {
+		return RawSealPreCommitOutput{}, err
+	}
+
+	return sectorbuilder.StandaloneSealPreCommit(
+		sb.ssize,
+		PoRepProofPartitions,
+		cacheDir,
+		sb.stagedSectorPath(sectorID),
+		sealedPath,
+		sectorID,
+		addressToProverID(sb.Miner),
+		ticket.TicketBytes,
+		pieces,
+	)
 }
 
-func (sb *SectorBuilder) SealCommit(sectorID uint64, seed SealSeed) (SealCommitOutput, error) {
+func (sb *SectorBuilder) SealCommit(sectorID uint64, ticket SealTicket, seed SealSeed, pieces []PublicPieceInfo, pieceKeys []string, rspco RawSealPreCommitOutput) (proof []byte, err error) {
 	ret := sb.rlimit()
 	defer ret()
 
-	return sectorbuilder.SealCommit(sb.handle, sectorID, seed)
-}
+	cacheDir, err := sb.sectorCacheDir(sectorID)
+	if err != nil {
+		return nil, err
+	}
 
-func (sb *SectorBuilder) ResumeSealCommit(sectorID uint64) (SealCommitOutput, error) {
-	ret := sb.rlimit()
-	defer ret()
+	proof, err = sectorbuilder.StandaloneSealCommit(
+		sb.ssize,
+		PoRepProofPartitions,
+		cacheDir,
+		sectorID,
+		addressToProverID(sb.Miner),
+		ticket.TicketBytes,
+		seed.TicketBytes,
+		pieces,
+		rspco,
+	)
+	if err != nil {
+		return nil, xerrors.Errorf("StandaloneSealCommit: %w", err)
+	}
 
-	return sectorbuilder.ResumeSealCommit(sb.handle, sectorID)
+	pmeta := make([]sectorbuilder.PieceMetadata, len(pieces))
+	for i, piece := range pieces {
+		pmeta[i] = sectorbuilder.PieceMetadata{
+			Key:   pieceKeys[i],
+			Size:  piece.Size,
+			CommP: piece.CommP,
+		}
+	}
+
+	sealedPath, err := sb.sealedSectorPath(sectorID)
+	if err != nil {
+		return nil, err
+	}
+
+	err = sectorbuilder.ImportSealedSector(
+		sb.handle,
+		sectorID,
+		cacheDir,
+		sealedPath,
+		ticket,
+		seed,
+		rspco.CommR,
+		rspco.CommD,
+		rspco.CommC,
+		rspco.CommRLast,
+		proof,
+		pmeta,
+	)
+	if err != nil {
+		return nil, xerrors.Errorf("ImportSealedSector: %w", err)
+	}
+	return proof, nil
 }
 
 func (sb *SectorBuilder) SealStatus(sector uint64) (SectorSealingStatus, error) {
@@ -216,47 +312,4 @@ func GeneratePieceCommitment(piece io.Reader, pieceSize uint64) (commP [CommLen]
 
 func GenerateDataCommitment(ssize uint64, pieces []PublicPieceInfo) ([CommLen]byte, error) {
 	return sectorbuilder.GenerateDataCommitment(ssize, pieces)
-}
-
-func toReadableFile(r io.Reader, n int64) (*os.File, func() error, error) {
-	f, ok := r.(*os.File)
-	if ok {
-		return f, func() error { return nil }, nil
-	}
-
-	var w *os.File
-
-	f, w, err := os.Pipe()
-	if err != nil {
-		return nil, nil, err
-	}
-
-	var wait sync.Mutex
-	var werr error
-
-	wait.Lock()
-	go func() {
-		defer wait.Unlock()
-
-		copied, werr := io.CopyN(w, r, n)
-		if werr != nil {
-			log.Warnf("toReadableFile: copy error: %+v", werr)
-		}
-
-		err := w.Close()
-		if werr == nil && err != nil {
-			werr = err
-			log.Warnf("toReadableFile: close error: %+v", err)
-			return
-		}
-		if copied != n {
-			log.Warnf("copied different amount than expected: %d != %d", copied, n)
-			werr = xerrors.Errorf("copied different amount than expected: %d != %d", copied, n)
-		}
-	}()
-
-	return f, func() error {
-		wait.Lock()
-		return werr
-	}, nil
 }

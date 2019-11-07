@@ -3,6 +3,7 @@ package sectorbuilder_test
 import (
 	"io"
 	"math/rand"
+	"os"
 	"testing"
 
 	"github.com/filecoin-project/lotus/build"
@@ -12,27 +13,33 @@ import (
 const sectorSize = 1024
 
 func TestSealAndVerify(t *testing.T) {
-	t.Skip("this is slow")
-	//os.Setenv("BELLMAN_NO_GPU", "1")
+	//t.Skip("this is slow")
+	os.Setenv("BELLMAN_NO_GPU", "1")
 
 	build.SectorSizes = []uint64{sectorSize}
 
 	if err := build.GetParams(true); err != nil {
-		t.Fatal(err)
+		t.Fatalf("%+v", err)
 	}
 
 	sb, cleanup, err := sectorbuilder.TempSectorbuilder(sectorSize)
 	if err != nil {
-		t.Fatal(err)
+		t.Fatalf("%+v", err)
 	}
-	defer cleanup()
+	_ = cleanup
+	//defer cleanup()
 
 	dlen := sectorbuilder.UserBytesForSectorSize(sectorSize)
 
-	r := io.LimitReader(rand.New(rand.NewSource(42)), int64(dlen))
-	sid, err := sb.AddPiece("foo", dlen, r)
+	sid, err := sb.AcquireSectorId()
 	if err != nil {
-		t.Fatal(err)
+		t.Fatalf("%+v", err)
+	}
+
+	r := io.LimitReader(rand.New(rand.NewSource(42)), int64(dlen))
+	ppi, err := sb.AddPiece(dlen, sid, r)
+	if err != nil {
+		t.Fatalf("%+v", err)
 	}
 
 	ticket := sectorbuilder.SealTicket{
@@ -40,9 +47,9 @@ func TestSealAndVerify(t *testing.T) {
 		TicketBytes: [32]byte{1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 1, 2},
 	}
 
-	pco, err := sb.SealPreCommit(sid, ticket)
+	pco, err := sb.SealPreCommit(sid, ticket, []sectorbuilder.PublicPieceInfo{ppi})
 	if err != nil {
-		t.Fatal(err)
+		t.Fatalf("%+v", err)
 	}
 
 	seed := sectorbuilder.SealSeed{
@@ -50,14 +57,14 @@ func TestSealAndVerify(t *testing.T) {
 		TicketBytes: [32]byte{0, 9, 8, 7, 6, 5, 4, 3, 2, 1, 0, 9, 8, 7, 6, 45, 3, 2, 1, 0, 9, 8, 7, 6, 5, 4, 3, 2, 1, 0, 9},
 	}
 
-	sco, err := sb.SealCommit(sid, seed)
+	proof, err := sb.SealCommit(sid, ticket, seed, []sectorbuilder.PublicPieceInfo{ppi}, []string{"foo"}, pco)
 	if err != nil {
-		t.Fatal(err)
+		t.Fatalf("%+v", err)
 	}
 
-	ok, err := sectorbuilder.VerifySeal(sectorSize, pco.CommR[:], pco.CommD[:], sb.Miner, ticket.TicketBytes[:], seed.TicketBytes[:], sid, sco.Proof)
+	ok, err := sectorbuilder.VerifySeal(sectorSize, pco.CommR[:], pco.CommD[:], sb.Miner, ticket.TicketBytes[:], seed.TicketBytes[:], sid, proof)
 	if err != nil {
-		t.Fatal(err)
+		t.Fatalf("%+v", err)
 	}
 
 	if !ok {
