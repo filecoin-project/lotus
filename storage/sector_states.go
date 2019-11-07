@@ -2,6 +2,7 @@ package storage
 
 import (
 	"context"
+	"github.com/filecoin-project/lotus/lib/sectorbuilder"
 
 	"github.com/filecoin-project/lotus/build"
 	"github.com/filecoin-project/lotus/chain/actors"
@@ -37,7 +38,16 @@ func (m *Miner) handle(ctx context.Context, sector SectorInfo, cb providerHandle
 func (m *Miner) finishPacking(ctx context.Context, sector SectorInfo) (func(*SectorInfo), error) {
 	log.Infow("performing filling up rest of the sector...", "sector", sector.SectorID)
 
-	fillerSizes, err := m.secst.PieceSizesToFill(sector.SectorID)
+	var allocated uint64
+	for _, piece := range sector.Pieces {
+		allocated += piece.Size
+	}
+
+	if allocated > m.sb.SectorSize() {
+		return nil, xerrors.Errorf("too much data in sector: %d > %d", allocated, m.sb.SectorSize())
+	}
+
+	fillerSizes, err := fillersFromRem(m.sb.SectorSize() - allocated)
 	if err != nil {
 		return nil, err
 	}
@@ -46,49 +56,47 @@ func (m *Miner) finishPacking(ctx context.Context, sector SectorInfo) (func(*Sec
 		log.Warnf("Creating %d filler pieces for sector %d", len(fillerSizes), sector.SectorID)
 	}
 
-	ids, err := m.storeGarbage(ctx, fillerSizes...)
+	pieces, err := m.storeGarbage(ctx, sector.SectorID, fillerSizes...)
 	if err != nil {
 		return nil, xerrors.Errorf("filling up the sector (%v): %w", fillerSizes, err)
 	}
 
-	for _, id := range ids {
-		if id != sector.SectorID {
-			panic("todo: pass SectorID into storeGarbage")
-		}
-	}
-
-	return nil, nil
+	return func(info *SectorInfo) {
+		info.Pieces = append(info.Pieces, pieces...)
+	}, nil
 }
 
 func (m *Miner) sealPreCommit(ctx context.Context, sector SectorInfo) (func(*SectorInfo), error) {
 	log.Infow("performing sector replication...", "sector", sector.SectorID)
-	sinfo, err := m.secst.SealPreCommit(ctx, sector.SectorID)
+	ticket, err := m.tktFn(ctx)
+	if err != nil {
+		return nil, err
+	}
+
+	rspco, err := m.sb.SealPreCommit(sector.SectorID, *ticket, sector.pieceInfos())
 	if err != nil {
 		return nil, xerrors.Errorf("seal pre commit failed: %w", err)
 	}
 
 	return func(info *SectorInfo) {
-		info.CommD = sinfo.CommD[:]
-		info.CommR = sinfo.CommR[:]
+		info.CommC = rspco.CommC[:]
+		info.CommD = rspco.CommD[:]
+		info.CommR = rspco.CommR[:]
+		info.CommRLast = rspco.CommRLast[:]
 		info.Ticket = SealTicket{
-			BlockHeight: sinfo.Ticket.BlockHeight,
-			TicketBytes: sinfo.Ticket.TicketBytes[:],
+			BlockHeight: ticket.BlockHeight,
+			TicketBytes: ticket.TicketBytes[:],
 		}
 	}, nil
 }
 
 func (m *Miner) preCommit(ctx context.Context, sector SectorInfo) (func(*SectorInfo), error) {
-	deals, err := m.secst.DealsForCommit(sector.SectorID, false)
-	if err != nil {
-		return nil, err
-	}
-
 	params := &actors.SectorPreCommitInfo{
 		SectorNumber: sector.SectorID,
 
 		CommR:     sector.CommR,
 		SealEpoch: sector.Ticket.BlockHeight,
-		DealIDs:   deals,
+		DealIDs:   sector.deals(),
 	}
 	enc, aerr := actors.SerializeParams(params)
 	if aerr != nil {
@@ -164,20 +172,20 @@ func (m *Miner) committing(ctx context.Context, sector SectorInfo) (func(*Sector
 		return nil, xerrors.Errorf("failed to get randomness for computing seal proof: %w", err)
 	}
 
-	proof, err := m.secst.SealComputeProof(ctx, sector.SectorID, sector.RandHeight, rand)
+	seed := sectorbuilder.SealSeed{
+		BlockHeight: sector.RandHeight,
+	}
+	copy(seed.TicketBytes[:], rand)
+
+	proof, err := m.sb.SealCommit(sector.SectorID, sector.Ticket.sb(), seed, sector.pieceInfos(), sector.refs(), sector.rspco())
 	if err != nil {
 		return nil, xerrors.Errorf("computing seal proof failed: %w", err)
-	}
-
-	deals, err := m.secst.DealsForCommit(sector.SectorID, true)
-	if err != nil {
-		return nil, err
 	}
 
 	params := &actors.SectorProveCommitInfo{
 		Proof:    proof,
 		SectorID: sector.SectorID,
-		DealIDs:  deals,
+		DealIDs:  sector.deals(),
 	}
 
 	enc, aerr := actors.SerializeParams(params)

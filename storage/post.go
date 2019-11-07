@@ -2,6 +2,7 @@ package storage
 
 import (
 	"context"
+	"github.com/filecoin-project/lotus/lib/sectorbuilder"
 	"time"
 
 	"github.com/ipfs/go-cid"
@@ -158,6 +159,21 @@ func (p *post) preparePost(ctx context.Context) error {
 	return nil
 }
 
+func (p *post) sortedSectorInfo() sectorbuilder.SortedSectorInfo {
+	sbsi := make([]sectorbuilder.SectorInfo, len(p.sset))
+	for k, sector := range p.sset {
+		var commR [sectorbuilder.CommLen]byte
+		copy(commR[:], sector.CommR)
+
+		sbsi[k] = sectorbuilder.SectorInfo{
+			SectorID: sector.SectorID,
+			CommR:    commR,
+		}
+	}
+
+	return sectorbuilder.NewSortedSectorInfo(sbsi)
+}
+
 func (p *post) runPost(ctx context.Context) error {
 	ctx, span := trace.StartSpan(ctx, "storage.runPost")
 	defer span.End()
@@ -168,7 +184,11 @@ func (p *post) runPost(ctx context.Context) error {
 
 	tsStart := time.Now()
 	var faults []uint64 // TODO
-	proof, err := p.m.secst.RunPoSt(ctx, p.sset, p.r, faults)
+
+	var seed [32]byte
+	copy(seed[:], p.r)
+
+	proof, err := p.m.sb.GeneratePoSt(p.sortedSectorInfo(), seed, faults)
 	if err != nil {
 		return xerrors.Errorf("running post failed: %w", err)
 	}

@@ -2,6 +2,7 @@ package storage
 
 import (
 	"context"
+	"github.com/filecoin-project/lotus/lib/sectorbuilder"
 	"sync"
 
 	"github.com/filecoin-project/lotus/lib/statestore"
@@ -18,7 +19,6 @@ import (
 	"github.com/filecoin-project/lotus/chain/events"
 	"github.com/filecoin-project/lotus/chain/store"
 	"github.com/filecoin-project/lotus/chain/types"
-	"github.com/filecoin-project/lotus/storage/sector"
 )
 
 var log = logging.Logger("storageminer")
@@ -29,7 +29,6 @@ type Miner struct {
 	api    storageMinerApi
 	events *events.Events
 	h      host.Host
-	secst  *sector.Store
 
 	maddr  address.Address
 	worker address.Address
@@ -39,7 +38,9 @@ type Miner struct {
 	schedPost uint64
 
 	// Sealing
+	sb    *sectorbuilder.SectorBuilder
 	sectors *statestore.StateStore
+	tktFn TicketFn
 
 	sectorIncoming chan *SectorInfo
 	sectorUpdated  chan sectorUpdate
@@ -73,13 +74,14 @@ type storageMinerApi interface {
 	WalletHas(context.Context, address.Address) (bool, error)
 }
 
-func NewMiner(api storageMinerApi, addr address.Address, h host.Host, ds datastore.Batching, secst *sector.Store) (*Miner, error) {
+func NewMiner(api storageMinerApi, addr address.Address, h host.Host, ds datastore.Batching, sb *sectorbuilder.SectorBuilder, tktFn TicketFn) (*Miner, error) {
 	return &Miner{
 		api: api,
 
 		maddr: addr,
 		h:     h,
-		secst: secst,
+		sb: sb,
+		tktFn: tktFn,
 
 		sectors: statestore.New(namespace.Wrap(ds, datastore.NewKey("/sectors"))),
 
@@ -131,9 +133,4 @@ func (m *Miner) runPreflightChecks(ctx context.Context) error {
 
 	log.Infof("starting up miner %s, worker addr %s", m.maddr, m.worker)
 	return nil
-}
-
-func (m *Miner) SectorSize(ctx context.Context) (uint64, error) {
-	// TODO: cache this
-	return m.api.StateMinerSectorSize(ctx, m.maddr, nil)
 }

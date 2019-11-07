@@ -219,7 +219,7 @@ func (p *Provider) staged(ctx context.Context, deal MinerDeal) (func(*MinerDeal)
 		return nil, xerrors.Errorf("deal.Proposal.PieceSize didn't match padded unixfs file size")
 	}
 
-	sectorID, err := p.secb.AddUnixfsPiece(deal.Ref, uf, deal.DealID)
+	sectorID, err := p.secb.AddUnixfsPiece(ctx, deal.Ref, uf, deal.DealID)
 	if err != nil {
 		return nil, xerrors.Errorf("AddPiece failed: %s", err)
 	}
@@ -228,16 +228,12 @@ func (p *Provider) staged(ctx context.Context, deal MinerDeal) (func(*MinerDeal)
 	return func(deal *MinerDeal) {
 		deal.SectorID = sectorID
 	}, nil
-
 }
 
 // SEALING
 
 func (p *Provider) sealing(ctx context.Context, deal MinerDeal) (func(*MinerDeal), error) {
-	log.Info("About to seal sector!", deal.ProposalCid, deal.SectorID)
-	if err := p.sminer.SealSector(ctx, deal.SectorID); err != nil {
-		return nil, xerrors.Errorf("sealing sector failed: %w", err)
-	}
+	// TODO: consider waiting for seal to happen
 
 	return nil, nil
 }

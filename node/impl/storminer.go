@@ -7,7 +7,6 @@ import (
 	"github.com/filecoin-project/lotus/chain/address"
 	"github.com/filecoin-project/lotus/lib/sectorbuilder"
 	"github.com/filecoin-project/lotus/storage"
-	"github.com/filecoin-project/lotus/storage/sector"
 	"github.com/filecoin-project/lotus/storage/sectorblocks"
 )
 
@@ -16,7 +15,6 @@ type StorageMinerAPI struct {
 
 	SectorBuilderConfig *sectorbuilder.Config
 	SectorBuilder       *sectorbuilder.SectorBuilder
-	Sectors             *sector.Store
 	SectorBlocks        *sectorblocks.SectorBlocks
 
 	Miner *storage.Miner

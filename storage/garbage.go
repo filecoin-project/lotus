@@ -17,7 +17,7 @@ import (
 )
 
 // TODO: expected sector ID
-func (m *Miner) storeGarbage(ctx context.Context, sizes ...uint64) ([]uint64, error) {
+func (m *Miner) storeGarbage(ctx context.Context, sectorID uint64, sizes ...uint64) ([]Piece, error) {
 	deals := make([]actors.StorageDeal, len(sizes))
 	for i, size := range sizes {
 		commP, err := sectorbuilder.GeneratePieceCommitment(io.LimitReader(rand.New(rand.NewSource(42)), int64(size)), size)
@@ -87,41 +87,47 @@ func (m *Miner) storeGarbage(ctx context.Context, sizes ...uint64) ([]uint64, er
 		return nil, xerrors.New("got unexpected number of DealIDs from PublishStorageDeals")
 	}
 
-	sectorIDs := make([]uint64, len(sizes))
+	out := make([]Piece, len(sizes))
 
 	for i, size := range sizes {
 		name := fmt.Sprintf("fake-file-%d", rand.Intn(100000000))
-		sectorID, err := m.secst.AddPiece(name, size, io.LimitReader(rand.New(rand.NewSource(42)), int64(size)), resp.DealIDs[i])
+		ppi, err := m.sb.AddPiece(size, sectorID, io.LimitReader(rand.New(rand.NewSource(42)), int64(size)))
 		if err != nil {
 			return nil, err
 		}
 
-		sectorIDs[i] = sectorID
+		out[i] = Piece{
+			DealID: resp.DealIDs[i],
+			Ref:    name,
+			Size:   ppi.Size,
+			CommP:  ppi.CommP[:],
+		}
 	}
 
-	return sectorIDs, nil
+	return out, nil
 }
 
 func (m *Miner) StoreGarbageData(_ context.Context) error {
 	ctx := context.TODO()
-	ssize, err := m.SectorSize(ctx)
-	if err != nil {
-		return xerrors.Errorf("failed to get miner sector size: %w", err)
-	}
 	go func() {
-		size := sectorbuilder.UserBytesForSectorSize(ssize)
+		size := sectorbuilder.UserBytesForSectorSize(m.sb.SectorSize())
 
-		sids, err := m.storeGarbage(ctx, size)
+		sid, err := m.sb.AcquireSectorId()
 		if err != nil {
 			log.Errorf("%+v", err)
 			return
 		}
 
-		if err := m.SealSector(context.TODO(), sids[0]); err != nil {
+		pieces, err := m.storeGarbage(ctx, sid, size)
+		if err != nil {
+			log.Errorf("%+v", err)
+			return
+		}
+
+		if err := m.newSector(context.TODO(), sid, pieces[0].DealID, pieces[0].Ref, pieces[0].ppi()); err != nil {
 			log.Errorf("%+v", err)
 			return
 		}
 	}()
-
-	return err
+	return nil
 }

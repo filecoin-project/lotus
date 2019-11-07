@@ -28,7 +28,6 @@ import (
 	"github.com/filecoin-project/lotus/node/repo"
 	"github.com/filecoin-project/lotus/retrieval"
 	"github.com/filecoin-project/lotus/storage"
-	"github.com/filecoin-project/lotus/storage/sector"
 )
 
 func minerAddrFromDS(ds dtypes.MetadataDS) (address.Address, error) {
@@ -81,13 +80,13 @@ func SectorBuilderConfig(storagePath string, threads uint) func(dtypes.MetadataD
 	}
 }
 
-func StorageMiner(mctx helpers.MetricsCtx, lc fx.Lifecycle, api api.FullNode, h host.Host, ds dtypes.MetadataDS, secst *sector.Store) (*storage.Miner, error) {
+func StorageMiner(mctx helpers.MetricsCtx, lc fx.Lifecycle, api api.FullNode, h host.Host, ds dtypes.MetadataDS, sb *sectorbuilder.SectorBuilder, tktFn storage.TicketFn) (*storage.Miner, error) {
 	maddr, err := minerAddrFromDS(ds)
 	if err != nil {
 		return nil, err
 	}
 
-	sm, err := storage.NewMiner(api, maddr, h, ds, secst)
+	sm, err := storage.NewMiner(api, maddr, h, ds, sb, tktFn)
 	if err != nil {
 		return nil, err
 	}
@@ -177,7 +176,7 @@ func RegisterMiner(lc fx.Lifecycle, ds dtypes.MetadataDS, api api.FullNode) erro
 	return nil
 }
 
-func SealTicketGen(api api.FullNode) sector.TicketFn {
+func SealTicketGen(api api.FullNode) storage.TicketFn {
 	return func(ctx context.Context) (*sectorbuilder.SealTicket, error) {
 		ts, err := api.ChainHead(ctx)
 		if err != nil {

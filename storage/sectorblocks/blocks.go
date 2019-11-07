@@ -23,7 +23,7 @@ import (
 	"github.com/filecoin-project/lotus/lib/padreader"
 	"github.com/filecoin-project/lotus/lib/sectorbuilder"
 	"github.com/filecoin-project/lotus/node/modules/dtypes"
-	"github.com/filecoin-project/lotus/storage/sector"
+	"github.com/filecoin-project/lotus/storage"
 )
 
 type SealSerialization uint8
@@ -38,7 +38,7 @@ var imBlocksPrefix = datastore.NewKey("/intermediate")
 var ErrNotFound = errors.New("not found")
 
 type SectorBlocks struct {
-	*sector.Store
+	*storage.Miner
 
 	intermediate blockstore.Blockstore // holds intermediate nodes TODO: consider combining with the staging blockstore
 
@@ -47,9 +47,9 @@ type SectorBlocks struct {
 	keyLk    sync.Mutex
 }
 
-func NewSectorBlocks(sectst *sector.Store, ds dtypes.MetadataDS, sb *sectorbuilder.SectorBuilder) *SectorBlocks {
+func NewSectorBlocks(miner *storage.Miner, ds dtypes.MetadataDS, sb *sectorbuilder.SectorBuilder) *SectorBlocks {
 	sbc := &SectorBlocks{
-		Store: sectst,
+		Miner: miner,
 
 		intermediate: blockstore.NewBlockstore(namespace.Wrap(ds, imBlocksPrefix)),
 
@@ -160,7 +160,7 @@ func (r *refStorer) Read(p []byte) (n int, err error) {
 	}
 }
 
-func (st *SectorBlocks) AddUnixfsPiece(ref cid.Cid, r UnixfsReader, dealID uint64) (sectorID uint64, err error) {
+func (st *SectorBlocks) AddUnixfsPiece(ctx context.Context, ref cid.Cid, r UnixfsReader, dealID uint64) (sectorID uint64, err error) {
 	size, err := r.Size()
 	if err != nil {
 		return 0, err
@@ -175,7 +175,7 @@ func (st *SectorBlocks) AddUnixfsPiece(ref cid.Cid, r UnixfsReader, dealID uint6
 
 	pr, psize := padreader.New(r, uint64(size))
 
-	return st.Store.AddPiece(refst.pieceRef, psize, pr, dealID)
+	return st.Miner.SealPiece(ctx, refst.pieceRef, psize, pr, dealID)
 }
 
 func (st *SectorBlocks) List() (map[cid.Cid][]api.SealedRef, error) {

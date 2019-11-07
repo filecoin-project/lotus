@@ -2,25 +2,56 @@ package storage
 
 import (
 	"context"
+	"io"
 
-	"github.com/filecoin-project/lotus/api"
-	"github.com/filecoin-project/lotus/chain/types"
 	cid "github.com/ipfs/go-cid"
 	xerrors "golang.org/x/xerrors"
+
+	"github.com/filecoin-project/lotus/lib/sectorbuilder"
+	"github.com/filecoin-project/lotus/api"
+	"github.com/filecoin-project/lotus/chain/types"
 )
+
+type TicketFn func(context.Context) (*sectorbuilder.SealTicket, error)
 
 type SealTicket struct {
 	BlockHeight uint64
 	TicketBytes []byte
 }
 
+func (t *SealTicket) sb() sectorbuilder.SealTicket {
+	out := sectorbuilder.SealTicket{BlockHeight: t.BlockHeight}
+	copy(out.TicketBytes[:], t.TicketBytes)
+	return out
+}
+
+type Piece struct {
+	DealID uint64
+	Ref string
+
+	Size uint64
+	CommP []byte
+}
+
+func (p *Piece) ppi() (out sectorbuilder.PublicPieceInfo) {
+	out.Size = p.Size
+	copy(out.CommP[:], p.CommP)
+	return out
+}
+
 type SectorInfo struct {
 	State    api.SectorState
 	SectorID uint64
 
+	// Packing
+
+	Pieces []Piece
+
 	// PreCommit
-	CommD  []byte
-	CommR  []byte
+	CommC     []byte
+	CommD     []byte
+	CommR     []byte
+	CommRLast []byte
 	Ticket SealTicket
 
 	PreCommitMessage *cid.Cid
@@ -38,6 +69,41 @@ type sectorUpdate struct {
 	id       uint64
 	err      error
 	mut      func(*SectorInfo)
+}
+
+func (t *SectorInfo) pieceInfos() []sectorbuilder.PublicPieceInfo {
+	out := make([]sectorbuilder.PublicPieceInfo, len(t.Pieces))
+	for i, piece := range t.Pieces {
+		out[i] = piece.ppi()
+	}
+	return out
+}
+
+func (t *SectorInfo) deals() []uint64 {
+	out := make([]uint64, len(t.Pieces))
+	for i, piece := range t.Pieces {
+		out[i] = piece.DealID
+	}
+	return out
+}
+
+func (t *SectorInfo) refs() []string {
+	out := make([]string, len(t.Pieces))
+	for i, piece := range t.Pieces {
+		out[i] = piece.Ref
+	}
+	return out
+}
+
+func (t *SectorInfo) rspco() sectorbuilder.RawSealPreCommitOutput {
+	var out sectorbuilder.RawSealPreCommitOutput
+
+	copy(out.CommC[:], t.CommC)
+	copy(out.CommD[:], t.CommD)
+	copy(out.CommR[:], t.CommR)
+	copy(out.CommRLast[:], t.CommRLast)
+
+	return out
 }
 
 func (m *Miner) sectorStateLoop(ctx context.Context) {
@@ -66,7 +132,7 @@ func (m *Miner) onSectorIncoming(sector *SectorInfo) {
 		return
 	}
 	if has {
-		log.Warnf("SealSector called more than once for sector %d", sector.SectorID)
+		log.Warnf("SealPiece called more than once for sector %d", sector.SectorID)
 		return
 	}
 
@@ -129,12 +195,36 @@ func (m *Miner) failSector(id uint64, err error) {
 	panic(err) // todo: better error handling strategy
 }
 
-func (m *Miner) SealSector(ctx context.Context, sid uint64) error {
-	log.Infof("Begin sealing sector %d", sid)
+func (m *Miner) SealPiece(ctx context.Context, ref string, size uint64, r io.Reader, dealID uint64) (uint64, error) {
+	log.Infof("Seal piece for deal %d", dealID)
 
+	sid, err := m.sb.AcquireSectorId() // TODO: Put more than one thing in a sector
+	if err != nil {
+		return 0, xerrors.Errorf("acquiring sector ID: %w", err)
+	}
+
+	ppi, err := m.sb.AddPiece(size, sid, r)
+	if err != nil {
+		return 0, xerrors.Errorf("adding piece to sector: %w", err)
+	}
+
+	return sid, m.newSector(ctx, sid, dealID, ref, ppi)
+}
+
+func (m *Miner) newSector(ctx context.Context, sid uint64, dealID uint64, ref string, ppi sectorbuilder.PublicPieceInfo) error {
 	si := &SectorInfo{
 		State:    api.UndefinedSectorState,
 		SectorID: sid,
+
+		Pieces: []Piece{
+			{
+				DealID: dealID,
+				Ref:ref,
+
+				Size:   ppi.Size,
+				CommP:  ppi.CommP[:],
+			},
+		},
 	}
 	select {
 	case m.sectorIncoming <- si:
