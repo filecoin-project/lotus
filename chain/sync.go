@@ -462,6 +462,17 @@ func (syncer *Syncer) ValidateBlock(ctx context.Context, b *types.FullBlock) err
 	}
 
 	if stateroot != h.ParentStateRoot {
+		msgs, err := syncer.store.MessagesForTipset(baseTs)
+		if err != nil {
+			log.Error("failed to load messages for tipset during tipset state mismatch error: ", err)
+		} else {
+			log.Warn("Messages for tipset with mismatching state:")
+			for i, m := range msgs {
+				mm := m.VMMessage()
+				log.Warnf("Message[%d]: from=%s to=%s method=%d params=%x", i, mm.From, mm.To, mm.Method, mm.Params)
+			}
+		}
+
 		return xerrors.Errorf("parent state root did not match computed state (%s != %s)", stateroot, h.ParentStateRoot)
 	}
 

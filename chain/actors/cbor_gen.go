@@ -3,6 +3,7 @@ package actors
 import (
 	"fmt"
 	"io"
+	"sort"
 
 	"github.com/filecoin-project/lotus/chain/address"
 	"github.com/filecoin-project/lotus/chain/types"
@@ -202,23 +203,31 @@ func (t *StorageMinerActorState) MarshalCBOR(w io.Writer) error {
 	}
 
 	// t.t.PreCommittedSectors (map[string]*actors.PreCommittedSector) (map)
-	if err := cbg.CborWriteHeader(w, cbg.MajMap, uint64(len(t.PreCommittedSectors))); err != nil {
-		return err
-	}
-
-	for k, v := range t.PreCommittedSectors {
-
-		if _, err := w.Write(cbg.CborEncodeMajorType(cbg.MajTextString, uint64(len(k)))); err != nil {
-			return err
-		}
-		if _, err := w.Write([]byte(k)); err != nil {
+	{
+		if err := cbg.CborWriteHeader(w, cbg.MajMap, uint64(len(t.PreCommittedSectors))); err != nil {
 			return err
 		}
 
-		if err := v.MarshalCBOR(w); err != nil {
-			return err
+		keys := make([]string, 0, len(t.PreCommittedSectors))
+		for k := range t.PreCommittedSectors {
+			keys = append(keys, k)
 		}
+		sort.Strings(keys)
+		for _, k := range keys {
+			v := t.PreCommittedSectors[k]
 
+			if _, err := w.Write(cbg.CborEncodeMajorType(cbg.MajTextString, uint64(len(k)))); err != nil {
+				return err
+			}
+			if _, err := w.Write([]byte(k)); err != nil {
+				return err
+			}
+
+			if err := v.MarshalCBOR(w); err != nil {
+				return err
+			}
+
+		}
 	}
 
 	// t.t.Sectors (cid.Cid) (struct)
@@ -1902,23 +1911,31 @@ func (t *PaymentChannelActorState) MarshalCBOR(w io.Writer) error {
 	}
 
 	// t.t.LaneStates (map[string]*actors.LaneState) (map)
-	if err := cbg.CborWriteHeader(w, cbg.MajMap, uint64(len(t.LaneStates))); err != nil {
-		return err
-	}
-
-	for k, v := range t.LaneStates {
-
-		if _, err := w.Write(cbg.CborEncodeMajorType(cbg.MajTextString, uint64(len(k)))); err != nil {
-			return err
-		}
-		if _, err := w.Write([]byte(k)); err != nil {
+	{
+		if err := cbg.CborWriteHeader(w, cbg.MajMap, uint64(len(t.LaneStates))); err != nil {
 			return err
 		}
 
-		if err := v.MarshalCBOR(w); err != nil {
-			return err
+		keys := make([]string, 0, len(t.LaneStates))
+		for k := range t.LaneStates {
+			keys = append(keys, k)
 		}
+		sort.Strings(keys)
+		for _, k := range keys {
+			v := t.LaneStates[k]
 
+			if _, err := w.Write(cbg.CborEncodeMajorType(cbg.MajTextString, uint64(len(k)))); err != nil {
+				return err
+			}
+			if _, err := w.Write([]byte(k)); err != nil {
+				return err
+			}
+
+			if err := v.MarshalCBOR(w); err != nil {
+				return err
+			}
+
+		}
 	}
 	return nil
 }

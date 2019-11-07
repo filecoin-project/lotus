@@ -613,6 +613,10 @@ func (sma StorageMarketActor) ComputeDataCommitment(act *types.Actor, vmctx type
 			return nil, aerrors.HandleExternalError(err, "getting deal info failed")
 		}
 
+		if dealInfo.Deal.Proposal.Provider != vmctx.Message().From {
+			return nil, aerrors.New(4, "referenced deal was not from caller")
+		}
+
 		var commP [32]byte
 		copy(commP[:], dealInfo.Deal.Proposal.PieceRef)
 
@@ -624,7 +628,7 @@ func (sma StorageMarketActor) ComputeDataCommitment(act *types.Actor, vmctx type
 
 	commd, err := sectorbuilder.GenerateDataCommitment(params.SectorSize, pieces)
 	if err != nil {
-		return nil, aerrors.Absorb(err, 4, "failed to generate data commitment from pieces")
+		return nil, aerrors.Absorb(err, 5, "failed to generate data commitment from pieces")
 	}
 
 	return commd[:], nil

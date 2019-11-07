@@ -3,6 +3,7 @@ package deals
 import (
 	"bytes"
 	"context"
+
 	"github.com/filecoin-project/lotus/build"
 	"github.com/filecoin-project/lotus/lib/cborutil"
 
@@ -97,6 +98,7 @@ func (c *Client) accepted(ctx context.Context, deal ClientDeal) (func(*ClientDea
 		}
 		if eq {
 			dealIdx = i
+			break
 		}
 	}
 

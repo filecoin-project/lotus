@@ -305,7 +305,7 @@ func (sma StorageMinerActor) ProveCommitSector(act *types.Actor, vmctx types.VMC
 		return nil, aerrors.New(1, "no pre-commitment found for sector")
 	}
 
-	if us.ReceivedEpoch+build.InteractivePoRepDelay > vmctx.BlockHeight() {
+	if us.ReceivedEpoch+build.InteractivePoRepDelay >= vmctx.BlockHeight() {
 		return nil, aerrors.New(2, "too early for proof submission")
 	}
 
@@ -340,7 +340,7 @@ func (sma StorageMinerActor) ProveCommitSector(act *types.Actor, vmctx types.VMC
 	if ok, err := ValidatePoRep(maddr, mi.SectorSize, commD, us.Info.CommR, ticket, params.Proof, seed, params.SectorID); err != nil {
 		return nil, err
 	} else if !ok {
-		return nil, aerrors.Newf(2, "bad proof! (t:%x; s:%x(%d); p:%x)", ticket, seed, us.ReceivedEpoch+build.InteractivePoRepDelay, params.Proof)
+		return nil, aerrors.Newf(2, "porep proof was invalid (t:%x; s:%x(%d); p:%x)", ticket, seed, us.ReceivedEpoch+build.InteractivePoRepDelay, params.Proof)
 	}
 
 	// Note: There must exist a unique index in the miner's sector set for each

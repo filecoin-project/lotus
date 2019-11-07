@@ -73,7 +73,7 @@ require (
 	github.com/polydawn/refmt v0.0.0-20190809202753-05966cbd336a
 	github.com/stretchr/testify v1.4.0
 	github.com/whyrusleeping/bencher v0.0.0-20190829221104-bb6607aa8bba
-	github.com/whyrusleeping/cbor-gen v0.0.0-20191104210213-4418c8842f0f
+	github.com/whyrusleeping/cbor-gen v0.0.0-20191107223350-6fdade89d679
 	github.com/whyrusleeping/multiaddr-filter v0.0.0-20160516205228-e903e4adabd7
 	github.com/whyrusleeping/pubsub v0.0.0-20131020042734-02de8aa2db3d
 	go.opencensus.io v0.22.0
