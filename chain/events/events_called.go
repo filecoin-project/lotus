@@ -24,7 +24,7 @@ type triggerH = uint64
 
 // `ts` is the tipset, in which the `msg` is included.
 // `curH`-`ts.Height` = `confidence`
-type CalledHandler func(msg *types.Message, ts *types.TipSet, curH uint64) (bool, error)
+type CalledHandler func(msg *types.Message, ts *types.TipSet, curH uint64) (more bool, err error)
 
 // CheckFunc is used for atomicity guarantees. If the condition the callbacks
 // wait for has already happened in tipset `ts`
@@ -147,7 +147,11 @@ func (e *calledEvents) checkNewCalls(ts *types.TipSet) {
 
 func (e *calledEvents) queueForConfidence(triggerId uint64, msg *types.Message, ts *types.TipSet) {
 	trigger := e.triggers[triggerId]
-	triggerH := ts.Height() + uint64(trigger.confidence)
+
+	// messages are not applied in the tipset they are included in
+	appliedH := ts.Height() + 1
+
+	triggerH := appliedH + uint64(trigger.confidence)
 
 	byOrigH, ok := e.confQueue[triggerH]
 	if !ok {
@@ -155,13 +159,13 @@ func (e *calledEvents) queueForConfidence(triggerId uint64, msg *types.Message, 
 		e.confQueue[triggerH] = byOrigH
 	}
 
-	byOrigH[ts.Height()] = append(byOrigH[ts.Height()], &queuedEvent{
+	byOrigH[appliedH] = append(byOrigH[appliedH], &queuedEvent{
 		trigger: triggerId,
-		h:       ts.Height(),
+		h:       appliedH,
 		msg:     msg,
 	})
 
-	e.revertQueue[ts.Height()] = append(e.revertQueue[ts.Height()], triggerH) // todo: dedupe?
+	e.revertQueue[appliedH] = append(e.revertQueue[appliedH], triggerH)
 }
 
 func (e *calledEvents) applyWithConfidence(ts *types.TipSet) {
