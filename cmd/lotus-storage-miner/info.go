@@ -38,11 +38,13 @@ var infoCmd = &cli.Command{
 		fmt.Printf("Miner: %s\n", maddr)
 
 		// Sector size
-		size, err := api.StateMinerSectorSize(ctx, maddr, nil)
+		sizeByte, err := api.StateMinerSectorSize(ctx, maddr, nil)
 		if err != nil {
 			return err
 		}
-		fmt.Printf("Sector Size: %dKiB\n", size / 1024)
+
+		size, unit := getSizeAndUnit(sizeByte)
+		fmt.Printf("Sector Size: %g %s\n", size, unit)
 
 		pow, err := api.StateMinerPower(ctx, maddr, nil)
 		if err != nil {
@@ -67,6 +69,18 @@ var infoCmd = &cli.Command{
 		//  * Power
 		return nil
 	},
+}
+
+var Units = []string{"B", "KiB", "MiB", "GiB"}
+
+func getSizeAndUnit(size uint64) (float64, string) {
+	i := 0
+	unitSize := float64(size)
+	for unitSize >= 1024 && i < len(Units) - 1 {
+		unitSize = unitSize / 1024
+		i++
+	}
+	return unitSize, Units[i]
 }
 
 type SectorsInfo struct {
