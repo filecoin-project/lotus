@@ -70,4 +70,24 @@ func TestSealAndVerify(t *testing.T) {
 	if !ok {
 		t.Fatal("proof failed to validate")
 	}
+
+	cSeed := [32]byte{0, 9, 2, 7, 6, 5, 4, 3, 2, 1, 0, 9, 8, 7, 6, 45, 3, 2, 1, 0, 9, 8, 7, 6, 5, 4, 3, 2, 1, 0, 9}
+
+	ssi := sectorbuilder.NewSortedSectorInfo([]sectorbuilder.SectorInfo{{
+		SectorID: sid,
+		CommR:    pco.CommR,
+	}})
+
+	postProof, err := sb.GeneratePoSt(ssi, cSeed, []uint64{})
+	if err != nil {
+		t.Fatalf("%+v", err)
+	}
+
+	ok, err = sectorbuilder.VerifyPost(sb.SectorSize(), ssi, cSeed, postProof, []uint64{})
+	if err != nil {
+		t.Fatalf("%+v", err)
+	}
+	if !ok {
+		t.Fatal("bad post")
+	}
 }
