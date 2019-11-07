@@ -42,7 +42,7 @@ var infoCmd = &cli.Command{
 		if err != nil {
 			return err
 		}
-		fmt.Printf("Sector Size(Byte): %d\n", types.NewInt(size))
+		fmt.Printf("Sector Size: %dKiB\n", size / 1024)
 
 		pow, err := api.StateMinerPower(ctx, maddr, nil)
 		if err != nil {
