@@ -220,6 +220,5 @@ func (c *Client) sealing(ctx context.Context, deal ClientDeal) (func(*ClientDeal
 		return nil, xerrors.Errorf("failed to set up called handler")
 	}
 
-	log.Info("DEAL COMPLETE!!")
 	return nil, nil
 }

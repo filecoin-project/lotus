@@ -24,7 +24,6 @@ import (
 
 	"github.com/filecoin-project/lotus/api"
 	"github.com/filecoin-project/lotus/build"
-	"github.com/filecoin-project/lotus/chain/actors"
 	"github.com/filecoin-project/lotus/chain/address"
 	"github.com/filecoin-project/lotus/chain/deals"
 	"github.com/filecoin-project/lotus/chain/store"
@@ -61,24 +60,14 @@ func (a *API) ClientStartDeal(ctx context.Context, data cid.Cid, miner address.A
 		return nil, xerrors.Errorf("failed to get default address: %w", err)
 	}
 
-	// get miner peerID
-	msg := &types.Message{
-		To:     miner,
-		From:   miner,
-		Method: actors.MAMethods.GetPeerID,
-	}
-
-	r, err := a.StateCall(ctx, msg, nil)
+	pid, err := a.StateMinerPeerID(ctx, miner, nil)
 	if err != nil {
 		return nil, xerrors.Errorf("failed getting peer ID: %w", err)
 	}
-	if r.ExitCode != 0 {
-		return nil, xerrors.Errorf("call to get peer ID for miner failed: exit code %d", r.ExitCode)
-	}
 
-	pid, err := peer.IDFromBytes(r.Return)
+	mw, err := a.StateMinerWorker(ctx, miner, nil)
 	if err != nil {
-		return nil, xerrors.Errorf("parsing peer ID wrong: %w", err)
+		return nil, xerrors.Errorf("failed getting miner worker: %w", err)
 	}
 
 	proposal := deals.ClientDealProposal{
@@ -86,8 +75,9 @@ func (a *API) ClientStartDeal(ctx context.Context, data cid.Cid, miner address.A
 		PricePerEpoch:      epochPrice,
 		ProposalExpiration: math.MaxUint64, // TODO: set something reasonable
 		Duration:           blocksDuration,
-		ProviderAddress:    miner,
 		Client:             self,
+		ProviderAddress:    miner,
+		MinerWorker:        mw,
 		MinerID:            pid,
 	}
 

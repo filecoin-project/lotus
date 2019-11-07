@@ -35,6 +35,7 @@ type ClientDeal struct {
 	Proposal    actors.StorageDealProposal
 	State       api.DealState
 	Miner       peer.ID
+	MinerWorker address.Address
 	DealID      uint64
 
 	PublishMessage *cid.Cid
@@ -178,6 +179,7 @@ type ClientDealProposal struct {
 
 	ProviderAddress address.Address
 	Client          address.Address
+	MinerWorker     address.Address
 	MinerID         peer.ID
 }
 
@@ -256,6 +258,7 @@ func (c *Client) Start(ctx context.Context, p ClientDealProposal) (cid.Cid, erro
 		Proposal:    *dealProposal,
 		State:       api.DealUnknown,
 		Miner:       p.MinerID,
+		MinerWorker: p.MinerWorker,
 
 		s: s,
 	}

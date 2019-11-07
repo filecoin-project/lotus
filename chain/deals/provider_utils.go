@@ -54,9 +54,6 @@ func (p *Provider) readProposal(s inet.Stream) (proposal Proposal, err error) {
 		return proposal, xerrors.Errorf("verifying StorageDealProposal: %w", err)
 	}
 
-	// TODO: Validate proposal maybe
-	// (and signature, obviously)
-
 	if proposal.DealProposal.Provider != p.actor {
 		log.Errorf("proposal with wrong ProviderAddress: %s", proposal.DealProposal.Provider)
 		return proposal, err

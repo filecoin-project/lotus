@@ -77,7 +77,9 @@ func (c *Client) readStorageDealResp(deal ClientDeal) (*Response, error) {
 		return nil, err
 	}
 
-	// TODO: verify signature
+	if err := resp.Verify(deal.MinerWorker); err != nil {
+		return nil, xerrors.Errorf("verifying response signature failed", err)
+	}
 
 	if resp.Response.Proposal != deal.ProposalCid {
 		return nil, xerrors.Errorf("miner responded to a wrong proposal: %s != %s", resp.Response.Proposal, deal.ProposalCid)

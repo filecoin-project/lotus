@@ -5,6 +5,7 @@ import (
 	"github.com/filecoin-project/lotus/chain/actors"
 	"github.com/filecoin-project/lotus/chain/address"
 	"github.com/filecoin-project/lotus/chain/types"
+	"github.com/filecoin-project/lotus/lib/cborrpc"
 	"github.com/ipfs/go-cid"
 )
 
@@ -34,6 +35,15 @@ type SignedResponse struct {
 	Response Response
 
 	Signature *types.Signature
+}
+
+func (r *SignedResponse) Verify(addr address.Address) error {
+	b, err := cborrpc.Dump(&r.Response)
+	if err != nil {
+		return err
+	}
+
+	return r.Signature.Verify(addr, b)
 }
 
 type AskRequest struct {

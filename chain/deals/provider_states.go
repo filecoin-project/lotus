@@ -85,7 +85,6 @@ func (p *Provider) accept(ctx context.Context, deal MinerDeal) (func(*MinerDeal)
 
 	// TODO: check StorageCollateral
 
-	// TODO:
 	minPrice := types.BigDiv(types.BigMul(p.ask.Ask.Price, types.NewInt(deal.Proposal.PieceSize)), types.NewInt(1<<30))
 	if deal.Proposal.StoragePricePerEpoch.LessThan(minPrice) {
 		return nil, xerrors.Errorf("storage price per epoch less than asking price: %s < %s", deal.Proposal.StoragePricePerEpoch, minPrice)
@@ -239,33 +238,12 @@ func (p *Provider) sealing(ctx context.Context, deal MinerDeal) (func(*MinerDeal
 	if err := p.sminer.SealSector(ctx, deal.SectorID); err != nil {
 		return nil, xerrors.Errorf("sealing sector failed: %w", err)
 	}
-	// TODO: Let's not care after this point, for now at least, client can watch the chain
-
-	/*_, err = p.waitSealed(ctx, deal)
-	if err != nil {
-		return nil, err
-	}*/
 
 	return nil, nil
 }
 
 func (p *Provider) complete(ctx context.Context, deal MinerDeal) (func(*MinerDeal), error) {
-	/*mcid, err := p.commt.WaitCommit(ctx, deal.Proposal.Provider, deal.SectorID)
-	if err != nil {
-		log.Warnf("Waiting for sector commitment message: %s", err)
-	}*/
-
-	//panic("fixme")
-
-	/*err = p.sendSignedResponse(&Response{
-		State:    api.DealComplete,
-		Proposal: deal.ProposalCid,
-
-		CommitMessage: &mcid,
-	})
-	if err != nil {
-		log.Warnf("Sending deal response failed: %s", err)
-	}*/
+	// TODO: observe sector lifecycle, status, expiration..
 
 	return nil, nil
 }

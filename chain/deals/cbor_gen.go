@@ -404,7 +404,7 @@ func (t *ClientDealProposal) MarshalCBOR(w io.Writer) error {
 		_, err := w.Write(cbg.CborNull)
 		return err
 	}
-	if _, err := w.Write([]byte{135}); err != nil {
+	if _, err := w.Write([]byte{136}); err != nil {
 		return err
 	}
 
@@ -439,6 +439,11 @@ func (t *ClientDealProposal) MarshalCBOR(w io.Writer) error {
 		return err
 	}
 
+	// t.t.MinerWorker (address.Address) (struct)
+	if err := t.MinerWorker.MarshalCBOR(w); err != nil {
+		return err
+	}
+
 	// t.t.MinerID (peer.ID) (string)
 	if _, err := w.Write(cbg.CborEncodeMajorType(cbg.MajTextString, uint64(len(t.MinerID)))); err != nil {
 		return err
@@ -460,7 +465,7 @@ func (t *ClientDealProposal) UnmarshalCBOR(r io.Reader) error {
 		return fmt.Errorf("cbor input should be of type array")
 	}
 
-	if extra != 7 {
+	if extra != 8 {
 		return fmt.Errorf("cbor input had wrong number of fields")
 	}
 
@@ -523,6 +528,15 @@ func (t *ClientDealProposal) UnmarshalCBOR(r io.Reader) error {
 		}
 
 	}
+	// t.t.MinerWorker (address.Address) (struct)
+
+	{
+
+		if err := t.MinerWorker.UnmarshalCBOR(br); err != nil {
+			return err
+		}
+
+	}
 	// t.t.MinerID (peer.ID) (string)
 
 	{
@@ -541,7 +555,7 @@ func (t *ClientDeal) MarshalCBOR(w io.Writer) error {
 		_, err := w.Write(cbg.CborNull)
 		return err
 	}
-	if _, err := w.Write([]byte{134}); err != nil {
+	if _, err := w.Write([]byte{135}); err != nil {
 		return err
 	}
 
@@ -566,6 +580,11 @@ func (t *ClientDeal) MarshalCBOR(w io.Writer) error {
 		return err
 	}
 	if _, err := w.Write([]byte(t.Miner)); err != nil {
+		return err
+	}
+
+	// t.t.MinerWorker (address.Address) (struct)
+	if err := t.MinerWorker.MarshalCBOR(w); err != nil {
 		return err
 	}
 
@@ -600,7 +619,7 @@ func (t *ClientDeal) UnmarshalCBOR(r io.Reader) error {
 		return fmt.Errorf("cbor input should be of type array")
 	}
 
-	if extra != 6 {
+	if extra != 7 {
 		return fmt.Errorf("cbor input had wrong number of fields")
 	}
 
@@ -644,6 +663,15 @@ func (t *ClientDeal) UnmarshalCBOR(r io.Reader) error {
 		}
 
 		t.Miner = peer.ID(sval)
+	}
+	// t.t.MinerWorker (address.Address) (struct)
+
+	{
+
+		if err := t.MinerWorker.UnmarshalCBOR(br); err != nil {
+			return err
+		}
+
 	}
 	// t.t.DealID (uint64) (uint64)
 
