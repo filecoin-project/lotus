@@ -18,6 +18,10 @@ import (
 
 // TODO: expected sector ID
 func (m *Miner) storeGarbage(ctx context.Context, sectorID uint64, sizes ...uint64) ([]Piece, error) {
+	if len(sizes) == 0 {
+		return nil, nil
+	}
+
 	deals := make([]actors.StorageDeal, len(sizes))
 	for i, size := range sizes {
 		commP, err := sectorbuilder.GeneratePieceCommitment(io.LimitReader(rand.New(rand.NewSource(42)), int64(size)), size)

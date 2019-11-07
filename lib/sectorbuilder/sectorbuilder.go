@@ -182,17 +182,33 @@ func (sb *SectorBuilder) SealPreCommit(sectorID uint64, ticket SealTicket, piece
 		return RawSealPreCommitOutput{}, err
 	}
 
-	return sectorbuilder.StandaloneSealPreCommit(
+	var sum uint64
+	for _, piece := range pieces {
+		sum += piece.Size
+	}
+	ussize := UserBytesForSectorSize(sb.ssize)
+	if sum != ussize {
+		return RawSealPreCommitOutput{}, xerrors.Errorf("aggregated piece sizes don't match sector size: %d != %d (%d)", sum, ussize, int64(ussize - sum))
+	}
+
+	stagedPath := sb.stagedSectorPath(sectorID)
+
+	rspco, err := sectorbuilder.StandaloneSealPreCommit(
 		sb.ssize,
 		PoRepProofPartitions,
 		cacheDir,
-		sb.stagedSectorPath(sectorID),
+		stagedPath,
 		sealedPath,
 		sectorID,
 		addressToProverID(sb.Miner),
 		ticket.TicketBytes,
 		pieces,
 	)
+	if err != nil {
+		return RawSealPreCommitOutput{}, xerrors.Errorf("presealing sector %d (%s): %w", sectorID, stagedPath, err)
+	}
+
+	return rspco, nil
 }
 
 func (sb *SectorBuilder) SealCommit(sectorID uint64, ticket SealTicket, seed SealSeed, pieces []PublicPieceInfo, pieceKeys []string, rspco RawSealPreCommitOutput) (proof []byte, err error) {

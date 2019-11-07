@@ -19,13 +19,13 @@ func (sb *SectorBuilder) stagedSectorPath(sectorID uint64) string {
 }
 
 func (sb *SectorBuilder) stagedSectorFile(sectorID uint64) (*os.File, error) {
-	return os.OpenFile(sb.stagedSectorPath(sectorID), os.O_WRONLY|os.O_CREATE|os.O_APPEND, 0644)
+	return os.OpenFile(sb.stagedSectorPath(sectorID), os.O_RDWR|os.O_CREATE|os.O_APPEND, 0644)
 }
 
 func (sb *SectorBuilder) sealedSectorPath(sectorID uint64) (string, error) {
 	path := filepath.Join(sb.sealedDir, sb.sectorName(sectorID))
 
-	e, err := os.OpenFile(path, os.O_WRONLY|os.O_CREATE, 0644)
+	e, err := os.OpenFile(path, os.O_RDWR|os.O_CREATE, 0644)
 	if err != nil {
 		return "", err
 	}
