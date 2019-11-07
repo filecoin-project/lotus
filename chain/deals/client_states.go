@@ -152,15 +152,41 @@ func (c *Client) sealing(ctx context.Context, deal ClientDeal) (func(*ClientDeal
 		return false, true, nil
 	}
 
-	called := func(msg *types.Message, ts *types.TipSet, curH uint64) (bool, error) {
-		// TODO: handle errors
+	called := func(msg *types.Message, ts *types.TipSet, curH uint64) (more bool, err error) {
+		defer func() {
+			if err != nil {
+				select {
+				case c.updated <- clientDealUpdate{
+					newState: api.DealComplete,
+					id:       deal.ProposalCid,
+					err:      xerrors.Errorf("handling applied event: %w", err),
+				}:
+				case <-c.stop:
+				}
+			}
+		}()
 
 		if msg == nil {
 			log.Error("timed out waiting for deal activation... what now?")
 			return false, nil
 		}
 
-		// TODO: can check msg.Params to see if we should even bother checking the state
+		var params actors.SectorProveCommitInfo
+		if err := params.UnmarshalCBOR(bytes.NewReader(msg.Params)); err != nil {
+			return false, err
+		}
+
+		var found bool
+		for _, dealID := range params.DealIDs {
+			if dealID == deal.DealID {
+				found = true
+				break
+			}
+		}
+
+		if !found {
+			return true, nil
+		}
 
 		sd, err := stmgr.GetStorageDeal(ctx, c.sm, deal.DealID, ts)
 		if err != nil {
@@ -171,7 +197,7 @@ func (c *Client) sealing(ctx context.Context, deal ClientDeal) (func(*ClientDeal
 			return true, nil
 		}
 
-		log.Info("Storage deal %d activated at epoch %d", deal.DealID, sd.ActivationEpoch)
+		log.Infof("Storage deal %d activated at epoch %d", deal.DealID, sd.ActivationEpoch)
 
 		select {
 		case c.updated <- clientDealUpdate{
