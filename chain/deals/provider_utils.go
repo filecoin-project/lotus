@@ -178,7 +178,7 @@ func (m *ProviderRequestValidator) ValidatePush(
 	Selector ipld.Node) error {
 	dealVoucher, ok := voucher.(*StorageDataTransferVoucher)
 	if !ok {
-		return xerrors.Errorf("voucher type %s: %w", voucher.Identifier(), ErrWrongVoucherType)
+		return xerrors.Errorf("voucher type %s: %w", voucher.Type(), ErrWrongVoucherType)
 	}
 
 	var deal MinerDeal
