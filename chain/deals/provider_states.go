@@ -171,13 +171,18 @@ func (p *Provider) accept(ctx context.Context, deal MinerDeal) (func(*MinerDeal)
 	log.Info("fetching data for a deal")
 	mcid := smsg.Cid()
 	err = p.sendSignedResponse(&Response{
-		State:          api.DealAccepted,
-		Message:        "",
+		State: api.DealAccepted,
+
 		Proposal:       deal.ProposalCid,
 		PublishMessage: &mcid,
+		StorageDeal:    &storageDeal,
 	})
 	if err != nil {
 		return nil, err
+	}
+
+	if err := p.disconnect(deal); err != nil {
+		log.Warnf("closing client connection: %+v", err)
 	}
 
 	return func(deal *MinerDeal) {
@@ -188,14 +193,6 @@ func (p *Provider) accept(ctx context.Context, deal MinerDeal) (func(*MinerDeal)
 // STAGED
 
 func (p *Provider) staged(ctx context.Context, deal MinerDeal) (func(*MinerDeal), error) {
-	err := p.sendSignedResponse(&Response{
-		State:    api.DealStaged,
-		Proposal: deal.ProposalCid,
-	})
-	if err != nil {
-		log.Warnf("Sending deal response failed: %s", err)
-	}
-
 	root, err := p.dag.Get(ctx, deal.Ref)
 	if err != nil {
 		return nil, xerrors.Errorf("failed to get file root for deal: %s", err)
@@ -238,15 +235,6 @@ func (p *Provider) staged(ctx context.Context, deal MinerDeal) (func(*MinerDeal)
 // SEALING
 
 func (p *Provider) sealing(ctx context.Context, deal MinerDeal) (func(*MinerDeal), error) {
-	err := p.sendSignedResponse(&Response{
-		State:    api.DealSealing,
-		Proposal: deal.ProposalCid,
-		// TODO: Send sector ID
-	})
-	if err != nil {
-		log.Warnf("Sending deal response failed: %s", err)
-	}
-
 	log.Info("About to seal sector!", deal.ProposalCid, deal.SectorID)
 	if err := p.sminer.SealSector(ctx, deal.SectorID); err != nil {
 		return nil, xerrors.Errorf("sealing sector failed: %w", err)

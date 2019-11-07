@@ -41,6 +41,9 @@ func (c *Client) new(ctx context.Context, deal ClientDeal) error {
 	if err != nil {
 		return err
 	}
+	if err := c.disconnect(deal); err != nil {
+		return err
+	}
 
 	if resp.State != api.DealAccepted {
 		return xerrors.Errorf("deal wasn't accepted (State=%d)", resp.State)
@@ -102,40 +105,12 @@ func (c *Client) accepted(ctx context.Context, deal ClientDeal) error {
 }
 
 func (c *Client) staged(ctx context.Context, deal ClientDeal) error {
-	/* miner seals our data, hopefully */
-
-	resp, err := c.readStorageDealResp(deal)
-	if err != nil {
-		return err
-	}
-
-	if resp.State != api.DealSealing {
-		return xerrors.Errorf("deal wasn't sealed (State=%d)", resp.State)
-	}
-
-	log.Info("DEAL SEALED!")
-
-	// TODO: want?
-	/*ssize, err := stmgr.GetMinerSectorSize(ctx, c.sm, nil, deal.Proposal.MinerAddress)
-	if err != nil {
-		return xerrors.Errorf("failed to get miner sector size: %w", err)
-	}
-
-	ok, err := sectorbuilder.VerifyPieceInclusionProof(ssize, deal.Proposal.Size, deal.Proposal.CommP, resp.CommD, resp.PieceInclusionProof.ProofElements)
-	if err != nil {
-		return xerrors.Errorf("verifying piece inclusion proof in staged deal %s: %w", deal.ProposalCid, err)
-	}
-	if !ok {
-		return xerrors.Errorf("verifying piece inclusion proof in staged deal %s failed", deal.ProposalCid)
-	}*/
+	// wait
 
 	return nil
 }
 
 func (c *Client) sealing(ctx context.Context, deal ClientDeal) error {
-
-	// TODO: disconnect
-
 	checkFunc := func(ts *types.TipSet) (done bool, more bool, err error) {
 		sd, err := stmgr.GetStorageDeal(ctx, c.sm, deal.DealID, ts)
 		if err != nil {

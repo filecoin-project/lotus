@@ -27,9 +27,6 @@ type Response struct {
 	// DealAccepted
 	StorageDeal    *actors.StorageDeal
 	PublishMessage *cid.Cid
-
-	// DealComplete
-	CommitMessage *cid.Cid
 }
 
 // TODO: Do we actually need this to be signed?

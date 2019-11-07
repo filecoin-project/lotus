@@ -85,3 +85,14 @@ func (c *Client) readStorageDealResp(deal ClientDeal) (*Response, error) {
 
 	return &resp.Response, nil
 }
+
+func (c *Client) disconnect(deal ClientDeal) error {
+	s, ok := c.conns[deal.ProposalCid]
+	if !ok {
+		return nil
+	}
+
+	err := s.Close()
+	delete(c.conns, deal.ProposalCid)
+	return err
+}

@@ -100,6 +100,17 @@ func (p *Provider) sendSignedResponse(resp *Response) error {
 	return err
 }
 
+func (p *Provider) disconnect(deal MinerDeal) error {
+	s, ok := p.conns[deal.ProposalCid]
+	if !ok {
+		return nil
+	}
+
+	err := s.Close()
+	delete(p.conns, deal.ProposalCid)
+	return err
+}
+
 func (p *Provider) getWorker(miner address.Address) (address.Address, error) {
 	getworker := &types.Message{
 		To:     miner,
