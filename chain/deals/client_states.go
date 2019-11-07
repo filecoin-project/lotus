@@ -8,6 +8,7 @@ import (
 	"github.com/filecoin-project/lotus/api"
 	"github.com/filecoin-project/lotus/chain/actors"
 	"github.com/filecoin-project/lotus/chain/stmgr"
+	"github.com/filecoin-project/lotus/chain/types"
 )
 
 type clientHandlerFunc func(ctx context.Context, deal ClientDeal) error
@@ -126,6 +127,51 @@ func (c *Client) staged(ctx context.Context, deal ClientDeal) error {
 }
 
 func (c *Client) sealing(ctx context.Context, deal ClientDeal) error {
+	//func (e *calledEvents) Called(check CheckFunc, hnd CalledHandler, rev RevertHandler, confidence int, timeout uint64, actor address.Address, method uint64) error {
+	checkFunc := func(ts *types.TipSet) (done bool, more bool, err error) {
+		sd, err := stmgr.GetStorageDeal(ctx, c.stmgr, deal.DealID, ts)
+		if err != nil {
+			return false, false, xerrors.Errorf("failed to look up deal on chain: %w", err)
+		}
+
+		if sd.ActivationEpoch > 0 {
+			// Deal is active already!
+			panic("handle me")
+			return true, false, nil
+		}
+
+		return false, true, nil
+	}
+
+	called := func(msg *types.Message, ts *types.TipSet, curH uint64) (bool, error) {
+		// To ask Magik: Does this trigger when the message in question is part of the parent state execution? Or just when its included in the block (aka, not executed)
+		// main thing i want to ensure is that ts.ParentState is the result of the execution of msg
+
+		if msg == nil {
+			log.Error("timed out waiting for deal activation... what now?")
+			return false, nil
+		}
+
+		// TODO: can check msg.Params to see if we should even bother checking the state
+
+		sd, err := stmgr.GetStorageDeal(ctx, c.stmgr, deal.DealID, ts)
+		if err != nil {
+			return false, false, xerrors.Errorf("failed to look up deal on chain: %w", err)
+		}
+
+		if sd.ActivationEpoch == 0 {
+			return true, nil
+		}
+
+		// Deal is active!
+		panic("handle me")
+
+		return false, nil
+	}
+
+	if err := c.events.Called(checkFunc, handler, rev, 3, 100, actors.StorageMarketAddress, actors.SMAMethods.ActivateStorageDeals); err != nil {
+		return xerrors.Errorf("failed to set up called handler")
+	}
 	resp, err := c.readStorageDealResp(deal)
 	if err != nil {
 		return err

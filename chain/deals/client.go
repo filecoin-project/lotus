@@ -18,6 +18,7 @@ import (
 	"github.com/filecoin-project/lotus/api"
 	"github.com/filecoin-project/lotus/chain/actors"
 	"github.com/filecoin-project/lotus/chain/address"
+	"github.com/filecoin-project/lotus/chain/events"
 	"github.com/filecoin-project/lotus/chain/stmgr"
 	"github.com/filecoin-project/lotus/chain/store"
 	"github.com/filecoin-project/lotus/chain/types"
@@ -34,6 +35,7 @@ type ClientDeal struct {
 	Proposal    actors.StorageDealProposal
 	State       api.DealState
 	Miner       peer.ID
+	DealID      uint64
 
 	s inet.Stream
 }
@@ -46,6 +48,7 @@ type Client struct {
 	dag       dtypes.ClientDAG
 	discovery *discovery.Local
 	mpool     full.MpoolAPI
+	events    *events.Events
 
 	deals *statestore.StateStore
 	conns map[cid.Cid]inet.Stream

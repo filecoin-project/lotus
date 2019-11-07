@@ -193,6 +193,26 @@ func GetMinerSectorSize(ctx context.Context, sm *StateManager, ts *types.TipSet,
 	return minfo.SectorSize, nil
 }
 
+func GetStorageDeal(ctx context.Context, sm *StateManager, dealId uint64, ts *types.TipSet) (*actors.OnChainDeal, error) {
+	var state actors.StorageMarketState
+	if _, err := sm.LoadActorState(ctx, actors.StorageMarketAddress, &state, ts); err != nil {
+		return nil, err
+	}
+
+	blks := amt.WrapBlockstore(sm.ChainStore().Blockstore())
+	da, err := amt.LoadAMT(blks, state.Deals)
+	if err != nil {
+		return nil, err
+	}
+
+	var ocd actors.OnChainDeal
+	if err := da.Get(dealId, &ocd); err != nil {
+		return nil, err
+	}
+
+	return &ocd, nil
+}
+
 func LoadSectorsFromSet(ctx context.Context, bs blockstore.Blockstore, ssc cid.Cid) ([]*api.SectorInfo, error) {
 	blks := amt.WrapBlockstore(bs)
 	a, err := amt.LoadAMT(blks, ssc)

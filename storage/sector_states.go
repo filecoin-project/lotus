@@ -2,6 +2,7 @@ package storage
 
 import (
 	"context"
+
 	"github.com/filecoin-project/lotus/build"
 	"github.com/filecoin-project/lotus/chain/actors"
 	"github.com/filecoin-project/lotus/chain/types"
@@ -113,6 +114,7 @@ func (m *Miner) preCommit(ctx context.Context, sector SectorInfo) (func(*SectorI
 
 func (m *Miner) preCommitted(ctx context.Context, sector SectorInfo) (func(*SectorInfo), error) {
 	// would be ideal to just use the events.Called handler, but it wouldnt be able to handle individual message timeouts
+	log.Info("Sector precommitted: ", sector.SectorID)
 	mw, err := m.api.StateWaitMsg(ctx, *sector.PreCommitMessage)
 	if err != nil {
 		return nil, err
@@ -122,6 +124,7 @@ func (m *Miner) preCommitted(ctx context.Context, sector SectorInfo) (func(*Sect
 		log.Error("sector precommit failed: ", mw.Receipt.ExitCode)
 		return nil, err
 	}
+	log.Info("precommit message landed on chain: ", sector.SectorID)
 
 	randHeight := mw.TipSet.Height() + build.InteractivePoRepDelay - 1 // -1 because of how the messages are applied
 	log.Infof("precommit for sector %d made it on chain, will start proof computation at height %d", sector.SectorID, randHeight)

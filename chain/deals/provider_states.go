@@ -247,6 +247,7 @@ func (p *Provider) sealing(ctx context.Context, deal MinerDeal) (func(*MinerDeal
 		log.Warnf("Sending deal response failed: %s", err)
 	}
 
+	log.Info("About to seal sector!", deal.ProposalCid, deal.SectorID)
 	if err := p.sminer.SealSector(ctx, deal.SectorID); err != nil {
 		return nil, xerrors.Errorf("sealing sector failed: %w", err)
 	}
