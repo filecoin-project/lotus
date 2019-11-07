@@ -6,13 +6,13 @@ import (
 	"github.com/ipfs/go-datastore"
 
 	"github.com/filecoin-project/lotus/chain/types"
-	"github.com/filecoin-project/lotus/lib/cborrpc"
+	"github.com/filecoin-project/lotus/lib/cborutil"
 )
 
 func TestList(t *testing.T) {
 	ds := datastore.NewMapDatastore()
 
-	e, err := cborrpc.Dump(types.NewInt(7))
+	e, err := cborutil.Dump(types.NewInt(7))
 	if err != nil {
 		t.Fatal(err)
 	}

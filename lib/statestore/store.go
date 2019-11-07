@@ -10,7 +10,7 @@ import (
 	cbg "github.com/whyrusleeping/cbor-gen"
 	"golang.org/x/xerrors"
 
-	"github.com/filecoin-project/lotus/lib/cborrpc"
+	"github.com/filecoin-project/lotus/lib/cborutil"
 )
 
 type StateStore struct {
@@ -42,7 +42,7 @@ func (st *StateStore) Begin(i interface{}, state interface{}) error {
 		return xerrors.Errorf("Already tracking state for %s", i)
 	}
 
-	b, err := cborrpc.Dump(state)
+	b, err := cborutil.Dump(state)
 	if err != nil {
 		return err
 	}
@@ -68,7 +68,7 @@ func cborMutator(mutator interface{}) func([]byte) ([]byte, error) {
 	return func(in []byte) ([]byte, error) {
 		state := reflect.New(rmut.Type().In(0).Elem())
 
-		err := cborrpc.ReadCborRPC(bytes.NewReader(in), state.Interface())
+		err := cborutil.ReadCborRPC(bytes.NewReader(in), state.Interface())
 		if err != nil {
 			return nil, err
 		}
@@ -79,7 +79,7 @@ func cborMutator(mutator interface{}) func([]byte) ([]byte, error) {
 			return nil, err.(error)
 		}
 
-		return cborrpc.Dump(state.Interface())
+		return cborutil.Dump(state.Interface())
 	}
 }
 
@@ -145,7 +145,7 @@ func (st *StateStore) List(out interface{}) error {
 		}
 
 		elem := reflect.New(outT)
-		err := cborrpc.ReadCborRPC(bytes.NewReader(res.Value), elem.Interface())
+		err := cborutil.ReadCborRPC(bytes.NewReader(res.Value), elem.Interface())
 		if err != nil {
 			return err
 		}

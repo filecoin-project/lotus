@@ -1,4 +1,4 @@
-package cborrpc
+package cborutil
 
 import (
 	"bytes"

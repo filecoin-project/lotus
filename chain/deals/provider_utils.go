@@ -8,7 +8,7 @@ import (
 	"github.com/filecoin-project/lotus/chain/actors"
 	"github.com/filecoin-project/lotus/chain/address"
 	"github.com/filecoin-project/lotus/chain/types"
-	"github.com/filecoin-project/lotus/lib/cborrpc"
+	"github.com/filecoin-project/lotus/lib/cborutil"
 
 	"github.com/ipfs/go-cid"
 	inet "github.com/libp2p/go-libp2p-core/network"
@@ -45,7 +45,7 @@ func (p *Provider) failDeal(id cid.Cid, cerr error) {
 }
 
 func (p *Provider) readProposal(s inet.Stream) (proposal Proposal, err error) {
-	if err := cborrpc.ReadCborRPC(s, &proposal); err != nil {
+	if err := cborutil.ReadCborRPC(s, &proposal); err != nil {
 		log.Errorw("failed to read proposal message", "error", err)
 		return proposal, err
 	}
@@ -68,7 +68,7 @@ func (p *Provider) sendSignedResponse(resp *Response) error {
 		return xerrors.New("couldn't send response: not connected")
 	}
 
-	msg, err := cborrpc.Dump(resp)
+	msg, err := cborutil.Dump(resp)
 	if err != nil {
 		return xerrors.Errorf("serializing response: %w", err)
 	}
@@ -88,7 +88,7 @@ func (p *Provider) sendSignedResponse(resp *Response) error {
 		Signature: sig,
 	}
 
-	err = cborrpc.WriteCborRPC(s, signedResponse)
+	err = cborutil.WriteCborRPC(s, signedResponse)
 	if err != nil {
 		// Assume client disconnected
 		s.Close()

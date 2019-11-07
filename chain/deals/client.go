@@ -23,7 +23,7 @@ import (
 	"github.com/filecoin-project/lotus/chain/store"
 	"github.com/filecoin-project/lotus/chain/types"
 	"github.com/filecoin-project/lotus/chain/wallet"
-	"github.com/filecoin-project/lotus/lib/cborrpc"
+	"github.com/filecoin-project/lotus/lib/cborutil"
 	"github.com/filecoin-project/lotus/node/modules/dtypes"
 	"github.com/filecoin-project/lotus/retrieval/discovery"
 )
@@ -233,7 +233,7 @@ func (c *Client) Start(ctx context.Context, p ClientDealProposal) (cid.Cid, erro
 		return cid.Undef, xerrors.Errorf("signing deal proposal failed: %w", err)
 	}
 
-	proposalNd, err := cborrpc.AsIpld(dealProposal)
+	proposalNd, err := cborutil.AsIpld(dealProposal)
 	if err != nil {
 		return cid.Undef, xerrors.Errorf("getting proposal node failed: %w", err)
 	}
@@ -248,7 +248,7 @@ func (c *Client) Start(ctx context.Context, p ClientDealProposal) (cid.Cid, erro
 		Piece:        p.Data,
 	}
 
-	if err := cborrpc.WriteCborRPC(s, proposal); err != nil {
+	if err := cborutil.WriteCborRPC(s, proposal); err != nil {
 		s.Reset()
 		return cid.Undef, xerrors.Errorf("sending proposal to storage provider failed: %w", err)
 	}
@@ -280,12 +280,12 @@ func (c *Client) QueryAsk(ctx context.Context, p peer.ID, a address.Address) (*t
 	req := &AskRequest{
 		Miner: a,
 	}
-	if err := cborrpc.WriteCborRPC(s, req); err != nil {
+	if err := cborutil.WriteCborRPC(s, req); err != nil {
 		return nil, xerrors.Errorf("failed to send ask request: %w", err)
 	}
 
 	var out AskResponse
-	if err := cborrpc.ReadCborRPC(s, &out); err != nil {
+	if err := cborutil.ReadCborRPC(s, &out); err != nil {
 		return nil, xerrors.Errorf("failed to read ask response: %w", err)
 	}
 

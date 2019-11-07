@@ -4,7 +4,7 @@ import (
 	"bytes"
 	"context"
 	"github.com/filecoin-project/lotus/build"
-	"github.com/filecoin-project/lotus/lib/cborrpc"
+	"github.com/filecoin-project/lotus/lib/cborutil"
 
 	"golang.org/x/xerrors"
 
@@ -91,7 +91,7 @@ func (c *Client) accepted(ctx context.Context, deal ClientDeal) (func(*ClientDea
 	dealIdx := -1
 	for i, storageDeal := range params.Deals {
 		// TODO: make it less hacky
-		eq, err := cborrpc.Equals(&deal.Proposal, &storageDeal.Proposal)
+		eq, err := cborutil.Equals(&deal.Proposal, &storageDeal.Proposal)
 		if err != nil {
 			return nil, err
 		}

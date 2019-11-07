@@ -19,7 +19,7 @@ import (
 	"golang.org/x/xerrors"
 
 	"github.com/filecoin-project/lotus/api"
-	"github.com/filecoin-project/lotus/lib/cborrpc"
+	"github.com/filecoin-project/lotus/lib/cborutil"
 	"github.com/filecoin-project/lotus/lib/padreader"
 	"github.com/filecoin-project/lotus/lib/sectorbuilder"
 	"github.com/filecoin-project/lotus/node/modules/dtypes"
@@ -98,7 +98,7 @@ func (st *SectorBlocks) writeRef(cid cid.Cid, pieceRef string, offset uint64, si
 
 	var refs api.SealedRefs
 	if len(v) > 0 {
-		if err := cborrpc.ReadCborRPC(bytes.NewReader(v), &refs); err != nil {
+		if err := cborutil.ReadCborRPC(bytes.NewReader(v), &refs); err != nil {
 			return xerrors.Errorf("decoding existing refs: %w", err)
 		}
 	}
@@ -109,7 +109,7 @@ func (st *SectorBlocks) writeRef(cid cid.Cid, pieceRef string, offset uint64, si
 		Size:   size,
 	})
 
-	newRef, err := cborrpc.Dump(&refs)
+	newRef, err := cborutil.Dump(&refs)
 	if err != nil {
 		return xerrors.Errorf("serializing refs: %w", err)
 	}
@@ -197,7 +197,7 @@ func (st *SectorBlocks) List() (map[cid.Cid][]api.SealedRef, error) {
 		}
 
 		var refs api.SealedRefs
-		if err := cborrpc.ReadCborRPC(bytes.NewReader(ent.Value), &refs); err != nil {
+		if err := cborutil.ReadCborRPC(bytes.NewReader(ent.Value), &refs); err != nil {
 			return nil, err
 		}
 
@@ -217,7 +217,7 @@ func (st *SectorBlocks) GetRefs(k cid.Cid) ([]api.SealedRef, error) { // TODO: t
 	}
 
 	var refs api.SealedRefs
-	if err := cborrpc.ReadCborRPC(bytes.NewReader(ent), &refs); err != nil {
+	if err := cborutil.ReadCborRPC(bytes.NewReader(ent), &refs); err != nil {
 		return nil, err
 	}
 

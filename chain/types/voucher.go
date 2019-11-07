@@ -5,7 +5,7 @@ import (
 	"encoding/base64"
 
 	"github.com/filecoin-project/lotus/chain/address"
-	cborrpc "github.com/filecoin-project/lotus/lib/cborrpc"
+	cborrpc "github.com/filecoin-project/lotus/lib/cborutil"
 	cbor "github.com/ipfs/go-ipld-cbor"
 )
 

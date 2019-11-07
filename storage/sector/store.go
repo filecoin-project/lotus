@@ -14,7 +14,7 @@ import (
 	"sync"
 
 	"github.com/filecoin-project/lotus/api"
-	"github.com/filecoin-project/lotus/lib/cborrpc"
+	"github.com/filecoin-project/lotus/lib/cborutil"
 	"github.com/filecoin-project/lotus/lib/sectorbuilder"
 	"github.com/filecoin-project/lotus/node/modules/dtypes"
 )
@@ -71,7 +71,7 @@ func (s *Store) AddPiece(ref string, size uint64, r io.Reader, dealIDs ...uint64
 	var deals DealMapping
 	switch err {
 	case nil:
-		if err := cborrpc.ReadCborRPC(bytes.NewReader(e), &deals); err != nil {
+		if err := cborutil.ReadCborRPC(bytes.NewReader(e), &deals); err != nil {
 			return 0, err
 		}
 		if deals.Committed {
@@ -82,7 +82,7 @@ func (s *Store) AddPiece(ref string, size uint64, r io.Reader, dealIDs ...uint64
 		deals.DealIDs = append(deals.DealIDs, dealIDs...)
 		deals.Allocated += size
 
-		d, err := cborrpc.Dump(&deals)
+		d, err := cborutil.Dump(&deals)
 		if err != nil {
 			return 0, err
 		}
@@ -106,7 +106,7 @@ func (s *Store) PieceSizesToFill(sectorID uint64) ([]uint64, error) {
 		return nil, err
 	}
 	var info DealMapping
-	if err := cborrpc.ReadCborRPC(bytes.NewReader(e), &info); err != nil {
+	if err := cborutil.ReadCborRPC(bytes.NewReader(e), &info); err != nil {
 		return nil, err
 	}
 	if info.Allocated > s.sb.SectorSize() {
@@ -139,7 +139,7 @@ func (s *Store) DealsForCommit(sectorID uint64, commit bool) ([]uint64, error) {
 	switch err {
 	case nil:
 		var deals DealMapping
-		if err := cborrpc.ReadCborRPC(bytes.NewReader(e), &deals); err != nil {
+		if err := cborutil.ReadCborRPC(bytes.NewReader(e), &deals); err != nil {
 			return nil, err
 		}
 		if !commit {
@@ -151,7 +151,7 @@ func (s *Store) DealsForCommit(sectorID uint64, commit bool) ([]uint64, error) {
 		}
 
 		deals.Committed = true
-		d, err := cborrpc.Dump(&deals)
+		d, err := cborutil.Dump(&deals)
 		if err != nil {
 			return nil, err
 		}

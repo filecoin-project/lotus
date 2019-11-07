@@ -15,7 +15,7 @@ import (
 	"github.com/filecoin-project/lotus/chain/actors"
 	"github.com/filecoin-project/lotus/chain/address"
 	"github.com/filecoin-project/lotus/chain/types"
-	"github.com/filecoin-project/lotus/lib/cborrpc"
+	"github.com/filecoin-project/lotus/lib/cborutil"
 	"github.com/filecoin-project/lotus/lib/statestore"
 	"github.com/filecoin-project/lotus/node/modules/dtypes"
 	"github.com/filecoin-project/lotus/storage"
@@ -193,7 +193,7 @@ func (p *Provider) onUpdated(ctx context.Context, update minerDealUpdate) {
 }
 
 func (p *Provider) newDeal(s inet.Stream, proposal Proposal) (MinerDeal, error) {
-	proposalNd, err := cborrpc.AsIpld(proposal.DealProposal)
+	proposalNd, err := cborutil.AsIpld(proposal.DealProposal)
 	if err != nil {
 		return MinerDeal{}, err
 	}

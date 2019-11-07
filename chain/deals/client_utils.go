@@ -9,7 +9,7 @@ import (
 	unixfile "github.com/ipfs/go-unixfs/file"
 	"golang.org/x/xerrors"
 
-	"github.com/filecoin-project/lotus/lib/cborrpc"
+	"github.com/filecoin-project/lotus/lib/cborutil"
 	"github.com/filecoin-project/lotus/lib/padreader"
 	"github.com/filecoin-project/lotus/lib/sectorbuilder"
 )
@@ -72,7 +72,7 @@ func (c *Client) readStorageDealResp(deal ClientDeal) (*Response, error) {
 	}
 
 	var resp SignedResponse
-	if err := cborrpc.ReadCborRPC(s, &resp); err != nil {
+	if err := cborutil.ReadCborRPC(s, &resp); err != nil {
 		log.Errorw("failed to read Response message", "error", err)
 		return nil, err
 	}
