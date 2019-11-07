@@ -124,7 +124,7 @@ func TestDataTransferOneWay(t *testing.T) {
 
 		voucher := fakeDTType{"applesauce"}
 		baseCid := testutil.GenerateCids(1)[0]
-		channelID, err := dt.OpenPushDataChannel(context.Background(), host2.ID(), &voucher, baseCid, stor)
+		channelID, err := dt.OpenPushDataChannel(ctx, host2.ID(), &voucher, baseCid, stor)
 		require.NoError(t, err)
 		require.NotNil(t, channelID)
 		require.Equal(t, channelID.To, host2.ID())
@@ -169,7 +169,7 @@ func TestDataTransferOneWay(t *testing.T) {
 
 		voucher := fakeDTType{"applesauce"}
 		baseCid := testutil.GenerateCids(1)[0]
-		channelID, err := dt.OpenPullDataChannel(context.Background(), host2.ID(), &voucher, baseCid, stor)
+		channelID, err := dt.OpenPullDataChannel(ctx, host2.ID(), &voucher, baseCid, stor)
 		require.NoError(t, err)
 		require.NotNil(t, channelID)
 		require.Equal(t, channelID.To, host2.ID())
@@ -283,7 +283,7 @@ func TestDataTransferValidation(t *testing.T) {
 
 		voucher := fakeDTType{"applesauce"}
 		baseCid := testutil.GenerateCids(1)[0]
-		channelID, err := dt1.OpenPushDataChannel(context.Background(), host2.ID(), &voucher, baseCid, stor)
+		channelID, err := dt1.OpenPushDataChannel(ctx, host2.ID(), &voucher, baseCid, stor)
 		require.NoError(t, err)
 
 		assert.Equal(t, channelID.To, host2.ID())
@@ -313,7 +313,7 @@ func TestDataTransferValidation(t *testing.T) {
 
 		voucher := fakeDTType{"applesauce"}
 		baseCid := testutil.GenerateCids(1)[0]
-		channelID, err := dt1.OpenPullDataChannel(context.Background(), host2.ID(), &voucher, baseCid, stor)
+		channelID, err := dt1.OpenPullDataChannel(ctx, host2.ID(), &voucher, baseCid, stor)
 		require.NoError(t, err)
 
 		assert.Equal(t, channelID.To, host2.ID())
