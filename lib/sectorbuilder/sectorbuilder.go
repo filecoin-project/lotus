@@ -124,7 +124,7 @@ func (sb *SectorBuilder) AcquireSectorId() (uint64, error) {
 	return sectorbuilder.AcquireSectorId(sb.handle)
 }
 
-func (sb *SectorBuilder) AddPiece(pieceSize uint64, sectorId uint64, file io.Reader) (PublicPieceInfo, error) {
+func (sb *SectorBuilder) AddPiece(pieceSize uint64, sectorId uint64, file io.Reader, existingPieceSizes []uint64) (PublicPieceInfo, error) {
 	f, werr, err := toReadableFile(file, int64(pieceSize))
 	if err != nil {
 		return PublicPieceInfo{}, err
@@ -138,13 +138,13 @@ func (sb *SectorBuilder) AddPiece(pieceSize uint64, sectorId uint64, file io.Rea
 		return PublicPieceInfo{}, err
 	}
 
-	writeUnpadded, commP, err := sectorbuilder.StandaloneWriteWithoutAlignment(f, pieceSize, stagedFile)
+	_, _, commP, err := sectorbuilder.StandaloneWriteWithAlignment(f, pieceSize, stagedFile, existingPieceSizes)
 	if err != nil {
 		return PublicPieceInfo{}, err
 	}
-	if writeUnpadded != pieceSize {
+	/*if writeUnpadded != pieceSize {
 		return PublicPieceInfo{}, xerrors.Errorf("writeUnpadded != pieceSize: %d != %d", writeUnpadded, pieceSize)
-	}
+	}*/
 
 	if err := stagedFile.Close(); err != nil {
 		return PublicPieceInfo{}, err
@@ -188,7 +188,7 @@ func (sb *SectorBuilder) SealPreCommit(sectorID uint64, ticket SealTicket, piece
 	}
 	ussize := UserBytesForSectorSize(sb.ssize)
 	if sum != ussize {
-		return RawSealPreCommitOutput{}, xerrors.Errorf("aggregated piece sizes don't match sector size: %d != %d (%d)", sum, ussize, int64(ussize - sum))
+		return RawSealPreCommitOutput{}, xerrors.Errorf("aggregated piece sizes don't match sector size: %d != %d (%d)", sum, ussize, int64(ussize-sum))
 	}
 
 	stagedPath := sb.stagedSectorPath(sectorID)

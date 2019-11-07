@@ -37,7 +37,7 @@ func TestSealAndVerify(t *testing.T) {
 	}
 
 	r := io.LimitReader(rand.New(rand.NewSource(42)), int64(dlen))
-	ppi, err := sb.AddPiece(dlen, sid, r)
+	ppi, err := sb.AddPiece(dlen, sid, r, []uint64{})
 	if err != nil {
 		t.Fatalf("%+v", err)
 	}

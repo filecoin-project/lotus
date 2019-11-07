@@ -36,7 +36,7 @@ func TestDealFlow(t *testing.T, b APIBuilder) {
 	}
 	time.Sleep(time.Second)
 
-	r := io.LimitReader(rand.New(rand.NewSource(17)), 9000000)
+	r := io.LimitReader(rand.New(rand.NewSource(17)), 1000)
 	fcid, err := client.ClientImportLocal(ctx, r)
 	if err != nil {
 		t.Fatal(err)

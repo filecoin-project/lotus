@@ -95,6 +95,14 @@ func (t *SectorInfo) refs() []string {
 	return out
 }
 
+func (t *SectorInfo) existingPieces() []uint64 {
+	out := make([]uint64, len(t.Pieces))
+	for i, piece := range t.Pieces {
+		out[i] = piece.Size
+	}
+	return out
+}
+
 func (t *SectorInfo) rspco() sectorbuilder.RawSealPreCommitOutput {
 	var out sectorbuilder.RawSealPreCommitOutput
 
@@ -203,7 +211,7 @@ func (m *Miner) SealPiece(ctx context.Context, ref string, size uint64, r io.Rea
 		return 0, xerrors.Errorf("acquiring sector ID: %w", err)
 	}
 
-	ppi, err := m.sb.AddPiece(size, sid, r)
+	ppi, err := m.sb.AddPiece(size, sid, r, []uint64{})
 	if err != nil {
 		return 0, xerrors.Errorf("adding piece to sector: %w", err)
 	}

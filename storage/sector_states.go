@@ -58,7 +58,7 @@ func (m *Miner) finishPacking(ctx context.Context, sector SectorInfo) (func(*Sec
 		log.Warnf("Creating %d filler pieces for sector %d", len(fillerSizes), sector.SectorID)
 	}
 
-	pieces, err := m.storeGarbage(ctx, sector.SectorID, fillerSizes...)
+	pieces, err := m.storeGarbage(ctx, sector.SectorID, sector.existingPieces(), fillerSizes...)
 	if err != nil {
 		return nil, xerrors.Errorf("filling up the sector (%v): %w", fillerSizes, err)
 	}

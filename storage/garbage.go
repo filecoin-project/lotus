@@ -16,8 +16,7 @@ import (
 	"github.com/filecoin-project/lotus/lib/sectorbuilder"
 )
 
-// TODO: expected sector ID
-func (m *Miner) storeGarbage(ctx context.Context, sectorID uint64, sizes ...uint64) ([]Piece, error) {
+func (m *Miner) storeGarbage(ctx context.Context, sectorID uint64, existingPieceSizes []uint64, sizes ...uint64) ([]Piece, error) {
 	if len(sizes) == 0 {
 		return nil, nil
 	}
@@ -95,10 +94,12 @@ func (m *Miner) storeGarbage(ctx context.Context, sectorID uint64, sizes ...uint
 
 	for i, size := range sizes {
 		name := fmt.Sprintf("fake-file-%d", rand.Intn(100000000))
-		ppi, err := m.sb.AddPiece(size, sectorID, io.LimitReader(rand.New(rand.NewSource(42)), int64(size)))
+		ppi, err := m.sb.AddPiece(size, sectorID, io.LimitReader(rand.New(rand.NewSource(42)), int64(size)), existingPieceSizes)
 		if err != nil {
 			return nil, err
 		}
+
+		existingPieceSizes = append(existingPieceSizes, size)
 
 		out[i] = Piece{
 			DealID: resp.DealIDs[i],
@@ -122,7 +123,7 @@ func (m *Miner) StoreGarbageData(_ context.Context) error {
 			return
 		}
 
-		pieces, err := m.storeGarbage(ctx, sid, size)
+		pieces, err := m.storeGarbage(ctx, sid, []uint64{}, size)
 		if err != nil {
 			log.Errorf("%+v", err)
 			return
