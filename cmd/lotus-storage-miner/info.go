@@ -37,6 +37,13 @@ var infoCmd = &cli.Command{
 
 		fmt.Printf("Miner: %s\n", maddr)
 
+		// Sector size
+		size, err := api.StateMinerSectorSize(ctx, maddr, nil)
+		if err != nil {
+			return err
+		}
+		fmt.Printf("Sector Size(Byte): %d\n", types.NewInt(size))
+
 		pow, err := api.StateMinerPower(ctx, maddr, nil)
 		if err != nil {
 			return err
@@ -56,7 +63,6 @@ var infoCmd = &cli.Command{
 		fmt.Println("Failed Sectors:\t", sinfo.FailedCount)
 
 		// TODO: grab actr state / info
-		//  * Sector size
 		//  * Sealed sectors (count / bytes)
 		//  * Power
 		return nil
