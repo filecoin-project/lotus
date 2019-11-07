@@ -256,9 +256,6 @@ func (p *Provider) sealing(ctx context.Context, deal MinerDeal) (func(*MinerDeal
 	if err != nil {
 		return nil, err
 	}*/
-	// TODO: Spec doesn't say anything about inclusion proofs anywhere
-	//  Not sure what mechanisms prevents miner from storing data that isn't
-	//  clients' data
 
 	return nil, nil
 }
