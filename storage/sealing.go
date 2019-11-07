@@ -61,6 +61,15 @@ func (m *Miner) sectorStateLoop(ctx context.Context) {
 }
 
 func (m *Miner) onSectorIncoming(sector *SectorInfo) {
+	has, err := m.sectors.Has(sector.SectorID)
+	if err != nil {
+		return
+	}
+	if has {
+		log.Warnf("SealSector called more than once for sector %d", sector.SectorID)
+		return
+	}
+
 	if err := m.sectors.Begin(sector.SectorID, sector); err != nil {
 		// We may have re-sent the proposal
 		log.Errorf("deal tracking failed: %s", err)

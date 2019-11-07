@@ -39,7 +39,7 @@ func (st *StateStore) Begin(i interface{}, state interface{}) error {
 		return err
 	}
 	if has {
-		return xerrors.Errorf("Already tracking state for %s", i)
+		return xerrors.Errorf("already tracking state for %v", i)
 	}
 
 	b, err := cborutil.Dump(state)
@@ -111,12 +111,16 @@ func (st *StateStore) mutate(i interface{}, mutator func([]byte) ([]byte, error)
 	return st.ds.Put(k, mutated)
 }
 
+func (st *StateStore) Has(i interface{}) (bool, error) {
+	return st.ds.Has(toKey(i))
+}
+
 func (st *StateStore) Get(i interface{}, out cbg.CBORUnmarshaler) error {
 	k := toKey(i)
 	val, err := st.ds.Get(k)
 	if err != nil {
 		if xerrors.Is(err, datastore.ErrNotFound) {
-			return xerrors.Errorf("No state for %s", i)
+			return xerrors.Errorf("No state for %s: %w", i, err)
 		}
 		return err
 	}
