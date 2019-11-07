@@ -24,7 +24,7 @@ type StorageMinerActor struct{}
 type StorageMinerActorState struct {
 	// PreCommittedSectors is the set of sectors that have been committed to but not
 	// yet had their proofs submitted
-	PreCommittedSectors map[string]*UnprovenSector
+	PreCommittedSectors map[string]*PreCommittedSector
 
 	// All sectors this miner has committed.
 	Sectors cid.Cid
@@ -94,11 +94,9 @@ type MinerInfo struct {
 	// SubsectorCount
 }
 
-type UnprovenSector struct {
-	CommD        []byte
-	CommR        []byte
-	SubmitHeight uint64
-	TicketEpoch  uint64
+type PreCommittedSector struct {
+	Info          SectorPreCommitInfo
+	ReceivedEpoch uint64
 }
 
 type StorageMinerConstructorParams struct {
@@ -106,6 +104,14 @@ type StorageMinerConstructorParams struct {
 	Worker     address.Address
 	SectorSize uint64
 	PeerID     peer.ID
+}
+
+type SectorPreCommitInfo struct {
+	SectorNumber uint64
+
+	CommR     []byte // TODO: Spec says CID
+	SealEpoch uint64
+	DealIDs   []uint64
 }
 
 type maMethods struct {
@@ -212,14 +218,6 @@ func (sma StorageMinerActor) StorageMinerConstructor(act *types.Actor, vmctx typ
 	return nil, nil
 }
 
-type SectorPreCommitInfo struct {
-	CommD []byte // TODO: update proofs code
-	CommR []byte
-
-	Epoch        uint64
-	SectorNumber uint64
-}
-
 func (sma StorageMinerActor) PreCommitSector(act *types.Actor, vmctx types.VMContext, params *SectorPreCommitInfo) ([]byte, ActorError) {
 	ctx := vmctx.Context()
 	oldstate, self, err := loadState(vmctx)
@@ -227,12 +225,12 @@ func (sma StorageMinerActor) PreCommitSector(act *types.Actor, vmctx types.VMCon
 		return nil, err
 	}
 
-	if params.Epoch >= vmctx.BlockHeight()+build.SealRandomnessLookback {
-		return nil, aerrors.Newf(1, "sector commitment must be based off past randomness (%d >= %d)", params.Epoch, vmctx.BlockHeight()+build.SealRandomnessLookback)
+	if params.SealEpoch >= vmctx.BlockHeight()+build.SealRandomnessLookback {
+		return nil, aerrors.Newf(1, "sector commitment must be based off past randomness (%d >= %d)", params.SealEpoch, vmctx.BlockHeight()+build.SealRandomnessLookback)
 	}
 
-	if vmctx.BlockHeight()-params.Epoch+build.SealRandomnessLookback > build.SealRandomnessLookbackLimit {
-		return nil, aerrors.Newf(2, "sector commitment must be recent enough (was %d)", vmctx.BlockHeight()-params.Epoch+build.SealRandomnessLookback)
+	if vmctx.BlockHeight()-params.SealEpoch+build.SealRandomnessLookback > build.SealRandomnessLookbackLimit {
+		return nil, aerrors.Newf(2, "sector commitment must be recent enough (was %d)", vmctx.BlockHeight()-params.SealEpoch+build.SealRandomnessLookback)
 	}
 
 	mi, err := loadMinerInfo(vmctx, self)
@@ -262,11 +260,9 @@ func (sma StorageMinerActor) PreCommitSector(act *types.Actor, vmctx types.VMCon
 		return nil, aerrors.New(4, "not enough collateral")
 	}
 
-	self.PreCommittedSectors[uintToStringKey(params.SectorNumber)] = &UnprovenSector{
-		CommR:        params.CommR,
-		CommD:        params.CommD,
-		SubmitHeight: vmctx.BlockHeight(),
-		TicketEpoch:  params.Epoch,
+	self.PreCommittedSectors[uintToStringKey(params.SectorNumber)] = &PreCommittedSector{
+		Info:          *params,
+		ReceivedEpoch: vmctx.BlockHeight(),
 	}
 
 	nstate, err := vmctx.Storage().Put(self)
@@ -309,7 +305,7 @@ func (sma StorageMinerActor) ProveCommitSector(act *types.Actor, vmctx types.VMC
 		return nil, aerrors.New(1, "no pre-commitment found for sector")
 	}
 
-	if us.SubmitHeight+build.InteractivePoRepDelay > vmctx.BlockHeight() {
+	if us.ReceivedEpoch+build.InteractivePoRepDelay > vmctx.BlockHeight() {
 		return nil, aerrors.New(2, "too early for proof submission")
 	}
 
@@ -318,12 +314,12 @@ func (sma StorageMinerActor) ProveCommitSector(act *types.Actor, vmctx types.VMC
 	// TODO: ensure normalization to ID address
 	maddr := vmctx.Message().To
 
-	ticket, err := vmctx.GetRandomness(us.TicketEpoch - build.SealRandomnessLookback)
+	ticket, err := vmctx.GetRandomness(us.Info.SealEpoch - build.SealRandomnessLookback)
 	if err != nil {
 		return nil, aerrors.Wrap(err, "failed to get ticket randomness")
 	}
 
-	seed, err := vmctx.GetRandomness(us.SubmitHeight + build.InteractivePoRepDelay)
+	seed, err := vmctx.GetRandomness(us.ReceivedEpoch + build.InteractivePoRepDelay)
 	if err != nil {
 		return nil, aerrors.Wrap(err, "failed to get randomness for prove sector commitment")
 	}
@@ -341,16 +337,16 @@ func (sma StorageMinerActor) ProveCommitSector(act *types.Actor, vmctx types.VMC
 		return nil, aerrors.Wrap(err, "failed to compute data commitment")
 	}
 
-	if ok, err := ValidatePoRep(maddr, mi.SectorSize, commD, us.CommR, ticket, params.Proof, seed, params.SectorID); err != nil {
+	if ok, err := ValidatePoRep(maddr, mi.SectorSize, commD, us.Info.CommR, ticket, params.Proof, seed, params.SectorID); err != nil {
 		return nil, err
 	} else if !ok {
-		return nil, aerrors.Newf(2, "bad proof! (t:%x; s:%x(%d); p:%x)", ticket, seed, us.SubmitHeight+build.InteractivePoRepDelay, params.Proof)
+		return nil, aerrors.Newf(2, "bad proof! (t:%x; s:%x(%d); p:%x)", ticket, seed, us.ReceivedEpoch+build.InteractivePoRepDelay, params.Proof)
 	}
 
 	// Note: There must exist a unique index in the miner's sector set for each
 	// sector ID. The `faults`, `recovered`, and `done` parameters of the
 	// SubmitPoSt method express indices into this sector set.
-	nssroot, err := AddToSectorSet(ctx, vmctx.Storage(), self.Sectors, params.SectorID, us.CommR, us.CommD)
+	nssroot, err := AddToSectorSet(ctx, vmctx.Storage(), self.Sectors, params.SectorID, us.Info.CommR, commD)
 	if err != nil {
 		return nil, err
 	}
@@ -581,6 +577,8 @@ func AddToSectorSet(ctx context.Context, s types.Storage, ss cid.Cid, sectorID u
 		return cid.Undef, aerrors.HandleExternalError(err, "could not load sector set node")
 	}
 
+	// TODO: Spec says to use SealCommitment, and construct commD from deals each time,
+	//  but that would make SubmitPoSt way, way more expensive
 	if err := ssr.Set(sectorID, [][]byte{commR, commD}); err != nil {
 		return cid.Undef, aerrors.HandleExternalError(err, "failed to set commitment in sector set")
 	}

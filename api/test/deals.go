@@ -21,7 +21,7 @@ func TestDealFlow(t *testing.T, b APIBuilder) {
 	os.Setenv("BELLMAN_NO_GPU", "1")
 
 	logging.SetAllLoggers(logging.LevelInfo)
-	ctx := context.TODO()
+	ctx := context.Background()
 	n, sn := b(t, 1, []int{0})
 	client := n[0].FullNode.(*impl.FullNodeAPI)
 	miner := sn[0]

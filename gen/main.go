@@ -91,7 +91,7 @@ func main() {
 		actors.StorageMinerActorState{},
 		actors.StorageMinerConstructorParams{},
 		actors.SectorPreCommitInfo{},
-		actors.UnprovenSector{},
+		actors.PreCommittedSector{},
 		actors.MinerInfo{},
 		actors.SubmitPoStParams{},
 		actors.PaymentVerifyParams{},

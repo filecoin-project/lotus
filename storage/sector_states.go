@@ -78,12 +78,17 @@ func (m *Miner) sealPreCommit(ctx context.Context, sector SectorInfo) (func(*Sec
 }
 
 func (m *Miner) preCommit(ctx context.Context, sector SectorInfo) (func(*SectorInfo), error) {
-	params := &actors.SectorPreCommitInfo{
-		CommD: sector.CommD,
-		CommR: sector.CommR,
-		Epoch: sector.Ticket.BlockHeight,
+	deals, err := m.secst.DealsForCommit(sector.SectorID, false)
+	if err != nil {
+		return nil, err
+	}
 
+	params := &actors.SectorPreCommitInfo{
 		SectorNumber: sector.SectorID,
+
+		CommR:     sector.CommR,
+		SealEpoch: sector.Ticket.BlockHeight,
+		DealIDs:   deals,
 	}
 	enc, aerr := actors.SerializeParams(params)
 	if aerr != nil {
