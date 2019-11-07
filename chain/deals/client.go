@@ -37,6 +37,8 @@ type ClientDeal struct {
 	Miner       peer.ID
 	DealID      uint64
 
+	PublishMessage *cid.Cid
+
 	s inet.Stream
 }
 
@@ -64,6 +66,7 @@ type clientDealUpdate struct {
 	newState api.DealState
 	id       cid.Cid
 	err      error
+	mut      func(*ClientDeal)
 }
 
 func NewClient(sm *stmgr.StateManager, chain *store.ChainStore, h host.Host, w *wallet.Wallet, ds dtypes.MetadataDS, dag dtypes.ClientDAG, discovery *discovery.Local, mpool full.MpoolAPI, chainapi full.ChainAPI) *Client {
@@ -137,6 +140,9 @@ func (c *Client) onUpdated(ctx context.Context, update clientDealUpdate) {
 	var deal ClientDeal
 	err := c.deals.Mutate(update.id, func(d *ClientDeal) error {
 		d.State = update.newState
+		if update.mut != nil {
+			update.mut(d)
+		}
 		deal = *d
 		return nil
 	})

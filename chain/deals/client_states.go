@@ -1,8 +1,10 @@
 package deals
 
 import (
+	"bytes"
 	"context"
 	"github.com/filecoin-project/lotus/build"
+	"github.com/filecoin-project/lotus/lib/cborrpc"
 
 	"golang.org/x/xerrors"
 
@@ -12,11 +14,11 @@ import (
 	"github.com/filecoin-project/lotus/chain/types"
 )
 
-type clientHandlerFunc func(ctx context.Context, deal ClientDeal) error
+type clientHandlerFunc func(ctx context.Context, deal ClientDeal) (func(*ClientDeal), error)
 
 func (c *Client) handle(ctx context.Context, deal ClientDeal, cb clientHandlerFunc, next api.DealState) {
 	go func() {
-		err := cb(ctx, deal)
+		mut, err := cb(ctx, deal)
 		if err != nil {
 			next = api.DealError
 		}
@@ -30,87 +32,104 @@ func (c *Client) handle(ctx context.Context, deal ClientDeal, cb clientHandlerFu
 			newState: next,
 			id:       deal.ProposalCid,
 			err:      err,
+			mut:      mut,
 		}:
 		case <-c.stop:
 		}
 	}()
 }
 
-func (c *Client) new(ctx context.Context, deal ClientDeal) error {
+func (c *Client) new(ctx context.Context, deal ClientDeal) (func(*ClientDeal), error) {
 	resp, err := c.readStorageDealResp(deal)
 	if err != nil {
-		return err
+		return nil, err
 	}
 	if err := c.disconnect(deal); err != nil {
-		return err
+		return nil, err
 	}
 
+	/* data transfer happens */
 	if resp.State != api.DealAccepted {
-		return xerrors.Errorf("deal wasn't accepted (State=%d)", resp.State)
+		return nil, xerrors.Errorf("deal wasn't accepted (State=%d)", resp.State)
 	}
 
-	// TODO: spec says it's optional
-	pubmsg, err := c.chain.GetMessage(*resp.PublishMessage)
+	return func(info *ClientDeal) {
+		info.PublishMessage = resp.PublishMessage
+	}, nil
+}
+
+func (c *Client) accepted(ctx context.Context, deal ClientDeal) (func(*ClientDeal), error) {
+	log.Infow("DEAL ACCEPTED!")
+
+	pubmsg, err := c.chain.GetMessage(*deal.PublishMessage)
 	if err != nil {
-		return xerrors.Errorf("getting deal pubsish message: %w", err)
+		return nil, xerrors.Errorf("getting deal pubsish message: %w", err)
 	}
 
 	pw, err := stmgr.GetMinerWorker(ctx, c.sm, nil, deal.Proposal.Provider)
 	if err != nil {
-		return xerrors.Errorf("getting miner worker failed: %w", err)
+		return nil, xerrors.Errorf("getting miner worker failed: %w", err)
 	}
 
 	if pubmsg.From != pw {
-		return xerrors.Errorf("deal wasn't published by storage provider: from=%s, provider=%s", pubmsg.From, deal.Proposal.Provider)
+		return nil, xerrors.Errorf("deal wasn't published by storage provider: from=%s, provider=%s", pubmsg.From, deal.Proposal.Provider)
 	}
 
 	if pubmsg.To != actors.StorageMarketAddress {
-		return xerrors.Errorf("deal publish message wasn't set to StorageMarket actor (to=%s)", pubmsg.To)
+		return nil, xerrors.Errorf("deal publish message wasn't set to StorageMarket actor (to=%s)", pubmsg.To)
 	}
 
 	if pubmsg.Method != actors.SMAMethods.PublishStorageDeals {
-		return xerrors.Errorf("deal publish message called incorrect method (method=%s)", pubmsg.Method)
+		return nil, xerrors.Errorf("deal publish message called incorrect method (method=%s)", pubmsg.Method)
+	}
+
+	var params actors.PublishStorageDealsParams
+	if err := params.UnmarshalCBOR(bytes.NewReader(pubmsg.Params)); err != nil {
+		return nil, err
+	}
+
+	dealIdx := -1
+	for i, storageDeal := range params.Deals {
+		// TODO: make it less hacky
+		eq, err := cborrpc.Equals(&deal.Proposal, &storageDeal.Proposal)
+		if err != nil {
+			return nil, err
+		}
+		if eq {
+			dealIdx = i
+		}
+	}
+
+	if dealIdx == -1 {
+		return nil, xerrors.Errorf("deal publish didn't contain our deal (message cid: %s)", deal.PublishMessage)
 	}
 
 	// TODO: timeout
-	_, ret, err := c.sm.WaitForMessage(ctx, *resp.PublishMessage)
+	_, ret, err := c.sm.WaitForMessage(ctx, *deal.PublishMessage)
 	if err != nil {
-		return xerrors.Errorf("waiting for deal publish message: %w", err)
+		return nil, xerrors.Errorf("waiting for deal publish message: %w", err)
 	}
 	if ret.ExitCode != 0 {
-		return xerrors.Errorf("deal publish failed: exit=%d", ret.ExitCode)
-	}
-	// TODO: persist dealId
-
-	log.Info("DEAL ACCEPTED!")
-
-	return nil
-}
-
-func (c *Client) accepted(ctx context.Context, deal ClientDeal) error {
-	/* data transfer happens */
-
-	resp, err := c.readStorageDealResp(deal)
-	if err != nil {
-		return err
+		return nil, xerrors.Errorf("deal publish failed: exit=%d", ret.ExitCode)
 	}
 
-	if resp.State != api.DealStaged {
-		return xerrors.Errorf("deal wasn't staged (State=%d)", resp.State)
+	var res actors.PublishStorageDealResponse
+	if err := res.UnmarshalCBOR(bytes.NewReader(ret.Return)); err != nil {
+		return nil, err
 	}
 
-	log.Info("DEAL STAGED!")
-
-	return nil
+	return func(info *ClientDeal) {
+		info.DealID = res.DealIDs[dealIdx]
+	}, nil
 }
 
-func (c *Client) staged(ctx context.Context, deal ClientDeal) error {
-	// wait
+func (c *Client) staged(ctx context.Context, deal ClientDeal) (func(*ClientDeal), error) {
+	// TODO: Maybe wait for pre-commit
 
-	return nil
+	return nil, nil
 }
 
-func (c *Client) sealing(ctx context.Context, deal ClientDeal) error {
+func (c *Client) sealing(ctx context.Context, deal ClientDeal) (func(*ClientDeal), error) {
 	checkFunc := func(ts *types.TipSet) (done bool, more bool, err error) {
 		sd, err := stmgr.GetStorageDeal(ctx, c.sm, deal.DealID, ts)
 		if err != nil {
@@ -172,9 +191,9 @@ func (c *Client) sealing(ctx context.Context, deal ClientDeal) error {
 	}
 
 	if err := c.events.Called(checkFunc, called, revert, 3, build.SealRandomnessLookbackLimit, deal.Proposal.Provider, actors.MAMethods.ProveCommitSector); err != nil {
-		return xerrors.Errorf("failed to set up called handler")
+		return nil, xerrors.Errorf("failed to set up called handler")
 	}
 
 	log.Info("DEAL COMPLETE!!")
-	return nil
+	return nil, nil
 }
