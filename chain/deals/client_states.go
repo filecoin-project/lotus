@@ -195,7 +195,7 @@ func (c *Client) sealing(ctx context.Context, deal ClientDeal) (func(*ClientDeal
 		}
 
 		if sd.ActivationEpoch == 0 {
-			return true, nil
+			return false, xerrors.Errorf("deal wasn't active: deal=%d, parentState=%s, h=%d", deal.DealID, ts.ParentState(), ts.Height())
 		}
 
 		log.Infof("Storage deal %d activated at epoch %d", deal.DealID, sd.ActivationEpoch)
