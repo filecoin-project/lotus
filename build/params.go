@@ -55,7 +55,7 @@ const Finality = 500
 // Proofs
 
 // Blocks
-const ProvingPeriodDuration = 60
+const ProvingPeriodDuration = 300
 
 // PoStChallangeTime sets the window in which post computation should happen
 // Blocks
@@ -71,6 +71,9 @@ const PoStRandomnessLookback = 1
 // Blocks
 const SealRandomnessLookback = Finality
 
+// Blocks
+const SealRandomnessLookbackLimit = SealRandomnessLookback + 2000
+
 // /////
 // Mining
 
@@ -81,17 +84,20 @@ const PowerCollateralProportion = 5
 const PerCapitaCollateralProportion = 1
 const CollateralPrecision = 1000
 
+// Blocks
+const InteractivePoRepDelay = 10
+
 // /////
 // Devnet settings
 
-const TotalFilecoin = 2000000000
-const MiningRewardTotal = 1400000000
+const TotalFilecoin = 2_000_000_000
+const MiningRewardTotal = 1_400_000_000
 
 const InitialRewardStr = "153856861913558700202"
 
 var InitialReward *big.Int
 
-const FilecoinPrecision = 1000000000000000000
+const FilecoinPrecision = 1_000_000_000_000_000_000
 
 // six years
 // Blocks

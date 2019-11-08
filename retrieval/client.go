@@ -17,7 +17,7 @@ import (
 	"github.com/filecoin-project/lotus/build"
 	"github.com/filecoin-project/lotus/chain/address"
 	"github.com/filecoin-project/lotus/chain/types"
-	"github.com/filecoin-project/lotus/lib/cborrpc"
+	"github.com/filecoin-project/lotus/lib/cborutil"
 	payapi "github.com/filecoin-project/lotus/node/impl/paych"
 	"github.com/filecoin-project/lotus/paych"
 	"github.com/filecoin-project/lotus/retrieval/discovery"
@@ -44,7 +44,7 @@ func (c *Client) Query(ctx context.Context, p discovery.RetrievalPeer, data cid.
 	}
 	defer s.Close()
 
-	err = cborrpc.WriteCborRPC(s, &Query{
+	err = cborutil.WriteCborRPC(s, &Query{
 		Piece: data,
 	})
 	if err != nil {
@@ -172,12 +172,12 @@ func (cst *clientStream) doOneExchange(ctx context.Context, toFetch uint64, out 
 		},
 	}
 
-	if err := cborrpc.WriteCborRPC(cst.stream, deal); err != nil {
+	if err := cborutil.WriteCborRPC(cst.stream, deal); err != nil {
 		return err
 	}
 
 	var resp DealResponse
-	if err := cborrpc.ReadCborRPC(cst.peeker, &resp); err != nil {
+	if err := cborutil.ReadCborRPC(cst.peeker, &resp); err != nil {
 		log.Error(err)
 		return err
 	}
@@ -209,7 +209,7 @@ func (cst *clientStream) fetchBlocks(toFetch uint64, out io.Writer) error {
 		log.Infof("block %d of %d", i+1, blocksToFetch)
 
 		var block Block
-		if err := cborrpc.ReadCborRPC(cst.peeker, &block); err != nil {
+		if err := cborutil.ReadCborRPC(cst.peeker, &block); err != nil {
 			return xerrors.Errorf("reading fetchBlock response: %w", err)
 		}
 

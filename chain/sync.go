@@ -2,6 +2,7 @@ package chain
 
 import (
 	"context"
+	"errors"
 	"fmt"
 	"sync"
 	"time"
@@ -102,7 +103,7 @@ func (syncer *Syncer) InformNewHead(from peer.ID, fts *store.FullTipSet) {
 
 	if from == syncer.self {
 		// TODO: this is kindof a hack...
-		log.Info("got block from ourselves")
+		log.Debug("got block from ourselves")
 
 		if err := syncer.Sync(ctx, fts.TipSet()); err != nil {
 			log.Errorf("failed to sync our own block %s: %+v", fts.TipSet().Cids(), err)
@@ -368,6 +369,10 @@ func (syncer *Syncer) Sync(ctx context.Context, maybeHead *types.TipSet) error {
 	return nil
 }
 
+func isPermanent(err error) bool {
+	return !errors.Is(err, ErrTemporal)
+}
+
 func (syncer *Syncer) ValidateTipSet(ctx context.Context, fts *store.FullTipSet) error {
 	ctx, span := trace.StartSpan(ctx, "validateTipSet")
 	defer span.End()
@@ -379,7 +384,9 @@ func (syncer *Syncer) ValidateTipSet(ctx context.Context, fts *store.FullTipSet)
 
 	for _, b := range fts.Blocks {
 		if err := syncer.ValidateBlock(ctx, b); err != nil {
-			syncer.bad.Add(b.Cid())
+			if isPermanent(err) {
+				syncer.bad.Add(b.Cid())
+			}
 			return xerrors.Errorf("validating block %s: %w", b.Cid(), err)
 		}
 
@@ -444,6 +451,8 @@ func (syncer *Syncer) validateTickets(ctx context.Context, mworker address.Addre
 	return nil
 }
 
+var ErrTemporal = errors.New("temporal error")
+
 // Should match up with 'Semantical Validation' in validation.md in the spec
 func (syncer *Syncer) ValidateBlock(ctx context.Context, b *types.FullBlock) error {
 	ctx, span := trace.StartSpan(ctx, "validateBlock")
@@ -462,6 +471,17 @@ func (syncer *Syncer) ValidateBlock(ctx context.Context, b *types.FullBlock) err
 	}
 
 	if stateroot != h.ParentStateRoot {
+		msgs, err := syncer.store.MessagesForTipset(baseTs)
+		if err != nil {
+			log.Error("failed to load messages for tipset during tipset state mismatch error: ", err)
+		} else {
+			log.Warn("Messages for tipset with mismatching state:")
+			for i, m := range msgs {
+				mm := m.VMMessage()
+				log.Warnf("Message[%d]: from=%s to=%s method=%d params=%x", i, mm.From, mm.To, mm.Method, mm.Params)
+			}
+		}
+
 		return xerrors.Errorf("parent state root did not match computed state (%s != %s)", stateroot, h.ParentStateRoot)
 	}
 
@@ -470,7 +490,7 @@ func (syncer *Syncer) ValidateBlock(ctx context.Context, b *types.FullBlock) err
 	}
 
 	if h.Timestamp > uint64(time.Now().Unix()+build.AllowableClockDrift) {
-		return xerrors.Errorf("block was from the future")
+		return xerrors.Errorf("block was from the future: %w", ErrTemporal)
 	}
 
 	if h.Timestamp < baseTs.MinTimestamp()+uint64(build.BlockDelay*len(h.Tickets)) {
@@ -907,7 +927,7 @@ func (syncer *Syncer) collectChain(ctx context.Context, ts *types.TipSet) error 
 	}
 
 	syncer.syncState.SetStage(api.StageSyncComplete)
-	log.Infow("new tipset", "height", ts.Height(), "tipset", types.LogCids(ts.Cids()))
+	log.Debugw("new tipset", "height", ts.Height(), "tipset", types.LogCids(ts.Cids()))
 
 	return nil
 }

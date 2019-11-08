@@ -118,7 +118,7 @@ func (t *Proposal) MarshalCBOR(w io.Writer) error {
 		_, err := w.Write(cbg.CborNull)
 		return err
 	}
-	if _, err := w.Write([]byte{129}); err != nil {
+	if _, err := w.Write([]byte{130}); err != nil {
 		return err
 	}
 
@@ -126,6 +126,13 @@ func (t *Proposal) MarshalCBOR(w io.Writer) error {
 	if err := t.DealProposal.MarshalCBOR(w); err != nil {
 		return err
 	}
+
+	// t.t.Piece (cid.Cid) (struct)
+
+	if err := cbg.WriteCid(w, t.Piece); err != nil {
+		return xerrors.Errorf("failed to write cid field t.Piece: %w", err)
+	}
+
 	return nil
 }
 
@@ -140,7 +147,7 @@ func (t *Proposal) UnmarshalCBOR(r io.Reader) error {
 		return fmt.Errorf("cbor input should be of type array")
 	}
 
-	if extra != 1 {
+	if extra != 2 {
 		return fmt.Errorf("cbor input had wrong number of fields")
 	}
 
@@ -148,9 +155,33 @@ func (t *Proposal) UnmarshalCBOR(r io.Reader) error {
 
 	{
 
-		if err := t.DealProposal.UnmarshalCBOR(br); err != nil {
+		pb, err := br.PeekByte()
+		if err != nil {
 			return err
 		}
+		if pb == cbg.CborNull[0] {
+			var nbuf [1]byte
+			if _, err := br.Read(nbuf[:]); err != nil {
+				return err
+			}
+		} else {
+			t.DealProposal = new(actors.StorageDealProposal)
+			if err := t.DealProposal.UnmarshalCBOR(br); err != nil {
+				return err
+			}
+		}
+
+	}
+	// t.t.Piece (cid.Cid) (struct)
+
+	{
+
+		c, err := cbg.ReadCid(br)
+		if err != nil {
+			return xerrors.Errorf("failed to read cid field t.Piece: %w", err)
+		}
+
+		t.Piece = c
 
 	}
 	return nil
@@ -161,7 +192,7 @@ func (t *Response) MarshalCBOR(w io.Writer) error {
 		_, err := w.Write(cbg.CborNull)
 		return err
 	}
-	if _, err := w.Write([]byte{134}); err != nil {
+	if _, err := w.Write([]byte{133}); err != nil {
 		return err
 	}
 
@@ -201,18 +232,6 @@ func (t *Response) MarshalCBOR(w io.Writer) error {
 		}
 	}
 
-	// t.t.CommitMessage (cid.Cid) (struct)
-
-	if t.CommitMessage == nil {
-		if _, err := w.Write(cbg.CborNull); err != nil {
-			return err
-		}
-	} else {
-		if err := cbg.WriteCid(w, *t.CommitMessage); err != nil {
-			return xerrors.Errorf("failed to write cid field t.CommitMessage: %w", err)
-		}
-	}
-
 	return nil
 }
 
@@ -227,7 +246,7 @@ func (t *Response) UnmarshalCBOR(r io.Reader) error {
 		return fmt.Errorf("cbor input should be of type array")
 	}
 
-	if extra != 6 {
+	if extra != 5 {
 		return fmt.Errorf("cbor input had wrong number of fields")
 	}
 
@@ -308,30 +327,6 @@ func (t *Response) UnmarshalCBOR(r io.Reader) error {
 		}
 
 	}
-	// t.t.CommitMessage (cid.Cid) (struct)
-
-	{
-
-		pb, err := br.PeekByte()
-		if err != nil {
-			return err
-		}
-		if pb == cbg.CborNull[0] {
-			var nbuf [1]byte
-			if _, err := br.Read(nbuf[:]); err != nil {
-				return err
-			}
-		} else {
-
-			c, err := cbg.ReadCid(br)
-			if err != nil {
-				return xerrors.Errorf("failed to read cid field t.CommitMessage: %w", err)
-			}
-
-			t.CommitMessage = &c
-		}
-
-	}
 	return nil
 }
 
@@ -409,7 +404,7 @@ func (t *ClientDealProposal) MarshalCBOR(w io.Writer) error {
 		_, err := w.Write(cbg.CborNull)
 		return err
 	}
-	if _, err := w.Write([]byte{135}); err != nil {
+	if _, err := w.Write([]byte{136}); err != nil {
 		return err
 	}
 
@@ -444,6 +439,11 @@ func (t *ClientDealProposal) MarshalCBOR(w io.Writer) error {
 		return err
 	}
 
+	// t.t.MinerWorker (address.Address) (struct)
+	if err := t.MinerWorker.MarshalCBOR(w); err != nil {
+		return err
+	}
+
 	// t.t.MinerID (peer.ID) (string)
 	if _, err := w.Write(cbg.CborEncodeMajorType(cbg.MajTextString, uint64(len(t.MinerID)))); err != nil {
 		return err
@@ -465,7 +465,7 @@ func (t *ClientDealProposal) UnmarshalCBOR(r io.Reader) error {
 		return fmt.Errorf("cbor input should be of type array")
 	}
 
-	if extra != 7 {
+	if extra != 8 {
 		return fmt.Errorf("cbor input had wrong number of fields")
 	}
 
@@ -528,6 +528,15 @@ func (t *ClientDealProposal) UnmarshalCBOR(r io.Reader) error {
 		}
 
 	}
+	// t.t.MinerWorker (address.Address) (struct)
+
+	{
+
+		if err := t.MinerWorker.UnmarshalCBOR(br); err != nil {
+			return err
+		}
+
+	}
 	// t.t.MinerID (peer.ID) (string)
 
 	{
@@ -546,7 +555,7 @@ func (t *ClientDeal) MarshalCBOR(w io.Writer) error {
 		_, err := w.Write(cbg.CborNull)
 		return err
 	}
-	if _, err := w.Write([]byte{132}); err != nil {
+	if _, err := w.Write([]byte{135}); err != nil {
 		return err
 	}
 
@@ -573,6 +582,29 @@ func (t *ClientDeal) MarshalCBOR(w io.Writer) error {
 	if _, err := w.Write([]byte(t.Miner)); err != nil {
 		return err
 	}
+
+	// t.t.MinerWorker (address.Address) (struct)
+	if err := t.MinerWorker.MarshalCBOR(w); err != nil {
+		return err
+	}
+
+	// t.t.DealID (uint64) (uint64)
+	if _, err := w.Write(cbg.CborEncodeMajorType(cbg.MajUnsignedInt, uint64(t.DealID))); err != nil {
+		return err
+	}
+
+	// t.t.PublishMessage (cid.Cid) (struct)
+
+	if t.PublishMessage == nil {
+		if _, err := w.Write(cbg.CborNull); err != nil {
+			return err
+		}
+	} else {
+		if err := cbg.WriteCid(w, *t.PublishMessage); err != nil {
+			return xerrors.Errorf("failed to write cid field t.PublishMessage: %w", err)
+		}
+	}
+
 	return nil
 }
 
@@ -587,7 +619,7 @@ func (t *ClientDeal) UnmarshalCBOR(r io.Reader) error {
 		return fmt.Errorf("cbor input should be of type array")
 	}
 
-	if extra != 4 {
+	if extra != 7 {
 		return fmt.Errorf("cbor input had wrong number of fields")
 	}
 
@@ -631,6 +663,49 @@ func (t *ClientDeal) UnmarshalCBOR(r io.Reader) error {
 		}
 
 		t.Miner = peer.ID(sval)
+	}
+	// t.t.MinerWorker (address.Address) (struct)
+
+	{
+
+		if err := t.MinerWorker.UnmarshalCBOR(br); err != nil {
+			return err
+		}
+
+	}
+	// t.t.DealID (uint64) (uint64)
+
+	maj, extra, err = cbg.CborReadHeader(br)
+	if err != nil {
+		return err
+	}
+	if maj != cbg.MajUnsignedInt {
+		return fmt.Errorf("wrong type for uint64 field")
+	}
+	t.DealID = uint64(extra)
+	// t.t.PublishMessage (cid.Cid) (struct)
+
+	{
+
+		pb, err := br.PeekByte()
+		if err != nil {
+			return err
+		}
+		if pb == cbg.CborNull[0] {
+			var nbuf [1]byte
+			if _, err := br.Read(nbuf[:]); err != nil {
+				return err
+			}
+		} else {
+
+			c, err := cbg.ReadCid(br)
+			if err != nil {
+				return xerrors.Errorf("failed to read cid field t.PublishMessage: %w", err)
+			}
+
+			t.PublishMessage = &c
+		}
+
 	}
 	return nil
 }

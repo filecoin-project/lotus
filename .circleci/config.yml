@@ -6,6 +6,7 @@ executors:
   golang:
     docker:
       - image: circleci/golang:1.13
+    resource_class: 2xlarge      
 
 commands:
   install-deps:
@@ -15,6 +16,8 @@ commands:
   prepare:
     steps:
       - checkout
+      - run: sudo apt-get update
+      - run: sudo apt-get install ocl-icd-opencl-dev
       - run: git submodule sync
       - run: git submodule update --init
   download-params:
@@ -22,14 +25,14 @@ commands:
       - restore_cache:
           name: Restore parameters cache
           keys: 
-            - 'v2-lotus-params-{{ checksum "build/proof-params/parameters.json" }}'
-            - 'v2-lotus-params-'
+            - 'v15-lotus-params-{{ checksum "build/proof-params/parameters.json" }}'
+            - 'v15-lotus-params-'
           paths:
             - /var/tmp/filecoin-proof-parameters/
       - run:  ./lotus fetch-params
       - save_cache:
           name: Save parameters cache
-          key: 'v2-lotus-params-{{ checksum "build/proof-params/parameters.json" }}'
+          key: 'v15-lotus-params-{{ checksum "build/proof-params/parameters.json" }}'
           paths:
             - /var/tmp/filecoin-proof-parameters/
 
@@ -155,7 +158,7 @@ jobs:
 
 
 workflows:
-  version: 2
+  version: 2.1
   ci:
     jobs:
       - lint-changes:

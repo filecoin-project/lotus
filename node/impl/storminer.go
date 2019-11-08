@@ -2,31 +2,32 @@ package impl
 
 import (
 	"context"
-	"fmt"
-	"io"
-	"math/rand"
 
 	"github.com/filecoin-project/lotus/api"
 	"github.com/filecoin-project/lotus/chain/address"
 	"github.com/filecoin-project/lotus/lib/sectorbuilder"
 	"github.com/filecoin-project/lotus/storage"
-	"github.com/filecoin-project/lotus/storage/commitment"
-	"github.com/filecoin-project/lotus/storage/sector"
 	"github.com/filecoin-project/lotus/storage/sectorblocks"
-
-	"golang.org/x/xerrors"
 )
 
 type StorageMinerAPI struct {
 	CommonAPI
 
-	SectorBuilderConfig *sectorbuilder.SectorBuilderConfig
+	SectorBuilderConfig *sectorbuilder.Config
 	SectorBuilder       *sectorbuilder.SectorBuilder
-	Sectors             *sector.Store
 	SectorBlocks        *sectorblocks.SectorBlocks
-	CommitmentTracker   *commitment.Tracker
 
 	Miner *storage.Miner
+	Full  api.FullNode
+}
+
+func (sm *StorageMinerAPI) WorkerStats(context.Context) (api.WorkerStats, error) {
+	free, reserved, total := sm.SectorBuilder.WorkerStats()
+	return api.WorkerStats{
+		Free:     free,
+		Reserved: reserved,
+		Total:    total,
+	}, nil
 }
 
 func (sm *StorageMinerAPI) ActorAddress(context.Context) (address.Address, error) {
@@ -34,37 +35,44 @@ func (sm *StorageMinerAPI) ActorAddress(context.Context) (address.Address, error
 }
 
 func (sm *StorageMinerAPI) StoreGarbageData(ctx context.Context) error {
-	ssize, err := sm.Miner.SectorSize(ctx)
-	if err != nil {
-		return xerrors.Errorf("failed to get miner sector size: %w", err)
-	}
-	go func() {
-		size := sectorbuilder.UserBytesForSectorSize(ssize)
-
-		// TODO: create a deal
-		name := fmt.Sprintf("fake-file-%d", rand.Intn(100000000))
-		sectorId, err := sm.Sectors.AddPiece(name, size, io.LimitReader(rand.New(rand.NewSource(42)), int64(size)))
-		if err != nil {
-			log.Error(err)
-			return
-		}
-
-		if err := sm.Sectors.SealSector(ctx, sectorId); err != nil {
-			log.Error(err)
-			return
-		}
-	}()
-
-	return err
+	return sm.Miner.StoreGarbageData()
 }
 
-func (sm *StorageMinerAPI) SectorsStatus(ctx context.Context, sid uint64) (sectorbuilder.SectorSealingStatus, error) {
-	return sm.SectorBuilder.SealStatus(sid)
+func (sm *StorageMinerAPI) SectorsStatus(ctx context.Context, sid uint64) (api.SectorInfo, error) {
+	info, err := sm.Miner.GetSectorInfo(sid)
+	if err != nil {
+		return api.SectorInfo{}, err
+	}
+
+	deals := make([]uint64, len(info.Pieces))
+	for i, piece := range info.Pieces {
+		deals[i] = piece.DealID
+	}
+
+	return api.SectorInfo{
+		SectorID: sid,
+		State:    info.State,
+		CommD:    info.CommD,
+		CommR:    info.CommR,
+		Proof:    info.Proof,
+		Deals:    deals,
+		Ticket:   info.Ticket.SB(),
+		Seed:     info.Seed.SB(),
+	}, nil
 }
 
 // List all staged sectors
 func (sm *StorageMinerAPI) SectorsList(context.Context) ([]uint64, error) {
-	return sm.SectorBuilder.GetAllStagedSectors()
+	sectors, err := sm.Miner.ListSectors()
+	if err != nil {
+		return nil, err
+	}
+
+	out := make([]uint64, len(sectors))
+	for i, sector := range sectors {
+		out[i] = sector.SectorID
+	}
+	return out, nil
 }
 
 func (sm *StorageMinerAPI) SectorsRefs(context.Context) (map[string][]api.SealedRef, error) {
@@ -81,10 +89,6 @@ func (sm *StorageMinerAPI) SectorsRefs(context.Context) (map[string][]api.Sealed
 	}
 
 	return out, nil
-}
-
-func (sm *StorageMinerAPI) CommitmentsList(ctx context.Context) ([]api.SectorCommitment, error) {
-	return sm.CommitmentTracker.List()
 }
 
 var _ api.StorageMiner = &StorageMinerAPI{}

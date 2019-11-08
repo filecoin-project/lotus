@@ -2,14 +2,17 @@ package cli
 
 import (
 	"fmt"
+	"os"
 	"path/filepath"
 	"strconv"
+	"text/tabwriter"
 
 	"github.com/ipfs/go-cid"
 	"github.com/libp2p/go-libp2p-core/peer"
 	"golang.org/x/xerrors"
 	"gopkg.in/urfave/cli.v2"
 
+	lapi "github.com/filecoin-project/lotus/api"
 	actors "github.com/filecoin-project/lotus/chain/actors"
 	"github.com/filecoin-project/lotus/chain/address"
 	"github.com/filecoin-project/lotus/chain/types"
@@ -25,6 +28,7 @@ var clientCmd = &cli.Command{
 		clientFindCmd,
 		clientRetrieveCmd,
 		clientQueryAskCmd,
+		clientListDeals,
 	},
 }
 
@@ -308,7 +312,7 @@ var clientQueryAskCmd = &cli.Command{
 		}
 
 		fmt.Printf("Ask: %s\n", maddr)
-		fmt.Printf("Price per Byte: %s\n", types.FIL(ask.Ask.Price))
+		fmt.Printf("Price per GigaByte: %s\n", types.FIL(ask.Ask.Price))
 
 		size := cctx.Int64("size")
 		if size == 0 {
@@ -324,5 +328,30 @@ var clientQueryAskCmd = &cli.Command{
 		fmt.Printf("Total Price: %s\n", types.FIL(types.BigMul(perEpoch, types.NewInt(uint64(duration)))))
 
 		return nil
+	},
+}
+
+var clientListDeals = &cli.Command{
+	Name:  "list-deals",
+	Usage: "List storage market deals",
+	Action: func(cctx *cli.Context) error {
+		api, closer, err := GetFullNodeAPI(cctx)
+		if err != nil {
+			return err
+		}
+		defer closer()
+		ctx := ReqContext(cctx)
+
+		deals, err := api.ClientListDeals(ctx)
+		if err != nil {
+			return err
+		}
+
+		w := tabwriter.NewWriter(os.Stdout, 2, 4, 2, ' ', 0)
+		fmt.Fprintf(w, "DealCid\tProvider\tState\tPieceRef\tSize\tPrice\tDuration\n")
+		for _, d := range deals {
+			fmt.Fprintf(w, "%s\t%s\t%s\t%x\t%d\t%s\t%d\n", d.ProposalCid, d.Provider, lapi.DealStates[d.State], d.PieceRef, d.Size, d.PricePerEpoch, d.Duration)
+		}
+		return w.Flush()
 	},
 }

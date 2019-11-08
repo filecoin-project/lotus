@@ -13,6 +13,7 @@ import (
 	"github.com/filecoin-project/lotus/chain/actors/aerrors"
 	"github.com/filecoin-project/lotus/chain/address"
 	"github.com/filecoin-project/lotus/chain/types"
+	"github.com/filecoin-project/lotus/lib/sectorbuilder"
 )
 
 type StorageMarketActor struct{}
@@ -29,9 +30,10 @@ type smaMethods struct {
 	SlashStorageDealCollateral   uint64
 	GetLastExpirationFromDealIDs uint64
 	ActivateStorageDeals         uint64
+	ComputeDataCommitment        uint64
 }
 
-var SMAMethods = smaMethods{1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11}
+var SMAMethods = smaMethods{1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12}
 
 func (sma StorageMarketActor) Exports() []interface{} {
 	return []interface{}{
@@ -45,6 +47,7 @@ func (sma StorageMarketActor) Exports() []interface{} {
 		// 9: sma.SlashStorageDealCollateral,
 		// 10: sma.GetLastExpirationFromDealIDs,
 		11: sma.ActivateStorageDeals, // TODO: move under PublishStorageDeals after specs team approves
+		12: sma.ComputeDataCommitment,
 	}
 }
 
@@ -433,7 +436,6 @@ func (sma StorageMarketActor) ActivateStorageDeals(act *types.Actor, vmctx types
 
 	deals, err := amt.LoadAMT(types.WrapStorage(vmctx.Storage()), self.Deals)
 	if err != nil {
-		// TODO: kind of annoying that this can be caused by gas, otherwise could be fatal
 		return nil, aerrors.HandleExternalError(err, "loading deals amt")
 	}
 
@@ -499,7 +501,6 @@ func (sma StorageMarketActor) ProcessStorageDealsPayment(act *types.Actor, vmctx
 
 	deals, err := amt.LoadAMT(types.WrapStorage(vmctx.Storage()), self.Deals)
 	if err != nil {
-		// TODO: kind of annoying that this can be caused by gas, otherwise could be fatal
 		return nil, aerrors.HandleExternalError(err, "loading deals amt")
 	}
 
@@ -583,6 +584,54 @@ func lockFunds(p StorageParticipantBalance, amt types.BigInt) StorageParticipant
 func transferFunds(from, to, amt types.BigInt) (types.BigInt, types.BigInt) {
 	// TODO: some asserts
 	return types.BigSub(from, amt), types.BigAdd(to, amt)
+}
+
+type ComputeDataCommitmentParams struct {
+	DealIDs    []uint64
+	SectorSize uint64
+}
+
+func (sma StorageMarketActor) ComputeDataCommitment(act *types.Actor, vmctx types.VMContext, params *ComputeDataCommitmentParams) ([]byte, ActorError) {
+	var self StorageMarketState
+	old := vmctx.Storage().GetHead()
+	if err := vmctx.Storage().Get(old, &self); err != nil {
+		return nil, err
+	}
+
+	deals, err := amt.LoadAMT(types.WrapStorage(vmctx.Storage()), self.Deals)
+	if err != nil {
+		return nil, aerrors.HandleExternalError(err, "loading deals amt")
+	}
+
+	var pieces []sectorbuilder.PublicPieceInfo
+	for _, deal := range params.DealIDs {
+		var dealInfo OnChainDeal
+		if err := deals.Get(deal, &dealInfo); err != nil {
+			if _, is := err.(*amt.ErrNotFound); is {
+				return nil, aerrors.New(3, "deal not found")
+			}
+			return nil, aerrors.HandleExternalError(err, "getting deal info failed")
+		}
+
+		if dealInfo.Deal.Proposal.Provider != vmctx.Message().From {
+			return nil, aerrors.New(4, "referenced deal was not from caller")
+		}
+
+		var commP [32]byte
+		copy(commP[:], dealInfo.Deal.Proposal.PieceRef)
+
+		pieces = append(pieces, sectorbuilder.PublicPieceInfo{
+			Size:  dealInfo.Deal.Proposal.PieceSize,
+			CommP: commP,
+		})
+	}
+
+	commd, err := sectorbuilder.GenerateDataCommitment(params.SectorSize, pieces)
+	if err != nil {
+		return nil, aerrors.Absorb(err, 5, "failed to generate data commitment from pieces")
+	}
+
+	return commd[:], nil
 }
 
 /*

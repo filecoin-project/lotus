@@ -20,6 +20,7 @@ import (
 	"github.com/filecoin-project/lotus/api"
 	"github.com/filecoin-project/lotus/chain"
 	"github.com/filecoin-project/lotus/chain/deals"
+	"github.com/filecoin-project/lotus/chain/market"
 	"github.com/filecoin-project/lotus/chain/metrics"
 	"github.com/filecoin-project/lotus/chain/stmgr"
 	"github.com/filecoin-project/lotus/chain/store"
@@ -41,8 +42,6 @@ import (
 	"github.com/filecoin-project/lotus/retrieval"
 	"github.com/filecoin-project/lotus/retrieval/discovery"
 	"github.com/filecoin-project/lotus/storage"
-	"github.com/filecoin-project/lotus/storage/commitment"
-	"github.com/filecoin-project/lotus/storage/sector"
 	"github.com/filecoin-project/lotus/storage/sectorblocks"
 )
 
@@ -223,17 +222,16 @@ func Online() Option {
 
 			Override(new(*paych.Store), paych.NewStore),
 			Override(new(*paych.Manager), paych.NewManager),
+			Override(new(*market.FundMgr), market.NewFundMgr),
 
 			Override(new(*miner.Miner), miner.NewMiner),
 		),
 
 		// Storage miner
 		ApplyIf(func(s *Settings) bool { return s.nodeType == repo.RepoStorageMiner },
-			Override(new(*sectorbuilder.SectorBuilder), sectorbuilder.New),
-			Override(new(*sector.Store), sector.NewStore),
+			Override(new(*sectorbuilder.SectorBuilder), modules.SectorBuilder),
 			Override(new(*sectorblocks.SectorBlocks), sectorblocks.NewSectorBlocks),
-			Override(new(*commitment.Tracker), commitment.NewTracker),
-			Override(new(sector.TicketFn), modules.SealTicketGen),
+			Override(new(storage.TicketFn), modules.SealTicketGen),
 			Override(new(*storage.Miner), modules.StorageMiner),
 
 			Override(new(dtypes.StagingDAG), modules.StagingDAG),
@@ -242,7 +240,6 @@ func Online() Option {
 			Override(new(*deals.Provider), deals.NewProvider),
 			Override(HandleRetrievalKey, modules.HandleRetrieval),
 			Override(HandleDealsKey, modules.HandleDeals),
-			Override(RunSectorServiceKey, modules.RunSectorService),
 			Override(RegisterMinerKey, modules.RegisterMiner),
 		),
 	)

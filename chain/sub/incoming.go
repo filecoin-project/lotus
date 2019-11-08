@@ -44,7 +44,7 @@ func HandleIncomingBlocks(ctx context.Context, bsub *pubsub.Subscription, s *cha
 				return
 			}
 
-			log.Infow("new block over pubsub", "cid", blk.Header.Cid(), "source", msg.GetFrom())
+			log.Debugw("new block over pubsub", "cid", blk.Header.Cid(), "source", msg.GetFrom())
 			s.InformNewBlock(msg.GetFrom(), &types.FullBlock{
 				Header:        blk.Header,
 				BlsMessages:   bmsgs,

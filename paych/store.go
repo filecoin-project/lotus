@@ -14,7 +14,7 @@ import (
 
 	"github.com/filecoin-project/lotus/chain/address"
 	"github.com/filecoin-project/lotus/chain/types"
-	cborrpc "github.com/filecoin-project/lotus/lib/cborrpc"
+	cborrpc "github.com/filecoin-project/lotus/lib/cborutil"
 	"github.com/filecoin-project/lotus/node/modules/dtypes"
 )
 

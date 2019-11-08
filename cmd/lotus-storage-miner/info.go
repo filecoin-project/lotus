@@ -6,7 +6,6 @@ import (
 
 	"gopkg.in/urfave/cli.v2"
 
-	sectorstate "github.com/filecoin-project/go-sectorbuilder/sealing_state"
 	"github.com/filecoin-project/lotus/api"
 	"github.com/filecoin-project/lotus/chain/types"
 	lcli "github.com/filecoin-project/lotus/cli"
@@ -37,6 +36,14 @@ var infoCmd = &cli.Command{
 
 		fmt.Printf("Miner: %s\n", maddr)
 
+		// Sector size
+		sizeByte, err := api.StateMinerSectorSize(ctx, maddr, nil)
+		if err != nil {
+			return err
+		}
+
+		fmt.Printf("Sector Size: %s\n", sizeStr(sizeByte))
+
 		pow, err := api.StateMinerPower(ctx, maddr, nil)
 		if err != nil {
 			return err
@@ -45,40 +52,47 @@ var infoCmd = &cli.Command{
 		percI := types.BigDiv(types.BigMul(pow.MinerPower, types.NewInt(1000)), pow.TotalPower)
 		fmt.Printf("Power: %s / %s (%0.2f%%)\n", pow.MinerPower, pow.TotalPower, float64(percI.Int64())/1000*100)
 
+		// TODO: indicate whether the post worker is in use
+		wstat, err := nodeApi.WorkerStats(ctx)
+		if err != nil {
+			return err
+		}
+		fmt.Printf("Worker use: %d / %d (+%d)", wstat.Total-wstat.Reserved-wstat.Free, wstat.Total, wstat.Reserved)
+
 		sinfo, err := sectorsInfo(ctx, nodeApi)
 		if err != nil {
 			return err
 		}
 
-		fmt.Println("Sealed Sectors:\t", sinfo.SealedCount)
-		fmt.Println("Sealing Sectors:\t", sinfo.SealingCount)
-		fmt.Println("Pending Sectors:\t", sinfo.PendingCount)
-		fmt.Println("Failed Sectors:\t", sinfo.FailedCount)
+		fmt.Println(sinfo)
 
 		// TODO: grab actr state / info
-		//  * Sector size
 		//  * Sealed sectors (count / bytes)
 		//  * Power
 		return nil
 	},
 }
 
-type SectorsInfo struct {
-	TotalCount   int
-	SealingCount int
-	FailedCount  int
-	SealedCount  int
-	PendingCount int
+var Units = []string{"B", "KiB", "MiB", "GiB", "TiB"}
+
+func sizeStr(size uint64) string {
+	i := 0
+	unitSize := float64(size)
+	for unitSize >= 1024 && i < len(Units)-1 {
+		unitSize = unitSize / 1024
+		i++
+	}
+	return fmt.Sprintf("%g %s", unitSize, Units[i])
 }
 
-func sectorsInfo(ctx context.Context, napi api.StorageMiner) (*SectorsInfo, error) {
+func sectorsInfo(ctx context.Context, napi api.StorageMiner) (map[string]int, error) {
 	sectors, err := napi.SectorsList(ctx)
 	if err != nil {
 		return nil, err
 	}
 
-	out := SectorsInfo{
-		TotalCount: len(sectors),
+	out := map[string]int{
+		"Total": len(sectors),
 	}
 	for _, s := range sectors {
 		st, err := napi.SectorsStatus(ctx, s)
@@ -86,18 +100,8 @@ func sectorsInfo(ctx context.Context, napi api.StorageMiner) (*SectorsInfo, erro
 			return nil, err
 		}
 
-		switch st.State {
-		case sectorstate.Sealed:
-			out.SealedCount++
-		case sectorstate.Pending:
-			out.PendingCount++
-		case sectorstate.Sealing:
-			out.SealingCount++
-		case sectorstate.Failed:
-			out.FailedCount++
-		case sectorstate.Unknown:
-		}
+		out[api.SectorStateStr(st.State)]++
 	}
 
-	return &out, nil
+	return out, nil
 }

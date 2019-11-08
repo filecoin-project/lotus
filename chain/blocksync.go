@@ -15,7 +15,7 @@ import (
 
 	"github.com/filecoin-project/lotus/chain/store"
 	"github.com/filecoin-project/lotus/chain/types"
-	"github.com/filecoin-project/lotus/lib/cborrpc"
+	"github.com/filecoin-project/lotus/lib/cborutil"
 	"github.com/filecoin-project/lotus/node/modules/dtypes"
 
 	blocks "github.com/ipfs/go-block-format"
@@ -93,7 +93,7 @@ func (bss *BlockSyncService) HandleStream(s inet.Stream) {
 	defer s.Close()
 
 	var req BlockSyncRequest
-	if err := cborrpc.ReadCborRPC(bufio.NewReader(s), &req); err != nil {
+	if err := cborutil.ReadCborRPC(bufio.NewReader(s), &req); err != nil {
 		log.Errorf("failed to read block sync request: %s", err)
 		return
 	}
@@ -105,7 +105,7 @@ func (bss *BlockSyncService) HandleStream(s inet.Stream) {
 		return
 	}
 
-	if err := cborrpc.WriteCborRPC(s, resp); err != nil {
+	if err := cborutil.WriteCborRPC(s, resp); err != nil {
 		log.Error("failed to write back response for handle stream: ", err)
 		return
 	}
@@ -401,12 +401,12 @@ func (bs *BlockSync) sendRequestToPeer(ctx context.Context, p peer.ID, req *Bloc
 		return nil, err
 	}
 
-	if err := cborrpc.WriteCborRPC(s, req); err != nil {
+	if err := cborutil.WriteCborRPC(s, req); err != nil {
 		return nil, err
 	}
 
 	var res BlockSyncResponse
-	if err := cborrpc.ReadCborRPC(bufio.NewReader(s), &res); err != nil {
+	if err := cborutil.ReadCborRPC(bufio.NewReader(s), &res); err != nil {
 		return nil, err
 	}
 

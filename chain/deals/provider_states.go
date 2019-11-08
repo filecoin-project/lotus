@@ -4,17 +4,14 @@ import (
 	"bytes"
 	"context"
 
-	"github.com/filecoin-project/go-sectorbuilder/sealing_state"
-	"github.com/ipfs/go-cid"
 	"github.com/ipfs/go-merkledag"
 	unixfile "github.com/ipfs/go-unixfs/file"
 	"golang.org/x/xerrors"
 
 	"github.com/filecoin-project/lotus/api"
 	"github.com/filecoin-project/lotus/chain/actors"
-	"github.com/filecoin-project/lotus/chain/address"
 	"github.com/filecoin-project/lotus/chain/types"
-	"github.com/filecoin-project/lotus/lib/sectorbuilder"
+	"github.com/filecoin-project/lotus/lib/padreader"
 	"github.com/filecoin-project/lotus/storage/sectorblocks"
 )
 
@@ -41,33 +38,6 @@ func (p *Provider) handle(ctx context.Context, deal MinerDeal, cb providerHandle
 }
 
 // ACCEPTED
-
-func (p *Provider) addMarketFunds(ctx context.Context, worker address.Address, deal MinerDeal) error {
-	log.Info("Adding market funds for storage collateral")
-	smsg, err := p.full.MpoolPushMessage(ctx, &types.Message{
-		To:       actors.StorageMarketAddress,
-		From:     worker,
-		Value:    deal.Proposal.StorageCollateral,
-		GasPrice: types.NewInt(0),
-		GasLimit: types.NewInt(1000000),
-		Method:   actors.SMAMethods.AddBalance,
-	})
-	if err != nil {
-		return err
-	}
-
-	r, err := p.full.StateWaitMsg(ctx, smsg.Cid())
-	if err != nil {
-		return err
-	}
-
-	if r.Receipt.ExitCode != 0 {
-		return xerrors.Errorf("adding funds to storage miner market actor failed: exit %d", r.Receipt.ExitCode)
-	}
-
-	return nil
-}
-
 func (p *Provider) accept(ctx context.Context, deal MinerDeal) (func(*MinerDeal), error) {
 	switch deal.Proposal.PieceSerialization {
 	//case SerializationRaw:
@@ -87,7 +57,6 @@ func (p *Provider) accept(ctx context.Context, deal MinerDeal) (func(*MinerDeal)
 
 	// TODO: check StorageCollateral
 
-	// TODO:
 	minPrice := types.BigDiv(types.BigMul(p.ask.Ask.Price, types.NewInt(deal.Proposal.PieceSize)), types.NewInt(1<<30))
 	if deal.Proposal.StoragePricePerEpoch.LessThan(minPrice) {
 		return nil, xerrors.Errorf("storage price per epoch less than asking price: %s < %s", deal.Proposal.StoragePricePerEpoch, minPrice)
@@ -114,16 +83,9 @@ func (p *Provider) accept(ctx context.Context, deal MinerDeal) (func(*MinerDeal)
 		return nil, err
 	}
 
-	providerMarketBalance, err := p.full.StateMarketBalance(ctx, waddr, nil)
-	if err != nil {
-		return nil, xerrors.Errorf("getting provider market balance failed: %w", err)
-	}
-
-	// TODO: this needs to be atomic
-	if providerMarketBalance.Available.LessThan(deal.Proposal.StorageCollateral) {
-		if err := p.addMarketFunds(ctx, waddr, deal); err != nil {
-			return nil, err
-		}
+	// TODO: check StorageCollateral (may be too large (or too small))
+	if err := p.full.MarketEnsureAvailable(ctx, waddr, deal.Proposal.StorageCollateral); err != nil {
+		return nil, err
 	}
 
 	log.Info("publishing deal")
@@ -173,13 +135,18 @@ func (p *Provider) accept(ctx context.Context, deal MinerDeal) (func(*MinerDeal)
 	log.Info("fetching data for a deal")
 	mcid := smsg.Cid()
 	err = p.sendSignedResponse(&Response{
-		State:          api.DealAccepted,
-		Message:        "",
+		State: api.DealAccepted,
+
 		Proposal:       deal.ProposalCid,
 		PublishMessage: &mcid,
+		StorageDeal:    &storageDeal,
 	})
 	if err != nil {
 		return nil, err
+	}
+
+	if err := p.disconnect(deal); err != nil {
+		log.Warnf("closing client connection: %+v", err)
 	}
 
 	return func(deal *MinerDeal) {
@@ -190,14 +157,6 @@ func (p *Provider) accept(ctx context.Context, deal MinerDeal) (func(*MinerDeal)
 // STAGED
 
 func (p *Provider) staged(ctx context.Context, deal MinerDeal) (func(*MinerDeal), error) {
-	err := p.sendSignedResponse(&Response{
-		State:    api.DealStaged,
-		Proposal: deal.ProposalCid,
-	})
-	if err != nil {
-		log.Warnf("Sending deal response failed: %s", err)
-	}
-
 	root, err := p.dag.Get(ctx, deal.Ref)
 	if err != nil {
 		return nil, xerrors.Errorf("failed to get file root for deal: %s", err)
@@ -221,21 +180,16 @@ func (p *Provider) staged(ctx context.Context, deal MinerDeal) (func(*MinerDeal)
 	if err != nil {
 		return nil, xerrors.Errorf("getting unixfs file size: %w", err)
 	}
-	if uint64(size) != deal.Proposal.PieceSize {
-		return nil, xerrors.Errorf("deal.Proposal.PieceSize didn't match unixfs file size")
+	if padreader.PaddedSize(uint64(size)) != deal.Proposal.PieceSize {
+		return nil, xerrors.Errorf("deal.Proposal.PieceSize didn't match padded unixfs file size")
 	}
 
-	pcid, err := cid.Cast(deal.Proposal.PieceRef)
-	if err != nil {
-		return nil, err
-	}
-
-	sectorID, err := p.secst.AddUnixfsPiece(pcid, uf, deal.DealID)
+	sectorID, err := p.secb.AddUnixfsPiece(ctx, deal.Ref, uf, deal.DealID)
 	if err != nil {
 		return nil, xerrors.Errorf("AddPiece failed: %s", err)
 	}
-
 	log.Warnf("New Sector: %d", sectorID)
+
 	return func(deal *MinerDeal) {
 		deal.SectorID = sectorID
 	}, nil
@@ -243,67 +197,14 @@ func (p *Provider) staged(ctx context.Context, deal MinerDeal) (func(*MinerDeal)
 
 // SEALING
 
-func (p *Provider) waitSealed(ctx context.Context, deal MinerDeal) (sectorbuilder.SectorSealingStatus, error) {
-	status, err := p.secst.WaitSeal(ctx, deal.SectorID)
-	if err != nil {
-		return sectorbuilder.SectorSealingStatus{}, err
-	}
-
-	switch status.State {
-	case sealing_state.Sealed:
-	case sealing_state.Failed:
-		return sectorbuilder.SectorSealingStatus{}, xerrors.Errorf("sealing sector %d for deal %s (ref=%s) failed: %s", deal.SectorID, deal.ProposalCid, deal.Ref, status.SealErrorMsg)
-	case sealing_state.Pending:
-		return sectorbuilder.SectorSealingStatus{}, xerrors.Errorf("sector status was 'pending' after call to WaitSeal (for sector %d)", deal.SectorID)
-	case sealing_state.Sealing:
-		return sectorbuilder.SectorSealingStatus{}, xerrors.Errorf("sector status was 'wait' after call to WaitSeal (for sector %d)", deal.SectorID)
-	default:
-		return sectorbuilder.SectorSealingStatus{}, xerrors.Errorf("unknown SealStatusCode: %d", status.SectorID)
-	}
-
-	return status, nil
-}
-
 func (p *Provider) sealing(ctx context.Context, deal MinerDeal) (func(*MinerDeal), error) {
-	err := p.sendSignedResponse(&Response{
-		State:    api.DealSealing,
-		Proposal: deal.ProposalCid,
-	})
-	if err != nil {
-		log.Warnf("Sending deal response failed: %s", err)
-	}
-
-	if err := p.secst.SealSector(ctx, deal.SectorID); err != nil {
-		return nil, xerrors.Errorf("sealing sector failed: %w", err)
-	}
-
-	_, err = p.waitSealed(ctx, deal)
-	if err != nil {
-		return nil, err
-	}
-	// TODO: Spec doesn't say anything about inclusion proofs anywhere
-	//  Not sure what mechanisms prevents miner from storing data that isn't
-	//  clients' data
+	// TODO: consider waiting for seal to happen
 
 	return nil, nil
 }
 
 func (p *Provider) complete(ctx context.Context, deal MinerDeal) (func(*MinerDeal), error) {
-	// TODO: Add dealID to commtracker (probably before sealing)
-	mcid, err := p.commt.WaitCommit(ctx, deal.Proposal.Provider, deal.SectorID)
-	if err != nil {
-		log.Warnf("Waiting for sector commitment message: %s", err)
-	}
-
-	err = p.sendSignedResponse(&Response{
-		State:    api.DealComplete,
-		Proposal: deal.ProposalCid,
-
-		CommitMessage: &mcid,
-	})
-	if err != nil {
-		log.Warnf("Sending deal response failed: %s", err)
-	}
+	// TODO: observe sector lifecycle, status, expiration..
 
 	return nil, nil
 }

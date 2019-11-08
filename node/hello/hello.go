@@ -16,7 +16,7 @@ import (
 	"github.com/filecoin-project/lotus/chain"
 	"github.com/filecoin-project/lotus/chain/store"
 	"github.com/filecoin-project/lotus/chain/types"
-	"github.com/filecoin-project/lotus/lib/cborrpc"
+	"github.com/filecoin-project/lotus/lib/cborutil"
 	"github.com/filecoin-project/lotus/peermgr"
 )
 
@@ -66,7 +66,7 @@ func (hs *Service) HandleStream(s inet.Stream) {
 	defer s.Close()
 
 	var hmsg Message
-	if err := cborrpc.ReadCborRPC(s, &hmsg); err != nil {
+	if err := cborutil.ReadCborRPC(s, &hmsg); err != nil {
 		log.Infow("failed to read hello message", "error", err)
 		return
 	}
@@ -120,7 +120,7 @@ func (hs *Service) SayHello(ctx context.Context, pid peer.ID) error {
 	fmt.Println("SENDING HELLO MESSAGE: ", hts.Cids(), hts.Height())
 	fmt.Println("hello message genesis: ", gen.Cid())
 
-	if err := cborrpc.WriteCborRPC(s, hmsg); err != nil {
+	if err := cborutil.WriteCborRPC(s, hmsg); err != nil {
 		return err
 	}
 
