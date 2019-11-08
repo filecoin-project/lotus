@@ -46,10 +46,23 @@ func (fcs *fakeCS) ChainGetTipSetByHeight(context.Context, uint64, *types.TipSet
 
 func makeTs(t *testing.T, h uint64, msgcid cid.Cid) *types.TipSet {
 	a, _ := address.NewFromString("t00")
+	b, _ := address.NewFromString("t02")
 	ts, err := types.NewTipSet([]*types.BlockHeader{
 		{
 			Height: h,
 			Miner:  a,
+
+			Tickets: []*types.Ticket{{[]byte{byte(h % 2)}}},
+
+			ParentStateRoot:       dummyCid,
+			Messages:              msgcid,
+			ParentMessageReceipts: dummyCid,
+		},
+		{
+			Height: h,
+			Miner:  b,
+
+			Tickets: []*types.Ticket{{[]byte{byte((h + 1) % 2)}}},
 
 			ParentStateRoot:       dummyCid,
 			Messages:              msgcid,
@@ -494,6 +507,7 @@ func TestCalled(t *testing.T) {
 	err = events.Called(func(ts *types.TipSet) (d bool, m bool, e error) {
 		return false, true, nil
 	}, func(msg *types.Message, ts *types.TipSet, curH uint64) (bool, error) {
+		require.Equal(t, false, applied)
 		applied = true
 		appliedMsg = msg
 		appliedTs = ts
