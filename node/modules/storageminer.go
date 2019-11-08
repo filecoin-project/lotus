@@ -221,7 +221,7 @@ func SealTicketGen(api api.FullNode) storage.TicketFn {
 			return nil, xerrors.Errorf("getting head ts for SealTicket failed: %w", err)
 		}
 
-		r, err := api.ChainGetRandomness(ctx, ts, nil, build.SealRandomnessLookback)
+		r, err := api.ChainGetRandomness(ctx, ts.Key(), nil, build.SealRandomnessLookback)
 		if err != nil {
 			return nil, xerrors.Errorf("getting randomness for SealTicket failed: %w", err)
 		}

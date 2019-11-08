@@ -123,6 +123,10 @@ func (ts *TipSet) Cids() []cid.Cid {
 	return ts.cids
 }
 
+func (ts *TipSet) Key() TipSetKey {
+	return NewTipSetKey(ts.cids...)
+}
+
 func (ts *TipSet) Height() uint64 {
 	return ts.height
 }
