@@ -176,6 +176,22 @@ func RegisterMiner(lc fx.Lifecycle, ds dtypes.MetadataDS, api api.FullNode) erro
 	return nil
 }
 
+func SectorBuilder(lc fx.Lifecycle, cfg *sectorbuilder.Config, ds dtypes.MetadataDS) (*sectorbuilder.SectorBuilder, error) {
+	sb, err := sectorbuilder.New(cfg, ds)
+	if err != nil {
+		return nil, err
+	}
+
+	lc.Append(fx.Hook{
+		OnStop: func(context.Context) error {
+			sb.Destroy()
+			return nil
+		},
+	})
+
+	return sb, nil
+}
+
 func SealTicketGen(api api.FullNode) storage.TicketFn {
 	return func(ctx context.Context) (*sectorbuilder.SealTicket, error) {
 		ts, err := api.ChainHead(ctx)

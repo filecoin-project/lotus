@@ -230,7 +230,7 @@ func Online() Option {
 		// Storage miner
 		ApplyIf(func(s *Settings) bool { return s.nodeType == repo.RepoStorageMiner },
 			Override(new(*sectorbuilder.SectorBuilder), sectorbuilder.New),
-			Override(new(*sectorblocks.SectorBlocks), sectorblocks.NewSectorBlocks),
+			Override(new(*sectorblocks.SectorBlocks), modules.SectorBuilder),
 			Override(new(storage.TicketFn), modules.SealTicketGen),
 			Override(new(*storage.Miner), modules.StorageMiner),
 

@@ -1,7 +1,6 @@
 package sectorbuilder
 
 import (
-	"context"
 	"fmt"
 	"io"
 	"os"
@@ -13,7 +12,6 @@ import (
 	sectorbuilder "github.com/filecoin-project/go-sectorbuilder"
 	"github.com/ipfs/go-datastore"
 	logging "github.com/ipfs/go-log"
-	"go.uber.org/fx"
 	"golang.org/x/xerrors"
 
 	"github.com/filecoin-project/lotus/chain/address"
@@ -77,7 +75,7 @@ type Config struct {
 	MetadataDir string
 }
 
-func New(cfg *Config, ds dtypes.MetadataDS, lc fx.Lifecycle) (*SectorBuilder, error) {
+func New(cfg *Config, ds dtypes.MetadataDS) (*SectorBuilder, error) {
 	if cfg.WorkerThreads <= PoStReservedWorkers {
 		return nil, xerrors.Errorf("minimum worker threads is %d, specified %d", PoStReservedWorkers+1, cfg.WorkerThreads)
 	}
@@ -124,15 +122,6 @@ func New(cfg *Config, ds dtypes.MetadataDS, lc fx.Lifecycle) (*SectorBuilder, er
 
 		Miner:     cfg.Miner,
 		rateLimit: make(chan struct{}, cfg.WorkerThreads-PoStReservedWorkers),
-	}
-
-	if lc != nil {
-		lc.Append(fx.Hook{
-			OnStop: func(context.Context) error {
-				sb.Destroy()
-				return nil
-			},
-		})
 	}
 
 	return sb, nil
@@ -196,9 +185,6 @@ func (sb *SectorBuilder) AddPiece(pieceSize uint64, sectorId uint64, file io.Rea
 	if err != nil {
 		return PublicPieceInfo{}, err
 	}
-	/*if writeUnpadded != pieceSize {
-		return PublicPieceInfo{}, xerrors.Errorf("writeUnpadded != pieceSize: %d != %d", writeUnpadded, pieceSize)
-	}*/
 
 	if err := stagedFile.Close(); err != nil {
 		return PublicPieceInfo{}, err

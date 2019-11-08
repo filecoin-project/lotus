@@ -46,7 +46,7 @@ func TempSectorbuilderDir(dir string, sectorSize uint64, ds dtypes.MetadataDS) (
 
 		WorkerThreads: 2,
 		Miner:         addr,
-	}, ds, nil)
+	}, ds)
 	if err != nil {
 		return nil, err
 	}
