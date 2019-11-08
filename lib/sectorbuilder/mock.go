@@ -15,9 +15,20 @@ func TempSectorbuilder(sectorSize uint64, ds dtypes.MetadataDS) (*SectorBuilder,
 		return nil, nil, err
 	}
 
+	sb, err := TempSectorbuilderDir(dir, sectorSize, ds)
+	return sb, func() {
+		sb.Destroy()
+
+		if err := os.RemoveAll(dir); err != nil {
+			log.Warn("failed to clean up temp sectorbuilder: ", err)
+		}
+	}, err
+}
+
+func TempSectorbuilderDir(dir string, sectorSize uint64, ds dtypes.MetadataDS) (*SectorBuilder, error) {
 	addr, err := address.NewFromString("t3vfxagwiegrywptkbmyohqqbfzd7xzbryjydmxso4hfhgsnv6apddyihltsbiikjf3lm7x2myiaxhuc77capq")
 	if err != nil {
-		return nil, nil, err
+		return nil, err
 	}
 
 	metadata := filepath.Join(dir, "meta")
@@ -37,14 +48,8 @@ func TempSectorbuilder(sectorSize uint64, ds dtypes.MetadataDS) (*SectorBuilder,
 		Miner:         addr,
 	}, ds, nil)
 	if err != nil {
-		return nil, nil, err
+		return nil, err
 	}
 
-	return sb, func() {
-		sb.Destroy()
-
-		if err := os.RemoveAll(dir); err != nil {
-			log.Warn("failed to clean up temp sectorbuilder: ", err)
-		}
-	}, nil
+	return sb, nil
 }

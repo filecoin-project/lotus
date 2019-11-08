@@ -2,6 +2,7 @@ package sectorbuilder_test
 
 import (
 	"io"
+	"io/ioutil"
 	"math/rand"
 	"os"
 	"testing"
@@ -98,7 +99,12 @@ func TestSealAndVerify(t *testing.T) {
 func TestAcquireID(t *testing.T) {
 	ds := datastore.NewMapDatastore()
 
-	sb, cleanup, err := sectorbuilder.TempSectorbuilder(sectorSize, ds)
+	dir, err := ioutil.TempDir("", "sbtest")
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	sb, err := sectorbuilder.TempSectorbuilderDir(dir, sectorSize, ds)
 	if err != nil {
 		t.Fatalf("%+v", err)
 	}
@@ -113,9 +119,9 @@ func TestAcquireID(t *testing.T) {
 	assertAcquire(2)
 	assertAcquire(3)
 
-	cleanup()
+	sb.Destroy()
 
-	sb, cleanup, err = sectorbuilder.TempSectorbuilder(sectorSize, ds)
+	sb, err = sectorbuilder.TempSectorbuilderDir(dir, sectorSize, ds)
 	if err != nil {
 		t.Fatalf("%+v", err)
 	}
@@ -124,5 +130,8 @@ func TestAcquireID(t *testing.T) {
 	assertAcquire(5)
 	assertAcquire(6)
 
-	cleanup()
+	sb.Destroy()
+	if err := os.RemoveAll(dir); err != nil {
+		t.Error(err)
+	}
 }
