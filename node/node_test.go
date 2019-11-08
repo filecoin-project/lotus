@@ -10,6 +10,7 @@ import (
 	"testing"
 
 	"github.com/libp2p/go-libp2p-core/crypto"
+	"github.com/prometheus/common/log"
 
 	"github.com/ipfs/go-datastore"
 	"github.com/libp2p/go-libp2p-core/peer"
@@ -83,8 +84,7 @@ func testStorageNode(ctx context.Context, t *testing.T, waddr address.Address, a
 
 	var minerapi api.StorageMiner
 
-	// TODO: use stop
-	_, err = node.New(ctx,
+	stop, err := node.New(ctx,
 		node.StorageMiner(&minerapi),
 		node.Online(),
 		node.Repo(r),
@@ -104,10 +104,10 @@ func testStorageNode(ctx context.Context, t *testing.T, waddr address.Address, a
 	err = minerapi.NetConnect(ctx, remoteAddrs)
 	require.NoError(t, err)*/
 
-	return test.TestStorageNode{minerapi}
+	return test.TestStorageNode{minerapi, stop}
 }
 
-func builder(t *testing.T, nFull int, storage []int) ([]test.TestNode, []test.TestStorageNode) {
+func builder(t *testing.T, nFull int, storage []int) ([]test.TestNode, []test.TestStorageNode, test.CleanupFunc) {
 	ctx := context.Background()
 	mn := mocknet.New(ctx)
 
@@ -132,9 +132,7 @@ func builder(t *testing.T, nFull int, storage []int) ([]test.TestNode, []test.Te
 
 		mineBlock := make(chan struct{})
 
-		var err error
-		// TODO: Don't ignore stop
-		_, err = node.New(ctx,
+		stop, err := node.New(ctx,
 			node.FullAPI(&fulls[i].FullNode),
 			node.Online(),
 			node.Repo(repo.NewMemory(nil)),
@@ -149,6 +147,7 @@ func builder(t *testing.T, nFull int, storage []int) ([]test.TestNode, []test.Te
 			t.Fatal(err)
 		}
 
+		fulls[i].Stop = stop
 		fulls[i].MineOne = func(ctx context.Context) error {
 			select {
 			case mineBlock <- struct{}{}:
@@ -183,15 +182,30 @@ func builder(t *testing.T, nFull int, storage []int) ([]test.TestNode, []test.Te
 		t.Fatal(err)
 	}
 
-	return fulls, storers
+	return fulls, storers, mkCleanupFunc(fulls, storers)
 }
 
 func TestAPI(t *testing.T) {
 	test.TestApis(t, builder)
 }
 
-func rpcBuilder(t *testing.T, nFull int, storage []int) ([]test.TestNode, []test.TestStorageNode) {
-	fullApis, storaApis := builder(t, nFull, storage)
+func mkCleanupFunc(nds []test.TestNode, snds []test.TestStorageNode) test.CleanupFunc {
+	return func(ctx context.Context) {
+		for _, n := range nds {
+			if err := n.Stop(ctx); err != nil {
+				log.Warn("node.Stop errored: ", err)
+			}
+		}
+		for _, n := range snds {
+			if err := n.Stop(ctx); err != nil {
+				log.Warn("storageNode.Stop errored: ", err)
+			}
+		}
+	}
+}
+
+func rpcBuilder(t *testing.T, nFull int, storage []int) ([]test.TestNode, []test.TestStorageNode, test.CleanupFunc) {
+	fullApis, storaApis, _ := builder(t, nFull, storage)
 	fulls := make([]test.TestNode, nFull)
 	storers := make([]test.TestStorageNode, len(storage))
 
@@ -206,6 +220,7 @@ func rpcBuilder(t *testing.T, nFull int, storage []int) ([]test.TestNode, []test
 			t.Fatal(err)
 		}
 		fulls[i].MineOne = a.MineOne
+		fulls[i].Stop = a.Stop
 	}
 
 	for i, a := range storaApis {
@@ -218,9 +233,10 @@ func rpcBuilder(t *testing.T, nFull int, storage []int) ([]test.TestNode, []test
 		if err != nil {
 			t.Fatal(err)
 		}
+		storers[i].Stop = a.Stop
 	}
 
-	return fulls, storers
+	return fulls, storers, mkCleanupFunc(fulls, storers)
 }
 
 func TestAPIRPC(t *testing.T) {

@@ -36,7 +36,6 @@ var DealStates = []string{
 	"DealError",
 }
 
-// TODO: check if this exists anywhere else
 type MultiaddrSlice []ma.Multiaddr
 
 func (m *MultiaddrSlice) UnmarshalJSON(raw []byte) (err error) {

@@ -22,7 +22,8 @@ func TestDealFlow(t *testing.T, b APIBuilder) {
 
 	logging.SetAllLoggers(logging.LevelInfo)
 	ctx := context.Background()
-	n, sn := b(t, 1, []int{0})
+	n, sn, cleanup := b(t, 1, []int{0})
+	defer cleanup(ctx)
 	client := n[0].FullNode.(*impl.FullNodeAPI)
 	miner := sn[0]
 

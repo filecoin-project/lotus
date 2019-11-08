@@ -9,7 +9,8 @@ import (
 
 func (ts *testSuite) testMining(t *testing.T) {
 	ctx := context.Background()
-	apis, _ := ts.makeNodes(t, 1, []int{0})
+	apis, _, cleanup := ts.makeNodes(t, 1, []int{0})
+	defer cleanup(ctx)
 	api := apis[0]
 
 	h1, err := api.ChainHead(ctx)

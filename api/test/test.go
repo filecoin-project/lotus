@@ -13,18 +13,22 @@ type TestNode struct {
 	api.FullNode
 
 	MineOne func(context.Context) error
+	Stop    func(context.Context) error
 }
 
 type TestStorageNode struct {
 	api.StorageMiner
+	Stop func(context.Context) error
 }
+
+type CleanupFunc func(context.Context)
 
 // APIBuilder is a function which is invoked in test suite to provide
 // test nodes and networks
 //
 // storage array defines storage nodes, numbers in the array specify full node
 // index the storage node 'belongs' to
-type APIBuilder func(t *testing.T, nFull int, storage []int) ([]TestNode, []TestStorageNode)
+type APIBuilder func(t *testing.T, nFull int, storage []int) ([]TestNode, []TestStorageNode, CleanupFunc)
 type testSuite struct {
 	makeNodes APIBuilder
 }
@@ -43,7 +47,8 @@ func TestApis(t *testing.T, b APIBuilder) {
 
 func (ts *testSuite) testVersion(t *testing.T) {
 	ctx := context.Background()
-	apis, _ := ts.makeNodes(t, 1, []int{})
+	apis, _, cleanup := ts.makeNodes(t, 1, []int{})
+	defer cleanup(ctx)
 	api := apis[0]
 
 	v, err := api.Version(ctx)
@@ -57,7 +62,8 @@ func (ts *testSuite) testVersion(t *testing.T) {
 
 func (ts *testSuite) testID(t *testing.T) {
 	ctx := context.Background()
-	apis, _ := ts.makeNodes(t, 1, []int{})
+	apis, _, cleanup := ts.makeNodes(t, 1, []int{})
+	defer cleanup(ctx)
 	api := apis[0]
 
 	id, err := api.ID(ctx)
@@ -69,7 +75,8 @@ func (ts *testSuite) testID(t *testing.T) {
 
 func (ts *testSuite) testConnectTwo(t *testing.T) {
 	ctx := context.Background()
-	apis, _ := ts.makeNodes(t, 2, []int{})
+	apis, _, cleanup := ts.makeNodes(t, 2, []int{})
+	defer cleanup(ctx)
 
 	p, err := apis[0].NetPeers(ctx)
 	if err != nil {

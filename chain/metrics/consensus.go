@@ -8,6 +8,7 @@ import (
 	logging "github.com/ipfs/go-log"
 	pubsub "github.com/libp2p/go-libp2p-pubsub"
 	"go.uber.org/fx"
+	"golang.org/x/xerrors"
 
 	"github.com/filecoin-project/lotus/chain/types"
 	"github.com/filecoin-project/lotus/node/impl/full"
@@ -86,7 +87,15 @@ func sendHeadNotifs(ctx context.Context, ps *pubsub.PubSub, topic string, chain 
 
 	for {
 		select {
-		case notif := <-notifs:
+		case notif, ok := <-notifs:
+			if !ok {
+				log.Warn("notifs channel is closed")
+				return nil
+			}
+			if len(notif) == 0 {
+				return xerrors.Errorf("got zero length notifications from ChainNotify api")
+			}
+
 			n := notif[len(notif)-1]
 
 			w, err := chain.ChainTipSetWeight(ctx, n.Val)
