@@ -1,20 +1,29 @@
 package sectorbuilder
 
 import (
+	"context"
+	"fmt"
 	"io"
 	"os"
 	"sort"
+	"strconv"
+	"sync"
 	"unsafe"
 
 	sectorbuilder "github.com/filecoin-project/go-sectorbuilder"
+	"github.com/ipfs/go-datastore"
 	logging "github.com/ipfs/go-log"
+	"go.uber.org/fx"
 	"golang.org/x/xerrors"
 
 	"github.com/filecoin-project/lotus/chain/address"
+	"github.com/filecoin-project/lotus/node/modules/dtypes"
 )
 
 const PoStReservedWorkers = 1
 const PoRepProofPartitions = 2
+
+var lastSectorIdKey = datastore.NewKey("/sectorbuilder/last")
 
 var log = logging.Logger("sectorbuilder")
 
@@ -42,6 +51,9 @@ const CommLen = sectorbuilder.CommitmentBytesLen
 
 type SectorBuilder struct {
 	handle unsafe.Pointer
+	ds dtypes.MetadataDS
+	idLk sync.Mutex
+
 	ssize  uint64
 
 	Miner address.Address
@@ -65,7 +77,7 @@ type Config struct {
 	MetadataDir string
 }
 
-func New(cfg *Config) (*SectorBuilder, error) {
+func New(cfg *Config, ds dtypes.MetadataDS, lc fx.Lifecycle) (*SectorBuilder, error) {
 	if cfg.WorkerThreads <= PoStReservedWorkers {
 		return nil, xerrors.Errorf("minimum worker threads is %d, specified %d", PoStReservedWorkers+1, cfg.WorkerThreads)
 	}
@@ -81,13 +93,29 @@ func New(cfg *Config) (*SectorBuilder, error) {
 		}
 	}
 
-	sbp, err := sectorbuilder.InitSectorBuilder(cfg.SectorSize, PoRepProofPartitions, 0, cfg.MetadataDir, proverId, cfg.SealedDir, cfg.StagedDir, cfg.CacheDir, 16, cfg.WorkerThreads)
+	var lastUsedID uint64
+	b, err := ds.Get(lastSectorIdKey)
+	switch err {
+	case nil:
+		i, err := strconv.ParseInt(string(b), 10, 64)
+		if err != nil {
+			return nil, err
+		}
+		lastUsedID = uint64(i)
+	case datastore.ErrNotFound:
+	default:
+		return nil, err
+	}
+
+	sbp, err := sectorbuilder.InitSectorBuilder(cfg.SectorSize, PoRepProofPartitions, lastUsedID, cfg.MetadataDir, proverId, cfg.SealedDir, cfg.StagedDir, cfg.CacheDir, 16, cfg.WorkerThreads)
 	if err != nil {
 		return nil, err
 	}
 
-	return &SectorBuilder{
+	sb := &SectorBuilder{
 		handle: sbp,
+		ds: ds,
+
 		ssize:  cfg.SectorSize,
 
 		stagedDir: cfg.StagedDir,
@@ -96,7 +124,18 @@ func New(cfg *Config) (*SectorBuilder, error) {
 
 		Miner:     cfg.Miner,
 		rateLimit: make(chan struct{}, cfg.WorkerThreads-PoStReservedWorkers),
-	}, nil
+	}
+
+	if lc != nil {
+		lc.Append(fx.Hook{
+			OnStop: func(context.Context) error {
+				sb.Destroy()
+				return nil
+			},
+		})
+	}
+
+	return sb, nil
 }
 
 func (sb *SectorBuilder) rlimit() func() {
@@ -125,7 +164,18 @@ func (sb *SectorBuilder) Destroy() {
 }
 
 func (sb *SectorBuilder) AcquireSectorId() (uint64, error) {
-	return sectorbuilder.AcquireSectorId(sb.handle)
+	sb.idLk.Lock()
+	defer sb.idLk.Unlock()
+
+	id, err := sectorbuilder.AcquireSectorId(sb.handle)
+	if err != nil {
+		return 0, err
+	}
+	err = sb.ds.Put(lastSectorIdKey, []byte(fmt.Sprint(id)))
+	if err != nil {
+		return 0, err
+	}
+	return id, nil
 }
 
 func (sb *SectorBuilder) AddPiece(pieceSize uint64, sectorId uint64, file io.Reader, existingPieceSizes []uint64) (PublicPieceInfo, error) {

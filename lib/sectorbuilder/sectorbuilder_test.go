@@ -6,6 +6,10 @@ import (
 	"os"
 	"testing"
 
+	"github.com/ipfs/go-datastore"
+	"github.com/stretchr/testify/assert"
+	"github.com/stretchr/testify/require"
+
 	"github.com/filecoin-project/lotus/build"
 	"github.com/filecoin-project/lotus/lib/sectorbuilder"
 )
@@ -22,12 +26,11 @@ func TestSealAndVerify(t *testing.T) {
 		t.Fatalf("%+v", err)
 	}
 
-	sb, cleanup, err := sectorbuilder.TempSectorbuilder(sectorSize)
+	sb, cleanup, err := sectorbuilder.TempSectorbuilder(sectorSize, datastore.NewMapDatastore())
 	if err != nil {
 		t.Fatalf("%+v", err)
 	}
-	_ = cleanup
-	//defer cleanup()
+	defer cleanup()
 
 	dlen := sectorbuilder.UserBytesForSectorSize(sectorSize)
 
@@ -90,4 +93,36 @@ func TestSealAndVerify(t *testing.T) {
 	if !ok {
 		t.Fatal("bad post")
 	}
+}
+
+func TestAcquireID(t *testing.T) {
+	ds := datastore.NewMapDatastore()
+
+	sb, cleanup, err := sectorbuilder.TempSectorbuilder(sectorSize, ds)
+	if err != nil {
+		t.Fatalf("%+v", err)
+	}
+
+	assertAcquire := func(expect uint64) {
+		id, err := sb.AcquireSectorId()
+		require.NoError(t, err)
+		assert.Equal(t, expect, id)
+	}
+
+	assertAcquire(1)
+	assertAcquire(2)
+	assertAcquire(3)
+
+	cleanup()
+
+	sb, cleanup, err = sectorbuilder.TempSectorbuilder(sectorSize, ds)
+	if err != nil {
+		t.Fatalf("%+v", err)
+	}
+
+	assertAcquire(4)
+	assertAcquire(5)
+	assertAcquire(6)
+
+	cleanup()
 }

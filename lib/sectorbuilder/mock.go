@@ -6,9 +6,10 @@ import (
 	"path/filepath"
 
 	"github.com/filecoin-project/lotus/chain/address"
+	"github.com/filecoin-project/lotus/node/modules/dtypes"
 )
 
-func TempSectorbuilder(sectorSize uint64) (*SectorBuilder, func(), error) {
+func TempSectorbuilder(sectorSize uint64, ds dtypes.MetadataDS) (*SectorBuilder, func(), error) {
 	dir, err := ioutil.TempDir("", "sbtest")
 	if err != nil {
 		return nil, nil, err
@@ -34,12 +35,14 @@ func TempSectorbuilder(sectorSize uint64) (*SectorBuilder, func(), error) {
 
 		WorkerThreads: 2,
 		Miner:         addr,
-	})
+	}, ds, nil)
 	if err != nil {
 		return nil, nil, err
 	}
 
 	return sb, func() {
+		sb.Destroy()
+
 		if err := os.RemoveAll(dir); err != nil {
 			log.Warn("failed to clean up temp sectorbuilder: ", err)
 		}
