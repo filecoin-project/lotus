@@ -78,7 +78,7 @@ var Units = []string{"B", "KiB", "MiB", "GiB", "TiB"}
 func sizeStr(size uint64) string {
 	i := 0
 	unitSize := float64(size)
-	for unitSize >= 1024 && i < len(Units) - 1 {
+	for unitSize >= 1024 && i < len(Units)-1 {
 		unitSize = unitSize / 1024
 		i++
 	}

@@ -49,10 +49,10 @@ const CommLen = sectorbuilder.CommitmentBytesLen
 
 type SectorBuilder struct {
 	handle unsafe.Pointer
-	ds dtypes.MetadataDS
-	idLk sync.Mutex
+	ds     dtypes.MetadataDS
+	idLk   sync.Mutex
 
-	ssize  uint64
+	ssize uint64
 
 	Miner address.Address
 
@@ -112,9 +112,9 @@ func New(cfg *Config, ds dtypes.MetadataDS) (*SectorBuilder, error) {
 
 	sb := &SectorBuilder{
 		handle: sbp,
-		ds: ds,
+		ds:     ds,
 
-		ssize:  cfg.SectorSize,
+		ssize: cfg.SectorSize,
 
 		stagedDir: cfg.StagedDir,
 		sealedDir: cfg.SealedDir,

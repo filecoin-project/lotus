@@ -205,12 +205,14 @@ func (m *Miner) onSectorUpdated(ctx context.Context, update sectorUpdate) {
 		m.handle(ctx, sector, m.preCommitted, api.SectorNoUpdate)
 	case api.Committing:
 		m.handle(ctx, sector, m.committing, api.Proving)
+	case api.SectorNoUpdate: // noop
+	default:
+		log.Error("unexpected sector update state: %d", update.newState)
 	}
 }
 
 func (m *Miner) failSector(id uint64, err error) {
 	log.Errorf("sector %d error: %+v", id, err)
-	panic(err) // todo: better error handling strategy
 }
 
 func (m *Miner) SealPiece(ctx context.Context, ref string, size uint64, r io.Reader, dealID uint64) (uint64, error) {
@@ -231,7 +233,6 @@ func (m *Miner) SealPiece(ctx context.Context, ref string, size uint64, r io.Rea
 
 func (m *Miner) newSector(ctx context.Context, sid uint64, dealID uint64, ref string, ppi sectorbuilder.PublicPieceInfo) error {
 	si := &SectorInfo{
-		State:    api.UndefinedSectorState,
 		SectorID: sid,
 
 		Pieces: []Piece{
