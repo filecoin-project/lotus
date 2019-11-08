@@ -31,10 +31,18 @@ var runCmd = &cli.Command{
 			Name:  "api",
 			Value: "2345",
 		},
+		&cli.BoolFlag{
+			Name:  "enable-gpu-proving",
+			Usage: "Enable use of GPU for mining operations",
+		},
 	},
 	Action: func(cctx *cli.Context) error {
 		if err := build.GetParams(true); err != nil {
 			return xerrors.Errorf("fetching proof parameters: %w", err)
+		}
+
+		if !cctx.Bool("enable-gpu-proving") {
+			os.Setenv("BELLMAN_NO_GPU", "true")
 		}
 
 		nodeApi, ncloser, err := lcli.GetFullNodeAPI(cctx)
