@@ -44,17 +44,18 @@ var infoCmd = &cli.Command{
 		percI := types.BigDiv(types.BigMul(pow.MinerPower, types.NewInt(1000)), pow.TotalPower)
 		fmt.Printf("Power: %s / %s (%0.2f%%)\n", pow.MinerPower, pow.TotalPower, float64(percI.Int64())/1000*100)
 
+		// TODO: indicate whether the post worker is in use
+		wstat, err := nodeApi.WorkerStats(ctx)
+		if err != nil {
+			return err
+		}
+		fmt.Printf("Worker use: %d / %d (+%d)", wstat.Total-wstat.Reserved-wstat.Free, wstat.Total, wstat.Reserved)
+
 		sinfo, err := sectorsInfo(ctx, nodeApi)
 		if err != nil {
 			return err
 		}
 
-		/*
-			fmt.Println("Sealed Sectors:\t", sinfo.SealedCount)
-			fmt.Println("Sealing Sectors:\t", sinfo.SealingCount)
-			fmt.Println("Pending Sectors:\t", sinfo.PendingCount)
-			fmt.Println("Failed Sectors:\t", sinfo.FailedCount)
-		*/
 		fmt.Println(sinfo)
 
 		// TODO: grab actr state / info
@@ -80,7 +81,7 @@ func sectorsInfo(ctx context.Context, napi api.StorageMiner) (map[string]int, er
 			return nil, err
 		}
 
-		out[st.State.String()]++
+		out[api.SectorStateStr(st.State)]++
 	}
 
 	return out, nil

@@ -107,7 +107,7 @@ type post struct {
 	ts  *types.TipSet
 
 	// prep
-	sset []*api.SectorInfo
+	sset []*api.ChainSectorInfo
 	r    []byte
 
 	// run
@@ -277,7 +277,7 @@ func (m *Miner) computePost(ppe uint64) func(ctx context.Context, ts *types.TipS
 	}
 }
 
-func sectorIdList(si []*api.SectorInfo) []uint64 {
+func sectorIdList(si []*api.ChainSectorInfo) []uint64 {
 	out := make([]uint64, len(si))
 	for i, s := range si {
 		out[i] = s.SectorID

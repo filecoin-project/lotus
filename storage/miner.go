@@ -56,8 +56,8 @@ type storageMinerApi interface {
 	StateCall(ctx context.Context, msg *types.Message, ts *types.TipSet) (*types.MessageReceipt, error)
 	StateMinerWorker(context.Context, address.Address, *types.TipSet) (address.Address, error)
 	StateMinerProvingPeriodEnd(context.Context, address.Address, *types.TipSet) (uint64, error)
-	StateMinerSectors(context.Context, address.Address, *types.TipSet) ([]*api.SectorInfo, error)
-	StateMinerProvingSet(context.Context, address.Address, *types.TipSet) ([]*api.SectorInfo, error)
+	StateMinerSectors(context.Context, address.Address, *types.TipSet) ([]*api.ChainSectorInfo, error)
+	StateMinerProvingSet(context.Context, address.Address, *types.TipSet) ([]*api.ChainSectorInfo, error)
 	StateMinerSectorSize(context.Context, address.Address, *types.TipSet) (uint64, error)
 	StateWaitMsg(context.Context, cid.Cid) (*api.MsgWait, error)
 

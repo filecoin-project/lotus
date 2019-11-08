@@ -95,8 +95,8 @@ type FullNode interface {
 	StateGetActor(ctx context.Context, actor address.Address, ts *types.TipSet) (*types.Actor, error)
 	StateReadState(ctx context.Context, act *types.Actor, ts *types.TipSet) (*ActorState, error)
 
-	StateMinerSectors(context.Context, address.Address, *types.TipSet) ([]*SectorInfo, error)
-	StateMinerProvingSet(context.Context, address.Address, *types.TipSet) ([]*SectorInfo, error)
+	StateMinerSectors(context.Context, address.Address, *types.TipSet) ([]*ChainSectorInfo, error)
+	StateMinerProvingSet(context.Context, address.Address, *types.TipSet) ([]*ChainSectorInfo, error)
 	StateMinerPower(context.Context, address.Address, *types.TipSet) (MinerPower, error)
 	StateMinerWorker(context.Context, address.Address, *types.TipSet) (address.Address, error)
 	StateMinerPeerID(ctx context.Context, m address.Address, ts *types.TipSet) (peer.ID, error)
@@ -164,7 +164,7 @@ type Message struct {
 	Message *types.Message
 }
 
-type SectorInfo struct {
+type ChainSectorInfo struct {
 	SectorID uint64
 	CommD    []byte
 	CommR    []byte

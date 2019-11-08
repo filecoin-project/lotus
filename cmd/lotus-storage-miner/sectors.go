@@ -2,6 +2,7 @@ package main
 
 import (
 	"fmt"
+	"github.com/filecoin-project/lotus/api"
 	"strconv"
 
 	"gopkg.in/urfave/cli.v2"
@@ -60,14 +61,15 @@ var sectorsStatusCmd = &cli.Command{
 		}
 
 		fmt.Printf("SectorID:\t%d\n", status.SectorID)
-		fmt.Printf("Status:\t%s\n", status.State.String())
-		fmt.Printf("SealErrorMsg:\t%q\n", status.SealErrorMsg)
+		fmt.Printf("Status:\t%s\n", api.SectorStateStr(status.State))
 		fmt.Printf("CommD:\t\t%x\n", status.CommD)
 		fmt.Printf("CommR:\t\t%x\n", status.CommR)
 		fmt.Printf("Ticket:\t\t%x\n", status.Ticket.TicketBytes)
 		fmt.Printf("TicketH:\t\t%d\n", status.Ticket.BlockHeight)
+		fmt.Printf("Seed:\t\t%x\n", status.Seed.TicketBytes)
+		fmt.Printf("SeedH:\t\t%d\n", status.Seed.BlockHeight)
 		fmt.Printf("Proof:\t\t%x\n", status.Proof)
-		fmt.Printf("Pieces:\t\t%v\n", status.Pieces)
+		fmt.Printf("Deals:\t\t%v\n", status.Deals)
 		return nil
 	},
 }

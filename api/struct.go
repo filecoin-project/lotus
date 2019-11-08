@@ -3,7 +3,6 @@ package api
 import (
 	"context"
 
-	sectorbuilder "github.com/filecoin-project/go-sectorbuilder"
 	"github.com/ipfs/go-cid"
 	"github.com/libp2p/go-libp2p-core/network"
 	"github.com/libp2p/go-libp2p-core/peer"
@@ -87,8 +86,8 @@ type FullNodeStruct struct {
 		ClientRetrieve    func(ctx context.Context, order RetrievalOrder, path string) error                                                          `perm:"admin"`
 		ClientQueryAsk    func(ctx context.Context, p peer.ID, miner address.Address) (*types.SignedStorageAsk, error)                                `perm:"read"`
 
-		StateMinerSectors          func(context.Context, address.Address, *types.TipSet) ([]*SectorInfo, error)                    `perm:"read"`
-		StateMinerProvingSet       func(context.Context, address.Address, *types.TipSet) ([]*SectorInfo, error)                    `perm:"read"`
+		StateMinerSectors          func(context.Context, address.Address, *types.TipSet) ([]*ChainSectorInfo, error)               `perm:"read"`
+		StateMinerProvingSet       func(context.Context, address.Address, *types.TipSet) ([]*ChainSectorInfo, error)               `perm:"read"`
 		StateMinerPower            func(context.Context, address.Address, *types.TipSet) (MinerPower, error)                       `perm:"read"`
 		StateMinerWorker           func(context.Context, address.Address, *types.TipSet) (address.Address, error)                  `perm:"read"`
 		StateMinerPeerID           func(ctx context.Context, m address.Address, ts *types.TipSet) (peer.ID, error)                 `perm:"read"`
@@ -133,10 +132,11 @@ type StorageMinerStruct struct {
 
 		StoreGarbageData func(context.Context) error `perm:"write"`
 
-		SectorsStatus func(context.Context, uint64) (sectorbuilder.SectorSealingStatus, error) `perm:"read"`
-		SectorsList   func(context.Context) ([]uint64, error)                                  `perm:"read"`
+		SectorsStatus func(context.Context, uint64) (SectorInfo, error)     `perm:"read"`
+		SectorsList   func(context.Context) ([]uint64, error)               `perm:"read"`
+		SectorsRefs   func(context.Context) (map[string][]SealedRef, error) `perm:"read"`
 
-		SectorsRefs func(context.Context) (map[string][]SealedRef, error) `perm:"read"`
+		WorkerStats func(context.Context) (WorkerStats, error) `perm:"read"`
 	}
 }
 
@@ -345,11 +345,11 @@ func (c *FullNodeStruct) SyncSubmitBlock(ctx context.Context, blk *types.BlockMs
 	return c.Internal.SyncSubmitBlock(ctx, blk)
 }
 
-func (c *FullNodeStruct) StateMinerSectors(ctx context.Context, addr address.Address, ts *types.TipSet) ([]*SectorInfo, error) {
+func (c *FullNodeStruct) StateMinerSectors(ctx context.Context, addr address.Address, ts *types.TipSet) ([]*ChainSectorInfo, error) {
 	return c.Internal.StateMinerSectors(ctx, addr, ts)
 }
 
-func (c *FullNodeStruct) StateMinerProvingSet(ctx context.Context, addr address.Address, ts *types.TipSet) ([]*SectorInfo, error) {
+func (c *FullNodeStruct) StateMinerProvingSet(ctx context.Context, addr address.Address, ts *types.TipSet) ([]*ChainSectorInfo, error) {
 	return c.Internal.StateMinerProvingSet(ctx, addr, ts)
 }
 
@@ -481,7 +481,7 @@ func (c *StorageMinerStruct) StoreGarbageData(ctx context.Context) error {
 }
 
 // Get the status of a given sector by ID
-func (c *StorageMinerStruct) SectorsStatus(ctx context.Context, sid uint64) (sectorbuilder.SectorSealingStatus, error) {
+func (c *StorageMinerStruct) SectorsStatus(ctx context.Context, sid uint64) (SectorInfo, error) {
 	return c.Internal.SectorsStatus(ctx, sid)
 }
 
@@ -492,6 +492,10 @@ func (c *StorageMinerStruct) SectorsList(ctx context.Context) ([]uint64, error) 
 
 func (c *StorageMinerStruct) SectorsRefs(ctx context.Context) (map[string][]SealedRef, error) {
 	return c.Internal.SectorsRefs(ctx)
+}
+
+func (c *StorageMinerStruct) WorkerStats(ctx context.Context) (WorkerStats, error) {
+	return c.Internal.WorkerStats(ctx)
 }
 
 var _ Common = &CommonStruct{}

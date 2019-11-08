@@ -8,7 +8,6 @@ import (
 	xerrors "golang.org/x/xerrors"
 
 	"github.com/filecoin-project/lotus/api"
-	"github.com/filecoin-project/lotus/chain/types"
 	"github.com/filecoin-project/lotus/lib/sectorbuilder"
 )
 
@@ -19,8 +18,19 @@ type SealTicket struct {
 	TicketBytes []byte
 }
 
-func (t *SealTicket) sb() sectorbuilder.SealTicket {
+func (t *SealTicket) SB() sectorbuilder.SealTicket {
 	out := sectorbuilder.SealTicket{BlockHeight: t.BlockHeight}
+	copy(out.TicketBytes[:], t.TicketBytes)
+	return out
+}
+
+type SealSeed struct {
+	BlockHeight uint64
+	TicketBytes []byte
+}
+
+func (t *SealSeed) SB() sectorbuilder.SealSeed {
+	out := sectorbuilder.SealSeed{BlockHeight: t.BlockHeight}
 	copy(out.TicketBytes[:], t.TicketBytes)
 	return out
 }
@@ -52,13 +62,13 @@ type SectorInfo struct {
 	CommD     []byte
 	CommR     []byte
 	CommRLast []byte
+	Proof     []byte
 	Ticket    SealTicket
 
 	PreCommitMessage *cid.Cid
 
 	// PreCommitted
-	RandHeight uint64
-	RandTs     *types.TipSet
+	Seed SealSeed
 
 	// Committing
 	CommitMessage *cid.Cid

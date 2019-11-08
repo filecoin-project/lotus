@@ -4,7 +4,6 @@ import (
 	"fmt"
 	"io"
 
-	"github.com/filecoin-project/lotus/chain/types"
 	cbg "github.com/whyrusleeping/cbor-gen"
 	xerrors "golang.org/x/xerrors"
 )
@@ -38,6 +37,75 @@ func (t *SealTicket) MarshalCBOR(w io.Writer) error {
 }
 
 func (t *SealTicket) UnmarshalCBOR(r io.Reader) error {
+	br := cbg.GetPeeker(r)
+
+	maj, extra, err := cbg.CborReadHeader(br)
+	if err != nil {
+		return err
+	}
+	if maj != cbg.MajArray {
+		return fmt.Errorf("cbor input should be of type array")
+	}
+
+	if extra != 2 {
+		return fmt.Errorf("cbor input had wrong number of fields")
+	}
+
+	// t.t.BlockHeight (uint64) (uint64)
+
+	maj, extra, err = cbg.CborReadHeader(br)
+	if err != nil {
+		return err
+	}
+	if maj != cbg.MajUnsignedInt {
+		return fmt.Errorf("wrong type for uint64 field")
+	}
+	t.BlockHeight = uint64(extra)
+	// t.t.TicketBytes ([]uint8) (slice)
+
+	maj, extra, err = cbg.CborReadHeader(br)
+	if err != nil {
+		return err
+	}
+	if extra > 8192 {
+		return fmt.Errorf("t.TicketBytes: array too large (%d)", extra)
+	}
+
+	if maj != cbg.MajByteString {
+		return fmt.Errorf("expected byte array")
+	}
+	t.TicketBytes = make([]byte, extra)
+	if _, err := io.ReadFull(br, t.TicketBytes); err != nil {
+		return err
+	}
+	return nil
+}
+
+func (t *SealSeed) MarshalCBOR(w io.Writer) error {
+	if t == nil {
+		_, err := w.Write(cbg.CborNull)
+		return err
+	}
+	if _, err := w.Write([]byte{130}); err != nil {
+		return err
+	}
+
+	// t.t.BlockHeight (uint64) (uint64)
+	if _, err := w.Write(cbg.CborEncodeMajorType(cbg.MajUnsignedInt, uint64(t.BlockHeight))); err != nil {
+		return err
+	}
+
+	// t.t.TicketBytes ([]uint8) (slice)
+	if _, err := w.Write(cbg.CborEncodeMajorType(cbg.MajByteString, uint64(len(t.TicketBytes)))); err != nil {
+		return err
+	}
+	if _, err := w.Write(t.TicketBytes); err != nil {
+		return err
+	}
+	return nil
+}
+
+func (t *SealSeed) UnmarshalCBOR(r io.Reader) error {
 	br := cbg.GetPeeker(r)
 
 	maj, extra, err := cbg.CborReadHeader(br)
@@ -245,6 +313,14 @@ func (t *SectorInfo) MarshalCBOR(w io.Writer) error {
 		return err
 	}
 
+	// t.t.Proof ([]uint8) (slice)
+	if _, err := w.Write(cbg.CborEncodeMajorType(cbg.MajByteString, uint64(len(t.Proof)))); err != nil {
+		return err
+	}
+	if _, err := w.Write(t.Proof); err != nil {
+		return err
+	}
+
 	// t.t.Ticket (storage.SealTicket) (struct)
 	if err := t.Ticket.MarshalCBOR(w); err != nil {
 		return err
@@ -262,13 +338,8 @@ func (t *SectorInfo) MarshalCBOR(w io.Writer) error {
 		}
 	}
 
-	// t.t.RandHeight (uint64) (uint64)
-	if _, err := w.Write(cbg.CborEncodeMajorType(cbg.MajUnsignedInt, uint64(t.RandHeight))); err != nil {
-		return err
-	}
-
-	// t.t.RandTs (types.TipSet) (struct)
-	if err := t.RandTs.MarshalCBOR(w); err != nil {
+	// t.t.Seed (storage.SealSeed) (struct)
+	if err := t.Seed.MarshalCBOR(w); err != nil {
 		return err
 	}
 
@@ -416,6 +487,23 @@ func (t *SectorInfo) UnmarshalCBOR(r io.Reader) error {
 	if _, err := io.ReadFull(br, t.CommRLast); err != nil {
 		return err
 	}
+	// t.t.Proof ([]uint8) (slice)
+
+	maj, extra, err = cbg.CborReadHeader(br)
+	if err != nil {
+		return err
+	}
+	if extra > 8192 {
+		return fmt.Errorf("t.Proof: array too large (%d)", extra)
+	}
+
+	if maj != cbg.MajByteString {
+		return fmt.Errorf("expected byte array")
+	}
+	t.Proof = make([]byte, extra)
+	if _, err := io.ReadFull(br, t.Proof); err != nil {
+		return err
+	}
 	// t.t.Ticket (storage.SealTicket) (struct)
 
 	{
@@ -449,34 +537,12 @@ func (t *SectorInfo) UnmarshalCBOR(r io.Reader) error {
 		}
 
 	}
-	// t.t.RandHeight (uint64) (uint64)
-
-	maj, extra, err = cbg.CborReadHeader(br)
-	if err != nil {
-		return err
-	}
-	if maj != cbg.MajUnsignedInt {
-		return fmt.Errorf("wrong type for uint64 field")
-	}
-	t.RandHeight = uint64(extra)
-	// t.t.RandTs (types.TipSet) (struct)
+	// t.t.Seed (storage.SealSeed) (struct)
 
 	{
 
-		pb, err := br.PeekByte()
-		if err != nil {
+		if err := t.Seed.UnmarshalCBOR(br); err != nil {
 			return err
-		}
-		if pb == cbg.CborNull[0] {
-			var nbuf [1]byte
-			if _, err := br.Read(nbuf[:]); err != nil {
-				return err
-			}
-		} else {
-			t.RandTs = new(types.TipSet)
-			if err := t.RandTs.UnmarshalCBOR(br); err != nil {
-				return err
-			}
 		}
 
 	}

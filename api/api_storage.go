@@ -58,12 +58,31 @@ type StorageMiner interface {
 	StoreGarbageData(context.Context) error
 
 	// Get the status of a given sector by ID
-	SectorsStatus(context.Context, uint64) (sectorbuilder.SectorSealingStatus, error)
+	SectorsStatus(context.Context, uint64) (SectorInfo, error)
 
 	// List all staged sectors
 	SectorsList(context.Context) ([]uint64, error)
 
 	SectorsRefs(context.Context) (map[string][]SealedRef, error)
+
+	WorkerStats(context.Context) (WorkerStats, error)
+}
+
+type WorkerStats struct {
+	Free     int
+	Reserved int // for PoSt
+	Total    int
+}
+
+type SectorInfo struct {
+	SectorID uint64
+	State    SectorState
+	CommD    []byte
+	CommR    []byte
+	Proof    []byte
+	Deals    []uint64
+	Ticket   sectorbuilder.SealTicket
+	Seed     sectorbuilder.SealSeed
 }
 
 type SealedRef struct {

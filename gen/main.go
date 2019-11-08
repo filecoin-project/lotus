@@ -152,6 +152,7 @@ func main() {
 
 	err = gen.WriteTupleEncodersToFile("./storage/cbor_gen.go", "storage",
 		storage.SealTicket{},
+		storage.SealSeed{},
 		storage.Piece{},
 		storage.SectorInfo{},
 	)

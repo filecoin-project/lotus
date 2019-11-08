@@ -145,12 +145,19 @@ func (m *Miner) preCommitted(ctx context.Context, sector SectorInfo) (func(*Sect
 	log.Infof("precommit for sector %d made it on chain, will start proof computation at height %d", sector.SectorID, randHeight)
 
 	err = m.events.ChainAt(func(ctx context.Context, ts *types.TipSet, curH uint64) error {
+		rand, err := m.api.ChainGetRandomness(ctx, ts, nil, int(ts.Height()-randHeight))
+		if err != nil {
+			return xerrors.Errorf("failed to get randomness for computing seal proof: %w", err)
+		}
+
 		m.sectorUpdated <- sectorUpdate{
 			newState: api.Committing,
 			id:       sector.SectorID,
 			mut: func(info *SectorInfo) {
-				info.RandHeight = randHeight
-				info.RandTs = ts
+				info.Seed = SealSeed{
+					BlockHeight: randHeight,
+					TicketBytes: rand,
+				}
 			},
 		}
 
@@ -169,20 +176,12 @@ func (m *Miner) preCommitted(ctx context.Context, sector SectorInfo) (func(*Sect
 func (m *Miner) committing(ctx context.Context, sector SectorInfo) (func(*SectorInfo), error) {
 	log.Info("scheduling seal proof computation...")
 
-	rand, err := m.api.ChainGetRandomness(ctx, sector.RandTs, nil, int(sector.RandTs.Height()-sector.RandHeight))
-	if err != nil {
-		return nil, xerrors.Errorf("failed to get randomness for computing seal proof: %w", err)
-	}
-
-	seed := sectorbuilder.SealSeed{
-		BlockHeight: sector.RandHeight,
-	}
-	copy(seed.TicketBytes[:], rand)
-
-	proof, err := m.sb.SealCommit(sector.SectorID, sector.Ticket.sb(), seed, sector.pieceInfos(), sector.refs(), sector.rspco())
+	proof, err := m.sb.SealCommit(sector.SectorID, sector.Ticket.SB(), sector.Seed.SB(), sector.pieceInfos(), sector.refs(), sector.rspco())
 	if err != nil {
 		return nil, xerrors.Errorf("computing seal proof failed: %w", err)
 	}
+
+	// TODO: Consider splitting states and persist proof for faster recovery
 
 	params := &actors.SectorProveCommitInfo{
 		Proof:    proof,
@@ -218,7 +217,7 @@ func (m *Miner) committing(ctx context.Context, sector SectorInfo) (func(*Sector
 	}
 
 	if mw.Receipt.ExitCode != 0 {
-		log.Errorf("UNHANDLED: submitting sector proof failed (t:%x; s:%x(%d); p:%x)", sector.Ticket.TicketBytes, rand, sector.RandHeight, params.Proof)
+		log.Errorf("UNHANDLED: submitting sector proof failed (t:%x; s:%x(%d); p:%x)", sector.Ticket.TicketBytes, sector.Seed.TicketBytes, sector.Seed.BlockHeight, params.Proof)
 		return nil, xerrors.New("UNHANDLED: submitting sector proof failed")
 	}
 
@@ -227,5 +226,6 @@ func (m *Miner) committing(ctx context.Context, sector SectorInfo) (func(*Sector
 	return func(info *SectorInfo) {
 		mcid := smsg.Cid()
 		info.CommitMessage = &mcid
+		info.Proof = proof
 	}, nil
 }

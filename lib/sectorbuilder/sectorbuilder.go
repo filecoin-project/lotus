@@ -110,6 +110,10 @@ func (sb *SectorBuilder) rlimit() func() {
 	}
 }
 
+func (sb *SectorBuilder) WorkerStats() (free, reserved, total int) {
+	return cap(sb.rateLimit) - len(sb.rateLimit), PoStReservedWorkers, cap(sb.rateLimit) + PoStReservedWorkers
+}
+
 func addressToProverID(a address.Address) [32]byte {
 	var proverId [32]byte
 	copy(proverId[:], a.Payload())
