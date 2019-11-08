@@ -6,6 +6,7 @@ executors:
   golang:
     docker:
       - image: circleci/golang:1.13
+    resource_class: 2xlarge      
 
 commands:
   install-deps:
@@ -155,7 +156,7 @@ jobs:
 
 
 workflows:
-  version: 2
+  version: 2.1
   ci:
     jobs:
       - lint-changes:
