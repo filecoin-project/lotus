@@ -24,14 +24,14 @@ commands:
       - restore_cache:
           name: Restore parameters cache
           keys: 
-            - 'v2-lotus-params-{{ checksum "build/proof-params/parameters.json" }}'
-            - 'v2-lotus-params-'
+            - 'v15-lotus-params-{{ checksum "build/proof-params/parameters.json" }}'
+            - 'v15-lotus-params-'
           paths:
             - /var/tmp/filecoin-proof-parameters/
       - run:  ./lotus fetch-params
       - save_cache:
           name: Save parameters cache
-          key: 'v2-lotus-params-{{ checksum "build/proof-params/parameters.json" }}'
+          key: 'v15-lotus-params-{{ checksum "build/proof-params/parameters.json" }}'
           paths:
             - /var/tmp/filecoin-proof-parameters/
 
