@@ -44,7 +44,6 @@ type PeerMgr struct {
 }
 
 func NewPeerMgr(h host.Host, dht *dht.IpfsDHT, bootstrap dtypes.BootstrapPeers) *PeerMgr {
-	bootstrap = nil
 	pm := &PeerMgr{
 		h:             h,
 		dht:           dht,
