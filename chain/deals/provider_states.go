@@ -10,7 +10,6 @@ import (
 
 	"github.com/filecoin-project/lotus/api"
 	"github.com/filecoin-project/lotus/chain/actors"
-	"github.com/filecoin-project/lotus/chain/address"
 	"github.com/filecoin-project/lotus/chain/types"
 	"github.com/filecoin-project/lotus/lib/padreader"
 	"github.com/filecoin-project/lotus/storage/sectorblocks"
@@ -39,33 +38,6 @@ func (p *Provider) handle(ctx context.Context, deal MinerDeal, cb providerHandle
 }
 
 // ACCEPTED
-
-func (p *Provider) addMarketFunds(ctx context.Context, worker address.Address, deal MinerDeal) error {
-	log.Info("Adding market funds for storage collateral")
-	smsg, err := p.full.MpoolPushMessage(ctx, &types.Message{
-		To:       actors.StorageMarketAddress,
-		From:     worker,
-		Value:    deal.Proposal.StorageCollateral,
-		GasPrice: types.NewInt(0),
-		GasLimit: types.NewInt(1000000),
-		Method:   actors.SMAMethods.AddBalance,
-	})
-	if err != nil {
-		return err
-	}
-
-	r, err := p.full.StateWaitMsg(ctx, smsg.Cid())
-	if err != nil {
-		return err
-	}
-
-	if r.Receipt.ExitCode != 0 {
-		return xerrors.Errorf("adding funds to storage miner market actor failed: exit %d", r.Receipt.ExitCode)
-	}
-
-	return nil
-}
-
 func (p *Provider) accept(ctx context.Context, deal MinerDeal) (func(*MinerDeal), error) {
 	switch deal.Proposal.PieceSerialization {
 	//case SerializationRaw:
@@ -111,16 +83,9 @@ func (p *Provider) accept(ctx context.Context, deal MinerDeal) (func(*MinerDeal)
 		return nil, err
 	}
 
-	providerMarketBalance, err := p.full.StateMarketBalance(ctx, waddr, nil)
-	if err != nil {
-		return nil, xerrors.Errorf("getting provider market balance failed: %w", err)
-	}
-
-	// TODO: this needs to be atomic
-	if providerMarketBalance.Available.LessThan(deal.Proposal.StorageCollateral) {
-		if err := p.addMarketFunds(ctx, waddr, deal); err != nil {
-			return nil, err
-		}
+	// TODO: check StorageCollateral (may be too large (or too small))
+	if err := p.full.MarketEnsureAvailable(ctx, waddr, deal.Proposal.StorageCollateral); err != nil {
+		return nil, err
 	}
 
 	log.Info("publishing deal")

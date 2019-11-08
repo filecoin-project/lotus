@@ -3,9 +3,6 @@ package deals
 import (
 	"context"
 
-	"github.com/filecoin-project/lotus/lib/statestore"
-	"github.com/filecoin-project/lotus/node/impl/full"
-
 	"github.com/ipfs/go-cid"
 	"github.com/ipfs/go-datastore"
 	"github.com/ipfs/go-datastore/namespace"
@@ -19,11 +16,14 @@ import (
 	"github.com/filecoin-project/lotus/chain/actors"
 	"github.com/filecoin-project/lotus/chain/address"
 	"github.com/filecoin-project/lotus/chain/events"
+	"github.com/filecoin-project/lotus/chain/market"
 	"github.com/filecoin-project/lotus/chain/stmgr"
 	"github.com/filecoin-project/lotus/chain/store"
 	"github.com/filecoin-project/lotus/chain/types"
 	"github.com/filecoin-project/lotus/chain/wallet"
 	"github.com/filecoin-project/lotus/lib/cborutil"
+	"github.com/filecoin-project/lotus/lib/statestore"
+	"github.com/filecoin-project/lotus/node/impl/full"
 	"github.com/filecoin-project/lotus/node/modules/dtypes"
 	"github.com/filecoin-project/lotus/retrieval/discovery"
 )
@@ -50,8 +50,8 @@ type Client struct {
 	w         *wallet.Wallet
 	dag       dtypes.ClientDAG
 	discovery *discovery.Local
-	mpool     full.MpoolAPI
 	events    *events.Events
+	fm        *market.FundMgr
 
 	deals *statestore.StateStore
 	conns map[cid.Cid]inet.Stream
@@ -70,7 +70,7 @@ type clientDealUpdate struct {
 	mut      func(*ClientDeal)
 }
 
-func NewClient(sm *stmgr.StateManager, chain *store.ChainStore, h host.Host, w *wallet.Wallet, ds dtypes.MetadataDS, dag dtypes.ClientDAG, discovery *discovery.Local, mpool full.MpoolAPI, chainapi full.ChainAPI) *Client {
+func NewClient(sm *stmgr.StateManager, chain *store.ChainStore, h host.Host, w *wallet.Wallet, ds dtypes.MetadataDS, dag dtypes.ClientDAG, discovery *discovery.Local, fm *market.FundMgr, chainapi full.ChainAPI) *Client {
 	c := &Client{
 		sm:        sm,
 		chain:     chain,
@@ -78,7 +78,7 @@ func NewClient(sm *stmgr.StateManager, chain *store.ChainStore, h host.Host, w *
 		w:         w,
 		dag:       dag,
 		discovery: discovery,
-		mpool:     mpool,
+		fm:        fm,
 		events:    events.NewEvents(context.TODO(), &chainapi),
 
 		deals: statestore.New(namespace.Wrap(ds, datastore.NewKey("/deals/client"))),
@@ -137,7 +137,7 @@ func (c *Client) onIncoming(deal *ClientDeal) {
 }
 
 func (c *Client) onUpdated(ctx context.Context, update clientDealUpdate) {
-	log.Infof("Deal %s updated state to %d", update.id, update.newState)
+	log.Infof("Client deal %s updated state to %s", update.id, api.DealStates[update.newState])
 	var deal ClientDeal
 	err := c.deals.Mutate(update.id, func(d *ClientDeal) error {
 		d.State = update.newState
@@ -184,35 +184,8 @@ type ClientDealProposal struct {
 }
 
 func (c *Client) Start(ctx context.Context, p ClientDealProposal) (cid.Cid, error) {
-	// check market funds
-	clientMarketBalance, err := c.sm.MarketBalance(ctx, p.Client, nil)
-	if err != nil {
-		return cid.Undef, xerrors.Errorf("getting client market balance failed: %w", err)
-	}
-
-	if clientMarketBalance.Available.LessThan(types.BigMul(p.PricePerEpoch, types.NewInt(p.Duration))) {
-		// TODO: move to a smarter market funds manager
-
-		smsg, err := c.mpool.MpoolPushMessage(ctx, &types.Message{
-			To:       actors.StorageMarketAddress,
-			From:     p.Client,
-			Value:    types.BigMul(p.PricePerEpoch, types.NewInt(p.Duration)),
-			GasPrice: types.NewInt(0),
-			GasLimit: types.NewInt(1000000),
-			Method:   actors.SMAMethods.AddBalance,
-		})
-		if err != nil {
-			return cid.Undef, err
-		}
-
-		_, r, err := c.sm.WaitForMessage(ctx, smsg.Cid())
-		if err != nil {
-			return cid.Undef, err
-		}
-
-		if r.ExitCode != 0 {
-			return cid.Undef, xerrors.Errorf("adding funds to storage miner market actor failed: exit %d", r.ExitCode)
-		}
+	if err := c.fm.EnsureAvailable(ctx, p.Client, types.BigMul(p.PricePerEpoch, types.NewInt(p.Duration))); err != nil {
+		return cid.Undef, xerrors.Errorf("adding market funds failed: %w", err)
 	}
 
 	commP, pieceSize, err := c.commP(ctx, p.Data)

@@ -111,6 +111,9 @@ type FullNode interface {
 	StateMarketDeals(context.Context, *types.TipSet) (map[string]actors.OnChainDeal, error)
 	StateMarketStorageDeal(context.Context, uint64, *types.TipSet) (*actors.OnChainDeal, error)
 
+	MarketEnsureAvailable(context.Context, address.Address, types.BigInt) error
+	// MarketFreeBalance
+
 	PaychGet(ctx context.Context, from, to address.Address, ensureFunds types.BigInt) (*ChannelInfo, error)
 	PaychList(context.Context) ([]address.Address, error)
 	PaychStatus(context.Context, address.Address) (*PaychStatus, error)

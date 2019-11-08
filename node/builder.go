@@ -3,6 +3,7 @@ package node
 import (
 	"context"
 	"errors"
+	"github.com/filecoin-project/lotus/chain/market"
 	"time"
 
 	blockstore "github.com/ipfs/go-ipfs-blockstore"
@@ -221,6 +222,7 @@ func Online() Option {
 
 			Override(new(*paych.Store), paych.NewStore),
 			Override(new(*paych.Manager), paych.NewManager),
+			Override(new(*market.FundMgr), market.NewFundMgr),
 
 			Override(new(*miner.Miner), miner.NewMiner),
 		),

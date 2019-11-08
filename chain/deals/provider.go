@@ -160,7 +160,7 @@ func (p *Provider) onIncoming(deal MinerDeal) {
 }
 
 func (p *Provider) onUpdated(ctx context.Context, update minerDealUpdate) {
-	log.Infof("Deal %s updated state to %d", update.id, update.newState)
+	log.Infof("Deal %s updated state to %s", update.id, api.DealStates[update.newState])
 	if update.err != nil {
 		log.Errorf("deal %s (newSt: %d) failed: %+v", update.id, update.newState, update.err)
 		p.failDeal(update.id, update.err)

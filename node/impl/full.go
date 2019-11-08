@@ -2,6 +2,7 @@ package impl
 
 import (
 	"context"
+	"github.com/filecoin-project/lotus/node/impl/market"
 
 	"github.com/filecoin-project/lotus/node/impl/client"
 	"github.com/filecoin-project/lotus/node/impl/paych"
@@ -21,6 +22,7 @@ type FullNodeAPI struct {
 	full.ChainAPI
 	client.API
 	full.MpoolAPI
+	market.MarketAPI
 	paych.PaychAPI
 	full.StateAPI
 	full.WalletAPI
