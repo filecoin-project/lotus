@@ -35,7 +35,7 @@ func (sm *StorageMinerAPI) ActorAddress(context.Context) (address.Address, error
 }
 
 func (sm *StorageMinerAPI) StoreGarbageData(ctx context.Context) error {
-	return sm.Miner.StoreGarbageData(ctx)
+	return sm.Miner.StoreGarbageData()
 }
 
 func (sm *StorageMinerAPI) SectorsStatus(ctx context.Context, sid uint64) (api.SectorInfo, error) {

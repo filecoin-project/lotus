@@ -62,7 +62,6 @@ func (m *Miner) storeGarbage(ctx context.Context, sectorID uint64, existingPiece
 		return nil, xerrors.Errorf("serializing PublishStorageDeals params failed: ", aerr)
 	}
 
-	// TODO: We may want this to happen after fetching data
 	smsg, err := m.api.MpoolPushMessage(ctx, &types.Message{
 		To:       actors.StorageMarketAddress,
 		From:     m.worker,
@@ -112,9 +111,12 @@ func (m *Miner) storeGarbage(ctx context.Context, sectorID uint64, existingPiece
 	return out, nil
 }
 
-func (m *Miner) StoreGarbageData(_ context.Context) error {
-	ctx := context.TODO()
+func (m *Miner) StoreGarbageData() error {
 	go func() {
+		ctx := context.TODO() // we can't use the context from command which invokes
+		// this, as we run everything here async, and it's cancelled when the
+		// command exits
+
 		size := sectorbuilder.UserBytesForSectorSize(m.sb.SectorSize())
 
 		sid, err := m.sb.AcquireSectorId()
