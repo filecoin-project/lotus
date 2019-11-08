@@ -36,6 +36,14 @@ var infoCmd = &cli.Command{
 
 		fmt.Printf("Miner: %s\n", maddr)
 
+		// Sector size
+		sizeByte, err := api.StateMinerSectorSize(ctx, maddr, nil)
+		if err != nil {
+			return err
+		}
+
+		fmt.Printf("Sector Size: %s\n", sizeStr(sizeByte))
+
 		pow, err := api.StateMinerPower(ctx, maddr, nil)
 		if err != nil {
 			return err
@@ -59,11 +67,22 @@ var infoCmd = &cli.Command{
 		fmt.Println(sinfo)
 
 		// TODO: grab actr state / info
-		//  * Sector size
 		//  * Sealed sectors (count / bytes)
 		//  * Power
 		return nil
 	},
+}
+
+var Units = []string{"B", "KiB", "MiB", "GiB", "TiB"}
+
+func sizeStr(size uint64) string {
+	i := 0
+	unitSize := float64(size)
+	for unitSize >= 1024 && i < len(Units) - 1 {
+		unitSize = unitSize / 1024
+		i++
+	}
+	return fmt.Sprintf("%g %s", unitSize, Units[i])
 }
 
 func sectorsInfo(ctx context.Context, napi api.StorageMiner) (map[string]int, error) {

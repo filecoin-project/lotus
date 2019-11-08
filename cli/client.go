@@ -312,7 +312,7 @@ var clientQueryAskCmd = &cli.Command{
 		}
 
 		fmt.Printf("Ask: %s\n", maddr)
-		fmt.Printf("Price per Byte: %s\n", types.FIL(ask.Ask.Price))
+		fmt.Printf("Price per GigaByte: %s\n", types.FIL(ask.Ask.Price))
 
 		size := cctx.Int64("size")
 		if size == 0 {
