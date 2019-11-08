@@ -2,18 +2,17 @@ package storage
 
 import (
 	"context"
-	"github.com/filecoin-project/lotus/lib/sectorbuilder"
 	"time"
 
 	"github.com/ipfs/go-cid"
 	"go.opencensus.io/trace"
-
 	"golang.org/x/xerrors"
 
 	"github.com/filecoin-project/lotus/api"
 	"github.com/filecoin-project/lotus/build"
 	"github.com/filecoin-project/lotus/chain/actors"
 	"github.com/filecoin-project/lotus/chain/types"
+	"github.com/filecoin-project/lotus/lib/sectorbuilder"
 )
 
 func (m *Miner) beginPosting(ctx context.Context) {

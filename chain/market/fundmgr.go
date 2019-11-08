@@ -52,6 +52,7 @@ func (fm *FundMgr) EnsureAvailable(ctx context.Context, addr address.Address, am
 		avail = types.NewInt(0)
 	}
 	fm.available[addr] = avail
+
 	fm.lk.Unlock()
 
 	smsg, err := fm.mpool.MpoolPushMessage(ctx, &types.Message{

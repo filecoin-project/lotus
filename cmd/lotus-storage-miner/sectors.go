@@ -2,11 +2,11 @@ package main
 
 import (
 	"fmt"
-	"github.com/filecoin-project/lotus/api"
 	"strconv"
 
 	"gopkg.in/urfave/cli.v2"
 
+	"github.com/filecoin-project/lotus/api"
 	lcli "github.com/filecoin-project/lotus/cli"
 )
 

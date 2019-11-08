@@ -2,8 +2,9 @@ package events
 
 import (
 	"context"
-	"go.opencensus.io/trace"
 	"sync"
+
+	"go.opencensus.io/trace"
 
 	"github.com/filecoin-project/lotus/chain/types"
 )

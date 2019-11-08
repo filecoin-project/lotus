@@ -3,7 +3,6 @@ package node
 import (
 	"context"
 	"errors"
-	"github.com/filecoin-project/lotus/chain/market"
 	"time"
 
 	blockstore "github.com/ipfs/go-ipfs-blockstore"
@@ -21,6 +20,7 @@ import (
 	"github.com/filecoin-project/lotus/api"
 	"github.com/filecoin-project/lotus/chain"
 	"github.com/filecoin-project/lotus/chain/deals"
+	"github.com/filecoin-project/lotus/chain/market"
 	"github.com/filecoin-project/lotus/chain/metrics"
 	"github.com/filecoin-project/lotus/chain/stmgr"
 	"github.com/filecoin-project/lotus/chain/store"
