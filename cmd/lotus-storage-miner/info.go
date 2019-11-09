@@ -57,7 +57,7 @@ var infoCmd = &cli.Command{
 		if err != nil {
 			return err
 		}
-		fmt.Printf("Worker use: %d / %d (+%d)", wstat.Total-wstat.Reserved-wstat.Free, wstat.Total, wstat.Reserved)
+		fmt.Printf("Worker use: %d / %d (+%d)\n", wstat.Total-wstat.Reserved-wstat.Free, wstat.Total, wstat.Reserved)
 
 		sinfo, err := sectorsInfo(ctx, nodeApi)
 		if err != nil {
