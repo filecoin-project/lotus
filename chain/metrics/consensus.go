@@ -3,6 +3,7 @@ package metrics
 import (
 	"context"
 	"encoding/json"
+	"time"
 
 	"github.com/ipfs/go-cid"
 	logging "github.com/ipfs/go-log"
@@ -69,6 +70,7 @@ type message struct {
 	Blocks []*types.BlockHeader
 	Height uint64
 	Weight types.BigInt
+	Time   uint64
 
 	// Meta
 
@@ -100,6 +102,7 @@ func sendHeadNotifs(ctx context.Context, ps *pubsub.PubSub, topic string, chain 
 				Height:   n.Val.Height(),
 				Weight:   w,
 				NodeName: nickname,
+				Time: uint64(time.Now().Unix()),
 			}
 
 			b, err := json.Marshal(m)
