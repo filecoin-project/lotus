@@ -110,6 +110,7 @@ func (ft *fetch) checkFile(path string, info paramFile) error {
 	sum := h.Sum(nil)
 	strSum := hex.EncodeToString(sum[:16])
 	if strSum == info.Digest {
+		log.Infof("Parameter file %s is ok", path)
 		return nil
 	}
 
