@@ -10,6 +10,7 @@ import (
 	"time"
 
 	rice "github.com/GeertJohan/go.rice"
+	"github.com/ipfs/go-cid"
 	logging "github.com/ipfs/go-log"
 	peer "github.com/libp2p/go-libp2p-peer"
 	"golang.org/x/xerrors"
@@ -101,7 +102,7 @@ var runCmd = &cli.Command{
 				WalletRate:  15 * time.Minute,
 				WalletBurst: 1,
 			}),
-			colLimiter: NewLimiter(LimiterConfig{
+			minerLimiter: NewLimiter(LimiterConfig{
 				TotalRate:   time.Second,
 				TotalBurst:  20,
 				IPRate:      10 * time.Minute,
@@ -114,6 +115,8 @@ var runCmd = &cli.Command{
 		http.Handle("/", http.FileServer(rice.MustFindBox("site").HTTPBox()))
 		http.HandleFunc("/send", h.send)
 		http.HandleFunc("/mkminer", h.mkminer)
+		http.HandleFunc("/msgwait", h.msgwait)
+		http.HandleFunc("/msgwaitaddr", h.msgwaitaddr)
 
 		fmt.Printf("Open http://%s\n", cctx.String("front"))
 
@@ -132,8 +135,8 @@ type handler struct {
 
 	from address.Address
 
-	limiter    *Limiter
-	colLimiter *Limiter
+	limiter      *Limiter
+	minerLimiter *Limiter
 }
 
 func (h *handler) send(w http.ResponseWriter, r *http.Request) {
@@ -202,35 +205,35 @@ func (h *handler) mkminer(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	ssize, err := strconv.ParseInt(r.FormValue("sectorSize"), 10, 64)
-	if err != nil {
-		return
-	}
-
 	if owner.Protocol() != address.BLS {
 		w.WriteHeader(400)
 		w.Write([]byte("Miner address must use BLS"))
 		return
 	}
 
-	log.Infof("mkactor on %s", owner)
+	ssize, err := strconv.ParseInt(r.FormValue("sectorSize"), 10, 64)
+	if err != nil {
+		return
+	}
+
+	log.Infof("%s: create actor start", owner)
 
 	// Limit based on wallet address
-	limiter := h.colLimiter.GetWalletLimiter(owner.String())
+	limiter := h.minerLimiter.GetWalletLimiter(owner.String())
 	if !limiter.Allow() {
 		http.Error(w, http.StatusText(http.StatusTooManyRequests), http.StatusTooManyRequests)
 		return
 	}
 
 	// Limit based on IP
-	limiter = h.colLimiter.GetIPLimiter(r.RemoteAddr)
+	limiter = h.minerLimiter.GetIPLimiter(r.RemoteAddr)
 	if !limiter.Allow() {
 		http.Error(w, http.StatusText(http.StatusTooManyRequests), http.StatusTooManyRequests)
 		return
 	}
 
 	// General limiter owner allow throttling all messages that can make it into the mpool
-	if !h.colLimiter.Allow() {
+	if !h.minerLimiter.Allow() {
 		http.Error(w, http.StatusText(http.StatusTooManyRequests), http.StatusTooManyRequests)
 		return
 	}
@@ -255,22 +258,7 @@ func (h *handler) mkminer(w http.ResponseWriter, r *http.Request) {
 		w.Write([]byte("pushfunds: " + err.Error()))
 		return
 	}
-	log.Infof("push funds to %s: %s", owner, smsg.Cid())
-
-	mw, err := h.api.StateWaitMsg(r.Context(), smsg.Cid())
-	if err != nil {
-		w.WriteHeader(400)
-		w.Write([]byte(err.Error()))
-		return
-	}
-
-	if mw.Receipt.ExitCode != 0 {
-		w.WriteHeader(400)
-		w.Write([]byte(xerrors.Errorf("create storage miner failed: exit code %d", mw.Receipt.ExitCode).Error()))
-		return
-	}
-
-	log.Infof("sendto %s ok", owner)
+	log.Infof("%s: push funds %s", owner, smsg.Cid())
 
 	params, err := actors.SerializeParams(&actors.CreateStorageMinerParams{
 		Owner:      owner,
@@ -303,9 +291,20 @@ func (h *handler) mkminer(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	log.Infof("smc %s", owner)
+	log.Infof("%s: create miner msg: %s", owner, signed.Cid())
 
-	mw, err = h.api.StateWaitMsg(r.Context(), signed.Cid())
+	http.Redirect(w, r, fmt.Sprintf("/wait.html?f=%s&m=%s&o=%s", signed.Cid(), smsg.Cid(), owner), 303)
+}
+
+func (h *handler) msgwait(w http.ResponseWriter, r *http.Request) {
+	c, err := cid.Parse(r.FormValue("cid"))
+	if err != nil {
+		w.WriteHeader(400)
+		w.Write([]byte(err.Error()))
+		return
+	}
+
+	mw, err := h.api.StateWaitMsg(r.Context(), c)
 	if err != nil {
 		w.WriteHeader(400)
 		w.Write([]byte(err.Error()))
@@ -317,6 +316,30 @@ func (h *handler) mkminer(w http.ResponseWriter, r *http.Request) {
 		w.Write([]byte(xerrors.Errorf("create storage miner failed: exit code %d", mw.Receipt.ExitCode).Error()))
 		return
 	}
+	w.WriteHeader(200)
+}
+
+func (h *handler) msgwaitaddr(w http.ResponseWriter, r *http.Request) {
+	c, err := cid.Parse(r.FormValue("cid"))
+	if err != nil {
+		w.WriteHeader(400)
+		w.Write([]byte(err.Error()))
+		return
+	}
+
+	mw, err := h.api.StateWaitMsg(r.Context(), c)
+	if err != nil {
+		w.WriteHeader(400)
+		w.Write([]byte(err.Error()))
+		return
+	}
+
+	if mw.Receipt.ExitCode != 0 {
+		w.WriteHeader(400)
+		w.Write([]byte(xerrors.Errorf("create storage miner failed: exit code %d", mw.Receipt.ExitCode).Error()))
+		return
+	}
+	w.WriteHeader(200)
 
 	addr, err := address.NewFromBytes(mw.Receipt.Return)
 	if err != nil {
@@ -325,8 +348,5 @@ func (h *handler) mkminer(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	w.Header().Set("Content-Type", "text/plain")
-	w.WriteHeader(200)
-	fmt.Fprintf(w, "New storage miners address is: %s\n", addr)
-	fmt.Fprintf(w, "Run lotus-storage-miner init --actor=%s --owner=%s", addr, owner)
+	fmt.Fprintf(w, "{\"addr\": \"%s\"}", addr)
 }
