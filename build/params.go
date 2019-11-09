@@ -46,16 +46,21 @@ const AllowableClockDrift = BlockDelay * 2
 const ForkLengthThreshold = 100
 
 // Blocks (e)
-const BlocksPerEpoch = 3
+const BlocksPerEpoch = 5
 
 // Blocks
 const Finality = 500
+
+// constants for Weight calculation
+// The ratio of weight contributed by short-term vs long-term factors in a given round
+const WRatioNum = int64(1)
+const WRatioDen = 2
 
 // /////
 // Proofs
 
 // Blocks
-const ProvingPeriodDuration = 300
+const ProvingPeriodDuration = 160
 
 // PoStChallangeTime sets the window in which post computation should happen
 // Blocks
@@ -102,11 +107,6 @@ const FilecoinPrecision = 1_000_000_000_000_000_000
 // six years
 // Blocks
 const HalvingPeriodBlocks = 6 * 365 * 24 * 60 * 2
-
-// constants for Weight calculation
-// The ratio of weight contributed by short-term vs long-term factors in a given round
-const WRatioNum = int64(1)
-const WRatioDen = 2
 
 // TODO: Move other important consts here
 
