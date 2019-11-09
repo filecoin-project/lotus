@@ -21,10 +21,35 @@ In order to run lotus, please do the following:
 - bzr (some go dependency needs this)
 - jq
 - pkg-config
-- opencl-headers
-- opencl-driver
 - opencl-icd-loader
+- opencl driver (like nvidia-opencl on arch) (for GPU acceleration) 
+- opencl-headers (build)
+- rustup (proofs build)
+- llvm (proofs build)
+- clang (proofs build)
 
+Arch (run):
+```sh
+sudo pacman -Syu opencl-icd-loader
+```
+
+Arch (build):
+```sh
+sudo pacman -Syu go gcc git bzr jq pkg-config opencl-icd-loader opencl-headers
+```
+
+Ubuntu / Debian (run):
+```sh
+sudo apt update
+sudo apt install mesa-opencl-icd ocl-icd-opencl-dev
+```
+
+Ubuntu (build):
+```sh
+sudo add-apt-repository ppa:longsleep/golang-backports
+sudo apt update
+sudo apt install golang-go gcc git bzr jq pkg-config mesa-opencl-icd ocl-icd-opencl-dev
+```
 
 2. Clone this repo & `cd` into it
 ```
