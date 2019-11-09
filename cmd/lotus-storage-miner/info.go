@@ -64,13 +64,18 @@ var infoCmd = &cli.Command{
 		if err != nil {
 			return err
 		}
-		head, err := api.ChainHead(ctx)
-		if err != nil {
-			return err
+		if ppe != 0 {
+			head, err := api.ChainHead(ctx)
+			if err != nil {
+				return err
+			}
+			pdiff := int64(ppe - head.Height())
+			pdifft := pdiff * build.BlockDelay
+			fmt.Printf("Proving Period: %d, in %d Blocks (~%dm %ds)\n", ppe, pdiff, pdifft/60, pdifft%60)
+		} else {
+			fmt.Printf("Proving Period: Not Proving\n")
 		}
-		pdiff := int64(ppe-head.Height())
-		pdifft := pdiff * build.BlockDelay
-		fmt.Printf("Proving Period: %d, in %d Blocks (~%dm %ds)\n", ppe, pdiff, pdifft / 60, pdifft % 60)
+
 
 		sinfo, err := sectorsInfo(ctx, nodeApi)
 		if err != nil {
