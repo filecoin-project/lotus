@@ -27,9 +27,22 @@ func TestSealAndVerify(t *testing.T) {
 		t.Fatalf("%+v", err)
 	}
 
-	sb, cleanup, err := sectorbuilder.TempSectorbuilder(sectorSize, datastore.NewMapDatastore())
+	ds := datastore.NewMapDatastore()
+
+	dir, err := ioutil.TempDir("", "sbtest")
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	sb, err := sectorbuilder.TempSectorbuilderDir(dir, sectorSize, ds)
 	if err != nil {
 		t.Fatalf("%+v", err)
+	}
+	cleanup := func() {
+		sb.Destroy()
+		if err := os.RemoveAll(dir); err != nil {
+			t.Error(err)
+		}
 	}
 	defer cleanup()
 
@@ -83,6 +96,26 @@ func TestSealAndVerify(t *testing.T) {
 	}})
 
 	postProof, err := sb.GeneratePoSt(ssi, cSeed, []uint64{})
+	if err != nil {
+		t.Fatalf("%+v", err)
+	}
+
+	ok, err = sectorbuilder.VerifyPost(sb.SectorSize(), ssi, cSeed, postProof, []uint64{})
+	if err != nil {
+		t.Fatalf("%+v", err)
+	}
+	if !ok {
+		t.Fatal("bad post")
+	}
+
+	// Restart sectorbuilder, re-run post
+	sb.Destroy()
+	sb, err = sectorbuilder.TempSectorbuilderDir(dir, sectorSize, ds)
+	if err != nil {
+		t.Fatalf("%+v", err)
+	}
+
+	postProof, err = sb.GeneratePoSt(ssi, cSeed, []uint64{})
 	if err != nil {
 		t.Fatalf("%+v", err)
 	}

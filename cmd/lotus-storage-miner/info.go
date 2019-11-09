@@ -68,7 +68,7 @@ var infoCmd = &cli.Command{
 		if err != nil {
 			return err
 		}
-		pdiff := ppe-head.Height()
+		pdiff := int64(ppe-head.Height())
 		pdifft := pdiff * build.BlockDelay
 		fmt.Printf("Proving Period: %d, in %d Blocks (~%dm %ds)\n", ppe, pdiff, pdifft / 60, pdifft % 60)
 
