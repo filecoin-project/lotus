@@ -3,10 +3,11 @@ package client
 import (
 	"context"
 	"errors"
-	"golang.org/x/xerrors"
 	"io"
 	"math"
 	"os"
+
+	"golang.org/x/xerrors"
 
 	"github.com/ipfs/go-blockservice"
 	"github.com/ipfs/go-cid"
@@ -23,7 +24,6 @@ import (
 
 	"github.com/filecoin-project/lotus/api"
 	"github.com/filecoin-project/lotus/build"
-	"github.com/filecoin-project/lotus/chain/actors"
 	"github.com/filecoin-project/lotus/chain/address"
 	"github.com/filecoin-project/lotus/chain/deals"
 	"github.com/filecoin-project/lotus/chain/store"
@@ -57,23 +57,17 @@ func (a *API) ClientStartDeal(ctx context.Context, data cid.Cid, miner address.A
 	// TODO: make this a param
 	self, err := a.WalletDefaultAddress(ctx)
 	if err != nil {
-		return nil, err
+		return nil, xerrors.Errorf("failed to get default address: %w", err)
 	}
 
-	// get miner peerID
-	msg := &types.Message{
-		To:     miner,
-		From:   miner,
-		Method: actors.MAMethods.GetPeerID,
+	pid, err := a.StateMinerPeerID(ctx, miner, nil)
+	if err != nil {
+		return nil, xerrors.Errorf("failed getting peer ID: %w", err)
 	}
 
-	r, err := a.StateCall(ctx, msg, nil)
+	mw, err := a.StateMinerWorker(ctx, miner, nil)
 	if err != nil {
-		return nil, err
-	}
-	pid, err := peer.IDFromBytes(r.Return)
-	if err != nil {
-		return nil, err
+		return nil, xerrors.Errorf("failed getting miner worker: %w", err)
 	}
 
 	proposal := deals.ClientDealProposal{
@@ -81,14 +75,18 @@ func (a *API) ClientStartDeal(ctx context.Context, data cid.Cid, miner address.A
 		PricePerEpoch:      epochPrice,
 		ProposalExpiration: math.MaxUint64, // TODO: set something reasonable
 		Duration:           blocksDuration,
-		ProviderAddress:    miner,
 		Client:             self,
+		ProviderAddress:    miner,
+		MinerWorker:        mw,
 		MinerID:            pid,
 	}
 
 	c, err := a.DealClient.Start(ctx, proposal)
-	// TODO: send updated voucher with PaymentVerifySector for cheaper validation (validate the sector the miner sent us first!)
-	return &c, err
+	if err != nil {
+		return nil, xerrors.Errorf("failed to start deal: %w", err)
+	}
+
+	return &c, nil
 }
 
 func (a *API) ClientListDeals(ctx context.Context) ([]api.DealInfo, error) {
@@ -113,6 +111,22 @@ func (a *API) ClientListDeals(ctx context.Context) ([]api.DealInfo, error) {
 	}
 
 	return out, nil
+}
+
+func (a *API) ClientGetDealInfo(ctx context.Context, d cid.Cid) (*api.DealInfo, error) {
+	v, err := a.DealClient.GetDeal(d)
+	if err != nil {
+		return nil, err
+	}
+	return &api.DealInfo{
+		ProposalCid:   v.ProposalCid,
+		State:         v.State,
+		Provider:      v.Proposal.Provider,
+		PieceRef:      v.Proposal.PieceRef,
+		Size:          v.Proposal.PieceSize,
+		PricePerEpoch: v.Proposal.StoragePricePerEpoch,
+		Duration:      v.Proposal.Duration,
+	}, nil
 }
 
 func (a *API) ClientHasLocal(ctx context.Context, root cid.Cid) (bool, error) {
@@ -177,7 +191,11 @@ func (a *API) ClientImport(ctx context.Context, path string) (cid.Cid, error) {
 		return cid.Undef, err
 	}
 
-	return nd.Cid(), bufferedDS.Commit()
+	if err := bufferedDS.Commit(); err != nil {
+		return cid.Undef, err
+	}
+
+	return nd.Cid(), nil
 }
 
 func (a *API) ClientImportLocal(ctx context.Context, f io.Reader) (cid.Cid, error) {

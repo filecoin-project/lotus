@@ -18,8 +18,8 @@ import (
 var log = logging.Logger("events")
 
 // `curH`-`ts.Height` = `confidence`
-type HeightHandler func(ts *types.TipSet, curH uint64) error
-type RevertHandler func(ts *types.TipSet) error
+type HeightHandler func(ctx context.Context, ts *types.TipSet, curH uint64) error
+type RevertHandler func(ctx context.Context, ts *types.TipSet) error
 
 type heightHandler struct {
 	confidence int
@@ -59,6 +59,7 @@ func NewEvents(ctx context.Context, api eventApi) *Events {
 
 		heightEvents: heightEvents{
 			tsc:          tsc,
+			ctx:          ctx,
 			gcConfidence: uint64(gcConfidence),
 
 			heightTriggers:   map[uint64]*heightHandler{},
@@ -69,6 +70,7 @@ func NewEvents(ctx context.Context, api eventApi) *Events {
 		calledEvents: calledEvents{
 			cs:           api,
 			tsc:          tsc,
+			ctx:          ctx,
 			gcConfidence: uint64(gcConfidence),
 
 			confQueue:   map[triggerH]map[msgH][]*queuedEvent{},

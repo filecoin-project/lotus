@@ -157,7 +157,7 @@ func GetMinerProvingPeriodEnd(ctx context.Context, sm *StateManager, ts *types.T
 	return mas.ProvingPeriodEnd, nil
 }
 
-func GetMinerProvingSet(ctx context.Context, sm *StateManager, ts *types.TipSet, maddr address.Address) ([]*api.SectorInfo, error) {
+func GetMinerProvingSet(ctx context.Context, sm *StateManager, ts *types.TipSet, maddr address.Address) ([]*api.ChainSectorInfo, error) {
 	var mas actors.StorageMinerActorState
 	_, err := sm.LoadActorState(ctx, maddr, &mas, ts)
 	if err != nil {
@@ -167,7 +167,7 @@ func GetMinerProvingSet(ctx context.Context, sm *StateManager, ts *types.TipSet,
 	return LoadSectorsFromSet(ctx, sm.ChainStore().Blockstore(), mas.ProvingSet)
 }
 
-func GetMinerSectorSet(ctx context.Context, sm *StateManager, ts *types.TipSet, maddr address.Address) ([]*api.SectorInfo, error) {
+func GetMinerSectorSet(ctx context.Context, sm *StateManager, ts *types.TipSet, maddr address.Address) ([]*api.ChainSectorInfo, error) {
 	var mas actors.StorageMinerActorState
 	_, err := sm.LoadActorState(ctx, maddr, &mas, ts)
 	if err != nil {
@@ -193,20 +193,40 @@ func GetMinerSectorSize(ctx context.Context, sm *StateManager, ts *types.TipSet,
 	return minfo.SectorSize, nil
 }
 
-func LoadSectorsFromSet(ctx context.Context, bs blockstore.Blockstore, ssc cid.Cid) ([]*api.SectorInfo, error) {
+func GetStorageDeal(ctx context.Context, sm *StateManager, dealId uint64, ts *types.TipSet) (*actors.OnChainDeal, error) {
+	var state actors.StorageMarketState
+	if _, err := sm.LoadActorState(ctx, actors.StorageMarketAddress, &state, ts); err != nil {
+		return nil, err
+	}
+
+	blks := amt.WrapBlockstore(sm.ChainStore().Blockstore())
+	da, err := amt.LoadAMT(blks, state.Deals)
+	if err != nil {
+		return nil, err
+	}
+
+	var ocd actors.OnChainDeal
+	if err := da.Get(dealId, &ocd); err != nil {
+		return nil, err
+	}
+
+	return &ocd, nil
+}
+
+func LoadSectorsFromSet(ctx context.Context, bs blockstore.Blockstore, ssc cid.Cid) ([]*api.ChainSectorInfo, error) {
 	blks := amt.WrapBlockstore(bs)
 	a, err := amt.LoadAMT(blks, ssc)
 	if err != nil {
 		return nil, err
 	}
 
-	var sset []*api.SectorInfo
+	var sset []*api.ChainSectorInfo
 	if err := a.ForEach(func(i uint64, v *cbg.Deferred) error {
 		var comms [][]byte
 		if err := cbor.DecodeInto(v.Raw, &comms); err != nil {
 			return err
 		}
-		sset = append(sset, &api.SectorInfo{
+		sset = append(sset, &api.ChainSectorInfo{
 			SectorID: i,
 			CommR:    comms[0],
 			CommD:    comms[1],

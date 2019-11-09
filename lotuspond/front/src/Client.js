@@ -21,7 +21,7 @@ class Client extends React.Component {
 
     this.state = {
       miners: ["t0101"],
-      ask: {Price: "500000000"},
+      ask: {Price: "1000000000"}, // 2x min default ask to account for bin packing (could also do the math correctly below, but..)
 
       kbs: 1,
       blocks: 12,
@@ -52,7 +52,7 @@ class Client extends React.Component {
   update = (name) => (e) => this.setState({ [name]: e.target.value });
 
   makeDeal = async () => {
-    let perBlk = this.state.ask.Price * this.state.kbs * 1000 / (1 << 30)
+    let perBlk = this.state.ask.Price * this.state.kbs * 1000 / (1 << 30) * 2
 
     let file = await this.props.pondClient.call('Pond.CreateRandomFile', [this.state.kbs * 1000]) // 1024 won't fit in 1k blocks :(
     let cid = await this.props.client.call('Filecoin.ClientImport', [file])

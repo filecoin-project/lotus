@@ -9,7 +9,9 @@ import (
 	unixfile "github.com/ipfs/go-unixfs/file"
 	"golang.org/x/xerrors"
 
-	"github.com/filecoin-project/lotus/lib/cborrpc"
+	"github.com/filecoin-project/lotus/lib/cborutil"
+	"github.com/filecoin-project/lotus/lib/padreader"
+	"github.com/filecoin-project/lotus/lib/sectorbuilder"
 )
 
 func (c *Client) failDeal(id cid.Cid, cerr error) {
@@ -25,29 +27,41 @@ func (c *Client) failDeal(id cid.Cid, cerr error) {
 	}
 
 	// TODO: store in some sort of audit log
-	log.Errorf("deal %s failed: %s", id, cerr)
+	log.Errorf("deal %s failed: %+v", id, cerr)
 }
 
-func (c *Client) dataSize(ctx context.Context, data cid.Cid) (int64, error) {
+func (c *Client) commP(ctx context.Context, data cid.Cid) ([]byte, uint64, error) {
 	root, err := c.dag.Get(ctx, data)
 	if err != nil {
 		log.Errorf("failed to get file root for deal: %s", err)
-		return 0, err
+		return nil, 0, err
 	}
 
 	n, err := unixfile.NewUnixfsFile(ctx, c.dag, root)
 	if err != nil {
 		log.Errorf("cannot open unixfs file: %s", err)
-		return 0, err
+		return nil, 0, err
 	}
 
 	uf, ok := n.(files.File)
 	if !ok {
 		// TODO: we probably got directory, how should we handle this in unixfs mode?
-		return 0, xerrors.New("unsupported unixfs type")
+		return nil, 0, xerrors.New("unsupported unixfs type")
 	}
 
-	return uf.Size()
+	s, err := uf.Size()
+	if err != nil {
+		return nil, 0, err
+	}
+
+	pr, psize := padreader.New(uf, uint64(s))
+
+	commp, err := sectorbuilder.GeneratePieceCommitment(pr, psize)
+	if err != nil {
+		return nil, 0, xerrors.Errorf("generating CommP: %w", err)
+	}
+
+	return commp[:], psize, nil
 }
 
 func (c *Client) readStorageDealResp(deal ClientDeal) (*Response, error) {
@@ -58,16 +72,29 @@ func (c *Client) readStorageDealResp(deal ClientDeal) (*Response, error) {
 	}
 
 	var resp SignedResponse
-	if err := cborrpc.ReadCborRPC(s, &resp); err != nil {
+	if err := cborutil.ReadCborRPC(s, &resp); err != nil {
 		log.Errorw("failed to read Response message", "error", err)
 		return nil, err
 	}
 
-	// TODO: verify signature
+	if err := resp.Verify(deal.MinerWorker); err != nil {
+		return nil, xerrors.Errorf("verifying response signature failed", err)
+	}
 
 	if resp.Response.Proposal != deal.ProposalCid {
-		return nil, xerrors.New("miner responded to a wrong proposal")
+		return nil, xerrors.Errorf("miner responded to a wrong proposal: %s != %s", resp.Response.Proposal, deal.ProposalCid)
 	}
 
 	return &resp.Response, nil
+}
+
+func (c *Client) disconnect(deal ClientDeal) error {
+	s, ok := c.conns[deal.ProposalCid]
+	if !ok {
+		return nil
+	}
+
+	err := s.Close()
+	delete(c.conns, deal.ProposalCid)
+	return err
 }

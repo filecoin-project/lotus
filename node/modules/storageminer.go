@@ -3,6 +3,7 @@ package modules
 import (
 	"context"
 	"fmt"
+	"math"
 	"path/filepath"
 
 	"github.com/ipfs/go-bitswap"
@@ -27,8 +28,6 @@ import (
 	"github.com/filecoin-project/lotus/node/repo"
 	"github.com/filecoin-project/lotus/retrieval"
 	"github.com/filecoin-project/lotus/storage"
-	"github.com/filecoin-project/lotus/storage/commitment"
-	"github.com/filecoin-project/lotus/storage/sector"
 )
 
 func minerAddrFromDS(ds dtypes.MetadataDS) (address.Address, error) {
@@ -40,8 +39,8 @@ func minerAddrFromDS(ds dtypes.MetadataDS) (address.Address, error) {
 	return address.NewFromBytes(maddrb)
 }
 
-func SectorBuilderConfig(storagePath string) func(dtypes.MetadataDS, api.FullNode) (*sectorbuilder.SectorBuilderConfig, error) {
-	return func(ds dtypes.MetadataDS, api api.FullNode) (*sectorbuilder.SectorBuilderConfig, error) {
+func SectorBuilderConfig(storagePath string, threads uint) func(dtypes.MetadataDS, api.FullNode) (*sectorbuilder.Config, error) {
+	return func(ds dtypes.MetadataDS, api api.FullNode) (*sectorbuilder.Config, error) {
 		minerAddr, err := minerAddrFromDS(ds)
 		if err != nil {
 			return nil, err
@@ -57,13 +56,21 @@ func SectorBuilderConfig(storagePath string) func(dtypes.MetadataDS, api.FullNod
 			return nil, err
 		}
 
+		if threads > math.MaxUint8 {
+			return nil, xerrors.Errorf("too many sectorbuilder threads specified: %d, max allowed: %d", threads, math.MaxUint8)
+		}
+
+		cache := filepath.Join(sp, "cache")
 		metadata := filepath.Join(sp, "meta")
 		sealed := filepath.Join(sp, "sealed")
 		staging := filepath.Join(sp, "staging")
 
-		sb := &sectorbuilder.SectorBuilderConfig{
-			Miner:       minerAddr,
-			SectorSize:  ssize,
+		sb := &sectorbuilder.Config{
+			Miner:         minerAddr,
+			SectorSize:    ssize,
+			WorkerThreads: uint8(threads),
+
+			CacheDir:    cache,
 			MetadataDir: metadata,
 			SealedDir:   sealed,
 			StagedDir:   staging,
@@ -73,13 +80,13 @@ func SectorBuilderConfig(storagePath string) func(dtypes.MetadataDS, api.FullNod
 	}
 }
 
-func StorageMiner(mctx helpers.MetricsCtx, lc fx.Lifecycle, api api.FullNode, h host.Host, ds dtypes.MetadataDS, secst *sector.Store, commt *commitment.Tracker) (*storage.Miner, error) {
+func StorageMiner(mctx helpers.MetricsCtx, lc fx.Lifecycle, api api.FullNode, h host.Host, ds dtypes.MetadataDS, sb *sectorbuilder.SectorBuilder, tktFn storage.TicketFn) (*storage.Miner, error) {
 	maddr, err := minerAddrFromDS(ds)
 	if err != nil {
 		return nil, err
 	}
 
-	sm, err := storage.NewMiner(api, maddr, h, ds, secst, commt)
+	sm, err := storage.NewMiner(api, maddr, h, ds, sb, tktFn)
 	if err != nil {
 		return nil, err
 	}
@@ -90,6 +97,7 @@ func StorageMiner(mctx helpers.MetricsCtx, lc fx.Lifecycle, api api.FullNode, h 
 		OnStart: func(context.Context) error {
 			return sm.Run(ctx)
 		},
+		OnStop: sm.Stop,
 	})
 
 	return sm, nil
@@ -168,7 +176,23 @@ func RegisterMiner(lc fx.Lifecycle, ds dtypes.MetadataDS, api api.FullNode) erro
 	return nil
 }
 
-func SealTicketGen(api api.FullNode) sector.TicketFn {
+func SectorBuilder(lc fx.Lifecycle, cfg *sectorbuilder.Config, ds dtypes.MetadataDS) (*sectorbuilder.SectorBuilder, error) {
+	sb, err := sectorbuilder.New(cfg, ds)
+	if err != nil {
+		return nil, err
+	}
+
+	lc.Append(fx.Hook{
+		OnStop: func(context.Context) error {
+			sb.Destroy()
+			return nil
+		},
+	})
+
+	return sb, nil
+}
+
+func SealTicketGen(api api.FullNode) storage.TicketFn {
 	return func(ctx context.Context) (*sectorbuilder.SealTicket, error) {
 		ts, err := api.ChainHead(ctx)
 		if err != nil {
@@ -186,7 +210,7 @@ func SealTicketGen(api api.FullNode) sector.TicketFn {
 		}
 
 		return &sectorbuilder.SealTicket{
-			BlockHeight: ts.Height() - build.SealRandomnessLookback,
+			BlockHeight: ts.Height(),
 			TicketBytes: tkt,
 		}, nil
 	}

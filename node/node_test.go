@@ -31,13 +31,10 @@ import (
 	"github.com/filecoin-project/lotus/node/repo"
 )
 
-func testStorageNode(ctx context.Context, t *testing.T, waddr address.Address, act address.Address, tnd test.TestNode) test.TestStorageNode {
+func testStorageNode(ctx context.Context, t *testing.T, waddr address.Address, act address.Address, pk crypto.PrivKey, tnd test.TestNode, mn mocknet.Mocknet) test.TestStorageNode {
 	r := repo.NewMemory(nil)
 
 	lr, err := r.Lock(repo.RepoStorageMiner)
-	require.NoError(t, err)
-
-	pk, _, err := crypto.GenerateEd25519Key(rand.Reader)
 	require.NoError(t, err)
 
 	ks, err := lr.KeyStore()
@@ -93,7 +90,9 @@ func testStorageNode(ctx context.Context, t *testing.T, waddr address.Address, a
 		node.Repo(r),
 		node.Test(),
 
-		node.Override(new(*sectorbuilder.SectorBuilderConfig), modules.SectorBuilderConfig(secbpath)),
+		node.MockHost(mn),
+
+		node.Override(new(*sectorbuilder.Config), modules.SectorBuilderConfig(secbpath, 2)),
 		node.Override(new(api.FullNode), tnd),
 	)
 	require.NoError(t, err)
@@ -115,12 +114,18 @@ func builder(t *testing.T, nFull int, storage []int) ([]test.TestNode, []test.Te
 	fulls := make([]test.TestNode, nFull)
 	storers := make([]test.TestStorageNode, len(storage))
 
+	pk, _, err := crypto.GenerateEd25519Key(rand.Reader)
+	require.NoError(t, err)
+
+	minerPid, err := peer.IDFromPrivateKey(pk)
+	require.NoError(t, err)
+
 	var genbuf bytes.Buffer
 
 	for i := 0; i < nFull; i++ {
 		var genesis node.Option
 		if i == 0 {
-			genesis = node.Override(new(modules.Genesis), modtest.MakeGenesisMem(&genbuf))
+			genesis = node.Override(new(modules.Genesis), modtest.MakeGenesisMem(&genbuf, minerPid))
 		} else {
 			genesis = node.Override(new(modules.Genesis), modules.LoadGenesis(genbuf.Bytes()))
 		}
@@ -171,7 +176,7 @@ func builder(t *testing.T, nFull int, storage []int) ([]test.TestNode, []test.Te
 		genMiner, err := address.NewFromString("t0101")
 		require.NoError(t, err)
 
-		storers[i] = testStorageNode(ctx, t, wa, genMiner, f)
+		storers[i] = testStorageNode(ctx, t, wa, genMiner, pk, f, mn)
 	}
 
 	if err := mn.LinkAll(); err != nil {
@@ -220,4 +225,8 @@ func rpcBuilder(t *testing.T, nFull int, storage []int) ([]test.TestNode, []test
 
 func TestAPIRPC(t *testing.T) {
 	test.TestApis(t, rpcBuilder)
+}
+
+func TestAPIDealFlow(t *testing.T) {
+	test.TestDealFlow(t, builder)
 }

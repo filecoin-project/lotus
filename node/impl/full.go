@@ -3,10 +3,11 @@ package impl
 import (
 	"context"
 
-	"github.com/filecoin-project/lotus/node/impl/client"
-	"github.com/filecoin-project/lotus/node/impl/paych"
-
 	logging "github.com/ipfs/go-log"
+
+	"github.com/filecoin-project/lotus/node/impl/client"
+	"github.com/filecoin-project/lotus/node/impl/market"
+	"github.com/filecoin-project/lotus/node/impl/paych"
 
 	"github.com/filecoin-project/lotus/api"
 	"github.com/filecoin-project/lotus/chain/address"
@@ -21,6 +22,7 @@ type FullNodeAPI struct {
 	full.ChainAPI
 	client.API
 	full.MpoolAPI
+	market.MarketAPI
 	paych.PaychAPI
 	full.StateAPI
 	full.WalletAPI

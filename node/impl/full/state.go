@@ -3,8 +3,9 @@ package full
 import (
 	"bytes"
 	"context"
-	"github.com/filecoin-project/go-amt-ipld"
 	"strconv"
+
+	"github.com/filecoin-project/go-amt-ipld"
 
 	cid "github.com/ipfs/go-cid"
 	"github.com/ipfs/go-hamt-ipld"
@@ -37,11 +38,11 @@ type StateAPI struct {
 	Chain        *store.ChainStore
 }
 
-func (a *StateAPI) StateMinerSectors(ctx context.Context, addr address.Address, ts *types.TipSet) ([]*api.SectorInfo, error) {
+func (a *StateAPI) StateMinerSectors(ctx context.Context, addr address.Address, ts *types.TipSet) ([]*api.ChainSectorInfo, error) {
 	return stmgr.GetMinerSectorSet(ctx, a.StateManager, ts, addr)
 }
 
-func (a *StateAPI) StateMinerProvingSet(ctx context.Context, addr address.Address, ts *types.TipSet) ([]*api.SectorInfo, error) {
+func (a *StateAPI) StateMinerProvingSet(ctx context.Context, addr address.Address, ts *types.TipSet) ([]*api.ChainSectorInfo, error) {
 	return stmgr.GetMinerProvingSet(ctx, a.StateManager, ts, addr)
 }
 
@@ -278,4 +279,8 @@ func (a *StateAPI) StateMarketDeals(ctx context.Context, ts *types.TipSet) (map[
 		return nil, err
 	}
 	return out, nil
+}
+
+func (a *StateAPI) StateMarketStorageDeal(ctx context.Context, dealId uint64, ts *types.TipSet) (*actors.OnChainDeal, error) {
+	return stmgr.GetStorageDeal(ctx, a.StateManager, dealId, ts)
 }

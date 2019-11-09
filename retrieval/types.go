@@ -3,7 +3,6 @@ package retrieval
 import (
 	"github.com/filecoin-project/lotus/api"
 	"github.com/ipfs/go-cid"
-	cbor "github.com/ipfs/go-ipld-cbor"
 
 	"github.com/filecoin-project/lotus/chain/types"
 )
@@ -11,7 +10,7 @@ import (
 const ProtocolID = "/fil/retrieval/-1.0.0"          // TODO: spec
 const QueryProtocolID = "/fil/retrieval/qry/-1.0.0" // TODO: spec
 
-type QueryResponseStatus int
+type QueryResponseStatus uint64
 
 const (
 	Available QueryResponseStatus = iota
@@ -24,18 +23,6 @@ const (
 	Rejected
 	Unsealing
 )
-
-func init() {
-	cbor.RegisterCborType(RetParams{})
-
-	cbor.RegisterCborType(Query{})
-	cbor.RegisterCborType(QueryResponse{})
-	cbor.RegisterCborType(Unixfs0Offer{})
-
-	cbor.RegisterCborType(DealProposal{})
-	cbor.RegisterCborType(DealResponse{})
-	cbor.RegisterCborType(Block{})
-}
 
 type Query struct {
 	Piece cid.Cid
@@ -69,7 +56,7 @@ type DealProposal struct {
 }
 
 type DealResponse struct {
-	Status  int
+	Status  uint64
 	Message string
 }
 

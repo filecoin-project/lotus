@@ -2,7 +2,6 @@ package deals
 
 import (
 	"context"
-	"github.com/filecoin-project/lotus/node/impl/full"
 
 	"github.com/ipfs/go-cid"
 	"github.com/ipfs/go-datastore"
@@ -16,11 +15,15 @@ import (
 	"github.com/filecoin-project/lotus/api"
 	"github.com/filecoin-project/lotus/chain/actors"
 	"github.com/filecoin-project/lotus/chain/address"
+	"github.com/filecoin-project/lotus/chain/events"
+	"github.com/filecoin-project/lotus/chain/market"
 	"github.com/filecoin-project/lotus/chain/stmgr"
 	"github.com/filecoin-project/lotus/chain/store"
 	"github.com/filecoin-project/lotus/chain/types"
 	"github.com/filecoin-project/lotus/chain/wallet"
-	"github.com/filecoin-project/lotus/lib/cborrpc"
+	"github.com/filecoin-project/lotus/lib/cborutil"
+	"github.com/filecoin-project/lotus/lib/statestore"
+	"github.com/filecoin-project/lotus/node/impl/full"
 	"github.com/filecoin-project/lotus/node/modules/dtypes"
 	"github.com/filecoin-project/lotus/retrieval/discovery"
 )
@@ -32,6 +35,10 @@ type ClientDeal struct {
 	Proposal    actors.StorageDealProposal
 	State       api.DealState
 	Miner       peer.ID
+	MinerWorker address.Address
+	DealID      uint64
+
+	PublishMessage *cid.Cid
 
 	s inet.Stream
 }
@@ -43,9 +50,10 @@ type Client struct {
 	w         *wallet.Wallet
 	dag       dtypes.ClientDAG
 	discovery *discovery.Local
-	mpool     full.MpoolAPI
+	events    *events.Events
+	fm        *market.FundMgr
 
-	deals ClientStateStore
+	deals *statestore.StateStore
 	conns map[cid.Cid]inet.Stream
 
 	incoming chan *ClientDeal
@@ -59,9 +67,10 @@ type clientDealUpdate struct {
 	newState api.DealState
 	id       cid.Cid
 	err      error
+	mut      func(*ClientDeal)
 }
 
-func NewClient(sm *stmgr.StateManager, chain *store.ChainStore, h host.Host, w *wallet.Wallet, ds dtypes.MetadataDS, dag dtypes.ClientDAG, discovery *discovery.Local, mpool full.MpoolAPI) *Client {
+func NewClient(sm *stmgr.StateManager, chain *store.ChainStore, h host.Host, w *wallet.Wallet, ds dtypes.MetadataDS, dag dtypes.ClientDAG, discovery *discovery.Local, fm *market.FundMgr, chainapi full.ChainAPI) *Client {
 	c := &Client{
 		sm:        sm,
 		chain:     chain,
@@ -69,9 +78,10 @@ func NewClient(sm *stmgr.StateManager, chain *store.ChainStore, h host.Host, w *
 		w:         w,
 		dag:       dag,
 		discovery: discovery,
-		mpool:     mpool,
+		fm:        fm,
+		events:    events.NewEvents(context.TODO(), &chainapi),
 
-		deals: ClientStateStore{StateStore{ds: namespace.Wrap(ds, datastore.NewKey("/deals/client"))}},
+		deals: statestore.New(namespace.Wrap(ds, datastore.NewKey("/deals/client"))),
 		conns: map[cid.Cid]inet.Stream{},
 
 		incoming: make(chan *ClientDeal, 16),
@@ -127,10 +137,13 @@ func (c *Client) onIncoming(deal *ClientDeal) {
 }
 
 func (c *Client) onUpdated(ctx context.Context, update clientDealUpdate) {
-	log.Infof("Deal %s updated state to %d", update.id, update.newState)
+	log.Infof("Client deal %s updated state to %s", update.id, api.DealStates[update.newState])
 	var deal ClientDeal
-	err := c.deals.MutateClient(update.id, func(d *ClientDeal) error {
+	err := c.deals.Mutate(update.id, func(d *ClientDeal) error {
 		d.State = update.newState
+		if update.mut != nil {
+			update.mut(d)
+		}
 		deal = *d
 		return nil
 	})
@@ -152,7 +165,8 @@ func (c *Client) onUpdated(ctx context.Context, update clientDealUpdate) {
 	case api.DealStaged:
 		c.handle(ctx, deal, c.staged, api.DealSealing)
 	case api.DealSealing:
-		c.handle(ctx, deal, c.sealing, api.DealComplete)
+		c.handle(ctx, deal, c.sealing, api.DealNoUpdate)
+		// TODO: DealComplete -> watch for faults, expiration, etc.
 	}
 }
 
@@ -165,80 +179,59 @@ type ClientDealProposal struct {
 
 	ProviderAddress address.Address
 	Client          address.Address
+	MinerWorker     address.Address
 	MinerID         peer.ID
 }
 
 func (c *Client) Start(ctx context.Context, p ClientDealProposal) (cid.Cid, error) {
-	// check market funds
-	clientMarketBalance, err := c.sm.MarketBalance(ctx, p.Client, nil)
-	if err != nil {
-		return cid.Undef, xerrors.Errorf("getting client market balance failed: %w", err)
+	if err := c.fm.EnsureAvailable(ctx, p.Client, types.BigMul(p.PricePerEpoch, types.NewInt(p.Duration))); err != nil {
+		return cid.Undef, xerrors.Errorf("adding market funds failed: %w", err)
 	}
 
-	if clientMarketBalance.Available.LessThan(types.BigMul(p.PricePerEpoch, types.NewInt(p.Duration))) {
-		// TODO: move to a smarter market funds manager
+	commP, pieceSize, err := c.commP(ctx, p.Data)
 
-		smsg, err := c.mpool.MpoolPushMessage(ctx, &types.Message{
-			To:       actors.StorageMarketAddress,
-			From:     p.Client,
-			Value:    types.BigMul(p.PricePerEpoch, types.NewInt(p.Duration)),
-			GasPrice: types.NewInt(0),
-			GasLimit: types.NewInt(1000000),
-			Method:   actors.SMAMethods.AddBalance,
-		})
-		if err != nil {
-			return cid.Undef, err
-		}
-
-		_, r, err := c.sm.WaitForMessage(ctx, smsg.Cid())
-		if err != nil {
-			return cid.Undef, err
-		}
-
-		if r.ExitCode != 0 {
-			return cid.Undef, xerrors.Errorf("adding funds to storage miner market actor failed: exit %d", r.ExitCode)
-		}
-	}
-
-	dataSize, err := c.dataSize(ctx, p.Data)
-
-	proposal := &actors.StorageDealProposal{
-		PieceRef:             p.Data.Bytes(),
-		PieceSize:            uint64(dataSize),
+	dealProposal := &actors.StorageDealProposal{
+		PieceRef:             commP,
+		PieceSize:            uint64(pieceSize),
 		PieceSerialization:   actors.SerializationUnixFSv0,
 		Client:               p.Client,
 		Provider:             p.ProviderAddress,
 		ProposalExpiration:   p.ProposalExpiration,
 		Duration:             p.Duration,
 		StoragePricePerEpoch: p.PricePerEpoch,
-		StorageCollateral:    types.NewInt(uint64(dataSize)), // TODO: real calc
+		StorageCollateral:    types.NewInt(uint64(pieceSize)), // TODO: real calc
 	}
 
-	if err := api.SignWith(ctx, c.w.Sign, p.Client, proposal); err != nil {
+	if err := api.SignWith(ctx, c.w.Sign, p.Client, dealProposal); err != nil {
 		return cid.Undef, xerrors.Errorf("signing deal proposal failed: %w", err)
 	}
 
-	proposalNd, err := cborrpc.AsIpld(proposal)
+	proposalNd, err := cborutil.AsIpld(dealProposal)
 	if err != nil {
 		return cid.Undef, xerrors.Errorf("getting proposal node failed: %w", err)
 	}
 
 	s, err := c.h.NewStream(ctx, p.MinerID, DealProtocolID)
 	if err != nil {
-		s.Reset()
 		return cid.Undef, xerrors.Errorf("connecting to storage provider failed: %w", err)
 	}
 
-	if err := cborrpc.WriteCborRPC(s, proposal); err != nil {
+	proposal := &Proposal{
+		DealProposal: dealProposal,
+		Piece:        p.Data,
+	}
+
+	if err := cborutil.WriteCborRPC(s, proposal); err != nil {
 		s.Reset()
 		return cid.Undef, xerrors.Errorf("sending proposal to storage provider failed: %w", err)
 	}
 
 	deal := &ClientDeal{
 		ProposalCid: proposalNd.Cid(),
-		Proposal:    *proposal,
+		Proposal:    *dealProposal,
 		State:       api.DealUnknown,
 		Miner:       p.MinerID,
+		MinerWorker: p.MinerWorker,
 
 		s: s,
 	}
@@ -246,7 +239,7 @@ func (c *Client) Start(ctx context.Context, p ClientDealProposal) (cid.Cid, erro
 	c.incoming <- deal
 
 	return deal.ProposalCid, c.discovery.AddPeer(p.Data, discovery.RetrievalPeer{
-		Address: proposal.Provider,
+		Address: dealProposal.Provider,
 		ID:      deal.Miner,
 	})
 }
@@ -260,12 +253,12 @@ func (c *Client) QueryAsk(ctx context.Context, p peer.ID, a address.Address) (*t
 	req := &AskRequest{
 		Miner: a,
 	}
-	if err := cborrpc.WriteCborRPC(s, req); err != nil {
+	if err := cborutil.WriteCborRPC(s, req); err != nil {
 		return nil, xerrors.Errorf("failed to send ask request: %w", err)
 	}
 
 	var out AskResponse
-	if err := cborrpc.ReadCborRPC(s, &out); err != nil {
+	if err := cborutil.ReadCborRPC(s, &out); err != nil {
 		return nil, xerrors.Errorf("failed to read ask response: %w", err)
 	}
 
@@ -285,7 +278,19 @@ func (c *Client) QueryAsk(ctx context.Context, p peer.ID, a address.Address) (*t
 }
 
 func (c *Client) List() ([]ClientDeal, error) {
-	return c.deals.ListClient()
+	var out []ClientDeal
+	if err := c.deals.List(&out); err != nil {
+		return nil, err
+	}
+	return out, nil
+}
+
+func (c *Client) GetDeal(d cid.Cid) (*ClientDeal, error) {
+	var out ClientDeal
+	if err := c.deals.Get(d, &out); err != nil {
+		return nil, err
+	}
+	return &out, nil
 }
 
 func (c *Client) Stop() {

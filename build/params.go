@@ -46,16 +46,21 @@ const AllowableClockDrift = BlockDelay * 2
 const ForkLengthThreshold = 100
 
 // Blocks (e)
-const BlocksPerEpoch = 3
+const BlocksPerEpoch = 5
 
 // Blocks
 const Finality = 500
+
+// constants for Weight calculation
+// The ratio of weight contributed by short-term vs long-term factors in a given round
+const WRatioNum = int64(1)
+const WRatioDen = 2
 
 // /////
 // Proofs
 
 // Blocks
-const ProvingPeriodDuration = 60
+const ProvingPeriodDuration = 160
 
 // PoStChallangeTime sets the window in which post computation should happen
 // Blocks
@@ -71,6 +76,9 @@ const PoStRandomnessLookback = 1
 // Blocks
 const SealRandomnessLookback = Finality
 
+// Blocks
+const SealRandomnessLookbackLimit = SealRandomnessLookback + 2000
+
 // /////
 // Mining
 
@@ -80,6 +88,9 @@ const EcRandomnessLookback = 300
 const PowerCollateralProportion = 5
 const PerCapitaCollateralProportion = 1
 const CollateralPrecision = 1000
+
+// Blocks
+const InteractivePoRepDelay = 10
 
 // /////
 // Devnet settings
@@ -96,9 +107,6 @@ const FilecoinPrecision = 1_000_000_000_000_000_000
 // six years
 // Blocks
 const HalvingPeriodBlocks = 6 * 365 * 24 * 60 * 2
-
-// Blocks
-const AdjustmentPeriod = 7 * 24 * 60 * 2
 
 // TODO: Move other important consts here
 

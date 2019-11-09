@@ -329,6 +329,7 @@ func powerLookup(ctx context.Context, vmctx types.VMContext, self *StoragePowerS
 		return types.EmptyInt, aerrors.New(1, "miner not registered with storage power actor")
 	}
 
+	// TODO: Use local amt
 	ret, err := vmctx.Send(miner, MAMethods.GetPower, types.NewInt(0), nil)
 	if err != nil {
 		return types.EmptyInt, aerrors.Wrap(err, "invoke Miner.GetPower")

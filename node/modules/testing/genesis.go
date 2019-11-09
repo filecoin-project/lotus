@@ -25,7 +25,7 @@ import (
 
 var glog = logging.Logger("genesis")
 
-func MakeGenesisMem(out io.Writer) func(bs dtypes.ChainBlockstore, w *wallet.Wallet) modules.Genesis {
+func MakeGenesisMem(out io.Writer, minerPid peer.ID) func(bs dtypes.ChainBlockstore, w *wallet.Wallet) modules.Genesis {
 	return func(bs dtypes.ChainBlockstore, w *wallet.Wallet) modules.Genesis {
 		return func() (*types.BlockHeader, error) {
 			glog.Warn("Generating new random genesis block, note that this SHOULD NOT happen unless you are setting up new network")
@@ -38,7 +38,7 @@ func MakeGenesisMem(out io.Writer) func(bs dtypes.ChainBlockstore, w *wallet.Wal
 			gmc := &gen.GenMinerCfg{
 				Owners:  []address.Address{w},
 				Workers: []address.Address{w},
-				PeerIDs: []peer.ID{"peerID 1"},
+				PeerIDs: []peer.ID{minerPid},
 			}
 			alloc := map[address.Address]types.BigInt{
 				w: types.FromFil(10000),

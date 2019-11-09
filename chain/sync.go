@@ -103,7 +103,7 @@ func (syncer *Syncer) InformNewHead(from peer.ID, fts *store.FullTipSet) {
 
 	if from == syncer.self {
 		// TODO: this is kindof a hack...
-		log.Info("got block from ourselves")
+		log.Debug("got block from ourselves")
 
 		if err := syncer.Sync(ctx, fts.TipSet()); err != nil {
 			log.Errorf("failed to sync our own block %s: %+v", fts.TipSet().Cids(), err)
@@ -471,6 +471,17 @@ func (syncer *Syncer) ValidateBlock(ctx context.Context, b *types.FullBlock) err
 	}
 
 	if stateroot != h.ParentStateRoot {
+		msgs, err := syncer.store.MessagesForTipset(baseTs)
+		if err != nil {
+			log.Error("failed to load messages for tipset during tipset state mismatch error: ", err)
+		} else {
+			log.Warn("Messages for tipset with mismatching state:")
+			for i, m := range msgs {
+				mm := m.VMMessage()
+				log.Warnf("Message[%d]: from=%s to=%s method=%d params=%x", i, mm.From, mm.To, mm.Method, mm.Params)
+			}
+		}
+
 		return xerrors.Errorf("parent state root did not match computed state (%s != %s)", stateroot, h.ParentStateRoot)
 	}
 
@@ -916,7 +927,7 @@ func (syncer *Syncer) collectChain(ctx context.Context, ts *types.TipSet) error 
 	}
 
 	syncer.syncState.SetStage(api.StageSyncComplete)
-	log.Infow("new tipset", "height", ts.Height(), "tipset", types.LogCids(ts.Cids()))
+	log.Debugw("new tipset", "height", ts.Height(), "tipset", types.LogCids(ts.Cids()))
 
 	return nil
 }

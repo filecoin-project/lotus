@@ -15,9 +15,10 @@ import (
 	"github.com/filecoin-project/lotus/chain/actors"
 	"github.com/filecoin-project/lotus/chain/address"
 	"github.com/filecoin-project/lotus/chain/types"
-	"github.com/filecoin-project/lotus/lib/cborrpc"
+	"github.com/filecoin-project/lotus/lib/cborutil"
+	"github.com/filecoin-project/lotus/lib/statestore"
 	"github.com/filecoin-project/lotus/node/modules/dtypes"
-	"github.com/filecoin-project/lotus/storage/commitment"
+	"github.com/filecoin-project/lotus/storage"
 	"github.com/filecoin-project/lotus/storage/sectorblocks"
 )
 
@@ -42,15 +43,15 @@ type Provider struct {
 	ask   *types.SignedStorageAsk
 	askLk sync.Mutex
 
-	secst *sectorblocks.SectorBlocks
-	commt *commitment.Tracker
-	full  api.FullNode
+	secb   *sectorblocks.SectorBlocks
+	sminer *storage.Miner
+	full   api.FullNode
 
 	// TODO: Use a custom protocol or graphsync in the future
 	// TODO: GC
 	dag dtypes.StagingDAG
 
-	deals MinerStateStore
+	deals *statestore.StateStore
 	ds    dtypes.MetadataDS
 
 	conns map[cid.Cid]inet.Stream
@@ -70,7 +71,7 @@ type minerDealUpdate struct {
 	mut      func(*MinerDeal)
 }
 
-func NewProvider(ds dtypes.MetadataDS, secst *sectorblocks.SectorBlocks, commt *commitment.Tracker, dag dtypes.StagingDAG, fullNode api.FullNode) (*Provider, error) {
+func NewProvider(ds dtypes.MetadataDS, sminer *storage.Miner, secb *sectorblocks.SectorBlocks, dag dtypes.StagingDAG, fullNode api.FullNode) (*Provider, error) {
 	addr, err := ds.Get(datastore.NewKey("miner-address"))
 	if err != nil {
 		return nil, err
@@ -81,13 +82,13 @@ func NewProvider(ds dtypes.MetadataDS, secst *sectorblocks.SectorBlocks, commt *
 	}
 
 	h := &Provider{
-		secst: secst,
-		commt: commt,
-		dag:   dag,
-		full:  fullNode,
+		sminer: sminer,
+		dag:    dag,
+		full:   fullNode,
+		secb:   secb,
 
 		pricePerByteBlock: types.NewInt(3), // TODO: allow setting
-		minPieceSize:      1,
+		minPieceSize:      256,             // TODO: allow setting (BUT KEEP MIN 256! (because of how we fill sectors up))
 
 		conns: map[cid.Cid]inet.Stream{},
 
@@ -98,7 +99,7 @@ func NewProvider(ds dtypes.MetadataDS, secst *sectorblocks.SectorBlocks, commt *
 
 		actor: minerAddress,
 
-		deals: MinerStateStore{StateStore{ds: namespace.Wrap(ds, datastore.NewKey("/deals/client"))}},
+		deals: statestore.New(namespace.Wrap(ds, datastore.NewKey("/deals/client"))),
 		ds:    ds,
 	}
 
@@ -159,14 +160,14 @@ func (p *Provider) onIncoming(deal MinerDeal) {
 }
 
 func (p *Provider) onUpdated(ctx context.Context, update minerDealUpdate) {
-	log.Infof("Deal %s updated state to %d", update.id, update.newState)
+	log.Infof("Deal %s updated state to %s", update.id, api.DealStates[update.newState])
 	if update.err != nil {
-		log.Errorf("deal %s (newSt: %d) failed: %s", update.id, update.newState, update.err)
+		log.Errorf("deal %s (newSt: %d) failed: %+v", update.id, update.newState, update.err)
 		p.failDeal(update.id, update.err)
 		return
 	}
 	var deal MinerDeal
-	err := p.deals.MutateMiner(update.id, func(d *MinerDeal) error {
+	err := p.deals.Mutate(update.id, func(d *MinerDeal) error {
 		d.State = update.newState
 		if update.mut != nil {
 			update.mut(d)
@@ -191,24 +192,19 @@ func (p *Provider) onUpdated(ctx context.Context, update minerDealUpdate) {
 	}
 }
 
-func (p *Provider) newDeal(s inet.Stream, proposal actors.StorageDealProposal) (MinerDeal, error) {
-	proposalNd, err := cborrpc.AsIpld(&proposal)
-	if err != nil {
-		return MinerDeal{}, err
-	}
-
-	ref, err := cid.Cast(proposal.PieceRef)
+func (p *Provider) newDeal(s inet.Stream, proposal Proposal) (MinerDeal, error) {
+	proposalNd, err := cborutil.AsIpld(proposal.DealProposal)
 	if err != nil {
 		return MinerDeal{}, err
 	}
 
 	return MinerDeal{
 		Client:      s.Conn().RemotePeer(),
-		Proposal:    proposal,
+		Proposal:    *proposal.DealProposal,
 		ProposalCid: proposalNd.Cid(),
 		State:       api.DealUnknown,
 
-		Ref: ref,
+		Ref: proposal.Piece,
 
 		s: s,
 	}, nil
@@ -226,7 +222,7 @@ func (p *Provider) HandleStream(s inet.Stream) {
 
 	deal, err := p.newDeal(s, proposal)
 	if err != nil {
-		log.Error(err)
+		log.Errorf("%+v", err)
 		s.Close()
 		return
 	}

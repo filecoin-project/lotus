@@ -8,7 +8,7 @@ import (
 	"github.com/filecoin-project/lotus/chain/address"
 	"github.com/filecoin-project/lotus/chain/stmgr"
 	"github.com/filecoin-project/lotus/chain/types"
-	"github.com/filecoin-project/lotus/lib/cborrpc"
+	"github.com/filecoin-project/lotus/lib/cborutil"
 	datastore "github.com/ipfs/go-datastore"
 	inet "github.com/libp2p/go-libp2p-core/network"
 	"golang.org/x/xerrors"
@@ -54,14 +54,14 @@ func (p *Provider) getAsk(m address.Address) *types.SignedStorageAsk {
 func (p *Provider) HandleAskStream(s inet.Stream) {
 	defer s.Close()
 	var ar AskRequest
-	if err := cborrpc.ReadCborRPC(s, &ar); err != nil {
+	if err := cborutil.ReadCborRPC(s, &ar); err != nil {
 		log.Errorf("failed to read AskRequest from incoming stream: %s", err)
 		return
 	}
 
 	resp := p.processAskRequest(&ar)
 
-	if err := cborrpc.WriteCborRPC(s, resp); err != nil {
+	if err := cborutil.WriteCborRPC(s, resp); err != nil {
 		log.Errorf("failed to write ask response: %s", err)
 		return
 	}
@@ -98,7 +98,7 @@ func (p *Provider) loadAsk() error {
 	}
 
 	var ssa types.SignedStorageAsk
-	if err := cborrpc.ReadCborRPC(bytes.NewReader(askb), &ssa); err != nil {
+	if err := cborutil.ReadCborRPC(bytes.NewReader(askb), &ssa); err != nil {
 		return err
 	}
 
@@ -107,7 +107,7 @@ func (p *Provider) loadAsk() error {
 }
 
 func (p *Provider) signAsk(a *types.StorageAsk) (*types.SignedStorageAsk, error) {
-	b, err := cborrpc.Dump(a)
+	b, err := cborutil.Dump(a)
 	if err != nil {
 		return nil, err
 	}
@@ -129,7 +129,7 @@ func (p *Provider) signAsk(a *types.StorageAsk) (*types.SignedStorageAsk, error)
 }
 
 func (p *Provider) saveAsk(a *types.SignedStorageAsk) error {
-	b, err := cborrpc.Dump(a)
+	b, err := cborutil.Dump(a)
 	if err != nil {
 		return err
 	}
@@ -150,7 +150,7 @@ func (c *Client) checkAskSignature(ask *types.SignedStorageAsk) error {
 		return xerrors.Errorf("failed to get worker for miner in ask", err)
 	}
 
-	sigb, err := cborrpc.Dump(ask.Ask)
+	sigb, err := cborutil.Dump(ask.Ask)
 	if err != nil {
 		return xerrors.Errorf("failed to re-serialize ask")
 	}

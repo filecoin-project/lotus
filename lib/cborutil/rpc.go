@@ -1,4 +1,4 @@
-package cborrpc
+package cborutil
 
 import (
 	"bytes"
@@ -65,4 +65,16 @@ func AsIpld(obj interface{}) (ipld.Node, error) {
 		return cbor.Decode(b, math.MaxUint64, -1)
 	}
 	return cbor.WrapObject(obj, math.MaxUint64, -1)
+}
+
+func Equals(a cbg.CBORMarshaler, b cbg.CBORMarshaler) (bool, error) {
+	ab, err := Dump(a)
+	if err != nil {
+		return false, err
+	}
+	bb, err := Dump(b)
+	if err != nil {
+		return false, err
+	}
+	return bytes.Equal(ab, bb), nil
 }

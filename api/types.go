@@ -25,6 +25,17 @@ const (
 	DealNoUpdate = DealUnknown
 )
 
+var DealStates = []string{
+	"DealUnknown",
+	"DealRejected",
+	"DealAccepted",
+	"DealStaged",
+	"DealSealing",
+	"DealFailed",
+	"DealComplete",
+	"DealError",
+}
+
 // TODO: check if this exists anywhere else
 type MultiaddrSlice []ma.Multiaddr
 
