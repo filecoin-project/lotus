@@ -7,6 +7,7 @@ import (
 	"gopkg.in/urfave/cli.v2"
 
 	"github.com/filecoin-project/lotus/api"
+	"github.com/filecoin-project/lotus/build"
 	"github.com/filecoin-project/lotus/chain/types"
 	lcli "github.com/filecoin-project/lotus/cli"
 )
@@ -59,12 +60,24 @@ var infoCmd = &cli.Command{
 		}
 		fmt.Printf("Worker use: %d / %d (+%d)\n", wstat.Total-wstat.Reserved-wstat.Free, wstat.Total, wstat.Reserved)
 
+		ppe, err := api.StateMinerProvingPeriodEnd(ctx, maddr, nil)
+		if err != nil {
+			return err
+		}
+		head, err := api.ChainHead(ctx)
+		if err != nil {
+			return err
+		}
+		pdiff := ppe-head.Height()
+		pdifft := pdiff * build.BlockDelay
+		fmt.Printf("Proving Period: %d, in %d Blocks (~%dm %ds)\n", ppe, pdiff, pdifft / 60, pdifft % 60)
+
 		sinfo, err := sectorsInfo(ctx, nodeApi)
 		if err != nil {
 			return err
 		}
 
-		fmt.Println(sinfo)
+		fmt.Println("Sectors: ", sinfo)
 
 		// TODO: grab actr state / info
 		//  * Sealed sectors (count / bytes)
