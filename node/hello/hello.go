@@ -12,6 +12,7 @@ import (
 	"github.com/libp2p/go-libp2p-core/host"
 	inet "github.com/libp2p/go-libp2p-core/network"
 	"github.com/libp2p/go-libp2p-core/peer"
+	protocol "github.com/libp2p/go-libp2p-protocol"
 
 	"github.com/filecoin-project/lotus/chain"
 	"github.com/filecoin-project/lotus/chain/store"
@@ -34,8 +35,9 @@ type Message struct {
 	GenesisHash          cid.Cid
 }
 
+type NewStreamFunc func(context.Context, peer.ID, ...protocol.ID) (inet.Stream, error)
 type Service struct {
-	newStream chain.NewStreamFunc
+	newStream NewStreamFunc
 
 	cs     *store.ChainStore
 	syncer *chain.Syncer

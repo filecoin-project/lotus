@@ -8,6 +8,7 @@ import (
 
 	"github.com/filecoin-project/lotus/api"
 	"github.com/filecoin-project/lotus/chain/actors"
+	"github.com/filecoin-project/lotus/chain/blocksync"
 	"github.com/filecoin-project/lotus/chain/deals"
 	"github.com/filecoin-project/lotus/chain/types"
 	"github.com/filecoin-project/lotus/paych"
@@ -71,17 +72,15 @@ func main() {
 		os.Exit(1)
 	}
 
-	/*
-		err = gen.WriteTupleEncodersToFile("./chain/cbor_gen.go", "chain",
-			chain.BlockSyncRequest{},
-			chain.BlockSyncResponse{},
-			chain.BSTipSet{},
-		)
-		if err != nil {
-			fmt.Println(err)
-			os.Exit(1)
-		}
-	*/
+	err = gen.WriteTupleEncodersToFile("./chain/blocksync/cbor_gen.go", "blocksync",
+		blocksync.BlockSyncRequest{},
+		blocksync.BlockSyncResponse{},
+		blocksync.BSTipSet{},
+	)
+	if err != nil {
+		fmt.Println(err)
+		os.Exit(1)
+	}
 
 	err = gen.WriteTupleEncodersToFile("./chain/actors/cbor_gen.go", "actors",
 		actors.InitActorState{},

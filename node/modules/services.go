@@ -9,6 +9,7 @@ import (
 	"go.uber.org/fx"
 
 	"github.com/filecoin-project/lotus/chain"
+	"github.com/filecoin-project/lotus/chain/blocksync"
 	"github.com/filecoin-project/lotus/chain/deals"
 	"github.com/filecoin-project/lotus/chain/sub"
 	"github.com/filecoin-project/lotus/node/hello"
@@ -37,8 +38,8 @@ func RunPeerMgr(mctx helpers.MetricsCtx, lc fx.Lifecycle, pmgr *peermgr.PeerMgr)
 	go pmgr.Run(helpers.LifecycleCtx(mctx, lc))
 }
 
-func RunBlockSync(h host.Host, svc *chain.BlockSyncService) {
-	h.SetStreamHandler(chain.BlockSyncProtocolID, svc.HandleStream)
+func RunBlockSync(h host.Host, svc *blocksync.BlockSyncService) {
+	h.SetStreamHandler(blocksync.BlockSyncProtocolID, svc.HandleStream)
 }
 
 func HandleIncomingBlocks(mctx helpers.MetricsCtx, lc fx.Lifecycle, pubsub *pubsub.PubSub, s *chain.Syncer) {

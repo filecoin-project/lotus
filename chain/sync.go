@@ -12,6 +12,7 @@ import (
 	"github.com/filecoin-project/lotus/build"
 	"github.com/filecoin-project/lotus/chain/actors"
 	"github.com/filecoin-project/lotus/chain/address"
+	"github.com/filecoin-project/lotus/chain/blocksync"
 	"github.com/filecoin-project/lotus/chain/state"
 	"github.com/filecoin-project/lotus/chain/stmgr"
 	"github.com/filecoin-project/lotus/chain/store"
@@ -49,7 +50,7 @@ type Syncer struct {
 	bad *BadBlockCache
 
 	// handle to the block sync service
-	Bsync *BlockSync
+	Bsync *blocksync.BlockSync
 
 	self peer.ID
 
@@ -61,7 +62,7 @@ type Syncer struct {
 	peerHeadsLk sync.Mutex
 }
 
-func NewSyncer(sm *stmgr.StateManager, bsync *BlockSync, self peer.ID) (*Syncer, error) {
+func NewSyncer(sm *stmgr.StateManager, bsync *blocksync.BlockSync, self peer.ID) (*Syncer, error) {
 	gen, err := sm.ChainStore().GetGenesis()
 	if err != nil {
 		return nil, err
@@ -882,7 +883,7 @@ func (syncer *Syncer) iterFullTipsets(ctx context.Context, headers []*types.TipS
 	return nil
 }
 
-func persistMessages(bs bstore.Blockstore, bst *BSTipSet) error {
+func persistMessages(bs bstore.Blockstore, bst *blocksync.BSTipSet) error {
 	for _, m := range bst.BlsMessages {
 		//log.Infof("putting BLS message: %s", m.Cid())
 		if _, err := store.PutMessage(bs, m); err != nil {
