@@ -170,7 +170,7 @@ func PowerCmp(eproof ElectionProof, mpow, totpow BigInt) bool {
 		max(h) == 2^256-1
 		which in terms of integer math means:
 		(h(vrfout) + 1) * totalPower <= e * minerPower * 2^256
-		in 2^256 space, it is equivalent to: 
+		in 2^256 space, it is equivalent to:
 		h(vrfout) * totalPower < e * minerPower * 2^256
 	*/
 
@@ -183,7 +183,7 @@ func PowerCmp(eproof ElectionProof, mpow, totpow BigInt) bool {
 	// rhs = minerPower << 256
 	rhs := new(big.Int).Lsh(mpow.Int, 256)
 	rhs = rhs.Mul(rhs, blocksPerEpoch.Int)
-	
+
 	// h(vrfout) * totalPower < e * minerPower * 2^256?
 	return lhs.Cmp(rhs) == -1
 }
