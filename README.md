@@ -59,7 +59,7 @@ $ cd lotus/
 
 3. Build and install the source code
 ```
-$ make
+$ make clean all
 $ sudo make install
 ```
 
@@ -89,16 +89,12 @@ $ lotus net peers | wc -l
 2 # number of peers
 ```
 
-[wait for the chain to finish syncing]
-
-You can follow sync status with:
+Wait for the chain to finish syncing:
 ```sh
-$ watch lotus sync status
+$ lotus sync wait
 ```
 
-then view latest block height along with other network metrics at the https://lotus-metrics.kittyhawk.wtf/chain.
-
-[It may take a few minutes for the chain to finish syncing. You will see `Height: 0` until the full chain is synced and validated.]
+You can view latest block height along with other network metrics at the https://lotus-metrics.kittyhawk.wtf/chain.
 
 ### Basics
 
