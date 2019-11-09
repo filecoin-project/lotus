@@ -111,10 +111,17 @@ func (syncer *Syncer) InformNewHead(from peer.ID, fts *store.FullTipSet) {
 
 		return
 	}
+
 	syncer.peerHeadsLk.Lock()
 	syncer.peerHeads[from] = fts.TipSet()
 	syncer.peerHeadsLk.Unlock()
 	syncer.Bsync.AddPeer(from)
+
+	bestPweight := syncer.store.GetHeaviestTipSet().Blocks()[0].ParentWeight
+	if fts.TipSet().Blocks()[0].ParentWeight.LessThan(bestPweight) {
+		log.Warn("incoming tipset does not appear to be better than our best chain, ignoring for now")
+		return
+	}
 
 	go func() {
 		if err := syncer.Sync(ctx, fts.TipSet()); err != nil {
@@ -724,6 +731,8 @@ loop:
 
 			log.Errorf("failed to get blocks: %+v", err)
 
+			span.AddAttributes(trace.StringAttribute("error", err.Error()))
+
 			// This error will only be logged above,
 			return nil, xerrors.Errorf("failed to get blocks: %w", err)
 		}
@@ -905,6 +914,8 @@ func (syncer *Syncer) collectChain(ctx context.Context, ts *types.TipSet) error 
 	if err != nil {
 		return err
 	}
+
+	span.AddAttributes(trace.Int64Attribute("syncChainLength", int64(len(headers))))
 
 	if !headers[0].Equals(ts) {
 		log.Errorf("collectChain headers[0] should be equal to sync target. Its not: %s != %s", headers[0].Cids(), ts.Cids())

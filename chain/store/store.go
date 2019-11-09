@@ -231,7 +231,7 @@ func (cs *ChainStore) MaybeTakeHeavierTipSet(ctx context.Context, ts *types.TipS
 		// TODO: don't do this for initial sync. Now that we don't have a
 		// difference between 'bootstrap sync' and 'caught up' sync, we need
 		// some other heuristic.
-		return cs.takeHeaviestTipSet(ts)
+		return cs.takeHeaviestTipSet(ctx, ts)
 	}
 	return nil
 }
@@ -267,7 +267,10 @@ func (cs *ChainStore) reorgWorker(ctx context.Context) chan<- reorg {
 	return out
 }
 
-func (cs *ChainStore) takeHeaviestTipSet(ts *types.TipSet) error {
+func (cs *ChainStore) takeHeaviestTipSet(ctx context.Context, ts *types.TipSet) error {
+	ctx, span := trace.StartSpan(ctx, "takeHeaviestTipSet")
+	defer span.End()
+
 	if cs.heaviest != nil { // buf
 		if len(cs.reorgCh) > 0 {
 			log.Warnf("Reorg channel running behind, %d reorgs buffered", len(cs.reorgCh))
@@ -279,6 +282,8 @@ func (cs *ChainStore) takeHeaviestTipSet(ts *types.TipSet) error {
 	} else {
 		log.Warnf("no heaviest tipset found, using %s", ts.Cids())
 	}
+
+	span.AddAttributes(trace.BoolAttribute("newHead", true))
 
 	log.Debugf("New heaviest tipset! %s", ts.Cids())
 	cs.heaviest = ts
@@ -296,7 +301,7 @@ func (cs *ChainStore) takeHeaviestTipSet(ts *types.TipSet) error {
 func (cs *ChainStore) SetHead(ts *types.TipSet) error {
 	cs.heaviestLk.Lock()
 	defer cs.heaviestLk.Unlock()
-	return cs.takeHeaviestTipSet(ts)
+	return cs.takeHeaviestTipSet(context.TODO(), ts)
 }
 
 func (cs *ChainStore) Contains(ts *types.TipSet) (bool, error) {

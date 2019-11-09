@@ -130,7 +130,7 @@ func (bss *BlockSyncService) processRequest(ctx context.Context, req *BlockSyncR
 
 	chain, err := bss.collectChainSegment(req.Start, req.RequestLength, opts)
 	if err != nil {
-		log.Error("encountered error while responding to block sync request: ", err)
+		log.Warn("encountered error while responding to block sync request: ", err)
 		return &BlockSyncResponse{
 			Status: 203,
 		}, nil
@@ -149,7 +149,7 @@ func (bss *BlockSyncService) collectChainSegment(start []cid.Cid, length uint64,
 		var bst BSTipSet
 		ts, err := bss.cs.LoadTipSet(cur)
 		if err != nil {
-			return nil, err
+			return nil, xerrors.Errorf("failed loading tipset %s: %w", cur, err)
 		}
 
 		if opts.IncludeMessages {
@@ -222,8 +222,8 @@ func (bss *BlockSyncService) gatherMessages(ts *types.TipSet) ([]*types.Message,
 }
 
 type BlockSync struct {
-	bserv     bserv.BlockService
-	newStream NewStreamFunc
+	bserv bserv.BlockService
+	host  host.Host
 
 	syncPeersLk sync.Mutex
 	syncPeers   map[peer.ID]struct{}
@@ -232,19 +232,9 @@ type BlockSync struct {
 func NewBlockSyncClient(bserv dtypes.ChainBlockService, h host.Host) *BlockSync {
 	return &BlockSync{
 		bserv:     bserv,
-		newStream: h.NewStream,
+		host:      h,
 		syncPeers: make(map[peer.ID]struct{}),
 	}
-}
-
-func (bs *BlockSync) getPeers() []peer.ID {
-	bs.syncPeersLk.Lock()
-	defer bs.syncPeersLk.Unlock()
-	var out []peer.ID
-	for p := range bs.syncPeers {
-		out = append(out, p)
-	}
-	return out
 }
 
 func (bs *BlockSync) processStatus(req *BlockSyncRequest, res *BlockSyncResponse) error {
@@ -396,8 +386,18 @@ func bstsToFullTipSet(bts *BSTipSet) (*store.FullTipSet, error) {
 }
 
 func (bs *BlockSync) sendRequestToPeer(ctx context.Context, p peer.ID, req *BlockSyncRequest) (*BlockSyncResponse, error) {
-	s, err := bs.newStream(inet.WithNoDial(ctx, "should already have connection"), p, BlockSyncProtocolID)
+	ctx, span := trace.StartSpan(ctx, "sendRequestToPeer")
+	defer span.End()
+
+	if span.IsRecordingEvents() {
+		span.AddAttributes(
+			trace.StringAttribute("peer", p.Pretty()),
+		)
+	}
+
+	s, err := bs.host.NewStream(inet.WithNoDial(ctx, "should already have connection"), p, BlockSyncProtocolID)
 	if err != nil {
+		bs.RemovePeer(p)
 		return nil, err
 	}
 
@@ -450,6 +450,26 @@ func (bs *BlockSync) AddPeer(p peer.ID) {
 	bs.syncPeersLk.Lock()
 	defer bs.syncPeersLk.Unlock()
 	bs.syncPeers[p] = struct{}{}
+}
+
+func (bs *BlockSync) RemovePeer(p peer.ID) {
+	bs.syncPeersLk.Lock()
+	defer bs.syncPeersLk.Unlock()
+	delete(bs.syncPeers, p)
+}
+
+func (bs *BlockSync) getPeers() []peer.ID {
+	bs.syncPeersLk.Lock()
+	defer bs.syncPeersLk.Unlock()
+	var out []peer.ID
+	for p := range bs.syncPeers {
+		out = append(out, p)
+	}
+	return out
+}
+
+func (bs *BlockSync) logPeerQuality(p peer.ID) {
+
 }
 
 func (bs *BlockSync) FetchMessagesByCids(ctx context.Context, cids []cid.Cid) ([]*types.Message, error) {
