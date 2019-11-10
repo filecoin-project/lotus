@@ -36,6 +36,8 @@ class App extends React.Component {
             console.log(ev)
             let update = JSON.parse(ev.data)
 
+            update.Update.Weight = Number(update.Update.Weight)
+
             let wdiff = update.Update.Weight - (this.state[update.From] || {Weight: update.Update.Weight}).Weight
             wdiff = <span style={{color: wdiff < 0 ? '#f00' : '#f0f0f0'}}>{wdiff}</span>
 
