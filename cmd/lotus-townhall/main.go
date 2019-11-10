@@ -5,20 +5,21 @@ import (
 	"context"
 	"encoding/json"
 	"fmt"
-	"github.com/filecoin-project/lotus/build"
-	"github.com/ipfs/go-car"
-	"github.com/ipfs/go-datastore"
-	blockstore "github.com/ipfs/go-ipfs-blockstore"
 	"net/http"
 	"strings"
+	"time"
 
 	rice "github.com/GeertJohan/go.rice"
 	"github.com/gorilla/websocket"
+	"github.com/ipfs/go-car"
+	"github.com/ipfs/go-datastore"
+	blockstore "github.com/ipfs/go-ipfs-blockstore"
 	"github.com/libp2p/go-libp2p"
 	"github.com/libp2p/go-libp2p-core/peer"
 	pnet "github.com/libp2p/go-libp2p-pnet"
 	pubsub "github.com/libp2p/go-libp2p-pubsub"
 
+	"github.com/filecoin-project/lotus/build"
 	"github.com/filecoin-project/lotus/node/modules/lp2p"
 )
 
@@ -90,6 +91,7 @@ func main() {
 type update struct {
 	From   peer.ID
 	Update json.RawMessage
+	Time   uint64
 }
 
 func handler(ps *pubsub.PubSub) func(w http.ResponseWriter, r *http.Request) {
@@ -109,17 +111,20 @@ func handler(ps *pubsub.PubSub) func(w http.ResponseWriter, r *http.Request) {
 			return
 		}
 
+		fmt.Println("new conn")
+
 		for {
 			msg, err := sub.Next(r.Context())
 			if err != nil {
 				return
 			}
 
-			fmt.Println(msg)
+			//fmt.Println(msg)
 
 			if err := conn.WriteJSON(update{
 				From:   peer.ID(msg.From),
 				Update: msg.Data,
+				Time:   uint64(time.Now().UnixNano() / 1000_000),
 			}); err != nil {
 				return
 			}

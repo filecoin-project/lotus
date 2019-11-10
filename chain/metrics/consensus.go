@@ -102,7 +102,7 @@ func sendHeadNotifs(ctx context.Context, ps *pubsub.PubSub, topic string, chain 
 				Height:   n.Val.Height(),
 				Weight:   w,
 				NodeName: nickname,
-				Time: uint64(time.Now().Unix()),
+				Time:     uint64(time.Now().UnixNano() / 1000_000),
 			}
 
 			b, err := json.Marshal(m)
