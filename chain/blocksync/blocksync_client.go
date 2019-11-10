@@ -67,22 +67,20 @@ func (bs *BlockSync) GetBlocks(ctx context.Context, tipset []cid.Cid, count int)
 		)
 	}
 
-	peers := bs.getPeers()
-	perm := rand.Perm(len(peers))
-	// TODO: round robin through these peers on error
-
 	req := &BlockSyncRequest{
 		Start:         tipset,
 		RequestLength: uint64(count),
 		Options:       BSOptBlocks,
 	}
 
+	peers := bs.getPeers()
+
 	var oerr error
-	for _, p := range perm {
-		res, err := bs.sendRequestToPeer(ctx, peers[p], req)
+	for _, p := range peers {
+		res, err := bs.sendRequestToPeer(ctx, p, req)
 		if err != nil {
 			oerr = err
-			log.Warnf("BlockSync request failed for peer %s: %s", peers[p].String(), err)
+			log.Warnf("BlockSync request failed for peer %s: %s", p.String(), err)
 			continue
 		}
 
@@ -91,7 +89,7 @@ func (bs *BlockSync) GetBlocks(ctx context.Context, tipset []cid.Cid, count int)
 		}
 		oerr = bs.processStatus(req, res)
 		if oerr != nil {
-			log.Warnf("BlockSync peer %s response was an error: %s", peers[p].String(), oerr)
+			log.Warnf("BlockSync peer %s response was an error: %s", p.String(), oerr)
 		}
 	}
 	return nil, xerrors.Errorf("GetBlocks failed with all peers: %w", oerr)
@@ -182,7 +180,7 @@ func (bs *BlockSync) sendRequestToPeer(ctx context.Context, p peer.ID, req *Bloc
 	s, err := bs.host.NewStream(inet.WithNoDial(ctx, "should already have connection"), p, BlockSyncProtocolID)
 	if err != nil {
 		bs.RemovePeer(p)
-		return nil, err
+		return nil, xerrors.Errorf("failed to open stream to peer: %w", err)
 	}
 
 	if err := cborutil.WriteCborRPC(s, req); err != nil {
