@@ -36,8 +36,11 @@ class App extends React.Component {
             console.log(ev)
             let update = JSON.parse(ev.data)
 
+            let wdiff = update.Update.Weight - (this.state[update.From] || {Weight: update.Update.Weight}).Weight
+            wdiff = <span style={{color: wdiff < 0 ? '#f00' : '#f0f0f0'}}>{wdiff}</span>
+
             this.setState( prev => ({
-                ...prev, [update.From]: {...update.Update, utime: update.Time},
+                ...prev, [update.From]: {...update.Update, utime: update.Time, wdiff: wdiff},
             }))
         }
 
@@ -57,14 +60,14 @@ class App extends React.Component {
         let bestw = Object.keys(this.state).map(k => this.state[k]).reduce((p, n) => p > n.Weight ? p : n.Weight, -1)
 
         return <table>
-            <tr><td>PeerID</td><td>Nickname</td><td>Lag</td><td>Weight</td><td>Height</td><td>Blocks</td></tr>
+            <tr><td>PeerID</td><td>Nickname</td><td>Lag</td><td>Weight(best, prev)</td><td>Height</td><td>Blocks</td></tr>
             {Object.keys(this.state).map(k => [k, this.state[k]]).map(([k, v]) => {
             let mnrs = v.Blocks.map(b => <td>&nbsp;m:{b.Miner}({lagCol(v.Time ? v.Time - (b.Timestamp*1000) : v.utime - (b.Timestamp*1000), v.Time)})</td>)
             let l = [
               <td>{k}</td>,
               <td>{v.NodeName}</td>,
               <td>{v.Time ? lagCol(v.utime - v.Time, true) : ""}</td>,
-              <td style={{color: bestw !== v.Weight ? '#f00' : '#afa'}}>{v.Weight}({bestw - v.Weight})</td>,
+              <td style={{color: bestw !== v.Weight ? '#f00' : '#afa'}}>{v.Weight}({bestw - v.Weight}, {v.wdiff})</td>,
               <td style={{color: colForH(besth, v.Height)}}>{v.Height}({besth - v.Height})</td>,
               ...mnrs,
             ]
