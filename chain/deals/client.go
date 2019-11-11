@@ -26,7 +26,7 @@ import (
 	"github.com/filecoin-project/lotus/lib/cborutil"
 	"github.com/filecoin-project/lotus/node/modules/dtypes"
 	"github.com/filecoin-project/lotus/retrieval/discovery"
-
+	"github.com/filecoin-project/lotus/storagemarket"
 )
 
 var log = logging.Logger("deals")
@@ -45,10 +45,10 @@ type ClientDeal struct {
 }
 
 type Client struct {
-        sm           *stmgr.StateManager
-	chain        *store.ChainStore
-	h            host.Host
-	w            *wallet.Wallet
+	sm    *stmgr.StateManager
+	chain *store.ChainStore
+	h     host.Host
+	w     *wallet.Wallet
 	// dataTransfer
 	// TODO: once the data transfer module is complete, the
 	// client will listen to events on the data transfer module
@@ -246,7 +246,7 @@ func (c *Client) Start(ctx context.Context, p ClientDealProposal) (cid.Cid, erro
 		return cid.Undef, xerrors.Errorf("getting proposal node failed: %w", err)
 	}
 
-	s, err := c.h.NewStream(ctx, p.MinerID, DealProtocolID)
+	s, err := c.h.NewStream(ctx, p.MinerID, storagemarket.DealProtocolID)
 	if err != nil {
 		return cid.Undef, xerrors.Errorf("connecting to storage provider failed: %w", err)
 	}
@@ -280,7 +280,7 @@ func (c *Client) Start(ctx context.Context, p ClientDealProposal) (cid.Cid, erro
 }
 
 func (c *Client) QueryAsk(ctx context.Context, p peer.ID, a address.Address) (*types.SignedStorageAsk, error) {
-	s, err := c.h.NewStream(ctx, p, AskProtocolID)
+	s, err := c.h.NewStream(ctx, p, storagemarket.AskProtocolID)
 	if err != nil {
 		return nil, err
 	}

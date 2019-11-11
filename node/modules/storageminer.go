@@ -118,9 +118,7 @@ func HandleDeals(mctx helpers.MetricsCtx, lc fx.Lifecycle, host host.Host, h *de
 
 	lc.Append(fx.Hook{
 		OnStart: func(context.Context) error {
-			h.Run(ctx)
-			host.SetStreamHandler(deals.DealProtocolID, h.HandleStream)
-			host.SetStreamHandler(deals.AskProtocolID, h.HandleAskStream)
+			h.Run(ctx, host)
 			return nil
 		},
 		OnStop: func(context.Context) error {
