@@ -19,6 +19,7 @@ import (
 
 	"github.com/filecoin-project/lotus/api"
 	"github.com/filecoin-project/lotus/chain"
+	"github.com/filecoin-project/lotus/chain/blocksync"
 	"github.com/filecoin-project/lotus/chain/deals"
 	"github.com/filecoin-project/lotus/chain/market"
 	"github.com/filecoin-project/lotus/chain/metrics"
@@ -197,14 +198,14 @@ func Online() Option {
 
 			// Filecoin services
 			Override(new(*chain.Syncer), chain.NewSyncer),
-			Override(new(*chain.BlockSync), chain.NewBlockSyncClient),
+			Override(new(*blocksync.BlockSync), blocksync.NewBlockSyncClient),
 			Override(new(*chain.MessagePool), chain.NewMessagePool),
 
 			Override(new(modules.Genesis), modules.ErrorGenesis),
 			Override(SetGenesisKey, modules.SetGenesis),
 
 			Override(new(*hello.Service), hello.NewHelloService),
-			Override(new(*chain.BlockSyncService), chain.NewBlockSyncService),
+			Override(new(*blocksync.BlockSyncService), blocksync.NewBlockSyncService),
 			Override(new(*peermgr.PeerMgr), peermgr.NewPeerMgr),
 
 			Override(RunHelloKey, modules.RunHello),

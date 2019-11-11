@@ -12,6 +12,7 @@ import (
 	"github.com/filecoin-project/lotus/build"
 	"github.com/filecoin-project/lotus/chain/actors"
 	"github.com/filecoin-project/lotus/chain/address"
+	"github.com/filecoin-project/lotus/chain/blocksync"
 	"github.com/filecoin-project/lotus/chain/state"
 	"github.com/filecoin-project/lotus/chain/stmgr"
 	"github.com/filecoin-project/lotus/chain/store"
@@ -49,7 +50,7 @@ type Syncer struct {
 	bad *BadBlockCache
 
 	// handle to the block sync service
-	Bsync *BlockSync
+	Bsync *blocksync.BlockSync
 
 	self peer.ID
 
@@ -61,7 +62,7 @@ type Syncer struct {
 	peerHeadsLk sync.Mutex
 }
 
-func NewSyncer(sm *stmgr.StateManager, bsync *BlockSync, self peer.ID) (*Syncer, error) {
+func NewSyncer(sm *stmgr.StateManager, bsync *blocksync.BlockSync, self peer.ID) (*Syncer, error) {
 	gen, err := sm.ChainStore().GetGenesis()
 	if err != nil {
 		return nil, err
@@ -111,14 +112,22 @@ func (syncer *Syncer) InformNewHead(from peer.ID, fts *store.FullTipSet) {
 
 		return
 	}
+
 	syncer.peerHeadsLk.Lock()
 	syncer.peerHeads[from] = fts.TipSet()
 	syncer.peerHeadsLk.Unlock()
 	syncer.Bsync.AddPeer(from)
 
+	bestPweight := syncer.store.GetHeaviestTipSet().Blocks()[0].ParentWeight
+	targetWeight := fts.TipSet().Blocks()[0].ParentWeight
+	if targetWeight.LessThan(bestPweight) {
+		log.Warn("incoming tipset does not appear to be better than our best chain, ignoring for now")
+		return
+	}
+
 	go func() {
 		if err := syncer.Sync(ctx, fts.TipSet()); err != nil {
-			log.Errorf("sync error: %+v", err)
+			log.Errorf("sync error (curW=%s, targetW=%s): %+v", bestPweight, targetWeight, err)
 		}
 	}()
 }
@@ -350,6 +359,12 @@ func (syncer *Syncer) tryLoadFullTipSet(cids []cid.Cid) (*store.FullTipSet, erro
 func (syncer *Syncer) Sync(ctx context.Context, maybeHead *types.TipSet) error {
 	ctx, span := trace.StartSpan(ctx, "chain.Sync")
 	defer span.End()
+	if span.IsRecordingEvents() {
+		span.AddAttributes(
+			trace.StringAttribute("tipset", fmt.Sprint(maybeHead.Cids())),
+			trace.Int64Attribute("height", int64(maybeHead.Height())),
+		)
+	}
 
 	syncer.syncLock.Lock()
 	defer syncer.syncLock.Unlock()
@@ -359,10 +374,12 @@ func (syncer *Syncer) Sync(ctx context.Context, maybeHead *types.TipSet) error {
 	}
 
 	if err := syncer.collectChain(ctx, maybeHead); err != nil {
+		span.AddAttributes(trace.StringAttribute("col_error", err.Error()))
 		return xerrors.Errorf("collectChain failed: %w", err)
 	}
 
 	if err := syncer.store.PutTipSet(ctx, maybeHead); err != nil {
+		span.AddAttributes(trace.StringAttribute("put_error", err.Error()))
 		return xerrors.Errorf("failed to put synced tipset to chainstore: %w", err)
 	}
 
@@ -682,6 +699,15 @@ func (syncer *Syncer) collectHeaders(ctx context.Context, from *types.TipSet, to
 		trace.Int64Attribute("toHeight", int64(to.Height())),
 	)
 
+	for _, pcid := range from.Parents() {
+		if syncer.bad.Has(pcid) {
+			for _, b := range from.Cids() {
+				syncer.bad.Add(b)
+			}
+			return nil, xerrors.Errorf("chain linked to block marked previously as bad (%s, %s)", from.Cids(), pcid)
+		}
+	}
+
 	blockSet := []*types.TipSet{from}
 
 	at := from.Parents()
@@ -724,6 +750,8 @@ loop:
 
 			log.Errorf("failed to get blocks: %+v", err)
 
+			span.AddAttributes(trace.StringAttribute("error", err.Error()))
+
 			// This error will only be logged above,
 			return nil, xerrors.Errorf("failed to get blocks: %w", err)
 		}
@@ -756,6 +784,13 @@ loop:
 		log.Warnf("(fork detected) synced header chain (%s - %d) does not link to our best block (%s - %d)", from.Cids(), from.Height(), to.Cids(), to.Height())
 		fork, err := syncer.syncFork(ctx, last, to)
 		if err != nil {
+			if xerrors.Is(err, ErrForkTooLong) {
+				// TODO: we're marking this block bad in the same way that we mark invalid blocks bad. Maybe distinguish?
+				log.Warn("adding forked chain to our bad tipset cache")
+				for _, b := range from.Blocks() {
+					syncer.bad.Add(b.Cid())
+				}
+			}
 			return nil, xerrors.Errorf("failed to sync fork: %w", err)
 		}
 
@@ -764,6 +799,8 @@ loop:
 
 	return blockSet, nil
 }
+
+var ErrForkTooLong = fmt.Errorf("fork longer than threshold")
 
 func (syncer *Syncer) syncFork(ctx context.Context, from *types.TipSet, to *types.TipSet) ([]*types.TipSet, error) {
 	tips, err := syncer.Bsync.GetBlocks(ctx, from.Parents(), build.ForkLengthThreshold)
@@ -791,7 +828,7 @@ func (syncer *Syncer) syncFork(ctx context.Context, from *types.TipSet, to *type
 			}
 		}
 	}
-	return nil, xerrors.Errorf("fork was longer than our threshold")
+	return nil, ErrForkTooLong
 }
 
 func (syncer *Syncer) syncMessagesAndCheckState(ctx context.Context, headers []*types.TipSet) error {
@@ -873,7 +910,7 @@ func (syncer *Syncer) iterFullTipsets(ctx context.Context, headers []*types.TipS
 	return nil
 }
 
-func persistMessages(bs bstore.Blockstore, bst *BSTipSet) error {
+func persistMessages(bs bstore.Blockstore, bst *blocksync.BSTipSet) error {
 	for _, m := range bst.BlsMessages {
 		//log.Infof("putting BLS message: %s", m.Cid())
 		if _, err := store.PutMessage(bs, m); err != nil {
@@ -905,6 +942,8 @@ func (syncer *Syncer) collectChain(ctx context.Context, ts *types.TipSet) error 
 	if err != nil {
 		return err
 	}
+
+	span.AddAttributes(trace.Int64Attribute("syncChainLength", int64(len(headers))))
 
 	if !headers[0].Equals(ts) {
 		log.Errorf("collectChain headers[0] should be equal to sync target. Its not: %s != %s", headers[0].Cids(), ts.Cids())

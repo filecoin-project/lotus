@@ -1,15 +1,20 @@
-package chain
+package blocksync
 
 import (
 	"bufio"
 	"context"
 	"fmt"
 	"math/rand"
+	"sort"
 	"sync"
+	"time"
 
+	blocks "github.com/ipfs/go-block-format"
 	bserv "github.com/ipfs/go-blockservice"
-	"github.com/libp2p/go-libp2p-core/host"
-	"github.com/libp2p/go-libp2p-core/protocol"
+	"github.com/ipfs/go-cid"
+	inet "github.com/libp2p/go-libp2p-core/network"
+	"github.com/libp2p/go-libp2p-core/peer"
+	host "github.com/libp2p/go-libp2p-host"
 	"go.opencensus.io/trace"
 	"golang.org/x/xerrors"
 
@@ -17,234 +22,22 @@ import (
 	"github.com/filecoin-project/lotus/chain/types"
 	"github.com/filecoin-project/lotus/lib/cborutil"
 	"github.com/filecoin-project/lotus/node/modules/dtypes"
-
-	blocks "github.com/ipfs/go-block-format"
-	"github.com/ipfs/go-cid"
-	cbor "github.com/ipfs/go-ipld-cbor"
-	inet "github.com/libp2p/go-libp2p-core/network"
-	"github.com/libp2p/go-libp2p-core/peer"
 )
-
-type NewStreamFunc func(context.Context, peer.ID, ...protocol.ID) (inet.Stream, error)
-
-const BlockSyncProtocolID = "/fil/sync/blk/0.0.1"
-
-func init() {
-	cbor.RegisterCborType(BlockSyncRequest{})
-	cbor.RegisterCborType(BlockSyncResponse{})
-	cbor.RegisterCborType(BSTipSet{})
-}
-
-type BlockSyncService struct {
-	cs *store.ChainStore
-}
-
-type BlockSyncRequest struct {
-	Start         []cid.Cid
-	RequestLength uint64
-
-	Options uint64
-}
-
-type BSOptions struct {
-	IncludeBlocks   bool
-	IncludeMessages bool
-}
-
-func ParseBSOptions(optfield uint64) *BSOptions {
-	return &BSOptions{
-		IncludeBlocks:   optfield&(BSOptBlocks) != 0,
-		IncludeMessages: optfield&(BSOptMessages) != 0,
-	}
-}
-
-const (
-	BSOptBlocks   = 1 << 0
-	BSOptMessages = 1 << 1
-)
-
-type BlockSyncResponse struct {
-	Chain []*BSTipSet
-
-	Status  uint64
-	Message string
-}
-
-type BSTipSet struct {
-	Blocks []*types.BlockHeader
-
-	BlsMessages    []*types.Message
-	BlsMsgIncludes [][]uint64
-
-	SecpkMessages    []*types.SignedMessage
-	SecpkMsgIncludes [][]uint64
-}
-
-func NewBlockSyncService(cs *store.ChainStore) *BlockSyncService {
-	return &BlockSyncService{
-		cs: cs,
-	}
-}
-
-func (bss *BlockSyncService) HandleStream(s inet.Stream) {
-	ctx, span := trace.StartSpan(context.Background(), "blocksync.HandleStream")
-	defer span.End()
-
-	defer s.Close()
-
-	var req BlockSyncRequest
-	if err := cborutil.ReadCborRPC(bufio.NewReader(s), &req); err != nil {
-		log.Errorf("failed to read block sync request: %s", err)
-		return
-	}
-	log.Infof("block sync request for: %s %d", req.Start, req.RequestLength)
-
-	resp, err := bss.processRequest(ctx, &req)
-	if err != nil {
-		log.Error("failed to process block sync request: ", err)
-		return
-	}
-
-	if err := cborutil.WriteCborRPC(s, resp); err != nil {
-		log.Error("failed to write back response for handle stream: ", err)
-		return
-	}
-}
-
-func (bss *BlockSyncService) processRequest(ctx context.Context, req *BlockSyncRequest) (*BlockSyncResponse, error) {
-	ctx, span := trace.StartSpan(ctx, "blocksync.ProcessRequest")
-	defer span.End()
-
-	opts := ParseBSOptions(req.Options)
-	if len(req.Start) == 0 {
-		return &BlockSyncResponse{
-			Status:  204,
-			Message: "no cids given in blocksync request",
-		}, nil
-	}
-
-	span.AddAttributes(
-		trace.BoolAttribute("blocks", opts.IncludeBlocks),
-		trace.BoolAttribute("messages", opts.IncludeMessages),
-	)
-
-	chain, err := bss.collectChainSegment(req.Start, req.RequestLength, opts)
-	if err != nil {
-		log.Error("encountered error while responding to block sync request: ", err)
-		return &BlockSyncResponse{
-			Status: 203,
-		}, nil
-	}
-
-	return &BlockSyncResponse{
-		Chain:  chain,
-		Status: 0,
-	}, nil
-}
-
-func (bss *BlockSyncService) collectChainSegment(start []cid.Cid, length uint64, opts *BSOptions) ([]*BSTipSet, error) {
-	var bstips []*BSTipSet
-	cur := start
-	for {
-		var bst BSTipSet
-		ts, err := bss.cs.LoadTipSet(cur)
-		if err != nil {
-			return nil, err
-		}
-
-		if opts.IncludeMessages {
-			bmsgs, bmincl, smsgs, smincl, err := bss.gatherMessages(ts)
-			if err != nil {
-				return nil, xerrors.Errorf("gather messages failed: %w", err)
-			}
-
-			bst.BlsMessages = bmsgs
-			bst.BlsMsgIncludes = bmincl
-			bst.SecpkMessages = smsgs
-			bst.SecpkMsgIncludes = smincl
-		}
-
-		if opts.IncludeBlocks {
-			bst.Blocks = ts.Blocks()
-		}
-
-		bstips = append(bstips, &bst)
-
-		if uint64(len(bstips)) >= length || ts.Height() == 0 {
-			return bstips, nil
-		}
-
-		cur = ts.Parents()
-	}
-}
-
-func (bss *BlockSyncService) gatherMessages(ts *types.TipSet) ([]*types.Message, [][]uint64, []*types.SignedMessage, [][]uint64, error) {
-	blsmsgmap := make(map[cid.Cid]uint64)
-	secpkmsgmap := make(map[cid.Cid]uint64)
-	var secpkmsgs []*types.SignedMessage
-	var blsmsgs []*types.Message
-	var secpkincl, blsincl [][]uint64
-
-	for _, b := range ts.Blocks() {
-		bmsgs, smsgs, err := bss.cs.MessagesForBlock(b)
-		if err != nil {
-			return nil, nil, nil, nil, err
-		}
-
-		bmi := make([]uint64, 0, len(bmsgs))
-		for _, m := range bmsgs {
-			i, ok := blsmsgmap[m.Cid()]
-			if !ok {
-				i = uint64(len(blsmsgs))
-				blsmsgs = append(blsmsgs, m)
-				blsmsgmap[m.Cid()] = i
-			}
-
-			bmi = append(bmi, i)
-		}
-		blsincl = append(blsincl, bmi)
-
-		smi := make([]uint64, 0, len(smsgs))
-		for _, m := range smsgs {
-			i, ok := secpkmsgmap[m.Cid()]
-			if !ok {
-				i = uint64(len(secpkmsgs))
-				secpkmsgs = append(secpkmsgs, m)
-				secpkmsgmap[m.Cid()] = i
-			}
-
-			smi = append(smi, i)
-		}
-		secpkincl = append(secpkincl, smi)
-	}
-
-	return blsmsgs, blsincl, secpkmsgs, secpkincl, nil
-}
 
 type BlockSync struct {
-	bserv     bserv.BlockService
-	newStream NewStreamFunc
+	bserv bserv.BlockService
+	host  host.Host
 
 	syncPeersLk sync.Mutex
-	syncPeers   map[peer.ID]struct{}
+	syncPeers   *bsPeerTracker
 }
 
 func NewBlockSyncClient(bserv dtypes.ChainBlockService, h host.Host) *BlockSync {
 	return &BlockSync{
 		bserv:     bserv,
-		newStream: h.NewStream,
-		syncPeers: make(map[peer.ID]struct{}),
+		host:      h,
+		syncPeers: newPeerTracker(),
 	}
-}
-
-func (bs *BlockSync) getPeers() []peer.ID {
-	bs.syncPeersLk.Lock()
-	defer bs.syncPeersLk.Unlock()
-	var out []peer.ID
-	for p := range bs.syncPeers {
-		out = append(out, p)
-	}
-	return out
 }
 
 func (bs *BlockSync) processStatus(req *BlockSyncRequest, res *BlockSyncResponse) error {
@@ -274,22 +67,20 @@ func (bs *BlockSync) GetBlocks(ctx context.Context, tipset []cid.Cid, count int)
 		)
 	}
 
-	peers := bs.getPeers()
-	perm := rand.Perm(len(peers))
-	// TODO: round robin through these peers on error
-
 	req := &BlockSyncRequest{
 		Start:         tipset,
 		RequestLength: uint64(count),
 		Options:       BSOptBlocks,
 	}
 
+	peers := bs.getPeers()
+
 	var oerr error
-	for _, p := range perm {
-		res, err := bs.sendRequestToPeer(ctx, peers[p], req)
+	for _, p := range peers {
+		res, err := bs.sendRequestToPeer(ctx, p, req)
 		if err != nil {
 			oerr = err
-			log.Warnf("BlockSync request failed for peer %s: %s", peers[p].String(), err)
+			log.Warnf("BlockSync request failed for peer %s: %s", p.String(), err)
 			continue
 		}
 
@@ -298,7 +89,7 @@ func (bs *BlockSync) GetBlocks(ctx context.Context, tipset []cid.Cid, count int)
 		}
 		oerr = bs.processStatus(req, res)
 		if oerr != nil {
-			log.Warnf("BlockSync peer %s response was an error: %s", peers[p].String(), oerr)
+			log.Warnf("BlockSync peer %s response was an error: %s", p.String(), oerr)
 		}
 	}
 	return nil, xerrors.Errorf("GetBlocks failed with all peers: %w", oerr)
@@ -327,11 +118,11 @@ func (bs *BlockSync) GetFullTipSet(ctx context.Context, p peer.ID, h []cid.Cid) 
 
 		return bstsToFullTipSet(bts)
 	case 101: // Partial Response
-		panic("not handled")
+		return nil, xerrors.Errorf("partial responses are not handled")
 	case 201: // req.Start not found
 		return nil, fmt.Errorf("not found")
 	case 202: // Go Away
-		panic("not handled")
+		return nil, xerrors.Errorf("received 'go away' response peer")
 	case 203: // Internal Error
 		return nil, fmt.Errorf("block sync peer errored: %q", res.Message)
 	case 204: // Invalid Request
@@ -376,29 +167,20 @@ func (bs *BlockSync) GetChainMessages(ctx context.Context, h *types.TipSet, coun
 	return nil, xerrors.Errorf("GetChainMessages failed with all peers(%d): %w", len(peers), err)
 }
 
-func bstsToFullTipSet(bts *BSTipSet) (*store.FullTipSet, error) {
-	fts := &store.FullTipSet{}
-	for i, b := range bts.Blocks {
-		fb := &types.FullBlock{
-			Header: b,
-		}
-		for _, mi := range bts.BlsMsgIncludes[i] {
-			fb.BlsMessages = append(fb.BlsMessages, bts.BlsMessages[mi])
-		}
-		for _, mi := range bts.SecpkMsgIncludes[i] {
-			fb.SecpkMessages = append(fb.SecpkMessages, bts.SecpkMessages[mi])
-		}
+func (bs *BlockSync) sendRequestToPeer(ctx context.Context, p peer.ID, req *BlockSyncRequest) (*BlockSyncResponse, error) {
+	ctx, span := trace.StartSpan(ctx, "sendRequestToPeer")
+	defer span.End()
 
-		fts.Blocks = append(fts.Blocks, fb)
+	if span.IsRecordingEvents() {
+		span.AddAttributes(
+			trace.StringAttribute("peer", p.Pretty()),
+		)
 	}
 
-	return fts, nil
-}
-
-func (bs *BlockSync) sendRequestToPeer(ctx context.Context, p peer.ID, req *BlockSyncRequest) (*BlockSyncResponse, error) {
-	s, err := bs.newStream(inet.WithNoDial(ctx, "should already have connection"), p, BlockSyncProtocolID)
+	s, err := bs.host.NewStream(inet.WithNoDial(ctx, "should already have connection"), p, BlockSyncProtocolID)
 	if err != nil {
-		return nil, err
+		bs.RemovePeer(p)
+		return nil, xerrors.Errorf("failed to open stream to peer: %w", err)
 	}
 
 	if err := cborutil.WriteCborRPC(s, req); err != nil {
@@ -447,9 +229,15 @@ func (bs *BlockSync) GetBlock(ctx context.Context, c cid.Cid) (*types.BlockHeade
 }
 
 func (bs *BlockSync) AddPeer(p peer.ID) {
-	bs.syncPeersLk.Lock()
-	defer bs.syncPeersLk.Unlock()
-	bs.syncPeers[p] = struct{}{}
+	bs.syncPeers.addPeer(p)
+}
+
+func (bs *BlockSync) RemovePeer(p peer.ID) {
+	bs.syncPeers.removePeer(p)
+}
+
+func (bs *BlockSync) getPeers() []peer.ID {
+	return bs.syncPeers.prefSortedPeers()
 }
 
 func (bs *BlockSync) FetchMessagesByCids(ctx context.Context, cids []cid.Cid) ([]*types.Message, error) {
@@ -527,4 +315,84 @@ func (bs *BlockSync) fetchCids(ctx context.Context, cids []cid.Cid, cb func(int,
 	}
 
 	return nil
+}
+
+type peerStats struct {
+	successes int
+	failures  int
+	firstSeen time.Time
+}
+
+type bsPeerTracker struct {
+	peers map[peer.ID]*peerStats
+	lk    sync.Mutex
+}
+
+func newPeerTracker() *bsPeerTracker {
+	return &bsPeerTracker{
+		peers: make(map[peer.ID]*peerStats),
+	}
+}
+func (bpt *bsPeerTracker) addPeer(p peer.ID) {
+	bpt.lk.Lock()
+	defer bpt.lk.Unlock()
+	if _, ok := bpt.peers[p]; ok {
+		return
+	}
+	bpt.peers[p] = &peerStats{
+		firstSeen: time.Now(),
+	}
+
+}
+
+func (bpt *bsPeerTracker) prefSortedPeers() []peer.ID {
+	// TODO: this could probably be cached, but as long as its not too many peers, fine for now
+	bpt.lk.Lock()
+	defer bpt.lk.Unlock()
+	out := make([]peer.ID, 0, len(bpt.peers))
+	for p := range bpt.peers {
+		out = append(out, p)
+	}
+
+	sort.Slice(out, func(i, j int) bool {
+		pi := bpt.peers[out[i]]
+		pj := bpt.peers[out[j]]
+		if pi.successes > pj.successes {
+			return true
+		}
+		if pi.failures < pj.successes {
+			return true
+		}
+		return pi.firstSeen.Before(pj.firstSeen)
+	})
+
+	return out
+}
+
+func (bpt *bsPeerTracker) logSuccess(p peer.ID) {
+	bpt.lk.Lock()
+	defer bpt.lk.Unlock()
+	if pi, ok := bpt.peers[p]; !ok {
+		log.Warn("log success called on peer not in tracker")
+		return
+	} else {
+		pi.successes++
+	}
+}
+
+func (bpt *bsPeerTracker) logFailure(p peer.ID) {
+	bpt.lk.Lock()
+	defer bpt.lk.Unlock()
+	if pi, ok := bpt.peers[p]; !ok {
+		log.Warn("log failure called on peer not in tracker")
+		return
+	} else {
+		pi.failures++
+	}
+}
+
+func (bpt *bsPeerTracker) removePeer(p peer.ID) {
+	bpt.lk.Lock()
+	defer bpt.lk.Unlock()
+	delete(bpt.peers, p)
 }

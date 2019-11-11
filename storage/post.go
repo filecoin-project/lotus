@@ -142,6 +142,7 @@ func (p *post) doPost(ctx context.Context) error {
 func (p *post) preparePost(ctx context.Context) error {
 	ctx, span := trace.StartSpan(ctx, "storage.preparePost")
 	defer span.End()
+	log.Info("preparePost")
 
 	sset, err := p.m.api.StateMinerProvingSet(ctx, p.m.maddr, p.ts)
 	if err != nil {
@@ -251,6 +252,7 @@ func (p *post) waitCommit(ctx context.Context) error {
 		log.Warnf("SubmitPoSt EXIT: %d", rec.Receipt.ExitCode)
 		// TODO: Do something
 	}
+	log.Infof("Post made it on chain! (height=%d)", rec.TipSet.Height())
 	return nil
 }
 
