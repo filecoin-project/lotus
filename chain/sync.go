@@ -971,6 +971,39 @@ func persistMessages(bs bstore.Blockstore, bst *blocksync.BSTipSet) error {
 	return nil
 }
 
+func (syncer *Syncer) persistHeaders(headers []*types.TipSet) error {
+	throttle := make(chan struct{}, 12)
+	var wait sync.WaitGroup
+
+	var err error
+	var errLk sync.Mutex
+
+	for _, ts := range headers {
+		syncer.syncState.SetHeight(ts.Height())
+
+		wait.Add(len(ts.Blocks()))
+
+		for _, b := range ts.Blocks() {
+			throttle <- struct{}{}
+
+			go func() {
+				defer func() { <-throttle }()
+				defer wait.Done()
+
+				if err := syncer.store.PersistBlockHeader(b); err != nil {
+					errLk.Lock()
+					err = multierror.Append(err, xerrors.Errorf("failed to persist synced blocks to the chainstore: %w", err))
+					errLk.Unlock()
+				}
+			}()
+		}
+	}
+
+	wait.Wait()
+
+	return err
+}
+
 func (syncer *Syncer) collectChain(ctx context.Context, ts *types.TipSet) error {
 	ctx, span := trace.StartSpan(ctx, "collectChain")
 	defer span.End()
@@ -990,12 +1023,8 @@ func (syncer *Syncer) collectChain(ctx context.Context, ts *types.TipSet) error 
 
 	syncer.syncState.SetStage(api.StagePersistHeaders)
 
-	for _, ts := range headers {
-		for _, b := range ts.Blocks() {
-			if err := syncer.store.PersistBlockHeader(b); err != nil {
-				return xerrors.Errorf("failed to persist synced blocks to the chainstore: %w", err)
-			}
-		}
+	if err := syncer.persistHeaders(headers); err != nil {
+		return err
 	}
 
 	syncer.syncState.SetStage(api.StageMessages)
