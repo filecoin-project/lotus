@@ -23,20 +23,20 @@ type Voucher interface {
 }
 
 // Status is the status of transfer for a given channel
-type Status string
+type Status int
 
 const (
 	// Ongoing means the data transfer is in progress
-	Ongoing = Status("Ongoing")
+	Ongoing Status = iota
 
 	// Completed means the data transfer is completed successfully
-	Completed = Status("Completed")
+	Completed
 
 	// Failed means the data transfer failed
-	Failed = Status("Failed")
+	Failed
 
 	// ChannelNotFoundError means the searched for data transfer does not exist
-	ChannelNotFoundError = Status("ChannelNotFoundError")
+	ChannelNotFoundError
 )
 
 // TransferID is an identifier for a data transfer, shared between
@@ -106,20 +106,20 @@ func (c ChannelState) Sent() uint64 { return c.sent }
 func (c ChannelState) Received() uint64 { return c.received }
 
 // Event is a name for an event that occurs on a data transfer channel
-type Event string
+type Event int
 
 const (
 	// Open is an event occurs when a channel is first opened
-	Open = Event("Open")
+	Open Event = iota
 
 	// Progress is an event that gets emitted every time more data is transferred
-	Progress = Event("Progress")
+	Progress
 
 	// Error is an event that emits when an error occurs in a data transfer
-	Error = Event("Error")
+	Error
 
 	// Complete is emitted when a data transfer is complete
-	Complete = Event("Complete")
+	Complete
 )
 
 // Subscriber is a callback that is called when events are emitted

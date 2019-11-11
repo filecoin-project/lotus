@@ -14,28 +14,28 @@ import (
 
 var (
 	// ErrWrongVoucherType means the voucher was not the correct type can validate against
-	ErrWrongVoucherType = errors.New("cannot validate voucher type")
+	ErrWrongVoucherType = errors.New("cannot validate voucher type.")
 
 	// ErrNoPushAccepted just means clients do not accept pushes for storage deals
-	ErrNoPushAccepted = errors.New("Client should not receive data for a storage deal")
+	ErrNoPushAccepted = errors.New("client should not receive data for a storage deal.")
 
 	// ErrNoPullAccepted just means providers do not accept pulls for storage deals
-	ErrNoPullAccepted = errors.New("Provider should not send data for a storage deal")
+	ErrNoPullAccepted = errors.New("provider should not send data for a storage deal.")
 
 	// ErrNoDeal means no active deal was found for this vouchers proposal cid
-	ErrNoDeal = errors.New("No deal found for this proposal")
+	ErrNoDeal = errors.New("no deal found for this proposal.")
 
 	// ErrWrongPeer means that the other peer for this data transfer request does not match
 	// the other peer for the deal
-	ErrWrongPeer = errors.New("Data Transfer peer id and Deal peer id do not match")
+	ErrWrongPeer = errors.New("data Transfer peer id and Deal peer id do not match.")
 
 	// ErrWrongPiece means that the pieceref for this data transfer request does not match
 	// the one specified in the deal
-	ErrWrongPiece = errors.New("Base CID for deal does not match CID for piece")
+	ErrWrongPiece = errors.New("base CID for deal does not match CID for piece.")
 
 	// ErrInacceptableDealState means the deal for this transfer is not in a deal state
 	// where transfer can be performed
-	ErrInacceptableDealState = errors.New("Deal is not a in a state where deals are accepted")
+	ErrInacceptableDealState = errors.New("deal is not a in a state where deals are accepted.")
 
 	// DataTransferStates are the states in which it would make sense to actually start a data transfer
 	DataTransferStates = []api.DealState{api.DealAccepted, api.DealUnknown}

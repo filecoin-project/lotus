@@ -167,10 +167,7 @@ func (m *ProviderRequestValidator) ValidatePush(
 	}
 
 	var deal MinerDeal
-	err := m.deals.Mutate(dealVoucher.Proposal, func(d *MinerDeal) error {
-		deal = *d
-		return nil
-	})
+	err := m.deals.Get(dealVoucher.Proposal, &deal)
 	if err != nil {
 		return xerrors.Errorf("Proposal CID %s: %w", dealVoucher.Proposal.String(), ErrNoDeal)
 	}

@@ -151,10 +151,7 @@ func (c *ClientRequestValidator) ValidatePull(
 	}
 
 	var deal ClientDeal
-	err := c.deals.Mutate(dealVoucher.Proposal, func(d *ClientDeal) error {
-		deal = *d
-		return nil
-	})
+	err := c.deals.Get(dealVoucher.Proposal, &deal)
 	if err != nil {
 		return xerrors.Errorf("Proposal CID %s: %w", dealVoucher.Proposal.String(), ErrNoDeal)
 	}
