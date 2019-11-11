@@ -38,7 +38,7 @@ var (
 	ErrInacceptableDealState = errors.New("Deal is not a in a state where deals are accepted")
 
 	// AcceptableDealStates are the states in which it would make sense to actually start a data transfer
-	AcceptableDealStates = []api.DealState{api.DealAccepted, api.DealUnknown}
+	DataTransferStates = []api.DealState{api.DealAccepted, api.DealUnknown}
 )
 
 const DealProtocolID = "/fil/storage/mk/1.0.1"
