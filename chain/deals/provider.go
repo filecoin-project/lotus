@@ -83,7 +83,7 @@ var (
 	ErrDataTransferFailed = errors.New("Deal data transfer failed")
 )
 
-func NewProvider(ds dtypes.MetadataDS, sminer *storage.Miner, secb *sectorblocks.SectorBlocks, dag dtypes.StagingDAG, dataTransfer datatransfer.ProviderDataTransfer, fullNode api.FullNode) (*Provider, error) {
+func NewProvider(ds dtypes.MetadataDS, sminer *storage.Miner, secb *sectorblocks.SectorBlocks, dag dtypes.StagingDAG, dataTransfer datatransfer.ProviderDataTransfer, fullNode api.FullNode) (storagemarket.StorageProvider, error) {
 	addr, err := ds.Get(datastore.NewKey("miner-address"))
 	if err != nil {
 		return nil, err

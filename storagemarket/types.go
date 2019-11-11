@@ -23,7 +23,7 @@ type Signature = types.Signature
 type StorageDeal = actors.OnChainDeal
 type StorageAsk = types.SignedStorageAsk
 
-// Duplicated from deals for now
+// Duplicated from deals package for now
 type MinerDeal struct {
 	Client      peer.ID
 	Proposal    actors.StorageDealProposal
@@ -50,7 +50,7 @@ type StorageProvider interface {
 	// ListDeals lists on-chain deals associated with this provider
 	ListDeals(ctx context.Context) ([]StorageDeal, error)
 
-	//// ListIncompleteDeals lists deals that are in progress or rejected
+	// ListIncompleteDeals lists deals that are in progress or rejected
 	ListIncompleteDeals() ([]MinerDeal, error)
 
 	// AddStorageCollateral adds storage collateral

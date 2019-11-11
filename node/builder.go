@@ -43,6 +43,7 @@ import (
 	"github.com/filecoin-project/lotus/retrieval/discovery"
 	"github.com/filecoin-project/lotus/storage"
 	"github.com/filecoin-project/lotus/storage/sectorblocks"
+	"github.com/filecoin-project/lotus/storagemarket"
 )
 
 // special is a type used to give keys to modules which
@@ -243,7 +244,7 @@ func Online() Option {
 			Override(new(*retrieval.Miner), retrieval.NewMiner),
 			Override(new(datatransfer.ProviderDataTransfer), datatransfer.NewProviderDAGServiceDataTransfer),
 			Override(new(*deals.ProviderRequestValidator), deals.NewProviderRequestValidator),
-			Override(new(*deals.Provider), deals.NewProvider),
+			Override(new(storagemarket.StorageProvider), deals.NewProvider),
 			Override(RegisterProviderValidatorKey, deals.RegisterProviderValidator),
 			Override(HandleRetrievalKey, modules.HandleRetrieval),
 			Override(HandleDealsKey, modules.HandleDeals),
