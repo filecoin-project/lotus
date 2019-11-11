@@ -4,23 +4,13 @@ import (
 	"context"
 	"errors"
 	"fmt"
-	"github.com/hashicorp/go-multierror"
 	"sync"
 	"time"
 
-	"github.com/filecoin-project/go-bls-sigs"
-	"github.com/filecoin-project/lotus/api"
-	"github.com/filecoin-project/lotus/build"
-	"github.com/filecoin-project/lotus/chain/actors"
-	"github.com/filecoin-project/lotus/chain/address"
-	"github.com/filecoin-project/lotus/chain/blocksync"
-	"github.com/filecoin-project/lotus/chain/state"
-	"github.com/filecoin-project/lotus/chain/stmgr"
-	"github.com/filecoin-project/lotus/chain/store"
-	"github.com/filecoin-project/lotus/chain/types"
-
 	"github.com/Gurpartap/async"
 	amt "github.com/filecoin-project/go-amt-ipld"
+	"github.com/filecoin-project/go-bls-sigs"
+	"github.com/hashicorp/go-multierror"
 	"github.com/ipfs/go-cid"
 	dstore "github.com/ipfs/go-datastore"
 	hamt "github.com/ipfs/go-hamt-ipld"
@@ -30,6 +20,16 @@ import (
 	cbg "github.com/whyrusleeping/cbor-gen"
 	"go.opencensus.io/trace"
 	"golang.org/x/xerrors"
+
+	"github.com/filecoin-project/lotus/api"
+	"github.com/filecoin-project/lotus/build"
+	"github.com/filecoin-project/lotus/chain/actors"
+	"github.com/filecoin-project/lotus/chain/address"
+	"github.com/filecoin-project/lotus/chain/blocksync"
+	"github.com/filecoin-project/lotus/chain/state"
+	"github.com/filecoin-project/lotus/chain/stmgr"
+	"github.com/filecoin-project/lotus/chain/store"
+	"github.com/filecoin-project/lotus/chain/types"
 )
 
 var log = logging.Logger("chain")

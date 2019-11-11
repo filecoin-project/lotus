@@ -16,6 +16,7 @@ require (
 	github.com/gbrlsnchs/jwt/v3 v3.0.0-beta.1
 	github.com/go-ole/go-ole v1.2.4 // indirect
 	github.com/gorilla/websocket v1.4.0
+	github.com/hashicorp/go-multierror v1.0.0
 	github.com/hashicorp/golang-lru v0.5.3
 	github.com/influxdata/influxdb1-client v0.0.0-20190809212627-fc22c7df067e
 	github.com/ipfs/go-bitswap v0.1.8
