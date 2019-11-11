@@ -98,7 +98,7 @@ func (impl *graphsyncImpl) OpenPullDataChannel(ctx context.Context, to peer.ID, 
 	return datatransfer.ChannelID{To: to, ID: tid}, nil
 }
 
-// sendMessage encapsulates message creation and posting to the data transfer network with the provided parameters
+// sendRequest encapsulates message creation and posting to the data transfer network with the provided parameters
 func (impl *graphsyncImpl) sendRequest(selector ipld.Node, isPull bool, voucher datatransfer.Voucher, baseCid cid.Cid, to peer.ID) (datatransfer.TransferID, error) {
 	sbytes, err := nodeAsBytes(selector)
 	if err != nil {
@@ -135,12 +135,13 @@ func (impl *graphsyncImpl) InProgressChannels() map[datatransfer.ChannelID]datat
 }
 
 // TODO: implement for https://github.com/filecoin-project/go-data-transfer/issues/14
+// ReceiveRequest takes an incoming request, validates the voucher and processes the message.
 func (receiver *graphsyncReceiver) ReceiveRequest(
 	ctx context.Context,
 	sender peer.ID,
 	incoming message.DataTransferRequest) {
 
-	voucher, err := receiver.ValidateVoucher(sender, incoming)
+	voucher, err := receiver.validateVoucher(sender, incoming)
 	if err != nil {
 		fmt.Printf(err.Error())
 	}
@@ -149,7 +150,13 @@ func (receiver *graphsyncReceiver) ReceiveRequest(
 	}
 }
 
-func (receiver *graphsyncReceiver) ValidateVoucher(sender peer.ID, incoming message.DataTransferRequest) (datatransfer.Voucher, error) {
+// validateVoucher converts a voucher in an incoming message to its appropriate
+// voucher struct, then runs the validator and returns the results.
+// returns error if:
+//   * voucherFromRequest fails
+//   * deserialization of selector fails
+//   * validation fails
+func (receiver *graphsyncReceiver) validateVoucher(sender peer.ID, incoming message.DataTransferRequest) (datatransfer.Voucher, error) {
 
 	vtypStr := incoming.VoucherType()
 	vouch, err := receiver.voucherFromRequest(incoming)
@@ -167,12 +174,17 @@ func (receiver *graphsyncReceiver) ValidateVoucher(sender peer.ID, incoming mess
 	stor, err := nodeFromBytes(incoming.Selector())
 	if err != nil { return vouch, err }
 
-
 	if err = validatorFunc(sender, vouch, incoming.BaseCid(), stor) ; err != nil { return nil, err	}
 
 	return vouch, nil
 }
 
+// voucherFromRequest takes an incoming request and attempts to create a
+// voucher struct from it using the registered validated types.  It returns
+// a deserialized voucher and any error.  It returns error if:
+//    * the voucher type has no validator registered
+//    * the voucher cannot be instantiated via reflection
+//    * request voucher bytes cannot be deserialized via <voucher>.FromBytes()
 func (receiver *graphsyncReceiver) voucherFromRequest(incoming message.DataTransferRequest) (datatransfer.Voucher, error) {
 	vtypStr := incoming.VoucherType()
 
@@ -202,6 +214,7 @@ func (receiver *graphsyncReceiver) ReceiveResponse(
 
 func (receiver *graphsyncReceiver) ReceiveError(error) {}
 
+// nodeAsBytes serializes an ipld.Node
 func nodeAsBytes(node ipld.Node) ([]byte, error) {
 	var buffer bytes.Buffer
 	err := dagcbor.Encoder(node, &buffer)
@@ -211,6 +224,7 @@ func nodeAsBytes(node ipld.Node) ([]byte, error) {
 	return buffer.Bytes(), nil
 }
 
+// nodeFromBytes deserializes an ipld.Node
 func nodeFromBytes(from []byte) (ipld.Node,error) {
 	reader := bytes.NewReader(from)
 	return dagcbor.Decoder(ipldfree.NodeBuilder(), reader)
