@@ -10,6 +10,21 @@ function colForH(besth, height) {
     return '#f00'
 }
 
+function colLag(lag) {
+    if(lag < 100) return '#6f6'
+    if(lag < 400) return '#df4'
+    if(lag < 1000) return '#ff0'
+    if(lag < 4000) return '#f60'
+    return '#f00'
+}
+
+function lagCol(lag, good) {
+    return <span>
+        <span style={{color: colLag(lag)}}>{lag}</span>
+        <span style={{color: good ? '#f0f0f0' : '#f60'}}>ms</span>
+    </span>
+}
+
 class App extends React.Component {
     constructor(props) {
         super(props);
@@ -21,31 +36,49 @@ class App extends React.Component {
             console.log(ev)
             let update = JSON.parse(ev.data)
 
+            update.Update.Weight = Number(update.Update.Weight)
+
+            let wdiff = update.Update.Weight - (this.state[update.From] || {Weight: update.Update.Weight}).Weight
+            wdiff = <span style={{color: wdiff < 0 ? '#f00' : '#f0f0f0'}}>{wdiff}</span>
+
             this.setState( prev => ({
-                ...prev, [update.From]: update.Update,
+                ...prev, [update.From]: {...update.Update, utime: update.Time, wdiff: wdiff},
             }))
+        }
+
+        ws.onclose = () => {
+            this.setState({disconnected: true})
         }
 
         this.state = {}
     }
 
     render() {
+        if(this.state.disconnected) {
+            return <span>Error: disconnected</span>
+        }
+
         let besth = Object.keys(this.state).map(k => this.state[k]).reduce((p, n) => p > n.Height ? p : n.Height, -1)
         let bestw = Object.keys(this.state).map(k => this.state[k]).reduce((p, n) => p > n.Weight ? p : n.Weight, -1)
 
-        return <table>{Object.keys(this.state).map(k => [k, this.state[k]]).map(([k, v]) => {
+        return <table>
+            <tr><td>PeerID</td><td>Nickname</td><td>Lag</td><td>Weight(best, prev)</td><td>Height</td><td>Blocks</td></tr>
+            {Object.keys(this.state).map(k => [k, this.state[k]]).map(([k, v]) => {
+            let mnrs = v.Blocks.map(b => <td>&nbsp;m:{b.Miner}({lagCol(v.Time ? v.Time - (b.Timestamp*1000) : v.utime - (b.Timestamp*1000), v.Time)})</td>)
+            let l = [
+              <td>{k}</td>,
+              <td>{v.NodeName}</td>,
+              <td>{v.Time ? lagCol(v.utime - v.Time, true) : ""}</td>,
+              <td style={{color: bestw !== v.Weight ? '#f00' : '#afa'}}>{v.Weight}({bestw - v.Weight}, {v.wdiff})</td>,
+              <td style={{color: colForH(besth, v.Height)}}>{v.Height}({besth - v.Height})</td>,
+              ...mnrs,
+            ]
 
-            let mnrs = v.Blocks.map(b => <span>&nbsp;m:{b.Miner}</span>)
-            let l = [<td>{k}</td>,
-                <td>{v.NodeName}</td>,
-                <td style={{color: bestw !== v.Weight ? '#f00' : '#afa'}}>{v.Weight}({bestw - v.Weight})</td>,
-                <td style={{color: colForH(besth, v.Height)}}>{v.Height}({besth - v.Height})</td>,
-                <td>{mnrs}</td>]
                 l = <tr>{l}</tr>
-
             return l
         })
-        }</table>
+        }
+        </table>
     }
 }
 export default App;
