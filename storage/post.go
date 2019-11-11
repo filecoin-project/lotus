@@ -193,9 +193,6 @@ func (p *post) runPost(ctx context.Context) error {
 	var seed [32]byte
 	copy(seed[:], p.r)
 
-	vals := p.sortedSectorInfo()
-	log.Infof("SSI: %+v", vals.Values())
-
 	proof, err := p.m.sb.GeneratePoSt(p.sortedSectorInfo(), seed, faults)
 	if err != nil {
 		return xerrors.Errorf("running post failed: %w", err)

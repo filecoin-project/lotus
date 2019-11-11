@@ -76,7 +76,6 @@ var infoCmd = &cli.Command{
 			fmt.Printf("Proving Period: Not Proving\n")
 		}
 
-
 		sinfo, err := sectorsInfo(ctx, nodeApi)
 		if err != nil {
 			return err
