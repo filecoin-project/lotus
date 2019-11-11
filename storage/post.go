@@ -148,6 +148,10 @@ func (p *post) preparePost(ctx context.Context) error {
 	if err != nil {
 		return xerrors.Errorf("failed to get proving set for miner: %w", err)
 	}
+	if len(sset) == 0 {
+		log.Warn("empty proving set! (ts.H: %d)", p.ts.Height())
+	}
+
 	p.sset = sset
 
 	// Compute how many blocks back we have to look from the given tipset for the PoSt challenge
@@ -182,7 +186,7 @@ func (p *post) runPost(ctx context.Context) error {
 
 	log.Infow("running PoSt", "delayed-by",
 		int64(p.ts.Height())-(int64(p.ppe)-int64(build.PoStChallangeTime)),
-		"chain-random", p.r, "ppe", p.ppe, "height", p.ts.Height())
+		"chain-random", p.r, "ppe", p.ppe, "height", p.ts.Height(), "sectors", len(p.sset))
 
 	tsStart := time.Now()
 	var faults []uint64 // TODO
@@ -272,7 +276,7 @@ func (m *Miner) computePost(ppe uint64) func(ctx context.Context, ts *types.TipS
 			ts:  ts,
 		}).doPost(ctx)
 		if err != nil {
-			return err
+			return xerrors.Errorf("doPost: %w", err)
 		}
 
 		m.scheduleNextPost(ppe + build.ProvingPeriodDuration)
