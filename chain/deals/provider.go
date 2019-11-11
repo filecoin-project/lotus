@@ -8,6 +8,7 @@ import (
 	cid "github.com/ipfs/go-cid"
 	datastore "github.com/ipfs/go-datastore"
 	"github.com/ipfs/go-datastore/namespace"
+	"github.com/libp2p/go-libp2p-core/host"
 	inet "github.com/libp2p/go-libp2p-core/network"
 	"github.com/libp2p/go-libp2p-core/peer"
 	"golang.org/x/xerrors"
@@ -22,6 +23,7 @@ import (
 	"github.com/filecoin-project/lotus/node/modules/dtypes"
 	"github.com/filecoin-project/lotus/storage"
 	"github.com/filecoin-project/lotus/storage/sectorblocks"
+	"github.com/filecoin-project/lotus/storagemarket"
 )
 
 var ProviderDsPrefix = "/deals/provider"
@@ -135,8 +137,11 @@ func NewProvider(ds dtypes.MetadataDS, sminer *storage.Miner, secb *sectorblocks
 	return h, nil
 }
 
-func (p *Provider) Run(ctx context.Context) {
+func (p *Provider) Run(ctx context.Context, host host.Host) {
 	// TODO: restore state
+
+	host.SetStreamHandler(storagemarket.DealProtocolID, p.HandleStream)
+	host.SetStreamHandler(storagemarket.AskProtocolID, p.HandleAskStream)
 
 	go func() {
 		defer log.Warn("quitting deal provider loop")

@@ -41,7 +41,7 @@ func (p *Provider) SetPrice(price types.BigInt, ttlsecs int64) error {
 	return p.saveAsk(ssa)
 }
 
-func (p *Provider) getAsk(m address.Address) *types.SignedStorageAsk {
+func (p *Provider) GetAsk(m address.Address) *types.SignedStorageAsk {
 	p.askLk.Lock()
 	defer p.askLk.Unlock()
 	if m != p.actor {
@@ -69,7 +69,7 @@ func (p *Provider) HandleAskStream(s inet.Stream) {
 
 func (p *Provider) processAskRequest(ar *AskRequest) *AskResponse {
 	return &AskResponse{
-		Ask: p.getAsk(ar.Miner),
+		Ask: p.GetAsk(ar.Miner),
 	}
 }
 
