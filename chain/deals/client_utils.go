@@ -6,8 +6,6 @@ import (
 	"runtime"
 
 	"github.com/ipfs/go-cid"
-	"github.com/ipfs/go-datastore"
-	"github.com/ipfs/go-datastore/namespace"
 	files "github.com/ipfs/go-ipfs-files"
 	unixfile "github.com/ipfs/go-unixfs/file"
 	"github.com/ipld/go-ipld-prime"
@@ -117,9 +115,9 @@ type ClientRequestValidator struct {
 
 // NewClientRequestValidator returns a new client request validator for the
 // given datastore
-func NewClientRequestValidator(ds dtypes.MetadataDS) *ClientRequestValidator {
+func NewClientRequestValidator(deals dtypes.ClientDealStore) *ClientRequestValidator {
 	crv := &ClientRequestValidator{
-		deals: statestore.New(namespace.Wrap(ds, datastore.NewKey("/deals/client"))),
+		deals: deals,
 	}
 	return crv
 }

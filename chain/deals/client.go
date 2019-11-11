@@ -4,8 +4,6 @@ import (
 	"context"
 
 	"github.com/ipfs/go-cid"
-	"github.com/ipfs/go-datastore"
-	"github.com/ipfs/go-datastore/namespace"
 	logging "github.com/ipfs/go-log"
 	"github.com/libp2p/go-libp2p-core/host"
 	inet "github.com/libp2p/go-libp2p-core/network"
@@ -21,7 +19,6 @@ import (
 	"github.com/filecoin-project/lotus/chain/store"
 	"github.com/filecoin-project/lotus/chain/types"
 	"github.com/filecoin-project/lotus/chain/wallet"
-	"github.com/filecoin-project/lotus/datatransfer"
 	"github.com/filecoin-project/lotus/lib/cborutil"
 	"github.com/filecoin-project/lotus/lib/statestore"
 	"github.com/filecoin-project/lotus/node/impl/full"
@@ -54,7 +51,7 @@ type Client struct {
 	// client will listen to events on the data transfer module
 	// Because we are using only a fake DAGService
 	// implementation, there's no validation or events on the client side
-	dataTransfer datatransfer.ClientDataTransfer
+	dataTransfer dtypes.ClientDataTransfer
 	dag          dtypes.ClientDAG
 	discovery    *discovery.Local
 	events       *events.Events
@@ -77,7 +74,7 @@ type clientDealUpdate struct {
 	mut      func(*ClientDeal)
 }
 
-func NewClient(sm *stmgr.StateManager, chain *store.ChainStore, h host.Host, w *wallet.Wallet, ds dtypes.MetadataDS, dag dtypes.ClientDAG, dataTransfer datatransfer.ClientDataTransfer, discovery *discovery.Local, fm *market.FundMgr, chainapi full.ChainAPI) *Client {
+func NewClient(sm *stmgr.StateManager, chain *store.ChainStore, h host.Host, w *wallet.Wallet, dag dtypes.ClientDAG, dataTransfer dtypes.ClientDataTransfer, discovery *discovery.Local, fm *market.FundMgr, deals dtypes.ClientDealStore, chainapi full.ChainAPI) *Client {
 	c := &Client{
 		sm:           sm,
 		chain:        chain,
@@ -89,7 +86,7 @@ func NewClient(sm *stmgr.StateManager, chain *store.ChainStore, h host.Host, w *
 		fm:           fm,
 		events:       events.NewEvents(context.TODO(), &chainapi),
 
-		deals: statestore.New(namespace.Wrap(ds, datastore.NewKey("/deals/client"))),
+		deals: deals,
 		conns: map[cid.Cid]inet.Stream{},
 
 		incoming: make(chan *ClientDeal, 16),

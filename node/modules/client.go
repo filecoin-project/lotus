@@ -5,6 +5,7 @@ import (
 	"path/filepath"
 	"reflect"
 
+	"github.com/filecoin-project/lotus/lib/statestore"
 	"github.com/filecoin-project/lotus/node/modules/helpers"
 	"github.com/ipfs/go-bitswap"
 	"github.com/ipfs/go-bitswap/network"
@@ -47,8 +48,19 @@ func ClientBlockstore(fstore dtypes.ClientFilestore) dtypes.ClientBlockstore {
 // RegisterClientValidator is an initialization hook that registers the client
 // request validator with the data transfer module as the validator for
 // StorageDataTransferVoucher types
-func RegisterClientValidator(crv *deals.ClientRequestValidator, dtm datatransfer.ClientDataTransfer) {
+func RegisterClientValidator(crv *deals.ClientRequestValidator, dtm dtypes.ClientDataTransfer) {
 	dtm.RegisterVoucherType(reflect.TypeOf(deals.StorageDataTransferVoucher{}), crv)
+}
+
+// NewClientDAGServiceDataTransfer returns a data transfer manager that just
+// uses the clients's Client DAG service for transfers
+func NewClientDAGServiceDataTransfer(dag dtypes.ClientDAG) dtypes.ClientDataTransfer {
+	return datatransfer.NewDAGServiceDataTransfer(dag)
+}
+
+// NewClientDealStore creates a statestore for the client to store its deals
+func NewClientDealStore(ds dtypes.MetadataDS) dtypes.ClientDealStore {
+	return statestore.New(namespace.Wrap(ds, datastore.NewKey("/deals/client")))
 }
 
 func ClientDAG(mctx helpers.MetricsCtx, lc fx.Lifecycle, ibs dtypes.ClientBlockstore, rt routing.Routing, h host.Host) dtypes.ClientDAG {

@@ -10,8 +10,6 @@ import (
 	ipld "github.com/ipld/go-ipld-prime"
 	"github.com/libp2p/go-libp2p-core/peer"
 	"golang.org/x/xerrors"
-
-	"github.com/filecoin-project/lotus/node/modules/dtypes"
 )
 
 // This file implements a VERY simple, incomplete version of the data transfer
@@ -28,15 +26,9 @@ type dagserviceImpl struct {
 	subscriber Subscriber
 }
 
-// NewProviderDAGServiceDataTransfer returns a data transfer manager that just
-// uses the provider's Staging DAG service for transfers
-func NewProviderDAGServiceDataTransfer(dag dtypes.StagingDAG) Manager {
-	return &dagserviceImpl{dag, nil}
-}
-
-// NewClientDAGServiceDataTransfer returns a data transfer manager that just
-// uses the clients's Client DAG service for transfers
-func NewClientDAGServiceDataTransfer(dag dtypes.ClientDAG) Manager {
+// NewDAGServiceDataTransfer returns a data transfer manager based on
+// an IPLD DAGService
+func NewDAGServiceDataTransfer(dag ipldformat.DAGService) Manager {
 	return &dagserviceImpl{dag, nil}
 }
 

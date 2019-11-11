@@ -171,9 +171,3 @@ type Manager interface {
 	// get all in progress transfers
 	InProgressChannels() map[ChannelID]ChannelState
 }
-
-// ClientDataTransfer is a data transfer manager for the client
-type ClientDataTransfer Manager
-
-// ProviderDataTransfer is a data transfer manager for the provider
-type ProviderDataTransfer Manager

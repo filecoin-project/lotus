@@ -17,8 +17,6 @@ import (
 	"github.com/filecoin-project/lotus/lib/statestore"
 
 	"github.com/ipfs/go-cid"
-	"github.com/ipfs/go-datastore"
-	"github.com/ipfs/go-datastore/namespace"
 	inet "github.com/libp2p/go-libp2p-core/network"
 	"github.com/libp2p/go-libp2p-core/peer"
 	"golang.org/x/xerrors"
@@ -145,9 +143,9 @@ type ProviderRequestValidator struct {
 
 // NewProviderRequestValidator returns a new client request validator for the
 // given datastore
-func NewProviderRequestValidator(ds dtypes.MetadataDS) *ProviderRequestValidator {
+func NewProviderRequestValidator(deals dtypes.ProviderDealStore) *ProviderRequestValidator {
 	return &ProviderRequestValidator{
-		deals: statestore.New(namespace.Wrap(ds, datastore.NewKey("/deals/client"))),
+		deals: deals,
 	}
 }
 

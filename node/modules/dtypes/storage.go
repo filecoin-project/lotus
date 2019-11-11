@@ -7,6 +7,9 @@ import (
 	blockstore "github.com/ipfs/go-ipfs-blockstore"
 	exchange "github.com/ipfs/go-ipfs-exchange-interface"
 	ipld "github.com/ipfs/go-ipld-format"
+
+	"github.com/filecoin-project/lotus/datatransfer"
+	"github.com/filecoin-project/lotus/lib/statestore"
 )
 
 // MetadataDS stores metadata
@@ -23,5 +26,14 @@ type ChainBlockService bserv.BlockService
 type ClientFilestore *filestore.Filestore
 type ClientBlockstore blockstore.Blockstore
 type ClientDAG ipld.DAGService
+type ClientDealStore *statestore.StateStore
+
+// ClientDataTransfer is a data transfer manager for the client
+type ClientDataTransfer datatransfer.Manager
+
+type ProviderDealStore *statestore.StateStore
+
+// ProviderDataTransfer is a data transfer manager for the provider
+type ProviderDataTransfer datatransfer.Manager
 
 type StagingDAG ipld.DAGService

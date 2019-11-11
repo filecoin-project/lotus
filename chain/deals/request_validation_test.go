@@ -106,7 +106,7 @@ func TestClientRequestValidation(t *testing.T) {
 	ds := dss.MutexWrap(datastore.NewMapDatastore())
 	state := statestore.New(namespace.Wrap(ds, datastore.NewKey("/deals/client")))
 
-	crv := deals.NewClientRequestValidator(ds)
+	crv := deals.NewClientRequestValidator(state)
 	minerID := peer.ID("fakepeerid")
 	block := blockGenerator.Next()
 	t.Run("ValidatePush fails", func(t *testing.T) {
@@ -198,7 +198,7 @@ func TestProviderRequestValidation(t *testing.T) {
 	ds := dss.MutexWrap(datastore.NewMapDatastore())
 	state := statestore.New(namespace.Wrap(ds, datastore.NewKey("/deals/client")))
 
-	mrv := deals.NewProviderRequestValidator(ds)
+	mrv := deals.NewProviderRequestValidator(state)
 	clientID := peer.ID("fakepeerid")
 	block := blockGenerator.Next()
 	t.Run("ValidatePull fails", func(t *testing.T) {
