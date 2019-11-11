@@ -4,6 +4,7 @@ import (
 	"bytes"
 	"context"
 	"errors"
+	"fmt"
 	"math/rand"
 	"reflect"
 	"testing"
@@ -24,7 +25,7 @@ import (
 	"github.com/stretchr/testify/require"
 
 	"github.com/filecoin-project/lotus/datatransfer"
-	dtgraphsync "github.com/filecoin-project/lotus/datatransfer/impl/graphsync"
+	. "github.com/filecoin-project/lotus/datatransfer/impl/graphsync"
 	"github.com/filecoin-project/lotus/datatransfer/message"
 	"github.com/filecoin-project/lotus/datatransfer/network"
 	"github.com/filecoin-project/lotus/datatransfer/testutil"
@@ -112,7 +113,7 @@ func TestDataTransferOneWay(t *testing.T) {
 
 	bs := bstore.NewBlockstore(dss.MutexWrap(datastore.NewMapDatastore()))
 
-	dt := dtgraphsync.NewGraphSyncDataTransfer(ctx, host1, bs)
+	dt := NewGraphSyncDataTransfer(ctx, host1, bs)
 
 	t.Run("OpenPushDataTransfer", func(t *testing.T) {
 		ssb := builder.NewSelectorSpecBuilder(ipldfree.NodeBuilder())
@@ -264,15 +265,14 @@ func TestDataTransferValidation(t *testing.T) {
 	bs1 := bstore.NewBlockstore(dss.MutexWrap(datastore.NewMapDatastore()))
 	bs2 := bstore.NewBlockstore(dss.MutexWrap(datastore.NewMapDatastore()))
 
-	dt1 := dtgraphsync.NewGraphSyncDataTransfer(ctx, host1, bs1)
-	dt2 := dtgraphsync.NewGraphSyncDataTransfer(ctx, host2, bs2)
+	dt1 := NewGraphSyncDataTransfer(ctx, host1, bs1)
+	dt2 := NewGraphSyncDataTransfer(ctx, host2, bs2)
 
 	fv := &fakeValidator{ctx, make(chan receivedValidation)}
 
 	err = dt2.RegisterVoucherType(reflect.TypeOf(&fakeDTType{}), fv)
 	require.NoError(t, err)
 
-	// TODO: get passing to complete https://github.com/filecoin-project/go-data-transfer/issues/15
 	t.Run("ValidatePush", func(t *testing.T) {
 		ssb := builder.NewSelectorSpecBuilder(ipldfree.NodeBuilder())
 
@@ -283,26 +283,27 @@ func TestDataTransferValidation(t *testing.T) {
 
 		voucher := fakeDTType{"applesauce"}
 		baseCid := testutil.GenerateCids(1)[0]
+
 		channelID, err := dt1.OpenPushDataChannel(ctx, host2.ID(), &voucher, baseCid, stor)
 		require.NoError(t, err)
 
 		assert.Equal(t, channelID.To, host2.ID())
 
-		//var validation receivedValidation
-		//select {
-		//case <-ctx.Done():
-		//	t.Fatal("did not receive message sent")
-		//case validation = <-fv.validationsReceived:
-		//}
-		//
-		//assert.False(t, validation.isPull)
-		//assert.Equal(t, validation.other, host1.ID())
-		//assert.Equal(t, validation.voucher, voucher)
-		//assert.Equal(t, validation.baseCid, baseCid)
-		//assert.Equal(t, validation.selector, stor)
+		var validation receivedValidation
+		select {
+		case <-ctx.Done():
+			t.Fatal("did not receive message sent")
+		case validation = <-fv.validationsReceived:
+			assert.False(t, validation.isPull)
+		}
+
+		assert.False(t, validation.isPull)
+		assert.Equal(t, host1.ID(), validation.other)
+		assert.Equal(t, &voucher, validation.voucher)
+		assert.Equal(t, baseCid, validation.baseCid)
+		assert.Equal(t, stor, validation.selector)
 	})
 
-	// TODO: get passing to complete https://github.com/filecoin-project/go-data-transfer/issues/18
 	t.Run("ValidatePull", func(t *testing.T) {
 		ssb := builder.NewSelectorSpecBuilder(ipldfree.NodeBuilder())
 
@@ -317,19 +318,19 @@ func TestDataTransferValidation(t *testing.T) {
 		require.NoError(t, err)
 
 		assert.Equal(t, channelID.To, host2.ID())
-		//
-		//var validation receivedValidation
-		//select {
-		//case <-ctx.Done():
-		//	t.Fatal("did not receive message sent")
-		//case validation = <-fv.validationsReceived:
-		//}
-		//
-		//assert.True(t, validation.isPull)
-		//assert.Equal(t, validation.other, host1.ID())
-		//assert.Equal(t, validation.voucher, voucher)
-		//assert.Equal(t, validation.baseCid, baseCid)
-		//assert.Equal(t, validation.selector, stor)
+
+		var validation receivedValidation
+		select {
+		case <-ctx.Done():
+			t.Fatal("did not receive message sent")
+		case validation = <-fv.validationsReceived:
+		}
+
+		assert.True(t, validation.isPull)
+		assert.Equal(t, validation.other, host1.ID())
+		assert.Equal(t, &voucher, validation.voucher)
+		assert.Equal(t, baseCid, validation.baseCid)
+		assert.Equal(t, stor, validation.selector)
 	})
 }
 
@@ -433,7 +434,6 @@ func TestSendResponseToIncomingRequest(t *testing.T) {
 
 	bs := bstore.NewBlockstore(dss.MutexWrap(datastore.NewMapDatastore()))
 
-	dt := dtgraphsync.NewGraphSyncDataTransfer(ctx, host2, bs)
 	ssb := builder.NewSelectorSpecBuilder(ipldfree.NodeBuilder())
 
 	stor := ssb.ExploreRecursive(selector.RecursionLimitNone(),
@@ -447,11 +447,11 @@ func TestSendResponseToIncomingRequest(t *testing.T) {
 
 	// TODO: get passing to complete https://github.com/filecoin-project/go-data-transfer/issues/14
 	t.Run("Response to push with successful validation", func(t *testing.T) {
-
 		sv := newSV()
 		sv.expectSuccessPush()
-		err = dt.RegisterVoucherType(reflect.TypeOf(&fakeDTType{}), sv)
-		require.NoError(t, err)
+
+		dt := NewGraphSyncDataTransfer(ctx, host2, bs)
+		require.NoError(t, dt.RegisterVoucherType(reflect.TypeOf(&fakeDTType{}), sv))
 
 		isPull := false
 		voucherBytes, err := voucher.ToBytes()
@@ -589,4 +589,21 @@ func TestSendResponseToIncomingRequest(t *testing.T) {
 		//require.Equal(t, receivedResponse.TransferID(), id)
 		//require.False(t, receivedResponse.Accepted())
 	})
+}
+
+func TestGraphsyncImpl_RegisterVoucherType(t *testing.T) {
+	ctx := context.Background()
+	ctx, cancel := context.WithTimeout(ctx, 10*time.Second)
+	defer cancel()
+	mn := mocknet.New(ctx)
+	// setup network
+	host1, err := mn.GenPeer()
+	require.NoError(t, err)
+
+	bs := bstore.NewBlockstore(dss.MutexWrap(datastore.NewMapDatastore()))
+	dt := NewGraphSyncDataTransfer(ctx, host1, bs)
+	fv := &fakeValidator{ctx, make(chan receivedValidation)}
+
+	assert.NoError(t, dt.RegisterVoucherType(reflect.TypeOf(&fakeDTType{}), fv))
+	assert.EqualError(t, dt.RegisterVoucherType(reflect.TypeOf(&fakeDTType{}), fv), "voucher type already registered: *graphsync_test.fakeDTType")
 }
