@@ -192,11 +192,8 @@ func (receiver *graphsyncReceiver) voucherFromRequest(incoming message.DataTrans
 	if !ok {
 		return nil, fmt.Errorf("unregistered voucher type %s", vtypStr)
 	}
-	vPtrVal := reflect.New(validatedType.voucherType)
-	vPtr := reflect.Indirect(vPtrVal)
-	vPtr.Set(reflect.New(validatedType.voucherType.Elem()))
-
-	voucher, ok := vPtr.Interface().(datatransfer.Voucher)
+	vStructVal := reflect.New(validatedType.voucherType.Elem())
+	voucher, ok := vStructVal.Interface().(datatransfer.Voucher)
 	if !ok || reflect.ValueOf(voucher).IsNil() {
 		return nil, fmt.Errorf("problem instantiating type %s, voucher: %v", vtypStr, voucher)
 	}
