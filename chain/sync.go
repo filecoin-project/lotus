@@ -4,6 +4,7 @@ import (
 	"context"
 	"errors"
 	"fmt"
+	"github.com/hashicorp/go-multierror"
 	"sync"
 	"time"
 
@@ -583,13 +584,15 @@ func (syncer *Syncer) ValidateBlock(ctx context.Context, b *types.FullBlock) err
 		winnerCheck,
 		msgsCheck,
 	}
+
+	var merr error
 	for _, fut := range await {
 		if err := fut.AwaitContext(ctx); err != nil {
-			return err
+			err = multierror.Append(merr, err)
 		}
 	}
 
-	return nil
+	return merr
 }
 
 func (syncer *Syncer) checkBlockMessages(ctx context.Context, b *types.FullBlock, baseTs *types.TipSet) error {
