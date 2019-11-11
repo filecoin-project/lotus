@@ -27,7 +27,6 @@ import (
 	"github.com/filecoin-project/lotus/node/impl/full"
 	"github.com/filecoin-project/lotus/node/modules/dtypes"
 	"github.com/filecoin-project/lotus/retrieval/discovery"
-
 )
 
 var log = logging.Logger("deals")
@@ -46,10 +45,10 @@ type ClientDeal struct {
 }
 
 type Client struct {
-        sm           *stmgr.StateManager
-	chain        *store.ChainStore
-	h            host.Host
-	w            *wallet.Wallet
+	sm    *stmgr.StateManager
+	chain *store.ChainStore
+	h     host.Host
+	w     *wallet.Wallet
 	// dataTransfer
 	// TODO: once the data transfer module is complete, the
 	// client will listen to events on the data transfer module
@@ -87,7 +86,7 @@ func NewClient(sm *stmgr.StateManager, chain *store.ChainStore, h host.Host, w *
 		dataTransfer: dataTransfer,
 		dag:          dag,
 		discovery:    discovery,
-		fm:        fm,
+		fm:           fm,
 		events:       events.NewEvents(context.TODO(), &chainapi),
 
 		deals: statestore.New(namespace.Wrap(ds, datastore.NewKey("/deals/client"))),

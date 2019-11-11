@@ -22,7 +22,6 @@ import (
 	"github.com/filecoin-project/lotus/lib/sectorbuilder"
 	"github.com/filecoin-project/lotus/lib/statestore"
 	"github.com/filecoin-project/lotus/node/modules/dtypes"
-
 )
 
 func (c *Client) failDeal(id cid.Cid, cerr error) {

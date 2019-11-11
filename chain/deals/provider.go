@@ -80,6 +80,7 @@ var (
 	// ErrDataTransferFailed means a data transfer for a deal failed
 	ErrDataTransferFailed = errors.New("Deal data transfer failed")
 )
+
 func NewProvider(ds dtypes.MetadataDS, sminer *storage.Miner, secb *sectorblocks.SectorBlocks, dag dtypes.StagingDAG, dataTransfer datatransfer.ProviderDataTransfer, fullNode api.FullNode) (*Provider, error) {
 	addr, err := ds.Get(datastore.NewKey("miner-address"))
 	if err != nil {
@@ -91,11 +92,11 @@ func NewProvider(ds dtypes.MetadataDS, sminer *storage.Miner, secb *sectorblocks
 	}
 
 	h := &Provider{
-		sminer: sminer,
-		dag:    dag,
+		sminer:       sminer,
+		dag:          dag,
 		dataTransfer: dataTransfer,
-		full:   fullNode,
-		secb:   secb,
+		full:         fullNode,
+		secb:         secb,
 
 		pricePerByteBlock: types.NewInt(3), // TODO: allow setting
 		minPieceSize:      256,             // TODO: allow setting (BUT KEEP MIN 256! (because of how we fill sectors up))
