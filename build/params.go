@@ -122,8 +122,8 @@ func init() {
 }
 
 // Sync
-const BadBlockCacheSize = 8192
+const BadBlockCacheSize = 1 << 15
 
 // assuming 4000 blocks per round, this lets us not lose any messages across a
-// 10 block reorg. 
+// 10 block reorg.
 const BlsSignatureCacheSize = 40000
