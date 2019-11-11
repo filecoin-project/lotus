@@ -1,17 +1,23 @@
 package deals
 
 import (
+	"bytes"
 	"context"
 	"runtime"
 
 	"github.com/ipfs/go-cid"
 	files "github.com/ipfs/go-ipfs-files"
 	unixfile "github.com/ipfs/go-unixfs/file"
+	"github.com/ipld/go-ipld-prime"
+	"github.com/libp2p/go-libp2p-core/peer"
 	"golang.org/x/xerrors"
 
+	"github.com/filecoin-project/lotus/datatransfer"
 	"github.com/filecoin-project/lotus/lib/cborutil"
 	"github.com/filecoin-project/lotus/lib/padreader"
 	"github.com/filecoin-project/lotus/lib/sectorbuilder"
+	"github.com/filecoin-project/lotus/lib/statestore"
+	"github.com/filecoin-project/lotus/node/modules/dtypes"
 )
 
 func (c *Client) failDeal(id cid.Cid, cerr error) {
@@ -97,4 +103,68 @@ func (c *Client) disconnect(deal ClientDeal) error {
 	err := s.Close()
 	delete(c.conns, deal.ProposalCid)
 	return err
+}
+
+var _ datatransfer.RequestValidator = &ClientRequestValidator{}
+
+// ClientRequestValidator validates data transfer requests for the client
+// in a storage market
+type ClientRequestValidator struct {
+	deals *statestore.StateStore
+}
+
+// NewClientRequestValidator returns a new client request validator for the
+// given datastore
+func NewClientRequestValidator(deals dtypes.ClientDealStore) *ClientRequestValidator {
+	crv := &ClientRequestValidator{
+		deals: deals,
+	}
+	return crv
+}
+
+// ValidatePush validates a push request received from the peer that will send data
+// Will always error because clients should not accept push requests from a provider
+// in a storage deal (i.e. send data to client).
+func (c *ClientRequestValidator) ValidatePush(
+	sender peer.ID,
+	voucher datatransfer.Voucher,
+	baseCid cid.Cid,
+	Selector ipld.Node) error {
+	return ErrNoPushAccepted
+}
+
+// ValidatePull validates a pull request received from the peer that will receive data
+// Will succeed only if:
+// - voucher has correct type
+// - voucher references an active deal
+// - referenced deal matches the receiver (miner)
+// - referenced deal matches the given base CID
+// - referenced deal is in an acceptable state
+func (c *ClientRequestValidator) ValidatePull(
+	receiver peer.ID,
+	voucher datatransfer.Voucher,
+	baseCid cid.Cid,
+	Selector ipld.Node) error {
+	dealVoucher, ok := voucher.(*StorageDataTransferVoucher)
+	if !ok {
+		return xerrors.Errorf("voucher type %s: %w", voucher.Identifier(), ErrWrongVoucherType)
+	}
+
+	var deal ClientDeal
+	err := c.deals.Get(dealVoucher.Proposal, &deal)
+	if err != nil {
+		return xerrors.Errorf("Proposal CID %s: %w", dealVoucher.Proposal.String(), ErrNoDeal)
+	}
+	if deal.Miner != receiver {
+		return xerrors.Errorf("Deal Peer %s, Data Transfer Peer %s: %w", deal.Miner.String(), receiver.String(), ErrWrongPeer)
+	}
+	if !bytes.Equal(deal.Proposal.PieceRef, baseCid.Bytes()) {
+		return xerrors.Errorf("Deal Payload CID %s, Data Transfer CID %s: %w", string(deal.Proposal.PieceRef), baseCid.String(), ErrWrongPiece)
+	}
+	for _, state := range DataTransferStates {
+		if deal.State == state {
+			return nil
+		}
+	}
+	return xerrors.Errorf("Deal State %s: %w", deal.State, ErrInacceptableDealState)
 }

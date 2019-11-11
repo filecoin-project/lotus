@@ -5,11 +5,13 @@ import (
 	"fmt"
 	"math"
 	"path/filepath"
+	"reflect"
 
 	"github.com/ipfs/go-bitswap"
 	"github.com/ipfs/go-bitswap/network"
 	"github.com/ipfs/go-blockservice"
 	"github.com/ipfs/go-datastore"
+	"github.com/ipfs/go-datastore/namespace"
 	blockstore "github.com/ipfs/go-ipfs-blockstore"
 	"github.com/ipfs/go-merkledag"
 	"github.com/libp2p/go-libp2p-core/host"
@@ -22,7 +24,9 @@ import (
 	"github.com/filecoin-project/lotus/build"
 	"github.com/filecoin-project/lotus/chain/address"
 	"github.com/filecoin-project/lotus/chain/deals"
+	"github.com/filecoin-project/lotus/datatransfer"
 	"github.com/filecoin-project/lotus/lib/sectorbuilder"
+	"github.com/filecoin-project/lotus/lib/statestore"
 	"github.com/filecoin-project/lotus/node/modules/dtypes"
 	"github.com/filecoin-project/lotus/node/modules/helpers"
 	"github.com/filecoin-project/lotus/node/repo"
@@ -128,6 +132,24 @@ func HandleDeals(mctx helpers.MetricsCtx, lc fx.Lifecycle, host host.Host, h *de
 			return nil
 		},
 	})
+}
+
+// RegisterProviderValidator is an initialization hook that registers the provider
+// request validator with the data transfer module as the validator for
+// StorageDataTransferVoucher types
+func RegisterProviderValidator(mrv *deals.ProviderRequestValidator, dtm dtypes.ProviderDataTransfer) {
+	dtm.RegisterVoucherType(reflect.TypeOf(deals.StorageDataTransferVoucher{}), mrv)
+}
+
+// NewProviderDAGServiceDataTransfer returns a data transfer manager that just
+// uses the provider's Staging DAG service for transfers
+func NewProviderDAGServiceDataTransfer(dag dtypes.StagingDAG) dtypes.ProviderDataTransfer {
+	return datatransfer.NewDAGServiceDataTransfer(dag)
+}
+
+// NewProviderDealStore creates a statestore for the client to store its deals
+func NewProviderDealStore(ds dtypes.MetadataDS) dtypes.ProviderDealStore {
+	return statestore.New(namespace.Wrap(ds, datastore.NewKey("/deals/client")))
 }
 
 func StagingDAG(mctx helpers.MetricsCtx, lc fx.Lifecycle, r repo.LockedRepo, rt routing.Routing, h host.Host) (dtypes.StagingDAG, error) {

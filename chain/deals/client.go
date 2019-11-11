@@ -4,8 +4,6 @@ import (
 	"context"
 
 	"github.com/ipfs/go-cid"
-	"github.com/ipfs/go-datastore"
-	"github.com/ipfs/go-datastore/namespace"
 	logging "github.com/ipfs/go-log"
 	"github.com/libp2p/go-libp2p-core/host"
 	inet "github.com/libp2p/go-libp2p-core/network"
@@ -44,14 +42,20 @@ type ClientDeal struct {
 }
 
 type Client struct {
-	sm        *stmgr.StateManager
-	chain     *store.ChainStore
-	h         host.Host
-	w         *wallet.Wallet
-	dag       dtypes.ClientDAG
-	discovery *discovery.Local
-	events    *events.Events
-	fm        *market.FundMgr
+	sm    *stmgr.StateManager
+	chain *store.ChainStore
+	h     host.Host
+	w     *wallet.Wallet
+	// dataTransfer
+	// TODO: once the data transfer module is complete, the
+	// client will listen to events on the data transfer module
+	// Because we are using only a fake DAGService
+	// implementation, there's no validation or events on the client side
+	dataTransfer dtypes.ClientDataTransfer
+	dag          dtypes.ClientDAG
+	discovery    *discovery.Local
+	events       *events.Events
+	fm           *market.FundMgr
 
 	deals *statestore.StateStore
 	conns map[cid.Cid]inet.Stream
@@ -70,18 +74,19 @@ type clientDealUpdate struct {
 	mut      func(*ClientDeal)
 }
 
-func NewClient(sm *stmgr.StateManager, chain *store.ChainStore, h host.Host, w *wallet.Wallet, ds dtypes.MetadataDS, dag dtypes.ClientDAG, discovery *discovery.Local, fm *market.FundMgr, chainapi full.ChainAPI) *Client {
+func NewClient(sm *stmgr.StateManager, chain *store.ChainStore, h host.Host, w *wallet.Wallet, dag dtypes.ClientDAG, dataTransfer dtypes.ClientDataTransfer, discovery *discovery.Local, fm *market.FundMgr, deals dtypes.ClientDealStore, chainapi full.ChainAPI) *Client {
 	c := &Client{
-		sm:        sm,
-		chain:     chain,
-		h:         h,
-		w:         w,
-		dag:       dag,
-		discovery: discovery,
-		fm:        fm,
-		events:    events.NewEvents(context.TODO(), &chainapi),
+		sm:           sm,
+		chain:        chain,
+		h:            h,
+		w:            w,
+		dataTransfer: dataTransfer,
+		dag:          dag,
+		discovery:    discovery,
+		fm:           fm,
+		events:       events.NewEvents(context.TODO(), &chainapi),
 
-		deals: statestore.New(namespace.Wrap(ds, datastore.NewKey("/deals/client"))),
+		deals: deals,
 		conns: map[cid.Cid]inet.Stream{},
 
 		incoming: make(chan *ClientDeal, 16),

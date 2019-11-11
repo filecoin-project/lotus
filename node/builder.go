@@ -85,12 +85,14 @@ const (
 	HandleIncomingMessagesKey
 
 	RunDealClientKey
+	RegisterClientValidatorKey
 
 	// storage miner
 	HandleDealsKey
 	HandleRetrievalKey
 	RunSectorServiceKey
 	RegisterMinerKey
+	RegisterProviderValidatorKey
 
 	// daemon
 	ExtractApiKey
@@ -218,7 +220,11 @@ func Online() Option {
 			Override(new(discovery.PeerResolver), modules.RetrievalResolver),
 
 			Override(new(*retrieval.Client), retrieval.NewClient),
+			Override(new(dtypes.ClientDealStore), modules.NewClientDealStore),
+			Override(new(dtypes.ClientDataTransfer), modules.NewClientDAGServiceDataTransfer),
+			Override(new(*deals.ClientRequestValidator), deals.NewClientRequestValidator),
 			Override(new(*deals.Client), deals.NewClient),
+			Override(RegisterClientValidatorKey, modules.RegisterClientValidator),
 			Override(RunDealClientKey, modules.RunDealClient),
 
 			Override(new(*paych.Store), paych.NewStore),
@@ -238,7 +244,11 @@ func Online() Option {
 			Override(new(dtypes.StagingDAG), modules.StagingDAG),
 
 			Override(new(*retrieval.Miner), retrieval.NewMiner),
+			Override(new(dtypes.ProviderDealStore), modules.NewProviderDealStore),
+			Override(new(dtypes.ProviderDataTransfer), modules.NewProviderDAGServiceDataTransfer),
+			Override(new(*deals.ProviderRequestValidator), deals.NewProviderRequestValidator),
 			Override(new(*deals.Provider), deals.NewProvider),
+			Override(RegisterProviderValidatorKey, modules.RegisterProviderValidator),
 			Override(HandleRetrievalKey, modules.HandleRetrieval),
 			Override(HandleDealsKey, modules.HandleDeals),
 			Override(RegisterMinerKey, modules.RegisterMiner),
