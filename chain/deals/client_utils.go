@@ -2,18 +2,16 @@ package deals
 
 import (
 	"context"
-	"github.com/filecoin-project/lotus/lib/sectorbuilder"
 	"runtime"
 
 	"github.com/ipfs/go-cid"
 	files "github.com/ipfs/go-ipfs-files"
-	cbor "github.com/ipfs/go-ipld-cbor"
 	unixfile "github.com/ipfs/go-unixfs/file"
-	inet "github.com/libp2p/go-libp2p-core/network"
 	"golang.org/x/xerrors"
 
-	"github.com/filecoin-project/lotus/chain/address"
-	"github.com/filecoin-project/lotus/lib/cborrpc"
+	"github.com/filecoin-project/lotus/lib/cborutil"
+	"github.com/filecoin-project/lotus/lib/padreader"
+	"github.com/filecoin-project/lotus/lib/sectorbuilder"
 )
 
 func (c *Client) failDeal(id cid.Cid, cerr error) {
@@ -29,10 +27,10 @@ func (c *Client) failDeal(id cid.Cid, cerr error) {
 	}
 
 	// TODO: store in some sort of audit log
-	log.Errorf("deal %s failed: %s", id, cerr)
+	log.Errorf("deal %s failed: %+v", id, cerr)
 }
 
-func (c *Client) commP(ctx context.Context, data cid.Cid) ([]byte, int64, error) {
+func (c *Client) commP(ctx context.Context, data cid.Cid) ([]byte, uint64, error) {
 	root, err := c.dag.Get(ctx, data)
 	if err != nil {
 		log.Errorf("failed to get file root for deal: %s", err)
@@ -51,57 +49,52 @@ func (c *Client) commP(ctx context.Context, data cid.Cid) ([]byte, int64, error)
 		return nil, 0, xerrors.New("unsupported unixfs type")
 	}
 
-	size, err := uf.Size()
+	s, err := uf.Size()
 	if err != nil {
 		return nil, 0, err
 	}
 
-	commP, err := sectorbuilder.GeneratePieceCommitment(uf, uint64(size))
+	pr, psize := padreader.New(uf, uint64(s))
+
+	commp, err := sectorbuilder.GeneratePieceCommitment(pr, psize)
 	if err != nil {
-		return nil, 0, err
+		return nil, 0, xerrors.Errorf("generating CommP: %w", err)
 	}
 
-	return commP[:], size, err
+	return commp[:], psize, nil
 }
 
-func (c *Client) sendProposal(s inet.Stream, proposal StorageDealProposal, from address.Address) error {
-	log.Info("Sending deal proposal")
-
-	msg, err := cbor.DumpObject(proposal)
-	if err != nil {
-		return err
-	}
-	sig, err := c.w.Sign(context.TODO(), from, msg)
-	if err != nil {
-		return err
-	}
-
-	signedProposal := &SignedStorageDealProposal{
-		Proposal:  proposal,
-		Signature: sig,
-	}
-
-	return cborrpc.WriteCborRPC(s, signedProposal)
-}
-
-func (c *Client) readStorageDealResp(deal ClientDeal) (*StorageDealResponse, error) {
+func (c *Client) readStorageDealResp(deal ClientDeal) (*Response, error) {
 	s, ok := c.conns[deal.ProposalCid]
 	if !ok {
 		// TODO: Try to re-establish the connection using query protocol
 		return nil, xerrors.Errorf("no connection to miner")
 	}
 
-	var resp SignedStorageDealResponse
-	if err := cborrpc.ReadCborRPC(s, &resp); err != nil {
-		log.Errorw("failed to read StorageDealResponse message", "error", err)
+	var resp SignedResponse
+	if err := cborutil.ReadCborRPC(s, &resp); err != nil {
+		log.Errorw("failed to read Response message", "error", err)
 		return nil, err
 	}
 
-	// TODO: verify signature
+	if err := resp.Verify(deal.MinerWorker); err != nil {
+		return nil, xerrors.Errorf("verifying response signature failed", err)
+	}
 
 	if resp.Response.Proposal != deal.ProposalCid {
-		return nil, xerrors.New("miner responded to a wrong proposal")
+		return nil, xerrors.Errorf("miner responded to a wrong proposal: %s != %s", resp.Response.Proposal, deal.ProposalCid)
 	}
 
 	return &resp.Response, nil
+}
+
+func (c *Client) disconnect(deal ClientDeal) error {
+	s, ok := c.conns[deal.ProposalCid]
+	if !ok {
+		return nil
+	}
+
+	err := s.Close()
+	delete(c.conns, deal.ProposalCid)
+	return err
 }

@@ -105,7 +105,7 @@ var walletBalance = &cli.Command{
 			return err
 		}
 
-		fmt.Printf("%s\n", types.FIL(balance).String())
+		fmt.Printf("%s\n", types.FIL(balance))
 		return nil
 	},
 }
@@ -231,7 +231,7 @@ var walletImport = &cli.Command{
 			return err
 		}
 
-		fmt.Printf("imported key %s successfully!", addr)
+		fmt.Printf("imported key %s successfully!\n", addr)
 		return nil
 	},
 }

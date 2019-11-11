@@ -68,7 +68,7 @@ func (st *StateTree) SetActor(addr address.Address, act *types.Actor) error {
 }
 
 func (st *StateTree) lookupID(addr address.Address) (address.Address, error) {
-	act, err := st.GetActor(actors.InitActorAddress)
+	act, err := st.GetActor(actors.InitAddress)
 	if err != nil {
 		return address.Undef, xerrors.Errorf("getting init actor: %w", err)
 	}
@@ -143,7 +143,7 @@ func (st *StateTree) Snapshot() error {
 
 func (st *StateTree) RegisterNewAddress(addr address.Address, act *types.Actor) (address.Address, error) {
 	var out address.Address
-	err := st.MutateActor(actors.InitActorAddress, func(initact *types.Actor) error {
+	err := st.MutateActor(actors.InitAddress, func(initact *types.Actor) error {
 		var ias actors.InitActorState
 		if err := st.Store.Get(context.TODO(), initact.Head, &ias); err != nil {
 			return err

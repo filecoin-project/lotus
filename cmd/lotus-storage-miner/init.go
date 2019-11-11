@@ -49,6 +49,11 @@ var initCmd = &cli.Command{
 			Aliases: []string{"o"},
 			Usage:   "owner key to use",
 		},
+		&cli.Uint64Flag{
+			Name:  "sector-size",
+			Usage: "specify sector size to use",
+			Value: build.SectorSizes[0],
+		},
 	},
 	Action: func(cctx *cli.Context) error {
 		log.Info("Initializing lotus storage miner")
@@ -96,7 +101,7 @@ var initCmd = &cli.Command{
 
 		log.Info("Initializing repo")
 
-		if err := r.Init(); err != nil {
+		if err := r.Init(repo.RepoStorageMiner); err != nil {
 			return err
 		}
 
@@ -117,7 +122,7 @@ var initCmd = &cli.Command{
 }
 
 func storageMinerInit(ctx context.Context, cctx *cli.Context, api api.FullNode, r repo.Repo) error {
-	lr, err := r.Lock()
+	lr, err := r.Lock(repo.RepoStorageMiner)
 	if err != nil {
 		return err
 	}
@@ -276,6 +281,8 @@ func createStorageMiner(ctx context.Context, api api.FullNode, peerid peer.ID, c
 		return address.Undef, err
 	}
 
+	ssize := cctx.Uint64("sector-size")
+
 	worker := owner
 	if cctx.String("worker") != "" {
 		worker, err = address.NewFromString(cctx.String("worker"))
@@ -295,7 +302,7 @@ func createStorageMiner(ctx context.Context, api api.FullNode, peerid peer.ID, c
 	params, err := actors.SerializeParams(&actors.CreateStorageMinerParams{
 		Owner:      owner,
 		Worker:     worker,
-		SectorSize: types.NewInt(build.SectorSize),
+		SectorSize: ssize,
 		PeerID:     peerid,
 	})
 	if err != nil {
@@ -303,7 +310,7 @@ func createStorageMiner(ctx context.Context, api api.FullNode, peerid peer.ID, c
 	}
 
 	createStorageMinerMsg := &types.Message{
-		To:    actors.StorageMarketAddress,
+		To:    actors.StoragePowerAddress,
 		From:  owner,
 		Value: collateral,
 

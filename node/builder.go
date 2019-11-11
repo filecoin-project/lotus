@@ -15,10 +15,13 @@ import (
 	pubsub "github.com/libp2p/go-libp2p-pubsub"
 	record "github.com/libp2p/go-libp2p-record"
 	"go.uber.org/fx"
+	"golang.org/x/xerrors"
 
 	"github.com/filecoin-project/lotus/api"
 	"github.com/filecoin-project/lotus/chain"
+	"github.com/filecoin-project/lotus/chain/blocksync"
 	"github.com/filecoin-project/lotus/chain/deals"
+	"github.com/filecoin-project/lotus/chain/market"
 	"github.com/filecoin-project/lotus/chain/metrics"
 	"github.com/filecoin-project/lotus/chain/stmgr"
 	"github.com/filecoin-project/lotus/chain/store"
@@ -40,8 +43,6 @@ import (
 	"github.com/filecoin-project/lotus/retrieval"
 	"github.com/filecoin-project/lotus/retrieval/discovery"
 	"github.com/filecoin-project/lotus/storage"
-	"github.com/filecoin-project/lotus/storage/commitment"
-	"github.com/filecoin-project/lotus/storage/sector"
 	"github.com/filecoin-project/lotus/storage/sectorblocks"
 )
 
@@ -100,11 +101,6 @@ const (
 	_nInvokes // keep this last
 )
 
-const (
-	nodeFull = iota
-	nodeStorageMiner
-)
-
 type Settings struct {
 	// modules is a map of constructors for DI
 	//
@@ -117,13 +113,11 @@ type Settings struct {
 	// type, and must be applied in correct order
 	invokes []fx.Option
 
-	nodeType int
+	nodeType repo.RepoType
 
 	Online bool // Online option applied
 	Config bool // Config option applied
 }
-
-var defConf = config.Default()
 
 func defaults() []Option {
 	return []Option{
@@ -161,8 +155,12 @@ func libp2p() Option {
 		Override(new(*pubsub.PubSub), lp2p.GossipSub()),
 
 		Override(PstoreAddSelfKeysKey, lp2p.PstoreAddSelfKeys),
-		Override(StartListeningKey, lp2p.StartListening(defConf.Libp2p.ListenAddresses)),
+		Override(StartListeningKey, lp2p.StartListening(config.DefaultFullNode().Libp2p.ListenAddresses)),
 	)
+}
+
+func isType(t repo.RepoType) func(s *Settings) bool {
+	return func(s *Settings) bool { return s.nodeType == t }
 }
 
 // Online sets up basic libp2p node
@@ -181,7 +179,7 @@ func Online() Option {
 
 		// Full node
 
-		ApplyIf(func(s *Settings) bool { return s.nodeType == nodeFull },
+		ApplyIf(isType(repo.RepoFullNode),
 			// TODO: Fix offline mode
 
 			Override(new(dtypes.BootstrapPeers), modules.BuiltinBootstrap),
@@ -200,14 +198,14 @@ func Online() Option {
 
 			// Filecoin services
 			Override(new(*chain.Syncer), chain.NewSyncer),
-			Override(new(*chain.BlockSync), chain.NewBlockSyncClient),
+			Override(new(*blocksync.BlockSync), blocksync.NewBlockSyncClient),
 			Override(new(*chain.MessagePool), chain.NewMessagePool),
 
 			Override(new(modules.Genesis), modules.ErrorGenesis),
 			Override(SetGenesisKey, modules.SetGenesis),
 
 			Override(new(*hello.Service), hello.NewHelloService),
-			Override(new(*chain.BlockSyncService), chain.NewBlockSyncService),
+			Override(new(*blocksync.BlockSyncService), blocksync.NewBlockSyncService),
 			Override(new(*peermgr.PeerMgr), peermgr.NewPeerMgr),
 
 			Override(RunHelloKey, modules.RunHello),
@@ -225,25 +223,24 @@ func Online() Option {
 
 			Override(new(*paych.Store), paych.NewStore),
 			Override(new(*paych.Manager), paych.NewManager),
+			Override(new(*market.FundMgr), market.NewFundMgr),
 
 			Override(new(*miner.Miner), miner.NewMiner),
 		),
 
 		// Storage miner
-		ApplyIf(func(s *Settings) bool { return s.nodeType == nodeStorageMiner },
-			Override(new(*sectorbuilder.SectorBuilder), sectorbuilder.New),
-			Override(new(*sector.Store), sector.NewStore),
+		ApplyIf(func(s *Settings) bool { return s.nodeType == repo.RepoStorageMiner },
+			Override(new(*sectorbuilder.SectorBuilder), modules.SectorBuilder),
 			Override(new(*sectorblocks.SectorBlocks), sectorblocks.NewSectorBlocks),
-			Override(new(*commitment.Tracker), commitment.NewTracker),
+			Override(new(storage.TicketFn), modules.SealTicketGen),
 			Override(new(*storage.Miner), modules.StorageMiner),
 
 			Override(new(dtypes.StagingDAG), modules.StagingDAG),
 
 			Override(new(*retrieval.Miner), retrieval.NewMiner),
-			Override(new(*deals.Handler), deals.NewHandler),
+			Override(new(*deals.Provider), deals.NewProvider),
 			Override(HandleRetrievalKey, modules.HandleRetrieval),
 			Override(HandleDealsKey, modules.HandleDeals),
-			Override(RunSectorServiceKey, modules.RunSectorService),
 			Override(RegisterMinerKey, modules.RegisterMiner),
 		),
 	)
@@ -259,7 +256,7 @@ func StorageMiner(out *api.StorageMiner) Option {
 		),
 
 		func(s *Settings) error {
-			s.nodeType = nodeStorageMiner
+			s.nodeType = repo.RepoStorageMiner
 			return nil
 		},
 
@@ -273,7 +270,7 @@ func StorageMiner(out *api.StorageMiner) Option {
 }
 
 // Config sets up constructors based on the provided Config
-func Config(cfg *config.Root) Option {
+func ConfigCommon(cfg *config.Common) Option {
 	return Options(
 		func(s *Settings) error { s.Config = true; return nil },
 
@@ -283,43 +280,69 @@ func Config(cfg *config.Root) Option {
 			ApplyIf(func(s *Settings) bool { return len(cfg.Libp2p.BootstrapPeers) > 0 },
 				Override(new(dtypes.BootstrapPeers), modules.ConfigBootstrap(cfg.Libp2p.BootstrapPeers)),
 			),
-
-			ApplyIf(func(s *Settings) bool { return s.nodeType == nodeFull },
-				Override(HeadMetricsKey, metrics.SendHeadNotifs(cfg.Metrics.Nickname)),
-			),
 		),
 	)
 }
 
-func Repo(r repo.Repo) Option {
-	lr, err := r.Lock()
-	if err != nil {
-		return Error(err)
-	}
-	cfg, err := lr.Config()
-	if err != nil {
-		return Error(err)
-	}
-
+func ConfigFullNode(cfg *config.FullNode) Option {
+	//ApplyIf(func(s *Settings) bool { return s.nodeType == repo.RepoFullNode }),
 	return Options(
-		Config(cfg),
-		Override(new(repo.LockedRepo), modules.LockedRepo(lr)), // module handles closing
-
-		Override(new(dtypes.MetadataDS), modules.Datastore),
-		Override(new(dtypes.ChainBlockstore), modules.ChainBlockstore),
-
-		Override(new(dtypes.ClientFilestore), modules.ClientFstore),
-		Override(new(dtypes.ClientBlockstore), modules.ClientBlockstore),
-		Override(new(dtypes.ClientDAG), modules.ClientDAG),
-
-		Override(new(ci.PrivKey), lp2p.PrivKey),
-		Override(new(ci.PubKey), ci.PrivKey.GetPublic),
-		Override(new(peer.ID), peer.IDFromPublicKey),
-
-		Override(new(types.KeyStore), modules.KeyStore),
-
-		Override(new(*dtypes.APIAlg), modules.APISecret),
+		ConfigCommon(&cfg.Common),
+		Override(HeadMetricsKey, metrics.SendHeadNotifs(cfg.Metrics.Nickname)),
 	)
+}
+
+func configFull(c interface{}) Option {
+	cfg, ok := c.(*config.FullNode)
+	if !ok {
+		return Error(xerrors.Errorf("invalid config from repo, got: %T", c))
+	}
+
+	return ConfigFullNode(cfg)
+}
+
+func configMiner(c interface{}) Option {
+	cfg, ok := c.(*config.StorageMiner)
+	if !ok {
+		return Error(xerrors.Errorf("invalid config from repo, got: %T", c))
+	}
+
+	return ConfigCommon(&cfg.Common)
+}
+
+func Repo(r repo.Repo) Option {
+	return func(settings *Settings) error {
+		lr, err := r.Lock(settings.nodeType)
+		if err != nil {
+			return err
+		}
+		c, err := lr.Config()
+		if err != nil {
+			return err
+		}
+
+		return Options(
+			Override(new(repo.LockedRepo), modules.LockedRepo(lr)), // module handles closing
+
+			ApplyIf(isType(repo.RepoFullNode), configFull(c)),
+			ApplyIf(isType(repo.RepoStorageMiner), configMiner(c)),
+
+			Override(new(dtypes.MetadataDS), modules.Datastore),
+			Override(new(dtypes.ChainBlockstore), modules.ChainBlockstore),
+
+			Override(new(dtypes.ClientFilestore), modules.ClientFstore),
+			Override(new(dtypes.ClientBlockstore), modules.ClientBlockstore),
+			Override(new(dtypes.ClientDAG), modules.ClientDAG),
+
+			Override(new(ci.PrivKey), lp2p.PrivKey),
+			Override(new(ci.PubKey), ci.PrivKey.GetPublic),
+			Override(new(peer.ID), peer.IDFromPublicKey),
+
+			Override(new(types.KeyStore), modules.KeyStore),
+
+			Override(new(*dtypes.APIAlg), modules.APISecret),
+		)(settings)
+	}
 }
 
 func FullAPI(out *api.FullNode) Option {
@@ -336,8 +359,9 @@ type StopFunc func(context.Context) error
 // New builds and starts new Filecoin node
 func New(ctx context.Context, opts ...Option) (StopFunc, error) {
 	settings := Settings{
-		modules: map[interface{}]fx.Option{},
-		invokes: make([]fx.Option, _nInvokes),
+		modules:  map[interface{}]fx.Option{},
+		invokes:  make([]fx.Option, _nInvokes),
+		nodeType: repo.RepoFullNode,
 	}
 
 	// apply module options in the right order

@@ -32,3 +32,20 @@ func TestBigIntSerializationRoundTrip(t *testing.T) {
 
 	}
 }
+
+func TestFilRoundTrip(t *testing.T) {
+	testValues := []string{
+		"0", "1", "1.001", "100.10001", "101100", "5000.01", "5000",
+	}
+
+	for _, v := range testValues {
+		fval, err := ParseFIL(v)
+		if err != nil {
+			t.Fatal(err)
+		}
+
+		if fval.String() != v {
+			t.Fatal("mismatch in values!", v, fval.String())
+		}
+	}
+}

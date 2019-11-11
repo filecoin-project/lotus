@@ -1,6 +1,8 @@
 package build
 
-import "math/big"
+import (
+	"math/big"
+)
 
 // Core network constants
 
@@ -10,7 +12,20 @@ import "math/big"
 const UnixfsChunkSize uint64 = 1 << 20
 const UnixfsLinksPerLevel = 1024
 
-const SectorSize = 16 << 20
+var SectorSizes = []uint64{
+	16 << 20,
+	256 << 20,
+	1 << 30,
+}
+
+func SupportedSectorSize(ssize uint64) bool {
+	for _, ss := range SectorSizes {
+		if ssize == ss {
+			return true
+		}
+	}
+	return false
+}
 
 // /////
 // Payments
@@ -18,19 +33,11 @@ const SectorSize = 16 << 20
 // Blocks
 const PaymentChannelClosingDelay = 6 * 60 * 2 // six hours
 
-// Blocks
-const DealVoucherSkewLimit = 10
-
-// Blocks
-const MinDealVoucherIncrement = ProvingPeriodDuration
-
-const MaxVouchersPerDeal = 768 // roughly one voucher per 10h over a year
-
 // /////
 // Consensus / Network
 
 // Seconds
-const BlockDelay = 30
+const BlockDelay = 10
 
 // Seconds
 const AllowableClockDrift = BlockDelay * 2
@@ -39,42 +46,67 @@ const AllowableClockDrift = BlockDelay * 2
 const ForkLengthThreshold = 100
 
 // Blocks (e)
-const BlocksPerEpoch = 1
+const BlocksPerEpoch = 5
+
+// Blocks
+const Finality = 500
+
+// constants for Weight calculation
+// The ratio of weight contributed by short-term vs long-term factors in a given round
+const WRatioNum = int64(1)
+const WRatioDen = 2
 
 // /////
-// Proofs / Mining
+// Proofs
 
 // Blocks
-const RandomnessLookback = 20
+const ProvingPeriodDuration = 160
+
+// PoStChallangeTime sets the window in which post computation should happen
+// Blocks
+const PoStChallangeTime = ProvingPeriodDuration - 6
+
+// PoStRandomnessLookback is additional randomness lookback for PoSt computation
+// To compute randomness epoch in a given proving period:
+// RandH = PPE - PoStChallangeTime - PoStRandomnessLookback
+//
+// Blocks
+const PoStRandomnessLookback = 1
 
 // Blocks
-const ProvingPeriodDuration = 40
+const SealRandomnessLookback = Finality
 
 // Blocks
-const PoSTChallangeTime = 20
+const SealRandomnessLookbackLimit = SealRandomnessLookback + 2000
+
+// /////
+// Mining
+
+// Blocks
+const EcRandomnessLookback = 300
 
 const PowerCollateralProportion = 5
 const PerCapitaCollateralProportion = 1
 const CollateralPrecision = 1000
 
+// Blocks
+const InteractivePoRepDelay = 10
+
 // /////
 // Devnet settings
 
-const TotalFilecoin = 2000000000
-const MiningRewardTotal = 1400000000
+const TotalFilecoin = 2_000_000_000
+const MiningRewardTotal = 1_400_000_000
 
 const InitialRewardStr = "153856861913558700202"
 
 var InitialReward *big.Int
 
-const FilecoinPrecision = 1000000000000000000
+const FilecoinPrecision = 1_000_000_000_000_000_000
 
 // six years
 // Blocks
 const HalvingPeriodBlocks = 6 * 365 * 24 * 60 * 2
-
-// Blocks
-const AdjustmentPeriod = 7 * 24 * 60 * 2
 
 // TODO: Move other important consts here
 

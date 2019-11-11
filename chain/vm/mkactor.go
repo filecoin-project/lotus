@@ -66,7 +66,7 @@ func NewBLSAccountActor(st *state.StateTree, addr address.Address) (*types.Actor
 	}
 
 	nact := &types.Actor{
-		Code:    actors.AccountActorCodeCid,
+		Code:    actors.AccountCodeCid,
 		Balance: types.NewInt(0),
 		Head:    c,
 	}
@@ -76,7 +76,7 @@ func NewBLSAccountActor(st *state.StateTree, addr address.Address) (*types.Actor
 
 func NewSecp256k1AccountActor(st *state.StateTree, addr address.Address) (*types.Actor, aerrors.ActorError) {
 	nact := &types.Actor{
-		Code:    actors.AccountActorCodeCid,
+		Code:    actors.AccountCodeCid,
 		Balance: types.NewInt(0),
 		Head:    EmptyObjectCid,
 	}

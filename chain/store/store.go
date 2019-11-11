@@ -17,6 +17,7 @@ import (
 	amt "github.com/filecoin-project/go-amt-ipld"
 	"github.com/filecoin-project/lotus/chain/types"
 
+	lru "github.com/hashicorp/golang-lru"
 	block "github.com/ipfs/go-block-format"
 	"github.com/ipfs/go-cid"
 	dstore "github.com/ipfs/go-datastore"
@@ -49,14 +50,18 @@ type ChainStore struct {
 
 	reorgCh          chan<- reorg
 	headChangeNotifs []func(rev, app []*types.TipSet) error
+
+	mmCache *lru.ARCCache
 }
 
 func NewChainStore(bs bstore.Blockstore, ds dstore.Batching) *ChainStore {
+	c, _ := lru.NewARC(2048)
 	cs := &ChainStore{
 		bs:       bs,
 		ds:       ds,
 		bestTips: pubsub.New(64),
 		tipsets:  make(map[uint64][]cid.Cid),
+		mmCache:  c,
 	}
 
 	cs.reorgCh = cs.reorgWorker(context.TODO())
@@ -226,7 +231,7 @@ func (cs *ChainStore) MaybeTakeHeavierTipSet(ctx context.Context, ts *types.TipS
 		// TODO: don't do this for initial sync. Now that we don't have a
 		// difference between 'bootstrap sync' and 'caught up' sync, we need
 		// some other heuristic.
-		return cs.takeHeaviestTipSet(ts)
+		return cs.takeHeaviestTipSet(ctx, ts)
 	}
 	return nil
 }
@@ -262,7 +267,10 @@ func (cs *ChainStore) reorgWorker(ctx context.Context) chan<- reorg {
 	return out
 }
 
-func (cs *ChainStore) takeHeaviestTipSet(ts *types.TipSet) error {
+func (cs *ChainStore) takeHeaviestTipSet(ctx context.Context, ts *types.TipSet) error {
+	ctx, span := trace.StartSpan(ctx, "takeHeaviestTipSet")
+	defer span.End()
+
 	if cs.heaviest != nil { // buf
 		if len(cs.reorgCh) > 0 {
 			log.Warnf("Reorg channel running behind, %d reorgs buffered", len(cs.reorgCh))
@@ -274,6 +282,8 @@ func (cs *ChainStore) takeHeaviestTipSet(ts *types.TipSet) error {
 	} else {
 		log.Warnf("no heaviest tipset found, using %s", ts.Cids())
 	}
+
+	span.AddAttributes(trace.BoolAttribute("newHead", true))
 
 	log.Debugf("New heaviest tipset! %s", ts.Cids())
 	cs.heaviest = ts
@@ -291,7 +301,7 @@ func (cs *ChainStore) takeHeaviestTipSet(ts *types.TipSet) error {
 func (cs *ChainStore) SetHead(ts *types.TipSet) error {
 	cs.heaviestLk.Lock()
 	defer cs.heaviestLk.Unlock()
-	return cs.takeHeaviestTipSet(ts)
+	return cs.takeHeaviestTipSet(context.TODO(), ts)
 }
 
 func (cs *ChainStore) Contains(ts *types.TipSet) (bool, error) {
@@ -627,10 +637,21 @@ func (cs *ChainStore) MessagesForTipset(ts *types.TipSet) ([]ChainMsg, error) {
 	return out, nil
 }
 
-func (cs *ChainStore) MessagesForBlock(b *types.BlockHeader) ([]*types.Message, []*types.SignedMessage, error) {
+type mmCids struct {
+	bls   []cid.Cid
+	secpk []cid.Cid
+}
+
+func (cs *ChainStore) readMsgMetaCids(mmc cid.Cid) ([]cid.Cid, []cid.Cid, error) {
+	o, ok := cs.mmCache.Get(mmc)
+	if ok {
+		mmcids := o.(*mmCids)
+		return mmcids.bls, mmcids.secpk, nil
+	}
+
 	cst := hamt.CSTFromBstore(cs.bs)
 	var msgmeta types.MsgMeta
-	if err := cst.Get(context.TODO(), b.Messages, &msgmeta); err != nil {
+	if err := cst.Get(context.TODO(), mmc, &msgmeta); err != nil {
 		return nil, nil, xerrors.Errorf("failed to load msgmeta: %w", err)
 	}
 
@@ -642,6 +663,20 @@ func (cs *ChainStore) MessagesForBlock(b *types.BlockHeader) ([]*types.Message, 
 	secpkcids, err := cs.readAMTCids(msgmeta.SecpkMessages)
 	if err != nil {
 		return nil, nil, errors.Wrap(err, "loading secpk message cids for block")
+	}
+
+	cs.mmCache.Add(mmc, &mmCids{
+		bls:   blscids,
+		secpk: secpkcids,
+	})
+
+	return blscids, secpkcids, nil
+}
+
+func (cs *ChainStore) MessagesForBlock(b *types.BlockHeader) ([]*types.Message, []*types.SignedMessage, error) {
+	blscids, secpkcids, err := cs.readMsgMetaCids(b.Messages)
+	if err != nil {
+		return nil, nil, err
 	}
 
 	blsmsgs, err := cs.LoadMessagesFromCids(blscids)

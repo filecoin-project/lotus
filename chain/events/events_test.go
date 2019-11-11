@@ -46,10 +46,23 @@ func (fcs *fakeCS) ChainGetTipSetByHeight(context.Context, uint64, *types.TipSet
 
 func makeTs(t *testing.T, h uint64, msgcid cid.Cid) *types.TipSet {
 	a, _ := address.NewFromString("t00")
+	b, _ := address.NewFromString("t02")
 	ts, err := types.NewTipSet([]*types.BlockHeader{
 		{
 			Height: h,
 			Miner:  a,
+
+			Tickets: []*types.Ticket{{[]byte{byte(h % 2)}}},
+
+			ParentStateRoot:       dummyCid,
+			Messages:              msgcid,
+			ParentMessageReceipts: dummyCid,
+		},
+		{
+			Height: h,
+			Miner:  b,
+
+			Tickets: []*types.Ticket{{[]byte{byte((h + 1) % 2)}}},
 
 			ParentStateRoot:       dummyCid,
 			Messages:              msgcid,
@@ -183,12 +196,12 @@ func TestAt(t *testing.T) {
 	var applied bool
 	var reverted bool
 
-	err := events.ChainAt(func(ts *types.TipSet, curH uint64) error {
+	err := events.ChainAt(func(_ context.Context, ts *types.TipSet, curH uint64) error {
 		require.Equal(t, 5, int(ts.Height()))
 		require.Equal(t, 8, int(curH))
 		applied = true
 		return nil
-	}, func(ts *types.TipSet) error {
+	}, func(_ context.Context, ts *types.TipSet) error {
 		reverted = true
 		return nil
 	}, 3, 5)
@@ -248,12 +261,12 @@ func TestAtNullTrigger(t *testing.T) {
 	var applied bool
 	var reverted bool
 
-	err := events.ChainAt(func(ts *types.TipSet, curH uint64) error {
+	err := events.ChainAt(func(_ context.Context, ts *types.TipSet, curH uint64) error {
 		require.Equal(t, uint64(6), ts.Height())
 		require.Equal(t, 8, int(curH))
 		applied = true
 		return nil
-	}, func(ts *types.TipSet) error {
+	}, func(_ context.Context, ts *types.TipSet) error {
 		reverted = true
 		return nil
 	}, 3, 5)
@@ -282,12 +295,12 @@ func TestAtNullConf(t *testing.T) {
 	var applied bool
 	var reverted bool
 
-	err := events.ChainAt(func(ts *types.TipSet, curH uint64) error {
+	err := events.ChainAt(func(_ context.Context, ts *types.TipSet, curH uint64) error {
 		require.Equal(t, 5, int(ts.Height()))
 		require.Equal(t, 8, int(curH))
 		applied = true
 		return nil
-	}, func(ts *types.TipSet) error {
+	}, func(_ context.Context, ts *types.TipSet) error {
 		reverted = true
 		return nil
 	}, 3, 5)
@@ -323,12 +336,12 @@ func TestAtStart(t *testing.T) {
 	var applied bool
 	var reverted bool
 
-	err := events.ChainAt(func(ts *types.TipSet, curH uint64) error {
+	err := events.ChainAt(func(_ context.Context, ts *types.TipSet, curH uint64) error {
 		require.Equal(t, 5, int(ts.Height()))
 		require.Equal(t, 8, int(curH))
 		applied = true
 		return nil
-	}, func(ts *types.TipSet) error {
+	}, func(_ context.Context, ts *types.TipSet) error {
 		reverted = true
 		return nil
 	}, 3, 5)
@@ -357,12 +370,12 @@ func TestAtStartConfidence(t *testing.T) {
 	var applied bool
 	var reverted bool
 
-	err := events.ChainAt(func(ts *types.TipSet, curH uint64) error {
+	err := events.ChainAt(func(_ context.Context, ts *types.TipSet, curH uint64) error {
 		require.Equal(t, 5, int(ts.Height()))
 		require.Equal(t, 11, int(curH))
 		applied = true
 		return nil
-	}, func(ts *types.TipSet) error {
+	}, func(_ context.Context, ts *types.TipSet) error {
 		reverted = true
 		return nil
 	}, 3, 5)
@@ -385,16 +398,16 @@ func TestAtChained(t *testing.T) {
 	var applied bool
 	var reverted bool
 
-	err := events.ChainAt(func(ts *types.TipSet, curH uint64) error {
-		return events.ChainAt(func(ts *types.TipSet, curH uint64) error {
+	err := events.ChainAt(func(_ context.Context, ts *types.TipSet, curH uint64) error {
+		return events.ChainAt(func(_ context.Context, ts *types.TipSet, curH uint64) error {
 			require.Equal(t, 10, int(ts.Height()))
 			applied = true
 			return nil
-		}, func(ts *types.TipSet) error {
+		}, func(_ context.Context, ts *types.TipSet) error {
 			reverted = true
 			return nil
 		}, 3, 10)
-	}, func(ts *types.TipSet) error {
+	}, func(_ context.Context, ts *types.TipSet) error {
 		reverted = true
 		return nil
 	}, 3, 5)
@@ -421,16 +434,16 @@ func TestAtChainedConfidence(t *testing.T) {
 	var applied bool
 	var reverted bool
 
-	err := events.ChainAt(func(ts *types.TipSet, curH uint64) error {
-		return events.ChainAt(func(ts *types.TipSet, curH uint64) error {
+	err := events.ChainAt(func(_ context.Context, ts *types.TipSet, curH uint64) error {
+		return events.ChainAt(func(_ context.Context, ts *types.TipSet, curH uint64) error {
 			require.Equal(t, 10, int(ts.Height()))
 			applied = true
 			return nil
-		}, func(ts *types.TipSet) error {
+		}, func(_ context.Context, ts *types.TipSet) error {
 			reverted = true
 			return nil
 		}, 3, 10)
-	}, func(ts *types.TipSet) error {
+	}, func(_ context.Context, ts *types.TipSet) error {
 		reverted = true
 		return nil
 	}, 3, 5)
@@ -455,11 +468,11 @@ func TestAtChainedConfidenceNull(t *testing.T) {
 	var applied bool
 	var reverted bool
 
-	err := events.ChainAt(func(ts *types.TipSet, curH uint64) error {
+	err := events.ChainAt(func(_ context.Context, ts *types.TipSet, curH uint64) error {
 		applied = true
 		require.Equal(t, 6, int(ts.Height()))
 		return nil
-	}, func(ts *types.TipSet) error {
+	}, func(_ context.Context, ts *types.TipSet) error {
 		reverted = true
 		return nil
 	}, 3, 5)
@@ -494,12 +507,13 @@ func TestCalled(t *testing.T) {
 	err = events.Called(func(ts *types.TipSet) (d bool, m bool, e error) {
 		return false, true, nil
 	}, func(msg *types.Message, ts *types.TipSet, curH uint64) (bool, error) {
+		require.Equal(t, false, applied)
 		applied = true
 		appliedMsg = msg
 		appliedTs = ts
 		appliedH = curH
 		return more, nil
-	}, func(ts *types.TipSet) error {
+	}, func(_ context.Context, ts *types.TipSet) error {
 		reverted = true
 		return nil
 	}, 3, 20, t0123, 5)
@@ -526,28 +540,28 @@ func TestCalled(t *testing.T) {
 
 	// create additional block so we are above confidence threshold
 
-	fcs.advance(0, 1, nil) // H=9 (confidence=3, apply)
+	fcs.advance(0, 2, nil) // H=10 (confidence=3, apply)
 
 	require.Equal(t, true, applied)
 	require.Equal(t, false, reverted)
 	applied = false
 
-	require.Equal(t, uint64(6), appliedTs.Height())
-	require.Equal(t, "bafkqaajq", appliedTs.Blocks()[0].Messages.String())
-	require.Equal(t, uint64(9), appliedH)
+	require.Equal(t, uint64(7), appliedTs.Height())
+	require.Equal(t, "bafkqaaa", appliedTs.Blocks()[0].Messages.String())
+	require.Equal(t, uint64(10), appliedH)
 	require.Equal(t, t0123, appliedMsg.To)
 	require.Equal(t, uint64(1), appliedMsg.Nonce)
 	require.Equal(t, uint64(5), appliedMsg.Method)
 
 	// revert some blocks, keep the message
 
-	fcs.advance(3, 1, nil) // H=7 (confidence=1)
+	fcs.advance(3, 1, nil) // H=8 (confidence=1)
 	require.Equal(t, false, applied)
 	require.Equal(t, false, reverted)
 
 	// revert the message
 
-	fcs.advance(2, 1, nil) // H=6, we reverted ts with the msg
+	fcs.advance(2, 1, nil) // H=7, we reverted ts with the msg
 
 	require.Equal(t, false, applied)
 	require.Equal(t, true, reverted)
@@ -561,7 +575,7 @@ func TestCalled(t *testing.T) {
 		},
 	})
 
-	fcs.advance(0, 4, map[int]cid.Cid{ // msg at H=7; H=10 (confidence=3)
+	fcs.advance(0, 5, map[int]cid.Cid{ // (confidence=3)
 		0: n2msg,
 	})
 
@@ -569,16 +583,16 @@ func TestCalled(t *testing.T) {
 	require.Equal(t, false, reverted)
 	applied = false
 
-	require.Equal(t, uint64(7), appliedTs.Height())
-	require.Equal(t, "bafkqaajr", appliedTs.Blocks()[0].Messages.String())
-	require.Equal(t, uint64(10), appliedH)
+	require.Equal(t, uint64(9), appliedTs.Height())
+	require.Equal(t, "bafkqaaa", appliedTs.Blocks()[0].Messages.String())
+	require.Equal(t, uint64(12), appliedH)
 	require.Equal(t, t0123, appliedMsg.To)
 	require.Equal(t, uint64(2), appliedMsg.Nonce)
 	require.Equal(t, uint64(5), appliedMsg.Method)
 
 	// revert and apply at different height
 
-	fcs.advance(4, 5, map[int]cid.Cid{ // msg at H=8; H=11 (confidence=3)
+	fcs.advance(4, 6, map[int]cid.Cid{ // (confidence=3)
 		1: n2msg,
 	})
 
@@ -590,16 +604,16 @@ func TestCalled(t *testing.T) {
 	reverted = false
 	applied = false
 
-	require.Equal(t, uint64(8), appliedTs.Height())
-	require.Equal(t, "bafkqaajr", appliedTs.Blocks()[0].Messages.String())
-	require.Equal(t, uint64(11), appliedH)
+	require.Equal(t, uint64(11), appliedTs.Height())
+	require.Equal(t, "bafkqaaa", appliedTs.Blocks()[0].Messages.String())
+	require.Equal(t, uint64(14), appliedH)
 	require.Equal(t, t0123, appliedMsg.To)
 	require.Equal(t, uint64(2), appliedMsg.Nonce)
 	require.Equal(t, uint64(5), appliedMsg.Method)
 
 	// call method again
 
-	fcs.advance(0, 4, map[int]cid.Cid{ // msg at H=12; H=15
+	fcs.advance(0, 5, map[int]cid.Cid{
 		0: n2msg,
 	})
 
@@ -608,7 +622,7 @@ func TestCalled(t *testing.T) {
 	applied = false
 
 	// send and revert below confidence, then cross confidence
-	fcs.advance(0, 1, map[int]cid.Cid{ // msg at H=16; H=16
+	fcs.advance(0, 2, map[int]cid.Cid{
 		0: fcs.fakeMsgs(fakeMsg{
 			bmsgs: []*types.Message{
 				{To: t0123, From: t0123, Method: 5, Nonce: 3},
@@ -623,7 +637,7 @@ func TestCalled(t *testing.T) {
 
 	// test timeout (it's set to 20 in the call to `events.Called` above)
 
-	fcs.advance(0, 6, nil) // H=25
+	fcs.advance(0, 6, nil)
 
 	require.Equal(t, false, applied) // not calling timeout as we received messages
 	require.Equal(t, false, reverted)
@@ -631,7 +645,7 @@ func TestCalled(t *testing.T) {
 	// test unregistering with more
 
 	more = false
-	fcs.advance(0, 4, map[int]cid.Cid{ // msg at H=26; H=29
+	fcs.advance(0, 5, map[int]cid.Cid{
 		0: fcs.fakeMsgs(fakeMsg{
 			bmsgs: []*types.Message{
 				{To: t0123, From: t0123, Method: 5, Nonce: 4}, // this signals we don't want more
@@ -643,7 +657,7 @@ func TestCalled(t *testing.T) {
 	require.Equal(t, false, reverted)
 	applied = false
 
-	fcs.advance(0, 4, map[int]cid.Cid{ // msg at H=26; H=29
+	fcs.advance(0, 5, map[int]cid.Cid{
 		0: fcs.fakeMsgs(fakeMsg{
 			bmsgs: []*types.Message{
 				{To: t0123, From: t0123, Method: 5, Nonce: 5},
@@ -693,7 +707,7 @@ func TestCalledTimeout(t *testing.T) {
 		require.Equal(t, uint64(20), ts.Height())
 		require.Equal(t, uint64(23), curH)
 		return false, nil
-	}, func(ts *types.TipSet) error {
+	}, func(_ context.Context, ts *types.TipSet) error {
 		t.Fatal("revert on timeout")
 		return nil
 	}, 3, 20, t0123, 5)
@@ -728,7 +742,7 @@ func TestCalledTimeout(t *testing.T) {
 		require.Equal(t, uint64(20), ts.Height())
 		require.Equal(t, uint64(23), curH)
 		return false, nil
-	}, func(ts *types.TipSet) error {
+	}, func(_ context.Context, ts *types.TipSet) error {
 		t.Fatal("revert on timeout")
 		return nil
 	}, 3, 20, t0123, 5)
@@ -765,21 +779,21 @@ func TestCalledOrder(t *testing.T) {
 		switch at {
 		case 0:
 			require.Equal(t, uint64(1), msg.Nonce)
-			require.Equal(t, uint64(3), ts.Height())
+			require.Equal(t, uint64(4), ts.Height())
 		case 1:
 			require.Equal(t, uint64(2), msg.Nonce)
-			require.Equal(t, uint64(4), ts.Height())
+			require.Equal(t, uint64(5), ts.Height())
 		default:
 			t.Fatal("apply should only get called twice, at: ", at)
 		}
 		at++
 		return true, nil
-	}, func(ts *types.TipSet) error {
+	}, func(_ context.Context, ts *types.TipSet) error {
 		switch at {
 		case 2:
-			require.Equal(t, uint64(4), ts.Height())
+			require.Equal(t, uint64(5), ts.Height())
 		case 3:
-			require.Equal(t, uint64(3), ts.Height())
+			require.Equal(t, uint64(4), ts.Height())
 		default:
 			t.Fatal("revert should only get called twice, at: ", at)
 		}

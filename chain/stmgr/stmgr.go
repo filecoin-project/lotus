@@ -217,7 +217,10 @@ func (sm *StateManager) GetActor(addr address.Address, ts *types.TipSet) (*types
 func (sm *StateManager) GetBalance(addr address.Address, ts *types.TipSet) (types.BigInt, error) {
 	act, err := sm.GetActor(addr, ts)
 	if err != nil {
-		return types.BigInt{}, xerrors.Errorf("get actor: %w", err)
+		if xerrors.Is(err, types.ErrActorNotFound) {
+			return types.NewInt(0), nil
+		}
+		return types.EmptyInt, xerrors.Errorf("get actor: %w", err)
 	}
 
 	return act.Balance, nil
@@ -458,4 +461,18 @@ func (sm *StateManager) ListAllActors(ctx context.Context, ts *types.TipSet) ([]
 	}
 
 	return out, nil
+}
+
+func (sm *StateManager) MarketBalance(ctx context.Context, addr address.Address, ts *types.TipSet) (actors.StorageParticipantBalance, error) {
+	var state actors.StorageMarketState
+	if _, err := sm.LoadActorState(ctx, actors.StorageMarketAddress, &state, ts); err != nil {
+		return actors.StorageParticipantBalance{}, err
+	}
+	cst := hamt.CSTFromBstore(sm.ChainStore().Blockstore())
+	b, _, err := actors.GetMarketBalances(ctx, cst, state.Balances, addr)
+	if err != nil {
+		return actors.StorageParticipantBalance{}, err
+	}
+
+	return b[0], nil
 }

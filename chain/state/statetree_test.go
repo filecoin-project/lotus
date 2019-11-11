@@ -27,7 +27,7 @@ func BenchmarkStateTreeSet(b *testing.B) {
 		err = st.SetActor(a, &types.Actor{
 			Balance: types.NewInt(1258812523),
 			Code:    actors.StorageMinerCodeCid,
-			Head:    actors.AccountActorCodeCid,
+			Head:    actors.AccountCodeCid,
 			Nonce:   uint64(i),
 		})
 		if err != nil {
@@ -54,7 +54,7 @@ func BenchmarkStateTreeSetFlush(b *testing.B) {
 		err = st.SetActor(a, &types.Actor{
 			Balance: types.NewInt(1258812523),
 			Code:    actors.StorageMinerCodeCid,
-			Head:    actors.AccountActorCodeCid,
+			Head:    actors.AccountCodeCid,
 			Nonce:   uint64(i),
 		})
 		if err != nil {
@@ -80,7 +80,7 @@ func BenchmarkStateTree10kGetActor(b *testing.B) {
 		err = st.SetActor(a, &types.Actor{
 			Balance: types.NewInt(1258812523 + uint64(i)),
 			Code:    actors.StorageMinerCodeCid,
-			Head:    actors.AccountActorCodeCid,
+			Head:    actors.AccountCodeCid,
 			Nonce:   uint64(i),
 		})
 		if err != nil {
@@ -123,7 +123,7 @@ func TestSetCache(t *testing.T) {
 	act := &types.Actor{
 		Balance: types.NewInt(0),
 		Code:    actors.StorageMinerCodeCid,
-		Head:    actors.AccountActorCodeCid,
+		Head:    actors.AccountCodeCid,
 		Nonce:   0,
 	}
 

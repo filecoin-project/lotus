@@ -8,22 +8,33 @@ import (
 	"os"
 	"path/filepath"
 	"strings"
+	"sync"
 
 	rice "github.com/GeertJohan/go.rice"
 	logging "github.com/ipfs/go-log"
 	"github.com/minio/blake2b-simd"
+	"go.uber.org/multierr"
+	"golang.org/x/xerrors"
 	pb "gopkg.in/cheggaaa/pb.v1"
 )
 
 var log = logging.Logger("build")
 
-const gateway = "http://198.211.99.118/ipfs/"
+//const gateway = "http://198.211.99.118/ipfs/"
+const gateway = "https://ipfs.io/ipfs/"
 const paramdir = "/var/tmp/filecoin-proof-parameters"
 
 type paramFile struct {
 	Cid        string `json:"cid"`
 	Digest     string `json:"digest"`
 	SectorSize uint64 `json:"sector_size"`
+}
+
+type fetch struct {
+	wg      sync.WaitGroup
+	fetchLk sync.Mutex
+
+	errs []error
 }
 
 func GetParams(storage bool) error {
@@ -38,49 +49,87 @@ func GetParams(storage bool) error {
 		return err
 	}
 
+	ft := &fetch{}
+
 	for name, info := range params {
-		if info.SectorSize != SectorSize {
+		if !SupportedSectorSize(info.SectorSize) {
 			continue
 		}
 		if !storage && strings.HasSuffix(name, ".params") {
 			continue
 		}
 
-		if err := maybeFetch(name, info); err != nil {
-			return err
-		}
+		ft.maybeFetchAsync(name, info)
 	}
 
-	return nil
+	return ft.wait()
 }
 
-func maybeFetch(name string, info paramFile) error {
-	path := filepath.Join(paramdir, name)
-	f, err := os.Open(path)
-	if err == nil {
-		defer f.Close()
+func (ft *fetch) maybeFetchAsync(name string, info paramFile) {
+	ft.wg.Add(1)
 
-		h := blake2b.New512()
-		if _, err := io.Copy(h, f); err != nil {
-			return err
+	go func() {
+		defer ft.wg.Done()
+
+		path := filepath.Join(paramdir, name)
+
+		err := ft.checkFile(path, info)
+		if !os.IsNotExist(err) && err != nil {
+			log.Warn(err)
+		}
+		if err == nil {
+			return
 		}
 
-		sum := h.Sum(nil)
-		strSum := hex.EncodeToString(sum[:16])
-		if strSum == info.Digest {
-			return nil
-		}
+		ft.fetchLk.Lock()
+		defer ft.fetchLk.Unlock()
 
-		log.Warnf("Checksum mismatch in param file %s, %s != %s", name, strSum, info.Digest)
+		if err := doFetch(path, info); err != nil {
+			ft.errs = append(ft.errs, xerrors.Errorf("fetching file %s: %w", path, err))
+		}
+	}()
+}
+
+func (ft *fetch) checkFile(path string, info paramFile) error {
+	if os.Getenv("TRUST_PARAMS") == "1" {
+		log.Warn("Assuming parameter files are ok. DO NOT USE IN PRODUCTION")
+		return nil
 	}
 
-	return doFetch(path, info)
+	f, err := os.Open(path)
+	if err != nil {
+		return err
+	}
+	defer f.Close()
+
+	h := blake2b.New512()
+	if _, err := io.Copy(h, f); err != nil {
+		return err
+	}
+
+	sum := h.Sum(nil)
+	strSum := hex.EncodeToString(sum[:16])
+	if strSum == info.Digest {
+		log.Infof("Parameter file %s is ok", path)
+		return nil
+	}
+
+	return xerrors.Errorf("checksum mismatch in param file %s, %s != %s", path, strSum, info.Digest)
+}
+
+func (ft *fetch) wait() error {
+	ft.wg.Wait()
+	return multierr.Combine(ft.errs...)
 }
 
 func doFetch(out string, info paramFile) error {
-	log.Infof("Fetching %s", out)
+	gw := os.Getenv("IPFS_GATEWAY")
+	if gw == "" {
+		gw = gateway
+	}
+	log.Infof("Fetching %s from %s", out, gw)
 
-	resp, err := http.Get(gateway + info.Cid)
+	resp, err := http.Get(gw + info.Cid)
 	if err != nil {
 		return err
 	}

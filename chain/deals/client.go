@@ -2,12 +2,10 @@ package deals
 
 import (
 	"context"
-	"math"
 
 	"github.com/ipfs/go-cid"
 	"github.com/ipfs/go-datastore"
 	"github.com/ipfs/go-datastore/namespace"
-	cbor "github.com/ipfs/go-ipld-cbor"
 	logging "github.com/ipfs/go-log"
 	"github.com/libp2p/go-libp2p-core/host"
 	inet "github.com/libp2p/go-libp2p-core/network"
@@ -17,47 +15,48 @@ import (
 	"github.com/filecoin-project/lotus/api"
 	"github.com/filecoin-project/lotus/chain/actors"
 	"github.com/filecoin-project/lotus/chain/address"
+	"github.com/filecoin-project/lotus/chain/events"
+	"github.com/filecoin-project/lotus/chain/market"
 	"github.com/filecoin-project/lotus/chain/stmgr"
+	"github.com/filecoin-project/lotus/chain/store"
 	"github.com/filecoin-project/lotus/chain/types"
 	"github.com/filecoin-project/lotus/chain/wallet"
-	"github.com/filecoin-project/lotus/lib/cborrpc"
+	"github.com/filecoin-project/lotus/lib/cborutil"
+	"github.com/filecoin-project/lotus/lib/statestore"
+	"github.com/filecoin-project/lotus/node/impl/full"
 	"github.com/filecoin-project/lotus/node/modules/dtypes"
 	"github.com/filecoin-project/lotus/retrieval/discovery"
 )
-
-func init() {
-	cbor.RegisterCborType(ClientDeal{})
-	cbor.RegisterCborType(actors.PieceInclVoucherData{}) // TODO: USE CBORGEN!
-	cbor.RegisterCborType(types.SignedVoucher{})
-	cbor.RegisterCborType(types.ModVerifyParams{})
-	cbor.RegisterCborType(types.Signature{})
-	cbor.RegisterCborType(actors.PaymentInfo{})
-	cbor.RegisterCborType(api.PaymentInfo{})
-	cbor.RegisterCborType(actors.InclusionProof{})
-}
 
 var log = logging.Logger("deals")
 
 type ClientDeal struct {
 	ProposalCid cid.Cid
-	Proposal    StorageDealProposal
+	Proposal    actors.StorageDealProposal
 	State       api.DealState
 	Miner       peer.ID
+	MinerWorker address.Address
+	DealID      uint64
+
+	PublishMessage *cid.Cid
 
 	s inet.Stream
 }
 
 type Client struct {
 	sm        *stmgr.StateManager
+	chain     *store.ChainStore
 	h         host.Host
 	w         *wallet.Wallet
 	dag       dtypes.ClientDAG
 	discovery *discovery.Local
+	events    *events.Events
+	fm        *market.FundMgr
 
-	deals ClientStateStore
+	deals *statestore.StateStore
 	conns map[cid.Cid]inet.Stream
 
-	incoming chan ClientDeal
+	incoming chan *ClientDeal
 	updated  chan clientDealUpdate
 
 	stop    chan struct{}
@@ -68,20 +67,24 @@ type clientDealUpdate struct {
 	newState api.DealState
 	id       cid.Cid
 	err      error
+	mut      func(*ClientDeal)
 }
 
-func NewClient(sm *stmgr.StateManager, h host.Host, w *wallet.Wallet, ds dtypes.MetadataDS, dag dtypes.ClientDAG, discovery *discovery.Local) *Client {
+func NewClient(sm *stmgr.StateManager, chain *store.ChainStore, h host.Host, w *wallet.Wallet, ds dtypes.MetadataDS, dag dtypes.ClientDAG, discovery *discovery.Local, fm *market.FundMgr, chainapi full.ChainAPI) *Client {
 	c := &Client{
 		sm:        sm,
+		chain:     chain,
 		h:         h,
 		w:         w,
 		dag:       dag,
 		discovery: discovery,
+		fm:        fm,
+		events:    events.NewEvents(context.TODO(), &chainapi),
 
-		deals: ClientStateStore{StateStore{ds: namespace.Wrap(ds, datastore.NewKey("/deals/client"))}},
+		deals: statestore.New(namespace.Wrap(ds, datastore.NewKey("/deals/client"))),
 		conns: map[cid.Cid]inet.Stream{},
 
-		incoming: make(chan ClientDeal, 16),
+		incoming: make(chan *ClientDeal, 16),
 		updated:  make(chan clientDealUpdate, 16),
 
 		stop:    make(chan struct{}),
@@ -108,7 +111,7 @@ func (c *Client) Run(ctx context.Context) {
 	}()
 }
 
-func (c *Client) onIncoming(deal ClientDeal) {
+func (c *Client) onIncoming(deal *ClientDeal) {
 	log.Info("incoming deal")
 
 	if _, ok := c.conns[deal.ProposalCid]; ok {
@@ -134,10 +137,13 @@ func (c *Client) onIncoming(deal ClientDeal) {
 }
 
 func (c *Client) onUpdated(ctx context.Context, update clientDealUpdate) {
-	log.Infof("Deal %s updated state to %d", update.id, update.newState)
+	log.Infof("Client deal %s updated state to %s", update.id, api.DealStates[update.newState])
 	var deal ClientDeal
-	err := c.deals.MutateClient(update.id, func(d *ClientDeal) error {
+	err := c.deals.Mutate(update.id, func(d *ClientDeal) error {
 		d.State = update.newState
+		if update.mut != nil {
+			update.mut(d)
+		}
 		deal = *d
 		return nil
 	})
@@ -159,77 +165,81 @@ func (c *Client) onUpdated(ctx context.Context, update clientDealUpdate) {
 	case api.DealStaged:
 		c.handle(ctx, deal, c.staged, api.DealSealing)
 	case api.DealSealing:
-		c.handle(ctx, deal, c.sealing, api.DealComplete)
+		c.handle(ctx, deal, c.sealing, api.DealNoUpdate)
+		// TODO: DealComplete -> watch for faults, expiration, etc.
 	}
 }
 
 type ClientDealProposal struct {
 	Data cid.Cid
 
-	TotalPrice types.BigInt
-	Duration   uint64
+	PricePerEpoch      types.BigInt
+	ProposalExpiration uint64
+	Duration           uint64
 
-	Payment actors.PaymentInfo
-
-	MinerAddress  address.Address
-	ClientAddress address.Address
-	MinerID       peer.ID
+	ProviderAddress address.Address
+	Client          address.Address
+	MinerWorker     address.Address
+	MinerID         peer.ID
 }
 
-func (c *Client) VerifyParams(ctx context.Context, data cid.Cid) (*actors.PieceInclVoucherData, error) {
-	commP, size, err := c.commP(ctx, data)
+func (c *Client) Start(ctx context.Context, p ClientDealProposal) (cid.Cid, error) {
+	if err := c.fm.EnsureAvailable(ctx, p.Client, types.BigMul(p.PricePerEpoch, types.NewInt(p.Duration))); err != nil {
+		return cid.Undef, xerrors.Errorf("adding market funds failed: %w", err)
+	}
+
+	commP, pieceSize, err := c.commP(ctx, p.Data)
+
+	dealProposal := &actors.StorageDealProposal{
+		PieceRef:             commP,
+		PieceSize:            uint64(pieceSize),
+		PieceSerialization:   actors.SerializationUnixFSv0,
+		Client:               p.Client,
+		Provider:             p.ProviderAddress,
+		ProposalExpiration:   p.ProposalExpiration,
+		Duration:             p.Duration,
+		StoragePricePerEpoch: p.PricePerEpoch,
+		StorageCollateral:    types.NewInt(uint64(pieceSize)), // TODO: real calc
+	}
+
+	if err := api.SignWith(ctx, c.w.Sign, p.Client, dealProposal); err != nil {
+		return cid.Undef, xerrors.Errorf("signing deal proposal failed: %w", err)
+	}
+
+	proposalNd, err := cborutil.AsIpld(dealProposal)
 	if err != nil {
-		return nil, err
+		return cid.Undef, xerrors.Errorf("getting proposal node failed: %w", err)
 	}
 
-	return &actors.PieceInclVoucherData{
-		CommP:     commP,
-		PieceSize: types.NewInt(uint64(size)),
-	}, nil
-}
-
-func (c *Client) Start(ctx context.Context, p ClientDealProposal, vd *actors.PieceInclVoucherData) (cid.Cid, error) {
-	proposal := StorageDealProposal{
-		PieceRef:          p.Data,
-		SerializationMode: SerializationUnixFs,
-		CommP:             vd.CommP[:],
-		Size:              vd.PieceSize.Uint64(),
-		TotalPrice:        p.TotalPrice,
-		Duration:          p.Duration,
-		Payment:           p.Payment,
-		MinerAddress:      p.MinerAddress,
-		ClientAddress:     p.ClientAddress,
-	}
-
-	s, err := c.h.NewStream(ctx, p.MinerID, ProtocolID)
+	s, err := c.h.NewStream(ctx, p.MinerID, DealProtocolID)
 	if err != nil {
-		return cid.Undef, err
+		return cid.Undef, xerrors.Errorf("connecting to storage provider failed: %w", err)
 	}
 
-	if err := c.sendProposal(s, proposal, p.ClientAddress); err != nil {
-		return cid.Undef, err
+	proposal := &Proposal{
+		DealProposal: dealProposal,
+		Piece:        p.Data,
 	}
 
-	proposalNd, err := cbor.WrapObject(proposal, math.MaxUint64, -1)
-	if err != nil {
-		return cid.Undef, err
+	if err := cborutil.WriteCborRPC(s, proposal); err != nil {
+		s.Reset()
+		return cid.Undef, xerrors.Errorf("sending proposal to storage provider failed: %w", err)
 	}
 
-	deal := ClientDeal{
+	deal := &ClientDeal{
 		ProposalCid: proposalNd.Cid(),
-		Proposal:    proposal,
+		Proposal:    *dealProposal,
 		State:       api.DealUnknown,
 		Miner:       p.MinerID,
+		MinerWorker: p.MinerWorker,
 
 		s: s,
 	}
 
-	// TODO: actually care about what happens with the deal after it was accepted
 	c.incoming <- deal
 
-	// TODO: start tracking after the deal is sealed
 	return deal.ProposalCid, c.discovery.AddPeer(p.Data, discovery.RetrievalPeer{
-		Address: proposal.MinerAddress,
+		Address: dealProposal.Provider,
 		ID:      deal.Miner,
 	})
 }
@@ -243,12 +253,12 @@ func (c *Client) QueryAsk(ctx context.Context, p peer.ID, a address.Address) (*t
 	req := &AskRequest{
 		Miner: a,
 	}
-	if err := cborrpc.WriteCborRPC(s, req); err != nil {
+	if err := cborutil.WriteCborRPC(s, req); err != nil {
 		return nil, xerrors.Errorf("failed to send ask request: %w", err)
 	}
 
 	var out AskResponse
-	if err := cborrpc.ReadCborRPC(s, &out); err != nil {
+	if err := cborutil.ReadCborRPC(s, &out); err != nil {
 		return nil, xerrors.Errorf("failed to read ask response: %w", err)
 	}
 
@@ -268,7 +278,19 @@ func (c *Client) QueryAsk(ctx context.Context, p peer.ID, a address.Address) (*t
 }
 
 func (c *Client) List() ([]ClientDeal, error) {
-	return c.deals.ListClient()
+	var out []ClientDeal
+	if err := c.deals.List(&out); err != nil {
+		return nil, err
+	}
+	return out, nil
+}
+
+func (c *Client) GetDeal(d cid.Cid) (*ClientDeal, error) {
+	var out ClientDeal
+	if err := c.deals.Get(d, &out); err != nil {
+		return nil, err
+	}
+	return &out, nil
 }
 
 func (c *Client) Stop() {

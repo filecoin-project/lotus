@@ -8,13 +8,12 @@ import (
 	"os/signal"
 	"syscall"
 
-	"github.com/filecoin-project/lotus/build"
-
 	"github.com/multiformats/go-multiaddr"
 	"golang.org/x/xerrors"
 	"gopkg.in/urfave/cli.v2"
 
 	"github.com/filecoin-project/lotus/api"
+	"github.com/filecoin-project/lotus/build"
 	lcli "github.com/filecoin-project/lotus/cli"
 	"github.com/filecoin-project/lotus/lib/auth"
 	"github.com/filecoin-project/lotus/lib/jsonrpc"
@@ -32,10 +31,18 @@ var runCmd = &cli.Command{
 			Name:  "api",
 			Value: "2345",
 		},
+		&cli.BoolFlag{
+			Name:  "enable-gpu-proving",
+			Usage: "Enable use of GPU for mining operations",
+		},
 	},
 	Action: func(cctx *cli.Context) error {
 		if err := build.GetParams(true); err != nil {
 			return xerrors.Errorf("fetching proof parameters: %w", err)
+		}
+
+		if !cctx.Bool("enable-gpu-proving") {
+			os.Setenv("BELLMAN_NO_GPU", "true")
 		}
 
 		nodeApi, ncloser, err := lcli.GetFullNodeAPI(cctx)
@@ -77,7 +84,7 @@ var runCmd = &cli.Command{
 				}
 				return lr.SetAPIEndpoint(apima)
 			}),
-			node.Override(new(*sectorbuilder.SectorBuilderConfig), modules.SectorBuilderConfig(storageRepoPath)),
+			node.Override(new(*sectorbuilder.Config), modules.SectorBuilderConfig(storageRepoPath, 5)), // TODO: grab worker count from config
 			node.Override(new(api.FullNode), nodeApi),
 		)
 		if err != nil {

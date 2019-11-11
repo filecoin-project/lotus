@@ -2,44 +2,16 @@ package api
 
 import (
 	"context"
-	"fmt"
 
-	sectorbuilder "github.com/filecoin-project/go-sectorbuilder"
 	"github.com/ipfs/go-cid"
 	"github.com/ipfs/go-filestore"
-	cbor "github.com/ipfs/go-ipld-cbor"
-	"github.com/libp2p/go-libp2p-core/network"
 	"github.com/libp2p/go-libp2p-core/peer"
 
-	"github.com/filecoin-project/lotus/build"
+	"github.com/filecoin-project/lotus/chain/actors"
 	"github.com/filecoin-project/lotus/chain/address"
 	"github.com/filecoin-project/lotus/chain/store"
 	"github.com/filecoin-project/lotus/chain/types"
 )
-
-func init() {
-	cbor.RegisterCborType(SealedRef{})
-}
-
-type Common interface {
-	// Auth
-	AuthVerify(ctx context.Context, token string) ([]Permission, error)
-	AuthNew(ctx context.Context, perms []Permission) ([]byte, error)
-
-	// network
-
-	NetConnectedness(context.Context, peer.ID) (network.Connectedness, error)
-	NetPeers(context.Context) ([]peer.AddrInfo, error)
-	NetConnect(context.Context, peer.AddrInfo) error
-	NetAddrsListen(context.Context) (peer.AddrInfo, error)
-	NetDisconnect(context.Context, peer.ID) error
-
-	// ID returns peerID of libp2p node backing this API
-	ID(context.Context) (peer.ID, error)
-
-	// Version provides information about API provider
-	Version(context.Context) (Version, error)
-}
 
 // FullNode API is a low-level interface to the Filecoin network full node
 type FullNode interface {
@@ -101,10 +73,11 @@ type FullNode interface {
 
 	// ClientImport imports file under the specified path into filestore
 	ClientImport(ctx context.Context, path string) (cid.Cid, error)
-	ClientStartDeal(ctx context.Context, data cid.Cid, miner address.Address, price types.BigInt, blocksDuration uint64) (*cid.Cid, error)
+	ClientStartDeal(ctx context.Context, data cid.Cid, miner address.Address, epochPrice types.BigInt, blocksDuration uint64) (*cid.Cid, error)
+	ClientGetDealInfo(context.Context, cid.Cid) (*DealInfo, error)
 	ClientListDeals(ctx context.Context) ([]DealInfo, error)
 	ClientHasLocal(ctx context.Context, root cid.Cid) (bool, error)
-	ClientFindData(ctx context.Context, root cid.Cid) ([]QueryOffer, error) // TODO: specify serialization mode we want (defaults to unixfs for now)
+	ClientFindData(ctx context.Context, root cid.Cid) ([]QueryOffer, error)
 	ClientRetrieve(ctx context.Context, order RetrievalOrder, path string) error
 	ClientQueryAsk(ctx context.Context, p peer.ID, miner address.Address) (*types.SignedStorageAsk, error)
 
@@ -122,16 +95,24 @@ type FullNode interface {
 	StateGetActor(ctx context.Context, actor address.Address, ts *types.TipSet) (*types.Actor, error)
 	StateReadState(ctx context.Context, act *types.Actor, ts *types.TipSet) (*ActorState, error)
 
-	StateMinerSectors(context.Context, address.Address) ([]*SectorInfo, error)
-	StateMinerProvingSet(context.Context, address.Address, *types.TipSet) ([]*SectorInfo, error)
+	StateMinerSectors(context.Context, address.Address, *types.TipSet) ([]*ChainSectorInfo, error)
+	StateMinerProvingSet(context.Context, address.Address, *types.TipSet) ([]*ChainSectorInfo, error)
 	StateMinerPower(context.Context, address.Address, *types.TipSet) (MinerPower, error)
 	StateMinerWorker(context.Context, address.Address, *types.TipSet) (address.Address, error)
 	StateMinerPeerID(ctx context.Context, m address.Address, ts *types.TipSet) (peer.ID, error)
 	StateMinerProvingPeriodEnd(ctx context.Context, actor address.Address, ts *types.TipSet) (uint64, error)
+	StateMinerSectorSize(context.Context, address.Address, *types.TipSet) (uint64, error)
 	StatePledgeCollateral(context.Context, *types.TipSet) (types.BigInt, error)
 	StateWaitMsg(context.Context, cid.Cid) (*MsgWait, error)
 	StateListMiners(context.Context, *types.TipSet) ([]address.Address, error)
 	StateListActors(context.Context, *types.TipSet) ([]address.Address, error)
+	StateMarketBalance(context.Context, address.Address, *types.TipSet) (actors.StorageParticipantBalance, error)
+	StateMarketParticipants(context.Context, *types.TipSet) (map[string]actors.StorageParticipantBalance, error)
+	StateMarketDeals(context.Context, *types.TipSet) (map[string]actors.OnChainDeal, error)
+	StateMarketStorageDeal(context.Context, uint64, *types.TipSet) (*actors.OnChainDeal, error)
+
+	MarketEnsureAvailable(context.Context, address.Address, types.BigInt) error
+	// MarketFreeBalance
 
 	PaychGet(ctx context.Context, from, to address.Address, ensureFunds types.BigInt) (*ChannelInfo, error)
 	PaychList(context.Context) ([]address.Address, error)
@@ -147,45 +128,6 @@ type FullNode interface {
 	PaychVoucherSubmit(context.Context, address.Address, *types.SignedVoucher) (cid.Cid, error)
 }
 
-// StorageMiner is a low-level interface to the Filecoin network storage miner node
-type StorageMiner interface {
-	Common
-
-	ActorAddress(context.Context) (address.Address, error)
-
-	// Temp api for testing
-	StoreGarbageData(context.Context) (uint64, error)
-
-	// Get the status of a given sector by ID
-	SectorsStatus(context.Context, uint64) (sectorbuilder.SectorSealingStatus, error)
-
-	// List all staged sectors
-	SectorsList(context.Context) ([]uint64, error)
-
-	// Seal all staged sectors
-	SectorsStagedSeal(context.Context) error
-
-	SectorsRefs(context.Context) (map[string][]SealedRef, error)
-}
-
-// Version provides various build-time information
-type Version struct {
-	Version string
-
-	// APIVersion is a binary encoded semver version of the remote implementing
-	// this api
-	//
-	// See APIVersion in build/version.go
-	APIVersion uint32
-
-	// TODO: git commit / os / genesis cid?
-}
-
-func (v Version) String() string {
-	vM, vm, vp := build.VersionInts(v.APIVersion)
-	return fmt.Sprintf("%s+api%d.%d.%d", v.Version, vM, vm, vp)
-}
-
 type Import struct {
 	Status   filestore.Status
 	Key      cid.Cid
@@ -196,14 +138,13 @@ type Import struct {
 type DealInfo struct {
 	ProposalCid cid.Cid
 	State       DealState
-	Miner       address.Address
+	Provider    address.Address
 
-	PieceRef cid.Cid
-	CommP    []byte
+	PieceRef []byte // cid bytes
 	Size     uint64
 
-	TotalPrice types.BigInt
-	Duration   uint64
+	PricePerEpoch types.BigInt
+	Duration      uint64
 }
 
 type MsgWait struct {
@@ -223,7 +164,7 @@ type Message struct {
 	Message *types.Message
 }
 
-type SectorInfo struct {
+type ChainSectorInfo struct {
 	SectorID uint64
 	CommD    []byte
 	CommR    []byte
@@ -269,12 +210,6 @@ type VoucherSpec struct {
 type MinerPower struct {
 	MinerPower types.BigInt
 	TotalPower types.BigInt
-}
-
-type SealedRef struct {
-	Piece  string
-	Offset uint64
-	Size   uint32
 }
 
 type QueryOffer struct {

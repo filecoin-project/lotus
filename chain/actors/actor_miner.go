@@ -2,6 +2,7 @@ package actors
 
 import (
 	"context"
+	"encoding/binary"
 	"fmt"
 
 	"github.com/filecoin-project/lotus/build"
@@ -18,26 +19,29 @@ import (
 	"golang.org/x/xerrors"
 )
 
-const POST_SECTORS_COUNT = 8192
-
 type StorageMinerActor struct{}
 
 type StorageMinerActorState struct {
-	// Contains mostly static info about this miner
-	Info cid.Cid
-
-	// Collateral that is waiting to be withdrawn.
-	DePledgedCollateral types.BigInt
-
-	// Time at which the depledged collateral may be withdrawn.
-	DePledgeTime types.BigInt
+	// PreCommittedSectors is the set of sectors that have been committed to but not
+	// yet had their proofs submitted
+	PreCommittedSectors map[string]*PreCommittedSector
 
 	// All sectors this miner has committed.
 	Sectors cid.Cid
 
+	// TODO: Spec says 'StagedCommittedSectors', which one is it?
+
 	// Sectors this miner is currently mining. It is only updated
 	// when a PoSt is submitted (not as each new sector commitment is added).
 	ProvingSet cid.Cid
+
+	// TODO: these:
+	//    SectorTable
+	//    SectorExpirationQueue
+	//    ChallengeStatus
+
+	// Contains mostly static info about this miner
+	Info cid.Cid
 
 	// Faulty sectors reported since last SubmitPost,
 	// up to the current proving period's challenge time.
@@ -53,10 +57,6 @@ type StorageMinerActorState struct {
 	// the next PoSt submission in case early sector
 	// removal penalization is needed.
 	NextDoneSet types.BitField
-
-	// Deals this miner has been slashed for since the last post submission.
-	//TODO: unsupported map key type "Cid" (if you want to use struct keys, your atlas needs a transform to string)
-	//ArbitratedDeals map[cid.Cid]struct{}
 
 	// Amount of power this miner has.
 	Power types.BigInt
@@ -89,63 +89,76 @@ type MinerInfo struct {
 	PeerID peer.ID
 
 	// Amount of space in each sector committed to the network by this miner.
-	SectorSize types.BigInt
+	SectorSize uint64
+
+	// SubsectorCount
+}
+
+type PreCommittedSector struct {
+	Info          SectorPreCommitInfo
+	ReceivedEpoch uint64
 }
 
 type StorageMinerConstructorParams struct {
 	Owner      address.Address
 	Worker     address.Address
-	SectorSize types.BigInt
+	SectorSize uint64
 	PeerID     peer.ID
 }
 
-type maMethods struct {
-	Constructor            uint64
-	CommitSector           uint64
-	SubmitPoSt             uint64
-	SlashStorageFault      uint64
-	GetCurrentProvingSet   uint64
-	ArbitrateDeal          uint64
-	DePledge               uint64
-	GetOwner               uint64
-	GetWorkerAddr          uint64
-	GetPower               uint64
-	GetPeerID              uint64
-	GetSectorSize          uint64
-	UpdatePeerID           uint64
-	ChangeWorker           uint64
-	IsSlashed              uint64
-	IsLate                 uint64
-	PaymentVerifyInclusion uint64
-	PaymentVerifySector    uint64
-	AddFaults              uint64
-	SlashConsensusFault    uint64
+type SectorPreCommitInfo struct {
+	SectorNumber uint64
+
+	CommR     []byte // TODO: Spec says CID
+	SealEpoch uint64
+	DealIDs   []uint64
 }
 
-var MAMethods = maMethods{1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16, 17, 18, 19, 20}
+type maMethods struct {
+	Constructor          uint64
+	PreCommitSector      uint64
+	ProveCommitSector    uint64
+	SubmitPoSt           uint64
+	SlashStorageFault    uint64
+	GetCurrentProvingSet uint64
+	ArbitrateDeal        uint64
+	DePledge             uint64
+	GetOwner             uint64
+	GetWorkerAddr        uint64
+	GetPower             uint64
+	GetPeerID            uint64
+	GetSectorSize        uint64
+	UpdatePeerID         uint64
+	ChangeWorker         uint64
+	IsSlashed            uint64
+	IsLate               uint64
+	DeclareFaults        uint64
+	SlashConsensusFault  uint64
+}
+
+var MAMethods = maMethods{1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16, 17, 18, 19}
 
 func (sma StorageMinerActor) Exports() []interface{} {
 	return []interface{}{
 		1: sma.StorageMinerConstructor,
-		2: sma.CommitSector,
-		3: sma.SubmitPoSt,
-		//4:  sma.SlashStorageFault,
-		//5: sma.GetCurrentProvingSet,
-		//6:  sma.ArbitrateDeal,
-		//7:  sma.DePledge,
-		8:  sma.GetOwner,
-		9:  sma.GetWorkerAddr,
-		10: sma.GetPower,
-		11: sma.GetPeerID,
-		12: sma.GetSectorSize,
-		13: sma.UpdatePeerID,
-		//14: sma.ChangeWorker,
-		//15: sma.IsSlashed,
-		//16: sma.IsLate,
-		17: sma.PaymentVerifyInclusion,
-		18: sma.PaymentVerifySector,
-		19: sma.AddFaults,
-		20: sma.SlashConsensusFault,
+		2: sma.PreCommitSector,
+		3: sma.ProveCommitSector,
+		4: sma.SubmitPoSt,
+		//5: sma.SlashStorageFault,
+		//6: sma.GetCurrentProvingSet,
+		//7:  sma.ArbitrateDeal,
+		//8:  sma.DePledge,
+		9:  sma.GetOwner,
+		10: sma.GetWorkerAddr,
+		11: sma.GetPower, // TODO: Remove
+		12: sma.GetPeerID,
+		13: sma.GetSectorSize,
+		14: sma.UpdatePeerID,
+		//15: sma.ChangeWorker,
+		//16: sma.IsSlashed,
+		//17: sma.IsLate,
+		18: sma.DeclareFaults,
+		19: sma.SlashConsensusFault,
 	}
 }
 
@@ -205,16 +218,78 @@ func (sma StorageMinerActor) StorageMinerConstructor(act *types.Actor, vmctx typ
 	return nil, nil
 }
 
-type CommitSectorParams struct {
-	SectorID  uint64
-	CommD     []byte
-	CommR     []byte
-	CommRStar []byte
-	Proof     []byte
+func (sma StorageMinerActor) PreCommitSector(act *types.Actor, vmctx types.VMContext, params *SectorPreCommitInfo) ([]byte, ActorError) {
+	ctx := vmctx.Context()
+	oldstate, self, err := loadState(vmctx)
+	if err != nil {
+		return nil, err
+	}
+
+	if params.SealEpoch >= vmctx.BlockHeight()+build.SealRandomnessLookback {
+		return nil, aerrors.Newf(1, "sector commitment must be based off past randomness (%d >= %d)", params.SealEpoch, vmctx.BlockHeight()+build.SealRandomnessLookback)
+	}
+
+	if vmctx.BlockHeight()-params.SealEpoch+build.SealRandomnessLookback > build.SealRandomnessLookbackLimit {
+		return nil, aerrors.Newf(2, "sector commitment must be recent enough (was %d)", vmctx.BlockHeight()-params.SealEpoch+build.SealRandomnessLookback)
+	}
+
+	mi, err := loadMinerInfo(vmctx, self)
+	if err != nil {
+		return nil, err
+	}
+
+	if vmctx.Message().From != mi.Worker {
+		return nil, aerrors.New(1, "not authorized to commit sector for miner")
+	}
+
+	// make sure the miner isnt trying to submit a pre-existing sector
+	unique, err := SectorIsUnique(ctx, vmctx.Storage(), self.Sectors, params.SectorNumber)
+	if err != nil {
+		return nil, err
+	}
+	if !unique {
+		return nil, aerrors.New(3, "sector already committed!")
+	}
+
+	// Power of the miner after adding this sector
+	futurePower := types.BigAdd(self.Power, types.NewInt(mi.SectorSize))
+	collateralRequired := CollateralForPower(futurePower)
+
+	// TODO: grab from market?
+	if act.Balance.LessThan(collateralRequired) {
+		return nil, aerrors.New(4, "not enough collateral")
+	}
+
+	self.PreCommittedSectors[uintToStringKey(params.SectorNumber)] = &PreCommittedSector{
+		Info:          *params,
+		ReceivedEpoch: vmctx.BlockHeight(),
+	}
+
+	nstate, err := vmctx.Storage().Put(self)
+	if err != nil {
+		return nil, err
+	}
+	if err := vmctx.Storage().Commit(oldstate, nstate); err != nil {
+		return nil, err
+	}
+
+	return nil, nil
 }
 
-func (sma StorageMinerActor) CommitSector(act *types.Actor, vmctx types.VMContext, params *CommitSectorParams) ([]byte, ActorError) {
-	ctx := context.TODO()
+func uintToStringKey(i uint64) string {
+	buf := make([]byte, 10)
+	n := binary.PutUvarint(buf, i)
+	return string(buf[:n])
+}
+
+type SectorProveCommitInfo struct {
+	Proof    []byte
+	SectorID uint64
+	DealIDs  []uint64
+}
+
+func (sma StorageMinerActor) ProveCommitSector(act *types.Actor, vmctx types.VMContext, params *SectorProveCommitInfo) ([]byte, ActorError) {
+	ctx := vmctx.Context()
 	oldstate, self, err := loadState(vmctx)
 	if err != nil {
 		return nil, err
@@ -225,36 +300,53 @@ func (sma StorageMinerActor) CommitSector(act *types.Actor, vmctx types.VMContex
 		return nil, err
 	}
 
-	// TODO: this needs to get normalized to either the ID address or the actor address
+	us, ok := self.PreCommittedSectors[uintToStringKey(params.SectorID)]
+	if !ok {
+		return nil, aerrors.New(1, "no pre-commitment found for sector")
+	}
+
+	if us.ReceivedEpoch+build.InteractivePoRepDelay >= vmctx.BlockHeight() {
+		return nil, aerrors.New(2, "too early for proof submission")
+	}
+
+	delete(self.PreCommittedSectors, uintToStringKey(params.SectorID))
+
+	// TODO: ensure normalization to ID address
 	maddr := vmctx.Message().To
 
-	if ok, err := ValidatePoRep(maddr, mi.SectorSize, params); err != nil {
+	ticket, err := vmctx.GetRandomness(us.Info.SealEpoch - build.SealRandomnessLookback)
+	if err != nil {
+		return nil, aerrors.Wrap(err, "failed to get ticket randomness")
+	}
+
+	seed, err := vmctx.GetRandomness(us.ReceivedEpoch + build.InteractivePoRepDelay)
+	if err != nil {
+		return nil, aerrors.Wrap(err, "failed to get randomness for prove sector commitment")
+	}
+
+	enc, err := SerializeParams(&ComputeDataCommitmentParams{
+		DealIDs:    params.DealIDs,
+		SectorSize: mi.SectorSize,
+	})
+	if err != nil {
+		return nil, aerrors.Wrap(err, "failed to serialize ComputeDataCommitmentParams")
+	}
+
+	commD, err := vmctx.Send(StorageMarketAddress, SMAMethods.ComputeDataCommitment, types.NewInt(0), enc)
+	if err != nil {
+		return nil, aerrors.Wrap(err, "failed to compute data commitment")
+	}
+
+	if ok, err := ValidatePoRep(maddr, mi.SectorSize, commD, us.Info.CommR, ticket, params.Proof, seed, params.SectorID); err != nil {
 		return nil, err
 	} else if !ok {
-		return nil, aerrors.New(1, "bad proof!")
-	}
-
-	// make sure the miner isnt trying to submit a pre-existing sector
-	unique, err := SectorIsUnique(ctx, vmctx.Storage(), self.Sectors, params.SectorID)
-	if err != nil {
-		return nil, err
-	}
-	if !unique {
-		return nil, aerrors.New(2, "sector already committed!")
-	}
-
-	// Power of the miner after adding this sector
-	futurePower := types.BigAdd(self.Power, mi.SectorSize)
-	collateralRequired := CollateralForPower(futurePower)
-
-	if act.Balance.LessThan(collateralRequired) {
-		return nil, aerrors.New(3, "not enough collateral")
+		return nil, aerrors.Newf(2, "porep proof was invalid (t:%x; s:%x(%d); p:%x)", ticket, seed, us.ReceivedEpoch+build.InteractivePoRepDelay, params.Proof)
 	}
 
 	// Note: There must exist a unique index in the miner's sector set for each
 	// sector ID. The `faults`, `recovered`, and `done` parameters of the
 	// SubmitPoSt method express indices into this sector set.
-	nssroot, err := AddToSectorSet(ctx, vmctx.Storage(), self.Sectors, params.SectorID, params.CommR, params.CommD)
+	nssroot, err := AddToSectorSet(ctx, vmctx.Storage(), self.Sectors, params.SectorID, us.Info.CommR, commD)
 	if err != nil {
 		return nil, err
 	}
@@ -264,7 +356,7 @@ func (sma StorageMinerActor) CommitSector(act *types.Actor, vmctx types.VMContex
 	// Note: As written here, every miners first PoSt will only be over one sector.
 	// We could set up a 'grace period' for starting mining that would allow miners
 	// to submit several sectors for their first proving period. Alternatively, we
-	// could simply make the 'CommitSector' call take multiple sectors at a time.
+	// could simply make the 'PreCommitSector' call take multiple sectors at a time.
 	//
 	// Note: Proving period is a function of sector size; small sectors take less
 	// time to prove than large sectors do. Sector size is selected when pledging.
@@ -286,7 +378,15 @@ func (sma StorageMinerActor) CommitSector(act *types.Actor, vmctx types.VMContex
 		return nil, err
 	}
 
-	return nil, nil
+	activateParams, err := SerializeParams(&ActivateStorageDealsParams{
+		Deals: params.DealIDs,
+	})
+	if err != nil {
+		return nil, err
+	}
+
+	_, err = vmctx.Send(StorageMarketAddress, SMAMethods.ActivateStorageDeals, types.NewInt(0), activateParams)
+	return nil, err
 }
 
 type SubmitPoStParams struct {
@@ -346,7 +446,7 @@ func (sma StorageMinerActor) SubmitPoSt(act *types.Actor, vmctx types.VMContext,
 
 	var seed [sectorbuilder.CommLen]byte
 	{
-		randHeight := currentProvingPeriodEnd - build.PoSTChallangeTime
+		randHeight := currentProvingPeriodEnd - build.PoStChallangeTime - build.PoStRandomnessLookback
 		if vmctx.BlockHeight() <= randHeight {
 			// TODO: spec, retcode
 			return nil, aerrors.Newf(1, "submit PoSt called outside submission window (%d < %d)", vmctx.BlockHeight(), randHeight)
@@ -393,7 +493,7 @@ func (sma StorageMinerActor) SubmitPoSt(act *types.Actor, vmctx types.VMContext,
 
 	faults := self.CurrentFaultSet.All()
 
-	if ok, lerr := sectorbuilder.VerifyPost(mi.SectorSize.Uint64(),
+	if ok, lerr := sectorbuilder.VerifyPost(mi.SectorSize,
 		sectorbuilder.NewSortedSectorInfo(sectorInfos), seed, params.Proof,
 		faults); !ok || lerr != nil {
 		if lerr != nil {
@@ -426,14 +526,14 @@ func (sma StorageMinerActor) SubmitPoSt(act *types.Actor, vmctx types.VMContext,
 
 	oldPower := self.Power
 	self.Power = types.BigMul(types.NewInt(pss.Count-uint64(len(faults))),
-		mi.SectorSize)
+		types.NewInt(mi.SectorSize))
 
 	enc, err := SerializeParams(&UpdateStorageParams{Delta: types.BigSub(self.Power, oldPower)})
 	if err != nil {
 		return nil, err
 	}
 
-	_, err = vmctx.Send(StorageMarketAddress, SPAMethods.UpdateStorage, types.NewInt(0), enc)
+	_, err = vmctx.Send(StoragePowerAddress, SPAMethods.UpdateStorage, types.NewInt(0), enc)
 	if err != nil {
 		return nil, err
 	}
@@ -477,6 +577,8 @@ func AddToSectorSet(ctx context.Context, s types.Storage, ss cid.Cid, sectorID u
 		return cid.Undef, aerrors.HandleExternalError(err, "could not load sector set node")
 	}
 
+	// TODO: Spec says to use SealCommitment, and construct commD from deals each time,
+	//  but that would make SubmitPoSt way, way more expensive
 	if err := ssr.Set(sectorID, [][]byte{commR, commD}); err != nil {
 		return cid.Undef, aerrors.HandleExternalError(err, "failed to set commitment in sector set")
 	}
@@ -511,8 +613,8 @@ func GetFromSectorSet(ctx context.Context, s types.Storage, ss cid.Cid, sectorID
 	return true, comms[0], comms[1], nil
 }
 
-func ValidatePoRep(maddr address.Address, ssize types.BigInt, params *CommitSectorParams) (bool, ActorError) {
-	ok, err := sectorbuilder.VerifySeal(ssize.Uint64(), params.CommR, params.CommD, params.CommRStar, maddr, params.SectorID, params.Proof)
+func ValidatePoRep(maddr address.Address, ssize uint64, commD, commR, ticket, proof, seed []byte, sectorID uint64) (bool, ActorError) {
+	ok, err := sectorbuilder.VerifySeal(ssize, commR, commD, maddr, ticket, seed, sectorID, proof)
 	if err != nil {
 		return false, aerrors.Absorb(err, 25, "verify seal failed")
 	}
@@ -626,7 +728,7 @@ func (sma StorageMinerActor) GetSectorSize(act *types.Actor, vmctx types.VMConte
 		return nil, err
 	}
 
-	return mi.SectorSize.Bytes(), nil
+	return types.NewInt(mi.SectorSize).Bytes(), nil
 }
 
 type PaymentVerifyParams struct {
@@ -634,95 +736,17 @@ type PaymentVerifyParams struct {
 	Proof []byte
 }
 
-type PieceInclVoucherData struct { // TODO: Update spec at https://github.com/filecoin-project/specs/blob/master/actors.md#paymentverify
-	CommP     []byte
-	PieceSize types.BigInt
-}
-
-type InclusionProof struct {
-	Sector uint64 // for CommD, also verifies the sector is in sector set
-	Proof  []byte
-}
-
-func (sma StorageMinerActor) PaymentVerifyInclusion(act *types.Actor, vmctx types.VMContext, params *PaymentVerifyParams) ([]byte, ActorError) {
-	// params.Extra - PieceInclVoucherData
-	// params.Proof - InclusionProof
-
-	_, self, aerr := loadState(vmctx)
-	if aerr != nil {
-		return nil, aerr
-	}
-	mi, aerr := loadMinerInfo(vmctx, self)
-	if aerr != nil {
-		return nil, aerr
-	}
-
-	var voucherData PieceInclVoucherData
-	if err := cbor.DecodeInto(params.Extra, &voucherData); err != nil {
-		return nil, aerrors.Absorb(err, 2, "failed to decode storage voucher data for verification")
-	}
-	var proof InclusionProof
-	if err := cbor.DecodeInto(params.Proof, &proof); err != nil {
-		return nil, aerrors.Absorb(err, 3, "failed to decode storage payment proof")
-	}
-
-	ok, _, commD, aerr := GetFromSectorSet(context.TODO(), vmctx.Storage(), self.Sectors, proof.Sector)
-	if aerr != nil {
-		return nil, aerr
-	}
-	if !ok {
-		return nil, aerrors.New(4, "miner does not have required sector")
-	}
-
-	ok, err := sectorbuilder.VerifyPieceInclusionProof(mi.SectorSize.Uint64(), voucherData.PieceSize.Uint64(), voucherData.CommP, commD, proof.Proof)
-	if err != nil {
-		return nil, aerrors.Absorb(err, 5, "verify piece inclusion proof failed")
-	}
-	if !ok {
-		return nil, aerrors.New(6, "piece inclusion proof was invalid")
-	}
-
-	return nil, nil
-}
-
-func (sma StorageMinerActor) PaymentVerifySector(act *types.Actor, vmctx types.VMContext, params *PaymentVerifyParams) ([]byte, ActorError) {
-	// params.Extra - BigInt - sector id
-	// params.Proof - nil
-
-	_, self, aerr := loadState(vmctx)
-	if aerr != nil {
-		return nil, aerr
-	}
-
-	// TODO: ensure no sector ID reusability within related deal lifetime
-	sector := types.BigFromBytes(params.Extra)
-
-	if len(params.Proof) > 0 {
-		return nil, aerrors.New(1, "unexpected proof bytes")
-	}
-
-	ok, _, _, aerr := GetFromSectorSet(context.TODO(), vmctx.Storage(), self.Sectors, sector.Uint64())
-	if aerr != nil {
-		return nil, aerr
-	}
-	if !ok {
-		return nil, aerrors.New(2, "miner does not have required sector")
-	}
-
-	return nil, nil
-}
-
-type AddFaultsParams struct {
+type DeclareFaultsParams struct {
 	Faults types.BitField
 }
 
-func (sma StorageMinerActor) AddFaults(act *types.Actor, vmctx types.VMContext, params *AddFaultsParams) ([]byte, ActorError) {
+func (sma StorageMinerActor) DeclareFaults(act *types.Actor, vmctx types.VMContext, params *DeclareFaultsParams) ([]byte, ActorError) {
 	oldstate, self, aerr := loadState(vmctx)
 	if aerr != nil {
 		return nil, aerr
 	}
 
-	challengeHeight := self.ProvingPeriodEnd - build.PoSTChallangeTime
+	challengeHeight := self.ProvingPeriodEnd - build.PoStChallangeTime
 
 	if vmctx.BlockHeight() < challengeHeight {
 		// TODO: optimized bitfield methods
@@ -753,7 +777,7 @@ type MinerSlashConsensusFault struct {
 }
 
 func (sma StorageMinerActor) SlashConsensusFault(act *types.Actor, vmctx types.VMContext, params *MinerSlashConsensusFault) ([]byte, ActorError) {
-	if vmctx.Message().From != StorageMarketAddress {
+	if vmctx.Message().From != StoragePowerAddress {
 		return nil, aerrors.New(1, "SlashConsensusFault may only be called by the storage market actor")
 	}
 

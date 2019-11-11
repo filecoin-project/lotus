@@ -1,7 +1,10 @@
 package events
 
 import (
+	"context"
 	"sync"
+
+	"go.opencensus.io/trace"
 
 	"github.com/filecoin-project/lotus/chain/types"
 )
@@ -17,16 +20,29 @@ type heightEvents struct {
 
 	htTriggerHeights map[triggerH][]triggerId
 	htHeights        map[msgH][]triggerId
+
+	ctx context.Context
 }
 
 func (e *heightEvents) headChangeAt(rev, app []*types.TipSet) error {
+	ctx, span := trace.StartSpan(e.ctx, "events.HeightHeadChange")
+	defer span.End()
+	span.AddAttributes(trace.Int64Attribute("endHeight", int64(app[0].Height())))
+	span.AddAttributes(trace.Int64Attribute("reverts", int64(len(rev))))
+	span.AddAttributes(trace.Int64Attribute("applies", int64(len(app))))
+
 	for _, ts := range rev {
 		// TODO: log error if h below gcconfidence
 		// revert height-based triggers
 
 		revert := func(h uint64, ts *types.TipSet) {
 			for _, tid := range e.htHeights[h] {
-				err := e.heightTriggers[tid].revert(ts)
+				ctx, span := trace.StartSpan(ctx, "events.HeightRevert")
+
+				err := e.heightTriggers[tid].revert(ctx, ts)
+
+				span.End()
+
 				if err != nil {
 					log.Errorf("reverting chain trigger (@H %d): %s", h, err)
 				}
@@ -74,7 +90,13 @@ func (e *heightEvents) headChangeAt(rev, app []*types.TipSet) error {
 					return err
 				}
 
-				if err := hnd.handle(incTs, h); err != nil {
+				ctx, span := trace.StartSpan(ctx, "events.HeightApply")
+				span.AddAttributes(trace.BoolAttribute("immediate", false))
+
+				err = hnd.handle(ctx, incTs, h)
+				span.End()
+
+				if err != nil {
 					log.Errorf("chain trigger (@H %d, called @ %d) failed: %s", triggerH, ts.Height(), err)
 				}
 			}
@@ -125,9 +147,16 @@ func (e *heightEvents) ChainAt(hnd HeightHandler, rev RevertHandler, confidence 
 		}
 
 		e.lk.Unlock()
-		if err := hnd(ts, bestH); err != nil {
+		ctx, span := trace.StartSpan(e.ctx, "events.HeightApply")
+		span.AddAttributes(trace.BoolAttribute("immediate", true))
+
+		err = hnd(ctx, ts, bestH)
+		span.End()
+
+		if err != nil {
 			return err
 		}
+
 		e.lk.Lock()
 		bestH = e.tsc.best().Height()
 	}

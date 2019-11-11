@@ -2,6 +2,7 @@ package repo
 
 import (
 	"encoding/json"
+	"fmt"
 	"io"
 	"io/ioutil"
 	"os"
@@ -33,13 +34,33 @@ const (
 	fsKeystore  = "keystore"
 )
 
+type RepoType int
+
+const (
+	_                     = iota // Default is invalid
+	RepoFullNode RepoType = iota
+	RepoStorageMiner
+)
+
+func defConfForType(t RepoType) interface{} {
+	switch t {
+	case RepoFullNode:
+		return config.DefaultFullNode()
+	case RepoStorageMiner:
+		return config.DefaultStorageMiner()
+	default:
+		panic(fmt.Sprintf("unknown RepoType(%d)", int(t)))
+	}
+}
+
 var log = logging.Logger("repo")
 
 var ErrRepoExists = xerrors.New("repo exists")
 
 // FsRepo is struct for repo, use NewFS to create
 type FsRepo struct {
-	path string
+	path     string
+	repoType RepoType
 }
 
 var _ Repo = &FsRepo{}
@@ -65,7 +86,7 @@ func (fsr *FsRepo) Exists() (bool, error) {
 	return !notexist, err
 }
 
-func (fsr *FsRepo) Init() error {
+func (fsr *FsRepo) Init(t RepoType) error {
 	exist, err := fsr.Exists()
 	if err != nil {
 		return err
@@ -79,16 +100,34 @@ func (fsr *FsRepo) Init() error {
 	if err != nil && !os.IsExist(err) {
 		return err
 	}
-	c, err := os.Create(filepath.Join(fsr.path, fsConfig))
-	if err != nil {
-		return err
-	}
-	if err := c.Close(); err != nil {
-		return err
+
+	if err := fsr.initConfig(t); err != nil {
+		return xerrors.Errorf("init config: %w", err)
 	}
 
 	return fsr.initKeystore()
 
+}
+
+func (fsr *FsRepo) initConfig(t RepoType) error {
+	c, err := os.Create(filepath.Join(fsr.path, fsConfig))
+	if err != nil {
+		return err
+	}
+
+	comm, err := config.ConfigComment(defConfForType(t))
+	if err != nil {
+		return xerrors.Errorf("comment: %w", err)
+	}
+	_, err = c.Write(comm)
+	if err != nil {
+		return xerrors.Errorf("write config: %w", err)
+	}
+
+	if err := c.Close(); err != nil {
+		return xerrors.Errorf("close config: %w", err)
+	}
+	return nil
 }
 
 func (fsr *FsRepo) initKeystore() error {
@@ -142,7 +181,7 @@ func (fsr *FsRepo) APIToken() ([]byte, error) {
 }
 
 // Lock acquires exclusive lock on this repo
-func (fsr *FsRepo) Lock() (LockedRepo, error) {
+func (fsr *FsRepo) Lock(repoType RepoType) (LockedRepo, error) {
 	locked, err := fslock.Locked(fsr.path, fsLock)
 	if err != nil {
 		return nil, xerrors.Errorf("could not check lock status: %w", err)
@@ -156,14 +195,16 @@ func (fsr *FsRepo) Lock() (LockedRepo, error) {
 		return nil, xerrors.Errorf("could not lock the repo: %w", err)
 	}
 	return &fsLockedRepo{
-		path:   fsr.path,
-		closer: closer,
+		path:     fsr.path,
+		repoType: repoType,
+		closer:   closer,
 	}, nil
 }
 
 type fsLockedRepo struct {
-	path   string
-	closer io.Closer
+	path     string
+	repoType RepoType
+	closer   io.Closer
 
 	ds     datastore.Batching
 	dsErr  error
@@ -205,7 +246,10 @@ func (fsr *fsLockedRepo) stillValid() error {
 
 func (fsr *fsLockedRepo) Datastore(ns string) (datastore.Batching, error) {
 	fsr.dsOnce.Do(func() {
-		fsr.ds, fsr.dsErr = badger.NewDatastore(fsr.join(fsDatastore), nil)
+		opts := badger.DefaultOptions
+		opts.Truncate = true
+
+		fsr.ds, fsr.dsErr = badger.NewDatastore(fsr.join(fsDatastore), &opts)
 		/*if fsr.dsErr == nil {
 			fsr.ds = datastore.NewLogDatastore(fsr.ds, "fsrepo")
 		}*/
@@ -216,11 +260,11 @@ func (fsr *fsLockedRepo) Datastore(ns string) (datastore.Batching, error) {
 	return namespace.Wrap(fsr.ds, datastore.NewKey(ns)), nil
 }
 
-func (fsr *fsLockedRepo) Config() (*config.Root, error) {
+func (fsr *fsLockedRepo) Config() (interface{}, error) {
 	if err := fsr.stillValid(); err != nil {
 		return nil, err
 	}
-	return config.FromFile(fsr.join(fsConfig))
+	return config.FromFile(fsr.join(fsConfig), defConfForType(fsr.repoType))
 }
 
 func (fsr *fsLockedRepo) SetAPIEndpoint(ma multiaddr.Multiaddr) error {

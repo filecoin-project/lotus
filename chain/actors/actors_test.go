@@ -80,7 +80,7 @@ func TestVMInvokeMethod(t *testing.T) {
 	}
 
 	msg := &types.Message{
-		To:       InitActorAddress,
+		To:       InitAddress,
 		From:     from,
 		Method:   IAMethods.Exec,
 		Params:   enc,
@@ -118,7 +118,7 @@ func TestStorageMarketActorCreateMiner(t *testing.T) {
 	params := &StorageMinerConstructorParams{
 		Owner:      maddr,
 		Worker:     maddr,
-		SectorSize: types.NewInt(build.SectorSize),
+		SectorSize: build.SectorSizes[0],
 		PeerID:     "fakepeerid",
 	}
 	var err error
@@ -128,7 +128,7 @@ func TestStorageMarketActorCreateMiner(t *testing.T) {
 	}
 
 	msg := &types.Message{
-		To:       StorageMarketAddress,
+		To:       StoragePowerAddress,
 		From:     from,
 		Method:   SPAMethods.CreateStorageMiner,
 		Params:   enc,

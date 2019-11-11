@@ -9,13 +9,13 @@ import (
 	"go.uber.org/fx"
 
 	"github.com/filecoin-project/lotus/chain"
+	"github.com/filecoin-project/lotus/chain/blocksync"
 	"github.com/filecoin-project/lotus/chain/deals"
 	"github.com/filecoin-project/lotus/chain/sub"
 	"github.com/filecoin-project/lotus/node/hello"
 	"github.com/filecoin-project/lotus/node/modules/helpers"
 	"github.com/filecoin-project/lotus/peermgr"
 	"github.com/filecoin-project/lotus/retrieval/discovery"
-	"github.com/filecoin-project/lotus/storage/sector"
 )
 
 func RunHello(mctx helpers.MetricsCtx, lc fx.Lifecycle, h host.Host, svc *hello.Service) {
@@ -38,8 +38,8 @@ func RunPeerMgr(mctx helpers.MetricsCtx, lc fx.Lifecycle, pmgr *peermgr.PeerMgr)
 	go pmgr.Run(helpers.LifecycleCtx(mctx, lc))
 }
 
-func RunBlockSync(h host.Host, svc *chain.BlockSyncService) {
-	h.SetStreamHandler(chain.BlockSyncProtocolID, svc.HandleStream)
+func RunBlockSync(h host.Host, svc *blocksync.BlockSyncService) {
+	h.SetStreamHandler(blocksync.BlockSyncProtocolID, svc.HandleStream)
 }
 
 func HandleIncomingBlocks(mctx helpers.MetricsCtx, lc fx.Lifecycle, pubsub *pubsub.PubSub, s *chain.Syncer) {
@@ -74,19 +74,6 @@ func RunDealClient(mctx helpers.MetricsCtx, lc fx.Lifecycle, c *deals.Client) {
 		},
 		OnStop: func(context.Context) error {
 			c.Stop()
-			return nil
-		},
-	})
-}
-
-func RunSectorService(lc fx.Lifecycle, secst *sector.Store) {
-	lc.Append(fx.Hook{
-		OnStart: func(context.Context) error {
-			secst.Service()
-			return nil
-		},
-		OnStop: func(context.Context) error {
-			secst.Stop()
 			return nil
 		},
 	})

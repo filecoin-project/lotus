@@ -12,6 +12,7 @@ import (
 	"github.com/stretchr/testify/require"
 
 	"github.com/filecoin-project/lotus/api"
+	"github.com/filecoin-project/lotus/build"
 	"github.com/filecoin-project/lotus/chain/address"
 	"github.com/filecoin-project/lotus/chain/gen"
 	"github.com/filecoin-project/lotus/chain/store"
@@ -390,7 +391,7 @@ func TestSyncBadTimestamp(t *testing.T) {
 
 	base := tu.g.CurTipset
 	tu.g.Timestamper = func(pts *types.TipSet, tl int) uint64 {
-		return pts.MinTimestamp() + 2
+		return pts.MinTimestamp() + (build.BlockDelay / 2)
 	}
 
 	fmt.Println("BASE: ", base.Cids())

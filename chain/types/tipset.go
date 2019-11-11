@@ -4,10 +4,12 @@ import (
 	"bytes"
 	"encoding/json"
 	"fmt"
+	"io"
 	"sort"
 
 	"github.com/ipfs/go-cid"
 	logging "github.com/ipfs/go-log"
+	cbg "github.com/whyrusleeping/cbor-gen"
 )
 
 var log = logging.Logger("types")
@@ -20,14 +22,14 @@ type TipSet struct {
 
 // why didnt i just export the fields? Because the struct has methods with the
 // same names already
-type expTipSet struct {
+type ExpTipSet struct {
 	Cids   []cid.Cid
 	Blocks []*BlockHeader
 	Height uint64
 }
 
 func (ts *TipSet) MarshalJSON() ([]byte, error) {
-	return json.Marshal(expTipSet{
+	return json.Marshal(ExpTipSet{
 		Cids:   ts.cids,
 		Blocks: ts.blks,
 		Height: ts.height,
@@ -35,8 +37,36 @@ func (ts *TipSet) MarshalJSON() ([]byte, error) {
 }
 
 func (ts *TipSet) UnmarshalJSON(b []byte) error {
-	var ets expTipSet
+	var ets ExpTipSet
 	if err := json.Unmarshal(b, &ets); err != nil {
+		return err
+	}
+
+	ots, err := NewTipSet(ets.Blocks)
+	if err != nil {
+		return err
+	}
+
+	*ts = *ots
+
+	return nil
+}
+
+func (ts *TipSet) MarshalCBOR(w io.Writer) error {
+	if ts == nil {
+		_, err := w.Write(cbg.CborNull)
+		return err
+	}
+	return (&ExpTipSet{
+		Cids:   ts.cids,
+		Blocks: ts.blks,
+		Height: ts.height,
+	}).MarshalCBOR(w)
+}
+
+func (ts *TipSet) UnmarshalCBOR(r io.Reader) error {
+	var ets ExpTipSet
+	if err := ets.UnmarshalCBOR(r); err != nil {
 		return err
 	}
 
@@ -74,9 +104,15 @@ func NewTipSet(blks []*BlockHeader) (*TipSet, error) {
 		if b.Height != blks[0].Height {
 			return nil, fmt.Errorf("cannot create tipset with mismatching heights")
 		}
+
+		for i, cid := range b.Parents {
+			if cid != blks[0].Parents[i] {
+				return nil, fmt.Errorf("cannot create tipset with mismatching parents")
+			}
+		}
+
 		ts.cids = append(ts.cids, b.Cid())
 
-		// TODO: ensure the same parents
 	}
 	ts.height = blks[0].Height
 

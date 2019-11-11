@@ -2,6 +2,7 @@ package vm
 
 import (
 	"bytes"
+	"encoding/hex"
 	"fmt"
 	"reflect"
 
@@ -29,11 +30,12 @@ func newInvoker() *invoker {
 	}
 
 	// add builtInCode using: register(cid, singleton)
-	inv.register(actors.InitActorCodeCid, actors.InitActor{}, actors.InitActorState{})
-	inv.register(actors.StorageMarketActorCodeCid, actors.StoragePowerActor{}, actors.StoragePowerState{})
+	inv.register(actors.InitCodeCid, actors.InitActor{}, actors.InitActorState{})
+	inv.register(actors.StoragePowerCodeCid, actors.StoragePowerActor{}, actors.StoragePowerState{})
+	inv.register(actors.StorageMarketCodeCid, actors.StorageMarketActor{}, actors.StorageMarketState{})
 	inv.register(actors.StorageMinerCodeCid, actors.StorageMinerActor{}, actors.StorageMinerActorState{})
-	inv.register(actors.MultisigActorCodeCid, actors.MultiSigActor{}, actors.MultiSigActorState{})
-	inv.register(actors.PaymentChannelActorCodeCid, actors.PaymentChannelActor{}, actors.PaymentChannelActorState{})
+	inv.register(actors.MultisigCodeCid, actors.MultiSigActor{}, actors.MultiSigActorState{})
+	inv.register(actors.PaymentChannelCodeCid, actors.PaymentChannelActor{}, actors.PaymentChannelActorState{})
 
 	return inv
 }
@@ -42,7 +44,8 @@ func (inv *invoker) Invoke(act *types.Actor, vmctx types.VMContext, method uint6
 
 	code, ok := inv.builtInCode[act.Code]
 	if !ok {
-		return nil, aerrors.Newf(255, "no code for actor %s", act.Code)
+		log.Errorf("no code for actor %s", act.Code)
+		return nil, aerrors.Newf(255, "no code for actor %s(%d)(%s)", act.Code, method, hex.EncodeToString(params))
 	}
 	if method >= uint64(len(code)) || code[method] == nil {
 		return nil, aerrors.Newf(255, "no method %d on actor", method)

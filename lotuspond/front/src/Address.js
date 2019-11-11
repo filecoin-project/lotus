@@ -1,10 +1,15 @@
 import React from 'react'
 import CID from 'cids'
-import * as multihash from "multihashes";
-import State from "./State";
-import methods from "./chain/methods";
+import ReactTooltip from 'react-tooltip'
+import * as multihash from "multihashes"
+import State from "./State"
+import methods from "./chain/methods"
+import Fil from "./Fil";
 
 function truncAddr(addr, len) {
+  if (!addr) {
+    return "<!nil>"
+  }
   if (addr.length > len) {
     return <abbr title={addr}>{addr.substr(0, len - 3) + '..'}</abbr>
   }
@@ -62,7 +67,7 @@ class Address extends React.Component {
   }
 
   openState() {
-    this.props.mountWindow((onClose) => <State addr={this.props.addr} actor={this.state.actor} client={this.props.client} onClose={onClose}/>)
+    this.props.mountWindow((onClose) => <State addr={this.props.addr} actor={this.state.actor} client={this.props.client} onClose={onClose} mountWindow={this.props.mountWindow}/>)
   }
 
   async actorInfo(actor) {
@@ -117,18 +122,18 @@ class Address extends React.Component {
       nonce = <span>&nbsp;<abbr title={"Next nonce"}>Nc:{this.state.nonce}</abbr>{nonce}</span>
     }
 
-    let balance = <span>:&nbsp;{this.state.balance}&nbsp;</span>
+    let balance = <span>:&nbsp;{<Fil>{this.state.balance}</Fil>}&nbsp;</span>
     if(this.props.nobalance) {
       balance = <span/>
     }
     if(this.props.short) {
-      actInfo = <span/>
+      actInfo = <ReactTooltip id={this.props.addr} place="top" type="dark" effect="solid">{actInfo}: {<Fil>this.state.balance</Fil>}</ReactTooltip>
       balance = <span/>
     }
 
     let transfer = <span/>
     if(this.props.transfer) {
-      transfer = <span>&nbsp;{this.props.transfer}FIL</span>
+      transfer = <span>&nbsp;<Fil>{this.props.transfer}</Fil>FIL</span>
     }
 
     let minerInfo = <span/>
@@ -136,7 +141,7 @@ class Address extends React.Component {
       minerInfo = <span>&nbsp;Power: {this.state.minerInfo.MinerPower} ({this.state.minerInfo.MinerPower/this.state.minerInfo.TotalPower*100}%)</span>
     }
 
-    return <span>{addr}{balance}{actInfo}{nonce}{add20k}{transfer}{minerInfo}</span>
+    return <span data-tip data-for={this.props.addr}>{addr}{balance}{actInfo}{nonce}{add20k}{transfer}{minerInfo}</span>
   }
 }
 

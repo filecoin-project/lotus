@@ -1,10 +1,12 @@
+import code from "./code";
+
 export default {
-  "account": [
+  [code.account]: [
     "Send",
     "Constructor",
     "GetAddress",
   ],
-  "smarket": [
+  [code.power]: [
     "Send",
     "Constructor",
     "CreateStorageMiner",
@@ -15,11 +17,26 @@ export default {
     "IsMiner",
     "StorageCollateralForSize"
   ],
-  "sminer": [
+  [code.market]: [
     "Send",
     "Constructor",
-    "CommitSector",
-    "SubmitPost",
+    "WithdrawBalance",
+    "AddBalance",
+    "CheckLockedBalance",
+    "PublishStorageDeals",
+    "HandleCronAction",
+    "SettleExpiredDeals",
+    "ProcessStorageDealsPayment",
+    "SlashStorageDealCollateral",
+    "GetLastExpirationFromDealIDs",
+    "ActivateStorageDeals",
+  ],
+  [code.miner]: [
+    "Send",
+    "Constructor",
+    "PreCommitSector",
+    "ProveCommitSector",
+    "SubmitPoSt",
     "SlashStorageFault",
     "GetCurrentProvingSet",
     "ArbitrateDeal",
@@ -33,10 +50,10 @@ export default {
     "ChangeWorker",
     "IsSlashed",
     "IsLate",
-    "PaymentVerifyInclusion",
-    "PaymentVerifySector",
+    "DeclareFaults",
+    "SlashConsensusFault",
   ],
-  "multisig": [
+  [code.multisig]: [
     "Send",
     "Constructor",
     "Propose",
@@ -48,13 +65,13 @@ export default {
     "SwapSigner",
     "ChangeRequirement",
   ],
-  "init": [
+  [code.init]: [
     "Send",
     "Constructor",
     "Exec",
     "GetIdForAddress"
   ],
-  "paych": [
+  [code.paych]: [
     "Send",
     "Constructor",
     "UpdateChannelState",

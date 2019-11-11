@@ -87,6 +87,8 @@ func (a *CommonAPI) Version(context.Context) (api.Version, error) {
 	return api.Version{
 		Version:    build.Version,
 		APIVersion: build.APIVersion,
+
+		BlockDelay: build.BlockDelay,
 	}, nil
 }
 

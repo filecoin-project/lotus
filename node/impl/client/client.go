@@ -3,9 +3,11 @@ package client
 import (
 	"context"
 	"errors"
-	"golang.org/x/xerrors"
 	"io"
+	"math"
 	"os"
+
+	"golang.org/x/xerrors"
 
 	"github.com/ipfs/go-blockservice"
 	"github.com/ipfs/go-cid"
@@ -13,7 +15,6 @@ import (
 	chunker "github.com/ipfs/go-ipfs-chunker"
 	offline "github.com/ipfs/go-ipfs-exchange-offline"
 	files "github.com/ipfs/go-ipfs-files"
-	cbor "github.com/ipfs/go-ipld-cbor"
 	ipld "github.com/ipfs/go-ipld-format"
 	"github.com/ipfs/go-merkledag"
 	"github.com/ipfs/go-unixfs/importer/balanced"
@@ -23,7 +24,6 @@ import (
 
 	"github.com/filecoin-project/lotus/api"
 	"github.com/filecoin-project/lotus/build"
-	"github.com/filecoin-project/lotus/chain/actors"
 	"github.com/filecoin-project/lotus/chain/address"
 	"github.com/filecoin-project/lotus/chain/deals"
 	"github.com/filecoin-project/lotus/chain/store"
@@ -53,75 +53,40 @@ type API struct {
 	Filestore  dtypes.ClientFilestore `optional:"true"`
 }
 
-func (a *API) ClientStartDeal(ctx context.Context, data cid.Cid, miner address.Address, price types.BigInt, blocksDuration uint64) (*cid.Cid, error) {
+func (a *API) ClientStartDeal(ctx context.Context, data cid.Cid, miner address.Address, epochPrice types.BigInt, blocksDuration uint64) (*cid.Cid, error) {
 	// TODO: make this a param
 	self, err := a.WalletDefaultAddress(ctx)
 	if err != nil {
-		return nil, err
+		return nil, xerrors.Errorf("failed to get default address: %w", err)
 	}
 
-	// get miner peerID
-	msg := &types.Message{
-		To:     miner,
-		From:   miner,
-		Method: actors.MAMethods.GetPeerID,
-	}
-
-	r, err := a.StateCall(ctx, msg, nil)
+	pid, err := a.StateMinerPeerID(ctx, miner, nil)
 	if err != nil {
-		return nil, err
+		return nil, xerrors.Errorf("failed getting peer ID: %w", err)
 	}
-	pid, err := peer.IDFromBytes(r.Return)
+
+	mw, err := a.StateMinerWorker(ctx, miner, nil)
 	if err != nil {
-		return nil, err
-	}
-
-	vd, err := a.DealClient.VerifyParams(ctx, data)
-	if err != nil {
-		return nil, err
-	}
-
-	voucherData, err := cbor.DumpObject(vd)
-	if err != nil {
-		return nil, err
-	}
-
-	// setup payments
-	total := types.BigMul(price, types.NewInt(blocksDuration))
-
-	// TODO: at least ping the miner before creating paych / locking the money
-	extra := &types.ModVerifyParams{
-		Actor:  miner,
-		Method: actors.MAMethods.PaymentVerifyInclusion,
-		Data:   voucherData,
-	}
-
-	head := a.Chain.GetHeaviestTipSet()
-	vouchers := deals.VoucherSpec(blocksDuration, total, head.Height(), extra)
-
-	payment, err := a.PaychNewPayment(ctx, self, miner, vouchers)
-	if err != nil {
-		return nil, err
+		return nil, xerrors.Errorf("failed getting miner worker: %w", err)
 	}
 
 	proposal := deals.ClientDealProposal{
-		Data:       data,
-		TotalPrice: total,
-		Duration:   blocksDuration,
-		Payment: actors.PaymentInfo{
-			PayChActor:     payment.Channel,
-			Payer:          self,
-			ChannelMessage: payment.ChannelMessage,
-			Vouchers:       payment.Vouchers,
-		},
-		MinerAddress:  miner,
-		ClientAddress: self,
-		MinerID:       pid,
+		Data:               data,
+		PricePerEpoch:      epochPrice,
+		ProposalExpiration: math.MaxUint64, // TODO: set something reasonable
+		Duration:           blocksDuration,
+		Client:             self,
+		ProviderAddress:    miner,
+		MinerWorker:        mw,
+		MinerID:            pid,
 	}
 
-	c, err := a.DealClient.Start(ctx, proposal, vd)
-	// TODO: send updated voucher with PaymentVerifySector for cheaper validation (validate the sector the miner sent us first!)
-	return &c, err
+	c, err := a.DealClient.Start(ctx, proposal)
+	if err != nil {
+		return nil, xerrors.Errorf("failed to start deal: %w", err)
+	}
+
+	return &c, nil
 }
 
 func (a *API) ClientListDeals(ctx context.Context) ([]api.DealInfo, error) {
@@ -135,18 +100,33 @@ func (a *API) ClientListDeals(ctx context.Context) ([]api.DealInfo, error) {
 		out[k] = api.DealInfo{
 			ProposalCid: v.ProposalCid,
 			State:       v.State,
-			Miner:       v.Proposal.MinerAddress,
+			Provider:    v.Proposal.Provider,
 
 			PieceRef: v.Proposal.PieceRef,
-			CommP:    v.Proposal.CommP,
-			Size:     v.Proposal.Size,
+			Size:     v.Proposal.PieceSize,
 
-			TotalPrice: v.Proposal.TotalPrice,
-			Duration:   v.Proposal.Duration,
+			PricePerEpoch: v.Proposal.StoragePricePerEpoch,
+			Duration:      v.Proposal.Duration,
 		}
 	}
 
 	return out, nil
+}
+
+func (a *API) ClientGetDealInfo(ctx context.Context, d cid.Cid) (*api.DealInfo, error) {
+	v, err := a.DealClient.GetDeal(d)
+	if err != nil {
+		return nil, err
+	}
+	return &api.DealInfo{
+		ProposalCid:   v.ProposalCid,
+		State:         v.State,
+		Provider:      v.Proposal.Provider,
+		PieceRef:      v.Proposal.PieceRef,
+		Size:          v.Proposal.PieceSize,
+		PricePerEpoch: v.Proposal.StoragePricePerEpoch,
+		Duration:      v.Proposal.Duration,
+	}, nil
 }
 
 func (a *API) ClientHasLocal(ctx context.Context, root cid.Cid) (bool, error) {
@@ -211,7 +191,11 @@ func (a *API) ClientImport(ctx context.Context, path string) (cid.Cid, error) {
 		return cid.Undef, err
 	}
 
-	return nd.Cid(), bufferedDS.Commit()
+	if err := bufferedDS.Commit(); err != nil {
+		return cid.Undef, err
+	}
+
+	return nd.Cid(), nil
 }
 
 func (a *API) ClientImportLocal(ctx context.Context, f io.Reader) (cid.Cid, error) {

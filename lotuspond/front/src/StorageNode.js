@@ -8,11 +8,14 @@ const stateConnecting = 'connecting'
 const stateGettingToken = 'getting-token'
 
 let sealCodes = [
-  "Unknown",
-  "Pending",
-  "Failed",
-  "Sealing",
-  "Sealed",
+  "Undefined",
+  "Empty",
+  "Packing",
+  "Unsealed",
+  "PreCommitting",
+  "PreCommitted",
+  "Committing",
+  "Proving",
 ]
 
 class StorageNode extends React.Component {
@@ -122,7 +125,7 @@ class StorageNode extends React.Component {
           <div>{this.state.statusCounts.map((c, i) => <span key={i}>{sealCodes[i]}: {c} | </span>)}</div>
           <div>
             {this.state.staged ? this.state.staged.map((s, i) => (
-              <div key={i}>{s.SectorID} {sealCodes[s.State]}</div>
+              <div key={i}>{s.SectorID} {sealCodes[s.State] || `unk ${s.State}`}</div>
             )) : <div/>}
           </div>
 

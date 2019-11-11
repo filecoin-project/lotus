@@ -1,8 +1,9 @@
 package node
 
 import (
-	"go.uber.org/fx"
 	"reflect"
+
+	"go.uber.org/fx"
 )
 
 // Option is a functional option which can be used with the New function to

@@ -6,6 +6,7 @@ import (
 
 	"gopkg.in/urfave/cli.v2"
 
+	"github.com/filecoin-project/lotus/api"
 	lcli "github.com/filecoin-project/lotus/cli"
 )
 
@@ -20,13 +21,7 @@ var storeGarbageCmd = &cli.Command{
 		defer closer()
 		ctx := lcli.ReqContext(cctx)
 
-		sectorId, err := nodeApi.StoreGarbageData(ctx)
-		if err != nil {
-			return err
-		}
-
-		fmt.Println(sectorId)
-		return nil
+		return nodeApi.StoreGarbageData(ctx)
 	},
 }
 
@@ -36,7 +31,6 @@ var sectorsCmd = &cli.Command{
 	Subcommands: []*cli.Command{
 		sectorsStatusCmd,
 		sectorsStagedListCmd,
-		sectorsStagedSealCmd,
 		sectorsRefsCmd,
 	},
 }
@@ -67,13 +61,15 @@ var sectorsStatusCmd = &cli.Command{
 		}
 
 		fmt.Printf("SectorID:\t%d\n", status.SectorID)
-		fmt.Printf("Status:\t%s\n", status.State.String())
-		fmt.Printf("SealErrorMsg:\t%q\n", status.SealErrorMsg)
+		fmt.Printf("Status:\t%s\n", api.SectorStateStr(status.State))
 		fmt.Printf("CommD:\t\t%x\n", status.CommD)
 		fmt.Printf("CommR:\t\t%x\n", status.CommR)
-		fmt.Printf("CommR*:\t\t%x\n", status.CommRStar)
+		fmt.Printf("Ticket:\t\t%x\n", status.Ticket.TicketBytes)
+		fmt.Printf("TicketH:\t\t%d\n", status.Ticket.BlockHeight)
+		fmt.Printf("Seed:\t\t%x\n", status.Seed.TicketBytes)
+		fmt.Printf("SeedH:\t\t%d\n", status.Seed.BlockHeight)
 		fmt.Printf("Proof:\t\t%x\n", status.Proof)
-		fmt.Printf("Pieces:\t\t%v\n", status.Pieces)
+		fmt.Printf("Deals:\t\t%v\n", status.Deals)
 		return nil
 	},
 }
@@ -98,21 +94,6 @@ var sectorsStagedListCmd = &cli.Command{
 			fmt.Println(s)
 		}
 		return nil
-	},
-}
-
-var sectorsStagedSealCmd = &cli.Command{
-	Name:  "seal-staged", // TODO: nest this under a 'staged' subcommand? idk
-	Usage: "Seal staged sectors",
-	Action: func(cctx *cli.Context) error {
-		nodeApi, closer, err := lcli.GetStorageMinerAPI(cctx)
-		if err != nil {
-			return err
-		}
-		defer closer()
-		ctx := lcli.ReqContext(cctx)
-
-		return nodeApi.SectorsStagedSeal(ctx)
 	},
 }
 

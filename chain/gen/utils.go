@@ -5,6 +5,14 @@ import (
 	"fmt"
 
 	amt "github.com/filecoin-project/go-amt-ipld"
+	"github.com/ipfs/go-cid"
+	"github.com/ipfs/go-datastore"
+	hamt "github.com/ipfs/go-hamt-ipld"
+	bstore "github.com/ipfs/go-ipfs-blockstore"
+	peer "github.com/libp2p/go-libp2p-peer"
+	cbg "github.com/whyrusleeping/cbor-gen"
+	"golang.org/x/xerrors"
+
 	"github.com/filecoin-project/lotus/build"
 	actors "github.com/filecoin-project/lotus/chain/actors"
 	"github.com/filecoin-project/lotus/chain/address"
@@ -12,14 +20,6 @@ import (
 	"github.com/filecoin-project/lotus/chain/store"
 	"github.com/filecoin-project/lotus/chain/types"
 	"github.com/filecoin-project/lotus/chain/vm"
-	"golang.org/x/xerrors"
-
-	"github.com/ipfs/go-cid"
-	"github.com/ipfs/go-datastore"
-	hamt "github.com/ipfs/go-hamt-ipld"
-	bstore "github.com/ipfs/go-ipfs-blockstore"
-	peer "github.com/libp2p/go-libp2p-peer"
-	cbg "github.com/whyrusleeping/cbor-gen"
 )
 
 type GenesisBootstrap struct {
@@ -56,7 +56,7 @@ func SetupInitActor(bs bstore.Blockstore, addrs []address.Address) (*types.Actor
 	}
 
 	act := &types.Actor{
-		Code: actors.InitActorCodeCid,
+		Code: actors.InitCodeCid,
 		Head: statecid,
 	}
 
@@ -85,8 +85,17 @@ func MakeInitialStateTree(bs bstore.Blockstore, actmap map[address.Address]types
 		return nil, xerrors.Errorf("setup init actor: %w", err)
 	}
 
-	if err := state.SetActor(actors.InitActorAddress, initact); err != nil {
+	if err := state.SetActor(actors.InitAddress, initact); err != nil {
 		return nil, xerrors.Errorf("set init actor: %w", err)
+	}
+
+	spact, err := SetupStoragePowerActor(bs)
+	if err != nil {
+		return nil, xerrors.Errorf("setup storage market actor: %w", err)
+	}
+
+	if err := state.SetActor(actors.StoragePowerAddress, spact); err != nil {
+		return nil, xerrors.Errorf("set storage market actor: %w", err)
 	}
 
 	smact, err := SetupStorageMarketActor(bs)
@@ -104,7 +113,7 @@ func MakeInitialStateTree(bs bstore.Blockstore, actmap map[address.Address]types
 	}
 
 	err = state.SetActor(actors.NetworkAddress, &types.Actor{
-		Code:    actors.AccountActorCodeCid,
+		Code:    actors.AccountCodeCid,
 		Balance: netAmt,
 		Head:    emptyobject,
 	})
@@ -113,7 +122,7 @@ func MakeInitialStateTree(bs bstore.Blockstore, actmap map[address.Address]types
 	}
 
 	err = state.SetActor(actors.BurntFundsAddress, &types.Actor{
-		Code:    actors.AccountActorCodeCid,
+		Code:    actors.AccountCodeCid,
 		Balance: types.NewInt(0),
 		Head:    emptyobject,
 	})
@@ -123,7 +132,7 @@ func MakeInitialStateTree(bs bstore.Blockstore, actmap map[address.Address]types
 
 	for a, v := range actmap {
 		err = state.SetActor(a, &types.Actor{
-			Code:    actors.AccountActorCodeCid,
+			Code:    actors.AccountCodeCid,
 			Balance: v,
 			Head:    emptyobject,
 		})
@@ -135,7 +144,7 @@ func MakeInitialStateTree(bs bstore.Blockstore, actmap map[address.Address]types
 	return state, nil
 }
 
-func SetupStorageMarketActor(bs bstore.Blockstore) (*types.Actor, error) {
+func SetupStoragePowerActor(bs bstore.Blockstore) (*types.Actor, error) {
 	cst := hamt.CSTFromBstore(bs)
 	nd := hamt.NewNode(cst)
 	emptyhamt, err := cst.Put(context.TODO(), nd)
@@ -154,7 +163,41 @@ func SetupStorageMarketActor(bs bstore.Blockstore) (*types.Actor, error) {
 	}
 
 	return &types.Actor{
-		Code:    actors.StorageMarketActorCodeCid,
+		Code:    actors.StoragePowerCodeCid,
+		Head:    stcid,
+		Nonce:   0,
+		Balance: types.NewInt(0),
+	}, nil
+}
+
+func SetupStorageMarketActor(bs bstore.Blockstore) (*types.Actor, error) {
+	cst := hamt.CSTFromBstore(bs)
+	nd := hamt.NewNode(cst)
+	emptyHAMT, err := cst.Put(context.TODO(), nd)
+	if err != nil {
+		return nil, err
+	}
+
+	blks := amt.WrapBlockstore(bs)
+
+	emptyAMT, err := amt.FromArray(blks, nil)
+	if err != nil {
+		return nil, xerrors.Errorf("amt build failed: %w", err)
+	}
+
+	sms := &actors.StorageMarketState{
+		Balances:   emptyHAMT,
+		Deals:      emptyAMT,
+		NextDealID: 0,
+	}
+
+	stcid, err := cst.Put(context.TODO(), sms)
+	if err != nil {
+		return nil, err
+	}
+
+	return &types.Actor{
+		Code:    actors.StorageMarketCodeCid,
 		Head:    stcid,
 		Nonce:   0,
 		Balance: types.NewInt(0),
@@ -196,13 +239,13 @@ func SetupStorageMiners(ctx context.Context, cs *store.ChainStore, sroot cid.Cid
 		params := mustEnc(&actors.CreateStorageMinerParams{
 			Owner:      owner,
 			Worker:     worker,
-			SectorSize: types.NewInt(build.SectorSize),
+			SectorSize: build.SectorSizes[0],
 			PeerID:     pid,
 		})
 
 		// TODO: hardcoding 7000000 here is a little fragile, it changes any
 		// time anyone changes the initial account allocations
-		rval, err := doExecValue(ctx, vm, actors.StorageMarketAddress, owner, types.FromFil(6500), actors.SPAMethods.CreateStorageMiner, params)
+		rval, err := doExecValue(ctx, vm, actors.StoragePowerAddress, owner, types.FromFil(6500), actors.SPAMethods.CreateStorageMiner, params)
 		if err != nil {
 			return cid.Undef, xerrors.Errorf("failed to create genesis miner: %w", err)
 		}
@@ -216,7 +259,7 @@ func SetupStorageMiners(ctx context.Context, cs *store.ChainStore, sroot cid.Cid
 
 		params = mustEnc(&actors.UpdateStorageParams{Delta: types.NewInt(5000)})
 
-		_, err = doExec(ctx, vm, actors.StorageMarketAddress, maddr, actors.SPAMethods.UpdateStorage, params)
+		_, err = doExec(ctx, vm, actors.StoragePowerAddress, maddr, actors.SPAMethods.UpdateStorage, params)
 		if err != nil {
 			return cid.Undef, xerrors.Errorf("failed to update total storage: %w", err)
 		}
@@ -329,11 +372,11 @@ func MakeGenesisBlock(bs bstore.Blockstore, balances map[address.Address]types.B
 	log.Infof("Empty Genesis root: %s", emptyroot)
 
 	genesisticket := &types.Ticket{
-		VRFProof: []byte("vrf proof"),
+		VRFProof: []byte("vrf proof0000000vrf proof0000000"),
 	}
 
 	b := &types.BlockHeader{
-		Miner:                 actors.InitActorAddress,
+		Miner:                 actors.InitAddress,
 		Tickets:               []*types.Ticket{genesisticket},
 		ElectionProof:         []byte("the Genesis block"),
 		Parents:               []cid.Cid{},
