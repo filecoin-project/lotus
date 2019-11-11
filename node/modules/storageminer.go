@@ -5,6 +5,7 @@ import (
 	"fmt"
 	"math"
 	"path/filepath"
+	"reflect"
 
 	"github.com/ipfs/go-bitswap"
 	"github.com/ipfs/go-bitswap/network"
@@ -22,6 +23,7 @@ import (
 	"github.com/filecoin-project/lotus/build"
 	"github.com/filecoin-project/lotus/chain/address"
 	"github.com/filecoin-project/lotus/chain/deals"
+	"github.com/filecoin-project/lotus/datatransfer"
 	"github.com/filecoin-project/lotus/lib/sectorbuilder"
 	"github.com/filecoin-project/lotus/node/modules/dtypes"
 	"github.com/filecoin-project/lotus/node/modules/helpers"
@@ -128,6 +130,13 @@ func HandleDeals(mctx helpers.MetricsCtx, lc fx.Lifecycle, host host.Host, h *de
 			return nil
 		},
 	})
+}
+
+// RegisterProviderValidator is an initialization hook that registers the provider
+// request validator with the data transfer module as the validator for
+// StorageDataTransferVoucher types
+func RegisterProviderValidator(mrv *deals.ProviderRequestValidator, dtm datatransfer.ProviderDataTransfer) {
+	dtm.RegisterVoucherType(reflect.TypeOf(deals.StorageDataTransferVoucher{}), mrv)
 }
 
 func StagingDAG(mctx helpers.MetricsCtx, lc fx.Lifecycle, r repo.LockedRepo, rt routing.Routing, h host.Host) (dtypes.StagingDAG, error) {

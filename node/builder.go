@@ -224,7 +224,7 @@ func Online() Option {
 			Override(new(datatransfer.ClientDataTransfer), datatransfer.NewClientDAGServiceDataTransfer),
 			Override(new(*deals.ClientRequestValidator), deals.NewClientRequestValidator),
 			Override(new(*deals.Client), deals.NewClient),
-			Override(RegisterClientValidatorKey, deals.RegisterClientValidator),
+			Override(RegisterClientValidatorKey, modules.RegisterClientValidator),
 			Override(RunDealClientKey, modules.RunDealClient),
 
 			Override(new(*paych.Store), paych.NewStore),
@@ -247,7 +247,7 @@ func Online() Option {
 			Override(new(datatransfer.ProviderDataTransfer), datatransfer.NewProviderDAGServiceDataTransfer),
 			Override(new(*deals.ProviderRequestValidator), deals.NewProviderRequestValidator),
 			Override(new(*deals.Provider), deals.NewProvider),
-			Override(RegisterProviderValidatorKey, deals.RegisterProviderValidator),
+			Override(RegisterProviderValidatorKey, modules.RegisterProviderValidator),
 			Override(HandleRetrievalKey, modules.HandleRetrieval),
 			Override(HandleDealsKey, modules.HandleDeals),
 			Override(RegisterMinerKey, modules.RegisterMiner),

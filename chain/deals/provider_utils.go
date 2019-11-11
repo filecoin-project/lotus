@@ -3,14 +3,12 @@ package deals
 import (
 	"bytes"
 	"context"
-	"reflect"
 	"runtime"
 
 	"github.com/filecoin-project/lotus/api"
 	"github.com/filecoin-project/lotus/datatransfer"
 	"github.com/filecoin-project/lotus/node/modules/dtypes"
 	"github.com/ipld/go-ipld-prime"
-	"go.uber.org/fx"
 
 	"github.com/filecoin-project/lotus/chain/actors"
 	"github.com/filecoin-project/lotus/chain/address"
@@ -145,17 +143,6 @@ type ProviderRequestValidator struct {
 	deals *statestore.StateStore
 }
 
-// RegisterProviderValidator is an initialization hook that registers the provider
-// request validator with the data transfer module as the validator for
-// StorageDataTransferVoucher types
-func RegisterProviderValidator(lc fx.Lifecycle, mrv *ProviderRequestValidator, dtm datatransfer.ProviderDataTransfer) {
-	lc.Append(fx.Hook{
-		OnStart: func(ctx context.Context) error {
-			return dtm.RegisterVoucherType(reflect.TypeOf(StorageDataTransferVoucher{}), mrv)
-		},
-	})
-}
-
 // NewProviderRequestValidator returns a new client request validator for the
 // given datastore
 func NewProviderRequestValidator(ds dtypes.MetadataDS) *ProviderRequestValidator {
@@ -196,7 +183,7 @@ func (m *ProviderRequestValidator) ValidatePush(
 	if !bytes.Equal(deal.Proposal.PieceRef, baseCid.Bytes()) {
 		return xerrors.Errorf("Deal Payload CID %s, Data Transfer CID %s: %w", string(deal.Proposal.PieceRef), baseCid.String(), ErrWrongPiece)
 	}
-	for _, state := range AcceptableDealStates {
+	for _, state := range DataTransferStates {
 		if deal.State == state {
 			return nil
 		}

@@ -3,7 +3,6 @@ package deals
 import (
 	"bytes"
 	"context"
-	"reflect"
 	"runtime"
 
 	"github.com/ipfs/go-cid"
@@ -13,7 +12,6 @@ import (
 	unixfile "github.com/ipfs/go-unixfs/file"
 	"github.com/ipld/go-ipld-prime"
 	"github.com/libp2p/go-libp2p-core/peer"
-	"go.uber.org/fx"
 	"golang.org/x/xerrors"
 
 	"github.com/filecoin-project/lotus/datatransfer"
@@ -117,17 +115,6 @@ type ClientRequestValidator struct {
 	deals *statestore.StateStore
 }
 
-// RegisterClientValidator is an initialization hook that registers the client
-// request validator with the data transfer module as the validator for
-// StorageDataTransferVoucher types
-func RegisterClientValidator(lc fx.Lifecycle, crv *ClientRequestValidator, dtm datatransfer.ClientDataTransfer) {
-	lc.Append(fx.Hook{
-		OnStart: func(ctx context.Context) error {
-			return dtm.RegisterVoucherType(reflect.TypeOf(StorageDataTransferVoucher{}), crv)
-		},
-	})
-}
-
 // NewClientRequestValidator returns a new client request validator for the
 // given datastore
 func NewClientRequestValidator(ds dtypes.MetadataDS) *ClientRequestValidator {
@@ -179,7 +166,7 @@ func (c *ClientRequestValidator) ValidatePull(
 	if !bytes.Equal(deal.Proposal.PieceRef, baseCid.Bytes()) {
 		return xerrors.Errorf("Deal Payload CID %s, Data Transfer CID %s: %w", string(deal.Proposal.PieceRef), baseCid.String(), ErrWrongPiece)
 	}
-	for _, state := range AcceptableDealStates {
+	for _, state := range DataTransferStates {
 		if deal.State == state {
 			return nil
 		}

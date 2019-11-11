@@ -37,7 +37,7 @@ var (
 	// where transfer can be performed
 	ErrInacceptableDealState = errors.New("Deal is not a in a state where deals are accepted")
 
-	// AcceptableDealStates are the states in which it would make sense to actually start a data transfer
+	// DataTransferStates are the states in which it would make sense to actually start a data transfer
 	DataTransferStates = []api.DealState{api.DealAccepted, api.DealUnknown}
 )
 
