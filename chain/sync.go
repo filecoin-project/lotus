@@ -483,6 +483,43 @@ func (syncer *Syncer) ValidateBlock(ctx context.Context, b *types.FullBlock) err
 		return xerrors.Errorf("load parent tipset failed (%s): %w", h.Parents, err)
 	}
 
+	// fast checks first
+	if h.Timestamp > uint64(time.Now().Unix()+build.AllowableClockDrift) {
+		return xerrors.Errorf("block was from the future")
+	}
+
+	if h.Timestamp < baseTs.MinTimestamp()+uint64(build.BlockDelay*len(h.Tickets)) {
+		log.Warn("timestamp funtimes: ", h.Timestamp, baseTs.MinTimestamp(), len(h.Tickets))
+		return xerrors.Errorf("block was generated too soon (h.ts:%d < base.mints:%d + BLOCK_DELAY:%d * tkts.len:%d)", h.Timestamp, baseTs.MinTimestamp(), build.BlockDelay, len(h.Tickets))
+	}
+
+	winnerCheck := async.Err(func() error {
+		mpow, tpow, err := stmgr.GetPower(ctx, syncer.sm, baseTs, h.Miner)
+		if err != nil {
+			return xerrors.Errorf("failed getting power: %w", err)
+		}
+
+		if !types.PowerCmp(h.ElectionProof, mpow, tpow) {
+			return xerrors.Errorf("miner created a block but was not a winner")
+		}
+		return nil
+	})
+
+	msgsCheck := async.Err(func() error {
+		if err := syncer.checkBlockMessages(ctx, b, baseTs); err != nil {
+			return xerrors.Errorf("block had invalid messages: %w", err)
+		}
+		return nil
+	})
+
+	minerCheck := async.Err(func() error {
+		if err := syncer.minerIsValid(ctx, h.Miner, baseTs); err != nil {
+			return xerrors.Errorf("minerIsValid failed: %w", err)
+		}
+		return nil
+	})
+
+	// Stuff that needs stateroot / worker address
 	stateroot, precp, err := syncer.sm.TipSetState(ctx, baseTs)
 	if err != nil {
 		return xerrors.Errorf("get tipsetstate(%d, %s) failed: %w", h.Height, h.Parents, err)
@@ -507,53 +544,36 @@ func (syncer *Syncer) ValidateBlock(ctx context.Context, b *types.FullBlock) err
 		return xerrors.Errorf("parent receipts root did not match computed value (%s != %s)", precp, h.ParentMessageReceipts)
 	}
 
-	if h.Timestamp > uint64(time.Now().Unix()+build.AllowableClockDrift) {
-		return xerrors.Errorf("block was from the future: %w", ErrTemporal)
-	}
-
-	if h.Timestamp < baseTs.MinTimestamp()+uint64(build.BlockDelay*len(h.Tickets)) {
-		log.Warn("timestamp funtimes: ", h.Timestamp, baseTs.MinTimestamp(), len(h.Tickets))
-		return xerrors.Errorf("block was generated too soon (h.ts:%d < base.mints:%d + BLOCK_DELAY:%d * tkts.len:%d)", h.Timestamp, baseTs.MinTimestamp(), build.BlockDelay, len(h.Tickets))
-	}
-
-	if err := syncer.minerIsValid(ctx, h.Miner, baseTs); err != nil {
-		return xerrors.Errorf("minerIsValid failed: %w", err)
-	}
-
 	waddr, err := stmgr.GetMinerWorkerRaw(ctx, syncer.sm, stateroot, h.Miner)
 	if err != nil {
 		return xerrors.Errorf("GetMinerWorkerRaw failed: %w", err)
 	}
 
-	if err := h.CheckBlockSignature(ctx, waddr); err != nil {
-		return xerrors.Errorf("check block signature failed: %w", err)
-	}
+	blockSigCheck := async.Err(func() error {
+		if err := h.CheckBlockSignature(ctx, waddr); err != nil {
+			return xerrors.Errorf("check block signature failed: %w", err)
+		}
+		return nil
+	})
 
-	if err := syncer.validateTickets(ctx, waddr, h.Tickets, baseTs); err != nil {
-		return xerrors.Errorf("validating block tickets failed: %w", err)
-	}
+	tktsCheck := async.Err(func() error {
+		if err := syncer.validateTickets(ctx, waddr, h.Tickets, baseTs); err != nil {
+			return xerrors.Errorf("validating block tickets failed: %w", err)
+		}
+		return nil
+	})
 
-	rand, err := syncer.sm.ChainStore().GetRandomness(ctx, baseTs.Cids(), h.Tickets, build.EcRandomnessLookback)
-	if err != nil {
-		return xerrors.Errorf("failed to get randomness for verifying election proof: %w", err)
-	}
+	eproofCheck := async.Err(func() error {
+		rand, err := syncer.sm.ChainStore().GetRandomness(ctx, baseTs.Cids(), h.Tickets, build.EcRandomnessLookback)
+		if err != nil {
+			return xerrors.Errorf("failed to get randomness for verifying election proof: %w", err)
+		}
 
-	if err := VerifyElectionProof(ctx, h.ElectionProof, rand, waddr); err != nil {
-		return xerrors.Errorf("checking eproof failed: %w", err)
-	}
-
-	mpow, tpow, err := stmgr.GetPower(ctx, syncer.sm, baseTs, h.Miner)
-	if err != nil {
-		return xerrors.Errorf("failed getting power: %w", err)
-	}
-
-	if !types.PowerCmp(h.ElectionProof, mpow, tpow) {
-		return xerrors.Errorf("miner created a block but was not a winner")
-	}
-
-	if err := syncer.checkBlockMessages(ctx, b, baseTs); err != nil {
-		return xerrors.Errorf("block had invalid messages: %w", err)
-	}
+		if err := VerifyElectionProof(ctx, h.ElectionProof, rand, waddr); err != nil {
+			return xerrors.Errorf("checking eproof failed: %w", err)
+		}
+		return nil
+	})
 
 	await := []async.ErrorFuture{
 		minerCheck,
