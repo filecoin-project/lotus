@@ -3,6 +3,7 @@ package graphsync
 import (
 	"bytes"
 	"context"
+	"fmt"
 	"math/rand"
 	"reflect"
 
@@ -11,6 +12,7 @@ import (
 	"github.com/ipld/go-ipld-prime"
 	"github.com/ipld/go-ipld-prime/encoding/dagcbor"
 	"github.com/libp2p/go-libp2p-core/host"
+	ipldfree "github.com/ipld/go-ipld-prime/impl/free"
 	"github.com/libp2p/go-libp2p-core/peer"
 
 	"github.com/filecoin-project/lotus/datatransfer"
@@ -57,10 +59,26 @@ func NewGraphSyncDataTransfer(parent context.Context, host host.Host, bs bstore.
 // or if there is a voucher type registered with an identical identifier
 // TODO: implement for https://github.com/filecoin-project/go-data-transfer/issues/15
 func (impl *graphsyncImpl) RegisterVoucherType(voucherType reflect.Type, validator datatransfer.RequestValidator) error {
+
+	v := reflect.Indirect(reflect.New(voucherType)).Interface()
+	voucher, ok := v.(datatransfer.Voucher)
+	if !ok {
+		return fmt.Errorf("voucher does not implement Voucher interface")
+	}
+
+	_, isReg := impl.validatedTypes[voucher.Type()]
+	if isReg {
+		return fmt.Errorf("voucher type already registered: %s", voucherType.String())
+	}
+
+	impl.validatedTypes[voucher.Type()] = validateType{
+		voucherType: voucherType,
+		validator:   validator,
+	}
 	return nil
 }
 
-// open a data transfer that will send data to the recipient peer and
+// OpenPushDataChannel opens a data transfer that will send data to the recipient peer and
 // transfer parts of the piece that match the selector
 func (impl *graphsyncImpl) OpenPushDataChannel(ctx context.Context, to peer.ID, voucher datatransfer.Voucher, baseCid cid.Cid, selector ipld.Node) (datatransfer.ChannelID, error) {
 	tid, err := impl.sendRequest(selector, false, voucher, baseCid, to)
@@ -70,7 +88,7 @@ func (impl *graphsyncImpl) OpenPushDataChannel(ctx context.Context, to peer.ID, 
 	return datatransfer.ChannelID{To: to, ID: tid}, nil
 }
 
-// open a data transfer that will request data from the sending peer and
+// OpenPullDataChannel opens a data transfer that will request data from the sending peer and
 // transfer parts of the piece that match the selector
 func (impl *graphsyncImpl) OpenPullDataChannel(ctx context.Context, to peer.ID, voucher datatransfer.Voucher, baseCid cid.Cid, selector ipld.Node) (datatransfer.ChannelID, error) {
 	tid, err := impl.sendRequest(selector, true, voucher, baseCid, to)
@@ -80,6 +98,7 @@ func (impl *graphsyncImpl) OpenPullDataChannel(ctx context.Context, to peer.ID, 
 	return datatransfer.ChannelID{To: to, ID: tid}, nil
 }
 
+// sendMessage encapsulates message creation and posting to the data transfer network with the provided parameters
 func (impl *graphsyncImpl) sendRequest(selector ipld.Node, isPull bool, voucher datatransfer.Voucher, baseCid cid.Cid, to peer.ID) (datatransfer.TransferID, error) {
 	sbytes, err := nodeAsBytes(selector)
 	if err != nil {
@@ -120,6 +139,59 @@ func (receiver *graphsyncReceiver) ReceiveRequest(
 	ctx context.Context,
 	sender peer.ID,
 	incoming message.DataTransferRequest) {
+
+	voucher, err := receiver.ValidateVoucher(sender, incoming)
+	if err != nil {
+		fmt.Printf(err.Error())
+	}
+	if voucher == nil {
+		fmt.Printf("\nincoming voucher failed to validate: %v\n", incoming)
+	}
+}
+
+func (receiver *graphsyncReceiver) ValidateVoucher(sender peer.ID, incoming message.DataTransferRequest) (datatransfer.Voucher, error) {
+
+	vtypStr := incoming.VoucherType()
+	vouch, err := receiver.voucherFromRequest(incoming)
+	if err != nil {
+		return vouch,err
+	}
+
+	var validatorFunc func(peer.ID, datatransfer.Voucher, cid.Cid, ipld.Node) error
+	if incoming.IsPull() {
+		validatorFunc = receiver.impl.validatedTypes[vtypStr].validator.ValidatePull
+	} else {
+		validatorFunc = receiver.impl.validatedTypes[vtypStr].validator.ValidatePush
+	}
+
+	stor, err := nodeFromBytes(incoming.Selector())
+	if err != nil { return vouch, err }
+
+
+	if err = validatorFunc(sender, vouch, incoming.BaseCid(), stor) ; err != nil { return nil, err	}
+
+	return vouch, nil
+}
+
+func (receiver *graphsyncReceiver) voucherFromRequest(incoming message.DataTransferRequest) (datatransfer.Voucher, error) {
+	vtypStr := incoming.VoucherType()
+
+	validatedType, ok := receiver.impl.validatedTypes[vtypStr]
+	if !ok {
+		return nil, fmt.Errorf("unregistered voucher type %s", vtypStr)
+	}
+	vPtrVal := reflect.New(validatedType.voucherType)
+	vPtr := reflect.Indirect(vPtrVal)
+	vPtr.Set(reflect.New(validatedType.voucherType.Elem()))
+
+	voucher, ok := vPtr.Interface().(datatransfer.Voucher)
+	if !ok || reflect.ValueOf(voucher).IsNil() {
+		return nil, fmt.Errorf("problem instantiating type %s, voucher: %v", vtypStr, voucher)
+	}
+	if err := voucher.FromBytes(incoming.Voucher()); err != nil {
+		return voucher, err
+	}
+	return voucher, nil
 }
 
 func (receiver *graphsyncReceiver) ReceiveResponse(
@@ -137,6 +209,11 @@ func nodeAsBytes(node ipld.Node) ([]byte, error) {
 		return nil, err
 	}
 	return buffer.Bytes(), nil
+}
+
+func nodeFromBytes(from []byte) (ipld.Node,error) {
+	reader := bytes.NewReader(from)
+	return dagcbor.Decoder(ipldfree.NodeBuilder(), reader)
 }
 
 // TODO: implement a real transfer ID generator.
