@@ -17,10 +17,10 @@ body {
     grid-template-columns: auto 40vw auto;
     grid-template-rows: auto auto auto 3em;
     grid-template-areas:
-            ". . ."
-            ". main ."
-            ". . ."
-            "footer footer footer";
+            ". . . ."
+            ". main main ."
+            ". . . ."
+            "footer footer footer footer";
 }
 .Index-footer {
     background: #2a2a2a;
