@@ -201,24 +201,24 @@ var walletImport = &cli.Command{
 		defer closer()
 		ctx := ReqContext(cctx)
 
-		var data []byte
+		var hexdata []byte
 		if !cctx.Args().Present() || cctx.Args().First() == "-" {
 			indata, err := ioutil.ReadAll(os.Stdin)
 			if err != nil {
 				return err
 			}
-			dec, err := hex.DecodeString(strings.TrimSpace(string(indata)))
-			if err != nil {
-				return err
-			}
+			hexdata = indata
 
-			data = dec
 		} else {
 			fdata, err := ioutil.ReadFile(cctx.Args().First())
 			if err != nil {
 				return err
 			}
-			data = fdata
+			hexdata = fdata
+		}
+		data, err := hex.DecodeString(strings.TrimSpace(string(hexdata)))
+		if err != nil {
+			return err
 		}
 
 		var ki types.KeyInfo
