@@ -198,7 +198,7 @@ func (cs *ChainStore) SetGenesis(b *types.BlockHeader) error {
 
 func (cs *ChainStore) PutTipSet(ctx context.Context, ts *types.TipSet) error {
 	for _, b := range ts.Blocks() {
-		if err := cs.PersistBlockHeader(b); err != nil {
+		if err := cs.PersistBlockHeaders(b); err != nil {
 			return err
 		}
 	}
@@ -423,13 +423,17 @@ func (cs *ChainStore) AddToTipSetTracker(b *types.BlockHeader) error {
 	return nil
 }
 
-func (cs *ChainStore) PersistBlockHeader(b *types.BlockHeader) error {
-	sb, err := b.ToStorageBlock()
-	if err != nil {
-		return err
+func (cs *ChainStore) PersistBlockHeaders(b ...*types.BlockHeader) (err error) {
+	sbs := make([]block.Block, len(b))
+
+	for i, header := range b {
+		sbs[i], err = header.ToStorageBlock()
+		if err != nil {
+			return err
+		}
 	}
 
-	return cs.bs.Put(sb)
+	return cs.bs.PutMany(sbs)
 }
 
 type storable interface {
@@ -487,7 +491,7 @@ func (cs *ChainStore) expandTipset(b *types.BlockHeader) (*types.TipSet, error) 
 }
 
 func (cs *ChainStore) AddBlock(ctx context.Context, b *types.BlockHeader) error {
-	if err := cs.PersistBlockHeader(b); err != nil {
+	if err := cs.PersistBlockHeaders(b); err != nil {
 		return err
 	}
 

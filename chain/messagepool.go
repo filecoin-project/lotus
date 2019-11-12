@@ -322,7 +322,7 @@ func (mp *MessagePool) RecoverSig(msg *types.Message) *types.SignedMessage {
 	if !ok {
 		return nil
 	}
-	sig, ok := val.(*types.Signature)
+	sig, ok := val.(types.Signature)
 	if !ok {
 		log.Warnf("value in signature cache was not a signature (got %T)", val)
 		return nil
@@ -330,6 +330,6 @@ func (mp *MessagePool) RecoverSig(msg *types.Message) *types.SignedMessage {
 
 	return &types.SignedMessage{
 		Message:   *msg,
-		Signature: *sig,
+		Signature: sig,
 	}
 }

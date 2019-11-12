@@ -755,10 +755,16 @@ func (syncer *Syncer) collectHeaders(ctx context.Context, from *types.TipSet, to
 
 	syncer.syncState.SetHeight(blockSet[len(blockSet)-1].Height())
 
+	var acceptedBlocks []cid.Cid
+
 loop:
 	for blockSet[len(blockSet)-1].Height() > untilHeight {
 		for _, bc := range at {
 			if syncer.bad.Has(bc) {
+				for _, b := range acceptedBlocks {
+					syncer.bad.Add(b)
+				}
+
 				return nil, xerrors.Errorf("chain contained block marked previously as bad (%s, %s)", from.Cids(), bc)
 			}
 		}
@@ -766,6 +772,8 @@ loop:
 		// If, for some reason, we have a suffix of the chain locally, handle that here
 		ts, err := syncer.store.LoadTipSet(at)
 		if err == nil {
+			acceptedBlocks = append(acceptedBlocks, at...)
+
 			blockSet = append(blockSet, ts)
 			at = ts.Parents()
 			continue
@@ -801,11 +809,17 @@ loop:
 			}
 			for _, bc := range b.Cids() {
 				if syncer.bad.Has(bc) {
+					for _, b := range acceptedBlocks {
+						syncer.bad.Add(b)
+					}
+
 					return nil, xerrors.Errorf("chain contained block marked previously as bad (%s, %s)", from.Cids(), bc)
 				}
 			}
 			blockSet = append(blockSet, b)
 		}
+
+		acceptedBlocks = append(acceptedBlocks, at...)
 
 		syncer.syncState.SetHeight(blks[len(blks)-1].Height())
 		at = blks[len(blks)-1].Parents()
@@ -990,13 +1004,14 @@ func (syncer *Syncer) collectChain(ctx context.Context, ts *types.TipSet) error 
 
 	syncer.syncState.SetStage(api.StagePersistHeaders)
 
+	toPersist := make([]*types.BlockHeader, 0, len(headers)*build.BlocksPerEpoch)
 	for _, ts := range headers {
-		for _, b := range ts.Blocks() {
-			if err := syncer.store.PersistBlockHeader(b); err != nil {
-				return xerrors.Errorf("failed to persist synced blocks to the chainstore: %w", err)
-			}
-		}
+		toPersist = append(toPersist, ts.Blocks()...)
 	}
+	if err := syncer.store.PersistBlockHeaders(toPersist...); err != nil {
+		return xerrors.Errorf("failed to persist synced blocks to the chainstore: %w", err)
+	}
+	toPersist = nil
 
 	syncer.syncState.SetStage(api.StageMessages)
 
