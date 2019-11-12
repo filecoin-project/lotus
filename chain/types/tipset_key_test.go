@@ -51,5 +51,8 @@ func TestTipSetKey(t *testing.T) {
 			require.NoError(t, err)
 			assert.Equal(t, tk, roundTrip)
 		}
+
+		_, err := TipSetKeyFromBytes(NewTipSetKey(c1).Bytes()[1:])
+		assert.Error(t, err)
 	})
 }

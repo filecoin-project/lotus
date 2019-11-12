@@ -27,7 +27,7 @@ require (
 	github.com/ipfs/go-block-format v0.0.2
 	github.com/ipfs/go-blockservice v0.1.3-0.20190908200855-f22eea50656c
 	github.com/ipfs/go-car v0.0.2
-	github.com/ipfs/go-cid v0.0.3
+	github.com/ipfs/go-cid v0.0.4-0.20191112011718-79e75dffeb10
 	github.com/ipfs/go-datastore v0.1.0
 	github.com/ipfs/go-ds-badger v0.0.5
 	github.com/ipfs/go-filestore v0.0.2
@@ -74,13 +74,13 @@ require (
 	github.com/mattn/go-runewidth v0.0.4 // indirect
 	github.com/miekg/dns v1.1.16 // indirect
 	github.com/minio/blake2b-simd v0.0.0-20160723061019-3f5f724cb5b1
-	github.com/minio/sha256-simd v0.1.0
+	github.com/minio/sha256-simd v0.1.1-0.20190913151208-6de447530771
 	github.com/mitchellh/go-homedir v1.1.0
 	github.com/multiformats/go-base32 v0.0.3
 	github.com/multiformats/go-multiaddr v0.0.4
 	github.com/multiformats/go-multiaddr-dns v0.0.3
 	github.com/multiformats/go-multiaddr-net v0.0.1
-	github.com/multiformats/go-multihash v0.0.7
+	github.com/multiformats/go-multihash v0.0.9
 	github.com/onsi/ginkgo v1.9.0 // indirect
 	github.com/onsi/gomega v1.6.0 // indirect
 	github.com/opentracing/opentracing-go v1.1.0

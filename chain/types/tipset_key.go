@@ -13,15 +13,10 @@ import (
 // CIDs in a different order are not considered equal.
 // TipSetKey is a lightweight value type, and may be compared for equality with ==.
 type TipSetKey struct {
-	// The internal representation is a concatenation of the bytes of the CIDs, each preceded by
-	// uint32 specifying the length of the CIDs bytes, and the whole preceded by a uint32
-	// giving the number of CIDs.
+	// The internal representation is a concatenation of the bytes of the CIDs, which are
+	// self-describing, wrapped as a string.
 	// These gymnastics make the a TipSetKey usable as a map key.
-	// This representation is slightly larger than strictly necessary: CIDs do carry a prefix
-	// including their length, but the cid package doesn't quite expose the functions needed to
-	// safely parse a sequence of concatenated CIDs from a stream, and we probably don't want to
-	// (re-)implement that here. See https://github.com/ipfs/go-cid/issues/93.
-	// The empty key has value "" (no encoded-zero prefix).
+	// The empty key has value "".
 	value string
 }
 
@@ -74,23 +69,9 @@ func (k TipSetKey) Bytes() []byte {
 }
 
 func encodeKey(cids []cid.Cid) ([]byte, error) {
-	length := uint32(len(cids))
-	if length == uint32(0) {
-		return []byte{}, nil
-	}
 	buffer := new(bytes.Buffer)
-	err := binary.Write(buffer, binary.LittleEndian, length)
-	if err != nil {
-		return nil, err
-	}
 	for _, c := range cids {
-		b := c.Bytes()
-		l := uint32(len(b))
-		err = binary.Write(buffer, binary.LittleEndian, l)
-		if err != nil {
-			return nil, err
-		}
-		err = binary.Write(buffer, binary.LittleEndian, c.Bytes())
+		err := binary.Write(buffer, binary.LittleEndian, c.Bytes())
 		if err != nil {
 			return nil, err
 		}
@@ -99,34 +80,19 @@ func encodeKey(cids []cid.Cid) ([]byte, error) {
 }
 
 func decodeKey(encoded []byte) ([]cid.Cid, error) {
-	if len(encoded) == 0 {
-		return []cid.Cid{}, nil
-	}
-
-	buffer := bytes.NewReader(encoded)
-	var length uint32
-	err := binary.Read(buffer, binary.LittleEndian, &length)
-	if err != nil {
-		return nil, err
-	}
-
-	var cids []cid.Cid
-	for idx := uint32(0); idx < length; idx++ {
-		var l uint32
-		err = binary.Read(buffer, binary.LittleEndian, &l)
+	// Estimate the number of CIDs to be extracted by dividing the encoded length by the shortest
+	// common CID length (V0 CIDs are 34 bytes). V1 CIDs are longer which means this might
+	// over-allocate, but avoid reallocation of the underlying array.
+	estimatedCount := len(encoded) / 34
+	cids := make([]cid.Cid, 0, estimatedCount)
+	nextIdx := 0
+	for nextIdx < len(encoded) {
+		nr, c, err := cid.CidFromBytes(encoded[nextIdx:])
 		if err != nil {
 			return nil, err
 		}
-		buf := make([]byte, l)
-		err = binary.Read(buffer, binary.LittleEndian, &buf)
-		if err != nil {
-			return nil, err
-		}
-		blockCid, err := cid.Cast(buf)
-		if err != nil {
-			return nil, err
-		}
-		cids = append(cids, blockCid)
+		cids = append(cids, c)
+		nextIdx += nr
 	}
 	return cids, nil
 }
