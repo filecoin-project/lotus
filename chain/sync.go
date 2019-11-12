@@ -971,37 +971,12 @@ func persistMessages(bs bstore.Blockstore, bst *blocksync.BSTipSet) error {
 	return nil
 }
 
-func (syncer *Syncer) persistHeaders(headers []*types.TipSet) error {
-	throttle := make(chan struct{}, 12)
-	var wait sync.WaitGroup
-
-	var err error
-	var errLk sync.Mutex
-
-	for _, ts := range headers {
-		syncer.syncState.SetHeight(ts.Height())
-
-		wait.Add(len(ts.Blocks()))
-
-		for _, b := range ts.Blocks() {
-			throttle <- struct{}{}
-
-			go func() {
-				defer func() { <-throttle }()
-				defer wait.Done()
-
-				if err := syncer.store.PersistBlockHeader(b); err != nil {
-					errLk.Lock()
-					err = multierror.Append(err, xerrors.Errorf("failed to persist synced blocks to the chainstore: %w", err))
-					errLk.Unlock()
-				}
-			}()
-		}
+func (syncer *Syncer) persistHeaders(tipsets []*types.TipSet) error {
+	headers := make([]*types.BlockHeader, 0, len(tipsets)*build.BlocksPerEpoch)
+	for _, ts := range tipsets {
+		headers = append(headers, ts.Blocks()...)
 	}
-
-	wait.Wait()
-
-	return err
+	return syncer.store.PersistBlockHeaders(headers)
 }
 
 func (syncer *Syncer) collectChain(ctx context.Context, ts *types.TipSet) error {

@@ -197,10 +197,8 @@ func (cs *ChainStore) SetGenesis(b *types.BlockHeader) error {
 }
 
 func (cs *ChainStore) PutTipSet(ctx context.Context, ts *types.TipSet) error {
-	for _, b := range ts.Blocks() {
-		if err := cs.PersistBlockHeader(b); err != nil {
-			return err
-		}
+	if err := cs.PersistBlockHeaders(ts.Blocks()); err != nil {
+		return err
 	}
 
 	expanded, err := cs.expandTipset(ts.Blocks()[0])
@@ -426,10 +424,23 @@ func (cs *ChainStore) AddToTipSetTracker(b *types.BlockHeader) error {
 func (cs *ChainStore) PersistBlockHeader(b *types.BlockHeader) error {
 	sb, err := b.ToStorageBlock()
 	if err != nil {
-		return err
+		return xerrors.Errorf("failed to serialize header: %w", err)
 	}
 
 	return cs.bs.Put(sb)
+}
+
+func (cs *ChainStore) PersistBlockHeaders(blks []*types.BlockHeader) error {
+	sbs := make([]block.Block, 0, len(blks))
+	for _, b := range blks {
+		sb, err := b.ToStorageBlock()
+		if err != nil {
+			return xerrors.Errorf("failed to serialize header: %w", err)
+		}
+		sbs = append(sbs, sb)
+	}
+
+	return cs.bs.PutMany(sbs)
 }
 
 type storable interface {
