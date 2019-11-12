@@ -7,8 +7,8 @@ import (
 	"io/ioutil"
 
 	"github.com/filecoin-project/lotus/peermgr"
-
 	"github.com/multiformats/go-multiaddr"
+
 	"golang.org/x/xerrors"
 	"gopkg.in/urfave/cli.v2"
 
@@ -29,6 +29,10 @@ var DaemonCmd = &cli.Command{
 	Name:  "daemon",
 	Usage: "Start a lotus daemon process",
 	Flags: []cli.Flag{
+		&cli.StringFlag{
+			Name:  "api",
+			Value: "1234",
+		},
 		&cli.StringFlag{
 			Name:   makeGenFlag,
 			Value:  "",
@@ -77,7 +81,6 @@ var DaemonCmd = &cli.Command{
 		}
 
 		var api api.FullNode
-		var endpoint multiaddr.Multiaddr
 
 		stop, err := node.New(ctx,
 			node.FullAPI(&api),
@@ -87,25 +90,25 @@ var DaemonCmd = &cli.Command{
 
 			genesis,
 
-			node.Override(node.SetApiEndpointKey, func(lr repo.LockedRepo) error {
-				cfg, err := lr.Config()
-				if err != nil {
-					return xerrors.Errorf("could not get config: %w", err)
-				}
-
-				apima, err := multiaddr.NewMultiaddr(cfg.API.ListenAddress)
-				if err != nil {
-					return err
-				}
-				endpoint = apima
-				return lr.SetAPIEndpoint(apima)
-			}),
-
+			node.ApplyIf(func(s *node.Settings) bool { return cctx.IsSet("api") },
+				node.Override(node.SetApiEndpointKey, func(lr repo.LockedRepo) error {
+					apima, err := multiaddr.NewMultiaddr("/ip4/127.0.0.1/tcp/" +
+						cctx.String("api"))
+					if err != nil {
+						return err
+					}
+					return lr.SetAPIEndpoint(apima)
+				})),
 			node.ApplyIf(func(s *node.Settings) bool { return !cctx.Bool("bootstrap") },
 				node.Unset(node.RunPeerMgrKey),
 				node.Unset(new(*peermgr.PeerMgr)),
 			),
 		)
+		if err != nil {
+			return err
+		}
+
+		endpoint, err := r.APIEndpoint()
 		if err != nil {
 			return err
 		}

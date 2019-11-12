@@ -75,13 +75,15 @@ func DefaultFullNode() *FullNode {
 }
 
 func DefaultStorageMiner() *StorageMiner {
-	return &StorageMiner{
+	cfg := &StorageMiner{
 		Common: defCommon(),
 
 		SectorBuilder: SectorBuilder{
 			WorkerCount: 5,
 		},
 	}
+	cfg.Common.API.ListenAddress = "/ip6/::1/tcp/2345/http"
+	return cfg
 }
 
 var _ encoding.TextMarshaler = (*Duration)(nil)
