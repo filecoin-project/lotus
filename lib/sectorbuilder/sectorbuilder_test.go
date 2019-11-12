@@ -1,15 +1,14 @@
 package sectorbuilder_test
 
 import (
+	"github.com/ipfs/go-datastore"
+	"github.com/stretchr/testify/assert"
+	"github.com/stretchr/testify/require"
 	"io"
 	"io/ioutil"
 	"math/rand"
 	"os"
 	"testing"
-
-	"github.com/ipfs/go-datastore"
-	"github.com/stretchr/testify/assert"
-	"github.com/stretchr/testify/require"
 
 	"github.com/filecoin-project/lotus/build"
 	"github.com/filecoin-project/lotus/lib/sectorbuilder"
@@ -20,6 +19,7 @@ const sectorSize = 1024
 func TestSealAndVerify(t *testing.T) {
 	//t.Skip("this is slow")
 	os.Setenv("BELLMAN_NO_GPU", "1")
+	os.Setenv("RUST_LOG", "info")
 
 	build.SectorSizes = []uint64{sectorSize}
 

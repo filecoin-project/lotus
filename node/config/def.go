@@ -17,9 +17,13 @@ type FullNode struct {
 	Metrics Metrics
 }
 
+// // Common
+
 // StorageMiner is a storage miner config
 type StorageMiner struct {
 	Common
+
+	SectorBuilder SectorBuilder
 }
 
 // API contains configs for API endpoint
@@ -34,8 +38,17 @@ type Libp2p struct {
 	BootstrapPeers  []string
 }
 
+// // Full Node
+
 type Metrics struct {
 	Nickname string
+}
+
+// // Storage Miner
+
+type SectorBuilder struct {
+	Path        string
+	WorkerCount uint
 }
 
 func defCommon() Common {
@@ -64,6 +77,10 @@ func DefaultFullNode() *FullNode {
 func DefaultStorageMiner() *StorageMiner {
 	return &StorageMiner{
 		Common: defCommon(),
+
+		SectorBuilder: SectorBuilder{
+			WorkerCount: 5,
+		},
 	}
 }
 
