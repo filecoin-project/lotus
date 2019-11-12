@@ -318,7 +318,6 @@ func (mp *MessagePool) HeadChange(revert []*types.TipSet, apply []*types.TipSet)
 }
 
 func (mp *MessagePool) RecoverSig(msg *types.Message) *types.SignedMessage {
-	// TODO: persist signatures for BLS messages for a little while in case of reorgs
 	val, ok := mp.blsSigCache.Get(msg.Cid())
 	if !ok {
 		return nil
