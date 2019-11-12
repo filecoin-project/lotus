@@ -116,6 +116,15 @@ func (impl *graphsyncImpl) sendRequest(selector ipld.Node, isPull bool, voucher 
 	return tid, nil
 }
 
+func (impl *graphsyncImpl) sendResponse(isAccepted bool, to peer.ID, tid datatransfer.TransferID) (datatransfer.TransferID, error) {
+	resp := message.NewResponse(tid, isAccepted)
+
+	if err := impl.dataTransferNetwork.SendMessage(context.TODO(), to, resp); err != nil {
+		return 0, err
+	}
+	return tid, nil
+}
+
 // close an open channel (effectively a cancel)
 func (impl *graphsyncImpl) CloseDataTransferChannel(x datatransfer.ChannelID) {}
 
@@ -134,20 +143,19 @@ func (impl *graphsyncImpl) InProgressChannels() map[datatransfer.ChannelID]datat
 	return nil
 }
 
-// TODO: implement for https://github.com/filecoin-project/go-data-transfer/issues/14
 // ReceiveRequest takes an incoming request, validates the voucher and processes the message.
 func (receiver *graphsyncReceiver) ReceiveRequest(
 	ctx context.Context,
 	sender peer.ID,
 	incoming message.DataTransferRequest) {
 
-	voucher, err := receiver.validateVoucher(sender, incoming)
-	if err != nil {
-		fmt.Printf(err.Error())
-	}
-	if voucher == nil {
-		fmt.Printf("\nincoming voucher failed to validate: %v\n", incoming)
-	}
+	var success bool
+	// not yet doing anything else with the voucher
+	_, err := receiver.validateVoucher(sender, incoming)
+	if err == nil { success = true }
+
+	// not yet doing anything else with the transfer ID
+	_, err = receiver.impl.sendResponse(success, sender, incoming.TransferID())
 }
 
 // validateVoucher converts a voucher in an incoming message to its appropriate
