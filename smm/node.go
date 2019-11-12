@@ -48,7 +48,7 @@ type Node interface {
     // chain and then await some delay before the seed is provided.
     // The parameters are a subset of OnChainSealVerifyInfo.
     // The miner chooses sector ID.
-    SubmitSectorPreCommitment(ctx context.Context, id SectorID, commR cid.Cid, deals []cid.Cid) (cid.Cid, error)
+    SubmitSectorPreCommitment(ctx context.Context, id SectorID, commR cid.Cid, dealIDs []uint64) (cid.Cid, error)
 
     // Reads a seal seed previously requested with
     // SubmitSectorPreCommitment.
@@ -57,7 +57,7 @@ type Node interface {
 
     // Submits final commitment of a sector, with a proof including the
     // seal seed.
-    SubmitSectorCommitment(ctx context.Context, id SectorID, proof Proof) (cid.Cid, error)
+    SubmitSectorCommitment(ctx context.Context, id SectorID, proof Proof, dealIDs []uint64) (cid.Cid, error)
 
     // Returns the current proving period and, if the miner has
     // been challenged, the challenge seed and period.

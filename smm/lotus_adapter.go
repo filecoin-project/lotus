@@ -1,9 +1,7 @@
 package smm
 
 import (
-    "bytes"
     "context"
-    "encoding/binary"
     "github.com/filecoin-project/lotus/api"
     "github.com/filecoin-project/lotus/build"
     "github.com/filecoin-project/lotus/chain/actors"
@@ -38,99 +36,18 @@ func NewNode(ctx context.Context, fullNode api.FullNode, address Address) (Node,
     return adapter, nil
 }
 
+// TODO: Implement this for TipSetKey
 func stateChangesFromHeadChanges(changes []*store.HeadChange) (stateChanges []*StateChange, err error) {
-    for _, change := range changes {
-        epoch := Epoch(change.Val.Height())
-        stateKey, marshallErr := tipset2statekey(change.Val)
-        if marshallErr != nil {
-            err = marshallErr
-            return
-        }
-        stateChange := new(StateChange)
-        stateChange.Type = change.Type
-        stateChange.Epoch = epoch
-        stateChange.StateKey = stateKey
-        stateChanges = append(stateChanges, stateChange)
-    }
     return
 }
 
+// TODO: Remove this after TipSetKey appears
 func tipset2statekey(ts *types.TipSet) (stateKey *StateKey, err error) {
-    buffer := new(bytes.Buffer)
-    cids := ts.Cids()
-    length := uint32(len(cids))
-    err = binary.Write(buffer, binary.LittleEndian, length)
-    if err != nil {
-        return
-    }
-    for _, blkcid := range cids {
-        b := blkcid.Bytes()
-        l := uint32(len(b))
-        err = binary.Write(buffer, binary.LittleEndian, l)
-        if err != nil {
-            return
-        }
-        var cidbytes []byte
-        cidbytes, err = blkcid.MarshalBinary()
-        if err != nil {
-            return
-        }
-        err = binary.Write(buffer, binary.LittleEndian, cidbytes)
-        if err != nil {
-            return
-        }
-    }
-    state := StateKey(buffer.String())
-    stateKey = &state
     return
 }
 
-// This belongs in statekey2tipset.
-// It was factored out for ease of unit testing (no FullNode calls)
-func statekey2cids(stateKey *StateKey) (output []cid.Cid, err error) {
-    buffer := bytes.NewReader([]byte(*stateKey))
-    var length uint32
-    err = binary.Read(buffer, binary.LittleEndian, &length)
-    if err != nil {
-        return
-    }
-
-    for idx := uint32(0); idx < length; idx++ {
-        var l uint32
-        err = binary.Read(buffer, binary.LittleEndian, &l)
-        if err != nil {
-            return
-        }
-        cidbuffer := make([]byte, l)
-        err = binary.Read(buffer, binary.LittleEndian, &cidbuffer)
-        if err != nil {
-            return
-        }
-        var blockCid cid.Cid
-        err = blockCid.UnmarshalBinary(cidbuffer)
-        if err != nil {
-            return
-        }
-        output = append(output, blockCid)
-    }
-    return
-}
-
+// TODO: Remove this after TipSetKey appears
 func statekey2tipset(ctx context.Context, stateKey *StateKey, fullNode api.FullNode) (ts *types.TipSet, err error) {
-    cids, err := statekey2cids(stateKey)
-    if err != nil {
-        return
-    }
-    blockHeaders := make([]*types.BlockHeader, 0, len(cids))
-    for idx, blockCid := range cids {
-        block, apiErr := fullNode.ChainGetBlock(ctx, blockCid)
-        if apiErr != nil {
-            err = apiErr
-            return
-        }
-        blockHeaders[idx] = block
-    }
-    ts, err = types.NewTipSet(blockHeaders)
     return
 }
 
@@ -180,6 +97,7 @@ func (adapter lotusAdapter) callMinerActorMethod(ctx context.Context, method uin
         From:     adapter.address,
         Method:   method,
         Params:   payload,
+        // TODO: Add ability to control these 'costs'
         Value:    types.NewInt(1000), // currently hard-coded late fee in actor, returned if not late
         GasLimit: types.NewInt(1000000 /* i dont know help */),
         GasPrice: types.NewInt(1),
@@ -274,18 +192,12 @@ func (adapter lotusAdapter) SubmitSelfDeal(ctx context.Context, size uint64) err
     panic("implement me")
 }
 
-func (adapter lotusAdapter) SubmitSectorPreCommitment(ctx context.Context, id SectorID, commR cid.Cid, deals []cid.Cid) (cid cid.Cid, err error) {
+func (adapter lotusAdapter) SubmitSectorPreCommitment(ctx context.Context, id SectorID, commR cid.Cid, dealIDs []uint64) (cid cid.Cid, err error) {
     params := actors.SectorPreCommitInfo{
         SectorNumber: uint64(id),
         CommR: commR.Bytes(),
         SealEpoch: 0, // TODO: does this need to be passed in?!
-    }
-    params.DealIDs = make([]uint64, len(deals))
-    for idx, deal := range deals {
-        // TODO: How to extract the deal id from the deal cid?
-        // params.DealIDs[idx] = deal
-        _ = deal
-        _ = idx
+        DealIDs: dealIDs,
     }
     var actorError aerrors.ActorError
     var enc []byte
@@ -294,8 +206,6 @@ func (adapter lotusAdapter) SubmitSectorPreCommitment(ctx context.Context, id Se
         err = actorError
         return
     }
-
-
     return adapter.callMinerActorMethod(ctx, actors.MAMethods.PreCommitSector, enc)
 }
 
@@ -304,13 +214,12 @@ func (adapter lotusAdapter) GetSealSeed(ctx context.Context, state *StateKey, id
     panic("implement me")
 }
 
-func (adapter lotusAdapter) SubmitSectorCommitment(ctx context.Context, id SectorID, proof Proof) (cid cid.Cid, err error) {
+func (adapter lotusAdapter) SubmitSectorCommitment(ctx context.Context, id SectorID, proof Proof, dealIDs []uint64) (cid cid.Cid, err error) {
     params := actors.SectorProveCommitInfo{
         Proof: proof,
         SectorID: uint64(id),
+        DealIDs: dealIDs,
     }
-    // TODO: Pass in the deals
-    params.DealIDs = make([]uint64, 0)
     var actorError aerrors.ActorError
     var enc []byte
     enc, actorError = actors.SerializeParams(&params)
@@ -318,8 +227,6 @@ func (adapter lotusAdapter) SubmitSectorCommitment(ctx context.Context, id Secto
         err = actorError
         return
     }
-
-
     return adapter.callMinerActorMethod(ctx, actors.MAMethods.ProveCommitSector, enc)
 }
 
@@ -350,7 +257,6 @@ func (adapter lotusAdapter) SubmitDeclaredFaults(ctx context.Context, faults Bit
         err = actorError
         return
     }
-
     return adapter.callMinerActorMethod(ctx, actors.MAMethods.DeclareFaults, enc)
 }
 
