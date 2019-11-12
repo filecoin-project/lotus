@@ -17,9 +17,7 @@ import (
 	lcli "github.com/filecoin-project/lotus/cli"
 	"github.com/filecoin-project/lotus/lib/auth"
 	"github.com/filecoin-project/lotus/lib/jsonrpc"
-	"github.com/filecoin-project/lotus/lib/sectorbuilder"
 	"github.com/filecoin-project/lotus/node"
-	"github.com/filecoin-project/lotus/node/modules"
 	"github.com/filecoin-project/lotus/node/repo"
 )
 
@@ -84,7 +82,6 @@ var runCmd = &cli.Command{
 				}
 				return lr.SetAPIEndpoint(apima)
 			}),
-			node.Override(new(*sectorbuilder.Config), modules.SectorBuilderConfig(storageRepoPath, 5)), // TODO: grab worker count from config
 			node.Override(new(api.FullNode), nodeApi),
 		)
 		if err != nil {

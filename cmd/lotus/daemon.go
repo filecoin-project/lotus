@@ -54,7 +54,7 @@ var DaemonCmd = &cli.Command{
 			return err
 		}
 
-		if err := r.Init(repo.RepoFullNode); err != nil && err != repo.ErrRepoExists {
+		if err := r.Init(repo.FullNode); err != nil && err != repo.ErrRepoExists {
 			return err
 		}
 

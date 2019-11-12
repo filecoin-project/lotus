@@ -37,16 +37,16 @@ const (
 type RepoType int
 
 const (
-	_                     = iota // Default is invalid
-	RepoFullNode RepoType = iota
-	RepoStorageMiner
+	_                 = iota // Default is invalid
+	FullNode RepoType = iota
+	StorageMiner
 )
 
 func defConfForType(t RepoType) interface{} {
 	switch t {
-	case RepoFullNode:
+	case FullNode:
 		return config.DefaultFullNode()
-	case RepoStorageMiner:
+	case StorageMiner:
 		return config.DefaultStorageMiner()
 	default:
 		panic(fmt.Sprintf("unknown RepoType(%d)", int(t)))

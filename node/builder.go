@@ -181,7 +181,7 @@ func Online() Option {
 
 		// Full node
 
-		ApplyIf(isType(repo.RepoFullNode),
+		ApplyIf(isType(repo.FullNode),
 			// TODO: Fix offline mode
 
 			Override(new(dtypes.BootstrapPeers), modules.BuiltinBootstrap),
@@ -235,7 +235,7 @@ func Online() Option {
 		),
 
 		// Storage miner
-		ApplyIf(func(s *Settings) bool { return s.nodeType == repo.RepoStorageMiner },
+		ApplyIf(func(s *Settings) bool { return s.nodeType == repo.StorageMiner },
 			Override(new(*sectorbuilder.SectorBuilder), modules.SectorBuilder),
 			Override(new(*sectorblocks.SectorBlocks), sectorblocks.NewSectorBlocks),
 			Override(new(storage.TicketFn), modules.SealTicketGen),
@@ -266,7 +266,7 @@ func StorageMiner(out *api.StorageMiner) Option {
 		),
 
 		func(s *Settings) error {
-			s.nodeType = repo.RepoStorageMiner
+			s.nodeType = repo.StorageMiner
 			return nil
 		},
 
@@ -294,30 +294,34 @@ func ConfigCommon(cfg *config.Common) Option {
 	)
 }
 
-func ConfigFullNode(cfg *config.FullNode) Option {
-	//ApplyIf(func(s *Settings) bool { return s.nodeType == repo.RepoFullNode }),
+func ConfigFullNode(c interface{}) Option {
+	cfg, ok := c.(*config.FullNode)
+	if !ok {
+		return Error(xerrors.Errorf("invalid config from repo, got: %T", c))
+	}
+
 	return Options(
 		ConfigCommon(&cfg.Common),
 		Override(HeadMetricsKey, metrics.SendHeadNotifs(cfg.Metrics.Nickname)),
 	)
 }
 
-func configFull(c interface{}) Option {
-	cfg, ok := c.(*config.FullNode)
-	if !ok {
-		return Error(xerrors.Errorf("invalid config from repo, got: %T", c))
-	}
-
-	return ConfigFullNode(cfg)
-}
-
-func configMiner(c interface{}) Option {
+func ConfigStorageMiner(c interface{}, lr repo.LockedRepo) Option {
 	cfg, ok := c.(*config.StorageMiner)
 	if !ok {
 		return Error(xerrors.Errorf("invalid config from repo, got: %T", c))
 	}
 
-	return ConfigCommon(&cfg.Common)
+	path := cfg.SectorBuilder.Path
+	if path == "" {
+		path = lr.Path()
+	}
+
+	return Options(
+		ConfigCommon(&cfg.Common),
+
+		Override(new(*sectorbuilder.Config), modules.SectorBuilderConfig(path, cfg.SectorBuilder.WorkerCount)),
+	)
 }
 
 func Repo(r repo.Repo) Option {
@@ -334,8 +338,8 @@ func Repo(r repo.Repo) Option {
 		return Options(
 			Override(new(repo.LockedRepo), modules.LockedRepo(lr)), // module handles closing
 
-			ApplyIf(isType(repo.RepoFullNode), configFull(c)),
-			ApplyIf(isType(repo.RepoStorageMiner), configMiner(c)),
+			ApplyIf(isType(repo.FullNode), ConfigFullNode(c)),
+			ApplyIf(isType(repo.StorageMiner), ConfigStorageMiner(c, lr)),
 
 			Override(new(dtypes.MetadataDS), modules.Datastore),
 			Override(new(dtypes.ChainBlockstore), modules.ChainBlockstore),
@@ -371,7 +375,7 @@ func New(ctx context.Context, opts ...Option) (StopFunc, error) {
 	settings := Settings{
 		modules:  map[interface{}]fx.Option{},
 		invokes:  make([]fx.Option, _nInvokes),
-		nodeType: repo.RepoFullNode,
+		nodeType: repo.FullNode,
 	}
 
 	// apply module options in the right order

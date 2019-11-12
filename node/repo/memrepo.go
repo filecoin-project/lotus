@@ -1,6 +1,8 @@
 package repo
 
 import (
+	"io/ioutil"
+	"os"
 	"sync"
 
 	"github.com/ipfs/go-datastore"
@@ -32,11 +34,20 @@ type lockedMemRepo struct {
 	t   RepoType
 	sync.RWMutex
 
-	token *byte
+	tempDir string
+	token   *byte
 }
 
 func (lmem *lockedMemRepo) Path() string {
-	return ""
+	t, err := ioutil.TempDir(os.TempDir(), "lotus-memrepo-temp-")
+	if err != nil {
+		panic(err) // only used in tests, probably fine
+	}
+
+	lmem.Lock()
+	lmem.tempDir = t
+	lmem.Unlock()
+	return t
 }
 
 var _ Repo = &MemRepo{}
@@ -125,6 +136,13 @@ func (lmem *lockedMemRepo) Close() error {
 
 	if lmem.mem.token != lmem.token {
 		return ErrClosedRepo
+	}
+
+	if lmem.tempDir != "" {
+		if err := os.RemoveAll(lmem.tempDir); err != nil {
+			return err
+		}
+		lmem.tempDir = ""
 	}
 
 	lmem.mem.token = nil

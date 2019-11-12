@@ -23,7 +23,10 @@ func (m *Miner) storeGarbage(ctx context.Context, sectorID uint64, existingPiece
 
 	deals := make([]actors.StorageDeal, len(sizes))
 	for i, size := range sizes {
+		release := m.sb.RateLimit()
 		commP, err := sectorbuilder.GeneratePieceCommitment(io.LimitReader(rand.New(rand.NewSource(42)), int64(size)), size)
+		release()
+
 		if err != nil {
 			return nil, err
 		}

@@ -127,7 +127,7 @@ func New(cfg *Config, ds dtypes.MetadataDS) (*SectorBuilder, error) {
 	return sb, nil
 }
 
-func (sb *SectorBuilder) rlimit() func() {
+func (sb *SectorBuilder) RateLimit() func() {
 	if cap(sb.rateLimit) == len(sb.rateLimit) {
 		log.Warn("rate-limiting sectorbuilder call")
 	}
@@ -173,7 +173,7 @@ func (sb *SectorBuilder) AddPiece(pieceSize uint64, sectorId uint64, file io.Rea
 		return PublicPieceInfo{}, err
 	}
 
-	ret := sb.rlimit()
+	ret := sb.RateLimit()
 	defer ret()
 
 	stagedFile, err := sb.stagedSectorFile(sectorId)
@@ -202,14 +202,14 @@ func (sb *SectorBuilder) AddPiece(pieceSize uint64, sectorId uint64, file io.Rea
 
 // TODO: should *really really* return an io.ReadCloser
 func (sb *SectorBuilder) ReadPieceFromSealedSector(pieceKey string) ([]byte, error) {
-	ret := sb.rlimit()
+	ret := sb.RateLimit()
 	defer ret()
 
 	return sectorbuilder.ReadPieceFromSealedSector(sb.handle, pieceKey)
 }
 
 func (sb *SectorBuilder) SealPreCommit(sectorID uint64, ticket SealTicket, pieces []PublicPieceInfo) (RawSealPreCommitOutput, error) {
-	ret := sb.rlimit()
+	ret := sb.RateLimit()
 	defer ret()
 
 	cacheDir, err := sb.sectorCacheDir(sectorID)
@@ -252,7 +252,7 @@ func (sb *SectorBuilder) SealPreCommit(sectorID uint64, ticket SealTicket, piece
 }
 
 func (sb *SectorBuilder) SealCommit(sectorID uint64, ticket SealTicket, seed SealSeed, pieces []PublicPieceInfo, pieceKeys []string, rspco RawSealPreCommitOutput) (proof []byte, err error) {
-	ret := sb.rlimit()
+	ret := sb.RateLimit()
 	defer ret()
 
 	cacheDir, err := sb.sectorCacheDir(sectorID)

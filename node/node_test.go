@@ -4,9 +4,7 @@ import (
 	"bytes"
 	"context"
 	"crypto/rand"
-	"io/ioutil"
 	"net/http/httptest"
-	"os"
 	"testing"
 
 	"github.com/libp2p/go-libp2p-core/crypto"
@@ -23,7 +21,6 @@ import (
 	"github.com/filecoin-project/lotus/chain/address"
 	"github.com/filecoin-project/lotus/chain/types"
 	"github.com/filecoin-project/lotus/lib/jsonrpc"
-	"github.com/filecoin-project/lotus/lib/sectorbuilder"
 	"github.com/filecoin-project/lotus/miner"
 	"github.com/filecoin-project/lotus/node"
 	"github.com/filecoin-project/lotus/node/modules"
@@ -34,7 +31,7 @@ import (
 func testStorageNode(ctx context.Context, t *testing.T, waddr address.Address, act address.Address, pk crypto.PrivKey, tnd test.TestNode, mn mocknet.Mocknet) test.TestStorageNode {
 	r := repo.NewMemory(nil)
 
-	lr, err := r.Lock(repo.RepoStorageMiner)
+	lr, err := r.Lock(repo.StorageMiner)
 	require.NoError(t, err)
 
 	ks, err := lr.KeyStore()
@@ -77,10 +74,6 @@ func testStorageNode(ctx context.Context, t *testing.T, waddr address.Address, a
 	require.NoError(t, err)
 
 	// start node
-
-	secbpath, err := ioutil.TempDir(os.TempDir(), "lotust-stortest-sb-")
-	require.NoError(t, err)
-
 	var minerapi api.StorageMiner
 
 	// TODO: use stop
@@ -92,7 +85,6 @@ func testStorageNode(ctx context.Context, t *testing.T, waddr address.Address, a
 
 		node.MockHost(mn),
 
-		node.Override(new(*sectorbuilder.Config), modules.SectorBuilderConfig(secbpath, 2)),
 		node.Override(new(api.FullNode), tnd),
 	)
 	require.NoError(t, err)
