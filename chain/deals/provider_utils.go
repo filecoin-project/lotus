@@ -5,14 +5,12 @@ import (
 	"context"
 	"runtime"
 
+	"github.com/ipld/go-ipld-prime"
+
 	"github.com/filecoin-project/lotus/api"
 	"github.com/filecoin-project/lotus/datatransfer"
 	"github.com/filecoin-project/lotus/node/modules/dtypes"
-	"github.com/ipld/go-ipld-prime"
 
-	"github.com/filecoin-project/lotus/chain/actors"
-	"github.com/filecoin-project/lotus/chain/address"
-	"github.com/filecoin-project/lotus/chain/types"
 	"github.com/filecoin-project/lotus/lib/cborutil"
 	"github.com/filecoin-project/lotus/lib/statestore"
 
@@ -80,12 +78,14 @@ func (p *Provider) sendSignedResponse(resp *Response) error {
 		return xerrors.Errorf("serializing response: %w", err)
 	}
 
-	worker, err := p.getWorker(p.actor)
+	ctx := context.TODO()
+
+	worker, err := p.spn.GetMinerWorker(ctx, p.actor)
 	if err != nil {
 		return err
 	}
 
-	sig, err := p.full.WalletSign(context.TODO(), worker, msg)
+	sig, err := p.spn.SignBytes(ctx, worker, msg)
 	if err != nil {
 		return xerrors.Errorf("failed to sign response message: %w", err)
 	}
@@ -113,24 +113,6 @@ func (p *Provider) disconnect(deal MinerDeal) error {
 	err := s.Close()
 	delete(p.conns, deal.ProposalCid)
 	return err
-}
-
-func (p *Provider) getWorker(miner address.Address) (address.Address, error) {
-	getworker := &types.Message{
-		To:     miner,
-		From:   miner,
-		Method: actors.MAMethods.GetWorkerAddr,
-	}
-	r, err := p.full.StateCall(context.TODO(), getworker, nil)
-	if err != nil {
-		return address.Undef, xerrors.Errorf("getting worker address: %w", err)
-	}
-
-	if r.ExitCode != 0 {
-		return address.Undef, xerrors.Errorf("getWorker call failed: %d", r.ExitCode)
-	}
-
-	return address.NewFromBytes(r.Return)
 }
 
 var _ datatransfer.RequestValidator = &ProviderRequestValidator{}

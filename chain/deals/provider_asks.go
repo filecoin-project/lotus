@@ -5,13 +5,13 @@ import (
 	"context"
 	"time"
 
-	"github.com/filecoin-project/lotus/chain/address"
-	"github.com/filecoin-project/lotus/chain/stmgr"
-	"github.com/filecoin-project/lotus/chain/types"
-	"github.com/filecoin-project/lotus/lib/cborutil"
-	datastore "github.com/ipfs/go-datastore"
+	"github.com/ipfs/go-datastore"
 	inet "github.com/libp2p/go-libp2p-core/network"
 	"golang.org/x/xerrors"
+
+	"github.com/filecoin-project/lotus/chain/address"
+	"github.com/filecoin-project/lotus/chain/types"
+	"github.com/filecoin-project/lotus/lib/cborutil"
 )
 
 func (p *Provider) SetPrice(price types.BigInt, ttlsecs int64) error {
@@ -112,12 +112,12 @@ func (p *Provider) signAsk(a *types.StorageAsk) (*types.SignedStorageAsk, error)
 		return nil, err
 	}
 
-	worker, err := p.getWorker(p.actor)
+	worker, err := p.spn.GetMinerWorker(context.TODO(), p.actor)
 	if err != nil {
 		return nil, xerrors.Errorf("failed to get worker to sign ask: %w", err)
 	}
 
-	sig, err := p.full.WalletSign(context.TODO(), worker, b)
+	sig, err := p.spn.SignBytes(context.TODO(), worker, b)
 	if err != nil {
 		return nil, err
 	}
@@ -143,18 +143,5 @@ func (p *Provider) saveAsk(a *types.SignedStorageAsk) error {
 }
 
 func (c *Client) checkAskSignature(ask *types.SignedStorageAsk) error {
-	tss := c.sm.ChainStore().GetHeaviestTipSet().ParentState()
-
-	w, err := stmgr.GetMinerWorkerRaw(context.TODO(), c.sm, tss, ask.Ask.Miner)
-	if err != nil {
-		return xerrors.Errorf("failed to get worker for miner in ask", err)
-	}
-
-	sigb, err := cborutil.Dump(ask.Ask)
-	if err != nil {
-		return xerrors.Errorf("failed to re-serialize ask")
-	}
-
-	return ask.Signature.Verify(w, sigb)
-
+	return c.node.ValidateAskSignature(ask)
 }

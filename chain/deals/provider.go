@@ -51,7 +51,7 @@ type Provider struct {
 
 	secb   *sectorblocks.SectorBlocks
 	sminer *storage.Miner
-	full   api.FullNode
+	spn    storagemarket.StorageProviderNode
 
 	// TODO: This will go away once storage market module + CAR
 	// is implemented
@@ -85,7 +85,7 @@ var (
 	ErrDataTransferFailed = errors.New("deal data transfer failed")
 )
 
-func NewProvider(ds dtypes.MetadataDS, sminer *storage.Miner, secb *sectorblocks.SectorBlocks, dag dtypes.StagingDAG, dataTransfer dtypes.ProviderDataTransfer, fullNode api.FullNode) (storagemarket.StorageProvider, error) {
+func NewProvider(ds dtypes.MetadataDS, sminer *storage.Miner, secb *sectorblocks.SectorBlocks, dag dtypes.StagingDAG, dataTransfer dtypes.ProviderDataTransfer, fullNode api.FullNode, spn storagemarket.StorageProviderNode) (storagemarket.StorageProvider, error) {
 	addr, err := ds.Get(datastore.NewKey("miner-address"))
 	if err != nil {
 		return nil, err
@@ -99,7 +99,7 @@ func NewProvider(ds dtypes.MetadataDS, sminer *storage.Miner, secb *sectorblocks
 		sminer:       sminer,
 		dag:          dag,
 		dataTransfer: dataTransfer,
-		full:         fullNode,
+		spn:          spn,
 		secb:         secb,
 
 		pricePerByteBlock: types.NewInt(3), // TODO: allow setting

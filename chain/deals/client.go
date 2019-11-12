@@ -13,15 +13,9 @@ import (
 	"github.com/filecoin-project/lotus/api"
 	"github.com/filecoin-project/lotus/chain/actors"
 	"github.com/filecoin-project/lotus/chain/address"
-	"github.com/filecoin-project/lotus/chain/events"
-	"github.com/filecoin-project/lotus/chain/market"
-	"github.com/filecoin-project/lotus/chain/stmgr"
-	"github.com/filecoin-project/lotus/chain/store"
 	"github.com/filecoin-project/lotus/chain/types"
-	"github.com/filecoin-project/lotus/chain/wallet"
 	"github.com/filecoin-project/lotus/lib/cborutil"
 	"github.com/filecoin-project/lotus/lib/statestore"
-	"github.com/filecoin-project/lotus/node/impl/full"
 	"github.com/filecoin-project/lotus/node/modules/dtypes"
 	"github.com/filecoin-project/lotus/retrieval/discovery"
 	"github.com/filecoin-project/lotus/storagemarket"
@@ -30,23 +24,14 @@ import (
 var log = logging.Logger("deals")
 
 type ClientDeal struct {
-	ProposalCid cid.Cid
-	Proposal    actors.StorageDealProposal
-	State       api.DealState
-	Miner       peer.ID
-	MinerWorker address.Address
-	DealID      uint64
-
-	PublishMessage *cid.Cid
+	storagemarket.ClientDeal
 
 	s inet.Stream
 }
 
 type Client struct {
-	sm    *stmgr.StateManager
-	chain *store.ChainStore
-	h     host.Host
-	w     *wallet.Wallet
+	h host.Host
+
 	// dataTransfer
 	// TODO: once the data transfer module is complete, the
 	// client will listen to events on the data transfer module
@@ -55,8 +40,8 @@ type Client struct {
 	dataTransfer dtypes.ClientDataTransfer
 	dag          dtypes.ClientDAG
 	discovery    *discovery.Local
-	events       *events.Events
-	fm           *market.FundMgr
+
+	node storagemarket.StorageClientNode
 
 	deals *statestore.StateStore
 	conns map[cid.Cid]inet.Stream
@@ -80,16 +65,13 @@ type clientApi struct {
 	full.StateAPI
 }
 
-func NewClient(sm *stmgr.StateManager, chain *store.ChainStore, h host.Host, w *wallet.Wallet, dag dtypes.ClientDAG, dataTransfer dtypes.ClientDataTransfer, discovery *discovery.Local, fm *market.FundMgr, deals dtypes.ClientDealStore, chainapi full.ChainAPI, stateapi full.StateAPI) *Client {
+func NewClient(h host.Host, dag dtypes.ClientDAG, dataTransfer dtypes.ClientDataTransfer, discovery *discovery.Local, deals dtypes.ClientDealStore, scn storagemarket.StorageClientNode) *Client {
 	c := &Client{
-		sm:           sm,
-		chain:        chain,
 		h:            h,
-		w:            w,
 		dataTransfer: dataTransfer,
 		dag:          dag,
 		discovery:    discovery,
-		fm:           fm,
+		node:         scn,
 		events:       events.NewEvents(context.TODO(), &clientApi{chainapi, stateapi}),
 
 		deals: deals,
@@ -195,7 +177,7 @@ type ClientDealProposal struct {
 }
 
 func (c *Client) Start(ctx context.Context, p ClientDealProposal) (cid.Cid, error) {
-	if err := c.fm.EnsureAvailable(ctx, p.Client, types.BigMul(p.PricePerEpoch, types.NewInt(p.Duration))); err != nil {
+	if err := c.node.EnsureFunds(ctx, p.Client, types.BigMul(p.PricePerEpoch, types.NewInt(p.Duration))); err != nil {
 		return cid.Undef, xerrors.Errorf("adding market funds failed: %w", err)
 	}
 
@@ -216,7 +198,7 @@ func (c *Client) Start(ctx context.Context, p ClientDealProposal) (cid.Cid, erro
 		StorageCollateral:    types.NewInt(uint64(pieceSize)), // TODO: real calc
 	}
 
-	if err := api.SignWith(ctx, c.w.Sign, p.Client, dealProposal); err != nil {
+	if err := c.node.SignProposal(ctx, p.Client, dealProposal); err != nil {
 		return cid.Undef, xerrors.Errorf("signing deal proposal failed: %w", err)
 	}
 
@@ -241,11 +223,13 @@ func (c *Client) Start(ctx context.Context, p ClientDealProposal) (cid.Cid, erro
 	}
 
 	deal := &ClientDeal{
-		ProposalCid: proposalNd.Cid(),
-		Proposal:    *dealProposal,
-		State:       api.DealUnknown,
-		Miner:       p.MinerID,
-		MinerWorker: p.MinerWorker,
+		ClientDeal: storagemarket.ClientDeal{
+			ProposalCid: proposalNd.Cid(),
+			Proposal:    *dealProposal,
+			State:       api.DealUnknown,
+			Miner:       p.MinerID,
+			MinerWorker: p.MinerWorker,
+		},
 
 		s: s,
 	}

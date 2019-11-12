@@ -20,6 +20,7 @@ import (
 	"github.com/filecoin-project/lotus/chain/types"
 	"github.com/filecoin-project/lotus/lib/cborutil"
 	"github.com/filecoin-project/lotus/lib/statestore"
+	"github.com/filecoin-project/lotus/storagemarket"
 )
 
 var blockGenerator = blocksutil.NewBlockGenerator()
@@ -74,11 +75,13 @@ func newClientDeal(minerID peer.ID, state api.DealState) (deals.ClientDeal, erro
 	}
 
 	return deals.ClientDeal{
-		Proposal:    newProposal,
-		ProposalCid: proposalNd.Cid(),
-		Miner:       minerID,
-		MinerWorker: minerAddr,
-		State:       state,
+		ClientDeal: storagemarket.ClientDeal{
+			Proposal:    newProposal,
+			ProposalCid: proposalNd.Cid(),
+			Miner:       minerID,
+			MinerWorker: minerAddr,
+			State:       state,
+		},
 	}, nil
 }
 

@@ -1,21 +1,18 @@
 package deals
 
 import (
-	"bytes"
 	"context"
 
 	ipldfree "github.com/ipld/go-ipld-prime/impl/free"
 	"github.com/ipld/go-ipld-prime/traversal/selector"
 	"github.com/ipld/go-ipld-prime/traversal/selector/builder"
 
-	unixfile "github.com/ipfs/go-unixfs/file"
 	"golang.org/x/xerrors"
 
 	"github.com/filecoin-project/lotus/api"
 	"github.com/filecoin-project/lotus/chain/actors"
 	"github.com/filecoin-project/lotus/chain/types"
-	"github.com/filecoin-project/lotus/lib/padreader"
-	"github.com/filecoin-project/lotus/storage/sectorblocks"
+	"github.com/filecoin-project/lotus/storagemarket"
 )
 
 type providerHandlerFunc func(ctx context.Context, deal MinerDeal) (func(*MinerDeal), error)
@@ -50,7 +47,7 @@ func (p *Provider) accept(ctx context.Context, deal MinerDeal) (func(*MinerDeal)
 		return nil, xerrors.Errorf("deal proposal with unsupported serialization: %s", deal.Proposal.PieceSerialization)
 	}
 
-	head, err := p.full.ChainHead(ctx)
+	head, err := p.spn.MostRecentStateId(ctx)
 	if err != nil {
 		return nil, err
 	}
@@ -70,7 +67,7 @@ func (p *Provider) accept(ctx context.Context, deal MinerDeal) (func(*MinerDeal)
 	}
 
 	// check market funds
-	clientMarketBalance, err := p.full.StateMarketBalance(ctx, deal.Proposal.Client, nil)
+	clientMarketBalance, err := p.spn.GetBalance(ctx, deal.Proposal.Client)
 	if err != nil {
 		return nil, xerrors.Errorf("getting client market balance failed: %w", err)
 	}
@@ -81,68 +78,37 @@ func (p *Provider) accept(ctx context.Context, deal MinerDeal) (func(*MinerDeal)
 		return nil, xerrors.New("clientMarketBalance.Available too small")
 	}
 
-	waddr, err := p.full.StateMinerWorker(ctx, deal.Proposal.Provider, nil)
+	waddr, err := p.spn.GetMinerWorker(ctx, deal.Proposal.Provider)
 	if err != nil {
 		return nil, err
 	}
 
 	// TODO: check StorageCollateral (may be too large (or too small))
-	if err := p.full.MarketEnsureAvailable(ctx, waddr, deal.Proposal.StorageCollateral); err != nil {
+	if err := p.spn.EnsureFunds(ctx, waddr, deal.Proposal.StorageCollateral); err != nil {
 		return nil, err
 	}
 
-	log.Info("publishing deal")
-
-	storageDeal := actors.StorageDeal{
-		Proposal: deal.Proposal,
-	}
-	if err := api.SignWith(ctx, p.full.WalletSign, waddr, &storageDeal); err != nil {
-		return nil, xerrors.Errorf("signing storage deal failed: ", err)
-	}
-
-	params, err := actors.SerializeParams(&actors.PublishStorageDealsParams{
-		Deals: []actors.StorageDeal{storageDeal},
-	})
-	if err != nil {
-		return nil, xerrors.Errorf("serializing PublishStorageDeals params failed: ", err)
+	smDeal := storagemarket.MinerDeal{
+		Client:      deal.Client,
+		Proposal:    deal.Proposal,
+		ProposalCid: deal.ProposalCid,
+		State:       deal.State,
+		Ref:         deal.Ref,
+		SectorID:    deal.SectorID,
 	}
 
-	// TODO: We may want this to happen after fetching data
-	smsg, err := p.full.MpoolPushMessage(ctx, &types.Message{
-		To:       actors.StorageMarketAddress,
-		From:     waddr,
-		Value:    types.NewInt(0),
-		GasPrice: types.NewInt(0),
-		GasLimit: types.NewInt(1000000),
-		Method:   actors.SMAMethods.PublishStorageDeals,
-		Params:   params,
-	})
+	dealId, mcid, err := p.spn.PublishDeals(ctx, smDeal)
 	if err != nil {
 		return nil, err
-	}
-	r, err := p.full.StateWaitMsg(ctx, smsg.Cid())
-	if err != nil {
-		return nil, err
-	}
-	if r.Receipt.ExitCode != 0 {
-		return nil, xerrors.Errorf("publishing deal failed: exit %d", r.Receipt.ExitCode)
-	}
-	var resp actors.PublishStorageDealResponse
-	if err := resp.UnmarshalCBOR(bytes.NewReader(r.Receipt.Return)); err != nil {
-		return nil, err
-	}
-	if len(resp.DealIDs) != 1 {
-		return nil, xerrors.Errorf("got unexpected number of DealIDs from SMA")
 	}
 
 	log.Infof("fetching data for a deal %d", resp.DealIDs[0])
-	mcid := smsg.Cid()
 	err = p.sendSignedResponse(&Response{
 		State: api.DealAccepted,
 
 		Proposal:       deal.ProposalCid,
 		PublishMessage: &mcid,
-		StorageDeal:    &storageDeal,
+		StorageDeal:    &actors.StorageDeal{Proposal: deal.Proposal},
 	})
 	if err != nil {
 		return nil, err
@@ -178,38 +144,22 @@ func (p *Provider) accept(ctx context.Context, deal MinerDeal) (func(*MinerDeal)
 // STAGED
 
 func (p *Provider) staged(ctx context.Context, deal MinerDeal) (func(*MinerDeal), error) {
-	root, err := p.dag.Get(ctx, deal.Ref)
-	if err != nil {
-		return nil, xerrors.Errorf("failed to get file root for deal: %s", err)
-	}
+	sectorID, err := p.spn.OnDealComplete(
+		ctx,
+		storagemarket.MinerDeal{
+			Client:      deal.Client,
+			Proposal:    deal.Proposal,
+			ProposalCid: deal.ProposalCid,
+			State:       deal.State,
+			Ref:         deal.Ref,
+			DealID:      deal.DealID,
+		},
+		"",
+	)
 
-	// TODO: abstract this away into ReadSizeCloser + implement different modes
-	n, err := unixfile.NewUnixfsFile(ctx, p.dag, root)
 	if err != nil {
-		return nil, xerrors.Errorf("cannot open unixfs file: %s", err)
+		return nil, err
 	}
-
-	uf, ok := n.(sectorblocks.UnixfsReader)
-	if !ok {
-		// we probably got directory, unsupported for now
-		return nil, xerrors.Errorf("unsupported unixfs file type")
-	}
-
-	// TODO: uf.Size() is user input, not trusted
-	// This won't be useful / here after we migrate to putting CARs into sectors
-	size, err := uf.Size()
-	if err != nil {
-		return nil, xerrors.Errorf("getting unixfs file size: %w", err)
-	}
-	if padreader.PaddedSize(uint64(size)) != deal.Proposal.PieceSize {
-		return nil, xerrors.Errorf("deal.Proposal.PieceSize didn't match padded unixfs file size")
-	}
-
-	sectorID, err := p.secb.AddUnixfsPiece(ctx, uf, deal.DealID)
-	if err != nil {
-		return nil, xerrors.Errorf("AddPiece failed: %s", err)
-	}
-	log.Warnf("New Sector: %d (deal %d)", sectorID, deal.DealID)
 
 	return func(deal *MinerDeal) {
 		deal.SectorID = sectorID
