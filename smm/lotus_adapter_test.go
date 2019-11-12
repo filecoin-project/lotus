@@ -3,34 +3,38 @@ package smm
 import (
     "fmt"
     laddress "github.com/filecoin-project/lotus/chain/address"
+    "github.com/filecoin-project/lotus/chain/store"
     "github.com/filecoin-project/lotus/chain/types"
     "github.com/ipfs/go-cid"
+    "math/rand"
     "testing"
+    "time"
 )
 
-func Test_StateID(t *testing.T) {
-    t.Helper()
-    var err error
+func testTipset() (ts *types.TipSet, err error) {
     var c cid.Cid
 
     // Copied from BlockHeader test
     c, err = cid.Decode("bafyreicmaj5hhoy5mgqvamfhgexxyergw7hdeshizghodwkjg6qmpoco7i")
 
+    r := rand.New(rand.NewSource(time.Now().UnixNano()))
+    height := uint64(r.Intn(20))
+
     blockHeaders := make([]*types.BlockHeader, 3)
     for idx, _ := range blockHeaders {
         header := new(types.BlockHeader)
-        header.Miner, err = laddress.NewIDAddress(uint64(1000 + idx))
+        header.Miner, err = laddress.NewIDAddress(uint64(r.Uint64()))
         if err != nil {
-            t.Fatal(err)
+            return
         }
-        header.Height = 10
+        header.Height = height
         header.ParentStateRoot = c
         header.ParentMessageReceipts = c
         header.Messages = c
         header.Parents = make([]cid.Cid, 0)
         header.Tickets = make([]*types.Ticket, 4)
         for i := 0; i < len(header.Tickets); i++ {
-            vrfstring := fmt.Sprintf("Hello world %d", (1 + i) * (1 + idx))
+            vrfstring := fmt.Sprintf("Hello world %d", r.Intn(100))
             header.Tickets[i] = &types.Ticket{
                 VRFProof: []byte(vrfstring),
             }
@@ -38,8 +42,15 @@ func Test_StateID(t *testing.T) {
         blockHeaders[idx] = header
 
     }
-    var ts *types.TipSet
     ts, err = types.NewTipSet(blockHeaders)
+    return
+}
+
+func Test_StateID(t *testing.T) {
+    t.Helper()
+    var err error
+    var ts *types.TipSet
+    ts, err = testTipset()
     if err != nil {
         t.Fatal(err)
     }
@@ -82,5 +93,50 @@ func Test_AddressCompat(t *testing.T) {
     }
     if l1 != l2 {
         t.Fatalf("Lotus and Node adddresses are not compatible")
+    }
+}
+
+func Test_StateChangesFromHeadChangesTo(t *testing.T) {
+    t.Helper()
+    var err error
+    headChanges := make([]*store.HeadChange, 5)
+    for i := 0; i < len(headChanges); i++ {
+        var ts *types.TipSet
+        ts, err = testTipset()
+        if err != nil {
+            t.Fatal(err)
+        }
+        headChanges[i] = &store.HeadChange{
+            Type: fmt.Sprintf("Type %d", 1 + i),
+            Val: ts,
+        }
+    }
+    var changes []*StateChange
+    changes, err = stateChangesFromHeadChanges(headChanges)
+    if err != nil {
+        t.Fatal(err)
+    }
+    if len(changes) != len(headChanges) {
+        t.Fatalf("error tranforming []*HeadChange to []*StateChange")
+    }
+    for idx, headChange := range headChanges {
+        stateChange := changes[idx]
+        if headChange.Type != stateChange.Type {
+            t.Fatalf("error tranforming *HeadChange to *StateChange")
+        }
+        if headChange.Val.Height() != uint64(stateChange.Epoch) {
+            t.Fatalf("error tranforming *HeadChange to *StateChange")
+        }
+        var cids []cid.Cid
+        cids, err = statekey2cids(stateChange.StateKey)
+        if err != nil {
+            t.Fatal(err)
+        }
+        for idx, cid := range headChange.Val.Cids() {
+            if cid != cids[idx] {
+                t.Fatalf("error tranforming *HeadChange to *StateChange")
+            }
+        }
+
     }
 }

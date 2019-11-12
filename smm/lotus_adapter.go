@@ -6,6 +6,8 @@ import (
     "encoding/binary"
     "github.com/filecoin-project/lotus/api"
     "github.com/filecoin-project/lotus/build"
+    "github.com/filecoin-project/lotus/chain/actors"
+    "github.com/filecoin-project/lotus/chain/actors/aerrors"
     laddress "github.com/filecoin-project/lotus/chain/address"
     "github.com/filecoin-project/lotus/chain/store"
     "github.com/filecoin-project/lotus/chain/types"
@@ -36,8 +38,20 @@ func NewNode(ctx context.Context, fullNode api.FullNode, address Address) (Node,
     return adapter, nil
 }
 
-func readState(headChanges []*store.HeadChange) (stateKey StateKey) {
-    // TODO: Implement
+func stateChangesFromHeadChanges(changes []*store.HeadChange) (stateChanges []*StateChange, err error) {
+    for _, change := range changes {
+        epoch := Epoch(change.Val.Height())
+        stateKey, marshallErr := tipset2statekey(change.Val)
+        if marshallErr != nil {
+            err = marshallErr
+            return
+        }
+        stateChange := new(StateChange)
+        stateChange.Type = change.Type
+        stateChange.Epoch = epoch
+        stateChange.StateKey = stateKey
+        stateChanges = append(stateChanges, stateChange)
+    }
     return
 }
 
@@ -66,10 +80,11 @@ func tipset2statekey(ts *types.TipSet) (stateKey *StateKey, err error) {
             return
         }
     }
-    state := StateKey(buffer.Bytes())
+    state := StateKey(buffer.String())
     stateKey = &state
     return
 }
+
 // This belongs in statekey2tipset.
 // It was factored out for ease of unit testing (no FullNode calls)
 func statekey2cids(stateKey *StateKey) (output []cid.Cid, err error) {
@@ -123,8 +138,7 @@ func (adapter lotusAdapter) eventHandler() {
     for {
         select {
         case changes := <-adapter.headChanges:
-            stateKey := readState(changes)
-            adapter.notifyListeners(stateKey)
+            adapter.notifyListeners(changes)
 
         case <-adapter.context.Done():
             return
@@ -132,13 +146,19 @@ func (adapter lotusAdapter) eventHandler() {
     }
 }
 
-func (adapter lotusAdapter) notifyListeners(stateKey StateKey) {
-    for listener, _ := range adapter.listeners {
-        // TODO: Send the proper epoch
-        listener.OnChainStateChanged(Epoch(10), stateKey)
+func (adapter lotusAdapter) notifyListeners(changes []*store.HeadChange) {
+    stateChanges, err := stateChangesFromHeadChanges(changes)
+    if err != nil {
+        // TODO: Log, nothing else to do
+        return
+    }
+
+    for _, stateChange := range stateChanges {
+        for listener, _ := range adapter.listeners {
+            listener.OnChainStateChanged(stateChange)
+        }
     }
 }
-
 
 func (adapter lotusAdapter) SubscribeMiner(ctx context.Context, cb StorageMiningEvents) error {
     adapter.listeners[cb] = struct{}{}
@@ -151,6 +171,29 @@ func (adapter lotusAdapter) UnsubscribeMiner(ctx context.Context, cb StorageMini
         delete(adapter.listeners, cb)
     }
     return nil
+}
+
+func (adapter lotusAdapter) callMinerActorMethod(ctx context.Context, method uint64, payload []byte) (cid cid.Cid, err error) {
+    // TODO: Validate that using the miner/worker address for both To and From is allowed
+    msg := types.Message{
+        To:       adapter.address,
+        From:     adapter.address,
+        Method:   method,
+        Params:   payload,
+        Value:    types.NewInt(1000), // currently hard-coded late fee in actor, returned if not late
+        GasLimit: types.NewInt(1000000 /* i dont know help */),
+        GasPrice: types.NewInt(1),
+    }
+
+    var msgErr error
+    signedMsg, msgErr := adapter.fullNode.MpoolPushMessage(ctx, &msg)
+
+    if msgErr != nil {
+        err = msgErr
+        return
+    }
+    cid = signedMsg.Cid()
+    return
 }
 
 func (adapter lotusAdapter) MostRecentState(ctx context.Context) (stateKey *StateKey, epoch Epoch, err error) {
@@ -180,7 +223,7 @@ func (adapter lotusAdapter) GetMinerState(ctx context.Context, stateKey *StateKe
         err = apiErr
         return
     }
-    state.Sectors = make(map[uint64]api.SectorInfo)
+    state.Sectors = make(map[uint64]api.ChainSectorInfo)
     for _, sectorInfo := range sectors {
         state.Sectors[sectorInfo.SectorID] = *sectorInfo
     }
@@ -189,8 +232,8 @@ func (adapter lotusAdapter) GetMinerState(ctx context.Context, stateKey *StateKe
     }
     state.Address = Address(adapter.address.String())
     // fill in this information
-    state.PreCommittedSectors = make(map[uint64]api.SectorInfo)
-    state.StagedCommittedSectors = make(map[uint64]api.SectorInfo)
+    state.PreCommittedSectors = make(map[uint64]api.ChainSectorInfo)
+    state.StagedCommittedSectors = make(map[uint64]api.ChainSectorInfo)
 
     return
 }
@@ -227,29 +270,91 @@ func (adapter lotusAdapter) GetProvingPeriod(ctx context.Context, stateKey *Stat
 }
 
 func (adapter lotusAdapter) SubmitSelfDeal(ctx context.Context, size uint64) error {
+    // TODO: Not sure how to implement this
     panic("implement me")
 }
 
-func (adapter lotusAdapter) SubmitSectorPreCommitment(ctx context.Context, miner Address, id SectorID, commR cid.Cid, deals []cid.Cid) {
+func (adapter lotusAdapter) SubmitSectorPreCommitment(ctx context.Context, id SectorID, commR cid.Cid, deals []cid.Cid) (cid cid.Cid, err error) {
+    params := actors.SectorPreCommitInfo{
+        SectorNumber: uint64(id),
+        CommR: commR.Bytes(),
+        SealEpoch: 0, // TODO: does this need to be passed in?!
+    }
+    params.DealIDs = make([]uint64, len(deals))
+    for idx, deal := range deals {
+        // TODO: How to extract the deal id from the deal cid?
+        // params.DealIDs[idx] = deal
+        _ = deal
+        _ = idx
+    }
+    var actorError aerrors.ActorError
+    var enc []byte
+    enc, actorError = actors.SerializeParams(&params)
+    if actorError != nil {
+        err = actorError
+        return
+    }
+
+
+    return adapter.callMinerActorMethod(ctx, actors.MAMethods.PreCommitSector, enc)
+}
+
+func (adapter lotusAdapter) GetSealSeed(ctx context.Context, state *StateKey, id SectorID) SealSeed {
+    // TODO: Not sure how to implement this
     panic("implement me")
 }
 
-func (adapter lotusAdapter) GetSealSeed(ctx context.Context, miner Address, state StateKey, id SectorID) SealSeed {
-    panic("implement me")
+func (adapter lotusAdapter) SubmitSectorCommitment(ctx context.Context, id SectorID, proof Proof) (cid cid.Cid, err error) {
+    params := actors.SectorProveCommitInfo{
+        Proof: proof,
+        SectorID: uint64(id),
+    }
+    // TODO: Pass in the deals
+    params.DealIDs = make([]uint64, 0)
+    var actorError aerrors.ActorError
+    var enc []byte
+    enc, actorError = actors.SerializeParams(&params)
+    if actorError != nil {
+        err = actorError
+        return
+    }
+
+
+    return adapter.callMinerActorMethod(ctx, actors.MAMethods.ProveCommitSector, enc)
 }
 
-func (adapter lotusAdapter) SubmitSectorCommitment(ctx context.Context, miner Address, id SectorID, proof Proof) {
-    panic("implement me")
+func (adapter lotusAdapter) SubmitPoSt(ctx context.Context, proof Proof) (cid cid.Cid, err error) {
+    params := actors.SubmitPoStParams{
+        Proof:   proof,
+        DoneSet: types.BitFieldFromSet(nil),
+    }
+    enc, actorError := actors.SerializeParams(&params)
+    if actorError != nil {
+        err = actorError
+        return
+    }
+
+    return adapter.callMinerActorMethod(ctx, actors.MAMethods.SubmitPoSt, enc)
 }
 
-func (adapter lotusAdapter) SubmitPoSt(ctx context.Context, miner Address, proof Proof) {
-    panic("implement me")
+func (adapter lotusAdapter) SubmitDeclaredFaults(ctx context.Context, faults BitField) (cid cid.Cid, err error) {
+    params := actors.DeclareFaultsParams{}
+    for k, _ := range faults {
+        params.Faults.Set(k)
+    }
+    var actorError aerrors.ActorError
+    var enc []byte
+    // TODO: Add MarshalCBOR and UnmarshalCBOR for DeclareFaultsParams
+    //enc, actorError = actors.SerializeParams(&params)
+    if actorError != nil {
+        err = actorError
+        return
+    }
+
+    return adapter.callMinerActorMethod(ctx, actors.MAMethods.DeclareFaults, enc)
 }
 
-func (adapter lotusAdapter) SubmitDeclaredFaults(ctx context.Context, miner Address, faults types.BitField) {
-    panic("implement me")
-}
-
-func (adapter lotusAdapter) SubmitDeclaredRecoveries(ctx context.Context, miner Address, recovered types.BitField) {
+func (adapter lotusAdapter) SubmitDeclaredRecoveries(ctx context.Context, recovered BitField) (cid cid.Cid, err error) {
+    // TODO: The method is missing on the miner actor
     panic("implement me")
 }

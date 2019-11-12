@@ -51,7 +51,7 @@ type StorageDealInfo struct {
 }
 
 type Epoch uint64    // aka “height” or “round number”
-type StateKey []byte // an opaque unique state identifier (the state root CID)
+type StateKey string // an opaque unique state identifier (the state root CID)
 type SealSeed []byte
 type Proof []byte
 
@@ -66,9 +66,9 @@ type ProvingPeriod struct {
 type MinerChainState struct {
     // From StorageMinerActor
     Address                Address
-    PreCommittedSectors    map[uint64]api.SectorInfo
-    Sectors                map[uint64]api.SectorInfo
-    StagedCommittedSectors map[uint64]api.SectorInfo
+    PreCommittedSectors    map[uint64]api.ChainSectorInfo
+    Sectors                map[uint64]api.ChainSectorInfo
+    StagedCommittedSectors map[uint64]api.ChainSectorInfo
     ProvingSet             BitField
 
     // From StoragePowerActor
