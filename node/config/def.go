@@ -54,7 +54,7 @@ type SectorBuilder struct {
 func defCommon() Common {
 	return Common{
 		API: API{
-			ListenAddress: "/ip6/::1/tcp/1234/http",
+			ListenAddress: "/ip4/127.0.0.1/tcp/1234/http",
 			Timeout:       Duration(30 * time.Second),
 		},
 		Libp2p: Libp2p{
@@ -82,7 +82,7 @@ func DefaultStorageMiner() *StorageMiner {
 			WorkerCount: 5,
 		},
 	}
-	cfg.Common.API.ListenAddress = "/ip6/::1/tcp/2345/http"
+	cfg.Common.API.ListenAddress = "/ip4/127.0.0.1/tcp/2345/http"
 	return cfg
 }
 

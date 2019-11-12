@@ -47,7 +47,7 @@ func (api *api) Spawn() (nodeInfo, error) {
 	}
 
 	mux := newWsMux()
-	confStr := fmt.Sprintf("[API]\nListenAddress = \"/ip6/::1/tcp/%d/http\"\n", 2500+id)
+	confStr := fmt.Sprintf("[API]\nListenAddress = \"/ip4/127.0.0.1/tcp/%d/http\"\n", 2500+id)
 
 	err = ioutil.WriteFile(filepath.Join(dir, "config.toml"), []byte(confStr), 0700)
 	if err != nil {
