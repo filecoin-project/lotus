@@ -482,7 +482,6 @@ func TestSendResponseToIncomingRequest(t *testing.T) {
 
 	// TODO: get passing to complete https://github.com/filecoin-project/go-data-transfer/issues/14
 	t.Run("Response to push with error validation", func(t *testing.T) {
-
 		sv := newSV()
 		sv.expectErrorPush()
 		dt := NewGraphSyncDataTransfer(ctx, host2, bs)
@@ -519,75 +518,75 @@ func TestSendResponseToIncomingRequest(t *testing.T) {
 
 	// TODO: get passing to complete https://github.com/filecoin-project/go-data-transfer/issues/17
 	t.Run("Response to pull with successful validation", func(t *testing.T) {
+		sv := newSV()
+		sv.expectSuccessPull()
 
-		//sv := newSV()
-		//sv.expectSuccessPull()
-		//err = dt.RegisterVoucherType(reflect.TypeOf(&fakeDTType{}), sv)
-		//require.NoError(t, err)
-		//
-		//isPull := true
-		//
-		//voucherBytes, err := voucher.ToBytes()
-		//require.NoError(t, err)
-		//request := message.NewRequest(id, isPull, voucher.Type(), voucherBytes, baseCid, buffer.Bytes())
-		//
-		//require.NoError(t, dtnet1.SendMessage(ctx, host2.ID(), request))
-		//var messageReceived receivedMessage
-		//select {
-		//case <-ctx.Done():
-		//	t.Fatal("did not receive message sent")
-		//case messageReceived = <-r.messageReceived:
-		//}
-		//
-		//sv.verifyExpectations(t)
-		//
-		//sender := messageReceived.sender
-		//require.Equal(t, sender, host2.ID())
-		//
-		//received := messageReceived.message
-		//require.False(t, received.IsRequest())
-		//receivedResponse, ok := received.(message.DataTransferResponse)
-		//require.True(t, ok)
-		//
-		//require.Equal(t, receivedResponse.TransferID(), id)
-		//require.True(t, receivedResponse.Accepted())
+		dt := NewGraphSyncDataTransfer(ctx, host2, bs)
+		err = dt.RegisterVoucherType(reflect.TypeOf(&fakeDTType{}), sv)
+		require.NoError(t, err)
 
+		isPull := true
+
+		voucherBytes, err := voucher.ToBytes()
+		require.NoError(t, err)
+		request := message.NewRequest(id, isPull, voucher.Type(), voucherBytes, baseCid, buffer.Bytes())
+
+		require.NoError(t, dtnet1.SendMessage(ctx, host2.ID(), request))
+		var messageReceived receivedMessage
+		select {
+		case <-ctx.Done():
+			t.Fatal("did not receive message sent")
+		case messageReceived = <-r.messageReceived:
+		}
+
+		sv.verifyExpectations(t)
+
+		sender := messageReceived.sender
+		require.Equal(t, sender, host2.ID())
+
+		received := messageReceived.message
+		require.False(t, received.IsRequest())
+		receivedResponse, ok := received.(message.DataTransferResponse)
+		require.True(t, ok)
+
+		require.Equal(t, receivedResponse.TransferID(), id)
+		require.True(t, receivedResponse.Accepted())
 	})
 
 	// TODO: get passing to complete https://github.com/filecoin-project/go-data-transfer/issues/17
 	t.Run("Response to push with error validation", func(t *testing.T) {
+		sv := newSV()
+		sv.expectErrorPull()
 
-		//sv := newSV()
-		//sv.expectErrorPull()
-		//
-		//err = dt.RegisterVoucherType(reflect.TypeOf(&fakeDTType{}), sv)
-		//require.NoError(t, err)
-		//
-		//isPull := true
-		//voucherBytes, err := voucher.ToBytes()
-		//require.NoError(t, err)
-		//request := message.NewRequest(id, isPull, voucher.Type(), voucherBytes, baseCid, buffer.Bytes())
-		//require.NoError(t, dtnet1.SendMessage(ctx, host2.ID(), request))
-		//
-		//var messageReceived receivedMessage
-		//select {
-		//case <-ctx.Done():
-		//	t.Fatal("did not receive message sent")
-		//case messageReceived = <-r.messageReceived:
-		//}
-		//
-		//sv.verifyExpectations(t)
-		//
-		//sender := messageReceived.sender
-		//require.Equal(t, sender, host2.ID())
-		//
-		//received := messageReceived.message
-		//require.False(t, received.IsRequest())
-		//receivedResponse, ok := received.(message.DataTransferResponse)
-		//require.True(t, ok)
-		//
-		//require.Equal(t, receivedResponse.TransferID(), id)
-		//require.False(t, receivedResponse.Accepted())
+		dt := NewGraphSyncDataTransfer(ctx, host2, bs)
+		err = dt.RegisterVoucherType(reflect.TypeOf(&fakeDTType{}), sv)
+		require.NoError(t, err)
+
+		isPull := true
+		voucherBytes, err := voucher.ToBytes()
+		require.NoError(t, err)
+		request := message.NewRequest(id, isPull, voucher.Type(), voucherBytes, baseCid, buffer.Bytes())
+		require.NoError(t, dtnet1.SendMessage(ctx, host2.ID(), request))
+
+		var messageReceived receivedMessage
+		select {
+		case <-ctx.Done():
+			t.Fatal("did not receive message sent")
+		case messageReceived = <-r.messageReceived:
+		}
+
+		sv.verifyExpectations(t)
+
+		sender := messageReceived.sender
+		require.Equal(t, sender, host2.ID())
+
+		received := messageReceived.message
+		require.False(t, received.IsRequest())
+		receivedResponse, ok := received.(message.DataTransferResponse)
+		require.True(t, ok)
+
+		require.Equal(t, receivedResponse.TransferID(), id)
+		require.False(t, receivedResponse.Accepted())
 	})
 }
 
