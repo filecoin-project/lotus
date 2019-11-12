@@ -1004,13 +1004,14 @@ func (syncer *Syncer) collectChain(ctx context.Context, ts *types.TipSet) error 
 
 	syncer.syncState.SetStage(api.StagePersistHeaders)
 
+	toPersist := make([]*types.BlockHeader, 0, len(headers)*build.BlocksPerEpoch)
 	for _, ts := range headers {
-		for _, b := range ts.Blocks() {
-			if err := syncer.store.PersistBlockHeader(b); err != nil {
-				return xerrors.Errorf("failed to persist synced blocks to the chainstore: %w", err)
-			}
-		}
+		toPersist = append(toPersist, ts.Blocks()...)
 	}
+	if err := syncer.store.PersistBlockHeaders(toPersist...); err != nil {
+		return xerrors.Errorf("failed to persist synced blocks to the chainstore: %w", err)
+	}
+	toPersist = nil
 
 	syncer.syncState.SetStage(api.StageMessages)
 
