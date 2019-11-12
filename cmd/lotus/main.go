@@ -69,6 +69,7 @@ func main() {
 			Message: err.Error(),
 		})
 		log.Warn(err)
+		os.Exit(1)
 	}
 	return
 }
