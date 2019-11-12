@@ -129,6 +129,7 @@ func (bss *BlockSyncService) processRequest(ctx context.Context, req *BlockSyncR
 		log.Warn("encountered error while responding to block sync request: ", err)
 		return &BlockSyncResponse{
 			Status: 203,
+			Message: err.Error(),
 		}, nil
 	}
 
