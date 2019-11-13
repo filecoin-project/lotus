@@ -1,6 +1,7 @@
 package chain
 
 import (
+	"sort"
 	"sync"
 	"time"
 
@@ -337,13 +338,17 @@ func (mp *MessagePool) pendingFor(a address.Address) []*types.SignedMessage {
 		return nil
 	}
 
-	set := make([]*types.SignedMessage, len(mset.msgs))
-	var i uint64
+	set := make([]*types.SignedMessage, 0, len(mset.msgs))
 
-	for i = mset.nextNonce - 1; mset.msgs[i] != nil; i-- {
-		set[len(mset.msgs)-int(mset.nextNonce-i)] = mset.msgs[i]
+	for _, m := range mset.msgs {
+		set = append(set, m)
 	}
-	return set[len(mset.msgs)-int(mset.nextNonce-i-1):]
+
+	sort.Slice(set, func(i, j int) bool {
+		return set[i].Message.Nonce < set[j].Message.Nonce
+	})
+
+	return set
 }
 
 func (mp *MessagePool) HeadChange(revert []*types.TipSet, apply []*types.TipSet) error {
