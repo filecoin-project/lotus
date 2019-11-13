@@ -5,24 +5,21 @@ import (
 	"fmt"
 	"math/rand"
 
-	"github.com/pkg/errors"
-
-	"github.com/filecoin-project/lotus/chain/actors"
-	"github.com/filecoin-project/lotus/chain/gen"
-	"github.com/filecoin-project/lotus/chain/vm"
-
+	vstate "github.com/filecoin-project/chain-validation/pkg/state"
 	"github.com/ipfs/go-cid"
 	"github.com/ipfs/go-datastore"
 	"github.com/ipfs/go-hamt-ipld"
 	blockstore "github.com/ipfs/go-ipfs-blockstore"
+	"github.com/pkg/errors"
 
+	"github.com/filecoin-project/lotus/chain/actors"
 	"github.com/filecoin-project/lotus/chain/address"
+	"github.com/filecoin-project/lotus/chain/gen"
 	"github.com/filecoin-project/lotus/chain/state"
 	"github.com/filecoin-project/lotus/chain/types"
+	"github.com/filecoin-project/lotus/chain/vm"
 	"github.com/filecoin-project/lotus/chain/wallet"
 	"github.com/filecoin-project/lotus/lib/crypto"
-
-	vstate "github.com/filecoin-project/chain-validation/pkg/state"
 )
 
 type StateWrapper struct {
@@ -178,6 +175,10 @@ func (s *StateWrapper) SetSingletonActor(addr vstate.SingletonActorID, balance v
 	}
 }
 
+func (s *StateWrapper) ActorCodeCid(code vstate.ActorCodeID) (cid.Cid, error) {
+	return fromActorCode(code), nil
+}
+
 func (s *StateWrapper) Signer() *keyStore {
 	return s.keys
 }
@@ -273,8 +274,8 @@ type directStorage struct {
 	cst *hamt.CborIpldStore
 }
 
-func (d *directStorage) Get(cid cid.Cid) ([]byte, error) {
-	panic("implement me")
+func (d *directStorage) Get(c cid.Cid, out interface{}) error {
+	return d.cst.Get(context.TODO(), c, out)
 }
 
 func fromActorCode(code vstate.ActorCodeID) cid.Cid {

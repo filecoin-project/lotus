@@ -25,3 +25,8 @@ func TestValueTransfer(t *testing.T) {
 	suites.AccountValueTransferFromUnknownToKnownAccount(t, factory, 0)
 	suites.AccountValueTransferFromUnknownToUnknownAccount(t, factory, 0)
 }
+
+func TestPaymentChannelActor(t *testing.T) {
+	factory := validation.NewFactories()
+	suites.PaymentChannelCreateSuccess(t, factory, 1120)
+}

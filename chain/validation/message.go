@@ -3,14 +3,14 @@ package validation
 import (
 	"context"
 
+	"github.com/filecoin-project/chain-validation/pkg/chain"
+	"github.com/filecoin-project/chain-validation/pkg/state"
+	"github.com/ipfs/go-cid"
 	"github.com/pkg/errors"
 
 	"github.com/filecoin-project/lotus/chain/actors"
 	"github.com/filecoin-project/lotus/chain/address"
 	"github.com/filecoin-project/lotus/chain/types"
-
-	"github.com/filecoin-project/chain-validation/pkg/chain"
-	"github.com/filecoin-project/chain-validation/pkg/state"
 )
 
 type Signer interface {
@@ -63,6 +63,9 @@ func (mf *MessageFactory) MakeMessage(from, to state.Address, method chain.Metho
 func (mf *MessageFactory) FromSingletonAddress(addr state.SingletonActorID) state.Address {
 	return fromSingletonAddress(addr)
 }
+func (mf *MessageFactory) FromActorCodeCid(code state.ActorCodeID) cid.Cid {
+	return fromActorCode(code)
+}
 
 // Maps method enumeration values to method names.
 // This will change to a mapping to method ids when method dispatch is updated to use integers.
@@ -80,5 +83,7 @@ var methods = []uint64{
 	chain.StorageMinerGetWorkerAddr: actors.MAMethods.GetWorkerAddr,
 	chain.StorageMinerGetPeerID:     actors.MAMethods.GetPeerID,
 	chain.StorageMinerGetSectorSize: actors.MAMethods.GetSectorSize,
+
+	chain.PaymentChannelCreate: actors.PCAMethods.Constructor,
 	// More to follow...
 }
