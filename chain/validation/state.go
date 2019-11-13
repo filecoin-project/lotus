@@ -114,7 +114,7 @@ func (s *StateWrapper) SetActor(addr vstate.Address, code vstate.ActorCodeID, ba
 	return actr, s.storage, s.flush(tree)
 }
 
-func (s *StateWrapper) SetSingletonActor(addr vstate.SingletonActorID, balance vstate.AttoFIL) (vstate.Actor, vstate.Storage, error){
+func (s *StateWrapper) SetSingletonActor(addr vstate.SingletonActorID, balance vstate.AttoFIL) (vstate.Actor, vstate.Storage, error) {
 	vaddr := fromSingletonAddress(addr)
 	tree, err := state.LoadStateTree(s.cst, s.stateRoot)
 	if err != nil {

@@ -205,6 +205,9 @@ func (m *Miner) onSectorUpdated(ctx context.Context, update sectorUpdate) {
 		m.handle(ctx, sector, m.preCommitted, api.SectorNoUpdate)
 	case api.Committing:
 		m.handle(ctx, sector, m.committing, api.Proving)
+	case api.Proving:
+		// TODO: track sector health / expiration
+		log.Infof("Proving sector %d", update.id)
 	case api.SectorNoUpdate: // noop
 	default:
 		log.Errorf("unexpected sector update state: %d", update.newState)
