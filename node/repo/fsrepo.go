@@ -20,6 +20,7 @@ import (
 	"github.com/multiformats/go-multiaddr"
 	"golang.org/x/xerrors"
 
+	"github.com/filecoin-project/lotus/api"
 	"github.com/filecoin-project/lotus/chain/types"
 	"github.com/filecoin-project/lotus/node/config"
 )
@@ -32,6 +33,7 @@ const (
 	fsLibp2pKey = "libp2p.priv"
 	fsLock      = "repo.lock"
 	fsKeystore  = "keystore"
+	fsVersion   = "version"
 )
 
 type RepoType int
@@ -48,6 +50,17 @@ func defConfForType(t RepoType) interface{} {
 		return config.DefaultFullNode()
 	case StorageMiner:
 		return config.DefaultStorageMiner()
+	default:
+		panic(fmt.Sprintf("unknown RepoType(%d)", int(t)))
+	}
+}
+
+func verForType(t RepoType) interface{} {
+	switch t {
+	case FullNode:
+		return api.VersionFullNode()
+	case StorageMiner:
+		return api.VersionStorageMiner()
 	default:
 		panic(fmt.Sprintf("unknown RepoType(%d)", int(t)))
 	}
@@ -137,6 +150,24 @@ func (fsr *FsRepo) initConfig(t RepoType) error {
 	if err := c.Close(); err != nil {
 		return xerrors.Errorf("close config: %w", err)
 	}
+
+	v, err := os.Create(filepath.Join(fsr.path, fsVersion))
+	if err != nil {
+		return err
+	}
+
+	ver, err := api.AppVersion(verForType(t))
+	if err != nil {
+		return xerrors.Errorf("version: %w", err)
+	}
+	_, err = v.Write(ver)
+	if err != nil {
+		return xerrors.Errorf("write version: %w", err)
+	}
+
+	if err := v.Close(); err != nil {
+		return xerrors.Errorf("close version: %w", err)
+	}
 	return nil
 }
 
@@ -182,6 +213,20 @@ func (fsr *FsRepo) APIToken() ([]byte, error) {
 
 	if os.IsNotExist(err) {
 		return nil, ErrNoAPIEndpoint
+	} else if err != nil {
+		return nil, err
+	}
+	defer f.Close() //nolint: errcheck // Read only op
+
+	return ioutil.ReadAll(f)
+}
+
+func (fsr *FsRepo) Version() ([]byte, error) {
+	p := filepath.Join(fsr.path, fsVersion)
+	f, err := os.Open(p)
+
+	if os.IsNotExist(err) {
+		return nil, ErrNoVersion
 	} else if err != nil {
 		return nil, err
 	}

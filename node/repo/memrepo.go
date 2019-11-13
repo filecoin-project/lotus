@@ -11,6 +11,8 @@ import (
 	"github.com/multiformats/go-multiaddr"
 	"golang.org/x/xerrors"
 
+	"github.com/filecoin-project/lotus/api"
+	"github.com/filecoin-project/lotus/build"
 	"github.com/filecoin-project/lotus/chain/types"
 )
 
@@ -101,6 +103,17 @@ func (mem *MemRepo) APIToken() ([]byte, error) {
 		return nil, ErrNoAPIToken
 	}
 	return mem.api.token, nil
+}
+
+func (mem *MemRepo) Version() ([]byte, error) {
+	ver := &api.Version{
+		Version:    build.Version,
+		APIVersion: build.APIVersion,
+
+		BlockDelay: build.BlockDelay,
+	}
+
+	return api.AppVersion(ver)
 }
 
 func (mem *MemRepo) Lock(t RepoType) (LockedRepo, error) {

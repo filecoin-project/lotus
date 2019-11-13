@@ -14,6 +14,7 @@ var (
 	ErrNoAPIToken        = errors.New("API token not set")
 	ErrRepoAlreadyLocked = errors.New("repo is already locked")
 	ErrClosedRepo        = errors.New("repo is no longer open")
+	ErrNoVersion         = errors.New("version file not exist")
 )
 
 type Repo interface {
@@ -22,6 +23,9 @@ type Repo interface {
 
 	// APIToken returns JWT API Token for use in operations that require auth
 	APIToken() ([]byte, error)
+
+	// Version returns lotus version
+	Version() ([]byte, error)
 
 	// Lock locks the repo for exclusive use.
 	Lock(RepoType) (LockedRepo, error)

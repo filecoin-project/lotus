@@ -50,3 +50,29 @@ func (v Version) String() string {
 	vM, vm, vp := build.VersionInts(v.APIVersion)
 	return fmt.Sprintf("%s+api%d.%d.%d", v.Version, vM, vm, vp)
 }
+
+func VersionFullNode() *Version {
+	return &Version{
+		Version:    build.Version,
+		APIVersion: build.APIVersion,
+
+		BlockDelay: build.BlockDelay,
+	}
+}
+
+func VersionStorageMiner() *Version {
+	return &Version{
+		Version:    build.Version,
+		APIVersion: build.APIVersion,
+
+		BlockDelay: build.BlockDelay,
+	}
+}
+
+func AppVersion(t interface{}) ([]byte, error) {
+	ver, ok := t.(*Version)
+	if !ok {
+		return nil, nil
+	}
+	return []byte(ver.String()), nil
+}
