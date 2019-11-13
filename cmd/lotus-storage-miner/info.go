@@ -43,7 +43,7 @@ var infoCmd = &cli.Command{
 			return err
 		}
 
-		fmt.Printf("Sector Size: %s\n", sizeStr(sizeByte))
+		fmt.Printf("Sector Size: %s\n", sizeStr(types.NewInt(sizeByte)))
 
 		pow, err := api.StateMinerPower(ctx, maddr, nil)
 		if err != nil {
@@ -51,7 +51,7 @@ var infoCmd = &cli.Command{
 		}
 
 		percI := types.BigDiv(types.BigMul(pow.MinerPower, types.NewInt(1000)), pow.TotalPower)
-		fmt.Printf("Power: %s / %s (%0.2f%%)\n", pow.MinerPower, pow.TotalPower, float64(percI.Int64())/1000*100)
+		fmt.Printf("Power: %s / %s (%0.4f%%)\n", sizeStr(pow.MinerPower), sizeStr(pow.TotalPower), float64(percI.Int64())/100000*10000)
 
 		// TODO: indicate whether the post worker is in use
 		wstat, err := nodeApi.WorkerStats(ctx)
@@ -90,16 +90,16 @@ var infoCmd = &cli.Command{
 	},
 }
 
-var Units = []string{"B", "KiB", "MiB", "GiB", "TiB"}
+var Units = []string{"B", "KiB", "MiB", "GiB", "TiB", "PiB", "EiB", "ZiB"}
 
-func sizeStr(size uint64) string {
+func sizeStr(size types.BigInt) string {
+	size = types.BigMul(size, types.NewInt(100))
 	i := 0
-	unitSize := float64(size)
-	for unitSize >= 1024 && i < len(Units)-1 {
-		unitSize = unitSize / 1024
+	for types.BigCmp(size, types.NewInt(102400)) >= 0 && i < len(Units)-1 {
+		size = types.BigDiv(size, types.NewInt(1024))
 		i++
 	}
-	return fmt.Sprintf("%g %s", unitSize, Units[i])
+	return fmt.Sprintf("%s.%s %s", types.BigDiv(size, types.NewInt(100)), types.BigMod(size, types.NewInt(100)), Units[i])
 }
 
 func sectorsInfo(ctx context.Context, napi api.StorageMiner) (map[string]int, error) {

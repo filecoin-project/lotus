@@ -23,9 +23,9 @@ type FullNode interface {
 	// First message is guaranteed to be of len == 1, and type == 'current'
 	ChainNotify(context.Context) (<-chan []*store.HeadChange, error)
 	ChainHead(context.Context) (*types.TipSet, error)
-	ChainGetRandomness(context.Context, *types.TipSet, []*types.Ticket, int) ([]byte, error)
+	ChainGetRandomness(context.Context, types.TipSetKey, []*types.Ticket, int) ([]byte, error)
 	ChainGetBlock(context.Context, cid.Cid) (*types.BlockHeader, error)
-	ChainGetTipSet(context.Context, []cid.Cid) (*types.TipSet, error)
+	ChainGetTipSet(context.Context, types.TipSetKey) (*types.TipSet, error)
 	ChainGetBlockMessages(context.Context, cid.Cid) (*BlockMessages, error)
 	ChainGetParentReceipts(context.Context, cid.Cid) ([]*types.MessageReceipt, error)
 	ChainGetParentMessages(context.Context, cid.Cid) ([]Message, error)

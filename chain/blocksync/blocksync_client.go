@@ -159,6 +159,7 @@ func (bs *BlockSync) GetChainMessages(ctx context.Context, h *types.TipSet, coun
 		}
 		err = bs.processStatus(req, res)
 		if err != nil {
+
 			log.Warnf("BlockSync peer %s response was an error: %s", peers[p].String(), err)
 		}
 	}
@@ -192,6 +193,13 @@ func (bs *BlockSync) sendRequestToPeer(ctx context.Context, p peer.ID, req *Bloc
 		return nil, err
 	}
 
+	if span.IsRecordingEvents() {
+		span.AddAttributes(
+			trace.Int64Attribute("resp_status", int64(res.Status)),
+			trace.StringAttribute("msg", res.Message),
+			trace.Int64Attribute("chain_len", int64(len(res.Chain))),
+		)
+	}
 	return &res, nil
 }
 

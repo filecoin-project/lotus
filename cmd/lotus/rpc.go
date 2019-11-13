@@ -9,19 +9,22 @@ import (
 	"os/signal"
 	"syscall"
 
-	"github.com/ipfs/go-cid"
-	logging "github.com/ipfs/go-log"
-
 	"github.com/filecoin-project/lotus/api"
 	"github.com/filecoin-project/lotus/lib/auth"
 	"github.com/filecoin-project/lotus/lib/jsonrpc"
 	"github.com/filecoin-project/lotus/node"
 	"github.com/filecoin-project/lotus/node/impl"
+
+	"github.com/ipfs/go-cid"
+	logging "github.com/ipfs/go-log"
+	"github.com/multiformats/go-multiaddr"
+	manet "github.com/multiformats/go-multiaddr-net"
+	"golang.org/x/xerrors"
 )
 
 var log = logging.Logger("main")
 
-func serveRPC(a api.FullNode, stop node.StopFunc, addr string) error {
+func serveRPC(a api.FullNode, stop node.StopFunc, addr multiaddr.Multiaddr) error {
 	rpcServer := jsonrpc.NewServer()
 	rpcServer.Register("Filecoin", api.PermissionedFullAPI(a))
 
@@ -39,7 +42,12 @@ func serveRPC(a api.FullNode, stop node.StopFunc, addr string) error {
 
 	http.Handle("/rest/v0/import", importAH)
 
-	srv := &http.Server{Addr: addr, Handler: http.DefaultServeMux}
+	lst, err := manet.Listen(addr)
+	if err != nil {
+		return xerrors.Errorf("could not listen: %w", err)
+	}
+
+	srv := &http.Server{Handler: http.DefaultServeMux}
 
 	sigChan := make(chan os.Signal, 2)
 	go func() {
@@ -53,7 +61,7 @@ func serveRPC(a api.FullNode, stop node.StopFunc, addr string) error {
 	}()
 	signal.Notify(sigChan, syscall.SIGTERM, syscall.SIGINT)
 
-	return srv.ListenAndServe()
+	return srv.Serve(manet.NetListener(lst))
 }
 
 func handleImport(a *impl.FullNodeAPI) func(w http.ResponseWriter, r *http.Request) {

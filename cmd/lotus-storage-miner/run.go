@@ -9,6 +9,7 @@ import (
 	"syscall"
 
 	"github.com/multiformats/go-multiaddr"
+	manet "github.com/multiformats/go-multiaddr-net"
 	"golang.org/x/xerrors"
 	"gopkg.in/urfave/cli.v2"
 
@@ -27,7 +28,7 @@ var runCmd = &cli.Command{
 	Flags: []cli.Flag{
 		&cli.StringFlag{
 			Name:  "api",
-			Value: "2345",
+			Value: "",
 		},
 		&cli.BoolFlag{
 			Name:  "enable-gpu-proving",
@@ -75,15 +76,23 @@ var runCmd = &cli.Command{
 			node.Online(),
 			node.Repo(r),
 
-			node.Override(node.SetApiEndpointKey, func(lr repo.LockedRepo) error {
-				apima, err := multiaddr.NewMultiaddr("/ip4/127.0.0.1/tcp/" + cctx.String("api"))
-				if err != nil {
-					return err
-				}
-				return lr.SetAPIEndpoint(apima)
-			}),
+			node.ApplyIf(func(s *node.Settings) bool { return cctx.IsSet("api") },
+				node.Override(node.SetApiEndpointKey, func(lr repo.LockedRepo) error {
+					apima, err := multiaddr.NewMultiaddr("/ip4/127.0.0.1/tcp/" +
+						cctx.String("api"))
+					if err != nil {
+						return err
+					}
+					return lr.SetAPIEndpoint(apima)
+				})),
+
 			node.Override(new(api.FullNode), nodeApi),
 		)
+		if err != nil {
+			return err
+		}
+
+		endpoint, err := r.APIEndpoint()
 		if err != nil {
 			return err
 		}
@@ -100,6 +109,11 @@ var runCmd = &cli.Command{
 
 		log.Infof("Remote version %s", v)
 
+		lst, err := manet.Listen(endpoint)
+		if err != nil {
+			return xerrors.Errorf("could not listen: %w", err)
+		}
+
 		rpcServer := jsonrpc.NewServer()
 		rpcServer.Register("Filecoin", api.PermissionedStorMinerAPI(minerapi))
 
@@ -110,7 +124,7 @@ var runCmd = &cli.Command{
 
 		http.Handle("/rpc/v0", ah)
 
-		srv := &http.Server{Addr: "127.0.0.1:" + cctx.String("api"), Handler: http.DefaultServeMux}
+		srv := &http.Server{Handler: http.DefaultServeMux}
 
 		sigChan := make(chan os.Signal, 2)
 		go func() {
@@ -126,6 +140,6 @@ var runCmd = &cli.Command{
 		}()
 		signal.Notify(sigChan, syscall.SIGTERM, syscall.SIGINT)
 
-		return srv.ListenAndServe()
+		return srv.Serve(manet.NetListener(lst))
 	},
 }

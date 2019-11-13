@@ -445,6 +445,7 @@ func (syncer *Syncer) minerIsValid(ctx context.Context, maddr address.Address, b
 func (syncer *Syncer) validateTickets(ctx context.Context, mworker address.Address, tickets []*types.Ticket, base *types.TipSet) error {
 	ctx, span := trace.StartSpan(ctx, "validateTickets")
 	defer span.End()
+	span.AddAttributes(trace.Int64Attribute("tickets", int64(len(tickets))))
 
 	if len(tickets) == 0 {
 		return xerrors.Errorf("block had no tickets")
