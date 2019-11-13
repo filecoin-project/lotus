@@ -30,7 +30,7 @@ var sectorsCmd = &cli.Command{
 	Usage: "interact with sector store",
 	Subcommands: []*cli.Command{
 		sectorsStatusCmd,
-		sectorsStagedListCmd,
+		sectorsListCmd,
 		sectorsRefsCmd,
 	},
 }
@@ -74,24 +74,71 @@ var sectorsStatusCmd = &cli.Command{
 	},
 }
 
-var sectorsStagedListCmd = &cli.Command{
-	Name:  "list-staged", // TODO: nest this under a 'staged' subcommand? idk
-	Usage: "List staged sectors",
+var sectorsListCmd = &cli.Command{
+	Name:  "list",
+	Usage: "List sectors",
 	Action: func(cctx *cli.Context) error {
 		nodeApi, closer, err := lcli.GetStorageMinerAPI(cctx)
 		if err != nil {
 			return err
 		}
 		defer closer()
+
+		fullApi, closer2, err := lcli.GetFullNodeAPI(cctx) // TODO: consider storing full node address in config
+		if err != nil {
+			return err
+		}
+		defer closer2()
+
 		ctx := lcli.ReqContext(cctx)
 
-		staged, err := nodeApi.SectorsList(ctx)
+		list, err := nodeApi.SectorsList(ctx)
 		if err != nil {
 			return err
 		}
 
-		for _, s := range staged {
-			fmt.Println(s)
+		maddr, err := nodeApi.ActorAddress(ctx)
+		if err != nil {
+			return err
+		}
+
+		pset, err := fullApi.StateMinerProvingSet(ctx, maddr, nil)
+		if err != nil {
+			return err
+		}
+		provingIDs := make(map[uint64]struct{}, len(pset))
+		for _, info := range pset {
+			provingIDs[info.SectorID] = struct{}{}
+		}
+
+		sset, err := fullApi.StateMinerSectors(ctx, maddr, nil)
+		if err != nil {
+			return err
+		}
+		commitedIDs := make(map[uint64]struct{}, len(pset))
+		for _, info := range sset {
+			commitedIDs[info.SectorID] = struct{}{}
+		}
+
+		for _, s := range list {
+			st, err := nodeApi.SectorsStatus(ctx, s)
+			if err != nil {
+				fmt.Printf("%d:\tError: %s\n", s, err)
+				continue
+			}
+
+			_, inSSet := commitedIDs[s]
+			_, inPSet := provingIDs[s]
+
+			fmt.Printf("%d: %s\tsSet: %s\tpSet: %s\ttktH: %d\tseedH: %d\tdeals: %v\n",
+				s,
+				api.SectorStateStr(st.State),
+				yesno(inSSet),
+				yesno(inPSet),
+				st.Ticket.BlockHeight,
+				st.Seed.BlockHeight,
+				st.Deals,
+			)
 		}
 		return nil
 	},
@@ -121,4 +168,11 @@ var sectorsRefsCmd = &cli.Command{
 		}
 		return nil
 	},
+}
+
+func yesno(b bool) string {
+	if b {
+		return "YES"
+	}
+	return "NO"
 }

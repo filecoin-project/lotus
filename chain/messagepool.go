@@ -1,7 +1,6 @@
 package chain
 
 import (
-	"fmt"
 	"sync"
 
 	lru "github.com/hashicorp/golang-lru"
@@ -16,15 +15,15 @@ import (
 )
 
 var (
-	ErrMessageTooBig = fmt.Errorf("message too big")
+	ErrMessageTooBig = errors.New("message too big")
 
-	ErrMessageValueTooHigh = fmt.Errorf("cannot send more filecoin than will ever exist")
+	ErrMessageValueTooHigh = errors.New("cannot send more filecoin than will ever exist")
 
-	ErrNonceTooLow = fmt.Errorf("message nonce too low")
+	ErrNonceTooLow = errors.New("message nonce too low")
 
-	ErrNotEnoughFunds = fmt.Errorf("not enough funds to execute transaction")
+	ErrNotEnoughFunds = errors.New("not enough funds to execute transaction")
 
-	ErrInvalidToAddr = fmt.Errorf("message had invalid to address")
+	ErrInvalidToAddr = errors.New("message had invalid to address")
 )
 
 type MessagePool struct {
@@ -81,7 +80,13 @@ func NewMessagePool(sm *stmgr.StateManager, ps *pubsub.PubSub) *MessagePool {
 		maxTxPoolSize: 100000,
 		blsSigCache:   cache,
 	}
-	sm.ChainStore().SubscribeHeadChanges(mp.HeadChange)
+	sm.ChainStore().SubscribeHeadChanges(func(rev, app []*types.TipSet) error {
+		err := mp.HeadChange(rev, app)
+		if err != nil {
+			log.Errorf("mpool head notif handler error: %+v", err)
+		}
+		return err
+	})
 
 	return mp
 }
@@ -102,7 +107,7 @@ func (mp *MessagePool) Push(m *types.SignedMessage) error {
 func (mp *MessagePool) Add(m *types.SignedMessage) error {
 	// big messages are bad, anti DOS
 	if m.Size() > 32*1024 {
-		return ErrMessageTooBig
+		return xerrors.Errorf("mpool message too large (%dB): %w", m.Size(), ErrMessageTooBig)
 	}
 
 	if m.Message.To == address.Undef {
@@ -124,7 +129,7 @@ func (mp *MessagePool) Add(m *types.SignedMessage) error {
 	}
 
 	if snonce > m.Message.Nonce {
-		return ErrNonceTooLow
+		return xerrors.Errorf("minimum expected nonce is %d: %w", snonce, ErrNonceTooLow)
 	}
 
 	balance, err := mp.getStateBalance(m.Message.From)
@@ -133,7 +138,7 @@ func (mp *MessagePool) Add(m *types.SignedMessage) error {
 	}
 
 	if balance.LessThan(m.Message.RequiredFunds()) {
-		return ErrNotEnoughFunds
+		return xerrors.Errorf("not enough funds (required: %s, balance: %s): %w", types.FIL(m.Message.RequiredFunds()), types.FIL(balance), ErrNotEnoughFunds)
 	}
 
 	mp.lk.Lock()

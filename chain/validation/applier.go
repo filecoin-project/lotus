@@ -49,7 +49,7 @@ func (a *Applier) ApplyMessage(eCtx *vchain.ExecutionContext, state vstate.Wrapp
 	mr := vchain.MessageReceipt{
 		ExitCode:    ret.ExitCode,
 		ReturnValue: ret.Return,
-		GasUsed: vstate.GasUnit(ret.GasUsed.Uint64()),
+		GasUsed:     vstate.GasUnit(ret.GasUsed.Uint64()),
 	}
 
 	return mr, nil
