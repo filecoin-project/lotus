@@ -62,14 +62,8 @@ type StorageMinerActorState struct {
 	// Amount of power this miner has.
 	Power types.BigInt
 
-	// List of sectors that this miner was slashed for.
-	//SlashedSet SectorSet
-
 	// The height at which this miner was slashed at.
-	SlashedAt types.BigInt
-
-	// The amount of storage collateral that is owed to clients, and cannot be used for collateral anymore.
-	OwedStorageCollateral types.BigInt
+	SlashedAt uint64
 
 	ProvingPeriodEnd uint64
 }
@@ -131,13 +125,12 @@ type maMethods struct {
 	GetSectorSize        uint64
 	UpdatePeerID         uint64
 	ChangeWorker         uint64
-	IsSlashed            uint64
-	IsLate               uint64
+	CheckMiner               uint64
 	DeclareFaults        uint64
 	SlashConsensusFault  uint64
 }
 
-var MAMethods = maMethods{1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16, 17, 18, 19}
+var MAMethods = maMethods{1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16, 17, 18}
 
 func (sma StorageMinerActor) Exports() []interface{} {
 	return []interface{}{
@@ -156,10 +149,9 @@ func (sma StorageMinerActor) Exports() []interface{} {
 		13: sma.GetSectorSize,
 		14: sma.UpdatePeerID,
 		//15: sma.ChangeWorker,
-		//16: sma.IsSlashed,
-		//17: sma.IsLate,
-		18: sma.DeclareFaults,
-		19: sma.SlashConsensusFault,
+		16: sma.CheckMiner,
+		17: sma.DeclareFaults,
+		18: sma.SlashConsensusFault,
 	}
 }
 
@@ -529,8 +521,14 @@ func (sma StorageMinerActor) SubmitPoSt(act *types.Actor, vmctx types.VMContext,
 	self.Power = types.BigMul(types.NewInt(pss.Count-uint64(len(faults))),
 		types.NewInt(mi.SectorSize))
 
+	delta := types.BigSub(self.Power, oldPower)
+	if self.SlashedAt != 0 {
+		self.SlashedAt = 0
+		delta = self.Power
+	}
+
 	enc, err := SerializeParams(&UpdateStorageParams{
-		Delta:                    types.BigSub(self.Power, oldPower),
+		Delta:                    delta,
 		NextProvingPeriodEnd:     currentProvingPeriodEnd + build.ProvingPeriodDuration,
 		PreviousProvingPeriodEnd: currentProvingPeriodEnd,
 	})
@@ -738,9 +736,40 @@ func (sma StorageMinerActor) GetSectorSize(act *types.Actor, vmctx types.VMConte
 	return types.NewInt(mi.SectorSize).Bytes(), nil
 }
 
-type PaymentVerifyParams struct {
-	Extra []byte
-	Proof []byte
+// TODO: better name
+func (sma StorageMinerActor) CheckMiner(act *types.Actor, vmctx types.VMContext, params *struct{}) ([]byte, ActorError) {
+	if vmctx.Message().From != StoragePowerAddress {
+		return nil, aerrors.New(2, "only the storage power actor can check miner")
+	}
+
+	oldstate, self, err := loadState(vmctx)
+	if err != nil {
+		return nil, err
+	}
+
+	if vmctx.BlockHeight() < self.ProvingPeriodEnd {
+		// Everything's fine
+		return cbg.EncodeBool(true), nil
+	}
+
+	if self.SlashedAt != 0 {
+		// Don't slash more than necessary
+		return nil, nil
+	}
+
+	// Slash for being late
+
+	self.SlashedAt = vmctx.BlockHeight()
+
+	nstate, err := vmctx.Storage().Put(self)
+	if err != nil {
+		return nil, err
+	}
+	if err := vmctx.Storage().Commit(oldstate, nstate); err != nil {
+		return nil, err
+	}
+
+	return self.Power.Bytes(), nil
 }
 
 type DeclareFaultsParams struct {

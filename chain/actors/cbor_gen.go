@@ -268,15 +268,6 @@ func (t *StorageMinerActorState) MarshalCBOR(w io.Writer) error {
 		return err
 	}
 
-	// t.t.SlashedAt (types.BigInt) (struct)
-	if err := t.SlashedAt.MarshalCBOR(w); err != nil {
-		return err
-	}
-
-	// t.t.OwedStorageCollateral (types.BigInt) (struct)
-	if err := t.OwedStorageCollateral.MarshalCBOR(w); err != nil {
-		return err
-	}
 
 	// t.t.ProvingPeriodEnd (uint64) (uint64)
 	if _, err := w.Write(cbg.CborEncodeMajorType(cbg.MajUnsignedInt, uint64(t.ProvingPeriodEnd))); err != nil {
@@ -427,22 +418,7 @@ func (t *StorageMinerActorState) UnmarshalCBOR(r io.Reader) error {
 	}
 	// t.t.SlashedAt (types.BigInt) (struct)
 
-	{
 
-		if err := t.SlashedAt.UnmarshalCBOR(br); err != nil {
-			return err
-		}
-
-	}
-	// t.t.OwedStorageCollateral (types.BigInt) (struct)
-
-	{
-
-		if err := t.OwedStorageCollateral.UnmarshalCBOR(br); err != nil {
-			return err
-		}
-
-	}
 	// t.t.ProvingPeriodEnd (uint64) (uint64)
 
 	maj, extra, err = cbg.CborReadHeader(br)
@@ -882,85 +858,6 @@ func (t *SubmitPoStParams) UnmarshalCBOR(r io.Reader) error {
 			return err
 		}
 
-	}
-	return nil
-}
-
-func (t *PaymentVerifyParams) MarshalCBOR(w io.Writer) error {
-	if t == nil {
-		_, err := w.Write(cbg.CborNull)
-		return err
-	}
-	if _, err := w.Write([]byte{130}); err != nil {
-		return err
-	}
-
-	// t.t.Extra ([]uint8) (slice)
-	if _, err := w.Write(cbg.CborEncodeMajorType(cbg.MajByteString, uint64(len(t.Extra)))); err != nil {
-		return err
-	}
-	if _, err := w.Write(t.Extra); err != nil {
-		return err
-	}
-
-	// t.t.Proof ([]uint8) (slice)
-	if _, err := w.Write(cbg.CborEncodeMajorType(cbg.MajByteString, uint64(len(t.Proof)))); err != nil {
-		return err
-	}
-	if _, err := w.Write(t.Proof); err != nil {
-		return err
-	}
-	return nil
-}
-
-func (t *PaymentVerifyParams) UnmarshalCBOR(r io.Reader) error {
-	br := cbg.GetPeeker(r)
-
-	maj, extra, err := cbg.CborReadHeader(br)
-	if err != nil {
-		return err
-	}
-	if maj != cbg.MajArray {
-		return fmt.Errorf("cbor input should be of type array")
-	}
-
-	if extra != 2 {
-		return fmt.Errorf("cbor input had wrong number of fields")
-	}
-
-	// t.t.Extra ([]uint8) (slice)
-
-	maj, extra, err = cbg.CborReadHeader(br)
-	if err != nil {
-		return err
-	}
-	if extra > 8192 {
-		return fmt.Errorf("t.Extra: array too large (%d)", extra)
-	}
-
-	if maj != cbg.MajByteString {
-		return fmt.Errorf("expected byte array")
-	}
-	t.Extra = make([]byte, extra)
-	if _, err := io.ReadFull(br, t.Extra); err != nil {
-		return err
-	}
-	// t.t.Proof ([]uint8) (slice)
-
-	maj, extra, err = cbg.CborReadHeader(br)
-	if err != nil {
-		return err
-	}
-	if extra > 8192 {
-		return fmt.Errorf("t.Proof: array too large (%d)", extra)
-	}
-
-	if maj != cbg.MajByteString {
-		return fmt.Errorf("expected byte array")
-	}
-	t.Proof = make([]byte, extra)
-	if _, err := io.ReadFull(br, t.Proof); err != nil {
-		return err
 	}
 	return nil
 }

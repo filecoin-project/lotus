@@ -27,9 +27,10 @@ type spaMethods struct {
 	PowerLookup             uint64
 	IsMiner                 uint64
 	PledgeCollateralForSize uint64
+	CheckProofSubmissions   uint64
 }
 
-var SPAMethods = spaMethods{1, 2, 3, 4, 5, 6, 7, 8}
+var SPAMethods = spaMethods{1, 2, 3, 4, 5, 6, 7, 8, 9}
 
 func (spa StoragePowerActor) Exports() []interface{} {
 	return []interface{}{
@@ -41,6 +42,7 @@ func (spa StoragePowerActor) Exports() []interface{} {
 		6: spa.PowerLookup,
 		7: spa.IsMiner,
 		8: spa.PledgeCollateralForSize,
+		9: spa.CheckProofSubmissions,
 	}
 }
 
@@ -273,13 +275,8 @@ func (spa StoragePowerActor) UpdateStorage(act *types.Actor, vmctx types.VMConte
 		return nil, err
 	}
 
-	has, err := MinerSetHas(vmctx, self.Miners, vmctx.Message().From)
-	if err != nil {
-		return nil, err
-	}
-
-	if !has {
-		return nil, aerrors.New(1, "update storage must only be called by a miner actor")
+	if vmctx.Message().From.Protocol() != address.Actor {
+		return nil, aerrors.New(1, "update storage must only be called by an actor")
 	}
 
 	self.TotalStorage = types.BigAdd(self.TotalStorage, params.Delta)
@@ -527,6 +524,68 @@ func pledgeCollateralForSize(vmctx types.VMContext, size, totalStorage types.Big
 	)
 
 	return types.BigAdd(powerCollateral, perCapCollateral), nil
+}
+
+func (spa StoragePowerActor) CheckProofSubmissions(act *types.Actor, vmctx types.VMContext, param *struct{}) ([]byte, ActorError) {
+	if vmctx.Message().From != StoragePowerAddress {
+		return nil, aerrors.New(1, "CheckProofSubmissions is only callable as a part of tipset state computation")
+	}
+
+	bucketID := vmctx.BlockHeight() % build.ProvingPeriodDuration
+
+	var self StoragePowerState
+	old := vmctx.Storage().GetHead()
+	if err := vmctx.Storage().Get(old, &self); err != nil {
+		return nil, err
+	}
+
+	buckets, eerr := amt.LoadAMT(types.WrapStorage(vmctx.Storage()), self.ProvingBuckets)
+	if eerr != nil {
+		return nil, aerrors.HandleExternalError(eerr, "loading proving buckets amt")
+	}
+
+	var bucket cid.Cid
+	err := buckets.Get(bucketID, &bucket)
+	switch err.(type) {
+	case amt.ErrNotFound:
+		return nil, nil // nothing to do
+	case nil:
+	default:
+		return nil, aerrors.HandleExternalError(err, "getting proving bucket")
+	}
+
+	bhamt, err := hamt.LoadNode(vmctx.Context(), vmctx.Ipld(), bucket)
+	if err != nil {
+		return nil, aerrors.HandleExternalError(err, "failed to load proving bucket")
+	}
+
+	err = bhamt.ForEach(vmctx.Context(), func(k string, val interface{}) error {
+		maddr, err := address.NewFromBytes([]byte(k))
+		if err != nil {
+			return aerrors.Escalate(err, "parsing miner address")
+		}
+
+		ret, err := vmctx.Send(maddr, MAMethods.CheckMiner, vmctx.Message().Value, nil)
+		if err != nil {
+			return err
+		}
+
+		if len(ret) == 0 {
+			return nil // miner is fine
+		}
+
+		power := types.NewInt(0)
+		power.SetBytes(ret)
+
+		self.TotalStorage = types.BigSub(self.TotalStorage, power)
+
+		return nil
+	})
+	if err != nil {
+		return nil, aerrors.HandleExternalError(err, "iterating miners in proving bucket")
+	}
+
+	return nil, nil
 }
 
 func MinerSetHas(vmctx types.VMContext, rcid cid.Cid, maddr address.Address) (bool, aerrors.ActorError) {
