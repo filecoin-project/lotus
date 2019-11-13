@@ -19,7 +19,7 @@ import (
 const sectorSize = 1024
 
 func TestSealAndVerify(t *testing.T) {
-	//t.Skip("this is slow")
+	t.Skip("this is slow")
 	os.Setenv("BELLMAN_NO_GPU", "1")
 	os.Setenv("RUST_LOG", "info")
 
