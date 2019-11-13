@@ -1,4 +1,4 @@
-package graphsync
+package graphsyncimpl
 
 import (
 	"bytes"
@@ -8,17 +8,28 @@ import (
 	"reflect"
 
 	"github.com/ipfs/go-cid"
-	bstore "github.com/ipfs/go-ipfs-blockstore"
+	"github.com/ipfs/go-graphsync"
 	"github.com/ipld/go-ipld-prime"
 	"github.com/ipld/go-ipld-prime/encoding/dagcbor"
-	"github.com/libp2p/go-libp2p-core/host"
 	ipldfree "github.com/ipld/go-ipld-prime/impl/free"
+	"github.com/libp2p/go-libp2p-core/host"
 	"github.com/libp2p/go-libp2p-core/peer"
 
 	"github.com/filecoin-project/lotus/datatransfer"
 	"github.com/filecoin-project/lotus/datatransfer/message"
 	"github.com/filecoin-project/lotus/datatransfer/network"
 )
+
+const (
+	// ExtensionDataTransfer is the identifier for the data transfer extension to graphsync
+	ExtensionDataTransfer = graphsync.ExtensionName("fil/data-transfer")
+)
+
+// ExtensionDataTransferData is the extension data for
+// the graphsync extension. TODO: feel free to add to this
+type ExtensionDataTransferData struct {
+	TransferID uint64
+}
 
 // This file implements a VERY simple, incomplete version of the data transfer
 // module that allows us to make the necessary insertions of data transfer
@@ -46,7 +57,7 @@ type graphsyncReceiver struct {
 }
 
 // NewGraphSyncDataTransfer initializes a new graphsync based data transfer manager
-func NewGraphSyncDataTransfer(parent context.Context, host host.Host, bs bstore.Blockstore) datatransfer.Manager {
+func NewGraphSyncDataTransfer(parent context.Context, host host.Host, gs graphsync.GraphExchange) datatransfer.Manager {
 	dataTransferNetwork := network.NewFromLibp2pHost(host)
 	impl := &graphsyncImpl{dataTransferNetwork, nil, make(map[string]validateType), make(map[datatransfer.ChannelID]datatransfer.ChannelState)}
 	receiver := &graphsyncReceiver{impl}
@@ -152,7 +163,9 @@ func (receiver *graphsyncReceiver) ReceiveRequest(
 	var success bool
 	// not yet doing anything else with the voucher
 	_, err := receiver.validateVoucher(sender, incoming)
-	if err == nil { success = true }
+	if err == nil {
+		success = true
+	}
 
 	// not yet doing anything else with the transfer ID
 	_, err = receiver.impl.sendResponse(success, sender, incoming.TransferID())
@@ -169,7 +182,7 @@ func (receiver *graphsyncReceiver) validateVoucher(sender peer.ID, incoming mess
 	vtypStr := incoming.VoucherType()
 	vouch, err := receiver.voucherFromRequest(incoming)
 	if err != nil {
-		return vouch,err
+		return vouch, err
 	}
 
 	var validatorFunc func(peer.ID, datatransfer.Voucher, cid.Cid, ipld.Node) error
@@ -180,9 +193,13 @@ func (receiver *graphsyncReceiver) validateVoucher(sender peer.ID, incoming mess
 	}
 
 	stor, err := nodeFromBytes(incoming.Selector())
-	if err != nil { return vouch, err }
+	if err != nil {
+		return vouch, err
+	}
 
-	if err = validatorFunc(sender, vouch, incoming.BaseCid(), stor) ; err != nil { return nil, err	}
+	if err = validatorFunc(sender, vouch, incoming.BaseCid(), stor); err != nil {
+		return nil, err
+	}
 
 	return vouch, nil
 }
@@ -230,7 +247,7 @@ func nodeAsBytes(node ipld.Node) ([]byte, error) {
 }
 
 // nodeFromBytes deserializes an ipld.Node
-func nodeFromBytes(from []byte) (ipld.Node,error) {
+func nodeFromBytes(from []byte) (ipld.Node, error) {
 	reader := bytes.NewReader(from)
 	return dagcbor.Decoder(ipldfree.NodeBuilder(), reader)
 }
