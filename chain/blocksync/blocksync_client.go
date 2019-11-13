@@ -77,6 +77,14 @@ func (bs *BlockSync) GetBlocks(ctx context.Context, tipset []cid.Cid, count int)
 
 	var oerr error
 	for _, p := range peers {
+		// TODO: doing this synchronously isnt great, but fetching in parallel
+		// may not be a good idea either. think about this more
+		select {
+		case <-ctx.Done():
+			return nil, xerrors.Errorf("blocksync getblocks failed: %w", ctx.Err())
+		default:
+		}
+
 		res, err := bs.sendRequestToPeer(ctx, p, req)
 		if err != nil {
 			oerr = err
