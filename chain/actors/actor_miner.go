@@ -125,8 +125,8 @@ type maMethods struct {
 	GetSectorSize        uint64
 	UpdatePeerID         uint64
 	ChangeWorker         uint64
-	IsLate uint64
-	CheckMiner               uint64
+	IsLate               uint64
+	CheckMiner           uint64
 	DeclareFaults        uint64
 	SlashConsensusFault  uint64
 }
