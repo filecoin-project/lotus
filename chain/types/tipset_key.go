@@ -2,11 +2,23 @@ package types
 
 import (
 	"bytes"
-	"encoding/binary"
+	"encoding/json"
 	"strings"
 
 	"github.com/ipfs/go-cid"
+	"github.com/multiformats/go-multihash"
 )
+
+// The length of a block header CID in bytes.
+var blockHeaderCIDLen int
+
+func init() {
+	c, err := cid.V1Builder{Codec: cid.DagCBOR, MhType: multihash.BLAKE2B_MIN + 31}.Sum([]byte{})
+	if err != nil {
+		panic(err)
+	}
+	blockHeaderCIDLen = len(c.Bytes())
+}
 
 // A TipSetKey is an immutable collection of CIDs forming a unique key for a tipset.
 // The CIDs are assumed to be distinct and in canonical order. Two keys with the same
@@ -23,10 +35,7 @@ type TipSetKey struct {
 // NewTipSetKey builds a new key from a slice of CIDs.
 // The CIDs are assumed to be ordered correctly.
 func NewTipSetKey(cids ...cid.Cid) TipSetKey {
-	encoded, err := encodeKey(cids)
-	if err != nil {
-		panic("failed to encode CIDs: " + err.Error())
-	}
+	encoded := encodeKey(cids)
 	return TipSetKey{string(encoded)}
 }
 
@@ -68,22 +77,32 @@ func (k TipSetKey) Bytes() []byte {
 	return []byte(k.value)
 }
 
-func encodeKey(cids []cid.Cid) ([]byte, error) {
+func (k *TipSetKey) MarshalJSON() ([]byte, error) {
+	return json.Marshal(k.Cids())
+}
+
+func (k *TipSetKey) UnmarshalJSON(b []byte) error {
+	var cids []cid.Cid
+	if err := json.Unmarshal(b, &cids); err != nil {
+		return err
+	}
+	k.value = string(encodeKey(cids))
+	return nil
+}
+
+func encodeKey(cids []cid.Cid) []byte {
 	buffer := new(bytes.Buffer)
 	for _, c := range cids {
-		err := binary.Write(buffer, binary.LittleEndian, c.Bytes())
-		if err != nil {
-			return nil, err
-		}
+		// bytes.Buffer.Write() err is documented to be always nil.
+		_, _ = buffer.Write(c.Bytes())
 	}
-	return buffer.Bytes(), nil
+	return buffer.Bytes()
 }
 
 func decodeKey(encoded []byte) ([]cid.Cid, error) {
-	// Estimate the number of CIDs to be extracted by dividing the encoded length by the shortest
-	// common CID length (V0 CIDs are 34 bytes). V1 CIDs are longer which means this might
-	// over-allocate, but avoid reallocation of the underlying array.
-	estimatedCount := len(encoded) / 34
+	// To avoid reallocation of the underlying array, estimate the number of CIDs to be extracted
+	// by dividing the encoded length by the expected CID length.
+	estimatedCount := len(encoded) / blockHeaderCIDLen
 	cids := make([]cid.Cid, 0, estimatedCount)
 	nextIdx := 0
 	for nextIdx < len(encoded) {

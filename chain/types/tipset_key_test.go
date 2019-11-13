@@ -1,6 +1,7 @@
 package types
 
 import (
+	"fmt"
 	"testing"
 
 	"github.com/ipfs/go-cid"
@@ -10,10 +11,11 @@ import (
 )
 
 func TestTipSetKey(t *testing.T) {
-	cb := cid.V1Builder{Codec: cid.DagCBOR, MhType: multihash.SHA2_256}
+	cb := cid.V1Builder{Codec: cid.DagCBOR, MhType: multihash.BLAKE2B_MIN+31}
 	c1, _ := cb.Sum([]byte("a"))
 	c2, _ := cb.Sum([]byte("b"))
 	c3, _ := cb.Sum([]byte("c"))
+	fmt.Println(len(c1.Bytes()))
 
 	t.Run("zero value", func(t *testing.T) {
 		assert.Equal(t, TipSetKey{}, NewTipSetKey())
@@ -55,4 +57,26 @@ func TestTipSetKey(t *testing.T) {
 		_, err := TipSetKeyFromBytes(NewTipSetKey(c1).Bytes()[1:])
 		assert.Error(t, err)
 	})
+
+	t.Run("JSON", func(t *testing.T) {
+		k0 := NewTipSetKey()
+		verifyJson(t, "[]", k0)
+		k3 := NewTipSetKey(c1, c2, c3)
+		verifyJson(t, `[` +
+			`{"/":"bafy2bzacecesrkxghscnq7vatble2hqdvwat6ed23vdu4vvo3uuggsoaya7ki"},` +
+			`{"/":"bafy2bzacebxfyh2fzoxrt6kcgc5dkaodpcstgwxxdizrww225vrhsizsfcg4g"},` +
+			`{"/":"bafy2bzacedwviarjtjraqakob5pslltmuo5n3xev3nt5zylezofkbbv5jclyu"}` +
+			`]`, k3)
+	})
+}
+
+func verifyJson(t *testing.T, expected string, k TipSetKey) {
+	bytes, err := k.MarshalJSON()
+	require.NoError(t, err)
+	assert.Equal(t, expected, string(bytes))
+
+	var rehydrated TipSetKey
+	err = rehydrated.UnmarshalJSON(bytes)
+	require.NoError(t, err)
+	assert.Equal(t, k, rehydrated)
 }
