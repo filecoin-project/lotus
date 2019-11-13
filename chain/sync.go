@@ -47,8 +47,6 @@ type Syncer struct {
 	// The known Genesis tipset
 	Genesis *types.TipSet
 
-	syncLock sync.Mutex
-
 	// TipSets known to be invalid
 	bad *BadBlockCache
 
@@ -57,12 +55,10 @@ type Syncer struct {
 
 	self peer.ID
 
+	syncLock  sync.Mutex
 	syncState SyncerState
 
-	// peer heads
-	// Note: clear cache on disconnects
-	peerHeads   map[peer.ID]*types.TipSet
-	peerHeadsLk sync.Mutex
+	syncmgr *SyncManager
 }
 
 func NewSyncer(sm *stmgr.StateManager, bsync *blocksync.BlockSync, self peer.ID) (*Syncer, error) {
@@ -86,8 +82,6 @@ func NewSyncer(sm *stmgr.StateManager, bsync *blocksync.BlockSync, self peer.ID)
 		self:      self,
 	}, nil
 }
-
-const BootstrapPeerThreshold = 1
 
 // InformNewHead informs the syncer about a new potential tipset
 // This should be called when connecting to new peers, and additionally
@@ -123,10 +117,8 @@ func (syncer *Syncer) InformNewHead(from peer.ID, fts *store.FullTipSet) {
 		return
 	}
 
-	syncer.peerHeadsLk.Lock()
-	syncer.peerHeads[from] = fts.TipSet()
-	syncer.peerHeadsLk.Unlock()
 	syncer.Bsync.AddPeer(from)
+	syncer.syncmgr.SetPeerHead(from, fts.TipSet())
 
 	bestPweight := syncer.store.GetHeaviestTipSet().Blocks()[0].ParentWeight
 	targetWeight := fts.TipSet().Blocks()[0].ParentWeight
