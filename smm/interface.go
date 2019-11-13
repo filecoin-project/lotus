@@ -58,9 +58,6 @@ type Proof []byte
 type ProvingPeriod struct {
     Start          Epoch  // First epoch in the period
     End            Epoch  // Last epoch in the period
-    ChallengeStart Epoch  // Epoch at which miner is challenged (or zero)
-    ChallengeEnd   Epoch  // Epoch by which PoSt is due (or zero)
-    ChallengeSeed  []byte // PoSt challenge seed (or empty)
 }
 
 type MinerChainState struct {

@@ -6,12 +6,12 @@ import (
 )
 
 type StateChange struct {
-    Type     string
-    Epoch    Epoch
-    StateKey *StateKey
+    Type     string      // values are 'current', 'apply' and 'revert'
+    Epoch    Epoch       // epoch for the state
+    StateKey *StateKey   // key for the state
 }
 
-type StorageMiningEvents interface {
+type StateChangeHandler interface {
     // Called when the chain state changes.
     // Epoch may change by >1.
     // In case of a re-org, state will always change back to the fork
@@ -19,19 +19,16 @@ type StorageMiningEvents interface {
     OnChainStateChanged(*StateChange)
 }
 
-// add the Node interface
+// Interface for querying the chain state and for submitting messages related to storage mining.
 type Node interface {
     // Subscribes to chain state changes.
-    // The subscription is scoped to a single miner actor:
-    // only changes in that actor’s state, or related to the actor
-    // in the storage power or market actors, will cause events.
-    SubscribeMiner(ctx context.Context, cb StorageMiningEvents) error
+    SubscribeMiner(ctx context.Context, cb StateChangeHandler) error
 
     // Fetches key for the most recent state known by the node.
     MostRecentState(ctx context.Context) (*StateKey, Epoch, error)
 
     // Cancels a subscription
-    UnsubscribeMiner(ctx context.Context, cb StorageMiningEvents) error
+    UnsubscribeMiner(ctx context.Context, cb StateChangeHandler) error
 
     // Gets miner-related on-chain state.
     GetMinerState(ctx context.Context, state *StateKey) (MinerChainState, error)

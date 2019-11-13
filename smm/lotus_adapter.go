@@ -2,38 +2,99 @@ package smm
 
 import (
     "context"
+    "fmt"
     "github.com/filecoin-project/lotus/api"
     "github.com/filecoin-project/lotus/build"
     "github.com/filecoin-project/lotus/chain/actors"
-    "github.com/filecoin-project/lotus/chain/actors/aerrors"
     laddress "github.com/filecoin-project/lotus/chain/address"
     "github.com/filecoin-project/lotus/chain/store"
     "github.com/filecoin-project/lotus/chain/types"
     "github.com/ipfs/go-cid"
+    "sync"
+    "time"
 )
+
+type stateListeners struct {
+    sync.RWMutex
+    listeners map[StateChangeHandler]struct{}
+}
+
+func NewStateListeners() stateListeners {
+    return stateListeners{
+        listeners: make(map[StateChangeHandler]struct{}),
+    }
+}
+
+func (sl stateListeners) Add(handler StateChangeHandler) {
+    sl.Lock()
+    defer sl.Unlock()
+
+    sl.listeners[handler] = struct{}{}
+}
+
+func (sl stateListeners) Remove(handler StateChangeHandler) {
+    sl.Lock()
+    defer sl.Unlock()
+
+    _, found := sl.listeners[handler]
+    if found {
+        delete(sl.listeners, handler)
+    }
+}
+
+func (sl stateListeners) Notify(changes []*StateChange) {
+    for _, change := range changes {
+        sl.RLock()
+        for handler, _ := range sl.listeners {
+            handler.OnChainStateChanged(change)
+        }
+        sl.RUnlock()
+    }
+}
 
 type lotusAdapter struct {
     address      laddress.Address
     fullNode     api.FullNode
-    listeners    map[StorageMiningEvents]struct{}
+    listeners    stateListeners
     headChanges  <-chan[]*store.HeadChange
     context      context.Context
 }
 
-func NewNode(ctx context.Context, fullNode api.FullNode, address Address) (Node, error) {
+func NewNode(ctx context.Context, fullNode api.FullNode, address Address) (Node, *StateChange, error) {
     adapter := lotusAdapter{
         fullNode: fullNode,
-        listeners: make(map[StorageMiningEvents]struct{}), // this needs synchronization
+        listeners: NewStateListeners(),
         context: ctx,
     }
     var err error
     adapter.address, err = laddress.NewFromString(string(address))
     if err != nil {
-        return nil, err
+        return nil, nil, err
     }
-    adapter.headChanges, _ = fullNode.ChainNotify(ctx)
+    adapter.headChanges, err = fullNode.ChainNotify(ctx)
+    if err != nil {
+        return nil, nil, err
+    }
+    var initialState *StateChange
+    select {
+    case initialNotification := <-adapter.headChanges:
+        if len(initialNotification) != 1 {
+            return nil, nil, fmt.Errorf("unexpected initial head notification length: %d", len(initialNotification))
+        }
+        if initialNotification[0].Type != store.HCCurrent {
+            return nil, nil, fmt.Errorf("expected first head notification type to be 'current', was '%s'", initialNotification[0].Type)
+        }
+        stateChanges, err := stateChangesFromHeadChanges(initialNotification)
+        if err != nil {
+            return nil, nil, err
+        }
+        initialState = stateChanges[0]
+
+    case <-time.After(time.Second):
+        return nil, nil, fmt.Errorf("timeout while waiting for the initial state")
+    }
     go adapter.eventHandler()
-    return adapter, nil
+    return adapter, initialState, nil
 }
 
 // TODO: Implement this for TipSetKey
@@ -55,7 +116,11 @@ func (adapter lotusAdapter) eventHandler() {
     for {
         select {
         case changes := <-adapter.headChanges:
-            adapter.notifyListeners(changes)
+            stateChanges, err := stateChangesFromHeadChanges(changes)
+            if err != nil {
+                // TODO: Log, nothing else to do
+            }
+            adapter.listeners.Notify(stateChanges)
 
         case <-adapter.context.Done():
             return
@@ -63,34 +128,17 @@ func (adapter lotusAdapter) eventHandler() {
     }
 }
 
-func (adapter lotusAdapter) notifyListeners(changes []*store.HeadChange) {
-    stateChanges, err := stateChangesFromHeadChanges(changes)
-    if err != nil {
-        // TODO: Log, nothing else to do
-        return
-    }
-
-    for _, stateChange := range stateChanges {
-        for listener, _ := range adapter.listeners {
-            listener.OnChainStateChanged(stateChange)
-        }
-    }
-}
-
-func (adapter lotusAdapter) SubscribeMiner(ctx context.Context, cb StorageMiningEvents) error {
-    adapter.listeners[cb] = struct{}{}
+func (adapter lotusAdapter) SubscribeMiner(ctx context.Context, cb StateChangeHandler) error {
+    adapter.listeners.Add(cb)
     return nil
 }
 
-func (adapter lotusAdapter) UnsubscribeMiner(ctx context.Context, cb StorageMiningEvents) error {
-    _, found := adapter.listeners[cb]
-    if found {
-        delete(adapter.listeners, cb)
-    }
+func (adapter lotusAdapter) UnsubscribeMiner(ctx context.Context, cb StateChangeHandler) error {
+    adapter.listeners.Remove(cb)
     return nil
 }
 
-func (adapter lotusAdapter) callMinerActorMethod(ctx context.Context, method uint64, payload []byte) (cid cid.Cid, err error) {
+func (adapter lotusAdapter) callMinerActorMethod(ctx context.Context, method uint64, payload []byte) (cid.Cid, error) {
     // TODO: Validate that using the miner/worker address for both To and From is allowed
     msg := types.Message{
         To:       adapter.address,
@@ -98,20 +146,15 @@ func (adapter lotusAdapter) callMinerActorMethod(ctx context.Context, method uin
         Method:   method,
         Params:   payload,
         // TODO: Add ability to control these 'costs'
-        Value:    types.NewInt(1000), // currently hard-coded late fee in actor, returned if not late
-        GasLimit: types.NewInt(1000000 /* i dont know help */),
+        Value:    types.NewInt(0),
+        GasLimit: types.NewInt(1000000),
         GasPrice: types.NewInt(1),
     }
-
-    var msgErr error
-    signedMsg, msgErr := adapter.fullNode.MpoolPushMessage(ctx, &msg)
-
-    if msgErr != nil {
-        err = msgErr
-        return
+    signedMsg, err := adapter.fullNode.MpoolPushMessage(ctx, &msg)
+    if err != nil {
+        return cid.Undef, err
     }
-    cid = signedMsg.Cid()
-    return
+    return signedMsg.Cid(), nil
 }
 
 func (adapter lotusAdapter) MostRecentState(ctx context.Context) (stateKey *StateKey, epoch Epoch, err error) {
@@ -149,7 +192,6 @@ func (adapter lotusAdapter) GetMinerState(ctx context.Context, stateKey *StateKe
         state.ProvingSet[sectorInfo.SectorID] = struct{}{}
     }
     state.Address = Address(adapter.address.String())
-    // fill in this information
     state.PreCommittedSectors = make(map[uint64]api.ChainSectorInfo)
     state.StagedCommittedSectors = make(map[uint64]api.ChainSectorInfo)
 
@@ -179,10 +221,6 @@ func (adapter lotusAdapter) GetProvingPeriod(ctx context.Context, stateKey *Stat
     }
     pp.End = Epoch(end)
     pp.Start = Epoch(end - build.ProvingPeriodDuration)
-    // Not sure what goes in these fields
-    _ = pp.ChallengeSeed
-    _ = pp.ChallengeStart
-    _ = pp.ChallengeEnd
 
     return
 }
@@ -192,21 +230,18 @@ func (adapter lotusAdapter) SubmitSelfDeal(ctx context.Context, size uint64) err
     panic("implement me")
 }
 
-func (adapter lotusAdapter) SubmitSectorPreCommitment(ctx context.Context, id SectorID, commR cid.Cid, dealIDs []uint64) (cid cid.Cid, err error) {
+func (adapter lotusAdapter) SubmitSectorPreCommitment(ctx context.Context, id SectorID, commR cid.Cid, dealIDs []uint64) (cid.Cid, error) {
     params := actors.SectorPreCommitInfo{
         SectorNumber: uint64(id),
         CommR: commR.Bytes(),
         SealEpoch: 0, // TODO: does this need to be passed in?!
         DealIDs: dealIDs,
     }
-    var actorError aerrors.ActorError
-    var enc []byte
-    enc, actorError = actors.SerializeParams(&params)
-    if actorError != nil {
-        err = actorError
-        return
+    payload, aerr := actors.SerializeParams(&params)
+    if aerr != nil {
+        return cid.Undef, aerr
     }
-    return adapter.callMinerActorMethod(ctx, actors.MAMethods.PreCommitSector, enc)
+    return adapter.callMinerActorMethod(ctx, actors.MAMethods.PreCommitSector, payload)
 }
 
 func (adapter lotusAdapter) GetSealSeed(ctx context.Context, state *StateKey, id SectorID) SealSeed {
@@ -214,50 +249,39 @@ func (adapter lotusAdapter) GetSealSeed(ctx context.Context, state *StateKey, id
     panic("implement me")
 }
 
-func (adapter lotusAdapter) SubmitSectorCommitment(ctx context.Context, id SectorID, proof Proof, dealIDs []uint64) (cid cid.Cid, err error) {
+func (adapter lotusAdapter) SubmitSectorCommitment(ctx context.Context, id SectorID, proof Proof, dealIDs []uint64) (cid.Cid, error) {
     params := actors.SectorProveCommitInfo{
         Proof: proof,
         SectorID: uint64(id),
         DealIDs: dealIDs,
     }
-    var actorError aerrors.ActorError
-    var enc []byte
-    enc, actorError = actors.SerializeParams(&params)
-    if actorError != nil {
-        err = actorError
-        return
+    payload, aerr := actors.SerializeParams(&params)
+    if aerr != nil {
+        return cid.Undef, aerr
     }
-    return adapter.callMinerActorMethod(ctx, actors.MAMethods.ProveCommitSector, enc)
+    return adapter.callMinerActorMethod(ctx, actors.MAMethods.ProveCommitSector, payload)
 }
 
-func (adapter lotusAdapter) SubmitPoSt(ctx context.Context, proof Proof) (cid cid.Cid, err error) {
+func (adapter lotusAdapter) SubmitPoSt(ctx context.Context, proof Proof) (cid.Cid, error) {
     params := actors.SubmitPoStParams{
         Proof:   proof,
         DoneSet: types.BitFieldFromSet(nil),
     }
-    enc, actorError := actors.SerializeParams(&params)
-    if actorError != nil {
-        err = actorError
-        return
+    payload, aerr := actors.SerializeParams(&params)
+    if aerr != nil {
+        return cid.Undef, aerr
     }
-
-    return adapter.callMinerActorMethod(ctx, actors.MAMethods.SubmitPoSt, enc)
+    return adapter.callMinerActorMethod(ctx, actors.MAMethods.SubmitPoSt, payload)
 }
 
-func (adapter lotusAdapter) SubmitDeclaredFaults(ctx context.Context, faults BitField) (cid cid.Cid, err error) {
+func (adapter lotusAdapter) SubmitDeclaredFaults(ctx context.Context, faults BitField) (cid.Cid, error) {
     params := actors.DeclareFaultsParams{}
     for k, _ := range faults {
         params.Faults.Set(k)
     }
-    var actorError aerrors.ActorError
-    var enc []byte
+    payload := make([]byte, 0)
     // TODO: Add MarshalCBOR and UnmarshalCBOR for DeclareFaultsParams
-    //enc, actorError = actors.SerializeParams(&params)
-    if actorError != nil {
-        err = actorError
-        return
-    }
-    return adapter.callMinerActorMethod(ctx, actors.MAMethods.DeclareFaults, enc)
+    return adapter.callMinerActorMethod(ctx, actors.MAMethods.DeclareFaults, payload)
 }
 
 func (adapter lotusAdapter) SubmitDeclaredRecoveries(ctx context.Context, recovered BitField) (cid cid.Cid, err error) {
