@@ -54,6 +54,10 @@ func (sm *SyncManager) SetPeerHead(p peer.ID, ts *types.TipSet) {
 
 }
 
+func (sm *SyncManager) selectSyncTarget() (*types.TipSet, error) {
+	panic("NYI")
+}
+
 func (sm *SyncManager) syncWorker(id int) {
 	for {
 		select {
