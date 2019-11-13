@@ -49,6 +49,9 @@ func cidsToKey(cids []cid.Cid) string {
 func (sm *StateManager) TipSetState(ctx context.Context, ts *types.TipSet) (cid.Cid, cid.Cid, error) {
 	ctx, span := trace.StartSpan(ctx, "tipSetState")
 	defer span.End()
+	if span.IsRecordingEvents() {
+		span.AddAttributes(trace.StringAttribute("tipset", fmt.Sprint(ts.Cids())))
+	}
 
 	ck := cidsToKey(ts.Cids())
 	sm.stlk.Lock()

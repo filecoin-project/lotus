@@ -1,14 +1,16 @@
 package sectorbuilder_test
 
 import (
-	"github.com/ipfs/go-datastore"
-	"github.com/stretchr/testify/assert"
-	"github.com/stretchr/testify/require"
+	"context"
 	"io"
 	"io/ioutil"
 	"math/rand"
 	"os"
 	"testing"
+
+	"github.com/ipfs/go-datastore"
+	"github.com/stretchr/testify/assert"
+	"github.com/stretchr/testify/require"
 
 	"github.com/filecoin-project/lotus/build"
 	"github.com/filecoin-project/lotus/lib/sectorbuilder"
@@ -100,7 +102,7 @@ func TestSealAndVerify(t *testing.T) {
 		t.Fatalf("%+v", err)
 	}
 
-	ok, err = sectorbuilder.VerifyPost(sb.SectorSize(), ssi, cSeed, postProof, []uint64{})
+	ok, err = sectorbuilder.VerifyPost(context.TODO(), sb.SectorSize(), ssi, cSeed, postProof, []uint64{})
 	if err != nil {
 		t.Fatalf("%+v", err)
 	}
@@ -120,7 +122,7 @@ func TestSealAndVerify(t *testing.T) {
 		t.Fatalf("%+v", err)
 	}
 
-	ok, err = sectorbuilder.VerifyPost(sb.SectorSize(), ssi, cSeed, postProof, []uint64{})
+	ok, err = sectorbuilder.VerifyPost(context.TODO(), sb.SectorSize(), ssi, cSeed, postProof, []uint64{})
 	if err != nil {
 		t.Fatalf("%+v", err)
 	}
