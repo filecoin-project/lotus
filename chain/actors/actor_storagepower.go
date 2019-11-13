@@ -4,6 +4,7 @@ import (
 	"bytes"
 	"context"
 	"github.com/filecoin-project/go-amt-ipld"
+	"io"
 
 	"github.com/filecoin-project/lotus/build"
 	"github.com/filecoin-project/lotus/chain/actors/aerrors"
@@ -276,8 +277,12 @@ func (spa StoragePowerActor) UpdateStorage(act *types.Actor, vmctx types.VMConte
 		return nil, err
 	}
 
-	if vmctx.Message().From.Protocol() != address.Actor {
-		return nil, aerrors.New(1, "update storage must only be called by an actor")
+	has, err := MinerSetHas(vmctx, self.Miners, vmctx.Message().From)
+	if err != nil {
+		return nil, err
+	}
+	if !has {
+		return nil, aerrors.New(1, "update storage must only be called by a miner actor")
 	}
 
 	self.TotalStorage = types.BigAdd(self.TotalStorage, params.Delta)
@@ -307,7 +312,7 @@ func (spa StoragePowerActor) UpdateStorage(act *types.Actor, vmctx types.VMConte
 		var bucket cid.Cid
 		err := buckets.Get(previousBucket, &bucket)
 		switch err.(type) {
-		case amt.ErrNotFound:
+		case *amt.ErrNotFound:
 			return nil, aerrors.HandleExternalError(err, "proving bucket missing")
 		case nil: // noop
 		default:
@@ -344,7 +349,7 @@ func (spa StoragePowerActor) UpdateStorage(act *types.Actor, vmctx types.VMConte
 		var bucket cid.Cid
 		err := buckets.Get(nextBucket, &bucket)
 		switch err.(type) {
-		case amt.ErrNotFound:
+		case *amt.ErrNotFound:
 			bhamt = hamt.NewNode(vmctx.Ipld())
 		case nil:
 			bhamt, err = hamt.LoadNode(vmctx.Context(), vmctx.Ipld(), bucket)
@@ -355,7 +360,7 @@ func (spa StoragePowerActor) UpdateStorage(act *types.Actor, vmctx types.VMConte
 			return nil, aerrors.HandleExternalError(err, "getting proving bucket")
 		}
 
-		err = bhamt.Set(vmctx.Context(), string(vmctx.Message().From.Bytes()), &struct{}{})
+		err = bhamt.Set(vmctx.Context(), string(vmctx.Message().From.Bytes()), cborNull)
 		if err != nil {
 			return nil, aerrors.HandleExternalError(err, "setting miner in proving bucket")
 		}
@@ -559,7 +564,7 @@ func (spa StoragePowerActor) CheckProofSubmissions(act *types.Actor, vmctx types
 	var bucket cid.Cid
 	err := buckets.Get(bucketID, &bucket)
 	switch err.(type) {
-	case amt.ErrNotFound:
+	case *amt.ErrNotFound:
 		return nil, nil // nothing to do
 	case nil:
 	default:
@@ -696,4 +701,34 @@ func MinerSetRemove(ctx context.Context, vmctx types.VMContext, rcid cid.Cid, ma
 	}
 
 	return c, nil
+}
+
+type cbgNull struct{}
+
+var cborNull = &cbgNull{}
+
+func (cbgNull) MarshalCBOR(w io.Writer) error {
+	n, err := w.Write(cbg.CborNull)
+	if err != nil {
+		return err
+	}
+	if n != 1 {
+		return xerrors.New("expected to write 1 byte")
+	}
+	return nil
+}
+
+func (cbgNull) UnmarshalCBOR(r io.Reader) error {
+	b := [1]byte{}
+	n, err := r.Read(b[:])
+	if err != nil {
+		return err
+	}
+	if n != 1 {
+		return xerrors.New("expected 1 byte")
+	}
+	if !bytes.Equal(b[:], cbg.CborNull) {
+		return xerrors.New("expected cbor null")
+	}
+	return nil
 }

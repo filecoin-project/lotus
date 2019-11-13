@@ -191,7 +191,7 @@ func (sm *StateManager) computeTipSetState(ctx context.Context, blks []*types.Bl
 	ret, err := vmi.ApplyMessage(ctx, &types.Message{
 		To:       actors.StoragePowerAddress,
 		From:     actors.StoragePowerAddress,
-		Nonce:    blks[0].Height,
+		Nonce:    blks[0].Height - 1,
 		Value:    types.NewInt(0),
 		GasPrice: types.NewInt(0),
 		GasLimit: types.NewInt(1 << 30), // Make super sure this is never too little
