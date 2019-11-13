@@ -125,12 +125,13 @@ type maMethods struct {
 	GetSectorSize        uint64
 	UpdatePeerID         uint64
 	ChangeWorker         uint64
+	IsLate uint64
 	CheckMiner               uint64
 	DeclareFaults        uint64
 	SlashConsensusFault  uint64
 }
 
-var MAMethods = maMethods{1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16, 17, 18}
+var MAMethods = maMethods{1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16, 17, 18, 19}
 
 func (sma StorageMinerActor) Exports() []interface{} {
 	return []interface{}{
@@ -149,9 +150,10 @@ func (sma StorageMinerActor) Exports() []interface{} {
 		13: sma.GetSectorSize,
 		14: sma.UpdatePeerID,
 		//15: sma.ChangeWorker,
-		16: sma.CheckMiner,
-		17: sma.DeclareFaults,
-		18: sma.SlashConsensusFault,
+		16: sma.IsLate,
+		17: sma.CheckMiner,
+		18: sma.DeclareFaults,
+		19: sma.SlashConsensusFault,
 	}
 }
 
@@ -736,6 +738,19 @@ func (sma StorageMinerActor) GetSectorSize(act *types.Actor, vmctx types.VMConte
 	return types.NewInt(mi.SectorSize).Bytes(), nil
 }
 
+func isLate(height uint64, self *StorageMinerActorState) bool {
+	return height >= self.ProvingPeriodEnd // TODO: review: maybe > ?
+}
+
+func (sma StorageMinerActor) IsLate(act *types.Actor, vmctx types.VMContext, params *struct{}) ([]byte, ActorError) {
+	_, self, err := loadState(vmctx)
+	if err != nil {
+		return nil, err
+	}
+
+	return cbg.EncodeBool(isLate(vmctx.BlockHeight(), self)), nil
+}
+
 // TODO: better name
 func (sma StorageMinerActor) CheckMiner(act *types.Actor, vmctx types.VMContext, params *struct{}) ([]byte, ActorError) {
 	if vmctx.Message().From != StoragePowerAddress {
@@ -747,7 +762,7 @@ func (sma StorageMinerActor) CheckMiner(act *types.Actor, vmctx types.VMContext,
 		return nil, err
 	}
 
-	if vmctx.BlockHeight() < self.ProvingPeriodEnd {
+	if !isLate(vmctx.BlockHeight(), self) {
 		// Everything's fine
 		return cbg.EncodeBool(true), nil
 	}

@@ -1,6 +1,7 @@
 package actors
 
 import (
+	"bytes"
 	"context"
 	"github.com/filecoin-project/go-amt-ipld"
 
@@ -25,7 +26,7 @@ type spaMethods struct {
 	UpdateStorage           uint64
 	GetTotalStorage         uint64
 	PowerLookup             uint64
-	IsMiner                 uint64
+	IsValidMiner            uint64
 	PledgeCollateralForSize uint64
 	CheckProofSubmissions   uint64
 }
@@ -40,7 +41,7 @@ func (spa StoragePowerActor) Exports() []interface{} {
 		4: spa.UpdateStorage,
 		5: spa.GetTotalStorage,
 		6: spa.PowerLookup,
-		7: spa.IsMiner,
+		7: spa.IsValidMiner,
 		8: spa.PledgeCollateralForSize,
 		9: spa.CheckProofSubmissions,
 	}
@@ -442,7 +443,7 @@ type IsMinerParam struct {
 	Addr address.Address
 }
 
-func (spa StoragePowerActor) IsMiner(act *types.Actor, vmctx types.VMContext, param *IsMinerParam) ([]byte, ActorError) {
+func (spa StoragePowerActor) IsValidMiner(act *types.Actor, vmctx types.VMContext, param *IsMinerParam) ([]byte, ActorError) {
 	var self StoragePowerState
 	if err := vmctx.Storage().Get(vmctx.Storage().GetHead(), &self); err != nil {
 		return nil, err
@@ -453,7 +454,18 @@ func (spa StoragePowerActor) IsMiner(act *types.Actor, vmctx types.VMContext, pa
 		return nil, err
 	}
 
-	return cbg.EncodeBool(has), nil
+	if !has {
+		return cbg.CborBoolFalse, nil
+	}
+
+	ret, err := vmctx.Send(param.Addr, MAMethods.IsLate, types.NewInt(0), nil)
+	if err != nil {
+		return nil, err
+	}
+
+	late := bytes.Equal(ret, cbg.CborBoolTrue)
+
+	return cbg.EncodeBool(!late), nil
 }
 
 type PledgeCollateralParams struct {
@@ -565,7 +577,7 @@ func (spa StoragePowerActor) CheckProofSubmissions(act *types.Actor, vmctx types
 			return aerrors.Escalate(err, "parsing miner address")
 		}
 
-		ret, err := vmctx.Send(maddr, MAMethods.CheckMiner, vmctx.Message().Value, nil)
+		ret, err := vmctx.Send(maddr, MAMethods.CheckMiner, types.NewInt(0), nil)
 		if err != nil {
 			return err
 		}

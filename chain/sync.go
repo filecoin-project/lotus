@@ -426,7 +426,7 @@ func (syncer *Syncer) minerIsValid(ctx context.Context, maddr address.Address, b
 	ret, err := syncer.sm.Call(ctx, &types.Message{
 		To:     actors.StoragePowerAddress,
 		From:   maddr,
-		Method: actors.SPAMethods.IsMiner,
+		Method: actors.SPAMethods.IsValidMiner,
 		Params: enc,
 	}, baseTs)
 	if err != nil {
@@ -434,7 +434,7 @@ func (syncer *Syncer) minerIsValid(ctx context.Context, maddr address.Address, b
 	}
 
 	if ret.ExitCode != 0 {
-		return xerrors.Errorf("StorageMarket.IsMiner check failed (exit code %d)", ret.ExitCode)
+		return xerrors.Errorf("StorageMarket.IsValidMiner check failed (exit code %d)", ret.ExitCode)
 	}
 
 	// TODO: ensure the miner is currently not late on their PoSt submission (this hasnt landed in the spec yet)
