@@ -60,7 +60,7 @@ const WRatioDen = 2
 // Proofs
 
 // Blocks
-const ProvingPeriodDuration = 160
+const ProvingPeriodDuration uint64 = 160
 
 // PoStChallangeTime sets the window in which post computation should happen
 // Blocks

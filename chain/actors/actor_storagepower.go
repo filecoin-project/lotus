@@ -2,6 +2,7 @@ package actors
 
 import (
 	"context"
+	"github.com/filecoin-project/go-amt-ipld"
 
 	"github.com/filecoin-project/lotus/build"
 	"github.com/filecoin-project/lotus/chain/actors/aerrors"
@@ -44,8 +45,9 @@ func (spa StoragePowerActor) Exports() []interface{} {
 }
 
 type StoragePowerState struct {
-	Miners     cid.Cid
-	MinerCount uint64
+	Miners         cid.Cid
+	ProvingBuckets cid.Cid // amt[ProvingPeriodBucket]hamt[minerAddress]struct{}
+	MinerCount     uint64
 
 	TotalStorage types.BigInt
 }
@@ -259,7 +261,9 @@ func shouldSlash(block1, block2 *types.BlockHeader) bool {
 }
 
 type UpdateStorageParams struct {
-	Delta types.BigInt
+	Delta                    types.BigInt
+	NextProvingPeriodEnd     uint64
+	PreviousProvingPeriodEnd uint64
 }
 
 func (spa StoragePowerActor) UpdateStorage(act *types.Actor, vmctx types.VMContext, params *UpdateStorageParams) ([]byte, ActorError) {
@@ -279,6 +283,105 @@ func (spa StoragePowerActor) UpdateStorage(act *types.Actor, vmctx types.VMConte
 	}
 
 	self.TotalStorage = types.BigAdd(self.TotalStorage, params.Delta)
+
+	previousBucket := params.PreviousProvingPeriodEnd % build.ProvingPeriodDuration
+	nextBucket := params.NextProvingPeriodEnd % build.ProvingPeriodDuration
+
+	if previousBucket == nextBucket && params.PreviousProvingPeriodEnd != 0 {
+		nroot, err := vmctx.Storage().Put(&self)
+		if err != nil {
+			return nil, err
+		}
+
+		if err := vmctx.Storage().Commit(old, nroot); err != nil {
+			return nil, err
+		}
+
+		return nil, nil // Nothing to do
+	}
+
+	buckets, eerr := amt.LoadAMT(types.WrapStorage(vmctx.Storage()), self.ProvingBuckets)
+	if eerr != nil {
+		return nil, aerrors.HandleExternalError(eerr, "loading proving buckets amt")
+	}
+
+	if params.PreviousProvingPeriodEnd != 0 { // delete from previous bucket
+		var bucket cid.Cid
+		err := buckets.Get(previousBucket, &bucket)
+		switch err.(type) {
+		case amt.ErrNotFound:
+			return nil, aerrors.HandleExternalError(err, "proving bucket missing")
+		case nil: // noop
+		default:
+			return nil, aerrors.HandleExternalError(err, "getting proving bucket")
+		}
+
+		bhamt, err := hamt.LoadNode(vmctx.Context(), vmctx.Ipld(), bucket)
+		if err != nil {
+			return nil, aerrors.HandleExternalError(err, "failed to load proving bucket")
+		}
+		err = bhamt.Delete(vmctx.Context(), string(vmctx.Message().From.Bytes()))
+		if err != nil {
+			return nil, aerrors.HandleExternalError(err, "deleting miner from proving bucket")
+		}
+
+		err = bhamt.Flush(vmctx.Context())
+		if err != nil {
+			return nil, aerrors.HandleExternalError(err, "flushing previous proving bucket")
+		}
+
+		bucket, err = vmctx.Ipld().Put(vmctx.Context(), bhamt)
+		if err != nil {
+			return nil, aerrors.HandleExternalError(err, "putting previous proving bucket hamt")
+		}
+
+		err = buckets.Set(previousBucket, bucket)
+		if err != nil {
+			return nil, aerrors.HandleExternalError(err, "setting previous proving bucket cid in amt")
+		}
+	}
+
+	{ // set in next bucket
+		var bhamt *hamt.Node
+		var bucket cid.Cid
+		err := buckets.Get(nextBucket, &bucket)
+		switch err.(type) {
+		case amt.ErrNotFound:
+			bhamt = hamt.NewNode(vmctx.Ipld())
+		case nil:
+			bhamt, err = hamt.LoadNode(vmctx.Context(), vmctx.Ipld(), bucket)
+			if err != nil {
+				return nil, aerrors.HandleExternalError(err, "failed to load proving bucket")
+			}
+		default:
+			return nil, aerrors.HandleExternalError(err, "getting proving bucket")
+		}
+
+		err = bhamt.Set(vmctx.Context(), string(vmctx.Message().From.Bytes()), &struct{}{})
+		if err != nil {
+			return nil, aerrors.HandleExternalError(err, "setting miner in proving bucket")
+		}
+
+		err = bhamt.Flush(vmctx.Context())
+		if err != nil {
+			return nil, aerrors.HandleExternalError(err, "flushing previous proving bucket")
+		}
+
+		bucket, err = vmctx.Ipld().Put(vmctx.Context(), bhamt)
+		if err != nil {
+			return nil, aerrors.HandleExternalError(err, "putting previous proving bucket hamt")
+		}
+
+		err = buckets.Set(nextBucket, bucket)
+		if err != nil {
+			return nil, aerrors.HandleExternalError(err, "setting previous proving bucket cid in amt")
+		}
+	}
+
+	self.ProvingBuckets, eerr = buckets.Flush()
+	if eerr != nil {
+		return nil, aerrors.HandleExternalError(eerr, "flushing proving buckets")
+	}
 
 	nroot, err := vmctx.Storage().Put(&self)
 	if err != nil {

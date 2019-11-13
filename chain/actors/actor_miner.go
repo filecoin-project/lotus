@@ -529,7 +529,11 @@ func (sma StorageMinerActor) SubmitPoSt(act *types.Actor, vmctx types.VMContext,
 	self.Power = types.BigMul(types.NewInt(pss.Count-uint64(len(faults))),
 		types.NewInt(mi.SectorSize))
 
-	enc, err := SerializeParams(&UpdateStorageParams{Delta: types.BigSub(self.Power, oldPower)})
+	enc, err := SerializeParams(&UpdateStorageParams{
+		Delta:                    types.BigSub(self.Power, oldPower),
+		NextProvingPeriodEnd:     currentProvingPeriodEnd + build.ProvingPeriodDuration,
+		PreviousProvingPeriodEnd: currentProvingPeriodEnd,
+	})
 	if err != nil {
 		return nil, err
 	}
