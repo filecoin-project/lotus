@@ -198,7 +198,7 @@ func (t *StorageMinerActorState) MarshalCBOR(w io.Writer) error {
 		_, err := w.Write(cbg.CborNull)
 		return err
 	}
-	if _, err := w.Write([]byte{139}); err != nil {
+	if _, err := w.Write([]byte{138}); err != nil {
 		return err
 	}
 
@@ -268,6 +268,10 @@ func (t *StorageMinerActorState) MarshalCBOR(w io.Writer) error {
 		return err
 	}
 
+	// t.t.SlashedAt (uint64) (uint64)
+	if _, err := w.Write(cbg.CborEncodeMajorType(cbg.MajUnsignedInt, uint64(t.SlashedAt))); err != nil {
+		return err
+	}
 
 	// t.t.ProvingPeriodEnd (uint64) (uint64)
 	if _, err := w.Write(cbg.CborEncodeMajorType(cbg.MajUnsignedInt, uint64(t.ProvingPeriodEnd))); err != nil {
@@ -287,7 +291,7 @@ func (t *StorageMinerActorState) UnmarshalCBOR(r io.Reader) error {
 		return fmt.Errorf("cbor input should be of type array")
 	}
 
-	if extra != 11 {
+	if extra != 10 {
 		return fmt.Errorf("cbor input had wrong number of fields")
 	}
 
@@ -416,9 +420,16 @@ func (t *StorageMinerActorState) UnmarshalCBOR(r io.Reader) error {
 		}
 
 	}
-	// t.t.SlashedAt (types.BigInt) (struct)
+	// t.t.SlashedAt (uint64) (uint64)
 
-
+	maj, extra, err = cbg.CborReadHeader(br)
+	if err != nil {
+		return err
+	}
+	if maj != cbg.MajUnsignedInt {
+		return fmt.Errorf("wrong type for uint64 field")
+	}
+	t.SlashedAt = uint64(extra)
 	// t.t.ProvingPeriodEnd (uint64) (uint64)
 
 	maj, extra, err = cbg.CborReadHeader(br)
@@ -858,6 +869,85 @@ func (t *SubmitPoStParams) UnmarshalCBOR(r io.Reader) error {
 			return err
 		}
 
+	}
+	return nil
+}
+
+func (t *PaymentVerifyParams) MarshalCBOR(w io.Writer) error {
+	if t == nil {
+		_, err := w.Write(cbg.CborNull)
+		return err
+	}
+	if _, err := w.Write([]byte{130}); err != nil {
+		return err
+	}
+
+	// t.t.Extra ([]uint8) (slice)
+	if _, err := w.Write(cbg.CborEncodeMajorType(cbg.MajByteString, uint64(len(t.Extra)))); err != nil {
+		return err
+	}
+	if _, err := w.Write(t.Extra); err != nil {
+		return err
+	}
+
+	// t.t.Proof ([]uint8) (slice)
+	if _, err := w.Write(cbg.CborEncodeMajorType(cbg.MajByteString, uint64(len(t.Proof)))); err != nil {
+		return err
+	}
+	if _, err := w.Write(t.Proof); err != nil {
+		return err
+	}
+	return nil
+}
+
+func (t *PaymentVerifyParams) UnmarshalCBOR(r io.Reader) error {
+	br := cbg.GetPeeker(r)
+
+	maj, extra, err := cbg.CborReadHeader(br)
+	if err != nil {
+		return err
+	}
+	if maj != cbg.MajArray {
+		return fmt.Errorf("cbor input should be of type array")
+	}
+
+	if extra != 2 {
+		return fmt.Errorf("cbor input had wrong number of fields")
+	}
+
+	// t.t.Extra ([]uint8) (slice)
+
+	maj, extra, err = cbg.CborReadHeader(br)
+	if err != nil {
+		return err
+	}
+	if extra > 8192 {
+		return fmt.Errorf("t.Extra: array too large (%d)", extra)
+	}
+
+	if maj != cbg.MajByteString {
+		return fmt.Errorf("expected byte array")
+	}
+	t.Extra = make([]byte, extra)
+	if _, err := io.ReadFull(br, t.Extra); err != nil {
+		return err
+	}
+	// t.t.Proof ([]uint8) (slice)
+
+	maj, extra, err = cbg.CborReadHeader(br)
+	if err != nil {
+		return err
+	}
+	if extra > 8192 {
+		return fmt.Errorf("t.Proof: array too large (%d)", extra)
+	}
+
+	if maj != cbg.MajByteString {
+		return fmt.Errorf("expected byte array")
+	}
+	t.Proof = make([]byte, extra)
+	if _, err := io.ReadFull(br, t.Proof); err != nil {
+		return err
 	}
 	return nil
 }
@@ -2305,7 +2395,7 @@ func (t *StoragePowerState) MarshalCBOR(w io.Writer) error {
 		_, err := w.Write(cbg.CborNull)
 		return err
 	}
-	if _, err := w.Write([]byte{131}); err != nil {
+	if _, err := w.Write([]byte{132}); err != nil {
 		return err
 	}
 
@@ -2313,6 +2403,12 @@ func (t *StoragePowerState) MarshalCBOR(w io.Writer) error {
 
 	if err := cbg.WriteCid(w, t.Miners); err != nil {
 		return xerrors.Errorf("failed to write cid field t.Miners: %w", err)
+	}
+
+	// t.t.ProvingBuckets (cid.Cid) (struct)
+
+	if err := cbg.WriteCid(w, t.ProvingBuckets); err != nil {
+		return xerrors.Errorf("failed to write cid field t.ProvingBuckets: %w", err)
 	}
 
 	// t.t.MinerCount (uint64) (uint64)
@@ -2338,7 +2434,7 @@ func (t *StoragePowerState) UnmarshalCBOR(r io.Reader) error {
 		return fmt.Errorf("cbor input should be of type array")
 	}
 
-	if extra != 3 {
+	if extra != 4 {
 		return fmt.Errorf("cbor input had wrong number of fields")
 	}
 
@@ -2352,6 +2448,18 @@ func (t *StoragePowerState) UnmarshalCBOR(r io.Reader) error {
 		}
 
 		t.Miners = c
+
+	}
+	// t.t.ProvingBuckets (cid.Cid) (struct)
+
+	{
+
+		c, err := cbg.ReadCid(br)
+		if err != nil {
+			return xerrors.Errorf("failed to read cid field t.ProvingBuckets: %w", err)
+		}
+
+		t.ProvingBuckets = c
 
 	}
 	// t.t.MinerCount (uint64) (uint64)
@@ -2557,12 +2665,22 @@ func (t *UpdateStorageParams) MarshalCBOR(w io.Writer) error {
 		_, err := w.Write(cbg.CborNull)
 		return err
 	}
-	if _, err := w.Write([]byte{129}); err != nil {
+	if _, err := w.Write([]byte{131}); err != nil {
 		return err
 	}
 
 	// t.t.Delta (types.BigInt) (struct)
 	if err := t.Delta.MarshalCBOR(w); err != nil {
+		return err
+	}
+
+	// t.t.NextProvingPeriodEnd (uint64) (uint64)
+	if _, err := w.Write(cbg.CborEncodeMajorType(cbg.MajUnsignedInt, uint64(t.NextProvingPeriodEnd))); err != nil {
+		return err
+	}
+
+	// t.t.PreviousProvingPeriodEnd (uint64) (uint64)
+	if _, err := w.Write(cbg.CborEncodeMajorType(cbg.MajUnsignedInt, uint64(t.PreviousProvingPeriodEnd))); err != nil {
 		return err
 	}
 	return nil
@@ -2579,7 +2697,7 @@ func (t *UpdateStorageParams) UnmarshalCBOR(r io.Reader) error {
 		return fmt.Errorf("cbor input should be of type array")
 	}
 
-	if extra != 1 {
+	if extra != 3 {
 		return fmt.Errorf("cbor input had wrong number of fields")
 	}
 
@@ -2592,6 +2710,26 @@ func (t *UpdateStorageParams) UnmarshalCBOR(r io.Reader) error {
 		}
 
 	}
+	// t.t.NextProvingPeriodEnd (uint64) (uint64)
+
+	maj, extra, err = cbg.CborReadHeader(br)
+	if err != nil {
+		return err
+	}
+	if maj != cbg.MajUnsignedInt {
+		return fmt.Errorf("wrong type for uint64 field")
+	}
+	t.NextProvingPeriodEnd = uint64(extra)
+	// t.t.PreviousProvingPeriodEnd (uint64) (uint64)
+
+	maj, extra, err = cbg.CborReadHeader(br)
+	if err != nil {
+		return err
+	}
+	if maj != cbg.MajUnsignedInt {
+		return fmt.Errorf("wrong type for uint64 field")
+	}
+	t.PreviousProvingPeriodEnd = uint64(extra)
 	return nil
 }
 

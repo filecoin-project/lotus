@@ -861,7 +861,7 @@ func (t *StorageDataTransferVoucher) MarshalCBOR(w io.Writer) error {
 		return err
 	}
 
-	// t.t.Proposal (cid.Cid)
+	// t.t.Proposal (cid.Cid) (struct)
 
 	if err := cbg.WriteCid(w, t.Proposal); err != nil {
 		return xerrors.Errorf("failed to write cid field t.Proposal: %w", err)
@@ -885,7 +885,7 @@ func (t *StorageDataTransferVoucher) UnmarshalCBOR(r io.Reader) error {
 		return fmt.Errorf("cbor input had wrong number of fields")
 	}
 
-	// t.t.Proposal (cid.Cid)
+	// t.t.Proposal (cid.Cid) (struct)
 
 	{
 
