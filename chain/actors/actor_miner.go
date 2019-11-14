@@ -315,12 +315,13 @@ func (sma StorageMinerActor) ProveCommitSector(act *types.Actor, vmctx types.VMC
 	// TODO: ensure normalization to ID address
 	maddr := vmctx.Message().To
 
-	ticket, err := vmctx.GetRandomness(us.Info.SealEpoch - build.SealRandomnessLookback)
+	// To get ticket from a particular height, which could be a negative number
+	ticket, err := vmctx.GetRandomness(int64(us.Info.SealEpoch) - build.SealRandomnessLookback)
 	if err != nil {
 		return nil, aerrors.Wrap(err, "failed to get ticket randomness")
 	}
 
-	seed, err := vmctx.GetRandomness(us.ReceivedEpoch + build.InteractivePoRepDelay)
+	seed, err := vmctx.GetRandomness(int64(us.ReceivedEpoch) + build.InteractivePoRepDelay)
 	if err != nil {
 		return nil, aerrors.Wrap(err, "failed to get randomness for prove sector commitment")
 	}
@@ -453,7 +454,7 @@ func (sma StorageMinerActor) SubmitPoSt(act *types.Actor, vmctx types.VMContext,
 			return nil, aerrors.Newf(1, "submit PoSt called outside submission window (%d < %d)", vmctx.BlockHeight(), randHeight)
 		}
 
-		rand, err := vmctx.GetRandomness(randHeight)
+		rand, err := vmctx.GetRandomness(int64(randHeight))
 
 		if err != nil {
 			return nil, aerrors.Wrap(err, "could not get randomness for PoST")
