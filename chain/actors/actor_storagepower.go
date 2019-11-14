@@ -10,6 +10,7 @@ import (
 	hamt "github.com/ipfs/go-hamt-ipld"
 	"github.com/libp2p/go-libp2p-core/peer"
 	cbg "github.com/whyrusleeping/cbor-gen"
+	"go.opencensus.io/trace"
 	xerrors "golang.org/x/xerrors"
 
 	"github.com/filecoin-project/lotus/build"
@@ -309,76 +310,15 @@ func (spa StoragePowerActor) UpdateStorage(act *types.Actor, vmctx types.VMConte
 	}
 
 	if params.PreviousProvingPeriodEnd != 0 { // delete from previous bucket
-		var bucket cid.Cid
-		err := buckets.Get(previousBucket, &bucket)
-		switch err.(type) {
-		case *amt.ErrNotFound:
-			return nil, aerrors.HandleExternalError(err, "proving bucket missing")
-		case nil: // noop
-		default:
-			return nil, aerrors.HandleExternalError(err, "getting proving bucket")
-		}
-
-		bhamt, err := hamt.LoadNode(vmctx.Context(), vmctx.Ipld(), bucket)
+		err := deleteMinerFromBucket(vmctx, buckets, previousBucket)
 		if err != nil {
-			return nil, aerrors.HandleExternalError(err, "failed to load proving bucket")
-		}
-		err = bhamt.Delete(vmctx.Context(), string(vmctx.Message().From.Bytes()))
-		if err != nil {
-			return nil, aerrors.HandleExternalError(err, "deleting miner from proving bucket")
-		}
-
-		err = bhamt.Flush(vmctx.Context())
-		if err != nil {
-			return nil, aerrors.HandleExternalError(err, "flushing previous proving bucket")
-		}
-
-		bucket, err = vmctx.Ipld().Put(vmctx.Context(), bhamt)
-		if err != nil {
-			return nil, aerrors.HandleExternalError(err, "putting previous proving bucket hamt")
-		}
-
-		err = buckets.Set(previousBucket, bucket)
-		if err != nil {
-			return nil, aerrors.HandleExternalError(err, "setting previous proving bucket cid in amt")
+			return nil, err
 		}
 	}
 
-	{ // set in next bucket
-		var bhamt *hamt.Node
-		var bucket cid.Cid
-		err := buckets.Get(nextBucket, &bucket)
-		switch err.(type) {
-		case *amt.ErrNotFound:
-			bhamt = hamt.NewNode(vmctx.Ipld())
-		case nil:
-			bhamt, err = hamt.LoadNode(vmctx.Context(), vmctx.Ipld(), bucket)
-			if err != nil {
-				return nil, aerrors.HandleExternalError(err, "failed to load proving bucket")
-			}
-		default:
-			return nil, aerrors.HandleExternalError(err, "getting proving bucket")
-		}
-
-		err = bhamt.Set(vmctx.Context(), string(vmctx.Message().From.Bytes()), cborNull)
-		if err != nil {
-			return nil, aerrors.HandleExternalError(err, "setting miner in proving bucket")
-		}
-
-		err = bhamt.Flush(vmctx.Context())
-		if err != nil {
-			return nil, aerrors.HandleExternalError(err, "flushing previous proving bucket")
-		}
-
-		bucket, err = vmctx.Ipld().Put(vmctx.Context(), bhamt)
-		if err != nil {
-			return nil, aerrors.HandleExternalError(err, "putting previous proving bucket hamt")
-		}
-
-		err = buckets.Set(nextBucket, bucket)
-		if err != nil {
-			return nil, aerrors.HandleExternalError(err, "setting previous proving bucket cid in amt")
-		}
+	err = addMinerToBucket(vmctx, buckets, nextBucket)
+	if err != nil {
+		return nil, err
 	}
 
 	self.ProvingBuckets, eerr = buckets.Flush()
@@ -396,6 +336,82 @@ func (spa StoragePowerActor) UpdateStorage(act *types.Actor, vmctx types.VMConte
 	}
 
 	return nil, nil
+}
+
+func deleteMinerFromBucket(vmctx types.VMContext, buckets *amt.Root, previousBucket uint64) aerrors.ActorError {
+	var bucket cid.Cid
+	err := buckets.Get(previousBucket, &bucket)
+	switch err.(type) {
+	case *amt.ErrNotFound:
+		return aerrors.HandleExternalError(err, "proving bucket missing")
+	case nil: // noop
+	default:
+		return aerrors.HandleExternalError(err, "getting proving bucket")
+	}
+
+	bhamt, err := hamt.LoadNode(vmctx.Context(), vmctx.Ipld(), bucket)
+	if err != nil {
+		return aerrors.HandleExternalError(err, "failed to load proving bucket")
+	}
+	err = bhamt.Delete(vmctx.Context(), string(vmctx.Message().From.Bytes()))
+	if err != nil {
+		return aerrors.HandleExternalError(err, "deleting miner from proving bucket")
+	}
+
+	err = bhamt.Flush(vmctx.Context())
+	if err != nil {
+		return aerrors.HandleExternalError(err, "flushing previous proving bucket")
+	}
+
+	bucket, err = vmctx.Ipld().Put(vmctx.Context(), bhamt)
+	if err != nil {
+		return aerrors.HandleExternalError(err, "putting previous proving bucket hamt")
+	}
+
+	err = buckets.Set(previousBucket, bucket)
+	if err != nil {
+		return aerrors.HandleExternalError(err, "setting previous proving bucket cid in amt")
+	}
+
+	return nil
+}
+
+func addMinerToBucket(vmctx types.VMContext, buckets *amt.Root, nextBucket uint64) aerrors.ActorError {
+	var bhamt *hamt.Node
+	var bucket cid.Cid
+	err := buckets.Get(nextBucket, &bucket)
+	switch err.(type) {
+	case *amt.ErrNotFound:
+		bhamt = hamt.NewNode(vmctx.Ipld())
+	case nil:
+		bhamt, err = hamt.LoadNode(vmctx.Context(), vmctx.Ipld(), bucket)
+		if err != nil {
+			return aerrors.HandleExternalError(err, "failed to load proving bucket")
+		}
+	default:
+		return aerrors.HandleExternalError(err, "getting proving bucket")
+	}
+
+	err = bhamt.Set(vmctx.Context(), string(vmctx.Message().From.Bytes()), cborNull)
+	if err != nil {
+		return aerrors.HandleExternalError(err, "setting miner in proving bucket")
+	}
+
+	err = bhamt.Flush(vmctx.Context())
+	if err != nil {
+		return aerrors.HandleExternalError(err, "flushing previous proving bucket")
+	}
+
+	bucket, err = vmctx.Ipld().Put(vmctx.Context(), bhamt)
+	if err != nil {
+		return aerrors.HandleExternalError(err, "putting previous proving bucket hamt")
+	}
+
+	err = buckets.Set(nextBucket, bucket)
+	if err != nil {
+		return aerrors.HandleExternalError(err, "setting previous proving bucket cid in amt")
+	}
+	return nil
 }
 
 func (spa StoragePowerActor) GetTotalStorage(act *types.Actor, vmctx types.VMContext, params *struct{}) ([]byte, ActorError) {
@@ -583,10 +599,15 @@ func (spa StoragePowerActor) CheckProofSubmissions(act *types.Actor, vmctx types
 	}
 
 	err = bhamt.ForEach(vmctx.Context(), func(k string, val interface{}) error {
+		_, span := trace.StartSpan(vmctx.Context(), "StoragePowerActor.CheckProofSubmissions.loop")
+		defer span.End()
+
 		maddr, err := address.NewFromBytes([]byte(k))
 		if err != nil {
 			return aerrors.Escalate(err, "parsing miner address")
 		}
+
+		span.AddAttributes(trace.StringAttribute("miner", maddr.String()))
 
 		params, err := SerializeParams(&CheckMinerParams{NetworkPower: self.TotalStorage})
 		if err != nil {
