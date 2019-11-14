@@ -53,6 +53,7 @@ type StoragePowerState struct {
 	Miners         cid.Cid
 	ProvingBuckets cid.Cid // amt[ProvingPeriodBucket]hamt[minerAddress]struct{}
 	MinerCount     uint64
+	LastMinerCheck uint64
 
 	TotalStorage types.BigInt
 }
@@ -570,32 +571,56 @@ func (spa StoragePowerActor) CheckProofSubmissions(act *types.Actor, vmctx types
 		return nil, aerrors.New(1, "CheckProofSubmissions is only callable as a part of tipset state computation")
 	}
 
-	bucketID := vmctx.BlockHeight() % build.ProvingPeriodDuration
-
 	var self StoragePowerState
 	old := vmctx.Storage().GetHead()
 	if err := vmctx.Storage().Get(old, &self); err != nil {
 		return nil, err
 	}
 
+	for i := self.LastMinerCheck; i < vmctx.BlockHeight(); i++ {
+		height := i + 1
+
+		err := checkProofSubmissionsAtH(vmctx, &self, height)
+		if err != nil {
+			return nil, err
+		}
+	}
+
+	self.LastMinerCheck = vmctx.BlockHeight()
+
+	nroot, aerr := vmctx.Storage().Put(&self)
+	if aerr != nil {
+		return nil, aerr
+	}
+
+	if err := vmctx.Storage().Commit(old, nroot); err != nil {
+		return nil, err
+	}
+
+	return nil, nil
+}
+
+func checkProofSubmissionsAtH(vmctx types.VMContext, self *StoragePowerState, height uint64) aerrors.ActorError {
+	bucketID := height % build.ProvingPeriodDuration
+
 	buckets, eerr := amt.LoadAMT(types.WrapStorage(vmctx.Storage()), self.ProvingBuckets)
 	if eerr != nil {
-		return nil, aerrors.HandleExternalError(eerr, "loading proving buckets amt")
+		return aerrors.HandleExternalError(eerr, "loading proving buckets amt")
 	}
 
 	var bucket cid.Cid
 	err := buckets.Get(bucketID, &bucket)
 	switch err.(type) {
 	case *amt.ErrNotFound:
-		return nil, nil // nothing to do
+		return nil // nothing to do
 	case nil:
 	default:
-		return nil, aerrors.HandleExternalError(err, "getting proving bucket")
+		return aerrors.HandleExternalError(err, "getting proving bucket")
 	}
 
 	bhamt, err := hamt.LoadNode(vmctx.Context(), vmctx.Ipld(), bucket)
 	if err != nil {
-		return nil, aerrors.HandleExternalError(err, "failed to load proving bucket")
+		return aerrors.HandleExternalError(err, "failed to load proving bucket")
 	}
 
 	err = bhamt.ForEach(vmctx.Context(), func(k string, val interface{}) error {
@@ -629,26 +654,18 @@ func (spa StoragePowerActor) CheckProofSubmissions(act *types.Actor, vmctx types
 		}
 
 		if power.GreaterThan(types.NewInt(0)) {
-			log.Warnf("slashing miner %s for missed PoSt (%s B, H: %d, Bucket: %d)", maddr, power, vmctx.BlockHeight(), bucketID)
+			log.Warnf("slashing miner %s for missed PoSt (%s B, H: %d, Bucket: %d)", maddr, power, height, bucketID)
 
 			self.TotalStorage = types.BigSub(self.TotalStorage, power)
 		}
 		return nil
 	})
+
 	if err != nil {
-		return nil, aerrors.HandleExternalError(err, "iterating miners in proving bucket")
+		return aerrors.HandleExternalError(err, "iterating miners in proving bucket")
 	}
 
-	nroot, aerr := vmctx.Storage().Put(&self)
-	if aerr != nil {
-		return nil, aerr
-	}
-
-	if err := vmctx.Storage().Commit(old, nroot); err != nil {
-		return nil, err
-	}
-
-	return nil, nil
+	return nil
 }
 
 func MinerSetHas(vmctx types.VMContext, rcid cid.Cid, maddr address.Address) (bool, aerrors.ActorError) {
