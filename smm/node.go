@@ -6,9 +6,8 @@ import (
 )
 
 type StateChange struct {
-    Type     string      // values are 'current', 'apply' and 'revert'
     Epoch    Epoch       // epoch for the state
-    StateKey *StateKey   // key for the state
+    StateKey StateKey   // key for the state
 }
 
 type StateChangeHandler interface {
@@ -21,23 +20,20 @@ type StateChangeHandler interface {
 
 // Interface for querying the chain state and for submitting messages related to storage mining.
 type Node interface {
-    // Subscribes to chain state changes.
-    SubscribeMiner(ctx context.Context, cb StateChangeHandler) error
+    // Starts listening for state changes
+    Start()
 
     // Fetches key for the most recent state known by the node.
-    MostRecentState(ctx context.Context) (*StateKey, Epoch, error)
-
-    // Cancels a subscription
-    UnsubscribeMiner(ctx context.Context, cb StateChangeHandler) error
+    MostRecentState(ctx context.Context) (StateKey, error)
 
     // Gets miner-related on-chain state.
-    GetMinerState(ctx context.Context, state *StateKey) (MinerChainState, error)
+    GetMinerState(ctx context.Context, state StateKey) (*MinerChainState, error)
 
     // Submits a self-deal to the chain.
     SubmitSelfDeal(ctx context.Context, size uint64) error
 
     // Retrieves a ticket used in sealing and proving operations.
-    GetRandomness(ctx context.Context, state *StateKey, e Epoch, offset uint) ([]byte, error)
+    GetRandomness(ctx context.Context, state StateKey, offset uint) ([]byte, error)
 
     // Submits replicated sector information and requests a seal seed
     // be generated on-chain.
@@ -50,7 +46,7 @@ type Node interface {
     // Reads a seal seed previously requested with
     // SubmitSectorPreCommitment.
     // Returns empty if the request and delay have not yet elapsed.
-    GetSealSeed(ctx context.Context, state *StateKey, id SectorID) SealSeed
+    GetSealSeed(ctx context.Context, state StateKey, id SectorID) SealSeed
 
     // Submits final commitment of a sector, with a proof including the
     // seal seed.
@@ -58,7 +54,7 @@ type Node interface {
 
     // Returns the current proving period and, if the miner has
     // been challenged, the challenge seed and period.
-    GetProvingPeriod(ctx context.Context, state *StateKey) (ProvingPeriod, error)
+    GetProvingPeriod(ctx context.Context, state StateKey) (*ProvingPeriod, error)
 
     // Submits a PoSt proof to the chain.
     SubmitPoSt(ctx context.Context, proof Proof) (cid.Cid, error)
