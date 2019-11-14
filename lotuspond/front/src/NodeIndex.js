@@ -93,7 +93,7 @@ class Index extends React.Component {
                             + RPC:<input defaultValue={"ws://127.0.0.1:1234/rpc/v0"} onChange={this.update("rpcUrl")}/>
                         </div>
                         <div>
-                            Token (<code>lotus auth create-admin-token</code>): <input onChange={this.update("rpcToken")}/>{this.tokenOk()}
+                            Token (<code>lotus auth create-token --perm admin</code>): <input onChange={this.update("rpcToken")}/>{this.tokenOk()}
                         </div>
                     </div>
                 </div>
