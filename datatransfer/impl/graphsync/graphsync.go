@@ -68,11 +68,14 @@ func NewGraphSyncDataTransfer(parent context.Context, host host.Host, gs graphsy
 // RegisterVoucherType registers a validator for the given voucher type
 // will error if voucher type does not implement voucher
 // or if there is a voucher type registered with an identical identifier
-// TODO: implement for https://github.com/filecoin-project/go-data-transfer/issues/15
+// This assumes that the voucherType is a pointer type, and that anything that implements datatransfer.Voucher
+// Takes a pointer receiver.
 func (impl *graphsyncImpl) RegisterVoucherType(voucherType reflect.Type, validator datatransfer.RequestValidator) error {
-
-	v := reflect.Indirect(reflect.New(voucherType)).Interface()
-	voucher, ok := v.(datatransfer.Voucher)
+	if voucherType.Kind() != reflect.Ptr {
+		return fmt.Errorf("voucherType must be a reflect.Ptr Kind")
+	}
+	v := reflect.New(voucherType.Elem())
+	voucher, ok := v.Interface().(datatransfer.Voucher)
 	if !ok {
 		return fmt.Errorf("voucher does not implement Voucher interface")
 	}
@@ -96,7 +99,8 @@ func (impl *graphsyncImpl) OpenPushDataChannel(ctx context.Context, to peer.ID, 
 	if err != nil {
 		return datatransfer.ChannelID{}, err
 	}
-	return datatransfer.ChannelID{To: to, ID: tid}, nil
+	chid := impl.createNewChannel(tid, to, baseCid, selector, voucher)
+	return chid, nil
 }
 
 // OpenPullDataChannel opens a data transfer that will request data from the sending peer and
@@ -106,7 +110,13 @@ func (impl *graphsyncImpl) OpenPullDataChannel(ctx context.Context, to peer.ID, 
 	if err != nil {
 		return datatransfer.ChannelID{}, err
 	}
-	return datatransfer.ChannelID{To: to, ID: tid}, nil
+	chid := impl.createNewChannel(tid, to, baseCid, selector, voucher)
+	return chid, nil
+}
+
+// createNewChannel creates a new channel id
+func (impl *graphsyncImpl) createNewChannel(tid datatransfer.TransferID, to peer.ID, baseCid cid.Cid, selector ipld.Node, voucher datatransfer.Voucher) (datatransfer.ChannelID) {
+	return datatransfer.ChannelID{To: to, ID: tid}
 }
 
 // sendRequest encapsulates message creation and posting to the data transfer network with the provided parameters
@@ -121,6 +131,7 @@ func (impl *graphsyncImpl) sendRequest(selector ipld.Node, isPull bool, voucher 
 	}
 	tid := impl.generateTransferID()
 	req := message.NewRequest(tid, isPull, voucher.Type(), vbytes, baseCid, sbytes)
+
 	if err := impl.dataTransferNetwork.SendMessage(context.TODO(), to, req); err != nil {
 		return 0, err
 	}
@@ -146,7 +157,30 @@ func (impl *graphsyncImpl) TransferChannelStatus(x datatransfer.ChannelID) datat
 
 // get notified when certain types of events happen
 func (impl *graphsyncImpl) SubscribeToEvents(subscriber datatransfer.Subscriber) datatransfer.Unsubscribe {
-	return func() {}
+	impl.subscribers = append(impl.subscribers, subscriber)
+	return impl.unsubscribeAt(subscriber)
+}
+
+// unsubscribeAt returns a function that removes an item from impl.subscribers by comparing
+// their reflect.ValueOf before pulling the item out of the slice.  Does not preserve order.
+// Subsequent, repeated calls to the func with the same Subscriber are a no-op.
+func (impl *graphsyncImpl) unsubscribeAt(sub datatransfer.Subscriber) datatransfer.Unsubscribe {
+	return func() {
+		curLen := len(impl.subscribers)
+		for i, el := range impl.subscribers {
+			if reflect.ValueOf(sub) == reflect.ValueOf(el) {
+				impl.subscribers[i] = impl.subscribers[curLen-1]
+				impl.subscribers = impl.subscribers[:curLen-1]
+				return
+			}
+		}
+	}
+}
+
+func (impl *graphsyncImpl) notifySubscribers(evt datatransfer.Event, cs datatransfer.ChannelState) {
+	for _,cb := range impl.subscribers {
+		cb(evt, cs)
+	}
 }
 
 // get all in progress transfers
@@ -232,6 +266,13 @@ func (receiver *graphsyncReceiver) ReceiveResponse(
 	ctx context.Context,
 	sender peer.ID,
 	incoming message.DataTransferResponse) {
+		var evt datatransfer.Event
+		if !incoming.Accepted() {
+			evt = datatransfer.Error
+		} else {
+			evt = datatransfer.Progress // for now
+		}
+		receiver.impl.notifySubscribers(evt, datatransfer.ChannelState{})
 }
 
 func (receiver *graphsyncReceiver) ReceiveError(error) {}
