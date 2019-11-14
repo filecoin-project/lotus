@@ -58,7 +58,7 @@ var DaemonCmd = &cli.Command{
 			return err
 		}
 
-		if err := build.GetParams(false); err != nil {
+		if err := build.GetParams(false, false); err != nil {
 			return xerrors.Errorf("fetching proof parameters: %w", err)
 		}
 
