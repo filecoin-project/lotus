@@ -859,11 +859,13 @@ func NewChainRand(cs *ChainStore, blks []cid.Cid, bheight uint64, tickets []*typ
 	}
 }
 
-func (cr *chainRand) GetRandomness(ctx context.Context, h uint64) ([]byte, error) {
-	if cr.bh + uint64(len(cr.tickets)) < h {
-		return nil, fmt.Errorf("negative lookback parameters are not valid (height: %d, lookback: %d)", cr.bh, int64(h))
+// GetRandomness is to get ticket from the epoch at height h
+// Note that h might be a negative number, e.g. when get a randomness for sector precommit
+func (cr *chainRand) GetRandomness(ctx context.Context, h int64) ([]byte, error) {
+	lb := (int64(cr.bh) + int64(len(cr.tickets))) - h
+	if lb < 0 {
+		return nil, fmt.Errorf("negative lookback parameters are not valid (height: %d, lookback: %d)", cr.bh, lb)
 	}
 
-	lb := cr.bh + uint64(len(cr.tickets)) - h
-	return cr.cs.GetRandomness(ctx, cr.blks, cr.tickets, lb)
+	return cr.cs.GetRandomness(ctx, cr.blks, cr.tickets, uint64(lb))
 }
