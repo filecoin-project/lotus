@@ -70,7 +70,7 @@ func (vmc *VMContext) Message() *types.Message {
 
 func (vmc *VMContext) GetRandomness(height uint64) ([]byte, aerrors.ActorError) {
 
-	res, err := vmc.vm.rand.GetRandomness(vmc.ctx, int64(height))
+	res, err := vmc.vm.rand.GetRandomness(vmc.ctx, height)
 	if err != nil {
 		return nil, aerrors.Escalate(err, "could not get randomness")
 	}
@@ -329,7 +329,7 @@ func NewVM(base cid.Cid, height uint64, r Rand, maddr address.Address, cbs block
 }
 
 type Rand interface {
-	GetRandomness(ctx context.Context, h int64) ([]byte, error)
+	GetRandomness(ctx context.Context, h uint64) ([]byte, error)
 }
 
 type ApplyRet struct {

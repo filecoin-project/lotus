@@ -28,8 +28,8 @@ func (a *ChainAPI) ChainHead(context.Context) (*types.TipSet, error) {
 	return a.Chain.GetHeaviestTipSet(), nil
 }
 
-func (a *ChainAPI) ChainGetRandomness(ctx context.Context, pts *types.TipSet, tickets []*types.Ticket, lb int) ([]byte, error) {
-	return a.Chain.GetRandomness(ctx, pts.Cids(), tickets, int64(lb))
+func (a *ChainAPI) ChainGetRandomness(ctx context.Context, pts *types.TipSet, tickets []*types.Ticket, lb uint64) ([]byte, error) {
+	return a.Chain.GetRandomness(ctx, pts.Cids(), tickets, lb)
 }
 
 func (a *ChainAPI) ChainGetBlock(ctx context.Context, msg cid.Cid) (*types.BlockHeader, error) {
