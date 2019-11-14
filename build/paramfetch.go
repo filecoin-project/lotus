@@ -37,7 +37,7 @@ type fetch struct {
 	errs []error
 }
 
-func GetParams(storage bool) error {
+func GetParams(storage bool, tests bool) error {
 	if err := os.Mkdir(paramdir, 0755); err != nil && !os.IsExist(err) {
 		return err
 	}
@@ -52,7 +52,7 @@ func GetParams(storage bool) error {
 	ft := &fetch{}
 
 	for name, info := range params {
-		if !SupportedSectorSize(info.SectorSize) {
+		if !(SupportedSectorSize(info.SectorSize) || (tests && info.SectorSize == 1<<10)) {
 			continue
 		}
 		if !storage && strings.HasSuffix(name, ".params") {

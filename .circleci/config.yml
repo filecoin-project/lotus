@@ -29,7 +29,7 @@ commands:
             - 'v15-lotus-params-'
           paths:
             - /var/tmp/filecoin-proof-parameters/
-      - run:  ./lotus fetch-params
+      - run:  ./lotus fetch-params --tests-also
       - save_cache:
           name: Save parameters cache
           key: 'v15-lotus-params-{{ checksum "build/proof-params/parameters.json" }}'

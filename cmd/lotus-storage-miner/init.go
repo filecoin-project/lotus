@@ -59,7 +59,7 @@ var initCmd = &cli.Command{
 		log.Info("Initializing lotus storage miner")
 
 		log.Info("Checking proof parameters")
-		if err := build.GetParams(true); err != nil {
+		if err := build.GetParams(true, false); err != nil {
 			return xerrors.Errorf("fetching proof parameters: %w", err)
 		}
 
