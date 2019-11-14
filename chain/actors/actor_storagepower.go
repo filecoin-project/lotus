@@ -591,6 +591,8 @@ func (spa StoragePowerActor) CheckProofSubmissions(act *types.Actor, vmctx types
 			return nil // miner is fine
 		}
 
+		log.Warnf("slashing miner %s for missed PoSt", maddr)
+
 		power := types.NewInt(0)
 		power.SetBytes(ret)
 
@@ -600,6 +602,15 @@ func (spa StoragePowerActor) CheckProofSubmissions(act *types.Actor, vmctx types
 	})
 	if err != nil {
 		return nil, aerrors.HandleExternalError(err, "iterating miners in proving bucket")
+	}
+
+	nroot, aerr := vmctx.Storage().Put(&self)
+	if aerr != nil {
+		return nil, aerr
+	}
+
+	if err := vmctx.Storage().Commit(old, nroot); err != nil {
+		return nil, err
 	}
 
 	return nil, nil

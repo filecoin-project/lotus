@@ -13,6 +13,7 @@ const UnixfsChunkSize uint64 = 1 << 20
 const UnixfsLinksPerLevel = 1024
 
 var SectorSizes = []uint64{
+	1024,
 	16 << 20,
 	256 << 20,
 	1 << 30,
@@ -37,7 +38,7 @@ const PaymentChannelClosingDelay = 6 * 60 * 2 // six hours
 // Consensus / Network
 
 // Seconds
-const BlockDelay = 10
+const BlockDelay = 2
 
 // Seconds
 const AllowableClockDrift = BlockDelay * 2
@@ -60,7 +61,7 @@ const WRatioDen = 2
 // Proofs
 
 // Blocks
-const ProvingPeriodDuration uint64 = 160
+const ProvingPeriodDuration uint64 = 20
 
 // PoStChallangeTime sets the window in which post computation should happen
 // Blocks

@@ -739,7 +739,7 @@ func (sma StorageMinerActor) GetSectorSize(act *types.Actor, vmctx types.VMConte
 }
 
 func isLate(height uint64, self *StorageMinerActorState) bool {
-	return height >= self.ProvingPeriodEnd // TODO: review: maybe > ?
+	return self.ProvingPeriodEnd == 0 || height >= self.ProvingPeriodEnd // TODO: review: maybe > ?
 }
 
 func (sma StorageMinerActor) IsLate(act *types.Actor, vmctx types.VMContext, params *struct{}) ([]byte, ActorError) {
