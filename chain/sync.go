@@ -519,7 +519,6 @@ func (syncer *Syncer) ValidateBlock(ctx context.Context, b *types.FullBlock) err
 
 	minerCheck := async.Err(func() error {
 		if err := syncer.minerIsValid(ctx, h.Miner, baseTs); err != nil {
-			log.Errorf("minerIsValid: %+v", err)
 			return xerrors.Errorf("minerIsValid failed: %w", err)
 		}
 		return nil
