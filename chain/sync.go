@@ -589,7 +589,7 @@ func (syncer *Syncer) ValidateBlock(ctx context.Context, b *types.FullBlock) err
 	var merr error
 	for _, fut := range await {
 		if err := fut.AwaitContext(ctx); err != nil {
-			err = multierror.Append(merr, err)
+			merr = multierror.Append(merr, err)
 		}
 	}
 
