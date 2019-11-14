@@ -12,9 +12,12 @@ import (
 	blockstore "github.com/ipfs/go-ipfs-blockstore"
 	"github.com/libp2p/go-libp2p-core/host"
 	"github.com/libp2p/go-libp2p-core/routing"
+	pubsub "github.com/libp2p/go-libp2p-pubsub"
 	"go.uber.org/fx"
 	"golang.org/x/xerrors"
 
+	"github.com/filecoin-project/lotus/chain"
+	"github.com/filecoin-project/lotus/chain/stmgr"
 	"github.com/filecoin-project/lotus/chain/store"
 	"github.com/filecoin-project/lotus/chain/types"
 	"github.com/filecoin-project/lotus/node/modules/dtypes"
@@ -34,6 +37,16 @@ func ChainExchange(mctx helpers.MetricsCtx, lc fx.Lifecycle, host host.Host, rt 
 	})
 
 	return exch
+}
+
+func MessagePool(lc fx.Lifecycle, sm *stmgr.StateManager, ps *pubsub.PubSub) *chain.MessagePool {
+	mp := chain.NewMessagePool(sm, ps)
+	lc.Append(fx.Hook{
+		OnStop: func(_ context.Context) error {
+			return mp.Close()
+		},
+	})
+	return mp
 }
 
 func ChainBlockstore(r repo.LockedRepo) (dtypes.ChainBlockstore, error) {

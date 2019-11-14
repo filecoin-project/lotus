@@ -49,6 +49,9 @@ func cidsToKey(cids []cid.Cid) string {
 func (sm *StateManager) TipSetState(ctx context.Context, ts *types.TipSet) (cid.Cid, cid.Cid, error) {
 	ctx, span := trace.StartSpan(ctx, "tipSetState")
 	defer span.End()
+	if span.IsRecordingEvents() {
+		span.AddAttributes(trace.StringAttribute("tipset", fmt.Sprint(ts.Cids())))
+	}
 
 	ck := cidsToKey(ts.Cids())
 	sm.stlk.Lock()
@@ -434,14 +437,14 @@ func (sm *StateManager) tipsetExecutedMessage(ts *types.TipSet, msg cid.Cid) (*t
 
 func (sm *StateManager) ListAllActors(ctx context.Context, ts *types.TipSet) ([]address.Address, error) {
 	if ts == nil {
-		ts = sm.ChainStore().GetHeaviestTipSet()
+		ts = sm.cs.GetHeaviestTipSet()
 	}
 	st, _, err := sm.TipSetState(ctx, ts)
 	if err != nil {
 		return nil, err
 	}
 
-	cst := hamt.CSTFromBstore(sm.ChainStore().Blockstore())
+	cst := hamt.CSTFromBstore(sm.cs.Blockstore())
 	r, err := hamt.LoadNode(ctx, cst, st)
 	if err != nil {
 		return nil, err
@@ -468,7 +471,7 @@ func (sm *StateManager) MarketBalance(ctx context.Context, addr address.Address,
 	if _, err := sm.LoadActorState(ctx, actors.StorageMarketAddress, &state, ts); err != nil {
 		return actors.StorageParticipantBalance{}, err
 	}
-	cst := hamt.CSTFromBstore(sm.ChainStore().Blockstore())
+	cst := hamt.CSTFromBstore(sm.cs.Blockstore())
 	b, _, err := actors.GetMarketBalances(ctx, cst, state.Balances, addr)
 	if err != nil {
 		return actors.StorageParticipantBalance{}, err

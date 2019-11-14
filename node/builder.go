@@ -14,6 +14,7 @@ import (
 	"github.com/libp2p/go-libp2p-peerstore/pstoremem"
 	pubsub "github.com/libp2p/go-libp2p-pubsub"
 	record "github.com/libp2p/go-libp2p-record"
+	"github.com/multiformats/go-multiaddr"
 	"go.uber.org/fx"
 	"golang.org/x/xerrors"
 
@@ -201,7 +202,7 @@ func Online() Option {
 			// Filecoin services
 			Override(new(*chain.Syncer), chain.NewSyncer),
 			Override(new(*blocksync.BlockSync), blocksync.NewBlockSyncClient),
-			Override(new(*chain.MessagePool), chain.NewMessagePool),
+			Override(new(*chain.MessagePool), modules.MessagePool),
 
 			Override(new(modules.Genesis), modules.ErrorGenesis),
 			Override(SetGenesisKey, modules.SetGenesis),
@@ -283,6 +284,14 @@ func StorageMiner(out *api.StorageMiner) Option {
 func ConfigCommon(cfg *config.Common) Option {
 	return Options(
 		func(s *Settings) error { s.Config = true; return nil },
+
+		Override(SetApiEndpointKey, func(lr repo.LockedRepo) error {
+			apima, err := multiaddr.NewMultiaddr(cfg.API.ListenAddress)
+			if err != nil {
+				return err
+			}
+			return lr.SetAPIEndpoint(apima)
+		}),
 
 		ApplyIf(func(s *Settings) bool { return s.Online },
 			Override(StartListeningKey, lp2p.StartListening(cfg.Libp2p.ListenAddresses)),

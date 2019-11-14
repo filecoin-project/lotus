@@ -1,6 +1,7 @@
 package sectorbuilder
 
 import (
+	"context"
 	"fmt"
 	"io"
 	"os"
@@ -12,6 +13,7 @@ import (
 	sectorbuilder "github.com/filecoin-project/go-sectorbuilder"
 	"github.com/ipfs/go-datastore"
 	logging "github.com/ipfs/go-log"
+	"go.opencensus.io/trace"
 	"golang.org/x/xerrors"
 
 	"github.com/filecoin-project/lotus/chain/address"
@@ -358,7 +360,9 @@ func NewSortedSectorInfo(sectors []SectorInfo) SortedSectorInfo {
 	return sectorbuilder.NewSortedSectorInfo(sectors...)
 }
 
-func VerifyPost(sectorSize uint64, sectorInfo SortedSectorInfo, challengeSeed [CommLen]byte, proof []byte, faults []uint64) (bool, error) {
+func VerifyPost(ctx context.Context, sectorSize uint64, sectorInfo SortedSectorInfo, challengeSeed [CommLen]byte, proof []byte, faults []uint64) (bool, error) {
+	_, span := trace.StartSpan(ctx, "VerifyPoSt")
+	defer span.End()
 	return sectorbuilder.VerifyPoSt(sectorSize, sectorInfo, challengeSeed, proof, faults)
 }
 

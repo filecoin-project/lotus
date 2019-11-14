@@ -60,7 +60,7 @@ func (mf *MessageFactory) MakeMessage(from, to state.Address, method chain.Metho
 	return msg, nil
 }
 
-func (mf *MessageFactory) FromSingletonAddress(addr state.SingletonActorID) (state.Address) {
+func (mf *MessageFactory) FromSingletonAddress(addr state.SingletonActorID) state.Address {
 	return fromSingletonAddress(addr)
 }
 
@@ -70,15 +70,15 @@ var methods = []uint64{
 	chain.NoMethod: 0,
 	chain.InitExec: actors.IAMethods.Exec,
 
-	chain.StoragePowerConstructor: actors.SPAMethods.Constructor,
+	chain.StoragePowerConstructor:        actors.SPAMethods.Constructor,
 	chain.StoragePowerCreateStorageMiner: actors.SPAMethods.CreateStorageMiner,
-	chain.StoragePowerUpdatePower: actors.SPAMethods.UpdateStorage,
+	chain.StoragePowerUpdatePower:        actors.SPAMethods.UpdateStorage,
 
-	chain.StorageMinerUpdatePeerID: actors.MAMethods.UpdatePeerID,
-	chain.StorageMinerGetOwner: actors.MAMethods.GetOwner,
-	chain.StorageMinerGetPower: actors.MAMethods.GetPower,
+	chain.StorageMinerUpdatePeerID:  actors.MAMethods.UpdatePeerID,
+	chain.StorageMinerGetOwner:      actors.MAMethods.GetOwner,
+	chain.StorageMinerGetPower:      actors.MAMethods.GetPower,
 	chain.StorageMinerGetWorkerAddr: actors.MAMethods.GetWorkerAddr,
-	chain.StorageMinerGetPeerID: actors.MAMethods.GetPeerID,
+	chain.StorageMinerGetPeerID:     actors.MAMethods.GetPeerID,
 	chain.StorageMinerGetSectorSize: actors.MAMethods.GetSectorSize,
 	// More to follow...
 }

@@ -7,8 +7,8 @@ import (
 	"io/ioutil"
 
 	"github.com/filecoin-project/lotus/peermgr"
-
 	"github.com/multiformats/go-multiaddr"
+
 	"golang.org/x/xerrors"
 	"gopkg.in/urfave/cli.v2"
 
@@ -81,6 +81,7 @@ var DaemonCmd = &cli.Command{
 		}
 
 		var api api.FullNode
+
 		stop, err := node.New(ctx,
 			node.FullAPI(&api),
 
@@ -89,14 +90,15 @@ var DaemonCmd = &cli.Command{
 
 			genesis,
 
-			node.Override(node.SetApiEndpointKey, func(lr repo.LockedRepo) error {
-				apima, err := multiaddr.NewMultiaddr("/ip4/127.0.0.1/tcp/" + cctx.String("api"))
-				if err != nil {
-					return err
-				}
-				return lr.SetAPIEndpoint(apima)
-			}),
-
+			node.ApplyIf(func(s *node.Settings) bool { return cctx.IsSet("api") },
+				node.Override(node.SetApiEndpointKey, func(lr repo.LockedRepo) error {
+					apima, err := multiaddr.NewMultiaddr("/ip4/127.0.0.1/tcp/" +
+						cctx.String("api"))
+					if err != nil {
+						return err
+					}
+					return lr.SetAPIEndpoint(apima)
+				})),
 			node.ApplyIf(func(s *node.Settings) bool { return !cctx.Bool("bootstrap") },
 				node.Unset(node.RunPeerMgrKey),
 				node.Unset(new(*peermgr.PeerMgr)),
@@ -106,7 +108,12 @@ var DaemonCmd = &cli.Command{
 			return err
 		}
 
+		endpoint, err := r.APIEndpoint()
+		if err != nil {
+			return err
+		}
+
 		// TODO: properly parse api endpoint (or make it a URL)
-		return serveRPC(api, stop, "127.0.0.1:"+cctx.String("api"))
+		return serveRPC(api, stop, endpoint)
 	},
 }
