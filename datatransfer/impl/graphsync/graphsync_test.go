@@ -594,48 +594,6 @@ func TestGraphsyncImpl_RegisterVoucherType(t *testing.T) {
 		"voucherType must be a reflect.Ptr Kind")
 }
 
-func TestGraphsyncImpl_SubscribeToEvents(t *testing.T) {
-	ctx, cancel := context.WithTimeout(context.Background(), 10*time.Second)
-	defer cancel()
-
-	gsData := newGraphsyncTestingData(t, ctx)
-	host1 := gsData.host1
-	gs1 := &fakeGraphSync{
-		receivedRequests: make(chan receivedGraphSyncRequest, 1),
-	}
-	dt1 := NewGraphSyncDataTransfer(ctx, host1, gs1)
-
-	subscribe1Calls := make(chan struct{}, 1)
-	subscriber := func(event datatransfer.Event, channelState datatransfer.ChannelState) {
-		if event == datatransfer.Error {
-			subscribe1Calls <- struct{}{}
-		}
-	}
-
-	subscribe2Calls := make(chan struct{}, 1)
-	subscriber2 := func(event datatransfer.Event, cst datatransfer.ChannelState) {
-		if event != datatransfer.Error {
-			subscribe2Calls <- struct{}{}
-		}
-	}
-
-	unsubFunc := dt1.SubscribeToEvents(subscriber)
-	assert.Equal(t, 1, len(dt1.GetSubscribers()))
-
-	unsubFunc2 := dt1.SubscribeToEvents(subscriber2)
-	assert.Equal(t, 2, len(dt1.GetSubscribers()))
-
-	//  ensure subsequent calls don't cause errors, and also check that the right item
-	// is removed, i.e. no false positives.
-	unsubFunc()
-	unsubFunc()
-	assert.Equal(t, 1, len(dt1.GetSubscribers()))
-
-	// ensure it can delete all elems
-	unsubFunc2()
-	assert.Equal(t, 0, len(dt1.GetSubscribers()))
-}
-
 func TestDataTransferSubscribing(t *testing.T) {
 	// create network
 	ctx := context.Background()

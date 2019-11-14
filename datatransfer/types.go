@@ -180,9 +180,6 @@ type Manager interface {
 	// get notified when certain types of events happen
 	SubscribeToEvents(subscriber Subscriber) Unsubscribe
 
-	// Fetch the GetSubscribers for this Manager
-	GetSubscribers() []Subscriber
-
 	// get all in progress transfers
 	InProgressChannels() map[ChannelID]ChannelState
 }

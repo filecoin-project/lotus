@@ -185,11 +185,6 @@ func (impl *graphsyncImpl) notifySubscribers(evt datatransfer.Event, cs datatran
 	}
 }
 
-// GetSubscribers returns the slice of subscribers for this graphsyncImpl
-func (impl *graphsyncImpl) GetSubscribers() []datatransfer.Subscriber {
-	return impl.subscribers
-}
-
 // get all in progress transfers
 func (impl *graphsyncImpl) InProgressChannels() map[datatransfer.ChannelID]datatransfer.ChannelState {
 	return nil
