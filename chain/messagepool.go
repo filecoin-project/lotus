@@ -86,7 +86,7 @@ func NewMessagePool(sm *stmgr.StateManager, ps *pubsub.PubSub) *MessagePool {
 	cache, _ := lru.New2Q(build.BlsSignatureCacheSize)
 	mp := &MessagePool{
 		closer:        make(chan struct{}),
-		repubTk:       time.NewTicker(2 * time.Minute),
+		repubTk:       time.NewTicker(build.BlockDelay * 10 * time.Second),
 		localAddrs:    make(map[address.Address]struct{}),
 		pending:       make(map[address.Address]*msgSet),
 		sm:            sm,
