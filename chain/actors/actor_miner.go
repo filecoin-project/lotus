@@ -16,6 +16,7 @@ import (
 	cbor "github.com/ipfs/go-ipld-cbor"
 	"github.com/libp2p/go-libp2p-core/peer"
 	cbg "github.com/whyrusleeping/cbor-gen"
+	"go.opencensus.io/trace"
 	"golang.org/x/xerrors"
 )
 
@@ -338,7 +339,7 @@ func (sma StorageMinerActor) ProveCommitSector(act *types.Actor, vmctx types.VMC
 		return nil, aerrors.Wrap(err, "failed to compute data commitment")
 	}
 
-	if ok, err := ValidatePoRep(maddr, mi.SectorSize, commD, us.Info.CommR, ticket, params.Proof, seed, params.SectorID); err != nil {
+	if ok, err := ValidatePoRep(ctx, maddr, mi.SectorSize, commD, us.Info.CommR, ticket, params.Proof, seed, params.SectorID); err != nil {
 		return nil, err
 	} else if !ok {
 		return nil, aerrors.Newf(2, "porep proof was invalid (t:%x; s:%x(%d); p:%x)", ticket, seed, us.ReceivedEpoch+build.InteractivePoRepDelay, params.Proof)
@@ -494,7 +495,7 @@ func (sma StorageMinerActor) SubmitPoSt(act *types.Actor, vmctx types.VMContext,
 
 	faults := self.CurrentFaultSet.All()
 
-	if ok, lerr := sectorbuilder.VerifyPost(mi.SectorSize,
+	if ok, lerr := sectorbuilder.VerifyPost(vmctx.Context(), mi.SectorSize,
 		sectorbuilder.NewSortedSectorInfo(sectorInfos), seed, params.Proof,
 		faults); !ok || lerr != nil {
 		if lerr != nil {
@@ -614,7 +615,9 @@ func GetFromSectorSet(ctx context.Context, s types.Storage, ss cid.Cid, sectorID
 	return true, comms[0], comms[1], nil
 }
 
-func ValidatePoRep(maddr address.Address, ssize uint64, commD, commR, ticket, proof, seed []byte, sectorID uint64) (bool, ActorError) {
+func ValidatePoRep(ctx context.Context, maddr address.Address, ssize uint64, commD, commR, ticket, proof, seed []byte, sectorID uint64) (bool, ActorError) {
+	_, span := trace.StartSpan(ctx, "ValidatePoRep")
+	defer span.End()
 	ok, err := sectorbuilder.VerifySeal(ssize, commR, commD, maddr, ticket, seed, sectorID, proof)
 	if err != nil {
 		return false, aerrors.Absorb(err, 25, "verify seal failed")

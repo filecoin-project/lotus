@@ -589,6 +589,13 @@ func (vm *VM) SetBlockHeight(h uint64) {
 func (vm *VM) Invoke(act *types.Actor, vmctx *VMContext, method uint64, params []byte) ([]byte, aerrors.ActorError) {
 	ctx, span := trace.StartSpan(vmctx.ctx, "vm.Invoke")
 	defer span.End()
+	if span.IsRecordingEvents() {
+		span.AddAttributes(
+			trace.StringAttribute("to", vmctx.Message().To.String()),
+			trace.Int64Attribute("method", int64(method)),
+			trace.StringAttribute("value", vmctx.Message().Value.String()),
+		)
+	}
 
 	var oldCtx context.Context
 	oldCtx, vmctx.ctx = vmctx.ctx, ctx

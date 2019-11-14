@@ -354,7 +354,7 @@ func (cg *ChainGen) YieldRepo() (repo.Repo, error) {
 }
 
 type MiningCheckAPI interface {
-	ChainGetRandomness(context.Context, *types.TipSet, []*types.Ticket, uint64) ([]byte, error)
+	ChainGetRandomness(context.Context, types.TipSetKey, []*types.Ticket, uint64) ([]byte, error)
 
 	StateMinerPower(context.Context, address.Address, *types.TipSet) (api.MinerPower, error)
 
@@ -368,7 +368,7 @@ type mca struct {
 	sm *stmgr.StateManager
 }
 
-func (mca mca) ChainGetRandomness(ctx context.Context, pts *types.TipSet, ticks []*types.Ticket, lb uint64) ([]byte, error) {
+func (mca mca) ChainGetRandomness(ctx context.Context, pts types.TipSetKey, ticks []*types.Ticket, lb uint64) ([]byte, error) {
 	return mca.sm.ChainStore().GetRandomness(ctx, pts.Cids(), ticks, lb)
 }
 
@@ -393,7 +393,7 @@ func (mca mca) WalletSign(ctx context.Context, a address.Address, v []byte) (*ty
 }
 
 func IsRoundWinner(ctx context.Context, ts *types.TipSet, ticks []*types.Ticket, miner address.Address, a MiningCheckAPI) (bool, types.ElectionProof, error) {
-	r, err := a.ChainGetRandomness(ctx, ts, ticks, build.EcRandomnessLookback)
+	r, err := a.ChainGetRandomness(ctx, ts.Key(), ticks, build.EcRandomnessLookback)
 	if err != nil {
 		return false, nil, xerrors.Errorf("chain get randomness: %w", err)
 	}

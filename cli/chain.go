@@ -319,7 +319,7 @@ var chainListCmd = &cli.Command{
 				break
 			}
 
-			head, err = api.ChainGetTipSet(ctx, head.Parents())
+			head, err = api.ChainGetTipSet(ctx, types.NewTipSetKey(head.Parents()...))
 			if err != nil {
 				return err
 			}

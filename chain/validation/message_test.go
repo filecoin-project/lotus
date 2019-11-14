@@ -28,7 +28,7 @@ func TestMessageFactory(t *testing.T) {
 	require.NoError(t, err)
 
 	bfAddr := factory.FromSingletonAddress(state.BurntFundsAddress)
-	m, err := p.Transfer(state.Address(sender.Bytes()), bfAddr,0, 1)
+	m, err := p.Transfer(state.Address(sender.Bytes()), bfAddr, 0, 1)
 	require.NoError(t, err)
 
 	messages := p.Messages()

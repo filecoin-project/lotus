@@ -768,6 +768,7 @@ func (cs *ChainStore) TryFillTipSet(ts *types.TipSet) (*FullTipSet, error) {
 func (cs *ChainStore) GetRandomness(ctx context.Context, blks []cid.Cid, tickets []*types.Ticket, lb uint64) ([]byte, error) {
 	ctx, span := trace.StartSpan(ctx, "store.GetRandomness")
 	defer span.End()
+	span.AddAttributes(trace.Int64Attribute("lb", lb))
 
 	// if lb < 0 {
 	// 	return nil, fmt.Errorf("negative lookback parameters are not valid (got %d)", lb)

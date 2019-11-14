@@ -67,6 +67,10 @@ func BigDiv(a, b BigInt) BigInt {
 	return BigInt{big.NewInt(0).Div(a.Int, b.Int)}
 }
 
+func BigMod(a, b BigInt) BigInt {
+	return BigInt{big.NewInt(0).Mod(a.Int, b.Int)}
+}
+
 func BigAdd(a, b BigInt) BigInt {
 	return BigInt{big.NewInt(0).Add(a.Int, b.Int)}
 }

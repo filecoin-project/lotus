@@ -64,7 +64,7 @@ type storageMinerApi interface {
 
 	ChainHead(context.Context) (*types.TipSet, error)
 	ChainNotify(context.Context) (<-chan []*store.HeadChange, error)
-	ChainGetRandomness(context.Context, *types.TipSet, []*types.Ticket, uint64) ([]byte, error)
+	ChainGetRandomness(context.Context, types.TipSetKey, []*types.Ticket, uint64) ([]byte, error)
 	ChainGetTipSetByHeight(context.Context, uint64, *types.TipSet) (*types.TipSet, error)
 	ChainGetBlockMessages(context.Context, cid.Cid) (*api.BlockMessages, error)
 
