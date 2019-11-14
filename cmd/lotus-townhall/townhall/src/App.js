@@ -41,8 +41,11 @@ class App extends React.Component {
             let wdiff = update.Update.Weight - (this.state[update.From] || {Weight: update.Update.Weight}).Weight
             wdiff = <span style={{color: wdiff < 0 ? '#f00' : '#f0f0f0'}}>{wdiff}</span>
 
+            let utDiff = update.Time - (this.state[update.From] || {utime: update.Time}).utime
+            utDiff = <span style={{color: utDiff < 0 ? '#f00' : '#f0f0f0'}}>{utDiff}ms</span>
+
             this.setState( prev => ({
-                ...prev, [update.From]: {...update.Update, utime: update.Time, wdiff: wdiff},
+                ...prev, [update.From]: {...update.Update, utime: update.Time, wdiff: wdiff, utDiff: utDiff},
             }))
         }
 
@@ -68,7 +71,7 @@ class App extends React.Component {
             let l = [
               <td>{k}</td>,
               <td>{v.NodeName}</td>,
-              <td>{v.Time ? lagCol(v.utime - v.Time, true) : ""}</td>,
+              <td>{v.Time ? lagCol(v.utime - v.Time, true) : ""}(Δ{v.utDiff})</td>,
               <td style={{color: bestw !== v.Weight ? '#f00' : '#afa'}}>{v.Weight}({bestw - v.Weight}, {v.wdiff})</td>,
               <td style={{color: colForH(besth, v.Height)}}>{v.Height}({besth - v.Height})</td>,
               ...mnrs,
