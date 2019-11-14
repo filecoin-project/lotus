@@ -33,12 +33,6 @@ func (s *seal) precommit(t *testing.T, sb *sectorbuilder.SectorBuilder, sid uint
 	dlen := sectorbuilder.UserBytesForSectorSize(sectorSize)
 
 	var err error
-	s.sid, err = sb.AcquireSectorId()
-	if err != nil {
-		t.Fatalf("%+v", err)
-	}
-	assert.Equal(t, sid, s.sid)
-
 	r := io.LimitReader(rand.New(rand.NewSource(42 + int64(sid))), int64(dlen))
 	s.ppi, err = sb.AddPiece(dlen, sid, r, []uint64{})
 	if err != nil {
@@ -133,7 +127,12 @@ func TestSealAndVerify(t *testing.T) {
 	}
 	defer cleanup()
 
-	s := seal{}
+	si, err := sb.AcquireSectorId()
+	if err != nil {
+		t.Fatalf("%+v", err)
+	}
+
+	s := seal{sid: si}
 
 	s.precommit(t, sb, 1, func() {})
 
@@ -184,8 +183,17 @@ func TestSealAndVerify2(t *testing.T) {
 
 	var wg sync.WaitGroup
 
-	s1 := seal{}
-	s2 := seal{}
+	si1, err := sb.AcquireSectorId()
+	if err != nil {
+		t.Fatalf("%+v", err)
+	}
+	si2, err := sb.AcquireSectorId()
+	if err != nil {
+		t.Fatalf("%+v", err)
+	}
+
+	s1 := seal{sid: si1}
+	s2 := seal{sid: si2}
 
 	wg.Add(2)
 	go s1.precommit(t, sb, 1, wg.Done)
