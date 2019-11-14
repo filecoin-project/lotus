@@ -6,6 +6,7 @@ import (
 	"io/ioutil"
 	"math/rand"
 	"os"
+	"runtime"
 	"sync"
 	"testing"
 	"time"
@@ -98,7 +99,9 @@ func (s *seal) post(t *testing.T, sb *sectorbuilder.SectorBuilder) {
 }
 
 func TestSealAndVerify(t *testing.T) {
-	//t.Skip("this is slow")
+	if runtime.NumCPU() < 10 && os.Getenv("CI") == "" { // don't bother on slow hardware
+		t.Skip("this is slow")
+	}
 	os.Setenv("BELLMAN_NO_GPU", "1")
 	os.Setenv("RUST_LOG", "info")
 
@@ -151,7 +154,9 @@ func TestSealAndVerify(t *testing.T) {
 }
 
 func TestSealAndVerify2(t *testing.T) {
-	//t.Skip("this is slow")
+	if runtime.NumCPU() < 10 && os.Getenv("CI") == "" { // don't bother on slow hardware
+		t.Skip("this is slow")
+	}
 	os.Setenv("BELLMAN_NO_GPU", "1")
 	os.Setenv("RUST_LOG", "info")
 
