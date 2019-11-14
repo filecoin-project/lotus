@@ -14,9 +14,14 @@ var fetchParamCmd = &cli.Command{
 			Name:  "only-verify-keys",
 			Usage: "only download the verify keys",
 		},
+		&cli.BoolFlag{
+			Name:  "include-test-params",
+			Usage: "download params used for tests",
+		},
 	},
 	Action: func(cctx *cli.Context) error {
-		if err := build.GetParams(!cctx.Bool("only-verify-keys")); err != nil {
+		err := build.GetParams(!cctx.Bool("only-verify-keys"), cctx.Bool("include-test-params"))
+		if err != nil {
 			return xerrors.Errorf("fetching proof parameters: %w", err)
 		}
 

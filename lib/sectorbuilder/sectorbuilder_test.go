@@ -25,7 +25,7 @@ func TestSealAndVerify(t *testing.T) {
 
 	build.SectorSizes = []uint64{sectorSize}
 
-	if err := build.GetParams(true); err != nil {
+	if err := build.GetParams(true, true); err != nil {
 		t.Fatalf("%+v", err)
 	}
 
