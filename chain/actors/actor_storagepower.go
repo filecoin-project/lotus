@@ -3,19 +3,19 @@ package actors
 import (
 	"bytes"
 	"context"
-	"github.com/filecoin-project/go-amt-ipld"
 	"io"
 
-	"github.com/filecoin-project/lotus/build"
-	"github.com/filecoin-project/lotus/chain/actors/aerrors"
-	"github.com/filecoin-project/lotus/chain/address"
-	"github.com/filecoin-project/lotus/chain/types"
-
+	"github.com/filecoin-project/go-amt-ipld"
 	cid "github.com/ipfs/go-cid"
 	hamt "github.com/ipfs/go-hamt-ipld"
 	"github.com/libp2p/go-libp2p-core/peer"
 	cbg "github.com/whyrusleeping/cbor-gen"
 	xerrors "golang.org/x/xerrors"
+
+	"github.com/filecoin-project/lotus/build"
+	"github.com/filecoin-project/lotus/chain/actors/aerrors"
+	"github.com/filecoin-project/lotus/chain/address"
+	"github.com/filecoin-project/lotus/chain/types"
 )
 
 type StoragePowerActor struct{}
@@ -444,11 +444,11 @@ func powerLookup(ctx context.Context, vmctx types.VMContext, self *StoragePowerS
 	return types.BigFromBytes(ret), nil
 }
 
-type IsMinerParam struct {
+type IsValidMinerParam struct {
 	Addr address.Address
 }
 
-func (spa StoragePowerActor) IsValidMiner(act *types.Actor, vmctx types.VMContext, param *IsMinerParam) ([]byte, ActorError) {
+func (spa StoragePowerActor) IsValidMiner(act *types.Actor, vmctx types.VMContext, param *IsValidMinerParam) ([]byte, ActorError) {
 	var self StoragePowerState
 	if err := vmctx.Storage().Get(vmctx.Storage().GetHead(), &self); err != nil {
 		return nil, err
@@ -460,17 +460,23 @@ func (spa StoragePowerActor) IsValidMiner(act *types.Actor, vmctx types.VMContex
 	}
 
 	if !has {
+		log.Warnf("Miner INVALID: not in set: %s", param.Addr)
+
 		return cbg.CborBoolFalse, nil
 	}
 
-	ret, err := vmctx.Send(param.Addr, MAMethods.IsLate, types.NewInt(0), nil)
+	ret, err := vmctx.Send(param.Addr, MAMethods.IsSlashed, types.NewInt(0), nil)
 	if err != nil {
 		return nil, err
 	}
 
-	late := bytes.Equal(ret, cbg.CborBoolTrue)
+	slashed := bytes.Equal(ret, cbg.CborBoolTrue)
 
-	return cbg.EncodeBool(!late), nil
+	if slashed {
+		log.Warnf("Miner INVALID: /SLASHED/ : %s", param.Addr)
+	}
+
+	return cbg.EncodeBool(!slashed), nil
 }
 
 type PledgeCollateralParams struct {
@@ -602,7 +608,7 @@ func (spa StoragePowerActor) CheckProofSubmissions(act *types.Actor, vmctx types
 		}
 
 		if power.GreaterThan(types.NewInt(0)) {
-			log.Warnf("slashing miner %s for missed PoSt (%s B)", maddr, power)
+			log.Warnf("slashing miner %s for missed PoSt (%s B, H: %d, Bucket: %d)", maddr, power, vmctx.BlockHeight(), bucketID)
 
 			self.TotalStorage = types.BigSub(self.TotalStorage, power)
 		}

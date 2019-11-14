@@ -63,6 +63,9 @@ type StorageMinerActorState struct {
 	// Amount of power this miner has.
 	Power types.BigInt
 
+	// Active is set to true after the miner has submitted their first PoSt
+	Active bool
+
 	// The height at which this miner was slashed at.
 	SlashedAt uint64
 
@@ -126,7 +129,7 @@ type maMethods struct {
 	GetSectorSize        uint64
 	UpdatePeerID         uint64
 	ChangeWorker         uint64
-	IsLate               uint64
+	IsSlashed            uint64
 	CheckMiner           uint64
 	DeclareFaults        uint64
 	SlashConsensusFault  uint64
@@ -151,7 +154,7 @@ func (sma StorageMinerActor) Exports() []interface{} {
 		13: sma.GetSectorSize,
 		14: sma.UpdatePeerID,
 		//15: sma.ChangeWorker,
-		16: sma.IsLate,
+		16: sma.IsSlashed,
 		17: sma.CheckMiner,
 		18: sma.DeclareFaults,
 		19: sma.SlashConsensusFault,
@@ -530,10 +533,16 @@ func (sma StorageMinerActor) SubmitPoSt(act *types.Actor, vmctx types.VMContext,
 		delta = self.Power
 	}
 
+	prevPE := self.ProvingPeriodEnd
+	if !self.Active {
+		self.Active = true
+		prevPE = 0
+	}
+
 	enc, err := SerializeParams(&UpdateStorageParams{
 		Delta:                    delta,
 		NextProvingPeriodEnd:     currentProvingPeriodEnd + build.ProvingPeriodDuration,
-		PreviousProvingPeriodEnd: currentProvingPeriodEnd,
+		PreviousProvingPeriodEnd: prevPE,
 	})
 	if err != nil {
 		return nil, err
@@ -740,16 +749,16 @@ func (sma StorageMinerActor) GetSectorSize(act *types.Actor, vmctx types.VMConte
 }
 
 func isLate(height uint64, self *StorageMinerActorState) bool {
-	return self.ProvingPeriodEnd == 0 || height >= self.ProvingPeriodEnd // TODO: review: maybe > ?
+	return self.ProvingPeriodEnd > 0 && height >= self.ProvingPeriodEnd // TODO: review: maybe > ?
 }
 
-func (sma StorageMinerActor) IsLate(act *types.Actor, vmctx types.VMContext, params *struct{}) ([]byte, ActorError) {
+func (sma StorageMinerActor) IsSlashed(act *types.Actor, vmctx types.VMContext, params *struct{}) ([]byte, ActorError) {
 	_, self, err := loadState(vmctx)
 	if err != nil {
 		return nil, err
 	}
 
-	return cbg.EncodeBool(isLate(vmctx.BlockHeight(), self)), nil
+	return cbg.EncodeBool(self.SlashedAt != 0), nil
 }
 
 type CheckMinerParams struct {

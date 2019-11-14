@@ -1,6 +1,7 @@
 package chain
 
 import (
+	"bytes"
 	"context"
 	"errors"
 	"fmt"
@@ -418,7 +419,7 @@ func (syncer *Syncer) ValidateTipSet(ctx context.Context, fts *store.FullTipSet)
 
 func (syncer *Syncer) minerIsValid(ctx context.Context, maddr address.Address, baseTs *types.TipSet) error {
 	var err error
-	enc, err := actors.SerializeParams(&actors.IsMinerParam{Addr: maddr})
+	enc, err := actors.SerializeParams(&actors.IsValidMinerParam{Addr: maddr})
 	if err != nil {
 		return err
 	}
@@ -437,7 +438,9 @@ func (syncer *Syncer) minerIsValid(ctx context.Context, maddr address.Address, b
 		return xerrors.Errorf("StorageMarket.IsValidMiner check failed (exit code %d)", ret.ExitCode)
 	}
 
-	// TODO: ensure the miner is currently not late on their PoSt submission (this hasnt landed in the spec yet)
+	if !bytes.Equal(ret.Return, cbg.CborBoolTrue) {
+		return xerrors.New("miner isn't valid")
+	}
 
 	return nil
 }
@@ -516,6 +519,7 @@ func (syncer *Syncer) ValidateBlock(ctx context.Context, b *types.FullBlock) err
 
 	minerCheck := async.Err(func() error {
 		if err := syncer.minerIsValid(ctx, h.Miner, baseTs); err != nil {
+			log.Errorf("minerIsValid: %+v", err)
 			return xerrors.Errorf("minerIsValid failed: %w", err)
 		}
 		return nil
@@ -589,7 +593,7 @@ func (syncer *Syncer) ValidateBlock(ctx context.Context, b *types.FullBlock) err
 	var merr error
 	for _, fut := range await {
 		if err := fut.AwaitContext(ctx); err != nil {
-			err = multierror.Append(merr, err)
+			merr = multierror.Append(merr, err)
 		}
 	}
 

@@ -198,7 +198,7 @@ func (t *StorageMinerActorState) MarshalCBOR(w io.Writer) error {
 		_, err := w.Write(cbg.CborNull)
 		return err
 	}
-	if _, err := w.Write([]byte{138}); err != nil {
+	if _, err := w.Write([]byte{139}); err != nil {
 		return err
 	}
 
@@ -268,6 +268,11 @@ func (t *StorageMinerActorState) MarshalCBOR(w io.Writer) error {
 		return err
 	}
 
+	// t.t.Active (bool) (bool)
+	if err := cbg.WriteBool(w, t.Active); err != nil {
+		return err
+	}
+
 	// t.t.SlashedAt (uint64) (uint64)
 	if _, err := w.Write(cbg.CborEncodeMajorType(cbg.MajUnsignedInt, uint64(t.SlashedAt))); err != nil {
 		return err
@@ -291,7 +296,7 @@ func (t *StorageMinerActorState) UnmarshalCBOR(r io.Reader) error {
 		return fmt.Errorf("cbor input should be of type array")
 	}
 
-	if extra != 10 {
+	if extra != 11 {
 		return fmt.Errorf("cbor input had wrong number of fields")
 	}
 
@@ -419,6 +424,23 @@ func (t *StorageMinerActorState) UnmarshalCBOR(r io.Reader) error {
 			return err
 		}
 
+	}
+	// t.t.Active (bool) (bool)
+
+	maj, extra, err = cbg.CborReadHeader(br)
+	if err != nil {
+		return err
+	}
+	if maj != cbg.MajOther {
+		return fmt.Errorf("booleans must be major type 7")
+	}
+	switch extra {
+	case 20:
+		t.Active = false
+	case 21:
+		t.Active = true
+	default:
+		return fmt.Errorf("booleans are either major type 7, value 20 or 21 (got %d)", extra)
 	}
 	// t.t.SlashedAt (uint64) (uint64)
 
@@ -2574,7 +2596,7 @@ func (t *CreateStorageMinerParams) UnmarshalCBOR(r io.Reader) error {
 	return nil
 }
 
-func (t *IsMinerParam) MarshalCBOR(w io.Writer) error {
+func (t *IsValidMinerParam) MarshalCBOR(w io.Writer) error {
 	if t == nil {
 		_, err := w.Write(cbg.CborNull)
 		return err
@@ -2590,7 +2612,7 @@ func (t *IsMinerParam) MarshalCBOR(w io.Writer) error {
 	return nil
 }
 
-func (t *IsMinerParam) UnmarshalCBOR(r io.Reader) error {
+func (t *IsValidMinerParam) UnmarshalCBOR(r io.Reader) error {
 	br := cbg.GetPeeker(r)
 
 	maj, extra, err := cbg.CborReadHeader(br)
