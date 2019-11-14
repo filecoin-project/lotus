@@ -71,6 +71,7 @@ type message struct {
 	Height uint64
 	Weight types.BigInt
 	Time   uint64
+	Nonce  uint64
 
 	// Meta
 
@@ -85,6 +86,9 @@ func sendHeadNotifs(ctx context.Context, ps *pubsub.PubSub, topic string, chain 
 	if err != nil {
 		return err
 	}
+
+	// using unix nano time makes very sure we pick a nonce higher than previous restart
+	nonce := uint64(time.Now().UnixNano())
 
 	for {
 		select {
@@ -103,6 +107,7 @@ func sendHeadNotifs(ctx context.Context, ps *pubsub.PubSub, topic string, chain 
 				Weight:   w,
 				NodeName: nickname,
 				Time:     uint64(time.Now().UnixNano() / 1000_000),
+				Nonce:    nonce,
 			}
 
 			b, err := json.Marshal(m)
@@ -116,5 +121,7 @@ func sendHeadNotifs(ctx context.Context, ps *pubsub.PubSub, topic string, chain 
 		case <-ctx.Done():
 			return nil
 		}
+
+		nonce++
 	}
 }
