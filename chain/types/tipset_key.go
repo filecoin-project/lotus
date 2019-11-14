@@ -77,7 +77,7 @@ func (k TipSetKey) Bytes() []byte {
 	return []byte(k.value)
 }
 
-func (k *TipSetKey) MarshalJSON() ([]byte, error) {
+func (k TipSetKey) MarshalJSON() ([]byte, error) {
 	return json.Marshal(k.Cids())
 }
 
