@@ -18,6 +18,7 @@ func main() {
 	logging.SetLogLevel("dht", "ERROR")
 	logging.SetLogLevel("swarm2", "WARN")
 	logging.SetLogLevel("bitswap", "WARN")
+	logging.SetLogLevel("pubsub", "WARN")
 
 	local := []*cli.Command{
 		DaemonCmd,
