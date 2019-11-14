@@ -179,9 +179,7 @@ func (impl *graphsyncImpl) unsubscribeAt(sub datatransfer.Subscriber) datatransf
 
 func (impl *graphsyncImpl) notifySubscribers(evt datatransfer.Event, cs datatransfer.ChannelState) {
 	for _,cb := range impl.subscribers {
-		if cb != nil {
-			cb(evt, cs)
-		}
+		cb(evt, cs)
 	}
 }
 
