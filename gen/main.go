@@ -128,6 +128,7 @@ func main() {
 		actors.OnChainDeal{},
 		actors.ComputeDataCommitmentParams{},
 		actors.SectorProveCommitInfo{},
+		actors.CheckMinerParams{},
 	)
 	if err != nil {
 		fmt.Println(err)

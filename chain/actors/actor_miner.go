@@ -1,6 +1,7 @@
 package actors
 
 import (
+	"bytes"
 	"context"
 	"encoding/binary"
 	"fmt"
@@ -751,8 +752,12 @@ func (sma StorageMinerActor) IsLate(act *types.Actor, vmctx types.VMContext, par
 	return cbg.EncodeBool(isLate(vmctx.BlockHeight(), self)), nil
 }
 
+type CheckMinerParams struct {
+	NetworkPower types.BigInt
+}
+
 // TODO: better name
-func (sma StorageMinerActor) CheckMiner(act *types.Actor, vmctx types.VMContext, params *struct{}) ([]byte, ActorError) {
+func (sma StorageMinerActor) CheckMiner(act *types.Actor, vmctx types.VMContext, params *CheckMinerParams) ([]byte, ActorError) {
 	if vmctx.Message().From != StoragePowerAddress {
 		return nil, aerrors.New(2, "only the storage power actor can check miner")
 	}
@@ -764,11 +769,18 @@ func (sma StorageMinerActor) CheckMiner(act *types.Actor, vmctx types.VMContext,
 
 	if !isLate(vmctx.BlockHeight(), self) {
 		// Everything's fine
-		return cbg.EncodeBool(true), nil
+		return nil, nil
 	}
 
 	if self.SlashedAt != 0 {
 		// Don't slash more than necessary
+		return nil, nil
+	}
+
+	if params.NetworkPower.Equals(self.Power) {
+		// Don't break the network when there's only one miner left
+
+		log.Warnf("can't slash miner %s for missed PoSt, no power would be left in the network", vmctx.Message().To)
 		return nil, nil
 	}
 
@@ -784,7 +796,11 @@ func (sma StorageMinerActor) CheckMiner(act *types.Actor, vmctx types.VMContext,
 		return nil, err
 	}
 
-	return self.Power.Bytes(), nil
+	var out bytes.Buffer
+	if err := self.Power.MarshalCBOR(&out); err != nil {
+		return nil, aerrors.HandleExternalError(err, "marshaling return value")
+	}
+	return out.Bytes(), nil
 }
 
 type DeclareFaultsParams struct {

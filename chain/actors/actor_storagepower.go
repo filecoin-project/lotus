@@ -582,7 +582,12 @@ func (spa StoragePowerActor) CheckProofSubmissions(act *types.Actor, vmctx types
 			return aerrors.Escalate(err, "parsing miner address")
 		}
 
-		ret, err := vmctx.Send(maddr, MAMethods.CheckMiner, types.NewInt(0), nil)
+		params, err := SerializeParams(&CheckMinerParams{NetworkPower: self.TotalStorage})
+		if err != nil {
+			return err
+		}
+
+		ret, err := vmctx.Send(maddr, MAMethods.CheckMiner, types.NewInt(0), params)
 		if err != nil {
 			return err
 		}
@@ -591,13 +596,16 @@ func (spa StoragePowerActor) CheckProofSubmissions(act *types.Actor, vmctx types
 			return nil // miner is fine
 		}
 
-		log.Warnf("slashing miner %s for missed PoSt", maddr)
+		var power types.BigInt
+		if err := power.UnmarshalCBOR(bytes.NewReader(ret)); err != nil {
+			return xerrors.Errorf("unmarshaling CheckMiner response (%x): %w", ret, err)
+		}
 
-		power := types.NewInt(0)
-		power.SetBytes(ret)
+		if power.GreaterThan(types.NewInt(0)) {
+			log.Warnf("slashing miner %s for missed PoSt (%s B)", maddr, power)
 
-		self.TotalStorage = types.BigSub(self.TotalStorage, power)
-
+			self.TotalStorage = types.BigSub(self.TotalStorage, power)
+		}
 		return nil
 	})
 	if err != nil {
