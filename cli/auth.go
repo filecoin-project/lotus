@@ -52,8 +52,7 @@ var authCreateAdminToken = &cli.Command{
 			return fmt.Errorf("--perm flag has to be one of: %s", api.AllPermissions)
 		}
 
-		// TODO: Probably tell the user how powerful this token is
-
+		// slice on [:idx] so for example: 'sign' gives you [read, write, sign]
 		token, err := napi.AuthNew(ctx, api.AllPermissions[:idx])
 		if err != nil {
 			return err
