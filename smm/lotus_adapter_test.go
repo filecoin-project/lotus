@@ -155,6 +155,70 @@ func Test_Randomness(t *testing.T) {
     }
 }
 
+func Test_RandomPoSt(t *testing.T) {
+    ctx := context.Background()
+    fullnode, err := create(ctx)
+    if err != nil {
+        t.Fatal(err)
+    }
+    actor, err := fullnode.WalletDefaultAddress(ctx)
+    if err != nil {
+        t.Fatal(err)
+    }
+    listener := testListener{false}
+    // Using the same address here as the miner one doesn't yet have a key in the test node's wallet
+    node, _, err := NewNode(ctx, fullnode, Address(actor.String()), Address(actor.String()), listener)
+    if err != nil {
+        t.Fatal(err)
+    }
+    proof := make([]byte, 32)
+    bytesRead, err := rand.Read(proof)
+    if err != nil {
+        t.Fatal(err)
+    }
+    if bytesRead != len(proof) {
+        t.Fatalf("invalid proof length")
+    }
+    cid, err := node.SubmitPoSt(ctx, proof)
+    if err != nil {
+        t.Fatal(err)
+    }
+    _ = cid
+}
+
+func Test_SubmitPoStFail(t *testing.T) {
+    ctx := context.Background()
+    fullnode, err := create(ctx)
+    if err != nil {
+        t.Fatal(err)
+    }
+    actor, err := fullnode.WalletDefaultAddress(ctx)
+    if err != nil {
+        t.Fatal(err)
+    }
+    listener := testListener{false}
+    miner, err := address.NewFromString("t0101")
+    if err != nil {
+      t.Fatal(err)
+    }
+    node, _, err := NewNode(ctx, fullnode, Address(actor.String()), Address(miner.String()), listener)
+    if err != nil {
+        t.Fatal(err)
+    }
+    proof := make([]byte, 32)
+    bytesRead, err := rand.Read(proof)
+    if bytesRead != len(proof) {
+        t.Fatalf("invalid proof length")
+    }
+    if bytesRead != len(proof) {
+        t.Fatalf("invalid proof length")
+    }
+    _, err = node.SubmitPoSt(ctx, proof)
+    if err == nil {
+        t.Fatalf("expecting SubmitPoSt to fail")
+    }
+}
+
 //func Test_StateChangeNotifications(t *testing.T) {
 //   ctx := context.Background()
 //   fullnode, err := create(ctx)
