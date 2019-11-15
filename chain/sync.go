@@ -55,8 +55,7 @@ type Syncer struct {
 
 	self peer.ID
 
-	syncLock  sync.Mutex
-	syncState SyncerState
+	syncLock sync.Mutex
 
 	syncmgr *SyncManager
 }
@@ -73,13 +72,12 @@ func NewSyncer(sm *stmgr.StateManager, bsync *blocksync.BlockSync, self peer.ID)
 	}
 
 	return &Syncer{
-		bad:       NewBadBlockCache(),
-		Genesis:   gent,
-		Bsync:     bsync,
-		peerHeads: make(map[peer.ID]*types.TipSet),
-		store:     sm.ChainStore(),
-		sm:        sm,
-		self:      self,
+		bad:     NewBadBlockCache(),
+		Genesis: gent,
+		Bsync:   bsync,
+		store:   sm.ChainStore(),
+		sm:      sm,
+		self:    self,
 	}, nil
 }
 
