@@ -1,6 +1,7 @@
 package chain
 
 import (
+	"bytes"
 	"context"
 	"errors"
 	"fmt"
@@ -418,7 +419,7 @@ func (syncer *Syncer) ValidateTipSet(ctx context.Context, fts *store.FullTipSet)
 
 func (syncer *Syncer) minerIsValid(ctx context.Context, maddr address.Address, baseTs *types.TipSet) error {
 	var err error
-	enc, err := actors.SerializeParams(&actors.IsMinerParam{Addr: maddr})
+	enc, err := actors.SerializeParams(&actors.IsValidMinerParam{Addr: maddr})
 	if err != nil {
 		return err
 	}
@@ -426,7 +427,7 @@ func (syncer *Syncer) minerIsValid(ctx context.Context, maddr address.Address, b
 	ret, err := syncer.sm.Call(ctx, &types.Message{
 		To:     actors.StoragePowerAddress,
 		From:   maddr,
-		Method: actors.SPAMethods.IsMiner,
+		Method: actors.SPAMethods.IsValidMiner,
 		Params: enc,
 	}, baseTs)
 	if err != nil {
@@ -434,10 +435,12 @@ func (syncer *Syncer) minerIsValid(ctx context.Context, maddr address.Address, b
 	}
 
 	if ret.ExitCode != 0 {
-		return xerrors.Errorf("StorageMarket.IsMiner check failed (exit code %d)", ret.ExitCode)
+		return xerrors.Errorf("StorageMarket.IsValidMiner check failed (exit code %d)", ret.ExitCode)
 	}
 
-	// TODO: ensure the miner is currently not late on their PoSt submission (this hasnt landed in the spec yet)
+	if !bytes.Equal(ret.Return, cbg.CborBoolTrue) {
+		return xerrors.New("miner isn't valid")
+	}
 
 	return nil
 }

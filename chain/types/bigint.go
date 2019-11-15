@@ -92,9 +92,14 @@ func (bi BigInt) LessThan(o BigInt) bool {
 	return BigCmp(bi, o) < 0
 }
 
-// LessThan returns true if bi > o
+// GreaterThan returns true if bi > o
 func (bi BigInt) GreaterThan(o BigInt) bool {
 	return BigCmp(bi, o) > 0
+}
+
+// Equals returns true if bi == o
+func (bi BigInt) Equals(o BigInt) bool {
+	return BigCmp(bi, o) == 0
 }
 
 func (bi *BigInt) MarshalJSON() ([]byte, error) {
@@ -186,7 +191,7 @@ func (bi *BigInt) UnmarshalCBOR(br io.Reader) error {
 	}
 
 	if maj != cbg.MajByteString {
-		return fmt.Errorf("cbor input for fil big int was not a byte string")
+		return fmt.Errorf("cbor input for fil big int was not a byte string (%x)", maj)
 	}
 
 	if extra == 0 {
