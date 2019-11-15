@@ -154,6 +154,15 @@ func (a *StateAPI) StateGetActor(ctx context.Context, actor address.Address, ts 
 	return state.GetActor(actor)
 }
 
+func (a *StateAPI) StateLookupID(ctx context.Context, addr address.Address, ts *types.TipSet) (address.Address, error) {
+	state, err := a.stateForTs(ctx, ts)
+	if err != nil {
+		return address.Undef, err
+	}
+
+	return state.LookupID(addr)
+}
+
 func (a *StateAPI) StateReadState(ctx context.Context, act *types.Actor, ts *types.TipSet) (*api.ActorState, error) {
 	state, err := a.stateForTs(ctx, ts)
 	if err != nil {
