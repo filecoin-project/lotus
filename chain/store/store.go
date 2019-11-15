@@ -5,6 +5,7 @@ import (
 	"crypto/sha256"
 	"encoding/json"
 	"fmt"
+	"math"
 	"sync"
 
 	"github.com/filecoin-project/lotus/build"
@@ -770,9 +771,11 @@ func (cs *ChainStore) GetRandomness(ctx context.Context, blks []cid.Cid, tickets
 	defer span.End()
 	span.AddAttributes(trace.Int64Attribute("lb", int64(lb)))
 
-	// if lb < 0 {
-	// 	return nil, fmt.Errorf("negative lookback parameters are not valid (got %d)", lb)
-	// }
+	// Check if lb is too big to be true, which implys some math wrong before calling this function
+	if lb > math.MaxUint32 {
+		return nil, fmt.Errorf("BUG: lookback too far (lb=%d), need to check if any math wrong", lb)
+	}
+
 	lt := uint64(len(tickets))
 	if lb < lt {
 		log.Desugar().Warn("self sampling randomness. this should be extremely rare, if you see this often it may be a bug", zap.Stack("stacktrace"))
@@ -865,7 +868,7 @@ func NewChainRand(cs *ChainStore, blks []cid.Cid, bheight uint64, tickets []*typ
 func (cr *chainRand) GetRandomness(ctx context.Context, h int64) ([]byte, error) {
 	lb := (int64(cr.bh) + int64(len(cr.tickets))) - h
 	if lb < 0 {
-		return nil, fmt.Errorf("negative lookback parameters are not valid (height: %d, lookback: %d)", cr.bh, lb)
+		return nil, fmt.Errorf("BUG: can not get randomness from the future (curHeight: %d, wantHeight: $d)", cr.bh, h)
 	}
 
 	return cr.cs.GetRandomness(ctx, cr.blks, cr.tickets, uint64(lb))
