@@ -1,6 +1,7 @@
 package chain
 
 import (
+	"bytes"
 	"context"
 	"errors"
 	"fmt"
@@ -115,6 +116,13 @@ func (syncer *Syncer) InformNewHead(from peer.ID, fts *store.FullTipSet) {
 		return
 	}
 
+	// TODO: IMPORTANT(GARBAGE) this needs to be put in the 'temporary' side of
+	// the blockstore
+	if err := syncer.store.PersistBlockHeaders(fts.TipSet().Blocks()...); err != nil {
+		log.Warn("failed to persist incoming block header: ", err)
+		return
+	}
+
 	syncer.peerHeadsLk.Lock()
 	syncer.peerHeads[from] = fts.TipSet()
 	syncer.peerHeadsLk.Unlock()
@@ -146,7 +154,12 @@ func (syncer *Syncer) ValidateMsgMeta(fblk *types.FullBlock) error {
 		scids = append(scids, &c)
 	}
 
-	bs := amt.WrapBlockstore(syncer.store.Blockstore())
+	// TODO: IMPORTANT(GARBAGE). These message puts and the msgmeta
+	// computation need to go into the 'temporary' side of the blockstore when
+	// we implement that
+	blockstore := syncer.store.Blockstore()
+
+	bs := amt.WrapBlockstore(blockstore)
 	smroot, err := computeMsgMeta(bs, bcids, scids)
 	if err != nil {
 		return xerrors.Errorf("validating msgmeta, compute failed: %w", err)
@@ -154,6 +167,20 @@ func (syncer *Syncer) ValidateMsgMeta(fblk *types.FullBlock) error {
 
 	if fblk.Header.Messages != smroot {
 		return xerrors.Errorf("messages in full block did not match msgmeta root in header (%s != %s)", fblk.Header.Messages, smroot)
+	}
+
+	for _, m := range fblk.BlsMessages {
+		_, err := store.PutMessage(blockstore, m)
+		if err != nil {
+			return xerrors.Errorf("putting bls message to blockstore after msgmeta computation: %w", err)
+		}
+	}
+
+	for _, m := range fblk.SecpkMessages {
+		_, err := store.PutMessage(blockstore, m)
+		if err != nil {
+			return xerrors.Errorf("putting bls message to blockstore after msgmeta computation: %w", err)
+		}
 	}
 
 	return nil
@@ -418,7 +445,7 @@ func (syncer *Syncer) ValidateTipSet(ctx context.Context, fts *store.FullTipSet)
 
 func (syncer *Syncer) minerIsValid(ctx context.Context, maddr address.Address, baseTs *types.TipSet) error {
 	var err error
-	enc, err := actors.SerializeParams(&actors.IsMinerParam{Addr: maddr})
+	enc, err := actors.SerializeParams(&actors.IsValidMinerParam{Addr: maddr})
 	if err != nil {
 		return err
 	}
@@ -426,7 +453,7 @@ func (syncer *Syncer) minerIsValid(ctx context.Context, maddr address.Address, b
 	ret, err := syncer.sm.Call(ctx, &types.Message{
 		To:     actors.StoragePowerAddress,
 		From:   maddr,
-		Method: actors.SPAMethods.IsMiner,
+		Method: actors.SPAMethods.IsValidMiner,
 		Params: enc,
 	}, baseTs)
 	if err != nil {
@@ -434,10 +461,12 @@ func (syncer *Syncer) minerIsValid(ctx context.Context, maddr address.Address, b
 	}
 
 	if ret.ExitCode != 0 {
-		return xerrors.Errorf("StorageMarket.IsMiner check failed (exit code %d)", ret.ExitCode)
+		return xerrors.Errorf("StorageMarket.IsValidMiner check failed (exit code %d)", ret.ExitCode)
 	}
 
-	// TODO: ensure the miner is currently not late on their PoSt submission (this hasnt landed in the spec yet)
+	if !bytes.Equal(ret.Return, cbg.CborBoolTrue) {
+		return xerrors.New("miner isn't valid")
+	}
 
 	return nil
 }
@@ -589,7 +618,7 @@ func (syncer *Syncer) ValidateBlock(ctx context.Context, b *types.FullBlock) err
 	var merr error
 	for _, fut := range await {
 		if err := fut.AwaitContext(ctx); err != nil {
-			err = multierror.Append(merr, err)
+			merr = multierror.Append(merr, err)
 		}
 	}
 

@@ -52,6 +52,16 @@ func (a *StateAPI) StateMinerPower(ctx context.Context, maddr address.Address, t
 		return api.MinerPower{}, err
 	}
 
+	if maddr != address.Undef {
+		slashed, err := stmgr.GetMinerSlashed(ctx, a.StateManager, ts, maddr)
+		if err != nil {
+			return api.MinerPower{}, err
+		}
+		if slashed != 0 {
+			mpow = types.NewInt(0)
+		}
+	}
+
 	return api.MinerPower{
 		MinerPower: mpow,
 		TotalPower: tpow,

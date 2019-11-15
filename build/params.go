@@ -37,13 +37,13 @@ const PaymentChannelClosingDelay = 6 * 60 * 2 // six hours
 // Consensus / Network
 
 // Seconds
-const BlockDelay = 10
+const BlockDelay = 12
 
 // Seconds
 const AllowableClockDrift = BlockDelay * 2
 
 // Blocks
-const ForkLengthThreshold = 100
+const ForkLengthThreshold = Finality
 
 // Blocks (e)
 const BlocksPerEpoch = 5
@@ -60,7 +60,7 @@ const WRatioDen = 2
 // Proofs
 
 // Blocks
-const ProvingPeriodDuration = 160
+const ProvingPeriodDuration uint64 = 300
 
 // PoStChallangeTime sets the window in which post computation should happen
 // Blocks

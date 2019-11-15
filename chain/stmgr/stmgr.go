@@ -85,6 +85,16 @@ func (sm *StateManager) computeTipSetState(ctx context.Context, blks []*types.Bl
 	ctx, span := trace.StartSpan(ctx, "computeTipSetState")
 	defer span.End()
 
+	for i := 0; i < len(blks); i++ {
+		for j := i + 1; j < len(blks); j++ {
+			if blks[i].Miner == blks[j].Miner {
+				return cid.Undef, cid.Undef,
+					xerrors.Errorf("duplicate miner in a tipset (%s %s)",
+						blks[i].Miner, blks[j].Miner)
+			}
+		}
+	}
+
 	pstate := blks[0].ParentStateRoot
 
 	cids := make([]cid.Cid, len(blks))
@@ -185,6 +195,30 @@ func (sm *StateManager) computeTipSetState(ctx context.Context, blks []*types.Bl
 				}
 			}
 		}
+	}
+
+	// TODO: this nonce-getting is a ting bit ugly
+	spa, err := vmi.StateTree().GetActor(actors.StoragePowerAddress)
+	if err != nil {
+		return cid.Undef, cid.Undef, err
+	}
+
+	// TODO: cron actor
+	ret, err := vmi.ApplyMessage(ctx, &types.Message{
+		To:       actors.StoragePowerAddress,
+		From:     actors.StoragePowerAddress,
+		Nonce:    spa.Nonce,
+		Value:    types.NewInt(0),
+		GasPrice: types.NewInt(0),
+		GasLimit: types.NewInt(1 << 30), // Make super sure this is never too little
+		Method:   actors.SPAMethods.CheckProofSubmissions,
+		Params:   nil,
+	})
+	if err != nil {
+		return cid.Undef, cid.Undef, err
+	}
+	if ret.ExitCode != 0 {
+		return cid.Undef, cid.Undef, xerrors.Errorf("CheckProofSubmissions exit was non-zero: %d", ret.ExitCode)
 	}
 
 	bs := amt.WrapBlockstore(sm.cs.Blockstore())
@@ -437,14 +471,14 @@ func (sm *StateManager) tipsetExecutedMessage(ts *types.TipSet, msg cid.Cid) (*t
 
 func (sm *StateManager) ListAllActors(ctx context.Context, ts *types.TipSet) ([]address.Address, error) {
 	if ts == nil {
-		ts = sm.ChainStore().GetHeaviestTipSet()
+		ts = sm.cs.GetHeaviestTipSet()
 	}
 	st, _, err := sm.TipSetState(ctx, ts)
 	if err != nil {
 		return nil, err
 	}
 
-	cst := hamt.CSTFromBstore(sm.ChainStore().Blockstore())
+	cst := hamt.CSTFromBstore(sm.cs.Blockstore())
 	r, err := hamt.LoadNode(ctx, cst, st)
 	if err != nil {
 		return nil, err
@@ -471,7 +505,7 @@ func (sm *StateManager) MarketBalance(ctx context.Context, addr address.Address,
 	if _, err := sm.LoadActorState(ctx, actors.StorageMarketAddress, &state, ts); err != nil {
 		return actors.StorageParticipantBalance{}, err
 	}
-	cst := hamt.CSTFromBstore(sm.ChainStore().Blockstore())
+	cst := hamt.CSTFromBstore(sm.cs.Blockstore())
 	b, _, err := actors.GetMarketBalances(ctx, cst, state.Balances, addr)
 	if err != nil {
 		return actors.StorageParticipantBalance{}, err

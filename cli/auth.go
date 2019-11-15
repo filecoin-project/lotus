@@ -1,6 +1,7 @@
 package cli
 
 import (
+	"errors"
 	"fmt"
 
 	"gopkg.in/urfave/cli.v2"
@@ -17,8 +18,15 @@ var authCmd = &cli.Command{
 }
 
 var authCreateAdminToken = &cli.Command{
-	Name:  "create-admin-token",
-	Usage: "Create admin token",
+	Name:  "create-token",
+	Usage: "Create token",
+	Flags: []cli.Flag{
+		&cli.StringFlag{
+			Name:  "perm",
+			Usage: "permission to assign to the token, one of: read, write, sign, admin",
+		},
+	},
+
 	Action: func(cctx *cli.Context) error {
 		napi, closer, err := GetFullNodeAPI(cctx)
 		if err != nil {
@@ -28,9 +36,24 @@ var authCreateAdminToken = &cli.Command{
 
 		ctx := ReqContext(cctx)
 
-		// TODO: Probably tell the user how powerful this token is
+		if !cctx.IsSet("perm") {
+			return errors.New("--perm flag not set")
+		}
 
-		token, err := napi.AuthNew(ctx, api.AllPermissions)
+		perm := cctx.String("perm")
+		idx := -1
+		for i, p := range api.AllPermissions {
+			if perm == p {
+				idx = i
+			}
+		}
+
+		if idx == -1 {
+			return fmt.Errorf("--perm flag has to be one of: %s", api.AllPermissions)
+		}
+
+		// slice on [:idx] so for example: 'sign' gives you [read, write, sign]
+		token, err := napi.AuthNew(ctx, api.AllPermissions[:idx])
 		if err != nil {
 			return err
 		}

@@ -59,7 +59,7 @@ var initCmd = &cli.Command{
 		log.Info("Initializing lotus storage miner")
 
 		log.Info("Checking proof parameters")
-		if err := build.GetParams(true); err != nil {
+		if err := build.GetParams(true, false); err != nil {
 			return xerrors.Errorf("fetching proof parameters: %w", err)
 		}
 
@@ -132,19 +132,19 @@ func storageMinerInit(ctx context.Context, cctx *cli.Context, api api.FullNode, 
 
 	p2pSk, err := makeHostKey(lr)
 	if err != nil {
-		return err
+		return xerrors.Errorf("make host key: %w", err)
 	}
 
 	peerid, err := peer.IDFromPrivateKey(p2pSk)
 	if err != nil {
-		return err
+		return xerrors.Errorf("peer ID from private key: %w", err)
 	}
 
 	var addr address.Address
 	if act := cctx.String("actor"); act != "" {
 		a, err := address.NewFromString(act)
 		if err != nil {
-			return err
+			return xerrors.Errorf("failed parsing actor flag value (%q): %w", act, err)
 		}
 
 		if err := configureStorageMiner(ctx, api, a, peerid, cctx.Bool("genesis-miner")); err != nil {

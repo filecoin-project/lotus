@@ -89,7 +89,7 @@ func (pmgr *PeerMgr) Run(ctx context.Context) {
 			if pcount < pmgr.minFilPeers {
 				pmgr.expandPeers()
 			} else if pcount > pmgr.maxFilPeers {
-				log.Infof("peer count about threshold: %d > %d", pcount, pmgr.maxFilPeers)
+				log.Debug("peer count about threshold: %d > %d", pcount, pmgr.maxFilPeers)
 			}
 		}
 	}

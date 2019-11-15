@@ -152,9 +152,16 @@ func SetupStoragePowerActor(bs bstore.Blockstore) (*types.Actor, error) {
 		return nil, err
 	}
 
+	blks := amt.WrapBlockstore(bs)
+	emptyamt, err := amt.FromArray(blks, nil)
+	if err != nil {
+		return nil, xerrors.Errorf("amt build failed: %w", err)
+	}
+
 	sms := &actors.StoragePowerState{
-		Miners:       emptyhamt,
-		TotalStorage: types.NewInt(0),
+		Miners:         emptyhamt,
+		ProvingBuckets: emptyamt,
+		TotalStorage:   types.NewInt(0),
 	}
 
 	stcid, err := cst.Put(context.TODO(), sms)

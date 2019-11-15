@@ -36,7 +36,7 @@ var runCmd = &cli.Command{
 		},
 	},
 	Action: func(cctx *cli.Context) error {
-		if err := build.GetParams(true); err != nil {
+		if err := build.GetParams(true, false); err != nil {
 			return xerrors.Errorf("fetching proof parameters: %w", err)
 		}
 

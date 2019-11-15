@@ -13,7 +13,7 @@ import (
 )
 
 // This file implements a VERY simple, incomplete version of the data transfer
-// module that allows us to make the neccesary insertions of data transfer
+// module that allows us to make the necessary insertions of data transfer
 // functionality into the storage market
 // It does not:
 // -- actually validate requests
@@ -39,7 +39,6 @@ func (impl *dagserviceImpl) RegisterVoucherType(voucherType reflect.Type, valida
 	return nil
 }
 
-// open a data transfer that will send data to the recipient peer and
 // open a data transfer that will send data to the recipient peer and
 // transfer parts of the piece that match the selector
 func (impl *dagserviceImpl) OpenPushDataChannel(ctx context.Context, to peer.ID, voucher Voucher, baseCid cid.Cid, Selector ipld.Node) (ChannelID, error) {
