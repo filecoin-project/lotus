@@ -81,6 +81,26 @@ func (s *StateWrapper) Actor(addr vstate.Address) (vstate.Actor, error) {
 	return &actorWrapper{*fcActor}, nil
 }
 
+func (s *StateWrapper) PaymentChannelActorState(addr vstate.Address) (vstate.PaymentChannelActorState, error) {
+	vaddr, err := address.NewFromBytes([]byte(addr))
+	if err != nil {
+		return nil, err
+	}
+	tree, err := state.LoadStateTree(s.cst, s.stateRoot)
+	if err != nil {
+		return nil, err
+	}
+	fcActor, err := tree.GetActor(vaddr)
+	if err != nil {
+		return nil, err
+	}
+	var pcs actors.PaymentChannelActorState
+	if err := s.cst.Get(context.TODO(), fcActor.Head, &pcs); err != nil {
+		return nil, err
+	}
+	return paymentChannelActorWrapper{pcs}, nil
+}
+
 func (s *StateWrapper) Storage(addr vstate.Address) (vstate.Storage, error) {
 	return s.storage, nil
 }
@@ -264,6 +284,34 @@ func (a *actorWrapper) Nonce() uint64 {
 func (a *actorWrapper) Balance() vstate.AttoFIL {
 	return a.Actor.Balance.Int
 
+}
+
+//
+// Payment channel actor wrapper
+//
+
+type paymentChannelActorWrapper struct {
+	actors.PaymentChannelActorState
+}
+
+func (pa paymentChannelActorWrapper) To() vstate.Address {
+	return vstate.Address(pa.PaymentChannelActorState.To.Bytes())
+}
+
+func (pa paymentChannelActorWrapper) From() vstate.Address {
+	return vstate.Address(pa.PaymentChannelActorState.From.Bytes())
+}
+
+func (pa paymentChannelActorWrapper) ToSend() vstate.AttoFIL {
+	return pa.PaymentChannelActorState.ToSend.Int
+}
+
+func (pa paymentChannelActorWrapper) ClosingAt() uint64 {
+	return pa.PaymentChannelActorState.ClosingAt
+}
+
+func (pa paymentChannelActorWrapper) MinCloseHeight() uint64{
+	return pa.PaymentChannelActorState.MinCloseHeight
 }
 
 //
