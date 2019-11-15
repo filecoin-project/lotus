@@ -29,8 +29,8 @@ type Node interface {
     // Gets miner-related on-chain state.
     GetMinerState(ctx context.Context, state StateKey) (*MinerChainState, error)
 
-    // Submits a self-deal to the chain.
-    SubmitSelfDeal(ctx context.Context, size uint64) error
+    // Submits a self-deals to the chain.
+    SubmitSelfDeals(ctx context.Context, deals []uint64) (cid.Cid, error)
 
     // Retrieves a ticket used in sealing and proving operations.
     GetRandomness(ctx context.Context, state StateKey, offset uint) ([]byte, error)

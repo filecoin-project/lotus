@@ -10,6 +10,7 @@ import (
     "github.com/filecoin-project/lotus/chain/store"
     "github.com/filecoin-project/lotus/chain/types"
     "github.com/ipfs/go-cid"
+    typegen "github.com/whyrusleeping/cbor-gen"
 )
 
 type lotusAdapter struct {
@@ -103,8 +104,11 @@ func (adapter lotusAdapter) eventHandler() {
     }
 }
 
-func (adapter lotusAdapter) callMinerActorMethod(ctx context.Context, method uint64, payload []byte) (cid.Cid, error) {
-    // TODO: Validate that using the miner/worker address for both To and From is allowed
+func (adapter lotusAdapter) callMinerActorMethod(ctx context.Context, method uint64, params typegen.CBORMarshaler) (cid.Cid, error) {
+    payload, aerr := actors.SerializeParams(params)
+    if aerr != nil {
+        return cid.Undef, aerr
+    }
     msg := types.Message{
         To:       adapter.actor,
         From:     adapter.miner,
@@ -192,9 +196,13 @@ func (adapter lotusAdapter) GetProvingPeriod(ctx context.Context, stateKey State
     return pp, nil
 }
 
-func (adapter lotusAdapter) SubmitSelfDeal(ctx context.Context, size uint64) error {
-    // TODO: Not sure how to implement this
-    panic("implement me")
+func (adapter lotusAdapter) SubmitSelfDeals(ctx context.Context, deals []uint64) (cid.Cid, error) {
+    // TODO: Adapt from shared modules' definition of storage deals to lotus' storage deal
+    // TODO: Each deal has to be signed (adapter.fullNode.WalletSign)
+    params := actors.PublishStorageDealsParams{
+        Deals: make([]actors.StorageDeal, len(deals)),
+    }
+    return adapter.callMinerActorMethod(ctx, actors.SMAMethods.PublishStorageDeals, &params)
 }
 
 func (adapter lotusAdapter) SubmitSectorPreCommitment(ctx context.Context, id SectorID, commR cid.Cid, dealIDs []uint64) (cid.Cid, error) {
@@ -204,11 +212,7 @@ func (adapter lotusAdapter) SubmitSectorPreCommitment(ctx context.Context, id Se
         SealEpoch: 0, // TODO: does this need to be passed in?!
         DealIDs: dealIDs,
     }
-    payload, aerr := actors.SerializeParams(&params)
-    if aerr != nil {
-        return cid.Undef, aerr
-    }
-    return adapter.callMinerActorMethod(ctx, actors.MAMethods.PreCommitSector, payload)
+    return adapter.callMinerActorMethod(ctx, actors.MAMethods.PreCommitSector, &params)
 }
 
 func (adapter lotusAdapter) GetSealSeed(ctx context.Context, state StateKey, id SectorID) SealSeed {
@@ -222,11 +226,7 @@ func (adapter lotusAdapter) SubmitSectorCommitment(ctx context.Context, id Secto
         SectorID: uint64(id),
         DealIDs: dealIDs,
     }
-    payload, aerr := actors.SerializeParams(&params)
-    if aerr != nil {
-        return cid.Undef, aerr
-    }
-    return adapter.callMinerActorMethod(ctx, actors.MAMethods.ProveCommitSector, payload)
+    return adapter.callMinerActorMethod(ctx, actors.MAMethods.ProveCommitSector, &params)
 }
 
 func (adapter lotusAdapter) SubmitPoSt(ctx context.Context, proof Proof) (cid.Cid, error) {
@@ -234,11 +234,7 @@ func (adapter lotusAdapter) SubmitPoSt(ctx context.Context, proof Proof) (cid.Ci
         Proof:   proof,
         DoneSet: types.BitFieldFromSet(nil),
     }
-    payload, aerr := actors.SerializeParams(&params)
-    if aerr != nil {
-        return cid.Undef, aerr
-    }
-    return adapter.callMinerActorMethod(ctx, actors.MAMethods.SubmitPoSt, payload)
+    return adapter.callMinerActorMethod(ctx, actors.MAMethods.SubmitPoSt, &params)
 }
 
 func (adapter lotusAdapter) SubmitDeclaredFaults(ctx context.Context, faults BitField) (cid.Cid, error) {
@@ -246,9 +242,7 @@ func (adapter lotusAdapter) SubmitDeclaredFaults(ctx context.Context, faults Bit
     for k, _ := range faults {
         params.Faults.Set(k)
     }
-    payload := make([]byte, 0)
-    // TODO: Add MarshalCBOR and UnmarshalCBOR for DeclareFaultsParams
-    return adapter.callMinerActorMethod(ctx, actors.MAMethods.DeclareFaults, payload)
+    return adapter.callMinerActorMethod(ctx, actors.MAMethods.DeclareFaults, &params)
 }
 
 func (adapter lotusAdapter) SubmitDeclaredRecoveries(ctx context.Context, recovered BitField) (cid cid.Cid, err error) {
