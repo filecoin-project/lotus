@@ -40,7 +40,7 @@ const (
 )
 
 // TransferID is an identifier for a data transfer, shared between
-// request/responder and unique to the requestor
+// request/responder and unique to the requester
 type TransferID uint64
 
 // ChannelID is a unique identifier for a channel, distinct by both the other
@@ -52,11 +52,11 @@ type ChannelID struct {
 
 // Channel represents all the parameters for a single data transfer
 type Channel struct {
-	// an identifier for this channel shared by request and responder, set by requestor through protocol
+	// an identifier for this channel shared by request and responder, set by requester through protocol
 	transferID TransferID
 	// base CID for the piece being transferred
 	baseCid cid.Cid
-	// portion of Piece to return, spescified by an IPLD selector
+	// portion of Piece to return, specified by an IPLD selector
 	selector ipld.Node
 	// used to verify this channel
 	voucher Voucher
