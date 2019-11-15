@@ -370,6 +370,11 @@ func (cs *ChainStore) NearestCommonAncestor(a, b *types.TipSet) (*types.TipSet, 
 }
 
 func (cs *ChainStore) ReorgOps(a, b *types.TipSet) ([]*types.TipSet, []*types.TipSet, error) {
+	// Simple expansion of a tipset should not result in any reorg
+	if types.CidArrsEqual(a.Parents(), b.Parents()) && a.Height() == b.Height() {
+		return nil, nil, nil
+	}
+
 	left := a
 	right := b
 
