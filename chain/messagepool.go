@@ -5,9 +5,10 @@ import (
 	"sync"
 	"time"
 
+	"errors"
+
 	lru "github.com/hashicorp/golang-lru"
 	pubsub "github.com/libp2p/go-libp2p-pubsub"
-	"github.com/pkg/errors"
 	"go.uber.org/multierr"
 	"golang.org/x/xerrors"
 
@@ -356,7 +357,7 @@ func (mp *MessagePool) HeadChange(revert []*types.TipSet, apply []*types.TipSet)
 		for _, b := range ts.Blocks() {
 			bmsgs, smsgs, err := mp.sm.ChainStore().MessagesForBlock(b)
 			if err != nil {
-				return errors.Wrapf(err, "failed to get messages for revert block %s(height %d)", b.Cid(), b.Height)
+				return xerrors.Errorf("failed to get messages for revert block %s(height %d): %w", b.Cid(), b.Height, err)
 			}
 			for _, msg := range smsgs {
 				if err := mp.Add(msg); err != nil {
@@ -381,7 +382,7 @@ func (mp *MessagePool) HeadChange(revert []*types.TipSet, apply []*types.TipSet)
 		for _, b := range ts.Blocks() {
 			bmsgs, smsgs, err := mp.sm.ChainStore().MessagesForBlock(b)
 			if err != nil {
-				return errors.Wrapf(err, "failed to get messages for apply block %s(height %d) (msgroot = %s)", b.Cid(), b.Height, b.Messages)
+				return xerrors.Errorf("failed to get messages for apply block %s(height %d) (msgroot = %s): %w", b.Cid(), b.Height, b.Messages, err)
 			}
 			for _, msg := range smsgs {
 				mp.Remove(msg.Message.From, msg.Message.Nonce)
