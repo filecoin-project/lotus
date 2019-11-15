@@ -85,6 +85,16 @@ func (sm *StateManager) computeTipSetState(ctx context.Context, blks []*types.Bl
 	ctx, span := trace.StartSpan(ctx, "computeTipSetState")
 	defer span.End()
 
+	for i := 0; i < len(blks); i++ {
+		for j := i + 1; j < len(blks); j++ {
+			if blks[i].Miner == blks[j].Miner {
+				return cid.Undef, cid.Undef,
+					xerrors.Errorf("duplicate miner in a tipset (%s %s)",
+						blks[i].Miner, blks[j].Miner)
+			}
+		}
+	}
+
 	pstate := blks[0].ParentStateRoot
 
 	cids := make([]cid.Cid, len(blks))
