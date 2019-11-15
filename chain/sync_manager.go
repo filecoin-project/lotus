@@ -20,11 +20,11 @@ type SyncManager struct {
 
 	bspThresh int
 
-	syncTargets chan *types.TipSet
+	incomingTipSets chan *types.TipSet
+	syncTargets     chan *types.TipSet
+	syncResults     chan *syncResult
 
-	asLk        sync.Mutex
 	activeSyncs map[types.TipSetKey]*types.TipSet
-	queuedSyncs map[types.TipSetKey]*types.TipSet
 
 	syncState SyncerState
 
@@ -33,30 +33,48 @@ type SyncManager struct {
 	stop chan struct{}
 }
 
+type syncResult struct {
+	ts      *types.TipSet
+	success bool
+}
+
+const syncWorkerCount = 3
+
 func NewSyncManager(sync SyncFunc) *SyncManager {
 	return &SyncManager{
-		peerHeads:   make(map[peer.ID]*types.TipSet),
-		syncTargets: make(chan *types.TipSet),
-		activeSyncs: make([]*types.TipSet, syncWorkerCount),
-		doSync:      sync,
-		stop:        make(chan struct{}),
+		bspThresh:       1,
+		peerHeads:       make(map[peer.ID]*types.TipSet),
+		syncTargets:     make(chan *types.TipSet),
+		syncResults:     make(chan *syncResult),
+		incomingTipSets: make(chan *types.TipSet),
+		activeSyncs:     make(map[types.TipSetKey]*types.TipSet),
+		doSync:          sync,
+		stop:            make(chan struct{}),
 	}
 }
 
 func (sm *SyncManager) Start() {
+	go sm.syncScheduler()
 	for i := 0; i < syncWorkerCount; i++ {
 		go sm.syncWorker(i)
 	}
 }
 
+func (sm *SyncManager) Stop() {
+	close(sm.stop)
+}
+
 func (sm *SyncManager) SetPeerHead(p peer.ID, ts *types.TipSet) {
+	log.Info("set peer head!")
 	sm.lk.Lock()
 	defer sm.lk.Unlock()
 	sm.peerHeads[p] = ts
 
 	if !sm.bootstrapped {
+		log.Info("not bootstrapped")
 		spc := sm.syncedPeerCount()
 		if spc >= sm.bspThresh {
+			log.Info("go time!")
 			// Its go time!
 			target, err := sm.selectSyncTarget()
 			if err != nil {
@@ -64,16 +82,15 @@ func (sm *SyncManager) SetPeerHead(p peer.ID, ts *types.TipSet) {
 				return
 			}
 
-			sm.asLk.Lock()
-			sm.activeSyncs[target.Key()] = target
-			sm.asLk.Unlock()
-			sm.syncTargets <- target
+			sm.incomingTipSets <- target
+			// TODO: is this the right place to say we're bootstrapped? probably want to wait until the sync finishes
 			sm.bootstrapped = true
 		}
 		log.Infof("sync bootstrap has %d peers", spc)
 		return
 	}
 
+	sm.incomingTipSets <- ts
 }
 
 type syncBucketSet struct {
@@ -103,14 +120,36 @@ func (sbs *syncBucketSet) Pop() *syncTargetBucket {
 			bestTs = hts
 		}
 	}
-	nbuckets := make([]*syncTargetBucket, len(sbs.buckets)-1)
+
+	sbs.removeBucket(bestBuck)
+
 	return bestBuck
+}
+
+func (sbs *syncBucketSet) removeBucket(toremove *syncTargetBucket) {
+	nbuckets := make([]*syncTargetBucket, 0, len(sbs.buckets)-1)
+	for _, b := range sbs.buckets {
+		if b != toremove {
+			nbuckets = append(nbuckets, b)
+		}
+	}
+	sbs.buckets = nbuckets
+}
+
+func (sbs *syncBucketSet) PopRelated(ts *types.TipSet) *syncTargetBucket {
+	for _, b := range sbs.buckets {
+		if b.sameChainAs(ts) {
+			sbs.removeBucket(b)
+			return b
+		}
+	}
+	return nil
 }
 
 func (sbs *syncBucketSet) Heaviest() *types.TipSet {
 	// TODO: should also consider factoring in number of peers represented by each bucket here
 	var bestTs *types.TipSet
-	for _, b := range buckets {
+	for _, b := range sbs.buckets {
 		bhts := b.heaviestTipSet()
 		if bestTs == nil || bhts.ParentWeight().GreaterThan(bestTs.ParentWeight()) {
 			bestTs = bhts
@@ -160,6 +199,10 @@ func (stb *syncTargetBucket) add(ts *types.TipSet) {
 }
 
 func (stb *syncTargetBucket) heaviestTipSet() *types.TipSet {
+	if stb == nil {
+		return nil
+	}
+
 	var best *types.TipSet
 	for _, ts := range stb.tips {
 		if best == nil || ts.ParentWeight().GreaterThan(best.ParentWeight()) {
@@ -195,6 +238,7 @@ func (sm *SyncManager) selectSyncTarget() (*types.TipSet, error) {
 
 func (sm *SyncManager) syncScheduler() {
 	var syncQueue syncBucketSet
+	var activeSyncTips syncBucketSet
 
 	var nextSyncTarget *syncTargetBucket
 	var workerChan chan *types.TipSet
@@ -208,7 +252,6 @@ func (sm *SyncManager) syncScheduler() {
 			}
 
 			var relatedToActiveSync bool
-			sm.asLk.Lock()
 			for _, acts := range sm.activeSyncs {
 				if ts.Equals(acts) {
 					break
@@ -219,28 +262,54 @@ func (sm *SyncManager) syncScheduler() {
 					relatedToActiveSync = true
 				}
 			}
-			sm.asLk.Unlock()
 
 			// if this is related to an active sync process, immediately bucket it
 			// we don't want to start a parallel sync process that duplicates work
 			if relatedToActiveSync {
-				syncQueue.Insert(ts)
+				log.Info("related to active sync")
+				activeSyncTips.Insert(ts)
+				continue
 			}
 
 			if nextSyncTarget != nil && nextSyncTarget.sameChainAs(ts) {
+				log.Info("new tipset is part of our next sync target")
 				nextSyncTarget.add(ts)
 			} else {
+				log.Info("insert into that queue!")
 				syncQueue.Insert(ts)
 
 				if nextSyncTarget == nil {
 					nextSyncTarget = syncQueue.Pop()
-					workerChan = workerChanVal
+					workerChan = sm.syncTargets
+					log.Info("setting next sync target")
+				}
+			}
+		case res := <-sm.syncResults:
+			delete(sm.activeSyncs, res.ts.Key())
+			relbucket := activeSyncTips.PopRelated(res.ts)
+			if relbucket != nil {
+				if res.success {
+					if nextSyncTarget == nil {
+						nextSyncTarget = relbucket
+						workerChan = sm.syncTargets
+					} else {
+						syncQueue.buckets = append(syncQueue.buckets, relbucket)
+					}
+				} else {
+					// TODO: this is the case where we try to sync a chain, and
+					// fail, and we have more blocks on top of that chain that
+					// have come in since.  The question is, should we try to
+					// sync these? or just drop them?
 				}
 			}
 		case workerChan <- nextSyncTarget.heaviestTipSet():
+			hts := nextSyncTarget.heaviestTipSet()
+			sm.activeSyncs[hts.Key()] = hts
+
 			if len(syncQueue.buckets) > 0 {
 				nextSyncTarget = syncQueue.Pop()
 			} else {
+				nextSyncTarget = nil
 				workerChan = nil
 			}
 		case <-sm.stop:
@@ -253,19 +322,22 @@ func (sm *SyncManager) syncScheduler() {
 func (sm *SyncManager) syncWorker(id int) {
 	for {
 		select {
-		case ts, ok := sm.syncTargets:
+		case ts, ok := <-sm.syncTargets:
 			if !ok {
 				log.Info("sync manager worker shutting down")
 				return
 			}
+			log.Info("sync worker go time!", ts.Cids())
 
-			if err := sm.doSync(context.TODO(), ts); err != nil {
+			err := sm.doSync(context.TODO(), ts)
+			if err != nil {
 				log.Errorf("sync error: %+v", err)
 			}
 
-			sm.asLk.Lock()
-			delete(sm.activeSyncs, ts.Key())
-			sm.asLk.Unlock()
+			sm.syncResults <- &syncResult{
+				ts:      ts,
+				success: err == nil,
+			}
 		}
 	}
 }

@@ -32,12 +32,20 @@ type SyncerState struct {
 }
 
 func (ss *SyncerState) SetStage(v api.SyncStateStage) {
+	if ss == nil {
+		return
+	}
+
 	ss.lk.Lock()
 	defer ss.lk.Unlock()
 	ss.Stage = v
 }
 
 func (ss *SyncerState) Init(base, target *types.TipSet) {
+	if ss == nil {
+		return
+	}
+
 	ss.lk.Lock()
 	defer ss.lk.Unlock()
 	ss.Target = target
@@ -47,6 +55,10 @@ func (ss *SyncerState) Init(base, target *types.TipSet) {
 }
 
 func (ss *SyncerState) SetHeight(h uint64) {
+	if ss == nil {
+		return
+	}
+
 	ss.lk.Lock()
 	defer ss.lk.Unlock()
 	ss.Height = h
