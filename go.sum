@@ -76,8 +76,8 @@ github.com/eapache/queue v1.1.0/go.mod h1:6eCeP0CKFpHLu8blIFXhExK/dRa7WDZfr6jVFP
 github.com/fatih/color v1.7.0 h1:DkWD4oS2D8LGGgTQ6IvwJJXSL5Vp2ffcQg58nFV38Ys=
 github.com/fatih/color v1.7.0/go.mod h1:Zm6kSWBoL9eyXnKyktHP6abPY2pDugNf5KwzbycvMj4=
 github.com/fd/go-nat v1.0.0/go.mod h1:BTBu/CKvMmOMUPkKVef1pngt2WFH/lg7E6yQnulfp6E=
-github.com/filecoin-project/chain-validation v0.0.0-20191106200742-11986803c0f7 h1:Ags/z6ZubzKonQ9PsY9fO439yGdVg07qpdxfv/AEUno=
-github.com/filecoin-project/chain-validation v0.0.0-20191106200742-11986803c0f7/go.mod h1:0/0/QUNqpF/jVzLHFncGeT3NvGPODBhGzQlNgzmoZew=
+github.com/filecoin-project/chain-validation v0.0.0-20191115224905-deb9ec1d98a9 h1:NhTd36q2oQI/ndDffB7tIVJPwzWBOy0lyZyA9YJZ5Lc=
+github.com/filecoin-project/chain-validation v0.0.0-20191115224905-deb9ec1d98a9/go.mod h1:0/0/QUNqpF/jVzLHFncGeT3NvGPODBhGzQlNgzmoZew=
 github.com/filecoin-project/go-amt-ipld v0.0.0-20190919045431-3650716fff16 h1:NzojcJU1VbS6zdLG13JMYis/cQy/MrN3rxmZRq56jKA=
 github.com/filecoin-project/go-amt-ipld v0.0.0-20190919045431-3650716fff16/go.mod h1:lKjJYPg2kwbav5f78i5YA8kGccnZn18IySbpneXvaQs=
 github.com/filecoin-project/go-leb128 v0.0.0-20190212224330-8d79a5489543 h1:aMJGfgqe1QDhAVwxRg5fjCRF533xHidiKsugk7Vvzug=
