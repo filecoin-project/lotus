@@ -34,7 +34,7 @@ func (s *seal) precommit(t *testing.T, sb *sectorbuilder.SectorBuilder, sid uint
 	dlen := sectorbuilder.UserBytesForSectorSize(sectorSize)
 
 	var err error
-	r := io.LimitReader(rand.New(rand.NewSource(42 + int64(sid))), int64(dlen))
+	r := io.LimitReader(rand.New(rand.NewSource(42+int64(sid))), int64(dlen))
 	s.ppi, err = sb.AddPiece(dlen, sid, r, []uint64{})
 	if err != nil {
 		t.Fatalf("%+v", err)

@@ -193,6 +193,16 @@ func GetMinerSectorSize(ctx context.Context, sm *StateManager, ts *types.TipSet,
 	return minfo.SectorSize, nil
 }
 
+func GetMinerSlashed(ctx context.Context, sm *StateManager, ts *types.TipSet, maddr address.Address) (uint64, error) {
+	var mas actors.StorageMinerActorState
+	_, err := sm.LoadActorState(ctx, maddr, &mas, ts)
+	if err != nil {
+		return 0, xerrors.Errorf("failed to load miner actor state: %w", err)
+	}
+
+	return mas.SlashedAt, nil
+}
+
 func GetStorageDeal(ctx context.Context, sm *StateManager, dealId uint64, ts *types.TipSet) (*actors.OnChainDeal, error) {
 	var state actors.StorageMarketState
 	if _, err := sm.LoadActorState(ctx, actors.StorageMarketAddress, &state, ts); err != nil {
