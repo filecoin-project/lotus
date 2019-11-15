@@ -3,7 +3,7 @@ package main
 import (
 	"container/list"
 	"context"
-	"fmt"
+	"github.com/filecoin-project/lotus/chain/address"
 	"sync"
 
 	"github.com/ipfs/go-cid"
@@ -35,7 +35,13 @@ func runSyncer(ctx context.Context, api api.FullNode, st *storage) {
 }
 
 func syncHead(ctx context.Context, api api.FullNode, st *storage, ts *types.TipSet) {
-	var toSync []*types.BlockHeader
+	addresses := map[address.Address]address.Address{}
+	actors := map[address.Address]map[types.Actor]struct{}{}
+	var alk sync.Mutex
+
+	log.Infof("Getting headers / actors")
+
+	toSync := map[cid.Cid]*types.BlockHeader{}
 	toVisit := list.New()
 
 	for _, header := range ts.Blocks() {
@@ -45,15 +51,19 @@ func syncHead(ctx context.Context, api api.FullNode, st *storage, ts *types.TipS
 	for toVisit.Len() > 0 {
 		bh := toVisit.Remove(toVisit.Back()).(*types.BlockHeader)
 
-		if !st.hasBlock(bh) {
-			toSync = append(toSync, bh)
+		if _, seen := toSync[bh.Cid()]; seen || st.hasBlock(bh) {
+			continue
 		}
-		if len(toSync)%500 == 0 {
+
+		toSync[bh.Cid()] = bh
+		addresses[bh.Miner] = address.Undef
+
+		if len(toSync)%500 == 10 {
 			log.Infof("todo: (%d) %s", len(toSync), bh.Cid())
 		}
 
 		if len(bh.Parents) == 0 {
-			break
+			continue
 		}
 
 		pts, err := api.ChainGetTipSet(ctx, types.NewTipSetKey(bh.Parents...))
@@ -68,6 +78,42 @@ func syncHead(ctx context.Context, api api.FullNode, st *storage, ts *types.TipS
 	}
 
 	log.Infof("Syncing %d blocks", len(toSync))
+
+	log.Infof("Persisting actors")
+
+	paDone := 0
+	par(40, maparr(toSync), func(bh *types.BlockHeader) {
+		paDone++
+		if paDone%100 == 0 {
+			log.Infof("pa: %d %d%%", paDone, (paDone*100)/len(toSync))
+		}
+		ts, err := types.NewTipSet([]*types.BlockHeader{bh})
+		aadrs, err := api.StateListActors(ctx, ts)
+		if err != nil {
+			return
+		}
+
+		par(50, aadrs, func(addr address.Address) {
+			act, err := api.StateGetActor(ctx, addr, ts)
+			if err != nil {
+				log.Error(err)
+				return
+			}
+			alk.Lock()
+			_, ok := actors[addr]
+			if !ok {
+				actors[addr] = map[types.Actor]struct{}{}
+			}
+			actors[addr][*act] = struct{}{}
+			addresses[addr] = address.Undef
+			alk.Unlock()
+		})
+	})
+
+	if err := st.storeActors(actors); err != nil {
+		log.Error(err)
+		return
+	}
 
 	log.Infof("Persisting headers")
 	if err := st.storeHeaders(toSync); err != nil {
@@ -89,64 +135,60 @@ func syncHead(ctx context.Context, api api.FullNode, st *storage, ts *types.TipS
 		return
 	}
 
-	log.Infof("Getting actors")
-	// TODO: for now this assumes that actor can't be removed
+	log.Infof("Resolving addresses")
 
-	/*	aadrs, err := api.StateListActors(ctx, ts)
+	for _, message := range msgs {
+		addresses[message.To] = address.Undef
+		addresses[message.From] = address.Undef
+	}
+
+	par(50, kmaparr(addresses), func(addr address.Address) {
+		raddr, err := api.StateLookupID(ctx, addr, nil)
 		if err != nil {
+			log.Warn(err)
 			return
-		}*/
+		}
+		alk.Lock()
+		addresses[addr] = raddr
+		alk.Unlock()
+	})
+
+	if err := st.storeAddressMap(addresses); err != nil {
+		log.Error(err)
+		return
+	}
 
 	log.Infof("Sync done")
 }
 
-func fetchMessages(ctx context.Context, api api.FullNode, toSync []*types.BlockHeader) (map[cid.Cid]*types.Message, map[cid.Cid][]cid.Cid) {
+func fetchMessages(ctx context.Context, api api.FullNode, toSync map[cid.Cid]*types.BlockHeader) (map[cid.Cid]*types.Message, map[cid.Cid][]cid.Cid) {
 	var lk sync.Mutex
 	messages := map[cid.Cid]*types.Message{}
 	inclusions := map[cid.Cid][]cid.Cid{} // block -> msgs
 
-	throttle := make(chan struct{}, 50)
-	var wg sync.WaitGroup
-
-	for _, header := range toSync {
-		if header.Height%30 == 0 {
-			fmt.Printf("\rh: %d", header.Height)
+	par(50, maparr(toSync), func(header *types.BlockHeader) {
+		msgs, err := api.ChainGetBlockMessages(ctx, header.Cid())
+		if err != nil {
+			log.Error(err)
+			return
 		}
 
-		throttle <- struct{}{}
-		wg.Add(1)
+		vmm := make([]*types.Message, 0, len(msgs.Cids))
+		for _, m := range msgs.BlsMessages {
+			vmm = append(vmm, m)
+		}
 
-		go func(header cid.Cid) {
-			defer wg.Done()
-			defer func() {
-				<-throttle
-			}()
+		for _, m := range msgs.SecpkMessages {
+			vmm = append(vmm, &m.Message)
+		}
 
-			msgs, err := api.ChainGetBlockMessages(ctx, header)
-			if err != nil {
-				log.Error(err)
-				return
-			}
-
-			vmm := make([]*types.Message, 0, len(msgs.Cids))
-			for _, m := range msgs.BlsMessages {
-				vmm = append(vmm, m)
-			}
-
-			for _, m := range msgs.SecpkMessages {
-				vmm = append(vmm, &m.Message)
-			}
-
-			lk.Lock()
-			for _, message := range vmm {
-				messages[message.Cid()] = message
-				inclusions[header] = append(inclusions[header], message.Cid())
-			}
-			lk.Unlock()
-
-		}(header.Cid())
-	}
-	wg.Wait()
+		lk.Lock()
+		for _, message := range vmm {
+			messages[message.Cid()] = message
+			inclusions[header.Cid()] = append(inclusions[header.Cid()], message.Cid())
+		}
+		lk.Unlock()
+	})
 
 	return messages, inclusions
 }
