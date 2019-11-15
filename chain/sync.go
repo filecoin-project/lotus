@@ -116,6 +116,13 @@ func (syncer *Syncer) InformNewHead(from peer.ID, fts *store.FullTipSet) {
 		return
 	}
 
+	// TODO: IMPORTANT(GARBAGE) this needs to be put in the 'temporary' side of
+	// the blockstore
+	if err := syncer.store.PersistBlockHeaders(fts.TipSet().Blocks()...); err != nil {
+		log.Warn("failed to persist incoming block header: ", err)
+		return
+	}
+
 	syncer.peerHeadsLk.Lock()
 	syncer.peerHeads[from] = fts.TipSet()
 	syncer.peerHeadsLk.Unlock()
@@ -147,7 +154,12 @@ func (syncer *Syncer) ValidateMsgMeta(fblk *types.FullBlock) error {
 		scids = append(scids, &c)
 	}
 
-	bs := amt.WrapBlockstore(syncer.store.Blockstore())
+	// TODO: IMPORTANT(GARBAGE). These message puts and the msgmeta
+	// computation need to go into the 'temporary' side of the blockstore when
+	// we implement that
+	blockstore := syncer.store.Blockstore()
+
+	bs := amt.WrapBlockstore(blockstore)
 	smroot, err := computeMsgMeta(bs, bcids, scids)
 	if err != nil {
 		return xerrors.Errorf("validating msgmeta, compute failed: %w", err)
@@ -155,6 +167,20 @@ func (syncer *Syncer) ValidateMsgMeta(fblk *types.FullBlock) error {
 
 	if fblk.Header.Messages != smroot {
 		return xerrors.Errorf("messages in full block did not match msgmeta root in header (%s != %s)", fblk.Header.Messages, smroot)
+	}
+
+	for _, m := range fblk.BlsMessages {
+		_, err := store.PutMessage(blockstore, m)
+		if err != nil {
+			return xerrors.Errorf("putting bls message to blockstore after msgmeta computation: %w", err)
+		}
+	}
+
+	for _, m := range fblk.SecpkMessages {
+		_, err := store.PutMessage(blockstore, m)
+		if err != nil {
+			return xerrors.Errorf("putting bls message to blockstore after msgmeta computation: %w", err)
+		}
 	}
 
 	return nil
