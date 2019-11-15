@@ -40,7 +40,6 @@ func (impl *dagserviceImpl) RegisterVoucherType(voucherType reflect.Type, valida
 }
 
 // open a data transfer that will send data to the recipient peer and
-// open a data transfer that will send data to the recipient peer and
 // transfer parts of the piece that match the selector
 func (impl *dagserviceImpl) OpenPushDataChannel(ctx context.Context, to peer.ID, voucher Voucher, baseCid cid.Cid, Selector ipld.Node) (ChannelID, error) {
 	return ChannelID{}, xerrors.Errorf("not implemented")
