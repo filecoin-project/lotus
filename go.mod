@@ -72,6 +72,7 @@ require (
 	github.com/libp2p/go-maddr-filter v0.0.5
 	github.com/mattn/go-isatty v0.0.9 // indirect
 	github.com/mattn/go-runewidth v0.0.4 // indirect
+	github.com/mattn/go-sqlite3 v1.12.0
 	github.com/miekg/dns v1.1.16 // indirect
 	github.com/minio/blake2b-simd v0.0.0-20160723061019-3f5f724cb5b1
 	github.com/minio/sha256-simd v0.1.1-0.20190913151208-6de447530771
