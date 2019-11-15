@@ -74,18 +74,26 @@ class PowerState extends React.Component {
   constructor(props) {
     super(props)
 
-    this.state = {actors: []}
+    this.state = {actors: [], state: {State: {}}}
   }
 
   async componentDidMount() {
     const tipset = await this.props.client.call("Filecoin.ChainHead", []) // TODO: from props
     const actors = await this.props.client.call("Filecoin.StateListMiners", [tipset])
-    this.setState({actors: actors})
+    const state = await this.props.client.call('Filecoin.StateReadState', [this.props.actor, tipset])
+
+    this.setState({actors, state})
   }
 
   render() {
-    return this.state.actors.sort((a, b) => (Number(a.substr(1)) > Number(b.substr(1))))
-      .map(addr => <div key={addr}><Address miner={true} addr={addr} client={this.props.client} mountWindow={this.props.mountWindow}/></div>)
+    return <div>
+      <div>
+        <div>Total Power: <b>{this.state.state.State.TotalStorage}</b></div>
+      </div>
+      <div>---</div>
+      <div>{this.state.actors.sort((a, b) => (Number(a.substr(1)) > Number(b.substr(1))))
+        .map(addr => <div key={addr}><Address miner={true} addr={addr} client={this.props.client} mountWindow={this.props.mountWindow}/></div>)}</div>
+    </div>
   }
 }
 
@@ -174,6 +182,7 @@ class MinerState extends React.Component {
       <div>Sector Size: <b>{this.state.sectorSize/1024}</b> KiB</div>
       <div>Power: <b>{state.Power}</b> (<b>{state.Power/this.state.networkPower*100}</b>%)</div>
       <div>Proving Period End: <b>{state.ProvingPeriodEnd}</b></div>
+      <div>Slashed: <b>{state.SlashedAt === 0 ? "NO" : state.SlashedAt}</b></div>
       <div>
         <div>----</div>
         <div>Sectors:</div>

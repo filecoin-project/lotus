@@ -1,18 +1,22 @@
 package actors
 
 import (
+	"bytes"
 	"context"
+	"io"
+
+	"github.com/filecoin-project/go-amt-ipld"
+	cid "github.com/ipfs/go-cid"
+	hamt "github.com/ipfs/go-hamt-ipld"
+	"github.com/libp2p/go-libp2p-core/peer"
+	cbg "github.com/whyrusleeping/cbor-gen"
+	"go.opencensus.io/trace"
+	xerrors "golang.org/x/xerrors"
 
 	"github.com/filecoin-project/lotus/build"
 	"github.com/filecoin-project/lotus/chain/actors/aerrors"
 	"github.com/filecoin-project/lotus/chain/address"
 	"github.com/filecoin-project/lotus/chain/types"
-
-	cid "github.com/ipfs/go-cid"
-	hamt "github.com/ipfs/go-hamt-ipld"
-	"github.com/libp2p/go-libp2p-core/peer"
-	cbg "github.com/whyrusleeping/cbor-gen"
-	xerrors "golang.org/x/xerrors"
 )
 
 type StoragePowerActor struct{}
@@ -24,11 +28,12 @@ type spaMethods struct {
 	UpdateStorage           uint64
 	GetTotalStorage         uint64
 	PowerLookup             uint64
-	IsMiner                 uint64
+	IsValidMiner            uint64
 	PledgeCollateralForSize uint64
+	CheckProofSubmissions   uint64
 }
 
-var SPAMethods = spaMethods{1, 2, 3, 4, 5, 6, 7, 8}
+var SPAMethods = spaMethods{1, 2, 3, 4, 5, 6, 7, 8, 9}
 
 func (spa StoragePowerActor) Exports() []interface{} {
 	return []interface{}{
@@ -38,14 +43,17 @@ func (spa StoragePowerActor) Exports() []interface{} {
 		4: spa.UpdateStorage,
 		5: spa.GetTotalStorage,
 		6: spa.PowerLookup,
-		7: spa.IsMiner,
+		7: spa.IsValidMiner,
 		8: spa.PledgeCollateralForSize,
+		9: spa.CheckProofSubmissions,
 	}
 }
 
 type StoragePowerState struct {
-	Miners     cid.Cid
-	MinerCount uint64
+	Miners         cid.Cid
+	ProvingBuckets cid.Cid // amt[ProvingPeriodBucket]hamt[minerAddress]struct{}
+	MinerCount     uint64
+	LastMinerCheck uint64
 
 	TotalStorage types.BigInt
 }
@@ -259,7 +267,9 @@ func shouldSlash(block1, block2 *types.BlockHeader) bool {
 }
 
 type UpdateStorageParams struct {
-	Delta types.BigInt
+	Delta                    types.BigInt
+	NextProvingPeriodEnd     uint64
+	PreviousProvingPeriodEnd uint64
 }
 
 func (spa StoragePowerActor) UpdateStorage(act *types.Actor, vmctx types.VMContext, params *UpdateStorageParams) ([]byte, ActorError) {
@@ -273,12 +283,49 @@ func (spa StoragePowerActor) UpdateStorage(act *types.Actor, vmctx types.VMConte
 	if err != nil {
 		return nil, err
 	}
-
 	if !has {
 		return nil, aerrors.New(1, "update storage must only be called by a miner actor")
 	}
 
 	self.TotalStorage = types.BigAdd(self.TotalStorage, params.Delta)
+
+	previousBucket := params.PreviousProvingPeriodEnd % build.ProvingPeriodDuration
+	nextBucket := params.NextProvingPeriodEnd % build.ProvingPeriodDuration
+
+	if previousBucket == nextBucket && params.PreviousProvingPeriodEnd != 0 {
+		nroot, err := vmctx.Storage().Put(&self)
+		if err != nil {
+			return nil, err
+		}
+
+		if err := vmctx.Storage().Commit(old, nroot); err != nil {
+			return nil, err
+		}
+
+		return nil, nil // Nothing to do
+	}
+
+	buckets, eerr := amt.LoadAMT(types.WrapStorage(vmctx.Storage()), self.ProvingBuckets)
+	if eerr != nil {
+		return nil, aerrors.HandleExternalError(eerr, "loading proving buckets amt")
+	}
+
+	if params.PreviousProvingPeriodEnd != 0 { // delete from previous bucket
+		err := deleteMinerFromBucket(vmctx, buckets, previousBucket)
+		if err != nil {
+			return nil, err
+		}
+	}
+
+	err = addMinerToBucket(vmctx, buckets, nextBucket)
+	if err != nil {
+		return nil, err
+	}
+
+	self.ProvingBuckets, eerr = buckets.Flush()
+	if eerr != nil {
+		return nil, aerrors.HandleExternalError(eerr, "flushing proving buckets")
+	}
 
 	nroot, err := vmctx.Storage().Put(&self)
 	if err != nil {
@@ -290,6 +337,82 @@ func (spa StoragePowerActor) UpdateStorage(act *types.Actor, vmctx types.VMConte
 	}
 
 	return nil, nil
+}
+
+func deleteMinerFromBucket(vmctx types.VMContext, buckets *amt.Root, previousBucket uint64) aerrors.ActorError {
+	var bucket cid.Cid
+	err := buckets.Get(previousBucket, &bucket)
+	switch err.(type) {
+	case *amt.ErrNotFound:
+		return aerrors.HandleExternalError(err, "proving bucket missing")
+	case nil: // noop
+	default:
+		return aerrors.HandleExternalError(err, "getting proving bucket")
+	}
+
+	bhamt, err := hamt.LoadNode(vmctx.Context(), vmctx.Ipld(), bucket)
+	if err != nil {
+		return aerrors.HandleExternalError(err, "failed to load proving bucket")
+	}
+	err = bhamt.Delete(vmctx.Context(), string(vmctx.Message().From.Bytes()))
+	if err != nil {
+		return aerrors.HandleExternalError(err, "deleting miner from proving bucket")
+	}
+
+	err = bhamt.Flush(vmctx.Context())
+	if err != nil {
+		return aerrors.HandleExternalError(err, "flushing previous proving bucket")
+	}
+
+	bucket, err = vmctx.Ipld().Put(vmctx.Context(), bhamt)
+	if err != nil {
+		return aerrors.HandleExternalError(err, "putting previous proving bucket hamt")
+	}
+
+	err = buckets.Set(previousBucket, bucket)
+	if err != nil {
+		return aerrors.HandleExternalError(err, "setting previous proving bucket cid in amt")
+	}
+
+	return nil
+}
+
+func addMinerToBucket(vmctx types.VMContext, buckets *amt.Root, nextBucket uint64) aerrors.ActorError {
+	var bhamt *hamt.Node
+	var bucket cid.Cid
+	err := buckets.Get(nextBucket, &bucket)
+	switch err.(type) {
+	case *amt.ErrNotFound:
+		bhamt = hamt.NewNode(vmctx.Ipld())
+	case nil:
+		bhamt, err = hamt.LoadNode(vmctx.Context(), vmctx.Ipld(), bucket)
+		if err != nil {
+			return aerrors.HandleExternalError(err, "failed to load proving bucket")
+		}
+	default:
+		return aerrors.HandleExternalError(err, "getting proving bucket")
+	}
+
+	err = bhamt.Set(vmctx.Context(), string(vmctx.Message().From.Bytes()), cborNull)
+	if err != nil {
+		return aerrors.HandleExternalError(err, "setting miner in proving bucket")
+	}
+
+	err = bhamt.Flush(vmctx.Context())
+	if err != nil {
+		return aerrors.HandleExternalError(err, "flushing previous proving bucket")
+	}
+
+	bucket, err = vmctx.Ipld().Put(vmctx.Context(), bhamt)
+	if err != nil {
+		return aerrors.HandleExternalError(err, "putting previous proving bucket hamt")
+	}
+
+	err = buckets.Set(nextBucket, bucket)
+	if err != nil {
+		return aerrors.HandleExternalError(err, "setting previous proving bucket cid in amt")
+	}
+	return nil
 }
 
 func (spa StoragePowerActor) GetTotalStorage(act *types.Actor, vmctx types.VMContext, params *struct{}) ([]byte, ActorError) {
@@ -338,11 +461,11 @@ func powerLookup(ctx context.Context, vmctx types.VMContext, self *StoragePowerS
 	return types.BigFromBytes(ret), nil
 }
 
-type IsMinerParam struct {
+type IsValidMinerParam struct {
 	Addr address.Address
 }
 
-func (spa StoragePowerActor) IsMiner(act *types.Actor, vmctx types.VMContext, param *IsMinerParam) ([]byte, ActorError) {
+func (spa StoragePowerActor) IsValidMiner(act *types.Actor, vmctx types.VMContext, param *IsValidMinerParam) ([]byte, ActorError) {
 	var self StoragePowerState
 	if err := vmctx.Storage().Get(vmctx.Storage().GetHead(), &self); err != nil {
 		return nil, err
@@ -353,7 +476,24 @@ func (spa StoragePowerActor) IsMiner(act *types.Actor, vmctx types.VMContext, pa
 		return nil, err
 	}
 
-	return cbg.EncodeBool(has), nil
+	if !has {
+		log.Warnf("Miner INVALID: not in set: %s", param.Addr)
+
+		return cbg.CborBoolFalse, nil
+	}
+
+	ret, err := vmctx.Send(param.Addr, MAMethods.IsSlashed, types.NewInt(0), nil)
+	if err != nil {
+		return nil, err
+	}
+
+	slashed := bytes.Equal(ret, cbg.CborBoolTrue)
+
+	if slashed {
+		log.Warnf("Miner INVALID: /SLASHED/ : %s", param.Addr)
+	}
+
+	return cbg.EncodeBool(!slashed), nil
 }
 
 type PledgeCollateralParams struct {
@@ -424,6 +564,108 @@ func pledgeCollateralForSize(vmctx types.VMContext, size, totalStorage types.Big
 	)
 
 	return types.BigAdd(powerCollateral, perCapCollateral), nil
+}
+
+func (spa StoragePowerActor) CheckProofSubmissions(act *types.Actor, vmctx types.VMContext, param *struct{}) ([]byte, ActorError) {
+	if vmctx.Message().From != StoragePowerAddress {
+		return nil, aerrors.New(1, "CheckProofSubmissions is only callable as a part of tipset state computation")
+	}
+
+	var self StoragePowerState
+	old := vmctx.Storage().GetHead()
+	if err := vmctx.Storage().Get(old, &self); err != nil {
+		return nil, err
+	}
+
+	for i := self.LastMinerCheck; i < vmctx.BlockHeight(); i++ {
+		height := i + 1
+
+		err := checkProofSubmissionsAtH(vmctx, &self, height)
+		if err != nil {
+			return nil, err
+		}
+	}
+
+	self.LastMinerCheck = vmctx.BlockHeight()
+
+	nroot, aerr := vmctx.Storage().Put(&self)
+	if aerr != nil {
+		return nil, aerr
+	}
+
+	if err := vmctx.Storage().Commit(old, nroot); err != nil {
+		return nil, err
+	}
+
+	return nil, nil
+}
+
+func checkProofSubmissionsAtH(vmctx types.VMContext, self *StoragePowerState, height uint64) aerrors.ActorError {
+	bucketID := height % build.ProvingPeriodDuration
+
+	buckets, eerr := amt.LoadAMT(types.WrapStorage(vmctx.Storage()), self.ProvingBuckets)
+	if eerr != nil {
+		return aerrors.HandleExternalError(eerr, "loading proving buckets amt")
+	}
+
+	var bucket cid.Cid
+	err := buckets.Get(bucketID, &bucket)
+	switch err.(type) {
+	case *amt.ErrNotFound:
+		return nil // nothing to do
+	case nil:
+	default:
+		return aerrors.HandleExternalError(err, "getting proving bucket")
+	}
+
+	bhamt, err := hamt.LoadNode(vmctx.Context(), vmctx.Ipld(), bucket)
+	if err != nil {
+		return aerrors.HandleExternalError(err, "failed to load proving bucket")
+	}
+
+	err = bhamt.ForEach(vmctx.Context(), func(k string, val interface{}) error {
+		_, span := trace.StartSpan(vmctx.Context(), "StoragePowerActor.CheckProofSubmissions.loop")
+		defer span.End()
+
+		maddr, err := address.NewFromBytes([]byte(k))
+		if err != nil {
+			return aerrors.Escalate(err, "parsing miner address")
+		}
+
+		span.AddAttributes(trace.StringAttribute("miner", maddr.String()))
+
+		params, err := SerializeParams(&CheckMinerParams{NetworkPower: self.TotalStorage})
+		if err != nil {
+			return err
+		}
+
+		ret, err := vmctx.Send(maddr, MAMethods.CheckMiner, types.NewInt(0), params)
+		if err != nil {
+			return err
+		}
+
+		if len(ret) == 0 {
+			return nil // miner is fine
+		}
+
+		var power types.BigInt
+		if err := power.UnmarshalCBOR(bytes.NewReader(ret)); err != nil {
+			return xerrors.Errorf("unmarshaling CheckMiner response (%x): %w", ret, err)
+		}
+
+		if power.GreaterThan(types.NewInt(0)) {
+			log.Warnf("slashing miner %s for missed PoSt (%s B, H: %d, Bucket: %d)", maddr, power, height, bucketID)
+
+			self.TotalStorage = types.BigSub(self.TotalStorage, power)
+		}
+		return nil
+	})
+
+	if err != nil {
+		return aerrors.HandleExternalError(err, "iterating miners in proving bucket")
+	}
+
+	return nil
 }
 
 func MinerSetHas(vmctx types.VMContext, rcid cid.Cid, maddr address.Address) (bool, aerrors.ActorError) {
@@ -522,4 +764,34 @@ func MinerSetRemove(ctx context.Context, vmctx types.VMContext, rcid cid.Cid, ma
 	}
 
 	return c, nil
+}
+
+type cbgNull struct{}
+
+var cborNull = &cbgNull{}
+
+func (cbgNull) MarshalCBOR(w io.Writer) error {
+	n, err := w.Write(cbg.CborNull)
+	if err != nil {
+		return err
+	}
+	if n != 1 {
+		return xerrors.New("expected to write 1 byte")
+	}
+	return nil
+}
+
+func (cbgNull) UnmarshalCBOR(r io.Reader) error {
+	b := [1]byte{}
+	n, err := r.Read(b[:])
+	if err != nil {
+		return err
+	}
+	if n != 1 {
+		return xerrors.New("expected 1 byte")
+	}
+	if !bytes.Equal(b[:], cbg.CborNull) {
+		return xerrors.New("expected cbor null")
+	}
+	return nil
 }

@@ -110,7 +110,7 @@ func main() {
 		actors.PaymentInfo{},
 		actors.StoragePowerState{},
 		actors.CreateStorageMinerParams{},
-		actors.IsMinerParam{},
+		actors.IsValidMinerParam{},
 		actors.PowerLookupParams{},
 		actors.UpdateStorageParams{},
 		actors.ArbitrateConsensusFaultParams{},
@@ -128,6 +128,7 @@ func main() {
 		actors.OnChainDeal{},
 		actors.ComputeDataCommitmentParams{},
 		actors.SectorProveCommitInfo{},
+		actors.CheckMinerParams{},
 	)
 	if err != nil {
 		fmt.Println(err)

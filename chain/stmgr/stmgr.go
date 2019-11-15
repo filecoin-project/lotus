@@ -197,6 +197,30 @@ func (sm *StateManager) computeTipSetState(ctx context.Context, blks []*types.Bl
 		}
 	}
 
+	// TODO: this nonce-getting is a ting bit ugly
+	spa, err := vmi.StateTree().GetActor(actors.StoragePowerAddress)
+	if err != nil {
+		return cid.Undef, cid.Undef, err
+	}
+
+	// TODO: cron actor
+	ret, err := vmi.ApplyMessage(ctx, &types.Message{
+		To:       actors.StoragePowerAddress,
+		From:     actors.StoragePowerAddress,
+		Nonce:    spa.Nonce,
+		Value:    types.NewInt(0),
+		GasPrice: types.NewInt(0),
+		GasLimit: types.NewInt(1 << 30), // Make super sure this is never too little
+		Method:   actors.SPAMethods.CheckProofSubmissions,
+		Params:   nil,
+	})
+	if err != nil {
+		return cid.Undef, cid.Undef, err
+	}
+	if ret.ExitCode != 0 {
+		return cid.Undef, cid.Undef, xerrors.Errorf("CheckProofSubmissions exit was non-zero: %d", ret.ExitCode)
+	}
+
 	bs := amt.WrapBlockstore(sm.cs.Blockstore())
 	rectroot, err := amt.FromArray(bs, receipts)
 	if err != nil {

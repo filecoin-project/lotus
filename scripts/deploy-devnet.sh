@@ -71,6 +71,8 @@ scp scripts/bootstrap.toml "${GENESIS_HOST}:.lotus/config.toml" &
 ssh < "${GENPATH}/wallet.key" $GENESIS_HOST '/usr/local/bin/lotus wallet import' &
 wait
 
+ssh $GENESIS_HOST "echo -e '[Metrics]\nNickname=\"Boot-genesis\"' >> .lotus/config.toml"
+
 ssh $GENESIS_HOST 'systemctl restart lotus-daemon'
 
 log 'Starting genesis mining'
@@ -109,9 +111,24 @@ do
 
   ssh "$host" 'systemctl start lotus-daemon'
   scp scripts/bootstrap.toml "${host}:.lotus/config.toml"
+  ssh "$host" "echo -e '[Metrics]\nNickname=\"Boot-$host\"' >> .lotus/config.toml"
   ssh "$host" 'systemctl restart lotus-daemon'
 
   log 'Extracting addr info'
 
   ssh "$host" 'lotus net listen' | grep -v '/10' | grep -v '/127' >> build/bootstrap/bootstrappers.pi
 done
+
+log 'Updating genesis node with bootstrapable binaries'
+
+ssh "$GENESIS_HOST" 'systemctl stop lotus-daemon' &
+ssh "$GENESIS_HOST" 'systemctl stop lotus-storage-miner' &
+wait
+
+scp -C lotus "${GENESIS_HOST}":/usr/local/bin/lotus &
+scp -C lotus-storage-miner "${GENESIS_HOST}":/usr/local/bin/lotus-storage-miner &
+wait
+
+ssh "$GENESIS_HOST" 'systemctl start lotus-daemon' &
+ssh "$GENESIS_HOST" 'systemctl start lotus-storage-miner' &
+wait

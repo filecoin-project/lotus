@@ -1,6 +1,7 @@
 package actors
 
 import (
+	"bytes"
 	"context"
 	"encoding/binary"
 	"fmt"
@@ -62,14 +63,11 @@ type StorageMinerActorState struct {
 	// Amount of power this miner has.
 	Power types.BigInt
 
-	// List of sectors that this miner was slashed for.
-	//SlashedSet SectorSet
+	// Active is set to true after the miner has submitted their first PoSt
+	Active bool
 
 	// The height at which this miner was slashed at.
-	SlashedAt types.BigInt
-
-	// The amount of storage collateral that is owed to clients, and cannot be used for collateral anymore.
-	OwedStorageCollateral types.BigInt
+	SlashedAt uint64
 
 	ProvingPeriodEnd uint64
 }
@@ -132,7 +130,7 @@ type maMethods struct {
 	UpdatePeerID         uint64
 	ChangeWorker         uint64
 	IsSlashed            uint64
-	IsLate               uint64
+	CheckMiner           uint64
 	DeclareFaults        uint64
 	SlashConsensusFault  uint64
 }
@@ -156,8 +154,8 @@ func (sma StorageMinerActor) Exports() []interface{} {
 		13: sma.GetSectorSize,
 		14: sma.UpdatePeerID,
 		//15: sma.ChangeWorker,
-		//16: sma.IsSlashed,
-		//17: sma.IsLate,
+		16: sma.IsSlashed,
+		17: sma.CheckMiner,
 		18: sma.DeclareFaults,
 		19: sma.SlashConsensusFault,
 	}
@@ -529,7 +527,23 @@ func (sma StorageMinerActor) SubmitPoSt(act *types.Actor, vmctx types.VMContext,
 	self.Power = types.BigMul(types.NewInt(pss.Count-uint64(len(faults))),
 		types.NewInt(mi.SectorSize))
 
-	enc, err := SerializeParams(&UpdateStorageParams{Delta: types.BigSub(self.Power, oldPower)})
+	delta := types.BigSub(self.Power, oldPower)
+	if self.SlashedAt != 0 {
+		self.SlashedAt = 0
+		delta = self.Power
+	}
+
+	prevPE := self.ProvingPeriodEnd
+	if !self.Active {
+		self.Active = true
+		prevPE = 0
+	}
+
+	enc, err := SerializeParams(&UpdateStorageParams{
+		Delta:                    delta,
+		NextProvingPeriodEnd:     currentProvingPeriodEnd + build.ProvingPeriodDuration,
+		PreviousProvingPeriodEnd: prevPE,
+	})
 	if err != nil {
 		return nil, err
 	}
@@ -734,9 +748,68 @@ func (sma StorageMinerActor) GetSectorSize(act *types.Actor, vmctx types.VMConte
 	return types.NewInt(mi.SectorSize).Bytes(), nil
 }
 
-type PaymentVerifyParams struct {
-	Extra []byte
-	Proof []byte
+func isLate(height uint64, self *StorageMinerActorState) bool {
+	return self.ProvingPeriodEnd > 0 && height >= self.ProvingPeriodEnd // TODO: review: maybe > ?
+}
+
+func (sma StorageMinerActor) IsSlashed(act *types.Actor, vmctx types.VMContext, params *struct{}) ([]byte, ActorError) {
+	_, self, err := loadState(vmctx)
+	if err != nil {
+		return nil, err
+	}
+
+	return cbg.EncodeBool(self.SlashedAt != 0), nil
+}
+
+type CheckMinerParams struct {
+	NetworkPower types.BigInt
+}
+
+// TODO: better name
+func (sma StorageMinerActor) CheckMiner(act *types.Actor, vmctx types.VMContext, params *CheckMinerParams) ([]byte, ActorError) {
+	if vmctx.Message().From != StoragePowerAddress {
+		return nil, aerrors.New(2, "only the storage power actor can check miner")
+	}
+
+	oldstate, self, err := loadState(vmctx)
+	if err != nil {
+		return nil, err
+	}
+
+	if !isLate(vmctx.BlockHeight(), self) {
+		// Everything's fine
+		return nil, nil
+	}
+
+	if self.SlashedAt != 0 {
+		// Don't slash more than necessary
+		return nil, nil
+	}
+
+	if params.NetworkPower.Equals(self.Power) {
+		// Don't break the network when there's only one miner left
+
+		log.Warnf("can't slash miner %s for missed PoSt, no power would be left in the network", vmctx.Message().To)
+		return nil, nil
+	}
+
+	// Slash for being late
+
+	self.SlashedAt = vmctx.BlockHeight()
+
+	nstate, err := vmctx.Storage().Put(self)
+	if err != nil {
+		return nil, err
+	}
+	if err := vmctx.Storage().Commit(oldstate, nstate); err != nil {
+		return nil, err
+	}
+
+	var out bytes.Buffer
+	if err := self.Power.MarshalCBOR(&out); err != nil {
+		return nil, aerrors.HandleExternalError(err, "marshaling return value")
+	}
+	return out.Bytes(), nil
 }
 
 type DeclareFaultsParams struct {

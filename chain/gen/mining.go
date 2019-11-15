@@ -7,7 +7,6 @@ import (
 	bls "github.com/filecoin-project/go-bls-sigs"
 	cid "github.com/ipfs/go-cid"
 	hamt "github.com/ipfs/go-hamt-ipld"
-	"github.com/pkg/errors"
 	cbg "github.com/whyrusleeping/cbor-gen"
 	"golang.org/x/xerrors"
 
@@ -22,7 +21,7 @@ import (
 func MinerCreateBlock(ctx context.Context, sm *stmgr.StateManager, w *wallet.Wallet, miner address.Address, parents *types.TipSet, tickets []*types.Ticket, proof types.ElectionProof, msgs []*types.SignedMessage, timestamp uint64) (*types.FullBlock, error) {
 	st, recpts, err := sm.TipSetState(ctx, parents)
 	if err != nil {
-		return nil, errors.Wrap(err, "failed to load tipset state")
+		return nil, xerrors.Errorf("failed to load tipset state: %w", err)
 	}
 
 	height := parents.Height() + uint64(len(tickets))

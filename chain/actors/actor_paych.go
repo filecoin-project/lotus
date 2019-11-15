@@ -97,6 +97,11 @@ func hash(b []byte) []byte {
 	panic("blake 2b hash pls")
 }
 
+type PaymentVerifyParams struct {
+	Extra []byte
+	Proof []byte
+}
+
 func (pca PaymentChannelActor) UpdateChannelState(act *types.Actor, vmctx types.VMContext, params *PCAUpdateChannelStateParams) ([]byte, ActorError) {
 	var self PaymentChannelActorState
 	oldstate := vmctx.Storage().GetHead()

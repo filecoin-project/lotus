@@ -52,8 +52,8 @@ func TestStorageMarketCreateAndSlashMiner(t *testing.T) {
 	}
 
 	{
-		ret, _ := h.Invoke(t, ownerAddr, StoragePowerAddress, SPAMethods.IsMiner,
-			&IsMinerParam{Addr: minerAddr})
+		ret, _ := h.Invoke(t, ownerAddr, StoragePowerAddress, SPAMethods.IsValidMiner,
+			&IsValidMinerParam{Addr: minerAddr})
 		ApplyOK(t, ret)
 
 		var output bool
@@ -63,7 +63,7 @@ func TestStorageMarketCreateAndSlashMiner(t *testing.T) {
 		}
 
 		if !output {
-			t.Fatalf("%s is miner but IsMiner call returned false", minerAddr)
+			t.Fatalf("%s is miner but IsValidMiner call returned false", minerAddr)
 		}
 	}
 
@@ -108,7 +108,7 @@ func TestStorageMarketCreateAndSlashMiner(t *testing.T) {
 	}
 
 	{
-		ret, _ := h.Invoke(t, ownerAddr, StoragePowerAddress, SPAMethods.IsMiner, &IsMinerParam{minerAddr})
+		ret, _ := h.Invoke(t, ownerAddr, StoragePowerAddress, SPAMethods.IsValidMiner, &IsValidMinerParam{minerAddr})
 		ApplyOK(t, ret)
 		assert.Equal(t, ret.Return, cbg.CborBoolFalse)
 	}
