@@ -354,7 +354,7 @@ func (cg *ChainGen) YieldRepo() (repo.Repo, error) {
 }
 
 type MiningCheckAPI interface {
-	ChainGetRandomness(context.Context, types.TipSetKey, []*types.Ticket, int) ([]byte, error)
+	ChainGetRandomness(context.Context, types.TipSetKey, []*types.Ticket, uint64) ([]byte, error)
 
 	StateMinerPower(context.Context, address.Address, *types.TipSet) (api.MinerPower, error)
 
@@ -368,8 +368,8 @@ type mca struct {
 	sm *stmgr.StateManager
 }
 
-func (mca mca) ChainGetRandomness(ctx context.Context, pts types.TipSetKey, ticks []*types.Ticket, lb int) ([]byte, error) {
-	return mca.sm.ChainStore().GetRandomness(ctx, pts.Cids(), ticks, int64(lb))
+func (mca mca) ChainGetRandomness(ctx context.Context, pts types.TipSetKey, ticks []*types.Ticket, lb uint64) ([]byte, error) {
+	return mca.sm.ChainStore().GetRandomness(ctx, pts.Cids(), ticks, lb)
 }
 
 func (mca mca) StateMinerPower(ctx context.Context, maddr address.Address, ts *types.TipSet) (api.MinerPower, error) {
