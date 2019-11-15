@@ -303,3 +303,54 @@ func (a *StateAPI) StateMarketDeals(ctx context.Context, ts *types.TipSet) (map[
 func (a *StateAPI) StateMarketStorageDeal(ctx context.Context, dealId uint64, ts *types.TipSet) (*actors.OnChainDeal, error) {
 	return stmgr.GetStorageDeal(ctx, a.StateManager, dealId, ts)
 }
+
+func (a *StateAPI) StateChangedActors(ctx context.Context, old cid.Cid, new cid.Cid) (map[string]types.Actor, error) {
+	cst := hamt.CSTFromBstore(a.Chain.Blockstore())
+
+	nh, err := hamt.LoadNode(ctx, cst, new)
+	if err != nil {
+		return nil, err
+	}
+
+	oh, err := hamt.LoadNode(ctx, cst, old)
+	if err != nil {
+		return nil, err
+	}
+
+	out := map[string]types.Actor{}
+
+	err = nh.ForEach(ctx, func(k string, nval interface{}) error {
+		ncval := nval.(*cbg.Deferred)
+		var act types.Actor
+
+		var ocval cbg.Deferred
+
+		switch err := oh.Find(ctx, k, &ocval); err {
+		case nil:
+			if bytes.Equal(ocval.Raw, ncval.Raw) {
+				return nil // not changed
+			}
+			fallthrough
+		case hamt.ErrNotFound:
+			if err := act.UnmarshalCBOR(bytes.NewReader(ncval.Raw)); err != nil {
+				return err
+			}
+
+			addr, err := address.NewFromBytes([]byte(k))
+			if err != nil {
+				return xerrors.Errorf("address in state tree was not valid: %w", err)
+			}
+
+			out[addr.String()] = act
+		default:
+			return err
+		}
+
+		return nil
+	})
+	if err != nil {
+		return nil, err
+	}
+
+	return out, nil
+}

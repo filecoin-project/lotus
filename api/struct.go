@@ -106,6 +106,7 @@ type FullNodeStruct struct {
 		StateMarketDeals           func(context.Context, *types.TipSet) (map[string]actors.OnChainDeal, error)                     `perm:"read"`
 		StateMarketStorageDeal     func(context.Context, uint64, *types.TipSet) (*actors.OnChainDeal, error)                       `perm:"read"`
 		StateLookupID              func(ctx context.Context, addr address.Address, ts *types.TipSet) (address.Address, error)      `perm:"read"`
+		StateChangedActors         func(context.Context, cid.Cid, cid.Cid) (map[string]types.Actor, error)                `perm:"read"`
 
 		MarketEnsureAvailable func(context.Context, address.Address, types.BigInt) error `perm:"sign"`
 
@@ -423,6 +424,10 @@ func (c *FullNodeStruct) StateMarketStorageDeal(ctx context.Context, dealid uint
 
 func (c *FullNodeStruct) StateLookupID(ctx context.Context, addr address.Address, ts *types.TipSet) (address.Address, error) {
 	return c.Internal.StateLookupID(ctx, addr, ts)
+}
+
+func (c *FullNodeStruct) StateChangedActors(ctx context.Context, olnstate cid.Cid, newstate cid.Cid) (map[string]types.Actor, error) {
+	return c.Internal.StateChangedActors(ctx, olnstate, newstate)
 }
 
 func (c *FullNodeStruct) MarketEnsureAvailable(ctx context.Context, addr address.Address, amt types.BigInt) error {

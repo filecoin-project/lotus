@@ -111,6 +111,7 @@ type FullNode interface {
 	StateMarketDeals(context.Context, *types.TipSet) (map[string]actors.OnChainDeal, error)
 	StateMarketStorageDeal(context.Context, uint64, *types.TipSet) (*actors.OnChainDeal, error)
 	StateLookupID(context.Context, address.Address, *types.TipSet) (address.Address, error)
+	StateChangedActors(context.Context, cid.Cid, cid.Cid) (map[string]types.Actor, error)
 
 	MarketEnsureAvailable(context.Context, address.Address, types.BigInt) error
 	// MarketFreeBalance
