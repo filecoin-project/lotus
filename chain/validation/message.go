@@ -84,6 +84,5 @@ var methods = []uint64{
 	chain.StorageMinerGetPeerID:     actors.MAMethods.GetPeerID,
 	chain.StorageMinerGetSectorSize: actors.MAMethods.GetSectorSize,
 
-	chain.PaymentChannelCreate: actors.PCAMethods.Constructor,
 	// More to follow...
 }
