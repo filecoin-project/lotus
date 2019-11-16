@@ -38,8 +38,11 @@ create table actors
 	head text not null,
 	nonce int not null,
 	balance text,
+	stateroot text
+		constraint actors_blocks_stateroot_fk
+			references blocks (parentStateRoot),
 	constraint actors_pk
-		unique (id, code, head, nonce, balance)
+		primary key (id, nonce, balance, stateroot)
   );
 
 create table id_address_map
@@ -51,7 +54,6 @@ create table id_address_map
 	constraint id_address_map_pk
 		primary key (id, address)
 );
-
 
 create table messages
 (
@@ -81,6 +83,7 @@ create table blocks
 		constraint blocks_pk
 			primary key,
 	parentWeight numeric not null,
+	parentStateRoot text not null,
 	height int not null,
 	miner text not null
 		constraint blocks_id_address_map_miner_fk
@@ -100,8 +103,36 @@ create table block_messages
 		constraint block_messages_msg_fk
 			references messages,
 	constraint block_messages_pk
-		unique (block, message)
+		primary key (block, message)
 );
+
+create table miner_heads
+(
+	head text not null
+		constraint miner_heads_actors_head_fk
+			references actors (head),
+	addr text not null
+		constraint miner_heads_actors_id_fk
+			references actors (id),
+	stateroot text not null
+		constraint miner_heads_blocks_stateroot_fk
+			references blocks (parentStateRoot),
+	sectorset text not null,
+	provingset text not null,
+	owner text not null,
+	worker text not null,
+	peerid text not null,
+	sectorsize int not null,
+	power text not null,
+	active int,
+	ppe int not null,
+	slashed_at int not null,
+	constraint miner_heads_id_address_map_address_address_fk
+		foreign key (owner, worker) references id_address_map (address, address),
+	constraint miner_heads_pk
+		primary key (head, addr)
+);
+
 `)
 	if err != nil {
 		return err
@@ -119,22 +150,56 @@ func (st *storage) hasBlock(bh *types.BlockHeader) bool {
 	return exitsts
 }
 
-func (st *storage) storeActors(actors map[address.Address]map[types.Actor]struct{}) error {
+func (st *storage) storeActors(actors map[address.Address]map[types.Actor]cid.Cid) error {
 	tx, err := st.db.Begin()
 	if err != nil {
 		return err
 	}
 
-	stmt, err := tx.Prepare(`insert into actors (id, code, head, nonce, balance) values (?, ?, ?, ?, ?) on conflict do nothing`)
+	stmt, err := tx.Prepare(`insert into actors (id, code, head, nonce, balance, stateroot) values (?, ?, ?, ?, ?, ?) on conflict do nothing`)
 	if err != nil {
 		return err
 	}
 	defer stmt.Close()
 	for addr, acts := range actors {
-		for act, _ := range acts {
-			if _, err := stmt.Exec(addr.String(), act.Code.String(), act.Head.String(), act.Nonce, act.Balance.String()); err != nil {
+		for act, st := range acts {
+			if _, err := stmt.Exec(addr.String(), act.Code.String(), act.Head.String(), act.Nonce, act.Balance.String(), st.String()); err != nil {
 				return err
 			}
+		}
+	}
+
+	return tx.Commit()
+}
+
+func (st *storage) storeMiners(miners map[minerKey]*minerInfo) error {
+	tx, err := st.db.Begin()
+	if err != nil {
+		return err
+	}
+
+	stmt, err := tx.Prepare(`insert into miner_heads (head, addr, stateroot, sectorset, provingset, owner, worker, peerid, sectorsize, power, active, ppe, slashed_at) values (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?) on conflict do nothing`)
+	if err != nil {
+		return err
+	}
+	defer stmt.Close()
+	for k, i := range miners {
+		if _, err := stmt.Exec(
+			k.act.Head.String(),
+			k.addr.String(),
+			k.stateroot.String(),
+			i.state.Sectors.String(),
+			i.state.ProvingSet.String(),
+			i.info.Owner.String(),
+			i.info.Worker.String(),
+			i.info.PeerID.String(),
+			i.info.SectorSize,
+			i.state.Power.String(),
+			i.state.Active,
+			i.state.ProvingPeriodEnd,
+			i.state.SlashedAt,
+		); err != nil {
+			return err
 		}
 	}
 
@@ -147,13 +212,13 @@ func (st *storage) storeHeaders(bhs map[cid.Cid]*types.BlockHeader) error {
 		return err
 	}
 
-	stmt, err := tx.Prepare(`insert into blocks (cid, parentWeight, height, miner, "timestamp") values (?, ?, ?, ?, ?) on conflict do nothing`)
+	stmt, err := tx.Prepare(`insert into blocks (cid, parentWeight, parentStateRoot, height, miner, "timestamp") values (?, ?, ?, ?, ?, ?) on conflict do nothing`)
 	if err != nil {
 		return err
 	}
 	defer stmt.Close()
 	for _, bh := range bhs {
-		if _, err := stmt.Exec(bh.Cid().String(), bh.ParentWeight.String(), bh.Height, bh.Miner.String(), bh.Timestamp); err != nil {
+		if _, err := stmt.Exec(bh.Cid().String(), bh.ParentWeight.String(), bh.ParentStateRoot.String(), bh.Height, bh.Miner.String(), bh.Timestamp); err != nil {
 			return err
 		}
 	}

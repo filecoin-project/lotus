@@ -1,8 +1,10 @@
 package main
 
 import (
+	"bytes"
 	"container/list"
 	"context"
+	actors2 "github.com/filecoin-project/lotus/chain/actors"
 	"github.com/filecoin-project/lotus/chain/address"
 	"sync"
 
@@ -34,9 +36,20 @@ func runSyncer(ctx context.Context, api api.FullNode, st *storage) {
 	}()
 }
 
+type minerKey struct {
+	addr      address.Address
+	act       types.Actor
+	stateroot cid.Cid
+}
+
+type minerInfo struct {
+	state actors2.StorageMinerActorState
+	info  actors2.MinerInfo
+}
+
 func syncHead(ctx context.Context, api api.FullNode, st *storage, ts *types.TipSet) {
 	addresses := map[address.Address]address.Address{}
-	actors := map[address.Address]map[types.Actor]struct{}{}
+	actors := map[address.Address]map[types.Actor]cid.Cid{}
 	var alk sync.Mutex
 
 	log.Infof("Getting headers / actors")
@@ -82,35 +95,119 @@ func syncHead(ctx context.Context, api api.FullNode, st *storage, ts *types.TipS
 	log.Infof("Persisting actors")
 
 	paDone := 0
-	par(40, maparr(toSync), func(bh *types.BlockHeader) {
+	par(50, maparr(toSync), func(bh *types.BlockHeader) {
 		paDone++
 		if paDone%100 == 0 {
 			log.Infof("pa: %d %d%%", paDone, (paDone*100)/len(toSync))
 		}
-		ts, err := types.NewTipSet([]*types.BlockHeader{bh})
-		aadrs, err := api.StateListActors(ctx, ts)
-		if err != nil {
-			return
-		}
 
-		par(50, aadrs, func(addr address.Address) {
-			act, err := api.StateGetActor(ctx, addr, ts)
+		if len(bh.Parents) == 0 { // genesis case
+			ts, err := types.NewTipSet([]*types.BlockHeader{bh})
+			aadrs, err := api.StateListActors(ctx, ts)
 			if err != nil {
 				log.Error(err)
 				return
 			}
+
+			par(50, aadrs, func(addr address.Address) {
+				act, err := api.StateGetActor(ctx, addr, ts)
+				if err != nil {
+					log.Error(err)
+					return
+				}
+				alk.Lock()
+				_, ok := actors[addr]
+				if !ok {
+					actors[addr] = map[types.Actor]cid.Cid{}
+				}
+				actors[addr][*act] = bh.ParentStateRoot
+				addresses[addr] = address.Undef
+				alk.Unlock()
+			})
+
+			return
+		}
+
+		pts, err := api.ChainGetTipSet(ctx, types.NewTipSetKey(bh.Parents...))
+		if err != nil {
+			log.Error(err)
+			return
+		}
+
+		changes, err := api.StateChangedActors(ctx, pts.ParentState(), bh.ParentStateRoot)
+		if err != nil {
+			log.Error(err)
+			return
+		}
+
+		for a, act := range changes {
+			addr, err := address.NewFromString(a)
+			if err != nil {
+				log.Error(err)
+				return
+			}
+
 			alk.Lock()
 			_, ok := actors[addr]
 			if !ok {
-				actors[addr] = map[types.Actor]struct{}{}
+				actors[addr] = map[types.Actor]cid.Cid{}
 			}
-			actors[addr][*act] = struct{}{}
+			actors[addr][act] = bh.ParentStateRoot
 			addresses[addr] = address.Undef
 			alk.Unlock()
-		})
+		}
 	})
 
 	if err := st.storeActors(actors); err != nil {
+		log.Error(err)
+		return
+	}
+
+	log.Infof("Persisting miners")
+
+	miners := map[minerKey]*minerInfo{}
+
+	for addr, m := range actors {
+		for actor, c := range m {
+			if actor.Code != actors2.StorageMinerCodeCid {
+				continue
+			}
+
+			miners[minerKey{
+				addr:      addr,
+				act:       actor,
+				stateroot: c,
+			}] = &minerInfo{}
+		}
+	}
+
+	par(50, kvmaparr(miners), func(it func() (minerKey, *minerInfo)) {
+		k, info := it()
+
+		astb, err := api.ChainReadObj(ctx, k.act.Head)
+		if err != nil {
+			log.Error(err)
+			return
+		}
+
+		if err := info.state.UnmarshalCBOR(bytes.NewReader(astb)); err != nil {
+			log.Error(err)
+			return
+		}
+
+		ib, err := api.ChainReadObj(ctx, info.state.Info)
+		if err != nil {
+			log.Error(err)
+			return
+		}
+
+		if err := info.info.UnmarshalCBOR(bytes.NewReader(ib)); err != nil {
+			log.Error(err)
+			return
+		}
+	})
+
+	if err := st.storeMiners(miners); err != nil {
 		log.Error(err)
 		return
 	}
