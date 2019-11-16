@@ -13,13 +13,18 @@
     </div>
     <div class="Index-nodes">
         <div class="Index-node">
-            X Actors; Y Miners; Z Power (A Total; B Slashed);
+            <b>{{countCol "actors" "id"}}</b> Actors;
+            <b>{{countCol "miner_heads" "addr"}}</b> Miners;
+            <b>{{netPower "slashed_at = 0" | sizeStr}}</b> Power
+            (<b>{{netPower "" | sizeStr}}</b> Total;
+            <b>{{netPower "slashed_at > 0" | sizeStr}}</b> Slashed)
         </div>
         <div class="Index-node">
-            U Messages; V Gas Used; Total D FIL transferred; E state changes
+            {{count "messages"}} Messages; {{count "actors"}}  state changes
         </div>
         <div class="Index-node">
-            N Wallets; E% FIL in wallets; F% FIL in miners; M% in market; %G Other actors; %H FIL it treasury
+            {{count "id_address_map" "id != address"}} <a href="keys.html">Keys</a>;
+            E% FIL in wallets; F% FIL in miners; M% in market; %G Other actors; %H FIL it treasury
         </div>
     </div>
 </div>

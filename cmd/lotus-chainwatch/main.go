@@ -66,10 +66,6 @@ var runCmd = &cli.Command{
 
 		log.Info("Remote version: %s", v.Version)
 
-		//http.Handle("/", http.FileServer(rice.MustFindBox("site").HTTPBox()))
-
-		fmt.Printf("Open http://%s\n", cctx.String("front"))
-
 		st, err := openStorage()
 		if err != nil {
 			return err
@@ -77,6 +73,15 @@ var runCmd = &cli.Command{
 		defer st.close()
 
 		runSyncer(ctx, api, st)
+
+		h, err := newHandler(api, st)
+		if err != nil {
+			return err
+		}
+
+		http.Handle("/", h)
+
+		fmt.Printf("Open http://%s\n", cctx.String("front"))
 
 		go func() {
 			<-ctx.Done()
