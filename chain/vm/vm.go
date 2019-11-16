@@ -1,18 +1,16 @@
 package vm
 
 import (
+	"bytes"
 	"context"
 	"fmt"
 	"math/big"
 
 	block "github.com/ipfs/go-block-format"
-	bserv "github.com/ipfs/go-blockservice"
 	cid "github.com/ipfs/go-cid"
 	hamt "github.com/ipfs/go-hamt-ipld"
 	blockstore "github.com/ipfs/go-ipfs-blockstore"
-	ipld "github.com/ipfs/go-ipld-format"
 	logging "github.com/ipfs/go-log"
-	dag "github.com/ipfs/go-merkledag"
 	cbg "github.com/whyrusleeping/cbor-gen"
 	"go.opencensus.io/trace"
 	"golang.org/x/xerrors"
@@ -526,50 +524,65 @@ func (vm *VM) Flush(ctx context.Context) (cid.Cid, error) {
 	ctx, span := trace.StartSpan(ctx, "vm.Flush")
 	defer span.End()
 
-	from := dag.NewDAGService(bserv.New(vm.buf, nil))
-	to := dag.NewDAGService(bserv.New(vm.buf.Read(), nil))
+	from := vm.buf
+	to := vm.buf.Read()
 
 	root, err := vm.cstate.Flush()
 	if err != nil {
 		return cid.Undef, xerrors.Errorf("flushing vm: %w", err)
 	}
 
-	if err := Copy(ctx, from, to, root); err != nil {
+	if err := Copy(from, to, root); err != nil {
 		return cid.Undef, xerrors.Errorf("copying tree: %w", err)
 	}
 
 	return root, nil
 }
 
-func Copy(ctx context.Context, from, to ipld.DAGService, root cid.Cid) error {
+func linksForObj(blk block.Block) ([]cid.Cid, error) {
+	switch blk.Cid().Prefix().Codec {
+	case cid.DagCBOR:
+		return cbg.ScanForLinks(bytes.NewReader(blk.RawData()))
+	default:
+		return nil, xerrors.Errorf("vm flush copy method only supports dag cbor")
+	}
+}
+
+func Copy(from, to blockstore.Blockstore, root cid.Cid) error {
 	if root.Prefix().MhType == 0 {
 		// identity cid, skip
 		return nil
 	}
-	node, err := from.Get(ctx, root)
+
+	blk, err := from.Get(root)
 	if err != nil {
 		return xerrors.Errorf("get %s failed: %w", root, err)
 	}
-	links := node.Links()
+
+	links, err := linksForObj(blk)
+	if err != nil {
+		return err
+	}
+
 	for _, link := range links {
-		if link.Cid.Prefix().MhType == 0 {
+		if link.Prefix().MhType == 0 {
 			continue
 		}
-		_, err := to.Get(ctx, link.Cid)
-		switch err {
-		default:
+
+		has, err := to.Has(link)
+		if err != nil {
 			return err
-		case nil:
-			continue
-		case ipld.ErrNotFound:
-			// continue
 		}
-		if err := Copy(ctx, from, to, link.Cid); err != nil {
+		if has {
+			continue
+		}
+
+		if err := Copy(from, to, link); err != nil {
 			return err
 		}
 	}
-	err = to.Add(ctx, node)
-	if err != nil {
+
+	if err := to.Put(blk); err != nil {
 		return err
 	}
 	return nil
