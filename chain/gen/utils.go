@@ -227,7 +227,7 @@ type GenMinerCfg struct {
 func mustEnc(i cbg.CBORMarshaler) []byte {
 	enc, err := actors.SerializeParams(i)
 	if err != nil {
-		panic(err)
+		panic(err) // ok
 	}
 	return enc
 }

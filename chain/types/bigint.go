@@ -130,15 +130,13 @@ func (bi *BigInt) cborBytes() []byte {
 	}
 
 	switch {
-	case bi.Sign() == 0:
-		return []byte{}
 	case bi.Sign() > 0:
 		return append([]byte{0}, bi.Bytes()...)
 	case bi.Sign() < 0:
 		return append([]byte{1}, bi.Bytes()...)
+	default: //  bi.Sign() == 0:
+		return []byte{}
 	}
-
-	panic("unreachable")
 }
 
 func fromCborBytes(buf []byte) (BigInt, error) {

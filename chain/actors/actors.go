@@ -24,7 +24,7 @@ var BurntFundsAddress = mustIDAddress(99)
 func mustIDAddress(i uint64) address.Address {
 	a, err := address.NewIDAddress(i)
 	if err != nil {
-		panic(err)
+		panic(err) // ok
 	}
 	return a
 }
@@ -34,7 +34,7 @@ func init() {
 	mustSum := func(s string) cid.Cid {
 		c, err := pref.Sum([]byte(s))
 		if err != nil {
-			panic(err)
+			panic(err) // ok
 		}
 		return c
 	}
