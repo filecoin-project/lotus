@@ -47,7 +47,7 @@ func newHandler(api api.FullNode, st *storage) (*handler, error) {
 
 	base.Funcs(funcs)
 
-	return h, h.site.Walk(".", func(path string, info os.FileInfo, err error) error {
+	return h, h.site.Walk("", func(path string, info os.FileInfo, err error) error {
 		if filepath.Ext(path) != ".html" {
 			return nil
 		}
