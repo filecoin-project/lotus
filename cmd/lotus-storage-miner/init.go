@@ -108,7 +108,7 @@ var initCmd = &cli.Command{
 		}
 
 		if err := storageMinerInit(ctx, cctx, api, lr); err != nil {
-			log.Errorf("Failed to initialize lotus-storage-miner: %s", err)
+			log.Errorf("Failed to initialize lotus-storage-miner: %+v", err)
 			log.Infof("Cleaning up %s after attempt...", lr.Path())
 			if err := lr.Close(); err != nil {
 				log.Errorf("Failed to close storage repo: %s", err)
