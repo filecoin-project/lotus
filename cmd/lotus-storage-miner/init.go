@@ -1,9 +1,16 @@
 package main
 
 import (
-	"os"
 	"context"
 	"crypto/rand"
+	"os"
+
+	"github.com/ipfs/go-datastore"
+	"github.com/libp2p/go-libp2p-core/crypto"
+	"github.com/libp2p/go-libp2p-core/peer"
+	"github.com/mitchellh/go-homedir"
+	"golang.org/x/xerrors"
+	"gopkg.in/urfave/cli.v2"
 
 	"github.com/filecoin-project/lotus/api"
 	"github.com/filecoin-project/lotus/build"
@@ -12,11 +19,6 @@ import (
 	"github.com/filecoin-project/lotus/chain/types"
 	lcli "github.com/filecoin-project/lotus/cli"
 	"github.com/filecoin-project/lotus/node/repo"
-	"github.com/ipfs/go-datastore"
-	"github.com/libp2p/go-libp2p-core/crypto"
-	"github.com/libp2p/go-libp2p-core/peer"
-	"golang.org/x/xerrors"
-	"gopkg.in/urfave/cli.v2"
 )
 
 var initCmd = &cli.Command{
@@ -102,18 +104,14 @@ var initCmd = &cli.Command{
 			return err
 		}
 
-		lr, err := r.Lock(repo.StorageMiner)
-		if err != nil {
-			return err
-		}
-
-		if err := storageMinerInit(ctx, cctx, api, lr); err != nil {
+		if err := storageMinerInit(ctx, cctx, api, r); err != nil {
 			log.Errorf("Failed to initialize lotus-storage-miner: %+v", err)
-			log.Infof("Cleaning up %s after attempt...", lr.Path())
-			if err := lr.Close(); err != nil {
-				log.Errorf("Failed to close storage repo: %s", err)
+			path, err := homedir.Expand(repoPath)
+			if err != nil {
+				return err
 			}
-			if err := os.RemoveAll(lr.Path()); err != nil {
+			log.Infof("Cleaning up %s after attempt...", path)
+			if err := os.RemoveAll(path); err != nil {
 				log.Errorf("Failed to clean up failed storage repo: %s", err)
 			}
 			return xerrors.Errorf("Storage-miner init failed")
@@ -121,15 +119,18 @@ var initCmd = &cli.Command{
 
 		// TODO: Point to setting storage price, maybe do it interactively or something
 		log.Info("Storage miner successfully created, you can now start it with 'lotus-storage-miner run'")
-		if err := lr.Close(); err != nil {
-			log.Errorf("Failed to close storage repo: %s", err)
-		}
 
 		return nil
 	},
 }
 
-func storageMinerInit(ctx context.Context, cctx *cli.Context, api api.FullNode, lr repo.LockedRepo) error {
+func storageMinerInit(ctx context.Context, cctx *cli.Context, api api.FullNode, r repo.Repo) error {
+	lr, err := r.Lock(repo.StorageMiner)
+	if err != nil {
+		return err
+	}
+	defer lr.Close()
+
 	log.Info("Initializing libp2p identity")
 
 	p2pSk, err := makeHostKey(lr)
