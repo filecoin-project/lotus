@@ -127,22 +127,15 @@ func (syncer *Syncer) InformNewHead(from peer.ID, fts *store.FullTipSet) {
 	}
 
 	syncer.Bsync.AddPeer(from)
+
+	bestPweight := syncer.store.GetHeaviestTipSet().Blocks()[0].ParentWeight
+	targetWeight := fts.TipSet().Blocks()[0].ParentWeight
+	if targetWeight.LessThan(bestPweight) {
+		log.Warn("incoming tipset does not appear to be better than our best chain, ignoring for now")
+		return
+	}
+
 	syncer.syncmgr.SetPeerHead(ctx, from, fts.TipSet())
-
-	/*
-		bestPweight := syncer.store.GetHeaviestTipSet().Blocks()[0].ParentWeight
-		targetWeight := fts.TipSet().Blocks()[0].ParentWeight
-		if targetWeight.LessThan(bestPweight) {
-			log.Warn("incoming tipset does not appear to be better than our best chain, ignoring for now")
-			return
-		}
-
-		go func() {
-			if err := syncer.Sync(ctx, fts.TipSet()); err != nil {
-				log.Errorf("sync error (curW=%s, targetW=%s): %+v", bestPweight, targetWeight, err)
-			}
-		}()
-	*/
 }
 
 func (syncer *Syncer) ValidateMsgMeta(fblk *types.FullBlock) error {
