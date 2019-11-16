@@ -2,9 +2,6 @@ package cli
 
 import (
 	"fmt"
-	"os"
-	"os/signal"
-	"syscall"
 	"time"
 
 	cid "github.com/ipfs/go-cid"
@@ -69,9 +66,6 @@ var syncWaitCmd = &cli.Command{
 		defer closer()
 		ctx := ReqContext(cctx)
 
-		sigChan := make(chan os.Signal, 2)
-		signal.Notify(sigChan, syscall.SIGTERM, syscall.SIGINT)
-
 		for {
 			state, err := napi.SyncState(ctx)
 			if err != nil {
@@ -115,7 +109,7 @@ var syncWaitCmd = &cli.Command{
 			}
 
 			select {
-			case <-sigChan:
+			case <-ctx.Done():
 				fmt.Println("\nExit by user")
 				return nil
 			case <-time.After(1 * time.Second):
