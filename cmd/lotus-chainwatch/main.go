@@ -5,6 +5,7 @@ import (
 	"github.com/filecoin-project/lotus/build"
 	lcli "github.com/filecoin-project/lotus/cli"
 	logging "github.com/ipfs/go-log"
+	"golang.org/x/xerrors"
 	"gopkg.in/urfave/cli.v2"
 	"net/http"
 	"os"
@@ -37,7 +38,7 @@ func main() {
 	}
 
 	if err := app.Run(os.Args); err != nil {
-		log.Warn(err)
+		log.Warnf("%+v", err)
 		return
 	}
 }
@@ -76,7 +77,7 @@ var runCmd = &cli.Command{
 
 		h, err := newHandler(api, st)
 		if err != nil {
-			return err
+			return xerrors.Errorf("handler setup: %w", err)
 		}
 
 		http.Handle("/", h)
