@@ -8,6 +8,7 @@ import (
 	"gopkg.in/urfave/cli.v2"
 
 	"github.com/filecoin-project/lotus/api"
+	"github.com/filecoin-project/lotus/build"
 	"github.com/filecoin-project/lotus/chain"
 )
 
@@ -72,27 +73,20 @@ var syncWaitCmd = &cli.Command{
 				return err
 			}
 
-			var complete bool
-			working := -1
+			head, err := napi.ChainHead(ctx)
+			if err != nil {
+				return err
+			}
+
+			working := 0
 			for i, ss := range state.ActiveSyncs {
 				switch ss.Stage {
 				case api.StageSyncComplete:
-					complete = true
 				default:
 					working = i
 				case api.StageIdle:
 					// not complete, not actively working
 				}
-			}
-
-			if complete && working != -1 {
-				fmt.Println("\nDone")
-				return nil
-			}
-
-			if working == -1 {
-				fmt.Println("Idle...")
-				continue
 			}
 
 			ss := state.ActiveSyncs[working]
@@ -103,8 +97,9 @@ var syncWaitCmd = &cli.Command{
 			}
 
 			fmt.Printf("\r\x1b[2KWorker %d: Target: %s\tState: %s\tHeight: %d", working, target, chain.SyncStageString(ss.Stage), ss.Height)
-			if ss.Stage == api.StageSyncComplete {
-				fmt.Println("\nDone")
+
+			if time.Now().Unix()-int64(head.MinTimestamp()) < build.BlockDelay {
+				fmt.Println("Done!")
 				return nil
 			}
 
