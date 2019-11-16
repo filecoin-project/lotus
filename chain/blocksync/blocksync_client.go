@@ -43,17 +43,17 @@ func NewBlockSyncClient(bserv dtypes.ChainBlockService, h host.Host) *BlockSync 
 func (bs *BlockSync) processStatus(req *BlockSyncRequest, res *BlockSyncResponse) error {
 	switch res.Status {
 	case 101: // Partial Response
-		panic("not handled")
+		return xerrors.Errorf("not handling partial blocksync responses yet")
 	case 201: // req.Start not found
-		return fmt.Errorf("not found")
+		return xerrors.Errorf("not found")
 	case 202: // Go Away
-		panic("not handled")
+		return xerrors.Errorf("not handling 'go away' blocksync responses yet")
 	case 203: // Internal Error
-		return fmt.Errorf("block sync peer errored: %s", res.Message)
+		return xerrors.Errorf("block sync peer errored: %s", res.Message)
 	case 204:
-		return fmt.Errorf("block sync request invalid: %s", res.Message)
+		return xerrors.Errorf("block sync request invalid: %s", res.Message)
 	default:
-		return fmt.Errorf("unrecognized response code: %d", res.Status)
+		return xerrors.Errorf("unrecognized response code: %d", res.Status)
 	}
 }
 

@@ -2,6 +2,7 @@ package wallet
 
 import (
 	"context"
+	"fmt"
 	"sort"
 	"strings"
 	"sync"
@@ -72,7 +73,7 @@ func (w *Wallet) Sign(ctx context.Context, addr address.Address, msg []byte) (*t
 		}, nil
 
 	default:
-		panic("cant do it sir")
+		return nil, fmt.Errorf("cannot sign with unsupported key type: %q", ki.Type)
 	}
 }
 

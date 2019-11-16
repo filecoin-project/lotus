@@ -31,7 +31,7 @@ func init() {
 
 	n, err := cbor.WrapObject(map[string]string{}, mh.SHA2_256, -1)
 	if err != nil {
-		panic(err)
+		panic(err) // ok
 	}
 
 	EmptyCBOR = n.Cid()

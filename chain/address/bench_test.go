@@ -14,7 +14,7 @@ func blsaddr(n int64) Address {
 
 	addr, err := NewBLSAddress(buf)
 	if err != nil {
-		panic(err)
+		panic(err) // ok
 	}
 
 	return addr
@@ -25,7 +25,7 @@ func makeActorAddresses(n int) [][]byte {
 	for i := 0; i < n; i++ {
 		a, err := NewActorAddress([]byte(fmt.Sprintf("ACTOR ADDRESS %d", i)))
 		if err != nil {
-			panic(err)
+			panic(err) // ok
 		}
 		addrs = append(addrs, a.Bytes())
 	}
@@ -50,7 +50,7 @@ func makeSecpAddresses(n int) [][]byte {
 
 		a, err := NewSecp256k1Address(buf)
 		if err != nil {
-			panic(err)
+			panic(err) // ok
 		}
 
 		addrs = append(addrs, a.Bytes())
@@ -64,7 +64,7 @@ func makeIDAddresses(n int) [][]byte {
 
 		a, err := NewIDAddress(uint64(i))
 		if err != nil {
-			panic(err)
+			panic(err) // ok
 		}
 
 		addrs = append(addrs, a.Bytes())
