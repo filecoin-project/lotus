@@ -238,7 +238,9 @@ func (adapter lotusAdapter) SubmitPoSt(ctx context.Context, proof Proof) (cid.Ci
 }
 
 func (adapter lotusAdapter) SubmitDeclaredFaults(ctx context.Context, faults BitField) (cid.Cid, error) {
-    params := actors.DeclareFaultsParams{}
+    params := actors.DeclareFaultsParams{
+        Faults: types.NewBitField(),
+    }
     for k, _ := range faults {
         params.Faults.Set(k)
     }
