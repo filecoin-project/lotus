@@ -26,11 +26,16 @@ type SyncManager struct {
 
 	syncStates []*SyncerState
 
-	activeSyncs map[types.TipSetKey]*types.TipSet
-
 	doSync func(context.Context, *types.TipSet) error
 
 	stop chan struct{}
+
+	// Sync Scheduler fields
+	activeSyncs    map[types.TipSetKey]*types.TipSet
+	syncQueue      syncBucketSet
+	activeSyncTips syncBucketSet
+	nextSyncTarget *syncTargetBucket
+	workerChan     chan *types.TipSet
 }
 
 type syncResult struct {
@@ -236,11 +241,6 @@ func (sm *SyncManager) selectSyncTarget() (*types.TipSet, error) {
 }
 
 func (sm *SyncManager) syncScheduler() {
-	var syncQueue syncBucketSet
-	var activeSyncTips syncBucketSet
-
-	var nextSyncTarget *syncTargetBucket
-	var workerChan chan *types.TipSet
 
 	for {
 		select {
@@ -250,71 +250,79 @@ func (sm *SyncManager) syncScheduler() {
 				return
 			}
 
-			var relatedToActiveSync bool
-			for _, acts := range sm.activeSyncs {
-				if ts.Equals(acts) {
-					break
-				}
-
-				if types.CidArrsEqual(ts.Parents(), acts.Cids()) {
-					// sync this next, after that sync process finishes
-					relatedToActiveSync = true
-				}
-			}
-
-			// if this is related to an active sync process, immediately bucket it
-			// we don't want to start a parallel sync process that duplicates work
-			if relatedToActiveSync {
-				log.Info("related to active sync")
-				activeSyncTips.Insert(ts)
-				continue
-			}
-
-			if nextSyncTarget != nil && nextSyncTarget.sameChainAs(ts) {
-				log.Info("new tipset is part of our next sync target")
-				nextSyncTarget.add(ts)
-			} else {
-				log.Info("insert into that queue!")
-				syncQueue.Insert(ts)
-
-				if nextSyncTarget == nil {
-					nextSyncTarget = syncQueue.Pop()
-					workerChan = sm.syncTargets
-					log.Info("setting next sync target")
-				}
-			}
+			sm.scheduleIncoming(ts)
 		case res := <-sm.syncResults:
-			delete(sm.activeSyncs, res.ts.Key())
-			relbucket := activeSyncTips.PopRelated(res.ts)
-			if relbucket != nil {
-				if res.success {
-					if nextSyncTarget == nil {
-						nextSyncTarget = relbucket
-						workerChan = sm.syncTargets
-					} else {
-						syncQueue.buckets = append(syncQueue.buckets, relbucket)
-					}
-				} else {
-					// TODO: this is the case where we try to sync a chain, and
-					// fail, and we have more blocks on top of that chain that
-					// have come in since.  The question is, should we try to
-					// sync these? or just drop them?
-				}
-			}
-		case workerChan <- nextSyncTarget.heaviestTipSet():
-			hts := nextSyncTarget.heaviestTipSet()
-			sm.activeSyncs[hts.Key()] = hts
-
-			if len(syncQueue.buckets) > 0 {
-				nextSyncTarget = syncQueue.Pop()
-			} else {
-				nextSyncTarget = nil
-				workerChan = nil
-			}
+			sm.scheduleProcessResult(res)
+		case sm.workerChan <- sm.nextSyncTarget.heaviestTipSet():
+			sm.scheduleWorkSent()
 		case <-sm.stop:
 			log.Info("sync scheduler shutting down")
 			return
 		}
+	}
+}
+
+func (sm *SyncManager) scheduleIncoming(ts *types.TipSet) {
+	var relatedToActiveSync bool
+	for _, acts := range sm.activeSyncs {
+		if ts.Equals(acts) {
+			break
+		}
+
+		if types.CidArrsEqual(ts.Parents(), acts.Cids()) {
+			// sync this next, after that sync process finishes
+			relatedToActiveSync = true
+		}
+	}
+
+	// if this is related to an active sync process, immediately bucket it
+	// we don't want to start a parallel sync process that duplicates work
+	if relatedToActiveSync {
+		sm.activeSyncTips.Insert(ts)
+		return
+	}
+
+	if sm.nextSyncTarget != nil && sm.nextSyncTarget.sameChainAs(ts) {
+		sm.nextSyncTarget.add(ts)
+	} else {
+		sm.syncQueue.Insert(ts)
+
+		if sm.nextSyncTarget == nil {
+			sm.nextSyncTarget = sm.syncQueue.Pop()
+			sm.workerChan = sm.syncTargets
+		}
+	}
+}
+
+func (sm *SyncManager) scheduleProcessResult(res *syncResult) {
+	delete(sm.activeSyncs, res.ts.Key())
+	relbucket := sm.activeSyncTips.PopRelated(res.ts)
+	if relbucket != nil {
+		if res.success {
+			if sm.nextSyncTarget == nil {
+				sm.nextSyncTarget = relbucket
+				sm.workerChan = sm.syncTargets
+			} else {
+				sm.syncQueue.buckets = append(sm.syncQueue.buckets, relbucket)
+			}
+		} else {
+			// TODO: this is the case where we try to sync a chain, and
+			// fail, and we have more blocks on top of that chain that
+			// have come in since.  The question is, should we try to
+			// sync these? or just drop them?
+		}
+	}
+}
+
+func (sm *SyncManager) scheduleWorkSent() {
+	hts := sm.nextSyncTarget.heaviestTipSet()
+	sm.activeSyncs[hts.Key()] = hts
+
+	if len(sm.syncQueue.buckets) > 0 {
+		sm.nextSyncTarget = sm.syncQueue.Pop()
+	} else {
+		sm.nextSyncTarget = nil
+		sm.workerChan = nil
 	}
 }
 
