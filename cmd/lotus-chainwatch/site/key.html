@@ -1,0 +1,29 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <title>Lotus ChainWatch</title>
+    <link rel="stylesheet" type="text/css" href="main.css">
+</head>
+<body>
+{{$wallet := param "w"}}
+
+<div class="Index">
+    <div class="Index-header">
+        <div>
+            <span>Lotus ChainWatch - Wallet {{$wallet}}</span>
+        </div>
+    </div>
+    <div class="Index-nodes">
+        <div class="Index-node">
+            Balance: {{queryNum "select balance from actors inner join main.id_address_map m on m.address = ? where actors.id = m.id order by nonce desc limit 1" $wallet }}
+        </div>
+        <div class="Index-node">
+            Messages:
+            {{ range strings "messages" "case when `to` = ? then `from` else `to` end" "`from` = ? or `to` = ?" $wallet $wallet $wallet}}
+            <div>to/from {{.}}</div>
+            {{end}}
+        </div>
+    </div>
+</div>
+</body>
+</html>

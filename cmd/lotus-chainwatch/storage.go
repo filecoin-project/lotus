@@ -31,21 +31,24 @@ func (st *storage) setup() error {
 		return err
 	}
 	_, err = tx.Exec(`
-create table actors
+create table if not exists actors
   (
 	id text not null,
 	code text not null,
 	head text not null,
 	nonce int not null,
-	balance text,
+	balance text not null,
 	stateroot text
 		constraint actors_blocks_stateroot_fk
 			references blocks (parentStateRoot),
 	constraint actors_pk
 		primary key (id, nonce, balance, stateroot)
   );
+  
+create index if not exists actors_id_index
+	on actors (id);
 
-create table id_address_map
+create table if not exists id_address_map
 (
 	id text not null
 		constraint id_address_map_actors_id_fk
@@ -55,7 +58,13 @@ create table id_address_map
 		primary key (id, address)
 );
 
-create table messages
+create index if not exists id_address_map_address_index
+	on id_address_map (address);
+
+create index if not exists id_address_map_id_index
+	on id_address_map (id);
+
+create table if not exists messages
 (
 	cid text not null
 		constraint messages_pk
@@ -74,10 +83,10 @@ create table messages
 	params blob
 );
 
-create unique index messages_cid_uindex
+create unique index if not exists messages_cid_uindex
 	on messages (cid);
 
-create table blocks
+create table if not exists blocks
 (
 	cid text not null
 		constraint blocks_pk
@@ -91,10 +100,10 @@ create table blocks
 	timestamp int not null
 );
 
-create unique index blocks_cid_uindex
+create unique index if not exists blocks_cid_uindex
 	on blocks (cid);
 	
-create table block_messages
+create table if not exists block_messages
 (
 	block text not null
 		constraint block_messages_blk_fk
@@ -106,7 +115,7 @@ create table block_messages
 		primary key (block, message)
 );
 
-create table miner_heads
+create table if not exists miner_heads
 (
 	head text not null
 		constraint miner_heads_actors_head_fk
@@ -127,8 +136,10 @@ create table miner_heads
 	active int,
 	ppe int not null,
 	slashed_at int not null,
-	constraint miner_heads_id_address_map_address_address_fk
-		foreign key (owner, worker) references id_address_map (address, address),
+	constraint miner_heads_id_address_map_owner_fk
+		foreign key (owner) references id_address_map (address),
+	constraint miner_heads_id_address_map_worker_fk
+		foreign key (worker) references id_address_map (address),
 	constraint miner_heads_pk
 		primary key (head, addr)
 );

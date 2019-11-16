@@ -12,6 +12,7 @@ body {
     background: #1a1a1a;
     color: #f0f0f0;
     font-family: monospace;
+    overflow: auto;
 
     display: grid;
     grid-template-columns: auto 80vw auto;
