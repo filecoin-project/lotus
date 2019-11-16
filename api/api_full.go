@@ -253,12 +253,16 @@ type ReplayResults struct {
 	Error   string
 }
 
-type SyncState struct {
+type ActiveSync struct {
 	Base   *types.TipSet
 	Target *types.TipSet
 
 	Stage  SyncStateStage
 	Height uint64
+}
+
+type SyncState struct {
+	ActiveSyncs []ActiveSync
 }
 
 type SyncStateStage int
