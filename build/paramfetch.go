@@ -5,8 +5,10 @@ import (
 	"encoding/json"
 	"io"
 	"net/http"
+	"net/url"
 	"os"
 	"path/filepath"
+	"strconv"
 	"strings"
 	"sync"
 
@@ -129,17 +131,34 @@ func doFetch(out string, info paramFile) error {
 	}
 	log.Infof("Fetching %s from %s", out, gw)
 
-	resp, err := http.Get(gw + info.Cid)
-	if err != nil {
-		return err
-	}
-	defer resp.Body.Close()
-
-	outf, err := os.Create(out)
+	outf, err := os.OpenFile(out, os.O_RDWR|os.O_CREATE|os.O_APPEND,0666)
 	if err != nil {
 		return err
 	}
 	defer outf.Close()
+
+	fStat, err := outf.Stat()
+	if err != nil {
+		return err
+	}
+	header := http.Header{}
+	header.Set("Range", "bytes=" + strconv.FormatInt(fStat.Size(), 10) + "-")
+	url, err := url.Parse(gw + info.Cid)
+	if err != nil {
+		return err
+	}
+	req := http.Request{
+		Method: "GET",
+		URL: url,
+		Header: header,
+		Close: true,
+	}
+
+	resp, err := http.DefaultClient.Do(&req)
+	if err != nil {
+		return err
+	}
+	defer resp.Body.Close()
 
 	bar := pb.New64(resp.ContentLength)
 	bar.Units = pb.U_BYTES
