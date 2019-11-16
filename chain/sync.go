@@ -127,7 +127,7 @@ func (syncer *Syncer) InformNewHead(from peer.ID, fts *store.FullTipSet) {
 	}
 
 	syncer.Bsync.AddPeer(from)
-	syncer.syncmgr.SetPeerHead(from, fts.TipSet())
+	syncer.syncmgr.SetPeerHead(ctx, from, fts.TipSet())
 
 	/*
 		bestPweight := syncer.store.GetHeaviestTipSet().Blocks()[0].ParentWeight
@@ -391,15 +391,13 @@ func (syncer *Syncer) tryLoadFullTipSet(cids []cid.Cid) (*store.FullTipSet, erro
 func (syncer *Syncer) Sync(ctx context.Context, maybeHead *types.TipSet) error {
 	ctx, span := trace.StartSpan(ctx, "chain.Sync")
 	defer span.End()
+
 	if span.IsRecordingEvents() {
 		span.AddAttributes(
 			trace.StringAttribute("tipset", fmt.Sprint(maybeHead.Cids())),
 			trace.Int64Attribute("height", int64(maybeHead.Height())),
 		)
 	}
-
-	syncer.syncLock.Lock()
-	defer syncer.syncLock.Unlock()
 
 	if syncer.Genesis.Equals(maybeHead) || syncer.store.GetHeaviestTipSet().Equals(maybeHead) {
 		return nil
@@ -1084,7 +1082,10 @@ func VerifyElectionProof(ctx context.Context, eproof []byte, rand []byte, worker
 	return nil
 }
 
-func (syncer *Syncer) State() SyncerState {
-	panic("NYI")
-	//return syncer.syncState.Snapshot()
+func (syncer *Syncer) State() []SyncerState {
+	var out []SyncerState
+	for _, ss := range syncer.syncmgr.syncStates {
+		out = append(out, ss.Snapshot())
+	}
+	return out
 }

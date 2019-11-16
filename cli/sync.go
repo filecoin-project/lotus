@@ -31,24 +31,26 @@ var syncStatusCmd = &cli.Command{
 		defer closer()
 		ctx := ReqContext(cctx)
 
-		ss, err := api.SyncState(ctx)
+		state, err := api.SyncState(ctx)
 		if err != nil {
 			return err
 		}
 
-		var base, target []cid.Cid
-		if ss.Base != nil {
-			base = ss.Base.Cids()
-		}
-		if ss.Target != nil {
-			target = ss.Target.Cids()
-		}
-
 		fmt.Println("sync status:")
-		fmt.Printf("Base:\t%s\n", base)
-		fmt.Printf("Target:\t%s\n", target)
-		fmt.Printf("Stage: %s\n", chain.SyncStageString(ss.Stage))
-		fmt.Printf("Height: %d\n", ss.Height)
+		for i, ss := range state.ActiveSyncs {
+			fmt.Printf("worker %d:\n", i)
+			var base, target []cid.Cid
+			if ss.Base != nil {
+				base = ss.Base.Cids()
+			}
+			if ss.Target != nil {
+				target = ss.Target.Cids()
+			}
+			fmt.Printf("\tBase:\t%s\n", base)
+			fmt.Printf("\tTarget:\t%s\n", target)
+			fmt.Printf("\tStage: %s\n", chain.SyncStageString(ss.Stage))
+			fmt.Printf("\tHeight: %d\n", ss.Height)
+		}
 		return nil
 	},
 }
@@ -65,17 +67,42 @@ var syncWaitCmd = &cli.Command{
 		ctx := ReqContext(cctx)
 
 		for {
-			ss, err := napi.SyncState(ctx)
+			state, err := napi.SyncState(ctx)
 			if err != nil {
 				return err
 			}
+
+			var complete bool
+			working := -1
+			for i, ss := range state.ActiveSyncs {
+				switch ss.Stage {
+				case api.StageSyncComplete:
+					complete = true
+				default:
+					working = i
+				case api.StageIdle:
+					// not complete, not actively working
+				}
+			}
+
+			if complete && working != -1 {
+				fmt.Println("\nDone")
+				return nil
+			}
+
+			if working == -1 {
+				fmt.Println("Idle...")
+				continue
+			}
+
+			ss := state.ActiveSyncs[working]
 
 			var target []cid.Cid
 			if ss.Target != nil {
 				target = ss.Target.Cids()
 			}
 
-			fmt.Printf("\r\x1b[2KTarget: %s\tState: %s\tHeight: %d", target, chain.SyncStageString(ss.Stage), ss.Height)
+			fmt.Printf("\r\x1b[2KWorker %d: Target: %s\tState: %s\tHeight: %d", working, target, chain.SyncStageString(ss.Stage), ss.Height)
 			if ss.Stage == api.StageSyncComplete {
 				fmt.Println("\nDone")
 				return nil

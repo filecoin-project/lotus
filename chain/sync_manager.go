@@ -24,9 +24,9 @@ type SyncManager struct {
 	syncTargets     chan *types.TipSet
 	syncResults     chan *syncResult
 
-	activeSyncs map[types.TipSetKey]*types.TipSet
+	syncStates []*SyncerState
 
-	syncState SyncerState
+	activeSyncs map[types.TipSetKey]*types.TipSet
 
 	doSync func(context.Context, *types.TipSet) error
 
@@ -46,6 +46,7 @@ func NewSyncManager(sync SyncFunc) *SyncManager {
 		peerHeads:       make(map[peer.ID]*types.TipSet),
 		syncTargets:     make(chan *types.TipSet),
 		syncResults:     make(chan *syncResult),
+		syncStates:      make([]*SyncerState, syncWorkerCount),
 		incomingTipSets: make(chan *types.TipSet),
 		activeSyncs:     make(map[types.TipSetKey]*types.TipSet),
 		doSync:          sync,
@@ -64,17 +65,15 @@ func (sm *SyncManager) Stop() {
 	close(sm.stop)
 }
 
-func (sm *SyncManager) SetPeerHead(p peer.ID, ts *types.TipSet) {
-	log.Info("set peer head!")
+func (sm *SyncManager) SetPeerHead(ctx context.Context, p peer.ID, ts *types.TipSet) {
+	log.Info("set peer head!", ts.Height(), ts.Cids())
 	sm.lk.Lock()
 	defer sm.lk.Unlock()
 	sm.peerHeads[p] = ts
 
 	if !sm.bootstrapped {
-		log.Info("not bootstrapped")
 		spc := sm.syncedPeerCount()
 		if spc >= sm.bspThresh {
-			log.Info("go time!")
 			// Its go time!
 			target, err := sm.selectSyncTarget()
 			if err != nil {
@@ -320,6 +319,8 @@ func (sm *SyncManager) syncScheduler() {
 }
 
 func (sm *SyncManager) syncWorker(id int) {
+	ss := &SyncerState{}
+	sm.syncStates[id] = ss
 	for {
 		select {
 		case ts, ok := <-sm.syncTargets:
@@ -327,9 +328,10 @@ func (sm *SyncManager) syncWorker(id int) {
 				log.Info("sync manager worker shutting down")
 				return
 			}
-			log.Info("sync worker go time!", ts.Cids())
+			log.Info("sync worker go time!", ts.Height(), ts.Cids())
 
-			err := sm.doSync(context.TODO(), ts)
+			ctx := context.WithValue(context.TODO(), syncStateKey, ss)
+			err := sm.doSync(ctx, ts)
 			if err != nil {
 				log.Errorf("sync error: %+v", err)
 			}
