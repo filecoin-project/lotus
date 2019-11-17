@@ -2,15 +2,17 @@ package main
 
 import (
 	"fmt"
-	rice "github.com/GeertJohan/go.rice"
-	"github.com/filecoin-project/lotus/chain/types"
-	"golang.org/x/xerrors"
 	"html/template"
 	"net/http"
 	"os"
 	"path/filepath"
 
+	rice "github.com/GeertJohan/go.rice"
+	"github.com/ipfs/go-cid"
+	"golang.org/x/xerrors"
+
 	"github.com/filecoin-project/lotus/api"
+	"github.com/filecoin-project/lotus/chain/types"
 )
 
 type handler struct {
@@ -40,6 +42,8 @@ func newHandler(api api.FullNode, st *storage) (*handler, error) {
 		"queryNum": h.queryNum,
 		"sizeStr":  sizeStr,
 		"strings":  h.strings,
+		"messages": h.messages,
+
 		"param":    func(string) string { return "" }, // replaced in request handler
 	}
 
@@ -90,7 +94,7 @@ func (h *handler) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 	})
 
 	if err := t.Execute(w, nil); err != nil {
-		log.Error(err)
+		log.Errorf("%+v", err)
 		return
 	}
 
@@ -204,5 +208,48 @@ func (h *handler) strings(table string, col string, filter string, args ...inter
 
 	return
 }
+
+func (h *handler) messages(filter string, args ...interface{}) (out []types.Message, err error) {
+	if len(filter) > 0 {
+		filter = " where " + filter
+	}
+
+	rws, err := h.st.db.Query("select * from messages "+filter, args...)
+	if err != nil {
+		return nil, err
+	}
+	for rws.Next() {
+		var r types.Message
+		var cs string
+
+		if err := rws.Scan(
+			&cs,
+			&r.From,
+			&r.To,
+			&r.Nonce,
+			&r.Value,
+			&r.GasPrice,
+			&r.GasLimit,
+			&r.Method,
+			&r.Params,
+			); err != nil {
+			return nil, err
+		}
+
+		c, err := cid.Parse(cs)
+		if err != nil {
+			return nil, err
+		}
+		if c != r.Cid() {
+			log.Warn("msg cid doesn't match")
+		}
+
+		out = append(out, r)
+	}
+
+	return
+}
+
+
 
 var _ http.Handler = &handler{}

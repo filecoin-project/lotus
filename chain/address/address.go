@@ -12,6 +12,7 @@ import (
 	cbor "github.com/ipfs/go-ipld-cbor"
 	"github.com/minio/blake2b-simd"
 	"github.com/polydawn/refmt/obj/atlas"
+	"golang.org/x/xerrors"
 
 	cbg "github.com/whyrusleeping/cbor-gen"
 )
@@ -144,6 +145,22 @@ func (a Address) Format(f fmt.State, c rune) {
 		fmt.Fprintf(f, "%s", a.String()) // nolint: errcheck
 	default:
 		fmt.Fprintf(f, "%"+string(c), a.Bytes()) // nolint: errcheck
+	}
+}
+
+func (a *Address) Scan(value interface{}) error {
+	switch value := value.(type) {
+	case string:
+		a1, err := decode(value)
+		if err != nil {
+			return err
+		}
+
+		*a = a1
+
+		return nil
+	default:
+		return xerrors.New("non-string types unsupported")
 	}
 }
 

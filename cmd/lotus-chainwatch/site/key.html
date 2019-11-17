@@ -19,9 +19,20 @@
         </div>
         <div class="Index-node">
             Messages:
-            {{ range strings "messages" "case when `to` = ? then `from` else `to` end" "`from` = ? or `to` = ?" $wallet $wallet $wallet}}
-            <div>to/from {{.}}</div>
-            {{end}}
+            <table>
+                <tr><td>Dir</td><td>Peer</td><td>Nonce</td><td>Value</td><td>Block</td><td>Mpool Wait</td></tr>
+                {{ range messages "`from` = ? or `to` = ?" $wallet $wallet $wallet}}
+                    <tr>
+                        {{ if eq .From.String $wallet }}
+                            <td>To</td><td>{{.To.String}}</td>
+                        {{else}}
+                            <td>From</td><td>{{.From.String}}</td>
+                        {{end}}
+                        <td>{{.Nonce}}</td>
+                        <td>{{.Value}}</td>
+                    </tr>
+                {{end}}
+            </table>
         </div>
     </div>
 </div>
