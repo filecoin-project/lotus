@@ -552,6 +552,32 @@ func linksForObj(blk block.Block) ([]cid.Cid, error) {
 }
 
 func Copy(from, to blockstore.Blockstore, root cid.Cid) error {
+	var batch []block.Block
+	batchCp := func(blk block.Block) error {
+		batch = append(batch, blk)
+		if len(batch) > 100 {
+			if err := to.PutMany(batch); err != nil {
+				return xerrors.Errorf("batch put in copy: %w", err)
+			}
+			batch = batch[:0]
+		}
+		return nil
+	}
+
+	if err := copyRec(from, to, root, batchCp); err != nil {
+		return err
+	}
+
+	if len(batch) > 0 {
+		if err := to.PutMany(batch); err != nil {
+			return xerrors.Errorf("batch put in copy: %w", err)
+		}
+	}
+
+	return nil
+}
+
+func copyRec(from, to blockstore.Blockstore, root cid.Cid, cp func(block.Block) error) error {
 	if root.Prefix().MhType == 0 {
 		// identity cid, skip
 		return nil
@@ -580,12 +606,12 @@ func Copy(from, to blockstore.Blockstore, root cid.Cid) error {
 			continue
 		}
 
-		if err := Copy(from, to, link); err != nil {
+		if err := copyRec(from, to, link, cp); err != nil {
 			return err
 		}
 	}
 
-	if err := to.Put(blk); err != nil {
+	if err := cp(blk); err != nil {
 		return err
 	}
 	return nil
