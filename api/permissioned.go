@@ -65,7 +65,7 @@ func permissionedAny(in interface{}, out interface{}) {
 		field := rint.Type().Field(f)
 		requiredPerm := Permission(field.Tag.Get("perm"))
 		if requiredPerm == "" {
-			panic("missing 'perm' tag on " + field.Name) // is this okay? can this be used to crash the process?
+			panic("missing 'perm' tag on " + field.Name) // ok
 		}
 
 		// Validate perm tag
@@ -77,7 +77,7 @@ func permissionedAny(in interface{}, out interface{}) {
 			}
 		}
 		if !ok {
-			panic("unknown 'perm' tag on " + field.Name) // is this okay? can this be used to crash the process?
+			panic("unknown 'perm' tag on " + field.Name) // ok
 		}
 
 		fn := ra.MethodByName(field.Name)
