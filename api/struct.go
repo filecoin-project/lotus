@@ -57,6 +57,8 @@ type FullNodeStruct struct {
 		MpoolPending     func(context.Context, *types.TipSet) ([]*types.SignedMessage, error) `perm:"read"`
 		MpoolPush        func(context.Context, *types.SignedMessage) error                    `perm:"write"`
 		MpoolPushMessage func(context.Context, *types.Message) (*types.SignedMessage, error)  `perm:"sign"`
+		MpoolGetNonce    func(context.Context, address.Address) (uint64, error)               `perm:"read"`
+		MpoolSub         func(context.Context) (<-chan MpoolUpdate, error)                    `perm:"read"`
 
 		MinerRegister    func(context.Context, address.Address) error                                                                                                         `perm:"admin"`
 		MinerUnregister  func(context.Context, address.Address) error                                                                                                         `perm:"admin"`
@@ -73,8 +75,6 @@ type FullNodeStruct struct {
 		WalletSetDefault     func(context.Context, address.Address) error                                         `perm:"admin"`
 		WalletExport         func(context.Context, address.Address) (*types.KeyInfo, error)                       `perm:"admin"`
 		WalletImport         func(context.Context, *types.KeyInfo) (address.Address, error)                       `perm:"admin"`
-
-		MpoolGetNonce func(context.Context, address.Address) (uint64, error) `perm:"read"`
 
 		ClientImport      func(ctx context.Context, path string) (cid.Cid, error)                                                                     `perm:"admin"`
 		ClientListImports func(ctx context.Context) ([]Import, error)                                                                                 `perm:"write"`
@@ -225,6 +225,10 @@ func (c *FullNodeStruct) MpoolPush(ctx context.Context, smsg *types.SignedMessag
 
 func (c *FullNodeStruct) MpoolPushMessage(ctx context.Context, msg *types.Message) (*types.SignedMessage, error) {
 	return c.Internal.MpoolPushMessage(ctx, msg)
+}
+
+func (c *FullNodeStruct) MpoolSub(ctx context.Context) (<-chan MpoolUpdate, error) {
+	return c.Internal.MpoolSub(ctx)
 }
 
 func (c *FullNodeStruct) MinerRegister(ctx context.Context, addr address.Address) error {

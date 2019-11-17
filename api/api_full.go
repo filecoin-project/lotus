@@ -44,6 +44,7 @@ type FullNode interface {
 	MpoolPush(context.Context, *types.SignedMessage) error                          // TODO: remove
 	MpoolPushMessage(context.Context, *types.Message) (*types.SignedMessage, error) // get nonce, sign, push
 	MpoolGetNonce(context.Context, address.Address) (uint64, error)
+	MpoolSub(context.Context) (<-chan MpoolUpdate, error)
 
 	// FullNodeStruct
 
@@ -276,3 +277,15 @@ const (
 	StageMessages
 	StageSyncComplete
 )
+
+type MpoolChange int
+
+const (
+	MpoolAdd MpoolChange = iota
+	MpoolRemove
+)
+
+type MpoolUpdate struct {
+	Type MpoolChange
+	Message *types.SignedMessage
+}

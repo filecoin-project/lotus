@@ -12,6 +12,7 @@ var mpoolCmd = &cli.Command{
 	Usage: "Manage message pool",
 	Subcommands: []*cli.Command{
 		mpoolPending,
+		mpoolSub,
 	},
 }
 
@@ -41,5 +42,37 @@ var mpoolPending = &cli.Command{
 		}
 
 		return nil
+	},
+}
+
+var mpoolSub = &cli.Command{
+	Name:  "sub",
+	Usage: "Subscibe to mpool changes",
+	Action: func(cctx *cli.Context) error {
+		api, closer, err := GetFullNodeAPI(cctx)
+		if err != nil {
+			return err
+		}
+		defer closer()
+
+		ctx := ReqContext(cctx)
+
+		sub, err := api.MpoolSub(ctx)
+		if err != nil {
+			return err
+		}
+
+		for {
+			select {
+			case update := <-sub:
+				out, err := json.MarshalIndent(update, "", "  ")
+				if err != nil {
+					return err
+				}
+				fmt.Println(string(out))
+			case <-ctx.Done():
+				return nil
+			}
+		}
 	},
 }
