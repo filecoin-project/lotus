@@ -2,6 +2,7 @@ package main
 
 import (
 	"database/sql"
+	"time"
 
 	"github.com/ipfs/go-cid"
 	_ "github.com/mattn/go-sqlite3"
@@ -114,6 +115,19 @@ create table if not exists block_messages
 	constraint block_messages_pk
 		primary key (block, message)
 );
+
+create table if not exists mpool_messages
+(
+	msg text not null
+		constraint mpool_messages_pk
+			primary key
+		constraint mpool_messages_messages_cid_fk
+			references messages,
+	add_ts int not null
+);
+
+create unique index if not exists mpool_messages_msg_uindex
+	on mpool_messages (msg);
 
 create table if not exists miner_heads
 (
@@ -318,6 +332,27 @@ func (st *storage) storeMsgInclusions(incls map[cid.Cid][]cid.Cid) error {
 		}
 	}
 
+	return tx.Commit()
+}
+
+func (st *storage) storeMpoolInclusion(msg cid.Cid) error {
+	tx, err := st.db.Begin()
+	if err != nil {
+		return err
+	}
+
+	stmt, err := tx.Prepare(`insert into mpool_messages (msg, add_ts) VALUES (?, ?)`)
+	if err != nil {
+		return err
+	}
+	defer stmt.Close()
+
+	if _, err := stmt.Exec(
+		msg.String(),
+		time.Now().Unix(),
+	); err != nil {
+		return err
+	}
 	return tx.Commit()
 }
 
