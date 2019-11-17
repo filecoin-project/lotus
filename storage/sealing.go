@@ -124,8 +124,27 @@ func (t *SectorInfo) rspco() sectorbuilder.RawSealPreCommitOutput {
 	return out
 }
 
-func (m *Miner) sectorStateLoop(ctx context.Context) {
-	// TODO: restore state
+func (m *Miner) sectorStateLoop(ctx context.Context) error {
+	toRestart, err := m.ListSectors()
+	if err != nil {
+		return err
+	}
+
+	go func() {
+		for _, si := range toRestart {
+			select {
+			case m.sectorUpdated <- sectorUpdate{
+				newState: si.State,
+				id:       si.SectorID,
+				err:      nil,
+				mut:      nil,
+			}:
+			case <-ctx.Done():
+				log.Warn("didn't restart processing for all sectors: ", ctx.Err())
+				return
+			}
+		}
+	}()
 
 	go func() {
 		defer log.Warn("quitting deal provider loop")
@@ -142,6 +161,8 @@ func (m *Miner) sectorStateLoop(ctx context.Context) {
 			}
 		}
 	}()
+
+	return nil
 }
 
 func (m *Miner) onSectorIncoming(sector *SectorInfo) {
