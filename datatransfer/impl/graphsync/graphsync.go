@@ -210,11 +210,9 @@ func (receiver *graphsyncReceiver) ReceiveRequest(
 	}
 	stor, _ := nodeFromBytes(incoming.Selector())
 	root := cidlink.Link{incoming.BaseCid()}
-	ctx, cancel := context.WithCancel(ctx)
-	go func() {
-		defer cancel()
+	if !incoming.IsPull() {
 		receiver.impl.gs.Request(ctx, sender, root, stor)
-	}()
+	}
 	receiver.impl.sendResponse(ctx, true, sender, incoming.TransferID())
 }
 
