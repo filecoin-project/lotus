@@ -41,14 +41,14 @@ var authCreateAdminToken = &cli.Command{
 		}
 
 		perm := cctx.String("perm")
-		idx := -1
+		idx := 0
 		for i, p := range api.AllPermissions {
 			if perm == p {
-				idx = i
+				idx = i + 1
 			}
 		}
 
-		if idx == -1 {
+		if idx == 0 {
 			return fmt.Errorf("--perm flag has to be one of: %s", api.AllPermissions)
 		}
 
