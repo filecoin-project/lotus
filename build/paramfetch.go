@@ -87,7 +87,16 @@ func (ft *fetch) maybeFetchAsync(name string, info paramFile) {
 		defer ft.fetchLk.Unlock()
 
 		if err := doFetch(path, info); err != nil {
-			ft.errs = append(ft.errs, xerrors.Errorf("fetching file %s: %w", path, err))
+			ft.errs = append(ft.errs, xerrors.Errorf("fetching file %s success: %w", path, err))
+			return
+		}
+		err = ft.checkFile(path, info)
+		if err != nil {
+			ft.errs = append(ft.errs, xerrors.Errorf("fetching file %s failed: %w", path, err))
+			err := os.Remove(path)
+			if err != nil {
+				ft.errs = append(ft.errs, xerrors.Errorf("remove file %s failed: %w", path, err))
+			}
 		}
 	}()
 }
