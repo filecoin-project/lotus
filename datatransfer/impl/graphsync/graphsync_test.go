@@ -4,7 +4,6 @@ import (
 	"bytes"
 	"context"
 	"errors"
-	"fmt"
 	"io"
 	"io/ioutil"
 	"math/rand"
@@ -1370,7 +1369,6 @@ func (fgs *fakeGraphSync) Request(ctx context.Context, p peer.ID, root ipld.Link
 	errors := make(chan error)
 	close(responses)
 	close(errors)
-	fmt.Println("fakeGraphSync.Request")
 	return responses, errors
 }
 

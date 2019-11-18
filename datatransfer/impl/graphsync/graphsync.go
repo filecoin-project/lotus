@@ -109,7 +109,7 @@ func (impl *graphsyncImpl) OpenPushDataChannel(ctx context.Context, to peer.ID, 
 	if err != nil {
 		return datatransfer.ChannelID{}, err
 	}
-	chid := impl.createNewChannel(tid, to, baseCid, selector, voucher, "", to)
+	chid := impl.createNewChannel(tid, baseCid, selector, voucher, to, "", to)
 	return chid, nil
 }
 
@@ -121,12 +121,12 @@ func (impl *graphsyncImpl) OpenPullDataChannel(ctx context.Context, to peer.ID, 
 	if err != nil {
 		return datatransfer.ChannelID{}, err
 	}
-	chid := impl.createNewChannel(tid, to, baseCid, selector, voucher, to, "")
+	chid := impl.createNewChannel(tid, baseCid, selector, voucher, to, to, "")
 	return chid, nil
 }
 
-// createNewChannel creates a new channel id
-func (impl *graphsyncImpl) createNewChannel(tid datatransfer.TransferID, to peer.ID, baseCid cid.Cid, selector ipld.Node, voucher datatransfer.Voucher, sender, receiver peer.ID) datatransfer.ChannelID {
+// createNewChannel creates a new channel id and channel state and saves to channels
+func (impl *graphsyncImpl) createNewChannel(tid datatransfer.TransferID, baseCid cid.Cid, selector ipld.Node, voucher datatransfer.Voucher, to, sender, receiver peer.ID) datatransfer.ChannelID {
 	chid := datatransfer.ChannelID{To: to, ID: tid}
 	chst := datatransfer.ChannelState{Channel: datatransfer.NewChannel(0, baseCid, selector, voucher, sender, receiver, 0)}
 	impl.channels[chid] = chst
