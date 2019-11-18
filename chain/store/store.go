@@ -254,6 +254,13 @@ func (cs *ChainStore) reorgWorker(ctx context.Context) chan<- reorg {
 					log.Error("computing reorg ops failed: ", err)
 					continue
 				}
+
+				// reverse the apply array
+				for i := len(apply)/2 - 1; i >= 0; i-- {
+					opp := len(apply) - 1 - i
+					apply[i], apply[opp] = apply[opp], apply[i]
+				}
+
 				for _, hcf := range cs.headChangeNotifs {
 					if err := hcf(revert, apply); err != nil {
 						log.Error("head change func errored (BAD): ", err)
