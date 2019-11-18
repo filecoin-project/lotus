@@ -101,7 +101,7 @@ func NewMessagePool(sm *stmgr.StateManager, ps *pubsub.PubSub) *MessagePool {
 		minGasPrice:   types.NewInt(0),
 		maxTxPoolSize: 100000,
 		blsSigCache:   cache,
-		changes: lps.New(50),
+		changes:       lps.New(50),
 	}
 	sm.ChainStore().SubscribeHeadChanges(func(rev, app []*types.TipSet) error {
 		err := mp.HeadChange(rev, app)

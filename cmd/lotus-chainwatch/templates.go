@@ -44,7 +44,7 @@ func newHandler(api api.FullNode, st *storage) (*handler, error) {
 		"strings":  h.strings,
 		"messages": h.messages,
 
-		"param":    func(string) string { return "" }, // replaced in request handler
+		"param": func(string) string { return "" }, // replaced in request handler
 	}
 
 	base := template.New("")
@@ -232,7 +232,7 @@ func (h *handler) messages(filter string, args ...interface{}) (out []types.Mess
 			&r.GasLimit,
 			&r.Method,
 			&r.Params,
-			); err != nil {
+		); err != nil {
 			return nil, err
 		}
 
@@ -249,7 +249,5 @@ func (h *handler) messages(filter string, args ...interface{}) (out []types.Mess
 
 	return
 }
-
-
 
 var _ http.Handler = &handler{}

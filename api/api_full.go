@@ -38,6 +38,7 @@ type FullNode interface {
 	// syncer
 	SyncState(context.Context) (*SyncState, error)
 	SyncSubmitBlock(ctx context.Context, blk *types.BlockMsg) error
+	SyncIncomingBlocks(ctx context.Context) (<-chan *types.BlockHeader, error)
 
 	// messages
 	MpoolPending(context.Context, *types.TipSet) ([]*types.SignedMessage, error)
@@ -286,6 +287,6 @@ const (
 )
 
 type MpoolUpdate struct {
-	Type MpoolChange
+	Type    MpoolChange
 	Message *types.SignedMessage
 }

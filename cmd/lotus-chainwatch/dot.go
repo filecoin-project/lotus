@@ -29,12 +29,12 @@ var dotCmd = &cli.Command{
 		fmt.Println("digraph D {")
 
 		for res.Next() {
-			var block,parent,miner string
+			var block, parent, miner string
 			if err := res.Scan(&block, &parent, &miner); err != nil {
 				return err
 			}
 
-			col := crc32.Checksum([]byte(miner), crc32.MakeTable(crc32.Castagnoli)) & 0x80808080 + 0x70707070
+			col := crc32.Checksum([]byte(miner), crc32.MakeTable(crc32.Castagnoli))&0x80808080 + 0x70707070
 
 			fmt.Printf("%s [label = \"%s\", fillcolor = \"#%06x\", style=filled]\n%s -> %s\n", block, miner, col, block, parent)
 		}

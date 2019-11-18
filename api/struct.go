@@ -51,8 +51,9 @@ type FullNodeStruct struct {
 		ChainGetGenesis        func(context.Context) (*types.TipSet, error)                                 `perm:"read"`
 		ChainTipSetWeight      func(context.Context, *types.TipSet) (types.BigInt, error)                   `perm:"read"`
 
-		SyncState       func(context.Context) (*SyncState, error)            `perm:"read"`
-		SyncSubmitBlock func(ctx context.Context, blk *types.BlockMsg) error `perm:"write"`
+		SyncState          func(context.Context) (*SyncState, error)                    `perm:"read"`
+		SyncSubmitBlock    func(ctx context.Context, blk *types.BlockMsg) error         `perm:"write"`
+		SyncIncomingBlocks func(ctx context.Context) (<-chan *types.BlockHeader, error) `perm:"read"`
 
 		MpoolPending     func(context.Context, *types.TipSet) ([]*types.SignedMessage, error) `perm:"read"`
 		MpoolPush        func(context.Context, *types.SignedMessage) error                    `perm:"write"`
@@ -349,6 +350,10 @@ func (c *FullNodeStruct) SyncState(ctx context.Context) (*SyncState, error) {
 
 func (c *FullNodeStruct) SyncSubmitBlock(ctx context.Context, blk *types.BlockMsg) error {
 	return c.Internal.SyncSubmitBlock(ctx, blk)
+}
+
+func (c *FullNodeStruct) SyncIncomingBlocks(ctx context.Context) (<-chan *types.BlockHeader, error) {
+	return c.Internal.SyncIncomingBlocks(ctx)
 }
 
 func (c *FullNodeStruct) StateMinerSectors(ctx context.Context, addr address.Address, ts *types.TipSet) ([]*ChainSectorInfo, error) {
