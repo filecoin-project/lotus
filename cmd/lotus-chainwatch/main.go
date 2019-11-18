@@ -20,6 +20,7 @@ func main() {
 
 	local := []*cli.Command{
 		runCmd,
+		dotCmd,
 	}
 
 	app := &cli.App{
