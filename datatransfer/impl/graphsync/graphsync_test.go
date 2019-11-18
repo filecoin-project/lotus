@@ -424,7 +424,6 @@ func TestSendResponseToIncomingRequest(t *testing.T) {
 	err := dagcbor.Encoder(gsData.allSelector, &buffer)
 	require.NoError(t, err)
 
-	// TODO: get passing to complete https://github.com/filecoin-project/go-data-transfer/issues/14
 	t.Run("Response to push with successful validation", func(t *testing.T) {
 		sv := newSV()
 		sv.expectSuccessPush()
@@ -460,7 +459,6 @@ func TestSendResponseToIncomingRequest(t *testing.T) {
 
 	})
 
-	// TODO: get passing to complete https://github.com/filecoin-project/go-data-transfer/issues/14
 	t.Run("Response to push with error validation", func(t *testing.T) {
 		sv := newSV()
 		sv.expectErrorPush()
@@ -686,92 +684,93 @@ func TestDataTransferSubscribing(t *testing.T) {
 	unsub4()
 }
 
-// TODO: get passing to complete https://github.com/filecoin-project/go-data-transfer/issues/20
 func TestDataTransferInitiatingPushGraphsyncRequests(t *testing.T) {
 	// create network
-	//ctx := context.Background()
-	//ctx, cancel := context.WithTimeout(ctx, 10*time.Second)
-	//defer cancel()
-	//gsData := newGraphsyncTestingData(t, ctx)
-	//host1 := gsData.host1
-	//host2 := gsData.host2
-	//
-	//gs2 := &fakeGraphSync{
-	//	receivedRequests: make(chan receivedGraphSyncRequest, 1),
-	//}
-	//voucher := fakeDTType{"applesauce"}
-	//baseCid := testutil.GenerateCids(1)[0]
-	//
-	//// setup receiving peer to just record message coming in
-	//dtnet1 := network.NewFromLibp2pHost(host1)
-	//r := &receiver{
-	//	messageReceived: make(chan receivedMessage),
-	//}
-	//dtnet1.SetDelegate(r)
-	//id := datatransfer.TransferID(rand.Int31())
-	//var buffer bytes.Buffer
-	//err := dagcbor.Encoder(gsData.allSelector, &buffer)
-	//require.NoError(t, err)
-	//isPull := false
-	//voucherBytes, err := voucher.ToBytes()
-	//require.NoError(t, err)
-	//request := message.NewRequest(id, isPull, voucher.Type(), voucherBytes, baseCid, buffer.Bytes())
-	//
-	//t.Run("with successful validiation", func(t *testing.T) {
-	//
-	//	sv := newSV()
-	//	sv.expectSuccessPush()
-	//
-	//	dt2 := NewGraphSyncDataTransfer(ctx, host2, gs2)
-	//	require.NoError(t, dt2.RegisterVoucherType(reflect.TypeOf(&fakeDTType{}), sv))
-	//
-	//	require.NoError(t, dtnet1.SendMessage(ctx, host2.ID(), request))
-	//	select {
-	//	case <-ctx.Done():
-	//		t.Fatal("did not receive message sent")
-	//	case <-r.messageReceived:
-	//	}
-	//	sv.verifyExpectations(t)
-	//
-	//	var requestReceived receivedGraphSyncRequest
-	//	select {
-	//	case <-ctx.Done():
-	//		t.Fatal("did not receive message sent")
-	//	case requestReceived = <-gs2.receivedRequests:
-	//	}
-	//
-	//	sv.verifyExpectations(t)
-	//
-	//	receiver := requestReceived.p
-	//	require.Equal(t, receiver, host1.ID())
-	//
-	//	cl, ok := requestReceived.root.(cidlink.Link)
-	//	require.True(t, ok)
-	//	require.Equal(t, baseCid, cl.Cid)
-	//
-	//	require.Equal(t, gsData.allSelector, requestReceived.selector)
-	//
-	//})
-	//
-	//t.Run("with error validation", func(t *testing.T) {
-	//	sv := newSV()
-	//	sv.expectErrorPush()
-	//
-	//	dt2 := NewGraphSyncDataTransfer(ctx, host2, gs2)
-	//	require.NoError(t, dt2.RegisterVoucherType(reflect.TypeOf(&fakeDTType{}), sv))
-	//
-	//	require.NoError(t, dtnet1.SendMessage(ctx, host2.ID(), request))
-	//	select {
-	//	case <-ctx.Done():
-	//		t.Fatal("did not receive message sent")
-	//	case <-r.messageReceived:
-	//	}
-	//	sv.verifyExpectations(t)
-	//
-	//	// no graphsync request should be scheduled
-	//	require.Empty(t, gs2.receivedRequests)
-	//
-	//})
+	ctx := context.Background()
+	ctx, cancel := context.WithTimeout(ctx, 10*time.Second)
+	defer cancel()
+	gsData := newGraphsyncTestingData(t, ctx)
+	host1 := gsData.host1
+	host2 := gsData.host2
+
+	gs2 := &fakeGraphSync{
+		receivedRequests: make(chan receivedGraphSyncRequest, 1),
+	}
+
+	// setup receiving peer to just record message coming in
+	dtnet1 := network.NewFromLibp2pHost(host1)
+	r := &receiver{
+		messageReceived: make(chan receivedMessage),
+	}
+	dtnet1.SetDelegate(r)
+
+	voucher := fakeDTType{"applesauce"}
+	baseCid := testutil.GenerateCids(1)[0]
+	id := datatransfer.TransferID(rand.Int31())
+	var buffer bytes.Buffer
+
+	err := dagcbor.Encoder(gsData.allSelector, &buffer)
+	require.NoError(t, err)
+
+	isPull := false
+	voucherBytes, err := voucher.ToBytes()
+	require.NoError(t, err)
+	request := message.NewRequest(id, isPull, voucher.Type(), voucherBytes, baseCid, buffer.Bytes())
+
+	t.Run("with successful validation", func(t *testing.T) {
+		sv := newSV()
+		sv.expectSuccessPush()
+
+		dt2 := NewGraphSyncDataTransfer(ctx, host2, gs2)
+		require.NoError(t, dt2.RegisterVoucherType(reflect.TypeOf(&fakeDTType{}), sv))
+
+		require.NoError(t, dtnet1.SendMessage(ctx, host2.ID(), request))
+		select {
+		case <-ctx.Done():
+			t.Fatal("did not receive message sent")
+		case <-r.messageReceived:
+		}
+		sv.verifyExpectations(t)
+
+		var requestReceived receivedGraphSyncRequest
+		select {
+		case <-ctx.Done():
+			t.Fatal("did not receive message sent")
+		case requestReceived = <-gs2.receivedRequests:
+		}
+
+		sv.verifyExpectations(t)
+
+		receiver := requestReceived.p
+		require.Equal(t, receiver, host1.ID())
+
+		cl, ok := requestReceived.root.(cidlink.Link)
+		require.True(t, ok)
+		require.Equal(t, baseCid, cl.Cid)
+
+		require.Equal(t, gsData.allSelector, requestReceived.selector)
+
+	})
+
+	t.Run("with error validation", func(t *testing.T) {
+		sv := newSV()
+		sv.expectErrorPush()
+
+		dt2 := NewGraphSyncDataTransfer(ctx, host2, gs2)
+		require.NoError(t, dt2.RegisterVoucherType(reflect.TypeOf(&fakeDTType{}), sv))
+
+		require.NoError(t, dtnet1.SendMessage(ctx, host2.ID(), request))
+		select {
+		case <-ctx.Done():
+			t.Fatal("did not receive message sent")
+		case <-r.messageReceived:
+		}
+		sv.verifyExpectations(t)
+
+		// no graphsync request should be scheduled
+		require.Empty(t, gs2.receivedRequests)
+
+	})
 }
 
 // TODO: get passing to complete https://github.com/filecoin-project/go-data-transfer/issues/21
