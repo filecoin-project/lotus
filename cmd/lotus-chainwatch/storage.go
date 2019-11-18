@@ -101,6 +101,19 @@ create table if not exists blocks
 	timestamp int not null
 );
 
+create table if not exists block_parents
+(
+	block text not null
+		constraint block_parents_blocks_cid_fk
+			references blocks,
+	parent text not null
+		constraint block_parents_blocks_cid_fk_2
+			references blocks
+);
+
+create unique index if not exists block_parents_block_parent_uindex
+	on block_parents (block, parent);
+
 create unique index if not exists blocks_cid_uindex
 	on blocks (cid);
 	
@@ -245,6 +258,19 @@ func (st *storage) storeHeaders(bhs map[cid.Cid]*types.BlockHeader) error {
 	for _, bh := range bhs {
 		if _, err := stmt.Exec(bh.Cid().String(), bh.ParentWeight.String(), bh.ParentStateRoot.String(), bh.Height, bh.Miner.String(), bh.Timestamp); err != nil {
 			return err
+		}
+	}
+
+	stmt2, err := tx.Prepare(`insert into block_parents (block, parent) values (?, ?) on conflict do nothing`)
+	if err != nil {
+		return err
+	}
+	defer stmt2.Close()
+	for _, bh := range bhs {
+		for _, parent := range bh.Parents {
+			if _, err := stmt2.Exec(bh.Cid().String(), parent.String()); err != nil {
+				return err
+			}
 		}
 	}
 
