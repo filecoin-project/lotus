@@ -76,10 +76,10 @@ func NewGraphSyncDataTransfer(parent context.Context, host host.Host, gs graphsy
 }
 
 // RegisterVoucherType registers a validator for the given voucher type
-// will error if voucher type does not implement voucher
-// or if there is a voucher type registered with an identical identifier
-// This assumes that the voucherType is a pointer type, and that anything that implements datatransfer.Voucher
-// Takes a pointer receiver.
+// returns error if:
+// * voucher type does not implement voucher
+// * there is a voucher type registered with an identical identifier
+// * voucherType's Kind is not reflect.Ptr
 func (impl *graphsyncImpl) RegisterVoucherType(voucherType reflect.Type, validator datatransfer.RequestValidator) error {
 	if voucherType.Kind() != reflect.Ptr {
 		return fmt.Errorf("voucherType must be a reflect.Ptr Kind")
@@ -293,9 +293,7 @@ func (receiver *graphsyncReceiver) ReceiveResponse(
 			if ok {
 				baseCid := channel.BaseCID()
 				root := cidlink.Link{baseCid}
-				go func() {
-					receiver.impl.gs.Request(ctx, sender, root, channel.Selector())
-				}()
+				receiver.impl.gs.Request(ctx, sender, root, channel.Selector())
 			}
 			evt = datatransfer.Progress
 		}

@@ -774,7 +774,6 @@ func TestDataTransferInitiatingPushGraphsyncRequests(t *testing.T) {
 	})
 }
 
-// TODO: get passing to complete https://github.com/filecoin-project/go-data-transfer/issues/21
 func TestDataTransferInitiatingPullGraphsyncRequests(t *testing.T) {
 	ctx := context.Background()
 	gsData := newGraphsyncTestingData(t, ctx)
