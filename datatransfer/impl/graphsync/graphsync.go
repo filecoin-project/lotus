@@ -4,11 +4,13 @@ import (
 	"bytes"
 	"context"
 	"fmt"
+	cidlink "github.com/ipld/go-ipld-prime/linking/cid"
 	"math/rand"
 	"reflect"
 
 	"github.com/ipfs/go-cid"
 	"github.com/ipfs/go-graphsync"
+	logging "github.com/ipfs/go-log"
 	"github.com/ipld/go-ipld-prime"
 	"github.com/ipld/go-ipld-prime/encoding/dagcbor"
 	ipldfree "github.com/ipld/go-ipld-prime/impl/free"
@@ -19,6 +21,8 @@ import (
 	"github.com/filecoin-project/lotus/datatransfer/message"
 	"github.com/filecoin-project/lotus/datatransfer/network"
 )
+
+var log = logging.Logger("graphsync-impl")
 
 const (
 	// ExtensionDataTransfer is the identifier for the data transfer extension to graphsync
@@ -35,8 +39,6 @@ type ExtensionDataTransferData struct {
 // module that allows us to make the necessary insertions of data transfer
 // functionality into the storage market
 // It does not:
-// -- actually validate requests
-// -- support Push requests
 // -- support multiple subscribers
 // -- do any actual network coordination or use Graphsync
 
@@ -50,17 +52,25 @@ type graphsyncImpl struct {
 	subscribers         []datatransfer.Subscriber
 	validatedTypes      map[string]validateType
 	channels            map[datatransfer.ChannelID]datatransfer.ChannelState
+	gs                  graphsync.GraphExchange
 }
 
 type graphsyncReceiver struct {
+	ctx context.Context
 	impl *graphsyncImpl
 }
 
 // NewGraphSyncDataTransfer initializes a new graphsync based data transfer manager
 func NewGraphSyncDataTransfer(parent context.Context, host host.Host, gs graphsync.GraphExchange) datatransfer.Manager {
 	dataTransferNetwork := network.NewFromLibp2pHost(host)
-	impl := &graphsyncImpl{dataTransferNetwork, nil, make(map[string]validateType), make(map[datatransfer.ChannelID]datatransfer.ChannelState)}
-	receiver := &graphsyncReceiver{impl}
+	impl := &graphsyncImpl{
+		dataTransferNetwork,
+		nil,
+		make(map[string]validateType),
+		make(map[datatransfer.ChannelID]datatransfer.ChannelState),
+		gs,
+	}
+	receiver := &graphsyncReceiver{parent, impl}
 	dataTransferNetwork.SetDelegate(receiver)
 	return impl
 }
@@ -95,7 +105,7 @@ func (impl *graphsyncImpl) RegisterVoucherType(voucherType reflect.Type, validat
 // OpenPushDataChannel opens a data transfer that will send data to the recipient peer and
 // transfer parts of the piece that match the selector
 func (impl *graphsyncImpl) OpenPushDataChannel(ctx context.Context, to peer.ID, voucher datatransfer.Voucher, baseCid cid.Cid, selector ipld.Node) (datatransfer.ChannelID, error) {
-	tid, err := impl.sendRequest(selector, false, voucher, baseCid, to)
+	tid, err := impl.sendRequest(ctx, selector, false, voucher, baseCid, to)
 	if err != nil {
 		return datatransfer.ChannelID{}, err
 	}
@@ -106,7 +116,7 @@ func (impl *graphsyncImpl) OpenPushDataChannel(ctx context.Context, to peer.ID, 
 // OpenPullDataChannel opens a data transfer that will request data from the sending peer and
 // transfer parts of the piece that match the selector
 func (impl *graphsyncImpl) OpenPullDataChannel(ctx context.Context, to peer.ID, voucher datatransfer.Voucher, baseCid cid.Cid, selector ipld.Node) (datatransfer.ChannelID, error) {
-	tid, err := impl.sendRequest(selector, true, voucher, baseCid, to)
+	tid, err := impl.sendRequest(ctx, selector, true, voucher, baseCid, to)
 	if err != nil {
 		return datatransfer.ChannelID{}, err
 	}
@@ -115,12 +125,12 @@ func (impl *graphsyncImpl) OpenPullDataChannel(ctx context.Context, to peer.ID, 
 }
 
 // createNewChannel creates a new channel id
-func (impl *graphsyncImpl) createNewChannel(tid datatransfer.TransferID, to peer.ID, baseCid cid.Cid, selector ipld.Node, voucher datatransfer.Voucher) (datatransfer.ChannelID) {
+func (impl *graphsyncImpl) createNewChannel(tid datatransfer.TransferID, to peer.ID, baseCid cid.Cid, selector ipld.Node, voucher datatransfer.Voucher) datatransfer.ChannelID {
 	return datatransfer.ChannelID{To: to, ID: tid}
 }
 
 // sendRequest encapsulates message creation and posting to the data transfer network with the provided parameters
-func (impl *graphsyncImpl) sendRequest(selector ipld.Node, isPull bool, voucher datatransfer.Voucher, baseCid cid.Cid, to peer.ID) (datatransfer.TransferID, error) {
+func (impl *graphsyncImpl) sendRequest(ctx context.Context, selector ipld.Node, isPull bool, voucher datatransfer.Voucher, baseCid cid.Cid, to peer.ID) (datatransfer.TransferID, error) {
 	sbytes, err := nodeAsBytes(selector)
 	if err != nil {
 		return 0, err
@@ -132,19 +142,17 @@ func (impl *graphsyncImpl) sendRequest(selector ipld.Node, isPull bool, voucher 
 	tid := impl.generateTransferID()
 	req := message.NewRequest(tid, isPull, voucher.Type(), vbytes, baseCid, sbytes)
 
-	if err := impl.dataTransferNetwork.SendMessage(context.TODO(), to, req); err != nil {
+	if err := impl.dataTransferNetwork.SendMessage(ctx, to, req); err != nil {
 		return 0, err
 	}
 	return tid, nil
 }
 
-func (impl *graphsyncImpl) sendResponse(isAccepted bool, to peer.ID, tid datatransfer.TransferID) (datatransfer.TransferID, error) {
+func (impl *graphsyncImpl) sendResponse(ctx context.Context, isAccepted bool, to peer.ID, tid datatransfer.TransferID){
 	resp := message.NewResponse(tid, isAccepted)
-
-	if err := impl.dataTransferNetwork.SendMessage(context.TODO(), to, resp); err != nil {
-		return 0, err
+	if err :=  impl.dataTransferNetwork.SendMessage(ctx, to, resp); err != nil {
+		log.Error(err)
 	}
-	return tid, nil
 }
 
 // close an open channel (effectively a cancel)
@@ -194,15 +202,18 @@ func (receiver *graphsyncReceiver) ReceiveRequest(
 	sender peer.ID,
 	incoming message.DataTransferRequest) {
 
-	var success bool
 	// not yet doing anything else with the voucher
 	_, err := receiver.validateVoucher(sender, incoming)
-	if err == nil {
-		success = true
+	if err != nil {
+		receiver.impl.sendResponse(ctx, false, sender, incoming.TransferID())
+		return
 	}
-
-	// not yet doing anything else with the transfer ID
-	_, err = receiver.impl.sendResponse(success, sender, incoming.TransferID())
+	stor, _ := nodeFromBytes(incoming.Selector())
+	root := cidlink.Link{incoming.BaseCid()}
+	if !incoming.IsPull() {
+		receiver.impl.gs.Request(ctx, sender, root, stor)
+	}
+	receiver.impl.sendResponse(ctx, true, sender, incoming.TransferID())
 }
 
 // validateVoucher converts a voucher in an incoming message to its appropriate
