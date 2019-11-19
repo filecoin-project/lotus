@@ -82,7 +82,6 @@ func (m *Miner) Register(addr address.Address) error {
 
 	m.addresses = append(m.addresses, addr)
 	if len(m.addresses) == 1 {
-		// TODO: there is probably a race here
 		m.stop = make(chan struct{})
 		go m.mine(context.TODO())
 	}
@@ -92,8 +91,8 @@ func (m *Miner) Register(addr address.Address) error {
 
 func (m *Miner) Unregister(ctx context.Context, addr address.Address) error {
 	m.lk.Lock()
+	defer m.lk.Unlock()
 	if len(m.addresses) == 0 {
-		m.lk.Unlock()
 		return xerrors.New("no addresses registered")
 	}
 
@@ -106,7 +105,6 @@ func (m *Miner) Unregister(ctx context.Context, addr address.Address) error {
 		}
 	}
 	if idx == -1 {
-		m.lk.Unlock()
 		return xerrors.New("unregister: address not found")
 	}
 
@@ -115,21 +113,17 @@ func (m *Miner) Unregister(ctx context.Context, addr address.Address) error {
 
 	// Unregistering last address, stop mining first
 	if len(m.addresses) == 0 && m.stop != nil {
-		if m.stopping == nil {
-			m.stopping = make(chan struct{})
-			close(m.stop)
-		}
+		m.stopping = make(chan struct{})
 		stopping := m.stopping
-		m.lk.Unlock()
+		close(m.stop)
+
 		select {
 		case <-stopping:
 		case <-ctx.Done():
 			return ctx.Err()
 		}
-		m.lk.Lock()
 	}
 
-	m.lk.Unlock()
 	return nil
 }
 
@@ -143,15 +137,12 @@ eventLoop:
 	for {
 		select {
 		case <-m.stop:
-			m.lk.Lock()
-
-			close(m.stopping)
+			stopping := m.stopping
 			m.stop = nil
 			m.stopping = nil
-
-			m.lk.Unlock()
-
+			close(stopping)
 			return
+
 		default:
 		}
 
