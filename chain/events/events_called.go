@@ -7,7 +7,6 @@ import (
 
 	"github.com/ipfs/go-cid"
 
-	"github.com/filecoin-project/lotus/chain/address"
 	"github.com/filecoin-project/lotus/chain/types"
 )
 
@@ -33,6 +32,8 @@ type CalledHandler func(msg *types.Message, ts *types.TipSet, curH uint64) (more
 // If `more` is false, no messages will be sent to CalledHandler (RevertHandler
 //  may still be called)
 type CheckFunc func(ts *types.TipSet) (done bool, more bool, err error)
+
+type MatchFunc func(msg *types.Message) (bool, error)
 
 type callHandler struct {
 	confidence int
@@ -63,8 +64,8 @@ type calledEvents struct {
 
 	ctr triggerId
 
-	triggers   map[triggerId]*callHandler
-	callTuples map[callTuple][]triggerId
+	triggers map[triggerId]*callHandler
+	matchers map[triggerId][]MatchFunc
 
 	// maps block heights to events
 	// [triggerH][msgH][event]
@@ -75,11 +76,6 @@ type calledEvents struct {
 
 	// [timeoutH+confidence][triggerId]{calls}
 	timeouts map[uint64]map[triggerId]int
-}
-
-type callTuple struct {
-	actor  address.Address
-	method uint64
 }
 
 func (e *calledEvents) headChangeCalled(rev, app []*types.TipSet) error {
@@ -126,21 +122,27 @@ func (e *calledEvents) handleReverts(ts *types.TipSet) {
 
 func (e *calledEvents) checkNewCalls(ts *types.TipSet) {
 	e.messagesForTs(ts, func(msg *types.Message) {
-		// TODO: do we have to verify the receipt, or are messages on chain
-		//  guaranteed to be successful?
+		// TODO: provide receipts
 
-		ct := callTuple{
-			actor:  msg.To,
-			method: msg.Method,
-		}
+		for tid, matchFns := range e.matchers {
+			var matched bool
+			for _, matchFn := range matchFns {
+				ok, err := matchFn(msg)
+				if err != nil {
+					log.Warnf("event matcher failed: %s")
+					continue
+				}
+				matched = ok
 
-		triggers, ok := e.callTuples[ct]
-		if !ok {
-			return
-		}
+				if matched {
+					break
+				}
+			}
 
-		for _, tid := range triggers {
-			e.queueForConfidence(tid, msg, ts)
+			if matched {
+				e.queueForConfidence(tid, msg, ts)
+				break
+			}
 		}
 	})
 }
@@ -292,7 +294,7 @@ func (e *calledEvents) messagesForTs(ts *types.TipSet, consume func(*types.Messa
 //    containing the message. The tipset passed as the argument is the tipset
 //    that is being dropped. Note that the message dropped may be re-applied
 //    in a different tipset in small amount of time.
-func (e *calledEvents) Called(check CheckFunc, hnd CalledHandler, rev RevertHandler, confidence int, timeout uint64, actor address.Address, method uint64) error {
+func (e *calledEvents) Called(check CheckFunc, hnd CalledHandler, rev RevertHandler, confidence int, timeout uint64, mf MatchFunc) error {
 	e.lk.Lock()
 	defer e.lk.Unlock()
 
@@ -317,12 +319,8 @@ func (e *calledEvents) Called(check CheckFunc, hnd CalledHandler, rev RevertHand
 		revert: rev,
 	}
 
-	ct := callTuple{
-		actor:  actor,
-		method: method,
-	}
+	e.matchers[id] = append(e.matchers[id], mf)
 
-	e.callTuples[ct] = append(e.callTuples[ct], id)
 	if timeout != NoTimeout {
 		if e.timeouts[timeout+uint64(confidence)] == nil {
 			e.timeouts[timeout+uint64(confidence)] = map[uint64]int{}
