@@ -139,6 +139,7 @@ func (m *Miner) mine(ctx context.Context) {
 
 	var lastBase MiningBase
 
+eventLoop:
 	for {
 		select {
 		case <-m.stop:
@@ -198,6 +199,15 @@ func (m *Miner) mine(ctx context.Context) {
 					"time", time.Now(), "duration", time.Now().Sub(btime))
 			}
 
+			mWon := make(map[address.Address]struct{})
+			for _, b := range blks {
+				_, notOk := mWon[b.Header.Miner]
+				if notOk {
+					log.Errorw("2 blocks for the same miner. Throwing hands in the air. Report this. It is important.", "bloks", blks)
+					continue eventLoop
+				}
+				mWon[b.Header.Miner] = struct{}{}
+			}
 			for _, b := range blks {
 				if err := m.api.SyncSubmitBlock(ctx, b); err != nil {
 					log.Errorf("failed to submit newly mined block: %s", err)
