@@ -338,7 +338,7 @@ func (sm *SyncManager) syncWorker(id int) {
 			}
 			log.Info("sync worker go time!", ts.Height(), ts.Cids())
 
-			ctx := context.WithValue(context.TODO(), syncStateKey, ss)
+			ctx := context.WithValue(context.TODO(), syncStateKey{}, ss)
 			err := sm.doSync(ctx, ts)
 			if err != nil {
 				log.Errorf("sync error: %+v", err)
