@@ -56,7 +56,7 @@ type graphsyncImpl struct {
 }
 
 type graphsyncReceiver struct {
-	ctx context.Context
+	ctx  context.Context
 	impl *graphsyncImpl
 }
 
@@ -152,9 +152,9 @@ func (impl *graphsyncImpl) sendRequest(ctx context.Context, selector ipld.Node, 
 	return tid, nil
 }
 
-func (impl *graphsyncImpl) sendResponse(ctx context.Context, isAccepted bool, to peer.ID, tid datatransfer.TransferID){
+func (impl *graphsyncImpl) sendResponse(ctx context.Context, isAccepted bool, to peer.ID, tid datatransfer.TransferID) {
 	resp := message.NewResponse(tid, isAccepted)
-	if err :=  impl.dataTransferNetwork.SendMessage(ctx, to, resp); err != nil {
+	if err := impl.dataTransferNetwork.SendMessage(ctx, to, resp); err != nil {
 		log.Error(err)
 	}
 }
@@ -190,7 +190,7 @@ func (impl *graphsyncImpl) unsubscribeAt(sub datatransfer.Subscriber) datatransf
 }
 
 func (impl *graphsyncImpl) notifySubscribers(evt datatransfer.Event, cs datatransfer.ChannelState) {
-	for _,cb := range impl.subscribers {
+	for _, cb := range impl.subscribers {
 		cb(evt, cs)
 	}
 }
@@ -277,27 +277,39 @@ func (receiver *graphsyncReceiver) voucherFromRequest(incoming message.DataTrans
 	return voucher, nil
 }
 
+// ReceiveResponse handles responding to Push or Pull Requests.
+// It schedules a graphsync transfer only if a Pull Request is accepted.
 func (receiver *graphsyncReceiver) ReceiveResponse(
 	ctx context.Context,
 	sender peer.ID,
 	incoming message.DataTransferResponse) {
-		var evt datatransfer.Event
-		if !incoming.Accepted() {
-			evt = datatransfer.Error
-		} else {
-			chid := datatransfer.ChannelID{
-				To: sender,
-				ID: incoming.TransferID(),
-			}
-			channel, ok := receiver.impl.channels[chid]
-			if ok {
-				baseCid := channel.BaseCID()
-				root := cidlink.Link{baseCid}
-				receiver.impl.gs.Request(ctx, sender, root, channel.Selector())
-			}
+	evt := datatransfer.Error
+	chst := datatransfer.EmptyChannelState
+	if incoming.Accepted() {
+		chid := datatransfer.ChannelID{
+			To: sender,
+			ID: incoming.TransferID(),
+		}
+		if chst = receiver.impl.getPullChannel(chid); chst != datatransfer.EmptyChannelState {
+			baseCid := chst.BaseCID()
+			root := cidlink.Link{baseCid}
+			receiver.impl.gs.Request(ctx, sender, root, chst.Selector())
 			evt = datatransfer.Progress
 		}
-		receiver.impl.notifySubscribers(evt, datatransfer.ChannelState{})
+	}
+	receiver.impl.notifySubscribers(evt, chst)
+}
+
+// getPullChannel searches for a pull-type channel in the slice of channels with id `chid`.
+// Returns datatransfer.EmptyChannelState if:
+//   * there is no channel with that id
+//   * it is not related to a pull request
+func (impl *graphsyncImpl) getPullChannel(chid datatransfer.ChannelID) datatransfer.ChannelState {
+	channelState, ok := impl.channels[chid]
+	if !ok || channelState.Sender() == "" {
+		return datatransfer.EmptyChannelState
+	}
+	return channelState
 }
 
 func (receiver *graphsyncReceiver) ReceiveError(error) {}

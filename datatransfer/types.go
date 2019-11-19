@@ -109,6 +109,8 @@ type ChannelState struct {
 	received uint64
 }
 
+var EmptyChannelState = ChannelState{}
+
 // Sent returns the number of bytes sent
 func (c ChannelState) Sent() uint64 { return c.sent }
 

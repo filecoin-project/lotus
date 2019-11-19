@@ -811,8 +811,6 @@ func TestDataTransferInitiatingPullGraphsyncRequests(t *testing.T) {
 			t.Fatal("did not receive message sent")
 		case requestReceived = <-gs1.receivedRequests:
 		}
-		// give a little time for the validation to happen
-		time.Sleep(15*time.Millisecond)
 		sv.verifyExpectations(t)
 
 		receiver := requestReceived.p
@@ -858,7 +856,49 @@ func TestDataTransferInitiatingPullGraphsyncRequests(t *testing.T) {
 		}
 
 		// give a little time for the validation to happen
-		time.Sleep(15*time.Millisecond)
+		//time.Sleep(15*time.Millisecond)
+		sv.verifyExpectations(t)
+
+		// no graphsync request should be scheduled
+		require.Empty(t, gs1.receivedRequests)
+		unsub()
+	})
+
+	t.Run("does not schedule graphsync request if is push request", func(t *testing.T) {
+		gs1 := &fakeGraphSync{
+			receivedRequests: make(chan receivedGraphSyncRequest, 1),
+		}
+		gs2 := &fakeGraphSync{
+			receivedRequests: make(chan receivedGraphSyncRequest, 1),
+		}
+
+		sv := newSV()
+		sv.expectSuccessPush()
+
+		bg := ctx
+		ctx, cancel := context.WithTimeout(ctx, 10*time.Second)
+		defer cancel()
+
+		dt1 := NewGraphSyncDataTransfer(bg, host1, gs1)
+		dt2 := NewGraphSyncDataTransfer(bg, host2, gs2)
+		err := dt2.RegisterVoucherType(reflect.TypeOf(&fakeDTType{}), sv)
+		require.NoError(t, err)
+
+		subscribeCalls := make(chan struct{}, 1)
+		subscribe := func(event datatransfer.Event, channelState datatransfer.ChannelState) {
+			if event == datatransfer.Error {
+				subscribeCalls <- struct{}{}
+			}
+		}
+		unsub := dt1.SubscribeToEvents(subscribe)
+		_, err = dt1.OpenPushDataChannel(ctx, host2.ID(), &voucher, baseCid, gsData.allSelector)
+		require.NoError(t, err)
+
+		select {
+		case <-ctx.Done():
+			t.Fatal("subscribed events not received")
+		case <-subscribeCalls:
+		}
 		sv.verifyExpectations(t)
 
 		// no graphsync request should be scheduled
