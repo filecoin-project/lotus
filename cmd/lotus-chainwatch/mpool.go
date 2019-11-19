@@ -20,6 +20,8 @@ func subMpool(ctx context.Context, api aapi.FullNode, st *storage) {
 			continue
 		}
 
+		log.Info("mpool message")
+
 		err := st.storeMessages(map[cid.Cid]*types.Message{
 			change.Message.Message.Cid(): &change.Message.Message,
 		})
