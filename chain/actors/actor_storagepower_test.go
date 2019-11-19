@@ -170,5 +170,5 @@ func signBlock(t *testing.T, w *wallet.Wallet, worker address.Address, blk *type
 		t.Fatal(err)
 	}
 
-	blk.BlockSig = *sig
+	blk.BlockSig = sig
 }

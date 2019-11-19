@@ -58,7 +58,7 @@ func makeTs(t *testing.T, h uint64, msgcid cid.Cid) *types.TipSet {
 			Messages:              msgcid,
 			ParentMessageReceipts: dummyCid,
 
-			BlockSig:     types.Signature{Type: types.KTBLS},
+			BlockSig:     &types.Signature{Type: types.KTBLS},
 			BLSAggregate: types.Signature{Type: types.KTBLS},
 		},
 		{
@@ -71,7 +71,7 @@ func makeTs(t *testing.T, h uint64, msgcid cid.Cid) *types.TipSet {
 			Messages:              msgcid,
 			ParentMessageReceipts: dummyCid,
 
-			BlockSig:     types.Signature{Type: types.KTBLS},
+			BlockSig:     &types.Signature{Type: types.KTBLS},
 			BLSAggregate: types.Signature{Type: types.KTBLS},
 		},
 	})
