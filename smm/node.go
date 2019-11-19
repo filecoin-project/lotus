@@ -21,12 +21,12 @@ type StateChangeHandler interface {
 // Interface for querying the chain state and for submitting messages related to storage mining.
 type Node interface {
     // Starts listening for state changes
-    Start()
+    Start(context.Context) (*StateChange, error)
 
     // Fetches key for the most recent state known by the node.
     MostRecentState(ctx context.Context) (StateKey, error)
 
-    // Gets miner-related on-chain state.
+    // Gets worker-related on-chain state.
     GetMinerState(ctx context.Context, state StateKey) (*MinerChainState, error)
 
     // Submits a self-deals to the chain.
@@ -40,8 +40,8 @@ type Node interface {
     // This is asynchronous as the request must appear on
     // chain and then await some delay before the seed is provided.
     // The parameters are a subset of OnChainSealVerifyInfo.
-    // The miner chooses sector ID.
-    SubmitSectorPreCommitment(ctx context.Context, id SectorID, commR cid.Cid, dealIDs []uint64) (cid.Cid, error)
+    // The worker chooses sector ID.
+    SubmitSectorPreCommitment(ctx context.Context, id SectorID, sealEpoch Epoch, commR cid.Cid, dealIDs []uint64) (cid.Cid, error)
 
     // Reads a seal seed previously requested with
     // SubmitSectorPreCommitment.
@@ -52,7 +52,7 @@ type Node interface {
     // seal seed.
     SubmitSectorCommitment(ctx context.Context, id SectorID, proof Proof, dealIDs []uint64) (cid.Cid, error)
 
-    // Returns the current proving period and, if the miner has
+    // Returns the current proving period and, if the worker has
     // been challenged, the challenge seed and period.
     GetProvingPeriod(ctx context.Context, state StateKey) (*ProvingPeriod, error)
 

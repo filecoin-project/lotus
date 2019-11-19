@@ -1,386 +1,769 @@
 package smm
 
 import (
-    "bytes"
     "context"
-    "crypto/rand"
-    "github.com/filecoin-project/lotus/api/test"
+    "fmt"
+    "github.com/filecoin-project/lotus/api"
+    "github.com/filecoin-project/lotus/build"
+    "github.com/filecoin-project/lotus/chain/actors"
     "github.com/filecoin-project/lotus/chain/address"
-    "github.com/filecoin-project/lotus/miner"
-    "github.com/filecoin-project/lotus/node"
-    "github.com/filecoin-project/lotus/node/modules"
-    modtest "github.com/filecoin-project/lotus/node/modules/testing"
-    "github.com/filecoin-project/lotus/node/repo"
+    "github.com/filecoin-project/lotus/chain/store"
+    "github.com/filecoin-project/lotus/chain/types"
     "github.com/ipfs/go-cid"
-    "github.com/libp2p/go-libp2p-core/crypto"
-    "github.com/libp2p/go-libp2p-core/peer"
-    mocknet "github.com/libp2p/go-libp2p/p2p/net/mock"
     "github.com/multiformats/go-multihash"
+    "github.com/stretchr/testify/assert"
+    "github.com/stretchr/testify/require"
     "testing"
+    "time"
 )
 
 type testListener struct {
-    Called bool
+    Cancel context.CancelFunc
 }
 
 func (t testListener) OnChainStateChanged(*StateChange) {
-    t.Called = true
+    t.Cancel()
 }
 
-func create(ctx context.Context) (*test.TestNode, error) {
-    var testNode test.TestNode
-    mn := mocknet.New(ctx)
+func build_head_change(size, height int, t string) []*store.HeadChange {
+    a, _ := address.NewFromString("t0101")
+    b, _ := address.NewFromString("t0102")
+    cid, _ := cid.Parse("bafkqaaa")
+    result := make([]*store.HeadChange, size)
+    for i := 0; i < size; i++ {
+        headChange := new(store.HeadChange)
+        headChange.Type = t
+        headChange.Val, _ = types.NewTipSet([]*types.BlockHeader{
+            {
+                Height: uint64(height),
+                Miner:  a,
+                Tickets: []*types.Ticket{{[]byte{byte(height % 2)}}},
+                ParentStateRoot:       cid,
+                Messages:              cid,
+                ParentMessageReceipts: cid,
+            },
+            {
+                Height: uint64(height),
+                Miner:  b,
+                Tickets: []*types.Ticket{{[]byte{byte((height + 1) % 2)}}},
+                ParentStateRoot:       cid,
+                Messages:              cid,
+                ParentMessageReceipts: cid,
+            },
+        })
+        result[i] = headChange
+    }
+    return result
+}
 
-    pk, _, err := crypto.GenerateEd25519Key(rand.Reader)
-    if err != nil {
-        return nil, err
-    }
-    minerPid, err := peer.IDFromPrivateKey(pk)
-    var genbuf bytes.Buffer
-    mineBlock := make(chan struct{})
-    _, err = node.New(ctx,
-        node.FullAPI(&testNode.FullNode),
-        node.Online(),
-        node.Repo(repo.NewMemory(nil)),
-        node.MockHost(mn),
-        node.Test(),
-        node.Override(new(*miner.Miner), miner.NewTestMiner(mineBlock)),
-        node.Override(new(modules.Genesis), modtest.MakeGenesisMem(&genbuf, minerPid)),
-    )
-    if err != nil {
-        return nil, err
-    }
-    testNode.MineOne = func(ctx context.Context) error {
+func Test_Creation(t *testing.T) {
+    worker, _ := address.NewFromString("t0101")
+    actor, _  := address.NewFromString("t0102")
+
+    t.Run("Listener is called", func(t *testing.T) {
+        ctx, cancel := context.WithCancel(context.Background())
+        mockapi := FullNode{}
+        listener := testListener{cancel}
+        events := make(chan []*store.HeadChange, 1)
+        events <- build_head_change(1, 2, store.HCCurrent)
+        var out <-chan []*store.HeadChange
+        out = events
+
+        mockapi.On("ChainNotify", ctx).Return(out, nil).Once()
+
+        node, err := NewStorageMinerAdapter(&mockapi, Address(actor.String()), Address(worker.String()), listener)
+        require.NoError(t, err)
+        _, err = node.Start(ctx)
+        require.NoError(t, err)
+        events <- build_head_change(3, 3, store.HCApply)
+        called := false
         select {
-        case mineBlock <- struct{}{}:
-            return nil
-        case <-ctx.Done():
-            return ctx.Err()
+        case <- ctx.Done():
+            called = true
+        case <- time.After(100 * time.Millisecond):
         }
-    }
-    err = mn.LinkAll()
-    if err != nil {
-        return nil, err
-    }
-    return &testNode, nil
-}
+        require.Equal(t, true, called, "event handling failed to call the listener")
+    })
 
-func Test_NodeCreation(t *testing.T) {
-    ctx := context.Background()
-    fullnode, err := create(ctx)
-    if err != nil {
-        t.Fatal(err)
-    }
-    actor, err := fullnode.WalletDefaultAddress(ctx)
-    if err != nil {
-        t.Fatal(err)
-    }
-    miner, err := address.NewFromString("t0101")
-    if err != nil {
-        t.Fatal(err)
-    }
-    listener := testListener{false}
-    node, initialState, err := NewNode(ctx, fullnode, Address(actor.String()), Address(miner.String()), listener)
-    if err != nil {
-        t.Fatal(err)
-    }
-    if node == nil {
-        t.Fatalf("invalid node")
-    }
-    if initialState == nil || initialState.StateKey == "" {
-        t.Fatalf("invalid initial state")
-    }
-}
+    t.Run("ChainNotify fails", func(t *testing.T) {
+        ctx, cancel := context.WithCancel(context.Background())
+        listener := testListener{cancel}
+        mockapi := FullNode{}
+        mockapi.On("ChainNotify", ctx).Return(nil, fmt.Errorf("Fake error")).Once()
+        node, err := NewStorageMinerAdapter(&mockapi, Address(actor.String()), Address(worker.String()), listener)
+        require.NoError(t, err)
+        _, err = node.Start(ctx)
+    })
 
-func Test_MinerState(t *testing.T) {
-    ctx := context.Background()
-    fullnode, err := create(ctx)
-    if err != nil {
-        t.Fatal(err)
-    }
-    actor, err := fullnode.WalletDefaultAddress(ctx)
-    if err != nil {
-        t.Fatal(err)
-    }
-    miner, err := address.NewFromString("t0101")
-    if err != nil {
-        t.Fatal(err)
-    }
-    listener := testListener{false}
-    node, initialState, err := NewNode(ctx, fullnode, Address(actor.String()), Address(miner.String()), listener)
-    if err != nil {
-        t.Fatal(err)
-    }
-    if initialState == nil || initialState.StateKey == "" {
-        t.Fatalf("invalid initial state")
-    }
-    state, err := node.GetMinerState(ctx, initialState.StateKey)
-    if err != nil {
-        t.Fatal(err)
-    }
-    _ = state
+    t.Run("Invalid actor address", func(t *testing.T) {
+        _, cancel := context.WithCancel(context.Background())
+        listener := testListener{cancel}
+        mockapi := FullNode{}
+        _, err := NewStorageMinerAdapter(&mockapi, Address("a"), Address(worker.String()), listener)
+        require.Error(t, err)
+    })
 
-    pp, err := node.GetProvingPeriod(ctx, initialState.StateKey)
-    if err != nil {
-        t.Fatal(err)
-    }
-    if pp.Start != pp.End {
-        t.Fatalf("invalid proving period after genesis")
-    }
-}
+    t.Run("Invalid worker address", func(t *testing.T) {
+        _, cancel := context.WithCancel(context.Background())
+        mockapi := FullNode{}
+        listener := testListener{cancel}
+        _, err := NewStorageMinerAdapter(&mockapi, Address(actor.String()), Address("w"), listener)
+        require.Error(t, err)
+    })
 
-func Test_Randomness(t *testing.T) {
-    ctx := context.Background()
-    fullnode, err := create(ctx)
-    if err != nil {
-        t.Fatal(err)
-    }
-    actor, err := fullnode.WalletDefaultAddress(ctx)
-    if err != nil {
-        t.Fatal(err)
-    }
-    miner, err := address.NewFromString("t0101")
-    if err != nil {
-        t.Fatal(err)
-    }
-    listener := testListener{false}
-    node, initialState, err := NewNode(ctx, fullnode, Address(actor.String()), Address(miner.String()), listener)
-    if err != nil {
-        t.Fatal(err)
-    }
-    randomness, err := node.GetRandomness(ctx, initialState.StateKey, 0)
-    if err != nil {
-        t.Fatal(err)
-    }
-    if 32 != len(randomness) {
-        t.Fatalf("invalid length for randomness")
-    }
-}
+    t.Run("Initial head change is too long", func(t *testing.T) {
+        ctx, cancel := context.WithCancel(context.Background())
+        mockapi := FullNode{}
+        listener := testListener{cancel}
+        events := make(chan []*store.HeadChange, 1)
+        events <- build_head_change(3, 2, store.HCCurrent)
+        var out <-chan []*store.HeadChange
+        out = events
+        mockapi.On("ChainNotify", ctx).Return(out, nil).Once()
+        node, err := NewStorageMinerAdapter(&mockapi, Address(actor.String()), Address(worker.String()), listener)
+        require.NoError(t, err)
+        _, err = node.Start(ctx)
+        require.Error(t, err)
+    })
 
-func Test_RandomPoSt(t *testing.T) {
-    ctx := context.Background()
-    fullnode, err := create(ctx)
-    if err != nil {
-        t.Fatal(err)
-    }
-    actor, err := fullnode.WalletDefaultAddress(ctx)
-    if err != nil {
-        t.Fatal(err)
-    }
-    listener := testListener{false}
-    node, _, err := NewNode(ctx, fullnode, Address(actor.String()), Address(actor.String()), listener)
-    if err != nil {
-        t.Fatal(err)
-    }
-    proof := make([]byte, 32)
-    bytesRead, err := rand.Read(proof)
-    if err != nil {
-        t.Fatal(err)
-    }
-    if bytesRead != len(proof) {
-        t.Fatalf("invalid proof length")
-    }
-    cid, err := node.SubmitPoSt(ctx, proof)
-    if err != nil {
-        t.Fatal(err)
-    }
-    _ = cid
-}
+    t.Run("Initial head change has wrong type", func(t *testing.T) {
+        ctx, cancel := context.WithCancel(context.Background())
+        mockapi := FullNode{}
+        listener := testListener{cancel}
+        events := make(chan []*store.HeadChange, 1)
+        events <- build_head_change(1, 2, store.HCRevert)
+        var out <-chan []*store.HeadChange
+        out = events
+        mockapi.On("ChainNotify", ctx).Return(out, nil).Once()
+        node, err := NewStorageMinerAdapter(&mockapi, Address(actor.String()), Address(worker.String()), listener)
+        require.NoError(t, err)
+        _, err = node.Start(ctx)
+        require.Error(t, err)
+    })
 
-func Test_SubmitPoStFail(t *testing.T) {
-    ctx := context.Background()
-    fullnode, err := create(ctx)
-    if err != nil {
-        t.Fatal(err)
-    }
-    actor, err := fullnode.WalletDefaultAddress(ctx)
-    if err != nil {
-        t.Fatal(err)
-    }
-    listener := testListener{false}
-    miner, err := address.NewFromString("t0101")
-    if err != nil {
-      t.Fatal(err)
-    }
-    node, _, err := NewNode(ctx, fullnode, Address(actor.String()), Address(miner.String()), listener)
-    if err != nil {
-        t.Fatal(err)
-    }
-    proof := make([]byte, 32)
-    bytesRead, err := rand.Read(proof)
-    if bytesRead != len(proof) {
-        t.Fatalf("invalid proof length")
-    }
-    if bytesRead != len(proof) {
-        t.Fatalf("invalid proof length")
-    }
-    _, err = node.SubmitPoSt(ctx, proof)
-    if err == nil {
-        t.Fatalf("expecting SubmitPoSt to fail")
-    }
-}
 
-func Test_SubmitSelfDeals(t *testing.T) {
-    ctx := context.Background()
-    fullnode, err := create(ctx)
-    if err != nil {
-        t.Fatal(err)
-    }
-    actor, err := fullnode.WalletDefaultAddress(ctx)
-    if err != nil {
-        t.Fatal(err)
-    }
-    listener := testListener{false}
-    // Using the same address here as the miner one doesn't yet have a key in the test node's wallet
-    node, _, err := NewNode(ctx, fullnode, Address(actor.String()), Address(actor.String()), listener)
-    if err != nil {
-        t.Fatal(err)
-    }
-    cid, err := node.SubmitSelfDeals(ctx, []uint64{})
-    if err != nil {
-        t.Fatal(err)
-    }
-    _ = cid
-}
-
-func Test_SubmitSectorCommitment(t *testing.T) {
-    ctx := context.Background()
-    fullnode, err := create(ctx)
-    if err != nil {
-        t.Fatal(err)
-    }
-    actor, err := fullnode.WalletDefaultAddress(ctx)
-    if err != nil {
-        t.Fatal(err)
-    }
-    listener := testListener{false}
-    // Using the same address here as the miner one doesn't yet have a key in the test node's wallet
-    node, _, err := NewNode(ctx, fullnode, Address(actor.String()), Address(actor.String()), listener)
-    if err != nil {
-        t.Fatal(err)
-    }
-    proof := make([]byte, 32)
-    bytesRead, err := rand.Read(proof)
-    if bytesRead != len(proof) {
-        t.Fatalf("invalid proof length")
-    }
-    if bytesRead != len(proof) {
-        t.Fatalf("invalid proof length")
-    }
-    cid, err := node.SubmitSectorCommitment(ctx, 1, proof, []uint64{2, 3, 4, 5})
-    if err != nil {
-        t.Fatal(err)
-    }
-    _ = cid
-}
-
-func Test_SubmitSectorPreCommitment(t *testing.T) {
-    ctx := context.Background()
-    fullnode, err := create(ctx)
-    if err != nil {
-        t.Fatal(err)
-    }
-    actor, err := fullnode.WalletDefaultAddress(ctx)
-    if err != nil {
-        t.Fatal(err)
-    }
-    listener := testListener{false}
-    // Using the same address here as the miner one doesn't yet have a key in the test node's wallet
-    node, _, err := NewNode(ctx, fullnode, Address(actor.String()), Address(actor.String()), listener)
-    if err != nil {
-        t.Fatal(err)
-    }
-    cb := cid.V1Builder{Codec: cid.DagCBOR, MhType: multihash.BLAKE2B_MIN + 31}
-    commR, err := cb.Sum([]byte("hello world"))
-    if err != nil {
-        t.Fatal(err)
-    }
-    _, err = node.SubmitSectorPreCommitment(ctx, 1, commR, []uint64{5, 6, 7, 8})
-    if err != nil {
-        t.Fatal(err)
-    }
-}
-
-func Test_SubmitDeclaredFaults(t *testing.T) {
-    ctx := context.Background()
-    fullnode, err := create(ctx)
-    if err != nil {
-        t.Fatal(err)
-    }
-    actor, err := fullnode.WalletDefaultAddress(ctx)
-    if err != nil {
-        t.Fatal(err)
-    }
-    listener := testListener{false}
-    // Using the same address here as the miner one doesn't yet have a key in the test node's wallet
-    node, _, err := NewNode(ctx, fullnode, Address(actor.String()), Address(actor.String()), listener)
-    if err != nil {
-        t.Fatal(err)
-    }
-    faults := make(BitField)
-    for i := uint64(10); i < 20; i++ {
-        faults[i] = struct{}{}
-    }
-    _, err = node.SubmitDeclaredFaults(ctx, faults)
-    if err != nil {
-        t.Fatal(err)
-    }
 }
 
 func Test_MostRecentState(t *testing.T) {
-    ctx := context.Background()
-    fullnode, err := create(ctx)
-    if err != nil {
-        t.Fatal(err)
-    }
-    actor, err := fullnode.WalletDefaultAddress(ctx)
-    if err != nil {
-        t.Fatal(err)
-    }
-    miner, err := address.NewFromString("t0101")
-    listener := testListener{false}
-    // Using the same address here as the miner one doesn't yet have a key in the test node's wallet
-    node, _, err := NewNode(ctx, fullnode, Address(actor.String()), Address(miner.String()), listener)
-    if err != nil {
-        t.Fatal(err)
-    }
-    _, err = node.MostRecentState(ctx)
-    if err != nil {
-        t.Fatal(err)
-    }
+    worker, _ := address.NewFromString("t0101")
+    actor, _  := address.NewFromString("t0102")
+
+    t.Run("Succeeds", func(t *testing.T) {
+        ctx, cancel := context.WithCancel(context.Background())
+        mockapi := FullNode{}
+        listener := testListener{cancel}
+        initialChange := build_head_change(1, 2, store.HCCurrent)
+        ts := initialChange[0].Val
+        mockapi.On("ChainHead", ctx).Return(ts, nil).Once()
+        node, err := NewStorageMinerAdapter(&mockapi, Address(actor.String()), Address(worker.String()), listener)
+        require.NoError(t, err)
+        _, err = node.MostRecentState(ctx)
+        require.NoError(t, err)
+    })
+
+    t.Run("ChainHead fails", func(t *testing.T) {
+        ctx, cancel := context.WithCancel(context.Background())
+        mockapi := FullNode{}
+        listener := testListener{cancel}
+        mockapi.On("ChainHead", ctx).Return(nil, fmt.Errorf("ChainHead failed")).Once()
+        node, err := NewStorageMinerAdapter(&mockapi, Address(actor.String()), Address(worker.String()), listener)
+        require.NoError(t, err)
+        _, err = node.MostRecentState(ctx)
+        require.Error(t, err)
+    })
 }
 
-//func Test_StateChangeNotifications(t *testing.T) {
-//   ctx := context.Background()
-//   fullnode, err := create(ctx)
-//   if err != nil {
-//       t.Fatal(err)
-//   }
-//   actor, err := fullnode.WalletDefaultAddress(ctx)
-//   if err != nil {
-//       t.Fatal(err)
-//   }
-//   miner, err := address.NewFromString("t0101")
-//   if err != nil {
-//       t.Fatal(err)
-//   }
-//   listener := testListener{false}
-//   node, initialState, err := NewNode(ctx, fullnode, Address(actor.String()), Address(miner.String()), listener)
-//   if err != nil {
-//       t.Fatal(err)
-//   }
-//   if node == nil {
-//       t.Fatalf("invalid node")
-//   }
-//   if initialState == nil || initialState.StateKey == "" {
-//       t.Fatalf("invalid initial state")
-//   }
-//   err = fullnode.MineOne(ctx)
-//   if err != nil {
-//       t.Fatal(err)
-//   }
-//   node.Start()
-//   if listener.Called == false {
-//       t.Fatalf("state change notification failed")
-//   }
-//}
+func Test_GetMinerState(t *testing.T) {
+    worker, _ := address.NewFromString("t0101")
+    actor, _  := address.NewFromString("t0102")
+
+    t.Run("Succeeds", func(t *testing.T) {
+        ctx, cancel := context.WithCancel(context.Background())
+        mockapi := FullNode{}
+        listener := testListener{cancel}
+        events := make(chan []*store.HeadChange, 1)
+        initialChange := build_head_change(1, 2, store.HCCurrent)
+        events <- initialChange
+        var out <-chan []*store.HeadChange
+        out = events
+
+        sectorInfo := api.ChainSectorInfo{1, make([]byte, 32), make([]byte, 32)}
+        ts := initialChange[0].Val
+        block0 := ts.Blocks()[0]
+        block1 := ts.Blocks()[1]
+
+        mockapi.On("ChainNotify", ctx).Return(out, nil).Once()
+        mockapi.On("StateMinerSectors", ctx, worker, ts).Return([]*api.ChainSectorInfo{&sectorInfo}, nil).Once()
+        mockapi.On("StateMinerProvingSet", ctx, worker, ts).Return([]*api.ChainSectorInfo{&sectorInfo}, nil).Once()
+        mockapi.On("ChainGetBlock", ctx, ts.Cids()[0]).Return(block0, nil).Once()
+        mockapi.On("ChainGetBlock", ctx, ts.Cids()[1]).Return(block1, nil).Once()
+
+        node, _ := NewStorageMinerAdapter(&mockapi, Address(actor.String()), Address(worker.String()), listener)
+        initialState, err := node.Start(ctx)
+        require.NoError(t, err)
+        _, err = node.GetMinerState(ctx, initialState.StateKey)
+        require.NoError(t, err)
+    })
+
+    t.Run("StateMinerProvingSet fails", func(t *testing.T) {
+        ctx, cancel := context.WithCancel(context.Background())
+        mockapi := FullNode{}
+        listener := testListener{cancel}
+        events := make(chan []*store.HeadChange, 1)
+        initialChange := build_head_change(1, 2, store.HCCurrent)
+        events <- initialChange
+        var out <-chan []*store.HeadChange
+        out = events
+
+        sectorInfo := api.ChainSectorInfo{1, make([]byte, 32), make([]byte, 32)}
+        ts := initialChange[0].Val
+        block0 := ts.Blocks()[0]
+        block1 := ts.Blocks()[1]
+
+        mockapi.On("ChainNotify", ctx).Return(out, nil).Once()
+        mockapi.On("StateMinerSectors", ctx, worker, ts).Return([]*api.ChainSectorInfo{&sectorInfo}, nil).Once()
+        mockapi.On("StateMinerProvingSet", ctx, worker, ts).Return(nil, fmt.Errorf("StateMinerProvingSet failed")).Once()
+        mockapi.On("ChainGetBlock", ctx, ts.Cids()[0]).Return(block0, nil).Once()
+        mockapi.On("ChainGetBlock", ctx, ts.Cids()[1]).Return(block1, nil).Once()
+
+        node, _ := NewStorageMinerAdapter(&mockapi, Address(actor.String()), Address(worker.String()), listener)
+        initialState, err := node.Start(ctx)
+        require.NoError(t, err)
+        _, err = node.GetMinerState(ctx, initialState.StateKey)
+        require.Error(t, err)
+    })
+
+    t.Run("StateMinerSectors fails", func(t *testing.T) {
+        ctx, cancel := context.WithCancel(context.Background())
+        mockapi := FullNode{}
+        listener := testListener{cancel}
+        events := make(chan []*store.HeadChange, 1)
+        initialChange := build_head_change(1, 2, store.HCCurrent)
+        events <- initialChange
+        var out <-chan []*store.HeadChange
+        out = events
+
+        ts := initialChange[0].Val
+        block0 := ts.Blocks()[0]
+        block1 := ts.Blocks()[1]
+
+        mockapi.On("ChainNotify", ctx).Return(out, nil).Once()
+        mockapi.On("StateMinerSectors", ctx, worker, ts).Return(nil, fmt.Errorf("StateMinerSectors failed")).Once()
+        mockapi.On("ChainGetBlock", ctx, ts.Cids()[0]).Return(block0, nil).Once()
+        mockapi.On("ChainGetBlock", ctx, ts.Cids()[1]).Return(block1, nil).Once()
+
+        node, _ := NewStorageMinerAdapter(&mockapi, Address(actor.String()), Address(worker.String()), listener)
+        initialState, err := node.Start(ctx)
+        require.NoError(t, err)
+        _, err = node.GetMinerState(ctx, initialState.StateKey)
+        require.Error(t, err)
+    })
+
+    t.Run("invalid block cid", func(t *testing.T) {
+        ctx, cancel := context.WithCancel(context.Background())
+        mockapi := FullNode{}
+        listener := testListener{cancel}
+        events := make(chan []*store.HeadChange, 1)
+        initialChange := build_head_change(1, 2, store.HCCurrent)
+        events <- initialChange
+        var out <-chan []*store.HeadChange
+        out = events
+
+        ts := initialChange[0].Val
+        block0 := ts.Blocks()[0]
+
+        mockapi.On("ChainNotify", ctx).Return(out, nil).Once()
+        mockapi.On("ChainGetBlock", ctx, ts.Cids()[0]).Return(block0, nil).Once()
+        mockapi.On("ChainGetBlock", ctx, ts.Cids()[1]).Return(nil, fmt.Errorf("invalid block")).Once()
+
+        node, _ := NewStorageMinerAdapter(&mockapi, Address(actor.String()), Address(worker.String()), listener)
+        initialState, err := node.Start(ctx)
+        require.NoError(t, err)
+        _, err = node.GetMinerState(ctx, initialState.StateKey)
+        require.Error(t, err)
+    })
+
+    t.Run("invalid state key", func(t *testing.T) {
+        ctx, cancel := context.WithCancel(context.Background())
+        mockapi := FullNode{}
+        listener := testListener{cancel}
+        events := make(chan []*store.HeadChange, 1)
+        initialChange := build_head_change(1, 2, store.HCCurrent)
+        events <- initialChange
+        var out <-chan []*store.HeadChange
+        out = events
+
+        mockapi.On("ChainNotify", ctx).Return(out, nil).Once()
+
+        node, err := NewStorageMinerAdapter(&mockapi, Address(actor.String()), Address(worker.String()), listener)
+        invalidStateKey := []byte{10, 32, 20, 20}
+        _, err = node.GetMinerState(ctx, StateKey(invalidStateKey))
+        require.Error(t, err)
+    })
+}
+
+func Test_GetRandomness(t *testing.T) {
+    worker, _ := address.NewFromString("t0101")
+    actor, _  := address.NewFromString("t0102")
+
+    t.Run("succeeds", func(t *testing.T) {
+        ctx, cancel := context.WithCancel(context.Background())
+        mockapi := FullNode{}
+        listener := testListener{cancel}
+        events := make(chan []*store.HeadChange, 1)
+        initialChange := build_head_change(1, 2, store.HCCurrent)
+        events <- initialChange
+        var out <-chan []*store.HeadChange
+        out = events
+
+        ts := initialChange[0].Val
+        tsk := types.NewTipSetKey(ts.Cids()...)
+        block0 := ts.Blocks()[0]
+        block1 := ts.Blocks()[1]
+
+        mockapi.On("ChainNotify", ctx).Return(out, nil).Once()
+        mockapi.On("ChainGetBlock", ctx, ts.Cids()[0]).Return(block0, nil).Once()
+        mockapi.On("ChainGetBlock", ctx, ts.Cids()[1]).Return(block1, nil).Once()
+        mockapi.On("ChainGetRandomness", ctx, tsk, []*types.Ticket(nil), 1).Return(make([]byte, 32), nil).Once()
+
+        node, err := NewStorageMinerAdapter(&mockapi, Address(actor.String()), Address(worker.String()), listener)
+        initialState, err := node.Start(ctx)
+        require.NoError(t, err)
+        _, err = node.GetRandomness(ctx, initialState.StateKey, 1)
+        require.NoError(t, err)
+    })
+
+    t.Run("ChainGetRandomness fails", func(t *testing.T) {
+        ctx, cancel := context.WithCancel(context.Background())
+        mockapi := FullNode{}
+        listener := testListener{cancel}
+        events := make(chan []*store.HeadChange, 1)
+        initialChange := build_head_change(1, 2, store.HCCurrent)
+        events <- initialChange
+        var out <-chan []*store.HeadChange
+        out = events
+
+        ts := initialChange[0].Val
+        tsk := types.NewTipSetKey(ts.Cids()...)
+        block0 := ts.Blocks()[0]
+        block1 := ts.Blocks()[1]
+
+        mockapi.On("ChainNotify", ctx).Return(out, nil).Once()
+        mockapi.On("ChainGetBlock", ctx, ts.Cids()[0]).Return(block0, nil).Once()
+        mockapi.On("ChainGetBlock", ctx, ts.Cids()[1]).Return(block1, nil).Once()
+        mockapi.On("ChainGetRandomness", ctx, tsk, []*types.Ticket(nil), 1).Return(nil, fmt.Errorf("ChainGetRandomness failed")).Once()
+
+        node, err := NewStorageMinerAdapter(&mockapi, Address(actor.String()), Address(worker.String()), listener)
+        initialState, err := node.Start(ctx)
+        require.NoError(t, err)
+        _, err = node.GetRandomness(ctx, initialState.StateKey, 1)
+        require.Error(t, err)
+    })
+
+    t.Run("invalid block", func(t *testing.T) {
+        ctx, cancel := context.WithCancel(context.Background())
+        mockapi := FullNode{}
+        listener := testListener{cancel}
+        events := make(chan []*store.HeadChange, 1)
+        initialChange := build_head_change(1, 2, store.HCCurrent)
+        events <- initialChange
+        var out <-chan []*store.HeadChange
+        out = events
+
+        ts := initialChange[0].Val
+        block0 := ts.Blocks()[0]
+
+        mockapi.On("ChainNotify", ctx).Return(out, nil).Once()
+        mockapi.On("ChainGetBlock", ctx, ts.Cids()[0]).Return(block0, nil).Once()
+        mockapi.On("ChainGetBlock", ctx, ts.Cids()[1]).Return(nil, fmt.Errorf("invalid block")).Once()
+
+        node, err := NewStorageMinerAdapter(&mockapi, Address(actor.String()), Address(worker.String()), listener)
+        initialState, err := node.Start(ctx)
+        require.NoError(t, err)
+        _, err = node.GetRandomness(ctx, initialState.StateKey, 1)
+        require.Error(t, err)
+    })
+}
+
+func Test_GetProvingPeriod(t *testing.T) {
+    worker, _ := address.NewFromString("t0101")
+    actor, _  := address.NewFromString("t0102")
+
+    t.Run("succeeds", func(t *testing.T) {
+        ctx, cancel := context.WithCancel(context.Background())
+        mockapi := FullNode{}
+        listener := testListener{cancel}
+        events := make(chan []*store.HeadChange, 1)
+        initialChange := build_head_change(1, 2, store.HCCurrent)
+        events <- initialChange
+        var out <-chan []*store.HeadChange
+        out = events
+
+        ts := initialChange[0].Val
+        block0 := ts.Blocks()[0]
+        block1 := ts.Blocks()[1]
+
+        mockapi.On("ChainNotify", ctx).Return(out, nil).Once()
+        mockapi.On("ChainGetBlock", ctx, ts.Cids()[0]).Return(block0, nil).Once()
+        mockapi.On("ChainGetBlock", ctx, ts.Cids()[1]).Return(block1, nil).Once()
+        mockapi.On("StateMinerProvingPeriodEnd", ctx, worker, ts).Return(20 + build.ProvingPeriodDuration, nil).Once()
+
+        node, _ := NewStorageMinerAdapter(&mockapi, Address(actor.String()), Address(worker.String()), listener)
+        initialState, err := node.Start(ctx)
+        require.NoError(t, err)
+        pp, err := node.GetProvingPeriod(ctx, initialState.StateKey)
+        require.NoError(t, err)
+        require.True(t, pp.Start > 0)
+    })
+
+    t.Run("succeeds", func(t *testing.T) {
+        ctx, cancel := context.WithCancel(context.Background())
+        mockapi := FullNode{}
+        listener := testListener{cancel}
+        events := make(chan []*store.HeadChange, 1)
+        initialChange := build_head_change(1, 2, store.HCCurrent)
+        events <- initialChange
+        var out <-chan []*store.HeadChange
+        out = events
+
+        ts := initialChange[0].Val
+        block0 := ts.Blocks()[0]
+        block1 := ts.Blocks()[1]
+
+        mockapi.On("ChainNotify", ctx).Return(out, nil).Once()
+        mockapi.On("ChainGetBlock", ctx, ts.Cids()[0]).Return(block0, nil).Once()
+        mockapi.On("ChainGetBlock", ctx, ts.Cids()[1]).Return(block1, nil).Once()
+        mockapi.On("StateMinerProvingPeriodEnd", ctx, worker, ts).Return(uint64(20), nil).Once()
+
+        node, _ := NewStorageMinerAdapter(&mockapi, Address(actor.String()), Address(worker.String()), listener)
+        initialState, err := node.Start(ctx)
+        require.NoError(t, err)
+        pp, err := node.GetProvingPeriod(ctx, initialState.StateKey)
+        require.NoError(t, err)
+        require.True(t, pp.Start == 0)
+    })
+
+    t.Run("StateMinerProvingPeriodEnd fails", func(t *testing.T) {
+        ctx, cancel := context.WithCancel(context.Background())
+        mockapi := FullNode{}
+        listener := testListener{cancel}
+        events := make(chan []*store.HeadChange, 1)
+        initialChange := build_head_change(1, 2, store.HCCurrent)
+        events <- initialChange
+        var out <-chan []*store.HeadChange
+        out = events
+
+        ts := initialChange[0].Val
+        block0 := ts.Blocks()[0]
+        block1 := ts.Blocks()[1]
+
+        mockapi.On("ChainNotify", ctx).Return(out, nil).Once()
+        mockapi.On("ChainGetBlock", ctx, ts.Cids()[0]).Return(block0, nil).Once()
+        mockapi.On("ChainGetBlock", ctx, ts.Cids()[1]).Return(block1, nil).Once()
+        mockapi.On("StateMinerProvingPeriodEnd", ctx, worker, ts).Return(uint64(0), fmt.Errorf("StateMinerProvingPeriodEnd failed")).Once()
+
+        node, _ := NewStorageMinerAdapter(&mockapi, Address(actor.String()), Address(worker.String()), listener)
+        initialState, err := node.Start(ctx)
+        require.NoError(t, err)
+        _, err = node.GetProvingPeriod(ctx, initialState.StateKey)
+        require.Error(t, err)
+    })
+
+    t.Run("invalid block", func(t *testing.T) {
+        ctx, cancel := context.WithCancel(context.Background())
+        mockapi := FullNode{}
+        listener := testListener{cancel}
+        events := make(chan []*store.HeadChange, 1)
+        initialChange := build_head_change(1, 2, store.HCCurrent)
+        events <- initialChange
+        var out <-chan []*store.HeadChange
+        out = events
+
+        ts := initialChange[0].Val
+        block0 := ts.Blocks()[0]
+
+        mockapi.On("ChainNotify", ctx).Return(out, nil).Once()
+        mockapi.On("ChainGetBlock", ctx, ts.Cids()[0]).Return(block0, nil).Once()
+        mockapi.On("ChainGetBlock", ctx, ts.Cids()[1]).Return(nil, fmt.Errorf("invalid block")).Once()
+
+        node, _ := NewStorageMinerAdapter(&mockapi, Address(actor.String()), Address(worker.String()), listener)
+        initialState, err := node.Start(ctx)
+        require.NoError(t, err)
+        _, err = node.GetProvingPeriod(ctx, initialState.StateKey)
+        require.Error(t, err)
+    })
+}
+
+func signedMessage(to, from address.Address) *types.SignedMessage {
+    result := types.SignedMessage{
+        Message: types.Message{
+            To:       to,
+            From:     from,
+            Params:   []byte("some bytes, idk"),
+            Method:   1235126,
+            Value:    types.NewInt(123123),
+            GasPrice: types.NewInt(1234),
+            GasLimit: types.NewInt(9992969384),
+            Nonce:    123123,
+        },
+    }
+    result.Signature.Type = types.KTBLS
+    return &result
+}
+
+func Test_SubmitSectorPreCommitment(t *testing.T) {
+    worker, _ := address.NewFromString("t0101")
+    actor, _  := address.NewFromString("t0102")
+
+    cb := cid.V1Builder{Codec: cid.DagCBOR, MhType: multihash.BLAKE2B_MIN + 31}
+    commR, err := cb.Sum([]byte("hello world"))
+    require.NoError(t, err)
+    epoch := Epoch(3)
+    dealIDs := []uint64{5, 6, 7, 8}
+
+    params := actors.SectorPreCommitInfo{
+        SectorNumber: 1,
+        CommR: commR.Bytes(),
+        SealEpoch: uint64(epoch),
+        DealIDs: dealIDs,
+    }
+    enc, err := actors.SerializeParams(&params)
+    require.NoError(t, err)
+    msg := types.Message{
+        To:       actor,
+        From:     worker,
+        Method:   actors.MAMethods.PreCommitSector,
+        Params:   enc,
+        Value:    types.NewInt(0),
+        GasLimit: types.NewInt(1000000),
+        GasPrice: types.NewInt(1),
+    }
+
+    t.Run("succeeds", func(t *testing.T) {
+        ctx, cancel := context.WithCancel(context.Background())
+        mockapi := FullNode{}
+        listener := testListener{cancel}
+
+        mockapi.On("MpoolPushMessage", ctx, &msg).Return(signedMessage(actor, worker), nil).Once()
+
+        node, err := NewStorageMinerAdapter(&mockapi, Address(actor.String()), Address(worker.String()), listener)
+        require.NoError(t, err)
+        _, err = node.SubmitSectorPreCommitment(ctx, 1, epoch, commR, dealIDs)
+        require.NoError(t, err)
+    })
+
+    t.Run("MpoolPushMessage fails", func(t *testing.T) {
+        ctx, cancel := context.WithCancel(context.Background())
+        mockapi := FullNode{}
+        listener := testListener{cancel}
+
+        mockapi.On("MpoolPushMessage", ctx, &msg).Return(nil, fmt.Errorf("MpoolPushMessage failed")).Once()
+
+        node, err := NewStorageMinerAdapter(&mockapi, Address(actor.String()), Address(worker.String()), listener)
+        require.NoError(t, err)
+        _, err = node.SubmitSectorPreCommitment(ctx, 1, epoch, commR, dealIDs)
+        require.Error(t, err)
+    })
+}
+
+func Test_SubmitSectorCommitment(t *testing.T) {
+    worker, _ := address.NewFromString("t0101")
+    actor, _  := address.NewFromString("t0102")
+
+    dealIDs := []uint64{5, 6, 7, 8}
+    proof := make([]byte, 32)
+
+    params := actors.SectorProveCommitInfo{
+        Proof: proof,
+        SectorID: uint64(3),
+        DealIDs: dealIDs,
+    }
+    enc, err := actors.SerializeParams(&params)
+    require.NoError(t, err)
+    msg := types.Message{
+        To:       actor,
+        From:     worker,
+        Method:   actors.MAMethods.ProveCommitSector,
+        Params:   enc,
+        Value:    types.NewInt(0),
+        GasLimit: types.NewInt(1000000),
+        GasPrice: types.NewInt(1),
+    }
+
+    t.Run("succeeds", func(t *testing.T) {
+        ctx, cancel := context.WithCancel(context.Background())
+        mockapi := FullNode{}
+        listener := testListener{cancel}
+
+        mockapi.On("MpoolPushMessage", ctx, &msg).Return(signedMessage(actor, worker), nil).Once()
+
+        node, err := NewStorageMinerAdapter(&mockapi, Address(actor.String()), Address(worker.String()), listener)
+        require.NoError(t, err)
+        _, err = node.SubmitSectorCommitment(ctx, 3, proof, dealIDs)
+        require.NoError(t, err)
+    })
+
+    t.Run("MpoolPushMessage fails", func(t *testing.T) {
+        ctx, cancel := context.WithCancel(context.Background())
+        mockapi := FullNode{}
+        listener := testListener{cancel}
+
+        mockapi.On("MpoolPushMessage", ctx, &msg).Return(nil, fmt.Errorf("MpoolPushMessage failed")).Once()
+
+        node, err := NewStorageMinerAdapter(&mockapi, Address(actor.String()), Address(worker.String()), listener)
+        require.NoError(t, err)
+        _, err = node.SubmitSectorCommitment(ctx, 3, proof, dealIDs)
+        require.Error(t, err)
+    })
+}
+
+func Test_SubmitPoSt(t *testing.T) {
+    worker, _ := address.NewFromString("t0101")
+    actor, _  := address.NewFromString("t0102")
+
+    proof := make([]byte, 32)
+
+    params := actors.SubmitPoStParams{
+        Proof: proof,
+        DoneSet: types.BitFieldFromSet(nil),
+    }
+    enc, err := actors.SerializeParams(&params)
+    require.NoError(t, err)
+    msg := types.Message{
+        To:       actor,
+        From:     worker,
+        Method:   actors.MAMethods.SubmitPoSt,
+        Params:   enc,
+        Value:    types.NewInt(0),
+        GasLimit: types.NewInt(1000000),
+        GasPrice: types.NewInt(1),
+    }
+
+    t.Run("succeeds", func(t *testing.T) {
+        ctx, cancel := context.WithCancel(context.Background())
+        mockapi := FullNode{}
+        listener := testListener{cancel}
+
+        mockapi.On("MpoolPushMessage", ctx, &msg).Return(signedMessage(actor, worker), nil).Once()
+
+        node, err := NewStorageMinerAdapter(&mockapi, Address(actor.String()), Address(worker.String()), listener)
+        require.NoError(t, err)
+        _, err = node.SubmitPoSt(ctx, proof)
+        require.NoError(t, err)
+    })
+
+    t.Run("MpoolPushMessage fails", func(t *testing.T) {
+        ctx, cancel := context.WithCancel(context.Background())
+        mockapi := FullNode{}
+        listener := testListener{cancel}
+
+        mockapi.On("MpoolPushMessage", ctx, &msg).Return(nil, fmt.Errorf("MpoolPushMessage failed")).Once()
+
+        node, err := NewStorageMinerAdapter(&mockapi, Address(actor.String()), Address(worker.String()), listener)
+        require.NoError(t, err)
+        _, err = node.SubmitPoSt(ctx, proof)
+        require.Error(t, err)
+    })
+}
+
+func Test_SubmitDeclaredFaults(t *testing.T) {
+    worker, _ := address.NewFromString("t0101")
+    actor, _  := address.NewFromString("t0102")
+    faultySector := uint64(123)
+    faults := make(BitField)
+    faults[faultySector] = struct{}{}
+    params := actors.DeclareFaultsParams{
+        Faults: types.NewBitField(),
+    }
+    params.Faults.Set(faultySector)
+    enc, err := actors.SerializeParams(&params)
+    require.NoError(t, err)
+    msg := types.Message{
+        To:       actor,
+        From:     worker,
+        Method:   actors.MAMethods.DeclareFaults,
+        Params:   enc,
+        Value:    types.NewInt(0),
+        GasLimit: types.NewInt(1000000),
+        GasPrice: types.NewInt(1),
+    }
+
+    t.Run("succeeds", func(t *testing.T) {
+        ctx, cancel := context.WithCancel(context.Background())
+        mockapi := FullNode{}
+        listener := testListener{cancel}
+
+        mockapi.On("MpoolPushMessage", ctx, &msg).Return(signedMessage(actor, worker), nil).Once()
+
+        node, err := NewStorageMinerAdapter(&mockapi, Address(actor.String()), Address(worker.String()), listener)
+        require.NoError(t, err)
+        _, err = node.SubmitDeclaredFaults(ctx, faults)
+        require.NoError(t, err)
+    })
+
+    t.Run("MpoolPushMessage fails", func(t *testing.T) {
+        ctx, cancel := context.WithCancel(context.Background())
+        mockapi := FullNode{}
+        listener := testListener{cancel}
+
+        mockapi.On("MpoolPushMessage", ctx, &msg).Return(nil, fmt.Errorf("MpoolPushMessage failed")).Once()
+
+        node, err := NewStorageMinerAdapter(&mockapi, Address(actor.String()), Address(worker.String()), listener)
+        require.NoError(t, err)
+        _, err = node.SubmitDeclaredFaults(ctx, faults)
+        require.Error(t, err)
+    })
+}
+
+func Test_GetSealSeed(t *testing.T) {
+    worker, _ := address.NewFromString("t0101")
+    actor, _  := address.NewFromString("t0102")
+
+    t.Run("code panics", func(t *testing.T) {
+        ctx, cancel := context.WithCancel(context.Background())
+        mockapi := FullNode{}
+        listener := testListener{cancel}
+        events := make(chan []*store.HeadChange, 1)
+        initialChange := build_head_change(1, 2, store.HCCurrent)
+        events <- initialChange
+        var out <-chan []*store.HeadChange
+        out = events
+
+        mockapi.On("ChainNotify", ctx).Return(out, nil).Once()
+
+        node, err := NewStorageMinerAdapter(&mockapi, Address(actor.String()), Address(worker.String()), listener)
+        initialState, err := node.Start(ctx)
+        require.NoError(t, err)
+        assert.Panics(t, func () { node.GetSealSeed(ctx, initialState.StateKey, 123) })
+    })
+}
+
+func Test_SubmitDeclaredRecoveries(t *testing.T) {
+    worker, _ := address.NewFromString("t0101")
+    actor, _  := address.NewFromString("t0102")
+
+    t.Run("code panics", func(t *testing.T) {
+        ctx, cancel := context.WithCancel(context.Background())
+        mockapi := FullNode{}
+        listener := testListener{cancel}
+
+        node, err := NewStorageMinerAdapter(&mockapi, Address(actor.String()), Address(worker.String()), listener)
+        require.NoError(t, err)
+        assert.Panics(t, func () { node.SubmitDeclaredRecoveries(ctx, make(BitField)) })
+    })
+}
+
+func Test_SubmitSelfDeals(t *testing.T) {
+    worker, _ := address.NewFromString("t0101")
+    actor, _  := address.NewFromString("t0102")
+
+    t.Run("code panics", func(t *testing.T) {
+        ctx, cancel := context.WithCancel(context.Background())
+        mockapi := FullNode{}
+        listener := testListener{cancel}
+
+        node, err := NewStorageMinerAdapter(&mockapi, Address(actor.String()), Address(worker.String()), listener)
+        require.NoError(t, err)
+        assert.Panics(t, func () { node.SubmitSelfDeals(ctx, make([]uint64, 4)) })
+    })
+}
