@@ -179,10 +179,6 @@ func (fcs *fakeCS) advance(rev, app int, msgs map[int]cid.Cid, nulls ...int) { /
 		apps = append(apps, ts)
 	}
 
-	for i, j := 0, len(apps)-1; i < j; i, j = i+1, j-1 {
-		apps[i], apps[j] = apps[j], apps[i]
-	}
-
 	fcs.sub(revs, apps)
 	time.Sleep(100 * time.Millisecond) // TODO: :c
 }
