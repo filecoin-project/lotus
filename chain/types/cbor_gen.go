@@ -5,7 +5,7 @@ import (
 	"io"
 	"math"
 
-	cid "github.com/ipfs/go-cid"
+	"github.com/ipfs/go-cid"
 	cbg "github.com/whyrusleeping/cbor-gen"
 	xerrors "golang.org/x/xerrors"
 )
@@ -28,14 +28,9 @@ func (t *BlockHeader) MarshalCBOR(w io.Writer) error {
 		return err
 	}
 
-	// t.t.Tickets ([]*types.Ticket) (slice)
-	if _, err := w.Write(cbg.CborEncodeMajorType(cbg.MajArray, uint64(len(t.Tickets)))); err != nil {
+	// t.t.Ticket (types.Ticket) (struct)
+	if err := t.Ticket.MarshalCBOR(w); err != nil {
 		return err
-	}
-	for _, v := range t.Tickets {
-		if err := v.MarshalCBOR(w); err != nil {
-			return err
-		}
 	}
 
 	// t.t.ElectionProof ([]uint8) (slice)
@@ -125,32 +120,27 @@ func (t *BlockHeader) UnmarshalCBOR(r io.Reader) error {
 		}
 
 	}
-	// t.t.Tickets ([]*types.Ticket) (slice)
+	// t.t.Ticket (types.Ticket) (struct)
 
-	maj, extra, err = cbg.CborReadHeader(br)
-	if err != nil {
-		return err
-	}
-	if extra > 8192 {
-		return fmt.Errorf("t.Tickets: array too large (%d)", extra)
-	}
+	{
 
-	if maj != cbg.MajArray {
-		return fmt.Errorf("expected cbor array")
-	}
-	if extra > 0 {
-		t.Tickets = make([]*Ticket, extra)
-	}
-	for i := 0; i < int(extra); i++ {
-
-		var v Ticket
-		if err := v.UnmarshalCBOR(br); err != nil {
+		pb, err := br.PeekByte()
+		if err != nil {
 			return err
 		}
+		if pb == cbg.CborNull[0] {
+			var nbuf [1]byte
+			if _, err := br.Read(nbuf[:]); err != nil {
+				return err
+			}
+		} else {
+			t.Ticket = new(Ticket)
+			if err := t.Ticket.UnmarshalCBOR(br); err != nil {
+				return err
+			}
+		}
 
-		t.Tickets[i] = &v
 	}
-
 	// t.t.ElectionProof ([]uint8) (slice)
 
 	maj, extra, err = cbg.CborReadHeader(br)

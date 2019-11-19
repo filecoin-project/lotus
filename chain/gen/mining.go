@@ -18,13 +18,11 @@ import (
 	"github.com/filecoin-project/lotus/chain/wallet"
 )
 
-func MinerCreateBlock(ctx context.Context, sm *stmgr.StateManager, w *wallet.Wallet, miner address.Address, parents *types.TipSet, tickets []*types.Ticket, proof types.ElectionProof, msgs []*types.SignedMessage, timestamp uint64) (*types.FullBlock, error) {
+func MinerCreateBlock(ctx context.Context, sm *stmgr.StateManager, w *wallet.Wallet, miner address.Address, parents *types.TipSet, ticket *types.Ticket, proof types.ElectionProof, msgs []*types.SignedMessage, height, timestamp uint64) (*types.FullBlock, error) {
 	st, recpts, err := sm.TipSetState(ctx, parents)
 	if err != nil {
 		return nil, xerrors.Errorf("failed to load tipset state: %w", err)
 	}
-
-	height := parents.Height() + uint64(len(tickets))
 
 	worker, err := stmgr.GetMinerWorkerRaw(ctx, sm, st, miner)
 	if err != nil {
@@ -34,7 +32,7 @@ func MinerCreateBlock(ctx context.Context, sm *stmgr.StateManager, w *wallet.Wal
 	next := &types.BlockHeader{
 		Miner:                 miner,
 		Parents:               parents.Cids(),
-		Tickets:               tickets,
+		Ticket:                ticket,
 		Height:                height,
 		Timestamp:             timestamp,
 		ElectionProof:         proof,

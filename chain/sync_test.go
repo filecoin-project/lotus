@@ -390,7 +390,7 @@ func TestSyncBadTimestamp(t *testing.T) {
 	tu.waitUntilSync(0, client)
 
 	base := tu.g.CurTipset
-	tu.g.Timestamper = func(pts *types.TipSet, tl int) uint64 {
+	tu.g.Timestamper = func(pts *types.TipSet, tl uint64) uint64 {
 		return pts.MinTimestamp() + (build.BlockDelay / 2)
 	}
 

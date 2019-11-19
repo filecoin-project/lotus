@@ -3,8 +3,8 @@ package store
 import (
 	"context"
 	"crypto/sha256"
+	"encoding/binary"
 	"encoding/json"
-	"fmt"
 	"sync"
 
 	"github.com/filecoin-project/lotus/build"
@@ -12,7 +12,6 @@ import (
 	"github.com/filecoin-project/lotus/chain/state"
 	"github.com/filecoin-project/lotus/chain/vm"
 	"go.opencensus.io/trace"
-	"go.uber.org/zap"
 
 	amt "github.com/filecoin-project/go-amt-ipld"
 	"github.com/filecoin-project/lotus/chain/types"
@@ -771,24 +770,21 @@ func (cs *ChainStore) TryFillTipSet(ts *types.TipSet) (*FullTipSet, error) {
 	return NewFullTipSet(out), nil
 }
 
-func (cs *ChainStore) GetRandomness(ctx context.Context, blks []cid.Cid, tickets []*types.Ticket, lb int64) ([]byte, error) {
+func ticketHash(t *types.Ticket, round int64) []byte {
+	h := sha256.New()
+	var buf [8]byte
+	binary.LittleEndian.PutUint64(buf[:], uint64(round))
+
+	h.Write(t.VRFProof)
+	h.Write(buf[:])
+
+	return h.Sum(nil)
+}
+
+func (cs *ChainStore) GetRandomness(ctx context.Context, blks []cid.Cid, round int64) ([]byte, error) {
 	ctx, span := trace.StartSpan(ctx, "store.GetRandomness")
 	defer span.End()
-	span.AddAttributes(trace.Int64Attribute("lb", lb))
-
-	if lb < 0 {
-		return nil, fmt.Errorf("negative lookback parameters are not valid (got %d)", lb)
-	}
-	lt := int64(len(tickets))
-	if lb < lt {
-		log.Desugar().Warn("self sampling randomness. this should be extremely rare, if you see this often it may be a bug", zap.Stack("stacktrace"))
-
-		t := tickets[lt-(1+lb)]
-
-		return t.VRFProof, nil
-	}
-
-	nv := lb - lt
+	span.AddAttributes(trace.Int64Attribute("round", round))
 
 	for {
 		nts, err := cs.LoadTipSet(blks)
@@ -797,26 +793,21 @@ func (cs *ChainStore) GetRandomness(ctx context.Context, blks []cid.Cid, tickets
 		}
 
 		mtb := nts.MinTicketBlock()
-		lt := int64(len(mtb.Tickets))
-		if nv < lt {
-			t := mtb.Tickets[lt-(1+nv)]
-			return t.VRFProof, nil
-		}
 
-		nv -= lt
+		if int64(nts.Height()) <= round {
+			return ticketHash(nts.MinTicketBlock().Ticket, round), nil
+		}
 
 		// special case for lookback behind genesis block
 		// TODO(spec): this is not in the spec, need to sync that
 		if mtb.Height == 0 {
 
-			t := mtb.Tickets[0]
+			// round is negative
+			thash := ticketHash(mtb.Ticket, round*-1)
 
-			rval := t.VRFProof
-			for i := int64(0); i < nv; i++ {
-				h := sha256.Sum256(rval)
-				rval = h[:]
-			}
-			return rval, nil
+			// for negative lookbacks, just use the hash of the positive tickethash value
+			h := sha256.Sum256(thash)
+			return h[:], nil
 		}
 
 		blks = mtb.Parents
@@ -837,36 +828,33 @@ func (cs *ChainStore) GetTipsetByHeight(ctx context.Context, h uint64, ts *types
 	}
 
 	for {
-		mtb := ts.MinTicketBlock()
-		if h >= ts.Height()-uint64(len(mtb.Tickets)) {
-			return ts, nil
-		}
-
 		pts, err := cs.LoadTipSet(ts.Parents())
 		if err != nil {
 			return nil, err
 		}
+
+		if h > pts.Height() {
+			return ts, nil
+		}
+
 		ts = pts
 	}
 }
 
 type chainRand struct {
-	cs      *ChainStore
-	blks    []cid.Cid
-	bh      uint64
-	tickets []*types.Ticket
+	cs   *ChainStore
+	blks []cid.Cid
+	bh   uint64
 }
 
-func NewChainRand(cs *ChainStore, blks []cid.Cid, bheight uint64, tickets []*types.Ticket) vm.Rand {
+func NewChainRand(cs *ChainStore, blks []cid.Cid, bheight uint64) vm.Rand {
 	return &chainRand{
-		cs:      cs,
-		blks:    blks,
-		bh:      bheight,
-		tickets: tickets,
+		cs:   cs,
+		blks: blks,
+		bh:   bheight,
 	}
 }
 
-func (cr *chainRand) GetRandomness(ctx context.Context, h int64) ([]byte, error) {
-	lb := (int64(cr.bh) + int64(len(cr.tickets))) - h
-	return cr.cs.GetRandomness(ctx, cr.blks, cr.tickets, lb)
+func (cr *chainRand) GetRandomness(ctx context.Context, round int64) ([]byte, error) {
+	return cr.cs.GetRandomness(ctx, cr.blks, round)
 }

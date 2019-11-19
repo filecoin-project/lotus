@@ -37,19 +37,19 @@ type FullNodeStruct struct {
 	CommonStruct
 
 	Internal struct {
-		ChainNotify            func(context.Context) (<-chan []*store.HeadChange, error)                    `perm:"read"`
-		ChainHead              func(context.Context) (*types.TipSet, error)                                 `perm:"read"`
-		ChainGetRandomness     func(context.Context, types.TipSetKey, []*types.Ticket, int) ([]byte, error) `perm:"read"`
-		ChainGetBlock          func(context.Context, cid.Cid) (*types.BlockHeader, error)                   `perm:"read"`
-		ChainGetTipSet         func(context.Context, types.TipSetKey) (*types.TipSet, error)                `perm:"read"`
-		ChainGetBlockMessages  func(context.Context, cid.Cid) (*BlockMessages, error)                       `perm:"read"`
-		ChainGetParentReceipts func(context.Context, cid.Cid) ([]*types.MessageReceipt, error)              `perm:"read"`
-		ChainGetParentMessages func(context.Context, cid.Cid) ([]Message, error)                            `perm:"read"`
-		ChainGetTipSetByHeight func(context.Context, uint64, *types.TipSet) (*types.TipSet, error)          `perm:"read"`
-		ChainReadObj           func(context.Context, cid.Cid) ([]byte, error)                               `perm:"read"`
-		ChainSetHead           func(context.Context, *types.TipSet) error                                   `perm:"admin"`
-		ChainGetGenesis        func(context.Context) (*types.TipSet, error)                                 `perm:"read"`
-		ChainTipSetWeight      func(context.Context, *types.TipSet) (types.BigInt, error)                   `perm:"read"`
+		ChainNotify            func(context.Context) (<-chan []*store.HeadChange, error)           `perm:"read"`
+		ChainHead              func(context.Context) (*types.TipSet, error)                        `perm:"read"`
+		ChainGetRandomness     func(context.Context, types.TipSetKey, int64) ([]byte, error)       `perm:"read"`
+		ChainGetBlock          func(context.Context, cid.Cid) (*types.BlockHeader, error)          `perm:"read"`
+		ChainGetTipSet         func(context.Context, types.TipSetKey) (*types.TipSet, error)       `perm:"read"`
+		ChainGetBlockMessages  func(context.Context, cid.Cid) (*BlockMessages, error)              `perm:"read"`
+		ChainGetParentReceipts func(context.Context, cid.Cid) ([]*types.MessageReceipt, error)     `perm:"read"`
+		ChainGetParentMessages func(context.Context, cid.Cid) ([]Message, error)                   `perm:"read"`
+		ChainGetTipSetByHeight func(context.Context, uint64, *types.TipSet) (*types.TipSet, error) `perm:"read"`
+		ChainReadObj           func(context.Context, cid.Cid) ([]byte, error)                      `perm:"read"`
+		ChainSetHead           func(context.Context, *types.TipSet) error                          `perm:"admin"`
+		ChainGetGenesis        func(context.Context) (*types.TipSet, error)                        `perm:"read"`
+		ChainTipSetWeight      func(context.Context, *types.TipSet) (types.BigInt, error)          `perm:"read"`
 
 		SyncState       func(context.Context) (*SyncState, error)            `perm:"read"`
 		SyncSubmitBlock func(ctx context.Context, blk *types.BlockMsg) error `perm:"write"`
@@ -58,10 +58,10 @@ type FullNodeStruct struct {
 		MpoolPush        func(context.Context, *types.SignedMessage) error                    `perm:"write"`
 		MpoolPushMessage func(context.Context, *types.Message) (*types.SignedMessage, error)  `perm:"sign"`
 
-		MinerRegister    func(context.Context, address.Address) error                                                                                                         `perm:"admin"`
-		MinerUnregister  func(context.Context, address.Address) error                                                                                                         `perm:"admin"`
-		MinerAddresses   func(context.Context) ([]address.Address, error)                                                                                                     `perm:"write"`
-		MinerCreateBlock func(context.Context, address.Address, *types.TipSet, []*types.Ticket, types.ElectionProof, []*types.SignedMessage, uint64) (*types.BlockMsg, error) `perm:"write"`
+		MinerRegister    func(context.Context, address.Address) error                                                                                                               `perm:"admin"`
+		MinerUnregister  func(context.Context, address.Address) error                                                                                                               `perm:"admin"`
+		MinerAddresses   func(context.Context) ([]address.Address, error)                                                                                                           `perm:"write"`
+		MinerCreateBlock func(context.Context, address.Address, *types.TipSet, *types.Ticket, types.ElectionProof, []*types.SignedMessage, uint64, uint64) (*types.BlockMsg, error) `perm:"write"`
 
 		WalletNew            func(context.Context, string) (address.Address, error)                               `perm:"write"`
 		WalletHas            func(context.Context, address.Address) (bool, error)                                 `perm:"write"`
@@ -237,16 +237,16 @@ func (c *FullNodeStruct) MinerAddresses(ctx context.Context) ([]address.Address,
 	return c.Internal.MinerAddresses(ctx)
 }
 
-func (c *FullNodeStruct) MinerCreateBlock(ctx context.Context, addr address.Address, base *types.TipSet, tickets []*types.Ticket, eproof types.ElectionProof, msgs []*types.SignedMessage, ts uint64) (*types.BlockMsg, error) {
-	return c.Internal.MinerCreateBlock(ctx, addr, base, tickets, eproof, msgs, ts)
+func (c *FullNodeStruct) MinerCreateBlock(ctx context.Context, addr address.Address, base *types.TipSet, ticket *types.Ticket, eproof types.ElectionProof, msgs []*types.SignedMessage, height, ts uint64) (*types.BlockMsg, error) {
+	return c.Internal.MinerCreateBlock(ctx, addr, base, ticket, eproof, msgs, height, ts)
 }
 
 func (c *FullNodeStruct) ChainHead(ctx context.Context) (*types.TipSet, error) {
 	return c.Internal.ChainHead(ctx)
 }
 
-func (c *FullNodeStruct) ChainGetRandomness(ctx context.Context, pts types.TipSetKey, ticks []*types.Ticket, lb int) ([]byte, error) {
-	return c.Internal.ChainGetRandomness(ctx, pts, ticks, lb)
+func (c *FullNodeStruct) ChainGetRandomness(ctx context.Context, pts types.TipSetKey, round int64) ([]byte, error) {
+	return c.Internal.ChainGetRandomness(ctx, pts, round)
 }
 
 func (c *FullNodeStruct) ChainGetTipSetByHeight(ctx context.Context, h uint64, ts *types.TipSet) (*types.TipSet, error) {

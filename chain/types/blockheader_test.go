@@ -25,10 +25,8 @@ func testBlockHeader(t testing.TB) *BlockHeader {
 	return &BlockHeader{
 		Miner:         addr,
 		ElectionProof: []byte("cats won the election"),
-		Tickets: []*Ticket{
-			&Ticket{
-				VRFProof: []byte("vrf proof0000000vrf proof0000000"),
-			},
+		Ticket: &Ticket{
+			VRFProof: []byte("vrf proof0000000vrf proof0000000"),
 		},
 		Parents:               []cid.Cid{c, c},
 		ParentMessageReceipts: c,

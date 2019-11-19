@@ -27,6 +27,7 @@ import (
 	"github.com/filecoin-project/lotus/chain/actors"
 	"github.com/filecoin-project/lotus/chain/address"
 	"github.com/filecoin-project/lotus/chain/blocksync"
+	"github.com/filecoin-project/lotus/chain/gen"
 	"github.com/filecoin-project/lotus/chain/state"
 	"github.com/filecoin-project/lotus/chain/stmgr"
 	"github.com/filecoin-project/lotus/chain/store"
@@ -466,30 +467,22 @@ func (syncer *Syncer) minerIsValid(ctx context.Context, maddr address.Address, b
 	return nil
 }
 
-func (syncer *Syncer) validateTickets(ctx context.Context, mworker address.Address, tickets []*types.Ticket, base *types.TipSet) error {
+func (syncer *Syncer) validateTicket(ctx context.Context, mworker address.Address, ticket *types.Ticket, base *types.TipSet, round uint64) error {
 	ctx, span := trace.StartSpan(ctx, "validateTickets")
 	defer span.End()
-	span.AddAttributes(trace.Int64Attribute("tickets", int64(len(tickets))))
 
-	if len(tickets) == 0 {
-		return xerrors.Errorf("block had no tickets")
+	sig := &types.Signature{
+		Type: types.KTBLS,
+		Data: ticket.VRFProof,
 	}
 
-	cur := base.MinTicket()
-	for i := 0; i < len(tickets); i++ {
-		next := tickets[i]
+	vrfBase := gen.TicketHash(base.MinTicket(), round)
 
-		sig := &types.Signature{
-			Type: types.KTBLS,
-			Data: next.VRFProof,
-		}
+	log.Infof("about to verify ticket: %x %d", base.MinTicket().VRFProof, round)
 
-		// TODO: ticket signatures should also include miner address
-		if err := sig.Verify(mworker, cur.VRFProof); err != nil {
-			return xerrors.Errorf("invalid ticket, VRFProof invalid: %w", err)
-		}
-
-		cur = next
+	// TODO: ticket signatures should also include miner address
+	if err := sig.Verify(mworker, vrfBase); err != nil {
+		return xerrors.Errorf("invalid ticket, VRFProof invalid: %w", err)
 	}
 
 	return nil
@@ -514,9 +507,9 @@ func (syncer *Syncer) ValidateBlock(ctx context.Context, b *types.FullBlock) err
 		return xerrors.Errorf("block was from the future")
 	}
 
-	if h.Timestamp < baseTs.MinTimestamp()+uint64(build.BlockDelay*len(h.Tickets)) {
-		log.Warn("timestamp funtimes: ", h.Timestamp, baseTs.MinTimestamp(), len(h.Tickets))
-		return xerrors.Errorf("block was generated too soon (h.ts:%d < base.mints:%d + BLOCK_DELAY:%d * tkts.len:%d)", h.Timestamp, baseTs.MinTimestamp(), build.BlockDelay, len(h.Tickets))
+	if h.Timestamp < baseTs.MinTimestamp()+(build.BlockDelay*(h.Height-baseTs.Height())) {
+		log.Warn("timestamp funtimes: ", h.Timestamp, baseTs.MinTimestamp(), h.Height, baseTs.Height())
+		return xerrors.Errorf("block was generated too soon (h.ts:%d < base.mints:%d + BLOCK_DELAY:%d * deltaH:%d)", h.Timestamp, baseTs.MinTimestamp(), build.BlockDelay, h.Height-baseTs.Height())
 	}
 
 	winnerCheck := async.Err(func() error {
@@ -583,14 +576,14 @@ func (syncer *Syncer) ValidateBlock(ctx context.Context, b *types.FullBlock) err
 	})
 
 	tktsCheck := async.Err(func() error {
-		if err := syncer.validateTickets(ctx, waddr, h.Tickets, baseTs); err != nil {
+		if err := syncer.validateTicket(ctx, waddr, h.Ticket, baseTs, h.Height); err != nil {
 			return xerrors.Errorf("validating block tickets failed: %w", err)
 		}
 		return nil
 	})
 
 	eproofCheck := async.Err(func() error {
-		rand, err := syncer.sm.ChainStore().GetRandomness(ctx, baseTs.Cids(), h.Tickets, build.EcRandomnessLookback)
+		rand, err := syncer.sm.ChainStore().GetRandomness(ctx, baseTs.Cids(), int64(h.Height-build.EcRandomnessLookback))
 		if err != nil {
 			return xerrors.Errorf("failed to get randomness for verifying election proof: %w", err)
 		}

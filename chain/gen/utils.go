@@ -384,7 +384,7 @@ func MakeGenesisBlock(bs bstore.Blockstore, balances map[address.Address]types.B
 
 	b := &types.BlockHeader{
 		Miner:                 actors.InitAddress,
-		Tickets:               []*types.Ticket{genesisticket},
+		Ticket:                genesisticket,
 		ElectionProof:         []byte("the Genesis block"),
 		Parents:               []cid.Cid{},
 		Height:                0,

@@ -102,7 +102,7 @@ func (sm *StateManager) computeTipSetState(ctx context.Context, blks []*types.Bl
 		cids[i] = v.Cid()
 	}
 
-	r := store.NewChainRand(sm.cs, cids, blks[0].Height, nil)
+	r := store.NewChainRand(sm.cs, cids, blks[0].Height)
 
 	vmi, err := vm.NewVM(pstate, blks[0].Height, r, address.Undef, sm.cs.Blockstore())
 	if err != nil {

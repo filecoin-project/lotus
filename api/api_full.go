@@ -23,7 +23,7 @@ type FullNode interface {
 	// First message is guaranteed to be of len == 1, and type == 'current'
 	ChainNotify(context.Context) (<-chan []*store.HeadChange, error)
 	ChainHead(context.Context) (*types.TipSet, error)
-	ChainGetRandomness(context.Context, types.TipSetKey, []*types.Ticket, int) ([]byte, error)
+	ChainGetRandomness(context.Context, types.TipSetKey, int64) ([]byte, error)
 	ChainGetBlock(context.Context, cid.Cid) (*types.BlockHeader, error)
 	ChainGetTipSet(context.Context, types.TipSetKey) (*types.TipSet, error)
 	ChainGetBlockMessages(context.Context, cid.Cid) (*BlockMessages, error)
@@ -52,7 +52,7 @@ type FullNode interface {
 	MinerRegister(context.Context, address.Address) error
 	MinerUnregister(context.Context, address.Address) error
 	MinerAddresses(context.Context) ([]address.Address, error)
-	MinerCreateBlock(context.Context, address.Address, *types.TipSet, []*types.Ticket, types.ElectionProof, []*types.SignedMessage, uint64) (*types.BlockMsg, error)
+	MinerCreateBlock(context.Context, address.Address, *types.TipSet, *types.Ticket, types.ElectionProof, []*types.SignedMessage, uint64, uint64) (*types.BlockMsg, error)
 
 	// // UX ?
 

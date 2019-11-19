@@ -3,6 +3,8 @@ package gen
 import (
 	"bytes"
 	"context"
+	"crypto/sha256"
+	"encoding/binary"
 	"fmt"
 	"sync/atomic"
 
@@ -46,7 +48,7 @@ type ChainGen struct {
 	genesis   *types.BlockHeader
 	CurTipset *store.FullTipSet
 
-	Timestamper func(*types.TipSet, int) uint64
+	Timestamper func(*types.TipSet, uint64) uint64
 
 	w *wallet.Wallet
 
@@ -195,14 +197,9 @@ func (cg *ChainGen) GenesisCar() ([]byte, error) {
 	return out.Bytes(), nil
 }
 
-func (cg *ChainGen) nextBlockProof(ctx context.Context, pts *types.TipSet, m address.Address, ticks []*types.Ticket) (types.ElectionProof, *types.Ticket, error) {
+func (cg *ChainGen) nextBlockProof(ctx context.Context, pts *types.TipSet, m address.Address, round int64) (types.ElectionProof, *types.Ticket, error) {
 
-	var lastTicket *types.Ticket
-	if len(ticks) == 0 {
-		lastTicket = pts.MinTicket()
-	} else {
-		lastTicket = ticks[len(ticks)-1]
-	}
+	lastTicket := pts.MinTicket()
 
 	st := pts.ParentState()
 
@@ -211,7 +208,8 @@ func (cg *ChainGen) nextBlockProof(ctx context.Context, pts *types.TipSet, m add
 		return nil, nil, xerrors.Errorf("get miner worker: %w", err)
 	}
 
-	vrfout, err := ComputeVRF(ctx, cg.w.Sign, worker, lastTicket.VRFProof)
+	vrfBase := TicketHash(lastTicket, uint64(round))
+	vrfout, err := ComputeVRF(ctx, cg.w.Sign, worker, vrfBase)
 	if err != nil {
 		return nil, nil, xerrors.Errorf("compute VRF: %w", err)
 	}
@@ -220,7 +218,7 @@ func (cg *ChainGen) nextBlockProof(ctx context.Context, pts *types.TipSet, m add
 		VRFProof: vrfout,
 	}
 
-	win, eproof, err := IsRoundWinner(ctx, pts, append(ticks, tick), m, &mca{w: cg.w, sm: cg.sm})
+	win, eproof, err := IsRoundWinner(ctx, pts, round, m, &mca{w: cg.w, sm: cg.sm})
 	if err != nil {
 		return nil, nil, xerrors.Errorf("checking round winner failed: %w", err)
 	}
@@ -248,23 +246,21 @@ func (cg *ChainGen) NextTipSet() (*MinedTipSet, error) {
 
 func (cg *ChainGen) NextTipSetFromMiners(base *types.TipSet, miners []address.Address) (*MinedTipSet, error) {
 	var blks []*types.FullBlock
-	ticketSets := make([][]*types.Ticket, len(miners))
 
 	msgs, err := cg.getRandomMessages()
 	if err != nil {
 		return nil, xerrors.Errorf("get random messages: %w", err)
 	}
 
-	for len(blks) == 0 {
-		for i, m := range miners {
-			proof, t, err := cg.nextBlockProof(context.TODO(), base, m, ticketSets[i])
+	for round := int64(base.Height() + 1); len(blks) == 0; round++ {
+		for _, m := range miners {
+			proof, t, err := cg.nextBlockProof(context.TODO(), base, m, round)
 			if err != nil {
 				return nil, xerrors.Errorf("next block proof: %w", err)
 			}
 
-			ticketSets[i] = append(ticketSets[i], t)
 			if proof != nil {
-				fblk, err := cg.makeBlock(base, m, proof, ticketSets[i], msgs)
+				fblk, err := cg.makeBlock(base, m, proof, t, uint64(round), msgs)
 				if err != nil {
 					return nil, xerrors.Errorf("making a block for next tipset failed: %w", err)
 				}
@@ -286,16 +282,16 @@ func (cg *ChainGen) NextTipSetFromMiners(base *types.TipSet, miners []address.Ad
 	}, nil
 }
 
-func (cg *ChainGen) makeBlock(parents *types.TipSet, m address.Address, eproof types.ElectionProof, tickets []*types.Ticket, msgs []*types.SignedMessage) (*types.FullBlock, error) {
+func (cg *ChainGen) makeBlock(parents *types.TipSet, m address.Address, eproof types.ElectionProof, ticket *types.Ticket, height uint64, msgs []*types.SignedMessage) (*types.FullBlock, error) {
 
 	var ts uint64
 	if cg.Timestamper != nil {
-		ts = cg.Timestamper(parents, len(tickets))
+		ts = cg.Timestamper(parents, height-parents.Height())
 	} else {
-		ts = parents.MinTimestamp() + (uint64(len(tickets)) * build.BlockDelay)
+		ts = parents.MinTimestamp() + ((height - parents.Height()) * build.BlockDelay)
 	}
 
-	fblk, err := MinerCreateBlock(context.TODO(), cg.sm, cg.w, m, parents, tickets, eproof, msgs, ts)
+	fblk, err := MinerCreateBlock(context.TODO(), cg.sm, cg.w, m, parents, ticket, eproof, msgs, height, ts)
 	if err != nil {
 		return nil, err
 	}
@@ -354,7 +350,7 @@ func (cg *ChainGen) YieldRepo() (repo.Repo, error) {
 }
 
 type MiningCheckAPI interface {
-	ChainGetRandomness(context.Context, types.TipSetKey, []*types.Ticket, int) ([]byte, error)
+	ChainGetRandomness(context.Context, types.TipSetKey, int64) ([]byte, error)
 
 	StateMinerPower(context.Context, address.Address, *types.TipSet) (api.MinerPower, error)
 
@@ -368,8 +364,8 @@ type mca struct {
 	sm *stmgr.StateManager
 }
 
-func (mca mca) ChainGetRandomness(ctx context.Context, pts types.TipSetKey, ticks []*types.Ticket, lb int) ([]byte, error) {
-	return mca.sm.ChainStore().GetRandomness(ctx, pts.Cids(), ticks, int64(lb))
+func (mca mca) ChainGetRandomness(ctx context.Context, pts types.TipSetKey, lb int64) ([]byte, error) {
+	return mca.sm.ChainStore().GetRandomness(ctx, pts.Cids(), int64(lb))
 }
 
 func (mca mca) StateMinerPower(ctx context.Context, maddr address.Address, ts *types.TipSet) (api.MinerPower, error) {
@@ -392,8 +388,8 @@ func (mca mca) WalletSign(ctx context.Context, a address.Address, v []byte) (*ty
 	return mca.w.Sign(ctx, a, v)
 }
 
-func IsRoundWinner(ctx context.Context, ts *types.TipSet, ticks []*types.Ticket, miner address.Address, a MiningCheckAPI) (bool, types.ElectionProof, error) {
-	r, err := a.ChainGetRandomness(ctx, ts.Key(), ticks, build.EcRandomnessLookback)
+func IsRoundWinner(ctx context.Context, ts *types.TipSet, round int64, miner address.Address, a MiningCheckAPI) (bool, types.ElectionProof, error) {
+	r, err := a.ChainGetRandomness(ctx, ts.Key(), round-build.EcRandomnessLookback)
 	if err != nil {
 		return false, nil, xerrors.Errorf("chain get randomness: %w", err)
 	}
@@ -429,4 +425,13 @@ func ComputeVRF(ctx context.Context, sign SignFunc, w address.Address, input []b
 	}
 
 	return sig.Data, nil
+}
+
+func TicketHash(t *types.Ticket, round uint64) []byte {
+	h := sha256.New()
+	h.Write(t.VRFProof)
+	var roundbuf [8]byte
+	binary.LittleEndian.PutUint64(roundbuf[:], round)
+	h.Write(roundbuf[:])
+	return h.Sum(nil)
 }

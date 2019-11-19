@@ -25,7 +25,7 @@ type ElectionProof []byte
 type BlockHeader struct {
 	Miner address.Address
 
-	Tickets []*Ticket
+	Ticket *Ticket
 
 	ElectionProof []byte
 
@@ -91,7 +91,7 @@ func (blk *BlockHeader) Serialize() ([]byte, error) {
 }
 
 func (blk *BlockHeader) LastTicket() *Ticket {
-	return blk.Tickets[len(blk.Tickets)-1]
+	return blk.Ticket
 }
 
 func (blk *BlockHeader) SigningBytes() ([]byte, error) {

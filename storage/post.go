@@ -154,9 +154,8 @@ func (p *post) preparePost(ctx context.Context) error {
 
 	p.sset = sset
 
-	// Compute how many blocks back we have to look from the given tipset for the PoSt challenge
-	challengeLookback := int((int64(p.ts.Height()) - int64(p.ppe)) + int64(build.PoStChallangeTime) + int64(build.PoStRandomnessLookback))
-	r, err := p.m.api.ChainGetRandomness(ctx, p.ts.Key(), nil, challengeLookback)
+	challengeRound := int64(p.ppe) - int64(build.PoStChallangeTime+build.PoStRandomnessLookback)
+	r, err := p.m.api.ChainGetRandomness(ctx, p.ts.Key(), challengeRound)
 	if err != nil {
 		return xerrors.Errorf("failed to get chain randomness for post (ts=%d; ppe=%d): %w", p.ts.Height(), p.ppe, err)
 	}
