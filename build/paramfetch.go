@@ -140,7 +140,7 @@ func doFetch(out string, info paramFile) error {
 	}
 	log.Infof("Fetching %s from %s", out, gw)
 
-	outf, err := os.OpenFile(out, os.O_RDWR|os.O_CREATE|os.O_APPEND,0666)
+	outf, err := os.OpenFile(out, os.O_RDWR|os.O_CREATE|os.O_APPEND, 0666)
 	if err != nil {
 		return err
 	}
@@ -151,16 +151,16 @@ func doFetch(out string, info paramFile) error {
 		return err
 	}
 	header := http.Header{}
-	header.Set("Range", "bytes=" + strconv.FormatInt(fStat.Size(), 10) + "-")
+	header.Set("Range", "bytes="+strconv.FormatInt(fStat.Size(), 10)+"-")
 	url, err := url.Parse(gw + info.Cid)
 	if err != nil {
 		return err
 	}
 	req := http.Request{
 		Method: "GET",
-		URL: url,
+		URL:    url,
 		Header: header,
-		Close: true,
+		Close:  true,
 	}
 
 	resp, err := http.DefaultClient.Do(&req)

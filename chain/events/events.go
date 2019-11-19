@@ -76,7 +76,7 @@ func NewEvents(ctx context.Context, api eventApi) *Events {
 			confQueue:   map[triggerH]map[msgH][]*queuedEvent{},
 			revertQueue: map[msgH][]triggerH{},
 			triggers:    map[triggerId]*callHandler{},
-			callTuples:  map[callTuple][]triggerId{},
+			matchers:    map[triggerId][]MatchFunc{},
 			timeouts:    map[uint64]map[triggerId]int{},
 		},
 	}
