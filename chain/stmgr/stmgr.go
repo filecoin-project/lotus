@@ -321,6 +321,29 @@ func (sm *StateManager) GetBlsPublicKey(ctx context.Context, addr address.Addres
 	return pubk, nil
 }
 
+func (sm *StateManager) GetReceipt(ctx context.Context, msg cid.Cid, ts *types.TipSet) (*types.MessageReceipt, error) {
+	r, err := sm.tipsetExecutedMessage(ts, msg)
+	if err != nil {
+		return nil, err
+	}
+
+	if r != nil {
+		return r, nil
+	}
+
+	m, err := sm.cs.GetCMessage(msg)
+	if err != nil {
+		return nil, fmt.Errorf("failed to load message: %w", err)
+	}
+
+	_, r, err = sm.searchBackForMsg(ctx, ts, m)
+	if err != nil {
+		return nil, fmt.Errorf("failed to look back through chain for message: %w", err)
+	}
+
+	return r, nil
+}
+
 func (sm *StateManager) WaitForMessage(ctx context.Context, mcid cid.Cid) (*types.TipSet, *types.MessageReceipt, error) {
 	ctx, cancel := context.WithCancel(ctx)
 	defer cancel()

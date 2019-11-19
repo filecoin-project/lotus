@@ -153,7 +153,7 @@ func (c *Client) sealing(ctx context.Context, deal ClientDeal) (func(*ClientDeal
 		return false, true, nil
 	}
 
-	called := func(msg *types.Message, ts *types.TipSet, curH uint64) (more bool, err error) {
+	called := func(msg *types.Message, rec *types.MessageReceipt, ts *types.TipSet, curH uint64) (more bool, err error) {
 		defer func() {
 			if err != nil {
 				select {

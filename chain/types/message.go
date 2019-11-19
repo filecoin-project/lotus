@@ -77,3 +77,7 @@ func (m *Message) RequiredFunds() BigInt {
 func (m *Message) VMMessage() *Message {
 	return m
 }
+
+func (m *Message) Equals(o *Message) bool {
+	return m.Cid() == o.Cid()
+}

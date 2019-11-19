@@ -15,6 +15,8 @@ import (
 	"github.com/filecoin-project/lotus/lib/sectorbuilder"
 )
 
+const postMsgTimeout = 20
+
 func (m *Miner) beginPosting(ctx context.Context) {
 	ts, err := m.api.ChainHead(context.TODO())
 	if err != nil {
@@ -113,6 +115,7 @@ type post struct {
 	proof []byte
 
 	// commit
+	msg  *types.Message
 	smsg cid.Cid
 }
 
@@ -220,7 +223,7 @@ func (p *post) commitPost(ctx context.Context) error {
 		return xerrors.Errorf("could not serialize submit post parameters: %w", aerr)
 	}
 
-	msg := &types.Message{
+	p.msg = &types.Message{
 		To:       p.m.maddr,
 		From:     p.m.worker,
 		Method:   actors.MAMethods.SubmitPoSt,
@@ -232,7 +235,7 @@ func (p *post) commitPost(ctx context.Context) error {
 
 	log.Info("mpush")
 
-	smsg, err := p.m.api.MpoolPushMessage(ctx, msg)
+	smsg, err := p.m.api.MpoolPushMessage(ctx, p.msg)
 	if err != nil {
 		return xerrors.Errorf("pushing message to mpool: %w", err)
 	}
@@ -247,16 +250,22 @@ func (p *post) waitCommit(ctx context.Context) error {
 
 	log.Infof("Waiting for post %s to appear on chain", p.smsg)
 
-	// make sure it succeeds...
-	rec, err := p.m.api.StateWaitMsg(ctx, p.smsg)
+	err := p.m.events.CalledMsg(ctx, func(msg *types.Message, rec *types.MessageReceipt, ts *types.TipSet, curH uint64) (more bool, err error) {
+		if rec.ExitCode != 0 {
+			log.Warnf("SubmitPoSt EXIT: %d", rec.ExitCode)
+		}
+
+		log.Infof("Post made it on chain! (height=%d)", ts.Height())
+
+		return false, nil
+	}, func(ctx context.Context, ts *types.TipSet) error {
+		log.Warn("post message reverted")
+		return nil
+	}, 3, postMsgTimeout, p.msg)
 	if err != nil {
 		return err
 	}
-	if rec.Receipt.ExitCode != 0 {
-		log.Warnf("SubmitPoSt EXIT: %d", rec.Receipt.ExitCode)
-		// TODO: Do something
-	}
-	log.Infof("Post made it on chain! (height=%d)", rec.TipSet.Height())
+
 	return nil
 }
 
