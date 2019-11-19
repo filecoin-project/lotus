@@ -184,7 +184,9 @@ func (m *Miner) mine(ctx context.Context) {
 				log.Errorf("mining block failed: %s", err)
 				continue
 			}
-			blks = append(blks, b)
+			if b != nil {
+				blks = append(blks, b)
+			}
 		}
 
 		if len(blks) != 0 {
