@@ -7,7 +7,6 @@ import (
 
 	"github.com/ipfs/go-cid"
 	"gopkg.in/urfave/cli.v2"
-
 )
 
 var dotCmd = &cli.Command{
