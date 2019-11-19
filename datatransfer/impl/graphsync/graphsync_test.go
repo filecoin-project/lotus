@@ -881,194 +881,198 @@ func (fgsr *fakeGraphSyncReceiver) Disconnected(p peer.ID) {
 // TODO: get passing to complete https://github.com/filecoin-project/go-data-transfer/issues/22
 func TestRespondingToPushGraphsyncRequests(t *testing.T) {
 	// create network
-	//ctx := context.Background()
-	//ctx, cancel := context.WithTimeout(ctx, 10*time.Second)
-	//defer cancel()
-	//gsData := newGraphsyncTestingData(t, ctx)
-	//host1 := gsData.host1
-	//host2 := gsData.host2
-	//voucher := fakeDTType{"applesauce"}
-	//baseBlock1 := blocks.NewBlock(testutil.RandomBytes(100))
-	//err := gsData.bs1.Put(baseBlock1)
-	//require.NoError(t, err)
-	//
-	//// setup receiving peer to just record message coming in
-	//dtnet2 := network.NewFromLibp2pHost(host2)
-	//r := &receiver{
-	//	messageReceived: make(chan receivedMessage),
-	//}
-	//dtnet2.SetDelegate(r)
-	//
-	//gsr := &fakeGraphSyncReceiver{
-	//	receivedMessages: make(chan receivedGraphSyncMessage),
-	//}
-	//gsData.gsNet2.SetDelegate(gsr)
-	//
-	//gs1 := gsData.setupGraphsyncHost1()
-	//dt1 := NewGraphSyncDataTransfer(ctx, host1, gs1)
-	//t.Run("when request is initiated", func(t *testing.T) {
-	//	_, err = dt1.OpenPushDataChannel(ctx, host2.ID(), &voucher, baseBlock1.Cid(), gsData.allSelector)
-	//	require.NoError(t, err)
-	//	var messageReceived receivedMessage
-	//	select {
-	//	case <-ctx.Done():
-	//		t.Fatal("did not receive message sent")
-	//	case messageReceived = <-r.messageReceived:
-	//	}
-	//	requestReceived := messageReceived.message.(message.DataTransferRequest)
-	//	var buf bytes.Buffer
-	//	extStruct := &ExtensionDataTransferData{TransferID: uint64(requestReceived.TransferID())}
-	//	err = extStruct.MarshalCBOR(&buf)
-	//	require.NoError(t, err)
-	//	extData := buf.Bytes()
-	//	err := dagcbor.Encoder(gsData.allSelector, &buf)
-	//	require.NoError(t, err)
-	//	selectorBytes := buf.Bytes()
-	//	request := gsmsg.NewRequest(graphsync.RequestID(rand.Int31()), baseBlock1.Cid(), selectorBytes, graphsync.Priority(rand.Int31()), graphsync.ExtensionData{
-	//		Name: ExtensionDataTransfer,
-	//		Data: extData,
-	//	})
-	//	gsmessage := gsmsg.New()
-	//	gsmessage.AddRequest(request)
-	//	gsData.gsNet2.SendMessage(ctx, host1.ID(), gsmessage)
-	//	var gsMessageReceived receivedGraphSyncMessage
-	//	select {
-	//	case <-ctx.Done():
-	//		t.Fatal("did not receive message sent")
-	//	case gsMessageReceived = <-gsr.receivedMessages:
-	//	}
-	//	response := gsMessageReceived.message.Responses()[0]
-	//	require.False(t, gsmsg.IsTerminalFailureCode(response.Status()))
-	//})
-	//
-	//t.Run("when no request is initiated", func(t *testing.T) {
-	//	var buf bytes.Buffer
-	//	extStruct := &ExtensionDataTransferData{TransferID: rand.Uint64()}
-	//	err = extStruct.MarshalCBOR(&buf)
-	//	require.NoError(t, err)
-	//	extData := buf.Bytes()
-	//	err := dagcbor.Encoder(gsData.allSelector, &buf)
-	//	require.NoError(t, err)
-	//	selectorBytes := buf.Bytes()
-	//	request := gsmsg.NewRequest(graphsync.RequestID(rand.Int31()), baseBlock1.Cid(), selectorBytes, graphsync.Priority(rand.Int31()), graphsync.ExtensionData{
-	//		Name: ExtensionDataTransfer,
-	//		Data: extData,
-	//	})
-	//	gsmessage := gsmsg.New()
-	//	gsmessage.AddRequest(request)
-	//	gsData.gsNet2.SendMessage(ctx, host1.ID(), gsmessage)
-	//	var gsMessageReceived receivedGraphSyncMessage
-	//	select {
-	//	case <-ctx.Done():
-	//		t.Fatal("did not receive message sent")
-	//	case gsMessageReceived = <-gsr.receivedMessages:
-	//	}
-	//	response := gsMessageReceived.message.Responses()[0]
-	//	require.True(t, gsmsg.IsTerminalFailureCode(response.Status()))
-	//})
+	// ctx := context.Background()
+	// ctx, cancel := context.WithTimeout(ctx, 10*time.Second)
+	// defer cancel()
+	// gsData := newGraphsyncTestingData(t, ctx)
+	// host1 := gsData.host1
+	// host2 := gsData.host2
+	// voucher := fakeDTType{"applesauce"}
+	// baseBlock1 := blocks.NewBlock(testutil.RandomBytes(100))
+	// err := gsData.bs1.Put(baseBlock1)
+	// require.NoError(t, err)
+
+	// // setup receiving peer to just record message coming in
+	// dtnet2 := network.NewFromLibp2pHost(host2)
+	// r := &receiver{
+	// 	messageReceived: make(chan receivedMessage),
+	// }
+	// dtnet2.SetDelegate(r)
+
+	// gsr := &fakeGraphSyncReceiver{
+	// 	receivedMessages: make(chan receivedGraphSyncMessage),
+	// }
+	// gsData.gsNet2.SetDelegate(gsr)
+
+	// gs1 := gsData.setupGraphsyncHost1()
+	// dt1 := NewGraphSyncDataTransfer(ctx, host1, gs1)
+	// t.Run("when request is initiated", func(t *testing.T) {
+	// 	_, err = dt1.OpenPushDataChannel(ctx, host2.ID(), &voucher, baseBlock1.Cid(), gsData.allSelector)
+	// 	require.NoError(t, err)
+	// 	var messageReceived receivedMessage
+	// 	select {
+	// 	case <-ctx.Done():
+	// 		t.Fatal("did not receive message sent")
+	// 	case messageReceived = <-r.messageReceived:
+	// 	}
+	// 	requestReceived := messageReceived.message.(message.DataTransferRequest)
+	// 	var buf bytes.Buffer
+	// 	extStruct := &ExtensionDataTransferData{TransferID: uint64(requestReceived.TransferID())}
+	// 	err = extStruct.MarshalCBOR(&buf)
+	// 	require.NoError(t, err)
+	// 	extData := buf.Bytes()
+	// 	buf.Truncate(0)
+	// 	err := dagcbor.Encoder(gsData.allSelector, &buf)
+	// 	require.NoError(t, err)
+	// 	selectorBytes := buf.Bytes()
+	// 	request := gsmsg.NewRequest(graphsync.RequestID(rand.Int31()), baseBlock1.Cid(), selectorBytes, graphsync.Priority(rand.Int31()), graphsync.ExtensionData{
+	// 		Name: ExtensionDataTransfer,
+	// 		Data: extData,
+	// 	})
+	// 	gsmessage := gsmsg.New()
+	// 	gsmessage.AddRequest(request)
+	// 	gsData.gsNet2.SendMessage(ctx, host1.ID(), gsmessage)
+	// 	var gsMessageReceived receivedGraphSyncMessage
+	// 	select {
+	// 	case <-ctx.Done():
+	// 		t.Fatal("did not receive message sent")
+	// 	case gsMessageReceived = <-gsr.receivedMessages:
+	// 	}
+	// 	response := gsMessageReceived.message.Responses()[0]
+	// 	require.False(t, gsmsg.IsTerminalFailureCode(response.Status()))
+	// })
+
+	// t.Run("when no request is initiated", func(t *testing.T) {
+	// 	var buf bytes.Buffer
+	// 	extStruct := &ExtensionDataTransferData{TransferID: rand.Uint64()}
+	// 	err = extStruct.MarshalCBOR(&buf)
+	// 	require.NoError(t, err)
+	// 	extData := buf.Bytes()
+	// 	buf.Truncate(0)
+	// 	err := dagcbor.Encoder(gsData.allSelector, &buf)
+	// 	require.NoError(t, err)
+	// 	selectorBytes := buf.Bytes()
+	// 	request := gsmsg.NewRequest(graphsync.RequestID(rand.Int31()), baseBlock1.Cid(), selectorBytes, graphsync.Priority(rand.Int31()), graphsync.ExtensionData{
+	// 		Name: ExtensionDataTransfer,
+	// 		Data: extData,
+	// 	})
+	// 	gsmessage := gsmsg.New()
+	// 	gsmessage.AddRequest(request)
+	// 	gsData.gsNet2.SendMessage(ctx, host1.ID(), gsmessage)
+	// 	var gsMessageReceived receivedGraphSyncMessage
+	// 	select {
+	// 	case <-ctx.Done():
+	// 		t.Fatal("did not receive message sent")
+	// 	case gsMessageReceived = <-gsr.receivedMessages:
+	// 	}
+	// 	response := gsMessageReceived.message.Responses()[0]
+	// 	require.True(t, gsmsg.IsTerminalFailureCode(response.Status()))
+	// })
 }
 
 // TODO: get passing to complete https://github.com/filecoin-project/go-data-transfer/issues/23
 func TestRespondingToPullGraphsyncRequests(t *testing.T) {
 	// create network
-	//ctx := context.Background()
-	//ctx, cancel := context.WithTimeout(ctx, 10*time.Second)
-	//defer cancel()
-	//
-	//gsData := newGraphsyncTestingData(t, ctx)
-	//host1 := gsData.host1
-	//host2 := gsData.host2
-	//
-	//// setup receiving peer to just record message coming in
-	//dtnet1 := network.NewFromLibp2pHost(host1)
-	//r := &receiver{
-	//	messageReceived: make(chan receivedMessage),
-	//}
-	//dtnet1.SetDelegate(r)
-	//
-	//gsr := &fakeGraphSyncReceiver{
-	//	receivedMessages: make(chan receivedGraphSyncMessage),
-	//}
-	//gsData.gsNet1.SetDelegate(gsr)
-	//
-	//gs2 := gsData.setupGraphsyncHost2()
-	//
-	//voucher := fakeDTType{"applesauce"}
-	//baseBlock1 := blocks.NewBlock(testutil.RandomBytes(100))
-	//err := gsData.bs2.Put(baseBlock1)
-	//require.NoError(t, err)
-	//id := datatransfer.TransferID(rand.Int31())
-	//var buf bytes.Buffer
-	//err = dagcbor.Encoder(gsData.allSelector, &buf)
-	//require.NoError(t, err)
-	//selectorBytes := buf.Bytes()
-	//
-	//t.Run("When request is initated and validated", func(t *testing.T) {
-	//	sv := newSV()
-	//	sv.expectSuccessPull()
-	//
-	//	dt := NewGraphSyncDataTransfer(ctx, host2, gs2)
-	//	require.NoError(t, dt.RegisterVoucherType(reflect.TypeOf(&fakeDTType{}), sv))
-	//
-	//	isPull := true
-	//	voucherBytes, err := voucher.ToBytes()
-	//	require.NoError(t, err)
-	//	request := message.NewRequest(id, isPull, voucher.Type(), voucherBytes, baseBlock1.Cid(), selectorBytes)
-	//	require.NoError(t, dtnet1.SendMessage(ctx, host2.ID(), request))
-	//	var messageReceived receivedMessage
-	//	select {
-	//	case <-ctx.Done():
-	//		t.Fatal("did not receive message sent")
-	//	case messageReceived = <-r.messageReceived:
-	//	}
-	//	sv.verifyExpectations(t)
-	//	receivedResponse, ok := messageReceived.message.(message.DataTransferResponse)
-	//	require.True(t, ok)
-	//	require.True(t, receivedResponse.Accepted())
-	//	extStruct := &ExtensionDataTransferData{TransferID: uint64(receivedResponse.TransferID())}
-	//	err = extStruct.MarshalCBOR(&buf)
-	//	require.NoError(t, err)
-	//	extData := buf.Bytes()
-	//	gsRequest := gsmsg.NewRequest(graphsync.RequestID(rand.Int31()), baseBlock1.Cid(), selectorBytes, graphsync.Priority(rand.Int31()), graphsync.ExtensionData{
-	//		Name: ExtensionDataTransfer,
-	//		Data: extData,
-	//	})
-	//	gsmessage := gsmsg.New()
-	//	gsmessage.AddRequest(gsRequest)
-	//	gsData.gsNet1.SendMessage(ctx, host1.ID(), gsmessage)
-	//	var gsMessageReceived receivedGraphSyncMessage
-	//	select {
-	//	case <-ctx.Done():
-	//		t.Fatal("did not receive message sent")
-	//	case gsMessageReceived = <-gsr.receivedMessages:
-	//	}
-	//	response := gsMessageReceived.message.Responses()[0]
-	//	require.False(t, gsmsg.IsTerminalFailureCode(response.Status()))
-	//})
-	//
-	//// TODO: get passing to complete https://github.com/filecoin-project/go-data-transfer/issues/14
-	//t.Run("When request is not initiated", func(t *testing.T) {
-	//	_ = NewGraphSyncDataTransfer(ctx, host2, gs2)
-	//	extStruct := &ExtensionDataTransferData{TransferID: rand.Uint64()}
-	//	err = extStruct.MarshalCBOR(&buf)
-	//	require.NoError(t, err)
-	//	extData := buf.Bytes()
-	//	request := gsmsg.NewRequest(graphsync.RequestID(rand.Int31()), baseBlock1.Cid(), selectorBytes, graphsync.Priority(rand.Int31()), graphsync.ExtensionData{
-	//		Name: ExtensionDataTransfer,
-	//		Data: extData,
-	//	})
-	//	gsmessage := gsmsg.New()
-	//	gsmessage.AddRequest(request)
-	//	gsData.gsNet1.SendMessage(ctx, host1.ID(), gsmessage)
-	//	var gsMessageReceived receivedGraphSyncMessage
-	//	select {
-	//	case <-ctx.Done():
-	//		t.Fatal("did not receive message sent")
-	//	case gsMessageReceived = <-gsr.receivedMessages:
-	//	}
-	//	response := gsMessageReceived.message.Responses()[0]
-	//	require.True(t, gsmsg.IsTerminalFailureCode(response.Status()))
-	//})
+	// ctx := context.Background()
+	// ctx, cancel := context.WithTimeout(ctx, 10*time.Second)
+	// defer cancel()
+
+	// gsData := newGraphsyncTestingData(t, ctx)
+	// host1 := gsData.host1
+	// host2 := gsData.host2
+
+	// // setup receiving peer to just record message coming in
+	// dtnet1 := network.NewFromLibp2pHost(host1)
+	// r := &receiver{
+	// 	messageReceived: make(chan receivedMessage),
+	// }
+	// dtnet1.SetDelegate(r)
+
+	// gsr := &fakeGraphSyncReceiver{
+	// 	receivedMessages: make(chan receivedGraphSyncMessage),
+	// }
+	// gsData.gsNet1.SetDelegate(gsr)
+
+	// gs2 := gsData.setupGraphsyncHost2()
+
+	// voucher := fakeDTType{"applesauce"}
+	// baseBlock1 := blocks.NewBlock(testutil.RandomBytes(100))
+	// err := gsData.bs2.Put(baseBlock1)
+	// require.NoError(t, err)
+	// id := datatransfer.TransferID(rand.Int31())
+	// var buf bytes.Buffer
+	// err = dagcbor.Encoder(gsData.allSelector, &buf)
+	// require.NoError(t, err)
+	// selectorBytes := buf.Bytes()
+
+	// t.Run("When request is initated and validated", func(t *testing.T) {
+	// 	sv := newSV()
+	// 	sv.expectSuccessPull()
+
+	// 	dt := NewGraphSyncDataTransfer(ctx, host2, gs2)
+	// 	require.NoError(t, dt.RegisterVoucherType(reflect.TypeOf(&fakeDTType{}), sv))
+
+	// 	isPull := true
+	// 	voucherBytes, err := voucher.ToBytes()
+	// 	require.NoError(t, err)
+	// 	request := message.NewRequest(id, isPull, voucher.Type(), voucherBytes, baseBlock1.Cid(), selectorBytes)
+	// 	require.NoError(t, dtnet1.SendMessage(ctx, host2.ID(), request))
+	// 	var messageReceived receivedMessage
+	// 	select {
+	// 	case <-ctx.Done():
+	// 		t.Fatal("did not receive message sent")
+	// 	case messageReceived = <-r.messageReceived:
+	// 	}
+	// 	sv.verifyExpectations(t)
+	// 	receivedResponse, ok := messageReceived.message.(message.DataTransferResponse)
+	// 	require.True(t, ok)
+	// 	require.True(t, receivedResponse.Accepted())
+	// 	extStruct := &ExtensionDataTransferData{TransferID: uint64(receivedResponse.TransferID())}
+	// 	buf.Truncate(0)
+	// 	err = extStruct.MarshalCBOR(&buf)
+	// 	require.NoError(t, err)
+	// 	extData := buf.Bytes()
+	// 	gsRequest := gsmsg.NewRequest(graphsync.RequestID(rand.Int31()), baseBlock1.Cid(), selectorBytes, graphsync.Priority(rand.Int31()), graphsync.ExtensionData{
+	// 		Name: ExtensionDataTransfer,
+	// 		Data: extData,
+	// 	})
+	// 	gsmessage := gsmsg.New()
+	// 	gsmessage.AddRequest(gsRequest)
+	// 	gsData.gsNet1.SendMessage(ctx, host1.ID(), gsmessage)
+	// 	var gsMessageReceived receivedGraphSyncMessage
+	// 	select {
+	// 	case <-ctx.Done():
+	// 		t.Fatal("did not receive message sent")
+	// 	case gsMessageReceived = <-gsr.receivedMessages:
+	// 	}
+	// 	response := gsMessageReceived.message.Responses()[0]
+	// 	require.False(t, gsmsg.IsTerminalFailureCode(response.Status()))
+	// })
+
+	// // TODO: get passing to complete https://github.com/filecoin-project/go-data-transfer/issues/14
+	// t.Run("When request is not initiated", func(t *testing.T) {
+	// 	_ = NewGraphSyncDataTransfer(ctx, host2, gs2)
+	// 	extStruct := &ExtensionDataTransferData{TransferID: rand.Uint64()}
+	// 	buf.Truncate(0)
+	// 	err = extStruct.MarshalCBOR(&buf)
+	// 	require.NoError(t, err)
+	// 	extData := buf.Bytes()
+	// 	request := gsmsg.NewRequest(graphsync.RequestID(rand.Int31()), baseBlock1.Cid(), selectorBytes, graphsync.Priority(rand.Int31()), graphsync.ExtensionData{
+	// 		Name: ExtensionDataTransfer,
+	// 		Data: extData,
+	// 	})
+	// 	gsmessage := gsmsg.New()
+	// 	gsmessage.AddRequest(request)
+	// 	gsData.gsNet1.SendMessage(ctx, host1.ID(), gsmessage)
+	// 	var gsMessageReceived receivedGraphSyncMessage
+	// 	select {
+	// 	case <-ctx.Done():
+	// 		t.Fatal("did not receive message sent")
+	// 	case gsMessageReceived = <-gsr.receivedMessages:
+	// 	}
+	// 	response := gsMessageReceived.message.Responses()[0]
+	// 	require.True(t, gsmsg.IsTerminalFailureCode(response.Status()))
+	// })
 }
 
 // TODO: get passing to complete https://github.com/filecoin-project/go-data-transfer/issues/24
