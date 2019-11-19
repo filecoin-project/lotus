@@ -12,11 +12,13 @@ import (
 	blockstore "github.com/ipfs/go-ipfs-blockstore"
 	"github.com/libp2p/go-libp2p-core/host"
 	"github.com/libp2p/go-libp2p-core/routing"
+	peer "github.com/libp2p/go-libp2p-peer"
 	pubsub "github.com/libp2p/go-libp2p-pubsub"
 	"go.uber.org/fx"
 	"golang.org/x/xerrors"
 
 	"github.com/filecoin-project/lotus/chain"
+	"github.com/filecoin-project/lotus/chain/blocksync"
 	"github.com/filecoin-project/lotus/chain/stmgr"
 	"github.com/filecoin-project/lotus/chain/store"
 	"github.com/filecoin-project/lotus/chain/types"
@@ -118,4 +120,23 @@ func SetGenesis(cs *store.ChainStore, g Genesis) error {
 	}
 
 	return cs.SetGenesis(genesis)
+}
+
+func NewSyncer(lc fx.Lifecycle, sm *stmgr.StateManager, bsync *blocksync.BlockSync, self peer.ID) (*chain.Syncer, error) {
+	syncer, err := chain.NewSyncer(sm, bsync, self)
+	if err != nil {
+		return nil, err
+	}
+
+	lc.Append(fx.Hook{
+		OnStart: func(_ context.Context) error {
+			syncer.Start()
+			return nil
+		},
+		OnStop: func(_ context.Context) error {
+			syncer.Stop()
+			return nil
+		},
+	})
+	return syncer, nil
 }

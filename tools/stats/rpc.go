@@ -6,13 +6,13 @@ import (
 	"net/http"
 	"time"
 
-	"github.com/multiformats/go-multiaddr-net"
+	manet "github.com/multiformats/go-multiaddr-net"
 
 	"golang.org/x/xerrors"
 
 	"github.com/filecoin-project/lotus/api"
 	"github.com/filecoin-project/lotus/api/client"
-	"github.com/filecoin-project/lotus/chain"
+	"github.com/filecoin-project/lotus/build"
 	"github.com/filecoin-project/lotus/chain/store"
 	"github.com/filecoin-project/lotus/chain/types"
 	"github.com/filecoin-project/lotus/lib/jsonrpc"
@@ -50,15 +50,15 @@ func WaitForSyncComplete(ctx context.Context, napi api.FullNode) error {
 		select {
 		case <-ctx.Done():
 			return ctx.Err()
-		case <-time.After(30 * time.Second):
-			state, err := napi.SyncState(ctx)
+		case <-time.After(3 * time.Second):
+			head, err := napi.ChainHead(ctx)
 			if err != nil {
 				return err
 			}
 
-			log.Printf("Stage %s, Height %d", chain.SyncStageString(state.Stage), state.Height)
+			log.Printf("Height %d", head.Height())
 
-			if state.Stage == api.StageSyncComplete {
+			if time.Now().Unix()-int64(head.MinTimestamp()) < build.BlockDelay {
 				return nil
 			}
 		}
