@@ -752,10 +752,10 @@ func (syncer *Syncer) verifyBlsAggregate(ctx context.Context, sig types.Signatur
 	return nil
 }
 
-const syncStateKey = "syncStateKey"
+type syncStateKey struct{}
 
 func extractSyncState(ctx context.Context) *SyncerState {
-	v := ctx.Value(syncStateKey)
+	v := ctx.Value(syncStateKey{})
 	if v != nil {
 		return v.(*SyncerState)
 	}
