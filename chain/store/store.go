@@ -22,7 +22,6 @@ import (
 	"github.com/ipfs/go-cid"
 	dstore "github.com/ipfs/go-datastore"
 	hamt "github.com/ipfs/go-hamt-ipld"
-	blockstore "github.com/ipfs/go-ipfs-blockstore"
 	bstore "github.com/ipfs/go-ipfs-blockstore"
 	logging "github.com/ipfs/go-log"
 	"github.com/pkg/errors"
@@ -440,7 +439,7 @@ type storable interface {
 	ToStorageBlock() (block.Block, error)
 }
 
-func PutMessage(bs blockstore.Blockstore, m storable) (cid.Cid, error) {
+func PutMessage(bs bstore.Blockstore, m storable) (cid.Cid, error) {
 	b, err := m.ToStorageBlock()
 	if err != nil {
 		return cid.Undef, err
@@ -739,7 +738,7 @@ func (cs *ChainStore) LoadSignedMessagesFromCids(cids []cid.Cid) ([]*types.Signe
 	return msgs, nil
 }
 
-func (cs *ChainStore) Blockstore() blockstore.Blockstore {
+func (cs *ChainStore) Blockstore() bstore.Blockstore {
 	return cs.bs
 }
 
