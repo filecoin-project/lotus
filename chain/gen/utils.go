@@ -393,7 +393,7 @@ func MakeGenesisBlock(bs bstore.Blockstore, balances map[address.Address]types.B
 		Messages:              mmb.Cid(),
 		ParentMessageReceipts: emptyroot,
 		BLSAggregate:          types.Signature{Type: types.KTBLS, Data: []byte("signatureeee")},
-		BlockSig:              types.Signature{Type: types.KTBLS, Data: []byte("block signatureeee")},
+		BlockSig:              &types.Signature{Type: types.KTBLS, Data: []byte("block signatureeee")},
 		Timestamp:             ts,
 	}
 

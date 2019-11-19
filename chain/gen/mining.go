@@ -120,7 +120,7 @@ func MinerCreateBlock(ctx context.Context, sm *stmgr.StateManager, w *wallet.Wal
 		return nil, xerrors.Errorf("failed to sign new block: %w", err)
 	}
 
-	next.BlockSig = *sig
+	next.BlockSig = sig
 
 	fullBlock := &types.FullBlock{
 		Header:        next,

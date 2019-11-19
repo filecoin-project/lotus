@@ -45,7 +45,7 @@ type BlockHeader struct {
 
 	Timestamp uint64
 
-	BlockSig Signature
+	BlockSig *Signature
 }
 
 func (b *BlockHeader) ToStorageBlock() (block.Block, error) {
@@ -96,7 +96,7 @@ func (blk *BlockHeader) LastTicket() *Ticket {
 
 func (blk *BlockHeader) SigningBytes() ([]byte, error) {
 	blkcopy := *blk
-	blkcopy.BlockSig = Signature{}
+	blkcopy.BlockSig = nil
 
 	return blkcopy.Serialize()
 }

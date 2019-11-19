@@ -35,7 +35,7 @@ func testBlockHeader(t testing.TB) *BlockHeader {
 		Messages:              c,
 		Height:                85919298723,
 		ParentStateRoot:       c,
-		BlockSig:              Signature{Type: KTBLS, Data: []byte("boo! im a signature")},
+		BlockSig:              &Signature{Type: KTBLS, Data: []byte("boo! im a signature")},
 	}
 }
 

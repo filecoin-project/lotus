@@ -304,7 +304,7 @@ func (m *Miner) getMinerWorker(ctx context.Context, addr address.Address, ts *ty
 }
 
 func (m *Miner) scratchTicket(ctx context.Context, addr address.Address, base *MiningBase) (*types.Ticket, error) {
-	round := base.ts.Height() + base.nullRounds
+	round := base.ts.Height() + base.nullRounds + 1
 
 	vrfBase := gen.TicketHash(base.ts.MinTicket(), round)
 

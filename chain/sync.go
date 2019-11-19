@@ -478,8 +478,6 @@ func (syncer *Syncer) validateTicket(ctx context.Context, mworker address.Addres
 
 	vrfBase := gen.TicketHash(base.MinTicket(), round)
 
-	log.Infof("about to verify ticket: %x %d", base.MinTicket().VRFProof, round)
-
 	// TODO: ticket signatures should also include miner address
 	if err := sig.Verify(mworker, vrfBase); err != nil {
 		return xerrors.Errorf("invalid ticket, VRFProof invalid: %w", err)
