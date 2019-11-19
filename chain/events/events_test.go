@@ -40,6 +40,14 @@ type fakeCS struct {
 	sub func(rev, app []*types.TipSet)
 }
 
+func (fcs *fakeCS) StateGetReceipt(context.Context, cid.Cid, *types.TipSet) (*types.MessageReceipt, error) {
+	return nil, nil
+}
+
+func (fcs *fakeCS) StateGetActor(ctx context.Context, actor address.Address, ts *types.TipSet) (*types.Actor, error) {
+	panic("Not Implemented")
+}
+
 func (fcs *fakeCS) ChainGetTipSetByHeight(context.Context, uint64, *types.TipSet) (*types.TipSet, error) {
 	panic("Not Implemented")
 }
@@ -514,7 +522,7 @@ func TestCalled(t *testing.T) {
 
 	err = events.Called(func(ts *types.TipSet) (d bool, m bool, e error) {
 		return false, true, nil
-	}, func(msg *types.Message, ts *types.TipSet, curH uint64) (bool, error) {
+	}, func(msg *types.Message, rec *types.MessageReceipt, ts *types.TipSet, curH uint64) (bool, error) {
 		require.Equal(t, false, applied)
 		applied = true
 		appliedMsg = msg
@@ -709,7 +717,7 @@ func TestCalledTimeout(t *testing.T) {
 
 	err = events.Called(func(ts *types.TipSet) (d bool, m bool, e error) {
 		return false, true, nil
-	}, func(msg *types.Message, ts *types.TipSet, curH uint64) (bool, error) {
+	}, func(msg *types.Message, rec *types.MessageReceipt, ts *types.TipSet, curH uint64) (bool, error) {
 		called = true
 		require.Nil(t, msg)
 		require.Equal(t, uint64(20), ts.Height())
@@ -744,7 +752,7 @@ func TestCalledTimeout(t *testing.T) {
 
 	err = events.Called(func(ts *types.TipSet) (d bool, m bool, e error) {
 		return true, true, nil
-	}, func(msg *types.Message, ts *types.TipSet, curH uint64) (bool, error) {
+	}, func(msg *types.Message, rec *types.MessageReceipt, ts *types.TipSet, curH uint64) (bool, error) {
 		called = true
 		require.Nil(t, msg)
 		require.Equal(t, uint64(20), ts.Height())
@@ -783,7 +791,7 @@ func TestCalledOrder(t *testing.T) {
 
 	err = events.Called(func(ts *types.TipSet) (d bool, m bool, e error) {
 		return false, true, nil
-	}, func(msg *types.Message, ts *types.TipSet, curH uint64) (bool, error) {
+	}, func(msg *types.Message, rec *types.MessageReceipt, ts *types.TipSet, curH uint64) (bool, error) {
 		switch at {
 		case 0:
 			require.Equal(t, uint64(1), msg.Nonce)
