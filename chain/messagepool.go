@@ -316,10 +316,12 @@ func (mp *MessagePool) Remove(from address.Address, nonce uint64) {
 		return
 	}
 
-	mp.changes.Pub(api.MpoolUpdate{
-		Type:    api.MpoolRemove,
-		Message: mset.msgs[nonce],
-	}, localUpdates)
+	if m, ok := mset.msgs[nonce]; ok {
+		mp.changes.Pub(api.MpoolUpdate{
+			Type:    api.MpoolRemove,
+			Message: m,
+		}, localUpdates)
+	}
 
 	// NB: This deletes any message with the given nonce. This makes sense
 	// as two messages with the same sender cannot have the same nonce
