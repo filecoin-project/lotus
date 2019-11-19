@@ -2,13 +2,15 @@ package main
 
 import (
 	"fmt"
-	"github.com/filecoin-project/lotus/build"
-	lcli "github.com/filecoin-project/lotus/cli"
+	"net/http"
+	"os"
+
 	logging "github.com/ipfs/go-log"
 	"golang.org/x/xerrors"
 	"gopkg.in/urfave/cli.v2"
-	"net/http"
-	"os"
+
+	"github.com/filecoin-project/lotus/build"
+	lcli "github.com/filecoin-project/lotus/cli"
 )
 
 var log = logging.Logger("chainwatch")
@@ -76,6 +78,7 @@ var runCmd = &cli.Command{
 
 		runSyncer(ctx, api, st)
 		go subMpool(ctx, api, st)
+		go subBlocks(ctx, api, st)
 
 		h, err := newHandler(api, st)
 		if err != nil {

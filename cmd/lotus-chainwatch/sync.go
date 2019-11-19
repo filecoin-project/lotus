@@ -64,7 +64,7 @@ func syncHead(ctx context.Context, api api.FullNode, st *storage, ts *types.TipS
 	for toVisit.Len() > 0 {
 		bh := toVisit.Remove(toVisit.Back()).(*types.BlockHeader)
 
-		if _, seen := toSync[bh.Cid()]; seen || st.hasBlock(bh) {
+		if _, seen := toSync[bh.Cid()]; seen || st.hasBlock(bh.Cid()) {
 			continue
 		}
 
@@ -213,7 +213,7 @@ func syncHead(ctx context.Context, api api.FullNode, st *storage, ts *types.TipS
 	}
 
 	log.Infof("Persisting headers")
-	if err := st.storeHeaders(toSync); err != nil {
+	if err := st.storeHeaders(toSync, true); err != nil {
 		log.Error(err)
 		return
 	}
