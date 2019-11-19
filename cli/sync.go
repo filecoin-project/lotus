@@ -99,7 +99,7 @@ var syncWaitCmd = &cli.Command{
 			fmt.Printf("\r\x1b[2KWorker %d: Target: %s\tState: %s\tHeight: %d", working, target, chain.SyncStageString(ss.Stage), ss.Height)
 
 			if time.Now().Unix()-int64(head.MinTimestamp()) < build.BlockDelay {
-				fmt.Println("Done!")
+				fmt.Println("\nDone!")
 				return nil
 			}
 
