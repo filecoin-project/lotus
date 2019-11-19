@@ -2,6 +2,7 @@ package main
 
 import (
 	"database/sql"
+	"sync"
 	"time"
 
 	"github.com/ipfs/go-cid"
@@ -13,6 +14,8 @@ import (
 
 type storage struct {
 	db *sql.DB
+
+	headerLk sync.Mutex
 }
 
 func openStorage() (*storage, error) {
@@ -101,6 +104,21 @@ create table if not exists blocks
 	timestamp int not null
 );
 
+create unique index if not exists block_cid_uindex
+	on blocks (cid);
+
+create table if not exists blocks_synced
+(
+	cid text not null
+		constraint blocks_synced_pk
+			primary key
+		constraint blocks_synced_blocks_cid_fk
+			references blocks
+);
+
+create unique index if not exists blocks_synced_cid_uindex
+	on blocks_synced (cid);
+
 create table if not exists block_parents
 (
 	block text not null
@@ -178,9 +196,9 @@ create table if not exists miner_heads
 	return tx.Commit()
 }
 
-func (st *storage) hasBlock(bh *types.BlockHeader) bool {
+func (st *storage) hasBlock(bh cid.Cid) bool {
 	var exitsts bool
-	err := st.db.QueryRow(`select exists (select 1 FROM blocks where cid=?)`, bh.Cid().String()).Scan(&exitsts)
+	err := st.db.QueryRow(`select exists (select 1 FROM blocks_synced where cid=?)`, bh.String()).Scan(&exitsts)
 	if err != nil {
 		log.Error(err)
 		return false
@@ -244,7 +262,10 @@ func (st *storage) storeMiners(miners map[minerKey]*minerInfo) error {
 	return tx.Commit()
 }
 
-func (st *storage) storeHeaders(bhs map[cid.Cid]*types.BlockHeader) error {
+func (st *storage) storeHeaders(bhs map[cid.Cid]*types.BlockHeader, sync bool) error {
+	st.headerLk.Lock()
+	defer st.headerLk.Unlock()
+
 	tx, err := st.db.Begin()
 	if err != nil {
 		return err
@@ -269,6 +290,19 @@ func (st *storage) storeHeaders(bhs map[cid.Cid]*types.BlockHeader) error {
 	for _, bh := range bhs {
 		for _, parent := range bh.Parents {
 			if _, err := stmt2.Exec(bh.Cid().String(), parent.String()); err != nil {
+				return err
+			}
+		}
+	}
+
+	if sync {
+		stmt, err := tx.Prepare(`insert into blocks_synced (cid) values (?) on conflict do nothing`)
+		if err != nil {
+			return err
+		}
+		defer stmt.Close()
+		for _, bh := range bhs {
+			if _, err := stmt.Exec(bh.Cid().String()); err != nil {
 				return err
 			}
 		}
@@ -341,7 +375,7 @@ func (st *storage) storeMsgInclusions(incls map[cid.Cid][]cid.Cid) error {
 		return err
 	}
 
-	stmt, err := tx.Prepare(`insert into block_messages (block, message) VALUES (?, ?)`)
+	stmt, err := tx.Prepare(`insert into block_messages (block, message) VALUES (?, ?) on conflict do nothing`)
 	if err != nil {
 		return err
 	}
@@ -367,7 +401,7 @@ func (st *storage) storeMpoolInclusion(msg cid.Cid) error {
 		return err
 	}
 
-	stmt, err := tx.Prepare(`insert into mpool_messages (msg, add_ts) VALUES (?, ?)`)
+	stmt, err := tx.Prepare(`insert into mpool_messages (msg, add_ts) VALUES (?, ?) on conflict do nothing`)
 	if err != nil {
 		return err
 	}

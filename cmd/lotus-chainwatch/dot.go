@@ -5,7 +5,9 @@ import (
 	"hash/crc32"
 	"strconv"
 
+	"github.com/ipfs/go-cid"
 	"gopkg.in/urfave/cli.v2"
+
 )
 
 var dotCmd = &cli.Command{
@@ -21,7 +23,7 @@ var dotCmd = &cli.Command{
 		tosee, err := strconv.ParseInt(cctx.Args().Get(1), 10, 32)
 		maxH := minH + tosee
 
-		res, err := st.db.Query("select block, parent, b.miner from block_parents inner join blocks b on block_parents.block = b.cid where b.height > ? and b.height < ?", minH, maxH)
+		res, err := st.db.Query("select block, parent, b.miner, b.height from block_parents inner join blocks b on block_parents.block = b.cid where b.height > ? and b.height < ?", minH, maxH)
 		if err != nil {
 			return err
 		}
@@ -30,13 +32,26 @@ var dotCmd = &cli.Command{
 
 		for res.Next() {
 			var block, parent, miner string
-			if err := res.Scan(&block, &parent, &miner); err != nil {
+			var height uint64
+			if err := res.Scan(&block, &parent, &miner, &height); err != nil {
 				return err
 			}
 
-			col := crc32.Checksum([]byte(miner), crc32.MakeTable(crc32.Castagnoli))&0x80808080 + 0x70707070
+			bc, err := cid.Parse(block)
+			if err != nil {
+				return err
+			}
 
-			fmt.Printf("%s [label = \"%s\", fillcolor = \"#%06x\", style=filled]\n%s -> %s\n", block, miner, col, block, parent)
+			has := st.hasBlock(bc)
+
+			col := crc32.Checksum([]byte(miner), crc32.MakeTable(crc32.Castagnoli))&0xc0c0c0c0 + 0x30303030
+
+			hasstr := ""
+			if !has {
+				hasstr = " UNSYNCED"
+			}
+
+			fmt.Printf("%s [label = \"%s:%d%s\", fillcolor = \"#%06x\", style=filled, forcelabels=true]\n%s -> %s\n", block, miner, height, hasstr, col, block, parent)
 		}
 		if res.Err() != nil {
 			return res.Err()
