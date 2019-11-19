@@ -81,7 +81,12 @@ var syncWaitCmd = &cli.Command{
 				return nil
 			}
 
-			time.Sleep(1 * time.Second)
+			select {
+			case <-ctx.Done():
+				fmt.Println("\nExit by user")
+				return nil
+			case <-time.After(1 * time.Second):
+			}
 		}
 	},
 }
