@@ -12,19 +12,19 @@ func FuzzMessage(data []byte) int {
 	}
 	reData, err := msg.Serialize()
 	if err != nil {
-		panic(err)
+		panic(err) // ok
 	}
 	var msg2 Message
 	err = msg2.UnmarshalCBOR(bytes.NewReader(data))
 	if err != nil {
-		panic(err)
+		panic(err) // ok
 	}
 	reData2, err := msg.Serialize()
 	if err != nil {
-		panic(err)
+		panic(err) // ok
 	}
 	if !bytes.Equal(reData, reData2) {
-		panic("reencoding not equal")
+		panic("reencoding not equal") // ok
 	}
 	return 1
 }

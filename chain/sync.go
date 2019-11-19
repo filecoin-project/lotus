@@ -95,7 +95,8 @@ const BootstrapPeerThreshold = 1
 func (syncer *Syncer) InformNewHead(from peer.ID, fts *store.FullTipSet) {
 	ctx := context.Background()
 	if fts == nil {
-		panic("bad")
+		log.Errorf("got nil tipset in InformNewHead")
+		return
 	}
 
 	for _, b := range fts.Blocks {

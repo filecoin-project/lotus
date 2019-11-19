@@ -91,7 +91,7 @@ func (a Address) Bytes() []byte {
 func (a Address) String() string {
 	str, err := encode(Testnet, a)
 	if err != nil {
-		panic(err)
+		panic(err) // I don't know if this one is okay
 	}
 	return str
 }
@@ -314,12 +314,12 @@ func hash(ingest []byte, cfg *blake2b.Config) []byte {
 	hasher, err := blake2b.New(cfg)
 	if err != nil {
 		// If this happens sth is very wrong.
-		panic(fmt.Sprintf("invalid address hash configuration: %v", err))
+		panic(fmt.Sprintf("invalid address hash configuration: %v", err)) // ok
 	}
 	if _, err := hasher.Write(ingest); err != nil {
 		// blake2bs Write implementation never returns an error in its current
 		// setup. So if this happens sth went very wrong.
-		panic(fmt.Sprintf("blake2b is unable to process hashes: %v", err))
+		panic(fmt.Sprintf("blake2b is unable to process hashes: %v", err)) // ok
 	}
 	return hasher.Sum(nil)
 }

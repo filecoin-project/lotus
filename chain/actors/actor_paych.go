@@ -5,6 +5,7 @@ import (
 	"fmt"
 
 	"github.com/ipfs/go-cid"
+	"github.com/minio/blake2b-simd"
 
 	"github.com/filecoin-project/lotus/build"
 	"github.com/filecoin-project/lotus/chain/actors/aerrors"
@@ -94,7 +95,8 @@ type PCAUpdateChannelStateParams struct {
 }
 
 func hash(b []byte) []byte {
-	panic("blake 2b hash pls")
+	s := blake2b.Sum256(b)
+	return s[:]
 }
 
 type PaymentVerifyParams struct {

@@ -55,10 +55,9 @@ func (s *Signature) TypeCode() int {
 		return IKTSecp256k1
 	case KTBLS:
 		return IKTBLS
-	case "":
-		return IKTUnknown
 	default:
-		panic("unsupported signature type")
+		log.Errorf("called TypeCode on signature with unknown Type: %q", s.Type)
+		return IKTUnknown
 	}
 }
 

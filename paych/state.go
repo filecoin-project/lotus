@@ -7,6 +7,7 @@ import (
 	"github.com/filecoin-project/lotus/chain/actors"
 	"github.com/filecoin-project/lotus/chain/address"
 	"github.com/filecoin-project/lotus/chain/types"
+	xerrors "golang.org/x/xerrors"
 )
 
 func (pm *Manager) loadPaychState(ctx context.Context, ch address.Address) (*types.Actor, *actors.PaymentChannelActorState, error) {
@@ -52,7 +53,7 @@ func (pm *Manager) laneState(ctx context.Context, ch address.Address, lane uint6
 
 	for _, v := range vouchers {
 		for range v.Voucher.Merges {
-			panic("merges todo") // TODO: nonce check
+			return actors.LaneState{}, xerrors.Errorf("paych merges not handled yet")
 		}
 
 		if v.Voucher.Lane != lane {

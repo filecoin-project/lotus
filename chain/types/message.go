@@ -61,7 +61,7 @@ func (m *Message) ToStorageBlock() (block.Block, error) {
 func (m *Message) Cid() cid.Cid {
 	b, err := m.ToStorageBlock()
 	if err != nil {
-		panic(fmt.Sprintf("failed to marshal message: %s", err))
+		panic(fmt.Sprintf("failed to marshal message: %s", err)) // I think this is maybe sketchy, what happens if we try to serialize a message with an undefined address in it?
 	}
 
 	return b.Cid()
