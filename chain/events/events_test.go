@@ -57,6 +57,9 @@ func makeTs(t *testing.T, h uint64, msgcid cid.Cid) *types.TipSet {
 			ParentStateRoot:       dummyCid,
 			Messages:              msgcid,
 			ParentMessageReceipts: dummyCid,
+
+			BlockSig:     types.Signature{Type: types.KTBLS},
+			BLSAggregate: types.Signature{Type: types.KTBLS},
 		},
 		{
 			Height: h,
@@ -67,6 +70,9 @@ func makeTs(t *testing.T, h uint64, msgcid cid.Cid) *types.TipSet {
 			ParentStateRoot:       dummyCid,
 			Messages:              msgcid,
 			ParentMessageReceipts: dummyCid,
+
+			BlockSig:     types.Signature{Type: types.KTBLS},
+			BLSAggregate: types.Signature{Type: types.KTBLS},
 		},
 	})
 
@@ -482,6 +488,12 @@ func TestAtChainedConfidenceNull(t *testing.T) {
 	require.Equal(t, false, reverted)
 }
 
+func matchAddrMethod(to address.Address, m uint64) func(msg *types.Message) (bool, error) {
+	return func(msg *types.Message) (bool, error) {
+		return to == msg.To && m == msg.Method, nil
+	}
+}
+
 func TestCalled(t *testing.T) {
 	fcs := &fakeCS{
 		t: t,
@@ -516,7 +528,7 @@ func TestCalled(t *testing.T) {
 	}, func(_ context.Context, ts *types.TipSet) error {
 		reverted = true
 		return nil
-	}, 3, 20, t0123, 5)
+	}, 3, 20, matchAddrMethod(t0123, 5))
 	require.NoError(t, err)
 
 	// create few blocks to make sure nothing get's randomly called
@@ -710,7 +722,7 @@ func TestCalledTimeout(t *testing.T) {
 	}, func(_ context.Context, ts *types.TipSet) error {
 		t.Fatal("revert on timeout")
 		return nil
-	}, 3, 20, t0123, 5)
+	}, 3, 20, matchAddrMethod(t0123, 5))
 	require.NoError(t, err)
 
 	fcs.advance(0, 21, nil)
@@ -745,7 +757,7 @@ func TestCalledTimeout(t *testing.T) {
 	}, func(_ context.Context, ts *types.TipSet) error {
 		t.Fatal("revert on timeout")
 		return nil
-	}, 3, 20, t0123, 5)
+	}, 3, 20, matchAddrMethod(t0123, 5))
 	require.NoError(t, err)
 
 	fcs.advance(0, 21, nil)
@@ -799,7 +811,7 @@ func TestCalledOrder(t *testing.T) {
 		}
 		at++
 		return nil
-	}, 3, 20, t0123, 5)
+	}, 3, 20, matchAddrMethod(t0123, 5))
 	require.NoError(t, err)
 
 	fcs.advance(0, 10, map[int]cid.Cid{

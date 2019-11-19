@@ -3,13 +3,12 @@ package main
 import (
 	"context"
 	"crypto/rand"
-	"fmt"
 	"os"
 
-	"github.com/libp2p/go-libp2p-core/crypto"
-
 	"github.com/ipfs/go-datastore"
+	"github.com/libp2p/go-libp2p-core/crypto"
 	"github.com/libp2p/go-libp2p-core/peer"
+	"github.com/mitchellh/go-homedir"
 	"golang.org/x/xerrors"
 	"gopkg.in/urfave/cli.v2"
 
@@ -106,12 +105,16 @@ var initCmd = &cli.Command{
 		}
 
 		if err := storageMinerInit(ctx, cctx, api, r); err != nil {
-			fmt.Printf("ERROR: failed to initialize lotus-storage-miner: %s\n", err)
-			fmt.Println("Cleaning up after attempt...")
-			if err := os.RemoveAll(repoPath); err != nil {
-				fmt.Println("ERROR: failed to clean up failed storage repo: ", err)
+			log.Errorf("Failed to initialize lotus-storage-miner: %+v", err)
+			path, err := homedir.Expand(repoPath)
+			if err != nil {
+				return err
 			}
-			return fmt.Errorf("storage-miner init failed")
+			log.Infof("Cleaning up %s after attempt...", path)
+			if err := os.RemoveAll(path); err != nil {
+				log.Errorf("Failed to clean up failed storage repo: %s", err)
+			}
+			return xerrors.Errorf("Storage-miner init failed")
 		}
 
 		// TODO: Point to setting storage price, maybe do it interactively or something

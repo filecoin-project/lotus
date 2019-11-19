@@ -24,7 +24,7 @@ func blsaddr(n uint64) address.Address {
 
 	addr, err := address.NewBLSAddress(buf)
 	if err != nil {
-		panic(err)
+		panic(err) // ok
 	}
 
 	return addr

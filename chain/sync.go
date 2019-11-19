@@ -47,8 +47,6 @@ type Syncer struct {
 	// The known Genesis tipset
 	Genesis *types.TipSet
 
-	syncLock sync.Mutex
-
 	// TipSets known to be invalid
 	bad *BadBlockCache
 
@@ -57,12 +55,9 @@ type Syncer struct {
 
 	self peer.ID
 
-	syncState SyncerState
+	syncLock sync.Mutex
 
-	// peer heads
-	// Note: clear cache on disconnects
-	peerHeads   map[peer.ID]*types.TipSet
-	peerHeadsLk sync.Mutex
+	syncmgr *SyncManager
 }
 
 func NewSyncer(sm *stmgr.StateManager, bsync *blocksync.BlockSync, self peer.ID) (*Syncer, error) {
@@ -76,18 +71,26 @@ func NewSyncer(sm *stmgr.StateManager, bsync *blocksync.BlockSync, self peer.ID)
 		return nil, err
 	}
 
-	return &Syncer{
-		bad:       NewBadBlockCache(),
-		Genesis:   gent,
-		Bsync:     bsync,
-		peerHeads: make(map[peer.ID]*types.TipSet),
-		store:     sm.ChainStore(),
-		sm:        sm,
-		self:      self,
-	}, nil
+	s := &Syncer{
+		bad:     NewBadBlockCache(),
+		Genesis: gent,
+		Bsync:   bsync,
+		store:   sm.ChainStore(),
+		sm:      sm,
+		self:    self,
+	}
+
+	s.syncmgr = NewSyncManager(s.Sync)
+	return s, nil
 }
 
-const BootstrapPeerThreshold = 1
+func (syncer *Syncer) Start() {
+	syncer.syncmgr.Start()
+}
+
+func (syncer *Syncer) Stop() {
+	syncer.syncmgr.Stop()
+}
 
 // InformNewHead informs the syncer about a new potential tipset
 // This should be called when connecting to new peers, and additionally
@@ -95,7 +98,8 @@ const BootstrapPeerThreshold = 1
 func (syncer *Syncer) InformNewHead(from peer.ID, fts *store.FullTipSet) {
 	ctx := context.Background()
 	if fts == nil {
-		panic("bad")
+		log.Errorf("got nil tipset in InformNewHead")
+		return
 	}
 
 	for _, b := range fts.Blocks {
@@ -123,9 +127,6 @@ func (syncer *Syncer) InformNewHead(from peer.ID, fts *store.FullTipSet) {
 		return
 	}
 
-	syncer.peerHeadsLk.Lock()
-	syncer.peerHeads[from] = fts.TipSet()
-	syncer.peerHeadsLk.Unlock()
 	syncer.Bsync.AddPeer(from)
 
 	bestPweight := syncer.store.GetHeaviestTipSet().Blocks()[0].ParentWeight
@@ -135,11 +136,7 @@ func (syncer *Syncer) InformNewHead(from peer.ID, fts *store.FullTipSet) {
 		return
 	}
 
-	go func() {
-		if err := syncer.Sync(ctx, fts.TipSet()); err != nil {
-			log.Errorf("sync error (curW=%s, targetW=%s): %+v", bestPweight, targetWeight, err)
-		}
-	}()
+	syncer.syncmgr.SetPeerHead(ctx, from, fts.TipSet())
 }
 
 func (syncer *Syncer) ValidateMsgMeta(fblk *types.FullBlock) error {
@@ -388,15 +385,13 @@ func (syncer *Syncer) tryLoadFullTipSet(cids []cid.Cid) (*store.FullTipSet, erro
 func (syncer *Syncer) Sync(ctx context.Context, maybeHead *types.TipSet) error {
 	ctx, span := trace.StartSpan(ctx, "chain.Sync")
 	defer span.End()
+
 	if span.IsRecordingEvents() {
 		span.AddAttributes(
 			trace.StringAttribute("tipset", fmt.Sprint(maybeHead.Cids())),
 			trace.Int64Attribute("height", int64(maybeHead.Height())),
 		)
 	}
-
-	syncer.syncLock.Lock()
-	defer syncer.syncLock.Unlock()
 
 	if syncer.Genesis.Equals(maybeHead) || syncer.store.GetHeaviestTipSet().Equals(maybeHead) {
 		return nil
@@ -758,9 +753,20 @@ func (syncer *Syncer) verifyBlsAggregate(ctx context.Context, sig types.Signatur
 	return nil
 }
 
+type syncStateKey struct{}
+
+func extractSyncState(ctx context.Context) *SyncerState {
+	v := ctx.Value(syncStateKey{})
+	if v != nil {
+		return v.(*SyncerState)
+	}
+	return nil
+}
+
 func (syncer *Syncer) collectHeaders(ctx context.Context, from *types.TipSet, to *types.TipSet) ([]*types.TipSet, error) {
 	ctx, span := trace.StartSpan(ctx, "collectHeaders")
 	defer span.End()
+	ss := extractSyncState(ctx)
 
 	span.AddAttributes(
 		trace.Int64Attribute("fromHeight", int64(from.Height())),
@@ -783,7 +789,7 @@ func (syncer *Syncer) collectHeaders(ctx context.Context, from *types.TipSet, to
 	// we want to sync all the blocks until the height above the block we have
 	untilHeight := to.Height() + 1
 
-	syncer.syncState.SetHeight(blockSet[len(blockSet)-1].Height())
+	ss.SetHeight(blockSet[len(blockSet)-1].Height())
 
 	var acceptedBlocks []cid.Cid
 
@@ -851,7 +857,7 @@ loop:
 
 		acceptedBlocks = append(acceptedBlocks, at...)
 
-		syncer.syncState.SetHeight(blks[len(blks)-1].Height())
+		ss.SetHeight(blks[len(blks)-1].Height())
 		at = blks[len(blks)-1].Parents()
 	}
 
@@ -914,7 +920,8 @@ func (syncer *Syncer) syncFork(ctx context.Context, from *types.TipSet, to *type
 }
 
 func (syncer *Syncer) syncMessagesAndCheckState(ctx context.Context, headers []*types.TipSet) error {
-	syncer.syncState.SetHeight(0)
+	ss := extractSyncState(ctx)
+	ss.SetHeight(0)
 
 	return syncer.iterFullTipsets(ctx, headers, func(ctx context.Context, fts *store.FullTipSet) error {
 		log.Debugw("validating tipset", "height", fts.TipSet().Height(), "size", len(fts.TipSet().Cids()))
@@ -923,7 +930,7 @@ func (syncer *Syncer) syncMessagesAndCheckState(ctx context.Context, headers []*
 			return xerrors.Errorf("message processing failed: %w", err)
 		}
 
-		syncer.syncState.SetHeight(fts.TipSet().Height())
+		ss.SetHeight(fts.TipSet().Height())
 
 		return nil
 	})
@@ -1018,8 +1025,9 @@ func persistMessages(bs bstore.Blockstore, bst *blocksync.BSTipSet) error {
 func (syncer *Syncer) collectChain(ctx context.Context, ts *types.TipSet) error {
 	ctx, span := trace.StartSpan(ctx, "collectChain")
 	defer span.End()
+	ss := extractSyncState(ctx)
 
-	syncer.syncState.Init(syncer.store.GetHeaviestTipSet(), ts)
+	ss.Init(syncer.store.GetHeaviestTipSet(), ts)
 
 	headers, err := syncer.collectHeaders(ctx, ts, syncer.store.GetHeaviestTipSet())
 	if err != nil {
@@ -1032,7 +1040,7 @@ func (syncer *Syncer) collectChain(ctx context.Context, ts *types.TipSet) error 
 		log.Errorf("collectChain headers[0] should be equal to sync target. Its not: %s != %s", headers[0].Cids(), ts.Cids())
 	}
 
-	syncer.syncState.SetStage(api.StagePersistHeaders)
+	ss.SetStage(api.StagePersistHeaders)
 
 	toPersist := make([]*types.BlockHeader, 0, len(headers)*build.BlocksPerEpoch)
 	for _, ts := range headers {
@@ -1043,13 +1051,13 @@ func (syncer *Syncer) collectChain(ctx context.Context, ts *types.TipSet) error 
 	}
 	toPersist = nil
 
-	syncer.syncState.SetStage(api.StageMessages)
+	ss.SetStage(api.StageMessages)
 
 	if err := syncer.syncMessagesAndCheckState(ctx, headers); err != nil {
 		return xerrors.Errorf("collectChain syncMessages: %w", err)
 	}
 
-	syncer.syncState.SetStage(api.StageSyncComplete)
+	ss.SetStage(api.StageSyncComplete)
 	log.Debugw("new tipset", "height", ts.Height(), "tipset", types.LogCids(ts.Cids()))
 
 	return nil
@@ -1068,6 +1076,10 @@ func VerifyElectionProof(ctx context.Context, eproof []byte, rand []byte, worker
 	return nil
 }
 
-func (syncer *Syncer) State() SyncerState {
-	return syncer.syncState.Snapshot()
+func (syncer *Syncer) State() []SyncerState {
+	var out []SyncerState
+	for _, ss := range syncer.syncmgr.syncStates {
+		out = append(out, ss.Snapshot())
+	}
+	return out
 }

@@ -172,23 +172,6 @@ func (c *Client) sealing(ctx context.Context, deal ClientDeal) (func(*ClientDeal
 			return false, nil
 		}
 
-		var params actors.SectorProveCommitInfo
-		if err := params.UnmarshalCBOR(bytes.NewReader(msg.Params)); err != nil {
-			return false, err
-		}
-
-		var found bool
-		for _, dealID := range params.DealIDs {
-			if dealID == deal.DealID {
-				found = true
-				break
-			}
-		}
-
-		if !found {
-			return true, nil
-		}
-
 		sd, err := stmgr.GetStorageDeal(ctx, c.sm, deal.DealID, ts)
 		if err != nil {
 			return false, xerrors.Errorf("failed to look up deal on chain: %w", err)
@@ -217,7 +200,32 @@ func (c *Client) sealing(ctx context.Context, deal ClientDeal) (func(*ClientDeal
 		return nil
 	}
 
-	if err := c.events.Called(checkFunc, called, revert, 3, build.SealRandomnessLookbackLimit, deal.Proposal.Provider, actors.MAMethods.ProveCommitSector); err != nil {
+	matchEvent := func(msg *types.Message) (bool, error) {
+		if msg.To != deal.Proposal.Provider {
+			return false, nil
+		}
+
+		if msg.Method != actors.MAMethods.ProveCommitSector {
+			return false, nil
+		}
+
+		var params actors.SectorProveCommitInfo
+		if err := params.UnmarshalCBOR(bytes.NewReader(msg.Params)); err != nil {
+			return false, err
+		}
+
+		var found bool
+		for _, dealID := range params.DealIDs {
+			if dealID == deal.DealID {
+				found = true
+				break
+			}
+		}
+
+		return found, nil
+	}
+
+	if err := c.events.Called(checkFunc, called, revert, 3, build.SealRandomnessLookbackLimit, matchEvent); err != nil {
 		return nil, xerrors.Errorf("failed to set up called handler")
 	}
 

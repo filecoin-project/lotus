@@ -8,6 +8,7 @@ import (
 	"gopkg.in/urfave/cli.v2"
 
 	"github.com/filecoin-project/lotus/api"
+	"github.com/filecoin-project/lotus/build"
 	"github.com/filecoin-project/lotus/chain"
 )
 
@@ -31,24 +32,26 @@ var syncStatusCmd = &cli.Command{
 		defer closer()
 		ctx := ReqContext(cctx)
 
-		ss, err := api.SyncState(ctx)
+		state, err := api.SyncState(ctx)
 		if err != nil {
 			return err
 		}
 
-		var base, target []cid.Cid
-		if ss.Base != nil {
-			base = ss.Base.Cids()
-		}
-		if ss.Target != nil {
-			target = ss.Target.Cids()
-		}
-
 		fmt.Println("sync status:")
-		fmt.Printf("Base:\t%s\n", base)
-		fmt.Printf("Target:\t%s\n", target)
-		fmt.Printf("Stage: %s\n", chain.SyncStageString(ss.Stage))
-		fmt.Printf("Height: %d\n", ss.Height)
+		for i, ss := range state.ActiveSyncs {
+			fmt.Printf("worker %d:\n", i)
+			var base, target []cid.Cid
+			if ss.Base != nil {
+				base = ss.Base.Cids()
+			}
+			if ss.Target != nil {
+				target = ss.Target.Cids()
+			}
+			fmt.Printf("\tBase:\t%s\n", base)
+			fmt.Printf("\tTarget:\t%s\n", target)
+			fmt.Printf("\tStage: %s\n", chain.SyncStageString(ss.Stage))
+			fmt.Printf("\tHeight: %d\n", ss.Height)
+		}
 		return nil
 	},
 }
@@ -65,23 +68,47 @@ var syncWaitCmd = &cli.Command{
 		ctx := ReqContext(cctx)
 
 		for {
-			ss, err := napi.SyncState(ctx)
+			state, err := napi.SyncState(ctx)
 			if err != nil {
 				return err
 			}
+
+			head, err := napi.ChainHead(ctx)
+			if err != nil {
+				return err
+			}
+
+			working := 0
+			for i, ss := range state.ActiveSyncs {
+				switch ss.Stage {
+				case api.StageSyncComplete:
+				default:
+					working = i
+				case api.StageIdle:
+					// not complete, not actively working
+				}
+			}
+
+			ss := state.ActiveSyncs[working]
 
 			var target []cid.Cid
 			if ss.Target != nil {
 				target = ss.Target.Cids()
 			}
 
-			fmt.Printf("\r\x1b[2KTarget: %s\tState: %s\tHeight: %d", target, chain.SyncStageString(ss.Stage), ss.Height)
-			if ss.Stage == api.StageSyncComplete {
-				fmt.Println("\nDone")
+			fmt.Printf("\r\x1b[2KWorker %d: Target: %s\tState: %s\tHeight: %d", working, target, chain.SyncStageString(ss.Stage), ss.Height)
+
+			if time.Now().Unix()-int64(head.MinTimestamp()) < build.BlockDelay {
+				fmt.Println("\nDone!")
 				return nil
 			}
 
-			time.Sleep(1 * time.Second)
+			select {
+			case <-ctx.Done():
+				fmt.Println("\nExit by user")
+				return nil
+			case <-time.After(1 * time.Second):
+			}
 		}
 	},
 }

@@ -66,7 +66,7 @@ func (b *BlockHeader) ToStorageBlock() (block.Block, error) {
 func (b *BlockHeader) Cid() cid.Cid {
 	sb, err := b.ToStorageBlock()
 	if err != nil {
-		panic(err)
+		panic(err) // Not sure i'm entirely comfortable with this one, needs to be checked
 	}
 
 	return sb.Cid()
@@ -121,7 +121,7 @@ type MsgMeta struct {
 func (mm *MsgMeta) Cid() cid.Cid {
 	b, err := mm.ToStorageBlock()
 	if err != nil {
-		panic(err)
+		panic(err) // also maybe sketchy
 	}
 	return b.Cid()
 }

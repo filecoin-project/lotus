@@ -13,7 +13,7 @@ type BadBlockCache struct {
 func NewBadBlockCache() *BadBlockCache {
 	cache, err := lru.NewARC(build.BadBlockCacheSize)
 	if err != nil {
-		panic(err)
+		panic(err) // ok
 	}
 
 	return &BadBlockCache{

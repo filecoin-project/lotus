@@ -20,13 +20,19 @@ type SyncAPI struct {
 }
 
 func (a *SyncAPI) SyncState(ctx context.Context) (*api.SyncState, error) {
-	ss := a.Syncer.State()
-	return &api.SyncState{
-		Base:   ss.Base,
-		Target: ss.Target,
-		Stage:  ss.Stage,
-		Height: ss.Height,
-	}, nil
+	states := a.Syncer.State()
+
+	out := &api.SyncState{}
+
+	for _, ss := range states {
+		out.ActiveSyncs = append(out.ActiveSyncs, api.ActiveSync{
+			Base:   ss.Base,
+			Target: ss.Target,
+			Stage:  ss.Stage,
+			Height: ss.Height,
+		})
+	}
+	return out, nil
 }
 
 func (a *SyncAPI) SyncSubmitBlock(ctx context.Context, blk *types.BlockMsg) error {
