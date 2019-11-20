@@ -11,7 +11,6 @@ import (
     "github.com/filecoin-project/lotus/chain/types"
     "github.com/ipfs/go-cid"
     "github.com/multiformats/go-multihash"
-    "github.com/stretchr/testify/assert"
     "github.com/stretchr/testify/require"
     "testing"
     "time"
@@ -41,6 +40,8 @@ func build_head_change(size, height int, t string) []*store.HeadChange {
                 ParentStateRoot:       cid,
                 Messages:              cid,
                 ParentMessageReceipts: cid,
+                BlockSig:     types.Signature{Type: types.KTBLS},
+                BLSAggregate: types.Signature{Type: types.KTBLS},
             },
             {
                 Height: uint64(height),
@@ -49,6 +50,8 @@ func build_head_change(size, height int, t string) []*store.HeadChange {
                 ParentStateRoot:       cid,
                 Messages:              cid,
                 ParentMessageReceipts: cid,
+                BlockSig:     types.Signature{Type: types.KTBLS},
+                BLSAggregate: types.Signature{Type: types.KTBLS},
             },
         })
         result[i] = headChange
@@ -140,8 +143,6 @@ func Test_Creation(t *testing.T) {
         _, err = node.Start(ctx)
         require.Error(t, err)
     })
-
-
 }
 
 func Test_MostRecentState(t *testing.T) {
@@ -157,7 +158,7 @@ func Test_MostRecentState(t *testing.T) {
         mockapi.On("ChainHead", ctx).Return(ts, nil).Once()
         node, err := NewStorageMinerAdapter(&mockapi, Address(actor.String()), Address(worker.String()), listener)
         require.NoError(t, err)
-        _, err = node.MostRecentState(ctx)
+        _, _, err = node.MostRecentState(ctx)
         require.NoError(t, err)
     })
 
@@ -168,7 +169,7 @@ func Test_MostRecentState(t *testing.T) {
         mockapi.On("ChainHead", ctx).Return(nil, fmt.Errorf("ChainHead failed")).Once()
         node, err := NewStorageMinerAdapter(&mockapi, Address(actor.String()), Address(worker.String()), listener)
         require.NoError(t, err)
-        _, err = node.MostRecentState(ctx)
+        _, _,  err = node.MostRecentState(ctx)
         require.Error(t, err)
     })
 }
@@ -712,58 +713,5 @@ func Test_SubmitDeclaredFaults(t *testing.T) {
         require.NoError(t, err)
         _, err = node.SubmitDeclaredFaults(ctx, faults)
         require.Error(t, err)
-    })
-}
-
-func Test_GetSealSeed(t *testing.T) {
-    worker, _ := address.NewFromString("t0101")
-    actor, _  := address.NewFromString("t0102")
-
-    t.Run("code panics", func(t *testing.T) {
-        ctx, cancel := context.WithCancel(context.Background())
-        mockapi := FullNode{}
-        listener := testListener{cancel}
-        events := make(chan []*store.HeadChange, 1)
-        initialChange := build_head_change(1, 2, store.HCCurrent)
-        events <- initialChange
-        var out <-chan []*store.HeadChange
-        out = events
-
-        mockapi.On("ChainNotify", ctx).Return(out, nil).Once()
-
-        node, err := NewStorageMinerAdapter(&mockapi, Address(actor.String()), Address(worker.String()), listener)
-        initialState, err := node.Start(ctx)
-        require.NoError(t, err)
-        assert.Panics(t, func () { node.GetSealSeed(ctx, initialState.StateKey, 123) })
-    })
-}
-
-func Test_SubmitDeclaredRecoveries(t *testing.T) {
-    worker, _ := address.NewFromString("t0101")
-    actor, _  := address.NewFromString("t0102")
-
-    t.Run("code panics", func(t *testing.T) {
-        ctx, cancel := context.WithCancel(context.Background())
-        mockapi := FullNode{}
-        listener := testListener{cancel}
-
-        node, err := NewStorageMinerAdapter(&mockapi, Address(actor.String()), Address(worker.String()), listener)
-        require.NoError(t, err)
-        assert.Panics(t, func () { node.SubmitDeclaredRecoveries(ctx, make(BitField)) })
-    })
-}
-
-func Test_SubmitSelfDeals(t *testing.T) {
-    worker, _ := address.NewFromString("t0101")
-    actor, _  := address.NewFromString("t0102")
-
-    t.Run("code panics", func(t *testing.T) {
-        ctx, cancel := context.WithCancel(context.Background())
-        mockapi := FullNode{}
-        listener := testListener{cancel}
-
-        node, err := NewStorageMinerAdapter(&mockapi, Address(actor.String()), Address(worker.String()), listener)
-        require.NoError(t, err)
-        assert.Panics(t, func () { node.SubmitSelfDeals(ctx, make([]uint64, 4)) })
     })
 }

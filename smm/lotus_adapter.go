@@ -13,12 +13,12 @@ import (
     typegen "github.com/whyrusleeping/cbor-gen"
 )
 
+// Implements the storage mining module's Node interface in terms of the Lotus chain state.
 type lotusAdapter struct {
-    actor       laddress.Address
-    worker      laddress.Address
-    fullAPI     api.FullNode
-    listener    StateChangeHandler
-    headChanges <-chan[]*store.HeadChange
+    actor       laddress.Address    // storage miner address
+    worker      laddress.Address    // worker address
+    fullAPI     api.FullNode        // FullNode API
+    listener    StateChangeHandler  // observer of state changes
 }
 
 func NewStorageMinerAdapter(fullapi api.FullNode, actor, worker Address, listener StateChangeHandler) (Node, error) {
@@ -68,10 +68,10 @@ func statekey2tipset(ctx context.Context, stateKey StateKey, fullNode api.FullNo
     return types.NewTipSet(blockHeaders)
 }
 
-func (adapter lotusAdapter) eventHandler(ctx context.Context) {
+func (adapter lotusAdapter) eventHandler(ctx context.Context, headChanges <- chan[]*store.HeadChange) {
     for {
         select {
-        case changes := <-adapter.headChanges:
+        case changes := <-headChanges:
             stateChanges := stateChangesFromHeadChanges(changes)
             for _, stateChange := range stateChanges {
                 adapter.listener.OnChainStateChanged(stateChange)
@@ -106,31 +106,30 @@ func (adapter lotusAdapter) callMinerActorMethod(ctx context.Context, method uin
 }
 
 func (adapter lotusAdapter) Start(ctx context.Context) (*StateChange, error) {
-    var err error
-    adapter.headChanges, err = adapter.fullAPI.ChainNotify(ctx)
+    headChanges, err := adapter.fullAPI.ChainNotify(ctx)
     if err != nil {
         return nil, err
     }
     // read current state
-    initialNotification := <-adapter.headChanges
+    initialNotification := <- headChanges
     if len(initialNotification) != 1 {
         return nil, fmt.Errorf("unexpected initial head notification length: %d", len(initialNotification))
     }
     if initialNotification[0].Type != store.HCCurrent {
         return nil, fmt.Errorf("expected first head notification type to be 'current', was '%s'", initialNotification[0].Type)
     }
-    go adapter.eventHandler(ctx)
+    go adapter.eventHandler(ctx, headChanges)
     stateChanges := stateChangesFromHeadChanges(initialNotification)
     return stateChanges[0], nil
 }
 
-func (adapter lotusAdapter) MostRecentState(ctx context.Context) (StateKey, error) {
+func (adapter lotusAdapter) MostRecentState(ctx context.Context) (StateKey, Epoch, error) {
     ts, err := adapter.fullAPI.ChainHead(ctx)
     if err != nil {
-        return "", err
+        return "", Epoch(0), err
     }
     tsk := types.NewTipSetKey(ts.Cids()...)
-    return StateKey(tsk.Bytes()), nil
+    return StateKey(tsk.Bytes()), Epoch(ts.Height()), nil
 }
 
 func (adapter lotusAdapter) GetMinerState(ctx context.Context, stateKey StateKey) (*MinerChainState, error) {
@@ -190,10 +189,6 @@ func (adapter lotusAdapter) GetProvingPeriod(ctx context.Context, stateKey State
     return pp, nil
 }
 
-func (adapter lotusAdapter) SubmitSelfDeals(ctx context.Context, deals []uint64) (cid.Cid, error) {
-    panic("implement me")
-}
-
 func (adapter lotusAdapter) SubmitSectorPreCommitment(ctx context.Context, id SectorID, sealEpoch Epoch, commR cid.Cid, dealIDs []uint64) (cid.Cid, error) {
     params := actors.SectorPreCommitInfo{
         SectorNumber: uint64(id),
@@ -204,16 +199,11 @@ func (adapter lotusAdapter) SubmitSectorPreCommitment(ctx context.Context, id Se
     return adapter.callMinerActorMethod(ctx, actors.MAMethods.PreCommitSector, &params)
 }
 
-func (adapter lotusAdapter) GetSealSeed(ctx context.Context, state StateKey, id SectorID) SealSeed {
-    // TODO: Not sure how to implement this
-    panic("implement me")
-}
-
 func (adapter lotusAdapter) SubmitSectorCommitment(ctx context.Context, id SectorID, proof Proof, dealIDs []uint64) (cid.Cid, error) {
     params := actors.SectorProveCommitInfo{
         Proof: proof,
         SectorID: uint64(id),
-        DealIDs: dealIDs,
+        DealIDs: dealIDs, // TODO: are the deal ids really needed here?
     }
     return adapter.callMinerActorMethod(ctx, actors.MAMethods.ProveCommitSector, &params)
 }
@@ -234,9 +224,4 @@ func (adapter lotusAdapter) SubmitDeclaredFaults(ctx context.Context, faults Bit
         params.Faults.Set(k)
     }
     return adapter.callMinerActorMethod(ctx, actors.MAMethods.DeclareFaults, &params)
-}
-
-func (adapter lotusAdapter) SubmitDeclaredRecoveries(ctx context.Context, recovered BitField) (cid cid.Cid, err error) {
-    // TODO: The method is missing on the miner actor
-    panic("implement me")
 }

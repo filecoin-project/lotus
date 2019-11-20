@@ -24,13 +24,13 @@ type Node interface {
     Start(context.Context) (*StateChange, error)
 
     // Fetches key for the most recent state known by the node.
-    MostRecentState(ctx context.Context) (StateKey, error)
+    MostRecentState(ctx context.Context) (StateKey, Epoch, error)
 
     // Gets worker-related on-chain state.
     GetMinerState(ctx context.Context, state StateKey) (*MinerChainState, error)
 
     // Submits a self-deals to the chain.
-    SubmitSelfDeals(ctx context.Context, deals []uint64) (cid.Cid, error)
+    //SubmitSelfDeals(ctx context.Context, deals []uint64) (cid.Cid, error)
 
     // Retrieves a ticket used in sealing and proving operations.
     GetRandomness(ctx context.Context, state StateKey, offset uint) ([]byte, error)
@@ -46,7 +46,7 @@ type Node interface {
     // Reads a seal seed previously requested with
     // SubmitSectorPreCommitment.
     // Returns empty if the request and delay have not yet elapsed.
-    GetSealSeed(ctx context.Context, state StateKey, id SectorID) SealSeed
+    //GetSealSeed(ctx context.Context, state StateKey, id SectorID) SealSeed
 
     // Submits final commitment of a sector, with a proof including the
     // seal seed.
@@ -63,5 +63,5 @@ type Node interface {
     SubmitDeclaredFaults(ctx context.Context, faults BitField) (cid.Cid, error)
 
     // Submits declaration of IDs of recovered sectors to the chain.
-    SubmitDeclaredRecoveries(ctx context.Context, recovered BitField) (cid.Cid, error)
+    //SubmitDeclaredRecoveries(ctx context.Context, recovered BitField) (cid.Cid, error)
 }
