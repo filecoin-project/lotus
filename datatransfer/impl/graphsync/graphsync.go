@@ -134,8 +134,8 @@ func (impl *graphsyncImpl) OpenPullDataChannel(ctx context.Context, requestTo pe
 }
 
 // createNewChannel creates a new channel id and channel state and saves to channels
-func (impl *graphsyncImpl) createNewChannel(tid datatransfer.TransferID, baseCid cid.Cid, selector ipld.Node, voucher datatransfer.Voucher, requestTo, dataSender, dataReceiver peer.ID) datatransfer.ChannelID {
-	chid := datatransfer.ChannelID{Initiator: requestTo, ID: tid}
+func (impl *graphsyncImpl) createNewChannel(tid datatransfer.TransferID, baseCid cid.Cid, selector ipld.Node, voucher datatransfer.Voucher, initiator, dataSender, dataReceiver peer.ID) datatransfer.ChannelID {
+	chid := datatransfer.ChannelID{Initiator: initiator, ID: tid}
 	chst := datatransfer.ChannelState{Channel: datatransfer.NewChannel(0, baseCid, selector, voucher, dataSender, dataReceiver, 0)}
 	impl.channels[chid] = chst
 	return chid
