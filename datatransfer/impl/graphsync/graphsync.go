@@ -338,8 +338,8 @@ func nodeFromBytes(from []byte) (ipld.Node, error) {
 	return dagcbor.Decoder(ipldfree.NodeBuilder(), reader)
 }
 
-// TODO: implement a real transfer ID generator.
-// https://github.com/filecoin-project/go-data-transfer/issues/38
+// generateTransferID() generates a unique-to-runtime TransferID for use in creating
+// ChannelIDs
 func (impl *graphsyncImpl) generateTransferID() datatransfer.TransferID {
 	impl.lastTID++
 	return datatransfer.TransferID(impl.lastTID)
