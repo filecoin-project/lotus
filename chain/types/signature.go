@@ -56,7 +56,6 @@ func (s *Signature) TypeCode() int {
 	case KTBLS:
 		return IKTBLS
 	default:
-		log.Errorf("called TypeCode on signature with unknown Type: %q", s.Type)
 		return IKTUnknown
 	}
 }

@@ -48,9 +48,6 @@ type Miner struct {
 }
 
 type storageMinerApi interface {
-	// I think I want this... but this is tricky
-	//ReadState(ctx context.Context, addr address.Address) (????, error)
-
 	// Call a read only method on actors (no interaction with the chain required)
 	StateCall(ctx context.Context, msg *types.Message, ts *types.TipSet) (*types.MessageReceipt, error)
 	StateMinerWorker(context.Context, address.Address, *types.TipSet) (address.Address, error)
@@ -58,7 +55,9 @@ type storageMinerApi interface {
 	StateMinerSectors(context.Context, address.Address, *types.TipSet) ([]*api.ChainSectorInfo, error)
 	StateMinerProvingSet(context.Context, address.Address, *types.TipSet) ([]*api.ChainSectorInfo, error)
 	StateMinerSectorSize(context.Context, address.Address, *types.TipSet) (uint64, error)
-	StateWaitMsg(context.Context, cid.Cid) (*api.MsgWait, error)
+	StateWaitMsg(context.Context, cid.Cid) (*api.MsgWait, error)  // TODO: removeme eventually
+	StateGetActor(ctx context.Context, actor address.Address, ts *types.TipSet) (*types.Actor, error)
+	StateGetReceipt(context.Context, cid.Cid, *types.TipSet) (*types.MessageReceipt, error)
 
 	MpoolPushMessage(context.Context, *types.Message) (*types.SignedMessage, error)
 
