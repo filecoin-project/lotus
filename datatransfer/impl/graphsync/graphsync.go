@@ -112,9 +112,10 @@ func (impl *graphsyncImpl) OpenPushDataChannel(ctx context.Context, requestTo pe
 	if err != nil {
 		return datatransfer.ChannelID{}, err
 	}
-	// initiator = them, sender = me, receiver = them
+	// initiator = me, sender = me, receiver = them
 	chid := impl.createNewChannel(tid, baseCid, selector, voucher,
-		requestTo, impl.peerID, requestTo)
+		//requestTo, impl.peerID, requestTo)
+		impl.peerID, impl.peerID, requestTo)
 	return chid, nil
 }
 
@@ -126,9 +127,9 @@ func (impl *graphsyncImpl) OpenPullDataChannel(ctx context.Context, requestTo pe
 	if err != nil {
 		return datatransfer.ChannelID{}, err
 	}
-	// initiator = them, sender = them, receiver = me
+	// initiator = me, sender = them, receiver = me
 	chid := impl.createNewChannel(tid, baseCid, selector, voucher,
-		requestTo, requestTo, impl.peerID)
+		impl.peerID, requestTo, impl.peerID)
 	return chid, nil
 }
 
@@ -204,7 +205,7 @@ func (impl *graphsyncImpl) notifySubscribers(evt datatransfer.Event, cs datatran
 
 // get all in progress transfers
 func (impl *graphsyncImpl) InProgressChannels() map[datatransfer.ChannelID]datatransfer.ChannelState {
-	return nil
+	return impl.channels
 }
 
 // ReceiveRequest takes an incoming request, validates the voucher and processes the message.
@@ -294,7 +295,7 @@ func (receiver *graphsyncReceiver) ReceiveResponse(
 	chst := datatransfer.EmptyChannelState
 	if incoming.Accepted() {
 		chid := datatransfer.ChannelID{
-			Initiator: sender,
+			Initiator: receiver.impl.peerID,
 			ID:        incoming.TransferID(),
 		}
 		if chst = receiver.impl.getPullChannel(chid); chst != datatransfer.EmptyChannelState {
