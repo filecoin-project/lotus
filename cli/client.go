@@ -230,6 +230,10 @@ var clientRetrieveCmd = &cli.Command{
 
 		// TODO: parse offer strings from `client find`, make this smarter
 
+		if len(offers) < 1 {
+			fmt.Println("Failed to find file")
+			return nil
+		}
 		order := offers[0].Order()
 		order.Client = payer
 
