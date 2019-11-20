@@ -84,7 +84,7 @@ func NewSyncer(sm *stmgr.StateManager, bsync *blocksync.BlockSync, self peer.ID)
 		sm:      sm,
 		self:    self,
 
-		incoming:  pubsub.New(50),
+		incoming: pubsub.New(50),
 	}
 
 	s.syncmgr = NewSyncManager(s.Sync)
@@ -427,6 +427,10 @@ func (syncer *Syncer) Sync(ctx context.Context, maybeHead *types.TipSet) error {
 			trace.StringAttribute("tipset", fmt.Sprint(maybeHead.Cids())),
 			trace.Int64Attribute("height", int64(maybeHead.Height())),
 		)
+	}
+
+	if syncer.store.GetHeaviestTipSet().ParentWeight().GreaterThan(maybeHead.ParentWeight()) {
+		return nil
 	}
 
 	if syncer.Genesis.Equals(maybeHead) || syncer.store.GetHeaviestTipSet().Equals(maybeHead) {
