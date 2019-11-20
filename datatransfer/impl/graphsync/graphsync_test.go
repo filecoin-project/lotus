@@ -134,7 +134,7 @@ func TestDataTransferOneWay(t *testing.T) {
 		channelID, err := dt.OpenPushDataChannel(ctx, host2.ID(), &voucher, baseCid, stor)
 		require.NoError(t, err)
 		require.NotNil(t, channelID)
-		require.Equal(t, channelID.To, host2.ID())
+		require.Equal(t, channelID.Initiator, host2.ID())
 		require.NoError(t, err)
 
 		var messageReceived receivedMessage
@@ -179,7 +179,7 @@ func TestDataTransferOneWay(t *testing.T) {
 		channelID, err := dt.OpenPullDataChannel(ctx, host2.ID(), &voucher, baseCid, stor)
 		require.NoError(t, err)
 		require.NotNil(t, channelID)
-		require.Equal(t, channelID.To, host2.ID())
+		require.Equal(t, channelID.Initiator, host2.ID())
 		require.NoError(t, err)
 
 		var messageReceived receivedMessage
@@ -280,7 +280,9 @@ func TestDataTransferValidation(t *testing.T) {
 
 		voucher := fakeDTType{"applesauce"}
 		baseCid := testutil.GenerateCids(1)[0]
-		dt1.OpenPushDataChannel(ctx, host2.ID(), &voucher, baseCid, gsData.allSelector)
+		_, err := dt1.OpenPushDataChannel(ctx, host2.ID(), &voucher, baseCid, gsData.allSelector)
+		require.NoError(t, err)
+
 		var validation receivedValidation
 		select {
 		case <-ctx.Done():
@@ -303,7 +305,7 @@ func TestDataTransferValidation(t *testing.T) {
 		channelID, err := dt1.OpenPullDataChannel(ctx, host2.ID(), &voucher, baseCid, gsData.allSelector)
 		require.NoError(t, err)
 
-		assert.Equal(t, channelID.To, host2.ID())
+		assert.Equal(t, channelID.Initiator, host2.ID())
 
 		var validation receivedValidation
 		select {
@@ -1412,7 +1414,11 @@ func (fgs *fakeGraphSync) Request(ctx context.Context, p peer.ID, root ipld.Link
 	return responses, errors
 }
 
-// RegisterExtension adds a user supplied extension with the given extension config
-func (fgs *fakeGraphSync) RegisterExtension(config graphsync.ExtensionConfig) error {
+func (fgs *fakeGraphSync)RegisterRequestReceivedHook(overrideDefaultValidation bool, hook graphsync.OnRequestReceivedHook) error {
+	return nil
+}
+
+// RegisterResponseReceivedHook adds a hook that runs when a response is received
+func (fgs *fakeGraphSync)RegisterResponseReceivedHook(graphsync.OnResponseReceivedHook) error {
 	return nil
 }

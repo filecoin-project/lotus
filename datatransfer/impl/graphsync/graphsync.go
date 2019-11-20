@@ -4,7 +4,6 @@ import (
 	"bytes"
 	"context"
 	"fmt"
-	"math/rand"
 	"reflect"
 
 	"github.com/ipfs/go-cid"
@@ -53,6 +52,8 @@ type graphsyncImpl struct {
 	validatedTypes      map[string]validateType
 	channels            map[datatransfer.ChannelID]datatransfer.ChannelState
 	gs                  graphsync.GraphExchange
+	peerID              peer.ID
+	lastTID             int64
 }
 
 type graphsyncReceiver struct {
@@ -69,6 +70,8 @@ func NewGraphSyncDataTransfer(parent context.Context, host host.Host, gs graphsy
 		make(map[string]validateType),
 		make(map[datatransfer.ChannelID]datatransfer.ChannelState),
 		gs,
+		host.ID(),
+		0,
 	}
 	receiver := &graphsyncReceiver{parent, impl}
 	dataTransferNetwork.SetDelegate(receiver)
@@ -104,31 +107,35 @@ func (impl *graphsyncImpl) RegisterVoucherType(voucherType reflect.Type, validat
 
 // OpenPushDataChannel opens a data transfer that will send data to the recipient peer and
 // transfer parts of the piece that match the selector
-func (impl *graphsyncImpl) OpenPushDataChannel(ctx context.Context, to peer.ID, voucher datatransfer.Voucher, baseCid cid.Cid, selector ipld.Node) (datatransfer.ChannelID, error) {
-	tid, err := impl.sendRequest(ctx, selector, false, voucher, baseCid, to)
+func (impl *graphsyncImpl) OpenPushDataChannel(ctx context.Context, requestTo peer.ID, voucher datatransfer.Voucher, baseCid cid.Cid, selector ipld.Node) (datatransfer.ChannelID, error) {
+	tid, err := impl.sendRequest(ctx, selector, false, voucher, baseCid, requestTo)
 	if err != nil {
 		return datatransfer.ChannelID{}, err
 	}
-	chid := impl.createNewChannel(tid, baseCid, selector, voucher, to, "", to)
+	// initiator = them, sender = me, receiver = them
+	chid := impl.createNewChannel(tid, baseCid, selector, voucher,
+		requestTo, impl.peerID, requestTo)
 	return chid, nil
 }
 
 // OpenPullDataChannel opens a data transfer that will request data from the sending peer and
 // transfer parts of the piece that match the selector
-func (impl *graphsyncImpl) OpenPullDataChannel(ctx context.Context, to peer.ID, voucher datatransfer.Voucher, baseCid cid.Cid, selector ipld.Node) (datatransfer.ChannelID, error) {
+func (impl *graphsyncImpl) OpenPullDataChannel(ctx context.Context, requestTo peer.ID, voucher datatransfer.Voucher, baseCid cid.Cid, selector ipld.Node) (datatransfer.ChannelID, error) {
 
-	tid, err := impl.sendRequest(ctx, selector, true, voucher, baseCid, to)
+	tid, err := impl.sendRequest(ctx, selector, true, voucher, baseCid, requestTo)
 	if err != nil {
 		return datatransfer.ChannelID{}, err
 	}
-	chid := impl.createNewChannel(tid, baseCid, selector, voucher, to, to, "")
+	// initiator = them, sender = them, receiver = me
+	chid := impl.createNewChannel(tid, baseCid, selector, voucher,
+		requestTo, requestTo, impl.peerID)
 	return chid, nil
 }
 
 // createNewChannel creates a new channel id and channel state and saves to channels
-func (impl *graphsyncImpl) createNewChannel(tid datatransfer.TransferID, baseCid cid.Cid, selector ipld.Node, voucher datatransfer.Voucher, to, sender, receiver peer.ID) datatransfer.ChannelID {
-	chid := datatransfer.ChannelID{To: to, ID: tid}
-	chst := datatransfer.ChannelState{Channel: datatransfer.NewChannel(0, baseCid, selector, voucher, sender, receiver, 0)}
+func (impl *graphsyncImpl) createNewChannel(tid datatransfer.TransferID, baseCid cid.Cid, selector ipld.Node, voucher datatransfer.Voucher, requestTo, dataSender, dataReceiver peer.ID) datatransfer.ChannelID {
+	chid := datatransfer.ChannelID{Initiator: requestTo, ID: tid}
+	chst := datatransfer.ChannelState{Channel: datatransfer.NewChannel(0, baseCid, selector, voucher, dataSender, dataReceiver, 0)}
 	impl.channels[chid] = chst
 	return chid
 }
@@ -287,8 +294,8 @@ func (receiver *graphsyncReceiver) ReceiveResponse(
 	chst := datatransfer.EmptyChannelState
 	if incoming.Accepted() {
 		chid := datatransfer.ChannelID{
-			To: sender,
-			ID: incoming.TransferID(),
+			Initiator: sender,
+			ID:        incoming.TransferID(),
 		}
 		if chst = receiver.impl.getPullChannel(chid); chst != datatransfer.EmptyChannelState {
 			baseCid := chst.BaseCID()
@@ -306,7 +313,7 @@ func (receiver *graphsyncReceiver) ReceiveResponse(
 //   * it is not related to a pull request
 func (impl *graphsyncImpl) getPullChannel(chid datatransfer.ChannelID) datatransfer.ChannelState {
 	channelState, ok := impl.channels[chid]
-	if !ok || channelState.Sender() == "" {
+	if !ok || channelState.Sender() == impl.peerID {
 		return datatransfer.EmptyChannelState
 	}
 	return channelState
@@ -333,5 +340,6 @@ func nodeFromBytes(from []byte) (ipld.Node, error) {
 // TODO: implement a real transfer ID generator.
 // https://github.com/filecoin-project/go-data-transfer/issues/38
 func (impl *graphsyncImpl) generateTransferID() datatransfer.TransferID {
-	return datatransfer.TransferID(rand.Int31())
+	impl.lastTID++
+	return datatransfer.TransferID(impl.lastTID)
 }

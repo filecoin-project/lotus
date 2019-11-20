@@ -176,8 +176,13 @@ func (fgs *fakeGraphSync) Request(ctx context.Context, p peer.ID, root ipld.Link
 	return responses, errors
 }
 
-// RegisterExtension adds a user supplied extension with the given extension config
-func (fgs *fakeGraphSync) RegisterExtension(config graphsync.ExtensionConfig) error {
+// RegisterResponseReceivedHook adds a hook that runs when a request is received
+func (fgs *fakeGraphSync)RegisterRequestReceivedHook(overrideDefaultValidation bool, hook graphsync.OnRequestReceivedHook) error {
+	return nil
+}
+
+// RegisterResponseReceivedHook adds a hook that runs when a response is received
+func (fgs *fakeGraphSync)RegisterResponseReceivedHook(graphsync.OnResponseReceivedHook) error {
 	return nil
 }
 

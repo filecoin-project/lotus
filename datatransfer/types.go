@@ -46,8 +46,8 @@ type TransferID uint64
 // ChannelID is a unique identifier for a channel, distinct by both the other
 // party's peer ID + the transfer ID
 type ChannelID struct {
-	To peer.ID
-	ID TransferID
+	Initiator peer.ID
+	ID        TransferID
 }
 
 // Channel represents all the parameters for a single data transfer
