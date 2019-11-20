@@ -30,7 +30,7 @@ func (e *calledEvents) CheckMsg(ctx context.Context, msg *types.Message, hnd Cal
 	}
 }
 
-func(e *calledEvents) MatchMsg(inmsg *types.Message) MatchFunc {
+func (e *calledEvents) MatchMsg(inmsg *types.Message) MatchFunc {
 	return func(msg *types.Message) (bool, error) {
 		if msg.From == inmsg.From && msg.Nonce == inmsg.Nonce && !inmsg.Equals(msg) {
 			return false, xerrors.Errorf("matching msg %s from %s, nonce %d: got duplicate origin/nonce msg %s", inmsg.Cid(), inmsg.From, inmsg.Nonce, msg.Nonce)
