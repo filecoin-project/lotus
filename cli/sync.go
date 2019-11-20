@@ -41,14 +41,20 @@ var syncStatusCmd = &cli.Command{
 		for i, ss := range state.ActiveSyncs {
 			fmt.Printf("worker %d:\n", i)
 			var base, target []cid.Cid
+			var heightDiff int64
 			if ss.Base != nil {
 				base = ss.Base.Cids()
+				heightDiff = int64(ss.Base.Height())
 			}
 			if ss.Target != nil {
 				target = ss.Target.Cids()
+				heightDiff = int64(ss.Target.Height()) - heightDiff
+			} else {
+				heightDiff = 0
 			}
 			fmt.Printf("\tBase:\t%s\n", base)
 			fmt.Printf("\tTarget:\t%s\n", target)
+			fmt.Printf("\tHeight diff:\t%d\n", heightDiff)
 			fmt.Printf("\tStage: %s\n", chain.SyncStageString(ss.Stage))
 			fmt.Printf("\tHeight: %d\n", ss.Height)
 		}

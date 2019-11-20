@@ -56,6 +56,10 @@ var runCmd = &cli.Command{
 			return err
 		}
 
+		if v.APIVersion != build.APIVersion {
+			return xerrors.Errorf("lotus-daemon API version doesn't match: local: ", api.Version{APIVersion: build.APIVersion})
+		}
+
 		storageRepoPath := cctx.String(FlagStorageRepo)
 		r, err := repo.NewFS(storageRepoPath)
 		if err != nil {
