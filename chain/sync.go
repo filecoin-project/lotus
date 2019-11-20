@@ -19,6 +19,7 @@ import (
 	logging "github.com/ipfs/go-log"
 	"github.com/libp2p/go-libp2p-core/peer"
 	cbg "github.com/whyrusleeping/cbor-gen"
+	"github.com/whyrusleeping/pubsub"
 	"go.opencensus.io/trace"
 	"golang.org/x/xerrors"
 
@@ -34,6 +35,8 @@ import (
 )
 
 var log = logging.Logger("chain")
+
+var localIncoming = "incoming"
 
 type Syncer struct {
 	// The heaviest known tipset in the network.
@@ -58,6 +61,8 @@ type Syncer struct {
 	syncLock sync.Mutex
 
 	syncmgr *SyncManager
+
+	incoming *pubsub.PubSub
 }
 
 func NewSyncer(sm *stmgr.StateManager, bsync *blocksync.BlockSync, self peer.ID) (*Syncer, error) {
@@ -78,6 +83,8 @@ func NewSyncer(sm *stmgr.StateManager, bsync *blocksync.BlockSync, self peer.ID)
 		store:   sm.ChainStore(),
 		sm:      sm,
 		self:    self,
+
+		incoming:  pubsub.New(50),
 	}
 
 	s.syncmgr = NewSyncManager(s.Sync)
@@ -109,6 +116,8 @@ func (syncer *Syncer) InformNewHead(from peer.ID, fts *store.FullTipSet) {
 		}
 	}
 
+	syncer.incoming.Pub(fts.TipSet().Blocks(), localIncoming)
+
 	if from == syncer.self {
 		// TODO: this is kindof a hack...
 		log.Debug("got block from ourselves")
@@ -137,6 +146,33 @@ func (syncer *Syncer) InformNewHead(from peer.ID, fts *store.FullTipSet) {
 	}
 
 	syncer.syncmgr.SetPeerHead(ctx, from, fts.TipSet())
+}
+
+func (syncer *Syncer) IncomingBlocks(ctx context.Context) (<-chan *types.BlockHeader, error) {
+	sub := syncer.incoming.Sub(localIncoming)
+	out := make(chan *types.BlockHeader, 10)
+
+	go func() {
+		defer syncer.incoming.Unsub(sub, localIncoming)
+
+		for {
+			select {
+			case r := <-sub:
+				hs := r.([]*types.BlockHeader)
+				for _, h := range hs {
+					select {
+					case out <- h:
+					case <-ctx.Done():
+						return
+					}
+				}
+			case <-ctx.Done():
+				return
+			}
+		}
+	}()
+
+	return out, nil
 }
 
 func (syncer *Syncer) ValidateMsgMeta(fblk *types.FullBlock) error {

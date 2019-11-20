@@ -1,17 +1,19 @@
 package chain
 
 import (
+	"context"
+	"errors"
 	"sort"
 	"sync"
 	"time"
 
-	"errors"
-
 	lru "github.com/hashicorp/golang-lru"
 	pubsub "github.com/libp2p/go-libp2p-pubsub"
+	lps "github.com/whyrusleeping/pubsub"
 	"go.uber.org/multierr"
 	"golang.org/x/xerrors"
 
+	"github.com/filecoin-project/lotus/api"
 	"github.com/filecoin-project/lotus/build"
 	"github.com/filecoin-project/lotus/chain/address"
 	"github.com/filecoin-project/lotus/chain/stmgr"
@@ -32,6 +34,8 @@ var (
 
 const (
 	msgTopic = "/fil/messages"
+
+	localUpdates = "update"
 )
 
 type MessagePool struct {
@@ -54,6 +58,8 @@ type MessagePool struct {
 	maxTxPoolSize int
 
 	blsSigCache *lru.TwoQueueCache
+
+	changes *lps.PubSub
 }
 
 type msgSet struct {
@@ -95,6 +101,7 @@ func NewMessagePool(sm *stmgr.StateManager, ps *pubsub.PubSub) *MessagePool {
 		minGasPrice:   types.NewInt(0),
 		maxTxPoolSize: 100000,
 		blsSigCache:   cache,
+		changes:       lps.New(50),
 	}
 	sm.ChainStore().SubscribeHeadChanges(func(rev, app []*types.TipSet) error {
 		err := mp.HeadChange(rev, app)
@@ -231,6 +238,11 @@ func (mp *MessagePool) addLocked(m *types.SignedMessage) error {
 	}
 
 	mset.add(m)
+
+	mp.changes.Pub(api.MpoolUpdate{
+		Type:    api.MpoolAdd,
+		Message: m,
+	}, localUpdates)
 	return nil
 }
 
@@ -302,6 +314,13 @@ func (mp *MessagePool) Remove(from address.Address, nonce uint64) {
 	mset, ok := mp.pending[from]
 	if !ok {
 		return
+	}
+
+	if m, ok := mset.msgs[nonce]; ok {
+		mp.changes.Pub(api.MpoolUpdate{
+			Type:    api.MpoolRemove,
+			Message: m,
+		}, localUpdates)
 	}
 
 	// NB: This deletes any message with the given nonce. This makes sense
@@ -412,4 +431,28 @@ func (mp *MessagePool) RecoverSig(msg *types.Message) *types.SignedMessage {
 		Message:   *msg,
 		Signature: sig,
 	}
+}
+
+func (mp *MessagePool) Updates(ctx context.Context) (<-chan api.MpoolUpdate, error) {
+	out := make(chan api.MpoolUpdate, 20)
+	sub := mp.changes.Sub(localUpdates)
+
+	go func() {
+		defer mp.changes.Unsub(sub, localIncoming)
+
+		for {
+			select {
+			case u := <-sub:
+				select {
+				case out <- u.(api.MpoolUpdate):
+				case <-ctx.Done():
+					return
+				}
+			case <-ctx.Done():
+				return
+			}
+		}
+	}()
+
+	return out, nil
 }

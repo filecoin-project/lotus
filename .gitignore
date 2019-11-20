@@ -13,6 +13,10 @@
 build/.*
 build/paramfetch.sh
 /vendor
+/blocks.dot
+/blocks.svg
+/chainwatch
+/chainwatch.db
 
 *-fuzz.zip
 /chain/types/work_msg/

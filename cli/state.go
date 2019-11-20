@@ -21,6 +21,7 @@ var stateCmd = &cli.Command{
 		stateListActorsCmd,
 		stateListMinersCmd,
 		stateGetActorCmd,
+		stateLookupIDCmd,
 	},
 }
 
@@ -284,6 +285,38 @@ var stateGetActorCmd = &cli.Command{
 		fmt.Printf("Nonce:\t\t%d\n", a.Nonce)
 		fmt.Printf("Code:\t\t%s\n", a.Code)
 		fmt.Printf("Head:\t\t%s\n", a.Head)
+
+		return nil
+	},
+}
+
+var stateLookupIDCmd = &cli.Command{
+	Name:  "lookup",
+	Usage: "Find corresponding ID address",
+	Action: func(cctx *cli.Context) error {
+		api, closer, err := GetFullNodeAPI(cctx)
+		if err != nil {
+			return err
+		}
+		defer closer()
+
+		ctx := ReqContext(cctx)
+
+		if !cctx.Args().Present() {
+			return fmt.Errorf("must pass address of actor to get")
+		}
+
+		addr, err := address.NewFromString(cctx.Args().First())
+		if err != nil {
+			return err
+		}
+
+		a, err := api.StateLookupID(ctx, addr, nil)
+		if err != nil {
+			return err
+		}
+
+		fmt.Printf("%s\n", a)
 
 		return nil
 	},

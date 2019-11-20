@@ -109,6 +109,12 @@ fountain:
 	go run github.com/GeertJohan/go.rice/rice append --exec fountain -i ./cmd/lotus-fountain
 .PHONY: fountain
 
+chainwatch:
+	rm -f chainwatch
+	go build -o chainwatch ./cmd/lotus-chainwatch
+	go run github.com/GeertJohan/go.rice/rice append --exec chainwatch -i ./cmd/lotus-chainwatch
+.PHONY: chainwatch
+
 stats:
 	rm -f stats
 	go build -o stats ./tools/stats

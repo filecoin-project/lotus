@@ -1,0 +1,23 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <title>Lotus ChainWatch</title>
+    <link rel="stylesheet" type="text/css" href="main.css">
+</head>
+<body>
+<div class="Index">
+    <div class="Index-header">
+        <div>
+            <span>Lotus ChainWatch - Wallets</span>
+        </div>
+    </div>
+    <div class="Index-nodes">
+        <div class="Index-node">
+           {{range strings "id_address_map" "address" "address != id"}}
+               <div><a href="key.html?w={{.}}">{{.}}</a></div>
+           {{end}}
+        </div>
+    </div>
+</div>
+</body>
+</html>
