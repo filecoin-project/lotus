@@ -134,7 +134,7 @@ func TestDataTransferOneWay(t *testing.T) {
 		channelID, err := dt.OpenPushDataChannel(ctx, host2.ID(), &voucher, baseCid, stor)
 		require.NoError(t, err)
 		require.NotNil(t, channelID)
-		require.Equal(t, channelID.To, host2.ID())
+		require.Equal(t, channelID.Initiator, host1.ID())
 		require.NoError(t, err)
 
 		var messageReceived receivedMessage
@@ -179,7 +179,7 @@ func TestDataTransferOneWay(t *testing.T) {
 		channelID, err := dt.OpenPullDataChannel(ctx, host2.ID(), &voucher, baseCid, stor)
 		require.NoError(t, err)
 		require.NotNil(t, channelID)
-		require.Equal(t, channelID.To, host2.ID())
+		require.Equal(t, channelID.Initiator, host1.ID())
 		require.NoError(t, err)
 
 		var messageReceived receivedMessage
@@ -280,7 +280,15 @@ func TestDataTransferValidation(t *testing.T) {
 
 		voucher := fakeDTType{"applesauce"}
 		baseCid := testutil.GenerateCids(1)[0]
-		dt1.OpenPushDataChannel(ctx, host2.ID(), &voucher, baseCid, gsData.allSelector)
+		chid, err := dt1.OpenPushDataChannel(ctx, host2.ID(), &voucher, baseCid, gsData.allSelector)
+		require.NoError(t, err)
+
+		assert.Equal(t, host1.ID(), chid.Initiator)
+		chs := dt1.InProgressChannels()
+		assert.Len(t, chs, 1)
+		assert.Equal(t, host2.ID(), chs[chid].Recipient())
+		assert.Equal(t, host1.ID(), chs[chid].Sender())
+
 		var validation receivedValidation
 		select {
 		case <-ctx.Done():
@@ -303,7 +311,10 @@ func TestDataTransferValidation(t *testing.T) {
 		channelID, err := dt1.OpenPullDataChannel(ctx, host2.ID(), &voucher, baseCid, gsData.allSelector)
 		require.NoError(t, err)
 
-		assert.Equal(t, channelID.To, host2.ID())
+		assert.Equal(t, channelID.Initiator, host1.ID())
+		chs := dt1.InProgressChannels()
+		assert.Equal(t, host1.ID(), chs[channelID].Recipient())
+		assert.Equal(t, host2.ID(), chs[channelID].Sender())
 
 		var validation receivedValidation
 		select {
@@ -1411,8 +1422,12 @@ func (fgs *fakeGraphSync) Request(ctx context.Context, p peer.ID, root ipld.Link
 	close(errors)
 	return responses, errors
 }
+// RegisterResponseReceivedHook adds a hook that runs when a request is received
+func (fgs *fakeGraphSync)RegisterRequestReceivedHook(overrideDefaultValidation bool, hook graphsync.OnRequestReceivedHook) error {
+	return nil
+}
 
-// RegisterExtension adds a user supplied extension with the given extension config
-func (fgs *fakeGraphSync) RegisterExtension(config graphsync.ExtensionConfig) error {
+// RegisterResponseReceivedHook adds a hook that runs when a response is received
+func (fgs *fakeGraphSync)RegisterResponseReceivedHook(graphsync.OnResponseReceivedHook) error {
 	return nil
 }
