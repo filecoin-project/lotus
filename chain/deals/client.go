@@ -74,6 +74,11 @@ type clientDealUpdate struct {
 	mut      func(*ClientDeal)
 }
 
+type clientApi struct {
+	full.ChainAPI
+	full.StateAPI
+}
+
 func NewClient(sm *stmgr.StateManager, chain *store.ChainStore, h host.Host, w *wallet.Wallet, dag dtypes.ClientDAG, dataTransfer dtypes.ClientDataTransfer, discovery *discovery.Local, fm *market.FundMgr, deals dtypes.ClientDealStore, chainapi full.ChainAPI, stateapi full.StateAPI) *Client {
 	c := &Client{
 		sm:           sm,
@@ -84,7 +89,7 @@ func NewClient(sm *stmgr.StateManager, chain *store.ChainStore, h host.Host, w *
 		dag:          dag,
 		discovery:    discovery,
 		fm:           fm,
-		events:       events.NewEvents(context.TODO(), &struct {full.ChainAPI; full.StateAPI}{chainapi, stateapi}),
+		events:       events.NewEvents(context.TODO(), &clientApi{chainapi, stateapi}),
 
 		deals: deals,
 		conns: map[cid.Cid]inet.Stream{},
