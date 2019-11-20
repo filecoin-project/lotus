@@ -12,28 +12,34 @@ import (
 	"github.com/filecoin-project/lotus/node/modules/helpers"
 )
 
-func withTracer(host host.Host, opts []pubsub.Option) []pubsub.Option {
-	pi, err := peer.AddrInfoFromP2pAddr(ma.StringCast("/ip4/147.75.67.199/tcp/4001/p2p/QmTd6UvR47vUidRNZ1ZKXHrAFhqTJAD27rKL9XYghEKgKX"))
-	if err != nil {
-		panic(err)
-	}
+type PubsubOpt func(host.Host) pubsub.Option
 
-	tr, err := pubsub.NewRemoteTracer(context.TODO(), host, *pi)
-	if err != nil {
-		panic(err)
-	}
+func PubsubTracer() PubsubOpt {
+	return func(host host.Host) pubsub.Option {
+		pi, err := peer.AddrInfoFromP2pAddr(ma.StringCast("/ip4/147.75.67.199/tcp/4001/p2p/QmTd6UvR47vUidRNZ1ZKXHrAFhqTJAD27rKL9XYghEKgKX"))
+		if err != nil {
+			panic(err)
+		}
 
-	return append(opts, pubsub.WithEventTracer(tr))
-}
+		tr, err := pubsub.NewRemoteTracer(context.TODO(), host, *pi)
+		if err != nil {
+			panic(err)
+		}
 
-func FloodSub(pubsubOptions ...pubsub.Option) interface{} {
-	return func(mctx helpers.MetricsCtx, lc fx.Lifecycle, host host.Host) (service *pubsub.PubSub, err error) {
-		return pubsub.NewFloodSub(helpers.LifecycleCtx(mctx, lc), host, pubsubOptions...)
+		return pubsub.WithEventTracer(tr)
 	}
 }
 
-func GossipSub(pubsubOptions ...pubsub.Option) interface{} {
+func GossipSub(pubsubOptions ...PubsubOpt) interface{} {
 	return func(mctx helpers.MetricsCtx, lc fx.Lifecycle, host host.Host) (service *pubsub.PubSub, err error) {
-		return pubsub.NewGossipSub(helpers.LifecycleCtx(mctx, lc), host, withTracer(host, pubsubOptions)...)
+		return pubsub.NewGossipSub(helpers.LifecycleCtx(mctx, lc), host, paresOpts(host, pubsubOptions)...)
 	}
+}
+
+func paresOpts(host host.Host, in []PubsubOpt) []pubsub.Option {
+	out := make([]pubsub.Option, len(in))
+	for k, v := range in {
+		out[k] = v(host)
+	}
+	return out
 }

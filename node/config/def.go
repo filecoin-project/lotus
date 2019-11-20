@@ -41,7 +41,8 @@ type Libp2p struct {
 // // Full Node
 
 type Metrics struct {
-	Nickname string
+	Nickname      string
+	PubsubTracing bool
 }
 
 // // Storage Miner

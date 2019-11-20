@@ -312,6 +312,9 @@ func ConfigFullNode(c interface{}) Option {
 	return Options(
 		ConfigCommon(&cfg.Common),
 		Override(HeadMetricsKey, metrics.SendHeadNotifs(cfg.Metrics.Nickname)),
+		If(cfg.Metrics.PubsubTracing,
+			Override(new(*pubsub.PubSub), lp2p.GossipSub(lp2p.PubsubTracer())),
+		),
 	)
 }
 
