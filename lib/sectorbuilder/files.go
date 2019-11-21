@@ -10,20 +10,20 @@ import (
 	"golang.org/x/xerrors"
 )
 
-func (sb *SectorBuilder) sectorName(sectorID uint64) string {
+func (sb *SectorBuilder) SectorName(sectorID uint64) string {
 	return fmt.Sprintf("s-%s-%d", sb.Miner, sectorID)
 }
 
-func (sb *SectorBuilder) stagedSectorPath(sectorID uint64) string {
-	return filepath.Join(sb.stagedDir, sb.sectorName(sectorID))
+func (sb *SectorBuilder) StagedSectorPath(sectorID uint64) string {
+	return filepath.Join(sb.stagedDir, sb.SectorName(sectorID))
 }
 
 func (sb *SectorBuilder) stagedSectorFile(sectorID uint64) (*os.File, error) {
-	return os.OpenFile(sb.stagedSectorPath(sectorID), os.O_RDWR|os.O_CREATE, 0644)
+	return os.OpenFile(sb.StagedSectorPath(sectorID), os.O_RDWR|os.O_CREATE, 0644)
 }
 
-func (sb *SectorBuilder) sealedSectorPath(sectorID uint64) (string, error) {
-	path := filepath.Join(sb.sealedDir, sb.sectorName(sectorID))
+func (sb *SectorBuilder) SealedSectorPath(sectorID uint64) (string, error) {
+	path := filepath.Join(sb.sealedDir, sb.SectorName(sectorID))
 
 	e, err := os.OpenFile(path, os.O_RDWR|os.O_CREATE, 0644)
 	if err != nil {
@@ -34,7 +34,7 @@ func (sb *SectorBuilder) sealedSectorPath(sectorID uint64) (string, error) {
 }
 
 func (sb *SectorBuilder) sectorCacheDir(sectorID uint64) (string, error) {
-	dir := filepath.Join(sb.cacheDir, sb.sectorName(sectorID))
+	dir := filepath.Join(sb.cacheDir, sb.SectorName(sectorID))
 
 	err := os.Mkdir(dir, 0755)
 	if os.IsExist(err) {

@@ -66,6 +66,11 @@ type StorageMiner interface {
 	SectorsRefs(context.Context) (map[string][]SealedRef, error)
 
 	WorkerStats(context.Context) (WorkerStats, error)
+
+	// WorkerQueue registers a remote worker
+	WorkerQueue(context.Context) (<-chan sectorbuilder.WorkerTask, error)
+
+	WorkerDone(ctx context.Context, task uint64, res sectorbuilder.SealRes) error
 }
 
 type WorkerStats struct {

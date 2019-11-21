@@ -91,4 +91,12 @@ func (sm *StorageMinerAPI) SectorsRefs(context.Context) (map[string][]api.Sealed
 	return out, nil
 }
 
+func (sm *StorageMinerAPI) WorkerQueue(ctx context.Context) (<-chan sectorbuilder.WorkerTask, error) {
+	return sm.SectorBuilder.AddWorker(ctx)
+}
+
+func (sm *StorageMinerAPI) WorkerDone(ctx context.Context, task uint64, res sectorbuilder.SealRes) error {
+	return sm.SectorBuilder.TaskDone(task, res)
+}
+
 var _ api.StorageMiner = &StorageMinerAPI{}

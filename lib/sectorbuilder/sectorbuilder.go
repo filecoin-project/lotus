@@ -1,7 +1,6 @@
 package sectorbuilder
 
 import (
-	"context"
 	"fmt"
 	"io"
 	"os"
@@ -12,7 +11,6 @@ import (
 	sectorbuilder "github.com/filecoin-project/go-sectorbuilder"
 	"github.com/ipfs/go-datastore"
 	logging "github.com/ipfs/go-log"
-	"go.opencensus.io/trace"
 	"golang.org/x/xerrors"
 
 	"github.com/filecoin-project/lotus/chain/address"
@@ -61,7 +59,30 @@ type SectorBuilder struct {
 	sealedDir string
 	cacheDir  string
 
+	sealLocal bool
 	rateLimit chan struct{}
+
+	sealTasks chan workerCall
+
+	remoteLk      sync.Mutex
+	remotes       []*remote
+	remoteResults map[uint64]chan<- SealRes
+
+	stopping chan struct{}
+}
+
+type SealRes struct {
+	Err error `json:"omitempty"`
+
+	Proof []byte                 `json:"omitempty"`
+	Rspco RawSealPreCommitOutput `json:"omitempty"`
+}
+
+type remote struct {
+	lk sync.Mutex
+
+	sealTasks chan<- WorkerTask
+	busy      uint64
 }
 
 type Config struct {
@@ -77,8 +98,8 @@ type Config struct {
 }
 
 func New(cfg *Config, ds dtypes.MetadataDS) (*SectorBuilder, error) {
-	if cfg.WorkerThreads <= PoStReservedWorkers {
-		return nil, xerrors.Errorf("minimum worker threads is %d, specified %d", PoStReservedWorkers+1, cfg.WorkerThreads)
+	if cfg.WorkerThreads < PoStReservedWorkers {
+		return nil, xerrors.Errorf("minimum worker threads is %d, specified %d", PoStReservedWorkers, cfg.WorkerThreads)
 	}
 
 	proverId := addressToProverID(cfg.Miner)
@@ -111,6 +132,14 @@ func New(cfg *Config, ds dtypes.MetadataDS) (*SectorBuilder, error) {
 		return nil, err
 	}
 
+	rlimit := cfg.WorkerThreads - PoStReservedWorkers
+
+	sealLocal := rlimit > 0
+
+	if rlimit == 0 {
+		rlimit = 1
+	}
+
 	sb := &SectorBuilder{
 		handle: sbp,
 		ds:     ds,
@@ -121,8 +150,13 @@ func New(cfg *Config, ds dtypes.MetadataDS) (*SectorBuilder, error) {
 		sealedDir: cfg.SealedDir,
 		cacheDir:  cfg.CacheDir,
 
-		Miner:     cfg.Miner,
-		rateLimit: make(chan struct{}, cfg.WorkerThreads-PoStReservedWorkers),
+		Miner: cfg.Miner,
+
+		sealLocal: sealLocal,
+		rateLimit: make(chan struct{}, rlimit),
+
+		sealTasks:     make(chan workerCall),
+		remoteResults: map[uint64]chan<- SealRes{},
 	}
 
 	return sb, nil
@@ -218,7 +252,7 @@ func (sb *SectorBuilder) SealPreCommit(sectorID uint64, ticket SealTicket, piece
 		return RawSealPreCommitOutput{}, err
 	}
 
-	sealedPath, err := sb.sealedSectorPath(sectorID)
+	sealedPath, err := sb.SealedSectorPath(sectorID)
 	if err != nil {
 		return RawSealPreCommitOutput{}, err
 	}
@@ -232,7 +266,7 @@ func (sb *SectorBuilder) SealPreCommit(sectorID uint64, ticket SealTicket, piece
 		return RawSealPreCommitOutput{}, xerrors.Errorf("aggregated piece sizes don't match sector size: %d != %d (%d)", sum, ussize, int64(ussize-sum))
 	}
 
-	stagedPath := sb.stagedSectorPath(sectorID)
+	stagedPath := sb.StagedSectorPath(sectorID)
 
 	rspco, err := sectorbuilder.StandaloneSealPreCommit(
 		sb.ssize,
@@ -285,7 +319,7 @@ func (sb *SectorBuilder) SealCommit(sectorID uint64, ticket SealTicket, seed Sea
 		}
 	}
 
-	sealedPath, err := sb.sealedSectorPath(sectorID)
+	sealedPath, err := sb.SealedSectorPath(sectorID)
 	if err != nil {
 		return nil, err
 	}
@@ -310,53 +344,6 @@ func (sb *SectorBuilder) SealCommit(sectorID uint64, ticket SealTicket, seed Sea
 	return proof, nil
 }
 
-func (sb *SectorBuilder) GeneratePoSt(sectorInfo SortedSectorInfo, challengeSeed [CommLen]byte, faults []uint64) ([]byte, error) {
-	// Wait, this is a blocking method with no way of interrupting it?
-	// does it checkpoint itself?
-	return sectorbuilder.GeneratePoSt(sb.handle, sectorInfo, challengeSeed, faults)
-}
-
-func (sb *SectorBuilder) SectorSize() uint64 {
-	return sb.ssize
-}
-
-var UserBytesForSectorSize = sectorbuilder.GetMaxUserBytesPerStagedSector
-
-func VerifySeal(sectorSize uint64, commR, commD []byte, proverID address.Address, ticket []byte, seed []byte, sectorID uint64, proof []byte) (bool, error) {
-	var commRa, commDa, ticketa, seeda [32]byte
-	copy(commRa[:], commR)
-	copy(commDa[:], commD)
-	copy(ticketa[:], ticket)
-	copy(seeda[:], seed)
-	proverIDa := addressToProverID(proverID)
-
-	return sectorbuilder.VerifySeal(sectorSize, commRa, commDa, proverIDa, ticketa, seeda, sectorID, proof)
-}
-
-func NewSortedSectorInfo(sectors []SectorInfo) SortedSectorInfo {
-	return sectorbuilder.NewSortedSectorInfo(sectors...)
-}
-
-func VerifyPost(ctx context.Context, sectorSize uint64, sectorInfo SortedSectorInfo, challengeSeed [CommLen]byte, proof []byte, faults []uint64) (bool, error) {
-	_, span := trace.StartSpan(ctx, "VerifyPoSt")
-	defer span.End()
-	return sectorbuilder.VerifyPoSt(sectorSize, sectorInfo, challengeSeed, proof, faults)
-}
-
-func GeneratePieceCommitment(piece io.Reader, pieceSize uint64) (commP [CommLen]byte, err error) {
-	f, werr, err := toReadableFile(piece, int64(pieceSize))
-	if err != nil {
-		return [32]byte{}, err
-	}
-
-	commP, err = sectorbuilder.GeneratePieceCommitmentFromFile(f, pieceSize)
-	if err != nil {
-		return [32]byte{}, err
-	}
-
-	return commP, werr()
-}
-
-func GenerateDataCommitment(ssize uint64, pieces []PublicPieceInfo) ([CommLen]byte, error) {
-	return sectorbuilder.GenerateDataCommitment(ssize, pieces)
+func (sb *SectorBuilder) Stop() {
+	close(sb.stopping)
 }
