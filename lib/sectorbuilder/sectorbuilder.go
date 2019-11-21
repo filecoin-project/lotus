@@ -67,7 +67,8 @@ type SectorBuilder struct {
 
 	taskCtr       uint64
 	remoteLk      sync.Mutex
-	remotes       []*remote
+	remoteCtr     int
+	remotes       map[int]*remote
 	remoteResults map[uint64]chan<- SealRes
 
 	stopping chan struct{}
@@ -160,6 +161,7 @@ func New(cfg *Config, ds dtypes.MetadataDS) (*SectorBuilder, error) {
 		taskCtr:       1,
 		sealTasks:     make(chan workerCall),
 		remoteResults: map[uint64]chan<- SealRes{},
+		remotes:       map[int]*remote{},
 
 		stopping: make(chan struct{}),
 	}
@@ -169,7 +171,7 @@ func New(cfg *Config, ds dtypes.MetadataDS) (*SectorBuilder, error) {
 
 func NewStandalone(cfg *Config) (*SectorBuilder, error) {
 	for _, dir := range []string{cfg.StagedDir, cfg.SealedDir, cfg.CacheDir, cfg.MetadataDir} {
-		if err := os.Mkdir(dir, 0755); err != nil {
+		if err := os.MkdirAll(dir, 0755); err != nil {
 			if os.IsExist(err) {
 				continue
 			}
@@ -188,6 +190,7 @@ func NewStandalone(cfg *Config) (*SectorBuilder, error) {
 
 		sealLocal: true,
 		taskCtr:   1,
+		remotes:   map[int]*remote{},
 		rateLimit: make(chan struct{}, cfg.WorkerThreads),
 		stopping:  make(chan struct{}),
 	}, nil
@@ -210,12 +213,12 @@ func (sb *SectorBuilder) RateLimit() func() {
 }
 
 type WorkerStats struct {
-	LocalFree int
+	LocalFree     int
 	LocalReserved int
-	LocalTotal int
+	LocalTotal    int
 	// todo: post in progress
 	RemotesTotal int
-	RemotesFree int
+	RemotesFree  int
 }
 
 func (sb *SectorBuilder) WorkerStats() WorkerStats {

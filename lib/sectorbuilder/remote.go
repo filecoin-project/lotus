@@ -38,7 +38,8 @@ func (sb *SectorBuilder) AddWorker(ctx context.Context) (<-chan WorkerTask, erro
 		busy:      0,
 	}
 
-	sb.remotes = append(sb.remotes, r)
+	sb.remoteCtr++
+	sb.remotes[sb.remoteCtr] = r
 	sb.remoteLk.Unlock()
 
 	go sb.remoteWorker(ctx, r)
@@ -58,6 +59,18 @@ func (sb *SectorBuilder) returnTask(task workerCall) {
 
 func (sb *SectorBuilder) remoteWorker(ctx context.Context, r *remote) {
 	defer log.Warn("Remote worker disconnected")
+
+	defer func() {
+		sb.remoteLk.Lock()
+		defer sb.remoteLk.Unlock()
+
+		for i, vr := range sb.remotes {
+			if vr == r {
+				delete(sb.remotes, i)
+				return
+			}
+		}
+	}()
 
 	for {
 		select {

@@ -41,7 +41,7 @@ func RepoInfo(ctx *cli.Context, repoFlag string) (string, string, error) {
 
 	ma, err := r.APIEndpoint()
 	if err != nil {
-		return "", "", xerrors.Errorf("failed to get api endpoint: %w", err)
+		return "", "", xerrors.Errorf("failed to get api endpoint: (%s) %w", p, err)
 	}
 	_, addr, err := manet.DialArgs(ma)
 	if err != nil {
@@ -51,7 +51,7 @@ func RepoInfo(ctx *cli.Context, repoFlag string) (string, string, error) {
 	return p, addr, nil
 }
 
-func getAPI(ctx *cli.Context, repoFlag string) (string, http.Header, error) {
+func GetRawAPI(ctx *cli.Context, repoFlag string) (string, http.Header, error) {
 	rdir, addr, err := RepoInfo(ctx, repoFlag)
 	if err != nil {
 		return "", nil, err
@@ -80,7 +80,7 @@ func GetAPI(ctx *cli.Context) (api.Common, jsonrpc.ClientCloser, error) {
 		f = "storagerepo"
 	}
 
-	addr, headers, err := getAPI(ctx, f)
+	addr, headers, err := GetRawAPI(ctx, f)
 	if err != nil {
 		return nil, nil, err
 	}
@@ -89,7 +89,7 @@ func GetAPI(ctx *cli.Context) (api.Common, jsonrpc.ClientCloser, error) {
 }
 
 func GetFullNodeAPI(ctx *cli.Context) (api.FullNode, jsonrpc.ClientCloser, error) {
-	addr, headers, err := getAPI(ctx, "repo")
+	addr, headers, err := GetRawAPI(ctx, "repo")
 	if err != nil {
 		return nil, nil, err
 	}
@@ -98,7 +98,7 @@ func GetFullNodeAPI(ctx *cli.Context) (api.FullNode, jsonrpc.ClientCloser, error
 }
 
 func GetStorageMinerAPI(ctx *cli.Context) (api.StorageMiner, jsonrpc.ClientCloser, error) {
-	addr, headers, err := getAPI(ctx, "storagerepo")
+	addr, headers, err := GetRawAPI(ctx, "storagerepo")
 	if err != nil {
 		return nil, nil, err
 	}

@@ -2,6 +2,7 @@ package main
 
 import (
 	"context"
+	"gopkg.in/cheggaaa/pb.v1"
 	"io"
 	"net/http"
 	"os"
@@ -17,11 +18,12 @@ type worker struct {
 	api           api.StorageMiner
 	minerEndpoint string
 	repo          string
+	auth          http.Header
 
 	sb *sectorbuilder.SectorBuilder
 }
 
-func acceptJobs(ctx context.Context, api api.StorageMiner, endpoint string, repo string) error {
+func acceptJobs(ctx context.Context, api api.StorageMiner, endpoint string, auth http.Header, repo string) error {
 	act, err := api.ActorAddress(ctx)
 	if err != nil {
 		return err
@@ -38,11 +40,16 @@ func acceptJobs(ctx context.Context, api api.StorageMiner, endpoint string, repo
 		CacheDir:      filepath.Join(repo, "cache"),
 		SealedDir:     filepath.Join(repo, "sealed"),
 		StagedDir:     filepath.Join(repo, "staged"),
+		MetadataDir:   filepath.Join(repo, "meta"),
 	})
+	if err != nil {
+		return err
+	}
 
 	w := &worker{
 		api:           api,
 		minerEndpoint: endpoint,
+		auth:          auth,
 		repo:          repo,
 		sb:            sb,
 	}
@@ -53,7 +60,11 @@ func acceptJobs(ctx context.Context, api api.StorageMiner, endpoint string, repo
 	}
 
 	for task := range tasks {
+		log.Infof("New task: %d, sector %d, action: %d", task.TaskID, task.SectorID, task.Type)
+
 		res := w.processTask(ctx, task)
+
+		log.Infof("Task %d done, err: %s", task.TaskID, res.Err)
 
 		if err := api.WorkerDone(ctx, task.TaskID, res); err != nil {
 			log.Error(err)
@@ -90,7 +101,7 @@ func (w *worker) processTask(ctx context.Context, task sectorbuilder.WorkerTask)
 			return errRes(err)
 		}
 	case sectorbuilder.WorkerCommit:
-
+		panic("todo")
 	}
 
 	return res
@@ -99,10 +110,20 @@ func (w *worker) processTask(ctx context.Context, task sectorbuilder.WorkerTask)
 func (w *worker) fetch(typ string, sectorID uint64) error {
 	outname := filepath.Join(w.repo, typ, w.sb.SectorName(sectorID))
 
-	resp, err := http.Get(w.minerEndpoint + "/remote/" + typ + "/" + w.sb.SectorName(sectorID))
+	url := w.minerEndpoint + "/remote/" + typ + "/" + w.sb.SectorName(sectorID)
+	log.Infof("Fetch %s", url)
+
+	req, err := http.NewRequest("GET", url, nil)
 	if err != nil {
 		return err
 	}
+	req.Header = w.auth
+
+	resp, err := http.DefaultClient.Do(req)
+	if err != nil {
+		return err
+	}
+
 	defer resp.Body.Close()
 
 	out, err := os.Create(outname)
@@ -111,9 +132,15 @@ func (w *worker) fetch(typ string, sectorID uint64) error {
 	}
 	defer out.Close()
 
-	// TODO: progress bar
+	bar := pb.New64(resp.ContentLength)
+	bar.ShowPercent = true
+	bar.ShowSpeed = true
+	bar.Units = pb.U_BYTES
 
-	_, err = io.Copy(out, resp.Body)
+	bar.Start()
+	defer bar.Finish()
+
+	_, err = io.Copy(out, bar.NewProxyReader(resp.Body))
 	return err
 }
 
@@ -125,13 +152,34 @@ func (w *worker) push(typ string, sectorID uint64) error {
 		return err
 	}
 
-	req, err := http.NewRequest("PUT", w.minerEndpoint+"/remote/"+typ+"/"+w.sb.SectorName(sectorID), f)
+	url := w.minerEndpoint + "/remote/" + typ + "/" + w.sb.SectorName(sectorID)
+	log.Infof("Push %s", url)
+
+	fi, err := f.Stat()
 	if err != nil {
 		return err
 	}
+
+	bar := pb.New64(fi.Size())
+	bar.ShowPercent = true
+	bar.ShowSpeed = true
+	bar.Units = pb.U_BYTES
+
+	bar.Start()
+	defer bar.Finish()
+
+	req, err := http.NewRequest("PUT", url, bar.NewProxyReader(f))
+	if err != nil {
+		return err
+	}
+	req.Header = w.auth
+
 	resp, err := http.DefaultClient.Do(req)
 	if err != nil {
 		return err
+	}
+	if resp.StatusCode != 200 {
+		return xerrors.Errorf("non-200 response: %d", resp.StatusCode)
 	}
 
 	if err := f.Close(); err != nil {

@@ -1,6 +1,7 @@
 package main
 
 import (
+	"github.com/mitchellh/go-homedir"
 	"os"
 
 	logging "github.com/ipfs/go-log"
@@ -44,7 +45,7 @@ func main() {
 	}
 
 	if err := app.Run(os.Args); err != nil {
-		log.Warn(err)
+		log.Warnf("%+v", err)
 		return
 	}
 }
@@ -52,26 +53,22 @@ func main() {
 var runCmd = &cli.Command{
 	Name:  "run",
 	Usage: "Start lotus worker",
-	Flags: []cli.Flag{
-		&cli.StringFlag{
-			Name:  "pullEndpoint",
-			Value: "127.0.0.1:30003",
-		},
-	},
 	Action: func(cctx *cli.Context) error {
 		nodeApi, closer, err := lcli.GetStorageMinerAPI(cctx)
 		if err != nil {
-			return err
+			return xerrors.Errorf("getting miner api: %w", err)
 		}
 		defer closer()
 		ctx := lcli.ReqContext(cctx)
 
+		_, auth, err := lcli.GetRawAPI(cctx, "storagerepo")
+
 		_, storageAddr, err := lcli.RepoInfo(cctx, "storagerepo")
 		if err != nil {
-			return err
+			return xerrors.Errorf("getting miner repo: %w", err)
 		}
 
-		r, _, err := lcli.RepoInfo(cctx, "repo")
+		r, err := homedir.Expand(cctx.String("repo"))
 		if err != nil {
 			return err
 		}
@@ -89,6 +86,6 @@ var runCmd = &cli.Command{
 			os.Exit(0)
 		}()
 
-		return acceptJobs(ctx, nodeApi, storageAddr, r)
+		return acceptJobs(ctx, nodeApi, "http://"+storageAddr, auth, r)
 	},
 }

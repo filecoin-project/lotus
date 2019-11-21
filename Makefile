@@ -72,13 +72,13 @@ lotus-storage-miner: $(BUILD_DEPS)
 	rm -f lotus-storage-miner
 	go build -o lotus-storage-miner ./cmd/lotus-storage-miner
 	go run github.com/GeertJohan/go.rice/rice append --exec lotus-storage-miner -i ./build
+.PHONY: lotus-storage-miner
 
 lotus-worker: $(BUILD_DEPS)
 	rm -f lotus-worker
 	go build -o lotus-worker ./cmd/lotus-worker
 	go run github.com/GeertJohan/go.rice/rice append --exec lotus-worker -i ./build
-
-.PHONY: lotus-storage-miner
+.PHONY: lotus-worker
 
 CLEAN+=lotus-storage-miner
 

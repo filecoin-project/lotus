@@ -3,6 +3,7 @@ package impl
 import (
 	"context"
 	"encoding/json"
+	"fmt"
 	"github.com/gorilla/mux"
 	"io"
 	"net/http"
@@ -37,6 +38,8 @@ func (sm *StorageMinerAPI) ServeRemote(w http.ResponseWriter, r *http.Request) {
 	mux.HandleFunc("/remote/{type}/{sname}", sm.remoteGetSector).Methods("GET")
 	mux.HandleFunc("/remote/{type}/{sname}", sm.remotePutSector).Methods("PUT")
 
+	log.Infof("SERVEGETREMOTE %s", r.URL)
+
 	mux.ServeHTTP(w, r)
 }
 
@@ -51,6 +54,12 @@ func (sm *StorageMinerAPI) remoteGetSector(w http.ResponseWriter, r *http.Reques
 	}
 	defer fr.Close()
 
+	fi, err := fr.Stat()
+	if err != nil {
+		return
+	}
+
+	w.Header().Set("Content-Length", fmt.Sprint(fi.Size()))
 	w.WriteHeader(200)
 	if _, err := io.Copy(w, fr); err != nil {
 		log.Error(err)

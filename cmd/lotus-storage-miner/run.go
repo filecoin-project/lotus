@@ -126,8 +126,8 @@ var runCmd = &cli.Command{
 		rpcServer.Register("Filecoin", api.PermissionedStorMinerAPI(minerapi))
 
 		mux.Handle("/rpc/v0", rpcServer)
-		mux.HandleFunc("/remote", minerapi.(*impl.StorageMinerAPI).ServeRemote)
-		mux.Handle("/", http.DefaultServeMux) // pprof
+		mux.PathPrefix("/remote").HandlerFunc(minerapi.(*impl.StorageMinerAPI).ServeRemote)
+		mux.PathPrefix("/").Handler(http.DefaultServeMux) // pprof
 
 		ah := &auth.Handler{
 			Verify: minerapi.AuthVerify,
