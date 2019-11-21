@@ -102,7 +102,6 @@ func (impl *graphsyncImpl) OpenPushDataChannel(ctx context.Context, requestTo pe
 	}
 	// initiator = us, sender = us, receiver = them
 	chid := impl.createNewChannel(tid, baseCid, selector, voucher,
-		//requestTo, impl.peerID, requestTo)
 		impl.peerID, impl.peerID, requestTo)
 	return chid, nil
 }
@@ -122,8 +121,8 @@ func (impl *graphsyncImpl) OpenPullDataChannel(ctx context.Context, requestTo pe
 }
 
 // createNewChannel creates a new channel id and channel state and saves to channels
-func (impl *graphsyncImpl) createNewChannel(tid datatransfer.TransferID, baseCid cid.Cid, selector ipld.Node, voucher datatransfer.Voucher, requestTo, dataSender, dataReceiver peer.ID) datatransfer.ChannelID {
-	chid := datatransfer.ChannelID{Initiator: requestTo, ID: tid}
+func (impl *graphsyncImpl) createNewChannel(tid datatransfer.TransferID, baseCid cid.Cid, selector ipld.Node, voucher datatransfer.Voucher, initiator, dataSender, dataReceiver peer.ID) datatransfer.ChannelID {
+	chid := datatransfer.ChannelID{Initiator: initiator, ID: tid}
 	chst := datatransfer.ChannelState{Channel: datatransfer.NewChannel(0, baseCid, selector, voucher, dataSender, dataReceiver, 0)}
 	impl.channels[chid] = chst
 	return chid
@@ -208,8 +207,8 @@ func (impl *graphsyncImpl) getPullChannel(chid datatransfer.ChannelID) datatrans
 	return channelState
 }
 
-// TODO: implement a real transfer ID generator.
-// https://github.com/filecoin-project/go-data-transfer/issues/38
+// generateTransferID() generates a unique-to-runtime TransferID for use in creating
+// ChannelIDs
 func (impl *graphsyncImpl) generateTransferID() datatransfer.TransferID {
 	impl.lastTID++
 	return datatransfer.TransferID(impl.lastTID)
