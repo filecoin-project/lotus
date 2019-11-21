@@ -3,7 +3,6 @@ package message_test
 import (
 	"bytes"
 	"math/rand"
-	"strings"
 	"testing"
 
 	"github.com/stretchr/testify/assert"

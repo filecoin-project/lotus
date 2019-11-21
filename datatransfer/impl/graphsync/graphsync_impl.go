@@ -5,14 +5,12 @@ import (
 	"context"
 	"errors"
 	"fmt"
-	"reflect"
-	"strings"
-
 	"github.com/ipfs/go-cid"
 	"github.com/ipfs/go-graphsync"
 	"github.com/ipld/go-ipld-prime"
 	"github.com/libp2p/go-libp2p-core/host"
 	"github.com/libp2p/go-libp2p-core/peer"
+	"reflect"
 
 	"github.com/filecoin-project/lotus/datatransfer"
 	"github.com/filecoin-project/lotus/datatransfer/message"
