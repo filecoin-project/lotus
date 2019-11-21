@@ -7,6 +7,7 @@ import (
 	"fmt"
 	"reflect"
 	"sync"
+	"strings"
 
 	"github.com/ipfs/go-cid"
 	"github.com/ipfs/go-graphsync"
@@ -273,6 +274,16 @@ func (impl *graphsyncImpl) hasPushChannel(chid datatransfer.ChannelID) bool {
 
 // hasPullChannel returns true if a channel with ID chid exists and is for a Pull request.
 func (impl *graphsyncImpl) hasPullChannel(chid datatransfer.ChannelID) bool {
+	return impl.getPullChannel(chid) != datatransfer.EmptyChannelState
+}
+
+// HasPushChannel returns true if a channel with ID chid exists and is for a Push request.
+func (impl *graphsyncImpl) HasPushChannel(chid datatransfer.ChannelID) bool {
+	return impl.getPushChannel(chid) != datatransfer.EmptyChannelState
+}
+
+// HasPullChannel returns true if a channel with ID chid exists and is for a Pull request.
+func (impl *graphsyncImpl) HasPullChannel(chid datatransfer.ChannelID) bool {
 	return impl.getPullChannel(chid) != datatransfer.EmptyChannelState
 }
 
