@@ -13,6 +13,7 @@ import (
 	offline "github.com/ipfs/go-ipfs-exchange-offline"
 	"github.com/ipfs/go-merkledag"
 	peer "github.com/libp2p/go-libp2p-peer"
+	"go.opencensus.io/trace"
 	"golang.org/x/xerrors"
 
 	"github.com/filecoin-project/lotus/api"
@@ -22,6 +23,7 @@ import (
 	"github.com/filecoin-project/lotus/chain/store"
 	"github.com/filecoin-project/lotus/chain/types"
 	"github.com/filecoin-project/lotus/chain/wallet"
+	"github.com/filecoin-project/lotus/lib/sectorbuilder"
 	"github.com/filecoin-project/lotus/node/repo"
 
 	block "github.com/ipfs/go-block-format"
@@ -52,6 +54,7 @@ type ChainGen struct {
 
 	w *wallet.Wallet
 
+	eppProvs    map[address.Address]ElectionPoStProver
 	Miners      []address.Address
 	mworkers    []address.Address
 	receivers   []address.Address
@@ -155,6 +158,11 @@ func NewGenerator() (*ChainGen, error) {
 		return nil, xerrors.Errorf("MakeGenesisBlock failed to set miner address")
 	}
 
+	mgen := make(map[address.Address]ElectionPoStProver)
+	for _, m := range minercfg.MinerAddrs {
+		mgen[m] = &eppProvider{}
+	}
+
 	sm := stmgr.NewStateManager(cs)
 
 	gen := &ChainGen{
@@ -166,6 +174,7 @@ func NewGenerator() (*ChainGen, error) {
 		w:            w,
 
 		Miners:    minercfg.MinerAddrs,
+		eppProvs:  mgen,
 		mworkers:  minercfg.Workers,
 		banker:    banker,
 		receivers: receievers,
@@ -191,13 +200,13 @@ func (cg *ChainGen) GenesisCar() ([]byte, error) {
 	out := new(bytes.Buffer)
 
 	if err := car.WriteCar(context.TODO(), dserv, []cid.Cid{cg.Genesis().Cid()}, out); err != nil {
-		return nil, err
+		return nil, xerrors.Errorf("genesis car write car failed: %w", err)
 	}
 
 	return out.Bytes(), nil
 }
 
-func (cg *ChainGen) nextBlockProof(ctx context.Context, pts *types.TipSet, m address.Address, round int64) (types.ElectionProof, *types.Ticket, error) {
+func (cg *ChainGen) nextBlockProof(ctx context.Context, pts *types.TipSet, m address.Address, round int64) (*types.EPostProof, *types.Ticket, error) {
 
 	lastTicket := pts.MinTicket()
 
@@ -208,8 +217,7 @@ func (cg *ChainGen) nextBlockProof(ctx context.Context, pts *types.TipSet, m add
 		return nil, nil, xerrors.Errorf("get miner worker: %w", err)
 	}
 
-	vrfBase := TicketHash(lastTicket, uint64(round))
-	vrfout, err := ComputeVRF(ctx, cg.w.Sign, worker, vrfBase)
+	vrfout, err := ComputeVRF(ctx, cg.w.Sign, worker, m, DSepTicket, lastTicket.VRFProof)
 	if err != nil {
 		return nil, nil, xerrors.Errorf("compute VRF: %w", err)
 	}
@@ -218,7 +226,7 @@ func (cg *ChainGen) nextBlockProof(ctx context.Context, pts *types.TipSet, m add
 		VRFProof: vrfout,
 	}
 
-	win, eproof, err := IsRoundWinner(ctx, pts, round, m, &mca{w: cg.w, sm: cg.sm})
+	win, eproof, err := IsRoundWinner(ctx, pts, round, m, cg.eppProvs[m], &mca{w: cg.w, sm: cg.sm})
 	if err != nil {
 		return nil, nil, xerrors.Errorf("checking round winner failed: %w", err)
 	}
@@ -282,7 +290,7 @@ func (cg *ChainGen) NextTipSetFromMiners(base *types.TipSet, miners []address.Ad
 	}, nil
 }
 
-func (cg *ChainGen) makeBlock(parents *types.TipSet, m address.Address, eproof types.ElectionProof, ticket *types.Ticket, height uint64, msgs []*types.SignedMessage) (*types.FullBlock, error) {
+func (cg *ChainGen) makeBlock(parents *types.TipSet, m address.Address, eproof *types.EPostProof, ticket *types.Ticket, height uint64, msgs []*types.SignedMessage) (*types.FullBlock, error) {
 
 	var ts uint64
 	if cg.Timestamper != nil {
@@ -356,6 +364,8 @@ type MiningCheckAPI interface {
 
 	StateMinerWorker(context.Context, address.Address, *types.TipSet) (address.Address, error)
 
+	StateMinerSectorSize(context.Context, address.Address, *types.TipSet) (uint64, error)
+
 	WalletSign(context.Context, address.Address, []byte) (*types.Signature, error)
 }
 
@@ -384,11 +394,38 @@ func (mca mca) StateMinerWorker(ctx context.Context, maddr address.Address, ts *
 	return stmgr.GetMinerWorkerRaw(ctx, mca.sm, ts.ParentState(), maddr)
 }
 
+func (mca mca) StateMinerSectorSize(ctx context.Context, maddr address.Address, ts *types.TipSet) (uint64, error) {
+	return stmgr.GetMinerSectorSize(ctx, mca.sm, ts, maddr)
+}
+
 func (mca mca) WalletSign(ctx context.Context, a address.Address, v []byte) (*types.Signature, error) {
 	return mca.w.Sign(ctx, a, v)
 }
 
-func IsRoundWinner(ctx context.Context, ts *types.TipSet, round int64, miner address.Address, a MiningCheckAPI) (bool, types.ElectionProof, error) {
+type ElectionPoStProver interface {
+	GenerateCandidates(context.Context, []byte) ([]sectorbuilder.EPostCandidate, error)
+	ComputeProof(context.Context, []byte, []sectorbuilder.EPostCandidate) ([]byte, error)
+}
+
+type eppProvider struct {
+}
+
+func (epp *eppProvider) GenerateCandidates(ctx context.Context, eprand []byte) ([]sectorbuilder.EPostCandidate, error) {
+	return []sectorbuilder.EPostCandidate{
+		sectorbuilder.EPostCandidate{
+			SectorID:             1,
+			PartialTicket:        [32]byte{},
+			Ticket:               [32]byte{},
+			SectorChallengeIndex: 1,
+		},
+	}, nil
+}
+
+func (epp *eppProvider) ComputeProof(ctx context.Context, eprand []byte, winners []sectorbuilder.EPostCandidate) ([]byte, error) {
+	return []byte("this is an election post proof"), nil
+}
+
+func IsRoundWinner(ctx context.Context, ts *types.TipSet, round int64, miner address.Address, epp ElectionPoStProver, a MiningCheckAPI) (bool, *types.EPostProof, error) {
 	r, err := a.ChainGetRandomness(ctx, ts.Key(), round-build.EcRandomnessLookback)
 	if err != nil {
 		return false, nil, xerrors.Errorf("chain get randomness: %w", err)
@@ -399,9 +436,14 @@ func IsRoundWinner(ctx context.Context, ts *types.TipSet, round int64, miner add
 		return false, nil, xerrors.Errorf("failed to get miner worker: %w", err)
 	}
 
-	vrfout, err := ComputeVRF(ctx, a.WalletSign, mworker, r)
+	vrfout, err := ComputeVRF(ctx, a.WalletSign, mworker, miner, DSepElectionPost, r)
 	if err != nil {
 		return false, nil, xerrors.Errorf("failed to compute VRF: %w", err)
+	}
+
+	candidates, err := epp.GenerateCandidates(ctx, vrfout)
+	if err != nil {
+		return false, nil, xerrors.Errorf("failed to generate electionPoSt candidates")
 	}
 
 	pow, err := a.StateMinerPower(ctx, miner, ts)
@@ -409,13 +451,96 @@ func IsRoundWinner(ctx context.Context, ts *types.TipSet, round int64, miner add
 		return false, nil, xerrors.Errorf("failed to check power: %w", err)
 	}
 
-	return types.PowerCmp(vrfout, pow.MinerPower, pow.TotalPower), vrfout, nil
+	ssize, err := a.StateMinerSectorSize(ctx, miner, ts)
+	if err != nil {
+		return false, nil, xerrors.Errorf("failed to look up miners sector size: %w", err)
+	}
+
+	var winners []sectorbuilder.EPostCandidate
+	for _, c := range candidates {
+		if types.IsTicketWinner(c.PartialTicket[:], ssize, pow.TotalPower, 1) {
+			winners = append(winners, c)
+		}
+	}
+
+	// no winners, sad
+	if len(winners) == 0 {
+		return false, nil, nil
+	}
+
+	proof, err := epp.ComputeProof(ctx, vrfout, winners)
+	if err != nil {
+		return false, nil, xerrors.Errorf("failed to compute snark for election proof: %w", err)
+	}
+
+	ept := types.EPostProof{
+		Proof:    proof,
+		PostRand: vrfout,
+	}
+	for _, win := range winners {
+		ept.Winners = append(ept.Winners, types.EPostTicket{
+			Partial:        win.PartialTicket[:],
+			SectorID:       win.SectorID,
+			ChallengeIndex: win.SectorChallengeIndex,
+		})
+	}
+
+	return true, &ept, nil
 }
 
 type SignFunc func(context.Context, address.Address, []byte) (*types.Signature, error)
 
-func ComputeVRF(ctx context.Context, sign SignFunc, w address.Address, input []byte) ([]byte, error) {
-	sig, err := sign(ctx, w, input)
+const (
+	DSepTicket       = 1
+	DSepElectionPost = 2
+)
+
+func hashVRFBase(personalization uint64, miner address.Address, input []byte) ([]byte, error) {
+	if miner.Protocol() != address.ID {
+		return nil, xerrors.Errorf("miner address for compute VRF must be an ID address")
+	}
+
+	var persbuf [8]byte
+	binary.LittleEndian.PutUint64(persbuf[:], personalization)
+
+	h := sha256.New()
+	h.Write(persbuf[:])
+	h.Write([]byte{0})
+	h.Write(input)
+	h.Write([]byte{0})
+	h.Write(miner.Bytes())
+
+	return h.Sum(nil), nil
+}
+
+func VerifyVRF(ctx context.Context, worker, miner address.Address, p uint64, input, vrfproof []byte) error {
+	ctx, span := trace.StartSpan(ctx, "VerifyVRF")
+	defer span.End()
+
+	vrfBase, err := hashVRFBase(p, miner, input)
+	if err != nil {
+		return xerrors.Errorf("computing vrf base failed: %w", err)
+	}
+
+	sig := &types.Signature{
+		Type: types.KTBLS,
+		Data: vrfproof,
+	}
+
+	if err := sig.Verify(worker, vrfBase); err != nil {
+		return xerrors.Errorf("vrf was invalid: %w", err)
+	}
+
+	return nil
+}
+
+func ComputeVRF(ctx context.Context, sign SignFunc, worker, miner address.Address, p uint64, input []byte) ([]byte, error) {
+	sigInput, err := hashVRFBase(p, miner, input)
+	if err != nil {
+		return nil, err
+	}
+
+	sig, err := sign(ctx, worker, sigInput)
 	if err != nil {
 		return nil, err
 	}
@@ -427,11 +552,15 @@ func ComputeVRF(ctx context.Context, sign SignFunc, w address.Address, input []b
 	return sig.Data, nil
 }
 
-func TicketHash(t *types.Ticket, round uint64) []byte {
+func TicketHash(t *types.Ticket, addr address.Address) []byte {
 	h := sha256.New()
+
 	h.Write(t.VRFProof)
-	var roundbuf [8]byte
-	binary.LittleEndian.PutUint64(roundbuf[:], round)
-	h.Write(roundbuf[:])
+
+	// Field Delimeter
+	h.Write([]byte{0})
+
+	h.Write(addr.Bytes())
+
 	return h.Sum(nil)
 }

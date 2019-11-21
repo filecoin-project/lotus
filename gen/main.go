@@ -20,6 +20,8 @@ func main() {
 	err := gen.WriteTupleEncodersToFile("./chain/types/cbor_gen.go", "types",
 		types.BlockHeader{},
 		types.Ticket{},
+		types.EPostProof{},
+		types.EPostTicket{},
 		types.Message{},
 		types.SignedMessage{},
 		types.MsgMeta{},

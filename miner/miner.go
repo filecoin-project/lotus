@@ -47,6 +47,8 @@ func NewMiner(api api) *Miner {
 type Miner struct {
 	api api
 
+	epp gen.ElectionPoStProver
+
 	lk        sync.Mutex
 	addresses []address.Address
 	stop      chan struct{}
@@ -248,12 +250,12 @@ func (m *Miner) GetBestMiningCandidate(ctx context.Context) (*MiningBase, error)
 
 func (m *Miner) mineOne(ctx context.Context, addr address.Address, base *MiningBase) (*types.BlockMsg, error) {
 	log.Debugw("attempting to mine a block", "tipset", types.LogCids(base.ts.Cids()))
-	ticket, err := m.scratchTicket(ctx, addr, base)
+	ticket, err := m.computeTicket(ctx, addr, base)
 	if err != nil {
 		return nil, errors.Wrap(err, "scratching ticket failed")
 	}
 
-	win, proof, err := gen.IsRoundWinner(ctx, base.ts, int64(base.ts.Height()+base.nullRounds+1), addr, &m.api)
+	win, proof, err := gen.IsRoundWinner(ctx, base.ts, int64(base.ts.Height()+base.nullRounds+1), addr, m.epp, &m.api)
 	if err != nil {
 		return nil, errors.Wrap(err, "failed to check if we win next round")
 	}
@@ -278,7 +280,7 @@ func (m *Miner) computeVRF(ctx context.Context, addr address.Address, input []by
 		return nil, err
 	}
 
-	return gen.ComputeVRF(ctx, m.api.WalletSign, w, input)
+	return gen.ComputeVRF(ctx, m.api.WalletSign, w, addr, gen.DSepTicket, input)
 }
 
 func (m *Miner) getMinerWorker(ctx context.Context, addr address.Address, ts *types.TipSet) (address.Address, error) {
@@ -303,10 +305,9 @@ func (m *Miner) getMinerWorker(ctx context.Context, addr address.Address, ts *ty
 	return w, nil
 }
 
-func (m *Miner) scratchTicket(ctx context.Context, addr address.Address, base *MiningBase) (*types.Ticket, error) {
-	round := base.ts.Height() + base.nullRounds + 1
+func (m *Miner) computeTicket(ctx context.Context, addr address.Address, base *MiningBase) (*types.Ticket, error) {
 
-	vrfBase := gen.TicketHash(base.ts.MinTicket(), round)
+	vrfBase := gen.TicketHash(base.ts.MinTicket(), addr)
 
 	vrfOut, err := m.computeVRF(ctx, addr, vrfBase)
 	if err != nil {
@@ -318,7 +319,7 @@ func (m *Miner) scratchTicket(ctx context.Context, addr address.Address, base *M
 	}, nil
 }
 
-func (m *Miner) createBlock(base *MiningBase, addr address.Address, ticket *types.Ticket, proof types.ElectionProof) (*types.BlockMsg, error) {
+func (m *Miner) createBlock(base *MiningBase, addr address.Address, ticket *types.Ticket, proof *types.EPostProof) (*types.BlockMsg, error) {
 
 	pending, err := m.api.MpoolPending(context.TODO(), base.ts)
 	if err != nil {

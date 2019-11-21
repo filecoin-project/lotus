@@ -193,7 +193,7 @@ func (p *post) runPost(ctx context.Context) error {
 	var seed [32]byte
 	copy(seed[:], p.r)
 
-	proof, err := p.m.sb.GeneratePoSt(p.sortedSectorInfo(), seed, faults)
+	proof, err := p.m.sb.GenerateFallbackPoSt(p.sortedSectorInfo(), seed, faults)
 	if err != nil {
 		return xerrors.Errorf("running post failed: %w", err)
 	}
@@ -209,8 +209,9 @@ func (p *post) commitPost(ctx context.Context) error {
 	ctx, span := trace.StartSpan(ctx, "storage.commitPost")
 	defer span.End()
 
+	panic("NYI")
 	params := &actors.SubmitPoStParams{
-		Proof:   p.proof,
+		//Proof:   p.proof,
 		DoneSet: types.BitFieldFromSet(nil),
 	}
 

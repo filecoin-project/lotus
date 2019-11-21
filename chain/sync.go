@@ -32,6 +32,7 @@ import (
 	"github.com/filecoin-project/lotus/chain/stmgr"
 	"github.com/filecoin-project/lotus/chain/store"
 	"github.com/filecoin-project/lotus/chain/types"
+	"github.com/filecoin-project/lotus/lib/sectorbuilder"
 )
 
 var log = logging.Logger("chain")
@@ -467,23 +468,8 @@ func (syncer *Syncer) minerIsValid(ctx context.Context, maddr address.Address, b
 	return nil
 }
 
-func (syncer *Syncer) validateTicket(ctx context.Context, mworker address.Address, ticket *types.Ticket, base *types.TipSet, round uint64) error {
-	ctx, span := trace.StartSpan(ctx, "validateTickets")
-	defer span.End()
-
-	sig := &types.Signature{
-		Type: types.KTBLS,
-		Data: ticket.VRFProof,
-	}
-
-	vrfBase := gen.TicketHash(base.MinTicket(), round)
-
-	// TODO: ticket signatures should also include miner address
-	if err := sig.Verify(mworker, vrfBase); err != nil {
-		return xerrors.Errorf("invalid ticket, VRFProof invalid: %w", err)
-	}
-
-	return nil
+func (syncer *Syncer) validateTicket(ctx context.Context, maddr, mworker address.Address, ticket *types.Ticket, base *types.TipSet) error {
+	return gen.VerifyVRF(ctx, mworker, maddr, gen.DSepTicket, base.MinTicket().VRFProof, ticket.VRFProof)
 }
 
 var ErrTemporal = errors.New("temporal error")
@@ -515,13 +501,20 @@ func (syncer *Syncer) ValidateBlock(ctx context.Context, b *types.FullBlock) err
 	}
 
 	winnerCheck := async.Err(func() error {
-		mpow, tpow, err := stmgr.GetPower(ctx, syncer.sm, baseTs, h.Miner)
+		_, tpow, err := stmgr.GetPower(ctx, syncer.sm, baseTs, h.Miner)
 		if err != nil {
 			return xerrors.Errorf("failed getting power: %w", err)
 		}
 
-		if !types.PowerCmp(h.ElectionProof, mpow, tpow) {
-			return xerrors.Errorf("miner created a block but was not a winner")
+		ssize, err := stmgr.GetMinerSectorSize(ctx, syncer.sm, baseTs, h.Miner)
+		if err != nil {
+			return xerrors.Errorf("failed to get sector size for block miner: %w", err)
+		}
+
+		for _, t := range h.EPostProof.Winners {
+			if !types.IsTicketWinner(t.Partial, ssize, tpow, 1) {
+				return xerrors.Errorf("miner created a block but was not a winner")
+			}
 		}
 		return nil
 	})
@@ -578,20 +571,15 @@ func (syncer *Syncer) ValidateBlock(ctx context.Context, b *types.FullBlock) err
 	})
 
 	tktsCheck := async.Err(func() error {
-		if err := syncer.validateTicket(ctx, waddr, h.Ticket, baseTs, h.Height); err != nil {
+		if err := syncer.validateTicket(ctx, h.Miner, waddr, h.Ticket, baseTs); err != nil {
 			return xerrors.Errorf("validating block tickets failed: %w", err)
 		}
 		return nil
 	})
 
 	eproofCheck := async.Err(func() error {
-		rand, err := syncer.sm.ChainStore().GetRandomness(ctx, baseTs.Cids(), int64(h.Height-build.EcRandomnessLookback))
-		if err != nil {
-			return xerrors.Errorf("failed to get randomness for verifying election proof: %w", err)
-		}
-
-		if err := VerifyElectionProof(ctx, h.ElectionProof, rand, waddr); err != nil {
-			return xerrors.Errorf("checking eproof failed: %w", err)
+		if err := syncer.VerifyElectionPoStProof(ctx, h, baseTs, waddr); err != nil {
+			return xerrors.Errorf("invalid election post: %w", err)
 		}
 		return nil
 	})
@@ -613,6 +601,49 @@ func (syncer *Syncer) ValidateBlock(ctx context.Context, b *types.FullBlock) err
 	}
 
 	return merr
+}
+
+func (syncer *Syncer) VerifyElectionPoStProof(ctx context.Context, h *types.BlockHeader, baseTs *types.TipSet, waddr address.Address) error {
+	rand, err := syncer.sm.ChainStore().GetRandomness(ctx, baseTs.Cids(), int64(h.Height-build.EcRandomnessLookback))
+	if err != nil {
+		return xerrors.Errorf("failed to get randomness for verifying election proof: %w", err)
+	}
+
+	if err := VerifyElectionPoStVRF(ctx, h.EPostProof.PostRand, rand, waddr, h.Miner); err != nil {
+		return xerrors.Errorf("checking eproof failed: %w", err)
+	}
+
+	ssize, err := stmgr.GetMinerSectorSize(ctx, syncer.sm, baseTs, h.Miner)
+	if err != nil {
+		return xerrors.Errorf("failed to get sector size for miner: %w", err)
+	}
+
+	var winners []sectorbuilder.EPostCandidate
+	for _, t := range h.EPostProof.Winners {
+		var partial [32]byte
+		copy(partial[:], t.Partial)
+		winners = append(winners, sectorbuilder.EPostCandidate{
+			PartialTicket:        partial,
+			SectorID:             t.SectorID,
+			SectorChallengeIndex: t.ChallengeIndex,
+		})
+	}
+
+	sectorInfo, err := stmgr.GetSectorsForElectionPost(ctx, syncer.sm, baseTs, h.Miner)
+	if err != nil {
+		return xerrors.Errorf("getting election post sector set: %w", err)
+	}
+
+	ok, err := sectorbuilder.VerifyPost(ctx, ssize, *sectorInfo, h.EPostProof.PostRand, h.EPostProof.Proof, winners, waddr)
+	if err != nil {
+		return xerrors.Errorf("failed to verify election post: %w", err)
+	}
+
+	if !ok {
+		return xerrors.Errorf("election post was invalid")
+	}
+
+	return nil
 }
 
 func (syncer *Syncer) checkBlockMessages(ctx context.Context, b *types.FullBlock, baseTs *types.TipSet) error {
@@ -1058,14 +1089,9 @@ func (syncer *Syncer) collectChain(ctx context.Context, ts *types.TipSet) error 
 	return nil
 }
 
-func VerifyElectionProof(ctx context.Context, eproof []byte, rand []byte, worker address.Address) error {
-	sig := types.Signature{
-		Data: eproof,
-		Type: types.KTBLS,
-	}
-
-	if err := sig.Verify(worker, rand); err != nil {
-		return xerrors.Errorf("failed to verify election proof signature: %w", err)
+func VerifyElectionPoStVRF(ctx context.Context, evrf []byte, rand []byte, worker, miner address.Address) error {
+	if err := gen.VerifyVRF(ctx, worker, miner, gen.DSepElectionPost, rand, evrf); err != nil {
+		return xerrors.Errorf("failed to verify post_randomness vrf: %w", err)
 	}
 
 	return nil

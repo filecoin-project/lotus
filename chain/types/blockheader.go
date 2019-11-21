@@ -20,14 +20,24 @@ type Ticket struct {
 	VRFProof []byte
 }
 
-type ElectionProof []byte
+type EPostTicket struct {
+	Partial        []byte
+	SectorID       uint64
+	ChallengeIndex uint64
+}
+
+type EPostProof struct {
+	Proof    []byte
+	PostRand []byte
+	Winners  []EPostTicket
+}
 
 type BlockHeader struct {
 	Miner address.Address
 
 	Ticket *Ticket
 
-	ElectionProof []byte
+	EPostProof EPostProof
 
 	Parents []cid.Cid
 
@@ -162,29 +172,31 @@ func CidArrsEqual(a, b []cid.Cid) bool {
 
 var blocksPerEpoch = NewInt(build.BlocksPerEpoch)
 
-func PowerCmp(eproof ElectionProof, mpow, totpow BigInt) bool {
+func IsTicketWinner(partialTicket []byte, ssizeI uint64, totpow BigInt, sampleRate int64) bool {
+	ssize := NewInt(ssizeI)
 
 	/*
 		Need to check that
-		(h(vrfout) + 1) / (max(h) + 1) <= e * minerPower / totalPower
+		(h(vrfout) + 1) / (max(h) + 1) <= e * sectorSize / totalPower
 		max(h) == 2^256-1
 		which in terms of integer math means:
-		(h(vrfout) + 1) * totalPower <= e * minerPower * 2^256
+		(h(vrfout) + 1) * totalPower <= e * sectorSize * 2^256
 		in 2^256 space, it is equivalent to:
-		h(vrfout) * totalPower < e * minerPower * 2^256
+		h(vrfout) * totalPower < e * sectorSize * 2^256
 	*/
 
-	h := sha256.Sum256(eproof)
+	h := sha256.Sum256(partialTicket)
 
 	lhs := BigFromBytes(h[:]).Int
 	lhs = lhs.Mul(lhs, totpow.Int)
+	lhs = lhs.Mul(lhs, big.NewInt(sampleRate))
 
-	// rhs = minerPower * 2^256
-	// rhs = minerPower << 256
-	rhs := new(big.Int).Lsh(mpow.Int, 256)
+	// rhs = sectorSize * 2^256
+	// rhs = sectorSize << 256
+	rhs := new(big.Int).Lsh(ssize.Int, 256)
 	rhs = rhs.Mul(rhs, blocksPerEpoch.Int)
 
-	// h(vrfout) * totalPower < e * minerPower * 2^256?
+	// h(vrfout) * totalPower < e * sectorSize * 2^256?
 	return lhs.Cmp(rhs) == -1
 }
 

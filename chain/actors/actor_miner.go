@@ -389,9 +389,8 @@ func (sma StorageMinerActor) ProveCommitSector(act *types.Actor, vmctx types.VMC
 }
 
 type SubmitPoStParams struct {
-	Proof   []byte
+	Proof   types.EPostProof
 	DoneSet types.BitField
-	// TODO: once the spec changes finish, we have more work to do here...
 }
 
 func ProvingPeriodEnd(setPeriodEnd, height uint64) (uint64, uint64) {
@@ -402,8 +401,6 @@ func ProvingPeriodEnd(setPeriodEnd, height uint64) (uint64, uint64) {
 	return end, period
 }
 
-// TODO: this is a dummy method that allows us to plumb in other parts of the
-// system for now.
 func (sma StorageMinerActor) SubmitPoSt(act *types.Actor, vmctx types.VMContext, params *SubmitPoStParams) ([]byte, ActorError) {
 	oldstate, self, err := loadState(vmctx)
 	if err != nil {
@@ -491,10 +488,20 @@ func (sma StorageMinerActor) SubmitPoSt(act *types.Actor, vmctx types.VMContext,
 	}
 
 	faults := self.CurrentFaultSet.All()
+	_ = faults
+
+	_ = seed
+	//VerifyPoStRandomness()
+
+	convertToCandidates := func(wins []types.EPostTicket) []sectorbuilder.EPostCandidate {
+		panic("NYI")
+	}
+	winners := convertToCandidates(params.Proof.Winners)
+
+	proverID := vmctx.Message().To // TODO: normalize to ID address
 
 	if ok, lerr := sectorbuilder.VerifyPost(vmctx.Context(), mi.SectorSize,
-		sectorbuilder.NewSortedSectorInfo(sectorInfos), seed, params.Proof,
-		faults); !ok || lerr != nil {
+		sectorbuilder.NewSortedSectorInfo(sectorInfos), params.Proof.PostRand, params.Proof.Proof, winners, proverID); !ok || lerr != nil {
 		if lerr != nil {
 			// TODO: study PoST errors
 			return nil, aerrors.Absorb(lerr, 4, "PoST error")

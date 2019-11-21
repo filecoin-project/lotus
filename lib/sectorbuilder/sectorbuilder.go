@@ -47,6 +47,8 @@ type PublicPieceInfo = sectorbuilder.PublicPieceInfo
 
 type RawSealPreCommitOutput = sectorbuilder.RawSealPreCommitOutput
 
+type EPostCandidate = sectorbuilder.Candidate
+
 const CommLen = sectorbuilder.CommitmentBytesLen
 
 type SectorBuilder struct {
@@ -333,14 +335,34 @@ func (sb *SectorBuilder) GetAllStagedSectors() ([]uint64, error) {
 	return out, nil
 }
 
+/*
 func (sb *SectorBuilder) GeneratePoSt(sectorInfo SortedSectorInfo, challengeSeed [CommLen]byte, faults []uint64) ([]byte, error) {
 	// Wait, this is a blocking method with no way of interrupting it?
 	// does it checkpoint itself?
 	return sectorbuilder.GeneratePoSt(sb.handle, sectorInfo, challengeSeed, faults)
 }
+*/
 
 func (sb *SectorBuilder) SectorSize() uint64 {
 	return sb.ssize
+}
+
+func (sb *SectorBuilder) ComputeElectionPoSt(sectorInfo SortedSectorInfo, challengeSeed []byte, winners []EPostCandidate) ([]byte, error) {
+	if len(challengeSeed) != CommLen {
+		return nil, xerrors.Errorf("given challenge seed was the wrong length: %d != %d", len(challengeSeed), CommLen)
+	}
+	var cseed [CommLen]byte
+	copy(cseed[:], challengeSeed)
+
+	return sectorbuilder.GeneratePoSt(sb.handle, sectorInfo, cseed, winners)
+}
+
+func (sb *SectorBuilder) GenerateEPostCandidates(sectorInfo SortedSectorInfo, challengeSeed [CommLen]byte, faults []uint64) ([]EPostCandidate, error) {
+	return sectorbuilder.GenerateCandidates(sb.handle, sectorInfo, challengeSeed, faults)
+}
+
+func (sb *SectorBuilder) GenerateFallbackPoSt(sectorInfo SortedSectorInfo, challengeSeed [CommLen]byte, faults []uint64) ([]byte, error) {
+	panic("NYI")
 }
 
 var UserBytesForSectorSize = sectorbuilder.GetMaxUserBytesPerStagedSector
@@ -360,10 +382,14 @@ func NewSortedSectorInfo(sectors []SectorInfo) SortedSectorInfo {
 	return sectorbuilder.NewSortedSectorInfo(sectors...)
 }
 
-func VerifyPost(ctx context.Context, sectorSize uint64, sectorInfo SortedSectorInfo, challengeSeed [CommLen]byte, proof []byte, faults []uint64) (bool, error) {
+func VerifyPost(ctx context.Context, sectorSize uint64, sectorInfo SortedSectorInfo, challengeSeed []byte, proof []byte, winners []EPostCandidate, proverID address.Address) (bool, error) {
+	var challengeSeeda [CommLen]byte
+	copy(challengeSeeda[:], challengeSeed)
+
 	_, span := trace.StartSpan(ctx, "VerifyPoSt")
 	defer span.End()
-	return sectorbuilder.VerifyPoSt(sectorSize, sectorInfo, challengeSeed, proof, faults)
+	prover := addressToProverID(proverID)
+	return sectorbuilder.VerifyPoSt(sectorSize, sectorInfo, challengeSeeda, proof, winners, prover)
 }
 
 func GeneratePieceCommitment(piece io.Reader, pieceSize uint64) (commP [CommLen]byte, err error) {

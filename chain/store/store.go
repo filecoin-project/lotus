@@ -770,7 +770,7 @@ func (cs *ChainStore) TryFillTipSet(ts *types.TipSet) (*FullTipSet, error) {
 	return NewFullTipSet(out), nil
 }
 
-func ticketHash(t *types.Ticket, round int64) []byte {
+func drawRandomness(t *types.Ticket, round int64) []byte {
 	h := sha256.New()
 	var buf [8]byte
 	binary.LittleEndian.PutUint64(buf[:], uint64(round))
@@ -795,7 +795,7 @@ func (cs *ChainStore) GetRandomness(ctx context.Context, blks []cid.Cid, round i
 		mtb := nts.MinTicketBlock()
 
 		if int64(nts.Height()) <= round {
-			return ticketHash(nts.MinTicketBlock().Ticket, round), nil
+			return drawRandomness(nts.MinTicketBlock().Ticket, round), nil
 		}
 
 		// special case for lookback behind genesis block
@@ -803,7 +803,7 @@ func (cs *ChainStore) GetRandomness(ctx context.Context, blks []cid.Cid, round i
 		if mtb.Height == 0 {
 
 			// round is negative
-			thash := ticketHash(mtb.Ticket, round*-1)
+			thash := drawRandomness(mtb.Ticket, round*-1)
 
 			// for negative lookbacks, just use the hash of the positive tickethash value
 			h := sha256.Sum256(thash)

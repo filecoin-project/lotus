@@ -836,11 +836,8 @@ func (t *SubmitPoStParams) MarshalCBOR(w io.Writer) error {
 		return err
 	}
 
-	// t.t.Proof ([]uint8) (slice)
-	if _, err := w.Write(cbg.CborEncodeMajorType(cbg.MajByteString, uint64(len(t.Proof)))); err != nil {
-		return err
-	}
-	if _, err := w.Write(t.Proof); err != nil {
+	// t.t.Proof (types.EPostProof) (struct)
+	if err := t.Proof.MarshalCBOR(w); err != nil {
 		return err
 	}
 
@@ -866,22 +863,14 @@ func (t *SubmitPoStParams) UnmarshalCBOR(r io.Reader) error {
 		return fmt.Errorf("cbor input had wrong number of fields")
 	}
 
-	// t.t.Proof ([]uint8) (slice)
+	// t.t.Proof (types.EPostProof) (struct)
 
-	maj, extra, err = cbg.CborReadHeader(br)
-	if err != nil {
-		return err
-	}
-	if extra > 8192 {
-		return fmt.Errorf("t.Proof: array too large (%d)", extra)
-	}
+	{
 
-	if maj != cbg.MajByteString {
-		return fmt.Errorf("expected byte array")
-	}
-	t.Proof = make([]byte, extra)
-	if _, err := io.ReadFull(br, t.Proof); err != nil {
-		return err
+		if err := t.Proof.UnmarshalCBOR(br); err != nil {
+			return err
+		}
+
 	}
 	// t.t.DoneSet (types.BitField) (struct)
 

@@ -7,6 +7,7 @@ import (
 	"github.com/filecoin-project/lotus/chain/actors"
 	"github.com/filecoin-project/lotus/chain/address"
 	"github.com/filecoin-project/lotus/chain/types"
+	"github.com/filecoin-project/lotus/lib/sectorbuilder"
 
 	amt "github.com/filecoin-project/go-amt-ipld"
 	cid "github.com/ipfs/go-cid"
@@ -175,6 +176,26 @@ func GetMinerSectorSet(ctx context.Context, sm *StateManager, ts *types.TipSet, 
 	}
 
 	return LoadSectorsFromSet(ctx, sm.ChainStore().Blockstore(), mas.Sectors)
+}
+
+func GetSectorsForElectionPost(ctx context.Context, sm *StateManager, ts *types.TipSet, maddr address.Address) (*sectorbuilder.SortedSectorInfo, error) {
+	sectors, err := GetMinerSectorSet(ctx, sm, ts, maddr)
+	if err != nil {
+		return nil, xerrors.Errorf("failed to get sector set for miner: %w", err)
+	}
+
+	var uselessOtherArray []sectorbuilder.SectorInfo
+	for _, s := range sectors {
+		var uselessBuffer [32]byte
+		copy(uselessBuffer[:], s.CommR)
+		uselessOtherArray = append(uselessOtherArray, sectorbuilder.SectorInfo{
+			SectorID: s.SectorID,
+			CommR:    uselessBuffer,
+		})
+	}
+
+	ssi := sectorbuilder.NewSortedSectorInfo(uselessOtherArray)
+	return &ssi, nil
 }
 
 func GetMinerSectorSize(ctx context.Context, sm *StateManager, ts *types.TipSet, maddr address.Address) (uint64, error) {

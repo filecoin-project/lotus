@@ -58,10 +58,10 @@ type FullNodeStruct struct {
 		MpoolPush        func(context.Context, *types.SignedMessage) error                    `perm:"write"`
 		MpoolPushMessage func(context.Context, *types.Message) (*types.SignedMessage, error)  `perm:"sign"`
 
-		MinerRegister    func(context.Context, address.Address) error                                                                                                               `perm:"admin"`
-		MinerUnregister  func(context.Context, address.Address) error                                                                                                               `perm:"admin"`
-		MinerAddresses   func(context.Context) ([]address.Address, error)                                                                                                           `perm:"write"`
-		MinerCreateBlock func(context.Context, address.Address, *types.TipSet, *types.Ticket, types.ElectionProof, []*types.SignedMessage, uint64, uint64) (*types.BlockMsg, error) `perm:"write"`
+		MinerRegister    func(context.Context, address.Address) error                                                                                                             `perm:"admin"`
+		MinerUnregister  func(context.Context, address.Address) error                                                                                                             `perm:"admin"`
+		MinerAddresses   func(context.Context) ([]address.Address, error)                                                                                                         `perm:"write"`
+		MinerCreateBlock func(context.Context, address.Address, *types.TipSet, *types.Ticket, *types.EPostProof, []*types.SignedMessage, uint64, uint64) (*types.BlockMsg, error) `perm:"write"`
 
 		WalletNew            func(context.Context, string) (address.Address, error)                               `perm:"write"`
 		WalletHas            func(context.Context, address.Address) (bool, error)                                 `perm:"write"`
@@ -237,7 +237,7 @@ func (c *FullNodeStruct) MinerAddresses(ctx context.Context) ([]address.Address,
 	return c.Internal.MinerAddresses(ctx)
 }
 
-func (c *FullNodeStruct) MinerCreateBlock(ctx context.Context, addr address.Address, base *types.TipSet, ticket *types.Ticket, eproof types.ElectionProof, msgs []*types.SignedMessage, height, ts uint64) (*types.BlockMsg, error) {
+func (c *FullNodeStruct) MinerCreateBlock(ctx context.Context, addr address.Address, base *types.TipSet, ticket *types.Ticket, eproof *types.EPostProof, msgs []*types.SignedMessage, height, ts uint64) (*types.BlockMsg, error) {
 	return c.Internal.MinerCreateBlock(ctx, addr, base, ticket, eproof, msgs, height, ts)
 }
 
