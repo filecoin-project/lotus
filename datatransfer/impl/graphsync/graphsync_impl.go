@@ -2,8 +2,10 @@ package graphsyncimpl
 
 import (
 	"context"
+	"errors"
 	"fmt"
 	"reflect"
+	"strings"
 
 	"github.com/ipfs/go-cid"
 	"github.com/ipfs/go-graphsync"
@@ -61,9 +63,43 @@ func NewGraphSyncDataTransfer(parent context.Context, host host.Host, gs graphsy
 		host.ID(),
 		0,
 	}
+	if err := gs.RegisterRequestReceivedHook(true, impl.GsReqRecdHook); err != nil {
+		log.Error(err)
+		return nil
+	}
 	receiver := &graphsyncReceiver{parent, impl}
 	dataTransferNetwork.SetDelegate(receiver)
 	return impl
+}
+
+func (impl *graphsyncImpl) GsReqRecdHook(p peer.ID, request graphsync.RequestData) ([]graphsync.ExtensionData, error) {
+	var resp []graphsync.ExtensionData
+	data, ok := request.Extension(ExtensionDataTransfer)
+	if !ok {
+		return resp, errors.New("extension not present")
+	}
+	unm, err := impl.unmarshalExtensionData(data)
+	if err != nil {
+		return resp, err
+	}
+	chid := datatransfer.ChannelID{
+		Initiator: impl.peerID,
+		ID:        datatransfer.TransferID(unm.TransferID),
+	}
+	if !impl.HasPushChannel(chid) {
+		return resp, errors.New("could not find push channel")
+	}
+	return resp, nil
+}
+
+func (impl *graphsyncImpl) unmarshalExtensionData(data []byte) (*ExtensionDataTransferData, error) {
+	var extStruct ExtensionDataTransferData
+
+	reader := strings.NewReader(string(data[:]))
+	if err := extStruct.UnmarshalCBOR(reader); err != nil {
+		return nil, err
+	}
+	return &extStruct, nil
 }
 
 // RegisterVoucherType registers a validator for the given voucher type
@@ -195,6 +231,16 @@ func (impl *graphsyncImpl) InProgressChannels() map[datatransfer.ChannelID]datat
 	return impl.channels
 }
 
+// HasPushChannel returns true if a channel with ID chid exists and is for a Push request.
+func (impl *graphsyncImpl) HasPushChannel(chid datatransfer.ChannelID) bool {
+	return impl.getPushChannel(chid) != datatransfer.EmptyChannelState
+}
+
+// HasPullChannel returns true if a channel with ID chid exists and is for a Pull request.
+func (impl *graphsyncImpl) HasPullChannel(chid datatransfer.ChannelID) bool {
+	return impl.getPullChannel(chid) != datatransfer.EmptyChannelState
+}
+
 // getPullChannel searches for a pull-type channel in the slice of channels with id `chid`.
 // Returns datatransfer.EmptyChannelState if:
 //   * there is no channel with that id
@@ -202,6 +248,14 @@ func (impl *graphsyncImpl) InProgressChannels() map[datatransfer.ChannelID]datat
 func (impl *graphsyncImpl) getPullChannel(chid datatransfer.ChannelID) datatransfer.ChannelState {
 	channelState, ok := impl.channels[chid]
 	if !ok || channelState.Sender() == impl.peerID {
+		return datatransfer.EmptyChannelState
+	}
+	return channelState
+}
+
+func (impl *graphsyncImpl) getPushChannel(chid datatransfer.ChannelID) datatransfer.ChannelState {
+	channelState, ok := impl.channels[chid]
+	if !ok || channelState.Recipient() == impl.peerID {
 		return datatransfer.EmptyChannelState
 	}
 	return channelState
