@@ -1,12 +1,13 @@
-package lotus_worker
+package main
 
 import (
 	"context"
-	"golang.org/x/xerrors"
 	"io"
 	"net/http"
 	"os"
 	"path/filepath"
+
+	"golang.org/x/xerrors"
 
 	"github.com/filecoin-project/lotus/api"
 	"github.com/filecoin-project/lotus/lib/sectorbuilder"
@@ -20,9 +21,30 @@ type worker struct {
 	sb *sectorbuilder.SectorBuilder
 }
 
-func acceptJobs(ctx context.Context, api api.StorageMiner) error {
+func acceptJobs(ctx context.Context, api api.StorageMiner, endpoint string, repo string) error {
+	act, err := api.ActorAddress(ctx)
+	if err != nil {
+		return err
+	}
+	ssize, err := api.ActorSectorSize(ctx, act)
+	if err != nil {
+		return err
+	}
+
+	sb, err := sectorbuilder.NewStandalone(&sectorbuilder.Config{
+		SectorSize:    ssize,
+		Miner:         act,
+		WorkerThreads: 1,
+		CacheDir:      filepath.Join(repo, "cache"),
+		SealedDir:     filepath.Join(repo, "sealed"),
+		StagedDir:     filepath.Join(repo, "staged"),
+	})
+
 	w := &worker{
-		api: api,
+		api:           api,
+		minerEndpoint: endpoint,
+		repo:          repo,
+		sb:            sb,
 	}
 
 	tasks, err := api.WorkerQueue(ctx)
@@ -33,8 +55,13 @@ func acceptJobs(ctx context.Context, api api.StorageMiner) error {
 	for task := range tasks {
 		res := w.processTask(ctx, task)
 
-		api.WorkerDone(ctx)
+		if err := api.WorkerDone(ctx, task.TaskID, res); err != nil {
+			log.Error(err)
+		}
 	}
+
+	log.Warn("acceptJobs exit")
+	return nil
 }
 
 func (w *worker) processTask(ctx context.Context, task sectorbuilder.WorkerTask) sectorbuilder.SealRes {

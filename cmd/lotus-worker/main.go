@@ -1,14 +1,13 @@
-package lotus_worker
+package main
 
 import (
-	"net/http"
 	"os"
 
-	"github.com/filecoin-project/lotus/api"
 	logging "github.com/ipfs/go-log"
 	"golang.org/x/xerrors"
 	"gopkg.in/urfave/cli.v2"
 
+	"github.com/filecoin-project/lotus/api"
 	"github.com/filecoin-project/lotus/build"
 	lcli "github.com/filecoin-project/lotus/cli"
 )
@@ -52,7 +51,7 @@ func main() {
 
 var runCmd = &cli.Command{
 	Name:  "run",
-	Usage: "Start lotus fountain",
+	Usage: "Start lotus worker",
 	Flags: []cli.Flag{
 		&cli.StringFlag{
 			Name:  "pullEndpoint",
@@ -72,7 +71,7 @@ var runCmd = &cli.Command{
 			return err
 		}
 		if v.APIVersion != build.APIVersion {
-			return xerrors.Errorf("lotus-daemon API version doesn't match: local: ", api.Version{APIVersion: build.APIVersion})
+			return xerrors.Errorf("lotus-storage-miner API version doesn't match: local: ", api.Version{APIVersion: build.APIVersion})
 		}
 
 		go func() {
@@ -80,6 +79,6 @@ var runCmd = &cli.Command{
 			os.Exit(0)
 		}()
 
-		return http.ListenAndServe(cctx.String("pullEndpoint"), nil)
+		return acceptJobs(ctx, nodeApi)
 	},
 }

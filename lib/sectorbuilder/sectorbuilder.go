@@ -82,7 +82,7 @@ type remote struct {
 	lk sync.Mutex
 
 	sealTasks chan<- WorkerTask
-	busy      uint64
+	busy      uint64 // only for metrics
 }
 
 type Config struct {
@@ -157,9 +157,35 @@ func New(cfg *Config, ds dtypes.MetadataDS) (*SectorBuilder, error) {
 
 		sealTasks:     make(chan workerCall),
 		remoteResults: map[uint64]chan<- SealRes{},
+
+		stopping: make(chan struct{}),
 	}
 
 	return sb, nil
+}
+
+func NewStandalone(cfg *Config) (*SectorBuilder, error) {
+	for _, dir := range []string{cfg.StagedDir, cfg.SealedDir, cfg.CacheDir, cfg.MetadataDir} {
+		if err := os.Mkdir(dir, 0755); err != nil {
+			if os.IsExist(err) {
+				continue
+			}
+			return nil, err
+		}
+	}
+
+	return &SectorBuilder{
+		handle:    nil,
+		ds:        nil,
+		ssize:     cfg.SectorSize,
+		Miner:     cfg.Miner,
+		stagedDir: cfg.StagedDir,
+		sealedDir: cfg.SealedDir,
+		cacheDir:  cfg.CacheDir,
+		sealLocal: true,
+		rateLimit: make(chan struct{}, cfg.WorkerThreads),
+		stopping:  make(chan struct{}),
+	}, nil
 }
 
 func (sb *SectorBuilder) RateLimit() func() {

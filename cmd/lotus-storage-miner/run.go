@@ -8,6 +8,7 @@ import (
 	"os/signal"
 	"syscall"
 
+	mux "github.com/gorilla/mux"
 	"github.com/multiformats/go-multiaddr"
 	manet "github.com/multiformats/go-multiaddr-net"
 	"golang.org/x/xerrors"
@@ -19,6 +20,7 @@ import (
 	"github.com/filecoin-project/lotus/lib/auth"
 	"github.com/filecoin-project/lotus/lib/jsonrpc"
 	"github.com/filecoin-project/lotus/node"
+	"github.com/filecoin-project/lotus/node/impl"
 	"github.com/filecoin-project/lotus/node/repo"
 )
 
@@ -118,17 +120,21 @@ var runCmd = &cli.Command{
 			return xerrors.Errorf("could not listen: %w", err)
 		}
 
+		mux := mux.NewRouter()
+
 		rpcServer := jsonrpc.NewServer()
 		rpcServer.Register("Filecoin", api.PermissionedStorMinerAPI(minerapi))
 
+		mux.Handle("/rpc/v0", rpcServer)
+		mux.HandleFunc("/remote", minerapi.(*impl.StorageMinerAPI).ServeRemote)
+		mux.Handle("/", http.DefaultServeMux) // pprof
+
 		ah := &auth.Handler{
 			Verify: minerapi.AuthVerify,
-			Next:   rpcServer.ServeHTTP,
+			Next:   mux.ServeHTTP,
 		}
 
-		http.Handle("/rpc/v0", ah)
-
-		srv := &http.Server{Handler: http.DefaultServeMux}
+		srv := &http.Server{Handler: ah}
 
 		sigChan := make(chan os.Signal, 2)
 		go func() {

@@ -3,7 +3,6 @@ package api
 import (
 	"context"
 	"fmt"
-
 	"github.com/filecoin-project/lotus/chain/address"
 	"github.com/filecoin-project/lotus/lib/sectorbuilder"
 )
@@ -53,6 +52,8 @@ type StorageMiner interface {
 	Common
 
 	ActorAddress(context.Context) (address.Address, error)
+
+	ActorSectorSize(context.Context, address.Address) (uint64, error)
 
 	// Temp api for testing
 	StoreGarbageData(context.Context) error

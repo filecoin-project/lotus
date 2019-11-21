@@ -39,9 +39,9 @@ func (sb *SectorBuilder) AddWorker(ctx context.Context) (<-chan WorkerTask, erro
 	}
 
 	sb.remotes = append(sb.remotes, r)
-	go sb.remoteWorker(ctx, r)
-
 	sb.remoteLk.Unlock()
+
+	go sb.remoteWorker(ctx, r)
 
 	return taskCh, nil
 }
@@ -92,6 +92,7 @@ func (sb *SectorBuilder) remoteWorker(ctx context.Context, r *remote) {
 				case <-sb.stopping:
 					return
 				}
+
 			case <-ctx.Done():
 				log.Warnf("context expired while waiting for task %d (sector %d): %s", task.task.TaskID, task.task.SectorID, ctx.Err())
 				return
@@ -104,6 +105,10 @@ func (sb *SectorBuilder) remoteWorker(ctx context.Context, r *remote) {
 		case <-sb.stopping:
 			return
 		}
+
+		r.lk.Lock()
+		r.busy = 0
+		r.lk.Unlock()
 	}
 }
 

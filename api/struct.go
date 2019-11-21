@@ -133,7 +133,8 @@ type StorageMinerStruct struct {
 	CommonStruct
 
 	Internal struct {
-		ActorAddress func(context.Context) (address.Address, error) `perm:"read"`
+		ActorAddress    func(context.Context) (address.Address, error)         `perm:"read"`
+		ActorSectorSize func(context.Context, address.Address) (uint64, error) `perm:"read"`
 
 		StoreGarbageData func(context.Context) error `perm:"write"`
 
@@ -502,6 +503,10 @@ func (c *FullNodeStruct) PaychVoucherSubmit(ctx context.Context, ch address.Addr
 
 func (c *StorageMinerStruct) ActorAddress(ctx context.Context) (address.Address, error) {
 	return c.Internal.ActorAddress(ctx)
+}
+
+func (c *StorageMinerStruct) ActorSectorSize(ctx context.Context, addr address.Address) (uint64, error) {
+	return c.Internal.ActorSectorSize(ctx, addr)
 }
 
 func (c *StorageMinerStruct) StoreGarbageData(ctx context.Context) error {

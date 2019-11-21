@@ -2,6 +2,10 @@ package impl
 
 import (
 	"context"
+	"encoding/json"
+	"github.com/gorilla/mux"
+	"io"
+	"net/http"
 
 	"github.com/filecoin-project/lotus/api"
 	"github.com/filecoin-project/lotus/chain/address"
@@ -21,6 +25,57 @@ type StorageMinerAPI struct {
 	Full  api.FullNode
 }
 
+func (sm *StorageMinerAPI) ServeRemote(w http.ResponseWriter, r *http.Request) {
+	if !api.HasPerm(r.Context(), api.PermAdmin) {
+		w.WriteHeader(401)
+		json.NewEncoder(w).Encode(struct{ Error string }{"unauthorized: missing write permission"})
+		return
+	}
+
+	mux := mux.NewRouter()
+
+	mux.HandleFunc("/remote/{type}/{sname}", sm.remoteGetSector).Methods("GET")
+	mux.HandleFunc("/remote/{type}/{sname}", sm.remotePutSector).Methods("PUT")
+
+	mux.ServeHTTP(w, r)
+}
+
+func (sm *StorageMinerAPI) remoteGetSector(w http.ResponseWriter, r *http.Request) {
+	vars := mux.Vars(r)
+
+	fr, err := sm.SectorBuilder.OpenRemoteRead(vars["type"], vars["sname"])
+	if err != nil {
+		log.Error(err)
+		w.WriteHeader(500)
+		return
+	}
+	defer fr.Close()
+
+	w.WriteHeader(200)
+	if _, err := io.Copy(w, fr); err != nil {
+		log.Error(err)
+		return
+	}
+}
+
+func (sm *StorageMinerAPI) remotePutSector(w http.ResponseWriter, r *http.Request) {
+	vars := mux.Vars(r)
+
+	fr, err := sm.SectorBuilder.OpenRemoteWrite(vars["type"], vars["sname"])
+	if err != nil {
+		log.Error(err)
+		w.WriteHeader(500)
+		return
+	}
+	defer fr.Close()
+
+	w.WriteHeader(200)
+	if _, err := io.Copy(w, fr); err != nil {
+		log.Error(err)
+		return
+	}
+}
+
 func (sm *StorageMinerAPI) WorkerStats(context.Context) (api.WorkerStats, error) {
 	free, reserved, total := sm.SectorBuilder.WorkerStats()
 	return api.WorkerStats{
@@ -32,6 +87,10 @@ func (sm *StorageMinerAPI) WorkerStats(context.Context) (api.WorkerStats, error)
 
 func (sm *StorageMinerAPI) ActorAddress(context.Context) (address.Address, error) {
 	return sm.SectorBuilderConfig.Miner, nil
+}
+
+func (sm *StorageMinerAPI) ActorSectorSize(ctx context.Context, addr address.Address) (uint64, error) {
+	return sm.Full.StateMinerSectorSize(ctx, addr, nil)
 }
 
 func (sm *StorageMinerAPI) StoreGarbageData(ctx context.Context) error {
@@ -96,7 +155,7 @@ func (sm *StorageMinerAPI) WorkerQueue(ctx context.Context) (<-chan sectorbuilde
 }
 
 func (sm *StorageMinerAPI) WorkerDone(ctx context.Context, task uint64, res sectorbuilder.SealRes) error {
-	return sm.SectorBuilder.TaskDone(task, res)
+	return sm.SectorBuilder.TaskDone(ctx, task, res)
 }
 
 var _ api.StorageMiner = &StorageMinerAPI{}
