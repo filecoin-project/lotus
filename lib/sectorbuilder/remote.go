@@ -20,13 +20,13 @@ type WorkerTask struct {
 	SectorID uint64
 
 	// preCommit
-	SealTicket      SealTicket
-	PublicPieceInfo []PublicPieceInfo
+	SealTicket SealTicket
+	Pieces     []PublicPieceInfo
 }
 
 type workerCall struct {
 	task WorkerTask
-	ret  chan<- SealRes
+	ret  chan SealRes
 }
 
 func (sb *SectorBuilder) AddWorker(ctx context.Context) (<-chan WorkerTask, error) {

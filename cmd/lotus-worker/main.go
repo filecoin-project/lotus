@@ -34,8 +34,8 @@ func main() {
 				Value:   "~/.lotusworker", // TODO: Consider XDG_DATA_HOME
 			},
 			&cli.StringFlag{
-				Name:    "minerrepo",
-				EnvVars: []string{"LOTUS_MINER_PATH"},
+				Name:    "storagerepo",
+				EnvVars: []string{"LOTUS_STORAGE_PATH"},
 				Value:   "~/.lotusstorage", // TODO: Consider XDG_DATA_HOME
 			},
 		},
@@ -66,6 +66,16 @@ var runCmd = &cli.Command{
 		defer closer()
 		ctx := lcli.ReqContext(cctx)
 
+		_, storageAddr, err := lcli.RepoInfo(cctx, "storagerepo")
+		if err != nil {
+			return err
+		}
+
+		r, _, err := lcli.RepoInfo(cctx, "repo")
+		if err != nil {
+			return err
+		}
+
 		v, err := nodeApi.Version(ctx)
 		if err != nil {
 			return err
@@ -79,6 +89,6 @@ var runCmd = &cli.Command{
 			os.Exit(0)
 		}()
 
-		return acceptJobs(ctx, nodeApi)
+		return acceptJobs(ctx, nodeApi, storageAddr, r)
 	},
 }

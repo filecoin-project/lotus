@@ -80,7 +80,7 @@ func (w *worker) processTask(ctx context.Context, task sectorbuilder.WorkerTask)
 
 	switch task.Type {
 	case sectorbuilder.WorkerPreCommit:
-		rspco, err := w.sb.SealPreCommit(task.SectorID, task.SealTicket, task.PublicPieceInfo)
+		rspco, err := w.sb.SealPreCommit(task.SectorID, task.SealTicket, task.Pieces)
 		if err != nil {
 			return errRes(err)
 		}

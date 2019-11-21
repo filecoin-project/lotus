@@ -6,6 +6,7 @@ import (
 	"os"
 	"strconv"
 	"sync"
+	"sync/atomic"
 	"unsafe"
 
 	sectorbuilder "github.com/filecoin-project/go-sectorbuilder"
@@ -64,6 +65,7 @@ type SectorBuilder struct {
 
 	sealTasks chan workerCall
 
+	taskCtr       uint64
 	remoteLk      sync.Mutex
 	remotes       []*remote
 	remoteResults map[uint64]chan<- SealRes
@@ -155,6 +157,7 @@ func New(cfg *Config, ds dtypes.MetadataDS) (*SectorBuilder, error) {
 		sealLocal: sealLocal,
 		rateLimit: make(chan struct{}, rlimit),
 
+		taskCtr:       1,
 		sealTasks:     make(chan workerCall),
 		remoteResults: map[uint64]chan<- SealRes{},
 
@@ -182,16 +185,23 @@ func NewStandalone(cfg *Config) (*SectorBuilder, error) {
 		stagedDir: cfg.StagedDir,
 		sealedDir: cfg.SealedDir,
 		cacheDir:  cfg.CacheDir,
+
 		sealLocal: true,
+		taskCtr:   1,
 		rateLimit: make(chan struct{}, cfg.WorkerThreads),
 		stopping:  make(chan struct{}),
 	}, nil
 }
 
-func (sb *SectorBuilder) RateLimit() func() {
+func (sb *SectorBuilder) checkRateLimit() {
 	if cap(sb.rateLimit) == len(sb.rateLimit) {
-		log.Warn("rate-limiting sectorbuilder call")
+		log.Warn("rate-limiting local sectorbuilder call")
 	}
+}
+
+func (sb *SectorBuilder) RateLimit() func() {
+	sb.checkRateLimit()
+
 	sb.rateLimit <- struct{}{}
 
 	return func() {
@@ -269,9 +279,46 @@ func (sb *SectorBuilder) ReadPieceFromSealedSector(pieceKey string) ([]byte, err
 	return sectorbuilder.ReadPieceFromSealedSector(sb.handle, pieceKey)
 }
 
+func (sb *SectorBuilder) sealPreCommitRemote(call workerCall) (RawSealPreCommitOutput, error) {
+	select {
+	case ret := <-call.ret:
+		return ret.Rspco, ret.Err
+	case <-sb.stopping:
+		return RawSealPreCommitOutput{}, xerrors.New("sectorbuilder stopped")
+	}
+}
+
 func (sb *SectorBuilder) SealPreCommit(sectorID uint64, ticket SealTicket, pieces []PublicPieceInfo) (RawSealPreCommitOutput, error) {
-	ret := sb.RateLimit()
-	defer ret()
+	call := workerCall{
+		task: WorkerTask{
+			Type:       WorkerPreCommit,
+			TaskID:     atomic.AddUint64(&sb.taskCtr, 1),
+			SectorID:   sectorID,
+			SealTicket: ticket,
+			Pieces:     pieces,
+		},
+		ret: make(chan SealRes),
+	}
+
+	select { // prefer remote
+	case sb.sealTasks <- call:
+		return sb.sealPreCommitRemote(call)
+	default:
+	}
+
+	sb.checkRateLimit()
+
+	select { // use whichever is available
+	case sb.sealTasks <- call:
+		return sb.sealPreCommitRemote(call)
+	case sb.rateLimit <- struct{}{}:
+	}
+
+	// local
+
+	defer func() {
+		<-sb.rateLimit
+	}()
 
 	cacheDir, err := sb.sectorCacheDir(sectorID)
 	if err != nil {
