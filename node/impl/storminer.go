@@ -79,10 +79,12 @@ func (sm *StorageMinerAPI) remotePutSector(w http.ResponseWriter, r *http.Reques
 	defer fr.Close()
 
 	w.WriteHeader(200)
-	if _, err := io.Copy(w, fr); err != nil {
+	n, err := io.Copy(w, fr)
+	if err != nil {
 		log.Error(err)
 		return
 	}
+	log.Infof("received %s sector (%s): %d bytes", vars["type"], vars["sname"], n)
 }
 
 func (sm *StorageMinerAPI) WorkerStats(context.Context) (sectorbuilder.WorkerStats, error) {

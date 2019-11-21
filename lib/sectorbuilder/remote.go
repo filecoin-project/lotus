@@ -22,6 +22,10 @@ type WorkerTask struct {
 	// preCommit
 	SealTicket SealTicket
 	Pieces     []PublicPieceInfo
+
+	// commit
+	SealSeed SealSeed
+	Rspco    RawSealPreCommitOutput
 }
 
 type workerCall struct {

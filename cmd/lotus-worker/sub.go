@@ -97,11 +97,20 @@ func (w *worker) processTask(ctx context.Context, task sectorbuilder.WorkerTask)
 		}
 		res.Rspco = rspco
 
+		// TODO: push cache
+
 		if err := w.push("sealed", task.SectorID); err != nil {
 			return errRes(err)
 		}
 	case sectorbuilder.WorkerCommit:
-		panic("todo")
+		proof, err := w.sb.SealCommit(task.SectorID, task.SealTicket, task.SealSeed, task.Pieces, nil, task.Rspco)
+		if err != nil {
+			return errRes(err)
+		}
+
+		res.Proof = proof
+
+		// TODO: Push cache
 	}
 
 	return res
@@ -167,7 +176,7 @@ func (w *worker) push(typ string, sectorID uint64) error {
 
 	bar.Start()
 	defer bar.Finish()
-
+	//todo set content size
 	req, err := http.NewRequest("PUT", url, bar.NewProxyReader(f))
 	if err != nil {
 		return err
@@ -195,7 +204,8 @@ func (w *worker) fetchSector(sectorID uint64, typ sectorbuilder.WorkerTaskType) 
 	case sectorbuilder.WorkerPreCommit:
 		err = w.fetch("staged", sectorID)
 	case sectorbuilder.WorkerCommit:
-		panic("todo")
+		err = w.fetch("sealed", sectorID)
+		// todo: cache
 	}
 	if err != nil {
 		return xerrors.Errorf("fetch failed: %w", err)

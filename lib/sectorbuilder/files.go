@@ -48,6 +48,8 @@ func (sb *SectorBuilder) OpenRemoteRead(typ string, sectorName string) (*os.File
 	switch typ {
 	case "staged":
 		return os.OpenFile(filepath.Join(sb.stagedDir, sectorName), os.O_RDONLY, 0644)
+	case "sealed":
+		return os.OpenFile(filepath.Join(sb.sealedDir, sectorName), os.O_RDONLY, 0644)
 	default:
 		return nil, xerrors.Errorf("unknown sector type for read: %s", typ)
 	}

@@ -387,9 +387,19 @@ func (sb *SectorBuilder) SealPreCommit(sectorID uint64, ticket SealTicket, piece
 	return rspco, nil
 }
 
-func (sb *SectorBuilder) SealCommit(sectorID uint64, ticket SealTicket, seed SealSeed, pieces []PublicPieceInfo, pieceKeys []string, rspco RawSealPreCommitOutput) (proof []byte, err error) {
-	ret := sb.RateLimit()
-	defer ret()
+func (sb *SectorBuilder) sealCommitRemote(call workerCall) (proof []byte, err error) {
+	select {
+	case ret := <-call.ret:
+		return ret.Proof, ret.Err
+	case <-sb.stopping:
+		return nil, xerrors.New("sectorbuilder stopped")
+	}
+}
+
+func (sb *SectorBuilder) sealCommitLocal(sectorID uint64, ticket SealTicket, seed SealSeed, pieces []PublicPieceInfo, rspco RawSealPreCommitOutput) (proof []byte, err error) {
+	defer func() {
+		<-sb.rateLimit
+	}()
 
 	cacheDir, err := sb.sectorCacheDir(sectorID)
 	if err != nil {
@@ -411,6 +421,41 @@ func (sb *SectorBuilder) SealCommit(sectorID uint64, ticket SealTicket, seed Sea
 		return nil, xerrors.Errorf("StandaloneSealCommit: %w", err)
 	}
 
+	return proof, nil
+}
+
+func (sb *SectorBuilder) SealCommit(sectorID uint64, ticket SealTicket, seed SealSeed, pieces []PublicPieceInfo, pieceKeys []string, rspco RawSealPreCommitOutput) (proof []byte, err error) {
+	call := workerCall{
+		task: WorkerTask{
+			Type:       WorkerCommit,
+			TaskID:     atomic.AddUint64(&sb.taskCtr, 1),
+			SectorID:   sectorID,
+			SealTicket: ticket,
+			Pieces:     pieces,
+
+			SealSeed: seed,
+			Rspco:    rspco,
+		},
+		ret: make(chan SealRes),
+	}
+
+	select { // prefer remote
+	case sb.sealTasks <- call:
+		proof, err = sb.sealCommitRemote(call)
+	default:
+		sb.checkRateLimit()
+
+		select { // use whichever is available
+		case sb.sealTasks <- call:
+			proof, err = sb.sealCommitRemote(call)
+		case sb.rateLimit <- struct{}{}:
+			proof, err = sb.sealCommitLocal(sectorID, ticket, seed, pieces, rspco)
+		}
+	}
+	if err != nil {
+		return nil, xerrors.Errorf("commit: %w", err)
+	}
+
 	pmeta := make([]sectorbuilder.PieceMetadata, len(pieces))
 	for i, piece := range pieces {
 		pmeta[i] = sectorbuilder.PieceMetadata{
@@ -421,6 +466,11 @@ func (sb *SectorBuilder) SealCommit(sectorID uint64, ticket SealTicket, seed Sea
 	}
 
 	sealedPath, err := sb.SealedSectorPath(sectorID)
+	if err != nil {
+		return nil, err
+	}
+
+	cacheDir, err := sb.sectorCacheDir(sectorID)
 	if err != nil {
 		return nil, err
 	}
