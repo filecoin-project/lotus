@@ -18,7 +18,7 @@ require (
 	github.com/go-ole/go-ole v1.2.4 // indirect
 	github.com/google/go-cmp v0.3.1 // indirect
 	github.com/gopherjs/gopherjs v0.0.0-20190812055157-5d271430af9f // indirect
-	github.com/gorilla/websocket v1.4.0
+	github.com/gorilla/websocket v1.4.1
 	github.com/hashicorp/go-multierror v1.0.0
 	github.com/hashicorp/golang-lru v0.5.3
 	github.com/influxdata/influxdb1-client v0.0.0-20190809212627-fc22c7df067e
@@ -67,6 +67,7 @@ require (
 	github.com/libp2p/go-libp2p-tls v0.1.0
 	github.com/libp2p/go-libp2p-yamux v0.2.1
 	github.com/libp2p/go-maddr-filter v0.0.5
+	github.com/libp2p/go-ws-transport v0.1.2 // indirect
 	github.com/mattn/go-isatty v0.0.9 // indirect
 	github.com/mattn/go-runewidth v0.0.4 // indirect
 	github.com/miekg/dns v1.1.16 // indirect
