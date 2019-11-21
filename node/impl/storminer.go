@@ -76,13 +76,9 @@ func (sm *StorageMinerAPI) remotePutSector(w http.ResponseWriter, r *http.Reques
 	}
 }
 
-func (sm *StorageMinerAPI) WorkerStats(context.Context) (api.WorkerStats, error) {
-	free, reserved, total := sm.SectorBuilder.WorkerStats()
-	return api.WorkerStats{
-		Free:     free,
-		Reserved: reserved,
-		Total:    total,
-	}, nil
+func (sm *StorageMinerAPI) WorkerStats(context.Context) (sectorbuilder.WorkerStats, error) {
+	stat := sm.SectorBuilder.WorkerStats()
+	return stat, nil
 }
 
 func (sm *StorageMinerAPI) ActorAddress(context.Context) (address.Address, error) {

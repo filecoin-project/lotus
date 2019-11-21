@@ -142,7 +142,7 @@ type StorageMinerStruct struct {
 		SectorsList   func(context.Context) ([]uint64, error)               `perm:"read"`
 		SectorsRefs   func(context.Context) (map[string][]SealedRef, error) `perm:"read"`
 
-		WorkerStats func(context.Context) (WorkerStats, error) `perm:"read"`
+		WorkerStats func(context.Context) (sectorbuilder.WorkerStats, error) `perm:"read"`
 
 		WorkerQueue func(context.Context) (<-chan sectorbuilder.WorkerTask, error)          `perm:"admin"` // TODO: worker perm
 		WorkerDone  func(ctx context.Context, task uint64, res sectorbuilder.SealRes) error `perm:"admin"`
@@ -527,7 +527,7 @@ func (c *StorageMinerStruct) SectorsRefs(ctx context.Context) (map[string][]Seal
 	return c.Internal.SectorsRefs(ctx)
 }
 
-func (c *StorageMinerStruct) WorkerStats(ctx context.Context) (WorkerStats, error) {
+func (c *StorageMinerStruct) WorkerStats(ctx context.Context) (sectorbuilder.WorkerStats, error) {
 	return c.Internal.WorkerStats(ctx)
 }
 

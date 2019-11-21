@@ -209,8 +209,33 @@ func (sb *SectorBuilder) RateLimit() func() {
 	}
 }
 
-func (sb *SectorBuilder) WorkerStats() (free, reserved, total int) {
-	return cap(sb.rateLimit) - len(sb.rateLimit), PoStReservedWorkers, cap(sb.rateLimit) + PoStReservedWorkers
+type WorkerStats struct {
+	LocalFree int
+	LocalReserved int
+	LocalTotal int
+	// todo: post in progress
+	RemotesTotal int
+	RemotesFree int
+}
+
+func (sb *SectorBuilder) WorkerStats() WorkerStats {
+	sb.remoteLk.Lock()
+	defer sb.remoteLk.Unlock()
+
+	remoteFree := len(sb.remotes)
+	for _, r := range sb.remotes {
+		if r.busy > 0 {
+			remoteFree--
+		}
+	}
+
+	return WorkerStats{
+		LocalFree:     cap(sb.rateLimit) - len(sb.rateLimit),
+		LocalReserved: PoStReservedWorkers,
+		LocalTotal:    cap(sb.rateLimit) + PoStReservedWorkers,
+		RemotesTotal:  len(sb.remotes),
+		RemotesFree:   remoteFree,
+	}
 }
 
 func addressToProverID(a address.Address) [32]byte {
