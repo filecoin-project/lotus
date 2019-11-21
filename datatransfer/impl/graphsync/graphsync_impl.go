@@ -1,6 +1,7 @@
 package graphsyncimpl
 
 import (
+	"bytes"
 	"context"
 	"errors"
 	"fmt"
@@ -95,7 +96,7 @@ func (impl *graphsyncImpl) GsReqRecdHook(p peer.ID, request graphsync.RequestDat
 func (impl *graphsyncImpl) unmarshalExtensionData(data []byte) (*ExtensionDataTransferData, error) {
 	var extStruct ExtensionDataTransferData
 
-	reader := strings.NewReader(string(data[:]))
+	reader := bytes.NewReader(data)
 	if err := extStruct.UnmarshalCBOR(reader); err != nil {
 		return nil, err
 	}

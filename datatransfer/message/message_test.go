@@ -52,7 +52,7 @@ func TestTransferRequest_UnmarshalCBOR(t *testing.T) {
 	// use ToNet / FromNet
 	require.NoError(t, req.ToNet(wbuf))
 
-	desMsg, err := FromNet(strings.NewReader(wbuf.String()))
+	desMsg, err := FromNet(wbuf)
 	require.NoError(t, err)
 
 	// Verify round-trip
@@ -101,7 +101,7 @@ func TestTransferResponse_UnmarshalCBOR(t *testing.T) {
 	require.NoError(t, response.ToNet(wbuf))
 
 	// verify round trip
-	desMsg, err := FromNet(strings.NewReader(wbuf.String()))
+	desMsg, err := FromNet(wbuf)
 	require.NoError(t, err)
 	assert.False(t, desMsg.IsRequest())
 	assert.Equal(t, id, desMsg.TransferID())
@@ -121,7 +121,7 @@ func TestRequestCancel(t *testing.T) {
 	wbuf := new(bytes.Buffer)
 	require.NoError(t, req.ToNet(wbuf))
 
-	deserialized, err := FromNet(strings.NewReader(wbuf.String()))
+	deserialized, err := FromNet(wbuf)
 	require.NoError(t, err)
 
 	deserializedRequest, ok := deserialized.(DataTransferRequest)
