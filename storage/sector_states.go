@@ -217,7 +217,7 @@ func (m *Miner) committing(ctx context.Context, sector SectorInfo) (func(*Sector
 	}
 
 	if mw.Receipt.ExitCode != 0 {
-		log.Errorf("UNHANDLED: submitting sector proof failed (t:%x; s:%x(%d); p:%x)", sector.Ticket.TicketBytes, sector.Seed.TicketBytes, sector.Seed.BlockHeight, params.Proof)
+		log.Errorf("UNHANDLED: submitting sector proof failed (exit=%d, msg=%s) (t:%x; s:%x(%d); p:%x)", mw.Receipt.ExitCode, smsg.Cid(), sector.Ticket.TicketBytes, sector.Seed.TicketBytes, sector.Seed.BlockHeight, params.Proof)
 		return nil, xerrors.New("UNHANDLED: submitting sector proof failed")
 	}
 
