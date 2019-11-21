@@ -771,7 +771,6 @@ func (fgsr *fakeGraphSyncReceiver) Connected(p peer.ID) {
 func (fgsr *fakeGraphSyncReceiver) Disconnected(p peer.ID) {
 }
 
-// TODO: get passing to complete https://github.com/filecoin-project/go-data-transfer/issues/22
 func TestRespondingToPushGraphsyncRequests(t *testing.T) {
 	// create network
 	ctx := context.Background()
