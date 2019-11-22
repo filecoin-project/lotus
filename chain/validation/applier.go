@@ -59,6 +59,6 @@ type vmRand struct {
 	eCtx *vchain.ExecutionContext
 }
 
-func (*vmRand) GetRandomness(ctx context.Context, h uint64) ([]byte, error) {
+func (*vmRand) GetRandomness(ctx context.Context, h int64) ([]byte, error) {
 	panic("implement me")
 }
