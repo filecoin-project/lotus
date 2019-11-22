@@ -25,7 +25,7 @@ func main() {
 	}
 
 	app := &cli.App{
-		Name:    "lotus-worker",
+		Name:    "lotus-seal-worker",
 		Usage:   "Remote storage miner worker",
 		Version: build.Version,
 		Flags: []cli.Flag{
