@@ -84,7 +84,7 @@ func (w *worker) processTask(ctx context.Context, task sectorbuilder.WorkerTask)
 	}
 
 	if err := w.fetchSector(task.SectorID, task.Type); err != nil {
-		return errRes(err)
+		return errRes(xerrors.Errorf("fetching sector: %w", err))
 	}
 
 	var res sectorbuilder.SealRes
@@ -93,19 +93,19 @@ func (w *worker) processTask(ctx context.Context, task sectorbuilder.WorkerTask)
 	case sectorbuilder.WorkerPreCommit:
 		rspco, err := w.sb.SealPreCommit(task.SectorID, task.SealTicket, task.Pieces)
 		if err != nil {
-			return errRes(err)
+			return errRes(xerrors.Errorf("precomitting: %w", err))
 		}
-		res.Rspco = rspco
+		res.Rspco = rspco.ToJson()
 
 		// TODO: push cache
 
 		if err := w.push("sealed", task.SectorID); err != nil {
-			return errRes(err)
+			return errRes(xerrors.Errorf("pushing precommited data: %w", err))
 		}
 	case sectorbuilder.WorkerCommit:
 		proof, err := w.sb.SealCommit(task.SectorID, task.SealTicket, task.SealSeed, task.Pieces, nil, task.Rspco)
 		if err != nil {
-			return errRes(err)
+			return errRes(xerrors.Errorf("comitting: %w", err))
 		}
 
 		res.Proof = proof
@@ -189,10 +189,6 @@ func (w *worker) push(typ string, sectorID uint64) error {
 	}
 	if resp.StatusCode != 200 {
 		return xerrors.Errorf("non-200 response: %d", resp.StatusCode)
-	}
-
-	if err := f.Close(); err != nil {
-		return err
 	}
 
 	return resp.Body.Close()

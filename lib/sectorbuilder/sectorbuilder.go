@@ -43,7 +43,7 @@ type SealCommitOutput = sectorbuilder.SealCommitOutput
 
 type PublicPieceInfo = sectorbuilder.PublicPieceInfo
 
-type RawSealPreCommitOutput = sectorbuilder.RawSealPreCommitOutput
+type RawSealPreCommitOutput sectorbuilder.RawSealPreCommitOutput
 
 const CommLen = sectorbuilder.CommitmentBytesLen
 
@@ -74,11 +74,36 @@ type SectorBuilder struct {
 	stopping chan struct{}
 }
 
-type SealRes struct {
-	Err error `json:"omitempty"`
+type JsonRSPCO struct {
+	CommC     []byte
+	CommD     []byte
+	CommR     []byte
+	CommRLast []byte
+}
 
-	Proof []byte                 `json:"omitempty"`
-	Rspco RawSealPreCommitOutput `json:"omitempty"`
+func (rspco *RawSealPreCommitOutput) ToJson() JsonRSPCO {
+	return JsonRSPCO{
+		CommC:     rspco.CommC[:],
+		CommD:     rspco.CommD[:],
+		CommR:     rspco.CommR[:],
+		CommRLast: rspco.CommRLast[:],
+	}
+}
+
+func (rspco *JsonRSPCO) rspco() RawSealPreCommitOutput {
+	var out RawSealPreCommitOutput
+	copy(out.CommC[:], rspco.CommC)
+	copy(out.CommD[:], rspco.CommD)
+	copy(out.CommR[:], rspco.CommR)
+	copy(out.CommRLast[:], rspco.CommRLast)
+	return out
+}
+
+type SealRes struct {
+	Err error
+
+	Proof []byte
+	Rspco JsonRSPCO
 }
 
 type remote struct {
@@ -310,7 +335,7 @@ func (sb *SectorBuilder) ReadPieceFromSealedSector(pieceKey string) ([]byte, err
 func (sb *SectorBuilder) sealPreCommitRemote(call workerCall) (RawSealPreCommitOutput, error) {
 	select {
 	case ret := <-call.ret:
-		return ret.Rspco, ret.Err
+		return ret.Rspco.rspco(), ret.Err
 	case <-sb.stopping:
 		return RawSealPreCommitOutput{}, xerrors.New("sectorbuilder stopped")
 	}
@@ -350,12 +375,12 @@ func (sb *SectorBuilder) SealPreCommit(sectorID uint64, ticket SealTicket, piece
 
 	cacheDir, err := sb.sectorCacheDir(sectorID)
 	if err != nil {
-		return RawSealPreCommitOutput{}, err
+		return RawSealPreCommitOutput{}, xerrors.Errorf("getting cache dir: %w", err)
 	}
 
 	sealedPath, err := sb.SealedSectorPath(sectorID)
 	if err != nil {
-		return RawSealPreCommitOutput{}, err
+		return RawSealPreCommitOutput{}, xerrors.Errorf("getting sealed sector path: %w", err)
 	}
 
 	var sum uint64
@@ -384,7 +409,7 @@ func (sb *SectorBuilder) SealPreCommit(sectorID uint64, ticket SealTicket, piece
 		return RawSealPreCommitOutput{}, xerrors.Errorf("presealing sector %d (%s): %w", sectorID, stagedPath, err)
 	}
 
-	return rspco, nil
+	return RawSealPreCommitOutput(rspco), nil
 }
 
 func (sb *SectorBuilder) sealCommitRemote(call workerCall) (proof []byte, err error) {
@@ -415,9 +440,12 @@ func (sb *SectorBuilder) sealCommitLocal(sectorID uint64, ticket SealTicket, see
 		ticket.TicketBytes,
 		seed.TicketBytes,
 		pieces,
-		rspco,
+		sectorbuilder.RawSealPreCommitOutput(rspco),
 	)
 	if err != nil {
+		log.Warn("StandaloneSealCommit error: ", err)
+		log.Warnf("sid:%d tkt:%v seed:%v, ppi:%v rspco:%v", sectorID, ticket, seed, pieces, rspco)
+
 		return nil, xerrors.Errorf("StandaloneSealCommit: %w", err)
 	}
 
@@ -454,6 +482,10 @@ func (sb *SectorBuilder) SealCommit(sectorID uint64, ticket SealTicket, seed Sea
 	}
 	if err != nil {
 		return nil, xerrors.Errorf("commit: %w", err)
+	}
+
+	if pieceKeys == nil {
+		return
 	}
 
 	pmeta := make([]sectorbuilder.PieceMetadata, len(pieces))

@@ -79,7 +79,7 @@ func (sm *StorageMinerAPI) remotePutSector(w http.ResponseWriter, r *http.Reques
 	defer fr.Close()
 
 	w.WriteHeader(200)
-	n, err := io.Copy(w, fr)
+	n, err := io.Copy(fr, r.Body)
 	if err != nil {
 		log.Error(err)
 		return
@@ -162,6 +162,8 @@ func (sm *StorageMinerAPI) WorkerQueue(ctx context.Context) (<-chan sectorbuilde
 }
 
 func (sm *StorageMinerAPI) WorkerDone(ctx context.Context, task uint64, res sectorbuilder.SealRes) error {
+	log.Infof("WDUN RSPKO %v", res.Rspco)
+
 	return sm.SectorBuilder.TaskDone(ctx, task, res)
 }
 
