@@ -3,7 +3,6 @@ package storage
 import (
 	"context"
 
-	"github.com/pkg/errors"
 	"golang.org/x/xerrors"
 
 	"github.com/filecoin-project/lotus/api"
@@ -206,7 +205,7 @@ func (m *Miner) committing(ctx context.Context, sector SectorInfo) (func(*Sector
 
 	smsg, err := m.api.MpoolPushMessage(ctx, msg)
 	if err != nil {
-		log.Error(errors.Wrap(err, "pushing message to mpool"))
+		log.Error(xerrors.Errorf("pushing message to mpool: %w", err))
 	}
 
 	// TODO: Separate state before this wait, so we persist message cid?

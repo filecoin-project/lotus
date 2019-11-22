@@ -2,6 +2,7 @@ package storage
 
 import (
 	"context"
+	"errors"
 	"sync"
 
 	"github.com/ipfs/go-cid"
@@ -9,7 +10,7 @@ import (
 	"github.com/ipfs/go-datastore/namespace"
 	logging "github.com/ipfs/go-log"
 	"github.com/libp2p/go-libp2p-core/host"
-	"github.com/pkg/errors"
+	"golang.org/x/xerrors"
 
 	"github.com/filecoin-project/lotus/api"
 	"github.com/filecoin-project/lotus/chain/address"
@@ -92,7 +93,7 @@ func NewMiner(api storageMinerApi, addr address.Address, h host.Host, ds datasto
 
 func (m *Miner) Run(ctx context.Context) error {
 	if err := m.runPreflightChecks(ctx); err != nil {
-		return errors.Wrap(err, "miner preflight checks failed")
+		return xerrors.Errorf("miner preflight checks failed: %w", err)
 	}
 
 	m.events = events.NewEvents(ctx, m.api)
@@ -122,7 +123,7 @@ func (m *Miner) runPreflightChecks(ctx context.Context) error {
 
 	has, err := m.api.WalletHas(ctx, worker)
 	if err != nil {
-		return errors.Wrap(err, "failed to check wallet for worker key")
+		return xerrors.Errorf("failed to check wallet for worker key: %w", err)
 	}
 
 	if !has {

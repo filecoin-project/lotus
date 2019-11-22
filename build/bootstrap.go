@@ -2,9 +2,10 @@ package build
 
 import (
 	"context"
-	"github.com/filecoin-project/lotus/lib/addrutil"
 	"os"
 	"strings"
+
+	"github.com/filecoin-project/lotus/lib/addrutil"
 
 	rice "github.com/GeertJohan/go.rice"
 	"github.com/libp2p/go-libp2p-core/peer"
