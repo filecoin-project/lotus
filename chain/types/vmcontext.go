@@ -38,7 +38,10 @@ type VMContext interface {
 	StateTree() (StateTree, aerrors.ActorError)
 	VerifySignature(sig *Signature, from address.Address, data []byte) aerrors.ActorError
 	ChargeGas(uint64) aerrors.ActorError
-	GetRandomness(height uint64) ([]byte, aerrors.ActorError)
+
+	// GetRandomness is to get randomness from a praticular height, which could be negative due to lookback
+	GetRandomness(height int64) ([]byte, aerrors.ActorError)
+
 	GetBalance(address.Address) (BigInt, aerrors.ActorError)
 
 	Context() context.Context

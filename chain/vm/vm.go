@@ -66,9 +66,12 @@ func (vmc *VMContext) Message() *types.Message {
 	return vmc.msg
 }
 
-func (vmc *VMContext) GetRandomness(height uint64) ([]byte, aerrors.ActorError) {
+// GetRandomness is to get the ticket from the Epoch at height
+// Note that the height might be a negative number,
+//     if so, the randomness will be calculated from the genesis ticket
+func (vmc *VMContext) GetRandomness(height int64) ([]byte, aerrors.ActorError) {
 
-	res, err := vmc.vm.rand.GetRandomness(vmc.ctx, int64(height))
+	res, err := vmc.vm.rand.GetRandomness(vmc.ctx, height)
 	if err != nil {
 		return nil, aerrors.Escalate(err, "could not get randomness")
 	}

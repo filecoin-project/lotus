@@ -145,7 +145,7 @@ func (m *Miner) preCommitted(ctx context.Context, sector SectorInfo) (func(*Sect
 	log.Infof("precommit for sector %d made it on chain, will start proof computation at height %d", sector.SectorID, randHeight)
 
 	err = m.events.ChainAt(func(ctx context.Context, ts *types.TipSet, curH uint64) error {
-		rand, err := m.api.ChainGetRandomness(ctx, ts.Key(), nil, int(ts.Height()-randHeight))
+		rand, err := m.api.ChainGetRandomness(ctx, ts.Key(), nil, ts.Height()-randHeight)
 		if err != nil {
 			return xerrors.Errorf("failed to get randomness for computing seal proof: %w", err)
 		}

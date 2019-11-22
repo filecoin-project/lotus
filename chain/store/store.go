@@ -5,6 +5,7 @@ import (
 	"crypto/sha256"
 	"encoding/json"
 	"fmt"
+	"math"
 	"sync"
 
 	"github.com/filecoin-project/lotus/build"
@@ -771,15 +772,17 @@ func (cs *ChainStore) TryFillTipSet(ts *types.TipSet) (*FullTipSet, error) {
 	return NewFullTipSet(out), nil
 }
 
-func (cs *ChainStore) GetRandomness(ctx context.Context, blks []cid.Cid, tickets []*types.Ticket, lb int64) ([]byte, error) {
+func (cs *ChainStore) GetRandomness(ctx context.Context, blks []cid.Cid, tickets []*types.Ticket, lb uint64) ([]byte, error) {
 	ctx, span := trace.StartSpan(ctx, "store.GetRandomness")
 	defer span.End()
-	span.AddAttributes(trace.Int64Attribute("lb", lb))
+	span.AddAttributes(trace.Int64Attribute("lb", int64(lb)))
 
-	if lb < 0 {
-		return nil, fmt.Errorf("negative lookback parameters are not valid (got %d)", lb)
+	// Check if lb is too big to be true, which implys some math wrong before calling this function
+	if lb > math.MaxUint32 {
+		return nil, fmt.Errorf("BUG: lookback too far (lb=%d), need to check if any math wrong", lb)
 	}
-	lt := int64(len(tickets))
+
+	lt := uint64(len(tickets))
 	if lb < lt {
 		log.Desugar().Warn("self sampling randomness. this should be extremely rare, if you see this often it may be a bug", zap.Stack("stacktrace"))
 
@@ -797,7 +800,7 @@ func (cs *ChainStore) GetRandomness(ctx context.Context, blks []cid.Cid, tickets
 		}
 
 		mtb := nts.MinTicketBlock()
-		lt := int64(len(mtb.Tickets))
+		lt := uint64(len(mtb.Tickets))
 		if nv < lt {
 			t := mtb.Tickets[lt-(1+nv)]
 			return t.VRFProof, nil
@@ -812,7 +815,7 @@ func (cs *ChainStore) GetRandomness(ctx context.Context, blks []cid.Cid, tickets
 			t := mtb.Tickets[0]
 
 			rval := t.VRFProof
-			for i := int64(0); i < nv; i++ {
+			for i := uint64(0); i < nv; i++ {
 				h := sha256.Sum256(rval)
 				rval = h[:]
 			}
@@ -868,5 +871,10 @@ func NewChainRand(cs *ChainStore, blks []cid.Cid, bheight uint64, tickets []*typ
 
 func (cr *chainRand) GetRandomness(ctx context.Context, h int64) ([]byte, error) {
 	lb := (int64(cr.bh) + int64(len(cr.tickets))) - h
-	return cr.cs.GetRandomness(ctx, cr.blks, cr.tickets, lb)
+
+	if lb < 0 {
+		return nil, fmt.Errorf("BUG: can not get randomness from the future (curHeight: %d, wantHeight: $d)", cr.bh, h)
+	}
+
+	return cr.cs.GetRandomness(ctx, cr.blks, cr.tickets, uint64(lb))
 }
