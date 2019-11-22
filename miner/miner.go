@@ -36,6 +36,7 @@ type api struct {
 func NewMiner(api api) *Miner {
 	return &Miner{
 		api: api,
+		epp: nil,
 		waitFunc: func(ctx context.Context) error {
 			// Wait around for half the block time in case other parents come in
 			time.Sleep(build.BlockDelay * time.Second / 2)

@@ -23,6 +23,10 @@ import (
 	"github.com/filecoin-project/lotus/node/repo"
 )
 
+func init() {
+	build.InsecurePoStValidation = true
+}
+
 const source = 0
 
 func (tu *syncTestUtil) repoWithChain(t testing.TB, h int) (repo.Repo, []byte, []*store.FullTipSet) {

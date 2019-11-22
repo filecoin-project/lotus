@@ -408,6 +408,7 @@ type ElectionPoStProver interface {
 }
 
 type eppProvider struct {
+	sectors []sectorbuilder.SectorInfo
 }
 
 func (epp *eppProvider) GenerateCandidates(ctx context.Context, eprand []byte) ([]sectorbuilder.EPostCandidate, error) {
@@ -422,7 +423,8 @@ func (epp *eppProvider) GenerateCandidates(ctx context.Context, eprand []byte) (
 }
 
 func (epp *eppProvider) ComputeProof(ctx context.Context, eprand []byte, winners []sectorbuilder.EPostCandidate) ([]byte, error) {
-	return []byte("this is an election post proof"), nil
+
+	return []byte("valid proof"), nil
 }
 
 func IsRoundWinner(ctx context.Context, ts *types.TipSet, round int64, miner address.Address, epp ElectionPoStProver, a MiningCheckAPI) (bool, *types.EPostProof, error) {

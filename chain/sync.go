@@ -478,6 +478,9 @@ var ErrTemporal = errors.New("temporal error")
 func (syncer *Syncer) ValidateBlock(ctx context.Context, b *types.FullBlock) error {
 	ctx, span := trace.StartSpan(ctx, "validateBlock")
 	defer span.End()
+	if build.InsecurePoStValidation {
+		log.Warn("insecure test validation is enabled, if you see this outside of a test, it is a severe bug!")
+	}
 
 	h := b.Header
 
@@ -634,6 +637,12 @@ func (syncer *Syncer) VerifyElectionPoStProof(ctx context.Context, h *types.Bloc
 		return xerrors.Errorf("getting election post sector set: %w", err)
 	}
 
+	if build.InsecurePoStValidation {
+		if string(h.EPostProof.Proof) == "valid proof" {
+			return nil
+		}
+		return xerrors.Errorf("[TESTING] election post was invalid")
+	}
 	ok, err := sectorbuilder.VerifyPost(ctx, ssize, *sectorInfo, h.EPostProof.PostRand, h.EPostProof.Proof, winners, waddr)
 	if err != nil {
 		return xerrors.Errorf("failed to verify election post: %w", err)

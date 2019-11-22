@@ -11,7 +11,7 @@ require (
 	github.com/btcsuite/btcd v0.0.0-20190807005414-4063feeff79a // indirect
 	github.com/fatih/color v1.7.0 // indirect
 	github.com/filecoin-project/chain-validation v0.0.0-20191106200742-11986803c0f7
-	github.com/filecoin-project/go-amt-ipld v0.0.0-20190919045431-3650716fff16
+	github.com/filecoin-project/go-amt-ipld v0.0.0-20191122035745-59b9dfc0efc7
 	github.com/filecoin-project/go-bls-sigs v0.0.0-20190718224239-4bc4b8a7bbf8
 	github.com/filecoin-project/go-leb128 v0.0.0-20190212224330-8d79a5489543
 	github.com/filecoin-project/go-sectorbuilder v0.0.0-00010101000000-000000000000

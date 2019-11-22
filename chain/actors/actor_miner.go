@@ -345,7 +345,7 @@ func (sma StorageMinerActor) ProveCommitSector(act *types.Actor, vmctx types.VMC
 	// Note: There must exist a unique index in the miner's sector set for each
 	// sector ID. The `faults`, `recovered`, and `done` parameters of the
 	// SubmitPoSt method express indices into this sector set.
-	nssroot, err := AddToSectorSet(ctx, vmctx.Storage(), self.Sectors, params.SectorID, us.Info.CommR, commD)
+	nssroot, err := AddToSectorSet(ctx, types.WrapStorage(vmctx.Storage()), self.Sectors, params.SectorID, us.Info.CommR, commD)
 	if err != nil {
 		return nil, err
 	}
@@ -593,8 +593,8 @@ func SectorIsUnique(ctx context.Context, s types.Storage, sroot cid.Cid, sid uin
 	return !found, nil
 }
 
-func AddToSectorSet(ctx context.Context, s types.Storage, ss cid.Cid, sectorID uint64, commR, commD []byte) (cid.Cid, ActorError) {
-	ssr, err := amt.LoadAMT(types.WrapStorage(s), ss)
+func AddToSectorSet(ctx context.Context, blks amt.Blocks, ss cid.Cid, sectorID uint64, commR, commD []byte) (cid.Cid, ActorError) {
+	ssr, err := amt.LoadAMT(blks, ss)
 	if err != nil {
 		return cid.Undef, aerrors.HandleExternalError(err, "could not load sector set node")
 	}
