@@ -4,9 +4,10 @@ import (
 	"bytes"
 	"container/list"
 	"context"
+	"sync"
+
 	actors2 "github.com/filecoin-project/lotus/chain/actors"
 	"github.com/filecoin-project/lotus/chain/address"
-	"sync"
 
 	"github.com/ipfs/go-cid"
 

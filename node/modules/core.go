@@ -3,6 +3,9 @@ package modules
 import (
 	"context"
 	"crypto/rand"
+	"io"
+	"io/ioutil"
+
 	"github.com/filecoin-project/lotus/api"
 	"github.com/filecoin-project/lotus/build"
 	"github.com/filecoin-project/lotus/chain/types"
@@ -14,8 +17,6 @@ import (
 	"github.com/libp2p/go-libp2p-core/peerstore"
 	record "github.com/libp2p/go-libp2p-record"
 	"golang.org/x/xerrors"
-	"io"
-	"io/ioutil"
 )
 
 var log = logging.Logger("modules")

@@ -2,14 +2,15 @@ package main
 
 import (
 	"crypto/rand"
-	"github.com/filecoin-project/lotus/lib/jsonrpc"
-	"github.com/filecoin-project/lotus/node/repo"
 	"io"
 	"io/ioutil"
 	"os"
 	"sync"
 
 	"golang.org/x/xerrors"
+
+	"github.com/filecoin-project/lotus/lib/jsonrpc"
+	"github.com/filecoin-project/lotus/node/repo"
 )
 
 type NodeState int

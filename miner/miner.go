@@ -13,7 +13,6 @@ import (
 	"github.com/filecoin-project/lotus/node/impl/full"
 
 	logging "github.com/ipfs/go-log"
-	"github.com/pkg/errors"
 	"go.opencensus.io/trace"
 	"go.uber.org/fx"
 	"golang.org/x/xerrors"
@@ -250,12 +249,12 @@ func (m *Miner) mineOne(ctx context.Context, addr address.Address, base *MiningB
 	log.Debugw("attempting to mine a block", "tipset", types.LogCids(base.ts.Cids()))
 	ticket, err := m.scratchTicket(ctx, addr, base)
 	if err != nil {
-		return nil, errors.Wrap(err, "scratching ticket failed")
+		return nil, xerrors.Errorf("scratching ticket failed: %w", err)
 	}
 
 	win, proof, err := gen.IsRoundWinner(ctx, base.ts, append(base.tickets, ticket), addr, &m.api)
 	if err != nil {
-		return nil, errors.Wrap(err, "failed to check if we win next round")
+		return nil, xerrors.Errorf("failed to check if we win next round: %w", err)
 	}
 
 	if !win {
@@ -265,7 +264,7 @@ func (m *Miner) mineOne(ctx context.Context, addr address.Address, base *MiningB
 
 	b, err := m.createBlock(base, addr, ticket, proof)
 	if err != nil {
-		return nil, errors.Wrap(err, "failed to create block")
+		return nil, xerrors.Errorf("failed to create block: %w", err)
 	}
 	log.Infow("mined new block", "cid", b.Cid())
 
@@ -330,7 +329,7 @@ func (m *Miner) createBlock(base *MiningBase, addr address.Address, ticket *type
 
 	pending, err := m.api.MpoolPending(context.TODO(), base.ts)
 	if err != nil {
-		return nil, errors.Wrapf(err, "failed to get pending messages")
+		return nil, xerrors.Errorf("failed to get pending messages: %w", err)
 	}
 
 	msgs, err := selectMessages(context.TODO(), m.api.StateGetActor, base, pending)

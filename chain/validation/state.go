@@ -2,14 +2,14 @@ package validation
 
 import (
 	"context"
+	"errors"
 	"fmt"
 	"math/rand"
-
-	"github.com/pkg/errors"
 
 	"github.com/filecoin-project/lotus/chain/actors"
 	"github.com/filecoin-project/lotus/chain/gen"
 	"github.com/filecoin-project/lotus/chain/vm"
+	"golang.org/x/xerrors"
 
 	"github.com/ipfs/go-cid"
 	"github.com/ipfs/go-datastore"
@@ -109,7 +109,7 @@ func (s *StateWrapper) SetActor(addr vstate.Address, code vstate.ActorCodeID, ba
 	// The ID-based address is dropped here, but should be reported back to the caller.
 	_, err = tree.RegisterNewAddress(addrInt, &actr.Actor)
 	if err != nil {
-		return nil, nil, errors.Wrapf(err, "register new address for actor")
+		return nil, nil, xerrors.Errorf("register new address for actor: %w", err)
 	}
 	return actr, s.storage, s.flush(tree)
 }
@@ -131,7 +131,7 @@ func (s *StateWrapper) SetSingletonActor(addr vstate.SingletonActorID, balance v
 			return nil, nil, err
 		}
 		if err := tree.SetActor(actors.InitAddress, initact); err != nil {
-			return nil, nil, errors.Wrapf(err, "set init actor")
+			return nil, nil, xerrors.Errorf("set init actor: %w", err)
 		}
 
 		return &actorWrapper{*initact}, s.storage, s.flush(tree)
@@ -141,7 +141,7 @@ func (s *StateWrapper) SetSingletonActor(addr vstate.SingletonActorID, balance v
 			return nil, nil, err
 		}
 		if err := tree.SetActor(actors.StorageMarketAddress, smact); err != nil {
-			return nil, nil, errors.Wrapf(err, "set network storage market actor")
+			return nil, nil, xerrors.Errorf("set network storage market actor: %w", err)
 		}
 		return &actorWrapper{*smact}, s.storage, s.flush(tree)
 	case actors.StoragePowerAddress:
@@ -150,7 +150,7 @@ func (s *StateWrapper) SetSingletonActor(addr vstate.SingletonActorID, balance v
 			return nil, nil, err
 		}
 		if err := tree.SetActor(actors.StoragePowerAddress, spact); err != nil {
-			return nil, nil, errors.Wrapf(err, "set network storage market actor")
+			return nil, nil, xerrors.Errorf("set network storage market actor: %w", err)
 		}
 		return &actorWrapper{*spact}, s.storage, s.flush(tree)
 	case actors.NetworkAddress:
@@ -160,7 +160,7 @@ func (s *StateWrapper) SetSingletonActor(addr vstate.SingletonActorID, balance v
 			Head:    vm.EmptyObjectCid,
 		}
 		if err := tree.SetActor(actors.NetworkAddress, ntwkact); err != nil {
-			return nil, nil, errors.Wrapf(err, "set network actor")
+			return nil, nil, xerrors.Errorf("set network actor: %w", err)
 		}
 		return &actorWrapper{*ntwkact}, s.storage, s.flush(tree)
 	case actors.BurntFundsAddress:
@@ -170,7 +170,7 @@ func (s *StateWrapper) SetSingletonActor(addr vstate.SingletonActorID, balance v
 			Head:    vm.EmptyObjectCid,
 		}
 		if err := tree.SetActor(actors.BurntFundsAddress, ntwkact); err != nil {
-			return nil, nil, errors.Wrapf(err, "set network actor")
+			return nil, nil, xerrors.Errorf("set network actor: %w", err)
 		}
 		return &actorWrapper{*ntwkact}, s.storage, s.flush(tree)
 	default:
