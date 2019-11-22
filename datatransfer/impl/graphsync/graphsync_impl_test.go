@@ -811,6 +811,8 @@ func TestRespondingToPushGraphsyncRequests(t *testing.T) {
 		}
 		requestReceived := messageReceived.message.(message.DataTransferRequest)
 
+		time.Sleep(150*time.Millisecond)
+
 		var buf bytes.Buffer
 		extStruct := &ExtensionDataTransferData{TransferID: uint64(requestReceived.TransferID())}
 		err = extStruct.MarshalCBOR(&buf)
