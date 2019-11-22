@@ -31,7 +31,7 @@ func (m *Miner) beginPosting(ctx context.Context) {
 	}
 
 	if ppe == 0 {
-		log.Errorf("Proving period end == 0")
+		log.Warn("Not proving yet")
 		return
 	}
 
