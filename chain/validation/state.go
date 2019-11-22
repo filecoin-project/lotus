@@ -2,7 +2,6 @@ package validation
 
 import (
 	"context"
-	"errors"
 	"fmt"
 	"math/rand"
 
@@ -174,7 +173,7 @@ func (s *StateWrapper) SetSingletonActor(addr vstate.SingletonActorID, balance v
 		}
 		return &actorWrapper{*ntwkact}, s.storage, s.flush(tree)
 	default:
-		return nil, nil, errors.Errorf("%v is not a singleton actor address", addr)
+		return nil, nil, xerrors.Errorf("%v is not a singleton actor address", addr)
 	}
 }
 
