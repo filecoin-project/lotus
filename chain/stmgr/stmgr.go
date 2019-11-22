@@ -197,21 +197,20 @@ func (sm *StateManager) computeTipSetState(ctx context.Context, blks []*types.Bl
 		}
 	}
 
-	// TODO: this nonce-getting is a ting bit ugly
-	spa, err := vmi.StateTree().GetActor(actors.StoragePowerAddress)
+	// TODO: this nonce-getting is a tiny bit ugly
+	ca, err := vmi.StateTree().GetActor(actors.CronAddress)
 	if err != nil {
 		return cid.Undef, cid.Undef, err
 	}
 
-	// TODO: cron actor
 	ret, err := vmi.ApplyMessage(ctx, &types.Message{
-		To:       actors.StoragePowerAddress,
-		From:     actors.StoragePowerAddress,
-		Nonce:    spa.Nonce,
+		To:       actors.CronAddress,
+		From:     actors.CronAddress,
+		Nonce:    ca.Nonce,
 		Value:    types.NewInt(0),
 		GasPrice: types.NewInt(0),
 		GasLimit: types.NewInt(1 << 30), // Make super sure this is never too little
-		Method:   actors.SPAMethods.CheckProofSubmissions,
+		Method:   actors.CAMethods.EpochTick,
 		Params:   nil,
 	})
 	if err != nil {

@@ -567,8 +567,8 @@ func pledgeCollateralForSize(vmctx types.VMContext, size, totalStorage types.Big
 }
 
 func (spa StoragePowerActor) CheckProofSubmissions(act *types.Actor, vmctx types.VMContext, param *struct{}) ([]byte, ActorError) {
-	if vmctx.Message().From != StoragePowerAddress {
-		return nil, aerrors.New(1, "CheckProofSubmissions is only callable as a part of tipset state computation")
+	if vmctx.Message().From != CronAddress {
+		return nil, aerrors.New(1, "CheckProofSubmissions is only callable from the cron actor")
 	}
 
 	var self StoragePowerState
