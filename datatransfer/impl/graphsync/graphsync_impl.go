@@ -46,8 +46,8 @@ type graphsyncImpl struct {
 	dataTransferNetwork network.DataTransferNetwork
 	subscribers         []datatransfer.Subscriber
 	validatedTypes      map[string]validateType
+	channelsLk          sync.RWMutex
 	channels            map[datatransfer.ChannelID]datatransfer.ChannelState
-	chMux               sync.Mutex
 	gs                  graphsync.GraphExchange
 	peerID              peer.ID
 	lastTID             int64
@@ -60,8 +60,8 @@ func NewGraphSyncDataTransfer(parent context.Context, host host.Host, gs graphsy
 		dataTransferNetwork,
 		nil,
 		make(map[string]validateType),
+		sync.RWMutex{},
 		make(map[datatransfer.ChannelID]datatransfer.ChannelState),
-		sync.Mutex{},
 		gs,
 		host.ID(),
 		0,
@@ -185,12 +185,11 @@ func (impl *graphsyncImpl) OpenPullDataChannel(ctx context.Context, requestTo pe
 
 // createNewChannel creates a new channel id and channel state and saves to channels
 func (impl *graphsyncImpl) createNewChannel(tid datatransfer.TransferID, baseCid cid.Cid, selector ipld.Node, voucher datatransfer.Voucher, initiator, dataSender, dataReceiver peer.ID) datatransfer.ChannelID {
-	impl.chMux.Lock()
-	defer impl.chMux.Unlock()
-
 	chid := datatransfer.ChannelID{Initiator: initiator, ID: tid}
 	chst := datatransfer.ChannelState{Channel: datatransfer.NewChannel(0, baseCid, selector, voucher, dataSender, dataReceiver, 0)}
+	impl.channelsLk.Lock()
 	impl.channels[chid] = chst
+	impl.channelsLk.Unlock()
 	return chid
 }
 
@@ -258,7 +257,13 @@ func (impl *graphsyncImpl) notifySubscribers(evt datatransfer.Event, cs datatran
 
 // get all in progress transfers
 func (impl *graphsyncImpl) InProgressChannels() map[datatransfer.ChannelID]datatransfer.ChannelState {
-	return impl.channels
+	impl.channelsLk.RLock()
+	defer impl.channelsLk.RUnlock()
+	channelsCopy := make(map[datatransfer.ChannelID]datatransfer.ChannelState, len(impl.channels))
+	for channelID, channelState := range impl.channels {
+		channelsCopy[channelID] = channelState
+	}
+	return channelsCopy
 }
 
 // HasPushChannel returns true if a channel with ID chid exists and is for a Push request.
@@ -276,8 +281,8 @@ func (impl *graphsyncImpl) HasPullChannel(chid datatransfer.ChannelID) bool {
 //   * there is no channel with that id
 //   * it is not related to a pull request
 func (impl *graphsyncImpl) getPullChannel(chid datatransfer.ChannelID) datatransfer.ChannelState {
-	impl.chMux.Lock()
-	defer impl.chMux.Unlock()
+	impl.channelsLk.RLock()
+	defer impl.channelsLk.RUnlock()
 	channelState, ok := impl.channels[chid]
 	if !ok || channelState.Sender() == impl.peerID {
 		return datatransfer.EmptyChannelState
@@ -286,8 +291,8 @@ func (impl *graphsyncImpl) getPullChannel(chid datatransfer.ChannelID) datatrans
 }
 
 func (impl *graphsyncImpl) getPushChannel(chid datatransfer.ChannelID) datatransfer.ChannelState {
-	impl.chMux.Lock()
-	defer impl.chMux.Unlock()
+	impl.channelsLk.RLock()
+	defer impl.channelsLk.RUnlock()
 	channelState, ok := impl.channels[chid]
 	if !ok || channelState.Recipient() == impl.peerID {
 		return datatransfer.EmptyChannelState
