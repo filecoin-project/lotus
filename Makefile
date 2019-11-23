@@ -60,9 +60,12 @@ CLEAN+=build/.update-modules
 deps: $(BUILD_DEPS)
 .PHONY: deps
 
+debug: GOFLAGS=-tags=debug
+debug: lotus lotus-storage-miner
+
 lotus: $(BUILD_DEPS)
 	rm -f lotus
-	go build -o lotus ./cmd/lotus
+	go build $(GOFLAGS) -o lotus ./cmd/lotus
 	go run github.com/GeertJohan/go.rice/rice append --exec lotus -i ./build
 
 .PHONY: lotus
