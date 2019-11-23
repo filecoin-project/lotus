@@ -136,7 +136,18 @@ var mpoolStat = &cli.Command{
 				cur++
 			}
 
-			fmt.Printf("%s, cur %d\n", a, cur-act.Nonce)
+			past := 0
+			future := 0
+			for _, m := range bkt.msgs {
+				if m.Message.Nonce < act.Nonce {
+					past++
+				}
+				if m.Message.Nonce > cur {
+					future++
+				}
+			}
+
+			fmt.Printf("%s, past: %d, cur: %d, future: %d\n", a, past, cur-act.Nonce, future)
 		}
 
 		return nil

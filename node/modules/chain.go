@@ -41,14 +41,17 @@ func ChainExchange(mctx helpers.MetricsCtx, lc fx.Lifecycle, host host.Host, rt 
 	return exch
 }
 
-func MessagePool(lc fx.Lifecycle, sm *stmgr.StateManager, ps *pubsub.PubSub) *chain.MessagePool {
-	mp := chain.NewMessagePool(sm, ps)
+func MessagePool(lc fx.Lifecycle, sm *stmgr.StateManager, ps *pubsub.PubSub, ds dtypes.MetadataDS) (*chain.MessagePool, error) {
+	mp, err := chain.NewMessagePool(sm, ps, ds)
+	if err != nil {
+		return nil, xerrors.Errorf("constructing mpool: %w", err)
+	}
 	lc.Append(fx.Hook{
 		OnStop: func(_ context.Context) error {
 			return mp.Close()
 		},
 	})
-	return mp
+	return mp, nil
 }
 
 func ChainBlockstore(r repo.LockedRepo) (dtypes.ChainBlockstore, error) {
