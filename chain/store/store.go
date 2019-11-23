@@ -873,7 +873,7 @@ func (cr *chainRand) GetRandomness(ctx context.Context, h int64) ([]byte, error)
 	lb := (int64(cr.bh) + int64(len(cr.tickets))) - h
 
 	if lb < 0 {
-		return nil, fmt.Errorf("BUG: can not get randomness from the future (curHeight: %d, wantHeight: $d)", cr.bh, h)
+		return nil, fmt.Errorf("BUG: can not get randomness from the future (curHeight: %d, wantHeight: %d)", cr.bh, h)
 	}
 
 	return cr.cs.GetRandomness(ctx, cr.blks, cr.tickets, uint64(lb))
