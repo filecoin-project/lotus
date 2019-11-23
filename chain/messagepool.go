@@ -99,7 +99,7 @@ func NewMessagePool(sm *stmgr.StateManager, ps *pubsub.PubSub) *MessagePool {
 		sm:            sm,
 		ps:            ps,
 		minGasPrice:   types.NewInt(0),
-		maxTxPoolSize: 100000,
+		maxTxPoolSize: 5000,
 		blsSigCache:   cache,
 		changes:       lps.New(50),
 	}
@@ -254,12 +254,23 @@ func (mp *MessagePool) GetNonce(addr address.Address) (uint64, error) {
 }
 
 func (mp *MessagePool) getNonceLocked(addr address.Address) (uint64, error) {
+	stateNonce, err := mp.getStateNonce(addr) // sanity check
+	if err != nil {
+		return 0, err
+	}
+
 	mset, ok := mp.pending[addr]
 	if ok {
+		if stateNonce > mset.nextNonce {
+			log.Errorf("state nonce was larger than mset.nextNonce")
+
+			return stateNonce, nil
+		}
+
 		return mset.nextNonce, nil
 	}
 
-	return mp.getStateNonce(addr)
+	return stateNonce, nil
 }
 
 func (mp *MessagePool) getStateNonce(addr address.Address) (uint64, error) {
@@ -328,8 +339,7 @@ func (mp *MessagePool) Remove(from address.Address, nonce uint64) {
 	delete(mset.msgs, nonce)
 
 	if len(mset.msgs) == 0 {
-		// FIXME: This is racy
-		//delete(mp.pending, from)
+		delete(mp.pending, from)
 	} else {
 		var max uint64
 		for nonce := range mset.msgs {

@@ -4,7 +4,11 @@ import (
 	"encoding/json"
 	"fmt"
 
+	"golang.org/x/xerrors"
 	"gopkg.in/urfave/cli.v2"
+
+	"github.com/filecoin-project/lotus/chain/address"
+	"github.com/filecoin-project/lotus/chain/types"
 )
 
 var mpoolCmd = &cli.Command{
@@ -13,6 +17,7 @@ var mpoolCmd = &cli.Command{
 	Subcommands: []*cli.Command{
 		mpoolPending,
 		mpoolSub,
+		mpoolStat,
 	},
 }
 
@@ -74,5 +79,66 @@ var mpoolSub = &cli.Command{
 				return nil
 			}
 		}
+	},
+}
+
+type statBucket struct {
+	msgs map[uint64]*types.SignedMessage
+}
+
+var mpoolStat = &cli.Command{
+	Name:  "stat",
+	Usage: "print mempool stats",
+	Action: func(cctx *cli.Context) error {
+		api, closer, err := GetFullNodeAPI(cctx)
+		if err != nil {
+			return err
+		}
+		defer closer()
+
+		ctx := ReqContext(cctx)
+
+		ts, err := api.ChainHead(ctx)
+		if err != nil {
+			return xerrors.Errorf("getting chain head: %w", err)
+		}
+
+		msgs, err := api.MpoolPending(ctx, nil)
+		if err != nil {
+			return err
+		}
+
+		buckets := map[address.Address]*statBucket{}
+
+		for _, v := range msgs {
+			bkt, ok := buckets[v.Message.From]
+			if !ok {
+				bkt = &statBucket{
+					msgs: map[uint64]*types.SignedMessage{},
+				}
+				buckets[v.Message.From] = bkt
+			}
+
+			bkt.msgs[v.Message.Nonce] = v
+		}
+		for a, bkt := range buckets {
+			act, err := api.StateGetActor(ctx, a, ts)
+			if err != nil {
+				return err
+			}
+
+			cur := act.Nonce
+			for {
+				_, ok := bkt.msgs[cur]
+				if !ok {
+					break
+				}
+				cur++
+			}
+
+			fmt.Printf("%s, cur %d\n", a, cur-act.Nonce)
+		}
+
+		return nil
 	},
 }
