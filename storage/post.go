@@ -249,7 +249,7 @@ func (p *post) waitCommit(ctx context.Context) error {
 	ctx, span := trace.StartSpan(ctx, "storage.waitPost")
 	defer span.End()
 
-	log.Infof("Waiting for post %s to appear on chain", p.smsg)
+	log.Infof("Waiting for post %s to appear on chain", p.smsg.Cid())
 
 	err := p.m.events.CalledMsg(ctx, func(msg *types.Message, rec *types.MessageReceipt, ts *types.TipSet, curH uint64) (more bool, err error) {
 		if rec.ExitCode != 0 {
