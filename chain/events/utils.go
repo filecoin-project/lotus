@@ -18,7 +18,8 @@ func (e *calledEvents) CheckMsg(ctx context.Context, smsg store.ChainMsg, hnd Ca
 			return false, true, err
 		}
 
-		if msg.Nonce > fa.Nonce {
+		// >= because actor nonce is actually the next nonce that is expected to appear on chain
+		if msg.Nonce >= fa.Nonce {
 			return false, true, nil
 		}
 
