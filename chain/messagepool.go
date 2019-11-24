@@ -257,6 +257,11 @@ func (mp *MessagePool) addLocked(m *types.SignedMessage) error {
 		return err
 	}
 
+	if _, err := mp.sm.ChainStore().PutMessage(&m.Message); err != nil {
+		log.Warnf("mpooladd cs.PutMessage failed: %s", err)
+		return err
+	}
+
 	mset, ok := mp.pending[m.Message.From]
 	if !ok {
 		mset = newMsgSet()
@@ -290,7 +295,7 @@ func (mp *MessagePool) getNonceLocked(addr address.Address) (uint64, error) {
 	mset, ok := mp.pending[addr]
 	if ok {
 		if stateNonce > mset.nextNonce {
-			log.Errorf("state nonce was larger than mset.nextNonce")
+			log.Errorf("state nonce was larger than mset.nextNonce (%d > %d)", stateNonce, mset.nextNonce)
 
 			return stateNonce, nil
 		}
@@ -341,7 +346,9 @@ func (mp *MessagePool) PushWithNonce(addr address.Address, cb func(uint64) (*typ
 	if err := mp.addLocked(msg); err != nil {
 		return nil, err
 	}
-	mp.addLocal(msg, msgb)
+	if err := mp.addLocal(msg, msgb); err != nil {
+		log.Errorf("addLocal failed: %+v", err)
+	}
 
 	return msg, mp.ps.Publish(msgTopic, msgb)
 }
@@ -375,6 +382,10 @@ func (mp *MessagePool) Remove(from address.Address, nonce uint64) {
 				max = nonce
 			}
 		}
+		if nonce > max {
+			max = nonce // we could have not seen the removed message before
+		}
+
 		mset.nextNonce = max + 1
 	}
 }
@@ -418,7 +429,7 @@ func (mp *MessagePool) HeadChange(revert []*types.TipSet, apply []*types.TipSet)
 			}
 			for _, msg := range smsgs {
 				if err := mp.Add(msg); err != nil {
-					return err
+					log.Error(err) // TODO: probably lots of spam in multi-block tsets
 				}
 			}
 
@@ -426,7 +437,7 @@ func (mp *MessagePool) HeadChange(revert []*types.TipSet, apply []*types.TipSet)
 				smsg := mp.RecoverSig(msg)
 				if smsg != nil {
 					if err := mp.Add(smsg); err != nil {
-						return err
+						log.Error(err) // TODO: probably lots of spam in multi-block tsets
 					}
 				} else {
 					log.Warnf("could not recover signature for bls message %s during a reorg revert", msg.Cid())
@@ -461,7 +472,7 @@ func (mp *MessagePool) RecoverSig(msg *types.Message) *types.SignedMessage {
 	}
 	sig, ok := val.(types.Signature)
 	if !ok {
-		log.Warnf("value in signature cache was not a signature (got %T)", val)
+		log.Errorf("value in signature cache was not a signature (got %T)", val)
 		return nil
 	}
 
@@ -516,7 +527,7 @@ func (mp *MessagePool) loadLocal() error {
 				continue // todo: drop the message from local cache (if above certain confidence threshold)
 			}
 
-			return xerrors.Errorf("adding local messgae: %w", err)
+			return xerrors.Errorf("adding local message: %w", err)
 		}
 	}
 

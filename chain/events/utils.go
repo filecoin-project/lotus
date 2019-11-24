@@ -5,28 +5,31 @@ import (
 
 	"golang.org/x/xerrors"
 
+	"github.com/filecoin-project/lotus/chain/store"
 	"github.com/filecoin-project/lotus/chain/types"
 )
 
-func (e *calledEvents) CheckMsg(ctx context.Context, msg *types.Message, hnd CalledHandler) CheckFunc {
+func (e *calledEvents) CheckMsg(ctx context.Context, smsg store.ChainMsg, hnd CalledHandler) CheckFunc {
+	msg := smsg.VMMessage()
+
 	return func(ts *types.TipSet) (done bool, more bool, err error) {
 		fa, err := e.cs.StateGetActor(ctx, msg.From, ts)
 		if err != nil {
 			return false, true, err
 		}
 
-		// TODO: probably want to look at the chain to make sure it's
-		//  the right message, but this is probably good enough for now
-		done = fa.Nonce >= msg.Nonce
+		if msg.Nonce > fa.Nonce {
+			return false, true, nil
+		}
 
-		rec, err := e.cs.StateGetReceipt(ctx, msg.Cid(), ts)
+		rec, err := e.cs.StateGetReceipt(ctx, smsg.VMMessage().Cid(), ts)
 		if err != nil {
-			return false, true, err
+			return false, true, xerrors.Errorf("getting receipt in CheckMsg: %w", err)
 		}
 
 		more, err = hnd(msg, rec, ts, ts.Height())
 
-		return done, more, err
+		return true, more, err
 	}
 }
 

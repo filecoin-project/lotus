@@ -96,7 +96,7 @@ func (e *heightEvents) headChangeAt(rev, app []*types.TipSet) error {
 				span.End()
 
 				if err != nil {
-					log.Errorf("chain trigger (@H %d, called @ %d) failed: %s", triggerH, ts.Height(), err)
+					log.Errorf("chain trigger (@H %d, called @ %d) failed: %+v", triggerH, ts.Height(), err)
 				}
 			}
 			return nil
