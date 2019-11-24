@@ -483,7 +483,11 @@ func (sm *StateManager) tipsetExecutedMessage(ts *types.TipSet, msg cid.Cid, vmm
 		return nil, err
 	}
 
-	for i, m := range cm {
+	for ii := range cm {
+		// iterate in reverse because we going backwards through the chain
+		i := len(cm) - ii - 1
+		m := cm[i]
+
 		if m.VMMessage().From == vmm.From { // cheaper to just check origin first
 			if m.VMMessage().Nonce == vmm.Nonce {
 				if m.Cid() == msg {
