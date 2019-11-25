@@ -291,7 +291,7 @@ func (sb *SectorBuilder) SealCommit(sectorID uint64, ticket SealTicket, seed Sea
 		}
 	}
 
-	sealedPath, err := sb.sealedSectorPath(sectorID)
+/*	sealedPath, err := sb.sealedSectorPath(sectorID)
 	if err != nil {
 		return nil, err
 	}
@@ -312,7 +312,7 @@ func (sb *SectorBuilder) SealCommit(sectorID uint64, ticket SealTicket, seed Sea
 	)
 	if err != nil {
 		return nil, xerrors.Errorf("ImportSealedSector: %w", err)
-	}
+	}*/
 	return proof, nil
 }
 
