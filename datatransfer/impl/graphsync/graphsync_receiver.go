@@ -22,21 +22,34 @@ type graphsyncReceiver struct {
 // ReceiveRequest takes an incoming request, validates the voucher and processes the message.
 func (receiver *graphsyncReceiver) ReceiveRequest(
 	ctx context.Context,
-	sender peer.ID,
+	initiator peer.ID,
 	incoming message.DataTransferRequest) {
 
-	// not yet doing anything else with the voucher
-	_, err := receiver.validateVoucher(sender, incoming)
+	voucher, err := receiver.validateVoucher(initiator, incoming)
 	if err != nil {
-		receiver.impl.sendResponse(ctx, false, sender, incoming.TransferID())
+		receiver.impl.sendResponse(ctx, false, initiator, incoming.TransferID())
 		return
 	}
 	stor, _ := nodeFromBytes(incoming.Selector())
 	root := cidlink.Link{incoming.BaseCid()}
-	if !incoming.IsPull() {
-		receiver.impl.gs.Request(ctx, sender, root, stor)
+
+	var dataSender, dataReceiver peer.ID
+	if incoming.IsPull() {
+		dataSender = receiver.impl.peerID
+		dataReceiver = initiator
+	} else {
+		dataSender = initiator
+		dataReceiver = receiver.impl.peerID
 	}
-	receiver.impl.sendResponse(ctx, true, sender, incoming.TransferID())
+
+	_ = receiver.impl.createNewChannel(incoming.TransferID(), incoming.BaseCid(), stor, voucher, initiator, dataSender, dataReceiver)
+
+	// schedule a data transfer if it's a Push request.
+	if !incoming.IsPull() {
+		receiver.impl.gs.Request(ctx, initiator, root, stor)
+	}
+
+	receiver.impl.sendResponse(ctx, true, initiator, incoming.TransferID())
 }
 
 // validateVoucher converts a voucher in an incoming message to its appropriate
