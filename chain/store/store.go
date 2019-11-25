@@ -12,6 +12,7 @@ import (
 	"github.com/filecoin-project/lotus/chain/state"
 	"github.com/filecoin-project/lotus/chain/vm"
 	"go.opencensus.io/trace"
+	"go.uber.org/multierr"
 	"go.uber.org/zap"
 
 	amt "github.com/filecoin-project/go-amt-ipld"
@@ -428,17 +429,32 @@ func (cs *ChainStore) AddToTipSetTracker(b *types.BlockHeader) error {
 	return nil
 }
 
-func (cs *ChainStore) PersistBlockHeaders(b ...*types.BlockHeader) (err error) {
+func (cs *ChainStore) PersistBlockHeaders(b ...*types.BlockHeader) error {
 	sbs := make([]block.Block, len(b))
 
 	for i, header := range b {
+		var err error
 		sbs[i], err = header.ToStorageBlock()
 		if err != nil {
 			return err
 		}
 	}
 
-	return cs.bs.PutMany(sbs)
+	batchSize := 256
+	calls := len(b) / batchSize
+
+	var err error
+	for i := 0; i <= calls; i++ {
+		start := batchSize * i
+		end := start + batchSize
+		if end > len(b) {
+			end = len(b)
+		}
+
+		err = multierr.Append(err, cs.bs.PutMany(sbs[start:end]))
+	}
+
+	return err
 }
 
 type storable interface {
