@@ -366,6 +366,8 @@ type MiningCheckAPI interface {
 
 	StateMinerSectorSize(context.Context, address.Address, *types.TipSet) (uint64, error)
 
+	StateMinerProvingSet(context.Context, address.Address, *types.TipSet) ([]*api.ChainSectorInfo, error)
+
 	WalletSign(context.Context, address.Address, []byte) (*types.Signature, error)
 }
 
@@ -398,20 +400,24 @@ func (mca mca) StateMinerSectorSize(ctx context.Context, maddr address.Address, 
 	return stmgr.GetMinerSectorSize(ctx, mca.sm, ts, maddr)
 }
 
+func (mca mca) StateMinerProvingSet(ctx context.Context, maddr address.Address, ts *types.TipSet) ([]*api.ChainSectorInfo, error) {
+	return stmgr.GetMinerProvingSet(ctx, mca.sm, ts, maddr)
+}
+
 func (mca mca) WalletSign(ctx context.Context, a address.Address, v []byte) (*types.Signature, error) {
 	return mca.w.Sign(ctx, a, v)
 }
 
 type ElectionPoStProver interface {
-	GenerateCandidates(context.Context, []byte) ([]sectorbuilder.EPostCandidate, error)
-	ComputeProof(context.Context, []byte, []sectorbuilder.EPostCandidate) ([]byte, error)
+	GenerateCandidates(context.Context, sectorbuilder.SortedPublicSectorInfo, []byte) ([]sectorbuilder.EPostCandidate, error)
+	ComputeProof(context.Context, sectorbuilder.SortedPublicSectorInfo, []byte, []sectorbuilder.EPostCandidate) ([]byte, error)
 }
 
 type eppProvider struct {
-	sectors []sectorbuilder.SectorInfo
+	sectors []sectorbuilder.PublicSectorInfo
 }
 
-func (epp *eppProvider) GenerateCandidates(ctx context.Context, eprand []byte) ([]sectorbuilder.EPostCandidate, error) {
+func (epp *eppProvider) GenerateCandidates(ctx context.Context, _ sectorbuilder.SortedPublicSectorInfo, eprand []byte) ([]sectorbuilder.EPostCandidate, error) {
 	return []sectorbuilder.EPostCandidate{
 		sectorbuilder.EPostCandidate{
 			SectorID:             1,
@@ -422,7 +428,7 @@ func (epp *eppProvider) GenerateCandidates(ctx context.Context, eprand []byte) (
 	}, nil
 }
 
-func (epp *eppProvider) ComputeProof(ctx context.Context, eprand []byte, winners []sectorbuilder.EPostCandidate) ([]byte, error) {
+func (epp *eppProvider) ComputeProof(ctx context.Context, _ sectorbuilder.SortedPublicSectorInfo, eprand []byte, winners []sectorbuilder.EPostCandidate) ([]byte, error) {
 
 	return []byte("valid proof"), nil
 }
@@ -443,9 +449,27 @@ func IsRoundWinner(ctx context.Context, ts *types.TipSet, round int64, miner add
 		return false, nil, xerrors.Errorf("failed to compute VRF: %w", err)
 	}
 
-	candidates, err := epp.GenerateCandidates(ctx, vrfout)
+	pset, err := a.StateMinerProvingSet(ctx, miner, ts)
 	if err != nil {
-		return false, nil, xerrors.Errorf("failed to generate electionPoSt candidates")
+		return false, nil, xerrors.Errorf("failed to load proving set for miner: %w", err)
+	}
+	log.Warningf("Proving set for miner %s: %s", miner, pset)
+
+	var sinfos []sectorbuilder.PublicSectorInfo
+	for _, s := range pset {
+		var commRa [32]byte
+		copy(commRa[:], s.CommR)
+		sinfos = append(sinfos, sectorbuilder.PublicSectorInfo{
+			SectorID: s.SectorID,
+			CommR:    commRa,
+		})
+	}
+	sectors := sectorbuilder.NewSortedPublicSectorInfo(sinfos)
+
+	log.Info("Replicas: ", sectors)
+	candidates, err := epp.GenerateCandidates(ctx, sectors, vrfout)
+	if err != nil {
+		return false, nil, xerrors.Errorf("failed to generate electionPoSt candidates: %w", err)
 	}
 
 	pow, err := a.StateMinerPower(ctx, miner, ts)
@@ -470,7 +494,7 @@ func IsRoundWinner(ctx context.Context, ts *types.TipSet, round int64, miner add
 		return false, nil, nil
 	}
 
-	proof, err := epp.ComputeProof(ctx, vrfout, winners)
+	proof, err := epp.ComputeProof(ctx, sectors, vrfout, winners)
 	if err != nil {
 		return false, nil, xerrors.Errorf("failed to compute snark for election proof: %w", err)
 	}

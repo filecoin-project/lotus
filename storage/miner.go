@@ -14,6 +14,7 @@ import (
 	"github.com/filecoin-project/lotus/api"
 	"github.com/filecoin-project/lotus/chain/address"
 	"github.com/filecoin-project/lotus/chain/events"
+	"github.com/filecoin-project/lotus/chain/gen"
 	"github.com/filecoin-project/lotus/chain/store"
 	"github.com/filecoin-project/lotus/chain/types"
 	"github.com/filecoin-project/lotus/lib/sectorbuilder"
@@ -132,4 +133,26 @@ func (m *Miner) runPreflightChecks(ctx context.Context) error {
 
 	log.Infof("starting up miner %s, worker addr %s", m.maddr, m.worker)
 	return nil
+}
+
+type sectorBuilderEpp struct {
+	sb *sectorbuilder.SectorBuilder
+}
+
+func NewElectionPoStProver(sb *sectorbuilder.SectorBuilder) *sectorBuilderEpp {
+	return &sectorBuilderEpp{sb}
+}
+
+var _ (gen.ElectionPoStProver) = (*sectorBuilderEpp)(nil)
+
+func (epp *sectorBuilderEpp) GenerateCandidates(ctx context.Context, ssi sectorbuilder.SortedPublicSectorInfo, rand []byte) ([]sectorbuilder.EPostCandidate, error) {
+	var faults []uint64 // TODO
+
+	var randbuf [32]byte
+	copy(randbuf[:], rand)
+	return epp.sb.GenerateEPostCandidates(ssi, randbuf, faults)
+}
+
+func (epp *sectorBuilderEpp) ComputeProof(ctx context.Context, ssi sectorbuilder.SortedPublicSectorInfo, rand []byte, winners []sectorbuilder.EPostCandidate) ([]byte, error) {
+	return epp.sb.ComputeElectionPoSt(ssi, rand, winners)
 }

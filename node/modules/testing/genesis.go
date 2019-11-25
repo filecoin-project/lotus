@@ -2,8 +2,10 @@ package testing
 
 import (
 	"context"
+	"encoding/json"
 	"fmt"
 	"io"
+	"io/ioutil"
 	"os"
 	"time"
 
@@ -19,6 +21,7 @@ import (
 	"github.com/filecoin-project/lotus/chain/gen"
 	"github.com/filecoin-project/lotus/chain/types"
 	"github.com/filecoin-project/lotus/chain/wallet"
+	"github.com/filecoin-project/lotus/genesis"
 	"github.com/filecoin-project/lotus/node/modules"
 	"github.com/filecoin-project/lotus/node/modules/dtypes"
 )
@@ -61,19 +64,30 @@ func MakeGenesisMem(out io.Writer, minerPid peer.ID) func(bs dtypes.ChainBlockst
 	}
 }
 
-func MakeGenesis(outFile string) func(bs dtypes.ChainBlockstore, w *wallet.Wallet) modules.Genesis {
+func MakeGenesis(outFile, preseal string) func(bs dtypes.ChainBlockstore, w *wallet.Wallet) modules.Genesis {
 	return func(bs dtypes.ChainBlockstore, w *wallet.Wallet) modules.Genesis {
 		return func() (*types.BlockHeader, error) {
 			glog.Warn("Generating new random genesis block, note that this SHOULD NOT happen unless you are setting up new network")
+			fdata, err := ioutil.ReadFile(preseal)
+			if err != nil {
+				return nil, err
+			}
+
+			var preseal map[string]genesis.GenesisMiner
+			if err := json.Unmarshal(fdata, &preseal); err != nil {
+				return nil, err
+			}
+
 			minerAddr, err := w.GenerateKey(types.KTBLS)
 			if err != nil {
 				return nil, err
 			}
 
 			gmc := &gen.GenMinerCfg{
-				Owners:  []address.Address{minerAddr},
-				Workers: []address.Address{minerAddr},
-				PeerIDs: []peer.ID{"peer ID 1"},
+				Owners:   []address.Address{minerAddr},
+				Workers:  []address.Address{minerAddr},
+				PeerIDs:  []peer.ID{"peer ID 1"},
+				PreSeals: preseal,
 			}
 
 			addrs := map[address.Address]types.BigInt{

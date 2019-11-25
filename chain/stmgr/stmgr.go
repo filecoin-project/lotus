@@ -84,6 +84,7 @@ func (sm *StateManager) TipSetState(ctx context.Context, ts *types.TipSet) (cid.
 func (sm *StateManager) computeTipSetState(ctx context.Context, blks []*types.BlockHeader, cb func(cid.Cid, *types.Message, *vm.ApplyRet) error) (cid.Cid, cid.Cid, error) {
 	ctx, span := trace.StartSpan(ctx, "computeTipSetState")
 	defer span.End()
+	fmt.Println("COMPUTE TIPSET STATE", len(blks))
 
 	for i := 0; i < len(blks); i++ {
 		for j := i + 1; j < len(blks); j++ {
@@ -113,9 +114,14 @@ func (sm *StateManager) computeTipSetState(ctx context.Context, blks []*types.Bl
 	if err != nil {
 		return cid.Undef, cid.Undef, xerrors.Errorf("failed to get network actor: %w", err)
 	}
-
 	reward := vm.MiningReward(netact.Balance)
 	for _, b := range blks {
+		netact, err = vmi.StateTree().GetActor(actors.NetworkAddress)
+		if err != nil {
+			return cid.Undef, cid.Undef, xerrors.Errorf("failed to get network actor: %w", err)
+		}
+		vmi.SetBlockMiner(b.Miner)
+
 		owner, err := GetMinerOwner(ctx, sm, pstate, b.Miner)
 		if err != nil {
 			return cid.Undef, cid.Undef, xerrors.Errorf("failed to get owner for miner %s: %w", b.Miner, err)
@@ -130,6 +136,24 @@ func (sm *StateManager) computeTipSetState(ctx context.Context, blks []*types.Bl
 			return cid.Undef, cid.Undef, xerrors.Errorf("failed to deduct funds from network actor: %w", err)
 		}
 
+		// all block miners created a valid post, go update the actor state
+		fmt.Println("SUBMIT ELECTION POST TIME", netact.Nonce, b.Height)
+		postSubmitMsg := &types.Message{
+			From:     actors.NetworkAddress,
+			Nonce:    netact.Nonce,
+			To:       b.Miner,
+			Method:   actors.MAMethods.SubmitElectionPoSt,
+			GasPrice: types.NewInt(0),
+			GasLimit: types.NewInt(10000000000),
+			Value:    types.NewInt(0),
+		}
+		ret, err := vmi.ApplyMessage(ctx, postSubmitMsg)
+		if err != nil {
+			return cid.Undef, cid.Undef, xerrors.Errorf("submit election post message invocation failed: %w", err)
+		}
+		if ret.ExitCode != 0 {
+			return cid.Undef, cid.Undef, xerrors.Errorf("submit election post invocation returned nonzero exit code: %d", ret.ExitCode)
+		}
 	}
 
 	// TODO: can't use method from chainstore because it doesnt let us know who the block miners were

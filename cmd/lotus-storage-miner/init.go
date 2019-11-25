@@ -4,6 +4,7 @@ import (
 	"context"
 	"crypto/rand"
 	"os"
+	"path/filepath"
 
 	"github.com/ipfs/go-datastore"
 	"github.com/libp2p/go-libp2p-core/crypto"
@@ -18,7 +19,11 @@ import (
 	"github.com/filecoin-project/lotus/chain/address"
 	"github.com/filecoin-project/lotus/chain/types"
 	lcli "github.com/filecoin-project/lotus/cli"
+	"github.com/filecoin-project/lotus/lib/sectorbuilder"
+	"github.com/filecoin-project/lotus/miner"
+	"github.com/filecoin-project/lotus/node/modules"
 	"github.com/filecoin-project/lotus/node/repo"
+	"github.com/filecoin-project/lotus/storage"
 )
 
 var initCmd = &cli.Command{
@@ -52,6 +57,10 @@ var initCmd = &cli.Command{
 			Name:  "sector-size",
 			Usage: "specify sector size to use",
 			Value: build.SectorSizes[0],
+		},
+		&cli.StringFlag{
+			Name:  "pre-sealed-sectors",
+			Usage: "specify set of presealed sectors for starting as a genesis miner",
 		},
 	},
 	Action: func(cctx *cli.Context) error {
@@ -104,6 +113,13 @@ var initCmd = &cli.Command{
 			return err
 		}
 
+		if pssb := cctx.String("pre-sealed-sectors"); pssb != "" {
+			log.Infof("moving pre-sealed-sectors from %s into newly created storage miner repo", pssb)
+			if err := migratePreSealedSectors(pssb, repoPath); err != nil {
+				return err
+			}
+		}
+
 		if err := storageMinerInit(ctx, cctx, api, r); err != nil {
 			log.Errorf("Failed to initialize lotus-storage-miner: %+v", err)
 			path, err := homedir.Expand(repoPath)
@@ -122,6 +138,35 @@ var initCmd = &cli.Command{
 
 		return nil
 	},
+}
+
+// TODO: this method should be a lot more robust for mainnet. For testnet, its
+// fine if we mess things up a few times
+func migratePreSealedSectors(presealsb string, repoPath string) error {
+	pspath, err := homedir.Expand(presealsb)
+	if err != nil {
+		return err
+	}
+
+	expRepo, err := homedir.Expand(repoPath)
+	if err != nil {
+		return err
+	}
+
+	if stat, err := os.Stat(pspath); err != nil {
+		return xerrors.Errorf("failed to stat presealed sectors directory: %w", err)
+	} else if !stat.IsDir() {
+		return xerrors.Errorf("given presealed sectors path was not a directory: %w", err)
+	}
+
+	for _, dir := range []string{"meta", "sealed", "staging", "cache"} {
+		from := filepath.Join(pspath, dir)
+		to := filepath.Join(expRepo, dir)
+		if err := os.Rename(from, to); err != nil {
+			return err
+		}
+	}
+	return nil
 }
 
 func storageMinerInit(ctx context.Context, cctx *cli.Context, api api.FullNode, r repo.Repo) error {
@@ -150,8 +195,47 @@ func storageMinerInit(ctx context.Context, cctx *cli.Context, api api.FullNode, 
 			return xerrors.Errorf("failed parsing actor flag value (%q): %w", act, err)
 		}
 
-		if err := configureStorageMiner(ctx, api, a, peerid, cctx.Bool("genesis-miner")); err != nil {
-			return xerrors.Errorf("failed to configure storage miner: %w", err)
+		if cctx.Bool("genesis-miner") {
+			mds, err := lr.Datastore("/metadata")
+			if err != nil {
+				return err
+			}
+			if err := mds.Put(datastore.NewKey("miner-address"), a.Bytes()); err != nil {
+				return err
+			}
+
+			sbcfg, err := modules.SectorBuilderConfig(lr.Path(), 2)(mds, api)
+			if err != nil {
+				return xerrors.Errorf("getting genesis miner sector builder config: %w", err)
+			}
+			sb, err := sectorbuilder.New(sbcfg, mds)
+			if err != nil {
+				return xerrors.Errorf("failed to set up sectorbuilder for genesis mining: %w", err)
+			}
+			epp := storage.NewElectionPoStProver(sb)
+
+			m := miner.NewMiner(api, epp)
+			{
+				if err := m.Register(a); err != nil {
+					return xerrors.Errorf("failed to start up genesis miner: %w", err)
+				}
+
+				defer func() {
+					if err := m.Unregister(ctx, a); err != nil {
+						log.Error("failed to shut down storage miner: ", err)
+					}
+				}()
+
+				if err := configureStorageMiner(ctx, api, a, peerid); err != nil {
+					return xerrors.Errorf("failed to configure storage miner: %w", err)
+				}
+			}
+
+			return nil
+		} else {
+			if err := configureStorageMiner(ctx, api, a, peerid); err != nil {
+				return xerrors.Errorf("failed to configure storage miner: %w", err)
+			}
 		}
 
 		addr = a
@@ -165,12 +249,11 @@ func storageMinerInit(ctx context.Context, cctx *cli.Context, api api.FullNode, 
 	}
 
 	log.Infof("Created new storage miner: %s", addr)
-
-	ds, err := lr.Datastore("/metadata")
+	mds, err := lr.Datastore("/metadata")
 	if err != nil {
 		return err
 	}
-	if err := ds.Put(datastore.NewKey("miner-address"), addr.Bytes()); err != nil {
+	if err := mds.Put(datastore.NewKey("miner-address"), addr.Bytes()); err != nil {
 		return err
 	}
 
@@ -203,22 +286,7 @@ func makeHostKey(lr repo.LockedRepo) (crypto.PrivKey, error) {
 	return pk, nil
 }
 
-func configureStorageMiner(ctx context.Context, api api.FullNode, addr address.Address, peerid peer.ID, genmine bool) error {
-	if genmine {
-		log.Warn("Starting genesis mining. This shouldn't happen when connecting to the real network.")
-		// We may be one of genesis miners, start mining before trying to do any chain operations
-		// (otherwise our messages won't be mined)
-		if err := api.MinerRegister(ctx, addr); err != nil {
-			return err
-		}
-
-		defer func() {
-			if err := api.MinerUnregister(ctx, addr); err != nil {
-				log.Errorf("failed to call api.MinerUnregister: %s", err)
-			}
-		}()
-	}
-
+func configureStorageMiner(ctx context.Context, api api.FullNode, addr address.Address, peerid peer.ID) error {
 	// This really just needs to be an api call at this point...
 	recp, err := api.StateCall(ctx, &types.Message{
 		To:     addr,

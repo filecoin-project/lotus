@@ -54,12 +54,6 @@ type StorageMinerActorState struct {
 	// These become the currentFaultSet when a PoSt is submitted.
 	NextFaultSet types.BitField
 
-	// Sectors reported during the last PoSt submission as being 'done'.
-	// The collateral for them is still being held until
-	// the next PoSt submission in case early sector
-	// removal penalization is needed.
-	NextDoneSet types.BitField
-
 	// Amount of power this miner has.
 	Power types.BigInt
 
@@ -69,7 +63,7 @@ type StorageMinerActorState struct {
 	// The height at which this miner was slashed at.
 	SlashedAt uint64
 
-	ProvingPeriodEnd uint64
+	ElectionPeriodStart uint64
 }
 
 type MinerInfo struct {
@@ -117,7 +111,7 @@ type maMethods struct {
 	Constructor          uint64
 	PreCommitSector      uint64
 	ProveCommitSector    uint64
-	SubmitPoSt           uint64
+	SubmitFallbackPoSt   uint64
 	SlashStorageFault    uint64
 	GetCurrentProvingSet uint64
 	ArbitrateDeal        uint64
@@ -133,16 +127,17 @@ type maMethods struct {
 	CheckMiner           uint64
 	DeclareFaults        uint64
 	SlashConsensusFault  uint64
+	SubmitElectionPoSt   uint64
 }
 
-var MAMethods = maMethods{1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16, 17, 18, 19}
+var MAMethods = maMethods{1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16, 17, 18, 19, 20}
 
 func (sma StorageMinerActor) Exports() []interface{} {
 	return []interface{}{
 		1: sma.StorageMinerConstructor,
 		2: sma.PreCommitSector,
 		3: sma.ProveCommitSector,
-		4: sma.SubmitPoSt,
+		4: sma.SubmitFallbackPoSt,
 		//5: sma.SlashStorageFault,
 		//6: sma.GetCurrentProvingSet,
 		//7:  sma.ArbitrateDeal,
@@ -158,6 +153,7 @@ func (sma StorageMinerActor) Exports() []interface{} {
 		17: sma.CheckMiner,
 		18: sma.DeclareFaults,
 		19: sma.SlashConsensusFault,
+		20: sma.SubmitElectionPoSt,
 	}
 }
 
@@ -366,7 +362,9 @@ func (sma StorageMinerActor) ProveCommitSector(act *types.Actor, vmctx types.VMC
 
 	if pss.Count == 0 {
 		self.ProvingSet = self.Sectors
-		self.ProvingPeriodEnd = vmctx.BlockHeight() + build.ProvingPeriodDuration
+		// TODO: probably want to wait until the miner is above a certain
+		// threshold before starting this
+		self.ElectionPeriodStart = vmctx.BlockHeight()
 	}
 
 	nstate, err := vmctx.Storage().Put(self)
@@ -389,8 +387,7 @@ func (sma StorageMinerActor) ProveCommitSector(act *types.Actor, vmctx types.VMC
 }
 
 type SubmitPoStParams struct {
-	Proof   types.EPostProof
-	DoneSet types.BitField
+	Proof types.EPostProof
 }
 
 func ProvingPeriodEnd(setPeriodEnd, height uint64) (uint64, uint64) {
@@ -401,7 +398,7 @@ func ProvingPeriodEnd(setPeriodEnd, height uint64) (uint64, uint64) {
 	return end, period
 }
 
-func (sma StorageMinerActor) SubmitPoSt(act *types.Actor, vmctx types.VMContext, params *SubmitPoStParams) ([]byte, ActorError) {
+func (sma StorageMinerActor) SubmitFallbackPoSt(act *types.Actor, vmctx types.VMContext, params *SubmitPoStParams) ([]byte, ActorError) {
 	oldstate, self, err := loadState(vmctx)
 	if err != nil {
 		return nil, err
@@ -416,36 +413,28 @@ func (sma StorageMinerActor) SubmitPoSt(act *types.Actor, vmctx types.VMContext,
 		return nil, aerrors.New(1, "not authorized to submit post for miner")
 	}
 
-	currentProvingPeriodEnd, _ := ProvingPeriodEnd(self.ProvingPeriodEnd, vmctx.BlockHeight())
-
-	feesRequired := types.NewInt(0)
-
-	if currentProvingPeriodEnd > self.ProvingPeriodEnd {
-		//TODO late fee calc
-		feesRequired = types.BigAdd(feesRequired, types.NewInt(1000))
-	}
-
-	//TODO temporary sector failure fees
-
-	msgVal := vmctx.Message().Value
-	if msgVal.LessThan(feesRequired) {
-		return nil, aerrors.New(2, "not enough funds to pay post submission fees")
-	}
-
-	if msgVal.GreaterThan(feesRequired) {
-		_, err := vmctx.Send(vmctx.Message().From, 0,
-			types.BigSub(msgVal, feesRequired), nil)
-		if err != nil {
-			return nil, aerrors.Wrap(err, "could not refund excess fees")
+	/*
+		// TODO: handle fees
+		msgVal := vmctx.Message().Value
+		if msgVal.LessThan(feesRequired) {
+			return nil, aerrors.New(2, "not enough funds to pay post submission fees")
 		}
-	}
+
+		if msgVal.GreaterThan(feesRequired) {
+			_, err := vmctx.Send(vmctx.Message().From, 0,
+				types.BigSub(msgVal, feesRequired), nil)
+			if err != nil {
+				return nil, aerrors.Wrap(err, "could not refund excess fees")
+			}
+		}
+	*/
 
 	var seed [sectorbuilder.CommLen]byte
 	{
-		randHeight := currentProvingPeriodEnd - build.PoStChallangeTime - build.PoStRandomnessLookback
+		randHeight := self.ElectionPeriodStart + build.FallbackPoStBegin
 		if vmctx.BlockHeight() <= randHeight {
 			// TODO: spec, retcode
-			return nil, aerrors.Newf(1, "submit PoSt called outside submission window (%d < %d)", vmctx.BlockHeight(), randHeight)
+			return nil, aerrors.Newf(1, "submit fallback PoSt called too early (%d < %d)", vmctx.BlockHeight(), randHeight)
 		}
 
 		rand, err := vmctx.GetRandomness(randHeight)
@@ -465,13 +454,13 @@ func (sma StorageMinerActor) SubmitPoSt(act *types.Actor, vmctx types.VMContext,
 		return nil, aerrors.HandleExternalError(lerr, "could not load proving set node")
 	}
 
-	var sectorInfos []sectorbuilder.SectorInfo
+	var sectorInfos []sectorbuilder.PublicSectorInfo
 	if err := pss.ForEach(func(id uint64, v *cbg.Deferred) error {
 		var comms [][]byte
 		if err := cbor.DecodeInto(v.Raw, &comms); err != nil {
 			return xerrors.New("could not decode comms")
 		}
-		si := sectorbuilder.SectorInfo{
+		si := sectorbuilder.PublicSectorInfo{
 			SectorID: id,
 		}
 		commR := comms[0]
@@ -501,7 +490,7 @@ func (sma StorageMinerActor) SubmitPoSt(act *types.Actor, vmctx types.VMContext,
 	proverID := vmctx.Message().To // TODO: normalize to ID address
 
 	if ok, lerr := sectorbuilder.VerifyPost(vmctx.Context(), mi.SectorSize,
-		sectorbuilder.NewSortedSectorInfo(sectorInfos), params.Proof.PostRand, params.Proof.Proof, winners, proverID); !ok || lerr != nil {
+		sectorbuilder.NewSortedPublicSectorInfo(sectorInfos), params.Proof.PostRand, params.Proof.Proof, winners, proverID); !ok || lerr != nil {
 		if lerr != nil {
 			// TODO: study PoST errors
 			return nil, aerrors.Absorb(lerr, 4, "PoST error")
@@ -510,25 +499,10 @@ func (sma StorageMinerActor) SubmitPoSt(act *types.Actor, vmctx types.VMContext,
 			return nil, aerrors.New(4, "PoST invalid")
 		}
 	}
+
+	// Post submission is successful!
 	self.CurrentFaultSet = self.NextFaultSet
 	self.NextFaultSet = types.NewBitField()
-
-	ss, lerr := amt.LoadAMT(types.WrapStorage(vmctx.Storage()), self.ProvingSet)
-	if lerr != nil {
-		return nil, aerrors.HandleExternalError(lerr, "could not load proving set node")
-	}
-
-	if err := ss.BatchDelete(params.DoneSet.All()); err != nil {
-		// TODO: this could fail for system reasons (block not found) or for
-		// bad user input reasons (e.g. bad doneset). The latter should be a
-		// non-fatal error
-		return nil, aerrors.HandleExternalError(err, "failed to delete sectors in done set")
-	}
-
-	self.ProvingSet, lerr = ss.Flush()
-	if lerr != nil {
-		return nil, aerrors.HandleExternalError(lerr, "could not flush AMT")
-	}
 
 	oldPower := self.Power
 	self.Power = types.BigMul(types.NewInt(pss.Count-uint64(len(faults))),
@@ -540,16 +514,16 @@ func (sma StorageMinerActor) SubmitPoSt(act *types.Actor, vmctx types.VMContext,
 		delta = self.Power
 	}
 
-	prevPE := self.ProvingPeriodEnd
+	prevSlashingDeadline := self.ElectionPeriodStart + build.SlashablePowerDelay
 	if !self.Active {
 		self.Active = true
-		prevPE = 0
+		prevSlashingDeadline = 0
 	}
 
 	enc, err := SerializeParams(&UpdateStorageParams{
 		Delta:                    delta,
-		NextProvingPeriodEnd:     currentProvingPeriodEnd + build.ProvingPeriodDuration,
-		PreviousProvingPeriodEnd: prevPE,
+		NextProvingPeriodEnd:     vmctx.BlockHeight() + build.SlashablePowerDelay,
+		PreviousProvingPeriodEnd: prevSlashingDeadline,
 	})
 	if err != nil {
 		return nil, err
@@ -561,8 +535,7 @@ func (sma StorageMinerActor) SubmitPoSt(act *types.Actor, vmctx types.VMContext,
 	}
 
 	self.ProvingSet = self.Sectors
-	self.ProvingPeriodEnd = currentProvingPeriodEnd + build.ProvingPeriodDuration
-	self.NextDoneSet = params.DoneSet
+	self.ElectionPeriodStart = vmctx.BlockHeight()
 
 	c, err := vmctx.Storage().Put(self)
 	if err != nil {
@@ -756,7 +729,7 @@ func (sma StorageMinerActor) GetSectorSize(act *types.Actor, vmctx types.VMConte
 }
 
 func isLate(height uint64, self *StorageMinerActorState) bool {
-	return self.ProvingPeriodEnd > 0 && height >= self.ProvingPeriodEnd // TODO: review: maybe > ?
+	return self.ElectionPeriodStart > 0 && height >= self.ElectionPeriodStart+build.SlashablePowerDelay
 }
 
 func (sma StorageMinerActor) IsSlashed(act *types.Actor, vmctx types.VMContext, params *struct{}) ([]byte, ActorError) {
@@ -824,32 +797,34 @@ type DeclareFaultsParams struct {
 }
 
 func (sma StorageMinerActor) DeclareFaults(act *types.Actor, vmctx types.VMContext, params *DeclareFaultsParams) ([]byte, ActorError) {
-	oldstate, self, aerr := loadState(vmctx)
-	if aerr != nil {
-		return nil, aerr
-	}
-
-	challengeHeight := self.ProvingPeriodEnd - build.PoStChallangeTime
-
-	if vmctx.BlockHeight() < challengeHeight {
-		// TODO: optimized bitfield methods
-		for _, v := range params.Faults.All() {
-			self.CurrentFaultSet.Set(v)
+	/*
+		oldstate, self, aerr := loadState(vmctx)
+		if aerr != nil {
+			return nil, aerr
 		}
-	} else {
-		for _, v := range params.Faults.All() {
-			self.NextFaultSet.Set(v)
+
+		challengeHeight := self.ProvingPeriodEnd - build.PoStChallangeTime
+
+		if vmctx.BlockHeight() < challengeHeight {
+			// TODO: optimized bitfield methods
+			for _, v := range params.Faults.All() {
+				self.CurrentFaultSet.Set(v)
+			}
+		} else {
+			for _, v := range params.Faults.All() {
+				self.NextFaultSet.Set(v)
+			}
 		}
-	}
 
-	nstate, err := vmctx.Storage().Put(self)
-	if err != nil {
-		return nil, err
-	}
-	if err := vmctx.Storage().Commit(oldstate, nstate); err != nil {
-		return nil, err
-	}
+		nstate, err := vmctx.Storage().Put(self)
+		if err != nil {
+			return nil, err
+		}
+		if err := vmctx.Storage().Commit(oldstate, nstate); err != nil {
+			return nil, err
+		}
 
+	*/
 	return nil, nil
 }
 
@@ -897,6 +872,85 @@ func (sma StorageMinerActor) SlashConsensusFault(act *types.Actor, vmctx types.V
 	// collateral that they no longer really 'need'
 
 	return nil, nil
+}
+
+func (sma StorageMinerActor) SubmitElectionPoSt(act *types.Actor, vmctx types.VMContext, params *struct{}) ([]byte, aerrors.ActorError) {
+	if vmctx.Message().From != NetworkAddress {
+		return nil, aerrors.Newf(1, "submit election post can only be called by the storage power actor")
+	}
+
+	oldstate, self, aerr := loadState(vmctx)
+	if aerr != nil {
+		return nil, aerr
+	}
+
+	if err := onSuccessfulPoSt(self, vmctx); err != nil {
+		return nil, err
+	}
+
+	ncid, err := vmctx.Storage().Put(self)
+	if err != nil {
+		return nil, err
+	}
+	if err := vmctx.Storage().Commit(oldstate, ncid); err != nil {
+		return nil, err
+	}
+
+	return nil, nil
+}
+
+func onSuccessfulPoSt(self *StorageMinerActorState, vmctx types.VMContext) aerrors.ActorError {
+	// TODO: some sector upkeep stuff that is very haphazard and unclear in the spec
+
+	var mi MinerInfo
+	if err := vmctx.Storage().Get(self.Info, &mi); err != nil {
+		return err
+	}
+
+	pss, nerr := amt.LoadAMT(types.WrapStorage(vmctx.Storage()), self.ProvingSet)
+	if nerr != nil {
+		return aerrors.HandleExternalError(nerr, "failed to load proving set")
+	}
+
+	self.CurrentFaultSet = self.NextFaultSet
+	self.NextFaultSet = types.NewBitField()
+
+	faults := []uint64{} // TODO
+
+	oldPower := self.Power
+	self.Power = types.BigMul(types.NewInt(pss.Count-uint64(len(faults))),
+		types.NewInt(mi.SectorSize))
+
+	delta := types.BigSub(self.Power, oldPower)
+	if self.SlashedAt != 0 {
+		self.SlashedAt = 0
+		delta = self.Power
+	}
+
+	prevSlashingDeadline := self.ElectionPeriodStart + build.SlashablePowerDelay
+	if !self.Active {
+		self.Active = true
+		prevSlashingDeadline = 0
+	}
+
+	fmt.Println("POWER UPDATE DELTA: ", delta)
+	enc, err := SerializeParams(&UpdateStorageParams{
+		Delta:                    delta,
+		NextProvingPeriodEnd:     vmctx.BlockHeight() + build.SlashablePowerDelay,
+		PreviousProvingPeriodEnd: prevSlashingDeadline,
+	})
+	if err != nil {
+		return err
+	}
+
+	_, err = vmctx.Send(StoragePowerAddress, SPAMethods.UpdateStorage, types.NewInt(0), enc)
+	if err != nil {
+		return err
+	}
+
+	self.ProvingSet = self.Sectors
+	self.ElectionPeriodStart = vmctx.BlockHeight()
+	return nil
 }
 
 func slasherShare(total types.BigInt, elapsed uint64) types.BigInt {

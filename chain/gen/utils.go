@@ -20,6 +20,7 @@ import (
 	"github.com/filecoin-project/lotus/chain/store"
 	"github.com/filecoin-project/lotus/chain/types"
 	"github.com/filecoin-project/lotus/chain/vm"
+	"github.com/filecoin-project/lotus/genesis"
 )
 
 type GenesisBootstrap struct {
@@ -215,8 +216,7 @@ type GenMinerCfg struct {
 	Owners  []address.Address
 	Workers []address.Address
 
-	// not quite generating real sectors yet, but this will be necessary
-	//SectorDir string
+	PreSeals map[string]genesis.GenesisMiner
 
 	// The addresses of the created miner, this is set by the genesis setup
 	MinerAddrs []address.Address
@@ -289,16 +289,23 @@ func SetupStorageMiners(ctx context.Context, cs *store.ChainStore, sroot cid.Cid
 		if err := cst.Get(ctx, mact.Head, &mstate); err != nil {
 			return cid.Undef, xerrors.Errorf("getting miner actor state failed: %w", err)
 		}
-		mstate.Power = types.NewInt(5000)
+		mstate.Power = types.NewInt(build.SectorSizes[0])
 
-		commD := make([]byte, 32)
-		commR := make([]byte, 32)
 		blks := amt.WrapBlockstore(cs.Blockstore())
-		nssroot, err := actors.AddToSectorSet(ctx, blks, mstate.Sectors, 1, commD, commR)
-		if err != nil {
-			return cid.Undef, xerrors.Errorf("failed to add fake sector to sector set: %w", err)
+
+		ps, ok := gmcfg.PreSeals[maddr.String()]
+		if ok {
+			for _, s := range ps.Sectors {
+				nssroot, err := actors.AddToSectorSet(ctx, blks, mstate.Sectors, s.SectorID, s.CommD[:], s.CommR[:])
+				if err != nil {
+					return cid.Undef, xerrors.Errorf("failed to add fake sector to sector set: %w", err)
+				}
+				mstate.Sectors = nssroot
+				mstate.ProvingSet = nssroot
+			}
+		} else {
+			log.Warning("No preseals for miner: ", maddr)
 		}
-		mstate.Sectors = nssroot
 
 		nstate, err := cst.Put(ctx, &mstate)
 		if err != nil {

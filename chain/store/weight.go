@@ -40,6 +40,7 @@ func (cs *ChainStore) Weight(ctx context.Context, ts *types.TipSet) (types.BigIn
 		log2P = int64(tpow.BitLen() - 1)
 	} else {
 		// Not really expect to be here ...
+		panic("where are we")
 		return types.EmptyInt, xerrors.Errorf("All power in the net is gone. You network might be disconnected, or the net is dead!")
 	}
 

@@ -31,9 +31,11 @@ type SectorSealingStatus = sectorbuilder.SectorSealingStatus
 
 type StagedSectorMetadata = sectorbuilder.StagedSectorMetadata
 
-type SortedSectorInfo = sectorbuilder.SortedSectorInfo
+type SortedPublicSectorInfo = sectorbuilder.SortedPublicSectorInfo
+type SortedPrivateSectorInfo = sectorbuilder.SortedPrivateSectorInfo
 
-type SectorInfo = sectorbuilder.SectorInfo
+type PrivateSectorInfo = sectorbuilder.SectorPrivateInfo
+type PublicSectorInfo = sectorbuilder.SectorPublicInfo
 
 type SealTicket = sectorbuilder.SealTicket
 
@@ -347,21 +349,49 @@ func (sb *SectorBuilder) SectorSize() uint64 {
 	return sb.ssize
 }
 
-func (sb *SectorBuilder) ComputeElectionPoSt(sectorInfo SortedSectorInfo, challengeSeed []byte, winners []EPostCandidate) ([]byte, error) {
+func (sb *SectorBuilder) ComputeElectionPoSt(sectorInfo SortedPublicSectorInfo, challengeSeed []byte, winners []EPostCandidate) ([]byte, error) {
 	if len(challengeSeed) != CommLen {
 		return nil, xerrors.Errorf("given challenge seed was the wrong length: %d != %d", len(challengeSeed), CommLen)
 	}
 	var cseed [CommLen]byte
 	copy(cseed[:], challengeSeed)
 
-	return sectorbuilder.GeneratePoSt(sb.handle, sectorInfo, cseed, winners)
+	return sectorbuilder.GeneratePoSt(sb.handle, sectorInfo, cseed, 1, winners)
 }
 
-func (sb *SectorBuilder) GenerateEPostCandidates(sectorInfo SortedSectorInfo, challengeSeed [CommLen]byte, faults []uint64) ([]EPostCandidate, error) {
-	return sectorbuilder.GenerateCandidates(sb.handle, sectorInfo, challengeSeed, faults)
+func (sb *SectorBuilder) GenerateEPostCandidates(sectorInfo SortedPublicSectorInfo, challengeSeed [CommLen]byte, faults []uint64) ([]EPostCandidate, error) {
+	privsectors, err := sb.pubSectorToPriv(sectorInfo)
+	if err != nil {
+		return nil, err
+	}
+	proverID := addressToProverID(sb.Miner)
+	return sectorbuilder.StandaloneGenerateCandidates(sb.ssize, proverID, challengeSeed, 1, privsectors)
 }
 
-func (sb *SectorBuilder) GenerateFallbackPoSt(sectorInfo SortedSectorInfo, challengeSeed [CommLen]byte, faults []uint64) ([]byte, error) {
+func (sb *SectorBuilder) pubSectorToPriv(sectorInfo SortedPublicSectorInfo) (SortedPrivateSectorInfo, error) {
+	var out []PrivateSectorInfo
+	for _, s := range sectorInfo.Values() {
+		cachePath, err := sb.sectorCacheDir(s.SectorID)
+		if err != nil {
+			return SortedPrivateSectorInfo{}, xerrors.Errorf("getting cache path for sector %d: %w", s.SectorID, err)
+		}
+
+		sealedPath, err := sb.sealedSectorPath(s.SectorID)
+		if err != nil {
+			return SortedPrivateSectorInfo{}, xerrors.Errorf("getting sealed path for sector %d: %w", s.SectorID, err)
+		}
+
+		out = append(out, PrivateSectorInfo{
+			SectorID:         s.SectorID,
+			CommR:            s.CommR,
+			CacheDirPath:     cachePath,
+			SealedSectorPath: sealedPath,
+		})
+	}
+	return NewSortedPrivateSectorInfo(out), nil
+}
+
+func (sb *SectorBuilder) GenerateFallbackPoSt(sectorInfo SortedPrivateSectorInfo, challengeSeed [CommLen]byte, faults []uint64) ([]byte, error) {
 	panic("NYI")
 }
 
@@ -378,18 +408,22 @@ func VerifySeal(sectorSize uint64, commR, commD []byte, proverID address.Address
 	return sectorbuilder.VerifySeal(sectorSize, commRa, commDa, proverIDa, ticketa, seeda, sectorID, proof)
 }
 
-func NewSortedSectorInfo(sectors []SectorInfo) SortedSectorInfo {
-	return sectorbuilder.NewSortedSectorInfo(sectors...)
+func NewSortedPrivateSectorInfo(sectors []PrivateSectorInfo) SortedPrivateSectorInfo {
+	return sectorbuilder.NewSortedSectorPrivateInfo(sectors...)
 }
 
-func VerifyPost(ctx context.Context, sectorSize uint64, sectorInfo SortedSectorInfo, challengeSeed []byte, proof []byte, winners []EPostCandidate, proverID address.Address) (bool, error) {
+func NewSortedPublicSectorInfo(sectors []PublicSectorInfo) SortedPublicSectorInfo {
+	return sectorbuilder.NewSortedSectorPublicInfo(sectors...)
+}
+
+func VerifyPost(ctx context.Context, sectorSize uint64, sectorInfo SortedPublicSectorInfo, challengeSeed []byte, proof []byte, winners []EPostCandidate, proverID address.Address) (bool, error) {
 	var challengeSeeda [CommLen]byte
 	copy(challengeSeeda[:], challengeSeed)
 
 	_, span := trace.StartSpan(ctx, "VerifyPoSt")
 	defer span.End()
 	prover := addressToProverID(proverID)
-	return sectorbuilder.VerifyPoSt(sectorSize, sectorInfo, challengeSeeda, proof, winners, prover)
+	return sectorbuilder.VerifyPoSt(sectorSize, sectorInfo, challengeSeeda, 1, proof, winners, prover)
 }
 
 func GeneratePieceCommitment(piece io.Reader, pieceSize uint64) (commP [CommLen]byte, err error) {

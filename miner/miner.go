@@ -5,17 +5,16 @@ import (
 	"sync"
 	"time"
 
+	"github.com/filecoin-project/lotus/api"
 	"github.com/filecoin-project/lotus/build"
 	"github.com/filecoin-project/lotus/chain/actors"
 	"github.com/filecoin-project/lotus/chain/address"
 	"github.com/filecoin-project/lotus/chain/gen"
 	"github.com/filecoin-project/lotus/chain/types"
-	"github.com/filecoin-project/lotus/node/impl/full"
 
 	logging "github.com/ipfs/go-log"
 	"github.com/pkg/errors"
 	"go.opencensus.io/trace"
-	"go.uber.org/fx"
 	"golang.org/x/xerrors"
 )
 
@@ -23,20 +22,10 @@ var log = logging.Logger("miner")
 
 type waitFunc func(ctx context.Context) error
 
-type api struct {
-	fx.In
-
-	full.ChainAPI
-	full.SyncAPI
-	full.MpoolAPI
-	full.WalletAPI
-	full.StateAPI
-}
-
-func NewMiner(api api) *Miner {
+func NewMiner(api api.FullNode, epp gen.ElectionPoStProver) *Miner {
 	return &Miner{
 		api: api,
-		epp: nil,
+		epp: epp,
 		waitFunc: func(ctx context.Context) error {
 			// Wait around for half the block time in case other parents come in
 			time.Sleep(build.BlockDelay * time.Second / 2)
@@ -46,7 +35,7 @@ func NewMiner(api api) *Miner {
 }
 
 type Miner struct {
-	api api
+	api api.FullNode
 
 	epp gen.ElectionPoStProver
 
@@ -256,9 +245,9 @@ func (m *Miner) mineOne(ctx context.Context, addr address.Address, base *MiningB
 		return nil, errors.Wrap(err, "scratching ticket failed")
 	}
 
-	win, proof, err := gen.IsRoundWinner(ctx, base.ts, int64(base.ts.Height()+base.nullRounds+1), addr, m.epp, &m.api)
+	win, proof, err := gen.IsRoundWinner(ctx, base.ts, int64(base.ts.Height()+base.nullRounds+1), addr, m.epp, m.api)
 	if err != nil {
-		return nil, errors.Wrap(err, "failed to check if we win next round")
+		return nil, xerrors.Errorf("failed to check if we win next round: %w", err)
 	}
 
 	if !win {

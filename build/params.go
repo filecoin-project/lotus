@@ -85,6 +85,10 @@ const SealRandomnessLookbackLimit = SealRandomnessLookback + 2000
 // Blocks
 const EcRandomnessLookback = 300
 
+const FallbackPoStBegin = 1000
+const SlashablePowerDelay = 2000 
+
+
 const PowerCollateralProportion = 5
 const PerCapitaCollateralProportion = 1
 const CollateralPrecision = 1000

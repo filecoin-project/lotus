@@ -155,7 +155,8 @@ func GetMinerProvingPeriodEnd(ctx context.Context, sm *StateManager, ts *types.T
 		return 0, xerrors.Errorf("failed to load miner actor state: %w", err)
 	}
 
-	return mas.ProvingPeriodEnd, nil
+	panic("idk what to do")
+	//return mas.ProvingPeriodEnd, nil
 }
 
 func GetMinerProvingSet(ctx context.Context, sm *StateManager, ts *types.TipSet, maddr address.Address) ([]*api.ChainSectorInfo, error) {
@@ -178,23 +179,23 @@ func GetMinerSectorSet(ctx context.Context, sm *StateManager, ts *types.TipSet, 
 	return LoadSectorsFromSet(ctx, sm.ChainStore().Blockstore(), mas.Sectors)
 }
 
-func GetSectorsForElectionPost(ctx context.Context, sm *StateManager, ts *types.TipSet, maddr address.Address) (*sectorbuilder.SortedSectorInfo, error) {
+func GetSectorsForElectionPost(ctx context.Context, sm *StateManager, ts *types.TipSet, maddr address.Address) (*sectorbuilder.SortedPublicSectorInfo, error) {
 	sectors, err := GetMinerSectorSet(ctx, sm, ts, maddr)
 	if err != nil {
 		return nil, xerrors.Errorf("failed to get sector set for miner: %w", err)
 	}
 
-	var uselessOtherArray []sectorbuilder.SectorInfo
+	var uselessOtherArray []sectorbuilder.PublicSectorInfo
 	for _, s := range sectors {
 		var uselessBuffer [32]byte
 		copy(uselessBuffer[:], s.CommR)
-		uselessOtherArray = append(uselessOtherArray, sectorbuilder.SectorInfo{
+		uselessOtherArray = append(uselessOtherArray, sectorbuilder.PublicSectorInfo{
 			SectorID: s.SectorID,
 			CommR:    uselessBuffer,
 		})
 	}
 
-	ssi := sectorbuilder.NewSortedSectorInfo(uselessOtherArray)
+	ssi := sectorbuilder.NewSortedPublicSectorInfo(uselessOtherArray)
 	return &ssi, nil
 }
 

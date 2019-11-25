@@ -22,6 +22,7 @@ import (
 	"github.com/filecoin-project/lotus/chain"
 	"github.com/filecoin-project/lotus/chain/blocksync"
 	"github.com/filecoin-project/lotus/chain/deals"
+	"github.com/filecoin-project/lotus/chain/gen"
 	"github.com/filecoin-project/lotus/chain/market"
 	"github.com/filecoin-project/lotus/chain/metrics"
 	"github.com/filecoin-project/lotus/chain/stmgr"
@@ -92,7 +93,6 @@ const (
 	HandleDealsKey
 	HandleRetrievalKey
 	RunSectorServiceKey
-	RegisterMinerKey
 	RegisterProviderValidatorKey
 
 	// daemon
@@ -231,8 +231,6 @@ func Online() Option {
 			Override(new(*paych.Store), paych.NewStore),
 			Override(new(*paych.Manager), paych.NewManager),
 			Override(new(*market.FundMgr), market.NewFundMgr),
-
-			Override(new(*miner.Miner), miner.NewMiner),
 		),
 
 		// Storage miner
@@ -252,7 +250,8 @@ func Online() Option {
 			Override(RegisterProviderValidatorKey, modules.RegisterProviderValidator),
 			Override(HandleRetrievalKey, modules.HandleRetrieval),
 			Override(HandleDealsKey, modules.HandleDeals),
-			Override(RegisterMinerKey, modules.RegisterMiner),
+			Override(new(gen.ElectionPoStProver), storage.NewElectionPoStProver),
+			Override(new(*miner.Miner), modules.SetupBlockProducer),
 		),
 	)
 }

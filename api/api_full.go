@@ -49,9 +49,6 @@ type FullNode interface {
 
 	// miner
 
-	MinerRegister(context.Context, address.Address) error
-	MinerUnregister(context.Context, address.Address) error
-	MinerAddresses(context.Context) ([]address.Address, error)
 	MinerCreateBlock(context.Context, address.Address, *types.TipSet, *types.Ticket, *types.EPostProof, []*types.SignedMessage, uint64, uint64) (*types.BlockMsg, error)
 
 	// // UX ?

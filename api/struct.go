@@ -58,9 +58,6 @@ type FullNodeStruct struct {
 		MpoolPush        func(context.Context, *types.SignedMessage) error                    `perm:"write"`
 		MpoolPushMessage func(context.Context, *types.Message) (*types.SignedMessage, error)  `perm:"sign"`
 
-		MinerRegister    func(context.Context, address.Address) error                                                                                                             `perm:"admin"`
-		MinerUnregister  func(context.Context, address.Address) error                                                                                                             `perm:"admin"`
-		MinerAddresses   func(context.Context) ([]address.Address, error)                                                                                                         `perm:"write"`
 		MinerCreateBlock func(context.Context, address.Address, *types.TipSet, *types.Ticket, *types.EPostProof, []*types.SignedMessage, uint64, uint64) (*types.BlockMsg, error) `perm:"write"`
 
 		WalletNew            func(context.Context, string) (address.Address, error)                               `perm:"write"`
@@ -223,18 +220,6 @@ func (c *FullNodeStruct) MpoolPush(ctx context.Context, smsg *types.SignedMessag
 
 func (c *FullNodeStruct) MpoolPushMessage(ctx context.Context, msg *types.Message) (*types.SignedMessage, error) {
 	return c.Internal.MpoolPushMessage(ctx, msg)
-}
-
-func (c *FullNodeStruct) MinerRegister(ctx context.Context, addr address.Address) error {
-	return c.Internal.MinerRegister(ctx, addr)
-}
-
-func (c *FullNodeStruct) MinerUnregister(ctx context.Context, addr address.Address) error {
-	return c.Internal.MinerUnregister(ctx, addr)
-}
-
-func (c *FullNodeStruct) MinerAddresses(ctx context.Context) ([]address.Address, error) {
-	return c.Internal.MinerAddresses(ctx)
 }
 
 func (c *FullNodeStruct) MinerCreateBlock(ctx context.Context, addr address.Address, base *types.TipSet, ticket *types.Ticket, eproof *types.EPostProof, msgs []*types.SignedMessage, height, ts uint64) (*types.BlockMsg, error) {

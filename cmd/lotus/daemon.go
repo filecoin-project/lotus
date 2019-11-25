@@ -21,7 +21,8 @@ import (
 )
 
 const (
-	makeGenFlag = "lotus-make-random-genesis"
+	makeGenFlag          = "lotus-make-random-genesis"
+	preSealedSectorsFlag = "genesis-presealed-sectors"
 )
 
 // DaemonCmd is the `go-lotus daemon` command
@@ -36,6 +37,10 @@ var DaemonCmd = &cli.Command{
 		&cli.StringFlag{
 			Name:   makeGenFlag,
 			Value:  "",
+			Hidden: true,
+		},
+		&cli.StringFlag{
+			Name:   "genesis-presealed-sectors",
 			Hidden: true,
 		},
 		&cli.StringFlag{
@@ -69,7 +74,6 @@ var DaemonCmd = &cli.Command{
 			if err != nil {
 				return err
 			}
-
 		}
 
 		genesis := node.Options()
@@ -77,7 +81,10 @@ var DaemonCmd = &cli.Command{
 			genesis = node.Override(new(modules.Genesis), modules.LoadGenesis(genBytes))
 		}
 		if cctx.String(makeGenFlag) != "" {
-			genesis = node.Override(new(modules.Genesis), testing.MakeGenesis(cctx.String(makeGenFlag)))
+			if cctx.String(preSealedSectorsFlag) == "" {
+				return xerrors.Errorf("must also pass file with miner preseal info to `--%s`", preSealedSectorsFlag)
+			}
+			genesis = node.Override(new(modules.Genesis), testing.MakeGenesis(cctx.String(makeGenFlag), cctx.String(preSealedSectorsFlag)))
 		}
 
 		var api api.FullNode

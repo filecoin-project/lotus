@@ -2,7 +2,6 @@ package modules
 
 import (
 	"context"
-	"fmt"
 	"math"
 	"path/filepath"
 	"reflect"
@@ -24,9 +23,11 @@ import (
 	"github.com/filecoin-project/lotus/build"
 	"github.com/filecoin-project/lotus/chain/address"
 	"github.com/filecoin-project/lotus/chain/deals"
+	"github.com/filecoin-project/lotus/chain/gen"
 	"github.com/filecoin-project/lotus/datatransfer"
 	"github.com/filecoin-project/lotus/lib/sectorbuilder"
 	"github.com/filecoin-project/lotus/lib/statestore"
+	"github.com/filecoin-project/lotus/miner"
 	"github.com/filecoin-project/lotus/node/modules/dtypes"
 	"github.com/filecoin-project/lotus/node/modules/helpers"
 	"github.com/filecoin-project/lotus/node/repo"
@@ -176,26 +177,27 @@ func StagingDAG(mctx helpers.MetricsCtx, lc fx.Lifecycle, r repo.LockedRepo, rt 
 	return dag, nil
 }
 
-func RegisterMiner(lc fx.Lifecycle, ds dtypes.MetadataDS, api api.FullNode) error {
+func SetupBlockProducer(lc fx.Lifecycle, ds dtypes.MetadataDS, api api.FullNode, epp gen.ElectionPoStProver) (*miner.Miner, error) {
 	minerAddr, err := minerAddrFromDS(ds)
 	if err != nil {
-		return err
+		return nil, err
 	}
+
+	m := miner.NewMiner(api, epp)
 
 	lc.Append(fx.Hook{
 		OnStart: func(ctx context.Context) error {
-			log.Infof("Registering miner '%s' with full node", minerAddr)
-			if err := api.MinerRegister(ctx, minerAddr); err != nil {
-				return fmt.Errorf("Failed to register miner: %s\nIf you are certain no other storage miner instance is running, try running 'lotus unregister-miner %s' and restarting the storage miner", err, minerAddr)
+			if err := m.Register(minerAddr); err != nil {
+				return err
 			}
 			return nil
 		},
 		OnStop: func(ctx context.Context) error {
-			log.Infof("Unregistering miner '%s' from full node", minerAddr)
-			return api.MinerUnregister(ctx, minerAddr)
+			return m.Unregister(ctx, minerAddr)
 		},
 	})
-	return nil
+
+	return m, nil
 }
 
 func SectorBuilder(lc fx.Lifecycle, cfg *sectorbuilder.Config, ds dtypes.MetadataDS) (*sectorbuilder.SectorBuilder, error) {
