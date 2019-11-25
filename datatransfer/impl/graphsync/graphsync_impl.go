@@ -66,7 +66,7 @@ func NewGraphSyncDataTransfer(parent context.Context, host host.Host, gs graphsy
 		host.ID(),
 		0,
 	}
-	if err := gs.RegisterRequestReceivedHook(true, impl.GsReqRecdHook); err != nil {
+	if err := gs.RegisterRequestReceivedHook(true, impl.gsReqRecdHook); err != nil {
 		log.Error(err)
 		return nil
 	}
@@ -75,9 +75,9 @@ func NewGraphSyncDataTransfer(parent context.Context, host host.Host, gs graphsy
 	return impl
 }
 
-// GsReqRecdHook is a graphsync.OnRequestReceivedHook hook
+// gsReqRecdHook is a graphsync.OnRequestReceivedHook hook
 // if an incoming request does not match a previous push request, it returns an error.
-func (impl *graphsyncImpl) GsReqRecdHook(p peer.ID, request graphsync.RequestData) ([]graphsync.ExtensionData, error) {
+func (impl *graphsyncImpl) gsReqRecdHook(p peer.ID, request graphsync.RequestData) ([]graphsync.ExtensionData, error) {
 	var resp []graphsync.ExtensionData
 	chid, _, err := impl.getChannelIDAndData(request)
 
@@ -88,7 +88,7 @@ func (impl *graphsyncImpl) GsReqRecdHook(p peer.ID, request graphsync.RequestDat
 	if err != nil {
 		return resp, err
 	}
-	if !impl.HasPushChannel(chid) {
+	if !impl.hasPushChannel(chid) {
 		return resp, errors.New("could not find push channel")
 	}
 	resp = append(resp, extData)
@@ -266,13 +266,13 @@ func (impl *graphsyncImpl) InProgressChannels() map[datatransfer.ChannelID]datat
 	return channelsCopy
 }
 
-// HasPushChannel returns true if a channel with ID chid exists and is for a Push request.
-func (impl *graphsyncImpl) HasPushChannel(chid datatransfer.ChannelID) bool {
+// hasPushChannel returns true if a channel with ID chid exists and is for a Push request.
+func (impl *graphsyncImpl) hasPushChannel(chid datatransfer.ChannelID) bool {
 	return impl.getPushChannel(chid) != datatransfer.EmptyChannelState
 }
 
-// HasPullChannel returns true if a channel with ID chid exists and is for a Pull request.
-func (impl *graphsyncImpl) HasPullChannel(chid datatransfer.ChannelID) bool {
+// hasPullChannel returns true if a channel with ID chid exists and is for a Pull request.
+func (impl *graphsyncImpl) hasPullChannel(chid datatransfer.ChannelID) bool {
 	return impl.getPullChannel(chid) != datatransfer.EmptyChannelState
 }
 
