@@ -79,6 +79,9 @@ const SealRandomnessLookback = Finality
 // Blocks
 const SealRandomnessLookbackLimit = SealRandomnessLookback + 2000
 
+// 1 / n
+const SectorChallengeRatioDiv = 25
+
 // /////
 // Mining
 

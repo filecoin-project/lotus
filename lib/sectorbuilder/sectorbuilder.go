@@ -16,6 +16,7 @@ import (
 	"go.opencensus.io/trace"
 	"golang.org/x/xerrors"
 
+	"github.com/filecoin-project/lotus/build"
 	"github.com/filecoin-project/lotus/chain/address"
 	"github.com/filecoin-project/lotus/node/modules/dtypes"
 )
@@ -356,7 +357,9 @@ func (sb *SectorBuilder) ComputeElectionPoSt(sectorInfo SortedPublicSectorInfo, 
 	var cseed [CommLen]byte
 	copy(cseed[:], challengeSeed)
 
-	return sectorbuilder.GeneratePoSt(sb.handle, sectorInfo, cseed, 1, winners)
+	challengeCount := challangeCount(uint64(len(sectorInfo.Values())))
+
+	return sectorbuilder.GeneratePoSt(sb.handle, sectorInfo, cseed, challengeCount, winners)
 }
 
 func (sb *SectorBuilder) GenerateEPostCandidates(sectorInfo SortedPublicSectorInfo, challengeSeed [CommLen]byte, faults []uint64) ([]EPostCandidate, error) {
@@ -364,8 +367,11 @@ func (sb *SectorBuilder) GenerateEPostCandidates(sectorInfo SortedPublicSectorIn
 	if err != nil {
 		return nil, err
 	}
+
+	challengeCount := challangeCount(uint64(len(sectorInfo.Values())))
+
 	proverID := addressToProverID(sb.Miner)
-	return sectorbuilder.StandaloneGenerateCandidates(sb.ssize, proverID, challengeSeed, 1, privsectors)
+	return sectorbuilder.StandaloneGenerateCandidates(sb.ssize, proverID, challengeSeed, challengeCount, privsectors)
 }
 
 func (sb *SectorBuilder) pubSectorToPriv(sectorInfo SortedPublicSectorInfo) (SortedPrivateSectorInfo, error) {
@@ -420,10 +426,12 @@ func VerifyPost(ctx context.Context, sectorSize uint64, sectorInfo SortedPublicS
 	var challengeSeeda [CommLen]byte
 	copy(challengeSeeda[:], challengeSeed)
 
+	challengeCount := challangeCount(uint64(len(sectorInfo.Values())))
+
 	_, span := trace.StartSpan(ctx, "VerifyPoSt")
 	defer span.End()
 	prover := addressToProverID(proverID)
-	return sectorbuilder.VerifyPoSt(sectorSize, sectorInfo, challengeSeeda, 1, proof, winners, prover)
+	return sectorbuilder.VerifyPoSt(sectorSize, sectorInfo, challengeSeeda, challengeCount, proof, winners, prover)
 }
 
 func GeneratePieceCommitment(piece io.Reader, pieceSize uint64) (commP [CommLen]byte, err error) {
@@ -442,4 +450,9 @@ func GeneratePieceCommitment(piece io.Reader, pieceSize uint64) (commP [CommLen]
 
 func GenerateDataCommitment(ssize uint64, pieces []PublicPieceInfo) ([CommLen]byte, error) {
 	return sectorbuilder.GenerateDataCommitment(ssize, pieces)
+}
+
+func challangeCount(sectors uint64) uint64 {
+	// ceil(sectors / build.SectorChallengeRatioDiv)
+	return (sectors + build.SectorChallengeRatioDiv - 1) / build.SectorChallengeRatioDiv
 }
