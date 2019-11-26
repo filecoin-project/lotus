@@ -291,28 +291,28 @@ func (sb *SectorBuilder) SealCommit(sectorID uint64, ticket SealTicket, seed Sea
 		}
 	}
 
-/*	sealedPath, err := sb.sealedSectorPath(sectorID)
-	if err != nil {
-		return nil, err
-	}
+	/*	sealedPath, err := sb.sealedSectorPath(sectorID)
+		if err != nil {
+			return nil, err
+		}
 
-	err = sectorbuilder.ImportSealedSector(
-		sb.handle,
-		sectorID,
-		cacheDir,
-		sealedPath,
-		ticket,
-		seed,
-		rspco.CommR,
-		rspco.CommD,
-		rspco.CommC,
-		rspco.CommRLast,
-		proof,
-		pmeta,
-	)
-	if err != nil {
-		return nil, xerrors.Errorf("ImportSealedSector: %w", err)
-	}*/
+		err = sectorbuilder.ImportSealedSector(
+			sb.handle,
+			sectorID,
+			cacheDir,
+			sealedPath,
+			ticket,
+			seed,
+			rspco.CommR,
+			rspco.CommD,
+			rspco.CommC,
+			rspco.CommRLast,
+			proof,
+			pmeta,
+		)
+		if err != nil {
+			return nil, xerrors.Errorf("ImportSealedSector: %w", err)
+		}*/
 	return proof, nil
 }
 
@@ -357,9 +357,13 @@ func (sb *SectorBuilder) ComputeElectionPoSt(sectorInfo SortedPublicSectorInfo, 
 	var cseed [CommLen]byte
 	copy(cseed[:], challengeSeed)
 
-	challengeCount := challangeCount(uint64(len(sectorInfo.Values())))
+	privsects, err := sb.pubSectorToPriv(sectorInfo)
+	if err != nil {
+		return nil, err
+	}
 
-	return sectorbuilder.GeneratePoSt(sb.handle, sectorInfo, cseed, challengeCount, winners)
+	proverID := addressToProverID(sb.Miner)
+	return sectorbuilder.StandaloneGeneratePoSt(sb.ssize, proverID, privsects, cseed, winners)
 }
 
 func (sb *SectorBuilder) GenerateEPostCandidates(sectorInfo SortedPublicSectorInfo, challengeSeed [CommLen]byte, faults []uint64) ([]EPostCandidate, error) {

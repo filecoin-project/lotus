@@ -246,7 +246,7 @@ func SetupStorageMiners(ctx context.Context, cs *store.ChainStore, sroot cid.Cid
 		params := mustEnc(&actors.CreateStorageMinerParams{
 			Owner:      owner,
 			Worker:     worker,
-			SectorSize: build.SectorSizes[0],
+			SectorSize: 1024, // TODO: needs to come from preseals info
 			PeerID:     pid,
 		})
 

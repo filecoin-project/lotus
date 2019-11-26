@@ -184,6 +184,7 @@ func (sma StorageMinerActor) StorageMinerConstructor(act *types.Actor, vmctx typ
 		SectorSize: params.SectorSize,
 	}
 
+	fmt.Println("NEW STORAGE MINER WITH SECTOR SIZE: ", params.SectorSize)
 	minfocid, err := vmctx.Storage().Put(minerInfo)
 	if err != nil {
 		return nil, err

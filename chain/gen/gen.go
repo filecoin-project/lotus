@@ -466,8 +466,9 @@ func IsRoundWinner(ctx context.Context, ts *types.TipSet, round int64, miner add
 	}
 	sectors := sectorbuilder.NewSortedPublicSectorInfo(sinfos)
 
+	hvrf := sha256.Sum256(vrfout)
 	log.Info("Replicas: ", sectors)
-	candidates, err := epp.GenerateCandidates(ctx, sectors, vrfout)
+	candidates, err := epp.GenerateCandidates(ctx, sectors, hvrf[:])
 	if err != nil {
 		return false, nil, xerrors.Errorf("failed to generate electionPoSt candidates: %w", err)
 	}
@@ -494,7 +495,7 @@ func IsRoundWinner(ctx context.Context, ts *types.TipSet, round int64, miner add
 		return false, nil, nil
 	}
 
-	proof, err := epp.ComputeProof(ctx, sectors, vrfout, winners)
+	proof, err := epp.ComputeProof(ctx, sectors, hvrf[:], winners)
 	if err != nil {
 		return false, nil, xerrors.Errorf("failed to compute snark for election proof: %w", err)
 	}
