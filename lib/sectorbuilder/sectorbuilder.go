@@ -3,18 +3,15 @@ package sectorbuilder
 import (
 	"context"
 	"fmt"
-	"io"
-	"os"
-	"sort"
-	"strconv"
-	"sync"
-	"unsafe"
-
 	sectorbuilder "github.com/filecoin-project/go-sectorbuilder"
 	"github.com/ipfs/go-datastore"
 	logging "github.com/ipfs/go-log"
 	"go.opencensus.io/trace"
 	"golang.org/x/xerrors"
+	"io"
+	"os"
+	"strconv"
+	"sync"
 
 	"github.com/filecoin-project/lotus/build"
 	"github.com/filecoin-project/lotus/chain/address"
@@ -55,11 +52,11 @@ type EPostCandidate = sectorbuilder.Candidate
 const CommLen = sectorbuilder.CommitmentBytesLen
 
 type SectorBuilder struct {
-	handle unsafe.Pointer
-	ds     dtypes.MetadataDS
-	idLk   sync.Mutex
+	ds   dtypes.MetadataDS
+	idLk sync.Mutex
 
-	ssize uint64
+	ssize  uint64
+	lastID uint64
 
 	Miner address.Address
 
@@ -87,8 +84,6 @@ func New(cfg *Config, ds dtypes.MetadataDS) (*SectorBuilder, error) {
 		return nil, xerrors.Errorf("minimum worker threads is %d, specified %d", PoStReservedWorkers+1, cfg.WorkerThreads)
 	}
 
-	proverId := addressToProverID(cfg.Miner)
-
 	for _, dir := range []string{cfg.StagedDir, cfg.SealedDir, cfg.CacheDir, cfg.MetadataDir} {
 		if err := os.Mkdir(dir, 0755); err != nil {
 			if os.IsExist(err) {
@@ -112,16 +107,11 @@ func New(cfg *Config, ds dtypes.MetadataDS) (*SectorBuilder, error) {
 		return nil, err
 	}
 
-	sbp, err := sectorbuilder.InitSectorBuilder(cfg.SectorSize, PoRepProofPartitions, lastUsedID, cfg.MetadataDir, proverId, cfg.SealedDir, cfg.StagedDir, cfg.CacheDir, 16, cfg.WorkerThreads)
-	if err != nil {
-		return nil, err
-	}
-
 	sb := &SectorBuilder{
-		handle: sbp,
-		ds:     ds,
+		ds: ds,
 
-		ssize: cfg.SectorSize,
+		ssize:  cfg.SectorSize,
+		lastID: lastUsedID,
 
 		stagedDir: cfg.StagedDir,
 		sealedDir: cfg.SealedDir,
@@ -155,19 +145,14 @@ func addressToProverID(a address.Address) [32]byte {
 	return proverId
 }
 
-func (sb *SectorBuilder) Destroy() {
-	sectorbuilder.DestroySectorBuilder(sb.handle)
-}
-
 func (sb *SectorBuilder) AcquireSectorId() (uint64, error) {
 	sb.idLk.Lock()
 	defer sb.idLk.Unlock()
 
-	id, err := sectorbuilder.AcquireSectorId(sb.handle)
-	if err != nil {
-		return 0, err
-	}
-	err = sb.ds.Put(lastSectorIdKey, []byte(fmt.Sprint(id)))
+	sb.lastID++
+	id := sb.lastID
+
+	err := sb.ds.Put(lastSectorIdKey, []byte(fmt.Sprint(id)))
 	if err != nil {
 		return 0, err
 	}
@@ -212,7 +197,8 @@ func (sb *SectorBuilder) ReadPieceFromSealedSector(pieceKey string) ([]byte, err
 	ret := sb.RateLimit()
 	defer ret()
 
-	return sectorbuilder.ReadPieceFromSealedSector(sb.handle, pieceKey)
+	panic("fixme")
+	//return sectorbuilder.StandaloneUnseal(sb.handle, pieceKey)
 }
 
 func (sb *SectorBuilder) SealPreCommit(sectorID uint64, ticket SealTicket, pieces []PublicPieceInfo) (RawSealPreCommitOutput, error) {
@@ -283,28 +269,6 @@ func (sb *SectorBuilder) SealCommit(sectorID uint64, ticket SealTicket, seed Sea
 	}
 
 	return proof, nil
-}
-
-func (sb *SectorBuilder) SealStatus(sector uint64) (SectorSealingStatus, error) {
-	return sectorbuilder.GetSectorSealingStatusByID(sb.handle, sector)
-}
-
-func (sb *SectorBuilder) GetAllStagedSectors() ([]uint64, error) {
-	sectors, err := sectorbuilder.GetAllStagedSectors(sb.handle)
-	if err != nil {
-		return nil, err
-	}
-
-	out := make([]uint64, len(sectors))
-	for i, v := range sectors {
-		out[i] = v.SectorID
-	}
-
-	sort.Slice(out, func(i, j int) bool {
-		return out[i] < out[j]
-	})
-
-	return out, nil
 }
 
 /*

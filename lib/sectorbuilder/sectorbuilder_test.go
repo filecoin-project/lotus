@@ -137,7 +137,6 @@ func TestSealAndVerify(t *testing.T) {
 		t.Fatalf("%+v", err)
 	}
 	cleanup := func() {
-		sb.Destroy()
 		if t.Failed() {
 			fmt.Printf("not removing %s\n", dir)
 			return
@@ -170,7 +169,6 @@ func TestSealAndVerify(t *testing.T) {
 	epost := time.Now()
 
 	// Restart sectorbuilder, re-run post
-	sb.Destroy()
 	sb, err = sectorbuilder.TempSectorbuilderDir(dir, sectorSize, ds)
 	if err != nil {
 		t.Fatalf("%+v", err)
@@ -209,7 +207,6 @@ func TestSealPoStNoCommit(t *testing.T) {
 		t.Fatalf("%+v", err)
 	}
 	cleanup := func() {
-		sb.Destroy()
 		if t.Failed() {
 			fmt.Printf("not removing %s\n", dir)
 			return
@@ -234,7 +231,6 @@ func TestSealPoStNoCommit(t *testing.T) {
 	precommit := time.Now()
 
 	// Restart sectorbuilder, re-run post
-	sb.Destroy()
 	sb, err = sectorbuilder.TempSectorbuilderDir(dir, sectorSize, ds)
 	if err != nil {
 		t.Fatalf("%+v", err)
