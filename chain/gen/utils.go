@@ -296,7 +296,7 @@ func SetupStorageMiners(ctx context.Context, cs *store.ChainStore, sroot cid.Cid
 		ps, ok := gmcfg.PreSeals[maddr.String()]
 		if ok {
 			for _, s := range ps.Sectors {
-				nssroot, err := actors.AddToSectorSet(ctx, blks, mstate.Sectors, s.SectorID, s.CommD[:], s.CommR[:])
+				nssroot, err := actors.AddToSectorSet(ctx, blks, mstate.Sectors, s.SectorID, s.CommR[:], s.CommD[:])
 				if err != nil {
 					return cid.Undef, xerrors.Errorf("failed to add fake sector to sector set: %w", err)
 				}
