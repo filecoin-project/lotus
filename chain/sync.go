@@ -643,7 +643,7 @@ func (syncer *Syncer) VerifyElectionPoStProof(ctx context.Context, h *types.Bloc
 		}
 		return xerrors.Errorf("[TESTING] election post was invalid")
 	}
-	ok, err := sectorbuilder.VerifyPost(ctx, ssize, *sectorInfo, h.EPostProof.PostRand, h.EPostProof.Proof, winners, waddr)
+	ok, err := sectorbuilder.VerifyPost(ctx, ssize, *sectorInfo, h.EPostProof.PostRand, h.EPostProof.Proof, winners, h.Miner)
 	if err != nil {
 		return xerrors.Errorf("failed to verify election post: %w", err)
 	}

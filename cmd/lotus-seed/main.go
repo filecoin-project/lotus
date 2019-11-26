@@ -145,17 +145,6 @@ var preSealCmd = &cli.Command{
 				CommD:    pco.CommD,
 				SectorID: i,
 			})
-
-			srand := sha256.Sum256([]byte(c.String("seed-preimage")))
-			seed := sectorbuilder.SealSeed{
-				TicketBytes: srand,
-			}
-
-			_, err = sb.SealCommit(i, ticket, seed, []sectorbuilder.PublicPieceInfo{pi}, pco)
-			if err != nil {
-				return xerrors.Errorf("commit: %w", err)
-			}
-
 		}
 
 		output := map[string]genesis.GenesisMiner{
