@@ -270,7 +270,6 @@ func TestSealAndVerify2(t *testing.T) {
 		t.Fatalf("%+v", err)
 	}
 	cleanup := func() {
-		sb.Destroy()
 		if err := os.RemoveAll(dir); err != nil {
 			t.Error(err)
 		}
@@ -327,8 +326,6 @@ func TestAcquireID(t *testing.T) {
 	assertAcquire(2)
 	assertAcquire(3)
 
-	sb.Destroy()
-
 	sb, err = sectorbuilder.TempSectorbuilderDir(dir, sectorSize, ds)
 	if err != nil {
 		t.Fatalf("%+v", err)
@@ -338,7 +335,6 @@ func TestAcquireID(t *testing.T) {
 	assertAcquire(5)
 	assertAcquire(6)
 
-	sb.Destroy()
 	if err := os.RemoveAll(dir); err != nil {
 		t.Error(err)
 	}
