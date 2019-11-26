@@ -5,23 +5,27 @@ import (
 	"fmt"
 	"math/rand"
 
-	"github.com/filecoin-project/lotus/chain/actors"
-	"github.com/filecoin-project/lotus/chain/gen"
-	"github.com/filecoin-project/lotus/chain/vm"
-	"golang.org/x/xerrors"
-
 	"github.com/ipfs/go-cid"
 	"github.com/ipfs/go-datastore"
 	"github.com/ipfs/go-hamt-ipld"
+	"github.com/minio/blake2b-simd"
 	blockstore "github.com/ipfs/go-ipfs-blockstore"
-
-	"github.com/filecoin-project/lotus/chain/address"
-	"github.com/filecoin-project/lotus/chain/state"
-	"github.com/filecoin-project/lotus/chain/types"
-	"github.com/filecoin-project/lotus/chain/wallet"
-	"github.com/filecoin-project/lotus/lib/crypto"
+	"golang.org/x/xerrors"
+	cbg "github.com/whyrusleeping/cbor-gen"
 
 	vstate "github.com/filecoin-project/chain-validation/pkg/state"
+	vactors "github.com/filecoin-project/chain-validation/pkg/state/actors"
+	vaddress "github.com/filecoin-project/chain-validation/pkg/state/address"
+	vtypes "github.com/filecoin-project/chain-validation/pkg/state/types"
+
+	"github.com/filecoin-project/lotus/chain/actors"
+	"github.com/filecoin-project/lotus/chain/address"
+	"github.com/filecoin-project/lotus/chain/gen"
+	"github.com/filecoin-project/lotus/chain/state"
+	"github.com/filecoin-project/lotus/chain/types"
+	"github.com/filecoin-project/lotus/chain/vm"
+	"github.com/filecoin-project/lotus/chain/wallet"
+	"github.com/filecoin-project/lotus/lib/crypto"
 )
 
 type StateWrapper struct {
@@ -67,8 +71,8 @@ func (s *StateWrapper) Cid() cid.Cid {
 	return s.stateRoot
 }
 
-func (s *StateWrapper) Actor(addr vstate.Address) (vstate.Actor, error) {
-	vaddr, err := address.NewFromBytes([]byte(addr))
+func (s *StateWrapper) Actor(addr vaddress.Address) (vstate.Actor, error) {
+	vaddr, err := address.NewFromBytes(addr.Bytes())
 	if err != nil {
 		return nil, err
 	}
@@ -83,16 +87,16 @@ func (s *StateWrapper) Actor(addr vstate.Address) (vstate.Actor, error) {
 	return &actorWrapper{*fcActor}, nil
 }
 
-func (s *StateWrapper) Storage(addr vstate.Address) (vstate.Storage, error) {
+func (s *StateWrapper) Storage(addr vaddress.Address) (vstate.Storage, error) {
 	return s.storage, nil
 }
 
-func (s *StateWrapper) NewAccountAddress() (vstate.Address, error) {
+func (s *StateWrapper) NewAccountAddress() (vaddress.Address, error) {
 	return s.keys.NewAddress()
 }
 
-func (s *StateWrapper) SetActor(addr vstate.Address, code vstate.ActorCodeID, balance vstate.AttoFIL) (vstate.Actor, vstate.Storage, error) {
-	addrInt, err := address.NewFromBytes([]byte(addr))
+func (s *StateWrapper) SetActor(addr vaddress.Address, code vactors.ActorCodeID, balance vtypes.BigInt) (vstate.Actor, vstate.Storage, error) {
+	addrInt, err := address.NewFromBytes(addr.Bytes())
 	if err != nil {
 		return nil, nil, err
 	}
@@ -102,7 +106,7 @@ func (s *StateWrapper) SetActor(addr vstate.Address, code vstate.ActorCodeID, ba
 	}
 	actr := &actorWrapper{types.Actor{
 		Code:    fromActorCode(code),
-		Balance: types.BigInt{balance},
+		Balance: types.BigInt{balance.Int},
 		Head:    vm.EmptyObjectCid,
 	}}
 	// The ID-based address is dropped here, but should be reported back to the caller.
@@ -113,16 +117,19 @@ func (s *StateWrapper) SetActor(addr vstate.Address, code vstate.ActorCodeID, ba
 	return actr, s.storage, s.flush(tree)
 }
 
-func (s *StateWrapper) SetSingletonActor(addr vstate.SingletonActorID, balance vstate.AttoFIL) (vstate.Actor, vstate.Storage, error) {
+func (s *StateWrapper) SetSingletonActor(addr vactors.SingletonActorID, balance vtypes.BigInt) (vstate.Actor, vstate.Storage, error) {
 	vaddr := fromSingletonAddress(addr)
+
 	tree, err := state.LoadStateTree(s.cst, s.stateRoot)
 	if err != nil {
 		return nil, nil, err
 	}
-	lotusAddr, err := address.NewFromBytes([]byte(vaddr))
+
+	lotusAddr, err := address.NewFromBytes(vaddr.Bytes())
 	if err != nil {
 		return nil, nil, err
 	}
+
 	switch lotusAddr {
 	case actors.InitAddress:
 		initact, err := gen.SetupInitActor(s.bs, nil)
@@ -162,7 +169,7 @@ func (s *StateWrapper) SetSingletonActor(addr vstate.SingletonActorID, balance v
 	case actors.NetworkAddress:
 		ntwkact := &types.Actor{
 			Code:    actors.AccountCodeCid,
-			Balance: types.BigInt{balance},
+			Balance: types.BigInt{balance.Int},
 			Head:    vm.EmptyObjectCid,
 		}
 		if err := tree.SetActor(actors.NetworkAddress, ntwkact); err != nil {
@@ -172,7 +179,7 @@ func (s *StateWrapper) SetSingletonActor(addr vstate.SingletonActorID, balance v
 	case actors.BurntFundsAddress:
 		ntwkact := &types.Actor{
 			Code:    actors.AccountCodeCid,
-			Balance: types.BigInt{balance},
+			Balance: types.BigInt{balance.Int},
 			Head:    vm.EmptyObjectCid,
 		}
 		if err := tree.SetActor(actors.BurntFundsAddress, ntwkact); err != nil {
@@ -182,6 +189,17 @@ func (s *StateWrapper) SetSingletonActor(addr vstate.SingletonActorID, balance v
 	default:
 		return nil, nil, xerrors.Errorf("%v is not a singleton actor address", addr)
 	}
+}
+
+func (s *StateWrapper) Sign(ctx context.Context, addr vaddress.Address, data []byte) (*vtypes.Signature, error) {
+	sig, err := s.keys.Sign(ctx, addr, data)
+	if err != nil {
+		return nil, err
+	}
+	return &vtypes.Signature{
+		Type: sig.Type,
+		Data: sig.Data,
+	}, nil
 }
 
 func (s *StateWrapper) Signer() *keyStore {
@@ -199,44 +217,52 @@ func (s *StateWrapper) flush(tree *state.StateTree) (err error) {
 //
 type keyStore struct {
 	// Private keys by address
-	keys map[address.Address]types.KeyInfo
+	keys map[vaddress.Address]vtypes.KeyInfo
 	// Seed for deterministic key generation.
 	seed int64
 }
 
 func newKeyStore() *keyStore {
 	return &keyStore{
-		keys: make(map[address.Address]types.KeyInfo),
+		keys: make(map[vaddress.Address]vtypes.KeyInfo),
 		seed: 0,
 	}
 }
 
-func (s *keyStore) NewAddress() (vstate.Address, error) {
+func (s *keyStore) NewAddress() (vaddress.Address, error) {
 	randSrc := rand.New(rand.NewSource(s.seed))
 	prv, err := crypto.GenerateKeyFromSeed(randSrc)
 	if err != nil {
-		return "", err
+		return vaddress.Undef, err
 	}
 
-	ki := types.KeyInfo{
+	vki := vtypes.KeyInfo{
 		PrivateKey: prv,
 		Type:       types.KTSecp256k1,
 	}
-	key, err := wallet.NewKey(ki)
+	key, err := wallet.NewKey(types.KeyInfo{
+		Type:       vki.Type,
+		PrivateKey: vki.PrivateKey,
+	})
 	if err != nil {
-		return "", err
+		return vaddress.Undef, err
 	}
-	s.keys[key.Address] = ki
+	vaddr, err := vaddress.NewFromBytes(key.Address.Bytes())
+	if err != nil {
+		return vaddress.Undef, err
+	}
+	s.keys[vaddr] = vki
 	s.seed++
-	return vstate.Address(key.Address.Bytes()), nil
+	return vaddress.NewFromBytes(key.Address.Bytes())
 }
 
-func (s *keyStore) Sign(ctx context.Context, addr address.Address, data []byte) (*types.Signature, error) {
+func (s *keyStore) Sign(ctx context.Context, addr vaddress.Address, data []byte) (*types.Signature, error) {
 	ki, ok := s.keys[addr]
 	if !ok {
 		return &types.Signature{}, fmt.Errorf("unknown address %v", addr)
 	}
-	digest, err := crypto.Sign(ki.PrivateKey, data)
+	b2sum := blake2b.Sum256(data)
+	digest, err := crypto.Sign(ki.PrivateKey, b2sum[:])
 	if err != nil {
 		return &types.Signature{}, err
 	}
@@ -266,8 +292,8 @@ func (a *actorWrapper) Nonce() uint64 {
 	return a.Actor.Nonce
 }
 
-func (a *actorWrapper) Balance() vstate.AttoFIL {
-	return a.Actor.Balance.Int
+func (a *actorWrapper) Balance() vtypes.BigInt {
+	return vtypes.NewInt(a.Actor.Balance.Uint64())
 
 }
 
@@ -279,37 +305,60 @@ type directStorage struct {
 	cst *hamt.CborIpldStore
 }
 
-func (d *directStorage) Get(cid cid.Cid) ([]byte, error) {
-	panic("implement me")
+func (d *directStorage) Get(c cid.Cid, out interface{}) error {
+	if err := d.cst.Get(context.TODO(), c, out.(cbg.CBORUnmarshaler)); err != nil {
+		return err
+	}
+	return nil
 }
 
-func fromActorCode(code vstate.ActorCodeID) cid.Cid {
+func fromActorCode(code vactors.ActorCodeID) cid.Cid {
 	switch code {
-	case vstate.AccountActorCodeCid:
+	case vactors.AccountActorCodeCid:
 		return actors.AccountCodeCid
-	case vstate.StorageMinerCodeCid:
+	case vactors.StorageMinerCodeCid:
 		return actors.StorageMinerCodeCid
-	case vstate.MultisigActorCodeCid:
+	case vactors.MultisigActorCodeCid:
 		return actors.MultisigCodeCid
-	case vstate.PaymentChannelActorCodeCid:
+	case vactors.PaymentChannelActorCodeCid:
 		return actors.PaymentChannelCodeCid
 	default:
 		panic(fmt.Errorf("unknown actor code: %v", code))
 	}
 }
 
-func fromSingletonAddress(addr vstate.SingletonActorID) vstate.Address {
+func fromSingletonAddress(addr vactors.SingletonActorID) vaddress.Address{
 	switch addr {
-	case vstate.InitAddress:
-		return vstate.Address(actors.InitAddress.Bytes())
-	case vstate.NetworkAddress:
-		return vstate.Address(actors.NetworkAddress.Bytes())
-	case vstate.StorageMarketAddress:
-		return vstate.Address(actors.StorageMarketAddress.Bytes())
-	case vstate.BurntFundsAddress:
-		return vstate.Address(actors.BurntFundsAddress.Bytes())
-	case vstate.StoragePowerAddress:
-		return vstate.Address(actors.StoragePowerAddress.Bytes())
+	case vactors.InitAddress:
+		out, err := vaddress.NewFromBytes(actors.InitAddress.Bytes())
+		if err != nil {
+			panic(err)
+		}
+		return out
+	case vactors.NetworkAddress:
+		out, err :=  vaddress.NewFromBytes(actors.NetworkAddress.Bytes())
+		if err != nil {
+			panic(err)
+		}
+		return out
+	case vactors.StorageMarketAddress:
+		out, err :=  vaddress.NewFromBytes(actors.StorageMarketAddress.Bytes())
+		if err != nil {
+			panic(err)
+		}
+		return out
+	case vactors.BurntFundsAddress:
+		out, err :=  vaddress.NewFromBytes(actors.BurntFundsAddress.Bytes())
+		if err != nil {
+			panic(err)
+		}
+		return out
+	case vactors.StoragePowerAddress:
+		out, err :=  vaddress.NewFromBytes(actors.StoragePowerAddress.Bytes())
+		if err != nil {
+			panic(err)
+		}
+		return out
 	default:
 		panic(fmt.Errorf("unknown singleton actor address: %v", addr))
 	}
