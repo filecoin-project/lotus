@@ -9,15 +9,16 @@ import (
 	"os"
 	"path/filepath"
 
+	badger "github.com/ipfs/go-ds-badger"
+	logging "github.com/ipfs/go-log"
+	"github.com/mitchellh/go-homedir"
+	"golang.org/x/xerrors"
+	"gopkg.in/urfave/cli.v2"
+
 	"github.com/filecoin-project/lotus/build"
 	"github.com/filecoin-project/lotus/chain/address"
 	"github.com/filecoin-project/lotus/genesis"
 	"github.com/filecoin-project/lotus/lib/sectorbuilder"
-
-	badger "github.com/ipfs/go-ds-badger"
-	logging "github.com/ipfs/go-log"
-	"github.com/mitchellh/go-homedir"
-	"gopkg.in/urfave/cli.v2"
 )
 
 var log = logging.Logger("lotus-seed")
@@ -106,6 +107,10 @@ var preSealCmd = &cli.Command{
 		mds, err := badger.NewDatastore(filepath.Join(sbroot, "badger"), nil)
 		if err != nil {
 			return err
+		}
+
+		if err := build.GetParams(true, false); err != nil {
+			return xerrors.Errorf("getting params: %w", err)
 		}
 
 		sb, err := sectorbuilder.New(cfg, mds)
