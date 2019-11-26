@@ -21,7 +21,6 @@ import (
 )
 
 const sectorSize = 1024
-
 type seal struct {
 	sid uint64
 
@@ -77,7 +76,7 @@ func (s *seal) commit(t *testing.T, sb *sectorbuilder.SectorBuilder, done func()
 	done()
 }
 
-func (s *seal) post(t *testing.T, sb *sectorbuilder.SectorBuilder) {
+func (s *seal) post(t *testing.T, sb *sectorbuilder.SectorBuilder) time.Time {
 	cSeed := [32]byte{0, 9, 2, 7, 6, 5, 4, 3, 2, 1, 0, 9, 8, 7, 6, 45, 3, 2, 1, 0, 9, 8, 7, 6, 5, 4, 3, 2, 1, 0, 9}
 
 	ssi := sectorbuilder.NewSortedPublicSectorInfo([]sectorbuilder.PublicSectorInfo{{
@@ -88,6 +87,12 @@ func (s *seal) post(t *testing.T, sb *sectorbuilder.SectorBuilder) {
 	candndates, err := sb.GenerateEPostCandidates(ssi, cSeed, []uint64{})
 	if err != nil {
 		t.Fatalf("%+v", err)
+	}
+
+	genCandidates := time.Now()
+
+	if len(candndates) != 1 {
+		t.Fatal("expected 1 candidate")
 	}
 
 	postProof, err := sb.ComputeElectionPoSt(ssi, cSeed[:], candndates)
@@ -102,6 +107,8 @@ func (s *seal) post(t *testing.T, sb *sectorbuilder.SectorBuilder) {
 	if !ok {
 		t.Fatal("bad post")
 	}
+
+	return genCandidates
 }
 
 func TestSealAndVerify(t *testing.T) {
@@ -147,11 +154,19 @@ func TestSealAndVerify(t *testing.T) {
 
 	s := seal{sid: si}
 
+	start := time.Now()
+
 	s.precommit(t, sb, 1, func() {})
+
+	precommit := time.Now()
 
 	s.commit(t, sb, func() {})
 
-	s.post(t, sb)
+	commit := time.Now()
+
+	genCandidiates := s.post(t, sb)
+
+	epost := time.Now()
 
 	// Restart sectorbuilder, re-run post
 	sb.Destroy()
@@ -161,6 +176,11 @@ func TestSealAndVerify(t *testing.T) {
 	}
 
 	s.post(t, sb)
+
+	fmt.Printf("PreCommit: %s\n", precommit.Sub(start).String())
+	fmt.Printf("Commit: %s\n", commit.Sub(precommit).String())
+	fmt.Printf("GenCandidates: %s\n", genCandidiates.Sub(commit).String())
+	fmt.Printf("EPoSt: %s\n", epost.Sub(genCandidiates).String())
 }
 
 func TestSealAndVerify2(t *testing.T) {

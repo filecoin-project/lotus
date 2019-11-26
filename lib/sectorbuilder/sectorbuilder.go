@@ -282,37 +282,6 @@ func (sb *SectorBuilder) SealCommit(sectorID uint64, ticket SealTicket, seed Sea
 		return nil, xerrors.Errorf("StandaloneSealCommit: %w", err)
 	}
 
-	pmeta := make([]sectorbuilder.PieceMetadata, len(pieces))
-	for i, piece := range pieces {
-		pmeta[i] = sectorbuilder.PieceMetadata{
-			Key:   pieceKeys[i],
-			Size:  piece.Size,
-			CommP: piece.CommP,
-		}
-	}
-
-	/*	sealedPath, err := sb.sealedSectorPath(sectorID)
-		if err != nil {
-			return nil, err
-		}
-
-		err = sectorbuilder.ImportSealedSector(
-			sb.handle,
-			sectorID,
-			cacheDir,
-			sealedPath,
-			ticket,
-			seed,
-			rspco.CommR,
-			rspco.CommD,
-			rspco.CommC,
-			rspco.CommRLast,
-			proof,
-			pmeta,
-		)
-		if err != nil {
-			return nil, xerrors.Errorf("ImportSealedSector: %w", err)
-		}*/
 	return proof, nil
 }
 
