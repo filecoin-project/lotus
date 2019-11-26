@@ -143,7 +143,7 @@ func NewElectionPoStProver(sb *sectorbuilder.SectorBuilder) *sectorBuilderEpp {
 	return &sectorBuilderEpp{sb}
 }
 
-var _ (gen.ElectionPoStProver) = (*sectorBuilderEpp)(nil)
+var _ gen.ElectionPoStProver = (*sectorBuilderEpp)(nil)
 
 func (epp *sectorBuilderEpp) GenerateCandidates(ctx context.Context, ssi sectorbuilder.SortedPublicSectorInfo, rand []byte) ([]sectorbuilder.EPostCandidate, error) {
 	var faults []uint64 // TODO

@@ -176,7 +176,7 @@ func (m *Miner) preCommitted(ctx context.Context, sector SectorInfo) (func(*Sect
 func (m *Miner) committing(ctx context.Context, sector SectorInfo) (func(*SectorInfo), error) {
 	log.Info("scheduling seal proof computation...")
 
-	proof, err := m.sb.SealCommit(sector.SectorID, sector.Ticket.SB(), sector.Seed.SB(), sector.pieceInfos(), sector.refs(), sector.rspco())
+	proof, err := m.sb.SealCommit(sector.SectorID, sector.Ticket.SB(), sector.Seed.SB(), sector.pieceInfos(), sector.rspco())
 	if err != nil {
 		return nil, xerrors.Errorf("computing seal proof failed: %w", err)
 	}

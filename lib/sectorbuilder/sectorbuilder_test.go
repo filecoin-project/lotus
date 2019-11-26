@@ -21,6 +21,7 @@ import (
 )
 
 const sectorSize = 1024
+
 type seal struct {
 	sid uint64
 
@@ -59,7 +60,7 @@ func (s *seal) commit(t *testing.T, sb *sectorbuilder.SectorBuilder, done func()
 		TicketBytes: [32]byte{0, 9, 8, 7, 6, 5, 4, 3, 2, 1, 0, 9, 8, 7, 6, 45, 3, 2, 1, 0, 9, 8, 7, 6, 5, 4, 3, 2, 1, 0, 9},
 	}
 
-	proof, err := sb.SealCommit(s.sid, s.ticket, seed, []sectorbuilder.PublicPieceInfo{s.ppi}, []string{"foo"}, s.pco)
+	proof, err := sb.SealCommit(s.sid, s.ticket, seed, []sectorbuilder.PublicPieceInfo{s.ppi}, s.pco)
 	if err != nil {
 		t.Fatalf("%+v", err)
 	}
@@ -180,6 +181,71 @@ func TestSealAndVerify(t *testing.T) {
 	fmt.Printf("PreCommit: %s\n", precommit.Sub(start).String())
 	fmt.Printf("Commit: %s\n", commit.Sub(precommit).String())
 	fmt.Printf("GenCandidates: %s\n", genCandidiates.Sub(commit).String())
+	fmt.Printf("EPoSt: %s\n", epost.Sub(genCandidiates).String())
+}
+
+func TestSealPoStNoCommit(t *testing.T) {
+	if runtime.NumCPU() < 10 && os.Getenv("CI") == "" { // don't bother on slow hardware
+		t.Skip("this is slow")
+	}
+	os.Setenv("BELLMAN_NO_GPU", "1")
+	os.Setenv("RUST_LOG", "info")
+
+	build.SectorSizes = []uint64{sectorSize}
+
+	if err := build.GetParams(true, true); err != nil {
+		t.Fatalf("%+v", err)
+	}
+
+	ds := datastore.NewMapDatastore()
+
+	dir, err := ioutil.TempDir("", "sbtest")
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	sb, err := sectorbuilder.TempSectorbuilderDir(dir, sectorSize, ds)
+	if err != nil {
+		t.Fatalf("%+v", err)
+	}
+	cleanup := func() {
+		sb.Destroy()
+		if t.Failed() {
+			fmt.Printf("not removing %s\n", dir)
+			return
+		}
+		if err := os.RemoveAll(dir); err != nil {
+			t.Error(err)
+		}
+	}
+	defer cleanup()
+
+	si, err := sb.AcquireSectorId()
+	if err != nil {
+		t.Fatalf("%+v", err)
+	}
+
+	s := seal{sid: si}
+
+	start := time.Now()
+
+	s.precommit(t, sb, 1, func() {})
+
+	precommit := time.Now()
+
+	// Restart sectorbuilder, re-run post
+	sb.Destroy()
+	sb, err = sectorbuilder.TempSectorbuilderDir(dir, sectorSize, ds)
+	if err != nil {
+		t.Fatalf("%+v", err)
+	}
+
+	genCandidiates := s.post(t, sb)
+
+	epost := time.Now()
+
+	fmt.Printf("PreCommit: %s\n", precommit.Sub(start).String())
+	fmt.Printf("GenCandidates: %s\n", genCandidiates.Sub(precommit).String())
 	fmt.Printf("EPoSt: %s\n", epost.Sub(genCandidiates).String())
 }
 

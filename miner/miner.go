@@ -165,7 +165,7 @@ eventLoop:
 		for _, addr := range addrs {
 			b, err := m.mineOne(ctx, addr, base)
 			if err != nil {
-				log.Errorf("mining block failed: %s", err)
+				log.Errorf("mining block failed: %+v", err)
 				continue
 			}
 			if b != nil {
