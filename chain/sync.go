@@ -3,6 +3,7 @@ package chain
 import (
 	"bytes"
 	"context"
+	"crypto/sha256"
 	"errors"
 	"fmt"
 	"sync"
@@ -643,7 +644,8 @@ func (syncer *Syncer) VerifyElectionPoStProof(ctx context.Context, h *types.Bloc
 		}
 		return xerrors.Errorf("[TESTING] election post was invalid")
 	}
-	ok, err := sectorbuilder.VerifyPost(ctx, ssize, *sectorInfo, h.EPostProof.PostRand, h.EPostProof.Proof, winners, h.Miner)
+	hvrf := sha256.Sum256(h.EPostProof.PostRand)
+	ok, err := sectorbuilder.VerifyPost(ctx, ssize, *sectorInfo, hvrf[:], h.EPostProof.Proof, winners, h.Miner)
 	if err != nil {
 		return xerrors.Errorf("failed to verify election post: %w", err)
 	}
