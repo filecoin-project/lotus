@@ -51,12 +51,15 @@ type FullNodeStruct struct {
 		ChainGetGenesis        func(context.Context) (*types.TipSet, error)                        `perm:"read"`
 		ChainTipSetWeight      func(context.Context, *types.TipSet) (types.BigInt, error)          `perm:"read"`
 
-		SyncState       func(context.Context) (*SyncState, error)            `perm:"read"`
-		SyncSubmitBlock func(ctx context.Context, blk *types.BlockMsg) error `perm:"write"`
+		SyncState          func(context.Context) (*SyncState, error)                    `perm:"read"`
+		SyncSubmitBlock    func(ctx context.Context, blk *types.BlockMsg) error         `perm:"write"`
+		SyncIncomingBlocks func(ctx context.Context) (<-chan *types.BlockHeader, error) `perm:"read"`
 
 		MpoolPending     func(context.Context, *types.TipSet) ([]*types.SignedMessage, error) `perm:"read"`
 		MpoolPush        func(context.Context, *types.SignedMessage) error                    `perm:"write"`
 		MpoolPushMessage func(context.Context, *types.Message) (*types.SignedMessage, error)  `perm:"sign"`
+		MpoolGetNonce    func(context.Context, address.Address) (uint64, error)               `perm:"read"`
+		MpoolSub         func(context.Context) (<-chan MpoolUpdate, error)                    `perm:"read"`
 
 		MinerCreateBlock func(context.Context, address.Address, *types.TipSet, *types.Ticket, *types.EPostProof, []*types.SignedMessage, uint64, uint64) (*types.BlockMsg, error) `perm:"write"`
 
@@ -70,8 +73,6 @@ type FullNodeStruct struct {
 		WalletSetDefault     func(context.Context, address.Address) error                                         `perm:"admin"`
 		WalletExport         func(context.Context, address.Address) (*types.KeyInfo, error)                       `perm:"admin"`
 		WalletImport         func(context.Context, *types.KeyInfo) (address.Address, error)                       `perm:"admin"`
-
-		MpoolGetNonce func(context.Context, address.Address) (uint64, error) `perm:"read"`
 
 		ClientImport      func(ctx context.Context, path string) (cid.Cid, error)                                                                     `perm:"admin"`
 		ClientListImports func(ctx context.Context) ([]Import, error)                                                                                 `perm:"write"`
@@ -102,6 +103,9 @@ type FullNodeStruct struct {
 		StateMarketParticipants    func(context.Context, *types.TipSet) (map[string]actors.StorageParticipantBalance, error)       `perm:"read"`
 		StateMarketDeals           func(context.Context, *types.TipSet) (map[string]actors.OnChainDeal, error)                     `perm:"read"`
 		StateMarketStorageDeal     func(context.Context, uint64, *types.TipSet) (*actors.OnChainDeal, error)                       `perm:"read"`
+		StateLookupID              func(ctx context.Context, addr address.Address, ts *types.TipSet) (address.Address, error)      `perm:"read"`
+		StateChangedActors         func(context.Context, cid.Cid, cid.Cid) (map[string]types.Actor, error)                         `perm:"read"`
+		StateGetReceipt            func(context.Context, cid.Cid, *types.TipSet) (*types.MessageReceipt, error)                    `perm:"read"`
 
 		MarketEnsureAvailable func(context.Context, address.Address, types.BigInt) error `perm:"sign"`
 
@@ -222,6 +226,10 @@ func (c *FullNodeStruct) MpoolPushMessage(ctx context.Context, msg *types.Messag
 	return c.Internal.MpoolPushMessage(ctx, msg)
 }
 
+func (c *FullNodeStruct) MpoolSub(ctx context.Context) (<-chan MpoolUpdate, error) {
+	return c.Internal.MpoolSub(ctx)
+}
+
 func (c *FullNodeStruct) MinerCreateBlock(ctx context.Context, addr address.Address, base *types.TipSet, ticket *types.Ticket, eproof *types.EPostProof, msgs []*types.SignedMessage, height, ts uint64) (*types.BlockMsg, error) {
 	return c.Internal.MinerCreateBlock(ctx, addr, base, ticket, eproof, msgs, height, ts)
 }
@@ -330,6 +338,10 @@ func (c *FullNodeStruct) SyncSubmitBlock(ctx context.Context, blk *types.BlockMs
 	return c.Internal.SyncSubmitBlock(ctx, blk)
 }
 
+func (c *FullNodeStruct) SyncIncomingBlocks(ctx context.Context) (<-chan *types.BlockHeader, error) {
+	return c.Internal.SyncIncomingBlocks(ctx)
+}
+
 func (c *FullNodeStruct) StateMinerSectors(ctx context.Context, addr address.Address, ts *types.TipSet) ([]*ChainSectorInfo, error) {
 	return c.Internal.StateMinerSectors(ctx, addr, ts)
 }
@@ -403,6 +415,18 @@ func (c *FullNodeStruct) StateMarketDeals(ctx context.Context, ts *types.TipSet)
 
 func (c *FullNodeStruct) StateMarketStorageDeal(ctx context.Context, dealid uint64, ts *types.TipSet) (*actors.OnChainDeal, error) {
 	return c.Internal.StateMarketStorageDeal(ctx, dealid, ts)
+}
+
+func (c *FullNodeStruct) StateLookupID(ctx context.Context, addr address.Address, ts *types.TipSet) (address.Address, error) {
+	return c.Internal.StateLookupID(ctx, addr, ts)
+}
+
+func (c *FullNodeStruct) StateChangedActors(ctx context.Context, olnstate cid.Cid, newstate cid.Cid) (map[string]types.Actor, error) {
+	return c.Internal.StateChangedActors(ctx, olnstate, newstate)
+}
+
+func (c *FullNodeStruct) StateGetReceipt(ctx context.Context, msg cid.Cid, ts *types.TipSet) (*types.MessageReceipt, error) {
+	return c.Internal.StateGetReceipt(ctx, msg, ts)
 }
 
 func (c *FullNodeStruct) MarketEnsureAvailable(ctx context.Context, addr address.Address, amt types.BigInt) error {

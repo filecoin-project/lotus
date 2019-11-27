@@ -38,9 +38,6 @@ const PaymentChannelClosingDelay = 6 * 60 * 2 // six hours
 // Consensus / Network
 
 // Seconds
-const BlockDelay = 12
-
-// Seconds
 const AllowableClockDrift = BlockDelay * 2
 
 // Blocks
@@ -59,9 +56,6 @@ const WRatioDen = 2
 
 // /////
 // Proofs
-
-// Blocks
-const ProvingPeriodDuration uint64 = 300
 
 // PoStChallangeTime sets the window in which post computation should happen
 // Blocks

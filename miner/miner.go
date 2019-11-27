@@ -13,7 +13,6 @@ import (
 	"github.com/filecoin-project/lotus/chain/types"
 
 	logging "github.com/ipfs/go-log"
-	"github.com/pkg/errors"
 	"go.opencensus.io/trace"
 	"golang.org/x/xerrors"
 )
@@ -242,7 +241,7 @@ func (m *Miner) mineOne(ctx context.Context, addr address.Address, base *MiningB
 	log.Debugw("attempting to mine a block", "tipset", types.LogCids(base.ts.Cids()))
 	ticket, err := m.computeTicket(ctx, addr, base)
 	if err != nil {
-		return nil, errors.Wrap(err, "scratching ticket failed")
+		return nil, xerrors.Errorf("scratching ticket failed: %w", err)
 	}
 
 	win, proof, err := gen.IsRoundWinner(ctx, base.ts, int64(base.ts.Height()+base.nullRounds+1), addr, m.epp, m.api)
@@ -257,7 +256,7 @@ func (m *Miner) mineOne(ctx context.Context, addr address.Address, base *MiningB
 
 	b, err := m.createBlock(base, addr, ticket, proof)
 	if err != nil {
-		return nil, errors.Wrap(err, "failed to create block")
+		return nil, xerrors.Errorf("failed to create block: %w", err)
 	}
 	log.Infow("mined new block", "cid", b.Cid())
 
@@ -313,7 +312,7 @@ func (m *Miner) createBlock(base *MiningBase, addr address.Address, ticket *type
 
 	pending, err := m.api.MpoolPending(context.TODO(), base.ts)
 	if err != nil {
-		return nil, errors.Wrapf(err, "failed to get pending messages")
+		return nil, xerrors.Errorf("failed to get pending messages: %w", err)
 	}
 
 	msgs, err := selectMessages(context.TODO(), m.api.StateGetActor, base, pending)
@@ -363,7 +362,7 @@ func selectMessages(ctx context.Context, al actorLookup, base *MiningBase, msgs 
 		}
 
 		if msg.Message.Nonce < inclNonces[from] {
-			log.Warnf("message in mempool has already used nonce (%d < %d) %s", msg.Message.Nonce, inclNonces[from], msg.Cid())
+			log.Warnf("message in mempool has already used nonce (%d < %d), from %s, to %s, %s", msg.Message.Nonce, inclNonces[from], msg.Message.From, msg.Message.To, msg.Cid())
 			continue
 		}
 

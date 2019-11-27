@@ -154,13 +154,13 @@ func (sb *SectorBuilder) AcquireSectorId() (uint64, error) {
 }
 
 func (sb *SectorBuilder) AddPiece(pieceSize uint64, sectorId uint64, file io.Reader, existingPieceSizes []uint64) (PublicPieceInfo, error) {
+	ret := sb.RateLimit()
+	defer ret()
+
 	f, werr, err := toReadableFile(file, int64(pieceSize))
 	if err != nil {
 		return PublicPieceInfo{}, err
 	}
-
-	ret := sb.RateLimit()
-	defer ret()
 
 	stagedFile, err := sb.stagedSectorFile(sectorId)
 	if err != nil {

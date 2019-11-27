@@ -3,12 +3,13 @@ package main
 import (
 	"bufio"
 	"fmt"
-	"github.com/gorilla/websocket"
-	"github.com/opentracing/opentracing-go/log"
 	"io"
 	"net/http"
 	"strings"
 	"sync"
+
+	"github.com/gorilla/websocket"
+	"github.com/opentracing/opentracing-go/log"
 )
 
 type outmux struct {

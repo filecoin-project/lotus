@@ -40,6 +40,12 @@ func ApplyIf(check func(s *Settings) bool, opts ...Option) Option {
 	}
 }
 
+func If(b bool, opts ...Option) Option {
+	return ApplyIf(func(s *Settings) bool {
+		return b
+	}, opts...)
+}
+
 // Override option changes constructor for a given type
 func Override(typ, constructor interface{}) Option {
 	return func(s *Settings) error {

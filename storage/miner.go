@@ -2,6 +2,7 @@ package storage
 
 import (
 	"context"
+	"errors"
 	"sync"
 
 	"github.com/ipfs/go-cid"
@@ -9,7 +10,7 @@ import (
 	"github.com/ipfs/go-datastore/namespace"
 	logging "github.com/ipfs/go-log"
 	"github.com/libp2p/go-libp2p-core/host"
-	"github.com/pkg/errors"
+	"golang.org/x/xerrors"
 
 	"github.com/filecoin-project/lotus/api"
 	"github.com/filecoin-project/lotus/chain/address"
@@ -49,9 +50,6 @@ type Miner struct {
 }
 
 type storageMinerApi interface {
-	// I think I want this... but this is tricky
-	//ReadState(ctx context.Context, addr address.Address) (????, error)
-
 	// Call a read only method on actors (no interaction with the chain required)
 	StateCall(ctx context.Context, msg *types.Message, ts *types.TipSet) (*types.MessageReceipt, error)
 	StateMinerWorker(context.Context, address.Address, *types.TipSet) (address.Address, error)
@@ -59,7 +57,9 @@ type storageMinerApi interface {
 	StateMinerSectors(context.Context, address.Address, *types.TipSet) ([]*api.ChainSectorInfo, error)
 	StateMinerProvingSet(context.Context, address.Address, *types.TipSet) ([]*api.ChainSectorInfo, error)
 	StateMinerSectorSize(context.Context, address.Address, *types.TipSet) (uint64, error)
-	StateWaitMsg(context.Context, cid.Cid) (*api.MsgWait, error)
+	StateWaitMsg(context.Context, cid.Cid) (*api.MsgWait, error) // TODO: removeme eventually
+	StateGetActor(ctx context.Context, actor address.Address, ts *types.TipSet) (*types.Actor, error)
+	StateGetReceipt(context.Context, cid.Cid, *types.TipSet) (*types.MessageReceipt, error)
 
 	MpoolPushMessage(context.Context, *types.Message) (*types.SignedMessage, error)
 
@@ -94,7 +94,7 @@ func NewMiner(api storageMinerApi, addr address.Address, h host.Host, ds datasto
 
 func (m *Miner) Run(ctx context.Context) error {
 	if err := m.runPreflightChecks(ctx); err != nil {
-		return errors.Wrap(err, "miner preflight checks failed")
+		return xerrors.Errorf("miner preflight checks failed: %w", err)
 	}
 
 	m.events = events.NewEvents(ctx, m.api)
@@ -124,7 +124,7 @@ func (m *Miner) runPreflightChecks(ctx context.Context) error {
 
 	has, err := m.api.WalletHas(ctx, worker)
 	if err != nil {
-		return errors.Wrap(err, "failed to check wallet for worker key")
+		return xerrors.Errorf("failed to check wallet for worker key: %w", err)
 	}
 
 	if !has {
