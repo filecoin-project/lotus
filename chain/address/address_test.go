@@ -10,7 +10,7 @@ import (
 	"testing"
 	"time"
 
-	"github.com/filecoin-project/go-bls-sigs"
+	"github.com/filecoin-project/filecoin-ffi"
 	"github.com/filecoin-project/go-leb128"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"

@@ -2,6 +2,7 @@ package stmgr
 
 import (
 	"context"
+	ffi "github.com/filecoin-project/filecoin-ffi"
 
 	"github.com/filecoin-project/lotus/api"
 	"github.com/filecoin-project/lotus/chain/actors"
@@ -185,11 +186,11 @@ func GetSectorsForElectionPost(ctx context.Context, sm *StateManager, ts *types.
 		return nil, xerrors.Errorf("failed to get sector set for miner: %w", err)
 	}
 
-	var uselessOtherArray []sectorbuilder.PublicSectorInfo
+	var uselessOtherArray []ffi.PublicSectorInfo
 	for _, s := range sectors {
 		var uselessBuffer [32]byte
 		copy(uselessBuffer[:], s.CommR)
-		uselessOtherArray = append(uselessOtherArray, sectorbuilder.PublicSectorInfo{
+		uselessOtherArray = append(uselessOtherArray, ffi.PublicSectorInfo{
 			SectorID: s.SectorID,
 			CommR:    uselessBuffer,
 		})

@@ -2,6 +2,7 @@ package storage
 
 import (
 	"context"
+	ffi "github.com/filecoin-project/filecoin-ffi"
 	"time"
 
 	"github.com/ipfs/go-cid"
@@ -166,12 +167,12 @@ func (p *post) preparePost(ctx context.Context) error {
 
 func (p *post) sortedSectorInfo() sectorbuilder.SortedPrivateSectorInfo {
 	panic("NYI")
-	sbsi := make([]sectorbuilder.PrivateSectorInfo, len(p.sset))
+	sbsi := make([]ffi.PrivateSectorInfo, len(p.sset))
 	for k, sector := range p.sset {
 		var commR [sectorbuilder.CommLen]byte
 		copy(commR[:], sector.CommR)
 
-		sbsi[k] = sectorbuilder.PrivateSectorInfo{
+		sbsi[k] = ffi.PrivateSectorInfo{
 			SectorID: sector.SectorID,
 			CommR:    commR,
 		}

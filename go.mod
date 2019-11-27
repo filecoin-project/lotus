@@ -11,10 +11,9 @@ require (
 	github.com/btcsuite/btcd v0.0.0-20190807005414-4063feeff79a // indirect
 	github.com/fatih/color v1.7.0 // indirect
 	github.com/filecoin-project/chain-validation v0.0.0-20191106200742-11986803c0f7
+	github.com/filecoin-project/filecoin-ffi v0.0.0-00010101000000-000000000000
 	github.com/filecoin-project/go-amt-ipld v0.0.0-20191122035745-59b9dfc0efc7
-	github.com/filecoin-project/go-bls-sigs v0.0.0-20190718224239-4bc4b8a7bbf8
 	github.com/filecoin-project/go-leb128 v0.0.0-20190212224330-8d79a5489543
-	github.com/filecoin-project/go-sectorbuilder v0.0.0-00010101000000-000000000000
 	github.com/gbrlsnchs/jwt/v3 v3.0.0-beta.1
 	github.com/go-ole/go-ole v1.2.4 // indirect
 	github.com/google/go-cmp v0.3.1 // indirect
@@ -43,7 +42,7 @@ require (
 	github.com/ipfs/go-ipfs-routing v0.1.0
 	github.com/ipfs/go-ipld-cbor v0.0.3
 	github.com/ipfs/go-ipld-format v0.0.2
-	github.com/ipfs/go-log v0.0.2-0.20190920042044-a609c1ae5144
+	github.com/ipfs/go-log v1.0.0
 	github.com/ipfs/go-merkledag v0.2.4
 	github.com/ipfs/go-unixfs v0.2.2-0.20190827150610-868af2e9e5cb
 	github.com/ipld/go-ipld-prime v0.0.2-0.20191025154717-8dff1cbec43b
@@ -89,7 +88,6 @@ require (
 	github.com/smartystreets/assertions v1.0.1 // indirect
 	github.com/smartystreets/goconvey v0.0.0-20190731233626-505e41936337 // indirect
 	github.com/stretchr/testify v1.4.0
-	github.com/urfave/cli v1.20.0
 	github.com/whyrusleeping/bencher v0.0.0-20190829221104-bb6607aa8bba
 	github.com/whyrusleeping/cbor-gen v0.0.0-20191116002219-891f55cd449d
 	github.com/whyrusleeping/multiaddr-filter v0.0.0-20160516205228-e903e4adabd7
@@ -113,6 +111,4 @@ require (
 
 replace github.com/golangci/golangci-lint => github.com/golangci/golangci-lint v1.18.0
 
-replace github.com/filecoin-project/go-bls-sigs => ./extern/go-bls-sigs
-
-replace github.com/filecoin-project/go-sectorbuilder => ./extern/go-sectorbuilder
+replace github.com/filecoin-project/filecoin-ffi => ./extern/filecoin-ffi

@@ -11,7 +11,7 @@ import (
 
 	"github.com/Gurpartap/async"
 	amt "github.com/filecoin-project/go-amt-ipld"
-	"github.com/filecoin-project/go-bls-sigs"
+	bls "github.com/filecoin-project/filecoin-ffi"
 	"github.com/hashicorp/go-multierror"
 	"github.com/ipfs/go-cid"
 	dstore "github.com/ipfs/go-datastore"
