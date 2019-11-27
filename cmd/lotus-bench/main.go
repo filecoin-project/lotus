@@ -9,6 +9,7 @@ import (
 	"path/filepath"
 	"time"
 
+	ffi "github.com/filecoin-project/filecoin-ffi"
 	"github.com/ipfs/go-datastore"
 	logging "github.com/ipfs/go-log"
 	"github.com/mitchellh/go-homedir"
@@ -108,7 +109,7 @@ func main() {
 			size := sectorbuilder.UserBytesForSectorSize(c.Uint64("sector-size"))
 
 			var sealTimings []SealingResult
-			var sealedSectors []sectorbuilder.PublicSectorInfo
+			var sealedSectors []ffi.PublicSectorInfo
 			numSectors := uint64(1)
 			for i := uint64(1); i <= numSectors; i++ {
 				start := time.Now()
@@ -134,7 +135,7 @@ func main() {
 
 				precommit := time.Now()
 
-				sealedSectors = append(sealedSectors, sectorbuilder.PublicSectorInfo{
+				sealedSectors = append(sealedSectors, ffi.PublicSectorInfo{
 					CommR:    pco.CommR,
 					SectorID: i,
 				})
