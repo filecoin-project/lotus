@@ -6,7 +6,9 @@ import (
 	"sync"
 
 	"github.com/ipfs/go-cid"
+	"golang.org/x/xerrors"
 
+	"github.com/filecoin-project/lotus/chain/store"
 	"github.com/filecoin-project/lotus/chain/types"
 )
 
@@ -302,9 +304,10 @@ func (e *calledEvents) Called(check CheckFunc, hnd CalledHandler, rev RevertHand
 	e.lk.Lock()
 	defer e.lk.Unlock()
 
-	done, more, err := check(e.tsc.best())
+	ts := e.tsc.best()
+	done, more, err := check(ts)
 	if err != nil {
-		return err
+		return xerrors.Errorf("called check error (h: %d): %w", ts.Height(), err)
 	}
 	if done {
 		timeout = NoTimeout
@@ -335,6 +338,6 @@ func (e *calledEvents) Called(check CheckFunc, hnd CalledHandler, rev RevertHand
 	return nil
 }
 
-func (e *calledEvents) CalledMsg(ctx context.Context, hnd CalledHandler, rev RevertHandler, confidence int, timeout uint64, msg *types.Message) error {
-	return e.Called(e.CheckMsg(ctx, msg, hnd), hnd, rev, confidence, timeout, e.MatchMsg(msg))
+func (e *calledEvents) CalledMsg(ctx context.Context, hnd CalledHandler, rev RevertHandler, confidence int, timeout uint64, msg store.ChainMsg) error {
+	return e.Called(e.CheckMsg(ctx, msg, hnd), hnd, rev, confidence, timeout, e.MatchMsg(msg.VMMessage()))
 }

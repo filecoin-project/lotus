@@ -4,7 +4,6 @@ import (
 	"context"
 	"time"
 
-	"github.com/ipfs/go-cid"
 	"go.opencensus.io/trace"
 	"golang.org/x/xerrors"
 
@@ -24,13 +23,13 @@ func (m *Miner) beginPosting(ctx context.Context) {
 		return
 	}
 
-	ppe, err := m.api.StateMinerProvingPeriodEnd(ctx, m.maddr, ts)
+	sppe, err := m.api.StateMinerProvingPeriodEnd(ctx, m.maddr, ts)
 	if err != nil {
-		log.Errorf("failed to get proving period end for miner: %s", err)
+		log.Errorf("failed to get proving period end for miner (ts h: %d): %s", ts.Height(), err)
 		return
 	}
 
-	if ppe == 0 {
+	if sppe == 0 {
 		log.Warn("Not proving yet")
 		return
 	}
@@ -44,12 +43,16 @@ func (m *Miner) beginPosting(ctx context.Context) {
 
 	// height needs to be +1, because otherwise we'd be trying to schedule PoSt
 	// at current block height
-	ppe, _ = actors.ProvingPeriodEnd(ppe, ts.Height()+1)
+	ppe, _ := actors.ProvingPeriodEnd(sppe, ts.Height()+1)
 	m.schedPost = ppe
 
 	m.postLk.Unlock()
 
-	log.Infof("Scheduling post at height %d", ppe-build.PoStChallangeTime)
+	if build.PoStChallangeTime > ppe {
+		ppe = build.PoStChallangeTime
+	}
+
+	log.Infof("Scheduling post at height %d (begin ts: %d, statePPE: %d)", ppe-build.PoStChallangeTime, ts.Height(), sppe)
 	err = m.events.ChainAt(m.computePost(m.schedPost), func(ctx context.Context, ts *types.TipSet) error { // Revert
 		// TODO: Cancel post
 		log.Errorf("TODO: Cancel PoSt, re-run")
@@ -115,8 +118,7 @@ type post struct {
 	proof []byte
 
 	// commit
-	msg  *types.Message
-	smsg cid.Cid
+	smsg *types.SignedMessage
 }
 
 func (p *post) doPost(ctx context.Context) error {
@@ -124,19 +126,19 @@ func (p *post) doPost(ctx context.Context) error {
 	defer span.End()
 
 	if err := p.preparePost(ctx); err != nil {
-		return err
+		return xerrors.Errorf("prepare: %w", err)
 	}
 
 	if err := p.runPost(ctx); err != nil {
-		return err
+		return xerrors.Errorf("run: %w", err)
 	}
 
 	if err := p.commitPost(ctx); err != nil {
-		return err
+		return xerrors.Errorf("commit: %w", err)
 	}
 
 	if err := p.waitCommit(ctx); err != nil {
-		return err
+		return xerrors.Errorf("wait: %w", err)
 	}
 
 	return nil
@@ -149,7 +151,7 @@ func (p *post) preparePost(ctx context.Context) error {
 
 	sset, err := p.m.api.StateMinerProvingSet(ctx, p.m.maddr, p.ts)
 	if err != nil {
-		return xerrors.Errorf("failed to get proving set for miner: %w", err)
+		return xerrors.Errorf("failed to get proving set for miner (tsH: %d): %w", p.ts.Height(), err)
 	}
 	if len(sset) == 0 {
 		log.Warn("empty proving set! (ts.H: %d)", p.ts.Height())
@@ -209,7 +211,7 @@ func (p *post) runPost(ctx context.Context) error {
 	return nil
 }
 
-func (p *post) commitPost(ctx context.Context) error {
+func (p *post) commitPost(ctx context.Context) (err error) {
 	ctx, span := trace.StartSpan(ctx, "storage.commitPost")
 	defer span.End()
 
@@ -223,7 +225,7 @@ func (p *post) commitPost(ctx context.Context) error {
 		return xerrors.Errorf("could not serialize submit post parameters: %w", aerr)
 	}
 
-	p.msg = &types.Message{
+	msg := &types.Message{
 		To:       p.m.maddr,
 		From:     p.m.worker,
 		Method:   actors.MAMethods.SubmitPoSt,
@@ -235,11 +237,10 @@ func (p *post) commitPost(ctx context.Context) error {
 
 	log.Info("mpush")
 
-	smsg, err := p.m.api.MpoolPushMessage(ctx, p.msg)
+	p.smsg, err = p.m.api.MpoolPushMessage(ctx, msg)
 	if err != nil {
 		return xerrors.Errorf("pushing message to mpool: %w", err)
 	}
-	p.smsg = smsg.Cid()
 
 	return nil
 }
@@ -248,7 +249,7 @@ func (p *post) waitCommit(ctx context.Context) error {
 	ctx, span := trace.StartSpan(ctx, "storage.waitPost")
 	defer span.End()
 
-	log.Infof("Waiting for post %s to appear on chain", p.smsg)
+	log.Infof("Waiting for post %s to appear on chain", p.smsg.Cid())
 
 	err := p.m.events.CalledMsg(ctx, func(msg *types.Message, rec *types.MessageReceipt, ts *types.TipSet, curH uint64) (more bool, err error) {
 		if rec.ExitCode != 0 {
@@ -261,9 +262,9 @@ func (p *post) waitCommit(ctx context.Context) error {
 	}, func(ctx context.Context, ts *types.TipSet) error {
 		log.Warn("post message reverted")
 		return nil
-	}, 3, postMsgTimeout, p.msg)
+	}, 3, postMsgTimeout, p.smsg)
 	if err != nil {
-		return err
+		return xerrors.Errorf("waiting for post to appear on chain: %w", err)
 	}
 
 	return nil
@@ -284,19 +285,13 @@ func (m *Miner) computePost(ppe uint64) func(ctx context.Context, ts *types.TipS
 			ppe: ppe,
 			ts:  ts,
 		}).doPost(ctx)
+
+		m.scheduleNextPost(ppe + build.ProvingPeriodDuration)
+
 		if err != nil {
 			return xerrors.Errorf("doPost: %w", err)
 		}
 
-		m.scheduleNextPost(ppe + build.ProvingPeriodDuration)
 		return nil
 	}
-}
-
-func sectorIdList(si []*api.ChainSectorInfo) []uint64 {
-	out := make([]uint64, len(si))
-	for i, s := range si {
-		out[i] = s.SectorID
-	}
-	return out
 }

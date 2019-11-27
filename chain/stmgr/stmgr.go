@@ -322,18 +322,18 @@ func (sm *StateManager) GetBlsPublicKey(ctx context.Context, addr address.Addres
 }
 
 func (sm *StateManager) GetReceipt(ctx context.Context, msg cid.Cid, ts *types.TipSet) (*types.MessageReceipt, error) {
-	r, err := sm.tipsetExecutedMessage(ts, msg)
+	m, err := sm.cs.GetCMessage(msg)
+	if err != nil {
+		return nil, fmt.Errorf("failed to load message: %w", err)
+	}
+
+	r, err := sm.tipsetExecutedMessage(ts, msg, m.VMMessage())
 	if err != nil {
 		return nil, err
 	}
 
 	if r != nil {
 		return r, nil
-	}
-
-	m, err := sm.cs.GetCMessage(msg)
-	if err != nil {
-		return nil, fmt.Errorf("failed to load message: %w", err)
 	}
 
 	_, r, err = sm.searchBackForMsg(ctx, ts, m)
@@ -368,7 +368,7 @@ func (sm *StateManager) WaitForMessage(ctx context.Context, mcid cid.Cid) (*type
 		return nil, nil, fmt.Errorf("expected current head on SHC stream (got %s)", head[0].Type)
 	}
 
-	r, err := sm.tipsetExecutedMessage(head[0].Val, mcid)
+	r, err := sm.tipsetExecutedMessage(head[0].Val, mcid, msg.VMMessage())
 	if err != nil {
 		return nil, nil, err
 	}
@@ -403,7 +403,7 @@ func (sm *StateManager) WaitForMessage(ctx context.Context, mcid cid.Cid) (*type
 				case store.HCRevert:
 					continue
 				case store.HCApply:
-					r, err := sm.tipsetExecutedMessage(val.Val, mcid)
+					r, err := sm.tipsetExecutedMessage(val.Val, mcid, msg.VMMessage())
 					if err != nil {
 						return nil, nil, err
 					}
@@ -454,7 +454,7 @@ func (sm *StateManager) searchBackForMsg(ctx context.Context, from *types.TipSet
 			return nil, nil, fmt.Errorf("failed to load tipset during msg wait searchback: %w", err)
 		}
 
-		r, err := sm.tipsetExecutedMessage(ts, m.Cid())
+		r, err := sm.tipsetExecutedMessage(ts, m.Cid(), m.VMMessage())
 		if err != nil {
 			return nil, nil, fmt.Errorf("checking for message execution during lookback: %w", err)
 		}
@@ -467,7 +467,7 @@ func (sm *StateManager) searchBackForMsg(ctx context.Context, from *types.TipSet
 	}
 }
 
-func (sm *StateManager) tipsetExecutedMessage(ts *types.TipSet, msg cid.Cid) (*types.MessageReceipt, error) {
+func (sm *StateManager) tipsetExecutedMessage(ts *types.TipSet, msg cid.Cid, vmm *types.Message) (*types.MessageReceipt, error) {
 	// The genesis block did not execute any messages
 	if ts.Height() == 0 {
 		return nil, nil
@@ -483,9 +483,24 @@ func (sm *StateManager) tipsetExecutedMessage(ts *types.TipSet, msg cid.Cid) (*t
 		return nil, err
 	}
 
-	for i, m := range cm {
-		if m.Cid() == msg {
-			return sm.cs.GetParentReceipt(ts.Blocks()[0], i)
+	for ii := range cm {
+		// iterate in reverse because we going backwards through the chain
+		i := len(cm) - ii - 1
+		m := cm[i]
+
+		if m.VMMessage().From == vmm.From { // cheaper to just check origin first
+			if m.VMMessage().Nonce == vmm.Nonce {
+				if m.Cid() == msg {
+					return sm.cs.GetParentReceipt(ts.Blocks()[0], i)
+				}
+
+				// this should be that message
+				return nil, xerrors.Errorf("found message with equal nonce as the one we are looking for (F:%s n %d, TS: %s n%d)",
+					msg, vmm.Nonce, m.Cid(), m.VMMessage().Nonce)
+			}
+			if m.VMMessage().Nonce < vmm.Nonce {
+				return nil, nil // don't bother looking further
+			}
 		}
 	}
 
