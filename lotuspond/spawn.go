@@ -11,6 +11,10 @@ import (
 	"time"
 
 	"golang.org/x/xerrors"
+
+	"github.com/filecoin-project/lotus/build"
+	"github.com/filecoin-project/lotus/chain/address"
+	"github.com/filecoin-project/lotus/cmd/lotus-seed/seed"
 )
 
 func (api *api) Spawn() (nodeInfo, error) {
@@ -19,9 +23,24 @@ func (api *api) Spawn() (nodeInfo, error) {
 		return nodeInfo{}, err
 	}
 
+	params := []string{"daemon", "--bootstrap=false"}
 	genParam := "--genesis=" + api.genesis
+
 	id := atomic.AddInt32(&api.cmds, 1)
 	if id == 1 {
+		// preseal
+
+		genMiner, err := address.NewIDAddress(101)
+		if err != nil {
+			return nodeInfo{}, err
+		}
+
+		err = seed.PreSeal(genMiner, build.SectorSizes[0], 1, filepath.Join(dir, "preseal"), []byte("8"))
+		if err != nil {
+			return nodeInfo{}, xerrors.Errorf("preseal failed: %w", err)
+		}
+		params = append(params, "--genesis-presealed-sectors="+filepath.Join(dir, "preseal", "pre-seal-t0101.json"))
+
 		// make genesis
 		genf, err := ioutil.TempFile(os.TempDir(), "lotus-genesis-")
 		if err != nil {
@@ -54,7 +73,7 @@ func (api *api) Spawn() (nodeInfo, error) {
 		return nodeInfo{}, err
 	}
 
-	cmd := exec.Command("./lotus", "daemon", "--bootstrap=false", genParam)
+	cmd := exec.Command("./lotus", append(params, genParam)...)
 
 	cmd.Stderr = io.MultiWriter(os.Stderr, errlogfile, mux.errpw)
 	cmd.Stdout = io.MultiWriter(os.Stdout, logfile, mux.outpw)
@@ -114,7 +133,7 @@ func (api *api) SpawnStorage(fullNodeRepo string) (nodeInfo, error) {
 
 	initArgs := []string{"init"}
 	if fullNodeRepo == api.running[1].meta.Repo {
-		initArgs = []string{"init", "--actor=t0101", "--genesis-miner"}
+		initArgs = []string{"init", "--actor=t0101", "--genesis-miner", "--pre-sealed-sectors=" + filepath.Join(fullNodeRepo, "preseal")}
 	}
 
 	id := atomic.AddInt32(&api.cmds, 1)

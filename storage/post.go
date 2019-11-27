@@ -219,32 +219,32 @@ func (p *post) commitPost(ctx context.Context) (err error) {
 	panic("NYI")
 	/*
 
-		params := &actors.SubmitPoStParams{
-			//Proof:   p.proof,
+			params := &actors.SubmitPoStParams{
+				//Proof:   p.proof,
+			}
+
+			enc, aerr := actors.SerializeParams(params)
+			if aerr != nil {
+				return xerrors.Errorf("could not serialize submit post parameters: %w", aerr)
+			}
+
+			msg := &types.Message{
+				To:       p.m.maddr,
+				From:     p.m.worker,
+				Method:   actors.MAMethods.SubmitPoSt,
+				Params:   enc,
+				Value:    types.NewInt(1000),    // currently hard-coded late fee in actor, returned if not late
+				GasLimit: types.NewInt(1000000), // i dont know help
+				GasPrice: types.NewInt(1),
+			}
+
+			log.Info("mpush")
+
+		p.smsg, err = p.m.api.MpoolPushMessage(ctx, msg)
+		if err != nil {
+			return xerrors.Errorf("pushing message to mpool: %w", err)
 		}
-
-		enc, aerr := actors.SerializeParams(params)
-		if aerr != nil {
-			return xerrors.Errorf("could not serialize submit post parameters: %w", aerr)
-		}
-
-		msg := &types.Message{
-			To:       p.m.maddr,
-			From:     p.m.worker,
-			Method:   actors.MAMethods.SubmitPoSt,
-			Params:   enc,
-			Value:    types.NewInt(1000),    // currently hard-coded late fee in actor, returned if not late
-			GasLimit: types.NewInt(1000000), // i dont know help
-			GasPrice: types.NewInt(1),
-		}
-
-		log.Info("mpush")
-
-	p.smsg, err = p.m.api.MpoolPushMessage(ctx, msg)
-	if err != nil {
-		return xerrors.Errorf("pushing message to mpool: %w", err)
-	}
-	 */
+	*/
 
 	return nil
 }

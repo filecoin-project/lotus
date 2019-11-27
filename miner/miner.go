@@ -239,6 +239,8 @@ func (m *Miner) GetBestMiningCandidate(ctx context.Context) (*MiningBase, error)
 
 func (m *Miner) mineOne(ctx context.Context, addr address.Address, base *MiningBase) (*types.BlockMsg, error) {
 	log.Debugw("attempting to mine a block", "tipset", types.LogCids(base.ts.Cids()))
+	start := time.Now()
+
 	ticket, err := m.computeTicket(ctx, addr, base)
 	if err != nil {
 		return nil, xerrors.Errorf("scratching ticket failed: %w", err)
@@ -259,6 +261,9 @@ func (m *Miner) mineOne(ctx context.Context, addr address.Address, base *MiningB
 		return nil, xerrors.Errorf("failed to create block: %w", err)
 	}
 	log.Infow("mined new block", "cid", b.Cid())
+
+	dur := time.Now().Sub(start)
+	log.Infof("Creating block took %s", dur)
 
 	return b, nil
 }
