@@ -7,6 +7,7 @@ import (
 	"path/filepath"
 
 	"github.com/ipfs/go-datastore"
+	badger "github.com/ipfs/go-ds-badger"
 	"github.com/libp2p/go-libp2p-core/crypto"
 	"github.com/libp2p/go-libp2p-core/peer"
 	"github.com/mitchellh/go-homedir"
@@ -22,6 +23,7 @@ import (
 	"github.com/filecoin-project/lotus/lib/sectorbuilder"
 	"github.com/filecoin-project/lotus/miner"
 	"github.com/filecoin-project/lotus/node/modules"
+	"github.com/filecoin-project/lotus/node/modules/dtypes"
 	"github.com/filecoin-project/lotus/node/repo"
 	"github.com/filecoin-project/lotus/storage"
 )
@@ -115,8 +117,20 @@ var initCmd = &cli.Command{
 
 		if pssb := cctx.String("pre-sealed-sectors"); pssb != "" {
 			log.Infof("moving pre-sealed-sectors from %s into newly created storage miner repo", pssb)
-			if err := migratePreSealedSectors(pssb, repoPath); err != nil {
+			lr, err := r.Lock(repo.StorageMiner)
+			if err != nil {
 				return err
+			}
+			mds, err := lr.Datastore("/metadata")
+			if err != nil {
+				return err
+			}
+
+			if err := migratePreSealedSectors(pssb, repoPath, mds); err != nil {
+				return err
+			}
+			if err := lr.Close(); err != nil {
+				return xerrors.Errorf("unlocking repo after preseal migration: %w", err)
 			}
 		}
 
@@ -142,8 +156,14 @@ var initCmd = &cli.Command{
 
 // TODO: this method should be a lot more robust for mainnet. For testnet, its
 // fine if we mess things up a few times
-func migratePreSealedSectors(presealsb string, repoPath string) error {
+// Also probably makes sense for this method to be in the sectorbuilder package
+func migratePreSealedSectors(presealsb string, repoPath string, mds dtypes.MetadataDS) error {
 	pspath, err := homedir.Expand(presealsb)
+	if err != nil {
+		return err
+	}
+
+	srcds, err := badger.NewDatastore(filepath.Join(pspath, "badger"), nil)
 	if err != nil {
 		return err
 	}
@@ -166,6 +186,16 @@ func migratePreSealedSectors(presealsb string, repoPath string) error {
 			return err
 		}
 	}
+
+	val, err := srcds.Get(sectorbuilder.LastSectorIdKey)
+	if err != nil {
+		return xerrors.Errorf("getting source last sector ID: %w", err)
+	}
+
+	if err := mds.Put(sectorbuilder.LastSectorIdKey, val); err != nil {
+		return xerrors.Errorf("failed to write last sector ID key to target datastore: %w", err)
+	}
+
 	return nil
 }
 

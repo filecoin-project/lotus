@@ -3,15 +3,16 @@ package sectorbuilder
 import (
 	"context"
 	"fmt"
+	"io"
+	"os"
+	"strconv"
+	"sync"
+
 	sectorbuilder "github.com/filecoin-project/go-sectorbuilder"
 	"github.com/ipfs/go-datastore"
 	logging "github.com/ipfs/go-log"
 	"go.opencensus.io/trace"
 	"golang.org/x/xerrors"
-	"io"
-	"os"
-	"strconv"
-	"sync"
 
 	"github.com/filecoin-project/lotus/build"
 	"github.com/filecoin-project/lotus/chain/address"
@@ -21,7 +22,7 @@ import (
 const PoStReservedWorkers = 1
 const PoRepProofPartitions = 2
 
-var lastSectorIdKey = datastore.NewKey("/sectorbuilder/last")
+var LastSectorIdKey = datastore.NewKey("/sectorbuilder/last")
 
 var log = logging.Logger("sectorbuilder")
 
@@ -94,7 +95,7 @@ func New(cfg *Config, ds dtypes.MetadataDS) (*SectorBuilder, error) {
 	}
 
 	var lastUsedID uint64
-	b, err := ds.Get(lastSectorIdKey)
+	b, err := ds.Get(LastSectorIdKey)
 	switch err {
 	case nil:
 		i, err := strconv.ParseInt(string(b), 10, 64)
@@ -152,7 +153,7 @@ func (sb *SectorBuilder) AcquireSectorId() (uint64, error) {
 	sb.lastID++
 	id := sb.lastID
 
-	err := sb.ds.Put(lastSectorIdKey, []byte(fmt.Sprint(id)))
+	err := sb.ds.Put(LastSectorIdKey, []byte(fmt.Sprint(id)))
 	if err != nil {
 		return 0, err
 	}
