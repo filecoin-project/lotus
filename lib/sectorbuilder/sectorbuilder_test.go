@@ -16,6 +16,7 @@ import (
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 
+	ffi "github.com/filecoin-project/filecoin-ffi"
 	"github.com/filecoin-project/lotus/build"
 	"github.com/filecoin-project/lotus/lib/sectorbuilder"
 )
@@ -80,7 +81,7 @@ func (s *seal) commit(t *testing.T, sb *sectorbuilder.SectorBuilder, done func()
 func (s *seal) post(t *testing.T, sb *sectorbuilder.SectorBuilder) time.Time {
 	cSeed := [32]byte{0, 9, 2, 7, 6, 5, 4, 3, 2, 1, 0, 9, 8, 7, 6, 45, 3, 2, 1, 0, 9, 8, 7, 6, 5, 4, 3, 2, 1, 0, 9}
 
-	ssi := sectorbuilder.NewSortedPublicSectorInfo([]sectorbuilder.PublicSectorInfo{{
+	ssi := sectorbuilder.NewSortedPublicSectorInfo([]ffi.PublicSectorInfo{{
 		SectorID: s.sid,
 		CommR:    s.pco.CommR,
 	}})

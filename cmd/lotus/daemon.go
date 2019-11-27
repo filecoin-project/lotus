@@ -56,11 +56,11 @@ var DaemonCmd = &cli.Command{
 		ctx := context.Background()
 		r, err := repo.NewFS(cctx.String("repo"))
 		if err != nil {
-			return err
+			return xerrors.Errorf("opening fs repo: %w", err)
 		}
 
 		if err := r.Init(repo.FullNode); err != nil && err != repo.ErrRepoExists {
-			return err
+			return xerrors.Errorf("repo init error: %w", err)
 		}
 
 		if err := build.GetParams(false, false); err != nil {
@@ -72,7 +72,7 @@ var DaemonCmd = &cli.Command{
 		if cctx.String("genesis") != "" {
 			genBytes, err = ioutil.ReadFile(cctx.String("genesis"))
 			if err != nil {
-				return err
+				return xerrors.Errorf("reading genesis: %w", err)
 			}
 		}
 
@@ -112,12 +112,12 @@ var DaemonCmd = &cli.Command{
 			),
 		)
 		if err != nil {
-			return err
+			return xerrors.Errorf("initializing node: %w", err)
 		}
 
 		endpoint, err := r.APIEndpoint()
 		if err != nil {
-			return err
+			return xerrors.Errorf("getting api endpoint: %w", err)
 		}
 
 		// TODO: properly parse api endpoint (or make it a URL)

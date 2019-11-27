@@ -1,82 +1,82 @@
 {
-  "v17-proof-of-spacetime-election-54266a3979de672c5f59a521e8e4a3fc2108da1eb019af74089ff6d05bfe83aa.params": {
-    "cid": "QmX1yk3iLPVd87nto2TjoR8ZRRUPS6VQrGjp6VGzJ5LMku",
-    "digest": "b77189b5fd4fdfb62aa10b711e2c07fe",
+  "v18-proof-of-spacetime-election-54266a3979de672c5f59a521e8e4a3fc2108da1eb019af74089ff6d05bfe83aa.params": {
+    "cid": "QmPhNP5h6W2VjraH76Mqt9Knt5aKWwKz9y2AKAAn128hz3",
+    "digest": "7c9913cb96717672347fa91a6daf3d3e",
     "sector_size": 1024
   },
-  "v17-proof-of-spacetime-election-54266a3979de672c5f59a521e8e4a3fc2108da1eb019af74089ff6d05bfe83aa.vk": {
-    "cid": "QmQbm46eEM7iixdU3N412CGXz17tegn2J3Yv37MwsuXwUv",
-    "digest": "5d67b3241bfba6832cfe55c044a5627f",
+  "v18-proof-of-spacetime-election-54266a3979de672c5f59a521e8e4a3fc2108da1eb019af74089ff6d05bfe83aa.vk": {
+    "cid": "QmVoeBVUruL9rsM6FwgqaZWuq2nnWVeMxcWfpKQfUAV6z8",
+    "digest": "394a355e08107de25fabe6bf4f055065",
     "sector_size": 1024
   },
-  "v17-proof-of-spacetime-election-5dafbb8a1d6802f3b68f0dd2d3eff36d203263b4a867df986b1d434f1852726c.params": {
-    "cid": "QmVavKxo3kNt8TBvMUeicv4FvM9FJ2UhMYpUNExvwRTXEc",
-    "digest": "0c2acd67ae44c8c4d9b5bb20e1dedc1f",
+  "v18-proof-of-spacetime-election-5dafbb8a1d6802f3b68f0dd2d3eff36d203263b4a867df986b1d434f1852726c.params": {
+    "cid": "QmXN1msCQwChwNQiniQFepEQfkvM881FEkNinDQyybwEoH",
+    "digest": "3245eed51a7738a9d2055e57f4cffad1",
     "sector_size": 268435456
   },
-  "v17-proof-of-spacetime-election-5dafbb8a1d6802f3b68f0dd2d3eff36d203263b4a867df986b1d434f1852726c.vk": {
-    "cid": "QmS7kg73nQ6ErhhASi6AnwjnQT4PmGMxEFzCnsZYx3PUFf",
-    "digest": "259bbafc10bd5ad883e2b54f61780230",
+  "v18-proof-of-spacetime-election-5dafbb8a1d6802f3b68f0dd2d3eff36d203263b4a867df986b1d434f1852726c.vk": {
+    "cid": "QmTtz4j6WhvLcnq45H6pPL1gnu47ppf3pqFJNjMcb4ftU7",
+    "digest": "a6b5ed26e61ee1ba6d0157e2f4a00f91",
     "sector_size": 268435456
   },
-  "v17-proof-of-spacetime-election-8923799c7eba68497833a94802c1f687aca037964aacbec838188c6d3912b718.params": {
-    "cid": "QmSz2YTybJDMCgW3ryvvNPQ2SJyBtASpWgzb5UfeTqQxJh",
-    "digest": "0ba0a7430cb9411e82cddd1b8a918428",
+  "v18-proof-of-spacetime-election-8923799c7eba68497833a94802c1f687aca037964aacbec838188c6d3912b718.params": {
+    "cid": "QmSNwSUEAp4eJC2UWo1HgmQZELiZVUErWceRed9vT7WQKS",
+    "digest": "52ac57808d3c5132ee66c9693f8af5ee",
     "sector_size": 16777216
   },
-  "v17-proof-of-spacetime-election-8923799c7eba68497833a94802c1f687aca037964aacbec838188c6d3912b718.vk": {
-    "cid": "QmWASM5eUWBaAqE6HAdjHWEHJKPW6veVgTuaJs45kKonwn",
-    "digest": "111a2ad1a6018ffc4e2a28644ed07f1b",
+  "v18-proof-of-spacetime-election-8923799c7eba68497833a94802c1f687aca037964aacbec838188c6d3912b718.vk": {
+    "cid": "Qmeg26ZQ57oi8bHkkgeYuafKjyZMGDXJhbg2ZSJW1zbAb5",
+    "digest": "1a5fc7b62c09a6d96455dcba83ceb9af",
     "sector_size": 16777216
   },
-  "v17-proof-of-spacetime-election-8ac1992c7b71f15757f62e11af51abc3d3b9db8ed8ed6804f4f06842d6d23bc5.params": {
-    "cid": "QmYwZVdahZ7irXaW423AXwfr2sbuCq3ih9oPFTo3mQpL6Y",
-    "digest": "a0107d57e12c33bdaf586bb54311ec90",
+  "v18-proof-of-spacetime-election-8ac1992c7b71f15757f62e11af51abc3d3b9db8ed8ed6804f4f06842d6d23bc5.params": {
+    "cid": "QmQy5eJwSTyWhRj3eTofVKs7TF1c9FdXUKMKjfwniiLJDE",
+    "digest": "a88c8497274ca648d7f4e1c25b4c9cb8",
     "sector_size": 1073741824
   },
-  "v17-proof-of-spacetime-election-8ac1992c7b71f15757f62e11af51abc3d3b9db8ed8ed6804f4f06842d6d23bc5.vk": {
-    "cid": "QmXHAwHcbpx31JFUeHs2mub4GPr4wsFSaCrxrxBHgy6adM",
-    "digest": "6e51dff3a3b51aef1ddf6b6f15c870f5",
+  "v18-proof-of-spacetime-election-8ac1992c7b71f15757f62e11af51abc3d3b9db8ed8ed6804f4f06842d6d23bc5.vk": {
+    "cid": "QmR5HvUPWfoB1zJmG87dZdD8NrwseUgAkjau7j99RJrvVZ",
+    "digest": "499db4ed613683f430ba7fafd01f52e6",
     "sector_size": 1073741824
   },
-  "v17-stacked-proof-of-replication-0c0b444c6f31d11c8e98003cc99a3b938db26b77a296d4253cda8945c234266d.params": {
-    "cid": "QmU5eYfCwyjsJ4perRgVW6KTq1bDLfQ7XcBhg9Z1mH42kQ",
-    "digest": "3d6d4ba0b2eae2695dfd73c916a66c95",
-    "sector_size": 16777216
-  },
-  "v17-stacked-proof-of-replication-0c0b444c6f31d11c8e98003cc99a3b938db26b77a296d4253cda8945c234266d.vk": {
-    "cid": "QmbB2Caq4muLCKbNJgH9KQddao5JYnB2JzYUMWwFq2Qm4Z",
-    "digest": "4a5efda7efb11b1af579baf30a41007f",
-    "sector_size": 16777216
-  },
-  "v17-stacked-proof-of-replication-967b11bb59be11b7dc6f2b627520ba450a3aa50846dbbf886cb8b735fe25c4e7.params": {
-    "cid": "QmSh7aFgjutVthSCyDYDs7FjHKGtuZc9YaFnFBSpEvYE1Y",
-    "digest": "c92ebee7cfc2509b624736df083e790b",
-    "sector_size": 268435456
-  },
-  "v17-stacked-proof-of-replication-967b11bb59be11b7dc6f2b627520ba450a3aa50846dbbf886cb8b735fe25c4e7.vk": {
-    "cid": "QmVL7fjQftCCPo6vRkVErspADjFCoVqdRCR179g9PyLbez",
-    "digest": "1ca0cd9c59df03621dfdf1427ea735dc",
-    "sector_size": 268435456
-  },
-  "v17-stacked-proof-of-replication-d01cd22091627b721c60a3375b5219af653fb9f6928c70aa7400587d396bc07a.params": {
-    "cid": "QmRXZCQdzP2kFfdHse953CxgdTupwT8fWQA7YmeqtAjM9H",
-    "digest": "5539c3c55c9b409e5432bc61f34b5786",
-    "sector_size": 1073741824
-  },
-  "v17-stacked-proof-of-replication-d01cd22091627b721c60a3375b5219af653fb9f6928c70aa7400587d396bc07a.vk": {
-    "cid": "QmdQGgWyYijAacJbRrdR42GYZz5QZhGQ1YY4kun2w27arx",
-    "digest": "716f20b705260ca43515a4bcff8e6f47",
-    "sector_size": 1073741824
-  },
-  "v17-stacked-proof-of-replication-f464b92d805d03de6e2c20e2530135b2c8ec96045ec58f342d6feb90282bff8a.params": {
-    "cid": "QmSkTjaq6X8jquVh6wsXrPVeMDMg7yC7fGJ1i3yeV54eiR",
-    "digest": "15fe50f23209ed875b4b44e3ee61c5c5",
+  "v18-stacked-proof-of-replication-5a438611c880423c4f5199787cd531b197846ef46af40af69222467ab9073226.params": {
+    "cid": "QmQb5mc3ksZh2K5GsNwJrkwuHoWXh8adBdJV3qTbFaRvGe",
+    "digest": "a187287b1d03cd7ec4f1fccd57f3f3d1",
     "sector_size": 1024
   },
-  "v17-stacked-proof-of-replication-f464b92d805d03de6e2c20e2530135b2c8ec96045ec58f342d6feb90282bff8a.vk": {
-    "cid": "QmZCU4KBnTkAQuhuRDwyopjzXEXSs13n34QCXM5a5a6AdY",
-    "digest": "e50d458bef1c840d5f1deff018a0d702",
+  "v18-stacked-proof-of-replication-5a438611c880423c4f5199787cd531b197846ef46af40af69222467ab9073226.vk": {
+    "cid": "QmYUjFHzeX22dfzv9wQxF4Qn8wS67bqBwr1Wcz2rga9rAZ",
+    "digest": "747792363f08d7b53be1a2f51f91582a",
     "sector_size": 1024
+  },
+  "v18-stacked-proof-of-replication-6ae8ae8998ef393ffd171487bc5141fa3642e9fd39e3a7dbada4f6e7bacffb9b.params": {
+    "cid": "QmRUZqCwYdcVfQ49Z97g2xkJnaSh4b9SHWwfB3kgZiPo9L",
+    "digest": "b9494e0ae432a0ebde9c8c877c914583",
+    "sector_size": 16777216
+  },
+  "v18-stacked-proof-of-replication-6ae8ae8998ef393ffd171487bc5141fa3642e9fd39e3a7dbada4f6e7bacffb9b.vk": {
+    "cid": "QmXngrBy74h8LYhYrbBpefXsXQFWLU3WX3LTXnVQnu1Sdc",
+    "digest": "af2c0d6834fa581b6f507f8266244dfb",
+    "sector_size": 16777216
+  },
+  "v18-stacked-proof-of-replication-d2ca0f634aebcecba88904612ff82f2349b080b1290879f3fba73c1d9a13d84e.params": {
+    "cid": "QmfNstuJFKnBt4yJHsNfoKahn1LafBdpJju23U5UNZd9Xy",
+    "digest": "3911d84ca2b86f491bc7c6372d7d9285",
+    "sector_size": 268435456
+  },
+  "v18-stacked-proof-of-replication-d2ca0f634aebcecba88904612ff82f2349b080b1290879f3fba73c1d9a13d84e.vk": {
+    "cid": "QmQgSRQBbp7udHDp5pNA3GSCjSyXktUHBw15wx9meL4wgc",
+    "digest": "ecd2a9bdd178b0ebc9110f568fd70d07",
+    "sector_size": 268435456
+  },
+  "v18-stacked-proof-of-replication-f7b95455d6b7a5e967388a97c2ddc01807eff4c1736e84be4554853bf7783105.params": {
+    "cid": "QmV5mAkhohUHPRWoNtS3Uo4yvmF23CR2u8JxeeCqthMCdX",
+    "digest": "9306d91c3518b87016d5efc19428b25e",
+    "sector_size": 1073741824
+  },
+  "v18-stacked-proof-of-replication-f7b95455d6b7a5e967388a97c2ddc01807eff4c1736e84be4554853bf7783105.vk": {
+    "cid": "QmPjwPdUQJmqp2rQuJX2dy57AC9YCwYtMHdpZzW5BG9JWh",
+    "digest": "a2004fca043da423df51f6c4bb65788c",
+    "sector_size": 1073741824
   }
 }
