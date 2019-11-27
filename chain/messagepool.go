@@ -382,7 +382,7 @@ func (mp *MessagePool) Remove(from address.Address, nonce uint64) {
 				max = nonce
 			}
 		}
-		if nonce > max {
+		if max < nonce {
 			max = nonce // we could have not seen the removed message before
 		}
 
