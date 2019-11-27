@@ -19,20 +19,6 @@ var SectorSizes = []uint64{
 	1 << 30,
 }
 
-const nodeSize = 32
-
-// sector size -> winSzNodes
-//
-//  https://github.com/filecoin-project/rust-fil-proofs/blob/master/filecoin-proofs/src/constants.rs#L16-L20
-var WindowSizeNodes = map[uint64]uint32{
-	1 << 10: 512 / nodeSize,
-
-	16 << 20:  (4 << 20) / nodeSize,
-	256 << 20: (64 << 20) / nodeSize,
-
-	1 << 30: (128 << 20) / nodeSize,
-}
-
 func SupportedSectorSize(ssize uint64) bool {
 	for _, ss := range SectorSizes {
 		if ssize == ss {

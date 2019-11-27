@@ -222,7 +222,6 @@ func (sb *SectorBuilder) SealPreCommit(sectorID uint64, ticket SealTicket, piece
 
 	rspco, err := sectorbuilder.SealPreCommit(
 		sb.ssize,
-		build.WindowSizeNodes[sb.ssize],
 		PoRepProofPartitions,
 		cacheDir,
 		stagedPath,
@@ -250,7 +249,6 @@ func (sb *SectorBuilder) SealCommit(sectorID uint64, ticket SealTicket, seed Sea
 
 	proof, err = sectorbuilder.SealCommit(
 		sb.ssize,
-		build.WindowSizeNodes[sb.ssize],
 		PoRepProofPartitions,
 		cacheDir,
 		sectorID,
@@ -292,7 +290,7 @@ func (sb *SectorBuilder) ComputeElectionPoSt(sectorInfo SortedPublicSectorInfo, 
 	}
 
 	proverID := addressToProverID(sb.Miner)
-	return sectorbuilder.GeneratePoSt(sb.ssize, build.WindowSizeNodes[sb.ssize], proverID, privsects, cseed, winners)
+	return sectorbuilder.GeneratePoSt(sb.ssize, proverID, privsects, cseed, winners)
 }
 
 func (sb *SectorBuilder) GenerateEPostCandidates(sectorInfo SortedPublicSectorInfo, challengeSeed [CommLen]byte, faults []uint64) ([]EPostCandidate, error) {
@@ -304,7 +302,7 @@ func (sb *SectorBuilder) GenerateEPostCandidates(sectorInfo SortedPublicSectorIn
 	challengeCount := challangeCount(uint64(len(sectorInfo.Values())))
 
 	proverID := addressToProverID(sb.Miner)
-	return sectorbuilder.GenerateCandidates(sb.ssize, build.WindowSizeNodes[sb.ssize], proverID, challengeSeed, challengeCount, privsectors)
+	return sectorbuilder.GenerateCandidates(sb.ssize, proverID, challengeSeed, challengeCount, privsectors)
 }
 
 func (sb *SectorBuilder) pubSectorToPriv(sectorInfo SortedPublicSectorInfo) (SortedPrivateSectorInfo, error) {
@@ -344,7 +342,7 @@ func VerifySeal(sectorSize uint64, commR, commD []byte, proverID address.Address
 	copy(seeda[:], seed)
 	proverIDa := addressToProverID(proverID)
 
-	return sectorbuilder.VerifySeal(sectorSize, build.WindowSizeNodes[sectorSize], commRa, commDa, proverIDa, ticketa, seeda, sectorID, proof)
+	return sectorbuilder.VerifySeal(sectorSize, commRa, commDa, proverIDa, ticketa, seeda, sectorID, proof)
 }
 
 func NewSortedPrivateSectorInfo(sectors []sectorbuilder.PrivateSectorInfo) SortedPrivateSectorInfo {
@@ -364,7 +362,7 @@ func VerifyPost(ctx context.Context, sectorSize uint64, sectorInfo SortedPublicS
 	_, span := trace.StartSpan(ctx, "VerifyPoSt")
 	defer span.End()
 	prover := addressToProverID(proverID)
-	return sectorbuilder.VerifyPoSt(sectorSize, build.WindowSizeNodes[sectorSize], sectorInfo, challengeSeeda, challengeCount, proof, winners, prover)
+	return sectorbuilder.VerifyPoSt(sectorSize, sectorInfo, challengeSeeda, challengeCount, proof, winners, prover)
 }
 
 func GeneratePieceCommitment(piece io.Reader, pieceSize uint64) (commP [CommLen]byte, err error) {
@@ -382,7 +380,7 @@ func GeneratePieceCommitment(piece io.Reader, pieceSize uint64) (commP [CommLen]
 }
 
 func GenerateDataCommitment(ssize uint64, pieces []PublicPieceInfo) ([CommLen]byte, error) {
-	return sectorbuilder.GenerateDataCommitment(ssize, build.WindowSizeNodes[ssize], pieces)
+	return sectorbuilder.GenerateDataCommitment(ssize, pieces)
 }
 
 func challangeCount(sectors uint64) uint64 {
