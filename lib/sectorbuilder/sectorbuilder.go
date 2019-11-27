@@ -8,7 +8,7 @@ import (
 	"strconv"
 	"sync"
 
-	sectorbuilder "github.com/filecoin-project/go-sectorbuilder"
+	sectorbuilder "github.com/filecoin-project/filecoin-ffi"
 	"github.com/ipfs/go-datastore"
 	logging "github.com/ipfs/go-log"
 	"go.opencensus.io/trace"
@@ -26,15 +26,8 @@ var LastSectorIdKey = datastore.NewKey("/sectorbuilder/last")
 
 var log = logging.Logger("sectorbuilder")
 
-type SectorSealingStatus = sectorbuilder.SectorSealingStatus
-
-type StagedSectorMetadata = sectorbuilder.StagedSectorMetadata
-
 type SortedPublicSectorInfo = sectorbuilder.SortedPublicSectorInfo
 type SortedPrivateSectorInfo = sectorbuilder.SortedPrivateSectorInfo
-
-type PrivateSectorInfo = sectorbuilder.SectorPrivateInfo
-type PublicSectorInfo = sectorbuilder.SectorPublicInfo
 
 type SealTicket = sectorbuilder.SealTicket
 
@@ -174,7 +167,7 @@ func (sb *SectorBuilder) AddPiece(pieceSize uint64, sectorId uint64, file io.Rea
 		return PublicPieceInfo{}, err
 	}
 
-	_, _, commP, err := sectorbuilder.StandaloneWriteWithAlignment(f, pieceSize, stagedFile, existingPieceSizes)
+	_, _, commP, err := sectorbuilder.WriteWithAlignment(f, pieceSize, stagedFile, existingPieceSizes)
 	if err != nil {
 		return PublicPieceInfo{}, err
 	}
@@ -199,7 +192,7 @@ func (sb *SectorBuilder) ReadPieceFromSealedSector(pieceKey string) ([]byte, err
 	defer ret()
 
 	panic("fixme")
-	//return sectorbuilder.StandaloneUnseal(sb.handle, pieceKey)
+	//return sectorbuilder.Unseal(sb.handle, pieceKey)
 }
 
 func (sb *SectorBuilder) SealPreCommit(sectorID uint64, ticket SealTicket, pieces []PublicPieceInfo) (RawSealPreCommitOutput, error) {
@@ -227,7 +220,7 @@ func (sb *SectorBuilder) SealPreCommit(sectorID uint64, ticket SealTicket, piece
 
 	stagedPath := sb.stagedSectorPath(sectorID)
 
-	rspco, err := sectorbuilder.StandaloneSealPreCommit(
+	rspco, err := sectorbuilder.SealPreCommit(
 		sb.ssize,
 		PoRepProofPartitions,
 		cacheDir,
@@ -254,7 +247,7 @@ func (sb *SectorBuilder) SealCommit(sectorID uint64, ticket SealTicket, seed Sea
 		return nil, err
 	}
 
-	proof, err = sectorbuilder.StandaloneSealCommit(
+	proof, err = sectorbuilder.SealCommit(
 		sb.ssize,
 		PoRepProofPartitions,
 		cacheDir,
@@ -266,7 +259,7 @@ func (sb *SectorBuilder) SealCommit(sectorID uint64, ticket SealTicket, seed Sea
 		rspco,
 	)
 	if err != nil {
-		return nil, xerrors.Errorf("StandaloneSealCommit: %w", err)
+		return nil, xerrors.Errorf("SealCommit: %w", err)
 	}
 
 	return proof, nil
@@ -297,7 +290,7 @@ func (sb *SectorBuilder) ComputeElectionPoSt(sectorInfo SortedPublicSectorInfo, 
 	}
 
 	proverID := addressToProverID(sb.Miner)
-	return sectorbuilder.StandaloneGeneratePoSt(sb.ssize, proverID, privsects, cseed, winners)
+	return sectorbuilder.GeneratePoSt(sb.ssize, proverID, privsects, cseed, winners)
 }
 
 func (sb *SectorBuilder) GenerateEPostCandidates(sectorInfo SortedPublicSectorInfo, challengeSeed [CommLen]byte, faults []uint64) ([]EPostCandidate, error) {
@@ -309,11 +302,11 @@ func (sb *SectorBuilder) GenerateEPostCandidates(sectorInfo SortedPublicSectorIn
 	challengeCount := challangeCount(uint64(len(sectorInfo.Values())))
 
 	proverID := addressToProverID(sb.Miner)
-	return sectorbuilder.StandaloneGenerateCandidates(sb.ssize, proverID, challengeSeed, challengeCount, privsectors)
+	return sectorbuilder.GenerateCandidates(sb.ssize, proverID, challengeSeed, challengeCount, privsectors)
 }
 
 func (sb *SectorBuilder) pubSectorToPriv(sectorInfo SortedPublicSectorInfo) (SortedPrivateSectorInfo, error) {
-	var out []PrivateSectorInfo
+	var out []sectorbuilder.PrivateSectorInfo
 	for _, s := range sectorInfo.Values() {
 		cachePath, err := sb.sectorCacheDir(s.SectorID)
 		if err != nil {
@@ -325,7 +318,7 @@ func (sb *SectorBuilder) pubSectorToPriv(sectorInfo SortedPublicSectorInfo) (Sor
 			return SortedPrivateSectorInfo{}, xerrors.Errorf("getting sealed path for sector %d: %w", s.SectorID, err)
 		}
 
-		out = append(out, PrivateSectorInfo{
+		out = append(out, sectorbuilder.PrivateSectorInfo{
 			SectorID:         s.SectorID,
 			CommR:            s.CommR,
 			CacheDirPath:     cachePath,
@@ -352,12 +345,12 @@ func VerifySeal(sectorSize uint64, commR, commD []byte, proverID address.Address
 	return sectorbuilder.VerifySeal(sectorSize, commRa, commDa, proverIDa, ticketa, seeda, sectorID, proof)
 }
 
-func NewSortedPrivateSectorInfo(sectors []PrivateSectorInfo) SortedPrivateSectorInfo {
-	return sectorbuilder.NewSortedSectorPrivateInfo(sectors...)
+func NewSortedPrivateSectorInfo(sectors []sectorbuilder.PrivateSectorInfo) SortedPrivateSectorInfo {
+	return sectorbuilder.NewSortedPrivateSectorInfo(sectors...)
 }
 
-func NewSortedPublicSectorInfo(sectors []PublicSectorInfo) SortedPublicSectorInfo {
-	return sectorbuilder.NewSortedSectorPublicInfo(sectors...)
+func NewSortedPublicSectorInfo(sectors []sectorbuilder.PublicSectorInfo) SortedPublicSectorInfo {
+	return sectorbuilder.NewSortedPublicSectorInfo(sectors...)
 }
 
 func VerifyPost(ctx context.Context, sectorSize uint64, sectorInfo SortedPublicSectorInfo, challengeSeed []byte, proof []byte, winners []EPostCandidate, proverID address.Address) (bool, error) {

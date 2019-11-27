@@ -7,7 +7,7 @@ import (
 	"strings"
 	"sync"
 
-	"github.com/filecoin-project/go-bls-sigs"
+	bls "github.com/filecoin-project/filecoin-ffi"
 
 	logging "github.com/ipfs/go-log"
 	"github.com/minio/blake2b-simd"

@@ -12,37 +12,21 @@ MODULES:=
 
 CLEAN:=
 
-## BLS
+## FFI
 
-BLS_PATH:=extern/go-bls-sigs/
-BLS_DEPS:=libbls_signatures.a libbls_signatures.pc libbls_signatures.h
-BLS_DEPS:=$(addprefix $(BLS_PATH),$(BLS_DEPS))
+FFI_PATH:=extern/filecoin-ffi/
+FFI_DEPS:=libfilecoin.a filecoin.pc filecoin.h
+FFI_DEPS:=$(addprefix $(FFI_PATH),$(FFI_DEPS))
 
-$(BLS_DEPS): build/.bls-install ;
+$(FFI_DEPS): build/.filecoin-install ;
 
-build/.bls-install: $(BLS_PATH)
-	$(MAKE) -C $(BLS_PATH) $(BLS_DEPS:$(BLS_PATH)%=%)
+build/.filecoin-install: $(FFI_PATH)
+	$(MAKE) -C $(FFI_PATH) $(FFI_DEPS:$(FFI_PATH)%=%)
 	@touch $@
 
-MODULES+=$(BLS_PATH)
-BUILD_DEPS+=build/.bls-install
-CLEAN+=build/.bls-install
-
-## SECTOR BUILDER
-
-SECTOR_BUILDER_PATH:=extern/go-sectorbuilder/
-SECTOR_BUILDER_DEPS:=libsector_builder_ffi.a sector_builder_ffi.pc sector_builder_ffi.h
-SECTOR_BUILDER_DEPS:=$(addprefix $(SECTOR_BUILDER_PATH),$(SECTOR_BUILDER_DEPS))
-
-$(SECTOR_BUILDER_DEPS): build/.sector-builder-install ;
-
-build/.sector-builder-install: $(SECTOR_BUILDER_PATH)
-	$(MAKE) -C $(SECTOR_BUILDER_PATH) $(SECTOR_BUILDER_DEPS:$(SECTOR_BUILDER_PATH)%=%)
-	@touch $@
-
-MODULES+=$(SECTOR_BUILDER_PATH)
-BUILD_DEPS+=build/.sector-builder-install
-CLEAN+=build/.sector-builder-install
+MODULES+=$(FFI_PATH)
+BUILD_DEPS+=build/.filecoin-install
+CLEAN+=build/.filecoin-install
 
 $(MODULES): build/.update-modules ;
 
@@ -123,8 +107,7 @@ stats:
 
 clean:
 	rm -rf $(CLEAN)
-	-$(MAKE) -C $(BLS_PATH) clean
-	-$(MAKE) -C $(SECTOR_BUILDER_PATH) clean
+	-$(MAKE) -C $(FFI_PATH) clean
 .PHONY: clean
 
 dist-clean:

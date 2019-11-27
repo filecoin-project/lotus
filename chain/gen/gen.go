@@ -6,6 +6,7 @@ import (
 	"crypto/sha256"
 	"encoding/binary"
 	"fmt"
+	ffi "github.com/filecoin-project/filecoin-ffi"
 	"sync/atomic"
 
 	"github.com/ipfs/go-blockservice"
@@ -414,7 +415,7 @@ type ElectionPoStProver interface {
 }
 
 type eppProvider struct {
-	sectors []sectorbuilder.PublicSectorInfo
+	sectors []ffi.PublicSectorInfo
 }
 
 func (epp *eppProvider) GenerateCandidates(ctx context.Context, _ sectorbuilder.SortedPublicSectorInfo, eprand []byte) ([]sectorbuilder.EPostCandidate, error) {
@@ -455,11 +456,11 @@ func IsRoundWinner(ctx context.Context, ts *types.TipSet, round int64, miner add
 	}
 	log.Warningf("Proving set for miner %s: %s", miner, pset)
 
-	var sinfos []sectorbuilder.PublicSectorInfo
+	var sinfos []ffi.PublicSectorInfo
 	for _, s := range pset {
 		var commRa [32]byte
 		copy(commRa[:], s.CommR)
-		sinfos = append(sinfos, sectorbuilder.PublicSectorInfo{
+		sinfos = append(sinfos, ffi.PublicSectorInfo{
 			SectorID: s.SectorID,
 			CommR:    commRa,
 		})
