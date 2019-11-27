@@ -123,7 +123,12 @@ var preSealCmd = &cli.Command{
 
 		var sealedSectors []genesis.PreSeal
 		for i := uint64(1); i <= c.Uint64("num-sectors"); i++ {
-			pi, err := sb.AddPiece(size, i, r, nil)
+			sid, err := sb.AcquireSectorId()
+			if err != nil {
+				return err
+			}
+
+			pi, err := sb.AddPiece(size, sid, r, nil)
 			if err != nil {
 				return err
 			}
@@ -135,7 +140,7 @@ var preSealCmd = &cli.Command{
 
 			fmt.Println("Piece info: ", pi)
 
-			pco, err := sb.SealPreCommit(i, ticket, []sectorbuilder.PublicPieceInfo{pi})
+			pco, err := sb.SealPreCommit(sid, ticket, []sectorbuilder.PublicPieceInfo{pi})
 			if err != nil {
 				return xerrors.Errorf("commit: %w", err)
 			}
@@ -143,7 +148,7 @@ var preSealCmd = &cli.Command{
 			sealedSectors = append(sealedSectors, genesis.PreSeal{
 				CommR:    pco.CommR,
 				CommD:    pco.CommD,
-				SectorID: i,
+				SectorID: sid,
 			})
 		}
 
@@ -160,6 +165,10 @@ var preSealCmd = &cli.Command{
 
 		if err := ioutil.WriteFile("pre-seal-"+maddr.String()+".json", out, 0664); err != nil {
 			return err
+		}
+
+		if err := mds.Close(); err != nil {
+			return xerrors.Errorf("closing datastore: %w", err)
 		}
 
 		return nil

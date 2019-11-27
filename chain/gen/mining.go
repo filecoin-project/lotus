@@ -3,8 +3,8 @@ package gen
 import (
 	"context"
 
-	amt "github.com/filecoin-project/go-amt-ipld"
 	bls "github.com/filecoin-project/filecoin-ffi"
+	amt "github.com/filecoin-project/go-amt-ipld"
 	cid "github.com/ipfs/go-cid"
 	hamt "github.com/ipfs/go-hamt-ipld"
 	cbg "github.com/whyrusleeping/cbor-gen"

@@ -165,7 +165,7 @@ func migratePreSealedSectors(presealsb string, repoPath string, mds dtypes.Metad
 
 	srcds, err := badger.NewDatastore(filepath.Join(pspath, "badger"), nil)
 	if err != nil {
-		return err
+		return xerrors.Errorf("openning presealed sectors datastore: %w", err)
 	}
 
 	expRepo, err := homedir.Expand(repoPath)
