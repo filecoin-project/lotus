@@ -506,7 +506,7 @@ func IsRoundWinner(ctx context.Context, ts *types.TipSet, round int64, miner add
 		PostRand: vrfout,
 	}
 	for _, win := range winners {
-		ept.Winners = append(ept.Winners, types.EPostTicket{
+		ept.Candidates = append(ept.Candidates, types.EPostTicket{
 			Partial:        win.PartialTicket[:],
 			SectorID:       win.SectorID,
 			ChallengeIndex: win.SectorChallengeIndex,

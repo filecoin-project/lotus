@@ -192,7 +192,7 @@ func main() {
 
 			epost := time.Now()
 
-			ok, err := sectorbuilder.VerifyPost(context.TODO(), sectorSize, sinfos, challenge[:], proof, candidates[:1], maddr)
+			ok, err := sectorbuilder.VerifyElectionPost(context.TODO(), sectorSize, sinfos, challenge[:], proof, candidates[:1], maddr)
 			if err != nil {
 				return err
 			}

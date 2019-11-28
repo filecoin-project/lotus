@@ -366,7 +366,7 @@ func (sma StorageMinerActor) ProveCommitSector(act *types.Actor, vmctx types.VMC
 	if pss.Count == 0 {
 		self.ProvingSet = self.Sectors
 		// TODO: probably want to wait until the miner is above a certain
-		// threshold before starting this
+		//  threshold before starting this
 		self.ElectionPeriodStart = vmctx.BlockHeight()
 	}
 
@@ -390,15 +390,8 @@ func (sma StorageMinerActor) ProveCommitSector(act *types.Actor, vmctx types.VMC
 }
 
 type SubmitPoStParams struct {
-	Proof []byte
-}
-
-func ProvingPeriodEnd(setPeriodEnd, height uint64) (uint64, uint64) {
-	offset := setPeriodEnd % build.ProvingPeriodDuration
-	period := ((height - offset - 1) / build.ProvingPeriodDuration) + 1
-	end := (period * build.ProvingPeriodDuration) + offset
-
-	return end, period
+	Proof      []byte
+	Candidates []types.EPostTicket
 }
 
 func (sma StorageMinerActor) SubmitFallbackPoSt(act *types.Actor, vmctx types.VMContext, params *SubmitPoStParams) ([]byte, ActorError) {
@@ -482,13 +475,21 @@ func (sma StorageMinerActor) SubmitFallbackPoSt(act *types.Actor, vmctx types.VM
 	faults := self.CurrentFaultSet.All()
 	_ = faults
 
-	_ = seed
-	//VerifyPoStRandomness()
-
 	proverID := vmctx.Message().To // TODO: normalize to ID address
 
-	if ok, lerr := sectorbuilder.VerifyPost(vmctx.Context(), mi.SectorSize,
-		sectorbuilder.NewSortedPublicSectorInfo(sectorInfos), params.Proof.PostRand, params.Proof.Proof, winners, proverID); !ok || lerr != nil {
+	var candidates []sectorbuilder.EPostCandidate
+	for _, t := range params.Candidates {
+		var partial [32]byte
+		copy(partial[:], t.Partial)
+		candidates = append(candidates, sectorbuilder.EPostCandidate{
+			PartialTicket:        partial,
+			SectorID:             t.SectorID,
+			SectorChallengeIndex: t.ChallengeIndex,
+		})
+	}
+
+	if ok, lerr := sectorbuilder.VerifyFallbackPost(vmctx.Context(), mi.SectorSize,
+		sectorbuilder.NewSortedPublicSectorInfo(sectorInfos), seed[:], params.Proof, candidates, proverID); !ok || lerr != nil {
 		if lerr != nil {
 			// TODO: study PoST errors
 			return nil, aerrors.Absorb(lerr, 4, "PoST error")

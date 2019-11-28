@@ -102,7 +102,7 @@ func (s *seal) post(t *testing.T, sb *sectorbuilder.SectorBuilder) time.Time {
 		t.Fatalf("%+v", err)
 	}
 
-	ok, err := sectorbuilder.VerifyPost(context.TODO(), sb.SectorSize(), ssi, cSeed[:], postProof, candndates, sb.Miner)
+	ok, err := sectorbuilder.VerifyElectionPost(context.TODO(), sb.SectorSize(), ssi, cSeed[:], postProof, candndates, sb.Miner)
 	if err != nil {
 		t.Fatalf("%+v", err)
 	}

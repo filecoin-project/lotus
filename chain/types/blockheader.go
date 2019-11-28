@@ -27,9 +27,9 @@ type EPostTicket struct {
 }
 
 type EPostProof struct {
-	Proof    []byte
-	PostRand []byte
-	Winners  []EPostTicket
+	Proof      []byte
+	PostRand   []byte
+	Candidates []EPostTicket
 }
 
 type BlockHeader struct {

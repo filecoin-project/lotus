@@ -31,7 +31,7 @@ func SupportedSectorSize(ssize uint64) bool {
 // /////
 // Payments
 
-// Blocks
+// Epochs
 const PaymentChannelClosingDelay = 6 * 60 * 2 // six hours
 
 // /////
@@ -40,13 +40,13 @@ const PaymentChannelClosingDelay = 6 * 60 * 2 // six hours
 // Seconds
 const AllowableClockDrift = BlockDelay * 2
 
-// Blocks
+// Epochs
 const ForkLengthThreshold = Finality
 
 // Blocks (e)
 const BlocksPerEpoch = 5
 
-// Blocks
+// Epochs
 const Finality = 500
 
 // constants for Weight calculation
@@ -57,40 +57,45 @@ const WRatioDen = 2
 // /////
 // Proofs
 
-// PoStChallangeTime sets the window in which post computation should happen
-// Blocks
-const PoStChallangeTime = ProvingPeriodDuration - 6
-
 // PoStRandomnessLookback is additional randomness lookback for PoSt computation
 // To compute randomness epoch in a given proving period:
 // RandH = PPE - PoStChallangeTime - PoStRandomnessLookback
 //
-// Blocks
+// Epochs
 const PoStRandomnessLookback = 1
 
-// Blocks
+// Epochs
 const SealRandomnessLookback = Finality
 
-// Blocks
+// Epochs
 const SealRandomnessLookbackLimit = SealRandomnessLookback + 2000
 
 // 1 / n
 const SectorChallengeRatioDiv = 25
 
+const MaxFallbackPostChallengeCount = 10
+
+// FallbackPoStBegin is the number of epochs the miner needs to wait after
+//  ElectionPeriodStart before starting fallback post computation
+//
+// Epochs
+const FallbackPoStBegin = 1000
+
+// SlashablePowerDelay is the number of epochs
+// Epochs
+const SlashablePowerDelay = 2000
+
 // /////
 // Mining
 
-// Blocks
+// Epochs
 const EcRandomnessLookback = 300
-
-const FallbackPoStBegin = 1000
-const SlashablePowerDelay = 2000
 
 const PowerCollateralProportion = 5
 const PerCapitaCollateralProportion = 1
 const CollateralPrecision = 1000
 
-// Blocks
+// Epochs
 const InteractivePoRepDelay = 10
 
 // /////
@@ -106,8 +111,8 @@ var InitialReward *big.Int
 const FilecoinPrecision = 1_000_000_000_000_000_000
 
 // six years
-// Blocks
-const HalvingPeriodBlocks = 6 * 365 * 24 * 60 * 2
+// Epochs
+const HalvingPeriodEpochs = 6 * 365 * 24 * 60 * 2
 
 // TODO: Move other important consts here
 
@@ -125,6 +130,6 @@ func init() {
 // Sync
 const BadBlockCacheSize = 1 << 15
 
-// assuming 4000 blocks per round, this lets us not lose any messages across a
+// assuming 4000 messages per round, this lets us not lose any messages across a
 // 10 block reorg.
 const BlsSignatureCacheSize = 40000

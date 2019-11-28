@@ -555,7 +555,7 @@ func (syncer *Syncer) ValidateBlock(ctx context.Context, b *types.FullBlock) err
 			return xerrors.Errorf("failed to get sector size for block miner: %w", err)
 		}
 
-		for _, t := range h.EPostProof.Winners {
+		for _, t := range h.EPostProof.Candidates {
 			if !types.IsTicketWinner(t.Partial, ssize, tpow, 1) {
 				return xerrors.Errorf("miner created a block but was not a winner")
 			}
@@ -667,7 +667,7 @@ func (syncer *Syncer) VerifyElectionPoStProof(ctx context.Context, h *types.Bloc
 	}
 
 	var winners []sectorbuilder.EPostCandidate
-	for _, t := range h.EPostProof.Winners {
+	for _, t := range h.EPostProof.Candidates {
 		var partial [32]byte
 		copy(partial[:], t.Partial)
 		winners = append(winners, sectorbuilder.EPostCandidate{
@@ -689,7 +689,7 @@ func (syncer *Syncer) VerifyElectionPoStProof(ctx context.Context, h *types.Bloc
 		return xerrors.Errorf("[TESTING] election post was invalid")
 	}
 	hvrf := sha256.Sum256(h.EPostProof.PostRand)
-	ok, err := sectorbuilder.VerifyPost(ctx, ssize, *sectorInfo, hvrf[:], h.EPostProof.Proof, winners, h.Miner)
+	ok, err := sectorbuilder.VerifyElectionPost(ctx, ssize, *sectorInfo, hvrf[:], h.EPostProof.Proof, winners, h.Miner)
 	if err != nil {
 		return xerrors.Errorf("failed to verify election post: %w", err)
 	}
