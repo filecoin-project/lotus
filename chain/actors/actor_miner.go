@@ -5,6 +5,7 @@ import (
 	"context"
 	"encoding/binary"
 	"fmt"
+
 	ffi "github.com/filecoin-project/filecoin-ffi"
 
 	"github.com/filecoin-project/lotus/build"
@@ -389,7 +390,7 @@ func (sma StorageMinerActor) ProveCommitSector(act *types.Actor, vmctx types.VMC
 }
 
 type SubmitPoStParams struct {
-	Proof types.EPostProof
+	Proof []byte
 }
 
 func ProvingPeriodEnd(setPeriodEnd, height uint64) (uint64, uint64) {

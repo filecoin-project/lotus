@@ -299,7 +299,7 @@ func (sb *SectorBuilder) GenerateEPostCandidates(sectorInfo SortedPublicSectorIn
 		return nil, err
 	}
 
-	challengeCount := challangeCount(uint64(len(sectorInfo.Values())))
+	challengeCount := challengeCount(uint64(len(sectorInfo.Values())))
 
 	proverID := addressToProverID(sb.Miner)
 	return sectorbuilder.GenerateCandidates(sb.ssize, proverID, challengeSeed, challengeCount, privsectors)
@@ -328,8 +328,24 @@ func (sb *SectorBuilder) pubSectorToPriv(sectorInfo SortedPublicSectorInfo) (Sor
 	return NewSortedPrivateSectorInfo(out), nil
 }
 
-func (sb *SectorBuilder) GenerateFallbackPoSt(sectorInfo SortedPrivateSectorInfo, challengeSeed [CommLen]byte, faults []uint64) ([]byte, error) {
-	panic("NYI")
+func (sb *SectorBuilder) GenerateFallbackPoSt(sectorInfo SortedPublicSectorInfo, challengeSeed [CommLen]byte, faults []uint64) ([]byte, error) {
+	privsectors, err := sb.pubSectorToPriv(sectorInfo)
+	if err != nil {
+		return nil, err
+	}
+
+	challengeCount := challengeCount(uint64(len(sectorInfo.Values())))
+	if challengeCount > 10 {
+		challengeCount = 10
+	}
+
+	proverID := addressToProverID(sb.Miner)
+	candidates, err := sectorbuilder.GenerateCandidates(sb.ssize, proverID, challengeSeed, challengeCount, privsectors)
+	if err != nil {
+		return nil, err
+	}
+
+	return sectorbuilder.GeneratePoSt(sb.ssize, proverID, privsectors, challengeSeed, candidates)
 }
 
 var UserBytesForSectorSize = sectorbuilder.GetMaxUserBytesPerStagedSector
@@ -357,7 +373,7 @@ func VerifyPost(ctx context.Context, sectorSize uint64, sectorInfo SortedPublicS
 	var challengeSeeda [CommLen]byte
 	copy(challengeSeeda[:], challengeSeed)
 
-	challengeCount := challangeCount(uint64(len(sectorInfo.Values())))
+	challengeCount := challengeCount(uint64(len(sectorInfo.Values())))
 
 	_, span := trace.StartSpan(ctx, "VerifyPoSt")
 	defer span.End()
@@ -383,7 +399,7 @@ func GenerateDataCommitment(ssize uint64, pieces []PublicPieceInfo) ([CommLen]by
 	return sectorbuilder.GenerateDataCommitment(ssize, pieces)
 }
 
-func challangeCount(sectors uint64) uint64 {
+func challengeCount(sectors uint64) uint64 {
 	// ceil(sectors / build.SectorChallengeRatioDiv)
 	return (sectors + build.SectorChallengeRatioDiv - 1) / build.SectorChallengeRatioDiv
 }

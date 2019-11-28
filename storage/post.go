@@ -2,8 +2,9 @@ package storage
 
 import (
 	"context"
-	ffi "github.com/filecoin-project/filecoin-ffi"
 	"time"
+
+	ffi "github.com/filecoin-project/filecoin-ffi"
 
 	"go.opencensus.io/trace"
 	"golang.org/x/xerrors"
@@ -170,20 +171,20 @@ func (p *post) preparePost(ctx context.Context) error {
 	return nil
 }
 
-func (p *post) sortedSectorInfo() sectorbuilder.SortedPrivateSectorInfo {
+func (p *post) sortedSectorInfo() sectorbuilder.SortedPublicSectorInfo {
 	panic("NYI")
-	sbsi := make([]ffi.PrivateSectorInfo, len(p.sset))
+	sbsi := make([]ffi.PublicSectorInfo, len(p.sset))
 	for k, sector := range p.sset {
 		var commR [sectorbuilder.CommLen]byte
 		copy(commR[:], sector.CommR)
 
-		sbsi[k] = ffi.PrivateSectorInfo{
+		sbsi[k] = ffi.PublicSectorInfo{
 			SectorID: sector.SectorID,
 			CommR:    commR,
 		}
 	}
 
-	return sectorbuilder.NewSortedPrivateSectorInfo(sbsi)
+	return sectorbuilder.NewSortedPublicSectorInfo(sbsi)
 }
 
 func (p *post) runPost(ctx context.Context) error {
@@ -216,35 +217,31 @@ func (p *post) commitPost(ctx context.Context) (err error) {
 	ctx, span := trace.StartSpan(ctx, "storage.commitPost")
 	defer span.End()
 
-	panic("NYI")
-	/*
+	params := &actors.SubmitPoStParams{
+		Proof: p.proof,
+	}
 
-			params := &actors.SubmitPoStParams{
-				//Proof:   p.proof,
-			}
+	enc, aerr := actors.SerializeParams(params)
+	if aerr != nil {
+		return xerrors.Errorf("could not serialize submit post parameters: %w", aerr)
+	}
 
-			enc, aerr := actors.SerializeParams(params)
-			if aerr != nil {
-				return xerrors.Errorf("could not serialize submit post parameters: %w", aerr)
-			}
+	msg := &types.Message{
+		To:       p.m.maddr,
+		From:     p.m.worker,
+		Method:   actors.MAMethods.SubmitPoSt,
+		Params:   enc,
+		Value:    types.NewInt(1000),    // currently hard-coded late fee in actor, returned if not late
+		GasLimit: types.NewInt(1000000), // i dont know help
+		GasPrice: types.NewInt(1),
+	}
 
-			msg := &types.Message{
-				To:       p.m.maddr,
-				From:     p.m.worker,
-				Method:   actors.MAMethods.SubmitPoSt,
-				Params:   enc,
-				Value:    types.NewInt(1000),    // currently hard-coded late fee in actor, returned if not late
-				GasLimit: types.NewInt(1000000), // i dont know help
-				GasPrice: types.NewInt(1),
-			}
+	log.Info("mpush")
 
-			log.Info("mpush")
-
-		p.smsg, err = p.m.api.MpoolPushMessage(ctx, msg)
-		if err != nil {
-			return xerrors.Errorf("pushing message to mpool: %w", err)
-		}
-	*/
+	p.smsg, err = p.m.api.MpoolPushMessage(ctx, msg)
+	if err != nil {
+		return xerrors.Errorf("pushing message to mpool: %w", err)
+	}
 
 	return nil
 }
