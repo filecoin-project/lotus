@@ -31,12 +31,16 @@ type StorageMinerActorState struct {
 	PreCommittedSectors map[string]*PreCommittedSector
 
 	// All sectors this miner has committed.
+	//
+	// AMT[sectorID]ffi.PublicSectorInfo
 	Sectors cid.Cid
 
 	// TODO: Spec says 'StagedCommittedSectors', which one is it?
 
 	// Sectors this miner is currently mining. It is only updated
 	// when a PoSt is submitted (not as each new sector commitment is added).
+	//
+	// AMT[sectorID]ffi.PublicSectorInfo
 	ProvingSet cid.Cid
 
 	// TODO: these:

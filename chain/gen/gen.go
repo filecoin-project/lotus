@@ -132,9 +132,8 @@ func NewGenerator() (*ChainGen, error) {
 	}
 
 	minercfg := &GenMinerCfg{
-		Workers: []address.Address{worker1, worker2},
-		Owners:  []address.Address{worker1, worker2},
 		PeerIDs: []peer.ID{"peerID1", "peerID2"},
+		// Call PreSeal(and give worker addrs to it somehow)
 	}
 
 	genb, err := MakeGenesisBlock(bs, map[address.Address]types.BigInt{
@@ -174,9 +173,9 @@ func NewGenerator() (*ChainGen, error) {
 		genesis:      genb.Genesis,
 		w:            w,
 
-		Miners:    minercfg.MinerAddrs,
-		eppProvs:  mgen,
-		mworkers:  minercfg.Workers,
+		Miners:   minercfg.MinerAddrs,
+		eppProvs: mgen,
+		//mworkers:  minercfg.Workers,
 		banker:    banker,
 		receivers: receievers,
 

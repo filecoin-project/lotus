@@ -41,6 +41,17 @@ func NewWallet(keystore types.KeyStore) (*Wallet, error) {
 	return w, nil
 }
 
+func KeyWallet(keys ...*Key) *Wallet {
+	m := make(map[address.Address]*Key)
+	for _, key := range keys {
+		m[key.Address] = key
+	}
+
+	return &Wallet{
+		keys: m,
+	}
+}
+
 func (w *Wallet) Sign(ctx context.Context, addr address.Address, msg []byte) (*types.Signature, error) {
 	ki, err := w.findKey(addr)
 	if err != nil {
@@ -85,6 +96,11 @@ func (w *Wallet) findKey(addr address.Address) (*Key, error) {
 	if ok {
 		return k, nil
 	}
+	if w.keystore == nil {
+		log.Warn("findKey didn't find the key in in-memory wallet")
+		return nil, nil
+	}
+
 	ki, err := w.keystore.Get(KNamePrefix + addr.String())
 	if err != nil {
 		if xerrors.Is(err, types.ErrKeyInfoNotFound) {

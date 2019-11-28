@@ -4,6 +4,7 @@ import (
 	"context"
 	"encoding/json"
 	"fmt"
+	"golang.org/x/xerrors"
 	"io"
 	"io/ioutil"
 	"os"
@@ -39,9 +40,8 @@ func MakeGenesisMem(out io.Writer, minerPid peer.ID) func(bs dtypes.ChainBlockst
 			}
 
 			gmc := &gen.GenMinerCfg{
-				Owners:  []address.Address{w},
-				Workers: []address.Address{w},
 				PeerIDs: []peer.ID{minerPid},
+				// TODO: Call seal.PreSeal
 			}
 			alloc := map[address.Address]types.BigInt{
 				w: types.FromFil(10000),
@@ -78,20 +78,34 @@ func MakeGenesis(outFile, preseal string) func(bs dtypes.ChainBlockstore, w *wal
 				return nil, err
 			}
 
-			minerAddr, err := w.GenerateKey(types.KTBLS)
-			if err != nil {
-				return nil, err
+			minerAddresses := make([]address.Address, 0, len(preseal))
+			for s := range preseal {
+				a, err := address.NewFromString(s)
+				if err != nil {
+					return nil, err
+				}
+				if a.Protocol() != address.ID {
+					return nil, xerrors.New("expected ID address")
+				}
+				minerAddresses = append(minerAddresses, a)
 			}
 
 			gmc := &gen.GenMinerCfg{
-				Owners:   []address.Address{minerAddr},
-				Workers:  []address.Address{minerAddr},
-				PeerIDs:  []peer.ID{"peer ID 1"},
-				PreSeals: preseal,
+				PeerIDs:    []peer.ID{"peer ID 1"},
+				PreSeals:   preseal,
+				MinerAddrs: minerAddresses,
 			}
 
-			addrs := map[address.Address]types.BigInt{
-				minerAddr: types.FromFil(100000),
+			addrs := map[address.Address]types.BigInt{}
+
+			for _, miner := range preseal {
+				if _, err := w.Import(&miner.Key); err != nil {
+					return nil, xerrors.Errorf("importing miner key: %w", err)
+				}
+
+				_ = w.SetDefault(miner.Worker)
+
+				addrs[miner.Worker] = types.FromFil(100000)
 			}
 
 			b, err := gen.MakeGenesisBlock(bs, addrs, gmc, uint64(time.Now().Unix()))
