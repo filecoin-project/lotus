@@ -220,8 +220,6 @@ func (m *Miner) committing(ctx context.Context, sector SectorInfo) (func(*Sector
 		return nil, xerrors.New("UNHANDLED: submitting sector proof failed")
 	}
 
-	m.beginPosting(ctx)
-
 	return func(info *SectorInfo) {
 		mcid := smsg.Cid()
 		info.CommitMessage = &mcid

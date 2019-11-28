@@ -75,11 +75,11 @@ const SectorChallengeRatioDiv = 25
 
 const MaxFallbackPostChallengeCount = 10
 
-// FallbackPoStBegin is the number of epochs the miner needs to wait after
+// FallbackPoStDelay is the number of epochs the miner needs to wait after
 //  ElectionPeriodStart before starting fallback post computation
 //
 // Epochs
-const FallbackPoStBegin = 1000
+const FallbackPoStDelay = 1000
 
 // SlashablePowerDelay is the number of epochs
 // Epochs

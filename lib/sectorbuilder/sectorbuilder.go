@@ -328,10 +328,10 @@ func (sb *SectorBuilder) pubSectorToPriv(sectorInfo SortedPublicSectorInfo) (Sor
 	return NewSortedPrivateSectorInfo(out), nil
 }
 
-func (sb *SectorBuilder) GenerateFallbackPoSt(sectorInfo SortedPublicSectorInfo, challengeSeed [CommLen]byte, faults []uint64) ([]byte, error) {
+func (sb *SectorBuilder) GenerateFallbackPoSt(sectorInfo SortedPublicSectorInfo, challengeSeed [CommLen]byte, faults []uint64) ([]EPostCandidate, []byte, error) {
 	privsectors, err := sb.pubSectorToPriv(sectorInfo)
 	if err != nil {
-		return nil, err
+		return nil, nil, err
 	}
 
 	challengeCount := fallbackPostChallengeCount(uint64(len(sectorInfo.Values())))
@@ -339,10 +339,11 @@ func (sb *SectorBuilder) GenerateFallbackPoSt(sectorInfo SortedPublicSectorInfo,
 	proverID := addressToProverID(sb.Miner)
 	candidates, err := sectorbuilder.GenerateCandidates(sb.ssize, proverID, challengeSeed, challengeCount, privsectors)
 	if err != nil {
-		return nil, err
+		return nil, nil, err
 	}
 
-	return sectorbuilder.GeneratePoSt(sb.ssize, proverID, privsectors, challengeSeed, candidates)
+	proof, err := sectorbuilder.GeneratePoSt(sb.ssize, proverID, privsectors, challengeSeed, candidates)
+	return candidates, proof, err
 }
 
 var UserBytesForSectorSize = sectorbuilder.GetMaxUserBytesPerStagedSector

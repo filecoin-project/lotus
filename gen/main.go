@@ -93,7 +93,7 @@ func main() {
 		actors.SectorPreCommitInfo{},
 		actors.PreCommittedSector{},
 		actors.MinerInfo{},
-		actors.SubmitPoStParams{},
+		actors.SubmitFallbackPoStParams{},
 		actors.PaymentVerifyParams{},
 		actors.UpdatePeerIDParams{},
 		actors.MultiSigActorState{},

@@ -60,7 +60,7 @@ var infoCmd = &cli.Command{
 		}
 		fmt.Printf("Worker use: %d / %d (+%d)\n", wstat.Total-wstat.Reserved-wstat.Free, wstat.Total, wstat.Reserved)
 
-		ppe, err := api.StateMinerProvingPeriodEnd(ctx, maddr, nil)
+		ppe, err := api.StateMinerElectionPeriodStart(ctx, maddr, nil)
 		if err != nil {
 			return err
 		}
