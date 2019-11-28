@@ -53,7 +53,7 @@ var preSealCmd = &cli.Command{
 		},
 		&cli.Uint64Flag{
 			Name:  "sector-size",
-			Value: 1024,
+			Value: build.SectorSizes[0],
 			Usage: "specify size of sectors to pre-seal",
 		},
 		&cli.StringFlag{
