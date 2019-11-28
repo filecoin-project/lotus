@@ -53,7 +53,7 @@ type storageMinerApi interface {
 	// Call a read only method on actors (no interaction with the chain required)
 	StateCall(ctx context.Context, msg *types.Message, ts *types.TipSet) (*types.MessageReceipt, error)
 	StateMinerWorker(context.Context, address.Address, *types.TipSet) (address.Address, error)
-	StateMinerProvingPeriodEnd(context.Context, address.Address, *types.TipSet) (uint64, error)
+	StateMinerElectionPeriodStart(ctx context.Context, actor address.Address, ts *types.TipSet) (uint64, error)
 	StateMinerSectors(context.Context, address.Address, *types.TipSet) ([]*api.ChainSectorInfo, error)
 	StateMinerProvingSet(context.Context, address.Address, *types.TipSet) ([]*api.ChainSectorInfo, error)
 	StateMinerSectorSize(context.Context, address.Address, *types.TipSet) (uint64, error)
@@ -99,7 +99,14 @@ func (m *Miner) Run(ctx context.Context) error {
 
 	m.events = events.NewEvents(ctx, m.api)
 
-	go m.beginPosting(ctx)
+	fps := &fpostScheduler{
+		api:    m.api,
+		sb:     m.sb,
+		actor:  m.maddr,
+		worker: m.worker,
+	}
+
+	go fps.run(ctx)
 	go m.sectorStateLoop(ctx)
 	return nil
 }

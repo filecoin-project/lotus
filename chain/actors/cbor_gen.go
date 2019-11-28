@@ -813,7 +813,7 @@ func (t *MinerInfo) UnmarshalCBOR(r io.Reader) error {
 	return nil
 }
 
-func (t *SubmitPoStParams) MarshalCBOR(w io.Writer) error {
+func (t *SubmitFallbackPoStParams) MarshalCBOR(w io.Writer) error {
 	if t == nil {
 		_, err := w.Write(cbg.CborNull)
 		return err
@@ -823,13 +823,10 @@ func (t *SubmitPoStParams) MarshalCBOR(w io.Writer) error {
 	}
 
 	// t.t.Proof (types.EPostProof) (struct)
-	if err := t.Proof.MarshalCBOR(w); err != nil {
-		return err
-	}
 	return nil
 }
 
-func (t *SubmitPoStParams) UnmarshalCBOR(r io.Reader) error {
+func (t *SubmitFallbackPoStParams) UnmarshalCBOR(r io.Reader) error {
 	br := cbg.GetPeeker(r)
 
 	maj, extra, err := cbg.CborReadHeader(br)
@@ -847,10 +844,6 @@ func (t *SubmitPoStParams) UnmarshalCBOR(r io.Reader) error {
 	// t.t.Proof (types.EPostProof) (struct)
 
 	{
-
-		if err := t.Proof.UnmarshalCBOR(br); err != nil {
-			return err
-		}
 
 	}
 	return nil

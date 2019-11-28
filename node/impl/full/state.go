@@ -76,8 +76,8 @@ func (a *StateAPI) StateMinerPeerID(ctx context.Context, m address.Address, ts *
 	return stmgr.GetMinerPeerID(ctx, a.StateManager, ts, m)
 }
 
-func (a *StateAPI) StateMinerProvingPeriodEnd(ctx context.Context, actor address.Address, ts *types.TipSet) (uint64, error) {
-	return stmgr.GetMinerProvingPeriodEnd(ctx, a.StateManager, ts, actor)
+func (a *StateAPI) StateMinerElectionPeriodStart(ctx context.Context, actor address.Address, ts *types.TipSet) (uint64, error) {
+	return stmgr.GetMinerElectionPeriodStart(ctx, a.StateManager, ts, actor)
 }
 
 func (a *StateAPI) StateMinerSectorSize(ctx context.Context, actor address.Address, ts *types.TipSet) (uint64, error) {

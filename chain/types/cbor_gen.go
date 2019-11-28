@@ -349,11 +349,11 @@ func (t *EPostProof) MarshalCBOR(w io.Writer) error {
 		return err
 	}
 
-	// t.t.Winners ([]types.EPostTicket) (slice)
-	if _, err := w.Write(cbg.CborEncodeMajorType(cbg.MajArray, uint64(len(t.Winners)))); err != nil {
+	// t.t.Candidates ([]types.EPostTicket) (slice)
+	if _, err := w.Write(cbg.CborEncodeMajorType(cbg.MajArray, uint64(len(t.Candidates)))); err != nil {
 		return err
 	}
-	for _, v := range t.Winners {
+	for _, v := range t.Candidates {
 		if err := v.MarshalCBOR(w); err != nil {
 			return err
 		}
@@ -410,21 +410,21 @@ func (t *EPostProof) UnmarshalCBOR(r io.Reader) error {
 	if _, err := io.ReadFull(br, t.PostRand); err != nil {
 		return err
 	}
-	// t.t.Winners ([]types.EPostTicket) (slice)
+	// t.t.Candidates ([]types.EPostTicket) (slice)
 
 	maj, extra, err = cbg.CborReadHeader(br)
 	if err != nil {
 		return err
 	}
 	if extra > 8192 {
-		return fmt.Errorf("t.Winners: array too large (%d)", extra)
+		return fmt.Errorf("t.Candidates: array too large (%d)", extra)
 	}
 
 	if maj != cbg.MajArray {
 		return fmt.Errorf("expected cbor array")
 	}
 	if extra > 0 {
-		t.Winners = make([]EPostTicket, extra)
+		t.Candidates = make([]EPostTicket, extra)
 	}
 	for i := 0; i < int(extra); i++ {
 
@@ -433,7 +433,7 @@ func (t *EPostProof) UnmarshalCBOR(r io.Reader) error {
 			return err
 		}
 
-		t.Winners[i] = v
+		t.Candidates[i] = v
 	}
 
 	return nil

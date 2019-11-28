@@ -159,7 +159,7 @@ func DumpActorState(code cid.Cid, b []byte) (interface{}, error) {
 
 	typ, ok := i.builtInState[code]
 	if !ok {
-		return nil, xerrors.New("state type for actor not found")
+		return nil, xerrors.Errorf("state type for actor %s not found", code)
 	}
 
 	rv := reflect.New(typ)

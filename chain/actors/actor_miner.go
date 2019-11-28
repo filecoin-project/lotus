@@ -5,6 +5,7 @@ import (
 	"context"
 	"encoding/binary"
 	"fmt"
+
 	ffi "github.com/filecoin-project/filecoin-ffi"
 
 	"github.com/filecoin-project/lotus/build"
@@ -365,7 +366,7 @@ func (sma StorageMinerActor) ProveCommitSector(act *types.Actor, vmctx types.VMC
 	if pss.Count == 0 {
 		self.ProvingSet = self.Sectors
 		// TODO: probably want to wait until the miner is above a certain
-		// threshold before starting this
+		//  threshold before starting this
 		self.ElectionPeriodStart = vmctx.BlockHeight()
 	}
 
@@ -388,19 +389,12 @@ func (sma StorageMinerActor) ProveCommitSector(act *types.Actor, vmctx types.VMC
 	return nil, err
 }
 
-type SubmitPoStParams struct {
-	Proof types.EPostProof
+type SubmitFallbackPoStParams struct {
+	Proof      []byte
+	Candidates []types.EPostTicket
 }
 
-func ProvingPeriodEnd(setPeriodEnd, height uint64) (uint64, uint64) {
-	offset := setPeriodEnd % build.ProvingPeriodDuration
-	period := ((height - offset - 1) / build.ProvingPeriodDuration) + 1
-	end := (period * build.ProvingPeriodDuration) + offset
-
-	return end, period
-}
-
-func (sma StorageMinerActor) SubmitFallbackPoSt(act *types.Actor, vmctx types.VMContext, params *SubmitPoStParams) ([]byte, ActorError) {
+func (sma StorageMinerActor) SubmitFallbackPoSt(act *types.Actor, vmctx types.VMContext, params *SubmitFallbackPoStParams) ([]byte, ActorError) {
 	oldstate, self, err := loadState(vmctx)
 	if err != nil {
 		return nil, err
@@ -433,7 +427,7 @@ func (sma StorageMinerActor) SubmitFallbackPoSt(act *types.Actor, vmctx types.VM
 
 	var seed [sectorbuilder.CommLen]byte
 	{
-		randHeight := self.ElectionPeriodStart + build.FallbackPoStBegin
+		randHeight := self.ElectionPeriodStart + build.FallbackPoStDelay
 		if vmctx.BlockHeight() <= randHeight {
 			// TODO: spec, retcode
 			return nil, aerrors.Newf(1, "submit fallback PoSt called too early (%d < %d)", vmctx.BlockHeight(), randHeight)
@@ -481,18 +475,21 @@ func (sma StorageMinerActor) SubmitFallbackPoSt(act *types.Actor, vmctx types.VM
 	faults := self.CurrentFaultSet.All()
 	_ = faults
 
-	_ = seed
-	//VerifyPoStRandomness()
-
-	convertToCandidates := func(wins []types.EPostTicket) []sectorbuilder.EPostCandidate {
-		panic("NYI")
-	}
-	winners := convertToCandidates(params.Proof.Winners)
-
 	proverID := vmctx.Message().To // TODO: normalize to ID address
 
-	if ok, lerr := sectorbuilder.VerifyPost(vmctx.Context(), mi.SectorSize,
-		sectorbuilder.NewSortedPublicSectorInfo(sectorInfos), params.Proof.PostRand, params.Proof.Proof, winners, proverID); !ok || lerr != nil {
+	var candidates []sectorbuilder.EPostCandidate
+	for _, t := range params.Candidates {
+		var partial [32]byte
+		copy(partial[:], t.Partial)
+		candidates = append(candidates, sectorbuilder.EPostCandidate{
+			PartialTicket:        partial,
+			SectorID:             t.SectorID,
+			SectorChallengeIndex: t.ChallengeIndex,
+		})
+	}
+
+	if ok, lerr := sectorbuilder.VerifyFallbackPost(vmctx.Context(), mi.SectorSize,
+		sectorbuilder.NewSortedPublicSectorInfo(sectorInfos), seed[:], params.Proof, candidates, proverID); !ok || lerr != nil {
 		if lerr != nil {
 			// TODO: study PoST errors
 			return nil, aerrors.Absorb(lerr, 4, "PoST error")
@@ -503,41 +500,9 @@ func (sma StorageMinerActor) SubmitFallbackPoSt(act *types.Actor, vmctx types.VM
 	}
 
 	// Post submission is successful!
-	self.CurrentFaultSet = self.NextFaultSet
-	self.NextFaultSet = types.NewBitField()
-
-	oldPower := self.Power
-	self.Power = types.BigMul(types.NewInt(pss.Count-uint64(len(faults))),
-		types.NewInt(mi.SectorSize))
-
-	delta := types.BigSub(self.Power, oldPower)
-	if self.SlashedAt != 0 {
-		self.SlashedAt = 0
-		delta = self.Power
-	}
-
-	prevSlashingDeadline := self.ElectionPeriodStart + build.SlashablePowerDelay
-	if !self.Active {
-		self.Active = true
-		prevSlashingDeadline = 0
-	}
-
-	enc, err := SerializeParams(&UpdateStorageParams{
-		Delta:                    delta,
-		NextProvingPeriodEnd:     vmctx.BlockHeight() + build.SlashablePowerDelay,
-		PreviousProvingPeriodEnd: prevSlashingDeadline,
-	})
-	if err != nil {
+	if err := onSuccessfulPoSt(self, vmctx); err != nil {
 		return nil, err
 	}
-
-	_, err = vmctx.Send(StoragePowerAddress, SPAMethods.UpdateStorage, types.NewInt(0), enc)
-	if err != nil {
-		return nil, err
-	}
-
-	self.ProvingSet = self.Sectors
-	self.ElectionPeriodStart = vmctx.BlockHeight()
 
 	c, err := vmctx.Storage().Put(self)
 	if err != nil {

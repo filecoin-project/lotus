@@ -149,15 +149,14 @@ func GetMinerWorker(ctx context.Context, sm *StateManager, ts *types.TipSet, mad
 	return address.NewFromBytes(recp.Return)
 }
 
-func GetMinerProvingPeriodEnd(ctx context.Context, sm *StateManager, ts *types.TipSet, maddr address.Address) (uint64, error) {
+func GetMinerElectionPeriodStart(ctx context.Context, sm *StateManager, ts *types.TipSet, maddr address.Address) (uint64, error) {
 	var mas actors.StorageMinerActorState
 	_, err := sm.LoadActorState(ctx, maddr, &mas, ts)
 	if err != nil {
 		return 0, xerrors.Errorf("failed to load miner actor state: %w", err)
 	}
 
-	panic("idk what to do")
-	//return mas.ProvingPeriodEnd, nil
+	return mas.ElectionPeriodStart, nil
 }
 
 func GetMinerProvingSet(ctx context.Context, sm *StateManager, ts *types.TipSet, maddr address.Address) ([]*api.ChainSectorInfo, error) {
