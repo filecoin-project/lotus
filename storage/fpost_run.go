@@ -2,14 +2,16 @@ package storage
 
 import (
 	"context"
+	"time"
+
 	ffi "github.com/filecoin-project/filecoin-ffi"
+	"go.opencensus.io/trace"
+	"golang.org/x/xerrors"
+
 	"github.com/filecoin-project/lotus/build"
 	"github.com/filecoin-project/lotus/chain/actors"
 	"github.com/filecoin-project/lotus/chain/types"
 	"github.com/filecoin-project/lotus/lib/sectorbuilder"
-	"go.opencensus.io/trace"
-	"golang.org/x/xerrors"
-	"time"
 )
 
 func (s *fpostScheduler) doPost(ctx context.Context, eps uint64, ts *types.TipSet) {

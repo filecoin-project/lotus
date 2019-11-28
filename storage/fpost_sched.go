@@ -41,7 +41,7 @@ func (s *fpostScheduler) run(ctx context.Context) {
 	if len(current) != 1 {
 		panic("expected first notif to have len = 1")
 	}
-	if current[0].Type == store.HCCurrent {
+	if current[0].Type != store.HCCurrent {
 		panic("expected first notif to tell current ts")
 	}
 
