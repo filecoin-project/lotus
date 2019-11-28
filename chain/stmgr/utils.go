@@ -180,7 +180,7 @@ func GetMinerSectorSet(ctx context.Context, sm *StateManager, ts *types.TipSet, 
 }
 
 func GetSectorsForElectionPost(ctx context.Context, sm *StateManager, ts *types.TipSet, maddr address.Address) (*sectorbuilder.SortedPublicSectorInfo, error) {
-	sectors, err := GetMinerSectorSet(ctx, sm, ts, maddr)
+	sectors, err := GetMinerProvingSet(ctx, sm, ts, maddr)
 	if err != nil {
 		return nil, xerrors.Errorf("failed to get sector set for miner: %w", err)
 	}

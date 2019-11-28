@@ -78,13 +78,18 @@ func (s *seal) commit(t *testing.T, sb *sectorbuilder.SectorBuilder, done func()
 	done()
 }
 
-func (s *seal) post(t *testing.T, sb *sectorbuilder.SectorBuilder) time.Time {
+func post(t *testing.T, sb *sectorbuilder.SectorBuilder, seals ...seal) time.Time {
 	cSeed := [32]byte{0, 9, 2, 7, 6, 5, 4, 3, 2, 1, 0, 9, 8, 7, 6, 45, 3, 2, 1, 0, 9, 8, 7, 6, 5, 4, 3, 2, 1, 0, 9}
 
-	ssi := sectorbuilder.NewSortedPublicSectorInfo([]ffi.PublicSectorInfo{{
-		SectorID: s.sid,
-		CommR:    s.pco.CommR,
-	}})
+	ppi := make([]ffi.PublicSectorInfo, len(seals))
+	for i, s := range seals {
+		ppi[i] = ffi.PublicSectorInfo{
+			SectorID: s.sid,
+			CommR:    s.pco.CommR,
+		}
+	}
+
+	ssi := sectorbuilder.NewSortedPublicSectorInfo(ppi)
 
 	candndates, err := sb.GenerateEPostCandidates(ssi, cSeed, []uint64{})
 	if err != nil {
@@ -165,7 +170,7 @@ func TestSealAndVerify(t *testing.T) {
 
 	commit := time.Now()
 
-	genCandidiates := s.post(t, sb)
+	genCandidiates := post(t, sb, s)
 
 	epost := time.Now()
 
@@ -175,7 +180,7 @@ func TestSealAndVerify(t *testing.T) {
 		t.Fatalf("%+v", err)
 	}
 
-	s.post(t, sb)
+	post(t, sb, s)
 
 	fmt.Printf("PreCommit: %s\n", precommit.Sub(start).String())
 	fmt.Printf("Commit: %s\n", commit.Sub(precommit).String())
@@ -237,7 +242,7 @@ func TestSealPoStNoCommit(t *testing.T) {
 		t.Fatalf("%+v", err)
 	}
 
-	genCandidiates := s.post(t, sb)
+	genCandidiates := post(t, sb, s)
 
 	epost := time.Now()
 
@@ -302,6 +307,8 @@ func TestSealAndVerify2(t *testing.T) {
 	go s1.commit(t, sb, wg.Done)
 	go s2.commit(t, sb, wg.Done)
 	wg.Wait()
+
+	post(t, sb, s1, s2)
 }
 
 func TestAcquireID(t *testing.T) {
