@@ -1,6 +1,7 @@
 package main
 
 import (
+	"context"
 	"crypto/sha256"
 	"fmt"
 	"io/ioutil"
@@ -30,12 +31,14 @@ type BenchResults struct {
 
 	PostGenerateCandidates time.Duration
 	PostEProof             time.Duration
+	VerifyEPost            time.Duration
 }
 
 type SealingResult struct {
 	AddPiece  time.Duration
 	PreCommit time.Duration
 	Commit    time.Duration
+	Verify    time.Duration
 }
 
 func main() {
@@ -81,10 +84,12 @@ func main() {
 				return err
 			}
 
+			sectorSize := c.Uint64("sector-size")
+
 			mds := datastore.NewMapDatastore()
 			cfg := &sectorbuilder.Config{
 				Miner:         maddr,
-				SectorSize:    c.Uint64("sector-size"),
+				SectorSize:    sectorSize,
 				WorkerThreads: 2,
 				CacheDir:      filepath.Join(tsdir, "cache"),
 				SealedDir:     filepath.Join(tsdir, "sealed"),
@@ -106,7 +111,7 @@ func main() {
 			}
 
 			r := rand.New(rand.NewSource(101))
-			size := sectorbuilder.UserBytesForSectorSize(c.Uint64("sector-size"))
+			size := sectorbuilder.UserBytesForSectorSize(sectorSize)
 
 			var sealTimings []SealingResult
 			var sealedSectors []ffi.PublicSectorInfo
@@ -150,14 +155,18 @@ func main() {
 				if err != nil {
 					return err
 				}
-				_ = proof // todo verify
 
 				sealcommit := time.Now()
+				commD := pi.CommP
+				sectorbuilder.VerifySeal(sectorSize, pco.CommR[:], commD[:], maddr, ticket.TicketBytes[:], seed.TicketBytes[:], i, proof)
+
+				verifySeal := time.Now()
 
 				sealTimings = append(sealTimings, SealingResult{
 					AddPiece:  addpiece.Sub(start),
 					PreCommit: precommit.Sub(addpiece),
 					Commit:    sealcommit.Sub(precommit),
+					Verify:    verifySeal.Sub(sealcommit),
 				})
 			}
 
@@ -180,9 +189,18 @@ func main() {
 			if err != nil {
 				return err
 			}
-			_ = proof // todo verify
 
 			epost := time.Now()
+
+			ok, err := sectorbuilder.VerifyPost(context.TODO(), sectorSize, sinfos, challenge[:], proof, candidates[:1], maddr)
+			if err != nil {
+				return err
+			}
+			if !ok {
+				log.Error("post verification failed")
+			}
+
+			verifypost := time.Now()
 
 			benchout := BenchResults{
 				SectorSize:     cfg.SectorSize,
@@ -190,14 +208,17 @@ func main() {
 
 				PostGenerateCandidates: gencandidates.Sub(beforePost),
 				PostEProof:             epost.Sub(gencandidates),
+				VerifyEPost:            verifypost.Sub(epost),
 			} // TODO: optionally write this as json to a file
 
 			fmt.Println("results")
 			fmt.Printf("seal: addPiece: %s\n", benchout.SealingResults[0].AddPiece) // TODO: average across multiple sealings
 			fmt.Printf("seal: preCommit: %s\n", benchout.SealingResults[0].PreCommit)
 			fmt.Printf("seal: Commit: %s\n", benchout.SealingResults[0].Commit)
+			fmt.Printf("seal: Verify: %s\n", benchout.SealingResults[0].Verify)
 			fmt.Printf("generate candidates: %s\n", benchout.PostGenerateCandidates)
 			fmt.Printf("compute epost proof: %s\n", benchout.PostEProof)
+			fmt.Printf("verify epost proof: %s\n", benchout.VerifyEPost)
 			return nil
 		},
 	}

@@ -84,7 +84,6 @@ func (sm *StateManager) TipSetState(ctx context.Context, ts *types.TipSet) (cid.
 func (sm *StateManager) computeTipSetState(ctx context.Context, blks []*types.BlockHeader, cb func(cid.Cid, *types.Message, *vm.ApplyRet) error) (cid.Cid, cid.Cid, error) {
 	ctx, span := trace.StartSpan(ctx, "computeTipSetState")
 	defer span.End()
-	fmt.Println("COMPUTE TIPSET STATE", len(blks))
 
 	for i := 0; i < len(blks); i++ {
 		for j := i + 1; j < len(blks); j++ {
