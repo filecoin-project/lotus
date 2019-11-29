@@ -75,7 +75,13 @@ func (ft *fetch) maybeFetchAsync(name string, info paramFile) {
 
 		path := filepath.Join(paramdir, name)
 
-		err := ft.checkFile(path, info)
+		outf, err := os.OpenFile(path, os.O_RDWR|os.O_CREATE|os.O_APPEND, 0666)
+		if err != nil {
+			return
+		}
+		defer outf.Close()
+
+		err = ft.checkFile(outf, info)
 		if !os.IsNotExist(err) && err != nil {
 			log.Warn(err)
 		}
@@ -86,11 +92,11 @@ func (ft *fetch) maybeFetchAsync(name string, info paramFile) {
 		ft.fetchLk.Lock()
 		defer ft.fetchLk.Unlock()
 
-		if err := doFetch(path, info); err != nil {
+		if err := doFetch(outf, info); err != nil {
 			ft.errs = append(ft.errs, xerrors.Errorf("fetching file %s failed: %w", path, err))
 			return
 		}
-		err = ft.checkFile(path, info)
+		err = ft.checkFile(outf, info)
 		if err != nil {
 			ft.errs = append(ft.errs, xerrors.Errorf("checking file %s failed: %w", path, err))
 			err := os.Remove(path)
@@ -101,17 +107,11 @@ func (ft *fetch) maybeFetchAsync(name string, info paramFile) {
 	}()
 }
 
-func (ft *fetch) checkFile(path string, info paramFile) error {
+func (ft *fetch) checkFile(f *os.File, info paramFile) error {
 	if os.Getenv("TRUST_PARAMS") == "1" {
 		log.Warn("Assuming parameter files are ok. DO NOT USE IN PRODUCTION")
 		return nil
 	}
-
-	f, err := os.Open(path)
-	if err != nil {
-		return err
-	}
-	defer f.Close()
 
 	h := blake2b.New512()
 	if _, err := io.Copy(h, f); err != nil {
@@ -121,11 +121,11 @@ func (ft *fetch) checkFile(path string, info paramFile) error {
 	sum := h.Sum(nil)
 	strSum := hex.EncodeToString(sum[:16])
 	if strSum == info.Digest {
-		log.Infof("Parameter file %s is ok", path)
+		log.Infof("Parameter file %s is ok", f.Name())
 		return nil
 	}
 
-	return xerrors.Errorf("checksum mismatch in param file %s, %s != %s", path, strSum, info.Digest)
+	return xerrors.Errorf("checksum mismatch in param file %s, %s != %s", f.Name(), strSum, info.Digest)
 }
 
 func (ft *fetch) wait() error {
@@ -133,18 +133,12 @@ func (ft *fetch) wait() error {
 	return multierr.Combine(ft.errs...)
 }
 
-func doFetch(out string, info paramFile) error {
+func doFetch(outf *os.File, info paramFile) error {
 	gw := os.Getenv("IPFS_GATEWAY")
 	if gw == "" {
 		gw = gateway
 	}
-	log.Infof("Fetching %s from %s", out, gw)
-
-	outf, err := os.OpenFile(out, os.O_RDWR|os.O_CREATE|os.O_APPEND, 0666)
-	if err != nil {
-		return err
-	}
-	defer outf.Close()
+	log.Infof("Fetching %s from %s", outf.Name(), gw)
 
 	fStat, err := outf.Stat()
 	if err != nil {
