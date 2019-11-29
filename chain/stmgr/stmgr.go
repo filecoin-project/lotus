@@ -136,7 +136,6 @@ func (sm *StateManager) computeTipSetState(ctx context.Context, blks []*types.Bl
 		}
 
 		// all block miners created a valid post, go update the actor state
-		fmt.Println("SUBMIT ELECTION POST TIME", netact.Nonce, b.Height)
 		postSubmitMsg := &types.Message{
 			From:     actors.NetworkAddress,
 			Nonce:    netact.Nonce,

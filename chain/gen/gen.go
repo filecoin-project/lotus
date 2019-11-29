@@ -492,7 +492,9 @@ func IsRoundWinner(ctx context.Context, ts *types.TipSet, round int64, miner add
 	if err != nil {
 		return false, nil, xerrors.Errorf("failed to load proving set for miner: %w", err)
 	}
-	log.Warningf("Proving set for miner %s: %s", miner, pset)
+	if len(pset) == 0 {
+		return false, nil, nil
+	}
 
 	var sinfos []ffi.PublicSectorInfo
 	for _, s := range pset {
