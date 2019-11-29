@@ -112,16 +112,6 @@ func NewGenerator() (*ChainGen, error) {
 		return nil, xerrors.Errorf("creating memrepo wallet failed: %w", err)
 	}
 
-	worker1, err := w.GenerateKey(types.KTBLS)
-	if err != nil {
-		return nil, xerrors.Errorf("failed to generate worker key: %w", err)
-	}
-
-	worker2, err := w.GenerateKey(types.KTBLS)
-	if err != nil {
-		return nil, xerrors.Errorf("failed to generate worker key: %w", err)
-	}
-
 	banker, err := w.GenerateKey(types.KTSecp256k1)
 	if err != nil {
 		return nil, xerrors.Errorf("failed to generate banker key: %w", err)
@@ -167,18 +157,28 @@ func NewGenerator() (*ChainGen, error) {
 		return nil, err
 	}
 
+	mk1, err := w.Import(&genm1.Key)
+	if err != nil {
+		return nil, err
+	}
+	mk2, err := w.Import(&genm2.Key)
+	if err != nil {
+		return nil, err
+	}
+
 	minercfg := &GenMinerCfg{
 		PeerIDs: []peer.ID{"peerID1", "peerID2"},
 		PreSeals: map[string]genesis.GenesisMiner{
 			maddr1.String(): *genm1,
 			maddr2.String(): *genm2,
 		},
+		MinerAddrs: []address.Address{maddr1, maddr2},
 	}
 
 	genb, err := MakeGenesisBlock(bs, map[address.Address]types.BigInt{
-		worker1: types.FromFil(40000),
-		worker2: types.FromFil(40000),
-		banker:  types.FromFil(50000),
+		mk1:    types.FromFil(40000),
+		mk2:    types.FromFil(40000),
+		banker: types.FromFil(50000),
 	}, minercfg, 100000)
 	if err != nil {
 		return nil, xerrors.Errorf("make genesis block failed: %w", err)
