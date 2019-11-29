@@ -190,7 +190,6 @@ func (sma StorageMinerActor) StorageMinerConstructor(act *types.Actor, vmctx typ
 		SectorSize: params.SectorSize,
 	}
 
-	fmt.Println("NEW STORAGE MINER WITH SECTOR SIZE: ", params.SectorSize)
 	minfocid, err := vmctx.Storage().Put(minerInfo)
 	if err != nil {
 		return nil, err
@@ -904,7 +903,6 @@ func onSuccessfulPoSt(self *StorageMinerActorState, vmctx types.VMContext) aerro
 		prevSlashingDeadline = 0
 	}
 
-	fmt.Println("POWER UPDATE DELTA: ", delta)
 	enc, err := SerializeParams(&UpdateStorageParams{
 		Delta:                    delta,
 		NextProvingPeriodEnd:     vmctx.BlockHeight() + build.SlashablePowerDelay,
