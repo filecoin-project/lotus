@@ -125,13 +125,13 @@ func (t *SectorInfo) rspco() sectorbuilder.RawSealPreCommitOutput {
 }
 
 func (m *Miner) sectorStateLoop(ctx context.Context) error {
-	toRestart, err := m.ListSectors()
+	trackedSectors, err := m.ListSectors()
 	if err != nil {
 		return err
 	}
 
 	go func() {
-		for _, si := range toRestart {
+		for _, si := range trackedSectors {
 			select {
 			case m.sectorUpdated <- sectorUpdate{
 				newState: si.State,
@@ -145,6 +145,32 @@ func (m *Miner) sectorStateLoop(ctx context.Context) error {
 			}
 		}
 	}()
+
+	{
+		// verify on-chain state
+		trackedByID := map[uint64]*SectorInfo{}
+		for _, si := range trackedSectors {
+			trackedByID[si.SectorID] = &si
+		}
+
+		curTs, err := m.api.ChainHead(ctx)
+		if err != nil {
+			return xerrors.Errorf("getting chain head: %w", err)
+		}
+
+		ps, err := m.api.StateMinerProvingSet(ctx, m.maddr, curTs)
+		if err != nil {
+			return err
+		}
+		for _, ocs := range ps {
+			if _, ok := trackedByID[ocs.SectorID]; ok {
+				continue // TODO: check state
+			}
+
+			// TODO: attempt recovery
+			log.Warnf("untracked sector %d found on chain", ocs.SectorID)
+		}
+	}
 
 	go func() {
 		defer log.Warn("quitting deal provider loop")
@@ -217,15 +243,15 @@ func (m *Miner) onSectorUpdated(ctx context.Context, update sectorUpdate) {
 
 	switch update.newState {
 	case api.Packing:
-		m.handle(ctx, sector, m.finishPacking, api.Unsealed)
+		m.handleSectorUpdate(ctx, sector, m.finishPacking, api.Unsealed)
 	case api.Unsealed:
-		m.handle(ctx, sector, m.sealPreCommit, api.PreCommitting)
+		m.handleSectorUpdate(ctx, sector, m.sealPreCommit, api.PreCommitting)
 	case api.PreCommitting:
-		m.handle(ctx, sector, m.preCommit, api.PreCommitted)
+		m.handleSectorUpdate(ctx, sector, m.preCommit, api.PreCommitted)
 	case api.PreCommitted:
-		m.handle(ctx, sector, m.preCommitted, api.SectorNoUpdate)
+		m.handleSectorUpdate(ctx, sector, m.preCommitted, api.SectorNoUpdate)
 	case api.Committing:
-		m.handle(ctx, sector, m.committing, api.Proving)
+		m.handleSectorUpdate(ctx, sector, m.committing, api.Proving)
 	case api.Proving:
 		// TODO: track sector health / expiration
 		log.Infof("Proving sector %d", update.id)

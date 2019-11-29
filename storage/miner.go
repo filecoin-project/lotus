@@ -24,7 +24,7 @@ import (
 
 var log = logging.Logger("storageminer")
 
-const PoStConfidence = 3
+const SectorStorePrefix = "/sectors"
 
 type Miner struct {
 	api    storageMinerApi
@@ -83,7 +83,7 @@ func NewMiner(api storageMinerApi, addr address.Address, h host.Host, ds datasto
 		sb:    sb,
 		tktFn: tktFn,
 
-		sectors: statestore.New(namespace.Wrap(ds, datastore.NewKey("/sectors"))),
+		sectors: statestore.New(namespace.Wrap(ds, datastore.NewKey(SectorStorePrefix))),
 
 		sectorIncoming: make(chan *SectorInfo),
 		sectorUpdated:  make(chan sectorUpdate),

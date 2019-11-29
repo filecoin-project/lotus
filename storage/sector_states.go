@@ -14,7 +14,7 @@ import (
 
 type providerHandlerFunc func(ctx context.Context, deal SectorInfo) (func(*SectorInfo), error)
 
-func (m *Miner) handle(ctx context.Context, sector SectorInfo, cb providerHandlerFunc, next api.SectorState) {
+func (m *Miner) handleSectorUpdate(ctx context.Context, sector SectorInfo, cb providerHandlerFunc, next api.SectorState) {
 	go func() {
 		mut, err := cb(ctx, sector)
 

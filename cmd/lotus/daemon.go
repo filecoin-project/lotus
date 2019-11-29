@@ -40,7 +40,7 @@ var DaemonCmd = &cli.Command{
 			Hidden: true,
 		},
 		&cli.StringFlag{
-			Name:   "genesis-presealed-sectors",
+			Name:   preSealedSectorsFlag,
 			Hidden: true,
 		},
 		&cli.StringFlag{

@@ -5,7 +5,7 @@ package build
 import "os"
 
 // Seconds
-const BlockDelay = 2
+const BlockDelay = 4
 
 // Blocks
 const ProvingPeriodDuration uint64 = 40

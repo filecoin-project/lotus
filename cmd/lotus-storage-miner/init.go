@@ -3,8 +3,12 @@ package main
 import (
 	"context"
 	"crypto/rand"
+	"encoding/json"
+	"fmt"
+	"io/ioutil"
 	"os"
 	"path/filepath"
+	"strconv"
 
 	"github.com/ipfs/go-datastore"
 	badger "github.com/ipfs/go-ds-badger"
@@ -14,12 +18,15 @@ import (
 	"golang.org/x/xerrors"
 	"gopkg.in/urfave/cli.v2"
 
-	"github.com/filecoin-project/lotus/api"
+	lapi "github.com/filecoin-project/lotus/api"
 	"github.com/filecoin-project/lotus/build"
 	"github.com/filecoin-project/lotus/chain/actors"
 	"github.com/filecoin-project/lotus/chain/address"
+	"github.com/filecoin-project/lotus/chain/deals"
 	"github.com/filecoin-project/lotus/chain/types"
 	lcli "github.com/filecoin-project/lotus/cli"
+	"github.com/filecoin-project/lotus/genesis"
+	"github.com/filecoin-project/lotus/lib/cborutil"
 	"github.com/filecoin-project/lotus/lib/sectorbuilder"
 	"github.com/filecoin-project/lotus/miner"
 	"github.com/filecoin-project/lotus/node/modules"
@@ -199,7 +206,116 @@ func migratePreSealedSectors(presealsb string, repoPath string, mds dtypes.Metad
 	return nil
 }
 
-func storageMinerInit(ctx context.Context, cctx *cli.Context, api api.FullNode, r repo.Repo) error {
+func migratePreSealMeta(ctx context.Context, api lapi.FullNode, presealDir string, maddr address.Address, mds dtypes.MetadataDS) error {
+	b, err := ioutil.ReadFile(filepath.Join(presealDir, "pre-seal-"+maddr.String()+".json"))
+	if err != nil {
+		return xerrors.Errorf("reading preseal metadata: %w", err)
+	}
+
+	preseals := map[string]genesis.GenesisMiner{}
+
+	if err := json.Unmarshal(b, &preseals); err != nil {
+		return xerrors.Errorf("unmarshaling preseal metadata: %w", err)
+	}
+
+	meta, ok := preseals[maddr.String()]
+	if !ok {
+		return xerrors.New("got wrong preseal info")
+	}
+
+	for _, sector := range meta.Sectors {
+		sectorKey := datastore.NewKey(storage.SectorStorePrefix).ChildString(fmt.Sprint(sector.SectorID))
+
+		dealID, err := findMarketDealID(ctx, api, sector.Deal)
+		if err != nil {
+			return xerrors.Errorf("finding storage deal for pre-sealed sector %d: %w", sector.SectorID, err)
+		}
+
+		info := &storage.SectorInfo{
+			State:    lapi.Proving,
+			SectorID: sector.SectorID,
+			Pieces: []storage.Piece{
+				{
+					DealID: dealID,
+					Ref:    fmt.Sprintf("preseal-%d", sector.SectorID),
+					Size:   meta.SectorSize,
+					CommP:  sector.CommD[:],
+				},
+			},
+			CommC:            nil,
+			CommD:            sector.CommD[:],
+			CommR:            sector.CommR[:],
+			CommRLast:        nil,
+			Proof:            nil,
+			Ticket:           storage.SealTicket{},
+			PreCommitMessage: nil,
+			Seed:             storage.SealSeed{},
+			CommitMessage:    nil,
+		}
+
+		b, err := cborutil.Dump(info)
+		if err != nil {
+			return err
+		}
+
+		if err := mds.Put(sectorKey, b); err != nil {
+			return err
+		}
+
+		proposalCid, err := sector.Deal.Proposal.Cid()
+		if err != nil {
+			return err
+		}
+
+		dealKey := datastore.NewKey(deals.ProviderDsPrefix).ChildString(proposalCid.String())
+
+		deal := &deals.MinerDeal{
+			Proposal:    sector.Deal.Proposal,
+			ProposalCid: proposalCid,
+			State:       lapi.DealComplete,
+			Ref:         proposalCid, // TODO: This is super wrong, but there
+			// are no params for CommP CIDs, we can't recover unixfs cid easily,
+			// and this isn't even used after the deal enters Complete state
+			DealID:   dealID,
+			SectorID: sector.SectorID,
+		}
+
+		b, err = cborutil.Dump(deal)
+		if err != nil {
+			return err
+		}
+
+		if err := mds.Put(dealKey, b); err != nil {
+			return err
+		}
+	}
+
+	return nil
+}
+
+func findMarketDealID(ctx context.Context, api lapi.FullNode, deal actors.StorageDeal) (uint64, error) {
+	// TODO: find a better way
+	//  (this is only used by genesis miners)
+
+	deals, err := api.StateMarketDeals(ctx, nil)
+	if err != nil {
+		return 0, xerrors.Errorf("getting market deals: %w", err)
+	}
+
+	for k, v := range deals {
+		eq, err := cborutil.Equals(&v.Deal, &deal)
+		if err != nil {
+			return 0, err
+		}
+		if eq {
+			return strconv.ParseUint(k, 10, 64)
+		}
+	}
+
+	return 0, xerrors.New("deal not found")
+}
+
+func storageMinerInit(ctx context.Context, cctx *cli.Context, api lapi.FullNode, r repo.Repo) error {
 	lr, err := r.Lock(repo.StorageMiner)
 	if err != nil {
 		return err
@@ -218,6 +334,11 @@ func storageMinerInit(ctx context.Context, cctx *cli.Context, api api.FullNode, 
 		return xerrors.Errorf("peer ID from private key: %w", err)
 	}
 
+	mds, err := lr.Datastore("/metadata")
+	if err != nil {
+		return err
+	}
+
 	var addr address.Address
 	if act := cctx.String("actor"); act != "" {
 		a, err := address.NewFromString(act)
@@ -226,10 +347,6 @@ func storageMinerInit(ctx context.Context, cctx *cli.Context, api api.FullNode, 
 		}
 
 		if cctx.Bool("genesis-miner") {
-			mds, err := lr.Datastore("/metadata")
-			if err != nil {
-				return err
-			}
 			if err := mds.Put(datastore.NewKey("miner-address"), a.Bytes()); err != nil {
 				return err
 			}
@@ -261,6 +378,14 @@ func storageMinerInit(ctx context.Context, cctx *cli.Context, api api.FullNode, 
 				}
 			}
 
+			if pssb := cctx.String("pre-sealed-sectors"); pssb != "" {
+				log.Infof("Importing pre-sealed sector metadata for %s", a)
+
+				if err := migratePreSealMeta(ctx, api, cctx.String("pre-sealed-sectors"), a, mds); err != nil {
+					return xerrors.Errorf("migrating presealed sector metadata: %w", err)
+				}
+			}
+
 			return nil
 		} else {
 			if err := configureStorageMiner(ctx, api, a, peerid); err != nil {
@@ -279,10 +404,6 @@ func storageMinerInit(ctx context.Context, cctx *cli.Context, api api.FullNode, 
 	}
 
 	log.Infof("Created new storage miner: %s", addr)
-	mds, err := lr.Datastore("/metadata")
-	if err != nil {
-		return err
-	}
 	if err := mds.Put(datastore.NewKey("miner-address"), addr.Bytes()); err != nil {
 		return err
 	}
@@ -316,7 +437,7 @@ func makeHostKey(lr repo.LockedRepo) (crypto.PrivKey, error) {
 	return pk, nil
 }
 
-func configureStorageMiner(ctx context.Context, api api.FullNode, addr address.Address, peerid peer.ID) error {
+func configureStorageMiner(ctx context.Context, api lapi.FullNode, addr address.Address, peerid peer.ID) error {
 	// This really just needs to be an api call at this point...
 	recp, err := api.StateCall(ctx, &types.Message{
 		To:     addr,
@@ -369,7 +490,7 @@ func configureStorageMiner(ctx context.Context, api api.FullNode, addr address.A
 	return nil
 }
 
-func createStorageMiner(ctx context.Context, api api.FullNode, peerid peer.ID, cctx *cli.Context) (addr address.Address, err error) {
+func createStorageMiner(ctx context.Context, api lapi.FullNode, peerid peer.ID, cctx *cli.Context) (addr address.Address, err error) {
 	log.Info("Creating StorageMarket.CreateStorageMiner message")
 
 	var owner address.Address
