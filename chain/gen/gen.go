@@ -152,10 +152,26 @@ func NewGenerator() (*ChainGen, error) {
 		return nil, err
 	}
 
+	maddr2, err := address.NewFromString("t0102")
+	if err != nil {
+		return nil, err
+	}
+
+	m2temp, err := ioutil.TempDir("", "preseal")
+	if err != nil {
+		return nil, err
+	}
+
+	genm2, err := seed.PreSeal(maddr2, 1024, 1, m2temp, []byte("some randomness"))
+	if err != nil {
+		return nil, err
+	}
+
 	minercfg := &GenMinerCfg{
 		PeerIDs: []peer.ID{"peerID1", "peerID2"},
 		PreSeals: map[string]genesis.GenesisMiner{
 			maddr1.String(): *genm1,
+			maddr2.String(): *genm2,
 		},
 	}
 
