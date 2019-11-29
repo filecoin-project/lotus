@@ -818,11 +818,27 @@ func (t *SubmitFallbackPoStParams) MarshalCBOR(w io.Writer) error {
 		_, err := w.Write(cbg.CborNull)
 		return err
 	}
-	if _, err := w.Write([]byte{129}); err != nil {
+	if _, err := w.Write([]byte{130}); err != nil {
 		return err
 	}
 
-	// t.t.Proof (types.EPostProof) (struct)
+	// t.t.Proof ([]uint8) (slice)
+	if _, err := w.Write(cbg.CborEncodeMajorType(cbg.MajByteString, uint64(len(t.Proof)))); err != nil {
+		return err
+	}
+	if _, err := w.Write(t.Proof); err != nil {
+		return err
+	}
+
+	// t.t.Candidates ([]types.EPostTicket) (slice)
+	if _, err := w.Write(cbg.CborEncodeMajorType(cbg.MajArray, uint64(len(t.Candidates)))); err != nil {
+		return err
+	}
+	for _, v := range t.Candidates {
+		if err := v.MarshalCBOR(w); err != nil {
+			return err
+		}
+	}
 	return nil
 }
 
@@ -837,15 +853,53 @@ func (t *SubmitFallbackPoStParams) UnmarshalCBOR(r io.Reader) error {
 		return fmt.Errorf("cbor input should be of type array")
 	}
 
-	if extra != 1 {
+	if extra != 2 {
 		return fmt.Errorf("cbor input had wrong number of fields")
 	}
 
-	// t.t.Proof (types.EPostProof) (struct)
+	// t.t.Proof ([]uint8) (slice)
 
-	{
-
+	maj, extra, err = cbg.CborReadHeader(br)
+	if err != nil {
+		return err
 	}
+	if extra > 8192 {
+		return fmt.Errorf("t.Proof: array too large (%d)", extra)
+	}
+
+	if maj != cbg.MajByteString {
+		return fmt.Errorf("expected byte array")
+	}
+	t.Proof = make([]byte, extra)
+	if _, err := io.ReadFull(br, t.Proof); err != nil {
+		return err
+	}
+	// t.t.Candidates ([]types.EPostTicket) (slice)
+
+	maj, extra, err = cbg.CborReadHeader(br)
+	if err != nil {
+		return err
+	}
+	if extra > 8192 {
+		return fmt.Errorf("t.Candidates: array too large (%d)", extra)
+	}
+
+	if maj != cbg.MajArray {
+		return fmt.Errorf("expected cbor array")
+	}
+	if extra > 0 {
+		t.Candidates = make([]types.EPostTicket, extra)
+	}
+	for i := 0; i < int(extra); i++ {
+
+		var v types.EPostTicket
+		if err := v.UnmarshalCBOR(br); err != nil {
+			return err
+		}
+
+		t.Candidates[i] = v
+	}
+
 	return nil
 }
 

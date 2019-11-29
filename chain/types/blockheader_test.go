@@ -2,6 +2,7 @@ package types
 
 import (
 	"bytes"
+	"fmt"
 	"reflect"
 	"testing"
 
@@ -25,7 +26,8 @@ func testBlockHeader(t testing.TB) *BlockHeader {
 	return &BlockHeader{
 		Miner: addr,
 		EPostProof: EPostProof{
-			Proof: []byte("pruuf"),
+			Proof:    []byte("pruuf"),
+			PostRand: []byte("random"),
 		},
 		Ticket: &Ticket{
 			VRFProof: []byte("vrf proof0000000vrf proof0000000"),
@@ -55,6 +57,8 @@ func TestBlockHeaderSerialization(t *testing.T) {
 	}
 
 	if !reflect.DeepEqual(&out, bh) {
+		fmt.Printf("%#v\n", &out)
+		fmt.Printf("%#v\n", bh)
 		t.Fatal("not equal")
 	}
 }

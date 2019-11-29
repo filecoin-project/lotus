@@ -6,8 +6,10 @@ import (
 	"crypto/sha256"
 	"encoding/binary"
 	"fmt"
-	ffi "github.com/filecoin-project/filecoin-ffi"
+	"io/ioutil"
 	"sync/atomic"
+
+	ffi "github.com/filecoin-project/filecoin-ffi"
 
 	"github.com/ipfs/go-blockservice"
 	"github.com/ipfs/go-car"
@@ -24,6 +26,8 @@ import (
 	"github.com/filecoin-project/lotus/chain/store"
 	"github.com/filecoin-project/lotus/chain/types"
 	"github.com/filecoin-project/lotus/chain/wallet"
+	"github.com/filecoin-project/lotus/cmd/lotus-seed/seed"
+	"github.com/filecoin-project/lotus/genesis"
 	"github.com/filecoin-project/lotus/lib/sectorbuilder"
 	"github.com/filecoin-project/lotus/node/repo"
 
@@ -131,9 +135,28 @@ func NewGenerator() (*ChainGen, error) {
 		}
 	}
 
+	// TODO: this is really weird, we have to guess the miner addresses that
+	// will be created in order to preseal data for them
+	maddr1, err := address.NewFromString("t0101")
+	if err != nil {
+		return nil, err
+	}
+
+	m1temp, err := ioutil.TempDir("", "preseal")
+	if err != nil {
+		return nil, err
+	}
+
+	genm1, err := seed.PreSeal(maddr1, 1024, 1, m1temp, []byte("some randomness"))
+	if err != nil {
+		return nil, err
+	}
+
 	minercfg := &GenMinerCfg{
 		PeerIDs: []peer.ID{"peerID1", "peerID2"},
-		// Call PreSeal(and give worker addrs to it somehow)
+		PreSeals: map[string]genesis.GenesisMiner{
+			maddr1.String(): *genm1,
+		},
 	}
 
 	genb, err := MakeGenesisBlock(bs, map[address.Address]types.BigInt{

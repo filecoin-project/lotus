@@ -35,9 +35,14 @@ func (api *api) Spawn() (nodeInfo, error) {
 			return nodeInfo{}, err
 		}
 
-		err = seed.PreSeal(genMiner, build.SectorSizes[0], 1, filepath.Join(dir, "preseal"), []byte("8"))
+		sbroot := filepath.Join(dir, "preseal")
+		genm, err := seed.PreSeal(genMiner, build.SectorSizes[0], 1, sbroot, []byte("8"))
 		if err != nil {
 			return nodeInfo{}, xerrors.Errorf("preseal failed: %w", err)
+		}
+
+		if err := seed.WriteGenesisMiner(genMiner, sbroot, genm); err != nil {
+			return nodeInfo{}, xerrors.Errorf("failed to write genminer info: %w", err)
 		}
 		params = append(params, "--genesis-presealed-sectors="+filepath.Join(dir, "preseal", "pre-seal-t0101.json"))
 

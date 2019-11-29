@@ -79,6 +79,11 @@ var preSealCmd = &cli.Command{
 			return err
 		}
 
-		return seed.PreSeal(maddr, c.Uint64("sector-size"), c.Uint64("num-sectors"), sbroot, []byte(c.String("ticket-preimage")))
+		gm, err := seed.PreSeal(maddr, c.Uint64("sector-size"), c.Uint64("num-sectors"), sbroot, []byte(c.String("ticket-preimage")))
+		if err != nil {
+			return err
+		}
+
+		return seed.WriteGenesisMiner(maddr, sbroot, gm)
 	},
 }
