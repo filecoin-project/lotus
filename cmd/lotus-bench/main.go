@@ -1,6 +1,7 @@
 package main
 
 import (
+	"bytes"
 	"context"
 	"crypto/sha256"
 	"fmt"
@@ -30,8 +31,10 @@ type BenchResults struct {
 	SealingResults []SealingResult
 
 	PostGenerateCandidates time.Duration
-	PostEProof             time.Duration
-	VerifyEPost            time.Duration
+	PostEProofCold         time.Duration
+	PostEProofHot          time.Duration
+	VerifyEPostCold        time.Duration
+	VerifyEPostHot         time.Duration
 }
 
 type SealingResult struct {
@@ -158,7 +161,13 @@ func main() {
 
 				sealcommit := time.Now()
 				commD := pi.CommP
-				sectorbuilder.VerifySeal(sectorSize, pco.CommR[:], commD[:], maddr, ticket.TicketBytes[:], seed.TicketBytes[:], i, proof)
+				ok, err := sectorbuilder.VerifySeal(sectorSize, pco.CommR[:], commD[:], maddr, ticket.TicketBytes[:], seed.TicketBytes[:], i, proof)
+				if err != nil {
+					return err
+				}
+				if !ok {
+					return xerrors.Errorf("porep proof for sector %d was invalid", i)
+				}
 
 				verifySeal := time.Now()
 
@@ -184,15 +193,27 @@ func main() {
 
 			gencandidates := time.Now()
 
-			log.Info("computing election post snark")
-			proof, err := sb.ComputeElectionPoSt(sinfos, challenge[:], candidates[:1])
+			log.Info("computing election post snark (cold)")
+			proof1, err := sb.ComputeElectionPoSt(sinfos, challenge[:], candidates[:1])
 			if err != nil {
 				return err
 			}
 
-			epost := time.Now()
+			epost1 := time.Now()
 
-			ok, err := sectorbuilder.VerifyElectionPost(context.TODO(), sectorSize, sinfos, challenge[:], proof, candidates[:1], maddr)
+			log.Info("computing election post snark (hot)")
+			proof2, err := sb.ComputeElectionPoSt(sinfos, challenge[:], candidates[:1])
+			if err != nil {
+				return err
+			}
+
+			epost2 := time.Now()
+
+			if !bytes.Equal(proof1, proof2) {
+				log.Warn("separate epost calls returned different proof values (this might be bad)")
+			}
+
+			ok, err := sectorbuilder.VerifyElectionPost(context.TODO(), sectorSize, sinfos, challenge[:], proof1, candidates[:1], maddr)
 			if err != nil {
 				return err
 			}
@@ -200,15 +221,26 @@ func main() {
 				log.Error("post verification failed")
 			}
 
-			verifypost := time.Now()
+			verifypost1 := time.Now()
+
+			ok, err = sectorbuilder.VerifyElectionPost(context.TODO(), sectorSize, sinfos, challenge[:], proof2, candidates[:1], maddr)
+			if err != nil {
+				return err
+			}
+			if !ok {
+				log.Error("post verification failed")
+			}
+			verifypost2 := time.Now()
 
 			benchout := BenchResults{
 				SectorSize:     cfg.SectorSize,
 				SealingResults: sealTimings,
 
 				PostGenerateCandidates: gencandidates.Sub(beforePost),
-				PostEProof:             epost.Sub(gencandidates),
-				VerifyEPost:            verifypost.Sub(epost),
+				PostEProofCold:         epost1.Sub(gencandidates),
+				PostEProofHot:          epost2.Sub(epost1),
+				VerifyEPostCold:        verifypost1.Sub(epost2),
+				VerifyEPostHot:         verifypost2.Sub(verifypost1),
 			} // TODO: optionally write this as json to a file
 
 			fmt.Println("results")
@@ -217,8 +249,10 @@ func main() {
 			fmt.Printf("seal: Commit: %s\n", benchout.SealingResults[0].Commit)
 			fmt.Printf("seal: Verify: %s\n", benchout.SealingResults[0].Verify)
 			fmt.Printf("generate candidates: %s\n", benchout.PostGenerateCandidates)
-			fmt.Printf("compute epost proof: %s\n", benchout.PostEProof)
-			fmt.Printf("verify epost proof: %s\n", benchout.VerifyEPost)
+			fmt.Printf("compute epost proof (cold): %s\n", benchout.PostEProofCold)
+			fmt.Printf("compute epost proof (hot): %s\n", benchout.PostEProofHot)
+			fmt.Printf("verify epost proof (cold): %s\n", benchout.VerifyEPostCold)
+			fmt.Printf("verify epost proof (hot): %s\n", benchout.VerifyEPostHot)
 			return nil
 		},
 	}
