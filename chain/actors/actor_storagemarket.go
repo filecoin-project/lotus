@@ -548,9 +548,7 @@ func (sma StorageMarketActor) ProcessStorageDealsPayment(act *types.Actor, vmctx
 			return nil, nil
 		}
 
-		// todo: check math (written on a plane, also tired)
-		// TODO: division is hard, this more than likely has some off-by-one issue
-		toPay := types.BigMul(dealInfo.Deal.Proposal.StoragePricePerEpoch, types.NewInt(build.ProvingPeriodDuration))
+		toPay := types.BigMul(dealInfo.Deal.Proposal.StoragePricePerEpoch, types.NewInt(build.SlashablePowerDelay))
 
 		b, bnd, aerr := GetMarketBalances(vmctx.Context(), vmctx.Ipld(), self.Balances, dealInfo.Deal.Proposal.Client, providerWorker)
 		if aerr != nil {

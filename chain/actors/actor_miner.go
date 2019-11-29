@@ -854,6 +854,10 @@ func (sma StorageMinerActor) SubmitElectionPoSt(act *types.Actor, vmctx types.VM
 		return nil, aerr
 	}
 
+	if self.SlashedAt != 0 {
+		return nil, aerrors.New(1, "slashed miners can't perform election PoSt")
+	}
+
 	if err := onSuccessfulPoSt(self, vmctx); err != nil {
 		return nil, err
 	}

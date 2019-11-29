@@ -57,13 +57,6 @@ const WRatioDen = 2
 // /////
 // Proofs
 
-// PoStRandomnessLookback is additional randomness lookback for PoSt computation
-// To compute randomness epoch in a given proving period:
-// RandH = PPE - PoStChallangeTime - PoStRandomnessLookback
-//
-// Epochs
-const PoStRandomnessLookback = 1
-
 // Epochs
 const SealRandomnessLookback = Finality
 
@@ -75,16 +68,6 @@ const SectorChallengeRatioDiv = 25
 
 const MaxFallbackPostChallengeCount = 10
 
-// FallbackPoStDelay is the number of epochs the miner needs to wait after
-//  ElectionPeriodStart before starting fallback post computation
-//
-// Epochs
-const FallbackPoStDelay = 1000
-
-// SlashablePowerDelay is the number of epochs
-// Epochs
-const SlashablePowerDelay = 2000
-
 // /////
 // Mining
 
@@ -94,9 +77,6 @@ const EcRandomnessLookback = 300
 const PowerCollateralProportion = 5
 const PerCapitaCollateralProportion = 1
 const CollateralPrecision = 1000
-
-// Epochs
-const InteractivePoRepDelay = 10
 
 // /////
 // Devnet settings
