@@ -75,7 +75,7 @@ func (ft *fetch) maybeFetchAsync(name string, info paramFile) {
 
 		path := filepath.Join(paramdir, name)
 
-		outf, err := os.OpenFile(path, os.O_RDWR|os.O_CREATE|os.O_APPEND, 0666)
+		outf, err := os.OpenFile(path, os.O_RDWR|os.O_CREATE, 0666)
 		if err != nil {
 			ft.errs = append(ft.errs, xerrors.Errorf("open file %s failed: %w", path, err))
 			return
@@ -113,6 +113,10 @@ func (ft *fetch) checkFile(f *os.File, info paramFile) error {
 		log.Warn("Assuming parameter files are ok. DO NOT USE IN PRODUCTION")
 		return nil
 	}
+	_, err := f.Seek(0, 0)
+	if err != nil {
+		return err
+	}
 
 	h := blake2b.New512()
 	if _, err := io.Copy(h, f); err != nil {
@@ -140,6 +144,10 @@ func doFetch(outf *os.File, info paramFile) error {
 		gw = gateway
 	}
 	log.Infof("Fetching %s from %s", outf.Name(), gw)
+	_, err := outf.Seek(0, 2)
+	if err != nil {
+		return err
+	}
 
 	fStat, err := outf.Stat()
 	if err != nil {
