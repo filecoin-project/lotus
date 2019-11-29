@@ -127,7 +127,7 @@ func NewGenerator() (*ChainGen, error) {
 
 	// TODO: this is really weird, we have to guess the miner addresses that
 	// will be created in order to preseal data for them
-	maddr1, err := address.NewFromString("t0101")
+	maddr1, err := address.NewFromString("t0103")
 	if err != nil {
 		return nil, err
 	}
@@ -142,7 +142,7 @@ func NewGenerator() (*ChainGen, error) {
 		return nil, err
 	}
 
-	maddr2, err := address.NewFromString("t0102")
+	maddr2, err := address.NewFromString("t0104")
 	if err != nil {
 		return nil, err
 	}

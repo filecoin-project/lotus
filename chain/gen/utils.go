@@ -286,8 +286,6 @@ func SetupStorageMiners(ctx context.Context, cs *store.ChainStore, sroot cid.Cid
 			return cid.Undef, nil, err
 		}
 
-		gmcfg.MinerAddrs = append(gmcfg.MinerAddrs, maddr)
-
 		power := types.BigMul(types.NewInt(minerParams.SectorSize), types.NewInt(uint64(len(ps.Sectors))))
 
 		params = mustEnc(&actors.UpdateStorageParams{Delta: power})
