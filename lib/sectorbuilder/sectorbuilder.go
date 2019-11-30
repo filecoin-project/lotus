@@ -98,6 +98,7 @@ func (rspco *JsonRSPCO) rspco() RawSealPreCommitOutput {
 
 type SealRes struct {
 	Err string
+	GoErr error `json:"-"`
 
 	Proof []byte
 	Rspco JsonRSPCO

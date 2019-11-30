@@ -44,23 +44,16 @@ func (sb *SectorBuilder) sectorCacheDir(sectorID uint64) (string, error) {
 	return dir, err
 }
 
-func (sb *SectorBuilder) OpenRemoteRead(typ string, sectorName string) (*os.File, error) {
+func (sb *SectorBuilder) GetPath(typ string, sectorName string) (string, error) {
 	switch typ {
 	case "staged":
-		return os.OpenFile(filepath.Join(sb.stagedDir, sectorName), os.O_RDONLY, 0644)
+		return filepath.Join(sb.stagedDir, sectorName), nil
 	case "sealed":
-		return os.OpenFile(filepath.Join(sb.sealedDir, sectorName), os.O_RDONLY, 0644)
+		return filepath.Join(sb.sealedDir, sectorName), nil
+	case "cache":
+		return filepath.Join(sb.cacheDir, sectorName), nil
 	default:
-		return nil, xerrors.Errorf("unknown sector type for read: %s", typ)
-	}
-}
-
-func (sb *SectorBuilder) OpenRemoteWrite(typ string, sectorName string) (*os.File, error) {
-	switch typ {
-	case "sealed":
-		return os.OpenFile(filepath.Join(sb.sealedDir, sectorName), os.O_WRONLY|os.O_CREATE, 0644)
-	default:
-		return nil, xerrors.Errorf("unknown sector type for write: %s", typ)
+		return "", xerrors.Errorf("unknown sector type for write: %s", typ)
 	}
 }
 

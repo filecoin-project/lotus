@@ -2,8 +2,11 @@ package main
 
 import (
 	"context"
+	files "github.com/ipfs/go-ipfs-files"
 	"gopkg.in/cheggaaa/pb.v1"
 	"io"
+	"mime"
+	"mime/multipart"
 	"net/http"
 	"os"
 	"path/filepath"
@@ -64,7 +67,7 @@ func acceptJobs(ctx context.Context, api api.StorageMiner, endpoint string, auth
 
 		res := w.processTask(ctx, task)
 
-		log.Infof("Task %d done, err: %s", task.TaskID, res.Err)
+		log.Infof("Task %d done, err: %+v", task.TaskID, res.GoErr)
 
 		if err := api.WorkerDone(ctx, task.TaskID, res); err != nil {
 			log.Error(err)
@@ -97,9 +100,11 @@ func (w *worker) processTask(ctx context.Context, task sectorbuilder.WorkerTask)
 		}
 		res.Rspco = rspco.ToJson()
 
-		// TODO: push cache
-
 		if err := w.push("sealed", task.SectorID); err != nil {
+			return errRes(xerrors.Errorf("pushing precommited data: %w", err))
+		}
+
+		if err := w.push("cache", task.SectorID); err != nil {
 			return errRes(xerrors.Errorf("pushing precommited data: %w", err))
 		}
 	case sectorbuilder.WorkerCommit:
@@ -110,7 +115,9 @@ func (w *worker) processTask(ctx context.Context, task sectorbuilder.WorkerTask)
 
 		res.Proof = proof
 
-		// TODO: Push cache
+		if err := w.push("cache", task.SectorID); err != nil {
+			return errRes(xerrors.Errorf("pushing precommited data: %w", err))
+		}
 	}
 
 	return res
@@ -120,56 +127,82 @@ func (w *worker) fetch(typ string, sectorID uint64) error {
 	outname := filepath.Join(w.repo, typ, w.sb.SectorName(sectorID))
 
 	url := w.minerEndpoint + "/remote/" + typ + "/" + w.sb.SectorName(sectorID)
-	log.Infof("Fetch %s", url)
+	log.Infof("Fetch %s %s", typ, url)
 
 	req, err := http.NewRequest("GET", url, nil)
 	if err != nil {
-		return err
+		return xerrors.Errorf("request: %w", err)
 	}
 	req.Header = w.auth
 
 	resp, err := http.DefaultClient.Do(req)
 	if err != nil {
-		return err
+		return xerrors.Errorf("do request: %w", err)
 	}
 
 	defer resp.Body.Close()
-
-	out, err := os.Create(outname)
-	if err != nil {
-		return err
-	}
-	defer out.Close()
 
 	bar := pb.New64(resp.ContentLength)
 	bar.ShowPercent = true
 	bar.ShowSpeed = true
 	bar.Units = pb.U_BYTES
 
+	barreader := bar.NewProxyReader(resp.Body)
+
 	bar.Start()
 	defer bar.Finish()
 
-	_, err = io.Copy(out, bar.NewProxyReader(resp.Body))
-	return err
+	mediatype, p, err := mime.ParseMediaType(resp.Header.Get("Content-Type"))
+	if err != nil {
+		return xerrors.Errorf("parse media type: %w", err)
+	}
+
+	var file files.Node
+	switch mediatype {
+	case "multipart/form-data":
+		mpr := multipart.NewReader(barreader, p["boundary"])
+
+		file, err = files.NewFileFromPartReader(mpr, mediatype)
+		if err != nil {
+			return xerrors.Errorf("call to NewFileFromPartReader failed: %w", err)
+		}
+
+	case "application/octet-stream":
+		file = files.NewReaderFile(barreader)
+	default:
+		return xerrors.Errorf("unknown content type: '%s'", mediatype)
+	}
+
+	// WriteTo is unhappy when things exist
+	if err := os.RemoveAll(outname); err != nil {
+		return xerrors.Errorf("removing dest: %w", err)
+	}
+
+	return files.WriteTo(file, outname)
 }
 
 func (w *worker) push(typ string, sectorID uint64) error {
 	outname := filepath.Join(w.repo, typ, w.sb.SectorName(sectorID))
 
-	f, err := os.OpenFile(outname, os.O_RDONLY, 0644)
+	stat, err := os.Stat(outname)
+	if err != nil {
+		return err
+	}
+
+	f, err := files.NewSerialFile(outname, false, stat)
 	if err != nil {
 		return err
 	}
 
 	url := w.minerEndpoint + "/remote/" + typ + "/" + w.sb.SectorName(sectorID)
-	log.Infof("Push %s", url)
+	log.Infof("Push %s %s", typ, url)
 
-	fi, err := f.Stat()
+	sz, err := f.Size()
 	if err != nil {
-		return err
+		return xerrors.Errorf("getting size: %w", err)
 	}
 
-	bar := pb.New64(fi.Size())
+	bar := pb.New64(sz)
 	bar.ShowPercent = true
 	bar.ShowSpeed = true
 	bar.Units = pb.U_BYTES
@@ -177,11 +210,25 @@ func (w *worker) push(typ string, sectorID uint64) error {
 	bar.Start()
 	defer bar.Finish()
 	//todo set content size
-	req, err := http.NewRequest("PUT", url, bar.NewProxyReader(f))
+
+	header := w.auth
+
+	var r io.Reader
+	r, file := f.(files.File)
+	if !file {
+		mfr := files.NewMultiFileReader(f.(files.Directory), true)
+
+		header.Set("Content-Type", "multipart/form-data; boundary="+mfr.Boundary())
+		r = mfr
+	} else {
+		header.Set("Content-Type", "application/octet-stream")
+	}
+
+	req, err := http.NewRequest("PUT", url, bar.NewProxyReader(r))
 	if err != nil {
 		return err
 	}
-	req.Header = w.auth
+	req.Header = header
 
 	resp, err := http.DefaultClient.Do(req)
 	if err != nil {
@@ -201,7 +248,10 @@ func (w *worker) fetchSector(sectorID uint64, typ sectorbuilder.WorkerTaskType) 
 		err = w.fetch("staged", sectorID)
 	case sectorbuilder.WorkerCommit:
 		err = w.fetch("sealed", sectorID)
-		// todo: cache
+		if err != nil {
+			return xerrors.Errorf("fetch sealed: %w", err)
+		}
+		err = w.fetch("cache", sectorID)
 	}
 	if err != nil {
 		return xerrors.Errorf("fetch failed: %w", err)
@@ -210,5 +260,5 @@ func (w *worker) fetchSector(sectorID uint64, typ sectorbuilder.WorkerTaskType) 
 }
 
 func errRes(err error) sectorbuilder.SealRes {
-	return sectorbuilder.SealRes{Err: err.Error()}
+	return sectorbuilder.SealRes{Err: err.Error(), GoErr: err}
 }

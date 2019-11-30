@@ -3,17 +3,18 @@ package impl
 import (
 	"context"
 	"encoding/json"
-	"fmt"
-	"github.com/gorilla/mux"
-	"io"
-	"net/http"
-
 	"github.com/filecoin-project/lotus/api"
 	"github.com/filecoin-project/lotus/chain/address"
 	"github.com/filecoin-project/lotus/lib/sectorbuilder"
 	"github.com/filecoin-project/lotus/miner"
 	"github.com/filecoin-project/lotus/storage"
 	"github.com/filecoin-project/lotus/storage/sectorblocks"
+	"github.com/gorilla/mux"
+	files "github.com/ipfs/go-ipfs-files"
+	"io"
+	"mime"
+	"net/http"
+	"os"
 )
 
 type StorageMinerAPI struct {
@@ -48,22 +49,40 @@ func (sm *StorageMinerAPI) ServeRemote(w http.ResponseWriter, r *http.Request) {
 func (sm *StorageMinerAPI) remoteGetSector(w http.ResponseWriter, r *http.Request) {
 	vars := mux.Vars(r)
 
-	fr, err := sm.SectorBuilder.OpenRemoteRead(vars["type"], vars["sname"])
+	path, err := sm.SectorBuilder.GetPath(vars["type"], vars["sname"])
 	if err != nil {
 		log.Error(err)
 		w.WriteHeader(500)
 		return
 	}
-	defer fr.Close()
 
-	fi, err := fr.Stat()
+	stat, err := os.Stat(path)
 	if err != nil {
+		log.Error(err)
+		w.WriteHeader(500)
 		return
 	}
 
-	w.Header().Set("Content-Length", fmt.Sprint(fi.Size()))
+	f, err := files.NewSerialFile(path, false, stat)
+	if err != nil {
+		log.Error(err)
+		w.WriteHeader(500)
+		return
+	}
+
+	var rd io.Reader
+	rd, file := f.(files.File)
+	if !file {
+		mfr := files.NewMultiFileReader(f.(files.Directory), true)
+
+		w.Header().Set("Content-Type", "multipart/form-data; boundary="+mfr.Boundary())
+		rd = mfr
+	} else {
+		w.Header().Set("Content-Type", "application/octet-stream")
+	}
+
 	w.WriteHeader(200)
-	if _, err := io.Copy(w, fr); err != nil {
+	if _, err := io.Copy(w, rd); err != nil {
 		log.Error(err)
 		return
 	}
@@ -72,21 +91,58 @@ func (sm *StorageMinerAPI) remoteGetSector(w http.ResponseWriter, r *http.Reques
 func (sm *StorageMinerAPI) remotePutSector(w http.ResponseWriter, r *http.Request) {
 	vars := mux.Vars(r)
 
-	fr, err := sm.SectorBuilder.OpenRemoteWrite(vars["type"], vars["sname"])
+	path, err := sm.SectorBuilder.GetPath(vars["type"], vars["sname"])
 	if err != nil {
 		log.Error(err)
 		w.WriteHeader(500)
 		return
 	}
-	defer fr.Close()
 
-	w.WriteHeader(200)
-	n, err := io.Copy(fr, r.Body)
+	var file files.Node
+
+	mediatype, _, err := mime.ParseMediaType(r.Header.Get("Content-Type"))
 	if err != nil {
 		log.Error(err)
+		w.WriteHeader(500)
 		return
 	}
-	log.Infof("received %s sector (%s): %d bytes", vars["type"], vars["sname"], n)
+
+	switch mediatype {
+	case "multipart/form-data":
+		mpr, err := r.MultipartReader()
+		if err != nil {
+			log.Error(err)
+			w.WriteHeader(500)
+			return
+		}
+
+		file, err = files.NewFileFromPartReader(mpr, mediatype)
+		if err != nil {
+			log.Error(err)
+			w.WriteHeader(500)
+			return
+		}
+
+	default:
+		file = files.NewReaderFile(r.Body)
+	}
+
+	// WriteTo is unhappy when things exist (also cleans up cache after Commit)
+	if err := os.RemoveAll(path); err != nil {
+		log.Error(err)
+		w.WriteHeader(500)
+		return
+	}
+
+	if err := files.WriteTo(file, path); err != nil {
+		log.Error(err)
+		w.WriteHeader(500)
+		return
+	}
+
+	w.WriteHeader(200)
+
+	log.Infof("received %s sector (%s): %d bytes", vars["type"], vars["sname"], r.ContentLength)
 }
 
 func (sm *StorageMinerAPI) WorkerStats(context.Context) (sectorbuilder.WorkerStats, error) {
