@@ -12,15 +12,19 @@ import (
 	logging "github.com/ipfs/go-log"
 
 	"github.com/filecoin-project/lotus/api"
-	"github.com/filecoin-project/lotus/chain/address"
+	"github.com/filecoin-project/lotus/build"
 	"github.com/filecoin-project/lotus/chain/types"
 	"github.com/filecoin-project/lotus/node/impl"
 )
 
+func init() {
+	logging.SetAllLoggers(logging.LevelInfo)
+	build.InsecurePoStValidation = true
+}
+
 func TestDealFlow(t *testing.T, b APIBuilder) {
 	os.Setenv("BELLMAN_NO_GPU", "1")
 
-	logging.SetAllLoggers(logging.LevelInfo)
 	ctx := context.Background()
 	n, sn := b(t, 1, []int{0})
 	client := n[0].FullNode.(*impl.FullNodeAPI)
@@ -42,7 +46,7 @@ func TestDealFlow(t *testing.T, b APIBuilder) {
 		t.Fatal(err)
 	}
 
-	maddr, err := address.NewFromString("t0102")
+	maddr, err := miner.ActorAddress(ctx)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -57,7 +61,7 @@ func TestDealFlow(t *testing.T, b APIBuilder) {
 		for mine {
 			time.Sleep(time.Second)
 			fmt.Println("mining a block now")
-			if err := n[0].MineOne(ctx); err != nil {
+			if err := sn[0].MineOne(ctx); err != nil {
 				t.Fatal(err)
 			}
 		}

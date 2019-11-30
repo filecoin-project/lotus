@@ -9,7 +9,7 @@ import (
 
 func (ts *testSuite) testMining(t *testing.T) {
 	ctx := context.Background()
-	apis, _ := ts.makeNodes(t, 1, []int{0})
+	apis, sn := ts.makeNodes(t, 1, []int{0})
 	api := apis[0]
 
 	h1, err := api.ChainHead(ctx)
@@ -20,7 +20,7 @@ func (ts *testSuite) testMining(t *testing.T) {
 	require.NoError(t, err)
 	<-newHeads
 
-	err = api.MineOne(ctx)
+	err = sn[0].MineOne(ctx)
 	require.NoError(t, err)
 
 	<-newHeads

@@ -614,7 +614,6 @@ func ComputeVRF(ctx context.Context, sign SignFunc, worker, miner address.Addres
 	if err != nil {
 		return nil, err
 	}
-	log.Warnf("making ticket: %x %s %s %x %x", sig.Data, worker, miner, input, sigInput)
 
 	if sig.Type != types.KTBLS {
 		return nil, fmt.Errorf("miner worker address was not a BLS key")

@@ -11,6 +11,7 @@ import (
 	"path/filepath"
 
 	badger "github.com/ipfs/go-ds-badger"
+	logging "github.com/ipfs/go-log"
 	"golang.org/x/xerrors"
 
 	"github.com/filecoin-project/lotus/api"
@@ -23,7 +24,9 @@ import (
 	"github.com/filecoin-project/lotus/lib/sectorbuilder"
 )
 
-func PreSeal(maddr address.Address, ssize uint64, sectors uint64, sbroot string, preimage []byte) (*genesis.GenesisMiner, error) {
+var log = logging.Logger("preseal")
+
+func PreSeal(maddr address.Address, ssize uint64, sectors int, sbroot string, preimage []byte) (*genesis.GenesisMiner, error) {
 	cfg := &sectorbuilder.Config{
 		Miner:         maddr,
 		SectorSize:    ssize,
@@ -58,7 +61,7 @@ func PreSeal(maddr address.Address, ssize uint64, sectors uint64, sbroot string,
 	size := sectorbuilder.UserBytesForSectorSize(ssize)
 
 	var sealedSectors []*genesis.PreSeal
-	for i := uint64(1); i <= sectors; i++ {
+	for i := 0; i < sectors; i++ {
 		sid, err := sb.AcquireSectorId()
 		if err != nil {
 			return nil, err
@@ -81,6 +84,7 @@ func PreSeal(maddr address.Address, ssize uint64, sectors uint64, sbroot string,
 			return nil, xerrors.Errorf("commit: %w", err)
 		}
 
+		log.Warn("PreCommitOutput: ", sid, pco)
 		sealedSectors = append(sealedSectors, &genesis.PreSeal{
 			CommR:    pco.CommR,
 			CommD:    pco.CommD,

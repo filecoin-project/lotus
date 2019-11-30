@@ -5,6 +5,7 @@ import (
 	"fmt"
 	"io"
 	"os"
+	"path/filepath"
 	"strconv"
 	"sync"
 
@@ -100,6 +101,7 @@ func New(cfg *Config, ds dtypes.MetadataDS) (*SectorBuilder, error) {
 	default:
 		return nil, err
 	}
+	log.Warn("STARTING UP SECTOR BULIDER, LAST ID: ", lastUsedID)
 
 	sb := &SectorBuilder{
 		ds: ds,
@@ -290,6 +292,9 @@ func (sb *SectorBuilder) ComputeElectionPoSt(sectorInfo SortedPublicSectorInfo, 
 	}
 
 	proverID := addressToProverID(sb.Miner)
+	log.Info("GENERATING ELECTION POST")
+	defer log.Info("DONE GENERATING ELECTION POST")
+
 	return sectorbuilder.GeneratePoSt(sb.ssize, proverID, privsects, cseed, winners)
 }
 
@@ -421,4 +426,50 @@ func fallbackPostChallengeCount(sectors uint64) uint64 {
 		return build.MaxFallbackPostChallengeCount
 	}
 	return challengeCount
+}
+
+func (sb *SectorBuilder) ImportFrom(osb *SectorBuilder) error {
+	if err := moveAllFiles(osb.cacheDir, sb.cacheDir); err != nil {
+		return err
+	}
+
+	if err := moveAllFiles(osb.sealedDir, sb.sealedDir); err != nil {
+		return err
+	}
+
+	if err := moveAllFiles(osb.stagedDir, sb.stagedDir); err != nil {
+		return err
+	}
+
+	val, err := osb.ds.Get(LastSectorIdKey)
+	if err != nil {
+		return err
+	}
+
+	if err := sb.ds.Put(LastSectorIdKey, val); err != nil {
+		return err
+	}
+
+	sb.lastID = osb.lastID
+
+	return nil
+}
+
+func moveAllFiles(from, to string) error {
+	dir, err := os.Open(from)
+	if err != nil {
+		return err
+	}
+
+	names, err := dir.Readdirnames(0)
+	if err != nil {
+		return xerrors.Errorf("failed to list items in dir: %w", err)
+	}
+	for _, n := range names {
+		if err := os.Rename(filepath.Join(from, n), filepath.Join(to, n)); err != nil {
+			return xerrors.Errorf("moving file failed: %w", err)
+		}
+	}
+
+	return nil
 }

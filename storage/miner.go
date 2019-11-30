@@ -13,6 +13,7 @@ import (
 	"golang.org/x/xerrors"
 
 	"github.com/filecoin-project/lotus/api"
+	"github.com/filecoin-project/lotus/build"
 	"github.com/filecoin-project/lotus/chain/address"
 	"github.com/filecoin-project/lotus/chain/events"
 	"github.com/filecoin-project/lotus/chain/gen"
@@ -161,5 +162,9 @@ func (epp *sectorBuilderEpp) GenerateCandidates(ctx context.Context, ssi sectorb
 }
 
 func (epp *sectorBuilderEpp) ComputeProof(ctx context.Context, ssi sectorbuilder.SortedPublicSectorInfo, rand []byte, winners []sectorbuilder.EPostCandidate) ([]byte, error) {
+	if build.InsecurePoStValidation {
+		log.Warn("Generating fake EPost proof! You should only see this while running tests!")
+		return []byte("valid proof"), nil
+	}
 	return epp.sb.ComputeElectionPoSt(ssi, rand, winners)
 }

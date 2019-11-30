@@ -133,7 +133,28 @@ var initCmd = &cli.Command{
 				return err
 			}
 
-			if err := migratePreSealedSectors(pssb, repoPath, mds); err != nil {
+			oldmds, err := badger.NewDatastore(filepath.Join(pssb, "badger"), nil)
+			if err != nil {
+				return err
+			}
+
+			oldsb, err := sectorbuilder.New(&sectorbuilder.Config{
+				SectorSize:  1024,
+				SealedDir:   filepath.Join(pssb, "sealed"),
+				CacheDir:    filepath.Join(pssb, "cache"),
+				StagedDir:   filepath.Join(pssb, "staging"),
+				MetadataDir: filepath.Join(pssb, "meta"),
+			}, oldmds)
+
+			nsb, err := sectorbuilder.New(&sectorbuilder.Config{
+				SectorSize:  1024,
+				SealedDir:   filepath.Join(lr.Path(), "sealed"),
+				CacheDir:    filepath.Join(lr.Path(), "cache"),
+				StagedDir:   filepath.Join(lr.Path(), "staging"),
+				MetadataDir: filepath.Join(lr.Path(), "meta"),
+			}, mds)
+
+			if err := nsb.ImportFrom(oldsb); err != nil {
 				return err
 			}
 			if err := lr.Close(); err != nil {
@@ -159,51 +180,6 @@ var initCmd = &cli.Command{
 
 		return nil
 	},
-}
-
-// TODO: this method should be a lot more robust for mainnet. For testnet, its
-// fine if we mess things up a few times
-// Also probably makes sense for this method to be in the sectorbuilder package
-func migratePreSealedSectors(presealsb string, repoPath string, mds dtypes.MetadataDS) error {
-	pspath, err := homedir.Expand(presealsb)
-	if err != nil {
-		return err
-	}
-
-	srcds, err := badger.NewDatastore(filepath.Join(pspath, "badger"), nil)
-	if err != nil {
-		return xerrors.Errorf("openning presealed sectors datastore: %w", err)
-	}
-
-	expRepo, err := homedir.Expand(repoPath)
-	if err != nil {
-		return err
-	}
-
-	if stat, err := os.Stat(pspath); err != nil {
-		return xerrors.Errorf("failed to stat presealed sectors directory: %w", err)
-	} else if !stat.IsDir() {
-		return xerrors.Errorf("given presealed sectors path was not a directory: %w", err)
-	}
-
-	for _, dir := range []string{"meta", "sealed", "staging", "cache"} {
-		from := filepath.Join(pspath, dir)
-		to := filepath.Join(expRepo, dir)
-		if err := os.Rename(from, to); err != nil {
-			return err
-		}
-	}
-
-	val, err := srcds.Get(sectorbuilder.LastSectorIdKey)
-	if err != nil {
-		return xerrors.Errorf("getting source last sector ID: %w", err)
-	}
-
-	if err := mds.Put(sectorbuilder.LastSectorIdKey, val); err != nil {
-		return xerrors.Errorf("failed to write last sector ID key to target datastore: %w", err)
-	}
-
-	return nil
 }
 
 func migratePreSealMeta(ctx context.Context, api lapi.FullNode, presealDir string, maddr address.Address, mds dtypes.MetadataDS) error {
