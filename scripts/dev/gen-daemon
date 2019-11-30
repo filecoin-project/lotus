@@ -1,0 +1,8 @@
+#!/usr/bin/env sh
+
+set -o xtrace
+
+export TRUST_PARAMS=1
+
+go run -tags=debug ./cmd/lotus-seed pre-seal
+go run -tags=debug ./cmd/lotus daemon --lotus-make-random-genesis=devel.gen --genesis-presealed-sectors=~/.genesis-sectors/pre-seal-t0101.json

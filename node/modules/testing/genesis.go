@@ -18,6 +18,7 @@ import (
 	logging "github.com/ipfs/go-log"
 	"github.com/ipfs/go-merkledag"
 	peer "github.com/libp2p/go-libp2p-peer"
+	"github.com/mitchellh/go-homedir"
 
 	"github.com/filecoin-project/lotus/chain/address"
 	"github.com/filecoin-project/lotus/chain/gen"
@@ -72,18 +73,23 @@ func MakeGenesis(outFile, preseal string) func(bs dtypes.ChainBlockstore, w *wal
 	return func(bs dtypes.ChainBlockstore, w *wallet.Wallet) modules.Genesis {
 		return func() (*types.BlockHeader, error) {
 			glog.Warn("Generating new random genesis block, note that this SHOULD NOT happen unless you are setting up new network")
+			preseal, err := homedir.Expand(preseal)
+			if err != nil {
+				return nil, xerrors.Errorf("expanding preseals json path: %w", err)
+			}
+
 			fdata, err := ioutil.ReadFile(preseal)
 			if err != nil {
+				return nil, xerrors.Errorf("reading preseals json: %w", err)
+			}
+
+			var preseals map[string]genesis.GenesisMiner
+			if err := json.Unmarshal(fdata, &preseals); err != nil {
 				return nil, err
 			}
 
-			var preseal map[string]genesis.GenesisMiner
-			if err := json.Unmarshal(fdata, &preseal); err != nil {
-				return nil, err
-			}
-
-			minerAddresses := make([]address.Address, 0, len(preseal))
-			for s := range preseal {
+			minerAddresses := make([]address.Address, 0, len(preseals))
+			for s := range preseals {
 				a, err := address.NewFromString(s)
 				if err != nil {
 					return nil, err
@@ -96,13 +102,13 @@ func MakeGenesis(outFile, preseal string) func(bs dtypes.ChainBlockstore, w *wal
 
 			gmc := &gen.GenMinerCfg{
 				PeerIDs:    []peer.ID{"peer ID 1"},
-				PreSeals:   preseal,
+				PreSeals:   preseals,
 				MinerAddrs: minerAddresses,
 			}
 
 			addrs := map[address.Address]types.BigInt{}
 
-			for _, miner := range preseal {
+			for _, miner := range preseals {
 				if _, err := w.Import(&miner.Key); err != nil {
 					return nil, xerrors.Errorf("importing miner key: %w", err)
 				}

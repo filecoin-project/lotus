@@ -207,6 +207,11 @@ func migratePreSealedSectors(presealsb string, repoPath string, mds dtypes.Metad
 }
 
 func migratePreSealMeta(ctx context.Context, api lapi.FullNode, presealDir string, maddr address.Address, mds dtypes.MetadataDS) error {
+	presealDir, err := homedir.Expand(presealDir)
+	if err != nil {
+		return xerrors.Errorf("expanding preseal dir: %w", err)
+	}
+
 	b, err := ioutil.ReadFile(filepath.Join(presealDir, "pre-seal-"+maddr.String()+".json"))
 	if err != nil {
 		return xerrors.Errorf("reading preseal metadata: %w", err)

@@ -97,7 +97,7 @@ func (rspco *JsonRSPCO) rspco() RawSealPreCommitOutput {
 }
 
 type SealRes struct {
-	Err error
+	Err string
 
 	Proof []byte
 	Rspco JsonRSPCO
@@ -322,7 +322,11 @@ func (sb *SectorBuilder) ReadPieceFromSealedSector(pieceKey string) ([]byte, err
 func (sb *SectorBuilder) sealPreCommitRemote(call workerCall) (RawSealPreCommitOutput, error) {
 	select {
 	case ret := <-call.ret:
-		return ret.Rspco.rspco(), ret.Err
+		var err error
+		if ret.Err != "" {
+			err = xerrors.New(ret.Err)
+		}
+		return ret.Rspco.rspco(), err
 	case <-sb.stopping:
 		return RawSealPreCommitOutput{}, xerrors.New("sectorbuilder stopped")
 	}
@@ -402,7 +406,10 @@ func (sb *SectorBuilder) SealPreCommit(sectorID uint64, ticket SealTicket, piece
 func (sb *SectorBuilder) sealCommitRemote(call workerCall) (proof []byte, err error) {
 	select {
 	case ret := <-call.ret:
-		return ret.Proof, ret.Err
+		if ret.Err != "" {
+			err = xerrors.New(ret.Err)
+		}
+		return ret.Proof, err
 	case <-sb.stopping:
 		return nil, xerrors.New("sectorbuilder stopped")
 	}
