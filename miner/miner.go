@@ -320,7 +320,7 @@ func (m *Miner) getMinerWorker(ctx context.Context, addr address.Address, ts *ty
 
 func (m *Miner) computeTicket(ctx context.Context, addr address.Address, base *MiningBase) (*types.Ticket, error) {
 
-	vrfBase := gen.TicketHash(base.ts.MinTicket(), addr)
+	vrfBase := base.ts.MinTicket().VRFProof
 
 	vrfOut, err := m.computeVRF(ctx, addr, vrfBase)
 	if err != nil {

@@ -127,7 +127,7 @@ func NewGenerator() (*ChainGen, error) {
 
 	// TODO: this is really weird, we have to guess the miner addresses that
 	// will be created in order to preseal data for them
-	maddr1, err := address.NewFromString("t0103")
+	maddr1, err := address.NewFromString("t0300")
 	if err != nil {
 		return nil, err
 	}
@@ -142,7 +142,7 @@ func NewGenerator() (*ChainGen, error) {
 		return nil, err
 	}
 
-	maddr2, err := address.NewFromString("t0104")
+	maddr2, err := address.NewFromString("t0301")
 	if err != nil {
 		return nil, err
 	}
@@ -256,6 +256,7 @@ func (cg *ChainGen) nextBlockProof(ctx context.Context, pts *types.TipSet, m add
 		return nil, nil, xerrors.Errorf("get miner worker: %w", err)
 	}
 
+	log.Warnf("compute VRF ROUND: %d %s %s", round, m, worker)
 	vrfout, err := ComputeVRF(ctx, cg.w.Sign, worker, m, DSepTicket, lastTicket.VRFProof)
 	if err != nil {
 		return nil, nil, xerrors.Errorf("compute VRF: %w", err)
@@ -307,6 +308,7 @@ func (cg *ChainGen) NextTipSetFromMiners(base *types.TipSet, miners []address.Ad
 			}
 
 			if proof != nil {
+				log.Warn("making block, ticket: ", t.VRFProof)
 				fblk, err := cg.makeBlock(base, m, proof, t, uint64(round), msgs)
 				if err != nil {
 					return nil, xerrors.Errorf("making a block for next tipset failed: %w", err)
@@ -612,6 +614,7 @@ func ComputeVRF(ctx context.Context, sign SignFunc, worker, miner address.Addres
 	if err != nil {
 		return nil, err
 	}
+	log.Warnf("making ticket: %x %s %s %x %x", sig.Data, worker, miner, input, sigInput)
 
 	if sig.Type != types.KTBLS {
 		return nil, fmt.Errorf("miner worker address was not a BLS key")

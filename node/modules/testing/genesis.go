@@ -4,11 +4,12 @@ import (
 	"context"
 	"encoding/json"
 	"fmt"
-	"golang.org/x/xerrors"
 	"io"
 	"io/ioutil"
 	"os"
 	"time"
+
+	"golang.org/x/xerrors"
 
 	"github.com/ipfs/go-blockservice"
 	"github.com/ipfs/go-car"
@@ -29,22 +30,25 @@ import (
 
 var glog = logging.Logger("genesis")
 
-func MakeGenesisMem(out io.Writer, minerPid peer.ID) func(bs dtypes.ChainBlockstore, w *wallet.Wallet) modules.Genesis {
+func MakeGenesisMem(out io.Writer, gmc *gen.GenMinerCfg) func(bs dtypes.ChainBlockstore, w *wallet.Wallet) modules.Genesis {
 	return func(bs dtypes.ChainBlockstore, w *wallet.Wallet) modules.Genesis {
 		return func() (*types.BlockHeader, error) {
 			glog.Warn("Generating new random genesis block, note that this SHOULD NOT happen unless you are setting up new network")
-			// TODO: make an address allocation
-			w, err := w.GenerateKey(types.KTBLS)
+			defk, err := w.GenerateKey(types.KTBLS)
 			if err != nil {
 				return nil, err
 			}
 
-			gmc := &gen.GenMinerCfg{
-				PeerIDs: []peer.ID{minerPid},
-				// TODO: Call seal.PreSeal
-			}
 			alloc := map[address.Address]types.BigInt{
-				w: types.FromFil(10000),
+				defk: types.FromFil(1000),
+			}
+
+			for _, genm := range gmc.PreSeals {
+				waddr, err := w.Import(&genm.Key)
+				if err != nil {
+					return nil, err
+				}
+				alloc[waddr] = types.FromFil(10000)
 			}
 
 			b, err := gen.MakeGenesisBlock(bs, alloc, gmc, 100000)

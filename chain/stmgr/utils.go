@@ -2,6 +2,7 @@ package stmgr
 
 import (
 	"context"
+
 	ffi "github.com/filecoin-project/filecoin-ffi"
 
 	"github.com/filecoin-project/lotus/api"
@@ -153,7 +154,7 @@ func GetMinerElectionPeriodStart(ctx context.Context, sm *StateManager, ts *type
 	var mas actors.StorageMinerActorState
 	_, err := sm.LoadActorState(ctx, maddr, &mas, ts)
 	if err != nil {
-		return 0, xerrors.Errorf("failed to load miner actor state: %w", err)
+		return 0, xerrors.Errorf("(get eps) failed to load miner actor state: %w", err)
 	}
 
 	return mas.ElectionPeriodStart, nil
@@ -163,7 +164,7 @@ func GetMinerProvingSet(ctx context.Context, sm *StateManager, ts *types.TipSet,
 	var mas actors.StorageMinerActorState
 	_, err := sm.LoadActorState(ctx, maddr, &mas, ts)
 	if err != nil {
-		return nil, xerrors.Errorf("failed to load miner actor state: %w", err)
+		return nil, xerrors.Errorf("(get pset) failed to load miner actor state: %w", err)
 	}
 
 	return LoadSectorsFromSet(ctx, sm.ChainStore().Blockstore(), mas.ProvingSet)
@@ -173,7 +174,7 @@ func GetMinerSectorSet(ctx context.Context, sm *StateManager, ts *types.TipSet, 
 	var mas actors.StorageMinerActorState
 	_, err := sm.LoadActorState(ctx, maddr, &mas, ts)
 	if err != nil {
-		return nil, xerrors.Errorf("failed to load miner actor state: %w", err)
+		return nil, xerrors.Errorf("(get sset) failed to load miner actor state: %w", err)
 	}
 
 	return LoadSectorsFromSet(ctx, sm.ChainStore().Blockstore(), mas.Sectors)
@@ -203,7 +204,7 @@ func GetMinerSectorSize(ctx context.Context, sm *StateManager, ts *types.TipSet,
 	var mas actors.StorageMinerActorState
 	_, err := sm.LoadActorState(ctx, maddr, &mas, ts)
 	if err != nil {
-		return 0, xerrors.Errorf("failed to load miner actor state: %w", err)
+		return 0, xerrors.Errorf("(get ssize) failed to load miner actor state: %w", err)
 	}
 
 	cst := hamt.CSTFromBstore(sm.cs.Blockstore())
@@ -219,7 +220,7 @@ func GetMinerSlashed(ctx context.Context, sm *StateManager, ts *types.TipSet, ma
 	var mas actors.StorageMinerActorState
 	_, err := sm.LoadActorState(ctx, maddr, &mas, ts)
 	if err != nil {
-		return 0, xerrors.Errorf("failed to load miner actor state: %w", err)
+		return 0, xerrors.Errorf("(get mslash) failed to load miner actor state: %w", err)
 	}
 
 	return mas.SlashedAt, nil

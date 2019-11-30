@@ -4,6 +4,7 @@ import (
 	"bytes"
 	"context"
 	"crypto/rand"
+	"io/ioutil"
 	"net/http/httptest"
 	"testing"
 
@@ -19,7 +20,10 @@ import (
 	"github.com/filecoin-project/lotus/api/test"
 	"github.com/filecoin-project/lotus/chain/actors"
 	"github.com/filecoin-project/lotus/chain/address"
+	"github.com/filecoin-project/lotus/chain/gen"
 	"github.com/filecoin-project/lotus/chain/types"
+	"github.com/filecoin-project/lotus/cmd/lotus-seed/seed"
+	"github.com/filecoin-project/lotus/genesis"
 	"github.com/filecoin-project/lotus/lib/jsonrpc"
 	"github.com/filecoin-project/lotus/miner"
 	"github.com/filecoin-project/lotus/node"
@@ -87,7 +91,9 @@ func testStorageNode(ctx context.Context, t *testing.T, waddr address.Address, a
 
 		node.Override(new(api.FullNode), tnd),
 	)
-	require.NoError(t, err)
+	if err != nil {
+		t.Fatalf("failed to construct node: %v", err)
+	}
 
 	/*// Bootstrap with full node
 	remoteAddrs, err := tnd.NetAddrsListen(ctx)
@@ -114,10 +120,38 @@ func builder(t *testing.T, nFull int, storage []int) ([]test.TestNode, []test.Te
 
 	var genbuf bytes.Buffer
 
+	if len(storage) != 1 {
+		panic("need more peer IDs")
+	}
+	// PRESEAL SECTION, TRY TO REPLACE WITH BETTER IN THE FUTURE
+	// TODO: would be great if there was a better way to fake the preseals
+	gmc := &gen.GenMinerCfg{
+		PeerIDs:  []peer.ID{minerPid}, // TODO: if we have more miners, need more peer IDs
+		PreSeals: map[string]genesis.GenesisMiner{},
+	}
+	for i := 0; i < len(storage); i++ {
+		maddr, err := address.NewIDAddress(300 + uint64(i))
+		if err != nil {
+			t.Fatal(err)
+		}
+		tdir, err := ioutil.TempDir("", "preseal-memgen")
+		if err != nil {
+			t.Fatal(err)
+		}
+		genm, err := seed.PreSeal(maddr, 1024, 1, tdir, []byte("make genesis mem random"))
+		if err != nil {
+			t.Fatal(err)
+		}
+		gmc.MinerAddrs = append(gmc.MinerAddrs, maddr)
+		gmc.PreSeals[maddr.String()] = *genm
+	}
+
+	// END PRESEAL SECTION
+
 	for i := 0; i < nFull; i++ {
 		var genesis node.Option
 		if i == 0 {
-			genesis = node.Override(new(modules.Genesis), modtest.MakeGenesisMem(&genbuf, minerPid))
+			genesis = node.Override(new(modules.Genesis), modtest.MakeGenesisMem(&genbuf, gmc))
 		} else {
 			genesis = node.Override(new(modules.Genesis), modules.LoadGenesis(genbuf.Bytes()))
 		}
@@ -165,7 +199,7 @@ func builder(t *testing.T, nFull int, storage []int) ([]test.TestNode, []test.Te
 		wa, err := f.WalletDefaultAddress(ctx)
 		require.NoError(t, err)
 
-		genMiner, err := address.NewFromString("t0101")
+		genMiner, err := address.NewFromString("t0102")
 		require.NoError(t, err)
 
 		storers[i] = testStorageNode(ctx, t, wa, genMiner, pk, f, mn)

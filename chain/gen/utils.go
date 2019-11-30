@@ -1,6 +1,7 @@
 package gen
 
 import (
+	"bytes"
 	"context"
 	"fmt"
 
@@ -8,6 +9,7 @@ import (
 	"github.com/ipfs/go-cid"
 	"github.com/ipfs/go-datastore"
 	hamt "github.com/ipfs/go-hamt-ipld"
+	blockstore "github.com/ipfs/go-ipfs-blockstore"
 	bstore "github.com/ipfs/go-ipfs-blockstore"
 	peer "github.com/libp2p/go-libp2p-peer"
 	cbg "github.com/whyrusleeping/cbor-gen"
@@ -281,8 +283,18 @@ func SetupStorageMiners(ctx context.Context, cs *store.ChainStore, sroot cid.Cid
 			return cid.Undef, nil, xerrors.Errorf("failed to create genesis miner: %w", err)
 		}
 
-		maddr, err := address.NewFromBytes(rval)
+		maddrret, err := address.NewFromBytes(rval)
 		if err != nil {
+			return cid.Undef, nil, err
+		}
+
+		_, err = vm.Flush(ctx)
+		if err != nil {
+			return cid.Undef, nil, err
+		}
+
+		cst := hamt.CSTFromBstore(cs.Blockstore())
+		if err := reassignMinerActorAddress(vm, cst, maddrret, maddr); err != nil {
 			return cid.Undef, nil, err
 		}
 
@@ -306,7 +318,6 @@ func SetupStorageMiners(ctx context.Context, cs *store.ChainStore, sroot cid.Cid
 			return cid.Undef, nil, xerrors.Errorf("get miner actor failed: %w", err)
 		}
 
-		cst := hamt.CSTFromBstore(cs.Blockstore())
 		var mstate actors.StorageMinerActorState
 		if err := cst.Get(ctx, mact.Head, &mstate); err != nil {
 			return cid.Undef, nil, xerrors.Errorf("getting miner actor state failed: %w", err)
@@ -339,6 +350,149 @@ func SetupStorageMiners(ctx context.Context, cs *store.ChainStore, sroot cid.Cid
 
 	c, err := vm.Flush(ctx)
 	return c, deals, err
+}
+
+func reassignMinerActorAddress(vm *vm.VM, cst *hamt.CborIpldStore, from, to address.Address) error {
+	if from == to {
+		return nil
+	}
+	act, err := vm.StateTree().GetActor(from)
+	if err != nil {
+		return xerrors.Errorf("reassign: failed to get 'from' actor: %w", err)
+	}
+
+	_, err = vm.StateTree().GetActor(to)
+	if err == nil {
+		return xerrors.Errorf("cannot reassign actor, target address taken")
+	}
+	if err := vm.StateTree().SetActor(to, act); err != nil {
+		return xerrors.Errorf("failed to reassign actor: %w", err)
+	}
+
+	if err := adjustStorageMarketTracking(vm, cst, from, to); err != nil {
+		return xerrors.Errorf("adjusting storage market tracking: %w", err)
+	}
+
+	// Now, adjust the tracking in the init actor
+	return initActorReassign(vm, cst, from, to)
+}
+
+func adjustStorageMarketTracking(vm *vm.VM, cst *hamt.CborIpldStore, from, to address.Address) error {
+	ctx := context.TODO()
+	act, err := vm.StateTree().GetActor(actors.StoragePowerAddress)
+	if err != nil {
+		return xerrors.Errorf("loading storage power actor: %w", err)
+	}
+
+	var spst actors.StoragePowerState
+	if err := cst.Get(ctx, act.Head, &spst); err != nil {
+		return xerrors.Errorf("loading storage power actor state: %w", err)
+	}
+
+	miners, err := hamt.LoadNode(ctx, cst, spst.Miners)
+	if err != nil {
+		return xerrors.Errorf("loading miner set: %w", err)
+	}
+
+	if err := miners.Delete(ctx, string(from.Bytes())); err != nil {
+		return xerrors.Errorf("deleting from spa set: %w", err)
+	}
+
+	if err := miners.Set(ctx, string(to.Bytes()), uint64(1)); err != nil {
+		return xerrors.Errorf("failed setting miner: %w", err)
+	}
+
+	if err := miners.Flush(ctx); err != nil {
+		return err
+	}
+
+	nminerscid, err := cst.Put(ctx, miners)
+	if err != nil {
+		return err
+	}
+	spst.Miners = nminerscid
+
+	nhead, err := cst.Put(ctx, &spst)
+	if err != nil {
+		return err
+	}
+
+	act.Head = nhead
+
+	return nil
+}
+
+func initActorReassign(vm *vm.VM, cst *hamt.CborIpldStore, from, to address.Address) error {
+	ctx := context.TODO()
+	initact, err := vm.StateTree().GetActor(actors.InitAddress)
+	if err != nil {
+		return xerrors.Errorf("couldnt get init actor: %w", err)
+	}
+
+	var st actors.InitActorState
+	if err := cst.Get(ctx, initact.Head, &st); err != nil {
+		return xerrors.Errorf("reassign loading init actor state: %w", err)
+	}
+
+	amap, err := hamt.LoadNode(ctx, cst, st.AddressMap)
+	if err != nil {
+		return xerrors.Errorf("failed to load init actor map: %w", err)
+	}
+
+	target, err := address.IDFromAddress(from)
+	if err != nil {
+		return xerrors.Errorf("failed to extract ID: %w", err)
+	}
+
+	var out string
+	halt := xerrors.Errorf("halt")
+	err = amap.ForEach(ctx, func(k string, v interface{}) error {
+		_, val, err := cbg.CborReadHeader(bytes.NewReader(v.(*cbg.Deferred).Raw))
+		if err != nil {
+			return xerrors.Errorf("parsing int in map failed: %w", err)
+		}
+
+		if val == target {
+			out = k
+			return halt
+		}
+		return nil
+	})
+
+	if err == nil {
+		return xerrors.Errorf("could not find from address in init ID map")
+	}
+	if !xerrors.Is(err, halt) {
+		return xerrors.Errorf("finding address in ID map failed: %w", err)
+	}
+
+	if err := amap.Delete(ctx, out); err != nil {
+		return xerrors.Errorf("deleting 'from' entry in amap: %w", err)
+	}
+
+	if err := amap.Set(ctx, out, target); err != nil {
+		return xerrors.Errorf("setting 'to' entry in amap: %w", err)
+	}
+
+	if err := amap.Flush(ctx); err != nil {
+		return xerrors.Errorf("failed to flush amap: %w", err)
+	}
+
+	ncid, err := cst.Put(ctx, amap)
+	if err != nil {
+		return err
+	}
+
+	st.AddressMap = ncid
+
+	nacthead, err := cst.Put(ctx, &st)
+	if err != nil {
+		return err
+	}
+
+	initact.Head = nacthead
+
+	return nil
 }
 
 func doExec(ctx context.Context, vm *vm.VM, to, from address.Address, method uint64, params []byte) ([]byte, error) {
@@ -397,6 +551,11 @@ func MakeGenesisBlock(bs bstore.Blockstore, balances map[address.Address]types.B
 		return nil, xerrors.Errorf("setup storage market actor: %w", err)
 	}
 
+	stateroot, err = AdjustInitActorStartID(ctx, bs, stateroot, 1000)
+	if err != nil {
+		return nil, xerrors.Errorf("failed to adjust init actor start ID: %w", err)
+	}
+
 	blks := amt.WrapBlockstore(bs)
 
 	emptyroot, err := amt.FromArray(blks, nil)
@@ -452,4 +611,38 @@ func MakeGenesisBlock(bs bstore.Blockstore, balances map[address.Address]types.B
 	return &GenesisBootstrap{
 		Genesis: b,
 	}, nil
+}
+
+func AdjustInitActorStartID(ctx context.Context, bs blockstore.Blockstore, stateroot cid.Cid, val uint64) (cid.Cid, error) {
+	cst := hamt.CSTFromBstore(bs)
+
+	tree, err := state.LoadStateTree(cst, stateroot)
+	if err != nil {
+		return cid.Undef, err
+	}
+
+	act, err := tree.GetActor(actors.InitAddress)
+	if err != nil {
+		return cid.Undef, err
+	}
+
+	var st actors.InitActorState
+	if err := cst.Get(ctx, act.Head, &st); err != nil {
+		return cid.Undef, err
+	}
+
+	st.NextID = val
+
+	nstate, err := cst.Put(ctx, &st)
+	if err != nil {
+		return cid.Undef, err
+	}
+
+	act.Head = nstate
+
+	if err := tree.SetActor(actors.InitAddress, act); err != nil {
+		return cid.Undef, err
+	}
+
+	return tree.Flush()
 }

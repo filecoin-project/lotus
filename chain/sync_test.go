@@ -346,7 +346,7 @@ func (tu *syncTestUtil) waitUntilSyncTarget(to int, target *types.TipSet) {
 }
 
 func TestSyncSimple(t *testing.T) {
-	H := 50
+	H := 2
 	tu := prepSyncTest(t, H)
 
 	client := tu.addClientNode()

@@ -615,11 +615,12 @@ func (syncer *Syncer) ValidateBlock(ctx context.Context, b *types.FullBlock) err
 	})
 
 	tktsCheck := async.Err(func() error {
-		vrfBase := gen.TicketHash(baseTs.MinTicket(), h.Miner)
+		vrfBase := baseTs.MinTicket().VRFProof
 
 		err := gen.VerifyVRF(ctx, waddr, h.Miner, gen.DSepTicket, vrfBase, h.Ticket.VRFProof)
 
 		if err != nil {
+			log.Warnf("BAD TICKET: %d %x %x %s %s %x", h.Height, h.Ticket.VRFProof, vrfBase, waddr, h.Miner, baseTs.MinTicket().VRFProof)
 			return xerrors.Errorf("validating block tickets failed: %w", err)
 		}
 		return nil

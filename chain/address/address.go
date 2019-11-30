@@ -389,3 +389,11 @@ func (a *Address) UnmarshalCBOR(br io.Reader) error {
 
 	return nil
 }
+
+func IDFromAddress(addr Address) (uint64, error) {
+	if addr.Protocol() != ID {
+		return 0, xerrors.Errorf("cannot get id from non id address")
+	}
+
+	return leb128.ToUInt64(addr.Payload()), nil
+}

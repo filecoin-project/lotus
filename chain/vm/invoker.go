@@ -42,9 +42,13 @@ func newInvoker() *invoker {
 
 func (inv *invoker) Invoke(act *types.Actor, vmctx types.VMContext, method uint64, params []byte) ([]byte, aerrors.ActorError) {
 
+	if act.Code == actors.AccountCodeCid {
+		return nil, aerrors.Newf(254, "cannot invoke methods on account actors")
+	}
+
 	code, ok := inv.builtInCode[act.Code]
 	if !ok {
-		log.Errorf("no code for actor %s", act.Code)
+		log.Errorf("no code for actor %s (Addr: %s)", act.Code, vmctx.Message().To)
 		return nil, aerrors.Newf(255, "no code for actor %s(%d)(%s)", act.Code, method, hex.EncodeToString(params))
 	}
 	if method >= uint64(len(code)) || code[method] == nil {
