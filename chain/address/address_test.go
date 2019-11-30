@@ -532,3 +532,9 @@ func BenchmarkCborUnmarshal(b *testing.B) {
 		}
 	}
 }
+
+func TestIDEdgeCase(t *testing.T) {
+	a, err := NewFromBytes([]byte{0, 0x80})
+	_ = a.String()
+	assert.Error(t, err)
+}
