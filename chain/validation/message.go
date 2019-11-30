@@ -3,11 +3,10 @@ package validation
 import (
 	"context"
 
-	"github.com/pkg/errors"
-
 	"github.com/filecoin-project/lotus/chain/actors"
 	"github.com/filecoin-project/lotus/chain/address"
 	"github.com/filecoin-project/lotus/chain/types"
+	"golang.org/x/xerrors"
 
 	"github.com/filecoin-project/chain-validation/pkg/chain"
 	"github.com/filecoin-project/chain-validation/pkg/state"
@@ -43,7 +42,7 @@ func (mf *MessageFactory) MakeMessage(from, to state.Address, method chain.Metho
 	}
 
 	if int(method) >= len(methods) {
-		return nil, errors.Errorf("No method name for method %v", method)
+		return nil, xerrors.Errorf("No method name for method %v", method)
 	}
 	methodId := methods[method]
 	msg := &types.Message{

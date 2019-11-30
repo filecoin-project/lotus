@@ -3,14 +3,15 @@ package chain
 import (
 	"bytes"
 	"context"
+	"crypto/sha256"
 	"errors"
 	"fmt"
 	"sync"
 	"time"
 
 	"github.com/Gurpartap/async"
+	bls "github.com/filecoin-project/filecoin-ffi"
 	amt "github.com/filecoin-project/go-amt-ipld"
-	"github.com/filecoin-project/go-bls-sigs"
 	"github.com/hashicorp/go-multierror"
 	"github.com/ipfs/go-cid"
 	dstore "github.com/ipfs/go-datastore"
@@ -28,10 +29,12 @@ import (
 	"github.com/filecoin-project/lotus/chain/actors"
 	"github.com/filecoin-project/lotus/chain/address"
 	"github.com/filecoin-project/lotus/chain/blocksync"
+	"github.com/filecoin-project/lotus/chain/gen"
 	"github.com/filecoin-project/lotus/chain/state"
 	"github.com/filecoin-project/lotus/chain/stmgr"
 	"github.com/filecoin-project/lotus/chain/store"
 	"github.com/filecoin-project/lotus/chain/types"
+	"github.com/filecoin-project/lotus/lib/sectorbuilder"
 )
 
 var log = logging.Logger("chain")
@@ -506,33 +509,8 @@ func (syncer *Syncer) minerIsValid(ctx context.Context, maddr address.Address, b
 	return nil
 }
 
-func (syncer *Syncer) validateTickets(ctx context.Context, mworker address.Address, tickets []*types.Ticket, base *types.TipSet) error {
-	ctx, span := trace.StartSpan(ctx, "validateTickets")
-	defer span.End()
-	span.AddAttributes(trace.Int64Attribute("tickets", int64(len(tickets))))
-
-	if len(tickets) == 0 {
-		return xerrors.Errorf("block had no tickets")
-	}
-
-	cur := base.MinTicket()
-	for i := 0; i < len(tickets); i++ {
-		next := tickets[i]
-
-		sig := &types.Signature{
-			Type: types.KTBLS,
-			Data: next.VRFProof,
-		}
-
-		// TODO: ticket signatures should also include miner address
-		if err := sig.Verify(mworker, cur.VRFProof); err != nil {
-			return xerrors.Errorf("invalid ticket, VRFProof invalid: %w", err)
-		}
-
-		cur = next
-	}
-
-	return nil
+func (syncer *Syncer) validateTicket(ctx context.Context, maddr, mworker address.Address, ticket *types.Ticket, base *types.TipSet) error {
+	return gen.VerifyVRF(ctx, mworker, maddr, gen.DSepTicket, base.MinTicket().VRFProof, ticket.VRFProof)
 }
 
 var ErrTemporal = errors.New("temporal error")
@@ -541,6 +519,9 @@ var ErrTemporal = errors.New("temporal error")
 func (syncer *Syncer) ValidateBlock(ctx context.Context, b *types.FullBlock) error {
 	ctx, span := trace.StartSpan(ctx, "validateBlock")
 	defer span.End()
+	if build.InsecurePoStValidation {
+		log.Warn("insecure test validation is enabled, if you see this outside of a test, it is a severe bug!")
+	}
 
 	h := b.Header
 
@@ -550,23 +531,34 @@ func (syncer *Syncer) ValidateBlock(ctx context.Context, b *types.FullBlock) err
 	}
 
 	// fast checks first
+	if h.BlockSig == nil {
+		return xerrors.Errorf("block had nil signature")
+	}
+
 	if h.Timestamp > uint64(time.Now().Unix()+build.AllowableClockDrift) {
 		return xerrors.Errorf("block was from the future")
 	}
 
-	if h.Timestamp < baseTs.MinTimestamp()+uint64(build.BlockDelay*len(h.Tickets)) {
-		log.Warn("timestamp funtimes: ", h.Timestamp, baseTs.MinTimestamp(), len(h.Tickets))
-		return xerrors.Errorf("block was generated too soon (h.ts:%d < base.mints:%d + BLOCK_DELAY:%d * tkts.len:%d)", h.Timestamp, baseTs.MinTimestamp(), build.BlockDelay, len(h.Tickets))
+	if h.Timestamp < baseTs.MinTimestamp()+(build.BlockDelay*(h.Height-baseTs.Height())) {
+		log.Warn("timestamp funtimes: ", h.Timestamp, baseTs.MinTimestamp(), h.Height, baseTs.Height())
+		return xerrors.Errorf("block was generated too soon (h.ts:%d < base.mints:%d + BLOCK_DELAY:%d * deltaH:%d)", h.Timestamp, baseTs.MinTimestamp(), build.BlockDelay, h.Height-baseTs.Height())
 	}
 
 	winnerCheck := async.Err(func() error {
-		mpow, tpow, err := stmgr.GetPower(ctx, syncer.sm, baseTs, h.Miner)
+		_, tpow, err := stmgr.GetPower(ctx, syncer.sm, baseTs, h.Miner)
 		if err != nil {
 			return xerrors.Errorf("failed getting power: %w", err)
 		}
 
-		if !types.PowerCmp(h.ElectionProof, mpow, tpow) {
-			return xerrors.Errorf("miner created a block but was not a winner")
+		ssize, err := stmgr.GetMinerSectorSize(ctx, syncer.sm, baseTs, h.Miner)
+		if err != nil {
+			return xerrors.Errorf("failed to get sector size for block miner: %w", err)
+		}
+
+		for _, t := range h.EPostProof.Candidates {
+			if !types.IsTicketWinner(t.Partial, ssize, tpow, 1) {
+				return xerrors.Errorf("miner created a block but was not a winner")
+			}
 		}
 		return nil
 	})
@@ -623,20 +615,20 @@ func (syncer *Syncer) ValidateBlock(ctx context.Context, b *types.FullBlock) err
 	})
 
 	tktsCheck := async.Err(func() error {
-		if err := syncer.validateTickets(ctx, waddr, h.Tickets, baseTs); err != nil {
+		vrfBase := baseTs.MinTicket().VRFProof
+
+		err := gen.VerifyVRF(ctx, waddr, h.Miner, gen.DSepTicket, vrfBase, h.Ticket.VRFProof)
+
+		if err != nil {
+			log.Warnf("BAD TICKET: %d %x %x %s %s %x", h.Height, h.Ticket.VRFProof, vrfBase, waddr, h.Miner, baseTs.MinTicket().VRFProof)
 			return xerrors.Errorf("validating block tickets failed: %w", err)
 		}
 		return nil
 	})
 
 	eproofCheck := async.Err(func() error {
-		rand, err := syncer.sm.ChainStore().GetRandomness(ctx, baseTs.Cids(), h.Tickets, build.EcRandomnessLookback)
-		if err != nil {
-			return xerrors.Errorf("failed to get randomness for verifying election proof: %w", err)
-		}
-
-		if err := VerifyElectionProof(ctx, h.ElectionProof, rand, waddr); err != nil {
-			return xerrors.Errorf("checking eproof failed: %w", err)
+		if err := syncer.VerifyElectionPoStProof(ctx, h, baseTs, waddr); err != nil {
+			return xerrors.Errorf("invalid election post: %w", err)
 		}
 		return nil
 	})
@@ -658,6 +650,56 @@ func (syncer *Syncer) ValidateBlock(ctx context.Context, b *types.FullBlock) err
 	}
 
 	return merr
+}
+
+func (syncer *Syncer) VerifyElectionPoStProof(ctx context.Context, h *types.BlockHeader, baseTs *types.TipSet, waddr address.Address) error {
+	rand, err := syncer.sm.ChainStore().GetRandomness(ctx, baseTs.Cids(), int64(h.Height-build.EcRandomnessLookback))
+	if err != nil {
+		return xerrors.Errorf("failed to get randomness for verifying election proof: %w", err)
+	}
+
+	if err := VerifyElectionPoStVRF(ctx, h.EPostProof.PostRand, rand, waddr, h.Miner); err != nil {
+		return xerrors.Errorf("checking eproof failed: %w", err)
+	}
+
+	ssize, err := stmgr.GetMinerSectorSize(ctx, syncer.sm, baseTs, h.Miner)
+	if err != nil {
+		return xerrors.Errorf("failed to get sector size for miner: %w", err)
+	}
+
+	var winners []sectorbuilder.EPostCandidate
+	for _, t := range h.EPostProof.Candidates {
+		var partial [32]byte
+		copy(partial[:], t.Partial)
+		winners = append(winners, sectorbuilder.EPostCandidate{
+			PartialTicket:        partial,
+			SectorID:             t.SectorID,
+			SectorChallengeIndex: t.ChallengeIndex,
+		})
+	}
+
+	sectorInfo, err := stmgr.GetSectorsForElectionPost(ctx, syncer.sm, baseTs, h.Miner)
+	if err != nil {
+		return xerrors.Errorf("getting election post sector set: %w", err)
+	}
+
+	if build.InsecurePoStValidation {
+		if string(h.EPostProof.Proof) == "valid proof" {
+			return nil
+		}
+		return xerrors.Errorf("[TESTING] election post was invalid")
+	}
+	hvrf := sha256.Sum256(h.EPostProof.PostRand)
+	ok, err := sectorbuilder.VerifyElectionPost(ctx, ssize, *sectorInfo, hvrf[:], h.EPostProof.Proof, winners, h.Miner)
+	if err != nil {
+		return xerrors.Errorf("failed to verify election post: %w", err)
+	}
+
+	if !ok {
+		return xerrors.Errorf("election post was invalid")
+	}
+
+	return nil
 }
 
 func (syncer *Syncer) checkBlockMessages(ctx context.Context, b *types.FullBlock, baseTs *types.TipSet) error {
@@ -1103,14 +1145,9 @@ func (syncer *Syncer) collectChain(ctx context.Context, ts *types.TipSet) error 
 	return nil
 }
 
-func VerifyElectionProof(ctx context.Context, eproof []byte, rand []byte, worker address.Address) error {
-	sig := types.Signature{
-		Data: eproof,
-		Type: types.KTBLS,
-	}
-
-	if err := sig.Verify(worker, rand); err != nil {
-		return xerrors.Errorf("failed to verify election proof signature: %w", err)
+func VerifyElectionPoStVRF(ctx context.Context, evrf []byte, rand []byte, worker, miner address.Address) error {
+	if err := gen.VerifyVRF(ctx, worker, miner, gen.DSepElectionPost, rand, evrf); err != nil {
+		return xerrors.Errorf("failed to verify post_randomness vrf: %w", err)
 	}
 
 	return nil

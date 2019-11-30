@@ -1,8 +1,9 @@
 package padreader
 
 import (
-	"gotest.tools/assert"
 	"testing"
+
+	"gotest.tools/assert"
 )
 
 func TestComputePaddedSize(t *testing.T) {

@@ -24,6 +24,8 @@ import (
 	"github.com/filecoin-project/lotus/storage/sectorblocks"
 )
 
+var ProviderDsPrefix = "/deals/provider"
+
 type MinerDeal struct {
 	Client      peer.ID
 	Proposal    actors.StorageDealProposal
@@ -110,7 +112,7 @@ func NewProvider(ds dtypes.MetadataDS, sminer *storage.Miner, secb *sectorblocks
 
 		actor: minerAddress,
 
-		deals: statestore.New(namespace.Wrap(ds, datastore.NewKey("/deals/client"))),
+		deals: statestore.New(namespace.Wrap(ds, datastore.NewKey(ProviderDsPrefix))),
 		ds:    ds,
 	}
 

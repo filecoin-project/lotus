@@ -2,6 +2,7 @@ package types
 
 import (
 	"bytes"
+	"fmt"
 	"reflect"
 	"testing"
 
@@ -23,12 +24,13 @@ func testBlockHeader(t testing.TB) *BlockHeader {
 	}
 
 	return &BlockHeader{
-		Miner:         addr,
-		ElectionProof: []byte("cats won the election"),
-		Tickets: []*Ticket{
-			&Ticket{
-				VRFProof: []byte("vrf proof0000000vrf proof0000000"),
-			},
+		Miner: addr,
+		EPostProof: EPostProof{
+			Proof:    []byte("pruuf"),
+			PostRand: []byte("random"),
+		},
+		Ticket: &Ticket{
+			VRFProof: []byte("vrf proof0000000vrf proof0000000"),
 		},
 		Parents:               []cid.Cid{c, c},
 		ParentMessageReceipts: c,
@@ -37,7 +39,7 @@ func testBlockHeader(t testing.TB) *BlockHeader {
 		Messages:              c,
 		Height:                85919298723,
 		ParentStateRoot:       c,
-		BlockSig:              Signature{Type: KTBLS, Data: []byte("boo! im a signature")},
+		BlockSig:              &Signature{Type: KTBLS, Data: []byte("boo! im a signature")},
 	}
 }
 
@@ -55,6 +57,8 @@ func TestBlockHeaderSerialization(t *testing.T) {
 	}
 
 	if !reflect.DeepEqual(&out, bh) {
+		fmt.Printf("%#v\n", &out)
+		fmt.Printf("%#v\n", bh)
 		t.Fatal("not equal")
 	}
 }

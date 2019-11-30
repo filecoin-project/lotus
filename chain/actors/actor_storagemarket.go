@@ -3,16 +3,17 @@ package actors
 import (
 	"bytes"
 	"context"
+	"golang.org/x/xerrors"
 
 	"github.com/filecoin-project/go-amt-ipld"
 	"github.com/ipfs/go-cid"
 	"github.com/ipfs/go-hamt-ipld"
-	"golang.org/x/xerrors"
 
 	"github.com/filecoin-project/lotus/build"
 	"github.com/filecoin-project/lotus/chain/actors/aerrors"
 	"github.com/filecoin-project/lotus/chain/address"
 	"github.com/filecoin-project/lotus/chain/types"
+	"github.com/filecoin-project/lotus/lib/cborutil"
 	"github.com/filecoin-project/lotus/lib/sectorbuilder"
 )
 
@@ -108,6 +109,15 @@ func (sdp *StorageDealProposal) Sign(ctx context.Context, sign SignFunc) error {
 	}
 	sdp.ProposerSignature = sig
 	return nil
+}
+
+func (sdp *StorageDealProposal) Cid() (cid.Cid, error) {
+	nd, err := cborutil.AsIpld(sdp)
+	if err != nil {
+		return cid.Undef, err
+	}
+
+	return nd.Cid(), nil
 }
 
 func (sdp *StorageDealProposal) Verify() error {
@@ -538,9 +548,7 @@ func (sma StorageMarketActor) ProcessStorageDealsPayment(act *types.Actor, vmctx
 			return nil, nil
 		}
 
-		// todo: check math (written on a plane, also tired)
-		// TODO: division is hard, this more than likely has some off-by-one issue
-		toPay := types.BigMul(dealInfo.Deal.Proposal.StoragePricePerEpoch, types.NewInt(build.ProvingPeriodDuration))
+		toPay := types.BigMul(dealInfo.Deal.Proposal.StoragePricePerEpoch, types.NewInt(build.SlashablePowerDelay))
 
 		b, bnd, aerr := GetMarketBalances(vmctx.Context(), vmctx.Ipld(), self.Balances, dealInfo.Deal.Proposal.Client, providerWorker)
 		if aerr != nil {

@@ -181,7 +181,7 @@ class MinerState extends React.Component {
       <div>Worker: <Address addr={this.state.worker} client={this.props.client} mountWindow={this.props.mountWindow}/></div>
       <div>Sector Size: <b>{this.state.sectorSize/1024}</b> KiB</div>
       <div>Power: <b>{state.Power}</b> (<b>{state.Power/this.state.networkPower*100}</b>%)</div>
-      <div>Proving Period End: <b>{state.ProvingPeriodEnd}</b></div>
+      <div>Election Period Start: <b>{state.ElectionPeriodStart}</b></div>
       <div>Slashed: <b>{state.SlashedAt === 0 ? "NO" : state.SlashedAt}</b></div>
       <div>
         <div>----</div>

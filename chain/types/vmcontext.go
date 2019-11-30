@@ -3,7 +3,7 @@ package types
 import (
 	"context"
 
-	amt "github.com/filecoin-project/go-amt-ipld"
+	"github.com/filecoin-project/go-amt-ipld"
 	"github.com/filecoin-project/lotus/chain/actors/aerrors"
 	"github.com/filecoin-project/lotus/chain/address"
 	cid "github.com/ipfs/go-cid"
@@ -48,8 +48,8 @@ type storageWrapper struct {
 	s Storage
 }
 
-func (sw *storageWrapper) Put(i interface{}) (cid.Cid, error) {
-	c, err := sw.s.Put(i.(cbg.CBORMarshaler))
+func (sw *storageWrapper) Put(i cbg.CBORMarshaler) (cid.Cid, error) {
+	c, err := sw.s.Put(i)
 	if err != nil {
 		return cid.Undef, err
 	}
@@ -57,8 +57,8 @@ func (sw *storageWrapper) Put(i interface{}) (cid.Cid, error) {
 	return c, nil
 }
 
-func (sw *storageWrapper) Get(c cid.Cid, out interface{}) error {
-	if err := sw.s.Get(c, out.(cbg.CBORUnmarshaler)); err != nil {
+func (sw *storageWrapper) Get(c cid.Cid, out cbg.CBORUnmarshaler) error {
+	if err := sw.s.Get(c, out); err != nil {
 		return err
 	}
 

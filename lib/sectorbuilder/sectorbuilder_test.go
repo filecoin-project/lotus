@@ -2,6 +2,7 @@ package sectorbuilder_test
 
 import (
 	"context"
+	"fmt"
 	"io"
 	"io/ioutil"
 	"math/rand"
@@ -15,6 +16,7 @@ import (
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 
+	ffi "github.com/filecoin-project/filecoin-ffi"
 	"github.com/filecoin-project/lotus/build"
 	"github.com/filecoin-project/lotus/lib/sectorbuilder"
 )
@@ -59,7 +61,7 @@ func (s *seal) commit(t *testing.T, sb *sectorbuilder.SectorBuilder, done func()
 		TicketBytes: [32]byte{0, 9, 8, 7, 6, 5, 4, 3, 2, 1, 0, 9, 8, 7, 6, 45, 3, 2, 1, 0, 9, 8, 7, 6, 5, 4, 3, 2, 1, 0, 9},
 	}
 
-	proof, err := sb.SealCommit(s.sid, s.ticket, seed, []sectorbuilder.PublicPieceInfo{s.ppi}, []string{"foo"}, s.pco)
+	proof, err := sb.SealCommit(s.sid, s.ticket, seed, []sectorbuilder.PublicPieceInfo{s.ppi}, s.pco)
 	if err != nil {
 		t.Fatalf("%+v", err)
 	}
@@ -76,26 +78,44 @@ func (s *seal) commit(t *testing.T, sb *sectorbuilder.SectorBuilder, done func()
 	done()
 }
 
-func (s *seal) post(t *testing.T, sb *sectorbuilder.SectorBuilder) {
+func post(t *testing.T, sb *sectorbuilder.SectorBuilder, seals ...seal) time.Time {
 	cSeed := [32]byte{0, 9, 2, 7, 6, 5, 4, 3, 2, 1, 0, 9, 8, 7, 6, 45, 3, 2, 1, 0, 9, 8, 7, 6, 5, 4, 3, 2, 1, 0, 9}
 
-	ssi := sectorbuilder.NewSortedSectorInfo([]sectorbuilder.SectorInfo{{
-		SectorID: s.sid,
-		CommR:    s.pco.CommR,
-	}})
+	ppi := make([]ffi.PublicSectorInfo, len(seals))
+	for i, s := range seals {
+		ppi[i] = ffi.PublicSectorInfo{
+			SectorID: s.sid,
+			CommR:    s.pco.CommR,
+		}
+	}
 
-	postProof, err := sb.GeneratePoSt(ssi, cSeed, []uint64{})
+	ssi := sectorbuilder.NewSortedPublicSectorInfo(ppi)
+
+	candndates, err := sb.GenerateEPostCandidates(ssi, cSeed, []uint64{})
 	if err != nil {
 		t.Fatalf("%+v", err)
 	}
 
-	ok, err := sectorbuilder.VerifyPost(context.TODO(), sb.SectorSize(), ssi, cSeed, postProof, []uint64{})
+	genCandidates := time.Now()
+
+	if len(candndates) != 1 {
+		t.Fatal("expected 1 candidate")
+	}
+
+	postProof, err := sb.ComputeElectionPoSt(ssi, cSeed[:], candndates)
+	if err != nil {
+		t.Fatalf("%+v", err)
+	}
+
+	ok, err := sectorbuilder.VerifyElectionPost(context.TODO(), sb.SectorSize(), ssi, cSeed[:], postProof, candndates, sb.Miner)
 	if err != nil {
 		t.Fatalf("%+v", err)
 	}
 	if !ok {
 		t.Fatal("bad post")
 	}
+
+	return genCandidates
 }
 
 func TestSealAndVerify(t *testing.T) {
@@ -123,7 +143,10 @@ func TestSealAndVerify(t *testing.T) {
 		t.Fatalf("%+v", err)
 	}
 	cleanup := func() {
-		sb.Destroy()
+		if t.Failed() {
+			fmt.Printf("not removing %s\n", dir)
+			return
+		}
 		if err := os.RemoveAll(dir); err != nil {
 			t.Error(err)
 		}
@@ -137,20 +160,95 @@ func TestSealAndVerify(t *testing.T) {
 
 	s := seal{sid: si}
 
+	start := time.Now()
+
 	s.precommit(t, sb, 1, func() {})
+
+	precommit := time.Now()
 
 	s.commit(t, sb, func() {})
 
-	s.post(t, sb)
+	commit := time.Now()
+
+	genCandidiates := post(t, sb, s)
+
+	epost := time.Now()
 
 	// Restart sectorbuilder, re-run post
-	sb.Destroy()
 	sb, err = sectorbuilder.TempSectorbuilderDir(dir, sectorSize, ds)
 	if err != nil {
 		t.Fatalf("%+v", err)
 	}
 
-	s.post(t, sb)
+	post(t, sb, s)
+
+	fmt.Printf("PreCommit: %s\n", precommit.Sub(start).String())
+	fmt.Printf("Commit: %s\n", commit.Sub(precommit).String())
+	fmt.Printf("GenCandidates: %s\n", genCandidiates.Sub(commit).String())
+	fmt.Printf("EPoSt: %s\n", epost.Sub(genCandidiates).String())
+}
+
+func TestSealPoStNoCommit(t *testing.T) {
+	if runtime.NumCPU() < 10 && os.Getenv("CI") == "" { // don't bother on slow hardware
+		t.Skip("this is slow")
+	}
+	os.Setenv("BELLMAN_NO_GPU", "1")
+	os.Setenv("RUST_LOG", "info")
+
+	build.SectorSizes = []uint64{sectorSize}
+
+	if err := build.GetParams(true, true); err != nil {
+		t.Fatalf("%+v", err)
+	}
+
+	ds := datastore.NewMapDatastore()
+
+	dir, err := ioutil.TempDir("", "sbtest")
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	sb, err := sectorbuilder.TempSectorbuilderDir(dir, sectorSize, ds)
+	if err != nil {
+		t.Fatalf("%+v", err)
+	}
+	cleanup := func() {
+		if t.Failed() {
+			fmt.Printf("not removing %s\n", dir)
+			return
+		}
+		if err := os.RemoveAll(dir); err != nil {
+			t.Error(err)
+		}
+	}
+	defer cleanup()
+
+	si, err := sb.AcquireSectorId()
+	if err != nil {
+		t.Fatalf("%+v", err)
+	}
+
+	s := seal{sid: si}
+
+	start := time.Now()
+
+	s.precommit(t, sb, 1, func() {})
+
+	precommit := time.Now()
+
+	// Restart sectorbuilder, re-run post
+	sb, err = sectorbuilder.TempSectorbuilderDir(dir, sectorSize, ds)
+	if err != nil {
+		t.Fatalf("%+v", err)
+	}
+
+	genCandidiates := post(t, sb, s)
+
+	epost := time.Now()
+
+	fmt.Printf("PreCommit: %s\n", precommit.Sub(start).String())
+	fmt.Printf("GenCandidates: %s\n", genCandidiates.Sub(precommit).String())
+	fmt.Printf("EPoSt: %s\n", epost.Sub(genCandidiates).String())
 }
 
 func TestSealAndVerify2(t *testing.T) {
@@ -178,7 +276,6 @@ func TestSealAndVerify2(t *testing.T) {
 		t.Fatalf("%+v", err)
 	}
 	cleanup := func() {
-		sb.Destroy()
 		if err := os.RemoveAll(dir); err != nil {
 			t.Error(err)
 		}
@@ -210,6 +307,8 @@ func TestSealAndVerify2(t *testing.T) {
 	go s1.commit(t, sb, wg.Done)
 	go s2.commit(t, sb, wg.Done)
 	wg.Wait()
+
+	post(t, sb, s1, s2)
 }
 
 func TestAcquireID(t *testing.T) {
@@ -235,8 +334,6 @@ func TestAcquireID(t *testing.T) {
 	assertAcquire(2)
 	assertAcquire(3)
 
-	sb.Destroy()
-
 	sb, err = sectorbuilder.TempSectorbuilderDir(dir, sectorSize, ds)
 	if err != nil {
 		t.Fatalf("%+v", err)
@@ -246,7 +343,6 @@ func TestAcquireID(t *testing.T) {
 	assertAcquire(5)
 	assertAcquire(6)
 
-	sb.Destroy()
 	if err := os.RemoveAll(dir); err != nil {
 		t.Error(err)
 	}

@@ -289,8 +289,8 @@ func (spa StoragePowerActor) UpdateStorage(act *types.Actor, vmctx types.VMConte
 
 	self.TotalStorage = types.BigAdd(self.TotalStorage, params.Delta)
 
-	previousBucket := params.PreviousProvingPeriodEnd % build.ProvingPeriodDuration
-	nextBucket := params.NextProvingPeriodEnd % build.ProvingPeriodDuration
+	previousBucket := params.PreviousProvingPeriodEnd % build.SlashablePowerDelay
+	nextBucket := params.NextProvingPeriodEnd % build.SlashablePowerDelay
 
 	if previousBucket == nextBucket && params.PreviousProvingPeriodEnd != 0 {
 		nroot, err := vmctx.Storage().Put(&self)
@@ -601,7 +601,7 @@ func (spa StoragePowerActor) CheckProofSubmissions(act *types.Actor, vmctx types
 }
 
 func checkProofSubmissionsAtH(vmctx types.VMContext, self *StoragePowerState, height uint64) aerrors.ActorError {
-	bucketID := height % build.ProvingPeriodDuration
+	bucketID := height % build.SlashablePowerDelay
 
 	buckets, eerr := amt.LoadAMT(types.WrapStorage(vmctx.Storage()), self.ProvingBuckets)
 	if eerr != nil {

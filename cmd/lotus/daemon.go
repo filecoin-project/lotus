@@ -21,7 +21,8 @@ import (
 )
 
 const (
-	makeGenFlag = "lotus-make-random-genesis"
+	makeGenFlag          = "lotus-make-random-genesis"
+	preSealedSectorsFlag = "genesis-presealed-sectors"
 )
 
 // DaemonCmd is the `go-lotus daemon` command
@@ -39,6 +40,10 @@ var DaemonCmd = &cli.Command{
 			Hidden: true,
 		},
 		&cli.StringFlag{
+			Name:   preSealedSectorsFlag,
+			Hidden: true,
+		},
+		&cli.StringFlag{
 			Name:  "genesis",
 			Usage: "genesis file to use for first node run",
 		},
@@ -51,11 +56,11 @@ var DaemonCmd = &cli.Command{
 		ctx := context.Background()
 		r, err := repo.NewFS(cctx.String("repo"))
 		if err != nil {
-			return err
+			return xerrors.Errorf("opening fs repo: %w", err)
 		}
 
 		if err := r.Init(repo.FullNode); err != nil && err != repo.ErrRepoExists {
-			return err
+			return xerrors.Errorf("repo init error: %w", err)
 		}
 
 		if err := build.GetParams(false, false); err != nil {
@@ -67,9 +72,8 @@ var DaemonCmd = &cli.Command{
 		if cctx.String("genesis") != "" {
 			genBytes, err = ioutil.ReadFile(cctx.String("genesis"))
 			if err != nil {
-				return err
+				return xerrors.Errorf("reading genesis: %w", err)
 			}
-
 		}
 
 		genesis := node.Options()
@@ -77,7 +81,10 @@ var DaemonCmd = &cli.Command{
 			genesis = node.Override(new(modules.Genesis), modules.LoadGenesis(genBytes))
 		}
 		if cctx.String(makeGenFlag) != "" {
-			genesis = node.Override(new(modules.Genesis), testing.MakeGenesis(cctx.String(makeGenFlag)))
+			if cctx.String(preSealedSectorsFlag) == "" {
+				return xerrors.Errorf("must also pass file with miner preseal info to `--%s`", preSealedSectorsFlag)
+			}
+			genesis = node.Override(new(modules.Genesis), testing.MakeGenesis(cctx.String(makeGenFlag), cctx.String(preSealedSectorsFlag)))
 		}
 
 		var api api.FullNode
@@ -105,12 +112,12 @@ var DaemonCmd = &cli.Command{
 			),
 		)
 		if err != nil {
-			return err
+			return xerrors.Errorf("initializing node: %w", err)
 		}
 
 		endpoint, err := r.APIEndpoint()
 		if err != nil {
-			return err
+			return xerrors.Errorf("getting api endpoint: %w", err)
 		}
 
 		// TODO: properly parse api endpoint (or make it a URL)

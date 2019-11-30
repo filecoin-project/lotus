@@ -7,7 +7,7 @@ import (
 	"io"
 	"strconv"
 
-	"github.com/filecoin-project/go-bls-sigs"
+	bls "github.com/filecoin-project/filecoin-ffi"
 	"github.com/filecoin-project/go-leb128"
 	cbor "github.com/ipfs/go-ipld-cbor"
 	"github.com/minio/blake2b-simd"
@@ -388,4 +388,12 @@ func (a *Address) UnmarshalCBOR(br io.Reader) error {
 	*a = addr
 
 	return nil
+}
+
+func IDFromAddress(addr Address) (uint64, error) {
+	if addr.Protocol() != ID {
+		return 0, xerrors.Errorf("cannot get id from non id address")
+	}
+
+	return leb128.ToUInt64(addr.Payload()), nil
 }

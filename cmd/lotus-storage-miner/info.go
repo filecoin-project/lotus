@@ -63,7 +63,7 @@ var infoCmd = &cli.Command{
 		fmt.Printf("\tLocal: %d / %d (+%d reserved)\n", wstat.LocalTotal-wstat.LocalReserved-wstat.LocalFree, wstat.LocalTotal-wstat.LocalReserved, wstat.LocalReserved)
 		fmt.Printf("\tRemote: %d / %d\n", wstat.RemotesTotal-wstat.RemotesFree, wstat.RemotesTotal)
 
-		ppe, err := api.StateMinerProvingPeriodEnd(ctx, maddr, nil)
+		ppe, err := api.StateMinerElectionPeriodStart(ctx, maddr, nil)
 		if err != nil {
 			return err
 		}

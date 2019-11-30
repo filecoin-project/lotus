@@ -4,17 +4,11 @@ import (
 	"context"
 	"io"
 
-	sectorbuilder "github.com/filecoin-project/go-sectorbuilder"
+	sectorbuilder "github.com/filecoin-project/filecoin-ffi"
 	"go.opencensus.io/trace"
 
 	"github.com/filecoin-project/lotus/chain/address"
 )
-
-func (sb *SectorBuilder) GeneratePoSt(sectorInfo SortedSectorInfo, challengeSeed [CommLen]byte, faults []uint64) ([]byte, error) {
-	// Wait, this is a blocking method with no way of interrupting it?
-	// does it checkpoint itself?
-	return sectorbuilder.GeneratePoSt(sb.handle, sectorInfo, challengeSeed, faults)
-}
 
 func (sb *SectorBuilder) SectorSize() uint64 {
 	return sb.ssize
@@ -33,14 +27,37 @@ func VerifySeal(sectorSize uint64, commR, commD []byte, proverID address.Address
 	return sectorbuilder.VerifySeal(sectorSize, commRa, commDa, proverIDa, ticketa, seeda, sectorID, proof)
 }
 
-func NewSortedSectorInfo(sectors []SectorInfo) SortedSectorInfo {
-	return sectorbuilder.NewSortedSectorInfo(sectors...)
+func NewSortedPrivateSectorInfo(sectors []sectorbuilder.PrivateSectorInfo) SortedPrivateSectorInfo {
+	return sectorbuilder.NewSortedPrivateSectorInfo(sectors...)
 }
 
-func VerifyPost(ctx context.Context, sectorSize uint64, sectorInfo SortedSectorInfo, challengeSeed [CommLen]byte, proof []byte, faults []uint64) (bool, error) {
+func NewSortedPublicSectorInfo(sectors []sectorbuilder.PublicSectorInfo) SortedPublicSectorInfo {
+	return sectorbuilder.NewSortedPublicSectorInfo(sectors...)
+}
+
+func VerifyElectionPost(ctx context.Context, sectorSize uint64, sectorInfo SortedPublicSectorInfo, challengeSeed []byte, proof []byte, candidates []EPostCandidate, proverID address.Address) (bool, error) {
+	challengeCount := electionPostChallengeCount(uint64(len(sectorInfo.Values())))
+	return verifyPost(ctx, sectorSize, sectorInfo, challengeCount, challengeSeed, proof, candidates, proverID)
+}
+
+func VerifyFallbackPost(ctx context.Context, sectorSize uint64, sectorInfo SortedPublicSectorInfo, challengeSeed []byte, proof []byte, candidates []EPostCandidate, proverID address.Address) (bool, error) {
+	challengeCount := fallbackPostChallengeCount(uint64(len(sectorInfo.Values())))
+	return verifyPost(ctx, sectorSize, sectorInfo, challengeCount, challengeSeed, proof, candidates, proverID)
+}
+
+func verifyPost(ctx context.Context, sectorSize uint64, sectorInfo SortedPublicSectorInfo, challengeCount uint64, challengeSeed []byte, proof []byte, candidates []EPostCandidate, proverID address.Address) (bool, error) {
+	if challengeCount != uint64(len(candidates)) {
+		log.Warnf("verifyPost with wrong candidate count: expected %d, got %d", challengeCount, len(candidates))
+		return false, nil // user input, dont't error
+	}
+
+	var challengeSeeda [CommLen]byte
+	copy(challengeSeeda[:], challengeSeed)
+
 	_, span := trace.StartSpan(ctx, "VerifyPoSt")
 	defer span.End()
-	return sectorbuilder.VerifyPoSt(sectorSize, sectorInfo, challengeSeed, proof, faults)
+	prover := addressToProverID(proverID)
+	return sectorbuilder.VerifyPoSt(sectorSize, sectorInfo, challengeSeeda, challengeCount, proof, candidates, prover)
 }
 
 func GeneratePieceCommitment(piece io.Reader, pieceSize uint64) (commP [CommLen]byte, err error) {
@@ -57,6 +74,6 @@ func GeneratePieceCommitment(piece io.Reader, pieceSize uint64) (commP [CommLen]
 	return commP, werr()
 }
 
-func GenerateDataCommitment(ssize uint64, pieces []PublicPieceInfo) ([CommLen]byte, error) {
+func GenerateDataCommitment(ssize uint64, pieces []sectorbuilder.PublicPieceInfo) ([CommLen]byte, error) {
 	return sectorbuilder.GenerateDataCommitment(ssize, pieces)
 }

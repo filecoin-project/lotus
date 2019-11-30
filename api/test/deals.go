@@ -42,7 +42,7 @@ func TestDealFlow(t *testing.T, b APIBuilder) {
 		t.Fatal(err)
 	}
 
-	maddr, err := address.NewFromString("t0101")
+	maddr, err := address.NewFromString("t0102")
 	if err != nil {
 		t.Fatal(err)
 	}

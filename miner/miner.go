@@ -5,17 +5,15 @@ import (
 	"sync"
 	"time"
 
+	"github.com/filecoin-project/lotus/api"
 	"github.com/filecoin-project/lotus/build"
 	"github.com/filecoin-project/lotus/chain/actors"
 	"github.com/filecoin-project/lotus/chain/address"
 	"github.com/filecoin-project/lotus/chain/gen"
 	"github.com/filecoin-project/lotus/chain/types"
-	"github.com/filecoin-project/lotus/node/impl/full"
 
 	logging "github.com/ipfs/go-log"
-	"github.com/pkg/errors"
 	"go.opencensus.io/trace"
-	"go.uber.org/fx"
 	"golang.org/x/xerrors"
 )
 
@@ -23,19 +21,10 @@ var log = logging.Logger("miner")
 
 type waitFunc func(ctx context.Context) error
 
-type api struct {
-	fx.In
-
-	full.ChainAPI
-	full.SyncAPI
-	full.MpoolAPI
-	full.WalletAPI
-	full.StateAPI
-}
-
-func NewMiner(api api) *Miner {
+func NewMiner(api api.FullNode, epp gen.ElectionPoStProver) *Miner {
 	return &Miner{
 		api: api,
+		epp: epp,
 		waitFunc: func(ctx context.Context) error {
 			// Wait around for half the block time in case other parents come in
 			time.Sleep(build.BlockDelay * time.Second / 2)
@@ -45,7 +34,9 @@ func NewMiner(api api) *Miner {
 }
 
 type Miner struct {
-	api api
+	api api.FullNode
+
+	epp gen.ElectionPoStProver
 
 	lk        sync.Mutex
 	addresses []address.Address
@@ -161,8 +152,8 @@ eventLoop:
 			log.Errorf("failed to get best mining candidate: %s", err)
 			continue
 		}
-		if base.ts.Equals(lastBase.ts) && len(lastBase.tickets) == len(base.tickets) {
-			log.Errorf("BestMiningCandidate from the previous round: %s (tkts:%d)", lastBase.ts.Cids(), len(lastBase.tickets))
+		if base.ts.Equals(lastBase.ts) && lastBase.nullRounds == base.nullRounds {
+			log.Errorf("BestMiningCandidate from the previous round: %s (nulls:%d)", lastBase.ts.Cids(), lastBase.nullRounds)
 			time.Sleep(build.BlockDelay * time.Second)
 			continue
 		}
@@ -173,7 +164,7 @@ eventLoop:
 		for _, addr := range addrs {
 			b, err := m.mineOne(ctx, addr, base)
 			if err != nil {
-				log.Errorf("mining block failed: %s", err)
+				log.Errorf("mining block failed: %+v", err)
 				continue
 			}
 			if b != nil {
@@ -205,15 +196,15 @@ eventLoop:
 				}
 			}
 		} else {
-			nextRound := time.Unix(int64(base.ts.MinTimestamp()+uint64(build.BlockDelay*len(base.tickets))), 0)
+			nextRound := time.Unix(int64(base.ts.MinTimestamp()+uint64(build.BlockDelay*base.nullRounds)), 0)
 			time.Sleep(time.Until(nextRound))
 		}
 	}
 }
 
 type MiningBase struct {
-	ts      *types.TipSet
-	tickets []*types.Ticket
+	ts         *types.TipSet
+	nullRounds uint64
 }
 
 func (m *Miner) GetBestMiningCandidate(ctx context.Context) (*MiningBase, error) {
@@ -246,35 +237,54 @@ func (m *Miner) GetBestMiningCandidate(ctx context.Context) (*MiningBase, error)
 	}, nil
 }
 
-func (m *Miner) mineOne(ctx context.Context, addr address.Address, base *MiningBase) (*types.BlockMsg, error) {
-	log.Debugw("attempting to mine a block", "tipset", types.LogCids(base.ts.Cids()))
-	ticket, err := m.scratchTicket(ctx, addr, base)
+func (m *Miner) isSlashed(ctx context.Context, addr address.Address, ts *types.TipSet) (bool, error) {
+	power, err := m.api.StateMinerPower(ctx, addr, ts)
 	if err != nil {
-		return nil, errors.Wrap(err, "scratching ticket failed")
+		return false, err
 	}
 
-	win, proof, err := gen.IsRoundWinner(ctx, base.ts, append(base.tickets, ticket), addr, &m.api)
+	return power.MinerPower.Equals(types.NewInt(0)), nil
+}
+
+func (m *Miner) mineOne(ctx context.Context, addr address.Address, base *MiningBase) (*types.BlockMsg, error) {
+	log.Debugw("attempting to mine a block", "tipset", types.LogCids(base.ts.Cids()))
+	start := time.Now()
+
+	slashed, err := m.isSlashed(ctx, addr, base.ts)
 	if err != nil {
-		return nil, errors.Wrap(err, "failed to check if we win next round")
+		return nil, xerrors.Errorf("checking if miner is slashed: %w", err)
+	}
+	if slashed {
+		log.Warnf("Slashed at epoch %d, not attempting to mine a block", base.ts.Height()+base.nullRounds)
+		base.nullRounds++
+		return nil, nil
+	}
+
+	ticket, err := m.computeTicket(ctx, addr, base)
+	if err != nil {
+		return nil, xerrors.Errorf("scratching ticket failed: %w", err)
+	}
+
+	win, proof, err := gen.IsRoundWinner(ctx, base.ts, int64(base.ts.Height()+base.nullRounds+1), addr, m.epp, m.api)
+	if err != nil {
+		return nil, xerrors.Errorf("failed to check if we win next round: %w", err)
 	}
 
 	if !win {
-		m.submitNullTicket(base, ticket)
+		base.nullRounds++
 		return nil, nil
 	}
 
 	b, err := m.createBlock(base, addr, ticket, proof)
 	if err != nil {
-		return nil, errors.Wrap(err, "failed to create block")
+		return nil, xerrors.Errorf("failed to create block: %w", err)
 	}
 	log.Infow("mined new block", "cid", b.Cid())
 
-	return b, nil
-}
+	dur := time.Now().Sub(start)
+	log.Infof("Creating block took %s", dur)
 
-func (m *Miner) submitNullTicket(base *MiningBase, ticket *types.Ticket) {
-	base.tickets = append(base.tickets, ticket)
-	m.lastWork = base
+	return b, nil
 }
 
 func (m *Miner) computeVRF(ctx context.Context, addr address.Address, input []byte) ([]byte, error) {
@@ -283,7 +293,7 @@ func (m *Miner) computeVRF(ctx context.Context, addr address.Address, input []by
 		return nil, err
 	}
 
-	return gen.ComputeVRF(ctx, m.api.WalletSign, w, input)
+	return gen.ComputeVRF(ctx, m.api.WalletSign, w, addr, gen.DSepTicket, input)
 }
 
 func (m *Miner) getMinerWorker(ctx context.Context, addr address.Address, ts *types.TipSet) (address.Address, error) {
@@ -308,15 +318,11 @@ func (m *Miner) getMinerWorker(ctx context.Context, addr address.Address, ts *ty
 	return w, nil
 }
 
-func (m *Miner) scratchTicket(ctx context.Context, addr address.Address, base *MiningBase) (*types.Ticket, error) {
-	var lastTicket *types.Ticket
-	if len(base.tickets) > 0 {
-		lastTicket = base.tickets[len(base.tickets)-1]
-	} else {
-		lastTicket = base.ts.MinTicket()
-	}
+func (m *Miner) computeTicket(ctx context.Context, addr address.Address, base *MiningBase) (*types.Ticket, error) {
 
-	vrfOut, err := m.computeVRF(ctx, addr, lastTicket.VRFProof)
+	vrfBase := base.ts.MinTicket().VRFProof
+
+	vrfOut, err := m.computeVRF(ctx, addr, vrfBase)
 	if err != nil {
 		return nil, err
 	}
@@ -326,11 +332,11 @@ func (m *Miner) scratchTicket(ctx context.Context, addr address.Address, base *M
 	}, nil
 }
 
-func (m *Miner) createBlock(base *MiningBase, addr address.Address, ticket *types.Ticket, proof types.ElectionProof) (*types.BlockMsg, error) {
+func (m *Miner) createBlock(base *MiningBase, addr address.Address, ticket *types.Ticket, proof *types.EPostProof) (*types.BlockMsg, error) {
 
 	pending, err := m.api.MpoolPending(context.TODO(), base.ts)
 	if err != nil {
-		return nil, errors.Wrapf(err, "failed to get pending messages")
+		return nil, xerrors.Errorf("failed to get pending messages: %w", err)
 	}
 
 	msgs, err := selectMessages(context.TODO(), m.api.StateGetActor, base, pending)
@@ -338,10 +344,12 @@ func (m *Miner) createBlock(base *MiningBase, addr address.Address, ticket *type
 		return nil, xerrors.Errorf("message filtering failed: %w", err)
 	}
 
-	uts := base.ts.MinTimestamp() + uint64(build.BlockDelay*(len(base.tickets)+1))
+	uts := base.ts.MinTimestamp() + uint64(build.BlockDelay*(base.nullRounds+1))
+
+	nheight := base.ts.Height() + base.nullRounds + 1
 
 	// why even return this? that api call could just submit it for us
-	return m.api.MinerCreateBlock(context.TODO(), addr, base.ts, append(base.tickets, ticket), proof, msgs, uint64(uts))
+	return m.api.MinerCreateBlock(context.TODO(), addr, base.ts, ticket, proof, msgs, nheight, uint64(uts))
 }
 
 type actorLookup func(context.Context, address.Address, *types.TipSet) (*types.Actor, error)
@@ -378,7 +386,7 @@ func selectMessages(ctx context.Context, al actorLookup, base *MiningBase, msgs 
 		}
 
 		if msg.Message.Nonce < inclNonces[from] {
-			log.Warnf("message in mempool has already used nonce (%d < %d) %s", msg.Message.Nonce, inclNonces[from], msg.Cid())
+			log.Warnf("message in mempool has already used nonce (%d < %d), from %s, to %s, %s", msg.Message.Nonce, inclNonces[from], msg.Message.From, msg.Message.To, msg.Cid())
 			continue
 		}
 

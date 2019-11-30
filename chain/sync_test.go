@@ -23,6 +23,10 @@ import (
 	"github.com/filecoin-project/lotus/node/repo"
 )
 
+func init() {
+	build.InsecurePoStValidation = true
+}
+
 const source = 0
 
 func (tu *syncTestUtil) repoWithChain(t testing.TB, h int) (repo.Repo, []byte, []*store.FullTipSet) {
@@ -342,7 +346,7 @@ func (tu *syncTestUtil) waitUntilSyncTarget(to int, target *types.TipSet) {
 }
 
 func TestSyncSimple(t *testing.T) {
-	H := 50
+	H := 2
 	tu := prepSyncTest(t, H)
 
 	client := tu.addClientNode()
@@ -390,7 +394,7 @@ func TestSyncBadTimestamp(t *testing.T) {
 	tu.waitUntilSync(0, client)
 
 	base := tu.g.CurTipset
-	tu.g.Timestamper = func(pts *types.TipSet, tl int) uint64 {
+	tu.g.Timestamper = func(pts *types.TipSet, tl uint64) uint64 {
 		return pts.MinTimestamp() + (build.BlockDelay / 2)
 	}
 

@@ -2,10 +2,12 @@ package miner
 
 import (
 	"context"
+
+	"github.com/filecoin-project/lotus/api"
 )
 
-func NewTestMiner(nextCh <-chan struct{}) func(api api) *Miner {
-	return func(api api) *Miner {
+func NewTestMiner(nextCh <-chan struct{}) func(api api.FullNode) *Miner {
+	return func(api api.FullNode) *Miner {
 		return &Miner{
 			api:      api,
 			waitFunc: chanWaiter(nextCh),

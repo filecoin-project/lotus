@@ -165,8 +165,7 @@ func (t *Ticket) Less(o *Ticket) bool {
 }
 
 func (ts *TipSet) MinTicket() *Ticket {
-	b := ts.MinTicketBlock()
-	return b.Tickets[len(b.Tickets)-1]
+	return ts.MinTicketBlock().Ticket
 }
 
 func (ts *TipSet) MinTimestamp() uint64 {

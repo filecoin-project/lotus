@@ -156,6 +156,8 @@ func doFetch(out string, info paramFile) error {
 	if err != nil {
 		return err
 	}
+	log.Infof("GET %s", url)
+
 	req := http.Request{
 		Method: "GET",
 		URL:    url,

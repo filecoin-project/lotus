@@ -35,6 +35,7 @@ var runCmd = &cli.Command{
 		&cli.BoolFlag{
 			Name:  "enable-gpu-proving",
 			Usage: "Enable use of GPU for mining operations",
+			Value: true,
 		},
 	},
 	Action: func(cctx *cli.Context) error {

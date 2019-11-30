@@ -13,6 +13,7 @@ const UnixfsChunkSize uint64 = 1 << 20
 const UnixfsLinksPerLevel = 1024
 
 var SectorSizes = []uint64{
+	1 << 10,
 	16 << 20,
 	256 << 20,
 	1 << 30,
@@ -30,25 +31,22 @@ func SupportedSectorSize(ssize uint64) bool {
 // /////
 // Payments
 
-// Blocks
+// Epochs
 const PaymentChannelClosingDelay = 6 * 60 * 2 // six hours
 
 // /////
 // Consensus / Network
 
 // Seconds
-const BlockDelay = 2
-
-// Seconds
 const AllowableClockDrift = BlockDelay * 2
 
-// Blocks
+// Epochs
 const ForkLengthThreshold = Finality
 
 // Blocks (e)
 const BlocksPerEpoch = 5
 
-// Blocks
+// Epochs
 const Finality = 500
 
 // constants for Weight calculation
@@ -59,38 +57,26 @@ const WRatioDen = 2
 // /////
 // Proofs
 
-// Blocks
-const ProvingPeriodDuration uint64 = 30
-
-// PoStChallangeTime sets the window in which post computation should happen
-// Blocks
-const PoStChallangeTime = ProvingPeriodDuration - 6
-
-// PoStRandomnessLookback is additional randomness lookback for PoSt computation
-// To compute randomness epoch in a given proving period:
-// RandH = PPE - PoStChallangeTime - PoStRandomnessLookback
-//
-// Blocks
-const PoStRandomnessLookback = 1
-
-// Blocks
+// Epochs
 const SealRandomnessLookback = Finality
 
-// Blocks
+// Epochs
 const SealRandomnessLookbackLimit = SealRandomnessLookback + 2000
+
+// 1 / n
+const SectorChallengeRatioDiv = 25
+
+const MaxFallbackPostChallengeCount = 10
 
 // /////
 // Mining
 
-// Blocks
+// Epochs
 const EcRandomnessLookback = 300
 
 const PowerCollateralProportion = 5
 const PerCapitaCollateralProportion = 1
 const CollateralPrecision = 1000
-
-// Blocks
-const InteractivePoRepDelay = 10
 
 // /////
 // Devnet settings
@@ -105,8 +91,8 @@ var InitialReward *big.Int
 const FilecoinPrecision = 1_000_000_000_000_000_000
 
 // six years
-// Blocks
-const HalvingPeriodBlocks = 6 * 365 * 24 * 60 * 2
+// Epochs
+const HalvingPeriodEpochs = 6 * 365 * 24 * 60 * 2
 
 // TODO: Move other important consts here
 
@@ -124,6 +110,6 @@ func init() {
 // Sync
 const BadBlockCacheSize = 1 << 15
 
-// assuming 4000 blocks per round, this lets us not lose any messages across a
+// assuming 4000 messages per round, this lets us not lose any messages across a
 // 10 block reorg.
 const BlsSignatureCacheSize = 40000

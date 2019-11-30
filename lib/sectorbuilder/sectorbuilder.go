@@ -7,13 +7,13 @@ import (
 	"strconv"
 	"sync"
 	"sync/atomic"
-	"unsafe"
 
-	sectorbuilder "github.com/filecoin-project/go-sectorbuilder"
+	sectorbuilder "github.com/filecoin-project/filecoin-ffi"
 	"github.com/ipfs/go-datastore"
 	logging "github.com/ipfs/go-log"
 	"golang.org/x/xerrors"
 
+	"github.com/filecoin-project/lotus/build"
 	"github.com/filecoin-project/lotus/chain/address"
 	"github.com/filecoin-project/lotus/node/modules/dtypes"
 )
@@ -21,17 +21,12 @@ import (
 const PoStReservedWorkers = 1
 const PoRepProofPartitions = 2
 
-var lastSectorIdKey = datastore.NewKey("/sectorbuilder/last")
+var LastSectorIdKey = datastore.NewKey("/sectorbuilder/last")
 
 var log = logging.Logger("sectorbuilder")
 
-type SectorSealingStatus = sectorbuilder.SectorSealingStatus
-
-type StagedSectorMetadata = sectorbuilder.StagedSectorMetadata
-
-type SortedSectorInfo = sectorbuilder.SortedSectorInfo
-
-type SectorInfo = sectorbuilder.SectorInfo
+type SortedPublicSectorInfo = sectorbuilder.SortedPublicSectorInfo
+type SortedPrivateSectorInfo = sectorbuilder.SortedPrivateSectorInfo
 
 type SealTicket = sectorbuilder.SealTicket
 
@@ -45,14 +40,16 @@ type PublicPieceInfo = sectorbuilder.PublicPieceInfo
 
 type RawSealPreCommitOutput sectorbuilder.RawSealPreCommitOutput
 
+type EPostCandidate = sectorbuilder.Candidate
+
 const CommLen = sectorbuilder.CommitmentBytesLen
 
 type SectorBuilder struct {
-	handle unsafe.Pointer
-	ds     dtypes.MetadataDS
-	idLk   sync.Mutex
+	ds   dtypes.MetadataDS
+	idLk sync.Mutex
 
-	ssize uint64
+	ssize  uint64
+	lastID uint64
 
 	Miner address.Address
 
@@ -130,8 +127,6 @@ func New(cfg *Config, ds dtypes.MetadataDS) (*SectorBuilder, error) {
 		return nil, xerrors.Errorf("minimum worker threads is %d, specified %d", PoStReservedWorkers, cfg.WorkerThreads)
 	}
 
-	proverId := addressToProverID(cfg.Miner)
-
 	for _, dir := range []string{cfg.StagedDir, cfg.SealedDir, cfg.CacheDir, cfg.MetadataDir} {
 		if err := os.Mkdir(dir, 0755); err != nil {
 			if os.IsExist(err) {
@@ -142,7 +137,7 @@ func New(cfg *Config, ds dtypes.MetadataDS) (*SectorBuilder, error) {
 	}
 
 	var lastUsedID uint64
-	b, err := ds.Get(lastSectorIdKey)
+	b, err := ds.Get(LastSectorIdKey)
 	switch err {
 	case nil:
 		i, err := strconv.ParseInt(string(b), 10, 64)
@@ -155,11 +150,6 @@ func New(cfg *Config, ds dtypes.MetadataDS) (*SectorBuilder, error) {
 		return nil, err
 	}
 
-	sbp, err := sectorbuilder.InitSectorBuilder(cfg.SectorSize, PoRepProofPartitions, lastUsedID, cfg.MetadataDir, proverId, cfg.SealedDir, cfg.StagedDir, cfg.CacheDir, 16, cfg.WorkerThreads)
-	if err != nil {
-		return nil, err
-	}
-
 	rlimit := cfg.WorkerThreads - PoStReservedWorkers
 
 	sealLocal := rlimit > 0
@@ -169,10 +159,10 @@ func New(cfg *Config, ds dtypes.MetadataDS) (*SectorBuilder, error) {
 	}
 
 	sb := &SectorBuilder{
-		handle: sbp,
-		ds:     ds,
+		ds: ds,
 
-		ssize: cfg.SectorSize,
+		ssize:  cfg.SectorSize,
+		lastID: lastUsedID,
 
 		stagedDir: cfg.StagedDir,
 		sealedDir: cfg.SealedDir,
@@ -205,9 +195,10 @@ func NewStandalone(cfg *Config) (*SectorBuilder, error) {
 	}
 
 	return &SectorBuilder{
-		handle:    nil,
 		ds:        nil,
+
 		ssize:     cfg.SectorSize,
+
 		Miner:     cfg.Miner,
 		stagedDir: cfg.StagedDir,
 		sealedDir: cfg.SealedDir,
@@ -272,19 +263,14 @@ func addressToProverID(a address.Address) [32]byte {
 	return proverId
 }
 
-func (sb *SectorBuilder) Destroy() {
-	sectorbuilder.DestroySectorBuilder(sb.handle)
-}
-
 func (sb *SectorBuilder) AcquireSectorId() (uint64, error) {
 	sb.idLk.Lock()
 	defer sb.idLk.Unlock()
 
-	id, err := sectorbuilder.AcquireSectorId(sb.handle)
-	if err != nil {
-		return 0, err
-	}
-	err = sb.ds.Put(lastSectorIdKey, []byte(fmt.Sprint(id)))
+	sb.lastID++
+	id := sb.lastID
+
+	err := sb.ds.Put(LastSectorIdKey, []byte(fmt.Sprint(id)))
 	if err != nil {
 		return 0, err
 	}
@@ -305,7 +291,7 @@ func (sb *SectorBuilder) AddPiece(pieceSize uint64, sectorId uint64, file io.Rea
 		return PublicPieceInfo{}, err
 	}
 
-	_, _, commP, err := sectorbuilder.StandaloneWriteWithAlignment(f, pieceSize, stagedFile, existingPieceSizes)
+	_, _, commP, err := sectorbuilder.WriteWithAlignment(f, pieceSize, stagedFile, existingPieceSizes)
 	if err != nil {
 		return PublicPieceInfo{}, err
 	}
@@ -329,7 +315,8 @@ func (sb *SectorBuilder) ReadPieceFromSealedSector(pieceKey string) ([]byte, err
 	ret := sb.RateLimit()
 	defer ret()
 
-	return sectorbuilder.ReadPieceFromSealedSector(sb.handle, pieceKey)
+	panic("fixme")
+	//return sectorbuilder.Unseal(sb.handle, pieceKey)
 }
 
 func (sb *SectorBuilder) sealPreCommitRemote(call workerCall) (RawSealPreCommitOutput, error) {
@@ -394,7 +381,7 @@ func (sb *SectorBuilder) SealPreCommit(sectorID uint64, ticket SealTicket, piece
 
 	stagedPath := sb.StagedSectorPath(sectorID)
 
-	rspco, err := sectorbuilder.StandaloneSealPreCommit(
+	rspco, err := sectorbuilder.SealPreCommit(
 		sb.ssize,
 		PoRepProofPartitions,
 		cacheDir,
@@ -431,7 +418,7 @@ func (sb *SectorBuilder) sealCommitLocal(sectorID uint64, ticket SealTicket, see
 		return nil, err
 	}
 
-	proof, err = sectorbuilder.StandaloneSealCommit(
+	proof, err = sectorbuilder.SealCommit(
 		sb.ssize,
 		PoRepProofPartitions,
 		cacheDir,
@@ -452,7 +439,7 @@ func (sb *SectorBuilder) sealCommitLocal(sectorID uint64, ticket SealTicket, see
 	return proof, nil
 }
 
-func (sb *SectorBuilder) SealCommit(sectorID uint64, ticket SealTicket, seed SealSeed, pieces []PublicPieceInfo, pieceKeys []string, rspco RawSealPreCommitOutput) (proof []byte, err error) {
+func (sb *SectorBuilder) SealCommit(sectorID uint64, ticket SealTicket, seed SealSeed, pieces []PublicPieceInfo, rspco RawSealPreCommitOutput) (proof []byte, err error) {
 	call := workerCall{
 		task: WorkerTask{
 			Type:       WorkerCommit,
@@ -484,49 +471,91 @@ func (sb *SectorBuilder) SealCommit(sectorID uint64, ticket SealTicket, seed Sea
 		return nil, xerrors.Errorf("commit: %w", err)
 	}
 
-	if pieceKeys == nil {
-		return
-	}
-
-	pmeta := make([]sectorbuilder.PieceMetadata, len(pieces))
-	for i, piece := range pieces {
-		pmeta[i] = sectorbuilder.PieceMetadata{
-			Key:   pieceKeys[i],
-			Size:  piece.Size,
-			CommP: piece.CommP,
-		}
-	}
-
-	sealedPath, err := sb.SealedSectorPath(sectorID)
-	if err != nil {
-		return nil, err
-	}
-
-	cacheDir, err := sb.sectorCacheDir(sectorID)
-	if err != nil {
-		return nil, err
-	}
-
-	err = sectorbuilder.ImportSealedSector(
-		sb.handle,
-		sectorID,
-		cacheDir,
-		sealedPath,
-		ticket,
-		seed,
-		rspco.CommR,
-		rspco.CommD,
-		rspco.CommC,
-		rspco.CommRLast,
-		proof,
-		pmeta,
-	)
-	if err != nil {
-		return nil, xerrors.Errorf("ImportSealedSector: %w", err)
-	}
 	return proof, nil
+}
+
+func (sb *SectorBuilder) ComputeElectionPoSt(sectorInfo SortedPublicSectorInfo, challengeSeed []byte, winners []EPostCandidate) ([]byte, error) {
+	if len(challengeSeed) != CommLen {
+		return nil, xerrors.Errorf("given challenge seed was the wrong length: %d != %d", len(challengeSeed), CommLen)
+	}
+	var cseed [CommLen]byte
+	copy(cseed[:], challengeSeed)
+
+	privsects, err := sb.pubSectorToPriv(sectorInfo)
+	if err != nil {
+		return nil, err
+	}
+
+	proverID := addressToProverID(sb.Miner)
+	return sectorbuilder.GeneratePoSt(sb.ssize, proverID, privsects, cseed, winners)
+}
+
+func (sb *SectorBuilder) GenerateEPostCandidates(sectorInfo SortedPublicSectorInfo, challengeSeed [CommLen]byte, faults []uint64) ([]EPostCandidate, error) {
+	privsectors, err := sb.pubSectorToPriv(sectorInfo)
+	if err != nil {
+		return nil, err
+	}
+
+	challengeCount := electionPostChallengeCount(uint64(len(sectorInfo.Values())))
+
+	proverID := addressToProverID(sb.Miner)
+	return sectorbuilder.GenerateCandidates(sb.ssize, proverID, challengeSeed, challengeCount, privsectors)
+}
+
+func (sb *SectorBuilder) pubSectorToPriv(sectorInfo SortedPublicSectorInfo) (SortedPrivateSectorInfo, error) {
+	var out []sectorbuilder.PrivateSectorInfo
+	for _, s := range sectorInfo.Values() {
+		cachePath, err := sb.sectorCacheDir(s.SectorID)
+		if err != nil {
+			return SortedPrivateSectorInfo{}, xerrors.Errorf("getting cache path for sector %d: %w", s.SectorID, err)
+		}
+
+		sealedPath, err := sb.SealedSectorPath(s.SectorID)
+		if err != nil {
+			return SortedPrivateSectorInfo{}, xerrors.Errorf("getting sealed path for sector %d: %w", s.SectorID, err)
+		}
+
+		out = append(out, sectorbuilder.PrivateSectorInfo{
+			SectorID:         s.SectorID,
+			CommR:            s.CommR,
+			CacheDirPath:     cachePath,
+			SealedSectorPath: sealedPath,
+		})
+	}
+	return NewSortedPrivateSectorInfo(out), nil
+}
+
+func (sb *SectorBuilder) GenerateFallbackPoSt(sectorInfo SortedPublicSectorInfo, challengeSeed [CommLen]byte, faults []uint64) ([]EPostCandidate, []byte, error) {
+	privsectors, err := sb.pubSectorToPriv(sectorInfo)
+	if err != nil {
+		return nil, nil, err
+	}
+
+	challengeCount := fallbackPostChallengeCount(uint64(len(sectorInfo.Values())))
+
+	proverID := addressToProverID(sb.Miner)
+	candidates, err := sectorbuilder.GenerateCandidates(sb.ssize, proverID, challengeSeed, challengeCount, privsectors)
+	if err != nil {
+		return nil, nil, err
+	}
+
+	proof, err := sectorbuilder.GeneratePoSt(sb.ssize, proverID, privsectors, challengeSeed, candidates)
+	return candidates, proof, err
 }
 
 func (sb *SectorBuilder) Stop() {
 	close(sb.stopping)
+}
+
+func electionPostChallengeCount(sectors uint64) uint64 {
+	// ceil(sectors / build.SectorChallengeRatioDiv)
+	return (sectors + build.SectorChallengeRatioDiv - 1) / build.SectorChallengeRatioDiv
+}
+
+func fallbackPostChallengeCount(sectors uint64) uint64 {
+	challengeCount := electionPostChallengeCount(sectors)
+	if challengeCount > build.MaxFallbackPostChallengeCount {
+		return build.MaxFallbackPostChallengeCount
+	}
+	return challengeCount
 }

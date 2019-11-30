@@ -17,8 +17,6 @@ func TempSectorbuilder(sectorSize uint64, ds dtypes.MetadataDS) (*SectorBuilder,
 
 	sb, err := TempSectorbuilderDir(dir, sectorSize, ds)
 	return sb, func() {
-		sb.Destroy()
-
 		if err := os.RemoveAll(dir); err != nil {
 			log.Warn("failed to clean up temp sectorbuilder: ", err)
 		}

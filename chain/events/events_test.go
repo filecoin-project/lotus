@@ -60,26 +60,26 @@ func makeTs(t *testing.T, h uint64, msgcid cid.Cid) *types.TipSet {
 			Height: h,
 			Miner:  a,
 
-			Tickets: []*types.Ticket{{[]byte{byte(h % 2)}}},
+			Ticket: &types.Ticket{[]byte{byte(h % 2)}},
 
 			ParentStateRoot:       dummyCid,
 			Messages:              msgcid,
 			ParentMessageReceipts: dummyCid,
 
-			BlockSig:     types.Signature{Type: types.KTBLS},
+			BlockSig:     &types.Signature{Type: types.KTBLS},
 			BLSAggregate: types.Signature{Type: types.KTBLS},
 		},
 		{
 			Height: h,
 			Miner:  b,
 
-			Tickets: []*types.Ticket{{[]byte{byte((h + 1) % 2)}}},
+			Ticket: &types.Ticket{[]byte{byte((h + 1) % 2)}},
 
 			ParentStateRoot:       dummyCid,
 			Messages:              msgcid,
 			ParentMessageReceipts: dummyCid,
 
-			BlockSig:     types.Signature{Type: types.KTBLS},
+			BlockSig:     &types.Signature{Type: types.KTBLS},
 			BLSAggregate: types.Signature{Type: types.KTBLS},
 		},
 	})

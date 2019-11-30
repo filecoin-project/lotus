@@ -15,7 +15,7 @@ import (
 	cbg "github.com/whyrusleeping/cbor-gen"
 	"golang.org/x/xerrors"
 
-	bls "github.com/filecoin-project/go-bls-sigs"
+	bls "github.com/filecoin-project/filecoin-ffi"
 	"github.com/ipfs/go-cid"
 	hamt "github.com/ipfs/go-hamt-ipld"
 	logging "github.com/ipfs/go-log"
@@ -102,7 +102,7 @@ func (sm *StateManager) computeTipSetState(ctx context.Context, blks []*types.Bl
 		cids[i] = v.Cid()
 	}
 
-	r := store.NewChainRand(sm.cs, cids, blks[0].Height, nil)
+	r := store.NewChainRand(sm.cs, cids, blks[0].Height)
 
 	vmi, err := vm.NewVM(pstate, blks[0].Height, r, address.Undef, sm.cs.Blockstore())
 	if err != nil {
@@ -113,9 +113,14 @@ func (sm *StateManager) computeTipSetState(ctx context.Context, blks []*types.Bl
 	if err != nil {
 		return cid.Undef, cid.Undef, xerrors.Errorf("failed to get network actor: %w", err)
 	}
-
 	reward := vm.MiningReward(netact.Balance)
 	for _, b := range blks {
+		netact, err = vmi.StateTree().GetActor(actors.NetworkAddress)
+		if err != nil {
+			return cid.Undef, cid.Undef, xerrors.Errorf("failed to get network actor: %w", err)
+		}
+		vmi.SetBlockMiner(b.Miner)
+
 		owner, err := GetMinerOwner(ctx, sm, pstate, b.Miner)
 		if err != nil {
 			return cid.Undef, cid.Undef, xerrors.Errorf("failed to get owner for miner %s: %w", b.Miner, err)
@@ -130,6 +135,23 @@ func (sm *StateManager) computeTipSetState(ctx context.Context, blks []*types.Bl
 			return cid.Undef, cid.Undef, xerrors.Errorf("failed to deduct funds from network actor: %w", err)
 		}
 
+		// all block miners created a valid post, go update the actor state
+		postSubmitMsg := &types.Message{
+			From:     actors.NetworkAddress,
+			Nonce:    netact.Nonce,
+			To:       b.Miner,
+			Method:   actors.MAMethods.SubmitElectionPoSt,
+			GasPrice: types.NewInt(0),
+			GasLimit: types.NewInt(10000000000),
+			Value:    types.NewInt(0),
+		}
+		ret, err := vmi.ApplyMessage(ctx, postSubmitMsg)
+		if err != nil {
+			return cid.Undef, cid.Undef, xerrors.Errorf("submit election post message invocation failed: %w", err)
+		}
+		if ret.ExitCode != 0 {
+			return cid.Undef, cid.Undef, xerrors.Errorf("submit election post invocation returned nonzero exit code: %d", ret.ExitCode)
+		}
 	}
 
 	// TODO: can't use method from chainstore because it doesnt let us know who the block miners were
@@ -322,18 +344,18 @@ func (sm *StateManager) GetBlsPublicKey(ctx context.Context, addr address.Addres
 }
 
 func (sm *StateManager) GetReceipt(ctx context.Context, msg cid.Cid, ts *types.TipSet) (*types.MessageReceipt, error) {
-	r, err := sm.tipsetExecutedMessage(ts, msg)
+	m, err := sm.cs.GetCMessage(msg)
+	if err != nil {
+		return nil, fmt.Errorf("failed to load message: %w", err)
+	}
+
+	r, err := sm.tipsetExecutedMessage(ts, msg, m.VMMessage())
 	if err != nil {
 		return nil, err
 	}
 
 	if r != nil {
 		return r, nil
-	}
-
-	m, err := sm.cs.GetCMessage(msg)
-	if err != nil {
-		return nil, fmt.Errorf("failed to load message: %w", err)
 	}
 
 	_, r, err = sm.searchBackForMsg(ctx, ts, m)
@@ -368,7 +390,7 @@ func (sm *StateManager) WaitForMessage(ctx context.Context, mcid cid.Cid) (*type
 		return nil, nil, fmt.Errorf("expected current head on SHC stream (got %s)", head[0].Type)
 	}
 
-	r, err := sm.tipsetExecutedMessage(head[0].Val, mcid)
+	r, err := sm.tipsetExecutedMessage(head[0].Val, mcid, msg.VMMessage())
 	if err != nil {
 		return nil, nil, err
 	}
@@ -403,7 +425,7 @@ func (sm *StateManager) WaitForMessage(ctx context.Context, mcid cid.Cid) (*type
 				case store.HCRevert:
 					continue
 				case store.HCApply:
-					r, err := sm.tipsetExecutedMessage(val.Val, mcid)
+					r, err := sm.tipsetExecutedMessage(val.Val, mcid, msg.VMMessage())
 					if err != nil {
 						return nil, nil, err
 					}
@@ -454,7 +476,7 @@ func (sm *StateManager) searchBackForMsg(ctx context.Context, from *types.TipSet
 			return nil, nil, fmt.Errorf("failed to load tipset during msg wait searchback: %w", err)
 		}
 
-		r, err := sm.tipsetExecutedMessage(ts, m.Cid())
+		r, err := sm.tipsetExecutedMessage(ts, m.Cid(), m.VMMessage())
 		if err != nil {
 			return nil, nil, fmt.Errorf("checking for message execution during lookback: %w", err)
 		}
@@ -467,7 +489,7 @@ func (sm *StateManager) searchBackForMsg(ctx context.Context, from *types.TipSet
 	}
 }
 
-func (sm *StateManager) tipsetExecutedMessage(ts *types.TipSet, msg cid.Cid) (*types.MessageReceipt, error) {
+func (sm *StateManager) tipsetExecutedMessage(ts *types.TipSet, msg cid.Cid, vmm *types.Message) (*types.MessageReceipt, error) {
 	// The genesis block did not execute any messages
 	if ts.Height() == 0 {
 		return nil, nil
@@ -483,9 +505,24 @@ func (sm *StateManager) tipsetExecutedMessage(ts *types.TipSet, msg cid.Cid) (*t
 		return nil, err
 	}
 
-	for i, m := range cm {
-		if m.Cid() == msg {
-			return sm.cs.GetParentReceipt(ts.Blocks()[0], i)
+	for ii := range cm {
+		// iterate in reverse because we going backwards through the chain
+		i := len(cm) - ii - 1
+		m := cm[i]
+
+		if m.VMMessage().From == vmm.From { // cheaper to just check origin first
+			if m.VMMessage().Nonce == vmm.Nonce {
+				if m.Cid() == msg {
+					return sm.cs.GetParentReceipt(ts.Blocks()[0], i)
+				}
+
+				// this should be that message
+				return nil, xerrors.Errorf("found message with equal nonce as the one we are looking for (F:%s n %d, TS: %s n%d)",
+					msg, vmm.Nonce, m.Cid(), m.VMMessage().Nonce)
+			}
+			if m.VMMessage().Nonce < vmm.Nonce {
+				return nil, nil // don't bother looking further
+			}
 		}
 	}
 
