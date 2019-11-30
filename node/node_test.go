@@ -199,8 +199,7 @@ func builder(t *testing.T, nFull int, storage []int) ([]test.TestNode, []test.Te
 		wa, err := f.WalletDefaultAddress(ctx)
 		require.NoError(t, err)
 
-		genMiner, err := address.NewFromString("t0102")
-		require.NoError(t, err)
+		genMiner := gmc.MinerAddrs[i]
 
 		storers[i] = testStorageNode(ctx, t, wa, genMiner, pk, f, mn)
 	}
