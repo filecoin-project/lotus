@@ -255,6 +255,10 @@ func SetupStorageMiners(ctx context.Context, cs *store.ChainStore, sroot cid.Cid
 		return cid.Undef, nil, xerrors.Errorf("failed to create NewVM: %w", err)
 	}
 
+	if len(gmcfg.MinerAddrs) == 0 {
+		return cid.Undef, nil, xerrors.New("no genesis miners")
+	}
+
 	if len(gmcfg.MinerAddrs) != len(gmcfg.PreSeals) {
 		return cid.Undef, nil, xerrors.Errorf("miner address list, and preseal count doesn't match (%d != %d)", len(gmcfg.MinerAddrs), len(gmcfg.PreSeals))
 	}

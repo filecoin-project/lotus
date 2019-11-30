@@ -11,6 +11,7 @@ import (
 	"github.com/libp2p/go-libp2p-core/crypto"
 
 	"github.com/ipfs/go-datastore"
+	logging "github.com/ipfs/go-log"
 	"github.com/libp2p/go-libp2p-core/peer"
 	mocknet "github.com/libp2p/go-libp2p/p2p/net/mock"
 	"github.com/stretchr/testify/require"
@@ -31,6 +32,10 @@ import (
 	modtest "github.com/filecoin-project/lotus/node/modules/testing"
 	"github.com/filecoin-project/lotus/node/repo"
 )
+
+func init() {
+	logging.SetLogLevel("*", "INFO")
+}
 
 func testStorageNode(ctx context.Context, t *testing.T, waddr address.Address, act address.Address, pk crypto.PrivKey, tnd test.TestNode, mn mocknet.Mocknet) test.TestStorageNode {
 	r := repo.NewMemory(nil)
