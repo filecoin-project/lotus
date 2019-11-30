@@ -11,6 +11,7 @@ import (
 	"strconv"
 	"strings"
 	"sync"
+	"syscall"
 
 	rice "github.com/GeertJohan/go.rice"
 	logging "github.com/ipfs/go-log"
@@ -81,6 +82,12 @@ func (ft *fetch) maybeFetchAsync(name string, info paramFile) {
 			return
 		}
 		defer outf.Close()
+		err = syscall.Flock(int(outf.Fd()), syscall.LOCK_EX|syscall.LOCK_NB)
+		if err != nil {
+			ft.errs = append(ft.errs, xerrors.Errorf("flock file %s failed: %w", path, err))
+			return
+		}
+		defer syscall.Flock(int(outf.Fd()), syscall.LOCK_UN)
 
 		err = ft.checkFile(outf, info)
 		if !os.IsNotExist(err) && err != nil {
