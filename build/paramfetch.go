@@ -54,9 +54,6 @@ func GetParams(storage bool, tests bool) error {
 	ft := &fetch{}
 
 	for name, info := range params {
-		if info.SectorSize != 1024 {
-			continue
-		}
 		if !(SupportedSectorSize(info.SectorSize) || (tests && info.SectorSize == 1<<10)) {
 			continue
 		}

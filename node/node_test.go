@@ -120,7 +120,7 @@ func builder(t *testing.T, nFull int, storage []int) ([]test.TestNode, []test.Te
 
 	var genbuf bytes.Buffer
 
-	if len(storage) != 1 {
+	if len(storage) > 1 {
 		panic("need more peer IDs")
 	}
 	// PRESEAL SECTION, TRY TO REPLACE WITH BETTER IN THE FUTURE
