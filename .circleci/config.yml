@@ -46,6 +46,15 @@ jobs:
       - go/mod-download
       - go/mod-tidy-check
 
+  build-all:
+    executor: golang
+    steps:
+      - install-deps
+      - prepare
+      - go/mod-download
+      - run:
+          command: make buildall
+
   test:
     description: |
       Run tests with gotestsum.
@@ -166,3 +175,4 @@ workflows:
       - test:
           codecov-upload: true
       - mod-tidy-check
+      - build-all

@@ -37,7 +37,7 @@ build/.update-modules:
 
 # end git modules
 
-## PROOFS
+## MAIN BINARIES
 
 CLEAN+=build/.update-modules
 
@@ -53,7 +53,7 @@ lotus: $(BUILD_DEPS)
 	go run github.com/GeertJohan/go.rice/rice append --exec lotus -i ./build
 
 .PHONY: lotus
-CLEAN+=lotus
+BINS+=lotus
 
 lotus-storage-miner: $(BUILD_DEPS)
 	rm -f lotus-storage-miner
@@ -61,6 +61,16 @@ lotus-storage-miner: $(BUILD_DEPS)
 	go run github.com/GeertJohan/go.rice/rice append --exec lotus-storage-miner -i ./build
 
 .PHONY: lotus-storage-miner
+BINS+=lotus-storage-miner
+
+build: lotus lotus-storage-miner
+.PHONY: build
+
+install:
+	install -C ./lotus /usr/local/bin/lotus
+	install -C ./lotus-storage-miner /usr/local/bin/lotus-storage-miner
+
+# TOOLS
 
 lotus-seed: $(BUILD_DEPS)
 	rm -f lotus-seed
@@ -68,16 +78,7 @@ lotus-seed: $(BUILD_DEPS)
 	go run github.com/GeertJohan/go.rice/rice append --exec lotus-seed -i ./build
 
 .PHONY: lotus-seed
-
-CLEAN+=lotus-storage-miner
-
-build: lotus lotus-storage-miner
-
-.PHONY: build
-
-install:
-	install -C ./lotus /usr/local/bin/lotus
-	install -C ./lotus-storage-miner /usr/local/bin/lotus-storage-miner
+BINS+=lotus-seed
 
 benchmarks:
 	go run github.com/whyrusleeping/bencher ./... > bench.json
@@ -89,6 +90,7 @@ pond: build
 	go build -o pond ./lotuspond
 	(cd lotuspond/front && npm i && npm run build)
 .PHONY: pond
+BINS+=pond
 
 townhall:
 	rm -f townhall
@@ -96,26 +98,41 @@ townhall:
 	(cd ./cmd/lotus-townhall/townhall && npm i && npm run build)
 	go run github.com/GeertJohan/go.rice/rice append --exec townhall -i ./cmd/lotus-townhall -i ./build
 .PHONY: townhall
+BINS+=townhall
 
 fountain:
 	rm -f fountain
 	go build -o fountain ./cmd/lotus-fountain
 	go run github.com/GeertJohan/go.rice/rice append --exec fountain -i ./cmd/lotus-fountain
 .PHONY: fountain
+BINS+=fountain
 
 chainwatch:
 	rm -f chainwatch
 	go build -o chainwatch ./cmd/lotus-chainwatch
 	go run github.com/GeertJohan/go.rice/rice append --exec chainwatch -i ./cmd/lotus-chainwatch
 .PHONY: chainwatch
+BINS+=chainwatch
+
+bench:
+	rm -f bench
+	go build -o bench ./cmd/lotus-bench
+	go run github.com/GeertJohan/go.rice/rice append --exec bench -i ./build
+.PHONY: bench
+BINS+=bench
 
 stats:
 	rm -f stats
 	go build -o stats ./tools/stats
 .PHONY: stats
+BINS+=stats
+
+# MISC
+
+buildall: $(BINS)
 
 clean:
-	rm -rf $(CLEAN)
+	rm -rf $(CLEAN) $(BINS)
 	-$(MAKE) -C $(FFI_PATH) clean
 .PHONY: clean
 
