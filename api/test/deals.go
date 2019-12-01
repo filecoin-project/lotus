@@ -1,11 +1,14 @@
 package test
 
 import (
+	"bytes"
 	"context"
 	"fmt"
 	"io"
+	"io/ioutil"
 	"math/rand"
 	"os"
+	"path/filepath"
 	"testing"
 	"time"
 
@@ -40,7 +43,8 @@ func TestDealFlow(t *testing.T, b APIBuilder) {
 	}
 	time.Sleep(time.Second)
 
-	r := io.LimitReader(rand.New(rand.NewSource(17)), 1000)
+	data, _ := ioutil.ReadAll(io.LimitReader(rand.New(rand.NewSource(5)), 1000))
+	r := bytes.NewReader(data)
 	fcid, err := client.ClientImportLocal(ctx, r)
 	if err != nil {
 		t.Fatal(err)
@@ -92,6 +96,42 @@ loop:
 		}
 		fmt.Println("Deal state: ", api.DealStates[di.State])
 		time.Sleep(time.Second / 2)
+	}
+
+	// Retrieval
+
+	offers, err := client.ClientFindData(ctx, fcid)
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	if len(offers) < 1 {
+		t.Fatal("no offers")
+	}
+
+	rpath, err := ioutil.TempDir("", "lotus-retrieve-test-")
+	if err != nil {
+		t.Fatal(err)
+	}
+	defer os.RemoveAll(rpath)
+
+	caddr, err := client.WalletDefaultAddress(ctx)
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	err = client.ClientRetrieve(ctx, offers[0].Order(caddr), filepath.Join(rpath, "ret"))
+	if err != nil {
+		t.Fatalf("%+v", err)
+	}
+
+	rdata, err := ioutil.ReadFile(filepath.Join(rpath, "ret"))
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	if !bytes.Equal(rdata, data) {
+		t.Fatal("wrong data retrieved")
 	}
 
 	mine = false

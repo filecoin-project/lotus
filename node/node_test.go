@@ -227,7 +227,7 @@ func builder(t *testing.T, nFull int, storage []int) ([]test.TestNode, []test.Te
 			CacheDir:      filepath.Join(psd, "cache"),
 			StagedDir:     filepath.Join(psd, "staging"),
 			SealedDir:     filepath.Join(psd, "sealed"),
-			MetadataDir:   filepath.Join(psd, "meta"),
+			UnsealedDir:   filepath.Join(psd, "unsealed"),
 		}, mds)
 		if err != nil {
 			t.Fatal(err)

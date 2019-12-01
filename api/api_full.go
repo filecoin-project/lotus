@@ -226,11 +226,13 @@ type QueryOffer struct {
 	MinerPeerID peer.ID
 }
 
-func (o *QueryOffer) Order() RetrievalOrder {
+func (o *QueryOffer) Order(client address.Address) RetrievalOrder {
 	return RetrievalOrder{
 		Root:  o.Root,
 		Size:  o.Size,
 		Total: o.MinPrice,
+
+		Client: client,
 
 		Miner:       o.Miner,
 		MinerPeerID: o.MinerPeerID,
