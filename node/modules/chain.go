@@ -42,7 +42,8 @@ func ChainExchange(mctx helpers.MetricsCtx, lc fx.Lifecycle, host host.Host, rt 
 }
 
 func MessagePool(lc fx.Lifecycle, sm *stmgr.StateManager, ps *pubsub.PubSub, ds dtypes.MetadataDS) (*chain.MessagePool, error) {
-	mp, err := chain.NewMessagePool(sm, ps, ds)
+	mpp := chain.NewMpoolProvider(sm, ps)
+	mp, err := chain.NewMessagePool(mpp, ds)
 	if err != nil {
 		return nil, xerrors.Errorf("constructing mpool: %w", err)
 	}

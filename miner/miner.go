@@ -279,7 +279,7 @@ func (m *Miner) mineOne(ctx context.Context, addr address.Address, base *MiningB
 	if err != nil {
 		return nil, xerrors.Errorf("failed to create block: %w", err)
 	}
-	log.Infow("mined new block", "cid", b.Cid())
+	log.Infow("mined new block", "cid", b.Cid(), "height", b.Header.Height)
 
 	dur := time.Now().Sub(start)
 	log.Infof("Creating block took %s", dur)

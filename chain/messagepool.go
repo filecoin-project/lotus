@@ -9,6 +9,7 @@ import (
 	"time"
 
 	lru "github.com/hashicorp/golang-lru"
+	"github.com/ipfs/go-cid"
 	"github.com/ipfs/go-datastore"
 	"github.com/ipfs/go-datastore/namespace"
 	"github.com/ipfs/go-datastore/query"
@@ -21,6 +22,7 @@ import (
 	"github.com/filecoin-project/lotus/build"
 	"github.com/filecoin-project/lotus/chain/address"
 	"github.com/filecoin-project/lotus/chain/stmgr"
+	"github.com/filecoin-project/lotus/chain/store"
 	"github.com/filecoin-project/lotus/chain/types"
 	"github.com/filecoin-project/lotus/node/modules/dtypes"
 )
@@ -56,9 +58,10 @@ type MessagePool struct {
 	pending      map[address.Address]*msgSet
 	pendingCount int
 
-	sm *stmgr.StateManager
+	curTsLk sync.RWMutex
+	curTs   *types.TipSet
 
-	ps *pubsub.PubSub
+	api MpoolProvider
 
 	minGasPrice types.BigInt
 
@@ -98,20 +101,61 @@ func (ms *msgSet) add(m *types.SignedMessage) error {
 	return nil
 }
 
-func NewMessagePool(sm *stmgr.StateManager, ps *pubsub.PubSub, ds dtypes.MetadataDS) (*MessagePool, error) {
+type MpoolProvider interface {
+	SubscribeHeadChanges(func(rev, app []*types.TipSet) error)
+	PutMessage(m store.ChainMsg) (cid.Cid, error)
+	PubSubPublish(string, []byte) error
+	StateGetActor(address.Address, *types.TipSet) (*types.Actor, error)
+	MessagesForBlock(*types.BlockHeader) ([]*types.Message, []*types.SignedMessage, error)
+	MessagesForTipset(*types.TipSet) ([]store.ChainMsg, error)
+}
+
+type mpoolProvider struct {
+	sm *stmgr.StateManager
+	ps *pubsub.PubSub
+}
+
+func NewMpoolProvider(sm *stmgr.StateManager, ps *pubsub.PubSub) MpoolProvider {
+	return &mpoolProvider{sm, ps}
+}
+
+func (mpp *mpoolProvider) SubscribeHeadChanges(cb func(rev, app []*types.TipSet) error) {
+	mpp.sm.ChainStore().SubscribeHeadChanges(cb)
+}
+
+func (mpp *mpoolProvider) PutMessage(m store.ChainMsg) (cid.Cid, error) {
+	return mpp.sm.ChainStore().PutMessage(m)
+}
+
+func (mpp *mpoolProvider) PubSubPublish(k string, v []byte) error {
+	return mpp.ps.Publish(k, v)
+}
+
+func (mpp *mpoolProvider) StateGetActor(addr address.Address, ts *types.TipSet) (*types.Actor, error) {
+	return mpp.sm.GetActor(addr, ts)
+}
+
+func (mpp *mpoolProvider) MessagesForBlock(h *types.BlockHeader) ([]*types.Message, []*types.SignedMessage, error) {
+	return mpp.sm.ChainStore().MessagesForBlock(h)
+}
+
+func (mpp *mpoolProvider) MessagesForTipset(ts *types.TipSet) ([]store.ChainMsg, error) {
+	return mpp.sm.ChainStore().MessagesForTipset(ts)
+}
+
+func NewMessagePool(api MpoolProvider, ds dtypes.MetadataDS) (*MessagePool, error) {
 	cache, _ := lru.New2Q(build.BlsSignatureCacheSize)
 	mp := &MessagePool{
 		closer:        make(chan struct{}),
 		repubTk:       time.NewTicker(build.BlockDelay * 10 * time.Second),
 		localAddrs:    make(map[address.Address]struct{}),
 		pending:       make(map[address.Address]*msgSet),
-		sm:            sm,
-		ps:            ps,
 		minGasPrice:   types.NewInt(0),
 		maxTxPoolSize: 5000,
 		blsSigCache:   cache,
 		changes:       lps.New(50),
 		localMsgs:     namespace.Wrap(ds, datastore.NewKey(localMsgsDs)),
+		api:           api,
 	}
 
 	if err := mp.loadLocal(); err != nil {
@@ -120,7 +164,7 @@ func NewMessagePool(sm *stmgr.StateManager, ps *pubsub.PubSub, ds dtypes.Metadat
 
 	go mp.repubLocal()
 
-	sm.ChainStore().SubscribeHeadChanges(func(rev, app []*types.TipSet) error {
+	api.SubscribeHeadChanges(func(rev, app []*types.TipSet) error {
 		err := mp.HeadChange(rev, app)
 		if err != nil {
 			log.Errorf("mpool head notif handler error: %+v", err)
@@ -155,7 +199,7 @@ func (mp *MessagePool) repubLocal() {
 					continue
 				}
 
-				err = mp.ps.Publish(msgTopic, msgb)
+				err = mp.api.PubSubPublish(msgTopic, msgb)
 				if err != nil {
 					errout = multierr.Append(errout, xerrors.Errorf("could not publish: %w", err))
 					continue
@@ -200,7 +244,7 @@ func (mp *MessagePool) Push(m *types.SignedMessage) error {
 	}
 	mp.lk.Unlock()
 
-	return mp.ps.Publish(msgTopic, msgb)
+	return mp.api.PubSubPublish(msgTopic, msgb)
 }
 
 func (mp *MessagePool) Add(m *types.SignedMessage) error {
@@ -252,12 +296,12 @@ func (mp *MessagePool) addLocked(m *types.SignedMessage) error {
 		mp.blsSigCache.Add(m.Cid(), m.Signature)
 	}
 
-	if _, err := mp.sm.ChainStore().PutMessage(m); err != nil {
+	if _, err := mp.api.PutMessage(m); err != nil {
 		log.Warnf("mpooladd cs.PutMessage failed: %s", err)
 		return err
 	}
 
-	if _, err := mp.sm.ChainStore().PutMessage(&m.Message); err != nil {
+	if _, err := mp.api.PutMessage(&m.Message); err != nil {
 		log.Warnf("mpooladd cs.PutMessage failed: %s", err)
 		return err
 	}
@@ -307,16 +351,44 @@ func (mp *MessagePool) getNonceLocked(addr address.Address) (uint64, error) {
 }
 
 func (mp *MessagePool) getStateNonce(addr address.Address) (uint64, error) {
-	act, err := mp.sm.GetActor(addr, nil)
+	// TODO: this method probably should be cached
+	mp.curTsLk.RLock()
+	defer mp.curTsLk.RUnlock()
+
+	act, err := mp.api.StateGetActor(addr, mp.curTs)
 	if err != nil {
 		return 0, err
 	}
 
-	return act.Nonce, nil
+	baseNonce := act.Nonce
+
+	// TODO: the correct thing to do here is probably to set curTs to chain.head
+	// but since we have an accurate view of the world until a head change occurs,
+	// this should be fine
+	if mp.curTs == nil {
+		return baseNonce, nil
+	}
+
+	msgs, err := mp.api.MessagesForTipset(mp.curTs)
+	if err != nil {
+		return 0, xerrors.Errorf("failed to check messages for tipset: %w", err)
+	}
+
+	for _, m := range msgs {
+		msg := m.VMMessage()
+		if msg.From == addr {
+			if msg.Nonce != baseNonce {
+				return 0, xerrors.Errorf("tipset %s has bad nonce ordering", mp.curTs)
+			}
+			baseNonce++
+		}
+	}
+
+	return baseNonce, nil
 }
 
 func (mp *MessagePool) getStateBalance(addr address.Address) (types.BigInt, error) {
-	act, err := mp.sm.GetActor(addr, nil)
+	act, err := mp.api.StateGetActor(addr, nil)
 	if err != nil {
 		return types.EmptyInt, err
 	}
@@ -327,6 +399,9 @@ func (mp *MessagePool) getStateBalance(addr address.Address) (types.BigInt, erro
 func (mp *MessagePool) PushWithNonce(addr address.Address, cb func(uint64) (*types.SignedMessage, error)) (*types.SignedMessage, error) {
 	mp.lk.Lock()
 	defer mp.lk.Unlock()
+	if addr.Protocol() == address.ID {
+		log.Warnf("Called pushWithNonce with ID address (%s) this might not be handled properly yet", addr)
+	}
 
 	nonce, err := mp.getNonceLocked(addr)
 	if err != nil {
@@ -350,7 +425,7 @@ func (mp *MessagePool) PushWithNonce(addr address.Address, cb func(uint64) (*typ
 		log.Errorf("addLocal failed: %+v", err)
 	}
 
-	return msg, mp.ps.Publish(msgTopic, msgb)
+	return msg, mp.api.PubSubPublish(msgTopic, msgb)
 }
 
 func (mp *MessagePool) Remove(from address.Address, nonce uint64) {
@@ -421,9 +496,12 @@ func (mp *MessagePool) pendingFor(a address.Address) []*types.SignedMessage {
 }
 
 func (mp *MessagePool) HeadChange(revert []*types.TipSet, apply []*types.TipSet) error {
+	mp.curTsLk.Lock()
+	defer mp.curTsLk.Unlock()
+
 	for _, ts := range revert {
 		for _, b := range ts.Blocks() {
-			bmsgs, smsgs, err := mp.sm.ChainStore().MessagesForBlock(b)
+			bmsgs, smsgs, err := mp.api.MessagesForBlock(b)
 			if err != nil {
 				return xerrors.Errorf("failed to get messages for revert block %s(height %d): %w", b.Cid(), b.Height, err)
 			}
@@ -444,11 +522,12 @@ func (mp *MessagePool) HeadChange(revert []*types.TipSet, apply []*types.TipSet)
 				}
 			}
 		}
+		mp.curTs = ts
 	}
 
 	for _, ts := range apply {
 		for _, b := range ts.Blocks() {
-			bmsgs, smsgs, err := mp.sm.ChainStore().MessagesForBlock(b)
+			bmsgs, smsgs, err := mp.api.MessagesForBlock(b)
 			if err != nil {
 				return xerrors.Errorf("failed to get messages for apply block %s(height %d) (msgroot = %s): %w", b.Cid(), b.Height, b.Messages, err)
 			}
@@ -460,6 +539,7 @@ func (mp *MessagePool) HeadChange(revert []*types.TipSet, apply []*types.TipSet)
 				mp.Remove(msg.From, msg.Nonce)
 			}
 		}
+		mp.curTs = ts
 	}
 
 	return nil

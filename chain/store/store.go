@@ -601,6 +601,7 @@ func (cs *ChainStore) readAMTCids(root cid.Cid) ([]cid.Cid, error) {
 type ChainMsg interface {
 	Cid() cid.Cid
 	VMMessage() *types.Message
+	ToStorageBlock() (block.Block, error)
 }
 
 func (cs *ChainStore) MessagesForTipset(ts *types.TipSet) ([]ChainMsg, error) {
