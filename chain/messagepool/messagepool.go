@@ -1,4 +1,4 @@
-package chain
+package messagepool
 
 import (
 	"bytes"
@@ -13,6 +13,7 @@ import (
 	"github.com/ipfs/go-datastore"
 	"github.com/ipfs/go-datastore/namespace"
 	"github.com/ipfs/go-datastore/query"
+	logging "github.com/ipfs/go-log"
 	pubsub "github.com/libp2p/go-libp2p-pubsub"
 	lps "github.com/whyrusleeping/pubsub"
 	"go.uber.org/multierr"
@@ -20,12 +21,15 @@ import (
 
 	"github.com/filecoin-project/lotus/api"
 	"github.com/filecoin-project/lotus/build"
+	"github.com/filecoin-project/lotus/chain"
 	"github.com/filecoin-project/lotus/chain/address"
 	"github.com/filecoin-project/lotus/chain/stmgr"
 	"github.com/filecoin-project/lotus/chain/store"
 	"github.com/filecoin-project/lotus/chain/types"
 	"github.com/filecoin-project/lotus/node/modules/dtypes"
 )
+
+var log = logging.Logger("messagepool")
 
 var (
 	ErrMessageTooBig = errors.New("message too big")
@@ -567,7 +571,7 @@ func (mp *MessagePool) Updates(ctx context.Context) (<-chan api.MpoolUpdate, err
 	sub := mp.changes.Sub(localUpdates)
 
 	go func() {
-		defer mp.changes.Unsub(sub, localIncoming)
+		defer mp.changes.Unsub(sub, chain.LocalIncoming)
 
 		for {
 			select {

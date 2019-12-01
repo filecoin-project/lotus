@@ -19,6 +19,7 @@ import (
 
 	"github.com/filecoin-project/lotus/chain"
 	"github.com/filecoin-project/lotus/chain/blocksync"
+	"github.com/filecoin-project/lotus/chain/messagepool"
 	"github.com/filecoin-project/lotus/chain/stmgr"
 	"github.com/filecoin-project/lotus/chain/store"
 	"github.com/filecoin-project/lotus/chain/types"
@@ -41,9 +42,9 @@ func ChainExchange(mctx helpers.MetricsCtx, lc fx.Lifecycle, host host.Host, rt 
 	return exch
 }
 
-func MessagePool(lc fx.Lifecycle, sm *stmgr.StateManager, ps *pubsub.PubSub, ds dtypes.MetadataDS) (*chain.MessagePool, error) {
-	mpp := chain.NewMpoolProvider(sm, ps)
-	mp, err := chain.NewMessagePool(mpp, ds)
+func MessagePool(lc fx.Lifecycle, sm *stmgr.StateManager, ps *pubsub.PubSub, ds dtypes.MetadataDS) (*messagepool.MessagePool, error) {
+	mpp := messagepool.NewMpoolProvider(sm, ps)
+	mp, err := messagepool.NewMessagePool(mpp, ds)
 	if err != nil {
 		return nil, xerrors.Errorf("constructing mpool: %w", err)
 	}

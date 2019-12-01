@@ -39,7 +39,7 @@ import (
 
 var log = logging.Logger("chain")
 
-var localIncoming = "incoming"
+var LocalIncoming = "incoming"
 
 type Syncer struct {
 	// The heaviest known tipset in the network.
@@ -119,7 +119,7 @@ func (syncer *Syncer) InformNewHead(from peer.ID, fts *store.FullTipSet) {
 		}
 	}
 
-	syncer.incoming.Pub(fts.TipSet().Blocks(), localIncoming)
+	syncer.incoming.Pub(fts.TipSet().Blocks(), LocalIncoming)
 
 	if from == syncer.self {
 		// TODO: this is kindof a hack...
@@ -152,11 +152,11 @@ func (syncer *Syncer) InformNewHead(from peer.ID, fts *store.FullTipSet) {
 }
 
 func (syncer *Syncer) IncomingBlocks(ctx context.Context) (<-chan *types.BlockHeader, error) {
-	sub := syncer.incoming.Sub(localIncoming)
+	sub := syncer.incoming.Sub(LocalIncoming)
 	out := make(chan *types.BlockHeader, 10)
 
 	go func() {
-		defer syncer.incoming.Unsub(sub, localIncoming)
+		defer syncer.incoming.Unsub(sub, LocalIncoming)
 
 		for {
 			select {
