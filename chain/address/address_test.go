@@ -11,7 +11,7 @@ import (
 	"time"
 
 	"github.com/filecoin-project/go-bls-sigs"
-	"github.com/filecoin-project/go-leb128"
+	"github.com/multiformats/go-varint"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 
@@ -94,7 +94,9 @@ func TestVectorsIDAddress(t *testing.T) {
 			maybeAddr, err := NewFromString(tc.expected)
 			assert.NoError(err)
 			assert.Equal(ID, maybeAddr.Protocol())
-			assert.Equal(tc.input, leb128.ToUInt64(maybeAddr.Payload()))
+			id, _, err := varint.FromUvarint(maybeAddr.Payload())
+			assert.NoError(err)
+			assert.Equal(tc.input, id)
 
 			// Round trip to and from bytes
 			maybeAddrBytes, err := NewFromBytes(maybeAddr.Bytes())
