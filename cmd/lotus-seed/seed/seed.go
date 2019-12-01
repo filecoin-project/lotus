@@ -33,11 +33,11 @@ func PreSeal(maddr address.Address, ssize uint64, sectors int, sbroot string, pr
 		CacheDir:      filepath.Join(sbroot, "cache"),
 		SealedDir:     filepath.Join(sbroot, "sealed"),
 		StagedDir:     filepath.Join(sbroot, "staging"),
-		MetadataDir:   filepath.Join(sbroot, "meta"),
+		UnsealedDir:   filepath.Join(sbroot, "unsealed"),
 		WorkerThreads: 2,
 	}
 
-	for _, d := range []string{cfg.CacheDir, cfg.SealedDir, cfg.StagedDir, cfg.MetadataDir} {
+	for _, d := range []string{cfg.CacheDir, cfg.SealedDir, cfg.StagedDir, cfg.UnsealedDir} {
 		if err := os.MkdirAll(d, 0775); err != nil {
 			return nil, err
 		}

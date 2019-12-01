@@ -55,9 +55,12 @@ type SectorBuilder struct {
 
 	Miner address.Address
 
-	stagedDir string
-	sealedDir string
-	cacheDir  string
+	stagedDir   string
+	sealedDir   string
+	cacheDir    string
+	unsealedDir string
+
+	unsealLk sync.Mutex
 
 	rateLimit chan struct{}
 }
@@ -71,7 +74,7 @@ type Config struct {
 	CacheDir    string
 	SealedDir   string
 	StagedDir   string
-	MetadataDir string
+	UnsealedDir string
 }
 
 func New(cfg *Config, ds dtypes.MetadataDS) (*SectorBuilder, error) {
@@ -79,7 +82,7 @@ func New(cfg *Config, ds dtypes.MetadataDS) (*SectorBuilder, error) {
 		return nil, xerrors.Errorf("minimum worker threads is %d, specified %d", PoStReservedWorkers+1, cfg.WorkerThreads)
 	}
 
-	for _, dir := range []string{cfg.StagedDir, cfg.SealedDir, cfg.CacheDir, cfg.MetadataDir} {
+	for _, dir := range []string{cfg.StagedDir, cfg.SealedDir, cfg.CacheDir, cfg.UnsealedDir} {
 		if err := os.Mkdir(dir, 0755); err != nil {
 			if os.IsExist(err) {
 				continue
@@ -187,13 +190,72 @@ func (sb *SectorBuilder) AddPiece(pieceSize uint64, sectorId uint64, file io.Rea
 	}, werr()
 }
 
-// TODO: should *really really* return an io.ReadCloser
-func (sb *SectorBuilder) ReadPieceFromSealedSector(pieceKey string) ([]byte, error) {
-	ret := sb.RateLimit()
+func (sb *SectorBuilder) ReadPieceFromSealedSector(sectorID uint64, offset uint64, size uint64, ticket []byte, commD []byte) (io.ReadCloser, error) {
+	ret := sb.RateLimit() // TODO: check perf, consider remote unseal worker
 	defer ret()
 
-	panic("fixme")
-	//return sectorbuilder.Unseal(sb.handle, pieceKey)
+	sb.unsealLk.Lock() // TODO: allow unsealing unrelated sectors in parallel
+	defer sb.unsealLk.Lock()
+
+	cacheDir, err := sb.sectorCacheDir(sectorID)
+	if err != nil {
+		return nil, err
+	}
+
+	sealedPath, err := sb.sealedSectorPath(sectorID)
+	if err != nil {
+		return nil, err
+	}
+
+	unsealedPath := sb.unsealedSectorPath(sectorID)
+
+	// TODO: GC for those
+	//  (Probably configurable count of sectors to be kept unsealed, and just
+	//   remove last used one (or use whatever other cache policy makes sense))
+	f, err := os.OpenFile(unsealedPath, os.O_RDONLY, 0644)
+	if err != nil {
+		if !os.IsNotExist(err) {
+			return nil, err
+		}
+
+		var commd [CommLen]byte
+		copy(commd[:], commD)
+
+		var tkt [CommLen]byte
+		copy(tkt[:], ticket)
+
+		err = sectorbuilder.Unseal(sb.ssize,
+			PoRepProofPartitions,
+			cacheDir,
+			sealedPath,
+			unsealedPath,
+			sectorID,
+			addressToProverID(sb.Miner),
+			tkt,
+			commd)
+		if err != nil {
+			return nil, xerrors.Errorf("unseal failed: %w", err)
+		}
+
+		f, err = os.OpenFile(unsealedPath, os.O_RDONLY, 0644)
+		if err != nil {
+			return nil, err
+		}
+	}
+
+	if _, err := f.Seek(int64(offset), io.SeekStart); err != nil {
+		return nil, xerrors.Errorf("seek: %w", err)
+	}
+
+	lr := io.LimitReader(f, int64(size))
+
+	return &struct {
+		io.Reader
+		io.Closer
+	}{
+		Reader: lr,
+		Closer: f,
+	}, nil
 }
 
 func (sb *SectorBuilder) SealPreCommit(sectorID uint64, ticket SealTicket, pieces []PublicPieceInfo) (RawSealPreCommitOutput, error) {

@@ -29,7 +29,7 @@ func TempSectorbuilderDir(dir string, sectorSize uint64, ds dtypes.MetadataDS) (
 		return nil, err
 	}
 
-	metadata := filepath.Join(dir, "meta")
+	unsealed := filepath.Join(dir, "unsealed")
 	sealed := filepath.Join(dir, "sealed")
 	staging := filepath.Join(dir, "staging")
 	cache := filepath.Join(dir, "cache")
@@ -39,7 +39,7 @@ func TempSectorbuilderDir(dir string, sectorSize uint64, ds dtypes.MetadataDS) (
 
 		SealedDir:   sealed,
 		StagedDir:   staging,
-		MetadataDir: metadata,
+		UnsealedDir: unsealed,
 		CacheDir:    cache,
 
 		WorkerThreads: 2,

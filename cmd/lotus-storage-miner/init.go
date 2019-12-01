@@ -144,7 +144,7 @@ var initCmd = &cli.Command{
 				SealedDir:     filepath.Join(pssb, "sealed"),
 				CacheDir:      filepath.Join(pssb, "cache"),
 				StagedDir:     filepath.Join(pssb, "staging"),
-				MetadataDir:   filepath.Join(pssb, "meta"),
+				UnsealedDir:   filepath.Join(pssb, "unsealed"),
 			}, oldmds)
 			if err != nil {
 				return xerrors.Errorf("failed to open up preseal sectorbuilder: %w", err)
@@ -156,7 +156,7 @@ var initCmd = &cli.Command{
 				SealedDir:     filepath.Join(lr.Path(), "sealed"),
 				CacheDir:      filepath.Join(lr.Path(), "cache"),
 				StagedDir:     filepath.Join(lr.Path(), "staging"),
-				MetadataDir:   filepath.Join(lr.Path(), "meta"),
+				UnsealedDir:   filepath.Join(lr.Path(), "unsealed"),
 			}, mds)
 			if err != nil {
 				return xerrors.Errorf("failed to open up sectorbuilder: %w", err)
@@ -221,7 +221,6 @@ func migratePreSealMeta(ctx context.Context, api lapi.FullNode, presealDir strin
 			Pieces: []storage.Piece{
 				{
 					DealID: dealID,
-					Ref:    fmt.Sprintf("preseal-%d", sector.SectorID),
 					Size:   meta.SectorSize,
 					CommP:  sector.CommD[:],
 				},

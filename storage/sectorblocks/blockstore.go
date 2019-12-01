@@ -2,6 +2,8 @@ package sectorblocks
 
 import (
 	"context"
+	"golang.org/x/xerrors"
+	"io/ioutil"
 
 	blocks "github.com/ipfs/go-block-format"
 	"github.com/ipfs/go-cid"
@@ -67,9 +69,28 @@ func (s *SectorBlockStore) Get(c cid.Cid) (blocks.Block, error) {
 		return nil, blockstore.ErrNotFound
 	}
 
-	data, err := s.sectorBlocks.unsealed.getRef(context.TODO(), refs, s.approveUnseal)
+	best := refs[0] // TODO: better strategy (e.g. look for already unsealed)
+
+	si, err := s.sectorBlocks.Miner.GetSectorInfo(best.SectorID)
 	if err != nil {
-		return nil, err
+		return nil, xerrors.Errorf("getting sector info: %w", err)
+	}
+
+	r, err := s.sectorBlocks.sb.ReadPieceFromSealedSector(
+		best.SectorID,
+		best.Offset,
+		best.Size,
+		si.Ticket.TicketBytes,
+		si.CommD,
+	)
+	if err != nil {
+		return nil, xerrors.Errorf("unsealing block: %w", err)
+	}
+	defer r.Close()
+
+	data, err := ioutil.ReadAll(r)
+	if err != nil {
+		return nil, xerrors.Errorf("reading block data: %w", err)
 	}
 
 	return blocks.NewBlockWithCid(data, c)

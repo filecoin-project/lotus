@@ -204,7 +204,7 @@ func (p *Provider) staged(ctx context.Context, deal MinerDeal) (func(*MinerDeal)
 		return nil, xerrors.Errorf("deal.Proposal.PieceSize didn't match padded unixfs file size")
 	}
 
-	sectorID, err := p.secb.AddUnixfsPiece(ctx, deal.Ref, uf, deal.DealID)
+	sectorID, err := p.secb.AddUnixfsPiece(ctx, uf, deal.DealID)
 	if err != nil {
 		return nil, xerrors.Errorf("AddPiece failed: %s", err)
 	}
