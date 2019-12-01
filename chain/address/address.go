@@ -8,9 +8,9 @@ import (
 	"strconv"
 
 	"github.com/filecoin-project/go-bls-sigs"
-	"github.com/filecoin-project/go-leb128"
 	cbor "github.com/ipfs/go-ipld-cbor"
 	"github.com/minio/blake2b-simd"
+	"github.com/multiformats/go-varint"
 	"github.com/polydawn/refmt/obj/atlas"
 	"golang.org/x/xerrors"
 
@@ -166,7 +166,7 @@ func (a *Address) Scan(value interface{}) error {
 
 // NewIDAddress returns an address using the ID protocol.
 func NewIDAddress(id uint64) (Address, error) {
-	return newAddress(ID, leb128.FromUInt64(id))
+	return newAddress(ID, varint.ToUvarint(id))
 }
 
 // NewSecp256k1Address returns an address using the SECP256K1 protocol.
@@ -218,6 +218,14 @@ func addressHash(ingest []byte) []byte {
 func newAddress(protocol Protocol, payload []byte) (Address, error) {
 	switch protocol {
 	case ID:
+		_, n, err := varint.FromUvarint(payload)
+		if err != nil {
+			return Undef, xerrors.Errorf("could not decode: %v: %w", err, ErrInvalidPayload)
+		}
+		if n != len(payload) {
+			return Undef, xerrors.Errorf("different varint length (v:%d != p:%d): %w",
+				n, len(payload), ErrInvalidPayload)
+		}
 	case SECP256K1, Actor:
 		if len(payload) != PayloadHashLength {
 			return Undef, ErrInvalidPayload
@@ -258,7 +266,14 @@ func encode(network Network, addr Address) (string, error) {
 		cksm := Checksum(append([]byte{addr.Protocol()}, addr.Payload()...))
 		strAddr = ntwk + fmt.Sprintf("%d", addr.Protocol()) + AddressEncoding.WithPadding(-1).EncodeToString(append(addr.Payload(), cksm[:]...))
 	case ID:
-		strAddr = ntwk + fmt.Sprintf("%d", addr.Protocol()) + fmt.Sprintf("%d", leb128.ToUInt64(addr.Payload()))
+		i, n, err := varint.FromUvarint(addr.Payload())
+		if err != nil {
+			return UndefAddressString, xerrors.Errorf("could not decode varint: %w", err)
+		}
+		if n != len(addr.Payload()) {
+			return UndefAddressString, xerrors.Errorf("payload contains additional bytes")
+		}
+		strAddr = fmt.Sprintf("%s%d%d", ntwk, addr.Protocol(), i)
 	default:
 		return UndefAddressString, ErrUnknownProtocol
 	}
@@ -304,7 +319,7 @@ func decode(a string) (Address, error) {
 		if err != nil {
 			return Undef, ErrInvalidPayload
 		}
-		return newAddress(protocol, leb128.FromUInt64(id))
+		return newAddress(protocol, varint.ToUvarint(id))
 	}
 
 	payloadcksm, err := AddressEncoding.WithPadding(-1).DecodeString(raw)
