@@ -10,6 +10,8 @@
 **/*.h
 **/*.a
 **/*.pc
+/**/*/.DS_STORE
+.DS_STORE
 build/.*
 build/paramfetch.sh
 /vendor
