@@ -42,6 +42,7 @@ type SealingResult struct {
 	PreCommit time.Duration
 	Commit    time.Duration
 	Verify    time.Duration
+	Unseal    time.Duration
 }
 
 func main() {
@@ -97,9 +98,9 @@ func main() {
 				CacheDir:      filepath.Join(tsdir, "cache"),
 				SealedDir:     filepath.Join(tsdir, "sealed"),
 				StagedDir:     filepath.Join(tsdir, "staged"),
-				MetadataDir:   filepath.Join(tsdir, "meta"),
+				UnsealedDir:   filepath.Join(tsdir, "unsealed"),
 			}
-			for _, d := range []string{cfg.CacheDir, cfg.SealedDir, cfg.StagedDir, cfg.MetadataDir} {
+			for _, d := range []string{cfg.CacheDir, cfg.SealedDir, cfg.StagedDir, cfg.UnsealedDir} {
 				if err := os.MkdirAll(d, 0775); err != nil {
 					return err
 				}
@@ -113,8 +114,7 @@ func main() {
 				return err
 			}
 
-			r := rand.New(rand.NewSource(101))
-			size := sectorbuilder.UserBytesForSectorSize(sectorSize)
+			dataSize := sectorbuilder.UserBytesForSectorSize(sectorSize)
 
 			var sealTimings []SealingResult
 			var sealedSectors []ffi.PublicSectorInfo
@@ -122,7 +122,10 @@ func main() {
 			for i := uint64(1); i <= numSectors; i++ {
 				start := time.Now()
 				log.Info("Writing piece into sector...")
-				pi, err := sb.AddPiece(size, i, r, nil)
+
+				r := rand.New(rand.NewSource(100 + int64(i)))
+
+				pi, err := sb.AddPiece(dataSize, i, r, nil)
 				if err != nil {
 					return err
 				}
@@ -171,11 +174,24 @@ func main() {
 
 				verifySeal := time.Now()
 
+				log.Info("Unsealing sector")
+				rc, err := sb.ReadPieceFromSealedSector(1, 0, dataSize, ticket.TicketBytes[:], commD[:])
+				if err != nil {
+					return err
+				}
+
+				unseal := time.Now()
+
+				if err := rc.Close(); err != nil {
+					return err
+				}
+
 				sealTimings = append(sealTimings, SealingResult{
 					AddPiece:  addpiece.Sub(start),
 					PreCommit: precommit.Sub(addpiece),
 					Commit:    sealcommit.Sub(precommit),
 					Verify:    verifySeal.Sub(sealcommit),
+					Unseal:    unseal.Sub(verifySeal),
 				})
 			}
 
@@ -248,6 +264,7 @@ func main() {
 			fmt.Printf("seal: preCommit: %s\n", benchout.SealingResults[0].PreCommit)
 			fmt.Printf("seal: Commit: %s\n", benchout.SealingResults[0].Commit)
 			fmt.Printf("seal: Verify: %s\n", benchout.SealingResults[0].Verify)
+			fmt.Printf("unseal: %s\n", benchout.SealingResults[0].Unseal)
 			fmt.Printf("generate candidates: %s\n", benchout.PostGenerateCandidates)
 			fmt.Printf("compute epost proof (cold): %s\n", benchout.PostEProofCold)
 			fmt.Printf("compute epost proof (hot): %s\n", benchout.PostEProofHot)
