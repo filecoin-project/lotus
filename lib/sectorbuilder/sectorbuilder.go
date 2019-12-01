@@ -111,9 +111,10 @@ func New(cfg *Config, ds dtypes.MetadataDS) (*SectorBuilder, error) {
 		ssize:  cfg.SectorSize,
 		lastID: lastUsedID,
 
-		stagedDir: cfg.StagedDir,
-		sealedDir: cfg.SealedDir,
-		cacheDir:  cfg.CacheDir,
+		stagedDir:   cfg.StagedDir,
+		sealedDir:   cfg.SealedDir,
+		cacheDir:    cfg.CacheDir,
+		unsealedDir: cfg.UnsealedDir,
 
 		Miner:     cfg.Miner,
 		rateLimit: make(chan struct{}, cfg.WorkerThreads-PoStReservedWorkers),

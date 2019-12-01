@@ -97,8 +97,16 @@ func (s *SectorBlockStore) Get(c cid.Cid) (blocks.Block, error) {
 	if err != nil {
 		return nil, xerrors.Errorf("reading block data: %w", err)
 	}
+	if uint64(len(data)) != best.Size {
+		return nil, xerrors.Errorf("got wrong amount of data: %d != !d", len(data), best.Size)
+	}
 
-	return blocks.NewBlockWithCid(data, c)
+	b, err := blocks.NewBlockWithCid(data, c)
+	if err != nil {
+		return nil, xerrors.Errorf("sbs get (%d[%d:%d]): %w", best.SectorID, best.Offset, best.Offset+best.Size, err)
+	}
+
+	return b, nil
 }
 
 var _ blockstore.Blockstore = &SectorBlockStore{}
