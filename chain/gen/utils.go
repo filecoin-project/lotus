@@ -205,7 +205,7 @@ func SetupStorageMarketActor(bs bstore.Blockstore, sroot cid.Cid, deals []actors
 	sms := &actors.StorageMarketState{
 		Balances:   emptyHAMT,
 		Deals:      dealAmt,
-		NextDealID: 0,
+		NextDealID: uint64(len(deals)),
 	}
 
 	stcid, err := cst.Put(context.TODO(), sms)
