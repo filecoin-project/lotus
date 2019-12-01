@@ -195,7 +195,7 @@ func (sb *SectorBuilder) ReadPieceFromSealedSector(sectorID uint64, offset uint6
 	defer ret()
 
 	sb.unsealLk.Lock() // TODO: allow unsealing unrelated sectors in parallel
-	defer sb.unsealLk.Lock()
+	defer sb.unsealLk.Unlock()
 
 	cacheDir, err := sb.sectorCacheDir(sectorID)
 	if err != nil {

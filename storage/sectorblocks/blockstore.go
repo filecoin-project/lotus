@@ -2,13 +2,16 @@ package sectorblocks
 
 import (
 	"context"
-	"golang.org/x/xerrors"
 	"io/ioutil"
 
 	blocks "github.com/ipfs/go-block-format"
 	"github.com/ipfs/go-cid"
 	blockstore "github.com/ipfs/go-ipfs-blockstore"
+	logging "github.com/ipfs/go-log"
+	"golang.org/x/xerrors"
 )
+
+var log = logging.Logger("sectorblocks")
 
 type SectorBlockStore struct {
 	intermediate blockstore.Blockstore
@@ -75,6 +78,8 @@ func (s *SectorBlockStore) Get(c cid.Cid) (blocks.Block, error) {
 	if err != nil {
 		return nil, xerrors.Errorf("getting sector info: %w", err)
 	}
+
+	log.Infof("reading block %s from sector %d(+%d;%d)", c, best.SectorID, best.Offset, best.Size)
 
 	r, err := s.sectorBlocks.sb.ReadPieceFromSealedSector(
 		best.SectorID,

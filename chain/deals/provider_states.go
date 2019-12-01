@@ -132,10 +132,10 @@ func (p *Provider) accept(ctx context.Context, deal MinerDeal) (func(*MinerDeal)
 		return nil, err
 	}
 	if len(resp.DealIDs) != 1 {
-		return nil, xerrors.Errorf("got unexpected number of DealIDs from")
+		return nil, xerrors.Errorf("got unexpected number of DealIDs from SMA")
 	}
 
-	log.Info("fetching data for a deal")
+	log.Infof("fetching data for a deal %d", resp.DealIDs[0])
 	mcid := smsg.Cid()
 	err = p.sendSignedResponse(&Response{
 		State: api.DealAccepted,
@@ -164,14 +164,12 @@ func (p *Provider) accept(ctx context.Context, deal MinerDeal) (func(*MinerDeal)
 	// (see onDataTransferEvent)
 	_, err = p.dataTransfer.OpenPullDataChannel(ctx,
 		deal.Client,
-		&StorageDataTransferVoucher{Proposal: deal.ProposalCid},
+		&StorageDataTransferVoucher{Proposal: deal.ProposalCid, DealID: resp.DealIDs[0]},
 		deal.Ref,
 		allSelector,
 	)
 
-	return func(deal *MinerDeal) {
-		deal.DealID = resp.DealIDs[0]
-	}, nil
+	return nil, nil
 }
 
 // STAGED
@@ -208,7 +206,7 @@ func (p *Provider) staged(ctx context.Context, deal MinerDeal) (func(*MinerDeal)
 	if err != nil {
 		return nil, xerrors.Errorf("AddPiece failed: %s", err)
 	}
-	log.Warnf("New Sector: %d", sectorID)
+	log.Warnf("New Sector: %d (deal %d)", sectorID, deal.DealID)
 
 	return func(deal *MinerDeal) {
 		deal.SectorID = sectorID

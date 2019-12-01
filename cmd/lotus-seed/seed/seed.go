@@ -108,7 +108,7 @@ func PreSeal(maddr address.Address, ssize uint64, sectors int, sbroot string, pr
 		Key: minerAddr.KeyInfo,
 	}
 
-	if err := createDeals(miner, minerAddr, ssize); err != nil {
+	if err := createDeals(miner, minerAddr, maddr, ssize); err != nil {
 		return nil, xerrors.Errorf("creating deals: %w", err)
 	}
 
@@ -136,14 +136,14 @@ func WriteGenesisMiner(maddr address.Address, sbroot string, gm *genesis.Genesis
 	return nil
 }
 
-func createDeals(m *genesis.GenesisMiner, k *wallet.Key, ssize uint64) error {
+func createDeals(m *genesis.GenesisMiner, k *wallet.Key, maddr address.Address, ssize uint64) error {
 	for _, sector := range m.Sectors {
 		proposal := &actors.StorageDealProposal{
 			PieceRef:             sector.CommD[:], // just one deal so this == CommP
-			PieceSize:            ssize,
+			PieceSize:            sectorbuilder.UserBytesForSectorSize(ssize),
 			PieceSerialization:   actors.SerializationUnixFSv0,
 			Client:               k.Address,
-			Provider:             k.Address,
+			Provider:             maddr,
 			ProposalExpiration:   9000, // TODO: allow setting
 			Duration:             9000,
 			StoragePricePerEpoch: types.NewInt(0),
