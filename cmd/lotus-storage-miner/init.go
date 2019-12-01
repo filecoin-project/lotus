@@ -139,20 +139,28 @@ var initCmd = &cli.Command{
 			}
 
 			oldsb, err := sectorbuilder.New(&sectorbuilder.Config{
-				SectorSize:  1024,
-				SealedDir:   filepath.Join(pssb, "sealed"),
-				CacheDir:    filepath.Join(pssb, "cache"),
-				StagedDir:   filepath.Join(pssb, "staging"),
-				MetadataDir: filepath.Join(pssb, "meta"),
+				SectorSize:    1024,
+				WorkerThreads: 2,
+				SealedDir:     filepath.Join(pssb, "sealed"),
+				CacheDir:      filepath.Join(pssb, "cache"),
+				StagedDir:     filepath.Join(pssb, "staging"),
+				MetadataDir:   filepath.Join(pssb, "meta"),
 			}, oldmds)
+			if err != nil {
+				return xerrors.Errorf("failed to open up preseal sectorbuilder: %w", err)
+			}
 
 			nsb, err := sectorbuilder.New(&sectorbuilder.Config{
-				SectorSize:  1024,
-				SealedDir:   filepath.Join(lr.Path(), "sealed"),
-				CacheDir:    filepath.Join(lr.Path(), "cache"),
-				StagedDir:   filepath.Join(lr.Path(), "staging"),
-				MetadataDir: filepath.Join(lr.Path(), "meta"),
+				SectorSize:    1024,
+				WorkerThreads: 2,
+				SealedDir:     filepath.Join(lr.Path(), "sealed"),
+				CacheDir:      filepath.Join(lr.Path(), "cache"),
+				StagedDir:     filepath.Join(lr.Path(), "staging"),
+				MetadataDir:   filepath.Join(lr.Path(), "meta"),
 			}, mds)
+			if err != nil {
+				return xerrors.Errorf("failed to open up sectorbuilder: %w", err)
+			}
 
 			if err := nsb.ImportFrom(oldsb); err != nil {
 				return err
