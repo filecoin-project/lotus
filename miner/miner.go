@@ -119,7 +119,6 @@ func (m *Miner) Unregister(ctx context.Context, addr address.Address) error {
 }
 
 func (m *Miner) mine(ctx context.Context) {
-	log.Warn("Starting mining!!")
 	ctx, span := trace.StartSpan(ctx, "/mine")
 	defer span.End()
 

@@ -23,7 +23,7 @@ import (
 const PoStReservedWorkers = 1
 const PoRepProofPartitions = 2
 
-var LastSectorIdKey = datastore.NewKey("/sectorbuilder/last")
+var lastSectorIdKey = datastore.NewKey("/sectorbuilder/last")
 
 var log = logging.Logger("sectorbuilder")
 
@@ -89,7 +89,7 @@ func New(cfg *Config, ds dtypes.MetadataDS) (*SectorBuilder, error) {
 	}
 
 	var lastUsedID uint64
-	b, err := ds.Get(LastSectorIdKey)
+	b, err := ds.Get(lastSectorIdKey)
 	switch err {
 	case nil:
 		i, err := strconv.ParseInt(string(b), 10, 64)
@@ -101,7 +101,6 @@ func New(cfg *Config, ds dtypes.MetadataDS) (*SectorBuilder, error) {
 	default:
 		return nil, err
 	}
-	log.Warn("STARTING UP SECTOR BULIDER, LAST ID: ", lastUsedID)
 
 	sb := &SectorBuilder{
 		ds: ds,
@@ -148,7 +147,7 @@ func (sb *SectorBuilder) AcquireSectorId() (uint64, error) {
 	sb.lastID++
 	id := sb.lastID
 
-	err := sb.ds.Put(LastSectorIdKey, []byte(fmt.Sprint(id)))
+	err := sb.ds.Put(lastSectorIdKey, []byte(fmt.Sprint(id)))
 	if err != nil {
 		return 0, err
 	}
@@ -267,14 +266,6 @@ func (sb *SectorBuilder) SealCommit(sectorID uint64, ticket SealTicket, seed Sea
 	return proof, nil
 }
 
-/*
-func (sb *SectorBuilder) GeneratePoSt(sectorInfo SortedSectorInfo, challengeSeed [CommLen]byte, faults []uint64) ([]byte, error) {
-	// Wait, this is a blocking method with no way of interrupting it?
-	// does it checkpoint itself?
-	return sectorbuilder.GeneratePoSt(sb.handle, sectorInfo, challengeSeed, faults)
-}
-*/
-
 func (sb *SectorBuilder) SectorSize() uint64 {
 	return sb.ssize
 }
@@ -292,8 +283,6 @@ func (sb *SectorBuilder) ComputeElectionPoSt(sectorInfo SortedPublicSectorInfo, 
 	}
 
 	proverID := addressToProverID(sb.Miner)
-	log.Info("GENERATING ELECTION POST")
-	defer log.Info("DONE GENERATING ELECTION POST")
 
 	return sectorbuilder.GeneratePoSt(sb.ssize, proverID, privsects, cseed, winners)
 }
@@ -441,12 +430,12 @@ func (sb *SectorBuilder) ImportFrom(osb *SectorBuilder) error {
 		return err
 	}
 
-	val, err := osb.ds.Get(LastSectorIdKey)
+	val, err := osb.ds.Get(lastSectorIdKey)
 	if err != nil {
 		return err
 	}
 
-	if err := sb.ds.Put(LastSectorIdKey, val); err != nil {
+	if err := sb.ds.Put(lastSectorIdKey, val); err != nil {
 		return err
 	}
 

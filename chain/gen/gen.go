@@ -61,7 +61,6 @@ type ChainGen struct {
 
 	eppProvs    map[address.Address]ElectionPoStProver
 	Miners      []address.Address
-	mworkers    []address.Address
 	receivers   []address.Address
 	banker      address.Address
 	bankerNonce uint64
@@ -125,8 +124,6 @@ func NewGenerator() (*ChainGen, error) {
 		}
 	}
 
-	// TODO: this is really weird, we have to guess the miner addresses that
-	// will be created in order to preseal data for them
 	maddr1, err := address.NewFromString("t0300")
 	if err != nil {
 		return nil, err
@@ -212,9 +209,8 @@ func NewGenerator() (*ChainGen, error) {
 		genesis:      genb.Genesis,
 		w:            w,
 
-		Miners:   minercfg.MinerAddrs,
-		eppProvs: mgen,
-		//mworkers:  minercfg.Workers,
+		Miners:    minercfg.MinerAddrs,
+		eppProvs:  mgen,
 		banker:    banker,
 		receivers: receievers,
 
@@ -256,7 +252,6 @@ func (cg *ChainGen) nextBlockProof(ctx context.Context, pts *types.TipSet, m add
 		return nil, nil, xerrors.Errorf("get miner worker: %w", err)
 	}
 
-	log.Warnf("compute VRF ROUND: %d %s %s", round, m, worker)
 	vrfout, err := ComputeVRF(ctx, cg.w.Sign, worker, m, DSepTicket, lastTicket.VRFProof)
 	if err != nil {
 		return nil, nil, xerrors.Errorf("compute VRF: %w", err)
@@ -308,7 +303,6 @@ func (cg *ChainGen) NextTipSetFromMiners(base *types.TipSet, miners []address.Ad
 			}
 
 			if proof != nil {
-				log.Warn("making block, ticket: ", t.VRFProof)
 				fblk, err := cg.makeBlock(base, m, proof, t, uint64(round), msgs)
 				if err != nil {
 					return nil, xerrors.Errorf("making a block for next tipset failed: %w", err)
@@ -510,7 +504,6 @@ func IsRoundWinner(ctx context.Context, ts *types.TipSet, round int64, miner add
 	sectors := sectorbuilder.NewSortedPublicSectorInfo(sinfos)
 
 	hvrf := sha256.Sum256(vrfout)
-	log.Info("Replicas: ", sectors)
 	candidates, err := epp.GenerateCandidates(ctx, sectors, hvrf[:])
 	if err != nil {
 		return false, nil, xerrors.Errorf("failed to generate electionPoSt candidates: %w", err)
