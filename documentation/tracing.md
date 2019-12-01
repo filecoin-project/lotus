@@ -1,4 +1,8 @@
-## Tracing
+# Tracing
+
+Lotus has tracing built into many of its internals. To view the traces, first download [jaeger](https://www.jaegertracing.io/download/) (Choose the 'all-in-one' binary). Then run it somewhere, start up the lotus daemon, and open up localhost:16686 in your browser.
+
+## Open Census
 
 Lotus uses [OpenCensus](https://opencensus.io/) for tracing application flow.
 This generates spans
@@ -22,6 +26,7 @@ Now, to view any generated traces, open up `http://localhost:16686/` in your
 browser.
 
 ## Adding Spans
+
 To annotate a new codepath with spans, add the following lines to the top of the function you wish to trace:
 
 ```go
