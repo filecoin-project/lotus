@@ -1,6 +1,6 @@
 # Installing Lotus on Ubuntu
 
-Install these dependencies:
+Install these dependencies for Ubuntu.
 
 - go (1.13 or higher)
 - gcc (7.4.0 or higher)
@@ -30,14 +30,14 @@ sudo apt update
 sudo apt install golang-go gcc git bzr jq pkg-config mesa-opencl-icd ocl-icd-opencl-dev
 ```
 
-## Clone
+Clone
 
 ```sh
 $ git clone https://github.com/filecoin-project/lotus.git
 $ cd lotus/
 ```
 
-## Install
+Install
 
 ```sh
 $ make clean all

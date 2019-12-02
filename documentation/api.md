@@ -1,6 +1,6 @@
 # API
 
-The systems API is defined in here. The RPC maps directly to the API defined here using the JSON RPC package in `lib/jsonrpc`.
+The systems API is defined in here. The RPC maps directly to the API defined here using the [JSON RPC package](https://github.com/filecoin-project/lotus/tree/master/lib/jsonrpc).
 
 ## Overview
 
@@ -10,8 +10,8 @@ By default `127.0.0.1:1234` - daemon stores the api endpoint multiaddr in `~/.lo
 - `ws://[api:port]/rpc/v0` - JsonRPC websocket endpoint
 - `PUT http://[api:port]/rest/v0/import` - import file to the node repo, it requires write permission.
 
-For JsonRPC interface definition see `api/api.go`. Required permissions are
-defined in `api/struct.go`
+For JsonRPC interface definition see [api/api.go](https://github.com/filecoin-project/lotus/blob/master/api/api_full.go). Required permissions are
+defined in [api/struct.go](https://github.com/filecoin-project/lotus/blob/master/api/struct.go)
 
 ## Auth
 

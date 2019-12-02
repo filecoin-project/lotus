@@ -1,6 +1,6 @@
 # Installing Lotus on Arch Linux
 
-Install these dependencies:
+Install these dependencies for Arch Linux.
 
 - go (1.13 or higher)
 - gcc (7.4.0 or higher)
@@ -27,14 +27,14 @@ Arch (build):
 sudo pacman -Syu go gcc git bzr jq pkg-config opencl-icd-loader opencl-headers
 ```
 
-## Clone
+Clone
 
 ```sh
 $ git clone https://github.com/filecoin-project/lotus.git
 $ cd lotus/
 ```
 
-## Install
+Install
 
 ```sh
 $ make clean all

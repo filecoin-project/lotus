@@ -1,6 +1,6 @@
-# Setup Lotus Devnet using the CLI
+# Join Lotus Devnet
 
-## Node setup
+## Node CLI setup
 
 If you have run lotus before and want to remove all previous data: `rm -rf ~/.lotus ~/.lotusstorage`
 
@@ -54,7 +54,6 @@ If you see an error like `actor not found` after executing this command, it mean
 It is possible for a Client to make a deal with a Miner on the same lotus Node.
 
 ```sh
-
 # List all miners in the system. Choose one to make a deal with.
 
 $ lotus state list-miners
@@ -72,4 +71,4 @@ For example `\$ lotus client deal bafkre...qvtjsi t0111 36000 12` proposes a dea
 
 ## Monitoring Dashboard
 
-To see the latest network activity, including chain block height, blocktime, total network power, largest miners, and more, check out the monitoring dashboard at https://lotus-metrics.kittyhawk.wtf.
+To see the latest network activity, including chain block height, blocktime, total network power, largest miners, and more, check out the [monitoring dashboard](https://lotus-metrics.kittyhawk.wtf).

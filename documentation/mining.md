@@ -1,4 +1,4 @@
-# Mining
+# Getting started
 
 Ensure that at least one BLS address (`t3..`) in your wallet exists
 
@@ -7,13 +7,15 @@ $ lotus wallet list
 t3...
 ```
 
-With this address, go to https://lotus-faucet.kittyhawk.wtf/miner.html, and
+With this address, go to [the faucet](https://lotus-faucet.kittyhawk.wtf/miner.html), and
 click `Create Miner`
 
 Wait for a page telling you the address of the newly created storage miner to
-appear - It should be saying: `New storage miners address is: t0..`
+appear.
 
-Initialize storage miner:
+The screen should show: `New storage miners address is: t0..`
+
+## Initialize
 
 ```sh
 $ lotus-storage-miner init --actor=t01.. --owner=t3....
@@ -21,7 +23,7 @@ $ lotus-storage-miner init --actor=t01.. --owner=t3....
 
 This command should return successfully after miner is setup on-chain (30-60s)
 
-Start mining:
+## Start mining
 
 ```sh
 $ lotus-storage-miner run

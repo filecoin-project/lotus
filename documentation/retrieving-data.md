@@ -11,7 +11,7 @@ RETRIEVAL <miner>@<miner peerId>-<deal funds>-<size>
 Retrieve data from a miner
 
 ```sh
-\$ lotus client retrieve <Data CID> <outfile>
+$ lotus client retrieve <Data CID> <outfile>
 ```
 
 This will initiate a retrieval deal and write the data to the outfile. This process may take some time.
