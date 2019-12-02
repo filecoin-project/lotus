@@ -115,7 +115,7 @@ func TestMessagePool(t *testing.T) {
 
 	ds := datastore.NewMapDatastore()
 
-	mp, err := NewMessagePool(tma, ds)
+	mp, err := New(tma, ds)
 	if err != nil {
 		t.Fatal(err)
 	}

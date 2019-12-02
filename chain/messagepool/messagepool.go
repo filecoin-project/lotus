@@ -65,7 +65,7 @@ type MessagePool struct {
 	curTsLk sync.RWMutex
 	curTs   *types.TipSet
 
-	api MpoolProvider
+	api Provider
 
 	minGasPrice types.BigInt
 
@@ -105,7 +105,7 @@ func (ms *msgSet) add(m *types.SignedMessage) error {
 	return nil
 }
 
-type MpoolProvider interface {
+type Provider interface {
 	SubscribeHeadChanges(func(rev, app []*types.TipSet) error)
 	PutMessage(m store.ChainMsg) (cid.Cid, error)
 	PubSubPublish(string, []byte) error
@@ -119,7 +119,7 @@ type mpoolProvider struct {
 	ps *pubsub.PubSub
 }
 
-func NewMpoolProvider(sm *stmgr.StateManager, ps *pubsub.PubSub) MpoolProvider {
+func NewProvider(sm *stmgr.StateManager, ps *pubsub.PubSub) Provider {
 	return &mpoolProvider{sm, ps}
 }
 
@@ -147,7 +147,7 @@ func (mpp *mpoolProvider) MessagesForTipset(ts *types.TipSet) ([]store.ChainMsg,
 	return mpp.sm.ChainStore().MessagesForTipset(ts)
 }
 
-func NewMessagePool(api MpoolProvider, ds dtypes.MetadataDS) (*MessagePool, error) {
+func New(api Provider, ds dtypes.MetadataDS) (*MessagePool, error) {
 	cache, _ := lru.New2Q(build.BlsSignatureCacheSize)
 	mp := &MessagePool{
 		closer:        make(chan struct{}),
