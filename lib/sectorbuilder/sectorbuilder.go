@@ -356,7 +356,7 @@ func (sb *SectorBuilder) GenerateEPostCandidates(sectorInfo SortedPublicSectorIn
 		return nil, err
 	}
 
-	challengeCount := electionPostChallengeCount(uint64(len(sectorInfo.Values())))
+	challengeCount := ElectionPostChallengeCount(uint64(len(sectorInfo.Values())))
 
 	proverID := addressToProverID(sb.Miner)
 	return sectorbuilder.GenerateCandidates(sb.ssize, proverID, challengeSeed, challengeCount, privsectors)
@@ -425,7 +425,7 @@ func NewSortedPublicSectorInfo(sectors []sectorbuilder.PublicSectorInfo) SortedP
 }
 
 func VerifyElectionPost(ctx context.Context, sectorSize uint64, sectorInfo SortedPublicSectorInfo, challengeSeed []byte, proof []byte, candidates []EPostCandidate, proverID address.Address) (bool, error) {
-	challengeCount := electionPostChallengeCount(uint64(len(sectorInfo.Values())))
+	challengeCount := ElectionPostChallengeCount(uint64(len(sectorInfo.Values())))
 	return verifyPost(ctx, sectorSize, sectorInfo, challengeCount, challengeSeed, proof, candidates, proverID)
 }
 
@@ -467,13 +467,13 @@ func GenerateDataCommitment(ssize uint64, pieces []PublicPieceInfo) ([CommLen]by
 	return sectorbuilder.GenerateDataCommitment(ssize, pieces)
 }
 
-func electionPostChallengeCount(sectors uint64) uint64 {
+func ElectionPostChallengeCount(sectors uint64) uint64 {
 	// ceil(sectors / build.SectorChallengeRatioDiv)
 	return (sectors + build.SectorChallengeRatioDiv - 1) / build.SectorChallengeRatioDiv
 }
 
 func fallbackPostChallengeCount(sectors uint64) uint64 {
-	challengeCount := electionPostChallengeCount(sectors)
+	challengeCount := ElectionPostChallengeCount(sectors)
 	if challengeCount > build.MaxFallbackPostChallengeCount {
 		return build.MaxFallbackPostChallengeCount
 	}
