@@ -25,14 +25,6 @@ import (
 	"github.com/filecoin-project/lotus/genesis"
 )
 
-var validSsizes = map[uint64]struct{}{}
-
-func init() {
-	for _, size := range build.SectorSizes {
-		validSsizes[size] = struct{}{}
-	}
-}
-
 type GenesisBootstrap struct {
 	Genesis *types.BlockHeader
 }
@@ -326,7 +318,7 @@ func SetupStorageMiners(ctx context.Context, cs *store.ChainStore, sroot cid.Cid
 		if err := cst.Get(ctx, mact.Head, &mstate); err != nil {
 			return cid.Undef, nil, xerrors.Errorf("getting miner actor state failed: %w", err)
 		}
-		mstate.Power = types.NewInt(build.SectorSizes[0])
+		mstate.Power = types.BigMul(types.NewInt(build.SectorSizes[0]), types.NewInt(uint64(len(ps.Sectors))))
 
 		blks := amt.WrapBlockstore(cs.Blockstore())
 

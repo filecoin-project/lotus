@@ -3,6 +3,7 @@ package chain_test
 import (
 	"context"
 	"fmt"
+	"os"
 	"testing"
 	"time"
 
@@ -25,6 +26,7 @@ import (
 
 func init() {
 	build.InsecurePoStValidation = true
+	os.Setenv("TRUST_PARAMS", "1")
 }
 
 const source = 0
@@ -346,7 +348,7 @@ func (tu *syncTestUtil) waitUntilSyncTarget(to int, target *types.TipSet) {
 }
 
 func TestSyncSimple(t *testing.T) {
-	H := 2
+	H := 50
 	tu := prepSyncTest(t, H)
 
 	client := tu.addClientNode()
