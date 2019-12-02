@@ -5,7 +5,8 @@ Lotus is an experimental implementation of the **Filecoin Distributed Storage Ne
 ## What can I learn here?
 
 - If you want to [store](https://docs.lotu.sh/storing-data) or [retrieve](https://docs.lotu.sh/retrieving-data) data, you can install Lotus on [Arch Linux](https://docs.lotu.sh/install-lotus-arch), [Ubuntu](https://docs.lotu.sh/install-lotus-ubuntu), or [MacOS](https://docs.lotu.sh/install-lotus-macos) and get started.
-- Learn how to setup a DevNet with either the [command line interface](https://docs.lotu.sh/join-devnet-cli) or a [graphical user interface](https://docs.lotu.sh/join-devnet-gui).
+- Learn how to join the DevNet with the [command line interface](https://docs.lotu.sh/join-devnet-cli).
+- Learn how to test Lotus in a seperate local network using a [GUI](https://docs.lotu.sh/testing-with-gui).
 - Learn how to mine Filecoin using the `lotus-storage-miner` in the [CLI](https://docs.lotu.sh/mining)
 
 ## What makes Lotus different?
