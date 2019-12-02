@@ -370,10 +370,10 @@ func storageMinerInit(ctx context.Context, cctx *cli.Context, api lapi.FullNode,
 			}
 
 			return nil
-		} else {
-			if err := configureStorageMiner(ctx, api, a, peerid); err != nil {
-				return xerrors.Errorf("failed to configure storage miner: %w", err)
-			}
+		}
+
+		if err := configureStorageMiner(ctx, api, a, peerid); err != nil {
+			return xerrors.Errorf("failed to configure storage miner: %w", err)
 		}
 
 		addr = a

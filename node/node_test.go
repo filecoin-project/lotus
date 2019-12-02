@@ -38,7 +38,7 @@ import (
 )
 
 func init() {
-	logging.SetLogLevel("*", "INFO")
+	_ = logging.SetLogLevel("*", "INFO")
 }
 
 func testStorageNode(ctx context.Context, t *testing.T, waddr address.Address, act address.Address, pk crypto.PrivKey, tnd test.TestNode, mn mocknet.Mocknet) test.TestStorageNode {
@@ -121,7 +121,7 @@ func testStorageNode(ctx context.Context, t *testing.T, waddr address.Address, a
 		}
 	}
 
-	return test.TestStorageNode{minerapi, mineOne}
+	return test.TestStorageNode{StorageMiner: minerapi, MineOne: mineOne}
 }
 
 func builder(t *testing.T, nFull int, storage []int) ([]test.TestNode, []test.TestStorageNode) {

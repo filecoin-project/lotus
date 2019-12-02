@@ -122,8 +122,7 @@ func TestSealAndVerify(t *testing.T) {
 	if runtime.NumCPU() < 10 && os.Getenv("CI") == "" { // don't bother on slow hardware
 		t.Skip("this is slow")
 	}
-	os.Setenv("BELLMAN_NO_GPU", "1")
-	os.Setenv("RUST_LOG", "info")
+	_ = os.Setenv("RUST_LOG", "info")
 
 	build.SectorSizes = []uint64{sectorSize}
 
@@ -192,8 +191,7 @@ func TestSealPoStNoCommit(t *testing.T) {
 	if runtime.NumCPU() < 10 && os.Getenv("CI") == "" { // don't bother on slow hardware
 		t.Skip("this is slow")
 	}
-	os.Setenv("BELLMAN_NO_GPU", "1")
-	os.Setenv("RUST_LOG", "info")
+	_ = os.Setenv("RUST_LOG", "info")
 
 	build.SectorSizes = []uint64{sectorSize}
 
@@ -255,8 +253,7 @@ func TestSealAndVerify2(t *testing.T) {
 	if runtime.NumCPU() < 10 && os.Getenv("CI") == "" { // don't bother on slow hardware
 		t.Skip("this is slow")
 	}
-	os.Setenv("BELLMAN_NO_GPU", "1")
-	os.Setenv("RUST_LOG", "info")
+	_ = os.Setenv("RUST_LOG", "info")
 
 	build.SectorSizes = []uint64{sectorSize}
 

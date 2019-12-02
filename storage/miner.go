@@ -143,17 +143,17 @@ func (m *Miner) runPreflightChecks(ctx context.Context) error {
 	return nil
 }
 
-type sectorBuilderEpp struct {
+type SectorBuilderEpp struct {
 	sb *sectorbuilder.SectorBuilder
 }
 
-func NewElectionPoStProver(sb *sectorbuilder.SectorBuilder) *sectorBuilderEpp {
-	return &sectorBuilderEpp{sb}
+func NewElectionPoStProver(sb *sectorbuilder.SectorBuilder) *SectorBuilderEpp {
+	return &SectorBuilderEpp{sb}
 }
 
-var _ gen.ElectionPoStProver = (*sectorBuilderEpp)(nil)
+var _ gen.ElectionPoStProver = (*SectorBuilderEpp)(nil)
 
-func (epp *sectorBuilderEpp) GenerateCandidates(ctx context.Context, ssi sectorbuilder.SortedPublicSectorInfo, rand []byte) ([]sectorbuilder.EPostCandidate, error) {
+func (epp *SectorBuilderEpp) GenerateCandidates(ctx context.Context, ssi sectorbuilder.SortedPublicSectorInfo, rand []byte) ([]sectorbuilder.EPostCandidate, error) {
 	var faults []uint64 // TODO
 
 	var randbuf [32]byte
@@ -161,7 +161,7 @@ func (epp *sectorBuilderEpp) GenerateCandidates(ctx context.Context, ssi sectorb
 	return epp.sb.GenerateEPostCandidates(ssi, randbuf, faults)
 }
 
-func (epp *sectorBuilderEpp) ComputeProof(ctx context.Context, ssi sectorbuilder.SortedPublicSectorInfo, rand []byte, winners []sectorbuilder.EPostCandidate) ([]byte, error) {
+func (epp *SectorBuilderEpp) ComputeProof(ctx context.Context, ssi sectorbuilder.SortedPublicSectorInfo, rand []byte, winners []sectorbuilder.EPostCandidate) ([]byte, error) {
 	if build.InsecurePoStValidation {
 		log.Warn("Generating fake EPost proof! You should only see this while running tests!")
 		return []byte("valid proof"), nil

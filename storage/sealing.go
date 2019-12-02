@@ -2,13 +2,13 @@ package storage
 
 import (
 	"context"
-	"github.com/filecoin-project/lotus/lib/padreader"
 	"io"
 
 	cid "github.com/ipfs/go-cid"
 	xerrors "golang.org/x/xerrors"
 
 	"github.com/filecoin-project/lotus/api"
+	"github.com/filecoin-project/lotus/lib/padreader"
 	"github.com/filecoin-project/lotus/lib/sectorbuilder"
 )
 
@@ -142,7 +142,8 @@ func (m *Miner) sectorStateLoop(ctx context.Context) error {
 		// verify on-chain state
 		trackedByID := map[uint64]*SectorInfo{}
 		for _, si := range trackedSectors {
-			trackedByID[si.SectorID] = &si
+			i := si
+			trackedByID[si.SectorID] = &i
 		}
 
 		curTs, err := m.api.ChainHead(ctx)

@@ -448,13 +448,11 @@ type ElectionPoStProver interface {
 	ComputeProof(context.Context, sectorbuilder.SortedPublicSectorInfo, []byte, []sectorbuilder.EPostCandidate) ([]byte, error)
 }
 
-type eppProvider struct {
-	sectors []ffi.PublicSectorInfo
-}
+type eppProvider struct{}
 
 func (epp *eppProvider) GenerateCandidates(ctx context.Context, _ sectorbuilder.SortedPublicSectorInfo, eprand []byte) ([]sectorbuilder.EPostCandidate, error) {
 	return []sectorbuilder.EPostCandidate{
-		sectorbuilder.EPostCandidate{
+		{
 			SectorID:             1,
 			PartialTicket:        [32]byte{},
 			Ticket:               [32]byte{},
@@ -577,7 +575,7 @@ func hashVRFBase(personalization uint64, miner address.Address, input []byte) ([
 }
 
 func VerifyVRF(ctx context.Context, worker, miner address.Address, p uint64, input, vrfproof []byte) error {
-	ctx, span := trace.StartSpan(ctx, "VerifyVRF")
+	_, span := trace.StartSpan(ctx, "VerifyVRF")
 	defer span.End()
 
 	vrfBase, err := hashVRFBase(p, miner, input)

@@ -800,7 +800,7 @@ func drawRandomness(t *types.Ticket, round int64) []byte {
 }
 
 func (cs *ChainStore) GetRandomness(ctx context.Context, blks []cid.Cid, round int64) ([]byte, error) {
-	ctx, span := trace.StartSpan(ctx, "store.GetRandomness")
+	_, span := trace.StartSpan(ctx, "store.GetRandomness")
 	defer span.End()
 	span.AddAttributes(trace.Int64Attribute("round", round))
 

@@ -55,12 +55,12 @@ func (fcs *fakeCS) ChainGetTipSetByHeight(context.Context, uint64, *types.TipSet
 func makeTs(t *testing.T, h uint64, msgcid cid.Cid) *types.TipSet {
 	a, _ := address.NewFromString("t00")
 	b, _ := address.NewFromString("t02")
-	ts, err := types.NewTipSet([]*types.BlockHeader{
+	var ts, err = types.NewTipSet([]*types.BlockHeader{
 		{
 			Height: h,
 			Miner:  a,
 
-			Ticket: &types.Ticket{[]byte{byte(h % 2)}},
+			Ticket: &types.Ticket{VRFProof: []byte{byte(h % 2)}},
 
 			ParentStateRoot:       dummyCid,
 			Messages:              msgcid,
@@ -73,7 +73,7 @@ func makeTs(t *testing.T, h uint64, msgcid cid.Cid) *types.TipSet {
 			Height: h,
 			Miner:  b,
 
-			Ticket: &types.Ticket{[]byte{byte((h + 1) % 2)}},
+			Ticket: &types.Ticket{VRFProof: []byte{byte((h + 1) % 2)}},
 
 			ParentStateRoot:       dummyCid,
 			Messages:              msgcid,
