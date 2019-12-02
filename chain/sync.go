@@ -545,7 +545,7 @@ func (syncer *Syncer) ValidateBlock(ctx context.Context, b *types.FullBlock) err
 	}
 
 	winnerCheck := async.Err(func() error {
-		mpow, tpow, err := stmgr.GetPower(ctx, syncer.sm, baseTs, h.Miner)
+		_, tpow, err := stmgr.GetPower(ctx, syncer.sm, baseTs, h.Miner)
 		if err != nil {
 			return xerrors.Errorf("failed getting power: %w", err)
 		}
@@ -556,10 +556,7 @@ func (syncer *Syncer) ValidateBlock(ctx context.Context, b *types.FullBlock) err
 		}
 
 		for _, t := range h.EPostProof.Candidates {
-			sectors := types.BigDiv(mpow, types.NewInt(ssize))
-			challangeCount := sectorbuilder.ElectionPostChallengeCount(sectors.Uint64())
-
-			if !types.IsTicketWinner(t.Partial, ssize, tpow, int64(challangeCount)) {
+			if !types.IsTicketWinner(t.Partial, ssize, tpow) {
 				return xerrors.Errorf("miner created a block but was not a winner")
 			}
 		}

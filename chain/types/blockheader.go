@@ -172,7 +172,7 @@ func CidArrsEqual(a, b []cid.Cid) bool {
 
 var blocksPerEpoch = NewInt(build.BlocksPerEpoch)
 
-func IsTicketWinner(partialTicket []byte, ssizeI uint64, totpow BigInt, sampleRate int64) bool {
+func IsTicketWinner(partialTicket []byte, ssizeI uint64, totpow BigInt) bool {
 	ssize := NewInt(ssizeI)
 
 	/*
@@ -189,7 +189,7 @@ func IsTicketWinner(partialTicket []byte, ssizeI uint64, totpow BigInt, sampleRa
 
 	lhs := BigFromBytes(h[:]).Int
 	lhs = lhs.Mul(lhs, totpow.Int)
-	lhs = lhs.Mul(lhs, big.NewInt(sampleRate))
+	lhs = lhs.Mul(lhs, big.NewInt(build.SectorChallengeRatioDiv))
 
 	// rhs = sectorSize * 2^256
 	// rhs = sectorSize << 256
