@@ -89,6 +89,15 @@ func MakeInitialStateTree(bs bstore.Blockstore, actmap map[address.Address]types
 		return nil, xerrors.Errorf("set init actor: %w", err)
 	}
 
+	cronact, err := SetupCronActor(bs)
+	if err != nil {
+		return nil, xerrors.Errorf("setup cron actor: %w", err)
+	}
+
+	if err := state.SetActor(actors.CronAddress, cronact); err != nil {
+		return nil, xerrors.Errorf("set cron actor: %w", err)
+	}
+
 	spact, err := SetupStoragePowerActor(bs)
 	if err != nil {
 		return nil, xerrors.Errorf("setup storage market actor: %w", err)
@@ -142,6 +151,23 @@ func MakeInitialStateTree(bs bstore.Blockstore, actmap map[address.Address]types
 	}
 
 	return state, nil
+}
+
+func SetupCronActor(bs bstore.Blockstore) (*types.Actor, error) {
+	cst := hamt.CSTFromBstore(bs)
+	cas := &actors.CronActorState{}
+
+	stcid, err := cst.Put(context.TODO(), cas)
+	if err != nil {
+		return nil, err
+	}
+
+	return &types.Actor{
+		Code:    actors.CronCodeCid,
+		Head:    stcid,
+		Nonce:   0,
+		Balance: types.NewInt(0),
+	}, nil
 }
 
 func SetupStoragePowerActor(bs bstore.Blockstore) (*types.Actor, error) {
