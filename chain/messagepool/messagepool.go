@@ -398,7 +398,7 @@ func (mp *MessagePool) getStateNonce(addr address.Address) (uint64, error) {
 		msg := m.VMMessage()
 		if msg.From == addr {
 			if msg.Nonce != baseNonce {
-				return 0, xerrors.Errorf("tipset %s has bad nonce ordering", curTs)
+				return 0, xerrors.Errorf("tipset %s has bad nonce ordering (%d != %d)", curTs.Cids(), msg.Nonce, baseNonce)
 			}
 			baseNonce++
 		}

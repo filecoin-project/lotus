@@ -1,6 +1,7 @@
 package messagepool
 
 import (
+	"fmt"
 	"testing"
 
 	"github.com/filecoin-project/lotus/chain/address"
@@ -17,6 +18,8 @@ type testMpoolApi struct {
 
 	bmsgs      map[cid.Cid][]*types.SignedMessage
 	statenonce map[address.Address]uint64
+
+	tipsets []*types.TipSet
 }
 
 func newTestMpoolApi() *testMpoolApi {
@@ -33,12 +36,20 @@ func (tma *testMpoolApi) applyBlock(t *testing.T, b *types.BlockHeader) {
 	}
 }
 
+func (tma *testMpoolApi) revertBlock(t *testing.T, b *types.BlockHeader) {
+	t.Helper()
+	if err := tma.cb([]*types.TipSet{mock.TipSet(b)}, nil); err != nil {
+		t.Fatal(err)
+	}
+}
+
 func (tma *testMpoolApi) setStateNonce(addr address.Address, v uint64) {
 	tma.statenonce[addr] = v
 }
 
 func (tma *testMpoolApi) setBlockMessages(h *types.BlockHeader, msgs ...*types.SignedMessage) {
 	tma.bmsgs[h.Cid()] = msgs
+	tma.tipsets = append(tma.tipsets, mock.TipSet(h))
 }
 
 func (tma *testMpoolApi) SubscribeHeadChanges(cb func(rev, app []*types.TipSet) error) {
@@ -87,7 +98,13 @@ func (tma *testMpoolApi) MessagesForTipset(ts *types.TipSet) ([]store.ChainMsg, 
 }
 
 func (tma *testMpoolApi) LoadTipSet(cids []cid.Cid) (*types.TipSet, error) {
-	panic("dont call me unless you implement me")
+	for _, ts := range tma.tipsets {
+		if types.CidArrsEqual(cids, ts.Cids()) {
+			return ts, nil
+		}
+	}
+
+	return nil, fmt.Errorf("tipset not found")
 }
 
 func assertNonce(t *testing.T, mp *MessagePool, addr address.Address, val uint64) {
@@ -148,4 +165,59 @@ func TestMessagePool(t *testing.T) {
 	tma.applyBlock(t, a)
 
 	assertNonce(t, mp, sender, 2)
+}
+
+func TestRevertMessages(t *testing.T) {
+	tma := newTestMpoolApi()
+
+	w, err := wallet.NewWallet(wallet.NewMemKeyStore())
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	ds := datastore.NewMapDatastore()
+
+	mp, err := New(tma, ds)
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	a := mock.MkBlock(nil, 1, 1)
+	b := mock.MkBlock(mock.TipSet(a), 1, 1)
+
+	sender, err := w.GenerateKey(types.KTBLS)
+	if err != nil {
+		t.Fatal(err)
+	}
+	target := mock.Address(1001)
+
+	var msgs []*types.SignedMessage
+	for i := 0; i < 5; i++ {
+		msgs = append(msgs, mock.MkMessage(sender, target, uint64(i), w))
+	}
+
+	tma.setBlockMessages(a, msgs[0])
+	tma.setBlockMessages(b, msgs[1], msgs[2], msgs[3])
+
+	mustAdd(t, mp, msgs[0])
+	mustAdd(t, mp, msgs[1])
+	mustAdd(t, mp, msgs[2])
+	mustAdd(t, mp, msgs[3])
+
+	tma.setStateNonce(sender, 0)
+	tma.applyBlock(t, a)
+	assertNonce(t, mp, sender, 4)
+
+	tma.setStateNonce(sender, 1)
+	tma.applyBlock(t, b)
+	assertNonce(t, mp, sender, 4)
+	tma.setStateNonce(sender, 0)
+	tma.revertBlock(t, b)
+
+	assertNonce(t, mp, sender, 4)
+
+	if len(mp.Pending()) != 3 {
+		t.Fatal("expected three messages in mempool")
+	}
+
 }
