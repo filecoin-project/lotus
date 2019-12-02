@@ -191,15 +191,15 @@ func IsTicketWinner(partialTicket []byte, ssizeI uint64, totpow BigInt) bool {
 
 	lhs := BigFromBytes(h[:]).Int
 	lhs = lhs.Mul(lhs, totpow.Int)
-	lhs = lhs.Mul(lhs, big.NewInt(build.SectorChallengeRatioDiv))
 
 	// rhs = sectorSize * 2^256
 	// rhs = sectorSize << 256
 	rhs := new(big.Int).Lsh(ssize.Int, sha256bits)
+	rhs = rhs.Mul(rhs, big.NewInt(build.SectorChallengeRatioDiv))
 	rhs = rhs.Mul(rhs, blocksPerEpoch.Int)
 
 	// h(vrfout) * totalPower < e * sectorSize * 2^256?
-	return lhs.Cmp(rhs) == -1
+	return lhs.Cmp(rhs) < 0
 }
 
 func (t *Ticket) Equals(ot *Ticket) bool {
