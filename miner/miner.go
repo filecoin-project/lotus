@@ -153,7 +153,7 @@ eventLoop:
 			continue
 		}
 		if base.ts.Equals(lastBase.ts) && lastBase.nullRounds == base.nullRounds {
-			log.Errorf("BestMiningCandidate from the previous round: %s (nulls:%d)", lastBase.ts.Cids(), lastBase.nullRounds)
+			log.Warnf("BestMiningCandidate from the previous round: %s (nulls:%d)", lastBase.ts.Cids(), lastBase.nullRounds)
 			time.Sleep(build.BlockDelay * time.Second)
 			continue
 		}
