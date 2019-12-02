@@ -281,13 +281,9 @@ func TestDataTransferValidation(t *testing.T) {
 	require.NoError(t, err)
 
 	t.Run("ValidatePush", func(t *testing.T) {
+		// create push request
+		voucher, baseCid, request := createDTRequest(t, false, id, buffer)
 
-		voucher := fakeDTType{"applesauce"}
-		baseCid := testutil.GenerateCids(1)[0]
-		isPull := false
-		voucherBytes, err := voucher.ToBytes()
-		require.NoError(t, err)
-		request := message.NewRequest(id, isPull, voucher.Type(), voucherBytes, baseCid, buffer.Bytes())
 		require.NoError(t, dtnet1.SendMessage(ctx, host2.ID(), request))
 
 		var validation receivedValidation
@@ -312,13 +308,8 @@ func TestDataTransferValidation(t *testing.T) {
 	})
 
 	t.Run("ValidatePull", func(t *testing.T) {
-
-		voucher := fakeDTType{"applesauce"}
-		baseCid := testutil.GenerateCids(1)[0]
-		isPull := true
-		voucherBytes, err := voucher.ToBytes()
-		require.NoError(t, err)
-		request := message.NewRequest(id, isPull, voucher.Type(), voucherBytes, baseCid, buffer.Bytes())
+		// create pull request
+		voucher, baseCid, request := createDTRequest(t, true, id, buffer)
 		require.NoError(t, dtnet1.SendMessage(ctx, host2.ID(), request))
 
 		var validation receivedValidation
@@ -339,6 +330,15 @@ func TestDataTransferValidation(t *testing.T) {
 		assert.Equal(t, baseCid, validation.baseCid)
 		assert.Equal(t, gsData.allSelector, validation.selector)
 	})
+}
+
+func createDTRequest(t *testing.T, isPull bool, id datatransfer.TransferID, buffer bytes.Buffer) (fakeDTType, cid.Cid, message.DataTransferRequest) {
+	voucher := fakeDTType{"applesauce"}
+	baseCid := testutil.GenerateCids(1)[0]
+	voucherBytes, err := voucher.ToBytes()
+	require.NoError(t, err)
+	request := message.NewRequest(id, isPull, voucher.Type(), voucherBytes, baseCid, buffer.Bytes())
+	return voucher, baseCid, request
 }
 
 type stubbedValidator struct {
@@ -555,18 +555,13 @@ func TestDataTransferInitiatingPushGraphsyncRequests(t *testing.T) {
 	}
 	dtnet1.SetDelegate(r)
 
-	voucher := fakeDTType{"applesauce"}
-	baseCid := testutil.GenerateCids(1)[0]
 	id := datatransfer.TransferID(rand.Int31())
 	var buffer bytes.Buffer
 
 	err := dagcbor.Encoder(gsData.allSelector, &buffer)
 	require.NoError(t, err)
 
-	isPull := false
-	voucherBytes, err := voucher.ToBytes()
-	require.NoError(t, err)
-	request := message.NewRequest(id, isPull, voucher.Type(), voucherBytes, baseCid, buffer.Bytes())
+	_, baseCid, request := createDTRequest(t, false, id, buffer)
 
 	t.Run("with successful validation", func(t *testing.T) {
 		sv := newSV()
@@ -802,8 +797,8 @@ func TestRespondingToPushGraphsyncRequests(t *testing.T) {
 	ctx, cancel := context.WithTimeout(ctx, 10*time.Second)
 	defer cancel()
 	gsData := newGraphsyncTestingData(t, ctx)
-	host1 := gsData.host1
-	host2 := gsData.host2
+	host1 := gsData.host1 // initiator and data sender
+	host2 := gsData.host2 // data recipient, makes graphsync request for data
 	voucher := fakeDTType{"applesauce"}
 	link := gsData.loadUnixFSFile(t, false)
 
@@ -890,7 +885,7 @@ func TestRespondingToPullGraphsyncRequests(t *testing.T) {
 	defer cancel()
 
 	gsData := newGraphsyncTestingData(t, ctx)
-	host1 := gsData.host1 // initiator
+	host1 := gsData.host1 // initiator, and recipient, makes graphync request
 	host2 := gsData.host2 // data sender
 
 	// setup receiving peer to just record message coming in
@@ -907,7 +902,6 @@ func TestRespondingToPullGraphsyncRequests(t *testing.T) {
 
 	gs2 := gsData.setupGraphsyncHost2()
 
-	voucher := fakeDTType{"applesauce"}
 	link := gsData.loadUnixFSFile(t, true)
 
 	id := datatransfer.TransferID(rand.Int31())
@@ -923,10 +917,7 @@ func TestRespondingToPullGraphsyncRequests(t *testing.T) {
 		dt1 := NewGraphSyncDataTransfer(ctx, host2, gs2)
 		require.NoError(t, dt1.RegisterVoucherType(reflect.TypeOf(&fakeDTType{}), sv))
 
-		isPull := true
-		voucherBytes, err := voucher.ToBytes()
-		require.NoError(t, err)
-		request := message.NewRequest(id, isPull, voucher.Type(), voucherBytes, link.(cidlink.Link).Cid, selectorBytes)
+		_, _, request := createDTRequest(t, true, id, buf)
 		require.NoError(t, dtnet1.SendMessage(ctx, host2.ID(), request))
 		var messageReceived receivedMessage
 		select {
@@ -961,10 +952,11 @@ func TestRespondingToPullGraphsyncRequests(t *testing.T) {
 	t.Run("When request is not initiated, graphsync response is error", func(t *testing.T) {
 		_ = NewGraphSyncDataTransfer(ctx, host2, gs2)
 		extStruct := &ExtensionDataTransferData{TransferID: rand.Uint64()}
-		buf.Truncate(0)
-		err = extStruct.MarshalCBOR(&buf)
+
+		var buf2 bytes.Buffer
+		err = extStruct.MarshalCBOR(&buf2)
 		require.NoError(t, err)
-		extData := buf.Bytes()
+		extData := buf2.Bytes()
 		request := gsmsg.NewRequest(graphsync.RequestID(rand.Int31()), link.(cidlink.Link).Cid, selectorBytes, graphsync.Priority(rand.Int31()), graphsync.ExtensionData{
 			Name: ExtensionDataTransfer,
 			Data: extData,

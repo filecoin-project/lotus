@@ -203,8 +203,6 @@ func (impl *graphsyncImpl) createNewChannel(tid datatransfer.TransferID, baseCid
 	impl.channelsLk.Lock()
 	impl.channels[chid] = chst
 	impl.channelsLk.Unlock()
-	fmt.Printf("\nour peer id: %s, chid initiator: %s, saved Base CID: %s\n\n",
-				impl.peerID.String(), chid.Initiator.String(), chst.BaseCID().String())
 	return chid
 }
 
