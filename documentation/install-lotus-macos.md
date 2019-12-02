@@ -1,6 +1,6 @@
 # Installing Lotus on MacOS
 
-Install these dependencies:
+Install these dependencies for MacOS Catalina.
 
 - go (1.13 or higher)
 - gcc (7.4.0 or higher)
@@ -15,14 +15,14 @@ Install these dependencies:
 - llvm (proofs build)
 - clang (proofs build)
 
-## Clone
+Clone
 
 ```sh
 $ git clone https://github.com/filecoin-project/lotus.git
 $ cd lotus/
 ```
 
-## Make & Install
+Install
 
 ```sh
 $ make clean all

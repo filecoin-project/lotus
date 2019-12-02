@@ -14,8 +14,7 @@ fairly easy to swap in.
 ## Running Locally
 
 To easily run and view tracing locally, first, install jaeger. The easiest way
-to do this is to download the binaries from
-https://www.jaegertracing.io/download/ and then run the `jaeger-all-in-one`
+to do this is to [download the binaries](https://www.jaegertracing.io/download/) and then run the `jaeger-all-in-one`
 binary. This will start up jaeger, listen for spans on `localhost:6831`, and
 expose a web UI for viewing traces on `http://localhost:16686/`.
 
