@@ -135,12 +135,19 @@ func (s *StateWrapper) SetSingletonActor(addr vstate.SingletonActorID, balance v
 
 		return &actorWrapper{*initact}, s.storage, s.flush(tree)
 	case actors.StorageMarketAddress:
-		smact, err := gen.SetupStorageMarketActor(s.bs)
+		nsroot, err := gen.SetupStorageMarketActor(s.bs, s.stateRoot, nil)
 		if err != nil {
 			return nil, nil, err
 		}
-		if err := tree.SetActor(actors.StorageMarketAddress, smact); err != nil {
-			return nil, nil, xerrors.Errorf("set network storage market actor: %w", err)
+		s.stateRoot = nsroot
+
+		tree, err = state.LoadStateTree(s.cst, s.stateRoot)
+		if err != nil {
+			return nil, nil, err
+		}
+		smact, err := tree.GetActor(actors.StorageMarketAddress)
+		if err != nil {
+			return nil, nil, err
 		}
 		return &actorWrapper{*smact}, s.storage, s.flush(tree)
 	case actors.StoragePowerAddress:

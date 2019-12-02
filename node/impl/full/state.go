@@ -76,8 +76,8 @@ func (a *StateAPI) StateMinerPeerID(ctx context.Context, m address.Address, ts *
 	return stmgr.GetMinerPeerID(ctx, a.StateManager, ts, m)
 }
 
-func (a *StateAPI) StateMinerProvingPeriodEnd(ctx context.Context, actor address.Address, ts *types.TipSet) (uint64, error) {
-	return stmgr.GetMinerProvingPeriodEnd(ctx, a.StateManager, ts, actor)
+func (a *StateAPI) StateMinerElectionPeriodStart(ctx context.Context, actor address.Address, ts *types.TipSet) (uint64, error) {
+	return stmgr.GetMinerElectionPeriodStart(ctx, a.StateManager, ts, actor)
 }
 
 func (a *StateAPI) StateMinerSectorSize(ctx context.Context, actor address.Address, ts *types.TipSet) (uint64, error) {
@@ -186,8 +186,8 @@ func (a *StateAPI) StateReadState(ctx context.Context, act *types.Actor, ts *typ
 }
 
 // This is on StateAPI because miner.Miner requires this, and MinerAPI requires miner.Miner
-func (a *StateAPI) MinerCreateBlock(ctx context.Context, addr address.Address, parents *types.TipSet, tickets []*types.Ticket, proof types.ElectionProof, msgs []*types.SignedMessage, ts uint64) (*types.BlockMsg, error) {
-	fblk, err := gen.MinerCreateBlock(ctx, a.StateManager, a.Wallet, addr, parents, tickets, proof, msgs, ts)
+func (a *StateAPI) MinerCreateBlock(ctx context.Context, addr address.Address, parents *types.TipSet, ticket *types.Ticket, proof *types.EPostProof, msgs []*types.SignedMessage, height, ts uint64) (*types.BlockMsg, error) {
+	fblk, err := gen.MinerCreateBlock(ctx, a.StateManager, a.Wallet, addr, parents, ticket, proof, msgs, height, ts)
 	if err != nil {
 		return nil, err
 	}

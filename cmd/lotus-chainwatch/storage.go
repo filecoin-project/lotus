@@ -252,7 +252,7 @@ func (st *storage) storeMiners(miners map[minerKey]*minerInfo) error {
 			i.info.SectorSize,
 			i.state.Power.String(),
 			i.state.Active,
-			i.state.ProvingPeriodEnd,
+			i.state.ElectionPeriodStart,
 			i.state.SlashedAt,
 		); err != nil {
 			return err

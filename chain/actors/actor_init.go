@@ -40,7 +40,6 @@ func init() {
 type InitActor struct{}
 
 type InitActorState struct {
-	// TODO: this needs to be a HAMT, its a dumb map for now
 	AddressMap cid.Cid
 
 	NextID uint64

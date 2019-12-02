@@ -3,10 +3,13 @@ package stmgr
 import (
 	"context"
 
+	ffi "github.com/filecoin-project/filecoin-ffi"
+
 	"github.com/filecoin-project/lotus/api"
 	"github.com/filecoin-project/lotus/chain/actors"
 	"github.com/filecoin-project/lotus/chain/address"
 	"github.com/filecoin-project/lotus/chain/types"
+	"github.com/filecoin-project/lotus/lib/sectorbuilder"
 
 	amt "github.com/filecoin-project/go-amt-ipld"
 	cid "github.com/ipfs/go-cid"
@@ -147,21 +150,21 @@ func GetMinerWorker(ctx context.Context, sm *StateManager, ts *types.TipSet, mad
 	return address.NewFromBytes(recp.Return)
 }
 
-func GetMinerProvingPeriodEnd(ctx context.Context, sm *StateManager, ts *types.TipSet, maddr address.Address) (uint64, error) {
+func GetMinerElectionPeriodStart(ctx context.Context, sm *StateManager, ts *types.TipSet, maddr address.Address) (uint64, error) {
 	var mas actors.StorageMinerActorState
 	_, err := sm.LoadActorState(ctx, maddr, &mas, ts)
 	if err != nil {
-		return 0, xerrors.Errorf("failed to load miner actor state: %w", err)
+		return 0, xerrors.Errorf("(get eps) failed to load miner actor state: %w", err)
 	}
 
-	return mas.ProvingPeriodEnd, nil
+	return mas.ElectionPeriodStart, nil
 }
 
 func GetMinerProvingSet(ctx context.Context, sm *StateManager, ts *types.TipSet, maddr address.Address) ([]*api.ChainSectorInfo, error) {
 	var mas actors.StorageMinerActorState
 	_, err := sm.LoadActorState(ctx, maddr, &mas, ts)
 	if err != nil {
-		return nil, xerrors.Errorf("failed to load miner actor state: %w", err)
+		return nil, xerrors.Errorf("(get pset) failed to load miner actor state: %w", err)
 	}
 
 	return LoadSectorsFromSet(ctx, sm.ChainStore().Blockstore(), mas.ProvingSet)
@@ -171,17 +174,37 @@ func GetMinerSectorSet(ctx context.Context, sm *StateManager, ts *types.TipSet, 
 	var mas actors.StorageMinerActorState
 	_, err := sm.LoadActorState(ctx, maddr, &mas, ts)
 	if err != nil {
-		return nil, xerrors.Errorf("failed to load miner actor state: %w", err)
+		return nil, xerrors.Errorf("(get sset) failed to load miner actor state: %w", err)
 	}
 
 	return LoadSectorsFromSet(ctx, sm.ChainStore().Blockstore(), mas.Sectors)
+}
+
+func GetSectorsForElectionPost(ctx context.Context, sm *StateManager, ts *types.TipSet, maddr address.Address) (*sectorbuilder.SortedPublicSectorInfo, error) {
+	sectors, err := GetMinerProvingSet(ctx, sm, ts, maddr)
+	if err != nil {
+		return nil, xerrors.Errorf("failed to get sector set for miner: %w", err)
+	}
+
+	var uselessOtherArray []ffi.PublicSectorInfo
+	for _, s := range sectors {
+		var uselessBuffer [32]byte
+		copy(uselessBuffer[:], s.CommR)
+		uselessOtherArray = append(uselessOtherArray, ffi.PublicSectorInfo{
+			SectorID: s.SectorID,
+			CommR:    uselessBuffer,
+		})
+	}
+
+	ssi := sectorbuilder.NewSortedPublicSectorInfo(uselessOtherArray)
+	return &ssi, nil
 }
 
 func GetMinerSectorSize(ctx context.Context, sm *StateManager, ts *types.TipSet, maddr address.Address) (uint64, error) {
 	var mas actors.StorageMinerActorState
 	_, err := sm.LoadActorState(ctx, maddr, &mas, ts)
 	if err != nil {
-		return 0, xerrors.Errorf("failed to load miner actor state: %w", err)
+		return 0, xerrors.Errorf("(get ssize) failed to load miner actor state: %w", err)
 	}
 
 	cst := hamt.CSTFromBstore(sm.cs.Blockstore())
@@ -197,7 +220,7 @@ func GetMinerSlashed(ctx context.Context, sm *StateManager, ts *types.TipSet, ma
 	var mas actors.StorageMinerActorState
 	_, err := sm.LoadActorState(ctx, maddr, &mas, ts)
 	if err != nil {
-		return 0, xerrors.Errorf("failed to load miner actor state: %w", err)
+		return 0, xerrors.Errorf("(get mslash) failed to load miner actor state: %w", err)
 	}
 
 	return mas.SlashedAt, nil

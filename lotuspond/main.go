@@ -88,6 +88,8 @@ var shCmd = &cli.Command{
 			}
 		}
 
+		shcmd.Env = append(os.Environ(), shcmd.Env...)
+
 		shcmd.Stdin = os.Stdin
 		shcmd.Stdout = os.Stdout
 		shcmd.Stderr = os.Stderr

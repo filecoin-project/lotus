@@ -27,7 +27,7 @@ func TestTsCache(t *testing.T) {
 			ParentStateRoot:       dummyCid,
 			Messages:              dummyCid,
 			ParentMessageReceipts: dummyCid,
-			BlockSig:              types.Signature{Type: types.KTBLS},
+			BlockSig:              &types.Signature{Type: types.KTBLS},
 			BLSAggregate:          types.Signature{Type: types.KTBLS},
 		}})
 		if err != nil {
@@ -69,7 +69,7 @@ func TestTsCacheNulls(t *testing.T) {
 			ParentStateRoot:       dummyCid,
 			Messages:              dummyCid,
 			ParentMessageReceipts: dummyCid,
-			BlockSig:              types.Signature{Type: types.KTBLS},
+			BlockSig:              &types.Signature{Type: types.KTBLS},
 			BLSAggregate:          types.Signature{Type: types.KTBLS},
 		}})
 		if err != nil {

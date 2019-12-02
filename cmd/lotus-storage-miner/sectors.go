@@ -163,7 +163,7 @@ var sectorsRefsCmd = &cli.Command{
 		for name, refs := range refs {
 			fmt.Printf("Block %s:\n", name)
 			for _, ref := range refs {
-				fmt.Printf("\t%s+%d %d bytes\n", ref.Piece, ref.Offset, ref.Size)
+				fmt.Printf("\t%d+%d %d bytes\n", ref.SectorID, ref.Offset, ref.Size)
 			}
 		}
 		return nil

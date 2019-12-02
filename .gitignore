@@ -1,8 +1,12 @@
 /lotus
 /lotus-storage-miner
+/lotus-seed
 /pond
 /townhall
 /fountain
+/stats
+/bench
+/bench.json
 /lotuspond/front/node_modules
 /lotuspond/front/build
 /cmd/lotus-townhall/townhall/node_modules

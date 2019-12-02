@@ -69,7 +69,7 @@ func main() {
 			Code:    trace.StatusCodeFailedPrecondition,
 			Message: err.Error(),
 		})
-		log.Warn(err)
+		log.Warnf("%+v", err)
 		os.Exit(1)
 	}
 	return

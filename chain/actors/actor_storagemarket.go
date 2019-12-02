@@ -3,16 +3,17 @@ package actors
 import (
 	"bytes"
 	"context"
+	"golang.org/x/xerrors"
 
 	"github.com/filecoin-project/go-amt-ipld"
 	"github.com/ipfs/go-cid"
 	"github.com/ipfs/go-hamt-ipld"
-	"golang.org/x/xerrors"
 
 	"github.com/filecoin-project/lotus/build"
 	"github.com/filecoin-project/lotus/chain/actors/aerrors"
 	"github.com/filecoin-project/lotus/chain/address"
 	"github.com/filecoin-project/lotus/chain/types"
+	"github.com/filecoin-project/lotus/lib/cborutil"
 	"github.com/filecoin-project/lotus/lib/sectorbuilder"
 )
 
@@ -108,6 +109,15 @@ func (sdp *StorageDealProposal) Sign(ctx context.Context, sign SignFunc) error {
 	}
 	sdp.ProposerSignature = sig
 	return nil
+}
+
+func (sdp *StorageDealProposal) Cid() (cid.Cid, error) {
+	nd, err := cborutil.AsIpld(sdp)
+	if err != nil {
+		return cid.Undef, err
+	}
+
+	return nd.Cid(), nil
 }
 
 func (sdp *StorageDealProposal) Verify() error {
@@ -538,9 +548,7 @@ func (sma StorageMarketActor) ProcessStorageDealsPayment(act *types.Actor, vmctx
 			return nil, nil
 		}
 
-		// todo: check math (written on a plane, also tired)
-		// TODO: division is hard, this more than likely has some off-by-one issue
-		toPay := types.BigMul(dealInfo.Deal.Proposal.StoragePricePerEpoch, types.NewInt(build.ProvingPeriodDuration))
+		toPay := types.BigMul(dealInfo.Deal.Proposal.StoragePricePerEpoch, types.NewInt(build.SlashablePowerDelay))
 
 		b, bnd, aerr := GetMarketBalances(vmctx.Context(), vmctx.Ipld(), self.Balances, dealInfo.Deal.Proposal.Client, providerWorker)
 		if aerr != nil {
@@ -603,18 +611,22 @@ func (sma StorageMarketActor) ComputeDataCommitment(act *types.Actor, vmctx type
 		return nil, aerrors.HandleExternalError(err, "loading deals amt")
 	}
 
+	if len(params.DealIDs) == 0 {
+		return nil, aerrors.New(3, "no deal IDs")
+	}
+
 	var pieces []sectorbuilder.PublicPieceInfo
 	for _, deal := range params.DealIDs {
 		var dealInfo OnChainDeal
 		if err := deals.Get(deal, &dealInfo); err != nil {
 			if _, is := err.(*amt.ErrNotFound); is {
-				return nil, aerrors.New(3, "deal not found")
+				return nil, aerrors.New(4, "deal not found")
 			}
 			return nil, aerrors.HandleExternalError(err, "getting deal info failed")
 		}
 
 		if dealInfo.Deal.Proposal.Provider != vmctx.Message().From {
-			return nil, aerrors.New(4, "referenced deal was not from caller")
+			return nil, aerrors.New(5, "referenced deal was not from caller")
 		}
 
 		var commP [32]byte
@@ -628,7 +640,7 @@ func (sma StorageMarketActor) ComputeDataCommitment(act *types.Actor, vmctx type
 
 	commd, err := sectorbuilder.GenerateDataCommitment(params.SectorSize, pieces)
 	if err != nil {
-		return nil, aerrors.Absorb(err, 5, "failed to generate data commitment from pieces")
+		return nil, aerrors.Absorb(err, 6, "failed to generate data commitment from pieces")
 	}
 
 	return commd[:], nil

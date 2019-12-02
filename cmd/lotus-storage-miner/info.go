@@ -60,18 +60,25 @@ var infoCmd = &cli.Command{
 		}
 		fmt.Printf("Worker use: %d / %d (+%d)\n", wstat.Total-wstat.Reserved-wstat.Free, wstat.Total, wstat.Reserved)
 
-		ppe, err := api.StateMinerProvingPeriodEnd(ctx, maddr, nil)
+		eps, err := api.StateMinerElectionPeriodStart(ctx, maddr, nil)
 		if err != nil {
 			return err
 		}
-		if ppe != 0 {
+		if eps != 0 {
 			head, err := api.ChainHead(ctx)
 			if err != nil {
 				return err
 			}
-			pdiff := int64(ppe - head.Height())
-			pdifft := pdiff * build.BlockDelay
-			fmt.Printf("Proving Period: %d, in %d Blocks (~%dm %ds)\n", ppe, pdiff, pdifft/60, pdifft%60)
+			lastEps := int64(head.Height() - eps)
+			lastEpsS := lastEps * build.BlockDelay
+
+			next := lastEps + build.SlashablePowerDelay
+			nextS := next * build.BlockDelay
+
+			fmt.Printf("PoSt Submissions:\n")
+			fmt.Printf("\tPrevious: Epoch %d (%d block(s), ~%dm %ds ago)\n", eps, lastEps, lastEpsS/60, lastEpsS%60)
+			fmt.Printf("\tDeadline: Epoch %d (in %d blocks, ~%dm %ds)\n", eps+build.SlashablePowerDelay, next, nextS/60, nextS%60)
+
 		} else {
 			fmt.Printf("Proving Period: Not Proving\n")
 		}

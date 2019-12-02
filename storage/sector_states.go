@@ -14,7 +14,7 @@ import (
 
 type providerHandlerFunc func(ctx context.Context, deal SectorInfo) (func(*SectorInfo), error)
 
-func (m *Miner) handle(ctx context.Context, sector SectorInfo, cb providerHandlerFunc, next api.SectorState) {
+func (m *Miner) handleSectorUpdate(ctx context.Context, sector SectorInfo, cb providerHandlerFunc, next api.SectorState) {
 	go func() {
 		mut, err := cb(ctx, sector)
 
@@ -144,7 +144,7 @@ func (m *Miner) preCommitted(ctx context.Context, sector SectorInfo) (func(*Sect
 	log.Infof("precommit for sector %d made it on chain, will start proof computation at height %d", sector.SectorID, randHeight)
 
 	err = m.events.ChainAt(func(ctx context.Context, ts *types.TipSet, curH uint64) error {
-		rand, err := m.api.ChainGetRandomness(ctx, ts.Key(), nil, int(ts.Height()-randHeight))
+		rand, err := m.api.ChainGetRandomness(ctx, ts.Key(), int64(randHeight))
 		if err != nil {
 			return xerrors.Errorf("failed to get randomness for computing seal proof: %w", err)
 		}
@@ -175,7 +175,7 @@ func (m *Miner) preCommitted(ctx context.Context, sector SectorInfo) (func(*Sect
 func (m *Miner) committing(ctx context.Context, sector SectorInfo) (func(*SectorInfo), error) {
 	log.Info("scheduling seal proof computation...")
 
-	proof, err := m.sb.SealCommit(sector.SectorID, sector.Ticket.SB(), sector.Seed.SB(), sector.pieceInfos(), sector.refs(), sector.rspco())
+	proof, err := m.sb.SealCommit(sector.SectorID, sector.Ticket.SB(), sector.Seed.SB(), sector.pieceInfos(), sector.rspco())
 	if err != nil {
 		return nil, xerrors.Errorf("computing seal proof failed: %w", err)
 	}
@@ -219,8 +219,6 @@ func (m *Miner) committing(ctx context.Context, sector SectorInfo) (func(*Sector
 		log.Errorf("UNHANDLED: submitting sector proof failed (exit=%d, msg=%s) (t:%x; s:%x(%d); p:%x)", mw.Receipt.ExitCode, smsg.Cid(), sector.Ticket.TicketBytes, sector.Seed.TicketBytes, sector.Seed.BlockHeight, params.Proof)
 		return nil, xerrors.New("UNHANDLED: submitting sector proof failed")
 	}
-
-	m.beginPosting(ctx)
 
 	return func(info *SectorInfo) {
 		mcid := smsg.Cid()

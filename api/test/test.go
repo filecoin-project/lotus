@@ -11,12 +11,12 @@ import (
 
 type TestNode struct {
 	api.FullNode
-
-	MineOne func(context.Context) error
 }
 
 type TestStorageNode struct {
 	api.StorageMiner
+
+	MineOne func(context.Context) error
 }
 
 // APIBuilder is a function which is invoked in test suite to provide
@@ -43,7 +43,7 @@ func TestApis(t *testing.T, b APIBuilder) {
 
 func (ts *testSuite) testVersion(t *testing.T) {
 	ctx := context.Background()
-	apis, _ := ts.makeNodes(t, 1, []int{})
+	apis, _ := ts.makeNodes(t, 1, []int{0})
 	api := apis[0]
 
 	v, err := api.Version(ctx)
@@ -57,7 +57,7 @@ func (ts *testSuite) testVersion(t *testing.T) {
 
 func (ts *testSuite) testID(t *testing.T) {
 	ctx := context.Background()
-	apis, _ := ts.makeNodes(t, 1, []int{})
+	apis, _ := ts.makeNodes(t, 1, []int{0})
 	api := apis[0]
 
 	id, err := api.ID(ctx)
@@ -69,7 +69,7 @@ func (ts *testSuite) testID(t *testing.T) {
 
 func (ts *testSuite) testConnectTwo(t *testing.T) {
 	ctx := context.Background()
-	apis, _ := ts.makeNodes(t, 2, []int{})
+	apis, _ := ts.makeNodes(t, 2, []int{0})
 
 	p, err := apis[0].NetPeers(ctx)
 	if err != nil {

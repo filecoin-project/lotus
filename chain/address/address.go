@@ -7,7 +7,7 @@ import (
 	"io"
 	"strconv"
 
-	"github.com/filecoin-project/go-bls-sigs"
+	bls "github.com/filecoin-project/filecoin-ffi"
 	cbor "github.com/ipfs/go-ipld-cbor"
 	"github.com/minio/blake2b-simd"
 	"github.com/multiformats/go-varint"
@@ -403,4 +403,13 @@ func (a *Address) UnmarshalCBOR(br io.Reader) error {
 	*a = addr
 
 	return nil
+}
+
+func IDFromAddress(addr Address) (uint64, error) {
+	if addr.Protocol() != ID {
+		return 0, xerrors.Errorf("cannot get id from non id address")
+	}
+
+	i, _, err := varint.FromUvarint(addr.Payload())
+	return i, err
 }

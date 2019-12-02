@@ -34,12 +34,12 @@ func MkBlock(parents *types.TipSet, weightInc uint64, ticketNonce uint64) *types
 	}
 
 	return &types.BlockHeader{
-		Miner:         addr,
-		ElectionProof: []byte("cats won the election"),
-		Tickets: []*types.Ticket{
-			{
-				VRFProof: []byte(fmt.Sprintf("====%d=====", ticketNonce)),
-			},
+		Miner: addr,
+		EPostProof: types.EPostProof{
+			Proof: []byte("election post proof proof"),
+		},
+		Ticket: &types.Ticket{
+			VRFProof: []byte(fmt.Sprintf("====%d=====", ticketNonce)),
 		},
 		Parents:               pcids,
 		ParentMessageReceipts: c,
@@ -48,7 +48,7 @@ func MkBlock(parents *types.TipSet, weightInc uint64, ticketNonce uint64) *types
 		Messages:              c,
 		Height:                height,
 		ParentStateRoot:       c,
-		BlockSig:              types.Signature{Type: types.KTBLS, Data: []byte("boo! im a signature")},
+		BlockSig:              &types.Signature{Type: types.KTBLS, Data: []byte("boo! im a signature")},
 	}
 }
 

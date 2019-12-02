@@ -23,7 +23,7 @@ type FullNode interface {
 	// First message is guaranteed to be of len == 1, and type == 'current'
 	ChainNotify(context.Context) (<-chan []*store.HeadChange, error)
 	ChainHead(context.Context) (*types.TipSet, error)
-	ChainGetRandomness(context.Context, types.TipSetKey, []*types.Ticket, int) ([]byte, error)
+	ChainGetRandomness(context.Context, types.TipSetKey, int64) ([]byte, error)
 	ChainGetBlock(context.Context, cid.Cid) (*types.BlockHeader, error)
 	ChainGetTipSet(context.Context, types.TipSetKey) (*types.TipSet, error)
 	ChainGetBlockMessages(context.Context, cid.Cid) (*BlockMessages, error)
@@ -51,10 +51,7 @@ type FullNode interface {
 
 	// miner
 
-	MinerRegister(context.Context, address.Address) error
-	MinerUnregister(context.Context, address.Address) error
-	MinerAddresses(context.Context) ([]address.Address, error)
-	MinerCreateBlock(context.Context, address.Address, *types.TipSet, []*types.Ticket, types.ElectionProof, []*types.SignedMessage, uint64) (*types.BlockMsg, error)
+	MinerCreateBlock(context.Context, address.Address, *types.TipSet, *types.Ticket, *types.EPostProof, []*types.SignedMessage, uint64, uint64) (*types.BlockMsg, error)
 
 	// // UX ?
 
@@ -102,7 +99,7 @@ type FullNode interface {
 	StateMinerPower(context.Context, address.Address, *types.TipSet) (MinerPower, error)
 	StateMinerWorker(context.Context, address.Address, *types.TipSet) (address.Address, error)
 	StateMinerPeerID(ctx context.Context, m address.Address, ts *types.TipSet) (peer.ID, error)
-	StateMinerProvingPeriodEnd(ctx context.Context, actor address.Address, ts *types.TipSet) (uint64, error)
+	StateMinerElectionPeriodStart(ctx context.Context, actor address.Address, ts *types.TipSet) (uint64, error)
 	StateMinerSectorSize(context.Context, address.Address, *types.TipSet) (uint64, error)
 	StatePledgeCollateral(context.Context, *types.TipSet) (types.BigInt, error)
 	StateWaitMsg(context.Context, cid.Cid) (*MsgWait, error)
@@ -229,11 +226,13 @@ type QueryOffer struct {
 	MinerPeerID peer.ID
 }
 
-func (o *QueryOffer) Order() RetrievalOrder {
+func (o *QueryOffer) Order(client address.Address) RetrievalOrder {
 	return RetrievalOrder{
 		Root:  o.Root,
 		Size:  o.Size,
 		Total: o.MinPrice,
+
+		Client: client,
 
 		Miner:       o.Miner,
 		MinerPeerID: o.MinerPeerID,

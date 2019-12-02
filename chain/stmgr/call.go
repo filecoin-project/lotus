@@ -68,7 +68,7 @@ func (sm *StateManager) Call(ctx context.Context, msg *types.Message, ts *types.
 
 	state := ts.ParentState()
 
-	r := store.NewChainRand(sm.cs, ts.Cids(), ts.Height(), nil)
+	r := store.NewChainRand(sm.cs, ts.Cids(), ts.Height())
 
 	return sm.CallRaw(ctx, msg, state, r, ts.Height())
 }
