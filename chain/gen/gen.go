@@ -612,16 +612,3 @@ func ComputeVRF(ctx context.Context, sign SignFunc, worker, miner address.Addres
 
 	return sig.Data, nil
 }
-
-func TicketHash(t *types.Ticket, addr address.Address) []byte {
-	h := sha256.New()
-
-	h.Write(t.VRFProof)
-
-	// Field Delimeter
-	h.Write([]byte{0})
-
-	h.Write(addr.Bytes())
-
-	return h.Sum(nil)
-}
