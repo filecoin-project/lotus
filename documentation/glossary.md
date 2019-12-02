@@ -30,4 +30,4 @@ The storage miner logic. This package also interfaces with the full node through
 
 **Pond**
 
-[Pond](https://docs.lotu.sh/join-devnet-gui) is a graphical testbed for lotus. It can be used to spin up nodes, connect them in a given topology, start them mining, and observe how they function over time.
+[Pond](https://docs.lotu.sh/testing-with-gui) is a graphical testbed for lotus. It can be used to spin up nodes, connect them in a given topology, start them mining, and observe how they function over time.
