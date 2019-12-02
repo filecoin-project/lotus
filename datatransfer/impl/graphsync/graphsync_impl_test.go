@@ -673,89 +673,89 @@ func TestDataTransferInitiatingPullGraphsyncRequests(t *testing.T) {
 
 		require.Equal(t, gsData.allSelector, requestReceived.selector)
 	})
-	//
-	//t.Run("with error validation", func(t *testing.T) {
-	//	gs1 := &fakeGraphSync{
-	//		requests: make(chan receivedGraphSyncRequest, 1),
-	//	}
-	//	gs2 := &fakeGraphSync{
-	//		requests: make(chan receivedGraphSyncRequest, 1),
-	//	}
-	//
-	//	dt1 := NewGraphSyncDataTransfer(ctx, host1, gs1)
-	//	sv := newSV()
-	//	sv.expectErrorPull()
-	//
-	//	dt2 := NewGraphSyncDataTransfer(ctx, host2, gs2)
-	//	err := dt2.RegisterVoucherType(reflect.TypeOf(&fakeDTType{}), sv)
-	//	require.NoError(t, err)
-	//
-	//	subscribeCalls := make(chan struct{}, 1)
-	//	subscribe := func(event datatransfer.Event, channelState datatransfer.ChannelState) {
-	//		if event == datatransfer.Error {
-	//			subscribeCalls <- struct{}{}
-	//		}
-	//	}
-	//	unsub := dt1.SubscribeToEvents(subscribe)
-	//	_, err = dt1.OpenPullDataChannel(ctx, host2.ID(), &voucher, baseCid, gsData.allSelector)
-	//	require.NoError(t, err)
-	//
-	//	select {
-	//	case <-ctx.Done():
-	//		t.Fatal("subscribed events not received")
-	//	case <-subscribeCalls:
-	//	}
-	//
-	//	// give a little time for the validation to happen
-	//	//time.Sleep(15*time.Millisecond)
-	//	sv.verifyExpectations(t)
-	//
-	//	// no graphsync request should be scheduled
-	//	require.Empty(t, gs1.requests)
-	//	unsub()
-	//})
-	//
-	//t.Run("does not schedule graphsync request if is push request", func(t *testing.T) {
-	//	gs1 := &fakeGraphSync{
-	//		requests: make(chan receivedGraphSyncRequest, 1),
-	//	}
-	//	gs2 := &fakeGraphSync{
-	//		requests: make(chan receivedGraphSyncRequest, 1),
-	//	}
-	//
-	//	sv := newSV()
-	//	sv.expectSuccessPush()
-	//
-	//	bg := ctx
-	//	ctx, cancel := context.WithTimeout(ctx, 10*time.Second)
-	//	defer cancel()
-	//
-	//	dt1 := NewGraphSyncDataTransfer(bg, host1, gs1)
-	//	dt2 := NewGraphSyncDataTransfer(bg, host2, gs2)
-	//	err := dt2.RegisterVoucherType(reflect.TypeOf(&fakeDTType{}), sv)
-	//	require.NoError(t, err)
-	//
-	//	subscribeCalls := make(chan struct{}, 1)
-	//	subscribe := func(event datatransfer.Event, channelState datatransfer.ChannelState) {
-	//		if event == datatransfer.Error {
-	//			subscribeCalls <- struct{}{}
-	//		}
-	//	}
-	//	unsub := dt1.SubscribeToEvents(subscribe)
-	//	_, err = dt1.OpenPushDataChannel(ctx, host2.ID(), &voucher, baseCid, gsData.allSelector)
-	//	require.NoError(t, err)
-	//
-	//	select {
-	//	case <-ctx.Done():
-	//		t.Fatal("subscribed events not received")
-	//	case <-subscribeCalls:
-	//	}
-	//	sv.verifyExpectations(t)
-	//
-	//	// no graphsync request should be scheduled
-	//	require.Empty(t, gs1.requests)
-	//	unsub()
-	//})
+
+	t.Run("with error validation", func(t *testing.T) {
+		gs1 := &fakeGraphSync{
+			requests: make(chan receivedGraphSyncRequest, 1),
+		}
+		gs2 := &fakeGraphSync{
+			requests: make(chan receivedGraphSyncRequest, 1),
+		}
+
+		dt1 := NewGraphSyncDataTransfer(ctx, host1, gs1)
+		sv := newSV()
+		sv.expectErrorPull()
+
+		dt2 := NewGraphSyncDataTransfer(ctx, host2, gs2)
+		err := dt2.RegisterVoucherType(reflect.TypeOf(&fakeDTType{}), sv)
+		require.NoError(t, err)
+
+		subscribeCalls := make(chan struct{}, 1)
+		subscribe := func(event datatransfer.Event, channelState datatransfer.ChannelState) {
+			if event == datatransfer.Error {
+				subscribeCalls <- struct{}{}
+			}
+		}
+		unsub := dt1.SubscribeToEvents(subscribe)
+		_, err = dt1.OpenPullDataChannel(ctx, host2.ID(), &voucher, baseCid, gsData.allSelector)
+		require.NoError(t, err)
+
+		select {
+		case <-ctx.Done():
+			t.Fatal("subscribed events not received")
+		case <-subscribeCalls:
+		}
+
+		// give a little time for the validation to happen
+		//time.Sleep(15*time.Millisecond)
+		sv.verifyExpectations(t)
+
+		// no graphsync request should be scheduled
+		require.Empty(t, gs1.requests)
+		unsub()
+	})
+
+	t.Run("does not schedule graphsync request if is push request", func(t *testing.T) {
+		gs1 := &fakeGraphSync{
+			requests: make(chan receivedGraphSyncRequest, 1),
+		}
+		gs2 := &fakeGraphSync{
+			requests: make(chan receivedGraphSyncRequest, 1),
+		}
+
+		sv := newSV()
+		sv.expectSuccessPush()
+
+		bg := ctx
+		ctx, cancel := context.WithTimeout(ctx, 10*time.Second)
+		defer cancel()
+
+		dt1 := NewGraphSyncDataTransfer(bg, host1, gs1)
+		dt2 := NewGraphSyncDataTransfer(bg, host2, gs2)
+		err := dt2.RegisterVoucherType(reflect.TypeOf(&fakeDTType{}), sv)
+		require.NoError(t, err)
+
+		subscribeCalls := make(chan struct{}, 1)
+		subscribe := func(event datatransfer.Event, channelState datatransfer.ChannelState) {
+			if event == datatransfer.Error {
+				subscribeCalls <- struct{}{}
+			}
+		}
+		unsub := dt1.SubscribeToEvents(subscribe)
+		_, err = dt1.OpenPushDataChannel(ctx, host2.ID(), &voucher, baseCid, gsData.allSelector)
+		require.NoError(t, err)
+
+		select {
+		case <-ctx.Done():
+			t.Fatal("subscribed events not received")
+		case <-subscribeCalls:
+		}
+		sv.verifyExpectations(t)
+
+		// no graphsync request should be scheduled
+		require.Empty(t, gs1.requests)
+		unsub()
+	})
 }
 
 type receivedGraphSyncMessage struct {
@@ -883,96 +883,101 @@ func TestRespondingToPushGraphsyncRequests(t *testing.T) {
 	})
 }
 
-// TODO: get passing to complete https://github.com/filecoin-project/go-data-transfer/issues/23
 func TestRespondingToPullGraphsyncRequests(t *testing.T) {
-	// create network
-	// ctx := context.Background()
-	// ctx, cancel := context.WithTimeout(ctx, 10*time.Second)
-	// defer cancel()
+	//create network
+	ctx := context.Background()
+	ctx, cancel := context.WithTimeout(ctx, 10*time.Second)
+	defer cancel()
 
-	// gsData := newGraphsyncTestingData(t, ctx)
-	// host1 := gsData.host1
-	// host2 := gsData.host2
+	gsData := newGraphsyncTestingData(t, ctx)
+	host1 := gsData.host1 // initiator
+	host2 := gsData.host2 // data sender
 
-	// // setup receiving peer to just record message coming in
-	// dtnet1 := network.NewFromLibp2pHost(host1)
-	// r := &receiver{
-	// 	messageReceived: make(chan receivedMessage),
-	// }
-	// dtnet1.SetDelegate(r)
+	// setup receiving peer to just record message coming in
+	dtnet1 := network.NewFromLibp2pHost(host1)
+	r := &receiver{
+		messageReceived: make(chan receivedMessage),
+	}
+	dtnet1.SetDelegate(r)
 
-	// gsr := &fakeGraphSyncReceiver{
-	// 	receivedMessages: make(chan receivedGraphSyncMessage),
-	// }
-	// gsData.gsNet1.SetDelegate(gsr)
+	gsr := &fakeGraphSyncReceiver{
+		receivedMessages: make(chan receivedGraphSyncMessage),
+	}
+	gsData.gsNet1.SetDelegate(gsr)
 
-	// gs2 := gsData.setupGraphsyncHost2()
+	gs2 := gsData.setupGraphsyncHost2()
 
-	// voucher := fakeDTType{"applesauce"}
-	// link := gsData.loadUnixFSFile(t, true)
+	voucher := fakeDTType{"applesauce"}
+	link := gsData.loadUnixFSFile(t, true)
 
-	// id := datatransfer.TransferID(rand.Int31())
-	// var buf bytes.Buffer
-	// err := dagcbor.Encoder(gsData.allSelector, &buf)
-	// require.NoError(t, err)
-	// selectorBytes := buf.Bytes()
+	id := datatransfer.TransferID(rand.Int31())
+	var buf bytes.Buffer
+	err := dagcbor.Encoder(gsData.allSelector, &buf)
+	require.NoError(t, err)
+	selectorBytes := buf.Bytes()
 
-	// t.Run("When request is initated and validated", func(t *testing.T) {
-	// 	sv := newSV()
-	// 	sv.expectSuccessPull()
+	t.Run("When a pull request is initiated and validated", func(t *testing.T) {
+		sv := newSV()
+		sv.expectSuccessPull()
 
-	// 	dt := NewGraphSyncDataTransfer(ctx, host2, gs2)
-	// 	require.NoError(t, dt.RegisterVoucherType(reflect.TypeOf(&fakeDTType{}), sv))
+		dt1 := NewGraphSyncDataTransfer(ctx, host2, gs2)
+		require.NoError(t, dt1.RegisterVoucherType(reflect.TypeOf(&fakeDTType{}), sv))
 
-	// 	isPull := true
-	// 	voucherBytes, err := voucher.ToBytes()
-	// 	require.NoError(t, err)
-	// 	request := message.NewRequest(id, isPull, voucher.Type(), voucherBytes, link.(cidlink.Link).Cid, selectorBytes)
-	// 	require.NoError(t, dtnet1.SendMessage(ctx, host2.ID(), request))
-	// 	var messageReceived receivedMessage
-	// 	select {
-	// 	case <-ctx.Done():
-	// 		t.Fatal("did not receive message sent")
-	// 	case messageReceived = <-r.messageReceived:
-	// 	}
-	// 	sv.verifyExpectations(t)
-	// 	receivedResponse, ok := messageReceived.message.(message.DataTransferResponse)
-	// 	require.True(t, ok)
-	// 	require.True(t, receivedResponse.Accepted())
-	// 	extStruct := &ExtensionDataTransferData{TransferID: uint64(receivedResponse.TransferID())}
-	// 	buf.Truncate(0)
-	// 	err = extStruct.MarshalCBOR(&buf)
-	// 	require.NoError(t, err)
-	// 	extData := buf.Bytes()
-	// 	gsRequest := gsmsg.NewRequest(graphsync.RequestID(rand.Int31()), link.(cidlink.Link).Cid, selectorBytes, graphsync.Priority(rand.Int31()), graphsync.ExtensionData{
-	// 		Name: ExtensionDataTransfer,
-	// 		Data: extData,
-	// 	})
-	// 	gsmessage := gsmsg.New()
-	// 	gsmessage.AddRequest(gsRequest)
-	// 	gsData.gsNet1.SendMessage(ctx, host1.ID(), gsmessage)
-	// 	status := gsr.consumeResponses(ctx, t)
-	// 	require.False(t, gsmsg.IsTerminalFailureCode(status))
-	// })
+		isPull := true
+		voucherBytes, err := voucher.ToBytes()
+		require.NoError(t, err)
+		request := message.NewRequest(id, isPull, voucher.Type(), voucherBytes, link.(cidlink.Link).Cid, selectorBytes)
+		require.NoError(t, dtnet1.SendMessage(ctx, host2.ID(), request))
+		var messageReceived receivedMessage
+		select {
+		case <-ctx.Done():
+			t.Fatal("did not receive message sent")
+		case messageReceived = <-r.messageReceived:
+		}
+		sv.verifyExpectations(t)
+		receivedResponse, ok := messageReceived.message.(message.DataTransferResponse)
+		require.True(t, ok)
+		require.True(t, receivedResponse.Accepted())
+		extStruct := &ExtensionDataTransferData{TransferID: uint64(receivedResponse.TransferID())}
 
-	// // TODO: get passing to complete https://github.com/filecoin-project/go-data-transfer/issues/14
-	// t.Run("When request is not initiated", func(t *testing.T) {
-	// 	_ = NewGraphSyncDataTransfer(ctx, host2, gs2)
-	// 	extStruct := &ExtensionDataTransferData{TransferID: rand.Uint64()}
-	// 	buf.Truncate(0)
-	// 	err = extStruct.MarshalCBOR(&buf)
-	// 	require.NoError(t, err)
-	// 	extData := buf.Bytes()
-	// 	request := gsmsg.NewRequest(graphsync.RequestID(rand.Int31()), link.(cidlink.Link).Cid, selectorBytes, graphsync.Priority(rand.Int31()), graphsync.ExtensionData{
-	// 		Name: ExtensionDataTransfer,
-	// 		Data: extData,
-	// 	})
-	// 	gsmessage := gsmsg.New()
-	// 	gsmessage.AddRequest(request)
-	// 	gsData.gsNet1.SendMessage(ctx, host1.ID(), gsmessage)
-	// 	status := gsr.consumeResponses(ctx, t)
-	// 	require.True(t, gsmsg.IsTerminalFailureCode(status))
-	// })
+		var buf2 = bytes.Buffer{}
+		err = extStruct.MarshalCBOR(&buf2)
+		require.NoError(t, err)
+		extData := buf2.Bytes()
+
+		gsRequest := gsmsg.NewRequest(graphsync.RequestID(rand.Int31()), link.(cidlink.Link).Cid, selectorBytes, graphsync.Priority(rand.Int31()), graphsync.ExtensionData{
+			Name: ExtensionDataTransfer,
+			Data: extData,
+		})
+
+		// initiator requests data over graphsync network
+		gsmessage := gsmsg.New()
+		gsmessage.AddRequest(gsRequest)
+		require.NoError(t, gsData.gsNet1.SendMessage(ctx, host2.ID(), gsmessage))
+		status := gsr.consumeResponses(ctx, t)
+		require.False(t, gsmsg.IsTerminalFailureCode(status))
+	})
+
+	t.Run("When request is not initiated, graphsync response is error", func(t *testing.T) {
+		_ = NewGraphSyncDataTransfer(ctx, host2, gs2)
+		extStruct := &ExtensionDataTransferData{TransferID: rand.Uint64()}
+		buf.Truncate(0)
+		err = extStruct.MarshalCBOR(&buf)
+		require.NoError(t, err)
+		extData := buf.Bytes()
+		request := gsmsg.NewRequest(graphsync.RequestID(rand.Int31()), link.(cidlink.Link).Cid, selectorBytes, graphsync.Priority(rand.Int31()), graphsync.ExtensionData{
+			Name: ExtensionDataTransfer,
+			Data: extData,
+		})
+		gsmessage := gsmsg.New()
+		gsmessage.AddRequest(request)
+
+		// non-initiator requests data over graphsync network, but should not get it
+		// because there was no previous request
+		require.NoError(t, gsData.gsNet1.SendMessage(ctx, host2.ID(), gsmessage))
+		status := gsr.consumeResponses(ctx, t)
+		require.True(t, gsmsg.IsTerminalFailureCode(status))
+	})
 }
 
 // TODO: get passing to complete https://github.com/filecoin-project/go-data-transfer/issues/24
