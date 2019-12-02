@@ -237,7 +237,7 @@ func (m *Miner) GetBestMiningCandidate(ctx context.Context) (*MiningBase, error)
 	}, nil
 }
 
-func (m *Miner) isSlashed(ctx context.Context, addr address.Address, ts *types.TipSet) (bool, error) {
+func (m *Miner) hasPower(ctx context.Context, addr address.Address, ts *types.TipSet) (bool, error) {
 	power, err := m.api.StateMinerPower(ctx, addr, ts)
 	if err != nil {
 		return false, err
@@ -250,12 +250,12 @@ func (m *Miner) mineOne(ctx context.Context, addr address.Address, base *MiningB
 	log.Debugw("attempting to mine a block", "tipset", types.LogCids(base.ts.Cids()))
 	start := time.Now()
 
-	slashed, err := m.isSlashed(ctx, addr, base.ts)
+	hasPower, err := m.hasPower(ctx, addr, base.ts)
 	if err != nil {
 		return nil, xerrors.Errorf("checking if miner is slashed: %w", err)
 	}
-	if slashed {
-		log.Warnf("Slashed at epoch %d, not attempting to mine a block", base.ts.Height()+base.nullRounds)
+	if hasPower {
+		// slashed or just have no power yet
 		base.nullRounds++
 		return nil, nil
 	}
