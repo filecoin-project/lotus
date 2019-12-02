@@ -11,6 +11,7 @@ endif
 MODULES:=
 
 CLEAN:=
+BINS:=
 
 ## FFI
 

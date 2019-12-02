@@ -4,7 +4,6 @@ import (
 	"bytes"
 	"context"
 	"fmt"
-	"io"
 	"io/ioutil"
 	"math/rand"
 	"os"
@@ -43,7 +42,9 @@ func TestDealFlow(t *testing.T, b APIBuilder) {
 	}
 	time.Sleep(time.Second)
 
-	data, _ := ioutil.ReadAll(io.LimitReader(rand.New(rand.NewSource(5)), 1000))
+	data := make([]byte, 1000)
+	rand.New(rand.NewSource(5)).Read(data)
+
 	r := bytes.NewReader(data)
 	fcid, err := client.ClientImportLocal(ctx, r)
 	if err != nil {
