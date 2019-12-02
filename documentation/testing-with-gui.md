@@ -1,6 +1,6 @@
-# Join Lotus Devnet
+# Pond UI
 
-As an alternative to the [CLI](https://docs.lotu.sh/join-devnet-cli) you can use Pond, a graphical testbed for lotus. It can be used to spin up nodes, connect them in a given topology, start them mining, and observe how they function over time.
+Pond is a graphical testbed for [Lotus](https://docs.lotu.sh). Using it will setup a seperate local network which is helpful for debugging. Pond will spin up nodes, connect them in a given topology, start them mining, and observe how they function over time.
 
 ## Build
 
@@ -16,7 +16,7 @@ $ ./pond run
 
 Now go to http://127.0.0.1:2222.
 
-## What can I do?
+## What can I test?
 
 - The `Spawn Node` button starts a new lotus Node in a new draggable window.
 - Click `[Spawn Storage Miner]` to start mining. This require's the node's wallet to have funds.
