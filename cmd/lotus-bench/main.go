@@ -64,8 +64,15 @@ func main() {
 				Name:  "sector-size",
 				Value: 1024,
 			},
+			&cli.BoolFlag{
+				Name:  "no-gpu",
+				Usage: "disable gpu usage for the benchmark run",
+			},
 		},
 		Action: func(c *cli.Context) error {
+			if c.Bool("no-gpu") {
+				os.Setenv("BELLMAN_NO_GPU", "1")
+			}
 			sdir, err := homedir.Expand(c.String("storage-dir"))
 			if err != nil {
 				return err
