@@ -4,6 +4,7 @@ import (
 	"context"
 	"encoding/json"
 	"fmt"
+	"github.com/mitchellh/go-homedir"
 	"io"
 	"io/ioutil"
 	"os"
@@ -67,11 +68,16 @@ func MakeGenesisMem(out io.Writer, gmc *gen.GenMinerCfg) func(bs dtypes.ChainBlo
 	}
 }
 
-func MakeGenesis(outFile, preseal string) func(bs dtypes.ChainBlockstore, w *wallet.Wallet) modules.Genesis {
+func MakeGenesis(outFile, presealInfo string) func(bs dtypes.ChainBlockstore, w *wallet.Wallet) modules.Genesis {
 	return func(bs dtypes.ChainBlockstore, w *wallet.Wallet) modules.Genesis {
 		return func() (*types.BlockHeader, error) {
 			glog.Warn("Generating new random genesis block, note that this SHOULD NOT happen unless you are setting up new network")
-			fdata, err := ioutil.ReadFile(preseal)
+			presealInfo, err := homedir.Expand(presealInfo)
+			if err != nil {
+				return nil, err
+			}
+
+			fdata, err := ioutil.ReadFile(presealInfo)
 			if err != nil {
 				return nil, err
 			}

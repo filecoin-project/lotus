@@ -123,6 +123,11 @@ var initCmd = &cli.Command{
 		}
 
 		if pssb := cctx.String("pre-sealed-sectors"); pssb != "" {
+			pssb, err := homedir.Expand(pssb)
+			if err != nil {
+				return err
+			}
+
 			log.Infof("moving pre-sealed-sectors from %s into newly created storage miner repo", pssb)
 			lr, err := r.Lock(repo.StorageMiner)
 			if err != nil {
