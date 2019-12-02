@@ -86,6 +86,10 @@ func (tma *testMpoolApi) MessagesForTipset(ts *types.TipSet) ([]store.ChainMsg, 
 	return out, nil
 }
 
+func (tma *testMpoolApi) LoadTipSet(cids []cid.Cid) (*types.TipSet, error) {
+	panic("dont call me unless you implement me")
+}
+
 func assertNonce(t *testing.T, mp *MessagePool, addr address.Address, val uint64) {
 	t.Helper()
 	n, err := mp.GetNonce(addr)
