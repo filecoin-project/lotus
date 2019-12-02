@@ -7,13 +7,14 @@ import (
 	"net/http"
 	"net/url"
 	"os"
+	"path"
 	"path/filepath"
 	"strconv"
 	"strings"
 	"sync"
-	"syscall"
 
 	rice "github.com/GeertJohan/go.rice"
+	"github.com/ipfs/go-fs-lock"
 	logging "github.com/ipfs/go-log"
 	"github.com/minio/blake2b-simd"
 	"go.uber.org/multierr"
@@ -44,6 +45,12 @@ func GetParams(storage bool, tests bool) error {
 	if err := os.Mkdir(paramdir, 0755); err != nil && !os.IsExist(err) {
 		return err
 	}
+
+	_, err := fslock.Lock(paramdir, ".lock")
+	if err != nil {
+		return err
+	}
+	defer os.Remove(path.Join(paramdir, ".lock"))
 
 	var params map[string]paramFile
 
@@ -82,12 +89,6 @@ func (ft *fetch) maybeFetchAsync(name string, info paramFile) {
 			return
 		}
 		defer outf.Close()
-		err = syscall.Flock(int(outf.Fd()), syscall.LOCK_EX|syscall.LOCK_NB)
-		if err != nil {
-			ft.errs = append(ft.errs, xerrors.Errorf("flock file %s failed: %w", path, err))
-			return
-		}
-		defer syscall.Flock(int(outf.Fd()), syscall.LOCK_UN)
 
 		err = ft.checkFile(outf, info)
 		if !os.IsNotExist(err) && err != nil {
