@@ -45,12 +45,13 @@ func GetParams(storage bool, tests bool) error {
 	if err := os.Mkdir(paramdir, 0755); err != nil && !os.IsExist(err) {
 		return err
 	}
-
-	_, err := fslock.Lock(paramdir, ".lock")
-	if err != nil {
-		return err
+	if !tests {
+		_, err := fslock.Lock(paramdir, ".lock")
+		if err != nil {
+			return err
+		}
+		defer os.Remove(path.Join(paramdir, ".lock"))
 	}
-	defer os.Remove(path.Join(paramdir, ".lock"))
 
 	var params map[string]paramFile
 
