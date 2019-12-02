@@ -37,7 +37,7 @@ func TestSendResponseToIncomingRequest(t *testing.T) {
 	dtnet1.SetDelegate(r)
 
 	gs2 := &fakeGraphSync{
-		receivedRequests: make(chan receivedGraphSyncRequest, 1),
+		requests: make(chan receivedGraphSyncRequest, 1),
 	}
 
 	voucher := fakeDTType{"applesauce"}
