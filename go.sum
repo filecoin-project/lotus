@@ -80,6 +80,8 @@ github.com/filecoin-project/chain-validation v0.0.0-20191106200742-11986803c0f7 
 github.com/filecoin-project/chain-validation v0.0.0-20191106200742-11986803c0f7/go.mod h1:0/0/QUNqpF/jVzLHFncGeT3NvGPODBhGzQlNgzmoZew=
 github.com/filecoin-project/go-amt-ipld v0.0.0-20191122035745-59b9dfc0efc7 h1:lKSMm8Go6qI7+Dk3rWCNIh57wBOqVNJ21re/p7D58gc=
 github.com/filecoin-project/go-amt-ipld v0.0.0-20191122035745-59b9dfc0efc7/go.mod h1:lKjJYPg2kwbav5f78i5YA8kGccnZn18IySbpneXvaQs=
+github.com/filecoin-project/go-amt-ipld v0.0.0-20191203073133-f941215342ed h1:Wt4+eF3fda6MKLjK0/zzBOxs5cUwGyucJSAfO4LnX/w=
+github.com/filecoin-project/go-amt-ipld v0.0.0-20191203073133-f941215342ed/go.mod h1:KsFPWjF+UUYl6n9A+qbg4bjFgAOneicFZtDH/LQEX2U=
 github.com/filecoin-project/go-leb128 v0.0.0-20190212224330-8d79a5489543 h1:aMJGfgqe1QDhAVwxRg5fjCRF533xHidiKsugk7Vvzug=
 github.com/filecoin-project/go-leb128 v0.0.0-20190212224330-8d79a5489543/go.mod h1:mjrHv1cDGJWDlGmC0eDc1E5VJr8DmL9XMUcaFwiuKg8=
 github.com/fsnotify/fsnotify v1.4.7 h1:IXs+QLmnXW2CcXuY+8Mzv/fWEsPGWxqefPtCP5CnV9I=
