@@ -108,12 +108,12 @@ func (impl *graphsyncImpl) gsReqRecdHook(p peer.ID, request graphsync.RequestDat
 	return resp, nil
 }
 
-// gsExtended is a small interface used by constructChannelIDFromExtensionData
+// gsExtended is a small interface used by transferIDFromExtension
 type gsExtended interface {
 	Extension(name graphsync.ExtensionName) ([]byte, bool)
 }
 
-// constructChannelIDFromExtensionData extracts extension data and creates a channel id then returns
+// transferIDFromExtension extracts extension data and creates a channel id then returns
 // both. Returns any errors.
 func (impl *graphsyncImpl) transferIDFromExtension(extendedData gsExtended, initiator peer.ID) (datatransfer.TransferID, error) {
 	data, ok := extendedData.Extension(ExtensionDataTransfer)
