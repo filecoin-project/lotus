@@ -1,4 +1,5 @@
 package graphsyncimpl
+
 import (
 	"bytes"
 	"context"
@@ -45,14 +46,14 @@ func TestGraphsyncImpl_SubscribeToEvents(t *testing.T) {
 
 	subscribe1Calls := make(chan struct{}, 1)
 	subscriber := func(event datatransfer.Event, channelState datatransfer.ChannelState) {
-		if event == datatransfer.Error {
+		if event.Code == datatransfer.Error {
 			subscribe1Calls <- struct{}{}
 		}
 	}
 
 	subscribe2Calls := make(chan struct{}, 1)
 	subscriber2 := func(event datatransfer.Event, cst datatransfer.ChannelState) {
-		if event != datatransfer.Error {
+		if event.Code != datatransfer.Error {
 			subscribe2Calls <- struct{}{}
 		}
 	}
@@ -154,7 +155,6 @@ func newGraphsyncTestingData(t *testing.T, ctx context.Context) *graphsyncTestin
 	return gsData
 }
 
-
 type receivedGraphSyncRequest struct {
 	p          peer.ID
 	root       ipld.Link
@@ -177,12 +177,12 @@ func (fgs *fakeGraphSync) Request(ctx context.Context, p peer.ID, root ipld.Link
 }
 
 // RegisterResponseReceivedHook adds a hook that runs when a request is received
-func (fgs *fakeGraphSync)RegisterRequestReceivedHook(overrideDefaultValidation bool, hook graphsync.OnRequestReceivedHook) error {
+func (fgs *fakeGraphSync) RegisterRequestReceivedHook(overrideDefaultValidation bool, hook graphsync.OnRequestReceivedHook) error {
 	return nil
 }
 
 // RegisterResponseReceivedHook adds a hook that runs when a response is received
-func (fgs *fakeGraphSync)RegisterResponseReceivedHook(graphsync.OnResponseReceivedHook) error {
+func (fgs *fakeGraphSync) RegisterResponseReceivedHook(graphsync.OnResponseReceivedHook) error {
 	return nil
 }
 

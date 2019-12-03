@@ -3,6 +3,7 @@ package datatransfer
 import (
 	"context"
 	"reflect"
+	"time"
 
 	"github.com/ipfs/go-cid"
 	"github.com/ipld/go-ipld-prime"
@@ -117,12 +118,12 @@ func (c ChannelState) Sent() uint64 { return c.sent }
 // Received returns the number of bytes received
 func (c ChannelState) Received() uint64 { return c.received }
 
-// Event is a name for an event that occurs on a data transfer channel
-type Event int
+// EventCode is a name for an event that occurs on a data transfer channel
+type EventCode int
 
 const (
 	// Open is an event occurs when a channel is first opened
-	Open Event = iota
+	Open EventCode = iota
 
 	// Progress is an event that gets emitted every time more data is transferred
 	Progress
@@ -133,6 +134,13 @@ const (
 	// Complete is emitted when a data transfer is complete
 	Complete
 )
+
+// Event is a struct containing information about a data transfer event
+type Event struct {
+	Code      EventCode // What type of event it is
+	Message   string    // Any clarifying information about the event
+	Timestamp time.Time // when the event happened
+}
 
 // Subscriber is a callback that is called when events are emitted
 type Subscriber func(event Event, channelState ChannelState)

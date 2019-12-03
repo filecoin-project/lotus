@@ -28,6 +28,8 @@ const (
 // the graphsync extension. TODO: feel free to add to this
 type ExtensionDataTransferData struct {
 	TransferID uint64
+	Initiator  peer.ID
+	IsPull     bool
 }
 
 // This file implements a VERY simple, incomplete version of the data transfer
@@ -74,8 +76,8 @@ func NewGraphSyncDataTransfer(parent context.Context, host host.Host, gs graphsy
 		log.Error(err)
 		return nil
 	}
-	receiver := &graphsyncReceiver{parent, impl}
-	dataTransferNetwork.SetDelegate(receiver)
+	dtReceiver := &graphsyncReceiver{parent, impl}
+	dataTransferNetwork.SetDelegate(dtReceiver)
 	return impl
 }
 
@@ -85,65 +87,67 @@ func (impl *graphsyncImpl) gsReqRecdHook(p peer.ID, request graphsync.RequestDat
 	var resp []graphsync.ExtensionData
 
 	// if this is a push request the sender is us.
-	tid, err := impl.transferIDFromExtension(request)
+	transferData, err := impl.getExtensionData(request)
 	if err != nil {
 		return resp, err
 	}
 
-	extData := graphsync.ExtensionData{
-		Name: ExtensionDataTransfer,
-		Data: nil,
+	sender := impl.peerID
+	initiator := impl.peerID
+	if transferData.IsPull {
+		// if it's a pull request: the initiator is them
+		initiator = p
+	} else {
+		// if a push request, initiator & sender is us, ask for the channel with us as sender
 	}
+	chid := datatransfer.ChannelID{Initiator: initiator, ID: datatransfer.TransferID(transferData.TransferID)}
 
-	chid := datatransfer.ChannelID{ Initiator: impl.peerID, ID: tid}
-	// if a push request, initiator & sender is us, ask for the channel with us as sender
-	if impl.getChannelByIdAndSender(chid, impl.peerID) == datatransfer.EmptyChannelState {
-
-		// otherwise check if it's a pull request: the initiator is them
-		tid, err = impl.transferIDFromExtension(request)
-
-		chid = datatransfer.ChannelID{Initiator: p, ID: tid}
-		// sender is still us
-		if impl.getChannelByIdAndSender(chid, impl.peerID) == datatransfer.EmptyChannelState {
-			return resp, errors.New("could not find push or pull channel")
-		}
+	if impl.getChannelByIdAndSender(chid, sender) == datatransfer.EmptyChannelState {
+		return resp, errors.New("could not find push or pull channel")
 	}
+	extData := graphsync.ExtensionData{Name: "transferData"}
 	resp = append(resp, extData)
 	return resp, nil
 }
 
 func (impl *graphsyncImpl) gsRespRecdHook(p peer.ID, responseData graphsync.ResponseData) error {
-	_, err := impl.transferIDFromExtension(responseData)
+	_, err := impl.getExtensionData(responseData)
+
+	//tid, err := impl.getExtensionData(responseData)
+	//if err != nil {
+	//	evt := datatransfer.Event{
+	//		Code:      datatransfer.Error,
+	//		Message:   "transferID could not be extracted from extension",
+	//		Timestamp: time.Now(),
+	//	}
+	//	ch := datatransfer.NewChannel(tid, )
+	//	impl.notifySubscribers(evt, )
+	//}
+
 	if err != nil {
+		//ch := datatransfer.Channel{}
+		//evt := datatransfer.Event{
+		//	Code:      datatransfer.Error,
+		//	Message:   "transferID could not be extracted from extension",
+		//	Timestamp: time.Now(),
+		//}
+		//impl.notifySubscribers(evt, datatransfer.ChannelState{ Channel: ch })
 		return err
 	}
 	return nil
 }
 
-// gsExtended is a small interface used by transferIDFromExtension
+// gsExtended is a small interface used by getExtensionData
 type gsExtended interface {
 	Extension(name graphsync.ExtensionName) ([]byte, bool)
 }
 
-// transferIDFromExtension extracts extension data and creates a channel id then returns
-// both. Returns any errors.
-func (impl *graphsyncImpl) transferIDFromExtension(extendedData gsExtended) (datatransfer.TransferID, error) {
+// getExtensionData unmarshals extension data. Returns any errors.
+func (impl *graphsyncImpl) getExtensionData(extendedData gsExtended) (*ExtensionDataTransferData, error) {
 	data, ok := extendedData.Extension(ExtensionDataTransfer)
-	zero := datatransfer.TransferID(0)
 	if !ok {
-		return zero, errors.New("extension not present")
+		return nil, errors.New("extension not present")
 	}
-
-	unm, err := impl.unmarshalExtensionData(data)
-	if err != nil {
-		return zero, err
-	}
-	
-	return datatransfer.TransferID(unm.TransferID), nil
-}
-
-// unmarshalExtensionData instatiates an extension data struct & unmarshals data into i
-func (impl *graphsyncImpl) unmarshalExtensionData(data []byte) (*ExtensionDataTransferData, error) {
 	var extStruct ExtensionDataTransferData
 
 	reader := bytes.NewReader(data)

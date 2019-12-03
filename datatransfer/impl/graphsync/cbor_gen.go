@@ -4,6 +4,7 @@ import (
 	"fmt"
 	"io"
 
+	"github.com/libp2p/go-libp2p-core/peer"
 	cbg "github.com/whyrusleeping/cbor-gen"
 	xerrors "golang.org/x/xerrors"
 )
@@ -17,12 +18,25 @@ func (t *ExtensionDataTransferData) MarshalCBOR(w io.Writer) error {
 		_, err := w.Write(cbg.CborNull)
 		return err
 	}
-	if _, err := w.Write([]byte{129}); err != nil {
+	if _, err := w.Write([]byte{131}); err != nil {
 		return err
 	}
 
 	// t.t.TransferID (uint64) (uint64)
 	if _, err := w.Write(cbg.CborEncodeMajorType(cbg.MajUnsignedInt, uint64(t.TransferID))); err != nil {
+		return err
+	}
+
+	// t.t.Initiator (peer.ID) (string)
+	if _, err := w.Write(cbg.CborEncodeMajorType(cbg.MajTextString, uint64(len(t.Initiator)))); err != nil {
+		return err
+	}
+	if _, err := w.Write([]byte(t.Initiator)); err != nil {
+		return err
+	}
+
+	// t.t.IsPull (bool) (bool)
+	if err := cbg.WriteBool(w, t.IsPull); err != nil {
 		return err
 	}
 	return nil
@@ -39,7 +53,7 @@ func (t *ExtensionDataTransferData) UnmarshalCBOR(r io.Reader) error {
 		return fmt.Errorf("cbor input should be of type array")
 	}
 
-	if extra != 1 {
+	if extra != 3 {
 		return fmt.Errorf("cbor input had wrong number of fields")
 	}
 
@@ -53,5 +67,32 @@ func (t *ExtensionDataTransferData) UnmarshalCBOR(r io.Reader) error {
 		return fmt.Errorf("wrong type for uint64 field")
 	}
 	t.TransferID = uint64(extra)
+	// t.t.Initiator (peer.ID) (string)
+
+	{
+		sval, err := cbg.ReadString(br)
+		if err != nil {
+			return err
+		}
+
+		t.Initiator = peer.ID(sval)
+	}
+	// t.t.IsPull (bool) (bool)
+
+	maj, extra, err = cbg.CborReadHeader(br)
+	if err != nil {
+		return err
+	}
+	if maj != cbg.MajOther {
+		return fmt.Errorf("booleans must be major type 7")
+	}
+	switch extra {
+	case 20:
+		t.IsPull = false
+	case 21:
+		t.IsPull = true
+	default:
+		return fmt.Errorf("booleans are either major type 7, value 20 or 21 (got %d)", extra)
+	}
 	return nil
 }
