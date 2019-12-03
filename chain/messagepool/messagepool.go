@@ -341,7 +341,7 @@ func (mp *MessagePool) addLocked(m *types.SignedMessage) error {
 
 func (mp *MessagePool) GetNonce(addr address.Address) (uint64, error) {
 	mp.curTsLk.Lock()
-	defer mp.curTsLk.Lock()
+	defer mp.curTsLk.Unlock()
 
 	mp.lk.Lock()
 	defer mp.lk.Unlock()
@@ -415,7 +415,7 @@ func (mp *MessagePool) getStateBalance(addr address.Address) (types.BigInt, erro
 
 func (mp *MessagePool) PushWithNonce(addr address.Address, cb func(uint64) (*types.SignedMessage, error)) (*types.SignedMessage, error) {
 	mp.curTsLk.Lock()
-	defer mp.curTsLk.Lock()
+	defer mp.curTsLk.Unlock()
 
 	mp.lk.Lock()
 	defer mp.lk.Unlock()
@@ -533,6 +533,8 @@ func (mp *MessagePool) HeadChange(revert []*types.TipSet, apply []*types.TipSet)
 		if err != nil {
 			return err
 		}
+
+		mp.curTs = pts
 
 		for _, msg := range msgs {
 			if err := mp.addTs(msg, pts); err != nil {
