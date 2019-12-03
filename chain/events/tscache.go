@@ -62,7 +62,7 @@ func (tsc *tipSetCache) add(ts *types.TipSet) error {
 
 func (tsc *tipSetCache) revert(ts *types.TipSet) error {
 	if tsc.len == 0 {
-		return xerrors.New("tipSetCache.revert: nothing to revert; cache is empty")
+		return nil // this can happen, and it's fine
 	}
 
 	if !tsc.cache[tsc.start].Equals(ts) {
