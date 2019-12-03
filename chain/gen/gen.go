@@ -472,9 +472,9 @@ func (epp *eppProvider) ComputeProof(ctx context.Context, _ sectorbuilder.Sorted
 
 type ProofInput struct {
 	sectors sectorbuilder.SortedPublicSectorInfo
-	hvrf []byte
+	hvrf    []byte
 	winners []sectorbuilder.EPostCandidate
-	vrfout []byte
+	vrfout  []byte
 }
 
 func IsRoundWinner(ctx context.Context, ts *types.TipSet, round int64, miner address.Address, epp ElectionPoStProver, a MiningCheckAPI) (bool, *ProofInput, error) {

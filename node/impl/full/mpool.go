@@ -3,12 +3,14 @@ package full
 import (
 	"context"
 
+	"github.com/ipfs/go-cid"
 	"go.uber.org/fx"
 	"golang.org/x/xerrors"
 
 	"github.com/filecoin-project/lotus/api"
 	"github.com/filecoin-project/lotus/chain/address"
 	"github.com/filecoin-project/lotus/chain/messagepool"
+	"github.com/filecoin-project/lotus/chain/store"
 	"github.com/filecoin-project/lotus/chain/types"
 )
 
@@ -17,13 +19,63 @@ type MpoolAPI struct {
 
 	WalletAPI
 
+	Chain *store.ChainStore
+
 	Mpool *messagepool.MessagePool
 }
 
 func (a *MpoolAPI) MpoolPending(ctx context.Context, ts *types.TipSet) ([]*types.SignedMessage, error) {
-	// TODO: need to make sure we don't return messages that were already included in the referenced chain
-	// also need to accept ts == nil just fine, assume nil == chain.Head()
-	return a.Mpool.Pending(), nil
+	pending, mpts := a.Mpool.Pending()
+
+	haveCids := map[cid.Cid]struct{}{}
+	for _, m := range pending {
+		haveCids[m.Cid()] = struct{}{}
+	}
+
+	if mpts.Height() > ts.Height() {
+		return pending, nil
+	}
+
+	for {
+		if mpts.Height() == ts.Height() {
+			if mpts.Equals(ts) {
+				return pending, nil
+			}
+			// different blocks in tipsets
+
+			have, err := a.Mpool.MessagesForBlocks(ts.Blocks())
+			if err != nil {
+				return nil, xerrors.Errorf("getting messages for base ts: %w", err)
+			}
+
+			for _, m := range have {
+				haveCids[m.Cid()] = struct{}{}
+			}
+		}
+
+		msgs, err := a.Mpool.MessagesForBlocks(ts.Blocks())
+		if err != nil {
+			return nil, xerrors.Errorf(": %w", err)
+		}
+
+		for _, m := range msgs {
+			if _, ok := haveCids[m.Cid()]; ok {
+				continue
+			}
+
+			haveCids[m.Cid()] = struct{}{}
+			pending = append(pending, m)
+		}
+
+		if mpts.Height() >= ts.Height() {
+			return pending, nil
+		}
+
+		ts, err = a.Chain.LoadTipSet(ts.Parents())
+		if err != nil {
+			return nil, xerrors.Errorf("loading parent tipset: %w", err)
+		}
+	}
 }
 
 func (a *MpoolAPI) MpoolPush(ctx context.Context, smsg *types.SignedMessage) error {
