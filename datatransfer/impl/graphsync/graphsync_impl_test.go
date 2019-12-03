@@ -269,20 +269,19 @@ func TestDataTransferValidation(t *testing.T) {
 	gs2 := &fakeGraphSync{
 		requests: make(chan receivedGraphSyncRequest, 1),
 	}
-	dt2 := NewGraphSyncDataTransfer(ctx, host2, gs2)
 
 	fv := &fakeValidator{ctx, make(chan receivedValidation)}
 
-	err := dt2.RegisterVoucherType(reflect.TypeOf(&fakeDTType{}), fv)
-	require.NoError(t, err)
 	id := datatransfer.TransferID(rand.Int31())
 	var buffer bytes.Buffer
-	err = dagcbor.Encoder(gsData.allSelector, &buffer)
-	require.NoError(t, err)
+	require.NoError(t, dagcbor.Encoder(gsData.allSelector, &buffer))
 
 	t.Run("ValidatePush", func(t *testing.T) {
+		dt2 := NewGraphSyncDataTransfer(ctx, host2, gs2)
+		err := dt2.RegisterVoucherType(reflect.TypeOf(&fakeDTType{}), fv)
+		require.NoError(t, err)
 		// create push request
-		voucher, baseCid, request := createDTRequest(t, false, id, buffer)
+		voucher, baseCid, request := createDTRequest(t, false, id, buffer.Bytes())
 
 		require.NoError(t, dtnet1.SendMessage(ctx, host2.ID(), request))
 
@@ -309,7 +308,7 @@ func TestDataTransferValidation(t *testing.T) {
 
 	t.Run("ValidatePull", func(t *testing.T) {
 		// create pull request
-		voucher, baseCid, request := createDTRequest(t, true, id, buffer)
+		voucher, baseCid, request := createDTRequest(t, true, id, buffer.Bytes())
 		require.NoError(t, dtnet1.SendMessage(ctx, host2.ID(), request))
 
 		var validation receivedValidation
@@ -332,12 +331,12 @@ func TestDataTransferValidation(t *testing.T) {
 	})
 }
 
-func createDTRequest(t *testing.T, isPull bool, id datatransfer.TransferID, buffer bytes.Buffer) (fakeDTType, cid.Cid, message.DataTransferRequest) {
+func createDTRequest(t *testing.T, isPull bool, id datatransfer.TransferID, selectorBytes []byte) (fakeDTType, cid.Cid, message.DataTransferRequest) {
 	voucher := fakeDTType{"applesauce"}
 	baseCid := testutil.GenerateCids(1)[0]
 	voucherBytes, err := voucher.ToBytes()
 	require.NoError(t, err)
-	request := message.NewRequest(id, isPull, voucher.Type(), voucherBytes, baseCid, buffer.Bytes())
+	request := message.NewRequest(id, isPull, voucher.Type(), voucherBytes, baseCid, selectorBytes)
 	return voucher, baseCid, request
 }
 
@@ -561,7 +560,7 @@ func TestDataTransferInitiatingPushGraphsyncRequests(t *testing.T) {
 	err := dagcbor.Encoder(gsData.allSelector, &buffer)
 	require.NoError(t, err)
 
-	_, baseCid, request := createDTRequest(t, false, id, buffer)
+	_, baseCid, request := createDTRequest(t, false, id, buffer.Bytes())
 
 	t.Run("with successful validation", func(t *testing.T) {
 		sv := newSV()
@@ -701,8 +700,6 @@ func TestDataTransferInitiatingPullGraphsyncRequests(t *testing.T) {
 		case <-subscribeCalls:
 		}
 
-		// give a little time for the validation to happen
-		//time.Sleep(15*time.Millisecond)
 		sv.verifyExpectations(t)
 
 		// no graphsync request should be scheduled
@@ -829,8 +826,6 @@ func TestRespondingToPushGraphsyncRequests(t *testing.T) {
 		}
 		requestReceived := messageReceived.message.(message.DataTransferRequest)
 
-		time.Sleep(150 * time.Millisecond)
-
 		var buf bytes.Buffer
 		extStruct := &ExtensionDataTransferData{TransferID: uint64(requestReceived.TransferID())}
 		err = extStruct.MarshalCBOR(&buf)
@@ -917,7 +912,7 @@ func TestRespondingToPullGraphsyncRequests(t *testing.T) {
 		dt1 := NewGraphSyncDataTransfer(ctx, host2, gs2)
 		require.NoError(t, dt1.RegisterVoucherType(reflect.TypeOf(&fakeDTType{}), sv))
 
-		_, _, request := createDTRequest(t, true, id, buf)
+		_, _, request := createDTRequest(t, true, id, selectorBytes)
 		require.NoError(t, dtnet1.SendMessage(ctx, host2.ID(), request))
 		var messageReceived receivedMessage
 		select {

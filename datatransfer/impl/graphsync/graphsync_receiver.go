@@ -45,8 +45,12 @@ func (receiver *graphsyncReceiver) ReceiveRequest(
 		receiver.impl.gs.Request(ctx, initiator, root, stor)
 	}
 
-	_ = receiver.impl.createNewChannel(incoming.TransferID(), incoming.BaseCid(), stor, voucher, initiator, dataSender, dataReceiver)
-
+	_, err = receiver.impl.createNewChannel(incoming.TransferID(), incoming.BaseCid(), stor, voucher, initiator, dataSender, dataReceiver)
+	if err != nil {
+		log.Error(err)
+		receiver.impl.sendResponse(ctx, false, initiator, incoming.TransferID())
+		return
+	}
 	receiver.impl.sendResponse(ctx, true, initiator, incoming.TransferID())
 }
 
@@ -123,7 +127,7 @@ func (receiver *graphsyncReceiver) ReceiveResponse(
 
 		// if we are handling a response to a pull request then they are sending data and the
 		// initiator is us
-		if chst = receiver.impl.getChannel(chid, sender) ; chst != datatransfer.EmptyChannelState {
+		if chst = receiver.impl.getChannelByIdAndSender(chid, sender) ; chst != datatransfer.EmptyChannelState {
 			baseCid := chst.BaseCID()
 			root := cidlink.Link{baseCid}
 			receiver.impl.gs.Request(ctx, sender, root, chst.Selector())
