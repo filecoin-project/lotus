@@ -12,29 +12,24 @@ import (
 	"github.com/filecoin-project/lotus/lib/sectorbuilder"
 )
 
-type providerHandlerFunc func(ctx context.Context, deal SectorInfo) (func(*SectorInfo), error)
+type providerHandlerFunc func(ctx context.Context, deal SectorInfo) *sectorUpdate
 
-func (m *Miner) handleSectorUpdate(ctx context.Context, sector SectorInfo, cb providerHandlerFunc, next api.SectorState) {
+func (m *Miner) handleSectorUpdate(ctx context.Context, sector SectorInfo, cb providerHandlerFunc) {
 	go func() {
-		mut, err := cb(ctx, sector)
+		update := cb(ctx, sector)
 
-		if err == nil && next == api.SectorNoUpdate {
-			return
+		if update == nil {
+			return // async
 		}
 
 		select {
-		case m.sectorUpdated <- sectorUpdate{
-			newState: next,
-			id:       sector.SectorID,
-			err:      err,
-			mut:      mut,
-		}:
+		case m.sectorUpdated <- *update:
 		case <-m.stop:
 		}
 	}()
 }
 
-func (m *Miner) finishPacking(ctx context.Context, sector SectorInfo) (func(*SectorInfo), error) {
+func (m *Miner) handlePacking(ctx context.Context, sector SectorInfo) *sectorUpdate {
 	log.Infow("performing filling up rest of the sector...", "sector", sector.SectorID)
 
 	var allocated uint64
@@ -45,12 +40,12 @@ func (m *Miner) finishPacking(ctx context.Context, sector SectorInfo) (func(*Sec
 	ubytes := sectorbuilder.UserBytesForSectorSize(m.sb.SectorSize())
 
 	if allocated > ubytes {
-		return nil, xerrors.Errorf("too much data in sector: %d > %d", allocated, ubytes)
+		return sector.upd().fatal(xerrors.Errorf("too much data in sector: %d > %d", allocated, ubytes))
 	}
 
 	fillerSizes, err := fillersFromRem(ubytes - allocated)
 	if err != nil {
-		return nil, err
+		return sector.upd().fatal(err)
 	}
 
 	if len(fillerSizes) > 0 {
@@ -59,27 +54,27 @@ func (m *Miner) finishPacking(ctx context.Context, sector SectorInfo) (func(*Sec
 
 	pieces, err := m.storeGarbage(ctx, sector.SectorID, sector.existingPieces(), fillerSizes...)
 	if err != nil {
-		return nil, xerrors.Errorf("filling up the sector (%v): %w", fillerSizes, err)
+		return sector.upd().fatal(xerrors.Errorf("filling up the sector (%v): %w", fillerSizes, err))
 	}
 
-	return func(info *SectorInfo) {
+	return sector.upd().to(api.Unsealed).state(func(info *SectorInfo) {
 		info.Pieces = append(info.Pieces, pieces...)
-	}, nil
+	})
 }
 
-func (m *Miner) sealPreCommit(ctx context.Context, sector SectorInfo) (func(*SectorInfo), error) {
+func (m *Miner) handleUnsealed(ctx context.Context, sector SectorInfo) *sectorUpdate {
 	log.Infow("performing sector replication...", "sector", sector.SectorID)
 	ticket, err := m.tktFn(ctx)
 	if err != nil {
-		return nil, err
+		return sector.upd().fatal(err)
 	}
 
 	rspco, err := m.sb.SealPreCommit(sector.SectorID, *ticket, sector.pieceInfos())
 	if err != nil {
-		return nil, xerrors.Errorf("seal pre commit failed: %w", err)
+		return sector.upd().fatal(xerrors.Errorf("seal pre commit failed: %w", err))
 	}
 
-	return func(info *SectorInfo) {
+	return sector.upd().to(api.PreCommitting).state(func(info *SectorInfo) {
 		info.CommC = rspco.CommC[:]
 		info.CommD = rspco.CommD[:]
 		info.CommR = rspco.CommR[:]
@@ -88,10 +83,11 @@ func (m *Miner) sealPreCommit(ctx context.Context, sector SectorInfo) (func(*Sec
 			BlockHeight: ticket.BlockHeight,
 			TicketBytes: ticket.TicketBytes[:],
 		}
-	}, nil
+	})
+
 }
 
-func (m *Miner) preCommit(ctx context.Context, sector SectorInfo) (func(*SectorInfo), error) {
+func (m *Miner) handlePreCommitting(ctx context.Context, sector SectorInfo) *sectorUpdate {
 	params := &actors.SectorPreCommitInfo{
 		SectorNumber: sector.SectorID,
 
@@ -101,7 +97,7 @@ func (m *Miner) preCommit(ctx context.Context, sector SectorInfo) (func(*SectorI
 	}
 	enc, aerr := actors.SerializeParams(params)
 	if aerr != nil {
-		return nil, xerrors.Errorf("could not serialize commit sector parameters: %w", aerr)
+		return sector.upd().fatal(xerrors.Errorf("could not serialize commit sector parameters: %w", aerr))
 	}
 
 	msg := &types.Message{
@@ -117,26 +113,26 @@ func (m *Miner) preCommit(ctx context.Context, sector SectorInfo) (func(*SectorI
 	log.Info("submitting precommit for sector: ", sector.SectorID)
 	smsg, err := m.api.MpoolPushMessage(ctx, msg)
 	if err != nil {
-		return nil, xerrors.Errorf("pushing message to mpool: %w", err)
+		return sector.upd().fatal(xerrors.Errorf("pushing message to mpool: %w", err))
 	}
 
-	return func(info *SectorInfo) {
+	return sector.upd().to(api.PreCommitted).state(func(info *SectorInfo) {
 		mcid := smsg.Cid()
 		info.PreCommitMessage = &mcid
-	}, nil
+	})
 }
 
-func (m *Miner) preCommitted(ctx context.Context, sector SectorInfo) (func(*SectorInfo), error) {
+func (m *Miner) handlePreCommitted(ctx context.Context, sector SectorInfo) *sectorUpdate {
 	// would be ideal to just use the events.Called handler, but it wouldnt be able to handle individual message timeouts
 	log.Info("Sector precommitted: ", sector.SectorID)
 	mw, err := m.api.StateWaitMsg(ctx, *sector.PreCommitMessage)
 	if err != nil {
-		return nil, err
+		return sector.upd().fatal(err)
 	}
 
 	if mw.Receipt.ExitCode != 0 {
 		log.Error("sector precommit failed: ", mw.Receipt.ExitCode)
-		return nil, err
+		return sector.upd().fatal(err)
 	}
 	log.Info("precommit message landed on chain: ", sector.SectorID)
 
@@ -146,19 +142,18 @@ func (m *Miner) preCommitted(ctx context.Context, sector SectorInfo) (func(*Sect
 	err = m.events.ChainAt(func(ctx context.Context, ts *types.TipSet, curH uint64) error {
 		rand, err := m.api.ChainGetRandomness(ctx, ts.Key(), int64(randHeight))
 		if err != nil {
-			return xerrors.Errorf("failed to get randomness for computing seal proof: %w", err)
+			err = xerrors.Errorf("failed to get randomness for computing seal proof: %w", err)
+
+			m.sectorUpdated <- *sector.upd().fatal(err)
+			return err
 		}
 
-		m.sectorUpdated <- sectorUpdate{
-			newState: api.Committing,
-			id:       sector.SectorID,
-			mut: func(info *SectorInfo) {
-				info.Seed = SealSeed{
-					BlockHeight: randHeight,
-					TicketBytes: rand,
-				}
-			},
-		}
+		m.sectorUpdated <- *sector.upd().to(api.Committing).state(func(info *SectorInfo) {
+			info.Seed = SealSeed{
+				BlockHeight: randHeight,
+				TicketBytes: rand,
+			}
+		})
 
 		return nil
 	}, func(ctx context.Context, ts *types.TipSet) error {
@@ -169,15 +164,15 @@ func (m *Miner) preCommitted(ctx context.Context, sector SectorInfo) (func(*Sect
 		log.Warn("waitForPreCommitMessage ChainAt errored: ", err)
 	}
 
-	return nil, nil
+	return nil
 }
 
-func (m *Miner) committing(ctx context.Context, sector SectorInfo) (func(*SectorInfo), error) {
+func (m *Miner) handleCommitting(ctx context.Context, sector SectorInfo) *sectorUpdate {
 	log.Info("scheduling seal proof computation...")
 
 	proof, err := m.sb.SealCommit(sector.SectorID, sector.Ticket.SB(), sector.Seed.SB(), sector.pieceInfos(), sector.rspco())
 	if err != nil {
-		return nil, xerrors.Errorf("computing seal proof failed: %w", err)
+		return sector.upd().fatal(xerrors.Errorf("computing seal proof failed: %w", err))
 	}
 
 	// TODO: Consider splitting states and persist proof for faster recovery
@@ -190,7 +185,7 @@ func (m *Miner) committing(ctx context.Context, sector SectorInfo) (func(*Sector
 
 	enc, aerr := actors.SerializeParams(params)
 	if aerr != nil {
-		return nil, xerrors.Errorf("could not serialize commit sector parameters: %w", aerr)
+		return sector.upd().fatal(xerrors.Errorf("could not serialize commit sector parameters: %w", aerr))
 	}
 
 	msg := &types.Message{
@@ -212,17 +207,17 @@ func (m *Miner) committing(ctx context.Context, sector SectorInfo) (func(*Sector
 
 	mw, err := m.api.StateWaitMsg(ctx, smsg.Cid())
 	if err != nil {
-		return nil, xerrors.Errorf("failed to wait for porep inclusion: %w", err)
+		return sector.upd().fatal(xerrors.Errorf("failed to wait for porep inclusion: %w", err))
 	}
 
 	if mw.Receipt.ExitCode != 0 {
 		log.Errorf("UNHANDLED: submitting sector proof failed (exit=%d, msg=%s) (t:%x; s:%x(%d); p:%x)", mw.Receipt.ExitCode, smsg.Cid(), sector.Ticket.TicketBytes, sector.Seed.TicketBytes, sector.Seed.BlockHeight, params.Proof)
-		return nil, xerrors.New("UNHANDLED: submitting sector proof failed")
+		return sector.upd().fatal(xerrors.New("UNHANDLED: submitting sector proof failed"))
 	}
 
-	return func(info *SectorInfo) {
+	return sector.upd().to(api.Proving).state(func(info *SectorInfo) {
 		mcid := smsg.Cid()
 		info.CommitMessage = &mcid
 		info.Proof = proof
-	}, nil
+	})
 }

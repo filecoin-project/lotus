@@ -18,6 +18,33 @@ type sectorUpdate struct {
 	mut      func(*SectorInfo)
 }
 
+func (u *sectorUpdate) fatal(err error) *sectorUpdate {
+	return &sectorUpdate{
+		newState: api.FailedUnrecoverable,
+		id:       u.id,
+		err:      err,
+		mut:      u.mut,
+	}
+}
+
+func (u *sectorUpdate) state(m func(*SectorInfo)) *sectorUpdate {
+	return &sectorUpdate{
+		newState: u.newState,
+		id:       u.id,
+		err:      u.err,
+		mut:      m,
+	}
+}
+
+func (u *sectorUpdate) to(newState api.SectorState) *sectorUpdate {
+	return &sectorUpdate{
+		newState: newState,
+		id:       u.id,
+		err:      u.err,
+		mut:      u.mut,
+	}
+}
+
 func (m *Miner) sectorStateLoop(ctx context.Context) error {
 	trackedSectors, err := m.ListSectors()
 	if err != nil {
@@ -97,9 +124,7 @@ func (m *Miner) onSectorIncoming(sector *SectorInfo) {
 	}
 
 	if err := m.sectors.Begin(sector.SectorID, sector); err != nil {
-		// We may have re-sent the proposal
-		log.Errorf("deal tracking failed: %s", err)
-		m.failSector(sector.SectorID, err)
+		log.Errorf("sector tracking failed: %s", err)
 		return
 	}
 
@@ -116,7 +141,7 @@ func (m *Miner) onSectorIncoming(sector *SectorInfo) {
 }
 
 func (m *Miner) onSectorUpdated(ctx context.Context, update sectorUpdate) {
-	log.Infof("Sector %d updated state to %s", update.id, api.SectorStateStr(update.newState))
+	log.Infof("Sector %d updated state to %s", update.id, api.SectorStates[update.newState])
 	var sector SectorInfo
 	err := m.sectors.Mutate(update.id, func(s *SectorInfo) error {
 		s.State = update.newState
@@ -127,37 +152,65 @@ func (m *Miner) onSectorUpdated(ctx context.Context, update sectorUpdate) {
 		return nil
 	})
 	if update.err != nil {
-		log.Errorf("sector %d failed: %s", update.id, update.err)
-		m.failSector(update.id, update.err)
-		return
+		log.Errorf("sector %d failed: %+v", update.id, update.err)
 	}
 	if err != nil {
-		m.failSector(update.id, err)
+		log.Errorf("sector %d error: %+v", update.id, err)
 		return
 	}
+
+	/*
+
+		*<- Empty
+		|   |
+		|   v
+		*<- Packing <- incoming
+		|   |
+		|   v
+		*<- Unsealed
+		|   |
+		|   v
+		*<- PreCommitting
+		|   |
+		|   v
+		*<- PreCommitted
+		|   |
+		|   v
+		*<- Committing
+		|   |
+		|   v
+		*<- Proving
+		|
+		v
+		FailedUnrecoverable
+
+		UndefinedSectorState <- ¯\_(ツ)_/¯
+		    |                     ^
+		    *---------------------/
+
+	*/
 
 	switch update.newState {
 	case api.Packing:
-		m.handleSectorUpdate(ctx, sector, m.finishPacking, api.Unsealed)
+		m.handleSectorUpdate(ctx, sector, m.handlePacking)
 	case api.Unsealed:
-		m.handleSectorUpdate(ctx, sector, m.sealPreCommit, api.PreCommitting)
+		m.handleSectorUpdate(ctx, sector, m.handleUnsealed)
 	case api.PreCommitting:
-		m.handleSectorUpdate(ctx, sector, m.preCommit, api.PreCommitted)
+		m.handleSectorUpdate(ctx, sector, m.handlePreCommitting)
 	case api.PreCommitted:
-		m.handleSectorUpdate(ctx, sector, m.preCommitted, api.SectorNoUpdate)
+		m.handleSectorUpdate(ctx, sector, m.handlePreCommitted)
 	case api.Committing:
-		m.handleSectorUpdate(ctx, sector, m.committing, api.Proving)
+		m.handleSectorUpdate(ctx, sector, m.handleCommitting)
 	case api.Proving:
 		// TODO: track sector health / expiration
 		log.Infof("Proving sector %d", update.id)
-	case api.SectorNoUpdate: // noop
+	case api.UndefinedSectorState:
+		log.Error("sector update with undefined state!")
+	case api.FailedUnrecoverable:
+		log.Errorf("sector %d failed unrecoverably", update.id)
 	default:
 		log.Errorf("unexpected sector update state: %d", update.newState)
 	}
-}
-
-func (m *Miner) failSector(id uint64, err error) {
-	log.Errorf("sector %d error: %+v", id, err)
 }
 
 func (m *Miner) AllocatePiece(size uint64) (sectorID uint64, offset uint64, err error) {

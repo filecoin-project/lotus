@@ -71,6 +71,10 @@ type SectorInfo struct {
 	CommitMessage *cid.Cid
 }
 
+func (t *SectorInfo) upd() *sectorUpdate {
+	return &sectorUpdate{id: t.SectorID}
+}
+
 func (t *SectorInfo) pieceInfos() []sectorbuilder.PublicPieceInfo {
 	out := make([]sectorbuilder.PublicPieceInfo, len(t.Pieces))
 	for i, piece := range t.Pieces {
