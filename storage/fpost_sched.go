@@ -102,9 +102,11 @@ func (s *fpostScheduler) update(ctx context.Context, new *types.TipSet) error {
 		return err
 	}
 
-	if newEPS != s.activeEPS {
-		s.abortActivePoSt()
+	if newEPS == s.activeEPS {
+		return nil
 	}
+
+	s.abortActivePoSt()
 
 	if newEPS != Inactive && start {
 		s.doPost(ctx, newEPS, new)
@@ -124,7 +126,7 @@ func (s *fpostScheduler) abortActivePoSt() {
 
 	log.Warnf("Aborting Fallback PoSt (EPS: %d)", s.activeEPS)
 
-	s.activeEPS = 0
+	s.activeEPS = Inactive
 	s.abort = nil
 }
 
