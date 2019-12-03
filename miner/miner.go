@@ -27,7 +27,7 @@ func NewMiner(api api.FullNode, epp gen.ElectionPoStProver) *Miner {
 		epp: epp,
 		waitFunc: func(ctx context.Context) error {
 			// Wait around for half the block time in case other parents come in
-			time.Sleep(build.BlockDelay * time.Second / 2)
+			time.Sleep(build.PropagationDelay * time.Second)
 			return nil
 		},
 	}

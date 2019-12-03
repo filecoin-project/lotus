@@ -71,7 +71,6 @@ func (sm *SyncManager) Stop() {
 }
 
 func (sm *SyncManager) SetPeerHead(ctx context.Context, p peer.ID, ts *types.TipSet) {
-	log.Info("set peer head!", ts.Height(), ts.Cids())
 	sm.lk.Lock()
 	defer sm.lk.Unlock()
 	sm.peerHeads[p] = ts
@@ -336,7 +335,6 @@ func (sm *SyncManager) syncWorker(id int) {
 				log.Info("sync manager worker shutting down")
 				return
 			}
-			log.Info("sync worker go time!", ts.Height(), ts.Cids())
 
 			ctx := context.WithValue(context.TODO(), syncStateKey{}, ss)
 			err := sm.doSync(ctx, ts)
