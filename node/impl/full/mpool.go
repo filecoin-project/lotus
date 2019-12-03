@@ -32,7 +32,7 @@ func (a *MpoolAPI) MpoolPending(ctx context.Context, ts *types.TipSet) ([]*types
 		haveCids[m.Cid()] = struct{}{}
 	}
 
-	if mpts.Height() > ts.Height() {
+	if ts == nil || mpts.Height() > ts.Height() {
 		return pending, nil
 	}
 
