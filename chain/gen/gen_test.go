@@ -2,7 +2,13 @@ package gen
 
 import (
 	"testing"
+
+	"github.com/filecoin-project/lotus/build"
 )
+
+func init() {
+	build.SectorSizes = []uint64{1024}
+}
 
 func testGeneration(t testing.TB, n int, msgs int) {
 	g, err := NewGenerator()

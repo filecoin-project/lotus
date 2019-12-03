@@ -4,6 +4,7 @@ import (
 	"fmt"
 	"io"
 	"os"
+	"path/filepath"
 	"strconv"
 	"sync"
 	"sync/atomic"
@@ -21,7 +22,7 @@ import (
 const PoStReservedWorkers = 1
 const PoRepProofPartitions = 2
 
-var LastSectorIdKey = datastore.NewKey("/sectorbuilder/last")
+var lastSectorIdKey = datastore.NewKey("/sectorbuilder/last")
 
 var log = logging.Logger("sectorbuilder")
 
@@ -53,9 +54,12 @@ type SectorBuilder struct {
 
 	Miner address.Address
 
-	stagedDir string
-	sealedDir string
-	cacheDir  string
+	stagedDir   string
+	sealedDir   string
+	cacheDir    string
+	unsealedDir string
+
+	unsealLk sync.Mutex
 
 	sealLocal bool
 	rateLimit chan struct{}
@@ -120,7 +124,7 @@ type Config struct {
 	CacheDir    string
 	SealedDir   string
 	StagedDir   string
-	MetadataDir string
+	UnsealedDir string
 }
 
 func New(cfg *Config, ds dtypes.MetadataDS) (*SectorBuilder, error) {
@@ -128,7 +132,7 @@ func New(cfg *Config, ds dtypes.MetadataDS) (*SectorBuilder, error) {
 		return nil, xerrors.Errorf("minimum worker threads is %d, specified %d", PoStReservedWorkers, cfg.WorkerThreads)
 	}
 
-	for _, dir := range []string{cfg.StagedDir, cfg.SealedDir, cfg.CacheDir, cfg.MetadataDir} {
+	for _, dir := range []string{cfg.StagedDir, cfg.SealedDir, cfg.CacheDir, cfg.UnsealedDir} {
 		if err := os.Mkdir(dir, 0755); err != nil {
 			if os.IsExist(err) {
 				continue
@@ -138,7 +142,7 @@ func New(cfg *Config, ds dtypes.MetadataDS) (*SectorBuilder, error) {
 	}
 
 	var lastUsedID uint64
-	b, err := ds.Get(LastSectorIdKey)
+	b, err := ds.Get(lastSectorIdKey)
 	switch err {
 	case nil:
 		i, err := strconv.ParseInt(string(b), 10, 64)
@@ -165,9 +169,10 @@ func New(cfg *Config, ds dtypes.MetadataDS) (*SectorBuilder, error) {
 		ssize:  cfg.SectorSize,
 		lastID: lastUsedID,
 
-		stagedDir: cfg.StagedDir,
-		sealedDir: cfg.SealedDir,
-		cacheDir:  cfg.CacheDir,
+		stagedDir:   cfg.StagedDir,
+		sealedDir:   cfg.SealedDir,
+		cacheDir:    cfg.CacheDir,
+		unsealedDir: cfg.UnsealedDir,
 
 		Miner: cfg.Miner,
 
@@ -186,7 +191,7 @@ func New(cfg *Config, ds dtypes.MetadataDS) (*SectorBuilder, error) {
 }
 
 func NewStandalone(cfg *Config) (*SectorBuilder, error) {
-	for _, dir := range []string{cfg.StagedDir, cfg.SealedDir, cfg.CacheDir, cfg.MetadataDir} {
+	for _, dir := range []string{cfg.StagedDir, cfg.SealedDir, cfg.CacheDir, cfg.UnsealedDir} {
 		if err := os.MkdirAll(dir, 0755); err != nil {
 			if os.IsExist(err) {
 				continue
@@ -204,6 +209,7 @@ func NewStandalone(cfg *Config) (*SectorBuilder, error) {
 		stagedDir: cfg.StagedDir,
 		sealedDir: cfg.SealedDir,
 		cacheDir:  cfg.CacheDir,
+		unsealedDir:cfg.UnsealedDir,
 
 		sealLocal: true,
 		taskCtr:   1,
@@ -271,7 +277,7 @@ func (sb *SectorBuilder) AcquireSectorId() (uint64, error) {
 	sb.lastID++
 	id := sb.lastID
 
-	err := sb.ds.Put(LastSectorIdKey, []byte(fmt.Sprint(id)))
+	err := sb.ds.Put(lastSectorIdKey, []byte(fmt.Sprint(id)))
 	if err != nil {
 		return 0, err
 	}
@@ -311,13 +317,72 @@ func (sb *SectorBuilder) AddPiece(pieceSize uint64, sectorId uint64, file io.Rea
 	}, werr()
 }
 
-// TODO: should *really really* return an io.ReadCloser
-func (sb *SectorBuilder) ReadPieceFromSealedSector(pieceKey string) ([]byte, error) {
-	ret := sb.RateLimit()
+func (sb *SectorBuilder) ReadPieceFromSealedSector(sectorID uint64, offset uint64, size uint64, ticket []byte, commD []byte) (io.ReadCloser, error) {
+	ret := sb.RateLimit() // TODO: check perf, consider remote unseal worker
 	defer ret()
 
-	panic("fixme")
-	//return sectorbuilder.Unseal(sb.handle, pieceKey)
+	sb.unsealLk.Lock() // TODO: allow unsealing unrelated sectors in parallel
+	defer sb.unsealLk.Unlock()
+
+	cacheDir, err := sb.sectorCacheDir(sectorID)
+	if err != nil {
+		return nil, err
+	}
+
+	sealedPath, err := sb.SealedSectorPath(sectorID)
+	if err != nil {
+		return nil, err
+	}
+
+	unsealedPath := sb.unsealedSectorPath(sectorID)
+
+	// TODO: GC for those
+	//  (Probably configurable count of sectors to be kept unsealed, and just
+	//   remove last used one (or use whatever other cache policy makes sense))
+	f, err := os.OpenFile(unsealedPath, os.O_RDONLY, 0644)
+	if err != nil {
+		if !os.IsNotExist(err) {
+			return nil, err
+		}
+
+		var commd [CommLen]byte
+		copy(commd[:], commD)
+
+		var tkt [CommLen]byte
+		copy(tkt[:], ticket)
+
+		err = sectorbuilder.Unseal(sb.ssize,
+			PoRepProofPartitions,
+			cacheDir,
+			sealedPath,
+			unsealedPath,
+			sectorID,
+			addressToProverID(sb.Miner),
+			tkt,
+			commd)
+		if err != nil {
+			return nil, xerrors.Errorf("unseal failed: %w", err)
+		}
+
+		f, err = os.OpenFile(unsealedPath, os.O_RDONLY, 0644)
+		if err != nil {
+			return nil, err
+		}
+	}
+
+	if _, err := f.Seek(int64(offset), io.SeekStart); err != nil {
+		return nil, xerrors.Errorf("seek: %w", err)
+	}
+
+	lr := io.LimitReader(f, int64(size))
+
+	return &struct {
+		io.Reader
+		io.Closer
+	}{
+		Reader: lr,
+		Closer: f,
+	}, nil
 }
 
 func (sb *SectorBuilder) sealPreCommitRemote(call workerCall) (RawSealPreCommitOutput, error) {
@@ -495,6 +560,7 @@ func (sb *SectorBuilder) ComputeElectionPoSt(sectorInfo SortedPublicSectorInfo, 
 	}
 
 	proverID := addressToProverID(sb.Miner)
+
 	return sectorbuilder.GeneratePoSt(sb.ssize, proverID, privsects, cseed, winners)
 }
 
@@ -504,7 +570,7 @@ func (sb *SectorBuilder) GenerateEPostCandidates(sectorInfo SortedPublicSectorIn
 		return nil, err
 	}
 
-	challengeCount := electionPostChallengeCount(uint64(len(sectorInfo.Values())))
+	challengeCount := ElectionPostChallengeCount(uint64(len(sectorInfo.Values())))
 
 	proverID := addressToProverID(sb.Miner)
 	return sectorbuilder.GenerateCandidates(sb.ssize, proverID, challengeSeed, challengeCount, privsectors)
@@ -555,15 +621,61 @@ func (sb *SectorBuilder) Stop() {
 	close(sb.stopping)
 }
 
-func electionPostChallengeCount(sectors uint64) uint64 {
+func ElectionPostChallengeCount(sectors uint64) uint64 {
 	// ceil(sectors / build.SectorChallengeRatioDiv)
 	return (sectors + build.SectorChallengeRatioDiv - 1) / build.SectorChallengeRatioDiv
 }
 
 func fallbackPostChallengeCount(sectors uint64) uint64 {
-	challengeCount := electionPostChallengeCount(sectors)
+	challengeCount := ElectionPostChallengeCount(sectors)
 	if challengeCount > build.MaxFallbackPostChallengeCount {
 		return build.MaxFallbackPostChallengeCount
 	}
 	return challengeCount
+}
+
+func (sb *SectorBuilder) ImportFrom(osb *SectorBuilder) error {
+	if err := moveAllFiles(osb.cacheDir, sb.cacheDir); err != nil {
+		return err
+	}
+
+	if err := moveAllFiles(osb.sealedDir, sb.sealedDir); err != nil {
+		return err
+	}
+
+	if err := moveAllFiles(osb.stagedDir, sb.stagedDir); err != nil {
+		return err
+	}
+
+	val, err := osb.ds.Get(lastSectorIdKey)
+	if err != nil {
+		return err
+	}
+
+	if err := sb.ds.Put(lastSectorIdKey, val); err != nil {
+		return err
+	}
+
+	sb.lastID = osb.lastID
+
+	return nil
+}
+
+func moveAllFiles(from, to string) error {
+	dir, err := os.Open(from)
+	if err != nil {
+		return err
+	}
+
+	names, err := dir.Readdirnames(0)
+	if err != nil {
+		return xerrors.Errorf("failed to list items in dir: %w", err)
+	}
+	for _, n := range names {
+		if err := os.Rename(filepath.Join(from, n), filepath.Join(to, n)); err != nil {
+			return xerrors.Errorf("moving file failed: %w", err)
+		}
+	}
+
+	return nil
 }

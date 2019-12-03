@@ -131,6 +131,7 @@ func main() {
 		actors.ComputeDataCommitmentParams{},
 		actors.SectorProveCommitInfo{},
 		actors.CheckMinerParams{},
+		actors.CronActorState{},
 	)
 	if err != nil {
 		fmt.Println(err)

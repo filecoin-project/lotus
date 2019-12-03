@@ -234,10 +234,8 @@ var clientRetrieveCmd = &cli.Command{
 			fmt.Println("Failed to find file")
 			return nil
 		}
-		order := offers[0].Order()
-		order.Client = payer
 
-		if err := api.ClientRetrieve(ctx, order, cctx.Args().Get(1)); err != nil {
+		if err := api.ClientRetrieve(ctx, offers[0].Order(payer), cctx.Args().Get(1)); err != nil {
 			return err
 		}
 

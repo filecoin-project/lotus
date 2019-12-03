@@ -25,14 +25,6 @@ import (
 	"github.com/filecoin-project/lotus/genesis"
 )
 
-var validSsizes = map[uint64]struct{}{}
-
-func init() {
-	for _, size := range build.SectorSizes {
-		validSsizes[size] = struct{}{}
-	}
-}
-
 type GenesisBootstrap struct {
 	Genesis *types.BlockHeader
 }
@@ -100,6 +92,15 @@ func MakeInitialStateTree(bs bstore.Blockstore, actmap map[address.Address]types
 		return nil, xerrors.Errorf("set init actor: %w", err)
 	}
 
+	cronact, err := SetupCronActor(bs)
+	if err != nil {
+		return nil, xerrors.Errorf("setup cron actor: %w", err)
+	}
+
+	if err := state.SetActor(actors.CronAddress, cronact); err != nil {
+		return nil, xerrors.Errorf("set cron actor: %w", err)
+	}
+
 	spact, err := SetupStoragePowerActor(bs)
 	if err != nil {
 		return nil, xerrors.Errorf("setup storage market actor: %w", err)
@@ -144,6 +145,23 @@ func MakeInitialStateTree(bs bstore.Blockstore, actmap map[address.Address]types
 	}
 
 	return state, nil
+}
+
+func SetupCronActor(bs bstore.Blockstore) (*types.Actor, error) {
+	cst := hamt.CSTFromBstore(bs)
+	cas := &actors.CronActorState{}
+
+	stcid, err := cst.Put(context.TODO(), cas)
+	if err != nil {
+		return nil, err
+	}
+
+	return &types.Actor{
+		Code:    actors.CronCodeCid,
+		Head:    stcid,
+		Nonce:   0,
+		Balance: types.NewInt(0),
+	}, nil
 }
 
 func SetupStoragePowerActor(bs bstore.Blockstore) (*types.Actor, error) {
@@ -205,7 +223,7 @@ func SetupStorageMarketActor(bs bstore.Blockstore, sroot cid.Cid, deals []actors
 	sms := &actors.StorageMarketState{
 		Balances:   emptyHAMT,
 		Deals:      dealAmt,
-		NextDealID: 0,
+		NextDealID: uint64(len(deals)),
 	}
 
 	stcid, err := cst.Put(context.TODO(), sms)
@@ -253,6 +271,10 @@ func SetupStorageMiners(ctx context.Context, cs *store.ChainStore, sroot cid.Cid
 	vm, err := vm.NewVM(sroot, 0, nil, actors.NetworkAddress, cs.Blockstore())
 	if err != nil {
 		return cid.Undef, nil, xerrors.Errorf("failed to create NewVM: %w", err)
+	}
+
+	if len(gmcfg.MinerAddrs) == 0 {
+		return cid.Undef, nil, xerrors.New("no genesis miners")
 	}
 
 	if len(gmcfg.MinerAddrs) != len(gmcfg.PreSeals) {
@@ -322,7 +344,7 @@ func SetupStorageMiners(ctx context.Context, cs *store.ChainStore, sroot cid.Cid
 		if err := cst.Get(ctx, mact.Head, &mstate); err != nil {
 			return cid.Undef, nil, xerrors.Errorf("getting miner actor state failed: %w", err)
 		}
-		mstate.Power = types.NewInt(build.SectorSizes[0])
+		mstate.Power = types.BigMul(types.NewInt(build.SectorSizes[0]), types.NewInt(uint64(len(ps.Sectors))))
 
 		blks := amt.WrapBlockstore(cs.Blockstore())
 

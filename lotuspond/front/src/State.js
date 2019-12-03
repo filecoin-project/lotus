@@ -107,7 +107,8 @@ class MarketState extends React.Component {
     const tipset = await this.props.client.call("Filecoin.ChainHead", []) // TODO: from props
     const participants = await this.props.client.call("Filecoin.StateMarketParticipants", [tipset])
     const deals = await this.props.client.call("Filecoin.StateMarketDeals", [tipset])
-    this.setState({participants, deals})
+    const state = await this.props.client.call('Filecoin.StateReadState', [this.props.actor, tipset])
+    this.setState({participants, deals, nextDeal: state.State.NextDealID})
   }
 
   render() {
@@ -125,7 +126,7 @@ class MarketState extends React.Component {
       </div>
       <div>
         <div>---</div>
-        <div>Deals:</div>
+        <div>Deals ({this.state.nextDeal} Total):</div>
         <table>
           <tr><td>id</td><td>Active</td><td>Client</td><td>Provider</td><td>Size</td><td>Price</td><td>Duration</td></tr>
           {Object.keys(this.state.deals).map(d => <tr>

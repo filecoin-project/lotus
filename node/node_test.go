@@ -4,13 +4,17 @@ import (
 	"bytes"
 	"context"
 	"crypto/rand"
+	"github.com/filecoin-project/lotus/build"
 	"io/ioutil"
 	"net/http/httptest"
+	"path/filepath"
 	"testing"
 
 	"github.com/libp2p/go-libp2p-core/crypto"
 
 	"github.com/ipfs/go-datastore"
+	badger "github.com/ipfs/go-ds-badger"
+	logging "github.com/ipfs/go-log"
 	"github.com/libp2p/go-libp2p-core/peer"
 	mocknet "github.com/libp2p/go-libp2p/p2p/net/mock"
 	"github.com/stretchr/testify/require"
@@ -25,12 +29,20 @@ import (
 	"github.com/filecoin-project/lotus/cmd/lotus-seed/seed"
 	"github.com/filecoin-project/lotus/genesis"
 	"github.com/filecoin-project/lotus/lib/jsonrpc"
+	"github.com/filecoin-project/lotus/lib/sectorbuilder"
 	"github.com/filecoin-project/lotus/miner"
 	"github.com/filecoin-project/lotus/node"
+	"github.com/filecoin-project/lotus/node/impl"
 	"github.com/filecoin-project/lotus/node/modules"
 	modtest "github.com/filecoin-project/lotus/node/modules/testing"
 	"github.com/filecoin-project/lotus/node/repo"
 )
+
+func init() {
+	_ = logging.SetLogLevel("*", "INFO")
+
+	build.SectorSizes = []uint64{1024}
+}
 
 func testStorageNode(ctx context.Context, t *testing.T, waddr address.Address, act address.Address, pk crypto.PrivKey, tnd test.TestNode, mn mocknet.Mocknet) test.TestStorageNode {
 	r := repo.NewMemory(nil)
@@ -80,6 +92,7 @@ func testStorageNode(ctx context.Context, t *testing.T, waddr address.Address, a
 	// start node
 	var minerapi api.StorageMiner
 
+	mineBlock := make(chan struct{})
 	// TODO: use stop
 	_, err = node.New(ctx,
 		node.StorageMiner(&minerapi),
@@ -90,6 +103,7 @@ func testStorageNode(ctx context.Context, t *testing.T, waddr address.Address, a
 		node.MockHost(mn),
 
 		node.Override(new(api.FullNode), tnd),
+		node.Override(new(*miner.Miner), miner.NewTestMiner(mineBlock, act)),
 	)
 	if err != nil {
 		t.Fatalf("failed to construct node: %v", err)
@@ -101,8 +115,16 @@ func testStorageNode(ctx context.Context, t *testing.T, waddr address.Address, a
 
 	err = minerapi.NetConnect(ctx, remoteAddrs)
 	require.NoError(t, err)*/
+	mineOne := func(ctx context.Context) error {
+		select {
+		case mineBlock <- struct{}{}:
+			return nil
+		case <-ctx.Done():
+			return ctx.Err()
+		}
+	}
 
-	return test.TestStorageNode{minerapi}
+	return test.TestStorageNode{StorageMiner: minerapi, MineOne: mineOne}
 }
 
 func builder(t *testing.T, nFull int, storage []int) ([]test.TestNode, []test.TestStorageNode) {
@@ -129,6 +151,8 @@ func builder(t *testing.T, nFull int, storage []int) ([]test.TestNode, []test.Te
 		PeerIDs:  []peer.ID{minerPid}, // TODO: if we have more miners, need more peer IDs
 		PreSeals: map[string]genesis.GenesisMiner{},
 	}
+
+	var presealDirs []string
 	for i := 0; i < len(storage); i++ {
 		maddr, err := address.NewIDAddress(300 + uint64(i))
 		if err != nil {
@@ -142,6 +166,8 @@ func builder(t *testing.T, nFull int, storage []int) ([]test.TestNode, []test.Te
 		if err != nil {
 			t.Fatal(err)
 		}
+
+		presealDirs = append(presealDirs, tdir)
 		gmc.MinerAddrs = append(gmc.MinerAddrs, maddr)
 		gmc.PreSeals[maddr.String()] = *genm
 	}
@@ -156,8 +182,6 @@ func builder(t *testing.T, nFull int, storage []int) ([]test.TestNode, []test.Te
 			genesis = node.Override(new(modules.Genesis), modules.LoadGenesis(genbuf.Bytes()))
 		}
 
-		mineBlock := make(chan struct{})
-
 		var err error
 		// TODO: Don't ignore stop
 		_, err = node.New(ctx,
@@ -167,22 +191,12 @@ func builder(t *testing.T, nFull int, storage []int) ([]test.TestNode, []test.Te
 			node.MockHost(mn),
 			node.Test(),
 
-			node.Override(new(*miner.Miner), miner.NewTestMiner(mineBlock)),
-
 			genesis,
 		)
 		if err != nil {
 			t.Fatal(err)
 		}
 
-		fulls[i].MineOne = func(ctx context.Context) error {
-			select {
-			case mineBlock <- struct{}{}:
-				return nil
-			case <-ctx.Done():
-				return ctx.Err()
-			}
-		}
 	}
 
 	for i, full := range storage {
@@ -196,13 +210,36 @@ func builder(t *testing.T, nFull int, storage []int) ([]test.TestNode, []test.Te
 
 		f := fulls[full]
 
-		wa, err := f.WalletDefaultAddress(ctx)
-		require.NoError(t, err)
-
-		genMiner, err := address.NewFromString("t0102")
-		require.NoError(t, err)
+		genMiner := gmc.MinerAddrs[i]
+		wa := gmc.PreSeals[genMiner.String()].Worker
 
 		storers[i] = testStorageNode(ctx, t, wa, genMiner, pk, f, mn)
+
+		sma := storers[i].StorageMiner.(*impl.StorageMinerAPI)
+
+		psd := presealDirs[i]
+		mds, err := badger.NewDatastore(filepath.Join(psd, "badger"), nil)
+		if err != nil {
+			t.Fatal(err)
+		}
+
+		osb, err := sectorbuilder.New(&sectorbuilder.Config{
+			SectorSize:    1024,
+			WorkerThreads: 2,
+			Miner:         genMiner,
+			CacheDir:      filepath.Join(psd, "cache"),
+			StagedDir:     filepath.Join(psd, "staging"),
+			SealedDir:     filepath.Join(psd, "sealed"),
+			UnsealedDir:   filepath.Join(psd, "unsealed"),
+		}, mds)
+		if err != nil {
+			t.Fatal(err)
+		}
+
+		if err := sma.SectorBuilder.ImportFrom(osb); err != nil {
+			t.Fatal(err)
+		}
+
 	}
 
 	if err := mn.LinkAll(); err != nil {
@@ -231,7 +268,6 @@ func rpcBuilder(t *testing.T, nFull int, storage []int) ([]test.TestNode, []test
 		if err != nil {
 			t.Fatal(err)
 		}
-		fulls[i].MineOne = a.MineOne
 	}
 
 	for i, a := range storaApis {
@@ -244,6 +280,7 @@ func rpcBuilder(t *testing.T, nFull int, storage []int) ([]test.TestNode, []test
 		if err != nil {
 			t.Fatal(err)
 		}
+		storers[i].MineOne = a.MineOne
 	}
 
 	return fulls, storers

@@ -18,6 +18,10 @@ func (sb *SectorBuilder) StagedSectorPath(sectorID uint64) string {
 	return filepath.Join(sb.stagedDir, sb.SectorName(sectorID))
 }
 
+func (sb *SectorBuilder) unsealedSectorPath(sectorID uint64) string {
+	return filepath.Join(sb.unsealedDir, sb.SectorName(sectorID))
+}
+
 func (sb *SectorBuilder) stagedSectorFile(sectorID uint64) (*os.File, error) {
 	return os.OpenFile(sb.StagedSectorPath(sectorID), os.O_RDWR|os.O_CREATE, 0644)
 }

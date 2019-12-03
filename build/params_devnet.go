@@ -3,19 +3,19 @@
 package build
 
 // Seconds
-const BlockDelay = 12
+const BlockDelay = 30
 
 // FallbackPoStDelay is the number of epochs the miner needs to wait after
 //  ElectionPeriodStart before starting fallback post computation
 //
 // Epochs
-const FallbackPoStDelay = 1000
+const FallbackPoStDelay = 30
 
 // SlashablePowerDelay is the number of epochs after ElectionPeriodStart, after
 // which the miner is slashed
 //
 // Epochs
-const SlashablePowerDelay = 2000
+const SlashablePowerDelay = 200
 
 // Epochs
-const InteractivePoRepDelay = 10
+const InteractivePoRepDelay = 8

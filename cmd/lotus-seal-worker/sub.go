@@ -43,7 +43,7 @@ func acceptJobs(ctx context.Context, api api.StorageMiner, endpoint string, auth
 		CacheDir:      filepath.Join(repo, "cache"),
 		SealedDir:     filepath.Join(repo, "sealed"),
 		StagedDir:     filepath.Join(repo, "staged"),
-		MetadataDir:   filepath.Join(repo, "meta"),
+		UnsealedDir:   filepath.Join(repo, "unsealed"),
 	})
 	if err != nil {
 		return err

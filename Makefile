@@ -11,6 +11,7 @@ endif
 MODULES:=
 
 CLEAN:=
+BINS:=
 
 ## FFI
 
@@ -94,7 +95,7 @@ benchmarks:
 
 pond: build
 	go build -o pond ./lotuspond
-	(cd lotuspond/front && npm i && npm run build)
+	(cd lotuspond/front && npm i && CI=false npm run build)
 .PHONY: pond
 BINS+=pond
 

@@ -12,7 +12,6 @@ require (
 	github.com/filecoin-project/chain-validation v0.0.0-20191106200742-11986803c0f7
 	github.com/filecoin-project/filecoin-ffi v0.0.0-00010101000000-000000000000
 	github.com/filecoin-project/go-amt-ipld v0.0.0-20191122035745-59b9dfc0efc7
-	github.com/filecoin-project/go-leb128 v0.0.0-20190212224330-8d79a5489543
 	github.com/gbrlsnchs/jwt/v3 v3.0.0-beta.1
 	github.com/go-ole/go-ole v1.2.4 // indirect
 	github.com/google/go-cmp v0.3.1 // indirect
@@ -71,7 +70,6 @@ require (
 	github.com/mattn/go-isatty v0.0.9 // indirect
 	github.com/mattn/go-runewidth v0.0.4 // indirect
 	github.com/mattn/go-sqlite3 v1.12.0
-	github.com/miekg/dns v1.1.16 // indirect
 	github.com/minio/blake2b-simd v0.0.0-20160723061019-3f5f724cb5b1
 	github.com/minio/sha256-simd v0.1.1
 	github.com/mitchellh/go-homedir v1.1.0
@@ -80,6 +78,7 @@ require (
 	github.com/multiformats/go-multiaddr-dns v0.2.0
 	github.com/multiformats/go-multiaddr-net v0.1.0
 	github.com/multiformats/go-multihash v0.0.9
+	github.com/multiformats/go-varint v0.0.1
 	github.com/onsi/ginkgo v1.9.0 // indirect
 	github.com/onsi/gomega v1.6.0 // indirect
 	github.com/opentracing/opentracing-go v1.1.0

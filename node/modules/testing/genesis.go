@@ -9,16 +9,15 @@ import (
 	"os"
 	"time"
 
-	"golang.org/x/xerrors"
-
 	"github.com/ipfs/go-blockservice"
 	"github.com/ipfs/go-car"
 	"github.com/ipfs/go-cid"
 	offline "github.com/ipfs/go-ipfs-exchange-offline"
 	logging "github.com/ipfs/go-log"
 	"github.com/ipfs/go-merkledag"
-	peer "github.com/libp2p/go-libp2p-peer"
+	"github.com/libp2p/go-libp2p-core/peer"
 	"github.com/mitchellh/go-homedir"
+	"golang.org/x/xerrors"
 
 	"github.com/filecoin-project/lotus/chain/address"
 	"github.com/filecoin-project/lotus/chain/gen"
@@ -69,16 +68,16 @@ func MakeGenesisMem(out io.Writer, gmc *gen.GenMinerCfg) func(bs dtypes.ChainBlo
 	}
 }
 
-func MakeGenesis(outFile, preseal string) func(bs dtypes.ChainBlockstore, w *wallet.Wallet) modules.Genesis {
+func MakeGenesis(outFile, presealInfo string) func(bs dtypes.ChainBlockstore, w *wallet.Wallet) modules.Genesis {
 	return func(bs dtypes.ChainBlockstore, w *wallet.Wallet) modules.Genesis {
 		return func() (*types.BlockHeader, error) {
 			glog.Warn("Generating new random genesis block, note that this SHOULD NOT happen unless you are setting up new network")
-			preseal, err := homedir.Expand(preseal)
+			presealInfo, err := homedir.Expand(presealInfo)
 			if err != nil {
-				return nil, xerrors.Errorf("expanding preseals json path: %w", err)
+				return nil, err
 			}
 
-			fdata, err := ioutil.ReadFile(preseal)
+			fdata, err := ioutil.ReadFile(presealInfo)
 			if err != nil {
 				return nil, xerrors.Errorf("reading preseals json: %w", err)
 			}

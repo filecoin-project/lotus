@@ -611,18 +611,22 @@ func (sma StorageMarketActor) ComputeDataCommitment(act *types.Actor, vmctx type
 		return nil, aerrors.HandleExternalError(err, "loading deals amt")
 	}
 
+	if len(params.DealIDs) == 0 {
+		return nil, aerrors.New(3, "no deal IDs")
+	}
+
 	var pieces []sectorbuilder.PublicPieceInfo
 	for _, deal := range params.DealIDs {
 		var dealInfo OnChainDeal
 		if err := deals.Get(deal, &dealInfo); err != nil {
 			if _, is := err.(*amt.ErrNotFound); is {
-				return nil, aerrors.New(3, "deal not found")
+				return nil, aerrors.New(4, "deal not found")
 			}
 			return nil, aerrors.HandleExternalError(err, "getting deal info failed")
 		}
 
 		if dealInfo.Deal.Proposal.Provider != vmctx.Message().From {
-			return nil, aerrors.New(4, "referenced deal was not from caller")
+			return nil, aerrors.New(5, "referenced deal was not from caller")
 		}
 
 		var commP [32]byte
@@ -636,7 +640,7 @@ func (sma StorageMarketActor) ComputeDataCommitment(act *types.Actor, vmctx type
 
 	commd, err := sectorbuilder.GenerateDataCommitment(params.SectorSize, pieces)
 	if err != nil {
-		return nil, aerrors.Absorb(err, 5, "failed to generate data commitment from pieces")
+		return nil, aerrors.Absorb(err, 6, "failed to generate data commitment from pieces")
 	}
 
 	return commd[:], nil

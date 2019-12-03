@@ -1,10 +1,12 @@
 package mock
 
 import (
+	"context"
 	"fmt"
 
 	"github.com/filecoin-project/lotus/chain/address"
 	"github.com/filecoin-project/lotus/chain/types"
+	"github.com/filecoin-project/lotus/chain/wallet"
 	"github.com/ipfs/go-cid"
 )
 
@@ -14,6 +16,26 @@ func Address(i uint64) address.Address {
 		panic(err)
 	}
 	return a
+}
+
+func MkMessage(from, to address.Address, nonce uint64, w *wallet.Wallet) *types.SignedMessage {
+	msg := &types.Message{
+		To:       to,
+		From:     from,
+		Value:    types.NewInt(1),
+		Nonce:    nonce,
+		GasLimit: types.NewInt(1),
+		GasPrice: types.NewInt(0),
+	}
+
+	sig, err := w.Sign(context.TODO(), from, msg.Cid().Bytes())
+	if err != nil {
+		panic(err)
+	}
+	return &types.SignedMessage{
+		Message:   *msg,
+		Signature: *sig,
+	}
 }
 
 func MkBlock(parents *types.TipSet, weightInc uint64, ticketNonce uint64) *types.BlockHeader {

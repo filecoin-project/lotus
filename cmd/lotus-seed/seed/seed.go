@@ -11,6 +11,7 @@ import (
 	"path/filepath"
 
 	badger "github.com/ipfs/go-ds-badger"
+	logging "github.com/ipfs/go-log"
 	"golang.org/x/xerrors"
 
 	"github.com/filecoin-project/lotus/api"
@@ -23,18 +24,20 @@ import (
 	"github.com/filecoin-project/lotus/lib/sectorbuilder"
 )
 
-func PreSeal(maddr address.Address, ssize uint64, sectors uint64, sbroot string, preimage []byte) (*genesis.GenesisMiner, error) {
+var log = logging.Logger("preseal")
+
+func PreSeal(maddr address.Address, ssize uint64, sectors int, sbroot string, preimage []byte) (*genesis.GenesisMiner, error) {
 	cfg := &sectorbuilder.Config{
 		Miner:         maddr,
 		SectorSize:    ssize,
 		CacheDir:      filepath.Join(sbroot, "cache"),
 		SealedDir:     filepath.Join(sbroot, "sealed"),
 		StagedDir:     filepath.Join(sbroot, "staging"),
-		MetadataDir:   filepath.Join(sbroot, "meta"),
+		UnsealedDir:   filepath.Join(sbroot, "unsealed"),
 		WorkerThreads: 2,
 	}
 
-	for _, d := range []string{cfg.CacheDir, cfg.SealedDir, cfg.StagedDir, cfg.MetadataDir} {
+	for _, d := range []string{cfg.CacheDir, cfg.SealedDir, cfg.StagedDir, cfg.UnsealedDir} {
 		if err := os.MkdirAll(d, 0775); err != nil {
 			return nil, err
 		}
@@ -58,7 +61,7 @@ func PreSeal(maddr address.Address, ssize uint64, sectors uint64, sbroot string,
 	size := sectorbuilder.UserBytesForSectorSize(ssize)
 
 	var sealedSectors []*genesis.PreSeal
-	for i := uint64(1); i <= sectors; i++ {
+	for i := 0; i < sectors; i++ {
 		sid, err := sb.AcquireSectorId()
 		if err != nil {
 			return nil, err
@@ -81,6 +84,7 @@ func PreSeal(maddr address.Address, ssize uint64, sectors uint64, sbroot string,
 			return nil, xerrors.Errorf("commit: %w", err)
 		}
 
+		log.Warn("PreCommitOutput: ", sid, pco)
 		sealedSectors = append(sealedSectors, &genesis.PreSeal{
 			CommR:    pco.CommR,
 			CommD:    pco.CommD,
@@ -104,7 +108,7 @@ func PreSeal(maddr address.Address, ssize uint64, sectors uint64, sbroot string,
 		Key: minerAddr.KeyInfo,
 	}
 
-	if err := createDeals(miner, minerAddr, ssize); err != nil {
+	if err := createDeals(miner, minerAddr, maddr, ssize); err != nil {
 		return nil, xerrors.Errorf("creating deals: %w", err)
 	}
 
@@ -132,14 +136,14 @@ func WriteGenesisMiner(maddr address.Address, sbroot string, gm *genesis.Genesis
 	return nil
 }
 
-func createDeals(m *genesis.GenesisMiner, k *wallet.Key, ssize uint64) error {
+func createDeals(m *genesis.GenesisMiner, k *wallet.Key, maddr address.Address, ssize uint64) error {
 	for _, sector := range m.Sectors {
 		proposal := &actors.StorageDealProposal{
 			PieceRef:             sector.CommD[:], // just one deal so this == CommP
-			PieceSize:            ssize,
+			PieceSize:            sectorbuilder.UserBytesForSectorSize(ssize),
 			PieceSerialization:   actors.SerializationUnixFSv0,
 			Client:               k.Address,
-			Provider:             k.Address,
+			Provider:             maddr,
 			ProposalExpiration:   9000, // TODO: allow setting
 			Duration:             9000,
 			StoragePricePerEpoch: types.NewInt(0),

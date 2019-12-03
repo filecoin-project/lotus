@@ -153,7 +153,7 @@ eventLoop:
 			continue
 		}
 		if base.ts.Equals(lastBase.ts) && lastBase.nullRounds == base.nullRounds {
-			log.Errorf("BestMiningCandidate from the previous round: %s (nulls:%d)", lastBase.ts.Cids(), lastBase.nullRounds)
+			log.Warnf("BestMiningCandidate from the previous round: %s (nulls:%d)", lastBase.ts.Cids(), lastBase.nullRounds)
 			time.Sleep(build.BlockDelay * time.Second)
 			continue
 		}
@@ -237,7 +237,7 @@ func (m *Miner) GetBestMiningCandidate(ctx context.Context) (*MiningBase, error)
 	}, nil
 }
 
-func (m *Miner) isSlashed(ctx context.Context, addr address.Address, ts *types.TipSet) (bool, error) {
+func (m *Miner) hasPower(ctx context.Context, addr address.Address, ts *types.TipSet) (bool, error) {
 	power, err := m.api.StateMinerPower(ctx, addr, ts)
 	if err != nil {
 		return false, err
@@ -250,12 +250,12 @@ func (m *Miner) mineOne(ctx context.Context, addr address.Address, base *MiningB
 	log.Debugw("attempting to mine a block", "tipset", types.LogCids(base.ts.Cids()))
 	start := time.Now()
 
-	slashed, err := m.isSlashed(ctx, addr, base.ts)
+	hasPower, err := m.hasPower(ctx, addr, base.ts)
 	if err != nil {
 		return nil, xerrors.Errorf("checking if miner is slashed: %w", err)
 	}
-	if slashed {
-		log.Warnf("Slashed at epoch %d, not attempting to mine a block", base.ts.Height()+base.nullRounds)
+	if hasPower {
+		// slashed or just have no power yet
 		base.nullRounds++
 		return nil, nil
 	}
@@ -279,10 +279,13 @@ func (m *Miner) mineOne(ctx context.Context, addr address.Address, base *MiningB
 	if err != nil {
 		return nil, xerrors.Errorf("failed to create block: %w", err)
 	}
-	log.Infow("mined new block", "cid", b.Cid())
+	log.Infow("mined new block", "cid", b.Cid(), "height", b.Header.Height)
 
 	dur := time.Now().Sub(start)
 	log.Infof("Creating block took %s", dur)
+	if dur > time.Second*build.BlockDelay {
+		log.Warn("CAUTION: block production took longer than the block delay. Your computer may not be fast enough to keep up")
+	}
 
 	return b, nil
 }

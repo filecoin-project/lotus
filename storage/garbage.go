@@ -3,7 +3,6 @@ package storage
 import (
 	"bytes"
 	"context"
-	"fmt"
 	"io"
 	"math"
 	"math/rand"
@@ -95,7 +94,6 @@ func (m *Miner) storeGarbage(ctx context.Context, sectorID uint64, existingPiece
 	out := make([]Piece, len(sizes))
 
 	for i, size := range sizes {
-		name := fmt.Sprintf("fake-file-%d", rand.Intn(100000000))
 		ppi, err := m.sb.AddPiece(size, sectorID, io.LimitReader(rand.New(rand.NewSource(42)), int64(size)), existingPieceSizes)
 		if err != nil {
 			return nil, err
@@ -105,7 +103,6 @@ func (m *Miner) storeGarbage(ctx context.Context, sectorID uint64, existingPiece
 
 		out[i] = Piece{
 			DealID: resp.DealIDs[i],
-			Ref:    name,
 			Size:   ppi.Size,
 			CommP:  ppi.CommP[:],
 		}
@@ -134,7 +131,7 @@ func (m *Miner) StoreGarbageData() error {
 			return
 		}
 
-		if err := m.newSector(context.TODO(), sid, pieces[0].DealID, pieces[0].Ref, pieces[0].ppi()); err != nil {
+		if err := m.newSector(context.TODO(), sid, pieces[0].DealID, pieces[0].ppi()); err != nil {
 			log.Errorf("%+v", err)
 			return
 		}

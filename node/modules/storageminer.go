@@ -66,7 +66,7 @@ func SectorBuilderConfig(storagePath string, threads uint) func(dtypes.MetadataD
 		}
 
 		cache := filepath.Join(sp, "cache")
-		metadata := filepath.Join(sp, "meta")
+		unsealed := filepath.Join(sp, "unsealed")
 		sealed := filepath.Join(sp, "sealed")
 		staging := filepath.Join(sp, "staging")
 
@@ -76,7 +76,7 @@ func SectorBuilderConfig(storagePath string, threads uint) func(dtypes.MetadataD
 			WorkerThreads: uint8(threads),
 
 			CacheDir:    cache,
-			MetadataDir: metadata,
+			UnsealedDir: unsealed,
 			SealedDir:   sealed,
 			StagedDir:   staging,
 		}

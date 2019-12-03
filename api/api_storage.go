@@ -86,9 +86,9 @@ type SectorInfo struct {
 }
 
 type SealedRef struct {
-	Piece  string
-	Offset uint64
-	Size   uint64
+	SectorID uint64
+	Offset   uint64
+	Size     uint64
 }
 
 type SealedRefs struct {

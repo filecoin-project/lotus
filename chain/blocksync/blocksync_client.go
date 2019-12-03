@@ -156,8 +156,9 @@ func (bs *BlockSync) GetChainMessages(ctx context.Context, h *types.TipSet, coun
 
 	var err error
 	for _, p := range perm {
-		res, err := bs.sendRequestToPeer(ctx, peers[p], req)
-		if err != nil {
+		res, rerr := bs.sendRequestToPeer(ctx, peers[p], req)
+		if rerr != nil {
+			err = rerr
 			log.Warnf("BlockSync request failed for peer %s: %s", peers[p].String(), err)
 			continue
 		}
@@ -170,6 +171,10 @@ func (bs *BlockSync) GetChainMessages(ctx context.Context, h *types.TipSet, coun
 
 			log.Warnf("BlockSync peer %s response was an error: %s", peers[p].String(), err)
 		}
+	}
+
+	if err == nil {
+		return nil, xerrors.Errorf("GetChainMessages failed, no peers connected")
 	}
 
 	// TODO: What if we have no peers (and err is nil)?

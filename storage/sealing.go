@@ -8,6 +8,7 @@ import (
 	xerrors "golang.org/x/xerrors"
 
 	"github.com/filecoin-project/lotus/api"
+	"github.com/filecoin-project/lotus/lib/padreader"
 	"github.com/filecoin-project/lotus/lib/sectorbuilder"
 )
 
@@ -37,7 +38,6 @@ func (t *SealSeed) SB() sectorbuilder.SealSeed {
 
 type Piece struct {
 	DealID uint64
-	Ref    string
 
 	Size  uint64
 	CommP []byte
@@ -97,14 +97,6 @@ func (t *SectorInfo) deals() []uint64 {
 	return out
 }
 
-func (t *SectorInfo) refs() []string {
-	out := make([]string, len(t.Pieces))
-	for i, piece := range t.Pieces {
-		out[i] = piece.Ref
-	}
-	return out
-}
-
 func (t *SectorInfo) existingPieces() []uint64 {
 	out := make([]uint64, len(t.Pieces))
 	for i, piece := range t.Pieces {
@@ -150,7 +142,8 @@ func (m *Miner) sectorStateLoop(ctx context.Context) error {
 		// verify on-chain state
 		trackedByID := map[uint64]*SectorInfo{}
 		for _, si := range trackedSectors {
-			trackedByID[si.SectorID] = &si
+			i := si
+			trackedByID[si.SectorID] = &i
 		}
 
 		curTs, err := m.api.ChainHead(ctx)
@@ -265,30 +258,38 @@ func (m *Miner) failSector(id uint64, err error) {
 	log.Errorf("sector %d error: %+v", id, err)
 }
 
-func (m *Miner) SealPiece(ctx context.Context, ref string, size uint64, r io.Reader, dealID uint64) (uint64, error) {
-	log.Infof("Seal piece for deal %d", dealID)
+func (m *Miner) AllocatePiece(size uint64) (sectorID uint64, offset uint64, err error) {
+	if padreader.PaddedSize(size) != size {
+		return 0, 0, xerrors.Errorf("cannot allocate unpadded piece")
+	}
 
 	sid, err := m.sb.AcquireSectorId() // TODO: Put more than one thing in a sector
 	if err != nil {
-		return 0, xerrors.Errorf("acquiring sector ID: %w", err)
+		return 0, 0, xerrors.Errorf("acquiring sector ID: %w", err)
 	}
 
-	ppi, err := m.sb.AddPiece(size, sid, r, []uint64{})
-	if err != nil {
-		return 0, xerrors.Errorf("adding piece to sector: %w", err)
-	}
-
-	return sid, m.newSector(ctx, sid, dealID, ref, ppi)
+	// offset hard-coded to 0 since we only put one thing in a sector for now
+	return sid, 0, nil
 }
 
-func (m *Miner) newSector(ctx context.Context, sid uint64, dealID uint64, ref string, ppi sectorbuilder.PublicPieceInfo) error {
+func (m *Miner) SealPiece(ctx context.Context, size uint64, r io.Reader, sectorID uint64, dealID uint64) error {
+	log.Infof("Seal piece for deal %d", dealID)
+
+	ppi, err := m.sb.AddPiece(size, sectorID, r, []uint64{})
+	if err != nil {
+		return xerrors.Errorf("adding piece to sector: %w", err)
+	}
+
+	return m.newSector(ctx, sectorID, dealID, ppi)
+}
+
+func (m *Miner) newSector(ctx context.Context, sid uint64, dealID uint64, ppi sectorbuilder.PublicPieceInfo) error {
 	si := &SectorInfo{
 		SectorID: sid,
 
 		Pieces: []Piece{
 			{
 				DealID: dealID,
-				Ref:    ref,
 
 				Size:  ppi.Size,
 				CommP: ppi.CommP[:],

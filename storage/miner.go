@@ -4,6 +4,7 @@ import (
 	"context"
 	"errors"
 	"sync"
+	"time"
 
 	"github.com/ipfs/go-cid"
 	"github.com/ipfs/go-datastore"
@@ -13,6 +14,7 @@ import (
 	"golang.org/x/xerrors"
 
 	"github.com/filecoin-project/lotus/api"
+	"github.com/filecoin-project/lotus/build"
 	"github.com/filecoin-project/lotus/chain/address"
 	"github.com/filecoin-project/lotus/chain/events"
 	"github.com/filecoin-project/lotus/chain/gen"
@@ -142,24 +144,40 @@ func (m *Miner) runPreflightChecks(ctx context.Context) error {
 	return nil
 }
 
-type sectorBuilderEpp struct {
+type SectorBuilderEpp struct {
 	sb *sectorbuilder.SectorBuilder
 }
 
-func NewElectionPoStProver(sb *sectorbuilder.SectorBuilder) *sectorBuilderEpp {
-	return &sectorBuilderEpp{sb}
+func NewElectionPoStProver(sb *sectorbuilder.SectorBuilder) *SectorBuilderEpp {
+	return &SectorBuilderEpp{sb}
 }
 
-var _ gen.ElectionPoStProver = (*sectorBuilderEpp)(nil)
+var _ gen.ElectionPoStProver = (*SectorBuilderEpp)(nil)
 
-func (epp *sectorBuilderEpp) GenerateCandidates(ctx context.Context, ssi sectorbuilder.SortedPublicSectorInfo, rand []byte) ([]sectorbuilder.EPostCandidate, error) {
+func (epp *SectorBuilderEpp) GenerateCandidates(ctx context.Context, ssi sectorbuilder.SortedPublicSectorInfo, rand []byte) ([]sectorbuilder.EPostCandidate, error) {
+	start := time.Now()
 	var faults []uint64 // TODO
 
 	var randbuf [32]byte
 	copy(randbuf[:], rand)
-	return epp.sb.GenerateEPostCandidates(ssi, randbuf, faults)
+	cds, err := epp.sb.GenerateEPostCandidates(ssi, randbuf, faults)
+	if err != nil {
+		return nil, err
+	}
+	log.Infof("Generate candidates took %s", time.Since(start))
+	return cds, nil
 }
 
-func (epp *sectorBuilderEpp) ComputeProof(ctx context.Context, ssi sectorbuilder.SortedPublicSectorInfo, rand []byte, winners []sectorbuilder.EPostCandidate) ([]byte, error) {
-	return epp.sb.ComputeElectionPoSt(ssi, rand, winners)
+func (epp *SectorBuilderEpp) ComputeProof(ctx context.Context, ssi sectorbuilder.SortedPublicSectorInfo, rand []byte, winners []sectorbuilder.EPostCandidate) ([]byte, error) {
+	if build.InsecurePoStValidation {
+		log.Warn("Generating fake EPost proof! You should only see this while running tests!")
+		return []byte("valid proof"), nil
+	}
+	start := time.Now()
+	proof, err := epp.sb.ComputeElectionPoSt(ssi, rand, winners)
+	if err != nil {
+		return nil, err
+	}
+	log.Infof("ComputeElectionPost took %s", time.Since(start))
+	return proof, nil
 }

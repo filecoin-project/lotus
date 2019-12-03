@@ -224,10 +224,13 @@ func (p *Provider) onDataTransferEvent(event datatransfer.Event, channelState da
 	// data transfer events for opening and progress do not affect deal state
 	var next api.DealState
 	var err error
+	var mut func(*MinerDeal)
 	switch event {
 	case datatransfer.Complete:
 		next = api.DealStaged
-		err = nil
+		mut = func(deal *MinerDeal) {
+			deal.DealID = voucher.DealID
+		}
 	case datatransfer.Error:
 		next = api.DealFailed
 		err = ErrDataTransferFailed
@@ -241,7 +244,7 @@ func (p *Provider) onDataTransferEvent(event datatransfer.Event, channelState da
 		newState: next,
 		id:       voucher.Proposal,
 		err:      err,
-		mut:      nil,
+		mut:      mut,
 	}:
 	case <-p.stop:
 	}

@@ -52,6 +52,8 @@ jobs:
       - install-deps
       - prepare
       - go/mod-download
+      - run: sudo apt-get update
+      - run: sudo apt-get install npm
       - run:
           command: make buildall
 
