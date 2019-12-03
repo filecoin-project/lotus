@@ -195,6 +195,7 @@ func (sm *StateManager) computeTipSetState(ctx context.Context, blks []*types.Bl
 			}
 
 			if applied[m.From] != m.Nonce {
+				log.Infof("skipping message from %s: nonce check failed: exp %d, was %d", m.From, applied[m.From], m.Nonce)
 				continue
 			}
 			applied[m.From]++

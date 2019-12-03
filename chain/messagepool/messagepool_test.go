@@ -52,8 +52,9 @@ func (tma *testMpoolApi) setBlockMessages(h *types.BlockHeader, msgs ...*types.S
 	tma.tipsets = append(tma.tipsets, mock.TipSet(h))
 }
 
-func (tma *testMpoolApi) SubscribeHeadChanges(cb func(rev, app []*types.TipSet) error) {
+func (tma *testMpoolApi) SubscribeHeadChanges(cb func(rev, app []*types.TipSet) error) *types.TipSet {
 	tma.cb = cb
+	return nil
 }
 
 func (tma *testMpoolApi) PutMessage(m store.ChainMsg) (cid.Cid, error) {
@@ -216,7 +217,8 @@ func TestRevertMessages(t *testing.T) {
 
 	assertNonce(t, mp, sender, 4)
 
-	if len(mp.Pending()) != 3 {
+	p, _ := mp.Pending()
+	if len(p) != 3 {
 		t.Fatal("expected three messages in mempool")
 	}
 
