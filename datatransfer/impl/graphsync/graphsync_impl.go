@@ -81,7 +81,7 @@ func (impl *graphsyncImpl) gsReqRecdHook(p peer.ID, request graphsync.RequestDat
 	var resp []graphsync.ExtensionData
 
 	// if this is a push request the sender is us.
-	tid, err := impl.transferIDFromExtension(request, impl.peerID)
+	tid, err := impl.transferIDFromExtension(request)
 	if err != nil {
 		return resp, err
 	}
@@ -96,7 +96,7 @@ func (impl *graphsyncImpl) gsReqRecdHook(p peer.ID, request graphsync.RequestDat
 	if impl.getChannelByIdAndSender(chid, impl.peerID) == datatransfer.EmptyChannelState {
 
 		// otherwise check if it's a pull request: the initiator is them
-		tid, err = impl.transferIDFromExtension(request, p)
+		tid, err = impl.transferIDFromExtension(request)
 
 		chid = datatransfer.ChannelID{Initiator: p, ID: tid}
 		// sender is still us
@@ -115,7 +115,7 @@ type gsExtended interface {
 
 // transferIDFromExtension extracts extension data and creates a channel id then returns
 // both. Returns any errors.
-func (impl *graphsyncImpl) transferIDFromExtension(extendedData gsExtended, initiator peer.ID) (datatransfer.TransferID, error) {
+func (impl *graphsyncImpl) transferIDFromExtension(extendedData gsExtended) (datatransfer.TransferID, error) {
 	data, ok := extendedData.Extension(ExtensionDataTransfer)
 	zero := datatransfer.TransferID(0)
 	if !ok {
