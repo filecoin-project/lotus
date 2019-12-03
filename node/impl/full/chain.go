@@ -68,7 +68,6 @@ func (a *ChainAPI) ChainGetBlockMessages(ctx context.Context, msg cid.Cid) (*api
 	}, nil
 }
 
-// TODO: Maybe deprecate in favor of just using ChainGetTipSetMessages?
 func (a *ChainAPI) ChainGetParentMessages(ctx context.Context, bcid cid.Cid) ([]api.Message, error) {
 	b, err := a.Chain.GetBlock(bcid)
 	if err != nil {
@@ -93,28 +92,6 @@ func (a *ChainAPI) ChainGetParentMessages(ctx context.Context, bcid cid.Cid) ([]
 
 	var out []api.Message
 	for _, m := range cm {
-		out = append(out, api.Message{
-			Cid:     m.Cid(),
-			Message: m.VMMessage(),
-		})
-	}
-
-	return out, nil
-}
-
-func (a *ChainAPI) ChainGetTipSetMessages(ctx context.Context, tsk types.TipSetKey) ([]api.Message, error) {
-	ts, err := a.Chain.LoadTipSet(tsk.Cids())
-	if err != nil {
-		return nil, xerrors.Errorf("failed to load tipset from key: %w", err)
-	}
-
-	messages, err := a.Chain.MessagesForTipset(ts)
-	if err != nil {
-		return nil, xerrors.Errorf("getting messages for tipset: %w", err)
-	}
-
-	var out []api.Message
-	for _, m := range messages {
 		out = append(out, api.Message{
 			Cid:     m.Cid(),
 			Message: m.VMMessage(),

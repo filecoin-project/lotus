@@ -33,8 +33,8 @@ func TestMessageFiltering(t *testing.T) {
 		},
 	}
 
-	af := func(ctx context.Context, addr address.Address, ts *types.TipSet) (uint64, *types.BigInt, error) {
-		return actors[addr].Nonce, &actors[addr].Balance, nil
+	af := func(ctx context.Context, addr address.Address, ts *types.TipSet) (*types.Actor, error) {
+		return actors[addr], nil
 	}
 
 	msgs := []types.Message{

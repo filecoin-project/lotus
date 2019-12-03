@@ -346,43 +346,8 @@ func (m *Miner) computeTicket(ctx context.Context, addr address.Address, base *M
 	}, nil
 }
 
-func (m *Miner) actorLookup(ctx context.Context, addr address.Address, ts *types.TipSet) (uint64, *types.BigInt, error) {
-	// TODO: strong opportunities for some caching in this method
-	act, err := m.api.StateGetActor(ctx, addr, ts)
-	if err != nil {
-		return 0, nil, xerrors.Errorf("looking up actor failed: %w", err)
-	}
-
-	msgs, err := m.api.ChainGetTipSetMessages(ctx, ts.Key())
-	if err != nil {
-		return 0, nil, xerrors.Errorf("failed to get tipset messages: %w", err)
-	}
-
-	curnonce := act.Nonce
-
-	sort.Slice(msgs, func(i, j int) bool { // TODO: is this actually needed?
-		return msgs[i].Message.Nonce < msgs[j].Message.Nonce
-	})
-
-	max := int64(-2)
-
-	for _, m := range msgs {
-		if m.Message.From == addr {
-			max = int64(m.Message.Nonce)
-		}
-	}
-
-	max++ // next unapplied nonce
-
-	if max != -1 && uint64(max) != curnonce {
-		return 0, nil, xerrors.Errorf("tipset messages from %s have too low nonce %d, expected %d, h: %d", addr, max, curnonce, ts.Height())
-	}
-
-	return curnonce, &act.Balance, nil
-}
-
 func (m *Miner) createBlock(base *MiningBase, addr address.Address, ticket *types.Ticket, proof *types.EPostProof, pending []*types.SignedMessage) (*types.BlockMsg, error) {
-	msgs, err := selectMessages(context.TODO(), m.actorLookup, base, pending)
+	msgs, err := selectMessages(context.TODO(), m.api.StateGetActor, base, pending)
 	if err != nil {
 		return nil, xerrors.Errorf("message filtering failed: %w", err)
 	}
@@ -395,7 +360,7 @@ func (m *Miner) createBlock(base *MiningBase, addr address.Address, ticket *type
 	return m.api.MinerCreateBlock(context.TODO(), addr, base.ts, ticket, proof, msgs, nheight, uint64(uts))
 }
 
-type actorLookup func(context.Context, address.Address, *types.TipSet) (uint64, *types.BigInt, error)
+type actorLookup func(context.Context, address.Address, *types.TipSet) (*types.Actor, error)
 
 func countFrom(msgs []*types.SignedMessage, from address.Address) (out int) {
 	for _, msg := range msgs {
@@ -424,13 +389,13 @@ func selectMessages(ctx context.Context, al actorLookup, base *MiningBase, msgs 
 		from := msg.Message.From
 
 		if _, ok := inclNonces[from]; !ok {
-			nonce, balance, err := al(ctx, from, base.ts)
+			act, err := al(ctx, from, base.ts)
 			if err != nil {
 				return nil, xerrors.Errorf("failed to check message sender balance: %w", err)
 			}
 
-			inclNonces[from] = nonce
-			inclBalances[from] = *balance
+			inclNonces[from] = act.Nonce
+			inclBalances[from] = act.Balance
 		}
 
 		if inclBalances[from].LessThan(msg.Message.RequiredFunds()) {
