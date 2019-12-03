@@ -627,85 +627,85 @@ func TestDataTransferInitiatingPullGraphsyncRequests(t *testing.T) {
 	voucher := fakeDTType{"applesauce"}
 	baseCid := testutil.GenerateCids(1)[0]
 
-	//t.Run("with successful validation", func(t *testing.T) {
-	//	gs1Init := &fakeGraphSync{
-	//		requests: make(chan receivedGraphSyncRequest, 1),
-	//	}
-	//	gs2Sender := &fakeGraphSync{
-	//		requests: make(chan receivedGraphSyncRequest, 1),
-	//	}
-	//
-	//	sv := newSV()
-	//	sv.expectSuccessPull()
-	//
-	//	bg := ctx
-	//	ctx, cancel := context.WithTimeout(ctx, 10*time.Second)
-	//	defer cancel()
-	//
-	//	dtInit := NewGraphSyncDataTransfer(bg, host1, gs1Init)
-	//	dtSender := NewGraphSyncDataTransfer(bg, host2, gs2Sender)
-	//	err := dtSender.RegisterVoucherType(reflect.TypeOf(&fakeDTType{}), sv)
-	//	require.NoError(t, err)
-	//
-	//	_, err = dtInit.OpenPullDataChannel(ctx, host2.ID(), &voucher, baseCid, gsData.allSelector)
-	//	require.NoError(t, err)
-	//
-	//	var requestReceived receivedGraphSyncRequest
-	//	select {
-	//	case <-ctx.Done():
-	//		t.Fatal("did not receive message sent")
-	//	case requestReceived = <-gs1Init.requests:
-	//	}
-	//	sv.verifyExpectations(t)
-	//
-	//	receiver := requestReceived.p
-	//	require.Equal(t, receiver, host2.ID())
-	//
-	//	cl, ok := requestReceived.root.(cidlink.Link)
-	//	require.True(t, ok)
-	//	require.Equal(t, baseCid.String(), cl.Cid.String())
-	//
-	//	require.Equal(t, gsData.allSelector, requestReceived.selector)
-	//})
-	//
-	//t.Run("with error validation", func(t *testing.T) {
-	//	gs1 := &fakeGraphSync{
-	//		requests: make(chan receivedGraphSyncRequest, 1),
-	//	}
-	//	gs2 := &fakeGraphSync{
-	//		requests: make(chan receivedGraphSyncRequest, 1),
-	//	}
-	//
-	//	dt1 := NewGraphSyncDataTransfer(ctx, host1, gs1)
-	//	sv := newSV()
-	//	sv.expectErrorPull()
-	//
-	//	dt2 := NewGraphSyncDataTransfer(ctx, host2, gs2)
-	//	err := dt2.RegisterVoucherType(reflect.TypeOf(&fakeDTType{}), sv)
-	//	require.NoError(t, err)
-	//
-	//	subscribeCalls := make(chan struct{}, 1)
-	//	subscribe := func(event datatransfer.Event, channelState datatransfer.ChannelState) {
-	//		if event.Code == datatransfer.Error {
-	//			subscribeCalls <- struct{}{}
-	//		}
-	//	}
-	//	unsub := dt1.SubscribeToEvents(subscribe)
-	//	_, err = dt1.OpenPullDataChannel(ctx, host2.ID(), &voucher, baseCid, gsData.allSelector)
-	//	require.NoError(t, err)
-	//
-	//	select {
-	//	case <-ctx.Done():
-	//		t.Fatal("subscribed events not received")
-	//	case <-subscribeCalls:
-	//	}
-	//
-	//	sv.verifyExpectations(t)
-	//
-	//	// no graphsync request should be scheduled
-	//	require.Empty(t, gs1.requests)
-	//	unsub()
-	//})
+	t.Run("with successful validation", func(t *testing.T) {
+		gs1Init := &fakeGraphSync{
+			requests: make(chan receivedGraphSyncRequest, 1),
+		}
+		gs2Sender := &fakeGraphSync{
+			requests: make(chan receivedGraphSyncRequest, 1),
+		}
+
+		sv := newSV()
+		sv.expectSuccessPull()
+
+		bg := ctx
+		ctx, cancel := context.WithTimeout(ctx, 10*time.Second)
+		defer cancel()
+
+		dtInit := NewGraphSyncDataTransfer(bg, host1, gs1Init)
+		dtSender := NewGraphSyncDataTransfer(bg, host2, gs2Sender)
+		err := dtSender.RegisterVoucherType(reflect.TypeOf(&fakeDTType{}), sv)
+		require.NoError(t, err)
+
+		_, err = dtInit.OpenPullDataChannel(ctx, host2.ID(), &voucher, baseCid, gsData.allSelector)
+		require.NoError(t, err)
+
+		var requestReceived receivedGraphSyncRequest
+		select {
+		case <-ctx.Done():
+			t.Fatal("did not receive message sent")
+		case requestReceived = <-gs1Init.requests:
+		}
+		sv.verifyExpectations(t)
+
+		receiver := requestReceived.p
+		require.Equal(t, receiver, host2.ID())
+
+		cl, ok := requestReceived.root.(cidlink.Link)
+		require.True(t, ok)
+		require.Equal(t, baseCid.String(), cl.Cid.String())
+
+		require.Equal(t, gsData.allSelector, requestReceived.selector)
+	})
+
+	t.Run("with error validation", func(t *testing.T) {
+		gs1 := &fakeGraphSync{
+			requests: make(chan receivedGraphSyncRequest, 1),
+		}
+		gs2 := &fakeGraphSync{
+			requests: make(chan receivedGraphSyncRequest, 1),
+		}
+
+		dt1 := NewGraphSyncDataTransfer(ctx, host1, gs1)
+		sv := newSV()
+		sv.expectErrorPull()
+
+		dt2 := NewGraphSyncDataTransfer(ctx, host2, gs2)
+		err := dt2.RegisterVoucherType(reflect.TypeOf(&fakeDTType{}), sv)
+		require.NoError(t, err)
+
+		subscribeCalls := make(chan struct{}, 1)
+		subscribe := func(event datatransfer.Event, channelState datatransfer.ChannelState) {
+			if event.Code == datatransfer.Error {
+				subscribeCalls <- struct{}{}
+			}
+		}
+		unsub := dt1.SubscribeToEvents(subscribe)
+		_, err = dt1.OpenPullDataChannel(ctx, host2.ID(), &voucher, baseCid, gsData.allSelector)
+		require.NoError(t, err)
+
+		select {
+		case <-ctx.Done():
+			t.Fatal("subscribed events not received")
+		case <-subscribeCalls:
+		}
+
+		sv.verifyExpectations(t)
+
+		// no graphsync request should be scheduled
+		require.Empty(t, gs1.requests)
+		unsub()
+	})
 
 	t.Run("does not schedule graphsync request if is push request", func(t *testing.T) {
 		gs1 := &fakeGraphSync{
