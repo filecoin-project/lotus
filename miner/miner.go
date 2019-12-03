@@ -2,6 +2,7 @@ package miner
 
 import (
 	"context"
+	"sort"
 	"sync"
 	"time"
 
@@ -348,14 +349,24 @@ func (m *Miner) actorLookup(ctx context.Context, addr address.Address, ts *types
 
 	balance := act.Balance
 	curnonce := act.Nonce
+
+	sort.Slice(msgs, func(i, j int) bool { // TODO: is this actually needed?
+		return msgs[i].Message.Nonce < msgs[j].Message.Nonce
+	})
+
+	max := int64(-2)
+
 	for _, m := range msgs {
 		if m.Message.From == addr {
-			if m.Message.Nonce != curnonce {
-				return 0, nil, xerrors.Errorf("tipset messages had bad nonce: %s had nonce %d, expected %d", m.Cid, m.Message.Nonce, curnonce)
-			}
-			curnonce++
+			max = int64(m.Message.Nonce)
 			balance = types.BigSub(balance, m.Message.RequiredFunds())
 		}
+	}
+
+	max++ // next unapplied nonce
+
+	if max != -1 && uint64(max) != curnonce {
+		return 0, nil, xerrors.Errorf("tipset messages from %s have too low nonce %d, expected %d, h: %d", addr, max, curnonce, ts.Height())
 	}
 
 	return curnonce, &balance, nil
