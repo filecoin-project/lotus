@@ -37,17 +37,17 @@ func TestSendResponseToIncomingRequest(t *testing.T) {
 	dtnet1.SetDelegate(r)
 
 	gs2 := &fakeGraphSync{
-		receivedRequests: make(chan receivedGraphSyncRequest, 1),
+		requests: make(chan receivedGraphSyncRequest, 1),
 	}
 
 	voucher := fakeDTType{"applesauce"}
 	baseCid := testutil.GenerateCids(1)[0]
-	id := datatransfer.TransferID(rand.Int31())
 	var buffer bytes.Buffer
 	err := dagcbor.Encoder(gsData.allSelector, &buffer)
 	require.NoError(t, err)
 
 	t.Run("Response to push with successful validation", func(t *testing.T) {
+		id := datatransfer.TransferID(rand.Int31())
 		sv := newSV()
 		sv.expectSuccessPush()
 
@@ -83,6 +83,7 @@ func TestSendResponseToIncomingRequest(t *testing.T) {
 	})
 
 	t.Run("Response to push with error validation", func(t *testing.T) {
+		id := datatransfer.TransferID(rand.Int31())
 		sv := newSV()
 		sv.expectErrorPush()
 		dt := NewGraphSyncDataTransfer(ctx, host2, gs2)
@@ -118,6 +119,7 @@ func TestSendResponseToIncomingRequest(t *testing.T) {
 	})
 
 	t.Run("Response to pull with successful validation", func(t *testing.T) {
+		id := datatransfer.TransferID(rand.Int31())
 		sv := newSV()
 		sv.expectSuccessPull()
 
@@ -154,6 +156,7 @@ func TestSendResponseToIncomingRequest(t *testing.T) {
 	})
 
 	t.Run("Response to push with error validation", func(t *testing.T) {
+		id := datatransfer.TransferID(rand.Int31())
 		sv := newSV()
 		sv.expectErrorPull()
 

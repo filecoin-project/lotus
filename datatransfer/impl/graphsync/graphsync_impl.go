@@ -79,43 +79,55 @@ func NewGraphSyncDataTransfer(parent context.Context, host host.Host, gs graphsy
 // if an incoming request does not match a previous push request, it returns an error.
 func (impl *graphsyncImpl) gsReqRecdHook(p peer.ID, request graphsync.RequestData) ([]graphsync.ExtensionData, error) {
 	var resp []graphsync.ExtensionData
-	chid, _, err := impl.getChannelIDAndData(request)
+
+	// if this is a push request the sender is us.
+	tid, err := impl.transferIDFromExtension(request)
+	if err != nil {
+		return resp, err
+	}
 
 	extData := graphsync.ExtensionData{
 		Name: ExtensionDataTransfer,
 		Data: nil,
 	}
-	if err != nil {
-		return resp, err
-	}
-	if !impl.hasPushChannel(chid) {
-		return resp, errors.New("could not find push channel")
+	
+	chid := datatransfer.ChannelID{ Initiator: impl.peerID, ID: tid}
+	// if a push request, initiator & sender is us, ask for the channel with us as sender
+	if impl.getChannelByIdAndSender(chid, impl.peerID) == datatransfer.EmptyChannelState {
+
+		// otherwise check if it's a pull request: the initiator is them
+		tid, err = impl.transferIDFromExtension(request)
+
+		chid = datatransfer.ChannelID{Initiator: p, ID: tid}
+		// sender is still us
+		if impl.getChannelByIdAndSender(chid, impl.peerID) == datatransfer.EmptyChannelState {
+			return resp, errors.New("could not find push or pull channel")
+		}
 	}
 	resp = append(resp, extData)
 	return resp, nil
 }
 
-// gsExtended is a small interface used by getChannelIDAndData
+// gsExtended is a small interface used by transferIDFromExtension
 type gsExtended interface {
 	Extension(name graphsync.ExtensionName) ([]byte, bool)
 }
 
-// getChannelIDAndData extracts extension data and creates a channel id then returns
+// transferIDFromExtension extracts extension data and creates a channel id then returns
 // both. Returns any errors.
-func (impl *graphsyncImpl) getChannelIDAndData(extendedData gsExtended) (datatransfer.ChannelID, *ExtensionDataTransferData, error) {
+func (impl *graphsyncImpl) transferIDFromExtension(extendedData gsExtended) (datatransfer.TransferID, error) {
 	data, ok := extendedData.Extension(ExtensionDataTransfer)
+	zero := datatransfer.TransferID(0)
 	if !ok {
-		return datatransfer.ChannelID{}, nil, errors.New("extension not present")
+		return zero, errors.New("extension not present")
 	}
+
 	unm, err := impl.unmarshalExtensionData(data)
 	if err != nil {
-		return datatransfer.ChannelID{}, nil, err
+		return zero, err
 	}
-	chid := datatransfer.ChannelID{
-		Initiator: impl.peerID,
-		ID:        datatransfer.TransferID(unm.TransferID),
-	}
-	return chid, unm, nil
+	
+	return datatransfer.TransferID(unm.TransferID), nil
 }
 
 // unmarshalExtensionData instatiates an extension data struct & unmarshals data into i
@@ -164,8 +176,11 @@ func (impl *graphsyncImpl) OpenPushDataChannel(ctx context.Context, requestTo pe
 		return datatransfer.ChannelID{}, err
 	}
 	// initiator = us, sender = us, receiver = them
-	chid := impl.createNewChannel(tid, baseCid, selector, voucher,
+	chid, err := impl.createNewChannel(tid, baseCid, selector, voucher,
 		impl.peerID, impl.peerID, requestTo)
+	if err != nil {
+		return chid, err
+	}
 	return chid, nil
 }
 
@@ -178,19 +193,27 @@ func (impl *graphsyncImpl) OpenPullDataChannel(ctx context.Context, requestTo pe
 		return datatransfer.ChannelID{}, err
 	}
 	// initiator = us, sender = them, receiver = us
-	chid := impl.createNewChannel(tid, baseCid, selector, voucher,
+	chid, err := impl.createNewChannel(tid, baseCid, selector, voucher,
 		impl.peerID, requestTo, impl.peerID)
+	if err != nil {
+		return chid, err
+	}
 	return chid, nil
 }
 
-// createNewChannel creates a new channel id and channel state and saves to channels
-func (impl *graphsyncImpl) createNewChannel(tid datatransfer.TransferID, baseCid cid.Cid, selector ipld.Node, voucher datatransfer.Voucher, initiator, dataSender, dataReceiver peer.ID) datatransfer.ChannelID {
+// createNewChannel creates a new channel id and channel state and saves to channels.
+// returns error if the channel exists already.
+func (impl *graphsyncImpl) createNewChannel(tid datatransfer.TransferID, baseCid cid.Cid, selector ipld.Node, voucher datatransfer.Voucher, initiator, dataSender, dataReceiver peer.ID) (datatransfer.ChannelID, error) {
 	chid := datatransfer.ChannelID{Initiator: initiator, ID: tid}
 	chst := datatransfer.ChannelState{Channel: datatransfer.NewChannel(0, baseCid, selector, voucher, dataSender, dataReceiver, 0)}
 	impl.channelsLk.Lock()
+	defer impl.channelsLk.Unlock()
+	_, ok := impl.channels[chid]
+	if ok {
+		return chid, errors.New("tried to create channel but it already exists")
+	}
 	impl.channels[chid] = chst
-	impl.channelsLk.Unlock()
-	return chid
+	return chid, nil
 }
 
 // sendRequest encapsulates message creation and posting to the data transfer network with the provided parameters
@@ -266,35 +289,14 @@ func (impl *graphsyncImpl) InProgressChannels() map[datatransfer.ChannelID]datat
 	return channelsCopy
 }
 
-// hasPushChannel returns true if a channel with ID chid exists and is for a Push request.
-func (impl *graphsyncImpl) hasPushChannel(chid datatransfer.ChannelID) bool {
-	return impl.getPushChannel(chid) != datatransfer.EmptyChannelState
-}
-
-// hasPullChannel returns true if a channel with ID chid exists and is for a Pull request.
-func (impl *graphsyncImpl) hasPullChannel(chid datatransfer.ChannelID) bool {
-	return impl.getPullChannel(chid) != datatransfer.EmptyChannelState
-}
-
-// getPullChannel searches for a pull-type channel in the slice of channels with id `chid`.
+// getChannelByIdAndSender searches for a pull-type channel in the slice of channels with id `chid`.
 // Returns datatransfer.EmptyChannelState if:
 //   * there is no channel with that id
-//   * it is not related to a pull request
-func (impl *graphsyncImpl) getPullChannel(chid datatransfer.ChannelID) datatransfer.ChannelState {
+func (impl *graphsyncImpl) getChannelByIdAndSender(chid datatransfer.ChannelID, sender peer.ID) datatransfer.ChannelState {
 	impl.channelsLk.RLock()
-	defer impl.channelsLk.RUnlock()
 	channelState, ok := impl.channels[chid]
-	if !ok || channelState.Sender() == impl.peerID {
-		return datatransfer.EmptyChannelState
-	}
-	return channelState
-}
-
-func (impl *graphsyncImpl) getPushChannel(chid datatransfer.ChannelID) datatransfer.ChannelState {
-	impl.channelsLk.RLock()
-	defer impl.channelsLk.RUnlock()
-	channelState, ok := impl.channels[chid]
-	if !ok || channelState.Recipient() == impl.peerID {
+	impl.channelsLk.RUnlock()
+	if !ok || channelState.Sender() != sender {
 		return datatransfer.EmptyChannelState
 	}
 	return channelState
