@@ -19,15 +19,17 @@ import (
 
 var log = logging.Logger("miner")
 
-type waitFunc func(ctx context.Context) error
+type waitFunc func(ctx context.Context, baseTime uint64) error
 
 func NewMiner(api api.FullNode, epp gen.ElectionPoStProver) *Miner {
 	return &Miner{
 		api: api,
 		epp: epp,
-		waitFunc: func(ctx context.Context) error {
+		waitFunc: func(ctx context.Context, baseTime uint64) error {
 			// Wait around for half the block time in case other parents come in
-			time.Sleep(build.PropagationDelay * time.Second)
+			deadline := baseTime + build.PropagationDelay
+			time.Sleep(time.Until(time.Unix(int64(deadline), 0)))
+
 			return nil
 		},
 	}
@@ -141,8 +143,15 @@ eventLoop:
 		addrs := m.addresses
 		m.lk.Unlock()
 
-		// Sleep a small amount in order to wait for other blocks to arrive
-		if err := m.waitFunc(ctx); err != nil {
+		prebase, err := m.GetBestMiningCandidate(ctx)
+		if err != nil {
+			log.Errorf("failed to get best mining candidate: %s", err)
+			time.Sleep(time.Second * 5)
+			continue
+		}
+
+		// Wait until propagation delay period after block we plan to mine on
+		if err := m.waitFunc(ctx, prebase.ts.MinTimestamp()); err != nil {
 			log.Error(err)
 			return
 		}
@@ -158,6 +167,8 @@ eventLoop:
 			continue
 		}
 		lastBase = *base
+
+		log.Infof("Time delta between now and our mining base: %ds", uint64(time.Now().Unix())-base.ts.MinTimestamp())
 
 		blks := make([]*types.BlockMsg, 0)
 
@@ -289,10 +300,9 @@ func (m *Miner) mineOne(ctx context.Context, addr address.Address, base *MiningB
 	if err != nil {
 		return nil, xerrors.Errorf("failed to create block: %w", err)
 	}
-	log.Infow("mined new block", "cid", b.Cid(), "height", b.Header.Height)
 
-	dur := time.Now().Sub(start)
-	log.Infof("Creating block took %s", dur)
+	dur := time.Since(start)
+	log.Infow("mined new block", "cid", b.Cid(), "height", b.Header.Height, "took", dur)
 	if dur > time.Second*build.BlockDelay {
 		log.Warn("CAUTION: block production took longer than the block delay. Your computer may not be fast enough to keep up")
 	}
@@ -374,6 +384,7 @@ func selectMessages(ctx context.Context, al actorLookup, base *MiningBase, msgs 
 	out := make([]*types.SignedMessage, 0, len(msgs))
 	inclNonces := make(map[address.Address]uint64)
 	inclBalances := make(map[address.Address]types.BigInt)
+	inclCount := make(map[address.Address]int)
 
 	for _, msg := range msgs {
 		if msg.Message.To == address.Undef {
@@ -399,7 +410,7 @@ func selectMessages(ctx context.Context, al actorLookup, base *MiningBase, msgs 
 		}
 
 		if msg.Message.Nonce > inclNonces[from] {
-			log.Warnf("message in mempool has too high of a nonce (%d > %d) %s (%d pending for orig)", msg.Message.Nonce, inclNonces[from], msg.Cid(), countFrom(msgs, from))
+			log.Warnf("message in mempool has too high of a nonce (%d > %d, from %s, inclcount %d) %s (%d pending for orig)", msg.Message.Nonce, inclNonces[from], from, inclCount[from], msg.Cid(), countFrom(msgs, from))
 			continue
 		}
 
@@ -410,6 +421,7 @@ func selectMessages(ctx context.Context, al actorLookup, base *MiningBase, msgs 
 
 		inclNonces[from] = msg.Message.Nonce + 1
 		inclBalances[from] = types.BigSub(inclBalances[from], msg.Message.RequiredFunds())
+		inclCount[from]++
 
 		out = append(out, msg)
 	}
