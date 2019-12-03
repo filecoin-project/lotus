@@ -261,12 +261,16 @@ func (cg *ChainGen) nextBlockProof(ctx context.Context, pts *types.TipSet, m add
 		VRFProof: vrfout,
 	}
 
-	win, eproof, err := IsRoundWinner(ctx, pts, round, m, cg.eppProvs[m], &mca{w: cg.w, sm: cg.sm})
+	win, eproofin, err := IsRoundWinner(ctx, pts, round, m, cg.eppProvs[m], &mca{w: cg.w, sm: cg.sm})
 	if err != nil {
 		return nil, nil, xerrors.Errorf("checking round winner failed: %w", err)
 	}
 	if !win {
 		return nil, tick, nil
+	}
+	eproof, err := ComputeProof(ctx, cg.eppProvs[m], eproofin)
+	if err != nil {
+		return nil, nil, xerrors.Errorf("computing proof: %w", err)
 	}
 
 	return eproof, tick, nil
@@ -466,7 +470,14 @@ func (epp *eppProvider) ComputeProof(ctx context.Context, _ sectorbuilder.Sorted
 	return []byte("valid proof"), nil
 }
 
-func IsRoundWinner(ctx context.Context, ts *types.TipSet, round int64, miner address.Address, epp ElectionPoStProver, a MiningCheckAPI) (bool, *types.EPostProof, error) {
+type ProofInput struct {
+	sectors sectorbuilder.SortedPublicSectorInfo
+	hvrf []byte
+	winners []sectorbuilder.EPostCandidate
+	vrfout []byte
+}
+
+func IsRoundWinner(ctx context.Context, ts *types.TipSet, round int64, miner address.Address, epp ElectionPoStProver, a MiningCheckAPI) (bool, *ProofInput, error) {
 	r, err := a.ChainGetRandomness(ctx, ts.Key(), round-build.EcRandomnessLookback)
 	if err != nil {
 		return false, nil, xerrors.Errorf("chain get randomness: %w", err)
@@ -529,16 +540,25 @@ func IsRoundWinner(ctx context.Context, ts *types.TipSet, round int64, miner add
 		return false, nil, nil
 	}
 
-	proof, err := epp.ComputeProof(ctx, sectors, hvrf[:], winners)
+	return true, &ProofInput{
+		sectors: sectors,
+		hvrf:    hvrf[:],
+		winners: winners,
+		vrfout:  vrfout,
+	}, nil
+}
+
+func ComputeProof(ctx context.Context, epp ElectionPoStProver, pi *ProofInput) (*types.EPostProof, error) {
+	proof, err := epp.ComputeProof(ctx, pi.sectors, pi.hvrf, pi.winners)
 	if err != nil {
-		return false, nil, xerrors.Errorf("failed to compute snark for election proof: %w", err)
+		return nil, xerrors.Errorf("failed to compute snark for election proof: %w", err)
 	}
 
 	ept := types.EPostProof{
 		Proof:    proof,
-		PostRand: vrfout,
+		PostRand: pi.vrfout,
 	}
-	for _, win := range winners {
+	for _, win := range pi.winners {
 		ept.Candidates = append(ept.Candidates, types.EPostTicket{
 			Partial:        win.PartialTicket[:],
 			SectorID:       win.SectorID,
@@ -546,7 +566,7 @@ func IsRoundWinner(ctx context.Context, ts *types.TipSet, round int64, miner add
 		})
 	}
 
-	return true, &ept, nil
+	return &ept, nil
 }
 
 type SignFunc func(context.Context, address.Address, []byte) (*types.Signature, error)

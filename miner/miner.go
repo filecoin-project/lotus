@@ -265,7 +265,7 @@ func (m *Miner) mineOne(ctx context.Context, addr address.Address, base *MiningB
 		return nil, xerrors.Errorf("scratching ticket failed: %w", err)
 	}
 
-	win, proof, err := gen.IsRoundWinner(ctx, base.ts, int64(base.ts.Height()+base.nullRounds+1), addr, m.epp, m.api)
+	win, proofin, err := gen.IsRoundWinner(ctx, base.ts, int64(base.ts.Height()+base.nullRounds+1), addr, m.epp, m.api)
 	if err != nil {
 		return nil, xerrors.Errorf("failed to check if we win next round: %w", err)
 	}
@@ -275,7 +275,18 @@ func (m *Miner) mineOne(ctx context.Context, addr address.Address, base *MiningB
 		return nil, nil
 	}
 
-	b, err := m.createBlock(base, addr, ticket, proof)
+	// get pending messages early,
+	pending, err := m.api.MpoolPending(context.TODO(), base.ts)
+	if err != nil {
+		return nil, xerrors.Errorf("failed to get pending messages: %w", err)
+	}
+
+	proof, err := gen.ComputeProof(ctx, m.epp, proofin)
+	if err != nil {
+		return nil, xerrors.Errorf("computing election proof: %w", err)
+	}
+
+	b, err := m.createBlock(base, addr, ticket, proof, pending)
 	if err != nil {
 		return nil, xerrors.Errorf("failed to create block: %w", err)
 	}
@@ -372,12 +383,7 @@ func (m *Miner) actorLookup(ctx context.Context, addr address.Address, ts *types
 	return curnonce, &balance, nil
 }
 
-func (m *Miner) createBlock(base *MiningBase, addr address.Address, ticket *types.Ticket, proof *types.EPostProof) (*types.BlockMsg, error) {
-	pending, err := m.api.MpoolPending(context.TODO(), base.ts)
-	if err != nil {
-		return nil, xerrors.Errorf("failed to get pending messages: %w", err)
-	}
-
+func (m *Miner) createBlock(base *MiningBase, addr address.Address, ticket *types.Ticket, proof *types.EPostProof, pending []*types.SignedMessage) (*types.BlockMsg, error) {
 	msgs, err := selectMessages(context.TODO(), m.actorLookup, base, pending)
 	if err != nil {
 		return nil, xerrors.Errorf("message filtering failed: %w", err)
@@ -393,10 +399,24 @@ func (m *Miner) createBlock(base *MiningBase, addr address.Address, ticket *type
 
 type actorLookup func(context.Context, address.Address, *types.TipSet) (uint64, *types.BigInt, error)
 
+func countFrom(msgs []*types.SignedMessage, from address.Address) (out int) {
+	for _, msg := range msgs {
+		if msg.Message.From == from {
+			out++
+		}
+	}
+	return out
+}
+
 func selectMessages(ctx context.Context, al actorLookup, base *MiningBase, msgs []*types.SignedMessage) ([]*types.SignedMessage, error) {
 	out := make([]*types.SignedMessage, 0, len(msgs))
 	inclNonces := make(map[address.Address]uint64)
 	inclBalances := make(map[address.Address]types.BigInt)
+
+	sort.Slice(msgs, func(i, j int) bool { // TODO: is this actually needed?
+		return msgs[i].Message.Nonce < msgs[j].Message.Nonce
+	})
+
 	for _, msg := range msgs {
 		if msg.Message.To == address.Undef {
 			log.Warnf("message in mempool had bad 'To' address")
@@ -421,12 +441,12 @@ func selectMessages(ctx context.Context, al actorLookup, base *MiningBase, msgs 
 		}
 
 		if msg.Message.Nonce > inclNonces[from] {
-			log.Warnf("message in mempool has too high of a nonce (%d > %d) %s", msg.Message.Nonce, inclNonces[from], msg.Cid())
+			log.Warnf("message in mempool has too high of a nonce (%d > %d) %s (%d pending for orig)", msg.Message.Nonce, inclNonces[from], msg.Cid(), countFrom(msgs, from))
 			continue
 		}
 
 		if msg.Message.Nonce < inclNonces[from] {
-			log.Warnf("message in mempool has already used nonce (%d < %d), from %s, to %s, %s", msg.Message.Nonce, inclNonces[from], msg.Message.From, msg.Message.To, msg.Cid())
+			log.Warnf("message in mempool has already used nonce (%d < %d), from %s, to %s, %s (%d pending for)", msg.Message.Nonce, inclNonces[from], msg.Message.From, msg.Message.To, msg.Cid(), countFrom(msgs, from))
 			continue
 		}
 
