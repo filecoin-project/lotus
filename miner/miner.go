@@ -358,7 +358,6 @@ func (m *Miner) actorLookup(ctx context.Context, addr address.Address, ts *types
 		return 0, nil, xerrors.Errorf("failed to get tipset messages: %w", err)
 	}
 
-	balance := act.Balance
 	curnonce := act.Nonce
 
 	sort.Slice(msgs, func(i, j int) bool { // TODO: is this actually needed?
@@ -370,7 +369,6 @@ func (m *Miner) actorLookup(ctx context.Context, addr address.Address, ts *types
 	for _, m := range msgs {
 		if m.Message.From == addr {
 			max = int64(m.Message.Nonce)
-			balance = types.BigSub(balance, m.Message.RequiredFunds())
 		}
 	}
 
@@ -380,7 +378,7 @@ func (m *Miner) actorLookup(ctx context.Context, addr address.Address, ts *types
 		return 0, nil, xerrors.Errorf("tipset messages from %s have too low nonce %d, expected %d, h: %d", addr, max, curnonce, ts.Height())
 	}
 
-	return curnonce, &balance, nil
+	return curnonce, &act.Balance, nil
 }
 
 func (m *Miner) createBlock(base *MiningBase, addr address.Address, ticket *types.Ticket, proof *types.EPostProof, pending []*types.SignedMessage) (*types.BlockMsg, error) {
