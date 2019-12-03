@@ -267,27 +267,22 @@ func TestDataTransferValidation(t *testing.T) {
 	dtnet1.SetDelegate(r)
 
 	gs2 := &fakeGraphSync{
-		receivedRequests: make(chan receivedGraphSyncRequest, 1),
+		requests: make(chan receivedGraphSyncRequest, 1),
 	}
-	dt2 := NewGraphSyncDataTransfer(ctx, host2, gs2)
 
 	fv := &fakeValidator{ctx, make(chan receivedValidation)}
 
-	err := dt2.RegisterVoucherType(reflect.TypeOf(&fakeDTType{}), fv)
-	require.NoError(t, err)
 	id := datatransfer.TransferID(rand.Int31())
 	var buffer bytes.Buffer
-	err = dagcbor.Encoder(gsData.allSelector, &buffer)
-	require.NoError(t, err)
+	require.NoError(t, dagcbor.Encoder(gsData.allSelector, &buffer))
 
 	t.Run("ValidatePush", func(t *testing.T) {
-
-		voucher := fakeDTType{"applesauce"}
-		baseCid := testutil.GenerateCids(1)[0]
-		isPull := false
-		voucherBytes, err := voucher.ToBytes()
+		dt2 := NewGraphSyncDataTransfer(ctx, host2, gs2)
+		err := dt2.RegisterVoucherType(reflect.TypeOf(&fakeDTType{}), fv)
 		require.NoError(t, err)
-		request := message.NewRequest(id, isPull, voucher.Type(), voucherBytes, baseCid, buffer.Bytes())
+		// create push request
+		voucher, baseCid, request := createDTRequest(t, false, id, buffer.Bytes())
+
 		require.NoError(t, dtnet1.SendMessage(ctx, host2.ID(), request))
 
 		var validation receivedValidation
@@ -312,13 +307,8 @@ func TestDataTransferValidation(t *testing.T) {
 	})
 
 	t.Run("ValidatePull", func(t *testing.T) {
-
-		voucher := fakeDTType{"applesauce"}
-		baseCid := testutil.GenerateCids(1)[0]
-		isPull := true
-		voucherBytes, err := voucher.ToBytes()
-		require.NoError(t, err)
-		request := message.NewRequest(id, isPull, voucher.Type(), voucherBytes, baseCid, buffer.Bytes())
+		// create pull request
+		voucher, baseCid, request := createDTRequest(t, true, id, buffer.Bytes())
 		require.NoError(t, dtnet1.SendMessage(ctx, host2.ID(), request))
 
 		var validation receivedValidation
@@ -339,6 +329,15 @@ func TestDataTransferValidation(t *testing.T) {
 		assert.Equal(t, baseCid, validation.baseCid)
 		assert.Equal(t, gsData.allSelector, validation.selector)
 	})
+}
+
+func createDTRequest(t *testing.T, isPull bool, id datatransfer.TransferID, selectorBytes []byte) (fakeDTType, cid.Cid, message.DataTransferRequest) {
+	voucher := fakeDTType{"applesauce"}
+	baseCid := testutil.GenerateCids(1)[0]
+	voucherBytes, err := voucher.ToBytes()
+	require.NoError(t, err)
+	request := message.NewRequest(id, isPull, voucher.Type(), voucherBytes, baseCid, selectorBytes)
+	return voucher, baseCid, request
 }
 
 type stubbedValidator struct {
@@ -427,7 +426,7 @@ func TestGraphsyncImpl_RegisterVoucherType(t *testing.T) {
 	require.NoError(t, err)
 
 	gs1 := &fakeGraphSync{
-		receivedRequests: make(chan receivedGraphSyncRequest, 1),
+		requests: make(chan receivedGraphSyncRequest, 1),
 	}
 	dt := NewGraphSyncDataTransfer(ctx, host1, gs1)
 	fv := &fakeValidator{ctx, make(chan receivedValidation)}
@@ -453,10 +452,10 @@ func TestDataTransferSubscribing(t *testing.T) {
 	host2 := gsData.host2
 
 	gs1 := &fakeGraphSync{
-		receivedRequests: make(chan receivedGraphSyncRequest, 1),
+		requests: make(chan receivedGraphSyncRequest, 1),
 	}
 	gs2 := &fakeGraphSync{
-		receivedRequests: make(chan receivedGraphSyncRequest, 1),
+		requests: make(chan receivedGraphSyncRequest, 1),
 	}
 	sv := newSV()
 	sv.stubErrorPull()
@@ -545,7 +544,7 @@ func TestDataTransferInitiatingPushGraphsyncRequests(t *testing.T) {
 	host2 := gsData.host2
 
 	gs2 := &fakeGraphSync{
-		receivedRequests: make(chan receivedGraphSyncRequest, 1),
+		requests: make(chan receivedGraphSyncRequest, 1),
 	}
 
 	// setup receiving peer to just record message coming in
@@ -555,18 +554,13 @@ func TestDataTransferInitiatingPushGraphsyncRequests(t *testing.T) {
 	}
 	dtnet1.SetDelegate(r)
 
-	voucher := fakeDTType{"applesauce"}
-	baseCid := testutil.GenerateCids(1)[0]
 	id := datatransfer.TransferID(rand.Int31())
 	var buffer bytes.Buffer
 
 	err := dagcbor.Encoder(gsData.allSelector, &buffer)
 	require.NoError(t, err)
 
-	isPull := false
-	voucherBytes, err := voucher.ToBytes()
-	require.NoError(t, err)
-	request := message.NewRequest(id, isPull, voucher.Type(), voucherBytes, baseCid, buffer.Bytes())
+	_, baseCid, request := createDTRequest(t, false, id, buffer.Bytes())
 
 	t.Run("with successful validation", func(t *testing.T) {
 		sv := newSV()
@@ -587,7 +581,7 @@ func TestDataTransferInitiatingPushGraphsyncRequests(t *testing.T) {
 		select {
 		case <-ctx.Done():
 			t.Fatal("did not receive message sent")
-		case requestReceived = <-gs2.receivedRequests:
+		case requestReceived = <-gs2.requests:
 		}
 
 		sv.verifyExpectations(t)
@@ -619,7 +613,7 @@ func TestDataTransferInitiatingPushGraphsyncRequests(t *testing.T) {
 		sv.verifyExpectations(t)
 
 		// no graphsync request should be scheduled
-		require.Empty(t, gs2.receivedRequests)
+		require.Empty(t, gs2.requests)
 
 	})
 }
@@ -627,18 +621,18 @@ func TestDataTransferInitiatingPushGraphsyncRequests(t *testing.T) {
 func TestDataTransferInitiatingPullGraphsyncRequests(t *testing.T) {
 	ctx := context.Background()
 	gsData := newGraphsyncTestingData(t, ctx)
-	host1 := gsData.host1
-	host2 := gsData.host2
+	host1 := gsData.host1 // initiates the pull request
+	host2 := gsData.host2 // sends the data
 
 	voucher := fakeDTType{"applesauce"}
 	baseCid := testutil.GenerateCids(1)[0]
 
 	t.Run("with successful validation", func(t *testing.T) {
-		gs1 := &fakeGraphSync{
-			receivedRequests: make(chan receivedGraphSyncRequest, 1),
+		gs1Init := &fakeGraphSync{
+			requests: make(chan receivedGraphSyncRequest, 1),
 		}
-		gs2 := &fakeGraphSync{
-			receivedRequests: make(chan receivedGraphSyncRequest, 1),
+		gs2Sender := &fakeGraphSync{
+			requests: make(chan receivedGraphSyncRequest, 1),
 		}
 
 		sv := newSV()
@@ -648,19 +642,19 @@ func TestDataTransferInitiatingPullGraphsyncRequests(t *testing.T) {
 		ctx, cancel := context.WithTimeout(ctx, 10*time.Second)
 		defer cancel()
 
-		dt1 := NewGraphSyncDataTransfer(bg, host1, gs1)
-		dt2 := NewGraphSyncDataTransfer(bg, host2, gs2)
-		err := dt2.RegisterVoucherType(reflect.TypeOf(&fakeDTType{}), sv)
+		dtInit := NewGraphSyncDataTransfer(bg, host1, gs1Init)
+		dtSender := NewGraphSyncDataTransfer(bg, host2, gs2Sender)
+		err := dtSender.RegisterVoucherType(reflect.TypeOf(&fakeDTType{}), sv)
 		require.NoError(t, err)
 
-		_, err = dt1.OpenPullDataChannel(ctx, host2.ID(), &voucher, baseCid, gsData.allSelector)
+		_, err = dtInit.OpenPullDataChannel(ctx, host2.ID(), &voucher, baseCid, gsData.allSelector)
 		require.NoError(t, err)
 
 		var requestReceived receivedGraphSyncRequest
 		select {
 		case <-ctx.Done():
 			t.Fatal("did not receive message sent")
-		case requestReceived = <-gs1.receivedRequests:
+		case requestReceived = <-gs1Init.requests:
 		}
 		sv.verifyExpectations(t)
 
@@ -669,17 +663,17 @@ func TestDataTransferInitiatingPullGraphsyncRequests(t *testing.T) {
 
 		cl, ok := requestReceived.root.(cidlink.Link)
 		require.True(t, ok)
-		require.Equal(t, baseCid, cl.Cid)
+		require.Equal(t, baseCid.String(), cl.Cid.String())
 
 		require.Equal(t, gsData.allSelector, requestReceived.selector)
 	})
 
 	t.Run("with error validation", func(t *testing.T) {
 		gs1 := &fakeGraphSync{
-			receivedRequests: make(chan receivedGraphSyncRequest, 1),
+			requests: make(chan receivedGraphSyncRequest, 1),
 		}
 		gs2 := &fakeGraphSync{
-			receivedRequests: make(chan receivedGraphSyncRequest, 1),
+			requests: make(chan receivedGraphSyncRequest, 1),
 		}
 
 		dt1 := NewGraphSyncDataTransfer(ctx, host1, gs1)
@@ -706,21 +700,19 @@ func TestDataTransferInitiatingPullGraphsyncRequests(t *testing.T) {
 		case <-subscribeCalls:
 		}
 
-		// give a little time for the validation to happen
-		//time.Sleep(15*time.Millisecond)
 		sv.verifyExpectations(t)
 
 		// no graphsync request should be scheduled
-		require.Empty(t, gs1.receivedRequests)
+		require.Empty(t, gs1.requests)
 		unsub()
 	})
 
 	t.Run("does not schedule graphsync request if is push request", func(t *testing.T) {
 		gs1 := &fakeGraphSync{
-			receivedRequests: make(chan receivedGraphSyncRequest, 1),
+			requests: make(chan receivedGraphSyncRequest, 1),
 		}
 		gs2 := &fakeGraphSync{
-			receivedRequests: make(chan receivedGraphSyncRequest, 1),
+			requests: make(chan receivedGraphSyncRequest, 1),
 		}
 
 		sv := newSV()
@@ -753,7 +745,7 @@ func TestDataTransferInitiatingPullGraphsyncRequests(t *testing.T) {
 		sv.verifyExpectations(t)
 
 		// no graphsync request should be scheduled
-		require.Empty(t, gs1.receivedRequests)
+		require.Empty(t, gs1.requests)
 		unsub()
 	})
 }
@@ -802,8 +794,8 @@ func TestRespondingToPushGraphsyncRequests(t *testing.T) {
 	ctx, cancel := context.WithTimeout(ctx, 10*time.Second)
 	defer cancel()
 	gsData := newGraphsyncTestingData(t, ctx)
-	host1 := gsData.host1
-	host2 := gsData.host2
+	host1 := gsData.host1 // initiator and data sender
+	host2 := gsData.host2 // data recipient, makes graphsync request for data
 	voucher := fakeDTType{"applesauce"}
 	link := gsData.loadUnixFSFile(t, false)
 
@@ -881,96 +873,98 @@ func TestRespondingToPushGraphsyncRequests(t *testing.T) {
 	})
 }
 
-// TODO: get passing to complete https://github.com/filecoin-project/go-data-transfer/issues/23
 func TestRespondingToPullGraphsyncRequests(t *testing.T) {
-	// create network
-	// ctx := context.Background()
-	// ctx, cancel := context.WithTimeout(ctx, 10*time.Second)
-	// defer cancel()
+	//create network
+	ctx := context.Background()
+	ctx, cancel := context.WithTimeout(ctx, 10*time.Second)
+	defer cancel()
 
-	// gsData := newGraphsyncTestingData(t, ctx)
-	// host1 := gsData.host1
-	// host2 := gsData.host2
+	gsData := newGraphsyncTestingData(t, ctx)
+	host1 := gsData.host1 // initiator, and recipient, makes graphync request
+	host2 := gsData.host2 // data sender
 
-	// // setup receiving peer to just record message coming in
-	// dtnet1 := network.NewFromLibp2pHost(host1)
-	// r := &receiver{
-	// 	messageReceived: make(chan receivedMessage),
-	// }
-	// dtnet1.SetDelegate(r)
+	// setup receiving peer to just record message coming in
+	dtnet1 := network.NewFromLibp2pHost(host1)
+	r := &receiver{
+		messageReceived: make(chan receivedMessage),
+	}
+	dtnet1.SetDelegate(r)
 
-	// gsr := &fakeGraphSyncReceiver{
-	// 	receivedMessages: make(chan receivedGraphSyncMessage),
-	// }
-	// gsData.gsNet1.SetDelegate(gsr)
+	gsr := &fakeGraphSyncReceiver{
+		receivedMessages: make(chan receivedGraphSyncMessage),
+	}
+	gsData.gsNet1.SetDelegate(gsr)
 
-	// gs2 := gsData.setupGraphsyncHost2()
+	gs2 := gsData.setupGraphsyncHost2()
 
-	// voucher := fakeDTType{"applesauce"}
-	// link := gsData.loadUnixFSFile(t, true)
+	link := gsData.loadUnixFSFile(t, true)
 
-	// id := datatransfer.TransferID(rand.Int31())
-	// var buf bytes.Buffer
-	// err := dagcbor.Encoder(gsData.allSelector, &buf)
-	// require.NoError(t, err)
-	// selectorBytes := buf.Bytes()
+	id := datatransfer.TransferID(rand.Int31())
+	var buf bytes.Buffer
+	err := dagcbor.Encoder(gsData.allSelector, &buf)
+	require.NoError(t, err)
+	selectorBytes := buf.Bytes()
 
-	// t.Run("When request is initated and validated", func(t *testing.T) {
-	// 	sv := newSV()
-	// 	sv.expectSuccessPull()
+	t.Run("When a pull request is initiated and validated", func(t *testing.T) {
+		sv := newSV()
+		sv.expectSuccessPull()
 
-	// 	dt := NewGraphSyncDataTransfer(ctx, host2, gs2)
-	// 	require.NoError(t, dt.RegisterVoucherType(reflect.TypeOf(&fakeDTType{}), sv))
+		dt1 := NewGraphSyncDataTransfer(ctx, host2, gs2)
+		require.NoError(t, dt1.RegisterVoucherType(reflect.TypeOf(&fakeDTType{}), sv))
 
-	// 	isPull := true
-	// 	voucherBytes, err := voucher.ToBytes()
-	// 	require.NoError(t, err)
-	// 	request := message.NewRequest(id, isPull, voucher.Type(), voucherBytes, link.(cidlink.Link).Cid, selectorBytes)
-	// 	require.NoError(t, dtnet1.SendMessage(ctx, host2.ID(), request))
-	// 	var messageReceived receivedMessage
-	// 	select {
-	// 	case <-ctx.Done():
-	// 		t.Fatal("did not receive message sent")
-	// 	case messageReceived = <-r.messageReceived:
-	// 	}
-	// 	sv.verifyExpectations(t)
-	// 	receivedResponse, ok := messageReceived.message.(message.DataTransferResponse)
-	// 	require.True(t, ok)
-	// 	require.True(t, receivedResponse.Accepted())
-	// 	extStruct := &ExtensionDataTransferData{TransferID: uint64(receivedResponse.TransferID())}
-	// 	buf.Truncate(0)
-	// 	err = extStruct.MarshalCBOR(&buf)
-	// 	require.NoError(t, err)
-	// 	extData := buf.Bytes()
-	// 	gsRequest := gsmsg.NewRequest(graphsync.RequestID(rand.Int31()), link.(cidlink.Link).Cid, selectorBytes, graphsync.Priority(rand.Int31()), graphsync.ExtensionData{
-	// 		Name: ExtensionDataTransfer,
-	// 		Data: extData,
-	// 	})
-	// 	gsmessage := gsmsg.New()
-	// 	gsmessage.AddRequest(gsRequest)
-	// 	gsData.gsNet1.SendMessage(ctx, host1.ID(), gsmessage)
-	// 	status := gsr.consumeResponses(ctx, t)
-	// 	require.False(t, gsmsg.IsTerminalFailureCode(status))
-	// })
+		_, _, request := createDTRequest(t, true, id, selectorBytes)
+		require.NoError(t, dtnet1.SendMessage(ctx, host2.ID(), request))
+		var messageReceived receivedMessage
+		select {
+		case <-ctx.Done():
+			t.Fatal("did not receive message sent")
+		case messageReceived = <-r.messageReceived:
+		}
+		sv.verifyExpectations(t)
+		receivedResponse, ok := messageReceived.message.(message.DataTransferResponse)
+		require.True(t, ok)
+		require.True(t, receivedResponse.Accepted())
+		extStruct := &ExtensionDataTransferData{TransferID: uint64(receivedResponse.TransferID())}
 
-	// // TODO: get passing to complete https://github.com/filecoin-project/go-data-transfer/issues/14
-	// t.Run("When request is not initiated", func(t *testing.T) {
-	// 	_ = NewGraphSyncDataTransfer(ctx, host2, gs2)
-	// 	extStruct := &ExtensionDataTransferData{TransferID: rand.Uint64()}
-	// 	buf.Truncate(0)
-	// 	err = extStruct.MarshalCBOR(&buf)
-	// 	require.NoError(t, err)
-	// 	extData := buf.Bytes()
-	// 	request := gsmsg.NewRequest(graphsync.RequestID(rand.Int31()), link.(cidlink.Link).Cid, selectorBytes, graphsync.Priority(rand.Int31()), graphsync.ExtensionData{
-	// 		Name: ExtensionDataTransfer,
-	// 		Data: extData,
-	// 	})
-	// 	gsmessage := gsmsg.New()
-	// 	gsmessage.AddRequest(request)
-	// 	gsData.gsNet1.SendMessage(ctx, host1.ID(), gsmessage)
-	// 	status := gsr.consumeResponses(ctx, t)
-	// 	require.True(t, gsmsg.IsTerminalFailureCode(status))
-	// })
+		var buf2 = bytes.Buffer{}
+		err = extStruct.MarshalCBOR(&buf2)
+		require.NoError(t, err)
+		extData := buf2.Bytes()
+
+		gsRequest := gsmsg.NewRequest(graphsync.RequestID(rand.Int31()), link.(cidlink.Link).Cid, selectorBytes, graphsync.Priority(rand.Int31()), graphsync.ExtensionData{
+			Name: ExtensionDataTransfer,
+			Data: extData,
+		})
+
+		// initiator requests data over graphsync network
+		gsmessage := gsmsg.New()
+		gsmessage.AddRequest(gsRequest)
+		require.NoError(t, gsData.gsNet1.SendMessage(ctx, host2.ID(), gsmessage))
+		status := gsr.consumeResponses(ctx, t)
+		require.False(t, gsmsg.IsTerminalFailureCode(status))
+	})
+
+	t.Run("When request is not initiated, graphsync response is error", func(t *testing.T) {
+		_ = NewGraphSyncDataTransfer(ctx, host2, gs2)
+		extStruct := &ExtensionDataTransferData{TransferID: rand.Uint64()}
+
+		var buf2 bytes.Buffer
+		err = extStruct.MarshalCBOR(&buf2)
+		require.NoError(t, err)
+		extData := buf2.Bytes()
+		request := gsmsg.NewRequest(graphsync.RequestID(rand.Int31()), link.(cidlink.Link).Cid, selectorBytes, graphsync.Priority(rand.Int31()), graphsync.ExtensionData{
+			Name: ExtensionDataTransfer,
+			Data: extData,
+		})
+		gsmessage := gsmsg.New()
+		gsmessage.AddRequest(request)
+
+		// non-initiator requests data over graphsync network, but should not get it
+		// because there was no previous request
+		require.NoError(t, gsData.gsNet1.SendMessage(ctx, host2.ID(), gsmessage))
+		status := gsr.consumeResponses(ctx, t)
+		require.True(t, gsmsg.IsTerminalFailureCode(status))
+	})
 }
 
 // TODO: get passing to complete https://github.com/filecoin-project/go-data-transfer/issues/24
@@ -1244,13 +1238,13 @@ type receivedGraphSyncRequest struct {
 }
 
 type fakeGraphSync struct {
-	receivedRequests chan receivedGraphSyncRequest
+	requests chan receivedGraphSyncRequest // records calls to fakeGraphSync.Request
 }
 
 // Request initiates a new GraphSync request to the given peer using the given selector spec.
 func (fgs *fakeGraphSync) Request(ctx context.Context, p peer.ID, root ipld.Link, selector ipld.Node, extensions ...graphsync.ExtensionData) (<-chan graphsync.ResponseProgress, <-chan error) {
 
-	fgs.receivedRequests <- receivedGraphSyncRequest{p, root, selector, extensions}
+	fgs.requests <- receivedGraphSyncRequest{p, root, selector, extensions}
 	responses := make(chan graphsync.ResponseProgress)
 	errors := make(chan error)
 	close(responses)
