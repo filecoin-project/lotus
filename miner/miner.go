@@ -232,9 +232,8 @@ func (m *Miner) GetBestMiningCandidate(ctx context.Context) (*MiningBase, error)
 		}
 	}
 
-	return &MiningBase{
-		ts: bts,
-	}, nil
+	m.lastWork = &MiningBase{ts: bts}
+	return m.lastWork, nil
 }
 
 func (m *Miner) hasPower(ctx context.Context, addr address.Address, ts *types.TipSet) (bool, error) {
