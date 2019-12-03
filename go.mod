@@ -11,7 +11,7 @@ require (
 	github.com/fatih/color v1.7.0 // indirect
 	github.com/filecoin-project/chain-validation v0.0.0-20191106200742-11986803c0f7
 	github.com/filecoin-project/filecoin-ffi v0.0.0-00010101000000-000000000000
-	github.com/filecoin-project/go-amt-ipld v0.0.0-20191122035745-59b9dfc0efc7
+	github.com/filecoin-project/go-amt-ipld v0.0.0-20191203073133-f941215342ed
 	github.com/gbrlsnchs/jwt/v3 v3.0.0-beta.1
 	github.com/go-ole/go-ole v1.2.4 // indirect
 	github.com/google/go-cmp v0.3.1 // indirect
