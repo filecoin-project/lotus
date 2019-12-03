@@ -13,7 +13,6 @@ const UnixfsChunkSize uint64 = 1 << 20
 const UnixfsLinksPerLevel = 1024
 
 var SectorSizes = []uint64{
-	1 << 10,
 	16 << 20,
 	256 << 20,
 	1 << 30,

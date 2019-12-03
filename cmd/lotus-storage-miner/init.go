@@ -367,9 +367,14 @@ func storageMinerInit(ctx context.Context, cctx *cli.Context, api lapi.FullNode,
 			}
 
 			if pssb := cctx.String("pre-sealed-sectors"); pssb != "" {
+				pssb, err := homedir.Expand(pssb)
+				if err != nil {
+					return err
+				}
+
 				log.Infof("Importing pre-sealed sector metadata for %s", a)
 
-				if err := migratePreSealMeta(ctx, api, cctx.String("pre-sealed-sectors"), a, mds); err != nil {
+				if err := migratePreSealMeta(ctx, api, pssb, a, mds); err != nil {
 					return xerrors.Errorf("migrating presealed sector metadata: %w", err)
 				}
 			}
