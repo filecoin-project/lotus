@@ -5,6 +5,8 @@ package build
 // Seconds
 const BlockDelay = 30
 
+const PropagationDelay = 5
+
 // FallbackPoStDelay is the number of epochs the miner needs to wait after
 //  ElectionPeriodStart before starting fallback post computation
 //
