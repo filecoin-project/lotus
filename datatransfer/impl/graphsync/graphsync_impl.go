@@ -209,7 +209,6 @@ func (impl *graphsyncImpl) createNewChannel(tid datatransfer.TransferID, baseCid
 	impl.channelsLk.Lock()
 	defer impl.channelsLk.Unlock()
 	_, ok := impl.channels[chid]
-	fmt.Printf("Me: %s, tid: %d, initiator: %s", impl.peerID.String(), tid, initiator.String())
 	if ok {
 		return chid, errors.New("tried to create channel but it already exists")
 	}
