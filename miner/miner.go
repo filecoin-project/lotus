@@ -283,6 +283,9 @@ func (m *Miner) mineOne(ctx context.Context, addr address.Address, base *MiningB
 
 	dur := time.Now().Sub(start)
 	log.Infof("Creating block took %s", dur)
+	if dur > time.Second*build.BlockDelay {
+		log.Warn("CAUTION: block production took longer than the block delay. Your computer may not be fast enough to keep up")
+	}
 
 	return b, nil
 }

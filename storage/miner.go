@@ -4,6 +4,7 @@ import (
 	"context"
 	"errors"
 	"sync"
+	"time"
 
 	"github.com/ipfs/go-cid"
 	"github.com/ipfs/go-datastore"
@@ -154,11 +155,17 @@ func NewElectionPoStProver(sb *sectorbuilder.SectorBuilder) *SectorBuilderEpp {
 var _ gen.ElectionPoStProver = (*SectorBuilderEpp)(nil)
 
 func (epp *SectorBuilderEpp) GenerateCandidates(ctx context.Context, ssi sectorbuilder.SortedPublicSectorInfo, rand []byte) ([]sectorbuilder.EPostCandidate, error) {
+	start := time.Now()
 	var faults []uint64 // TODO
 
 	var randbuf [32]byte
 	copy(randbuf[:], rand)
-	return epp.sb.GenerateEPostCandidates(ssi, randbuf, faults)
+	cds, err := epp.sb.GenerateEPostCandidates(ssi, randbuf, faults)
+	if err != nil {
+		return nil, err
+	}
+	log.Infof("Generate candidates took %s", time.Since(start))
+	return cds, nil
 }
 
 func (epp *SectorBuilderEpp) ComputeProof(ctx context.Context, ssi sectorbuilder.SortedPublicSectorInfo, rand []byte, winners []sectorbuilder.EPostCandidate) ([]byte, error) {
@@ -166,5 +173,11 @@ func (epp *SectorBuilderEpp) ComputeProof(ctx context.Context, ssi sectorbuilder
 		log.Warn("Generating fake EPost proof! You should only see this while running tests!")
 		return []byte("valid proof"), nil
 	}
-	return epp.sb.ComputeElectionPoSt(ssi, rand, winners)
+	start := time.Now()
+	proof, err := epp.sb.ComputeElectionPoSt(ssi, rand, winners)
+	if err != nil {
+		return nil, err
+	}
+	log.Infof("ComputeElectionPost took %s", time.Since(start))
+	return proof, nil
 }
