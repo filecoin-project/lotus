@@ -4,6 +4,8 @@ package build
 
 import "os"
 
+var SectorSizes = []uint64{1024}
+
 // Seconds
 const BlockDelay = 6
 

@@ -21,18 +21,29 @@ const (
 	Committing
 	Proving
 
+	SealFailed
+	PreCommitFailed
+	SealCommitFailed
+	CommitFailed
+
 	FailedUnrecoverable
 )
 
 var SectorStates = []string{
 	UndefinedSectorState: "UndefinedSectorState",
-	Empty: "Empty",
-	Packing: "Packing",
-	Unsealed: "Unsealed",
-	PreCommitting: "PreCommitting",
-	PreCommitted: "PreCommitted",
-	Committing: "Committing",
-	Proving: "Proving",
+	Empty:                "Empty",
+	Packing:              "Packing",
+	Unsealed:             "Unsealed",
+	PreCommitting:        "PreCommitting",
+	PreCommitted:         "PreCommitted",
+	Committing:           "Committing",
+	Proving:              "Proving",
+
+	SealFailed:       "SealFailed",
+	PreCommitFailed:  "PreCommitFailed",
+	SealCommitFailed: "SealCommitFailed",
+	CommitFailed:     "CommitFailed",
+
 	FailedUnrecoverable: "FailedUnrecoverable",
 }
 

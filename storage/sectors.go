@@ -27,6 +27,15 @@ func (u *sectorUpdate) fatal(err error) *sectorUpdate {
 	}
 }
 
+func (u *sectorUpdate) error(err error) *sectorUpdate {
+	return &sectorUpdate{
+		newState: u.newState,
+		id:       u.id,
+		err:      err,
+		mut:      u.mut,
+	}
+}
+
 func (u *sectorUpdate) state(m func(*SectorInfo)) *sectorUpdate {
 	return &sectorUpdate{
 		newState: u.newState,
@@ -161,23 +170,23 @@ func (m *Miner) onSectorUpdated(ctx context.Context, update sectorUpdate) {
 
 	/*
 
-		*<- Empty
+		*   Empty
 		|   |
 		|   v
 		*<- Packing <- incoming
 		|   |
 		|   v
-		*<- Unsealed
+		*<- Unsealed <--> SealFailed
 		|   |
 		|   v
-		*<- PreCommitting
+		*   PreCommitting <--> PreCommitFailed
+		|   |                  ^
+		|   v                  |
+		*<- PreCommitted ------/
 		|   |
-		|   v
-		*<- PreCommitted
-		|   |
-		|   v
+		|   v        v--> SealCommitFailed
 		*<- Committing
-		|   |
+		|   |        ^--> CommitFailed
 		|   v
 		*<- Proving
 		|
@@ -191,6 +200,7 @@ func (m *Miner) onSectorUpdated(ctx context.Context, update sectorUpdate) {
 	*/
 
 	switch update.newState {
+	// Happy path
 	case api.Packing:
 		m.handleSectorUpdate(ctx, sector, m.handlePacking)
 	case api.Unsealed:
@@ -204,6 +214,18 @@ func (m *Miner) onSectorUpdated(ctx context.Context, update sectorUpdate) {
 	case api.Proving:
 		// TODO: track sector health / expiration
 		log.Infof("Proving sector %d", update.id)
+
+	// Handled failure modes
+	case api.SealFailed:
+		log.Warn("sector %d entered unimplemented state 'SealFailed'", update.id)
+	case api.PreCommitFailed:
+		log.Warn("sector %d entered unimplemented state 'PreCommitFailed'", update.id)
+	case api.SealCommitFailed:
+		log.Warn("sector %d entered unimplemented state 'SealCommitFailed'", update.id)
+	case api.CommitFailed:
+		log.Warn("sector %d entered unimplemented state 'CommitFailed'", update.id)
+
+	// Fatal errors
 	case api.UndefinedSectorState:
 		log.Error("sector update with undefined state!")
 	case api.FailedUnrecoverable:

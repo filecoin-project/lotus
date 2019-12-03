@@ -71,7 +71,7 @@ func (m *Miner) handleUnsealed(ctx context.Context, sector SectorInfo) *sectorUp
 
 	rspco, err := m.sb.SealPreCommit(sector.SectorID, *ticket, sector.pieceInfos())
 	if err != nil {
-		return sector.upd().fatal(xerrors.Errorf("seal pre commit failed: %w", err))
+		return sector.upd().to(api.SealFailed).error(xerrors.Errorf("seal pre commit failed: %w", err))
 	}
 
 	return sector.upd().to(api.PreCommitting).state(func(info *SectorInfo) {
@@ -97,7 +97,7 @@ func (m *Miner) handlePreCommitting(ctx context.Context, sector SectorInfo) *sec
 	}
 	enc, aerr := actors.SerializeParams(params)
 	if aerr != nil {
-		return sector.upd().fatal(xerrors.Errorf("could not serialize commit sector parameters: %w", aerr))
+		return sector.upd().to(api.PreCommitFailed).error(xerrors.Errorf("could not serialize commit sector parameters: %w", aerr))
 	}
 
 	msg := &types.Message{
@@ -113,7 +113,7 @@ func (m *Miner) handlePreCommitting(ctx context.Context, sector SectorInfo) *sec
 	log.Info("submitting precommit for sector: ", sector.SectorID)
 	smsg, err := m.api.MpoolPushMessage(ctx, msg)
 	if err != nil {
-		return sector.upd().fatal(xerrors.Errorf("pushing message to mpool: %w", err))
+		return sector.upd().to(api.PreCommitFailed).error(xerrors.Errorf("pushing message to mpool: %w", err))
 	}
 
 	return sector.upd().to(api.PreCommitted).state(func(info *SectorInfo) {
@@ -127,12 +127,12 @@ func (m *Miner) handlePreCommitted(ctx context.Context, sector SectorInfo) *sect
 	log.Info("Sector precommitted: ", sector.SectorID)
 	mw, err := m.api.StateWaitMsg(ctx, *sector.PreCommitMessage)
 	if err != nil {
-		return sector.upd().fatal(err)
+		return sector.upd().to(api.PreCommitFailed).error(err)
 	}
 
 	if mw.Receipt.ExitCode != 0 {
 		log.Error("sector precommit failed: ", mw.Receipt.ExitCode)
-		return sector.upd().fatal(err)
+		return sector.upd().to(api.PreCommitFailed).error(err)
 	}
 	log.Info("precommit message landed on chain: ", sector.SectorID)
 
@@ -172,7 +172,7 @@ func (m *Miner) handleCommitting(ctx context.Context, sector SectorInfo) *sector
 
 	proof, err := m.sb.SealCommit(sector.SectorID, sector.Ticket.SB(), sector.Seed.SB(), sector.pieceInfos(), sector.rspco())
 	if err != nil {
-		return sector.upd().fatal(xerrors.Errorf("computing seal proof failed: %w", err))
+		return sector.upd().to(api.SealCommitFailed).error(xerrors.Errorf("computing seal proof failed: %w", err))
 	}
 
 	// TODO: Consider splitting states and persist proof for faster recovery
@@ -185,7 +185,7 @@ func (m *Miner) handleCommitting(ctx context.Context, sector SectorInfo) *sector
 
 	enc, aerr := actors.SerializeParams(params)
 	if aerr != nil {
-		return sector.upd().fatal(xerrors.Errorf("could not serialize commit sector parameters: %w", aerr))
+		return sector.upd().to(api.CommitFailed).error(xerrors.Errorf("could not serialize commit sector parameters: %w", aerr))
 	}
 
 	msg := &types.Message{
@@ -200,14 +200,14 @@ func (m *Miner) handleCommitting(ctx context.Context, sector SectorInfo) *sector
 
 	smsg, err := m.api.MpoolPushMessage(ctx, msg)
 	if err != nil {
-		log.Error(xerrors.Errorf("pushing message to mpool: %w", err))
+		return sector.upd().to(api.CommitFailed).error(xerrors.Errorf("pushing message to mpool: %w", err))
 	}
 
 	// TODO: Separate state before this wait, so we persist message cid?
 
 	mw, err := m.api.StateWaitMsg(ctx, smsg.Cid())
 	if err != nil {
-		return sector.upd().fatal(xerrors.Errorf("failed to wait for porep inclusion: %w", err))
+		return sector.upd().to(api.CommitFailed).error(xerrors.Errorf("failed to wait for porep inclusion: %w", err))
 	}
 
 	if mw.Receipt.ExitCode != 0 {
