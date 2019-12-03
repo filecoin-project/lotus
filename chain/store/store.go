@@ -290,7 +290,7 @@ func (cs *ChainStore) takeHeaviestTipSet(ctx context.Context, ts *types.TipSet) 
 
 	span.AddAttributes(trace.BoolAttribute("newHead", true))
 
-	log.Infof("New heaviest tipset! %s (height=%d)", ts.Cids())
+	log.Infof("New heaviest tipset! %s (height=%d)", ts.Cids(), ts.Height())
 	cs.heaviest = ts
 
 	if err := cs.writeHead(ts); err != nil {
