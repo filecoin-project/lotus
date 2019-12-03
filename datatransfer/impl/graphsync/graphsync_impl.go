@@ -70,6 +70,10 @@ func NewGraphSyncDataTransfer(parent context.Context, host host.Host, gs graphsy
 		log.Error(err)
 		return nil
 	}
+	if err := gs.RegisterResponseReceivedHook(impl.gsRespRecdHook); err != nil {
+		log.Error(err)
+		return nil
+	}
 	receiver := &graphsyncReceiver{parent, impl}
 	dataTransferNetwork.SetDelegate(receiver)
 	return impl
@@ -90,7 +94,7 @@ func (impl *graphsyncImpl) gsReqRecdHook(p peer.ID, request graphsync.RequestDat
 		Name: ExtensionDataTransfer,
 		Data: nil,
 	}
-	
+
 	chid := datatransfer.ChannelID{ Initiator: impl.peerID, ID: tid}
 	// if a push request, initiator & sender is us, ask for the channel with us as sender
 	if impl.getChannelByIdAndSender(chid, impl.peerID) == datatransfer.EmptyChannelState {
@@ -106,6 +110,14 @@ func (impl *graphsyncImpl) gsReqRecdHook(p peer.ID, request graphsync.RequestDat
 	}
 	resp = append(resp, extData)
 	return resp, nil
+}
+
+func (impl *graphsyncImpl) gsRespRecdHook(p peer.ID, responseData graphsync.ResponseData) error {
+	_, err := impl.transferIDFromExtension(responseData)
+	if err != nil {
+		return err
+	}
+	return nil
 }
 
 // gsExtended is a small interface used by transferIDFromExtension

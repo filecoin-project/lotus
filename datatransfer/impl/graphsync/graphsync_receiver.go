@@ -111,7 +111,7 @@ func (receiver *graphsyncReceiver) voucherFromRequest(incoming message.DataTrans
 	return voucher, nil
 }
 
-// ReceiveResponse handles responses to our Push or Pull Requests.
+// ReceiveResponse handles responses to our  Push or Pull data transfer request.
 // It schedules a graphsync transfer only if our Pull Request is accepted.
 func (receiver *graphsyncReceiver) ReceiveResponse(
 	ctx context.Context,
@@ -120,10 +120,7 @@ func (receiver *graphsyncReceiver) ReceiveResponse(
 	evt := datatransfer.Error
 	chst := datatransfer.EmptyChannelState
 	if incoming.Accepted() {
-		chid := datatransfer.ChannelID{
-			Initiator: receiver.impl.peerID,
-			ID:        incoming.TransferID(),
-		}
+		chid := datatransfer.ChannelID{ Initiator: receiver.impl.peerID,  ID: incoming.TransferID()}
 
 		// if we are handling a response to a pull request then they are sending data and the
 		// initiator is us
@@ -132,6 +129,8 @@ func (receiver *graphsyncReceiver) ReceiveResponse(
 			root := cidlink.Link{baseCid}
 			receiver.impl.gs.Request(ctx, sender, root, chst.Selector())
 			evt = datatransfer.Progress
+		} else {
+			evt = datatransfer.Open
 		}
 	}
 	receiver.impl.notifySubscribers(evt, chst)
