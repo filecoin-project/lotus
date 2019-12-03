@@ -30,7 +30,11 @@ var runCmd = &cli.Command{
 	Flags: []cli.Flag{
 		&cli.StringFlag{
 			Name:  "api",
-			Value: "",
+			Value: "2345",
+		},
+		&cli.StringFlag{
+				Name: "apihost",
+				Value: "127.0.0.1",
 		},
 		&cli.BoolFlag{
 			Name:  "enable-gpu-proving",
@@ -83,9 +87,9 @@ var runCmd = &cli.Command{
 			node.Online(),
 			node.Repo(r),
 
-			node.ApplyIf(func(s *node.Settings) bool { return cctx.IsSet("api") },
+			node.ApplyIf(func(s *node.Settings) bool { return cctx.IsSet("api") || cctx.IsSet("apihost") },
 				node.Override(node.SetApiEndpointKey, func(lr repo.LockedRepo) error {
-					apima, err := multiaddr.NewMultiaddr("/ip4/127.0.0.1/tcp/" +
+					apima, err := multiaddr.NewMultiaddr("/ip4/"+cctx.String("apihost")+"/tcp/" +
 						cctx.String("api"))
 					if err != nil {
 						return err
