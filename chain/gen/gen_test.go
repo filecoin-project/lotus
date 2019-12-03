@@ -2,7 +2,13 @@ package gen
 
 import (
 	"testing"
+
+	"github.com/filecoin-project/lotus/build"
 )
+
+func init() {
+	build.SectorSizes = []uint64{1024}
+}
 
 func testGeneration(t testing.TB, n int, msgs int) {
 	g, err := NewGenerator()
@@ -12,18 +18,12 @@ func testGeneration(t testing.TB, n int, msgs int) {
 
 	g.msgsPerBlock = msgs
 
-	var height int
 	for i := 0; i < n; i++ {
 		mts, err := g.NextTipSet()
 		if err != nil {
 			t.Fatalf("error at H:%d, %s", i, err)
 		}
-
-		ts := mts.TipSet.TipSet()
-		if ts.Height() != uint64(height+len(ts.Blocks()[0].Tickets)) {
-			t.Fatal("wrong height", ts.Height(), i, len(ts.Blocks()[0].Tickets), len(ts.Blocks()))
-		}
-		height += len(ts.Blocks()[0].Tickets)
+		_ = mts
 	}
 }
 

@@ -58,7 +58,7 @@ func (cs *ChainStore) Weight(ctx context.Context, ts *types.TipSet) (types.BigIn
 func (cs *ChainStore) call(ctx context.Context, msg *types.Message, ts *types.TipSet) (*types.MessageReceipt, error) {
 	bstate := ts.ParentState()
 
-	r := NewChainRand(cs, ts.Cids(), ts.Height(), nil)
+	r := NewChainRand(cs, ts.Cids(), ts.Height())
 
 	vmi, err := vm.NewVM(bstate, ts.Height(), r, actors.NetworkAddress, cs.bs)
 	if err != nil {

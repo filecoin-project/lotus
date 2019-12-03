@@ -137,11 +137,8 @@ func (t *SealedRef) MarshalCBOR(w io.Writer) error {
 		return err
 	}
 
-	// t.t.Piece (string) (string)
-	if _, err := w.Write(cbg.CborEncodeMajorType(cbg.MajTextString, uint64(len(t.Piece)))); err != nil {
-		return err
-	}
-	if _, err := w.Write([]byte(t.Piece)); err != nil {
+	// t.t.SectorID (uint64) (uint64)
+	if _, err := w.Write(cbg.CborEncodeMajorType(cbg.MajUnsignedInt, uint64(t.SectorID))); err != nil {
 		return err
 	}
 
@@ -172,16 +169,16 @@ func (t *SealedRef) UnmarshalCBOR(r io.Reader) error {
 		return fmt.Errorf("cbor input had wrong number of fields")
 	}
 
-	// t.t.Piece (string) (string)
+	// t.t.SectorID (uint64) (uint64)
 
-	{
-		sval, err := cbg.ReadString(br)
-		if err != nil {
-			return err
-		}
-
-		t.Piece = string(sval)
+	maj, extra, err = cbg.CborReadHeader(br)
+	if err != nil {
+		return err
 	}
+	if maj != cbg.MajUnsignedInt {
+		return fmt.Errorf("wrong type for uint64 field")
+	}
+	t.SectorID = uint64(extra)
 	// t.t.Offset (uint64) (uint64)
 
 	maj, extra, err = cbg.CborReadHeader(br)

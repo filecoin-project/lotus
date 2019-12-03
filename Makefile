@@ -11,38 +11,23 @@ endif
 MODULES:=
 
 CLEAN:=
+BINS:=
 
-## BLS
+## FFI
 
-BLS_PATH:=extern/go-bls-sigs/
-BLS_DEPS:=libbls_signatures.a libbls_signatures.pc libbls_signatures.h
-BLS_DEPS:=$(addprefix $(BLS_PATH),$(BLS_DEPS))
+FFI_PATH:=extern/filecoin-ffi/
+FFI_DEPS:=libfilecoin.a filecoin.pc filecoin.h
+FFI_DEPS:=$(addprefix $(FFI_PATH),$(FFI_DEPS))
 
-$(BLS_DEPS): build/.bls-install ;
+$(FFI_DEPS): build/.filecoin-install ;
 
-build/.bls-install: $(BLS_PATH)
-	$(MAKE) -C $(BLS_PATH) $(BLS_DEPS:$(BLS_PATH)%=%)
+build/.filecoin-install: $(FFI_PATH)
+	$(MAKE) -C $(FFI_PATH) $(FFI_DEPS:$(FFI_PATH)%=%)
 	@touch $@
 
-MODULES+=$(BLS_PATH)
-BUILD_DEPS+=build/.bls-install
-CLEAN+=build/.bls-install
-
-## SECTOR BUILDER
-
-SECTOR_BUILDER_PATH:=extern/go-sectorbuilder/
-SECTOR_BUILDER_DEPS:=libsector_builder_ffi.a sector_builder_ffi.pc sector_builder_ffi.h
-SECTOR_BUILDER_DEPS:=$(addprefix $(SECTOR_BUILDER_PATH),$(SECTOR_BUILDER_DEPS))
-
-$(SECTOR_BUILDER_DEPS): build/.sector-builder-install ;
-
-build/.sector-builder-install: $(SECTOR_BUILDER_PATH)
-	$(MAKE) -C $(SECTOR_BUILDER_PATH) $(SECTOR_BUILDER_DEPS:$(SECTOR_BUILDER_PATH)%=%)
-	@touch $@
-
-MODULES+=$(SECTOR_BUILDER_PATH)
-BUILD_DEPS+=build/.sector-builder-install
-CLEAN+=build/.sector-builder-install
+MODULES+=$(FFI_PATH)
+BUILD_DEPS+=build/.filecoin-install
+CLEAN+=build/.filecoin-install
 
 $(MODULES): build/.update-modules ;
 
@@ -53,7 +38,7 @@ build/.update-modules:
 
 # end git modules
 
-## PROOFS
+## MAIN BINARIES
 
 CLEAN+=build/.update-modules
 
@@ -69,7 +54,7 @@ lotus: $(BUILD_DEPS)
 	go run github.com/GeertJohan/go.rice/rice append --exec lotus -i ./build
 
 .PHONY: lotus
-CLEAN+=lotus
+BINS+=lotus
 
 lotus-storage-miner: $(BUILD_DEPS)
 	rm -f lotus-storage-miner
@@ -77,16 +62,24 @@ lotus-storage-miner: $(BUILD_DEPS)
 	go run github.com/GeertJohan/go.rice/rice append --exec lotus-storage-miner -i ./build
 
 .PHONY: lotus-storage-miner
-
-CLEAN+=lotus-storage-miner
+BINS+=lotus-storage-miner
 
 build: lotus lotus-storage-miner
-
 .PHONY: build
 
 install:
 	install -C ./lotus /usr/local/bin/lotus
 	install -C ./lotus-storage-miner /usr/local/bin/lotus-storage-miner
+
+# TOOLS
+
+lotus-seed: $(BUILD_DEPS)
+	rm -f lotus-seed
+	go build -o lotus-seed ./cmd/lotus-seed
+	go run github.com/GeertJohan/go.rice/rice append --exec lotus-seed -i ./build
+
+.PHONY: lotus-seed
+BINS+=lotus-seed
 
 benchmarks:
 	go run github.com/whyrusleeping/bencher ./... > bench.json
@@ -96,8 +89,9 @@ benchmarks:
 
 pond: build
 	go build -o pond ./lotuspond
-	(cd lotuspond/front && npm i && npm run build)
+	(cd lotuspond/front && npm i && CI=false npm run build)
 .PHONY: pond
+BINS+=pond
 
 townhall:
 	rm -f townhall
@@ -105,28 +99,42 @@ townhall:
 	(cd ./cmd/lotus-townhall/townhall && npm i && npm run build)
 	go run github.com/GeertJohan/go.rice/rice append --exec townhall -i ./cmd/lotus-townhall -i ./build
 .PHONY: townhall
+BINS+=townhall
 
 fountain:
 	rm -f fountain
 	go build -o fountain ./cmd/lotus-fountain
 	go run github.com/GeertJohan/go.rice/rice append --exec fountain -i ./cmd/lotus-fountain
 .PHONY: fountain
+BINS+=fountain
 
 chainwatch:
 	rm -f chainwatch
 	go build -o chainwatch ./cmd/lotus-chainwatch
 	go run github.com/GeertJohan/go.rice/rice append --exec chainwatch -i ./cmd/lotus-chainwatch
 .PHONY: chainwatch
+BINS+=chainwatch
+
+bench:
+	rm -f bench
+	go build -o bench ./cmd/lotus-bench
+	go run github.com/GeertJohan/go.rice/rice append --exec bench -i ./build
+.PHONY: bench
+BINS+=bench
 
 stats:
 	rm -f stats
 	go build -o stats ./tools/stats
 .PHONY: stats
+BINS+=stats
+
+# MISC
+
+buildall: $(BINS)
 
 clean:
-	rm -rf $(CLEAN)
-	-$(MAKE) -C $(BLS_PATH) clean
-	-$(MAKE) -C $(SECTOR_BUILDER_PATH) clean
+	rm -rf $(CLEAN) $(BINS)
+	-$(MAKE) -C $(FFI_PATH) clean
 .PHONY: clean
 
 dist-clean:

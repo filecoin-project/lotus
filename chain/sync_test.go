@@ -3,6 +3,7 @@ package chain_test
 import (
 	"context"
 	"fmt"
+	"os"
 	"testing"
 	"time"
 
@@ -22,6 +23,12 @@ import (
 	"github.com/filecoin-project/lotus/node/modules"
 	"github.com/filecoin-project/lotus/node/repo"
 )
+
+func init() {
+	build.InsecurePoStValidation = true
+	os.Setenv("TRUST_PARAMS", "1")
+	build.SectorSizes = []uint64{1024}
+}
 
 const source = 0
 
@@ -390,7 +397,7 @@ func TestSyncBadTimestamp(t *testing.T) {
 	tu.waitUntilSync(0, client)
 
 	base := tu.g.CurTipset
-	tu.g.Timestamper = func(pts *types.TipSet, tl int) uint64 {
+	tu.g.Timestamper = func(pts *types.TipSet, tl uint64) uint64 {
 		return pts.MinTimestamp() + (build.BlockDelay / 2)
 	}
 

@@ -12,7 +12,7 @@ import (
 func TestBlockReward(t *testing.T) {
 	coffer := types.FromFil(build.MiningRewardTotal).Int
 	sum := new(big.Int)
-	N := build.HalvingPeriodBlocks
+	N := build.HalvingPeriodEpochs
 	for i := 0; i < N; i++ {
 		a := MiningReward(types.BigInt{coffer})
 		sum = sum.Add(sum, a.Int)

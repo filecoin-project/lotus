@@ -20,6 +20,8 @@ func main() {
 	err := gen.WriteTupleEncodersToFile("./chain/types/cbor_gen.go", "types",
 		types.BlockHeader{},
 		types.Ticket{},
+		types.EPostProof{},
+		types.EPostTicket{},
 		types.Message{},
 		types.SignedMessage{},
 		types.MsgMeta{},
@@ -91,7 +93,7 @@ func main() {
 		actors.SectorPreCommitInfo{},
 		actors.PreCommittedSector{},
 		actors.MinerInfo{},
-		actors.SubmitPoStParams{},
+		actors.SubmitFallbackPoStParams{},
 		actors.PaymentVerifyParams{},
 		actors.UpdatePeerIDParams{},
 		actors.MultiSigActorState{},
@@ -129,6 +131,7 @@ func main() {
 		actors.ComputeDataCommitmentParams{},
 		actors.SectorProveCommitInfo{},
 		actors.CheckMinerParams{},
+		actors.CronActorState{},
 	)
 	if err != nil {
 		fmt.Println(err)

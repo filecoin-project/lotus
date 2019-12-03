@@ -198,7 +198,7 @@ func (t *StorageMinerActorState) MarshalCBOR(w io.Writer) error {
 		_, err := w.Write(cbg.CborNull)
 		return err
 	}
-	if _, err := w.Write([]byte{139}); err != nil {
+	if _, err := w.Write([]byte{138}); err != nil {
 		return err
 	}
 
@@ -258,11 +258,6 @@ func (t *StorageMinerActorState) MarshalCBOR(w io.Writer) error {
 		return err
 	}
 
-	// t.t.NextDoneSet (types.BitField) (struct)
-	if err := t.NextDoneSet.MarshalCBOR(w); err != nil {
-		return err
-	}
-
 	// t.t.Power (types.BigInt) (struct)
 	if err := t.Power.MarshalCBOR(w); err != nil {
 		return err
@@ -278,8 +273,8 @@ func (t *StorageMinerActorState) MarshalCBOR(w io.Writer) error {
 		return err
 	}
 
-	// t.t.ProvingPeriodEnd (uint64) (uint64)
-	if _, err := w.Write(cbg.CborEncodeMajorType(cbg.MajUnsignedInt, uint64(t.ProvingPeriodEnd))); err != nil {
+	// t.t.ElectionPeriodStart (uint64) (uint64)
+	if _, err := w.Write(cbg.CborEncodeMajorType(cbg.MajUnsignedInt, uint64(t.ElectionPeriodStart))); err != nil {
 		return err
 	}
 	return nil
@@ -296,7 +291,7 @@ func (t *StorageMinerActorState) UnmarshalCBOR(r io.Reader) error {
 		return fmt.Errorf("cbor input should be of type array")
 	}
 
-	if extra != 11 {
+	if extra != 10 {
 		return fmt.Errorf("cbor input had wrong number of fields")
 	}
 
@@ -407,15 +402,6 @@ func (t *StorageMinerActorState) UnmarshalCBOR(r io.Reader) error {
 		}
 
 	}
-	// t.t.NextDoneSet (types.BitField) (struct)
-
-	{
-
-		if err := t.NextDoneSet.UnmarshalCBOR(br); err != nil {
-			return err
-		}
-
-	}
 	// t.t.Power (types.BigInt) (struct)
 
 	{
@@ -452,7 +438,7 @@ func (t *StorageMinerActorState) UnmarshalCBOR(r io.Reader) error {
 		return fmt.Errorf("wrong type for uint64 field")
 	}
 	t.SlashedAt = uint64(extra)
-	// t.t.ProvingPeriodEnd (uint64) (uint64)
+	// t.t.ElectionPeriodStart (uint64) (uint64)
 
 	maj, extra, err = cbg.CborReadHeader(br)
 	if err != nil {
@@ -461,7 +447,7 @@ func (t *StorageMinerActorState) UnmarshalCBOR(r io.Reader) error {
 	if maj != cbg.MajUnsignedInt {
 		return fmt.Errorf("wrong type for uint64 field")
 	}
-	t.ProvingPeriodEnd = uint64(extra)
+	t.ElectionPeriodStart = uint64(extra)
 	return nil
 }
 
@@ -827,7 +813,7 @@ func (t *MinerInfo) UnmarshalCBOR(r io.Reader) error {
 	return nil
 }
 
-func (t *SubmitPoStParams) MarshalCBOR(w io.Writer) error {
+func (t *SubmitFallbackPoStParams) MarshalCBOR(w io.Writer) error {
 	if t == nil {
 		_, err := w.Write(cbg.CborNull)
 		return err
@@ -844,14 +830,19 @@ func (t *SubmitPoStParams) MarshalCBOR(w io.Writer) error {
 		return err
 	}
 
-	// t.t.DoneSet (types.BitField) (struct)
-	if err := t.DoneSet.MarshalCBOR(w); err != nil {
+	// t.t.Candidates ([]types.EPostTicket) (slice)
+	if _, err := w.Write(cbg.CborEncodeMajorType(cbg.MajArray, uint64(len(t.Candidates)))); err != nil {
 		return err
+	}
+	for _, v := range t.Candidates {
+		if err := v.MarshalCBOR(w); err != nil {
+			return err
+		}
 	}
 	return nil
 }
 
-func (t *SubmitPoStParams) UnmarshalCBOR(r io.Reader) error {
+func (t *SubmitFallbackPoStParams) UnmarshalCBOR(r io.Reader) error {
 	br := cbg.GetPeeker(r)
 
 	maj, extra, err := cbg.CborReadHeader(br)
@@ -883,15 +874,32 @@ func (t *SubmitPoStParams) UnmarshalCBOR(r io.Reader) error {
 	if _, err := io.ReadFull(br, t.Proof); err != nil {
 		return err
 	}
-	// t.t.DoneSet (types.BitField) (struct)
+	// t.t.Candidates ([]types.EPostTicket) (slice)
 
-	{
+	maj, extra, err = cbg.CborReadHeader(br)
+	if err != nil {
+		return err
+	}
+	if extra > 8192 {
+		return fmt.Errorf("t.Candidates: array too large (%d)", extra)
+	}
 
-		if err := t.DoneSet.UnmarshalCBOR(br); err != nil {
+	if maj != cbg.MajArray {
+		return fmt.Errorf("expected cbor array")
+	}
+	if extra > 0 {
+		t.Candidates = make([]types.EPostTicket, extra)
+	}
+	for i := 0; i < int(extra); i++ {
+
+		var v types.EPostTicket
+		if err := v.UnmarshalCBOR(br); err != nil {
 			return err
 		}
 
+		t.Candidates[i] = v
 	}
+
 	return nil
 }
 
@@ -3974,5 +3982,34 @@ func (t *CheckMinerParams) UnmarshalCBOR(r io.Reader) error {
 		}
 
 	}
+	return nil
+}
+
+func (t *CronActorState) MarshalCBOR(w io.Writer) error {
+	if t == nil {
+		_, err := w.Write(cbg.CborNull)
+		return err
+	}
+	if _, err := w.Write([]byte{128}); err != nil {
+		return err
+	}
+	return nil
+}
+
+func (t *CronActorState) UnmarshalCBOR(r io.Reader) error {
+	br := cbg.GetPeeker(r)
+
+	maj, extra, err := cbg.CborReadHeader(br)
+	if err != nil {
+		return err
+	}
+	if maj != cbg.MajArray {
+		return fmt.Errorf("cbor input should be of type array")
+	}
+
+	if extra != 0 {
+		return fmt.Errorf("cbor input had wrong number of fields")
+	}
+
 	return nil
 }

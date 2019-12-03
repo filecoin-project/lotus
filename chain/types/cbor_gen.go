@@ -5,7 +5,7 @@ import (
 	"io"
 	"math"
 
-	cid "github.com/ipfs/go-cid"
+	"github.com/ipfs/go-cid"
 	cbg "github.com/whyrusleeping/cbor-gen"
 	xerrors "golang.org/x/xerrors"
 )
@@ -28,21 +28,13 @@ func (t *BlockHeader) MarshalCBOR(w io.Writer) error {
 		return err
 	}
 
-	// t.t.Tickets ([]*types.Ticket) (slice)
-	if _, err := w.Write(cbg.CborEncodeMajorType(cbg.MajArray, uint64(len(t.Tickets)))); err != nil {
+	// t.t.Ticket (types.Ticket) (struct)
+	if err := t.Ticket.MarshalCBOR(w); err != nil {
 		return err
-	}
-	for _, v := range t.Tickets {
-		if err := v.MarshalCBOR(w); err != nil {
-			return err
-		}
 	}
 
-	// t.t.ElectionProof ([]uint8) (slice)
-	if _, err := w.Write(cbg.CborEncodeMajorType(cbg.MajByteString, uint64(len(t.ElectionProof)))); err != nil {
-		return err
-	}
-	if _, err := w.Write(t.ElectionProof); err != nil {
+	// t.t.EPostProof (types.EPostProof) (struct)
+	if err := t.EPostProof.MarshalCBOR(w); err != nil {
 		return err
 	}
 
@@ -125,48 +117,35 @@ func (t *BlockHeader) UnmarshalCBOR(r io.Reader) error {
 		}
 
 	}
-	// t.t.Tickets ([]*types.Ticket) (slice)
+	// t.t.Ticket (types.Ticket) (struct)
 
-	maj, extra, err = cbg.CborReadHeader(br)
-	if err != nil {
-		return err
-	}
-	if extra > 8192 {
-		return fmt.Errorf("t.Tickets: array too large (%d)", extra)
-	}
+	{
 
-	if maj != cbg.MajArray {
-		return fmt.Errorf("expected cbor array")
-	}
-	if extra > 0 {
-		t.Tickets = make([]*Ticket, extra)
-	}
-	for i := 0; i < int(extra); i++ {
+		pb, err := br.PeekByte()
+		if err != nil {
+			return err
+		}
+		if pb == cbg.CborNull[0] {
+			var nbuf [1]byte
+			if _, err := br.Read(nbuf[:]); err != nil {
+				return err
+			}
+		} else {
+			t.Ticket = new(Ticket)
+			if err := t.Ticket.UnmarshalCBOR(br); err != nil {
+				return err
+			}
+		}
 
-		var v Ticket
-		if err := v.UnmarshalCBOR(br); err != nil {
+	}
+	// t.t.EPostProof (types.EPostProof) (struct)
+
+	{
+
+		if err := t.EPostProof.UnmarshalCBOR(br); err != nil {
 			return err
 		}
 
-		t.Tickets[i] = &v
-	}
-
-	// t.t.ElectionProof ([]uint8) (slice)
-
-	maj, extra, err = cbg.CborReadHeader(br)
-	if err != nil {
-		return err
-	}
-	if extra > 8192 {
-		return fmt.Errorf("t.ElectionProof: array too large (%d)", extra)
-	}
-
-	if maj != cbg.MajByteString {
-		return fmt.Errorf("expected byte array")
-	}
-	t.ElectionProof = make([]byte, extra)
-	if _, err := io.ReadFull(br, t.ElectionProof); err != nil {
-		return err
 	}
 	// t.t.Parents ([]cid.Cid) (slice)
 
@@ -271,8 +250,20 @@ func (t *BlockHeader) UnmarshalCBOR(r io.Reader) error {
 
 	{
 
-		if err := t.BlockSig.UnmarshalCBOR(br); err != nil {
+		pb, err := br.PeekByte()
+		if err != nil {
 			return err
+		}
+		if pb == cbg.CborNull[0] {
+			var nbuf [1]byte
+			if _, err := br.Read(nbuf[:]); err != nil {
+				return err
+			}
+		} else {
+			t.BlockSig = new(Signature)
+			if err := t.BlockSig.UnmarshalCBOR(br); err != nil {
+				return err
+			}
 		}
 
 	}
@@ -330,6 +321,205 @@ func (t *Ticket) UnmarshalCBOR(r io.Reader) error {
 	if _, err := io.ReadFull(br, t.VRFProof); err != nil {
 		return err
 	}
+	return nil
+}
+
+func (t *EPostProof) MarshalCBOR(w io.Writer) error {
+	if t == nil {
+		_, err := w.Write(cbg.CborNull)
+		return err
+	}
+	if _, err := w.Write([]byte{131}); err != nil {
+		return err
+	}
+
+	// t.t.Proof ([]uint8) (slice)
+	if _, err := w.Write(cbg.CborEncodeMajorType(cbg.MajByteString, uint64(len(t.Proof)))); err != nil {
+		return err
+	}
+	if _, err := w.Write(t.Proof); err != nil {
+		return err
+	}
+
+	// t.t.PostRand ([]uint8) (slice)
+	if _, err := w.Write(cbg.CborEncodeMajorType(cbg.MajByteString, uint64(len(t.PostRand)))); err != nil {
+		return err
+	}
+	if _, err := w.Write(t.PostRand); err != nil {
+		return err
+	}
+
+	// t.t.Candidates ([]types.EPostTicket) (slice)
+	if _, err := w.Write(cbg.CborEncodeMajorType(cbg.MajArray, uint64(len(t.Candidates)))); err != nil {
+		return err
+	}
+	for _, v := range t.Candidates {
+		if err := v.MarshalCBOR(w); err != nil {
+			return err
+		}
+	}
+	return nil
+}
+
+func (t *EPostProof) UnmarshalCBOR(r io.Reader) error {
+	br := cbg.GetPeeker(r)
+
+	maj, extra, err := cbg.CborReadHeader(br)
+	if err != nil {
+		return err
+	}
+	if maj != cbg.MajArray {
+		return fmt.Errorf("cbor input should be of type array")
+	}
+
+	if extra != 3 {
+		return fmt.Errorf("cbor input had wrong number of fields")
+	}
+
+	// t.t.Proof ([]uint8) (slice)
+
+	maj, extra, err = cbg.CborReadHeader(br)
+	if err != nil {
+		return err
+	}
+	if extra > 8192 {
+		return fmt.Errorf("t.Proof: array too large (%d)", extra)
+	}
+
+	if maj != cbg.MajByteString {
+		return fmt.Errorf("expected byte array")
+	}
+	t.Proof = make([]byte, extra)
+	if _, err := io.ReadFull(br, t.Proof); err != nil {
+		return err
+	}
+	// t.t.PostRand ([]uint8) (slice)
+
+	maj, extra, err = cbg.CborReadHeader(br)
+	if err != nil {
+		return err
+	}
+	if extra > 8192 {
+		return fmt.Errorf("t.PostRand: array too large (%d)", extra)
+	}
+
+	if maj != cbg.MajByteString {
+		return fmt.Errorf("expected byte array")
+	}
+	t.PostRand = make([]byte, extra)
+	if _, err := io.ReadFull(br, t.PostRand); err != nil {
+		return err
+	}
+	// t.t.Candidates ([]types.EPostTicket) (slice)
+
+	maj, extra, err = cbg.CborReadHeader(br)
+	if err != nil {
+		return err
+	}
+	if extra > 8192 {
+		return fmt.Errorf("t.Candidates: array too large (%d)", extra)
+	}
+
+	if maj != cbg.MajArray {
+		return fmt.Errorf("expected cbor array")
+	}
+	if extra > 0 {
+		t.Candidates = make([]EPostTicket, extra)
+	}
+	for i := 0; i < int(extra); i++ {
+
+		var v EPostTicket
+		if err := v.UnmarshalCBOR(br); err != nil {
+			return err
+		}
+
+		t.Candidates[i] = v
+	}
+
+	return nil
+}
+
+func (t *EPostTicket) MarshalCBOR(w io.Writer) error {
+	if t == nil {
+		_, err := w.Write(cbg.CborNull)
+		return err
+	}
+	if _, err := w.Write([]byte{131}); err != nil {
+		return err
+	}
+
+	// t.t.Partial ([]uint8) (slice)
+	if _, err := w.Write(cbg.CborEncodeMajorType(cbg.MajByteString, uint64(len(t.Partial)))); err != nil {
+		return err
+	}
+	if _, err := w.Write(t.Partial); err != nil {
+		return err
+	}
+
+	// t.t.SectorID (uint64) (uint64)
+	if _, err := w.Write(cbg.CborEncodeMajorType(cbg.MajUnsignedInt, uint64(t.SectorID))); err != nil {
+		return err
+	}
+
+	// t.t.ChallengeIndex (uint64) (uint64)
+	if _, err := w.Write(cbg.CborEncodeMajorType(cbg.MajUnsignedInt, uint64(t.ChallengeIndex))); err != nil {
+		return err
+	}
+	return nil
+}
+
+func (t *EPostTicket) UnmarshalCBOR(r io.Reader) error {
+	br := cbg.GetPeeker(r)
+
+	maj, extra, err := cbg.CborReadHeader(br)
+	if err != nil {
+		return err
+	}
+	if maj != cbg.MajArray {
+		return fmt.Errorf("cbor input should be of type array")
+	}
+
+	if extra != 3 {
+		return fmt.Errorf("cbor input had wrong number of fields")
+	}
+
+	// t.t.Partial ([]uint8) (slice)
+
+	maj, extra, err = cbg.CborReadHeader(br)
+	if err != nil {
+		return err
+	}
+	if extra > 8192 {
+		return fmt.Errorf("t.Partial: array too large (%d)", extra)
+	}
+
+	if maj != cbg.MajByteString {
+		return fmt.Errorf("expected byte array")
+	}
+	t.Partial = make([]byte, extra)
+	if _, err := io.ReadFull(br, t.Partial); err != nil {
+		return err
+	}
+	// t.t.SectorID (uint64) (uint64)
+
+	maj, extra, err = cbg.CborReadHeader(br)
+	if err != nil {
+		return err
+	}
+	if maj != cbg.MajUnsignedInt {
+		return fmt.Errorf("wrong type for uint64 field")
+	}
+	t.SectorID = uint64(extra)
+	// t.t.ChallengeIndex (uint64) (uint64)
+
+	maj, extra, err = cbg.CborReadHeader(br)
+	if err != nil {
+		return err
+	}
+	if maj != cbg.MajUnsignedInt {
+		return fmt.Errorf("wrong type for uint64 field")
+	}
+	t.ChallengeIndex = uint64(extra)
 	return nil
 }
 

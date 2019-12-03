@@ -46,6 +46,17 @@ jobs:
       - go/mod-download
       - go/mod-tidy-check
 
+  build-all:
+    executor: golang
+    steps:
+      - install-deps
+      - prepare
+      - go/mod-download
+      - run: sudo apt-get update
+      - run: sudo apt-get install npm
+      - run:
+          command: make buildall
+
   test:
     description: |
       Run tests with gotestsum.
@@ -166,3 +177,4 @@ workflows:
       - test:
           codecov-upload: true
       - mod-tidy-check
+      - build-all

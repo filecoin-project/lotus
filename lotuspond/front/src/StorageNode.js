@@ -120,7 +120,7 @@ class StorageNode extends React.Component {
           </div>
           <div>
             <Address client={this.props.fullConn} addr={this.state.actor} mountWindow={this.props.mountWindow}/>
-            <span>&nbsp;<abbr title="Proving period end">PPE:</abbr> <b>{this.state.actorState.State.ProvingPeriodEnd}</b></span>
+            <span>&nbsp;<abbr title="Proving period end">EPS:</abbr> <b>{this.state.actorState.State.ElectionPeriodStart}</b></span>
           </div>
           <div>{this.state.statusCounts.map((c, i) => <span key={i}>{sealCodes[i]}: {c} | </span>)}</div>
           <div>

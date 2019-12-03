@@ -8,6 +8,7 @@ import (
 )
 
 var AccountCodeCid cid.Cid
+var CronCodeCid cid.Cid
 var StoragePowerCodeCid cid.Cid
 var StorageMarketCodeCid cid.Cid
 var StorageMinerCodeCid cid.Cid
@@ -19,6 +20,7 @@ var InitAddress = mustIDAddress(0)
 var NetworkAddress = mustIDAddress(1)
 var StoragePowerAddress = mustIDAddress(2)
 var StorageMarketAddress = mustIDAddress(3) // TODO: missing from spec
+var CronAddress = mustIDAddress(4)
 var BurntFundsAddress = mustIDAddress(99)
 
 func mustIDAddress(i uint64) address.Address {
@@ -40,6 +42,7 @@ func init() {
 	}
 
 	AccountCodeCid = mustSum("fil/1/account") // TODO: spec
+	CronCodeCid = mustSum("fil/1/cron")
 	StoragePowerCodeCid = mustSum("fil/1/power")
 	StorageMarketCodeCid = mustSum("fil/1/market")
 	StorageMinerCodeCid = mustSum("fil/1/miner")

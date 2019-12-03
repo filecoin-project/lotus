@@ -15,7 +15,7 @@ import (
 	cbg "github.com/whyrusleeping/cbor-gen"
 	"golang.org/x/xerrors"
 
-	bls "github.com/filecoin-project/go-bls-sigs"
+	bls "github.com/filecoin-project/filecoin-ffi"
 	"github.com/ipfs/go-cid"
 	hamt "github.com/ipfs/go-hamt-ipld"
 	logging "github.com/ipfs/go-log"
@@ -102,7 +102,7 @@ func (sm *StateManager) computeTipSetState(ctx context.Context, blks []*types.Bl
 		cids[i] = v.Cid()
 	}
 
-	r := store.NewChainRand(sm.cs, cids, blks[0].Height, nil)
+	r := store.NewChainRand(sm.cs, cids, blks[0].Height)
 
 	vmi, err := vm.NewVM(pstate, blks[0].Height, r, address.Undef, sm.cs.Blockstore())
 	if err != nil {
@@ -113,9 +113,14 @@ func (sm *StateManager) computeTipSetState(ctx context.Context, blks []*types.Bl
 	if err != nil {
 		return cid.Undef, cid.Undef, xerrors.Errorf("failed to get network actor: %w", err)
 	}
-
 	reward := vm.MiningReward(netact.Balance)
 	for _, b := range blks {
+		netact, err = vmi.StateTree().GetActor(actors.NetworkAddress)
+		if err != nil {
+			return cid.Undef, cid.Undef, xerrors.Errorf("failed to get network actor: %w", err)
+		}
+		vmi.SetBlockMiner(b.Miner)
+
 		owner, err := GetMinerOwner(ctx, sm, pstate, b.Miner)
 		if err != nil {
 			return cid.Undef, cid.Undef, xerrors.Errorf("failed to get owner for miner %s: %w", b.Miner, err)
@@ -130,6 +135,23 @@ func (sm *StateManager) computeTipSetState(ctx context.Context, blks []*types.Bl
 			return cid.Undef, cid.Undef, xerrors.Errorf("failed to deduct funds from network actor: %w", err)
 		}
 
+		// all block miners created a valid post, go update the actor state
+		postSubmitMsg := &types.Message{
+			From:     actors.NetworkAddress,
+			Nonce:    netact.Nonce,
+			To:       b.Miner,
+			Method:   actors.MAMethods.SubmitElectionPoSt,
+			GasPrice: types.NewInt(0),
+			GasLimit: types.NewInt(10000000000),
+			Value:    types.NewInt(0),
+		}
+		ret, err := vmi.ApplyMessage(ctx, postSubmitMsg)
+		if err != nil {
+			return cid.Undef, cid.Undef, xerrors.Errorf("submit election post message invocation failed: %w", err)
+		}
+		if ret.ExitCode != 0 {
+			return cid.Undef, cid.Undef, xerrors.Errorf("submit election post invocation returned nonzero exit code: %d", ret.ExitCode)
+		}
 	}
 
 	// TODO: can't use method from chainstore because it doesnt let us know who the block miners were
@@ -197,21 +219,20 @@ func (sm *StateManager) computeTipSetState(ctx context.Context, blks []*types.Bl
 		}
 	}
 
-	// TODO: this nonce-getting is a ting bit ugly
-	spa, err := vmi.StateTree().GetActor(actors.StoragePowerAddress)
+	// TODO: this nonce-getting is a tiny bit ugly
+	ca, err := vmi.StateTree().GetActor(actors.CronAddress)
 	if err != nil {
 		return cid.Undef, cid.Undef, err
 	}
 
-	// TODO: cron actor
 	ret, err := vmi.ApplyMessage(ctx, &types.Message{
-		To:       actors.StoragePowerAddress,
-		From:     actors.StoragePowerAddress,
-		Nonce:    spa.Nonce,
+		To:       actors.CronAddress,
+		From:     actors.CronAddress,
+		Nonce:    ca.Nonce,
 		Value:    types.NewInt(0),
 		GasPrice: types.NewInt(0),
 		GasLimit: types.NewInt(1 << 30), // Make super sure this is never too little
-		Method:   actors.SPAMethods.CheckProofSubmissions,
+		Method:   actors.CAMethods.EpochTick,
 		Params:   nil,
 	})
 	if err != nil {

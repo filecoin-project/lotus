@@ -107,7 +107,8 @@ class MarketState extends React.Component {
     const tipset = await this.props.client.call("Filecoin.ChainHead", []) // TODO: from props
     const participants = await this.props.client.call("Filecoin.StateMarketParticipants", [tipset])
     const deals = await this.props.client.call("Filecoin.StateMarketDeals", [tipset])
-    this.setState({participants, deals})
+    const state = await this.props.client.call('Filecoin.StateReadState', [this.props.actor, tipset])
+    this.setState({participants, deals, nextDeal: state.State.NextDealID})
   }
 
   render() {
@@ -125,7 +126,7 @@ class MarketState extends React.Component {
       </div>
       <div>
         <div>---</div>
-        <div>Deals:</div>
+        <div>Deals ({this.state.nextDeal} Total):</div>
         <table>
           <tr><td>id</td><td>Active</td><td>Client</td><td>Provider</td><td>Size</td><td>Price</td><td>Duration</td></tr>
           {Object.keys(this.state.deals).map(d => <tr>
@@ -181,7 +182,7 @@ class MinerState extends React.Component {
       <div>Worker: <Address addr={this.state.worker} client={this.props.client} mountWindow={this.props.mountWindow}/></div>
       <div>Sector Size: <b>{this.state.sectorSize/1024}</b> KiB</div>
       <div>Power: <b>{state.Power}</b> (<b>{state.Power/this.state.networkPower*100}</b>%)</div>
-      <div>Proving Period End: <b>{state.ProvingPeriodEnd}</b></div>
+      <div>Election Period Start: <b>{state.ElectionPeriodStart}</b></div>
       <div>Slashed: <b>{state.SlashedAt === 0 ? "NO" : state.SlashedAt}</b></div>
       <div>
         <div>----</div>

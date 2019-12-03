@@ -39,31 +39,24 @@ var ErrNotFound = errors.New("not found")
 
 type SectorBlocks struct {
 	*storage.Miner
+	sb *sectorbuilder.SectorBuilder
 
 	intermediate blockstore.Blockstore // holds intermediate nodes TODO: consider combining with the staging blockstore
 
-	unsealed *unsealedBlocks
-	keys     datastore.Batching
-	keyLk    sync.Mutex
+	keys  datastore.Batching
+	keyLk sync.Mutex
 }
 
 func NewSectorBlocks(miner *storage.Miner, ds dtypes.MetadataDS, sb *sectorbuilder.SectorBuilder) *SectorBlocks {
 	sbc := &SectorBlocks{
 		Miner: miner,
+		sb:    sb,
 
 		intermediate: blockstore.NewBlockstore(namespace.Wrap(ds, imBlocksPrefix)),
 
 		keys: namespace.Wrap(ds, dsPrefix),
 	}
 
-	unsealed := &unsealedBlocks{ // TODO: untangle this
-		sb: sb,
-
-		unsealed:  map[string][]byte{},
-		unsealing: map[string]chan struct{}{},
-	}
-
-	sbc.unsealed = unsealed
 	return sbc
 }
 
@@ -77,14 +70,13 @@ type UnixfsReader interface {
 
 type refStorer struct {
 	blockReader  UnixfsReader
-	writeRef     func(cid cid.Cid, pieceRef string, offset uint64, size uint64) error
+	writeRef     func(cid cid.Cid, offset uint64, size uint64) error
 	intermediate blockstore.Blockstore
 
-	pieceRef  string
 	remaining []byte
 }
 
-func (st *SectorBlocks) writeRef(cid cid.Cid, pieceRef string, offset uint64, size uint64) error {
+func (st *SectorBlocks) writeRef(cid cid.Cid, sectorID uint64, offset uint64, size uint64) error {
 	st.keyLk.Lock() // TODO: make this multithreaded
 	defer st.keyLk.Unlock()
 
@@ -104,9 +96,9 @@ func (st *SectorBlocks) writeRef(cid cid.Cid, pieceRef string, offset uint64, si
 	}
 
 	refs.Refs = append(refs.Refs, api.SealedRef{
-		Piece:  pieceRef,
-		Offset: offset,
-		Size:   size,
+		SectorID: sectorID,
+		Offset:   offset,
+		Size:     size,
 	})
 
 	newRef, err := cborutil.Dump(&refs)
@@ -147,7 +139,7 @@ func (r *refStorer) Read(p []byte) (n int, err error) {
 			continue
 		}
 
-		if err := r.writeRef(nd.Cid(), r.pieceRef, offset, uint64(len(data))); err != nil {
+		if err := r.writeRef(nd.Cid(), offset, uint64(len(data))); err != nil {
 			return 0, xerrors.Errorf("writing ref: %w", err)
 		}
 
@@ -160,22 +152,30 @@ func (r *refStorer) Read(p []byte) (n int, err error) {
 	}
 }
 
-func (st *SectorBlocks) AddUnixfsPiece(ctx context.Context, ref cid.Cid, r UnixfsReader, dealID uint64) (sectorID uint64, err error) {
+func (st *SectorBlocks) AddUnixfsPiece(ctx context.Context, r UnixfsReader, dealID uint64) (sectorID uint64, err error) {
 	size, err := r.Size()
 	if err != nil {
 		return 0, err
 	}
 
+	sectorID, pieceOffset, err := st.Miner.AllocatePiece(padreader.PaddedSize(uint64(size)))
+	if err != nil {
+		return 0, err
+	}
+
 	refst := &refStorer{
-		blockReader:  r,
-		pieceRef:     string(SerializationUnixfs0) + ref.String(),
-		writeRef:     st.writeRef,
+		blockReader: r,
+		writeRef: func(cid cid.Cid, offset uint64, size uint64) error {
+			offset += pieceOffset
+
+			return st.writeRef(cid, sectorID, offset, size)
+		},
 		intermediate: st.intermediate,
 	}
 
-	pr, psize := padreader.New(r, uint64(size))
+	pr, psize := padreader.New(refst, uint64(size))
 
-	return st.Miner.SealPiece(ctx, refst.pieceRef, psize, pr, dealID)
+	return sectorID, st.Miner.SealPiece(ctx, psize, pr, sectorID, dealID)
 }
 
 func (st *SectorBlocks) List() (map[cid.Cid][]api.SealedRef, error) {

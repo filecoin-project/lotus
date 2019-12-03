@@ -134,12 +134,8 @@ func loadTipsets(ctx context.Context, api api.FullNode, curr *types.TipSet, lowe
 		log.Printf("Walking back { height:%d }", curr.Height())
 		tipsets = append(tipsets, curr)
 
-		ph := ParentTipsetHeight(curr)
-		if ph == 0 {
-			break
-		}
-
-		prev, err := api.ChainGetTipSetByHeight(ctx, ph, curr)
+		tsk := types.NewTipSetKey(curr.Parents()...)
+		prev, err := api.ChainGetTipSet(ctx, tsk)
 		if err != nil {
 			return tipsets, err
 		}
@@ -152,11 +148,6 @@ func loadTipsets(ctx context.Context, api api.FullNode, curr *types.TipSet, lowe
 	}
 
 	return tipsets, nil
-}
-
-func ParentTipsetHeight(tipset *types.TipSet) uint64 {
-	mtb := tipset.MinTicketBlock()
-	return tipset.Height() - uint64(len(mtb.Tickets)) - 1
 }
 
 func GetFullNodeAPI(repo string) (api.FullNode, jsonrpc.ClientCloser, error) {

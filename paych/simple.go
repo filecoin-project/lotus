@@ -5,6 +5,7 @@ import (
 	"fmt"
 
 	"github.com/ipfs/go-cid"
+	"golang.org/x/xerrors"
 
 	"github.com/filecoin-project/lotus/chain/actors"
 	"github.com/filecoin-project/lotus/chain/address"
@@ -37,7 +38,7 @@ func (pm *Manager) createPaych(ctx context.Context, from, to address.Address, am
 
 	smsg, err := pm.mpool.MpoolPushMessage(ctx, msg)
 	if err != nil {
-		return address.Undef, cid.Undef, err
+		return address.Undef, cid.Undef, xerrors.Errorf("initializing paych actor: %w", err)
 	}
 
 	mcid := smsg.Cid()
@@ -46,7 +47,7 @@ func (pm *Manager) createPaych(ctx context.Context, from, to address.Address, am
 	//  (tricky because we need to setup channel tracking before we know it's address)
 	mwait, err := pm.state.StateWaitMsg(ctx, mcid)
 	if err != nil {
-		return address.Undef, cid.Undef, err
+		return address.Undef, cid.Undef, xerrors.Errorf("wait msg: %w", err)
 	}
 
 	if mwait.Receipt.ExitCode != 0 {
@@ -60,11 +61,11 @@ func (pm *Manager) createPaych(ctx context.Context, from, to address.Address, am
 
 	ci, err := pm.loadOutboundChannelInfo(ctx, paychaddr)
 	if err != nil {
-		return address.Undef, cid.Undef, err
+		return address.Undef, cid.Undef, xerrors.Errorf("loading channel info: %w", err)
 	}
 
 	if err := pm.store.trackChannel(ci); err != nil {
-		return address.Undef, cid.Undef, err
+		return address.Undef, cid.Undef, xerrors.Errorf("tracking channel: %w", err)
 	}
 
 	return paychaddr, mcid, nil
@@ -108,7 +109,7 @@ func (pm *Manager) GetPaych(ctx context.Context, from, to address.Address, ensur
 		return ci.Control == from && ci.Target == to
 	})
 	if err != nil {
-		return address.Undef, cid.Undef, err
+		return address.Undef, cid.Undef, xerrors.Errorf("findChan: %w", err)
 	}
 	if ch != address.Undef {
 		// TODO: Track available funds

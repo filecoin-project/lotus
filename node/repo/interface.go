@@ -47,6 +47,6 @@ type LockedRepo interface {
 	// KeyStore returns store of private keys for Filecoin transactions
 	KeyStore() (types.KeyStore, error)
 
-	// Path returns absolute path of the repo (or empty string if in-memory)
+	// Path returns absolute path of the repo
 	Path() string
 }

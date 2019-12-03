@@ -6,6 +6,7 @@ import (
 	"github.com/filecoin-project/lotus/api"
 	"github.com/filecoin-project/lotus/chain/address"
 	"github.com/filecoin-project/lotus/lib/sectorbuilder"
+	"github.com/filecoin-project/lotus/miner"
 	"github.com/filecoin-project/lotus/storage"
 	"github.com/filecoin-project/lotus/storage/sectorblocks"
 )
@@ -17,8 +18,9 @@ type StorageMinerAPI struct {
 	SectorBuilder       *sectorbuilder.SectorBuilder
 	SectorBlocks        *sectorblocks.SectorBlocks
 
-	Miner *storage.Miner
-	Full  api.FullNode
+	Miner      *storage.Miner
+	BlockMiner *miner.Miner
+	Full       api.FullNode
 }
 
 func (sm *StorageMinerAPI) WorkerStats(context.Context) (api.WorkerStats, error) {

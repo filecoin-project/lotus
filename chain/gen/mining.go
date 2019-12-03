@@ -3,8 +3,8 @@ package gen
 import (
 	"context"
 
+	bls "github.com/filecoin-project/filecoin-ffi"
 	amt "github.com/filecoin-project/go-amt-ipld"
-	bls "github.com/filecoin-project/go-bls-sigs"
 	cid "github.com/ipfs/go-cid"
 	hamt "github.com/ipfs/go-hamt-ipld"
 	cbg "github.com/whyrusleeping/cbor-gen"
@@ -18,13 +18,11 @@ import (
 	"github.com/filecoin-project/lotus/chain/wallet"
 )
 
-func MinerCreateBlock(ctx context.Context, sm *stmgr.StateManager, w *wallet.Wallet, miner address.Address, parents *types.TipSet, tickets []*types.Ticket, proof types.ElectionProof, msgs []*types.SignedMessage, timestamp uint64) (*types.FullBlock, error) {
+func MinerCreateBlock(ctx context.Context, sm *stmgr.StateManager, w *wallet.Wallet, miner address.Address, parents *types.TipSet, ticket *types.Ticket, proof *types.EPostProof, msgs []*types.SignedMessage, height, timestamp uint64) (*types.FullBlock, error) {
 	st, recpts, err := sm.TipSetState(ctx, parents)
 	if err != nil {
 		return nil, xerrors.Errorf("failed to load tipset state: %w", err)
 	}
-
-	height := parents.Height() + uint64(len(tickets))
 
 	worker, err := stmgr.GetMinerWorkerRaw(ctx, sm, st, miner)
 	if err != nil {
@@ -34,10 +32,10 @@ func MinerCreateBlock(ctx context.Context, sm *stmgr.StateManager, w *wallet.Wal
 	next := &types.BlockHeader{
 		Miner:                 miner,
 		Parents:               parents.Cids(),
-		Tickets:               tickets,
+		Ticket:                ticket,
 		Height:                height,
 		Timestamp:             timestamp,
-		ElectionProof:         proof,
+		EPostProof:            *proof,
 		ParentStateRoot:       st,
 		ParentMessageReceipts: recpts,
 	}
@@ -122,7 +120,7 @@ func MinerCreateBlock(ctx context.Context, sm *stmgr.StateManager, w *wallet.Wal
 		return nil, xerrors.Errorf("failed to sign new block: %w", err)
 	}
 
-	next.BlockSig = *sig
+	next.BlockSig = sig
 
 	fullBlock := &types.FullBlock{
 		Header:        next,

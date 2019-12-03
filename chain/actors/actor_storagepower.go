@@ -289,8 +289,8 @@ func (spa StoragePowerActor) UpdateStorage(act *types.Actor, vmctx types.VMConte
 
 	self.TotalStorage = types.BigAdd(self.TotalStorage, params.Delta)
 
-	previousBucket := params.PreviousProvingPeriodEnd % build.ProvingPeriodDuration
-	nextBucket := params.NextProvingPeriodEnd % build.ProvingPeriodDuration
+	previousBucket := params.PreviousProvingPeriodEnd % build.SlashablePowerDelay
+	nextBucket := params.NextProvingPeriodEnd % build.SlashablePowerDelay
 
 	if previousBucket == nextBucket && params.PreviousProvingPeriodEnd != 0 {
 		nroot, err := vmctx.Storage().Put(&self)
@@ -567,8 +567,8 @@ func pledgeCollateralForSize(vmctx types.VMContext, size, totalStorage types.Big
 }
 
 func (spa StoragePowerActor) CheckProofSubmissions(act *types.Actor, vmctx types.VMContext, param *struct{}) ([]byte, ActorError) {
-	if vmctx.Message().From != StoragePowerAddress {
-		return nil, aerrors.New(1, "CheckProofSubmissions is only callable as a part of tipset state computation")
+	if vmctx.Message().From != CronAddress {
+		return nil, aerrors.New(1, "CheckProofSubmissions is only callable from the cron actor")
 	}
 
 	var self StoragePowerState
@@ -601,7 +601,7 @@ func (spa StoragePowerActor) CheckProofSubmissions(act *types.Actor, vmctx types
 }
 
 func checkProofSubmissionsAtH(vmctx types.VMContext, self *StoragePowerState, height uint64) aerrors.ActorError {
-	bucketID := height % build.ProvingPeriodDuration
+	bucketID := height % build.SlashablePowerDelay
 
 	buckets, eerr := amt.LoadAMT(types.WrapStorage(vmctx.Storage()), self.ProvingBuckets)
 	if eerr != nil {

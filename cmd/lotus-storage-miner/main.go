@@ -70,7 +70,7 @@ func main() {
 	}
 
 	if err := app.Run(os.Args); err != nil {
-		log.Warn(err)
+		log.Warnf("%+v", err)
 		os.Exit(1)
 	}
 }
