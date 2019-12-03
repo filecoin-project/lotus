@@ -72,11 +72,15 @@ var infoCmd = &cli.Command{
 			lastEps := int64(head.Height() - eps)
 			lastEpsS := lastEps * build.BlockDelay
 
+			fallback := lastEps + build.FallbackPoStDelay
+			fallbackS := fallback * build.BlockDelay
+
 			next := lastEps + build.SlashablePowerDelay
 			nextS := next * build.BlockDelay
 
 			fmt.Printf("PoSt Submissions:\n")
 			fmt.Printf("\tPrevious: Epoch %d (%d block(s), ~%dm %ds ago)\n", eps, lastEps, lastEpsS/60, lastEpsS%60)
+			fmt.Printf("\tFallback: Epoch %d (in %d blocks, ~%dm %ds)\n", eps+build.FallbackPoStDelay, fallback, fallbackS/60, fallbackS%60)
 			fmt.Printf("\tDeadline: Epoch %d (in %d blocks, ~%dm %ds)\n", eps+build.SlashablePowerDelay, next, nextS/60, nextS%60)
 
 		} else {
