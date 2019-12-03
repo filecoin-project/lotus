@@ -49,10 +49,17 @@ func (s *fpostScheduler) run(ctx context.Context) {
 		panic(err)
 	}
 
+	defer s.abortActivePoSt()
+
 	// not fine to panic after this point
 	for {
 		select {
-		case changes := <-notifs:
+		case changes, ok := <-notifs:
+			if !ok {
+				log.Warn("fpostScheduler notifs channel closed")
+				return
+			}
+
 			ctx, span := trace.StartSpan(ctx, "fpostScheduler.headChange")
 
 			var lowest, highest *types.TipSet = s.cur, nil
@@ -74,6 +81,8 @@ func (s *fpostScheduler) run(ctx context.Context) {
 			}
 
 			span.End()
+		case <-ctx.Done():
+			return
 		}
 	}
 }
