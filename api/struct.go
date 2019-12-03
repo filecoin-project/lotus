@@ -45,6 +45,7 @@ type FullNodeStruct struct {
 		ChainGetBlockMessages  func(context.Context, cid.Cid) (*BlockMessages, error)              `perm:"read"`
 		ChainGetParentReceipts func(context.Context, cid.Cid) ([]*types.MessageReceipt, error)     `perm:"read"`
 		ChainGetParentMessages func(context.Context, cid.Cid) ([]Message, error)                   `perm:"read"`
+		ChainGetTipSetMessages func(context.Context, types.TipSetKey) ([]Message, error)           `perm:"read"`
 		ChainGetTipSetByHeight func(context.Context, uint64, *types.TipSet) (*types.TipSet, error) `perm:"read"`
 		ChainReadObj           func(context.Context, cid.Cid) ([]byte, error)                      `perm:"read"`
 		ChainSetHead           func(context.Context, *types.TipSet) error                          `perm:"admin"`
@@ -308,6 +309,10 @@ func (c *FullNodeStruct) ChainGetParentReceipts(ctx context.Context, b cid.Cid) 
 
 func (c *FullNodeStruct) ChainGetParentMessages(ctx context.Context, b cid.Cid) ([]Message, error) {
 	return c.Internal.ChainGetParentMessages(ctx, b)
+}
+
+func (c *FullNodeStruct) ChainGetTipSetMessages(ctx context.Context, tsk types.TipSetKey) ([]Message, error) {
+	return c.Internal.ChainGetTipSetMessages(ctx, tsk)
 }
 
 func (c *FullNodeStruct) ChainNotify(ctx context.Context) (<-chan []*store.HeadChange, error) {
