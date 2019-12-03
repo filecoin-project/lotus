@@ -4,6 +4,7 @@ import (
 	"bytes"
 	"context"
 	"crypto/rand"
+	"github.com/filecoin-project/lotus/build"
 	"io/ioutil"
 	"net/http/httptest"
 	"path/filepath"
@@ -39,6 +40,8 @@ import (
 
 func init() {
 	_ = logging.SetLogLevel("*", "INFO")
+
+	build.SectorSizes = []uint64{1024}
 }
 
 func testStorageNode(ctx context.Context, t *testing.T, waddr address.Address, act address.Address, pk crypto.PrivKey, tnd test.TestNode, mn mocknet.Mocknet) test.TestStorageNode {
