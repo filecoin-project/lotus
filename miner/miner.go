@@ -2,7 +2,6 @@ package miner
 
 import (
 	"context"
-	"sort"
 	"sync"
 	"time"
 
@@ -375,10 +374,6 @@ func selectMessages(ctx context.Context, al actorLookup, base *MiningBase, msgs 
 	out := make([]*types.SignedMessage, 0, len(msgs))
 	inclNonces := make(map[address.Address]uint64)
 	inclBalances := make(map[address.Address]types.BigInt)
-
-	sort.Slice(msgs, func(i, j int) bool { // TODO: is this actually needed?
-		return msgs[i].Message.Nonce < msgs[j].Message.Nonce
-	})
 
 	for _, msg := range msgs {
 		if msg.Message.To == address.Undef {
