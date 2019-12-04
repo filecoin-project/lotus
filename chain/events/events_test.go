@@ -604,6 +604,12 @@ func TestCalled(t *testing.T) {
 	require.Equal(t, false, reverted)
 	applied = false
 
+	// dip below confidence
+	fcs.advance(2, 2, nil) // H=10 (confidence=3, apply)
+
+	require.Equal(t, false, applied)
+	require.Equal(t, false, reverted)
+
 	require.Equal(t, uint64(7), appliedTs.Height())
 	require.Equal(t, "bafkqaaa", appliedTs.Blocks()[0].Messages.String())
 	require.Equal(t, uint64(10), appliedH)
