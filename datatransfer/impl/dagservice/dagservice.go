@@ -3,6 +3,7 @@ package datatransfer
 import (
 	"context"
 	"reflect"
+	"time"
 
 	"github.com/ipfs/go-cid"
 	ipldformat "github.com/ipfs/go-ipld-format"
@@ -54,13 +55,14 @@ func (impl *dagserviceImpl) OpenPullDataChannel(ctx context.Context, to peer.ID,
 	go func() {
 		defer cancel()
 		err := merkledag.FetchGraph(ctx, baseCid, impl.dag)
-		var event datatransfer.Event
+		event := datatransfer.Event{Timestamp: time.Now()}
 		if err != nil {
-			event = datatransfer.Error
+			event.Code = datatransfer.Error
+			event.Message = err.Error()
 		} else {
-			event = datatransfer.Complete
+			event.Code = datatransfer.Complete
 		}
-		impl.subscriber(event, datatransfer.ChannelState{Channel: datatransfer.NewChannel(0, baseCid, Selector, voucher, to, peer.ID(""), 0)})
+		impl.subscriber(event, datatransfer.ChannelState{Channel: datatransfer.NewChannel(0, baseCid, Selector, voucher, to, "", 0)})
 	}()
 	return datatransfer.ChannelID{}, nil
 }

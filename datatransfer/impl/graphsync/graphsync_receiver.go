@@ -4,6 +4,7 @@ import (
 	"context"
 	"fmt"
 	"reflect"
+	"time"
 
 	"github.com/ipfs/go-cid"
 	"github.com/ipld/go-ipld-prime"
@@ -32,7 +33,7 @@ func (receiver *graphsyncReceiver) ReceiveRequest(
 		return
 	}
 	stor, _ := nodeFromBytes(incoming.Selector())
-	root := cidlink.Link{incoming.BaseCid()}
+	root := cidlink.Link{Cid: incoming.BaseCid()}
 
 	var dataSender, dataReceiver peer.ID
 	if incoming.IsPull() {
@@ -41,8 +42,7 @@ func (receiver *graphsyncReceiver) ReceiveRequest(
 	} else {
 		dataSender = initiator
 		dataReceiver = receiver.impl.peerID
-		// schedule a graphsync data transfer if it's a Push request.
-		receiver.impl.gs.Request(ctx, initiator, root, stor)
+		receiver.impl.sendGsRequest(ctx, initiator, incoming.TransferID(), incoming.IsPull(), dataSender, root, stor)
 	}
 
 	_, err = receiver.impl.createNewChannel(incoming.TransferID(), incoming.BaseCid(), stor, voucher, initiator, dataSender, dataReceiver)
@@ -111,30 +111,43 @@ func (receiver *graphsyncReceiver) voucherFromRequest(incoming message.DataTrans
 	return voucher, nil
 }
 
-// ReceiveResponse handles responses to our Push or Pull Requests.
+// ReceiveResponse handles responses to our  Push or Pull data transfer request.
 // It schedules a graphsync transfer only if our Pull Request is accepted.
 func (receiver *graphsyncReceiver) ReceiveResponse(
 	ctx context.Context,
 	sender peer.ID,
 	incoming message.DataTransferResponse) {
-	evt := datatransfer.Error
+	evt := datatransfer.Event{
+		Code:      datatransfer.Error,
+		Message:   "",
+		Timestamp: time.Now(),
+	}
 	chst := datatransfer.EmptyChannelState
 	if incoming.Accepted() {
-		chid := datatransfer.ChannelID{
-			Initiator: receiver.impl.peerID,
-			ID:        incoming.TransferID(),
-		}
+		// if we are handling a response to a pull request then they are sending data and the
+		// initiator is us. construct a channel id for a pull request that we initiated and see
+		// if there is one in our saved channel list. otherwise we should not respond.
+		chid := datatransfer.ChannelID{Initiator: receiver.impl.peerID, ID: incoming.TransferID()}
 
 		// if we are handling a response to a pull request then they are sending data and the
 		// initiator is us
-		if chst = receiver.impl.getChannelByIdAndSender(chid, sender) ; chst != datatransfer.EmptyChannelState {
+		if chst = receiver.impl.getChannelByIDAndSender(chid, sender); chst != datatransfer.EmptyChannelState {
 			baseCid := chst.BaseCID()
-			root := cidlink.Link{baseCid}
-			receiver.impl.gs.Request(ctx, sender, root, chst.Selector())
-			evt = datatransfer.Progress
+			root := cidlink.Link{Cid: baseCid}
+			receiver.impl.sendGsRequest(ctx, receiver.impl.peerID, incoming.TransferID(), true, sender, root, chst.Selector())
+			evt.Code = datatransfer.Progress
 		}
 	}
 	receiver.impl.notifySubscribers(evt, chst)
+}
+
+func (receiver *graphsyncReceiver) notifySubscribersErr(err error) {
+	evt := datatransfer.Event{
+		Code:      datatransfer.Error,
+		Message:   err.Error(),
+		Timestamp: time.Now(),
+	}
+	receiver.impl.notifySubscribers(evt, datatransfer.ChannelState{})
 }
 
 func (receiver *graphsyncReceiver) ReceiveError(error) {}

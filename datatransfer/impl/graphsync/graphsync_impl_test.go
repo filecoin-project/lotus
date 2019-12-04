@@ -108,7 +108,7 @@ func TestDataTransferOneWay(t *testing.T) {
 	ctx := context.Background()
 	ctx, cancel := context.WithTimeout(ctx, 10*time.Second)
 	defer cancel()
-	gsData := newGraphsyncTestingData(t, ctx)
+	gsData := newGraphsyncTestingData(ctx, t)
 	host1 := gsData.host1
 	host2 := gsData.host2
 	// setup receiving peer to just record message coming in
@@ -257,7 +257,7 @@ func TestDataTransferValidation(t *testing.T) {
 	ctx := context.Background()
 	ctx, cancel := context.WithTimeout(ctx, 10*time.Second)
 	defer cancel()
-	gsData := newGraphsyncTestingData(t, ctx)
+	gsData := newGraphsyncTestingData(ctx, t)
 	host1 := gsData.host1
 	host2 := gsData.host2
 	dtnet1 := network.NewFromLibp2pHost(host1)
@@ -447,7 +447,7 @@ func TestDataTransferSubscribing(t *testing.T) {
 	ctx := context.Background()
 	ctx, cancel := context.WithTimeout(ctx, 10*time.Second)
 	defer cancel()
-	gsData := newGraphsyncTestingData(t, ctx)
+	gsData := newGraphsyncTestingData(ctx, t)
 	host1 := gsData.host1
 	host2 := gsData.host2
 
@@ -469,13 +469,13 @@ func TestDataTransferSubscribing(t *testing.T) {
 
 	subscribe1Calls := make(chan struct{}, 1)
 	subscribe1 := func(event datatransfer.Event, channelState datatransfer.ChannelState) {
-		if event == datatransfer.Error {
+		if event.Code == datatransfer.Error {
 			subscribe1Calls <- struct{}{}
 		}
 	}
 	subscribe2Calls := make(chan struct{}, 1)
 	subscribe2 := func(event datatransfer.Event, channelState datatransfer.ChannelState) {
-		if event == datatransfer.Error {
+		if event.Code == datatransfer.Error {
 			subscribe2Calls <- struct{}{}
 		}
 	}
@@ -498,13 +498,13 @@ func TestDataTransferSubscribing(t *testing.T) {
 
 	subscribe3Calls := make(chan struct{}, 1)
 	subscribe3 := func(event datatransfer.Event, channelState datatransfer.ChannelState) {
-		if event == datatransfer.Error {
+		if event.Code == datatransfer.Error {
 			subscribe3Calls <- struct{}{}
 		}
 	}
 	subscribe4Calls := make(chan struct{}, 1)
 	subscribe4 := func(event datatransfer.Event, channelState datatransfer.ChannelState) {
-		if event == datatransfer.Error {
+		if event.Code == datatransfer.Error {
 			subscribe4Calls <- struct{}{}
 		}
 	}
@@ -539,7 +539,7 @@ func TestDataTransferInitiatingPushGraphsyncRequests(t *testing.T) {
 	ctx := context.Background()
 	ctx, cancel := context.WithTimeout(ctx, 10*time.Second)
 	defer cancel()
-	gsData := newGraphsyncTestingData(t, ctx)
+	gsData := newGraphsyncTestingData(ctx, t)
 	host1 := gsData.host1
 	host2 := gsData.host2
 
@@ -620,7 +620,7 @@ func TestDataTransferInitiatingPushGraphsyncRequests(t *testing.T) {
 
 func TestDataTransferInitiatingPullGraphsyncRequests(t *testing.T) {
 	ctx := context.Background()
-	gsData := newGraphsyncTestingData(t, ctx)
+	gsData := newGraphsyncTestingData(ctx, t)
 	host1 := gsData.host1 // initiates the pull request
 	host2 := gsData.host2 // sends the data
 
@@ -686,7 +686,7 @@ func TestDataTransferInitiatingPullGraphsyncRequests(t *testing.T) {
 
 		subscribeCalls := make(chan struct{}, 1)
 		subscribe := func(event datatransfer.Event, channelState datatransfer.ChannelState) {
-			if event == datatransfer.Error {
+			if event.Code == datatransfer.Error {
 				subscribeCalls <- struct{}{}
 			}
 		}
@@ -729,7 +729,7 @@ func TestDataTransferInitiatingPullGraphsyncRequests(t *testing.T) {
 
 		subscribeCalls := make(chan struct{}, 1)
 		subscribe := func(event datatransfer.Event, channelState datatransfer.ChannelState) {
-			if event == datatransfer.Error {
+			if event.Code == datatransfer.Error {
 				subscribeCalls <- struct{}{}
 			}
 		}
@@ -778,7 +778,7 @@ func (fgsr *fakeGraphSyncReceiver) consumeResponses(ctx context.Context, t *test
 	for {
 		select {
 		case <-ctx.Done():
-			t.Fatal("did not receive message sent")
+			t.Fail()
 		case gsMessageReceived = <-fgsr.receivedMessages:
 			responses := gsMessageReceived.message.Responses()
 			if (len(responses) > 0) && gsmsg.IsTerminalResponseCode(responses[0].Status()) {
@@ -793,7 +793,7 @@ func TestRespondingToPushGraphsyncRequests(t *testing.T) {
 	ctx := context.Background()
 	ctx, cancel := context.WithTimeout(ctx, 10*time.Second)
 	defer cancel()
-	gsData := newGraphsyncTestingData(t, ctx)
+	gsData := newGraphsyncTestingData(ctx, t)
 	host1 := gsData.host1 // initiator and data sender
 	host2 := gsData.host2 // data recipient, makes graphsync request for data
 	voucher := fakeDTType{"applesauce"}
@@ -879,7 +879,7 @@ func TestRespondingToPullGraphsyncRequests(t *testing.T) {
 	ctx, cancel := context.WithTimeout(ctx, 10*time.Second)
 	defer cancel()
 
-	gsData := newGraphsyncTestingData(t, ctx)
+	gsData := newGraphsyncTestingData(ctx, t)
 	host1 := gsData.host1 // initiator, and recipient, makes graphync request
 	host2 := gsData.host2 // data sender
 
@@ -924,7 +924,11 @@ func TestRespondingToPullGraphsyncRequests(t *testing.T) {
 		receivedResponse, ok := messageReceived.message.(message.DataTransferResponse)
 		require.True(t, ok)
 		require.True(t, receivedResponse.Accepted())
-		extStruct := &ExtensionDataTransferData{TransferID: uint64(receivedResponse.TransferID())}
+		extStruct := &ExtensionDataTransferData{
+			TransferID: uint64(receivedResponse.TransferID()),
+			Initiator:  host1.ID(),
+			IsPull:     true,
+		}
 
 		var buf2 = bytes.Buffer{}
 		err = extStruct.MarshalCBOR(&buf2)
@@ -967,82 +971,84 @@ func TestRespondingToPullGraphsyncRequests(t *testing.T) {
 	})
 }
 
-// TODO: get passing to complete https://github.com/filecoin-project/go-data-transfer/issues/24
 func TestDataTransferPushRoundTrip(t *testing.T) {
-	//ctx := context.Background()
-	//ctx, cancel := context.WithTimeout(ctx, 10*time.Second)
-	//defer cancel()
-	//
-	//gsData := newGraphsyncTestingData(t, ctx)
-	//host1 := gsData.host1
-	//host2 := gsData.host2
-	//
-	//root := gsData.loadUnixFSFile(t, false)
-	//rootCid := root.(cidlink.Link).Cid
-	//gs1 := gsData.setupGraphsyncHost1()
-	//gs2 := gsData.setupGraphsyncHost2()
-	//
-	//dt1 := NewGraphSyncDataTransfer(ctx, host1, gs1)
-	//dt2 := NewGraphSyncDataTransfer(ctx, host2, gs2)
-	//
-	//finished := make(chan struct{}, 1)
-	//var subscriber datatransfer.Subscriber = func(event datatransfer.Event, channelState datatransfer.ChannelState) {
-	//	if event == datatransfer.Complete {
-	//		finished <- struct{}{}
-	//	}
-	//}
-	//dt2.SubscribeToEvents(subscriber)
-	//voucher := fakeDTType{"applesauce"}
-	//sv := newSV()
-	//sv.expectSuccessPull()
-	//require.NoError(t, dt2.RegisterVoucherType(reflect.TypeOf(&fakeDTType{}), sv))
-	//
-	//dt1.OpenPushDataChannel(ctx, host2.ID(), &voucher, rootCid, gsData.allSelector)
-	//select {
-	//case <-ctx.Done():
-	//	t.Fatal("Did not complete succcessful data transfer")
-	//case <-finished:
-	//	gsData.verifyFileTransferred(t, root, true)
-	//}
+	ctx := context.Background()
+	ctx, cancel := context.WithTimeout(ctx, 10*time.Second)
+	defer cancel()
+
+	gsData := newGraphsyncTestingData(ctx, t)
+	host1 := gsData.host1 // initiator, data sender
+	host2 := gsData.host2 // data recipient
+
+	root := gsData.loadUnixFSFile(t, false)
+	rootCid := root.(cidlink.Link).Cid
+	gs1 := gsData.setupGraphsyncHost1()
+	gs2 := gsData.setupGraphsyncHost2()
+
+	dt1 := NewGraphSyncDataTransfer(ctx, host1, gs1)
+	dt2 := NewGraphSyncDataTransfer(ctx, host2, gs2)
+
+	finished := make(chan struct{}, 1)
+	var subscriber datatransfer.Subscriber = func(event datatransfer.Event, channelState datatransfer.ChannelState) {
+		if event.Code == datatransfer.Complete {
+			finished <- struct{}{}
+		}
+	}
+	unsub := dt2.SubscribeToEvents(subscriber)
+	voucher := fakeDTType{"applesauce"}
+	sv := newSV()
+	sv.expectSuccessPull()
+	require.NoError(t, dt2.RegisterVoucherType(reflect.TypeOf(&fakeDTType{}), sv))
+
+	chid, err := dt1.OpenPushDataChannel(ctx, host2.ID(), &voucher, rootCid, gsData.allSelector)
+	require.NoError(t, err)
+	select {
+	case <-ctx.Done():
+		t.Fatal("Did not complete succcessful data transfer")
+	case <-finished:
+		gsData.verifyFileTransferred(t, root, true)
+	}
+	assert.Equal(t, chid.Initiator, host1.ID())
+	unsub()
 }
 
-// TODO: get passing to complete https://github.com/filecoin-project/go-data-transfer/issues/24
 func TestDataTransferPullRoundTrip(t *testing.T) {
-	//ctx := context.Background()
-	//ctx, cancel := context.WithTimeout(ctx, 10*time.Second)
-	//defer cancel()
-	//
-	//gsData := newGraphsyncTestingData(t, ctx)
-	//host1 := gsData.host1
-	//host2 := gsData.host2
-	//
-	//root := gsData.loadUnixFSFile(t, false)
-	//rootCid := root.(cidlink.Link).Cid
-	//gs1 := gsData.setupGraphsyncHost1()
-	//gs2 := gsData.setupGraphsyncHost2()
-	//
-	//dt1 := NewGraphSyncDataTransfer(ctx, host1, gs1)
-	//dt2 := NewGraphSyncDataTransfer(ctx, host2, gs2)
-	//
-	//finished := make(chan struct{}, 1)
-	//var subscriber datatransfer.Subscriber = func(event datatransfer.Event, channelState datatransfer.ChannelState) {
-	//	if event == datatransfer.Complete {
-	//		finished <- struct{}{}
-	//	}
-	//}
-	//dt2.SubscribeToEvents(subscriber)
-	//voucher := fakeDTType{"applesauce"}
-	//sv := newSV()
-	//sv.expectSuccessPull()
-	//require.NoError(t, dt1.RegisterVoucherType(reflect.TypeOf(&fakeDTType{}), sv))
-	//
-	//dt2.OpenPullDataChannel(ctx, host1.ID(), &voucher, rootCid, gsData.allSelector)
-	//select {
-	//case <-ctx.Done():
-	//	t.Fatal("Did not complete succcessful data transfer")
-	//case <-finished:
-	//	gsData.verifyFileTransferred(t, root, true)
-	//}
+	ctx := context.Background()
+	ctx, cancel := context.WithTimeout(ctx, 10*time.Second)
+	defer cancel()
+
+	gsData := newGraphsyncTestingData(ctx, t)
+	host1 := gsData.host1
+	host2 := gsData.host2
+
+	root := gsData.loadUnixFSFile(t, false)
+	rootCid := root.(cidlink.Link).Cid
+	gs1 := gsData.setupGraphsyncHost1()
+	gs2 := gsData.setupGraphsyncHost2()
+
+	dt1 := NewGraphSyncDataTransfer(ctx, host1, gs1)
+	dt2 := NewGraphSyncDataTransfer(ctx, host2, gs2)
+
+	finished := make(chan struct{}, 1)
+	var subscriber datatransfer.Subscriber = func(event datatransfer.Event, channelState datatransfer.ChannelState) {
+		if event.Code == datatransfer.Complete {
+			finished <- struct{}{}
+		}
+	}
+	dt2.SubscribeToEvents(subscriber)
+	voucher := fakeDTType{"applesauce"}
+	sv := newSV()
+	sv.expectSuccessPull()
+	require.NoError(t, dt1.RegisterVoucherType(reflect.TypeOf(&fakeDTType{}), sv))
+
+	_, err := dt2.OpenPullDataChannel(ctx, host1.ID(), &voucher, rootCid, gsData.allSelector)
+	require.NoError(t, err)
+	select {
+	case <-ctx.Done():
+		t.Fatal("Did not complete succcessful data transfer")
+	case <-finished:
+		gsData.verifyFileTransferred(t, root, true)
+	}
 }
 
 const unixfsChunkSize uint64 = 1 << 10
@@ -1068,7 +1074,7 @@ type graphsyncTestingData struct {
 	origBytes   []byte
 }
 
-func newGraphsyncTestingData(t *testing.T, ctx context.Context) *graphsyncTestingData {
+func newGraphsyncTestingData(ctx context.Context, t *testing.T) *graphsyncTestingData {
 
 	gsData := &graphsyncTestingData{}
 	gsData.ctx = ctx

@@ -1,4 +1,5 @@
 package graphsyncimpl
+
 import (
 	"bytes"
 	"context"
@@ -36,7 +37,7 @@ func TestGraphsyncImpl_SubscribeToEvents(t *testing.T) {
 	ctx, cancel := context.WithTimeout(context.Background(), 10*time.Second)
 	defer cancel()
 
-	gsData := newGraphsyncTestingData(t, ctx)
+	gsData := newGraphsyncTestingData(ctx, t)
 	host1 := gsData.host1
 	gs1 := &fakeGraphSync{
 		receivedRequests: make(chan receivedGraphSyncRequest, 1),
@@ -45,14 +46,14 @@ func TestGraphsyncImpl_SubscribeToEvents(t *testing.T) {
 
 	subscribe1Calls := make(chan struct{}, 1)
 	subscriber := func(event datatransfer.Event, channelState datatransfer.ChannelState) {
-		if event == datatransfer.Error {
+		if event.Code == datatransfer.Error {
 			subscribe1Calls <- struct{}{}
 		}
 	}
 
 	subscribe2Calls := make(chan struct{}, 1)
 	subscriber2 := func(event datatransfer.Event, cst datatransfer.ChannelState) {
-		if event != datatransfer.Error {
+		if event.Code != datatransfer.Error {
 			subscribe2Calls <- struct{}{}
 		}
 	}
@@ -75,7 +76,7 @@ func TestGraphsyncImpl_SubscribeToEvents(t *testing.T) {
 	assert.Equal(t, 0, len(impl.subscribers))
 }
 
-func newGraphsyncTestingData(t *testing.T, ctx context.Context) *graphsyncTestingData {
+func newGraphsyncTestingData(ctx context.Context, t *testing.T) *graphsyncTestingData {
 
 	gsData := &graphsyncTestingData{}
 	gsData.ctx = ctx
@@ -154,7 +155,6 @@ func newGraphsyncTestingData(t *testing.T, ctx context.Context) *graphsyncTestin
 	return gsData
 }
 
-
 type receivedGraphSyncRequest struct {
 	p          peer.ID
 	root       ipld.Link
@@ -177,12 +177,12 @@ func (fgs *fakeGraphSync) Request(ctx context.Context, p peer.ID, root ipld.Link
 }
 
 // RegisterResponseReceivedHook adds a hook that runs when a request is received
-func (fgs *fakeGraphSync)RegisterRequestReceivedHook(overrideDefaultValidation bool, hook graphsync.OnRequestReceivedHook) error {
+func (fgs *fakeGraphSync) RegisterRequestReceivedHook(overrideDefaultValidation bool, hook graphsync.OnRequestReceivedHook) error {
 	return nil
 }
 
 // RegisterResponseReceivedHook adds a hook that runs when a response is received
-func (fgs *fakeGraphSync)RegisterResponseReceivedHook(graphsync.OnResponseReceivedHook) error {
+func (fgs *fakeGraphSync) RegisterResponseReceivedHook(graphsync.OnResponseReceivedHook) error {
 	return nil
 }
 
@@ -203,5 +203,4 @@ type graphsyncTestingData struct {
 	bridge1     ipldbridge.IPLDBridge
 	bridge2     ipldbridge.IPLDBridge
 	allSelector ipld.Node
-	origBytes   []byte
 }

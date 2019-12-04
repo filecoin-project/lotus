@@ -225,7 +225,7 @@ func (p *Provider) onDataTransferEvent(event datatransfer.Event, channelState da
 	var next api.DealState
 	var err error
 	var mut func(*MinerDeal)
-	switch event {
+	switch event.Code {
 	case datatransfer.Complete:
 		next = api.DealStaged
 		mut = func(deal *MinerDeal) {
