@@ -6,6 +6,7 @@ import (
 	"github.com/filecoin-project/lotus/api"
 	"github.com/filecoin-project/lotus/chain/address"
 	"github.com/filecoin-project/lotus/lib/sectorbuilder"
+	"github.com/filecoin-project/lotus/lib/systar"
 	"github.com/filecoin-project/lotus/miner"
 	"github.com/filecoin-project/lotus/storage"
 	"github.com/filecoin-project/lotus/storage/sectorblocks"
@@ -63,22 +64,18 @@ func (sm *StorageMinerAPI) remoteGetSector(w http.ResponseWriter, r *http.Reques
 		return
 	}
 
-	f, err := files.NewSerialFile(path, false, stat)
+	var rd io.Reader
+	if stat.IsDir() {
+		rd, err = systar.TarDirectory(path)
+		w.Header().Set("Content-Type", "application/x-tar")
+	} else {
+		rd, err = os.OpenFile(path, os.O_RDONLY, 0644)
+		w.Header().Set("Content-Type", "application/octet-stream")
+	}
 	if err != nil {
 		log.Error(err)
 		w.WriteHeader(500)
 		return
-	}
-
-	var rd io.Reader
-	rd, file := f.(files.File)
-	if !file {
-		mfr := files.NewMultiFileReader(f.(files.Directory), true)
-
-		w.Header().Set("Content-Type", "multipart/form-data; boundary="+mfr.Boundary())
-		rd = mfr
-	} else {
-		w.Header().Set("Content-Type", "application/octet-stream")
 	}
 
 	w.WriteHeader(200)
@@ -98,8 +95,6 @@ func (sm *StorageMinerAPI) remotePutSector(w http.ResponseWriter, r *http.Reques
 		return
 	}
 
-	var file files.Node
-
 	mediatype, _, err := mime.ParseMediaType(r.Header.Get("Content-Type"))
 	if err != nil {
 		log.Error(err)
@@ -107,37 +102,23 @@ func (sm *StorageMinerAPI) remotePutSector(w http.ResponseWriter, r *http.Reques
 		return
 	}
 
-	switch mediatype {
-	case "multipart/form-data":
-		mpr, err := r.MultipartReader()
-		if err != nil {
-			log.Error(err)
-			w.WriteHeader(500)
-			return
-		}
-
-		file, err = files.NewFileFromPartReader(mpr, mediatype)
-		if err != nil {
-			log.Error(err)
-			w.WriteHeader(500)
-			return
-		}
-
-	default:
-		file = files.NewReaderFile(r.Body)
-	}
-
-	// WriteTo is unhappy when things exist (also cleans up cache after Commit)
 	if err := os.RemoveAll(path); err != nil {
 		log.Error(err)
 		w.WriteHeader(500)
 		return
 	}
 
-	if err := files.WriteTo(file, path); err != nil {
-		log.Error(err)
-		w.WriteHeader(500)
-		return
+	switch mediatype {
+	case "application/x-tar":
+		if err := systar.ExtractTar(r.Body, path); err != nil {
+			return
+		}
+	default:
+		if err := files.WriteTo(files.NewReaderFile(r.Body), path); err != nil {
+			log.Error(err)
+			w.WriteHeader(500)
+			return
+		}
 	}
 
 	w.WriteHeader(200)
