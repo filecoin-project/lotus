@@ -277,6 +277,7 @@ const (
 	StagePersistHeaders
 	StageMessages
 	StageSyncComplete
+	StageSyncErrored
 )
 
 type MpoolChange int

@@ -1115,6 +1115,7 @@ func (syncer *Syncer) collectChain(ctx context.Context, ts *types.TipSet) error 
 
 	headers, err := syncer.collectHeaders(ctx, ts, syncer.store.GetHeaviestTipSet())
 	if err != nil {
+		ss.Error(err)
 		return err
 	}
 
@@ -1131,14 +1132,18 @@ func (syncer *Syncer) collectChain(ctx context.Context, ts *types.TipSet) error 
 		toPersist = append(toPersist, ts.Blocks()...)
 	}
 	if err := syncer.store.PersistBlockHeaders(toPersist...); err != nil {
-		return xerrors.Errorf("failed to persist synced blocks to the chainstore: %w", err)
+		err = xerrors.Errorf("failed to persist synced blocks to the chainstore: %w", err)
+		ss.Error(err)
+		return err
 	}
 	toPersist = nil
 
 	ss.SetStage(api.StageMessages)
 
 	if err := syncer.syncMessagesAndCheckState(ctx, headers); err != nil {
-		return xerrors.Errorf("collectChain syncMessages: %w", err)
+		err = xerrors.Errorf("collectChain syncMessages: %w", err)
+		ss.Error(err)
+		return err
 	}
 
 	ss.SetStage(api.StageSyncComplete)
