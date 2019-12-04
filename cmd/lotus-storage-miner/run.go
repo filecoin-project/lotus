@@ -35,6 +35,10 @@ var runCmd = &cli.Command{
 			Usage: "Enable use of GPU for mining operations",
 			Value: true,
 		},
+		&cli.BoolFlag{
+			Name:  "nosync",
+			Usage: "Don't check full-node sync status",
+		},
 	},
 	Action: func(cctx *cli.Context) error {
 		if err := build.GetParams(true, false); err != nil {
@@ -59,6 +63,14 @@ var runCmd = &cli.Command{
 
 		if v.APIVersion != build.APIVersion {
 			return xerrors.Errorf("lotus-daemon API version doesn't match: local: ", api.Version{APIVersion: build.APIVersion})
+		}
+
+		log.Info("Checking full node sync status")
+
+		if !cctx.Bool("nosync") {
+			if err := lcli.SyncWait(ctx, nodeApi); err != nil {
+				return xerrors.Errorf("sync wait: %w", err)
+			}
 		}
 
 		storageRepoPath := cctx.String(FlagStorageRepo)

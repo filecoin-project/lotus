@@ -1,6 +1,7 @@
 package cli
 
 import (
+	"context"
 	"fmt"
 	"time"
 
@@ -73,48 +74,52 @@ var syncWaitCmd = &cli.Command{
 		defer closer()
 		ctx := ReqContext(cctx)
 
-		for {
-			state, err := napi.SyncState(ctx)
-			if err != nil {
-				return err
-			}
+		return SyncWait(ctx, napi)
+	},
+}
 
-			head, err := napi.ChainHead(ctx)
-			if err != nil {
-				return err
-			}
+func SyncWait(ctx context.Context, napi api.FullNode) error {
+	for {
+		state, err := napi.SyncState(ctx)
+		if err != nil {
+			return err
+		}
 
-			working := 0
-			for i, ss := range state.ActiveSyncs {
-				switch ss.Stage {
-				case api.StageSyncComplete:
-				default:
-					working = i
-				case api.StageIdle:
-					// not complete, not actively working
-				}
-			}
+		head, err := napi.ChainHead(ctx)
+		if err != nil {
+			return err
+		}
 
-			ss := state.ActiveSyncs[working]
-
-			var target []cid.Cid
-			if ss.Target != nil {
-				target = ss.Target.Cids()
-			}
-
-			fmt.Printf("\r\x1b[2KWorker %d: Target: %s\tState: %s\tHeight: %d", working, target, chain.SyncStageString(ss.Stage), ss.Height)
-
-			if time.Now().Unix()-int64(head.MinTimestamp()) < build.BlockDelay {
-				fmt.Println("\nDone!")
-				return nil
-			}
-
-			select {
-			case <-ctx.Done():
-				fmt.Println("\nExit by user")
-				return nil
-			case <-time.After(1 * time.Second):
+		working := 0
+		for i, ss := range state.ActiveSyncs {
+			switch ss.Stage {
+			case api.StageSyncComplete:
+			default:
+				working = i
+			case api.StageIdle:
+				// not complete, not actively working
 			}
 		}
-	},
+
+		ss := state.ActiveSyncs[working]
+
+		var target []cid.Cid
+		if ss.Target != nil {
+			target = ss.Target.Cids()
+		}
+
+		fmt.Printf("\r\x1b[2KWorker %d: Target: %s\tState: %s\tHeight: %d", working, target, chain.SyncStageString(ss.Stage), ss.Height)
+
+		if time.Now().Unix()-int64(head.MinTimestamp()) < build.BlockDelay {
+			fmt.Println("\nDone!")
+			return nil
+		}
+
+		select {
+		case <-ctx.Done():
+			fmt.Println("\nExit by user")
+			return nil
+		case <-time.After(1 * time.Second):
+		}
+	}
 }

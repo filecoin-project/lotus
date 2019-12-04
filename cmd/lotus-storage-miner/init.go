@@ -80,6 +80,23 @@ var initCmd = &cli.Command{
 			return xerrors.Errorf("fetching proof parameters: %w", err)
 		}
 
+		log.Info("Trying to connect to full node RPC")
+
+		api, closer, err := lcli.GetFullNodeAPI(cctx) // TODO: consider storing full node address in config
+		if err != nil {
+			return err
+		}
+		defer closer()
+		ctx := lcli.ReqContext(cctx)
+
+		log.Info("Checking full node sync status")
+
+		if !cctx.Bool("genesis-miner") {
+			if err := lcli.SyncWait(ctx, api); err != nil {
+				return xerrors.Errorf("sync wait: %w", err)
+			}
+		}
+
 		log.Info("Checking if repo exists")
 
 		repoPath := cctx.String(FlagStorageRepo)
@@ -95,15 +112,6 @@ var initCmd = &cli.Command{
 		if ok {
 			return xerrors.Errorf("repo at '%s' is already initialized", cctx.String(FlagStorageRepo))
 		}
-
-		log.Info("Trying to connect to full node RPC")
-
-		api, closer, err := lcli.GetFullNodeAPI(cctx) // TODO: consider storing full node address in config
-		if err != nil {
-			return err
-		}
-		defer closer()
-		ctx := lcli.ReqContext(cctx)
 
 		log.Info("Checking full node version")
 
