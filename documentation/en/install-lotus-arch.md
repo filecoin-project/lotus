@@ -1,6 +1,6 @@
-# Installing Lotus on Arch Linux
+# Arch Linux Instructions
 
-Install these dependencies for Arch Linux.
+These steps will install the following dependencies:
 
 - go (1.13 or higher)
 - gcc (7.4.0 or higher)
@@ -15,13 +15,13 @@ Install these dependencies for Arch Linux.
 - llvm (proofs build)
 - clang (proofs build)
 
-Arch (run):
+Run
 
 ```sh
 sudo pacman -Syu opencl-icd-loader
 ```
 
-Arch (build):
+Build
 
 ```sh
 sudo pacman -Syu go gcc git bzr jq pkg-config opencl-icd-loader opencl-headers
