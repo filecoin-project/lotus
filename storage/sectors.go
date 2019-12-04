@@ -2,7 +2,6 @@ package storage
 
 import (
 	"context"
-	"fmt"
 	"io"
 
 	xerrors "golang.org/x/xerrors"
@@ -155,10 +154,10 @@ func (m *Miner) onSectorUpdated(ctx context.Context, update sectorUpdate) {
 	var sector SectorInfo
 	err := m.sectors.Mutate(update.id, func(s *SectorInfo) error {
 		s.State = update.newState
-		s.LastErr = ""
+		/*s.LastErr = ""
 		if update.err != nil {
 			s.LastErr = fmt.Sprintf("%+v", update.err)
-		}
+		}*/
 
 		if update.mut != nil {
 			update.mut(s)
