@@ -18,9 +18,9 @@ Now go to http://127.0.0.1:2222.
 
 ## What can I test?
 
-- The `Spawn Node` button starts a new lotus Node in a new draggable window.
-- Click `[Spawn Storage Miner]` to start mining. This require's the node's wallet to have funds.
-- Click on `[Client]` to open the Node's client interface and propose a deal with an existing Miner. If successful you'll see a payment channel open up with that Miner.
+- The `Spawn Node` button starts a new **Lotus Node** in a new draggable window.
+- Click `[Spawn Storage Miner]` to start a **Lotus Storage Miner**. This require's the node's wallet to have funds.
+- Click on `[Client]` to open the **Lotus Node**'s client interface and propose a deal with an existing Miner. If successful you'll see a payment channel open up with that Miner.
 
 Don't leave Pond unattended for more than 10 hours, the web client will eventually consume all available RAM.
 
@@ -30,4 +30,3 @@ Don't leave Pond unattended for more than 10 hours, the web client will eventual
 - `rm -rf ~/.lotus ~/.lotusstorage/`
 - Verify you have the correct versions of dependencies
 - If stuck on a bad fork, try `lotus chain sethead --genesis`
-- If that didn't help, open a new issue, ask in the [Community forum](https://discuss.filecoin.io) or reach out via [Community chat](https://github.com/filecoin-project/community#chat).
