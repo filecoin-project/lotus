@@ -294,6 +294,10 @@ func TestAtDoubleTrigger(t *testing.T) {
 	fcs.advance(2, 2, nil)
 	require.False(t, applied)
 	require.False(t, reverted)
+
+	fcs.advance(4, 4, nil)
+	require.True(t, applied)
+	require.True(t, reverted)
 }
 
 func TestAtNullTrigger(t *testing.T) {
