@@ -17,6 +17,8 @@ import (
 	"golang.org/x/xerrors"
 )
 
+const MaxMessagesPerBlock = 4000
+
 var log = logging.Logger("miner")
 
 type waitFunc func(ctx context.Context, baseTime uint64) error
@@ -424,6 +426,9 @@ func selectMessages(ctx context.Context, al actorLookup, base *MiningBase, msgs 
 		inclCount[from]++
 
 		out = append(out, msg)
+		if len(out) >= MaxMessagesPerBlock {
+			break
+		}
 	}
 	return out, nil
 }
