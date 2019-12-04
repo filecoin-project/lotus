@@ -4,9 +4,8 @@ import (
 	"fmt"
 	"os"
 
-	"github.com/filecoin-project/lotus/datatransfer/impl/graphsync"
+	graphsyncimpl "github.com/filecoin-project/lotus/datatransfer/impl/graphsync"
 	"github.com/filecoin-project/lotus/datatransfer/message"
-
 )
 
 // main func has ONE JOB

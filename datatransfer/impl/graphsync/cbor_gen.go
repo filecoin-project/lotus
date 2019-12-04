@@ -23,7 +23,7 @@ func (t *ExtensionDataTransferData) MarshalCBOR(w io.Writer) error {
 	}
 
 	// t.t.TransferID (uint64) (uint64)
-	if _, err := w.Write(cbg.CborEncodeMajorType(cbg.MajUnsignedInt, uint64(t.TransferID))); err != nil {
+	if _, err := w.Write(cbg.CborEncodeMajorType(cbg.MajUnsignedInt, uint64(t.TransferID))); err != nil { // nolint: unconvert
 		return err
 	}
 
@@ -66,7 +66,7 @@ func (t *ExtensionDataTransferData) UnmarshalCBOR(r io.Reader) error {
 	if maj != cbg.MajUnsignedInt {
 		return fmt.Errorf("wrong type for uint64 field")
 	}
-	t.TransferID = uint64(extra)
+	t.TransferID = uint64(extra) // nolint: unconvert
 	// t.t.Initiator (peer.ID) (string)
 
 	{

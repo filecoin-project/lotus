@@ -54,6 +54,7 @@ type graphsyncImpl struct {
 	channels            map[datatransfer.ChannelID]datatransfer.ChannelState
 	gs                  graphsync.GraphExchange
 	peerID              peer.ID
+	lastTIDLk           sync.Mutex
 	lastTID             int64
 }
 
@@ -68,6 +69,7 @@ func NewGraphSyncDataTransfer(parent context.Context, host host.Host, gs graphsy
 		make(map[datatransfer.ChannelID]datatransfer.ChannelState),
 		gs,
 		host.ID(),
+		sync.Mutex{},
 		0,
 	}
 	if err := gs.RegisterRequestReceivedHook(true, impl.gsReqRecdHook); err != nil {
@@ -291,11 +293,13 @@ func (impl *graphsyncImpl) getChannelByIDAndSender(chid datatransfer.ChannelID, 
 // generateTransferID() generates a unique-to-runtime TransferID for use in creating
 // ChannelIDs
 func (impl *graphsyncImpl) generateTransferID() datatransfer.TransferID {
+	impl.lastTIDLk.Lock()
 	impl.lastTID++
+	impl.lastTIDLk.Unlock()
 	return datatransfer.TransferID(impl.lastTID)
 }
 
-// makeGsRequest assembles a graphsync request and determines if the transfer was completed/successful.
+// sendGsRequest assembles a graphsync request and determines if the transfer was completed/successful.
 // notifies subscribers of final request status.
 func (impl *graphsyncImpl) sendGsRequest(ctx context.Context, initiator peer.ID, transferID datatransfer.TransferID, isPull bool, dataSender peer.ID, root cidlink.Link, stor ipld.Node) {
 	extDtData := ExtensionDataTransferData{
