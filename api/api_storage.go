@@ -82,6 +82,7 @@ type SectorInfo struct {
 	Deals    []uint64
 	Ticket   sectorbuilder.SealTicket
 	Seed     sectorbuilder.SealSeed
+	LastErr  string
 }
 
 type SealedRef struct {

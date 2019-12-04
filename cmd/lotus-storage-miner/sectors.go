@@ -70,6 +70,9 @@ var sectorsStatusCmd = &cli.Command{
 		fmt.Printf("SeedH:\t\t%d\n", status.Seed.BlockHeight)
 		fmt.Printf("Proof:\t\t%x\n", status.Proof)
 		fmt.Printf("Deals:\t\t%v\n", status.Deals)
+		if status.LastErr != "" {
+			fmt.Printf("Last Error:\t\t%s\n", status.LastErr)
+		}
 		return nil
 	},
 }

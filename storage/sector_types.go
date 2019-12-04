@@ -69,6 +69,9 @@ type SectorInfo struct {
 
 	// Committing
 	CommitMessage *cid.Cid
+
+	// Debug
+	LastErr string
 }
 
 func (t *SectorInfo) upd() *sectorUpdate {

@@ -60,6 +60,8 @@ func (sm *StorageMinerAPI) SectorsStatus(ctx context.Context, sid uint64) (api.S
 		Deals:    deals,
 		Ticket:   info.Ticket.SB(),
 		Seed:     info.Seed.SB(),
+
+		LastErr: info.LastErr,
 	}, nil
 }
 
