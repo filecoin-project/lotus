@@ -109,7 +109,11 @@ func (m *Miner) Run(ctx context.Context) error {
 	}
 
 	go fps.run(ctx)
-	go m.sectorStateLoop(ctx)
+	if err := m.sectorStateLoop(ctx); err != nil {
+		log.Error(err)
+		return xerrors.Errorf("failed to startup sector state loop: %w", err)
+	}
+
 	return nil
 }
 
