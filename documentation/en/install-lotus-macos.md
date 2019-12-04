@@ -1,4 +1,6 @@
-# Installing Lotus on MacOS
+# MacOS Instructions
+
+> This document is a work in progress.
 
 Install these dependencies for MacOS Catalina.
 

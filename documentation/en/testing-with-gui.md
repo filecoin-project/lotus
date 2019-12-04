@@ -22,7 +22,7 @@ Now go to http://127.0.0.1:2222.
 - Click `[Spawn Storage Miner]` to start mining. This require's the node's wallet to have funds.
 - Click on `[Client]` to open the Node's client interface and propose a deal with an existing Miner. If successful you'll see a payment channel open up with that Miner.
 
-Don't leave Pond unattended for long periods of time (10h+), the web-ui tends to eventually consume all the available RAM.
+Don't leave Pond unattended for more than 10 hours, the web client will eventually consume all available RAM.
 
 ## Troubleshooting
 

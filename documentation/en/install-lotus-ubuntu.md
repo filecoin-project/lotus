@@ -1,6 +1,6 @@
-# Installing Lotus on Ubuntu
+# Ubuntu Instructions
 
-Install these dependencies for Ubuntu.
+These steps will install the following dependencies:
 
 - go (1.13 or higher)
 - gcc (7.4.0 or higher)
@@ -15,14 +15,14 @@ Install these dependencies for Ubuntu.
 - llvm (proofs build)
 - clang (proofs build)
 
-Ubuntu / Debian (run):
+Run
 
 ```sh
 sudo apt update
 sudo apt install mesa-opencl-icd ocl-icd-opencl-dev
 ```
 
-Ubuntu (build):
+Build
 
 ```sh
 sudo add-apt-repository ppa:longsleep/golang-backports
