@@ -2,6 +2,7 @@ package api
 
 import (
 	"context"
+	"time"
 
 	"github.com/ipfs/go-cid"
 	"github.com/ipfs/go-filestore"
@@ -263,6 +264,10 @@ type ActiveSync struct {
 
 	Stage  SyncStateStage
 	Height uint64
+
+	Start   time.Time
+	End     time.Time
+	Message string
 }
 
 type SyncState struct {

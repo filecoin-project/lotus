@@ -26,14 +26,14 @@ var syncStatusCmd = &cli.Command{
 	Name:  "status",
 	Usage: "check sync status",
 	Action: func(cctx *cli.Context) error {
-		api, closer, err := GetFullNodeAPI(cctx)
+		apic, closer, err := GetFullNodeAPI(cctx)
 		if err != nil {
 			return err
 		}
 		defer closer()
 		ctx := ReqContext(cctx)
 
-		state, err := api.SyncState(ctx)
+		state, err := apic.SyncState(ctx)
 		if err != nil {
 			return err
 		}
@@ -43,6 +43,7 @@ var syncStatusCmd = &cli.Command{
 			fmt.Printf("worker %d:\n", i)
 			var base, target []cid.Cid
 			var heightDiff int64
+			var theight uint64
 			if ss.Base != nil {
 				base = ss.Base.Cids()
 				heightDiff = int64(ss.Base.Height())
@@ -50,14 +51,25 @@ var syncStatusCmd = &cli.Command{
 			if ss.Target != nil {
 				target = ss.Target.Cids()
 				heightDiff = int64(ss.Target.Height()) - heightDiff
+				theight = ss.Target.Height()
 			} else {
 				heightDiff = 0
 			}
 			fmt.Printf("\tBase:\t%s\n", base)
-			fmt.Printf("\tTarget:\t%s\n", target)
+			fmt.Printf("\tTarget:\t%s (%d)\n", target, theight)
 			fmt.Printf("\tHeight diff:\t%d\n", heightDiff)
 			fmt.Printf("\tStage: %s\n", chain.SyncStageString(ss.Stage))
 			fmt.Printf("\tHeight: %d\n", ss.Height)
+			if ss.End.IsZero() {
+				if !ss.Start.IsZero() {
+					fmt.Printf("\tElapsed: %s\n", time.Since(ss.Start))
+				}
+			} else {
+				fmt.Printf("\tElapsed: %s\n", ss.End.Sub(ss.Start))
+			}
+			if ss.Stage == api.StageSyncErrored {
+				fmt.Printf("\tError: %s\n", ss.Message)
+			}
 		}
 		return nil
 	},
