@@ -258,6 +258,44 @@ func TestAt(t *testing.T) {
 	require.Equal(t, false, reverted)
 }
 
+func TestAtDoubleTrigger(t *testing.T) {
+	fcs := &fakeCS{
+		t:   t,
+		h:   1,
+		tsc: newTSCache(2*build.ForkLengthThreshold, nil),
+	}
+	require.NoError(t, fcs.tsc.add(makeTs(t, 1, dummyCid)))
+
+	events := NewEvents(context.Background(), fcs)
+
+	var applied bool
+	var reverted bool
+
+	err := events.ChainAt(func(_ context.Context, ts *types.TipSet, curH uint64) error {
+		require.Equal(t, 5, int(ts.Height()))
+		require.Equal(t, 8, int(curH))
+		applied = true
+		return nil
+	}, func(_ context.Context, ts *types.TipSet) error {
+		reverted = true
+		return nil
+	}, 3, 5)
+	require.NoError(t, err)
+
+	fcs.advance(0, 6, nil)
+	require.False(t, applied)
+	require.False(t, reverted)
+
+	fcs.advance(0, 1, nil)
+	require.True(t, applied)
+	require.False(t, reverted)
+	applied = false
+
+	fcs.advance(2, 2, nil)
+	require.False(t, applied)
+	require.False(t, reverted)
+}
+
 func TestAtNullTrigger(t *testing.T) {
 	fcs := &fakeCS{
 		t:   t,
