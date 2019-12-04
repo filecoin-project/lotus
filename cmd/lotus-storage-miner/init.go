@@ -75,8 +75,10 @@ var initCmd = &cli.Command{
 	Action: func(cctx *cli.Context) error {
 		log.Info("Initializing lotus storage miner")
 
+		ssize := cctx.Uint64("sector-size")
+
 		log.Info("Checking proof parameters")
-		if err := build.GetParams(true, false); err != nil {
+		if err := build.GetParams(ssize); err != nil {
 			return xerrors.Errorf("fetching proof parameters: %w", err)
 		}
 
@@ -152,7 +154,7 @@ var initCmd = &cli.Command{
 			}
 
 			oldsb, err := sectorbuilder.New(&sectorbuilder.Config{
-				SectorSize:    1024,
+				SectorSize:    ssize,
 				WorkerThreads: 2,
 				SealedDir:     filepath.Join(pssb, "sealed"),
 				CacheDir:      filepath.Join(pssb, "cache"),
@@ -164,7 +166,7 @@ var initCmd = &cli.Command{
 			}
 
 			nsb, err := sectorbuilder.New(&sectorbuilder.Config{
-				SectorSize:    1024,
+				SectorSize:    ssize,
 				WorkerThreads: 2,
 				SealedDir:     filepath.Join(lr.Path(), "sealed"),
 				CacheDir:      filepath.Join(lr.Path(), "cache"),

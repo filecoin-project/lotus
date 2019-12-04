@@ -91,6 +91,7 @@ const (
 	RegisterClientValidatorKey
 
 	// storage miner
+	GetParamsKey
 	HandleDealsKey
 	HandleRetrievalKey
 	RunSectorServiceKey
@@ -250,6 +251,7 @@ func Online() Option {
 			Override(new(*deals.Provider), deals.NewProvider),
 			Override(RegisterProviderValidatorKey, modules.RegisterProviderValidator),
 			Override(HandleRetrievalKey, modules.HandleRetrieval),
+			Override(GetParamsKey, modules.GetParams),
 			Override(HandleDealsKey, modules.HandleDeals),
 			Override(new(gen.ElectionPoStProver), storage.NewElectionPoStProver),
 			Override(new(*miner.Miner), modules.SetupBlockProducer),

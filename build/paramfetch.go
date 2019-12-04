@@ -39,7 +39,7 @@ type fetch struct {
 	errs []error
 }
 
-func GetParams(storage bool, tests bool) error {
+func GetParams(storageSize uint64) error {
 	if err := os.Mkdir(paramdir, 0755); err != nil && !os.IsExist(err) {
 		return err
 	}
@@ -54,10 +54,7 @@ func GetParams(storage bool, tests bool) error {
 	ft := &fetch{}
 
 	for name, info := range params {
-		if !(SupportedSectorSize(info.SectorSize) || (tests && info.SectorSize == 1<<10)) {
-			continue
-		}
-		if !storage && strings.HasSuffix(name, ".params") {
+		if storageSize != info.SectorSize && strings.HasSuffix(name, ".params") {
 			continue
 		}
 
@@ -83,8 +80,8 @@ func (ft *fetch) maybeFetchAsync(name string, info paramFile) {
 			return
 		}
 
-		ft.fetchLk.Lock()
-		defer ft.fetchLk.Unlock()
+		/*ft.fetchLk.Lock()
+		defer ft.fetchLk.Unlock()*/
 
 		if err := doFetch(path, info); err != nil {
 			ft.errs = append(ft.errs, xerrors.Errorf("fetching file %s failed: %w", path, err))
