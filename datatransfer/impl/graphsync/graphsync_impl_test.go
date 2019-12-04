@@ -773,16 +773,16 @@ func (fgsr *fakeGraphSyncReceiver) Connected(p peer.ID) {
 func (fgsr *fakeGraphSyncReceiver) Disconnected(p peer.ID) {
 }
 
-func (fgsr *fakeGraphSyncReceiver) consumeResponses(ctx context.Context, t *testing.T) (graphsync.ResponseStatusCode, error) {
+func (fgsr *fakeGraphSyncReceiver) consumeResponses(ctx context.Context, t *testing.T) graphsync.ResponseStatusCode {
 	var gsMessageReceived receivedGraphSyncMessage
 	for {
 		select {
 		case <-ctx.Done():
-			return 0, errors.New("did not receive message sent")
+			t.Fail()
 		case gsMessageReceived = <-fgsr.receivedMessages:
 			responses := gsMessageReceived.message.Responses()
 			if (len(responses) > 0) && gsmsg.IsTerminalResponseCode(responses[0].Status()) {
-				return responses[0].Status(), nil
+				return responses[0].Status()
 			}
 		}
 	}
@@ -845,7 +845,7 @@ func TestRespondingToPushGraphsyncRequests(t *testing.T) {
 		gsmessage.AddRequest(request)
 		require.NoError(t, gsData.gsNet2.SendMessage(ctx, host1.ID(), gsmessage))
 
-		status, _ := gsr.consumeResponses(ctx, t)
+		status := gsr.consumeResponses(ctx, t)
 		require.False(t, gsmsg.IsTerminalFailureCode(status))
 	})
 
@@ -868,7 +868,7 @@ func TestRespondingToPushGraphsyncRequests(t *testing.T) {
 		gsmessage.AddRequest(request)
 		require.NoError(t, gsData.gsNet2.SendMessage(ctx, host1.ID(), gsmessage))
 
-		status, _ := gsr.consumeResponses(ctx, t)
+		status := gsr.consumeResponses(ctx, t)
 		require.True(t, gsmsg.IsTerminalFailureCode(status))
 	})
 }
@@ -944,8 +944,7 @@ func TestRespondingToPullGraphsyncRequests(t *testing.T) {
 		gsmessage := gsmsg.New()
 		gsmessage.AddRequest(gsRequest)
 		require.NoError(t, gsData.gsNet1.SendMessage(ctx, host2.ID(), gsmessage))
-		status, err := gsr.consumeResponses(ctx, t)
-		assert.NoError(t, err)
+		status := gsr.consumeResponses(ctx, t)
 		require.False(t, gsmsg.IsTerminalFailureCode(status))
 	})
 
@@ -967,8 +966,7 @@ func TestRespondingToPullGraphsyncRequests(t *testing.T) {
 		// non-initiator requests data over graphsync network, but should not get it
 		// because there was no previous request
 		require.NoError(t, gsData.gsNet1.SendMessage(ctx, host2.ID(), gsmessage))
-		status, err := gsr.consumeResponses(ctx, t)
-		assert.NoError(t, err)
+		status := gsr.consumeResponses(ctx, t)
 		require.True(t, gsmsg.IsTerminalFailureCode(status))
 	})
 }
