@@ -40,6 +40,7 @@ func (e *heightEvents) headChangeAt(rev, app []*types.TipSet) error {
 				ctx, span := trace.StartSpan(ctx, "events.HeightRevert")
 
 				err := e.heightTriggers[tid].revert(ctx, ts)
+				e.heightTriggers[tid].called = false
 
 				span.End()
 
@@ -82,6 +83,11 @@ func (e *heightEvents) headChangeAt(rev, app []*types.TipSet) error {
 		apply := func(h uint64, ts *types.TipSet) error {
 			for _, tid := range e.htTriggerHeights[h] {
 				hnd := e.heightTriggers[tid]
+				if hnd.called {
+					return nil
+				}
+				hnd.called = true
+
 				triggerH := h - uint64(hnd.confidence)
 
 				incTs, err := e.tsc.getNonNull(triggerH)

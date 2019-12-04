@@ -24,6 +24,7 @@ type RevertHandler func(ctx context.Context, ts *types.TipSet) error
 
 type heightHandler struct {
 	confidence int
+	called     bool
 
 	handle HeightHandler
 	revert RevertHandler

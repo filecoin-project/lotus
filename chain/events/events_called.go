@@ -183,6 +183,10 @@ func (e *calledEvents) applyWithConfidence(ts *types.TipSet) {
 		}
 
 		for _, event := range events {
+			if event.called {
+				continue
+			}
+
 			trigger := e.triggers[event.trigger]
 			if trigger.disabled {
 				continue
