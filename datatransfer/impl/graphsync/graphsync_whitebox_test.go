@@ -37,7 +37,7 @@ func TestGraphsyncImpl_SubscribeToEvents(t *testing.T) {
 	ctx, cancel := context.WithTimeout(context.Background(), 10*time.Second)
 	defer cancel()
 
-	gsData := newGraphsyncTestingData(t, ctx)
+	gsData := newGraphsyncTestingData(ctx, t)
 	host1 := gsData.host1
 	gs1 := &fakeGraphSync{
 		receivedRequests: make(chan receivedGraphSyncRequest, 1),
@@ -76,7 +76,7 @@ func TestGraphsyncImpl_SubscribeToEvents(t *testing.T) {
 	assert.Equal(t, 0, len(impl.subscribers))
 }
 
-func newGraphsyncTestingData(t *testing.T, ctx context.Context) *graphsyncTestingData { // nolint: golint
+func newGraphsyncTestingData(ctx context.Context, t *testing.T) *graphsyncTestingData {
 
 	gsData := &graphsyncTestingData{}
 	gsData.ctx = ctx

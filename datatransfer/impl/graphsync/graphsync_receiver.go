@@ -33,7 +33,7 @@ func (receiver *graphsyncReceiver) ReceiveRequest(
 		return
 	}
 	stor, _ := nodeFromBytes(incoming.Selector())
-	root := cidlink.Link{incoming.BaseCid()} // nolint: govet
+	root := cidlink.Link{Cid: incoming.BaseCid()}
 
 	var dataSender, dataReceiver peer.ID
 	if incoming.IsPull() {
@@ -133,7 +133,7 @@ func (receiver *graphsyncReceiver) ReceiveResponse(
 		// initiator is us
 		if chst = receiver.impl.getChannelByIDAndSender(chid, sender); chst != datatransfer.EmptyChannelState {
 			baseCid := chst.BaseCID()
-			root := cidlink.Link{baseCid} // nolint: govet
+			root := cidlink.Link{Cid: baseCid}
 			receiver.impl.sendGsRequest(ctx, receiver.impl.peerID, incoming.TransferID(), true, sender, root, chst.Selector())
 			evt.Code = datatransfer.Progress
 		}

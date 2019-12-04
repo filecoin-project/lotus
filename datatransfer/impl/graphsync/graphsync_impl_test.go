@@ -108,7 +108,7 @@ func TestDataTransferOneWay(t *testing.T) {
 	ctx := context.Background()
 	ctx, cancel := context.WithTimeout(ctx, 10*time.Second)
 	defer cancel()
-	gsData := newGraphsyncTestingData(t, ctx)
+	gsData := newGraphsyncTestingData(ctx, t)
 	host1 := gsData.host1
 	host2 := gsData.host2
 	// setup receiving peer to just record message coming in
@@ -257,7 +257,7 @@ func TestDataTransferValidation(t *testing.T) {
 	ctx := context.Background()
 	ctx, cancel := context.WithTimeout(ctx, 10*time.Second)
 	defer cancel()
-	gsData := newGraphsyncTestingData(t, ctx)
+	gsData := newGraphsyncTestingData(ctx, t)
 	host1 := gsData.host1
 	host2 := gsData.host2
 	dtnet1 := network.NewFromLibp2pHost(host1)
@@ -447,7 +447,7 @@ func TestDataTransferSubscribing(t *testing.T) {
 	ctx := context.Background()
 	ctx, cancel := context.WithTimeout(ctx, 10*time.Second)
 	defer cancel()
-	gsData := newGraphsyncTestingData(t, ctx)
+	gsData := newGraphsyncTestingData(ctx, t)
 	host1 := gsData.host1
 	host2 := gsData.host2
 
@@ -539,7 +539,7 @@ func TestDataTransferInitiatingPushGraphsyncRequests(t *testing.T) {
 	ctx := context.Background()
 	ctx, cancel := context.WithTimeout(ctx, 10*time.Second)
 	defer cancel()
-	gsData := newGraphsyncTestingData(t, ctx)
+	gsData := newGraphsyncTestingData(ctx, t)
 	host1 := gsData.host1
 	host2 := gsData.host2
 
@@ -620,7 +620,7 @@ func TestDataTransferInitiatingPushGraphsyncRequests(t *testing.T) {
 
 func TestDataTransferInitiatingPullGraphsyncRequests(t *testing.T) {
 	ctx := context.Background()
-	gsData := newGraphsyncTestingData(t, ctx)
+	gsData := newGraphsyncTestingData(ctx, t)
 	host1 := gsData.host1 // initiates the pull request
 	host2 := gsData.host2 // sends the data
 
@@ -793,7 +793,7 @@ func TestRespondingToPushGraphsyncRequests(t *testing.T) {
 	ctx := context.Background()
 	ctx, cancel := context.WithTimeout(ctx, 10*time.Second)
 	defer cancel()
-	gsData := newGraphsyncTestingData(t, ctx)
+	gsData := newGraphsyncTestingData(ctx, t)
 	host1 := gsData.host1 // initiator and data sender
 	host2 := gsData.host2 // data recipient, makes graphsync request for data
 	voucher := fakeDTType{"applesauce"}
@@ -879,7 +879,7 @@ func TestRespondingToPullGraphsyncRequests(t *testing.T) {
 	ctx, cancel := context.WithTimeout(ctx, 10*time.Second)
 	defer cancel()
 
-	gsData := newGraphsyncTestingData(t, ctx)
+	gsData := newGraphsyncTestingData(ctx, t)
 	host1 := gsData.host1 // initiator, and recipient, makes graphync request
 	host2 := gsData.host2 // data sender
 
@@ -976,7 +976,7 @@ func TestDataTransferPushRoundTrip(t *testing.T) {
 	ctx, cancel := context.WithTimeout(ctx, 10*time.Second)
 	defer cancel()
 
-	gsData := newGraphsyncTestingData(t, ctx)
+	gsData := newGraphsyncTestingData(ctx, t)
 	host1 := gsData.host1 // initiator, data sender
 	host2 := gsData.host2 // data recipient
 
@@ -1006,7 +1006,6 @@ func TestDataTransferPushRoundTrip(t *testing.T) {
 	case <-ctx.Done():
 		t.Fatal("Did not complete succcessful data transfer")
 	case <-finished:
-		time.Sleep(5 * time.Millisecond) // commenting this out causes "merkledag: not found" error
 		gsData.verifyFileTransferred(t, root, true)
 	}
 	assert.Equal(t, chid.Initiator, host1.ID())
@@ -1018,7 +1017,7 @@ func TestDataTransferPullRoundTrip(t *testing.T) {
 	ctx, cancel := context.WithTimeout(ctx, 10*time.Second)
 	defer cancel()
 
-	gsData := newGraphsyncTestingData(t, ctx)
+	gsData := newGraphsyncTestingData(ctx, t)
 	host1 := gsData.host1
 	host2 := gsData.host2
 
@@ -1075,7 +1074,7 @@ type graphsyncTestingData struct {
 	origBytes   []byte
 }
 
-func newGraphsyncTestingData(t *testing.T, ctx context.Context) *graphsyncTestingData { // nolint: golint
+func newGraphsyncTestingData(ctx context.Context, t *testing.T) *graphsyncTestingData {
 
 	gsData := &graphsyncTestingData{}
 	gsData.ctx = ctx
