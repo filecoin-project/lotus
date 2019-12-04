@@ -446,11 +446,19 @@ func (syncer *Syncer) Sync(ctx context.Context, maybeHead *types.TipSet) error {
 
 	if err := syncer.collectChain(ctx, maybeHead); err != nil {
 		span.AddAttributes(trace.StringAttribute("col_error", err.Error()))
+		span.SetStatus(trace.Status{
+			Code:    13,
+			Message: err.Error(),
+		})
 		return xerrors.Errorf("collectChain failed: %w", err)
 	}
 
 	if err := syncer.store.PutTipSet(ctx, maybeHead); err != nil {
 		span.AddAttributes(trace.StringAttribute("put_error", err.Error()))
+		span.SetStatus(trace.Status{
+			Code:    13,
+			Message: err.Error(),
+		})
 		return xerrors.Errorf("failed to put synced tipset to chainstore: %w", err)
 	}
 
