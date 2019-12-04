@@ -92,5 +92,12 @@ var methods = []uint64{
 	vchain.MultiSigRemoveSigner: actors.MultiSigMethods.RemoveSigner,
 	vchain.MultiSigSwapSigner: actors.MultiSigMethods.SwapSigner,
 	vchain.MultiSigChangeRequirement: actors.MultiSigMethods.ChangeRequirement,
+
+	vchain.PaymentChannelConstructor: actors.PCAMethods.Constructor,
+	vchain.PaymentChannelUpdate: actors.PCAMethods.UpdateChannelState,
+	vchain.PaymentChannelCollect: actors.PCAMethods.Collect,
+	vchain.PaymentChannelClose: actors.PCAMethods.Close,
+	vchain.PaymentChannelGetOwner: actors.PCAMethods.GetOwner,
+	vchain.PaymentChannelGetToSend: actors.PCAMethods.GetToSend,
 	// More to follow...
 }

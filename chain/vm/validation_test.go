@@ -33,3 +33,10 @@ func TestMultiSig(t *testing.T) {
 	suites.MultiSigActorProposeApprove(t, factory)
 	suites.MultiSigActorProposeCancel(t, factory)
 }
+
+func TestPaymentChannel(t *testing.T) {
+	factory := validation.NewFactories()
+	suites.PayChActorConstructor(t, factory)
+	suites.PayChActorUpdate(t, factory)
+
+}
