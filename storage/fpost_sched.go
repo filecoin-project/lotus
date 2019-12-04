@@ -49,10 +49,17 @@ func (s *fpostScheduler) run(ctx context.Context) {
 		panic(err)
 	}
 
+	defer s.abortActivePoSt()
+
 	// not fine to panic after this point
 	for {
 		select {
-		case changes := <-notifs:
+		case changes, ok := <-notifs:
+			if !ok {
+				log.Warn("fpostScheduler notifs channel closed")
+				return
+			}
+
 			ctx, span := trace.StartSpan(ctx, "fpostScheduler.headChange")
 
 			var lowest, highest *types.TipSet = s.cur, nil
@@ -74,6 +81,8 @@ func (s *fpostScheduler) run(ctx context.Context) {
 			}
 
 			span.End()
+		case <-ctx.Done():
+			return
 		}
 	}
 }
@@ -102,9 +111,11 @@ func (s *fpostScheduler) update(ctx context.Context, new *types.TipSet) error {
 		return err
 	}
 
-	if newEPS != s.activeEPS {
-		s.abortActivePoSt()
+	if newEPS == s.activeEPS {
+		return nil
 	}
+
+	s.abortActivePoSt()
 
 	if newEPS != Inactive && start {
 		s.doPost(ctx, newEPS, new)
@@ -124,7 +135,7 @@ func (s *fpostScheduler) abortActivePoSt() {
 
 	log.Warnf("Aborting Fallback PoSt (EPS: %d)", s.activeEPS)
 
-	s.activeEPS = 0
+	s.activeEPS = Inactive
 	s.abort = nil
 }
 

@@ -4,8 +4,12 @@ package build
 
 import "os"
 
+var SectorSizes = []uint64{1024}
+
 // Seconds
 const BlockDelay = 6
+
+const PropagationDelay = 3
 
 // FallbackPoStDelay is the number of epochs the miner needs to wait after
 //  ElectionPeriodStart before starting fallback post computation

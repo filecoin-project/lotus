@@ -26,10 +26,13 @@ func (a *SyncAPI) SyncState(ctx context.Context) (*api.SyncState, error) {
 
 	for _, ss := range states {
 		out.ActiveSyncs = append(out.ActiveSyncs, api.ActiveSync{
-			Base:   ss.Base,
-			Target: ss.Target,
-			Stage:  ss.Stage,
-			Height: ss.Height,
+			Base:    ss.Base,
+			Target:  ss.Target,
+			Stage:   ss.Stage,
+			Height:  ss.Height,
+			Start:   ss.Start,
+			End:     ss.End,
+			Message: ss.Message,
 		})
 	}
 	return out, nil

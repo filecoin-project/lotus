@@ -2,7 +2,7 @@ package api
 
 import (
 	"context"
-	"fmt"
+
 	"github.com/filecoin-project/lotus/chain/address"
 	"github.com/filecoin-project/lotus/lib/sectorbuilder"
 )
@@ -22,29 +22,30 @@ const (
 	Committing
 	Proving
 
-	SectorNoUpdate = UndefinedSectorState
+	SealFailed
+	PreCommitFailed
+	SealCommitFailed
+	CommitFailed
+
+	FailedUnrecoverable
 )
 
-func SectorStateStr(s SectorState) string {
-	switch s {
-	case UndefinedSectorState:
-		return "UndefinedSectorState"
-	case Empty:
-		return "Empty"
-	case Packing:
-		return "Packing"
-	case Unsealed:
-		return "Unsealed"
-	case PreCommitting:
-		return "PreCommitting"
-	case PreCommitted:
-		return "PreCommitted"
-	case Committing:
-		return "Committing"
-	case Proving:
-		return "Proving"
-	}
-	return fmt.Sprintf("<Unknown %d>", s)
+var SectorStates = []string{
+	UndefinedSectorState: "UndefinedSectorState",
+	Empty:                "Empty",
+	Packing:              "Packing",
+	Unsealed:             "Unsealed",
+	PreCommitting:        "PreCommitting",
+	PreCommitted:         "PreCommitted",
+	Committing:           "Committing",
+	Proving:              "Proving",
+
+	SealFailed:       "SealFailed",
+	PreCommitFailed:  "PreCommitFailed",
+	SealCommitFailed: "SealCommitFailed",
+	CommitFailed:     "CommitFailed",
+
+	FailedUnrecoverable: "FailedUnrecoverable",
 }
 
 // StorageMiner is a low-level interface to the Filecoin network storage miner node
@@ -83,6 +84,7 @@ type SectorInfo struct {
 	Deals    []uint64
 	Ticket   sectorbuilder.SealTicket
 	Seed     sectorbuilder.SealSeed
+	LastErr  string
 }
 
 type SealedRef struct {
