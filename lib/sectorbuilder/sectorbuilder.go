@@ -1,18 +1,17 @@
 package sectorbuilder
 
 import (
-	"context"
 	"fmt"
 	"io"
 	"os"
 	"path/filepath"
 	"strconv"
 	"sync"
+	"sync/atomic"
 
 	sectorbuilder "github.com/filecoin-project/filecoin-ffi"
 	"github.com/ipfs/go-datastore"
 	logging "github.com/ipfs/go-log"
-	"go.opencensus.io/trace"
 	"golang.org/x/xerrors"
 
 	"github.com/filecoin-project/lotus/build"
@@ -40,7 +39,7 @@ type SealCommitOutput = sectorbuilder.SealCommitOutput
 
 type PublicPieceInfo = sectorbuilder.PublicPieceInfo
 
-type RawSealPreCommitOutput = sectorbuilder.RawSealPreCommitOutput
+type RawSealPreCommitOutput sectorbuilder.RawSealPreCommitOutput
 
 type EPostCandidate = sectorbuilder.Candidate
 
@@ -62,7 +61,58 @@ type SectorBuilder struct {
 
 	unsealLk sync.Mutex
 
+	sealLocal bool
 	rateLimit chan struct{}
+
+	sealTasks chan workerCall
+
+	taskCtr       uint64
+	remoteLk      sync.Mutex
+	remoteCtr     int
+	remotes       map[int]*remote
+	remoteResults map[uint64]chan<- SealRes
+
+	stopping chan struct{}
+}
+
+type JsonRSPCO struct {
+	CommC     []byte
+	CommD     []byte
+	CommR     []byte
+	CommRLast []byte
+}
+
+func (rspco *RawSealPreCommitOutput) ToJson() JsonRSPCO {
+	return JsonRSPCO{
+		CommC:     rspco.CommC[:],
+		CommD:     rspco.CommD[:],
+		CommR:     rspco.CommR[:],
+		CommRLast: rspco.CommRLast[:],
+	}
+}
+
+func (rspco *JsonRSPCO) rspco() RawSealPreCommitOutput {
+	var out RawSealPreCommitOutput
+	copy(out.CommC[:], rspco.CommC)
+	copy(out.CommD[:], rspco.CommD)
+	copy(out.CommR[:], rspco.CommR)
+	copy(out.CommRLast[:], rspco.CommRLast)
+	return out
+}
+
+type SealRes struct {
+	Err   string
+	GoErr error `json:"-"`
+
+	Proof []byte
+	Rspco JsonRSPCO
+}
+
+type remote struct {
+	lk sync.Mutex
+
+	sealTasks chan<- WorkerTask
+	busy      uint64 // only for metrics
 }
 
 type Config struct {
@@ -78,8 +128,8 @@ type Config struct {
 }
 
 func New(cfg *Config, ds dtypes.MetadataDS) (*SectorBuilder, error) {
-	if cfg.WorkerThreads <= PoStReservedWorkers {
-		return nil, xerrors.Errorf("minimum worker threads is %d, specified %d", PoStReservedWorkers+1, cfg.WorkerThreads)
+	if cfg.WorkerThreads < PoStReservedWorkers {
+		return nil, xerrors.Errorf("minimum worker threads is %d, specified %d", PoStReservedWorkers, cfg.WorkerThreads)
 	}
 
 	for _, dir := range []string{cfg.StagedDir, cfg.SealedDir, cfg.CacheDir, cfg.UnsealedDir} {
@@ -105,6 +155,14 @@ func New(cfg *Config, ds dtypes.MetadataDS) (*SectorBuilder, error) {
 		return nil, err
 	}
 
+	rlimit := cfg.WorkerThreads - PoStReservedWorkers
+
+	sealLocal := rlimit > 0
+
+	if rlimit == 0 {
+		rlimit = 1
+	}
+
 	sb := &SectorBuilder{
 		ds: ds,
 
@@ -116,17 +174,60 @@ func New(cfg *Config, ds dtypes.MetadataDS) (*SectorBuilder, error) {
 		cacheDir:    cfg.CacheDir,
 		unsealedDir: cfg.UnsealedDir,
 
-		Miner:     cfg.Miner,
-		rateLimit: make(chan struct{}, cfg.WorkerThreads-PoStReservedWorkers),
+		Miner: cfg.Miner,
+
+		sealLocal: sealLocal,
+		rateLimit: make(chan struct{}, rlimit),
+
+		taskCtr:       1,
+		sealTasks:     make(chan workerCall),
+		remoteResults: map[uint64]chan<- SealRes{},
+		remotes:       map[int]*remote{},
+
+		stopping: make(chan struct{}),
 	}
 
 	return sb, nil
 }
 
-func (sb *SectorBuilder) RateLimit() func() {
-	if cap(sb.rateLimit) == len(sb.rateLimit) {
-		log.Warn("rate-limiting sectorbuilder call")
+func NewStandalone(cfg *Config) (*SectorBuilder, error) {
+	for _, dir := range []string{cfg.StagedDir, cfg.SealedDir, cfg.CacheDir, cfg.UnsealedDir} {
+		if err := os.MkdirAll(dir, 0755); err != nil {
+			if os.IsExist(err) {
+				continue
+			}
+			return nil, err
+		}
 	}
+
+	return &SectorBuilder{
+		ds: nil,
+
+		ssize: cfg.SectorSize,
+
+		Miner:       cfg.Miner,
+		stagedDir:   cfg.StagedDir,
+		sealedDir:   cfg.SealedDir,
+		cacheDir:    cfg.CacheDir,
+		unsealedDir: cfg.UnsealedDir,
+
+		sealLocal: true,
+		taskCtr:   1,
+		remotes:   map[int]*remote{},
+		rateLimit: make(chan struct{}, cfg.WorkerThreads),
+		stopping:  make(chan struct{}),
+	}, nil
+}
+
+func (sb *SectorBuilder) checkRateLimit() {
+	if cap(sb.rateLimit) == len(sb.rateLimit) {
+		log.Warn("rate-limiting local sectorbuilder call")
+	}
+}
+
+func (sb *SectorBuilder) RateLimit() func() {
+	sb.checkRateLimit()
+
 	sb.rateLimit <- struct{}{}
 
 	return func() {
@@ -134,8 +235,33 @@ func (sb *SectorBuilder) RateLimit() func() {
 	}
 }
 
-func (sb *SectorBuilder) WorkerStats() (free, reserved, total int) {
-	return cap(sb.rateLimit) - len(sb.rateLimit), PoStReservedWorkers, cap(sb.rateLimit) + PoStReservedWorkers
+type WorkerStats struct {
+	LocalFree     int
+	LocalReserved int
+	LocalTotal    int
+	// todo: post in progress
+	RemotesTotal int
+	RemotesFree  int
+}
+
+func (sb *SectorBuilder) WorkerStats() WorkerStats {
+	sb.remoteLk.Lock()
+	defer sb.remoteLk.Unlock()
+
+	remoteFree := len(sb.remotes)
+	for _, r := range sb.remotes {
+		if r.busy > 0 {
+			remoteFree--
+		}
+	}
+
+	return WorkerStats{
+		LocalFree:     cap(sb.rateLimit) - len(sb.rateLimit),
+		LocalReserved: PoStReservedWorkers,
+		LocalTotal:    cap(sb.rateLimit) + PoStReservedWorkers,
+		RemotesTotal:  len(sb.remotes),
+		RemotesFree:   remoteFree,
+	}
 }
 
 func addressToProverID(a address.Address) [32]byte {
@@ -203,7 +329,7 @@ func (sb *SectorBuilder) ReadPieceFromSealedSector(sectorID uint64, offset uint6
 		return nil, err
 	}
 
-	sealedPath, err := sb.sealedSectorPath(sectorID)
+	sealedPath, err := sb.SealedSectorPath(sectorID)
 	if err != nil {
 		return nil, err
 	}
@@ -259,18 +385,59 @@ func (sb *SectorBuilder) ReadPieceFromSealedSector(sectorID uint64, offset uint6
 	}, nil
 }
 
+func (sb *SectorBuilder) sealPreCommitRemote(call workerCall) (RawSealPreCommitOutput, error) {
+	select {
+	case ret := <-call.ret:
+		var err error
+		if ret.Err != "" {
+			err = xerrors.New(ret.Err)
+		}
+		return ret.Rspco.rspco(), err
+	case <-sb.stopping:
+		return RawSealPreCommitOutput{}, xerrors.New("sectorbuilder stopped")
+	}
+}
+
 func (sb *SectorBuilder) SealPreCommit(sectorID uint64, ticket SealTicket, pieces []PublicPieceInfo) (RawSealPreCommitOutput, error) {
-	ret := sb.RateLimit()
-	defer ret()
+	call := workerCall{
+		task: WorkerTask{
+			Type:       WorkerPreCommit,
+			TaskID:     atomic.AddUint64(&sb.taskCtr, 1),
+			SectorID:   sectorID,
+			SealTicket: ticket,
+			Pieces:     pieces,
+		},
+		ret: make(chan SealRes),
+	}
+
+	select { // prefer remote
+	case sb.sealTasks <- call:
+		return sb.sealPreCommitRemote(call)
+	default:
+	}
+
+	sb.checkRateLimit()
+
+	select { // use whichever is available
+	case sb.sealTasks <- call:
+		return sb.sealPreCommitRemote(call)
+	case sb.rateLimit <- struct{}{}:
+	}
+
+	// local
+
+	defer func() {
+		<-sb.rateLimit
+	}()
 
 	cacheDir, err := sb.sectorCacheDir(sectorID)
 	if err != nil {
-		return RawSealPreCommitOutput{}, err
+		return RawSealPreCommitOutput{}, xerrors.Errorf("getting cache dir: %w", err)
 	}
 
-	sealedPath, err := sb.sealedSectorPath(sectorID)
+	sealedPath, err := sb.SealedSectorPath(sectorID)
 	if err != nil {
-		return RawSealPreCommitOutput{}, err
+		return RawSealPreCommitOutput{}, xerrors.Errorf("getting sealed sector path: %w", err)
 	}
 
 	var sum uint64
@@ -282,7 +449,7 @@ func (sb *SectorBuilder) SealPreCommit(sectorID uint64, ticket SealTicket, piece
 		return RawSealPreCommitOutput{}, xerrors.Errorf("aggregated piece sizes don't match sector size: %d != %d (%d)", sum, ussize, int64(ussize-sum))
 	}
 
-	stagedPath := sb.stagedSectorPath(sectorID)
+	stagedPath := sb.StagedSectorPath(sectorID)
 
 	rspco, err := sectorbuilder.SealPreCommit(
 		sb.ssize,
@@ -299,12 +466,25 @@ func (sb *SectorBuilder) SealPreCommit(sectorID uint64, ticket SealTicket, piece
 		return RawSealPreCommitOutput{}, xerrors.Errorf("presealing sector %d (%s): %w", sectorID, stagedPath, err)
 	}
 
-	return rspco, nil
+	return RawSealPreCommitOutput(rspco), nil
 }
 
-func (sb *SectorBuilder) SealCommit(sectorID uint64, ticket SealTicket, seed SealSeed, pieces []PublicPieceInfo, rspco RawSealPreCommitOutput) (proof []byte, err error) {
-	ret := sb.RateLimit()
-	defer ret()
+func (sb *SectorBuilder) sealCommitRemote(call workerCall) (proof []byte, err error) {
+	select {
+	case ret := <-call.ret:
+		if ret.Err != "" {
+			err = xerrors.New(ret.Err)
+		}
+		return ret.Proof, err
+	case <-sb.stopping:
+		return nil, xerrors.New("sectorbuilder stopped")
+	}
+}
+
+func (sb *SectorBuilder) sealCommitLocal(sectorID uint64, ticket SealTicket, seed SealSeed, pieces []PublicPieceInfo, rspco RawSealPreCommitOutput) (proof []byte, err error) {
+	defer func() {
+		<-sb.rateLimit
+	}()
 
 	cacheDir, err := sb.sectorCacheDir(sectorID)
 	if err != nil {
@@ -320,17 +500,51 @@ func (sb *SectorBuilder) SealCommit(sectorID uint64, ticket SealTicket, seed Sea
 		ticket.TicketBytes,
 		seed.TicketBytes,
 		pieces,
-		rspco,
+		sectorbuilder.RawSealPreCommitOutput(rspco),
 	)
 	if err != nil {
-		return nil, xerrors.Errorf("SealCommit: %w", err)
+		log.Warn("StandaloneSealCommit error: ", err)
+		log.Warnf("sid:%d tkt:%v seed:%v, ppi:%v rspco:%v", sectorID, ticket, seed, pieces, rspco)
+
+		return nil, xerrors.Errorf("StandaloneSealCommit: %w", err)
 	}
 
 	return proof, nil
 }
 
-func (sb *SectorBuilder) SectorSize() uint64 {
-	return sb.ssize
+func (sb *SectorBuilder) SealCommit(sectorID uint64, ticket SealTicket, seed SealSeed, pieces []PublicPieceInfo, rspco RawSealPreCommitOutput) (proof []byte, err error) {
+	call := workerCall{
+		task: WorkerTask{
+			Type:       WorkerCommit,
+			TaskID:     atomic.AddUint64(&sb.taskCtr, 1),
+			SectorID:   sectorID,
+			SealTicket: ticket,
+			Pieces:     pieces,
+
+			SealSeed: seed,
+			Rspco:    rspco,
+		},
+		ret: make(chan SealRes),
+	}
+
+	select { // prefer remote
+	case sb.sealTasks <- call:
+		proof, err = sb.sealCommitRemote(call)
+	default:
+		sb.checkRateLimit()
+
+		select { // use whichever is available
+		case sb.sealTasks <- call:
+			proof, err = sb.sealCommitRemote(call)
+		case sb.rateLimit <- struct{}{}:
+			proof, err = sb.sealCommitLocal(sectorID, ticket, seed, pieces, rspco)
+		}
+	}
+	if err != nil {
+		return nil, xerrors.Errorf("commit: %w", err)
+	}
+
+	return proof, nil
 }
 
 func (sb *SectorBuilder) ComputeElectionPoSt(sectorInfo SortedPublicSectorInfo, challengeSeed []byte, winners []EPostCandidate) ([]byte, error) {
@@ -370,7 +584,7 @@ func (sb *SectorBuilder) pubSectorToPriv(sectorInfo SortedPublicSectorInfo) (Sor
 			return SortedPrivateSectorInfo{}, xerrors.Errorf("getting cache path for sector %d: %w", s.SectorID, err)
 		}
 
-		sealedPath, err := sb.sealedSectorPath(s.SectorID)
+		sealedPath, err := sb.SealedSectorPath(s.SectorID)
 		if err != nil {
 			return SortedPrivateSectorInfo{}, xerrors.Errorf("getting sealed path for sector %d: %w", s.SectorID, err)
 		}
@@ -403,68 +617,8 @@ func (sb *SectorBuilder) GenerateFallbackPoSt(sectorInfo SortedPublicSectorInfo,
 	return candidates, proof, err
 }
 
-var UserBytesForSectorSize = sectorbuilder.GetMaxUserBytesPerStagedSector
-
-func VerifySeal(sectorSize uint64, commR, commD []byte, proverID address.Address, ticket []byte, seed []byte, sectorID uint64, proof []byte) (bool, error) {
-	var commRa, commDa, ticketa, seeda [32]byte
-	copy(commRa[:], commR)
-	copy(commDa[:], commD)
-	copy(ticketa[:], ticket)
-	copy(seeda[:], seed)
-	proverIDa := addressToProverID(proverID)
-
-	return sectorbuilder.VerifySeal(sectorSize, commRa, commDa, proverIDa, ticketa, seeda, sectorID, proof)
-}
-
-func NewSortedPrivateSectorInfo(sectors []sectorbuilder.PrivateSectorInfo) SortedPrivateSectorInfo {
-	return sectorbuilder.NewSortedPrivateSectorInfo(sectors...)
-}
-
-func NewSortedPublicSectorInfo(sectors []sectorbuilder.PublicSectorInfo) SortedPublicSectorInfo {
-	return sectorbuilder.NewSortedPublicSectorInfo(sectors...)
-}
-
-func VerifyElectionPost(ctx context.Context, sectorSize uint64, sectorInfo SortedPublicSectorInfo, challengeSeed []byte, proof []byte, candidates []EPostCandidate, proverID address.Address) (bool, error) {
-	challengeCount := ElectionPostChallengeCount(uint64(len(sectorInfo.Values())))
-	return verifyPost(ctx, sectorSize, sectorInfo, challengeCount, challengeSeed, proof, candidates, proverID)
-}
-
-func VerifyFallbackPost(ctx context.Context, sectorSize uint64, sectorInfo SortedPublicSectorInfo, challengeSeed []byte, proof []byte, candidates []EPostCandidate, proverID address.Address) (bool, error) {
-	challengeCount := fallbackPostChallengeCount(uint64(len(sectorInfo.Values())))
-	return verifyPost(ctx, sectorSize, sectorInfo, challengeCount, challengeSeed, proof, candidates, proverID)
-}
-
-func verifyPost(ctx context.Context, sectorSize uint64, sectorInfo SortedPublicSectorInfo, challengeCount uint64, challengeSeed []byte, proof []byte, candidates []EPostCandidate, proverID address.Address) (bool, error) {
-	if challengeCount != uint64(len(candidates)) {
-		log.Warnf("verifyPost with wrong candidate count: expected %d, got %d", challengeCount, len(candidates))
-		return false, nil // user input, dont't error
-	}
-
-	var challengeSeeda [CommLen]byte
-	copy(challengeSeeda[:], challengeSeed)
-
-	_, span := trace.StartSpan(ctx, "VerifyPoSt")
-	defer span.End()
-	prover := addressToProverID(proverID)
-	return sectorbuilder.VerifyPoSt(sectorSize, sectorInfo, challengeSeeda, challengeCount, proof, candidates, prover)
-}
-
-func GeneratePieceCommitment(piece io.Reader, pieceSize uint64) (commP [CommLen]byte, err error) {
-	f, werr, err := toReadableFile(piece, int64(pieceSize))
-	if err != nil {
-		return [32]byte{}, err
-	}
-
-	commP, err = sectorbuilder.GeneratePieceCommitmentFromFile(f, pieceSize)
-	if err != nil {
-		return [32]byte{}, err
-	}
-
-	return commP, werr()
-}
-
-func GenerateDataCommitment(ssize uint64, pieces []PublicPieceInfo) ([CommLen]byte, error) {
-	return sectorbuilder.GenerateDataCommitment(ssize, pieces)
+func (sb *SectorBuilder) Stop() {
+	close(sb.stopping)
 }
 
 func ElectionPostChallengeCount(sectors uint64) uint64 {

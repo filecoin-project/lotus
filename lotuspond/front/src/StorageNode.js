@@ -16,6 +16,11 @@ let sealCodes = [
   "PreCommitted",
   "Committing",
   "Proving",
+
+  "SealFailed",
+  "PreCommitFailed",
+  "SealCommitFailed",
+  "CommitFailed",
 ]
 
 class StorageNode extends React.Component {

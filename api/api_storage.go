@@ -2,6 +2,7 @@ package api
 
 import (
 	"context"
+
 	"github.com/filecoin-project/lotus/chain/address"
 	"github.com/filecoin-project/lotus/lib/sectorbuilder"
 )
@@ -53,6 +54,8 @@ type StorageMiner interface {
 
 	ActorAddress(context.Context) (address.Address, error)
 
+	ActorSectorSize(context.Context, address.Address) (uint64, error)
+
 	// Temp api for testing
 	StoreGarbageData(context.Context) error
 
@@ -64,13 +67,12 @@ type StorageMiner interface {
 
 	SectorsRefs(context.Context) (map[string][]SealedRef, error)
 
-	WorkerStats(context.Context) (WorkerStats, error)
-}
+	WorkerStats(context.Context) (sectorbuilder.WorkerStats, error)
 
-type WorkerStats struct {
-	Free     int
-	Reserved int // for PoSt
-	Total    int
+	// WorkerQueue registers a remote worker
+	WorkerQueue(context.Context) (<-chan sectorbuilder.WorkerTask, error)
+
+	WorkerDone(ctx context.Context, task uint64, res sectorbuilder.SealRes) error
 }
 
 type SectorInfo struct {

@@ -46,7 +46,7 @@ deps: $(BUILD_DEPS)
 .PHONY: deps
 
 debug: GOFLAGS=-tags=debug
-debug: lotus lotus-storage-miner
+debug: lotus lotus-storage-miner lotus-seal-worker lotus-seed
 
 lotus: $(BUILD_DEPS)
 	rm -f lotus
@@ -60,9 +60,15 @@ lotus-storage-miner: $(BUILD_DEPS)
 	rm -f lotus-storage-miner
 	go build $(GOFLAGS) -o lotus-storage-miner ./cmd/lotus-storage-miner
 	go run github.com/GeertJohan/go.rice/rice append --exec lotus-storage-miner -i ./build
-
 .PHONY: lotus-storage-miner
 BINS+=lotus-storage-miner
+
+lotus-seal-worker: $(BUILD_DEPS)
+	rm -f lotus-seal-worker
+	go build $(GOFLAGS) -o lotus-seal-worker ./cmd/lotus-seal-worker
+	go run github.com/GeertJohan/go.rice/rice append --exec lotus-seal-worker -i ./build
+.PHONY: lotus-seal-worker
+BINS+=lotus-seal-worker
 
 build: lotus lotus-storage-miner
 .PHONY: build
@@ -75,7 +81,7 @@ install:
 
 lotus-seed: $(BUILD_DEPS)
 	rm -f lotus-seed
-	go build -o lotus-seed ./cmd/lotus-seed
+	go build $(GOFLAGS) -o lotus-seed ./cmd/lotus-seed
 	go run github.com/GeertJohan/go.rice/rice append --exec lotus-seed -i ./build
 
 .PHONY: lotus-seed

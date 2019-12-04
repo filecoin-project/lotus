@@ -58,7 +58,10 @@ var infoCmd = &cli.Command{
 		if err != nil {
 			return err
 		}
-		fmt.Printf("Worker use: %d / %d (+%d)\n", wstat.Total-wstat.Reserved-wstat.Free, wstat.Total, wstat.Reserved)
+
+		fmt.Printf("Worker use:\n")
+		fmt.Printf("\tLocal: %d / %d (+%d reserved)\n", wstat.LocalTotal-wstat.LocalReserved-wstat.LocalFree, wstat.LocalTotal-wstat.LocalReserved, wstat.LocalReserved)
+		fmt.Printf("\tRemote: %d / %d\n", wstat.RemotesTotal-wstat.RemotesFree, wstat.RemotesTotal)
 
 		eps, err := api.StateMinerElectionPeriodStart(ctx, maddr, nil)
 		if err != nil {

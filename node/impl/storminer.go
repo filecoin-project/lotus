@@ -2,13 +2,21 @@ package impl
 
 import (
 	"context"
-
+	"encoding/json"
 	"github.com/filecoin-project/lotus/api"
 	"github.com/filecoin-project/lotus/chain/address"
 	"github.com/filecoin-project/lotus/lib/sectorbuilder"
+	"github.com/filecoin-project/lotus/lib/systar"
 	"github.com/filecoin-project/lotus/miner"
 	"github.com/filecoin-project/lotus/storage"
 	"github.com/filecoin-project/lotus/storage/sectorblocks"
+	"github.com/gorilla/mux"
+	files "github.com/ipfs/go-ipfs-files"
+	"io"
+	"mime"
+	"net/http"
+	"os"
+	"path/filepath"
 )
 
 type StorageMinerAPI struct {
@@ -23,17 +31,115 @@ type StorageMinerAPI struct {
 	Full       api.FullNode
 }
 
-func (sm *StorageMinerAPI) WorkerStats(context.Context) (api.WorkerStats, error) {
-	free, reserved, total := sm.SectorBuilder.WorkerStats()
-	return api.WorkerStats{
-		Free:     free,
-		Reserved: reserved,
-		Total:    total,
-	}, nil
+func (sm *StorageMinerAPI) ServeRemote(w http.ResponseWriter, r *http.Request) {
+	if !api.HasPerm(r.Context(), api.PermAdmin) {
+		w.WriteHeader(401)
+		json.NewEncoder(w).Encode(struct{ Error string }{"unauthorized: missing write permission"})
+		return
+	}
+
+	mux := mux.NewRouter()
+
+	mux.HandleFunc("/remote/{type}/{sname}", sm.remoteGetSector).Methods("GET")
+	mux.HandleFunc("/remote/{type}/{sname}", sm.remotePutSector).Methods("PUT")
+
+	log.Infof("SERVEGETREMOTE %s", r.URL)
+
+	mux.ServeHTTP(w, r)
+}
+
+func (sm *StorageMinerAPI) remoteGetSector(w http.ResponseWriter, r *http.Request) {
+	vars := mux.Vars(r)
+
+	path, err := sm.SectorBuilder.GetPath(vars["type"], vars["sname"])
+	if err != nil {
+		log.Error(err)
+		w.WriteHeader(500)
+		return
+	}
+
+	stat, err := os.Stat(path)
+	if err != nil {
+		log.Error(err)
+		w.WriteHeader(500)
+		return
+	}
+
+	var rd io.Reader
+	if stat.IsDir() {
+		rd, err = systar.TarDirectory(path)
+		w.Header().Set("Content-Type", "application/x-tar")
+	} else {
+		rd, err = os.OpenFile(path, os.O_RDONLY, 0644)
+		w.Header().Set("Content-Type", "application/octet-stream")
+	}
+	if err != nil {
+		log.Error(err)
+		w.WriteHeader(500)
+		return
+	}
+
+	w.WriteHeader(200)
+	if _, err := io.Copy(w, rd); err != nil {
+		log.Error(err)
+		return
+	}
+}
+
+func (sm *StorageMinerAPI) remotePutSector(w http.ResponseWriter, r *http.Request) {
+	vars := mux.Vars(r)
+
+	path, err := sm.SectorBuilder.GetPath(vars["type"], vars["sname"])
+	if err != nil {
+		log.Error(err)
+		w.WriteHeader(500)
+		return
+	}
+
+	mediatype, _, err := mime.ParseMediaType(r.Header.Get("Content-Type"))
+	if err != nil {
+		log.Error(err)
+		w.WriteHeader(500)
+		return
+	}
+
+	if err := os.RemoveAll(path); err != nil {
+		log.Error(err)
+		w.WriteHeader(500)
+		return
+	}
+
+	switch mediatype {
+	case "application/x-tar":
+		if err := systar.ExtractTar(r.Body, filepath.Dir(path)); err != nil {
+			log.Error(err)
+			w.WriteHeader(500)
+			return
+		}
+	default:
+		if err := files.WriteTo(files.NewReaderFile(r.Body), path); err != nil {
+			log.Error(err)
+			w.WriteHeader(500)
+			return
+		}
+	}
+
+	w.WriteHeader(200)
+
+	log.Infof("received %s sector (%s): %d bytes", vars["type"], vars["sname"], r.ContentLength)
+}
+
+func (sm *StorageMinerAPI) WorkerStats(context.Context) (sectorbuilder.WorkerStats, error) {
+	stat := sm.SectorBuilder.WorkerStats()
+	return stat, nil
 }
 
 func (sm *StorageMinerAPI) ActorAddress(context.Context) (address.Address, error) {
 	return sm.SectorBuilderConfig.Miner, nil
+}
+
+func (sm *StorageMinerAPI) ActorSectorSize(ctx context.Context, addr address.Address) (uint64, error) {
+	return sm.Full.StateMinerSectorSize(ctx, addr, nil)
 }
 
 func (sm *StorageMinerAPI) StoreGarbageData(ctx context.Context) error {
@@ -93,6 +199,14 @@ func (sm *StorageMinerAPI) SectorsRefs(context.Context) (map[string][]api.Sealed
 	}
 
 	return out, nil
+}
+
+func (sm *StorageMinerAPI) WorkerQueue(ctx context.Context) (<-chan sectorbuilder.WorkerTask, error) {
+	return sm.SectorBuilder.AddWorker(ctx)
+}
+
+func (sm *StorageMinerAPI) WorkerDone(ctx context.Context, task uint64, res sectorbuilder.SealRes) error {
+	return sm.SectorBuilder.TaskDone(ctx, task, res)
 }
 
 var _ api.StorageMiner = &StorageMinerAPI{}

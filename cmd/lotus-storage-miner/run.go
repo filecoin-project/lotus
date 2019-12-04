@@ -8,6 +8,7 @@ import (
 	"os/signal"
 	"syscall"
 
+	mux "github.com/gorilla/mux"
 	"github.com/multiformats/go-multiaddr"
 	manet "github.com/multiformats/go-multiaddr-net"
 	"golang.org/x/xerrors"
@@ -19,8 +20,11 @@ import (
 	"github.com/filecoin-project/lotus/lib/auth"
 	"github.com/filecoin-project/lotus/lib/jsonrpc"
 	"github.com/filecoin-project/lotus/node"
+	"github.com/filecoin-project/lotus/node/impl"
 	"github.com/filecoin-project/lotus/node/repo"
 )
+
+const defaultListen = "/ip4/127.0.0.1/tcp/"
 
 var runCmd = &cli.Command{
 	Name:  "run",
@@ -28,16 +32,16 @@ var runCmd = &cli.Command{
 	Flags: []cli.Flag{
 		&cli.StringFlag{
 			Name:  "api",
-			Value: "",
+			Value: "2345",
 		},
 		&cli.BoolFlag{
 			Name:  "enable-gpu-proving",
-			Usage: "Enable use of GPU for mining operations",
+			Usage: "enable use of GPU for mining operations",
 			Value: true,
 		},
 		&cli.BoolFlag{
 			Name:  "nosync",
-			Usage: "Don't check full-node sync status",
+			Usage: "don't check full-node sync status",
 		},
 	},
 	Action: func(cctx *cli.Context) error {
@@ -93,15 +97,13 @@ var runCmd = &cli.Command{
 			node.Online(),
 			node.Repo(r),
 
-			node.ApplyIf(func(s *node.Settings) bool { return cctx.IsSet("api") },
-				node.Override(node.SetApiEndpointKey, func(lr repo.LockedRepo) error {
-					apima, err := multiaddr.NewMultiaddr("/ip4/127.0.0.1/tcp/" +
-						cctx.String("api"))
-					if err != nil {
-						return err
-					}
-					return lr.SetAPIEndpoint(apima)
-				})),
+			node.Override(node.SetApiEndpointKey, func(lr repo.LockedRepo) error {
+				apima, err := parseApi(cctx.String("api"))
+				if err != nil {
+					return err
+				}
+				return lr.SetAPIEndpoint(apima)
+			}),
 
 			node.Override(new(api.FullNode), nodeApi),
 		)
@@ -131,17 +133,21 @@ var runCmd = &cli.Command{
 			return xerrors.Errorf("could not listen: %w", err)
 		}
 
+		mux := mux.NewRouter()
+
 		rpcServer := jsonrpc.NewServer()
 		rpcServer.Register("Filecoin", api.PermissionedStorMinerAPI(minerapi))
 
+		mux.Handle("/rpc/v0", rpcServer)
+		mux.PathPrefix("/remote").HandlerFunc(minerapi.(*impl.StorageMinerAPI).ServeRemote)
+		mux.PathPrefix("/").Handler(http.DefaultServeMux) // pprof
+
 		ah := &auth.Handler{
 			Verify: minerapi.AuthVerify,
-			Next:   rpcServer.ServeHTTP,
+			Next:   mux.ServeHTTP,
 		}
 
-		http.Handle("/rpc/v0", ah)
-
-		srv := &http.Server{Handler: http.DefaultServeMux}
+		srv := &http.Server{Handler: ah}
 
 		sigChan := make(chan os.Signal, 2)
 		go func() {
@@ -159,4 +165,16 @@ var runCmd = &cli.Command{
 
 		return srv.Serve(manet.NetListener(lst))
 	},
+}
+
+func parseApi(api string) (multiaddr.Multiaddr, error) {
+	if api == "" {
+		return nil, xerrors.New("empty --api")
+	}
+
+	if api[0] != '/' {
+		api = defaultListen + api
+	}
+
+	return multiaddr.NewMultiaddr(api)
 }

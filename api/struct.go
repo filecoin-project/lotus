@@ -2,6 +2,7 @@ package api
 
 import (
 	"context"
+	"github.com/filecoin-project/lotus/lib/sectorbuilder"
 
 	"github.com/ipfs/go-cid"
 	"github.com/libp2p/go-libp2p-core/network"
@@ -129,7 +130,8 @@ type StorageMinerStruct struct {
 	CommonStruct
 
 	Internal struct {
-		ActorAddress func(context.Context) (address.Address, error) `perm:"read"`
+		ActorAddress    func(context.Context) (address.Address, error)         `perm:"read"`
+		ActorSectorSize func(context.Context, address.Address) (uint64, error) `perm:"read"`
 
 		StoreGarbageData func(context.Context) error `perm:"write"`
 
@@ -137,7 +139,10 @@ type StorageMinerStruct struct {
 		SectorsList   func(context.Context) ([]uint64, error)               `perm:"read"`
 		SectorsRefs   func(context.Context) (map[string][]SealedRef, error) `perm:"read"`
 
-		WorkerStats func(context.Context) (WorkerStats, error) `perm:"read"`
+		WorkerStats func(context.Context) (sectorbuilder.WorkerStats, error) `perm:"read"`
+
+		WorkerQueue func(context.Context) (<-chan sectorbuilder.WorkerTask, error)          `perm:"admin"` // TODO: worker perm
+		WorkerDone  func(ctx context.Context, task uint64, res sectorbuilder.SealRes) error `perm:"admin"`
 	}
 }
 
@@ -485,6 +490,10 @@ func (c *StorageMinerStruct) ActorAddress(ctx context.Context) (address.Address,
 	return c.Internal.ActorAddress(ctx)
 }
 
+func (c *StorageMinerStruct) ActorSectorSize(ctx context.Context, addr address.Address) (uint64, error) {
+	return c.Internal.ActorSectorSize(ctx, addr)
+}
+
 func (c *StorageMinerStruct) StoreGarbageData(ctx context.Context) error {
 	return c.Internal.StoreGarbageData(ctx)
 }
@@ -503,8 +512,16 @@ func (c *StorageMinerStruct) SectorsRefs(ctx context.Context) (map[string][]Seal
 	return c.Internal.SectorsRefs(ctx)
 }
 
-func (c *StorageMinerStruct) WorkerStats(ctx context.Context) (WorkerStats, error) {
+func (c *StorageMinerStruct) WorkerStats(ctx context.Context) (sectorbuilder.WorkerStats, error) {
 	return c.Internal.WorkerStats(ctx)
+}
+
+func (c *StorageMinerStruct) WorkerQueue(ctx context.Context) (<-chan sectorbuilder.WorkerTask, error) {
+	return c.Internal.WorkerQueue(ctx)
+}
+
+func (c *StorageMinerStruct) WorkerDone(ctx context.Context, task uint64, res sectorbuilder.SealRes) error {
+	return c.Internal.WorkerDone(ctx, task, res)
 }
 
 var _ Common = &CommonStruct{}

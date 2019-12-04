@@ -16,6 +16,7 @@ require (
 	github.com/go-ole/go-ole v1.2.4 // indirect
 	github.com/google/go-cmp v0.3.1 // indirect
 	github.com/gopherjs/gopherjs v0.0.0-20190812055157-5d271430af9f // indirect
+	github.com/gorilla/mux v1.7.3
 	github.com/gorilla/websocket v1.4.1
 	github.com/hashicorp/go-multierror v1.0.0
 	github.com/hashicorp/golang-lru v0.5.3

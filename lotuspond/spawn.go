@@ -136,7 +136,7 @@ func (api *api) SpawnStorage(fullNodeRepo string) (nodeInfo, error) {
 		return nodeInfo{}, err
 	}
 
-	initArgs := []string{"init"}
+	initArgs := []string{"init", "--nosync"}
 	if fullNodeRepo == api.running[1].meta.Repo {
 		initArgs = []string{"init", "--actor=t0101", "--genesis-miner", "--pre-sealed-sectors=" + filepath.Join(fullNodeRepo, "preseal")}
 	}
@@ -154,7 +154,7 @@ func (api *api) SpawnStorage(fullNodeRepo string) (nodeInfo, error) {
 
 	mux := newWsMux()
 
-	cmd = exec.Command("./lotus-storage-miner", "run", "--api", fmt.Sprintf("%d", 2500+id))
+	cmd = exec.Command("./lotus-storage-miner", "run", "--api", fmt.Sprintf("%d", 2500+id), "--nosync")
 	cmd.Stderr = io.MultiWriter(os.Stderr, errlogfile, mux.errpw)
 	cmd.Stdout = io.MultiWriter(os.Stdout, logfile, mux.outpw)
 	cmd.Env = append(os.Environ(), "LOTUS_STORAGE_PATH="+dir, "LOTUS_PATH="+fullNodeRepo)
@@ -214,7 +214,7 @@ func (api *api) RestartNode(id int32) (nodeInfo, error) {
 
 	var cmd *exec.Cmd
 	if nd.meta.Storage {
-		cmd = exec.Command("./lotus-storage-miner", "run", "--api", fmt.Sprintf("%d", 2500+id))
+		cmd = exec.Command("./lotus-storage-miner", "run", "--api", fmt.Sprintf("%d", 2500+id), "--nosync")
 	} else {
 		cmd = exec.Command("./lotus", "daemon", "--api", fmt.Sprintf("%d", 2500+id))
 	}

@@ -12,12 +12,6 @@ import (
 const UnixfsChunkSize uint64 = 1 << 20
 const UnixfsLinksPerLevel = 1024
 
-var SectorSizes = []uint64{
-	16 << 20,
-	256 << 20,
-	1 << 30,
-}
-
 func SupportedSectorSize(ssize uint64) bool {
 	for _, ss := range SectorSizes {
 		if ssize == ss {

@@ -1,27 +1,11 @@
 package sectorbuilder
 
 import (
-	"io/ioutil"
-	"os"
 	"path/filepath"
 
 	"github.com/filecoin-project/lotus/chain/address"
 	"github.com/filecoin-project/lotus/node/modules/dtypes"
 )
-
-func TempSectorbuilder(sectorSize uint64, ds dtypes.MetadataDS) (*SectorBuilder, func(), error) {
-	dir, err := ioutil.TempDir("", "sbtest")
-	if err != nil {
-		return nil, nil, err
-	}
-
-	sb, err := TempSectorbuilderDir(dir, sectorSize, ds)
-	return sb, func() {
-		if err := os.RemoveAll(dir); err != nil {
-			log.Warn("failed to clean up temp sectorbuilder: ", err)
-		}
-	}, err
-}
 
 func TempSectorbuilderDir(dir string, sectorSize uint64, ds dtypes.MetadataDS) (*SectorBuilder, error) {
 	addr, err := address.NewFromString("t3vfxagwiegrywptkbmyohqqbfzd7xzbryjydmxso4hfhgsnv6apddyihltsbiikjf3lm7x2myiaxhuc77capq")
