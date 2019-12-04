@@ -233,6 +233,15 @@ func syncHead(ctx context.Context, api api.FullNode, st *storage, ts *types.TipS
 		return
 	}
 
+	log.Infof("Getting parent receipts")
+
+	receipts := fetchParentReceipts(ctx, api, toSync)
+
+	if err := st.storeReceipts(receipts); err != nil {
+		log.Error(err)
+		return
+	}
+
 	log.Infof("Resolving addresses")
 
 	for _, message := range msgs {
@@ -289,4 +298,40 @@ func fetchMessages(ctx context.Context, api api.FullNode, toSync map[cid.Cid]*ty
 	})
 
 	return messages, inclusions
+}
+
+type mrec struct {
+	msg   cid.Cid
+	state cid.Cid
+	idx   int
+}
+
+func fetchParentReceipts(ctx context.Context, api api.FullNode, toSync map[cid.Cid]*types.BlockHeader) map[mrec]*types.MessageReceipt {
+	var lk sync.Mutex
+	out := map[mrec]*types.MessageReceipt{}
+
+	par(50, maparr(toSync), func(header *types.BlockHeader) {
+		recs, err := api.ChainGetParentReceipts(ctx, header.Cid())
+		if err != nil {
+			log.Error(err)
+			return
+		}
+		msgs, err := api.ChainGetParentMessages(ctx, header.Cid())
+		if err != nil {
+			log.Error(err)
+			return
+		}
+
+		lk.Lock()
+		for i, r := range recs {
+			out[mrec{
+				msg:   msgs[i].Cid,
+				state: header.ParentStateRoot,
+				idx:   i,
+			}] = r
+		}
+		lk.Unlock()
+	})
+
+	return out
 }

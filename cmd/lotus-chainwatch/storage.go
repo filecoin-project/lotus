@@ -160,6 +160,26 @@ create table if not exists mpool_messages
 create unique index if not exists mpool_messages_msg_uindex
 	on mpool_messages (msg);
 
+create table if not exists receipts
+(
+	msg text not null
+		constraint receipts_messages_cid_fk
+			references messages,
+	state text not null
+		constraint receipts_blocks_parentStateRoot_fk
+			references blocks (parentStateRoot),
+	idx int not null,
+	exit int not null,
+	gas_used int not null,
+	return blob,
+	constraint receipts_pk
+		primary key (msg, state)
+);
+
+create index if not exists receipts_msg_state_index
+	on receipts (msg, state);
+
+
 create table if not exists miner_heads
 (
 	head text not null
@@ -334,6 +354,34 @@ func (st *storage) storeMessages(msgs map[cid.Cid]*types.Message) error {
 			m.GasLimit.String(),
 			m.Method,
 			m.Params,
+		); err != nil {
+			return err
+		}
+	}
+
+	return tx.Commit()
+}
+
+func (st *storage) storeReceipts(recs map[mrec]*types.MessageReceipt) error {
+	tx, err := st.db.Begin()
+	if err != nil {
+		return err
+	}
+
+	stmt, err := tx.Prepare(`insert into receipts (msg, state, idx, exit, gas_used, return) VALUES (?, ?, ?, ?, ?, ?) on conflict do nothing`)
+	if err != nil {
+		return err
+	}
+	defer stmt.Close()
+
+	for c, m := range recs {
+		if _, err := stmt.Exec(
+			c.msg.String(),
+			c.state.String(),
+			c.idx,
+			m.ExitCode,
+			m.GasUsed.String(),
+			m.Return,
 		); err != nil {
 			return err
 		}
