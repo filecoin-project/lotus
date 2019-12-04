@@ -975,44 +975,45 @@ func TestRespondingToPullGraphsyncRequests(t *testing.T) {
 
 // TODO: get passing to complete https://github.com/filecoin-project/go-data-transfer/issues/24
 func TestDataTransferPushRoundTrip(t *testing.T) {
-	//ctx := context.Background()
-	//ctx, cancel := context.WithTimeout(ctx, 10*time.Second)
-	//defer cancel()
-	//
-	//gsData := newGraphsyncTestingData(t, ctx)
-	//host1 := gsData.host1 // initiator, data sender
-	//host2 := gsData.host2 // data recipient
-	//
-	//root := gsData.loadUnixFSFile(t, false)
-	//rootCid := root.(cidlink.Link).Cid
-	//gs1 := gsData.setupGraphsyncHost1()
-	//gs2 := gsData.setupGraphsyncHost2()
-	//
-	//dt1 := NewGraphSyncDataTransfer(ctx, host1, gs1)
-	//dt2 := NewGraphSyncDataTransfer(ctx, host2, gs2)
-	//
-	//finished := make(chan struct{}, 1)
-	//var subscriber datatransfer.Subscriber = func(event datatransfer.Event, channelState datatransfer.ChannelState) {
-	//	if event.Code == datatransfer.Complete {
-	//		finished <- struct{}{}
-	//	}
-	//}
-	//unsub := dt2.SubscribeToEvents(subscriber)
-	//voucher := fakeDTType{"applesauce"}
-	//sv := newSV()
-	//sv.expectSuccessPull()
-	//require.NoError(t, dt2.RegisterVoucherType(reflect.TypeOf(&fakeDTType{}), sv))
-	//
-	//chid, err := dt1.OpenPushDataChannel(ctx, host2.ID(), &voucher, rootCid, gsData.allSelector)
-	//require.NoError(t, err)
-	//select {
-	//case <-ctx.Done():
-	//	t.Fatal("Did not complete succcessful data transfer")
-	//case <-finished:
-	//	gsData.verifyFileTransferred(t, root, true)
-	//}
-	//assert.Equal(t, chid.Initiator, host1.ID())
-	//unsub()
+	ctx := context.Background()
+	ctx, cancel := context.WithTimeout(ctx, 10*time.Second)
+	defer cancel()
+
+	gsData := newGraphsyncTestingData(t, ctx)
+	host1 := gsData.host1 // initiator, data sender
+	host2 := gsData.host2 // data recipient
+
+	root := gsData.loadUnixFSFile(t, false)
+	rootCid := root.(cidlink.Link).Cid
+	gs1 := gsData.setupGraphsyncHost1()
+	gs2 := gsData.setupGraphsyncHost2()
+
+	dt1 := NewGraphSyncDataTransfer(ctx, host1, gs1)
+	dt2 := NewGraphSyncDataTransfer(ctx, host2, gs2)
+
+	finished := make(chan struct{}, 1)
+	var subscriber datatransfer.Subscriber = func(event datatransfer.Event, channelState datatransfer.ChannelState) {
+		if event.Code == datatransfer.Complete {
+			finished <- struct{}{}
+		}
+	}
+	unsub := dt2.SubscribeToEvents(subscriber)
+	voucher := fakeDTType{"applesauce"}
+	sv := newSV()
+	sv.expectSuccessPull()
+	require.NoError(t, dt2.RegisterVoucherType(reflect.TypeOf(&fakeDTType{}), sv))
+
+	chid, err := dt1.OpenPushDataChannel(ctx, host2.ID(), &voucher, rootCid, gsData.allSelector)
+	require.NoError(t, err)
+	select {
+	case <-ctx.Done():
+		t.Fatal("Did not complete succcessful data transfer")
+	case <-finished:
+		time.Sleep(5 * time.Millisecond) // commenting this out causes "merkledag: not found" error
+		gsData.verifyFileTransferred(t, root, true)
+	}
+	assert.Equal(t, chid.Initiator, host1.ID())
+	unsub()
 }
 
 // TODO: get passing to complete https://github.com/filecoin-project/go-data-transfer/issues/24

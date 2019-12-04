@@ -1,8 +1,10 @@
 package graphsyncimpl
 
 import (
+	"bytes"
 	"context"
 	"fmt"
+	"github.com/ipfs/go-graphsync"
 	"reflect"
 	"time"
 
@@ -42,8 +44,23 @@ func (receiver *graphsyncReceiver) ReceiveRequest(
 	} else {
 		dataSender = initiator
 		dataReceiver = receiver.impl.peerID
+
 		// schedule a graphsync data transfer if it's a Push request.
-		receiver.impl.gs.Request(ctx, initiator, root, stor)
+		extDtData := ExtensionDataTransferData{
+			TransferID: uint64(incoming.TransferID()),
+			Initiator:  initiator,
+			IsPull:     incoming.IsPull(),
+		}
+		var buf bytes.Buffer
+		if err := extDtData.MarshalCBOR(&buf); err != nil {
+			log.Error(err)
+		}
+		extData := buf.Bytes()
+		receiver.impl.gs.Request(ctx, dataSender, root, stor,
+			graphsync.ExtensionData{
+				Name: ExtensionDataTransfer,
+				Data: extData,
+			})
 	}
 
 	_, err = receiver.impl.createNewChannel(incoming.TransferID(), incoming.BaseCid(), stor, voucher, initiator, dataSender, dataReceiver)
@@ -132,8 +149,24 @@ func (receiver *graphsyncReceiver) ReceiveResponse(
 		if chst = receiver.impl.getChannelByIdAndSender(chid, sender); chst != datatransfer.EmptyChannelState {
 			baseCid := chst.BaseCID()
 			root := cidlink.Link{baseCid}
-			receiver.impl.gs.Request(ctx, sender, root, chst.Selector())
-			evt.Code = datatransfer.Progress
+			extDtData := ExtensionDataTransferData{
+				TransferID: uint64(incoming.TransferID()),
+				Initiator:  receiver.impl.peerID,
+				IsPull:     true,
+			}
+			var buf bytes.Buffer
+			if err := extDtData.MarshalCBOR(&buf); err != nil {
+				log.Error(err)
+				evt.Code = datatransfer.Error
+			} else {
+				extData := buf.Bytes()
+				receiver.impl.gs.Request(ctx, sender, root, chst.Selector(),
+					graphsync.ExtensionData{
+						Name: ExtensionDataTransfer,
+						Data: extData,
+					})
+				evt.Code = datatransfer.Progress
+			}
 		}
 	}
 	receiver.impl.notifySubscribers(evt, chst)
