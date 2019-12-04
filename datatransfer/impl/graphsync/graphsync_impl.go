@@ -134,7 +134,9 @@ func (impl *graphsyncImpl) gsRespRecdHook(p peer.ID, responseData graphsync.Resp
 		impl.notifySubscribers(evt, datatransfer.ChannelState{})
 		return errors.New(msg)
 	}
-	evt.Code = datatransfer.Complete
+	if responseData.Status() == graphsync.RequestCompletedFull {
+		evt.Code = datatransfer.Complete
+	}
 	impl.notifySubscribers(evt, chst)
 	return nil
 }
