@@ -128,7 +128,7 @@ func sectorsInfo(ctx context.Context, napi api.StorageMiner) (map[string]int, er
 			return nil, err
 		}
 
-		out[api.SectorStateStr(st.State)]++
+		out[api.SectorStates[st.State]]++
 	}
 
 	return out, nil

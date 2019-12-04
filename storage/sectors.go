@@ -2,77 +2,15 @@ package storage
 
 import (
 	"context"
+	"fmt"
 	"io"
 
-	cid "github.com/ipfs/go-cid"
 	xerrors "golang.org/x/xerrors"
 
 	"github.com/filecoin-project/lotus/api"
 	"github.com/filecoin-project/lotus/lib/padreader"
 	"github.com/filecoin-project/lotus/lib/sectorbuilder"
 )
-
-type TicketFn func(context.Context) (*sectorbuilder.SealTicket, error)
-
-type SealTicket struct {
-	BlockHeight uint64
-	TicketBytes []byte
-}
-
-func (t *SealTicket) SB() sectorbuilder.SealTicket {
-	out := sectorbuilder.SealTicket{BlockHeight: t.BlockHeight}
-	copy(out.TicketBytes[:], t.TicketBytes)
-	return out
-}
-
-type SealSeed struct {
-	BlockHeight uint64
-	TicketBytes []byte
-}
-
-func (t *SealSeed) SB() sectorbuilder.SealSeed {
-	out := sectorbuilder.SealSeed{BlockHeight: t.BlockHeight}
-	copy(out.TicketBytes[:], t.TicketBytes)
-	return out
-}
-
-type Piece struct {
-	DealID uint64
-
-	Size  uint64
-	CommP []byte
-}
-
-func (p *Piece) ppi() (out sectorbuilder.PublicPieceInfo) {
-	out.Size = p.Size
-	copy(out.CommP[:], p.CommP)
-	return out
-}
-
-type SectorInfo struct {
-	State    api.SectorState
-	SectorID uint64
-
-	// Packing
-
-	Pieces []Piece
-
-	// PreCommit
-	CommC     []byte
-	CommD     []byte
-	CommR     []byte
-	CommRLast []byte
-	Proof     []byte
-	Ticket    SealTicket
-
-	PreCommitMessage *cid.Cid
-
-	// PreCommitted
-	Seed SealSeed
-
-	// Committing
-	CommitMessage *cid.Cid
-}
 
 type sectorUpdate struct {
 	newState api.SectorState
@@ -81,39 +19,40 @@ type sectorUpdate struct {
 	mut      func(*SectorInfo)
 }
 
-func (t *SectorInfo) pieceInfos() []sectorbuilder.PublicPieceInfo {
-	out := make([]sectorbuilder.PublicPieceInfo, len(t.Pieces))
-	for i, piece := range t.Pieces {
-		out[i] = piece.ppi()
+func (u *sectorUpdate) fatal(err error) *sectorUpdate {
+	return &sectorUpdate{
+		newState: api.FailedUnrecoverable,
+		id:       u.id,
+		err:      err,
+		mut:      u.mut,
 	}
-	return out
 }
 
-func (t *SectorInfo) deals() []uint64 {
-	out := make([]uint64, len(t.Pieces))
-	for i, piece := range t.Pieces {
-		out[i] = piece.DealID
+func (u *sectorUpdate) error(err error) *sectorUpdate {
+	return &sectorUpdate{
+		newState: u.newState,
+		id:       u.id,
+		err:      err,
+		mut:      u.mut,
 	}
-	return out
 }
 
-func (t *SectorInfo) existingPieces() []uint64 {
-	out := make([]uint64, len(t.Pieces))
-	for i, piece := range t.Pieces {
-		out[i] = piece.Size
+func (u *sectorUpdate) state(m func(*SectorInfo)) *sectorUpdate {
+	return &sectorUpdate{
+		newState: u.newState,
+		id:       u.id,
+		err:      u.err,
+		mut:      m,
 	}
-	return out
 }
 
-func (t *SectorInfo) rspco() sectorbuilder.RawSealPreCommitOutput {
-	var out sectorbuilder.RawSealPreCommitOutput
-
-	copy(out.CommC[:], t.CommC)
-	copy(out.CommD[:], t.CommD)
-	copy(out.CommR[:], t.CommR)
-	copy(out.CommRLast[:], t.CommRLast)
-
-	return out
+func (u *sectorUpdate) to(newState api.SectorState) *sectorUpdate {
+	return &sectorUpdate{
+		newState: newState,
+		id:       u.id,
+		err:      u.err,
+		mut:      u.mut,
+	}
 }
 
 func (m *Miner) sectorStateLoop(ctx context.Context) error {
@@ -195,9 +134,7 @@ func (m *Miner) onSectorIncoming(sector *SectorInfo) {
 	}
 
 	if err := m.sectors.Begin(sector.SectorID, sector); err != nil {
-		// We may have re-sent the proposal
-		log.Errorf("deal tracking failed: %s", err)
-		m.failSector(sector.SectorID, err)
+		log.Errorf("sector tracking failed: %s", err)
 		return
 	}
 
@@ -214,10 +151,15 @@ func (m *Miner) onSectorIncoming(sector *SectorInfo) {
 }
 
 func (m *Miner) onSectorUpdated(ctx context.Context, update sectorUpdate) {
-	log.Infof("Sector %d updated state to %s", update.id, api.SectorStateStr(update.newState))
+	log.Infof("Sector %d updated state to %s", update.id, api.SectorStates[update.newState])
 	var sector SectorInfo
 	err := m.sectors.Mutate(update.id, func(s *SectorInfo) error {
 		s.State = update.newState
+		s.LastErr = ""
+		if update.err != nil {
+			s.LastErr = fmt.Sprintf("%+v", update.err)
+		}
+
 		if update.mut != nil {
 			update.mut(s)
 		}
@@ -225,37 +167,78 @@ func (m *Miner) onSectorUpdated(ctx context.Context, update sectorUpdate) {
 		return nil
 	})
 	if update.err != nil {
-		log.Errorf("sector %d failed: %s", update.id, update.err)
-		m.failSector(update.id, update.err)
-		return
+		log.Errorf("sector %d failed: %+v", update.id, update.err)
 	}
 	if err != nil {
-		m.failSector(update.id, err)
+		log.Errorf("sector %d error: %+v", update.id, err)
 		return
 	}
 
+	/*
+
+		*   Empty
+		|   |
+		|   v
+		*<- Packing <- incoming
+		|   |
+		|   v
+		*<- Unsealed <--> SealFailed
+		|   |
+		|   v
+		*   PreCommitting <--> PreCommitFailed
+		|   |                  ^
+		|   v                  |
+		*<- PreCommitted ------/
+		|   |
+		|   v        v--> SealCommitFailed
+		*<- Committing
+		|   |        ^--> CommitFailed
+		|   v
+		*<- Proving
+		|
+		v
+		FailedUnrecoverable
+
+		UndefinedSectorState <- ¯\_(ツ)_/¯
+		    |                     ^
+		    *---------------------/
+
+	*/
+
 	switch update.newState {
+	// Happy path
 	case api.Packing:
-		m.handleSectorUpdate(ctx, sector, m.finishPacking, api.Unsealed)
+		m.handleSectorUpdate(ctx, sector, m.handlePacking)
 	case api.Unsealed:
-		m.handleSectorUpdate(ctx, sector, m.sealPreCommit, api.PreCommitting)
+		m.handleSectorUpdate(ctx, sector, m.handleUnsealed)
 	case api.PreCommitting:
-		m.handleSectorUpdate(ctx, sector, m.preCommit, api.PreCommitted)
+		m.handleSectorUpdate(ctx, sector, m.handlePreCommitting)
 	case api.PreCommitted:
-		m.handleSectorUpdate(ctx, sector, m.preCommitted, api.SectorNoUpdate)
+		m.handleSectorUpdate(ctx, sector, m.handlePreCommitted)
 	case api.Committing:
-		m.handleSectorUpdate(ctx, sector, m.committing, api.Proving)
+		m.handleSectorUpdate(ctx, sector, m.handleCommitting)
 	case api.Proving:
 		// TODO: track sector health / expiration
 		log.Infof("Proving sector %d", update.id)
-	case api.SectorNoUpdate: // noop
+
+	// Handled failure modes
+	case api.SealFailed:
+		log.Warn("sector %d entered unimplemented state 'SealFailed'", update.id)
+	case api.PreCommitFailed:
+		log.Warn("sector %d entered unimplemented state 'PreCommitFailed'", update.id)
+	case api.SealCommitFailed:
+		log.Warn("sector %d entered unimplemented state 'SealCommitFailed'", update.id)
+	case api.CommitFailed:
+		log.Warn("sector %d entered unimplemented state 'CommitFailed'", update.id)
+
+	// Fatal errors
+	case api.UndefinedSectorState:
+		log.Error("sector update with undefined state!")
+	case api.FailedUnrecoverable:
+		log.Errorf("sector %d failed unrecoverably", update.id)
 	default:
 		log.Errorf("unexpected sector update state: %d", update.newState)
 	}
-}
-
-func (m *Miner) failSector(id uint64, err error) {
-	log.Errorf("sector %d error: %+v", id, err)
 }
 
 func (m *Miner) AllocatePiece(size uint64) (sectorID uint64, offset uint64, err error) {

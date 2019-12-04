@@ -61,7 +61,7 @@ var sectorsStatusCmd = &cli.Command{
 		}
 
 		fmt.Printf("SectorID:\t%d\n", status.SectorID)
-		fmt.Printf("Status:\t%s\n", api.SectorStateStr(status.State))
+		fmt.Printf("Status:\t%s\n", api.SectorStates[status.State])
 		fmt.Printf("CommD:\t\t%x\n", status.CommD)
 		fmt.Printf("CommR:\t\t%x\n", status.CommR)
 		fmt.Printf("Ticket:\t\t%x\n", status.Ticket.TicketBytes)
@@ -70,6 +70,9 @@ var sectorsStatusCmd = &cli.Command{
 		fmt.Printf("SeedH:\t\t%d\n", status.Seed.BlockHeight)
 		fmt.Printf("Proof:\t\t%x\n", status.Proof)
 		fmt.Printf("Deals:\t\t%v\n", status.Deals)
+		if status.LastErr != "" {
+			fmt.Printf("Last Error:\t\t%s\n", status.LastErr)
+		}
 		return nil
 	},
 }
@@ -132,7 +135,7 @@ var sectorsListCmd = &cli.Command{
 
 			fmt.Printf("%d: %s\tsSet: %s\tpSet: %s\ttktH: %d\tseedH: %d\tdeals: %v\n",
 				s,
-				api.SectorStateStr(st.State),
+				api.SectorStates[st.State],
 				yesno(inSSet),
 				yesno(inPSet),
 				st.Ticket.BlockHeight,
