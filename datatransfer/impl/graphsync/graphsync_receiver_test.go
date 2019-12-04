@@ -25,7 +25,7 @@ func TestSendResponseToIncomingRequest(t *testing.T) {
 	ctx, cancel := context.WithTimeout(ctx, 10*time.Second)
 	defer cancel()
 
-	gsData := newGraphsyncTestingData(t, ctx)
+	gsData := newGraphsyncTestingData(ctx, t)
 	host1 := gsData.host1
 	host2 := gsData.host2
 

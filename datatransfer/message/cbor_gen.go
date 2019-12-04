@@ -180,7 +180,7 @@ func (t *transferRequest) MarshalCBOR(w io.Writer) error {
 	}
 
 	// t.t.XferID (uint64) (uint64)
-	if _, err := w.Write(cbg.CborEncodeMajorType(cbg.MajUnsignedInt, uint64(t.XferID))); err != nil {
+	if _, err := w.Write(cbg.CborEncodeMajorType(cbg.MajUnsignedInt, uint64(t.XferID))); err != nil { // nolint: unconvert
 		return err
 	}
 	return nil
@@ -209,7 +209,7 @@ func (t *transferRequest) UnmarshalCBOR(r io.Reader) error {
 			return err
 		}
 
-		t.BCid = string(sval)
+		t.BCid = string(sval) // nolint: unconvert
 	}
 	// t.t.Canc (bool) (bool)
 
@@ -321,7 +321,7 @@ func (t *transferRequest) UnmarshalCBOR(r io.Reader) error {
 			return err
 		}
 
-		t.VTyp = string(sval)
+		t.VTyp = string(sval) // nolint: unconvert
 	}
 	// t.t.XferID (uint64) (uint64)
 
@@ -332,7 +332,7 @@ func (t *transferRequest) UnmarshalCBOR(r io.Reader) error {
 	if maj != cbg.MajUnsignedInt {
 		return fmt.Errorf("wrong type for uint64 field")
 	}
-	t.XferID = uint64(extra)
+	t.XferID = uint64(extra) // nolint: unconvert
 	return nil
 }
 
@@ -351,7 +351,7 @@ func (t *transferResponse) MarshalCBOR(w io.Writer) error {
 	}
 
 	// t.t.XferID (uint64) (uint64)
-	if _, err := w.Write(cbg.CborEncodeMajorType(cbg.MajUnsignedInt, uint64(t.XferID))); err != nil {
+	if _, err := w.Write(cbg.CborEncodeMajorType(cbg.MajUnsignedInt, uint64(t.XferID))); err != nil { // nolint: unconvert
 		return err
 	}
 	return nil
@@ -398,6 +398,6 @@ func (t *transferResponse) UnmarshalCBOR(r io.Reader) error {
 	if maj != cbg.MajUnsignedInt {
 		return fmt.Errorf("wrong type for uint64 field")
 	}
-	t.XferID = uint64(extra)
+	t.XferID = uint64(extra) // nolint: unconvert
 	return nil
 }
