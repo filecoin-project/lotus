@@ -23,8 +23,8 @@ func NewTestMiner(nextCh <-chan struct{}, addr address.Address) func(api.FullNod
 	}
 }
 
-func chanWaiter(next <-chan struct{}) func(ctx context.Context) error {
-	return func(ctx context.Context) error {
+func chanWaiter(next <-chan struct{}) func(ctx context.Context, _ uint64) error {
+	return func(ctx context.Context, _ uint64) error {
 		select {
 		case <-ctx.Done():
 			return ctx.Err()
