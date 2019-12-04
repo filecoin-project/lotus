@@ -7,9 +7,8 @@ For more details about Filecoin, check out the [Filecoin Spec](https://github.co
 ## What can I learn here?
 
 - How to install Lotus on [Arch Linux](https://docs.lotu.sh/install-lotus-arch), [Ubuntu](https://docs.lotu.sh/install-lotus-ubuntu), or [MacOS](https://docs.lotu.sh/install-lotus-macos).
-- [Storing](https://docs.lotu.sh/storing-data) or [retrieving](https://docs.lotu.sh/retrieving-data) data.
 - Joining the **Lotus DevNet** using your [CLI](https://docs.lotu.sh/join-devnet-cli).
-- Test Lotus in a seperate local network using [Pond UI](https://docs.lotu.sh/testing-with-gui).
+- [Storing](https://docs.lotu.sh/storing-data) or [retrieving](https://docs.lotu.sh/retrieving-data) data.
 - Mining Filecoin using the **Lotus Storage Miner** in your [CLI](https://docs.lotu.sh/mining).
 
 ## What makes Lotus different?

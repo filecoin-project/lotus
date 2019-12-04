@@ -6,7 +6,7 @@ If you have run Lotus before and want to remove all previous data: `rm -rf ~/.lo
 
 ## Genesis & Bootstrap
 
-The current Lotus build will automatically join the **Lotus DevNet** using the genesis and bootstrap files in the `build/` directory using a default configuration.
+The current Lotus build will automatically join the **Lotus DevNet** using the genesis and bootstrap files in the `build/`.
 
 ## Start Daemon
 
@@ -38,7 +38,7 @@ $ lotus wallet new bls
 t3...
 ```
 
-- Visit the [faucet](https://lotus-faucet.kittyhawk.wtf/)
+- Visit the [faucet](https://lotus-faucet.kittyhawk.wtf/funds.html)
 - Paste the address you created
 - Press Send.
 

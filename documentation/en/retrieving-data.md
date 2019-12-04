@@ -14,4 +14,4 @@ Retrieve data from a **Lotus Storage Miner**.
 $ lotus client retrieve <Data CID> <outfile>
 ```
 
-This will initiate a **retrieval deal** and write the data to the outfile. This process may take some time.
+This will initiate a **retrieval deal** and write the data to the outfile. This process may take 2 to 10 minutes.

@@ -55,9 +55,9 @@ $ lotus-storage-miner state sectors <miner>
 
 ## Assign a nickname for your node
 
-In the `.lotus` folder, create a `config.toml` or modify an existing file with:
+In the `.lotus` folder, modify `config.toml` with:
 
-```
+```sh
 [Metrics]
 Nickname="snoopy"
 ```

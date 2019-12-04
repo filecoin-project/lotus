@@ -1,6 +1,6 @@
 # Static port
 
-If you plan to accept a **storage deal**, you will want to set a static port and open it in your firewall to ensure clients can connect to you.
+For a **storage deal**, you may want to set a static port and open it in your firewall to ensure clients can connect to you.
 
 Lotus binds to a random **swarm port** by default.
 
@@ -17,15 +17,15 @@ Here is an example of changing the port to `1347`.
 
 Once you update `config.toml`, restart your **daemon**.
 
-## Open firewall on Ubuntu manually
+## Ubuntu's Uncomplicated Firewall
+
+Open firewall manually
 
 ```sh
 # ufw allow 1347/tcp
 ```
 
-## Open firewall using a UFW profile
-
-Open and modify `/etc/ufw/applications.d/lotus-daemon` with:
+Or open and modify the profile located at `/etc/ufw/applications.d/lotus-daemon`
 
 ```sh
 [Lotus Daemon]

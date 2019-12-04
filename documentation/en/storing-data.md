@@ -1,9 +1,5 @@
 # Storing Data
 
-You can store files that have the minimum file size of 256 bytes.
-
-## Tutorial
-
 Start by creating a file, in this example we will use the command line to create `hello.txt`.
 
 ```sh
