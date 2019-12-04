@@ -35,6 +35,7 @@ type workerCall struct {
 
 func (sb *SectorBuilder) AddWorker(ctx context.Context) (<-chan WorkerTask, error) {
 	sb.remoteLk.Lock()
+	defer sb.remoteLk.Unlock()
 
 	taskCh := make(chan WorkerTask)
 	r := &remote{
@@ -44,7 +45,6 @@ func (sb *SectorBuilder) AddWorker(ctx context.Context) (<-chan WorkerTask, erro
 
 	sb.remoteCtr++
 	sb.remotes[sb.remoteCtr] = r
-	sb.remoteLk.Unlock()
 
 	go sb.remoteWorker(ctx, r)
 

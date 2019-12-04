@@ -83,7 +83,7 @@ var runCmd = &cli.Command{
 
 		go func() {
 			<-ctx.Done()
-			os.Exit(0)
+			log.Warn("Shutting down..")
 		}()
 
 		return acceptJobs(ctx, nodeApi, "http://"+storageAddr, auth, r)

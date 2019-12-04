@@ -16,6 +16,7 @@ import (
 	"mime"
 	"net/http"
 	"os"
+	"path/filepath"
 )
 
 type StorageMinerAPI struct {
@@ -110,7 +111,9 @@ func (sm *StorageMinerAPI) remotePutSector(w http.ResponseWriter, r *http.Reques
 
 	switch mediatype {
 	case "application/x-tar":
-		if err := systar.ExtractTar(r.Body, path); err != nil {
+		if err := systar.ExtractTar(r.Body, filepath.Dir(path)); err != nil {
+			log.Error(err)
+			w.WriteHeader(500)
 			return
 		}
 	default:
@@ -203,8 +206,6 @@ func (sm *StorageMinerAPI) WorkerQueue(ctx context.Context) (<-chan sectorbuilde
 }
 
 func (sm *StorageMinerAPI) WorkerDone(ctx context.Context, task uint64, res sectorbuilder.SealRes) error {
-	log.Infof("WDUN RSPKO %v", res.Rspco)
-
 	return sm.SectorBuilder.TaskDone(ctx, task, res)
 }
 

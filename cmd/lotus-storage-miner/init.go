@@ -71,6 +71,10 @@ var initCmd = &cli.Command{
 			Name:  "pre-sealed-sectors",
 			Usage: "specify set of presealed sectors for starting as a genesis miner",
 		},
+		&cli.BoolFlag{
+			Name:  "nosync",
+			Usage: "don't check full-node sync status",
+		},
 	},
 	Action: func(cctx *cli.Context) error {
 		log.Info("Initializing lotus storage miner")
@@ -91,7 +95,7 @@ var initCmd = &cli.Command{
 
 		log.Info("Checking full node sync status")
 
-		if !cctx.Bool("genesis-miner") {
+		if !cctx.Bool("genesis-miner") && !cctx.Bool("nosync") {
 			if err := lcli.SyncWait(ctx, api); err != nil {
 				return xerrors.Errorf("sync wait: %w", err)
 			}

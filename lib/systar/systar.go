@@ -1,12 +1,22 @@
 package systar
 
 import (
+	"golang.org/x/xerrors"
 	"io"
+	"os"
 	"os/exec"
 	"path/filepath"
+
+	logging "github.com/ipfs/go-log"
 )
 
+var log = logging.Logger("systar")
+
 func ExtractTar(body io.Reader, dest string) error {
+	if err := os.MkdirAll(dest, 0755); err != nil {
+		return xerrors.Errorf("creating dest directory: %w", err)
+	}
+
 	cmd := exec.Command("tar", "-xS", "-C", dest)
 	cmd.Stdin = body
 	return cmd.Run()
@@ -27,23 +37,11 @@ func TarDirectory(file string) (io.ReadCloser, error) {
 		return nil, err
 	}
 
-	return &struct {
-		io.Reader
-		io.Closer
-	}{
-		Reader: i,
-		Closer: closer(func() error {
-			e1 := i.Close()
-			if err := cmd.Wait(); err != nil {
-				return err
-			}
+	go func() {
+		if err := o.CloseWithError(cmd.Wait()); err != nil {
+			log.Error(err)
+		}
+	}()
 
-			return e1
-		}),
-	}, nil
-}
-
-type closer func() error
-func (cl closer) Close() error {
-	return cl()
+	return i, nil
 }

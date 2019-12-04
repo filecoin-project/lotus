@@ -2,6 +2,12 @@
 
 package build
 
+var SectorSizes = []uint64{
+	16 << 20,
+	256 << 20,
+	1 << 30,
+}
+
 // Seconds
 const BlockDelay = 30
 

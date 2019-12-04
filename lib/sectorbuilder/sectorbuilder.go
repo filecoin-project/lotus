@@ -101,7 +101,7 @@ func (rspco *JsonRSPCO) rspco() RawSealPreCommitOutput {
 }
 
 type SealRes struct {
-	Err string
+	Err   string
 	GoErr error `json:"-"`
 
 	Proof []byte
@@ -201,15 +201,15 @@ func NewStandalone(cfg *Config) (*SectorBuilder, error) {
 	}
 
 	return &SectorBuilder{
-		ds:        nil,
+		ds: nil,
 
-		ssize:     cfg.SectorSize,
+		ssize: cfg.SectorSize,
 
-		Miner:     cfg.Miner,
-		stagedDir: cfg.StagedDir,
-		sealedDir: cfg.SealedDir,
-		cacheDir:  cfg.CacheDir,
-		unsealedDir:cfg.UnsealedDir,
+		Miner:       cfg.Miner,
+		stagedDir:   cfg.StagedDir,
+		sealedDir:   cfg.SealedDir,
+		cacheDir:    cfg.CacheDir,
+		unsealedDir: cfg.UnsealedDir,
 
 		sealLocal: true,
 		taskCtr:   1,

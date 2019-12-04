@@ -2,13 +2,7 @@ package main
 
 import (
 	"context"
-	files "github.com/ipfs/go-ipfs-files"
-	"gopkg.in/cheggaaa/pb.v1"
-	"io"
-	"mime"
-	"mime/multipart"
 	"net/http"
-	"os"
 	"path/filepath"
 
 	"golang.org/x/xerrors"
@@ -62,15 +56,21 @@ func acceptJobs(ctx context.Context, api api.StorageMiner, endpoint string, auth
 		return err
 	}
 
-	for task := range tasks {
-		log.Infof("New task: %d, sector %d, action: %d", task.TaskID, task.SectorID, task.Type)
+loop:
+	for {
+		select {
+		case task := <-tasks:
+			log.Infof("New task: %d, sector %d, action: %d", task.TaskID, task.SectorID, task.Type)
 
-		res := w.processTask(ctx, task)
+			res := w.processTask(ctx, task)
 
-		log.Infof("Task %d done, err: %+v", task.TaskID, res.GoErr)
+			log.Infof("Task %d done, err: %+v", task.TaskID, res.GoErr)
 
-		if err := api.WorkerDone(ctx, task.TaskID, res); err != nil {
-			log.Error(err)
+			if err := api.WorkerDone(ctx, task.TaskID, res); err != nil {
+				log.Error(err)
+			}
+		case <-ctx.Done():
+			break loop
 		}
 	}
 

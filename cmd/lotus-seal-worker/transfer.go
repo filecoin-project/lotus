@@ -31,8 +31,11 @@ func (w *worker) fetch(typ string, sectorID uint64) error {
 	if err != nil {
 		return xerrors.Errorf("do request: %w", err)
 	}
-
 	defer resp.Body.Close()
+
+	if resp.StatusCode != 200 {
+		return xerrors.Errorf("non-200 code: %d", resp.StatusCode)
+	}
 
 	bar := pb.New64(resp.ContentLength)
 	bar.ShowPercent = true
@@ -49,14 +52,13 @@ func (w *worker) fetch(typ string, sectorID uint64) error {
 		return xerrors.Errorf("parse media type: %w", err)
 	}
 
-	// WriteTo is unhappy when things exist
 	if err := os.RemoveAll(outname); err != nil {
 		return xerrors.Errorf("removing dest: %w", err)
 	}
 
 	switch mediatype {
 	case "application/x-tar":
-		return systar.ExtractTar(barreader, outname)
+		return systar.ExtractTar(barreader, filepath.Dir(outname))
 	case "application/octet-stream":
 		return files.WriteTo(files.NewReaderFile(barreader), outname)
 	default:
@@ -98,7 +100,6 @@ func (w *worker) push(typ string, sectorID uint64) error {
 
 	header := w.auth
 
-
 	if stat.IsDir() {
 		header.Set("Content-Type", "application/x-tar")
 	} else {
@@ -119,7 +120,12 @@ func (w *worker) push(typ string, sectorID uint64) error {
 		return xerrors.Errorf("non-200 response: %d", resp.StatusCode)
 	}
 
-	return resp.Body.Close()
+	if err := resp.Body.Close(); err != nil {
+		return err
+	}
+
+	// TODO: keep files around for later stages of sealing
+	return os.RemoveAll(filename)
 }
 
 func (w *worker) fetchSector(sectorID uint64, typ sectorbuilder.WorkerTaskType) error {
