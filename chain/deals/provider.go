@@ -222,7 +222,7 @@ func (p *Provider) onDataTransferEvent(event datatransfer.Event, channelState da
 	// data transfer events for opening and progress do not affect deal state
 	var next api.DealState
 	var err error
-	switch event {
+	switch event.Code {
 	case datatransfer.Complete:
 		next = api.DealStaged
 		err = nil

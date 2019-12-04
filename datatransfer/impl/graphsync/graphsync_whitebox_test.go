@@ -76,7 +76,7 @@ func TestGraphsyncImpl_SubscribeToEvents(t *testing.T) {
 	assert.Equal(t, 0, len(impl.subscribers))
 }
 
-func newGraphsyncTestingData(t *testing.T, ctx context.Context) *graphsyncTestingData {
+func newGraphsyncTestingData(t *testing.T, ctx context.Context) *graphsyncTestingData { // nolint: golint
 
 	gsData := &graphsyncTestingData{}
 	gsData.ctx = ctx
@@ -203,5 +203,4 @@ type graphsyncTestingData struct {
 	bridge1     ipldbridge.IPLDBridge
 	bridge2     ipldbridge.IPLDBridge
 	allSelector ipld.Node
-	origBytes   []byte
 }

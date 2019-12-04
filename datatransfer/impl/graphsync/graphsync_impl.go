@@ -12,6 +12,7 @@ import (
 	"github.com/ipfs/go-cid"
 	"github.com/ipfs/go-graphsync"
 	"github.com/ipld/go-ipld-prime"
+	cidlink "github.com/ipld/go-ipld-prime/linking/cid"
 	"github.com/libp2p/go-libp2p-core/host"
 	"github.com/libp2p/go-libp2p-core/peer"
 
@@ -73,10 +74,6 @@ func NewGraphSyncDataTransfer(parent context.Context, host host.Host, gs graphsy
 		log.Error(err)
 		return nil
 	}
-	if err := gs.RegisterResponseReceivedHook(impl.gsRespRecdHook); err != nil {
-		log.Error(err)
-		return nil
-	}
 	dtReceiver := &graphsyncReceiver{parent, impl}
 	dataTransferNetwork.SetDelegate(dtReceiver)
 	return impl
@@ -104,41 +101,11 @@ func (impl *graphsyncImpl) gsReqRecdHook(p peer.ID, request graphsync.RequestDat
 	}
 	chid := datatransfer.ChannelID{Initiator: initiator, ID: datatransfer.TransferID(transferData.TransferID)}
 
-	if impl.getChannelByIdAndSender(chid, sender) == datatransfer.EmptyChannelState {
+	if impl.getChannelByIDAndSender(chid, sender) == datatransfer.EmptyChannelState {
 		return resp, errors.New("could not find push or pull channel")
 	}
 
 	return resp, nil
-}
-
-func (impl *graphsyncImpl) gsRespRecdHook(p peer.ID, responseData graphsync.ResponseData) error {
-	_, err := impl.getExtensionData(responseData)
-
-	evt := datatransfer.Event{
-		Code:      datatransfer.Error,
-		Timestamp: time.Now(),
-	}
-
-	dtExtData, err := impl.getExtensionData(responseData)
-	if err != nil {
-		evt.Message = err.Error()
-		impl.notifySubscribers(evt, datatransfer.ChannelState{})
-		return err
-	}
-
-	chid := datatransfer.ChannelID{Initiator: dtExtData.Initiator, ID: datatransfer.TransferID(dtExtData.TransferID)}
-	chst := impl.getChannelByIdAndSender(chid, p)
-	if chst == datatransfer.EmptyChannelState {
-		msg := "cannot find a matching channel for this request"
-		evt.Message = msg
-		impl.notifySubscribers(evt, datatransfer.ChannelState{})
-		return errors.New(msg)
-	}
-	if responseData.Status() == graphsync.RequestCompletedFull {
-		evt.Code = datatransfer.Complete
-	}
-	impl.notifySubscribers(evt, chst)
-	return nil
 }
 
 // gsExtended is a small interface used by getExtensionData
@@ -191,7 +158,7 @@ func (impl *graphsyncImpl) RegisterVoucherType(voucherType reflect.Type, validat
 // OpenPushDataChannel opens a data transfer that will send data to the recipient peer and
 // transfer parts of the piece that match the selector
 func (impl *graphsyncImpl) OpenPushDataChannel(ctx context.Context, requestTo peer.ID, voucher datatransfer.Voucher, baseCid cid.Cid, selector ipld.Node) (datatransfer.ChannelID, error) {
-	tid, err := impl.sendRequest(ctx, selector, false, voucher, baseCid, requestTo)
+	tid, err := impl.sendDtRequest(ctx, selector, false, voucher, baseCid, requestTo)
 	if err != nil {
 		return datatransfer.ChannelID{}, err
 	}
@@ -208,7 +175,7 @@ func (impl *graphsyncImpl) OpenPushDataChannel(ctx context.Context, requestTo pe
 // transfer parts of the piece that match the selector
 func (impl *graphsyncImpl) OpenPullDataChannel(ctx context.Context, requestTo peer.ID, voucher datatransfer.Voucher, baseCid cid.Cid, selector ipld.Node) (datatransfer.ChannelID, error) {
 
-	tid, err := impl.sendRequest(ctx, selector, true, voucher, baseCid, requestTo)
+	tid, err := impl.sendDtRequest(ctx, selector, true, voucher, baseCid, requestTo)
 	if err != nil {
 		return datatransfer.ChannelID{}, err
 	}
@@ -236,8 +203,8 @@ func (impl *graphsyncImpl) createNewChannel(tid datatransfer.TransferID, baseCid
 	return chid, nil
 }
 
-// sendRequest encapsulates message creation and posting to the data transfer network with the provided parameters
-func (impl *graphsyncImpl) sendRequest(ctx context.Context, selector ipld.Node, isPull bool, voucher datatransfer.Voucher, baseCid cid.Cid, to peer.ID) (datatransfer.TransferID, error) {
+// sendDtRequest encapsulates message creation and posting to the data transfer network with the provided parameters
+func (impl *graphsyncImpl) sendDtRequest(ctx context.Context, selector ipld.Node, isPull bool, voucher datatransfer.Voucher, baseCid cid.Cid, to peer.ID) (datatransfer.TransferID, error) {
 	sbytes, err := nodeAsBytes(selector)
 	if err != nil {
 		return 0, err
@@ -309,9 +276,9 @@ func (impl *graphsyncImpl) InProgressChannels() map[datatransfer.ChannelID]datat
 	return channelsCopy
 }
 
-// getChannelByIdAndSender searches for a channel in the slice of channels with id `chid`.
+// getChannelByIDAndSender searches for a channel in the slice of channels with id `chid`.
 // Returns datatransfer.EmptyChannelState if there is no channel with that id
-func (impl *graphsyncImpl) getChannelByIdAndSender(chid datatransfer.ChannelID, sender peer.ID) datatransfer.ChannelState {
+func (impl *graphsyncImpl) getChannelByIDAndSender(chid datatransfer.ChannelID, sender peer.ID) datatransfer.ChannelState {
 	impl.channelsLk.RLock()
 	channelState, ok := impl.channels[chid]
 	impl.channelsLk.RUnlock()
@@ -326,4 +293,47 @@ func (impl *graphsyncImpl) getChannelByIdAndSender(chid datatransfer.ChannelID, 
 func (impl *graphsyncImpl) generateTransferID() datatransfer.TransferID {
 	impl.lastTID++
 	return datatransfer.TransferID(impl.lastTID)
+}
+
+// makeGsRequest assembles a graphsync request and determines if the transfer was completed/successful.
+// notifies subscribers of final request status.
+func (impl *graphsyncImpl) sendGsRequest(ctx context.Context, initiator peer.ID, transferID datatransfer.TransferID, isPull bool, dataSender peer.ID, root cidlink.Link, stor ipld.Node) {
+	extDtData := ExtensionDataTransferData{
+		TransferID: uint64(transferID),
+		Initiator:  initiator,
+		IsPull:     isPull,
+	}
+	var buf bytes.Buffer
+	if err := extDtData.MarshalCBOR(&buf); err != nil {
+		log.Error(err)
+	}
+	extData := buf.Bytes()
+	_, errChan := impl.gs.Request(ctx, dataSender, root, stor,
+		graphsync.ExtensionData{
+			Name: ExtensionDataTransfer,
+			Data: extData,
+		})
+	go func() {
+		var lastError error
+		for err := range errChan {
+			lastError = err
+		}
+		evt := datatransfer.Event{
+			Code:      datatransfer.Error,
+			Timestamp: time.Now(),
+		}
+		chid := datatransfer.ChannelID{Initiator: initiator, ID: transferID}
+		chst := impl.getChannelByIDAndSender(chid, dataSender)
+		if chst == datatransfer.EmptyChannelState {
+			msg := "cannot find a matching channel for this request"
+			evt.Message = msg
+		} else {
+			if lastError == nil {
+				evt.Code = datatransfer.Complete
+			} else {
+				evt.Message = lastError.Error()
+			}
+		}
+		impl.notifySubscribers(evt, chst)
+	}()
 }

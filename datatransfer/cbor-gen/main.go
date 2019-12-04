@@ -4,8 +4,8 @@ import (
 	"fmt"
 	"os"
 
-	"github.com/filecoin-project/lotus/datatransfer/message"
 	"github.com/filecoin-project/lotus/datatransfer/impl/graphsync"
+	"github.com/filecoin-project/lotus/datatransfer/message"
 
 )
 
