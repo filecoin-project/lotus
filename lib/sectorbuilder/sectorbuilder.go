@@ -159,10 +159,6 @@ func New(cfg *Config, ds dtypes.MetadataDS) (*SectorBuilder, error) {
 
 	sealLocal := rlimit > 0
 
-	if rlimit == 0 {
-		rlimit = 1
-	}
-
 	sb := &SectorBuilder{
 		ds: ds,
 
