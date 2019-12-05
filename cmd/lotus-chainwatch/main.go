@@ -35,6 +35,11 @@ func main() {
 				EnvVars: []string{"LOTUS_PATH"},
 				Value:   "~/.lotus", // TODO: Consider XDG_DATA_HOME
 			},
+			&cli.StringFlag{
+				Name:    "db",
+				EnvVars: []string{"LOTUS_DB"},
+				Value:   "./chainwatch.db",
+			},
 		},
 
 		Commands: local,
@@ -70,7 +75,7 @@ var runCmd = &cli.Command{
 
 		log.Info("Remote version: %s", v.Version)
 
-		st, err := openStorage()
+		st, err := openStorage(cctx.String("db"))
 		if err != nil {
 			return err
 		}

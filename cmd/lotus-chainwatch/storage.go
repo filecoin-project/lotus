@@ -18,8 +18,8 @@ type storage struct {
 	headerLk sync.Mutex
 }
 
-func openStorage() (*storage, error) {
-	db, err := sql.Open("sqlite3", "./chainwatch.db")
+func openStorage(dbSource string) (*storage, error) {
+	db, err := sql.Open("sqlite3", dbSource)
 	if err != nil {
 		return nil, err
 	}
