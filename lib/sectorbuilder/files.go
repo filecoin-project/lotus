@@ -81,7 +81,8 @@ func toReadableFile(r io.Reader, n int64) (*os.File, func() error, error) {
 	go func() {
 		defer wait.Unlock()
 
-		copied, werr := io.CopyN(w, r, n)
+		var copied int64
+		copied, werr = io.CopyN(w, r, n)
 		if werr != nil {
 			log.Warnf("toReadableFile: copy error: %+v", werr)
 		}

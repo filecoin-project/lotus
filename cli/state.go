@@ -23,6 +23,7 @@ var stateCmd = &cli.Command{
 		stateListMinersCmd,
 		stateGetActorCmd,
 		stateLookupIDCmd,
+		stateReplaySetCmd,
 	},
 }
 

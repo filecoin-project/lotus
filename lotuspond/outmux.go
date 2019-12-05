@@ -6,15 +6,12 @@ import (
 	"io"
 	"net/http"
 	"strings"
-	"sync"
 
 	"github.com/gorilla/websocket"
 	"github.com/opentracing/opentracing-go/log"
 )
 
 type outmux struct {
-	lk sync.Mutex
-
 	errpw *io.PipeWriter
 	outpw *io.PipeWriter
 
@@ -127,5 +124,4 @@ func (m *outmux) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 	}
 
 	m.new <- c
-	return
 }

@@ -199,6 +199,9 @@ func (c *Client) Start(ctx context.Context, p ClientDealProposal) (cid.Cid, erro
 	}
 
 	commP, pieceSize, err := c.commP(ctx, p.Data)
+	if err != nil {
+		return cid.Undef, xerrors.Errorf("computing commP failed: %w", err)
+	}
 
 	dealProposal := &actors.StorageDealProposal{
 		PieceRef:             commP,

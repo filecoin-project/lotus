@@ -80,7 +80,7 @@ type minerDealUpdate struct {
 
 var (
 	// ErrDataTransferFailed means a data transfer for a deal failed
-	ErrDataTransferFailed = errors.New("Deal data transfer failed")
+	ErrDataTransferFailed = errors.New("deal data transfer failed")
 )
 
 func NewProvider(ds dtypes.MetadataDS, sminer *storage.Miner, secb *sectorblocks.SectorBlocks, dag dtypes.StagingDAG, dataTransfer dtypes.ProviderDataTransfer, fullNode api.FullNode) (*Provider, error) {

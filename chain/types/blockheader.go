@@ -112,7 +112,7 @@ func (blk *BlockHeader) SigningBytes() ([]byte, error) {
 }
 
 func (blk *BlockHeader) CheckBlockSignature(ctx context.Context, worker address.Address) error {
-	ctx, span := trace.StartSpan(ctx, "checkBlockSignature")
+	_, span := trace.StartSpan(ctx, "checkBlockSignature")
 	defer span.End()
 
 	sigb, err := blk.SigningBytes()
