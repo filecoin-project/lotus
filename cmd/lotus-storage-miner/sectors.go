@@ -186,7 +186,7 @@ var sectorsUpdateCmd = &cli.Command{
 	},
 	Action: func(cctx *cli.Context) error {
 		if !cctx.Bool("really-do-it") {
-			return xerrors.Errorf("this is a command for advanced users, only us it if you are sure of what you are doing")
+			return xerrors.Errorf("this is a command for advanced users, only use it if you are sure of what you are doing")
 		}
 		nodeApi, closer, err := lcli.GetStorageMinerAPI(cctx)
 		if err != nil {
