@@ -12,6 +12,7 @@ import (
 var dotCmd = &cli.Command{
 	Name:  "dot",
 	Usage: "generate dot graphs",
+	ArgsUsage: "<minHeight> <toseeHeight>",
 	Action: func(cctx *cli.Context) error {
 		st, err := openStorage()
 		if err != nil {
