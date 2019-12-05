@@ -37,14 +37,14 @@ commands:
       - restore_cache:
           name: Restore parameters cache
           keys:
-            - 'v19-lotus-params-{{ checksum "build/proof-params/parameters.json" }}-{{ checksum "build/paramfetch.go" }}'
-            - 'v19-lotus-params-{{ checksum "build/proof-params/parameters.json" }}-'
+            - 'v20-1k-lotus-params-{{ checksum "build/proof-params/parameters.json" }}-{{ checksum "build/paramfetch.go" }}'
+            - 'v20-1k-lotus-params-{{ checksum "build/proof-params/parameters.json" }}-'
           paths:
             - /var/tmp/filecoin-proof-parameters/
-      - run:  ./lotus fetch-params --include-test-params
+      - run:  ./lotus fetch-params --proving-params 1024
       - save_cache:
           name: Save parameters cache
-          key: 'v19-lotus-params-{{ checksum "build/proof-params/parameters.json" }}-{{ checksum "build/paramfetch.go" }}'
+          key: 'v20-1k-lotus-params-{{ checksum "build/proof-params/parameters.json" }}-{{ checksum "build/paramfetch.go" }}'
           paths:
             - /var/tmp/filecoin-proof-parameters/
 
@@ -85,7 +85,7 @@ jobs:
         default: golang
       go-test-flags:
         type: string
-        default: ""
+        default: "-timeout 30m"
         description: Flags passed to go test.
       packages:
         type: string
@@ -134,6 +134,7 @@ jobs:
               << parameters.coverage >> \
               << parameters.go-test-flags >> \
               << parameters.packages >>
+          no_output_timeout: 30m
       - store_test_results:
           path: /tmp/test-reports
       - when:

@@ -45,10 +45,6 @@ var runCmd = &cli.Command{
 		},
 	},
 	Action: func(cctx *cli.Context) error {
-		if err := build.GetParams(true, false); err != nil {
-			return xerrors.Errorf("fetching proof parameters: %w", err)
-		}
-
 		if !cctx.Bool("enable-gpu-proving") {
 			os.Setenv("BELLMAN_NO_GPU", "true")
 		}

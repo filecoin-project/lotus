@@ -44,6 +44,14 @@ func minerAddrFromDS(ds dtypes.MetadataDS) (address.Address, error) {
 	return address.NewFromBytes(maddrb)
 }
 
+func GetParams(sbc *sectorbuilder.Config) error {
+	if err := build.GetParams(sbc.SectorSize); err != nil {
+		return xerrors.Errorf("fetching proof parameters: %w", err)
+	}
+
+	return nil
+}
+
 func SectorBuilderConfig(storagePath string, threads uint) func(dtypes.MetadataDS, api.FullNode) (*sectorbuilder.Config, error) {
 	return func(ds dtypes.MetadataDS, api api.FullNode) (*sectorbuilder.Config, error) {
 		minerAddr, err := minerAddrFromDS(ds)

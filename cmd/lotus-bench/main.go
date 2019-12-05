@@ -113,7 +113,7 @@ func main() {
 				}
 			}
 
-			if err := build.GetParams(true, false); err != nil {
+			if err := build.GetParams(sectorSize); err != nil {
 				return xerrors.Errorf("getting params: %w", err)
 			}
 			sb, err := sectorbuilder.New(cfg, mds)
