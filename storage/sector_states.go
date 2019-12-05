@@ -84,7 +84,6 @@ func (m *Miner) handleUnsealed(ctx context.Context, sector SectorInfo) *sectorUp
 			TicketBytes: ticket.TicketBytes[:],
 		}
 	})
-
 }
 
 func (m *Miner) handlePreCommitting(ctx context.Context, sector SectorInfo) *sectorUpdate {

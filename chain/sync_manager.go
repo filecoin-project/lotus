@@ -6,7 +6,7 @@ import (
 	"sync"
 
 	"github.com/filecoin-project/lotus/chain/types"
-	peer "github.com/libp2p/go-libp2p-peer"
+	peer "github.com/libp2p/go-libp2p-core/peer"
 )
 
 const BootstrapPeerThreshold = 2
@@ -100,6 +100,14 @@ type syncBucketSet struct {
 	buckets []*syncTargetBucket
 }
 
+func newSyncTargetBucket(tipsets ...*types.TipSet) *syncTargetBucket {
+	var stb syncTargetBucket
+	for _, ts := range tipsets {
+		stb.add(ts)
+	}
+	return &stb
+}
+
 func (sbs *syncBucketSet) Insert(ts *types.TipSet) {
 	for _, b := range sbs.buckets {
 		if b.sameChainAs(ts) {
@@ -107,10 +115,7 @@ func (sbs *syncBucketSet) Insert(ts *types.TipSet) {
 			return
 		}
 	}
-	sbs.buckets = append(sbs.buckets, &syncTargetBucket{
-		tips:  []*types.TipSet{ts},
-		count: 1,
-	})
+	sbs.buckets = append(sbs.buckets, newSyncTargetBucket(ts))
 }
 
 func (sbs *syncBucketSet) Pop() *syncTargetBucket {
@@ -164,14 +169,6 @@ func (sbs *syncBucketSet) Heaviest() *types.TipSet {
 type syncTargetBucket struct {
 	tips  []*types.TipSet
 	count int
-}
-
-func newSyncTargetBucket(tipsets ...*types.TipSet) *syncTargetBucket {
-	var stb syncTargetBucket
-	for _, ts := range tipsets {
-		stb.add(ts)
-	}
-	return &stb
 }
 
 func (stb *syncTargetBucket) sameChainAs(ts *types.TipSet) bool {
@@ -231,7 +228,7 @@ func (sm *SyncManager) selectSyncTarget() (*types.TipSet, error) {
 	}
 
 	if len(buckets.buckets) > 1 {
-		log.Warning("caution, multiple distinct chains seen during head selections")
+		log.Warn("caution, multiple distinct chains seen during head selections")
 		// TODO: we *could* refuse to sync here without user intervention.
 		// For now, just select the best cluster
 	}
