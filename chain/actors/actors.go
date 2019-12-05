@@ -32,7 +32,7 @@ func mustIDAddress(i uint64) address.Address {
 }
 
 func init() {
-	pref := cid.NewPrefixV1(cid.Raw, mh.ID)
+	pref := cid.NewPrefixV1(cid.Raw, mh.IDENTITY)
 	mustSum := func(s string) cid.Cid {
 		c, err := pref.Sum([]byte(s))
 		if err != nil {

@@ -59,8 +59,7 @@ type MessagePool struct {
 
 	localAddrs map[address.Address]struct{}
 
-	pending      map[address.Address]*msgSet
-	pendingCount int
+	pending map[address.Address]*msgSet
 
 	curTsLk sync.Mutex // DO NOT LOCK INSIDE lk
 	curTs   *types.TipSet
@@ -79,9 +78,8 @@ type MessagePool struct {
 }
 
 type msgSet struct {
-	msgs       map[uint64]*types.SignedMessage
-	nextNonce  uint64
-	curBalance types.BigInt
+	msgs      map[uint64]*types.SignedMessage
+	nextNonce uint64
 }
 
 func newMsgSet() *msgSet {
@@ -572,9 +570,7 @@ func (mp *MessagePool) MessagesForBlocks(blks []*types.BlockHeader) ([]*types.Si
 		if err != nil {
 			return nil, xerrors.Errorf("failed to get messages for apply block %s(height %d) (msgroot = %s): %w", b.Cid(), b.Height, b.Messages, err)
 		}
-		for _, msg := range smsgs {
-			out = append(out, msg)
-		}
+		out = append(out, smsgs...)
 
 		for _, msg := range bmsgs {
 			smsg := mp.RecoverSig(msg)

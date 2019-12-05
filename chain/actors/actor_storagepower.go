@@ -747,10 +747,10 @@ func MinerSetRemove(ctx context.Context, vmctx types.VMContext, rcid cid.Cid, ma
 
 	mkey := string(maddr.Bytes())
 	switch nd.Delete(ctx, mkey) {
-	case hamt.ErrNotFound:
-		return cid.Undef, aerrors.New(1, "miner not found in set on delete")
 	default:
 		return cid.Undef, aerrors.HandleExternalError(err, "failed to delete miner from set")
+	case hamt.ErrNotFound:
+		return cid.Undef, aerrors.New(1, "miner not found in set on delete")
 	case nil:
 	}
 

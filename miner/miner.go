@@ -191,7 +191,7 @@ eventLoop:
 				time.Sleep(time.Until(btime))
 			} else {
 				log.Warnw("mined block in the past", "block-time", btime,
-					"time", time.Now(), "duration", time.Now().Sub(btime))
+					"time", time.Now(), "duration", time.Since(btime))
 			}
 
 			mWon := make(map[address.Address]struct{})

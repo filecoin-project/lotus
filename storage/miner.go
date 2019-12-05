@@ -3,7 +3,6 @@ package storage
 import (
 	"context"
 	"errors"
-	"sync"
 	"time"
 
 	"github.com/ipfs/go-cid"
@@ -35,10 +34,6 @@ type Miner struct {
 
 	maddr  address.Address
 	worker address.Address
-
-	// PoSt
-	postLk    sync.Mutex
-	schedPost uint64
 
 	// Sealing
 	sb      *sectorbuilder.SectorBuilder
