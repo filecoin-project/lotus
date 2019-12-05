@@ -6,7 +6,6 @@ import (
 	"crypto/sha256"
 	"errors"
 	"fmt"
-	"sync"
 	"time"
 
 	"github.com/Gurpartap/async"
@@ -60,8 +59,6 @@ type Syncer struct {
 	Bsync *blocksync.BlockSync
 
 	self peer.ID
-
-	syncLock sync.Mutex
 
 	syncmgr *SyncManager
 
@@ -242,14 +239,6 @@ func (syncer *Syncer) InformNewBlock(from peer.ID, blk *types.FullBlock) {
 	syncer.InformNewHead(from, fts)
 }
 
-func reverse(tips []*types.TipSet) []*types.TipSet {
-	out := make([]*types.TipSet, len(tips))
-	for i := 0; i < len(tips); i++ {
-		out[i] = tips[len(tips)-(i+1)]
-	}
-	return out
-}
-
 func copyBlockstore(from, to bstore.Blockstore) error {
 	cids, err := from.AllKeysChan(context.TODO())
 	if err != nil {
@@ -338,59 +327,6 @@ func computeMsgMeta(bs amt.Blocks, bmsgCids, smsgCids []cbg.CBORMarshaler) (cid.
 	}
 
 	return mrcid, nil
-}
-
-func (syncer *Syncer) selectHead(ctx context.Context, heads map[peer.ID]*types.TipSet) (*types.TipSet, error) {
-	var headsArr []*types.TipSet
-	for _, ts := range heads {
-		headsArr = append(headsArr, ts)
-	}
-
-	sel := headsArr[0]
-	for i := 1; i < len(headsArr); i++ {
-		cur := headsArr[i]
-
-		yes, err := syncer.store.IsAncestorOf(cur, sel)
-		if err != nil {
-			return nil, err
-		}
-		if yes {
-			continue
-		}
-
-		yes, err = syncer.store.IsAncestorOf(sel, cur)
-		if err != nil {
-			return nil, err
-		}
-		if yes {
-			sel = cur
-			continue
-		}
-
-		nca, err := syncer.store.NearestCommonAncestor(cur, sel)
-		if err != nil {
-			return nil, err
-		}
-
-		if sel.Height()-nca.Height() > build.ForkLengthThreshold {
-			// TODO: handle this better than refusing to sync
-			return nil, fmt.Errorf("Conflict exists in heads set")
-		}
-
-		curw, err := syncer.store.Weight(ctx, cur)
-		if err != nil {
-			return nil, err
-		}
-		selw, err := syncer.store.Weight(ctx, sel)
-		if err != nil {
-			return nil, err
-		}
-
-		if curw.GreaterThan(selw) {
-			sel = cur
-		}
-	}
-	return sel, nil
 }
 
 func (syncer *Syncer) FetchTipSet(ctx context.Context, p peer.ID, cids []cid.Cid) (*store.FullTipSet, error) {
@@ -519,10 +455,6 @@ func (syncer *Syncer) minerIsValid(ctx context.Context, maddr address.Address, b
 	}
 
 	return nil
-}
-
-func (syncer *Syncer) validateTicket(ctx context.Context, maddr, mworker address.Address, ticket *types.Ticket, base *types.TipSet) error {
-	return gen.VerifyVRF(ctx, mworker, maddr, gen.DSepTicket, base.MinTicket().VRFProof, ticket.VRFProof)
 }
 
 var ErrTemporal = errors.New("temporal error")
@@ -829,7 +761,7 @@ func (syncer *Syncer) checkBlockMessages(ctx context.Context, b *types.FullBlock
 }
 
 func (syncer *Syncer) verifyBlsAggregate(ctx context.Context, sig types.Signature, msgs []cid.Cid, pubks []bls.PublicKey) error {
-	ctx, span := trace.StartSpan(ctx, "syncer.verifyBlsAggregate")
+	_, span := trace.StartSpan(ctx, "syncer.verifyBlsAggregate")
 	defer span.End()
 	span.AddAttributes(
 		trace.Int64Attribute("msgCount", int64(len(msgs))),
