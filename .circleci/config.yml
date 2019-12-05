@@ -134,6 +134,7 @@ jobs:
               << parameters.coverage >> \
               << parameters.go-test-flags >> \
               << parameters.packages >>
+          no_output_timeout: 30m
       - store_test_results:
           path: /tmp/test-reports
       - when:
