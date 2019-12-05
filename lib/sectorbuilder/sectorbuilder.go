@@ -159,6 +159,10 @@ func New(cfg *Config, ds dtypes.MetadataDS) (*SectorBuilder, error) {
 
 	sealLocal := rlimit > 0
 
+	if rlimit == 0 {
+		rlimit = 1
+	}
+
 	sb := &SectorBuilder{
 		ds: ds,
 
@@ -414,10 +418,15 @@ func (sb *SectorBuilder) SealPreCommit(sectorID uint64, ticket SealTicket, piece
 
 	sb.checkRateLimit()
 
+	rl := sb.rateLimit
+	if !sb.sealLocal {
+		rl = make(chan struct{})
+	}
+
 	select { // use whichever is available
 	case sb.sealTasks <- call:
 		return sb.sealPreCommitRemote(call)
-	case sb.rateLimit <- struct{}{}:
+	case rl <- struct{}{}:
 	}
 
 	// local
@@ -529,10 +538,15 @@ func (sb *SectorBuilder) SealCommit(sectorID uint64, ticket SealTicket, seed Sea
 	default:
 		sb.checkRateLimit()
 
+		rl := sb.rateLimit
+		if !sb.sealLocal {
+			rl = make(chan struct{})
+		}
+
 		select { // use whichever is available
 		case sb.sealTasks <- call:
 			proof, err = sb.sealCommitRemote(call)
-		case sb.rateLimit <- struct{}{}:
+		case rl <- struct{}{}:
 			proof, err = sb.sealCommitLocal(sectorID, ticket, seed, pieces, rspco)
 		}
 	}
