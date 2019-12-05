@@ -4,6 +4,7 @@ import (
 	"fmt"
 	"strconv"
 
+	"golang.org/x/xerrors"
 	"gopkg.in/urfave/cli.v2"
 
 	"github.com/filecoin-project/lotus/api"
@@ -32,6 +33,7 @@ var sectorsCmd = &cli.Command{
 		sectorsStatusCmd,
 		sectorsListCmd,
 		sectorsRefsCmd,
+		sectorsUpdateCmd,
 	},
 }
 
@@ -170,6 +172,45 @@ var sectorsRefsCmd = &cli.Command{
 			}
 		}
 		return nil
+	},
+}
+
+var sectorsUpdateCmd = &cli.Command{
+	Name:  "update-state",
+	Usage: "ADVANCED: manually update the state of a sector, this may aid in error recovery",
+	Flags: []cli.Flag{
+		&cli.BoolFlag{
+			Name:  "really-do-it",
+			Usage: "pass this flag if you know what you are doing",
+		},
+	},
+	Action: func(cctx *cli.Context) error {
+		if !cctx.Bool("really-do-it") {
+			return xerrors.Errorf("this is a command for advanced users, only use it if you are sure of what you are doing")
+		}
+		nodeApi, closer, err := lcli.GetStorageMinerAPI(cctx)
+		if err != nil {
+			return err
+		}
+		defer closer()
+		ctx := lcli.ReqContext(cctx)
+		if cctx.Args().Len() < 2 {
+			return xerrors.Errorf("must pass sector ID and new state")
+		}
+
+		id, err := strconv.ParseUint(cctx.Args().Get(0), 10, 64)
+		if err != nil {
+			return xerrors.Errorf("could not parse sector ID: %w", err)
+		}
+
+		var st api.SectorState
+		for i, s := range api.SectorStates {
+			if cctx.Args().Get(1) == s {
+				st = api.SectorState(i)
+			}
+		}
+
+		return nodeApi.SectorsUpdate(ctx, id, st)
 	},
 }
 

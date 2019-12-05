@@ -55,6 +55,18 @@ func (u *sectorUpdate) to(newState api.SectorState) *sectorUpdate {
 	}
 }
 
+func (m *Miner) UpdateSectorState(ctx context.Context, sector uint64, state api.SectorState) error {
+	select {
+	case m.sectorUpdated <- sectorUpdate{
+		newState: state,
+		id:       sector,
+	}:
+		return nil
+	case <-ctx.Done():
+		return ctx.Err()
+	}
+}
+
 func (m *Miner) sectorStateLoop(ctx context.Context) error {
 	trackedSectors, err := m.ListSectors()
 	if err != nil {

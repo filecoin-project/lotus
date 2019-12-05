@@ -3,6 +3,12 @@ package impl
 import (
 	"context"
 	"encoding/json"
+	"io"
+	"mime"
+	"net/http"
+	"os"
+	"path/filepath"
+
 	"github.com/filecoin-project/lotus/api"
 	"github.com/filecoin-project/lotus/chain/address"
 	"github.com/filecoin-project/lotus/lib/sectorbuilder"
@@ -12,11 +18,6 @@ import (
 	"github.com/filecoin-project/lotus/storage/sectorblocks"
 	"github.com/gorilla/mux"
 	files "github.com/ipfs/go-ipfs-files"
-	"io"
-	"mime"
-	"net/http"
-	"os"
-	"path/filepath"
 )
 
 type StorageMinerAPI struct {
@@ -199,6 +200,10 @@ func (sm *StorageMinerAPI) SectorsRefs(context.Context) (map[string][]api.Sealed
 	}
 
 	return out, nil
+}
+
+func (sm *StorageMinerAPI) SectorsUpdate(ctx context.Context, id uint64, state api.SectorState) error {
+	return sm.Miner.UpdateSectorState(ctx, id, state)
 }
 
 func (sm *StorageMinerAPI) WorkerQueue(ctx context.Context) (<-chan sectorbuilder.WorkerTask, error) {

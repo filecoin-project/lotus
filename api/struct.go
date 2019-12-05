@@ -2,6 +2,7 @@ package api
 
 import (
 	"context"
+
 	"github.com/filecoin-project/lotus/lib/sectorbuilder"
 
 	"github.com/ipfs/go-cid"
@@ -138,6 +139,7 @@ type StorageMinerStruct struct {
 		SectorsStatus func(context.Context, uint64) (SectorInfo, error)     `perm:"read"`
 		SectorsList   func(context.Context) ([]uint64, error)               `perm:"read"`
 		SectorsRefs   func(context.Context) (map[string][]SealedRef, error) `perm:"read"`
+		SectorsUpdate func(context.Context, uint64, SectorState) error      `perm:"write"`
 
 		WorkerStats func(context.Context) (sectorbuilder.WorkerStats, error) `perm:"read"`
 
@@ -510,6 +512,10 @@ func (c *StorageMinerStruct) SectorsList(ctx context.Context) ([]uint64, error) 
 
 func (c *StorageMinerStruct) SectorsRefs(ctx context.Context) (map[string][]SealedRef, error) {
 	return c.Internal.SectorsRefs(ctx)
+}
+
+func (c *StorageMinerStruct) SectorsUpdate(ctx context.Context, id uint64, state SectorState) error {
+	return c.Internal.SectorsUpdate(ctx, id, state)
 }
 
 func (c *StorageMinerStruct) WorkerStats(ctx context.Context) (sectorbuilder.WorkerStats, error) {

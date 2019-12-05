@@ -67,6 +67,8 @@ type StorageMiner interface {
 
 	SectorsRefs(context.Context) (map[string][]SealedRef, error)
 
+	SectorsUpdate(context.Context, uint64, SectorState) error
+
 	WorkerStats(context.Context) (sectorbuilder.WorkerStats, error)
 
 	// WorkerQueue registers a remote worker
