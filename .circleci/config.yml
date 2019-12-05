@@ -85,7 +85,7 @@ jobs:
         default: golang
       go-test-flags:
         type: string
-        default: ""
+        default: "-timeout 30m"
         description: Flags passed to go test.
       packages:
         type: string
