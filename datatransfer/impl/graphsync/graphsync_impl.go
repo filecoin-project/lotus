@@ -34,6 +34,8 @@ type ExtensionDataTransferData struct {
 	IsPull     bool
 }
 
+var EmptyExtensionDataTransferData = ExtensionDataTransferData{}
+
 // This file implements a VERY simple, incomplete version of the data transfer
 // module that allows us to make the necessary insertions of data transfer
 // functionality into the storage market
@@ -91,6 +93,11 @@ func (impl *graphsyncImpl) gsReqRecdHook(p peer.ID, request graphsync.RequestDat
 	if err != nil {
 		return resp, err
 	}
+	if transferData == EmptyExtensionDataTransferData {
+		// extension not found; probably not our request. Return without validating.
+		return resp, nil
+	}
+
 	raw, _ := request.Extension(ExtensionDataTransfer)
 	respData := graphsync.ExtensionData{Name: ExtensionDataTransfer, Data: raw}
 	resp = append(resp, respData)
@@ -116,18 +123,18 @@ type gsExtended interface {
 }
 
 // getExtensionData unmarshals extension data. Returns any errors.
-func (impl *graphsyncImpl) getExtensionData(extendedData gsExtended) (*ExtensionDataTransferData, error) {
+func (impl *graphsyncImpl) getExtensionData(extendedData gsExtended) (ExtensionDataTransferData, error) {
 	data, ok := extendedData.Extension(ExtensionDataTransfer)
 	if !ok {
-		return nil, errors.New("extension not present")
+		return EmptyExtensionDataTransferData, nil
 	}
 	var extStruct ExtensionDataTransferData
 
 	reader := bytes.NewReader(data)
 	if err := extStruct.UnmarshalCBOR(reader); err != nil {
-		return nil, err
+		return EmptyExtensionDataTransferData, err
 	}
-	return &extStruct, nil
+	return extStruct, nil
 }
 
 // RegisterVoucherType registers a validator for the given voucher type

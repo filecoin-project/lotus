@@ -616,6 +616,7 @@ func TestDataTransferInitiatingPushGraphsyncRequests(t *testing.T) {
 		require.Empty(t, gs2.requests)
 
 	})
+
 }
 
 func TestDataTransferInitiatingPullGraphsyncRequests(t *testing.T) {
@@ -871,6 +872,31 @@ func TestRespondingToPushGraphsyncRequests(t *testing.T) {
 		status := gsr.consumeResponses(ctx, t)
 		require.True(t, gsmsg.IsTerminalFailureCode(status))
 	})
+
+	t.Run("when it's not our extension, does not error and does not validate", func(t *testing.T) {
+		_, err := dt1.OpenPushDataChannel(ctx, host2.ID(), &voucher, link.(cidlink.Link).Cid, gsData.allSelector)
+		require.NoError(t, err)
+
+		select {
+		case <-ctx.Done():
+			t.Fatal("did not receive message sent")
+		case <-r.messageReceived:
+		}
+
+		var selBuf bytes.Buffer
+		err = dagcbor.Encoder(gsData.allSelector, &selBuf)
+		require.NoError(t, err)
+		selectorBytes := selBuf.Bytes()
+
+		request := gsmsg.NewRequest(graphsync.RequestID(rand.Int31()), link.(cidlink.Link).Cid, selectorBytes, graphsync.Priority(rand.Int31()))
+		gsmessage := gsmsg.New()
+		gsmessage.AddRequest(request)
+		require.NoError(t, gsData.gsNet2.SendMessage(ctx, host1.ID(), gsmessage))
+
+		status := gsr.consumeResponses(ctx, t)
+		require.False(t, gsmsg.IsTerminalFailureCode(status))
+	})
+
 }
 
 func TestRespondingToPullGraphsyncRequests(t *testing.T) {
