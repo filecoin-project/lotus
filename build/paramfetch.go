@@ -80,8 +80,8 @@ func (ft *fetch) maybeFetchAsync(name string, info paramFile) {
 			return
 		}
 
-		/*ft.fetchLk.Lock()
-		defer ft.fetchLk.Unlock()*/
+		ft.fetchLk.Lock()
+		defer ft.fetchLk.Unlock()
 
 		if err := doFetch(path, info); err != nil {
 			ft.errs = append(ft.errs, xerrors.Errorf("fetching file %s failed: %w", path, err))
