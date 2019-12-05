@@ -63,7 +63,7 @@ var DaemonCmd = &cli.Command{
 			return xerrors.Errorf("repo init error: %w", err)
 		}
 
-		if err := build.GetParams(false, false); err != nil {
+		if err := build.GetParams(0); err != nil {
 			return xerrors.Errorf("fetching proof parameters: %w", err)
 		}
 

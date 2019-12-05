@@ -48,7 +48,7 @@ func PreSeal(maddr address.Address, ssize uint64, sectors int, sbroot string, pr
 		return nil, err
 	}
 
-	if err := build.GetParams(true, false); err != nil {
+	if err := build.GetParams(ssize); err != nil {
 		return nil, xerrors.Errorf("getting params: %w", err)
 	}
 

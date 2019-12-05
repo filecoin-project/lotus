@@ -126,7 +126,7 @@ func TestSealAndVerify(t *testing.T) {
 
 	build.SectorSizes = []uint64{sectorSize}
 
-	if err := build.GetParams(true, true); err != nil {
+	if err := build.GetParams(sectorSize); err != nil {
 		t.Fatalf("%+v", err)
 	}
 
@@ -195,7 +195,7 @@ func TestSealPoStNoCommit(t *testing.T) {
 
 	build.SectorSizes = []uint64{sectorSize}
 
-	if err := build.GetParams(true, true); err != nil {
+	if err := build.GetParams(sectorSize); err != nil {
 		t.Fatalf("%+v", err)
 	}
 
@@ -257,7 +257,7 @@ func TestSealAndVerify2(t *testing.T) {
 
 	build.SectorSizes = []uint64{sectorSize}
 
-	if err := build.GetParams(true, true); err != nil {
+	if err := build.GetParams(sectorSize); err != nil {
 		t.Fatalf("%+v", err)
 	}
 

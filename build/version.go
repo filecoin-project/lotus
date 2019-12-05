@@ -1,7 +1,7 @@
 package build
 
 // Version is the local build version, set by build system
-const Version = "0.7.0"
+const Version = "0.10.0"
 
 // APIVersion is a hex semver version of the rpc api exposed
 //
@@ -12,7 +12,7 @@ const Version = "0.7.0"
 //                   R R  H
 //                   |\vv/|
 //                   vv  vv
-const APIVersion = 0x000701
+const APIVersion = 0x000a01
 
 const (
 	MajorMask = 0xff0000

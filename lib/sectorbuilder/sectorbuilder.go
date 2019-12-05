@@ -20,7 +20,7 @@ import (
 )
 
 const PoStReservedWorkers = 1
-const PoRepProofPartitions = 2
+const PoRepProofPartitions = 10
 
 var lastSectorIdKey = datastore.NewKey("/sectorbuilder/last")
 
