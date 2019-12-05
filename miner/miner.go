@@ -255,7 +255,7 @@ func (m *Miner) hasPower(ctx context.Context, addr address.Address, ts *types.Ti
 		return false, err
 	}
 
-	return power.MinerPower.Equals(types.NewInt(0)), nil
+	return !power.MinerPower.Equals(types.NewInt(0)), nil
 }
 
 func (m *Miner) mineOne(ctx context.Context, addr address.Address, base *MiningBase) (*types.BlockMsg, error) {
@@ -266,7 +266,7 @@ func (m *Miner) mineOne(ctx context.Context, addr address.Address, base *MiningB
 	if err != nil {
 		return nil, xerrors.Errorf("checking if miner is slashed: %w", err)
 	}
-	if hasPower {
+	if !hasPower {
 		// slashed or just have no power yet
 		base.nullRounds++
 		return nil, nil
