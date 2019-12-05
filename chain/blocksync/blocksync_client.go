@@ -12,9 +12,9 @@ import (
 	blocks "github.com/ipfs/go-block-format"
 	bserv "github.com/ipfs/go-blockservice"
 	"github.com/ipfs/go-cid"
+	host "github.com/libp2p/go-libp2p-core/host"
 	inet "github.com/libp2p/go-libp2p-core/network"
 	"github.com/libp2p/go-libp2p-core/peer"
-	host "github.com/libp2p/go-libp2p-host"
 	"go.opencensus.io/trace"
 	"golang.org/x/xerrors"
 
@@ -28,8 +28,7 @@ type BlockSync struct {
 	bserv bserv.BlockService
 	host  host.Host
 
-	syncPeersLk sync.Mutex
-	syncPeers   *bsPeerTracker
+	syncPeers *bsPeerTracker
 }
 
 func NewBlockSyncClient(bserv dtypes.ChainBlockService, h host.Host) *BlockSync {

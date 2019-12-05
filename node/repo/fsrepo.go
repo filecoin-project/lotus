@@ -29,7 +29,6 @@ const (
 	fsAPIToken  = "token"
 	fsConfig    = "config.toml"
 	fsDatastore = "datastore"
-	fsLibp2pKey = "libp2p.priv"
 	fsLock      = "repo.lock"
 	fsKeystore  = "keystore"
 )

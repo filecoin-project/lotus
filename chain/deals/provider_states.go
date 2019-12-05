@@ -168,6 +168,9 @@ func (p *Provider) accept(ctx context.Context, deal MinerDeal) (func(*MinerDeal)
 		deal.Ref,
 		allSelector,
 	)
+	if err != nil {
+		return nil, xerrors.Errorf("failed to open pull data channel: %w", err)
+	}
 
 	return nil, nil
 }

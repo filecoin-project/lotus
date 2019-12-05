@@ -69,6 +69,9 @@ func newClientDeal(minerID peer.ID, state api.DealState) (deals.ClientDeal, erro
 		return deals.ClientDeal{}, err
 	}
 	minerAddr, err := address.NewIDAddress(uint64(rand.Int()))
+	if err != nil {
+		return deals.ClientDeal{}, err
+	}
 
 	return deals.ClientDeal{
 		Proposal:    newProposal,

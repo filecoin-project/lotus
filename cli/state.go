@@ -5,6 +5,7 @@ import (
 
 	"github.com/filecoin-project/lotus/chain/address"
 	"github.com/filecoin-project/lotus/chain/types"
+	"golang.org/x/xerrors"
 
 	"github.com/ipfs/go-cid"
 	"gopkg.in/urfave/cli.v2"
@@ -22,6 +23,7 @@ var stateCmd = &cli.Command{
 		stateListMinersCmd,
 		stateGetActorCmd,
 		stateLookupIDCmd,
+		stateReplaySetCmd,
 	},
 }
 
@@ -176,7 +178,18 @@ var stateReplaySetCmd = &cli.Command{
 			return err
 		}
 
-		api.StateReplay(ctx, ts, mcid)
+		res, err := api.StateReplay(ctx, ts, mcid)
+		if err != nil {
+			return xerrors.Errorf("replay call failed: %w", err)
+		}
+
+		fmt.Println("Replay receipt:")
+		fmt.Printf("Exit code: %d\n", res.Receipt.ExitCode)
+		fmt.Printf("Return: %x\n", res.Receipt.Return)
+		fmt.Printf("Gas Used: %s\n", res.Receipt.GasUsed)
+		if res.Receipt.ExitCode != 0 {
+			fmt.Printf("Error message: %q\n", res.Error)
+		}
 
 		return nil
 	},

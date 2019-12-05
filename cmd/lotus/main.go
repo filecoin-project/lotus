@@ -72,5 +72,4 @@ func main() {
 		log.Warnf("%+v", err)
 		os.Exit(1)
 	}
-	return
 }

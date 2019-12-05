@@ -67,7 +67,7 @@ func TestDealFlow(t *testing.T, b APIBuilder) {
 			time.Sleep(time.Second)
 			fmt.Println("mining a block now")
 			if err := sn[0].MineOne(ctx); err != nil {
-				t.Fatal(err)
+				t.Error(err)
 			}
 		}
 	}()

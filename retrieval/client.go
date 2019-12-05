@@ -231,6 +231,9 @@ func (cst *clientStream) consumeBlockMessage(block Block, out io.Writer) (uint64
 	}
 
 	cid, err := prefix.Sum(block.Data)
+	if err != nil {
+		return 0, err
+	}
 
 	blk, err := blocks.NewBlockWithCid(block.Data, cid)
 	if err != nil {

@@ -108,7 +108,7 @@ func (bss *BlockSyncService) HandleStream(s inet.Stream) {
 }
 
 func (bss *BlockSyncService) processRequest(ctx context.Context, req *BlockSyncRequest) (*BlockSyncResponse, error) {
-	ctx, span := trace.StartSpan(ctx, "blocksync.ProcessRequest")
+	_, span := trace.StartSpan(ctx, "blocksync.ProcessRequest")
 	defer span.End()
 
 	opts := ParseBSOptions(req.Options)

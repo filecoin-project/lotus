@@ -139,7 +139,9 @@ func HandleDeals(mctx helpers.MetricsCtx, lc fx.Lifecycle, host host.Host, h *de
 // request validator with the data transfer module as the validator for
 // StorageDataTransferVoucher types
 func RegisterProviderValidator(mrv *deals.ProviderRequestValidator, dtm dtypes.ProviderDataTransfer) {
-	dtm.RegisterVoucherType(reflect.TypeOf(deals.StorageDataTransferVoucher{}), mrv)
+	if err := dtm.RegisterVoucherType(reflect.TypeOf(deals.StorageDataTransferVoucher{}), mrv); err != nil {
+		panic(err)
+	}
 }
 
 // NewProviderDAGServiceDataTransfer returns a data transfer manager that just

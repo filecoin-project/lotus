@@ -273,7 +273,7 @@ func (cs *ChainStore) reorgWorker(ctx context.Context) chan<- reorg {
 }
 
 func (cs *ChainStore) takeHeaviestTipSet(ctx context.Context, ts *types.TipSet) error {
-	ctx, span := trace.StartSpan(ctx, "takeHeaviestTipSet")
+	_, span := trace.StartSpan(ctx, "takeHeaviestTipSet")
 	defer span.End()
 
 	if cs.heaviest != nil { // buf

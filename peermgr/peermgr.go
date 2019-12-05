@@ -27,7 +27,7 @@ type PeerMgr struct {
 
 	// peerLeads is a set of peers we hear about through the network
 	// and who may be good peers to connect to for expanding our peer set
-	peerLeads map[peer.ID]time.Time
+	//peerLeads map[peer.ID]time.Time // TODO: unused
 
 	peersLk sync.Mutex
 	peers   map[peer.ID]struct{}

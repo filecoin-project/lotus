@@ -15,7 +15,7 @@ import (
 	"github.com/ipfs/go-car"
 	offline "github.com/ipfs/go-ipfs-exchange-offline"
 	"github.com/ipfs/go-merkledag"
-	peer "github.com/libp2p/go-libp2p-peer"
+	peer "github.com/libp2p/go-libp2p-core/peer"
 	"go.opencensus.io/trace"
 	"golang.org/x/xerrors"
 
@@ -42,8 +42,6 @@ var log = logging.Logger("gen")
 const msgsPerBlock = 20
 
 type ChainGen struct {
-	accounts []address.Address
-
 	msgsPerBlock int
 
 	bs blockstore.Blockstore
