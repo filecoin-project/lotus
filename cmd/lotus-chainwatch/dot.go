@@ -14,7 +14,7 @@ var dotCmd = &cli.Command{
 	Usage: "generate dot graphs",
 	ArgsUsage: "<minHeight> <toseeHeight>",
 	Action: func(cctx *cli.Context) error {
-		st, err := openStorage()
+		st, err := openStorage(cctx.String("db"))
 		if err != nil {
 			return err
 		}
