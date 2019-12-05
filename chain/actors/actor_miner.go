@@ -23,7 +23,7 @@ import (
 	"golang.org/x/xerrors"
 )
 
-const MaxSectorID = 32 << 30 // 32 billion sectors should be good enough right?
+const MaxSectors = 1 << 48
 
 type StorageMinerActor struct{}
 
@@ -539,7 +539,7 @@ func SectorIsUnique(ctx context.Context, s types.Storage, sroot cid.Cid, sid uin
 }
 
 func AddToSectorSet(ctx context.Context, blks amt.Blocks, ss cid.Cid, sectorID uint64, commR, commD []byte) (cid.Cid, ActorError) {
-	if sectorID > MaxSectorID {
+	if sectorID >= MaxSectors {
 		return cid.Undef, aerrors.Newf(25, "sector ID out of range: %d", sectorID)
 	}
 	ssr, err := amt.LoadAMT(blks, ss)
@@ -562,7 +562,7 @@ func AddToSectorSet(ctx context.Context, blks amt.Blocks, ss cid.Cid, sectorID u
 }
 
 func GetFromSectorSet(ctx context.Context, s types.Storage, ss cid.Cid, sectorID uint64) (bool, []byte, []byte, ActorError) {
-	if sectorID > MaxSectorID {
+	if sectorID >= MaxSectors {
 		return false, nil, nil, aerrors.Newf(25, "sector ID out of range: %d", sectorID)
 	}
 
