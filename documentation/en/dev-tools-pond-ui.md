@@ -5,16 +5,16 @@ Pond is a graphical testbed for [Lotus](https://docs.lotu.sh). Using it will set
 ## Build
 
 ```sh
-$ make pond
+make pond
 ```
 
 ## Run
 
 ```sh
-$ ./pond run
+./pond run
 ```
 
-Now go to http://127.0.0.1:2222.
+Now go to `http://127.0.0.1:2222`.
 
 ## What can I test?
 

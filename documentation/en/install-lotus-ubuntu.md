@@ -33,15 +33,15 @@ sudo apt install golang-go gcc git bzr jq pkg-config mesa-opencl-icd ocl-icd-ope
 Clone
 
 ```sh
-$ git clone https://github.com/filecoin-project/lotus.git
-$ cd lotus/
+git clone https://github.com/filecoin-project/lotus.git
+cd lotus/
 ```
 
 Install
 
 ```sh
-$ make clean all
-$ sudo make install
+make clean all
+sudo make install
 ```
 
-Now you can use the command `lotus` in the command line.
+Now you can use the command `lotus` in the CLI and join the [Lotus DevNet](https://docs.lotu.sh/en+join-devnet).
