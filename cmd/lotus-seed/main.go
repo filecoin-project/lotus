@@ -66,7 +66,7 @@ var preSealCmd = &cli.Command{
 			Value: 1,
 			Usage: "select number of sectors to pre-seal",
 		},
-		&cli.IntFlag{
+		&cli.Uint64Flag{
 			Name:  "sector-offset",
 			Value: 0,
 			Usage: "select number of sectors to pre-seal",
