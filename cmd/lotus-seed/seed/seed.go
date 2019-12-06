@@ -30,7 +30,7 @@ func PreSeal(maddr address.Address, ssize uint64, offset uint64, sectors int, sb
 	cfg := &sectorbuilder.Config{
 		Miner:          maddr,
 		SectorSize:     ssize,
-		OverrideLastID: offset,
+		FallbackLastID: offset,
 		CacheDir:       filepath.Join(sbroot, "cache"),
 		SealedDir:      filepath.Join(sbroot, "sealed"),
 		StagedDir:      filepath.Join(sbroot, "staging"),

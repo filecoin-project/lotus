@@ -163,7 +163,7 @@ func builder(t *testing.T, nFull int, storage []int) ([]test.TestNode, []test.Te
 		if err != nil {
 			t.Fatal(err)
 		}
-		genm, err := seed.PreSeal(maddr, 1024, 1, 0, tdir, []byte("make genesis mem random"))
+		genm, err := seed.PreSeal(maddr, 1024, 0, 1, tdir, []byte("make genesis mem random"))
 		if err != nil {
 			t.Fatal(err)
 		}

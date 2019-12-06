@@ -120,7 +120,7 @@ type Config struct {
 	Miner      address.Address
 
 	WorkerThreads  uint8
-	OverrideLastID uint64
+	FallbackLastID uint64
 
 	CacheDir    string
 	SealedDir   string
@@ -144,21 +144,18 @@ func New(cfg *Config, ds dtypes.MetadataDS) (*SectorBuilder, error) {
 	}
 
 	var lastUsedID uint64
-	if cfg.OverrideLastID != 0 {
-		lastUsedID = cfg.OverrideLastID
-	} else {
-		b, err := ds.Get(lastSectorIdKey)
-		switch err {
-		case nil:
-			i, err := strconv.ParseInt(string(b), 10, 64)
-			if err != nil {
-				return nil, err
-			}
-			lastUsedID = uint64(i)
-		case datastore.ErrNotFound:
-		default:
+	b, err := ds.Get(lastSectorIdKey)
+	switch err {
+	case nil:
+		i, err := strconv.ParseInt(string(b), 10, 64)
+		if err != nil {
 			return nil, err
 		}
+		lastUsedID = uint64(i)
+	case datastore.ErrNotFound:
+		lastUsedID = cfg.FallbackLastID
+	default:
+		return nil, err
 	}
 
 	rlimit := cfg.WorkerThreads - PoStReservedWorkers

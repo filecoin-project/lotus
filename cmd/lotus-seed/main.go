@@ -69,7 +69,7 @@ var preSealCmd = &cli.Command{
 		&cli.Uint64Flag{
 			Name:  "sector-offset",
 			Value: 0,
-			Usage: "select number of sectors to pre-seal",
+			Usage: "how many sector ids to skip when starting to seal",
 		},
 	},
 	Action: func(c *cli.Context) error {
