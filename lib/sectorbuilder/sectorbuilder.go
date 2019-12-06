@@ -119,12 +119,14 @@ type Config struct {
 	SectorSize uint64
 	Miner      address.Address
 
-	WorkerThreads uint8
+	WorkerThreads  uint8
+	OverrideLastID uint64
 
 	CacheDir    string
 	SealedDir   string
 	StagedDir   string
 	UnsealedDir string
+	_           struct{} // guard against nameless init
 }
 
 func New(cfg *Config, ds dtypes.MetadataDS) (*SectorBuilder, error) {
@@ -142,17 +144,21 @@ func New(cfg *Config, ds dtypes.MetadataDS) (*SectorBuilder, error) {
 	}
 
 	var lastUsedID uint64
-	b, err := ds.Get(lastSectorIdKey)
-	switch err {
-	case nil:
-		i, err := strconv.ParseInt(string(b), 10, 64)
-		if err != nil {
+	if cfg.OverrideLastID != 0 {
+		lastUsedID = cfg.OverrideLastID
+	} else {
+		b, err := ds.Get(lastSectorIdKey)
+		switch err {
+		case nil:
+			i, err := strconv.ParseInt(string(b), 10, 64)
+			if err != nil {
+				return nil, err
+			}
+			lastUsedID = uint64(i)
+		case datastore.ErrNotFound:
+		default:
 			return nil, err
 		}
-		lastUsedID = uint64(i)
-	case datastore.ErrNotFound:
-	default:
-		return nil, err
 	}
 
 	rlimit := cfg.WorkerThreads - PoStReservedWorkers

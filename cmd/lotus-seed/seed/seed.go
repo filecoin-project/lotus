@@ -26,15 +26,16 @@ import (
 
 var log = logging.Logger("preseal")
 
-func PreSeal(maddr address.Address, ssize uint64, sectors int, sbroot string, preimage []byte) (*genesis.GenesisMiner, error) {
+func PreSeal(maddr address.Address, ssize uint64, offset uint64, sectors int, sbroot string, preimage []byte) (*genesis.GenesisMiner, error) {
 	cfg := &sectorbuilder.Config{
-		Miner:         maddr,
-		SectorSize:    ssize,
-		CacheDir:      filepath.Join(sbroot, "cache"),
-		SealedDir:     filepath.Join(sbroot, "sealed"),
-		StagedDir:     filepath.Join(sbroot, "staging"),
-		UnsealedDir:   filepath.Join(sbroot, "unsealed"),
-		WorkerThreads: 2,
+		Miner:          maddr,
+		SectorSize:     ssize,
+		OverrideLastID: offset,
+		CacheDir:       filepath.Join(sbroot, "cache"),
+		SealedDir:      filepath.Join(sbroot, "sealed"),
+		StagedDir:      filepath.Join(sbroot, "staging"),
+		UnsealedDir:    filepath.Join(sbroot, "unsealed"),
+		WorkerThreads:  2,
 	}
 
 	for _, d := range []string{cfg.CacheDir, cfg.SealedDir, cfg.StagedDir, cfg.UnsealedDir} {
