@@ -12,7 +12,7 @@ import (
 )
 
 type worker struct {
-	api           api.StorageMiner
+	api           lapi.StorageMiner
 	minerEndpoint string
 	repo          string
 	auth          http.Header
@@ -51,7 +51,7 @@ func acceptJobs(ctx context.Context, api lapi.StorageMiner, endpoint string, aut
 		sb:            sb,
 	}
 
-	tasks, err := api.WorkerQueue(ctx, lapi.WorkerCfg{
+	tasks, err := api.WorkerQueue(ctx, sectorbuilder.WorkerCfg{
 		NoPreCommit: noprecommit,
 		NoCommit:    nocommit,
 	})
