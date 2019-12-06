@@ -40,8 +40,13 @@ type VMContext interface {
 	ChargeGas(uint64) aerrors.ActorError
 	GetRandomness(height uint64) ([]byte, aerrors.ActorError)
 	GetBalance(address.Address) (BigInt, aerrors.ActorError)
+	Sys() *VMSyscalls
 
 	Context() context.Context
+}
+
+type VMSyscalls struct {
+	ValidatePoRep func(context.Context, address.Address, uint64, []byte, []byte, []byte, []byte, []byte, uint64) (bool, aerrors.ActorError)
 }
 
 type storageWrapper struct {

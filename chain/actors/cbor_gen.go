@@ -248,13 +248,13 @@ func (t *StorageMinerActorState) MarshalCBOR(w io.Writer) error {
 		return xerrors.Errorf("failed to write cid field t.Info: %w", err)
 	}
 
-	// t.t.CurrentFaultSet (types.BitField) (struct)
-	if err := t.CurrentFaultSet.MarshalCBOR(w); err != nil {
+	// t.t.FaultSet (types.BitField) (struct)
+	if err := t.FaultSet.MarshalCBOR(w); err != nil {
 		return err
 	}
 
-	// t.t.NextFaultSet (types.BitField) (struct)
-	if err := t.NextFaultSet.MarshalCBOR(w); err != nil {
+	// t.t.LastFaultSubmission (uint64) (uint64)
+	if _, err := w.Write(cbg.CborEncodeMajorType(cbg.MajUnsignedInt, uint64(t.LastFaultSubmission))); err != nil {
 		return err
 	}
 
@@ -384,24 +384,25 @@ func (t *StorageMinerActorState) UnmarshalCBOR(r io.Reader) error {
 		t.Info = c
 
 	}
-	// t.t.CurrentFaultSet (types.BitField) (struct)
+	// t.t.FaultSet (types.BitField) (struct)
 
 	{
 
-		if err := t.CurrentFaultSet.UnmarshalCBOR(br); err != nil {
+		if err := t.FaultSet.UnmarshalCBOR(br); err != nil {
 			return err
 		}
 
 	}
-	// t.t.NextFaultSet (types.BitField) (struct)
+	// t.t.LastFaultSubmission (uint64) (uint64)
 
-	{
-
-		if err := t.NextFaultSet.UnmarshalCBOR(br); err != nil {
-			return err
-		}
-
+	maj, extra, err = cbg.CborReadHeader(br)
+	if err != nil {
+		return err
 	}
+	if maj != cbg.MajUnsignedInt {
+		return fmt.Errorf("wrong type for uint64 field")
+	}
+	t.LastFaultSubmission = uint64(extra)
 	// t.t.Power (types.BigInt) (struct)
 
 	{
@@ -1027,6 +1028,49 @@ func (t *UpdatePeerIDParams) UnmarshalCBOR(r io.Reader) error {
 		}
 
 		t.PeerID = peer.ID(sval)
+	}
+	return nil
+}
+
+func (t *DeclareFaultsParams) MarshalCBOR(w io.Writer) error {
+	if t == nil {
+		_, err := w.Write(cbg.CborNull)
+		return err
+	}
+	if _, err := w.Write([]byte{129}); err != nil {
+		return err
+	}
+
+	// t.t.Faults (types.BitField) (struct)
+	if err := t.Faults.MarshalCBOR(w); err != nil {
+		return err
+	}
+	return nil
+}
+
+func (t *DeclareFaultsParams) UnmarshalCBOR(r io.Reader) error {
+	br := cbg.GetPeeker(r)
+
+	maj, extra, err := cbg.CborReadHeader(br)
+	if err != nil {
+		return err
+	}
+	if maj != cbg.MajArray {
+		return fmt.Errorf("cbor input should be of type array")
+	}
+
+	if extra != 1 {
+		return fmt.Errorf("cbor input had wrong number of fields")
+	}
+
+	// t.t.Faults (types.BitField) (struct)
+
+	{
+
+		if err := t.Faults.UnmarshalCBOR(br); err != nil {
+			return err
+		}
+
 	}
 	return nil
 }

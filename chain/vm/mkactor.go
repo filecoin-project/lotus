@@ -48,7 +48,7 @@ func makeActor(st *state.StateTree, addr address.Address) (*types.Actor, aerrors
 	case address.SECP256K1:
 		return NewSecp256k1AccountActor(st, addr)
 	case address.ID:
-		return nil, aerrors.New(1, "no actor with given ID")
+		return nil, aerrors.Newf(1, "no actor with given ID: %s", addr)
 	case address.Actor:
 		return nil, aerrors.Newf(1, "no such actor: %s", addr)
 	default:
