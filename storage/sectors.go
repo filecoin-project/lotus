@@ -229,6 +229,8 @@ func (m *Miner) onSectorUpdated(ctx context.Context, update sectorUpdate) {
 		m.handleSectorUpdate(ctx, sector, m.handlePreCommitted)
 	case api.Committing:
 		m.handleSectorUpdate(ctx, sector, m.handleCommitting)
+	case api.CommitWait:
+		m.handleSectorUpdate(ctx, sector, m.handleCommitWait)
 	case api.Proving:
 		// TODO: track sector health / expiration
 		log.Infof("Proving sector %d", update.id)
