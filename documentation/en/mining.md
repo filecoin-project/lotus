@@ -1,63 +1,87 @@
-# Getting started
+# Storage Mining
 
-Ensure that at least one **BLS address** (`t3..`) in your wallet exists
+Here are instructions to learn how to perform storage mining. For hardware specifications please read [this](https://docs.lotu.sh/en+hardware-mining).
+
+It is useful to [join the DevNet](https://docs.lotu.sh/en+join-devnet) prior to attempting storage mining for the first time.
+
+## Get started
+
+Please ensure that at least one **BLS address** (`t3..`) in your wallet exists with the following command:
 
 ```sh
-$ lotus wallet list
-t3...
+lotus wallet list
 ```
 
 With this address, go to the [faucet](https://lotus-faucet.kittyhawk.wtf/miner.html), and
 click `Create Miner`
 
-Wait for a page telling you the address of the newly created **Lotus Storage Miner** to appear.
-
-The screen should show: `New storage miners address is: t0..`
-
-## Initialize
+Await this response:
 
 ```sh
-$ lotus-storage-miner init --actor=t01.. --owner=t3....
+To initialize the storage miner run the following command
 ```
 
-This command should return successfully after **Lotus Storage Miner** is setup on **chain**. It usually takes 30 to 60 seconds.
-
-## Start mining
+## Initialize the storage miner
 
 ```sh
-$ lotus-storage-miner run
+lotus-storage-miner init --actor=ACTOR_VALUE_RECEIVED --owner=OWNER_VALUE_RECEIVED
 ```
 
-To view the miner id used for deals:
+Example
 
 ```sh
-$ lotus-storage-miner info
+lotus-storage-miner init --actor=t01424 --owner=t3spmep2xxsl33o4gxk7yjxcobyohzgj3vejzerug25iinbznpzob6a6kexcbeix73th6vjtzfq7boakfdtd6a
 ```
 
-e.g. miner id `t0111`
+This command will take 30-60 seconds.
+
+## Mining
+
+To mine:
+
+```sh
+lotus-storage-miner run
+```
+
+Get information about your miner:
+
+```sh
+lotus-storage-miner info
+# example: miner id `t0111`
+```
 
 **Seal** random data to start producing **PoSts**:
 
 ```sh
-$ lotus-storage-miner store-garbage
+lotus-storage-miner store-garbage
 ```
 
-You can check **miner power** and **sector** usage with the miner id:
+Get **miner power** and **sector usage**:
 
 ```sh
-# Total power of the network
-$ lotus-storage-miner state power
+lotus-storage-miner state power
+# returns total power
 
-$ lotus-storage-miner state power <miner>
+lotus-storage-miner state power <miner>
 
-$ lotus-storage-miner state sectors <miner>
+lotus-storage-miner state sectors <miner>
 ```
 
-## Assign a nickname for your node
+## Change nickname
 
-In the `.lotus` folder, modify `config.toml` with:
+Update `~/.lotus/config.toml` with:
+
 
 ```sh
 [Metrics]
 Nickname="snoopy"
 ```
+
+## Troubleshooting
+
+```sh
+lotus-storage-miner info
+# WARN  main  lotus-storage-miner/main.go:73  failed to get api endpoint: (/Users/myrmidon/.lotusstorage) %!w(*errors.errorString=&{API not running (no endpoint)}):
+```
+
+If you see this, that means your **Lotus Storage Miner** isn't ready yet.
