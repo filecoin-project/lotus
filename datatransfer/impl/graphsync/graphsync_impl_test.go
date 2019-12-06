@@ -872,8 +872,42 @@ func TestRespondingToPushGraphsyncRequests(t *testing.T) {
 		status := gsr.consumeResponses(ctx, t)
 		require.True(t, gsmsg.IsTerminalFailureCode(status))
 	})
+}
+
+func TestResponseHookWhenExtensionNotFound(t *testing.T) {
+	// create network
+	ctx := context.Background()
+	ctx, cancel := context.WithTimeout(ctx, 10*time.Second)
+	defer cancel()
+	gsData := newGraphsyncTestingData(ctx, t)
+	host1 := gsData.host1 // initiator and data sender
+	host2 := gsData.host2 // data recipient, makes graphsync request for data
+	voucher := fakeDTType{"applesauce"}
+	link := gsData.loadUnixFSFile(t, false)
+
+	// setup receiving peer to just record message coming in
+	dtnet2 := network.NewFromLibp2pHost(host2)
+	r := &receiver{
+		messageReceived: make(chan receivedMessage),
+	}
+	dtnet2.SetDelegate(r)
+
+	gsr := &fakeGraphSyncReceiver{
+		receivedMessages: make(chan receivedGraphSyncMessage),
+	}
+	gsData.gsNet2.SetDelegate(gsr)
+
+	gs1 := gsData.setupGraphsyncHost1()
+	dt1 := NewGraphSyncDataTransfer(ctx, host1, gs1)
 
 	t.Run("when it's not our extension, does not error and does not validate", func(t *testing.T) {
+		//register a hook that validates the request so we don't fail in gs because the request
+		//never gets processed
+		validateHook := func(p peer.ID, req graphsync.RequestData, ha graphsync.RequestReceivedHookActions) {
+			ha.ValidateRequest()
+		}
+		require.NoError(t, gs1.RegisterRequestReceivedHook(validateHook))
+
 		_, err := dt1.OpenPushDataChannel(ctx, host2.ID(), &voucher, link.(cidlink.Link).Cid, gsData.allSelector)
 		require.NoError(t, err)
 
@@ -894,9 +928,8 @@ func TestRespondingToPushGraphsyncRequests(t *testing.T) {
 		require.NoError(t, gsData.gsNet2.SendMessage(ctx, host1.ID(), gsmessage))
 
 		status := gsr.consumeResponses(ctx, t)
-		require.False(t, gsmsg.IsTerminalFailureCode(status))
+		assert.False(t, gsmsg.IsTerminalFailureCode(status))
 	})
-
 }
 
 func TestRespondingToPullGraphsyncRequests(t *testing.T) {
@@ -1285,7 +1318,7 @@ func (fgs *fakeGraphSync) Request(ctx context.Context, p peer.ID, root ipld.Link
 }
 
 // RegisterResponseReceivedHook adds a hook that runs when a request is received
-func (fgs *fakeGraphSync) RegisterRequestReceivedHook(overrideDefaultValidation bool, hook graphsync.OnRequestReceivedHook) error {
+func (fgs *fakeGraphSync) RegisterRequestReceivedHook(hook graphsync.OnRequestReceivedHook) error {
 	return nil
 }
 

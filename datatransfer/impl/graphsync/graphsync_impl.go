@@ -74,7 +74,7 @@ func NewGraphSyncDataTransfer(parent context.Context, host host.Host, gs graphsy
 		sync.Mutex{},
 		0,
 	}
-	if err := gs.RegisterRequestReceivedHook(true, impl.gsReqRecdHook); err != nil {
+	if err := gs.RegisterRequestReceivedHook(impl.gsReqRecdHook); err != nil {
 		log.Error(err)
 		return nil
 	}
@@ -85,22 +85,23 @@ func NewGraphSyncDataTransfer(parent context.Context, host host.Host, gs graphsy
 
 // gsReqRecdHook is a graphsync.OnRequestReceivedHook hook
 // if an incoming request does not match a previous push request, it returns an error.
-func (impl *graphsyncImpl) gsReqRecdHook(p peer.ID, request graphsync.RequestData) ([]graphsync.ExtensionData, error) {
-	var resp []graphsync.ExtensionData
+func (impl *graphsyncImpl) gsReqRecdHook(p peer.ID, request graphsync.RequestData, hookActions graphsync.RequestReceivedHookActions) {
 
 	// if this is a push request the sender is us.
 	transferData, err := impl.getExtensionData(request)
 	if err != nil {
-		return resp, err
-	}
-	if transferData == EmptyExtensionDataTransferData {
-		// extension not found; probably not our request. Return without validating.
-		return resp, nil
+		hookActions.TerminateWithError(err)
+		return
 	}
 
 	raw, _ := request.Extension(ExtensionDataTransfer)
 	respData := graphsync.ExtensionData{Name: ExtensionDataTransfer, Data: raw}
-	resp = append(resp, respData)
+
+	if transferData == EmptyExtensionDataTransferData {
+		// extension not found; probably not our request. Return without validating.
+		//hookActions.SendExtensionData(respData)
+		return
+	}
 
 	sender := impl.peerID
 	initiator := impl.peerID
@@ -111,10 +112,12 @@ func (impl *graphsyncImpl) gsReqRecdHook(p peer.ID, request graphsync.RequestDat
 	chid := datatransfer.ChannelID{Initiator: initiator, ID: datatransfer.TransferID(transferData.TransferID)}
 
 	if impl.getChannelByIDAndSender(chid, sender) == datatransfer.EmptyChannelState {
-		return resp, errors.New("could not find push or pull channel")
+		hookActions.TerminateWithError(err)
+		return
 	}
 
-	return resp, nil
+	hookActions.ValidateRequest()
+	hookActions.SendExtensionData(respData)
 }
 
 // gsExtended is a small interface used by getExtensionData
@@ -122,7 +125,11 @@ type gsExtended interface {
 	Extension(name graphsync.ExtensionName) ([]byte, bool)
 }
 
-// getExtensionData unmarshals extension data. Returns any errors.
+// getExtensionData unmarshals extension data.
+// Returns:
+//    * EmptyExtensionDataTransferData + nil if the extension is not found
+//    * EmptyExtensionDataTransferData + error if the extendedData fails to unmarshal
+//    * unmarshaled ExtensionDataTransferData + nil if all goes well
 func (impl *graphsyncImpl) getExtensionData(extendedData gsExtended) (ExtensionDataTransferData, error) {
 	data, ok := extendedData.Extension(ExtensionDataTransfer)
 	if !ok {
