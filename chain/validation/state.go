@@ -8,10 +8,10 @@ import (
 	"github.com/ipfs/go-cid"
 	"github.com/ipfs/go-datastore"
 	"github.com/ipfs/go-hamt-ipld"
-	"github.com/minio/blake2b-simd"
 	blockstore "github.com/ipfs/go-ipfs-blockstore"
-	"golang.org/x/xerrors"
+	"github.com/minio/blake2b-simd"
 	cbg "github.com/whyrusleeping/cbor-gen"
+	"golang.org/x/xerrors"
 
 	vstate "github.com/filecoin-project/chain-validation/pkg/state"
 	vactors "github.com/filecoin-project/chain-validation/pkg/state/actors"
@@ -327,7 +327,7 @@ func fromActorCode(code vactors.ActorCodeID) cid.Cid {
 	}
 }
 
-func fromSingletonAddress(addr vactors.SingletonActorID) vaddress.Address{
+func fromSingletonAddress(addr vactors.SingletonActorID) vaddress.Address {
 	switch addr {
 	case vactors.InitAddress:
 		out, err := vaddress.NewFromBytes(actors.InitAddress.Bytes())
@@ -336,25 +336,25 @@ func fromSingletonAddress(addr vactors.SingletonActorID) vaddress.Address{
 		}
 		return out
 	case vactors.NetworkAddress:
-		out, err :=  vaddress.NewFromBytes(actors.NetworkAddress.Bytes())
+		out, err := vaddress.NewFromBytes(actors.NetworkAddress.Bytes())
 		if err != nil {
 			panic(err)
 		}
 		return out
 	case vactors.StorageMarketAddress:
-		out, err :=  vaddress.NewFromBytes(actors.StorageMarketAddress.Bytes())
+		out, err := vaddress.NewFromBytes(actors.StorageMarketAddress.Bytes())
 		if err != nil {
 			panic(err)
 		}
 		return out
 	case vactors.BurntFundsAddress:
-		out, err :=  vaddress.NewFromBytes(actors.BurntFundsAddress.Bytes())
+		out, err := vaddress.NewFromBytes(actors.BurntFundsAddress.Bytes())
 		if err != nil {
 			panic(err)
 		}
 		return out
 	case vactors.StoragePowerAddress:
-		out, err :=  vaddress.NewFromBytes(actors.StoragePowerAddress.Bytes())
+		out, err := vaddress.NewFromBytes(actors.StoragePowerAddress.Bytes())
 		if err != nil {
 			panic(err)
 		}

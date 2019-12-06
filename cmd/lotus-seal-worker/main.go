@@ -40,10 +40,10 @@ func main() {
 				Value:   "~/.lotusstorage", // TODO: Consider XDG_DATA_HOME
 			},
 			&cli.BoolFlag{
-				Name:    "no-precommit",
+				Name: "no-precommit",
 			},
 			&cli.BoolFlag{
-				Name:    "no-commit",
+				Name: "no-commit",
 			},
 		},
 

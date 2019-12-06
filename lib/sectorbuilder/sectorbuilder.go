@@ -45,6 +45,13 @@ type EPostCandidate = sectorbuilder.Candidate
 
 const CommLen = sectorbuilder.CommitmentBytesLen
 
+type WorkerCfg struct {
+	NoPreCommit bool
+	NoCommit    bool
+
+	// TODO: 'cost' info, probably in terms of sealing + transfer speed
+}
+
 type SectorBuilder struct {
 	ds   dtypes.MetadataDS
 	idLk sync.Mutex
@@ -61,12 +68,12 @@ type SectorBuilder struct {
 
 	unsealLk sync.Mutex
 
-	noCommit bool
+	noCommit    bool
 	noPreCommit bool
-	rateLimit chan struct{}
+	rateLimit   chan struct{}
 
 	precommitTasks chan workerCall
-	commitTasks chan workerCall
+	commitTasks    chan workerCall
 
 	taskCtr       uint64
 	remoteLk      sync.Mutex
@@ -122,8 +129,8 @@ type Config struct {
 	Miner      address.Address
 
 	WorkerThreads uint8
-	NoCommit    bool
-	NoPreCommit bool
+	NoCommit      bool
+	NoPreCommit   bool
 
 	CacheDir    string
 	SealedDir   string
@@ -181,8 +188,8 @@ func New(cfg *Config, ds dtypes.MetadataDS) (*SectorBuilder, error) {
 		Miner: cfg.Miner,
 
 		noPreCommit: cfg.NoPreCommit || !sealLocal,
-		noCommit: cfg.NoCommit || !sealLocal,
-		rateLimit: make(chan struct{}, rlimit),
+		noCommit:    cfg.NoCommit || !sealLocal,
+		rateLimit:   make(chan struct{}, rlimit),
 
 		taskCtr:        1,
 		precommitTasks: make(chan workerCall),

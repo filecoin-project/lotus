@@ -33,7 +33,7 @@ type workerCall struct {
 	ret  chan SealRes
 }
 
-func (sb *SectorBuilder) AddWorker(ctx context.Context, noprecommit, nocommit bool) (<-chan WorkerTask, error) {
+func (sb *SectorBuilder) AddWorker(ctx context.Context, cfg WorkerCfg) (<-chan WorkerTask, error) {
 	sb.remoteLk.Lock()
 	defer sb.remoteLk.Unlock()
 
@@ -46,7 +46,7 @@ func (sb *SectorBuilder) AddWorker(ctx context.Context, noprecommit, nocommit bo
 	sb.remoteCtr++
 	sb.remotes[sb.remoteCtr] = r
 
-	go sb.remoteWorker(ctx, r, noprecommit, nocommit)
+	go sb.remoteWorker(ctx, r, cfg)
 
 	return taskCh, nil
 }
@@ -71,7 +71,7 @@ func (sb *SectorBuilder) returnTask(task workerCall) {
 	}()
 }
 
-func (sb *SectorBuilder) remoteWorker(ctx context.Context, r *remote, noprecommit, nocommit bool) {
+func (sb *SectorBuilder) remoteWorker(ctx context.Context, r *remote, cfg WorkerCfg) {
 	defer log.Warn("Remote worker disconnected")
 
 	defer func() {
@@ -86,13 +86,13 @@ func (sb *SectorBuilder) remoteWorker(ctx context.Context, r *remote, noprecommi
 		}
 	}()
 
-	commits := sb.commitTasks
-	if nocommit {
-		commits = nil
-	}
 	precommits := sb.precommitTasks
-	if noprecommit {
+	if cfg.NoPreCommit {
 		precommits = nil
+	}
+	commits := sb.commitTasks
+	if cfg.NoCommit {
+		commits = nil
 	}
 
 	for {

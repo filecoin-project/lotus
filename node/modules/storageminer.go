@@ -79,12 +79,12 @@ func SectorBuilderConfig(storagePath string, threads uint, noprecommit, nocommit
 		staging := filepath.Join(sp, "staging")
 
 		sb := &sectorbuilder.Config{
-			Miner:         minerAddr,
-			SectorSize:    ssize,
+			Miner:      minerAddr,
+			SectorSize: ssize,
 
 			WorkerThreads: uint8(threads),
-			NoPreCommit: noprecommit,
-			NoCommit: nocommit,
+			NoPreCommit:   noprecommit,
+			NoCommit:      nocommit,
 
 			CacheDir:    cache,
 			UnsealedDir: unsealed,
