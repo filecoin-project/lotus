@@ -5,6 +5,7 @@ import (
 
 	logging "github.com/ipfs/go-log"
 	"github.com/mitchellh/go-homedir"
+	"golang.org/x/xerrors"
 	"gopkg.in/urfave/cli.v2"
 
 	"github.com/filecoin-project/lotus/build"
@@ -20,7 +21,9 @@ func main() {
 	log.Info("Starting seed")
 
 	local := []*cli.Command{
+		prepCmd,
 		preSealCmd,
+		runCmd,
 	}
 
 	app := &cli.App{
@@ -30,7 +33,7 @@ func main() {
 		Flags: []cli.Flag{
 			&cli.StringFlag{
 				Name:  "sectorbuilder-dir",
-				Value: "~/.genesis-sectors",
+				Value: "genesis-sectors",
 			},
 		},
 
@@ -62,11 +65,12 @@ var preSealCmd = &cli.Command{
 			Usage: "set the ticket preimage for sealing randomness",
 		},
 		&cli.IntFlag{
-			Name:  "num-sectors",
+			Name:  "sectors",
 			Value: 1,
 			Usage: "select number of sectors to pre-seal",
 		},
 	},
+	Description: "all-in-one preseal",
 	Action: func(c *cli.Context) error {
 		sdir := c.String("sectorbuilder-dir")
 		sbroot, err := homedir.Expand(sdir)
@@ -74,12 +78,16 @@ var preSealCmd = &cli.Command{
 			return err
 		}
 
+		if err := os.MkdirAll(sbroot, 0755); err != nil {
+			return xerrors.Errorf("creating sbroot: %w", err)
+		}
+
 		maddr, err := address.NewFromString(c.String("miner-addr"))
 		if err != nil {
 			return err
 		}
 
-		gm, err := seed.PreSeal(maddr, c.Uint64("sector-size"), c.Int("num-sectors"), sbroot, []byte(c.String("ticket-preimage")))
+		gm, err := seed.PreSeal(maddr, c.Uint64("sector-size"), c.Int("sectors"), sbroot, []byte(c.String("ticket-preimage")))
 		if err != nil {
 			return err
 		}
