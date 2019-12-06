@@ -84,6 +84,10 @@ func PreSeal(maddr address.Address, ssize uint64, sectors int, sbroot string, pr
 			return nil, xerrors.Errorf("commit: %w", err)
 		}
 
+		if err := sb.TrimCache(sid); err != nil {
+			return nil, xerrors.Errorf("trim cache: %w", err)
+		}
+
 		log.Warn("PreCommitOutput: ", sid, pco)
 		sealedSectors = append(sealedSectors, &genesis.PreSeal{
 			CommR:    pco.CommR,

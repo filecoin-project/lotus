@@ -240,6 +240,10 @@ func TestSealPoStNoCommit(t *testing.T) {
 		t.Fatalf("%+v", err)
 	}
 
+	if err := sb.TrimCache(1); err != nil {
+		t.Fatal(err)
+	}
+
 	genCandidiates := post(t, sb, s)
 
 	epost := time.Now()
