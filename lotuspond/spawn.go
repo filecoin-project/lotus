@@ -36,7 +36,7 @@ func (api *api) Spawn() (nodeInfo, error) {
 		}
 
 		sbroot := filepath.Join(dir, "preseal")
-		genm, err := seed.PreSeal(genMiner, build.SectorSizes[0], 1, sbroot, []byte("8"))
+		genm, err := seed.PreSeal(genMiner, build.SectorSizes[0], 0, 1, sbroot, []byte("8"))
 		if err != nil {
 			return nodeInfo{}, xerrors.Errorf("preseal failed: %w", err)
 		}

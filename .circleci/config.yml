@@ -68,7 +68,7 @@ jobs:
       - run: sudo apt-get install npm
       - restore_cache:
           name: restore go mod cache
-          key: v1-go-deps-{{ arch }}-{{ checksum "~/go/src/github.com/filecoin-project/lotus/go.mod" }}
+          key: v1-go-deps-{{ arch }}-{{ checksum "/home/circleci/project/lotus/go.mod" }}
       - run:
           command: make buildall
       - store_artifacts:
