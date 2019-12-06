@@ -3,8 +3,10 @@ package sectorbuilder
 import (
 	"fmt"
 	"io"
+	"io/ioutil"
 	"os"
 	"path/filepath"
+	"strings"
 	"sync"
 
 	"golang.org/x/xerrors"
@@ -59,6 +61,33 @@ func (sb *SectorBuilder) GetPath(typ string, sectorName string) (string, error) 
 	default:
 		return "", xerrors.Errorf("unknown sector type for write: %s", typ)
 	}
+}
+
+func (sb *SectorBuilder) TrimCache(sectorID uint64) error {
+	dir, err := sb.sectorCacheDir(sectorID)
+	if err != nil {
+		return xerrors.Errorf("getting cache dir: %w", err)
+	}
+
+	files, err := ioutil.ReadDir(dir)
+	if err != nil {
+		return xerrors.Errorf("readdir: %w", err)
+	}
+
+	for _, file := range files {
+		if !strings.HasSuffix(file.Name(), ".dat") { // _aux probably
+			continue
+		}
+		if strings.HasSuffix(file.Name(), "-data-tree-r-last.dat") { // Want to keep
+			continue
+		}
+
+		if err := os.Remove(filepath.Join(dir, file.Name())); err != nil {
+			return xerrors.Errorf("rm %s: %w", file.Name(), err)
+		}
+	}
+
+	return nil
 }
 
 func toReadableFile(r io.Reader, n int64) (*os.File, func() error, error) {
