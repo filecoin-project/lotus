@@ -46,11 +46,6 @@ func VerifyFallbackPost(ctx context.Context, sectorSize uint64, sectorInfo Sorte
 }
 
 func verifyPost(ctx context.Context, sectorSize uint64, sectorInfo SortedPublicSectorInfo, challengeCount uint64, challengeSeed []byte, proof []byte, candidates []EPostCandidate, proverID address.Address) (bool, error) {
-	if challengeCount != uint64(len(candidates)) {
-		log.Warnf("verifyPost with wrong candidate count: expected %d, got %d", challengeCount, len(candidates))
-		return false, nil // user input, dont't error
-	}
-
 	var challengeSeeda [CommLen]byte
 	copy(challengeSeeda[:], challengeSeed)
 
