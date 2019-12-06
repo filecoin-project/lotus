@@ -97,9 +97,8 @@ func (impl *graphsyncImpl) gsReqRecdHook(p peer.ID, request graphsync.RequestDat
 	raw, _ := request.Extension(ExtensionDataTransfer)
 	respData := graphsync.ExtensionData{Name: ExtensionDataTransfer, Data: raw}
 
+	// extension not found; probably not our request.
 	if transferData == EmptyExtensionDataTransferData {
-		// extension not found; probably not our request. Return without validating.
-		//hookActions.SendExtensionData(respData)
 		return
 	}
 
