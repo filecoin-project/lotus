@@ -30,7 +30,7 @@ require (
 	github.com/ipfs/go-ds-badger v0.0.5
 	github.com/ipfs/go-filestore v0.0.2
 	github.com/ipfs/go-fs-lock v0.0.1
-	github.com/ipfs/go-graphsync v0.0.4-0.20191119222929-854c867d838d
+	github.com/ipfs/go-graphsync v0.0.4
 	github.com/ipfs/go-hamt-ipld v0.0.12-0.20190910032255-ee6e898f0456
 	github.com/ipfs/go-ipfs-blockstore v0.1.0
 	github.com/ipfs/go-ipfs-blocksutil v0.0.1

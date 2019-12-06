@@ -177,7 +177,7 @@ func (fgs *fakeGraphSync) Request(ctx context.Context, p peer.ID, root ipld.Link
 }
 
 // RegisterResponseReceivedHook adds a hook that runs when a request is received
-func (fgs *fakeGraphSync) RegisterRequestReceivedHook(overrideDefaultValidation bool, hook graphsync.OnRequestReceivedHook) error {
+func (fgs *fakeGraphSync) RegisterRequestReceivedHook(graphsync.OnRequestReceivedHook) error {
 	return nil
 }
 
