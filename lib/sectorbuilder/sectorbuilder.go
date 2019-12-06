@@ -45,6 +45,13 @@ type EPostCandidate = sectorbuilder.Candidate
 
 const CommLen = sectorbuilder.CommitmentBytesLen
 
+type WorkerCfg struct {
+	NoPreCommit bool
+	NoCommit    bool
+
+	// TODO: 'cost' info, probably in terms of sealing + transfer speed
+}
+
 type SectorBuilder struct {
 	ds   dtypes.MetadataDS
 	idLk sync.Mutex
@@ -61,10 +68,12 @@ type SectorBuilder struct {
 
 	unsealLk sync.Mutex
 
-	sealLocal bool
-	rateLimit chan struct{}
+	noCommit    bool
+	noPreCommit bool
+	rateLimit   chan struct{}
 
-	sealTasks chan workerCall
+	precommitTasks chan workerCall
+	commitTasks    chan workerCall
 
 	taskCtr       uint64
 	remoteLk      sync.Mutex
@@ -72,31 +81,30 @@ type SectorBuilder struct {
 	remotes       map[int]*remote
 	remoteResults map[uint64]chan<- SealRes
 
+	addPieceWait  int32
+	preCommitWait int32
+	commitWait    int32
+	unsealWait    int32
+
 	stopping chan struct{}
 }
 
 type JsonRSPCO struct {
-	CommC     []byte
-	CommD     []byte
-	CommR     []byte
-	CommRLast []byte
+	CommD []byte
+	CommR []byte
 }
 
 func (rspco *RawSealPreCommitOutput) ToJson() JsonRSPCO {
 	return JsonRSPCO{
-		CommC:     rspco.CommC[:],
-		CommD:     rspco.CommD[:],
-		CommR:     rspco.CommR[:],
-		CommRLast: rspco.CommRLast[:],
+		CommD: rspco.CommD[:],
+		CommR: rspco.CommR[:],
 	}
 }
 
 func (rspco *JsonRSPCO) rspco() RawSealPreCommitOutput {
 	var out RawSealPreCommitOutput
-	copy(out.CommC[:], rspco.CommC)
 	copy(out.CommD[:], rspco.CommD)
 	copy(out.CommR[:], rspco.CommR)
-	copy(out.CommRLast[:], rspco.CommRLast)
 	return out
 }
 
@@ -121,6 +129,8 @@ type Config struct {
 
 	WorkerThreads  uint8
 	FallbackLastID uint64
+	NoCommit       bool
+	NoPreCommit    bool
 
 	CacheDir    string
 	SealedDir   string
@@ -179,13 +189,15 @@ func New(cfg *Config, ds dtypes.MetadataDS) (*SectorBuilder, error) {
 
 		Miner: cfg.Miner,
 
-		sealLocal: sealLocal,
-		rateLimit: make(chan struct{}, rlimit),
+		noPreCommit: cfg.NoPreCommit || !sealLocal,
+		noCommit:    cfg.NoCommit || !sealLocal,
+		rateLimit:   make(chan struct{}, rlimit),
 
-		taskCtr:       1,
-		sealTasks:     make(chan workerCall),
-		remoteResults: map[uint64]chan<- SealRes{},
-		remotes:       map[int]*remote{},
+		taskCtr:        1,
+		precommitTasks: make(chan workerCall),
+		commitTasks:    make(chan workerCall),
+		remoteResults:  map[uint64]chan<- SealRes{},
+		remotes:        map[int]*remote{},
 
 		stopping: make(chan struct{}),
 	}
@@ -214,7 +226,6 @@ func NewStandalone(cfg *Config) (*SectorBuilder, error) {
 		cacheDir:    cfg.CacheDir,
 		unsealedDir: cfg.UnsealedDir,
 
-		sealLocal: true,
 		taskCtr:   1,
 		remotes:   map[int]*remote{},
 		rateLimit: make(chan struct{}, cfg.WorkerThreads),
@@ -245,6 +256,11 @@ type WorkerStats struct {
 	// todo: post in progress
 	RemotesTotal int
 	RemotesFree  int
+
+	AddPieceWait  int
+	PreCommitWait int
+	CommitWait    int
+	UnsealWait    int
 }
 
 func (sb *SectorBuilder) WorkerStats() WorkerStats {
@@ -264,6 +280,11 @@ func (sb *SectorBuilder) WorkerStats() WorkerStats {
 		LocalTotal:    cap(sb.rateLimit) + PoStReservedWorkers,
 		RemotesTotal:  len(sb.remotes),
 		RemotesFree:   remoteFree,
+
+		AddPieceWait:  int(atomic.LoadInt32(&sb.addPieceWait)),
+		PreCommitWait: int(atomic.LoadInt32(&sb.preCommitWait)),
+		CommitWait:    int(atomic.LoadInt32(&sb.commitWait)),
+		UnsealWait:    int(atomic.LoadInt32(&sb.unsealWait)),
 	}
 }
 
@@ -288,7 +309,9 @@ func (sb *SectorBuilder) AcquireSectorId() (uint64, error) {
 }
 
 func (sb *SectorBuilder) AddPiece(pieceSize uint64, sectorId uint64, file io.Reader, existingPieceSizes []uint64) (PublicPieceInfo, error) {
+	atomic.AddInt32(&sb.addPieceWait, 1)
 	ret := sb.RateLimit()
+	atomic.AddInt32(&sb.addPieceWait, -1)
 	defer ret()
 
 	f, werr, err := toReadableFile(file, int64(pieceSize))
@@ -321,8 +344,11 @@ func (sb *SectorBuilder) AddPiece(pieceSize uint64, sectorId uint64, file io.Rea
 }
 
 func (sb *SectorBuilder) ReadPieceFromSealedSector(sectorID uint64, offset uint64, size uint64, ticket []byte, commD []byte) (io.ReadCloser, error) {
+	atomic.AddInt32(&sb.unsealWait, 1)
+	// TODO: Don't wait if cached
 	ret := sb.RateLimit() // TODO: check perf, consider remote unseal worker
 	defer ret()
+	atomic.AddInt32(&sb.unsealWait, -1)
 
 	sb.unsealLk.Lock() // TODO: allow unsealing unrelated sectors in parallel
 	defer sb.unsealLk.Unlock()
@@ -389,6 +415,8 @@ func (sb *SectorBuilder) ReadPieceFromSealedSector(sectorID uint64, offset uint6
 }
 
 func (sb *SectorBuilder) sealPreCommitRemote(call workerCall) (RawSealPreCommitOutput, error) {
+	atomic.AddInt32(&sb.preCommitWait, -1)
+
 	select {
 	case ret := <-call.ret:
 		var err error
@@ -413,8 +441,10 @@ func (sb *SectorBuilder) SealPreCommit(sectorID uint64, ticket SealTicket, piece
 		ret: make(chan SealRes),
 	}
 
+	atomic.AddInt32(&sb.preCommitWait, 1)
+
 	select { // prefer remote
-	case sb.sealTasks <- call:
+	case sb.precommitTasks <- call:
 		return sb.sealPreCommitRemote(call)
 	default:
 	}
@@ -422,15 +452,17 @@ func (sb *SectorBuilder) SealPreCommit(sectorID uint64, ticket SealTicket, piece
 	sb.checkRateLimit()
 
 	rl := sb.rateLimit
-	if !sb.sealLocal {
+	if sb.noPreCommit {
 		rl = make(chan struct{})
 	}
 
 	select { // use whichever is available
-	case sb.sealTasks <- call:
+	case sb.precommitTasks <- call:
 		return sb.sealPreCommitRemote(call)
 	case rl <- struct{}{}:
 	}
+
+	atomic.AddInt32(&sb.preCommitWait, -1)
 
 	// local
 
@@ -474,10 +506,14 @@ func (sb *SectorBuilder) SealPreCommit(sectorID uint64, ticket SealTicket, piece
 		return RawSealPreCommitOutput{}, xerrors.Errorf("presealing sector %d (%s): %w", sectorID, stagedPath, err)
 	}
 
+	log.Infof("PRECOMMIT FFI RSPCO %v", rspco)
+
 	return RawSealPreCommitOutput(rspco), nil
 }
 
 func (sb *SectorBuilder) sealCommitRemote(call workerCall) (proof []byte, err error) {
+	atomic.AddInt32(&sb.commitWait, -1)
+
 	select {
 	case ret := <-call.ret:
 		if ret.Err != "" {
@@ -490,6 +526,8 @@ func (sb *SectorBuilder) sealCommitRemote(call workerCall) (proof []byte, err er
 }
 
 func (sb *SectorBuilder) sealCommitLocal(sectorID uint64, ticket SealTicket, seed SealSeed, pieces []PublicPieceInfo, rspco RawSealPreCommitOutput) (proof []byte, err error) {
+	atomic.AddInt32(&sb.commitWait, -1)
+
 	defer func() {
 		<-sb.rateLimit
 	}()
@@ -535,19 +573,21 @@ func (sb *SectorBuilder) SealCommit(sectorID uint64, ticket SealTicket, seed Sea
 		ret: make(chan SealRes),
 	}
 
+	atomic.AddInt32(&sb.commitWait, 1)
+
 	select { // prefer remote
-	case sb.sealTasks <- call:
+	case sb.commitTasks <- call:
 		proof, err = sb.sealCommitRemote(call)
 	default:
 		sb.checkRateLimit()
 
 		rl := sb.rateLimit
-		if !sb.sealLocal {
+		if sb.noCommit {
 			rl = make(chan struct{})
 		}
 
 		select { // use whichever is available
-		case sb.sealTasks <- call:
+		case sb.commitTasks <- call:
 			proof, err = sb.sealCommitRemote(call)
 		case rl <- struct{}{}:
 			proof, err = sb.sealCommitLocal(sectorID, ticket, seed, pieces, rspco)

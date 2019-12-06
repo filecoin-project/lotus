@@ -249,10 +249,8 @@ func migratePreSealMeta(ctx context.Context, api lapi.FullNode, presealDir strin
 					CommP:  sector.CommD[:],
 				},
 			},
-			CommC:            nil,
 			CommD:            sector.CommD[:],
 			CommR:            sector.CommR[:],
-			CommRLast:        nil,
 			Proof:            nil,
 			Ticket:           storage.SealTicket{},
 			PreCommitMessage: nil,
@@ -358,7 +356,7 @@ func storageMinerInit(ctx context.Context, cctx *cli.Context, api lapi.FullNode,
 				return err
 			}
 
-			sbcfg, err := modules.SectorBuilderConfig(lr.Path(), 2)(mds, api)
+			sbcfg, err := modules.SectorBuilderConfig(lr.Path(), 2, false, false)(mds, api)
 			if err != nil {
 				return xerrors.Errorf("getting genesis miner sector builder config: %w", err)
 			}

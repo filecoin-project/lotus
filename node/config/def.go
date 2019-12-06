@@ -50,6 +50,9 @@ type Metrics struct {
 type SectorBuilder struct {
 	Path        string
 	WorkerCount uint
+
+	DisableLocalPreCommit bool
+	DisableLocalCommit    bool
 }
 
 func defCommon() Common {

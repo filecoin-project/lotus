@@ -12,7 +12,7 @@ import (
 	"path/filepath"
 
 	"github.com/filecoin-project/lotus/lib/sectorbuilder"
-	"github.com/filecoin-project/lotus/lib/systar"
+	"github.com/filecoin-project/lotus/lib/tarutil"
 )
 
 func (w *worker) fetch(typ string, sectorID uint64) error {
@@ -58,7 +58,7 @@ func (w *worker) fetch(typ string, sectorID uint64) error {
 
 	switch mediatype {
 	case "application/x-tar":
-		return systar.ExtractTar(barreader, filepath.Dir(outname))
+		return tarutil.ExtractTar(barreader, outname)
 	case "application/octet-stream":
 		return files.WriteTo(files.NewReaderFile(barreader), outname)
 	default:
@@ -80,7 +80,7 @@ func (w *worker) push(typ string, sectorID uint64) error {
 
 	var r io.Reader
 	if stat.IsDir() {
-		r, err = systar.TarDirectory(filename)
+		r, err = tarutil.TarDirectory(filename)
 	} else {
 		r, err = os.OpenFile(filename, os.O_RDONLY, 0644)
 	}

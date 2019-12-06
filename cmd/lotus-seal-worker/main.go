@@ -1,8 +1,9 @@
 package main
 
 import (
-	"github.com/mitchellh/go-homedir"
 	"os"
+
+	"github.com/mitchellh/go-homedir"
 
 	logging "github.com/ipfs/go-log"
 	"golang.org/x/xerrors"
@@ -43,6 +44,12 @@ func main() {
 				Name:  "enable-gpu-proving",
 				Usage: "enable use of GPU for mining operations",
 				Value: true,
+			},
+			&cli.BoolFlag{
+				Name: "no-precommit",
+			},
+			&cli.BoolFlag{
+				Name: "no-commit",
 			},
 		},
 
@@ -95,6 +102,6 @@ var runCmd = &cli.Command{
 			log.Warn("Shutting down..")
 		}()
 
-		return acceptJobs(ctx, nodeApi, "http://"+storageAddr, auth, r)
+		return acceptJobs(ctx, nodeApi, "http://"+storageAddr, auth, r, cctx.Bool("no-precommit"), cctx.Bool("no-commit"))
 	},
 }

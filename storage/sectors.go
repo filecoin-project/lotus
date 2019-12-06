@@ -167,9 +167,11 @@ func (m *Miner) onSectorUpdated(ctx context.Context, update sectorUpdate) {
 	var sector SectorInfo
 	err := m.sectors.Mutate(update.id, func(s *SectorInfo) error {
 		s.State = update.newState
-		s.LastErr = ""
 		if update.err != nil {
-			s.LastErr = fmt.Sprintf("%+v", update.err)
+			if s.LastErr != "" {
+				s.LastErr += "---------\n\n"
+			}
+			s.LastErr += fmt.Sprintf("entering state %s: %+v", api.SectorStates[update.newState], update.err)
 		}
 
 		if update.mut != nil {

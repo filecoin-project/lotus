@@ -13,6 +13,7 @@ import (
 	"time"
 
 	"github.com/ipfs/go-datastore"
+	logging "github.com/ipfs/go-log"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 
@@ -20,6 +21,10 @@ import (
 	"github.com/filecoin-project/lotus/build"
 	"github.com/filecoin-project/lotus/lib/sectorbuilder"
 )
+
+func init() {
+	logging.SetLogLevel("*", "INFO")
+}
 
 const sectorSize = 1024
 
