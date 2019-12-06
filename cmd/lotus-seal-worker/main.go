@@ -39,6 +39,12 @@ func main() {
 				EnvVars: []string{"LOTUS_STORAGE_PATH"},
 				Value:   "~/.lotusstorage", // TODO: Consider XDG_DATA_HOME
 			},
+			&cli.BoolFlag{
+				Name:    "no-precommit",
+			},
+			&cli.BoolFlag{
+				Name:    "no-commit",
+			},
 		},
 
 		Commands: local,
@@ -86,6 +92,6 @@ var runCmd = &cli.Command{
 			log.Warn("Shutting down..")
 		}()
 
-		return acceptJobs(ctx, nodeApi, "http://"+storageAddr, auth, r)
+		return acceptJobs(ctx, nodeApi, "http://"+storageAddr, auth, r, cctx.Bool("no-precommit"), cctx.Bool("no-commit"))
 	},
 }

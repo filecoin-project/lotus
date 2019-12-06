@@ -52,7 +52,7 @@ func GetParams(sbc *sectorbuilder.Config) error {
 	return nil
 }
 
-func SectorBuilderConfig(storagePath string, threads uint) func(dtypes.MetadataDS, api.FullNode) (*sectorbuilder.Config, error) {
+func SectorBuilderConfig(storagePath string, threads uint, noprecommit, nocommit bool) func(dtypes.MetadataDS, api.FullNode) (*sectorbuilder.Config, error) {
 	return func(ds dtypes.MetadataDS, api api.FullNode) (*sectorbuilder.Config, error) {
 		minerAddr, err := minerAddrFromDS(ds)
 		if err != nil {
@@ -81,7 +81,10 @@ func SectorBuilderConfig(storagePath string, threads uint) func(dtypes.MetadataD
 		sb := &sectorbuilder.Config{
 			Miner:         minerAddr,
 			SectorSize:    ssize,
+
 			WorkerThreads: uint8(threads),
+			NoPreCommit: noprecommit,
+			NoCommit: nocommit,
 
 			CacheDir:    cache,
 			UnsealedDir: unsealed,

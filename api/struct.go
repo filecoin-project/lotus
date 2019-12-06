@@ -143,7 +143,7 @@ type StorageMinerStruct struct {
 
 		WorkerStats func(context.Context) (sectorbuilder.WorkerStats, error) `perm:"read"`
 
-		WorkerQueue func(context.Context) (<-chan sectorbuilder.WorkerTask, error)          `perm:"admin"` // TODO: worker perm
+		WorkerQueue func(ctx context.Context, noprecommit, nocommit bool) (<-chan sectorbuilder.WorkerTask, error)          `perm:"admin"` // TODO: worker perm
 		WorkerDone  func(ctx context.Context, task uint64, res sectorbuilder.SealRes) error `perm:"admin"`
 	}
 }
@@ -522,8 +522,8 @@ func (c *StorageMinerStruct) WorkerStats(ctx context.Context) (sectorbuilder.Wor
 	return c.Internal.WorkerStats(ctx)
 }
 
-func (c *StorageMinerStruct) WorkerQueue(ctx context.Context) (<-chan sectorbuilder.WorkerTask, error) {
-	return c.Internal.WorkerQueue(ctx)
+func (c *StorageMinerStruct) WorkerQueue(ctx context.Context, noprecommit, nocommit bool) (<-chan sectorbuilder.WorkerTask, error) {
+	return c.Internal.WorkerQueue(ctx, noprecommit, nocommit)
 }
 
 func (c *StorageMinerStruct) WorkerDone(ctx context.Context, task uint64, res sectorbuilder.SealRes) error {

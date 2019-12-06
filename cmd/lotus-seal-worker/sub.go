@@ -20,7 +20,7 @@ type worker struct {
 	sb *sectorbuilder.SectorBuilder
 }
 
-func acceptJobs(ctx context.Context, api api.StorageMiner, endpoint string, auth http.Header, repo string) error {
+func acceptJobs(ctx context.Context, api api.StorageMiner, endpoint string, auth http.Header, repo string, noprecommit, nocommit bool) error {
 	act, err := api.ActorAddress(ctx)
 	if err != nil {
 		return err
@@ -51,7 +51,7 @@ func acceptJobs(ctx context.Context, api api.StorageMiner, endpoint string, auth
 		sb:            sb,
 	}
 
-	tasks, err := api.WorkerQueue(ctx)
+	tasks, err := api.WorkerQueue(ctx, noprecommit, nocommit)
 	if err != nil {
 		return err
 	}

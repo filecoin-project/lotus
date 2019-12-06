@@ -206,8 +206,8 @@ func (sm *StorageMinerAPI) SectorsUpdate(ctx context.Context, id uint64, state a
 	return sm.Miner.UpdateSectorState(ctx, id, state)
 }
 
-func (sm *StorageMinerAPI) WorkerQueue(ctx context.Context) (<-chan sectorbuilder.WorkerTask, error) {
-	return sm.SectorBuilder.AddWorker(ctx)
+func (sm *StorageMinerAPI) WorkerQueue(ctx context.Context, noprecommit, nocommit bool) (<-chan sectorbuilder.WorkerTask, error) {
+	return sm.SectorBuilder.AddWorker(ctx, noprecommit, nocommit)
 }
 
 func (sm *StorageMinerAPI) WorkerDone(ctx context.Context, task uint64, res sectorbuilder.SealRes) error {

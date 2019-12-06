@@ -61,10 +61,12 @@ type SectorBuilder struct {
 
 	unsealLk sync.Mutex
 
-	sealLocal bool
+	noCommit bool
+	noPreCommit bool
 	rateLimit chan struct{}
 
-	sealTasks chan workerCall
+	precommitTasks chan workerCall
+	commitTasks chan workerCall
 
 	taskCtr       uint64
 	remoteLk      sync.Mutex
@@ -120,6 +122,8 @@ type Config struct {
 	Miner      address.Address
 
 	WorkerThreads uint8
+	NoCommit    bool
+	NoPreCommit bool
 
 	CacheDir    string
 	SealedDir   string
@@ -176,13 +180,15 @@ func New(cfg *Config, ds dtypes.MetadataDS) (*SectorBuilder, error) {
 
 		Miner: cfg.Miner,
 
-		sealLocal: sealLocal,
+		noPreCommit: cfg.NoPreCommit || !sealLocal,
+		noCommit: cfg.NoCommit || !sealLocal,
 		rateLimit: make(chan struct{}, rlimit),
 
-		taskCtr:       1,
-		sealTasks:     make(chan workerCall),
-		remoteResults: map[uint64]chan<- SealRes{},
-		remotes:       map[int]*remote{},
+		taskCtr:        1,
+		precommitTasks: make(chan workerCall),
+		commitTasks:    make(chan workerCall),
+		remoteResults:  map[uint64]chan<- SealRes{},
+		remotes:        map[int]*remote{},
 
 		stopping: make(chan struct{}),
 	}
@@ -211,7 +217,6 @@ func NewStandalone(cfg *Config) (*SectorBuilder, error) {
 		cacheDir:    cfg.CacheDir,
 		unsealedDir: cfg.UnsealedDir,
 
-		sealLocal: true,
 		taskCtr:   1,
 		remotes:   map[int]*remote{},
 		rateLimit: make(chan struct{}, cfg.WorkerThreads),
@@ -411,7 +416,7 @@ func (sb *SectorBuilder) SealPreCommit(sectorID uint64, ticket SealTicket, piece
 	}
 
 	select { // prefer remote
-	case sb.sealTasks <- call:
+	case sb.precommitTasks <- call:
 		return sb.sealPreCommitRemote(call)
 	default:
 	}
@@ -419,12 +424,12 @@ func (sb *SectorBuilder) SealPreCommit(sectorID uint64, ticket SealTicket, piece
 	sb.checkRateLimit()
 
 	rl := sb.rateLimit
-	if !sb.sealLocal {
+	if sb.noPreCommit {
 		rl = make(chan struct{})
 	}
 
 	select { // use whichever is available
-	case sb.sealTasks <- call:
+	case sb.precommitTasks <- call:
 		return sb.sealPreCommitRemote(call)
 	case rl <- struct{}{}:
 	}
@@ -533,18 +538,18 @@ func (sb *SectorBuilder) SealCommit(sectorID uint64, ticket SealTicket, seed Sea
 	}
 
 	select { // prefer remote
-	case sb.sealTasks <- call:
+	case sb.commitTasks <- call:
 		proof, err = sb.sealCommitRemote(call)
 	default:
 		sb.checkRateLimit()
 
 		rl := sb.rateLimit
-		if !sb.sealLocal {
+		if sb.noCommit {
 			rl = make(chan struct{})
 		}
 
 		select { // use whichever is available
-		case sb.sealTasks <- call:
+		case sb.commitTasks <- call:
 			proof, err = sb.sealCommitRemote(call)
 		case rl <- struct{}{}:
 			proof, err = sb.sealCommitLocal(sectorID, ticket, seed, pieces, rspco)
