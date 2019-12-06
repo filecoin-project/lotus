@@ -73,8 +73,10 @@ func (s *fpostScheduler) runPost(ctx context.Context, eps uint64, ts *types.TipS
 
 	candidates := make([]types.EPostTicket, len(scandidates))
 	for i, sc := range scandidates {
+		part := make([]byte, 32)
+		copy(part, sc.PartialTicket[:])
 		candidates[i] = types.EPostTicket{
-			Partial:        sc.PartialTicket[:],
+			Partial:        part,
 			SectorID:       sc.SectorID,
 			ChallengeIndex: sc.SectorChallengeIndex,
 		}

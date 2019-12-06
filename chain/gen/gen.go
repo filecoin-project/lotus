@@ -557,8 +557,10 @@ func ComputeProof(ctx context.Context, epp ElectionPoStProver, pi *ProofInput) (
 		PostRand: pi.vrfout,
 	}
 	for _, win := range pi.winners {
+		part := make([]byte, 32)
+		copy(part, win.PartialTicket[:])
 		ept.Candidates = append(ept.Candidates, types.EPostTicket{
-			Partial:        win.PartialTicket[:],
+			Partial:        part,
 			SectorID:       win.SectorID,
 			ChallengeIndex: win.SectorChallengeIndex,
 		})
