@@ -138,8 +138,10 @@ func WriteGenesisMiner(maddr address.Address, sbroot string, gm *genesis.Genesis
 
 func createDeals(m *genesis.GenesisMiner, k *wallet.Key, maddr address.Address, ssize uint64) error {
 	for _, sector := range m.Sectors {
+		pref := make([]byte, len(sector.CommD))
+		copt(pref, sector.CommD)
 		proposal := &actors.StorageDealProposal{
-			PieceRef:             sector.CommD[:], // just one deal so this == CommP
+			PieceRef:             pref, // just one deal so this == CommP
 			PieceSize:            sectorbuilder.UserBytesForSectorSize(ssize),
 			PieceSerialization:   actors.SerializationUnixFSv0,
 			Client:               k.Address,
