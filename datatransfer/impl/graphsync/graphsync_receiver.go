@@ -16,7 +16,6 @@ import (
 )
 
 type graphsyncReceiver struct {
-	ctx  context.Context
 	impl *graphsyncImpl
 }
 
