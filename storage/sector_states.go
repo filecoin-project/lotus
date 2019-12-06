@@ -131,6 +131,7 @@ func (m *Miner) handlePreCommitted(ctx context.Context, sector SectorInfo) *sect
 
 	if mw.Receipt.ExitCode != 0 {
 		log.Error("sector precommit failed: ", mw.Receipt.ExitCode)
+		err := xerrors.Errorf("sector precommit failed: %d", mw.Receipt.ExitCode)
 		return sector.upd().to(api.PreCommitFailed).error(err)
 	}
 	log.Info("precommit message landed on chain: ", sector.SectorID)
@@ -157,6 +158,7 @@ func (m *Miner) handlePreCommitted(ctx context.Context, sector SectorInfo) *sect
 		return nil
 	}, func(ctx context.Context, ts *types.TipSet) error {
 		log.Warn("revert in interactive commit sector step")
+		// TODO: need to cancel running process and restart...
 		return nil
 	}, 3, mw.TipSet.Height()+build.InteractivePoRepDelay)
 	if err != nil {
@@ -203,20 +205,29 @@ func (m *Miner) handleCommitting(ctx context.Context, sector SectorInfo) *sector
 	}
 
 	// TODO: Separate state before this wait, so we persist message cid?
+	return sector.upd().to(api.CommitWait).state(func(info *SectorInfo) {
+		mcid := smsg.Cid()
+		info.CommitMessage = &mcid
+		info.Proof = proof
+	})
+}
 
-	mw, err := m.api.StateWaitMsg(ctx, smsg.Cid())
+func (m *Miner) handleCommitWait(ctx context.Context, sector SectorInfo) *sectorUpdate {
+	if sector.CommitMessage == nil {
+		log.Errorf("sector %d entered commit wait state without a message cid", sector.SectorID)
+		return sector.upd().to(api.CommitFailed).error(xerrors.Errorf("entered commit wait with no commit cid"))
+	}
+
+	mw, err := m.api.StateWaitMsg(ctx, *sector.CommitMessage)
 	if err != nil {
 		return sector.upd().to(api.CommitFailed).error(xerrors.Errorf("failed to wait for porep inclusion: %w", err))
 	}
 
 	if mw.Receipt.ExitCode != 0 {
-		log.Errorf("UNHANDLED: submitting sector proof failed (exit=%d, msg=%s) (t:%x; s:%x(%d); p:%x)", mw.Receipt.ExitCode, smsg.Cid(), sector.Ticket.TicketBytes, sector.Seed.TicketBytes, sector.Seed.BlockHeight, params.Proof)
+		log.Errorf("UNHANDLED: submitting sector proof failed (exit=%d, msg=%s) (t:%x; s:%x(%d); p:%x)", mw.Receipt.ExitCode, sector.CommitMessage, sector.Ticket.TicketBytes, sector.Seed.TicketBytes, sector.Seed.BlockHeight, sector.Proof)
 		return sector.upd().fatal(xerrors.New("UNHANDLED: submitting sector proof failed"))
 	}
 
 	return sector.upd().to(api.Proving).state(func(info *SectorInfo) {
-		mcid := smsg.Cid()
-		info.CommitMessage = &mcid
-		info.Proof = proof
 	})
 }

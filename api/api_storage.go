@@ -20,6 +20,7 @@ const (
 	PreCommitting // on chain pre-commit
 	PreCommitted  // waiting for seed
 	Committing
+	CommitWait // waiting for message to land on chain
 	Proving
 
 	SealFailed
