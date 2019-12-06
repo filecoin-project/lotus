@@ -61,7 +61,7 @@ type graphsyncImpl struct {
 }
 
 // NewGraphSyncDataTransfer initializes a new graphsync based data transfer manager
-func NewGraphSyncDataTransfer(parent context.Context, host host.Host, gs graphsync.GraphExchange) datatransfer.Manager {
+func NewGraphSyncDataTransfer(host host.Host, gs graphsync.GraphExchange) datatransfer.Manager {
 	dataTransferNetwork := network.NewFromLibp2pHost(host)
 	impl := &graphsyncImpl{
 		dataTransferNetwork,
@@ -78,7 +78,7 @@ func NewGraphSyncDataTransfer(parent context.Context, host host.Host, gs graphsy
 		log.Error(err)
 		return nil
 	}
-	dtReceiver := &graphsyncReceiver{parent, impl}
+	dtReceiver := &graphsyncReceiver{impl}
 	dataTransferNetwork.SetDelegate(dtReceiver)
 	return impl
 }

@@ -36,6 +36,7 @@ type ClientDeal struct {
 	Miner       peer.ID
 	MinerWorker address.Address
 	DealID      uint64
+	PayloadCid  cid.Cid
 
 	PublishMessage *cid.Cid
 
@@ -246,8 +247,8 @@ func (c *Client) Start(ctx context.Context, p ClientDealProposal) (cid.Cid, erro
 		State:       api.DealUnknown,
 		Miner:       p.MinerID,
 		MinerWorker: p.MinerWorker,
-
-		s: s,
+		PayloadCid:  p.Data,
+		s:           s,
 	}
 
 	c.incoming <- deal

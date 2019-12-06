@@ -1,7 +1,6 @@
 package deals
 
 import (
-	"bytes"
 	"context"
 	"runtime"
 
@@ -158,7 +157,7 @@ func (c *ClientRequestValidator) ValidatePull(
 	if deal.Miner != receiver {
 		return xerrors.Errorf("Deal Peer %s, Data Transfer Peer %s: %w", deal.Miner.String(), receiver.String(), ErrWrongPeer)
 	}
-	if !bytes.Equal(deal.Proposal.PieceRef, baseCid.Bytes()) {
+	if !deal.PayloadCid.Equals(baseCid) {
 		return xerrors.Errorf("Deal Payload CID %s, Data Transfer CID %s: %w", string(deal.Proposal.PieceRef), baseCid.String(), ErrWrongPiece)
 	}
 	for _, state := range DataTransferStates {

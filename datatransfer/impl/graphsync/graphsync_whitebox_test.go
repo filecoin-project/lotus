@@ -42,7 +42,7 @@ func TestGraphsyncImpl_SubscribeToEvents(t *testing.T) {
 	gs1 := &fakeGraphSync{
 		receivedRequests: make(chan receivedGraphSyncRequest, 1),
 	}
-	dt1 := NewGraphSyncDataTransfer(ctx, host1, gs1)
+	dt1 := NewGraphSyncDataTransfer(host1, gs1)
 
 	subscribe1Calls := make(chan struct{}, 1)
 	subscriber := func(event datatransfer.Event, channelState datatransfer.ChannelState) {
