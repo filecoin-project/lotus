@@ -110,7 +110,7 @@ func Count(ri RunIterator) (uint64, error) {
 			return 0, err
 		}
 		if r.Val {
-			if math.MaxUint64-r.Len > count {
+			if math.MaxUint64-r.Len < count {
 				return 0, xerrors.New("RLE+ overflows")
 			}
 			count += r.Len
