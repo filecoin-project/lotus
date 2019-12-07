@@ -191,6 +191,9 @@ func (stb *syncTargetBucket) sameChainAs(ts *types.TipSet) bool {
 		if types.CidArrsEqual(ts.Parents(), t.Cids()) {
 			return true
 		}
+		if types.CidArrsEqual(ts.Parents(), t.Parents()) {
+			return true
+		}
 	}
 	return false
 }
@@ -268,6 +271,7 @@ func (sm *SyncManager) syncScheduler() {
 }
 
 func (sm *SyncManager) scheduleIncoming(ts *types.TipSet) {
+	log.Warn("Incoming tipset! ", ts.Cids(), ts.Height())
 	var relatedToActiveSync bool
 	for _, acts := range sm.activeSyncs {
 		if ts.Equals(acts) {
@@ -276,17 +280,20 @@ func (sm *SyncManager) scheduleIncoming(ts *types.TipSet) {
 
 		if types.CidArrsEqual(ts.Parents(), acts.Cids()) || types.CidArrsEqual(ts.Parents(), acts.Parents()) {
 			// sync this next, after that sync process finishes
+			log.Warn("mark 1")
 			relatedToActiveSync = true
 		}
 	}
 
 	if !relatedToActiveSync && sm.activeSyncTips.RelatedToAny(ts) {
+		log.Warn("mark 2")
 		relatedToActiveSync = true
 	}
 
 	// if this is related to an active sync process, immediately bucket it
 	// we don't want to start a parallel sync process that duplicates work
 	if relatedToActiveSync {
+		log.Warn("related to active sync")
 		sm.activeSyncTips.Insert(ts)
 		return
 	}
@@ -304,6 +311,7 @@ func (sm *SyncManager) scheduleIncoming(ts *types.TipSet) {
 }
 
 func (sm *SyncManager) scheduleProcessResult(res *syncResult) {
+	log.Warn("sync result! ", res.ts.Key())
 	delete(sm.activeSyncs, res.ts.Key())
 	relbucket := sm.activeSyncTips.PopRelated(res.ts)
 	if relbucket != nil {
@@ -320,6 +328,8 @@ func (sm *SyncManager) scheduleProcessResult(res *syncResult) {
 			// have come in since.  The question is, should we try to
 			// sync these? or just drop them?
 		}
+	} else {
+		log.Warn("no related bucket!")
 	}
 }
 
