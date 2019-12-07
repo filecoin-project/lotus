@@ -78,7 +78,7 @@ func (hs *Service) HandleStream(s inet.Stream) {
 		"hash", hmsg.GenesisHash)
 
 	if hmsg.GenesisHash != hs.syncer.Genesis.Cids()[0] {
-		log.Error("other peer has different genesis!")
+		log.Warnf("other peer has different genesis! (%s)", hmsg.GenesisHash)
 		s.Conn().Close()
 		return
 	}
