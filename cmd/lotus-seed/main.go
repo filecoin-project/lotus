@@ -66,6 +66,11 @@ var preSealCmd = &cli.Command{
 			Value: 1,
 			Usage: "select number of sectors to pre-seal",
 		},
+		&cli.Uint64Flag{
+			Name:  "sector-offset",
+			Value: 0,
+			Usage: "how many sector ids to skip when starting to seal",
+		},
 	},
 	Action: func(c *cli.Context) error {
 		sdir := c.String("sectorbuilder-dir")
@@ -79,7 +84,7 @@ var preSealCmd = &cli.Command{
 			return err
 		}
 
-		gm, err := seed.PreSeal(maddr, c.Uint64("sector-size"), c.Int("num-sectors"), sbroot, []byte(c.String("ticket-preimage")))
+		gm, err := seed.PreSeal(maddr, c.Uint64("sector-size"), c.Uint64("sector-offset"), c.Int("num-sectors"), sbroot, []byte(c.String("ticket-preimage")))
 		if err != nil {
 			return err
 		}

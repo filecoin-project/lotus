@@ -68,7 +68,7 @@ jobs:
       - run: sudo apt-get install npm
       - restore_cache:
           name: restore go mod cache
-          key: v1-go-deps-{{ arch }}-{{ checksum "~/go/src/github.com/filecoin-project/lotus/go.mod" }}
+          key: v1-go-deps-{{ arch }}-{{ checksum "/home/circleci/project/lotus/go.mod" }}
       - run:
           command: make buildall
       - store_artifacts:
@@ -116,7 +116,7 @@ jobs:
       - go/mod-download
       - restore_cache:
           name: restore go mod cache
-          key: v1-go-deps-{{ arch }}-{{ checksum "~/go/src/github.com/filecoin-project/lotus/go.mod" }}
+          key: v1-go-deps-{{ arch }}-{{ checksum "/home/circleci/project/go.mod" }}
       - run:
           command: make deps lotus
           no_output_timeout: 30m
@@ -148,7 +148,7 @@ jobs:
                   bash <(curl -s https://codecov.io/bash)
       - save_cache:
           name: save go mod cache
-          key: v1-go-deps-{{ arch }}-{{ checksum "~/go/src/github.com/filecoin-project/lotus/go.mod" }}
+          key: v1-go-deps-{{ arch }}-{{ checksum "/home/circleci/project/go.mod" }}
           paths:
             - "~/go/pkg"
             - "~/go/src/github.com"

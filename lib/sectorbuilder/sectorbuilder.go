@@ -119,12 +119,14 @@ type Config struct {
 	SectorSize uint64
 	Miner      address.Address
 
-	WorkerThreads uint8
+	WorkerThreads  uint8
+	FallbackLastID uint64
 
 	CacheDir    string
 	SealedDir   string
 	StagedDir   string
 	UnsealedDir string
+	_           struct{} // guard against nameless init
 }
 
 func New(cfg *Config, ds dtypes.MetadataDS) (*SectorBuilder, error) {
@@ -151,6 +153,7 @@ func New(cfg *Config, ds dtypes.MetadataDS) (*SectorBuilder, error) {
 		}
 		lastUsedID = uint64(i)
 	case datastore.ErrNotFound:
+		lastUsedID = cfg.FallbackLastID
 	default:
 		return nil, err
 	}

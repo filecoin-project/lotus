@@ -4,11 +4,12 @@ import (
 	"bytes"
 	"context"
 	"crypto/rand"
-	"github.com/filecoin-project/lotus/build"
 	"io/ioutil"
 	"net/http/httptest"
 	"path/filepath"
 	"testing"
+
+	"github.com/filecoin-project/lotus/build"
 
 	"github.com/libp2p/go-libp2p-core/crypto"
 
@@ -162,7 +163,7 @@ func builder(t *testing.T, nFull int, storage []int) ([]test.TestNode, []test.Te
 		if err != nil {
 			t.Fatal(err)
 		}
-		genm, err := seed.PreSeal(maddr, 1024, 1, tdir, []byte("make genesis mem random"))
+		genm, err := seed.PreSeal(maddr, 1024, 0, 1, tdir, []byte("make genesis mem random"))
 		if err != nil {
 			t.Fatal(err)
 		}

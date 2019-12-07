@@ -132,7 +132,7 @@ func NewGenerator() (*ChainGen, error) {
 		return nil, err
 	}
 
-	genm1, err := seed.PreSeal(maddr1, 1024, 1, m1temp, []byte("some randomness"))
+	genm1, err := seed.PreSeal(maddr1, 1024, 0, 1, m1temp, []byte("some randomness"))
 	if err != nil {
 		return nil, err
 	}
@@ -147,7 +147,7 @@ func NewGenerator() (*ChainGen, error) {
 		return nil, err
 	}
 
-	genm2, err := seed.PreSeal(maddr2, 1024, 1, m2temp, []byte("some randomness"))
+	genm2, err := seed.PreSeal(maddr2, 1024, 0, 1, m2temp, []byte("some randomness"))
 	if err != nil {
 		return nil, err
 	}
