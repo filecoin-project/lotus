@@ -59,7 +59,7 @@ func (it *addIt) prep() error {
 		return nil
 	}
 
-	if !it.arun.Val && !it.brun.Val {
+	if !(it.arun.Val || it.brun.Val) {
 		min := it.arun.Len
 		if it.brun.Len < min {
 			min = it.brun.Len

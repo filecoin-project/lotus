@@ -16,7 +16,10 @@ type BitField struct {
 }
 
 func NewBitField() BitField {
-	rle, _ := rlepluslazy.FromBuf([]byte{})
+	rle, err := rlepluslazy.FromBuf([]byte{})
+	if err != nil {
+		panic(err)
+	}
 	return BitField{
 		rle:  rle,
 		bits: make(map[uint64]struct{}),
@@ -70,7 +73,7 @@ func (bf BitField) Count() (uint64, error) {
 	return rlepluslazy.Count(s)
 }
 
-// All returns all set bits, in random order
+// All returns all set bits
 func (bf BitField) All() ([]uint64, error) {
 
 	runs, err := bf.sum()

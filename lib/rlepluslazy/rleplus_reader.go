@@ -1,8 +1,7 @@
 package rlepluslazy
 
 import (
-	"encoding/binary"
-
+	"github.com/multiformats/go-varint"
 	"golang.org/x/xerrors"
 )
 
@@ -64,7 +63,12 @@ func (it *rleIterator) prep() error {
 					return xerrors.Errorf("run too long: %w", ErrDecode)
 				}
 			}
-			it.nextRun.Len, _ = binary.Uvarint(buf)
+			var err error
+			it.nextRun.Len, _, err = varint.FromUvarint(buf)
+			if err != nil {
+				return err
+			}
+
 		}
 	}
 
