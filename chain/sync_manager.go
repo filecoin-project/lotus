@@ -108,6 +108,15 @@ func newSyncTargetBucket(tipsets ...*types.TipSet) *syncTargetBucket {
 	return &stb
 }
 
+func (sbs *syncBucketSet) RelatedToAny(ts *types.TipSet) bool {
+	for _, b := range sbs.buckets {
+		if b.sameChainAs(ts) {
+			return true
+		}
+	}
+	return false
+}
+
 func (sbs *syncBucketSet) Insert(ts *types.TipSet) {
 	for _, b := range sbs.buckets {
 		if b.sameChainAs(ts) {
@@ -180,6 +189,9 @@ func (stb *syncTargetBucket) sameChainAs(ts *types.TipSet) bool {
 			return true
 		}
 		if types.CidArrsEqual(ts.Parents(), t.Cids()) {
+			return true
+		}
+		if types.CidArrsEqual(ts.Parents(), t.Parents()) {
 			return true
 		}
 	}
@@ -265,10 +277,14 @@ func (sm *SyncManager) scheduleIncoming(ts *types.TipSet) {
 			break
 		}
 
-		if types.CidArrsEqual(ts.Parents(), acts.Cids()) {
+		if types.CidArrsEqual(ts.Parents(), acts.Cids()) || types.CidArrsEqual(ts.Parents(), acts.Parents()) {
 			// sync this next, after that sync process finishes
 			relatedToActiveSync = true
 		}
+	}
+
+	if !relatedToActiveSync && sm.activeSyncTips.RelatedToAny(ts) {
+		relatedToActiveSync = true
 	}
 
 	// if this is related to an active sync process, immediately bucket it
