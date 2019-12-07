@@ -223,7 +223,7 @@ func (m *Miner) handleCommitWait(ctx context.Context, sector SectorInfo) *sector
 
 	if mw.Receipt.ExitCode != 0 {
 		log.Errorf("UNHANDLED: submitting sector proof failed (exit=%d, msg=%s) (t:%x; s:%x(%d); p:%x)", mw.Receipt.ExitCode, sector.CommitMessage, sector.Ticket.TicketBytes, sector.Seed.TicketBytes, sector.Seed.BlockHeight, sector.Proof)
-		return sector.upd().fatal(xerrors.New("UNHANDLED: submitting sector proof failed"))
+		return sector.upd().fatal(xerrors.New("UNHANDLED: submitting sector proof failed (exit: %d)", mw.Receipt.ExitCode))
 	}
 
 	return sector.upd().to(api.Proving).state(func(info *SectorInfo) {
