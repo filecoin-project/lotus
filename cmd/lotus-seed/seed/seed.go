@@ -15,7 +15,6 @@ import (
 	"golang.org/x/xerrors"
 
 	"github.com/filecoin-project/lotus/api"
-	"github.com/filecoin-project/lotus/build"
 	"github.com/filecoin-project/lotus/chain/actors"
 	"github.com/filecoin-project/lotus/chain/address"
 	"github.com/filecoin-project/lotus/chain/types"
@@ -47,10 +46,6 @@ func PreSeal(maddr address.Address, ssize uint64, offset uint64, sectors int, sb
 	mds, err := badger.NewDatastore(filepath.Join(sbroot, "badger"), nil)
 	if err != nil {
 		return nil, err
-	}
-
-	if err := build.GetParams(ssize); err != nil {
-		return nil, xerrors.Errorf("getting params: %w", err)
 	}
 
 	sb, err := sectorbuilder.New(cfg, mds)
