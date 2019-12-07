@@ -2,6 +2,7 @@ package sub
 
 import (
 	"context"
+	"time"
 
 	logging "github.com/ipfs/go-log"
 	pubsub "github.com/libp2p/go-libp2p-pubsub"
@@ -46,6 +47,9 @@ func HandleIncomingBlocks(ctx context.Context, bsub *pubsub.Subscription, s *cha
 			}
 
 			log.Debugw("new block over pubsub", "cid", blk.Header.Cid(), "source", msg.GetFrom())
+			if delay := time.Now().Unix() - int64(blk.Header.Timestamp); delay > 5 {
+				log.Warnf("Received block with large delay %d from miner %s", delay, blk.Header.Miner)
+			}
 			s.InformNewBlock(msg.GetFrom(), &types.FullBlock{
 				Header:        blk.Header,
 				BlsMessages:   bmsgs,
