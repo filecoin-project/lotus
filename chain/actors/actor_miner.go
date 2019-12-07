@@ -477,7 +477,10 @@ func (sma StorageMinerActor) SubmitFallbackPoSt(act *types.Actor, vmctx types.VM
 		return nil, aerrors.Absorb(err, 3, "could not decode sectorset")
 	}
 
-	faults := self.CurrentFaultSet.All()
+	faults, nerr := self.CurrentFaultSet.All()
+	if nerr != nil {
+		return nil, aerrors.Absorb(err, 5, "RLE+ invalid")
+	}
 	_ = faults
 
 	proverID := vmctx.Message().To // TODO: normalize to ID address
