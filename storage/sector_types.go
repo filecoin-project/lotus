@@ -55,12 +55,12 @@ type SectorInfo struct {
 	Pieces []Piece
 
 	// PreCommit
-	CommC     []byte
-	CommD     []byte
-	CommR     []byte
-	CommRLast []byte
-	Proof     []byte
-	Ticket    SealTicket
+	Pad0   []byte // TODO: legacy placeholder, remove
+	CommD  []byte
+	CommR  []byte
+	Pad1   []byte // TODO: legacy placeholder, remove
+	Proof  []byte
+	Ticket SealTicket
 
 	PreCommitMessage *cid.Cid
 
@@ -105,10 +105,8 @@ func (t *SectorInfo) existingPieces() []uint64 {
 func (t *SectorInfo) rspco() sectorbuilder.RawSealPreCommitOutput {
 	var out sectorbuilder.RawSealPreCommitOutput
 
-	copy(out.CommC[:], t.CommC)
 	copy(out.CommD[:], t.CommD)
 	copy(out.CommR[:], t.CommR)
-	copy(out.CommRLast[:], t.CommRLast)
 
 	return out
 }

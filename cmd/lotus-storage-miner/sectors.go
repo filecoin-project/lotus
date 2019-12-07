@@ -2,6 +2,7 @@ package main
 
 import (
 	"fmt"
+	"sort"
 	"strconv"
 
 	"golang.org/x/xerrors"
@@ -124,6 +125,10 @@ var sectorsListCmd = &cli.Command{
 		for _, info := range sset {
 			commitedIDs[info.SectorID] = struct{}{}
 		}
+
+		sort.Slice(list, func(i, j int) bool {
+			return list[i] < list[j]
+		})
 
 		for _, s := range list {
 			st, err := nodeApi.SectorsStatus(ctx, s)

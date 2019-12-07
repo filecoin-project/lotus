@@ -7,12 +7,13 @@ import (
 
 	"golang.org/x/xerrors"
 
-	"github.com/filecoin-project/lotus/api"
+	lapi "github.com/filecoin-project/lotus/api"
+	"github.com/filecoin-project/lotus/build"
 	"github.com/filecoin-project/lotus/lib/sectorbuilder"
 )
 
 type worker struct {
-	api           api.StorageMiner
+	api           lapi.StorageMiner
 	minerEndpoint string
 	repo          string
 	auth          http.Header
@@ -20,7 +21,7 @@ type worker struct {
 	sb *sectorbuilder.SectorBuilder
 }
 
-func acceptJobs(ctx context.Context, api api.StorageMiner, endpoint string, auth http.Header, repo string) error {
+func acceptJobs(ctx context.Context, api lapi.StorageMiner, endpoint string, auth http.Header, repo string, noprecommit, nocommit bool) error {
 	act, err := api.ActorAddress(ctx)
 	if err != nil {
 		return err
@@ -43,6 +44,10 @@ func acceptJobs(ctx context.Context, api api.StorageMiner, endpoint string, auth
 		return err
 	}
 
+	if err := build.GetParams(ssize); err != nil {
+		return xerrors.Errorf("get params: %w", err)
+	}
+
 	w := &worker{
 		api:           api,
 		minerEndpoint: endpoint,
@@ -51,13 +56,18 @@ func acceptJobs(ctx context.Context, api api.StorageMiner, endpoint string, auth
 		sb:            sb,
 	}
 
-	tasks, err := api.WorkerQueue(ctx)
+	tasks, err := api.WorkerQueue(ctx, sectorbuilder.WorkerCfg{
+		NoPreCommit: noprecommit,
+		NoCommit:    nocommit,
+	})
 	if err != nil {
 		return err
 	}
 
 loop:
 	for {
+		log.Infof("Waiting for new task")
+
 		select {
 		case task := <-tasks:
 			log.Infof("New task: %d, sector %d, action: %d", task.TaskID, task.SectorID, task.Type)
@@ -89,6 +99,8 @@ func (w *worker) processTask(ctx context.Context, task sectorbuilder.WorkerTask)
 	if err := w.fetchSector(task.SectorID, task.Type); err != nil {
 		return errRes(xerrors.Errorf("fetching sector: %w", err))
 	}
+
+	log.Infof("Data fetched, starting computation")
 
 	var res sectorbuilder.SealRes
 

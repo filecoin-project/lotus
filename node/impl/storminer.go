@@ -7,17 +7,17 @@ import (
 	"mime"
 	"net/http"
 	"os"
-	"path/filepath"
+
+	"github.com/gorilla/mux"
+	files "github.com/ipfs/go-ipfs-files"
 
 	"github.com/filecoin-project/lotus/api"
 	"github.com/filecoin-project/lotus/chain/address"
 	"github.com/filecoin-project/lotus/lib/sectorbuilder"
-	"github.com/filecoin-project/lotus/lib/systar"
+	"github.com/filecoin-project/lotus/lib/tarutil"
 	"github.com/filecoin-project/lotus/miner"
 	"github.com/filecoin-project/lotus/storage"
 	"github.com/filecoin-project/lotus/storage/sectorblocks"
-	"github.com/gorilla/mux"
-	files "github.com/ipfs/go-ipfs-files"
 )
 
 type StorageMinerAPI struct {
@@ -68,7 +68,7 @@ func (sm *StorageMinerAPI) remoteGetSector(w http.ResponseWriter, r *http.Reques
 
 	var rd io.Reader
 	if stat.IsDir() {
-		rd, err = systar.TarDirectory(path)
+		rd, err = tarutil.TarDirectory(path)
 		w.Header().Set("Content-Type", "application/x-tar")
 	} else {
 		rd, err = os.OpenFile(path, os.O_RDONLY, 0644)
@@ -112,7 +112,7 @@ func (sm *StorageMinerAPI) remotePutSector(w http.ResponseWriter, r *http.Reques
 
 	switch mediatype {
 	case "application/x-tar":
-		if err := systar.ExtractTar(r.Body, filepath.Dir(path)); err != nil {
+		if err := tarutil.ExtractTar(r.Body, path); err != nil {
 			log.Error(err)
 			w.WriteHeader(500)
 			return
@@ -206,8 +206,8 @@ func (sm *StorageMinerAPI) SectorsUpdate(ctx context.Context, id uint64, state a
 	return sm.Miner.UpdateSectorState(ctx, id, state)
 }
 
-func (sm *StorageMinerAPI) WorkerQueue(ctx context.Context) (<-chan sectorbuilder.WorkerTask, error) {
-	return sm.SectorBuilder.AddWorker(ctx)
+func (sm *StorageMinerAPI) WorkerQueue(ctx context.Context, cfg sectorbuilder.WorkerCfg) (<-chan sectorbuilder.WorkerTask, error) {
+	return sm.SectorBuilder.AddWorker(ctx, cfg)
 }
 
 func (sm *StorageMinerAPI) WorkerDone(ctx context.Context, task uint64, res sectorbuilder.SealRes) error {

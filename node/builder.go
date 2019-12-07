@@ -334,7 +334,10 @@ func ConfigStorageMiner(c interface{}, lr repo.LockedRepo) Option {
 	return Options(
 		ConfigCommon(&cfg.Common),
 
-		Override(new(*sectorbuilder.Config), modules.SectorBuilderConfig(path, cfg.SectorBuilder.WorkerCount)),
+		Override(new(*sectorbuilder.Config), modules.SectorBuilderConfig(path,
+			cfg.SectorBuilder.WorkerCount,
+			cfg.SectorBuilder.DisableLocalPreCommit,
+			cfg.SectorBuilder.DisableLocalCommit)),
 	)
 }
 
