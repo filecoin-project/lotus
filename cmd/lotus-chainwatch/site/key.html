@@ -24,9 +24,9 @@
                 {{ range messages "`from` = ? or `to` = ?" $wallet $wallet $wallet}}
                     <tr>
                         {{ if eq .From.String $wallet }}
-                            <td>To</td><td>{{.To.String}}</td>
+                            <td>To</td><td><a href="key.html?w={{.To.String}}">{{.To.String}}</a></td>
                         {{else}}
-                            <td>From</td><td>{{.From.String}}</td>
+                            <td>From</td><td><a href="key.html?w={{.From.String}}">{{.From.String}}</a></td>
                         {{end}}
                         <td>{{.Nonce}}</td>
                         <td>{{.Value}}</td>
