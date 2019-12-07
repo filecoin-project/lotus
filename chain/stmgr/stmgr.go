@@ -147,10 +147,10 @@ func (sm *StateManager) computeTipSetState(ctx context.Context, blks []*types.Bl
 		}
 		ret, err := vmi.ApplyMessage(ctx, postSubmitMsg)
 		if err != nil {
-			return cid.Undef, cid.Undef, xerrors.Errorf("submit election post message invocation failed: %w", err)
+			return cid.Undef, cid.Undef, xerrors.Errorf("submit election post message for block %s (miner %s) invocation failed: %w", b.Cid(), b.Miner, err)
 		}
 		if ret.ExitCode != 0 {
-			return cid.Undef, cid.Undef, xerrors.Errorf("submit election post invocation returned nonzero exit code: %d", ret.ExitCode)
+			return cid.Undef, cid.Undef, xerrors.Errorf("submit election post invocation returned nonzero exit code: %d (err = %s)", ret.ExitCode, ret.ActorErr)
 		}
 	}
 
