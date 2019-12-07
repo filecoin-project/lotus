@@ -9,7 +9,7 @@ import (
 	exchange "github.com/ipfs/go-ipfs-exchange-interface"
 	ipld "github.com/ipfs/go-ipld-format"
 
-	"github.com/filecoin-project/lotus/datatransfer"
+	"github.com/filecoin-project/go-fil-components/datatransfer"
 	"github.com/filecoin-project/lotus/lib/statestore"
 )
 

@@ -23,12 +23,12 @@ import (
 	"go.uber.org/fx"
 	"golang.org/x/xerrors"
 
+	dtgraphsync "github.com/filecoin-project/go-fil-components/datatransfer/impl/graphsync"
 	"github.com/filecoin-project/lotus/api"
 	"github.com/filecoin-project/lotus/build"
 	"github.com/filecoin-project/lotus/chain/address"
 	"github.com/filecoin-project/lotus/chain/deals"
 	"github.com/filecoin-project/lotus/chain/gen"
-	dtgraphsync "github.com/filecoin-project/lotus/datatransfer/impl/graphsync"
 	"github.com/filecoin-project/lotus/lib/sectorbuilder"
 	"github.com/filecoin-project/lotus/lib/statestore"
 	"github.com/filecoin-project/lotus/miner"

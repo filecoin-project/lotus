@@ -12,10 +12,9 @@ require (
 	github.com/filecoin-project/chain-validation v0.0.3
 	github.com/filecoin-project/filecoin-ffi v0.0.0-20191204125133-ebb3e13addf1
 	github.com/filecoin-project/go-amt-ipld v0.0.0-20191205011053-79efc22d6cdc
+	github.com/filecoin-project/go-fil-components v0.0.0-20191207000154-7875a4fac0c4
 	github.com/gbrlsnchs/jwt/v3 v3.0.0-beta.1
 	github.com/go-ole/go-ole v1.2.4 // indirect
-	github.com/google/go-cmp v0.3.1 // indirect
-	github.com/gopherjs/gopherjs v0.0.0-20190812055157-5d271430af9f // indirect
 	github.com/gorilla/mux v1.7.3
 	github.com/gorilla/websocket v1.4.1
 	github.com/hashicorp/go-multierror v1.0.0
@@ -79,12 +78,8 @@ require (
 	github.com/multiformats/go-multiaddr-net v0.1.0
 	github.com/multiformats/go-multihash v0.0.9
 	github.com/multiformats/go-varint v0.0.1
-	github.com/onsi/ginkgo v1.9.0 // indirect
-	github.com/onsi/gomega v1.6.0 // indirect
 	github.com/opentracing/opentracing-go v1.1.0
 	github.com/polydawn/refmt v0.0.0-20190809202753-05966cbd336a
-	github.com/smartystreets/assertions v1.0.1 // indirect
-	github.com/smartystreets/goconvey v0.0.0-20190731233626-505e41936337 // indirect
 	github.com/stretchr/testify v1.4.0
 	github.com/whyrusleeping/bencher v0.0.0-20190829221104-bb6607aa8bba
 	github.com/whyrusleeping/cbor-gen v0.0.0-20191116002219-891f55cd449d

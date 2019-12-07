@@ -12,11 +12,11 @@ import (
 	"github.com/libp2p/go-libp2p-core/peer"
 	"golang.org/x/xerrors"
 
+	"github.com/filecoin-project/go-fil-components/datatransfer"
 	"github.com/filecoin-project/lotus/api"
 	"github.com/filecoin-project/lotus/chain/actors"
 	"github.com/filecoin-project/lotus/chain/address"
 	"github.com/filecoin-project/lotus/chain/types"
-	"github.com/filecoin-project/lotus/datatransfer"
 	"github.com/filecoin-project/lotus/lib/cborutil"
 	"github.com/filecoin-project/lotus/lib/statestore"
 	"github.com/filecoin-project/lotus/node/modules/dtypes"

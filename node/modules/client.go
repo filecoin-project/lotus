@@ -24,8 +24,8 @@ import (
 	"github.com/ipfs/go-merkledag"
 	"go.uber.org/fx"
 
+	"github.com/filecoin-project/go-fil-components/datatransfer/impl/graphsync"
 	"github.com/filecoin-project/lotus/chain/deals"
-	"github.com/filecoin-project/lotus/datatransfer/impl/graphsync"
 	"github.com/filecoin-project/lotus/node/modules/dtypes"
 	"github.com/filecoin-project/lotus/node/repo"
 )
