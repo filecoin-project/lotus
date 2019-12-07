@@ -39,6 +39,11 @@ func main() {
 				EnvVars: []string{"LOTUS_STORAGE_PATH"},
 				Value:   "~/.lotusstorage", // TODO: Consider XDG_DATA_HOME
 			},
+			&cli.BoolFlag{
+				Name:  "enable-gpu-proving",
+				Usage: "enable use of GPU for mining operations",
+				Value: true,
+			},
 		},
 
 		Commands: local,
@@ -54,6 +59,10 @@ var runCmd = &cli.Command{
 	Name:  "run",
 	Usage: "Start lotus worker",
 	Action: func(cctx *cli.Context) error {
+		if !cctx.Bool("enable-gpu-proving") {
+			os.Setenv("BELLMAN_NO_GPU", "true")
+		}
+
 		nodeApi, closer, err := lcli.GetStorageMinerAPI(cctx)
 		if err != nil {
 			return xerrors.Errorf("getting miner api: %w", err)
