@@ -70,12 +70,13 @@ lotus-seal-worker: $(BUILD_DEPS)
 .PHONY: lotus-seal-worker
 BINS+=lotus-seal-worker
 
-build: lotus lotus-storage-miner
+build: lotus lotus-storage-miner lotus-seal-worker
 .PHONY: build
 
 install:
 	install -C ./lotus /usr/local/bin/lotus
 	install -C ./lotus-storage-miner /usr/local/bin/lotus-storage-miner
+	install -C ./lotus-seal-worker /usr/local/bin/lotus-seal-worker
 
 # TOOLS
 
