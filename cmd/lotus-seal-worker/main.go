@@ -39,12 +39,6 @@ func main() {
 				EnvVars: []string{"LOTUS_STORAGE_PATH"},
 				Value:   "~/.lotusstorage", // TODO: Consider XDG_DATA_HOME
 			},
-			&cli.BoolFlag{
-				Name: "no-precommit",
-			},
-			&cli.BoolFlag{
-				Name: "no-commit",
-			},
 		},
 
 		Commands: local,

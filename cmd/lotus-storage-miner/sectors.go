@@ -64,8 +64,10 @@ var sectorsStatusCmd = &cli.Command{
 
 		fmt.Printf("SectorID:\t%d\n", status.SectorID)
 		fmt.Printf("Status:\t%s\n", api.SectorStates[status.State])
+		fmt.Printf("CommC:\t\t%x\n", status.CommC)
 		fmt.Printf("CommD:\t\t%x\n", status.CommD)
 		fmt.Printf("CommR:\t\t%x\n", status.CommR)
+		fmt.Printf("CommRLast:\t\t%x\n", status.CommRLast)
 		fmt.Printf("Ticket:\t\t%x\n", status.Ticket.TicketBytes)
 		fmt.Printf("TicketH:\t\t%d\n", status.Ticket.BlockHeight)
 		fmt.Printf("Seed:\t\t%x\n", status.Seed.TicketBytes)

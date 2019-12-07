@@ -79,15 +79,17 @@ type StorageMiner interface {
 }
 
 type SectorInfo struct {
-	SectorID uint64
-	State    SectorState
-	CommD    []byte
-	CommR    []byte
-	Proof    []byte
-	Deals    []uint64
-	Ticket   sectorbuilder.SealTicket
-	Seed     sectorbuilder.SealSeed
-	LastErr  string
+	SectorID  uint64
+	State     SectorState
+	CommC     []byte
+	CommD     []byte
+	CommR     []byte
+	CommRLast []byte
+	Proof     []byte
+	Deals     []uint64
+	Ticket    sectorbuilder.SealTicket
+	Seed      sectorbuilder.SealSeed
+	LastErr   string
 }
 
 type SealedRef struct {
