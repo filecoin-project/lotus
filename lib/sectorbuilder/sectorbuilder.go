@@ -93,19 +93,15 @@ type JsonRSPCO struct {
 
 func (rspco *RawSealPreCommitOutput) ToJson() JsonRSPCO {
 	return JsonRSPCO{
-		CommC:     rspco.CommC[:],
 		CommD:     rspco.CommD[:],
 		CommR:     rspco.CommR[:],
-		CommRLast: rspco.CommRLast[:],
 	}
 }
 
 func (rspco *JsonRSPCO) rspco() RawSealPreCommitOutput {
 	var out RawSealPreCommitOutput
-	copy(out.CommC[:], rspco.CommC)
 	copy(out.CommD[:], rspco.CommD)
 	copy(out.CommR[:], rspco.CommR)
-	copy(out.CommRLast[:], rspco.CommRLast)
 	return out
 }
 

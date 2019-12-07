@@ -263,14 +263,6 @@ func (t *SectorInfo) MarshalCBOR(w io.Writer) error {
 		}
 	}
 
-	// t.t.CommC ([]uint8) (slice)
-	if _, err := w.Write(cbg.CborEncodeMajorType(cbg.MajByteString, uint64(len(t.CommC)))); err != nil {
-		return err
-	}
-	if _, err := w.Write(t.CommC); err != nil {
-		return err
-	}
-
 	// t.t.CommD ([]uint8) (slice)
 	if _, err := w.Write(cbg.CborEncodeMajorType(cbg.MajByteString, uint64(len(t.CommD)))); err != nil {
 		return err
@@ -284,14 +276,6 @@ func (t *SectorInfo) MarshalCBOR(w io.Writer) error {
 		return err
 	}
 	if _, err := w.Write(t.CommR); err != nil {
-		return err
-	}
-
-	// t.t.CommRLast ([]uint8) (slice)
-	if _, err := w.Write(cbg.CborEncodeMajorType(cbg.MajByteString, uint64(len(t.CommRLast)))); err != nil {
-		return err
-	}
-	if _, err := w.Write(t.CommRLast); err != nil {
 		return err
 	}
 
@@ -408,23 +392,6 @@ func (t *SectorInfo) UnmarshalCBOR(r io.Reader) error {
 		t.Pieces[i] = v
 	}
 
-	// t.t.CommC ([]uint8) (slice)
-
-	maj, extra, err = cbg.CborReadHeader(br)
-	if err != nil {
-		return err
-	}
-	if extra > 8192 {
-		return fmt.Errorf("t.CommC: array too large (%d)", extra)
-	}
-
-	if maj != cbg.MajByteString {
-		return fmt.Errorf("expected byte array")
-	}
-	t.CommC = make([]byte, extra)
-	if _, err := io.ReadFull(br, t.CommC); err != nil {
-		return err
-	}
 	// t.t.CommD ([]uint8) (slice)
 
 	maj, extra, err = cbg.CborReadHeader(br)
@@ -459,23 +426,7 @@ func (t *SectorInfo) UnmarshalCBOR(r io.Reader) error {
 	if _, err := io.ReadFull(br, t.CommR); err != nil {
 		return err
 	}
-	// t.t.CommRLast ([]uint8) (slice)
 
-	maj, extra, err = cbg.CborReadHeader(br)
-	if err != nil {
-		return err
-	}
-	if extra > 8192 {
-		return fmt.Errorf("t.CommRLast: array too large (%d)", extra)
-	}
-
-	if maj != cbg.MajByteString {
-		return fmt.Errorf("expected byte array")
-	}
-	t.CommRLast = make([]byte, extra)
-	if _, err := io.ReadFull(br, t.CommRLast); err != nil {
-		return err
-	}
 	// t.t.Proof ([]uint8) (slice)
 
 	maj, extra, err = cbg.CborReadHeader(br)

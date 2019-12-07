@@ -161,10 +161,8 @@ func (sm *StorageMinerAPI) SectorsStatus(ctx context.Context, sid uint64) (api.S
 	return api.SectorInfo{
 		SectorID:  sid,
 		State:     info.State,
-		CommC:     info.CommC,
 		CommD:     info.CommD,
 		CommR:     info.CommR,
-		CommRLast: info.CommRLast,
 		Proof:     info.Proof,
 		Deals:     deals,
 		Ticket:    info.Ticket.SB(),

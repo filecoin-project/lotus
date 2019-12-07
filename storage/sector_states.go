@@ -75,10 +75,8 @@ func (m *Miner) handleUnsealed(ctx context.Context, sector SectorInfo) *sectorUp
 	}
 
 	return sector.upd().to(api.PreCommitting).state(func(info *SectorInfo) {
-		info.CommC = rspco.CommC[:]
 		info.CommD = rspco.CommD[:]
 		info.CommR = rspco.CommR[:]
-		info.CommRLast = rspco.CommRLast[:]
 		info.Ticket = SealTicket{
 			BlockHeight: ticket.BlockHeight,
 			TicketBytes: ticket.TicketBytes[:],
