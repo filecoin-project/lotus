@@ -2,11 +2,11 @@ package seed
 
 import (
 	"context"
+	"crypto/rand"
 	"crypto/sha256"
 	"encoding/json"
 	"fmt"
 	"io/ioutil"
-	"math/rand"
 	"os"
 	"path/filepath"
 
@@ -53,7 +53,6 @@ func PreSeal(maddr address.Address, ssize uint64, offset uint64, sectors int, sb
 		return nil, err
 	}
 
-	r := rand.New(rand.NewSource(101))
 	size := sectorbuilder.UserBytesForSectorSize(ssize)
 
 	var sealedSectors []*genesis.PreSeal
@@ -63,7 +62,7 @@ func PreSeal(maddr address.Address, ssize uint64, offset uint64, sectors int, sb
 			return nil, err
 		}
 
-		pi, err := sb.AddPiece(size, sid, r, nil)
+		pi, err := sb.AddPiece(size, sid, rand.Reader, nil)
 		if err != nil {
 			return nil, err
 		}
@@ -153,20 +152,12 @@ func createDeals(m *genesis.GenesisMiner, k *wallet.Key, maddr address.Address, 
 			ProposerSignature:    nil,
 		}
 
+		// TODO: pretty sure we don't even need to sign this
 		if err := api.SignWith(context.TODO(), wallet.KeyWallet(k).Sign, k.Address, proposal); err != nil {
 			return err
 		}
 
-		deal := &actors.StorageDeal{
-			Proposal:         *proposal,
-			CounterSignature: nil,
-		}
-
-		if err := api.SignWith(context.TODO(), wallet.KeyWallet(k).Sign, k.Address, deal); err != nil {
-			return err
-		}
-
-		sector.Deal = *deal
+		sector.Deal = *proposal
 	}
 
 	return nil

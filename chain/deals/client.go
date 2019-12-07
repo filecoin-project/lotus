@@ -36,7 +36,7 @@ type ClientDeal struct {
 	MinerWorker address.Address
 	DealID      uint64
 
-	PublishMessage *cid.Cid
+	PublishMessage *types.SignedMessage
 
 	s inet.Stream
 }

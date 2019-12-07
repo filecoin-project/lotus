@@ -93,15 +93,8 @@ func (p *Provider) accept(ctx context.Context, deal MinerDeal) (func(*MinerDeal)
 
 	log.Info("publishing deal")
 
-	storageDeal := actors.StorageDeal{
-		Proposal: deal.Proposal,
-	}
-	if err := api.SignWith(ctx, p.full.WalletSign, waddr, &storageDeal); err != nil {
-		return nil, xerrors.Errorf("signing storage deal failed: ", err)
-	}
-
 	params, err := actors.SerializeParams(&actors.PublishStorageDealsParams{
-		Deals: []actors.StorageDeal{storageDeal},
+		Deals: []actors.StorageDealProposal{deal.Proposal},
 	})
 	if err != nil {
 		return nil, xerrors.Errorf("serializing PublishStorageDeals params failed: ", err)
@@ -136,13 +129,11 @@ func (p *Provider) accept(ctx context.Context, deal MinerDeal) (func(*MinerDeal)
 	}
 
 	log.Infof("fetching data for a deal %d", resp.DealIDs[0])
-	mcid := smsg.Cid()
 	err = p.sendSignedResponse(&Response{
 		State: api.DealAccepted,
 
-		Proposal:       deal.ProposalCid,
-		PublishMessage: &mcid,
-		StorageDeal:    &storageDeal,
+		Proposal:              deal.ProposalCid,
+		StorageDealSubmission: smsg,
 	})
 	if err != nil {
 		return nil, err

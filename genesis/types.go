@@ -10,7 +10,7 @@ type PreSeal struct {
 	CommR    [32]byte
 	CommD    [32]byte
 	SectorID uint64
-	Deal     actors.StorageDeal
+	Deal     actors.StorageDealProposal
 }
 
 type GenesisMiner struct {

@@ -20,7 +20,7 @@ func (m *Miner) storeGarbage(ctx context.Context, sectorID uint64, existingPiece
 		return nil, nil
 	}
 
-	deals := make([]actors.StorageDeal, len(sizes))
+	deals := make([]actors.StorageDealProposal, len(sizes))
 	for i, size := range sizes {
 		release := m.sb.RateLimit()
 		commP, err := sectorbuilder.GeneratePieceCommitment(io.LimitReader(rand.New(rand.NewSource(42)), int64(size)), size)
@@ -47,14 +47,7 @@ func (m *Miner) storeGarbage(ctx context.Context, sectorID uint64, existingPiece
 			return nil, xerrors.Errorf("signing storage deal failed: ", err)
 		}
 
-		storageDeal := actors.StorageDeal{
-			Proposal: sdp,
-		}
-		if err := api.SignWith(ctx, m.api.WalletSign, m.worker, &storageDeal); err != nil {
-			return nil, xerrors.Errorf("signing storage deal failed: ", err)
-		}
-
-		deals[i] = storageDeal
+		deals[i] = sdp
 	}
 
 	params, aerr := actors.SerializeParams(&actors.PublishStorageDealsParams{

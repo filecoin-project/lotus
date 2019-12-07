@@ -197,7 +197,7 @@ func SetupStoragePowerActor(bs bstore.Blockstore) (*types.Actor, error) {
 	}, nil
 }
 
-func SetupStorageMarketActor(bs bstore.Blockstore, sroot cid.Cid, deals []actors.StorageDeal) (cid.Cid, error) {
+func SetupStorageMarketActor(bs bstore.Blockstore, sroot cid.Cid, deals []actors.StorageDealProposal) (cid.Cid, error) {
 	cst := hamt.CSTFromBstore(bs)
 	nd := hamt.NewNode(cst)
 	emptyHAMT, err := cst.Put(context.TODO(), nd)
@@ -210,8 +210,16 @@ func SetupStorageMarketActor(bs bstore.Blockstore, sroot cid.Cid, deals []actors
 	cdeals := make([]cbg.CBORMarshaler, len(deals))
 	for i, deal := range deals {
 		cdeals[i] = &actors.OnChainDeal{
-			Deal:            deal,
-			ActivationEpoch: 1,
+			PieceRef:             deal.PieceRef,
+			PieceSize:            deal.PieceSize,
+			PieceSerialization:   deal.PieceSerialization,
+			Client:               deal.Client,
+			Provider:             deal.Provider,
+			ProposalExpiration:   deal.ProposalExpiration,
+			Duration:             deal.Duration,
+			StoragePricePerEpoch: deal.StoragePricePerEpoch,
+			StorageCollateral:    deal.StorageCollateral,
+			ActivationEpoch:      1,
 		}
 	}
 
@@ -267,7 +275,7 @@ func mustEnc(i cbg.CBORMarshaler) []byte {
 	return enc
 }
 
-func SetupStorageMiners(ctx context.Context, cs *store.ChainStore, sroot cid.Cid, gmcfg *GenMinerCfg) (cid.Cid, []actors.StorageDeal, error) {
+func SetupStorageMiners(ctx context.Context, cs *store.ChainStore, sroot cid.Cid, gmcfg *GenMinerCfg) (cid.Cid, []actors.StorageDealProposal, error) {
 	vm, err := vm.NewVM(sroot, 0, nil, actors.NetworkAddress, cs.Blockstore())
 	if err != nil {
 		return cid.Undef, nil, xerrors.Errorf("failed to create NewVM: %w", err)
@@ -281,7 +289,7 @@ func SetupStorageMiners(ctx context.Context, cs *store.ChainStore, sroot cid.Cid
 		return cid.Undef, nil, xerrors.Errorf("miner address list, and preseal count doesn't match (%d != %d)", len(gmcfg.MinerAddrs), len(gmcfg.PreSeals))
 	}
 
-	var deals []actors.StorageDeal
+	var deals []actors.StorageDealProposal
 
 	for i, maddr := range gmcfg.MinerAddrs {
 		ps, psok := gmcfg.PreSeals[maddr.String()]
