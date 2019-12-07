@@ -97,7 +97,7 @@ func (bss *BlockSyncService) HandleStream(s inet.Stream) {
 
 	resp, err := bss.processRequest(ctx, &req)
 	if err != nil {
-		log.Error("failed to process block sync request: ", err)
+		log.Warn("failed to process block sync request: ", err)
 		return
 	}
 

@@ -78,7 +78,7 @@ func HandleIncomingMessages(ctx context.Context, mpool *messagepool.MessagePool,
 		}
 
 		if err := mpool.Add(m); err != nil {
-			log.Warnf("failed to add message from network to message pool (From: %s, To: %s, Nonce: %d, Value: %s): %+v", m.Message.From, m.Message.To, m.Message.Nonce, types.FIL(m.Message.Value), err)
+			log.Warnf("failed to add message from network to message pool (From: %s, To: %s, Nonce: %d, Value: %s): %s", m.Message.From, m.Message.To, m.Message.Nonce, types.FIL(m.Message.Value), err)
 			continue
 		}
 	}

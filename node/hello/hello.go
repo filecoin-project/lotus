@@ -2,7 +2,6 @@ package hello
 
 import (
 	"context"
-	"fmt"
 
 	"go.uber.org/fx"
 
@@ -119,8 +118,7 @@ func (hs *Service) SayHello(ctx context.Context, pid peer.ID) error {
 		HeaviestTipSetWeight: weight,
 		GenesisHash:          gen.Cid(),
 	}
-	fmt.Println("SENDING HELLO MESSAGE: ", hts.Cids(), hts.Height())
-	fmt.Println("hello message genesis: ", gen.Cid())
+	log.Info("Sending hello message: ", hts.Cids(), hts.Height(), gen.Cid())
 
 	if err := cborutil.WriteCborRPC(s, hmsg); err != nil {
 		return err
