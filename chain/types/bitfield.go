@@ -3,19 +3,24 @@ package types
 import (
 	"fmt"
 	"io"
-	"sort"
 
-	"github.com/filecoin-project/lotus/extern/rleplus"
+	rlepluslazy "github.com/filecoin-project/lotus/lib/rlepluslazy"
 	cbg "github.com/whyrusleeping/cbor-gen"
 	"golang.org/x/xerrors"
 )
 
 type BitField struct {
+	rle rlepluslazy.RLE
+
 	bits map[uint64]struct{}
 }
 
 func NewBitField() BitField {
-	return BitField{bits: make(map[uint64]struct{})}
+	rle, _ := rlepluslazy.FromBuf([]byte{})
+	return BitField{
+		rle:  rle,
+		bits: make(map[uint64]struct{}),
+	}
 }
 
 func BitFieldFromSet(setBits []uint64) BitField {
@@ -26,31 +31,59 @@ func BitFieldFromSet(setBits []uint64) BitField {
 	return res
 }
 
+func (bf BitField) sum() (rlepluslazy.RunIterator, error) {
+	if len(bf.bits) == 0 {
+		return bf.rle.RunIterator()
+	}
+
+	a, err := bf.rle.RunIterator()
+	if err != nil {
+		return nil, err
+	}
+	slc := make([]uint64, 0, len(bf.bits))
+	for b := range bf.bits {
+		slc = append(slc, b)
+	}
+
+	b, err := rlepluslazy.RunsFromSlice(slc)
+	if err != nil {
+		return nil, err
+	}
+
+	res, err := rlepluslazy.Sum(a, b)
+	if err != nil {
+		return nil, err
+	}
+	return res, nil
+}
+
 // Set ...s bit in the BitField
 func (bf BitField) Set(bit uint64) {
 	bf.bits[bit] = struct{}{}
 }
 
-// Clear ...s bit in the BitField
-func (bf BitField) Clear(bit uint64) {
-	delete(bf.bits, bit)
-}
-
-// Has checkes if bit is set in the BitField
-func (bf BitField) Has(bit uint64) bool {
-	_, ok := bf.bits[bit]
-	return ok
+func (bf BitField) Count() (uint64, error) {
+	s, err := bf.sum()
+	if err != nil {
+		return 0, err
+	}
+	return rlepluslazy.Count(s)
 }
 
 // All returns all set bits, in random order
-func (bf BitField) All() []uint64 {
-	res := make([]uint64, 0, len(bf.bits))
-	for i := range bf.bits {
-		res = append(res, i)
+func (bf BitField) All() ([]uint64, error) {
+
+	runs, err := bf.sum()
+	if err != nil {
+		return nil, err
 	}
 
-	sort.Slice(res, func(i, j int) bool { return res[i] < res[j] })
-	return res
+	res, err := rlepluslazy.SliceFromRuns(runs)
+	if err != nil {
+		return nil, err
+	}
+
+	return res, err
 }
 
 func (bf BitField) MarshalCBOR(w io.Writer) error {
@@ -59,7 +92,12 @@ func (bf BitField) MarshalCBOR(w io.Writer) error {
 		ints = append(ints, i)
 	}
 
-	rle, _, err := rleplus.Encode(ints) // Encode sorts internally
+	s, err := bf.sum()
+	if err != nil {
+		return err
+	}
+
+	rle, err := rlepluslazy.EncodeRuns(s, []byte{})
 	if err != nil {
 		return err
 	}
@@ -88,19 +126,17 @@ func (bf *BitField) UnmarshalCBOR(r io.Reader) error {
 		return fmt.Errorf("expected byte array")
 	}
 
-	rle := make([]byte, extra)
-	if _, err := io.ReadFull(br, rle); err != nil {
+	buf := make([]byte, extra)
+	if _, err := io.ReadFull(br, buf); err != nil {
 		return err
 	}
 
-	ints, err := rleplus.Decode(rle)
+	rle, err := rlepluslazy.FromBuf(buf)
 	if err != nil {
 		return xerrors.Errorf("could not decode rle+: %w", err)
 	}
+	bf.rle = rle
 	bf.bits = make(map[uint64]struct{})
-	for _, i := range ints {
-		bf.bits[i] = struct{}{}
-	}
 
 	return nil
 }

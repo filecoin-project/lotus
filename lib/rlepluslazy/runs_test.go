@@ -76,8 +76,8 @@ func TestSumRandom(t *testing.T) {
 	N := 100
 
 	for i := 0; i < N; i++ {
-		abits := randomBits(1000, 2000)
-		bbits := randomBits(1000, 2000)
+		abits := randomBits(1000, 1500)
+		bbits := randomBits(1000, 1500)
 		sumbits := sum(abits, bbits)
 
 		a, err := RunsFromSlice(abits)

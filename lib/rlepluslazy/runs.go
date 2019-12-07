@@ -1,5 +1,11 @@
 package rlepluslazy
 
+import (
+	"math"
+
+	"golang.org/x/xerrors"
+)
+
 func Sum(a, b RunIterator) (RunIterator, error) {
 	it := addIt{a: a, b: b}
 	it.prep()
@@ -93,4 +99,22 @@ func (it *addIt) HasNext() bool {
 func (it *addIt) NextRun() (Run, error) {
 	next := it.next
 	return next, it.prep()
+}
+
+func Count(ri RunIterator) (uint64, error) {
+	var count uint64
+
+	for ri.HasNext() {
+		r, err := ri.NextRun()
+		if err != nil {
+			return 0, err
+		}
+		if r.Val {
+			if math.MaxUint64-r.Len > count {
+				return 0, xerrors.New("RLE+ overflows")
+			}
+			count += r.Len
+		}
+	}
+	return count, nil
 }

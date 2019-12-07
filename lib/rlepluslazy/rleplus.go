@@ -16,25 +16,18 @@ var (
 
 type RLE struct {
 	buf []byte
-
-	changes []change
 }
 
-type change struct {
-	set   bool
-	reset bool
-	index uint64
-}
-
-func (c change) valid() bool {
-	return c.reset || c.set
-}
-
-func FromBuf(buf []byte) (*RLE, error) {
-	rle := &RLE{buf: buf}
+func FromBuf(buf []byte) (RLE, error) {
+	rle := RLE{buf: buf}
 
 	if len(buf) > 0 && buf[0]&3 != Version {
-		return nil, xerrors.Errorf("could not create RLE+ for a buffer: %w", ErrWrongVersion)
+		return RLE{}, xerrors.Errorf("could not create RLE+ for a buffer: %w", ErrWrongVersion)
+	}
+
+	_, err := rle.Count()
+	if err != nil {
+		return RLE{}, err
 	}
 
 	return rle, nil
@@ -45,7 +38,26 @@ func (rle *RLE) RunIterator() (RunIterator, error) {
 	return source, err
 }
 
+func (rle *RLE) Count() (uint64, error) {
+	it, err := rle.RunIterator()
+	if err != nil {
+		return 0, err
+	}
+	return Count(it)
+}
+
 /*
+
+type change struct {
+	set   bool
+	reset bool
+	index uint64
+}
+func (c change) valid() bool {
+	return c.reset || c.set
+}
+
+func (rle *RLE) RunIterator() (RunIterator, error) {
 	if err != nil {
 		return nil, err
 	}
