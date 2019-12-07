@@ -2,6 +2,7 @@ package storage
 
 import (
 	"context"
+	"sync"
 
 	"golang.org/x/xerrors"
 
@@ -139,20 +140,24 @@ func (m *Miner) handlePreCommitted(ctx context.Context, sector SectorInfo) *sect
 	randHeight := mw.TipSet.Height() + build.InteractivePoRepDelay - 1 // -1 because of how the messages are applied
 	log.Infof("precommit for sector %d made it on chain, will start proof computation at height %d", sector.SectorID, randHeight)
 
+	var once sync.Once
+
 	err = m.events.ChainAt(func(ctx context.Context, ts *types.TipSet, curH uint64) error {
-		rand, err := m.api.ChainGetRandomness(ctx, ts.Key(), int64(randHeight))
-		if err != nil {
-			err = xerrors.Errorf("failed to get randomness for computing seal proof: %w", err)
+		once.Do(func() {
+			rand, err := m.api.ChainGetRandomness(ctx, ts.Key(), int64(randHeight))
+			if err != nil {
+				err = xerrors.Errorf("failed to get randomness for computing seal proof: %w", err)
 
-			m.sectorUpdated <- *sector.upd().fatal(err)
-			return err
-		}
-
-		m.sectorUpdated <- *sector.upd().to(api.Committing).state(func(info *SectorInfo) {
-			info.Seed = SealSeed{
-				BlockHeight: randHeight,
-				TicketBytes: rand,
+				m.sectorUpdated <- *sector.upd().fatal(err)
+				log.Error(err)
 			}
+
+			m.sectorUpdated <- *sector.upd().to(api.Committing).state(func(info *SectorInfo) {
+				info.Seed = SealSeed{
+					BlockHeight: randHeight,
+					TicketBytes: rand,
+				}
+			})
 		})
 
 		return nil
@@ -160,7 +165,7 @@ func (m *Miner) handlePreCommitted(ctx context.Context, sector SectorInfo) *sect
 		log.Warn("revert in interactive commit sector step")
 		// TODO: need to cancel running process and restart...
 		return nil
-	}, 3, mw.TipSet.Height()+build.InteractivePoRepDelay)
+	}, build.InteractivePoRepConfidence, mw.TipSet.Height()+build.InteractivePoRepDelay)
 	if err != nil {
 		log.Warn("waitForPreCommitMessage ChainAt errored: ", err)
 	}

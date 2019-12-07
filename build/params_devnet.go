@@ -28,3 +28,6 @@ const SlashablePowerDelay = 200
 
 // Epochs
 const InteractivePoRepDelay = 8
+
+// Epochs
+const InteractivePoRepConfidence = 6
