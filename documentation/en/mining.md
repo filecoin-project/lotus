@@ -53,7 +53,7 @@ lotus-storage-miner info
 **Seal** random data to start producing **PoSts**:
 
 ```sh
-lotus-storage-miner store-garbage
+lotus-storage-miner pledge-sector
 ```
 
 Get **miner power** and **sector usage**:

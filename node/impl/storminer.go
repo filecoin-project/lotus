@@ -143,8 +143,8 @@ func (sm *StorageMinerAPI) ActorSectorSize(ctx context.Context, addr address.Add
 	return sm.Full.StateMinerSectorSize(ctx, addr, nil)
 }
 
-func (sm *StorageMinerAPI) StoreGarbageData(ctx context.Context) error {
-	return sm.Miner.StoreGarbageData()
+func (sm *StorageMinerAPI) PledgeSector(ctx context.Context) error {
+	return sm.Miner.PledgeSector()
 }
 
 func (sm *StorageMinerAPI) SectorsStatus(ctx context.Context, sid uint64) (api.SectorInfo, error) {

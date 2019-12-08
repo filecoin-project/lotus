@@ -134,7 +134,7 @@ type StorageMinerStruct struct {
 		ActorAddress    func(context.Context) (address.Address, error)         `perm:"read"`
 		ActorSectorSize func(context.Context, address.Address) (uint64, error) `perm:"read"`
 
-		StoreGarbageData func(context.Context) error `perm:"write"`
+		PledgeSector func(context.Context) error `perm:"write"`
 
 		SectorsStatus func(context.Context, uint64) (SectorInfo, error)     `perm:"read"`
 		SectorsList   func(context.Context) ([]uint64, error)               `perm:"read"`
@@ -496,8 +496,8 @@ func (c *StorageMinerStruct) ActorSectorSize(ctx context.Context, addr address.A
 	return c.Internal.ActorSectorSize(ctx, addr)
 }
 
-func (c *StorageMinerStruct) StoreGarbageData(ctx context.Context) error {
-	return c.Internal.StoreGarbageData(ctx)
+func (c *StorageMinerStruct) PledgeSector(ctx context.Context) error {
+	return c.Internal.PledgeSector(ctx)
 }
 
 // Get the status of a given sector by ID
