@@ -244,7 +244,9 @@ var aggregateSectorDirsCmd = &cli.Command{
 				}
 			}
 
-			mds, err := badger.NewDatastore(filepath.Join(dir, "badger"), nil)
+			opts := badger.DefaultOptions
+			opts.ReadOnly = true
+			mds, err := badger.NewDatastore(filepath.Join(dir, "badger"), &opts)
 			if err != nil {
 				return err
 			}
