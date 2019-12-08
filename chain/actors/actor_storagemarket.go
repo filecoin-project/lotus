@@ -3,6 +3,7 @@ package actors
 import (
 	"bytes"
 	"context"
+	"sort"
 
 	"golang.org/x/xerrors"
 
@@ -74,9 +75,8 @@ const (
 )
 
 type StorageDealProposal struct {
-	PieceRef           []byte // cid bytes // TODO: spec says to use cid.Cid, probably not a good idea
-	PieceSize          uint64
-	PieceSerialization SerializationMode // Needs to be here as it tells how data in the sector maps to PieceRef cid
+	PieceRef  []byte // cid bytes // TODO: spec says to use cid.Cid, probably not a good idea
+	PieceSize uint64
 
 	Client   address.Address
 	Provider address.Address
@@ -133,9 +133,8 @@ func (sdp *StorageDealProposal) Verify() error {
 }
 
 type OnChainDeal struct {
-	PieceRef           []byte // cid bytes // TODO: spec says to use cid.Cid, probably not a good idea
-	PieceSize          uint64
-	PieceSerialization SerializationMode // Needs to be here as it tells how data in the sector maps to PieceRef cid
+	PieceRef  []byte // cid bytes // TODO: spec says to use cid.Cid, probably not a good idea
+	PieceSize uint64
 
 	Client   address.Address
 	Provider address.Address
@@ -230,9 +229,15 @@ func (sma StorageMarketActor) AddBalance(act *types.Actor, vmctx types.VMContext
 }
 
 func setMarketBalances(vmctx types.VMContext, nd *hamt.Node, set map[address.Address]StorageParticipantBalance) (cid.Cid, ActorError) {
-	// TODO: iterating over a map might happen in the wrong order, this could have gas implications
-	for addr, b := range set {
-		balance := b // to stop linter complaining
+	keys := make([]address.Address, 0, len(set))
+	for k := range set {
+		keys = append(keys, k)
+	}
+	sort.Slice(keys, func(i, j int) bool {
+		return bytes.Compare(keys[i].Bytes(), keys[j].Bytes()) < 0
+	})
+	for _, addr := range keys {
+		balance := set[addr]
 		if err := nd.Set(vmctx.Context(), string(addr.Bytes()), &balance); err != nil {
 			return cid.Undef, aerrors.HandleExternalError(err, "setting new balance")
 		}
@@ -329,9 +334,8 @@ func (sma StorageMarketActor) PublishStorageDeals(act *types.Actor, vmctx types.
 		}
 
 		err := deals.Set(self.NextDealID, &OnChainDeal{
-			PieceRef:           deal.PieceRef,
-			PieceSize:          deal.PieceSize,
-			PieceSerialization: deal.PieceSerialization, // TODO: this isnt needed anymore, right?
+			PieceRef:  deal.PieceRef,
+			PieceSize: deal.PieceSize,
 
 			Client:   deal.Client,
 			Provider: deal.Provider,

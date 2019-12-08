@@ -212,7 +212,6 @@ func SetupStorageMarketActor(bs bstore.Blockstore, sroot cid.Cid, deals []actors
 		cdeals[i] = &actors.OnChainDeal{
 			PieceRef:             deal.PieceRef,
 			PieceSize:            deal.PieceSize,
-			PieceSerialization:   deal.PieceSerialization,
 			Client:               deal.Client,
 			Provider:             deal.Provider,
 			ProposalExpiration:   deal.ProposalExpiration,

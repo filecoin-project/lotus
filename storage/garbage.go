@@ -33,7 +33,6 @@ func (m *Miner) storeGarbage(ctx context.Context, sectorID uint64, existingPiece
 		sdp := actors.StorageDealProposal{
 			PieceRef:             commP[:],
 			PieceSize:            size,
-			PieceSerialization:   actors.SerializationUnixFSv0,
 			Client:               m.worker,
 			Provider:             m.maddr,
 			ProposalExpiration:   math.MaxUint64,

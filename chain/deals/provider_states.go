@@ -42,13 +42,6 @@ func (p *Provider) handle(ctx context.Context, deal MinerDeal, cb providerHandle
 
 // ACCEPTED
 func (p *Provider) accept(ctx context.Context, deal MinerDeal) (func(*MinerDeal), error) {
-	switch deal.Proposal.PieceSerialization {
-	//case SerializationRaw:
-	//case SerializationIPLD:
-	case actors.SerializationUnixFSv0:
-	default:
-		return nil, xerrors.Errorf("deal proposal with unsupported serialization: %s", deal.Proposal.PieceSerialization)
-	}
 
 	head, err := p.full.ChainHead(ctx)
 	if err != nil {

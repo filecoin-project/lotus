@@ -142,7 +142,6 @@ func createDeals(m *genesis.GenesisMiner, k *wallet.Key, maddr address.Address, 
 		proposal := &actors.StorageDealProposal{
 			PieceRef:             pref, // just one deal so this == CommP
 			PieceSize:            sectorbuilder.UserBytesForSectorSize(ssize),
-			PieceSerialization:   actors.SerializationUnixFSv0,
 			Client:               k.Address,
 			Provider:             maddr,
 			ProposalExpiration:   9000, // TODO: allow setting
