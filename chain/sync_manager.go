@@ -2,7 +2,6 @@ package chain
 
 import (
 	"context"
-	"fmt"
 	"sort"
 	"sync"
 
@@ -96,13 +95,11 @@ func (sm *SyncManager) SetPeerHead(ctx context.Context, p peer.ID, ts *types.Tip
 			}
 			sm.setBootstrapState(BSStateSelected)
 
-			fmt.Println("schedule bootstrap sync")
 			sm.incomingTipSets <- target
 		}
 		log.Infof("sync bootstrap has %d peers", spc)
 		return
 	}
-	fmt.Println("sending off incoming tipset")
 
 	sm.incomingTipSets <- ts
 }
@@ -286,10 +283,8 @@ func (sm *SyncManager) syncScheduler() {
 }
 
 func (sm *SyncManager) scheduleIncoming(ts *types.TipSet) {
-	fmt.Println("INCOMING: ", ts.Height())
 	if sm.getBootstrapState() == BSStateSelected {
 		sm.setBootstrapState(BSStateScheduled)
-		fmt.Println("start bootstrap sync")
 		sm.syncTargets <- ts
 		return
 	}
@@ -318,7 +313,6 @@ func (sm *SyncManager) scheduleIncoming(ts *types.TipSet) {
 	}
 
 	if sm.getBootstrapState() == BSStateScheduled {
-		fmt.Println("received new head while bootstrapping...")
 		sm.syncQueue.Insert(ts)
 		return
 	}
@@ -336,9 +330,7 @@ func (sm *SyncManager) scheduleIncoming(ts *types.TipSet) {
 }
 
 func (sm *SyncManager) scheduleProcessResult(res *syncResult) {
-	fmt.Println("result!")
 	if res.success && sm.getBootstrapState() != BSStateComplete {
-		fmt.Println("finally out of bootstrapping")
 		sm.setBootstrapState(BSStateComplete)
 	}
 	delete(sm.activeSyncs, res.ts.Key())
