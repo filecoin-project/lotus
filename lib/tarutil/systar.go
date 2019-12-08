@@ -38,6 +38,10 @@ func ExtractTar(body io.Reader, dir string) error {
 		if _, err := io.Copy(f, tr); err != nil {
 			return err
 		}
+
+		if err := f.Close(); err != nil {
+			return err
+		}
 	}
 }
 
