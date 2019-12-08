@@ -1,7 +1,10 @@
 package main
 
 import (
+	"fmt"
 	"os"
+
+	"encoding/json"
 
 	logging "github.com/ipfs/go-log"
 	"github.com/mitchellh/go-homedir"
@@ -10,6 +13,7 @@ import (
 	"github.com/filecoin-project/lotus/build"
 	"github.com/filecoin-project/lotus/chain/address"
 	"github.com/filecoin-project/lotus/cmd/lotus-seed/seed"
+	"github.com/filecoin-project/lotus/genesis"
 )
 
 var log = logging.Logger("lotus-seed")
@@ -21,6 +25,7 @@ func main() {
 
 	local := []*cli.Command{
 		preSealCmd,
+		aggregateManifestsCmd,
 	}
 
 	app := &cli.App{
@@ -91,4 +96,58 @@ var preSealCmd = &cli.Command{
 
 		return seed.WriteGenesisMiner(maddr, sbroot, gm)
 	},
+}
+
+var aggregateManifestsCmd = &cli.Command{
+	Name:  "aggregate-manifests",
+	Usage: "aggregate a set of preseal manifests into a single file",
+	Action: func(cctx *cli.Context) error {
+		var inputs []map[string]genesis.GenesisMiner
+		for _, infi := range cctx.Args().Slice() {
+			fi, err := os.Open(infi)
+			if err != nil {
+				return err
+			}
+			defer fi.Close()
+			var val map[string]genesis.GenesisMiner
+			if err := json.NewDecoder(fi).Decode(&val); err != nil {
+				return err
+			}
+
+			inputs = append(inputs, val)
+		}
+
+		output := make(map[string]genesis.GenesisMiner)
+		for _, in := range inputs {
+			for maddr, val := range in {
+				if gm, ok := output[maddr]; ok {
+					output[maddr] = mergeGenMiners(gm, val)
+				} else {
+					output[maddr] = val
+				}
+			}
+		}
+
+		blob, err := json.MarshalIndent(output, "", "  ")
+		if err != nil {
+			return err
+		}
+
+		fmt.Println(string(blob))
+		return nil
+	},
+}
+
+func mergeGenMiners(a, b genesis.GenesisMiner) genesis.GenesisMiner {
+	if a.SectorSize != b.SectorSize {
+		panic("sector sizes mismatch")
+	}
+
+	return genesis.GenesisMiner{
+		Owner:      a.Owner,
+		Worker:     a.Worker,
+		SectorSize: a.SectorSize,
+		Key:        a.Key,
+		Sectors:    append(a.Sectors, b.Sectors...),
+	}
 }
