@@ -13,7 +13,7 @@ import (
 )
 
 var storeGarbageCmd = &cli.Command{
-	Name:  "store-garbage",
+	Name:  "pledge-sector",
 	Usage: "store random data in a sector",
 	Action: func(cctx *cli.Context) error {
 		nodeApi, closer, err := lcli.GetStorageMinerAPI(cctx)
