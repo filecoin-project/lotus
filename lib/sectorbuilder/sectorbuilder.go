@@ -4,7 +4,6 @@ import (
 	"fmt"
 	"io"
 	"os"
-	"path/filepath"
 	"strconv"
 	"sync"
 	"sync/atomic"
@@ -12,6 +11,7 @@ import (
 	sectorbuilder "github.com/filecoin-project/filecoin-ffi"
 	"github.com/ipfs/go-datastore"
 	logging "github.com/ipfs/go-log"
+	dcopy "github.com/otiai10/copy"
 	"golang.org/x/xerrors"
 
 	"github.com/filecoin-project/lotus/build"
@@ -688,15 +688,15 @@ func fallbackPostChallengeCount(sectors uint64) uint64 {
 }
 
 func (sb *SectorBuilder) ImportFrom(osb *SectorBuilder) error {
-	if err := copyAllFiles(osb.cacheDir, sb.cacheDir); err != nil {
+	if err := dcopy.Copy(osb.cacheDir, sb.cacheDir); err != nil {
 		return err
 	}
 
-	if err := copyAllFiles(osb.sealedDir, sb.sealedDir); err != nil {
+	if err := dcopy.Copy(osb.sealedDir, sb.sealedDir); err != nil {
 		return err
 	}
 
-	if err := copyAllFiles(osb.stagedDir, sb.stagedDir); err != nil {
+	if err := dcopy.Copy(osb.stagedDir, sb.stagedDir); err != nil {
 		return err
 	}
 
@@ -720,68 +720,5 @@ func (sb *SectorBuilder) SetLastSectorID(id uint64) error {
 	}
 
 	sb.lastID = id
-	return nil
-}
-
-func copyAllFiles(from, to string) error {
-	dir, err := os.Open(from)
-	if err != nil {
-		return err
-	}
-
-	names, err := dir.Readdirnames(0)
-	if err != nil {
-		return xerrors.Errorf("failed to list items in dir: %w", err)
-	}
-	for _, n := range names {
-		if err := copyFile(filepath.Join(from, n), filepath.Join(to, n)); err != nil {
-			return xerrors.Errorf("copying file failed: %w", err)
-		}
-	}
-
-	return nil
-}
-
-func copyFile(from, to string) error {
-	st, err := os.Stat(to)
-	if err != nil {
-		if !os.IsNotExist(err) {
-			return xerrors.Errorf("stat of target file returned unexpected error: %w", err)
-		}
-	}
-
-	if st != nil {
-		log.Warn("destination file %q already exists! skipping copy...", to)
-		return nil
-	}
-
-	dst, err := os.Create(to)
-	if err != nil {
-		return xerrors.Errorf("failed to create target file: %w", err)
-	}
-	defer dst.Close()
-
-	fromst, err := os.Stat(from)
-	if err != nil {
-		return err
-	}
-
-	if fromst.IsDir() {
-		if err := os.Mkdir(to, 0755); err != nil {
-			return xerrors.Errorf("making target directory failed: %w", err)
-		}
-		return copyAllFiles(from, to)
-	}
-
-	src, err := os.Open(from)
-	if err != nil {
-		return xerrors.Errorf("failed to open source file: %w", err)
-	}
-	defer src.Close()
-
-	if _, err := io.Copy(dst, src); err != nil {
-		return xerrors.Errorf("copy failed: %w", err)
-	}
-
 	return nil
 }
