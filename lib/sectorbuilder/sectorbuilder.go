@@ -750,10 +750,6 @@ func copyFile(from, to string) error {
 		}
 	}
 
-	if st.IsDir() {
-		return xerrors.Errorf("copying directories not handled")
-	}
-
 	if st != nil {
 		log.Warn("destination file %q already exists! skipping copy...", to)
 		return nil
