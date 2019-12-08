@@ -343,7 +343,7 @@ func (sma StorageMinerActor) ProveCommitSector(act *types.Actor, vmctx types.VMC
 	if ok, err := ValidatePoRep(ctx, maddr, mi.SectorSize, commD, us.Info.CommR, ticket, params.Proof, seed, params.SectorID); err != nil {
 		return nil, err
 	} else if !ok {
-		return nil, aerrors.Newf(2, "porep proof was invalid (t:%x; s:%x(%d); p:%x)", ticket, seed, us.ReceivedEpoch+build.InteractivePoRepDelay, params.Proof)
+		return nil, aerrors.Newf(2, "porep proof was invalid (t:%x; s:%x(%d); p:%s)", ticket, seed, us.ReceivedEpoch+build.InteractivePoRepDelay, truncateHexPrint(params.Proof))
 	}
 
 	// Note: There must exist a unique index in the miner's sector set for each
@@ -392,6 +392,14 @@ func (sma StorageMinerActor) ProveCommitSector(act *types.Actor, vmctx types.VMC
 
 	_, err = vmctx.Send(StorageMarketAddress, SMAMethods.ActivateStorageDeals, types.NewInt(0), activateParams)
 	return nil, err
+}
+
+func truncateHexPrint(b []byte) string {
+	s := fmt.Sprintf("%x", b)
+	if len(s) > 60 {
+		return s[:20] + "..." + s[len(s)-20:]
+	}
+	return s
 }
 
 type SubmitFallbackPoStParams struct {
