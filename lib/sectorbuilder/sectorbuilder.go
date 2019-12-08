@@ -761,6 +761,18 @@ func copyFile(from, to string) error {
 	}
 	defer dst.Close()
 
+	fromst, err := os.Stat(from)
+	if err != nil {
+		return err
+	}
+
+	if fromst.IsDir() {
+		if err := os.Mkdir(to, 0755); err != nil {
+			return xerrors.Errorf("making target directory failed: %w", err)
+		}
+		return copyAllFiles(from, to)
+	}
+
 	src, err := os.Open(from)
 	if err != nil {
 		return xerrors.Errorf("failed to open source file: %w", err)
