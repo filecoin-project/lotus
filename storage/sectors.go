@@ -13,6 +13,8 @@ import (
 	"github.com/filecoin-project/lotus/lib/sectorbuilder"
 )
 
+const NonceIncrement = math.MaxUint64
+
 type sectorUpdate struct {
 	newState api.SectorState
 	id       uint64
@@ -164,7 +166,7 @@ func (m *Miner) onSectorUpdated(ctx context.Context, update sectorUpdate) {
 			return xerrors.Errorf("update nonce too low, ignoring (%d < %d)", update.nonce, s.Nonce)
 		}
 
-		if update.nonce != math.MaxUint64 {
+		if update.nonce != NonceIncrement {
 			s.Nonce = update.nonce
 		} else {
 			s.Nonce++ // forced update
@@ -193,35 +195,35 @@ func (m *Miner) onSectorUpdated(ctx context.Context, update sectorUpdate) {
 
 	/*
 
-			*   Empty
-			|   |
-			|   v
-			*<- Packing <- incoming
-			|   |
-			|   v
-			*<- Unsealed <--> SealFailed
-			|   |
-			|   v
-			*   PreCommitting <--> PreCommitFailed
-			|   |                  ^
-			|   v                  |
-			*<- PreCommitted ------/
-			|   |||
-			|   vvv      v--> SealCommitFailed
-			*<- Committing
-			|   |        ^--> CommitFailed
-		    |   v             ^
-		    *<- CommitWait ---/
-		    |   |
-			|   v
-			*<- Proving
-			|
-			v
-			FailedUnrecoverable
+		*   Empty
+		|   |
+		|   v
+		*<- Packing <- incoming
+		|   |
+		|   v
+		*<- Unsealed <--> SealFailed
+		|   |
+		|   v
+		*   PreCommitting <--> PreCommitFailed
+		|   |                  ^
+		|   v                  |
+		*<- PreCommitted ------/
+		|   |||
+		|   vvv      v--> SealCommitFailed
+		*<- Committing
+		|   |        ^--> CommitFailed
+		|   v             ^
+		*<- CommitWait ---/
+		|   |
+		|   v
+		*<- Proving
+		|
+		v
+		FailedUnrecoverable
 
-			UndefinedSectorState <- ¯\_(ツ)_/¯
-			    |                     ^
-			    *---------------------/
+		UndefinedSectorState <- ¯\_(ツ)_/¯
+		    |                     ^
+		    *---------------------/
 
 	*/
 
