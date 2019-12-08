@@ -224,13 +224,18 @@ var aggregateSectorDirsCmd = &cli.Command{
 				return err
 			}
 
-			var genm genesis.GenesisMiner
-			if err := json.NewDecoder(fi).Decode(&genm); err != nil {
+			var genmm map[string]genesis.GenesisMiner
+			if err := json.NewDecoder(fi).Decode(&genmm); err != nil {
 				return err
 			}
 
+			genm, ok := genmm[maddr.String()]
+			if !ok {
+				return xerrors.Errorf("input data did not have our miner in it (%s)", maddr)
+			}
+
 			if genm.SectorSize != ssize {
-				return xerrors.Errorf("sector size mismatch in %q", dir)
+				return xerrors.Errorf("sector size mismatch in %q (%d != %d)", dir)
 			}
 
 			for _, s := range genm.Sectors {
