@@ -407,10 +407,10 @@ func (bpt *bsPeerTracker) prefSortedPeers() []peer.ID {
 
 		if pj.successes > 0 && pi.successes > 0 {
 			failRateI := float64(pi.failures) / float64(pi.failures+pi.successes)
-			costI := float64(pi.averageTime) * failRateI
+			costI := float64(pi.averageTime) * (failRateI + 1)
 
 			failRateJ := float64(pj.failures) / float64(pj.failures+pj.successes)
-			costJ := float64(pj.averageTime) * failRateJ
+			costJ := float64(pj.averageTime) * (failRateJ + 1)
 
 			return costI < costJ
 		}
