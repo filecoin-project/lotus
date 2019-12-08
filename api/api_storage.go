@@ -58,7 +58,7 @@ type StorageMiner interface {
 	ActorSectorSize(context.Context, address.Address) (uint64, error)
 
 	// Temp api for testing
-	StoreGarbageData(context.Context) error
+	PledgeSector(context.Context) error
 
 	// Get the status of a given sector by ID
 	SectorsStatus(context.Context, uint64) (SectorInfo, error)

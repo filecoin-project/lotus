@@ -52,7 +52,7 @@ func (m *Miner) handlePacking(ctx context.Context, sector SectorInfo) *sectorUpd
 		log.Warnf("Creating %d filler pieces for sector %d", len(fillerSizes), sector.SectorID)
 	}
 
-	pieces, err := m.storeGarbage(ctx, sector.SectorID, sector.existingPieces(), fillerSizes...)
+	pieces, err := m.pledgeSector(ctx, sector.SectorID, sector.existingPieces(), fillerSizes...)
 	if err != nil {
 		return sector.upd().fatal(xerrors.Errorf("filling up the sector (%v): %w", fillerSizes, err))
 	}
