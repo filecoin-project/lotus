@@ -113,7 +113,8 @@ create table if not exists blocks_synced
 		constraint blocks_synced_pk
 			primary key
 		constraint blocks_synced_blocks_cid_fk
-			references blocks
+			references blocks,
+	add_ts int not null
 );
 
 create unique index if not exists blocks_synced_cid_uindex
@@ -316,13 +317,15 @@ func (st *storage) storeHeaders(bhs map[cid.Cid]*types.BlockHeader, sync bool) e
 	}
 
 	if sync {
-		stmt, err := tx.Prepare(`insert into blocks_synced (cid) values (?) on conflict do nothing`)
+		stmt, err := tx.Prepare(`insert into blocks_synced (cid, add_ts) values (?, ?) on conflict do nothing`)
 		if err != nil {
 			return err
 		}
 		defer stmt.Close()
+		now := time.Now().Unix()
+
 		for _, bh := range bhs {
-			if _, err := stmt.Exec(bh.Cid().String()); err != nil {
+			if _, err := stmt.Exec(bh.Cid().String(), now); err != nil {
 				return err
 			}
 		}
