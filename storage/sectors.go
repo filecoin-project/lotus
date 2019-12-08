@@ -4,6 +4,7 @@ import (
 	"context"
 	"fmt"
 	"io"
+	"math"
 
 	xerrors "golang.org/x/xerrors"
 
@@ -16,49 +17,41 @@ type sectorUpdate struct {
 	newState api.SectorState
 	id       uint64
 	err      error
+	nonce    uint64
 	mut      func(*SectorInfo)
 }
 
 func (u *sectorUpdate) fatal(err error) *sectorUpdate {
-	return &sectorUpdate{
-		newState: api.FailedUnrecoverable,
-		id:       u.id,
-		err:      err,
-		mut:      u.mut,
-	}
+	u.newState = api.FailedUnrecoverable
+	u.err = err
+	return u
 }
 
 func (u *sectorUpdate) error(err error) *sectorUpdate {
-	return &sectorUpdate{
-		newState: u.newState,
-		id:       u.id,
-		err:      err,
-		mut:      u.mut,
-	}
+	u.err = err
+	return u
 }
 
 func (u *sectorUpdate) state(m func(*SectorInfo)) *sectorUpdate {
-	return &sectorUpdate{
-		newState: u.newState,
-		id:       u.id,
-		err:      u.err,
-		mut:      m,
-	}
+	u.mut = m
+	return u
 }
 
 func (u *sectorUpdate) to(newState api.SectorState) *sectorUpdate {
-	return &sectorUpdate{
-		newState: newState,
-		id:       u.id,
-		err:      u.err,
-		mut:      u.mut,
-	}
+	u.nonce = newState
+	return u
 }
 
-func (m *Miner) UpdateSectorState(ctx context.Context, sector uint64, state api.SectorState) error {
+func (u *sectorUpdate) setNonce(nc uint64) *sectorUpdate {
+	u.nonce = nc
+	return u
+}
+
+func (m *Miner) UpdateSectorState(ctx context.Context, sector uint64, snonce uint64, state api.SectorState) error {
 	select {
 	case m.sectorUpdated <- sectorUpdate{
 		newState: state,
+		nonce:    snonce,
 		id:       sector,
 	}:
 		return nil
@@ -78,6 +71,7 @@ func (m *Miner) sectorStateLoop(ctx context.Context) error {
 			select {
 			case m.sectorUpdated <- sectorUpdate{
 				newState: si.State,
+				nonce:    si.Nonce,
 				id:       si.SectorID,
 				err:      nil,
 				mut:      nil,
@@ -166,6 +160,15 @@ func (m *Miner) onSectorUpdated(ctx context.Context, update sectorUpdate) {
 	log.Infof("Sector %d updated state to %s", update.id, api.SectorStates[update.newState])
 	var sector SectorInfo
 	err := m.sectors.Mutate(update.id, func(s *SectorInfo) error {
+		if update.nonce < s.Nonce {
+			return xerrors.Errorf("update nonce too low, ignoring (%d < %d)", update.nonce, s.Nonce)
+		}
+
+		if update.nonce != math.MaxUint64 {
+			s.Nonce = update.nonce
+		} else {
+			s.Nonce++ // forced update
+		}
 		s.State = update.newState
 		if update.err != nil {
 			if s.LastErr != "" {
@@ -184,38 +187,41 @@ func (m *Miner) onSectorUpdated(ctx context.Context, update sectorUpdate) {
 		log.Errorf("sector %d failed: %+v", update.id, update.err)
 	}
 	if err != nil {
-		log.Errorf("sector %d error: %+v", update.id, err)
+		log.Errorf("sector %d update error: %+v", update.id, err)
 		return
 	}
 
 	/*
 
-		*   Empty
-		|   |
-		|   v
-		*<- Packing <- incoming
-		|   |
-		|   v
-		*<- Unsealed <--> SealFailed
-		|   |
-		|   v
-		*   PreCommitting <--> PreCommitFailed
-		|   |                  ^
-		|   v                  |
-		*<- PreCommitted ------/
-		|   |
-		|   v        v--> SealCommitFailed
-		*<- Committing
-		|   |        ^--> CommitFailed
-		|   v
-		*<- Proving
-		|
-		v
-		FailedUnrecoverable
+			*   Empty
+			|   |
+			|   v
+			*<- Packing <- incoming
+			|   |
+			|   v
+			*<- Unsealed <--> SealFailed
+			|   |
+			|   v
+			*   PreCommitting <--> PreCommitFailed
+			|   |                  ^
+			|   v                  |
+			*<- PreCommitted ------/
+			|   |||
+			|   vvv      v--> SealCommitFailed
+			*<- Committing
+			|   |        ^--> CommitFailed
+		    |   v             ^
+		    *<- CommitWait ---/
+		    |   |
+			|   v
+			*<- Proving
+			|
+			v
+			FailedUnrecoverable
 
-		UndefinedSectorState <- ¯\_(ツ)_/¯
-		    |                     ^
-		    *---------------------/
+			UndefinedSectorState <- ¯\_(ツ)_/¯
+			    |                     ^
+			    *---------------------/
 
 	*/
 

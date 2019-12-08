@@ -4,6 +4,7 @@ import (
 	"context"
 	"encoding/json"
 	"io"
+	"math"
 	"mime"
 	"net/http"
 	"os"
@@ -203,7 +204,7 @@ func (sm *StorageMinerAPI) SectorsRefs(context.Context) (map[string][]api.Sealed
 }
 
 func (sm *StorageMinerAPI) SectorsUpdate(ctx context.Context, id uint64, state api.SectorState) error {
-	return sm.Miner.UpdateSectorState(ctx, id, state)
+	return sm.Miner.UpdateSectorState(ctx, id, math.MaxUint64, state)
 }
 
 func (sm *StorageMinerAPI) WorkerQueue(ctx context.Context, cfg sectorbuilder.WorkerCfg) (<-chan sectorbuilder.WorkerTask, error) {
