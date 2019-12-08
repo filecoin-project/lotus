@@ -688,15 +688,15 @@ func fallbackPostChallengeCount(sectors uint64) uint64 {
 }
 
 func (sb *SectorBuilder) ImportFrom(osb *SectorBuilder) error {
-	if err := moveAllFiles(osb.cacheDir, sb.cacheDir); err != nil {
+	if err := copyAllFiles(osb.cacheDir, sb.cacheDir); err != nil {
 		return err
 	}
 
-	if err := moveAllFiles(osb.sealedDir, sb.sealedDir); err != nil {
+	if err := copyAllFiles(osb.sealedDir, sb.sealedDir); err != nil {
 		return err
 	}
 
-	if err := moveAllFiles(osb.stagedDir, sb.stagedDir); err != nil {
+	if err := copyAllFiles(osb.stagedDir, sb.stagedDir); err != nil {
 		return err
 	}
 
@@ -714,7 +714,16 @@ func (sb *SectorBuilder) ImportFrom(osb *SectorBuilder) error {
 	return nil
 }
 
-func moveAllFiles(from, to string) error {
+func (sb *SectorBuilder) SetLastSectorID(id uint64) error {
+	if err := sb.ds.Put(lastSectorIdKey, []byte(fmt.Sprint(id))); err != nil {
+		return err
+	}
+
+	sb.lastID = id
+	return nil
+}
+
+func copyAllFiles(from, to string) error {
 	dir, err := os.Open(from)
 	if err != nil {
 		return err
@@ -728,6 +737,42 @@ func moveAllFiles(from, to string) error {
 		if err := os.Rename(filepath.Join(from, n), filepath.Join(to, n)); err != nil {
 			return xerrors.Errorf("moving file failed: %w", err)
 		}
+	}
+
+	return nil
+}
+
+func copyFile(from, to string) error {
+	st, err := os.Stat(to)
+	if err != nil {
+		if !os.IsNotExist(err) {
+			return xerrors.Errorf("stat of target file returned unexpected error: %w", err)
+		}
+	}
+
+	if st.IsDir() {
+		return xerrors.Errorf("copying directories not handled")
+	}
+
+	if st != nil {
+		log.Warn("destination file %q already exists! skipping copy...", to)
+		return nil
+	}
+
+	dst, err := os.Create(to)
+	if err != nil {
+		return xerrors.Errorf("failed to create target file: %w", err)
+	}
+	defer dst.Close()
+
+	src, err := os.Open(from)
+	if err != nil {
+		return xerrors.Errorf("failed to open source file: %w", err)
+	}
+	defer src.Close()
+
+	if _, err := io.Copy(dst, src); err != nil {
+		return xerrors.Errorf("copy failed: %w", err)
 	}
 
 	return nil
