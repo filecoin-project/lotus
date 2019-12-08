@@ -734,8 +734,8 @@ func copyAllFiles(from, to string) error {
 		return xerrors.Errorf("failed to list items in dir: %w", err)
 	}
 	for _, n := range names {
-		if err := os.Rename(filepath.Join(from, n), filepath.Join(to, n)); err != nil {
-			return xerrors.Errorf("moving file failed: %w", err)
+		if err := copyFile(filepath.Join(from, n), filepath.Join(to, n)); err != nil {
+			return xerrors.Errorf("copying file failed: %w", err)
 		}
 	}
 
