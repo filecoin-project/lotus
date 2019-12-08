@@ -155,6 +155,8 @@ func (m *Miner) handlePreCommitted(ctx context.Context, sector SectorInfo) *sect
 			}
 		})
 
+		updateNonce++
+
 		return nil
 	}, func(ctx context.Context, ts *types.TipSet) error {
 		log.Warn("revert in interactive commit sector step")
