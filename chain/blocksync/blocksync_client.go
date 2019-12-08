@@ -164,8 +164,6 @@ func (bs *BlockSync) GetChainMessages(ctx context.Context, h *types.TipSet, coun
 	defer span.End()
 
 	peers := bs.getPeers()
-	fmt.Println("BEST PEER: ", bs.syncPeers.peers[peers[0]])
-
 	// randomize the first few peers so we don't always pick the same peer
 	shufflePrefix(peers)
 
@@ -389,8 +387,6 @@ type peerStats struct {
 	averageTime time.Duration
 }
 
-const alpha = 20
-
 type bsPeerTracker struct {
 	lk sync.Mutex
 
@@ -416,6 +412,12 @@ func (bpt *bsPeerTracker) addPeer(p peer.ID) {
 
 }
 
+const (
+	// newPeerMul is how much better than average is the new peer assumed to be
+	// less than one to encourouge trying new peers
+	newPeerMul = 0.9
+)
+
 func (bpt *bsPeerTracker) prefSortedPeers() []peer.ID {
 	// TODO: this could probably be cached, but as long as its not too many peers, fine for now
 	bpt.lk.Lock()
@@ -439,14 +441,14 @@ func (bpt *bsPeerTracker) prefSortedPeers() []peer.ID {
 		} else {
 			// we know nothing about this peer
 			// make them bit better than average
-			costI = float64(bpt.avgGlobalTime) * 0.8
+			costI = 0.9 * float64(bpt.avgGlobalTime)
 		}
 
 		if pj.successes+pj.failures > 0 {
 			failRateJ := float64(pj.failures) / float64(pj.failures+pj.successes)
 			costJ = float64(pj.averageTime) + failRateJ*float64(bpt.avgGlobalTime)
 		} else {
-			costJ = float64(bpt.avgGlobalTime) * 0.8
+			costJ = 0.9 * float64(bpt.avgGlobalTime)
 		}
 
 		return costI < costJ
@@ -455,12 +457,33 @@ func (bpt *bsPeerTracker) prefSortedPeers() []peer.ID {
 	return out
 }
 
+const (
+	// xInvAlpha = (N+1)/2
+
+	localInvAlpha  = 5  // 86% of the value is the last 9
+	globalInvAlpha = 20 // 86% of the value is the last 39
+)
+
 func (bpt *bsPeerTracker) logGlobalSuccess(dur time.Duration) {
 	bpt.lk.Lock()
 	defer bpt.lk.Unlock()
 
-	delta := (dur - bpt.avgGlobalTime) / alpha
+	if bpt.avgGlobalTime == 0 {
+		bpt.avgGlobalTime = dur
+		return
+	}
+	delta := (dur - bpt.avgGlobalTime) / globalInvAlpha
 	bpt.avgGlobalTime += delta
+}
+
+func logTime(pi *peerStats, dur time.Duration) {
+	if pi.averageTime == 0 {
+		pi.averageTime = dur
+		return
+	}
+	delta := (dur - pi.averageTime) / localInvAlpha
+	pi.averageTime += delta
+
 }
 
 func (bpt *bsPeerTracker) logSuccess(p peer.ID, dur time.Duration) {
@@ -468,13 +491,12 @@ func (bpt *bsPeerTracker) logSuccess(p peer.ID, dur time.Duration) {
 	defer bpt.lk.Unlock()
 
 	if pi, ok := bpt.peers[p]; !ok {
-		log.Warn("log success called on peer not in tracker")
+		log.Warnw("log success called on peer not in tracker", "peerid", p.String())
 		return
 	} else {
 		pi.successes++
 
-		delta := (dur - pi.averageTime) / alpha
-		pi.averageTime += delta
+		logTime(pi, dur)
 	}
 }
 
@@ -482,13 +504,11 @@ func (bpt *bsPeerTracker) logFailure(p peer.ID, dur time.Duration) {
 	bpt.lk.Lock()
 	defer bpt.lk.Unlock()
 	if pi, ok := bpt.peers[p]; !ok {
-		log.Warn("log failure called on peer not in tracker")
+		log.Warn("log failure called on peer not in tracker", "peerid", p.String())
 		return
 	} else {
 		pi.failures++
-
-		delta := (dur - pi.averageTime) / alpha
-		pi.averageTime += delta
+		logTime(pi, dur)
 	}
 }
 
