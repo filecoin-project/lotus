@@ -5,7 +5,7 @@ import (
 	"io"
 
 	"github.com/filecoin-project/lotus/chain/types"
-	cid "github.com/ipfs/go-cid"
+	"github.com/ipfs/go-cid"
 	cbg "github.com/whyrusleeping/cbor-gen"
 	xerrors "golang.org/x/xerrors"
 )
@@ -66,7 +66,8 @@ func (t *BlockSyncRequest) UnmarshalCBOR(r io.Reader) error {
 	if err != nil {
 		return err
 	}
-	if extra > 8192 {
+
+	if extra > cbg.MaxLength {
 		return fmt.Errorf("t.Start: array too large (%d)", extra)
 	}
 
@@ -163,7 +164,8 @@ func (t *BlockSyncResponse) UnmarshalCBOR(r io.Reader) error {
 	if err != nil {
 		return err
 	}
-	if extra > 8192 {
+
+	if extra > cbg.MaxLength {
 		return fmt.Errorf("t.Chain: array too large (%d)", extra)
 	}
 
@@ -298,7 +300,8 @@ func (t *BSTipSet) UnmarshalCBOR(r io.Reader) error {
 	if err != nil {
 		return err
 	}
-	if extra > 8192 {
+
+	if extra > cbg.MaxLength {
 		return fmt.Errorf("t.Blocks: array too large (%d)", extra)
 	}
 
@@ -324,7 +327,8 @@ func (t *BSTipSet) UnmarshalCBOR(r io.Reader) error {
 	if err != nil {
 		return err
 	}
-	if extra > 8192 {
+
+	if extra > cbg.MaxLength {
 		return fmt.Errorf("t.BlsMessages: array too large (%d)", extra)
 	}
 
@@ -350,7 +354,8 @@ func (t *BSTipSet) UnmarshalCBOR(r io.Reader) error {
 	if err != nil {
 		return err
 	}
-	if extra > 8192 {
+
+	if extra > cbg.MaxLength {
 		return fmt.Errorf("t.BlsMsgIncludes: array too large (%d)", extra)
 	}
 
@@ -370,7 +375,8 @@ func (t *BSTipSet) UnmarshalCBOR(r io.Reader) error {
 			if err != nil {
 				return err
 			}
-			if extra > 8192 {
+
+			if extra > cbg.MaxLength {
 				return fmt.Errorf("t.BlsMsgIncludes[i]: array too large (%d)", extra)
 			}
 
@@ -403,7 +409,8 @@ func (t *BSTipSet) UnmarshalCBOR(r io.Reader) error {
 	if err != nil {
 		return err
 	}
-	if extra > 8192 {
+
+	if extra > cbg.MaxLength {
 		return fmt.Errorf("t.SecpkMessages: array too large (%d)", extra)
 	}
 
@@ -429,7 +436,8 @@ func (t *BSTipSet) UnmarshalCBOR(r io.Reader) error {
 	if err != nil {
 		return err
 	}
-	if extra > 8192 {
+
+	if extra > cbg.MaxLength {
 		return fmt.Errorf("t.SecpkMsgIncludes: array too large (%d)", extra)
 	}
 
@@ -449,7 +457,8 @@ func (t *BSTipSet) UnmarshalCBOR(r io.Reader) error {
 			if err != nil {
 				return err
 			}
-			if extra > 8192 {
+
+			if extra > cbg.MaxLength {
 				return fmt.Errorf("t.SecpkMsgIncludes[i]: array too large (%d)", extra)
 			}
 

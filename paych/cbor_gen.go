@@ -79,10 +79,10 @@ func (t *VoucherInfo) UnmarshalCBOR(r io.Reader) error {
 	if err != nil {
 		return err
 	}
-	if extra > 8192 {
-		return fmt.Errorf("t.Proof: array too large (%d)", extra)
-	}
 
+	if extra > cbg.ByteArrayMaxLen {
+		return fmt.Errorf("t.Proof: byte array too large (%d)", extra)
+	}
 	if maj != cbg.MajByteString {
 		return fmt.Errorf("expected byte array")
 	}
@@ -197,7 +197,8 @@ func (t *ChannelInfo) UnmarshalCBOR(r io.Reader) error {
 	if err != nil {
 		return err
 	}
-	if extra > 8192 {
+
+	if extra > cbg.MaxLength {
 		return fmt.Errorf("t.Vouchers: array too large (%d)", extra)
 	}
 
