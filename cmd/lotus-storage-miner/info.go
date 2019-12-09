@@ -64,10 +64,10 @@ var infoCmd = &cli.Command{
 		fmt.Printf("\tRemote: %d / %d\n", wstat.RemotesTotal-wstat.RemotesFree, wstat.RemotesTotal)
 
 		fmt.Printf("Queues:\n")
-		fmt.Printf("\tAddPieceWait: %d\n", wstat.AddPieceWait)
-		fmt.Printf("\tPreCommitWait: %d\n", wstat.PreCommitWait)
-		fmt.Printf("\tCommitWait: %d\n", wstat.CommitWait)
-		fmt.Printf("\tUnsealWait: %d\n", wstat.UnsealWait)
+		fmt.Printf("\tAddPiece: %d\n", wstat.AddPieceWait)
+		fmt.Printf("\tPreCommit: %d\n", wstat.PreCommitWait)
+		fmt.Printf("\tCommit: %d\n", wstat.CommitWait)
+		fmt.Printf("\tUnseal: %d\n", wstat.UnsealWait)
 
 		eps, err := api.StateMinerElectionPeriodStart(ctx, maddr, nil)
 		if err != nil {
