@@ -167,7 +167,7 @@ func (sm *StorageMinerAPI) SectorsStatus(ctx context.Context, sid uint64) (api.S
 		Deals:    deals,
 		Ticket:   info.Ticket.SB(),
 		Seed:     info.Seed.SB(),
-		Retries: info.Nonce,
+		Retries:  info.Nonce,
 
 		LastErr: info.LastErr,
 	}, nil

@@ -22,12 +22,12 @@ func (t *VoucherInfo) MarshalCBOR(w io.Writer) error {
 		return err
 	}
 
-	// t.t.Voucher (types.SignedVoucher) (struct)
+	// t.Voucher (types.SignedVoucher) (struct)
 	if err := t.Voucher.MarshalCBOR(w); err != nil {
 		return err
 	}
 
-	// t.t.Proof ([]uint8) (slice)
+	// t.Proof ([]uint8) (slice)
 	if _, err := w.Write(cbg.CborEncodeMajorType(cbg.MajByteString, uint64(len(t.Proof)))); err != nil {
 		return err
 	}
@@ -52,7 +52,7 @@ func (t *VoucherInfo) UnmarshalCBOR(r io.Reader) error {
 		return fmt.Errorf("cbor input had wrong number of fields")
 	}
 
-	// t.t.Voucher (types.SignedVoucher) (struct)
+	// t.Voucher (types.SignedVoucher) (struct)
 
 	{
 
@@ -73,16 +73,16 @@ func (t *VoucherInfo) UnmarshalCBOR(r io.Reader) error {
 		}
 
 	}
-	// t.t.Proof ([]uint8) (slice)
+	// t.Proof ([]uint8) (slice)
 
 	maj, extra, err = cbg.CborReadHeader(br)
 	if err != nil {
 		return err
 	}
-	if extra > 8192 {
-		return fmt.Errorf("t.Proof: array too large (%d)", extra)
-	}
 
+	if extra > cbg.ByteArrayMaxLen {
+		return fmt.Errorf("t.Proof: byte array too large (%d)", extra)
+	}
 	if maj != cbg.MajByteString {
 		return fmt.Errorf("expected byte array")
 	}
@@ -102,27 +102,27 @@ func (t *ChannelInfo) MarshalCBOR(w io.Writer) error {
 		return err
 	}
 
-	// t.t.Channel (address.Address) (struct)
+	// t.Channel (address.Address) (struct)
 	if err := t.Channel.MarshalCBOR(w); err != nil {
 		return err
 	}
 
-	// t.t.Control (address.Address) (struct)
+	// t.Control (address.Address) (struct)
 	if err := t.Control.MarshalCBOR(w); err != nil {
 		return err
 	}
 
-	// t.t.Target (address.Address) (struct)
+	// t.Target (address.Address) (struct)
 	if err := t.Target.MarshalCBOR(w); err != nil {
 		return err
 	}
 
-	// t.t.Direction (uint64) (uint64)
+	// t.Direction (uint64) (uint64)
 	if _, err := w.Write(cbg.CborEncodeMajorType(cbg.MajUnsignedInt, uint64(t.Direction))); err != nil {
 		return err
 	}
 
-	// t.t.Vouchers ([]*paych.VoucherInfo) (slice)
+	// t.Vouchers ([]*paych.VoucherInfo) (slice)
 	if _, err := w.Write(cbg.CborEncodeMajorType(cbg.MajArray, uint64(len(t.Vouchers)))); err != nil {
 		return err
 	}
@@ -132,7 +132,7 @@ func (t *ChannelInfo) MarshalCBOR(w io.Writer) error {
 		}
 	}
 
-	// t.t.NextLane (uint64) (uint64)
+	// t.NextLane (uint64) (uint64)
 	if _, err := w.Write(cbg.CborEncodeMajorType(cbg.MajUnsignedInt, uint64(t.NextLane))); err != nil {
 		return err
 	}
@@ -154,7 +154,7 @@ func (t *ChannelInfo) UnmarshalCBOR(r io.Reader) error {
 		return fmt.Errorf("cbor input had wrong number of fields")
 	}
 
-	// t.t.Channel (address.Address) (struct)
+	// t.Channel (address.Address) (struct)
 
 	{
 
@@ -163,7 +163,7 @@ func (t *ChannelInfo) UnmarshalCBOR(r io.Reader) error {
 		}
 
 	}
-	// t.t.Control (address.Address) (struct)
+	// t.Control (address.Address) (struct)
 
 	{
 
@@ -172,7 +172,7 @@ func (t *ChannelInfo) UnmarshalCBOR(r io.Reader) error {
 		}
 
 	}
-	// t.t.Target (address.Address) (struct)
+	// t.Target (address.Address) (struct)
 
 	{
 
@@ -181,7 +181,7 @@ func (t *ChannelInfo) UnmarshalCBOR(r io.Reader) error {
 		}
 
 	}
-	// t.t.Direction (uint64) (uint64)
+	// t.Direction (uint64) (uint64)
 
 	maj, extra, err = cbg.CborReadHeader(br)
 	if err != nil {
@@ -191,13 +191,14 @@ func (t *ChannelInfo) UnmarshalCBOR(r io.Reader) error {
 		return fmt.Errorf("wrong type for uint64 field")
 	}
 	t.Direction = uint64(extra)
-	// t.t.Vouchers ([]*paych.VoucherInfo) (slice)
+	// t.Vouchers ([]*paych.VoucherInfo) (slice)
 
 	maj, extra, err = cbg.CborReadHeader(br)
 	if err != nil {
 		return err
 	}
-	if extra > 8192 {
+
+	if extra > cbg.MaxLength {
 		return fmt.Errorf("t.Vouchers: array too large (%d)", extra)
 	}
 
@@ -217,7 +218,7 @@ func (t *ChannelInfo) UnmarshalCBOR(r io.Reader) error {
 		t.Vouchers[i] = &v
 	}
 
-	// t.t.NextLane (uint64) (uint64)
+	// t.NextLane (uint64) (uint64)
 
 	maj, extra, err = cbg.CborReadHeader(br)
 	if err != nil {

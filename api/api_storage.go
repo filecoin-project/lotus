@@ -87,9 +87,9 @@ type SectorInfo struct {
 	Deals    []uint64
 	Ticket   sectorbuilder.SealTicket
 	Seed     sectorbuilder.SealSeed
-	Retries uint64
+	Retries  uint64
 
-	LastErr  string
+	LastErr string
 }
 
 type SealedRef struct {

@@ -49,7 +49,7 @@ func main() {
 		os.Exit(1)
 	}
 
-	err = gen.WriteTupleEncodersToFile("./api/cbor_gen.go", "api",
+	err = gen.WriteMapEncodersToFile("./api/cbor_gen.go", "api",
 		api.PaymentInfo{},
 		api.SealedRef{},
 		api.SealedRefs{},
@@ -154,7 +154,7 @@ func main() {
 		os.Exit(1)
 	}
 
-	err = gen.WriteTupleEncodersToFile("./storage/cbor_gen.go", "storage",
+	err = gen.WriteMapEncodersToFile("./storage/cbor_gen.go", "storage",
 		storage.SealTicket{},
 		storage.SealSeed{},
 		storage.Piece{},
