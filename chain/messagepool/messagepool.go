@@ -21,7 +21,6 @@ import (
 
 	"github.com/filecoin-project/lotus/api"
 	"github.com/filecoin-project/lotus/build"
-	"github.com/filecoin-project/lotus/chain"
 	"github.com/filecoin-project/lotus/chain/address"
 	"github.com/filecoin-project/lotus/chain/stmgr"
 	"github.com/filecoin-project/lotus/chain/store"
@@ -644,7 +643,7 @@ func (mp *MessagePool) Updates(ctx context.Context) (<-chan api.MpoolUpdate, err
 	sub := mp.changes.Sub(localUpdates)
 
 	go func() {
-		defer mp.changes.Unsub(sub, chain.LocalIncoming)
+		defer mp.changes.Unsub(sub, localUpdates)
 
 		for {
 			select {

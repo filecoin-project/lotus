@@ -15,7 +15,7 @@ import (
 	"github.com/filecoin-project/lotus/lib/sectorbuilder"
 )
 
-func (m *Miner) storeGarbage(ctx context.Context, sectorID uint64, existingPieceSizes []uint64, sizes ...uint64) ([]Piece, error) {
+func (m *Miner) pledgeSector(ctx context.Context, sectorID uint64, existingPieceSizes []uint64, sizes ...uint64) ([]Piece, error) {
 	if len(sizes) == 0 {
 		return nil, nil
 	}
@@ -111,7 +111,7 @@ func (m *Miner) storeGarbage(ctx context.Context, sectorID uint64, existingPiece
 	return out, nil
 }
 
-func (m *Miner) StoreGarbageData() error {
+func (m *Miner) PledgeSector() error {
 	go func() {
 		ctx := context.TODO() // we can't use the context from command which invokes
 		// this, as we run everything here async, and it's cancelled when the
@@ -125,7 +125,7 @@ func (m *Miner) StoreGarbageData() error {
 			return
 		}
 
-		pieces, err := m.storeGarbage(ctx, sid, []uint64{}, size)
+		pieces, err := m.pledgeSector(ctx, sid, []uint64{}, size)
 		if err != nil {
 			log.Errorf("%+v", err)
 			return

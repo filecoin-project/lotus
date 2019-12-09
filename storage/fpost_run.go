@@ -14,6 +14,14 @@ import (
 	"github.com/filecoin-project/lotus/lib/sectorbuilder"
 )
 
+func (s *fpostScheduler) failPost(eps uint64) {
+	s.failLk.Lock()
+	if eps > s.failed {
+		s.failed = eps
+	}
+	s.failLk.Unlock()
+}
+
 func (s *fpostScheduler) doPost(ctx context.Context, eps uint64, ts *types.TipSet) {
 	ctx, abort := context.WithCancel(ctx)
 
@@ -29,13 +37,16 @@ func (s *fpostScheduler) doPost(ctx context.Context, eps uint64, ts *types.TipSe
 		proof, err := s.runPost(ctx, eps, ts)
 		if err != nil {
 			log.Errorf("runPost failed: %+v", err)
+			s.failPost(eps)
 			return
 		}
 
 		if err := s.submitPost(ctx, proof); err != nil {
 			log.Errorf("submitPost failed: %+v", err)
+			s.failPost(eps)
 			return
 		}
+
 	}()
 }
 

@@ -37,7 +37,7 @@ class StorageNode extends React.Component {
     }
 
     this.loadInfo = this.loadInfo.bind(this)
-    this.sealGarbage = this.sealGarbage.bind(this)
+    this.pledgeSector = this.pledgeSector.bind(this)
     this.stop = this.stop.bind(this)
 
     this.connect()
@@ -98,8 +98,8 @@ class StorageNode extends React.Component {
     this.setState({staged, statusCounts})
   }
 
-  async sealGarbage() {
-    await this.state.client.call("Filecoin.StoreGarbageData", [])
+  async pledgeSector() {
+    await this.state.client.call("Filecoin.PledgeSector", [])
   }
 
   sealStaged = async () => {
@@ -113,7 +113,7 @@ class StorageNode extends React.Component {
   render() {
     let runtime = <div></div>
     if (this.state.actor) {
-      const sealGarbage = <a href="#" onClick={this.sealGarbage}>[Seal Garbage]</a>
+      const pledgeSector = <a href="#" onClick={this.pledgeSector}>[Pledge Sector]</a>
       const sealStaged = <a href="#" onClick={this.sealStaged}>[Seal Staged]</a>
 
       runtime = (
@@ -121,7 +121,7 @@ class StorageNode extends React.Component {
           <div>v{this.state.version.Version}, <abbr title={this.state.id}>{this.state.id.substr(-8)}</abbr>, {this.state.peers} peers</div>
           <div>Repo: LOTUS_STORAGE_PATH={this.props.node.Repo}</div>
           <div>
-            {sealGarbage} {sealStaged}
+            {pledgeSector} {sealStaged}
           </div>
           <div>
             <Address client={this.props.fullConn} addr={this.state.actor} mountWindow={this.props.mountWindow}/>
