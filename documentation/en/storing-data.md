@@ -45,24 +45,11 @@ Store a **Data CID** with a miner:
 
 ```sh
 lotus client deal <Data CID> <miner> <price> <duration>
-# price is in attoFIL/byte/block
-# duration is number of blocks.
 ```
+
+* Price is in attoFIL.
+* The `duration`, which represents how long the miner will keep your file hosted, is represented in blocks. Each block represents 30 seconds.
 
 Upon success, this command will return a **Deal CID**. 
 
 From now on the **Data CID** is [retrievable](https://docs.lotu.sh/en+retrieving-data) from the **Lotus Storage Miner**.
-
-## Troubleshooting
-
-```sh
-WARN  main  lotus/main.go:72  routing: not found
-```
-
-* This miner is offline.
-
-```sh
-WARN  main  lotus/main.go:72  failed to start deal: computing commP failed: generating CommP: Piece must be at least 127 bytes
-```
-
-* There is a minimum file size of 127 bytes.
