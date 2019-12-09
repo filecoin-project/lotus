@@ -9,6 +9,7 @@ import (
 
 	"github.com/filecoin-project/lotus/build"
 	lcli "github.com/filecoin-project/lotus/cli"
+	"github.com/filecoin-project/lotus/node/repo"
 	"github.com/filecoin-project/lotus/tracing"
 )
 
@@ -68,6 +69,8 @@ func main() {
 
 		Commands: append(local, lcli.Commands...),
 	}
+	app.Setup()
+	app.Metadata["repoType"] = repo.StorageMiner
 
 	if err := app.Run(os.Args); err != nil {
 		log.Warnf("%+v", err)
