@@ -137,6 +137,8 @@ func (m *Miner) handlePreCommitted(ctx context.Context, sector SectorInfo) *sect
 	randHeight := mw.TipSet.Height() + build.InteractivePoRepDelay - 1 // -1 because of how the messages are applied
 	log.Infof("precommit for sector %d made it on chain, will start proof computation at height %d", sector.SectorID, randHeight)
 
+	updateNonce := sector.Nonce
+
 	err = m.events.ChainAt(func(ctx context.Context, ts *types.TipSet, curH uint64) error {
 		rand, err := m.api.ChainGetRandomness(ctx, ts.Key(), int64(randHeight))
 		if err != nil {
@@ -146,19 +148,21 @@ func (m *Miner) handlePreCommitted(ctx context.Context, sector SectorInfo) *sect
 			return err
 		}
 
-		m.sectorUpdated <- *sector.upd().to(api.Committing).state(func(info *SectorInfo) {
+		m.sectorUpdated <- *sector.upd().to(api.Committing).setNonce(updateNonce).state(func(info *SectorInfo) {
 			info.Seed = SealSeed{
 				BlockHeight: randHeight,
 				TicketBytes: rand,
 			}
 		})
 
+		updateNonce++
+
 		return nil
 	}, func(ctx context.Context, ts *types.TipSet) error {
 		log.Warn("revert in interactive commit sector step")
 		// TODO: need to cancel running process and restart...
 		return nil
-	}, 3, mw.TipSet.Height()+build.InteractivePoRepDelay)
+	}, build.InteractivePoRepConfidence, mw.TipSet.Height()+build.InteractivePoRepDelay)
 	if err != nil {
 		log.Warn("waitForPreCommitMessage ChainAt errored: ", err)
 	}

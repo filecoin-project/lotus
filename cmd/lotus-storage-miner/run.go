@@ -24,8 +24,6 @@ import (
 	"github.com/filecoin-project/lotus/node/repo"
 )
 
-const defaultListen = "/ip4/127.0.0.1/tcp/"
-
 var runCmd = &cli.Command{
 	Name:  "run",
 	Usage: "Start a lotus storage miner process",
@@ -93,14 +91,15 @@ var runCmd = &cli.Command{
 			node.Online(),
 			node.Repo(r),
 
-			node.Override(node.SetApiEndpointKey, func(lr repo.LockedRepo) error {
-				apima, err := parseApi(cctx.String("api"))
-				if err != nil {
-					return err
-				}
-				return lr.SetAPIEndpoint(apima)
-			}),
-
+			node.ApplyIf(func(s *node.Settings) bool { return cctx.IsSet("api") },
+				node.Override(node.SetApiEndpointKey, func(lr repo.LockedRepo) error {
+					apima, err := multiaddr.NewMultiaddr("/ip4/127.0.0.1/tcp/" +
+						cctx.String("api"))
+					if err != nil {
+						return err
+					}
+					return lr.SetAPIEndpoint(apima)
+				})),
 			node.Override(new(api.FullNode), nodeApi),
 		)
 		if err != nil {
@@ -161,16 +160,4 @@ var runCmd = &cli.Command{
 
 		return srv.Serve(manet.NetListener(lst))
 	},
-}
-
-func parseApi(api string) (multiaddr.Multiaddr, error) {
-	if api == "" {
-		return nil, xerrors.New("empty --api")
-	}
-
-	if api[0] != '/' {
-		api = defaultListen + api
-	}
-
-	return multiaddr.NewMultiaddr(api)
 }

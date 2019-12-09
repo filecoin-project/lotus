@@ -26,6 +26,9 @@ const SlashablePowerDelay = 20
 // Epochs
 const InteractivePoRepDelay = 2
 
+// Epochs
+const InteractivePoRepConfidence = 6
+
 func init() {
 	os.Setenv("TRUST_PARAMS", "1")
 }

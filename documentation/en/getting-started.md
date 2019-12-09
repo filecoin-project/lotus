@@ -1,6 +1,6 @@
 # Lotus
 
-Lotus is an alternative implementation of the **Filecoin Distributed Storage Network**. You can run the Lotus software client to join the **Filecoin TestNet** (when it launches).
+Lotus is an implementation of the **Filecoin Distributed Storage Network**. You can run the Lotus software client to join the **Filecoin TestNet** (when it launches).
 
 For more details about Filecoin, check out the [Filecoin Spec](https://github.com/filecoin-project/specs).
 
@@ -13,7 +13,7 @@ For more details about Filecoin, check out the [Filecoin Spec](https://github.co
 
 ## What makes Lotus different?
 
-Lotus is architected modularly to keep clean API boundaries while using the same process. Installing Lotus will include two seperate programs:
+Lotus is architected modularly to keep clean API boundaries while using the same process. Installing Lotus will include two separate programs:
 
 - The **Lotus Node** 
 - The **Lotus Storage Miner**

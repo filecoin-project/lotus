@@ -4,24 +4,31 @@ Here are instructions to learn how to perform storage mining. For hardware speci
 
 It is useful to [join the DevNet](https://docs.lotu.sh/en+join-devnet) prior to attempting storage mining for the first time.
 
+NOTE: While a miner is running, there will be many `WARN` and `ERROR` logs.
+
 ## Get started
 
-Please ensure that at least one **BLS address** (`t3..`) in your wallet exists with the following command:
+Please ensure that at least one **BLS address** in your wallet exists with the following command:
 
 ```sh
 lotus wallet list
 ```
 
-With this address, go to the [faucet](https://lotus-faucet.kittyhawk.wtf/miner.html), and
-click `Create Miner`
+With your wallet address:
 
-Await this response:
+- Visit the [faucet](https://lotus-faucet.kittyhawk.wtf/miner.html)
+- Click "Create Miner
+- DO NOT REFRESH THE PAGE. THIS OPERATION CAN TAKE SOME TIME.
+
+The task will be complete when you see:
 
 ```sh
-To initialize the storage miner run the following command
+New storage miners address is: <YOUR_NEW_MINING_ADDRESS>
 ```
 
 ## Initialize the storage miner
+
+In a CLI window, use the following command to start your miner:
 
 ```sh
 lotus-storage-miner init --actor=ACTOR_VALUE_RECEIVED --owner=OWNER_VALUE_RECEIVED
@@ -33,7 +40,7 @@ Example
 lotus-storage-miner init --actor=t01424 --owner=t3spmep2xxsl33o4gxk7yjxcobyohzgj3vejzerug25iinbznpzob6a6kexcbeix73th6vjtzfq7boakfdtd6a
 ```
 
-This command will take 30-60 seconds.
+You will have to wait some time for this operation to complete.
 
 ## Mining
 
@@ -74,14 +81,5 @@ Update `~/.lotus/config.toml` with:
 
 ```sh
 [Metrics]
-Nickname="snoopy"
+Nickname="fun"
 ```
-
-## Troubleshooting
-
-```sh
-lotus-storage-miner info
-# WARN  main  lotus-storage-miner/main.go:73  failed to get api endpoint: (/Users/myrmidon/.lotusstorage) %!w(*errors.errorString=&{API not running (no endpoint)}):
-```
-
-If you see this, that means your **Lotus Storage Miner** isn't ready yet.
