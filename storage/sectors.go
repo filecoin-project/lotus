@@ -40,7 +40,7 @@ func (u *sectorUpdate) state(m func(*SectorInfo)) *sectorUpdate {
 }
 
 func (u *sectorUpdate) to(newState api.SectorState) *sectorUpdate {
-	u.nonce = newState
+	u.newState = newState
 	return u
 }
 
