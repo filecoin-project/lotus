@@ -122,8 +122,8 @@ type FullNodeStruct struct {
 		PaychVoucherCheckValid     func(context.Context, address.Address, *types.SignedVoucher) error                                        `perm:"read"`
 		PaychVoucherCheckSpendable func(context.Context, address.Address, *types.SignedVoucher, []byte, []byte) (bool, error)                `perm:"read"`
 		PaychVoucherAdd            func(context.Context, address.Address, *types.SignedVoucher, []byte, types.BigInt) (types.BigInt, error)  `perm:"write"`
-		PaychVoucherCreate         func(context.Context, address.Address, types.BigInt, uint64) (*types.SignedVoucher, error)               `perm:"sign"`
-		PaychVoucherList           func(context.Context, address.Address) ([]*types.SignedVoucher, error)                                   `perm:"write"`
+		PaychVoucherCreate         func(context.Context, address.Address, types.BigInt, uint64) (*types.SignedVoucher, error)                `perm:"sign"`
+		PaychVoucherList           func(context.Context, address.Address) ([]*types.SignedVoucher, error)                                    `perm:"write"`
 		PaychVoucherSubmit         func(context.Context, address.Address, *types.SignedVoucher) (cid.Cid, error)                             `perm:"sign"`
 	}
 }
