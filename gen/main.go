@@ -122,7 +122,6 @@ func main() {
 		actors.StorageMarketState{},
 		actors.WithdrawBalanceParams{},
 		actors.StorageDealProposal{},
-		actors.StorageDeal{},
 		actors.PublishStorageDealsParams{},
 		actors.PublishStorageDealResponse{},
 		actors.ActivateStorageDealsParams{},

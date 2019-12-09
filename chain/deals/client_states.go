@@ -44,6 +44,9 @@ func (c *Client) new(ctx context.Context, deal ClientDeal) (func(*ClientDeal), e
 	if err != nil {
 		return nil, err
 	}
+
+	// TODO: verify StorageDealSubmission
+
 	if err := c.disconnect(deal); err != nil {
 		return nil, err
 	}
@@ -54,18 +57,14 @@ func (c *Client) new(ctx context.Context, deal ClientDeal) (func(*ClientDeal), e
 	}
 
 	return func(info *ClientDeal) {
-		info.PublishMessage = resp.PublishMessage
+		info.PublishMessage = resp.StorageDealSubmission
 	}, nil
 }
 
 func (c *Client) accepted(ctx context.Context, deal ClientDeal) (func(*ClientDeal), error) {
 	log.Infow("DEAL ACCEPTED!")
 
-	pubmsg, err := c.chain.GetMessage(*deal.PublishMessage)
-	if err != nil {
-		return nil, xerrors.Errorf("getting deal pubsish message: %w", err)
-	}
-
+	pubmsg := deal.PublishMessage.Message
 	pw, err := stmgr.GetMinerWorker(ctx, c.sm, nil, deal.Proposal.Provider)
 	if err != nil {
 		return nil, xerrors.Errorf("getting miner worker failed: %w", err)
@@ -91,7 +90,7 @@ func (c *Client) accepted(ctx context.Context, deal ClientDeal) (func(*ClientDea
 	dealIdx := -1
 	for i, storageDeal := range params.Deals {
 		// TODO: make it less hacky
-		eq, err := cborutil.Equals(&deal.Proposal, &storageDeal.Proposal)
+		eq, err := cborutil.Equals(&deal.Proposal, &storageDeal)
 		if err != nil {
 			return nil, err
 		}
@@ -102,11 +101,11 @@ func (c *Client) accepted(ctx context.Context, deal ClientDeal) (func(*ClientDea
 	}
 
 	if dealIdx == -1 {
-		return nil, xerrors.Errorf("deal publish didn't contain our deal (message cid: %s)", deal.PublishMessage)
+		return nil, xerrors.Errorf("deal publish didn't contain our deal (message cid: %s)", deal.PublishMessage.Cid())
 	}
 
 	// TODO: timeout
-	_, ret, err := c.sm.WaitForMessage(ctx, *deal.PublishMessage)
+	_, ret, err := c.sm.WaitForMessage(ctx, deal.PublishMessage.Cid())
 	if err != nil {
 		return nil, xerrors.Errorf("waiting for deal publish message: %w", err)
 	}
