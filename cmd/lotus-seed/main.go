@@ -179,7 +179,7 @@ var aggregateSectorDirsCmd = &cli.Command{
 			return err
 		}
 
-		if err := os.MkdirAll(cctx.String("dest"), 0755); err != nil {
+		if err := os.MkdirAll(destdir, 0755); err != nil {
 			return err
 		}
 

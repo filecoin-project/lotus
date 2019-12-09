@@ -153,7 +153,9 @@ var initCmd = &cli.Command{
 				return err
 			}
 
-			oldmds, err := badger.NewDatastore(filepath.Join(pssb, "badger"), nil)
+			bopts := badger.DefaultOptions
+			bopts.ReadOnly = true
+			oldmds, err := badger.NewDatastore(filepath.Join(pssb, "badger"), &bopts)
 			if err != nil {
 				return err
 			}
