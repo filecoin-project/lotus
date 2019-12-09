@@ -501,7 +501,7 @@ func (syncer *Syncer) ValidateBlock(ctx context.Context, b *types.FullBlock) err
 			return xerrors.Errorf("received block was from miner slashed at height %d", slashedAt)
 		}
 
-		_, tpow, err := stmgr.GetPower(ctx, syncer.sm, baseTs, h.Miner)
+		mpow, tpow, err := stmgr.GetPower(ctx, syncer.sm, baseTs, h.Miner)
 		if err != nil {
 			return xerrors.Errorf("failed getting power: %w", err)
 		}
@@ -511,8 +511,10 @@ func (syncer *Syncer) ValidateBlock(ctx context.Context, b *types.FullBlock) err
 			return xerrors.Errorf("failed to get sector size for block miner: %w", err)
 		}
 
+		snum := types.BigDiv(mpow, types.NewInt(ssize))
+
 		for _, t := range h.EPostProof.Candidates {
-			if !types.IsTicketWinner(t.Partial, ssize, tpow) {
+			if !types.IsTicketWinner(t.Partial, ssize, snum.Uint64(), tpow) {
 				return xerrors.Errorf("miner created a block but was not a winner")
 			}
 		}

@@ -526,9 +526,11 @@ func IsRoundWinner(ctx context.Context, ts *types.TipSet, round int64, miner add
 		return nil, xerrors.Errorf("failed to look up miners sector size: %w", err)
 	}
 
+	snum := types.BigDiv(pow.MinerPower, types.NewInt(ssize))
+
 	var winners []sectorbuilder.EPostCandidate
 	for _, c := range candidates {
-		if types.IsTicketWinner(c.PartialTicket[:], ssize, pow.TotalPower) {
+		if types.IsTicketWinner(c.PartialTicket[:], ssize, snum.Uint64(), pow.TotalPower) {
 			winners = append(winners, c)
 		}
 	}
