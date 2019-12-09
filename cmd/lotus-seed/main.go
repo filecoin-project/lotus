@@ -81,6 +81,10 @@ var preSealCmd = &cli.Command{
 			Value: 0,
 			Usage: "how many sector ids to skip when starting to seal",
 		},
+		&cli.StringFlag{
+			Name:  "sectorbuilder-dir",
+			Value: "~/.genesis-sectors",
+		},
 	},
 	Action: func(c *cli.Context) error {
 		sdir := c.String("sectorbuilder-dir")
@@ -179,7 +183,7 @@ var aggregateSectorDirsCmd = &cli.Command{
 			return err
 		}
 
-		if err := os.MkdirAll(cctx.String("dest"), 0755); err != nil {
+		if err := os.MkdirAll(destdir, 0755); err != nil {
 			return err
 		}
 
