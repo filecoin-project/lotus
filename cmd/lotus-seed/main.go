@@ -81,10 +81,6 @@ var preSealCmd = &cli.Command{
 			Value: 0,
 			Usage: "how many sector ids to skip when starting to seal",
 		},
-		&cli.StringFlag{
-			Name:  "sectorbuilder-dir",
-			Value: "~/.genesis-sectors",
-		},
 	},
 	Action: func(c *cli.Context) error {
 		sdir := c.String("sectorbuilder-dir")
