@@ -12,6 +12,8 @@ import (
 	"github.com/filecoin-project/lotus/api"
 	"github.com/filecoin-project/lotus/build"
 	lcli "github.com/filecoin-project/lotus/cli"
+	"github.com/filecoin-project/lotus/node/repo"
+	manet "github.com/multiformats/go-multiaddr-net"
 )
 
 var log = logging.Logger("main")
@@ -55,6 +57,8 @@ func main() {
 
 		Commands: local,
 	}
+	app.Setup()
+	app.Metadata["repoType"] = repo.StorageMiner
 
 	if err := app.Run(os.Args); err != nil {
 		log.Warnf("%+v", err)
@@ -77,12 +81,11 @@ var runCmd = &cli.Command{
 		defer closer()
 		ctx := lcli.ReqContext(cctx)
 
-		_, auth, err := lcli.GetRawAPI(cctx, "storagerepo")
-
-		_, storageAddr, err := lcli.RepoInfo(cctx, "storagerepo")
+		ainfo, err := lcli.GetAPIInfo(cctx, repo.StorageMiner)
 		if err != nil {
-			return xerrors.Errorf("getting miner repo: %w", err)
+			return xerrors.Errorf("could not get api info: %w", err)
 		}
+		_, storageAddr, err := manet.DialArgs(ainfo.Addr)
 
 		r, err := homedir.Expand(cctx.String("repo"))
 		if err != nil {
@@ -102,6 +105,6 @@ var runCmd = &cli.Command{
 			log.Warn("Shutting down..")
 		}()
 
-		return acceptJobs(ctx, nodeApi, "http://"+storageAddr, auth, r, cctx.Bool("no-precommit"), cctx.Bool("no-commit"))
+		return acceptJobs(ctx, nodeApi, "http://"+storageAddr, ainfo.AuthHeader(), r, cctx.Bool("no-precommit"), cctx.Bool("no-commit"))
 	},
 }
