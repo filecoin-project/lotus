@@ -96,6 +96,7 @@ func main() {
 		actors.SubmitFallbackPoStParams{},
 		actors.PaymentVerifyParams{},
 		actors.UpdatePeerIDParams{},
+		actors.DeclareFaultsParams{},
 		actors.MultiSigActorState{},
 		actors.MultiSigConstructorParams{},
 		actors.MultiSigProposeParams{},
