@@ -16,8 +16,12 @@ lotus client find <Data CID>
 
 ## Retrieve by Data CID
 
+All fields are required.
+
 ```sh
 lotus client retrieve <Data CID> <outfile>
 ```
+
+If the outfile does not exist it will be created in the Lotus repository directory.
 
 This command will initiate a **retrieval deal** and write the data to your computer. This process may take 2 to 10 minutes.
