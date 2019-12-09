@@ -214,8 +214,11 @@ func IsTicketWinner(partialTicket []byte, ssizeI uint64, snum uint64, totpow Big
 }
 
 func ElectionPostChallengeCount(sectors uint64) uint64 {
+	if sectors == 0 {
+		return 0
+	}
 	// ceil(sectors / build.SectorChallengeRatioDiv)
-	return (sectors + build.SectorChallengeRatioDiv - 1) / build.SectorChallengeRatioDiv
+	return (sectors-1)/build.SectorChallengeRatioDiv + 1
 }
 
 func (t *Ticket) Equals(ot *Ticket) bool {
