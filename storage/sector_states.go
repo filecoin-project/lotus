@@ -245,7 +245,7 @@ func (m *Miner) handleFaulty(ctx context.Context, sector SectorInfo) *sectorUpda
 	_ = fp
 	enc, aerr := actors.SerializeParams(nil)
 	if aerr != nil {
-		return sector.upd().to(api.FailedUnrecoverable).error(xerrors.Errorf("failed to serialize declare fault params: %w", aerr))
+		return sector.upd().fatal(xerrors.Errorf("failed to serialize declare fault params: %w", aerr))
 	}
 
 	msg := &types.Message{
