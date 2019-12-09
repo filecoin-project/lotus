@@ -105,7 +105,8 @@ func (t *PaymentInfo) UnmarshalCBOR(r io.Reader) error {
 	if err != nil {
 		return err
 	}
-	if extra > 8192 {
+
+	if extra > cbg.MaxLength {
 		return fmt.Errorf("t.Vouchers: array too large (%d)", extra)
 	}
 
@@ -244,7 +245,8 @@ func (t *SealedRefs) UnmarshalCBOR(r io.Reader) error {
 	if err != nil {
 		return err
 	}
-	if extra > 8192 {
+
+	if extra > cbg.MaxLength {
 		return fmt.Errorf("t.Refs: array too large (%d)", extra)
 	}
 
