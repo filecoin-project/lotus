@@ -69,6 +69,9 @@ type SectorInfo struct {
 	// Committing
 	CommitMessage *cid.Cid
 
+	// Faults
+	FaultReportMsg *cid.Cid
+
 	// Debug
 	LastErr string
 }

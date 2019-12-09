@@ -3,6 +3,7 @@ package impl
 import (
 	"context"
 	"encoding/json"
+	"github.com/filecoin-project/lotus/api/apistruct"
 	"io"
 	"mime"
 	"net/http"
@@ -33,7 +34,7 @@ type StorageMinerAPI struct {
 }
 
 func (sm *StorageMinerAPI) ServeRemote(w http.ResponseWriter, r *http.Request) {
-	if !api.HasPerm(r.Context(), api.PermAdmin) {
+	if !apistruct.HasPerm(r.Context(), apistruct.PermAdmin) {
 		w.WriteHeader(401)
 		json.NewEncoder(w).Encode(struct{ Error string }{"unauthorized: missing write permission"})
 		return

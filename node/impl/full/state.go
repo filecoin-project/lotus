@@ -148,7 +148,7 @@ func (a *StateAPI) stateForTs(ctx context.Context, ts *types.TipSet) (*state.Sta
 func (a *StateAPI) StateGetActor(ctx context.Context, actor address.Address, ts *types.TipSet) (*types.Actor, error) {
 	state, err := a.stateForTs(ctx, ts)
 	if err != nil {
-		return nil, err
+		return nil, xerrors.Errorf("computing tipset state failed: %w", err)
 	}
 
 	return state.GetActor(actor)

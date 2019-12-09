@@ -385,7 +385,7 @@ func (t *SectorInfo) MarshalCBOR(w io.Writer) error {
 		_, err := w.Write(cbg.CborNull)
 		return err
 	}
-	if _, err := w.Write([]byte{172}); err != nil {
+	if _, err := w.Write([]byte{173}); err != nil {
 		return err
 	}
 
@@ -547,6 +547,24 @@ func (t *SectorInfo) MarshalCBOR(w io.Writer) error {
 		}
 	}
 
+	// t.FaultReportMsg (cid.Cid) (struct)
+	if _, err := w.Write(cbg.CborEncodeMajorType(cbg.MajTextString, uint64(len("FaultReportMsg")))); err != nil {
+		return err
+	}
+	if _, err := w.Write([]byte("FaultReportMsg")); err != nil {
+		return err
+	}
+
+	if t.FaultReportMsg == nil {
+		if _, err := w.Write(cbg.CborNull); err != nil {
+			return err
+		}
+	} else {
+		if err := cbg.WriteCid(w, *t.FaultReportMsg); err != nil {
+			return xerrors.Errorf("failed to write cid field t.FaultReportMsg: %w", err)
+		}
+	}
+
 	// t.LastErr (string) (string)
 	if _, err := w.Write(cbg.CborEncodeMajorType(cbg.MajTextString, uint64(len("LastErr")))); err != nil {
 		return err
@@ -575,7 +593,7 @@ func (t *SectorInfo) UnmarshalCBOR(r io.Reader) error {
 		return fmt.Errorf("cbor input should be of type map")
 	}
 
-	if extra != 12 {
+	if extra != 13 {
 		return fmt.Errorf("cbor input had wrong number of fields")
 	}
 
@@ -895,6 +913,43 @@ func (t *SectorInfo) UnmarshalCBOR(r io.Reader) error {
 			}
 
 			t.CommitMessage = &c
+		}
+
+	}
+	// t.FaultReportMsg (cid.Cid) (struct)
+
+	{
+		sval, err := cbg.ReadString(br)
+		if err != nil {
+			return err
+		}
+
+		name = string(sval)
+	}
+
+	if name != "FaultReportMsg" {
+		return fmt.Errorf("expected struct map entry %s to be FaultReportMsg", name)
+	}
+
+	{
+
+		pb, err := br.PeekByte()
+		if err != nil {
+			return err
+		}
+		if pb == cbg.CborNull[0] {
+			var nbuf [1]byte
+			if _, err := br.Read(nbuf[:]); err != nil {
+				return err
+			}
+		} else {
+
+			c, err := cbg.ReadCid(br)
+			if err != nil {
+				return xerrors.Errorf("failed to read cid field t.FaultReportMsg: %w", err)
+			}
+
+			t.FaultReportMsg = &c
 		}
 
 	}

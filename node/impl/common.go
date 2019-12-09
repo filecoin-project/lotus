@@ -2,7 +2,6 @@ package impl
 
 import (
 	"context"
-
 	"github.com/gbrlsnchs/jwt/v3"
 	"github.com/libp2p/go-libp2p-core/host"
 	"github.com/libp2p/go-libp2p-core/network"

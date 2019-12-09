@@ -124,6 +124,9 @@ func post(t *testing.T, sb *sectorbuilder.SectorBuilder, seals ...seal) time.Tim
 }
 
 func TestSealAndVerify(t *testing.T) {
+	if testing.Short() {
+		t.Skip("skipping test in short mode")
+	}
 	if runtime.NumCPU() < 10 && os.Getenv("CI") == "" { // don't bother on slow hardware
 		t.Skip("this is slow")
 	}
@@ -193,6 +196,9 @@ func TestSealAndVerify(t *testing.T) {
 }
 
 func TestSealPoStNoCommit(t *testing.T) {
+	if testing.Short() {
+		t.Skip("skipping test in short mode")
+	}
 	if runtime.NumCPU() < 10 && os.Getenv("CI") == "" { // don't bother on slow hardware
 		t.Skip("this is slow")
 	}
@@ -259,6 +265,9 @@ func TestSealPoStNoCommit(t *testing.T) {
 }
 
 func TestSealAndVerify2(t *testing.T) {
+	if testing.Short() {
+		t.Skip("skipping test in short mode")
+	}
 	if runtime.NumCPU() < 10 && os.Getenv("CI") == "" { // don't bother on slow hardware
 		t.Skip("this is slow")
 	}

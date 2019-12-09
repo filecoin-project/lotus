@@ -16,6 +16,7 @@ import (
 
 	"github.com/filecoin-project/lotus/build"
 	"github.com/filecoin-project/lotus/chain/address"
+	"github.com/filecoin-project/lotus/chain/types"
 	"github.com/filecoin-project/lotus/node/modules/dtypes"
 )
 
@@ -623,7 +624,7 @@ func (sb *SectorBuilder) GenerateEPostCandidates(sectorInfo SortedPublicSectorIn
 		return nil, err
 	}
 
-	challengeCount := ElectionPostChallengeCount(uint64(len(sectorInfo.Values())))
+	challengeCount := types.ElectionPostChallengeCount(uint64(len(sectorInfo.Values())))
 
 	proverID := addressToProverID(sb.Miner)
 	return sectorbuilder.GenerateCandidates(sb.ssize, proverID, challengeSeed, challengeCount, privsectors)
@@ -674,13 +675,8 @@ func (sb *SectorBuilder) Stop() {
 	close(sb.stopping)
 }
 
-func ElectionPostChallengeCount(sectors uint64) uint64 {
-	// ceil(sectors / build.SectorChallengeRatioDiv)
-	return (sectors + build.SectorChallengeRatioDiv - 1) / build.SectorChallengeRatioDiv
-}
-
 func fallbackPostChallengeCount(sectors uint64) uint64 {
-	challengeCount := ElectionPostChallengeCount(sectors)
+	challengeCount := types.ElectionPostChallengeCount(sectors)
 	if challengeCount > build.MaxFallbackPostChallengeCount {
 		return build.MaxFallbackPostChallengeCount
 	}

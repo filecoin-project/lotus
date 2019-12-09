@@ -36,7 +36,7 @@ type ClientDeal struct {
 	MinerWorker address.Address
 	DealID      uint64
 
-	PublishMessage *cid.Cid
+	PublishMessage *types.SignedMessage
 
 	s inet.Stream
 }
@@ -206,7 +206,6 @@ func (c *Client) Start(ctx context.Context, p ClientDealProposal) (cid.Cid, erro
 	dealProposal := &actors.StorageDealProposal{
 		PieceRef:             commP,
 		PieceSize:            uint64(pieceSize),
-		PieceSerialization:   actors.SerializationUnixFSv0,
 		Client:               p.Client,
 		Provider:             p.ProviderAddress,
 		ProposalExpiration:   p.ProposalExpiration,

@@ -255,6 +255,12 @@ func (m *Miner) onSectorUpdated(ctx context.Context, update sectorUpdate) {
 	case api.CommitFailed:
 		log.Warnf("sector %d entered unimplemented state 'CommitFailed'", update.id)
 
+		// Faults
+	case api.Faulty:
+		m.handleSectorUpdate(ctx, sector, m.handleFaulty)
+	case api.FaultReported:
+		m.handleSectorUpdate(ctx, sector, m.handleFaultReported)
+
 	// Fatal errors
 	case api.UndefinedSectorState:
 		log.Error("sector update with undefined state!")

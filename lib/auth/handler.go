@@ -5,8 +5,10 @@ import (
 	"net/http"
 	"strings"
 
-	"github.com/filecoin-project/lotus/api"
 	logging "github.com/ipfs/go-log"
+
+	"github.com/filecoin-project/lotus/api"
+	"github.com/filecoin-project/lotus/api/apistruct"
 )
 
 var log = logging.Logger("auth")
@@ -42,7 +44,7 @@ func (h *Handler) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 			return
 		}
 
-		ctx = api.WithPerm(ctx, allow)
+		ctx = apistruct.WithPerm(ctx, allow)
 	}
 
 	h.Next(w, r.WithContext(ctx))
