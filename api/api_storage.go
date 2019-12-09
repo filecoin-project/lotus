@@ -39,6 +39,7 @@ var SectorStates = []string{
 	PreCommitting:        "PreCommitting",
 	PreCommitted:         "PreCommitted",
 	Committing:           "Committing",
+	CommitWait:           "CommitWait",
 	Proving:              "Proving",
 
 	SealFailed:       "SealFailed",
