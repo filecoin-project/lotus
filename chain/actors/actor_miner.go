@@ -912,8 +912,14 @@ func onSuccessfulPoSt(self *StorageMinerActorState, vmctx types.VMContext) aerro
 	faults := []uint64{} // TODO
 
 	oldPower := self.Power
-	self.Power = types.BigMul(types.NewInt(pss.Count-uint64(len(faults))),
-		types.NewInt(mi.SectorSize))
+	newPower := types.BigMul(types.NewInt(pss.Count-uint64(len(faults))), types.NewInt(mi.SectorSize))
+
+	// If below the minimum size requirement, miners have zero power
+	if newPower.LessThan(types.NewInt(build.MinimumMinerPower)) {
+		newPower = types.NewInt(0)
+	}
+
+	self.Power = newPower
 
 	delta := types.BigSub(self.Power, oldPower)
 	if self.SlashedAt != 0 {
@@ -922,23 +928,25 @@ func onSuccessfulPoSt(self *StorageMinerActorState, vmctx types.VMContext) aerro
 	}
 
 	prevSlashingDeadline := self.ElectionPeriodStart + build.SlashablePowerDelay
-	if !self.Active {
+	if !self.Active && newPower.GreaterThan(types.NewInt(0)) {
 		self.Active = true
 		prevSlashingDeadline = 0
 	}
 
-	enc, err := SerializeParams(&UpdateStorageParams{
-		Delta:                    delta,
-		NextProvingPeriodEnd:     vmctx.BlockHeight() + build.SlashablePowerDelay,
-		PreviousProvingPeriodEnd: prevSlashingDeadline,
-	})
-	if err != nil {
-		return err
-	}
+	if !(oldPower.IsZero() && newPower.IsZero()) {
+		enc, err := SerializeParams(&UpdateStorageParams{
+			Delta:                    delta,
+			NextProvingPeriodEnd:     vmctx.BlockHeight() + build.SlashablePowerDelay,
+			PreviousProvingPeriodEnd: prevSlashingDeadline,
+		})
+		if err != nil {
+			return err
+		}
 
-	_, err = vmctx.Send(StoragePowerAddress, SPAMethods.UpdateStorage, types.NewInt(0), enc)
-	if err != nil {
-		return err
+		_, err = vmctx.Send(StoragePowerAddress, SPAMethods.UpdateStorage, types.NewInt(0), enc)
+		if err != nil {
+			return err
+		}
 	}
 
 	self.ProvingSet = self.Sectors
