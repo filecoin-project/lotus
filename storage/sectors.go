@@ -247,13 +247,13 @@ func (m *Miner) onSectorUpdated(ctx context.Context, update sectorUpdate) {
 
 	// Handled failure modes
 	case api.SealFailed:
-		log.Warn("sector %d entered unimplemented state 'SealFailed'", update.id)
+		log.Warnf("sector %d entered unimplemented state 'SealFailed'", update.id)
 	case api.PreCommitFailed:
-		log.Warn("sector %d entered unimplemented state 'PreCommitFailed'", update.id)
+		log.Warnf("sector %d entered unimplemented state 'PreCommitFailed'", update.id)
 	case api.SealCommitFailed:
-		log.Warn("sector %d entered unimplemented state 'SealCommitFailed'", update.id)
+		log.Warnf("sector %d entered unimplemented state 'SealCommitFailed'", update.id)
 	case api.CommitFailed:
-		log.Warn("sector %d entered unimplemented state 'CommitFailed'", update.id)
+		log.Warnf("sector %d entered unimplemented state 'CommitFailed'", update.id)
 
 	// Fatal errors
 	case api.UndefinedSectorState:
