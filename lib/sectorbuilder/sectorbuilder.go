@@ -4,7 +4,6 @@ import (
 	"fmt"
 	"io"
 	"os"
-	"path/filepath"
 	"strconv"
 	"sync"
 	"sync/atomic"
@@ -12,6 +11,7 @@ import (
 	sectorbuilder "github.com/filecoin-project/filecoin-ffi"
 	"github.com/ipfs/go-datastore"
 	logging "github.com/ipfs/go-log"
+	dcopy "github.com/otiai10/copy"
 	"golang.org/x/xerrors"
 
 	"github.com/filecoin-project/lotus/build"
@@ -688,15 +688,15 @@ func fallbackPostChallengeCount(sectors uint64) uint64 {
 }
 
 func (sb *SectorBuilder) ImportFrom(osb *SectorBuilder) error {
-	if err := moveAllFiles(osb.cacheDir, sb.cacheDir); err != nil {
+	if err := dcopy.Copy(osb.cacheDir, sb.cacheDir); err != nil {
 		return err
 	}
 
-	if err := moveAllFiles(osb.sealedDir, sb.sealedDir); err != nil {
+	if err := dcopy.Copy(osb.sealedDir, sb.sealedDir); err != nil {
 		return err
 	}
 
-	if err := moveAllFiles(osb.stagedDir, sb.stagedDir); err != nil {
+	if err := dcopy.Copy(osb.stagedDir, sb.stagedDir); err != nil {
 		return err
 	}
 
@@ -714,21 +714,11 @@ func (sb *SectorBuilder) ImportFrom(osb *SectorBuilder) error {
 	return nil
 }
 
-func moveAllFiles(from, to string) error {
-	dir, err := os.Open(from)
-	if err != nil {
+func (sb *SectorBuilder) SetLastSectorID(id uint64) error {
+	if err := sb.ds.Put(lastSectorIdKey, []byte(fmt.Sprint(id))); err != nil {
 		return err
 	}
 
-	names, err := dir.Readdirnames(0)
-	if err != nil {
-		return xerrors.Errorf("failed to list items in dir: %w", err)
-	}
-	for _, n := range names {
-		if err := os.Rename(filepath.Join(from, n), filepath.Join(to, n)); err != nil {
-			return xerrors.Errorf("moving file failed: %w", err)
-		}
-	}
-
+	sb.lastID = id
 	return nil
 }
