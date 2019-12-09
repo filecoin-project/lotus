@@ -15,6 +15,7 @@ let sealCodes = [
   "PreCommitting",
   "PreCommitted",
   "Committing",
+  "CommitWait",
   "Proving",
 
   "SealFailed",
