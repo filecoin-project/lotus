@@ -167,6 +167,7 @@ func (sm *StorageMinerAPI) SectorsStatus(ctx context.Context, sid uint64) (api.S
 		Deals:    deals,
 		Ticket:   info.Ticket.SB(),
 		Seed:     info.Seed.SB(),
+		Retries: info.Nonce,
 
 		LastErr: info.LastErr,
 	}, nil
@@ -203,7 +204,7 @@ func (sm *StorageMinerAPI) SectorsRefs(context.Context) (map[string][]api.Sealed
 }
 
 func (sm *StorageMinerAPI) SectorsUpdate(ctx context.Context, id uint64, state api.SectorState) error {
-	return sm.Miner.UpdateSectorState(ctx, id, state)
+	return sm.Miner.UpdateSectorState(ctx, id, storage.NonceIncrement, state)
 }
 
 func (sm *StorageMinerAPI) WorkerQueue(ctx context.Context, cfg sectorbuilder.WorkerCfg) (<-chan sectorbuilder.WorkerTask, error) {

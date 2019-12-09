@@ -49,6 +49,7 @@ func (p *Piece) ppi() (out sectorbuilder.PublicPieceInfo) {
 type SectorInfo struct {
 	State    api.SectorState
 	SectorID uint64
+	Nonce    uint64
 
 	// Packing
 
@@ -75,7 +76,7 @@ type SectorInfo struct {
 }
 
 func (t *SectorInfo) upd() *sectorUpdate {
-	return &sectorUpdate{id: t.SectorID}
+	return &sectorUpdate{id: t.SectorID, nonce: t.Nonce}
 }
 
 func (t *SectorInfo) pieceInfos() []sectorbuilder.PublicPieceInfo {

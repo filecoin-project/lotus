@@ -239,7 +239,7 @@ func (t *SectorInfo) MarshalCBOR(w io.Writer) error {
 		_, err := w.Write(cbg.CborNull)
 		return err
 	}
-	if _, err := w.Write([]byte{141}); err != nil {
+	if _, err := w.Write([]byte{142}); err != nil {
 		return err
 	}
 
@@ -250,6 +250,11 @@ func (t *SectorInfo) MarshalCBOR(w io.Writer) error {
 
 	// t.t.SectorID (uint64) (uint64)
 	if _, err := w.Write(cbg.CborEncodeMajorType(cbg.MajUnsignedInt, uint64(t.SectorID))); err != nil {
+		return err
+	}
+
+	// t.t.Nonce (uint64) (uint64)
+	if _, err := w.Write(cbg.CborEncodeMajorType(cbg.MajUnsignedInt, uint64(t.Nonce))); err != nil {
 		return err
 	}
 
@@ -358,7 +363,7 @@ func (t *SectorInfo) UnmarshalCBOR(r io.Reader) error {
 		return fmt.Errorf("cbor input should be of type array")
 	}
 
-	if extra != 13 {
+	if extra != 14 {
 		return fmt.Errorf("cbor input had wrong number of fields")
 	}
 
@@ -382,6 +387,16 @@ func (t *SectorInfo) UnmarshalCBOR(r io.Reader) error {
 		return fmt.Errorf("wrong type for uint64 field")
 	}
 	t.SectorID = uint64(extra)
+	// t.t.Nonce (uint64) (uint64)
+
+	maj, extra, err = cbg.CborReadHeader(br)
+	if err != nil {
+		return err
+	}
+	if maj != cbg.MajUnsignedInt {
+		return fmt.Errorf("wrong type for uint64 field")
+	}
+	t.Nonce = uint64(extra)
 	// t.t.Pieces ([]storage.Piece) (slice)
 
 	maj, extra, err = cbg.CborReadHeader(br)
