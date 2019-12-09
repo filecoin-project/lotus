@@ -77,6 +77,7 @@ const CollateralPrecision = 1000
 const TotalFilecoin = 2_000_000_000
 const MiningRewardTotal = 1_400_000_000
 
+
 const InitialRewardStr = "153856861913558700202"
 
 var InitialReward *big.Int

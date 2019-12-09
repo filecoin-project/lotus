@@ -31,3 +31,6 @@ const InteractivePoRepDelay = 8
 
 // Epochs
 const InteractivePoRepConfidence = 6
+
+// Bytes
+const MinimumMinerPower = 20 << 30 // 20GB

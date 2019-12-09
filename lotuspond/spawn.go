@@ -17,6 +17,10 @@ import (
 	"github.com/filecoin-project/lotus/cmd/lotus-seed/seed"
 )
 
+func init() {
+	build.SectorSizes = []uint64{1024}
+}
+
 func (api *api) Spawn() (nodeInfo, error) {
 	dir, err := ioutil.TempDir(os.TempDir(), "lotus-")
 	if err != nil {
@@ -36,7 +40,7 @@ func (api *api) Spawn() (nodeInfo, error) {
 		}
 
 		sbroot := filepath.Join(dir, "preseal")
-		genm, err := seed.PreSeal(genMiner, build.SectorSizes[0], 0, 1, sbroot, []byte("8"))
+		genm, err := seed.PreSeal(genMiner, build.SectorSizes[0], 0, 2, sbroot, []byte("8"))
 		if err != nil {
 			return nodeInfo{}, xerrors.Errorf("preseal failed: %w", err)
 		}
