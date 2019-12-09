@@ -76,7 +76,7 @@ jobs:
       - store_artifacts:
           path: lotus-storage-miner
 
-  test:
+  test: &test
     description: |
       Run tests with gotestsum.
     parameters:
@@ -153,6 +153,9 @@ jobs:
             - "~/go/pkg"
             - "~/go/src/github.com"
             - "~/go/src/golang.org"
+
+  test-short: 
+    <<: *test
 
   build_macos:
     description: build darwin lotus binary
@@ -254,8 +257,9 @@ workflows:
     jobs:
       - lint-changes:
           args: "--new-from-rev origin/master"
-      - test:
-          codecov-upload: true
+      - test
+      - test-short:
+          go-test-flags: "--timeout 10m --short"
       - mod-tidy-check
       - build-all
       - build_macos:
