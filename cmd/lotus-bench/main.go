@@ -79,6 +79,10 @@ func main() {
 				Name:  "benchmark-existing-sectorbuilder",
 				Usage: "pass a directory to run election-post timings on an existing sectorbuilder",
 			},
+			&cli.BoolFlag{
+				Name:  "json-out",
+				Usage: "output results in json format",
+			},
 		},
 		Action: func(c *cli.Context) error {
 			if c.Bool("no-gpu") {
@@ -322,19 +326,28 @@ func main() {
 				VerifyEPostHot:         verifypost2.Sub(verifypost1),
 			} // TODO: optionally write this as json to a file
 
-			fmt.Println("results")
-			if robench == "" {
-				fmt.Printf("seal: addPiece: %s\n", benchout.SealingResults[0].AddPiece) // TODO: average across multiple sealings
-				fmt.Printf("seal: preCommit: %s\n", benchout.SealingResults[0].PreCommit)
-				fmt.Printf("seal: Commit: %s\n", benchout.SealingResults[0].Commit)
-				fmt.Printf("seal: Verify: %s\n", benchout.SealingResults[0].Verify)
-				fmt.Printf("unseal: %s\n", benchout.SealingResults[0].Unseal)
+			if c.Bool("json-out") {
+				data, err := json.MarshalIndent(benchout, "", "  ")
+				if err != nil {
+					return err
+				}
+
+				fmt.Println(string(data))
+			} else {
+				fmt.Printf("results (%d)", sectorSize)
+				if robench == "" {
+					fmt.Printf("seal: addPiece: %s\n", benchout.SealingResults[0].AddPiece) // TODO: average across multiple sealings
+					fmt.Printf("seal: preCommit: %s\n", benchout.SealingResults[0].PreCommit)
+					fmt.Printf("seal: Commit: %s\n", benchout.SealingResults[0].Commit)
+					fmt.Printf("seal: Verify: %s\n", benchout.SealingResults[0].Verify)
+					fmt.Printf("unseal: %s\n", benchout.SealingResults[0].Unseal)
+				}
+				fmt.Printf("generate candidates: %s\n", benchout.PostGenerateCandidates)
+				fmt.Printf("compute epost proof (cold): %s\n", benchout.PostEProofCold)
+				fmt.Printf("compute epost proof (hot): %s\n", benchout.PostEProofHot)
+				fmt.Printf("verify epost proof (cold): %s\n", benchout.VerifyEPostCold)
+				fmt.Printf("verify epost proof (hot): %s\n", benchout.VerifyEPostHot)
 			}
-			fmt.Printf("generate candidates: %s\n", benchout.PostGenerateCandidates)
-			fmt.Printf("compute epost proof (cold): %s\n", benchout.PostEProofCold)
-			fmt.Printf("compute epost proof (hot): %s\n", benchout.PostEProofHot)
-			fmt.Printf("verify epost proof (cold): %s\n", benchout.VerifyEPostCold)
-			fmt.Printf("verify epost proof (hot): %s\n", benchout.VerifyEPostHot)
 			return nil
 		},
 	}
