@@ -268,7 +268,7 @@ var aggregateSectorDirsCmd = &cli.Command{
 				return err
 			}
 
-			if err := agsb.ImportFrom(sb); err != nil {
+			if err := agsb.ImportFrom(sb, false); err != nil {
 				return xerrors.Errorf("importing sectors from %q failed: %w", dir, err)
 			}
 		}
