@@ -941,6 +941,12 @@ func (syncer *Syncer) syncFork(ctx context.Context, from *types.TipSet, to *type
 	}
 
 	for cur := 0; cur < len(tips); {
+		if nts.Height() == 0 {
+			if !syncer.Genesis.Equals(nts) {
+				return nil, xerrors.Errorf("somehow synced chain that linked back to a different genesis (bad genesis: %s)", nts.Key())
+			}
+			return nil, xerrors.Errorf("synced chain forked at genesis, refusing to sync")
+		}
 
 		if nts.Equals(tips[cur]) {
 			return tips[:cur+1], nil
