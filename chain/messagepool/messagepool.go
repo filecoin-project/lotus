@@ -166,7 +166,7 @@ func New(api Provider, ds dtypes.MetadataDS) (*MessagePool, error) {
 	}
 
 	if err := mp.loadLocal(); err != nil {
-		return nil, xerrors.Errorf("loading local messages: %w", err)
+		log.Errorf("loading local messages: %+v", err)
 	}
 
 	go mp.repubLocal()
@@ -712,7 +712,7 @@ func (mp *MessagePool) loadLocal() error {
 				continue // todo: drop the message from local cache (if above certain confidence threshold)
 			}
 
-			return xerrors.Errorf("adding local message: %w", err)
+			log.Errorf("adding local message: %+v", err)
 		}
 	}
 
