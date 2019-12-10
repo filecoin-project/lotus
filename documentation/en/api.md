@@ -49,7 +49,7 @@ curl -X POST \
 
 > In the future we will add a playground to make it easier to build and experiment with API requests.
 
-## Authorization
+## CURL authorization
 
 To authorize your request, you will need to include the **JWT** in a HTTP header, for example:
 
@@ -59,23 +59,23 @@ To authorize your request, you will need to include the **JWT** in a HTTP header
 
 Admin token is stored in `~/.lotus/token` for the **Lotus Node** or `~/.lotusstorage/token` for the **Lotus Storage Miner**.
 
-## Authorization types
+## How do I generate a token?
+
+To generate a JWT with custom permissions, use this command:
+
+```sh
+# Lotus Node
+lotus auth create-token --perm admin
+
+# Lotus Storage Miner
+lotus-storage-miner auth create-token --perm admin
+```
+
+## What authorization level should I use?
 
 When viewing [api/struct.go](https://github.com/filecoin-project/lotus/blob/master/api/struct.go), you will encounter these types:
 
 - `read` - Read node state, no private data.
-- `write` - Write to local store / chain, read private data.
-- `sign` - Use private keys stored in wallet for signing.
-- `admin` - Manage permissions.
-
-Payload
-
-```json
-{
-  "Allow": [
-    "read", 
-    "write",
-    /* other options */
-  ]
-}
-```
+- `write` - Write to local store / chain, and `read` permissions.
+- `sign` - Use private keys stored in wallet for signing, `read` and `write` permissions.
+- `admin` - Manage permissions, `read`, `write`, and `sign` permissions.

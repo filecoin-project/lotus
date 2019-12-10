@@ -49,7 +49,7 @@ Here is an example of the response
 t3vhfme4qfvegqaz7m7q6o6afjcs67n6kpzv7t2eozio4chwpafwa2y4l7zhwd5eom7jmihzdg4s52dpvnclza
 ```
 
-- Visit the [faucet](https://lotus-faucet.kittyhawk.wtf/funds.html)
+- Visit the [faucet](https://lotus-faucet.kittyhawk.wtf/funds.html) to add funds.
 - Paste the address you created.
 - Press the send button.
 
