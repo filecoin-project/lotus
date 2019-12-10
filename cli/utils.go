@@ -2,6 +2,7 @@ package cli
 
 import (
 	"fmt"
+	"math/big"
 
 	"github.com/filecoin-project/lotus/chain/types"
 )
@@ -9,11 +10,15 @@ import (
 var Units = []string{"B", "KiB", "MiB", "GiB", "TiB", "PiB", "EiB", "ZiB"}
 
 func SizeStr(size types.BigInt) string {
-	size = types.BigMul(size, types.NewInt(100))
-	i := 0
-	for types.BigCmp(size, types.NewInt(102400)) >= 0 && i < len(Units)-1 {
-		size = types.BigDiv(size, types.NewInt(1024))
+	r := new(big.Rat).SetInt(size.Int)
+	den := big.NewRat(1, 1024)
+
+	var i int
+	for f, _ := r.Float64(); f >= 1024 && 1 < len(Units); f, _ = r.Float64() {
 		i++
+		r = r.Mul(r, den)
 	}
-	return fmt.Sprintf("%s.%s %s", types.BigDiv(size, types.NewInt(100)), types.BigMod(size, types.NewInt(100)), Units[i])
+
+	f, _ := r.Float64()
+	return fmt.Sprintf("%.3f %s", f, Units[i])
 }

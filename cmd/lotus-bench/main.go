@@ -6,8 +6,8 @@ import (
 	"crypto/sha256"
 	"encoding/json"
 	"fmt"
-	"github.com/filecoin-project/lotus/chain/types"
 	"io/ioutil"
+	"math/big"
 	"math/rand"
 	"os"
 	"path/filepath"
@@ -23,6 +23,7 @@ import (
 
 	"github.com/filecoin-project/lotus/build"
 	"github.com/filecoin-project/lotus/chain/address"
+	"github.com/filecoin-project/lotus/chain/types"
 	"github.com/filecoin-project/lotus/genesis"
 	"github.com/filecoin-project/lotus/lib/sectorbuilder"
 )
@@ -361,5 +362,8 @@ func main() {
 }
 
 func bps(data uint64, d time.Duration) string {
-	return lcli.SizeStr(types.BigDiv(types.BigMul(types.NewInt(data), types.NewInt(uint64(time.Second))), types.NewInt(uint64(d)))) + "/s"
+	bdata := new(big.Int).SetUint64(data)
+	bdata = bdata.Mul(bdata, big.NewInt(time.Second.Nanoseconds()))
+	bps := bdata.Div(bdata, big.NewInt(d.Nanoseconds()))
+	return lcli.SizeStr(types.BigInt{bps}) + "/s"
 }
