@@ -108,7 +108,11 @@ func main() {
 				}()
 				sbdir = tsdir
 			} else {
-				sbdir = robench
+				exp, err := homedir.Expand(robench)
+				if err != nil {
+					return err
+				}
+				sbdir = exp
 			}
 
 			maddr, err := address.NewFromString(c.String("miner-addr"))
