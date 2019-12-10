@@ -334,7 +334,7 @@ func main() {
 
 				fmt.Println(string(data))
 			} else {
-				fmt.Printf("results (%d)", sectorSize)
+				fmt.Printf("results (%d)\n", sectorSize)
 				if robench == "" {
 					fmt.Printf("seal: addPiece: %s\n", benchout.SealingResults[0].AddPiece) // TODO: average across multiple sealings
 					fmt.Printf("seal: preCommit: %s\n", benchout.SealingResults[0].PreCommit)
