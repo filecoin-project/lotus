@@ -8,7 +8,7 @@ import (
 	pnet "github.com/libp2p/go-libp2p-pnet"
 )
 
-var LotusKey = "/key/swarm/psk/1.0.0/\n/base16/\n20c72398e6299c7bbc1b501fdcc8abe4f89f798e9b93b2d2bc02e3c29b6a088e"
+var LotusKey = "/key/swarm/psk/1.0.0/\n/base16/\n20c72388e6299c7bbc1b501fdcc8abe4f89f798e9b93b2d2bc02e3c29b6a088e"
 
 type PNetFingerprint []byte
 
