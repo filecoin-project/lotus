@@ -124,8 +124,11 @@ func RecordTipsetPoints(ctx context.Context, api api.FullNode, pl *PointList, ti
 		if err != nil {
 			return err
 		}
+		p := NewPoint("chain.election", 1)
+		p.AddTag("miner", blockheader.Miner.String())
+		pl.AddPoint(p)
 
-		p := NewPoint("chain.blockheader_size", len(bs))
+		p = NewPoint("chain.blockheader_size", len(bs))
 		pl.AddPoint(p)
 	}
 
