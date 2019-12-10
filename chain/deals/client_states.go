@@ -90,7 +90,8 @@ func (c *Client) accepted(ctx context.Context, deal ClientDeal) (func(*ClientDea
 	dealIdx := -1
 	for i, storageDeal := range params.Deals {
 		// TODO: make it less hacky
-		eq, err := cborutil.Equals(&deal.Proposal, &storageDeal)
+		sd := storageDeal
+		eq, err := cborutil.Equals(&deal.Proposal, &sd)
 		if err != nil {
 			return nil, err
 		}
