@@ -131,7 +131,9 @@ func (hs *Service) SayHello(ctx context.Context, pid peer.ID) error {
 		latency := time.Since(start)
 
 		// add to peer tracker
-		hs.pmgr.SetPeerLatency(pid, latency)
+		if hs.pmgr != nil {
+			hs.pmgr.SetPeerLatency(pid, latency)
+		}
 	}()
 
 	return nil
