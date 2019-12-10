@@ -94,6 +94,8 @@ env LOTUS_PATH="${ldt0222}" LOTUS_STORAGE_PATH="${mdt0222}" ./lotus-storage-mine
 env LOTUS_PATH="${ldt0333}" LOTUS_STORAGE_PATH="${mdt0333}" ./lotus-storage-miner init                 --actor=t0333 --pre-sealed-sectors="${sdt0333}" --nosync=true --sector-size="${SECTOR_SIZE}" || true
 
 kill $mpid
+wait $mpid
+
 for (( i=0; i<${#pids[@]}; i++ )); do
   kill ${pids[$i]}
 done
