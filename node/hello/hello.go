@@ -64,7 +64,8 @@ func (hs *Service) HandleStream(s inet.Stream) {
 
 	var hmsg Message
 	if err := cborutil.ReadCborRPC(s, &hmsg); err != nil {
-		log.Infow("failed to read hello message", "error", err)
+		log.Infow("failed to read hello message, diconnecting", "error", err)
+		s.Conn().Close()
 		return
 	}
 	arrived := time.Now()
