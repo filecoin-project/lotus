@@ -222,7 +222,7 @@ func Online() Option {
 			Override(new(*discovery.Local), discovery.NewLocal),
 			Override(new(retrievalmarket.PeerResolver), modules.RetrievalResolver),
 
-			Override(new(retrievalmarket.RetrievalClient), retrievalimpl.NewClient),
+			Override(new(retrievalmarket.RetrievalClient), modules.RetrievalClient),
 			Override(new(dtypes.ClientDealStore), modules.NewClientDealStore),
 			Override(new(dtypes.ClientDataTransfer), modules.NewClientDAGServiceDataTransfer),
 			Override(new(*deals.ClientRequestValidator), deals.NewClientRequestValidator),
