@@ -204,6 +204,7 @@ var aggregateSectorDirsCmd = &cli.Command{
 			return err
 		}
 
+		var aggrGenMiner genesis.GenesisMiner
 		var highestSectorID uint64
 		for _, dir := range cctx.Args().Slice() {
 			dir, err := homedir.Expand(dir)
@@ -244,6 +245,8 @@ var aggregateSectorDirsCmd = &cli.Command{
 				}
 			}
 
+			aggrGenMiner = mergeGenMiners(aggrGenMiner, genm)
+
 			opts := badger.DefaultOptions
 			opts.ReadOnly = true
 			mds, err := badger.NewDatastore(filepath.Join(dir, "badger"), &opts)
@@ -271,6 +274,10 @@ var aggregateSectorDirsCmd = &cli.Command{
 		}
 
 		if err := agsb.SetLastSectorID(highestSectorID); err != nil {
+			return err
+		}
+
+		if err := seed.WriteGenesisMiner(maddr, destdir, &aggrGenMiner); err != nil {
 			return err
 		}
 
