@@ -495,7 +495,9 @@ func IsRoundWinner(ctx context.Context, ts *types.TipSet, round int64, miner add
 	if err != nil {
 		return nil, xerrors.Errorf("failed to load proving set for miner: %w", err)
 	}
-	if len(pset) == 0 {
+
+	snum := len(pset)
+	if snum == 0 {
 		return nil, nil
 	}
 
@@ -526,11 +528,9 @@ func IsRoundWinner(ctx context.Context, ts *types.TipSet, round int64, miner add
 		return nil, xerrors.Errorf("failed to look up miners sector size: %w", err)
 	}
 
-	snum := types.BigDiv(pow.MinerPower, types.NewInt(ssize))
-
 	var winners []sectorbuilder.EPostCandidate
 	for _, c := range candidates {
-		if types.IsTicketWinner(c.PartialTicket[:], ssize, snum.Uint64(), pow.TotalPower) {
+		if types.IsTicketWinner(c.PartialTicket[:], ssize, uint64(snum), pow.TotalPower) {
 			winners = append(winners, c)
 		}
 	}
