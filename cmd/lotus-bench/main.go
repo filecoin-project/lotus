@@ -68,27 +68,41 @@ func main() {
 				Name:  "no-gpu",
 				Usage: "disable gpu usage for the benchmark run",
 			},
+			&cli.StringFlag{
+				Name:  "benchmark-existing-sectorbuilder",
+				Usage: "pass a directory to run election-post timings on an existing sectorbuilder",
+			},
 		},
 		Action: func(c *cli.Context) error {
 			if c.Bool("no-gpu") {
 				os.Setenv("BELLMAN_NO_GPU", "1")
 			}
-			sdir, err := homedir.Expand(c.String("storage-dir"))
-			if err != nil {
-				return err
-			}
 
-			os.MkdirAll(sdir, 0775)
+			robench := c.String("benchmark-existing-sectorbuilder")
 
-			tsdir, err := ioutil.TempDir(sdir, "bench")
-			if err != nil {
-				return err
-			}
-			defer func() {
-				if err := os.RemoveAll(tsdir); err != nil {
-					log.Warn("remove all: ", err)
+			var sbdir string
+
+			if robench == "" {
+				sdir, err := homedir.Expand(c.String("storage-dir"))
+				if err != nil {
+					return err
 				}
-			}()
+
+				os.MkdirAll(sdir, 0775)
+
+				tsdir, err := ioutil.TempDir(sdir, "bench")
+				if err != nil {
+					return err
+				}
+				defer func() {
+					if err := os.RemoveAll(tsdir); err != nil {
+						log.Warn("remove all: ", err)
+					}
+				}()
+				sbdir = tsdir
+			} else {
+				sbdir = robench
+			}
 
 			maddr, err := address.NewFromString("t0101")
 			if err != nil {
@@ -102,14 +116,17 @@ func main() {
 				Miner:         maddr,
 				SectorSize:    sectorSize,
 				WorkerThreads: 2,
-				CacheDir:      filepath.Join(tsdir, "cache"),
-				SealedDir:     filepath.Join(tsdir, "sealed"),
-				StagedDir:     filepath.Join(tsdir, "staged"),
-				UnsealedDir:   filepath.Join(tsdir, "unsealed"),
+				CacheDir:      filepath.Join(sbdir, "cache"),
+				SealedDir:     filepath.Join(sbdir, "sealed"),
+				StagedDir:     filepath.Join(sbdir, "staged"),
+				UnsealedDir:   filepath.Join(sbdir, "unsealed"),
 			}
-			for _, d := range []string{cfg.CacheDir, cfg.SealedDir, cfg.StagedDir, cfg.UnsealedDir} {
-				if err := os.MkdirAll(d, 0775); err != nil {
-					return err
+
+			if robench == "" {
+				for _, d := range []string{cfg.CacheDir, cfg.SealedDir, cfg.StagedDir, cfg.UnsealedDir} {
+					if err := os.MkdirAll(d, 0775); err != nil {
+						return err
+					}
 				}
 			}
 
@@ -126,7 +143,7 @@ func main() {
 			var sealTimings []SealingResult
 			var sealedSectors []ffi.PublicSectorInfo
 			numSectors := uint64(1)
-			for i := uint64(1); i <= numSectors; i++ {
+			for i := uint64(1); i <= numSectors && robench == ""; i++ {
 				start := time.Now()
 				log.Info("Writing piece into sector...")
 
@@ -267,11 +284,13 @@ func main() {
 			} // TODO: optionally write this as json to a file
 
 			fmt.Println("results")
-			fmt.Printf("seal: addPiece: %s\n", benchout.SealingResults[0].AddPiece) // TODO: average across multiple sealings
-			fmt.Printf("seal: preCommit: %s\n", benchout.SealingResults[0].PreCommit)
-			fmt.Printf("seal: Commit: %s\n", benchout.SealingResults[0].Commit)
-			fmt.Printf("seal: Verify: %s\n", benchout.SealingResults[0].Verify)
-			fmt.Printf("unseal: %s\n", benchout.SealingResults[0].Unseal)
+			if robench == "" {
+				fmt.Printf("seal: addPiece: %s\n", benchout.SealingResults[0].AddPiece) // TODO: average across multiple sealings
+				fmt.Printf("seal: preCommit: %s\n", benchout.SealingResults[0].PreCommit)
+				fmt.Printf("seal: Commit: %s\n", benchout.SealingResults[0].Commit)
+				fmt.Printf("seal: Verify: %s\n", benchout.SealingResults[0].Verify)
+				fmt.Printf("unseal: %s\n", benchout.SealingResults[0].Unseal)
+			}
 			fmt.Printf("generate candidates: %s\n", benchout.PostGenerateCandidates)
 			fmt.Printf("compute epost proof (cold): %s\n", benchout.PostEProofCold)
 			fmt.Printf("compute epost proof (hot): %s\n", benchout.PostEProofHot)
