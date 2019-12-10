@@ -22,6 +22,7 @@ import (
 	"github.com/filecoin-project/lotus/chain/types"
 	"github.com/filecoin-project/lotus/lib/cborutil"
 	"github.com/filecoin-project/lotus/node/modules/dtypes"
+	"github.com/filecoin-project/lotus/peermgr"
 )
 
 type BlockSync struct {
@@ -29,13 +30,15 @@ type BlockSync struct {
 	host  host.Host
 
 	syncPeers *bsPeerTracker
+	peerMgr   *peermgr.PeerMgr
 }
 
-func NewBlockSyncClient(bserv dtypes.ChainBlockService, h host.Host) *BlockSync {
+func NewBlockSyncClient(bserv dtypes.ChainBlockService, h host.Host, pmgr peermgr.MaybePeerMgr) *BlockSync {
 	return &BlockSync{
 		bserv:     bserv,
 		host:      h,
-		syncPeers: newPeerTracker(),
+		syncPeers: newPeerTracker(pmgr.Mgr),
+		peerMgr:   pmgr.Mgr,
 	}
 }
 
@@ -392,11 +395,14 @@ type bsPeerTracker struct {
 
 	peers         map[peer.ID]*peerStats
 	avgGlobalTime time.Duration
+
+	pmgr *peermgr.PeerMgr
 }
 
-func newPeerTracker() *bsPeerTracker {
+func newPeerTracker(pmgr *peermgr.PeerMgr) *bsPeerTracker {
 	return &bsPeerTracker{
 		peers: make(map[peer.ID]*peerStats),
+		pmgr:  pmgr,
 	}
 }
 
@@ -435,20 +441,31 @@ func (bpt *bsPeerTracker) prefSortedPeers() []peer.ID {
 
 		var costI, costJ float64
 
+		getPeerInitLat := func(p peer.ID) float64 {
+			var res float64
+			if bpt.pmgr != nil {
+				if lat, ok := bpt.pmgr.GetPeerLatency(out[i]); ok {
+					res = float64(lat)
+				}
+			}
+			if res == 0 {
+				res = float64(bpt.avgGlobalTime)
+			}
+			return res * newPeerMul
+		}
+
 		if pi.successes+pi.failures > 0 {
 			failRateI := float64(pi.failures) / float64(pi.failures+pi.successes)
 			costI = float64(pi.averageTime) + failRateI*float64(bpt.avgGlobalTime)
 		} else {
-			// we know nothing about this peer
-			// make them bit better than average
-			costI = 0.9 * float64(bpt.avgGlobalTime)
+			costI = getPeerInitLat(out[i])
 		}
 
 		if pj.successes+pj.failures > 0 {
 			failRateJ := float64(pj.failures) / float64(pj.failures+pj.successes)
 			costJ = float64(pj.averageTime) + failRateJ*float64(bpt.avgGlobalTime)
 		} else {
-			costJ = 0.9 * float64(bpt.avgGlobalTime)
+			costI = getPeerInitLat(out[i])
 		}
 
 		return costI < costJ

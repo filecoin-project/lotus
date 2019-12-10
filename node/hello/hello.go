@@ -2,8 +2,7 @@ package hello
 
 import (
 	"context"
-
-	"go.uber.org/fx"
+	"time"
 
 	"github.com/ipfs/go-cid"
 	cbor "github.com/ipfs/go-ipld-cbor"
@@ -43,13 +42,7 @@ type Service struct {
 	pmgr   *peermgr.PeerMgr
 }
 
-type MaybePeerMgr struct {
-	fx.In
-
-	Mgr *peermgr.PeerMgr `optional:"true"`
-}
-
-func NewHelloService(h host.Host, cs *store.ChainStore, syncer *chain.Syncer, pmgr MaybePeerMgr) *Service {
+func NewHelloService(h host.Host, cs *store.ChainStore, syncer *chain.Syncer, pmgr peermgr.MaybePeerMgr) *Service {
 	if pmgr.Mgr == nil {
 		log.Warn("running without peer manager")
 	}
@@ -81,6 +74,11 @@ func (hs *Service) HandleStream(s inet.Stream) {
 		s.Conn().Close()
 		return
 	}
+	go func() {
+		if err := cborutil.WriteCborRPC(s, &Message{}); err != nil {
+			log.Debugf("error while responding to latency: %v", err)
+		}
+	}()
 
 	ts, err := hs.syncer.FetchTipSet(context.Background(), s.Conn().RemotePeer(), hmsg.HeaviestTipSet)
 	if err != nil {
@@ -93,9 +91,11 @@ func (hs *Service) HandleStream(s inet.Stream) {
 	if hs.pmgr != nil {
 		hs.pmgr.AddFilecoinPeer(s.Conn().RemotePeer())
 	}
+
 }
 
 func (hs *Service) SayHello(ctx context.Context, pid peer.ID) error {
+	start := time.Now()
 	s, err := hs.newStream(ctx, pid, ProtocolID)
 	if err != nil {
 		return err
@@ -123,6 +123,16 @@ func (hs *Service) SayHello(ctx context.Context, pid peer.ID) error {
 	if err := cborutil.WriteCborRPC(s, hmsg); err != nil {
 		return err
 	}
+
+	go func() {
+		hmsg = &Message{}
+		s.SetReadDeadline(time.Now().Add(10 * time.Second))
+		_ = cborutil.ReadCborRPC(s, hmsg) // ignore error
+		latency := time.Since(start)
+
+		// add to peer tracker
+		hs.pmgr.SetPeerLatency(pid, latency)
+	}()
 
 	return nil
 }
