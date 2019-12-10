@@ -9,6 +9,7 @@ import (
 	logging "github.com/ipfs/go-log"
 
 	"github.com/filecoin-project/lotus/node/modules/dtypes"
+	retrievalmarket "github.com/filecoin-project/lotus/retrieval"
 )
 
 var log = logging.Logger("ret-discovery")
@@ -21,7 +22,7 @@ func NewLocal(ds dtypes.MetadataDS) *Local {
 	return &Local{ds: namespace.Wrap(ds, datastore.NewKey("/deals/local"))}
 }
 
-func (l *Local) AddPeer(cid cid.Cid, peer RetrievalPeer) error {
+func (l *Local) AddPeer(cid cid.Cid, peer retrievalmarket.RetrievalPeer) error {
 	// TODO: allow multiple peers here
 	//  (implement an util for tracking map[thing][]otherThing, use in sectorBlockstore too)
 
@@ -35,19 +36,19 @@ func (l *Local) AddPeer(cid cid.Cid, peer RetrievalPeer) error {
 	return l.ds.Put(dshelp.CidToDsKey(cid), entry)
 }
 
-func (l *Local) GetPeers(data cid.Cid) ([]RetrievalPeer, error) {
+func (l *Local) GetPeers(data cid.Cid) ([]retrievalmarket.RetrievalPeer, error) {
 	entry, err := l.ds.Get(dshelp.CidToDsKey(data))
 	if err == datastore.ErrNotFound {
-		return []RetrievalPeer{}, nil
+		return []retrievalmarket.RetrievalPeer{}, nil
 	}
 	if err != nil {
 		return nil, err
 	}
-	var peer RetrievalPeer
+	var peer retrievalmarket.RetrievalPeer
 	if err := cbor.DecodeInto(entry, &peer); err != nil {
 		return nil, err
 	}
-	return []RetrievalPeer{peer}, nil
+	return []retrievalmarket.RetrievalPeer{peer}, nil
 }
 
-var _ PeerResolver = &Local{}
+var _ retrievalmarket.PeerResolver = &Local{}

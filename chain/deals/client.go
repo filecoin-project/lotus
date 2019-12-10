@@ -23,7 +23,7 @@ import (
 	"github.com/filecoin-project/lotus/lib/statestore"
 	"github.com/filecoin-project/lotus/node/impl/full"
 	"github.com/filecoin-project/lotus/node/modules/dtypes"
-
+	retrievalmarket "github.com/filecoin-project/lotus/retrieval"
 	"github.com/filecoin-project/lotus/retrieval/discovery"
 )
 
@@ -252,7 +252,7 @@ func (c *Client) Start(ctx context.Context, p ClientDealProposal) (cid.Cid, erro
 
 	c.incoming <- deal
 
-	return deal.ProposalCid, c.discovery.AddPeer(p.Data, discovery.RetrievalPeer{
+	return deal.ProposalCid, c.discovery.AddPeer(p.Data, retrievalmarket.RetrievalPeer{
 		Address: dealProposal.Provider,
 		ID:      deal.Miner,
 	})

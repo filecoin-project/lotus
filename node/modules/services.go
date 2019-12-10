@@ -16,6 +16,7 @@ import (
 	"github.com/filecoin-project/lotus/node/hello"
 	"github.com/filecoin-project/lotus/node/modules/helpers"
 	"github.com/filecoin-project/lotus/peermgr"
+	retrievalmarket "github.com/filecoin-project/lotus/retrieval"
 	"github.com/filecoin-project/lotus/retrieval/discovery"
 )
 
@@ -80,6 +81,6 @@ func RunDealClient(mctx helpers.MetricsCtx, lc fx.Lifecycle, c *deals.Client) {
 	})
 }
 
-func RetrievalResolver(l *discovery.Local) discovery.PeerResolver {
+func RetrievalResolver(l *discovery.Local) retrievalmarket.PeerResolver {
 	return discovery.Multi(l)
 }

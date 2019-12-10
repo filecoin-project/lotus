@@ -1,13 +1,15 @@
-package retrieval
+package retrievalimpl
 
 import (
 	"context"
 	"io"
+	"reflect"
 
 	"github.com/ipfs/go-blockservice"
 	"github.com/ipfs/go-cid"
 	"github.com/ipfs/go-merkledag"
 	unixfile "github.com/ipfs/go-unixfs/file"
+	"github.com/libp2p/go-libp2p-core/host"
 	"github.com/libp2p/go-libp2p-core/network"
 	"golang.org/x/xerrors"
 
@@ -16,23 +18,32 @@ import (
 	"github.com/filecoin-project/lotus/chain/address"
 	"github.com/filecoin-project/lotus/chain/types"
 	"github.com/filecoin-project/lotus/lib/cborutil"
+	retrievalmarket "github.com/filecoin-project/lotus/retrieval"
 	"github.com/filecoin-project/lotus/storage/sectorblocks"
 )
 
-type RetrMinerApi interface {
+// RetrMinerAPI are the node functions needed by a retrieval provider
+type RetrMinerAPI interface {
 	PaychVoucherAdd(context.Context, address.Address, *types.SignedVoucher, []byte, types.BigInt) (types.BigInt, error)
 }
 
-type Miner struct {
-	sectorBlocks *sectorblocks.SectorBlocks
-	full         RetrMinerApi
+type provider struct {
 
-	pricePerByte types.BigInt
-	// TODO: Unseal price
+	// TODO: Replace with RetrievalProviderNode & FileStore for https://github.com/filecoin-project/go-retrieval-market-project/issues/9
+	sectorBlocks *sectorblocks.SectorBlocks
+
+	// TODO: Replace with RetrievalProviderNode for
+	// https://github.com/filecoin-project/go-retrieval-market-project/issues/4
+	full RetrMinerAPI
+
+	pricePerByte retrievalmarket.BigInt
+
+	subscribers []retrievalmarket.ProviderSubscriber
 }
 
-func NewMiner(sblks *sectorblocks.SectorBlocks, full api.FullNode) *Miner {
-	return &Miner{
+// NewProvider returns a new retrieval provider
+func NewProvider(sblks *sectorblocks.SectorBlocks, full api.FullNode) retrievalmarket.RetrievalProvider {
+	return &provider{
 		sectorBlocks: sblks,
 		full:         full,
 
@@ -40,37 +51,95 @@ func NewMiner(sblks *sectorblocks.SectorBlocks, full api.FullNode) *Miner {
 	}
 }
 
+// Start begins listening for deals on the given host
+func (p *provider) Start(host host.Host) {
+	host.SetStreamHandler(retrievalmarket.QueryProtocolID, p.handleQueryStream)
+	host.SetStreamHandler(retrievalmarket.ProtocolID, p.handleDealStream)
+}
+
+// V0
+// SetPricePerByte sets the price per byte a miner charges for retrievals
+func (p *provider) SetPricePerByte(price retrievalmarket.BigInt) {
+	p.pricePerByte = price
+}
+
+// SetPaymentInterval sets the maximum number of bytes a a provider will send before
+// requesting further payment, and the rate at which that value increases
+// TODO: Implement for https://github.com/filecoin-project/go-retrieval-market-project/issues/7
+func (p *provider) SetPaymentInterval(paymentInterval uint64, paymentIntervalIncrease uint64) {
+	panic("not implemented")
+}
+
+// unsubscribeAt returns a function that removes an item from the subscribers list by comparing
+// their reflect.ValueOf before pulling the item out of the slice.  Does not preserve order.
+// Subsequent, repeated calls to the func with the same Subscriber are a no-op.
+func (p *provider) unsubscribeAt(sub retrievalmarket.ProviderSubscriber) retrievalmarket.Unsubscribe {
+	return func() {
+		curLen := len(p.subscribers)
+		for i, el := range p.subscribers {
+			if reflect.ValueOf(sub) == reflect.ValueOf(el) {
+				p.subscribers[i] = p.subscribers[curLen-1]
+				p.subscribers = p.subscribers[:curLen-1]
+				return
+			}
+		}
+	}
+}
+
+func (p *provider) notifySubscribers(evt retrievalmarket.ProviderEvent, ds retrievalmarket.ProviderDealState) {
+	for _, cb := range p.subscribers {
+		cb(evt, ds)
+	}
+}
+
+// SubscribeToEvents listens for events that happen related to client retrievals
+// TODO: Implement updates as part of https://github.com/filecoin-project/go-retrieval-market-project/issues/7
+func (p *provider) SubscribeToEvents(subscriber retrievalmarket.ProviderSubscriber) retrievalmarket.Unsubscribe {
+	p.subscribers = append(p.subscribers, subscriber)
+	return p.unsubscribeAt(subscriber)
+}
+
+// V1
+func (p *provider) SetPricePerUnseal(price retrievalmarket.BigInt) {
+	panic("not implemented")
+}
+
+func (p *provider) ListDeals() map[retrievalmarket.ProviderDealID]retrievalmarket.ProviderDealState {
+	panic("not implemented")
+}
+
 func writeErr(stream network.Stream, err error) {
 	log.Errorf("Retrieval deal error: %+v", err)
-	_ = cborutil.WriteCborRPC(stream, &DealResponse{
+	_ = cborutil.WriteCborRPC(stream, &OldDealResponse{
 		Status:  Error,
 		Message: err.Error(),
 	})
 }
 
-func (m *Miner) HandleQueryStream(stream network.Stream) {
+// TODO: Update for https://github.com/filecoin-project/go-retrieval-market-project/issues/8
+func (p *provider) handleQueryStream(stream network.Stream) {
 	defer stream.Close()
 
-	var query Query
+	var query OldQuery
 	if err := cborutil.ReadCborRPC(stream, &query); err != nil {
 		writeErr(stream, err)
 		return
 	}
 
-	size, err := m.sectorBlocks.GetSize(query.Piece)
+	size, err := p.sectorBlocks.GetSize(query.Piece)
 	if err != nil && err != sectorblocks.ErrNotFound {
 		log.Errorf("Retrieval query: GetRefs: %s", err)
 		return
 	}
 
-	answer := &QueryResponse{
+	answer := &OldQueryResponse{
 		Status: Unavailable,
 	}
 	if err == nil {
 		answer.Status = Available
 
 		// TODO: get price, look for already unsealed ref to reduce work
-		answer.MinPrice = types.BigMul(types.NewInt(uint64(size)), m.pricePerByte)
+		answer.MinPrice = types.BigMul(types.NewInt(uint64(size)), p.pricePerByte)
 		answer.Size = uint64(size) // TODO: verify on intermediate
 	}
 
@@ -81,7 +150,7 @@ func (m *Miner) HandleQueryStream(stream network.Stream) {
 }
 
 type handlerDeal struct {
-	m      *Miner
+	p      *provider
 	stream network.Stream
 
 	ufsr sectorblocks.UnixfsReader
@@ -90,11 +159,12 @@ type handlerDeal struct {
 	size uint64
 }
 
-func (m *Miner) HandleDealStream(stream network.Stream) {
+// TODO: Update for https://github.com/filecoin-project/go-retrieval-market-project/issues/7
+func (p *provider) handleDealStream(stream network.Stream) {
 	defer stream.Close()
 
 	hnd := &handlerDeal{
-		m: m,
+		p: p,
 
 		stream: stream,
 	}
@@ -113,7 +183,7 @@ func (m *Miner) HandleDealStream(stream network.Stream) {
 }
 
 func (hnd *handlerDeal) handleNext() (bool, error) {
-	var deal DealProposal
+	var deal OldDealProposal
 	if err := cborutil.ReadCborRPC(hnd.stream, &deal); err != nil {
 		if err == io.EOF { // client sent all deals
 			err = nil
@@ -131,8 +201,8 @@ func (hnd *handlerDeal) handleNext() (bool, error) {
 		return false, xerrors.Errorf("expected one signed voucher, got %d", len(deal.Payment.Vouchers))
 	}
 
-	expPayment := types.BigMul(hnd.m.pricePerByte, types.NewInt(deal.Params.Unixfs0.Size))
-	if _, err := hnd.m.full.PaychVoucherAdd(context.TODO(), deal.Payment.Channel, deal.Payment.Vouchers[0], nil, expPayment); err != nil {
+	expPayment := types.BigMul(hnd.p.pricePerByte, types.NewInt(deal.Params.Unixfs0.Size))
+	if _, err := hnd.p.full.PaychVoucherAdd(context.TODO(), deal.Payment.Channel, deal.Payment.Vouchers[0], nil, expPayment); err != nil {
 		return false, xerrors.Errorf("processing retrieval payment: %w", err)
 	}
 
@@ -156,7 +226,7 @@ func (hnd *handlerDeal) handleNext() (bool, error) {
 	return true, nil
 }
 
-func (hnd *handlerDeal) openFile(deal DealProposal) error {
+func (hnd *handlerDeal) openFile(deal OldDealProposal) error {
 	unixfs0 := deal.Params.Unixfs0
 
 	if unixfs0.Offset != 0 {
@@ -165,7 +235,7 @@ func (hnd *handlerDeal) openFile(deal DealProposal) error {
 	}
 	hnd.at = unixfs0.Offset
 
-	bstore := hnd.m.sectorBlocks.SealedBlockstore(func() error {
+	bstore := hnd.p.sectorBlocks.SealedBlockstore(func() error {
 		return nil // TODO: approve unsealing based on amount paid
 	})
 
@@ -197,10 +267,10 @@ func (hnd *handlerDeal) openFile(deal DealProposal) error {
 	return nil
 }
 
-func (hnd *handlerDeal) accept(deal DealProposal) error {
+func (hnd *handlerDeal) accept(deal OldDealProposal) error {
 	unixfs0 := deal.Params.Unixfs0
 
-	resp := &DealResponse{
+	resp := &OldDealResponse{
 		Status: Accepted,
 	}
 	if err := cborutil.WriteCborRPC(hnd.stream, resp); err != nil {

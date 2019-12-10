@@ -34,7 +34,7 @@ import (
 	"github.com/filecoin-project/lotus/node/modules/dtypes"
 	"github.com/filecoin-project/lotus/node/modules/helpers"
 	"github.com/filecoin-project/lotus/node/repo"
-	"github.com/filecoin-project/lotus/retrieval"
+	retrievalmarket "github.com/filecoin-project/lotus/retrieval"
 	"github.com/filecoin-project/lotus/storage"
 )
 
@@ -114,11 +114,10 @@ func StorageMiner(mctx helpers.MetricsCtx, lc fx.Lifecycle, api api.FullNode, h 
 	return sm, nil
 }
 
-func HandleRetrieval(host host.Host, lc fx.Lifecycle, m *retrieval.Miner) {
+func HandleRetrieval(host host.Host, lc fx.Lifecycle, m retrievalmarket.RetrievalProvider) {
 	lc.Append(fx.Hook{
 		OnStart: func(context.Context) error {
-			host.SetStreamHandler(retrieval.QueryProtocolID, m.HandleQueryStream)
-			host.SetStreamHandler(retrieval.ProtocolID, m.HandleDealStream)
+			m.Start(host)
 			return nil
 		},
 	})
