@@ -3,7 +3,9 @@ package sectorbuilder
 import (
 	"fmt"
 	"io"
+	"io/ioutil"
 	"os"
+	"path/filepath"
 	"strconv"
 	"sync"
 	"sync/atomic"
@@ -681,7 +683,7 @@ func fallbackPostChallengeCount(sectors uint64) uint64 {
 	return challengeCount
 }
 
-func (sb *SectorBuilder) ImportFrom(osb *SectorBuilder) error {
+func (sb *SectorBuilder) ImportFrom(osb *SectorBuilder, symlink bool) error {
 	if err := dcopy.Copy(osb.cacheDir, sb.cacheDir); err != nil {
 		return err
 	}
@@ -715,4 +717,59 @@ func (sb *SectorBuilder) SetLastSectorID(id uint64) error {
 
 	sb.lastID = id
 	return nil
+}
+
+func migrate(from, to string, symlink bool) error {
+	st, err := os.Stat(from)
+	if err != nil {
+		return err
+	}
+
+	if st.IsDir() {
+		return migrateDir(from, to, symlink)
+	}
+	return migrateFile(from, to, symlink)
+}
+
+func migrateDir(from, to string, symlink bool) error {
+	tost, err := os.Stat(to)
+	if err != nil {
+		if !os.IsNotExist(err) {
+			return err
+		}
+
+		if err := os.MkdirAll(to, 0755); err != nil {
+			return err
+		}
+	} else if !tost.IsDir() {
+		return xerrors.Errorf("target %q already exists and is a file (expected directory)")
+	}
+
+	dirents, err := ioutil.ReadDir(from)
+	if err != nil {
+		return err
+	}
+
+	for _, inf := range dirents {
+		n := inf.Name()
+		if inf.IsDir() {
+			if err := migrate(filepath.Join(from, n), filepath.Join(to, n), symlink); err != nil {
+				return err
+			}
+		} else {
+			if err := migrate(filepath.Join(from, n), filepath.Join(to, n), symlink); err != nil {
+				return err
+			}
+		}
+	}
+
+	return nil
+}
+
+func migrateFile(from, to string, symlink bool) error {
+	if symlink {
+		return os.Symlink(from, to)
+	}
+
+	return dcopy.Copy(from, to)
 }
