@@ -6,6 +6,7 @@ import (
 	"crypto/sha256"
 	"encoding/json"
 	"fmt"
+	"github.com/filecoin-project/lotus/chain/types"
 	"io/ioutil"
 	"math/rand"
 	"os"
@@ -13,6 +14,7 @@ import (
 	"time"
 
 	ffi "github.com/filecoin-project/filecoin-ffi"
+	lcli "github.com/filecoin-project/lotus/cli"
 	"github.com/ipfs/go-datastore"
 	logging "github.com/ipfs/go-log"
 	"github.com/mitchellh/go-homedir"
@@ -315,7 +317,7 @@ func main() {
 			}
 			verifypost2 := time.Now()
 
-			benchout := BenchResults{
+			bo := BenchResults{
 				SectorSize:     cfg.SectorSize,
 				SealingResults: sealTimings,
 
@@ -327,7 +329,7 @@ func main() {
 			} // TODO: optionally write this as json to a file
 
 			if c.Bool("json-out") {
-				data, err := json.MarshalIndent(benchout, "", "  ")
+				data, err := json.MarshalIndent(bo, "", "  ")
 				if err != nil {
 					return err
 				}
@@ -336,17 +338,17 @@ func main() {
 			} else {
 				fmt.Printf("results (%d)\n", sectorSize)
 				if robench == "" {
-					fmt.Printf("seal: addPiece: %s\n", benchout.SealingResults[0].AddPiece) // TODO: average across multiple sealings
-					fmt.Printf("seal: preCommit: %s\n", benchout.SealingResults[0].PreCommit)
-					fmt.Printf("seal: Commit: %s\n", benchout.SealingResults[0].Commit)
-					fmt.Printf("seal: Verify: %s\n", benchout.SealingResults[0].Verify)
-					fmt.Printf("unseal: %s\n", benchout.SealingResults[0].Unseal)
+					fmt.Printf("seal: addPiece: %s (%s)\n", bo.SealingResults[0].AddPiece, bps(bo.SectorSize, bo.SealingResults[0].AddPiece)) // TODO: average across multiple sealings
+					fmt.Printf("seal: preCommit: %s (%s)\n", bo.SealingResults[0].PreCommit, bps(bo.SectorSize, bo.SealingResults[0].PreCommit))
+					fmt.Printf("seal: commit: %s (%s)\n", bo.SealingResults[0].Commit, bps(bo.SectorSize, bo.SealingResults[0].Commit))
+					fmt.Printf("seal: verify: %s\n", bo.SealingResults[0].Verify)
+					fmt.Printf("unseal: %s  (%s)\n", bo.SealingResults[0].Unseal, bps(bo.SectorSize, bo.SealingResults[0].Unseal))
 				}
-				fmt.Printf("generate candidates: %s\n", benchout.PostGenerateCandidates)
-				fmt.Printf("compute epost proof (cold): %s\n", benchout.PostEProofCold)
-				fmt.Printf("compute epost proof (hot): %s\n", benchout.PostEProofHot)
-				fmt.Printf("verify epost proof (cold): %s\n", benchout.VerifyEPostCold)
-				fmt.Printf("verify epost proof (hot): %s\n", benchout.VerifyEPostHot)
+				fmt.Printf("generate candidates: %s (%s)\n", bo.PostGenerateCandidates, bps(bo.SectorSize*uint64(len(bo.SealingResults)), bo.PostGenerateCandidates))
+				fmt.Printf("compute epost proof (cold): %s\n", bo.PostEProofCold)
+				fmt.Printf("compute epost proof (hot): %s\n", bo.PostEProofHot)
+				fmt.Printf("verify epost proof (cold): %s\n", bo.VerifyEPostCold)
+				fmt.Printf("verify epost proof (hot): %s\n", bo.VerifyEPostHot)
 			}
 			return nil
 		},
@@ -356,4 +358,8 @@ func main() {
 		log.Warn(err)
 		return
 	}
+}
+
+func bps(data uint64, d time.Duration) string {
+	return lcli.SizeStr(types.BigDiv(types.BigMul(types.NewInt(data), types.NewInt(uint64(time.Second))), types.NewInt(uint64(d)))) + "/s"
 }
