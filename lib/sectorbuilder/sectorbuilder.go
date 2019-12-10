@@ -483,6 +483,14 @@ func (sb *SectorBuilder) SealPreCommit(sectorID uint64, ticket SealTicket, piece
 		return RawSealPreCommitOutput{}, xerrors.Errorf("getting sealed sector path: %w", err)
 	}
 
+	e, err := os.OpenFile(sealedPath, os.O_RDWR|os.O_CREATE, 0644)
+	if err != nil {
+		return RawSealPreCommitOutput{}, xerrors.Errorf("ensuring sealed file exists: %w", err)
+	}
+	if err := e.Close(); err != nil {
+		return RawSealPreCommitOutput{}, err
+	}
+
 	var sum uint64
 	for _, piece := range pieces {
 		sum += piece.Size
