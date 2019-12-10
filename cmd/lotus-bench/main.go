@@ -4,6 +4,7 @@ import (
 	"bytes"
 	"context"
 	"crypto/sha256"
+	"encoding/json"
 	"fmt"
 	"io/ioutil"
 	"math/rand"
@@ -20,6 +21,7 @@ import (
 
 	"github.com/filecoin-project/lotus/build"
 	"github.com/filecoin-project/lotus/chain/address"
+	"github.com/filecoin-project/lotus/genesis"
 	"github.com/filecoin-project/lotus/lib/sectorbuilder"
 )
 
@@ -69,6 +71,11 @@ func main() {
 				Usage: "disable gpu usage for the benchmark run",
 			},
 			&cli.StringFlag{
+				Name:  "miner-addr",
+				Usage: "pass miner address (only necessary if using existing sectorbuilder)",
+				Value: "t0101",
+			},
+			&cli.StringFlag{
 				Name:  "benchmark-existing-sectorbuilder",
 				Usage: "pass a directory to run election-post timings on an existing sectorbuilder",
 			},
@@ -104,7 +111,7 @@ func main() {
 				sbdir = robench
 			}
 
-			maddr, err := address.NewFromString("t0101")
+			maddr, err := address.NewFromString(c.String("miner-addr"))
 			if err != nil {
 				return err
 			}
@@ -223,6 +230,34 @@ func main() {
 
 			var challenge [32]byte
 			rand.Read(challenge[:])
+
+			if robench != "" {
+				// TODO: this assumes we only ever benchmark a preseal
+				// sectorbuilder directory... we need a better way to handle
+				// this in other cases
+
+				fdata, err := ioutil.ReadFile(filepath.Join(sbdir, "pre-seal-"+maddr.String()+".json"))
+				if err != nil {
+					return err
+				}
+
+				var genmm map[string]genesis.GenesisMiner
+				if err := json.Unmarshal(fdata, &genmm); err != nil {
+					return err
+				}
+
+				genm, ok := genmm[maddr.String()]
+				if !ok {
+					return xerrors.Errorf("preseal file didnt have expected miner in it")
+				}
+
+				for _, s := range genm.Sectors {
+					sealedSectors = append(sealedSectors, ffi.PublicSectorInfo{
+						CommR:    s.CommR,
+						SectorID: s.SectorID,
+					})
+				}
+			}
 
 			log.Info("generating election post candidates")
 			sinfos := sectorbuilder.NewSortedPublicSectorInfo(sealedSectors)
