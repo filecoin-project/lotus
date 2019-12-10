@@ -490,6 +490,7 @@ func (cs *ChainStore) expandTipset(b *types.BlockHeader) (*types.TipSet, error) 
 		return types.NewTipSet(all)
 	}
 
+	inclMiners := map[address.Address]bool{b.Miner: true}
 	for _, bhc := range tsets {
 		if bhc == b.Cid() {
 			continue
@@ -500,8 +501,14 @@ func (cs *ChainStore) expandTipset(b *types.BlockHeader) (*types.TipSet, error) 
 			return nil, xerrors.Errorf("failed to load block (%s) for tipset expansion: %w", bhc, err)
 		}
 
+		if inclMiners[h.Miner] {
+			log.Warnf("Have multiple blocks from miner %s at height %d in our tipset cache", h.Miner, h.Height)
+			continue
+		}
+
 		if types.CidArrsEqual(h.Parents, b.Parents) {
 			all = append(all, h)
+			inclMiners[h.Miner] = true
 		}
 	}
 
