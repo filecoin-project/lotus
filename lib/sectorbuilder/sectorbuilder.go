@@ -507,8 +507,6 @@ func (sb *SectorBuilder) SealPreCommit(sectorID uint64, ticket SealTicket, piece
 		return RawSealPreCommitOutput{}, xerrors.Errorf("presealing sector %d (%s): %w", sectorID, stagedPath, err)
 	}
 
-	log.Infof("PRECOMMIT FFI RSPCO %v", rspco)
-
 	return RawSealPreCommitOutput(rspco), nil
 }
 

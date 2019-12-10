@@ -1,6 +1,7 @@
 package main
 
 import (
+	"bytes"
 	"context"
 	"crypto/rand"
 	"encoding/json"
@@ -152,7 +153,9 @@ var initCmd = &cli.Command{
 				return err
 			}
 
-			oldmds, err := badger.NewDatastore(filepath.Join(pssb, "badger"), nil)
+			bopts := badger.DefaultOptions
+			bopts.ReadOnly = true
+			oldmds, err := badger.NewDatastore(filepath.Join(pssb, "badger"), &bopts)
 			if err != nil {
 				return err
 			}
@@ -267,7 +270,7 @@ func migratePreSealMeta(ctx context.Context, api lapi.FullNode, presealDir strin
 			return err
 		}
 
-		proposalCid, err := sector.Deal.Proposal.Cid()
+		proposalCid, err := sector.Deal.Cid()
 		if err != nil {
 			return err
 		}
@@ -275,7 +278,7 @@ func migratePreSealMeta(ctx context.Context, api lapi.FullNode, presealDir strin
 		dealKey := datastore.NewKey(deals.ProviderDsPrefix).ChildString(proposalCid.String())
 
 		deal := &deals.MinerDeal{
-			Proposal:    sector.Deal.Proposal,
+			Proposal:    sector.Deal,
 			ProposalCid: proposalCid,
 			State:       lapi.DealComplete,
 			Ref:         proposalCid, // TODO: This is super wrong, but there
@@ -298,7 +301,7 @@ func migratePreSealMeta(ctx context.Context, api lapi.FullNode, presealDir strin
 	return nil
 }
 
-func findMarketDealID(ctx context.Context, api lapi.FullNode, deal actors.StorageDeal) (uint64, error) {
+func findMarketDealID(ctx context.Context, api lapi.FullNode, deal actors.StorageDealProposal) (uint64, error) {
 	// TODO: find a better way
 	//  (this is only used by genesis miners)
 
@@ -308,11 +311,7 @@ func findMarketDealID(ctx context.Context, api lapi.FullNode, deal actors.Storag
 	}
 
 	for k, v := range deals {
-		eq, err := cborutil.Equals(&v.Deal, &deal)
-		if err != nil {
-			return 0, err
-		}
-		if eq {
+		if bytes.Equal(v.PieceRef, deal.PieceRef) {
 			return strconv.ParseUint(k, 10, 64)
 		}
 	}

@@ -56,10 +56,8 @@ type SectorInfo struct {
 	Pieces []Piece
 
 	// PreCommit
-	Pad0   []byte // TODO: legacy placeholder, remove
 	CommD  []byte
 	CommR  []byte
-	Pad1   []byte // TODO: legacy placeholder, remove
 	Proof  []byte
 	Ticket SealTicket
 
@@ -70,6 +68,9 @@ type SectorInfo struct {
 
 	// Committing
 	CommitMessage *cid.Cid
+
+	// Faults
+	FaultReportMsg *cid.Cid
 
 	// Debug
 	LastErr string

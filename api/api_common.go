@@ -10,6 +10,8 @@ import (
 	"github.com/filecoin-project/lotus/build"
 )
 
+type Permission = string
+
 type Common interface {
 	// Auth
 	AuthVerify(ctx context.Context, token string) ([]Permission, error)

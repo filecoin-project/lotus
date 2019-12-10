@@ -8,6 +8,7 @@ import (
 
 func init() {
 	build.SectorSizes = []uint64{1024}
+	build.MinimumMinerPower = 1024
 }
 
 func testGeneration(t testing.TB, n int, msgs int) {

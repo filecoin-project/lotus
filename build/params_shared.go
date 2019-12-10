@@ -25,7 +25,7 @@ func SupportedSectorSize(ssize uint64) bool {
 // Payments
 
 // Epochs
-const PaymentChannelClosingDelay = 6 * 60 * 2 // six hours
+const PaymentChannelClosingDelay = 6 * 60 * 60 / BlockDelay // six hours
 
 // /////
 // Consensus / Network

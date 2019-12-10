@@ -87,6 +87,7 @@ func MakeGenesis(outFile, presealInfo string) func(bs dtypes.ChainBlockstore, w 
 				return nil, err
 			}
 
+			var fakePeerIDs []peer.ID
 			minerAddresses := make([]address.Address, 0, len(preseals))
 			for s := range preseals {
 				a, err := address.NewFromString(s)
@@ -97,10 +98,11 @@ func MakeGenesis(outFile, presealInfo string) func(bs dtypes.ChainBlockstore, w 
 					return nil, xerrors.New("expected ID address")
 				}
 				minerAddresses = append(minerAddresses, a)
+				fakePeerIDs = append(fakePeerIDs, peer.ID("peer"+a.String()))
 			}
 
 			gmc := &gen.GenMinerCfg{
-				PeerIDs:    []peer.ID{"peer ID 1"},
+				PeerIDs:    fakePeerIDs,
 				PreSeals:   preseals,
 				MinerAddrs: minerAddresses,
 			}

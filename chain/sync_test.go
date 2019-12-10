@@ -28,6 +28,7 @@ func init() {
 	build.InsecurePoStValidation = true
 	os.Setenv("TRUST_PARAMS", "1")
 	build.SectorSizes = []uint64{1024}
+	build.MinimumMinerPower = 1024
 }
 
 const source = 0
