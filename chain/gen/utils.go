@@ -351,7 +351,7 @@ func SetupStorageMiners(ctx context.Context, cs *store.ChainStore, sroot cid.Cid
 		if err := cst.Get(ctx, mact.Head, &mstate); err != nil {
 			return cid.Undef, nil, xerrors.Errorf("getting miner actor state failed: %w", err)
 		}
-		mstate.Power = types.BigMul(types.NewInt(build.SectorSizes[0]), types.NewInt(uint64(len(ps.Sectors))))
+		mstate.Power = types.BigMul(types.NewInt(ps.SectorSize), types.NewInt(uint64(len(ps.Sectors))))
 
 		blks := amt.WrapBlockstore(cs.Blockstore())
 
