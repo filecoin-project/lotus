@@ -12,7 +12,7 @@ require (
 	github.com/filecoin-project/chain-validation v0.0.3
 	github.com/filecoin-project/filecoin-ffi v0.0.0-20191204125133-ebb3e13addf1
 	github.com/filecoin-project/go-amt-ipld v0.0.0-20191205011053-79efc22d6cdc
-	github.com/filecoin-project/go-fil-components v0.0.0-20191207000154-7875a4fac0c4
+	github.com/filecoin-project/go-fil-components v0.0.0-20191209202555-21dd66ba3701
 	github.com/gbrlsnchs/jwt/v3 v3.0.0-beta.1
 	github.com/go-ole/go-ole v1.2.4 // indirect
 	github.com/gorilla/mux v1.7.3
