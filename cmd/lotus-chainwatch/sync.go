@@ -223,25 +223,6 @@ func syncHead(ctx context.Context, api api.FullNode, st *storage, ts *types.TipS
 
 	msgs, incls := fetchMessages(ctx, api, toSync)
 
-	if err := st.storeMessages(msgs); err != nil {
-		log.Error(err)
-		return
-	}
-
-	if err := st.storeMsgInclusions(incls); err != nil {
-		log.Error(err)
-		return
-	}
-
-	log.Infof("Getting parent receipts")
-
-	receipts := fetchParentReceipts(ctx, api, toSync)
-
-	if err := st.storeReceipts(receipts); err != nil {
-		log.Error(err)
-		return
-	}
-
 	log.Infof("Resolving addresses")
 
 	for _, message := range msgs {
@@ -261,6 +242,27 @@ func syncHead(ctx context.Context, api api.FullNode, st *storage, ts *types.TipS
 	})
 
 	if err := st.storeAddressMap(addresses); err != nil {
+		log.Error(err)
+		return
+	}
+
+	log.Infof("Persisting messages")
+
+	if err := st.storeMessages(msgs); err != nil {
+		log.Error(err)
+		return
+	}
+
+	if err := st.storeMsgInclusions(incls); err != nil {
+		log.Error(err)
+		return
+	}
+
+	log.Infof("Getting parent receipts")
+
+	receipts := fetchParentReceipts(ctx, api, toSync)
+
+	if err := st.storeReceipts(receipts); err != nil {
 		log.Error(err)
 		return
 	}

@@ -38,7 +38,7 @@ func main() {
 			&cli.StringFlag{
 				Name:    "db",
 				EnvVars: []string{"LOTUS_DB"},
-				Value:   "./chainwatch.db",
+				Value:   "",
 			},
 		},
 

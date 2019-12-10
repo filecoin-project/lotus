@@ -6,7 +6,7 @@ import (
 	"time"
 
 	"github.com/ipfs/go-cid"
-	_ "github.com/mattn/go-sqlite3"
+	_ "github.com/lib/pq"
 
 	"github.com/filecoin-project/lotus/chain/address"
 	"github.com/filecoin-project/lotus/chain/types"
@@ -19,7 +19,7 @@ type storage struct {
 }
 
 func openStorage(dbSource string) (*storage, error) {
-	db, err := sql.Open("sqlite3", dbSource)
+	db, err := sql.Open("postgres", dbSource)
 	if err != nil {
 		return nil, err
 	}
@@ -35,32 +35,75 @@ func (st *storage) setup() error {
 		return err
 	}
 	_, err = tx.Exec(`
+create table if not exists blocks_synced
+(
+	cid text not null
+		constraint blocks_synced_pk
+			primary key,
+	add_ts int not null
+);
+
+create unique index if not exists blocks_synced_cid_uindex
+	on blocks_synced (cid);
+
+create table if not exists block_parents
+(
+	block text not null
+	    constraint block_parents_pk
+			primary key,
+	parent text not null
+);
+
+create unique index if not exists block_parents_block_parent_uindex
+	on block_parents (block, parent);
+
+create table if not exists blocks
+(
+	cid text not null
+		constraint blocks_pk
+			primary key
+		constraint blocks_synced_blocks_cid_fk
+			references blocks_synced (cid)
+		constraint block_parents_blocks_cid_fk
+			references block_parents (block),
+	parentWeight numeric not null,
+	parentStateRoot text not null,
+	height int not null,
+	miner text not null,
+	timestamp int not null
+);
+
+create unique index if not exists block_cid_uindex
+	on blocks (cid);
+
+create table if not exists id_address_map
+(
+	id text not null,
+	address text not null,
+	constraint id_address_map_pk
+		primary key (id, address)
+);
+
+create unique index if not exists id_address_map_id_uindex
+	on id_address_map (id);
+
+create unique index if not exists id_address_map_address_uindex
+	on id_address_map (address);
+
 create table if not exists actors
   (
-	id text not null,
+	id text not null
+		constraint id_address_map_actors_id_fk
+			references id_address_map (id),
 	code text not null,
 	head text not null,
 	nonce int not null,
 	balance text not null,
 	stateroot text
-		constraint actors_blocks_stateroot_fk
-			references blocks (parentStateRoot),
-	constraint actors_pk
-		primary key (id, nonce, balance, stateroot)
   );
   
 create index if not exists actors_id_index
 	on actors (id);
-
-create table if not exists id_address_map
-(
-	id text not null
-		constraint id_address_map_actors_id_fk
-			references actors (id),
-	address text not null,
-	constraint id_address_map_pk
-		primary key (id, address)
-);
 
 create index if not exists id_address_map_address_index
 	on id_address_map (address);
@@ -84,57 +127,11 @@ create table if not exists messages
 	gasprice int not null,
 	gaslimit int not null,
 	method int,
-	params blob
+	params bytea
 );
 
 create unique index if not exists messages_cid_uindex
 	on messages (cid);
-
-create table if not exists blocks
-(
-	cid text not null
-		constraint blocks_pk
-			primary key,
-	parentWeight numeric not null,
-	parentStateRoot text not null,
-	height int not null,
-	miner text not null
-		constraint blocks_id_address_map_miner_fk
-			references id_address_map (address),
-	timestamp int not null
-);
-
-create unique index if not exists block_cid_uindex
-	on blocks (cid);
-
-create table if not exists blocks_synced
-(
-	cid text not null
-		constraint blocks_synced_pk
-			primary key
-		constraint blocks_synced_blocks_cid_fk
-			references blocks,
-	add_ts int not null
-);
-
-create unique index if not exists blocks_synced_cid_uindex
-	on blocks_synced (cid);
-
-create table if not exists block_parents
-(
-	block text not null
-		constraint block_parents_blocks_cid_fk
-			references blocks,
-	parent text not null
-		constraint block_parents_blocks_cid_fk_2
-			references blocks
-);
-
-create unique index if not exists block_parents_block_parent_uindex
-	on block_parents (block, parent);
-
-create unique index if not exists blocks_cid_uindex
-	on blocks (cid);
 	
 create table if not exists block_messages
 (
@@ -166,13 +163,11 @@ create table if not exists receipts
 	msg text not null
 		constraint receipts_messages_cid_fk
 			references messages,
-	state text not null
-		constraint receipts_blocks_parentStateRoot_fk
-			references blocks (parentStateRoot),
+	state text not null,
 	idx int not null,
 	exit int not null,
 	gas_used int not null,
-	return blob,
+	return bytea,
 	constraint receipts_pk
 		primary key (msg, state)
 );
@@ -180,18 +175,11 @@ create table if not exists receipts
 create index if not exists receipts_msg_state_index
 	on receipts (msg, state);
 
-
 create table if not exists miner_heads
 (
-	head text not null
-		constraint miner_heads_actors_head_fk
-			references actors (head),
-	addr text not null
-		constraint miner_heads_actors_id_fk
-			references actors (id),
-	stateroot text not null
-		constraint miner_heads_blocks_stateroot_fk
-			references blocks (parentStateRoot),
+	head text not null,
+	addr text not null,
+	stateroot text not null,
 	sectorset text not null,
 	provingset text not null,
 	owner text not null,
@@ -219,7 +207,7 @@ create table if not exists miner_heads
 
 func (st *storage) hasBlock(bh cid.Cid) bool {
 	var exitsts bool
-	err := st.db.QueryRow(`select exists (select 1 FROM blocks_synced where cid=?)`, bh.String()).Scan(&exitsts)
+	err := st.db.QueryRow(`select exists (select 1 FROM blocks_synced where cid=$1)`, bh.String()).Scan(&exitsts)
 	if err != nil {
 		log.Error(err)
 		return false
@@ -233,7 +221,7 @@ func (st *storage) storeActors(actors map[address.Address]map[types.Actor]cid.Ci
 		return err
 	}
 
-	stmt, err := tx.Prepare(`insert into actors (id, code, head, nonce, balance, stateroot) values (?, ?, ?, ?, ?, ?) on conflict do nothing`)
+	stmt, err := tx.Prepare(`insert into actors (id, code, head, nonce, balance, stateroot) values ($1, $2, $3, $4, $5, $6) on conflict do nothing`)
 	if err != nil {
 		return err
 	}
@@ -255,7 +243,7 @@ func (st *storage) storeMiners(miners map[minerKey]*minerInfo) error {
 		return err
 	}
 
-	stmt, err := tx.Prepare(`insert into miner_heads (head, addr, stateroot, sectorset, provingset, owner, worker, peerid, sectorsize, power, active, ppe, slashed_at) values (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?) on conflict do nothing`)
+	stmt, err := tx.Prepare(`insert into miner_heads (head, addr, stateroot, sectorset, provingset, owner, worker, peerid, sectorsize, power, active, ppe, slashed_at) VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9,$10,$11,$12,$13) on conflict do nothing`)
 	if err != nil {
 		return err
 	}
@@ -292,18 +280,7 @@ func (st *storage) storeHeaders(bhs map[cid.Cid]*types.BlockHeader, sync bool) e
 		return err
 	}
 
-	stmt, err := tx.Prepare(`insert into blocks (cid, parentWeight, parentStateRoot, height, miner, "timestamp") values (?, ?, ?, ?, ?, ?) on conflict do nothing`)
-	if err != nil {
-		return err
-	}
-	defer stmt.Close()
-	for _, bh := range bhs {
-		if _, err := stmt.Exec(bh.Cid().String(), bh.ParentWeight.String(), bh.ParentStateRoot.String(), bh.Height, bh.Miner.String(), bh.Timestamp); err != nil {
-			return err
-		}
-	}
-
-	stmt2, err := tx.Prepare(`insert into block_parents (block, parent) values (?, ?) on conflict do nothing`)
+	stmt2, err := tx.Prepare(`insert into block_parents (block, parent) values ($1, $2) on conflict do nothing`)
 	if err != nil {
 		return err
 	}
@@ -317,7 +294,7 @@ func (st *storage) storeHeaders(bhs map[cid.Cid]*types.BlockHeader, sync bool) e
 	}
 
 	if sync {
-		stmt, err := tx.Prepare(`insert into blocks_synced (cid, add_ts) values (?, ?) on conflict do nothing`)
+		stmt, err := tx.Prepare(`insert into blocks_synced (cid, add_ts) values ($1, $2) on conflict do nothing`)
 		if err != nil {
 			return err
 		}
@@ -331,6 +308,17 @@ func (st *storage) storeHeaders(bhs map[cid.Cid]*types.BlockHeader, sync bool) e
 		}
 	}
 
+	stmt, err := tx.Prepare(`insert into blocks (cid, parentWeight, parentStateRoot, height, miner, "timestamp") values ($1, $2, $3, $4, $5, $6) on conflict do nothing`)
+	if err != nil {
+		return err
+	}
+	defer stmt.Close()
+	for _, bh := range bhs {
+		if _, err := stmt.Exec(bh.Cid().String(), bh.ParentWeight.String(), bh.ParentStateRoot.String(), bh.Height, bh.Miner.String(), bh.Timestamp); err != nil {
+			return err
+		}
+	}
+
 	return tx.Commit()
 }
 
@@ -340,7 +328,7 @@ func (st *storage) storeMessages(msgs map[cid.Cid]*types.Message) error {
 		return err
 	}
 
-	stmt, err := tx.Prepare(`insert into messages (cid, "from", "to", nonce, "value", gasprice, gaslimit, method, params) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?) on conflict do nothing`)
+	stmt, err := tx.Prepare(`insert into messages (cid, "from", "to", nonce, "value", gasprice, gaslimit, method, params) VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9) on conflict do nothing`)
 	if err != nil {
 		return err
 	}
@@ -371,7 +359,7 @@ func (st *storage) storeReceipts(recs map[mrec]*types.MessageReceipt) error {
 		return err
 	}
 
-	stmt, err := tx.Prepare(`insert into receipts (msg, state, idx, exit, gas_used, return) VALUES (?, ?, ?, ?, ?, ?) on conflict do nothing`)
+	stmt, err := tx.Prepare(`insert into receipts (msg, state, idx, exit, gas_used, return) VALUES ($1,$2,$3,$4,$5,$6) on conflict do nothing`)
 	if err != nil {
 		return err
 	}
@@ -399,7 +387,7 @@ func (st *storage) storeAddressMap(addrs map[address.Address]address.Address) er
 		return err
 	}
 
-	stmt, err := tx.Prepare(`insert into id_address_map (id, address) VALUES (?, ?) on conflict do nothing`)
+	stmt, err := tx.Prepare(`insert into id_address_map (id, address) VALUES ($1, $2) on conflict do nothing`)
 	if err != nil {
 		return err
 	}
@@ -426,7 +414,7 @@ func (st *storage) storeMsgInclusions(incls map[cid.Cid][]cid.Cid) error {
 		return err
 	}
 
-	stmt, err := tx.Prepare(`insert into block_messages (block, message) VALUES (?, ?) on conflict do nothing`)
+	stmt, err := tx.Prepare(`insert into block_messages (block, message) VALUES ($1, $2) on conflict do nothing`)
 	if err != nil {
 		return err
 	}
@@ -452,7 +440,7 @@ func (st *storage) storeMpoolInclusion(msg cid.Cid) error {
 		return err
 	}
 
-	stmt, err := tx.Prepare(`insert into mpool_messages (msg, add_ts) VALUES (?, ?) on conflict do nothing`)
+	stmt, err := tx.Prepare(`insert into mpool_messages (msg, add_ts) VALUES ($1, $2) on conflict do nothing`)
 	if err != nil {
 		return err
 	}

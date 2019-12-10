@@ -46,6 +46,7 @@ require (
 	github.com/ipfs/go-unixfs v0.2.2-0.20190827150610-868af2e9e5cb
 	github.com/ipld/go-ipld-prime v0.0.2-0.20191025154717-8dff1cbec43b
 	github.com/ipsn/go-secp256k1 v0.0.0-20180726113642-9d62b9f0bc52
+	github.com/lib/pq v1.2.0
 	github.com/libp2p/go-libp2p v0.3.0
 	github.com/libp2p/go-libp2p-circuit v0.1.1
 	github.com/libp2p/go-libp2p-connmgr v0.1.0
