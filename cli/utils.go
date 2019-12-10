@@ -20,5 +20,5 @@ func SizeStr(size types.BigInt) string {
 	}
 
 	f, _ := r.Float64()
-	return fmt.Sprintf("%.3f %s", f, Units[i])
+	return fmt.Sprintf("%.3g %s", f, Units[i])
 }
