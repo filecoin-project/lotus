@@ -25,6 +25,7 @@ var log = logging.Logger("build")
 //const gateway = "http://198.211.99.118/ipfs/"
 const gateway = "https://ipfs.io/ipfs/"
 const paramdir = "/var/tmp/filecoin-proof-parameters"
+const dirEnv = "FIL_PROOFS_PARAMETER_CACHE"
 
 type paramFile struct {
 	Cid        string `json:"cid"`
@@ -39,8 +40,15 @@ type fetch struct {
 	errs []error
 }
 
+func getParamDir() string {
+	if os.Getenv(dirEnv) == "" {
+		return paramdir
+	}
+	return os.Getenv(dirEnv)
+}
+
 func GetParams(storageSize uint64) error {
-	if err := os.Mkdir(paramdir, 0755); err != nil && !os.IsExist(err) {
+	if err := os.Mkdir(getParamDir(), 0755); err != nil && !os.IsExist(err) {
 		return err
 	}
 
@@ -70,7 +78,7 @@ func (ft *fetch) maybeFetchAsync(name string, info paramFile) {
 	go func() {
 		defer ft.wg.Done()
 
-		path := filepath.Join(paramdir, name)
+		path := filepath.Join(getParamDir(), name)
 
 		err := ft.checkFile(path, info)
 		if !os.IsNotExist(err) && err != nil {
