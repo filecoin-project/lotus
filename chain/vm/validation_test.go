@@ -40,3 +40,10 @@ func TestPaymentChannel(t *testing.T) {
 	suites.PayChActorUpdate(t, factory)
 
 }
+
+func TestStoragePower(t *testing.T) {
+	factory := validation.NewFactories()
+	suites.StoragePowerActorConstructor(t, factory)
+	suites.StoragePowerActorCreateStorageMiner(t, factory)
+	suites.StoragePowerActorUpdateStorage(t, factory)
+}
