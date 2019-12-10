@@ -212,6 +212,9 @@ func (mp *MessagePool) repubLocal() {
 
 				curNonce := a.Nonce
 				for _, m := range msgs {
+					if m.Message.Nonce < curNonce {
+						continue
+					}
 					if m.Message.Nonce != curNonce {
 						break
 					}
