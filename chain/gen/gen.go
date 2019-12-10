@@ -530,7 +530,7 @@ func IsRoundWinner(ctx context.Context, ts *types.TipSet, round int64, miner add
 
 	var winners []sectorbuilder.EPostCandidate
 	for _, c := range candidates {
-		if types.IsTicketWinner(c.PartialTicket[:], ssize, uint64(len(sinfos)), pow.TotalPower) {
+		if types.IsTicketWinner(c.PartialTicket[:], ssize, uint64(snum), pow.TotalPower) {
 			winners = append(winners, c)
 		}
 	}
