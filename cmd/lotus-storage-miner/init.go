@@ -76,11 +76,20 @@ var initCmd = &cli.Command{
 			Name:  "nosync",
 			Usage: "don't check full-node sync status",
 		},
+		&cli.BoolFlag{
+			Name:  "symlink-imported-sectors",
+			Usage: "attempt to symlink to presealed sectors instead of copying them into place",
+		},
 	},
 	Action: func(cctx *cli.Context) error {
 		log.Info("Initializing lotus storage miner")
 
 		ssize := cctx.Uint64("sector-size")
+
+		symlink := cctx.Bool("symlink-imported-sectors")
+		if symlink {
+			log.Info("will attempt to symlink to imported sectors")
+		}
 
 		log.Info("Checking proof parameters")
 		if err := build.GetParams(ssize); err != nil {
@@ -184,7 +193,7 @@ var initCmd = &cli.Command{
 				return xerrors.Errorf("failed to open up sectorbuilder: %w", err)
 			}
 
-			if err := nsb.ImportFrom(oldsb); err != nil {
+			if err := nsb.ImportFrom(oldsb, symlink); err != nil {
 				return err
 			}
 			if err := lr.Close(); err != nil {
