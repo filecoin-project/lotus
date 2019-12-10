@@ -1,8 +1,7 @@
-package retrieval
+package retrievalimpl
 
 import (
 	"context"
-	"io"
 
 	blocks "github.com/ipfs/go-block-format"
 	"github.com/ipfs/go-cid"
@@ -16,13 +15,13 @@ import (
 )
 
 type BlockVerifier interface {
-	Verify(context.Context, blocks.Block, io.Writer) (internal bool, err error)
+	Verify(context.Context, blocks.Block) (internal bool, err error)
 }
 
 type OptimisticVerifier struct {
 }
 
-func (o *OptimisticVerifier) Verify(context.Context, blocks.Block, io.Writer) (bool, error) {
+func (o *OptimisticVerifier) Verify(context.Context, blocks.Block) (bool, error) {
 	// It's probably fine
 	return false, nil
 }
@@ -37,11 +36,11 @@ type UnixFs0Verifier struct {
 	sub *UnixFs0Verifier
 }
 
-func (b *UnixFs0Verifier) verify(ctx context.Context, blk blocks.Block, out io.Writer) (last bool, internal bool, err error) {
+func (b *UnixFs0Verifier) verify(ctx context.Context, blk blocks.Block) (last bool, internal bool, err error) {
 	if b.sub != nil {
 		// TODO: check links here (iff b.sub.sub == nil)
 
-		subLast, internal, err := b.sub.verify(ctx, blk, out)
+		subLast, internal, err := b.sub.verify(ctx, blk)
 		if err != nil {
 			return false, false, err
 		}
@@ -57,7 +56,7 @@ func (b *UnixFs0Verifier) verify(ctx context.Context, blk blocks.Block, out io.W
 		return false, false, xerrors.New("unixfs verifier: too many nodes in level")
 	}
 
-	links, err := b.checkInternal(blk, out)
+	links, err := b.checkInternal(blk)
 	if err != nil {
 		return false, false, err
 	}
@@ -85,7 +84,7 @@ func (b *UnixFs0Verifier) verify(ctx context.Context, blk blocks.Block, out io.W
 	return b.seen == b.expect, false, nil
 }
 
-func (b *UnixFs0Verifier) checkInternal(blk blocks.Block, out io.Writer) (int, error) {
+func (b *UnixFs0Verifier) checkInternal(blk blocks.Block) (int, error) {
 	nd, err := ipld.Decode(blk)
 	if err != nil {
 		log.Warnf("IPLD Decode failed: %s", err)
@@ -112,21 +111,20 @@ func (b *UnixFs0Verifier) checkInternal(blk blocks.Block, out io.Writer) (int, e
 		return len(nd.Links()), nil
 
 	case *merkledag.RawNode:
-		_, err := out.Write(nd.RawData())
-		return 0, err
+		return 0, nil
 	default:
 		return 0, xerrors.New("verifier: unknown node type")
 	}
 }
 
-func (b *UnixFs0Verifier) Verify(ctx context.Context, blk blocks.Block, w io.Writer) (bool, error) {
+func (b *UnixFs0Verifier) Verify(ctx context.Context, blk blocks.Block) (bool, error) {
 	// root is special
 	if b.rootBlk == nil {
 		if !b.Root.Equals(blk.Cid()) {
 			return false, xerrors.Errorf("unixfs verifier: root block CID didn't match: valid %s, got %s", b.Root, blk.Cid())
 		}
 		b.rootBlk = blk
-		links, err := b.checkInternal(blk, w)
+		links, err := b.checkInternal(blk)
 		if err != nil {
 			return false, err
 		}
@@ -135,7 +133,7 @@ func (b *UnixFs0Verifier) Verify(ctx context.Context, blk blocks.Block, w io.Wri
 		return links != 0, nil
 	}
 
-	_, internal, err := b.verify(ctx, blk, w)
+	_, internal, err := b.verify(ctx, blk)
 	return internal, err
 }
 

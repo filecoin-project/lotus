@@ -35,8 +35,11 @@ import (
 	"github.com/filecoin-project/lotus/node/modules/dtypes"
 	"github.com/filecoin-project/lotus/node/modules/helpers"
 	"github.com/filecoin-project/lotus/node/repo"
-	"github.com/filecoin-project/lotus/retrieval"
+	retrievalmarket "github.com/filecoin-project/lotus/retrieval"
+	retrievalimpl "github.com/filecoin-project/lotus/retrieval/impl"
+	"github.com/filecoin-project/lotus/retrievaladapter"
 	"github.com/filecoin-project/lotus/storage"
+	"github.com/filecoin-project/lotus/storage/sectorblocks"
 )
 
 func minerAddrFromDS(ds dtypes.MetadataDS) (address.Address, error) {
@@ -115,11 +118,10 @@ func StorageMiner(mctx helpers.MetricsCtx, lc fx.Lifecycle, api api.FullNode, h 
 	return sm, nil
 }
 
-func HandleRetrieval(host host.Host, lc fx.Lifecycle, m *retrieval.Miner) {
+func HandleRetrieval(host host.Host, lc fx.Lifecycle, m retrievalmarket.RetrievalProvider) {
 	lc.Append(fx.Hook{
 		OnStart: func(context.Context) error {
-			host.SetStreamHandler(retrieval.QueryProtocolID, m.HandleQueryStream)
-			host.SetStreamHandler(retrieval.ProtocolID, m.HandleDealStream)
+			m.Start(host)
 			return nil
 		},
 	})
@@ -260,4 +262,10 @@ func SealTicketGen(api api.FullNode) storage.TicketFn {
 			TicketBytes: tkt,
 		}, nil
 	}
+}
+
+// RetrievalProvider creates a new retrieval provider attached to the provider blockstore
+func RetrievalProvider(sblks *sectorblocks.SectorBlocks, full api.FullNode) retrievalmarket.RetrievalProvider {
+	adapter := retrievaladapter.NewRetrievalProviderNode(full)
+	return retrievalimpl.NewProvider(sblks, adapter)
 }

@@ -1,4 +1,4 @@
-package retrieval
+package retrievalimpl
 
 import (
 	"fmt"
@@ -67,7 +67,7 @@ func (t *RetParams) UnmarshalCBOR(r io.Reader) error {
 	return nil
 }
 
-func (t *Query) MarshalCBOR(w io.Writer) error {
+func (t *OldQuery) MarshalCBOR(w io.Writer) error {
 	if t == nil {
 		_, err := w.Write(cbg.CborNull)
 		return err
@@ -85,7 +85,7 @@ func (t *Query) MarshalCBOR(w io.Writer) error {
 	return nil
 }
 
-func (t *Query) UnmarshalCBOR(r io.Reader) error {
+func (t *OldQuery) UnmarshalCBOR(r io.Reader) error {
 	br := cbg.GetPeeker(r)
 
 	maj, extra, err := cbg.CborReadHeader(br)
@@ -115,7 +115,7 @@ func (t *Query) UnmarshalCBOR(r io.Reader) error {
 	return nil
 }
 
-func (t *QueryResponse) MarshalCBOR(w io.Writer) error {
+func (t *OldQueryResponse) MarshalCBOR(w io.Writer) error {
 	if t == nil {
 		_, err := w.Write(cbg.CborNull)
 		return err
@@ -124,7 +124,7 @@ func (t *QueryResponse) MarshalCBOR(w io.Writer) error {
 		return err
 	}
 
-	// t.Status (retrieval.QueryResponseStatus) (uint64)
+	// t.t.Status (retrieval.OldQueryResponseStatus) (uint64)
 	if _, err := w.Write(cbg.CborEncodeMajorType(cbg.MajUnsignedInt, uint64(t.Status))); err != nil {
 		return err
 	}
@@ -141,7 +141,7 @@ func (t *QueryResponse) MarshalCBOR(w io.Writer) error {
 	return nil
 }
 
-func (t *QueryResponse) UnmarshalCBOR(r io.Reader) error {
+func (t *OldQueryResponse) UnmarshalCBOR(r io.Reader) error {
 	br := cbg.GetPeeker(r)
 
 	maj, extra, err := cbg.CborReadHeader(br)
@@ -156,7 +156,7 @@ func (t *QueryResponse) UnmarshalCBOR(r io.Reader) error {
 		return fmt.Errorf("cbor input had wrong number of fields")
 	}
 
-	// t.Status (retrieval.QueryResponseStatus) (uint64)
+	// t.t.Status (retrieval.OldQueryResponseStatus) (uint64)
 
 	maj, extra, err = cbg.CborReadHeader(br)
 	if err != nil {
@@ -165,8 +165,8 @@ func (t *QueryResponse) UnmarshalCBOR(r io.Reader) error {
 	if maj != cbg.MajUnsignedInt {
 		return fmt.Errorf("wrong type for uint64 field")
 	}
-	t.Status = QueryResponseStatus(extra)
-	// t.Size (uint64) (uint64)
+	t.Status = OldQueryResponseStatus(extra)
+	// t.t.Size (uint64) (uint64)
 
 	maj, extra, err = cbg.CborReadHeader(br)
 	if err != nil {
@@ -247,7 +247,7 @@ func (t *Unixfs0Offer) UnmarshalCBOR(r io.Reader) error {
 	return nil
 }
 
-func (t *DealProposal) MarshalCBOR(w io.Writer) error {
+func (t *OldDealProposal) MarshalCBOR(w io.Writer) error {
 	if t == nil {
 		_, err := w.Write(cbg.CborNull)
 		return err
@@ -274,7 +274,7 @@ func (t *DealProposal) MarshalCBOR(w io.Writer) error {
 	return nil
 }
 
-func (t *DealProposal) UnmarshalCBOR(r io.Reader) error {
+func (t *OldDealProposal) UnmarshalCBOR(r io.Reader) error {
 	br := cbg.GetPeeker(r)
 
 	maj, extra, err := cbg.CborReadHeader(br)
@@ -322,7 +322,7 @@ func (t *DealProposal) UnmarshalCBOR(r io.Reader) error {
 	return nil
 }
 
-func (t *DealResponse) MarshalCBOR(w io.Writer) error {
+func (t *OldDealResponse) MarshalCBOR(w io.Writer) error {
 	if t == nil {
 		_, err := w.Write(cbg.CborNull)
 		return err
@@ -350,7 +350,7 @@ func (t *DealResponse) MarshalCBOR(w io.Writer) error {
 	return nil
 }
 
-func (t *DealResponse) UnmarshalCBOR(r io.Reader) error {
+func (t *OldDealResponse) UnmarshalCBOR(r io.Reader) error {
 	br := cbg.GetPeeker(r)
 
 	maj, extra, err := cbg.CborReadHeader(br)
