@@ -139,7 +139,7 @@ func (hs *Service) SayHello(ctx context.Context, pid peer.ID) error {
 		hmsg = &Message{}
 		s.SetReadDeadline(time.Now().Add(10 * time.Second))
 		err := cborutil.ReadCborRPC(s, hmsg) // ignore error
-		ok := err != nil
+		ok := err == nil
 
 		t3 := time.Now()
 		lat := t3.Sub(t0)
