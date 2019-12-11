@@ -49,19 +49,27 @@ Here is an example of the response
 t3vhfme4qfvegqaz7m7q6o6afjcs67n6kpzv7t2eozio4chwpafwa2y4l7zhwd5eom7jmihzdg4s52dpvnclza
 ```
 
-- Visit the [faucet](https://lotus-faucet.kittyhawk.wtf/funds.html)
+- Visit the [faucet](https://lotus-faucet.kittyhawk.wtf/funds.html) to add funds.
 - Paste the address you created.
 - Press the send button.
 
 ## Check wallet address balance
 
-Wallet balances in the devnet are in **FIL**, the smallest denomination of FIL is an **attoFil**, where 1 attoFil = 10^-18 FIL.
+Wallet balances in the Lotus DevNet are in **FIL**, the smallest denomination of FIL is an **attoFil**, where 1 attoFil = 10^-18 FIL.
 
 ```sh
 lotus wallet balance <YOUR_NEW_ADDRESS>
 ```
 
 You will not see any attoFIL in your wallet if your **chain** is not fully synced.
+
+## Send FIL to another wallet
+
+To send FIL to another wallet, use this command:
+
+```
+lotus send <target> <amount>
+```
 
 ## Monitor the dashboard
 

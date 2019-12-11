@@ -17,7 +17,7 @@ lotus wallet list
 With your wallet address:
 
 - Visit the [faucet](https://lotus-faucet.kittyhawk.wtf/miner.html)
-- Click "Create Miner
+- Click "Create Miner"
 - DO NOT REFRESH THE PAGE. THIS OPERATION CAN TAKE SOME TIME.
 
 The task will be complete when you see:
@@ -49,6 +49,8 @@ To mine:
 ```sh
 lotus-storage-miner run
 ```
+
+If you are downloading **Filecoin Proof Parameters**, the download can take some time.
 
 Get information about your miner:
 

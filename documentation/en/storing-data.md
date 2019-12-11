@@ -52,4 +52,4 @@ lotus client deal <Data CID> <miner> <price> <duration>
 
 Upon success, this command will return a **Deal CID**. 
 
-From now on the **Data CID** is [retrievable](https://docs.lotu.sh/en+retrieving-data) from the **Lotus Storage Miner**.
+To retrieve this file it must be sealed. If the **Lotus Storage Miner** is not running on a machine designed for sealing, the process will take a very long time. 
