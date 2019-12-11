@@ -5,7 +5,7 @@ orbs:
 executors:
   golang:
     docker:
-      - image: circleci/golang:1.13
+      - image: circleci/golang:1.13-stretch
     resource_class: 2xlarge
 
 commands:
@@ -75,6 +75,8 @@ jobs:
           path: lotus
       - store_artifacts:
           path: lotus-storage-miner
+      - store_artifacts:
+          path: lotus-storage-worker
 
   test: &test
     description: |
@@ -197,6 +199,8 @@ jobs:
           path: lotus
       - store_artifacts:
           path: lotus-storage-miner
+      - store_artifacts:
+          path: lotus-storage-worker
       - save_cache:
           name: save go mod and cargo cache
           key: v1-go-deps-{{ arch }}-{{ checksum "~/go/src/github.com/filecoin-project/lotus/go.mod" }}
