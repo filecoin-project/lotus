@@ -34,6 +34,11 @@ type ClientNodeAdapter struct {
 	ev *events.Events
 }
 
+type clientApi struct {
+	full.ChainAPI
+	full.StateAPI
+}
+
 func NewClientNodeAdapter(state full.StateAPI, chain full.ChainAPI, mpool full.MpoolAPI, sm *stmgr.StateManager, cs *store.ChainStore, fm *market.FundMgr) storagemarket.StorageClientNode {
 	return &ClientNodeAdapter{
 		StateAPI: state,
@@ -43,7 +48,7 @@ func NewClientNodeAdapter(state full.StateAPI, chain full.ChainAPI, mpool full.M
 		sm: sm,
 		cs: cs,
 		fm: fm,
-		ev: events.NewEvents(context.TODO(), &chain),
+		ev: events.NewEvents(context.TODO(), &clientApi{chain, state}),
 	}
 }
 
@@ -228,7 +233,7 @@ func (c *ClientNodeAdapter) OnDealSectorCommitted(ctx context.Context, provider 
 		return false, true, nil
 	}
 
-	called := func(msg *types.Message, ts *types.TipSet, curH uint64) (more bool, err error) {
+	called := func(msg *types.Message, rec *types.MessageReceipt, ts *types.TipSet, curH uint64) (more bool, err error) {
 		defer func() {
 			if err != nil {
 				cb(xerrors.Errorf("handling applied event: %w", err))
@@ -238,23 +243,6 @@ func (c *ClientNodeAdapter) OnDealSectorCommitted(ctx context.Context, provider 
 		if msg == nil {
 			log.Error("timed out waiting for deal activation... what now?")
 			return false, nil
-		}
-
-		var params actors.SectorProveCommitInfo
-		if err := params.UnmarshalCBOR(bytes.NewReader(msg.Params)); err != nil {
-			return false, err
-		}
-
-		var found bool
-		for _, dealID := range params.DealIDs {
-			if dealID == dealId {
-				found = true
-				break
-			}
-		}
-
-		if !found {
-			return true, nil
 		}
 
 		sd, err := stmgr.GetStorageDeal(ctx, c.StateManager, dealId, ts)
@@ -279,7 +267,32 @@ func (c *ClientNodeAdapter) OnDealSectorCommitted(ctx context.Context, provider 
 		return nil
 	}
 
-	if err := c.ev.Called(checkFunc, called, revert, 3, build.SealRandomnessLookbackLimit, provider, actors.MAMethods.ProveCommitSector); err != nil {
+	matchEvent := func(msg *types.Message) (bool, error) {
+		if msg.To != provider {
+			return false, nil
+		}
+
+		if msg.Method != actors.MAMethods.ProveCommitSector {
+			return false, nil
+		}
+
+		var params actors.SectorProveCommitInfo
+		if err := params.UnmarshalCBOR(bytes.NewReader(msg.Params)); err != nil {
+			return false, err
+		}
+
+		var found bool
+		for _, dealID := range params.DealIDs {
+			if dealID == dealId {
+				found = true
+				break
+			}
+		}
+
+		return found, nil
+	}
+
+	if err := c.ev.Called(checkFunc, called, revert, 3, build.SealRandomnessLookbackLimit, matchEvent); err != nil {
 		return xerrors.Errorf("failed to set up called handler")
 	}
 

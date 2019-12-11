@@ -120,11 +120,11 @@ func (n *ProviderNodeAdapter) OnDealComplete(ctx context.Context, deal storagema
 		return 0, xerrors.Errorf("deal.Proposal.PieceSize didn't match padded unixfs file size")
 	}
 
-	sectorID, err := n.secb.AddUnixfsPiece(ctx, deal.Ref, uf, deal.DealID)
+	sectorID, err := n.secb.AddUnixfsPiece(ctx, uf, deal.DealID)
 	if err != nil {
 		return 0, xerrors.Errorf("AddPiece failed: %s", err)
 	}
-	log.Warnf("New Sector: %d", sectorID)
+	log.Warnf("New Sector: %d (deal %d)", sectorID, deal.DealID)
 
 	return sectorID, nil
 }

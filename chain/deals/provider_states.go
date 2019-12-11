@@ -102,7 +102,7 @@ func (p *Provider) accept(ctx context.Context, deal MinerDeal) (func(*MinerDeal)
 		return nil, err
 	}
 
-	log.Infof("fetching data for a deal %d", resp.DealIDs[0])
+	log.Infof("fetching data for a deal %d", dealId)
 	err = p.sendSignedResponse(&Response{
 		State: api.DealAccepted,
 
@@ -130,7 +130,7 @@ func (p *Provider) accept(ctx context.Context, deal MinerDeal) (func(*MinerDeal)
 	// (see onDataTransferEvent)
 	_, err = p.dataTransfer.OpenPullDataChannel(ctx,
 		deal.Client,
-		&StorageDataTransferVoucher{Proposal: deal.ProposalCid, DealID: resp.DealIDs[0]},
+		&StorageDataTransferVoucher{Proposal: deal.ProposalCid, DealID: uint64(dealId)},
 		deal.Ref,
 		allSelector,
 	)

@@ -10,6 +10,7 @@ import (
 
 	"github.com/filecoin-project/lotus/chain"
 	"github.com/filecoin-project/lotus/chain/blocksync"
+	"github.com/filecoin-project/lotus/chain/messagepool"
 	"github.com/filecoin-project/lotus/chain/sub"
 	"github.com/filecoin-project/lotus/node/hello"
 	"github.com/filecoin-project/lotus/node/modules/helpers"
