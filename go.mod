@@ -9,7 +9,7 @@ require (
 	github.com/Gurpartap/async v0.0.0-20180927173644-4f7f499dd9ee
 	github.com/StackExchange/wmi v0.0.0-20190523213315-cbe66965904d // indirect
 	github.com/fatih/color v1.7.0 // indirect
-	github.com/filecoin-project/chain-validation v0.0.4
+	github.com/filecoin-project/chain-validation v0.0.5
 	github.com/filecoin-project/filecoin-ffi v0.0.0-20191204125133-ebb3e13addf1
 	github.com/filecoin-project/go-amt-ipld v0.0.0-20191205011053-79efc22d6cdc
 	github.com/gbrlsnchs/jwt/v3 v3.0.0-beta.1

@@ -47,3 +47,10 @@ func TestStoragePower(t *testing.T) {
 	suites.StoragePowerActorCreateStorageMiner(t, factory)
 	suites.StoragePowerActorUpdateStorage(t, factory)
 }
+
+func TestStorageMarket(t *testing.T) {
+	factory := validation.NewFactories()
+	suites.StorageMarketActorConstructor(t, factory)
+	suites.StorageMarketBalanceUpdates(t, factory)
+	suites.StorageMarketStoragePublishDeal(t, factory)
+}
