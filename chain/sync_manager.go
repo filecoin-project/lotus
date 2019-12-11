@@ -203,9 +203,6 @@ func (stb *syncTargetBucket) sameChainAs(ts *types.TipSet) bool {
 		if types.CidArrsEqual(ts.Parents(), t.Cids()) {
 			return true
 		}
-		if types.CidArrsEqual(ts.Parents(), t.Parents()) {
-			return true
-		}
 	}
 	return false
 }
@@ -283,6 +280,7 @@ func (sm *SyncManager) syncScheduler() {
 }
 
 func (sm *SyncManager) scheduleIncoming(ts *types.TipSet) {
+	log.Info("scheduling incoming tipset sync: ", ts.Cids())
 	if sm.getBootstrapState() == BSStateSelected {
 		sm.setBootstrapState(BSStateScheduled)
 		sm.syncTargets <- ts
@@ -295,7 +293,7 @@ func (sm *SyncManager) scheduleIncoming(ts *types.TipSet) {
 			break
 		}
 
-		if types.CidArrsEqual(ts.Parents(), acts.Cids()) || types.CidArrsEqual(ts.Parents(), acts.Parents()) {
+		if types.CidArrsEqual(ts.Parents(), acts.Cids()) {
 			// sync this next, after that sync process finishes
 			relatedToActiveSync = true
 		}

@@ -692,15 +692,15 @@ func fallbackPostChallengeCount(sectors uint64) uint64 {
 }
 
 func (sb *SectorBuilder) ImportFrom(osb *SectorBuilder, symlink bool) error {
-	if err := migrate(osb.cacheDir, sb.cacheDir, true); err != nil {
+	if err := migrate(osb.cacheDir, sb.cacheDir, symlink); err != nil {
 		return err
 	}
 
-	if err := migrate(osb.sealedDir, sb.sealedDir, true); err != nil {
+	if err := migrate(osb.sealedDir, sb.sealedDir, symlink); err != nil {
 		return err
 	}
 
-	if err := migrate(osb.stagedDir, sb.stagedDir, true); err != nil {
+	if err := migrate(osb.stagedDir, sb.stagedDir, symlink); err != nil {
 		return err
 	}
 

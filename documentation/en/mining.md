@@ -2,7 +2,7 @@
 
 Here are instructions to learn how to perform storage mining. For hardware specifications please read [this](https://docs.lotu.sh/en+hardware-mining).
 
-It is useful to [join the DevNet](https://docs.lotu.sh/en+join-devnet) prior to attempting storage mining for the first time.
+It is useful to [join the TestNet](https://docs.lotu.sh/en+join-testnet) prior to attempting storage mining for the first time.
 
 NOTE: While a miner is running, there will be many `WARN` and `ERROR` logs.
 
@@ -17,7 +17,7 @@ lotus wallet list
 With your wallet address:
 
 - Visit the [faucet](https://lotus-faucet.kittyhawk.wtf/miner.html)
-- Click "Create Miner
+- Click "Create Miner"
 - DO NOT REFRESH THE PAGE. THIS OPERATION CAN TAKE SOME TIME.
 
 The task will be complete when you see:
@@ -50,6 +50,8 @@ To mine:
 lotus-storage-miner run
 ```
 
+If you are downloading **Filecoin Proof Parameters**, the download can take some time.
+
 Get information about your miner:
 
 ```sh
@@ -62,6 +64,8 @@ lotus-storage-miner info
 ```sh
 lotus-storage-miner pledge-sector
 ```
+
+* Warning: On Linux configurations, this command will write data to `$TMPDIR` which is not usually the largest partition. You should point the value to a larger partition if possible.
 
 Get **miner power** and **sector usage**:
 

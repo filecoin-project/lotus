@@ -2,6 +2,8 @@ package cli
 
 import (
 	"fmt"
+	"sort"
+	"strings"
 
 	"gopkg.in/urfave/cli.v2"
 
@@ -33,6 +35,10 @@ var netPeers = &cli.Command{
 		if err != nil {
 			return err
 		}
+
+		sort.Slice(peers, func(i, j int) bool {
+			return strings.Compare(string(peers[i].ID), string(peers[j].ID)) > 0
+		})
 
 		for _, peer := range peers {
 			fmt.Println(peer)

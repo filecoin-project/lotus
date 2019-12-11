@@ -33,6 +33,9 @@ func HandleIncomingBlocks(ctx context.Context, bsub *pubsub.Subscription, s *cha
 		}
 
 		go func() {
+			log.Infof("New block over pubsub: %s", blk.Cid())
+
+			start := time.Now()
 			log.Debug("about to fetch messages for block from pubsub")
 			bmsgs, err := s.Bsync.FetchMessagesByCids(context.TODO(), blk.BlsMessages)
 			if err != nil {
@@ -46,7 +49,8 @@ func HandleIncomingBlocks(ctx context.Context, bsub *pubsub.Subscription, s *cha
 				return
 			}
 
-			log.Debugw("new block over pubsub", "cid", blk.Header.Cid(), "source", msg.GetFrom())
+			took := time.Since(start)
+			log.Infow("new block over pubsub", "cid", blk.Header.Cid(), "source", msg.GetFrom(), "msgfetch", took)
 			if delay := time.Now().Unix() - int64(blk.Header.Timestamp); delay > 5 {
 				log.Warnf("Received block with large delay %d from miner %s", delay, blk.Header.Miner)
 			}

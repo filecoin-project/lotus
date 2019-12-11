@@ -236,7 +236,7 @@ var clientRetrieveCmd = &cli.Command{
 		}
 
 		if err := api.ClientRetrieve(ctx, offers[0].Order(payer), cctx.Args().Get(1)); err != nil {
-			return err
+			return xerrors.Errorf("Retrieval Failed: %w", err)
 		}
 
 		fmt.Println("Success")

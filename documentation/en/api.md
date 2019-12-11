@@ -4,9 +4,9 @@ Here is an early overview of how to make API calls.
 
 Implementation details for the **JSON-RPC** package are [here](https://github.com/filecoin-project/lotus/tree/master/lib/jsonrpc).
 
-## Overview
+## Overview: How do you modify the config.toml to change the API endpoint?
 
-API requests are made against `127.0.0.1:1234` unless you modify `~/.lotus/api`. 
+API requests are made against `127.0.0.1:1234` unless you modify `.lotus/config.toml`. 
 
 Options:
 
@@ -16,7 +16,11 @@ Options:
 
 ## What methods can I use?
 
-Every `method` is available in [api/api.go](https://github.com/filecoin-project/lotus/blob/master/api/api_full.go). 
+For now, you can look into different files to find methods available to you based on your needs:
+
+* [Both Lotus node + storage miner APIs](https://github.com/filecoin-project/lotus/blob/master/api/api_common.go)
+* [Lotus node API](https://github.com/filecoin-project/lotus/blob/master/api/api_full.go)
+* [Storage miner API](https://github.com/filecoin-project/lotus/blob/master/api/api_storage.go)
 
 The necessary permissions for each are in [api/struct.go](https://github.com/filecoin-project/lotus/blob/master/api/struct.go).
 
@@ -49,7 +53,7 @@ curl -X POST \
 
 > In the future we will add a playground to make it easier to build and experiment with API requests.
 
-## Authorization
+## CURL authorization
 
 To authorize your request, you will need to include the **JWT** in a HTTP header, for example:
 
@@ -59,23 +63,23 @@ To authorize your request, you will need to include the **JWT** in a HTTP header
 
 Admin token is stored in `~/.lotus/token` for the **Lotus Node** or `~/.lotusstorage/token` for the **Lotus Storage Miner**.
 
-## Authorization types
+## How do I generate a token?
+
+To generate a JWT with custom permissions, use this command:
+
+```sh
+# Lotus Node
+lotus auth create-token --perm admin
+
+# Lotus Storage Miner
+lotus-storage-miner auth create-token --perm admin
+```
+
+## What authorization level should I use?
 
 When viewing [api/struct.go](https://github.com/filecoin-project/lotus/blob/master/api/struct.go), you will encounter these types:
 
 - `read` - Read node state, no private data.
-- `write` - Write to local store / chain, read private data.
-- `sign` - Use private keys stored in wallet for signing.
-- `admin` - Manage permissions.
-
-Payload
-
-```json
-{
-  "Allow": [
-    "read", 
-    "write",
-    /* other options */
-  ]
-}
-```
+- `write` - Write to local store / chain, and `read` permissions.
+- `sign` - Use private keys stored in wallet for signing, `read` and `write` permissions.
+- `admin` - Manage permissions, `read`, `write`, and `sign` permissions.

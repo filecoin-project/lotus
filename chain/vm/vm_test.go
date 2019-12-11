@@ -9,10 +9,12 @@ import (
 	"github.com/filecoin-project/lotus/chain/types"
 )
 
+const HalvingPeriodEpochs = 6 * 365 * 24 * 60 * 2
+
 func TestBlockReward(t *testing.T) {
 	coffer := types.FromFil(build.MiningRewardTotal).Int
 	sum := new(big.Int)
-	N := build.HalvingPeriodEpochs
+	N := HalvingPeriodEpochs
 	for i := 0; i < N; i++ {
 		a := MiningReward(types.BigInt{coffer})
 		sum = sum.Add(sum, a.Int)

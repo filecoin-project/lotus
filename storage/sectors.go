@@ -65,7 +65,7 @@ func (m *Miner) UpdateSectorState(ctx context.Context, sector uint64, snonce uin
 func (m *Miner) sectorStateLoop(ctx context.Context) error {
 	trackedSectors, err := m.ListSectors()
 	if err != nil {
-		return xerrors.Errorf("loading sector list: %w", err)
+		log.Errorf("loading sector list: %+v", err)
 	}
 
 	go func() {
