@@ -10,6 +10,7 @@ import (
 
 	"github.com/filecoin-project/lotus/build"
 	lcli "github.com/filecoin-project/lotus/cli"
+	"github.com/filecoin-project/lotus/node/repo"
 	"github.com/filecoin-project/lotus/tracing"
 )
 
@@ -63,14 +64,14 @@ func main() {
 	}
 	app.Setup()
 	app.Metadata["traceContext"] = ctx
+	app.Metadata["repoType"] = repo.FullNode
 
 	if err := app.Run(os.Args); err != nil {
 		span.SetStatus(trace.Status{
 			Code:    trace.StatusCodeFailedPrecondition,
 			Message: err.Error(),
 		})
-		log.Warn(err)
+		log.Warnf("%+v", err)
 		os.Exit(1)
 	}
-	return
 }

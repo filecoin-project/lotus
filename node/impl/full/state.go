@@ -76,8 +76,8 @@ func (a *StateAPI) StateMinerPeerID(ctx context.Context, m address.Address, ts *
 	return stmgr.GetMinerPeerID(ctx, a.StateManager, ts, m)
 }
 
-func (a *StateAPI) StateMinerProvingPeriodEnd(ctx context.Context, actor address.Address, ts *types.TipSet) (uint64, error) {
-	return stmgr.GetMinerProvingPeriodEnd(ctx, a.StateManager, ts, actor)
+func (a *StateAPI) StateMinerElectionPeriodStart(ctx context.Context, actor address.Address, ts *types.TipSet) (uint64, error) {
+	return stmgr.GetMinerElectionPeriodStart(ctx, a.StateManager, ts, actor)
 }
 
 func (a *StateAPI) StateMinerSectorSize(ctx context.Context, actor address.Address, ts *types.TipSet) (uint64, error) {
@@ -148,10 +148,19 @@ func (a *StateAPI) stateForTs(ctx context.Context, ts *types.TipSet) (*state.Sta
 func (a *StateAPI) StateGetActor(ctx context.Context, actor address.Address, ts *types.TipSet) (*types.Actor, error) {
 	state, err := a.stateForTs(ctx, ts)
 	if err != nil {
-		return nil, err
+		return nil, xerrors.Errorf("computing tipset state failed: %w", err)
 	}
 
 	return state.GetActor(actor)
+}
+
+func (a *StateAPI) StateLookupID(ctx context.Context, addr address.Address, ts *types.TipSet) (address.Address, error) {
+	state, err := a.stateForTs(ctx, ts)
+	if err != nil {
+		return address.Undef, err
+	}
+
+	return state.LookupID(addr)
 }
 
 func (a *StateAPI) StateReadState(ctx context.Context, act *types.Actor, ts *types.TipSet) (*api.ActorState, error) {
@@ -177,8 +186,8 @@ func (a *StateAPI) StateReadState(ctx context.Context, act *types.Actor, ts *typ
 }
 
 // This is on StateAPI because miner.Miner requires this, and MinerAPI requires miner.Miner
-func (a *StateAPI) MinerCreateBlock(ctx context.Context, addr address.Address, parents *types.TipSet, tickets []*types.Ticket, proof types.ElectionProof, msgs []*types.SignedMessage, ts uint64) (*types.BlockMsg, error) {
-	fblk, err := gen.MinerCreateBlock(ctx, a.StateManager, a.Wallet, addr, parents, tickets, proof, msgs, ts)
+func (a *StateAPI) MinerCreateBlock(ctx context.Context, addr address.Address, parents *types.TipSet, ticket *types.Ticket, proof *types.EPostProof, msgs []*types.SignedMessage, height, ts uint64) (*types.BlockMsg, error) {
+	fblk, err := gen.MinerCreateBlock(ctx, a.StateManager, a.Wallet, addr, parents, ticket, proof, msgs, height, ts)
 	if err != nil {
 		return nil, err
 	}
@@ -207,6 +216,10 @@ func (a *StateAPI) StateWaitMsg(ctx context.Context, msg cid.Cid) (*api.MsgWait,
 		Receipt: *recpt,
 		TipSet:  ts,
 	}, nil
+}
+
+func (a *StateAPI) StateGetReceipt(ctx context.Context, msg cid.Cid, ts *types.TipSet) (*types.MessageReceipt, error) {
+	return a.StateManager.GetReceipt(ctx, msg, ts)
 }
 
 func (a *StateAPI) StateListMiners(ctx context.Context, ts *types.TipSet) ([]address.Address, error) {
@@ -293,4 +306,55 @@ func (a *StateAPI) StateMarketDeals(ctx context.Context, ts *types.TipSet) (map[
 
 func (a *StateAPI) StateMarketStorageDeal(ctx context.Context, dealId uint64, ts *types.TipSet) (*actors.OnChainDeal, error) {
 	return stmgr.GetStorageDeal(ctx, a.StateManager, dealId, ts)
+}
+
+func (a *StateAPI) StateChangedActors(ctx context.Context, old cid.Cid, new cid.Cid) (map[string]types.Actor, error) {
+	cst := hamt.CSTFromBstore(a.Chain.Blockstore())
+
+	nh, err := hamt.LoadNode(ctx, cst, new)
+	if err != nil {
+		return nil, err
+	}
+
+	oh, err := hamt.LoadNode(ctx, cst, old)
+	if err != nil {
+		return nil, err
+	}
+
+	out := map[string]types.Actor{}
+
+	err = nh.ForEach(ctx, func(k string, nval interface{}) error {
+		ncval := nval.(*cbg.Deferred)
+		var act types.Actor
+
+		var ocval cbg.Deferred
+
+		switch err := oh.Find(ctx, k, &ocval); err {
+		case nil:
+			if bytes.Equal(ocval.Raw, ncval.Raw) {
+				return nil // not changed
+			}
+			fallthrough
+		case hamt.ErrNotFound:
+			if err := act.UnmarshalCBOR(bytes.NewReader(ncval.Raw)); err != nil {
+				return err
+			}
+
+			addr, err := address.NewFromBytes([]byte(k))
+			if err != nil {
+				return xerrors.Errorf("address in state tree was not valid: %w", err)
+			}
+
+			out[addr.String()] = act
+		default:
+			return err
+		}
+
+		return nil
+	})
+	if err != nil {
+		return nil, err
+	}
+
+	return out, nil
 }

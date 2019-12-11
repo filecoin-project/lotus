@@ -1,8 +1,6 @@
 package impl
 
 import (
-	"context"
-
 	logging "github.com/ipfs/go-log"
 
 	"github.com/filecoin-project/lotus/node/impl/client"
@@ -10,8 +8,6 @@ import (
 	"github.com/filecoin-project/lotus/node/impl/paych"
 
 	"github.com/filecoin-project/lotus/api"
-	"github.com/filecoin-project/lotus/chain/address"
-	"github.com/filecoin-project/lotus/miner"
 	"github.com/filecoin-project/lotus/node/impl/full"
 )
 
@@ -27,20 +23,6 @@ type FullNodeAPI struct {
 	full.StateAPI
 	full.WalletAPI
 	full.SyncAPI
-
-	Miner *miner.Miner
-}
-
-func (a *FullNodeAPI) MinerAddresses(context.Context) ([]address.Address, error) {
-	return a.Miner.Addresses()
-}
-
-func (a *FullNodeAPI) MinerRegister(ctx context.Context, addr address.Address) error {
-	return a.Miner.Register(addr)
-}
-
-func (a *FullNodeAPI) MinerUnregister(ctx context.Context, addr address.Address) error {
-	return a.Miner.Unregister(ctx, addr)
 }
 
 var _ api.FullNode = &FullNodeAPI{}

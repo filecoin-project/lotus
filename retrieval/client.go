@@ -100,7 +100,7 @@ type clientStream struct {
 func (c *Client) RetrieveUnixfs(ctx context.Context, root cid.Cid, size uint64, total types.BigInt, miner peer.ID, client, minerAddr address.Address, out io.Writer) error {
 	s, err := c.h.NewStream(ctx, miner, ProtocolID)
 	if err != nil {
-		return err
+		return xerrors.Errorf("failed to open stream to miner for retrieval query: %w", err)
 	}
 	defer s.Close()
 
@@ -149,7 +149,6 @@ func (c *Client) RetrieveUnixfs(ctx context.Context, root cid.Cid, size uint64, 
 
 		cst.offset += toFetch
 	}
-	log.Info("RETRIEVE SUCCESSFUL")
 	return nil
 }
 
@@ -173,13 +172,12 @@ func (cst *clientStream) doOneExchange(ctx context.Context, toFetch uint64, out 
 	}
 
 	if err := cborutil.WriteCborRPC(cst.stream, deal); err != nil {
-		return err
+		return xerrors.Errorf("sending incremental retrieval request: %w", err)
 	}
 
 	var resp DealResponse
 	if err := cborutil.ReadCborRPC(cst.peeker, &resp); err != nil {
-		log.Error(err)
-		return err
+		return xerrors.Errorf("reading retrieval response: %w", err)
 	}
 
 	if resp.Status != Accepted {
@@ -231,6 +229,9 @@ func (cst *clientStream) consumeBlockMessage(block Block, out io.Writer) (uint64
 	}
 
 	cid, err := prefix.Sum(block.Data)
+	if err != nil {
+		return 0, err
+	}
 
 	blk, err := blocks.NewBlockWithCid(block.Data, cid)
 	if err != nil {

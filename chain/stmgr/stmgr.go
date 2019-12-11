@@ -15,7 +15,7 @@ import (
 	cbg "github.com/whyrusleeping/cbor-gen"
 	"golang.org/x/xerrors"
 
-	bls "github.com/filecoin-project/go-bls-sigs"
+	bls "github.com/filecoin-project/filecoin-ffi"
 	"github.com/ipfs/go-cid"
 	hamt "github.com/ipfs/go-hamt-ipld"
 	logging "github.com/ipfs/go-log"
@@ -27,14 +27,16 @@ var log = logging.Logger("statemgr")
 type StateManager struct {
 	cs *store.ChainStore
 
-	stCache map[string][]cid.Cid
-	stlk    sync.Mutex
+	stCache  map[string][]cid.Cid
+	compWait map[string]chan struct{}
+	stlk     sync.Mutex
 }
 
 func NewStateManager(cs *store.ChainStore) *StateManager {
 	return &StateManager{
-		cs:      cs,
-		stCache: make(map[string][]cid.Cid),
+		cs:       cs,
+		stCache:  make(map[string][]cid.Cid),
+		compWait: make(map[string]chan struct{}),
 	}
 }
 
@@ -46,7 +48,7 @@ func cidsToKey(cids []cid.Cid) string {
 	return out
 }
 
-func (sm *StateManager) TipSetState(ctx context.Context, ts *types.TipSet) (cid.Cid, cid.Cid, error) {
+func (sm *StateManager) TipSetState(ctx context.Context, ts *types.TipSet) (st cid.Cid, rec cid.Cid, err error) {
 	ctx, span := trace.StartSpan(ctx, "tipSetState")
 	defer span.End()
 	if span.IsRecordingEvents() {
@@ -55,12 +57,37 @@ func (sm *StateManager) TipSetState(ctx context.Context, ts *types.TipSet) (cid.
 
 	ck := cidsToKey(ts.Cids())
 	sm.stlk.Lock()
+	cw, cwok := sm.compWait[ck]
+	if cwok {
+		sm.stlk.Unlock()
+		span.AddAttributes(trace.BoolAttribute("waited", true))
+		select {
+		case <-cw:
+			sm.stlk.Lock()
+		case <-ctx.Done():
+			return cid.Undef, cid.Undef, ctx.Err()
+		}
+	}
 	cached, ok := sm.stCache[ck]
-	sm.stlk.Unlock()
 	if ok {
+		sm.stlk.Unlock()
 		span.AddAttributes(trace.BoolAttribute("cache", true))
 		return cached[0], cached[1], nil
 	}
+	ch := make(chan struct{})
+	sm.compWait[ck] = ch
+
+	defer func() {
+		sm.stlk.Lock()
+		delete(sm.compWait, ck)
+		if st != cid.Undef {
+			sm.stCache[ck] = []cid.Cid{st, rec}
+		}
+		sm.stlk.Unlock()
+		close(ch)
+	}()
+
+	sm.stlk.Unlock()
 
 	if ts.Height() == 0 {
 		// NB: This is here because the process that executes blocks requires that the
@@ -70,14 +97,11 @@ func (sm *StateManager) TipSetState(ctx context.Context, ts *types.TipSet) (cid.
 		return ts.Blocks()[0].ParentStateRoot, ts.Blocks()[0].ParentMessageReceipts, nil
 	}
 
-	st, rec, err := sm.computeTipSetState(ctx, ts.Blocks(), nil)
+	st, rec, err = sm.computeTipSetState(ctx, ts.Blocks(), nil)
 	if err != nil {
 		return cid.Undef, cid.Undef, err
 	}
 
-	sm.stlk.Lock()
-	sm.stCache[ck] = []cid.Cid{st, rec}
-	sm.stlk.Unlock()
 	return st, rec, nil
 }
 
@@ -102,7 +126,7 @@ func (sm *StateManager) computeTipSetState(ctx context.Context, blks []*types.Bl
 		cids[i] = v.Cid()
 	}
 
-	r := store.NewChainRand(sm.cs, cids, blks[0].Height, nil)
+	r := store.NewChainRand(sm.cs, cids, blks[0].Height)
 
 	vmi, err := vm.NewVM(pstate, blks[0].Height, r, address.Undef, sm.cs.Blockstore())
 	if err != nil {
@@ -113,9 +137,14 @@ func (sm *StateManager) computeTipSetState(ctx context.Context, blks []*types.Bl
 	if err != nil {
 		return cid.Undef, cid.Undef, xerrors.Errorf("failed to get network actor: %w", err)
 	}
-
 	reward := vm.MiningReward(netact.Balance)
-	for _, b := range blks {
+	for tsi, b := range blks {
+		netact, err = vmi.StateTree().GetActor(actors.NetworkAddress)
+		if err != nil {
+			return cid.Undef, cid.Undef, xerrors.Errorf("failed to get network actor: %w", err)
+		}
+		vmi.SetBlockMiner(b.Miner)
+
 		owner, err := GetMinerOwner(ctx, sm, pstate, b.Miner)
 		if err != nil {
 			return cid.Undef, cid.Undef, xerrors.Errorf("failed to get owner for miner %s: %w", b.Miner, err)
@@ -130,6 +159,23 @@ func (sm *StateManager) computeTipSetState(ctx context.Context, blks []*types.Bl
 			return cid.Undef, cid.Undef, xerrors.Errorf("failed to deduct funds from network actor: %w", err)
 		}
 
+		// all block miners created a valid post, go update the actor state
+		postSubmitMsg := &types.Message{
+			From:     actors.NetworkAddress,
+			Nonce:    netact.Nonce,
+			To:       b.Miner,
+			Method:   actors.MAMethods.SubmitElectionPoSt,
+			GasPrice: types.NewInt(0),
+			GasLimit: types.NewInt(10000000000),
+			Value:    types.NewInt(0),
+		}
+		ret, err := vmi.ApplyMessage(ctx, postSubmitMsg)
+		if err != nil {
+			return cid.Undef, cid.Undef, xerrors.Errorf("submit election post message for block %s (miner %s) invocation failed: %w", b.Cid(), b.Miner, err)
+		}
+		if ret.ExitCode != 0 {
+			return cid.Undef, cid.Undef, xerrors.Errorf("submit election post invocation returned nonzero exit code: %d (err = %s, block = %s, miner = %s, tsi = %d)", ret.ExitCode, ret.ActorErr, b.Cid(), b.Miner, tsi)
+		}
 	}
 
 	// TODO: can't use method from chainstore because it doesnt let us know who the block miners were
@@ -197,21 +243,20 @@ func (sm *StateManager) computeTipSetState(ctx context.Context, blks []*types.Bl
 		}
 	}
 
-	// TODO: this nonce-getting is a ting bit ugly
-	spa, err := vmi.StateTree().GetActor(actors.StoragePowerAddress)
+	// TODO: this nonce-getting is a tiny bit ugly
+	ca, err := vmi.StateTree().GetActor(actors.CronAddress)
 	if err != nil {
 		return cid.Undef, cid.Undef, err
 	}
 
-	// TODO: cron actor
 	ret, err := vmi.ApplyMessage(ctx, &types.Message{
-		To:       actors.StoragePowerAddress,
-		From:     actors.StoragePowerAddress,
-		Nonce:    spa.Nonce,
+		To:       actors.CronAddress,
+		From:     actors.CronAddress,
+		Nonce:    ca.Nonce,
 		Value:    types.NewInt(0),
 		GasPrice: types.NewInt(0),
 		GasLimit: types.NewInt(1 << 30), // Make super sure this is never too little
-		Method:   actors.SPAMethods.CheckProofSubmissions,
+		Method:   actors.CAMethods.EpochTick,
 		Params:   nil,
 	})
 	if err != nil {
@@ -321,6 +366,29 @@ func (sm *StateManager) GetBlsPublicKey(ctx context.Context, addr address.Addres
 	return pubk, nil
 }
 
+func (sm *StateManager) GetReceipt(ctx context.Context, msg cid.Cid, ts *types.TipSet) (*types.MessageReceipt, error) {
+	m, err := sm.cs.GetCMessage(msg)
+	if err != nil {
+		return nil, fmt.Errorf("failed to load message: %w", err)
+	}
+
+	r, err := sm.tipsetExecutedMessage(ts, msg, m.VMMessage())
+	if err != nil {
+		return nil, err
+	}
+
+	if r != nil {
+		return r, nil
+	}
+
+	_, r, err = sm.searchBackForMsg(ctx, ts, m)
+	if err != nil {
+		return nil, fmt.Errorf("failed to look back through chain for message: %w", err)
+	}
+
+	return r, nil
+}
+
 func (sm *StateManager) WaitForMessage(ctx context.Context, mcid cid.Cid) (*types.TipSet, *types.MessageReceipt, error) {
 	ctx, cancel := context.WithCancel(ctx)
 	defer cancel()
@@ -345,7 +413,7 @@ func (sm *StateManager) WaitForMessage(ctx context.Context, mcid cid.Cid) (*type
 		return nil, nil, fmt.Errorf("expected current head on SHC stream (got %s)", head[0].Type)
 	}
 
-	r, err := sm.tipsetExecutedMessage(head[0].Val, mcid)
+	r, err := sm.tipsetExecutedMessage(head[0].Val, mcid, msg.VMMessage())
 	if err != nil {
 		return nil, nil, err
 	}
@@ -380,7 +448,7 @@ func (sm *StateManager) WaitForMessage(ctx context.Context, mcid cid.Cid) (*type
 				case store.HCRevert:
 					continue
 				case store.HCApply:
-					r, err := sm.tipsetExecutedMessage(val.Val, mcid)
+					r, err := sm.tipsetExecutedMessage(val.Val, mcid, msg.VMMessage())
 					if err != nil {
 						return nil, nil, err
 					}
@@ -431,7 +499,7 @@ func (sm *StateManager) searchBackForMsg(ctx context.Context, from *types.TipSet
 			return nil, nil, fmt.Errorf("failed to load tipset during msg wait searchback: %w", err)
 		}
 
-		r, err := sm.tipsetExecutedMessage(ts, m.Cid())
+		r, err := sm.tipsetExecutedMessage(ts, m.Cid(), m.VMMessage())
 		if err != nil {
 			return nil, nil, fmt.Errorf("checking for message execution during lookback: %w", err)
 		}
@@ -444,7 +512,7 @@ func (sm *StateManager) searchBackForMsg(ctx context.Context, from *types.TipSet
 	}
 }
 
-func (sm *StateManager) tipsetExecutedMessage(ts *types.TipSet, msg cid.Cid) (*types.MessageReceipt, error) {
+func (sm *StateManager) tipsetExecutedMessage(ts *types.TipSet, msg cid.Cid, vmm *types.Message) (*types.MessageReceipt, error) {
 	// The genesis block did not execute any messages
 	if ts.Height() == 0 {
 		return nil, nil
@@ -460,9 +528,24 @@ func (sm *StateManager) tipsetExecutedMessage(ts *types.TipSet, msg cid.Cid) (*t
 		return nil, err
 	}
 
-	for i, m := range cm {
-		if m.Cid() == msg {
-			return sm.cs.GetParentReceipt(ts.Blocks()[0], i)
+	for ii := range cm {
+		// iterate in reverse because we going backwards through the chain
+		i := len(cm) - ii - 1
+		m := cm[i]
+
+		if m.VMMessage().From == vmm.From { // cheaper to just check origin first
+			if m.VMMessage().Nonce == vmm.Nonce {
+				if m.Cid() == msg {
+					return sm.cs.GetParentReceipt(ts.Blocks()[0], i)
+				}
+
+				// this should be that message
+				return nil, xerrors.Errorf("found message with equal nonce as the one we are looking for (F:%s n %d, TS: %s n%d)",
+					msg, vmm.Nonce, m.Cid(), m.VMMessage().Nonce)
+			}
+			if m.VMMessage().Nonce < vmm.Nonce {
+				return nil, nil // don't bother looking further
+			}
 		}
 	}
 

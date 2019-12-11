@@ -40,7 +40,6 @@ func init() {
 type InitActor struct{}
 
 type InitActorState struct {
-	// TODO: this needs to be a HAMT, its a dumb map for now
 	AddressMap cid.Cid
 
 	NextID uint64
@@ -170,7 +169,7 @@ func IsBuiltinActor(code cid.Cid) bool {
 }
 
 func IsSingletonActor(code cid.Cid) bool {
-	return code == StoragePowerCodeCid || code == StorageMarketCodeCid || code == InitCodeCid
+	return code == StoragePowerCodeCid || code == StorageMarketCodeCid || code == InitCodeCid || code == CronCodeCid
 }
 
 func (ias *InitActorState) AddActor(cst *hamt.CborIpldStore, addr address.Address) (address.Address, error) {

@@ -2,6 +2,7 @@ package api
 
 import (
 	"context"
+	"time"
 
 	"github.com/ipfs/go-cid"
 	"github.com/ipfs/go-filestore"
@@ -23,7 +24,7 @@ type FullNode interface {
 	// First message is guaranteed to be of len == 1, and type == 'current'
 	ChainNotify(context.Context) (<-chan []*store.HeadChange, error)
 	ChainHead(context.Context) (*types.TipSet, error)
-	ChainGetRandomness(context.Context, types.TipSetKey, []*types.Ticket, int) ([]byte, error)
+	ChainGetRandomness(context.Context, types.TipSetKey, int64) ([]byte, error)
 	ChainGetBlock(context.Context, cid.Cid) (*types.BlockHeader, error)
 	ChainGetTipSet(context.Context, types.TipSetKey) (*types.TipSet, error)
 	ChainGetBlockMessages(context.Context, cid.Cid) (*BlockMessages, error)
@@ -38,21 +39,20 @@ type FullNode interface {
 	// syncer
 	SyncState(context.Context) (*SyncState, error)
 	SyncSubmitBlock(ctx context.Context, blk *types.BlockMsg) error
+	SyncIncomingBlocks(ctx context.Context) (<-chan *types.BlockHeader, error)
 
 	// messages
 	MpoolPending(context.Context, *types.TipSet) ([]*types.SignedMessage, error)
 	MpoolPush(context.Context, *types.SignedMessage) error                          // TODO: remove
 	MpoolPushMessage(context.Context, *types.Message) (*types.SignedMessage, error) // get nonce, sign, push
 	MpoolGetNonce(context.Context, address.Address) (uint64, error)
+	MpoolSub(context.Context) (<-chan MpoolUpdate, error)
 
 	// FullNodeStruct
 
 	// miner
 
-	MinerRegister(context.Context, address.Address) error
-	MinerUnregister(context.Context, address.Address) error
-	MinerAddresses(context.Context) ([]address.Address, error)
-	MinerCreateBlock(context.Context, address.Address, *types.TipSet, []*types.Ticket, types.ElectionProof, []*types.SignedMessage, uint64) (*types.BlockMsg, error)
+	MinerCreateBlock(context.Context, address.Address, *types.TipSet, *types.Ticket, *types.EPostProof, []*types.SignedMessage, uint64, uint64) (*types.BlockMsg, error)
 
 	// // UX ?
 
@@ -100,7 +100,7 @@ type FullNode interface {
 	StateMinerPower(context.Context, address.Address, *types.TipSet) (MinerPower, error)
 	StateMinerWorker(context.Context, address.Address, *types.TipSet) (address.Address, error)
 	StateMinerPeerID(ctx context.Context, m address.Address, ts *types.TipSet) (peer.ID, error)
-	StateMinerProvingPeriodEnd(ctx context.Context, actor address.Address, ts *types.TipSet) (uint64, error)
+	StateMinerElectionPeriodStart(ctx context.Context, actor address.Address, ts *types.TipSet) (uint64, error)
 	StateMinerSectorSize(context.Context, address.Address, *types.TipSet) (uint64, error)
 	StatePledgeCollateral(context.Context, *types.TipSet) (types.BigInt, error)
 	StateWaitMsg(context.Context, cid.Cid) (*MsgWait, error)
@@ -110,6 +110,9 @@ type FullNode interface {
 	StateMarketParticipants(context.Context, *types.TipSet) (map[string]actors.StorageParticipantBalance, error)
 	StateMarketDeals(context.Context, *types.TipSet) (map[string]actors.OnChainDeal, error)
 	StateMarketStorageDeal(context.Context, uint64, *types.TipSet) (*actors.OnChainDeal, error)
+	StateLookupID(context.Context, address.Address, *types.TipSet) (address.Address, error)
+	StateChangedActors(context.Context, cid.Cid, cid.Cid) (map[string]types.Actor, error)
+	StateGetReceipt(context.Context, cid.Cid, *types.TipSet) (*types.MessageReceipt, error)
 
 	MarketEnsureAvailable(context.Context, address.Address, types.BigInt) error
 	// MarketFreeBalance
@@ -224,11 +227,13 @@ type QueryOffer struct {
 	MinerPeerID peer.ID
 }
 
-func (o *QueryOffer) Order() RetrievalOrder {
+func (o *QueryOffer) Order(client address.Address) RetrievalOrder {
 	return RetrievalOrder{
 		Root:  o.Root,
 		Size:  o.Size,
 		Total: o.MinPrice,
+
+		Client: client,
 
 		Miner:       o.Miner,
 		MinerPeerID: o.MinerPeerID,
@@ -259,6 +264,10 @@ type ActiveSync struct {
 
 	Stage  SyncStateStage
 	Height uint64
+
+	Start   time.Time
+	End     time.Time
+	Message string
 }
 
 type SyncState struct {
@@ -273,4 +282,17 @@ const (
 	StagePersistHeaders
 	StageMessages
 	StageSyncComplete
+	StageSyncErrored
 )
+
+type MpoolChange int
+
+const (
+	MpoolAdd MpoolChange = iota
+	MpoolRemove
+)
+
+type MpoolUpdate struct {
+	Type    MpoolChange
+	Message *types.SignedMessage
+}

@@ -2,11 +2,13 @@ package sub
 
 import (
 	"context"
+	"time"
 
 	logging "github.com/ipfs/go-log"
 	pubsub "github.com/libp2p/go-libp2p-pubsub"
 
 	"github.com/filecoin-project/lotus/chain"
+	"github.com/filecoin-project/lotus/chain/messagepool"
 	"github.com/filecoin-project/lotus/chain/types"
 )
 
@@ -45,6 +47,9 @@ func HandleIncomingBlocks(ctx context.Context, bsub *pubsub.Subscription, s *cha
 			}
 
 			log.Debugw("new block over pubsub", "cid", blk.Header.Cid(), "source", msg.GetFrom())
+			if delay := time.Now().Unix() - int64(blk.Header.Timestamp); delay > 5 {
+				log.Warnf("Received block with large delay %d from miner %s", delay, blk.Header.Miner)
+			}
 			s.InformNewBlock(msg.GetFrom(), &types.FullBlock{
 				Header:        blk.Header,
 				BlsMessages:   bmsgs,
@@ -54,7 +59,7 @@ func HandleIncomingBlocks(ctx context.Context, bsub *pubsub.Subscription, s *cha
 	}
 }
 
-func HandleIncomingMessages(ctx context.Context, mpool *chain.MessagePool, msub *pubsub.Subscription) {
+func HandleIncomingMessages(ctx context.Context, mpool *messagepool.MessagePool, msub *pubsub.Subscription) {
 	for {
 		msg, err := msub.Next(ctx)
 		if err != nil {
@@ -73,7 +78,7 @@ func HandleIncomingMessages(ctx context.Context, mpool *chain.MessagePool, msub 
 		}
 
 		if err := mpool.Add(m); err != nil {
-			log.Warnf("failed to add message from network to message pool (From: %s, To: %s, Nonce: %d, Value: %s): %+v", m.Message.From, m.Message.To, m.Message.Nonce, types.FIL(m.Message.Value), err)
+			log.Warnf("failed to add message from network to message pool (From: %s, To: %s, Nonce: %d, Value: %s): %s", m.Message.From, m.Message.To, m.Message.Nonce, types.FIL(m.Message.Value), err)
 			continue
 		}
 	}

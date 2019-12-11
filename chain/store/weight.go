@@ -2,12 +2,13 @@ package store
 
 import (
 	"context"
+	"math/big"
+
 	"github.com/filecoin-project/lotus/build"
 	"github.com/filecoin-project/lotus/chain/actors"
 	"github.com/filecoin-project/lotus/chain/types"
 	"github.com/filecoin-project/lotus/chain/vm"
 	"golang.org/x/xerrors"
-	"math/big"
 )
 
 var zero = types.NewInt(0)
@@ -57,7 +58,7 @@ func (cs *ChainStore) Weight(ctx context.Context, ts *types.TipSet) (types.BigIn
 func (cs *ChainStore) call(ctx context.Context, msg *types.Message, ts *types.TipSet) (*types.MessageReceipt, error) {
 	bstate := ts.ParentState()
 
-	r := NewChainRand(cs, ts.Cids(), ts.Height(), nil)
+	r := NewChainRand(cs, ts.Cids(), ts.Height())
 
 	vmi, err := vm.NewVM(bstate, ts.Height(), r, actors.NetworkAddress, cs.bs)
 	if err != nil {

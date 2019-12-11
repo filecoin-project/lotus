@@ -22,7 +22,9 @@ import (
 	"github.com/filecoin-project/lotus/chain"
 	"github.com/filecoin-project/lotus/chain/blocksync"
 	"github.com/filecoin-project/lotus/chain/deals"
+	"github.com/filecoin-project/lotus/chain/gen"
 	"github.com/filecoin-project/lotus/chain/market"
+	"github.com/filecoin-project/lotus/chain/messagepool"
 	"github.com/filecoin-project/lotus/chain/metrics"
 	"github.com/filecoin-project/lotus/chain/stmgr"
 	"github.com/filecoin-project/lotus/chain/store"
@@ -89,10 +91,10 @@ const (
 	RegisterClientValidatorKey
 
 	// storage miner
+	GetParamsKey
 	HandleDealsKey
 	HandleRetrievalKey
 	RunSectorServiceKey
-	RegisterMinerKey
 	RegisterProviderValidatorKey
 
 	// daemon
@@ -202,7 +204,7 @@ func Online() Option {
 			// Filecoin services
 			Override(new(*chain.Syncer), modules.NewSyncer),
 			Override(new(*blocksync.BlockSync), blocksync.NewBlockSyncClient),
-			Override(new(*chain.MessagePool), modules.MessagePool),
+			Override(new(*messagepool.MessagePool), modules.MessagePool),
 
 			Override(new(modules.Genesis), modules.ErrorGenesis),
 			Override(SetGenesisKey, modules.SetGenesis),
@@ -215,7 +217,6 @@ func Online() Option {
 			Override(RunBlockSyncKey, modules.RunBlockSync),
 			Override(RunPeerMgrKey, modules.RunPeerMgr),
 			Override(HandleIncomingBlocksKey, modules.HandleIncomingBlocks),
-			Override(HeadMetricsKey, metrics.SendHeadNotifs("")),
 
 			Override(new(*discovery.Local), discovery.NewLocal),
 			Override(new(discovery.PeerResolver), modules.RetrievalResolver),
@@ -231,8 +232,6 @@ func Online() Option {
 			Override(new(*paych.Store), paych.NewStore),
 			Override(new(*paych.Manager), paych.NewManager),
 			Override(new(*market.FundMgr), market.NewFundMgr),
-
-			Override(new(*miner.Miner), miner.NewMiner),
 		),
 
 		// Storage miner
@@ -251,8 +250,10 @@ func Online() Option {
 			Override(new(*deals.Provider), deals.NewProvider),
 			Override(RegisterProviderValidatorKey, modules.RegisterProviderValidator),
 			Override(HandleRetrievalKey, modules.HandleRetrieval),
+			Override(GetParamsKey, modules.GetParams),
 			Override(HandleDealsKey, modules.HandleDeals),
-			Override(RegisterMinerKey, modules.RegisterMiner),
+			Override(new(gen.ElectionPoStProver), storage.NewElectionPoStProver),
+			Override(new(*miner.Miner), modules.SetupBlockProducer),
 		),
 	)
 }
@@ -311,7 +312,12 @@ func ConfigFullNode(c interface{}) Option {
 
 	return Options(
 		ConfigCommon(&cfg.Common),
-		Override(HeadMetricsKey, metrics.SendHeadNotifs(cfg.Metrics.Nickname)),
+		If(cfg.Metrics.HeadNotifs,
+			Override(HeadMetricsKey, metrics.SendHeadNotifs(cfg.Metrics.Nickname)),
+		),
+		If(cfg.Metrics.PubsubTracing,
+			Override(new(*pubsub.PubSub), lp2p.GossipSub(lp2p.PubsubTracer())),
+		),
 	)
 }
 
@@ -329,7 +335,10 @@ func ConfigStorageMiner(c interface{}, lr repo.LockedRepo) Option {
 	return Options(
 		ConfigCommon(&cfg.Common),
 
-		Override(new(*sectorbuilder.Config), modules.SectorBuilderConfig(path, cfg.SectorBuilder.WorkerCount)),
+		Override(new(*sectorbuilder.Config), modules.SectorBuilderConfig(path,
+			cfg.SectorBuilder.WorkerCount,
+			cfg.SectorBuilder.DisableLocalPreCommit,
+			cfg.SectorBuilder.DisableLocalCommit)),
 	)
 }
 

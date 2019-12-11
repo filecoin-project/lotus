@@ -1,26 +1,32 @@
 package test
 
 import (
+	"bytes"
 	"context"
 	"fmt"
-	"io"
+	"io/ioutil"
 	"math/rand"
 	"os"
+	"path/filepath"
 	"testing"
 	"time"
 
 	logging "github.com/ipfs/go-log"
 
 	"github.com/filecoin-project/lotus/api"
-	"github.com/filecoin-project/lotus/chain/address"
+	"github.com/filecoin-project/lotus/build"
 	"github.com/filecoin-project/lotus/chain/types"
 	"github.com/filecoin-project/lotus/node/impl"
 )
 
+func init() {
+	logging.SetAllLoggers(logging.LevelInfo)
+	build.InsecurePoStValidation = true
+}
+
 func TestDealFlow(t *testing.T, b APIBuilder) {
 	os.Setenv("BELLMAN_NO_GPU", "1")
 
-	logging.SetAllLoggers(logging.LevelInfo)
 	ctx := context.Background()
 	n, sn := b(t, 1, []int{0})
 	client := n[0].FullNode.(*impl.FullNodeAPI)
@@ -36,13 +42,16 @@ func TestDealFlow(t *testing.T, b APIBuilder) {
 	}
 	time.Sleep(time.Second)
 
-	r := io.LimitReader(rand.New(rand.NewSource(17)), 1000)
+	data := make([]byte, 1000)
+	rand.New(rand.NewSource(5)).Read(data)
+
+	r := bytes.NewReader(data)
 	fcid, err := client.ClientImportLocal(ctx, r)
 	if err != nil {
 		t.Fatal(err)
 	}
 
-	maddr, err := address.NewFromString("t0101")
+	maddr, err := miner.ActorAddress(ctx)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -57,8 +66,8 @@ func TestDealFlow(t *testing.T, b APIBuilder) {
 		for mine {
 			time.Sleep(time.Second)
 			fmt.Println("mining a block now")
-			if err := n[0].MineOne(ctx); err != nil {
-				t.Fatal(err)
+			if err := sn[0].MineOne(ctx); err != nil {
+				t.Error(err)
 			}
 		}
 	}()
@@ -88,6 +97,42 @@ loop:
 		}
 		fmt.Println("Deal state: ", api.DealStates[di.State])
 		time.Sleep(time.Second / 2)
+	}
+
+	// Retrieval
+
+	offers, err := client.ClientFindData(ctx, fcid)
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	if len(offers) < 1 {
+		t.Fatal("no offers")
+	}
+
+	rpath, err := ioutil.TempDir("", "lotus-retrieve-test-")
+	if err != nil {
+		t.Fatal(err)
+	}
+	defer os.RemoveAll(rpath)
+
+	caddr, err := client.WalletDefaultAddress(ctx)
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	err = client.ClientRetrieve(ctx, offers[0].Order(caddr), filepath.Join(rpath, "ret"))
+	if err != nil {
+		t.Fatalf("%+v", err)
+	}
+
+	rdata, err := ioutil.ReadFile(filepath.Join(rpath, "ret"))
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	if !bytes.Equal(rdata, data) {
+		t.Fatal("wrong data retrieved")
 	}
 
 	mine = false

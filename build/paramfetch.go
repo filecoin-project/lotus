@@ -25,6 +25,7 @@ var log = logging.Logger("build")
 //const gateway = "http://198.211.99.118/ipfs/"
 const gateway = "https://ipfs.io/ipfs/"
 const paramdir = "/var/tmp/filecoin-proof-parameters"
+const dirEnv = "FIL_PROOFS_PARAMETER_CACHE"
 
 type paramFile struct {
 	Cid        string `json:"cid"`
@@ -39,8 +40,15 @@ type fetch struct {
 	errs []error
 }
 
-func GetParams(storage bool, tests bool) error {
-	if err := os.Mkdir(paramdir, 0755); err != nil && !os.IsExist(err) {
+func getParamDir() string {
+	if os.Getenv(dirEnv) == "" {
+		return paramdir
+	}
+	return os.Getenv(dirEnv)
+}
+
+func GetParams(storageSize uint64) error {
+	if err := os.Mkdir(getParamDir(), 0755); err != nil && !os.IsExist(err) {
 		return err
 	}
 
@@ -54,10 +62,7 @@ func GetParams(storage bool, tests bool) error {
 	ft := &fetch{}
 
 	for name, info := range params {
-		if !(SupportedSectorSize(info.SectorSize) || (tests && info.SectorSize == 1<<10)) {
-			continue
-		}
-		if !storage && strings.HasSuffix(name, ".params") {
+		if storageSize != info.SectorSize && strings.HasSuffix(name, ".params") {
 			continue
 		}
 
@@ -73,7 +78,7 @@ func (ft *fetch) maybeFetchAsync(name string, info paramFile) {
 	go func() {
 		defer ft.wg.Done()
 
-		path := filepath.Join(paramdir, name)
+		path := filepath.Join(getParamDir(), name)
 
 		err := ft.checkFile(path, info)
 		if !os.IsNotExist(err) && err != nil {
@@ -156,6 +161,8 @@ func doFetch(out string, info paramFile) error {
 	if err != nil {
 		return err
 	}
+	log.Infof("GET %s", url)
+
 	req := http.Request{
 		Method: "GET",
 		URL:    url,

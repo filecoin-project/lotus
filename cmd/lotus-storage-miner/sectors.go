@@ -2,16 +2,18 @@ package main
 
 import (
 	"fmt"
+	"sort"
 	"strconv"
 
+	"golang.org/x/xerrors"
 	"gopkg.in/urfave/cli.v2"
 
 	"github.com/filecoin-project/lotus/api"
 	lcli "github.com/filecoin-project/lotus/cli"
 )
 
-var storeGarbageCmd = &cli.Command{
-	Name:  "store-garbage",
+var pledgeSectorCmd = &cli.Command{
+	Name:  "pledge-sector",
 	Usage: "store random data in a sector",
 	Action: func(cctx *cli.Context) error {
 		nodeApi, closer, err := lcli.GetStorageMinerAPI(cctx)
@@ -21,7 +23,7 @@ var storeGarbageCmd = &cli.Command{
 		defer closer()
 		ctx := lcli.ReqContext(cctx)
 
-		return nodeApi.StoreGarbageData(ctx)
+		return nodeApi.PledgeSector(ctx)
 	},
 }
 
@@ -32,6 +34,7 @@ var sectorsCmd = &cli.Command{
 		sectorsStatusCmd,
 		sectorsListCmd,
 		sectorsRefsCmd,
+		sectorsUpdateCmd,
 	},
 }
 
@@ -61,7 +64,7 @@ var sectorsStatusCmd = &cli.Command{
 		}
 
 		fmt.Printf("SectorID:\t%d\n", status.SectorID)
-		fmt.Printf("Status:\t%s\n", api.SectorStateStr(status.State))
+		fmt.Printf("Status:\t%s\n", api.SectorStates[status.State])
 		fmt.Printf("CommD:\t\t%x\n", status.CommD)
 		fmt.Printf("CommR:\t\t%x\n", status.CommR)
 		fmt.Printf("Ticket:\t\t%x\n", status.Ticket.TicketBytes)
@@ -70,6 +73,10 @@ var sectorsStatusCmd = &cli.Command{
 		fmt.Printf("SeedH:\t\t%d\n", status.Seed.BlockHeight)
 		fmt.Printf("Proof:\t\t%x\n", status.Proof)
 		fmt.Printf("Deals:\t\t%v\n", status.Deals)
+		fmt.Printf("Retries:\t\t%d\n", status.Retries)
+		if status.LastErr != "" {
+			fmt.Printf("Last Error:\t\t%s\n", status.LastErr)
+		}
 		return nil
 	},
 }
@@ -120,6 +127,10 @@ var sectorsListCmd = &cli.Command{
 			commitedIDs[info.SectorID] = struct{}{}
 		}
 
+		sort.Slice(list, func(i, j int) bool {
+			return list[i] < list[j]
+		})
+
 		for _, s := range list {
 			st, err := nodeApi.SectorsStatus(ctx, s)
 			if err != nil {
@@ -132,7 +143,7 @@ var sectorsListCmd = &cli.Command{
 
 			fmt.Printf("%d: %s\tsSet: %s\tpSet: %s\ttktH: %d\tseedH: %d\tdeals: %v\n",
 				s,
-				api.SectorStateStr(st.State),
+				api.SectorStates[st.State],
 				yesno(inSSet),
 				yesno(inPSet),
 				st.Ticket.BlockHeight,
@@ -163,10 +174,49 @@ var sectorsRefsCmd = &cli.Command{
 		for name, refs := range refs {
 			fmt.Printf("Block %s:\n", name)
 			for _, ref := range refs {
-				fmt.Printf("\t%s+%d %d bytes\n", ref.Piece, ref.Offset, ref.Size)
+				fmt.Printf("\t%d+%d %d bytes\n", ref.SectorID, ref.Offset, ref.Size)
 			}
 		}
 		return nil
+	},
+}
+
+var sectorsUpdateCmd = &cli.Command{
+	Name:  "update-state",
+	Usage: "ADVANCED: manually update the state of a sector, this may aid in error recovery",
+	Flags: []cli.Flag{
+		&cli.BoolFlag{
+			Name:  "really-do-it",
+			Usage: "pass this flag if you know what you are doing",
+		},
+	},
+	Action: func(cctx *cli.Context) error {
+		if !cctx.Bool("really-do-it") {
+			return xerrors.Errorf("this is a command for advanced users, only use it if you are sure of what you are doing")
+		}
+		nodeApi, closer, err := lcli.GetStorageMinerAPI(cctx)
+		if err != nil {
+			return err
+		}
+		defer closer()
+		ctx := lcli.ReqContext(cctx)
+		if cctx.Args().Len() < 2 {
+			return xerrors.Errorf("must pass sector ID and new state")
+		}
+
+		id, err := strconv.ParseUint(cctx.Args().Get(0), 10, 64)
+		if err != nil {
+			return xerrors.Errorf("could not parse sector ID: %w", err)
+		}
+
+		var st api.SectorState
+		for i, s := range api.SectorStates {
+			if cctx.Args().Get(1) == s {
+				st = api.SectorState(i)
+			}
+		}
+
+		return nodeApi.SectorsUpdate(ctx, id, st)
 	},
 }
 

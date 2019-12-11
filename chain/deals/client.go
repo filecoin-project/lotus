@@ -36,7 +36,7 @@ type ClientDeal struct {
 	MinerWorker address.Address
 	DealID      uint64
 
-	PublishMessage *cid.Cid
+	PublishMessage *types.SignedMessage
 
 	s inet.Stream
 }
@@ -74,7 +74,12 @@ type clientDealUpdate struct {
 	mut      func(*ClientDeal)
 }
 
-func NewClient(sm *stmgr.StateManager, chain *store.ChainStore, h host.Host, w *wallet.Wallet, dag dtypes.ClientDAG, dataTransfer dtypes.ClientDataTransfer, discovery *discovery.Local, fm *market.FundMgr, deals dtypes.ClientDealStore, chainapi full.ChainAPI) *Client {
+type clientApi struct {
+	full.ChainAPI
+	full.StateAPI
+}
+
+func NewClient(sm *stmgr.StateManager, chain *store.ChainStore, h host.Host, w *wallet.Wallet, dag dtypes.ClientDAG, dataTransfer dtypes.ClientDataTransfer, discovery *discovery.Local, fm *market.FundMgr, deals dtypes.ClientDealStore, chainapi full.ChainAPI, stateapi full.StateAPI) *Client {
 	c := &Client{
 		sm:           sm,
 		chain:        chain,
@@ -84,7 +89,7 @@ func NewClient(sm *stmgr.StateManager, chain *store.ChainStore, h host.Host, w *
 		dag:          dag,
 		discovery:    discovery,
 		fm:           fm,
-		events:       events.NewEvents(context.TODO(), &chainapi),
+		events:       events.NewEvents(context.TODO(), &clientApi{chainapi, stateapi}),
 
 		deals: deals,
 		conns: map[cid.Cid]inet.Stream{},
@@ -194,11 +199,13 @@ func (c *Client) Start(ctx context.Context, p ClientDealProposal) (cid.Cid, erro
 	}
 
 	commP, pieceSize, err := c.commP(ctx, p.Data)
+	if err != nil {
+		return cid.Undef, xerrors.Errorf("computing commP failed: %w", err)
+	}
 
 	dealProposal := &actors.StorageDealProposal{
 		PieceRef:             commP,
 		PieceSize:            uint64(pieceSize),
-		PieceSerialization:   actors.SerializationUnixFSv0,
 		Client:               p.Client,
 		Provider:             p.ProviderAddress,
 		ProposalExpiration:   p.ProposalExpiration,

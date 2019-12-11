@@ -3,6 +3,7 @@ package main
 import (
 	"context"
 	"encoding/json"
+	"github.com/filecoin-project/lotus/api/apistruct"
 	"net/http"
 	_ "net/http/pprof"
 	"os"
@@ -26,7 +27,7 @@ var log = logging.Logger("main")
 
 func serveRPC(a api.FullNode, stop node.StopFunc, addr multiaddr.Multiaddr) error {
 	rpcServer := jsonrpc.NewServer()
-	rpcServer.Register("Filecoin", api.PermissionedFullAPI(a))
+	rpcServer.Register("Filecoin", apistruct.PermissionedFullAPI(a))
 
 	ah := &auth.Handler{
 		Verify: a.AuthVerify,
@@ -70,7 +71,7 @@ func handleImport(a *impl.FullNodeAPI) func(w http.ResponseWriter, r *http.Reque
 			w.WriteHeader(404)
 			return
 		}
-		if !api.HasPerm(r.Context(), api.PermWrite) {
+		if !apistruct.HasPerm(r.Context(), apistruct.PermWrite) {
 			w.WriteHeader(401)
 			json.NewEncoder(w).Encode(struct{ Error string }{"unauthorized: missing write permission"})
 			return

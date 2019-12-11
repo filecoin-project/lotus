@@ -19,7 +19,11 @@ var versionCmd = &cli.Command{
 		ctx := ReqContext(cctx)
 		// TODO: print more useful things
 
-		fmt.Println(api.Version(ctx))
+		v, err := api.Version(ctx)
+		if err != nil {
+			return err
+		}
+		fmt.Println(v)
 		cli.VersionPrinter(cctx)
 		return nil
 	},

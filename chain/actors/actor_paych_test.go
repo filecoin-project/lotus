@@ -83,7 +83,7 @@ func TestPaychUpdate(t *testing.T) {
 	ApplyOK(t, ret)
 
 	// now we have to 'wait' for the chain to advance.
-	h.vm.SetBlockHeight(1000)
+	h.BlockHeight = 1000
 
 	ret, _ = h.Invoke(t, targetAddr, pch, actors.PCAMethods.Collect, nil)
 	ApplyOK(t, ret)

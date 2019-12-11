@@ -5,6 +5,7 @@ import (
 
 	"github.com/filecoin-project/lotus/chain/address"
 	"github.com/filecoin-project/lotus/chain/types"
+	"golang.org/x/xerrors"
 
 	"github.com/ipfs/go-cid"
 	"gopkg.in/urfave/cli.v2"
@@ -21,6 +22,8 @@ var stateCmd = &cli.Command{
 		stateListActorsCmd,
 		stateListMinersCmd,
 		stateGetActorCmd,
+		stateLookupIDCmd,
+		stateReplaySetCmd,
 	},
 }
 
@@ -175,7 +178,18 @@ var stateReplaySetCmd = &cli.Command{
 			return err
 		}
 
-		api.StateReplay(ctx, ts, mcid)
+		res, err := api.StateReplay(ctx, ts, mcid)
+		if err != nil {
+			return xerrors.Errorf("replay call failed: %w", err)
+		}
+
+		fmt.Println("Replay receipt:")
+		fmt.Printf("Exit code: %d\n", res.Receipt.ExitCode)
+		fmt.Printf("Return: %x\n", res.Receipt.Return)
+		fmt.Printf("Gas Used: %s\n", res.Receipt.GasUsed)
+		if res.Receipt.ExitCode != 0 {
+			fmt.Printf("Error message: %q\n", res.Error)
+		}
 
 		return nil
 	},
@@ -284,6 +298,38 @@ var stateGetActorCmd = &cli.Command{
 		fmt.Printf("Nonce:\t\t%d\n", a.Nonce)
 		fmt.Printf("Code:\t\t%s\n", a.Code)
 		fmt.Printf("Head:\t\t%s\n", a.Head)
+
+		return nil
+	},
+}
+
+var stateLookupIDCmd = &cli.Command{
+	Name:  "lookup",
+	Usage: "Find corresponding ID address",
+	Action: func(cctx *cli.Context) error {
+		api, closer, err := GetFullNodeAPI(cctx)
+		if err != nil {
+			return err
+		}
+		defer closer()
+
+		ctx := ReqContext(cctx)
+
+		if !cctx.Args().Present() {
+			return fmt.Errorf("must pass address of actor to get")
+		}
+
+		addr, err := address.NewFromString(cctx.Args().First())
+		if err != nil {
+			return err
+		}
+
+		a, err := api.StateLookupID(ctx, addr, nil)
+		if err != nil {
+			return err
+		}
+
+		fmt.Printf("%s\n", a)
 
 		return nil
 	},

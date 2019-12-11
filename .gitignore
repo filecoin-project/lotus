@@ -1,8 +1,13 @@
 /lotus
 /lotus-storage-miner
+/lotus-seal-worker
+/lotus-seed
 /pond
 /townhall
 /fountain
+/stats
+/bench
+/bench.json
 /lotuspond/front/node_modules
 /lotuspond/front/build
 /cmd/lotus-townhall/townhall/node_modules
@@ -10,9 +15,15 @@
 **/*.h
 **/*.a
 **/*.pc
+/**/*/.DS_STORE
+.DS_STORE
 build/.*
 build/paramfetch.sh
 /vendor
+/blocks.dot
+/blocks.svg
+/chainwatch
+/chainwatch.db
 
 *-fuzz.zip
 /chain/types/work_msg/

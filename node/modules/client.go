@@ -49,7 +49,9 @@ func ClientBlockstore(fstore dtypes.ClientFilestore) dtypes.ClientBlockstore {
 // request validator with the data transfer module as the validator for
 // StorageDataTransferVoucher types
 func RegisterClientValidator(crv *deals.ClientRequestValidator, dtm dtypes.ClientDataTransfer) {
-	dtm.RegisterVoucherType(reflect.TypeOf(deals.StorageDataTransferVoucher{}), crv)
+	if err := dtm.RegisterVoucherType(reflect.TypeOf(deals.StorageDataTransferVoucher{}), crv); err != nil {
+		panic(err)
+	}
 }
 
 // NewClientDAGServiceDataTransfer returns a data transfer manager that just

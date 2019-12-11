@@ -43,7 +43,7 @@ var infoCmd = &cli.Command{
 			return err
 		}
 
-		fmt.Printf("Sector Size: %s\n", sizeStr(types.NewInt(sizeByte)))
+		fmt.Printf("Sector Size: %s\n", lcli.SizeStr(types.NewInt(sizeByte)))
 
 		pow, err := api.StateMinerPower(ctx, maddr, nil)
 		if err != nil {
@@ -51,27 +51,47 @@ var infoCmd = &cli.Command{
 		}
 
 		percI := types.BigDiv(types.BigMul(pow.MinerPower, types.NewInt(1000)), pow.TotalPower)
-		fmt.Printf("Power: %s / %s (%0.4f%%)\n", sizeStr(pow.MinerPower), sizeStr(pow.TotalPower), float64(percI.Int64())/100000*10000)
+		fmt.Printf("Power: %s / %s (%0.4f%%)\n", lcli.SizeStr(pow.MinerPower), lcli.SizeStr(pow.TotalPower), float64(percI.Int64())/100000*10000)
 
 		// TODO: indicate whether the post worker is in use
 		wstat, err := nodeApi.WorkerStats(ctx)
 		if err != nil {
 			return err
 		}
-		fmt.Printf("Worker use: %d / %d (+%d)\n", wstat.Total-wstat.Reserved-wstat.Free, wstat.Total, wstat.Reserved)
 
-		ppe, err := api.StateMinerProvingPeriodEnd(ctx, maddr, nil)
+		fmt.Printf("Worker use:\n")
+		fmt.Printf("\tLocal: %d / %d (+%d reserved)\n", wstat.LocalTotal-wstat.LocalReserved-wstat.LocalFree, wstat.LocalTotal-wstat.LocalReserved, wstat.LocalReserved)
+		fmt.Printf("\tRemote: %d / %d\n", wstat.RemotesTotal-wstat.RemotesFree, wstat.RemotesTotal)
+
+		fmt.Printf("Queues:\n")
+		fmt.Printf("\tAddPiece: %d\n", wstat.AddPieceWait)
+		fmt.Printf("\tPreCommit: %d\n", wstat.PreCommitWait)
+		fmt.Printf("\tCommit: %d\n", wstat.CommitWait)
+		fmt.Printf("\tUnseal: %d\n", wstat.UnsealWait)
+
+		eps, err := api.StateMinerElectionPeriodStart(ctx, maddr, nil)
 		if err != nil {
 			return err
 		}
-		if ppe != 0 {
+		if eps != 0 {
 			head, err := api.ChainHead(ctx)
 			if err != nil {
 				return err
 			}
-			pdiff := int64(ppe - head.Height())
-			pdifft := pdiff * build.BlockDelay
-			fmt.Printf("Proving Period: %d, in %d Blocks (~%dm %ds)\n", ppe, pdiff, pdifft/60, pdifft%60)
+			lastEps := int64(head.Height() - eps)
+			lastEpsS := lastEps * build.BlockDelay
+
+			fallback := lastEps + build.FallbackPoStDelay
+			fallbackS := fallback * build.BlockDelay
+
+			next := lastEps + build.SlashablePowerDelay
+			nextS := next * build.BlockDelay
+
+			fmt.Printf("PoSt Submissions:\n")
+			fmt.Printf("\tPrevious: Epoch %d (%d block(s), ~%dm %ds ago)\n", eps, lastEps, lastEpsS/60, lastEpsS%60)
+			fmt.Printf("\tFallback: Epoch %d (in %d blocks, ~%dm %ds)\n", eps+build.FallbackPoStDelay, fallback, fallbackS/60, fallbackS%60)
+			fmt.Printf("\tDeadline: Epoch %d (in %d blocks, ~%dm %ds)\n", eps+build.SlashablePowerDelay, next, nextS/60, nextS%60)
+
 		} else {
 			fmt.Printf("Proving Period: Not Proving\n")
 		}
@@ -90,18 +110,6 @@ var infoCmd = &cli.Command{
 	},
 }
 
-var Units = []string{"B", "KiB", "MiB", "GiB", "TiB", "PiB", "EiB", "ZiB"}
-
-func sizeStr(size types.BigInt) string {
-	size = types.BigMul(size, types.NewInt(100))
-	i := 0
-	for types.BigCmp(size, types.NewInt(102400)) >= 0 && i < len(Units)-1 {
-		size = types.BigDiv(size, types.NewInt(1024))
-		i++
-	}
-	return fmt.Sprintf("%s.%s %s", types.BigDiv(size, types.NewInt(100)), types.BigMod(size, types.NewInt(100)), Units[i])
-}
-
 func sectorsInfo(ctx context.Context, napi api.StorageMiner) (map[string]int, error) {
 	sectors, err := napi.SectorsList(ctx)
 	if err != nil {
@@ -117,7 +125,7 @@ func sectorsInfo(ctx context.Context, napi api.StorageMiner) (map[string]int, er
 			return nil, err
 		}
 
-		out[api.SectorStateStr(st.State)]++
+		out[api.SectorStates[st.State]]++
 	}
 
 	return out, nil

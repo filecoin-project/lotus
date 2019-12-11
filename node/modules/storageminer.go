@@ -2,7 +2,6 @@ package modules
 
 import (
 	"context"
-	"fmt"
 	"math"
 	"path/filepath"
 	"reflect"
@@ -24,9 +23,11 @@ import (
 	"github.com/filecoin-project/lotus/build"
 	"github.com/filecoin-project/lotus/chain/address"
 	"github.com/filecoin-project/lotus/chain/deals"
+	"github.com/filecoin-project/lotus/chain/gen"
 	"github.com/filecoin-project/lotus/datatransfer"
 	"github.com/filecoin-project/lotus/lib/sectorbuilder"
 	"github.com/filecoin-project/lotus/lib/statestore"
+	"github.com/filecoin-project/lotus/miner"
 	"github.com/filecoin-project/lotus/node/modules/dtypes"
 	"github.com/filecoin-project/lotus/node/modules/helpers"
 	"github.com/filecoin-project/lotus/node/repo"
@@ -43,7 +44,15 @@ func minerAddrFromDS(ds dtypes.MetadataDS) (address.Address, error) {
 	return address.NewFromBytes(maddrb)
 }
 
-func SectorBuilderConfig(storagePath string, threads uint) func(dtypes.MetadataDS, api.FullNode) (*sectorbuilder.Config, error) {
+func GetParams(sbc *sectorbuilder.Config) error {
+	if err := build.GetParams(sbc.SectorSize); err != nil {
+		return xerrors.Errorf("fetching proof parameters: %w", err)
+	}
+
+	return nil
+}
+
+func SectorBuilderConfig(storagePath string, threads uint, noprecommit, nocommit bool) func(dtypes.MetadataDS, api.FullNode) (*sectorbuilder.Config, error) {
 	return func(ds dtypes.MetadataDS, api api.FullNode) (*sectorbuilder.Config, error) {
 		minerAddr, err := minerAddrFromDS(ds)
 		if err != nil {
@@ -65,17 +74,20 @@ func SectorBuilderConfig(storagePath string, threads uint) func(dtypes.MetadataD
 		}
 
 		cache := filepath.Join(sp, "cache")
-		metadata := filepath.Join(sp, "meta")
+		unsealed := filepath.Join(sp, "unsealed")
 		sealed := filepath.Join(sp, "sealed")
 		staging := filepath.Join(sp, "staging")
 
 		sb := &sectorbuilder.Config{
-			Miner:         minerAddr,
-			SectorSize:    ssize,
+			Miner:      minerAddr,
+			SectorSize: ssize,
+
 			WorkerThreads: uint8(threads),
+			NoPreCommit:   noprecommit,
+			NoCommit:      nocommit,
 
 			CacheDir:    cache,
-			MetadataDir: metadata,
+			UnsealedDir: unsealed,
 			SealedDir:   sealed,
 			StagedDir:   staging,
 		}
@@ -138,7 +150,9 @@ func HandleDeals(mctx helpers.MetricsCtx, lc fx.Lifecycle, host host.Host, h *de
 // request validator with the data transfer module as the validator for
 // StorageDataTransferVoucher types
 func RegisterProviderValidator(mrv *deals.ProviderRequestValidator, dtm dtypes.ProviderDataTransfer) {
-	dtm.RegisterVoucherType(reflect.TypeOf(deals.StorageDataTransferVoucher{}), mrv)
+	if err := dtm.RegisterVoucherType(reflect.TypeOf(deals.StorageDataTransferVoucher{}), mrv); err != nil {
+		panic(err)
+	}
 }
 
 // NewProviderDAGServiceDataTransfer returns a data transfer manager that just
@@ -176,40 +190,34 @@ func StagingDAG(mctx helpers.MetricsCtx, lc fx.Lifecycle, r repo.LockedRepo, rt 
 	return dag, nil
 }
 
-func RegisterMiner(lc fx.Lifecycle, ds dtypes.MetadataDS, api api.FullNode) error {
+func SetupBlockProducer(lc fx.Lifecycle, ds dtypes.MetadataDS, api api.FullNode, epp gen.ElectionPoStProver) (*miner.Miner, error) {
 	minerAddr, err := minerAddrFromDS(ds)
-	if err != nil {
-		return err
-	}
-
-	lc.Append(fx.Hook{
-		OnStart: func(ctx context.Context) error {
-			log.Infof("Registering miner '%s' with full node", minerAddr)
-			if err := api.MinerRegister(ctx, minerAddr); err != nil {
-				return fmt.Errorf("Failed to register miner: %s\nIf you are certain no other storage miner instance is running, try running 'lotus unregister-miner %s' and restarting the storage miner", err, minerAddr)
-			}
-			return nil
-		},
-		OnStop: func(ctx context.Context) error {
-			log.Infof("Unregistering miner '%s' from full node", minerAddr)
-			return api.MinerUnregister(ctx, minerAddr)
-		},
-	})
-	return nil
-}
-
-func SectorBuilder(lc fx.Lifecycle, cfg *sectorbuilder.Config, ds dtypes.MetadataDS) (*sectorbuilder.SectorBuilder, error) {
-	sb, err := sectorbuilder.New(cfg, ds)
 	if err != nil {
 		return nil, err
 	}
 
+	m := miner.NewMiner(api, epp)
+
 	lc.Append(fx.Hook{
-		OnStop: func(context.Context) error {
-			sb.Destroy()
+		OnStart: func(ctx context.Context) error {
+			if err := m.Register(minerAddr); err != nil {
+				return err
+			}
 			return nil
 		},
+		OnStop: func(ctx context.Context) error {
+			return m.Unregister(ctx, minerAddr)
+		},
 	})
+
+	return m, nil
+}
+
+func SectorBuilder(cfg *sectorbuilder.Config, ds dtypes.MetadataDS) (*sectorbuilder.SectorBuilder, error) {
+	sb, err := sectorbuilder.New(cfg, ds)
+	if err != nil {
+		return nil, err
+	}
 
 	return sb, nil
 }
@@ -221,7 +229,7 @@ func SealTicketGen(api api.FullNode) storage.TicketFn {
 			return nil, xerrors.Errorf("getting head ts for SealTicket failed: %w", err)
 		}
 
-		r, err := api.ChainGetRandomness(ctx, ts.Key(), nil, build.SealRandomnessLookback)
+		r, err := api.ChainGetRandomness(ctx, ts.Key(), int64(ts.Height())-build.SealRandomnessLookback)
 		if err != nil {
 			return nil, xerrors.Errorf("getting randomness for SealTicket failed: %w", err)
 		}

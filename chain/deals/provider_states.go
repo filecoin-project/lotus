@@ -42,13 +42,6 @@ func (p *Provider) handle(ctx context.Context, deal MinerDeal, cb providerHandle
 
 // ACCEPTED
 func (p *Provider) accept(ctx context.Context, deal MinerDeal) (func(*MinerDeal), error) {
-	switch deal.Proposal.PieceSerialization {
-	//case SerializationRaw:
-	//case SerializationIPLD:
-	case actors.SerializationUnixFSv0:
-	default:
-		return nil, xerrors.Errorf("deal proposal with unsupported serialization: %s", deal.Proposal.PieceSerialization)
-	}
 
 	head, err := p.full.ChainHead(ctx)
 	if err != nil {
@@ -93,15 +86,8 @@ func (p *Provider) accept(ctx context.Context, deal MinerDeal) (func(*MinerDeal)
 
 	log.Info("publishing deal")
 
-	storageDeal := actors.StorageDeal{
-		Proposal: deal.Proposal,
-	}
-	if err := api.SignWith(ctx, p.full.WalletSign, waddr, &storageDeal); err != nil {
-		return nil, xerrors.Errorf("signing storage deal failed: ", err)
-	}
-
 	params, err := actors.SerializeParams(&actors.PublishStorageDealsParams{
-		Deals: []actors.StorageDeal{storageDeal},
+		Deals: []actors.StorageDealProposal{deal.Proposal},
 	})
 	if err != nil {
 		return nil, xerrors.Errorf("serializing PublishStorageDeals params failed: ", err)
@@ -132,17 +118,15 @@ func (p *Provider) accept(ctx context.Context, deal MinerDeal) (func(*MinerDeal)
 		return nil, err
 	}
 	if len(resp.DealIDs) != 1 {
-		return nil, xerrors.Errorf("got unexpected number of DealIDs from")
+		return nil, xerrors.Errorf("got unexpected number of DealIDs from SMA")
 	}
 
-	log.Info("fetching data for a deal")
-	mcid := smsg.Cid()
+	log.Infof("fetching data for a deal %d", resp.DealIDs[0])
 	err = p.sendSignedResponse(&Response{
 		State: api.DealAccepted,
 
-		Proposal:       deal.ProposalCid,
-		PublishMessage: &mcid,
-		StorageDeal:    &storageDeal,
+		Proposal:              deal.ProposalCid,
+		StorageDealSubmission: smsg,
 	})
 	if err != nil {
 		return nil, err
@@ -164,14 +148,15 @@ func (p *Provider) accept(ctx context.Context, deal MinerDeal) (func(*MinerDeal)
 	// (see onDataTransferEvent)
 	_, err = p.dataTransfer.OpenPullDataChannel(ctx,
 		deal.Client,
-		&StorageDataTransferVoucher{Proposal: deal.ProposalCid},
+		&StorageDataTransferVoucher{Proposal: deal.ProposalCid, DealID: resp.DealIDs[0]},
 		deal.Ref,
 		allSelector,
 	)
+	if err != nil {
+		return nil, xerrors.Errorf("failed to open pull data channel: %w", err)
+	}
 
-	return func(deal *MinerDeal) {
-		deal.DealID = resp.DealIDs[0]
-	}, nil
+	return nil, nil
 }
 
 // STAGED
@@ -204,11 +189,11 @@ func (p *Provider) staged(ctx context.Context, deal MinerDeal) (func(*MinerDeal)
 		return nil, xerrors.Errorf("deal.Proposal.PieceSize didn't match padded unixfs file size")
 	}
 
-	sectorID, err := p.secb.AddUnixfsPiece(ctx, deal.Ref, uf, deal.DealID)
+	sectorID, err := p.secb.AddUnixfsPiece(ctx, uf, deal.DealID)
 	if err != nil {
 		return nil, xerrors.Errorf("AddPiece failed: %s", err)
 	}
-	log.Warnf("New Sector: %d", sectorID)
+	log.Warnf("New Sector: %d (deal %d)", sectorID, deal.DealID)
 
 	return func(deal *MinerDeal) {
 		deal.SectorID = sectorID

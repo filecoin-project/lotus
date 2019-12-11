@@ -97,7 +97,7 @@ func (bss *BlockSyncService) HandleStream(s inet.Stream) {
 
 	resp, err := bss.processRequest(ctx, &req)
 	if err != nil {
-		log.Error("failed to process block sync request: ", err)
+		log.Warn("failed to process block sync request: ", err)
 		return
 	}
 
@@ -108,7 +108,7 @@ func (bss *BlockSyncService) HandleStream(s inet.Stream) {
 }
 
 func (bss *BlockSyncService) processRequest(ctx context.Context, req *BlockSyncRequest) (*BlockSyncResponse, error) {
-	ctx, span := trace.StartSpan(ctx, "blocksync.ProcessRequest")
+	_, span := trace.StartSpan(ctx, "blocksync.ProcessRequest")
 	defer span.End()
 
 	opts := ParseBSOptions(req.Options)

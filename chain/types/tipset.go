@@ -10,6 +10,7 @@ import (
 	"github.com/ipfs/go-cid"
 	logging "github.com/ipfs/go-log"
 	cbg "github.com/whyrusleeping/cbor-gen"
+	"golang.org/x/xerrors"
 )
 
 var log = logging.Logger("types")
@@ -95,6 +96,10 @@ func tipsetSortFunc(blks []*BlockHeader) func(i, j int) bool {
 }
 
 func NewTipSet(blks []*BlockHeader) (*TipSet, error) {
+	if len(blks) == 0 {
+		return nil, xerrors.Errorf("NewTipSet called with zero length array of blocks")
+	}
+
 	sort.Slice(blks, tipsetSortFunc(blks))
 
 	var ts TipSet
@@ -165,8 +170,7 @@ func (t *Ticket) Less(o *Ticket) bool {
 }
 
 func (ts *TipSet) MinTicket() *Ticket {
-	b := ts.MinTicketBlock()
-	return b.Tickets[len(b.Tickets)-1]
+	return ts.MinTicketBlock().Ticket
 }
 
 func (ts *TipSet) MinTimestamp() uint64 {

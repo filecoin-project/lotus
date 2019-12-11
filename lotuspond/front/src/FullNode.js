@@ -45,8 +45,6 @@ class FullNode extends React.Component {
       return this.props.client.call('Filecoin.PaychVoucherList', [paych])
     }))
 
-    let minerList = await this.props.client.call('Filecoin.MinerAddresses', [])
-
     let mpoolPending = (await this.props.client.call('Filecoin.MpoolPending', [tipset])).length
 
     this.setState(() => ({
@@ -62,8 +60,6 @@ class FullNode extends React.Component {
       vouchers: vouchers,
 
       defaultAddr: defaultAddr,
-
-      minerList: minerList,
     }))
   }
 
@@ -110,11 +106,6 @@ class FullNode extends React.Component {
         )
       }
 
-      let miners = <span/>
-      if(this.state.minerList.length > 0) {
-        miners = this.state.minerList.map((a, k) => <div key={k}><Address miner={true} client={this.props.client} addr={a} mountWindow={this.props.mountWindow}/></div>)
-      }
-
       let storageMine = <a href="#" onClick={this.startStorageMiner} hidden={!this.props.spawnStorageNode}>[Spawn Storage Miner]</a>
 
       let addresses = this.state.addrs.map((addr) => {
@@ -153,7 +144,6 @@ class FullNode extends React.Component {
           <div>
             <div>Balances: [New <a href="#" onClick={this.newSecpAddr}>[Secp256k1]</a> <a href="#" onClick={this.newBLSAddr}>[BLS]</a>]</div>
             <div>{addresses}</div>
-            <div>{miners}</div>
             <div>{paychannels}</div>
           </div>
 

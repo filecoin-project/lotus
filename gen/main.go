@@ -20,6 +20,8 @@ func main() {
 	err := gen.WriteTupleEncodersToFile("./chain/types/cbor_gen.go", "types",
 		types.BlockHeader{},
 		types.Ticket{},
+		types.EPostProof{},
+		types.EPostTicket{},
 		types.Message{},
 		types.SignedMessage{},
 		types.MsgMeta{},
@@ -47,7 +49,7 @@ func main() {
 		os.Exit(1)
 	}
 
-	err = gen.WriteTupleEncodersToFile("./api/cbor_gen.go", "api",
+	err = gen.WriteMapEncodersToFile("./api/cbor_gen.go", "api",
 		api.PaymentInfo{},
 		api.SealedRef{},
 		api.SealedRefs{},
@@ -91,9 +93,10 @@ func main() {
 		actors.SectorPreCommitInfo{},
 		actors.PreCommittedSector{},
 		actors.MinerInfo{},
-		actors.SubmitPoStParams{},
+		actors.SubmitFallbackPoStParams{},
 		actors.PaymentVerifyParams{},
 		actors.UpdatePeerIDParams{},
+		actors.DeclareFaultsParams{},
 		actors.MultiSigActorState{},
 		actors.MultiSigConstructorParams{},
 		actors.MultiSigProposeParams{},
@@ -120,7 +123,6 @@ func main() {
 		actors.StorageMarketState{},
 		actors.WithdrawBalanceParams{},
 		actors.StorageDealProposal{},
-		actors.StorageDeal{},
 		actors.PublishStorageDealsParams{},
 		actors.PublishStorageDealResponse{},
 		actors.ActivateStorageDealsParams{},
@@ -129,6 +131,7 @@ func main() {
 		actors.ComputeDataCommitmentParams{},
 		actors.SectorProveCommitInfo{},
 		actors.CheckMinerParams{},
+		actors.CronActorState{},
 		actors.DeclareFaultsParams{},
 	)
 	if err != nil {
@@ -152,7 +155,7 @@ func main() {
 		os.Exit(1)
 	}
 
-	err = gen.WriteTupleEncodersToFile("./storage/cbor_gen.go", "storage",
+	err = gen.WriteMapEncodersToFile("./storage/cbor_gen.go", "storage",
 		storage.SealTicket{},
 		storage.SealSeed{},
 		storage.Piece{},

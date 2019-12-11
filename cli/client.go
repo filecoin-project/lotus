@@ -230,11 +230,13 @@ var clientRetrieveCmd = &cli.Command{
 
 		// TODO: parse offer strings from `client find`, make this smarter
 
-		order := offers[0].Order()
-		order.Client = payer
+		if len(offers) < 1 {
+			fmt.Println("Failed to find file")
+			return nil
+		}
 
-		if err := api.ClientRetrieve(ctx, order, cctx.Args().Get(1)); err != nil {
-			return err
+		if err := api.ClientRetrieve(ctx, offers[0].Order(payer), cctx.Args().Get(1)); err != nil {
+			return xerrors.Errorf("Retrieval Failed: %w", err)
 		}
 
 		fmt.Println("Success")

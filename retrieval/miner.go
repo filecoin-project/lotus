@@ -41,7 +41,7 @@ func NewMiner(sblks *sectorblocks.SectorBlocks, full api.FullNode) *Miner {
 }
 
 func writeErr(stream network.Stream, err error) {
-	log.Errorf("Retrieval deal error: %s", err)
+	log.Errorf("Retrieval deal error: %+v", err)
 	_ = cborutil.WriteCborRPC(stream, &DealResponse{
 		Status:  Error,
 		Message: err.Error(),

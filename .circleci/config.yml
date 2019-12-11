@@ -6,7 +6,7 @@ executors:
   golang:
     docker:
       - image: circleci/golang:1.13
-    resource_class: 2xlarge      
+    resource_class: 2xlarge
 
 commands:
   install-deps:
@@ -14,25 +14,37 @@ commands:
       - go/install-ssh
       - go/install: {package: git}
   prepare:
+    parameters:
+      linux:
+        default: true
+        description: is a linux build environment?
+        type: boolean
+      darwin:
+        default: false
+        description: is a darwin build environment?
+        type: boolean
     steps:
       - checkout
-      - run: sudo apt-get update
-      - run: sudo apt-get install ocl-icd-opencl-dev
+      - when:
+          condition: << parameters.linux >>
+          steps:
+            - run: sudo apt-get update
+            - run: sudo apt-get install ocl-icd-opencl-dev
       - run: git submodule sync
       - run: git submodule update --init
   download-params:
     steps:
       - restore_cache:
           name: Restore parameters cache
-          keys: 
-            - 'v15-lotus-params-{{ checksum "build/proof-params/parameters.json" }}-{{ checksum "build/paramfetch.go" }}'
-            - 'v15-lotus-params-{{ checksum "build/proof-params/parameters.json" }}-'
+          keys:
+            - 'v20-1k-lotus-params-{{ checksum "build/proof-params/parameters.json" }}-{{ checksum "build/paramfetch.go" }}'
+            - 'v20-1k-lotus-params-{{ checksum "build/proof-params/parameters.json" }}-'
           paths:
             - /var/tmp/filecoin-proof-parameters/
-      - run:  ./lotus fetch-params --include-test-params
+      - run:  ./lotus fetch-params --proving-params 1024
       - save_cache:
           name: Save parameters cache
-          key: 'v15-lotus-params-{{ checksum "build/proof-params/parameters.json" }}-{{ checksum "build/paramfetch.go" }}'
+          key: 'v20-1k-lotus-params-{{ checksum "build/proof-params/parameters.json" }}-{{ checksum "build/paramfetch.go" }}'
           paths:
             - /var/tmp/filecoin-proof-parameters/
 
@@ -46,7 +58,25 @@ jobs:
       - go/mod-download
       - go/mod-tidy-check
 
-  test:
+  build-all:
+    executor: golang
+    steps:
+      - install-deps
+      - prepare
+      - go/mod-download
+      - run: sudo apt-get update
+      - run: sudo apt-get install npm
+      - restore_cache:
+          name: restore go mod cache
+          key: v1-go-deps-{{ arch }}-{{ checksum "/home/circleci/project/go.mod" }}
+      - run:
+          command: make buildall
+      - store_artifacts:
+          path: lotus
+      - store_artifacts:
+          path: lotus-storage-miner
+
+  test: &test
     description: |
       Run tests with gotestsum.
     parameters:
@@ -55,7 +85,7 @@ jobs:
         default: golang
       go-test-flags:
         type: string
-        default: ""
+        default: "-timeout 30m"
         description: Flags passed to go test.
       packages:
         type: string
@@ -84,6 +114,9 @@ jobs:
       - install-deps
       - prepare
       - go/mod-download
+      - restore_cache:
+          name: restore go mod cache
+          key: v1-go-deps-{{ arch }}-{{ checksum "/home/circleci/project/go.mod" }}
       - run:
           command: make deps lotus
           no_output_timeout: 30m
@@ -101,6 +134,7 @@ jobs:
               << parameters.coverage >> \
               << parameters.go-test-flags >> \
               << parameters.packages >>
+          no_output_timeout: 30m
       - store_test_results:
           path: /tmp/test-reports
       - when:
@@ -112,6 +146,66 @@ jobs:
                 shell: /bin/bash -eo pipefail
                 command: |
                   bash <(curl -s https://codecov.io/bash)
+      - save_cache:
+          name: save go mod cache
+          key: v1-go-deps-{{ arch }}-{{ checksum "/home/circleci/project/go.mod" }}
+          paths:
+            - "~/go/pkg"
+            - "~/go/src/github.com"
+            - "~/go/src/golang.org"
+
+  test-short: 
+    <<: *test
+
+  build_macos:
+    description: build darwin lotus binary
+    macos:
+      xcode: "10.0.0"
+    working_directory: ~/go/src/github.com/filecoin-project/lotus
+    steps:
+      - prepare:
+          linux: false
+          darwin: true
+      - run:
+          name: Install go
+          command: |
+            curl -O https://dl.google.com/go/go1.13.4.darwin-amd64.pkg && \
+            sudo installer -pkg go1.13.4.darwin-amd64.pkg -target /
+      - run:
+          name: Install pkg-config
+          command: HOMEBREW_NO_AUTO_UPDATE=1 brew install pkg-config
+      - run: go version
+      - run:
+          name: Install Rust
+          command: |
+            curl https://sh.rustup.rs -sSf | sh -s -- -y
+      - run:
+          name: Install jq
+          command: |
+            mkdir $HOME/.bin
+            curl --location https://github.com/stedolan/jq/releases/download/jq-1.6/jq-osx-amd64 --output $HOME/.bin/jq
+            chmod +x $HOME/.bin/jq
+      - restore_cache:
+          name: restore go mod and cargo cache
+          key: v1-go-deps-{{ arch }}-{{ checksum "~/go/src/github.com/filecoin-project/lotus/go.mod" }}
+      - install-deps
+      - go/mod-download
+      - run:
+          command: make build
+          no_output_timeout: 30m
+      - store_artifacts:
+          path: lotus
+      - store_artifacts:
+          path: lotus-storage-miner
+      - save_cache:
+          name: save go mod and cargo cache
+          key: v1-go-deps-{{ arch }}-{{ checksum "~/go/src/github.com/filecoin-project/lotus/go.mod" }}
+          paths:
+            - "~/go/pkg"
+            - "~/go/src/github.com"
+            - "~/go/src/golang.org"
+            - "~/.rustup"
+            - "~/.cargo"
 
   lint: &lint
     description: |
@@ -163,6 +257,12 @@ workflows:
     jobs:
       - lint-changes:
           args: "--new-from-rev origin/master"
-      - test:
-          codecov-upload: true
+      - test
+      - test-short:
+          go-test-flags: "--timeout 10m --short"
       - mod-tidy-check
+      - build-all
+      - build_macos:
+          filters:
+            branches:
+              only: master

@@ -3,16 +3,19 @@ package actors
 import (
 	"bytes"
 	"context"
+	"sort"
+
+	"golang.org/x/xerrors"
 
 	"github.com/filecoin-project/go-amt-ipld"
 	"github.com/ipfs/go-cid"
 	"github.com/ipfs/go-hamt-ipld"
-	"golang.org/x/xerrors"
 
 	"github.com/filecoin-project/lotus/build"
 	"github.com/filecoin-project/lotus/chain/actors/aerrors"
 	"github.com/filecoin-project/lotus/chain/address"
 	"github.com/filecoin-project/lotus/chain/types"
+	"github.com/filecoin-project/lotus/lib/cborutil"
 	"github.com/filecoin-project/lotus/lib/sectorbuilder"
 )
 
@@ -72,9 +75,8 @@ const (
 )
 
 type StorageDealProposal struct {
-	PieceRef           []byte // cid bytes // TODO: spec says to use cid.Cid, probably not a good idea
-	PieceSize          uint64
-	PieceSerialization SerializationMode // Needs to be here as it tells how data in the sector maps to PieceRef cid
+	PieceRef  []byte // cid bytes // TODO: spec says to use cid.Cid, probably not a good idea
+	PieceSize uint64
 
 	Client   address.Address
 	Provider address.Address
@@ -110,6 +112,15 @@ func (sdp *StorageDealProposal) Sign(ctx context.Context, sign SignFunc) error {
 	return nil
 }
 
+func (sdp *StorageDealProposal) Cid() (cid.Cid, error) {
+	nd, err := cborutil.AsIpld(sdp)
+	if err != nil {
+		return cid.Undef, err
+	}
+
+	return nd.Cid(), nil
+}
+
 func (sdp *StorageDealProposal) Verify() error {
 	unsigned := *sdp
 	unsigned.ProposerSignature = nil
@@ -121,36 +132,19 @@ func (sdp *StorageDealProposal) Verify() error {
 	return sdp.ProposerSignature.Verify(sdp.Client, buf.Bytes())
 }
 
-func (d *StorageDeal) Sign(ctx context.Context, sign SignFunc) error {
-	var buf bytes.Buffer
-	if err := d.Proposal.MarshalCBOR(&buf); err != nil {
-		return err
-	}
-	sig, err := sign(ctx, buf.Bytes())
-	if err != nil {
-		return err
-	}
-	d.CounterSignature = sig
-	return nil
-}
-
-func (d *StorageDeal) Verify(proposerWorker address.Address) error {
-	var buf bytes.Buffer
-	if err := d.Proposal.MarshalCBOR(&buf); err != nil {
-		return err
-	}
-
-	return d.CounterSignature.Verify(proposerWorker, buf.Bytes())
-}
-
-type StorageDeal struct {
-	Proposal         StorageDealProposal
-	CounterSignature *types.Signature
-}
-
 type OnChainDeal struct {
-	Deal            StorageDeal
-	ActivationEpoch uint64 // 0 = inactive
+	PieceRef  []byte // cid bytes // TODO: spec says to use cid.Cid, probably not a good idea
+	PieceSize uint64
+
+	Client   address.Address
+	Provider address.Address
+
+	ProposalExpiration uint64
+	Duration           uint64 // TODO: spec
+
+	StoragePricePerEpoch types.BigInt
+	StorageCollateral    types.BigInt
+	ActivationEpoch      uint64 // 0 = inactive
 }
 
 type WithdrawBalanceParams struct {
@@ -235,8 +229,15 @@ func (sma StorageMarketActor) AddBalance(act *types.Actor, vmctx types.VMContext
 }
 
 func setMarketBalances(vmctx types.VMContext, nd *hamt.Node, set map[address.Address]StorageParticipantBalance) (cid.Cid, ActorError) {
-	for addr, b := range set {
-		balance := b // to stop linter complaining
+	keys := make([]address.Address, 0, len(set))
+	for k := range set {
+		keys = append(keys, k)
+	}
+	sort.Slice(keys, func(i, j int) bool {
+		return bytes.Compare(keys[i].Bytes(), keys[j].Bytes()) < 0
+	})
+	for _, addr := range keys {
+		balance := set[addr]
 		if err := nd.Set(vmctx.Context(), string(addr.Bytes()), &balance); err != nil {
 			return cid.Undef, aerrors.HandleExternalError(err, "setting new balance")
 		}
@@ -287,7 +288,7 @@ func (sma StorageMarketActor) CheckLockedBalance(act *types.Actor, vmctx types.V
 */
 
 type PublishStorageDealsParams struct {
-	Deals []StorageDeal
+	Deals []StorageDealProposal
 }
 
 type PublishStorageDealResponse struct {
@@ -316,7 +317,7 @@ func (sma StorageMarketActor) PublishStorageDeals(act *types.Actor, vmctx types.
 		DealIDs: make([]uint64, len(params.Deals)),
 	}
 
-	workerBytes, aerr := vmctx.Send(params.Deals[0].Proposal.Provider, MAMethods.GetWorkerAddr, types.NewInt(0), nil)
+	workerBytes, aerr := vmctx.Send(params.Deals[0].Provider, MAMethods.GetWorkerAddr, types.NewInt(0), nil)
 	if aerr != nil {
 		return nil, aerr
 	}
@@ -332,7 +333,20 @@ func (sma StorageMarketActor) PublishStorageDeals(act *types.Actor, vmctx types.
 			return nil, err
 		}
 
-		err := deals.Set(self.NextDealID, &OnChainDeal{Deal: deal})
+		err := deals.Set(self.NextDealID, &OnChainDeal{
+			PieceRef:  deal.PieceRef,
+			PieceSize: deal.PieceSize,
+
+			Client:   deal.Client,
+			Provider: deal.Provider,
+
+			ProposalExpiration: deal.ProposalExpiration,
+			Duration:           deal.Duration,
+
+			StoragePricePerEpoch: deal.StoragePricePerEpoch,
+			StorageCollateral:    deal.StorageCollateral,
+			ActivationEpoch:      0,
+		})
 		if err != nil {
 			return nil, aerrors.HandleExternalError(err, "setting deal in deal AMT")
 		}
@@ -366,34 +380,28 @@ func (sma StorageMarketActor) PublishStorageDeals(act *types.Actor, vmctx types.
 	return outBuf.Bytes(), nil
 }
 
-func (st *StorageMarketState) validateDeal(vmctx types.VMContext, deal StorageDeal, providerWorker address.Address) aerrors.ActorError {
-	if vmctx.BlockHeight() > deal.Proposal.ProposalExpiration {
+func (st *StorageMarketState) validateDeal(vmctx types.VMContext, deal StorageDealProposal, providerWorker address.Address) aerrors.ActorError {
+	if vmctx.BlockHeight() > deal.ProposalExpiration {
 		return aerrors.New(1, "deal proposal already expired")
 	}
 
-	if err := deal.Proposal.Verify(); err != nil {
-		return aerrors.Absorb(err, 2, "verifying proposer signature")
+	if vmctx.Message().From != providerWorker {
+		return aerrors.New(2, "Deals must be submitted by the miner worker")
 	}
 
-	err := deal.Verify(providerWorker)
-	if err != nil {
-		return aerrors.Absorb(err, 2, "verifying provider signature")
-	}
-
-	// TODO: maybe this is actually fine
-	if vmctx.Message().From != providerWorker && vmctx.Message().From != deal.Proposal.Client {
-		return aerrors.New(4, "message not sent by deal participant")
+	if err := deal.Verify(); err != nil {
+		return aerrors.Absorb(err, 3, "verifying proposer signature")
 	}
 
 	// TODO: do some caching (changes gas so needs to be in spec too)
-	b, bnd, aerr := GetMarketBalances(vmctx.Context(), vmctx.Ipld(), st.Balances, deal.Proposal.Client, providerWorker)
+	b, bnd, aerr := GetMarketBalances(vmctx.Context(), vmctx.Ipld(), st.Balances, deal.Client, providerWorker)
 	if aerr != nil {
 		return aerrors.Wrap(aerr, "getting client, and provider balances")
 	}
 	clientBalance := b[0]
 	providerBalance := b[1]
 
-	totalPrice := deal.Proposal.TotalStoragePrice()
+	totalPrice := deal.TotalStoragePrice()
 
 	if clientBalance.Available.LessThan(totalPrice) {
 		return aerrors.Newf(5, "client doesn't have enough available funds to cover storage price; %d < %d", clientBalance.Available, totalPrice)
@@ -402,17 +410,17 @@ func (st *StorageMarketState) validateDeal(vmctx types.VMContext, deal StorageDe
 	clientBalance = lockFunds(clientBalance, totalPrice)
 
 	// TODO: REVIEW: Not clear who pays for this
-	if providerBalance.Available.LessThan(deal.Proposal.StorageCollateral) {
-		return aerrors.Newf(6, "provider doesn't have enough available funds to cover StorageCollateral; %d < %d", providerBalance.Available, deal.Proposal.StorageCollateral)
+	if providerBalance.Available.LessThan(deal.StorageCollateral) {
+		return aerrors.Newf(6, "provider doesn't have enough available funds to cover StorageCollateral; %d < %d", providerBalance.Available, deal.StorageCollateral)
 	}
 
-	providerBalance = lockFunds(providerBalance, deal.Proposal.StorageCollateral)
+	providerBalance = lockFunds(providerBalance, deal.StorageCollateral)
 
 	// TODO: piece checks (e.g. size > sectorSize)?
 
 	bcid, aerr := setMarketBalances(vmctx, bnd, map[address.Address]StorageParticipantBalance{
-		deal.Proposal.Client: clientBalance,
-		providerWorker:       providerBalance,
+		deal.Client:    clientBalance,
+		providerWorker: providerBalance,
 	})
 	if aerr != nil {
 		return aerr
@@ -448,11 +456,11 @@ func (sma StorageMarketActor) ActivateStorageDeals(act *types.Actor, vmctx types
 			return nil, aerrors.HandleExternalError(err, "getting deal info failed")
 		}
 
-		if vmctx.Message().From != dealInfo.Deal.Proposal.Provider {
+		if vmctx.Message().From != dealInfo.Provider {
 			return nil, aerrors.New(1, "ActivateStorageDeals can only be called by the deal provider")
 		}
 
-		if vmctx.BlockHeight() > dealInfo.Deal.Proposal.ProposalExpiration {
+		if vmctx.BlockHeight() > dealInfo.ProposalExpiration {
 			return nil, aerrors.New(2, "deal cannot be activated: proposal expired")
 		}
 
@@ -523,7 +531,7 @@ func (sma StorageMarketActor) ProcessStorageDealsPayment(act *types.Actor, vmctx
 			return nil, aerrors.HandleExternalError(err, "getting deal info failed")
 		}
 
-		if dealInfo.Deal.Proposal.Provider != vmctx.Message().From {
+		if dealInfo.Provider != vmctx.Message().From {
 			return nil, aerrors.New(3, "ProcessStorageDealsPayment can only be called by deal provider")
 		}
 
@@ -532,17 +540,15 @@ func (sma StorageMarketActor) ProcessStorageDealsPayment(act *types.Actor, vmctx
 			return nil, aerrors.New(4, "ActivationEpoch lower than block height")
 		}
 
-		if vmctx.BlockHeight() > dealInfo.ActivationEpoch+dealInfo.Deal.Proposal.Duration {
+		if vmctx.BlockHeight() > dealInfo.ActivationEpoch+dealInfo.Duration {
 			// Deal expired, miner should drop it
 			// TODO: process payment for the remainder of last proving period
 			return nil, nil
 		}
 
-		// todo: check math (written on a plane, also tired)
-		// TODO: division is hard, this more than likely has some off-by-one issue
-		toPay := types.BigMul(dealInfo.Deal.Proposal.StoragePricePerEpoch, types.NewInt(build.ProvingPeriodDuration))
+		toPay := types.BigMul(dealInfo.StoragePricePerEpoch, types.NewInt(build.SlashablePowerDelay))
 
-		b, bnd, aerr := GetMarketBalances(vmctx.Context(), vmctx.Ipld(), self.Balances, dealInfo.Deal.Proposal.Client, providerWorker)
+		b, bnd, aerr := GetMarketBalances(vmctx.Context(), vmctx.Ipld(), self.Balances, dealInfo.Client, providerWorker)
 		if aerr != nil {
 			return nil, aerr
 		}
@@ -553,8 +559,8 @@ func (sma StorageMarketActor) ProcessStorageDealsPayment(act *types.Actor, vmctx
 
 		// TODO: call set once
 		bcid, aerr := setMarketBalances(vmctx, bnd, map[address.Address]StorageParticipantBalance{
-			dealInfo.Deal.Proposal.Client: clientBal,
-			providerWorker:                providerBal,
+			dealInfo.Client: clientBal,
+			providerWorker:  providerBal,
 		})
 		if aerr != nil {
 			return nil, aerr
@@ -603,32 +609,36 @@ func (sma StorageMarketActor) ComputeDataCommitment(act *types.Actor, vmctx type
 		return nil, aerrors.HandleExternalError(err, "loading deals amt")
 	}
 
+	if len(params.DealIDs) == 0 {
+		return nil, aerrors.New(3, "no deal IDs")
+	}
+
 	var pieces []sectorbuilder.PublicPieceInfo
 	for _, deal := range params.DealIDs {
 		var dealInfo OnChainDeal
 		if err := deals.Get(deal, &dealInfo); err != nil {
 			if _, is := err.(*amt.ErrNotFound); is {
-				return nil, aerrors.New(3, "deal not found")
+				return nil, aerrors.New(4, "deal not found")
 			}
 			return nil, aerrors.HandleExternalError(err, "getting deal info failed")
 		}
 
-		if dealInfo.Deal.Proposal.Provider != vmctx.Message().From {
-			return nil, aerrors.New(4, "referenced deal was not from caller")
+		if dealInfo.Provider != vmctx.Message().From {
+			return nil, aerrors.New(5, "referenced deal was not from caller")
 		}
 
 		var commP [32]byte
-		copy(commP[:], dealInfo.Deal.Proposal.PieceRef)
+		copy(commP[:], dealInfo.PieceRef)
 
 		pieces = append(pieces, sectorbuilder.PublicPieceInfo{
-			Size:  dealInfo.Deal.Proposal.PieceSize,
+			Size:  dealInfo.PieceSize,
 			CommP: commP,
 		})
 	}
 
 	commd, err := sectorbuilder.GenerateDataCommitment(params.SectorSize, pieces)
 	if err != nil {
-		return nil, aerrors.Absorb(err, 5, "failed to generate data commitment from pieces")
+		return nil, aerrors.Absorb(err, 6, "failed to generate data commitment from pieces")
 	}
 
 	return commd[:], nil

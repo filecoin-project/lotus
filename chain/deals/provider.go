@@ -24,6 +24,8 @@ import (
 	"github.com/filecoin-project/lotus/storage/sectorblocks"
 )
 
+var ProviderDsPrefix = "/deals/provider"
+
 type MinerDeal struct {
 	Client      peer.ID
 	Proposal    actors.StorageDealProposal
@@ -78,7 +80,7 @@ type minerDealUpdate struct {
 
 var (
 	// ErrDataTransferFailed means a data transfer for a deal failed
-	ErrDataTransferFailed = errors.New("Deal data transfer failed")
+	ErrDataTransferFailed = errors.New("deal data transfer failed")
 )
 
 func NewProvider(ds dtypes.MetadataDS, sminer *storage.Miner, secb *sectorblocks.SectorBlocks, dag dtypes.StagingDAG, dataTransfer dtypes.ProviderDataTransfer, fullNode api.FullNode) (*Provider, error) {
@@ -110,7 +112,7 @@ func NewProvider(ds dtypes.MetadataDS, sminer *storage.Miner, secb *sectorblocks
 
 		actor: minerAddress,
 
-		deals: statestore.New(namespace.Wrap(ds, datastore.NewKey("/deals/client"))),
+		deals: statestore.New(namespace.Wrap(ds, datastore.NewKey(ProviderDsPrefix))),
 		ds:    ds,
 	}
 
@@ -222,10 +224,13 @@ func (p *Provider) onDataTransferEvent(event datatransfer.Event, channelState da
 	// data transfer events for opening and progress do not affect deal state
 	var next api.DealState
 	var err error
+	var mut func(*MinerDeal)
 	switch event {
 	case datatransfer.Complete:
 		next = api.DealStaged
-		err = nil
+		mut = func(deal *MinerDeal) {
+			deal.DealID = voucher.DealID
+		}
 	case datatransfer.Error:
 		next = api.DealFailed
 		err = ErrDataTransferFailed
@@ -239,7 +244,7 @@ func (p *Provider) onDataTransferEvent(event datatransfer.Event, channelState da
 		newState: next,
 		id:       voucher.Proposal,
 		err:      err,
-		mut:      nil,
+		mut:      mut,
 	}:
 	case <-p.stop:
 	}

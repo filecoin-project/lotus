@@ -11,7 +11,15 @@ import (
 	"time"
 
 	"golang.org/x/xerrors"
+
+	"github.com/filecoin-project/lotus/build"
+	"github.com/filecoin-project/lotus/chain/address"
+	"github.com/filecoin-project/lotus/cmd/lotus-seed/seed"
 )
+
+func init() {
+	build.SectorSizes = []uint64{1024}
+}
 
 func (api *api) Spawn() (nodeInfo, error) {
 	dir, err := ioutil.TempDir(os.TempDir(), "lotus-")
@@ -19,9 +27,29 @@ func (api *api) Spawn() (nodeInfo, error) {
 		return nodeInfo{}, err
 	}
 
+	params := []string{"daemon", "--bootstrap=false"}
 	genParam := "--genesis=" + api.genesis
+
 	id := atomic.AddInt32(&api.cmds, 1)
 	if id == 1 {
+		// preseal
+
+		genMiner, err := address.NewIDAddress(101)
+		if err != nil {
+			return nodeInfo{}, err
+		}
+
+		sbroot := filepath.Join(dir, "preseal")
+		genm, err := seed.PreSeal(genMiner, build.SectorSizes[0], 0, 2, sbroot, []byte("8"))
+		if err != nil {
+			return nodeInfo{}, xerrors.Errorf("preseal failed: %w", err)
+		}
+
+		if err := seed.WriteGenesisMiner(genMiner, sbroot, genm); err != nil {
+			return nodeInfo{}, xerrors.Errorf("failed to write genminer info: %w", err)
+		}
+		params = append(params, "--genesis-presealed-sectors="+filepath.Join(dir, "preseal", "pre-seal-t0101.json"))
+
 		// make genesis
 		genf, err := ioutil.TempFile(os.TempDir(), "lotus-genesis-")
 		if err != nil {
@@ -54,7 +82,7 @@ func (api *api) Spawn() (nodeInfo, error) {
 		return nodeInfo{}, err
 	}
 
-	cmd := exec.Command("./lotus", "daemon", "--bootstrap=false", genParam)
+	cmd := exec.Command("./lotus", append(params, genParam)...)
 
 	cmd.Stderr = io.MultiWriter(os.Stderr, errlogfile, mux.errpw)
 	cmd.Stdout = io.MultiWriter(os.Stdout, logfile, mux.outpw)
@@ -112,9 +140,9 @@ func (api *api) SpawnStorage(fullNodeRepo string) (nodeInfo, error) {
 		return nodeInfo{}, err
 	}
 
-	initArgs := []string{"init"}
+	initArgs := []string{"init", "--nosync"}
 	if fullNodeRepo == api.running[1].meta.Repo {
-		initArgs = []string{"init", "--actor=t0101", "--genesis-miner"}
+		initArgs = []string{"init", "--actor=t0101", "--genesis-miner", "--pre-sealed-sectors=" + filepath.Join(fullNodeRepo, "preseal")}
 	}
 
 	id := atomic.AddInt32(&api.cmds, 1)
@@ -130,7 +158,7 @@ func (api *api) SpawnStorage(fullNodeRepo string) (nodeInfo, error) {
 
 	mux := newWsMux()
 
-	cmd = exec.Command("./lotus-storage-miner", "run", "--api", fmt.Sprintf("%d", 2500+id))
+	cmd = exec.Command("./lotus-storage-miner", "run", "--api", fmt.Sprintf("%d", 2500+id), "--nosync")
 	cmd.Stderr = io.MultiWriter(os.Stderr, errlogfile, mux.errpw)
 	cmd.Stdout = io.MultiWriter(os.Stdout, logfile, mux.outpw)
 	cmd.Env = append(os.Environ(), "LOTUS_STORAGE_PATH="+dir, "LOTUS_PATH="+fullNodeRepo)
@@ -190,7 +218,7 @@ func (api *api) RestartNode(id int32) (nodeInfo, error) {
 
 	var cmd *exec.Cmd
 	if nd.meta.Storage {
-		cmd = exec.Command("./lotus-storage-miner", "run", "--api", fmt.Sprintf("%d", 2500+id))
+		cmd = exec.Command("./lotus-storage-miner", "run", "--api", fmt.Sprintf("%d", 2500+id), "--nosync")
 	} else {
 		cmd = exec.Command("./lotus", "daemon", "--api", fmt.Sprintf("%d", 2500+id))
 	}

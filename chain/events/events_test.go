@@ -40,6 +40,14 @@ type fakeCS struct {
 	sub func(rev, app []*types.TipSet)
 }
 
+func (fcs *fakeCS) StateGetReceipt(context.Context, cid.Cid, *types.TipSet) (*types.MessageReceipt, error) {
+	return nil, nil
+}
+
+func (fcs *fakeCS) StateGetActor(ctx context.Context, actor address.Address, ts *types.TipSet) (*types.Actor, error) {
+	panic("Not Implemented")
+}
+
 func (fcs *fakeCS) ChainGetTipSetByHeight(context.Context, uint64, *types.TipSet) (*types.TipSet, error) {
 	panic("Not Implemented")
 }
@@ -47,31 +55,31 @@ func (fcs *fakeCS) ChainGetTipSetByHeight(context.Context, uint64, *types.TipSet
 func makeTs(t *testing.T, h uint64, msgcid cid.Cid) *types.TipSet {
 	a, _ := address.NewFromString("t00")
 	b, _ := address.NewFromString("t02")
-	ts, err := types.NewTipSet([]*types.BlockHeader{
+	var ts, err = types.NewTipSet([]*types.BlockHeader{
 		{
 			Height: h,
 			Miner:  a,
 
-			Tickets: []*types.Ticket{{[]byte{byte(h % 2)}}},
+			Ticket: &types.Ticket{VRFProof: []byte{byte(h % 2)}},
 
 			ParentStateRoot:       dummyCid,
 			Messages:              msgcid,
 			ParentMessageReceipts: dummyCid,
 
-			BlockSig:     types.Signature{Type: types.KTBLS},
+			BlockSig:     &types.Signature{Type: types.KTBLS},
 			BLSAggregate: types.Signature{Type: types.KTBLS},
 		},
 		{
 			Height: h,
 			Miner:  b,
 
-			Tickets: []*types.Ticket{{[]byte{byte((h + 1) % 2)}}},
+			Ticket: &types.Ticket{VRFProof: []byte{byte((h + 1) % 2)}},
 
 			ParentStateRoot:       dummyCid,
 			Messages:              msgcid,
 			ParentMessageReceipts: dummyCid,
 
-			BlockSig:     types.Signature{Type: types.KTBLS},
+			BlockSig:     &types.Signature{Type: types.KTBLS},
 			BLSAggregate: types.Signature{Type: types.KTBLS},
 		},
 	})
@@ -179,10 +187,6 @@ func (fcs *fakeCS) advance(rev, app int, msgs map[int]cid.Cid, nulls ...int) { /
 		apps = append(apps, ts)
 	}
 
-	for i, j := 0, len(apps)-1; i < j; i, j = i+1, j-1 {
-		apps[i], apps[j] = apps[j], apps[i]
-	}
-
 	fcs.sub(revs, apps)
 	time.Sleep(100 * time.Millisecond) // TODO: :c
 }
@@ -252,6 +256,48 @@ func TestAt(t *testing.T) {
 	fcs.advance(0, 1, nil) // 8
 	require.Equal(t, true, applied)
 	require.Equal(t, false, reverted)
+}
+
+func TestAtDoubleTrigger(t *testing.T) {
+	fcs := &fakeCS{
+		t:   t,
+		h:   1,
+		tsc: newTSCache(2*build.ForkLengthThreshold, nil),
+	}
+	require.NoError(t, fcs.tsc.add(makeTs(t, 1, dummyCid)))
+
+	events := NewEvents(context.Background(), fcs)
+
+	var applied bool
+	var reverted bool
+
+	err := events.ChainAt(func(_ context.Context, ts *types.TipSet, curH uint64) error {
+		require.Equal(t, 5, int(ts.Height()))
+		require.Equal(t, 8, int(curH))
+		applied = true
+		return nil
+	}, func(_ context.Context, ts *types.TipSet) error {
+		reverted = true
+		return nil
+	}, 3, 5)
+	require.NoError(t, err)
+
+	fcs.advance(0, 6, nil)
+	require.False(t, applied)
+	require.False(t, reverted)
+
+	fcs.advance(0, 1, nil)
+	require.True(t, applied)
+	require.False(t, reverted)
+	applied = false
+
+	fcs.advance(2, 2, nil)
+	require.False(t, applied)
+	require.False(t, reverted)
+
+	fcs.advance(4, 4, nil)
+	require.True(t, applied)
+	require.True(t, reverted)
 }
 
 func TestAtNullTrigger(t *testing.T) {
@@ -518,7 +564,7 @@ func TestCalled(t *testing.T) {
 
 	err = events.Called(func(ts *types.TipSet) (d bool, m bool, e error) {
 		return false, true, nil
-	}, func(msg *types.Message, ts *types.TipSet, curH uint64) (bool, error) {
+	}, func(msg *types.Message, rec *types.MessageReceipt, ts *types.TipSet, curH uint64) (bool, error) {
 		require.Equal(t, false, applied)
 		applied = true
 		appliedMsg = msg
@@ -557,6 +603,12 @@ func TestCalled(t *testing.T) {
 	require.Equal(t, true, applied)
 	require.Equal(t, false, reverted)
 	applied = false
+
+	// dip below confidence
+	fcs.advance(2, 2, nil) // H=10 (confidence=3, apply)
+
+	require.Equal(t, false, applied)
+	require.Equal(t, false, reverted)
 
 	require.Equal(t, uint64(7), appliedTs.Height())
 	require.Equal(t, "bafkqaaa", appliedTs.Blocks()[0].Messages.String())
@@ -713,7 +765,7 @@ func TestCalledTimeout(t *testing.T) {
 
 	err = events.Called(func(ts *types.TipSet) (d bool, m bool, e error) {
 		return false, true, nil
-	}, func(msg *types.Message, ts *types.TipSet, curH uint64) (bool, error) {
+	}, func(msg *types.Message, rec *types.MessageReceipt, ts *types.TipSet, curH uint64) (bool, error) {
 		called = true
 		require.Nil(t, msg)
 		require.Equal(t, uint64(20), ts.Height())
@@ -748,7 +800,7 @@ func TestCalledTimeout(t *testing.T) {
 
 	err = events.Called(func(ts *types.TipSet) (d bool, m bool, e error) {
 		return true, true, nil
-	}, func(msg *types.Message, ts *types.TipSet, curH uint64) (bool, error) {
+	}, func(msg *types.Message, rec *types.MessageReceipt, ts *types.TipSet, curH uint64) (bool, error) {
 		called = true
 		require.Nil(t, msg)
 		require.Equal(t, uint64(20), ts.Height())
@@ -787,7 +839,7 @@ func TestCalledOrder(t *testing.T) {
 
 	err = events.Called(func(ts *types.TipSet) (d bool, m bool, e error) {
 		return false, true, nil
-	}, func(msg *types.Message, ts *types.TipSet, curH uint64) (bool, error) {
+	}, func(msg *types.Message, rec *types.MessageReceipt, ts *types.TipSet, curH uint64) (bool, error) {
 		switch at {
 		case 0:
 			require.Equal(t, uint64(1), msg.Nonce)

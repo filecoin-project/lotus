@@ -6,7 +6,9 @@ import (
 	"sync"
 
 	"github.com/ipfs/go-cid"
+	"golang.org/x/xerrors"
 
+	"github.com/filecoin-project/lotus/chain/store"
 	"github.com/filecoin-project/lotus/chain/types"
 )
 
@@ -23,7 +25,7 @@ type triggerH = uint64
 
 // `ts` is the tipset, in which the `msg` is included.
 // `curH`-`ts.Height` = `confidence`
-type CalledHandler func(msg *types.Message, ts *types.TipSet, curH uint64) (more bool, err error)
+type CalledHandler func(msg *types.Message, rec *types.MessageReceipt, ts *types.TipSet, curH uint64) (more bool, err error)
 
 // CheckFunc is used for atomicity guarantees. If the condition the callbacks
 // wait for has already happened in tipset `ts`
@@ -83,9 +85,7 @@ func (e *calledEvents) headChangeCalled(rev, app []*types.TipSet) error {
 		e.handleReverts(ts)
 	}
 
-	tail := len(app) - 1
-	for i := range app {
-		ts := app[tail-i]
+	for _, ts := range app {
 		// called triggers
 
 		e.checkNewCalls(ts)
@@ -183,12 +183,22 @@ func (e *calledEvents) applyWithConfidence(ts *types.TipSet) {
 		}
 
 		for _, event := range events {
+			if event.called {
+				continue
+			}
+
 			trigger := e.triggers[event.trigger]
 			if trigger.disabled {
 				continue
 			}
 
-			more, err := trigger.handle(event.msg, triggerTs, ts.Height())
+			rec, err := e.cs.StateGetReceipt(e.ctx, event.msg.Cid(), ts)
+			if err != nil {
+				log.Error(err)
+				return
+			}
+
+			more, err := trigger.handle(event.msg, rec, triggerTs, ts.Height())
 			if err != nil {
 				log.Errorf("chain trigger (call %s.%d() @H %d, called @ %d) failed: %s", event.msg.To, event.msg.Method, origH, ts.Height(), err)
 				continue // don't revert failed calls
@@ -226,7 +236,7 @@ func (e *calledEvents) applyTimeouts(ts *types.TipSet) {
 			log.Errorf("events: applyTimeouts didn't find tipset for event; wanted %d; current %d", ts.Height()-uint64(trigger.confidence), ts.Height())
 		}
 
-		more, err := trigger.handle(nil, timeoutTs, ts.Height())
+		more, err := trigger.handle(nil, nil, timeoutTs, ts.Height())
 		if err != nil {
 			log.Errorf("chain trigger (call @H %d, called @ %d) failed: %s", timeoutTs.Height(), ts.Height(), err)
 			continue // don't revert failed calls
@@ -298,9 +308,10 @@ func (e *calledEvents) Called(check CheckFunc, hnd CalledHandler, rev RevertHand
 	e.lk.Lock()
 	defer e.lk.Unlock()
 
-	done, more, err := check(e.tsc.best())
+	ts := e.tsc.best()
+	done, more, err := check(ts)
 	if err != nil {
-		return err
+		return xerrors.Errorf("called check error (h: %d): %w", ts.Height(), err)
 	}
 	if done {
 		timeout = NoTimeout
@@ -329,4 +340,8 @@ func (e *calledEvents) Called(check CheckFunc, hnd CalledHandler, rev RevertHand
 	}
 
 	return nil
+}
+
+func (e *calledEvents) CalledMsg(ctx context.Context, hnd CalledHandler, rev RevertHandler, confidence int, timeout uint64, msg store.ChainMsg) error {
+	return e.Called(e.CheckMsg(ctx, msg, hnd), hnd, rev, confidence, timeout, e.MatchMsg(msg.VMMessage()))
 }

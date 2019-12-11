@@ -6,17 +6,26 @@ import (
 	"sync"
 
 	"github.com/filecoin-project/lotus/chain/types"
-	peer "github.com/libp2p/go-libp2p-peer"
+	peer "github.com/libp2p/go-libp2p-core/peer"
 )
 
 const BootstrapPeerThreshold = 2
 
+const (
+	BSStateInit      = 0
+	BSStateSelected  = 1
+	BSStateScheduled = 2
+	BSStateComplete  = 3
+)
+
 type SyncFunc func(context.Context, *types.TipSet) error
 
 type SyncManager struct {
-	lk           sync.Mutex
-	peerHeads    map[peer.ID]*types.TipSet
-	bootstrapped bool
+	lk        sync.Mutex
+	peerHeads map[peer.ID]*types.TipSet
+
+	bssLk          sync.Mutex
+	bootstrapState int
 
 	bspThresh int
 
@@ -71,12 +80,11 @@ func (sm *SyncManager) Stop() {
 }
 
 func (sm *SyncManager) SetPeerHead(ctx context.Context, p peer.ID, ts *types.TipSet) {
-	log.Info("set peer head!", ts.Height(), ts.Cids())
 	sm.lk.Lock()
 	defer sm.lk.Unlock()
 	sm.peerHeads[p] = ts
 
-	if !sm.bootstrapped {
+	if sm.getBootstrapState() == BSStateInit {
 		spc := sm.syncedPeerCount()
 		if spc >= sm.bspThresh {
 			// Its go time!
@@ -85,10 +93,9 @@ func (sm *SyncManager) SetPeerHead(ctx context.Context, p peer.ID, ts *types.Tip
 				log.Error("failed to select sync target: ", err)
 				return
 			}
+			sm.setBootstrapState(BSStateSelected)
 
 			sm.incomingTipSets <- target
-			// TODO: is this the right place to say we're bootstrapped? probably want to wait until the sync finishes
-			sm.bootstrapped = true
 		}
 		log.Infof("sync bootstrap has %d peers", spc)
 		return
@@ -101,6 +108,23 @@ type syncBucketSet struct {
 	buckets []*syncTargetBucket
 }
 
+func newSyncTargetBucket(tipsets ...*types.TipSet) *syncTargetBucket {
+	var stb syncTargetBucket
+	for _, ts := range tipsets {
+		stb.add(ts)
+	}
+	return &stb
+}
+
+func (sbs *syncBucketSet) RelatedToAny(ts *types.TipSet) bool {
+	for _, b := range sbs.buckets {
+		if b.sameChainAs(ts) {
+			return true
+		}
+	}
+	return false
+}
+
 func (sbs *syncBucketSet) Insert(ts *types.TipSet) {
 	for _, b := range sbs.buckets {
 		if b.sameChainAs(ts) {
@@ -108,10 +132,7 @@ func (sbs *syncBucketSet) Insert(ts *types.TipSet) {
 			return
 		}
 	}
-	sbs.buckets = append(sbs.buckets, &syncTargetBucket{
-		tips:  []*types.TipSet{ts},
-		count: 1,
-	})
+	sbs.buckets = append(sbs.buckets, newSyncTargetBucket(ts))
 }
 
 func (sbs *syncBucketSet) Pop() *syncTargetBucket {
@@ -162,17 +183,13 @@ func (sbs *syncBucketSet) Heaviest() *types.TipSet {
 	return bestTs
 }
 
+func (sbs *syncBucketSet) Empty() bool {
+	return len(sbs.buckets) == 0
+}
+
 type syncTargetBucket struct {
 	tips  []*types.TipSet
 	count int
-}
-
-func newSyncTargetBucket(tipsets ...*types.TipSet) *syncTargetBucket {
-	var stb syncTargetBucket
-	for _, ts := range tipsets {
-		stb.add(ts)
-	}
-	return &stb
 }
 
 func (stb *syncTargetBucket) sameChainAs(ts *types.TipSet) bool {
@@ -184,6 +201,9 @@ func (stb *syncTargetBucket) sameChainAs(ts *types.TipSet) bool {
 			return true
 		}
 		if types.CidArrsEqual(ts.Parents(), t.Cids()) {
+			return true
+		}
+		if types.CidArrsEqual(ts.Parents(), t.Parents()) {
 			return true
 		}
 	}
@@ -232,7 +252,7 @@ func (sm *SyncManager) selectSyncTarget() (*types.TipSet, error) {
 	}
 
 	if len(buckets.buckets) > 1 {
-		log.Warning("caution, multiple distinct chains seen during head selections")
+		log.Warn("caution, multiple distinct chains seen during head selections")
 		// TODO: we *could* refuse to sync here without user intervention.
 		// For now, just select the best cluster
 	}
@@ -263,22 +283,37 @@ func (sm *SyncManager) syncScheduler() {
 }
 
 func (sm *SyncManager) scheduleIncoming(ts *types.TipSet) {
+	if sm.getBootstrapState() == BSStateSelected {
+		sm.setBootstrapState(BSStateScheduled)
+		sm.syncTargets <- ts
+		return
+	}
+
 	var relatedToActiveSync bool
 	for _, acts := range sm.activeSyncs {
 		if ts.Equals(acts) {
 			break
 		}
 
-		if types.CidArrsEqual(ts.Parents(), acts.Cids()) {
+		if types.CidArrsEqual(ts.Parents(), acts.Cids()) || types.CidArrsEqual(ts.Parents(), acts.Parents()) {
 			// sync this next, after that sync process finishes
 			relatedToActiveSync = true
 		}
+	}
+
+	if !relatedToActiveSync && sm.activeSyncTips.RelatedToAny(ts) {
+		relatedToActiveSync = true
 	}
 
 	// if this is related to an active sync process, immediately bucket it
 	// we don't want to start a parallel sync process that duplicates work
 	if relatedToActiveSync {
 		sm.activeSyncTips.Insert(ts)
+		return
+	}
+
+	if sm.getBootstrapState() == BSStateScheduled {
+		sm.syncQueue.Insert(ts)
 		return
 	}
 
@@ -295,6 +330,9 @@ func (sm *SyncManager) scheduleIncoming(ts *types.TipSet) {
 }
 
 func (sm *SyncManager) scheduleProcessResult(res *syncResult) {
+	if res.success && sm.getBootstrapState() != BSStateComplete {
+		sm.setBootstrapState(BSStateComplete)
+	}
 	delete(sm.activeSyncs, res.ts.Key())
 	relbucket := sm.activeSyncTips.PopRelated(res.ts)
 	if relbucket != nil {
@@ -305,11 +343,20 @@ func (sm *SyncManager) scheduleProcessResult(res *syncResult) {
 			} else {
 				sm.syncQueue.buckets = append(sm.syncQueue.buckets, relbucket)
 			}
+			return
 		} else {
 			// TODO: this is the case where we try to sync a chain, and
 			// fail, and we have more blocks on top of that chain that
 			// have come in since.  The question is, should we try to
 			// sync these? or just drop them?
+		}
+	}
+
+	if sm.nextSyncTarget == nil && !sm.syncQueue.Empty() {
+		next := sm.syncQueue.Pop()
+		if next != nil {
+			sm.nextSyncTarget = next
+			sm.workerChan = sm.syncTargets
 		}
 	}
 }
@@ -318,7 +365,7 @@ func (sm *SyncManager) scheduleWorkSent() {
 	hts := sm.nextSyncTarget.heaviestTipSet()
 	sm.activeSyncs[hts.Key()] = hts
 
-	if len(sm.syncQueue.buckets) > 0 {
+	if !sm.syncQueue.Empty() {
 		sm.nextSyncTarget = sm.syncQueue.Pop()
 	} else {
 		sm.nextSyncTarget = nil
@@ -336,7 +383,6 @@ func (sm *SyncManager) syncWorker(id int) {
 				log.Info("sync manager worker shutting down")
 				return
 			}
-			log.Info("sync worker go time!", ts.Height(), ts.Cids())
 
 			ctx := context.WithValue(context.TODO(), syncStateKey{}, ss)
 			err := sm.doSync(ctx, ts)
@@ -362,8 +408,20 @@ func (sm *SyncManager) syncedPeerCount() int {
 	return count
 }
 
+func (sm *SyncManager) getBootstrapState() int {
+	sm.bssLk.Lock()
+	defer sm.bssLk.Unlock()
+	return sm.bootstrapState
+}
+
+func (sm *SyncManager) setBootstrapState(v int) {
+	sm.bssLk.Lock()
+	defer sm.bssLk.Unlock()
+	sm.bootstrapState = v
+}
+
 func (sm *SyncManager) IsBootstrapped() bool {
-	sm.lk.Lock()
-	defer sm.lk.Unlock()
-	return sm.bootstrapped
+	sm.bssLk.Lock()
+	defer sm.bssLk.Unlock()
+	return sm.bootstrapState == BSStateComplete
 }

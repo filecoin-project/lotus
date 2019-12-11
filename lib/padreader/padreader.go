@@ -4,7 +4,7 @@ import (
 	"io"
 	"math/bits"
 
-	sectorbuilder "github.com/filecoin-project/go-sectorbuilder"
+	sectorbuilder "github.com/filecoin-project/filecoin-ffi"
 )
 
 func PaddedSize(size uint64) uint64 {

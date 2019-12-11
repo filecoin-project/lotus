@@ -58,8 +58,7 @@ type Response struct {
 	Proposal cid.Cid
 
 	// DealAccepted
-	StorageDeal    *actors.StorageDeal
-	PublishMessage *cid.Cid
+	StorageDealSubmission *types.SignedMessage
 }
 
 // TODO: Do we actually need this to be signed?
@@ -90,6 +89,7 @@ type AskResponse struct {
 // used by the storage market
 type StorageDataTransferVoucher struct {
 	Proposal cid.Cid
+	DealID   uint64
 }
 
 // ToBytes converts the StorageDataTransferVoucher to raw bytes

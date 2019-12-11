@@ -40,6 +40,7 @@ func (e *heightEvents) headChangeAt(rev, app []*types.TipSet) error {
 				ctx, span := trace.StartSpan(ctx, "events.HeightRevert")
 
 				err := e.heightTriggers[tid].revert(ctx, ts)
+				e.heightTriggers[tid].called = false
 
 				span.End()
 
@@ -70,9 +71,8 @@ func (e *heightEvents) headChangeAt(rev, app []*types.TipSet) error {
 		}
 	}
 
-	tail := len(app) - 1
 	for i := range app {
-		ts := app[tail-i]
+		ts := app[i]
 
 		if err := e.tsc.add(ts); err != nil {
 			return err
@@ -83,6 +83,11 @@ func (e *heightEvents) headChangeAt(rev, app []*types.TipSet) error {
 		apply := func(h uint64, ts *types.TipSet) error {
 			for _, tid := range e.htTriggerHeights[h] {
 				hnd := e.heightTriggers[tid]
+				if hnd.called {
+					return nil
+				}
+				hnd.called = true
+
 				triggerH := h - uint64(hnd.confidence)
 
 				incTs, err := e.tsc.getNonNull(triggerH)
@@ -97,7 +102,7 @@ func (e *heightEvents) headChangeAt(rev, app []*types.TipSet) error {
 				span.End()
 
 				if err != nil {
-					log.Errorf("chain trigger (@H %d, called @ %d) failed: %s", triggerH, ts.Height(), err)
+					log.Errorf("chain trigger (@H %d, called @ %d) failed: %+v", triggerH, ts.Height(), err)
 				}
 			}
 			return nil

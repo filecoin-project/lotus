@@ -2,9 +2,9 @@ package address
 
 import (
 	"encoding/base32"
+	"errors"
 
 	"github.com/minio/blake2b-simd"
-	errors "github.com/pkg/errors"
 )
 
 func init() {

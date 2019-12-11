@@ -3,8 +3,8 @@ package store
 import (
 	"context"
 	"crypto/sha256"
+	"encoding/binary"
 	"encoding/json"
-	"fmt"
 	"sync"
 
 	"github.com/filecoin-project/lotus/build"
@@ -12,7 +12,7 @@ import (
 	"github.com/filecoin-project/lotus/chain/state"
 	"github.com/filecoin-project/lotus/chain/vm"
 	"go.opencensus.io/trace"
-	"go.uber.org/zap"
+	"go.uber.org/multierr"
 
 	amt "github.com/filecoin-project/go-amt-ipld"
 	"github.com/filecoin-project/lotus/chain/types"
@@ -24,7 +24,6 @@ import (
 	hamt "github.com/ipfs/go-hamt-ipld"
 	bstore "github.com/ipfs/go-ipfs-blockstore"
 	logging "github.com/ipfs/go-log"
-	"github.com/pkg/errors"
 	cbg "github.com/whyrusleeping/cbor-gen"
 	pubsub "github.com/whyrusleeping/pubsub"
 	"golang.org/x/xerrors"
@@ -100,12 +99,12 @@ func (cs *ChainStore) Load() error {
 		return nil
 	}
 	if err != nil {
-		return errors.Wrap(err, "failed to load chain state from datastore")
+		return xerrors.Errorf("failed to load chain state from datastore: %w", err)
 	}
 
 	var tscids []cid.Cid
 	if err := json.Unmarshal(head, &tscids); err != nil {
-		return errors.Wrap(err, "failed to unmarshal stored chain head")
+		return xerrors.Errorf("failed to unmarshal stored chain head: %w", err)
 	}
 
 	ts, err := cs.LoadTipSet(tscids)
@@ -121,11 +120,11 @@ func (cs *ChainStore) Load() error {
 func (cs *ChainStore) writeHead(ts *types.TipSet) error {
 	data, err := json.Marshal(ts.Cids())
 	if err != nil {
-		return errors.Wrap(err, "failed to marshal tipset")
+		return xerrors.Errorf("failed to marshal tipset: %w", err)
 	}
 
 	if err := cs.ds.Put(chainHeadKey, data); err != nil {
-		return errors.Wrap(err, "failed to write chain head to datastore")
+		return xerrors.Errorf("failed to write chain head to datastore: %w", err)
 	}
 
 	return nil
@@ -156,6 +155,8 @@ func (cs *ChainStore) SubHeadChanges(ctx context.Context) chan []*HeadChange {
 
 	go func() {
 		defer close(out)
+		var unsubOnce sync.Once
+
 		for {
 			select {
 			case val, ok := <-subch:
@@ -171,7 +172,9 @@ func (cs *ChainStore) SubHeadChanges(ctx context.Context) chan []*HeadChange {
 				case <-ctx.Done():
 				}
 			case <-ctx.Done():
-				go cs.bestTips.Unsub(subch)
+				unsubOnce.Do(func() {
+					go cs.bestTips.Unsub(subch)
+				})
 			}
 		}
 	}()
@@ -209,7 +212,7 @@ func (cs *ChainStore) PutTipSet(ctx context.Context, ts *types.TipSet) error {
 	log.Debugf("expanded %s into %s\n", ts.Cids(), expanded.Cids())
 
 	if err := cs.MaybeTakeHeavierTipSet(ctx, expanded); err != nil {
-		return errors.Wrap(err, "MaybeTakeHeavierTipSet failed in PutTipSet")
+		return xerrors.Errorf("MaybeTakeHeavierTipSet failed in PutTipSet: %w", err)
 	}
 	return nil
 }
@@ -253,6 +256,13 @@ func (cs *ChainStore) reorgWorker(ctx context.Context) chan<- reorg {
 					log.Error("computing reorg ops failed: ", err)
 					continue
 				}
+
+				// reverse the apply array
+				for i := len(apply)/2 - 1; i >= 0; i-- {
+					opp := len(apply) - 1 - i
+					apply[i], apply[opp] = apply[opp], apply[i]
+				}
+
 				for _, hcf := range cs.headChangeNotifs {
 					if err := hcf(revert, apply); err != nil {
 						log.Error("head change func errored (BAD): ", err)
@@ -267,7 +277,7 @@ func (cs *ChainStore) reorgWorker(ctx context.Context) chan<- reorg {
 }
 
 func (cs *ChainStore) takeHeaviestTipSet(ctx context.Context, ts *types.TipSet) error {
-	ctx, span := trace.StartSpan(ctx, "takeHeaviestTipSet")
+	_, span := trace.StartSpan(ctx, "takeHeaviestTipSet")
 	defer span.End()
 
 	if cs.heaviest != nil { // buf
@@ -284,7 +294,7 @@ func (cs *ChainStore) takeHeaviestTipSet(ctx context.Context, ts *types.TipSet) 
 
 	span.AddAttributes(trace.BoolAttribute("newHead", true))
 
-	log.Debugf("New heaviest tipset! %s", ts.Cids())
+	log.Infof("New heaviest tipset! %s (height=%d)", ts.Cids(), ts.Height())
 	cs.heaviest = ts
 
 	if err := cs.writeHead(ts); err != nil {
@@ -422,17 +432,32 @@ func (cs *ChainStore) AddToTipSetTracker(b *types.BlockHeader) error {
 	return nil
 }
 
-func (cs *ChainStore) PersistBlockHeaders(b ...*types.BlockHeader) (err error) {
+func (cs *ChainStore) PersistBlockHeaders(b ...*types.BlockHeader) error {
 	sbs := make([]block.Block, len(b))
 
 	for i, header := range b {
+		var err error
 		sbs[i], err = header.ToStorageBlock()
 		if err != nil {
 			return err
 		}
 	}
 
-	return cs.bs.PutMany(sbs)
+	batchSize := 256
+	calls := len(b) / batchSize
+
+	var err error
+	for i := 0; i <= calls; i++ {
+		start := batchSize * i
+		end := start + batchSize
+		if end > len(b) {
+			end = len(b)
+		}
+
+		err = multierr.Append(err, cs.bs.PutMany(sbs[start:end]))
+	}
+
+	return err
 }
 
 type storable interface {
@@ -469,6 +494,7 @@ func (cs *ChainStore) expandTipset(b *types.BlockHeader) (*types.TipSet, error) 
 		return types.NewTipSet(all)
 	}
 
+	inclMiners := map[address.Address]bool{b.Miner: true}
 	for _, bhc := range tsets {
 		if bhc == b.Cid() {
 			continue
@@ -479,8 +505,14 @@ func (cs *ChainStore) expandTipset(b *types.BlockHeader) (*types.TipSet, error) 
 			return nil, xerrors.Errorf("failed to load block (%s) for tipset expansion: %w", bhc, err)
 		}
 
+		if inclMiners[h.Miner] {
+			log.Warnf("Have multiple blocks from miner %s at height %d in our tipset cache", h.Miner, h.Height)
+			continue
+		}
+
 		if types.CidArrsEqual(h.Parents, b.Parents) {
 			all = append(all, h)
+			inclMiners[h.Miner] = true
 		}
 	}
 
@@ -500,7 +532,7 @@ func (cs *ChainStore) AddBlock(ctx context.Context, b *types.BlockHeader) error 
 	}
 
 	if err := cs.MaybeTakeHeavierTipSet(ctx, ts); err != nil {
-		return errors.Wrap(err, "MaybeTakeHeavierTipSet failed")
+		return xerrors.Errorf("MaybeTakeHeavierTipSet failed: %w", err)
 	}
 
 	return nil
@@ -529,6 +561,9 @@ func (cs *ChainStore) GetCMessage(c cid.Cid) (ChainMsg, error) {
 	m, err := cs.GetMessage(c)
 	if err == nil {
 		return m, nil
+	}
+	if err != bstore.ErrNotFound {
+		log.Warn("GetCMessage: unexpected error getting unsigned message: %s", err)
 	}
 
 	return cs.GetSignedMessage(c)
@@ -577,6 +612,7 @@ func (cs *ChainStore) readAMTCids(root cid.Cid) ([]cid.Cid, error) {
 type ChainMsg interface {
 	Cid() cid.Cid
 	VMMessage() *types.Message
+	ToStorageBlock() (block.Block, error)
 }
 
 func (cs *ChainStore) MessagesForTipset(ts *types.TipSet) ([]ChainMsg, error) {
@@ -660,12 +696,12 @@ func (cs *ChainStore) readMsgMetaCids(mmc cid.Cid) ([]cid.Cid, []cid.Cid, error)
 
 	blscids, err := cs.readAMTCids(msgmeta.BlsMessages)
 	if err != nil {
-		return nil, nil, errors.Wrap(err, "loading bls message cids for block")
+		return nil, nil, xerrors.Errorf("loading bls message cids for block: %w", err)
 	}
 
 	secpkcids, err := cs.readAMTCids(msgmeta.SecpkMessages)
 	if err != nil {
-		return nil, nil, errors.Wrap(err, "loading secpk message cids for block")
+		return nil, nil, xerrors.Errorf("loading secpk message cids for block: %w", err)
 	}
 
 	cs.mmCache.Add(mmc, &mmCids{
@@ -684,12 +720,12 @@ func (cs *ChainStore) MessagesForBlock(b *types.BlockHeader) ([]*types.Message, 
 
 	blsmsgs, err := cs.LoadMessagesFromCids(blscids)
 	if err != nil {
-		return nil, nil, errors.Wrap(err, "loading bls messages for block")
+		return nil, nil, xerrors.Errorf("loading bls messages for block: %w", err)
 	}
 
 	secpkmsgs, err := cs.LoadSignedMessagesFromCids(secpkcids)
 	if err != nil {
-		return nil, nil, errors.Wrap(err, "loading secpk messages for block")
+		return nil, nil, xerrors.Errorf("loading secpk messages for block: %w", err)
 	}
 
 	return blsmsgs, secpkmsgs, nil
@@ -699,7 +735,7 @@ func (cs *ChainStore) GetParentReceipt(b *types.BlockHeader, i int) (*types.Mess
 	bs := amt.WrapBlockstore(cs.bs)
 	a, err := amt.LoadAMT(bs, b.ParentMessageReceipts)
 	if err != nil {
-		return nil, errors.Wrap(err, "amt load")
+		return nil, xerrors.Errorf("amt load: %w", err)
 	}
 
 	var r types.MessageReceipt
@@ -715,7 +751,7 @@ func (cs *ChainStore) LoadMessagesFromCids(cids []cid.Cid) ([]*types.Message, er
 	for i, c := range cids {
 		m, err := cs.GetMessage(c)
 		if err != nil {
-			return nil, errors.Wrapf(err, "failed to get message: (%s):%d", c, i)
+			return nil, xerrors.Errorf("failed to get message: (%s):%d: %w", err, c, i)
 		}
 
 		msgs = append(msgs, m)
@@ -729,7 +765,7 @@ func (cs *ChainStore) LoadSignedMessagesFromCids(cids []cid.Cid) ([]*types.Signe
 	for i, c := range cids {
 		m, err := cs.GetSignedMessage(c)
 		if err != nil {
-			return nil, errors.Wrapf(err, "failed to get message: (%s):%d", c, i)
+			return nil, xerrors.Errorf("failed to get message: (%s):%d: %w", err, c, i)
 		}
 
 		msgs = append(msgs, m)
@@ -764,24 +800,21 @@ func (cs *ChainStore) TryFillTipSet(ts *types.TipSet) (*FullTipSet, error) {
 	return NewFullTipSet(out), nil
 }
 
-func (cs *ChainStore) GetRandomness(ctx context.Context, blks []cid.Cid, tickets []*types.Ticket, lb int64) ([]byte, error) {
-	ctx, span := trace.StartSpan(ctx, "store.GetRandomness")
+func drawRandomness(t *types.Ticket, round int64) []byte {
+	h := sha256.New()
+	var buf [8]byte
+	binary.LittleEndian.PutUint64(buf[:], uint64(round))
+
+	h.Write(t.VRFProof)
+	h.Write(buf[:])
+
+	return h.Sum(nil)
+}
+
+func (cs *ChainStore) GetRandomness(ctx context.Context, blks []cid.Cid, round int64) ([]byte, error) {
+	_, span := trace.StartSpan(ctx, "store.GetRandomness")
 	defer span.End()
-	span.AddAttributes(trace.Int64Attribute("lb", lb))
-
-	if lb < 0 {
-		return nil, fmt.Errorf("negative lookback parameters are not valid (got %d)", lb)
-	}
-	lt := int64(len(tickets))
-	if lb < lt {
-		log.Desugar().Warn("self sampling randomness. this should be extremely rare, if you see this often it may be a bug", zap.Stack("stacktrace"))
-
-		t := tickets[lt-(1+lb)]
-
-		return t.VRFProof, nil
-	}
-
-	nv := lb - lt
+	span.AddAttributes(trace.Int64Attribute("round", round))
 
 	for {
 		nts, err := cs.LoadTipSet(blks)
@@ -790,26 +823,21 @@ func (cs *ChainStore) GetRandomness(ctx context.Context, blks []cid.Cid, tickets
 		}
 
 		mtb := nts.MinTicketBlock()
-		lt := int64(len(mtb.Tickets))
-		if nv < lt {
-			t := mtb.Tickets[lt-(1+nv)]
-			return t.VRFProof, nil
-		}
 
-		nv -= lt
+		if int64(nts.Height()) <= round {
+			return drawRandomness(nts.MinTicketBlock().Ticket, round), nil
+		}
 
 		// special case for lookback behind genesis block
 		// TODO(spec): this is not in the spec, need to sync that
 		if mtb.Height == 0 {
 
-			t := mtb.Tickets[0]
+			// round is negative
+			thash := drawRandomness(mtb.Ticket, round*-1)
 
-			rval := t.VRFProof
-			for i := int64(0); i < nv; i++ {
-				h := sha256.Sum256(rval)
-				rval = h[:]
-			}
-			return rval, nil
+			// for negative lookbacks, just use the hash of the positive tickethash value
+			h := sha256.Sum256(thash)
+			return h[:], nil
 		}
 
 		blks = mtb.Parents
@@ -830,36 +858,33 @@ func (cs *ChainStore) GetTipsetByHeight(ctx context.Context, h uint64, ts *types
 	}
 
 	for {
-		mtb := ts.MinTicketBlock()
-		if h >= ts.Height()-uint64(len(mtb.Tickets)) {
-			return ts, nil
-		}
-
 		pts, err := cs.LoadTipSet(ts.Parents())
 		if err != nil {
 			return nil, err
 		}
+
+		if h > pts.Height() {
+			return ts, nil
+		}
+
 		ts = pts
 	}
 }
 
 type chainRand struct {
-	cs      *ChainStore
-	blks    []cid.Cid
-	bh      uint64
-	tickets []*types.Ticket
+	cs   *ChainStore
+	blks []cid.Cid
+	bh   uint64
 }
 
-func NewChainRand(cs *ChainStore, blks []cid.Cid, bheight uint64, tickets []*types.Ticket) vm.Rand {
+func NewChainRand(cs *ChainStore, blks []cid.Cid, bheight uint64) vm.Rand {
 	return &chainRand{
-		cs:      cs,
-		blks:    blks,
-		bh:      bheight,
-		tickets: tickets,
+		cs:   cs,
+		blks: blks,
+		bh:   bheight,
 	}
 }
 
-func (cr *chainRand) GetRandomness(ctx context.Context, h int64) ([]byte, error) {
-	lb := (int64(cr.bh) + int64(len(cr.tickets))) - h
-	return cr.cs.GetRandomness(ctx, cr.blks, cr.tickets, lb)
+func (cr *chainRand) GetRandomness(ctx context.Context, round int64) ([]byte, error) {
+	return cr.cs.GetRandomness(ctx, cr.blks, round)
 }

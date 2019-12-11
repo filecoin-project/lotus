@@ -47,13 +47,11 @@ func LoadStateTree(cst *hamt.CborIpldStore, c cid.Cid) (*StateTree, error) {
 }
 
 func (st *StateTree) SetActor(addr address.Address, act *types.Actor) error {
-	if addr.Protocol() != address.ID {
-		iaddr, err := st.lookupID(addr)
-		if err != nil {
-			return xerrors.Errorf("ID lookup failed: %w", err)
-		}
-		addr = iaddr
+	iaddr, err := st.LookupID(addr)
+	if err != nil {
+		return xerrors.Errorf("ID lookup failed: %w", err)
 	}
+	addr = iaddr
 
 	cact, ok := st.actorcache[addr]
 	if ok {
@@ -67,7 +65,11 @@ func (st *StateTree) SetActor(addr address.Address, act *types.Actor) error {
 	return st.root.Set(context.TODO(), string(addr.Bytes()), act)
 }
 
-func (st *StateTree) lookupID(addr address.Address) (address.Address, error) {
+func (st *StateTree) LookupID(addr address.Address) (address.Address, error) {
+	if addr.Protocol() == address.ID {
+		return addr, nil
+	}
+
 	act, err := st.GetActor(actors.InitAddress)
 	if err != nil {
 		return address.Undef, xerrors.Errorf("getting init actor: %w", err)
@@ -86,16 +88,14 @@ func (st *StateTree) GetActor(addr address.Address) (*types.Actor, error) {
 		return nil, fmt.Errorf("GetActor called on undefined address")
 	}
 
-	if addr.Protocol() != address.ID {
-		iaddr, err := st.lookupID(addr)
-		if err != nil {
-			if xerrors.Is(err, hamt.ErrNotFound) {
-				return nil, xerrors.Errorf("resolution lookup failed (%s): %w", addr, types.ErrActorNotFound)
-			}
-			return nil, xerrors.Errorf("address resolution: %w", err)
+	iaddr, err := st.LookupID(addr)
+	if err != nil {
+		if xerrors.Is(err, hamt.ErrNotFound) {
+			return nil, xerrors.Errorf("resolution lookup failed (%s): %w", addr, types.ErrActorNotFound)
 		}
-		addr = iaddr
+		return nil, xerrors.Errorf("address resolution: %w", err)
 	}
+	addr = iaddr
 
 	cact, ok := st.actorcache[addr]
 	if ok {
@@ -103,7 +103,7 @@ func (st *StateTree) GetActor(addr address.Address) (*types.Actor, error) {
 	}
 
 	var act types.Actor
-	err := st.root.Find(context.TODO(), string(addr.Bytes()), &act)
+	err = st.root.Find(context.TODO(), string(addr.Bytes()), &act)
 	if err != nil {
 		if err == hamt.ErrNotFound {
 			return nil, types.ErrActorNotFound

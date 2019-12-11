@@ -14,6 +14,7 @@ import (
 	"github.com/filecoin-project/lotus/chain/actors"
 	"github.com/filecoin-project/lotus/chain/address"
 	"github.com/filecoin-project/lotus/chain/types"
+	"github.com/multiformats/go-multihash"
 
 	_ "github.com/influxdata/influxdb1-client"
 	models "github.com/influxdata/influxdb1-client/models"
@@ -124,8 +125,11 @@ func RecordTipsetPoints(ctx context.Context, api api.FullNode, pl *PointList, ti
 		if err != nil {
 			return err
 		}
+		p := NewPoint("chain.election", 1)
+		p.AddTag("miner", blockheader.Miner.String())
+		pl.AddPoint(p)
 
-		p := NewPoint("chain.blockheader_size", len(bs))
+		p = NewPoint("chain.blockheader_size", len(bs))
 		pl.AddPoint(p)
 	}
 
@@ -212,7 +216,13 @@ func RecordTipsetMessagesPoints(ctx context.Context, api api.FullNode, pl *Point
 		}
 
 		p = NewPoint("chain.message_count", 1)
-		p.AddTag("actor", actor.Code.String())
+
+		dm, err := multihash.Decode(actor.Code.Hash())
+		if err != nil {
+			continue
+		}
+
+		p.AddTag("actor", string(dm.Digest))
 		p.AddTag("method", fmt.Sprintf("%d", msg.Message.Method))
 		p.AddTag("exitcode", fmt.Sprintf("%d", recp[i].ExitCode))
 		pl.AddPoint(p)

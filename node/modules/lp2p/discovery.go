@@ -6,7 +6,6 @@ import (
 
 	"github.com/libp2p/go-libp2p-core/host"
 	"github.com/libp2p/go-libp2p-core/peer"
-	"github.com/libp2p/go-libp2p/p2p/discovery"
 	"go.uber.org/fx"
 
 	"github.com/filecoin-project/lotus/node/modules/helpers"
@@ -32,22 +31,5 @@ func DiscoveryHandler(mctx helpers.MetricsCtx, lc fx.Lifecycle, host host.Host) 
 	return &discoveryHandler{
 		ctx:  helpers.LifecycleCtx(mctx, lc),
 		host: host,
-	}
-}
-
-func SetupDiscovery(mdns bool, mdnsInterval int) func(helpers.MetricsCtx, fx.Lifecycle, host.Host, *discoveryHandler) error {
-	return func(mctx helpers.MetricsCtx, lc fx.Lifecycle, host host.Host, handler *discoveryHandler) error {
-		if mdns {
-			if mdnsInterval == 0 {
-				mdnsInterval = 5
-			}
-			service, err := discovery.NewMdnsService(helpers.LifecycleCtx(mctx, lc), host, time.Duration(mdnsInterval)*time.Second, discovery.ServiceTag)
-			if err != nil {
-				log.Errorw("mdns error", "error", err)
-				return nil
-			}
-			service.RegisterNotifee(handler)
-		}
-		return nil
 	}
 }

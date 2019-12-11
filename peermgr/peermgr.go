@@ -6,6 +6,7 @@ import (
 	"time"
 
 	"github.com/filecoin-project/lotus/node/modules/dtypes"
+	"go.uber.org/fx"
 
 	host "github.com/libp2p/go-libp2p-core/host"
 	net "github.com/libp2p/go-libp2p-core/network"
@@ -22,15 +23,21 @@ const (
 	MinFilPeers = 8
 )
 
+type MaybePeerMgr struct {
+	fx.In
+
+	Mgr *PeerMgr `optional:"true"`
+}
+
 type PeerMgr struct {
 	bootstrappers []peer.AddrInfo
 
 	// peerLeads is a set of peers we hear about through the network
 	// and who may be good peers to connect to for expanding our peer set
-	peerLeads map[peer.ID]time.Time
+	//peerLeads map[peer.ID]time.Time // TODO: unused
 
 	peersLk sync.Mutex
-	peers   map[peer.ID]struct{}
+	peers   map[peer.ID]time.Duration
 
 	maxFilPeers int
 	minFilPeers int
@@ -49,7 +56,7 @@ func NewPeerMgr(h host.Host, dht *dht.IpfsDHT, bootstrap dtypes.BootstrapPeers) 
 		dht:           dht,
 		bootstrappers: bootstrap,
 
-		peers: make(map[peer.ID]struct{}),
+		peers: make(map[peer.ID]time.Duration),
 
 		maxFilPeers: MaxFilPeers,
 		minFilPeers: MinFilPeers,
@@ -69,7 +76,23 @@ func NewPeerMgr(h host.Host, dht *dht.IpfsDHT, bootstrap dtypes.BootstrapPeers) 
 func (pmgr *PeerMgr) AddFilecoinPeer(p peer.ID) {
 	pmgr.peersLk.Lock()
 	defer pmgr.peersLk.Unlock()
-	pmgr.peers[p] = struct{}{}
+	pmgr.peers[p] = time.Duration(0)
+}
+
+func (pmgr *PeerMgr) GetPeerLatency(p peer.ID) (time.Duration, bool) {
+	pmgr.peersLk.Lock()
+	defer pmgr.peersLk.Unlock()
+	dur, ok := pmgr.peers[p]
+	return dur, ok
+}
+
+func (pmgr *PeerMgr) SetPeerLatency(p peer.ID, latency time.Duration) {
+	pmgr.peersLk.Lock()
+	defer pmgr.peersLk.Unlock()
+	if _, ok := pmgr.peers[p]; ok {
+		pmgr.peers[p] = latency
+	}
+
 }
 
 func (pmgr *PeerMgr) Disconnect(p peer.ID) {

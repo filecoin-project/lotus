@@ -26,10 +26,13 @@ func (a *SyncAPI) SyncState(ctx context.Context) (*api.SyncState, error) {
 
 	for _, ss := range states {
 		out.ActiveSyncs = append(out.ActiveSyncs, api.ActiveSync{
-			Base:   ss.Base,
-			Target: ss.Target,
-			Stage:  ss.Stage,
-			Height: ss.Height,
+			Base:    ss.Base,
+			Target:  ss.Target,
+			Stage:   ss.Stage,
+			Height:  ss.Height,
+			Start:   ss.Start,
+			End:     ss.End,
+			Message: ss.Message,
 		})
 	}
 	return out, nil
@@ -54,7 +57,7 @@ func (a *SyncAPI) SyncSubmitBlock(ctx context.Context, blk *types.BlockMsg) erro
 	}
 
 	if err := a.Syncer.ValidateMsgMeta(fb); err != nil {
-		xerrors.Errorf("provided messages did not match block: %w", err)
+		return xerrors.Errorf("provided messages did not match block: %w", err)
 	}
 
 	ts, err := types.NewTipSet([]*types.BlockHeader{blk.Header})
@@ -72,4 +75,8 @@ func (a *SyncAPI) SyncSubmitBlock(ctx context.Context, blk *types.BlockMsg) erro
 
 	// TODO: anything else to do here?
 	return a.PubSub.Publish("/fil/blocks", b)
+}
+
+func (a *SyncAPI) SyncIncomingBlocks(ctx context.Context) (<-chan *types.BlockHeader, error) {
+	return a.Syncer.IncomingBlocks(ctx)
 }
