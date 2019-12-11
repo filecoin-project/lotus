@@ -2,6 +2,8 @@ package sectorblocks
 
 import (
 	"context"
+	"github.com/filecoin-project/lotus/api"
+	"github.com/filecoin-project/lotus/storage"
 	"io/ioutil"
 
 	blocks "github.com/ipfs/go-block-format"
@@ -72,11 +74,22 @@ func (s *SectorBlockStore) Get(c cid.Cid) (blocks.Block, error) {
 		return nil, blockstore.ErrNotFound
 	}
 
-	best := refs[0] // TODO: better strategy (e.g. look for already unsealed)
-
-	si, err := s.sectorBlocks.Miner.GetSectorInfo(best.SectorID)
-	if err != nil {
-		return nil, xerrors.Errorf("getting sector info: %w", err)
+	// TODO: better strategy (e.g. look for already unsealed)
+	var best api.SealedRef
+	var bestSi storage.SectorInfo
+	for _, r := range refs {
+		si, err := s.sectorBlocks.Miner.GetSectorInfo(r.SectorID)
+		if err != nil {
+			return nil, xerrors.Errorf("getting sector info: %w", err)
+		}
+		if si.State == api.Proving {
+			best = r
+			bestSi = si
+			break
+		}
+	}
+	if bestSi.State == api.UndefinedSectorState {
+		return nil, xerrors.New("no sealed sector found")
 	}
 
 	log.Infof("reading block %s from sector %d(+%d;%d)", c, best.SectorID, best.Offset, best.Size)
@@ -85,8 +98,8 @@ func (s *SectorBlockStore) Get(c cid.Cid) (blocks.Block, error) {
 		best.SectorID,
 		best.Offset,
 		best.Size,
-		si.Ticket.TicketBytes,
-		si.CommD,
+		bestSi.Ticket.TicketBytes,
+		bestSi.CommD,
 	)
 	if err != nil {
 		return nil, xerrors.Errorf("unsealing block: %w", err)

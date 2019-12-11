@@ -47,6 +47,11 @@ var DaemonCmd = &cli.Command{
 			Name:  "genesis",
 			Usage: "genesis file to use for first node run",
 		},
+		&cli.StringFlag{
+			Name:   "genesis-timestamp",
+			Hidden: true,
+			Usage:  "set the timestamp for the genesis block that will be created",
+		},
 		&cli.BoolFlag{
 			Name:  "bootstrap",
 			Value: true,
@@ -84,7 +89,7 @@ var DaemonCmd = &cli.Command{
 			if cctx.String(preSealedSectorsFlag) == "" {
 				return xerrors.Errorf("must also pass file with miner preseal info to `--%s`", preSealedSectorsFlag)
 			}
-			genesis = node.Override(new(modules.Genesis), testing.MakeGenesis(cctx.String(makeGenFlag), cctx.String(preSealedSectorsFlag)))
+			genesis = node.Override(new(modules.Genesis), testing.MakeGenesis(cctx.String(makeGenFlag), cctx.String(preSealedSectorsFlag), cctx.String("genesis-timestamp")))
 		}
 
 		var api api.FullNode

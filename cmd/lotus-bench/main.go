@@ -6,6 +6,7 @@ import (
 	"crypto/sha256"
 	"encoding/json"
 	"fmt"
+	"github.com/docker/go-units"
 	"io/ioutil"
 	"math/big"
 	"math/rand"
@@ -65,9 +66,10 @@ func main() {
 				Value: "~/.lotus-bench",
 				Usage: "Path to the storage directory that will store sectors long term",
 			},
-			&cli.Uint64Flag{
+			&cli.StringFlag{
 				Name:  "sector-size",
-				Value: 1024,
+				Value: "1GiB",
+				Usage: "size of the sectors in bytes, i.e. 32GiB",
 			},
 			&cli.BoolFlag{
 				Name:  "no-gpu",
@@ -127,7 +129,11 @@ func main() {
 				return err
 			}
 
-			sectorSize := c.Uint64("sector-size")
+			sectorSizeInt, err := units.FromHumanSize(c.String("sector-size"))
+			if err != nil {
+				return err
+			}
+			sectorSize := uint64(sectorSizeInt)
 
 			mds := datastore.NewMapDatastore()
 			cfg := &sectorbuilder.Config{

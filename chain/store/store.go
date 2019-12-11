@@ -155,6 +155,8 @@ func (cs *ChainStore) SubHeadChanges(ctx context.Context) chan []*HeadChange {
 
 	go func() {
 		defer close(out)
+		var unsubOnce sync.Once
+
 		for {
 			select {
 			case val, ok := <-subch:
@@ -170,7 +172,9 @@ func (cs *ChainStore) SubHeadChanges(ctx context.Context) chan []*HeadChange {
 				case <-ctx.Done():
 				}
 			case <-ctx.Done():
-				go cs.bestTips.Unsub(subch)
+				unsubOnce.Do(func() {
+					go cs.bestTips.Unsub(subch)
+				})
 			}
 		}
 	}()
