@@ -53,6 +53,10 @@ func syncHead(ctx context.Context, api api.FullNode, st *storage, ts *types.TipS
 	actors := map[address.Address]map[types.Actor]cid.Cid{}
 	var alk sync.Mutex
 
+	log.Infof("Getting synced block list")
+
+	hazlist := st.hasList()
+
 	log.Infof("Getting headers / actors")
 
 	toSync := map[cid.Cid]*types.BlockHeader{}
@@ -65,7 +69,8 @@ func syncHead(ctx context.Context, api api.FullNode, st *storage, ts *types.TipS
 	for toVisit.Len() > 0 {
 		bh := toVisit.Remove(toVisit.Back()).(*types.BlockHeader)
 
-		if _, seen := toSync[bh.Cid()]; seen || st.hasBlock(bh.Cid()) {
+		_, has := hazlist[bh.Cid()]
+		if _, seen := toSync[bh.Cid()]; seen || has {
 			continue
 		}
 
@@ -92,6 +97,12 @@ func syncHead(ctx context.Context, api api.FullNode, st *storage, ts *types.TipS
 	}
 
 	log.Infof("Syncing %d blocks", len(toSync))
+
+	log.Infof("Persisting headers")
+	if err := st.storeHeaders(toSync, true); err != nil {
+		log.Error(err)
+		return
+	}
 
 	log.Infof("Persisting actors")
 
@@ -209,12 +220,6 @@ func syncHead(ctx context.Context, api api.FullNode, st *storage, ts *types.TipS
 	})
 
 	if err := st.storeMiners(miners); err != nil {
-		log.Error(err)
-		return
-	}
-
-	log.Infof("Persisting headers")
-	if err := st.storeHeaders(toSync, true); err != nil {
 		log.Error(err)
 		return
 	}

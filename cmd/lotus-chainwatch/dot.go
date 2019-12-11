@@ -30,6 +30,8 @@ var dotCmd = &cli.Command{
 
 		fmt.Println("digraph D {")
 
+		hl := st.hasList()
+
 		for res.Next() {
 			var block, parent, miner string
 			var height uint64
@@ -42,7 +44,7 @@ var dotCmd = &cli.Command{
 				return err
 			}
 
-			has := st.hasBlock(bc)
+			_, has := hl[bc]
 
 			col := crc32.Checksum([]byte(miner), crc32.MakeTable(crc32.Castagnoli))&0xc0c0c0c0 + 0x30303030
 

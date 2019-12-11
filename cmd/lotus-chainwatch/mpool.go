@@ -26,7 +26,7 @@ func subMpool(ctx context.Context, api aapi.FullNode, st *storage) {
 			change.Message.Message.Cid(): &change.Message.Message,
 		})
 		if err != nil {
-			log.Error(err)
+			//log.Error(err)
 			continue
 		}
 

@@ -61,11 +61,7 @@ create table if not exists blocks
 (
 	cid text not null
 		constraint blocks_pk
-			primary key
-		constraint blocks_synced_blocks_cid_fk
-			references blocks_synced (cid)
-		constraint block_parents_blocks_cid_fk
-			references block_parents (block),
+			primary key,
 	parentWeight numeric not null,
 	parentStateRoot text not null,
 	height int not null,
@@ -205,14 +201,31 @@ create table if not exists miner_heads
 	return tx.Commit()
 }
 
-func (st *storage) hasBlock(bh cid.Cid) bool {
-	var exitsts bool
-	err := st.db.QueryRow(`select exists (select 1 FROM blocks_synced where cid=$1)`, bh.String()).Scan(&exitsts)
+func (st *storage) hasList() map[cid.Cid]struct{} {
+	rws, err := st.db.Query(`select cid FROM blocks_synced`)
 	if err != nil {
 		log.Error(err)
-		return false
+		return map[cid.Cid]struct{}{}
 	}
-	return exitsts
+	out := map[cid.Cid]struct{}{}
+
+	for rws.Next() {
+		var c string
+		if err := rws.Scan(&c); err != nil {
+			log.Error(err)
+			continue
+		}
+
+		ci, err := cid.Parse(c)
+		if err != nil {
+			log.Error(err)
+			continue
+		}
+
+		out[ci] = struct{}{}
+	}
+
+	return out
 }
 
 func (st *storage) storeActors(actors map[address.Address]map[types.Actor]cid.Cid) error {
@@ -271,55 +284,74 @@ func (st *storage) storeMiners(miners map[minerKey]*minerInfo) error {
 	return tx.Commit()
 }
 
+func (st *storage) batch(n int) chan *sql.Tx {
+	out := make(chan *sql.Tx, n)
+	for i := 0; i < n; i++ {
+		tx, err := st.db.Begin()
+		if err != nil {
+			log.Error(err)
+		}
+
+		out <- tx
+	}
+
+	return out
+}
+
+func endbatch(b chan *sql.Tx) {
+	n := len(b)
+	for i := 0; i < n; i++ {
+		tx := <- b
+		if err := tx.Commit(); err != nil {
+			log.Error(err)
+		}
+	}
+}
+
 func (st *storage) storeHeaders(bhs map[cid.Cid]*types.BlockHeader, sync bool) error {
 	st.headerLk.Lock()
 	defer st.headerLk.Unlock()
 
-	tx, err := st.db.Begin()
-	if err != nil {
-		return err
-	}
+	tb := st.batch(50)
 
-	stmt2, err := tx.Prepare(`insert into block_parents (block, parent) values ($1, $2) on conflict do nothing`)
-	if err != nil {
-		return err
-	}
-	defer stmt2.Close()
-	for _, bh := range bhs {
+	par(100, maparr(bhs), func(bh *types.BlockHeader) {
 		for _, parent := range bh.Parents {
-			if _, err := stmt2.Exec(bh.Cid().String(), parent.String()); err != nil {
+			log.Info("bps ", bh.Cid())
+			tx := <-tb
+			stmt2, err := tx.Prepare(`insert into block_parents (block, parent) values ($1, $2) on conflict do nothing`)
+			if err != nil {
 				return err
 			}
+			if _, err := tx.Exec(`insert into block_parents (block, parent) values ($1, $2) on conflict do nothing`, bh.Cid().String(), parent.String()); err != nil {
+				log.Error(err)
+			}
+			tb <- tx
 		}
-	}
+	})
 
 	if sync {
-		stmt, err := tx.Prepare(`insert into blocks_synced (cid, add_ts) values ($1, $2) on conflict do nothing`)
-		if err != nil {
-			return err
-		}
-		defer stmt.Close()
 		now := time.Now().Unix()
 
-		for _, bh := range bhs {
-			if _, err := stmt.Exec(bh.Cid().String(), now); err != nil {
-				return err
+		par(50, maparr(bhs), func(bh *types.BlockHeader) {
+			tx := <-tb
+			if _, err := tx.Exec(`insert into blocks_synced (cid, add_ts) values ($1, $2) on conflict do nothing`, bh.Cid().String(), now); err != nil {
+				log.Error(err)
 			}
-		}
+			tb <- tx
+		})
 	}
 
-	stmt, err := tx.Prepare(`insert into blocks (cid, parentWeight, parentStateRoot, height, miner, "timestamp") values ($1, $2, $3, $4, $5, $6) on conflict do nothing`)
-	if err != nil {
-		return err
-	}
-	defer stmt.Close()
-	for _, bh := range bhs {
-		if _, err := stmt.Exec(bh.Cid().String(), bh.ParentWeight.String(), bh.ParentStateRoot.String(), bh.Height, bh.Miner.String(), bh.Timestamp); err != nil {
-			return err
+	par(50, maparr(bhs), func(bh *types.BlockHeader) {
+		log.Info("bh", bh.Cid())
+		tx := <-tb
+		if _, err := tx.Exec(`insert into blocks (cid, parentWeight, parentStateRoot, height, miner, "timestamp") values ($1, $2, $3, $4, $5, $6) on conflict do nothing`, bh.Cid().String(), bh.ParentWeight.String(), bh.ParentStateRoot.String(), bh.Height, bh.Miner.String(), bh.Timestamp); err != nil {
+			log.Error(err)
 		}
-	}
+		tb <- tx
+	})
 
-	return tx.Commit()
+	endbatch(tb)
+	return nil
 }
 
 func (st *storage) storeMessages(msgs map[cid.Cid]*types.Message) error {
