@@ -83,10 +83,6 @@ var InitialReward *big.Int
 
 const FilecoinPrecision = 1_000_000_000_000_000_000
 
-// six years
-// Epochs
-const HalvingPeriodEpochs = 6 * 365 * 24 * 60 * 2
-
 // TODO: Move other important consts here
 
 func init() {

@@ -31,4 +31,4 @@ const InteractivePoRepDelay = 8
 const InteractivePoRepConfidence = 6
 
 // Bytes
-var MinimumMinerPower uint64 = 20 << 30 // 20GB
+var MinimumMinerPower uint64 = 512 << 30 // 512GB
