@@ -1,10 +1,14 @@
 # Mining Troubleshooting
 
+## Bellman Lockfile
+
+The **Bellman** lockfile is created to lock a GPU for a process. This bug can occur when this file isn't properly cleaned up:
+
 ```sh
 mining block failed: computing election proof: github.com/filecoin-project/lotus/miner.(*Miner).mineOne
 ```
 
-This bug occurs when the storage miner can't acquire the `bellman.lock`. To fix it you need to stop the `lotus-storage-miner` and remove `/tmp/bellman.lock`
+This bug occurs when the storage miner can't acquire the `bellman.lock`. To fix it you need to stop the `lotus-storage-miner` and remove `/tmp/bellman.lock`.
 
 ## Your miner is not ready
 
@@ -13,7 +17,7 @@ lotus-storage-miner info
 # WARN  main  lotus-storage-miner/main.go:73  failed to get api endpoint: (/Users/myrmidon/.lotusstorage) %!w(*errors.errorString=&{API not running (no endpoint)}):
 ```
 
-If you see this, that means your **Lotus Storage Miner** isn't ready yet.
+If you see this, that means your **Lotus Storage Miner** isn't ready yet. You need to finish [syncing the chain](https://docs.lotu.sh/en+join-testnet).
 
 ## Your computer is too slow
 
