@@ -1,6 +1,6 @@
 # Setup Troubleshooting
 
-Here is a command that will delete your chain data and any miners you have set up:
+Here is a command that will delete your chain data, stored wallets, stored data and any miners you have set up:
 
 ```sh
 rm -rf ~/.lotus ~/.lotusstorage

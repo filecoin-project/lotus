@@ -7,12 +7,12 @@ If you installed Lotus on your machine, you can upgrade to the latest version by
 git pull origin master
 
 # clean and remake the binaries
-make clean build
+make clean && make build
 ```
 
 Sometimes when you run Lotus after a pull, certain commands such as `lotus daemon` may break. 
 
-Here is a command that will delete your chain data and any miners you have set up:
+Here is a command that will delete your chain data, stored wallets and any miners you have set up:
 
 ```sh
 rm -rf ~/.lotus ~/.lotusstorage

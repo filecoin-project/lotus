@@ -10,17 +10,17 @@ BECAUSE OF THIS, OUR STANDARD TESTING CONFIGURATION FOR FILECOIN MAINNET CAN AND
 
 The setup below is a minimal example for sealing 32 GiB sectors on Lotus:
 
-* 3 TB of hard drive space.
+* 2 TB of hard drive space.
 * 8 core CPU
-* 128 GB of RAM
+* 128 GiB of RAM
 
 ## TestNet discoveries
 
-* 256GB **NVMe** Swap on an SSD for anyone that has 128GB RAM to avoid out of memory issues while mining.
+* If you only have 128GiB of ram, enabling 256GB of **NVMe** swap on an SSD will help you avoid out-of-memory issues while mining.
 
 ## Benchmarked GPUs
 
-GPUs are a must for getting **block rewards**. Here are a few that have been tried in the past:
+GPUs are a must for getting **block rewards**. Here are a few that have been confirmed to generate **SNARKs** quickly enough to successfully mine blocks on the Lotus TestNet.
 
 * GeForce RTX 2080 Ti
 * GeForce RTX 2080 SUPER
@@ -31,7 +31,7 @@ GPUs are a must for getting **block rewards**. Here are a few that have been tri
 
 ## Testing other GPUs
 
-If you want to test other GPUs, such as the GeForce GTX 1660, you can use the following configuration flag:
+If you want to test a GPU that is not explicitly supported, you can use the following configuration flag:
 
 ```sh
 BELLMAN_CUSTOM_GPU="<NAME>:<NUMBER_OF_CORES>"
@@ -43,7 +43,7 @@ Here is an example of trying a GeForce GTX 1660 ti with 1536 cores.
 BELLMAN_CUSTOM_GPU="GeForce GTX 1660 Ti:1536"
 ```
 
-To get the number of cores for your GPU, you will need to check your cards specifications.
+To get the number of cores for your GPU, you will need to check your card’s specifications.
 
 ## Benchmarking
 

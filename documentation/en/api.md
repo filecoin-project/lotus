@@ -4,7 +4,7 @@ Here is an early overview of how to make API calls.
 
 Implementation details for the **JSON-RPC** package are [here](https://github.com/filecoin-project/lotus/tree/master/lib/jsonrpc).
 
-## Overview
+## Overview: How do you modify the config.toml to change the API endpoint?
 
 API requests are made against `127.0.0.1:1234` unless you modify `.lotus/config.toml`. 
 

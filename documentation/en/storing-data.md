@@ -2,9 +2,11 @@
 
 > There are recent bug reports with these instructions. If you happen to encounter any problems, please create a [GitHub issue](https://github.com/filecoin-project/lotus/issues/new) and a maintainer will address the problem as soon as they can.
 
-Here are instructions for how to store data on the **Lotus DevNet**.
+Here are instructions for how to store data on the **Lotus TestNet**.
 
-## Adding a file
+## Adding a file locally
+
+Adding a file locally allows you to make miner deals on the **Lotus TestNet**.
 
 ```sh
 lotus client import ./your-example-file.txt
@@ -12,7 +14,7 @@ lotus client import ./your-example-file.txt
 
 Upon success, this command will return a **Data CID**.
 
-## List local files
+## List your local files
 
 The command to see a list of files by `CID`, `name`, `size` in bytes, and `status`:
 
@@ -27,7 +29,7 @@ bafkreierupr5ioxn4obwly4i2a5cd2rwxqi6kwmcyyylifxjsmos7hrgpe Development/sample-1
 bafkreieuk7h4zs5alzpdyhlph4lxkefowvwdho3a3pml6j7dam5mipzaii Development/sample-2.txt 30618 ok
 ```
 
-## Make a Miner Deal on DevNet
+## Make a Miner Deal on Lotus TestNet
 
 Get a list of all miners that can store data:
 
@@ -52,4 +54,4 @@ lotus client deal <Data CID> <miner> <price> <duration>
 
 Upon success, this command will return a **Deal CID**. 
 
-To retrieve this file it must be sealed. If the **Lotus Storage Miner** is not running on a machine designed for sealing, the process will take a very long time. 
+The storage miner will need to **seal** the file before it can be retrieved. If the **Lotus Storage Miner** is not running on a machine designed for sealing, the process will take a very long time. 

@@ -42,11 +42,7 @@ In your terminal, enter this command to install Homebrew:
 Use the command `brew install` to install the following packages:
 
 ```sh
-brew install go
-brew install bzr
-brew install jq
-brew install pkg-config
-brew install rustup
+brew install go bzr jq pkg-config rustup
 ```
 
 ## Clone
@@ -59,8 +55,8 @@ cd lotus/
 ## Build
 
 ```sh
-make clean all
+make clean && make all
 sudo make install
 ```
 
-After installing Lotus, you can run the `lotus` command directly from your CLI to see usage documentation. Next, you can join the [Lotus DevNet](https://docs.lotu.sh/en+join-devnet).
+After installing Lotus, you can run the `lotus` command directly from your CLI to see usage documentation. Next, you can join the [Lotus TestNet](https://docs.lotu.sh/en+join-testnet).
