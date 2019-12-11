@@ -362,6 +362,7 @@ func (syncer *Syncer) tryLoadFullTipSet(cids []cid.Cid) (*store.FullTipSet, erro
 }
 
 func (syncer *Syncer) Sync(ctx context.Context, maybeHead *types.TipSet) error {
+	log.Info("SYNC TIME: ", maybeHead.Cids())
 	ctx, span := trace.StartSpan(ctx, "chain.Sync")
 	defer span.End()
 
