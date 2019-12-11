@@ -65,6 +65,8 @@ lotus-storage-miner info
 lotus-storage-miner pledge-sector
 ```
 
+* Warning: On Linux configurations, this command will write data to `$TMPDIR` which is not usually the largest partition. You should point the value to a larger partition if possible.
+
 Get **miner power** and **sector usage**:
 
 ```sh

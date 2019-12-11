@@ -11,8 +11,12 @@ BECAUSE OF THIS, OUR STANDARD TESTING CONFIGURATION FOR FILECOIN MAINNET CAN AND
 The setup below is a minimal example for sealing 32 GiB sectors on Lotus:
 
 * 3 TB of hard drive space.
-* 8 to 12 core CPU
-* 256 GB of RAM
+* 8 core CPU
+* 128 GB of RAM
+
+## TestNet discoveries
+
+* 256GB **NVMe** Swap on an SSD for anyone that has 128GB RAM to avoid out of memory issues while mining.
 
 ## Benchmarked GPUs
 

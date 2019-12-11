@@ -1,14 +1,33 @@
 # Mining Troubleshooting
 
 ```sh
+mining block failed: computing election proof: github.com/filecoin-project/lotus/miner.(*Miner).mineOne
+```
+
+This bug occurs when the storage miner can't acquire the `bellman.lock`. To fix it you need to stop the `lotus-storage-miner` and remove `/tmp/bellman.lock`
+
+## Your miner is not ready
+
+```sh
 lotus-storage-miner info
 # WARN  main  lotus-storage-miner/main.go:73  failed to get api endpoint: (/Users/myrmidon/.lotusstorage) %!w(*errors.errorString=&{API not running (no endpoint)}):
 ```
 
 If you see this, that means your **Lotus Storage Miner** isn't ready yet.
 
+## Your computer is too slow
+
 ```sh
 CAUTION: block production took longer than the block delay. Your computer may not be fast enough to keep up
 ```
 
 If you see this, that means your computer is too slow and your blocks are not included in the chain, and you will not receive any rewards.
+
+## Running out of storage
+
+```
+lotus-storage-miner pledge-sector
+# No space left on device (os error 28)
+```
+
+If you see this, that means `pledge-sector` wrote too much data to `$TMPDIR` which by default is the root partition (This is common for Linux setups). Usually your root partition does not get the largest partition of storage so you will need to change the environment variable to something else.
