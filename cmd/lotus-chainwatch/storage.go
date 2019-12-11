@@ -193,7 +193,9 @@ create table if not exists miner_heads
 		constraint miner_heads_blocks_stateroot_fk
 			references blocks (parentStateRoot),
 	sectorset text not null,
+	setsize int not null,
 	provingset text not null,
+	provingsize int not null,
 	owner text not null,
 	worker text not null,
 	peerid text not null,
@@ -255,7 +257,7 @@ func (st *storage) storeMiners(miners map[minerKey]*minerInfo) error {
 		return err
 	}
 
-	stmt, err := tx.Prepare(`insert into miner_heads (head, addr, stateroot, sectorset, provingset, owner, worker, peerid, sectorsize, power, active, ppe, slashed_at) values (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?) on conflict do nothing`)
+	stmt, err := tx.Prepare(`insert into miner_heads (head, addr, stateroot, sectorset, setsize, provingset, provingsize, owner, worker, peerid, sectorsize, power, active, ppe, slashed_at) values (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?) on conflict do nothing`)
 	if err != nil {
 		return err
 	}
@@ -266,7 +268,9 @@ func (st *storage) storeMiners(miners map[minerKey]*minerInfo) error {
 			k.addr.String(),
 			k.stateroot.String(),
 			i.state.Sectors.String(),
+			i.ssize,
 			i.state.ProvingSet.String(),
+			i.psize,
 			i.info.Owner.String(),
 			i.info.Worker.String(),
 			i.info.PeerID.String(),
