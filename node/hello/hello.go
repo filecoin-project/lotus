@@ -60,7 +60,6 @@ func NewHelloService(h host.Host, cs *store.ChainStore, syncer *chain.Syncer, pm
 }
 
 func (hs *Service) HandleStream(s inet.Stream) {
-	defer s.Close()
 
 	var hmsg Message
 	if err := cborutil.ReadCborRPC(s, &hmsg); err != nil {
@@ -81,6 +80,8 @@ func (hs *Service) HandleStream(s inet.Stream) {
 		return
 	}
 	go func() {
+		defer s.Close()
+
 		sent := time.Now()
 		msg := &Message{
 			TArrial: arrived.UnixNano(),
@@ -110,7 +111,6 @@ func (hs *Service) SayHello(ctx context.Context, pid peer.ID) error {
 	if err != nil {
 		return err
 	}
-	defer s.Close()
 
 	hts := hs.cs.GetHeaviestTipSet()
 	weight, err := hs.cs.Weight(ctx, hts)
@@ -136,9 +136,11 @@ func (hs *Service) SayHello(ctx context.Context, pid peer.ID) error {
 	}
 
 	go func() {
+		defer s.Close()
+
 		hmsg = &Message{}
 		s.SetReadDeadline(time.Now().Add(10 * time.Second))
-		err := cborutil.ReadCborRPC(s, hmsg) // ignore error
+		err := cborutil.ReadCborRPC(s, hmsg)
 		ok := err == nil
 
 		t3 := time.Now()
