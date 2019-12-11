@@ -8,6 +8,7 @@ import (
 	"github.com/ipfs/go-datastore"
 	"github.com/ipfs/go-datastore/query"
 	cbg "github.com/whyrusleeping/cbor-gen"
+	"go.uber.org/multierr"
 	"golang.org/x/xerrors"
 
 	"github.com/filecoin-project/lotus/lib/cborutil"
@@ -139,6 +140,8 @@ func (st *StateStore) List(out interface{}) error {
 	outT := reflect.TypeOf(out).Elem().Elem()
 	rout := reflect.ValueOf(out)
 
+	var errs error
+
 	for {
 		res, ok := res.NextSync()
 		if !ok {
@@ -151,7 +154,8 @@ func (st *StateStore) List(out interface{}) error {
 		elem := reflect.New(outT)
 		err := cborutil.ReadCborRPC(bytes.NewReader(res.Value), elem.Interface())
 		if err != nil {
-			return err
+			errs = multierr.Append(errs, xerrors.Errorf("decoding state for key '%s': %w", res.Key, err))
+			continue
 		}
 
 		rout.Elem().Set(reflect.Append(rout.Elem(), elem.Elem()))

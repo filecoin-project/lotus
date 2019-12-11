@@ -17,16 +17,30 @@ func (t *SealTicket) MarshalCBOR(w io.Writer) error {
 		_, err := w.Write(cbg.CborNull)
 		return err
 	}
-	if _, err := w.Write([]byte{130}); err != nil {
+	if _, err := w.Write([]byte{162}); err != nil {
 		return err
 	}
 
-	// t.t.BlockHeight (uint64) (uint64)
+	// t.BlockHeight (uint64) (uint64)
+	if _, err := w.Write(cbg.CborEncodeMajorType(cbg.MajTextString, uint64(len("BlockHeight")))); err != nil {
+		return err
+	}
+	if _, err := w.Write([]byte("BlockHeight")); err != nil {
+		return err
+	}
+
 	if _, err := w.Write(cbg.CborEncodeMajorType(cbg.MajUnsignedInt, uint64(t.BlockHeight))); err != nil {
 		return err
 	}
 
-	// t.t.TicketBytes ([]uint8) (slice)
+	// t.TicketBytes ([]uint8) (slice)
+	if _, err := w.Write(cbg.CborEncodeMajorType(cbg.MajTextString, uint64(len("TicketBytes")))); err != nil {
+		return err
+	}
+	if _, err := w.Write([]byte("TicketBytes")); err != nil {
+		return err
+	}
+
 	if _, err := w.Write(cbg.CborEncodeMajorType(cbg.MajByteString, uint64(len(t.TicketBytes)))); err != nil {
 		return err
 	}
@@ -43,15 +57,30 @@ func (t *SealTicket) UnmarshalCBOR(r io.Reader) error {
 	if err != nil {
 		return err
 	}
-	if maj != cbg.MajArray {
-		return fmt.Errorf("cbor input should be of type array")
+	if maj != cbg.MajMap {
+		return fmt.Errorf("cbor input should be of type map")
 	}
 
 	if extra != 2 {
 		return fmt.Errorf("cbor input had wrong number of fields")
 	}
 
-	// t.t.BlockHeight (uint64) (uint64)
+	var name string
+
+	// t.BlockHeight (uint64) (uint64)
+
+	{
+		sval, err := cbg.ReadString(br)
+		if err != nil {
+			return err
+		}
+
+		name = string(sval)
+	}
+
+	if name != "BlockHeight" {
+		return fmt.Errorf("expected struct map entry %s to be BlockHeight", name)
+	}
 
 	maj, extra, err = cbg.CborReadHeader(br)
 	if err != nil {
@@ -61,7 +90,20 @@ func (t *SealTicket) UnmarshalCBOR(r io.Reader) error {
 		return fmt.Errorf("wrong type for uint64 field")
 	}
 	t.BlockHeight = uint64(extra)
-	// t.t.TicketBytes ([]uint8) (slice)
+	// t.TicketBytes ([]uint8) (slice)
+
+	{
+		sval, err := cbg.ReadString(br)
+		if err != nil {
+			return err
+		}
+
+		name = string(sval)
+	}
+
+	if name != "TicketBytes" {
+		return fmt.Errorf("expected struct map entry %s to be TicketBytes", name)
+	}
 
 	maj, extra, err = cbg.CborReadHeader(br)
 	if err != nil {
@@ -86,16 +128,30 @@ func (t *SealSeed) MarshalCBOR(w io.Writer) error {
 		_, err := w.Write(cbg.CborNull)
 		return err
 	}
-	if _, err := w.Write([]byte{130}); err != nil {
+	if _, err := w.Write([]byte{162}); err != nil {
 		return err
 	}
 
-	// t.t.BlockHeight (uint64) (uint64)
+	// t.BlockHeight (uint64) (uint64)
+	if _, err := w.Write(cbg.CborEncodeMajorType(cbg.MajTextString, uint64(len("BlockHeight")))); err != nil {
+		return err
+	}
+	if _, err := w.Write([]byte("BlockHeight")); err != nil {
+		return err
+	}
+
 	if _, err := w.Write(cbg.CborEncodeMajorType(cbg.MajUnsignedInt, uint64(t.BlockHeight))); err != nil {
 		return err
 	}
 
-	// t.t.TicketBytes ([]uint8) (slice)
+	// t.TicketBytes ([]uint8) (slice)
+	if _, err := w.Write(cbg.CborEncodeMajorType(cbg.MajTextString, uint64(len("TicketBytes")))); err != nil {
+		return err
+	}
+	if _, err := w.Write([]byte("TicketBytes")); err != nil {
+		return err
+	}
+
 	if _, err := w.Write(cbg.CborEncodeMajorType(cbg.MajByteString, uint64(len(t.TicketBytes)))); err != nil {
 		return err
 	}
@@ -112,15 +168,30 @@ func (t *SealSeed) UnmarshalCBOR(r io.Reader) error {
 	if err != nil {
 		return err
 	}
-	if maj != cbg.MajArray {
-		return fmt.Errorf("cbor input should be of type array")
+	if maj != cbg.MajMap {
+		return fmt.Errorf("cbor input should be of type map")
 	}
 
 	if extra != 2 {
 		return fmt.Errorf("cbor input had wrong number of fields")
 	}
 
-	// t.t.BlockHeight (uint64) (uint64)
+	var name string
+
+	// t.BlockHeight (uint64) (uint64)
+
+	{
+		sval, err := cbg.ReadString(br)
+		if err != nil {
+			return err
+		}
+
+		name = string(sval)
+	}
+
+	if name != "BlockHeight" {
+		return fmt.Errorf("expected struct map entry %s to be BlockHeight", name)
+	}
 
 	maj, extra, err = cbg.CborReadHeader(br)
 	if err != nil {
@@ -130,7 +201,20 @@ func (t *SealSeed) UnmarshalCBOR(r io.Reader) error {
 		return fmt.Errorf("wrong type for uint64 field")
 	}
 	t.BlockHeight = uint64(extra)
-	// t.t.TicketBytes ([]uint8) (slice)
+	// t.TicketBytes ([]uint8) (slice)
+
+	{
+		sval, err := cbg.ReadString(br)
+		if err != nil {
+			return err
+		}
+
+		name = string(sval)
+	}
+
+	if name != "TicketBytes" {
+		return fmt.Errorf("expected struct map entry %s to be TicketBytes", name)
+	}
 
 	maj, extra, err = cbg.CborReadHeader(br)
 	if err != nil {
@@ -155,21 +239,42 @@ func (t *Piece) MarshalCBOR(w io.Writer) error {
 		_, err := w.Write(cbg.CborNull)
 		return err
 	}
-	if _, err := w.Write([]byte{131}); err != nil {
+	if _, err := w.Write([]byte{163}); err != nil {
 		return err
 	}
 
-	// t.t.DealID (uint64) (uint64)
+	// t.DealID (uint64) (uint64)
+	if _, err := w.Write(cbg.CborEncodeMajorType(cbg.MajTextString, uint64(len("DealID")))); err != nil {
+		return err
+	}
+	if _, err := w.Write([]byte("DealID")); err != nil {
+		return err
+	}
+
 	if _, err := w.Write(cbg.CborEncodeMajorType(cbg.MajUnsignedInt, uint64(t.DealID))); err != nil {
 		return err
 	}
 
-	// t.t.Size (uint64) (uint64)
+	// t.Size (uint64) (uint64)
+	if _, err := w.Write(cbg.CborEncodeMajorType(cbg.MajTextString, uint64(len("Size")))); err != nil {
+		return err
+	}
+	if _, err := w.Write([]byte("Size")); err != nil {
+		return err
+	}
+
 	if _, err := w.Write(cbg.CborEncodeMajorType(cbg.MajUnsignedInt, uint64(t.Size))); err != nil {
 		return err
 	}
 
-	// t.t.CommP ([]uint8) (slice)
+	// t.CommP ([]uint8) (slice)
+	if _, err := w.Write(cbg.CborEncodeMajorType(cbg.MajTextString, uint64(len("CommP")))); err != nil {
+		return err
+	}
+	if _, err := w.Write([]byte("CommP")); err != nil {
+		return err
+	}
+
 	if _, err := w.Write(cbg.CborEncodeMajorType(cbg.MajByteString, uint64(len(t.CommP)))); err != nil {
 		return err
 	}
@@ -186,15 +291,30 @@ func (t *Piece) UnmarshalCBOR(r io.Reader) error {
 	if err != nil {
 		return err
 	}
-	if maj != cbg.MajArray {
-		return fmt.Errorf("cbor input should be of type array")
+	if maj != cbg.MajMap {
+		return fmt.Errorf("cbor input should be of type map")
 	}
 
 	if extra != 3 {
 		return fmt.Errorf("cbor input had wrong number of fields")
 	}
 
-	// t.t.DealID (uint64) (uint64)
+	var name string
+
+	// t.DealID (uint64) (uint64)
+
+	{
+		sval, err := cbg.ReadString(br)
+		if err != nil {
+			return err
+		}
+
+		name = string(sval)
+	}
+
+	if name != "DealID" {
+		return fmt.Errorf("expected struct map entry %s to be DealID", name)
+	}
 
 	maj, extra, err = cbg.CborReadHeader(br)
 	if err != nil {
@@ -204,7 +324,20 @@ func (t *Piece) UnmarshalCBOR(r io.Reader) error {
 		return fmt.Errorf("wrong type for uint64 field")
 	}
 	t.DealID = uint64(extra)
-	// t.t.Size (uint64) (uint64)
+	// t.Size (uint64) (uint64)
+
+	{
+		sval, err := cbg.ReadString(br)
+		if err != nil {
+			return err
+		}
+
+		name = string(sval)
+	}
+
+	if name != "Size" {
+		return fmt.Errorf("expected struct map entry %s to be Size", name)
+	}
 
 	maj, extra, err = cbg.CborReadHeader(br)
 	if err != nil {
@@ -214,7 +347,20 @@ func (t *Piece) UnmarshalCBOR(r io.Reader) error {
 		return fmt.Errorf("wrong type for uint64 field")
 	}
 	t.Size = uint64(extra)
-	// t.t.CommP ([]uint8) (slice)
+	// t.CommP ([]uint8) (slice)
+
+	{
+		sval, err := cbg.ReadString(br)
+		if err != nil {
+			return err
+		}
+
+		name = string(sval)
+	}
+
+	if name != "CommP" {
+		return fmt.Errorf("expected struct map entry %s to be CommP", name)
+	}
 
 	maj, extra, err = cbg.CborReadHeader(br)
 	if err != nil {
@@ -239,26 +385,54 @@ func (t *SectorInfo) MarshalCBOR(w io.Writer) error {
 		_, err := w.Write(cbg.CborNull)
 		return err
 	}
-	if _, err := w.Write([]byte{142}); err != nil {
+	if _, err := w.Write([]byte{173}); err != nil {
 		return err
 	}
 
-	// t.t.State (uint64) (uint64)
+	// t.State (uint64) (uint64)
+	if _, err := w.Write(cbg.CborEncodeMajorType(cbg.MajTextString, uint64(len("State")))); err != nil {
+		return err
+	}
+	if _, err := w.Write([]byte("State")); err != nil {
+		return err
+	}
+
 	if _, err := w.Write(cbg.CborEncodeMajorType(cbg.MajUnsignedInt, uint64(t.State))); err != nil {
 		return err
 	}
 
-	// t.t.SectorID (uint64) (uint64)
+	// t.SectorID (uint64) (uint64)
+	if _, err := w.Write(cbg.CborEncodeMajorType(cbg.MajTextString, uint64(len("SectorID")))); err != nil {
+		return err
+	}
+	if _, err := w.Write([]byte("SectorID")); err != nil {
+		return err
+	}
+
 	if _, err := w.Write(cbg.CborEncodeMajorType(cbg.MajUnsignedInt, uint64(t.SectorID))); err != nil {
 		return err
 	}
 
-	// t.t.Nonce (uint64) (uint64)
+	// t.Nonce (uint64) (uint64)
+	if _, err := w.Write(cbg.CborEncodeMajorType(cbg.MajTextString, uint64(len("Nonce")))); err != nil {
+		return err
+	}
+	if _, err := w.Write([]byte("Nonce")); err != nil {
+		return err
+	}
+
 	if _, err := w.Write(cbg.CborEncodeMajorType(cbg.MajUnsignedInt, uint64(t.Nonce))); err != nil {
 		return err
 	}
 
-	// t.t.Pieces ([]storage.Piece) (slice)
+	// t.Pieces ([]storage.Piece) (slice)
+	if _, err := w.Write(cbg.CborEncodeMajorType(cbg.MajTextString, uint64(len("Pieces")))); err != nil {
+		return err
+	}
+	if _, err := w.Write([]byte("Pieces")); err != nil {
+		return err
+	}
+
 	if _, err := w.Write(cbg.CborEncodeMajorType(cbg.MajArray, uint64(len(t.Pieces)))); err != nil {
 		return err
 	}
@@ -268,15 +442,14 @@ func (t *SectorInfo) MarshalCBOR(w io.Writer) error {
 		}
 	}
 
-	// t.t.Pad0 ([]uint8) (slice)
-	if _, err := w.Write(cbg.CborEncodeMajorType(cbg.MajByteString, uint64(len(t.Pad0)))); err != nil {
+	// t.CommD ([]uint8) (slice)
+	if _, err := w.Write(cbg.CborEncodeMajorType(cbg.MajTextString, uint64(len("CommD")))); err != nil {
 		return err
 	}
-	if _, err := w.Write(t.Pad0); err != nil {
+	if _, err := w.Write([]byte("CommD")); err != nil {
 		return err
 	}
 
-	// t.t.CommD ([]uint8) (slice)
 	if _, err := w.Write(cbg.CborEncodeMajorType(cbg.MajByteString, uint64(len(t.CommD)))); err != nil {
 		return err
 	}
@@ -284,7 +457,14 @@ func (t *SectorInfo) MarshalCBOR(w io.Writer) error {
 		return err
 	}
 
-	// t.t.CommR ([]uint8) (slice)
+	// t.CommR ([]uint8) (slice)
+	if _, err := w.Write(cbg.CborEncodeMajorType(cbg.MajTextString, uint64(len("CommR")))); err != nil {
+		return err
+	}
+	if _, err := w.Write([]byte("CommR")); err != nil {
+		return err
+	}
+
 	if _, err := w.Write(cbg.CborEncodeMajorType(cbg.MajByteString, uint64(len(t.CommR)))); err != nil {
 		return err
 	}
@@ -292,15 +472,14 @@ func (t *SectorInfo) MarshalCBOR(w io.Writer) error {
 		return err
 	}
 
-	// t.t.Pad1 ([]uint8) (slice)
-	if _, err := w.Write(cbg.CborEncodeMajorType(cbg.MajByteString, uint64(len(t.Pad1)))); err != nil {
+	// t.Proof ([]uint8) (slice)
+	if _, err := w.Write(cbg.CborEncodeMajorType(cbg.MajTextString, uint64(len("Proof")))); err != nil {
 		return err
 	}
-	if _, err := w.Write(t.Pad1); err != nil {
+	if _, err := w.Write([]byte("Proof")); err != nil {
 		return err
 	}
 
-	// t.t.Proof ([]uint8) (slice)
 	if _, err := w.Write(cbg.CborEncodeMajorType(cbg.MajByteString, uint64(len(t.Proof)))); err != nil {
 		return err
 	}
@@ -308,12 +487,25 @@ func (t *SectorInfo) MarshalCBOR(w io.Writer) error {
 		return err
 	}
 
-	// t.t.Ticket (storage.SealTicket) (struct)
+	// t.Ticket (storage.SealTicket) (struct)
+	if _, err := w.Write(cbg.CborEncodeMajorType(cbg.MajTextString, uint64(len("Ticket")))); err != nil {
+		return err
+	}
+	if _, err := w.Write([]byte("Ticket")); err != nil {
+		return err
+	}
+
 	if err := t.Ticket.MarshalCBOR(w); err != nil {
 		return err
 	}
 
-	// t.t.PreCommitMessage (cid.Cid) (struct)
+	// t.PreCommitMessage (cid.Cid) (struct)
+	if _, err := w.Write(cbg.CborEncodeMajorType(cbg.MajTextString, uint64(len("PreCommitMessage")))); err != nil {
+		return err
+	}
+	if _, err := w.Write([]byte("PreCommitMessage")); err != nil {
+		return err
+	}
 
 	if t.PreCommitMessage == nil {
 		if _, err := w.Write(cbg.CborNull); err != nil {
@@ -325,12 +517,25 @@ func (t *SectorInfo) MarshalCBOR(w io.Writer) error {
 		}
 	}
 
-	// t.t.Seed (storage.SealSeed) (struct)
+	// t.Seed (storage.SealSeed) (struct)
+	if _, err := w.Write(cbg.CborEncodeMajorType(cbg.MajTextString, uint64(len("Seed")))); err != nil {
+		return err
+	}
+	if _, err := w.Write([]byte("Seed")); err != nil {
+		return err
+	}
+
 	if err := t.Seed.MarshalCBOR(w); err != nil {
 		return err
 	}
 
-	// t.t.CommitMessage (cid.Cid) (struct)
+	// t.CommitMessage (cid.Cid) (struct)
+	if _, err := w.Write(cbg.CborEncodeMajorType(cbg.MajTextString, uint64(len("CommitMessage")))); err != nil {
+		return err
+	}
+	if _, err := w.Write([]byte("CommitMessage")); err != nil {
+		return err
+	}
 
 	if t.CommitMessage == nil {
 		if _, err := w.Write(cbg.CborNull); err != nil {
@@ -342,7 +547,32 @@ func (t *SectorInfo) MarshalCBOR(w io.Writer) error {
 		}
 	}
 
-	// t.t.LastErr (string) (string)
+	// t.FaultReportMsg (cid.Cid) (struct)
+	if _, err := w.Write(cbg.CborEncodeMajorType(cbg.MajTextString, uint64(len("FaultReportMsg")))); err != nil {
+		return err
+	}
+	if _, err := w.Write([]byte("FaultReportMsg")); err != nil {
+		return err
+	}
+
+	if t.FaultReportMsg == nil {
+		if _, err := w.Write(cbg.CborNull); err != nil {
+			return err
+		}
+	} else {
+		if err := cbg.WriteCid(w, *t.FaultReportMsg); err != nil {
+			return xerrors.Errorf("failed to write cid field t.FaultReportMsg: %w", err)
+		}
+	}
+
+	// t.LastErr (string) (string)
+	if _, err := w.Write(cbg.CborEncodeMajorType(cbg.MajTextString, uint64(len("LastErr")))); err != nil {
+		return err
+	}
+	if _, err := w.Write([]byte("LastErr")); err != nil {
+		return err
+	}
+
 	if _, err := w.Write(cbg.CborEncodeMajorType(cbg.MajTextString, uint64(len(t.LastErr)))); err != nil {
 		return err
 	}
@@ -359,15 +589,30 @@ func (t *SectorInfo) UnmarshalCBOR(r io.Reader) error {
 	if err != nil {
 		return err
 	}
-	if maj != cbg.MajArray {
-		return fmt.Errorf("cbor input should be of type array")
+	if maj != cbg.MajMap {
+		return fmt.Errorf("cbor input should be of type map")
 	}
 
-	if extra != 14 {
+	if extra != 13 {
 		return fmt.Errorf("cbor input had wrong number of fields")
 	}
 
-	// t.t.State (uint64) (uint64)
+	var name string
+
+	// t.State (uint64) (uint64)
+
+	{
+		sval, err := cbg.ReadString(br)
+		if err != nil {
+			return err
+		}
+
+		name = string(sval)
+	}
+
+	if name != "State" {
+		return fmt.Errorf("expected struct map entry %s to be State", name)
+	}
 
 	maj, extra, err = cbg.CborReadHeader(br)
 	if err != nil {
@@ -377,7 +622,20 @@ func (t *SectorInfo) UnmarshalCBOR(r io.Reader) error {
 		return fmt.Errorf("wrong type for uint64 field")
 	}
 	t.State = uint64(extra)
-	// t.t.SectorID (uint64) (uint64)
+	// t.SectorID (uint64) (uint64)
+
+	{
+		sval, err := cbg.ReadString(br)
+		if err != nil {
+			return err
+		}
+
+		name = string(sval)
+	}
+
+	if name != "SectorID" {
+		return fmt.Errorf("expected struct map entry %s to be SectorID", name)
+	}
 
 	maj, extra, err = cbg.CborReadHeader(br)
 	if err != nil {
@@ -387,7 +645,20 @@ func (t *SectorInfo) UnmarshalCBOR(r io.Reader) error {
 		return fmt.Errorf("wrong type for uint64 field")
 	}
 	t.SectorID = uint64(extra)
-	// t.t.Nonce (uint64) (uint64)
+	// t.Nonce (uint64) (uint64)
+
+	{
+		sval, err := cbg.ReadString(br)
+		if err != nil {
+			return err
+		}
+
+		name = string(sval)
+	}
+
+	if name != "Nonce" {
+		return fmt.Errorf("expected struct map entry %s to be Nonce", name)
+	}
 
 	maj, extra, err = cbg.CborReadHeader(br)
 	if err != nil {
@@ -397,7 +668,20 @@ func (t *SectorInfo) UnmarshalCBOR(r io.Reader) error {
 		return fmt.Errorf("wrong type for uint64 field")
 	}
 	t.Nonce = uint64(extra)
-	// t.t.Pieces ([]storage.Piece) (slice)
+	// t.Pieces ([]storage.Piece) (slice)
+
+	{
+		sval, err := cbg.ReadString(br)
+		if err != nil {
+			return err
+		}
+
+		name = string(sval)
+	}
+
+	if name != "Pieces" {
+		return fmt.Errorf("expected struct map entry %s to be Pieces", name)
+	}
 
 	maj, extra, err = cbg.CborReadHeader(br)
 	if err != nil {
@@ -424,24 +708,20 @@ func (t *SectorInfo) UnmarshalCBOR(r io.Reader) error {
 		t.Pieces[i] = v
 	}
 
-	// t.t.Pad0 ([]uint8) (slice)
+	// t.CommD ([]uint8) (slice)
 
-	maj, extra, err = cbg.CborReadHeader(br)
-	if err != nil {
-		return err
+	{
+		sval, err := cbg.ReadString(br)
+		if err != nil {
+			return err
+		}
+
+		name = string(sval)
 	}
 
-	if extra > cbg.ByteArrayMaxLen {
-		return fmt.Errorf("t.Pad0: byte array too large (%d)", extra)
+	if name != "CommD" {
+		return fmt.Errorf("expected struct map entry %s to be CommD", name)
 	}
-	if maj != cbg.MajByteString {
-		return fmt.Errorf("expected byte array")
-	}
-	t.Pad0 = make([]byte, extra)
-	if _, err := io.ReadFull(br, t.Pad0); err != nil {
-		return err
-	}
-	// t.t.CommD ([]uint8) (slice)
 
 	maj, extra, err = cbg.CborReadHeader(br)
 	if err != nil {
@@ -458,7 +738,20 @@ func (t *SectorInfo) UnmarshalCBOR(r io.Reader) error {
 	if _, err := io.ReadFull(br, t.CommD); err != nil {
 		return err
 	}
-	// t.t.CommR ([]uint8) (slice)
+	// t.CommR ([]uint8) (slice)
+
+	{
+		sval, err := cbg.ReadString(br)
+		if err != nil {
+			return err
+		}
+
+		name = string(sval)
+	}
+
+	if name != "CommR" {
+		return fmt.Errorf("expected struct map entry %s to be CommR", name)
+	}
 
 	maj, extra, err = cbg.CborReadHeader(br)
 	if err != nil {
@@ -475,24 +768,20 @@ func (t *SectorInfo) UnmarshalCBOR(r io.Reader) error {
 	if _, err := io.ReadFull(br, t.CommR); err != nil {
 		return err
 	}
-	// t.t.Pad1 ([]uint8) (slice)
+	// t.Proof ([]uint8) (slice)
 
-	maj, extra, err = cbg.CborReadHeader(br)
-	if err != nil {
-		return err
+	{
+		sval, err := cbg.ReadString(br)
+		if err != nil {
+			return err
+		}
+
+		name = string(sval)
 	}
 
-	if extra > cbg.ByteArrayMaxLen {
-		return fmt.Errorf("t.Pad1: byte array too large (%d)", extra)
+	if name != "Proof" {
+		return fmt.Errorf("expected struct map entry %s to be Proof", name)
 	}
-	if maj != cbg.MajByteString {
-		return fmt.Errorf("expected byte array")
-	}
-	t.Pad1 = make([]byte, extra)
-	if _, err := io.ReadFull(br, t.Pad1); err != nil {
-		return err
-	}
-	// t.t.Proof ([]uint8) (slice)
 
 	maj, extra, err = cbg.CborReadHeader(br)
 	if err != nil {
@@ -509,7 +798,20 @@ func (t *SectorInfo) UnmarshalCBOR(r io.Reader) error {
 	if _, err := io.ReadFull(br, t.Proof); err != nil {
 		return err
 	}
-	// t.t.Ticket (storage.SealTicket) (struct)
+	// t.Ticket (storage.SealTicket) (struct)
+
+	{
+		sval, err := cbg.ReadString(br)
+		if err != nil {
+			return err
+		}
+
+		name = string(sval)
+	}
+
+	if name != "Ticket" {
+		return fmt.Errorf("expected struct map entry %s to be Ticket", name)
+	}
 
 	{
 
@@ -518,7 +820,20 @@ func (t *SectorInfo) UnmarshalCBOR(r io.Reader) error {
 		}
 
 	}
-	// t.t.PreCommitMessage (cid.Cid) (struct)
+	// t.PreCommitMessage (cid.Cid) (struct)
+
+	{
+		sval, err := cbg.ReadString(br)
+		if err != nil {
+			return err
+		}
+
+		name = string(sval)
+	}
+
+	if name != "PreCommitMessage" {
+		return fmt.Errorf("expected struct map entry %s to be PreCommitMessage", name)
+	}
 
 	{
 
@@ -542,7 +857,20 @@ func (t *SectorInfo) UnmarshalCBOR(r io.Reader) error {
 		}
 
 	}
-	// t.t.Seed (storage.SealSeed) (struct)
+	// t.Seed (storage.SealSeed) (struct)
+
+	{
+		sval, err := cbg.ReadString(br)
+		if err != nil {
+			return err
+		}
+
+		name = string(sval)
+	}
+
+	if name != "Seed" {
+		return fmt.Errorf("expected struct map entry %s to be Seed", name)
+	}
 
 	{
 
@@ -551,7 +879,20 @@ func (t *SectorInfo) UnmarshalCBOR(r io.Reader) error {
 		}
 
 	}
-	// t.t.CommitMessage (cid.Cid) (struct)
+	// t.CommitMessage (cid.Cid) (struct)
+
+	{
+		sval, err := cbg.ReadString(br)
+		if err != nil {
+			return err
+		}
+
+		name = string(sval)
+	}
+
+	if name != "CommitMessage" {
+		return fmt.Errorf("expected struct map entry %s to be CommitMessage", name)
+	}
 
 	{
 
@@ -575,7 +916,57 @@ func (t *SectorInfo) UnmarshalCBOR(r io.Reader) error {
 		}
 
 	}
-	// t.t.LastErr (string) (string)
+	// t.FaultReportMsg (cid.Cid) (struct)
+
+	{
+		sval, err := cbg.ReadString(br)
+		if err != nil {
+			return err
+		}
+
+		name = string(sval)
+	}
+
+	if name != "FaultReportMsg" {
+		return fmt.Errorf("expected struct map entry %s to be FaultReportMsg", name)
+	}
+
+	{
+
+		pb, err := br.PeekByte()
+		if err != nil {
+			return err
+		}
+		if pb == cbg.CborNull[0] {
+			var nbuf [1]byte
+			if _, err := br.Read(nbuf[:]); err != nil {
+				return err
+			}
+		} else {
+
+			c, err := cbg.ReadCid(br)
+			if err != nil {
+				return xerrors.Errorf("failed to read cid field t.FaultReportMsg: %w", err)
+			}
+
+			t.FaultReportMsg = &c
+		}
+
+	}
+	// t.LastErr (string) (string)
+
+	{
+		sval, err := cbg.ReadString(br)
+		if err != nil {
+			return err
+		}
+
+		name = string(sval)
+	}
+
+	if name != "LastErr" {
+		return fmt.Errorf("expected struct map entry %s to be LastErr", name)
+	}
 
 	{
 		sval, err := cbg.ReadString(br)

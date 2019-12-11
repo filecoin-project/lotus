@@ -3,10 +3,10 @@ package modules
 import (
 	"context"
 	"crypto/rand"
+	"github.com/filecoin-project/lotus/api/apistruct"
 	"io"
 	"io/ioutil"
 
-	"github.com/filecoin-project/lotus/api"
 	"github.com/filecoin-project/lotus/build"
 	"github.com/filecoin-project/lotus/chain/types"
 	"github.com/filecoin-project/lotus/lib/addrutil"
@@ -57,7 +57,7 @@ func APISecret(keystore types.KeyStore, lr repo.LockedRepo) (*dtypes.APIAlg, err
 
 		// TODO: make this configurable
 		p := jwtPayload{
-			Allow: api.AllPermissions,
+			Allow: apistruct.AllPermissions,
 		}
 
 		cliToken, err := jwt.Sign(&p, jwt.NewHS256(key.PrivateKey))

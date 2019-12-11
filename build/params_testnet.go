@@ -3,16 +3,14 @@
 package build
 
 var SectorSizes = []uint64{
-	16 << 20,
-	256 << 20,
 	1 << 30,
 	32 << 30,
 }
 
 // Seconds
-const BlockDelay = 30
+const BlockDelay = 45
 
-const PropagationDelay = 5
+const PropagationDelay = 6
 
 // FallbackPoStDelay is the number of epochs the miner needs to wait after
 //  ElectionPeriodStart before starting fallback post computation
@@ -31,3 +29,6 @@ const InteractivePoRepDelay = 8
 
 // Epochs
 const InteractivePoRepConfidence = 6
+
+// Bytes
+var MinimumMinerPower uint64 = 512 << 30 // 512GB

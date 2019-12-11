@@ -31,12 +31,7 @@ func (sb *SectorBuilder) stagedSectorFile(sectorID uint64) (*os.File, error) {
 func (sb *SectorBuilder) SealedSectorPath(sectorID uint64) (string, error) {
 	path := filepath.Join(sb.sealedDir, sb.SectorName(sectorID))
 
-	e, err := os.OpenFile(path, os.O_RDWR|os.O_CREATE, 0644)
-	if err != nil {
-		return "", err
-	}
-
-	return path, e.Close()
+	return path, nil
 }
 
 func (sb *SectorBuilder) sectorCacheDir(sectorID uint64) (string, error) {

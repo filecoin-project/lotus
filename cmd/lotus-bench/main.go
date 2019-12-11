@@ -4,14 +4,18 @@ import (
 	"bytes"
 	"context"
 	"crypto/sha256"
+	"encoding/json"
 	"fmt"
+	"github.com/docker/go-units"
 	"io/ioutil"
+	"math/big"
 	"math/rand"
 	"os"
 	"path/filepath"
 	"time"
 
 	ffi "github.com/filecoin-project/filecoin-ffi"
+	lcli "github.com/filecoin-project/lotus/cli"
 	"github.com/ipfs/go-datastore"
 	logging "github.com/ipfs/go-log"
 	"github.com/mitchellh/go-homedir"
@@ -20,6 +24,8 @@ import (
 
 	"github.com/filecoin-project/lotus/build"
 	"github.com/filecoin-project/lotus/chain/address"
+	"github.com/filecoin-project/lotus/chain/types"
+	"github.com/filecoin-project/lotus/genesis"
 	"github.com/filecoin-project/lotus/lib/sectorbuilder"
 )
 
@@ -60,56 +66,91 @@ func main() {
 				Value: "~/.lotus-bench",
 				Usage: "Path to the storage directory that will store sectors long term",
 			},
-			&cli.Uint64Flag{
+			&cli.StringFlag{
 				Name:  "sector-size",
-				Value: 1024,
+				Value: "1GiB",
+				Usage: "size of the sectors in bytes, i.e. 32GiB",
 			},
 			&cli.BoolFlag{
 				Name:  "no-gpu",
 				Usage: "disable gpu usage for the benchmark run",
+			},
+			&cli.StringFlag{
+				Name:  "miner-addr",
+				Usage: "pass miner address (only necessary if using existing sectorbuilder)",
+				Value: "t0101",
+			},
+			&cli.StringFlag{
+				Name:  "benchmark-existing-sectorbuilder",
+				Usage: "pass a directory to run election-post timings on an existing sectorbuilder",
+			},
+			&cli.BoolFlag{
+				Name:  "json-out",
+				Usage: "output results in json format",
 			},
 		},
 		Action: func(c *cli.Context) error {
 			if c.Bool("no-gpu") {
 				os.Setenv("BELLMAN_NO_GPU", "1")
 			}
-			sdir, err := homedir.Expand(c.String("storage-dir"))
-			if err != nil {
-				return err
-			}
 
-			os.MkdirAll(sdir, 0775)
+			robench := c.String("benchmark-existing-sectorbuilder")
 
-			tsdir, err := ioutil.TempDir(sdir, "bench")
-			if err != nil {
-				return err
-			}
-			defer func() {
-				if err := os.RemoveAll(tsdir); err != nil {
-					log.Warn("remove all: ", err)
+			var sbdir string
+
+			if robench == "" {
+				sdir, err := homedir.Expand(c.String("storage-dir"))
+				if err != nil {
+					return err
 				}
-			}()
 
-			maddr, err := address.NewFromString("t0101")
+				os.MkdirAll(sdir, 0775)
+
+				tsdir, err := ioutil.TempDir(sdir, "bench")
+				if err != nil {
+					return err
+				}
+				defer func() {
+					if err := os.RemoveAll(tsdir); err != nil {
+						log.Warn("remove all: ", err)
+					}
+				}()
+				sbdir = tsdir
+			} else {
+				exp, err := homedir.Expand(robench)
+				if err != nil {
+					return err
+				}
+				sbdir = exp
+			}
+
+			maddr, err := address.NewFromString(c.String("miner-addr"))
 			if err != nil {
 				return err
 			}
 
-			sectorSize := c.Uint64("sector-size")
+			sectorSizeInt, err := units.FromHumanSize(c.String("sector-size"))
+			if err != nil {
+				return err
+			}
+			sectorSize := uint64(sectorSizeInt)
 
 			mds := datastore.NewMapDatastore()
 			cfg := &sectorbuilder.Config{
 				Miner:         maddr,
 				SectorSize:    sectorSize,
 				WorkerThreads: 2,
-				CacheDir:      filepath.Join(tsdir, "cache"),
-				SealedDir:     filepath.Join(tsdir, "sealed"),
-				StagedDir:     filepath.Join(tsdir, "staged"),
-				UnsealedDir:   filepath.Join(tsdir, "unsealed"),
+				CacheDir:      filepath.Join(sbdir, "cache"),
+				SealedDir:     filepath.Join(sbdir, "sealed"),
+				StagedDir:     filepath.Join(sbdir, "staged"),
+				UnsealedDir:   filepath.Join(sbdir, "unsealed"),
 			}
-			for _, d := range []string{cfg.CacheDir, cfg.SealedDir, cfg.StagedDir, cfg.UnsealedDir} {
-				if err := os.MkdirAll(d, 0775); err != nil {
-					return err
+
+			if robench == "" {
+				for _, d := range []string{cfg.CacheDir, cfg.SealedDir, cfg.StagedDir, cfg.UnsealedDir} {
+					if err := os.MkdirAll(d, 0775); err != nil {
+						return err
+					}
 				}
 			}
 
@@ -126,7 +167,7 @@ func main() {
 			var sealTimings []SealingResult
 			var sealedSectors []ffi.PublicSectorInfo
 			numSectors := uint64(1)
-			for i := uint64(1); i <= numSectors; i++ {
+			for i := uint64(1); i <= numSectors && robench == ""; i++ {
 				start := time.Now()
 				log.Info("Writing piece into sector...")
 
@@ -207,6 +248,34 @@ func main() {
 			var challenge [32]byte
 			rand.Read(challenge[:])
 
+			if robench != "" {
+				// TODO: this assumes we only ever benchmark a preseal
+				// sectorbuilder directory... we need a better way to handle
+				// this in other cases
+
+				fdata, err := ioutil.ReadFile(filepath.Join(sbdir, "pre-seal-"+maddr.String()+".json"))
+				if err != nil {
+					return err
+				}
+
+				var genmm map[string]genesis.GenesisMiner
+				if err := json.Unmarshal(fdata, &genmm); err != nil {
+					return err
+				}
+
+				genm, ok := genmm[maddr.String()]
+				if !ok {
+					return xerrors.Errorf("preseal file didnt have expected miner in it")
+				}
+
+				for _, s := range genm.Sectors {
+					sealedSectors = append(sealedSectors, ffi.PublicSectorInfo{
+						CommR:    s.CommR,
+						SectorID: s.SectorID,
+					})
+				}
+			}
+
 			log.Info("generating election post candidates")
 			sinfos := sectorbuilder.NewSortedPublicSectorInfo(sealedSectors)
 			candidates, err := sb.GenerateEPostCandidates(sinfos, challenge, []uint64{})
@@ -255,7 +324,7 @@ func main() {
 			}
 			verifypost2 := time.Now()
 
-			benchout := BenchResults{
+			bo := BenchResults{
 				SectorSize:     cfg.SectorSize,
 				SealingResults: sealTimings,
 
@@ -266,17 +335,28 @@ func main() {
 				VerifyEPostHot:         verifypost2.Sub(verifypost1),
 			} // TODO: optionally write this as json to a file
 
-			fmt.Println("results")
-			fmt.Printf("seal: addPiece: %s\n", benchout.SealingResults[0].AddPiece) // TODO: average across multiple sealings
-			fmt.Printf("seal: preCommit: %s\n", benchout.SealingResults[0].PreCommit)
-			fmt.Printf("seal: Commit: %s\n", benchout.SealingResults[0].Commit)
-			fmt.Printf("seal: Verify: %s\n", benchout.SealingResults[0].Verify)
-			fmt.Printf("unseal: %s\n", benchout.SealingResults[0].Unseal)
-			fmt.Printf("generate candidates: %s\n", benchout.PostGenerateCandidates)
-			fmt.Printf("compute epost proof (cold): %s\n", benchout.PostEProofCold)
-			fmt.Printf("compute epost proof (hot): %s\n", benchout.PostEProofHot)
-			fmt.Printf("verify epost proof (cold): %s\n", benchout.VerifyEPostCold)
-			fmt.Printf("verify epost proof (hot): %s\n", benchout.VerifyEPostHot)
+			if c.Bool("json-out") {
+				data, err := json.MarshalIndent(bo, "", "  ")
+				if err != nil {
+					return err
+				}
+
+				fmt.Println(string(data))
+			} else {
+				fmt.Printf("results (%d)\n", sectorSize)
+				if robench == "" {
+					fmt.Printf("seal: addPiece: %s (%s)\n", bo.SealingResults[0].AddPiece, bps(bo.SectorSize, bo.SealingResults[0].AddPiece)) // TODO: average across multiple sealings
+					fmt.Printf("seal: preCommit: %s (%s)\n", bo.SealingResults[0].PreCommit, bps(bo.SectorSize, bo.SealingResults[0].PreCommit))
+					fmt.Printf("seal: commit: %s (%s)\n", bo.SealingResults[0].Commit, bps(bo.SectorSize, bo.SealingResults[0].Commit))
+					fmt.Printf("seal: verify: %s\n", bo.SealingResults[0].Verify)
+					fmt.Printf("unseal: %s  (%s)\n", bo.SealingResults[0].Unseal, bps(bo.SectorSize, bo.SealingResults[0].Unseal))
+				}
+				fmt.Printf("generate candidates: %s (%s)\n", bo.PostGenerateCandidates, bps(bo.SectorSize*uint64(len(bo.SealingResults)), bo.PostGenerateCandidates))
+				fmt.Printf("compute epost proof (cold): %s\n", bo.PostEProofCold)
+				fmt.Printf("compute epost proof (hot): %s\n", bo.PostEProofHot)
+				fmt.Printf("verify epost proof (cold): %s\n", bo.VerifyEPostCold)
+				fmt.Printf("verify epost proof (hot): %s\n", bo.VerifyEPostHot)
+			}
 			return nil
 		},
 	}
@@ -285,4 +365,11 @@ func main() {
 		log.Warn(err)
 		return
 	}
+}
+
+func bps(data uint64, d time.Duration) string {
+	bdata := new(big.Int).SetUint64(data)
+	bdata = bdata.Mul(bdata, big.NewInt(time.Second.Nanoseconds()))
+	bps := bdata.Div(bdata, big.NewInt(d.Nanoseconds()))
+	return lcli.SizeStr(types.BigInt{bps}) + "/s"
 }

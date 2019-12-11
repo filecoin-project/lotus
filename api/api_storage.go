@@ -29,6 +29,10 @@ const (
 	CommitFailed
 
 	FailedUnrecoverable
+
+	Faulty        // sector is corrupted or gone for some reason
+	FaultReported // sector has been declared as a fault on chain
+	FaultedFinal  // fault declared on chain
 )
 
 var SectorStates = []string{
@@ -39,6 +43,7 @@ var SectorStates = []string{
 	PreCommitting:        "PreCommitting",
 	PreCommitted:         "PreCommitted",
 	Committing:           "Committing",
+	CommitWait:           "CommitWait",
 	Proving:              "Proving",
 
 	SealFailed:       "SealFailed",
@@ -47,6 +52,10 @@ var SectorStates = []string{
 	CommitFailed:     "CommitFailed",
 
 	FailedUnrecoverable: "FailedUnrecoverable",
+
+	Faulty:        "Faulty",
+	FaultReported: "FaultReported",
+	FaultedFinal:  "FaultedFinal",
 }
 
 // StorageMiner is a low-level interface to the Filecoin network storage miner node
@@ -87,9 +96,9 @@ type SectorInfo struct {
 	Deals    []uint64
 	Ticket   sectorbuilder.SealTicket
 	Seed     sectorbuilder.SealSeed
-	Retries uint64
+	Retries  uint64
 
-	LastErr  string
+	LastErr string
 }
 
 type SealedRef struct {

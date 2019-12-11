@@ -1,6 +1,7 @@
 package main
 
 import (
+	"bytes"
 	"context"
 	"crypto/rand"
 	"encoding/json"
@@ -75,11 +76,20 @@ var initCmd = &cli.Command{
 			Name:  "nosync",
 			Usage: "don't check full-node sync status",
 		},
+		&cli.BoolFlag{
+			Name:  "symlink-imported-sectors",
+			Usage: "attempt to symlink to presealed sectors instead of copying them into place",
+		},
 	},
 	Action: func(cctx *cli.Context) error {
 		log.Info("Initializing lotus storage miner")
 
 		ssize := cctx.Uint64("sector-size")
+
+		symlink := cctx.Bool("symlink-imported-sectors")
+		if symlink {
+			log.Info("will attempt to symlink to imported sectors")
+		}
 
 		log.Info("Checking proof parameters")
 		if err := build.GetParams(ssize); err != nil {
@@ -152,7 +162,9 @@ var initCmd = &cli.Command{
 				return err
 			}
 
-			oldmds, err := badger.NewDatastore(filepath.Join(pssb, "badger"), nil)
+			bopts := badger.DefaultOptions
+			bopts.ReadOnly = true
+			oldmds, err := badger.NewDatastore(filepath.Join(pssb, "badger"), &bopts)
 			if err != nil {
 				return err
 			}
@@ -181,7 +193,7 @@ var initCmd = &cli.Command{
 				return xerrors.Errorf("failed to open up sectorbuilder: %w", err)
 			}
 
-			if err := nsb.ImportFrom(oldsb); err != nil {
+			if err := nsb.ImportFrom(oldsb, symlink); err != nil {
 				return err
 			}
 			if err := lr.Close(); err != nil {
@@ -267,7 +279,7 @@ func migratePreSealMeta(ctx context.Context, api lapi.FullNode, presealDir strin
 			return err
 		}
 
-		proposalCid, err := sector.Deal.Proposal.Cid()
+		proposalCid, err := sector.Deal.Cid()
 		if err != nil {
 			return err
 		}
@@ -275,7 +287,7 @@ func migratePreSealMeta(ctx context.Context, api lapi.FullNode, presealDir strin
 		dealKey := datastore.NewKey(deals.ProviderDsPrefix).ChildString(proposalCid.String())
 
 		deal := &deals.MinerDeal{
-			Proposal:    sector.Deal.Proposal,
+			Proposal:    sector.Deal,
 			ProposalCid: proposalCid,
 			State:       lapi.DealComplete,
 			Ref:         proposalCid, // TODO: This is super wrong, but there
@@ -298,7 +310,7 @@ func migratePreSealMeta(ctx context.Context, api lapi.FullNode, presealDir strin
 	return nil
 }
 
-func findMarketDealID(ctx context.Context, api lapi.FullNode, deal actors.StorageDeal) (uint64, error) {
+func findMarketDealID(ctx context.Context, api lapi.FullNode, deal actors.StorageDealProposal) (uint64, error) {
 	// TODO: find a better way
 	//  (this is only used by genesis miners)
 
@@ -308,11 +320,7 @@ func findMarketDealID(ctx context.Context, api lapi.FullNode, deal actors.Storag
 	}
 
 	for k, v := range deals {
-		eq, err := cborutil.Equals(&v.Deal, &deal)
-		if err != nil {
-			return 0, err
-		}
-		if eq {
+		if bytes.Equal(v.PieceRef, deal.PieceRef) {
 			return strconv.ParseUint(k, 10, 64)
 		}
 	}

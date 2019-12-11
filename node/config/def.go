@@ -42,6 +42,7 @@ type Libp2p struct {
 
 type Metrics struct {
 	Nickname      string
+	HeadNotifs     bool
 	PubsubTracing bool
 }
 

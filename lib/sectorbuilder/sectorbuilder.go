@@ -3,7 +3,9 @@ package sectorbuilder
 import (
 	"fmt"
 	"io"
+	"io/ioutil"
 	"os"
+	"path/filepath"
 	"strconv"
 	"sync"
 	"sync/atomic"
@@ -16,6 +18,7 @@ import (
 
 	"github.com/filecoin-project/lotus/build"
 	"github.com/filecoin-project/lotus/chain/address"
+	"github.com/filecoin-project/lotus/chain/types"
 	"github.com/filecoin-project/lotus/node/modules/dtypes"
 )
 
@@ -480,6 +483,14 @@ func (sb *SectorBuilder) SealPreCommit(sectorID uint64, ticket SealTicket, piece
 		return RawSealPreCommitOutput{}, xerrors.Errorf("getting sealed sector path: %w", err)
 	}
 
+	e, err := os.OpenFile(sealedPath, os.O_RDWR|os.O_CREATE, 0644)
+	if err != nil {
+		return RawSealPreCommitOutput{}, xerrors.Errorf("ensuring sealed file exists: %w", err)
+	}
+	if err := e.Close(); err != nil {
+		return RawSealPreCommitOutput{}, err
+	}
+
 	var sum uint64
 	for _, piece := range pieces {
 		sum += piece.Size
@@ -505,8 +516,6 @@ func (sb *SectorBuilder) SealPreCommit(sectorID uint64, ticket SealTicket, piece
 	if err != nil {
 		return RawSealPreCommitOutput{}, xerrors.Errorf("presealing sector %d (%s): %w", sectorID, stagedPath, err)
 	}
-
-	log.Infof("PRECOMMIT FFI RSPCO %v", rspco)
 
 	return RawSealPreCommitOutput(rspco), nil
 }
@@ -623,7 +632,7 @@ func (sb *SectorBuilder) GenerateEPostCandidates(sectorInfo SortedPublicSectorIn
 		return nil, err
 	}
 
-	challengeCount := ElectionPostChallengeCount(uint64(len(sectorInfo.Values())))
+	challengeCount := types.ElectionPostChallengeCount(uint64(len(sectorInfo.Values())))
 
 	proverID := addressToProverID(sb.Miner)
 	return sectorbuilder.GenerateCandidates(sb.ssize, proverID, challengeSeed, challengeCount, privsectors)
@@ -674,29 +683,24 @@ func (sb *SectorBuilder) Stop() {
 	close(sb.stopping)
 }
 
-func ElectionPostChallengeCount(sectors uint64) uint64 {
-	// ceil(sectors / build.SectorChallengeRatioDiv)
-	return (sectors + build.SectorChallengeRatioDiv - 1) / build.SectorChallengeRatioDiv
-}
-
 func fallbackPostChallengeCount(sectors uint64) uint64 {
-	challengeCount := ElectionPostChallengeCount(sectors)
+	challengeCount := types.ElectionPostChallengeCount(sectors)
 	if challengeCount > build.MaxFallbackPostChallengeCount {
 		return build.MaxFallbackPostChallengeCount
 	}
 	return challengeCount
 }
 
-func (sb *SectorBuilder) ImportFrom(osb *SectorBuilder) error {
-	if err := dcopy.Copy(osb.cacheDir, sb.cacheDir); err != nil {
+func (sb *SectorBuilder) ImportFrom(osb *SectorBuilder, symlink bool) error {
+	if err := migrate(osb.cacheDir, sb.cacheDir, symlink); err != nil {
 		return err
 	}
 
-	if err := dcopy.Copy(osb.sealedDir, sb.sealedDir); err != nil {
+	if err := migrate(osb.sealedDir, sb.sealedDir, symlink); err != nil {
 		return err
 	}
 
-	if err := dcopy.Copy(osb.stagedDir, sb.stagedDir); err != nil {
+	if err := migrate(osb.stagedDir, sb.stagedDir, symlink); err != nil {
 		return err
 	}
 
@@ -721,4 +725,59 @@ func (sb *SectorBuilder) SetLastSectorID(id uint64) error {
 
 	sb.lastID = id
 	return nil
+}
+
+func migrate(from, to string, symlink bool) error {
+	st, err := os.Stat(from)
+	if err != nil {
+		return err
+	}
+
+	if st.IsDir() {
+		return migrateDir(from, to, symlink)
+	}
+	return migrateFile(from, to, symlink)
+}
+
+func migrateDir(from, to string, symlink bool) error {
+	tost, err := os.Stat(to)
+	if err != nil {
+		if !os.IsNotExist(err) {
+			return err
+		}
+
+		if err := os.MkdirAll(to, 0755); err != nil {
+			return err
+		}
+	} else if !tost.IsDir() {
+		return xerrors.Errorf("target %q already exists and is a file (expected directory)")
+	}
+
+	dirents, err := ioutil.ReadDir(from)
+	if err != nil {
+		return err
+	}
+
+	for _, inf := range dirents {
+		n := inf.Name()
+		if inf.IsDir() {
+			if err := migrate(filepath.Join(from, n), filepath.Join(to, n), symlink); err != nil {
+				return err
+			}
+		} else {
+			if err := migrate(filepath.Join(from, n), filepath.Join(to, n), symlink); err != nil {
+				return err
+			}
+		}
+	}
+
+	return nil
+}
+
+func migrateFile(from, to string, symlink bool) error {
+	if symlink {
+		return os.Symlink(from, to)
+	}
+
+	return dcopy.Copy(from, to)
 }

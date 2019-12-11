@@ -34,6 +34,38 @@ func BitFieldFromSet(setBits []uint64) BitField {
 	return res
 }
 
+func MergeBitFields(a, b BitField) (BitField, error) {
+	ra, err := a.rle.RunIterator()
+	if err != nil {
+		return BitField{}, err
+	}
+
+	rb, err := b.rle.RunIterator()
+	if err != nil {
+		return BitField{}, err
+	}
+
+	merge, err := rlepluslazy.Sum(ra, rb)
+	if err != nil {
+		return BitField{}, err
+	}
+
+	mergebytes, err := rlepluslazy.EncodeRuns(merge, nil)
+	if err != nil {
+		return BitField{}, err
+	}
+
+	rle, err := rlepluslazy.FromBuf(mergebytes)
+	if err != nil {
+		return BitField{}, err
+	}
+
+	return BitField{
+		rle:  rle,
+		bits: make(map[uint64]struct{}),
+	}, nil
+}
+
 func (bf BitField) sum() (rlepluslazy.RunIterator, error) {
 	if len(bf.bits) == 0 {
 		return bf.rle.RunIterator()
@@ -86,7 +118,26 @@ func (bf BitField) All() ([]uint64, error) {
 		return nil, err
 	}
 
-	return res, err
+	return res, nil
+}
+
+func (bf BitField) AllMap() (map[uint64]bool, error) {
+
+	runs, err := bf.sum()
+	if err != nil {
+		return nil, err
+	}
+
+	res, err := rlepluslazy.SliceFromRuns(runs)
+	if err != nil {
+		return nil, err
+	}
+
+	out := make(map[uint64]bool)
+	for _, i := range res {
+		out[i] = true
+	}
+	return out, nil
 }
 
 func (bf BitField) MarshalCBOR(w io.Writer) error {

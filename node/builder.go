@@ -217,7 +217,6 @@ func Online() Option {
 			Override(RunBlockSyncKey, modules.RunBlockSync),
 			Override(RunPeerMgrKey, modules.RunPeerMgr),
 			Override(HandleIncomingBlocksKey, modules.HandleIncomingBlocks),
-			Override(HeadMetricsKey, metrics.SendHeadNotifs("")),
 
 			Override(new(*discovery.Local), discovery.NewLocal),
 			Override(new(discovery.PeerResolver), modules.RetrievalResolver),
@@ -313,7 +312,9 @@ func ConfigFullNode(c interface{}) Option {
 
 	return Options(
 		ConfigCommon(&cfg.Common),
-		Override(HeadMetricsKey, metrics.SendHeadNotifs(cfg.Metrics.Nickname)),
+		If(cfg.Metrics.HeadNotifs,
+			Override(HeadMetricsKey, metrics.SendHeadNotifs(cfg.Metrics.Nickname)),
+		),
 		If(cfg.Metrics.PubsubTracing,
 			Override(new(*pubsub.PubSub), lp2p.GossipSub(lp2p.PubsubTracer())),
 		),

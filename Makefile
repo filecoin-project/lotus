@@ -1,3 +1,5 @@
+SHELL=/usr/bin/env bash
+
 all: build
 .PHONY: all
 
@@ -70,7 +72,16 @@ lotus-seal-worker: $(BUILD_DEPS)
 .PHONY: lotus-seal-worker
 BINS+=lotus-seal-worker
 
+lotus-shed: $(BUILD_DEPS)
+	rm -f lotus-shed
+	go build $(GOFLAGS) -o lotus-shed ./cmd/lotus-shed
+.PHONY: lotus-seal-worker
+BINS+=lotus-seal-worker
+
 build: lotus lotus-storage-miner lotus-seal-worker
+	@[[ $$(type -P "lotus") ]] && echo "Caution: you have \
+an existing lotus binary in your PATH. This may cause problems if you don't run 'sudo make install'" || true
+
 .PHONY: build
 
 install:

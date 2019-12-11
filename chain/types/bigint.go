@@ -237,3 +237,7 @@ func (bi *BigInt) UnmarshalCBOR(br io.Reader) error {
 
 	return nil
 }
+
+func (bi *BigInt) IsZero() bool {
+	return bi.Int.Sign() == 0
+}

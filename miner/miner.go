@@ -170,8 +170,6 @@ eventLoop:
 		}
 		lastBase = *base
 
-		log.Infof("Time delta between now and our mining base: %ds", uint64(time.Now().Unix())-base.ts.MinTimestamp())
-
 		blks := make([]*types.BlockMsg, 0)
 
 		for _, addr := range addrs {
@@ -271,6 +269,8 @@ func (m *Miner) mineOne(ctx context.Context, addr address.Address, base *MiningB
 		base.nullRounds++
 		return nil, nil
 	}
+
+	log.Infof("Time delta between now and our mining base: %ds", uint64(time.Now().Unix())-base.ts.MinTimestamp())
 
 	ticket, err := m.computeTicket(ctx, addr, base)
 	if err != nil {
