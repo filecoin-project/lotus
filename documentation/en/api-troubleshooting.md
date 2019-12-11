@@ -17,7 +17,7 @@ curl -X POST \
 
 ## Sending a CID
 
-If you do not serialize the CID as a JSON IPLD link, you will receive an error. Here is an example of a broken CURL request:
+If you do not serialize the CID as a [JSON IPLD link](https://did-ipid.github.io/ipid-did-method/#txref), you will receive an error. Here is an example of a broken CURL request:
 
 ```sh
 curl -X POST \
