@@ -50,7 +50,7 @@ To mine:
 lotus-storage-miner run
 ```
 
-If you are downloading **Filecoin Parameters**, the download can take some time.
+If you are downloading **Filecoin Proof Parameters**, the download can take some time.
 
 Get information about your miner:
 
