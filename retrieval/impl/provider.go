@@ -13,7 +13,6 @@ import (
 	"github.com/libp2p/go-libp2p-core/network"
 	"golang.org/x/xerrors"
 
-	"github.com/filecoin-project/lotus/api"
 	"github.com/filecoin-project/lotus/build"
 	"github.com/filecoin-project/lotus/chain/address"
 	"github.com/filecoin-project/lotus/chain/types"
@@ -34,7 +33,7 @@ type provider struct {
 
 	// TODO: Replace with RetrievalProviderNode for
 	// https://github.com/filecoin-project/go-retrieval-market-project/issues/4
-	full RetrMinerAPI
+	node retrievalmarket.RetrievalProviderNode
 
 	pricePerByte retrievalmarket.BigInt
 
@@ -42,10 +41,10 @@ type provider struct {
 }
 
 // NewProvider returns a new retrieval provider
-func NewProvider(sblks *sectorblocks.SectorBlocks, full api.FullNode) retrievalmarket.RetrievalProvider {
+func NewProvider(sblks *sectorblocks.SectorBlocks, node retrievalmarket.RetrievalProviderNode) retrievalmarket.RetrievalProvider {
 	return &provider{
 		sectorBlocks: sblks,
-		full:         full,
+		node:         node,
 
 		pricePerByte: types.NewInt(2), // TODO: allow setting
 	}
@@ -202,7 +201,7 @@ func (hnd *handlerDeal) handleNext() (bool, error) {
 	}
 
 	expPayment := types.BigMul(hnd.p.pricePerByte, types.NewInt(deal.Params.Unixfs0.Size))
-	if _, err := hnd.p.full.PaychVoucherAdd(context.TODO(), deal.Payment.Channel, deal.Payment.Vouchers[0], nil, expPayment); err != nil {
+	if _, err := hnd.p.node.SavePaymentVoucher(context.TODO(), deal.Payment.Channel, deal.Payment.Vouchers[0], nil, expPayment); err != nil {
 		return false, xerrors.Errorf("processing retrieval payment: %w", err)
 	}
 

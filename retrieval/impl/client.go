@@ -17,24 +17,18 @@ import (
 
 	"github.com/filecoin-project/lotus/api"
 	"github.com/filecoin-project/lotus/build"
-	"github.com/filecoin-project/lotus/chain/address"
 	"github.com/filecoin-project/lotus/chain/types"
 	"github.com/filecoin-project/lotus/lib/cborutil"
-	payapi "github.com/filecoin-project/lotus/node/impl/paych"
-	"github.com/filecoin-project/lotus/paych"
 	retrievalmarket "github.com/filecoin-project/lotus/retrieval"
 )
 
 var log = logging.Logger("retrieval")
 
 type client struct {
-	h  host.Host
-	bs blockstore.Blockstore
-
+	h    host.Host
+	bs   blockstore.Blockstore
+	node retrievalmarket.RetrievalClientNode
 	// The parameters should be replaced by RetrievalClientNode
-	// for https://github.com/filecoin-project/go-retrieval-market-project/issues/3
-	pmgr   *paych.Manager
-	payapi payapi.PaychAPI
 
 	nextDealLk  sync.Mutex
 	nextDealID  retrievalmarket.DealID
@@ -42,8 +36,8 @@ type client struct {
 }
 
 // NewClient creates a new retrieval client
-func NewClient(h host.Host, bs blockstore.Blockstore, pmgr *paych.Manager, payapi payapi.PaychAPI) retrievalmarket.RetrievalClient {
-	return &client{h: h, bs: bs, pmgr: pmgr, payapi: payapi}
+func NewClient(h host.Host, bs blockstore.Blockstore, node retrievalmarket.RetrievalClientNode) retrievalmarket.RetrievalClient {
+	return &client{h: h, bs: bs, node: node}
 }
 
 // V0
@@ -94,7 +88,7 @@ func (c *client) Query(ctx context.Context, p retrievalmarket.RetrievalPeer, pie
 
 // TODO: Update to match spec for V0 Epic:
 // https://github.com/filecoin-project/go-retrieval-market-project/issues/9
-func (c *client) Retrieve(ctx context.Context, pieceCID []byte, params retrievalmarket.Params, totalFunds retrievalmarket.BigInt, miner peer.ID, clientWallet retrievalmarket.Address, minerWallet retrievalmarket.Address) retrievalmarket.DealID {
+func (c *client) Retrieve(ctx context.Context, pieceCID []byte, params retrievalmarket.Params, totalFunds types.BigInt, miner peer.ID, clientWallet retrievalmarket.Address, minerWallet retrievalmarket.Address) retrievalmarket.DealID {
 	/* The implementation of this function is just wrapper for the old code which retrieves UnixFS pieces
 	-- it will be replaced when we do the V0 implementation of the module */
 	c.nextDealLk.Lock()
@@ -158,7 +152,7 @@ func (c *client) SubscribeToEvents(subscriber retrievalmarket.ClientSubscriber) 
 }
 
 // V1
-func (c *client) AddMoreFunds(id retrievalmarket.DealID, amount retrievalmarket.BigInt) error {
+func (c *client) AddMoreFunds(id retrievalmarket.DealID, amount types.BigInt) error {
 	panic("not implemented")
 }
 
@@ -175,7 +169,7 @@ func (c *client) ListDeals() map[retrievalmarket.DealID]retrievalmarket.ClientDe
 }
 
 type clientStream struct {
-	payapi payapi.PaychAPI
+	node   retrievalmarket.RetrievalClientNode
 	stream network.Stream
 	peeker cbg.BytePeeker
 
@@ -183,7 +177,7 @@ type clientStream struct {
 	size   types.BigInt
 	offset uint64
 
-	paych       address.Address
+	paych       retrievalmarket.Address
 	lane        uint64
 	total       types.BigInt
 	transferred types.BigInt
@@ -207,7 +201,7 @@ type clientStream struct {
 // < ..Blocks
 // > DealProposal(...)
 // < ...
-func (c *client) retrieveUnixfs(ctx context.Context, root cid.Cid, size uint64, total types.BigInt, miner peer.ID, client, minerAddr address.Address) error {
+func (c *client) retrieveUnixfs(ctx context.Context, root cid.Cid, size uint64, total types.BigInt, miner peer.ID, client, minerAddr retrievalmarket.Address) error {
 	s, err := c.h.NewStream(ctx, miner, retrievalmarket.ProtocolID)
 	if err != nil {
 		return err
@@ -218,17 +212,17 @@ func (c *client) retrieveUnixfs(ctx context.Context, root cid.Cid, size uint64, 
 	// TODO: Support in handler
 	// TODO: Allow client to specify this
 
-	paych, _, err := c.pmgr.GetPaych(ctx, client, minerAddr, total)
+	paych, err := c.node.GetOrCreatePaymentChannel(ctx, client, minerAddr, total)
 	if err != nil {
 		return xerrors.Errorf("getting payment channel: %w", err)
 	}
-	lane, err := c.pmgr.AllocateLane(paych)
+	lane, err := c.node.AllocateLane(paych)
 	if err != nil {
 		return xerrors.Errorf("allocating payment lane: %w", err)
 	}
 
 	cst := clientStream{
-		payapi: c.payapi,
+		node:   c.node,
 		stream: s,
 		peeker: cbg.GetPeeker(s),
 
@@ -372,7 +366,7 @@ func (cst *clientStream) consumeBlockMessage(block Block) (uint64, error) {
 func (cst *clientStream) setupPayment(ctx context.Context, toSend types.BigInt) (api.PaymentInfo, error) {
 	amount := types.BigAdd(cst.transferred, toSend)
 
-	sv, err := cst.payapi.PaychVoucherCreate(ctx, cst.paych, amount, cst.lane)
+	sv, err := cst.node.CreatePaymentVoucher(ctx, cst.paych, amount, cst.lane)
 	if err != nil {
 		return api.PaymentInfo{}, err
 	}

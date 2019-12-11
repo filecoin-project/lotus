@@ -35,7 +35,10 @@ import (
 	"github.com/filecoin-project/lotus/node/modules/helpers"
 	"github.com/filecoin-project/lotus/node/repo"
 	retrievalmarket "github.com/filecoin-project/lotus/retrieval"
+	retrievalimpl "github.com/filecoin-project/lotus/retrieval/impl"
+	"github.com/filecoin-project/lotus/retrievaladapter"
 	"github.com/filecoin-project/lotus/storage"
+	"github.com/filecoin-project/lotus/storage/sectorblocks"
 )
 
 func minerAddrFromDS(ds dtypes.MetadataDS) (address.Address, error) {
@@ -258,4 +261,10 @@ func SealTicketGen(api api.FullNode) storage.TicketFn {
 			TicketBytes: tkt,
 		}, nil
 	}
+}
+
+// RetrievalProvider creates a new retrieval provider attached to the provider blockstore
+func RetrievalProvider(sblks *sectorblocks.SectorBlocks, full api.FullNode) retrievalmarket.RetrievalProvider {
+	adapter := retrievaladapter.NewRetrievalProviderNode(full)
+	return retrievalimpl.NewProvider(sblks, adapter)
 }
