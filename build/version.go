@@ -22,7 +22,7 @@ const (
 	MajorOnlyMask = 0xff0000
 	MinorOnlyMask = 0x00ff00
 	PatchOnlyMask = 0x0000ff
-c)
+)
 
 // VersionInts returns (major, minor, patch) versions
 func VersionInts(version uint32) (uint32, uint32, uint32) {
