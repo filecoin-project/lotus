@@ -89,7 +89,7 @@ var DaemonCmd = &cli.Command{
 			if cctx.String(preSealedSectorsFlag) == "" {
 				return xerrors.Errorf("must also pass file with miner preseal info to `--%s`", preSealedSectorsFlag)
 			}
-			genesis = node.Override(new(modules.Genesis), testing.MakeGenesis(cctx.String(makeGenFlag), cctx.String(preSealedSectorsFlag), cctx.String("genesis-timestamp"))
+			genesis = node.Override(new(modules.Genesis), testing.MakeGenesis(cctx.String(makeGenFlag), cctx.String(preSealedSectorsFlag), cctx.String("genesis-timestamp")))
 		}
 
 		var api api.FullNode
