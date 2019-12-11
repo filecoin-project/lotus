@@ -68,7 +68,7 @@ func MakeGenesisMem(out io.Writer, gmc *gen.GenMinerCfg) func(bs dtypes.ChainBlo
 	}
 }
 
-func MakeGenesis(outFile, presealInfo string) func(bs dtypes.ChainBlockstore, w *wallet.Wallet) modules.Genesis {
+func MakeGenesis(outFile, presealInfo, timestamp string) func(bs dtypes.ChainBlockstore, w *wallet.Wallet) modules.Genesis {
 	return func(bs dtypes.ChainBlockstore, w *wallet.Wallet) modules.Genesis {
 		return func() (*types.BlockHeader, error) {
 			glog.Warn("Generating new random genesis block, note that this SHOULD NOT happen unless you are setting up new network")
@@ -119,7 +119,18 @@ func MakeGenesis(outFile, presealInfo string) func(bs dtypes.ChainBlockstore, w 
 				addrs[miner.Worker] = types.FromFil(100000)
 			}
 
-			b, err := gen.MakeGenesisBlock(bs, addrs, gmc, uint64(time.Now().Unix()))
+			ts := uint64(time.Now().Unix())
+			if timestamp != "" {
+				t, err := time.Parse(time.RFC3339, timestamp)
+				if err != nil {
+					return nil, xerrors.Errorf("parsing input genesis timestamp: %w", err)
+				}
+
+				glog.Infof("will use %s as the genesis timestamp", t)
+				ts = uint64(t.Unix())
+			}
+
+			b, err := gen.MakeGenesisBlock(bs, addrs, gmc, ts)
 			if err != nil {
 				return nil, err
 			}
