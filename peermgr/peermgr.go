@@ -20,7 +20,7 @@ var log = logging.Logger("peermgr")
 
 const (
 	MaxFilPeers = 32
-	MinFilPeers = 8
+	MinFilPeers = 12
 )
 
 type MaybePeerMgr struct {
