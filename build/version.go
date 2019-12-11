@@ -1,7 +1,11 @@
 package build
 
+var CurrentCommit string
+
 // Version is the local build version, set by build system
 const Version = "0.1.0"
+
+var UserVersion = Version + CurrentCommit
 
 // APIVersion is a hex semver version of the rpc api exposed
 //
