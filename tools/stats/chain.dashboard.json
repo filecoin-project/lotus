@@ -70,7 +70,7 @@
       "fill": 3,
       "fillGradient": 0,
       "gridPos": {
-        "h": 14,
+        "h": 16,
         "w": 24,
         "x": 0,
         "y": 0
@@ -131,7 +131,7 @@
           "measurement": "chain.election",
           "orderByTime": "ASC",
           "policy": "default",
-          "query": "SELECT moving_average(count(\"value\"), 20) FROM \"chain.election\" WHERE $timeFilter -10m GROUP BY time($__interval), \"miner\" fill(null)",
+          "query": "SELECT moving_average(count(\"value\"), 10) FROM \"chain.election\" WHERE $timeFilter -10m GROUP BY time($__interval), \"miner\" fill(null)",
           "rawQuery": true,
           "refId": "A",
           "resultFormat": "time_series",
@@ -214,7 +214,7 @@
         "h": 4,
         "w": 8,
         "x": 0,
-        "y": 14
+        "y": 16
       },
       "id": 22,
       "legend": {
@@ -237,7 +237,12 @@
       "pointradius": 2,
       "points": false,
       "renderer": "flot",
-      "seriesOverrides": [],
+      "seriesOverrides": [
+        {
+          "alias": "/.*/",
+          "color": "rgb(31, 120, 193)"
+        }
+      ],
       "spaceLength": 10,
       "stack": false,
       "steppedLine": false,
@@ -282,8 +287,9 @@
       },
       "yaxes": [
         {
+          "decimals": 2,
           "format": "bytes",
-          "label": null,
+          "label": "",
           "logBase": 1,
           "max": null,
           "min": null,
@@ -325,7 +331,7 @@
         "h": 4,
         "w": 8,
         "x": 8,
-        "y": 14
+        "y": 16
       },
       "id": 12,
       "interval": null,
@@ -429,7 +435,7 @@
         "h": 4,
         "w": 8,
         "x": 16,
-        "y": 14
+        "y": 16
       },
       "id": 6,
       "interval": null,
@@ -528,7 +534,7 @@
         "h": 3,
         "w": 4,
         "x": 0,
-        "y": 18
+        "y": 20
       },
       "id": 4,
       "interval": null,
@@ -626,7 +632,7 @@
         "h": 3,
         "w": 4,
         "x": 4,
-        "y": 18
+        "y": 20
       },
       "id": 14,
       "interval": null,
@@ -728,7 +734,7 @@
         "h": 3,
         "w": 4,
         "x": 8,
-        "y": 18
+        "y": 20
       },
       "id": 32,
       "interval": null,
@@ -843,7 +849,7 @@
         "h": 3,
         "w": 4,
         "x": 12,
-        "y": 18
+        "y": 20
       },
       "id": 20,
       "interval": null,
@@ -958,7 +964,7 @@
         "h": 3,
         "w": 4,
         "x": 16,
-        "y": 18
+        "y": 20
       },
       "id": 8,
       "interval": null,
@@ -1073,7 +1079,7 @@
         "h": 3,
         "w": 4,
         "x": 20,
-        "y": 18
+        "y": 20
       },
       "id": 10,
       "interval": null,
@@ -1192,7 +1198,7 @@
         "h": 3,
         "w": 4,
         "x": 0,
-        "y": 21
+        "y": 23
       },
       "id": 16,
       "interval": "",
@@ -1287,16 +1293,16 @@
         "h": 3,
         "w": 16,
         "x": 4,
-        "y": 21
+        "y": 23
       },
       "id": 2,
       "legend": {
         "alignAsTable": true,
         "avg": true,
-        "current": true,
+        "current": false,
         "hideEmpty": false,
         "hideZero": false,
-        "max": true,
+        "max": false,
         "min": false,
         "rightSide": true,
         "show": true,
@@ -1322,6 +1328,10 @@
         {
           "alias": "Null Blocks",
           "yaxis": 2
+        },
+        {
+          "alias": "Block Time",
+          "color": "rgb(31, 120, 193)"
         }
       ],
       "spaceLength": 10,
@@ -1389,7 +1399,7 @@
       "timeFrom": null,
       "timeRegions": [],
       "timeShift": null,
-      "title": "Tipsets",
+      "title": "",
       "tooltip": {
         "shared": true,
         "sort": 0,
@@ -1406,7 +1416,7 @@
       "yaxes": [
         {
           "format": "s",
-          "label": "Time between tipsets",
+          "label": "Time delta",
           "logBase": 1,
           "max": null,
           "min": null,
@@ -1415,7 +1425,7 @@
         {
           "decimals": 0,
           "format": "short",
-          "label": "Number of Null blocks",
+          "label": "# null blocks",
           "logBase": 1,
           "max": null,
           "min": "0",
@@ -1449,7 +1459,7 @@
         "h": 3,
         "w": 4,
         "x": 20,
-        "y": 21
+        "y": 23
       },
       "id": 30,
       "interval": null,
@@ -1533,7 +1543,7 @@
         "h": 16,
         "w": 4,
         "x": 0,
-        "y": 24
+        "y": 26
       },
       "id": 28,
       "options": {},
@@ -1617,13 +1627,13 @@
       "dashLength": 10,
       "dashes": false,
       "datasource": "${DS_INFLUXDB}",
-      "fill": 5,
+      "fill": 4,
       "fillGradient": 0,
       "gridPos": {
         "h": 8,
         "w": 12,
         "x": 4,
-        "y": 24
+        "y": 26
       },
       "id": 40,
       "interval": "",
@@ -1758,7 +1768,7 @@
         "h": 16,
         "w": 8,
         "x": 16,
-        "y": 24
+        "y": 26
       },
       "id": 18,
       "options": {},
@@ -1855,7 +1865,7 @@
         "h": 8,
         "w": 12,
         "x": 4,
-        "y": 32
+        "y": 34
       },
       "id": 24,
       "legend": {
@@ -1880,7 +1890,12 @@
       "pointradius": 2,
       "points": false,
       "renderer": "flot",
-      "seriesOverrides": [],
+      "seriesOverrides": [
+        {
+          "alias": "/.*/",
+          "color": "rgb(31, 120, 193)"
+        }
+      ],
       "spaceLength": 10,
       "stack": false,
       "steppedLine": false,
@@ -1975,7 +1990,7 @@
         "h": 9,
         "w": 12,
         "x": 0,
-        "y": 40
+        "y": 42
       },
       "id": 34,
       "legend": {
@@ -2001,7 +2016,7 @@
       "renderer": "flot",
       "seriesOverrides": [],
       "spaceLength": 10,
-      "stack": false,
+      "stack": true,
       "steppedLine": false,
       "targets": [
         {
@@ -2035,6 +2050,8 @@
           "measurement": "chain.message_count",
           "orderByTime": "ASC",
           "policy": "default",
+          "query": "SELECT moving_average(count(\"value\"), 2) FROM \"chain.message_count\" WHERE $timeFilter -4m GROUP BY time($__interval), \"actor\", \"method\" fill(null)",
+          "rawQuery": true,
           "refId": "A",
           "resultFormat": "time_series",
           "select": [
@@ -2101,25 +2118,29 @@
       "dashLength": 10,
       "dashes": false,
       "datasource": "${DS_INFLUXDB}",
+      "decimals": 2,
       "fill": 1,
       "fillGradient": 0,
       "gridPos": {
         "h": 9,
         "w": 12,
         "x": 12,
-        "y": 40
+        "y": 42
       },
       "id": 36,
+      "interval": "",
       "legend": {
         "alignAsTable": true,
-        "avg": false,
+        "avg": true,
         "current": false,
-        "max": false,
+        "max": true,
         "min": false,
         "rightSide": true,
         "show": true,
+        "sort": "avg",
+        "sortDesc": true,
         "total": false,
-        "values": false
+        "values": true
       },
       "lines": true,
       "linewidth": 1,
@@ -2133,7 +2154,7 @@
       "renderer": "flot",
       "seriesOverrides": [],
       "spaceLength": 10,
-      "stack": false,
+      "stack": true,
       "steppedLine": false,
       "targets": [
         {
@@ -2144,12 +2165,6 @@
                 "$__interval"
               ],
               "type": "time"
-            },
-            {
-              "params": [
-                "method"
-              ],
-              "type": "tag"
             },
             {
               "params": [
@@ -2165,6 +2180,12 @@
             },
             {
               "params": [
+                "method"
+              ],
+              "type": "tag"
+            },
+            {
+              "params": [
                 "null"
               ],
               "type": "fill"
@@ -2173,6 +2194,8 @@
           "measurement": "chain.message_count",
           "orderByTime": "ASC",
           "policy": "default",
+          "query": "SELECT moving_average(count(\"value\"), 10) FROM \"chain.message_count\" WHERE $timeFilter -10m GROUP BY time($__interval), \"exitcode\", \"actor\", \"method\" fill(null)",
+          "rawQuery": true,
           "refId": "A",
           "resultFormat": "time_series",
           "select": [
@@ -2186,6 +2209,12 @@
               {
                 "params": [],
                 "type": "count"
+              },
+              {
+                "params": [
+                  10
+                ],
+                "type": "moving_average"
               }
             ]
           ],
@@ -2212,6 +2241,7 @@
       },
       "yaxes": [
         {
+          "decimals": null,
           "format": "short",
           "label": "",
           "logBase": 1,
@@ -2262,5 +2292,5 @@
   "timezone": "",
   "title": "Chain",
   "uid": "z6FtI92Zz",
-  "version": 5
+  "version": 8
 }
