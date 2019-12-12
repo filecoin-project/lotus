@@ -24,6 +24,7 @@ var stateCmd = &cli.Command{
 		stateGetActorCmd,
 		stateLookupIDCmd,
 		stateReplaySetCmd,
+		stateSectorSizeCmd,
 	},
 }
 
@@ -330,6 +331,38 @@ var stateLookupIDCmd = &cli.Command{
 		}
 
 		fmt.Printf("%s\n", a)
+
+		return nil
+	},
+}
+
+var stateSectorSizeCmd = &cli.Command{
+	Name:  "sector-size",
+	Usage: "Look up miners sector size",
+	Action: func(cctx *cli.Context) error {
+		api, closer, err := GetFullNodeAPI(cctx)
+		if err != nil {
+			return err
+		}
+		defer closer()
+
+		ctx := ReqContext(cctx)
+
+		if !cctx.Args().Present() {
+			return fmt.Errorf("must pass address of actor to get")
+		}
+
+		addr, err := address.NewFromString(cctx.Args().First())
+		if err != nil {
+			return err
+		}
+
+		ssize, err := api.StateMinerSectorSize(ctx, addr, nil)
+		if err != nil {
+			return err
+		}
+
+		fmt.Printf("%d\n", ssize)
 
 		return nil
 	},

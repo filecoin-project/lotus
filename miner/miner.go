@@ -270,7 +270,7 @@ func (m *Miner) mineOne(ctx context.Context, addr address.Address, base *MiningB
 		return nil, nil
 	}
 
-	log.Infof("Time delta between now and our mining base: %ds", uint64(time.Now().Unix())-base.ts.MinTimestamp())
+	log.Infof("Time delta between now and our mining base: %ds (nulls: %d)", uint64(time.Now().Unix())-base.ts.MinTimestamp(), base.nullRounds)
 
 	ticket, err := m.computeTicket(ctx, addr, base)
 	if err != nil {
