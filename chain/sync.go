@@ -642,6 +642,13 @@ func (syncer *Syncer) VerifyElectionPoStProof(ctx context.Context, h *types.Bloc
 			SectorChallengeIndex: t.ChallengeIndex,
 		})
 	}
+	// FORK START
+	if h.Height > build.ForkCCM {
+		if len(winners) == 0 {
+			return xerrors.Errorf("no candidates")
+		}
+	}
+	// FORK END
 
 	sectorInfo, err := stmgr.GetSectorsForElectionPost(ctx, syncer.sm, baseTs, h.Miner)
 	if err != nil {
@@ -655,6 +662,7 @@ func (syncer *Syncer) VerifyElectionPoStProof(ctx context.Context, h *types.Bloc
 		return xerrors.Errorf("[TESTING] election post was invalid")
 	}
 	hvrf := sha256.Sum256(h.EPostProof.PostRand)
+
 	ok, err := sectorbuilder.VerifyElectionPost(ctx, ssize, *sectorInfo, hvrf[:], h.EPostProof.Proof, winners, h.Miner)
 	if err != nil {
 		return xerrors.Errorf("failed to verify election post: %w", err)
