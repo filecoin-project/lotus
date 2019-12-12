@@ -264,6 +264,10 @@ func (sma StorageMinerActor) PreCommitSector(act *types.Actor, vmctx types.VMCon
 		ReceivedEpoch: vmctx.BlockHeight(),
 	}
 
+	if len(self.PreCommittedSectors) > 4096 {
+		return nil, aerrors.New(5, "too many precommitted sectors")
+	}
+
 	nstate, err := vmctx.Storage().Put(self)
 	if err != nil {
 		return nil, err
