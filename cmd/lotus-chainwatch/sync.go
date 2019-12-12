@@ -101,14 +101,6 @@ func syncHead(ctx context.Context, api api.FullNode, st *storage, ts *types.TipS
 
 	log.Infof("Syncing %d blocks", len(toSync))
 
-	log.Infof("Persisting headers")
-	if err := st.storeHeaders(toSync, true); err != nil {
-		log.Error(err)
-		return
-	}
-
-	log.Infof("Persisting actors")
-
 	paDone := 0
 	par(50, maparr(toSync), func(bh *types.BlockHeader) {
 		paDone++
@@ -173,12 +165,29 @@ func syncHead(ctx context.Context, api api.FullNode, st *storage, ts *types.TipS
 		}
 	})
 
-	if err := st.storeActors(actors); err != nil {
-		log.Error(err)
-		return
+	log.Infof("Getting messages")
+
+	msgs, incls := fetchMessages(ctx, api, toSync)
+
+	log.Infof("Resolving addresses")
+
+	for _, message := range msgs {
+		addresses[message.To] = address.Undef
+		addresses[message.From] = address.Undef
 	}
 
-	log.Infof("Persisting miners")
+	par(50, kmaparr(addresses), func(addr address.Address) {
+		raddr, err := api.StateLookupID(ctx, addr, nil)
+		if err != nil {
+			log.Warn(err)
+			return
+		}
+		alk.Lock()
+		addresses[addr] = raddr
+		alk.Unlock()
+	})
+
+	log.Infof("Getting miner info")
 
 	miners := map[minerKey]*minerInfo{}
 
@@ -230,53 +239,53 @@ func syncHead(ctx context.Context, api api.FullNode, st *storage, ts *types.TipS
 		}
 	})
 
-	if err := st.storeMiners(miners); err != nil {
-		log.Error(err)
+	log.Info("Getting receipts")
+
+	receipts := fetchParentReceipts(ctx, api, toSync)
+
+	log.Info("Storing headers")
+
+	if err := st.storeHeaders(toSync, true); err != nil {
+		log.Errorf("%+v", err)
 		return
 	}
 
-	log.Infof("Getting messages")
-
-	msgs, incls := fetchMessages(ctx, api, toSync)
-
-	log.Infof("Resolving addresses")
-
-	for _, message := range msgs {
-		addresses[message.To] = address.Undef
-		addresses[message.From] = address.Undef
-	}
-
-	par(50, kmaparr(addresses), func(addr address.Address) {
-		raddr, err := api.StateLookupID(ctx, addr, nil)
-		if err != nil {
-			log.Warn(err)
-			return
-		}
-		alk.Lock()
-		addresses[addr] = raddr
-		alk.Unlock()
-	})
+	log.Info("Storing address mapping")
 
 	if err := st.storeAddressMap(addresses); err != nil {
 		log.Error(err)
 		return
 	}
 
-	log.Infof("Persisting messages")
+	log.Info("Storing actors")
+
+	if err := st.storeActors(actors); err != nil {
+		log.Error(err)
+		return
+	}
+
+	log.Info("Storing miners")
+
+	if err := st.storeMiners(miners); err != nil {
+		log.Error(err)
+		return
+	}
+
+	log.Infof("Storing messages")
 
 	if err := st.storeMessages(msgs); err != nil {
 		log.Error(err)
 		return
 	}
 
+	log.Info("Storing message inclusions")
+
 	if err := st.storeMsgInclusions(incls); err != nil {
 		log.Error(err)
 		return
 	}
 
-	log.Infof("Getting parent receipts")
-
-	receipts := fetchParentReceipts(ctx, api, toSync)
+	log.Infof("Storing parent receipts")
 
 	if err := st.storeReceipts(receipts); err != nil {
 		log.Error(err)
