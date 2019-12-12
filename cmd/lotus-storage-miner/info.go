@@ -53,6 +53,13 @@ var infoCmd = &cli.Command{
 		percI := types.BigDiv(types.BigMul(pow.MinerPower, types.NewInt(1000)), pow.TotalPower)
 		fmt.Printf("Power: %s / %s (%0.4f%%)\n", lcli.SizeStr(pow.MinerPower), lcli.SizeStr(pow.TotalPower), float64(percI.Int64())/100000*10000)
 
+		secCounts, err := api.StateMinerSectorCount(ctx, maddr, nil)
+		if err != nil {
+			return err
+		}
+		fmt.Printf("\tCommitted: %s\n", lcli.SizeStr(types.BigMul(types.NewInt(secCounts.Sset), types.NewInt(sizeByte))))
+		fmt.Printf("\tProving: %s\n", lcli.SizeStr(types.BigMul(types.NewInt(secCounts.Pset), types.NewInt(sizeByte))))
+
 		// TODO: indicate whether the post worker is in use
 		wstat, err := nodeApi.WorkerStats(ctx)
 		if err != nil {

@@ -113,6 +113,7 @@ type FullNode interface {
 	StateLookupID(context.Context, address.Address, *types.TipSet) (address.Address, error)
 	StateChangedActors(context.Context, cid.Cid, cid.Cid) (map[string]types.Actor, error)
 	StateGetReceipt(context.Context, cid.Cid, *types.TipSet) (*types.MessageReceipt, error)
+	StateMinerSectorCount(context.Context, address.Address, *types.TipSet) (MinerSectors, error)
 
 	MarketEnsureAvailable(context.Context, address.Address, types.BigInt) error
 	// MarketFreeBalance
@@ -129,6 +130,11 @@ type FullNode interface {
 	PaychVoucherAdd(context.Context, address.Address, *types.SignedVoucher, []byte, types.BigInt) (types.BigInt, error)
 	PaychVoucherList(context.Context, address.Address) ([]*types.SignedVoucher, error)
 	PaychVoucherSubmit(context.Context, address.Address, *types.SignedVoucher) (cid.Cid, error)
+}
+
+type MinerSectors struct {
+	Pset uint64
+	Sset uint64
 }
 
 type Import struct {

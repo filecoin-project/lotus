@@ -66,7 +66,14 @@ create table if not exists blocks
 	parentStateRoot text not null,
 	height int not null,
 	miner text not null,
-	timestamp int not null
+	timestamp int not null,
+	vrfproof bytea,
+	tickets int not null,
+	eprof bytea,
+	prand bytea,
+	ep0partial bytea,
+	ep0sector int not null,
+	ep0challangei int not null
 );
 
 create unique index if not exists block_cid_uindex
@@ -177,7 +184,9 @@ create table if not exists miner_heads
 	addr text not null,
 	stateroot text not null,
 	sectorset text not null,
+	setsize int not null,
 	provingset text not null,
+	provingsize int not null,
 	owner text not null,
 	worker text not null,
 	peerid text not null,
@@ -256,7 +265,7 @@ func (st *storage) storeMiners(miners map[minerKey]*minerInfo) error {
 		return err
 	}
 
-	stmt, err := tx.Prepare(`insert into miner_heads (head, addr, stateroot, sectorset, provingset, owner, worker, peerid, sectorsize, power, active, ppe, slashed_at) VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9,$10,$11,$12,$13) on conflict do nothing`)
+	stmt, err := tx.Prepare(`insert into miner_heads (head, addr, stateroot, sectorset, setsize, provingset, provingsize, owner, worker, peerid, sectorsize, power, active, ppe, slashed_at) VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9,$10,$11,$12,$13,$14,$15) on conflict do nothing`)
 	if err != nil {
 		return err
 	}
@@ -267,7 +276,9 @@ func (st *storage) storeMiners(miners map[minerKey]*minerInfo) error {
 			k.addr.String(),
 			k.stateroot.String(),
 			i.state.Sectors.String(),
+			i.ssize,
 			i.state.ProvingSet.String(),
+			i.psize,
 			i.info.Owner.String(),
 			i.info.Worker.String(),
 			i.info.PeerID.String(),
@@ -284,73 +295,75 @@ func (st *storage) storeMiners(miners map[minerKey]*minerInfo) error {
 	return tx.Commit()
 }
 
-func (st *storage) batch(n int) chan *sql.Tx {
-	out := make(chan *sql.Tx, n)
-	for i := 0; i < n; i++ {
-		tx, err := st.db.Begin()
-		if err != nil {
-			log.Error(err)
-		}
-
-		out <- tx
-	}
-
-	return out
-}
-
-func endbatch(b chan *sql.Tx) {
-	n := len(b)
-	for i := 0; i < n; i++ {
-		tx := <- b
-		if err := tx.Commit(); err != nil {
-			log.Error(err)
-		}
-	}
-}
-
 func (st *storage) storeHeaders(bhs map[cid.Cid]*types.BlockHeader, sync bool) error {
 	st.headerLk.Lock()
 	defer st.headerLk.Unlock()
 
-	tb := st.batch(50)
+	tx, err := st.db.Begin()
+	if err != nil {
+		return err
+	}
 
-	par(100, maparr(bhs), func(bh *types.BlockHeader) {
+	stmt, err := tx.Prepare(`insert into block_parents (block, parent) values ($1, $2) on conflict do nothing`)
+	if err != nil {
+		return err
+	}
+	defer stmt.Close()
+
+	for _, bh := range bhs {
 		for _, parent := range bh.Parents {
-			log.Info("bps ", bh.Cid())
-			tx := <-tb
-			stmt2, err := tx.Prepare(`insert into block_parents (block, parent) values ($1, $2) on conflict do nothing`)
-			if err != nil {
-				return err
-			}
-			if _, err := tx.Exec(`insert into block_parents (block, parent) values ($1, $2) on conflict do nothing`, bh.Cid().String(), parent.String()); err != nil {
+			if _, err := stmt.Exec(bh.Cid().String(), parent.String()); err != nil {
 				log.Error(err)
 			}
-			tb <- tx
 		}
-	})
+	}
 
 	if sync {
 		now := time.Now().Unix()
 
-		par(50, maparr(bhs), func(bh *types.BlockHeader) {
-			tx := <-tb
-			if _, err := tx.Exec(`insert into blocks_synced (cid, add_ts) values ($1, $2) on conflict do nothing`, bh.Cid().String(), now); err != nil {
+		stmt, err := tx.Prepare(`insert into blocks_synced (cid, add_ts) values ($1, $2) on conflict do nothing`)
+		if err != nil {
+			return err
+		}
+		defer stmt.Close()
+
+		for _, bh := range bhs {
+			if _, err := tx.Exec(bh.Cid().String(), now); err != nil {
 				log.Error(err)
 			}
-			tb <- tx
-		})
+		}
 	}
 
-	par(50, maparr(bhs), func(bh *types.BlockHeader) {
-		log.Info("bh", bh.Cid())
-		tx := <-tb
-		if _, err := tx.Exec(`insert into blocks (cid, parentWeight, parentStateRoot, height, miner, "timestamp") values ($1, $2, $3, $4, $5, $6) on conflict do nothing`, bh.Cid().String(), bh.ParentWeight.String(), bh.ParentStateRoot.String(), bh.Height, bh.Miner.String(), bh.Timestamp); err != nil {
+	stmt2, err := tx.Prepare(`insert into blocks (cid, parentWeight, parentStateRoot, height, miner, "timestamp", vrfproof, tickets, eprof, prand, ep0partial, ep0sector, ep0challangei) values ($1, $2, $3, $4, $5, $6,$7,$8,$9,$10,$11,$12,$13) on conflict do nothing`)
+	if err != nil {
+		return err
+	}
+	defer stmt2.Close()
+
+	for _, bh := range bhs {
+		l := len(bh.EPostProof.Candidates)
+		if len(bh.EPostProof.Candidates) == 0 {
+			bh.EPostProof.Candidates = append(bh.EPostProof.Candidates, types.EPostTicket{})
+		}
+
+		if _, err := stmt2.Exec(
+			bh.Cid().String(),
+			bh.ParentWeight.String(),
+			bh.ParentStateRoot.String(),
+			bh.Height,
+			bh.Miner.String(),
+			bh.Timestamp,
+			bh.Ticket.VRFProof,
+			l,
+			bh.EPostProof.Proof,
+			bh.EPostProof.PostRand,
+			bh.EPostProof.Candidates[0].Partial,
+			bh.EPostProof.Candidates[0].SectorID,
+			bh.EPostProof.Candidates[0].ChallengeIndex); err != nil {
 			log.Error(err)
 		}
-		tb <- tx
-	})
+	}
 
-	endbatch(tb)
 	return nil
 }
 

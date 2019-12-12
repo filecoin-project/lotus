@@ -46,6 +46,9 @@ type minerKey struct {
 type minerInfo struct {
 	state actors2.StorageMinerActorState
 	info  actors2.MinerInfo
+
+	ssize uint64
+	psize uint64
 }
 
 func syncHead(ctx context.Context, api api.FullNode, st *storage, ts *types.TipSet) {
@@ -195,6 +198,14 @@ func syncHead(ctx context.Context, api api.FullNode, st *storage, ts *types.TipS
 
 	par(50, kvmaparr(miners), func(it func() (minerKey, *minerInfo)) {
 		k, info := it()
+
+		sszs, err := api.StateMinerSectorCount(ctx, k.addr, nil)
+		if err != nil {
+			log.Error(err)
+			return
+		}
+		info.psize = sszs.Pset
+		info.ssize = sszs.Sset
 
 		astb, err := api.ChainReadObj(ctx, k.act.Head)
 		if err != nil {

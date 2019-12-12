@@ -109,6 +109,7 @@ type FullNodeStruct struct {
 		StateLookupID                 func(ctx context.Context, addr address.Address, ts *types.TipSet) (address.Address, error)      `perm:"read"`
 		StateChangedActors            func(context.Context, cid.Cid, cid.Cid) (map[string]types.Actor, error)                         `perm:"read"`
 		StateGetReceipt               func(context.Context, cid.Cid, *types.TipSet) (*types.MessageReceipt, error)                    `perm:"read"`
+		StateMinerSectorCount         func(context.Context, address.Address, *types.TipSet) (api.MinerSectors, error)                 `perm:"read"`
 
 		MarketEnsureAvailable func(context.Context, address.Address, types.BigInt) error `perm:"sign"`
 
@@ -126,6 +127,10 @@ type FullNodeStruct struct {
 		PaychVoucherList           func(context.Context, address.Address) ([]*types.SignedVoucher, error)                                    `perm:"write"`
 		PaychVoucherSubmit         func(context.Context, address.Address, *types.SignedVoucher) (cid.Cid, error)                             `perm:"sign"`
 	}
+}
+
+func (c *FullNodeStruct) StateMinerSectorCount(ctx context.Context, addr address.Address, ts *types.TipSet) (api.MinerSectors, error) {
+	return c.Internal.StateMinerSectorCount(ctx, addr, ts)
 }
 
 type StorageMinerStruct struct {

@@ -358,3 +358,7 @@ func (a *StateAPI) StateChangedActors(ctx context.Context, old cid.Cid, new cid.
 
 	return out, nil
 }
+
+func (a *StateAPI) StateMinerSectorCount(ctx context.Context, addr address.Address, ts *types.TipSet) (api.MinerSectors, error) {
+	return stmgr.SectorSetSizes(ctx, a.StateManager, addr, ts)
+}
