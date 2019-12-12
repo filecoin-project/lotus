@@ -52,7 +52,7 @@ func main() {
 	app := &cli.App{
 		Name:    "lotus-storage-miner",
 		Usage:   "Filecoin decentralized storage network storage miner",
-		Version: build.Version,
+		Version: build.UserVersion,
 		Flags: []cli.Flag{
 			&cli.StringFlag{
 				Name:    "repo",

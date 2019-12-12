@@ -14,6 +14,7 @@ MODULES:=
 
 CLEAN:=
 BINS:=
+GOFLAGS+=-ldflags="-X "github.com/filecoin-project/lotus/build".CurrentCommit=-$(shell git describe --always --match=NeVeRmAtCh --dirty 2>/dev/null || git rev-parse --short HEAD 2>/dev/null)"
 
 ## FFI
 
@@ -47,7 +48,7 @@ CLEAN+=build/.update-modules
 deps: $(BUILD_DEPS)
 .PHONY: deps
 
-debug: GOFLAGS=-tags=debug
+debug: GOFLAGS+=-tags=debug
 debug: lotus lotus-storage-miner lotus-seal-worker lotus-seed
 
 lotus: $(BUILD_DEPS)
