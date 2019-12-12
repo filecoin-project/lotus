@@ -48,6 +48,7 @@ var dotCmd = &cli.Command{
 
 			hasstr := ""
 			if !has {
+				col = 0xffffffff
 				hasstr = " UNSYNCED"
 			}
 
