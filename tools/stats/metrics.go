@@ -14,6 +14,7 @@ import (
 	"github.com/filecoin-project/lotus/chain/actors"
 	"github.com/filecoin-project/lotus/chain/address"
 	"github.com/filecoin-project/lotus/chain/types"
+	"github.com/ipfs/go-cid"
 	"github.com/multiformats/go-multihash"
 
 	_ "github.com/influxdata/influxdb1-client"
@@ -182,6 +183,12 @@ func RecordTipsetStatePoints(ctx context.Context, api api.FullNode, pl *PointLis
 	return nil
 }
 
+type msgTag struct {
+	actor    string
+	method   uint64
+	exitcode uint8
+}
+
 func RecordTipsetMessagesPoints(ctx context.Context, api api.FullNode, pl *PointList, tipset *types.TipSet) error {
 	cids := tipset.Cids()
 	if len(cids) == 0 {
@@ -197,6 +204,8 @@ func RecordTipsetMessagesPoints(ctx context.Context, api api.FullNode, pl *Point
 	if err != nil {
 		return err
 	}
+
+	msgn := make(map[msgTag][]cid.Cid)
 
 	for i, msg := range msgs {
 		p := NewPoint("chain.message_gasprice", msg.Message.GasPrice.Int64())
@@ -215,16 +224,33 @@ func RecordTipsetMessagesPoints(ctx context.Context, api api.FullNode, pl *Point
 			return err
 		}
 
-		p = NewPoint("chain.message_count", 1)
-
 		dm, err := multihash.Decode(actor.Code.Hash())
 		if err != nil {
 			continue
 		}
+		tag := msgTag{
+			actor:    string(dm.Digest),
+			method:   msg.Message.Method,
+			exitcode: recp[i].ExitCode,
+		}
 
-		p.AddTag("actor", string(dm.Digest))
-		p.AddTag("method", fmt.Sprintf("%d", msg.Message.Method))
-		p.AddTag("exitcode", fmt.Sprintf("%d", recp[i].ExitCode))
+		found := false
+		for _, c := range msgn[tag] {
+			if c.Equals(msg.Cid) {
+				found = true
+				break
+			}
+		}
+		if !found {
+			msgn[tag] = append(msgn[tag], msg.Cid)
+		}
+	}
+
+	for t, m := range msgn {
+		p := NewPoint("chain.message_count", len(m))
+		p.AddTag("actor", t.actor)
+		p.AddTag("method", fmt.Sprintf("%d", t.method))
+		p.AddTag("exitcode", fmt.Sprintf("%d", t.exitcode))
 		pl.AddPoint(p)
 
 	}
