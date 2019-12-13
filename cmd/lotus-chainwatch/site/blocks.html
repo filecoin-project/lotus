@@ -25,10 +25,10 @@
                         <td>
                             <b>{{qstr `select count(distinct block_messages.message) from block_messages
                                     inner join blocks b on block_messages.block = b.cid
-                                    where b.height = ?` $h}}</b> Msgs
+                                    where b.height = $1` $h}}</b> Msgs
                         </td>
                         <td>
-                            {{range strings "blocks" "cid" "height = ?" $h}}
+                            {{range strings "blocks" "cid" "height = $1" $h}}
                                 <a href="block.html?cid={{.}}">{{. | substr 54 62}}</a>
                             {{end}}
                         </td>
