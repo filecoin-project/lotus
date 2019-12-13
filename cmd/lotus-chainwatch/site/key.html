@@ -21,7 +21,7 @@
             Messages:
             <table>
                 <tr><td>Dir</td><td>Peer</td><td>Nonce</td><td>Value</td><td>Block</td><td>Mpool Wait</td></tr>
-                {{ range messages "`from` = $1 or `to` = $2" $wallet $wallet $wallet}}
+                {{ range messages "\"from\" = $1 or \"to\" = $1" $wallet}}
                     <tr>
                         {{ if eq .From.String $wallet }}
                             <td>To</td><td>{{.To.String}}</td>

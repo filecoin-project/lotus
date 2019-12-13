@@ -153,10 +153,9 @@ func (h *handler) netPower(slashFilt string) (types.BigInt, error) {
 	if slashFilt != "" {
 		slashFilt = " where " + slashFilt
 	}
-	return h.queryNum(`select sum(a.power) from (
-	select max(miner_heads.power), miner_heads.slashed_at, height as power from miner_heads
+	return h.queryNum(`select sum(power) from (select distinct on (addr) power, slashed_at from miner_heads
     inner join blocks b on miner_heads.stateroot = b.parentStateRoot
-    group by miner_heads.addr) a` + slashFilt)
+order by addr, height desc) as p` + slashFilt)
 }
 
 func (h *handler) queryNum(q string, p ...interface{}) (types.BigInt, error) {
@@ -213,6 +212,8 @@ func (h *handler) messages(filter string, args ...interface{}) (out []types.Mess
 	if len(filter) > 0 {
 		filter = " where " + filter
 	}
+
+	log.Info("select * from messages "+filter)
 
 	rws, err := h.st.db.Query("select * from messages "+filter, args...)
 	if err != nil {
