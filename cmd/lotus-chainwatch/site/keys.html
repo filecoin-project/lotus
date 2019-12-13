@@ -14,7 +14,12 @@
     <div class="Index-nodes">
         <div class="Index-node">
            {{range strings "id_address_map" "address" "address != id"}}
-               <div><a href="key.html?w={{.}}">{{.}}</a></div>
+               {{$addr := .}}
+               <div>
+                   <a href="key.html?w={{$addr}}">{{$addr}}</a>
+                   <span><b>{{qstr "select count(distinct cid) from messages where \"from\"=?" $addr}}</b> outmsgs;</span>
+                   <span><b>{{qstr "select count(distinct cid) from messages where \"to\"=?" $addr}}</b> inmsgs</span>
+               </div>
            {{end}}
         </div>
     </div>
