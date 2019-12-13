@@ -25,6 +25,8 @@ func openStorage(dbSource string) (*storage, error) {
 		return nil, err
 	}
 
+	db.SetMaxOpenConns(1350)
+
 	st := &storage{db: db}
 
 	return st, st.setup()
@@ -182,7 +184,7 @@ create table if not exists miner_heads
 	worker text not null,
 	peerid text not null,
 	sectorsize bigint not null,
-	power text not null,
+	power bigint not null,
 	active bool,
 	ppe bigint not null,
 	slashed_at bigint not null,

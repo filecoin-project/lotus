@@ -23,7 +23,7 @@ var dotCmd = &cli.Command{
 		tosee, err := strconv.ParseInt(cctx.Args().Get(1), 10, 32)
 		maxH := minH + tosee
 
-		res, err := st.db.Query("select block, parent, b.miner, b.height from block_parents inner join blocks b on block_parents.block = b.cid where b.height > ? and b.height < ?", minH, maxH)
+		res, err := st.db.Query("select block, parent, b.miner, b.height from block_parents inner join blocks b on block_parents.block = b.cid where b.height > $1 and b.height < $2", minH, maxH)
 		if err != nil {
 			return err
 		}

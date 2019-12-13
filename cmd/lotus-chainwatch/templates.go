@@ -153,10 +153,10 @@ func (h *handler) netPower(slashFilt string) (types.BigInt, error) {
 	if slashFilt != "" {
 		slashFilt = " where " + slashFilt
 	}
-	return h.queryNum(`select sum(power) from (
-	select miner_heads.power, miner_heads.slashed_at, max(height) from miner_heads
-    	inner join blocks b on miner_heads.stateroot = b.parentStateRoot
-	group by miner_heads.addr)` + slashFilt)
+	return h.queryNum(`select sum(a.power) from (
+	select max(miner_heads.power), miner_heads.slashed_at, height as power from miner_heads
+    inner join blocks b on miner_heads.stateroot = b.parentStateRoot
+    group by miner_heads.addr) a` + slashFilt)
 }
 
 func (h *handler) queryNum(q string, p ...interface{}) (types.BigInt, error) {

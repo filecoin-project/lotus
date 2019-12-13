@@ -22,17 +22,19 @@ func subMpool(ctx context.Context, api aapi.FullNode, st *storage) {
 
 		log.Info("mpool message")
 
-		err := st.storeMessages(map[cid.Cid]*types.Message{
-			change.Message.Message.Cid(): &change.Message.Message,
-		})
-		if err != nil {
-			//log.Error(err)
-			continue
-		}
+		go func() {
+			err := st.storeMessages(map[cid.Cid]*types.Message{
+				change.Message.Message.Cid(): &change.Message.Message,
+			})
+			if err != nil {
+				//log.Error(err)
+				return
+			}
 
-		if err := st.storeMpoolInclusion(change.Message.Message.Cid()); err != nil {
-			log.Error(err)
-			continue
-		}
+			if err := st.storeMpoolInclusion(change.Message.Message.Cid()); err != nil {
+				log.Error(err)
+			}
+		}()
+
 	}
 }
