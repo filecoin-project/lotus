@@ -19,6 +19,7 @@ func main() {
 		base16Cmd,
 		keyinfoCmd,
 		peerkeyCmd,
+		noncefix,
 	}
 
 	app := &cli.App{
