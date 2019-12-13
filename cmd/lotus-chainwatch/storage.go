@@ -2,6 +2,7 @@ package main
 
 import (
 	"database/sql"
+	"github.com/filecoin-project/lotus/api"
 	"golang.org/x/xerrors"
 	"sync"
 	"time"
@@ -595,24 +596,47 @@ create temp table mi (like block_messages excluding constraints) on commit drop;
 	return tx.Commit()
 }
 
-func (st *storage) storeMpoolInclusion(msg cid.Cid) error {
+func (st *storage) storeMpoolInclusions(msgs []api.MpoolUpdate) error {
 	tx, err := st.db.Begin()
 	if err != nil {
 		return err
 	}
 
-	stmt, err := tx.Prepare(`insert into mpool_messages (msg, add_ts) VALUES ($1, $2) on conflict do nothing`)
+	if _, err := tx.Exec(`
+
+create temp table mi (like mpool_messages excluding constraints) on commit drop;
+
+
+`); err != nil {
+		return xerrors.Errorf("prep temp: %w", err)
+	}
+
+	stmt, err := tx.Prepare(`copy mi (msg, add_ts) from stdin `)
 	if err != nil {
 		return err
 	}
-	defer stmt.Close()
 
-	if _, err := stmt.Exec(
-		msg.String(),
-		time.Now().Unix(),
-	); err != nil {
+	for _, msg := range msgs {
+		if msg.Type != api.MpoolAdd {
+			continue
+		}
+
+		if _, err := stmt.Exec(
+			msg.Message.Message.Cid().String(),
+			time.Now().Unix(),
+		); err != nil {
+			return err
+		}
+	}
+
+	if err := stmt.Close(); err != nil {
 		return err
 	}
+
+	if _, err := tx.Exec(`insert into mpool_messages select * from mi on conflict do nothing `); err != nil {
+		return xerrors.Errorf("actor put: %w", err)
+	}
+
 	return tx.Commit()
 }
 
