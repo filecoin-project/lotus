@@ -82,8 +82,6 @@ var runCmd = &cli.Command{
 		defer st.close()
 
 		runSyncer(ctx, api, st)
-		go subMpool(ctx, api, st)
-		go subBlocks(ctx, api, st)
 
 		h, err := newHandler(api, st)
 		if err != nil {

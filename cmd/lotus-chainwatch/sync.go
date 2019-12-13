@@ -32,6 +32,12 @@ func runSyncer(ctx context.Context, api api.FullNode, st *storage) {
 				case store.HCRevert:
 					log.Warnf("revert todo")
 				}
+
+				if change.Type == store.HCCurrent {
+					go subMpool(ctx, api, st)
+					go subBlocks(ctx, api, st)
+				}
+
 			}
 		}
 	}()
