@@ -93,7 +93,7 @@ func (c *Client) ProposeStorageDeal(ctx context.Context, info *storagemarket.Sto
 
 	proposal := ClientDealProposal{
 		Data:               payloadCid,
-		PricePerEpoch:      types.NewInt(uint64(price)),
+		PricePerEpoch:      types.BigInt(price),
 		ProposalExpiration: uint64(proposalExpiration),
 		Duration:           uint64(duration),
 		Client:             addr,
@@ -122,7 +122,7 @@ func (c *Client) GetPaymentEscrow(ctx context.Context) (storagemarket.Balance, e
 	return balance, err
 }
 
-func (c *Client) AddPaymentEscrow(ctx context.Context, amount types.BigInt) error {
+func (c *Client) AddPaymentEscrow(ctx context.Context, amount storagemarket.TokenAmount) error {
 	addr, err := c.node.GetDefaultWalletAddress(ctx)
 	if err != nil {
 		return err

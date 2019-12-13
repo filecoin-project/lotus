@@ -6,7 +6,6 @@ import (
 	"bytes"
 	"context"
 
-	"github.com/prometheus/common/log"
 	"golang.org/x/xerrors"
 
 	"github.com/filecoin-project/lotus/api"
@@ -114,12 +113,12 @@ func (n *ClientNodeAdapter) MostRecentStateId(ctx context.Context) (storagemarke
 }
 
 // Adds funds with the StorageMinerActor for a storage participant.  Used by both providers and clients.
-func (n *ClientNodeAdapter) AddFunds(ctx context.Context, addr address.Address, amount storagemarket.BigInt) error {
+func (n *ClientNodeAdapter) AddFunds(ctx context.Context, addr address.Address, amount storagemarket.TokenAmount) error {
 	// (Provider Node API)
 	smsg, err := n.MpoolPushMessage(ctx, &types.Message{
 		To:       actors.StorageMarketAddress,
 		From:     addr,
-		Value:    amount,
+		Value:    types.BigInt(amount),
 		GasPrice: types.NewInt(0),
 		GasLimit: types.NewInt(1000000),
 		Method:   actors.SMAMethods.AddBalance,
@@ -140,8 +139,8 @@ func (n *ClientNodeAdapter) AddFunds(ctx context.Context, addr address.Address, 
 	return nil
 }
 
-func (n *ClientNodeAdapter) EnsureFunds(ctx context.Context, addr address.Address, amt types.BigInt) error {
-	return n.fm.EnsureAvailable(ctx, addr, amt)
+func (n *ClientNodeAdapter) EnsureFunds(ctx context.Context, addr address.Address, amount storagemarket.TokenAmount) error {
+	return n.fm.EnsureAvailable(ctx, addr, types.BigInt(amount))
 }
 
 func (n *ClientNodeAdapter) GetBalance(ctx context.Context, addr address.Address) (storagemarket.Balance, error) {

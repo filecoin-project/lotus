@@ -7,8 +7,8 @@ import (
 	"context"
 
 	"github.com/ipfs/go-cid"
+	logging "github.com/ipfs/go-log"
 	unixfile "github.com/ipfs/go-unixfs/file"
-	"github.com/prometheus/common/log"
 	"golang.org/x/xerrors"
 
 	"github.com/filecoin-project/lotus/api"
@@ -20,6 +20,8 @@ import (
 	"github.com/filecoin-project/lotus/storage/sectorblocks"
 	"github.com/filecoin-project/lotus/storagemarket"
 )
+
+var log = logging.Logger("provideradapter")
 
 type ProviderNodeAdapter struct {
 	api.FullNode
@@ -154,8 +156,8 @@ func (n *ProviderNodeAdapter) SignBytes(ctx context.Context, signer address.Addr
 	return n.WalletSign(ctx, signer, b)
 }
 
-func (n *ProviderNodeAdapter) EnsureFunds(ctx context.Context, addr address.Address, amt types.BigInt) error {
-	return n.MarketEnsureAvailable(ctx, addr, amt)
+func (n *ProviderNodeAdapter) EnsureFunds(ctx context.Context, addr address.Address, amt storagemarket.TokenAmount) error {
+	return n.MarketEnsureAvailable(ctx, addr, types.BigInt(amt))
 }
 
 func (n *ProviderNodeAdapter) MostRecentStateId(ctx context.Context) (storagemarket.StateKey, error) {
@@ -163,12 +165,12 @@ func (n *ProviderNodeAdapter) MostRecentStateId(ctx context.Context) (storagemar
 }
 
 // Adds funds with the StorageMinerActor for a storage participant.  Used by both providers and clients.
-func (n *ProviderNodeAdapter) AddFunds(ctx context.Context, addr address.Address, amount storagemarket.BigInt) error {
+func (n *ProviderNodeAdapter) AddFunds(ctx context.Context, addr address.Address, amount storagemarket.TokenAmount) error {
 	// (Provider Node API)
 	smsg, err := n.MpoolPushMessage(ctx, &types.Message{
 		To:       actors.StorageMarketAddress,
 		From:     addr,
-		Value:    amount,
+		Value:    types.BigInt(amount),
 		GasPrice: types.NewInt(0),
 		GasLimit: types.NewInt(1000000),
 		Method:   actors.SMAMethods.AddBalance,

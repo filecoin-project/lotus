@@ -171,7 +171,8 @@ type ClientDealProposal struct {
 }
 
 func (c *Client) Start(ctx context.Context, p ClientDealProposal) (cid.Cid, error) {
-	if err := c.node.EnsureFunds(ctx, p.Client, types.BigMul(p.PricePerEpoch, types.NewInt(p.Duration))); err != nil {
+	amount := types.BigMul(p.PricePerEpoch, types.NewInt(p.Duration))
+	if err := c.node.EnsureFunds(ctx, p.Client, storagemarket.TokenAmount(amount)); err != nil {
 		return cid.Undef, xerrors.Errorf("adding market funds failed: %w", err)
 	}
 

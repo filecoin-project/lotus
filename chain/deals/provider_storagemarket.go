@@ -11,8 +11,8 @@ import (
 	"github.com/filecoin-project/lotus/storagemarket"
 )
 
-func (p *Provider) AddAsk(price types.BigInt, ttlsecs int64) error {
-	return p.SetPrice(price, ttlsecs)
+func (p *Provider) AddAsk(price storagemarket.TokenAmount, ttlsecs int64) error {
+	return p.SetPrice(types.BigInt(price), ttlsecs)
 }
 
 func (p *Provider) ListAsks(addr address.Address) []*types.SignedStorageAsk {
@@ -29,7 +29,7 @@ func (p *Provider) ListDeals(ctx context.Context) ([]actors.OnChainDeal, error) 
 	return p.spn.ListProviderDeals(ctx, p.actor)
 }
 
-func (p *Provider) AddStorageCollateral(ctx context.Context, amount types.BigInt) error {
+func (p *Provider) AddStorageCollateral(ctx context.Context, amount storagemarket.TokenAmount) error {
 	return p.spn.AddFunds(ctx, p.actor, amount)
 }
 

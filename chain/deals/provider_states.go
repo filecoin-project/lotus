@@ -84,7 +84,7 @@ func (p *Provider) accept(ctx context.Context, deal MinerDeal) (func(*MinerDeal)
 	}
 
 	// TODO: check StorageCollateral (may be too large (or too small))
-	if err := p.spn.EnsureFunds(ctx, waddr, deal.Proposal.StorageCollateral); err != nil {
+	if err := p.spn.EnsureFunds(ctx, waddr, storagemarket.TokenAmount(deal.Proposal.StorageCollateral)); err != nil {
 		return nil, err
 	}
 
@@ -103,7 +103,7 @@ func (p *Provider) accept(ctx context.Context, deal MinerDeal) (func(*MinerDeal)
 	}
 
 	log.Infof("fetching data for a deal %d", dealId)
-	err = p.sendSignedResponse(&Response{
+	err = p.sendSignedResponse(ctx, &Response{
 		State: api.DealAccepted,
 
 		Proposal:       deal.ProposalCid,

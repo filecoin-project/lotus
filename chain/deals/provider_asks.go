@@ -141,7 +141,3 @@ func (p *Provider) saveAsk(a *types.SignedStorageAsk) error {
 	p.ask = a
 	return nil
 }
-
-func (c *Client) checkAskSignature(ask *types.SignedStorageAsk) error {
-	return c.node.ValidateAskSignature(ask)
-}

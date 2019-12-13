@@ -76,8 +76,8 @@ func (a *API) ClientStartDeal(ctx context.Context, data cid.Cid, miner address.A
 		data,
 		storagemarket.Epoch(math.MaxUint64),
 		storagemarket.Epoch(blocksDuration),
-		storagemarket.TokenAmount(epochPrice.Int64()),
-		0)
+		storagemarket.TokenAmount(epochPrice),
+		storagemarket.TokenAmount(storagemarket.EmptyInt))
 
 	if err != nil {
 		return nil, xerrors.Errorf("failed to start deal: %w", err)

@@ -18,14 +18,13 @@ const AskProtocolID = "/fil/storage/ask/1.0.1"
 
 // type shims - used during migration into separate module
 type Balance = actors.StorageParticipantBalance
-type BigInt = types.BigInt
 type DealID uint64
 type Signature = types.Signature
 type StorageDeal = actors.OnChainDeal
 type StorageAsk = types.SignedStorageAsk
 type StateKey = *types.TipSet
 type Epoch uint64
-type TokenAmount uint64
+type TokenAmount BigInt
 
 // Duplicated from deals package for now
 type MinerDeal struct {
@@ -58,7 +57,7 @@ type StorageProvider interface {
 
 	Stop()
 
-	AddAsk(price BigInt, ttlsecs int64) error
+	AddAsk(price TokenAmount, ttlsecs int64) error
 
 	// ListAsks lists current asks
 	ListAsks(addr address.Address) []*StorageAsk
@@ -70,7 +69,7 @@ type StorageProvider interface {
 	ListIncompleteDeals() ([]MinerDeal, error)
 
 	// AddStorageCollateral adds storage collateral
-	AddStorageCollateral(ctx context.Context, amount BigInt) error
+	AddStorageCollateral(ctx context.Context, amount TokenAmount) error
 
 	// GetStorageCollateral returns the current collateral balance
 	GetStorageCollateral(ctx context.Context) (Balance, error)
@@ -81,10 +80,10 @@ type StorageProviderNode interface {
 	MostRecentStateId(ctx context.Context) (StateKey, error)
 
 	// Adds funds with the StorageMinerActor for a storage participant.  Used by both providers and clients.
-	AddFunds(ctx context.Context, addr address.Address, amount BigInt) error
+	AddFunds(ctx context.Context, addr address.Address, amount TokenAmount) error
 
 	// Ensures that a storage market participant has a certain amount of available funds
-	EnsureFunds(ctx context.Context, addr address.Address, amt types.BigInt) error
+	EnsureFunds(ctx context.Context, addr address.Address, amount TokenAmount) error
 
 	// GetBalance returns locked/unlocked for a storage participant.  Used by both providers and clients.
 	GetBalance(ctx context.Context, addr address.Address) (Balance, error)
@@ -113,9 +112,9 @@ type StorageClientNode interface {
 	MostRecentStateId(ctx context.Context) (StateKey, error)
 
 	// Adds funds with the StorageMinerActor for a storage participant.  Used by both providers and clients.
-	AddFunds(ctx context.Context, addr address.Address, amount BigInt) error
+	AddFunds(ctx context.Context, addr address.Address, amount TokenAmount) error
 
-	EnsureFunds(ctx context.Context, addr address.Address, amt types.BigInt) error
+	EnsureFunds(ctx context.Context, addr address.Address, amount TokenAmount) error
 
 	// GetBalance returns locked/unlocked for a storage participant.  Used by both providers and clients.
 	GetBalance(ctx context.Context, addr address.Address) (Balance, error)
@@ -196,5 +195,5 @@ type StorageClient interface {
 	GetPaymentEscrow(ctx context.Context) (Balance, error)
 
 	// AddStorageCollateral adds storage collateral
-	AddPaymentEscrow(ctx context.Context, amount BigInt) error
+	AddPaymentEscrow(ctx context.Context, amount TokenAmount) error
 }

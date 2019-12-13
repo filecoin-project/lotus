@@ -6,6 +6,7 @@ import (
 	"golang.org/x/xerrors"
 
 	"github.com/filecoin-project/lotus/api"
+	"github.com/filecoin-project/lotus/chain/types"
 )
 
 type clientHandlerFunc func(ctx context.Context, deal ClientDeal) (func(*ClientDeal), error)
@@ -86,4 +87,8 @@ func (c *Client) sealing(ctx context.Context, deal ClientDeal) (func(*ClientDeal
 	err := c.node.OnDealSectorCommitted(ctx, deal.Proposal.Provider, deal.DealID, cb)
 
 	return nil, err
+}
+
+func (c *Client) checkAskSignature(ask *types.SignedStorageAsk) error {
+	return c.node.ValidateAskSignature(ask)
 }

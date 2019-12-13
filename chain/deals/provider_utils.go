@@ -20,7 +20,7 @@ import (
 	"golang.org/x/xerrors"
 )
 
-func (p *Provider) failDeal(id cid.Cid, cerr error) {
+func (p *Provider) failDeal(ctx context.Context, id cid.Cid, cerr error) {
 	if err := p.deals.End(id); err != nil {
 		log.Warnf("deals.End: %s", err)
 	}
@@ -32,7 +32,7 @@ func (p *Provider) failDeal(id cid.Cid, cerr error) {
 
 	log.Warnf("deal %s failed: %s", id, cerr)
 
-	err := p.sendSignedResponse(&Response{
+	err := p.sendSignedResponse(ctx, &Response{
 		State:    api.DealFailed,
 		Message:  cerr.Error(),
 		Proposal: id,
@@ -67,7 +67,7 @@ func (p *Provider) readProposal(s inet.Stream) (proposal Proposal, err error) {
 	return
 }
 
-func (p *Provider) sendSignedResponse(resp *Response) error {
+func (p *Provider) sendSignedResponse(ctx context.Context, resp *Response) error {
 	s, ok := p.conns[resp.Proposal]
 	if !ok {
 		return xerrors.New("couldn't send response: not connected")
@@ -77,8 +77,6 @@ func (p *Provider) sendSignedResponse(resp *Response) error {
 	if err != nil {
 		return xerrors.Errorf("serializing response: %w", err)
 	}
-
-	ctx := context.TODO()
 
 	worker, err := p.spn.GetMinerWorker(ctx, p.actor)
 	if err != nil {
