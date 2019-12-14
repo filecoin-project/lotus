@@ -115,7 +115,11 @@ var clientDealCmd = &cli.Command{
 			return err
 		}
 
-		proposal, err := api.ClientStartDeal(ctx, data, miner, types.BigInt(price), uint64(dur))
+		a, err := api.WalletDefaultAddress(ctx)
+		if err != nil {
+			return err
+		}
+		proposal, err := api.ClientStartDeal(ctx, data, a, miner, types.BigInt(price), uint64(dur))
 		if err != nil {
 			return err
 		}
