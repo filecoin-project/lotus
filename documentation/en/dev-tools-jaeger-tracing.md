@@ -1,4 +1,4 @@
-# Jaegar Tracing
+# Jaeger Tracing
 
 Lotus has tracing built into many of its internals. To view the traces, first download [Jaeger](https://www.jaegertracing.io/download/) (Choose the 'all-in-one' binary). Then run it somewhere, start up the lotus daemon, and open up localhost:16686 in your browser.
 
