@@ -1,8 +1,12 @@
 package cli
 
 import (
+	"context"
+	"encoding/json"
 	"fmt"
+	"strings"
 
+	"github.com/filecoin-project/lotus/api"
 	"github.com/filecoin-project/lotus/chain/address"
 	"github.com/filecoin-project/lotus/chain/types"
 	"golang.org/x/xerrors"
@@ -14,6 +18,12 @@ import (
 var stateCmd = &cli.Command{
 	Name:  "state",
 	Usage: "Interact with and query filecoin chain state",
+	Flags: []cli.Flag{
+		&cli.StringFlag{
+			Name:  "tipset",
+			Usage: "specify tipset to call method on (pass comma separated array of cids)",
+		},
+	},
 	Subcommands: []*cli.Command{
 		statePowerCmd,
 		stateSectorsCmd,
@@ -25,7 +35,47 @@ var stateCmd = &cli.Command{
 		stateLookupIDCmd,
 		stateReplaySetCmd,
 		stateSectorSizeCmd,
+		stateReadStateCmd,
 	},
+}
+
+func parseTipSetString(cctx *cli.Context) ([]cid.Cid, error) {
+	ts := cctx.String("tipset")
+	if ts == "" {
+		return nil, nil
+	}
+
+	strs := strings.Split(ts, ",")
+
+	var cids []cid.Cid
+	for _, s := range strs {
+		c, err := cid.Parse(strings.TrimSpace(s))
+		if err != nil {
+			return nil, err
+		}
+		cids = append(cids, c)
+	}
+
+	return cids, nil
+}
+
+func loadTipSet(ctx context.Context, cctx *cli.Context, api api.FullNode) (*types.TipSet, error) {
+	cids, err := parseTipSetString(cctx)
+	if err != nil {
+		return nil, err
+	}
+
+	if len(cids) == 0 {
+		return nil, nil
+	}
+
+	k := types.NewTipSetKey(cids...)
+	ts, err := api.ChainGetTipSet(ctx, k)
+	if err != nil {
+		return nil, err
+	}
+
+	return ts, nil
 }
 
 var statePowerCmd = &cli.Command{
@@ -47,7 +97,13 @@ var statePowerCmd = &cli.Command{
 				return err
 			}
 		}
-		power, err := api.StateMinerPower(ctx, maddr, nil)
+
+		ts, err := loadTipSet(ctx, cctx, api)
+		if err != nil {
+			return err
+		}
+
+		power, err := api.StateMinerPower(ctx, maddr, ts)
 		if err != nil {
 			return err
 		}
@@ -83,7 +139,12 @@ var stateSectorsCmd = &cli.Command{
 			return err
 		}
 
-		sectors, err := api.StateMinerSectors(ctx, maddr, nil)
+		ts, err := loadTipSet(ctx, cctx, api)
+		if err != nil {
+			return err
+		}
+
+		sectors, err := api.StateMinerSectors(ctx, maddr, ts)
 		if err != nil {
 			return err
 		}
@@ -117,7 +178,12 @@ var stateProvingSetCmd = &cli.Command{
 			return err
 		}
 
-		sectors, err := api.StateMinerProvingSet(ctx, maddr, nil)
+		ts, err := loadTipSet(ctx, cctx, api)
+		if err != nil {
+			return err
+		}
+
+		sectors, err := api.StateMinerProvingSet(ctx, maddr, ts)
 		if err != nil {
 			return err
 		}
@@ -208,7 +274,12 @@ var statePledgeCollateralCmd = &cli.Command{
 
 		ctx := ReqContext(cctx)
 
-		coll, err := api.StatePledgeCollateral(ctx, nil)
+		ts, err := loadTipSet(ctx, cctx, api)
+		if err != nil {
+			return err
+		}
+
+		coll, err := api.StatePledgeCollateral(ctx, ts)
 		if err != nil {
 			return err
 		}
@@ -230,7 +301,12 @@ var stateListMinersCmd = &cli.Command{
 
 		ctx := ReqContext(cctx)
 
-		miners, err := api.StateListMiners(ctx, nil)
+		ts, err := loadTipSet(ctx, cctx, api)
+		if err != nil {
+			return err
+		}
+
+		miners, err := api.StateListMiners(ctx, ts)
 		if err != nil {
 			return err
 		}
@@ -255,7 +331,12 @@ var stateListActorsCmd = &cli.Command{
 
 		ctx := ReqContext(cctx)
 
-		actors, err := api.StateListActors(ctx, nil)
+		ts, err := loadTipSet(ctx, cctx, api)
+		if err != nil {
+			return err
+		}
+
+		actors, err := api.StateListActors(ctx, ts)
 		if err != nil {
 			return err
 		}
@@ -289,7 +370,12 @@ var stateGetActorCmd = &cli.Command{
 			return err
 		}
 
-		a, err := api.StateGetActor(ctx, addr, nil)
+		ts, err := loadTipSet(ctx, cctx, api)
+		if err != nil {
+			return err
+		}
+
+		a, err := api.StateGetActor(ctx, addr, ts)
 		if err != nil {
 			return err
 		}
@@ -325,7 +411,12 @@ var stateLookupIDCmd = &cli.Command{
 			return err
 		}
 
-		a, err := api.StateLookupID(ctx, addr, nil)
+		ts, err := loadTipSet(ctx, cctx, api)
+		if err != nil {
+			return err
+		}
+
+		a, err := api.StateLookupID(ctx, addr, ts)
 		if err != nil {
 			return err
 		}
@@ -357,12 +448,62 @@ var stateSectorSizeCmd = &cli.Command{
 			return err
 		}
 
-		ssize, err := api.StateMinerSectorSize(ctx, addr, nil)
+		ts, err := loadTipSet(ctx, cctx, api)
+		if err != nil {
+			return err
+		}
+
+		ssize, err := api.StateMinerSectorSize(ctx, addr, ts)
 		if err != nil {
 			return err
 		}
 
 		fmt.Printf("%d\n", ssize)
+		return nil
+	},
+}
+
+var stateReadStateCmd = &cli.Command{
+	Name:  "read-state",
+	Usage: "View a json representation of an actors state",
+	Action: func(cctx *cli.Context) error {
+		api, closer, err := GetFullNodeAPI(cctx)
+		if err != nil {
+			return err
+		}
+		defer closer()
+
+		ctx := ReqContext(cctx)
+
+		if !cctx.Args().Present() {
+			return fmt.Errorf("must pass address of actor to get")
+		}
+
+		addr, err := address.NewFromString(cctx.Args().First())
+		if err != nil {
+			return err
+		}
+
+		ts, err := loadTipSet(ctx, cctx, api)
+		if err != nil {
+			return err
+		}
+
+		act, err := api.StateGetActor(ctx, addr, ts)
+		if err != nil {
+			return err
+		}
+
+		as, err := api.StateReadState(ctx, act, ts)
+		if err != nil {
+			return err
+		}
+
+		data, err := json.MarshalIndent(as.State, "", "  ")
+		if err != nil {
+			return err
+		}
+		fmt.Println(string(data))
 
 		return nil
 	},
