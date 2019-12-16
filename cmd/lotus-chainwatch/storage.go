@@ -327,7 +327,7 @@ func (st *storage) storeHeaders(bhs map[cid.Cid]*types.BlockHeader, sync bool) e
 			bh.EPostProof.Candidates[0].Partial,
 			bh.EPostProof.Candidates[0].SectorID,
 			bh.EPostProof.Candidates[0].ChallengeIndex,
-	); err != nil {
+		); err != nil {
 			return err
 		}
 	}
