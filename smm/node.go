@@ -18,6 +18,13 @@ type StateChangeHandler interface {
     OnChainStateChanged(*StateChange)
 }
 
+// copied from lotus/chain/types/blockheader.go
+type EPostTicket struct {
+    Partial        []byte
+    SectorID       uint64
+    ChallengeIndex uint64
+}
+
 // Interface for querying the chain state and for submitting messages related to storage mining.
 type Node interface {
     // Starts listening for state changes
@@ -33,7 +40,7 @@ type Node interface {
     //SubmitSelfDeals(ctx context.Context, deals []uint64) (cid.Cid, error)
 
     // Retrieves a ticket used in sealing and proving operations.
-    GetRandomness(ctx context.Context, state StateKey, offset uint) ([]byte, error)
+    GetRandomness(ctx context.Context, state StateKey, offset int64) ([]byte, error)
 
     // Submits replicated sector information and requests a seal seed
     // be generated on-chain.
@@ -57,7 +64,7 @@ type Node interface {
     GetProvingPeriod(ctx context.Context, state StateKey) (*ProvingPeriod, error)
 
     // Submits a PoSt proof to the chain.
-    SubmitPoSt(ctx context.Context, proof Proof) (cid.Cid, error)
+    SubmitPoSt(ctx context.Context, proof Proof, candidates []EPostTicket) (cid.Cid, error)
 
     // Submits declaration of IDs of faulty sectors to the chain.
     SubmitDeclaredFaults(ctx context.Context, faults BitField) (cid.Cid, error)

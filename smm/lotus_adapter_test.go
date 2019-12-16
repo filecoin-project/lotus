@@ -36,21 +36,21 @@ func build_head_change(size, height int, t string) []*store.HeadChange {
             {
                 Height: uint64(height),
                 Miner:  a,
-                Tickets: []*types.Ticket{{[]byte{byte(height % 2)}}},
+                Ticket: &types.Ticket{[]byte{byte(height % 2)}},
                 ParentStateRoot:       cid,
                 Messages:              cid,
                 ParentMessageReceipts: cid,
-                BlockSig:     types.Signature{Type: types.KTBLS},
+                BlockSig:     &types.Signature{Type: types.KTBLS},
                 BLSAggregate: types.Signature{Type: types.KTBLS},
             },
             {
                 Height: uint64(height),
                 Miner:  b,
-                Tickets: []*types.Ticket{{[]byte{byte((height + 1) % 2)}}},
+                Ticket: &types.Ticket{[]byte{byte((height + 1) % 2)}},
                 ParentStateRoot:       cid,
                 Messages:              cid,
                 ParentMessageReceipts: cid,
-                BlockSig:     types.Signature{Type: types.KTBLS},
+                BlockSig:     &types.Signature{Type: types.KTBLS},
                 BLSAggregate: types.Signature{Type: types.KTBLS},
             },
         })
@@ -325,7 +325,7 @@ func Test_GetRandomness(t *testing.T) {
         mockapi.On("ChainNotify", ctx).Return(out, nil).Once()
         mockapi.On("ChainGetBlock", ctx, ts.Cids()[0]).Return(block0, nil).Once()
         mockapi.On("ChainGetBlock", ctx, ts.Cids()[1]).Return(block1, nil).Once()
-        mockapi.On("ChainGetRandomness", ctx, tsk, []*types.Ticket(nil), 1).Return(make([]byte, 32), nil).Once()
+        mockapi.On("ChainGetRandomness", ctx, tsk, int64(1)).Return(make([]byte, 32), nil).Once()
 
         node, err := NewStorageMinerAdapter(&mockapi, Address(actor.String()), Address(worker.String()), listener)
         initialState, err := node.Start(ctx)
@@ -352,7 +352,7 @@ func Test_GetRandomness(t *testing.T) {
         mockapi.On("ChainNotify", ctx).Return(out, nil).Once()
         mockapi.On("ChainGetBlock", ctx, ts.Cids()[0]).Return(block0, nil).Once()
         mockapi.On("ChainGetBlock", ctx, ts.Cids()[1]).Return(block1, nil).Once()
-        mockapi.On("ChainGetRandomness", ctx, tsk, []*types.Ticket(nil), 1).Return(nil, fmt.Errorf("ChainGetRandomness failed")).Once()
+        mockapi.On("ChainGetRandomness", ctx, tsk, int64(1)).Return(nil, fmt.Errorf("ChainGetRandomness failed")).Once()
 
         node, err := NewStorageMinerAdapter(&mockapi, Address(actor.String()), Address(worker.String()), listener)
         initialState, err := node.Start(ctx)
@@ -407,7 +407,7 @@ func Test_GetProvingPeriod(t *testing.T) {
         mockapi.On("ChainNotify", ctx).Return(out, nil).Once()
         mockapi.On("ChainGetBlock", ctx, ts.Cids()[0]).Return(block0, nil).Once()
         mockapi.On("ChainGetBlock", ctx, ts.Cids()[1]).Return(block1, nil).Once()
-        mockapi.On("StateMinerProvingPeriodEnd", ctx, worker, ts).Return(20 + build.ProvingPeriodDuration, nil).Once()
+        mockapi.On("StateMinerElectionPeriodStart", ctx, worker, ts).Return(uint64(20 + build.FallbackPoStDelay), nil).Once()
 
         node, _ := NewStorageMinerAdapter(&mockapi, Address(actor.String()), Address(worker.String()), listener)
         initialState, err := node.Start(ctx)
@@ -415,33 +415,6 @@ func Test_GetProvingPeriod(t *testing.T) {
         pp, err := node.GetProvingPeriod(ctx, initialState.StateKey)
         require.NoError(t, err)
         require.True(t, pp.Start > 0)
-    })
-
-    t.Run("succeeds", func(t *testing.T) {
-        ctx, cancel := context.WithCancel(context.Background())
-        mockapi := FullNode{}
-        listener := testListener{cancel}
-        events := make(chan []*store.HeadChange, 1)
-        initialChange := build_head_change(1, 2, store.HCCurrent)
-        events <- initialChange
-        var out <-chan []*store.HeadChange
-        out = events
-
-        ts := initialChange[0].Val
-        block0 := ts.Blocks()[0]
-        block1 := ts.Blocks()[1]
-
-        mockapi.On("ChainNotify", ctx).Return(out, nil).Once()
-        mockapi.On("ChainGetBlock", ctx, ts.Cids()[0]).Return(block0, nil).Once()
-        mockapi.On("ChainGetBlock", ctx, ts.Cids()[1]).Return(block1, nil).Once()
-        mockapi.On("StateMinerProvingPeriodEnd", ctx, worker, ts).Return(uint64(20), nil).Once()
-
-        node, _ := NewStorageMinerAdapter(&mockapi, Address(actor.String()), Address(worker.String()), listener)
-        initialState, err := node.Start(ctx)
-        require.NoError(t, err)
-        pp, err := node.GetProvingPeriod(ctx, initialState.StateKey)
-        require.NoError(t, err)
-        require.True(t, pp.Start == 0)
     })
 
     t.Run("StateMinerProvingPeriodEnd fails", func(t *testing.T) {
@@ -461,7 +434,7 @@ func Test_GetProvingPeriod(t *testing.T) {
         mockapi.On("ChainNotify", ctx).Return(out, nil).Once()
         mockapi.On("ChainGetBlock", ctx, ts.Cids()[0]).Return(block0, nil).Once()
         mockapi.On("ChainGetBlock", ctx, ts.Cids()[1]).Return(block1, nil).Once()
-        mockapi.On("StateMinerProvingPeriodEnd", ctx, worker, ts).Return(uint64(0), fmt.Errorf("StateMinerProvingPeriodEnd failed")).Once()
+        mockapi.On("StateMinerElectionPeriodStart", ctx, worker, ts).Return(uint64(0), fmt.Errorf("StateMinerProvingPeriodEnd failed")).Once()
 
         node, _ := NewStorageMinerAdapter(&mockapi, Address(actor.String()), Address(worker.String()), listener)
         initialState, err := node.Start(ctx)
@@ -624,16 +597,17 @@ func Test_SubmitPoSt(t *testing.T) {
 
     proof := make([]byte, 32)
 
-    params := actors.SubmitPoStParams{
+    params := actors.SubmitFallbackPoStParams{
         Proof: proof,
-        DoneSet: types.BitFieldFromSet(nil),
+        Candidates: []types.EPostTicket{{	[]byte{'a', 'b'},
+            uint64(1024), uint64(2048)}},
     }
     enc, err := actors.SerializeParams(&params)
     require.NoError(t, err)
     msg := types.Message{
         To:       actor,
         From:     worker,
-        Method:   actors.MAMethods.SubmitPoSt,
+        Method:   actors.MAMethods.SubmitFallbackPoSt,
         Params:   enc,
         Value:    types.NewInt(0),
         GasLimit: types.NewInt(1000000),
@@ -649,7 +623,7 @@ func Test_SubmitPoSt(t *testing.T) {
 
         node, err := NewStorageMinerAdapter(&mockapi, Address(actor.String()), Address(worker.String()), listener)
         require.NoError(t, err)
-        _, err = node.SubmitPoSt(ctx, proof)
+        _, err = node.SubmitPoSt(ctx, proof, []EPostTicket{{[]byte{'a', 'b'}, uint64(1024), uint64(2048)}})
         require.NoError(t, err)
     })
 
@@ -662,7 +636,7 @@ func Test_SubmitPoSt(t *testing.T) {
 
         node, err := NewStorageMinerAdapter(&mockapi, Address(actor.String()), Address(worker.String()), listener)
         require.NoError(t, err)
-        _, err = node.SubmitPoSt(ctx, proof)
+        _, err = node.SubmitPoSt(ctx, proof, []EPostTicket{{[]byte{'a', 'b'}, uint64(1024), uint64(2048)}})
         require.Error(t, err)
     })
 }

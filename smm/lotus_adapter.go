@@ -160,13 +160,13 @@ func (adapter lotusAdapter) GetMinerState(ctx context.Context, stateKey StateKey
     return state, nil
 }
 
-func (adapter lotusAdapter) GetRandomness(ctx context.Context, stateKey StateKey, offset uint) ([]byte, error) {
+func (adapter lotusAdapter) GetRandomness(ctx context.Context, stateKey StateKey, offset int64) ([]byte, error) {
     ts, err := statekey2tipset(ctx, stateKey, adapter.fullAPI)
     if err != nil {
         return nil, err
     }
     tsk := types.NewTipSetKey(ts.Cids()...)
-    return adapter.fullAPI.ChainGetRandomness(ctx, tsk, nil, int(offset))
+    return adapter.fullAPI.ChainGetRandomness(ctx, tsk, offset)
 }
 
 func (adapter lotusAdapter) GetProvingPeriod(ctx context.Context, stateKey StateKey) (*ProvingPeriod, error) {
@@ -175,17 +175,12 @@ func (adapter lotusAdapter) GetProvingPeriod(ctx context.Context, stateKey State
     if err != nil {
         return nil, err
     }
-    end, err := adapter.fullAPI.StateMinerProvingPeriodEnd(ctx, adapter.worker, ts)
+    start, err := adapter.fullAPI.StateMinerElectionPeriodStart(ctx, adapter.worker, ts)
     if err != nil {
         return nil, err
     }
-    pp.End = Epoch(end)
-    if end > build.ProvingPeriodDuration {
-        pp.Start = Epoch(end - build.ProvingPeriodDuration)
-    } else {
-        pp.Start = 0
-    }
-
+    pp.Start = Epoch(start)
+    pp.End = Epoch(start + build.FallbackPoStDelay)
     return pp, nil
 }
 
@@ -208,12 +203,18 @@ func (adapter lotusAdapter) SubmitSectorCommitment(ctx context.Context, id Secto
     return adapter.callMinerActorMethod(ctx, actors.MAMethods.ProveCommitSector, &params)
 }
 
-func (adapter lotusAdapter) SubmitPoSt(ctx context.Context, proof Proof) (cid.Cid, error) {
-    params := actors.SubmitPoStParams{
+func (adapter lotusAdapter) SubmitPoSt(ctx context.Context, proof Proof, candidates []EPostTicket) (cid.Cid, error) {
+    params := actors.SubmitFallbackPoStParams{
         Proof:   proof,
-        DoneSet: types.BitFieldFromSet(nil),
+        Candidates: make([]types.EPostTicket, len(candidates)),
     }
-    return adapter.callMinerActorMethod(ctx, actors.MAMethods.SubmitPoSt, &params)
+    for idx, candidate := range candidates {
+        params.Candidates[idx].Partial = make([]byte, len(candidate.Partial))
+        copy(params.Candidates[idx].Partial, candidate.Partial)
+        params.Candidates[idx].SectorID = candidate.SectorID
+        params.Candidates[idx].ChallengeIndex =  candidate.ChallengeIndex
+    }
+    return adapter.callMinerActorMethod(ctx, actors.MAMethods.SubmitFallbackPoSt, &params)
 }
 
 func (adapter lotusAdapter) SubmitDeclaredFaults(ctx context.Context, faults BitField) (cid.Cid, error) {
