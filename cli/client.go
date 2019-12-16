@@ -303,6 +303,9 @@ var clientQueryAskCmd = &cli.Command{
 			if ret.ExitCode != 0 {
 				return fmt.Errorf("call to GetPeerID was unsuccesful (exit code %d)", ret.ExitCode)
 			}
+			if peer.ID(ret.Return) == peer.ID("SETME") {
+				return fmt.Errorf("the miner hasn't initialized yet")
+			}
 
 			p, err := peer.IDFromBytes(ret.Return)
 			if err != nil {
