@@ -86,7 +86,7 @@ func (f *fs) reserve(typ dataType, size uint64) error {
 		return err
 	}
 
-	avail := int64(fsstat.Bavail) * fsstat.Bsize
+	avail := int64(fsstat.Bavail) * int64(fsstat.Bsize)
 
 	avail -= f.reservedBytes()
 
