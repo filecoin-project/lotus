@@ -480,7 +480,7 @@ func (syncer *Syncer) ValidateBlock(ctx context.Context, b *types.FullBlock) err
 	}
 
 	if h.Timestamp > uint64(time.Now().Unix()+build.AllowableClockDrift) {
-		return xerrors.Errorf("block was from the future")
+		return xerrors.Errorf("block was from the future: %w", ErrTemporal)
 	}
 	if h.Timestamp > uint64(time.Now().Unix()) {
 		log.Warn("Got block from the future, but within threshold", h.Timestamp, time.Now().Unix())

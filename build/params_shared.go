@@ -31,7 +31,7 @@ const PaymentChannelClosingDelay = 6 * 60 * 60 / BlockDelay // six hours
 // Consensus / Network
 
 // Seconds
-const AllowableClockDrift = BlockDelay * 2
+const AllowableClockDrift = 1
 
 // Epochs
 const ForkLengthThreshold = Finality
