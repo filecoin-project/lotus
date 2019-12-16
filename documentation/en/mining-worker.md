@@ -16,7 +16,16 @@ To do this, simply run `lotus-seal-worker run`, and the seal worker will automat
 
 To check that the seal worker is properly connected to your storage miner, run `lotus-storage-miner info` and check that the remote worker count has increased.
 
-TODO: sample output
+```
+Miner: t0103
+Sector Size: 16.0 MiB
+Power: 0 B / 16.0 MiB (0%)
+Worker use:
+        Local: 0 / 2 (+1 reserved)
+        **Remote: 0 / 1**
+PoSt Submissions: Not Proving
+Sectors:  map[Committing:0 Proving:0 Total:0]
+```
 
 ## Running Over the Network
 To use an entirely separate computer for sealing tasks, you will want to run the `lotus-seal-worker` on a separate machine, connected to your storage miner via the local area network.
