@@ -98,8 +98,11 @@ func (hs *Service) HandleStream(s inet.Stream) {
 		return
 	}
 
-	log.Infof("Got new tipset through Hello: %s from %s", ts.Cids(), s.Conn().RemotePeer())
-	hs.syncer.InformNewHead(s.Conn().RemotePeer(), ts)
+	if ts.TipSet().Height() > 0 {
+		// don't bother informing about genesis
+		log.Infof("Got new tipset through Hello: %s from %s", ts.Cids(), s.Conn().RemotePeer())
+		hs.syncer.InformNewHead(s.Conn().RemotePeer(), ts)
+	}
 	if hs.pmgr != nil {
 		hs.pmgr.AddFilecoinPeer(s.Conn().RemotePeer())
 	}
@@ -128,7 +131,7 @@ func (hs *Service) SayHello(ctx context.Context, pid peer.ID) error {
 		HeaviestTipSetWeight: weight,
 		GenesisHash:          gen.Cid(),
 	}
-	log.Info("Sending hello message: ", hts.Cids(), hts.Height(), gen.Cid())
+	log.Debug("Sending hello message: ", hts.Cids(), hts.Height(), gen.Cid())
 
 	t0 := time.Now()
 	if err := cborutil.WriteCborRPC(s, hmsg); err != nil {

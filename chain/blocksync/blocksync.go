@@ -90,7 +90,7 @@ func (bss *BlockSyncService) HandleStream(s inet.Stream) {
 
 	var req BlockSyncRequest
 	if err := cborutil.ReadCborRPC(bufio.NewReader(s), &req); err != nil {
-		log.Errorf("failed to read block sync request: %s", err)
+		log.Warnf("failed to read block sync request: %s", err)
 		return
 	}
 	log.Infof("block sync request for: %s %d", req.Start, req.RequestLength)
@@ -102,7 +102,7 @@ func (bss *BlockSyncService) HandleStream(s inet.Stream) {
 	}
 
 	if err := cborutil.WriteCborRPC(s, resp); err != nil {
-		log.Error("failed to write back response for handle stream: ", err)
+		log.Warn("failed to write back response for handle stream: ", err)
 		return
 	}
 }

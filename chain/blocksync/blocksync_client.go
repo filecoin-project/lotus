@@ -94,7 +94,9 @@ func (bs *BlockSync) GetBlocks(ctx context.Context, tipset []cid.Cid, count int)
 		res, err := bs.sendRequestToPeer(ctx, p, req)
 		if err != nil {
 			oerr = err
-			log.Warnf("BlockSync request failed for peer %s: %s", p.String(), err)
+			if !xerrors.Is(err, inet.ErrNoConn) {
+				log.Warnf("BlockSync request failed for peer %s: %s", p.String(), err)
+			}
 			continue
 		}
 
