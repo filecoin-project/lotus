@@ -3,7 +3,6 @@ package modules
 import (
 	"context"
 	"math"
-	"path/filepath"
 	"reflect"
 
 	"github.com/ipfs/go-bitswap"
@@ -73,11 +72,6 @@ func SectorBuilderConfig(storagePath string, threads uint, noprecommit, nocommit
 			return nil, xerrors.Errorf("too many sectorbuilder threads specified: %d, max allowed: %d", threads, math.MaxUint8)
 		}
 
-		cache := filepath.Join(sp, "cache")
-		unsealed := filepath.Join(sp, "unsealed")
-		sealed := filepath.Join(sp, "sealed")
-		staging := filepath.Join(sp, "staging")
-
 		sb := &sectorbuilder.Config{
 			Miner:      minerAddr,
 			SectorSize: ssize,
@@ -86,10 +80,7 @@ func SectorBuilderConfig(storagePath string, threads uint, noprecommit, nocommit
 			NoPreCommit:   noprecommit,
 			NoCommit:      nocommit,
 
-			CacheDir:    cache,
-			UnsealedDir: unsealed,
-			SealedDir:   sealed,
-			StagedDir:   staging,
+			Dir: sp,
 		}
 
 		return sb, nil

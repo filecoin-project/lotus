@@ -229,10 +229,7 @@ func builder(t *testing.T, nFull int, storage []int) ([]test.TestNode, []test.Te
 			SectorSize:    1024,
 			WorkerThreads: 2,
 			Miner:         genMiner,
-			CacheDir:      filepath.Join(psd, "cache"),
-			StagedDir:     filepath.Join(psd, "staging"),
-			SealedDir:     filepath.Join(psd, "sealed"),
-			UnsealedDir:   filepath.Join(psd, "unsealed"),
+			Dir:           psd,
 		}, mds)
 		if err != nil {
 			t.Fatal(err)

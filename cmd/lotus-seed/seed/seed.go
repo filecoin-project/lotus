@@ -30,17 +30,12 @@ func PreSeal(maddr address.Address, ssize uint64, offset uint64, sectors int, sb
 		Miner:          maddr,
 		SectorSize:     ssize,
 		FallbackLastID: offset,
-		CacheDir:       filepath.Join(sbroot, "cache"),
-		SealedDir:      filepath.Join(sbroot, "sealed"),
-		StagedDir:      filepath.Join(sbroot, "staging"),
-		UnsealedDir:    filepath.Join(sbroot, "unsealed"),
+		Dir:            sbroot,
 		WorkerThreads:  2,
 	}
 
-	for _, d := range []string{cfg.CacheDir, cfg.SealedDir, cfg.StagedDir, cfg.UnsealedDir} {
-		if err := os.MkdirAll(d, 0775); err != nil {
-			return nil, err
-		}
+	if err := os.MkdirAll(sbroot, 0775); err != nil {
+		return nil, err
 	}
 
 	mds, err := badger.NewDatastore(filepath.Join(sbroot, "badger"), nil)

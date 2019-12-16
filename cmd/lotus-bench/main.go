@@ -6,7 +6,6 @@ import (
 	"crypto/sha256"
 	"encoding/json"
 	"fmt"
-	"github.com/docker/go-units"
 	"io/ioutil"
 	"math/big"
 	"math/rand"
@@ -14,8 +13,8 @@ import (
 	"path/filepath"
 	"time"
 
+	"github.com/docker/go-units"
 	ffi "github.com/filecoin-project/filecoin-ffi"
-	lcli "github.com/filecoin-project/lotus/cli"
 	"github.com/ipfs/go-datastore"
 	logging "github.com/ipfs/go-log"
 	"github.com/mitchellh/go-homedir"
@@ -140,17 +139,12 @@ func main() {
 				Miner:         maddr,
 				SectorSize:    sectorSize,
 				WorkerThreads: 2,
-				CacheDir:      filepath.Join(sbdir, "cache"),
-				SealedDir:     filepath.Join(sbdir, "sealed"),
-				StagedDir:     filepath.Join(sbdir, "staged"),
-				UnsealedDir:   filepath.Join(sbdir, "unsealed"),
+				Dir:           sbdir,
 			}
 
 			if robench == "" {
-				for _, d := range []string{cfg.CacheDir, cfg.SealedDir, cfg.StagedDir, cfg.UnsealedDir} {
-					if err := os.MkdirAll(d, 0775); err != nil {
-						return err
-					}
+				if err := os.MkdirAll(sbdir, 0775); err != nil {
+					return err
 				}
 			}
 
@@ -371,5 +365,5 @@ func bps(data uint64, d time.Duration) string {
 	bdata := new(big.Int).SetUint64(data)
 	bdata = bdata.Mul(bdata, big.NewInt(time.Second.Nanoseconds()))
 	bps := bdata.Div(bdata, big.NewInt(d.Nanoseconds()))
-	return lcli.SizeStr(types.BigInt{bps}) + "/s"
+	return (types.BigInt{bps}).SizeStr() + "/s"
 }
