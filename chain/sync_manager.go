@@ -197,10 +197,10 @@ func (stb *syncTargetBucket) sameChainAs(ts *types.TipSet) bool {
 		if ts.Equals(t) {
 			return true
 		}
-		if types.CidArrsEqual(ts.Cids(), t.Parents()) {
+		if ts.Key() == t.Parents() {
 			return true
 		}
-		if types.CidArrsEqual(ts.Parents(), t.Cids()) {
+		if ts.Parents() == t.Key() {
 			return true
 		}
 	}
@@ -293,7 +293,7 @@ func (sm *SyncManager) scheduleIncoming(ts *types.TipSet) {
 			break
 		}
 
-		if types.CidArrsEqual(ts.Parents(), acts.Cids()) {
+		if ts.Parents() == acts.Key() {
 			// sync this next, after that sync process finishes
 			relatedToActiveSync = true
 		}

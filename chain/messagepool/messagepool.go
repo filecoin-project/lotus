@@ -109,7 +109,7 @@ type Provider interface {
 	StateGetActor(address.Address, *types.TipSet) (*types.Actor, error)
 	MessagesForBlock(*types.BlockHeader) ([]*types.Message, []*types.SignedMessage, error)
 	MessagesForTipset(*types.TipSet) ([]store.ChainMsg, error)
-	LoadTipSet(cids []cid.Cid) (*types.TipSet, error)
+	LoadTipSet(tsk types.TipSetKey) (*types.TipSet, error)
 }
 
 type mpoolProvider struct {
@@ -146,8 +146,8 @@ func (mpp *mpoolProvider) MessagesForTipset(ts *types.TipSet) ([]store.ChainMsg,
 	return mpp.sm.ChainStore().MessagesForTipset(ts)
 }
 
-func (mpp *mpoolProvider) LoadTipSet(cids []cid.Cid) (*types.TipSet, error) {
-	return mpp.sm.ChainStore().LoadTipSet(cids)
+func (mpp *mpoolProvider) LoadTipSet(tsk types.TipSetKey) (*types.TipSet, error) {
+	return mpp.sm.ChainStore().LoadTipSet(tsk)
 }
 
 func New(api Provider, ds dtypes.MetadataDS) (*MessagePool, error) {

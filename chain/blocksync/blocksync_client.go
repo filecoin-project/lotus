@@ -59,18 +59,18 @@ func (bs *BlockSync) processStatus(req *BlockSyncRequest, res *BlockSyncResponse
 	}
 }
 
-func (bs *BlockSync) GetBlocks(ctx context.Context, tipset []cid.Cid, count int) ([]*types.TipSet, error) {
+func (bs *BlockSync) GetBlocks(ctx context.Context, tsk types.TipSetKey, count int) ([]*types.TipSet, error) {
 	ctx, span := trace.StartSpan(ctx, "bsync.GetBlocks")
 	defer span.End()
 	if span.IsRecordingEvents() {
 		span.AddAttributes(
-			trace.StringAttribute("tipset", fmt.Sprint(tipset)),
+			trace.StringAttribute("tipset", fmt.Sprint(tsk.Cids())),
 			trace.Int64Attribute("count", int64(count)),
 		)
 	}
 
 	req := &BlockSyncRequest{
-		Start:         tipset,
+		Start:         tsk.Cids(),
 		RequestLength: uint64(count),
 		Options:       BSOptBlocks,
 	}
@@ -112,11 +112,11 @@ func (bs *BlockSync) GetBlocks(ctx context.Context, tipset []cid.Cid, count int)
 	return nil, xerrors.Errorf("GetBlocks failed with all peers: %w", oerr)
 }
 
-func (bs *BlockSync) GetFullTipSet(ctx context.Context, p peer.ID, h []cid.Cid) (*store.FullTipSet, error) {
+func (bs *BlockSync) GetFullTipSet(ctx context.Context, p peer.ID, tsk types.TipSetKey) (*store.FullTipSet, error) {
 	// TODO: round robin through these peers on error
 
 	req := &BlockSyncRequest{
-		Start:         h,
+		Start:         tsk.Cids(),
 		RequestLength: 1,
 		Options:       BSOptBlocks | BSOptMessages,
 	}
@@ -277,7 +277,7 @@ func (bs *BlockSync) processBlocksResponse(req *BlockSyncRequest, res *BlockSync
 			return nil, err
 		}
 
-		if !types.CidArrsEqual(cur.Parents(), nts.Cids()) {
+		if !types.CidArrsEqual(cur.Parents().Cids(), nts.Cids()) {
 			return nil, fmt.Errorf("parents of tipset[%d] were not tipset[%d]", bi-1, bi)
 		}
 

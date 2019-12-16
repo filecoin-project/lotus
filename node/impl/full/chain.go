@@ -37,7 +37,7 @@ func (a *ChainAPI) ChainGetBlock(ctx context.Context, msg cid.Cid) (*types.Block
 }
 
 func (a *ChainAPI) ChainGetTipSet(ctx context.Context, key types.TipSetKey) (*types.TipSet, error) {
-	return a.Chain.LoadTipSet(key.Cids())
+	return a.Chain.LoadTipSet(key)
 }
 
 func (a *ChainAPI) ChainGetBlockMessages(ctx context.Context, msg cid.Cid) (*api.BlockMessages, error) {
@@ -80,7 +80,7 @@ func (a *ChainAPI) ChainGetParentMessages(ctx context.Context, bcid cid.Cid) ([]
 	}
 
 	// TODO: need to get the number of messages better than this
-	pts, err := a.Chain.LoadTipSet(b.Parents)
+	pts, err := a.Chain.LoadTipSet(types.NewTipSetKey(b.Parents...))
 	if err != nil {
 		return nil, err
 	}
@@ -112,7 +112,7 @@ func (a *ChainAPI) ChainGetParentReceipts(ctx context.Context, bcid cid.Cid) ([]
 	}
 
 	// TODO: need to get the number of messages better than this
-	pts, err := a.Chain.LoadTipSet(b.Parents)
+	pts, err := a.Chain.LoadTipSet(types.NewTipSetKey(b.Parents...))
 	if err != nil {
 		return nil, err
 	}

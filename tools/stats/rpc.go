@@ -134,7 +134,7 @@ func loadTipsets(ctx context.Context, api api.FullNode, curr *types.TipSet, lowe
 		log.Printf("Walking back { height:%d }", curr.Height())
 		tipsets = append(tipsets, curr)
 
-		tsk := types.NewTipSetKey(curr.Parents()...)
+		tsk := curr.Parents()
 		prev, err := api.ChainGetTipSet(ctx, tsk)
 		if err != nil {
 			return tipsets, err
