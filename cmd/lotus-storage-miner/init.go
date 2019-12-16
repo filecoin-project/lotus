@@ -172,10 +172,7 @@ var initCmd = &cli.Command{
 			oldsb, err := sectorbuilder.New(&sectorbuilder.Config{
 				SectorSize:    ssize,
 				WorkerThreads: 2,
-				SealedDir:     filepath.Join(pssb, "sealed"),
-				CacheDir:      filepath.Join(pssb, "cache"),
-				StagedDir:     filepath.Join(pssb, "staging"),
-				UnsealedDir:   filepath.Join(pssb, "unsealed"),
+				Dir:           pssb,
 			}, oldmds)
 			if err != nil {
 				return xerrors.Errorf("failed to open up preseal sectorbuilder: %w", err)
@@ -184,10 +181,7 @@ var initCmd = &cli.Command{
 			nsb, err := sectorbuilder.New(&sectorbuilder.Config{
 				SectorSize:    ssize,
 				WorkerThreads: 2,
-				SealedDir:     filepath.Join(lr.Path(), "sealed"),
-				CacheDir:      filepath.Join(lr.Path(), "cache"),
-				StagedDir:     filepath.Join(lr.Path(), "staging"),
-				UnsealedDir:   filepath.Join(lr.Path(), "unsealed"),
+				Dir:           lr.Path(),
 			}, mds)
 			if err != nil {
 				return xerrors.Errorf("failed to open up sectorbuilder: %w", err)
