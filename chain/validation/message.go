@@ -83,14 +83,14 @@ var methods = []uint64{
 	vchain.StorageMinerGetPeerID:     actors.MAMethods.GetPeerID,
 	vchain.StorageMinerGetSectorSize: actors.MAMethods.GetSectorSize,
 
-	vchain.MultiSigConstructor: actors.MultiSigMethods.MultiSigConstructor,
-	vchain.MultiSigPropose: actors.MultiSigMethods.Propose,
-	vchain.MultiSigApprove: actors.MultiSigMethods.Approve,
-	vchain.MultiSigCancel: actors.MultiSigMethods.Cancel,
-	vchain.MultiSigClearCompleted: actors.MultiSigMethods.ClearCompleted,
-	vchain.MultiSigAddSigner: actors.MultiSigMethods.AddSigner,
-	vchain.MultiSigRemoveSigner: actors.MultiSigMethods.RemoveSigner,
-	vchain.MultiSigSwapSigner: actors.MultiSigMethods.SwapSigner,
+	vchain.MultiSigConstructor:       actors.MultiSigMethods.MultiSigConstructor,
+	vchain.MultiSigPropose:           actors.MultiSigMethods.Propose,
+	vchain.MultiSigApprove:           actors.MultiSigMethods.Approve,
+	vchain.MultiSigCancel:            actors.MultiSigMethods.Cancel,
+	vchain.MultiSigClearCompleted:    actors.MultiSigMethods.ClearCompleted,
+	vchain.MultiSigAddSigner:         actors.MultiSigMethods.AddSigner,
+	vchain.MultiSigRemoveSigner:      actors.MultiSigMethods.RemoveSigner,
+	vchain.MultiSigSwapSigner:        actors.MultiSigMethods.SwapSigner,
 	vchain.MultiSigChangeRequirement: actors.MultiSigMethods.ChangeRequirement,
 	// More to follow...
 }
