@@ -92,7 +92,7 @@ func (hs *Service) HandleStream(s inet.Stream) {
 		}
 	}()
 
-	ts, err := hs.syncer.FetchTipSet(context.Background(), s.Conn().RemotePeer(), hmsg.HeaviestTipSet)
+	ts, err := hs.syncer.FetchTipSet(context.Background(), s.Conn().RemotePeer(), types.NewTipSetKey(hmsg.HeaviestTipSet...))
 	if err != nil {
 		log.Errorf("failed to fetch tipset from peer during hello: %s", err)
 		return

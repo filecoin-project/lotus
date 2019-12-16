@@ -124,7 +124,7 @@ func (bss *BlockSyncService) processRequest(ctx context.Context, req *BlockSyncR
 		trace.BoolAttribute("messages", opts.IncludeMessages),
 	)
 
-	chain, err := bss.collectChainSegment(req.Start, req.RequestLength, opts)
+	chain, err := bss.collectChainSegment(types.NewTipSetKey(req.Start...), req.RequestLength, opts)
 	if err != nil {
 		log.Warn("encountered error while responding to block sync request: ", err)
 		return &BlockSyncResponse{
@@ -139,7 +139,7 @@ func (bss *BlockSyncService) processRequest(ctx context.Context, req *BlockSyncR
 	}, nil
 }
 
-func (bss *BlockSyncService) collectChainSegment(start []cid.Cid, length uint64, opts *BSOptions) ([]*BSTipSet, error) {
+func (bss *BlockSyncService) collectChainSegment(start types.TipSetKey, length uint64, opts *BSOptions) ([]*BSTipSet, error) {
 	var bstips []*BSTipSet
 	cur := start
 	for {

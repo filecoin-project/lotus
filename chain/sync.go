@@ -329,16 +329,16 @@ func computeMsgMeta(bs amt.Blocks, bmsgCids, smsgCids []cbg.CBORMarshaler) (cid.
 	return mrcid, nil
 }
 
-func (syncer *Syncer) FetchTipSet(ctx context.Context, p peer.ID, cids []cid.Cid) (*store.FullTipSet, error) {
-	if fts, err := syncer.tryLoadFullTipSet(cids); err == nil {
+func (syncer *Syncer) FetchTipSet(ctx context.Context, p peer.ID, tsk types.TipSetKey) (*store.FullTipSet, error) {
+	if fts, err := syncer.tryLoadFullTipSet(tsk); err == nil {
 		return fts, nil
 	}
 
-	return syncer.Bsync.GetFullTipSet(ctx, p, cids)
+	return syncer.Bsync.GetFullTipSet(ctx, p, tsk)
 }
 
-func (syncer *Syncer) tryLoadFullTipSet(cids []cid.Cid) (*store.FullTipSet, error) {
-	ts, err := syncer.store.LoadTipSet(cids)
+func (syncer *Syncer) tryLoadFullTipSet(tsk types.TipSetKey) (*store.FullTipSet, error) {
+	ts, err := syncer.store.LoadTipSet(tsk)
 	if err != nil {
 		return nil, err
 	}
@@ -469,7 +469,7 @@ func (syncer *Syncer) ValidateBlock(ctx context.Context, b *types.FullBlock) err
 
 	h := b.Header
 
-	baseTs, err := syncer.store.LoadTipSet(h.Parents)
+	baseTs, err := syncer.store.LoadTipSet(types.NewTipSetKey(h.Parents...))
 	if err != nil {
 		return xerrors.Errorf("load parent tipset failed (%s): %w", h.Parents, err)
 	}
@@ -828,7 +828,7 @@ func (syncer *Syncer) collectHeaders(ctx context.Context, from *types.TipSet, to
 		trace.Int64Attribute("toHeight", int64(to.Height())),
 	)
 
-	for _, pcid := range from.Parents() {
+	for _, pcid := range from.Parents().Cids() {
 		if syncer.bad.Has(pcid) {
 			for _, b := range from.Cids() {
 				syncer.bad.Add(b)
@@ -850,7 +850,7 @@ func (syncer *Syncer) collectHeaders(ctx context.Context, from *types.TipSet, to
 
 loop:
 	for blockSet[len(blockSet)-1].Height() > untilHeight {
-		for _, bc := range at {
+		for _, bc := range at.Cids() {
 			if syncer.bad.Has(bc) {
 				for _, b := range acceptedBlocks {
 					syncer.bad.Add(b)
@@ -863,7 +863,7 @@ loop:
 		// If, for some reason, we have a suffix of the chain locally, handle that here
 		ts, err := syncer.store.LoadTipSet(at)
 		if err == nil {
-			acceptedBlocks = append(acceptedBlocks, at...)
+			acceptedBlocks = append(acceptedBlocks, at.Cids()...)
 
 			blockSet = append(blockSet, ts)
 			at = ts.Parents()
@@ -910,16 +910,16 @@ loop:
 			blockSet = append(blockSet, b)
 		}
 
-		acceptedBlocks = append(acceptedBlocks, at...)
+		acceptedBlocks = append(acceptedBlocks, at.Cids()...)
 
 		ss.SetHeight(blks[len(blks)-1].Height())
 		at = blks[len(blks)-1].Parents()
 	}
 
 	// We have now ascertained that this is *not* a 'fast forward'
-	if !types.CidArrsEqual(blockSet[len(blockSet)-1].Parents(), to.Cids()) {
+	if !types.CidArrsEqual(blockSet[len(blockSet)-1].Parents().Cids(), to.Cids()) {
 		last := blockSet[len(blockSet)-1]
-		if types.CidArrsEqual(last.Parents(), to.Parents()) {
+		if last.Parents() == to.Parents() {
 			// common case: receiving a block thats potentially part of the same tipset as our best block
 			return blockSet, nil
 		}

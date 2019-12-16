@@ -136,8 +136,8 @@ func (ts *TipSet) Height() uint64 {
 	return ts.height
 }
 
-func (ts *TipSet) Parents() []cid.Cid {
-	return ts.blks[0].Parents
+func (ts *TipSet) Parents() TipSetKey {
+	return NewTipSetKey(ts.blks[0].Parents...)
 }
 
 func (ts *TipSet) Blocks() []*BlockHeader {
