@@ -132,7 +132,7 @@ func (w *worker) fetchSector(sectorID uint64, typ sectorbuilder.WorkerTaskType) 
 	var err error
 	switch typ {
 	case sectorbuilder.WorkerPreCommit:
-		err = w.fetch("staged", sectorID)
+		err = w.fetch("staging", sectorID)
 	case sectorbuilder.WorkerCommit:
 		err = w.fetch("sealed", sectorID)
 		if err != nil {

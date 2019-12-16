@@ -3,7 +3,7 @@ package build
 var CurrentCommit string
 
 // Version is the local build version, set by build system
-const Version = "0.1.1"
+const Version = "0.1.2"
 
 var UserVersion = Version + CurrentCommit
 
@@ -16,7 +16,7 @@ var UserVersion = Version + CurrentCommit
 //                   R R  H
 //                   |\vv/|
 //                   vv  vv
-const APIVersion = 0x000101
+const APIVersion = 0x000102
 
 const (
 	MajorMask = 0xff0000

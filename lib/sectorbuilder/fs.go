@@ -9,18 +9,16 @@ import (
 	"syscall"
 )
 
-type dataType int
+type dataType string
 
 const (
-	dataCache dataType = iota
-	dataStaging
-	dataSealed
-	dataUnsealed
-
-	nDataTypes
+	dataCache    dataType = "cache"
+	dataStaging  dataType = "staging"
+	dataSealed   dataType = "sealed"
+	dataUnsealed dataType = "unsealed"
 )
 
-var overheadMul = []uint64{ // * sectorSize
+var overheadMul = map[dataType]uint64{ // * sectorSize
 	dataCache:    11, // TODO: check if true for 32G sectors
 	dataStaging:  1,
 	dataSealed:   1,
@@ -32,19 +30,24 @@ type fs struct {
 
 	// in progress actions
 
-	reserved [nDataTypes]uint64
+	reserved map[dataType]uint64
 
 	lk sync.Mutex
 }
 
 func openFs(dir string) *fs {
 	return &fs{
-		path: dir,
+		path:     dir,
+		reserved: map[dataType]uint64{},
 	}
 }
 
 func (f *fs) init() error {
-	for _, dir := range []string{f.path, f.cache(), f.staging(), f.sealed(), f.unsealed()} {
+	for _, dir := range []string{f.path,
+		f.pathFor(dataCache),
+		f.pathFor(dataStaging),
+		f.pathFor(dataSealed),
+		f.pathFor(dataUnsealed)} {
 		if err := os.Mkdir(dir, 0755); err != nil {
 			if os.IsExist(err) {
 				continue
@@ -56,20 +59,13 @@ func (f *fs) init() error {
 	return nil
 }
 
-func (f *fs) cache() string {
-	return filepath.Join(f.path, "cache")
-}
+func (f *fs) pathFor(typ dataType) string {
+	_, found := overheadMul[typ]
+	if !found {
+		panic("unknown data path requested")
+	}
 
-func (f *fs) staging() string {
-	return filepath.Join(f.path, "staging")
-}
-
-func (f *fs) sealed() string {
-	return filepath.Join(f.path, "sealed")
-}
-
-func (f *fs) unsealed() string {
-	return filepath.Join(f.path, "unsealed")
+	return filepath.Join(f.path, string(typ))
 }
 
 func (f *fs) reservedBytes() int64 {
@@ -86,7 +82,7 @@ func (f *fs) reserve(typ dataType, size uint64) error {
 
 	var fsstat syscall.Statfs_t
 
-	if err := syscall.Statfs(f.path, &fsstat); err != nil {
+	if err := syscall.Statfs(f.pathFor(typ), &fsstat); err != nil {
 		return err
 	}
 
