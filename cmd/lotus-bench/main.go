@@ -129,7 +129,7 @@ func main() {
 				return err
 			}
 
-			sectorSizeInt, err := units.FromHumanSize(c.String("sector-size"))
+			sectorSizeInt, err := units.RAMInBytes(c.String("sector-size"))
 			if err != nil {
 				return err
 			}
