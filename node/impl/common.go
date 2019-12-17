@@ -14,7 +14,6 @@ import (
 	"github.com/filecoin-project/lotus/api"
 	"github.com/filecoin-project/lotus/build"
 	"github.com/filecoin-project/lotus/node/modules/dtypes"
-	"github.com/filecoin-project/lotus/node/peers"
 )
 
 type CommonAPI struct {
@@ -22,7 +21,6 @@ type CommonAPI struct {
 
 	APISecret  *dtypes.APIAlg
 	Host       host.Host
-	PeerTagger *peers.PeerTagger // TODO: this needs a better home
 }
 
 type jwtPayload struct {

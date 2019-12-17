@@ -40,7 +40,6 @@ import (
 	"github.com/filecoin-project/lotus/node/modules/helpers"
 	"github.com/filecoin-project/lotus/node/modules/lp2p"
 	"github.com/filecoin-project/lotus/node/modules/testing"
-	"github.com/filecoin-project/lotus/node/peers"
 	"github.com/filecoin-project/lotus/node/repo"
 	"github.com/filecoin-project/lotus/paych"
 	"github.com/filecoin-project/lotus/peermgr"
@@ -101,6 +100,7 @@ const (
 	// daemon
 	ExtractApiKey
 	HeadMetricsKey
+	RunPeerTaggerKey
 
 	SetApiEndpointKey
 
@@ -234,7 +234,7 @@ func Online() Option {
 			Override(new(*paych.Store), paych.NewStore),
 			Override(new(*paych.Manager), paych.NewManager),
 			Override(new(*market.FundMgr), market.NewFundMgr),
-			Override(new(*peers.PeerTagger), lp2p.TagMiners),
+			Override(RunPeerTaggerKey, lp2p.TagMiners),
 		),
 
 		// Storage miner

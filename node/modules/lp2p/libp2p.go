@@ -100,7 +100,7 @@ func simpleOpt(opt libp2p.Option) func() (opts Libp2pOpts, err error) {
 	}
 }
 
-func TagMiners(lc fx.Lifecycle, h host.Host, stmgr *stmgr.StateManager) *peers.PeerTagger {
+func TagMiners(lc fx.Lifecycle, h host.Host, stmgr *stmgr.StateManager) {
 	pt := peers.NewPeerTagger(h, stmgr)
 	lc.Append(fx.Hook{
 		OnStart: func(ctx context.Context) error {
@@ -112,5 +112,5 @@ func TagMiners(lc fx.Lifecycle, h host.Host, stmgr *stmgr.StateManager) *peers.P
 		},
 	})
 
-	return pt
+	return
 }
