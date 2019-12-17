@@ -27,21 +27,26 @@ import (
 	dtgraphsync "github.com/filecoin-project/go-data-transfer/impl/graphsync"
 	"github.com/filecoin-project/go-fil-markets/retrievalmarket"
 	retrievalimpl "github.com/filecoin-project/go-fil-markets/retrievalmarket/impl"
+	deals "github.com/filecoin-project/go-fil-markets/storagemarket/impl"
+	storageimpl "github.com/filecoin-project/go-fil-markets/storagemarket/impl"
 	"github.com/filecoin-project/go-sectorbuilder"
 	"github.com/filecoin-project/go-statestore"
 	"github.com/filecoin-project/lotus/api"
 	"github.com/filecoin-project/lotus/build"
+	"github.com/filecoin-project/lotus/chain/address"
 	"github.com/filecoin-project/lotus/chain/deals"
 	"github.com/filecoin-project/lotus/chain/gen"
+	"github.com/filecoin-project/lotus/lib/sectorbuilder"
+	"github.com/filecoin-project/lotus/lib/statestore"
 	"github.com/filecoin-project/lotus/miner"
 	"github.com/filecoin-project/lotus/node/modules/dtypes"
 	"github.com/filecoin-project/lotus/node/modules/helpers"
 	"github.com/filecoin-project/lotus/node/repo"
 
+	"github.com/filecoin-project/go-fil-components/storagemarket"
 	"github.com/filecoin-project/lotus/retrievaladapter"
 	"github.com/filecoin-project/lotus/storage"
 	"github.com/filecoin-project/lotus/storage/sectorblocks"
-	"github.com/filecoin-project/lotus/storagemarket"
 )
 
 func minerAddrFromDS(ds dtypes.MetadataDS) (address.Address, error) {
@@ -262,6 +267,14 @@ func SealTicketGen(api api.FullNode) storage.TicketFn {
 			TicketBytes: tkt,
 		}, nil
 	}
+}
+
+func NewProviderRequestValidator(deals dtypes.ProviderDealStore) *storageimpl.ProviderRequestValidator {
+	return storageimpl.NewProviderRequestValidator(deals)
+}
+
+func StorageProvider(ds dtypes.MetadataDS, dag dtypes.StagingDAG, dataTransfer dtypes.ProviderDataTransfer, spn storagemarket.StorageProviderNode) (storagemarket.StorageProvider, error) {
+	return storageimpl.NewProvider(ds, dag, dataTransfer, spn)
 }
 
 // RetrievalProvider creates a new retrieval provider attached to the provider blockstore

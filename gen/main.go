@@ -2,7 +2,6 @@ package main
 
 import (
 	"fmt"
-	"github.com/filecoin-project/lotus/storagemarket"
 	"os"
 
 	gen "github.com/whyrusleeping/cbor-gen"
@@ -10,7 +9,6 @@ import (
 	"github.com/filecoin-project/lotus/api"
 	"github.com/filecoin-project/lotus/chain/actors"
 	"github.com/filecoin-project/lotus/chain/blocksync"
-	"github.com/filecoin-project/lotus/chain/deals"
 	"github.com/filecoin-project/lotus/chain/types"
 	"github.com/filecoin-project/lotus/paych"
 	"github.com/filecoin-project/lotus/storage"
@@ -117,31 +115,6 @@ func main() {
 		actors.SectorProveCommitInfo{},
 		actors.CheckMinerParams{},
 		actors.CronActorState{},
-	)
-	if err != nil {
-		fmt.Println(err)
-		os.Exit(1)
-	}
-
-	err = gen.WriteTupleEncodersToFile("./storagemarket/cbor_gen.go", "storagemarket",
-		storagemarket.ClientDeal{},
-		storagemarket.MinerDeal{},
-	)
-	if err != nil {
-		fmt.Println(err)
-		os.Exit(1)
-	}
-
-	err = gen.WriteTupleEncodersToFile("./chain/deals/cbor_gen.go", "deals",
-		deals.AskRequest{},
-		deals.AskResponse{},
-		deals.Proposal{},
-		deals.Response{},
-		deals.SignedResponse{},
-		deals.ClientDealProposal{},
-		deals.ClientDeal{},
-		deals.MinerDeal{},
-		deals.StorageDataTransferVoucher{},
 	)
 	if err != nil {
 		fmt.Println(err)

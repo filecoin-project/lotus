@@ -2,6 +2,7 @@ package retrievaladapter
 
 import (
 	"context"
+	"github.com/filecoin-project/lotus/lib/sharedutils"
 
 	"github.com/filecoin-project/go-address"
 	"github.com/filecoin-project/go-fil-markets/retrievalmarket"
@@ -37,10 +38,10 @@ func (rpn *retrievalProviderNode) SealedBlockstore(approveUnseal func() error) b
 }
 
 func (rpn *retrievalProviderNode) SavePaymentVoucher(ctx context.Context, paymentChannel address.Address, voucher *retrievaltypes.SignedVoucher, proof []byte, expectedAmount retrievaltoken.TokenAmount) (retrievaltoken.TokenAmount, error) {
-	localVoucher, err := FromSharedSignedVoucher(voucher)
+	localVoucher, err := sharedutils.FromSharedSignedVoucher(voucher)
 	if err != nil {
 		return retrievaltoken.FromInt(0), err
 	}
-	added, err := rpn.full.PaychVoucherAdd(ctx, paymentChannel, localVoucher, proof, FromSharedTokenAmount(expectedAmount))
-	return ToSharedTokenAmount(added), err
+	added, err := rpn.full.PaychVoucherAdd(ctx, paymentChannel, localVoucher, proof, sharedutils.FromSharedTokenAmount(expectedAmount))
+	return sharedutils.ToSharedTokenAmount(added), err
 }

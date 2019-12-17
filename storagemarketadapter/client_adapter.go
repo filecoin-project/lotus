@@ -5,11 +5,14 @@ package storagemarketadapter
 import (
 	"bytes"
 	"context"
+	"github.com/filecoin-project/lotus/lib/sharedutils"
 
 	"golang.org/x/xerrors"
 
 	"github.com/filecoin-project/go-address"
 	"github.com/filecoin-project/go-cbor-util"
+	sharedtypes "github.com/filecoin-project/go-fil-markets/shared/types"
+	"github.com/filecoin-project/go-fil-markets/storagemarket"
 	"github.com/filecoin-project/lotus/api"
 	"github.com/filecoin-project/lotus/build"
 	"github.com/filecoin-project/lotus/chain/actors"
@@ -19,7 +22,6 @@ import (
 	"github.com/filecoin-project/lotus/chain/store"
 	"github.com/filecoin-project/lotus/chain/types"
 	"github.com/filecoin-project/lotus/node/impl/full"
-	"github.com/filecoin-project/lotus/storagemarket"
 )
 
 type ClientNodeAdapter struct {
@@ -79,13 +81,8 @@ func (n *ClientNodeAdapter) ListStorageProviders(ctx context.Context) ([]*storag
 		if err != nil {
 			return nil, err
 		}
-
-		out = append(out, &storagemarket.StorageProviderInfo{
-			Address:    addr,
-			Worker:     workerAddr,
-			SectorSize: sectorSize,
-			PeerID:     peerId,
-		})
+		storageProviderInfo := NewStorageProviderInfo(addr, workerAddr, sectorSize, peerId)
+		out = append(out, &storageProviderInfo)
 	}
 
 	return out, nil
@@ -97,11 +94,12 @@ func (n *ClientNodeAdapter) ListClientDeals(ctx context.Context, addr address.Ad
 		return nil, err
 	}
 
-	var out []actors.OnChainDeal
+	var out []storagemarket.StorageDeal
 
 	for _, deal := range allDeals {
-		if deal.Client == addr {
-			out = append(out, deal)
+		storageDeal := FromOnChainDeal(deal)
+		if storageDeal.Client == addr {
+			out = append(out, storageDeal)
 		}
 	}
 
@@ -113,12 +111,12 @@ func (n *ClientNodeAdapter) MostRecentStateId(ctx context.Context) (storagemarke
 }
 
 // Adds funds with the StorageMinerActor for a storage participant.  Used by both providers and clients.
-func (n *ClientNodeAdapter) AddFunds(ctx context.Context, addr address.Address, amount storagemarket.TokenAmount) error {
+func (n *ClientNodeAdapter) AddFunds(ctx context.Context, addr address.Address, amount tokenamount.TokenAmount) error {
 	// (Provider Node API)
 	smsg, err := n.MpoolPushMessage(ctx, &types.Message{
 		To:       actors.StorageMarketAddress,
-		From:     addr,
-		Value:    types.BigInt(amount),
+		From:     sharedutils.FromSharedAddress(addr),
+		Value:    sharedutils.FromSharedTokenAmount(amount),
 		GasPrice: types.NewInt(0),
 		GasLimit: types.NewInt(1000000),
 		Method:   actors.SMAMethods.AddBalance,
@@ -139,17 +137,17 @@ func (n *ClientNodeAdapter) AddFunds(ctx context.Context, addr address.Address, 
 	return nil
 }
 
-func (n *ClientNodeAdapter) EnsureFunds(ctx context.Context, addr address.Address, amount storagemarket.TokenAmount) error {
-	return n.fm.EnsureAvailable(ctx, addr, types.BigInt(amount))
+func (n *ClientNodeAdapter) EnsureFunds(ctx context.Context, addr address.Address, amount tokenamount.TokenAmount) error {
+	return n.fm.EnsureAvailable(ctx, sharedutils.FromSharedAddress(addr), sharedutils.FromSharedTokenAmount(amount))
 }
 
 func (n *ClientNodeAdapter) GetBalance(ctx context.Context, addr address.Address) (storagemarket.Balance, error) {
-	bal, err := n.StateMarketBalance(ctx, addr, nil)
+	bal, err := n.StateMarketBalance(ctx, sharedutils.FromSharedAddress(addr), nil)
 	if err != nil {
 		return storagemarket.Balance{}, err
 	}
 
-	return bal, nil
+	return ToSharedBalance(bal), nil
 }
 
 // ValidatePublishedDeal validates that the provided deal has appeared on chain and references the same ClientDeal
@@ -162,7 +160,7 @@ func (c *ClientNodeAdapter) ValidatePublishedDeal(ctx context.Context, deal stor
 		return 0, xerrors.Errorf("getting deal pubsish message: %w", err)
 	}
 
-	pw, err := stmgr.GetMinerWorker(ctx, c.sm, nil, deal.Proposal.Provider)
+	pw, err := stmgr.GetMinerWorker(ctx, c.sm, nil, sharedutils.FromSharedAddress(deal.Proposal.Provider))
 	if err != nil {
 		return 0, xerrors.Errorf("getting miner worker failed: %w", err)
 	}
@@ -270,7 +268,7 @@ func (c *ClientNodeAdapter) OnDealSectorCommitted(ctx context.Context, provider 
 	}
 
 	matchEvent := func(msg *types.Message) (bool, error) {
-		if msg.To != provider {
+		if msg.To != sharedutils.FromSharedAddress(provider) {
 			return false, nil
 		}
 
@@ -301,18 +299,23 @@ func (c *ClientNodeAdapter) OnDealSectorCommitted(ctx context.Context, provider 
 	return nil
 }
 
-func (n *ClientNodeAdapter) SignProposal(ctx context.Context, signer address.Address, proposal *actors.StorageDealProposal) error {
-	return api.SignWith(ctx, n.Wallet.Sign, signer, proposal)
+func (n *ClientNodeAdapter) SignProposal(ctx context.Context, signer address.Address, proposal *storagemarket.StorageDealProposal) error {
+	localProposal, err := FromSharedStorageDealProposal(proposal)
+	if err != nil {
+		return err
+	}
+	return api.SignWith(ctx, n.Wallet.Sign, sharedutils.FromSharedAddress(signer), localProposal)
 }
 
 func (n *ClientNodeAdapter) GetDefaultWalletAddress(ctx context.Context) (address.Address, error) {
-	return n.Wallet.GetDefault()
+	addr, err := n.Wallet.GetDefault()
+	return sharedutils.ToSharedAddress(addr), err
 }
 
-func (n *ClientNodeAdapter) ValidateAskSignature(ask *types.SignedStorageAsk) error {
+func (n *ClientNodeAdapter) ValidateAskSignature(ask *sharedtypes.SignedStorageAsk) error {
 	tss := n.cs.GetHeaviestTipSet().ParentState()
 
-	w, err := stmgr.GetMinerWorkerRaw(context.TODO(), n.StateManager, tss, ask.Ask.Miner)
+	w, err := stmgr.GetMinerWorkerRaw(context.TODO(), n.StateManager, tss, sharedutils.FromSharedAddress(ask.Ask.Miner))
 	if err != nil {
 		return xerrors.Errorf("failed to get worker for miner in ask", err)
 	}
@@ -322,7 +325,7 @@ func (n *ClientNodeAdapter) ValidateAskSignature(ask *types.SignedStorageAsk) er
 		return xerrors.Errorf("failed to re-serialize ask")
 	}
 
-	return ask.Signature.Verify(w, sigb)
+	return ask.Signature.Verify(sharedutils.ToSharedAddress(w), sigb)
 }
 
 var _ storagemarket.StorageClientNode = &ClientNodeAdapter{}

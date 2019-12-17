@@ -26,15 +26,18 @@ import (
 
 	"github.com/filecoin-project/go-address"
 	"github.com/filecoin-project/go-fil-markets/retrievalmarket"
+	"github.com/filecoin-project/go-fil-markets/shared/tokenamount"
+	"github.com/filecoin-project/go-fil-markets/storagemarket"
 	"github.com/filecoin-project/lotus/api"
 	"github.com/filecoin-project/lotus/build"
 	"github.com/filecoin-project/lotus/chain/store"
 	"github.com/filecoin-project/lotus/chain/types"
+	"github.com/filecoin-project/lotus/lib/sharedutils"
 	"github.com/filecoin-project/lotus/node/impl/full"
 	"github.com/filecoin-project/lotus/node/impl/paych"
 	"github.com/filecoin-project/lotus/node/modules/dtypes"
 	"github.com/filecoin-project/lotus/retrievaladapter"
-	"github.com/filecoin-project/lotus/storagemarket"
+	"github.com/filecoin-project/lotus/storagemarketadapter"
 )
 
 type API struct {
@@ -73,20 +76,16 @@ func (a *API) ClientStartDeal(ctx context.Context, data cid.Cid, addr address.Ad
 	if err != nil {
 		return nil, xerrors.Errorf("failed getting miner worker: %w", err)
 	}
-	providerInfo := storagemarket.StorageProviderInfo{
-		Address: miner,
-		Worker:  mw,
-		PeerID:  pid,
-	}
+	providerInfo := storagemarketadapter.NewStorageProviderInfo(miner, mw, 0, pid)
 	result, err := a.SMDealClient.ProposeStorageDeal(
 		ctx,
-		addr,
+		sharedutils.ToSharedAddress(addr),
 		&providerInfo,
 		data,
 		storagemarket.Epoch(math.MaxUint64),
 		storagemarket.Epoch(blocksDuration),
-		storagemarket.TokenAmount(epochPrice),
-		storagemarket.TokenAmount(storagemarket.EmptyInt))
+		sharedutils.ToSharedTokenAmount(epochPrice),
+		tokenamount.Empty)
 
 	if err != nil {
 		return nil, xerrors.Errorf("failed to start deal: %w", err)
@@ -106,12 +105,12 @@ func (a *API) ClientListDeals(ctx context.Context) ([]api.DealInfo, error) {
 		out[k] = api.DealInfo{
 			ProposalCid: v.ProposalCid,
 			State:       v.State,
-			Provider:    v.Proposal.Provider,
+			Provider:    sharedutils.FromSharedAddress(v.Proposal.Provider),
 
 			PieceRef: v.Proposal.PieceRef,
 			Size:     v.Proposal.PieceSize,
 
-			PricePerEpoch: v.Proposal.StoragePricePerEpoch,
+			PricePerEpoch: sharedutils.FromSharedTokenAmount(v.Proposal.StoragePricePerEpoch),
 			Duration:      v.Proposal.Duration,
 		}
 	}
@@ -128,10 +127,10 @@ func (a *API) ClientGetDealInfo(ctx context.Context, d cid.Cid) (*api.DealInfo, 
 	return &api.DealInfo{
 		ProposalCid:   v.ProposalCid,
 		State:         v.State,
-		Provider:      v.Proposal.Provider,
+		Provider:      sharedutils.FromSharedAddress(v.Proposal.Provider),
 		PieceRef:      v.Proposal.PieceRef,
 		Size:          v.Proposal.PieceSize,
-		PricePerEpoch: v.Proposal.StoragePricePerEpoch,
+		PricePerEpoch: sharedutils.FromSharedTokenAmount(v.Proposal.StoragePricePerEpoch),
 		Duration:      v.Proposal.Duration,
 	}, nil
 }
@@ -160,13 +159,13 @@ func (a *API) ClientFindData(ctx context.Context, root cid.Cid) ([]api.QueryOffe
 	for k, p := range peers {
 		queryResponse, err := a.Retrieval.Query(ctx, p, root.Bytes(), retrievalmarket.QueryParams{})
 		if err != nil {
-			out[k] = api.QueryOffer{Err: err.Error(), Miner: p.Address, MinerPeerID: p.ID}
+			out[k] = api.QueryOffer{Err: err.Error(), Miner: retrievaladapter.FromSharedAddress(p.Address), MinerPeerID: p.ID}
 		} else {
 			out[k] = api.QueryOffer{
 				Root:        root,
 				Size:        queryResponse.Size,
 				MinPrice:    retrievaladapter.FromSharedTokenAmount(queryResponse.PieceRetrievalPrice()),
-				Miner:       p.Address, // TODO: check
+				Miner:       retrievaladapter.FromSharedAddress(p.Address), // TODO: check
 				MinerPeerID: p.ID,
 			}
 		}
@@ -296,10 +295,10 @@ func (a *API) ClientRetrieve(ctx context.Context, order api.RetrievalOrder, path
 		ctx,
 		order.Root.Bytes(),
 		retrievalmarket.NewParamsV0(types.BigDiv(order.Total, types.NewInt(order.Size)).Int, 0, 0),
-		retrievaladapter.ToSharedTokenAmount(order.Total),
+		sharedutils.ToSharedTokenAmount(order.Total),
 		order.MinerPeerID,
-		order.Client,
-		order.Miner)
+		retrievaladapter.ToSharedAddress(order.Client),
+		retrievaladapter.ToSharedAddress(order.Miner))
 	select {
 	case <-ctx.Done():
 		return xerrors.New("Retrieval Timed Out")
@@ -323,6 +322,10 @@ func (a *API) ClientRetrieve(ctx context.Context, order api.RetrievalOrder, path
 }
 
 func (a *API) ClientQueryAsk(ctx context.Context, p peer.ID, miner address.Address) (*types.SignedStorageAsk, error) {
-	info := storagemarket.StorageProviderInfo{Address: miner, PeerID: p}
-	return a.SMDealClient.GetAsk(ctx, info)
+	info := storagemarketadapter.NewStorageProviderInfo(miner, address.Undef, 0, p)
+	signedAsk, err := a.SMDealClient.GetAsk(ctx, info)
+	if err != nil {
+		return nil, err
+	}
+	return sharedutils.FromSignedStorageAsk(signedAsk)
 }

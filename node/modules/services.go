@@ -18,7 +18,7 @@ import (
 	"github.com/filecoin-project/lotus/node/modules/dtypes"
 	"github.com/filecoin-project/lotus/node/modules/helpers"
 	"github.com/filecoin-project/lotus/peermgr"
-	"github.com/filecoin-project/lotus/storagemarket"
+	"github.com/filecoin-project/go-fil-components/storagemarket"
 )
 
 func RunHello(mctx helpers.MetricsCtx, lc fx.Lifecycle, h host.Host, svc *hello.Service) {
