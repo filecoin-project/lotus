@@ -1,34 +1,44 @@
 package build
 
+import "fmt"
+
 var CurrentCommit string
 
-// Version is the local build version, set by build system
-const Version = "0.1.2"
+// BuildVersion is the local build version, set by build system
+const BuildVersion = "0.1.2"
 
-var UserVersion = Version + CurrentCommit
+var UserVersion = BuildVersion + CurrentCommit
 
-// APIVersion is a hex semver version of the rpc api exposed
-//
-//                   M M  P
-//                   A I  A
-//                   J N  T
-//                   O O  C
-//                   R R  H
-//                   |\vv/|
-//                   vv  vv
-const APIVersion = 0x000102
+type Version uint32
+
+func newVer(major, minor, patch uint8) Version {
+	return Version(uint32(major)<<16 | uint32(minor)<<8 | uint32(patch))
+}
+
+// Ints returns (major, minor, patch) versions
+func (ve Version) Ints() (uint32, uint32, uint32) {
+	v := uint32(ve)
+	return (v & majorOnlyMask) >> 16, (v & minorOnlyMask) >> 8, v & patchOnlyMask
+}
+
+func (ve Version) String() string {
+	vmj, vmi, vp := ve.Ints()
+	return fmt.Sprintf("%d.%d.%d", vmj, vmi, vp)
+}
+
+func (ve Version) EqMajorMinor(v2 Version) bool {
+	return ve&minorMask == v2&minorMask
+}
+
+// APIVersion is a semver version of the rpc api exposed
+var APIVersion Version = newVer(0, 1, 2)
 
 const (
-	MajorMask = 0xff0000
-	MinorMask = 0xffff00
-	PatchMask = 0xffffff
+	majorMask = 0xff0000
+	minorMask = 0xffff00
+	patchMask = 0xffffff
 
-	MajorOnlyMask = 0xff0000
-	MinorOnlyMask = 0x00ff00
-	PatchOnlyMask = 0x0000ff
+	majorOnlyMask = 0xff0000
+	minorOnlyMask = 0x00ff00
+	patchOnlyMask = 0x0000ff
 )
-
-// VersionInts returns (major, minor, patch) versions
-func VersionInts(version uint32) (uint32, uint32, uint32) {
-	return (version & MajorOnlyMask) >> 16, (version & MinorOnlyMask) >> 8, version & PatchOnlyMask
-}
