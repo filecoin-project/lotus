@@ -2,6 +2,7 @@ package impl
 
 import (
 	"context"
+
 	"github.com/gbrlsnchs/jwt/v3"
 	"github.com/libp2p/go-libp2p-core/host"
 	"github.com/libp2p/go-libp2p-core/network"
@@ -13,13 +14,15 @@ import (
 	"github.com/filecoin-project/lotus/api"
 	"github.com/filecoin-project/lotus/build"
 	"github.com/filecoin-project/lotus/node/modules/dtypes"
+	"github.com/filecoin-project/lotus/node/peers"
 )
 
 type CommonAPI struct {
 	fx.In
 
-	APISecret *dtypes.APIAlg
-	Host      host.Host
+	APISecret  *dtypes.APIAlg
+	Host       host.Host
+	PeerTagger *peers.PeerTagger // TODO: this needs a better home
 }
 
 type jwtPayload struct {

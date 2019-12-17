@@ -223,18 +223,7 @@ func (a *StateAPI) StateGetReceipt(ctx context.Context, msg cid.Cid, ts *types.T
 }
 
 func (a *StateAPI) StateListMiners(ctx context.Context, ts *types.TipSet) ([]address.Address, error) {
-	var state actors.StoragePowerState
-	if _, err := a.StateManager.LoadActorState(ctx, actors.StoragePowerAddress, &state, ts); err != nil {
-		return nil, err
-	}
-
-	cst := hamt.CSTFromBstore(a.StateManager.ChainStore().Blockstore())
-	miners, err := actors.MinerSetList(ctx, cst, state.Miners)
-	if err != nil {
-		return nil, err
-	}
-
-	return miners, nil
+	return stmgr.ListMinerActors(ctx, a.StateManager, ts)
 }
 
 func (a *StateAPI) StateListActors(ctx context.Context, ts *types.TipSet) ([]address.Address, error) {
