@@ -11,15 +11,15 @@ import (
 	"golang.org/x/xerrors"
 
 	"github.com/filecoin-project/go-address"
-	"github.com/filecoin-project/go-cbor-util"
+	cborutil "github.com/filecoin-project/go-cbor-util"
+	"github.com/filecoin-project/go-fil-components/retrievalmarket"
+	"github.com/filecoin-project/go-fil-components/retrievalmarket/discovery"
 	"github.com/filecoin-project/go-statestore"
 	"github.com/filecoin-project/lotus/api"
 	"github.com/filecoin-project/lotus/chain/actors"
 	"github.com/filecoin-project/lotus/chain/types"
 	"github.com/filecoin-project/lotus/node/modules/dtypes"
-	retrievalmarket "github.com/filecoin-project/lotus/retrieval"
-	"github.com/filecoin-project/lotus/retrieval/discovery"
-	"github.com/filecoin-project/lotus/storagemarket"
+        "github.com/filecoin-project/lotus/storagemarket"
 )
 
 var log = logging.Logger("deals")

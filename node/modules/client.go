@@ -6,11 +6,12 @@ import (
 	"path/filepath"
 	"reflect"
 
+	"github.com/filecoin-project/go-fil-components/retrievalmarket"
+	retrievalimpl "github.com/filecoin-project/go-fil-components/retrievalmarket/impl"
 	"github.com/filecoin-project/go-statestore"
 	"github.com/filecoin-project/lotus/node/modules/helpers"
 	"github.com/filecoin-project/lotus/paych"
-	retrievalmarket "github.com/filecoin-project/lotus/retrieval"
-	retrievalimpl "github.com/filecoin-project/lotus/retrieval/impl"
+
 	"github.com/ipfs/go-bitswap"
 	"github.com/ipfs/go-bitswap/network"
 	graphsync "github.com/ipfs/go-graphsync/impl"

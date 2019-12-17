@@ -8,15 +8,16 @@ import (
 	pubsub "github.com/libp2p/go-libp2p-pubsub"
 	"go.uber.org/fx"
 
+	"github.com/filecoin-project/go-fil-components/retrievalmarket"
+	"github.com/filecoin-project/go-fil-components/retrievalmarket/discovery"
 	"github.com/filecoin-project/lotus/chain"
 	"github.com/filecoin-project/lotus/chain/blocksync"
 	"github.com/filecoin-project/lotus/chain/messagepool"
 	"github.com/filecoin-project/lotus/chain/sub"
 	"github.com/filecoin-project/lotus/node/hello"
+	"github.com/filecoin-project/lotus/node/modules/dtypes"
 	"github.com/filecoin-project/lotus/node/modules/helpers"
 	"github.com/filecoin-project/lotus/peermgr"
-	retrievalmarket "github.com/filecoin-project/lotus/retrieval"
-	"github.com/filecoin-project/lotus/retrieval/discovery"
 	"github.com/filecoin-project/lotus/storagemarket"
 )
 
@@ -79,6 +80,10 @@ func RunDealClient(mctx helpers.MetricsCtx, lc fx.Lifecycle, c storagemarket.Sto
 			return nil
 		},
 	})
+}
+
+func NewLocalDiscovery(ds dtypes.MetadataDS) *discovery.Local {
+	return discovery.NewLocal(ds)
 }
 
 func RetrievalResolver(l *discovery.Local) retrievalmarket.PeerResolver {

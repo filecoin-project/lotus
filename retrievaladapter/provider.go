@@ -4,20 +4,43 @@ import (
 	"context"
 
 	"github.com/filecoin-project/go-address"
+	"github.com/filecoin-project/go-fil-components/retrievalmarket"
+	retrievaltoken "github.com/filecoin-project/go-fil-components/shared/tokenamount"
+	retrievaltypes "github.com/filecoin-project/go-fil-components/shared/types"
 	"github.com/filecoin-project/lotus/api"
-	retrievalmarket "github.com/filecoin-project/lotus/retrieval"
+	"github.com/filecoin-project/lotus/storage/sectorblocks"
+	"github.com/ipfs/go-cid"
+	blockstore "github.com/ipfs/go-ipfs-blockstore"
 )
 
 type retrievalProviderNode struct {
-	full api.FullNode
+	sectorBlocks *sectorblocks.SectorBlocks
+	full         api.FullNode
 }
 
 // NewRetrievalProviderNode returns a new node adapter for a retrieval provider that talks to the
 // Lotus Node
-func NewRetrievalProviderNode(full api.FullNode) retrievalmarket.RetrievalProviderNode {
-	return &retrievalProviderNode{full}
+func NewRetrievalProviderNode(sectorBlocks *sectorblocks.SectorBlocks, full api.FullNode) retrievalmarket.RetrievalProviderNode {
+	return &retrievalProviderNode{sectorBlocks, full}
 }
 
-func (rpn *retrievalProviderNode) SavePaymentVoucher(ctx context.Context, paymentChannel address.Address, voucher *retrievalmarket.SignedVoucher, proof []byte, expectedAmount retrievalmarket.BigInt) (retrievalmarket.BigInt, error) {
-	return rpn.full.PaychVoucherAdd(ctx, paymentChannel, voucher, proof, expectedAmount)
+func (rpn *retrievalProviderNode) GetPieceSize(pieceCid []byte) (uint64, error) {
+	asCid, err := cid.Cast(pieceCid)
+	if err != nil {
+		return 0, err
+	}
+	return rpn.sectorBlocks.GetSize(asCid)
+}
+
+func (rpn *retrievalProviderNode) SealedBlockstore(approveUnseal func() error) blockstore.Blockstore {
+	return rpn.sectorBlocks.SealedBlockstore(approveUnseal)
+}
+
+func (rpn *retrievalProviderNode) SavePaymentVoucher(ctx context.Context, paymentChannel address.Address, voucher *retrievaltypes.SignedVoucher, proof []byte, expectedAmount retrievaltoken.TokenAmount) (retrievaltoken.TokenAmount, error) {
+	localVoucher, err := FromSharedSignedVoucher(voucher)
+	if err != nil {
+		return retrievaltoken.FromInt(0), err
+	}
+	added, err := rpn.full.PaychVoucherAdd(ctx, paymentChannel, localVoucher, proof, FromSharedTokenAmount(expectedAmount))
+	return ToSharedTokenAmount(added), err
 }

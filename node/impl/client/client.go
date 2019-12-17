@@ -25,6 +25,7 @@ import (
 	"go.uber.org/fx"
 
 	"github.com/filecoin-project/go-address"
+	"github.com/filecoin-project/go-fil-components/retrievalmarket"
 	"github.com/filecoin-project/lotus/api"
 	"github.com/filecoin-project/lotus/build"
 	"github.com/filecoin-project/lotus/chain/store"
@@ -32,7 +33,7 @@ import (
 	"github.com/filecoin-project/lotus/node/impl/full"
 	"github.com/filecoin-project/lotus/node/impl/paych"
 	"github.com/filecoin-project/lotus/node/modules/dtypes"
-	retrievalmarket "github.com/filecoin-project/lotus/retrieval"
+	"github.com/filecoin-project/lotus/retrievaladapter"
 	"github.com/filecoin-project/lotus/storagemarket"
 )
 
@@ -164,7 +165,7 @@ func (a *API) ClientFindData(ctx context.Context, root cid.Cid) ([]api.QueryOffe
 			out[k] = api.QueryOffer{
 				Root:        root,
 				Size:        queryResponse.Size,
-				MinPrice:    queryResponse.PieceRetrievalPrice(),
+				MinPrice:    retrievaladapter.FromSharedTokenAmount(queryResponse.PieceRetrievalPrice()),
 				Miner:       p.Address, // TODO: check
 				MinerPeerID: p.ID,
 			}
@@ -292,9 +293,13 @@ func (a *API) ClientRetrieve(ctx context.Context, order api.RetrievalOrder, path
 	})
 
 	a.Retrieval.Retrieve(
-		ctx, order.Root.Bytes(), retrievalmarket.Params{
-			PricePerByte: types.BigDiv(order.Total, types.NewInt(order.Size)),
-		}, order.Total, order.MinerPeerID, order.Client, order.Miner)
+		ctx,
+		order.Root.Bytes(),
+		retrievalmarket.NewParamsV0(types.BigDiv(order.Total, types.NewInt(order.Size)).Int, 0, 0),
+		retrievaladapter.ToSharedTokenAmount(order.Total),
+		order.MinerPeerID,
+		order.Client,
+		order.Miner)
 	select {
 	case <-ctx.Done():
 		return xerrors.New("Retrieval Timed Out")
