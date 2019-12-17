@@ -112,7 +112,5 @@ func (t *SectorInfo) rspco() sectorbuilder.RawSealPreCommitOutput {
 
 	copy(out.CommD[:], t.CommD)
 	copy(out.CommR[:], t.CommR)
-	out.RemoteID = t.RemoteID
-
 	return out
 }

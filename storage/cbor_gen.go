@@ -582,17 +582,17 @@ func (t *SectorInfo) MarshalCBOR(w io.Writer) error {
 
 	// t.RemoteID (string) (string)
 	if _, err := w.Write(cbg.CborEncodeMajorType(cbg.MajTextString, uint64(len("RemoteID")))); err != nil {
-		return err
+		return nil
 	}
 	if _, err := w.Write([]byte("RemoteID")); err != nil {
-		return err
+		return nil
 	}
 
 	if _, err := w.Write(cbg.CborEncodeMajorType(cbg.MajTextString, uint64(len(t.RemoteID)))); err != nil {
-		return err
+		return nil
 	}
 	if _, err := w.Write([]byte(t.RemoteID)); err != nil {
-		return err
+		return nil
 	}
 
 	return nil

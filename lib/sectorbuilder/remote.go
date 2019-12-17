@@ -60,7 +60,7 @@ func (sb *SectorBuilder) returnTask(task workerCall) {
 	case WorkerPreCommit:
 		ret = sb.precommitTasks
 	case WorkerCommit:
-		remoteid := task.task.Rspco.RemoteID
+		remoteid := task.task.RemoteID
 		log.Info("returnTask...", "RemoteID:", remoteid )
 		ret = sb.specialcommitTasks[remoteid]
 	default:
@@ -109,10 +109,10 @@ func (sb *SectorBuilder) remoteWorker(ctx context.Context, r *remote, cfg Worker
 	for {
 		select {
 		case workertask := <-specialcommits:
-			log.Infof("specialcommits SectorID: %d WorkerCfg: %s RemoteID: %s", workertask.task.SectorID, cfg.RemoteID, workertask.task.Rspco.RemoteID)
+			log.Infof("specialcommits SectorID: %d WorkerCfg: %s RemoteID: %s", workertask.task.SectorID, cfg.RemoteID, workertask.task.RemoteID)
 			sb.doTask(ctx, r, workertask)
 		case workertask := <-commits:
-			log.Infof("commits SectorID: %d WorkerCfg: %s RemoteID: %s", workertask.task.SectorID, cfg.RemoteID, workertask.task.Rspco.RemoteID)
+			log.Infof("commits SectorID: %d WorkerCfg: %s RemoteID: %s", workertask.task.SectorID, cfg.RemoteID, workertask.task.RemoteID)
 			sb.doTask(ctx, r, workertask)
 		case workertask := <-precommits:
 			log.Infof("precommits SectorID: %d WorkerCfg: %s ", workertask.task.SectorID, cfg.RemoteID)
