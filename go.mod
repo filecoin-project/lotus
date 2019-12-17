@@ -8,6 +8,7 @@ require (
 	github.com/GeertJohan/go.rice v1.0.0
 	github.com/Gurpartap/async v0.0.0-20180927173644-4f7f499dd9ee
 	github.com/StackExchange/wmi v0.0.0-20190523213315-cbe66965904d // indirect
+	github.com/btcsuite/btcd v0.0.0-20190824003749-130ea5bddde3
 	github.com/docker/go-units v0.4.0
 	github.com/fatih/color v1.7.0 // indirect
 	github.com/filecoin-project/chain-validation v0.0.3
@@ -28,7 +29,7 @@ require (
 	github.com/ipfs/go-car v0.0.2
 	github.com/ipfs/go-cid v0.0.4
 	github.com/ipfs/go-datastore v0.1.1
-	github.com/ipfs/go-ds-badger v0.0.5
+	github.com/ipfs/go-ds-badger v0.0.7
 	github.com/ipfs/go-filestore v0.0.2
 	github.com/ipfs/go-fs-lock v0.0.1
 	github.com/ipfs/go-hamt-ipld v0.0.12-0.20190910032255-ee6e898f0456
@@ -47,8 +48,8 @@ require (
 	github.com/ipfs/go-unixfs v0.2.2-0.20190827150610-868af2e9e5cb
 	github.com/ipld/go-ipld-prime v0.0.2-0.20191025154717-8dff1cbec43b
 	github.com/ipsn/go-secp256k1 v0.0.0-20180726113642-9d62b9f0bc52
-	github.com/libp2p/go-libp2p v0.3.0
-	github.com/libp2p/go-libp2p-circuit v0.1.1
+	github.com/libp2p/go-libp2p v0.4.2
+	github.com/libp2p/go-libp2p-circuit v0.1.4
 	github.com/libp2p/go-libp2p-connmgr v0.1.0
 	github.com/libp2p/go-libp2p-core v0.2.4
 	github.com/libp2p/go-libp2p-discovery v0.2.0
@@ -56,17 +57,16 @@ require (
 	github.com/libp2p/go-libp2p-kad-dht v0.1.1
 	github.com/libp2p/go-libp2p-mplex v0.2.1
 	github.com/libp2p/go-libp2p-peer v0.2.0
-	github.com/libp2p/go-libp2p-peerstore v0.1.3
+	github.com/libp2p/go-libp2p-peerstore v0.1.4
 	github.com/libp2p/go-libp2p-pnet v0.1.0
 	github.com/libp2p/go-libp2p-pubsub v0.2.3
 	github.com/libp2p/go-libp2p-quic-transport v0.1.1
 	github.com/libp2p/go-libp2p-record v0.1.1
 	github.com/libp2p/go-libp2p-routing-helpers v0.1.0
-	github.com/libp2p/go-libp2p-secio v0.2.0
+	github.com/libp2p/go-libp2p-secio v0.2.1
 	github.com/libp2p/go-libp2p-tls v0.1.0
 	github.com/libp2p/go-libp2p-yamux v0.2.1
 	github.com/libp2p/go-maddr-filter v0.0.5
-	github.com/libp2p/go-ws-transport v0.1.2 // indirect
 	github.com/mattn/go-isatty v0.0.9 // indirect
 	github.com/mattn/go-runewidth v0.0.4 // indirect
 	github.com/mattn/go-sqlite3 v1.12.0
@@ -76,7 +76,7 @@ require (
 	github.com/multiformats/go-base32 v0.0.3
 	github.com/multiformats/go-multiaddr v0.1.1
 	github.com/multiformats/go-multiaddr-dns v0.2.0
-	github.com/multiformats/go-multiaddr-net v0.1.0
+	github.com/multiformats/go-multiaddr-net v0.1.1
 	github.com/multiformats/go-multihash v0.0.10
 	github.com/multiformats/go-varint v0.0.1
 	github.com/onsi/ginkgo v1.9.0 // indirect
