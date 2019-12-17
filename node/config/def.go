@@ -36,6 +36,7 @@ type API struct {
 type Libp2p struct {
 	ListenAddresses []string
 	BootstrapPeers  []string
+	ProtectedPeers  []string
 }
 
 // // Full Node

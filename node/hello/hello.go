@@ -38,7 +38,7 @@ type Message struct {
 
 type NewStreamFunc func(context.Context, peer.ID, ...protocol.ID) (inet.Stream, error)
 type Service struct {
-	newStream NewStreamFunc
+	h host.Host
 
 	cs     *store.ChainStore
 	syncer *chain.Syncer
@@ -51,7 +51,7 @@ func NewHelloService(h host.Host, cs *store.ChainStore, syncer *chain.Syncer, pm
 	}
 
 	return &Service{
-		newStream: h.NewStream,
+		h: h,
 
 		cs:     cs,
 		syncer: syncer,
@@ -99,6 +99,8 @@ func (hs *Service) HandleStream(s inet.Stream) {
 	}
 
 	if ts.TipSet().Height() > 0 {
+		hs.h.ConnManager().TagPeer(s.Conn().RemotePeer(), "fcpeer", 1)
+
 		// don't bother informing about genesis
 		log.Infof("Got new tipset through Hello: %s from %s", ts.Cids(), s.Conn().RemotePeer())
 		hs.syncer.InformNewHead(s.Conn().RemotePeer(), ts)
@@ -110,7 +112,7 @@ func (hs *Service) HandleStream(s inet.Stream) {
 }
 
 func (hs *Service) SayHello(ctx context.Context, pid peer.ID) error {
-	s, err := hs.newStream(ctx, pid, ProtocolID)
+	s, err := hs.h.NewStream(ctx, pid, ProtocolID)
 	if err != nil {
 		return err
 	}
