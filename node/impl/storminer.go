@@ -53,6 +53,8 @@ func (sm *StorageMinerAPI) ServeRemote(w http.ResponseWriter, r *http.Request) {
 func (sm *StorageMinerAPI) remoteGetSector(w http.ResponseWriter, r *http.Request) {
 	vars := mux.Vars(r)
 
+	log.Infof("send sector to  %s",  r.RemoteAddr)
+
 	path, err := sm.SectorBuilder.GetPath(vars["type"], vars["sname"])
 	if err != nil {
 		log.Error(err)
@@ -90,6 +92,8 @@ func (sm *StorageMinerAPI) remoteGetSector(w http.ResponseWriter, r *http.Reques
 
 func (sm *StorageMinerAPI) remotePutSector(w http.ResponseWriter, r *http.Request) {
 	vars := mux.Vars(r)
+
+	log.Infof("received sector form  %s",  r.RemoteAddr)
 
 	path, err := sm.SectorBuilder.GetPath(vars["type"], vars["sname"])
 	if err != nil {
