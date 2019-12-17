@@ -1022,6 +1022,8 @@ func (syncer *Syncer) iterFullTipsets(ctx context.Context, headers []*types.TipS
 	ctx, span := trace.StartSpan(ctx, "iterFullTipsets")
 	defer span.End()
 
+	span.AddAttributes(trace.Int64Attribute("num_headers", int64(len(headers))))
+
 	windowSize := 200
 	for i := len(headers) - 1; i >= 0; {
 		fts, err := syncer.store.TryFillTipSet(headers[i])
