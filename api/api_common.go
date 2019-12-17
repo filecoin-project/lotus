@@ -4,9 +4,10 @@ import (
 	"context"
 	"fmt"
 
-	"github.com/filecoin-project/lotus/build"
 	"github.com/libp2p/go-libp2p-core/network"
 	"github.com/libp2p/go-libp2p-core/peer"
+
+	"github.com/filecoin-project/lotus/build"
 )
 
 type Permission = string
@@ -39,7 +40,7 @@ type Version struct {
 	// this api
 	//
 	// See APIVersion in build/version.go
-	APIVersion build.Version
+	APIVersion uint32
 
 	// TODO: git commit / os / genesis cid?
 
@@ -48,5 +49,6 @@ type Version struct {
 }
 
 func (v Version) String() string {
-	return fmt.Sprintf("%s+api%s", v.Version, v.APIVersion.String())
+	vM, vm, vp := build.VersionInts(v.APIVersion)
+	return fmt.Sprintf("%s+api%d.%d.%d", v.Version, vM, vm, vp)
 }
