@@ -50,6 +50,57 @@ func (s *fpostScheduler) doPost(ctx context.Context, eps uint64, ts *types.TipSe
 	}()
 }
 
+func (s *fpostScheduler) checkFaults(ctx context.Context, ssi sectorbuilder.SortedPublicSectorInfo) ([]uint64, error) {
+	faults := s.sb.Scrub(ssi)
+	var faultIDs []uint64
+
+	if len(faults) > 0 {
+		params := &actors.DeclareFaultsParams{Faults: types.NewBitField()}
+
+		for _, fault := range faults {
+			log.Warnf("fault detected: sector %d: %s", fault.SectorID, fault.Err)
+			faultIDs = append(faultIDs, fault.SectorID)
+
+			// TODO: omit already declared (with finality in mind though..)
+			params.Faults.Set(fault.SectorID)
+		}
+
+		log.Warnf("DECLARING %d FAULTS", len(faults))
+
+		enc, aerr := actors.SerializeParams(params)
+		if aerr != nil {
+			return nil, xerrors.Errorf("could not serialize declare faults parameters: %w", aerr)
+		}
+
+		msg := &types.Message{
+			To:       s.actor,
+			From:     s.worker,
+			Method:   actors.MAMethods.DeclareFaults,
+			Params:   enc,
+			Value:    types.NewInt(0),
+			GasLimit: types.NewInt(10000000), // i dont know help
+			GasPrice: types.NewInt(1),
+		}
+
+		sm, err := s.api.MpoolPushMessage(ctx, msg)
+		if err != nil {
+			return nil, xerrors.Errorf("pushing faults message to mpool: %w", err)
+		}
+
+		rec, err := s.api.StateWaitMsg(ctx, sm.Cid())
+		if err != nil {
+			return nil, xerrors.Errorf("waiting for declare faults: %w", err)
+		}
+
+		if rec.Receipt.ExitCode != 0 {
+			return nil, xerrors.Errorf("declare faults exit %d", rec.Receipt.ExitCode)
+		}
+		log.Infof("Faults declared successfully")
+	}
+
+	return faultIDs, nil
+}
+
 func (s *fpostScheduler) runPost(ctx context.Context, eps uint64, ts *types.TipSet) (*actors.SubmitFallbackPoStParams, error) {
 	ctx, span := trace.StartSpan(ctx, "storage.runPost")
 	defer span.End()
@@ -68,8 +119,12 @@ func (s *fpostScheduler) runPost(ctx context.Context, eps uint64, ts *types.TipS
 
 	log.Infow("running fPoSt", "chain-random", rand, "eps", eps, "height", ts.Height())
 
+	faults, err := s.checkFaults(ctx, ssi)
+	if err != nil {
+		log.Errorf("Failed to declare faults: %+v", err)
+	}
+
 	tsStart := time.Now()
-	var faults []uint64 // TODO
 
 	var seed [32]byte
 	copy(seed[:], rand)

@@ -508,7 +508,7 @@ func (sma StorageMinerActor) SubmitFallbackPoSt(act *types.Actor, vmctx types.VM
 	}
 
 	if ok, lerr := sectorbuilder.VerifyFallbackPost(vmctx.Context(), mi.SectorSize,
-		sectorbuilder.NewSortedPublicSectorInfo(sectorInfos), seed[:], params.Proof, candidates, proverID); !ok || lerr != nil {
+		sectorbuilder.NewSortedPublicSectorInfo(sectorInfos), seed[:], params.Proof, candidates, proverID, 0); !ok || lerr != nil { // TODO: FORK - set faults to len(faults)
 		if lerr != nil {
 			// TODO: study PoST errors
 			return nil, aerrors.Absorb(lerr, 4, "PoST error")
@@ -824,7 +824,7 @@ func (sma StorageMinerActor) DeclareFaults(act *types.Actor, vmctx types.VMConte
 	self.LastFaultSubmission = vmctx.BlockHeight()
 
 	nstate, aerr := vmctx.Storage().Put(self)
-	if err != nil {
+	if err != nil { // TODO: FORK: should be aerr
 		return nil, aerr
 	}
 	if err := vmctx.Storage().Commit(oldstate, nstate); err != nil {
