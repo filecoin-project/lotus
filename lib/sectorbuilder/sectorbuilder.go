@@ -489,20 +489,20 @@ func (sb *SectorBuilder) SealPreCommit(sectorID uint64, ticket SealTicket, piece
 
 	cacheDir, err := sb.sectorCacheDir(sectorID)
 	if err != nil {
-		return RawSealPreCommitOutput{}, xerrors.Errorf("getting cache dir: %w", err)
+		return RawSealPreCommitOutput{}, "", xerrors.Errorf("getting cache dir: %w", err)
 	}
 
 	sealedPath, err := sb.SealedSectorPath(sectorID)
 	if err != nil {
-		return RawSealPreCommitOutput{}, xerrors.Errorf("getting sealed sector path: %w", err)
+		return RawSealPreCommitOutput{}, "",xerrors.Errorf("getting sealed sector path: %w", err)
 	}
 
 	e, err := os.OpenFile(sealedPath, os.O_RDWR|os.O_CREATE, 0644)
 	if err != nil {
-		return RawSealPreCommitOutput{}, xerrors.Errorf("ensuring sealed file exists: %w", err)
+		return RawSealPreCommitOutput{}, "",xerrors.Errorf("ensuring sealed file exists: %w", err)
 	}
 	if err := e.Close(); err != nil {
-		return RawSealPreCommitOutput{}, err
+		return RawSealPreCommitOutput{}, "", err
 	}
 
 	var sum uint64
@@ -511,7 +511,7 @@ func (sb *SectorBuilder) SealPreCommit(sectorID uint64, ticket SealTicket, piece
 	}
 	ussize := UserBytesForSectorSize(sb.ssize)
 	if sum != ussize {
-		return RawSealPreCommitOutput{}, xerrors.Errorf("aggregated piece sizes don't match sector size: %d != %d (%d)", sum, ussize, int64(ussize-sum))
+		return RawSealPreCommitOutput{}, "",xerrors.Errorf("aggregated piece sizes don't match sector size: %d != %d (%d)", sum, ussize, int64(ussize-sum))
 	}
 
 	stagedPath := sb.StagedSectorPath(sectorID)
@@ -528,10 +528,10 @@ func (sb *SectorBuilder) SealPreCommit(sectorID uint64, ticket SealTicket, piece
 		pieces,
 	)
 	if err != nil {
-		return RawSealPreCommitOutput{}, xerrors.Errorf("presealing sector %d (%s): %w", sectorID, stagedPath, err)
+		return RawSealPreCommitOutput{}, "",xerrors.Errorf("presealing sector %d (%s): %w", sectorID, stagedPath, err)
 	}
 
-	return RawSealPreCommitOutput(rspco), nil
+	return RawSealPreCommitOutput(rspco), "", nil
 }
 
 func (sb *SectorBuilder) sealCommitRemote(call workerCall) (proof []byte, err error) {
