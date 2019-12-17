@@ -89,7 +89,7 @@ func (p *Provider) accept(ctx context.Context, deal MinerDeal) (func(*MinerDeal)
 		SectorID:    deal.SectorID,
 	}
 
-	dealId, _, err := p.spn.PublishDeals(ctx, smDeal)
+	dealId, mcid, err := p.spn.PublishDeals(ctx, smDeal)
 	if err != nil {
 		return nil, err
 	}
@@ -98,8 +98,8 @@ func (p *Provider) accept(ctx context.Context, deal MinerDeal) (func(*MinerDeal)
 	err = p.sendSignedResponse(ctx, &Response{
 		State: api.DealAccepted,
 
-		Proposal:              deal.ProposalCid,
-		StorageDealSubmission: nil,
+		Proposal:       deal.ProposalCid,
+		PublishMessage: &mcid,
 	})
 	if err != nil {
 		return nil, err

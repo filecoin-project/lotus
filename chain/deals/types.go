@@ -56,7 +56,7 @@ type Response struct {
 	Proposal cid.Cid
 
 	// DealAccepted
-	StorageDealSubmission *types.SignedMessage
+	PublishMessage *cid.Cid
 }
 
 // TODO: Do we actually need this to be signed?

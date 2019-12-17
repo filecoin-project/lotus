@@ -6,6 +6,7 @@ import (
 	"bytes"
 	"context"
 
+	"github.com/ipfs/go-cid"
 	logging "github.com/ipfs/go-log"
 	unixfile "github.com/ipfs/go-unixfs/file"
 	"golang.org/x/xerrors"
@@ -39,12 +40,12 @@ func NewProviderNodeAdapter(dag dtypes.StagingDAG, secb *sectorblocks.SectorBloc
 	}
 }
 
-func (n *ProviderNodeAdapter) PublishDeals(ctx context.Context, deal storagemarket.MinerDeal) (storagemarket.DealID, *types.SignedMessage, error) {
+func (n *ProviderNodeAdapter) PublishDeals(ctx context.Context, deal storagemarket.MinerDeal) (storagemarket.DealID, cid.Cid, error) {
 	log.Info("publishing deal")
 
 	worker, err := n.StateMinerWorker(ctx, deal.Proposal.Provider, nil)
 	if err != nil {
-		return 0, nil, err
+		return 0, cid.Undef, err
 	}
 
 	params, err := actors.SerializeParams(&actors.PublishStorageDealsParams{
@@ -52,7 +53,7 @@ func (n *ProviderNodeAdapter) PublishDeals(ctx context.Context, deal storagemark
 	})
 
 	if err != nil {
-		return 0, nil, xerrors.Errorf("serializing PublishStorageDeals params failed: ", err)
+		return 0, cid.Undef, xerrors.Errorf("serializing PublishStorageDeals params failed: ", err)
 	}
 
 	// TODO: We may want this to happen after fetching data
@@ -66,24 +67,24 @@ func (n *ProviderNodeAdapter) PublishDeals(ctx context.Context, deal storagemark
 		Params:   params,
 	})
 	if err != nil {
-		return 0, nil, err
+		return 0, cid.Undef, err
 	}
 	r, err := n.StateWaitMsg(ctx, smsg.Cid())
 	if err != nil {
-		return 0, nil, err
+		return 0, cid.Undef, err
 	}
 	if r.Receipt.ExitCode != 0 {
-		return 0, nil, xerrors.Errorf("publishing deal failed: exit %d", r.Receipt.ExitCode)
+		return 0, cid.Undef, xerrors.Errorf("publishing deal failed: exit %d", r.Receipt.ExitCode)
 	}
 	var resp actors.PublishStorageDealResponse
 	if err := resp.UnmarshalCBOR(bytes.NewReader(r.Receipt.Return)); err != nil {
-		return 0, nil, err
+		return 0, cid.Undef, err
 	}
 	if len(resp.DealIDs) != 1 {
-		return 0, nil, xerrors.Errorf("got unexpected number of DealIDs from")
+		return 0, cid.Undef, xerrors.Errorf("got unexpected number of DealIDs from")
 	}
 
-	return storagemarket.DealID(resp.DealIDs[0]), smsg, nil
+	return storagemarket.DealID(resp.DealIDs[0]), smsg.Cid(), nil
 }
 
 func (n *ProviderNodeAdapter) OnDealComplete(ctx context.Context, deal storagemarket.MinerDeal, piecePath string) (uint64, error) {

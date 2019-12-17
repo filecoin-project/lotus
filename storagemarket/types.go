@@ -48,7 +48,7 @@ type ClientDeal struct {
 	MinerWorker    address.Address
 	DealID         uint64
 	PayloadCid     cid.Cid
-	PublishMessage *types.SignedMessage
+	PublishMessage *cid.Cid
 }
 
 // The interface provided for storage providers
@@ -89,7 +89,7 @@ type StorageProviderNode interface {
 	GetBalance(ctx context.Context, addr address.Address) (Balance, error)
 
 	// Publishes deal on chain
-	PublishDeals(ctx context.Context, deal MinerDeal) (DealID, *types.SignedMessage, error)
+	PublishDeals(ctx context.Context, deal MinerDeal) (DealID, cid.Cid, error)
 
 	// ListProviderDeals lists all deals associated with a storage provider
 	ListProviderDeals(ctx context.Context, addr address.Address) ([]StorageDeal, error)

@@ -52,7 +52,7 @@ func (c *Client) new(ctx context.Context, deal ClientDeal) (func(*ClientDeal), e
 	}
 
 	return func(info *ClientDeal) {
-		info.PublishMessage = resp.StorageDealSubmission
+		info.PublishMessage = resp.PublishMessage
 	}, nil
 }
 

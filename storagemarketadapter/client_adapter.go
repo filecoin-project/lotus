@@ -157,7 +157,11 @@ func (n *ClientNodeAdapter) GetBalance(ctx context.Context, addr address.Address
 func (c *ClientNodeAdapter) ValidatePublishedDeal(ctx context.Context, deal storagemarket.ClientDeal) (uint64, error) {
 	log.Infow("DEAL ACCEPTED!")
 
-	pubmsg := deal.PublishMessage.Message
+	pubmsg, err := c.cs.GetMessage(*deal.PublishMessage)
+	if err != nil {
+		return 0, xerrors.Errorf("getting deal pubsish message: %w", err)
+	}
+
 	pw, err := stmgr.GetMinerWorker(ctx, c.sm, nil, deal.Proposal.Provider)
 	if err != nil {
 		return 0, xerrors.Errorf("getting miner worker failed: %w", err)
@@ -195,11 +199,11 @@ func (c *ClientNodeAdapter) ValidatePublishedDeal(ctx context.Context, deal stor
 	}
 
 	if dealIdx == -1 {
-		return 0, xerrors.Errorf("deal publish didn't contain our deal (message cid: %s)", deal.PublishMessage.Cid())
+		return 0, xerrors.Errorf("deal publish didn't contain our deal (message cid: %s)", deal.PublishMessage)
 	}
 
 	// TODO: timeout
-	_, ret, err := c.sm.WaitForMessage(ctx, deal.PublishMessage.Cid())
+	_, ret, err := c.sm.WaitForMessage(ctx, *deal.PublishMessage)
 	if err != nil {
 		return 0, xerrors.Errorf("waiting for deal publish message: %w", err)
 	}
