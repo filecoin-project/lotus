@@ -136,12 +136,20 @@ func (w *worker) fetchSector(sectorID uint64, typ sectorbuilder.WorkerTaskType) 
 		err = w.fetch("staging", sectorID)
 	case sectorbuilder.WorkerCommit:
 		//TODO 后续改成文件存在就不下载了
-		//err = w.fetch("sealed", sectorID)
-		//if err != nil {
-		//	return xerrors.Errorf("fetch sealed: %w", err)
-		//}
-		//
-		//err = w.fetch("cache", sectorID)
+		sealedfilename := filepath.Join(w.repo, "sealed", w.sb.SectorName(sectorID))
+		stat, err := os.Stat(sealedfilename)
+		if err != nil  || stat.IsDir() {
+			err = w.fetch("sealed", sectorID)
+			if err != nil {
+				return xerrors.Errorf("fetch sealed: %w", err)
+			}
+		}
+
+		cachefilename := filepath.Join(w.repo, "cache", w.sb.SectorName(sectorID))
+		cachestat, cacheerr := os.Stat(cachefilename)
+		if cacheerr != nil || !cachestat.IsDir() {
+			err = w.fetch("cache", sectorID)
+		}
 	}
 	if err != nil {
 		return xerrors.Errorf("fetch failed: %w", err)

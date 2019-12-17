@@ -585,7 +585,9 @@ func (sb *SectorBuilder) SealCommit(sectorID uint64, ticket SealTicket, seed Sea
 	log.Info("SealCommit...", "RemoteID:", remoteid)
 
 	specialtask := sb.specialcommitTasks[remoteid]
-
+    if remoteid == ""{
+		specialtask = sb.commitTasks
+	}
 
 	call := workerCall{
 		task: WorkerTask{

@@ -63,6 +63,9 @@ func (sb *SectorBuilder) returnTask(task workerCall) {
 		remoteid := task.task.RemoteID
 		log.Info("returnTask...", "RemoteID:", remoteid )
 		ret = sb.specialcommitTasks[remoteid]
+		if remoteid == "" {
+			ret = sb.commitTasks
+		}
 	default:
 		log.Error("unknown task type", task.task.Type)
 	}
