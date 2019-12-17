@@ -304,7 +304,16 @@ func (n *ClientNodeAdapter) SignProposal(ctx context.Context, signer address.Add
 	if err != nil {
 		return err
 	}
-	return api.SignWith(ctx, n.Wallet.Sign, sharedutils.FromSharedAddress(signer), localProposal)
+	err = api.SignWith(ctx, n.Wallet.Sign, sharedutils.FromSharedAddress(signer), localProposal)
+	if err != nil {
+		return err
+	}
+	signature, err := sharedutils.ToSharedSignature(localProposal.ProposerSignature)
+	if err != nil {
+		return err
+	}
+	proposal.ProposerSignature = signature
+	return nil
 }
 
 func (n *ClientNodeAdapter) GetDefaultWalletAddress(ctx context.Context) (address.Address, error) {
