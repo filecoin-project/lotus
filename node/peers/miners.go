@@ -5,10 +5,12 @@ import (
 	"time"
 
 	"github.com/filecoin-project/lotus/chain/stmgr"
+	logging "github.com/ipfs/go-log"
 	host "github.com/libp2p/go-libp2p-core/host"
-	"github.com/prometheus/common/log"
 	"go.opencensus.io/trace"
 )
+
+var log = logging.Logger("peertag")
 
 // PeerTagger uses information from the chain to tag peer connections to
 // prevent them from being closed by the connection manager
@@ -20,7 +22,6 @@ type PeerTagger struct {
 }
 
 func NewPeerTagger(h host.Host, st *stmgr.StateManager) *PeerTagger {
-	log.Error("NEW PEER TAGGER")
 	return &PeerTagger{
 		h:       h,
 		st:      st,
