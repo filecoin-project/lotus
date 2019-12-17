@@ -155,7 +155,9 @@ func libp2p() Option {
 		Override(new(routing.Routing), lp2p.Routing),
 
 		Override(NatPortMapKey, lp2p.NatPortMap),
-		Override(ConnectionManagerKey, lp2p.ConnectionManager(50, 200, 20*time.Second)),
+
+		// TODO: how do i pass config.Libp2p.ProtectedPeers here?
+		Override(ConnectionManagerKey, lp2p.ConnectionManager(50, 200, 20*time.Second, nil)),
 
 		Override(new(*pubsub.PubSub), lp2p.GossipSub()),
 

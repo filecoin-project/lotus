@@ -69,13 +69,15 @@ func ConnectionManager(low, high int, grace time.Duration, protected []string) f
 		for _, p := range protected {
 			pid, err := peer.IDFromString(p)
 			if err != nil {
-				return nil, xerrors.Errorf("failed to parse peer ID in protected peers array: %w", err)
+				return Libp2pOpts{}, xerrors.Errorf("failed to parse peer ID in protected peers array: %w", err)
 			}
 
 			cm.Protect(pid, "config-prot")
 		}
-		opts.Opts = append(opts.Opts, libp2p.ConnectionManager(cm))
-		return
+
+		return Libp2pOpts{
+			Opts: []libp2p.Option{libp2p.ConnectionManager(cm)},
+		}, nil
 	}
 }
 
