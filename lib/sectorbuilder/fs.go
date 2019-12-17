@@ -98,7 +98,7 @@ func (f *fs) reserve(typ dataType, size uint64) error {
 			types.NewInt(need).SizeStr(),
 			types.NewInt(uint64(avail)).SizeStr(),
 			types.NewInt(uint64(fsavail)).SizeStr(),
-			types.NewInt(uint64(f.reservedBytes())))
+			types.NewInt(uint64(f.reservedBytes())).SizeStr())
 	}
 
 	f.reserved[typ] += need
