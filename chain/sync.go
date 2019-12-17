@@ -679,6 +679,26 @@ func (syncer *Syncer) VerifyElectionPoStProof(ctx context.Context, h *types.Bloc
 }
 
 func (syncer *Syncer) checkBlockMessages(ctx context.Context, b *types.FullBlock, baseTs *types.TipSet) error {
+	{
+		var sigCids []cid.Cid // this is what we get for people not wanting the marshalcbor method on the cid type
+		var pubks []bls.PublicKey
+
+		for _, m := range b.BlsMessages {
+			sigCids = append(sigCids, m.Cid())
+
+			pubk, err := syncer.sm.GetBlsPublicKey(ctx, m.From, baseTs)
+			if err != nil {
+				return xerrors.Errorf("failed to load bls public to validate block: %w", err)
+			}
+
+			pubks = append(pubks, pubk)
+		}
+
+		if err := syncer.verifyBlsAggregate(ctx, b.Header.BLSAggregate, sigCids, pubks); err != nil {
+			return xerrors.Errorf("bls aggregate signature was invalid: %w", err)
+		}
+	}
+
 	nonces := make(map[address.Address]uint64)
 	balances := make(map[address.Address]types.BigInt)
 
@@ -722,28 +742,14 @@ func (syncer *Syncer) checkBlockMessages(ctx context.Context, b *types.FullBlock
 
 	bs := amt.WrapBlockstore(syncer.store.Blockstore())
 	var blsCids []cbg.CBORMarshaler
-	var sigCids []cid.Cid // this is what we get for people not wanting the marshalcbor method on the cid type
 
-	var pubks []bls.PublicKey
 	for i, m := range b.BlsMessages {
 		if err := checkMsg(m); err != nil {
 			return xerrors.Errorf("block had invalid bls message at index %d: %w", i, err)
 		}
 
-		sigCids = append(sigCids, m.Cid())
 		c := cbg.CborCid(m.Cid())
 		blsCids = append(blsCids, &c)
-
-		pubk, err := syncer.sm.GetBlsPublicKey(ctx, m.From, baseTs)
-		if err != nil {
-			return xerrors.Errorf("failed to load bls public to validate block: %w", err)
-		}
-
-		pubks = append(pubks, pubk)
-	}
-
-	if err := syncer.verifyBlsAggregate(ctx, b.Header.BLSAggregate, sigCids, pubks); err != nil {
-		return xerrors.Errorf("bls aggregate signature was invalid: %w", err)
 	}
 
 	var secpkCids []cbg.CBORMarshaler
