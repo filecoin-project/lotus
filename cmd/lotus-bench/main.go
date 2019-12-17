@@ -181,7 +181,7 @@ func main() {
 
 				log.Info("Running replication...")
 				pieces := []sectorbuilder.PublicPieceInfo{pi}
-				pco, err := sb.SealPreCommit(i, ticket, pieces)
+				pco, _,err := sb.SealPreCommit(i, ticket, pieces)
 				if err != nil {
 					return xerrors.Errorf("commit: %w", err)
 				}
