@@ -103,17 +103,17 @@ func (syncer *Syncer) Stop() {
 // InformNewHead informs the syncer about a new potential tipset
 // This should be called when connecting to new peers, and additionally
 // when receiving new blocks from the network
-func (syncer *Syncer) InformNewHead(from peer.ID, fts *store.FullTipSet) {
+func (syncer *Syncer) InformNewHead(from peer.ID, fts *store.FullTipSet) bool {
 	ctx := context.Background()
 	if fts == nil {
 		log.Errorf("got nil tipset in InformNewHead")
-		return
+		return false
 	}
 
 	for _, b := range fts.Blocks {
 		if err := syncer.ValidateMsgMeta(b); err != nil {
 			log.Warnf("invalid block received: %s", err)
-			return
+			return false
 		}
 	}
 
@@ -125,16 +125,17 @@ func (syncer *Syncer) InformNewHead(from peer.ID, fts *store.FullTipSet) {
 
 		if err := syncer.Sync(ctx, fts.TipSet()); err != nil {
 			log.Errorf("failed to sync our own block %s: %+v", fts.TipSet().Cids(), err)
+			return false
 		}
 
-		return
+		return true
 	}
 
 	// TODO: IMPORTANT(GARBAGE) this needs to be put in the 'temporary' side of
 	// the blockstore
 	if err := syncer.store.PersistBlockHeaders(fts.TipSet().Blocks()...); err != nil {
 		log.Warn("failed to persist incoming block header: ", err)
-		return
+		return false
 	}
 
 	syncer.Bsync.AddPeer(from)
@@ -147,10 +148,11 @@ func (syncer *Syncer) InformNewHead(from peer.ID, fts *store.FullTipSet) {
 			miners = append(miners, blk.Miner.String())
 		}
 		log.Infof("incoming tipset from %s does not appear to be better than our best chain, ignoring for now", miners)
-		return
+		return false
 	}
 
 	syncer.syncmgr.SetPeerHead(ctx, from, fts.TipSet())
+	return true
 }
 
 func (syncer *Syncer) IncomingBlocks(ctx context.Context) (<-chan *types.BlockHeader, error) {
@@ -232,12 +234,12 @@ func (syncer *Syncer) ChainStore() *store.ChainStore {
 	return syncer.store
 }
 
-func (syncer *Syncer) InformNewBlock(from peer.ID, blk *types.FullBlock) {
+func (syncer *Syncer) InformNewBlock(from peer.ID, blk *types.FullBlock) bool {
 	// TODO: search for other blocks that could form a tipset with this block
 	// and then send that tipset to InformNewHead
 
 	fts := &store.FullTipSet{Blocks: []*types.FullBlock{blk}}
-	syncer.InformNewHead(from, fts)
+	return syncer.InformNewHead(from, fts)
 }
 
 func copyBlockstore(from, to bstore.Blockstore) error {
