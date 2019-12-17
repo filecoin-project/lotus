@@ -3,9 +3,13 @@ package retrievaladapter
 import (
 	"context"
 
+	"github.com/filecoin-project/go-fil-components/retrievalmarket"
+	retrievaladdress "github.com/filecoin-project/go-fil-components/shared/address"
+	retrievaltoken "github.com/filecoin-project/go-fil-components/shared/tokenamount"
+	retrievaltypes "github.com/filecoin-project/go-fil-components/shared/types"
+
 	payapi "github.com/filecoin-project/lotus/node/impl/paych"
 	"github.com/filecoin-project/lotus/paych"
-	retrievalmarket "github.com/filecoin-project/lotus/retrieval"
 )
 
 type retrievalClientNode struct {
@@ -21,21 +25,25 @@ func NewRetrievalClientNode(pmgr *paych.Manager, payapi payapi.PaychAPI) retriev
 
 // GetOrCreatePaymentChannel sets up a new payment channel if one does not exist
 // between a client and a miner and insures the client has the given amount of funds available in the channel
-func (rcn *retrievalClientNode) GetOrCreatePaymentChannel(ctx context.Context, clientAddress retrievalmarket.Address, minerAddress retrievalmarket.Address, clientFundsAvailable retrievalmarket.BigInt) (retrievalmarket.Address, error) {
-	paych, _, err := rcn.pmgr.GetPaych(ctx, clientAddress, minerAddress, clientFundsAvailable)
-	return paych, err
+func (rcn *retrievalClientNode) GetOrCreatePaymentChannel(ctx context.Context, clientAddress retrievaladdress.Address, minerAddress retrievaladdress.Address, clientFundsAvailable retrievaltoken.TokenAmount) (retrievaladdress.Address, error) {
+	paych, _, err := rcn.pmgr.GetPaych(ctx, FromSharedAddress(clientAddress), FromSharedAddress(minerAddress), FromSharedTokenAmount(clientFundsAvailable))
+	return ToSharedAddress(paych), err
 }
 
 // Allocate late creates a lane within a payment channel so that calls to
 // CreatePaymentVoucher will automatically make vouchers only for the difference
 // in total
-func (rcn *retrievalClientNode) AllocateLane(paymentChannel retrievalmarket.Address) (uint64, error) {
-	return rcn.pmgr.AllocateLane(paymentChannel)
+func (rcn *retrievalClientNode) AllocateLane(paymentChannel retrievaladdress.Address) (uint64, error) {
+	return rcn.pmgr.AllocateLane(FromSharedAddress(paymentChannel))
 }
 
 // CreatePaymentVoucher creates a new payment voucher in the given lane for a
 // given payment channel so that all the payment vouchers in the lane add up
 // to the given amount (so the payment voucher will be for the difference)
-func (rcn *retrievalClientNode) CreatePaymentVoucher(ctx context.Context, paymentChannel retrievalmarket.Address, amount retrievalmarket.BigInt, lane uint64) (*retrievalmarket.SignedVoucher, error) {
-	return rcn.payapi.PaychVoucherCreate(ctx, paymentChannel, amount, lane)
+func (rcn *retrievalClientNode) CreatePaymentVoucher(ctx context.Context, paymentChannel retrievaladdress.Address, amount retrievaltoken.TokenAmount, lane uint64) (*retrievaltypes.SignedVoucher, error) {
+	voucher, err := rcn.payapi.PaychVoucherCreate(ctx, FromSharedAddress(paymentChannel), FromSharedTokenAmount(amount), lane)
+	if err != nil {
+		return nil, err
+	}
+	return ToSharedSignedVoucher(voucher)
 }
