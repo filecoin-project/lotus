@@ -10,7 +10,7 @@ import (
 	ipld "github.com/ipfs/go-ipld-format"
 
 	"github.com/filecoin-project/go-fil-components/datatransfer"
-	"github.com/filecoin-project/lotus/lib/statestore"
+	"github.com/filecoin-project/go-fil-components/shared/statestore"
 )
 
 // MetadataDS stores metadata

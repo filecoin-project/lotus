@@ -2,13 +2,16 @@ package modules
 
 import (
 	"context"
-	"github.com/filecoin-project/lotus/retrievaladapter"
 	"path/filepath"
 	"reflect"
 
+	"github.com/filecoin-project/lotus/retrievaladapter"
+
 	"github.com/filecoin-project/go-fil-components/retrievalmarket"
+	"github.com/filecoin-project/go-fil-components/retrievalmarket/discovery"
 	retrievalimpl "github.com/filecoin-project/go-fil-components/retrievalmarket/impl"
-	"github.com/filecoin-project/lotus/lib/statestore"
+	"github.com/filecoin-project/go-fil-components/shared/statestore"
+	"github.com/filecoin-project/go-fil-components/storagemarket"
 	"github.com/filecoin-project/lotus/node/modules/helpers"
 	"github.com/filecoin-project/lotus/paych"
 
@@ -30,7 +33,8 @@ import (
 	"go.uber.org/fx"
 
 	"github.com/filecoin-project/go-fil-components/datatransfer/impl/graphsync"
-	"github.com/filecoin-project/lotus/chain/deals"
+	deals "github.com/filecoin-project/go-fil-components/storagemarket/impl"
+	storageimpl "github.com/filecoin-project/go-fil-components/storagemarket/impl"
 	payapi "github.com/filecoin-project/lotus/node/impl/paych"
 	"github.com/filecoin-project/lotus/node/modules/dtypes"
 	"github.com/filecoin-project/lotus/node/repo"
@@ -102,6 +106,14 @@ func ClientGraphsync(mctx helpers.MetricsCtx, lc fx.Lifecycle, ibs dtypes.Client
 	gs := graphsync.New(helpers.LifecycleCtx(mctx, lc), graphsyncNetwork, ipldBridge, loader, storer)
 
 	return gs
+}
+
+func NewClientRequestValidator(deals dtypes.ClientDealStore) *storageimpl.ClientRequestValidator {
+	return storageimpl.NewClientRequestValidator(deals)
+}
+
+func StorageClient(h host.Host, dag dtypes.ClientDAG, dataTransfer dtypes.ClientDataTransfer, discovery *discovery.Local, deals dtypes.ClientDealStore, scn storagemarket.StorageClientNode) storagemarket.StorageClient {
+	return storageimpl.NewClient(h, dag, dataTransfer, discovery, deals, scn)
 }
 
 // RetrievalClient creates a new retrieval client attached to the client blockstore

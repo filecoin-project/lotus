@@ -6,6 +6,7 @@ import (
 	"crypto/rand"
 	"encoding/json"
 	"fmt"
+	"github.com/filecoin-project/lotus/storagemarketadapter"
 	"io/ioutil"
 	"os"
 	"path/filepath"
@@ -19,11 +20,12 @@ import (
 	"golang.org/x/xerrors"
 	"gopkg.in/urfave/cli.v2"
 
+	"github.com/filecoin-project/go-fil-components/storagemarket"
+	deals "github.com/filecoin-project/go-fil-components/storagemarket/impl"
 	lapi "github.com/filecoin-project/lotus/api"
 	"github.com/filecoin-project/lotus/build"
 	"github.com/filecoin-project/lotus/chain/actors"
 	"github.com/filecoin-project/lotus/chain/address"
-	"github.com/filecoin-project/lotus/chain/deals"
 	"github.com/filecoin-project/lotus/chain/types"
 	lcli "github.com/filecoin-project/lotus/cli"
 	"github.com/filecoin-project/lotus/genesis"
@@ -280,15 +282,21 @@ func migratePreSealMeta(ctx context.Context, api lapi.FullNode, presealDir strin
 
 		dealKey := datastore.NewKey(deals.ProviderDsPrefix).ChildString(proposalCid.String())
 
+		proposal, err := storagemarketadapter.ToSharedStorageDealProposal(&sector.Deal)
+		if err != nil {
+			return err
+		}
 		deal := &deals.MinerDeal{
-			Proposal:    sector.Deal,
-			ProposalCid: proposalCid,
-			State:       lapi.DealComplete,
-			Ref:         proposalCid, // TODO: This is super wrong, but there
-			// are no params for CommP CIDs, we can't recover unixfs cid easily,
-			// and this isn't even used after the deal enters Complete state
-			DealID:   dealID,
-			SectorID: sector.SectorID,
+			MinerDeal: storagemarket.MinerDeal{
+				Proposal:    *proposal,
+				ProposalCid: proposalCid,
+				State:       lapi.DealComplete,
+				Ref:         proposalCid, // TODO: This is super wrong, but there
+				// are no params for CommP CIDs, we can't recover unixfs cid easily,
+				// and this isn't even used after the deal enters Complete state
+				DealID:   dealID,
+				SectorID: sector.SectorID,
+			},
 		}
 
 		b, err = cborutil.Dump(deal)
