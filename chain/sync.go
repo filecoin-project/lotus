@@ -6,6 +6,7 @@ import (
 	"crypto/sha256"
 	"errors"
 	"fmt"
+	"sync"
 	"time"
 
 	"github.com/Gurpartap/async"
@@ -409,6 +410,8 @@ func (syncer *Syncer) ValidateTipSet(ctx context.Context, fts *store.FullTipSet)
 	ctx, span := trace.StartSpan(ctx, "validateTipSet")
 	defer span.End()
 
+	span.AddAttributes(trace.Int64Attribute("height", int64(fts.TipSet().Height())))
+
 	ts := fts.TipSet()
 	if ts.Equals(syncer.Genesis) {
 		return nil
@@ -794,10 +797,19 @@ func (syncer *Syncer) verifyBlsAggregate(ctx context.Context, sig types.Signatur
 		trace.Int64Attribute("msgCount", int64(len(msgs))),
 	)
 
-	var digests []bls.Digest
-	for _, c := range msgs {
-		digests = append(digests, bls.Hash(bls.Message(c.Bytes())))
+	var wg sync.WaitGroup
+
+	digests := make([]bls.Digest, len(msgs))
+	for i := 0; i < 10; i++ {
+		wg.Add(1)
+		go func(w int) {
+			defer wg.Done()
+			for j := 0; (j*10)+w < len(msgs); j++ {
+				digests[j*10+w] = bls.Hash(bls.Message(msgs[j*10+w].Bytes()))
+			}
+		}(i)
 	}
+	wg.Wait()
 
 	var bsig bls.Signature
 	copy(bsig[:], sig.Data)
