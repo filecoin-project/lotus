@@ -579,6 +579,22 @@ func (t *SectorInfo) MarshalCBOR(w io.Writer) error {
 	if _, err := w.Write([]byte(t.LastErr)); err != nil {
 		return err
 	}
+
+	// t.RemoteID (string) (string)
+	if _, err := w.Write(cbg.CborEncodeMajorType(cbg.MajTextString, uint64(len("RemoteID")))); err != nil {
+		return err
+	}
+	if _, err := w.Write([]byte("RemoteID")); err != nil {
+		return err
+	}
+
+	if _, err := w.Write(cbg.CborEncodeMajorType(cbg.MajTextString, uint64(len(t.RemoteID)))); err != nil {
+		return err
+	}
+	if _, err := w.Write([]byte(t.RemoteID)); err != nil {
+		return err
+	}
+
 	return nil
 }
 
@@ -975,6 +991,32 @@ func (t *SectorInfo) UnmarshalCBOR(r io.Reader) error {
 		}
 
 		t.LastErr = string(sval)
+	}
+
+	// t.RemoteID (string) (string)
+
+	{
+		sval, err := cbg.ReadString(br)
+		if err != nil {
+			return err
+		}
+
+		name = string(sval)
+	}
+
+	if name != "RemoteID" {
+		//return fmt.Errorf("expected struct map entry %s to be RemoteID", name)
+		t.RemoteID = string("")
+		return nil
+	}
+
+	{
+		sval, err := cbg.ReadString(br)
+		if err != nil {
+			return err
+		}
+
+		t.RemoteID = string(sval)
 	}
 	return nil
 }

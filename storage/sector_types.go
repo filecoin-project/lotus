@@ -74,6 +74,9 @@ type SectorInfo struct {
 
 	// Debug
 	LastErr string
+
+	//Remote
+	RemoteID string
 }
 
 func (t *SectorInfo) upd() *sectorUpdate {
@@ -109,6 +112,7 @@ func (t *SectorInfo) rspco() sectorbuilder.RawSealPreCommitOutput {
 
 	copy(out.CommD[:], t.CommD)
 	copy(out.CommR[:], t.CommR)
+	out.RemoteID = t.RemoteID
 
 	return out
 }

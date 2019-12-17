@@ -26,6 +26,9 @@ type WorkerTask struct {
 	// commit
 	SealSeed SealSeed
 	Rspco    RawSealPreCommitOutput
+
+	// remoteid
+	RemoteID string
 }
 
 type workerCall struct {
@@ -57,7 +60,9 @@ func (sb *SectorBuilder) returnTask(task workerCall) {
 	case WorkerPreCommit:
 		ret = sb.precommitTasks
 	case WorkerCommit:
-		ret = sb.commitTasks
+		remoteid := task.task.Rspco.RemoteID
+		log.Info("returnTask...", "RemoteID:", remoteid )
+		ret = sb.specialcommitTasks[remoteid]
 	default:
 		log.Error("unknown task type", task.task.Type)
 	}
@@ -95,12 +100,23 @@ func (sb *SectorBuilder) remoteWorker(ctx context.Context, r *remote, cfg Worker
 		commits = nil
 	}
 
+	specialcommits := make(chan workerCall)
+
+	sb.specialcommitTasks[cfg.RemoteID] = specialcommits
+
+	log.Infof("remoteWorker WorkerCfg RemoteID: %s", cfg.RemoteID)
+
 	for {
 		select {
-		case task := <-commits:
-			sb.doTask(ctx, r, task)
-		case task := <-precommits:
-			sb.doTask(ctx, r, task)
+		case workertask := <-specialcommits:
+			log.Infof("specialcommits SectorID: %d WorkerCfg: %s RemoteID: %s", workertask.task.SectorID, cfg.RemoteID, workertask.task.Rspco.RemoteID)
+			sb.doTask(ctx, r, workertask)
+		case workertask := <-commits:
+			log.Infof("commits SectorID: %d WorkerCfg: %s RemoteID: %s", workertask.task.SectorID, cfg.RemoteID, workertask.task.Rspco.RemoteID)
+			sb.doTask(ctx, r, workertask)
+		case workertask := <-precommits:
+			log.Infof("precommits SectorID: %d WorkerCfg: %s ", workertask.task.SectorID, cfg.RemoteID)
+			 sb.doTask(ctx, r, workertask)
 		case <-ctx.Done():
 			return
 		case <-sb.stopping:

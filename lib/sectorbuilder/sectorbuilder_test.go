@@ -66,7 +66,7 @@ func (s *seal) commit(t *testing.T, sb *sectorbuilder.SectorBuilder, done func()
 		TicketBytes: [32]byte{0, 9, 8, 7, 6, 5, 4, 3, 2, 1, 0, 9, 8, 7, 6, 45, 3, 2, 1, 0, 9, 8, 7, 6, 5, 4, 3, 2, 1, 0, 9},
 	}
 
-	proof, err := sb.SealCommit(s.sid, s.ticket, seed, []sectorbuilder.PublicPieceInfo{s.ppi}, s.pco)
+	proof, err := sb.SealCommit(s.sid, s.ticket, seed, []sectorbuilder.PublicPieceInfo{s.ppi}, s.pco, "")
 	if err != nil {
 		t.Fatalf("%+v", err)
 	}

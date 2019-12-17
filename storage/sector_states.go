@@ -69,10 +69,12 @@ func (m *Miner) handleUnsealed(ctx context.Context, sector SectorInfo) *sectorUp
 		return sector.upd().fatal(err)
 	}
 
-	rspco, err := m.sb.SealPreCommit(sector.SectorID, *ticket, sector.pieceInfos())
+	rspco, remoteid, err := m.sb.SealPreCommit(sector.SectorID, *ticket, sector.pieceInfos())
 	if err != nil {
 		return sector.upd().to(api.SealFailed).error(xerrors.Errorf("seal pre commit failed: %w", err))
 	}
+
+	log.Info("performing sector replication:  ", "RemoteID:", remoteid)
 
 	return sector.upd().to(api.PreCommitting).state(func(info *SectorInfo) {
 		info.CommD = rspco.CommD[:]
@@ -81,6 +83,9 @@ func (m *Miner) handleUnsealed(ctx context.Context, sector SectorInfo) *sectorUp
 			BlockHeight: ticket.BlockHeight,
 			TicketBytes: ticket.TicketBytes[:],
 		}
+		info.RemoteID = remoteid
+
+		log.Info("info.RemoteID:  ", "RemoteID:", info.RemoteID)
 	})
 }
 
@@ -132,7 +137,7 @@ func (m *Miner) handlePreCommitted(ctx context.Context, sector SectorInfo) *sect
 		err := xerrors.Errorf("sector precommit failed: %d", mw.Receipt.ExitCode)
 		return sector.upd().to(api.PreCommitFailed).error(err)
 	}
-	log.Info("precommit message landed on chain: ", sector.SectorID)
+	log.Infof("precommit message landed on chain: %d  use %s", sector.SectorID, sector.RemoteID)
 
 	randHeight := mw.TipSet.Height() + build.InteractivePoRepDelay - 1 // -1 because of how the messages are applied
 	log.Infof("precommit for sector %d made it on chain, will start proof computation at height %d", sector.SectorID, randHeight)
@@ -153,6 +158,8 @@ func (m *Miner) handlePreCommitted(ctx context.Context, sector SectorInfo) *sect
 				BlockHeight: randHeight,
 				TicketBytes: rand,
 			}
+			info.RemoteID = sector.RemoteID
+			log.Info("handlePreCommitted...", "RemoteID:", sector.RemoteID)
 		})
 
 		updateNonce++
@@ -171,9 +178,9 @@ func (m *Miner) handlePreCommitted(ctx context.Context, sector SectorInfo) *sect
 }
 
 func (m *Miner) handleCommitting(ctx context.Context, sector SectorInfo) *sectorUpdate {
-	log.Info("scheduling seal proof computation...")
+	log.Info("scheduling seal proof computation...", "RemoteID:", sector.RemoteID)
 
-	proof, err := m.sb.SealCommit(sector.SectorID, sector.Ticket.SB(), sector.Seed.SB(), sector.pieceInfos(), sector.rspco())
+	proof, err := m.sb.SealCommit(sector.SectorID, sector.Ticket.SB(), sector.Seed.SB(), sector.pieceInfos(), sector.rspco(), sector.RemoteID)
 	if err != nil {
 		return sector.upd().to(api.SealCommitFailed).error(xerrors.Errorf("computing seal proof failed: %w", err))
 	}
@@ -211,6 +218,7 @@ func (m *Miner) handleCommitting(ctx context.Context, sector SectorInfo) *sector
 		mcid := smsg.Cid()
 		info.CommitMessage = &mcid
 		info.Proof = proof
+		info.RemoteID = sector.RemoteID
 	})
 }
 

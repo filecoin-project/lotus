@@ -125,7 +125,8 @@ func (w *worker) push(typ string, sectorID uint64) error {
 	}
 
 	// TODO: keep files around for later stages of sealing
-	return os.RemoveAll(filename)
+	return nil
+	//return os.RemoveAll(filename)
 }
 
 func (w *worker) fetchSector(sectorID uint64, typ sectorbuilder.WorkerTaskType) error {
@@ -134,11 +135,13 @@ func (w *worker) fetchSector(sectorID uint64, typ sectorbuilder.WorkerTaskType) 
 	case sectorbuilder.WorkerPreCommit:
 		err = w.fetch("staging", sectorID)
 	case sectorbuilder.WorkerCommit:
-		err = w.fetch("sealed", sectorID)
-		if err != nil {
-			return xerrors.Errorf("fetch sealed: %w", err)
-		}
-		err = w.fetch("cache", sectorID)
+		//TODO 后续改成文件存在就不下载了
+		//err = w.fetch("sealed", sectorID)
+		//if err != nil {
+		//	return xerrors.Errorf("fetch sealed: %w", err)
+		//}
+		//
+		//err = w.fetch("cache", sectorID)
 	}
 	if err != nil {
 		return xerrors.Errorf("fetch failed: %w", err)

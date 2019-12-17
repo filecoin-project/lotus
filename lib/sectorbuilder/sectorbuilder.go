@@ -51,6 +51,7 @@ const CommLen = sectorbuilder.CommitmentBytesLen
 type WorkerCfg struct {
 	NoPreCommit bool
 	NoCommit    bool
+	RemoteID    string
 
 	// TODO: 'cost' info, probably in terms of sealing + transfer speed
 }
@@ -73,6 +74,8 @@ type SectorBuilder struct {
 	precommitTasks chan workerCall
 	commitTasks    chan workerCall
 
+	specialcommitTasks map[string]chan workerCall
+
 	taskCtr       uint64
 	remoteLk      sync.Mutex
 	remoteCtr     int
@@ -93,6 +96,8 @@ type SectorBuilder struct {
 type JsonRSPCO struct {
 	CommD []byte
 	CommR []byte
+
+	RemoteID string
 }
 
 func (rspco *RawSealPreCommitOutput) ToJson() JsonRSPCO {
@@ -184,6 +189,8 @@ func New(cfg *Config, ds dtypes.MetadataDS) (*SectorBuilder, error) {
 		commitTasks:    make(chan workerCall),
 		remoteResults:  map[uint64]chan<- SealRes{},
 		remotes:        map[int]*remote{},
+
+		specialcommitTasks:  map[string]chan workerCall{},
 
 		stopping: make(chan struct{}),
 	}
@@ -412,7 +419,7 @@ func (sb *SectorBuilder) ReadPieceFromSealedSector(sectorID uint64, offset uint6
 	}, nil
 }
 
-func (sb *SectorBuilder) sealPreCommitRemote(call workerCall) (RawSealPreCommitOutput, error) {
+func (sb *SectorBuilder) sealPreCommitRemote(call workerCall) (RawSealPreCommitOutput, string, error) {
 	atomic.AddInt32(&sb.preCommitWait, -1)
 
 	select {
@@ -421,22 +428,22 @@ func (sb *SectorBuilder) sealPreCommitRemote(call workerCall) (RawSealPreCommitO
 		if ret.Err != "" {
 			err = xerrors.New(ret.Err)
 		}
-		return ret.Rspco.rspco(), err
+		return ret.Rspco.rspco(), ret.Rspco.RemoteID, err
 	case <-sb.stopping:
-		return RawSealPreCommitOutput{}, xerrors.New("sectorbuilder stopped")
+		return RawSealPreCommitOutput{}, "", xerrors.New("sectorbuilder stopped")
 	}
 }
 
-func (sb *SectorBuilder) SealPreCommit(sectorID uint64, ticket SealTicket, pieces []PublicPieceInfo) (RawSealPreCommitOutput, error) {
+func (sb *SectorBuilder) SealPreCommit(sectorID uint64, ticket SealTicket, pieces []PublicPieceInfo) (RawSealPreCommitOutput, string, error) {
 	fs := sb.filesystem
 
 	if err := fs.reserve(dataCache, sb.ssize); err != nil {
-		return RawSealPreCommitOutput{}, err
+		return RawSealPreCommitOutput{}, "", err
 	}
 	defer fs.free(dataCache, sb.ssize)
 
 	if err := fs.reserve(dataSealed, sb.ssize); err != nil {
-		return RawSealPreCommitOutput{}, err
+		return RawSealPreCommitOutput{}, "", err
 	}
 	defer fs.free(dataSealed, sb.ssize)
 
@@ -574,7 +581,12 @@ func (sb *SectorBuilder) sealCommitLocal(sectorID uint64, ticket SealTicket, see
 	return proof, nil
 }
 
-func (sb *SectorBuilder) SealCommit(sectorID uint64, ticket SealTicket, seed SealSeed, pieces []PublicPieceInfo, rspco RawSealPreCommitOutput) (proof []byte, err error) {
+func (sb *SectorBuilder) SealCommit(sectorID uint64, ticket SealTicket, seed SealSeed, pieces []PublicPieceInfo, rspco RawSealPreCommitOutput, remoteid string) (proof []byte, err error) {
+	log.Info("SealCommit...", "RemoteID:", remoteid)
+
+	specialtask := sb.specialcommitTasks[remoteid]
+
+
 	call := workerCall{
 		task: WorkerTask{
 			Type:       WorkerCommit,
@@ -592,7 +604,8 @@ func (sb *SectorBuilder) SealCommit(sectorID uint64, ticket SealTicket, seed Sea
 	atomic.AddInt32(&sb.commitWait, 1)
 
 	select { // prefer remote
-	case sb.commitTasks <- call:
+	case specialtask <- call:
+		log.Info("specialtask...", "RemoteID:", remoteid)
 		proof, err = sb.sealCommitRemote(call)
 	default:
 		sb.checkRateLimit()
@@ -603,7 +616,8 @@ func (sb *SectorBuilder) SealCommit(sectorID uint64, ticket SealTicket, seed Sea
 		}
 
 		select { // use whichever is available
-		case sb.commitTasks <- call:
+		case specialtask <- call:
+			log.Info("commitTasks...", "RemoteID:", remoteid)
 			proof, err = sb.sealCommitRemote(call)
 		case rl <- struct{}{}:
 			proof, err = sb.sealCommitLocal(sectorID, ticket, seed, pieces, rspco)
