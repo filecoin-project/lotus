@@ -136,7 +136,7 @@ var initCmd = &cli.Command{
 			return err
 		}
 
-		if v.APIVersion.EqMajorMinor(build.APIVersion) {
+		if v.APIVersion&build.MinorMask != build.APIVersion&build.MinorMask {
 			return xerrors.Errorf("Remote API version didn't match (local %x, remote %x)", build.APIVersion, v.APIVersion)
 		}
 
