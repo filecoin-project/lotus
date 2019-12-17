@@ -25,28 +25,13 @@ func (ve Version) String() string {
 	vmj, vmi, vp := ve.Ints()
 	return fmt.Sprintf("%d.%d.%d", vmj, vmi, vp)
 }
->>>>>>> 4041819c... Refactor versions
 
 func (ve Version) EqMajorMinor(v2 Version) bool {
 	return ve&minorMask == v2&minorMask
 }
 
-// APIVersion is a hex semver version of the rpc api exposed
-//
-//                   M M  P
-//                   A I  A
-//                   J N  T
-//                   O O  C
-//                   R R  H
-//                   |\vv/|
-//                   vv  vv
-<<<<<<< HEAD
-const APIVersion = 0x000102
-||||||| parent of 4041819c... Refactor versions
-const APIVersion = 0x000101
-=======
-var APIVersion Version = newVer(0, 1, 1)
->>>>>>> 4041819c... Refactor versions
+// APIVersion is a semver version of the rpc api exposed
+var APIVersion Version = newVer(0, 1, 2)
 
 const (
 	majorMask = 0xff0000
