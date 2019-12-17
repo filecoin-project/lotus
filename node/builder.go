@@ -234,7 +234,6 @@ func Online() Option {
 			Override(new(*paych.Store), paych.NewStore),
 			Override(new(*paych.Manager), paych.NewManager),
 			Override(new(*market.FundMgr), market.NewFundMgr),
-			Override(RunPeerTaggerKey, lp2p.TagMiners),
 		),
 
 		// Storage miner

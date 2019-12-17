@@ -1,20 +1,16 @@
 package lp2p
 
 import (
-	"context"
 	"crypto/rand"
 	"time"
 
-	"github.com/filecoin-project/lotus/chain/stmgr"
 	"github.com/filecoin-project/lotus/chain/types"
-	"github.com/filecoin-project/lotus/node/peers"
 	"golang.org/x/xerrors"
 
 	logging "github.com/ipfs/go-log"
 	"github.com/libp2p/go-libp2p"
 	connmgr "github.com/libp2p/go-libp2p-connmgr"
 	"github.com/libp2p/go-libp2p-core/crypto"
-	host "github.com/libp2p/go-libp2p-core/host"
 	"github.com/libp2p/go-libp2p-core/peer"
 	"github.com/libp2p/go-libp2p-core/peerstore"
 	"go.uber.org/fx"
@@ -98,19 +94,4 @@ func simpleOpt(opt libp2p.Option) func() (opts Libp2pOpts, err error) {
 		opts.Opts = append(opts.Opts, opt)
 		return
 	}
-}
-
-func TagMiners(lc fx.Lifecycle, h host.Host, stmgr *stmgr.StateManager) {
-	pt := peers.NewPeerTagger(h, stmgr)
-	lc.Append(fx.Hook{
-		OnStart: func(ctx context.Context) error {
-			pt.Run()
-			return nil
-		},
-		OnStop: func(ctx context.Context) error {
-			return pt.Close()
-		},
-	})
-
-	return
 }

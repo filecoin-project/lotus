@@ -19,8 +19,8 @@ import (
 type CommonAPI struct {
 	fx.In
 
-	APISecret  *dtypes.APIAlg
-	Host       host.Host
+	APISecret *dtypes.APIAlg
+	Host      host.Host
 }
 
 type jwtPayload struct {
