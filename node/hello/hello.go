@@ -99,7 +99,7 @@ func (hs *Service) HandleStream(s inet.Stream) {
 	}
 
 	if ts.TipSet().Height() > 0 {
-		hs.h.ConnManager().TagPeer(s.Conn().RemotePeer(), "fcpeer", 1)
+		hs.h.ConnManager().TagPeer(s.Conn().RemotePeer(), "fcpeer", 10)
 
 		// don't bother informing about genesis
 		log.Infof("Got new tipset through Hello: %s from %s", ts.Cids(), s.Conn().RemotePeer())

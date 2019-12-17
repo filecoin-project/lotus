@@ -106,7 +106,7 @@ func (bs *BlockSync) GetBlocks(ctx context.Context, tsk types.TipSetKey, count i
 				return nil, xerrors.Errorf("success response from peer failed to process: %w", err)
 			}
 			bs.syncPeers.logGlobalSuccess(time.Since(start))
-			bs.host.ConnManager().TagPeer(p, "bsync", 2)
+			bs.host.ConnManager().TagPeer(p, "bsync", 25)
 			return resp, nil
 		}
 		oerr = bs.processStatus(req, res)

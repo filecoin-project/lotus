@@ -61,7 +61,7 @@ func HandleIncomingBlocks(ctx context.Context, bsub *pubsub.Subscription, s *cha
 				BlsMessages:   bmsgs,
 				SecpkMessages: smsgs,
 			}) {
-				cmgr.TagPeer(msg.ReceivedFrom, "blkprop", 2)
+				cmgr.TagPeer(msg.ReceivedFrom, "blkprop", 20)
 			}
 		}()
 	}
