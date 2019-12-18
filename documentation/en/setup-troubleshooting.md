@@ -1,5 +1,7 @@
 # Setup Troubleshooting
 
+## Config: Clearing data
+
 Here is a command that will delete your chain data, stored wallets, stored data
 and any miners you have set up:
 
@@ -11,7 +13,7 @@ This command usually resolves any issues with running `lotus` but it is not
 always required for updates. We will share information about when resetting your
 chain data and miners is required for an update in the future.
 
-## Lotus daemon problems
+## Error: Failed to connect bootstrap peer
 
 ```sh
 WARN  peermgr peermgr/peermgr.go:131  failed to connect to bootstrap peer: failed to dial : all dials failed
@@ -34,7 +36,7 @@ ERROR hello hello/hello.go:81 other peer has different genesis!
 
 - You already have another lotus deamon running.
 
-## Failed messages
+## Warning: get message get failed
 
 Some errors will occur that do not prevent Lotus from working:
 
