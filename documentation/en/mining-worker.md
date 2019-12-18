@@ -45,7 +45,7 @@ ListenAddress = "/ip4/127.0.0.1/tcp/2345/http"
 
 To make your node accessible over the local area network, you will need to determine your machines IP on the LAN, and change the `127.0.0.1` in the file to that address. A less secure, but more permissive option is to change it to `0.0.0.0`. This will allow anyone who can connect to your computer on that port to access the API (though they will still need an auth token, as we will discuss next).
 
-Next, you will need to get an authentication token for the seal worker. All lotus APIs require authentication tokens to ensure your processes are as secure against attackers attempting to make unauthenticated requests to them. To create a token, run `lotus-storage-miner auth create-token --perm admin`. This will create a token with `admin` permissions. Note: This is an admin token, it can access any of the api endpoints of your node, take care not to leak it.
+Next, you will need to get an authentication token for the seal worker. All lotus APIs require authentication tokens to ensure your processes are as secure against attackers attempting to make unauthenticated requests to them. To create a token, run `lotus-storage-miner auth create-token --perm admin`. This will create a token with `admin` permissions. Note: This is an admin token, it can access any of the api endpoints of your node, take care not to leak it. See the [scripting support doc](api-scripting-support.md) for more details.
 
 This token will look something like this:
 ```sh
