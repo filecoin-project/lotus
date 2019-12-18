@@ -42,7 +42,12 @@ func Host(mctx helpers.MetricsCtx, lc fx.Lifecycle, params P2PHostIn) (RawHost, 
 		return nil, fmt.Errorf("missing private key for node ID: %s", params.ID.Pretty())
 	}
 
-	opts := []libp2p.Option{libp2p.Identity(pkey), libp2p.Peerstore(params.Peerstore), libp2p.NoListenAddrs, libp2p.UserAgent("lotus-" + build.UserVersion)}
+	opts := []libp2p.Option{
+		libp2p.Identity(pkey),
+		libp2p.Peerstore(params.Peerstore),
+		libp2p.NoListenAddrs,
+		libp2p.Ping(true),
+		libp2p.UserAgent("lotus-" + build.UserVersion)}
 	for _, o := range params.Opts {
 		opts = append(opts, o...)
 	}
