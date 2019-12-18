@@ -7,6 +7,7 @@ import (
 	"net/http"
 	"os"
 	"path/filepath"
+	"time"
 
 	"golang.org/x/xerrors"
 
@@ -95,10 +96,11 @@ loop:
 		case task := <-tasks:
 			log.Infof("New task: %d, sector %d, action: %d", task.TaskID, task.SectorID, task.Type)
 			log.Infof("WorkerCfg: %s RemoteID: %s", constRemoteID, task.RemoteID)
+			seal := time.Now()
             // 考虑一些sealworker节点不添加此限制，保证一些异常的任务可以及时处理，或者直接让他fail， 因为恢复代价太大了
 			res := w.processTask(ctx, task)
 
-			log.Infof("Task %d done, err: %+v", task.TaskID, res.GoErr)
+			log.Infof("bench Task %d done,  task.Type %d use %s , err: %+v", task.TaskID,  task.Type, time.Now().Sub(seal), res.GoErr)
 
 			if err := api.WorkerDone(ctx, task.TaskID, res); err != nil {
 				log.Error(err)
