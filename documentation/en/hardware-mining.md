@@ -4,13 +4,13 @@
 > Protocol Labs team has used to test **Lotus Storage Miner**s on Lotus. There
 > is no guarantee this testing configuration will be suitable for Filecoin
 > storage mining at MainNet launch. If you need to buy new hardware to join the
-> Filecoin TestNet, we recommend to buy no more hardware than you require for
+> Filecoin Testnet, we recommend to buy no more hardware than you require for
 > testing. To learn more please read this
 > [Protocol Labs Standard Testing Configuration post](https://filecoin.io/blog/filecoin-testnet-mining/).
 
 **Sector sizes** and **minimum pledged storage** required to mine blocks are two
-very important Filecoin TestNet parameters that impact hardware decisions. We
-will continue to refine all parameters during TestNet.
+very important Filecoin Testnet parameters that impact hardware decisions. We
+will continue to refine all parameters during Testnet.
 
 BECAUSE OF THIS, OUR STANDARD TESTING CONFIGURATION FOR FILECOIN MAINNET CAN AND
 WILL CHANGE. YOU HAVE BEEN WARNED.
@@ -26,7 +26,7 @@ The setup below is a minimal example for sealing 32 GiB sectors on Lotus:
 Note that 1GB sectors don't require as high of specs, but are likely to be
 removed as we improve the performance of 32GB sector sealing.
 
-## TestNet discoveries
+## Testnet discoveries
 
 - If you only have 128GiB of ram, enabling 256GB of **NVMe** swap on an SSD will
   help you avoid out-of-memory issues while mining.
@@ -35,7 +35,7 @@ removed as we improve the performance of 32GB sector sealing.
 
 GPUs are a must for getting **block rewards**. Here are a few that have been
 confirmed to generate **SNARKs** quickly enough to successfully mine blocks on
-the Lotus TestNet.
+the Lotus Testnet.
 
 - GeForce RTX 2080 Ti
 - GeForce RTX 2080 SUPER
@@ -69,4 +69,4 @@ Here is a
 and a
 [GitHub issue thread](https://github.com/filecoin-project/lotus/issues/694) for
 those who wish to experiment with and contribute hardware setups for the
-**Filecoin TestNet**.
+**Filecoin Testnet**.

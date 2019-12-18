@@ -1,8 +1,8 @@
-# Join TestNet
+# Join Testnet
 
 ## Introduction
 
-Anyone can set up a **Lotus Node** and connect to the **Lotus TestNet**. This is
+Anyone can set up a **Lotus Node** and connect to the **Lotus Testnet**. This is
 the best way to explore the current CLI and the **Filecoin Decentralized Storage
 Market**.
 
@@ -42,7 +42,7 @@ lotus sync wait
 ```
 
 - This step will take anywhere between 30 minutes to a few hours.
-- You will be able to perform **Lotus TestNet** operations after it is finished.
+- You will be able to perform **Lotus Testnet** operations after it is finished.
 
 ## Create your first address
 
@@ -65,7 +65,7 @@ t3vhfme4qfvegqaz7m7q6o6afjcs67n6kpzv7t2eozio4chwpafwa2y4l7zhwd5eom7jmihzdg4s52dp
 
 ## Check wallet address balance
 
-Wallet balances in the Lotus TestNet are in **FIL**, the smallest denomination
+Wallet balances in the Lotus Testnet are in **FIL**, the smallest denomination
 of FIL is an **attoFil**, where 1 attoFil = 10^-18 FIL.
 
 ```sh
