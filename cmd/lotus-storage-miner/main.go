@@ -8,7 +8,6 @@ import (
 	"gopkg.in/urfave/cli.v2"
 
 	"github.com/filecoin-project/lotus/build"
-	lcli "github.com/filecoin-project/lotus/cli"
 	"github.com/filecoin-project/lotus/node/repo"
 	"github.com/filecoin-project/lotus/tracing"
 )
@@ -22,6 +21,7 @@ func main() {
 	logging.SetLogLevel("swarm", "WARN")
 
 	local := []*cli.Command{
+		authCmd,
 		runCmd,
 		initCmd,
 		infoCmd,
@@ -67,7 +67,7 @@ func main() {
 			},
 		},
 
-		Commands: append(local, lcli.Commands...),
+		Commands: local,
 	}
 	app.Setup()
 	app.Metadata["repoType"] = repo.StorageMiner
