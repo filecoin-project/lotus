@@ -423,7 +423,7 @@ func (c *wsConn) handleWsConn(ctx context.Context) {
 			if !ok {
 				if c.incomingErr != nil {
 					if !websocket.IsCloseError(c.incomingErr, websocket.CloseNormalClosure) {
-						log.Warnw("websocket error", "error", c.incomingErr)
+						log.Debugw("websocket error", "error", c.incomingErr)
 					}
 				}
 				return // remote closed
