@@ -142,9 +142,36 @@ func (w *worker) processTask(ctx context.Context, task sectorbuilder.WorkerTask)
 			return errRes(xerrors.Errorf("pushing precommited data: %w", err))
 		}
 
+		cachename := filepath.Join(w.repo, "cache", w.sb.SectorName(task.SectorID))
+		bakname := filepath.Join(w.repo, "cache", w.sb.SectorName(task.SectorID) + "_bak")
+
+        //移除文件
+		os.Mkdir(bakname, 750)
+
+		os.Rename(filepath.Join(cachename, "sc-01-data-layer-0.dat"),  filepath.Join(bakname, "sc-01-data-layer-0.dat"))
+		os.Rename(filepath.Join(cachename, "sc-01-data-layer-1.dat"),  filepath.Join(bakname, "sc-01-data-layer-1.dat"))
+		os.Rename(filepath.Join(cachename, "sc-01-data-layer-2.dat"),  filepath.Join(bakname, "sc-01-data-layer-2.dat"))
+		os.Rename(filepath.Join(cachename, "sc-01-data-layer-3.dat"),  filepath.Join(bakname, "sc-01-data-layer-3.dat"))
+
+		os.Rename(filepath.Join(cachename, "sc-01-data-tree-c.dat"),  filepath.Join(bakname, "sc-01-data-tree-c.dat"))
+		os.Rename(filepath.Join(cachename, "sc-01-data-tree-d.dat"),  filepath.Join(bakname, "sc-01-data-tree-d.dat"))
+		os.Rename(filepath.Join(cachename, "sc-01-data-tree-q.dat"),  filepath.Join(bakname, "sc-01-data-tree-q.dat"))
+
 		if err := w.push("cache", task.SectorID); err != nil {
 			return errRes(xerrors.Errorf("pushing precommited data: %w", err))
 		}
+
+		os.Rename(filepath.Join(bakname, "sc-01-data-layer-0.dat"),  filepath.Join(cachename, "sc-01-data-layer-0.dat"))
+		os.Rename(filepath.Join(bakname, "sc-01-data-layer-1.dat"),  filepath.Join(cachename, "sc-01-data-layer-1.dat"))
+		os.Rename(filepath.Join(bakname, "sc-01-data-layer-2.dat"),  filepath.Join(cachename, "sc-01-data-layer-2.dat"))
+		os.Rename(filepath.Join(bakname, "sc-01-data-layer-3.dat"),  filepath.Join(cachename, "sc-01-data-layer-3.dat"))
+
+		os.Rename(filepath.Join(bakname, "sc-01-data-tree-c.dat"),  filepath.Join(cachename, "sc-01-data-tree-c.dat"))
+		os.Rename(filepath.Join(bakname, "sc-01-data-tree-d.dat"),  filepath.Join(cachename, "sc-01-data-tree-d.dat"))
+		os.Rename(filepath.Join(bakname, "sc-01-data-tree-q.dat"),  filepath.Join(cachename, "sc-01-data-tree-q.dat"))
+
+		os.RemoveAll(bakname)
+
 	case sectorbuilder.WorkerCommit:
 		proof, err := w.sb.SealCommit(task.SectorID, task.SealTicket, task.SealSeed, task.Pieces, task.Rspco, constRemoteID)
 		if err != nil {
