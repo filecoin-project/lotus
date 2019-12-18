@@ -17,11 +17,11 @@ func (sb *SectorBuilder) SectorName(sectorID uint64) string {
 }
 
 func (sb *SectorBuilder) StagedSectorPath(sectorID uint64) string {
-	return filepath.Join(sb.stagedDir, sb.SectorName(sectorID))
+	return filepath.Join(sb.filesystem.pathFor(dataStaging), sb.SectorName(sectorID))
 }
 
 func (sb *SectorBuilder) unsealedSectorPath(sectorID uint64) string {
-	return filepath.Join(sb.unsealedDir, sb.SectorName(sectorID))
+	return filepath.Join(sb.filesystem.pathFor(dataUnsealed), sb.SectorName(sectorID))
 }
 
 func (sb *SectorBuilder) stagedSectorFile(sectorID uint64) (*os.File, error) {
@@ -29,13 +29,13 @@ func (sb *SectorBuilder) stagedSectorFile(sectorID uint64) (*os.File, error) {
 }
 
 func (sb *SectorBuilder) SealedSectorPath(sectorID uint64) (string, error) {
-	path := filepath.Join(sb.sealedDir, sb.SectorName(sectorID))
+	path := filepath.Join(sb.filesystem.pathFor(dataSealed), sb.SectorName(sectorID))
 
 	return path, nil
 }
 
 func (sb *SectorBuilder) sectorCacheDir(sectorID uint64) (string, error) {
-	dir := filepath.Join(sb.cacheDir, sb.SectorName(sectorID))
+	dir := filepath.Join(sb.filesystem.pathFor(dataCache), sb.SectorName(sectorID))
 
 	err := os.Mkdir(dir, 0755)
 	if os.IsExist(err) {
@@ -46,16 +46,12 @@ func (sb *SectorBuilder) sectorCacheDir(sectorID uint64) (string, error) {
 }
 
 func (sb *SectorBuilder) GetPath(typ string, sectorName string) (string, error) {
-	switch typ {
-	case "staged":
-		return filepath.Join(sb.stagedDir, sectorName), nil
-	case "sealed":
-		return filepath.Join(sb.sealedDir, sectorName), nil
-	case "cache":
-		return filepath.Join(sb.cacheDir, sectorName), nil
-	default:
-		return "", xerrors.Errorf("unknown sector type for write: %s", typ)
+	_, found := overheadMul[dataType(typ)]
+	if !found {
+		return "", xerrors.Errorf("unknown sector type: %s", typ)
 	}
+
+	return filepath.Join(sb.filesystem.pathFor(dataType(typ)), sectorName), nil
 }
 
 func (sb *SectorBuilder) TrimCache(sectorID uint64) error {

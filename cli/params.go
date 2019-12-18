@@ -17,7 +17,7 @@ var fetchParamCmd = &cli.Command{
 		},
 	},
 	Action: func(cctx *cli.Context) error {
-		sectorSizeInt, err := units.FromHumanSize(cctx.String("proving-params"))
+		sectorSizeInt, err := units.RAMInBytes(cctx.String("proving-params"))
 		if err != nil {
 			return err
 		}

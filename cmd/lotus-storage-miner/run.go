@@ -61,7 +61,7 @@ var runCmd = &cli.Command{
 		}
 
 		if v.APIVersion != build.APIVersion {
-			return xerrors.Errorf("lotus-daemon API version doesn't match: local: ", api.Version{APIVersion: build.APIVersion})
+			return xerrors.Errorf("lotus-daemon API version doesn't match: local: %s", api.Version{APIVersion: build.APIVersion})
 		}
 
 		log.Info("Checking full node sync status")

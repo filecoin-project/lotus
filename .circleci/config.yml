@@ -157,7 +157,7 @@ jobs:
   test-short: 
     <<: *test
 
-  build_macos:
+  build-macos:
     description: build darwin lotus binary
     macos:
       xcode: "10.0.0"
@@ -187,11 +187,11 @@ jobs:
             chmod +x $HOME/.bin/jq
       - restore_cache:
           name: restore go mod and cargo cache
-          key: v1-go-deps-{{ arch }}-{{ checksum "~/go/src/github.com/filecoin-project/lotus/go.mod" }}
+          key: v2-go-deps-{{ arch }}-{{ checksum "~/go/src/github.com/filecoin-project/lotus/go.mod" }}
       - install-deps
       - go/mod-download
       - run:
-          command: make build
+          command: make buildall
           no_output_timeout: 30m
       - store_artifacts:
           path: lotus
@@ -199,9 +199,8 @@ jobs:
           path: lotus-storage-miner
       - save_cache:
           name: save go mod and cargo cache
-          key: v1-go-deps-{{ arch }}-{{ checksum "~/go/src/github.com/filecoin-project/lotus/go.mod" }}
+          key: v2-go-deps-{{ arch }}-{{ checksum "~/go/src/github.com/filecoin-project/lotus/go.mod" }}
           paths:
-            - "~/go/pkg"
             - "~/go/src/github.com"
             - "~/go/src/golang.org"
             - "~/.rustup"
@@ -262,7 +261,4 @@ workflows:
           go-test-flags: "--timeout 10m --short"
       - mod-tidy-check
       - build-all
-      - build_macos:
-          filters:
-            branches:
-              only: master
+      - build-macos

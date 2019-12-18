@@ -218,6 +218,10 @@ var chainSetHeadCmd = &cli.Command{
 			Name:  "genesis",
 			Usage: "reset head to genesis",
 		},
+		&cli.Uint64Flag{
+			Name:  "epoch",
+			Usage: "reset head to given epoch",
+		},
 	},
 	Action: func(cctx *cli.Context) error {
 		api, closer, err := GetFullNodeAPI(cctx)
@@ -227,25 +231,23 @@ var chainSetHeadCmd = &cli.Command{
 		defer closer()
 		ctx := ReqContext(cctx)
 
-		gen := cctx.Bool("genesis")
+		var ts *types.TipSet
 
-		if !cctx.Args().Present() && !gen {
-			return fmt.Errorf("must pass cids for tipset to set as head")
+		if cctx.Bool("genesis") {
+			ts, err = api.ChainGetGenesis(ctx)
+		}
+		if ts == nil && cctx.IsSet("epoch") {
+			ts, err = api.ChainGetTipSetByHeight(ctx, cctx.Uint64("epoch"), nil)
+		}
+		if ts == nil {
+			ts, err = parseTipSet(api, ctx, cctx.Args().Slice())
+		}
+		if err != nil {
+			return err
 		}
 
-		var ts *types.TipSet
-		if gen {
-			gents, err := api.ChainGetGenesis(ctx)
-			if err != nil {
-				return err
-			}
-			ts = gents
-		} else {
-			parsedts, err := parseTipSet(api, ctx, cctx.Args().Slice())
-			if err != nil {
-				return err
-			}
-			ts = parsedts
+		if ts == nil {
+			return fmt.Errorf("must pass cids for tipset to set as head")
 		}
 
 		if err := api.ChainSetHead(ctx, ts); err != nil {
@@ -319,7 +321,7 @@ var chainListCmd = &cli.Command{
 				break
 			}
 
-			head, err = api.ChainGetTipSet(ctx, types.NewTipSetKey(head.Parents()...))
+			head, err = api.ChainGetTipSet(ctx, head.Parents())
 			if err != nil {
 				return err
 			}

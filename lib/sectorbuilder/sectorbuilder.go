@@ -64,11 +64,6 @@ type SectorBuilder struct {
 
 	Miner address.Address
 
-	stagedDir   string
-	sealedDir   string
-	cacheDir    string
-	unsealedDir string
-
 	unsealLk sync.Mutex
 
 	noCommit    bool
@@ -88,6 +83,9 @@ type SectorBuilder struct {
 	preCommitWait int32
 	commitWait    int32
 	unsealWait    int32
+
+	fsLk       sync.Mutex
+	filesystem *fs // TODO: multi-fs support
 
 	stopping chan struct{}
 }
@@ -135,25 +133,13 @@ type Config struct {
 	NoCommit       bool
 	NoPreCommit    bool
 
-	CacheDir    string
-	SealedDir   string
-	StagedDir   string
-	UnsealedDir string
-	_           struct{} // guard against nameless init
+	Dir string
+	_   struct{} // guard against nameless init
 }
 
 func New(cfg *Config, ds dtypes.MetadataDS) (*SectorBuilder, error) {
 	if cfg.WorkerThreads < PoStReservedWorkers {
 		return nil, xerrors.Errorf("minimum worker threads is %d, specified %d", PoStReservedWorkers, cfg.WorkerThreads)
-	}
-
-	for _, dir := range []string{cfg.StagedDir, cfg.SealedDir, cfg.CacheDir, cfg.UnsealedDir} {
-		if err := os.Mkdir(dir, 0755); err != nil {
-			if os.IsExist(err) {
-				continue
-			}
-			return nil, err
-		}
 	}
 
 	var lastUsedID uint64
@@ -185,10 +171,7 @@ func New(cfg *Config, ds dtypes.MetadataDS) (*SectorBuilder, error) {
 		ssize:  cfg.SectorSize,
 		lastID: lastUsedID,
 
-		stagedDir:   cfg.StagedDir,
-		sealedDir:   cfg.SealedDir,
-		cacheDir:    cfg.CacheDir,
-		unsealedDir: cfg.UnsealedDir,
+		filesystem: openFs(cfg.Dir),
 
 		Miner: cfg.Miner,
 
@@ -205,35 +188,33 @@ func New(cfg *Config, ds dtypes.MetadataDS) (*SectorBuilder, error) {
 		stopping: make(chan struct{}),
 	}
 
+	if err := sb.filesystem.init(); err != nil {
+		return nil, xerrors.Errorf("initializing sectorbuilder filesystem: %w", err)
+	}
+
 	return sb, nil
 }
 
 func NewStandalone(cfg *Config) (*SectorBuilder, error) {
-	for _, dir := range []string{cfg.StagedDir, cfg.SealedDir, cfg.CacheDir, cfg.UnsealedDir} {
-		if err := os.MkdirAll(dir, 0755); err != nil {
-			if os.IsExist(err) {
-				continue
-			}
-			return nil, err
-		}
-	}
-
-	return &SectorBuilder{
+	sb := &SectorBuilder{
 		ds: nil,
 
 		ssize: cfg.SectorSize,
 
-		Miner:       cfg.Miner,
-		stagedDir:   cfg.StagedDir,
-		sealedDir:   cfg.SealedDir,
-		cacheDir:    cfg.CacheDir,
-		unsealedDir: cfg.UnsealedDir,
+		Miner:      cfg.Miner,
+		filesystem: openFs(cfg.Dir),
 
 		taskCtr:   1,
 		remotes:   map[int]*remote{},
 		rateLimit: make(chan struct{}, cfg.WorkerThreads),
 		stopping:  make(chan struct{}),
-	}, nil
+	}
+
+	if err := sb.filesystem.init(); err != nil {
+		return nil, xerrors.Errorf("initializing sectorbuilder filesystem: %w", err)
+	}
+
+	return sb, nil
 }
 
 func (sb *SectorBuilder) checkRateLimit() {
@@ -312,6 +293,13 @@ func (sb *SectorBuilder) AcquireSectorId() (uint64, error) {
 }
 
 func (sb *SectorBuilder) AddPiece(pieceSize uint64, sectorId uint64, file io.Reader, existingPieceSizes []uint64) (PublicPieceInfo, error) {
+	fs := sb.filesystem
+
+	if err := fs.reserve(dataStaging, sb.ssize); err != nil {
+		return PublicPieceInfo{}, err
+	}
+	defer fs.free(dataStaging, sb.ssize)
+
 	atomic.AddInt32(&sb.addPieceWait, 1)
 	ret := sb.RateLimit()
 	atomic.AddInt32(&sb.addPieceWait, -1)
@@ -347,6 +335,13 @@ func (sb *SectorBuilder) AddPiece(pieceSize uint64, sectorId uint64, file io.Rea
 }
 
 func (sb *SectorBuilder) ReadPieceFromSealedSector(sectorID uint64, offset uint64, size uint64, ticket []byte, commD []byte) (io.ReadCloser, error) {
+	fs := sb.filesystem
+
+	if err := fs.reserve(dataUnsealed, sb.ssize); err != nil { // TODO: this needs to get smarter when we start supporting partial unseals
+		return nil, err
+	}
+	defer fs.free(dataUnsealed, sb.ssize)
+
 	atomic.AddInt32(&sb.unsealWait, 1)
 	// TODO: Don't wait if cached
 	ret := sb.RateLimit() // TODO: check perf, consider remote unseal worker
@@ -433,6 +428,18 @@ func (sb *SectorBuilder) sealPreCommitRemote(call workerCall) (RawSealPreCommitO
 }
 
 func (sb *SectorBuilder) SealPreCommit(sectorID uint64, ticket SealTicket, pieces []PublicPieceInfo) (RawSealPreCommitOutput, error) {
+	fs := sb.filesystem
+
+	if err := fs.reserve(dataCache, sb.ssize); err != nil {
+		return RawSealPreCommitOutput{}, err
+	}
+	defer fs.free(dataCache, sb.ssize)
+
+	if err := fs.reserve(dataSealed, sb.ssize); err != nil {
+		return RawSealPreCommitOutput{}, err
+	}
+	defer fs.free(dataSealed, sb.ssize)
+
 	call := workerCall{
 		task: WorkerTask{
 			Type:       WorkerPreCommit,
@@ -692,15 +699,15 @@ func fallbackPostChallengeCount(sectors uint64) uint64 {
 }
 
 func (sb *SectorBuilder) ImportFrom(osb *SectorBuilder, symlink bool) error {
-	if err := migrate(osb.cacheDir, sb.cacheDir, symlink); err != nil {
+	if err := migrate(osb.filesystem.pathFor(dataCache), sb.filesystem.pathFor(dataCache), symlink); err != nil {
 		return err
 	}
 
-	if err := migrate(osb.sealedDir, sb.sealedDir, symlink); err != nil {
+	if err := migrate(osb.filesystem.pathFor(dataStaging), sb.filesystem.pathFor(dataStaging), symlink); err != nil {
 		return err
 	}
 
-	if err := migrate(osb.stagedDir, sb.stagedDir, symlink); err != nil {
+	if err := migrate(osb.filesystem.pathFor(dataSealed), sb.filesystem.pathFor(dataSealed), symlink); err != nil {
 		return err
 	}
 

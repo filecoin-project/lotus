@@ -3,6 +3,8 @@ package types
 import (
 	"bytes"
 	"testing"
+
+	"github.com/stretchr/testify/assert"
 )
 
 func TestBigIntSerializationRoundTrip(t *testing.T) {
@@ -47,5 +49,23 @@ func TestFilRoundTrip(t *testing.T) {
 		if fval.String() != v {
 			t.Fatal("mismatch in values!", v, fval.String())
 		}
+	}
+}
+
+func TestSizeStr(t *testing.T) {
+	cases := []struct {
+		in  uint64
+		out string
+	}{
+		{0, "0 B"},
+		{1, "1 B"},
+		{1024, "1 KiB"},
+		{2000, "1.95 KiB"},
+		{5 << 20, "5 MiB"},
+		{11 << 60, "11 EiB"},
+	}
+
+	for _, c := range cases {
+		assert.Equal(t, c.out, NewInt(c.in).SizeStr(), "input %+v, produced wrong result", c)
 	}
 }

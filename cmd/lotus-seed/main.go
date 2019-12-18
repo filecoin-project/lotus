@@ -194,10 +194,7 @@ var aggregateSectorDirsCmd = &cli.Command{
 		agsb, err := sectorbuilder.New(&sectorbuilder.Config{
 			Miner:         maddr,
 			SectorSize:    ssize,
-			CacheDir:      filepath.Join(destdir, "cache"),
-			SealedDir:     filepath.Join(destdir, "sealed"),
-			StagedDir:     filepath.Join(destdir, "staging"),
-			UnsealedDir:   filepath.Join(destdir, "unsealed"),
+			Dir:           destdir,
 			WorkerThreads: 2,
 		}, agmds)
 		if err != nil {
@@ -258,10 +255,7 @@ var aggregateSectorDirsCmd = &cli.Command{
 			sb, err := sectorbuilder.New(&sectorbuilder.Config{
 				Miner:         maddr,
 				SectorSize:    genm.SectorSize,
-				CacheDir:      filepath.Join(dir, "cache"),
-				SealedDir:     filepath.Join(dir, "sealed"),
-				StagedDir:     filepath.Join(dir, "staging"),
-				UnsealedDir:   filepath.Join(dir, "unsealed"),
+				Dir:           dir,
 				WorkerThreads: 2,
 			}, mds)
 			if err != nil {

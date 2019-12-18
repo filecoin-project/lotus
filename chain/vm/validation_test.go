@@ -26,3 +26,10 @@ func TestValueTransfer(t *testing.T) {
 	suites.AccountValueTransferFromUnknownToKnownAccount(t, factory, 0)
 	suites.AccountValueTransferFromUnknownToUnknownAccount(t, factory, 0)
 }
+
+func TestMultiSig(t *testing.T) {
+	factory := validation.NewFactories()
+	suites.MultiSigActorConstructor(t, factory)
+	suites.MultiSigActorProposeApprove(t, factory)
+	suites.MultiSigActorProposeCancel(t, factory)
+}

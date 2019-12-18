@@ -303,6 +303,9 @@ var clientQueryAskCmd = &cli.Command{
 			if ret.ExitCode != 0 {
 				return fmt.Errorf("call to GetPeerID was unsuccesful (exit code %d)", ret.ExitCode)
 			}
+			if peer.ID(ret.Return) == peer.ID("SETME") {
+				return fmt.Errorf("the miner hasn't initialized yet")
+			}
 
 			p, err := peer.IDFromBytes(ret.Return)
 			if err != nil {
@@ -318,7 +321,7 @@ var clientQueryAskCmd = &cli.Command{
 		}
 
 		fmt.Printf("Ask: %s\n", maddr)
-		fmt.Printf("Price per GigaByte: %s\n", types.FIL(ask.Ask.Price))
+		fmt.Printf("Price per GiB: %s\n", types.FIL(ask.Ask.Price))
 
 		size := cctx.Int64("size")
 		if size == 0 {
