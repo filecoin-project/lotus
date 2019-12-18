@@ -3,6 +3,7 @@ package retrieval
 import (
 	"context"
 	"io"
+	"time"
 
 	blocks "github.com/ipfs/go-block-format"
 	"github.com/ipfs/go-cid"
@@ -21,6 +22,7 @@ import (
 	payapi "github.com/filecoin-project/lotus/node/impl/paych"
 	"github.com/filecoin-project/lotus/paych"
 	"github.com/filecoin-project/lotus/retrieval/discovery"
+	ping "github.com/libp2p/go-libp2p/p2p/protocol/ping"
 )
 
 var log = logging.Logger("retrieval")
@@ -85,6 +87,44 @@ type clientStream struct {
 	verifier   BlockVerifier
 }
 
+func (c *Client) PingMiner(ctx context.Context, miner peer.ID) error {
+	const numPings = 3
+	const kPingTimeout = 10 * time.Second
+
+	log.Infof("Pinging miner %s with %d requests", miner, numPings)
+
+	ctx, cancel := context.WithTimeout(ctx, kPingTimeout*time.Duration(numPings))
+	defer cancel()
+
+	var (
+		count int
+	)
+	ticker := time.NewTicker(time.Second)
+	defer ticker.Stop()
+
+	pings := ping.Ping(ctx, c.h, miner)
+	for i := 0; i < numPings; i++ {
+		r, ok := <-pings
+		if !ok {
+			continue
+		}
+
+		if r.Error != nil {
+			return xerrors.Errorf("Ping error: %s", r.Error)
+		}
+
+		count++
+	}
+
+	if count == 0 {
+		return xerrors.Errorf("Zero ping responses out of %d", numPings)
+	}
+
+	log.Infof("Ping results for miner %s: %d out of %d", miner, count, numPings)
+
+	return nil
+}
+
 // C > S
 //
 // Offset MUST be aligned on chunking boundaries, size is rounded up to leaf size
@@ -98,6 +138,10 @@ type clientStream struct {
 // > DealProposal(...)
 // < ...
 func (c *Client) RetrieveUnixfs(ctx context.Context, root cid.Cid, size uint64, total types.BigInt, miner peer.ID, client, minerAddr address.Address, out io.Writer) error {
+	if err := c.PingMiner(ctx, miner); err != nil {
+		return err
+	}
+
 	initialOffset := uint64(0) // TODO: Check how much data we have locally
 	// TODO: Support in handler
 	// TODO: Allow client to specify this
