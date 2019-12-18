@@ -4,7 +4,14 @@ Here are instructions to learn how to perform storage mining. For hardware speci
 
 It is useful to [join the Testnet](https://docs.lotu.sh/en+join-testnet) prior to attempting storage mining for the first time.
 
-NOTE: While a miner is running, there will be many `WARN` and `ERROR` logs.
+## Note: Filecoin Proof Parameters
+
+If you are trying to download the **Filecoin Proof Parameters** from within China, you can download them from [JDCloud CDN](https://s3.cn-south-1.jdcloud-oss.com/proof-parameters/filecoin-proof-parameters-v20-testnet.tar.gz). Once you do you will need to extract them to:
+
+```sh
+# put the .param and .vk files in the directory below
+/var/tmp/filecoin-proof-parameters
+```
 
 ## Get started
 
