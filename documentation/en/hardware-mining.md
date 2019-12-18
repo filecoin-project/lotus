@@ -33,13 +33,13 @@ GPUs are a must for getting **block rewards**. Here are a few that have been con
 
 ## Testing other GPUs
 
-If you want to test a GPU that is not explicitly supported, you can use the following configuration flag:
+If you want to test a GPU that is not explicitly supported, use the following global**environment variable**:
 
 ```sh
 BELLMAN_CUSTOM_GPU="<NAME>:<NUMBER_OF_CORES>"
 ```
 
-Here is an example of trying a GeForce GTX 1660 ti with 1536 cores.
+Here is an example of trying a GeForce GTX 1660 Ti with 1536 cores.
 
 ```sh
 BELLMAN_CUSTOM_GPU="GeForce GTX 1660 Ti:1536"
