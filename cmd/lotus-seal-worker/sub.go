@@ -176,12 +176,6 @@ func (w *worker) processTask(ctx context.Context, task sectorbuilder.WorkerTask)
 
 	case sectorbuilder.WorkerCommit:
 		proof, err := w.sb.SealCommit(task.SectorID, task.SealTicket, task.SealSeed, task.Pieces, task.Rspco, constRemoteID)
-		if err != nil {
-			return errRes(xerrors.Errorf("comitting: %w", err))
-		}
-
-		res.Proof = proof
-
 		//if err := w.push("cache", task.SectorID); err != nil {
 		//	return errRes(xerrors.Errorf("pushing precommited data: %w", err))
 		//}
@@ -190,6 +184,11 @@ func (w *worker) processTask(ctx context.Context, task sectorbuilder.WorkerTask)
 
 		sealedfilename := filepath.Join(w.repo, "sealed", w.sb.SectorName(task.SectorID))
 		os.RemoveAll(sealedfilename)
+		if err != nil {
+			return errRes(xerrors.Errorf("comitting: %w", err))
+		}
+
+		res.Proof = proof
 
 	}
 
