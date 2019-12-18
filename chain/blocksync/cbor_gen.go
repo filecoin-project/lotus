@@ -5,7 +5,7 @@ import (
 	"io"
 
 	"github.com/filecoin-project/lotus/chain/types"
-	"github.com/ipfs/go-cid"
+	cid "github.com/ipfs/go-cid"
 	cbg "github.com/whyrusleeping/cbor-gen"
 	xerrors "golang.org/x/xerrors"
 )
@@ -24,6 +24,10 @@ func (t *BlockSyncRequest) MarshalCBOR(w io.Writer) error {
 	}
 
 	// t.Start ([]cid.Cid) (slice)
+	if len(t.Start) > cbg.MaxLength {
+		return xerrors.Errorf("Slice value in field t.Start was too long")
+	}
+
 	if _, err := w.Write(cbg.CborEncodeMajorType(cbg.MajArray, uint64(len(t.Start)))); err != nil {
 		return err
 	}
@@ -119,6 +123,10 @@ func (t *BlockSyncResponse) MarshalCBOR(w io.Writer) error {
 	}
 
 	// t.Chain ([]*blocksync.BSTipSet) (slice)
+	if len(t.Chain) > cbg.MaxLength {
+		return xerrors.Errorf("Slice value in field t.Chain was too long")
+	}
+
 	if _, err := w.Write(cbg.CborEncodeMajorType(cbg.MajArray, uint64(len(t.Chain)))); err != nil {
 		return err
 	}
@@ -134,6 +142,10 @@ func (t *BlockSyncResponse) MarshalCBOR(w io.Writer) error {
 	}
 
 	// t.Message (string) (string)
+	if len(t.Message) > cbg.MaxLength {
+		return xerrors.Errorf("Value in field t.Message was too long")
+	}
+
 	if _, err := w.Write(cbg.CborEncodeMajorType(cbg.MajTextString, uint64(len(t.Message)))); err != nil {
 		return err
 	}
@@ -218,6 +230,10 @@ func (t *BSTipSet) MarshalCBOR(w io.Writer) error {
 	}
 
 	// t.Blocks ([]*types.BlockHeader) (slice)
+	if len(t.Blocks) > cbg.MaxLength {
+		return xerrors.Errorf("Slice value in field t.Blocks was too long")
+	}
+
 	if _, err := w.Write(cbg.CborEncodeMajorType(cbg.MajArray, uint64(len(t.Blocks)))); err != nil {
 		return err
 	}
@@ -228,6 +244,10 @@ func (t *BSTipSet) MarshalCBOR(w io.Writer) error {
 	}
 
 	// t.BlsMessages ([]*types.Message) (slice)
+	if len(t.BlsMessages) > cbg.MaxLength {
+		return xerrors.Errorf("Slice value in field t.BlsMessages was too long")
+	}
+
 	if _, err := w.Write(cbg.CborEncodeMajorType(cbg.MajArray, uint64(len(t.BlsMessages)))); err != nil {
 		return err
 	}
@@ -238,10 +258,18 @@ func (t *BSTipSet) MarshalCBOR(w io.Writer) error {
 	}
 
 	// t.BlsMsgIncludes ([][]uint64) (slice)
+	if len(t.BlsMsgIncludes) > cbg.MaxLength {
+		return xerrors.Errorf("Slice value in field t.BlsMsgIncludes was too long")
+	}
+
 	if _, err := w.Write(cbg.CborEncodeMajorType(cbg.MajArray, uint64(len(t.BlsMsgIncludes)))); err != nil {
 		return err
 	}
 	for _, v := range t.BlsMsgIncludes {
+		if len(v) > cbg.MaxLength {
+			return xerrors.Errorf("Slice value in field v was too long")
+		}
+
 		if _, err := w.Write(cbg.CborEncodeMajorType(cbg.MajArray, uint64(len(v)))); err != nil {
 			return err
 		}
@@ -253,6 +281,10 @@ func (t *BSTipSet) MarshalCBOR(w io.Writer) error {
 	}
 
 	// t.SecpkMessages ([]*types.SignedMessage) (slice)
+	if len(t.SecpkMessages) > cbg.MaxLength {
+		return xerrors.Errorf("Slice value in field t.SecpkMessages was too long")
+	}
+
 	if _, err := w.Write(cbg.CborEncodeMajorType(cbg.MajArray, uint64(len(t.SecpkMessages)))); err != nil {
 		return err
 	}
@@ -263,10 +295,18 @@ func (t *BSTipSet) MarshalCBOR(w io.Writer) error {
 	}
 
 	// t.SecpkMsgIncludes ([][]uint64) (slice)
+	if len(t.SecpkMsgIncludes) > cbg.MaxLength {
+		return xerrors.Errorf("Slice value in field t.SecpkMsgIncludes was too long")
+	}
+
 	if _, err := w.Write(cbg.CborEncodeMajorType(cbg.MajArray, uint64(len(t.SecpkMsgIncludes)))); err != nil {
 		return err
 	}
 	for _, v := range t.SecpkMsgIncludes {
+		if len(v) > cbg.MaxLength {
+			return xerrors.Errorf("Slice value in field v was too long")
+		}
+
 		if _, err := w.Write(cbg.CborEncodeMajorType(cbg.MajArray, uint64(len(v)))); err != nil {
 			return err
 		}

@@ -156,6 +156,10 @@ func (bf BitField) MarshalCBOR(w io.Writer) error {
 		return err
 	}
 
+	if len(rle) > 8192 {
+		return xerrors.Errorf("encoded bitfield was too large (%d)", len(rle))
+	}
+
 	if _, err := w.Write(cbg.CborEncodeMajorType(cbg.MajByteString, uint64(len(rle)))); err != nil {
 		return err
 	}

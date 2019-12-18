@@ -202,6 +202,10 @@ func (t *Response) MarshalCBOR(w io.Writer) error {
 	}
 
 	// t.Message (string) (string)
+	if len(t.Message) > cbg.MaxLength {
+		return xerrors.Errorf("Value in field t.Message was too long")
+	}
+
 	if _, err := w.Write(cbg.CborEncodeMajorType(cbg.MajTextString, uint64(len(t.Message)))); err != nil {
 		return err
 	}
@@ -408,6 +412,10 @@ func (t *ClientDealProposal) MarshalCBOR(w io.Writer) error {
 	}
 
 	// t.MinerID (peer.ID) (string)
+	if len(t.MinerID) > cbg.MaxLength {
+		return xerrors.Errorf("Value in field t.MinerID was too long")
+	}
+
 	if _, err := w.Write(cbg.CborEncodeMajorType(cbg.MajTextString, uint64(len(t.MinerID)))); err != nil {
 		return err
 	}
@@ -539,6 +547,10 @@ func (t *ClientDeal) MarshalCBOR(w io.Writer) error {
 	}
 
 	// t.Miner (peer.ID) (string)
+	if len(t.Miner) > cbg.MaxLength {
+		return xerrors.Errorf("Value in field t.Miner was too long")
+	}
+
 	if _, err := w.Write(cbg.CborEncodeMajorType(cbg.MajTextString, uint64(len(t.Miner)))); err != nil {
 		return err
 	}
@@ -672,6 +684,10 @@ func (t *MinerDeal) MarshalCBOR(w io.Writer) error {
 	}
 
 	// t.Client (peer.ID) (string)
+	if len(t.Client) > cbg.MaxLength {
+		return xerrors.Errorf("Value in field t.Client was too long")
+	}
+
 	if _, err := w.Write(cbg.CborEncodeMajorType(cbg.MajTextString, uint64(len(t.Client)))); err != nil {
 		return err
 	}

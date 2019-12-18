@@ -86,14 +86,19 @@ func (f *fs) reserve(typ dataType, size uint64) error {
 		return err
 	}
 
-	avail := int64(fsstat.Bavail) * int64(fsstat.Bsize)
+	fsavail := int64(fsstat.Bavail) * int64(fsstat.Bsize)
 
-	avail -= f.reservedBytes()
+	avail := fsavail - f.reservedBytes()
 
 	need := overheadMul[typ] * size
 
 	if int64(need) > avail {
-		return xerrors.Errorf("not enough space in '%s', need %s, available %s", f.path, types.NewInt(need).SizeStr(), types.NewInt(uint64(avail)).SizeStr())
+		return xerrors.Errorf("not enough space in '%s', need %s, available %s (fs: %s, reserved: %s)",
+			f.path,
+			types.NewInt(need).SizeStr(),
+			types.NewInt(uint64(avail)).SizeStr(),
+			types.NewInt(uint64(fsavail)).SizeStr(),
+			types.NewInt(uint64(f.reservedBytes())).SizeStr())
 	}
 
 	f.reserved[typ] += need

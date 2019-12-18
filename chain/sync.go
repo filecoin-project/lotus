@@ -6,6 +6,7 @@ import (
 	"crypto/sha256"
 	"errors"
 	"fmt"
+	"sync"
 	"time"
 
 	"github.com/Gurpartap/async"
@@ -102,17 +103,17 @@ func (syncer *Syncer) Stop() {
 // InformNewHead informs the syncer about a new potential tipset
 // This should be called when connecting to new peers, and additionally
 // when receiving new blocks from the network
-func (syncer *Syncer) InformNewHead(from peer.ID, fts *store.FullTipSet) {
+func (syncer *Syncer) InformNewHead(from peer.ID, fts *store.FullTipSet) bool {
 	ctx := context.Background()
 	if fts == nil {
 		log.Errorf("got nil tipset in InformNewHead")
-		return
+		return false
 	}
 
 	for _, b := range fts.Blocks {
 		if err := syncer.ValidateMsgMeta(b); err != nil {
 			log.Warnf("invalid block received: %s", err)
-			return
+			return false
 		}
 	}
 
@@ -124,16 +125,17 @@ func (syncer *Syncer) InformNewHead(from peer.ID, fts *store.FullTipSet) {
 
 		if err := syncer.Sync(ctx, fts.TipSet()); err != nil {
 			log.Errorf("failed to sync our own block %s: %+v", fts.TipSet().Cids(), err)
+			return false
 		}
 
-		return
+		return true
 	}
 
 	// TODO: IMPORTANT(GARBAGE) this needs to be put in the 'temporary' side of
 	// the blockstore
 	if err := syncer.store.PersistBlockHeaders(fts.TipSet().Blocks()...); err != nil {
 		log.Warn("failed to persist incoming block header: ", err)
-		return
+		return false
 	}
 
 	syncer.Bsync.AddPeer(from)
@@ -146,10 +148,11 @@ func (syncer *Syncer) InformNewHead(from peer.ID, fts *store.FullTipSet) {
 			miners = append(miners, blk.Miner.String())
 		}
 		log.Infof("incoming tipset from %s does not appear to be better than our best chain, ignoring for now", miners)
-		return
+		return false
 	}
 
 	syncer.syncmgr.SetPeerHead(ctx, from, fts.TipSet())
+	return true
 }
 
 func (syncer *Syncer) IncomingBlocks(ctx context.Context) (<-chan *types.BlockHeader, error) {
@@ -231,12 +234,12 @@ func (syncer *Syncer) ChainStore() *store.ChainStore {
 	return syncer.store
 }
 
-func (syncer *Syncer) InformNewBlock(from peer.ID, blk *types.FullBlock) {
+func (syncer *Syncer) InformNewBlock(from peer.ID, blk *types.FullBlock) bool {
 	// TODO: search for other blocks that could form a tipset with this block
 	// and then send that tipset to InformNewHead
 
 	fts := &store.FullTipSet{Blocks: []*types.FullBlock{blk}}
-	syncer.InformNewHead(from, fts)
+	return syncer.InformNewHead(from, fts)
 }
 
 func copyBlockstore(from, to bstore.Blockstore) error {
@@ -408,6 +411,8 @@ func isPermanent(err error) bool {
 func (syncer *Syncer) ValidateTipSet(ctx context.Context, fts *store.FullTipSet) error {
 	ctx, span := trace.StartSpan(ctx, "validateTipSet")
 	defer span.End()
+
+	span.AddAttributes(trace.Int64Attribute("height", int64(fts.TipSet().Height())))
 
 	ts := fts.TipSet()
 	if ts.Equals(syncer.Genesis) {
@@ -676,6 +681,26 @@ func (syncer *Syncer) VerifyElectionPoStProof(ctx context.Context, h *types.Bloc
 }
 
 func (syncer *Syncer) checkBlockMessages(ctx context.Context, b *types.FullBlock, baseTs *types.TipSet) error {
+	{
+		var sigCids []cid.Cid // this is what we get for people not wanting the marshalcbor method on the cid type
+		var pubks []bls.PublicKey
+
+		for _, m := range b.BlsMessages {
+			sigCids = append(sigCids, m.Cid())
+
+			pubk, err := syncer.sm.GetBlsPublicKey(ctx, m.From, baseTs)
+			if err != nil {
+				return xerrors.Errorf("failed to load bls public to validate block: %w", err)
+			}
+
+			pubks = append(pubks, pubk)
+		}
+
+		if err := syncer.verifyBlsAggregate(ctx, b.Header.BLSAggregate, sigCids, pubks); err != nil {
+			return xerrors.Errorf("bls aggregate signature was invalid: %w", err)
+		}
+	}
+
 	nonces := make(map[address.Address]uint64)
 	balances := make(map[address.Address]types.BigInt)
 
@@ -719,28 +744,14 @@ func (syncer *Syncer) checkBlockMessages(ctx context.Context, b *types.FullBlock
 
 	bs := amt.WrapBlockstore(syncer.store.Blockstore())
 	var blsCids []cbg.CBORMarshaler
-	var sigCids []cid.Cid // this is what we get for people not wanting the marshalcbor method on the cid type
 
-	var pubks []bls.PublicKey
 	for i, m := range b.BlsMessages {
 		if err := checkMsg(m); err != nil {
 			return xerrors.Errorf("block had invalid bls message at index %d: %w", i, err)
 		}
 
-		sigCids = append(sigCids, m.Cid())
 		c := cbg.CborCid(m.Cid())
 		blsCids = append(blsCids, &c)
-
-		pubk, err := syncer.sm.GetBlsPublicKey(ctx, m.From, baseTs)
-		if err != nil {
-			return xerrors.Errorf("failed to load bls public to validate block: %w", err)
-		}
-
-		pubks = append(pubks, pubk)
-	}
-
-	if err := syncer.verifyBlsAggregate(ctx, b.Header.BLSAggregate, sigCids, pubks); err != nil {
-		return xerrors.Errorf("bls aggregate signature was invalid: %w", err)
 	}
 
 	var secpkCids []cbg.CBORMarshaler
@@ -794,10 +805,19 @@ func (syncer *Syncer) verifyBlsAggregate(ctx context.Context, sig types.Signatur
 		trace.Int64Attribute("msgCount", int64(len(msgs))),
 	)
 
-	var digests []bls.Digest
-	for _, c := range msgs {
-		digests = append(digests, bls.Hash(bls.Message(c.Bytes())))
+	var wg sync.WaitGroup
+
+	digests := make([]bls.Digest, len(msgs))
+	for i := 0; i < 10; i++ {
+		wg.Add(1)
+		go func(w int) {
+			defer wg.Done()
+			for j := 0; (j*10)+w < len(msgs); j++ {
+				digests[j*10+w] = bls.Hash(bls.Message(msgs[j*10+w].Bytes()))
+			}
+		}(i)
 	}
+	wg.Wait()
 
 	var bsig bls.Signature
 	copy(bsig[:], sig.Data)
@@ -1001,6 +1021,8 @@ func (syncer *Syncer) syncMessagesAndCheckState(ctx context.Context, headers []*
 func (syncer *Syncer) iterFullTipsets(ctx context.Context, headers []*types.TipSet, cb func(context.Context, *store.FullTipSet) error) error {
 	ctx, span := trace.StartSpan(ctx, "iterFullTipsets")
 	defer span.End()
+
+	span.AddAttributes(trace.Int64Attribute("num_headers", int64(len(headers))))
 
 	windowSize := 200
 	for i := len(headers) - 1; i >= 0; {

@@ -4,6 +4,7 @@ import (
 	"crypto/rand"
 	"time"
 
+	"github.com/filecoin-project/lotus/build"
 	"github.com/filecoin-project/lotus/chain/types"
 	"golang.org/x/xerrors"
 
@@ -63,11 +64,30 @@ func genLibp2pKey() (crypto.PrivKey, error) {
 
 // Misc options
 
-func ConnectionManager(low, high int, grace time.Duration) func() (opts Libp2pOpts, err error) {
-	return func() (opts Libp2pOpts, err error) {
-		cm := connmgr.NewConnManager(low, high, grace)
-		opts.Opts = append(opts.Opts, libp2p.ConnectionManager(cm))
-		return
+func ConnectionManager(low, high uint, grace time.Duration, protected []string) func() (opts Libp2pOpts, err error) {
+	return func() (Libp2pOpts, error) {
+		cm := connmgr.NewConnManager(int(low), int(high), grace)
+		for _, p := range protected {
+			pid, err := peer.IDFromString(p)
+			if err != nil {
+				return Libp2pOpts{}, xerrors.Errorf("failed to parse peer ID in protected peers array: %w", err)
+			}
+
+			cm.Protect(pid, "config-prot")
+		}
+
+		infos, err := build.BuiltinBootstrap()
+		if err != nil {
+			return Libp2pOpts{}, xerrors.Errorf("failed to get bootstrap peers: %w", err)
+		}
+
+		for _, inf := range infos {
+			cm.Protect(inf.ID, "bootstrap")
+		}
+
+		return Libp2pOpts{
+			Opts: []libp2p.Option{libp2p.ConnectionManager(cm)},
+		}, nil
 	}
 }
 

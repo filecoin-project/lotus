@@ -101,8 +101,13 @@ func (bs *BlockSync) GetBlocks(ctx context.Context, tsk types.TipSetKey, count i
 		}
 
 		if res.Status == 0 {
+			resp, err := bs.processBlocksResponse(req, res)
+			if err != nil {
+				return nil, xerrors.Errorf("success response from peer failed to process: %w", err)
+			}
 			bs.syncPeers.logGlobalSuccess(time.Since(start))
-			return bs.processBlocksResponse(req, res)
+			bs.host.ConnManager().TagPeer(p, "bsync", 25)
+			return resp, nil
 		}
 		oerr = bs.processStatus(req, res)
 		if oerr != nil {
@@ -264,6 +269,10 @@ func (bs *BlockSync) sendRequestToPeer(ctx context.Context, p peer.ID, req *Bloc
 }
 
 func (bs *BlockSync) processBlocksResponse(req *BlockSyncRequest, res *BlockSyncResponse) ([]*types.TipSet, error) {
+	if len(res.Chain) == 0 {
+		return nil, xerrors.Errorf("got no blocks in successful blocksync response")
+	}
+
 	cur, err := types.NewTipSet(res.Chain[0].Blocks)
 	if err != nil {
 		return nil, err
