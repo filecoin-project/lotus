@@ -17,6 +17,7 @@ To do this, simply run `lotus-seal-worker run`, and the seal worker will automat
 To check that the seal worker is properly connected to your storage miner, run `lotus-storage-miner info` and check that the remote worker count has increased.
 
 ```
+why@computer ~/lotus> lotus-storage-miner info
 Miner: t0103
 Sector Size: 16.0 MiB
 Power: 0 B / 16.0 MiB (0%)
@@ -44,11 +45,11 @@ ListenAddress = "/ip4/127.0.0.1/tcp/2345/http"
 
 To make your node accessible over the local area network, you will need to determine your machines IP on the LAN, and change the `127.0.0.1` in the file to that address. A less secure, but more permissive option is to change it to `0.0.0.0`. This will allow anyone who can connect to your computer on that port to access the API (though they will still need an auth token, as we will discuss next).
 
-Next, you will need to get an authentication token for the seal worker. All lotus APIs require authentication tokens to ensure your processes are as secure against attackers attempting to make unauthenticated requests to them. To create a token, run `lotus-storage-miner auth create-token --perm admin`. This will create a token with `admin` permissions. (TODO: does the seal worker need admin? or can we get away with less?) (if it does need admin powers, insert a warning here about how powerful this token is)
+Next, you will need to get an authentication token for the seal worker. All lotus APIs require authentication tokens to ensure your processes are as secure against attackers attempting to make unauthenticated requests to them. To create a token, run `lotus-storage-miner auth create-token --perm admin`. This will create a token with `admin` permissions. Note: This is an admin token, it can access any of the api endpoints of your node, take care not to leak it.
 
 This token will look something like this:
 ```sh
-why@WhyNet ~> lotus-storage-miner auth create-token --perm admin
+why@computer ~> lotus-storage-miner auth create-token --perm admin
 eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJBbGxvdyI6WyJyZWFkIiwid3JpdGUiLCJzaWduIiwiYWRtaW4iXX0.KWWdh1jOVP_5YMAp8x5wNomFGgKS75ucOtj1ah5iP7k
 ```
 
@@ -60,4 +61,15 @@ Once this is set, you should be able to just run `lotus-seal-worker run`.
 
 To check that the seal worker is properly connected to your storage miner, run `lotus-storage-miner info` and check that the remote worker count has increased.
 
-TODO: sample output
+```
+why@computer ~/lotus> lotus-storage-miner info
+Miner: t05749
+Sector Size: 1 GiB
+Power: 0 B / 136 TiB (0.0000%)
+	Committed: 1 GiB
+	Proving: 1 GiB
+Worker use:
+	Local: 0 / 1 (+1 reserved)
+	**Remote: 0 / 1**
+Sectors:  map[Proving:1 Total:1]
+```
