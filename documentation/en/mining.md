@@ -3,7 +3,7 @@
 Here are instructions to learn how to perform storage mining. For hardware
 specifications please read [this](https://docs.lotu.sh/en+hardware-mining).
 
-It is useful to [join the TestNet](https://docs.lotu.sh/en+join-testnet) prior
+It is useful to [join the Testnet](https://docs.lotu.sh/en+join-testnet) prior
 to attempting storage mining for the first time.
 
 NOTE: While a miner is running, there will be many `WARN` and `ERROR` logs.

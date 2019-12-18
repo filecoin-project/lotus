@@ -5,11 +5,11 @@
 > [GitHub issue](https://github.com/filecoin-project/lotus/issues/new) and a
 > maintainer will address the problem as soon as they can.
 
-Here are instructions for how to store data on the **Lotus TestNet**.
+Here are instructions for how to store data on the **Lotus Testnet**.
 
 ## Adding a file locally
 
-Adding a file locally allows you to make miner deals on the **Lotus TestNet**.
+Adding a file locally allows you to make miner deals on the **Lotus Testnet**.
 
 ```sh
 lotus client import ./your-example-file.txt
@@ -33,7 +33,7 @@ bafkreierupr5ioxn4obwly4i2a5cd2rwxqi6kwmcyyylifxjsmos7hrgpe Development/sample-1
 bafkreieuk7h4zs5alzpdyhlph4lxkefowvwdho3a3pml6j7dam5mipzaii Development/sample-2.txt 30618 ok
 ```
 
-## Make a Miner Deal on Lotus TestNet
+## Make a Miner Deal on Lotus Testnet
 
 Get a list of all miners that can store data:
 

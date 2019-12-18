@@ -1,4 +1,4 @@
-# Join TestNet
+# Join Testnet
 
 ## Introduction
 
