@@ -33,7 +33,7 @@ included in the chain, and you will not receive any rewards.
 
 ## Running out of storage
 
-```
+```sh
 lotus-storage-miner pledge-sector
 # No space left on device (os error 28)
 ```
@@ -54,7 +54,7 @@ benchmark.
 First, to watch GPU utilization run `nvtop` in one terminal, then in a separate
 terminal, run:
 
-```
+```sh
 lotus-bench --sector-size=1024
 ```
 

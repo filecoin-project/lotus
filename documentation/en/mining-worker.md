@@ -26,7 +26,7 @@ automatically pick up the correct authentication tokens from the
 To check that the seal worker is properly connected to your storage miner, run
 `lotus-storage-miner info` and check that the remote worker count has increased.
 
-```
+```sh
 why@computer ~/lotus> lotus-storage-miner info
 Miner: t0103
 Sector Size: 16.0 MiB
@@ -95,7 +95,7 @@ Once this is set, you should be able to just run `lotus-seal-worker run`.
 To check that the seal worker is properly connected to your storage miner, run
 `lotus-storage-miner info` and check that the remote worker count has increased.
 
-```
+```sh
 why@computer ~/lotus> lotus-storage-miner info
 Miner: t05749
 Sector Size: 1 GiB

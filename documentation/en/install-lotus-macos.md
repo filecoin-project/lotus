@@ -49,14 +49,14 @@ Use the command `brew install` to install the following packages:
 brew install go bzr jq pkg-config rustup
 ```
 
-## Clone
+Clone
 
 ```sh
 git clone https://github.com/filecoin-project/lotus.git
 cd lotus/
 ```
 
-## Build
+Build
 
 ```sh
 make clean && make all
