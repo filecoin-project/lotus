@@ -98,12 +98,6 @@ type clientStream struct {
 // > DealProposal(...)
 // < ...
 func (c *Client) RetrieveUnixfs(ctx context.Context, root cid.Cid, size uint64, total types.BigInt, miner peer.ID, client, minerAddr address.Address, out io.Writer) error {
-	s, err := c.h.NewStream(ctx, miner, ProtocolID)
-	if err != nil {
-		return xerrors.Errorf("failed to open stream to miner for retrieval query: %w", err)
-	}
-	defer s.Close()
-
 	initialOffset := uint64(0) // TODO: Check how much data we have locally
 	// TODO: Support in handler
 	// TODO: Allow client to specify this
@@ -116,6 +110,12 @@ func (c *Client) RetrieveUnixfs(ctx context.Context, root cid.Cid, size uint64, 
 	if err != nil {
 		return xerrors.Errorf("allocating payment lane: %w", err)
 	}
+
+	s, err := c.h.NewStream(ctx, miner, ProtocolID)
+	if err != nil {
+		return xerrors.Errorf("failed to open stream to miner for retrieval query: %w", err)
+	}
+	defer s.Close()
 
 	cst := clientStream{
 		payapi: c.payapi,
