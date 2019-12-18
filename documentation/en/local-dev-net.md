@@ -1,7 +1,6 @@
 # Setup Local Devnet
 
-Build the Lotus Binaries in debug mode, This enables the use of 1024 byte
-sectors.
+Build the Lotus Binaries in debug mode, This enables the use of 1024 byte sectors.
 
 ```sh
 make debug

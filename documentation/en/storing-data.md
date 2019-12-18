@@ -1,9 +1,6 @@
 # Storing Data
 
-> There are recent bug reports with these instructions. If you happen to
-> encounter any problems, please create a
-> [GitHub issue](https://github.com/filecoin-project/lotus/issues/new) and a
-> maintainer will address the problem as soon as they can.
+> There are recent bug reports with these instructions. If you happen to encounter any problems, please create a [GitHub issue](https://github.com/filecoin-project/lotus/issues/new) and a maintainer will address the problem as soon as they can.
 
 Here are instructions for how to store data on the **Lotus Testnet**.
 
@@ -19,8 +16,7 @@ Upon success, this command will return a **Data CID**.
 
 ## List your local files
 
-The command to see a list of files by `CID`, `name`, `size` in bytes, and
-`status`:
+The command to see a list of files by `CID`, `name`, `size` in bytes, and `status`:
 
 ```sh
 lotus client local
@@ -54,11 +50,8 @@ lotus client deal <Data CID> <miner> <price> <duration>
 ```
 
 - Price is in attoFIL.
-- The `duration`, which represents how long the miner will keep your file
-  hosted, is represented in blocks. Each block represents 45 seconds.
+- The `duration`, which represents how long the miner will keep your file hosted, is represented in blocks. Each block represents 45 seconds.
 
 Upon success, this command will return a **Deal CID**.
 
-The storage miner will need to **seal** the file before it can be retrieved. If
-the **Lotus Storage Miner** is not running on a machine designed for sealing,
-the process will take a very long time.
+The storage miner will need to **seal** the file before it can be retrieved. If the **Lotus Storage Miner** is not running on a machine designed for sealing, the process will take a very long time.

@@ -18,13 +18,10 @@ WARN  main  lotus/main.go:72  failed to start deal: computing commP failed: gene
 
 ## Error: 0kb file response during retrieval
 
-In order to retrieve a file, it must be sealed. Miners can check sealing
-progress with this command:
+In order to retrieve a file, it must be sealed. Miners can check sealing progress with this command:
 
 ```sh
 lotus-storage-miner sectors list
 ```
 
-When sealing is complete, `pSet: NO` will become `pSet: YES`. From now on the
-**Data CID** is [retrievable](https://docs.lotu.sh/en+retrieving-data) from the
-**Lotus Storage Miner**.
+When sealing is complete, `pSet: NO` will become `pSet: YES`. From now on the **Data CID** is [retrievable](https://docs.lotu.sh/en+retrieving-data) from the **Lotus Storage Miner**.
