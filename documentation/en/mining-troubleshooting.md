@@ -1,5 +1,14 @@
 # Mining Troubleshooting
 
+## Changing the Filecoin Proof Parameters directory
+
+If you want to put the **Filecoin Proof Parameters** in a different directory,
+use the following environment variable:
+
+```sh
+FIL_PROOFS_PARAMETER_CACHE
+```
+
 ## Bellman Lockfile
 
 The **Bellman** lockfile is created to lock a GPU for a process. This bug can
