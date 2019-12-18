@@ -73,8 +73,8 @@ func defCommon() Common {
 				"/ip6/::/tcp/0",
 			},
 
-			ConnMgrLow:   50,
-			ConnMgrHigh:  200,
+			ConnMgrLow:   150,
+			ConnMgrHigh:  180,
 			ConnMgrGrace: Duration(20 * time.Second),
 		},
 	}
