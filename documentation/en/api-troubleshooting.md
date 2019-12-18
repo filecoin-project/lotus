@@ -2,14 +2,11 @@
 
 ## Types: params
 
-`params` must be an array. If there are no `params` you should still pass an
-empty array.
+`params` must be an array. If there are no `params` you should still pass an empty array.
 
 ## Types: TipSet
 
-For methods such as `Filecoin.StateMinerPower`, where the method accepts the
-argument of the type `TipSet`, you can pass `null` to use the current chain
-head.
+For methods such as `Filecoin.StateMinerPower`, where the method accepts the argument of the type `TipSet`, you can pass `null` to use the current chain head.
 
 ```sh
 curl -X POST \
@@ -20,9 +17,7 @@ curl -X POST \
 
 ## Types: Sending a CID
 
-If you do not serialize the CID as a
-[JSON IPLD link](https://did-ipid.github.io/ipid-did-method/#txref), you will
-receive an error. Here is an example of a broken CURL request:
+If you do not serialize the CID as a [JSON IPLD link](https://did-ipid.github.io/ipid-did-method/#txref), you will receive an error. Here is an example of a broken CURL request:
 
 ```sh
 curl -X POST \
