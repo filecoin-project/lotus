@@ -2,13 +2,15 @@
 
 ## Get XCode Command Line Tools
 
-To check if you already have the XCode Command Line Tools installed via the CLI, run:
+To check if you already have the XCode Command Line Tools installed via the CLI,
+run:
 
 ```sh
 xcode-select -p
 ```
 
-If this command returns a path, you can move on to the next step. Otherwise, to install via the CLI, run:
+If this command returns a path, you can move on to the next step. Otherwise, to
+install via the CLI, run:
 
 ```sh
 xcode-select --install
@@ -23,7 +25,8 @@ xcode-select --install
 
 ## Get HomeBrew
 
-We recommend that MacOS users use [HomeBrew](https://brew.sh) to install each the necessary packages.
+We recommend that MacOS users use [HomeBrew](https://brew.sh) to install each
+the necessary packages.
 
 Check if you have HomeBrew:
 
@@ -31,7 +34,8 @@ Check if you have HomeBrew:
 brew -v
 ```
 
-This command returns a version number if you have HomeBrew installed and nothing otherwise.
+This command returns a version number if you have HomeBrew installed and nothing
+otherwise.
 
 In your terminal, enter this command to install Homebrew:
 
@@ -59,4 +63,6 @@ make clean && make all
 sudo make install
 ```
 
-After installing Lotus, you can run the `lotus` command directly from your CLI to see usage documentation. Next, you can join the [Lotus TestNet](https://docs.lotu.sh/en+join-testnet).
+After installing Lotus, you can run the `lotus` command directly from your CLI
+to see usage documentation. Next, you can join the
+[Lotus TestNet](https://docs.lotu.sh/en+join-testnet).
