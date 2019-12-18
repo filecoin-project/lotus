@@ -14,6 +14,9 @@ The setup below is a minimal example for sealing 32 GiB sectors on Lotus:
 * 8 core CPU
 * 128 GiB of RAM
 
+Note that 1GB sectors don't require as high of specs, but are likely to be removed
+as we improve the performance of 32GB sector sealing.
+
 ## TestNet discoveries
 
 * If you only have 128GiB of ram, enabling 256GB of **NVMe** swap on an SSD will help you avoid out-of-memory issues while mining.

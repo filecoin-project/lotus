@@ -35,3 +35,19 @@ lotus-storage-miner pledge-sector
 ```
 
 If you see this, that means `pledge-sector` wrote too much data to `$TMPDIR` which by default is the root partition (This is common for Linux setups). Usually your root partition does not get the largest partition of storage so you will need to change the environment variable to something else.
+
+## GPU not being used
+
+If you suspect that your GPU is not being used, first make sure it is properly configured as described in the [testing configuration page](hardware-mining.md). Once you've done that (and set the `BELLMAN_CUSTOM_GPU` as appropriate if necessary) you can verify your GPU is being used by running a quick lotus-bench benchmark.
+
+First, to watch GPU utilization run `nvtop` in one terminal, then in a separate
+terminal, run:
+
+```
+lotus-bench --sector-size=1024
+```
+
+This process uses a fair amount of GPU, and generally takes ~4 minutes to
+complete. If you do not see any activity in nvtop from lotus during the entire
+process, it is likely something is misconfigured with your GPU. 
+

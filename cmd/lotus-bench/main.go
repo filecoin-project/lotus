@@ -55,6 +55,8 @@ func main() {
 
 	log.Info("Starting lotus-bench")
 
+	build.SectorSizes = append(build.SectorSizes, 1024)
+
 	app := &cli.App{
 		Name:    "lotus-bench",
 		Usage:   "Benchmark performance of lotus on your hardware",
