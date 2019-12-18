@@ -1,6 +1,6 @@
-# Running a local developer network
+# Setup Local Devnet
 
-Build the lotus binaries in debug mode, This enables the use of 1024 byte
+Build the Lotus Binaries in debug mode, This enables the use of 1024 byte
 sectors.
 
 ```sh
@@ -32,4 +32,4 @@ Now, finally, start up the miner:
 ./lotus-storage-miner run --nosync
 ```
 
-If all went well, you will have your own local lotus network running!
+If all went well, you will have your own local Lotus Devnet running.
