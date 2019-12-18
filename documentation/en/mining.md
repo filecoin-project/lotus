@@ -1,14 +1,17 @@
 # Storage Mining
 
-Here are instructions to learn how to perform storage mining. For hardware specifications please read [this](https://docs.lotu.sh/en+hardware-mining).
+Here are instructions to learn how to perform storage mining. For hardware
+specifications please read [this](https://docs.lotu.sh/en+hardware-mining).
 
-It is useful to [join the TestNet](https://docs.lotu.sh/en+join-testnet) prior to attempting storage mining for the first time.
+It is useful to [join the TestNet](https://docs.lotu.sh/en+join-testnet) prior
+to attempting storage mining for the first time.
 
 NOTE: While a miner is running, there will be many `WARN` and `ERROR` logs.
 
 ## Get started
 
-Please ensure that at least one **BLS address** in your wallet exists with the following command:
+Please ensure that at least one **BLS address** in your wallet exists with the
+following command:
 
 ```sh
 lotus wallet list
@@ -50,7 +53,8 @@ To mine:
 lotus-storage-miner run
 ```
 
-If you are downloading **Filecoin Proof Parameters**, the download can take some time.
+If you are downloading **Filecoin Proof Parameters**, the download can take some
+time.
 
 Get information about your miner:
 
@@ -65,7 +69,9 @@ lotus-storage-miner info
 lotus-storage-miner pledge-sector
 ```
 
-* Warning: On Linux configurations, this command will write data to `$TMPDIR` which is not usually the largest partition. You should point the value to a larger partition if possible.
+- Warning: On Linux configurations, this command will write data to `$TMPDIR`
+  which is not usually the largest partition. You should point the value to a
+  larger partition if possible.
 
 Get **miner power** and **sector usage**:
 
@@ -81,7 +87,6 @@ lotus-storage-miner state sectors <miner>
 ## Change nickname
 
 Update `~/.lotus/config.toml` with:
-
 
 ```sh
 [Metrics]
