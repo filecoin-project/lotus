@@ -1,6 +1,6 @@
 # Mining Troubleshooting
 
-## Changing the Filecoin Proof Parameters directory
+## Config: Filecoin Proof Parameters directory
 
 If you want to put the **Filecoin Proof Parameters** in a different directory,
 use the following environment variable:
@@ -9,7 +9,7 @@ use the following environment variable:
 FIL_PROOFS_PARAMETER_CACHE
 ```
 
-## Bellman Lockfile
+## Error: Can't acquire bellman.lock
 
 The **Bellman** lockfile is created to lock a GPU for a process. This bug can
 occur when this file isn't properly cleaned up:
@@ -21,7 +21,7 @@ mining block failed: computing election proof: github.com/filecoin-project/lotus
 This bug occurs when the storage miner can't acquire the `bellman.lock`. To fix
 it you need to stop the `lotus-storage-miner` and remove `/tmp/bellman.lock`.
 
-## Your miner is not ready
+## Error: Failed to get api endpoint
 
 ```sh
 lotus-storage-miner info
@@ -31,7 +31,7 @@ lotus-storage-miner info
 If you see this, that means your **Lotus Storage Miner** isn't ready yet. You
 need to finish [syncing the chain](https://docs.lotu.sh/en+join-testnet).
 
-## Your computer is too slow
+## Error: Your computer may not be fast enough
 
 ```sh
 CAUTION: block production took longer than the block delay. Your computer may not be fast enough to keep up
@@ -40,7 +40,7 @@ CAUTION: block production took longer than the block delay. Your computer may no
 If you see this, that means your computer is too slow and your blocks are not
 included in the chain, and you will not receive any rewards.
 
-## Running out of storage
+## Error: No space left on device
 
 ```sh
 lotus-storage-miner pledge-sector
@@ -52,7 +52,7 @@ which by default is the root partition (This is common for Linux setups).
 Usually your root partition does not get the largest partition of storage so you
 will need to change the environment variable to something else.
 
-## GPU not being used
+## Error: GPU unused
 
 If you suspect that your GPU is not being used, first make sure it is properly
 configured as described in the [testing configuration page](hardware-mining.md).
