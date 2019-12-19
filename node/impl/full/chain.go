@@ -2,14 +2,29 @@ package full
 
 import (
 	"context"
+	"fmt"
+	"strconv"
+	"strings"
 
-	"github.com/filecoin-project/lotus/api"
-	"github.com/filecoin-project/lotus/chain/store"
-	"github.com/filecoin-project/lotus/chain/types"
+	"github.com/filecoin-project/go-amt-ipld"
+	"github.com/ipfs/go-blockservice"
+	"github.com/ipfs/go-cid"
+	"github.com/ipfs/go-hamt-ipld"
+	blockstore "github.com/ipfs/go-ipfs-blockstore"
+	offline "github.com/ipfs/go-ipfs-exchange-offline"
+	cbor "github.com/ipfs/go-ipld-cbor"
+	ipld "github.com/ipfs/go-ipld-format"
+	"github.com/ipfs/go-merkledag"
+	"github.com/ipfs/go-path"
+	"github.com/ipfs/go-path/resolver"
+	mh "github.com/multiformats/go-multihash"
+	"go.uber.org/fx"
 	"golang.org/x/xerrors"
 
-	"github.com/ipfs/go-cid"
-	"go.uber.org/fx"
+	"github.com/filecoin-project/lotus/api"
+	"github.com/filecoin-project/lotus/chain/address"
+	"github.com/filecoin-project/lotus/chain/store"
+	"github.com/filecoin-project/lotus/chain/types"
 )
 
 type ChainAPI struct {
@@ -163,4 +178,124 @@ func (a *ChainAPI) ChainGetGenesis(ctx context.Context) (*types.TipSet, error) {
 
 func (a *ChainAPI) ChainTipSetWeight(ctx context.Context, ts *types.TipSet) (types.BigInt, error) {
 	return a.Chain.Weight(ctx, ts)
+}
+
+func resolveOnce(bs blockstore.Blockstore) func(ctx context.Context, ds ipld.NodeGetter, nd ipld.Node, names []string) (*ipld.Link, []string, error) {
+	return func(ctx context.Context, ds ipld.NodeGetter, nd ipld.Node, names []string) (*ipld.Link, []string, error) {
+		if strings.HasPrefix(names[0], "@Ha:") {
+			addr, err := address.NewFromString(names[0][4:])
+			if err != nil {
+				return nil, nil, xerrors.Errorf("parsing addr: %w", err)
+			}
+
+			names[0] = "@H:" + string(addr.Bytes())
+		}
+
+		if strings.HasPrefix(names[0], "@H:") {
+			cst := hamt.CSTFromBstore(bs)
+
+			h, err := hamt.LoadNode(ctx, cst, nd.Cid())
+			if err != nil {
+				return nil, nil, xerrors.Errorf("resolving hamt link: %w", err)
+			}
+
+			var m interface{}
+			if err := h.Find(ctx, names[0][3:], &m); err != nil {
+				return nil, nil, xerrors.Errorf("resolve hamt: %w", err)
+			}
+			if c, ok := m.(cid.Cid); ok {
+				return &ipld.Link{
+					Name: names[0][3:],
+					Cid:  c,
+				}, names[1:], nil
+			}
+
+			n, err := cbor.WrapObject(m, mh.SHA2_256, 32)
+			if err != nil {
+				return nil, nil, err
+			}
+
+			if err := bs.Put(n); err != nil {
+				return nil, nil, xerrors.Errorf("put hamt val: %w", err)
+			}
+
+			if len(names) == 1 {
+				return &ipld.Link{
+					Name: names[0][3:],
+					Cid:  n.Cid(),
+				}, nil, nil
+			}
+
+			return resolveOnce(bs)(ctx, ds, n, names[1:])
+		}
+
+		if strings.HasPrefix(names[0], "@A:") {
+			a, err := amt.LoadAMT(amt.WrapBlockstore(bs), nd.Cid())
+			if err != nil {
+				return nil, nil, xerrors.Errorf("load amt: %w", err)
+			}
+
+			idx, err := strconv.ParseUint(names[0][3:], 10, 64)
+			if err != nil {
+				return nil, nil, xerrors.Errorf("parsing amt index: %w", err)
+			}
+
+			var m interface{}
+			if err := a.Get(idx, &m); err != nil {
+				return nil, nil, xerrors.Errorf("amt get: %w", err)
+			}
+			fmt.Printf("AG %T %v\n", m, m)
+			if c, ok := m.(cid.Cid); ok {
+				return &ipld.Link{
+					Name: names[0][3:],
+					Cid:  c,
+				}, names[1:], nil
+			}
+
+			n, err := cbor.WrapObject(m, mh.SHA2_256, 32)
+			if err != nil {
+				return nil, nil, err
+			}
+
+			if err := bs.Put(n); err != nil {
+				return nil, nil, xerrors.Errorf("put amt val: %w", err)
+			}
+
+			if len(names) == 1 {
+				return &ipld.Link{
+					Name: names[0][3:],
+					Size: 0,
+					Cid:  n.Cid(),
+				}, nil, nil
+			}
+
+			return resolveOnce(bs)(ctx, ds, n, names[1:])
+		}
+
+		return nd.ResolveLink(names)
+	}
+}
+
+func (a *ChainAPI) ChainGetNode(ctx context.Context, p string) (interface{}, error) {
+	ip, err := path.ParsePath(p)
+	if err != nil {
+		return nil, xerrors.Errorf("parsing path: %w", err)
+	}
+
+	bs := a.Chain.Blockstore()
+	bsvc := blockservice.New(bs, offline.Exchange(bs))
+
+	dag := merkledag.NewDAGService(bsvc)
+
+	r := &resolver.Resolver{
+		DAG:         dag,
+		ResolveOnce: resolveOnce(bs),
+	}
+
+	node, err := r.ResolvePath(ctx, ip)
+	if err != nil {
+		return nil, err
+	}
+
+	return node, nil
 }

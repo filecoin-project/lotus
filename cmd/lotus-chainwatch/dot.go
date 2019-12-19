@@ -58,10 +58,10 @@ where b.height > ? and b.height < ?`, minH, maxH)
 
 			nulls := height - ph - 1
 			for i := uint64(0); i < nulls; i++ {
-				name := block+"NP"+fmt.Sprint(i)
+				name := block + "NP" + fmt.Sprint(i)
 
 				fmt.Printf("%s [label = \"NULL:%d\", fillcolor = \"#ffddff\", style=filled, forcelabels=true]\n%s -> %s\n",
-					name, height - nulls + i, name, parent)
+					name, height-nulls+i, name, parent)
 
 				parent = name
 			}

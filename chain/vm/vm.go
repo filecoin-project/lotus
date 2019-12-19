@@ -86,10 +86,7 @@ func (vmc *VMContext) Sys() *types.VMSyscalls {
 func (vmc *VMContext) Put(i cbg.CBORMarshaler) (cid.Cid, aerrors.ActorError) {
 	c, err := vmc.cst.Put(context.TODO(), i)
 	if err != nil {
-		if aerr := vmc.ChargeGas(0); aerr != nil {
-			return cid.Undef, aerrors.Absorb(err, outOfGasErrCode, "Put out of gas")
-		}
-		return cid.Undef, aerrors.Escalate(err, fmt.Sprintf("putting object %T", i))
+		return cid.Undef, aerrors.HandleExternalError(err, fmt.Sprintf("putting object %T", i))
 	}
 	return c, nil
 }
@@ -97,10 +94,7 @@ func (vmc *VMContext) Put(i cbg.CBORMarshaler) (cid.Cid, aerrors.ActorError) {
 func (vmc *VMContext) Get(c cid.Cid, out cbg.CBORUnmarshaler) aerrors.ActorError {
 	err := vmc.cst.Get(context.TODO(), c, out)
 	if err != nil {
-		if aerr := vmc.ChargeGas(0); aerr != nil {
-			return aerrors.Absorb(err, outOfGasErrCode, "Get out of gas")
-		}
-		return aerrors.Escalate(err, "getting cid")
+		return aerrors.HandleExternalError(err, "getting cid")
 	}
 	return nil
 }
@@ -467,7 +461,7 @@ func (vm *VM) ApplyMessage(ctx context.Context, msg *types.Message) (*ApplyRet, 
 	ret, actorErr, vmctx := vm.send(ctx, msg, nil, msgGasCost)
 
 	if aerrors.IsFatal(actorErr) {
-		return nil, xerrors.Errorf("fatal error: %w", actorErr)
+		return nil, xerrors.Errorf("[from=%s,to=%s,n=%d,m=%d,h=%d] fatal error: %w", msg.From, msg.To, msg.Nonce, msg.Method, vm.blockHeight, actorErr)
 	}
 	if actorErr != nil {
 		log.Warnf("[from=%s,to=%s,n=%d,m=%d,h=%d] Send actor error: %+v", msg.From, msg.To, msg.Nonce, msg.Method, vm.blockHeight, actorErr)
