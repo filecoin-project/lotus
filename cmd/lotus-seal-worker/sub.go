@@ -100,11 +100,12 @@ loop:
             // 考虑一些sealworker节点不添加此限制，保证一些异常的任务可以及时处理，或者直接让他fail， 因为恢复代价太大了
 			res := w.processTask(ctx, task)
 
-			log.Infof("bench Task %d done,  task.Type %d use %s , err: %+v", task.TaskID,  task.Type, time.Now().Sub(seal), res.GoErr)
-
 			if err := api.WorkerDone(ctx, task.TaskID, res); err != nil {
 				log.Error(err)
 			}
+
+			log.Infof("bench Task %d done,  task.Type %d use %s , err: %+v", task.TaskID,  task.Type, time.Now().Sub(seal), res.GoErr)
+
 		case <-ctx.Done():
 			break loop
 		}
@@ -184,6 +185,9 @@ func (w *worker) processTask(ctx context.Context, task sectorbuilder.WorkerTask)
 
 		sealedfilename := filepath.Join(w.repo, "sealed", w.sb.SectorName(task.SectorID))
 		os.RemoveAll(sealedfilename)
+
+		stagingfilename := filepath.Join(w.repo, "staging", w.sb.SectorName(task.SectorID))
+		os.RemoveAll(stagingfilename)
 		if err != nil {
 			return errRes(xerrors.Errorf("comitting: %w", err))
 		}
