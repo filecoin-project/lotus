@@ -2866,13 +2866,13 @@ func (t *UpdateStorageParams) MarshalCBOR(w io.Writer) error {
 		return err
 	}
 
-	// t.NextProvingPeriodEnd (uint64) (uint64)
-	if _, err := w.Write(cbg.CborEncodeMajorType(cbg.MajUnsignedInt, uint64(t.NextProvingPeriodEnd))); err != nil {
+	// t.NextSlashDeadline (uint64) (uint64)
+	if _, err := w.Write(cbg.CborEncodeMajorType(cbg.MajUnsignedInt, uint64(t.NextSlashDeadline))); err != nil {
 		return err
 	}
 
-	// t.PreviousProvingPeriodEnd (uint64) (uint64)
-	if _, err := w.Write(cbg.CborEncodeMajorType(cbg.MajUnsignedInt, uint64(t.PreviousProvingPeriodEnd))); err != nil {
+	// t.PreviousSlashDeadline (uint64) (uint64)
+	if _, err := w.Write(cbg.CborEncodeMajorType(cbg.MajUnsignedInt, uint64(t.PreviousSlashDeadline))); err != nil {
 		return err
 	}
 	return nil
@@ -2902,7 +2902,7 @@ func (t *UpdateStorageParams) UnmarshalCBOR(r io.Reader) error {
 		}
 
 	}
-	// t.NextProvingPeriodEnd (uint64) (uint64)
+	// t.NextSlashDeadline (uint64) (uint64)
 
 	maj, extra, err = cbg.CborReadHeader(br)
 	if err != nil {
@@ -2911,8 +2911,8 @@ func (t *UpdateStorageParams) UnmarshalCBOR(r io.Reader) error {
 	if maj != cbg.MajUnsignedInt {
 		return fmt.Errorf("wrong type for uint64 field")
 	}
-	t.NextProvingPeriodEnd = uint64(extra)
-	// t.PreviousProvingPeriodEnd (uint64) (uint64)
+	t.NextSlashDeadline = uint64(extra)
+	// t.PreviousSlashDeadline (uint64) (uint64)
 
 	maj, extra, err = cbg.CborReadHeader(br)
 	if err != nil {
@@ -2921,7 +2921,7 @@ func (t *UpdateStorageParams) UnmarshalCBOR(r io.Reader) error {
 	if maj != cbg.MajUnsignedInt {
 		return fmt.Errorf("wrong type for uint64 field")
 	}
-	t.PreviousProvingPeriodEnd = uint64(extra)
+	t.PreviousSlashDeadline = uint64(extra)
 	return nil
 }
 
