@@ -11,7 +11,7 @@ import (
 	"github.com/filecoin-project/lotus/chain/actors"
 	"github.com/filecoin-project/lotus/chain/stmgr"
 	"github.com/filecoin-project/lotus/chain/types"
-	"github.com/filecoin-project/lotus/lib/cborutil"
+	"github.com/filecoin-project/go-cbor-util"
 )
 
 type clientHandlerFunc func(ctx context.Context, deal ClientDeal) (func(*ClientDeal), error)

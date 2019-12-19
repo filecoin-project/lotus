@@ -8,7 +8,7 @@ import (
 	"github.com/filecoin-project/go-address"
 	"github.com/filecoin-project/lotus/chain/stmgr"
 	"github.com/filecoin-project/lotus/chain/types"
-	"github.com/filecoin-project/lotus/lib/cborutil"
+	"github.com/filecoin-project/go-cbor-util"
 	datastore "github.com/ipfs/go-datastore"
 	inet "github.com/libp2p/go-libp2p-core/network"
 	"golang.org/x/xerrors"

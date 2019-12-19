@@ -8,7 +8,7 @@ import (
 	"github.com/filecoin-project/lotus/api"
 	"github.com/filecoin-project/lotus/chain/actors"
 	"github.com/filecoin-project/lotus/chain/types"
-	"github.com/filecoin-project/lotus/lib/cborutil"
+	"github.com/filecoin-project/go-cbor-util"
 	"github.com/ipfs/go-cid"
 )
 

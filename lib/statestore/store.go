@@ -11,7 +11,7 @@ import (
 	"go.uber.org/multierr"
 	"golang.org/x/xerrors"
 
-	"github.com/filecoin-project/lotus/lib/cborutil"
+	"github.com/filecoin-project/go-cbor-util"
 )
 
 type StateStore struct {

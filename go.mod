@@ -14,6 +14,7 @@ require (
 	github.com/filecoin-project/filecoin-ffi v0.0.0-20191213130254-f261762ff8ed
 	github.com/filecoin-project/go-address v0.0.0-20191219011437-af739c490b4f
 	github.com/filecoin-project/go-amt-ipld v0.0.0-20191205011053-79efc22d6cdc
+	github.com/filecoin-project/go-cbor-util v0.0.0-20191219014500-08c40a1e63a2
 	github.com/filecoin-project/go-crypto v0.0.0-20191218222705-effae4ea9f03
 	github.com/filecoin-project/go-paramfetch v0.0.0-20200102181131-b20d579f2878
 	github.com/gbrlsnchs/jwt/v3 v3.0.0-beta.1
