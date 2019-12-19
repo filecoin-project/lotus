@@ -9,7 +9,7 @@ import (
 )
 
 type update struct {
-	start uint64
+	start  uint64
 	method interface{}
 }
 
@@ -31,7 +31,7 @@ func withUpdates(updates ...update) interface{} {
 			}
 		}
 
-		return reflect.ValueOf(notFound(vmctx)).Call([]reflect.Value{})
+		return reflect.ValueOf(notFound(vmctx)).Call([]reflect.Value{args[1]})
 	})
 
 	return out.Interface()
