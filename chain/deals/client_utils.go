@@ -16,7 +16,7 @@ import (
 	"github.com/filecoin-project/lotus/lib/cborutil"
 	"github.com/filecoin-project/lotus/lib/padreader"
 	"github.com/filecoin-project/lotus/lib/sectorbuilder"
-	"github.com/filecoin-project/lotus/lib/statestore"
+	"github.com/filecoin-project/go-statestore"
 	"github.com/filecoin-project/lotus/node/modules/dtypes"
 )
 

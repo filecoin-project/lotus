@@ -25,7 +25,7 @@ import (
 	"github.com/filecoin-project/lotus/chain/gen"
 	"github.com/filecoin-project/lotus/datatransfer"
 	"github.com/filecoin-project/lotus/lib/sectorbuilder"
-	"github.com/filecoin-project/lotus/lib/statestore"
+	"github.com/filecoin-project/go-statestore"
 	"github.com/filecoin-project/lotus/miner"
 	"github.com/filecoin-project/lotus/node/modules/dtypes"
 	"github.com/filecoin-project/lotus/node/modules/helpers"
