@@ -25,6 +25,7 @@ var chainCmd = &cli.Command{
 		chainGetMsgCmd,
 		chainSetHeadCmd,
 		chainListCmd,
+		chainGetCmd,
 	},
 }
 
@@ -332,6 +333,41 @@ var chainListCmd = &cli.Command{
 		for i := len(tss) - 1; i >= 0; i-- {
 			printTipSet(cctx.String("format"), tss[i])
 		}
+		return nil
+	},
+}
+
+var chainGetCmd = &cli.Command{
+	Name:  "get",
+	Usage: "Get chain DAG node by path",
+	Description: `Get ipld node under a specified path:
+
+   lotus chain get /ipfs/[cid]/some/path
+
+   Note:
+   You can use special path elements to traverse through some data structures:
+   - /ipfs/[cid]/@H:elem - get 'elem' from hamt
+   - /ipfs/[cid]/@Ha:t01 - get element under Addr(t01).Bytes
+   - /ipfs/[cid]/@A:10 - get 10th amt element
+`,
+	Action: func(cctx *cli.Context) error {
+		api, closer, err := GetFullNodeAPI(cctx)
+		if err != nil {
+			return err
+		}
+		defer closer()
+		ctx := ReqContext(cctx)
+
+		nd, err := api.ChainGetNode(ctx, cctx.Args().First())
+		if err != nil {
+			return err
+		}
+
+		b, err := json.MarshalIndent(nd, "", "\t")
+		if err != nil {
+			return err
+		}
+		fmt.Println(string(b))
 		return nil
 	},
 }

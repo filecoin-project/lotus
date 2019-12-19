@@ -391,7 +391,7 @@ func (sma StorageMinerActor) ProveCommitSector(act *types.Actor, vmctx types.VMC
 	}
 
 	_, err = vmctx.Send(StorageMarketAddress, SMAMethods.ActivateStorageDeals, types.NewInt(0), activateParams)
-	return nil, err
+	return nil, aerrors.Wrapf(err, "calling ActivateStorageDeals failed")
 }
 
 func truncateHexPrint(b []byte) string {
@@ -953,9 +953,9 @@ func onSuccessfulPoSt(self *StorageMinerActorState, vmctx types.VMContext) aerro
 
 	if !(oldPower.IsZero() && newPower.IsZero()) {
 		enc, err := SerializeParams(&UpdateStorageParams{
-			Delta:                    delta,
-			NextProvingPeriodEnd:     vmctx.BlockHeight() + build.SlashablePowerDelay,
-			PreviousProvingPeriodEnd: prevSlashingDeadline,
+			Delta:                 delta,
+			NextSlashDeadline:     vmctx.BlockHeight() + build.SlashablePowerDelay,
+			PreviousSlashDeadline: prevSlashingDeadline,
 		})
 		if err != nil {
 			return err
@@ -963,7 +963,7 @@ func onSuccessfulPoSt(self *StorageMinerActorState, vmctx types.VMContext) aerro
 
 		_, err = vmctx.Send(StoragePowerAddress, SPAMethods.UpdateStorage, types.NewInt(0), enc)
 		if err != nil {
-			return err
+			return aerrors.Wrap(err, "updating storage failed")
 		}
 	}
 
