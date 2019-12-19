@@ -1,8 +1,6 @@
 package dtypes
 
 import (
-	"github.com/filecoin-project/go-fil-components/datatransfer"
-	"github.com/filecoin-project/go-statestore"
 	bserv "github.com/ipfs/go-blockservice"
 	"github.com/ipfs/go-datastore"
 	"github.com/ipfs/go-filestore"
@@ -10,6 +8,9 @@ import (
 	blockstore "github.com/ipfs/go-ipfs-blockstore"
 	exchange "github.com/ipfs/go-ipfs-exchange-interface"
 	ipld "github.com/ipfs/go-ipld-format"
+
+	"github.com/filecoin-project/go-data-transfer"
+	"github.com/filecoin-project/go-statestore"
 )
 
 // MetadataDS stores metadata

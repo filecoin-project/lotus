@@ -24,7 +24,7 @@ import (
 	"golang.org/x/xerrors"
 
 	"github.com/filecoin-project/go-address"
-	dtgraphsync "github.com/filecoin-project/go-fil-components/datatransfer/impl/graphsync"
+	dtgraphsync "github.com/filecoin-project/go-data-transfer/impl/graphsync"
 	"github.com/filecoin-project/go-sectorbuilder"
 	"github.com/filecoin-project/go-statestore"
 	"github.com/filecoin-project/lotus/api"
