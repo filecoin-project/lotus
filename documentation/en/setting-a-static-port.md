@@ -1,6 +1,6 @@
 # Static Ports
 
-Depending on how your network is set up, you may need to set a static port to successfully connect to peers to perform storage deals with your **Lotus Storage Miner**. 
+Depending on how your network is set up, you may need to set a static port to successfully connect to peers to perform storage deals with your **Lotus Storage Miner**.
 
 ## Setup
 

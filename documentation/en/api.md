@@ -6,21 +6,21 @@ Implementation details for the **JSON-RPC** package are [here](https://github.co
 
 ## Overview: How do you modify the config.toml to change the API endpoint?
 
-API requests are made against `127.0.0.1:1234` unless you modify `.lotus/config.toml`. 
+API requests are made against `127.0.0.1:1234` unless you modify `.lotus/config.toml`.
 
 Options:
 
 - `http://[api:port]/rpc/v0` - HTTP endpoint
-- `ws://[api:port]/rpc/v0` -  Websocket endpoint
+- `ws://[api:port]/rpc/v0` - Websocket endpoint
 - `PUT http://[api:port]/rest/v0/import` - File import, it requires write permissions.
 
 ## What methods can I use?
 
 For now, you can look into different files to find methods available to you based on your needs:
 
-* [Both Lotus node + storage miner APIs](https://github.com/filecoin-project/lotus/blob/master/api/api_common.go)
-* [Lotus node API](https://github.com/filecoin-project/lotus/blob/master/api/api_full.go)
-* [Storage miner API](https://github.com/filecoin-project/lotus/blob/master/api/api_storage.go)
+- [Both Lotus node + storage miner APIs](https://github.com/filecoin-project/lotus/blob/master/api/api_common.go)
+- [Lotus node API](https://github.com/filecoin-project/lotus/blob/master/api/api_full.go)
+- [Storage miner API](https://github.com/filecoin-project/lotus/blob/master/api/api_storage.go)
 
 The necessary permissions for each are in [api/struct.go](https://github.com/filecoin-project/lotus/blob/master/api/struct.go).
 

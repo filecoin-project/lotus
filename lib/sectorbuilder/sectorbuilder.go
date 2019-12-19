@@ -639,7 +639,7 @@ func (sb *SectorBuilder) ComputeElectionPoSt(sectorInfo SortedPublicSectorInfo, 
 	var cseed [CommLen]byte
 	copy(cseed[:], challengeSeed)
 
-	privsects, err := sb.pubSectorToPriv(sectorInfo)
+	privsects, err := sb.pubSectorToPriv(sectorInfo, nil) // TODO: faults
 	if err != nil {
 		return nil, err
 	}
@@ -650,20 +650,29 @@ func (sb *SectorBuilder) ComputeElectionPoSt(sectorInfo SortedPublicSectorInfo, 
 }
 
 func (sb *SectorBuilder) GenerateEPostCandidates(sectorInfo SortedPublicSectorInfo, challengeSeed [CommLen]byte, faults []uint64) ([]EPostCandidate, error) {
-	privsectors, err := sb.pubSectorToPriv(sectorInfo)
+	privsectors, err := sb.pubSectorToPriv(sectorInfo, faults)
 	if err != nil {
 		return nil, err
 	}
 
-	challengeCount := types.ElectionPostChallengeCount(uint64(len(sectorInfo.Values())))
+	challengeCount := types.ElectionPostChallengeCount(uint64(len(sectorInfo.Values())), len(faults))
 
 	proverID := addressToProverID(sb.Miner)
 	return sectorbuilder.GenerateCandidates(sb.ssize, proverID, challengeSeed, challengeCount, privsectors)
 }
 
-func (sb *SectorBuilder) pubSectorToPriv(sectorInfo SortedPublicSectorInfo) (SortedPrivateSectorInfo, error) {
+func (sb *SectorBuilder) pubSectorToPriv(sectorInfo SortedPublicSectorInfo, faults []uint64) (SortedPrivateSectorInfo, error) {
+	fmap := map[uint64]struct{}{}
+	for _, fault := range faults {
+		fmap[fault] = struct{}{}
+	}
+
 	var out []sectorbuilder.PrivateSectorInfo
 	for _, s := range sectorInfo.Values() {
+		if _, faulty := fmap[s.SectorID]; faulty {
+			continue
+		}
+
 		cachePath, err := sb.sectorCacheDir(s.SectorID)
 		if err != nil {
 			return SortedPrivateSectorInfo{}, xerrors.Errorf("getting cache path for sector %d: %w", s.SectorID, err)
@@ -685,12 +694,12 @@ func (sb *SectorBuilder) pubSectorToPriv(sectorInfo SortedPublicSectorInfo) (Sor
 }
 
 func (sb *SectorBuilder) GenerateFallbackPoSt(sectorInfo SortedPublicSectorInfo, challengeSeed [CommLen]byte, faults []uint64) ([]EPostCandidate, []byte, error) {
-	privsectors, err := sb.pubSectorToPriv(sectorInfo)
+	privsectors, err := sb.pubSectorToPriv(sectorInfo, faults)
 	if err != nil {
 		return nil, nil, err
 	}
 
-	challengeCount := fallbackPostChallengeCount(uint64(len(sectorInfo.Values())))
+	challengeCount := fallbackPostChallengeCount(uint64(len(sectorInfo.Values())), len(faults))
 
 	proverID := addressToProverID(sb.Miner)
 	candidates, err := sectorbuilder.GenerateCandidates(sb.ssize, proverID, challengeSeed, challengeCount, privsectors)
@@ -706,8 +715,8 @@ func (sb *SectorBuilder) Stop() {
 	close(sb.stopping)
 }
 
-func fallbackPostChallengeCount(sectors uint64) uint64 {
-	challengeCount := types.ElectionPostChallengeCount(sectors)
+func fallbackPostChallengeCount(sectors uint64, faults int) uint64 {
+	challengeCount := types.ElectionPostChallengeCount(sectors, faults)
 	if challengeCount > build.MaxFallbackPostChallengeCount {
 		return build.MaxFallbackPostChallengeCount
 	}
