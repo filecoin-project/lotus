@@ -1,6 +1,11 @@
 package build
 
-import rice "github.com/GeertJohan/go.rice"
+import (
+	rice "github.com/GeertJohan/go.rice"
+	logging "github.com/ipfs/go-log"
+)
+
+var log = logging.Logger("build")
 
 func MaybeGenesis() []byte {
 	builtinGen, err := rice.FindBox("genesis")

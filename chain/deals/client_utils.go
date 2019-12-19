@@ -5,6 +5,7 @@ import (
 	"context"
 	"runtime"
 
+	sectorbuilder "github.com/filecoin-project/go-sectorbuilder"
 	"github.com/ipfs/go-cid"
 	files "github.com/ipfs/go-ipfs-files"
 	unixfile "github.com/ipfs/go-unixfs/file"
@@ -15,8 +16,7 @@ import (
 	"github.com/filecoin-project/go-cbor-util"
 	"github.com/filecoin-project/lotus/datatransfer"
 	"github.com/filecoin-project/lotus/lib/padreader"
-	"github.com/filecoin-project/lotus/lib/sectorbuilder"
-	"github.com/filecoin-project/lotus/lib/statestore"
+	"github.com/filecoin-project/go-statestore"
 	"github.com/filecoin-project/lotus/node/modules/dtypes"
 )
 

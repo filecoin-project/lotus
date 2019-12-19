@@ -3,7 +3,7 @@ package apistruct
 import (
 	"context"
 
-	"github.com/filecoin-project/lotus/lib/sectorbuilder"
+	sectorbuilder "github.com/filecoin-project/go-sectorbuilder"
 
 	"github.com/ipfs/go-cid"
 	"github.com/libp2p/go-libp2p-core/network"

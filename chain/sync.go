@@ -9,6 +9,7 @@ import (
 	"sync"
 	"time"
 
+	sectorbuilder "github.com/filecoin-project/go-sectorbuilder"
 	"github.com/Gurpartap/async"
 	bls "github.com/filecoin-project/filecoin-ffi"
 	amt "github.com/filecoin-project/go-amt-ipld"
@@ -35,7 +36,6 @@ import (
 	"github.com/filecoin-project/lotus/chain/stmgr"
 	"github.com/filecoin-project/lotus/chain/store"
 	"github.com/filecoin-project/lotus/chain/types"
-	"github.com/filecoin-project/lotus/lib/sectorbuilder"
 )
 
 var log = logging.Logger("chain")

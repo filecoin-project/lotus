@@ -5,7 +5,7 @@ import (
 	"path/filepath"
 	"reflect"
 
-	"github.com/filecoin-project/lotus/lib/statestore"
+	"github.com/filecoin-project/go-statestore"
 	"github.com/filecoin-project/lotus/node/modules/helpers"
 	"github.com/ipfs/go-bitswap"
 	"github.com/ipfs/go-bitswap/network"

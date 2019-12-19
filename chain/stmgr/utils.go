@@ -3,13 +3,13 @@ package stmgr
 import (
 	"context"
 
+	sectorbuilder "github.com/filecoin-project/go-sectorbuilder"
 	ffi "github.com/filecoin-project/filecoin-ffi"
 
 	"github.com/filecoin-project/go-address"
 	"github.com/filecoin-project/lotus/api"
 	"github.com/filecoin-project/lotus/chain/actors"
 	"github.com/filecoin-project/lotus/chain/types"
-	"github.com/filecoin-project/lotus/lib/sectorbuilder"
 
 	amt "github.com/filecoin-project/go-amt-ipld"
 	cid "github.com/ipfs/go-cid"
