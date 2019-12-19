@@ -187,7 +187,7 @@ jobs:
             chmod +x $HOME/.bin/jq
       - restore_cache:
           name: restore go mod and cargo cache
-          key: v2-go-deps-{{ arch }}-{{ checksum "~/go/src/github.com/filecoin-project/lotus/go.mod" }}
+          key: v3-go-deps-{{ arch }}-{{ checksum "~/go/src/github.com/filecoin-project/lotus/go.sum" }}
       - install-deps
       - go/mod-download
       - run:
@@ -198,11 +198,9 @@ jobs:
       - store_artifacts:
           path: lotus-storage-miner
       - save_cache:
-          name: save go mod and cargo cache
-          key: v2-go-deps-{{ arch }}-{{ checksum "~/go/src/github.com/filecoin-project/lotus/go.mod" }}
+          name: save cargo cache
+          key: v3-go-deps-{{ arch }}-{{ checksum "~/go/src/github.com/filecoin-project/lotus/go.sum" }}
           paths:
-            - "~/go/src/github.com"
-            - "~/go/src/golang.org"
             - "~/.rustup"
             - "~/.cargo"
 
