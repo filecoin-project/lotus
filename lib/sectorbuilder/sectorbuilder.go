@@ -548,7 +548,7 @@ func (sb *SectorBuilder) sealCommitRemote(call workerCall) (proof []byte, err er
 	}
 }
 
-func (sb *SectorBuilder) sealCommitLocal(sectorID uint64, ticket SealTicket, seed SealSeed, pieces []PublicPieceInfo, rspco RawSealPreCommitOutput) (proof []byte, err error) {
+func (sb *SectorBuilder) SealCommitLocal(sectorID uint64, ticket SealTicket, seed SealSeed, pieces []PublicPieceInfo, rspco RawSealPreCommitOutput) (proof []byte, err error) {
 	atomic.AddInt32(&sb.commitWait, -1)
 
 	defer func() {
@@ -622,7 +622,7 @@ func (sb *SectorBuilder) SealCommit(sectorID uint64, ticket SealTicket, seed Sea
 			log.Info("commitTasks...", "RemoteID:", remoteid)
 			proof, err = sb.sealCommitRemote(call)
 		case rl <- struct{}{}:
-			proof, err = sb.sealCommitLocal(sectorID, ticket, seed, pieces, rspco)
+			proof, err = sb.SealCommitLocal(sectorID, ticket, seed, pieces, rspco)
 		}
 	}
 	if err != nil {
