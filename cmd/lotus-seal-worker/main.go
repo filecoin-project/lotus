@@ -53,6 +53,9 @@ func main() {
 			&cli.BoolFlag{
 				Name: "no-commit",
 			},
+			&cli.BoolFlag{
+				Name: "no-sealone",
+			},
 		},
 
 		Commands: local,
@@ -105,6 +108,7 @@ var runCmd = &cli.Command{
 			log.Warn("Shutting down..")
 		}()
 
-		return acceptJobs(ctx, nodeApi, "http://"+storageAddr, ainfo.AuthHeader(), r, cctx.Bool("no-precommit"), cctx.Bool("no-commit"))
+		return acceptJobs(ctx, nodeApi, "http://"+storageAddr, ainfo.AuthHeader(), r,
+			cctx.Bool("no-precommit"),  cctx.Bool("no-commit"), cctx.Bool("no-sealone"))
 	},
 }

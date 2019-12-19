@@ -105,7 +105,7 @@ func (sb *SectorBuilder) remoteWorker(ctx context.Context, r *remote, cfg Worker
 
 	log.Infof("remoteWorker WorkerCfg RemoteID: %s", cfg.RemoteID)
 
-	if sb.specialcommitTasks[cfg.RemoteID] == nil {
+	if cfg.RemoteID != "" && sb.specialcommitTasks[cfg.RemoteID] == nil {
 		sb.specialcommitTasks[cfg.RemoteID] = make(chan workerCall)
 		log.Infof("sb.specialcommitTasks make RemoteID: %s", cfg.RemoteID)
 	}
@@ -113,13 +113,13 @@ func (sb *SectorBuilder) remoteWorker(ctx context.Context, r *remote, cfg Worker
 	for {
 		select {
 		case workertask := <-sb.specialcommitTasks[cfg.RemoteID]:
-			log.Infof("specialcommits SectorID: %d WorkerCfg: %s RemoteID: %s", workertask.task.SectorID, cfg.RemoteID, workertask.task.RemoteID)
+			log.Infof("specialcommits SectorID: %d cfg.RemoteID: %s RemoteID: %s", workertask.task.SectorID, cfg.RemoteID, workertask.task.RemoteID)
 			sb.doTask(ctx, r, workertask)
 		case workertask := <-commits:
-			log.Infof("commits SectorID: %d WorkerCfg: %s RemoteID: %s", workertask.task.SectorID, cfg.RemoteID, workertask.task.RemoteID)
+			log.Infof("commits SectorID: %d cfg.RemoteID: %s RemoteID: %s", workertask.task.SectorID, cfg.RemoteID, workertask.task.RemoteID)
 			sb.doTask(ctx, r, workertask)
 		case workertask := <-precommits:
-			log.Infof("precommits SectorID: %d WorkerCfg: %s ", workertask.task.SectorID, cfg.RemoteID)
+			log.Infof("precommits SectorID: %d cfg.RemoteID: %s ", workertask.task.SectorID, cfg.RemoteID)
 			 sb.doTask(ctx, r, workertask)
 		case <-ctx.Done():
 			return

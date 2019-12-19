@@ -16,7 +16,7 @@ import (
 	"github.com/filecoin-project/lotus/lib/sectorbuilder"
 )
 
-var constRemoteID = "remote"
+var constRemoteID = ""
 
 type worker struct {
 	api           lapi.StorageMiner
@@ -27,25 +27,26 @@ type worker struct {
 	sb *sectorbuilder.SectorBuilder
 }
 
-//TODO  添加进程号来区分
-func get_internal() string {
+
+//host ip
+func get_hostip() string {
 	addrs, err := net.InterfaceAddrs()
 	if err == nil {
 		for _, a := range addrs {
 			if ipnet, ok := a.(*net.IPNet); ok && !ipnet.IP.IsLoopback() {
 				if ipnet.IP.To4() != nil {
-					log.Infof("get_internal  ip:%s", ipnet.IP.String())
+					log.Infof("get_hostip:%s", ipnet.IP.String())
 					return ipnet.IP.String()
 				}
 			}
 		}
 	}
 
-	uuidname ,_ := uuid.NewRandom()
-	return uuidname.String()
+	remoteid ,_ := uuid.NewRandom()
+	return remoteid.String()
 }
 
-func acceptJobs(ctx context.Context, api lapi.StorageMiner, endpoint string, auth http.Header, repo string, noprecommit, nocommit bool) error {
+func acceptJobs(ctx context.Context, api lapi.StorageMiner, endpoint string, auth http.Header, repo string, noprecommit, nocommit bool, nosealone bool) error {
 	act, err := api.ActorAddress(ctx)
 	if err != nil {
 		return err
@@ -69,7 +70,10 @@ func acceptJobs(ctx context.Context, api lapi.StorageMiner, endpoint string, aut
 		return xerrors.Errorf("get params: %w", err)
 	}
 
-	constRemoteID = get_internal()
+	constRemoteID = get_hostip()
+	if nosealone {
+		constRemoteID = ""
+	}
 
 	w := &worker{
 		api:           api,
@@ -97,7 +101,6 @@ loop:
 			log.Infof("New task: %d, sector %d, action: %d", task.TaskID, task.SectorID, task.Type)
 			log.Infof("WorkerCfg: %s RemoteID: %s", constRemoteID, task.RemoteID)
 			seal := time.Now()
-            // 考虑一些sealworker节点不添加此限制，保证一些异常的任务可以及时处理，或者直接让他fail， 因为恢复代价太大了
 			res := w.processTask(ctx, task)
 
 			if err := api.WorkerDone(ctx, task.TaskID, res); err != nil {
