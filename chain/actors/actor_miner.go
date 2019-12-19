@@ -1106,7 +1106,6 @@ func onSuccessfulPoStV0(self *StorageMinerActorState, vmctx types.VMContext) aer
 	}
 
 	if !(oldPower.IsZero() && newPower.IsZero()) {
-		self.ElectionPeriodStart = vmctx.BlockHeight()
 		enc, err := SerializeParams(&UpdateStorageParams{
 			Delta:                 delta,
 			NextSlashDeadline:     vmctx.BlockHeight() + build.SlashablePowerDelay,
@@ -1129,6 +1128,7 @@ func onSuccessfulPoStV0(self *StorageMinerActorState, vmctx types.VMContext) aer
 
 	self.Sectors = ncid
 	self.ProvingSet = ncid
+	self.ElectionPeriodStart = vmctx.BlockHeight()
 	return nil
 }
 
