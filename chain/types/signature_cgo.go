@@ -6,7 +6,7 @@ import (
 	"fmt"
 
 	bls "github.com/filecoin-project/filecoin-ffi"
-	"github.com/filecoin-project/lotus/chain/address"
+	"github.com/filecoin-project/go-address"
 	"github.com/filecoin-project/lotus/lib/crypto"
 	"github.com/minio/blake2b-simd"
 )

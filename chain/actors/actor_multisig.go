@@ -3,8 +3,8 @@ package actors
 import (
 	"github.com/ipfs/go-cid"
 
+	"github.com/filecoin-project/go-address"
 	"github.com/filecoin-project/lotus/chain/actors/aerrors"
-	"github.com/filecoin-project/lotus/chain/address"
 	"github.com/filecoin-project/lotus/chain/types"
 
 	cbg "github.com/whyrusleeping/cbor-gen"
