@@ -238,7 +238,7 @@ func (sma StorageMinerActor) PreCommitSector(act *types.Actor, vmctx types.VMCon
 	}
 
 	if vmctx.Message().From != mi.Worker {
-		return nil, aerrors.New(1, "not authorized to commit sector for miner")
+		return nil, aerrors.New(1, "not authorized to precommit sector for miner")
 	}
 
 	// make sure the miner isnt trying to submit a pre-existing sector
@@ -301,6 +301,10 @@ func (sma StorageMinerActor) ProveCommitSector(act *types.Actor, vmctx types.VMC
 	mi, err := loadMinerInfo(vmctx, self)
 	if err != nil {
 		return nil, err
+	}
+
+	if vmctx.Message().From != mi.Worker {
+		return nil, aerrors.New(1, "not authorized to sector proof for miner")
 	}
 
 	us, ok := self.PreCommittedSectors[uintToStringKey(params.SectorID)]
@@ -368,7 +372,7 @@ func (sma StorageMinerActor) ProveCommitSector(act *types.Actor, vmctx types.VMC
 		return nil, aerrors.HandleExternalError(lerr, "could not load proving set node")
 	}
 
-	if pss.Count == 0 {
+	if pss.Count == 0 && (!self.Active || vmctx.BlockHeight() < build.ForkNoPowerEPSUpdates) { // FORK
 		self.ProvingSet = self.Sectors
 		// TODO: probably want to wait until the miner is above a certain
 		//  threshold before starting this
@@ -814,6 +818,15 @@ func (sma StorageMinerActor) DeclareFaults(act *types.Actor, vmctx types.VMConte
 		return nil, aerr
 	}
 
+	mi, aerr := loadMinerInfo(vmctx, self)
+	if aerr != nil {
+		return nil, aerr
+	}
+
+	if vmctx.Message().From != mi.Worker {
+		return nil, aerrors.New(1, "not authorized to declare faults for miner")
+	}
+
 	nfaults, err := types.MergeBitFields(params.Faults, self.FaultSet)
 	if err != nil {
 		return nil, aerrors.Absorb(err, 1, "failed to merge bitfields")
@@ -824,7 +837,7 @@ func (sma StorageMinerActor) DeclareFaults(act *types.Actor, vmctx types.VMConte
 	self.LastFaultSubmission = vmctx.BlockHeight()
 
 	nstate, aerr := vmctx.Storage().Put(self)
-	if err != nil { // TODO: FORK: should be aerr
+	if aerr != nil {
 		return nil, aerr
 	}
 	if err := vmctx.Storage().Commit(oldstate, nstate); err != nil {
@@ -965,6 +978,8 @@ func onSuccessfulPoSt(self *StorageMinerActorState, vmctx types.VMContext) aerro
 		if err != nil {
 			return aerrors.Wrap(err, "updating storage failed")
 		}
+
+		self.ElectionPeriodStart = vmctx.BlockHeight()
 	}
 
 	ncid, err := RemoveFromSectorSet(vmctx.Context(), vmctx.Storage(), self.Sectors, faults)
@@ -974,7 +989,9 @@ func onSuccessfulPoSt(self *StorageMinerActorState, vmctx types.VMContext) aerro
 
 	self.Sectors = ncid
 	self.ProvingSet = ncid
-	self.ElectionPeriodStart = vmctx.BlockHeight()
+	if vmctx.BlockHeight() < build.ForkNoPowerEPSUpdates { // FORK
+		self.ElectionPeriodStart = vmctx.BlockHeight()
+	}
 	return nil
 }
 
