@@ -1,6 +1,7 @@
 package storage
 
 import (
+	"bytes"
 	"context"
 
 	"golang.org/x/xerrors"
@@ -171,6 +172,15 @@ func (m *Miner) handlePreCommitted(ctx context.Context, sector SectorInfo) *sect
 }
 
 func (m *Miner) handleCommitting(ctx context.Context, sector SectorInfo) *sectorUpdate {
+	ok, err := m.sb.CanCommit(sector.SectorID)
+	if err != nil {
+		return sector.upd().fatal(xerrors.Errorf("canCommit check failed: %w", err))
+	}
+	if !ok {
+		log.Infof("sector %d in invalid state for commit, attempting reseal", sector.SectorID)
+		return sector.upd().to(api.Reseal)
+	}
+
 	log.Info("scheduling seal proof computation...")
 
 	proof, err := m.sb.SealCommit(sector.SectorID, sector.Ticket.SB(), sector.Seed.SB(), sector.pieceInfos(), sector.rspco())
@@ -230,8 +240,7 @@ func (m *Miner) handleCommitWait(ctx context.Context, sector SectorInfo) *sector
 		return sector.upd().fatal(xerrors.Errorf("UNHANDLED: submitting sector proof failed (exit: %d)", mw.Receipt.ExitCode))
 	}
 
-	return sector.upd().to(api.Proving).state(func(info *SectorInfo) {
-	})
+	return sector.upd().to(api.Proving)
 }
 
 func (m *Miner) handleFaulty(ctx context.Context, sector SectorInfo) *sectorUpdate {
@@ -286,4 +295,27 @@ func (m *Miner) handleFaultReported(ctx context.Context, sector SectorInfo) *sec
 
 	return sector.upd().to(api.FaultedFinal).state(func(info *SectorInfo) {})
 
+}
+
+func (m *Miner) handleReseal(ctx context.Context, sector SectorInfo) *sectorUpdate {
+	log.Infow("performing sector replication again...", "sector", sector.SectorID)
+
+	if err := m.sb.CleanupFailedData(sector.SectorID); err != nil {
+		return sector.upd().to(api.SealFailed).error(xerrors.Errorf("reseal cleanup failed: %w", err))
+	}
+
+	rspco, err := m.sb.SealPreCommit(sector.SectorID, sector.Ticket.SB(), sector.pieceInfos())
+	if err != nil {
+		return sector.upd().to(api.SealFailed).error(xerrors.Errorf("reseal failed: %w", err))
+	}
+
+	if !bytes.Equal(rspco.CommD[:], sector.CommD) {
+		return sector.upd().fatal(xerrors.Errorf("recomputed CommD didn't match: %v --- %v", rspco.CommD[:], sector.CommD))
+	}
+
+	if !bytes.Equal(rspco.CommR[:], sector.CommR) {
+		return sector.upd().fatal(xerrors.Errorf("recomputed CommR didn't match: %v --- %v", rspco.CommR[:], sector.CommR))
+	}
+
+	return sector.upd().to(api.Committing)
 }

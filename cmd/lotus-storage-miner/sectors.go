@@ -35,6 +35,7 @@ var sectorsCmd = &cli.Command{
 		sectorsListCmd,
 		sectorsRefsCmd,
 		sectorsUpdateCmd,
+		sectorsRetryCmd,
 	},
 }
 
@@ -217,6 +218,76 @@ var sectorsUpdateCmd = &cli.Command{
 		}
 
 		return nodeApi.SectorsUpdate(ctx, id, st)
+	},
+}
+
+var sectorsRetryCmd = &cli.Command{
+	Name:  "retry",
+	Usage: "Retry last failed action on sector",
+	Action: func(cctx *cli.Context) error {
+		nodeApi, closer, err := lcli.GetStorageMinerAPI(cctx)
+		if err != nil {
+			return err
+		}
+		defer closer()
+		ctx := lcli.ReqContext(cctx)
+
+		fullApi, closer2, err := lcli.GetFullNodeAPI(cctx)
+		if err != nil {
+			return err
+		}
+		defer closer2()
+
+		if !cctx.Args().Present() {
+			return fmt.Errorf("must specify sector ID to retry")
+		}
+
+		id, err := strconv.ParseUint(cctx.Args().First(), 10, 64)
+		if err != nil {
+			return err
+		}
+
+		maddr, err := nodeApi.ActorAddress(ctx)
+		if err != nil {
+			return err
+		}
+
+		sset, err := fullApi.StateMinerSectors(ctx, maddr, nil)
+		if err != nil {
+			return err
+		}
+
+		inSset := false
+		for _, s := range sset {
+			if s.SectorID == id {
+				inSset = true
+				break
+			}
+		}
+
+		status, err := nodeApi.SectorsStatus(ctx, id)
+		if err != nil {
+			return err
+		}
+
+		switch status.State {
+		case api.CommitFailed:
+			// TODO: check if precommit valid
+
+			fallthrough
+		case api.SealCommitFailed:
+			if inSset {
+				// TODO: try moving to proving
+				return xerrors.Errorf("sector in state '%s' in in on-chain sector set, aborting", api.SectorStates[status.State])
+			}
+
+			if err := nodeApi.SectorsUpdate(ctx, id, api.Committing); err != nil {
+				return err
+			}
+		default:
+			return xerrors.Errorf("no retry handler for state '%s'", api.SectorStates[status.State])
+		}
+		return nil
 	},
 }
 

@@ -201,16 +201,16 @@ func (m *Miner) onSectorUpdated(ctx context.Context, update sectorUpdate) {
 		*<- Packing <- incoming
 		|   |
 		|   v
-		*<- Unsealed <--> SealFailed
-		|   |
-		|   v
-		*   PreCommitting <--> PreCommitFailed
-		|   |                  ^
-		|   v                  |
-		*<- PreCommitted ------/
-		|   |||
-		|   vvv      v--> SealCommitFailed
-		*<- Committing
+		*<- Unsealed <--> SealFailed <---------------\
+		|   |                                        |
+		|   v                                        |
+		*   PreCommitting <--> PreCommitFailed       |
+		|   |                  ^                     |
+		|   v                  |                     |
+		*<- PreCommitted ------/                     |
+		|   |||                                      |
+		|   vvv      v--> SealCommitFailed           |
+		*<- Committing <------------------> Reseal <-/
 		|   |        ^--> CommitFailed
 		|   v             ^
 		*<- CommitWait ---/
@@ -243,6 +243,8 @@ func (m *Miner) onSectorUpdated(ctx context.Context, update sectorUpdate) {
 		m.handleSectorUpdate(ctx, sector, m.handleCommitWait)
 	case api.Proving:
 		// TODO: track sector health / expiration
+		// TODO: drop unsealed data
+		// TODO: manually cleanup cache after some commit msg finality
 		log.Infof("Proving sector %d", update.id)
 
 	// Handled failure modes
@@ -255,7 +257,11 @@ func (m *Miner) onSectorUpdated(ctx context.Context, update sectorUpdate) {
 	case api.CommitFailed:
 		log.Warnf("sector %d entered unimplemented state 'CommitFailed'", update.id)
 
-		// Faults
+	// Special recovery states
+	case api.Reseal:
+		m.handleSectorUpdate(ctx, sector, m.handleReseal)
+
+	// Faults
 	case api.Faulty:
 		m.handleSectorUpdate(ctx, sector, m.handleFaulty)
 	case api.FaultReported:

@@ -81,6 +81,39 @@ func (sb *SectorBuilder) TrimCache(sectorID uint64) error {
 	return nil
 }
 
+func (sb *SectorBuilder) CanCommit(sectorID uint64) (bool, error) {
+	dir, err := sb.sectorCacheDir(sectorID)
+	if err != nil {
+		return false, xerrors.Errorf("getting cache dir: %w", err)
+	}
+
+	ents, err := ioutil.ReadDir(dir)
+	if err != nil {
+		return false, err
+	}
+
+	// TODO: slightly more sophisticated check
+	return len(ents) == 10, nil
+}
+
+func (sb *SectorBuilder) CleanupFailedData(sectorID uint64) error {
+	dir, err := sb.sectorCacheDir(sectorID)
+	if err != nil {
+		return xerrors.Errorf("getting cache dir: %w", err)
+	}
+
+	if err := os.RemoveAll(dir); err != nil {
+		return err
+	}
+
+	sealed, err := sb.SealedSectorPath(sectorID)
+	if err != nil {
+		return err
+	}
+
+	return os.Remove(sealed)
+}
+
 func toReadableFile(r io.Reader, n int64) (*os.File, func() error, error) {
 	f, ok := r.(*os.File)
 	if ok {
