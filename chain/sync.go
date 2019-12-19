@@ -18,6 +18,7 @@ import (
 	hamt "github.com/ipfs/go-hamt-ipld"
 	bstore "github.com/ipfs/go-ipfs-blockstore"
 	logging "github.com/ipfs/go-log"
+	"github.com/libp2p/go-libp2p-core/connmgr"
 	"github.com/libp2p/go-libp2p-core/peer"
 	cbg "github.com/whyrusleeping/cbor-gen"
 	"github.com/whyrusleeping/pubsub"
@@ -42,8 +43,6 @@ var log = logging.Logger("chain")
 var LocalIncoming = "incoming"
 
 type Syncer struct {
-	// The heaviest known tipset in the network.
-
 	// The interface for accessing and putting tipsets into local storage
 	store *store.ChainStore
 
@@ -63,10 +62,14 @@ type Syncer struct {
 
 	syncmgr *SyncManager
 
+	connmgr connmgr.ConnManager
+
 	incoming *pubsub.PubSub
+
+	receiptTracker *blockReceiptTracker
 }
 
-func NewSyncer(sm *stmgr.StateManager, bsync *blocksync.BlockSync, self peer.ID) (*Syncer, error) {
+func NewSyncer(sm *stmgr.StateManager, bsync *blocksync.BlockSync, connmgr connmgr.ConnManager, self peer.ID) (*Syncer, error) {
 	gen, err := sm.ChainStore().GetGenesis()
 	if err != nil {
 		return nil, err
@@ -78,12 +81,14 @@ func NewSyncer(sm *stmgr.StateManager, bsync *blocksync.BlockSync, self peer.ID)
 	}
 
 	s := &Syncer{
-		bad:     NewBadBlockCache(),
-		Genesis: gent,
-		Bsync:   bsync,
-		store:   sm.ChainStore(),
-		sm:      sm,
-		self:    self,
+		bad:            NewBadBlockCache(),
+		Genesis:        gent,
+		Bsync:          bsync,
+		store:          sm.ChainStore(),
+		sm:             sm,
+		self:           self,
+		receiptTracker: newBlockReceiptTracker(),
+		connmgr:        connmgr,
 
 		incoming: pubsub.New(50),
 	}
@@ -399,6 +404,15 @@ func (syncer *Syncer) Sync(ctx context.Context, maybeHead *types.TipSet) error {
 			Message: err.Error(),
 		})
 		return xerrors.Errorf("failed to put synced tipset to chainstore: %w", err)
+	}
+
+	peers := syncer.receiptTracker.GetPeers(maybeHead)
+	if len(peers) > 0 {
+		syncer.connmgr.TagPeer(peers[0], "new-block", 40)
+
+		for _, p := range peers[1:] {
+			syncer.connmgr.TagPeer(p, "new-block", 25)
+		}
 	}
 
 	return nil
