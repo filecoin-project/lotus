@@ -103,15 +103,16 @@ func (sb *SectorBuilder) remoteWorker(ctx context.Context, r *remote, cfg Worker
 		commits = nil
 	}
 
-	specialcommits := make(chan workerCall)
-
-	sb.specialcommitTasks[cfg.RemoteID] = specialcommits
-
 	log.Infof("remoteWorker WorkerCfg RemoteID: %s", cfg.RemoteID)
+
+	if sb.specialcommitTasks[cfg.RemoteID] == nil {
+		sb.specialcommitTasks[cfg.RemoteID] = make(chan workerCall)
+		log.Infof("sb.specialcommitTasks make RemoteID: %s", cfg.RemoteID)
+	}
 
 	for {
 		select {
-		case workertask := <-specialcommits:
+		case workertask := <-sb.specialcommitTasks[cfg.RemoteID]:
 			log.Infof("specialcommits SectorID: %d WorkerCfg: %s RemoteID: %s", workertask.task.SectorID, cfg.RemoteID, workertask.task.RemoteID)
 			sb.doTask(ctx, r, workertask)
 		case workertask := <-commits:

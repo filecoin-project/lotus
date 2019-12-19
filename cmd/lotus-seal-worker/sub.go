@@ -104,7 +104,7 @@ loop:
 				log.Error(err)
 			}
 
-			log.Infof("bench Task %d done,  task.Type %d use %s , err: %+v", task.TaskID,  task.Type, time.Now().Sub(seal), res.GoErr)
+			log.Infof("bench Task %d done,  task.Type %d use %s , err: %+v", task.TaskID,  task.Type, time.Since(seal), res.GoErr)
 
 		case <-ctx.Done():
 			break loop
