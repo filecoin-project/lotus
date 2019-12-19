@@ -2,7 +2,6 @@ package main
 
 import (
 	"context"
-	"log"
 	"net/http"
 	"time"
 
@@ -13,6 +12,7 @@ import (
 	"github.com/filecoin-project/lotus/api"
 	"github.com/filecoin-project/lotus/api/client"
 	"github.com/filecoin-project/lotus/build"
+	"github.com/filecoin-project/lotus/chain"
 	"github.com/filecoin-project/lotus/chain/store"
 	"github.com/filecoin-project/lotus/chain/types"
 	"github.com/filecoin-project/lotus/lib/jsonrpc"
@@ -36,7 +36,7 @@ func getAPI(path string) (string, http.Header, error) {
 	var headers http.Header
 	token, err := r.APIToken()
 	if err != nil {
-		log.Printf("Couldn't load CLI token, capabilities may be limited: %w", err)
+		log.Warnw("Couldn't load CLI token, capabilities may be limited", "error", err)
 	} else {
 		headers = http.Header{}
 		headers.Add("Authorization", "Bearer "+string(token))
@@ -46,19 +46,74 @@ func getAPI(path string) (string, http.Header, error) {
 }
 
 func WaitForSyncComplete(ctx context.Context, napi api.FullNode) error {
+sync_complete:
 	for {
 		select {
 		case <-ctx.Done():
 			return ctx.Err()
-		case <-time.After(3 * time.Second):
+		case <-time.After(5 * time.Second):
+			state, err := napi.SyncState(ctx)
+			if err != nil {
+				return err
+			}
+
+			for i, w := range state.ActiveSyncs {
+				if w.Target == nil {
+					continue
+				}
+
+				if w.Stage == api.StageSyncErrored {
+					log.Errorw(
+						"Syncing",
+						"worker", i,
+						"base", w.Base.Key(),
+						"target", w.Target.Key(),
+						"target_height", w.Target.Height(),
+						"height", w.Height,
+						"error", w.Message,
+						"stage", chain.SyncStageString(w.Stage),
+					)
+				} else {
+					log.Infow(
+						"Syncing",
+						"worker", i,
+						"base", w.Base.Key(),
+						"target", w.Target.Key(),
+						"target_height", w.Target.Height(),
+						"height", w.Height,
+						"stage", chain.SyncStageString(w.Stage),
+					)
+				}
+
+				if w.Stage == api.StageSyncComplete {
+					break sync_complete
+				}
+			}
+		}
+	}
+
+	for {
+		select {
+		case <-ctx.Done():
+			return ctx.Err()
+		case <-time.After(5 * time.Second):
 			head, err := napi.ChainHead(ctx)
 			if err != nil {
 				return err
 			}
 
-			log.Printf("Height %d", head.Height())
+			timestampDelta := time.Now().Unix() - int64(head.MinTimestamp())
 
-			if time.Now().Unix()-int64(head.MinTimestamp()) < build.BlockDelay {
+			log.Infow(
+				"Waiting for reasonable head height",
+				"height", head.Height(),
+				"timestamp_delta", timestampDelta,
+			)
+
+			// If we get within 20 blocks of the current exected block height we
+			// consider sync complete. Block propagation is not always great but we still
+			// want to be recording stats as soon as we can
+			if timestampDelta < build.BlockDelay*20 {
 				return nil
 			}
 		}
@@ -82,13 +137,13 @@ func GetTips(ctx context.Context, api api.FullNode, lastHeight uint64) (<-chan *
 			select {
 			case changes := <-notif:
 				for _, change := range changes {
-					log.Printf("Head event { height:%d; type: %s }", change.Val.Height(), change.Type)
+					log.Infow("Head event", "height", change.Val.Height(), "type", change.Type)
 
 					switch change.Type {
 					case store.HCCurrent:
 						tipsets, err := loadTipsets(ctx, api, change.Val, lastHeight)
 						if err != nil {
-							log.Print(err)
+							log.Info(err)
 							return
 						}
 
@@ -100,17 +155,17 @@ func GetTips(ctx context.Context, api api.FullNode, lastHeight uint64) (<-chan *
 					}
 				}
 			case <-ping:
-				log.Print("Running health check")
+				log.Info("Running health check")
 
 				cctx, cancel := context.WithTimeout(ctx, 5*time.Second)
 				if _, err := api.ID(cctx); err != nil {
-					log.Print("Health check failed")
+					log.Error("Health check failed")
 					return
 				}
 
 				cancel()
 
-				log.Print("Node online")
+				log.Info("Node online")
 			case <-ctx.Done():
 				return
 			}
@@ -131,7 +186,7 @@ func loadTipsets(ctx context.Context, api api.FullNode, curr *types.TipSet, lowe
 			break
 		}
 
-		log.Printf("Walking back { height:%d }", curr.Height())
+		log.Infow("Walking back", "height", curr.Height())
 		tipsets = append(tipsets, curr)
 
 		tsk := curr.Parents()
