@@ -393,7 +393,7 @@ func addMinerToBucket(vmctx types.VMContext, buckets *amt.Root, nextBucket uint6
 		return aerrors.HandleExternalError(err, "getting proving bucket")
 	}
 
-	err = bhamt.Set(vmctx.Context(), string(vmctx.Message().From.Bytes()), cborNull)
+	err = bhamt.Set(vmctx.Context(), string(vmctx.Message().From.Bytes()), CborNull)
 	if err != nil {
 		return aerrors.HandleExternalError(err, "setting miner in proving bucket")
 	}
@@ -768,7 +768,7 @@ func MinerSetRemove(ctx context.Context, vmctx types.VMContext, rcid cid.Cid, ma
 
 type cbgNull struct{}
 
-var cborNull = &cbgNull{}
+var CborNull = &cbgNull{}
 
 func (cbgNull) MarshalCBOR(w io.Writer) error {
 	n, err := w.Write(cbg.CborNull)
