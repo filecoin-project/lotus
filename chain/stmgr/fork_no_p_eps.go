@@ -108,9 +108,14 @@ func (sm *StateManager) forkNoPowerEPS(ctx context.Context, pstate cid.Cid) (cid
 			}
 		}
 
-		spa.Head, err = fixed.Flush()
+		head.ProvingBuckets, err = fixed.Flush()
 		if err != nil {
 			return xerrors.Errorf("flushing bucket amt: %w", err)
+		}
+
+		spa.Head, err = cst.Put(ctx, &head)
+		if err != nil {
+			return xerrors.Errorf("putting actor head: %w", err)
 		}
 
 		return nil
