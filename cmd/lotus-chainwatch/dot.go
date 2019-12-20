@@ -23,7 +23,11 @@ var dotCmd = &cli.Command{
 		tosee, err := strconv.ParseInt(cctx.Args().Get(1), 10, 32)
 		maxH := minH + tosee
 
-		res, err := st.db.Query("select block, parent, b.miner, b.height from block_parents inner join blocks b on block_parents.block = b.cid where b.height > ? and b.height < ?", minH, maxH)
+		res, err := st.db.Query(`select block, parent, b.miner, b.height, p.height from block_parents
+    inner join blocks b on block_parents.block = b.cid
+    inner join blocks p on block_parents.parent = p.cid
+where b.height > ? and b.height < ?`, minH, maxH)
+
 		if err != nil {
 			return err
 		}
@@ -32,8 +36,8 @@ var dotCmd = &cli.Command{
 
 		for res.Next() {
 			var block, parent, miner string
-			var height uint64
-			if err := res.Scan(&block, &parent, &miner, &height); err != nil {
+			var height, ph uint64
+			if err := res.Scan(&block, &parent, &miner, &height, &ph); err != nil {
 				return err
 			}
 
@@ -48,8 +52,18 @@ var dotCmd = &cli.Command{
 
 			hasstr := ""
 			if !has {
-				col = 0xffffffff
+				//col = 0xffffffff
 				hasstr = " UNSYNCED"
+			}
+
+			nulls := height - ph - 1
+			for i := uint64(0); i < nulls; i++ {
+				name := block + "NP" + fmt.Sprint(i)
+
+				fmt.Printf("%s [label = \"NULL:%d\", fillcolor = \"#ffddff\", style=filled, forcelabels=true]\n%s -> %s\n",
+					name, height-nulls+i, name, parent)
+
+				parent = name
 			}
 
 			fmt.Printf("%s [label = \"%s:%d%s\", fillcolor = \"#%06x\", style=filled, forcelabels=true]\n%s -> %s\n", block, miner, height, hasstr, col, block, parent)

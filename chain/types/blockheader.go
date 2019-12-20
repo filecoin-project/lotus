@@ -176,7 +176,7 @@ const sha256bits = 256
 
 func IsTicketWinner(partialTicket []byte, ssizeI uint64, snum uint64, totpow BigInt) bool {
 	ssize := NewInt(ssizeI)
-	ssampled := ElectionPostChallengeCount(snum)
+	ssampled := ElectionPostChallengeCount(snum, 0) // TODO: faults in epost?
 	/*
 		Need to check that
 		(h(vrfout) + 1) / (max(h) + 1) <= e * sectorSize / totalPower
@@ -213,12 +213,12 @@ func IsTicketWinner(partialTicket []byte, ssizeI uint64, snum uint64, totpow Big
 	return lhs.Cmp(rhs) < 0
 }
 
-func ElectionPostChallengeCount(sectors uint64) uint64 {
+func ElectionPostChallengeCount(sectors uint64, faults int) uint64 {
 	if sectors == 0 {
 		return 0
 	}
 	// ceil(sectors / build.SectorChallengeRatioDiv)
-	return (sectors-1)/build.SectorChallengeRatioDiv + 1
+	return (sectors-uint64(faults)-1)/build.SectorChallengeRatioDiv + 1
 }
 
 func (t *Ticket) Equals(ot *Ticket) bool {

@@ -55,6 +55,8 @@ func main() {
 
 	log.Info("Starting lotus-bench")
 
+	build.SectorSizes = append(build.SectorSizes, 1024)
+
 	app := &cli.App{
 		Name:    "lotus-bench",
 		Usage:   "Benchmark performance of lotus on your hardware",
@@ -86,6 +88,10 @@ func main() {
 			&cli.BoolFlag{
 				Name:  "json-out",
 				Usage: "output results in json format",
+			},
+			&cli.BoolFlag{
+				Name:  "skip-unseal",
+				Usage: "skip the unseal portion of the benchmark",
 			},
 		},
 		Action: func(c *cli.Context) error {
@@ -216,17 +222,18 @@ func main() {
 
 				verifySeal := time.Now()
 
-				log.Info("Unsealing sector")
-				rc, err := sb.ReadPieceFromSealedSector(1, 0, dataSize, ticket.TicketBytes[:], commD[:])
-				if err != nil {
-					return err
-				}
+				if !c.Bool("skip-unseal") {
+					log.Info("Unsealing sector")
+					rc, err := sb.ReadPieceFromSealedSector(1, 0, dataSize, ticket.TicketBytes[:], commD[:])
+					if err != nil {
+						return err
+					}
 
+					if err := rc.Close(); err != nil {
+						return err
+					}
+				}
 				unseal := time.Now()
-
-				if err := rc.Close(); err != nil {
-					return err
-				}
 
 				sealTimings = append(sealTimings, SealingResult{
 					AddPiece:  addpiece.Sub(start),

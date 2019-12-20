@@ -11,7 +11,6 @@ import (
 	"github.com/ipfs/go-datastore"
 	blockstore "github.com/ipfs/go-ipfs-blockstore"
 	"github.com/libp2p/go-libp2p-core/host"
-	peer "github.com/libp2p/go-libp2p-core/peer"
 	"github.com/libp2p/go-libp2p-core/routing"
 	pubsub "github.com/libp2p/go-libp2p-pubsub"
 	"go.uber.org/fx"
@@ -127,8 +126,8 @@ func SetGenesis(cs *store.ChainStore, g Genesis) error {
 	return cs.SetGenesis(genesis)
 }
 
-func NewSyncer(lc fx.Lifecycle, sm *stmgr.StateManager, bsync *blocksync.BlockSync, self peer.ID) (*chain.Syncer, error) {
-	syncer, err := chain.NewSyncer(sm, bsync, self)
+func NewSyncer(lc fx.Lifecycle, sm *stmgr.StateManager, bsync *blocksync.BlockSync, h host.Host) (*chain.Syncer, error) {
+	syncer, err := chain.NewSyncer(sm, bsync, h.ConnManager(), h.ID())
 	if err != nil {
 		return nil, err
 	}

@@ -53,6 +53,7 @@ type FullNodeStruct struct {
 		ChainSetHead           func(context.Context, *types.TipSet) error                          `perm:"admin"`
 		ChainGetGenesis        func(context.Context) (*types.TipSet, error)                        `perm:"read"`
 		ChainTipSetWeight      func(context.Context, *types.TipSet) (types.BigInt, error)          `perm:"read"`
+		ChainGetNode           func(ctx context.Context, p string) (interface{}, error)            `perm:"read"`
 
 		SyncState          func(context.Context) (*api.SyncState, error)                `perm:"read"`
 		SyncSubmitBlock    func(ctx context.Context, blk *types.BlockMsg) error         `perm:"write"`
@@ -341,6 +342,10 @@ func (c *FullNodeStruct) ChainGetGenesis(ctx context.Context) (*types.TipSet, er
 
 func (c *FullNodeStruct) ChainTipSetWeight(ctx context.Context, ts *types.TipSet) (types.BigInt, error) {
 	return c.Internal.ChainTipSetWeight(ctx, ts)
+}
+
+func (c *FullNodeStruct) ChainGetNode(ctx context.Context, p string) (interface{}, error) {
+	return c.Internal.ChainGetNode(ctx, p)
 }
 
 func (c *FullNodeStruct) SyncState(ctx context.Context) (*api.SyncState, error) {

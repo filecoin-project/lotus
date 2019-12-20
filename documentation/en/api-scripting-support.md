@@ -25,7 +25,7 @@ FULLNODE_API_INFO="JWT_TOKEN:/ip4/127.0.0.1/tcp/1234/http"
 STORAGE_API_INFO="JWT_TOKEN:/ip4/127.0.0.1/tcp/2345/http"
 ```
 
-* The **Lotus Node**'s `mutliaddr` is in `~/.lotus/api`.
-* The default token is in `~/.lotus/token`.
-* The **Lotus Storage Miner**'s `multiaddr` is in `~/.lotusstorage/config`.
-* The default token is in `~/.lotusstorage/token`.
+- The **Lotus Node**'s `mutliaddr` is in `~/.lotus/api`.
+- The default token is in `~/.lotus/token`.
+- The **Lotus Storage Miner**'s `multiaddr` is in `~/.lotusstorage/config`.
+- The default token is in `~/.lotusstorage/token`.

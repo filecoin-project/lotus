@@ -35,6 +35,7 @@ type FullNode interface {
 	ChainSetHead(context.Context, *types.TipSet) error
 	ChainGetGenesis(context.Context) (*types.TipSet, error)
 	ChainTipSetWeight(context.Context, *types.TipSet) (types.BigInt, error)
+	ChainGetNode(ctx context.Context, p string) (interface{}, error)
 
 	// syncer
 	SyncState(context.Context) (*SyncState, error)

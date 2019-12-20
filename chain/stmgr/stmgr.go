@@ -120,6 +120,17 @@ func (sm *StateManager) computeTipSetState(ctx context.Context, blks []*types.Bl
 	}
 
 	pstate := blks[0].ParentStateRoot
+	if len(blks[0].Parents) > 0 { // don't support forks on genesis
+		parent, err := sm.cs.GetBlock(blks[0].Parents[0])
+		if err != nil {
+			return cid.Undef, cid.Undef, xerrors.Errorf("getting parent block: %w", err)
+		}
+
+		pstate, err = sm.handleStateForks(ctx, blks[0].ParentStateRoot, blks[0].Height, parent.Height)
+		if err != nil {
+			return cid.Undef, cid.Undef, xerrors.Errorf("error handling state forks: %w", err)
+		}
+	}
 
 	cids := make([]cid.Cid, len(blks))
 	for i, v := range blks {

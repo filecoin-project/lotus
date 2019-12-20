@@ -31,7 +31,7 @@ require (
 	github.com/ipfs/go-ds-badger v0.0.7
 	github.com/ipfs/go-filestore v0.0.2
 	github.com/ipfs/go-fs-lock v0.0.1
-	github.com/ipfs/go-hamt-ipld v0.0.14-0.20191216205022-2612fdd40689
+	github.com/ipfs/go-hamt-ipld v0.0.14-0.20191218031521-b2c774a54db1
 	github.com/ipfs/go-ipfs-blockstore v0.1.1
 	github.com/ipfs/go-ipfs-blocksutil v0.0.1
 	github.com/ipfs/go-ipfs-chunker v0.0.1
@@ -44,6 +44,7 @@ require (
 	github.com/ipfs/go-ipld-format v0.0.2
 	github.com/ipfs/go-log v1.0.0
 	github.com/ipfs/go-merkledag v0.2.4
+	github.com/ipfs/go-path v0.0.7
 	github.com/ipfs/go-unixfs v0.2.2-0.20190827150610-868af2e9e5cb
 	github.com/ipld/go-ipld-prime v0.0.2-0.20191025154717-8dff1cbec43b
 	github.com/ipsn/go-secp256k1 v0.0.0-20180726113642-9d62b9f0bc52
