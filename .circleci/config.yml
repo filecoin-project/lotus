@@ -37,14 +37,13 @@ commands:
       - restore_cache:
           name: Restore parameters cache
           keys:
-            - 'v20-1k-lotus-params-{{ checksum "build/proof-params/parameters.json" }}-{{ checksum "build/paramfetch.go" }}'
-            - 'v20-1k-lotus-params-{{ checksum "build/proof-params/parameters.json" }}-'
+            - 'v20-1k-lotus-params'
           paths:
             - /var/tmp/filecoin-proof-parameters/
       - run:  ./lotus fetch-params --proving-params 1024
       - save_cache:
           name: Save parameters cache
-          key: 'v20-1k-lotus-params-{{ checksum "build/proof-params/parameters.json" }}-{{ checksum "build/paramfetch.go" }}'
+          key: 'v20-1k-lotus-params'
           paths:
             - /var/tmp/filecoin-proof-parameters/
 
