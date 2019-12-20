@@ -16,6 +16,8 @@ func (sm *StateManager) handleStateForks(ctx context.Context, pstate cid.Cid, he
 			if err != nil {
 				return cid.Undef, xerrors.Errorf("executing state fork in epoch %d: %w", i, err)
 			}
+
+			log.Infof("forkNoPowerEPS state: %s", pstate)
 		}
 	}
 

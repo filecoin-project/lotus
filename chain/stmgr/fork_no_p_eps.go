@@ -108,20 +108,14 @@ func (sm *StateManager) forkNoPowerEPS(ctx context.Context, pstate cid.Cid) (cid
 			}
 		}
 
-		pbuck, err := fixed.Flush()
+		head.ProvingBuckets, err = fixed.Flush()
 		if err != nil {
 			return xerrors.Errorf("flushing bucket amt: %w", err)
 		}
 
-		head.ProvingBuckets = pbuck
-		nhead, err := cst.Put(context.TODO(), &head)
+		spa.Head, err = cst.Put(ctx, &head)
 		if err != nil {
-			return xerrors.Errorf("failed to put new storage power actor state object: %w", err)
-		}
-
-		spa.Head = nhead
-		if err != nil {
-			return xerrors.Errorf("flushing bucket amt: %w", err)
+			return xerrors.Errorf("putting actor head: %w", err)
 		}
 
 		return nil
