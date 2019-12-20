@@ -15,10 +15,9 @@ require (
 	github.com/filecoin-project/go-amt-ipld v0.0.0-20191205011053-79efc22d6cdc
 	github.com/filecoin-project/go-cbor-util v0.0.0-20191219014500-08c40a1e63a2
 	github.com/filecoin-project/go-crypto v0.0.0-20191218222705-effae4ea9f03
-	github.com/filecoin-project/go-sectorbuilder v0.0.0-20191220204520-82965a74eaca
 	github.com/filecoin-project/go-paramfetch v0.0.0-20200102181131-b20d579f2878
-	github.com/filecoin-project/go-sectorbuilder v0.0.0-20191220163446-1b44c19a72e9
-	github.com/filecoin-project/go-statestore v0.0.0-20191220165813-c30fad612418
+	github.com/filecoin-project/go-sectorbuilder v0.0.0-20200107152336-0cbb2c483013
+	github.com/filecoin-project/go-statestore v0.0.0-20200102200712-1f63c701c1e5
 	github.com/gbrlsnchs/jwt/v3 v3.0.0-beta.1
 	github.com/go-ole/go-ole v1.2.4 // indirect
 	github.com/google/go-cmp v0.3.1 // indirect
@@ -70,8 +69,6 @@ require (
 	github.com/libp2p/go-libp2p-tls v0.1.0
 	github.com/libp2p/go-libp2p-yamux v0.2.1
 	github.com/libp2p/go-maddr-filter v0.0.5
-	github.com/mattn/go-isatty v0.0.9 // indirect
-	github.com/mattn/go-colorable v0.1.4 // indirect
 	github.com/mattn/go-sqlite3 v1.12.0
 	github.com/minio/blake2b-simd v0.0.0-20160723061019-3f5f724cb5b1
 	github.com/minio/sha256-simd v0.1.1
@@ -99,7 +96,6 @@ require (
 	go.uber.org/multierr v1.4.0
 	go.uber.org/zap v1.10.0
 	go4.org v0.0.0-20190313082347-94abd6928b1d // indirect
-	golang.org/x/net v0.0.0-20190923162816-aa69164e4478 // indirect
 	golang.org/x/time v0.0.0-20190308202827-9d24e82272b4
 	golang.org/x/xerrors v0.0.0-20191204190536-9bdfabe68543
 	gopkg.in/cheggaaa/pb.v1 v1.0.28
