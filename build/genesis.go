@@ -5,6 +5,7 @@ import (
 	logging "github.com/ipfs/go-log"
 )
 
+// moved from now-defunct build/paramfetch.go
 var log = logging.Logger("build")
 
 func MaybeGenesis() []byte {
