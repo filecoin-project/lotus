@@ -532,13 +532,9 @@ func (syncer *Syncer) ValidateBlock(ctx context.Context, b *types.FullBlock) err
 
 		snum := types.BigDiv(mpow, types.NewInt(ssize))
 
-		// FORK START
-		if h.Height > build.ForkCCM {
-			if len(h.EPostProof.Candidates) == 0 {
-				return xerrors.Errorf("no candidates")
-			}
+		if len(h.EPostProof.Candidates) == 0 {
+			return xerrors.Errorf("no candidates")
 		}
-		// FORK END
 
 		for _, t := range h.EPostProof.Candidates {
 			if !types.IsTicketWinner(t.Partial, ssize, snum.Uint64(), tpow) {
@@ -661,13 +657,10 @@ func (syncer *Syncer) VerifyElectionPoStProof(ctx context.Context, h *types.Bloc
 			SectorChallengeIndex: t.ChallengeIndex,
 		})
 	}
-	// FORK START
-	if h.Height > build.ForkCCM {
-		if len(winners) == 0 {
-			return xerrors.Errorf("no candidates")
-		}
+
+	if len(winners) == 0 {
+		return xerrors.Errorf("no candidates")
 	}
-	// FORK END
 
 	sectorInfo, err := stmgr.GetSectorsForElectionPost(ctx, syncer.sm, baseTs, h.Miner)
 	if err != nil {
