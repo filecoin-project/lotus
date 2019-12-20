@@ -1,4 +1,4 @@
 package build
 
 const ForkCCM = 1750
-const ForkNoPowerEPSUpdates = 16450
+const ForkNoPowerEPSUpdates = 15930
