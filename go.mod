@@ -15,6 +15,7 @@ require (
 	github.com/filecoin-project/go-amt-ipld v0.0.0-20191205011053-79efc22d6cdc
 	github.com/filecoin-project/go-cbor-util v0.0.0-20191219014500-08c40a1e63a2
 	github.com/filecoin-project/go-crypto v0.0.0-20191218222705-effae4ea9f03
+	github.com/filecoin-project/go-sectorbuilder v0.0.0-20191220204520-82965a74eaca
 	github.com/filecoin-project/go-paramfetch v0.0.0-20200102181131-b20d579f2878
 	github.com/filecoin-project/go-sectorbuilder v0.0.0-20191220163446-1b44c19a72e9
 	github.com/filecoin-project/go-statestore v0.0.0-20191220165813-c30fad612418
