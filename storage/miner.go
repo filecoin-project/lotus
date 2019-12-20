@@ -5,6 +5,7 @@ import (
 	"errors"
 	"time"
 
+	"github.com/filecoin-project/go-statestore"
 	"github.com/ipfs/go-cid"
 	"github.com/ipfs/go-datastore"
 	"github.com/ipfs/go-datastore/namespace"
@@ -20,7 +21,6 @@ import (
 	"github.com/filecoin-project/lotus/chain/store"
 	"github.com/filecoin-project/lotus/chain/types"
 	"github.com/filecoin-project/lotus/lib/sectorbuilder"
-	"github.com/filecoin-project/go-statestore"
 )
 
 var log = logging.Logger("storageminer")
