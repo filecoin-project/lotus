@@ -599,6 +599,8 @@ func (sb *SectorBuilder) SealCommit(sectorID uint64, ticket SealTicket, seed Sea
 
 			SealSeed: seed,
 			Rspco:    rspco,
+
+			RemoteID: remoteid,
 		},
 		ret: make(chan SealRes),
 	}
