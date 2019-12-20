@@ -56,12 +56,12 @@ func HandleIncomingBlocks(ctx context.Context, bsub *pubsub.Subscription, s *cha
 				log.Warnf("Received block with large delay %d from miner %s", delay, blk.Header.Miner)
 			}
 
-			if s.InformNewBlock(msg.GetFrom(), &types.FullBlock{
+			if s.InformNewBlock(msg.ReceivedFrom, &types.FullBlock{
 				Header:        blk.Header,
 				BlsMessages:   bmsgs,
 				SecpkMessages: smsgs,
 			}) {
-				cmgr.TagPeer(msg.ReceivedFrom, "blkprop", 20)
+				cmgr.TagPeer(msg.ReceivedFrom, "blkprop", 5)
 			}
 		}()
 	}
