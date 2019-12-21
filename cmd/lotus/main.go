@@ -15,7 +15,7 @@ import (
 )
 
 func main() {
-	logging.SetLogLevel("*", "INFO")
+	logging.SetLogLevel("*", "DEBUG")
 	logging.SetLogLevel("dht", "ERROR")
 	logging.SetLogLevel("swarm2", "WARN")
 	logging.SetLogLevel("bitswap", "WARN")

@@ -314,9 +314,9 @@ func (sma StorageMinerActor) ProveCommitSectorV0(act *types.Actor, vmctx types.V
 		return nil, aerrors.New(1, "no pre-commitment found for sector")
 	}
 
-	//if us.ReceivedEpoch+build.InteractivePoRepDelay >= vmctx.BlockHeight() {
-	//	return nil, aerrors.New(2, "too early for proof submission")
-	//}
+	if us.ReceivedEpoch+build.InteractivePoRepDelay >= vmctx.BlockHeight() {
+		return nil, aerrors.New(2, "too early for proof submission")
+	}
 
 	delete(self.PreCommittedSectors, uintToStringKey(params.SectorID))
 
@@ -422,9 +422,9 @@ func (sma StorageMinerActor) ProveCommitSectorV1(act *types.Actor, vmctx types.V
 		return nil, aerrors.New(1, "no pre-commitment found for sector")
 	}
 
-	//if us.ReceivedEpoch+build.InteractivePoRepDelay >= vmctx.BlockHeight() {
-	//	return nil, aerrors.New(2, "too early for proof submission")
-	//}
+	if us.ReceivedEpoch+build.InteractivePoRepDelay >= vmctx.BlockHeight() {
+		return nil, aerrors.New(2, "too early for proof submission")
+	}
 
 	delete(self.PreCommittedSectors, uintToStringKey(params.SectorID))
 
@@ -556,10 +556,10 @@ func (sma StorageMinerActor) SubmitFallbackPoSt(act *types.Actor, vmctx types.VM
 	var seed [sectorbuilder.CommLen]byte
 	{
 		randHeight := self.ElectionPeriodStart + build.FallbackPoStDelay
-		//if vmctx.BlockHeight() <= randHeight {
-		//	// TODO: spec, retcode
-		//	return nil, aerrors.Newf(1, "submit fallback PoSt called too early (%d < %d)", vmctx.BlockHeight(), randHeight)
-		//}
+		if vmctx.BlockHeight() <= randHeight {
+			// TODO: spec, retcode
+			return nil, aerrors.Newf(1, "submit fallback PoSt called too early (%d < %d)", vmctx.BlockHeight(), randHeight)
+		}
 
 		rand, err := vmctx.GetRandomness(randHeight)
 
@@ -581,6 +581,10 @@ func (sma StorageMinerActor) SubmitFallbackPoSt(act *types.Actor, vmctx types.VM
 	faults, nerr := self.FaultSet.AllMap()
 	if nerr != nil {
 		return nil, aerrors.Absorb(err, 5, "RLE+ invalid")
+	}
+
+	if pss.Count < uint64(len(faults)) {
+		return nil, aerrors.Absorb(nerr, 6, fmt.Sprintf("too many faults count pss:(%v) faults:(%v)", pss.Count, len(faults)))
 	}
 
 	var sectorInfos []ffi.PublicSectorInfo
@@ -1088,6 +1092,10 @@ func onSuccessfulPoStV0(self *StorageMinerActorState, vmctx types.VMContext) aer
 		return aerrors.Absorb(nerr, 1, "invalid bitfield (fatal?)")
 	}
 
+	if pss.Count < uint64(len(faults)) {
+		return aerrors.Absorb(nerr, 6, fmt.Sprintf("too many faults count pss:(%v) faults:(%v)", pss.Count, len(faults)))
+	}
+
 	self.FaultSet = types.NewBitField()
 
 	oldPower := self.Power
@@ -1158,11 +1166,16 @@ func onSuccessfulPoStV1(self *StorageMinerActorState, vmctx types.VMContext) aer
 		return aerrors.Absorb(nerr, 1, "invalid bitfield (fatal?)")
 	}
 
+	if pss.Count < uint64(len(faults)) {
+		return aerrors.Absorb(nerr, 6, fmt.Sprintf("too many faults count pss:(%v) faults:(%v)", pss.Count, len(faults)))
+	}
+
 	self.FaultSet = types.NewBitField()
 
 	oldPower := self.Power
 	newPower := types.BigMul(types.NewInt(pss.Count-uint64(len(faults))), types.NewInt(mi.SectorSize))
 
+	log.Infof("ElectionPeriodStart set to 1178: els：%d  old:%d  new:%d", self.ElectionPeriodStart, oldPower, newPower)
 	// If below the minimum size requirement, miners have zero power
 	if newPower.LessThan(types.NewInt(build.MinimumMinerPower)) {
 		newPower = types.NewInt(0)
@@ -1172,6 +1185,7 @@ func onSuccessfulPoStV1(self *StorageMinerActorState, vmctx types.VMContext) aer
 
 	delta := types.BigSub(self.Power, oldPower)
 	if self.SlashedAt != 0 {
+		log.Infof("ElectionPeriodStart set to 1178: els：%d  SlashedAt:%d ", self.ElectionPeriodStart, self.SlashedAt)
 		self.SlashedAt = 0
 		delta = self.Power
 	}
@@ -1182,6 +1196,7 @@ func onSuccessfulPoStV1(self *StorageMinerActorState, vmctx types.VMContext) aer
 		prevSlashingDeadline = 0
 	}
 
+	log.Infof("ElectionPeriodStart set to 1197: els：%d  old:%d  new:%d", self.ElectionPeriodStart, oldPower, newPower)
 	if !(oldPower.IsZero() && newPower.IsZero()) {
 		enc, err := SerializeParams(&UpdateStorageParams{
 			Delta:                 delta,
@@ -1197,7 +1212,7 @@ func onSuccessfulPoStV1(self *StorageMinerActorState, vmctx types.VMContext) aer
 			return aerrors.Wrap(err, "updating storage failed")
 		}
 
-		log.Infof("ElectionPeriodStart set to 1199: %d", self.ElectionPeriodStart)
+		log.Infof("ElectionPeriodStart set to 1212: %d", self.ElectionPeriodStart)
 		self.ElectionPeriodStart = vmctx.BlockHeight()
 	}
 
