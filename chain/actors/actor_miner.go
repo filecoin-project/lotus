@@ -581,6 +581,10 @@ func (sma StorageMinerActor) SubmitFallbackPoSt(act *types.Actor, vmctx types.VM
 		return nil, aerrors.Absorb(err, 5, "RLE+ invalid")
 	}
 
+	if pss.Count < uint64(len(faults)) {
+		return nil, aerrors.Absorb(nerr, 6, fmt.Sprintf("too many faults count pss:(%v) faults:(%v)", pss.Count, len(faults)))
+	}
+
 	var sectorInfos []ffi.PublicSectorInfo
 	if err := pss.ForEach(func(id uint64, v *cbg.Deferred) error {
 		if faults[id] {
@@ -1083,6 +1087,10 @@ func onSuccessfulPoStV0(self *StorageMinerActorState, vmctx types.VMContext) aer
 		return aerrors.Absorb(nerr, 1, "invalid bitfield (fatal?)")
 	}
 
+	if pss.Count < uint64(len(faults)) {
+		return aerrors.Absorb(nerr, 6, fmt.Sprintf("too many faults count pss:(%v) faults:(%v)", pss.Count, len(faults)))
+	}
+
 	self.FaultSet = types.NewBitField()
 
 	oldPower := self.Power
@@ -1150,6 +1158,10 @@ func onSuccessfulPoStV1(self *StorageMinerActorState, vmctx types.VMContext) aer
 	faults, nerr := self.FaultSet.All()
 	if nerr != nil {
 		return aerrors.Absorb(nerr, 1, "invalid bitfield (fatal?)")
+	}
+
+	if pss.Count < uint64(len(faults)) {
+		return aerrors.Absorb(nerr, 6, fmt.Sprintf("too many faults count pss:(%v) faults:(%v)", pss.Count, len(faults)))
 	}
 
 	self.FaultSet = types.NewBitField()
