@@ -1,7 +1,6 @@
 package sectorbuilder
 
 import (
-	"io/ioutil"
 	"os"
 	"path/filepath"
 
@@ -46,13 +45,13 @@ func (sb *SectorBuilder) checkSector(sectorID uint64) error {
 		return err
 	}
 
-	dent, err := ioutil.ReadDir(cache)
-	if err != nil {
-		return xerrors.Errorf("reading cache dir %s", cache)
-	}
-	if len(dent) != 3 {
-		return xerrors.Errorf("found %d files in %s, expected 3", len(dent), cache)
-	}
+	//dent, err := ioutil.ReadDir(cache)
+	//if err != nil {
+	//	return xerrors.Errorf("reading cache dir %s", cache)
+	//}
+	//if len(dent) != 3 {
+	//	return xerrors.Errorf("found %d files in %s, expected 3", len(dent), cache)
+	//}
 
 	sealed, err := sb.SealedSectorPath(sectorID)
 	if err != nil {
