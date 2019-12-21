@@ -314,9 +314,9 @@ func (sma StorageMinerActor) ProveCommitSectorV0(act *types.Actor, vmctx types.V
 		return nil, aerrors.New(1, "no pre-commitment found for sector")
 	}
 
-	if us.ReceivedEpoch+build.InteractivePoRepDelay >= vmctx.BlockHeight() {
-		return nil, aerrors.New(2, "too early for proof submission")
-	}
+	//if us.ReceivedEpoch+build.InteractivePoRepDelay >= vmctx.BlockHeight() {
+	//	return nil, aerrors.New(2, "too early for proof submission")
+	//}
 
 	delete(self.PreCommittedSectors, uintToStringKey(params.SectorID))
 
@@ -421,9 +421,9 @@ func (sma StorageMinerActor) ProveCommitSectorV1(act *types.Actor, vmctx types.V
 		return nil, aerrors.New(1, "no pre-commitment found for sector")
 	}
 
-	if us.ReceivedEpoch+build.InteractivePoRepDelay >= vmctx.BlockHeight() {
-		return nil, aerrors.New(2, "too early for proof submission")
-	}
+	//if us.ReceivedEpoch+build.InteractivePoRepDelay >= vmctx.BlockHeight() {
+	//	return nil, aerrors.New(2, "too early for proof submission")
+	//}
 
 	delete(self.PreCommittedSectors, uintToStringKey(params.SectorID))
 
