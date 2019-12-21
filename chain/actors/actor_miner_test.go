@@ -52,6 +52,60 @@ func TestMinerCommitSectors(t *testing.T) {
 	assertSectorIDs(h, t, minerAddr, []uint64{1})
 }
 
+func TestMinerSubmitBadFault(t *testing.T) {
+	var worker, client address.Address
+	var minerAddr address.Address
+	opts := []HarnessOpt{
+		HarnessAddr(&worker, 1000000),
+		HarnessAddr(&client, 1000000),
+		HarnessActor(&minerAddr, &worker, actors.StorageMinerCodeCid,
+			func() cbg.CBORMarshaler {
+				return &actors.StorageMinerConstructorParams{
+					Owner:      worker,
+					Worker:     worker,
+					SectorSize: 1024,
+					PeerID:     "fakepeerid",
+				}
+			}),
+	}
+
+	h := NewHarness(t, opts...)
+	h.vm.Syscalls.ValidatePoRep = func(ctx context.Context, maddr address.Address, ssize uint64, commD, commR, ticket, proof, seed []byte, sectorID uint64) (bool, aerrors.ActorError) {
+		// all proofs are valid
+		return true, nil
+	}
+
+	ret, _ := h.SendFunds(t, worker, minerAddr, types.NewInt(100000))
+	ApplyOK(t, ret)
+
+	ret, _ = h.InvokeWithValue(t, client, actors.StorageMarketAddress, actors.SMAMethods.AddBalance, types.NewInt(2000), nil)
+	ApplyOK(t, ret)
+
+	addSectorToMiner(h, t, minerAddr, worker, client, 1)
+
+	assertSectorIDs(h, t, minerAddr, []uint64{1})
+
+	bf := types.NewBitField()
+	bf.Set(6)
+	ret, _ = h.Invoke(t, worker, minerAddr, actors.MAMethods.DeclareFaults, &actors.DeclareFaultsParams{bf})
+	ApplyOK(t, ret)
+
+	ret, _ = h.Invoke(t, actors.NetworkAddress, minerAddr, actors.MAMethods.SubmitElectionPoSt, nil)
+	ApplyOK(t, ret)
+
+	assertSectorIDs(h, t, minerAddr, []uint64{1})
+
+	bf = types.NewBitField()
+	bf.Set(1)
+	ret, _ = h.Invoke(t, worker, minerAddr, actors.MAMethods.DeclareFaults, &actors.DeclareFaultsParams{bf})
+	ApplyOK(t, ret)
+
+	ret, _ = h.Invoke(t, actors.NetworkAddress, minerAddr, actors.MAMethods.SubmitElectionPoSt, nil)
+	ApplyOK(t, ret)
+
+	assertSectorIDs(h, t, minerAddr, []uint64{})
+}
+
 func addSectorToMiner(h *Harness, t *testing.T, minerAddr, worker, client address.Address, sid uint64) {
 	t.Helper()
 	s := sectorbuilder.UserBytesForSectorSize(1024)
