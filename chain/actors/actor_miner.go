@@ -721,8 +721,10 @@ func RemoveFromSectorSet(ctx context.Context, s types.Storage, ss cid.Cid, ids [
 		return cid.Undef, aerrors.HandleExternalError(err, "could not load sector set node")
 	}
 
-	if err := ssr.BatchDelete(ids); err != nil {
-		return cid.Undef, aerrors.HandleExternalError(err, "failed to delete from sector set")
+	for _, id := range ids {
+		if err := ssr.Delete(id); err != nil {
+			log.Warnf("failed to delete sector %d from set: %s", id, err)
+		}
 	}
 
 	ncid, err := ssr.Flush()
