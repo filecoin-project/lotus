@@ -95,6 +95,16 @@ func TestMinerSubmitBadFault(t *testing.T) {
 
 	assertSectorIDs(h, t, minerAddr, []uint64{1})
 
+	badnum := uint64(0)
+	badnum--
+	bf = types.NewBitField()
+	bf.Set(badnum)
+	ret, _ = h.Invoke(t, worker, minerAddr, actors.MAMethods.DeclareFaults, &actors.DeclareFaultsParams{bf})
+	ApplyOK(t, ret)
+
+	ret, _ = h.Invoke(t, actors.NetworkAddress, minerAddr, actors.MAMethods.SubmitElectionPoSt, nil)
+	ApplyOK(t, ret)
+
 	bf = types.NewBitField()
 	bf.Set(1)
 	ret, _ = h.Invoke(t, worker, minerAddr, actors.MAMethods.DeclareFaults, &actors.DeclareFaultsParams{bf})
@@ -104,6 +114,7 @@ func TestMinerSubmitBadFault(t *testing.T) {
 	ApplyOK(t, ret)
 
 	assertSectorIDs(h, t, minerAddr, []uint64{})
+
 }
 
 func addSectorToMiner(h *Harness, t *testing.T, minerAddr, worker, client address.Address, sid uint64) {
