@@ -554,10 +554,10 @@ func (sma StorageMinerActor) SubmitFallbackPoSt(act *types.Actor, vmctx types.VM
 	var seed [sectorbuilder.CommLen]byte
 	{
 		randHeight := self.ElectionPeriodStart + build.FallbackPoStDelay
-		if vmctx.BlockHeight() <= randHeight {
-			// TODO: spec, retcode
-			return nil, aerrors.Newf(1, "submit fallback PoSt called too early (%d < %d)", vmctx.BlockHeight(), randHeight)
-		}
+		//if vmctx.BlockHeight() <= randHeight {
+		//	// TODO: spec, retcode
+		//	return nil, aerrors.Newf(1, "submit fallback PoSt called too early (%d < %d)", vmctx.BlockHeight(), randHeight)
+		//}
 
 		rand, err := vmctx.GetRandomness(randHeight)
 
