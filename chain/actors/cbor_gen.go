@@ -461,6 +461,7 @@ func (t *StorageMinerActorState) UnmarshalCBOR(r io.Reader) error {
 		return fmt.Errorf("wrong type for uint64 field")
 	}
 	t.ElectionPeriodStart = uint64(extra)
+	log.Infof("ElectionPeriodStart set to gen 464: %d", t.ElectionPeriodStart)
 	return nil
 }
 

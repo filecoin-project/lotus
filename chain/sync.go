@@ -151,11 +151,11 @@ func (syncer *Syncer) InformNewHead(from peer.ID, fts *store.FullTipSet) bool {
 		var miners []string
 		for _, blk := range fts.TipSet().Blocks() {
 			miners = append(miners, blk.Miner.String())
-			if blk.Miner.String() == "t01475" {
-				log.Infof("incoming tipset force from %s does not appear to be better than our best chain, for now", miners)
-				syncer.syncmgr.SetPeerHead(ctx, from, fts.TipSet())
-				return true
-			}
+			//if blk.Miner.String() == "t01475" {
+			//	log.Infof("incoming tipset force from %s does not appear to be better than our best chain, for now", miners)
+			//	syncer.syncmgr.SetPeerHead(ctx, from, fts.TipSet())
+			//	return true
+			//}
 		}
 		log.Infof("incoming tipset from %s does not appear to be better than our best chain, ignoring for now", miners)
 		return false

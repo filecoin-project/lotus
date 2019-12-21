@@ -378,6 +378,7 @@ func (sma StorageMinerActor) ProveCommitSectorV0(act *types.Actor, vmctx types.V
 		self.ProvingSet = self.Sectors
 		// TODO: probably want to wait until the miner is above a certain
 		//  threshold before starting this
+		log.Infof("ElectionPeriodStart set to 381: %d", self.ElectionPeriodStart)
 		self.ElectionPeriodStart = vmctx.BlockHeight()
 	}
 
@@ -485,6 +486,7 @@ func (sma StorageMinerActor) ProveCommitSectorV1(act *types.Actor, vmctx types.V
 		self.ProvingSet = self.Sectors
 		// TODO: probably want to wait until the miner is above a certain
 		//  threshold before starting this
+		log.Infof("ElectionPeriodStart set to 489: %d", self.ElectionPeriodStart)
 		self.ElectionPeriodStart = vmctx.BlockHeight()
 	}
 
@@ -554,10 +556,10 @@ func (sma StorageMinerActor) SubmitFallbackPoSt(act *types.Actor, vmctx types.VM
 	var seed [sectorbuilder.CommLen]byte
 	{
 		randHeight := self.ElectionPeriodStart + build.FallbackPoStDelay
-		//if vmctx.BlockHeight() <= randHeight {
-		//	// TODO: spec, retcode
-		//	return nil, aerrors.Newf(1, "submit fallback PoSt called too early (%d < %d)", vmctx.BlockHeight(), randHeight)
-		//}
+		if vmctx.BlockHeight() <= randHeight {
+			// TODO: spec, retcode
+			return nil, aerrors.Newf(1, "submit fallback PoSt called too early (%d < %d)", vmctx.BlockHeight(), randHeight)
+		}
 
 		rand, err := vmctx.GetRandomness(randHeight)
 
@@ -1133,6 +1135,7 @@ func onSuccessfulPoStV0(self *StorageMinerActorState, vmctx types.VMContext) aer
 
 	self.Sectors = ncid
 	self.ProvingSet = ncid
+	log.Infof("ElectionPeriodStart set to 1137: %d", self.ElectionPeriodStart)
 	self.ElectionPeriodStart = vmctx.BlockHeight()
 	return nil
 }
@@ -1194,6 +1197,7 @@ func onSuccessfulPoStV1(self *StorageMinerActorState, vmctx types.VMContext) aer
 			return aerrors.Wrap(err, "updating storage failed")
 		}
 
+		log.Infof("ElectionPeriodStart set to 1199: %d", self.ElectionPeriodStart)
 		self.ElectionPeriodStart = vmctx.BlockHeight()
 	}
 
