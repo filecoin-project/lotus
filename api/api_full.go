@@ -41,6 +41,7 @@ type FullNode interface {
 	SyncState(context.Context) (*SyncState, error)
 	SyncSubmitBlock(ctx context.Context, blk *types.BlockMsg) error
 	SyncIncomingBlocks(ctx context.Context) (<-chan *types.BlockHeader, error)
+	SyncMarkBad(ctx context.Context, bcid cid.Cid) error
 
 	// messages
 	MpoolPending(context.Context, *types.TipSet) ([]*types.SignedMessage, error)

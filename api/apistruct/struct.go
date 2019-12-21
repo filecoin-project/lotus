@@ -58,6 +58,7 @@ type FullNodeStruct struct {
 		SyncState          func(context.Context) (*api.SyncState, error)                `perm:"read"`
 		SyncSubmitBlock    func(ctx context.Context, blk *types.BlockMsg) error         `perm:"write"`
 		SyncIncomingBlocks func(ctx context.Context) (<-chan *types.BlockHeader, error) `perm:"read"`
+		SyncMarkBad        func(ctx context.Context, bcid cid.Cid) error                `perm:"write"`
 
 		MpoolPending     func(context.Context, *types.TipSet) ([]*types.SignedMessage, error) `perm:"read"`
 		MpoolPush        func(context.Context, *types.SignedMessage) error                    `perm:"write"`
@@ -358,6 +359,10 @@ func (c *FullNodeStruct) SyncSubmitBlock(ctx context.Context, blk *types.BlockMs
 
 func (c *FullNodeStruct) SyncIncomingBlocks(ctx context.Context) (<-chan *types.BlockHeader, error) {
 	return c.Internal.SyncIncomingBlocks(ctx)
+}
+
+func (c *FullNodeStruct) SyncMarkBad(ctx context.Context, bcid cid.Cid) error {
+	return c.Internal.SyncMarkBad(ctx, bcid)
 }
 
 func (c *FullNodeStruct) StateMinerSectors(ctx context.Context, addr address.Address, ts *types.TipSet) ([]*api.ChainSectorInfo, error) {

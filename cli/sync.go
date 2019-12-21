@@ -19,6 +19,7 @@ var syncCmd = &cli.Command{
 	Subcommands: []*cli.Command{
 		syncStatusCmd,
 		syncWaitCmd,
+		syncMarkBadCmd,
 	},
 }
 
@@ -87,6 +88,30 @@ var syncWaitCmd = &cli.Command{
 		ctx := ReqContext(cctx)
 
 		return SyncWait(ctx, napi)
+	},
+}
+
+var syncMarkBadCmd = &cli.Command{
+	Name:  "mark-bad",
+	Usage: "Mark the given block as bad, will prevent syncing to a chain that contains it",
+	Action: func(cctx *cli.Context) error {
+		napi, closer, err := GetFullNodeAPI(cctx)
+		if err != nil {
+			return err
+		}
+		defer closer()
+		ctx := ReqContext(cctx)
+
+		if !cctx.Args().Present() {
+			return fmt.Errorf("must specify block cid to mark")
+		}
+
+		bcid, err := cid.Decode(cctx.Args().First())
+		if err != nil {
+			return fmt.Errorf("failed to decode input as a cid: %s", err)
+		}
+
+		return napi.SyncMarkBad(ctx, bcid)
 	},
 }
 
