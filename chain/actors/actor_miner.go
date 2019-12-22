@@ -378,7 +378,6 @@ func (sma StorageMinerActor) ProveCommitSectorV0(act *types.Actor, vmctx types.V
 		self.ProvingSet = self.Sectors
 		// TODO: probably want to wait until the miner is above a certain
 		//  threshold before starting this
-		log.Infof("ElectionPeriodStart set to 381: %d", self.ElectionPeriodStart)
 		self.ElectionPeriodStart = vmctx.BlockHeight()
 	}
 
@@ -486,7 +485,6 @@ func (sma StorageMinerActor) ProveCommitSectorV1(act *types.Actor, vmctx types.V
 		self.ProvingSet = self.Sectors
 		// TODO: probably want to wait until the miner is above a certain
 		//  threshold before starting this
-		log.Infof("ElectionPeriodStart set to 489: %d", self.ElectionPeriodStart)
 		self.ElectionPeriodStart = vmctx.BlockHeight()
 	}
 
@@ -581,10 +579,6 @@ func (sma StorageMinerActor) SubmitFallbackPoSt(act *types.Actor, vmctx types.VM
 	faults, nerr := self.FaultSet.AllMap()
 	if nerr != nil {
 		return nil, aerrors.Absorb(err, 5, "RLE+ invalid")
-	}
-
-	if pss.Count < uint64(len(faults)) {
-		return nil, aerrors.Absorb(nerr, 6, fmt.Sprintf("too many faults count pss:(%v) faults:(%v)", pss.Count, len(faults)))
 	}
 
 	var sectorInfos []ffi.PublicSectorInfo
@@ -727,9 +721,6 @@ func RemoveFromSectorSet(ctx context.Context, s types.Storage, ss cid.Cid, ids [
 		return cid.Undef, aerrors.HandleExternalError(err, "could not load sector set node")
 	}
 
-	//if err := ssr.BatchDelete(ids); err != nil {
-	//	return cid.Undef, aerrors.HandleExternalError(err, "failed to delete from sector set")
-	//}
 	for _, id := range ids {
 		if err := ssr.Delete(id); err != nil {
 			log.Warnf("failed to delete sector %d from set: %s", id, err)
@@ -1092,10 +1083,6 @@ func onSuccessfulPoStV0(self *StorageMinerActorState, vmctx types.VMContext) aer
 		return aerrors.Absorb(nerr, 1, "invalid bitfield (fatal?)")
 	}
 
-	if pss.Count < uint64(len(faults)) {
-		return aerrors.Absorb(nerr, 6, fmt.Sprintf("too many faults count pss:(%v) faults:(%v)", pss.Count, len(faults)))
-	}
-
 	self.FaultSet = types.NewBitField()
 
 	oldPower := self.Power
@@ -1143,7 +1130,6 @@ func onSuccessfulPoStV0(self *StorageMinerActorState, vmctx types.VMContext) aer
 
 	self.Sectors = ncid
 	self.ProvingSet = ncid
-	log.Infof("ElectionPeriodStart set to 1137: %d", self.ElectionPeriodStart)
 	self.ElectionPeriodStart = vmctx.BlockHeight()
 	return nil
 }
@@ -1166,16 +1152,11 @@ func onSuccessfulPoStV1(self *StorageMinerActorState, vmctx types.VMContext) aer
 		return aerrors.Absorb(nerr, 1, "invalid bitfield (fatal?)")
 	}
 
-	if pss.Count < uint64(len(faults)) {
-		return aerrors.Absorb(nerr, 6, fmt.Sprintf("too many faults count pss:(%v) faults:(%v)", pss.Count, len(faults)))
-	}
-
 	self.FaultSet = types.NewBitField()
 
 	oldPower := self.Power
 	newPower := types.BigMul(types.NewInt(pss.Count-uint64(len(faults))), types.NewInt(mi.SectorSize))
 
-	log.Infof("ElectionPeriodStart set to 1178: els：%d  old:%d  new:%d", self.ElectionPeriodStart, oldPower, newPower)
 	// If below the minimum size requirement, miners have zero power
 	if newPower.LessThan(types.NewInt(build.MinimumMinerPower)) {
 		newPower = types.NewInt(0)
@@ -1185,7 +1166,6 @@ func onSuccessfulPoStV1(self *StorageMinerActorState, vmctx types.VMContext) aer
 
 	delta := types.BigSub(self.Power, oldPower)
 	if self.SlashedAt != 0 {
-		log.Infof("ElectionPeriodStart set to 1178: els：%d  SlashedAt:%d ", self.ElectionPeriodStart, self.SlashedAt)
 		self.SlashedAt = 0
 		delta = self.Power
 	}
@@ -1196,7 +1176,6 @@ func onSuccessfulPoStV1(self *StorageMinerActorState, vmctx types.VMContext) aer
 		prevSlashingDeadline = 0
 	}
 
-	log.Infof("ElectionPeriodStart set to 1197: els：%d  old:%d  new:%d", self.ElectionPeriodStart, oldPower, newPower)
 	if !(oldPower.IsZero() && newPower.IsZero()) {
 		enc, err := SerializeParams(&UpdateStorageParams{
 			Delta:                 delta,
@@ -1212,7 +1191,6 @@ func onSuccessfulPoStV1(self *StorageMinerActorState, vmctx types.VMContext) aer
 			return aerrors.Wrap(err, "updating storage failed")
 		}
 
-		log.Infof("ElectionPeriodStart set to 1212: %d", self.ElectionPeriodStart)
 		self.ElectionPeriodStart = vmctx.BlockHeight()
 	}
 

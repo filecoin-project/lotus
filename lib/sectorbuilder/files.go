@@ -51,7 +51,7 @@ func (sb *SectorBuilder) GetPath(typ string, sectorName string) (string, error) 
 		return "", xerrors.Errorf("unknown sector type: %s", typ)
 	}
 
-	return  filepath.Join(sb.filesystem.pathFor(dataType(typ)), sectorName), nil
+	return filepath.Join(sb.filesystem.pathFor(dataType(typ)), sectorName), nil
 }
 
 func (sb *SectorBuilder) TrimCache(sectorID uint64) error {
