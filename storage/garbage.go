@@ -3,9 +3,11 @@ package storage
 import (
 	"bytes"
 	"context"
+	"github.com/btcsuite/goleveldb/leveldb/errors"
 	"io"
 	"math"
 	"math/rand"
+	"os"
 
 	"golang.org/x/xerrors"
 
@@ -15,23 +17,31 @@ import (
 	"github.com/filecoin-project/lotus/lib/sectorbuilder"
 )
 
+var lastcommP = [32]byte {}
+var lastSectorId uint64  = 0
+
 func (m *Miner) pledgeSector(ctx context.Context, sectorID uint64, existingPieceSizes []uint64, sizes ...uint64) ([]Piece, error) {
 	if len(sizes) == 0 {
 		return nil, nil
 	}
-
+	log.Infof("pledgeSector 1: lastSectorId: %d sectorID: %s lastcommP: %s",  lastSectorId, sectorID, lastcommP)
 	deals := make([]actors.StorageDealProposal, len(sizes))
 	for i, size := range sizes {
 		release := m.sb.RateLimit()
-		commP, err := sectorbuilder.GeneratePieceCommitment(io.LimitReader(rand.New(rand.NewSource(42)), int64(size)), size)
+		err := errors.ErrNotFound
+		if len(lastcommP) == 0 {
+			log.Infof("pledgeSector 2 : lastSectorId: %d sectorID: %s lastcommP: %s",  lastSectorId, sectorID, lastcommP)
+			lastcommP, err = sectorbuilder.GeneratePieceCommitment(io.LimitReader(rand.New(rand.NewSource(42)), int64(size)), size)
+			if err != nil {
+				return nil, err
+			}
+
+		}
 		release()
 
-		if err != nil {
-			return nil, err
-		}
 
 		sdp := actors.StorageDealProposal{
-			PieceRef:             commP[:],
+			PieceRef:             lastcommP[:],
 			PieceSize:            size,
 			Client:               m.worker,
 			Provider:             m.maddr,
@@ -86,17 +96,29 @@ func (m *Miner) pledgeSector(ctx context.Context, sectorID uint64, existingPiece
 	out := make([]Piece, len(sizes))
 
 	for i, size := range sizes {
-		ppi, err := m.sb.AddPiece(size, sectorID, io.LimitReader(rand.New(rand.NewSource(42)), int64(size)), existingPieceSizes)
-		if err != nil {
-			return nil, err
-		}
+		if len(lastcommP) == 0 {
+			log.Infof("pledgeSector 3 : lastSectorId: %d sectorID: %s lastcommP: %s",  lastSectorId, sectorID, lastcommP)
+			ppi, err := m.sb.AddPiece(size, sectorID, io.LimitReader(rand.New(rand.NewSource(42)), int64(size)), existingPieceSizes)
+			if err != nil {
+				return nil, err
+			}
+			lastSectorId = sectorID
+			existingPieceSizes = append(existingPieceSizes, size)
 
-		existingPieceSizes = append(existingPieceSizes, size)
+			out[i] = Piece{
+				DealID: resp.DealIDs[i],
+				Size:   ppi.Size,
+				CommP:  ppi.CommP[:],
+			}
+		} else {
+			log.Infof("pledgeSector 4 : lastSectorId: %d sectorID: %s lastcommP: %s",  lastSectorId, sectorID, lastcommP)
+			os.Symlink(m.sb.StagedSectorPath(lastSectorId), m.sb.StagedSectorPath(sectorID))
 
-		out[i] = Piece{
-			DealID: resp.DealIDs[i],
-			Size:   ppi.Size,
-			CommP:  ppi.CommP[:],
+			out[i] = Piece{
+				DealID: resp.DealIDs[i],
+				Size:   size,
+				CommP:  lastcommP[:],
+			}
 		}
 	}
 
