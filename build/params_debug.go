@@ -4,7 +4,10 @@ package build
 
 import "os"
 
-var SectorSizes = []uint64{1024}
+var SectorSizes = []uint64{
+	1 << 30,
+	32 << 30,
+}
 
 // Seconds
 const BlockDelay = 6
