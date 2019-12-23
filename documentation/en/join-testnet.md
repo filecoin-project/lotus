@@ -10,6 +10,14 @@ If you have installed older versions, you may need to clear existing chain data,
 rm -rf ~/.lotus ~/.lotusstorage
 ```
 
+## Note: Using the Lotus Node from China
+
+If you are trying to use `lotus` from China. You should set this **environment variable** on your machine:
+
+```sh
+IPFS_GATEWAY="https://proof-parameters.s3.cn-south-1.jdcloud-oss.com/ipfs/"
+```
+
 ## Get started
 
 Start the **daemon** using the default configuration in `./build`:
