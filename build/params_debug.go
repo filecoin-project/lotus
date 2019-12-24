@@ -2,6 +2,8 @@
 
 package build
 
+import "os"
+
 var SectorSizes = []uint64{
 	1024,
 	1 << 30,
