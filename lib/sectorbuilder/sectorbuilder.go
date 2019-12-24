@@ -531,9 +531,9 @@ func (sb *SectorBuilder) SealPreCommitLocal(sectorID uint64, ticket SealTicket, 
 	defer fs.free(dataSealed, sb.ssize)
 
 	// local
-	defer func() {
-		<-sb.rateLimit
-	}()
+	//defer func() {
+	//	<-sb.rateLimit
+	//}()
 
 	cacheDir, err := sb.sectorCacheDir(sectorID)
 	if err != nil {
@@ -579,6 +579,7 @@ func (sb *SectorBuilder) SealPreCommitLocal(sectorID uint64, ticket SealTicket, 
 		return RawSealPreCommitOutput{}, "",xerrors.Errorf("presealing sector %d (%s): %w", sectorID, stagedPath, err)
 	}
 
+	log.Warn("PreCommitOutput: ", sectorID)
 	return RawSealPreCommitOutput(rspco), "", nil
 }
 
