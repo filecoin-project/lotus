@@ -91,7 +91,7 @@ func TestRleplus(t *testing.T) {
 		encodeBytes, _, err := rleplus.Encode(ints)
 		assert.NilError(t, err)
 		for idx, v := range encodeBytes {
-			fmt.Println(v, expected[idx])
+			// fmt.Println(v, expected[idx])
 			assert.Equal(
 				t,
 				fmt.Sprintf("%8b", v),
