@@ -132,6 +132,8 @@ func (w *worker) push(typ string, sectorID uint64) error {
 func (w *worker) fetchSector(sectorID uint64, typ sectorbuilder.WorkerTaskType) error {
 	var err error
 	switch typ {
+	case sectorbuilder.WorkerAddPiece:
+		err = nil
 	case sectorbuilder.WorkerPreCommit:
 		err = w.fetch("staging", sectorID)
 	case sectorbuilder.WorkerCommit:

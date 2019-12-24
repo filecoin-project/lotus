@@ -137,19 +137,20 @@ func (w *worker) processTask(ctx context.Context, task sectorbuilder.WorkerTask)
 
 	switch task.Type {
 	case sectorbuilder.WorkerAddPiece:
-		//One process
-		log.Infof("WorkerAddPiece : %s SectorID: %d", constRemoteID,task.SectorID)
-		commp, _, err := w.sb.SealAddPiece(task.SectorID, 0)
+		size := sectorbuilder.UserBytesForSectorSize(w.sb.SectorSize())
+		log.Infof("WorkerAddPiece : %s SectorID: %d size:%d", constRemoteID,task.SectorID, size)
+		commp, _, err := w.sb.SealAddPieceLocal(task.SectorID, size)
 		if err != nil {
 			return errRes(xerrors.Errorf("comitting: %w", err))
 		}
 
 		res.Commp = commp
 		res.RemoteID = constRemoteID
+		log.Infof("WorkerAddPiece : %s SectorID: %d commp:%s", constRemoteID,task.SectorID, commp)
 
 	case sectorbuilder.WorkerPreCommit:
 		log.Infof("WorkerPreCommit : %s SectorID: %d", constRemoteID, task.SectorID)
-		rspco, _, err := w.sb.SealPreCommit(task.SectorID, task.SealTicket, task.Pieces, constRemoteID)
+		rspco, _, err := w.sb.SealPreCommitLocal(task.SectorID, task.SealTicket, task.Pieces)
 		if err != nil {
 			return errRes(xerrors.Errorf("precomitting: %w", err))
 		}
@@ -191,7 +192,7 @@ func (w *worker) processTask(ctx context.Context, task sectorbuilder.WorkerTask)
 
 	case sectorbuilder.WorkerCommit:
 		log.Infof("WorkerCommit : %s SectorID: %d", constRemoteID, task.SectorID)
-		proof, err := w.sb.SealCommit(task.SectorID, task.SealTicket, task.SealSeed, task.Pieces, task.Rspco, constRemoteID)
+		proof, err := w.sb.SealCommitLocal(task.SectorID, task.SealTicket, task.SealSeed, task.Pieces, task.Rspco)
 		 cachefilename := filepath.Join(w.repo, "cache", w.sb.SectorName(task.SectorID))
 		 os.RemoveAll(cachefilename)
 
