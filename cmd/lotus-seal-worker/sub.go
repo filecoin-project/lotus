@@ -146,7 +146,6 @@ func (w *worker) processTask(ctx context.Context, task sectorbuilder.WorkerTask)
 
 		res.Commp = commp
 		res.RemoteID = constRemoteID
-		log.Infof("WorkerAddPiece : %s SectorID: %d commp:%s", constRemoteID,task.SectorID, commp)
 
 	case sectorbuilder.WorkerPreCommit:
 		log.Infof("WorkerPreCommit : %s SectorID: %d", constRemoteID, task.SectorID)

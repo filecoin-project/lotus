@@ -498,7 +498,7 @@ func (sb *SectorBuilder) SealAddPiece(sectorID uint64, size uint64) ([]byte, str
 	return nil, "", xerrors.New("sectorbuilder stopped")
 }
 
-func (sb *SectorBuilder) sealPreCommitRemote(call workerCall) (RawSealPreCommitOutput, string, error) {
+func (sb *SectorBuilder) sealPreCommitRemote(call workerCall) (RawSealPreCommitOutput, error) {
 	log.Info("sealPreCommitRemote...", "sectorID:", call.task.SectorID)
 	atomic.AddInt32(&sb.preCommitWait, -1)
 
@@ -508,23 +508,23 @@ func (sb *SectorBuilder) sealPreCommitRemote(call workerCall) (RawSealPreCommitO
 		if ret.Err != "" {
 			err = xerrors.New(ret.Err)
 		}
-		return ret.Rspco.rspco(), ret.RemoteID, err
+		return ret.Rspco.rspco(), err
 	case <-sb.stopping:
-		return RawSealPreCommitOutput{}, "", xerrors.New("sectorbuilder stopped")
+		return RawSealPreCommitOutput{}, xerrors.New("sectorbuilder stopped")
 	}
 }
 
-func (sb *SectorBuilder) SealPreCommitLocal(sectorID uint64, ticket SealTicket, pieces []PublicPieceInfo) (RawSealPreCommitOutput, string, error) {
+func (sb *SectorBuilder) SealPreCommitLocal(sectorID uint64, ticket SealTicket, pieces []PublicPieceInfo) (RawSealPreCommitOutput, error) {
 	log.Info("SealPreCommitLocal...", "sectorID:", sectorID)
 	fs := sb.filesystem
 
 	if err := fs.reserve(dataCache, sb.ssize); err != nil {
-		return RawSealPreCommitOutput{}, "", err
+		return RawSealPreCommitOutput{}, err
 	}
 	defer fs.free(dataCache, sb.ssize)
 
 	if err := fs.reserve(dataSealed, sb.ssize); err != nil {
-		return RawSealPreCommitOutput{}, "", err
+		return RawSealPreCommitOutput{}, err
 	}
 	defer fs.free(dataSealed, sb.ssize)
 
@@ -535,20 +535,20 @@ func (sb *SectorBuilder) SealPreCommitLocal(sectorID uint64, ticket SealTicket, 
 
 	cacheDir, err := sb.sectorCacheDir(sectorID)
 	if err != nil {
-		return RawSealPreCommitOutput{}, "", xerrors.Errorf("getting cache dir: %w", err)
+		return RawSealPreCommitOutput{}, xerrors.Errorf("getting cache dir: %w", err)
 	}
 
 	sealedPath, err := sb.SealedSectorPath(sectorID)
 	if err != nil {
-		return RawSealPreCommitOutput{}, "",xerrors.Errorf("getting sealed sector path: %w", err)
+		return RawSealPreCommitOutput{}, xerrors.Errorf("getting sealed sector path: %w", err)
 	}
 
 	e, err := os.OpenFile(sealedPath, os.O_RDWR|os.O_CREATE, 0644)
 	if err != nil {
-		return RawSealPreCommitOutput{}, "",xerrors.Errorf("ensuring sealed file exists: %w", err)
+		return RawSealPreCommitOutput{}, xerrors.Errorf("ensuring sealed file exists: %w", err)
 	}
 	if err := e.Close(); err != nil {
-		return RawSealPreCommitOutput{}, "", err
+		return RawSealPreCommitOutput{}, err
 	}
 
 	var sum uint64
@@ -557,7 +557,7 @@ func (sb *SectorBuilder) SealPreCommitLocal(sectorID uint64, ticket SealTicket, 
 	}
 	ussize := UserBytesForSectorSize(sb.ssize)
 	if sum != ussize {
-		return RawSealPreCommitOutput{}, "",xerrors.Errorf("aggregated piece sizes don't match sector size: %d != %d (%d)", sum, ussize, int64(ussize-sum))
+		return RawSealPreCommitOutput{}, xerrors.Errorf("aggregated piece sizes don't match sector size: %d != %d (%d)", sum, ussize, int64(ussize-sum))
 	}
 
 	stagedPath := sb.StagedSectorPath(sectorID)
@@ -574,14 +574,14 @@ func (sb *SectorBuilder) SealPreCommitLocal(sectorID uint64, ticket SealTicket, 
 		pieces,
 	)
 	if err != nil {
-		return RawSealPreCommitOutput{}, "",xerrors.Errorf("presealing sector %d (%s): %w", sectorID, stagedPath, err)
+		return RawSealPreCommitOutput{}, xerrors.Errorf("presealing sector %d (%s): %w", sectorID, stagedPath, err)
 	}
 
 	log.Warn("PreCommitOutput: ", sectorID)
-	return RawSealPreCommitOutput(rspco), "", nil
+	return RawSealPreCommitOutput(rspco), nil
 }
 
-func (sb *SectorBuilder) SealPreCommit(sectorID uint64, ticket SealTicket, pieces []PublicPieceInfo, remoteid string) (RawSealPreCommitOutput, string, error) {
+func (sb *SectorBuilder) SealPreCommit(sectorID uint64, ticket SealTicket, pieces []PublicPieceInfo, remoteid string) (RawSealPreCommitOutput, error) {
 	log.Info("SealPreCommit...", "RemoteID:", remoteid)
 	specialtask := sb.specialcommitTasks[remoteid]
 	call := workerCall{
@@ -613,7 +613,7 @@ func (sb *SectorBuilder) SealPreCommit(sectorID uint64, ticket SealTicket, piece
 		}
 	}
 
-	return RawSealPreCommitOutput{}, "", xerrors.New("sectorbuilder stopped")
+	return RawSealPreCommitOutput{}, xerrors.New("sectorbuilder stopped")
 }
 
 func (sb *SectorBuilder) sealCommitRemote(call workerCall) (proof []byte, err error) {

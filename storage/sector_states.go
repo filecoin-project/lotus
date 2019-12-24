@@ -30,8 +30,7 @@ func (m *Miner) handleSectorUpdate(ctx context.Context, sector SectorInfo, cb pr
 }
 
 func (m *Miner) handlePacking(ctx context.Context, sector SectorInfo) *sectorUpdate {
-	log.Infow("performing filling up rest of the sector...", "sector", sector.SectorID)
-
+	log.Infof("handlePacking... sector:%d  RemoteID:%s", sector.SectorID, sector.RemoteID)
 	var allocated uint64
 	for _, piece := range sector.Pieces {
 		allocated += piece.Size
@@ -52,29 +51,35 @@ func (m *Miner) handlePacking(ctx context.Context, sector SectorInfo) *sectorUpd
 		log.Warnf("Creating %d filler pieces for sector %d", len(fillerSizes), sector.SectorID)
 	}
 
-	pieces, err := m.pledgeSector(ctx, sector.SectorID, nil, sector.existingPieces(), fillerSizes...)
-	if err != nil {
-		return sector.upd().fatal(xerrors.Errorf("filling up the sector (%v): %w", fillerSizes, err))
+	if sector.RemoteID == "" {
+		pieces, err := m.pledgeSector(ctx, sector.SectorID, nil, sector.existingPieces(), fillerSizes...)
+		if err != nil {
+			return sector.upd().fatal(xerrors.Errorf("filling up the sector (%v): %w", fillerSizes, err))
+		}
+
+		return sector.upd().to(api.Unsealed).state(func(info *SectorInfo) {
+			info.Pieces = append(info.Pieces, pieces...)
+		})
+	} else {
+		return sector.upd().to(api.Unsealed).state(func(info *SectorInfo) {
+		})
 	}
 
-	return sector.upd().to(api.Unsealed).state(func(info *SectorInfo) {
-		info.Pieces = append(info.Pieces, pieces...)
-	})
 }
 
 func (m *Miner) handleUnsealed(ctx context.Context, sector SectorInfo) *sectorUpdate {
-	log.Infow("performing sector replication...", "sector", sector.SectorID)
+	log.Infof("handleUnsealed... sector:%d  RemoteID:%s", sector.SectorID, sector.RemoteID)
 	ticket, err := m.tktFn(ctx)
 	if err != nil {
 		return sector.upd().fatal(err)
 	}
 
-	rspco, remoteid, err := m.sb.SealPreCommit(sector.SectorID, *ticket, sector.pieceInfos(), sector.RemoteID)
+	rspco, err := m.sb.SealPreCommit(sector.SectorID, *ticket, sector.pieceInfos(), sector.RemoteID)
 	if err != nil {
 		return sector.upd().to(api.SealFailed).error(xerrors.Errorf("seal pre commit failed: %w", err))
 	}
 
-	log.Info("performing sector replication:  ", "RemoteID:", remoteid)
+	log.Info("performing sector replication:  ", "RemoteID:", sector.RemoteID)
 
 	return sector.upd().to(api.PreCommitting).state(func(info *SectorInfo) {
 		info.CommD = rspco.CommD[:]
@@ -83,13 +88,11 @@ func (m *Miner) handleUnsealed(ctx context.Context, sector SectorInfo) *sectorUp
 			BlockHeight: ticket.BlockHeight,
 			TicketBytes: ticket.TicketBytes[:],
 		}
-		info.RemoteID = remoteid
-
-		log.Info("info.RemoteID:  ", "RemoteID:", info.RemoteID)
 	})
 }
 
 func (m *Miner) handlePreCommitting(ctx context.Context, sector SectorInfo) *sectorUpdate {
+	log.Infof("handlePreCommitting... sector:%d  RemoteID:%s", sector.SectorID, sector.RemoteID)
 	params := &actors.SectorPreCommitInfo{
 		SectorNumber: sector.SectorID,
 
@@ -126,7 +129,7 @@ func (m *Miner) handlePreCommitting(ctx context.Context, sector SectorInfo) *sec
 
 func (m *Miner) handlePreCommitted(ctx context.Context, sector SectorInfo) *sectorUpdate {
 	// would be ideal to just use the events.Called handler, but it wouldnt be able to handle individual message timeouts
-	log.Info("Sector precommitted: ", sector.SectorID)
+	log.Infof("handlePreCommitted... sector:%d  RemoteID:%s", sector.SectorID, sector.RemoteID)
 	mw, err := m.api.StateWaitMsg(ctx, *sector.PreCommitMessage)
 	if err != nil {
 		return sector.upd().to(api.PreCommitFailed).error(err)
@@ -158,8 +161,6 @@ func (m *Miner) handlePreCommitted(ctx context.Context, sector SectorInfo) *sect
 				BlockHeight: randHeight,
 				TicketBytes: rand,
 			}
-			info.RemoteID = sector.RemoteID
-			log.Info("handlePreCommitted...", "RemoteID:", sector.RemoteID)
 		})
 
 		updateNonce++
@@ -178,7 +179,7 @@ func (m *Miner) handlePreCommitted(ctx context.Context, sector SectorInfo) *sect
 }
 
 func (m *Miner) handleCommitting(ctx context.Context, sector SectorInfo) *sectorUpdate {
-	log.Info("scheduling seal proof computation...", "RemoteID:", sector.RemoteID)
+	log.Infof("handleCommitting... sector:%d  RemoteID:%s", sector.SectorID, sector.RemoteID)
 
 	proof, err := m.sb.SealCommit(sector.SectorID, sector.Ticket.SB(), sector.Seed.SB(), sector.pieceInfos(), sector.rspco(), sector.RemoteID)
 	if err != nil {
@@ -186,7 +187,6 @@ func (m *Miner) handleCommitting(ctx context.Context, sector SectorInfo) *sector
 	}
 
 	// TODO: Consider splitting states and persist proof for faster recovery
-
 	params := &actors.SectorProveCommitInfo{
 		Proof:    proof,
 		SectorID: sector.SectorID,
@@ -223,6 +223,7 @@ func (m *Miner) handleCommitting(ctx context.Context, sector SectorInfo) *sector
 }
 
 func (m *Miner) handleCommitWait(ctx context.Context, sector SectorInfo) *sectorUpdate {
+	log.Infof("handleCommitWait... sector:%d  RemoteID:%s", sector.SectorID, sector.RemoteID)
 	if sector.CommitMessage == nil {
 		log.Errorf("sector %d entered commit wait state without a message cid", sector.SectorID)
 		return sector.upd().to(api.CommitFailed).error(xerrors.Errorf("entered commit wait with no commit cid"))
@@ -243,6 +244,7 @@ func (m *Miner) handleCommitWait(ctx context.Context, sector SectorInfo) *sector
 }
 
 func (m *Miner) handleFaulty(ctx context.Context, sector SectorInfo) *sectorUpdate {
+	log.Infof("handleFaulty... sector:%d  RemoteID:%s", sector.SectorID, sector.RemoteID)
 	// TODO: check if the fault has already been reported, and that this sector is even valid
 
 	// TODO: coalesce faulty sector reporting
@@ -278,6 +280,7 @@ func (m *Miner) handleFaulty(ctx context.Context, sector SectorInfo) *sectorUpda
 }
 
 func (m *Miner) handleFaultReported(ctx context.Context, sector SectorInfo) *sectorUpdate {
+	log.Infof("handleFaultReported... sector:%d  RemoteID:%s", sector.SectorID, sector.RemoteID)
 	if sector.FaultReportMsg == nil {
 		return sector.upd().to(api.FailedUnrecoverable).error(xerrors.Errorf("entered fault reported state without a FaultReportMsg cid"))
 	}
