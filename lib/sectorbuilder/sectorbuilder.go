@@ -313,10 +313,10 @@ func (sb *SectorBuilder) AddPiece(pieceSize uint64, sectorId uint64, file io.Rea
 	}
 	defer fs.free(dataStaging, sb.ssize)
 
-	atomic.AddInt32(&sb.addPieceWait, 1)
-	ret := sb.RateLimit()
-	atomic.AddInt32(&sb.addPieceWait, -1)
-	defer ret()
+	//atomic.AddInt32(&sb.addPieceWait, 1)
+	//ret := sb.RateLimit()
+	//atomic.AddInt32(&sb.addPieceWait, -1)
+	//defer ret()
 
 	f, werr, err := toReadableFile(file, int64(pieceSize))
 	if err != nil {
@@ -444,12 +444,12 @@ func (sb *SectorBuilder) SealAddPieceLocal(sectorID uint64, size uint64) (commp[
 	log.Info("SealAddPieceLocal...", "sectorID:", sectorID)
 	atomic.AddInt32(&sb.addPieceWait, -1)
 
-	defer func() {
-		<-sb.rateLimit
-	}()
+	//defer func() {
+	//	<-sb.rateLimit
+	//}()
 
 	//TODO  do once remeber ppi.CommP[:]
-	log.Infof("SealAddPieceLocal...", "sectorID: %d", sectorID)
+	log.Infof("SealAddPieceLocal...", "sectorID:%d", sectorID)
 	ppi, err := sb.AddPiece(size, sectorID, io.LimitReader(rand.New(rand.NewSource(42)), int64(size)), []uint64{})
 
 	if err != nil {
@@ -484,7 +484,6 @@ func (sb *SectorBuilder) SealAddPiece(sectorID uint64, size uint64) ([]byte, str
 		default:
 			sb.checkRateLimit()
 			rl := sb.rateLimit
-			rl = make(chan struct{})
 
 			select { // use whichever is available
 			case sb.preAddPieceTasks <- call:
@@ -606,9 +605,6 @@ func (sb *SectorBuilder) SealPreCommit(sectorID uint64, ticket SealTicket, piece
 	default:
 		sb.checkRateLimit()
 		rl := sb.rateLimit
-		if sb.noPreCommit {
-			rl = make(chan struct{})
-		}
 
 		select { // use whichever is available
 		case specialtask <- call:
@@ -638,9 +634,9 @@ func (sb *SectorBuilder) sealCommitRemote(call workerCall) (proof []byte, err er
 func (sb *SectorBuilder) SealCommitLocal(sectorID uint64, ticket SealTicket, seed SealSeed, pieces []PublicPieceInfo, rspco RawSealPreCommitOutput) (proof []byte, err error) {
 	atomic.AddInt32(&sb.commitWait, -1)
 
-	defer func() {
-		<-sb.rateLimit
-	}()
+	//defer func() {
+	//	<-sb.rateLimit
+	//}()
 
 	cacheDir, err := sb.sectorCacheDir(sectorID)
 	if err != nil {
@@ -698,9 +694,9 @@ func (sb *SectorBuilder) SealCommit(sectorID uint64, ticket SealTicket, seed Sea
 	default:
 		sb.checkRateLimit()
 		rl := sb.rateLimit
-		if sb.noCommit {
-			rl = make(chan struct{})
-		}
+		//if sb.noCommit {
+		//	rl = make(chan struct{})
+		//}
 
 		select { // use whichever is available
 		case specialtask <- call:
