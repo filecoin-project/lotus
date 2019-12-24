@@ -304,7 +304,7 @@ func (sb *SectorBuilder) AcquireSectorId() (uint64, error) {
 }
 
 func (sb *SectorBuilder) AddPiece(pieceSize uint64, sectorId uint64, file io.Reader, existingPieceSizes []uint64) (PublicPieceInfo, error) {
-	log.Infof("AddPiece SectorID: %d", sectorId)
+	log.Infof("AddPiece SectorID: %d pieceSize:%d", sectorId, pieceSize)
 
 	fs := sb.filesystem
 
