@@ -579,7 +579,7 @@ func (sb *SectorBuilder) SealPreCommitLocal(sectorID uint64, ticket SealTicket, 
 		return RawSealPreCommitOutput{}, xerrors.Errorf("presealing sector %d (%s): %w", sectorID, stagedPath, err)
 	}
 
-	log.Warn("PreCommitOutput: ", sectorID)
+	log.Info("SealPreCommitLocal...", "PreCommitOutput:", sectorID)
 	return RawSealPreCommitOutput(rspco), nil
 }
 
@@ -633,6 +633,7 @@ func (sb *SectorBuilder) sealCommitRemote(call workerCall) (proof []byte, err er
 }
 
 func (sb *SectorBuilder) SealCommitLocal(sectorID uint64, ticket SealTicket, seed SealSeed, pieces []PublicPieceInfo, rspco RawSealPreCommitOutput) (proof []byte, err error) {
+	log.Info("SealCommitLocal...", "sectorID:", sectorID)
 	atomic.AddInt32(&sb.commitWait, -1)
 
 	//defer func() {
@@ -662,6 +663,7 @@ func (sb *SectorBuilder) SealCommitLocal(sectorID uint64, ticket SealTicket, see
 		return nil, xerrors.Errorf("StandaloneSealCommit: %w", err)
 	}
 
+	log.Info("SealCommitLocal...", "proof:", proof)
 	return proof, nil
 }
 
