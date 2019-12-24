@@ -34,7 +34,8 @@ const InteractivePoRepDelay = 8
 const InteractivePoRepConfidence = 6
 
 // Bytes
-var MinimumMinerPower uint64 = 512 << 30 // 512GB
+//var MinimumMinerPower uint64 = 512 << 30 // 512GB
+var MinimumMinerPower uint64 = 2 << 10 // 2KiB
 
 func init() {
 	os.Setenv("TRUST_PARAMS", "1")
