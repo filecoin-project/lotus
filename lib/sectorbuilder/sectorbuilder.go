@@ -449,7 +449,6 @@ func (sb *SectorBuilder) SealAddPieceLocal(sectorID uint64, size uint64) (commp[
 	//}()
 
 	//TODO  do once remeber ppi.CommP[:]
-	log.Infof("SealAddPieceLocal...", "sectorID:%d", sectorID)
 	ppi, err := sb.AddPiece(size, sectorID, io.LimitReader(rand.New(rand.NewSource(42)), int64(size)), []uint64{})
 
 	if err != nil {

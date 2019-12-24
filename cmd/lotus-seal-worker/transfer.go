@@ -135,9 +135,15 @@ func (w *worker) fetchSector(sectorID uint64, typ sectorbuilder.WorkerTaskType) 
 	case sectorbuilder.WorkerAddPiece:
 		err = nil
 	case sectorbuilder.WorkerPreCommit:
-		err = w.fetch("staging", sectorID)
+		stagingfilename := filepath.Join(w.repo, "staging", w.sb.SectorName(sectorID))
+		stat, err := os.Stat(stagingfilename)
+		if err != nil  || stat.IsDir() {
+			err = w.fetch("staging", sectorID)
+			if err != nil {
+				return xerrors.Errorf("fetch stagingfilename: %w", err)
+			}
+		}
 	case sectorbuilder.WorkerCommit:
-		//TODO 后续改成文件存在就不下载了
 		sealedfilename := filepath.Join(w.repo, "sealed", w.sb.SectorName(sectorID))
 		stat, err := os.Stat(sealedfilename)
 		if err != nil  || stat.IsDir() {
