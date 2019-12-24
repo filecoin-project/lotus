@@ -4,12 +4,10 @@ import (
 	"bytes"
 	"context"
 	"github.com/btcsuite/goleveldb/leveldb/errors"
+	"golang.org/x/xerrors"
 	"io"
 	"math"
 	"math/rand"
-	"os"
-
-	"golang.org/x/xerrors"
 
 	"github.com/filecoin-project/lotus/api"
 	"github.com/filecoin-project/lotus/chain/actors"
@@ -99,6 +97,7 @@ func (m *Miner) pledgeSector(ctx context.Context, sectorID uint64, commp []byte,
 
 	for i, size := range sizes {
 		if commp == nil && lastSectorId == 0 {
+			//TODO something is wrong
 			log.Infof("pledgeSector 3 : lastSectorId: %d sectorID: %d lastcommP: %s",  lastSectorId, sectorID, lastcommP)
 			ppi, err := m.sb.AddPiece(size, sectorID, io.LimitReader(rand.New(rand.NewSource(42)), int64(size)), existingPieceSizes)
 			if err != nil {
@@ -115,7 +114,7 @@ func (m *Miner) pledgeSector(ctx context.Context, sectorID uint64, commp []byte,
 		} else
 		{
 			log.Infof("pledgeSector 4 : sectorID: %d commp: %s",  sectorID, commp)
-			os.Symlink(m.sb.StagedSectorPath(lastSectorId), m.sb.StagedSectorPath(sectorID))
+			//os.Symlink(m.sb.StagedSectorPath(lastSectorId), m.sb.StagedSectorPath(sectorID))
 
 			out[i] = Piece{
 				DealID: resp.DealIDs[i],

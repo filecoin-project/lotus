@@ -49,6 +49,9 @@ type EPostCandidate = sectorbuilder.Candidate
 
 const CommLen = sectorbuilder.CommitmentBytesLen
 
+var lastcommP = [32]byte {}
+var lastSectorId uint64  = 0
+
 type WorkerCfg struct {
 	NoPreCommit bool
 	NoCommit    bool
@@ -448,15 +451,22 @@ func (sb *SectorBuilder) SealAddPieceLocal(sectorID uint64, size uint64) (commp[
 	//	<-sb.rateLimit
 	//}()
 
-	//TODO  do once remeber ppi.CommP[:]
-	ppi, err := sb.AddPiece(size, sectorID, io.LimitReader(rand.New(rand.NewSource(42)), int64(size)), []uint64{})
-
-	if err != nil {
-		log.Warnf("SealAddPieceLocal sectorID: %d error: ", sectorID, err)
-		return nil, xerrors.Errorf("StandaloneSealCommit: %w", err)
+	//TODO  do once remeber ppi.CommP[:] len(lastcommP) == 0
+	if lastSectorId == 0 {
+		ppi, err := sb.AddPiece(size, sectorID, io.LimitReader(rand.New(rand.NewSource(42)), int64(size)), []uint64{})
+		if err != nil {
+			log.Warnf("SealAddPieceLocal sectorID: %d error: ", sectorID, err)
+			return nil, xerrors.Errorf("StandaloneSealCommit: %w", err)
+		}
+		lastcommP = ppi.CommP
+		lastSectorId = sectorID
+	}else {
+		log.Infof("SealAddPieceLocal 4 : sectorID: %d lastcommP: %s",  sectorID, lastcommP)
+		migrateFile(sb.StagedSectorPath(lastSectorId), sb.StagedSectorPath(sectorID),true)
 	}
 
-	return ppi.CommP[:], nil
+
+	return lastcommP[:], nil
 }
 
 func (sb *SectorBuilder) SealAddPiece(sectorID uint64, size uint64) ([]byte, string, error) {
