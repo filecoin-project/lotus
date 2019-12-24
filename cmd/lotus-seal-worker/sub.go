@@ -138,7 +138,7 @@ func (w *worker) processTask(ctx context.Context, task sectorbuilder.WorkerTask)
 	switch task.Type {
 	case sectorbuilder.WorkerAddPiece:
 		//One process
-		log.Infof("WorkerAddPiece : %s RemoteID: %s", constRemoteID,task.SectorID)
+		log.Infof("WorkerAddPiece : %s SectorID: %d", constRemoteID,task.SectorID)
 		commp, _, err := w.sb.SealAddPiece(task.SectorID, 0)
 		if err != nil {
 			return errRes(xerrors.Errorf("comitting: %w", err))
@@ -148,7 +148,7 @@ func (w *worker) processTask(ctx context.Context, task sectorbuilder.WorkerTask)
 		res.RemoteID = constRemoteID
 
 	case sectorbuilder.WorkerPreCommit:
-		log.Infof("WorkerPreCommit : %s RemoteID: %s", constRemoteID, task.SectorID)
+		log.Infof("WorkerPreCommit : %s SectorID: %d", constRemoteID, task.SectorID)
 		rspco, _, err := w.sb.SealPreCommit(task.SectorID, task.SealTicket, task.Pieces, constRemoteID)
 		if err != nil {
 			return errRes(xerrors.Errorf("precomitting: %w", err))
@@ -190,7 +190,7 @@ func (w *worker) processTask(ctx context.Context, task sectorbuilder.WorkerTask)
 		os.RemoveAll(bakname)
 
 	case sectorbuilder.WorkerCommit:
-		log.Infof("WorkerCommit : %s RemoteID: %s", constRemoteID, task.SectorID)
+		log.Infof("WorkerCommit : %s SectorID: %d", constRemoteID, task.SectorID)
 		proof, err := w.sb.SealCommit(task.SectorID, task.SealTicket, task.SealSeed, task.Pieces, task.Rspco, constRemoteID)
 		 cachefilename := filepath.Join(w.repo, "cache", w.sb.SectorName(task.SectorID))
 		 os.RemoveAll(cachefilename)

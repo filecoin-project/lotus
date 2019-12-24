@@ -302,6 +302,8 @@ func (sb *SectorBuilder) AcquireSectorId() (uint64, error) {
 }
 
 func (sb *SectorBuilder) AddPiece(pieceSize uint64, sectorId uint64, file io.Reader, existingPieceSizes []uint64) (PublicPieceInfo, error) {
+	log.Infof("AddPiece SectorID: %d", sectorId)
+
 	fs := sb.filesystem
 
 	if err := fs.reserve(dataStaging, sb.ssize); err != nil {
@@ -462,7 +464,6 @@ func (sb *SectorBuilder) sealAddPieceLocal(sectorID uint64, size uint64) (commp[
 
 	if err != nil {
 		log.Warnf("sealAddPieceLocal sectorID: %d error: ", sectorID, err)
-
 		return nil, "", xerrors.Errorf("StandaloneSealCommit: %w", err)
 	}
 
@@ -488,7 +489,7 @@ func (sb *SectorBuilder) SealAddPiece(sectorID uint64, size uint64) ([]byte, str
 	default:
 		select { // prefer remote
 		case sb.preAddPieceTasks <- call:
-			log.Infof("preAddPieceTasks...", "RemoteID: %d", sectorID)
+			log.Infof("sealAddPieceRemote...", "sectorID: %d", sectorID)
 			return sb.sealAddPieceRemote(call)
 		default:
 			sb.checkRateLimit()
@@ -498,9 +499,10 @@ func (sb *SectorBuilder) SealAddPiece(sectorID uint64, size uint64) ([]byte, str
 
 			select { // use whichever is available
 			case sb.preAddPieceTasks <- call:
-				log.Infof("preAddPieceTasks...", "RemoteID: %d", sectorID)
+				log.Infof("sealAddPieceRemote...", "sectorID: %d", sectorID)
 				return sb.sealAddPieceRemote(call)
 			case rl <- struct{}{}:
+				log.Infof("sealAddPieceLocal...", "sectorID: %d", sectorID)
 				return sb.sealAddPieceLocal(sectorID, size)
 			}
 		}

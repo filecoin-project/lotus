@@ -96,7 +96,9 @@ func DefaultStorageMiner() *StorageMiner {
 			WorkerCount: 5,
 		},
 	}
-	cfg.Common.API.ListenAddress = "/ip4/127.0.0.1/tcp/2345/http"
+	cfg.Common.API.ListenAddress = "/ip4/0.0.0.0/tcp/2345/http"
+	cfg.SectorBuilder.DisableLocalPreCommit= true
+	cfg.SectorBuilder.DisableLocalCommit= true
 	return cfg
 }
 
