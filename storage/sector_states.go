@@ -52,7 +52,7 @@ func (m *Miner) handlePacking(ctx context.Context, sector SectorInfo) *sectorUpd
 		log.Warnf("Creating %d filler pieces for sector %d", len(fillerSizes), sector.SectorID)
 	}
 
-	pieces, err := m.pledgeSector(ctx, sector.SectorID, sector.existingPieces(), fillerSizes...)
+	pieces, err := m.pledgeSector(ctx, sector.SectorID, nil, sector.existingPieces(), fillerSizes...)
 	if err != nil {
 		return sector.upd().fatal(xerrors.Errorf("filling up the sector (%v): %w", fillerSizes, err))
 	}
@@ -69,7 +69,7 @@ func (m *Miner) handleUnsealed(ctx context.Context, sector SectorInfo) *sectorUp
 		return sector.upd().fatal(err)
 	}
 
-	rspco, remoteid, err := m.sb.SealPreCommit(sector.SectorID, *ticket, sector.pieceInfos())
+	rspco, remoteid, err := m.sb.SealPreCommit(sector.SectorID, *ticket, sector.pieceInfos(), sector.RemoteID)
 	if err != nil {
 		return sector.upd().to(api.SealFailed).error(xerrors.Errorf("seal pre commit failed: %w", err))
 	}

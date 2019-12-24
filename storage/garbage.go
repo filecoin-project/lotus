@@ -20,22 +20,22 @@ import (
 var lastcommP = [32]byte {}
 var lastSectorId uint64  = 0
 
-func (m *Miner) pledgeSector(ctx context.Context, sectorID uint64, existingPieceSizes []uint64, sizes ...uint64) ([]Piece, error) {
+func (m *Miner) pledgeSector(ctx context.Context, sectorID uint64, commp []byte, existingPieceSizes []uint64, sizes ...uint64) ([]Piece, error) {
 	if len(sizes) == 0 {
 		return nil, nil
 	}
-	log.Infof("pledgeSector 1: lastSectorId: %d sectorID: %d lastcommP: %s",  lastSectorId, sectorID, lastcommP)
+	log.Infof("pledgeSector 1: sectorID: %d commp: %s",  sectorID, commp)
 	deals := make([]actors.StorageDealProposal, len(sizes))
 	for i, size := range sizes {
 		release := m.sb.RateLimit()
 		err := errors.ErrNotFound
-		if lastSectorId == 0 {
+		if commp == nil && lastSectorId != 0 {
 			log.Infof("pledgeSector 2 : lastSectorId: %d sectorID: %d lastcommP: %s",  lastSectorId, sectorID, lastcommP)
 			lastcommP, err = sectorbuilder.GeneratePieceCommitment(io.LimitReader(rand.New(rand.NewSource(42)), int64(size)), size)
 			if err != nil {
 				return nil, err
 			}
-
+			commp = lastcommP[:]
 			lastSectorId = sectorID
 
 		}
@@ -43,7 +43,7 @@ func (m *Miner) pledgeSector(ctx context.Context, sectorID uint64, existingPiece
 
 
 		sdp := actors.StorageDealProposal{
-			PieceRef:             lastcommP[:],
+			PieceRef:             commp[:],
 			PieceSize:            size,
 			Client:               m.worker,
 			Provider:             m.maddr,
@@ -98,7 +98,7 @@ func (m *Miner) pledgeSector(ctx context.Context, sectorID uint64, existingPiece
 	out := make([]Piece, len(sizes))
 
 	for i, size := range sizes {
-		if lastSectorId == 0 {
+		if commp == nil && lastSectorId == 0 {
 			log.Infof("pledgeSector 3 : lastSectorId: %d sectorID: %d lastcommP: %s",  lastSectorId, sectorID, lastcommP)
 			ppi, err := m.sb.AddPiece(size, sectorID, io.LimitReader(rand.New(rand.NewSource(42)), int64(size)), existingPieceSizes)
 			if err != nil {
@@ -112,14 +112,15 @@ func (m *Miner) pledgeSector(ctx context.Context, sectorID uint64, existingPiece
 				Size:   ppi.Size,
 				CommP:  ppi.CommP[:],
 			}
-		} else {
-			log.Infof("pledgeSector 4 : lastSectorId: %d sectorID: %d lastcommP: %s",  lastSectorId, sectorID, lastcommP)
+		} else
+		{
+			log.Infof("pledgeSector 4 : sectorID: %d commp: %s",  sectorID, commp)
 			os.Symlink(m.sb.StagedSectorPath(lastSectorId), m.sb.StagedSectorPath(sectorID))
 
 			out[i] = Piece{
 				DealID: resp.DealIDs[i],
 				Size:   size,
-				CommP:  lastcommP[:],
+				CommP:  commp[:],
 			}
 		}
 	}
@@ -141,13 +142,16 @@ func (m *Miner) PledgeSector() error {
 			return
 		}
 
-		pieces, err := m.pledgeSector(ctx, sid, []uint64{}, size)
+		//TODO
+		commp, remoteid, err := m.sb.SealAddPiece(sid, size)
+
+		pieces, err := m.pledgeSector(ctx, sid, commp, []uint64{}, size)
 		if err != nil {
 			log.Errorf("%+v", err)
 			return
 		}
 
-		if err := m.newSector(context.TODO(), sid, pieces[0].DealID, pieces[0].ppi()); err != nil {
+		if err := m.newSector(context.TODO(), sid, pieces[0].DealID, pieces[0].ppi(), remoteid); err != nil {
 			log.Errorf("%+v", err)
 			return
 		}

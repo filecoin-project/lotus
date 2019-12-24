@@ -120,6 +120,7 @@ loop:
 
 func (w *worker) processTask(ctx context.Context, task sectorbuilder.WorkerTask) sectorbuilder.SealRes {
 	switch task.Type {
+	case sectorbuilder.WorkerAddPiece:
 	case sectorbuilder.WorkerPreCommit:
 	case sectorbuilder.WorkerCommit:
 	default:
@@ -135,14 +136,24 @@ func (w *worker) processTask(ctx context.Context, task sectorbuilder.WorkerTask)
 	var res sectorbuilder.SealRes
 
 	switch task.Type {
+	case sectorbuilder.WorkerAddPiece:
+		//One process
+		log.Infof("WorkerAddPiece : %s RemoteID: %s", constRemoteID,task.SectorID)
+		commp, _, err := w.sb.SealAddPiece(task.SectorID, 0)
+		if err != nil {
+			return errRes(xerrors.Errorf("comitting: %w", err))
+		}
+
+		res.Commp = commp
+		res.RemoteID = constRemoteID
+
 	case sectorbuilder.WorkerPreCommit:
-		rspco, _, err := w.sb.SealPreCommit(task.SectorID, task.SealTicket, task.Pieces)
+		log.Infof("WorkerPreCommit : %s RemoteID: %s", constRemoteID, task.SectorID)
+		rspco, _, err := w.sb.SealPreCommit(task.SectorID, task.SealTicket, task.Pieces, constRemoteID)
 		if err != nil {
 			return errRes(xerrors.Errorf("precomitting: %w", err))
 		}
 		res.Rspco = rspco.ToJson()
-
-		res.Rspco.RemoteID = constRemoteID
 
 		if err := w.push("sealed", task.SectorID); err != nil {
 			return errRes(xerrors.Errorf("pushing precommited data: %w", err))
@@ -179,13 +190,8 @@ func (w *worker) processTask(ctx context.Context, task sectorbuilder.WorkerTask)
 		os.RemoveAll(bakname)
 
 	case sectorbuilder.WorkerCommit:
-		//One process
+		log.Infof("WorkerCommit : %s RemoteID: %s", constRemoteID, task.SectorID)
 		proof, err := w.sb.SealCommit(task.SectorID, task.SealTicket, task.SealSeed, task.Pieces, task.Rspco, constRemoteID)
-		//Two process
-		//proof, err := w.sb.SealCommitLocal(task.SectorID, task.SealTicket, task.SealSeed, task.Pieces, task.Rspco)
-		//if err := w.push("cache", task.SectorID); err != nil {
-		//	return errRes(xerrors.Errorf("pushing precommited data: %w", err))
-		//}
 		 cachefilename := filepath.Join(w.repo, "cache", w.sb.SectorName(task.SectorID))
 		 os.RemoveAll(cachefilename)
 

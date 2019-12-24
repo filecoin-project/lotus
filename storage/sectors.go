@@ -293,10 +293,10 @@ func (m *Miner) SealPiece(ctx context.Context, size uint64, r io.Reader, sectorI
 		return xerrors.Errorf("adding piece to sector: %w", err)
 	}
 
-	return m.newSector(ctx, sectorID, dealID, ppi)
+	return m.newSector(ctx, sectorID, dealID, ppi ,"")
 }
 
-func (m *Miner) newSector(ctx context.Context, sid uint64, dealID uint64, ppi sectorbuilder.PublicPieceInfo) error {
+func (m *Miner) newSector(ctx context.Context, sid uint64, dealID uint64, ppi sectorbuilder.PublicPieceInfo, remoteid string) error {
 	si := &SectorInfo{
 		SectorID: sid,
 
@@ -308,6 +308,7 @@ func (m *Miner) newSector(ctx context.Context, sid uint64, dealID uint64, ppi se
 				CommP: ppi.CommP[:],
 			},
 		},
+		RemoteID: remoteid,
 	}
 	select {
 	case m.sectorIncoming <- si:

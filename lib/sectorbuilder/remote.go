@@ -9,7 +9,8 @@ import (
 type WorkerTaskType int
 
 const (
-	WorkerPreCommit WorkerTaskType = iota
+	WorkerAddPiece WorkerTaskType = iota
+	WorkerPreCommit
 	WorkerCommit
 )
 
@@ -18,6 +19,9 @@ type WorkerTask struct {
 	TaskID uint64
 
 	SectorID uint64
+
+	// AddPiece
+	CommP []byte
 
 	// preCommit
 	SealTicket SealTicket
@@ -57,15 +61,13 @@ func (sb *SectorBuilder) AddWorker(ctx context.Context, cfg WorkerCfg) (<-chan W
 func (sb *SectorBuilder) returnTask(task workerCall) {
 	var ret chan workerCall
 	switch task.task.Type {
+	case WorkerAddPiece:
+		ret = sb.preAddPieceTasks
 	case WorkerPreCommit:
-		ret = sb.precommitTasks
 	case WorkerCommit:
 		remoteid := task.task.RemoteID
 		log.Info("returnTask...", "RemoteID:", remoteid )
 		ret = sb.specialcommitTasks[remoteid]
-		if remoteid == "" {
-			ret = sb.commitTasks
-		}
 	default:
 		log.Error("unknown task type", task.task.Type)
 	}
@@ -94,14 +96,14 @@ func (sb *SectorBuilder) remoteWorker(ctx context.Context, r *remote, cfg Worker
 		}
 	}()
 
-	precommits := sb.precommitTasks
-	if cfg.NoPreCommit {
-		precommits = nil
-	}
-	commits := sb.commitTasks
-	if cfg.NoCommit {
-		commits = nil
-	}
+	//precommits := sb.precommitTasks
+	//if cfg.NoPreCommit {
+	//	precommits = nil
+	//}
+	//commits := sb.commitTasks
+	//if cfg.NoCommit {
+	//	commits = nil
+	//}
 
 	log.Infof("remoteWorker WorkerCfg RemoteID: %s", cfg.RemoteID)
 
@@ -112,15 +114,12 @@ func (sb *SectorBuilder) remoteWorker(ctx context.Context, r *remote, cfg Worker
 
 	for {
 		select {
+		case workertask := <-sb.preAddPieceTasks:
+			log.Infof("preAddPieceTasks SectorID: %d cfg.RemoteID: %s ", workertask.task.SectorID, cfg.RemoteID)
+			sb.doTask(ctx, r, workertask)
 		case workertask := <-sb.specialcommitTasks[cfg.RemoteID]:
-			log.Infof("specialcommits SectorID: %d cfg.RemoteID: %s RemoteID: %s", workertask.task.SectorID, cfg.RemoteID, workertask.task.RemoteID)
+			log.Infof("specialcommitTasks SectorID: %d cfg.RemoteID: %s RemoteID: %s", workertask.task.SectorID, cfg.RemoteID, workertask.task.RemoteID)
 			sb.doTask(ctx, r, workertask)
-		case workertask := <-commits:
-			log.Infof("commits SectorID: %d cfg.RemoteID: %s RemoteID: %s", workertask.task.SectorID, cfg.RemoteID, workertask.task.RemoteID)
-			sb.doTask(ctx, r, workertask)
-		case workertask := <-precommits:
-			log.Infof("precommits SectorID: %d cfg.RemoteID: %s ", workertask.task.SectorID, cfg.RemoteID)
-			 sb.doTask(ctx, r, workertask)
 		case <-ctx.Done():
 			return
 		case <-sb.stopping:
