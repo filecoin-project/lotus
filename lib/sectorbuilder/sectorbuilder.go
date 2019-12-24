@@ -470,7 +470,7 @@ func (sb *SectorBuilder) SealAddPieceLocal(sectorID uint64, size uint64) (commp[
 }
 
 func (sb *SectorBuilder) SealAddPiece(sectorID uint64, size uint64) ([]byte, string, error) {
-	log.Infof("SealAddPiece...", "sectorID: %d", sectorID)
+	log.Info("SealAddPiece...", "sectorID: ", sectorID)
 	call := workerCall{
 		task: WorkerTask{
 			Type:       WorkerAddPiece,
@@ -491,18 +491,15 @@ func (sb *SectorBuilder) SealAddPiece(sectorID uint64, size uint64) ([]byte, str
 			log.Infof("sealAddPieceRemote...", "sectorID: %d", sectorID)
 			return sb.sealAddPieceRemote(call)
 		default:
-			sb.checkRateLimit()
-			rl := sb.rateLimit
-
+			//rl := sb.rateLimit
 			select { // use whichever is available
 			case sb.preAddPieceTasks <- call:
 				log.Infof("sealAddPieceRemote...", "sectorID: %d", sectorID)
 				return sb.sealAddPieceRemote(call)
-			case rl <- struct{}{}:
-				log.Infof("sealAddPieceLocal...", "sectorID: %d", sectorID)
-				commp, err :=  sb.SealAddPieceLocal(sectorID, size)
-				return commp, "", err
-
+			//case rl <- struct{}{}:
+			//	log.Infof("sealAddPieceLocal...", "sectorID: %d", sectorID)
+			//	commp, err :=  sb.SealAddPieceLocal(sectorID, size)
+			//	return commp, "", err
 			}
 		}
 	}
@@ -539,11 +536,6 @@ func (sb *SectorBuilder) SealPreCommitLocal(sectorID uint64, ticket SealTicket, 
 		return RawSealPreCommitOutput{}, err
 	}
 	defer fs.free(dataSealed, sb.ssize)
-
-	// local
-	//defer func() {
-	//	<-sb.rateLimit
-	//}()
 
 	cacheDir, err := sb.sectorCacheDir(sectorID)
 	if err != nil {
@@ -614,14 +606,9 @@ func (sb *SectorBuilder) SealPreCommit(sectorID uint64, ticket SealTicket, piece
 	case specialtask <- call:
 		return sb.sealPreCommitRemote(call)
 	default:
-		sb.checkRateLimit()
-		rl := sb.rateLimit
-
 		select { // use whichever is available
 		case specialtask <- call:
 			return sb.sealPreCommitRemote(call)
-		case rl <- struct{}{}:
-			return sb.SealPreCommitLocal(sectorID, ticket, pieces)
 		}
 	}
 
@@ -646,10 +633,6 @@ func (sb *SectorBuilder) SealCommitLocal(sectorID uint64, ticket SealTicket, see
 	log.Info("SealCommitLocal...", "sectorID:", sectorID)
 	atomic.AddInt32(&sb.commitWait, -1)
 
-	//defer func() {
-	//	<-sb.rateLimit
-	//}()
-
 	cacheDir, err := sb.sectorCacheDir(sectorID)
 	if err != nil {
 		return nil, err
@@ -673,7 +656,7 @@ func (sb *SectorBuilder) SealCommitLocal(sectorID uint64, ticket SealTicket, see
 		return nil, xerrors.Errorf("StandaloneSealCommit: %w", err)
 	}
 
-	log.Info("SealCommitLocal...", "proof:", proof)
+	log.Info("SealCommitLocal...end", "sectorID:", sectorID)
 	return proof, nil
 }
 
@@ -705,19 +688,10 @@ func (sb *SectorBuilder) SealCommit(sectorID uint64, ticket SealTicket, seed Sea
 		log.Info("sealCommitRemote...", "RemoteID:", remoteid)
 		proof, err = sb.sealCommitRemote(call)
 	default:
-		sb.checkRateLimit()
-		rl := sb.rateLimit
-		//if sb.noCommit {
-		//	rl = make(chan struct{})
-		//}
-
 		select { // use whichever is available
 		case specialtask <- call:
 			log.Info("sealCommitRemote...", "RemoteID:", remoteid)
 			proof, err = sb.sealCommitRemote(call)
-		case rl <- struct{}{}:
-			log.Info("SealCommitLocal...", "RemoteID:", remoteid)
-			proof, err = sb.SealCommitLocal(sectorID, ticket, seed, pieces, rspco)
 		}
 	}
 	if err != nil {
