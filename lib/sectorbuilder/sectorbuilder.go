@@ -440,7 +440,7 @@ func (sb *SectorBuilder) sealAddPieceRemote(call workerCall) ([]byte,  string, e
 		return nil, "", xerrors.New("sectorbuilder stopped")
 	}
 }
-func (sb *SectorBuilder) SealAddPieceLocal(sectorID uint64, size uint64) (commp[]byte, remoteid string, err error) {
+func (sb *SectorBuilder) SealAddPieceLocal(sectorID uint64, size uint64) (commp[]byte, err error) {
 	log.Info("SealAddPieceLocal...", "sectorID:", sectorID)
 	atomic.AddInt32(&sb.addPieceWait, -1)
 
@@ -453,10 +453,10 @@ func (sb *SectorBuilder) SealAddPieceLocal(sectorID uint64, size uint64) (commp[
 
 	if err != nil {
 		log.Warnf("SealAddPieceLocal sectorID: %d error: ", sectorID, err)
-		return nil, "", xerrors.Errorf("StandaloneSealCommit: %w", err)
+		return nil, xerrors.Errorf("StandaloneSealCommit: %w", err)
 	}
 
-	return ppi.CommP[:], "", nil
+	return ppi.CommP[:], nil
 }
 
 func (sb *SectorBuilder) SealAddPiece(sectorID uint64, size uint64) ([]byte, string, error) {
@@ -490,7 +490,9 @@ func (sb *SectorBuilder) SealAddPiece(sectorID uint64, size uint64) ([]byte, str
 				return sb.sealAddPieceRemote(call)
 			case rl <- struct{}{}:
 				log.Infof("sealAddPieceLocal...", "sectorID: %d", sectorID)
-				return sb.SealAddPieceLocal(sectorID, size)
+				commp, err :=  sb.SealAddPieceLocal(sectorID, size)
+				return commp, "", err
+
 			}
 		}
 	}

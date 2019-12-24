@@ -139,7 +139,7 @@ func (w *worker) processTask(ctx context.Context, task sectorbuilder.WorkerTask)
 	case sectorbuilder.WorkerAddPiece:
 		size := sectorbuilder.UserBytesForSectorSize(w.sb.SectorSize())
 		log.Infof("WorkerAddPiece : %s SectorID: %d size:%d", constRemoteID,task.SectorID, size)
-		commp, _, err := w.sb.SealAddPieceLocal(task.SectorID, size)
+		commp, err := w.sb.SealAddPieceLocal(task.SectorID, size)
 		if err != nil {
 			return errRes(xerrors.Errorf("comitting: %w", err))
 		}
@@ -149,7 +149,7 @@ func (w *worker) processTask(ctx context.Context, task sectorbuilder.WorkerTask)
 
 	case sectorbuilder.WorkerPreCommit:
 		log.Infof("WorkerPreCommit : %s SectorID: %d", constRemoteID, task.SectorID)
-		rspco, _, err := w.sb.SealPreCommitLocal(task.SectorID, task.SealTicket, task.Pieces)
+		rspco, err := w.sb.SealPreCommitLocal(task.SectorID, task.SealTicket, task.Pieces)
 		if err != nil {
 			return errRes(xerrors.Errorf("precomitting: %w", err))
 		}
