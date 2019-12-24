@@ -69,7 +69,7 @@ func PreSeal(maddr address.Address, ssize uint64, offset uint64, sectors int, sb
 
 		fmt.Printf("sector-id: %d, sector-size: %d, piece info: %v", sid, size, pi)
 
-		pco, _, err := sb.SealPreCommitLocal(sid, ticket, []sectorbuilder.PublicPieceInfo{pi})
+		pco, err := sb.SealPreCommitLocal(sid, ticket, []sectorbuilder.PublicPieceInfo{pi})
 		if err != nil {
 			return nil, xerrors.Errorf("commit: %w", err)
 		}
