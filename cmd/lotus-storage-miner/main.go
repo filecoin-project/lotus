@@ -20,6 +20,7 @@ const FlagStorageRepo = "storagerepo"
 func main() {
 	logging.SetLogLevel("*", "INFO")
 	logging.SetLogLevel("swarm", "WARN")
+	logging.SetLogLevel("storageminer", "DEBUG")
 
 	local := []*cli.Command{
 		runCmd,
