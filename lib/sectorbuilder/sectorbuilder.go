@@ -488,13 +488,13 @@ func (sb *SectorBuilder) SealAddPiece(sectorID uint64, size uint64) ([]byte, str
 	default:
 		select { // prefer remote
 		case sb.preAddPieceTasks <- call:
-			log.Infof("sealAddPieceRemote...", "sectorID: %d", sectorID)
+			log.Info("sealAddPieceRemote...", "sectorID: ", sectorID)
 			return sb.sealAddPieceRemote(call)
 		default:
 			//rl := sb.rateLimit
 			select { // use whichever is available
 			case sb.preAddPieceTasks <- call:
-				log.Infof("sealAddPieceRemote...", "sectorID: %d", sectorID)
+				log.Info("sealAddPieceRemote...", "sectorID:", sectorID)
 				return sb.sealAddPieceRemote(call)
 			//case rl <- struct{}{}:
 			//	log.Infof("sealAddPieceLocal...", "sectorID: %d", sectorID)

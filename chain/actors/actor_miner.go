@@ -626,8 +626,14 @@ func (sma StorageMinerActor) SubmitFallbackPoSt(act *types.Actor, vmctx types.VM
 		})
 	}
 
+	log.Infow("SubmitFallbackPoSt", "mi.SectorSize", mi.SectorSize)
+	log.Infow("SubmitFallbackPoSt", "params.Proof", params.Proof)
+	log.Infow("SubmitFallbackPoSt", "candidates", candidates)
+	log.Infow("SubmitFallbackPoSt", "proverID", proverID)
+	log.Infow("SubmitFallbackPoSt", "faults", faults)
+
 	if ok, lerr := sectorbuilder.VerifyFallbackPost(vmctx.Context(), mi.SectorSize,
-		sectorbuilder.NewSortedPublicSectorInfo(sectorInfos), seed[:], params.Proof, candidates, proverID, 0); !ok || lerr != nil { // TODO: FORK - set faults to len(faults)
+		sectorbuilder.NewSortedPublicSectorInfo(sectorInfos), seed[:], params.Proof, candidates, proverID, len(faults)); !ok || lerr != nil { // TODO: FORK - set faults to len(faults)
 		if lerr != nil {
 			// TODO: study PoST errors
 			return nil, aerrors.Absorb(lerr, 4, "PoST error")

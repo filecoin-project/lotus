@@ -147,7 +147,9 @@ func (s *fpostScheduler) runPost(ctx context.Context, eps uint64, ts *types.TipS
 			ChallengeIndex: sc.SectorChallengeIndex,
 		}
 	}
-
+	log.Infow("submitting PoSt", "faults", faults)
+	log.Infow("submitting PoSt", "proof", proof)
+	log.Infow("submitting PoSt", "candidates", candidates)
 	return &actors.SubmitFallbackPoStParams{
 		Proof:      proof,
 		Candidates: candidates,
