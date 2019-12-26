@@ -198,8 +198,9 @@ func (w *worker) processTask(ctx context.Context, task sectorbuilder.WorkerTask)
 		sealedfilename := filepath.Join(w.repo, "sealed", w.sb.SectorName(task.SectorID))
 		os.RemoveAll(sealedfilename)
 
-		stagingfilename := filepath.Join(w.repo, "staging", w.sb.SectorName(task.SectorID))
-		os.RemoveAll(stagingfilename)
+		//link file 
+		//stagingfilename := filepath.Join(w.repo, "staging", w.sb.SectorName(task.SectorID))
+		//os.RemoveAll(stagingfilename)
 		if err != nil {
 			return errRes(xerrors.Errorf("comitting: %w", err))
 		}
