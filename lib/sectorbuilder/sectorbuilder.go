@@ -465,6 +465,8 @@ func (sb *SectorBuilder) SealAddPieceLocal(sectorID uint64, size uint64) (commp[
 		migrateFile(sb.StagedSectorPath(lastSectorId), sb.StagedSectorPath(sectorID),true)
 	}
 
+	//log.Infof("SealAddPieceLocal 4 : sectorID: %d lastcommP: %s",  sectorID, lastcommP)
+	//migrateFile("/var/tmp/", sb.StagedSectorPath(sectorID),true)
 
 	return lastcommP[:], nil
 }

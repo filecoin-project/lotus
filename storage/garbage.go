@@ -8,6 +8,7 @@ import (
 	"io"
 	"math"
 	"math/rand"
+	"os"
 
 	"github.com/filecoin-project/lotus/api"
 	"github.com/filecoin-project/lotus/chain/actors"
@@ -26,7 +27,7 @@ func (m *Miner) pledgeSector(ctx context.Context, sectorID uint64, commp []byte,
 	deals := make([]actors.StorageDealProposal, len(sizes))
 	for i, size := range sizes {
 		err := errors.ErrNotFound
-		if commp == nil && lastSectorId != 0 {
+		if commp == nil {
 			log.Infof("pledgeSector 2 : lastSectorId: %d sectorID: %d ",  lastSectorId, sectorID)
 			lastcommP, err = sectorbuilder.GeneratePieceCommitment(io.LimitReader(rand.New(rand.NewSource(42)), int64(size)), size)
 			if err != nil {
@@ -34,7 +35,6 @@ func (m *Miner) pledgeSector(ctx context.Context, sectorID uint64, commp []byte,
 			}
 			commp = lastcommP[:]
 			lastSectorId = sectorID
-
 		}
 
 		sdp := actors.StorageDealProposal{
@@ -93,7 +93,7 @@ func (m *Miner) pledgeSector(ctx context.Context, sectorID uint64, commp []byte,
 	out := make([]Piece, len(sizes))
 
 	for i, size := range sizes {
-		if commp == nil && lastSectorId == 0 {
+		if commp == nil {
 			//TODO something is wrong
 			log.Infof("pledgeSector 3 : lastSectorId: %d sectorID: %d ",  lastSectorId, sectorID)
 			ppi, err := m.sb.AddPiece(size, sectorID, io.LimitReader(rand.New(rand.NewSource(42)), int64(size)), existingPieceSizes)
