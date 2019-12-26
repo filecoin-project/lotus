@@ -1091,7 +1091,8 @@ func (syncer *Syncer) iterFullTipsets(ctx context.Context, headers []*types.TipS
 				return xerrors.Errorf("message processing failed: %w", err)
 			}
 		}
-		i -= windowSize
+		size := windowSize + 1
+		i -= size
 	}
 
 	return nil
