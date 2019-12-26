@@ -4,16 +4,14 @@ import (
 	"bytes"
 	"context"
 	"github.com/btcsuite/goleveldb/leveldb/errors"
-	"golang.org/x/xerrors"
-	"io"
-	"math"
-	"math/rand"
-	"os"
-
 	"github.com/filecoin-project/lotus/api"
 	"github.com/filecoin-project/lotus/chain/actors"
 	"github.com/filecoin-project/lotus/chain/types"
 	"github.com/filecoin-project/lotus/lib/sectorbuilder"
+	"golang.org/x/xerrors"
+	"io"
+	"math"
+	"math/rand"
 )
 
 var lastcommP = [32]byte {}
@@ -33,12 +31,13 @@ func (m *Miner) pledgeSector(ctx context.Context, sectorID uint64, commp []byte,
 			if err != nil {
 				return nil, err
 			}
-			commp = lastcommP[:]
 			lastSectorId = sectorID
+		} else {
+			copy(lastcommP[:], commp)
 		}
 
 		sdp := actors.StorageDealProposal{
-			PieceRef:             commp[:],
+			PieceRef:             lastcommP[:],
 			PieceSize:            size,
 			Client:               m.worker,
 			Provider:             m.maddr,
@@ -110,9 +109,6 @@ func (m *Miner) pledgeSector(ctx context.Context, sectorID uint64, commp []byte,
 			}
 		} else
 		{
-			log.Infof("pledgeSector 4 : sectorID: %d",  sectorID)
-			//os.Symlink(m.sb.StagedSectorPath(lastSectorId), m.sb.StagedSectorPath(sectorID))
-
 			out[i] = Piece{
 				DealID: resp.DealIDs[i],
 				Size:   size,
@@ -120,6 +116,8 @@ func (m *Miner) pledgeSector(ctx context.Context, sectorID uint64, commp []byte,
 			}
 		}
 	}
+
+	log.Info("pledgeSector 4 : out: ",  out)
 
 	return out, nil
 }

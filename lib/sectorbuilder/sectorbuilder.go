@@ -447,10 +447,6 @@ func (sb *SectorBuilder) SealAddPieceLocal(sectorID uint64, size uint64) (commp[
 	log.Info("SealAddPieceLocal...", "sectorID:", sectorID)
 	atomic.AddInt32(&sb.addPieceWait, -1)
 
-	//defer func() {
-	//	<-sb.rateLimit
-	//}()
-
 	//TODO  do once remeber ppi.CommP[:] len(lastcommP) == 0
 	if lastSectorId == 0 {
 		ppi, err := sb.AddPiece(size, sectorID, io.LimitReader(rand.New(rand.NewSource(42)), int64(size)), []uint64{})
@@ -461,11 +457,10 @@ func (sb *SectorBuilder) SealAddPieceLocal(sectorID uint64, size uint64) (commp[
 		lastcommP = ppi.CommP
 		lastSectorId = sectorID
 	}else {
-		log.Infof("SealAddPieceLocal 4 : sectorID: %d lastcommP: %s",  sectorID, lastcommP)
 		migrateFile(sb.StagedSectorPath(lastSectorId), sb.StagedSectorPath(sectorID),true)
 	}
 
-	//log.Infof("SealAddPieceLocal 4 : sectorID: %d lastcommP: %s",  sectorID, lastcommP)
+	log.Infof("SealAddPieceLocal : sectorID: %d lastcommP: %s",  sectorID, lastcommP)
 	//migrateFile("/var/tmp/", sb.StagedSectorPath(sectorID),true)
 
 	return lastcommP[:], nil
