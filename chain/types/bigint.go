@@ -127,11 +127,11 @@ func (bi *BigInt) UnmarshalJSON(b []byte) error {
 var sizeUnits = []string{"B", "KiB", "MiB", "GiB", "TiB", "PiB", "EiB", "ZiB"}
 
 func (bi BigInt) SizeStr() string {
-	r := new(big.Rat).SetInt(bi.Int)
+	r := new(big.Rat).SetUint64(bi.Uint64())
 	den := big.NewRat(1, 1024)
 
 	var i int
-	for f, _ := r.Float64(); f >= 1024 && 1 < len(sizeUnits); f, _ = r.Float64() {
+	for f, _ := r.Float64(); f >= 1024 && 1 < (len(sizeUnits) - 1); f, _ = r.Float64() {
 		i++
 		r = r.Mul(r, den)
 	}
