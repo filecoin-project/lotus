@@ -15,6 +15,7 @@ import (
 
 	"github.com/docker/go-units"
 	ffi "github.com/filecoin-project/filecoin-ffi"
+	paramfetch "github.com/filecoin-project/go-paramfetch"
 	"github.com/ipfs/go-datastore"
 	logging "github.com/ipfs/go-log"
 	"github.com/mitchellh/go-homedir"
@@ -154,7 +155,7 @@ func main() {
 				}
 			}
 
-			if err := build.GetParams(sectorSize); err != nil {
+			if err := paramfetch.GetParams(sectorSize); err != nil {
 				return xerrors.Errorf("getting params: %w", err)
 			}
 			sb, err := sectorbuilder.New(cfg, mds)

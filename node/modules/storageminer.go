@@ -5,6 +5,7 @@ import (
 	"math"
 	"reflect"
 
+	paramfetch "github.com/filecoin-project/go-paramfetch"
 	"github.com/ipfs/go-bitswap"
 	"github.com/ipfs/go-bitswap/network"
 	"github.com/ipfs/go-blockservice"
@@ -44,7 +45,7 @@ func minerAddrFromDS(ds dtypes.MetadataDS) (address.Address, error) {
 }
 
 func GetParams(sbc *sectorbuilder.Config) error {
-	if err := build.GetParams(sbc.SectorSize); err != nil {
+	if err := paramfetch.GetParams(sbc.SectorSize); err != nil {
 		return xerrors.Errorf("fetching proof parameters: %w", err)
 	}
 

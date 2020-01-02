@@ -11,6 +11,7 @@ import (
 	"path/filepath"
 	"strconv"
 
+	paramfetch "github.com/filecoin-project/go-paramfetch"
 	"github.com/ipfs/go-datastore"
 	badger "github.com/ipfs/go-ds-badger"
 	"github.com/libp2p/go-libp2p-core/crypto"
@@ -92,7 +93,7 @@ var initCmd = &cli.Command{
 		}
 
 		log.Info("Checking proof parameters")
-		if err := build.GetParams(ssize); err != nil {
+		if err := paramfetch.GetParams(ssize); err != nil {
 			return xerrors.Errorf("fetching proof parameters: %w", err)
 		}
 

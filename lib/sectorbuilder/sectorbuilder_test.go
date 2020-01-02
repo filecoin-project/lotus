@@ -12,12 +12,13 @@ import (
 	"testing"
 	"time"
 
+	ffi "github.com/filecoin-project/filecoin-ffi"
+	paramfetch "github.com/filecoin-project/go-paramfetch"
 	"github.com/ipfs/go-datastore"
 	logging "github.com/ipfs/go-log"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 
-	ffi "github.com/filecoin-project/filecoin-ffi"
 	"github.com/filecoin-project/lotus/build"
 	"github.com/filecoin-project/lotus/lib/sectorbuilder"
 )
@@ -134,7 +135,7 @@ func TestSealAndVerify(t *testing.T) {
 
 	build.SectorSizes = []uint64{sectorSize}
 
-	if err := build.GetParams(sectorSize); err != nil {
+	if err := paramfetch.GetParams(sectorSize); err != nil {
 		t.Fatalf("%+v", err)
 	}
 
@@ -206,7 +207,7 @@ func TestSealPoStNoCommit(t *testing.T) {
 
 	build.SectorSizes = []uint64{sectorSize}
 
-	if err := build.GetParams(sectorSize); err != nil {
+	if err := paramfetch.GetParams(sectorSize); err != nil {
 		t.Fatalf("%+v", err)
 	}
 
@@ -275,7 +276,7 @@ func TestSealAndVerify2(t *testing.T) {
 
 	build.SectorSizes = []uint64{sectorSize}
 
-	if err := build.GetParams(sectorSize); err != nil {
+	if err := paramfetch.GetParams(sectorSize); err != nil {
 		t.Fatalf("%+v", err)
 	}
 
