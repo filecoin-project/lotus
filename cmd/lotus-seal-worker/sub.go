@@ -91,9 +91,9 @@ func (w *worker) processTask(ctx context.Context, task sectorbuilder.WorkerTask)
 		return errRes(xerrors.Errorf("unknown task type %d", task.Type))
 	}
 
-	if err := w.fetchSector(task.SectorID, task.Type); err != nil {
-		return errRes(xerrors.Errorf("fetching sector: %w", err))
-	}
+	//if err := w.fetchSector(task.SectorID, task.Type); err != nil {
+	//	return errRes(xerrors.Errorf("fetching sector: %w", err))
+	//}
 
 	log.Infof("Data fetched, starting computation")
 
@@ -107,13 +107,13 @@ func (w *worker) processTask(ctx context.Context, task sectorbuilder.WorkerTask)
 		}
 		res.Rspco = rspco.ToJson()
 
-		if err := w.push("sealed", task.SectorID); err != nil {
-			return errRes(xerrors.Errorf("pushing precommited data: %w", err))
-		}
+		//if err := w.push("sealed", task.SectorID); err != nil {
+		//	return errRes(xerrors.Errorf("pushing precommited data: %w", err))
+		//}
 
-		if err := w.push("cache", task.SectorID); err != nil {
-			return errRes(xerrors.Errorf("pushing precommited data: %w", err))
-		}
+		//if err := w.push("cache", task.SectorID); err != nil {
+		//	return errRes(xerrors.Errorf("pushing precommited data: %w", err))
+		//}
 	case sectorbuilder.WorkerCommit:
 		proof, err := w.sb.SealCommit(task.SectorID, task.SealTicket, task.SealSeed, task.Pieces, task.Rspco)
 		if err != nil {
@@ -122,9 +122,9 @@ func (w *worker) processTask(ctx context.Context, task sectorbuilder.WorkerTask)
 
 		res.Proof = proof
 
-		if err := w.push("cache", task.SectorID); err != nil {
-			return errRes(xerrors.Errorf("pushing precommited data: %w", err))
-		}
+		//if err := w.push("cache", task.SectorID); err != nil {
+		//	return errRes(xerrors.Errorf("pushing precommited data: %w", err))
+		//}
 	}
 
 	return res

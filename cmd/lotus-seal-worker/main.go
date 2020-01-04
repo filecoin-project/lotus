@@ -35,7 +35,8 @@ func main() {
 			&cli.StringFlag{
 				Name:    "repo",
 				EnvVars: []string{"WORKER_PATH"},
-				Value:   "~/.lotusworker", // TODO: Consider XDG_DATA_HOME
+				//Value:   "~/.lotusworker", // TODO: Consider XDG_DATA_HOME
+				Value:   "~/.lotusstorage", // TODO: Consider XDG_DATA_HOME
 			},
 			&cli.StringFlag{
 				Name:    "storagerepo",
