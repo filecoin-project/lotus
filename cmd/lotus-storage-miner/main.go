@@ -9,6 +9,7 @@ import (
 
 	"github.com/filecoin-project/lotus/build"
 	lcli "github.com/filecoin-project/lotus/cli"
+	"github.com/filecoin-project/lotus/node/repo"
 	"github.com/filecoin-project/lotus/tracing"
 )
 
@@ -24,7 +25,7 @@ func main() {
 		runCmd,
 		initCmd,
 		infoCmd,
-		storeGarbageCmd,
+		pledgeSectorCmd,
 		sectorsCmd,
 	}
 	jaeger := tracing.SetupJaegerTracing("lotus")
@@ -51,7 +52,7 @@ func main() {
 	app := &cli.App{
 		Name:    "lotus-storage-miner",
 		Usage:   "Filecoin decentralized storage network storage miner",
-		Version: build.Version,
+		Version: build.UserVersion,
 		Flags: []cli.Flag{
 			&cli.StringFlag{
 				Name:    "repo",
@@ -68,6 +69,8 @@ func main() {
 
 		Commands: append(local, lcli.Commands...),
 	}
+	app.Setup()
+	app.Metadata["repoType"] = repo.StorageMiner
 
 	if err := app.Run(os.Args); err != nil {
 		log.Warnf("%+v", err)

@@ -160,6 +160,30 @@ func GetMinerElectionPeriodStart(ctx context.Context, sm *StateManager, ts *type
 	return mas.ElectionPeriodStart, nil
 }
 
+func SectorSetSizes(ctx context.Context, sm *StateManager, maddr address.Address, ts *types.TipSet) (api.MinerSectors, error) {
+	var mas actors.StorageMinerActorState
+	_, err := sm.LoadActorState(ctx, maddr, &mas, ts)
+	if err != nil {
+		return api.MinerSectors{}, xerrors.Errorf("(get sset) failed to load miner actor state: %w", err)
+	}
+
+	blks := amt.WrapBlockstore(sm.ChainStore().Blockstore())
+	ss, err := amt.LoadAMT(blks, mas.Sectors)
+	if err != nil {
+		return api.MinerSectors{}, err
+	}
+
+	ps, err := amt.LoadAMT(blks, mas.ProvingSet)
+	if err != nil {
+		return api.MinerSectors{}, err
+	}
+
+	return api.MinerSectors{
+		Pset: ps.Count,
+		Sset: ss.Count,
+	}, nil
+}
+
 func GetMinerProvingSet(ctx context.Context, sm *StateManager, ts *types.TipSet, maddr address.Address) ([]*api.ChainSectorInfo, error) {
 	var mas actors.StorageMinerActorState
 	_, err := sm.LoadActorState(ctx, maddr, &mas, ts)
@@ -244,6 +268,21 @@ func GetStorageDeal(ctx context.Context, sm *StateManager, dealId uint64, ts *ty
 	}
 
 	return &ocd, nil
+}
+
+func ListMinerActors(ctx context.Context, sm *StateManager, ts *types.TipSet) ([]address.Address, error) {
+	var state actors.StoragePowerState
+	if _, err := sm.LoadActorState(ctx, actors.StoragePowerAddress, &state, ts); err != nil {
+		return nil, err
+	}
+
+	cst := hamt.CSTFromBstore(sm.ChainStore().Blockstore())
+	miners, err := actors.MinerSetList(ctx, cst, state.Miners)
+	if err != nil {
+		return nil, err
+	}
+
+	return miners, nil
 }
 
 func LoadSectorsFromSet(ctx context.Context, bs blockstore.Blockstore, ssc cid.Cid) ([]*api.ChainSectorInfo, error) {

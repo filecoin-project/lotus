@@ -36,12 +36,18 @@ type API struct {
 type Libp2p struct {
 	ListenAddresses []string
 	BootstrapPeers  []string
+	ProtectedPeers  []string
+
+	ConnMgrLow   uint
+	ConnMgrHigh  uint
+	ConnMgrGrace Duration
 }
 
 // // Full Node
 
 type Metrics struct {
 	Nickname      string
+	HeadNotifs    bool
 	PubsubTracing bool
 }
 
@@ -66,6 +72,10 @@ func defCommon() Common {
 				"/ip4/0.0.0.0/tcp/0",
 				"/ip6/::/tcp/0",
 			},
+
+			ConnMgrLow:   150,
+			ConnMgrHigh:  180,
+			ConnMgrGrace: Duration(20 * time.Second),
 		},
 	}
 

@@ -40,7 +40,7 @@ func main() {
 	app := &cli.App{
 		Name:    "lotus-fountain",
 		Usage:   "Devnet token distribution utility",
-		Version: build.Version,
+		Version: build.UserVersion,
 		Flags: []cli.Flag{
 			&cli.StringFlag{
 				Name:    "repo",
@@ -100,7 +100,7 @@ var runCmd = &cli.Command{
 				IPRate:      time.Minute,
 				IPBurst:     5,
 				WalletRate:  15 * time.Minute,
-				WalletBurst: 1,
+				WalletBurst: 2,
 			}),
 			minerLimiter: NewLimiter(LimiterConfig{
 				TotalRate:   time.Second,
@@ -108,7 +108,7 @@ var runCmd = &cli.Command{
 				IPRate:      10 * time.Minute,
 				IPBurst:     2,
 				WalletRate:  1 * time.Hour,
-				WalletBurst: 1,
+				WalletBurst: 2,
 			}),
 		}
 
@@ -150,7 +150,7 @@ func (h *handler) send(w http.ResponseWriter, r *http.Request) {
 	// Limit based on wallet address
 	limiter := h.limiter.GetWalletLimiter(to.String())
 	if !limiter.Allow() {
-		http.Error(w, http.StatusText(http.StatusTooManyRequests), http.StatusTooManyRequests)
+		http.Error(w, http.StatusText(http.StatusTooManyRequests)+": wallet limit", http.StatusTooManyRequests)
 		return
 	}
 
@@ -170,13 +170,13 @@ func (h *handler) send(w http.ResponseWriter, r *http.Request) {
 
 	limiter = h.limiter.GetIPLimiter(reqIP)
 	if !limiter.Allow() {
-		http.Error(w, http.StatusText(http.StatusTooManyRequests), http.StatusTooManyRequests)
+		http.Error(w, http.StatusText(http.StatusTooManyRequests)+": IP limit", http.StatusTooManyRequests)
 		return
 	}
 
 	// General limiter to allow throttling all messages that can make it into the mpool
 	if !h.limiter.Allow() {
-		http.Error(w, http.StatusText(http.StatusTooManyRequests), http.StatusTooManyRequests)
+		http.Error(w, http.StatusText(http.StatusTooManyRequests)+": global limit", http.StatusTooManyRequests)
 		return
 	}
 
@@ -221,20 +221,20 @@ func (h *handler) mkminer(w http.ResponseWriter, r *http.Request) {
 	// Limit based on wallet address
 	limiter := h.minerLimiter.GetWalletLimiter(owner.String())
 	if !limiter.Allow() {
-		http.Error(w, http.StatusText(http.StatusTooManyRequests), http.StatusTooManyRequests)
+		http.Error(w, http.StatusText(http.StatusTooManyRequests)+": wallet limit", http.StatusTooManyRequests)
 		return
 	}
 
 	// Limit based on IP
 	limiter = h.minerLimiter.GetIPLimiter(r.RemoteAddr)
 	if !limiter.Allow() {
-		http.Error(w, http.StatusText(http.StatusTooManyRequests), http.StatusTooManyRequests)
+		http.Error(w, http.StatusText(http.StatusTooManyRequests)+": IP limit", http.StatusTooManyRequests)
 		return
 	}
 
 	// General limiter owner allow throttling all messages that can make it into the mpool
 	if !h.minerLimiter.Allow() {
-		http.Error(w, http.StatusText(http.StatusTooManyRequests), http.StatusTooManyRequests)
+		http.Error(w, http.StatusText(http.StatusTooManyRequests)+": global limit", http.StatusTooManyRequests)
 		return
 	}
 

@@ -2,6 +2,7 @@ package storage
 
 import (
 	"context"
+	"sync"
 
 	"go.opencensus.io/trace"
 	"golang.org/x/xerrors"
@@ -29,6 +30,9 @@ type fpostScheduler struct {
 	// if a post is in progress, this indicates for which ElectionPeriodStart
 	activeEPS uint64
 	abort     context.CancelFunc
+
+	failed uint64 // eps
+	failLk sync.Mutex
 }
 
 func (s *fpostScheduler) run(ctx context.Context) {
@@ -110,6 +114,13 @@ func (s *fpostScheduler) update(ctx context.Context, new *types.TipSet) error {
 	if err != nil {
 		return err
 	}
+
+	s.failLk.Lock()
+	if s.failed > 0 {
+		s.failed = 0
+		s.activeEPS = 0
+	}
+	s.failLk.Unlock()
 
 	if newEPS == s.activeEPS {
 		return nil

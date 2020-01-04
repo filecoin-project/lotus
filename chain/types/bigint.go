@@ -124,6 +124,22 @@ func (bi *BigInt) UnmarshalJSON(b []byte) error {
 	return nil
 }
 
+var sizeUnits = []string{"B", "KiB", "MiB", "GiB", "TiB", "PiB", "EiB", "ZiB"}
+
+func (bi BigInt) SizeStr() string {
+	r := new(big.Rat).SetInt(bi.Int)
+	den := big.NewRat(1, 1024)
+
+	var i int
+	for f, _ := r.Float64(); f >= 1024 && 1 < len(sizeUnits); f, _ = r.Float64() {
+		i++
+		r = r.Mul(r, den)
+	}
+
+	f, _ := r.Float64()
+	return fmt.Sprintf("%.3g %s", f, sizeUnits[i])
+}
+
 func (bi *BigInt) Scan(value interface{}) error {
 	switch value := value.(type) {
 	case string:
@@ -236,4 +252,8 @@ func (bi *BigInt) UnmarshalCBOR(br io.Reader) error {
 	*bi = i
 
 	return nil
+}
+
+func (bi *BigInt) IsZero() bool {
+	return bi.Int.Sign() == 0
 }

@@ -40,8 +40,8 @@ cd lotus/
 Install
 
 ```sh
-make clean all
+make clean && make all
 sudo make install
 ```
 
-Now you can use the command `lotus` in the CLI and join the [Lotus DevNet](https://docs.lotu.sh/en+join-devnet).
+After installing Lotus, you can run the `lotus` command directly from your CLI to see usage documentation. Next, you can join the [Lotus Testnet](https://docs.lotu.sh/en+join-testnet).

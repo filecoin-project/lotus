@@ -15,12 +15,12 @@ import (
 	"github.com/filecoin-project/lotus/lib/sectorbuilder"
 )
 
-func (m *Miner) storeGarbage(ctx context.Context, sectorID uint64, existingPieceSizes []uint64, sizes ...uint64) ([]Piece, error) {
+func (m *Miner) pledgeSector(ctx context.Context, sectorID uint64, existingPieceSizes []uint64, sizes ...uint64) ([]Piece, error) {
 	if len(sizes) == 0 {
 		return nil, nil
 	}
 
-	deals := make([]actors.StorageDeal, len(sizes))
+	deals := make([]actors.StorageDealProposal, len(sizes))
 	for i, size := range sizes {
 		release := m.sb.RateLimit()
 		commP, err := sectorbuilder.GeneratePieceCommitment(io.LimitReader(rand.New(rand.NewSource(42)), int64(size)), size)
@@ -33,7 +33,6 @@ func (m *Miner) storeGarbage(ctx context.Context, sectorID uint64, existingPiece
 		sdp := actors.StorageDealProposal{
 			PieceRef:             commP[:],
 			PieceSize:            size,
-			PieceSerialization:   actors.SerializationUnixFSv0,
 			Client:               m.worker,
 			Provider:             m.maddr,
 			ProposalExpiration:   math.MaxUint64,
@@ -47,14 +46,7 @@ func (m *Miner) storeGarbage(ctx context.Context, sectorID uint64, existingPiece
 			return nil, xerrors.Errorf("signing storage deal failed: ", err)
 		}
 
-		storageDeal := actors.StorageDeal{
-			Proposal: sdp,
-		}
-		if err := api.SignWith(ctx, m.api.WalletSign, m.worker, &storageDeal); err != nil {
-			return nil, xerrors.Errorf("signing storage deal failed: ", err)
-		}
-
-		deals[i] = storageDeal
+		deals[i] = sdp
 	}
 
 	params, aerr := actors.SerializeParams(&actors.PublishStorageDealsParams{
@@ -111,7 +103,7 @@ func (m *Miner) storeGarbage(ctx context.Context, sectorID uint64, existingPiece
 	return out, nil
 }
 
-func (m *Miner) StoreGarbageData() error {
+func (m *Miner) PledgeSector() error {
 	go func() {
 		ctx := context.TODO() // we can't use the context from command which invokes
 		// this, as we run everything here async, and it's cancelled when the
@@ -125,7 +117,7 @@ func (m *Miner) StoreGarbageData() error {
 			return
 		}
 
-		pieces, err := m.storeGarbage(ctx, sid, []uint64{}, size)
+		pieces, err := m.pledgeSector(ctx, sid, []uint64{}, size)
 		if err != nil {
 			log.Errorf("%+v", err)
 			return

@@ -22,6 +22,7 @@ import (
 	"github.com/filecoin-project/lotus/chain/types"
 	"github.com/filecoin-project/lotus/lib/cborutil"
 	"github.com/filecoin-project/lotus/node/modules/dtypes"
+	"github.com/filecoin-project/lotus/peermgr"
 )
 
 type BlockSync struct {
@@ -29,13 +30,15 @@ type BlockSync struct {
 	host  host.Host
 
 	syncPeers *bsPeerTracker
+	peerMgr   *peermgr.PeerMgr
 }
 
-func NewBlockSyncClient(bserv dtypes.ChainBlockService, h host.Host) *BlockSync {
+func NewBlockSyncClient(bserv dtypes.ChainBlockService, h host.Host, pmgr peermgr.MaybePeerMgr) *BlockSync {
 	return &BlockSync{
 		bserv:     bserv,
 		host:      h,
-		syncPeers: newPeerTracker(),
+		syncPeers: newPeerTracker(pmgr.Mgr),
+		peerMgr:   pmgr.Mgr,
 	}
 }
 
@@ -56,25 +59,29 @@ func (bs *BlockSync) processStatus(req *BlockSyncRequest, res *BlockSyncResponse
 	}
 }
 
-func (bs *BlockSync) GetBlocks(ctx context.Context, tipset []cid.Cid, count int) ([]*types.TipSet, error) {
+func (bs *BlockSync) GetBlocks(ctx context.Context, tsk types.TipSetKey, count int) ([]*types.TipSet, error) {
 	ctx, span := trace.StartSpan(ctx, "bsync.GetBlocks")
 	defer span.End()
 	if span.IsRecordingEvents() {
 		span.AddAttributes(
-			trace.StringAttribute("tipset", fmt.Sprint(tipset)),
+			trace.StringAttribute("tipset", fmt.Sprint(tsk.Cids())),
 			trace.Int64Attribute("count", int64(count)),
 		)
 	}
 
 	req := &BlockSyncRequest{
-		Start:         tipset,
+		Start:         tsk.Cids(),
 		RequestLength: uint64(count),
 		Options:       BSOptBlocks,
 	}
 
 	peers := bs.getPeers()
+	// randomize the first few peers so we don't always pick the same peer
+	shufflePrefix(peers)
 
+	start := time.Now()
 	var oerr error
+
 	for _, p := range peers {
 		// TODO: doing this synchronously isnt great, but fetching in parallel
 		// may not be a good idea either. think about this more
@@ -87,12 +94,20 @@ func (bs *BlockSync) GetBlocks(ctx context.Context, tipset []cid.Cid, count int)
 		res, err := bs.sendRequestToPeer(ctx, p, req)
 		if err != nil {
 			oerr = err
-			log.Warnf("BlockSync request failed for peer %s: %s", p.String(), err)
+			if !xerrors.Is(err, inet.ErrNoConn) {
+				log.Warnf("BlockSync request failed for peer %s: %s", p.String(), err)
+			}
 			continue
 		}
 
 		if res.Status == 0 {
-			return bs.processBlocksResponse(req, res)
+			resp, err := bs.processBlocksResponse(req, res)
+			if err != nil {
+				return nil, xerrors.Errorf("success response from peer failed to process: %w", err)
+			}
+			bs.syncPeers.logGlobalSuccess(time.Since(start))
+			bs.host.ConnManager().TagPeer(p, "bsync", 25)
+			return resp, nil
 		}
 		oerr = bs.processStatus(req, res)
 		if oerr != nil {
@@ -102,11 +117,11 @@ func (bs *BlockSync) GetBlocks(ctx context.Context, tipset []cid.Cid, count int)
 	return nil, xerrors.Errorf("GetBlocks failed with all peers: %w", oerr)
 }
 
-func (bs *BlockSync) GetFullTipSet(ctx context.Context, p peer.ID, h []cid.Cid) (*store.FullTipSet, error) {
+func (bs *BlockSync) GetFullTipSet(ctx context.Context, p peer.ID, tsk types.TipSetKey) (*store.FullTipSet, error) {
 	// TODO: round robin through these peers on error
 
 	req := &BlockSyncRequest{
-		Start:         h,
+		Start:         tsk.Cids(),
 		RequestLength: 1,
 		Options:       BSOptBlocks | BSOptMessages,
 	}
@@ -139,13 +154,28 @@ func (bs *BlockSync) GetFullTipSet(ctx context.Context, p peer.ID, h []cid.Cid) 
 	}
 }
 
+func shufflePrefix(peers []peer.ID) {
+	pref := 5
+	if len(peers) < pref {
+		pref = len(peers)
+	}
+
+	buf := make([]peer.ID, pref)
+	perm := rand.Perm(pref)
+	for i, v := range perm {
+		buf[i] = peers[v]
+	}
+
+	copy(peers, buf)
+}
+
 func (bs *BlockSync) GetChainMessages(ctx context.Context, h *types.TipSet, count uint64) ([]*BSTipSet, error) {
 	ctx, span := trace.StartSpan(ctx, "GetChainMessages")
 	defer span.End()
 
 	peers := bs.getPeers()
-	perm := rand.Perm(len(peers))
-	// TODO: round robin through these peers on error
+	// randomize the first few peers so we don't always pick the same peer
+	shufflePrefix(peers)
 
 	req := &BlockSyncRequest{
 		Start:         h.Cids(),
@@ -154,21 +184,24 @@ func (bs *BlockSync) GetChainMessages(ctx context.Context, h *types.TipSet, coun
 	}
 
 	var err error
-	for _, p := range perm {
-		res, rerr := bs.sendRequestToPeer(ctx, peers[p], req)
+	start := time.Now()
+
+	for _, p := range peers {
+		res, rerr := bs.sendRequestToPeer(ctx, p, req)
 		if rerr != nil {
 			err = rerr
-			log.Warnf("BlockSync request failed for peer %s: %s", peers[p].String(), err)
+			log.Warnf("BlockSync request failed for peer %s: %s", p.String(), err)
 			continue
 		}
 
 		if res.Status == 0 {
+			bs.syncPeers.logGlobalSuccess(time.Since(start))
 			return res.Chain, nil
 		}
+
 		err = bs.processStatus(req, res)
 		if err != nil {
-
-			log.Warnf("BlockSync peer %s response was an error: %s", peers[p].String(), err)
+			log.Warnf("BlockSync peer %s response was an error: %s", p.String(), err)
 		}
 	}
 
@@ -180,9 +213,22 @@ func (bs *BlockSync) GetChainMessages(ctx context.Context, h *types.TipSet, coun
 	return nil, xerrors.Errorf("GetChainMessages failed with all peers(%d): %w", len(peers), err)
 }
 
-func (bs *BlockSync) sendRequestToPeer(ctx context.Context, p peer.ID, req *BlockSyncRequest) (*BlockSyncResponse, error) {
+func (bs *BlockSync) sendRequestToPeer(ctx context.Context, p peer.ID, req *BlockSyncRequest) (_ *BlockSyncResponse, err error) {
 	ctx, span := trace.StartSpan(ctx, "sendRequestToPeer")
 	defer span.End()
+
+	defer func() {
+		if err != nil {
+			if span.IsRecordingEvents() {
+				span.SetStatus(trace.Status{
+					Code:    5,
+					Message: err.Error(),
+				})
+			}
+		}
+	}()
+
+	start := time.Now()
 
 	if span.IsRecordingEvents() {
 		span.AddAttributes(
@@ -195,13 +241,17 @@ func (bs *BlockSync) sendRequestToPeer(ctx context.Context, p peer.ID, req *Bloc
 		bs.RemovePeer(p)
 		return nil, xerrors.Errorf("failed to open stream to peer: %w", err)
 	}
+	s.SetDeadline(time.Now().Add(10 * time.Second))
+	defer s.SetDeadline(time.Time{})
 
 	if err := cborutil.WriteCborRPC(s, req); err != nil {
+		bs.syncPeers.logFailure(p, time.Since(start))
 		return nil, err
 	}
 
 	var res BlockSyncResponse
 	if err := cborutil.ReadCborRPC(bufio.NewReader(s), &res); err != nil {
+		bs.syncPeers.logFailure(p, time.Since(start))
 		return nil, err
 	}
 
@@ -212,10 +262,17 @@ func (bs *BlockSync) sendRequestToPeer(ctx context.Context, p peer.ID, req *Bloc
 			trace.Int64Attribute("chain_len", int64(len(res.Chain))),
 		)
 	}
+
+	bs.syncPeers.logSuccess(p, time.Since(start))
+
 	return &res, nil
 }
 
 func (bs *BlockSync) processBlocksResponse(req *BlockSyncRequest, res *BlockSyncResponse) ([]*types.TipSet, error) {
+	if len(res.Chain) == 0 {
+		return nil, xerrors.Errorf("got no blocks in successful blocksync response")
+	}
+
 	cur, err := types.NewTipSet(res.Chain[0].Blocks)
 	if err != nil {
 		return nil, err
@@ -229,7 +286,7 @@ func (bs *BlockSync) processBlocksResponse(req *BlockSyncRequest, res *BlockSync
 			return nil, err
 		}
 
-		if !types.CidArrsEqual(cur.Parents(), nts.Cids()) {
+		if !types.CidArrsEqual(cur.Parents().Cids(), nts.Cids()) {
 			return nil, fmt.Errorf("parents of tipset[%d] were not tipset[%d]", bi-1, bi)
 		}
 
@@ -338,21 +395,28 @@ func (bs *BlockSync) fetchCids(ctx context.Context, cids []cid.Cid, cb func(int,
 }
 
 type peerStats struct {
-	successes int
-	failures  int
-	firstSeen time.Time
+	successes   int
+	failures    int
+	firstSeen   time.Time
+	averageTime time.Duration
 }
 
 type bsPeerTracker struct {
-	peers map[peer.ID]*peerStats
-	lk    sync.Mutex
+	lk sync.Mutex
+
+	peers         map[peer.ID]*peerStats
+	avgGlobalTime time.Duration
+
+	pmgr *peermgr.PeerMgr
 }
 
-func newPeerTracker() *bsPeerTracker {
+func newPeerTracker(pmgr *peermgr.PeerMgr) *bsPeerTracker {
 	return &bsPeerTracker{
 		peers: make(map[peer.ID]*peerStats),
+		pmgr:  pmgr,
 	}
 }
+
 func (bpt *bsPeerTracker) addPeer(p peer.ID) {
 	bpt.lk.Lock()
 	defer bpt.lk.Unlock()
@@ -365,6 +429,12 @@ func (bpt *bsPeerTracker) addPeer(p peer.ID) {
 
 }
 
+const (
+	// newPeerMul is how much better than average is the new peer assumed to be
+	// less than one to encourouge trying new peers
+	newPeerMul = 0.9
+)
+
 func (bpt *bsPeerTracker) prefSortedPeers() []peer.ID {
 	// TODO: this could probably be cached, but as long as its not too many peers, fine for now
 	bpt.lk.Lock()
@@ -374,40 +444,99 @@ func (bpt *bsPeerTracker) prefSortedPeers() []peer.ID {
 		out = append(out, p)
 	}
 
+	// sort by 'expected cost' of requesting data from that peer
+	// additionally handle edge cases where not enough data is available
 	sort.Slice(out, func(i, j int) bool {
 		pi := bpt.peers[out[i]]
 		pj := bpt.peers[out[j]]
-		if pi.successes > pj.successes {
-			return true
+
+		var costI, costJ float64
+
+		getPeerInitLat := func(p peer.ID) float64 {
+			var res float64
+			if bpt.pmgr != nil {
+				if lat, ok := bpt.pmgr.GetPeerLatency(out[i]); ok {
+					res = float64(lat)
+				}
+			}
+			if res == 0 {
+				res = float64(bpt.avgGlobalTime)
+			}
+			return res * newPeerMul
 		}
-		if pi.failures < pj.successes {
-			return true
+
+		if pi.successes+pi.failures > 0 {
+			failRateI := float64(pi.failures) / float64(pi.failures+pi.successes)
+			costI = float64(pi.averageTime) + failRateI*float64(bpt.avgGlobalTime)
+		} else {
+			costI = getPeerInitLat(out[i])
 		}
-		return pi.firstSeen.Before(pj.firstSeen)
+
+		if pj.successes+pj.failures > 0 {
+			failRateJ := float64(pj.failures) / float64(pj.failures+pj.successes)
+			costJ = float64(pj.averageTime) + failRateJ*float64(bpt.avgGlobalTime)
+		} else {
+			costI = getPeerInitLat(out[i])
+		}
+
+		return costI < costJ
 	})
 
 	return out
 }
 
-func (bpt *bsPeerTracker) logSuccess(p peer.ID) {
+const (
+	// xInvAlpha = (N+1)/2
+
+	localInvAlpha  = 5  // 86% of the value is the last 9
+	globalInvAlpha = 20 // 86% of the value is the last 39
+)
+
+func (bpt *bsPeerTracker) logGlobalSuccess(dur time.Duration) {
 	bpt.lk.Lock()
 	defer bpt.lk.Unlock()
+
+	if bpt.avgGlobalTime == 0 {
+		bpt.avgGlobalTime = dur
+		return
+	}
+	delta := (dur - bpt.avgGlobalTime) / globalInvAlpha
+	bpt.avgGlobalTime += delta
+}
+
+func logTime(pi *peerStats, dur time.Duration) {
+	if pi.averageTime == 0 {
+		pi.averageTime = dur
+		return
+	}
+	delta := (dur - pi.averageTime) / localInvAlpha
+	pi.averageTime += delta
+
+}
+
+func (bpt *bsPeerTracker) logSuccess(p peer.ID, dur time.Duration) {
+	bpt.lk.Lock()
+	defer bpt.lk.Unlock()
+
 	if pi, ok := bpt.peers[p]; !ok {
-		log.Warn("log success called on peer not in tracker")
+		log.Warnw("log success called on peer not in tracker", "peerid", p.String())
 		return
 	} else {
 		pi.successes++
+
+		logTime(pi, dur)
 	}
 }
 
-func (bpt *bsPeerTracker) logFailure(p peer.ID) {
+func (bpt *bsPeerTracker) logFailure(p peer.ID, dur time.Duration) {
 	bpt.lk.Lock()
 	defer bpt.lk.Unlock()
 	if pi, ok := bpt.peers[p]; !ok {
-		log.Warn("log failure called on peer not in tracker")
+		log.Warn("log failure called on peer not in tracker", "peerid", p.String())
 		return
 	} else {
 		pi.failures++
+		logTime(pi, dur)
 	}
 }
 

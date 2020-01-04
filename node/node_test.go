@@ -43,6 +43,7 @@ func init() {
 	_ = logging.SetLogLevel("*", "INFO")
 
 	build.SectorSizes = []uint64{1024}
+	build.MinimumMinerPower = 1024
 }
 
 func testStorageNode(ctx context.Context, t *testing.T, waddr address.Address, act address.Address, pk crypto.PrivKey, tnd test.TestNode, mn mocknet.Mocknet) test.TestStorageNode {
@@ -228,16 +229,13 @@ func builder(t *testing.T, nFull int, storage []int) ([]test.TestNode, []test.Te
 			SectorSize:    1024,
 			WorkerThreads: 2,
 			Miner:         genMiner,
-			CacheDir:      filepath.Join(psd, "cache"),
-			StagedDir:     filepath.Join(psd, "staging"),
-			SealedDir:     filepath.Join(psd, "sealed"),
-			UnsealedDir:   filepath.Join(psd, "unsealed"),
+			Dir:           psd,
 		}, mds)
 		if err != nil {
 			t.Fatal(err)
 		}
 
-		if err := sma.SectorBuilder.ImportFrom(osb); err != nil {
+		if err := sma.SectorBuilder.ImportFrom(osb, false); err != nil {
 			t.Fatal(err)
 		}
 
@@ -292,5 +290,8 @@ func TestAPIRPC(t *testing.T) {
 }
 
 func TestAPIDealFlow(t *testing.T) {
+	if testing.Short() {
+		t.Skip("skipping test in short mode")
+	}
 	test.TestDealFlow(t, builder)
 }

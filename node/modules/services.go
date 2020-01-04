@@ -43,7 +43,7 @@ func RunBlockSync(h host.Host, svc *blocksync.BlockSyncService) {
 	h.SetStreamHandler(blocksync.BlockSyncProtocolID, svc.HandleStream)
 }
 
-func HandleIncomingBlocks(mctx helpers.MetricsCtx, lc fx.Lifecycle, pubsub *pubsub.PubSub, s *chain.Syncer) {
+func HandleIncomingBlocks(mctx helpers.MetricsCtx, lc fx.Lifecycle, pubsub *pubsub.PubSub, s *chain.Syncer, h host.Host) {
 	ctx := helpers.LifecycleCtx(mctx, lc)
 
 	blocksub, err := pubsub.Subscribe("/fil/blocks")
@@ -51,7 +51,7 @@ func HandleIncomingBlocks(mctx helpers.MetricsCtx, lc fx.Lifecycle, pubsub *pubs
 		panic(err)
 	}
 
-	go sub.HandleIncomingBlocks(ctx, blocksub, s)
+	go sub.HandleIncomingBlocks(ctx, blocksub, s, h.ConnManager())
 }
 
 func HandleIncomingMessages(mctx helpers.MetricsCtx, lc fx.Lifecycle, pubsub *pubsub.PubSub, mpool *messagepool.MessagePool) {

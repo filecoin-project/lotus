@@ -15,6 +15,7 @@ import (
 	"gopkg.in/urfave/cli.v2"
 
 	"github.com/filecoin-project/lotus/api"
+	"github.com/filecoin-project/lotus/api/apistruct"
 	"github.com/filecoin-project/lotus/build"
 	lcli "github.com/filecoin-project/lotus/cli"
 	"github.com/filecoin-project/lotus/lib/auth"
@@ -23,8 +24,6 @@ import (
 	"github.com/filecoin-project/lotus/node/impl"
 	"github.com/filecoin-project/lotus/node/repo"
 )
-
-const defaultListen = "/ip4/127.0.0.1/tcp/"
 
 var runCmd = &cli.Command{
 	Name:  "run",
@@ -62,7 +61,7 @@ var runCmd = &cli.Command{
 		}
 
 		if v.APIVersion != build.APIVersion {
-			return xerrors.Errorf("lotus-daemon API version doesn't match: local: ", api.Version{APIVersion: build.APIVersion})
+			return xerrors.Errorf("lotus-daemon API version doesn't match: local: %s", api.Version{APIVersion: build.APIVersion})
 		}
 
 		log.Info("Checking full node sync status")
@@ -93,14 +92,15 @@ var runCmd = &cli.Command{
 			node.Online(),
 			node.Repo(r),
 
-			node.Override(node.SetApiEndpointKey, func(lr repo.LockedRepo) error {
-				apima, err := parseApi(cctx.String("api"))
-				if err != nil {
-					return err
-				}
-				return lr.SetAPIEndpoint(apima)
-			}),
-
+			node.ApplyIf(func(s *node.Settings) bool { return cctx.IsSet("api") },
+				node.Override(node.SetApiEndpointKey, func(lr repo.LockedRepo) error {
+					apima, err := multiaddr.NewMultiaddr("/ip4/127.0.0.1/tcp/" +
+						cctx.String("api"))
+					if err != nil {
+						return err
+					}
+					return lr.SetAPIEndpoint(apima)
+				})),
 			node.Override(new(api.FullNode), nodeApi),
 		)
 		if err != nil {
@@ -132,7 +132,7 @@ var runCmd = &cli.Command{
 		mux := mux.NewRouter()
 
 		rpcServer := jsonrpc.NewServer()
-		rpcServer.Register("Filecoin", api.PermissionedStorMinerAPI(minerapi))
+		rpcServer.Register("Filecoin", apistruct.PermissionedStorMinerAPI(minerapi))
 
 		mux.Handle("/rpc/v0", rpcServer)
 		mux.PathPrefix("/remote").HandlerFunc(minerapi.(*impl.StorageMinerAPI).ServeRemote)
@@ -161,16 +161,4 @@ var runCmd = &cli.Command{
 
 		return srv.Serve(manet.NetListener(lst))
 	},
-}
-
-func parseApi(api string) (multiaddr.Multiaddr, error) {
-	if api == "" {
-		return nil, xerrors.New("empty --api")
-	}
-
-	if api[0] != '/' {
-		api = defaultListen + api
-	}
-
-	return multiaddr.NewMultiaddr(api)
 }

@@ -115,7 +115,11 @@ var clientDealCmd = &cli.Command{
 			return err
 		}
 
-		proposal, err := api.ClientStartDeal(ctx, data, miner, types.BigInt(price), uint64(dur))
+		a, err := api.WalletDefaultAddress(ctx)
+		if err != nil {
+			return err
+		}
+		proposal, err := api.ClientStartDeal(ctx, data, a, miner, types.BigInt(price), uint64(dur))
 		if err != nil {
 			return err
 		}
@@ -236,7 +240,7 @@ var clientRetrieveCmd = &cli.Command{
 		}
 
 		if err := api.ClientRetrieve(ctx, offers[0].Order(payer), cctx.Args().Get(1)); err != nil {
-			return err
+			return xerrors.Errorf("Retrieval Failed: %w", err)
 		}
 
 		fmt.Println("Success")
@@ -299,6 +303,9 @@ var clientQueryAskCmd = &cli.Command{
 			if ret.ExitCode != 0 {
 				return fmt.Errorf("call to GetPeerID was unsuccesful (exit code %d)", ret.ExitCode)
 			}
+			if peer.ID(ret.Return) == peer.ID("SETME") {
+				return fmt.Errorf("the miner hasn't initialized yet")
+			}
 
 			p, err := peer.IDFromBytes(ret.Return)
 			if err != nil {
@@ -314,7 +321,7 @@ var clientQueryAskCmd = &cli.Command{
 		}
 
 		fmt.Printf("Ask: %s\n", maddr)
-		fmt.Printf("Price per GigaByte: %s\n", types.FIL(ask.Ask.Price))
+		fmt.Printf("Price per GiB: %s\n", types.FIL(ask.Ask.Price))
 
 		size := cctx.Int64("size")
 		if size == 0 {

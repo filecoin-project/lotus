@@ -49,16 +49,15 @@ func (p *Piece) ppi() (out sectorbuilder.PublicPieceInfo) {
 type SectorInfo struct {
 	State    api.SectorState
 	SectorID uint64
+	Nonce    uint64
 
 	// Packing
 
 	Pieces []Piece
 
 	// PreCommit
-	Pad0   []byte // TODO: legacy placeholder, remove
 	CommD  []byte
 	CommR  []byte
-	Pad1   []byte // TODO: legacy placeholder, remove
 	Proof  []byte
 	Ticket SealTicket
 
@@ -70,12 +69,15 @@ type SectorInfo struct {
 	// Committing
 	CommitMessage *cid.Cid
 
+	// Faults
+	FaultReportMsg *cid.Cid
+
 	// Debug
 	LastErr string
 }
 
 func (t *SectorInfo) upd() *sectorUpdate {
-	return &sectorUpdate{id: t.SectorID}
+	return &sectorUpdate{id: t.SectorID, nonce: t.Nonce}
 }
 
 func (t *SectorInfo) pieceInfos() []sectorbuilder.PublicPieceInfo {

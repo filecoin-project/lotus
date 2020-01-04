@@ -74,6 +74,7 @@ func TestSyncManager(t *testing.T) {
 	b := mock.TipSet(mock.MkBlock(a, 1, 2))
 	c1 := mock.TipSet(mock.MkBlock(b, 1, 3))
 	c2 := mock.TipSet(mock.MkBlock(b, 2, 4))
+	c3 := mock.TipSet(mock.MkBlock(b, 3, 5))
 	d := mock.TipSet(mock.MkBlock(c1, 4, 5))
 
 	runSyncMgrTest(t, "testBootstrap", 1, func(t *testing.T, sm *SyncManager, stc chan *syncOp) {
@@ -119,5 +120,31 @@ func TestSyncManager(t *testing.T) {
 		op.done()
 
 		assertGetSyncOp(t, stc, d)
+	})
+
+	runSyncMgrTest(t, "testSyncIncomingTipset", 1, func(t *testing.T, sm *SyncManager, stc chan *syncOp) {
+		sm.SetPeerHead(ctx, "peer1", a)
+		assertGetSyncOp(t, stc, a)
+
+		sm.SetPeerHead(ctx, "peer2", b)
+		op := <-stc
+		op.done()
+
+		sm.SetPeerHead(ctx, "peer2", c1)
+		op1 := <-stc
+		fmt.Println("op1: ", op1.ts.Cids())
+
+		sm.SetPeerHead(ctx, "peer2", c2)
+		sm.SetPeerHead(ctx, "peer2", c3)
+
+		op1.done()
+
+		op2 := <-stc
+		fmt.Println("op2: ", op2.ts.Cids())
+		op2.done()
+
+		op3 := <-stc
+		fmt.Println("op3: ", op3.ts.Cids())
+		op3.done()
 	})
 }

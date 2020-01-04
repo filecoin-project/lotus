@@ -3,6 +3,7 @@ package impl
 import (
 	"context"
 	"encoding/json"
+	"github.com/filecoin-project/lotus/api/apistruct"
 	"io"
 	"mime"
 	"net/http"
@@ -33,7 +34,7 @@ type StorageMinerAPI struct {
 }
 
 func (sm *StorageMinerAPI) ServeRemote(w http.ResponseWriter, r *http.Request) {
-	if !api.HasPerm(r.Context(), api.PermAdmin) {
+	if !apistruct.HasPerm(r.Context(), apistruct.PermAdmin) {
 		w.WriteHeader(401)
 		json.NewEncoder(w).Encode(struct{ Error string }{"unauthorized: missing write permission"})
 		return
@@ -143,8 +144,8 @@ func (sm *StorageMinerAPI) ActorSectorSize(ctx context.Context, addr address.Add
 	return sm.Full.StateMinerSectorSize(ctx, addr, nil)
 }
 
-func (sm *StorageMinerAPI) StoreGarbageData(ctx context.Context) error {
-	return sm.Miner.StoreGarbageData()
+func (sm *StorageMinerAPI) PledgeSector(ctx context.Context) error {
+	return sm.Miner.PledgeSector()
 }
 
 func (sm *StorageMinerAPI) SectorsStatus(ctx context.Context, sid uint64) (api.SectorInfo, error) {
@@ -167,6 +168,7 @@ func (sm *StorageMinerAPI) SectorsStatus(ctx context.Context, sid uint64) (api.S
 		Deals:    deals,
 		Ticket:   info.Ticket.SB(),
 		Seed:     info.Seed.SB(),
+		Retries:  info.Nonce,
 
 		LastErr: info.LastErr,
 	}, nil
@@ -203,7 +205,7 @@ func (sm *StorageMinerAPI) SectorsRefs(context.Context) (map[string][]api.Sealed
 }
 
 func (sm *StorageMinerAPI) SectorsUpdate(ctx context.Context, id uint64, state api.SectorState) error {
-	return sm.Miner.UpdateSectorState(ctx, id, state)
+	return sm.Miner.UpdateSectorState(ctx, id, storage.NonceIncrement, state)
 }
 
 func (sm *StorageMinerAPI) WorkerQueue(ctx context.Context, cfg sectorbuilder.WorkerCfg) (<-chan sectorbuilder.WorkerTask, error) {

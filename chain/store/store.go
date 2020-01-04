@@ -50,16 +50,19 @@ type ChainStore struct {
 	headChangeNotifs []func(rev, app []*types.TipSet) error
 
 	mmCache *lru.ARCCache
+	tsCache *lru.ARCCache
 }
 
 func NewChainStore(bs bstore.Blockstore, ds dstore.Batching) *ChainStore {
 	c, _ := lru.NewARC(2048)
+	tsc, _ := lru.NewARC(4096)
 	cs := &ChainStore{
 		bs:       bs,
 		ds:       ds,
 		bestTips: pubsub.New(64),
 		tipsets:  make(map[uint64][]cid.Cid),
 		mmCache:  c,
+		tsCache:  tsc,
 	}
 
 	cs.reorgCh = cs.reorgWorker(context.TODO())
@@ -107,7 +110,7 @@ func (cs *ChainStore) Load() error {
 		return xerrors.Errorf("failed to unmarshal stored chain head: %w", err)
 	}
 
-	ts, err := cs.LoadTipSet(tscids)
+	ts, err := cs.LoadTipSet(types.NewTipSetKey(tscids...))
 	if err != nil {
 		return xerrors.Errorf("loading tipset: %w", err)
 	}
@@ -155,6 +158,8 @@ func (cs *ChainStore) SubHeadChanges(ctx context.Context) chan []*HeadChange {
 
 	go func() {
 		defer close(out)
+		var unsubOnce sync.Once
+
 		for {
 			select {
 			case val, ok := <-subch:
@@ -170,7 +175,9 @@ func (cs *ChainStore) SubHeadChanges(ctx context.Context) chan []*HeadChange {
 				case <-ctx.Done():
 				}
 			case <-ctx.Done():
-				go cs.bestTips.Unsub(subch)
+				unsubOnce.Do(func() {
+					go cs.bestTips.Unsub(subch)
+				})
 			}
 		}
 	}()
@@ -332,9 +339,14 @@ func (cs *ChainStore) GetBlock(c cid.Cid) (*types.BlockHeader, error) {
 	return types.DecodeBlock(sb.RawData())
 }
 
-func (cs *ChainStore) LoadTipSet(cids []cid.Cid) (*types.TipSet, error) {
+func (cs *ChainStore) LoadTipSet(tsk types.TipSetKey) (*types.TipSet, error) {
+	v, ok := cs.tsCache.Get(tsk)
+	if ok {
+		return v.(*types.TipSet), nil
+	}
+
 	var blks []*types.BlockHeader
-	for _, c := range cids {
+	for _, c := range tsk.Cids() {
 		b, err := cs.GetBlock(c)
 		if err != nil {
 			return nil, xerrors.Errorf("get block %s: %w", c, err)
@@ -343,7 +355,14 @@ func (cs *ChainStore) LoadTipSet(cids []cid.Cid) (*types.TipSet, error) {
 		blks = append(blks, b)
 	}
 
-	return types.NewTipSet(blks)
+	ts, err := types.NewTipSet(blks)
+	if err != nil {
+		return nil, err
+	}
+
+	cs.tsCache.Add(tsk, ts)
+
+	return ts, nil
 }
 
 // returns true if 'a' is an ancestor of 'b'
@@ -490,6 +509,7 @@ func (cs *ChainStore) expandTipset(b *types.BlockHeader) (*types.TipSet, error) 
 		return types.NewTipSet(all)
 	}
 
+	inclMiners := map[address.Address]bool{b.Miner: true}
 	for _, bhc := range tsets {
 		if bhc == b.Cid() {
 			continue
@@ -500,8 +520,14 @@ func (cs *ChainStore) expandTipset(b *types.BlockHeader) (*types.TipSet, error) 
 			return nil, xerrors.Errorf("failed to load block (%s) for tipset expansion: %w", bhc, err)
 		}
 
+		if inclMiners[h.Miner] {
+			log.Warnf("Have multiple blocks from miner %s at height %d in our tipset cache", h.Miner, h.Height)
+			continue
+		}
+
 		if types.CidArrsEqual(h.Parents, b.Parents) {
 			all = append(all, h)
+			inclMiners[h.Miner] = true
 		}
 	}
 
@@ -806,7 +832,7 @@ func (cs *ChainStore) GetRandomness(ctx context.Context, blks []cid.Cid, round i
 	span.AddAttributes(trace.Int64Attribute("round", round))
 
 	for {
-		nts, err := cs.LoadTipSet(blks)
+		nts, err := cs.LoadTipSet(types.NewTipSetKey(blks...))
 		if err != nil {
 			return nil, err
 		}

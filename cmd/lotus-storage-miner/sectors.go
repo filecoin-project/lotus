@@ -12,8 +12,8 @@ import (
 	lcli "github.com/filecoin-project/lotus/cli"
 )
 
-var storeGarbageCmd = &cli.Command{
-	Name:  "store-garbage",
+var pledgeSectorCmd = &cli.Command{
+	Name:  "pledge-sector",
 	Usage: "store random data in a sector",
 	Action: func(cctx *cli.Context) error {
 		nodeApi, closer, err := lcli.GetStorageMinerAPI(cctx)
@@ -23,7 +23,7 @@ var storeGarbageCmd = &cli.Command{
 		defer closer()
 		ctx := lcli.ReqContext(cctx)
 
-		return nodeApi.StoreGarbageData(ctx)
+		return nodeApi.PledgeSector(ctx)
 	},
 }
 
@@ -73,6 +73,7 @@ var sectorsStatusCmd = &cli.Command{
 		fmt.Printf("SeedH:\t\t%d\n", status.Seed.BlockHeight)
 		fmt.Printf("Proof:\t\t%x\n", status.Proof)
 		fmt.Printf("Deals:\t\t%v\n", status.Deals)
+		fmt.Printf("Retries:\t\t%d\n", status.Retries)
 		if status.LastErr != "" {
 			fmt.Printf("Last Error:\t\t%s\n", status.LastErr)
 		}

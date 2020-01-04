@@ -100,6 +100,7 @@ const (
 	// daemon
 	ExtractApiKey
 	HeadMetricsKey
+	RunPeerTaggerKey
 
 	SetApiEndpointKey
 
@@ -155,7 +156,8 @@ func libp2p() Option {
 		Override(new(routing.Routing), lp2p.Routing),
 
 		Override(NatPortMapKey, lp2p.NatPortMap),
-		Override(ConnectionManagerKey, lp2p.ConnectionManager(50, 200, 20*time.Second)),
+
+		Override(ConnectionManagerKey, lp2p.ConnectionManager(50, 200, 20*time.Second, nil)),
 
 		Override(new(*pubsub.PubSub), lp2p.GossipSub()),
 
@@ -217,7 +219,6 @@ func Online() Option {
 			Override(RunBlockSyncKey, modules.RunBlockSync),
 			Override(RunPeerMgrKey, modules.RunPeerMgr),
 			Override(HandleIncomingBlocksKey, modules.HandleIncomingBlocks),
-			Override(HeadMetricsKey, metrics.SendHeadNotifs("")),
 
 			Override(new(*discovery.Local), discovery.NewLocal),
 			Override(new(discovery.PeerResolver), modules.RetrievalResolver),
@@ -297,6 +298,11 @@ func ConfigCommon(cfg *config.Common) Option {
 
 		ApplyIf(func(s *Settings) bool { return s.Online },
 			Override(StartListeningKey, lp2p.StartListening(cfg.Libp2p.ListenAddresses)),
+			Override(ConnectionManagerKey, lp2p.ConnectionManager(
+				cfg.Libp2p.ConnMgrLow,
+				cfg.Libp2p.ConnMgrHigh,
+				time.Duration(cfg.Libp2p.ConnMgrGrace),
+				cfg.Libp2p.ProtectedPeers)),
 
 			ApplyIf(func(s *Settings) bool { return len(cfg.Libp2p.BootstrapPeers) > 0 },
 				Override(new(dtypes.BootstrapPeers), modules.ConfigBootstrap(cfg.Libp2p.BootstrapPeers)),
@@ -313,7 +319,9 @@ func ConfigFullNode(c interface{}) Option {
 
 	return Options(
 		ConfigCommon(&cfg.Common),
-		Override(HeadMetricsKey, metrics.SendHeadNotifs(cfg.Metrics.Nickname)),
+		If(cfg.Metrics.HeadNotifs,
+			Override(HeadMetricsKey, metrics.SendHeadNotifs(cfg.Metrics.Nickname)),
+		),
 		If(cfg.Metrics.PubsubTracing,
 			Override(new(*pubsub.PubSub), lp2p.GossipSub(lp2p.PubsubTracer())),
 		),

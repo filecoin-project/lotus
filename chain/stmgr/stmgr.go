@@ -27,14 +27,16 @@ var log = logging.Logger("statemgr")
 type StateManager struct {
 	cs *store.ChainStore
 
-	stCache map[string][]cid.Cid
-	stlk    sync.Mutex
+	stCache  map[string][]cid.Cid
+	compWait map[string]chan struct{}
+	stlk     sync.Mutex
 }
 
 func NewStateManager(cs *store.ChainStore) *StateManager {
 	return &StateManager{
-		cs:      cs,
-		stCache: make(map[string][]cid.Cid),
+		cs:       cs,
+		stCache:  make(map[string][]cid.Cid),
+		compWait: make(map[string]chan struct{}),
 	}
 }
 
@@ -46,7 +48,7 @@ func cidsToKey(cids []cid.Cid) string {
 	return out
 }
 
-func (sm *StateManager) TipSetState(ctx context.Context, ts *types.TipSet) (cid.Cid, cid.Cid, error) {
+func (sm *StateManager) TipSetState(ctx context.Context, ts *types.TipSet) (st cid.Cid, rec cid.Cid, err error) {
 	ctx, span := trace.StartSpan(ctx, "tipSetState")
 	defer span.End()
 	if span.IsRecordingEvents() {
@@ -55,12 +57,37 @@ func (sm *StateManager) TipSetState(ctx context.Context, ts *types.TipSet) (cid.
 
 	ck := cidsToKey(ts.Cids())
 	sm.stlk.Lock()
+	cw, cwok := sm.compWait[ck]
+	if cwok {
+		sm.stlk.Unlock()
+		span.AddAttributes(trace.BoolAttribute("waited", true))
+		select {
+		case <-cw:
+			sm.stlk.Lock()
+		case <-ctx.Done():
+			return cid.Undef, cid.Undef, ctx.Err()
+		}
+	}
 	cached, ok := sm.stCache[ck]
-	sm.stlk.Unlock()
 	if ok {
+		sm.stlk.Unlock()
 		span.AddAttributes(trace.BoolAttribute("cache", true))
 		return cached[0], cached[1], nil
 	}
+	ch := make(chan struct{})
+	sm.compWait[ck] = ch
+
+	defer func() {
+		sm.stlk.Lock()
+		delete(sm.compWait, ck)
+		if st != cid.Undef {
+			sm.stCache[ck] = []cid.Cid{st, rec}
+		}
+		sm.stlk.Unlock()
+		close(ch)
+	}()
+
+	sm.stlk.Unlock()
 
 	if ts.Height() == 0 {
 		// NB: This is here because the process that executes blocks requires that the
@@ -70,14 +97,11 @@ func (sm *StateManager) TipSetState(ctx context.Context, ts *types.TipSet) (cid.
 		return ts.Blocks()[0].ParentStateRoot, ts.Blocks()[0].ParentMessageReceipts, nil
 	}
 
-	st, rec, err := sm.computeTipSetState(ctx, ts.Blocks(), nil)
+	st, rec, err = sm.computeTipSetState(ctx, ts.Blocks(), nil)
 	if err != nil {
 		return cid.Undef, cid.Undef, err
 	}
 
-	sm.stlk.Lock()
-	sm.stCache[ck] = []cid.Cid{st, rec}
-	sm.stlk.Unlock()
 	return st, rec, nil
 }
 
@@ -96,6 +120,17 @@ func (sm *StateManager) computeTipSetState(ctx context.Context, blks []*types.Bl
 	}
 
 	pstate := blks[0].ParentStateRoot
+	if len(blks[0].Parents) > 0 { // don't support forks on genesis
+		parent, err := sm.cs.GetBlock(blks[0].Parents[0])
+		if err != nil {
+			return cid.Undef, cid.Undef, xerrors.Errorf("getting parent block: %w", err)
+		}
+
+		pstate, err = sm.handleStateForks(ctx, blks[0].ParentStateRoot, blks[0].Height, parent.Height)
+		if err != nil {
+			return cid.Undef, cid.Undef, xerrors.Errorf("error handling state forks: %w", err)
+		}
+	}
 
 	cids := make([]cid.Cid, len(blks))
 	for i, v := range blks {
@@ -114,7 +149,7 @@ func (sm *StateManager) computeTipSetState(ctx context.Context, blks []*types.Bl
 		return cid.Undef, cid.Undef, xerrors.Errorf("failed to get network actor: %w", err)
 	}
 	reward := vm.MiningReward(netact.Balance)
-	for _, b := range blks {
+	for tsi, b := range blks {
 		netact, err = vmi.StateTree().GetActor(actors.NetworkAddress)
 		if err != nil {
 			return cid.Undef, cid.Undef, xerrors.Errorf("failed to get network actor: %w", err)
@@ -147,10 +182,10 @@ func (sm *StateManager) computeTipSetState(ctx context.Context, blks []*types.Bl
 		}
 		ret, err := vmi.ApplyMessage(ctx, postSubmitMsg)
 		if err != nil {
-			return cid.Undef, cid.Undef, xerrors.Errorf("submit election post message invocation failed: %w", err)
+			return cid.Undef, cid.Undef, xerrors.Errorf("submit election post message for block %s (miner %s) invocation failed: %w", b.Cid(), b.Miner, err)
 		}
 		if ret.ExitCode != 0 {
-			return cid.Undef, cid.Undef, xerrors.Errorf("submit election post invocation returned nonzero exit code: %d", ret.ExitCode)
+			return cid.Undef, cid.Undef, xerrors.Errorf("submit election post invocation returned nonzero exit code: %d (err = %s, block = %s, miner = %s, tsi = %d)", ret.ExitCode, ret.ActorErr, b.Cid(), b.Miner, tsi)
 		}
 	}
 

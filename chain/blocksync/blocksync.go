@@ -90,19 +90,19 @@ func (bss *BlockSyncService) HandleStream(s inet.Stream) {
 
 	var req BlockSyncRequest
 	if err := cborutil.ReadCborRPC(bufio.NewReader(s), &req); err != nil {
-		log.Errorf("failed to read block sync request: %s", err)
+		log.Warnf("failed to read block sync request: %s", err)
 		return
 	}
 	log.Infof("block sync request for: %s %d", req.Start, req.RequestLength)
 
 	resp, err := bss.processRequest(ctx, &req)
 	if err != nil {
-		log.Error("failed to process block sync request: ", err)
+		log.Warn("failed to process block sync request: ", err)
 		return
 	}
 
 	if err := cborutil.WriteCborRPC(s, resp); err != nil {
-		log.Error("failed to write back response for handle stream: ", err)
+		log.Warn("failed to write back response for handle stream: ", err)
 		return
 	}
 }
@@ -124,7 +124,7 @@ func (bss *BlockSyncService) processRequest(ctx context.Context, req *BlockSyncR
 		trace.BoolAttribute("messages", opts.IncludeMessages),
 	)
 
-	chain, err := bss.collectChainSegment(req.Start, req.RequestLength, opts)
+	chain, err := bss.collectChainSegment(types.NewTipSetKey(req.Start...), req.RequestLength, opts)
 	if err != nil {
 		log.Warn("encountered error while responding to block sync request: ", err)
 		return &BlockSyncResponse{
@@ -139,7 +139,7 @@ func (bss *BlockSyncService) processRequest(ctx context.Context, req *BlockSyncR
 	}, nil
 }
 
-func (bss *BlockSyncService) collectChainSegment(start []cid.Cid, length uint64, opts *BSOptions) ([]*BSTipSet, error) {
+func (bss *BlockSyncService) collectChainSegment(start types.TipSetKey, length uint64, opts *BSOptions) ([]*BSTipSet, error) {
 	var bstips []*BSTipSet
 	cur := start
 	for {

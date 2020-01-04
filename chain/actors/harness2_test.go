@@ -3,6 +3,7 @@ package actors_test
 import (
 	"bytes"
 	"context"
+	"math/rand"
 	"testing"
 
 	"github.com/ipfs/go-cid"
@@ -41,10 +42,12 @@ const (
 type HarnessOpt func(testing.TB, *Harness) error
 
 type Harness struct {
-	HI         HarnessInit
-	Stage      HarnessStage
-	Nonces     map[address.Address]uint64
-	GasCharges map[address.Address]types.BigInt
+	HI          HarnessInit
+	Stage       HarnessStage
+	Nonces      map[address.Address]uint64
+	GasCharges  map[address.Address]types.BigInt
+	Rand        vm.Rand
+	BlockHeight uint64
 
 	lastBalanceCheck map[address.Address]types.BigInt
 
@@ -127,6 +130,7 @@ func NewHarness(t *testing.T, options ...HarnessOpt) *Harness {
 	h := &Harness{
 		Stage:  HarnessPreInit,
 		Nonces: make(map[address.Address]uint64),
+		Rand:   &fakeRand{},
 		HI: HarnessInit{
 			NAddrs: 1,
 			Miner:  blsaddr(0),
@@ -140,6 +144,7 @@ func NewHarness(t *testing.T, options ...HarnessOpt) *Harness {
 		w:                w,
 		ctx:              context.Background(),
 		bs:               bstore.NewBlockstore(dstore.NewMapDatastore()),
+		BlockHeight:      0,
 	}
 	for _, opt := range options {
 		err := opt(t, h)
@@ -157,8 +162,14 @@ func NewHarness(t *testing.T, options ...HarnessOpt) *Harness {
 	if err != nil {
 		t.Fatal(err)
 	}
+
+	stateroot, err = gen.SetupStorageMarketActor(h.bs, stateroot, nil)
+	if err != nil {
+		t.Fatal(err)
+	}
+
 	h.cs = store.NewChainStore(h.bs, nil)
-	h.vm, err = vm.NewVM(stateroot, 1, nil, h.HI.Miner, h.cs.Blockstore())
+	h.vm, err = vm.NewVM(stateroot, 1, h.Rand, h.HI.Miner, h.cs.Blockstore())
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -246,6 +257,7 @@ func (h *Harness) Invoke(t testing.TB, from address.Address, to address.Address,
 func (h *Harness) InvokeWithValue(t testing.TB, from address.Address, to address.Address,
 	method uint64, value types.BigInt, params cbg.CBORMarshaler) (*vm.ApplyRet, *state.StateTree) {
 	t.Helper()
+	h.vm.SetBlockHeight(h.BlockHeight)
 	return h.Apply(t, types.Message{
 		To:       to,
 		From:     from,
@@ -314,4 +326,12 @@ func DumpObject(t testing.TB, obj cbg.CBORMarshaler) []byte {
 		t.Fatalf("dumping params: %+v", err)
 	}
 	return b.Bytes()
+}
+
+type fakeRand struct{}
+
+func (fr *fakeRand) GetRandomness(ctx context.Context, h int64) ([]byte, error) {
+	out := make([]byte, 32)
+	rand.New(rand.NewSource(h)).Read(out)
+	return out, nil
 }

@@ -2,10 +2,8 @@ package main
 
 import (
 	"context"
-	"net/http"
-	"path/filepath"
-
 	"golang.org/x/xerrors"
+	"net/http"
 
 	lapi "github.com/filecoin-project/lotus/api"
 	"github.com/filecoin-project/lotus/build"
@@ -35,10 +33,7 @@ func acceptJobs(ctx context.Context, api lapi.StorageMiner, endpoint string, aut
 		SectorSize:    ssize,
 		Miner:         act,
 		WorkerThreads: 1,
-		CacheDir:      filepath.Join(repo, "cache"),
-		SealedDir:     filepath.Join(repo, "sealed"),
-		StagedDir:     filepath.Join(repo, "staged"),
-		UnsealedDir:   filepath.Join(repo, "unsealed"),
+		Dir:           repo,
 	})
 	if err != nil {
 		return err

@@ -4,6 +4,7 @@ import (
 	"context"
 	"fmt"
 	"io"
+	"math"
 
 	xerrors "golang.org/x/xerrors"
 
@@ -12,53 +13,47 @@ import (
 	"github.com/filecoin-project/lotus/lib/sectorbuilder"
 )
 
+const NonceIncrement = math.MaxUint64
+
 type sectorUpdate struct {
 	newState api.SectorState
 	id       uint64
 	err      error
+	nonce    uint64
 	mut      func(*SectorInfo)
 }
 
 func (u *sectorUpdate) fatal(err error) *sectorUpdate {
-	return &sectorUpdate{
-		newState: api.FailedUnrecoverable,
-		id:       u.id,
-		err:      err,
-		mut:      u.mut,
-	}
+	u.newState = api.FailedUnrecoverable
+	u.err = err
+	return u
 }
 
 func (u *sectorUpdate) error(err error) *sectorUpdate {
-	return &sectorUpdate{
-		newState: u.newState,
-		id:       u.id,
-		err:      err,
-		mut:      u.mut,
-	}
+	u.err = err
+	return u
 }
 
 func (u *sectorUpdate) state(m func(*SectorInfo)) *sectorUpdate {
-	return &sectorUpdate{
-		newState: u.newState,
-		id:       u.id,
-		err:      u.err,
-		mut:      m,
-	}
+	u.mut = m
+	return u
 }
 
 func (u *sectorUpdate) to(newState api.SectorState) *sectorUpdate {
-	return &sectorUpdate{
-		newState: newState,
-		id:       u.id,
-		err:      u.err,
-		mut:      u.mut,
-	}
+	u.newState = newState
+	return u
 }
 
-func (m *Miner) UpdateSectorState(ctx context.Context, sector uint64, state api.SectorState) error {
+func (u *sectorUpdate) setNonce(nc uint64) *sectorUpdate {
+	u.nonce = nc
+	return u
+}
+
+func (m *Miner) UpdateSectorState(ctx context.Context, sector uint64, snonce uint64, state api.SectorState) error {
 	select {
 	case m.sectorUpdated <- sectorUpdate{
 		newState: state,
+		nonce:    snonce,
 		id:       sector,
 	}:
 		return nil
@@ -70,7 +65,7 @@ func (m *Miner) UpdateSectorState(ctx context.Context, sector uint64, state api.
 func (m *Miner) sectorStateLoop(ctx context.Context) error {
 	trackedSectors, err := m.ListSectors()
 	if err != nil {
-		return err
+		log.Errorf("loading sector list: %+v", err)
 	}
 
 	go func() {
@@ -78,6 +73,7 @@ func (m *Miner) sectorStateLoop(ctx context.Context) error {
 			select {
 			case m.sectorUpdated <- sectorUpdate{
 				newState: si.State,
+				nonce:    si.Nonce,
 				id:       si.SectorID,
 				err:      nil,
 				mut:      nil,
@@ -104,7 +100,7 @@ func (m *Miner) sectorStateLoop(ctx context.Context) error {
 
 		ps, err := m.api.StateMinerProvingSet(ctx, m.maddr, curTs)
 		if err != nil {
-			return err
+			return xerrors.Errorf("getting miner proving set: %w", err)
 		}
 		for _, ocs := range ps {
 			if _, ok := trackedByID[ocs.SectorID]; ok {
@@ -166,6 +162,15 @@ func (m *Miner) onSectorUpdated(ctx context.Context, update sectorUpdate) {
 	log.Infof("Sector %d updated state to %s", update.id, api.SectorStates[update.newState])
 	var sector SectorInfo
 	err := m.sectors.Mutate(update.id, func(s *SectorInfo) error {
+		if update.nonce < s.Nonce {
+			return xerrors.Errorf("update nonce too low, ignoring (%d < %d)", update.nonce, s.Nonce)
+		}
+
+		if update.nonce != NonceIncrement {
+			s.Nonce = update.nonce
+		} else {
+			s.Nonce++ // forced update
+		}
 		s.State = update.newState
 		if update.err != nil {
 			if s.LastErr != "" {
@@ -184,7 +189,7 @@ func (m *Miner) onSectorUpdated(ctx context.Context, update sectorUpdate) {
 		log.Errorf("sector %d failed: %+v", update.id, update.err)
 	}
 	if err != nil {
-		log.Errorf("sector %d error: %+v", update.id, err)
+		log.Errorf("sector %d update error: %+v", update.id, err)
 		return
 	}
 
@@ -203,10 +208,13 @@ func (m *Miner) onSectorUpdated(ctx context.Context, update sectorUpdate) {
 		|   |                  ^
 		|   v                  |
 		*<- PreCommitted ------/
-		|   |
-		|   v        v--> SealCommitFailed
+		|   |||
+		|   vvv      v--> SealCommitFailed
 		*<- Committing
 		|   |        ^--> CommitFailed
+		|   v             ^
+		*<- CommitWait ---/
+		|   |
 		|   v
 		*<- Proving
 		|
@@ -239,13 +247,19 @@ func (m *Miner) onSectorUpdated(ctx context.Context, update sectorUpdate) {
 
 	// Handled failure modes
 	case api.SealFailed:
-		log.Warn("sector %d entered unimplemented state 'SealFailed'", update.id)
+		log.Warnf("sector %d entered unimplemented state 'SealFailed'", update.id)
 	case api.PreCommitFailed:
-		log.Warn("sector %d entered unimplemented state 'PreCommitFailed'", update.id)
+		log.Warnf("sector %d entered unimplemented state 'PreCommitFailed'", update.id)
 	case api.SealCommitFailed:
-		log.Warn("sector %d entered unimplemented state 'SealCommitFailed'", update.id)
+		log.Warnf("sector %d entered unimplemented state 'SealCommitFailed'", update.id)
 	case api.CommitFailed:
-		log.Warn("sector %d entered unimplemented state 'CommitFailed'", update.id)
+		log.Warnf("sector %d entered unimplemented state 'CommitFailed'", update.id)
+
+		// Faults
+	case api.Faulty:
+		m.handleSectorUpdate(ctx, sector, m.handleFaulty)
+	case api.FaultReported:
+		m.handleSectorUpdate(ctx, sector, m.handleFaultReported)
 
 	// Fatal errors
 	case api.UndefinedSectorState:

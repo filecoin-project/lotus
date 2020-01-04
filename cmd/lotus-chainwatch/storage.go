@@ -101,7 +101,14 @@ create table if not exists blocks
 	miner text not null
 		constraint blocks_id_address_map_miner_fk
 			references id_address_map (address),
-	timestamp int not null
+	timestamp int not null,
+	vrfproof blob,
+	tickets int not null,
+	eprof blob,
+	prand blob,
+	ep0partial blob,
+	ep0sector int not null,
+	ep0challangei int not null
 );
 
 create unique index if not exists block_cid_uindex
@@ -113,7 +120,8 @@ create table if not exists blocks_synced
 		constraint blocks_synced_pk
 			primary key
 		constraint blocks_synced_blocks_cid_fk
-			references blocks
+			references blocks,
+	add_ts int not null
 );
 
 create unique index if not exists blocks_synced_cid_uindex
@@ -192,7 +200,9 @@ create table if not exists miner_heads
 		constraint miner_heads_blocks_stateroot_fk
 			references blocks (parentStateRoot),
 	sectorset text not null,
+	setsize int not null,
 	provingset text not null,
+	provingsize int not null,
 	owner text not null,
 	worker text not null,
 	peerid text not null,
@@ -254,7 +264,7 @@ func (st *storage) storeMiners(miners map[minerKey]*minerInfo) error {
 		return err
 	}
 
-	stmt, err := tx.Prepare(`insert into miner_heads (head, addr, stateroot, sectorset, provingset, owner, worker, peerid, sectorsize, power, active, ppe, slashed_at) values (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?) on conflict do nothing`)
+	stmt, err := tx.Prepare(`insert into miner_heads (head, addr, stateroot, sectorset, setsize, provingset, provingsize, owner, worker, peerid, sectorsize, power, active, ppe, slashed_at) values (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?) on conflict do nothing`)
 	if err != nil {
 		return err
 	}
@@ -265,7 +275,9 @@ func (st *storage) storeMiners(miners map[minerKey]*minerInfo) error {
 			k.addr.String(),
 			k.stateroot.String(),
 			i.state.Sectors.String(),
+			i.ssize,
 			i.state.ProvingSet.String(),
+			i.psize,
 			i.info.Owner.String(),
 			i.info.Worker.String(),
 			i.info.PeerID.String(),
@@ -291,13 +303,31 @@ func (st *storage) storeHeaders(bhs map[cid.Cid]*types.BlockHeader, sync bool) e
 		return err
 	}
 
-	stmt, err := tx.Prepare(`insert into blocks (cid, parentWeight, parentStateRoot, height, miner, "timestamp") values (?, ?, ?, ?, ?, ?) on conflict do nothing`)
+	stmt, err := tx.Prepare(`insert into blocks (cid, parentWeight, parentStateRoot, height, miner, "timestamp", vrfproof, tickets, eprof, prand, ep0partial, ep0sector, ep0challangei) values (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?) on conflict do nothing`)
 	if err != nil {
 		return err
 	}
 	defer stmt.Close()
 	for _, bh := range bhs {
-		if _, err := stmt.Exec(bh.Cid().String(), bh.ParentWeight.String(), bh.ParentStateRoot.String(), bh.Height, bh.Miner.String(), bh.Timestamp); err != nil {
+		l := len(bh.EPostProof.Candidates)
+		if len(bh.EPostProof.Candidates) == 0 {
+			bh.EPostProof.Candidates = append(bh.EPostProof.Candidates, types.EPostTicket{})
+		}
+
+		if _, err := stmt.Exec(bh.Cid().String(),
+			bh.ParentWeight.String(),
+			bh.ParentStateRoot.String(),
+			bh.Height,
+			bh.Miner.String(),
+			bh.Timestamp,
+			bh.Ticket.VRFProof,
+			l,
+			bh.EPostProof.Proof,
+			bh.EPostProof.PostRand,
+			bh.EPostProof.Candidates[0].Partial,
+			bh.EPostProof.Candidates[0].SectorID,
+			bh.EPostProof.Candidates[0].ChallengeIndex,
+		); err != nil {
 			return err
 		}
 	}
@@ -316,13 +346,15 @@ func (st *storage) storeHeaders(bhs map[cid.Cid]*types.BlockHeader, sync bool) e
 	}
 
 	if sync {
-		stmt, err := tx.Prepare(`insert into blocks_synced (cid) values (?) on conflict do nothing`)
+		stmt, err := tx.Prepare(`insert into blocks_synced (cid, add_ts) values (?, ?) on conflict do nothing`)
 		if err != nil {
 			return err
 		}
 		defer stmt.Close()
+		now := time.Now().Unix()
+
 		for _, bh := range bhs {
-			if _, err := stmt.Exec(bh.Cid().String()); err != nil {
+			if _, err := stmt.Exec(bh.Cid().String(), now); err != nil {
 				return err
 			}
 		}

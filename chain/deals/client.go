@@ -36,7 +36,7 @@ type ClientDeal struct {
 	MinerWorker address.Address
 	DealID      uint64
 
-	PublishMessage *cid.Cid
+	PublishMessage *types.SignedMessage
 
 	s inet.Stream
 }
@@ -206,7 +206,6 @@ func (c *Client) Start(ctx context.Context, p ClientDealProposal) (cid.Cid, erro
 	dealProposal := &actors.StorageDealProposal{
 		PieceRef:             commP,
 		PieceSize:            uint64(pieceSize),
-		PieceSerialization:   actors.SerializationUnixFSv0,
 		Client:               p.Client,
 		Provider:             p.ProviderAddress,
 		ProposalExpiration:   p.ProposalExpiration,
@@ -260,7 +259,7 @@ func (c *Client) Start(ctx context.Context, p ClientDealProposal) (cid.Cid, erro
 func (c *Client) QueryAsk(ctx context.Context, p peer.ID, a address.Address) (*types.SignedStorageAsk, error) {
 	s, err := c.h.NewStream(ctx, p, AskProtocolID)
 	if err != nil {
-		return nil, err
+		return nil, xerrors.Errorf("failed to open stream to miner: %w", err)
 	}
 
 	req := &AskRequest{

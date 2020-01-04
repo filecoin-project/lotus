@@ -267,9 +267,9 @@ func shouldSlash(block1, block2 *types.BlockHeader) bool {
 }
 
 type UpdateStorageParams struct {
-	Delta                    types.BigInt
-	NextProvingPeriodEnd     uint64
-	PreviousProvingPeriodEnd uint64
+	Delta                 types.BigInt
+	NextSlashDeadline     uint64
+	PreviousSlashDeadline uint64
 }
 
 func (spa StoragePowerActor) UpdateStorage(act *types.Actor, vmctx types.VMContext, params *UpdateStorageParams) ([]byte, ActorError) {
@@ -289,10 +289,10 @@ func (spa StoragePowerActor) UpdateStorage(act *types.Actor, vmctx types.VMConte
 
 	self.TotalStorage = types.BigAdd(self.TotalStorage, params.Delta)
 
-	previousBucket := params.PreviousProvingPeriodEnd % build.SlashablePowerDelay
-	nextBucket := params.NextProvingPeriodEnd % build.SlashablePowerDelay
+	previousBucket := params.PreviousSlashDeadline % build.SlashablePowerDelay
+	nextBucket := params.NextSlashDeadline % build.SlashablePowerDelay
 
-	if previousBucket == nextBucket && params.PreviousProvingPeriodEnd != 0 {
+	if previousBucket == nextBucket && params.PreviousSlashDeadline != 0 {
 		nroot, err := vmctx.Storage().Put(&self)
 		if err != nil {
 			return nil, err
@@ -310,10 +310,10 @@ func (spa StoragePowerActor) UpdateStorage(act *types.Actor, vmctx types.VMConte
 		return nil, aerrors.HandleExternalError(eerr, "loading proving buckets amt")
 	}
 
-	if params.PreviousProvingPeriodEnd != 0 { // delete from previous bucket
+	if params.PreviousSlashDeadline != 0 { // delete from previous bucket
 		err := deleteMinerFromBucket(vmctx, buckets, previousBucket)
 		if err != nil {
-			return nil, err
+			return nil, aerrors.Wrapf(err, "delete from bucket %d, next %d", previousBucket, nextBucket)
 		}
 	}
 
@@ -393,7 +393,7 @@ func addMinerToBucket(vmctx types.VMContext, buckets *amt.Root, nextBucket uint6
 		return aerrors.HandleExternalError(err, "getting proving bucket")
 	}
 
-	err = bhamt.Set(vmctx.Context(), string(vmctx.Message().From.Bytes()), cborNull)
+	err = bhamt.Set(vmctx.Context(), string(vmctx.Message().From.Bytes()), CborNull)
 	if err != nil {
 		return aerrors.HandleExternalError(err, "setting miner in proving bucket")
 	}
@@ -768,7 +768,7 @@ func MinerSetRemove(ctx context.Context, vmctx types.VMContext, rcid cid.Cid, ma
 
 type cbgNull struct{}
 
-var cborNull = &cbgNull{}
+var CborNull = &cbgNull{}
 
 func (cbgNull) MarshalCBOR(w io.Writer) error {
 	n, err := w.Write(cbg.CborNull)

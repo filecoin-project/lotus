@@ -1,4 +1,4 @@
-package api
+package apistruct
 
 import (
 	"context"
@@ -9,6 +9,7 @@ import (
 	"github.com/libp2p/go-libp2p-core/network"
 	"github.com/libp2p/go-libp2p-core/peer"
 
+	"github.com/filecoin-project/lotus/api"
 	"github.com/filecoin-project/lotus/chain/actors"
 	"github.com/filecoin-project/lotus/chain/address"
 	"github.com/filecoin-project/lotus/chain/store"
@@ -20,8 +21,8 @@ var _ = AllPermissions
 
 type CommonStruct struct {
 	Internal struct {
-		AuthVerify func(ctx context.Context, token string) ([]Permission, error) `perm:"read"`
-		AuthNew    func(ctx context.Context, perms []Permission) ([]byte, error) `perm:"admin"`
+		AuthVerify func(ctx context.Context, token string) ([]api.Permission, error) `perm:"read"`
+		AuthNew    func(ctx context.Context, perms []api.Permission) ([]byte, error) `perm:"admin"`
 
 		NetConnectedness func(context.Context, peer.ID) (network.Connectedness, error) `perm:"read"`
 		NetPeers         func(context.Context) ([]peer.AddrInfo, error)                `perm:"read"`
@@ -29,8 +30,8 @@ type CommonStruct struct {
 		NetAddrsListen   func(context.Context) (peer.AddrInfo, error)                  `perm:"read"`
 		NetDisconnect    func(context.Context, peer.ID) error                          `perm:"write"`
 
-		ID      func(context.Context) (peer.ID, error) `perm:"read"`
-		Version func(context.Context) (Version, error) `perm:"read"`
+		ID      func(context.Context) (peer.ID, error)     `perm:"read"`
+		Version func(context.Context) (api.Version, error) `perm:"read"`
 	}
 }
 
@@ -44,16 +45,17 @@ type FullNodeStruct struct {
 		ChainGetRandomness     func(context.Context, types.TipSetKey, int64) ([]byte, error)       `perm:"read"`
 		ChainGetBlock          func(context.Context, cid.Cid) (*types.BlockHeader, error)          `perm:"read"`
 		ChainGetTipSet         func(context.Context, types.TipSetKey) (*types.TipSet, error)       `perm:"read"`
-		ChainGetBlockMessages  func(context.Context, cid.Cid) (*BlockMessages, error)              `perm:"read"`
+		ChainGetBlockMessages  func(context.Context, cid.Cid) (*api.BlockMessages, error)          `perm:"read"`
 		ChainGetParentReceipts func(context.Context, cid.Cid) ([]*types.MessageReceipt, error)     `perm:"read"`
-		ChainGetParentMessages func(context.Context, cid.Cid) ([]Message, error)                   `perm:"read"`
+		ChainGetParentMessages func(context.Context, cid.Cid) ([]api.Message, error)               `perm:"read"`
 		ChainGetTipSetByHeight func(context.Context, uint64, *types.TipSet) (*types.TipSet, error) `perm:"read"`
 		ChainReadObj           func(context.Context, cid.Cid) ([]byte, error)                      `perm:"read"`
 		ChainSetHead           func(context.Context, *types.TipSet) error                          `perm:"admin"`
 		ChainGetGenesis        func(context.Context) (*types.TipSet, error)                        `perm:"read"`
 		ChainTipSetWeight      func(context.Context, *types.TipSet) (types.BigInt, error)          `perm:"read"`
+		ChainGetNode           func(ctx context.Context, p string) (interface{}, error)            `perm:"read"`
 
-		SyncState          func(context.Context) (*SyncState, error)                    `perm:"read"`
+		SyncState          func(context.Context) (*api.SyncState, error)                `perm:"read"`
 		SyncSubmitBlock    func(ctx context.Context, blk *types.BlockMsg) error         `perm:"write"`
 		SyncIncomingBlocks func(ctx context.Context) (<-chan *types.BlockHeader, error) `perm:"read"`
 
@@ -61,7 +63,7 @@ type FullNodeStruct struct {
 		MpoolPush        func(context.Context, *types.SignedMessage) error                    `perm:"write"`
 		MpoolPushMessage func(context.Context, *types.Message) (*types.SignedMessage, error)  `perm:"sign"`
 		MpoolGetNonce    func(context.Context, address.Address) (uint64, error)               `perm:"read"`
-		MpoolSub         func(context.Context) (<-chan MpoolUpdate, error)                    `perm:"read"`
+		MpoolSub         func(context.Context) (<-chan api.MpoolUpdate, error)                `perm:"read"`
 
 		MinerCreateBlock func(context.Context, address.Address, *types.TipSet, *types.Ticket, *types.EPostProof, []*types.SignedMessage, uint64, uint64) (*types.BlockMsg, error) `perm:"write"`
 
@@ -76,29 +78,29 @@ type FullNodeStruct struct {
 		WalletExport         func(context.Context, address.Address) (*types.KeyInfo, error)                       `perm:"admin"`
 		WalletImport         func(context.Context, *types.KeyInfo) (address.Address, error)                       `perm:"admin"`
 
-		ClientImport      func(ctx context.Context, path string) (cid.Cid, error)                                                                     `perm:"admin"`
-		ClientListImports func(ctx context.Context) ([]Import, error)                                                                                 `perm:"write"`
-		ClientHasLocal    func(ctx context.Context, root cid.Cid) (bool, error)                                                                       `perm:"write"`
-		ClientFindData    func(ctx context.Context, root cid.Cid) ([]QueryOffer, error)                                                               `perm:"read"`
-		ClientStartDeal   func(ctx context.Context, data cid.Cid, miner address.Address, price types.BigInt, blocksDuration uint64) (*cid.Cid, error) `perm:"admin"`
-		ClientGetDealInfo func(context.Context, cid.Cid) (*DealInfo, error)                                                                           `perm:"read"`
-		ClientListDeals   func(ctx context.Context) ([]DealInfo, error)                                                                               `perm:"write"`
-		ClientRetrieve    func(ctx context.Context, order RetrievalOrder, path string) error                                                          `perm:"admin"`
-		ClientQueryAsk    func(ctx context.Context, p peer.ID, miner address.Address) (*types.SignedStorageAsk, error)                                `perm:"read"`
+		ClientImport      func(ctx context.Context, path string) (cid.Cid, error)                                                                                           `perm:"admin"`
+		ClientListImports func(ctx context.Context) ([]api.Import, error)                                                                                                   `perm:"write"`
+		ClientHasLocal    func(ctx context.Context, root cid.Cid) (bool, error)                                                                                             `perm:"write"`
+		ClientFindData    func(ctx context.Context, root cid.Cid) ([]api.QueryOffer, error)                                                                                 `perm:"read"`
+		ClientStartDeal   func(ctx context.Context, data cid.Cid, addr address.Address, miner address.Address, price types.BigInt, blocksDuration uint64) (*cid.Cid, error) `perm:"admin"`
+		ClientGetDealInfo func(context.Context, cid.Cid) (*api.DealInfo, error)                                                                                             `perm:"read"`
+		ClientListDeals   func(ctx context.Context) ([]api.DealInfo, error)                                                                                                 `perm:"write"`
+		ClientRetrieve    func(ctx context.Context, order api.RetrievalOrder, path string) error                                                                            `perm:"admin"`
+		ClientQueryAsk    func(ctx context.Context, p peer.ID, miner address.Address) (*types.SignedStorageAsk, error)                                                      `perm:"read"`
 
-		StateMinerSectors             func(context.Context, address.Address, *types.TipSet) ([]*ChainSectorInfo, error)               `perm:"read"`
-		StateMinerProvingSet          func(context.Context, address.Address, *types.TipSet) ([]*ChainSectorInfo, error)               `perm:"read"`
-		StateMinerPower               func(context.Context, address.Address, *types.TipSet) (MinerPower, error)                       `perm:"read"`
+		StateMinerSectors             func(context.Context, address.Address, *types.TipSet) ([]*api.ChainSectorInfo, error)           `perm:"read"`
+		StateMinerProvingSet          func(context.Context, address.Address, *types.TipSet) ([]*api.ChainSectorInfo, error)           `perm:"read"`
+		StateMinerPower               func(context.Context, address.Address, *types.TipSet) (api.MinerPower, error)                   `perm:"read"`
 		StateMinerWorker              func(context.Context, address.Address, *types.TipSet) (address.Address, error)                  `perm:"read"`
 		StateMinerPeerID              func(ctx context.Context, m address.Address, ts *types.TipSet) (peer.ID, error)                 `perm:"read"`
 		StateMinerElectionPeriodStart func(ctx context.Context, actor address.Address, ts *types.TipSet) (uint64, error)              `perm:"read"`
 		StateMinerSectorSize          func(context.Context, address.Address, *types.TipSet) (uint64, error)                           `perm:"read"`
 		StateCall                     func(context.Context, *types.Message, *types.TipSet) (*types.MessageReceipt, error)             `perm:"read"`
-		StateReplay                   func(context.Context, *types.TipSet, cid.Cid) (*ReplayResults, error)                           `perm:"read"`
+		StateReplay                   func(context.Context, *types.TipSet, cid.Cid) (*api.ReplayResults, error)                       `perm:"read"`
 		StateGetActor                 func(context.Context, address.Address, *types.TipSet) (*types.Actor, error)                     `perm:"read"`
-		StateReadState                func(context.Context, *types.Actor, *types.TipSet) (*ActorState, error)                         `perm:"read"`
+		StateReadState                func(context.Context, *types.Actor, *types.TipSet) (*api.ActorState, error)                     `perm:"read"`
 		StatePledgeCollateral         func(context.Context, *types.TipSet) (types.BigInt, error)                                      `perm:"read"`
-		StateWaitMsg                  func(context.Context, cid.Cid) (*MsgWait, error)                                                `perm:"read"`
+		StateWaitMsg                  func(context.Context, cid.Cid) (*api.MsgWait, error)                                            `perm:"read"`
 		StateListMiners               func(context.Context, *types.TipSet) ([]address.Address, error)                                 `perm:"read"`
 		StateListActors               func(context.Context, *types.TipSet) ([]address.Address, error)                                 `perm:"read"`
 		StateMarketBalance            func(context.Context, address.Address, *types.TipSet) (actors.StorageParticipantBalance, error) `perm:"read"`
@@ -108,23 +110,28 @@ type FullNodeStruct struct {
 		StateLookupID                 func(ctx context.Context, addr address.Address, ts *types.TipSet) (address.Address, error)      `perm:"read"`
 		StateChangedActors            func(context.Context, cid.Cid, cid.Cid) (map[string]types.Actor, error)                         `perm:"read"`
 		StateGetReceipt               func(context.Context, cid.Cid, *types.TipSet) (*types.MessageReceipt, error)                    `perm:"read"`
+		StateMinerSectorCount         func(context.Context, address.Address, *types.TipSet) (api.MinerSectors, error)                 `perm:"read"`
 
 		MarketEnsureAvailable func(context.Context, address.Address, types.BigInt) error `perm:"sign"`
 
-		PaychGet                   func(ctx context.Context, from, to address.Address, ensureFunds types.BigInt) (*ChannelInfo, error)      `perm:"sign"`
-		PaychList                  func(context.Context) ([]address.Address, error)                                                         `perm:"read"`
-		PaychStatus                func(context.Context, address.Address) (*PaychStatus, error)                                             `perm:"read"`
-		PaychClose                 func(context.Context, address.Address) (cid.Cid, error)                                                  `perm:"sign"`
-		PaychAllocateLane          func(context.Context, address.Address) (uint64, error)                                                   `perm:"sign"`
-		PaychNewPayment            func(ctx context.Context, from, to address.Address, vouchers []VoucherSpec) (*PaymentInfo, error)        `perm:"sign"`
-		PaychVoucherCheck          func(context.Context, *types.SignedVoucher) error                                                        `perm:"read"`
-		PaychVoucherCheckValid     func(context.Context, address.Address, *types.SignedVoucher) error                                       `perm:"read"`
-		PaychVoucherCheckSpendable func(context.Context, address.Address, *types.SignedVoucher, []byte, []byte) (bool, error)               `perm:"read"`
-		PaychVoucherAdd            func(context.Context, address.Address, *types.SignedVoucher, []byte, types.BigInt) (types.BigInt, error) `perm:"write"`
-		PaychVoucherCreate         func(context.Context, address.Address, types.BigInt, uint64) (*types.SignedVoucher, error)               `perm:"sign"`
-		PaychVoucherList           func(context.Context, address.Address) ([]*types.SignedVoucher, error)                                   `perm:"write"`
-		PaychVoucherSubmit         func(context.Context, address.Address, *types.SignedVoucher) (cid.Cid, error)                            `perm:"sign"`
+		PaychGet                   func(ctx context.Context, from, to address.Address, ensureFunds types.BigInt) (*api.ChannelInfo, error)   `perm:"sign"`
+		PaychList                  func(context.Context) ([]address.Address, error)                                                          `perm:"read"`
+		PaychStatus                func(context.Context, address.Address) (*api.PaychStatus, error)                                          `perm:"read"`
+		PaychClose                 func(context.Context, address.Address) (cid.Cid, error)                                                   `perm:"sign"`
+		PaychAllocateLane          func(context.Context, address.Address) (uint64, error)                                                    `perm:"sign"`
+		PaychNewPayment            func(ctx context.Context, from, to address.Address, vouchers []api.VoucherSpec) (*api.PaymentInfo, error) `perm:"sign"`
+		PaychVoucherCheck          func(context.Context, *types.SignedVoucher) error                                                         `perm:"read"`
+		PaychVoucherCheckValid     func(context.Context, address.Address, *types.SignedVoucher) error                                        `perm:"read"`
+		PaychVoucherCheckSpendable func(context.Context, address.Address, *types.SignedVoucher, []byte, []byte) (bool, error)                `perm:"read"`
+		PaychVoucherAdd            func(context.Context, address.Address, *types.SignedVoucher, []byte, types.BigInt) (types.BigInt, error)  `perm:"write"`
+		PaychVoucherCreate         func(context.Context, address.Address, types.BigInt, uint64) (*types.SignedVoucher, error)                `perm:"sign"`
+		PaychVoucherList           func(context.Context, address.Address) ([]*types.SignedVoucher, error)                                    `perm:"write"`
+		PaychVoucherSubmit         func(context.Context, address.Address, *types.SignedVoucher) (cid.Cid, error)                             `perm:"sign"`
 	}
+}
+
+func (c *FullNodeStruct) StateMinerSectorCount(ctx context.Context, addr address.Address, ts *types.TipSet) (api.MinerSectors, error) {
+	return c.Internal.StateMinerSectorCount(ctx, addr, ts)
 }
 
 type StorageMinerStruct struct {
@@ -134,12 +141,12 @@ type StorageMinerStruct struct {
 		ActorAddress    func(context.Context) (address.Address, error)         `perm:"read"`
 		ActorSectorSize func(context.Context, address.Address) (uint64, error) `perm:"read"`
 
-		StoreGarbageData func(context.Context) error `perm:"write"`
+		PledgeSector func(context.Context) error `perm:"write"`
 
-		SectorsStatus func(context.Context, uint64) (SectorInfo, error)     `perm:"read"`
-		SectorsList   func(context.Context) ([]uint64, error)               `perm:"read"`
-		SectorsRefs   func(context.Context) (map[string][]SealedRef, error) `perm:"read"`
-		SectorsUpdate func(context.Context, uint64, SectorState) error      `perm:"write"`
+		SectorsStatus func(context.Context, uint64) (api.SectorInfo, error)     `perm:"read"`
+		SectorsList   func(context.Context) ([]uint64, error)                   `perm:"read"`
+		SectorsRefs   func(context.Context) (map[string][]api.SealedRef, error) `perm:"read"`
+		SectorsUpdate func(context.Context, uint64, api.SectorState) error      `perm:"write"`
 
 		WorkerStats func(context.Context) (sectorbuilder.WorkerStats, error) `perm:"read"`
 
@@ -148,11 +155,11 @@ type StorageMinerStruct struct {
 	}
 }
 
-func (c *CommonStruct) AuthVerify(ctx context.Context, token string) ([]Permission, error) {
+func (c *CommonStruct) AuthVerify(ctx context.Context, token string) ([]api.Permission, error) {
 	return c.Internal.AuthVerify(ctx, token)
 }
 
-func (c *CommonStruct) AuthNew(ctx context.Context, perms []Permission) ([]byte, error) {
+func (c *CommonStruct) AuthNew(ctx context.Context, perms []api.Permission) ([]byte, error) {
 	return c.Internal.AuthNew(ctx, perms)
 }
 
@@ -182,11 +189,11 @@ func (c *CommonStruct) ID(ctx context.Context) (peer.ID, error) {
 }
 
 // Version implements API.Version
-func (c *CommonStruct) Version(ctx context.Context) (Version, error) {
+func (c *CommonStruct) Version(ctx context.Context) (api.Version, error) {
 	return c.Internal.Version(ctx)
 }
 
-func (c *FullNodeStruct) ClientListImports(ctx context.Context) ([]Import, error) {
+func (c *FullNodeStruct) ClientListImports(ctx context.Context) ([]api.Import, error) {
 	return c.Internal.ClientListImports(ctx)
 }
 
@@ -198,22 +205,22 @@ func (c *FullNodeStruct) ClientHasLocal(ctx context.Context, root cid.Cid) (bool
 	return c.Internal.ClientHasLocal(ctx, root)
 }
 
-func (c *FullNodeStruct) ClientFindData(ctx context.Context, root cid.Cid) ([]QueryOffer, error) {
+func (c *FullNodeStruct) ClientFindData(ctx context.Context, root cid.Cid) ([]api.QueryOffer, error) {
 	return c.Internal.ClientFindData(ctx, root)
 }
 
-func (c *FullNodeStruct) ClientStartDeal(ctx context.Context, data cid.Cid, miner address.Address, price types.BigInt, blocksDuration uint64) (*cid.Cid, error) {
-	return c.Internal.ClientStartDeal(ctx, data, miner, price, blocksDuration)
+func (c *FullNodeStruct) ClientStartDeal(ctx context.Context, data cid.Cid, addr address.Address, miner address.Address, price types.BigInt, blocksDuration uint64) (*cid.Cid, error) {
+	return c.Internal.ClientStartDeal(ctx, data, addr, miner, price, blocksDuration)
 }
-func (c *FullNodeStruct) ClientGetDealInfo(ctx context.Context, deal cid.Cid) (*DealInfo, error) {
+func (c *FullNodeStruct) ClientGetDealInfo(ctx context.Context, deal cid.Cid) (*api.DealInfo, error) {
 	return c.Internal.ClientGetDealInfo(ctx, deal)
 }
 
-func (c *FullNodeStruct) ClientListDeals(ctx context.Context) ([]DealInfo, error) {
+func (c *FullNodeStruct) ClientListDeals(ctx context.Context) ([]api.DealInfo, error) {
 	return c.Internal.ClientListDeals(ctx)
 }
 
-func (c *FullNodeStruct) ClientRetrieve(ctx context.Context, order RetrievalOrder, path string) error {
+func (c *FullNodeStruct) ClientRetrieve(ctx context.Context, order api.RetrievalOrder, path string) error {
 	return c.Internal.ClientRetrieve(ctx, order, path)
 }
 
@@ -233,7 +240,7 @@ func (c *FullNodeStruct) MpoolPushMessage(ctx context.Context, msg *types.Messag
 	return c.Internal.MpoolPushMessage(ctx, msg)
 }
 
-func (c *FullNodeStruct) MpoolSub(ctx context.Context) (<-chan MpoolUpdate, error) {
+func (c *FullNodeStruct) MpoolSub(ctx context.Context) (<-chan api.MpoolUpdate, error) {
 	return c.Internal.MpoolSub(ctx)
 }
 
@@ -305,7 +312,7 @@ func (c *FullNodeStruct) ChainGetTipSet(ctx context.Context, key types.TipSetKey
 	return c.Internal.ChainGetTipSet(ctx, key)
 }
 
-func (c *FullNodeStruct) ChainGetBlockMessages(ctx context.Context, b cid.Cid) (*BlockMessages, error) {
+func (c *FullNodeStruct) ChainGetBlockMessages(ctx context.Context, b cid.Cid) (*api.BlockMessages, error) {
 	return c.Internal.ChainGetBlockMessages(ctx, b)
 }
 
@@ -313,7 +320,7 @@ func (c *FullNodeStruct) ChainGetParentReceipts(ctx context.Context, b cid.Cid) 
 	return c.Internal.ChainGetParentReceipts(ctx, b)
 }
 
-func (c *FullNodeStruct) ChainGetParentMessages(ctx context.Context, b cid.Cid) ([]Message, error) {
+func (c *FullNodeStruct) ChainGetParentMessages(ctx context.Context, b cid.Cid) ([]api.Message, error) {
 	return c.Internal.ChainGetParentMessages(ctx, b)
 }
 
@@ -337,7 +344,11 @@ func (c *FullNodeStruct) ChainTipSetWeight(ctx context.Context, ts *types.TipSet
 	return c.Internal.ChainTipSetWeight(ctx, ts)
 }
 
-func (c *FullNodeStruct) SyncState(ctx context.Context) (*SyncState, error) {
+func (c *FullNodeStruct) ChainGetNode(ctx context.Context, p string) (interface{}, error) {
+	return c.Internal.ChainGetNode(ctx, p)
+}
+
+func (c *FullNodeStruct) SyncState(ctx context.Context) (*api.SyncState, error) {
 	return c.Internal.SyncState(ctx)
 }
 
@@ -349,15 +360,15 @@ func (c *FullNodeStruct) SyncIncomingBlocks(ctx context.Context) (<-chan *types.
 	return c.Internal.SyncIncomingBlocks(ctx)
 }
 
-func (c *FullNodeStruct) StateMinerSectors(ctx context.Context, addr address.Address, ts *types.TipSet) ([]*ChainSectorInfo, error) {
+func (c *FullNodeStruct) StateMinerSectors(ctx context.Context, addr address.Address, ts *types.TipSet) ([]*api.ChainSectorInfo, error) {
 	return c.Internal.StateMinerSectors(ctx, addr, ts)
 }
 
-func (c *FullNodeStruct) StateMinerProvingSet(ctx context.Context, addr address.Address, ts *types.TipSet) ([]*ChainSectorInfo, error) {
+func (c *FullNodeStruct) StateMinerProvingSet(ctx context.Context, addr address.Address, ts *types.TipSet) ([]*api.ChainSectorInfo, error) {
 	return c.Internal.StateMinerProvingSet(ctx, addr, ts)
 }
 
-func (c *FullNodeStruct) StateMinerPower(ctx context.Context, a address.Address, ts *types.TipSet) (MinerPower, error) {
+func (c *FullNodeStruct) StateMinerPower(ctx context.Context, a address.Address, ts *types.TipSet) (api.MinerPower, error) {
 	return c.Internal.StateMinerPower(ctx, a, ts)
 }
 
@@ -381,7 +392,7 @@ func (c *FullNodeStruct) StateCall(ctx context.Context, msg *types.Message, ts *
 	return c.Internal.StateCall(ctx, msg, ts)
 }
 
-func (c *FullNodeStruct) StateReplay(ctx context.Context, ts *types.TipSet, mc cid.Cid) (*ReplayResults, error) {
+func (c *FullNodeStruct) StateReplay(ctx context.Context, ts *types.TipSet, mc cid.Cid) (*api.ReplayResults, error) {
 	return c.Internal.StateReplay(ctx, ts, mc)
 }
 
@@ -389,7 +400,7 @@ func (c *FullNodeStruct) StateGetActor(ctx context.Context, actor address.Addres
 	return c.Internal.StateGetActor(ctx, actor, ts)
 }
 
-func (c *FullNodeStruct) StateReadState(ctx context.Context, act *types.Actor, ts *types.TipSet) (*ActorState, error) {
+func (c *FullNodeStruct) StateReadState(ctx context.Context, act *types.Actor, ts *types.TipSet) (*api.ActorState, error) {
 	return c.Internal.StateReadState(ctx, act, ts)
 }
 
@@ -397,7 +408,7 @@ func (c *FullNodeStruct) StatePledgeCollateral(ctx context.Context, ts *types.Ti
 	return c.Internal.StatePledgeCollateral(ctx, ts)
 }
 
-func (c *FullNodeStruct) StateWaitMsg(ctx context.Context, msgc cid.Cid) (*MsgWait, error) {
+func (c *FullNodeStruct) StateWaitMsg(ctx context.Context, msgc cid.Cid) (*api.MsgWait, error) {
 	return c.Internal.StateWaitMsg(ctx, msgc)
 }
 func (c *FullNodeStruct) StateListMiners(ctx context.Context, ts *types.TipSet) ([]address.Address, error) {
@@ -440,7 +451,7 @@ func (c *FullNodeStruct) MarketEnsureAvailable(ctx context.Context, addr address
 	return c.Internal.MarketEnsureAvailable(ctx, addr, amt)
 }
 
-func (c *FullNodeStruct) PaychGet(ctx context.Context, from, to address.Address, ensureFunds types.BigInt) (*ChannelInfo, error) {
+func (c *FullNodeStruct) PaychGet(ctx context.Context, from, to address.Address, ensureFunds types.BigInt) (*api.ChannelInfo, error) {
 	return c.Internal.PaychGet(ctx, from, to, ensureFunds)
 }
 
@@ -448,7 +459,7 @@ func (c *FullNodeStruct) PaychList(ctx context.Context) ([]address.Address, erro
 	return c.Internal.PaychList(ctx)
 }
 
-func (c *FullNodeStruct) PaychStatus(ctx context.Context, pch address.Address) (*PaychStatus, error) {
+func (c *FullNodeStruct) PaychStatus(ctx context.Context, pch address.Address) (*api.PaychStatus, error) {
 	return c.Internal.PaychStatus(ctx, pch)
 }
 
@@ -480,7 +491,7 @@ func (c *FullNodeStruct) PaychAllocateLane(ctx context.Context, ch address.Addre
 	return c.Internal.PaychAllocateLane(ctx, ch)
 }
 
-func (c *FullNodeStruct) PaychNewPayment(ctx context.Context, from, to address.Address, vouchers []VoucherSpec) (*PaymentInfo, error) {
+func (c *FullNodeStruct) PaychNewPayment(ctx context.Context, from, to address.Address, vouchers []api.VoucherSpec) (*api.PaymentInfo, error) {
 	return c.Internal.PaychNewPayment(ctx, from, to, vouchers)
 }
 
@@ -496,12 +507,12 @@ func (c *StorageMinerStruct) ActorSectorSize(ctx context.Context, addr address.A
 	return c.Internal.ActorSectorSize(ctx, addr)
 }
 
-func (c *StorageMinerStruct) StoreGarbageData(ctx context.Context) error {
-	return c.Internal.StoreGarbageData(ctx)
+func (c *StorageMinerStruct) PledgeSector(ctx context.Context) error {
+	return c.Internal.PledgeSector(ctx)
 }
 
 // Get the status of a given sector by ID
-func (c *StorageMinerStruct) SectorsStatus(ctx context.Context, sid uint64) (SectorInfo, error) {
+func (c *StorageMinerStruct) SectorsStatus(ctx context.Context, sid uint64) (api.SectorInfo, error) {
 	return c.Internal.SectorsStatus(ctx, sid)
 }
 
@@ -510,11 +521,11 @@ func (c *StorageMinerStruct) SectorsList(ctx context.Context) ([]uint64, error) 
 	return c.Internal.SectorsList(ctx)
 }
 
-func (c *StorageMinerStruct) SectorsRefs(ctx context.Context) (map[string][]SealedRef, error) {
+func (c *StorageMinerStruct) SectorsRefs(ctx context.Context) (map[string][]api.SealedRef, error) {
 	return c.Internal.SectorsRefs(ctx)
 }
 
-func (c *StorageMinerStruct) SectorsUpdate(ctx context.Context, id uint64, state SectorState) error {
+func (c *StorageMinerStruct) SectorsUpdate(ctx context.Context, id uint64, state api.SectorState) error {
 	return c.Internal.SectorsUpdate(ctx, id, state)
 }
 
@@ -530,6 +541,6 @@ func (c *StorageMinerStruct) WorkerDone(ctx context.Context, task uint64, res se
 	return c.Internal.WorkerDone(ctx, task, res)
 }
 
-var _ Common = &CommonStruct{}
-var _ FullNode = &FullNodeStruct{}
-var _ StorageMiner = &StorageMinerStruct{}
+var _ api.Common = &CommonStruct{}
+var _ api.FullNode = &FullNodeStruct{}
+var _ api.StorageMiner = &StorageMinerStruct{}

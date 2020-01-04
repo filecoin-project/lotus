@@ -148,7 +148,7 @@ func (a *StateAPI) stateForTs(ctx context.Context, ts *types.TipSet) (*state.Sta
 func (a *StateAPI) StateGetActor(ctx context.Context, actor address.Address, ts *types.TipSet) (*types.Actor, error) {
 	state, err := a.stateForTs(ctx, ts)
 	if err != nil {
-		return nil, err
+		return nil, xerrors.Errorf("computing tipset state failed: %w", err)
 	}
 
 	return state.GetActor(actor)
@@ -223,18 +223,7 @@ func (a *StateAPI) StateGetReceipt(ctx context.Context, msg cid.Cid, ts *types.T
 }
 
 func (a *StateAPI) StateListMiners(ctx context.Context, ts *types.TipSet) ([]address.Address, error) {
-	var state actors.StoragePowerState
-	if _, err := a.StateManager.LoadActorState(ctx, actors.StoragePowerAddress, &state, ts); err != nil {
-		return nil, err
-	}
-
-	cst := hamt.CSTFromBstore(a.StateManager.ChainStore().Blockstore())
-	miners, err := actors.MinerSetList(ctx, cst, state.Miners)
-	if err != nil {
-		return nil, err
-	}
-
-	return miners, nil
+	return stmgr.ListMinerActors(ctx, a.StateManager, ts)
 }
 
 func (a *StateAPI) StateListActors(ctx context.Context, ts *types.TipSet) ([]address.Address, error) {
@@ -357,4 +346,8 @@ func (a *StateAPI) StateChangedActors(ctx context.Context, old cid.Cid, new cid.
 	}
 
 	return out, nil
+}
+
+func (a *StateAPI) StateMinerSectorCount(ctx context.Context, addr address.Address, ts *types.TipSet) (api.MinerSectors, error) {
+	return stmgr.SectorSetSizes(ctx, a.StateManager, addr, ts)
 }

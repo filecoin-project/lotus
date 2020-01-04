@@ -1,6 +1,6 @@
 # Pond UI
 
-Pond is a graphical testbed for [Lotus](https://docs.lotu.sh). Using it will setup a seperate local network which is helpful for debugging. Pond will spin up nodes, connect them in a given topology, start them mining, and observe how they function over time.
+Pond is a graphical testbed for [Lotus](https://docs.lotu.sh). Using it will setup a separate local network which is helpful for debugging. Pond will spin up nodes, connect them in a given topology, start them mining, and observe how they function over time.
 
 ## Build
 
@@ -27,6 +27,6 @@ Don't leave Pond unattended for more than 10 hours, the web client will eventual
 ## Troubleshooting
 
 - Turn it off and on - Start at the top
-- `rm -rf ~/.lotus ~/.lotusstorage/`
+- `rm -rf ~/.lotus ~/.lotusstorage/`, this command will delete chain sync data, stored wallets, and other configurations so be careful.
 - Verify you have the correct versions of dependencies
 - If stuck on a bad fork, try `lotus chain sethead --genesis`

@@ -25,13 +25,13 @@ func SupportedSectorSize(ssize uint64) bool {
 // Payments
 
 // Epochs
-const PaymentChannelClosingDelay = 6 * 60 * 2 // six hours
+const PaymentChannelClosingDelay = 6 * 60 * 60 / BlockDelay // six hours
 
 // /////
 // Consensus / Network
 
 // Seconds
-const AllowableClockDrift = BlockDelay * 2
+const AllowableClockDrift = 1
 
 // Epochs
 const ForkLengthThreshold = Finality
@@ -82,10 +82,6 @@ const InitialRewardStr = "153856861913558700202"
 var InitialReward *big.Int
 
 const FilecoinPrecision = 1_000_000_000_000_000_000
-
-// six years
-// Epochs
-const HalvingPeriodEpochs = 6 * 365 * 24 * 60 * 2
 
 // TODO: Move other important consts here
 
