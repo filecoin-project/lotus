@@ -1,6 +1,7 @@
 package types
 
 import (
+	"errors"
 	"fmt"
 	"io"
 
@@ -8,6 +9,8 @@ import (
 	cbg "github.com/whyrusleeping/cbor-gen"
 	"golang.org/x/xerrors"
 )
+
+var ErrBitFieldTooMany = errors.New("to many items in RLE")
 
 type BitField struct {
 	rle rlepluslazy.RLE
@@ -106,7 +109,14 @@ func (bf BitField) Count() (uint64, error) {
 }
 
 // All returns all set bits
-func (bf BitField) All() ([]uint64, error) {
+func (bf BitField) All(max uint64) ([]uint64, error) {
+	c, err := bf.Count()
+	if err != nil {
+		return nil, xerrors.Errorf("count errror: %w", err)
+	}
+	if c > max {
+		return nil, xerrors.Errorf("expected %d, got %d: %w", max, c, ErrBitFieldTooMany)
+	}
 
 	runs, err := bf.sum()
 	if err != nil {
@@ -121,7 +131,14 @@ func (bf BitField) All() ([]uint64, error) {
 	return res, nil
 }
 
-func (bf BitField) AllMap() (map[uint64]bool, error) {
+func (bf BitField) AllMap(max uint64) (map[uint64]bool, error) {
+	c, err := bf.Count()
+	if err != nil {
+		return nil, xerrors.Errorf("count errror: %w", err)
+	}
+	if c > max {
+		return nil, xerrors.Errorf("expected %d, got %d: %w", max, c, ErrBitFieldTooMany)
+	}
 
 	runs, err := bf.sum()
 	if err != nil {

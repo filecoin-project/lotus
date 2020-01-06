@@ -467,7 +467,12 @@ func (sma StorageMinerActor) SubmitFallbackPoSt(act *types.Actor, vmctx types.VM
 		return nil, aerrors.HandleExternalError(lerr, "could not load proving set node")
 	}
 
-	faults, nerr := self.FaultSet.AllMap()
+	ss, lerr := amt.LoadAMT(types.WrapStorage(vmctx.Storage()), self.Sectors)
+	if lerr != nil {
+		return nil, aerrors.HandleExternalError(lerr, "could not load proving set node")
+	}
+
+	faults, nerr := self.FaultSet.AllMap(ss.Count)
 	if nerr != nil {
 		return nil, aerrors.Absorb(err, 5, "RLE+ invalid")
 	}
@@ -937,7 +942,12 @@ func onSuccessfulPoSt(self *StorageMinerActorState, vmctx types.VMContext) aerro
 		return aerrors.HandleExternalError(nerr, "failed to load proving set")
 	}
 
-	faults, nerr := self.FaultSet.All()
+	ss, nerr := amt.LoadAMT(types.WrapStorage(vmctx.Storage()), self.Sectors)
+	if nerr != nil {
+		return aerrors.HandleExternalError(nerr, "failed to load proving set")
+	}
+
+	faults, nerr := self.FaultSet.All(ss.Count)
 	if nerr != nil {
 		return aerrors.Absorb(nerr, 1, "invalid bitfield (fatal?)")
 	}
