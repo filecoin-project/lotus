@@ -184,7 +184,7 @@ func (p *Provider) onUpdated(ctx context.Context, update minerDealUpdate) {
 		return
 	}
 	var deal MinerDeal
-	err := p.deals.Mutate(update.id, func(d *MinerDeal) error {
+	err := p.deals.Get(update.id).Mutate(func(d *MinerDeal) error {
 		d.State = update.newState
 		if update.mut != nil {
 			update.mut(d)

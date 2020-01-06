@@ -23,7 +23,7 @@ import (
 )
 
 func (p *Provider) failDeal(id cid.Cid, cerr error) {
-	if err := p.deals.End(id); err != nil {
+	if err := p.deals.Get(id).End(); err != nil {
 		log.Warnf("deals.End: %s", err)
 	}
 
@@ -167,7 +167,7 @@ func (m *ProviderRequestValidator) ValidatePush(
 	}
 
 	var deal MinerDeal
-	err := m.deals.Get(dealVoucher.Proposal, &deal)
+	err := m.deals.Get(dealVoucher.Proposal).Get(&deal)
 	if err != nil {
 		return xerrors.Errorf("Proposal CID %s: %w", dealVoucher.Proposal.String(), ErrNoDeal)
 	}

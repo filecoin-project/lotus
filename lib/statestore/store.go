@@ -5,13 +5,11 @@ import (
 	"fmt"
 	"reflect"
 
+	"github.com/filecoin-project/go-cbor-util"
 	"github.com/ipfs/go-datastore"
 	"github.com/ipfs/go-datastore/query"
-	cbg "github.com/whyrusleeping/cbor-gen"
 	"go.uber.org/multierr"
 	"golang.org/x/xerrors"
-
-	"github.com/filecoin-project/go-cbor-util"
 )
 
 type StateStore struct {
@@ -22,7 +20,7 @@ func New(ds datastore.Datastore) *StateStore {
 	return &StateStore{ds: ds}
 }
 
-func toKey(k interface{}) datastore.Key {
+func ToKey(k interface{}) datastore.Key {
 	switch t := k.(type) {
 	case uint64:
 		return datastore.NewKey(fmt.Sprint(t))
@@ -34,7 +32,7 @@ func toKey(k interface{}) datastore.Key {
 }
 
 func (st *StateStore) Begin(i interface{}, state interface{}) error {
-	k := toKey(i)
+	k := ToKey(i)
 	has, err := st.ds.Has(k)
 	if err != nil {
 		return err
@@ -51,82 +49,15 @@ func (st *StateStore) Begin(i interface{}, state interface{}) error {
 	return st.ds.Put(k, b)
 }
 
-func (st *StateStore) End(i interface{}) error {
-	k := toKey(i)
-	has, err := st.ds.Has(k)
-	if err != nil {
-		return err
+func (st *StateStore) Get(i interface{}) *StoredState {
+	return &StoredState{
+		ds:   st.ds,
+		name: ToKey(i),
 	}
-	if !has {
-		return xerrors.Errorf("No state for %s", i)
-	}
-	return st.ds.Delete(k)
-}
-
-func cborMutator(mutator interface{}) func([]byte) ([]byte, error) {
-	rmut := reflect.ValueOf(mutator)
-
-	return func(in []byte) ([]byte, error) {
-		state := reflect.New(rmut.Type().In(0).Elem())
-
-		err := cborutil.ReadCborRPC(bytes.NewReader(in), state.Interface())
-		if err != nil {
-			return nil, err
-		}
-
-		out := rmut.Call([]reflect.Value{state})
-
-		if err := out[0].Interface(); err != nil {
-			return nil, err.(error)
-		}
-
-		return cborutil.Dump(state.Interface())
-	}
-}
-
-// mutator func(*T) error
-func (st *StateStore) Mutate(i interface{}, mutator interface{}) error {
-	return st.mutate(i, cborMutator(mutator))
-}
-
-func (st *StateStore) mutate(i interface{}, mutator func([]byte) ([]byte, error)) error {
-	k := toKey(i)
-	has, err := st.ds.Has(k)
-	if err != nil {
-		return err
-	}
-	if !has {
-		return xerrors.Errorf("No state for %s", i)
-	}
-
-	cur, err := st.ds.Get(k)
-	if err != nil {
-		return err
-	}
-
-	mutated, err := mutator(cur)
-	if err != nil {
-		return err
-	}
-
-	return st.ds.Put(k, mutated)
 }
 
 func (st *StateStore) Has(i interface{}) (bool, error) {
-	return st.ds.Has(toKey(i))
-}
-
-func (st *StateStore) Get(i interface{}, out cbg.CBORUnmarshaler) error {
-	k := toKey(i)
-	val, err := st.ds.Get(k)
-	if err != nil {
-		if xerrors.Is(err, datastore.ErrNotFound) {
-			return xerrors.Errorf("No state for %s: %w", i, err)
-		}
-		return err
-	}
-
-	return out.UnmarshalCBOR(bytes.NewReader(val))
+	return st.ds.Has(ToKey(i))
 }
 
 // out: *[]T

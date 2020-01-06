@@ -161,7 +161,7 @@ func (m *Miner) onSectorIncoming(sector *SectorInfo) {
 func (m *Miner) onSectorUpdated(ctx context.Context, update sectorUpdate) {
 	log.Infof("Sector %d updated state to %s", update.id, api.SectorStates[update.newState])
 	var sector SectorInfo
-	err := m.sectors.Mutate(update.id, func(s *SectorInfo) error {
+	err := m.sectors.Get(update.id).Mutate(func(s *SectorInfo) error {
 		if update.nonce < s.Nonce {
 			return xerrors.Errorf("update nonce too low, ignoring (%d < %d)", update.nonce, s.Nonce)
 		}

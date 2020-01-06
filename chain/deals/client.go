@@ -149,7 +149,7 @@ func (c *Client) onIncoming(deal *ClientDeal) {
 func (c *Client) onUpdated(ctx context.Context, update clientDealUpdate) {
 	log.Infof("Client deal %s updated state to %s", update.id, api.DealStates[update.newState])
 	var deal ClientDeal
-	err := c.deals.Mutate(update.id, func(d *ClientDeal) error {
+	err := c.deals.Get(update.id).Mutate(func(d *ClientDeal) error {
 		d.State = update.newState
 		if update.mut != nil {
 			update.mut(d)
@@ -299,7 +299,7 @@ func (c *Client) List() ([]ClientDeal, error) {
 
 func (c *Client) GetDeal(d cid.Cid) (*ClientDeal, error) {
 	var out ClientDeal
-	if err := c.deals.Get(d, &out); err != nil {
+	if err := c.deals.Get(d).Get(&out); err != nil {
 		return nil, err
 	}
 	return &out, nil

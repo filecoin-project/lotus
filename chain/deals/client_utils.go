@@ -151,7 +151,7 @@ func (c *ClientRequestValidator) ValidatePull(
 	}
 
 	var deal ClientDeal
-	err := c.deals.Get(dealVoucher.Proposal, &deal)
+	err := c.deals.Get(dealVoucher.Proposal).Get(&deal)
 	if err != nil {
 		return xerrors.Errorf("Proposal CID %s: %w", dealVoucher.Proposal.String(), ErrNoDeal)
 	}

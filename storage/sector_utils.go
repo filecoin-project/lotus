@@ -52,6 +52,6 @@ func (m *Miner) ListSectors() ([]SectorInfo, error) {
 
 func (m *Miner) GetSectorInfo(sid uint64) (SectorInfo, error) {
 	var out SectorInfo
-	err := m.sectors.Get(sid, &out)
+	err := m.sectors.Get(sid).Get(&out)
 	return out, err
 }
