@@ -4,8 +4,8 @@ import (
 	"bytes"
 	"encoding/base64"
 
-	cborrpc "github.com/filecoin-project/go-cbor-util"
 	"github.com/filecoin-project/go-address"
+	cborrpc "github.com/filecoin-project/go-cbor-util"
 	cbor "github.com/ipfs/go-ipld-cbor"
 )
 
