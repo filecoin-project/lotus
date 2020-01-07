@@ -11,9 +11,9 @@ import (
 	"github.com/ipld/go-ipld-prime"
 
 	"github.com/filecoin-project/go-address"
+	"github.com/filecoin-project/go-cbor-util"
 	"github.com/filecoin-project/lotus/chain/actors"
 	"github.com/filecoin-project/lotus/chain/types"
-	"github.com/filecoin-project/lotus/lib/cborutil"
 	"github.com/filecoin-project/lotus/lib/statestore"
 
 	"github.com/ipfs/go-cid"
