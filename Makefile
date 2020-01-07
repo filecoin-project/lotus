@@ -149,6 +149,12 @@ stats:
 .PHONY: stats
 BINS+=stats
 
+health:
+	rm -f lotus-health
+	go build -o lotus-health ./cmd/lotus-health
+.PHONY: health
+BINS+=health
+
 # MISC
 
 buildall: $(BINS)
