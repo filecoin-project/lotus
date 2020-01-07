@@ -3,6 +3,7 @@ package actors_test
 import (
 	"bytes"
 	"context"
+	"math"
 	"math/rand"
 	"testing"
 
@@ -13,8 +14,10 @@ import (
 	"github.com/filecoin-project/lotus/chain/actors/aerrors"
 	"github.com/filecoin-project/lotus/chain/stmgr"
 	"github.com/filecoin-project/lotus/chain/types"
+	"github.com/filecoin-project/lotus/lib/rlepluslazy"
 	hamt "github.com/ipfs/go-hamt-ipld"
 	blockstore "github.com/ipfs/go-ipfs-blockstore"
+	"github.com/stretchr/testify/assert"
 	cbg "github.com/whyrusleeping/cbor-gen"
 )
 
@@ -50,7 +53,23 @@ func TestMinerCommitSectors(t *testing.T) {
 	addSectorToMiner(h, t, minerAddr, worker, client, 1)
 
 	assertSectorIDs(h, t, minerAddr, []uint64{1})
+
 }
+
+type badRuns struct {
+	done bool
+}
+
+func (br *badRuns) HasNext() bool {
+	return !br.done
+}
+
+func (br *badRuns) NextRun() (rlepluslazy.Run, error) {
+	br.done = true
+	return rlepluslazy.Run{true, math.MaxInt64}, nil
+}
+
+var _ rlepluslazy.RunIterator = (*badRuns)(nil)
 
 func TestMinerSubmitBadFault(t *testing.T) {
 	var worker, client address.Address
@@ -99,11 +118,32 @@ func TestMinerSubmitBadFault(t *testing.T) {
 	badnum--
 	bf = types.NewBitField()
 	bf.Set(badnum)
+	bf.Set(badnum - 1)
 	ret, _ = h.Invoke(t, worker, minerAddr, actors.MAMethods.DeclareFaults, &actors.DeclareFaultsParams{bf})
 	ApplyOK(t, ret)
 
 	ret, _ = h.Invoke(t, actors.NetworkAddress, minerAddr, actors.MAMethods.SubmitElectionPoSt, nil)
+
 	ApplyOK(t, ret)
+	assertSectorIDs(h, t, minerAddr, []uint64{1})
+
+	bf.Set(badnum - 2)
+	ret, _ = h.Invoke(t, worker, minerAddr, actors.MAMethods.DeclareFaults, &actors.DeclareFaultsParams{bf})
+	if ret.ExitCode != 3 {
+		t.Errorf("expected exit code 3, got %d: %+v", ret.ExitCode, ret.ActorErr)
+	}
+	assertSectorIDs(h, t, minerAddr, []uint64{1})
+
+	rle, err := rlepluslazy.EncodeRuns(&badRuns{}, []byte{})
+	assert.NoError(t, err)
+
+	bf, err = types.NewBitFieldFromBytes(rle)
+	assert.NoError(t, err)
+	ret, _ = h.Invoke(t, worker, minerAddr, actors.MAMethods.DeclareFaults, &actors.DeclareFaultsParams{bf})
+	if ret.ExitCode != 3 {
+		t.Errorf("expected exit code 3, got %d: %+v", ret.ExitCode, ret.ActorErr)
+	}
+	assertSectorIDs(h, t, minerAddr, []uint64{1})
 
 	bf = types.NewBitField()
 	bf.Set(1)

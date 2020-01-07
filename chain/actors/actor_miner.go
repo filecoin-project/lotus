@@ -472,7 +472,7 @@ func (sma StorageMinerActor) SubmitFallbackPoSt(act *types.Actor, vmctx types.VM
 		return nil, aerrors.HandleExternalError(lerr, "could not load proving set node")
 	}
 
-	faults, nerr := self.FaultSet.AllMap(ss.Count)
+	faults, nerr := self.FaultSet.AllMap(2 * ss.Count)
 	if nerr != nil {
 		return nil, aerrors.Absorb(err, 5, "RLE+ invalid")
 	}
@@ -851,8 +851,8 @@ func (sma StorageMinerActor) DeclareFaults(act *types.Actor, vmctx types.VMConte
 		return nil, aerrors.Absorb(nerr, 2, "could not decode RLE+")
 	}
 
-	if cf > ss.Count {
-		return nil, aerrors.New(3, "too many declared faults")
+	if cf > 2*ss.Count {
+		return nil, aerrors.Newf(3, "too many declared faults: %d > %d", cf, 2*ss.Count)
 	}
 
 	self.FaultSet = nfaults
@@ -940,7 +940,7 @@ func (sma StorageMinerActor) SubmitElectionPoSt(act *types.Actor, vmctx types.VM
 		return nil, aerrors.HandleExternalError(nerr, "failed to load proving set")
 	}
 
-	faults, nerr := self.FaultSet.AllMap(ss.Count)
+	faults, nerr := self.FaultSet.AllMap(2 * ss.Count)
 	if nerr != nil {
 		return nil, aerrors.Absorb(nerr, 1, "invalid bitfield (fatal?)")
 	}
@@ -988,7 +988,7 @@ func onSuccessfulPoSt(self *StorageMinerActorState, vmctx types.VMContext, activ
 		return aerrors.HandleExternalError(nerr, "failed to load sector set")
 	}
 
-	faults, nerr := self.FaultSet.All(ss.Count)
+	faults, nerr := self.FaultSet.All(2 * ss.Count)
 	if nerr != nil {
 		return aerrors.Absorb(nerr, 1, "invalid bitfield (fatal?)")
 	}

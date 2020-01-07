@@ -19,14 +19,23 @@ type BitField struct {
 }
 
 func NewBitField() BitField {
-	rle, err := rlepluslazy.FromBuf([]byte{})
+	bf, err := NewBitFieldFromBytes([]byte{})
 	if err != nil {
-		panic(err)
+		panic(fmt.Sprintf("creating empty rle: %+v", err))
 	}
-	return BitField{
-		rle:  rle,
-		bits: make(map[uint64]struct{}),
+	return bf
+}
+
+func NewBitFieldFromBytes(rle []byte) (BitField, error) {
+	bf := BitField{}
+	rlep, err := rlepluslazy.FromBuf(rle)
+	if err != nil {
+		return BitField{}, xerrors.Errorf("could not decode rle+: %w", err)
 	}
+	bf.rle = rlep
+	bf.bits = make(map[uint64]struct{})
+	return bf, nil
+
 }
 
 func BitFieldFromSet(setBits []uint64) BitField {
