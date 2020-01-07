@@ -946,6 +946,23 @@ func (sma StorageMinerActor) SubmitElectionPoSt(act *types.Actor, vmctx types.VM
 	}
 
 	activeFaults := uint64(0)
+	for f := range faults {
+		if f > amt.MaxIndex {
+			continue
+		}
+
+		var comms [][]byte
+		err := pss.Get(f, &comms)
+		if err != nil {
+			var notfound *amt.ErrNotFound
+			if xerrors.As(err, &notfound) {
+				activeFaults++
+			} else {
+				return nil, aerrors.HandleExternalError(err, "failed to find sector in sector set")
+			}
+		}
+
+	}
 	if err := pss.ForEach(func(id uint64, v *cbg.Deferred) error {
 		if faults[id] {
 			activeFaults++

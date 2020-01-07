@@ -104,6 +104,10 @@ func TestMinerSubmitBadFault(t *testing.T) {
 
 	assertSectorIDs(h, t, minerAddr, []uint64{1})
 
+	st, err := getMinerState(context.TODO(), h.vm.StateTree(), h.bs, minerAddr)
+	assert.NoError(t, err)
+	expectedPower := st.Power
+
 	bf := types.NewBitField()
 	bf.Set(6)
 	ret, _ = h.Invoke(t, worker, minerAddr, actors.MAMethods.DeclareFaults, &actors.DeclareFaultsParams{bf})
@@ -126,6 +130,13 @@ func TestMinerSubmitBadFault(t *testing.T) {
 
 	ApplyOK(t, ret)
 	assertSectorIDs(h, t, minerAddr, []uint64{1})
+
+	st, err = getMinerState(context.TODO(), h.vm.StateTree(), h.bs, minerAddr)
+	assert.NoError(t, err)
+	currentPower := st.Power
+	if types.BigCmp(expectedPower, currentPower) != 0 {
+		t.Errorf("power changed and shouldn't have: %s != %s", expectedPower, currentPower)
+	}
 
 	bf.Set(badnum - 2)
 	ret, _ = h.Invoke(t, worker, minerAddr, actors.MAMethods.DeclareFaults, &actors.DeclareFaultsParams{bf})
@@ -215,7 +226,7 @@ func assertSectorIDs(h *Harness, t *testing.T, maddr address.Address, ids []uint
 	}
 }
 
-func getMinerSectorSet(ctx context.Context, st types.StateTree, bs blockstore.Blockstore, maddr address.Address) ([]*api.ChainSectorInfo, error) {
+func getMinerState(ctx context.Context, st types.StateTree, bs blockstore.Blockstore, maddr address.Address) (*actors.StorageMinerActorState, error) {
 	mact, err := st.GetActor(maddr)
 	if err != nil {
 		return nil, err
@@ -225,6 +236,14 @@ func getMinerSectorSet(ctx context.Context, st types.StateTree, bs blockstore.Bl
 
 	var mstate actors.StorageMinerActorState
 	if err := cst.Get(ctx, mact.Head, &mstate); err != nil {
+		return nil, err
+	}
+	return &mstate, nil
+}
+
+func getMinerSectorSet(ctx context.Context, st types.StateTree, bs blockstore.Blockstore, maddr address.Address) ([]*api.ChainSectorInfo, error) {
+	mstate, err := getMinerState(ctx, st, bs, maddr)
+	if err != nil {
 		return nil, err
 	}
 
