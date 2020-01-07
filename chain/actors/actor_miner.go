@@ -955,21 +955,13 @@ func (sma StorageMinerActor) SubmitElectionPoSt(act *types.Actor, vmctx types.VM
 		err := pss.Get(f, &comms)
 		if err != nil {
 			var notfound *amt.ErrNotFound
-			if xerrors.As(err, &notfound) {
-				activeFaults++
-			} else {
+			if !xerrors.As(err, &notfound) {
 				return nil, aerrors.HandleExternalError(err, "failed to find sector in sector set")
 			}
+			continue
 		}
 
-	}
-	if err := pss.ForEach(func(id uint64, v *cbg.Deferred) error {
-		if faults[id] {
-			activeFaults++
-		}
-		return nil
-	}); err != nil {
-		return nil, aerrors.Absorb(err, 2, "could not decode sectorset")
+		activeFaults++
 	}
 
 	if err := onSuccessfulPoSt(self, vmctx, activeFaults); err != nil { // TODO

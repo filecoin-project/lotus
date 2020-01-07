@@ -10,6 +10,7 @@ import (
 	"github.com/filecoin-project/go-address"
 	"github.com/filecoin-project/go-sectorbuilder"
 	"github.com/filecoin-project/lotus/api"
+	"github.com/filecoin-project/lotus/build"
 	"github.com/filecoin-project/lotus/chain/actors"
 	"github.com/filecoin-project/lotus/chain/actors/aerrors"
 	"github.com/filecoin-project/lotus/chain/stmgr"
@@ -72,20 +73,18 @@ func (br *badRuns) NextRun() (rlepluslazy.Run, error) {
 var _ rlepluslazy.RunIterator = (*badRuns)(nil)
 
 func TestMinerSubmitBadFault(t *testing.T) {
+	oldSS, oldMin := build.SectorSizes, build.MinimumMinerPower
+	build.SectorSizes, build.MinimumMinerPower = []uint64{1024}, 1024
+	defer func() {
+		build.SectorSizes, build.MinimumMinerPower = oldSS, oldMin
+	}()
+
 	var worker, client address.Address
 	var minerAddr address.Address
 	opts := []HarnessOpt{
 		HarnessAddr(&worker, 1000000),
 		HarnessAddr(&client, 1000000),
-		HarnessActor(&minerAddr, &worker, actors.StorageMinerCodeCid,
-			func() cbg.CBORMarshaler {
-				return &actors.StorageMinerConstructorParams{
-					Owner:      worker,
-					Worker:     worker,
-					SectorSize: 1024,
-					PeerID:     "fakepeerid",
-				}
-			}),
+		HarnessAddMiner(&minerAddr, &worker),
 	}
 
 	h := NewHarness(t, opts...)
@@ -104,10 +103,6 @@ func TestMinerSubmitBadFault(t *testing.T) {
 
 	assertSectorIDs(h, t, minerAddr, []uint64{1})
 
-	st, err := getMinerState(context.TODO(), h.vm.StateTree(), h.bs, minerAddr)
-	assert.NoError(t, err)
-	expectedPower := st.Power
-
 	bf := types.NewBitField()
 	bf.Set(6)
 	ret, _ = h.Invoke(t, worker, minerAddr, actors.MAMethods.DeclareFaults, &actors.DeclareFaultsParams{bf})
@@ -115,8 +110,14 @@ func TestMinerSubmitBadFault(t *testing.T) {
 
 	ret, _ = h.Invoke(t, actors.NetworkAddress, minerAddr, actors.MAMethods.SubmitElectionPoSt, nil)
 	ApplyOK(t, ret)
-
 	assertSectorIDs(h, t, minerAddr, []uint64{1})
+
+	st, err := getMinerState(context.TODO(), h.vm.StateTree(), h.bs, minerAddr)
+	assert.NoError(t, err)
+	expectedPower := st.Power
+	if types.BigCmp(expectedPower, types.NewInt(1024)) != 0 {
+		t.Errorf("Expected power of 1024, got %s", expectedPower)
+	}
 
 	badnum := uint64(0)
 	badnum--
