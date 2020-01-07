@@ -7,8 +7,8 @@ import (
 	paramfetch "github.com/filecoin-project/go-paramfetch"
 	"golang.org/x/xerrors"
 
+	"github.com/filecoin-project/go-sectorbuilder"
 	lapi "github.com/filecoin-project/lotus/api"
-	"github.com/filecoin-project/lotus/lib/sectorbuilder"
 )
 
 type worker struct {

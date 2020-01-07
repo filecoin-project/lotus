@@ -4,6 +4,7 @@ import (
 	"context"
 	"sync"
 
+	sectorbuilder "github.com/filecoin-project/go-sectorbuilder"
 	"go.opencensus.io/trace"
 	"golang.org/x/xerrors"
 
@@ -11,7 +12,6 @@ import (
 	"github.com/filecoin-project/lotus/build"
 	"github.com/filecoin-project/lotus/chain/store"
 	"github.com/filecoin-project/lotus/chain/types"
-	"github.com/filecoin-project/lotus/lib/sectorbuilder"
 )
 
 const Inactive = 0

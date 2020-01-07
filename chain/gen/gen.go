@@ -11,6 +11,7 @@ import (
 
 	ffi "github.com/filecoin-project/filecoin-ffi"
 
+	sectorbuilder "github.com/filecoin-project/go-sectorbuilder"
 	"github.com/ipfs/go-blockservice"
 	"github.com/ipfs/go-car"
 	offline "github.com/ipfs/go-ipfs-exchange-offline"
@@ -28,7 +29,6 @@ import (
 	"github.com/filecoin-project/lotus/chain/wallet"
 	"github.com/filecoin-project/lotus/cmd/lotus-seed/seed"
 	"github.com/filecoin-project/lotus/genesis"
-	"github.com/filecoin-project/lotus/lib/sectorbuilder"
 	"github.com/filecoin-project/lotus/node/repo"
 
 	block "github.com/ipfs/go-block-format"

@@ -7,6 +7,7 @@ import (
 
 	"encoding/json"
 
+	sectorbuilder "github.com/filecoin-project/go-sectorbuilder"
 	badger "github.com/ipfs/go-ds-badger"
 	logging "github.com/ipfs/go-log"
 	"github.com/mitchellh/go-homedir"
@@ -17,7 +18,6 @@ import (
 	"github.com/filecoin-project/lotus/build"
 	"github.com/filecoin-project/lotus/cmd/lotus-seed/seed"
 	"github.com/filecoin-project/lotus/genesis"
-	"github.com/filecoin-project/lotus/lib/sectorbuilder"
 )
 
 var log = logging.Logger("lotus-seed")
