@@ -44,7 +44,7 @@ type FullNode interface {
 
 	// messages
 	MpoolPending(context.Context, *types.TipSet) ([]*types.SignedMessage, error)
-	MpoolPush(context.Context, *types.SignedMessage) error                          // TODO: remove
+	MpoolPush(context.Context, *types.SignedMessage) (cid.Cid, error)
 	MpoolPushMessage(context.Context, *types.Message) (*types.SignedMessage, error) // get nonce, sign, push
 	MpoolGetNonce(context.Context, address.Address) (uint64, error)
 	MpoolSub(context.Context) (<-chan MpoolUpdate, error)

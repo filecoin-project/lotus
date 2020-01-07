@@ -60,7 +60,7 @@ type FullNodeStruct struct {
 		SyncIncomingBlocks func(ctx context.Context) (<-chan *types.BlockHeader, error) `perm:"read"`
 
 		MpoolPending     func(context.Context, *types.TipSet) ([]*types.SignedMessage, error) `perm:"read"`
-		MpoolPush        func(context.Context, *types.SignedMessage) error                    `perm:"write"`
+		MpoolPush        func(context.Context, *types.SignedMessage) (cid.Cid, error)         `perm:"write"`
 		MpoolPushMessage func(context.Context, *types.Message) (*types.SignedMessage, error)  `perm:"sign"`
 		MpoolGetNonce    func(context.Context, address.Address) (uint64, error)               `perm:"read"`
 		MpoolSub         func(context.Context) (<-chan api.MpoolUpdate, error)                `perm:"read"`
@@ -232,7 +232,7 @@ func (c *FullNodeStruct) MpoolPending(ctx context.Context, ts *types.TipSet) ([]
 	return c.Internal.MpoolPending(ctx, ts)
 }
 
-func (c *FullNodeStruct) MpoolPush(ctx context.Context, smsg *types.SignedMessage) error {
+func (c *FullNodeStruct) MpoolPush(ctx context.Context, smsg *types.SignedMessage) (cid.Cid, error) {
 	return c.Internal.MpoolPush(ctx, smsg)
 }
 
