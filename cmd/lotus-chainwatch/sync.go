@@ -6,8 +6,8 @@ import (
 	"context"
 	"sync"
 
+	"github.com/filecoin-project/go-address"
 	actors2 "github.com/filecoin-project/lotus/chain/actors"
-	"github.com/filecoin-project/lotus/chain/address"
 
 	"github.com/ipfs/go-cid"
 

@@ -5,9 +5,9 @@ import (
 	"fmt"
 	"sync"
 
+	"github.com/filecoin-project/go-address"
 	amt "github.com/filecoin-project/go-amt-ipld"
 	"github.com/filecoin-project/lotus/chain/actors"
-	"github.com/filecoin-project/lotus/chain/address"
 	"github.com/filecoin-project/lotus/chain/state"
 	"github.com/filecoin-project/lotus/chain/store"
 	"github.com/filecoin-project/lotus/chain/types"

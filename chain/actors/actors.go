@@ -1,7 +1,7 @@
 package actors
 
 import (
-	"github.com/filecoin-project/lotus/chain/address"
+	"github.com/filecoin-project/go-address"
 
 	"github.com/ipfs/go-cid"
 	mh "github.com/multiformats/go-multihash"

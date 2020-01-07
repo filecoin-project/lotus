@@ -6,7 +6,7 @@ import (
 	"reflect"
 	"testing"
 
-	"github.com/filecoin-project/lotus/chain/address"
+	"github.com/filecoin-project/go-address"
 	cid "github.com/ipfs/go-cid"
 )
 
