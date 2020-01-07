@@ -15,11 +15,11 @@ import (
 
 	"github.com/filecoin-project/go-address"
 	"github.com/filecoin-project/go-cbor-util"
+	"github.com/filecoin-project/go-statestore"
 	"github.com/filecoin-project/lotus/api"
 	"github.com/filecoin-project/lotus/chain/actors"
 	"github.com/filecoin-project/lotus/chain/deals"
 	"github.com/filecoin-project/lotus/chain/types"
-	"github.com/filecoin-project/lotus/lib/statestore"
 )
 
 var blockGenerator = blocksutil.NewBlockGenerator()

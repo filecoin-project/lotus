@@ -12,9 +12,9 @@ import (
 
 	"github.com/filecoin-project/go-address"
 	"github.com/filecoin-project/go-cbor-util"
+	"github.com/filecoin-project/go-statestore"
 	"github.com/filecoin-project/lotus/chain/actors"
 	"github.com/filecoin-project/lotus/chain/types"
-	"github.com/filecoin-project/lotus/lib/statestore"
 
 	"github.com/ipfs/go-cid"
 	inet "github.com/libp2p/go-libp2p-core/network"

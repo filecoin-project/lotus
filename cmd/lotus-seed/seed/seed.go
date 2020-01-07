@@ -10,6 +10,7 @@ import (
 	"os"
 	"path/filepath"
 
+	sectorbuilder "github.com/filecoin-project/go-sectorbuilder"
 	badger "github.com/ipfs/go-ds-badger"
 	logging "github.com/ipfs/go-log"
 	"golang.org/x/xerrors"
@@ -20,7 +21,6 @@ import (
 	"github.com/filecoin-project/lotus/chain/types"
 	"github.com/filecoin-project/lotus/chain/wallet"
 	"github.com/filecoin-project/lotus/genesis"
-	"github.com/filecoin-project/lotus/lib/sectorbuilder"
 )
 
 var log = logging.Logger("preseal")

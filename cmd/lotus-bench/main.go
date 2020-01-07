@@ -23,10 +23,10 @@ import (
 	"gopkg.in/urfave/cli.v2"
 
 	"github.com/filecoin-project/go-address"
+	"github.com/filecoin-project/go-sectorbuilder"
 	"github.com/filecoin-project/lotus/build"
 	"github.com/filecoin-project/lotus/chain/types"
 	"github.com/filecoin-project/lotus/genesis"
-	"github.com/filecoin-project/lotus/lib/sectorbuilder"
 )
 
 var log = logging.Logger("lotus-bench")

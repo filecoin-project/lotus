@@ -6,12 +6,12 @@ import (
 	"net/http"
 	"os"
 
+	sectorbuilder "github.com/filecoin-project/go-sectorbuilder"
 	files "github.com/ipfs/go-ipfs-files"
 	"golang.org/x/xerrors"
 	"gopkg.in/cheggaaa/pb.v1"
 	"path/filepath"
 
-	"github.com/filecoin-project/lotus/lib/sectorbuilder"
 	"github.com/filecoin-project/lotus/lib/tarutil"
 )
 
