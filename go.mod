@@ -11,8 +11,12 @@ require (
 	github.com/docker/go-units v0.4.0
 	github.com/fatih/color v1.7.0 // indirect
 	github.com/filecoin-project/chain-validation v0.0.3
-	github.com/filecoin-project/filecoin-ffi v0.0.0-20191204125133-ebb3e13addf1
+	github.com/filecoin-project/filecoin-ffi v0.0.0-20191213130254-f261762ff8ed
+	github.com/filecoin-project/go-address v0.0.0-20191219011437-af739c490b4f
 	github.com/filecoin-project/go-amt-ipld v0.0.0-20191205011053-79efc22d6cdc
+	github.com/filecoin-project/go-cbor-util v0.0.0-20191219014500-08c40a1e63a2
+	github.com/filecoin-project/go-crypto v0.0.0-20191218222705-effae4ea9f03
+	github.com/filecoin-project/go-paramfetch v0.0.0-20200102181131-b20d579f2878
 	github.com/gbrlsnchs/jwt/v3 v3.0.0-beta.1
 	github.com/go-ole/go-ole v1.2.4 // indirect
 	github.com/google/go-cmp v0.3.1 // indirect
@@ -47,7 +51,6 @@ require (
 	github.com/ipfs/go-path v0.0.7
 	github.com/ipfs/go-unixfs v0.2.2-0.20190827150610-868af2e9e5cb
 	github.com/ipld/go-ipld-prime v0.0.2-0.20191025154717-8dff1cbec43b
-	github.com/ipsn/go-secp256k1 v0.0.0-20180726113642-9d62b9f0bc52
 	github.com/libp2p/go-libp2p v0.4.2
 	github.com/libp2p/go-libp2p-circuit v0.1.4
 	github.com/libp2p/go-libp2p-connmgr v0.1.0
@@ -67,7 +70,6 @@ require (
 	github.com/libp2p/go-libp2p-yamux v0.2.1
 	github.com/libp2p/go-maddr-filter v0.0.5
 	github.com/mattn/go-isatty v0.0.9 // indirect
-	github.com/mattn/go-runewidth v0.0.4 // indirect
 	github.com/mattn/go-sqlite3 v1.12.0
 	github.com/minio/blake2b-simd v0.0.0-20160723061019-3f5f724cb5b1
 	github.com/minio/sha256-simd v0.1.1
@@ -78,7 +80,7 @@ require (
 	github.com/multiformats/go-multiaddr-dns v0.2.0
 	github.com/multiformats/go-multiaddr-net v0.1.1
 	github.com/multiformats/go-multihash v0.0.10
-	github.com/multiformats/go-varint v0.0.1
+	github.com/multiformats/go-varint v0.0.2
 	github.com/onsi/ginkgo v1.9.0 // indirect
 	github.com/onsi/gomega v1.6.0 // indirect
 	github.com/opentracing/opentracing-go v1.1.0
@@ -95,7 +97,7 @@ require (
 	go.uber.org/dig v1.7.0 // indirect
 	go.uber.org/fx v1.9.0
 	go.uber.org/goleak v0.10.0 // indirect
-	go.uber.org/multierr v1.1.0
+	go.uber.org/multierr v1.4.0
 	go.uber.org/zap v1.10.0
 	go4.org v0.0.0-20190313082347-94abd6928b1d // indirect
 	golang.org/x/crypto v0.0.0-20191206172530-e9b2fee46413 // indirect

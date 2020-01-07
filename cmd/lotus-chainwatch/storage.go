@@ -8,7 +8,7 @@ import (
 	"github.com/ipfs/go-cid"
 	_ "github.com/mattn/go-sqlite3"
 
-	"github.com/filecoin-project/lotus/chain/address"
+	"github.com/filecoin-project/go-address"
 	"github.com/filecoin-project/lotus/chain/types"
 )
 

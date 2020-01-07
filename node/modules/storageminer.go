@@ -5,6 +5,7 @@ import (
 	"math"
 	"reflect"
 
+	paramfetch "github.com/filecoin-project/go-paramfetch"
 	"github.com/ipfs/go-bitswap"
 	"github.com/ipfs/go-bitswap/network"
 	"github.com/ipfs/go-blockservice"
@@ -18,9 +19,9 @@ import (
 	"go.uber.org/fx"
 	"golang.org/x/xerrors"
 
+	"github.com/filecoin-project/go-address"
 	"github.com/filecoin-project/lotus/api"
 	"github.com/filecoin-project/lotus/build"
-	"github.com/filecoin-project/lotus/chain/address"
 	"github.com/filecoin-project/lotus/chain/deals"
 	"github.com/filecoin-project/lotus/chain/gen"
 	"github.com/filecoin-project/lotus/datatransfer"
@@ -44,7 +45,7 @@ func minerAddrFromDS(ds dtypes.MetadataDS) (address.Address, error) {
 }
 
 func GetParams(sbc *sectorbuilder.Config) error {
-	if err := build.GetParams(sbc.SectorSize); err != nil {
+	if err := paramfetch.GetParams(sbc.SectorSize); err != nil {
 		return xerrors.Errorf("fetching proof parameters: %w", err)
 	}
 

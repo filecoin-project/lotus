@@ -5,8 +5,8 @@ import (
 
 	"github.com/ipfs/go-datastore"
 
+	"github.com/filecoin-project/go-cbor-util"
 	"github.com/filecoin-project/lotus/chain/types"
-	"github.com/filecoin-project/lotus/lib/cborutil"
 )
 
 func TestList(t *testing.T) {
