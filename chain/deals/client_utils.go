@@ -13,10 +13,11 @@ import (
 	"github.com/libp2p/go-libp2p-core/peer"
 	"golang.org/x/xerrors"
 
-	"github.com/filecoin-project/go-cbor-util"
+	cborutil "github.com/filecoin-project/go-cbor-util"
+	"github.com/filecoin-project/go-statestore"
+
 	"github.com/filecoin-project/lotus/datatransfer"
 	"github.com/filecoin-project/lotus/lib/padreader"
-	"github.com/filecoin-project/go-statestore"
 	"github.com/filecoin-project/lotus/node/modules/dtypes"
 )
 
