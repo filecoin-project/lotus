@@ -11,12 +11,12 @@ var log = logging.Logger("build")
 func MaybeGenesis() []byte {
 	builtinGen, err := rice.FindBox("genesis")
 	if err != nil {
-		log.Warn("loading built-in genesis: %s", err)
+		log.Warnf("loading built-in genesis: %s", err)
 		return nil
 	}
 	genBytes, err := builtinGen.Bytes("devnet.car")
 	if err != nil {
-		log.Warn("loading built-in genesis: %s", err)
+		log.Warnf("loading built-in genesis: %s", err)
 	}
 
 	return genBytes
