@@ -263,24 +263,24 @@ func (mp *MessagePool) addLocal(m *types.SignedMessage, msgb []byte) error {
 	return nil
 }
 
-func (mp *MessagePool) Push(m *types.SignedMessage) error {
+func (mp *MessagePool) Push(m *types.SignedMessage) (cid.Cid, error) {
 	msgb, err := m.Serialize()
 	if err != nil {
-		return err
+		return cid.Undef, err
 	}
 
 	if err := mp.Add(m); err != nil {
-		return err
+		return cid.Undef, err
 	}
 
 	mp.lk.Lock()
 	if err := mp.addLocal(m, msgb); err != nil {
 		mp.lk.Unlock()
-		return err
+		return cid.Undef, err
 	}
 	mp.lk.Unlock()
 
-	return mp.api.PubSubPublish(msgTopic, msgb)
+	return m.Cid(), mp.api.PubSubPublish(msgTopic, msgb)
 }
 
 func (mp *MessagePool) Add(m *types.SignedMessage) error {
