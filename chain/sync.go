@@ -1181,3 +1181,7 @@ func (syncer *Syncer) State() []SyncerState {
 	}
 	return out
 }
+
+func (syncer *Syncer) MarkBad(blk cid.Cid) {
+	syncer.bad.Add(blk)
+}

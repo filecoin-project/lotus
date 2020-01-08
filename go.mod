@@ -83,6 +83,7 @@ require (
 	github.com/onsi/gomega v1.6.0 // indirect
 	github.com/opentracing/opentracing-go v1.1.0
 	github.com/polydawn/refmt v0.0.0-20190809202753-05966cbd336a
+	github.com/prometheus/common v0.2.0
 	github.com/stretchr/testify v1.4.0
 	github.com/whyrusleeping/bencher v0.0.0-20190829221104-bb6607aa8bba
 	github.com/whyrusleeping/cbor-gen v0.0.0-20191216205031-b047b6acb3c0
