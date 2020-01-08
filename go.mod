@@ -31,8 +31,8 @@ require (
 	github.com/ipfs/go-blockservice v0.1.3-0.20190908200855-f22eea50656c
 	github.com/ipfs/go-car v0.0.2
 	github.com/ipfs/go-cid v0.0.4
-	github.com/ipfs/go-datastore v0.1.1
-	github.com/ipfs/go-ds-badger v0.0.7
+	github.com/ipfs/go-datastore v0.3.1
+	github.com/ipfs/go-ds-badger2 v0.0.0-20200108185345-7f650e6b2521
 	github.com/ipfs/go-filestore v0.0.2
 	github.com/ipfs/go-fs-lock v0.0.1
 	github.com/ipfs/go-graphsync v0.0.4
