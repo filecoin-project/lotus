@@ -45,18 +45,18 @@ Use the command `brew install` to install the following packages:
 brew install go bzr jq pkg-config rustup
 ```
 
-## Clone
+Clone
 
 ```sh
 git clone https://github.com/filecoin-project/lotus.git
 cd lotus/
 ```
 
-## Build
+Build
 
 ```sh
 make clean && make all
 sudo make install
 ```
 
-After installing Lotus, you can run the `lotus` command directly from your CLI to see usage documentation. Next, you can join the [Lotus TestNet](https://docs.lotu.sh/en+join-testnet).
+After installing Lotus, you can run the `lotus` command directly from your CLI to see usage documentation. Next, you can join the [Lotus Testnet](https://docs.lotu.sh/en+join-testnet).

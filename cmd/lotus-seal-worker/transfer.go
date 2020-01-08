@@ -6,12 +6,12 @@ import (
 	"net/http"
 	"os"
 
+	sectorbuilder "github.com/filecoin-project/go-sectorbuilder"
 	files "github.com/ipfs/go-ipfs-files"
 	"golang.org/x/xerrors"
 	"gopkg.in/cheggaaa/pb.v1"
 	"path/filepath"
 
-	"github.com/filecoin-project/lotus/lib/sectorbuilder"
 	"github.com/filecoin-project/lotus/lib/tarutil"
 )
 
@@ -132,7 +132,7 @@ func (w *worker) fetchSector(sectorID uint64, typ sectorbuilder.WorkerTaskType) 
 	var err error
 	switch typ {
 	case sectorbuilder.WorkerPreCommit:
-		err = w.fetch("staged", sectorID)
+		err = w.fetch("staging", sectorID)
 	case sectorbuilder.WorkerCommit:
 		err = w.fetch("sealed", sectorID)
 		if err != nil {

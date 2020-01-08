@@ -5,18 +5,19 @@ import (
 	"context"
 	"sort"
 
+	"go.opencensus.io/trace"
 	"golang.org/x/xerrors"
 
 	"github.com/filecoin-project/go-amt-ipld"
 	"github.com/ipfs/go-cid"
 	"github.com/ipfs/go-hamt-ipld"
 
+	"github.com/filecoin-project/go-address"
+	"github.com/filecoin-project/go-cbor-util"
+	"github.com/filecoin-project/go-sectorbuilder"
 	"github.com/filecoin-project/lotus/build"
 	"github.com/filecoin-project/lotus/chain/actors/aerrors"
-	"github.com/filecoin-project/lotus/chain/address"
 	"github.com/filecoin-project/lotus/chain/types"
-	"github.com/filecoin-project/lotus/lib/cborutil"
-	"github.com/filecoin-project/lotus/lib/sectorbuilder"
 )
 
 type StorageMarketActor struct{}
@@ -254,6 +255,9 @@ func setMarketBalances(vmctx types.VMContext, nd *hamt.Node, set map[address.Add
 }
 
 func GetMarketBalances(ctx context.Context, store *hamt.CborIpldStore, rcid cid.Cid, addrs ...address.Address) ([]StorageParticipantBalance, *hamt.Node, ActorError) {
+	ctx, span := trace.StartSpan(ctx, "GetMarketBalances")
+	defer span.End()
+
 	nd, err := hamt.LoadNode(ctx, store, rcid)
 	if err != nil {
 		return nil, nil, aerrors.HandleExternalError(err, "failed to load miner set")
@@ -381,6 +385,9 @@ func (sma StorageMarketActor) PublishStorageDeals(act *types.Actor, vmctx types.
 }
 
 func (st *StorageMarketState) validateDeal(vmctx types.VMContext, deal StorageDealProposal, providerWorker address.Address) aerrors.ActorError {
+	ctx, span := trace.StartSpan(vmctx.Context(), "validateDeal")
+	defer span.End()
+
 	if vmctx.BlockHeight() > deal.ProposalExpiration {
 		return aerrors.New(1, "deal proposal already expired")
 	}
@@ -394,7 +401,7 @@ func (st *StorageMarketState) validateDeal(vmctx types.VMContext, deal StorageDe
 	}
 
 	// TODO: do some caching (changes gas so needs to be in spec too)
-	b, bnd, aerr := GetMarketBalances(vmctx.Context(), vmctx.Ipld(), st.Balances, deal.Client, providerWorker)
+	b, bnd, aerr := GetMarketBalances(ctx, vmctx.Ipld(), st.Balances, deal.Client, providerWorker)
 	if aerr != nil {
 		return aerrors.Wrap(aerr, "getting client, and provider balances")
 	}

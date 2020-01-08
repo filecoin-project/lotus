@@ -31,7 +31,7 @@ const PaymentChannelClosingDelay = 6 * 60 * 60 / BlockDelay // six hours
 // Consensus / Network
 
 // Seconds
-const AllowableClockDrift = BlockDelay * 2
+const AllowableClockDrift = 1
 
 // Epochs
 const ForkLengthThreshold = Finality
@@ -55,11 +55,6 @@ const SealRandomnessLookback = Finality
 
 // Epochs
 const SealRandomnessLookbackLimit = SealRandomnessLookback + 2000
-
-// 1 / n
-const SectorChallengeRatioDiv = 25
-
-const MaxFallbackPostChallengeCount = 10
 
 // /////
 // Mining

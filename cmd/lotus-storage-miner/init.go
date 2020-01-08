@@ -11,6 +11,7 @@ import (
 	"path/filepath"
 	"strconv"
 
+	paramfetch "github.com/filecoin-project/go-paramfetch"
 	"github.com/ipfs/go-datastore"
 	badger "github.com/ipfs/go-ds-badger"
 	"github.com/libp2p/go-libp2p-core/crypto"
@@ -19,16 +20,16 @@ import (
 	"golang.org/x/xerrors"
 	"gopkg.in/urfave/cli.v2"
 
+	"github.com/filecoin-project/go-address"
+	"github.com/filecoin-project/go-cbor-util"
+	"github.com/filecoin-project/go-sectorbuilder"
 	lapi "github.com/filecoin-project/lotus/api"
 	"github.com/filecoin-project/lotus/build"
 	"github.com/filecoin-project/lotus/chain/actors"
-	"github.com/filecoin-project/lotus/chain/address"
 	"github.com/filecoin-project/lotus/chain/deals"
 	"github.com/filecoin-project/lotus/chain/types"
 	lcli "github.com/filecoin-project/lotus/cli"
 	"github.com/filecoin-project/lotus/genesis"
-	"github.com/filecoin-project/lotus/lib/cborutil"
-	"github.com/filecoin-project/lotus/lib/sectorbuilder"
 	"github.com/filecoin-project/lotus/miner"
 	"github.com/filecoin-project/lotus/node/modules"
 	"github.com/filecoin-project/lotus/node/modules/dtypes"
@@ -92,7 +93,7 @@ var initCmd = &cli.Command{
 		}
 
 		log.Info("Checking proof parameters")
-		if err := build.GetParams(ssize); err != nil {
+		if err := paramfetch.GetParams(ssize); err != nil {
 			return xerrors.Errorf("fetching proof parameters: %w", err)
 		}
 
@@ -136,8 +137,8 @@ var initCmd = &cli.Command{
 			return err
 		}
 
-		if v.APIVersion&build.MinorMask != build.APIVersion&build.MinorMask {
-			return xerrors.Errorf("Remote API version didn't match (local %x, remote %x)", build.APIVersion, v.APIVersion)
+		if !v.APIVersion.EqMajorMinor(build.APIVersion) {
+			return xerrors.Errorf("Remote API version didn't match (local %s, remote %s)", build.APIVersion, v.APIVersion)
 		}
 
 		log.Info("Initializing repo")
@@ -172,10 +173,7 @@ var initCmd = &cli.Command{
 			oldsb, err := sectorbuilder.New(&sectorbuilder.Config{
 				SectorSize:    ssize,
 				WorkerThreads: 2,
-				SealedDir:     filepath.Join(pssb, "sealed"),
-				CacheDir:      filepath.Join(pssb, "cache"),
-				StagedDir:     filepath.Join(pssb, "staging"),
-				UnsealedDir:   filepath.Join(pssb, "unsealed"),
+				Dir:           pssb,
 			}, oldmds)
 			if err != nil {
 				return xerrors.Errorf("failed to open up preseal sectorbuilder: %w", err)
@@ -184,10 +182,7 @@ var initCmd = &cli.Command{
 			nsb, err := sectorbuilder.New(&sectorbuilder.Config{
 				SectorSize:    ssize,
 				WorkerThreads: 2,
-				SealedDir:     filepath.Join(lr.Path(), "sealed"),
-				CacheDir:      filepath.Join(lr.Path(), "cache"),
-				StagedDir:     filepath.Join(lr.Path(), "staging"),
-				UnsealedDir:   filepath.Join(lr.Path(), "unsealed"),
+				Dir:           lr.Path(),
 			}, mds)
 			if err != nil {
 				return xerrors.Errorf("failed to open up sectorbuilder: %w", err)

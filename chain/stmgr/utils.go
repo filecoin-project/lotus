@@ -4,12 +4,13 @@ import (
 	"context"
 
 	ffi "github.com/filecoin-project/filecoin-ffi"
+	sectorbuilder "github.com/filecoin-project/go-sectorbuilder"
+
+	"github.com/filecoin-project/go-address"
 
 	"github.com/filecoin-project/lotus/api"
 	"github.com/filecoin-project/lotus/chain/actors"
-	"github.com/filecoin-project/lotus/chain/address"
 	"github.com/filecoin-project/lotus/chain/types"
-	"github.com/filecoin-project/lotus/lib/sectorbuilder"
 
 	amt "github.com/filecoin-project/go-amt-ipld"
 	cid "github.com/ipfs/go-cid"
@@ -268,6 +269,21 @@ func GetStorageDeal(ctx context.Context, sm *StateManager, dealId uint64, ts *ty
 	}
 
 	return &ocd, nil
+}
+
+func ListMinerActors(ctx context.Context, sm *StateManager, ts *types.TipSet) ([]address.Address, error) {
+	var state actors.StoragePowerState
+	if _, err := sm.LoadActorState(ctx, actors.StoragePowerAddress, &state, ts); err != nil {
+		return nil, err
+	}
+
+	cst := hamt.CSTFromBstore(sm.ChainStore().Blockstore())
+	miners, err := actors.MinerSetList(ctx, cst, state.Miners)
+	if err != nil {
+		return nil, err
+	}
+
+	return miners, nil
 }
 
 func LoadSectorsFromSet(ctx context.Context, bs blockstore.Blockstore, ssc cid.Cid) ([]*api.ChainSectorInfo, error) {

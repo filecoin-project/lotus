@@ -4,16 +4,16 @@ import (
 	"context"
 	"encoding/json"
 	"fmt"
-	"log"
 	"math/big"
 	"strings"
 	"time"
 
+	"github.com/filecoin-project/go-address"
 	"github.com/filecoin-project/lotus/api"
 	"github.com/filecoin-project/lotus/build"
 	"github.com/filecoin-project/lotus/chain/actors"
-	"github.com/filecoin-project/lotus/chain/address"
 	"github.com/filecoin-project/lotus/chain/types"
+	"github.com/ipfs/go-cid"
 	"github.com/multiformats/go-multihash"
 
 	_ "github.com/influxdata/influxdb1-client"
@@ -56,7 +56,7 @@ func NewInfluxWriteQueue(ctx context.Context, influx client.Client) *InfluxWrite
 			case batch := <-ch:
 				for i := 0; i < maxRetries; i++ {
 					if err := influx.Write(batch); err != nil {
-						log.Printf("Failed to write batch: %w", err)
+						log.Warnw("Failed to write batch", "error", err)
 						time.Sleep(time.Second * 15)
 						continue
 					}
@@ -64,7 +64,7 @@ func NewInfluxWriteQueue(ctx context.Context, influx client.Client) *InfluxWrite
 					continue main
 				}
 
-				log.Printf("Dropping batch due to failure to write")
+				log.Error("Dropping batch due to failure to write")
 			}
 		}
 	}()
@@ -182,6 +182,12 @@ func RecordTipsetStatePoints(ctx context.Context, api api.FullNode, pl *PointLis
 	return nil
 }
 
+type msgTag struct {
+	actor    string
+	method   uint64
+	exitcode uint8
+}
+
 func RecordTipsetMessagesPoints(ctx context.Context, api api.FullNode, pl *PointList, tipset *types.TipSet) error {
 	cids := tipset.Cids()
 	if len(cids) == 0 {
@@ -197,6 +203,8 @@ func RecordTipsetMessagesPoints(ctx context.Context, api api.FullNode, pl *Point
 	if err != nil {
 		return err
 	}
+
+	msgn := make(map[msgTag][]cid.Cid)
 
 	for i, msg := range msgs {
 		p := NewPoint("chain.message_gasprice", msg.Message.GasPrice.Int64())
@@ -215,16 +223,33 @@ func RecordTipsetMessagesPoints(ctx context.Context, api api.FullNode, pl *Point
 			return err
 		}
 
-		p = NewPoint("chain.message_count", 1)
-
 		dm, err := multihash.Decode(actor.Code.Hash())
 		if err != nil {
 			continue
 		}
+		tag := msgTag{
+			actor:    string(dm.Digest),
+			method:   msg.Message.Method,
+			exitcode: recp[i].ExitCode,
+		}
 
-		p.AddTag("actor", string(dm.Digest))
-		p.AddTag("method", fmt.Sprintf("%d", msg.Message.Method))
-		p.AddTag("exitcode", fmt.Sprintf("%d", recp[i].ExitCode))
+		found := false
+		for _, c := range msgn[tag] {
+			if c.Equals(msg.Cid) {
+				found = true
+				break
+			}
+		}
+		if !found {
+			msgn[tag] = append(msgn[tag], msg.Cid)
+		}
+	}
+
+	for t, m := range msgn {
+		p := NewPoint("chain.message_count", len(m))
+		p.AddTag("actor", t.actor)
+		p.AddTag("method", fmt.Sprintf("%d", t.method))
+		p.AddTag("exitcode", fmt.Sprintf("%d", t.exitcode))
 		pl.AddPoint(p)
 
 	}
@@ -233,14 +258,14 @@ func RecordTipsetMessagesPoints(ctx context.Context, api api.FullNode, pl *Point
 }
 
 func ResetDatabase(influx client.Client, database string) error {
-	log.Print("Resetting database")
+	log.Info("Resetting database")
 	q := client.NewQuery(fmt.Sprintf(`DROP DATABASE "%s"; CREATE DATABASE "%s";`, database, database), "", "")
 	_, err := influx.Query(q)
 	return err
 }
 
 func GetLastRecordedHeight(influx client.Client, database string) (int64, error) {
-	log.Print("Retrieving last record height")
+	log.Info("Retrieving last record height")
 	q := client.NewQuery(`SELECT "value" FROM "chain.height" ORDER BY time DESC LIMIT 1`, database, "")
 	res, err := influx.Query(q)
 	if err != nil {
@@ -260,7 +285,7 @@ func GetLastRecordedHeight(influx client.Client, database string) (int64, error)
 		return 0, err
 	}
 
-	log.Printf("Last record height %d", height)
+	log.Infow("Last record height", "height", height)
 
 	return height, nil
 }

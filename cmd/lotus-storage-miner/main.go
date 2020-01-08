@@ -9,6 +9,7 @@ import (
 
 	"github.com/filecoin-project/lotus/build"
 	lcli "github.com/filecoin-project/lotus/cli"
+	"github.com/filecoin-project/lotus/lib/lotuslog"
 	"github.com/filecoin-project/lotus/node/repo"
 	"github.com/filecoin-project/lotus/tracing"
 )
@@ -18,8 +19,7 @@ var log = logging.Logger("main")
 const FlagStorageRepo = "storagerepo"
 
 func main() {
-	logging.SetLogLevel("*", "INFO")
-	logging.SetLogLevel("swarm", "WARN")
+	lotuslog.SetupLogLevels()
 
 	local := []*cli.Command{
 		runCmd,

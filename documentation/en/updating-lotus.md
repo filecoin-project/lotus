@@ -10,7 +10,7 @@ git pull origin master
 make clean && make build
 ```
 
-Sometimes when you run Lotus after a pull, certain commands such as `lotus daemon` may break. 
+Sometimes when you run Lotus after a pull, certain commands such as `lotus daemon` may break.
 
 Here is a command that will delete your chain data, stored wallets and any miners you have set up:
 

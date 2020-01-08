@@ -2,9 +2,15 @@
 
 Here are instructions to learn how to perform storage mining. For hardware specifications please read [this](https://docs.lotu.sh/en+hardware-mining).
 
-It is useful to [join the TestNet](https://docs.lotu.sh/en+join-testnet) prior to attempting storage mining for the first time.
+It is useful to [join the Testnet](https://docs.lotu.sh/en+join-testnet) prior to attempting storage mining for the first time.
 
-NOTE: While a miner is running, there will be many `WARN` and `ERROR` logs.
+## Note: Using the Lotus Storage Miner from China
+
+If you are trying to use `lotus-storage-miner` from China. You should set this **environment variable** on your machine.
+
+```sh
+IPFS_GATEWAY="https://proof-parameters.s3.cn-south-1.jdcloud-oss.com/ipfs/"
+```
 
 ## Get started
 
@@ -65,7 +71,7 @@ lotus-storage-miner info
 lotus-storage-miner pledge-sector
 ```
 
-* Warning: On Linux configurations, this command will write data to `$TMPDIR` which is not usually the largest partition. You should point the value to a larger partition if possible.
+- Warning: On Linux configurations, this command will write data to `$TMPDIR` which is not usually the largest partition. You should point the value to a larger partition if possible.
 
 Get **miner power** and **sector usage**:
 
@@ -81,7 +87,6 @@ lotus-storage-miner state sectors <miner>
 ## Change nickname
 
 Update `~/.lotus/config.toml` with:
-
 
 ```sh
 [Metrics]

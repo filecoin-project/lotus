@@ -12,10 +12,10 @@ import (
 	"github.com/libp2p/go-libp2p-core/peer"
 	protocol "github.com/libp2p/go-libp2p-core/protocol"
 
+	"github.com/filecoin-project/go-cbor-util"
 	"github.com/filecoin-project/lotus/chain"
 	"github.com/filecoin-project/lotus/chain/store"
 	"github.com/filecoin-project/lotus/chain/types"
-	"github.com/filecoin-project/lotus/lib/cborutil"
 	"github.com/filecoin-project/lotus/peermgr"
 )
 
@@ -38,7 +38,7 @@ type Message struct {
 
 type NewStreamFunc func(context.Context, peer.ID, ...protocol.ID) (inet.Stream, error)
 type Service struct {
-	newStream NewStreamFunc
+	h host.Host
 
 	cs     *store.ChainStore
 	syncer *chain.Syncer
@@ -51,7 +51,7 @@ func NewHelloService(h host.Host, cs *store.ChainStore, syncer *chain.Syncer, pm
 	}
 
 	return &Service{
-		newStream: h.NewStream,
+		h: h,
 
 		cs:     cs,
 		syncer: syncer,
@@ -92,14 +92,19 @@ func (hs *Service) HandleStream(s inet.Stream) {
 		}
 	}()
 
-	ts, err := hs.syncer.FetchTipSet(context.Background(), s.Conn().RemotePeer(), hmsg.HeaviestTipSet)
+	ts, err := hs.syncer.FetchTipSet(context.Background(), s.Conn().RemotePeer(), types.NewTipSetKey(hmsg.HeaviestTipSet...))
 	if err != nil {
 		log.Errorf("failed to fetch tipset from peer during hello: %s", err)
 		return
 	}
 
-	log.Infof("Got new tipset through Hello: %s from %s", ts.Cids(), s.Conn().RemotePeer())
-	hs.syncer.InformNewHead(s.Conn().RemotePeer(), ts)
+	if ts.TipSet().Height() > 0 {
+		hs.h.ConnManager().TagPeer(s.Conn().RemotePeer(), "fcpeer", 10)
+
+		// don't bother informing about genesis
+		log.Infof("Got new tipset through Hello: %s from %s", ts.Cids(), s.Conn().RemotePeer())
+		hs.syncer.InformNewHead(s.Conn().RemotePeer(), ts)
+	}
 	if hs.pmgr != nil {
 		hs.pmgr.AddFilecoinPeer(s.Conn().RemotePeer())
 	}
@@ -107,7 +112,7 @@ func (hs *Service) HandleStream(s inet.Stream) {
 }
 
 func (hs *Service) SayHello(ctx context.Context, pid peer.ID) error {
-	s, err := hs.newStream(ctx, pid, ProtocolID)
+	s, err := hs.h.NewStream(ctx, pid, ProtocolID)
 	if err != nil {
 		return err
 	}
@@ -128,7 +133,7 @@ func (hs *Service) SayHello(ctx context.Context, pid peer.ID) error {
 		HeaviestTipSetWeight: weight,
 		GenesisHash:          gen.Cid(),
 	}
-	log.Info("Sending hello message: ", hts.Cids(), hts.Height(), gen.Cid())
+	log.Debug("Sending hello message: ", hts.Cids(), hts.Height(), gen.Cid())
 
 	t0 := time.Now()
 	if err := cborutil.WriteCborRPC(s, hmsg); err != nil {

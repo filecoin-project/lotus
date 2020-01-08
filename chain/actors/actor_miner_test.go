@@ -6,13 +6,13 @@ import (
 	"math/rand"
 	"testing"
 
+	"github.com/filecoin-project/go-address"
+	"github.com/filecoin-project/go-sectorbuilder"
 	"github.com/filecoin-project/lotus/api"
 	"github.com/filecoin-project/lotus/chain/actors"
 	"github.com/filecoin-project/lotus/chain/actors/aerrors"
-	"github.com/filecoin-project/lotus/chain/address"
 	"github.com/filecoin-project/lotus/chain/stmgr"
 	"github.com/filecoin-project/lotus/chain/types"
-	"github.com/filecoin-project/lotus/lib/sectorbuilder"
 	hamt "github.com/ipfs/go-hamt-ipld"
 	blockstore "github.com/ipfs/go-ipfs-blockstore"
 	cbg "github.com/whyrusleeping/cbor-gen"
@@ -50,6 +50,71 @@ func TestMinerCommitSectors(t *testing.T) {
 	addSectorToMiner(h, t, minerAddr, worker, client, 1)
 
 	assertSectorIDs(h, t, minerAddr, []uint64{1})
+}
+
+func TestMinerSubmitBadFault(t *testing.T) {
+	var worker, client address.Address
+	var minerAddr address.Address
+	opts := []HarnessOpt{
+		HarnessAddr(&worker, 1000000),
+		HarnessAddr(&client, 1000000),
+		HarnessActor(&minerAddr, &worker, actors.StorageMinerCodeCid,
+			func() cbg.CBORMarshaler {
+				return &actors.StorageMinerConstructorParams{
+					Owner:      worker,
+					Worker:     worker,
+					SectorSize: 1024,
+					PeerID:     "fakepeerid",
+				}
+			}),
+	}
+
+	h := NewHarness(t, opts...)
+	h.vm.Syscalls.ValidatePoRep = func(ctx context.Context, maddr address.Address, ssize uint64, commD, commR, ticket, proof, seed []byte, sectorID uint64) (bool, aerrors.ActorError) {
+		// all proofs are valid
+		return true, nil
+	}
+
+	ret, _ := h.SendFunds(t, worker, minerAddr, types.NewInt(100000))
+	ApplyOK(t, ret)
+
+	ret, _ = h.InvokeWithValue(t, client, actors.StorageMarketAddress, actors.SMAMethods.AddBalance, types.NewInt(2000), nil)
+	ApplyOK(t, ret)
+
+	addSectorToMiner(h, t, minerAddr, worker, client, 1)
+
+	assertSectorIDs(h, t, minerAddr, []uint64{1})
+
+	bf := types.NewBitField()
+	bf.Set(6)
+	ret, _ = h.Invoke(t, worker, minerAddr, actors.MAMethods.DeclareFaults, &actors.DeclareFaultsParams{bf})
+	ApplyOK(t, ret)
+
+	ret, _ = h.Invoke(t, actors.NetworkAddress, minerAddr, actors.MAMethods.SubmitElectionPoSt, nil)
+	ApplyOK(t, ret)
+
+	assertSectorIDs(h, t, minerAddr, []uint64{1})
+
+	badnum := uint64(0)
+	badnum--
+	bf = types.NewBitField()
+	bf.Set(badnum)
+	ret, _ = h.Invoke(t, worker, minerAddr, actors.MAMethods.DeclareFaults, &actors.DeclareFaultsParams{bf})
+	ApplyOK(t, ret)
+
+	ret, _ = h.Invoke(t, actors.NetworkAddress, minerAddr, actors.MAMethods.SubmitElectionPoSt, nil)
+	ApplyOK(t, ret)
+
+	bf = types.NewBitField()
+	bf.Set(1)
+	ret, _ = h.Invoke(t, worker, minerAddr, actors.MAMethods.DeclareFaults, &actors.DeclareFaultsParams{bf})
+	ApplyOK(t, ret)
+
+	ret, _ = h.Invoke(t, actors.NetworkAddress, minerAddr, actors.MAMethods.SubmitElectionPoSt, nil)
+	ApplyOK(t, ret)
+
+	assertSectorIDs(h, t, minerAddr, []uint64{})
+
 }
 
 func addSectorToMiner(h *Harness, t *testing.T, minerAddr, worker, client address.Address, sid uint64) {

@@ -1,8 +1,8 @@
 package actors
 
 import (
+	"github.com/filecoin-project/go-address"
 	"github.com/filecoin-project/lotus/chain/actors/aerrors"
-	"github.com/filecoin-project/lotus/chain/address"
 )
 
 func NewIDAddress(id uint64) (address.Address, ActorError) {

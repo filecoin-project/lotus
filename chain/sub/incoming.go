@@ -5,6 +5,7 @@ import (
 	"time"
 
 	logging "github.com/ipfs/go-log"
+	connmgr "github.com/libp2p/go-libp2p-core/connmgr"
 	pubsub "github.com/libp2p/go-libp2p-pubsub"
 
 	"github.com/filecoin-project/lotus/chain"
@@ -14,7 +15,7 @@ import (
 
 var log = logging.Logger("sub")
 
-func HandleIncomingBlocks(ctx context.Context, bsub *pubsub.Subscription, s *chain.Syncer) {
+func HandleIncomingBlocks(ctx context.Context, bsub *pubsub.Subscription, s *chain.Syncer, cmgr connmgr.ConnManager) {
 	for {
 		msg, err := bsub.Next(ctx)
 		if err != nil {
@@ -54,11 +55,14 @@ func HandleIncomingBlocks(ctx context.Context, bsub *pubsub.Subscription, s *cha
 			if delay := time.Now().Unix() - int64(blk.Header.Timestamp); delay > 5 {
 				log.Warnf("Received block with large delay %d from miner %s", delay, blk.Header.Miner)
 			}
-			s.InformNewBlock(msg.GetFrom(), &types.FullBlock{
+
+			if s.InformNewBlock(msg.ReceivedFrom, &types.FullBlock{
 				Header:        blk.Header,
 				BlsMessages:   bmsgs,
 				SecpkMessages: smsgs,
-			})
+			}) {
+				cmgr.TagPeer(msg.ReceivedFrom, "blkprop", 5)
+			}
 		}()
 	}
 }

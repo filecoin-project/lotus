@@ -4,7 +4,7 @@ import (
 	"fmt"
 	"testing"
 
-	"github.com/filecoin-project/lotus/chain/address"
+	"github.com/filecoin-project/go-address"
 	"github.com/filecoin-project/lotus/chain/store"
 	"github.com/filecoin-project/lotus/chain/types"
 	"github.com/filecoin-project/lotus/chain/types/mock"
@@ -98,9 +98,9 @@ func (tma *testMpoolApi) MessagesForTipset(ts *types.TipSet) ([]store.ChainMsg, 
 	return out, nil
 }
 
-func (tma *testMpoolApi) LoadTipSet(cids []cid.Cid) (*types.TipSet, error) {
+func (tma *testMpoolApi) LoadTipSet(tsk types.TipSetKey) (*types.TipSet, error) {
 	for _, ts := range tma.tipsets {
-		if types.CidArrsEqual(cids, ts.Cids()) {
+		if types.CidArrsEqual(tsk.Cids(), ts.Cids()) {
 			return ts, nil
 		}
 	}

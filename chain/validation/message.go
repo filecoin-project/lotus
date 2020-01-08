@@ -2,7 +2,6 @@ package validation
 
 import (
 	"context"
-
 	"github.com/ipfs/go-cid"
 	"golang.org/x/xerrors"
 
@@ -11,8 +10,8 @@ import (
 	vaddress "github.com/filecoin-project/chain-validation/pkg/state/address"
 	vtypes "github.com/filecoin-project/chain-validation/pkg/state/types"
 
+	"github.com/filecoin-project/go-address"
 	"github.com/filecoin-project/lotus/chain/actors"
-	"github.com/filecoin-project/lotus/chain/address"
 	"github.com/filecoin-project/lotus/chain/types"
 )
 
@@ -83,5 +82,15 @@ var methods = []uint64{
 	vchain.StorageMinerGetWorkerAddr: actors.MAMethods.GetWorkerAddr,
 	vchain.StorageMinerGetPeerID:     actors.MAMethods.GetPeerID,
 	vchain.StorageMinerGetSectorSize: actors.MAMethods.GetSectorSize,
+
+	vchain.MultiSigConstructor:       actors.MultiSigMethods.MultiSigConstructor,
+	vchain.MultiSigPropose:           actors.MultiSigMethods.Propose,
+	vchain.MultiSigApprove:           actors.MultiSigMethods.Approve,
+	vchain.MultiSigCancel:            actors.MultiSigMethods.Cancel,
+	vchain.MultiSigClearCompleted:    actors.MultiSigMethods.ClearCompleted,
+	vchain.MultiSigAddSigner:         actors.MultiSigMethods.AddSigner,
+	vchain.MultiSigRemoveSigner:      actors.MultiSigMethods.RemoveSigner,
+	vchain.MultiSigSwapSigner:        actors.MultiSigMethods.SwapSigner,
+	vchain.MultiSigChangeRequirement: actors.MultiSigMethods.ChangeRequirement,
 	// More to follow...
 }

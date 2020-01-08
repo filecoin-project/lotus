@@ -3,13 +3,13 @@ package storage
 import (
 	"context"
 
+	sectorbuilder "github.com/filecoin-project/go-sectorbuilder"
 	"golang.org/x/xerrors"
 
 	"github.com/filecoin-project/lotus/api"
 	"github.com/filecoin-project/lotus/build"
 	"github.com/filecoin-project/lotus/chain/actors"
 	"github.com/filecoin-project/lotus/chain/types"
-	"github.com/filecoin-project/lotus/lib/sectorbuilder"
 )
 
 type providerHandlerFunc func(ctx context.Context, deal SectorInfo) *sectorUpdate

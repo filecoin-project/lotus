@@ -50,7 +50,7 @@ func (ts *testSuite) testVersion(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	if v.Version != build.Version {
+	if v.Version != build.BuildVersion {
 		t.Error("Version didn't work properly")
 	}
 }

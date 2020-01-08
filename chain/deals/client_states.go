@@ -6,12 +6,12 @@ import (
 
 	"golang.org/x/xerrors"
 
+	"github.com/filecoin-project/go-cbor-util"
 	"github.com/filecoin-project/lotus/api"
 	"github.com/filecoin-project/lotus/build"
 	"github.com/filecoin-project/lotus/chain/actors"
 	"github.com/filecoin-project/lotus/chain/stmgr"
 	"github.com/filecoin-project/lotus/chain/types"
-	"github.com/filecoin-project/lotus/lib/cborutil"
 )
 
 type clientHandlerFunc func(ctx context.Context, deal ClientDeal) (func(*ClientDeal), error)

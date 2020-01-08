@@ -12,6 +12,7 @@ import (
 	"github.com/filecoin-project/lotus/api"
 	"github.com/filecoin-project/lotus/build"
 	lcli "github.com/filecoin-project/lotus/cli"
+	"github.com/filecoin-project/lotus/lib/lotuslog"
 	"github.com/filecoin-project/lotus/node/repo"
 	manet "github.com/multiformats/go-multiaddr-net"
 )
@@ -19,7 +20,7 @@ import (
 var log = logging.Logger("main")
 
 func main() {
-	logging.SetLogLevel("*", "INFO")
+	lotuslog.SetupLogLevels()
 
 	log.Info("Starting lotus worker")
 

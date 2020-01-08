@@ -19,9 +19,9 @@ import (
 	"go.uber.org/multierr"
 	"golang.org/x/xerrors"
 
+	"github.com/filecoin-project/go-address"
 	"github.com/filecoin-project/lotus/api"
 	"github.com/filecoin-project/lotus/build"
-	"github.com/filecoin-project/lotus/chain/address"
 	"github.com/filecoin-project/lotus/chain/stmgr"
 	"github.com/filecoin-project/lotus/chain/store"
 	"github.com/filecoin-project/lotus/chain/types"
@@ -109,7 +109,7 @@ type Provider interface {
 	StateGetActor(address.Address, *types.TipSet) (*types.Actor, error)
 	MessagesForBlock(*types.BlockHeader) ([]*types.Message, []*types.SignedMessage, error)
 	MessagesForTipset(*types.TipSet) ([]store.ChainMsg, error)
-	LoadTipSet(cids []cid.Cid) (*types.TipSet, error)
+	LoadTipSet(tsk types.TipSetKey) (*types.TipSet, error)
 }
 
 type mpoolProvider struct {
@@ -146,8 +146,8 @@ func (mpp *mpoolProvider) MessagesForTipset(ts *types.TipSet) ([]store.ChainMsg,
 	return mpp.sm.ChainStore().MessagesForTipset(ts)
 }
 
-func (mpp *mpoolProvider) LoadTipSet(cids []cid.Cid) (*types.TipSet, error) {
-	return mpp.sm.ChainStore().LoadTipSet(cids)
+func (mpp *mpoolProvider) LoadTipSet(tsk types.TipSetKey) (*types.TipSet, error) {
+	return mpp.sm.ChainStore().LoadTipSet(tsk)
 }
 
 func New(api Provider, ds dtypes.MetadataDS) (*MessagePool, error) {
@@ -263,24 +263,24 @@ func (mp *MessagePool) addLocal(m *types.SignedMessage, msgb []byte) error {
 	return nil
 }
 
-func (mp *MessagePool) Push(m *types.SignedMessage) error {
+func (mp *MessagePool) Push(m *types.SignedMessage) (cid.Cid, error) {
 	msgb, err := m.Serialize()
 	if err != nil {
-		return err
+		return cid.Undef, err
 	}
 
 	if err := mp.Add(m); err != nil {
-		return err
+		return cid.Undef, err
 	}
 
 	mp.lk.Lock()
 	if err := mp.addLocal(m, msgb); err != nil {
 		mp.lk.Unlock()
-		return err
+		return cid.Undef, err
 	}
 	mp.lk.Unlock()
 
-	return mp.api.PubSubPublish(msgTopic, msgb)
+	return m.Cid(), mp.api.PubSubPublish(msgTopic, msgb)
 }
 
 func (mp *MessagePool) Add(m *types.SignedMessage) error {

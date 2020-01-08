@@ -6,11 +6,11 @@ import (
 	"io"
 	"math"
 
+	sectorbuilder "github.com/filecoin-project/go-sectorbuilder"
 	xerrors "golang.org/x/xerrors"
 
 	"github.com/filecoin-project/lotus/api"
 	"github.com/filecoin-project/lotus/lib/padreader"
-	"github.com/filecoin-project/lotus/lib/sectorbuilder"
 )
 
 const NonceIncrement = math.MaxUint64

@@ -18,9 +18,9 @@ import (
 	"go.opencensus.io/trace"
 	"golang.org/x/xerrors"
 
+	"github.com/filecoin-project/go-cbor-util"
 	"github.com/filecoin-project/lotus/chain/store"
 	"github.com/filecoin-project/lotus/chain/types"
-	"github.com/filecoin-project/lotus/lib/cborutil"
 	"github.com/filecoin-project/lotus/node/modules/dtypes"
 	"github.com/filecoin-project/lotus/peermgr"
 )
@@ -59,18 +59,18 @@ func (bs *BlockSync) processStatus(req *BlockSyncRequest, res *BlockSyncResponse
 	}
 }
 
-func (bs *BlockSync) GetBlocks(ctx context.Context, tipset []cid.Cid, count int) ([]*types.TipSet, error) {
+func (bs *BlockSync) GetBlocks(ctx context.Context, tsk types.TipSetKey, count int) ([]*types.TipSet, error) {
 	ctx, span := trace.StartSpan(ctx, "bsync.GetBlocks")
 	defer span.End()
 	if span.IsRecordingEvents() {
 		span.AddAttributes(
-			trace.StringAttribute("tipset", fmt.Sprint(tipset)),
+			trace.StringAttribute("tipset", fmt.Sprint(tsk.Cids())),
 			trace.Int64Attribute("count", int64(count)),
 		)
 	}
 
 	req := &BlockSyncRequest{
-		Start:         tipset,
+		Start:         tsk.Cids(),
 		RequestLength: uint64(count),
 		Options:       BSOptBlocks,
 	}
@@ -94,13 +94,20 @@ func (bs *BlockSync) GetBlocks(ctx context.Context, tipset []cid.Cid, count int)
 		res, err := bs.sendRequestToPeer(ctx, p, req)
 		if err != nil {
 			oerr = err
-			log.Warnf("BlockSync request failed for peer %s: %s", p.String(), err)
+			if !xerrors.Is(err, inet.ErrNoConn) {
+				log.Warnf("BlockSync request failed for peer %s: %s", p.String(), err)
+			}
 			continue
 		}
 
 		if res.Status == 0 {
+			resp, err := bs.processBlocksResponse(req, res)
+			if err != nil {
+				return nil, xerrors.Errorf("success response from peer failed to process: %w", err)
+			}
 			bs.syncPeers.logGlobalSuccess(time.Since(start))
-			return bs.processBlocksResponse(req, res)
+			bs.host.ConnManager().TagPeer(p, "bsync", 25)
+			return resp, nil
 		}
 		oerr = bs.processStatus(req, res)
 		if oerr != nil {
@@ -110,11 +117,11 @@ func (bs *BlockSync) GetBlocks(ctx context.Context, tipset []cid.Cid, count int)
 	return nil, xerrors.Errorf("GetBlocks failed with all peers: %w", oerr)
 }
 
-func (bs *BlockSync) GetFullTipSet(ctx context.Context, p peer.ID, h []cid.Cid) (*store.FullTipSet, error) {
+func (bs *BlockSync) GetFullTipSet(ctx context.Context, p peer.ID, tsk types.TipSetKey) (*store.FullTipSet, error) {
 	// TODO: round robin through these peers on error
 
 	req := &BlockSyncRequest{
-		Start:         h,
+		Start:         tsk.Cids(),
 		RequestLength: 1,
 		Options:       BSOptBlocks | BSOptMessages,
 	}
@@ -262,6 +269,10 @@ func (bs *BlockSync) sendRequestToPeer(ctx context.Context, p peer.ID, req *Bloc
 }
 
 func (bs *BlockSync) processBlocksResponse(req *BlockSyncRequest, res *BlockSyncResponse) ([]*types.TipSet, error) {
+	if len(res.Chain) == 0 {
+		return nil, xerrors.Errorf("got no blocks in successful blocksync response")
+	}
+
 	cur, err := types.NewTipSet(res.Chain[0].Blocks)
 	if err != nil {
 		return nil, err
@@ -275,7 +286,7 @@ func (bs *BlockSync) processBlocksResponse(req *BlockSyncRequest, res *BlockSync
 			return nil, err
 		}
 
-		if !types.CidArrsEqual(cur.Parents(), nts.Cids()) {
+		if !types.CidArrsEqual(cur.Parents().Cids(), nts.Cids()) {
 			return nil, fmt.Errorf("parents of tipset[%d] were not tipset[%d]", bi-1, bi)
 		}
 

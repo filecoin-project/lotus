@@ -64,8 +64,40 @@ func TestRleplus(t *testing.T) {
 	t.Run("Encode allows all runs sizes possible uint64", func(t *testing.T) {
 		// create a run of math.MaxUint64
 		ints := []uint64{math.MaxUint64}
-		_, _, err := rleplus.Encode(ints)
+
+		// There would be 64 bits(1) for the UvarInt, totally 9 bytes.
+		expected := []byte{0xe0, 0xff, 0xff, 0xff, 0xff, 0xff, 0xff, 0xff, 0xff, 0x3f, 0x20}
+		encodeBytes, _, err := rleplus.Encode(ints)
 		assert.NilError(t, err)
+		for idx, v := range encodeBytes {
+			assert.Equal(
+				t,
+				fmt.Sprintf("%8b", v),
+				fmt.Sprintf("%8b", expected[idx]),
+			)
+		}
+	})
+
+	t.Run("Encode for some big numbers", func(t *testing.T) {
+		// create a run of math.MaxUint64
+		ints := make([]uint64, 1024)
+
+		// ints {2^63 .. 2^63+1023}
+		for i := uint64(0); i < 1024; i++ {
+			ints[i] = uint64(1)<<63 + i
+		}
+
+		expected := []byte{0x00, 0x10, 0x10, 0x10, 0x10, 0x10, 0x10, 0x10, 0x10, 0x30, 0x00, 0x40, 0x04}
+		encodeBytes, _, err := rleplus.Encode(ints)
+		assert.NilError(t, err)
+		for idx, v := range encodeBytes {
+			// fmt.Println(v, expected[idx])
+			assert.Equal(
+				t,
+				fmt.Sprintf("%8b", v),
+				fmt.Sprintf("%8b", expected[idx]),
+			)
+		}
 	})
 
 	t.Run("Decode", func(t *testing.T) {

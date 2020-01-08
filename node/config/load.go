@@ -44,6 +44,7 @@ func ConfigComment(t interface{}) ([]byte, error) {
 	}
 	b := buf.Bytes()
 	b = bytes.ReplaceAll(b, []byte("\n"), []byte("\n#"))
+	b = bytes.ReplaceAll(b, []byte("#["), []byte("["))
 	return b, nil
 
 }

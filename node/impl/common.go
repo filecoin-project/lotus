@@ -2,6 +2,7 @@ package impl
 
 import (
 	"context"
+
 	"github.com/gbrlsnchs/jwt/v3"
 	"github.com/libp2p/go-libp2p-core/host"
 	"github.com/libp2p/go-libp2p-core/network"
@@ -84,7 +85,7 @@ func (a *CommonAPI) ID(context.Context) (peer.ID, error) {
 
 func (a *CommonAPI) Version(context.Context) (api.Version, error) {
 	return api.Version{
-		Version:    build.Version,
+		Version:    build.UserVersion,
 		APIVersion: build.APIVersion,
 
 		BlockDelay: build.BlockDelay,

@@ -22,9 +22,9 @@ import (
 	"github.com/libp2p/go-libp2p-core/peer"
 	"go.uber.org/fx"
 
+	"github.com/filecoin-project/go-address"
 	"github.com/filecoin-project/lotus/api"
 	"github.com/filecoin-project/lotus/build"
-	"github.com/filecoin-project/lotus/chain/address"
 	"github.com/filecoin-project/lotus/chain/deals"
 	"github.com/filecoin-project/lotus/chain/store"
 	"github.com/filecoin-project/lotus/chain/types"
@@ -53,11 +53,13 @@ type API struct {
 	Filestore  dtypes.ClientFilestore `optional:"true"`
 }
 
-func (a *API) ClientStartDeal(ctx context.Context, data cid.Cid, miner address.Address, epochPrice types.BigInt, blocksDuration uint64) (*cid.Cid, error) {
-	// TODO: make this a param
-	self, err := a.WalletDefaultAddress(ctx)
+func (a *API) ClientStartDeal(ctx context.Context, data cid.Cid, addr address.Address, miner address.Address, epochPrice types.BigInt, blocksDuration uint64) (*cid.Cid, error) {
+	exist, err := a.WalletHas(ctx, addr)
 	if err != nil {
-		return nil, xerrors.Errorf("failed to get default address: %w", err)
+		return nil, xerrors.Errorf("failed getting addr from wallet: %w", addr)
+	}
+	if !exist {
+		return nil, xerrors.Errorf("provided address doesn't exist in wallet")
 	}
 
 	pid, err := a.StateMinerPeerID(ctx, miner, nil)
@@ -75,7 +77,7 @@ func (a *API) ClientStartDeal(ctx context.Context, data cid.Cid, miner address.A
 		PricePerEpoch:      epochPrice,
 		ProposalExpiration: math.MaxUint64, // TODO: set something reasonable
 		Duration:           blocksDuration,
-		Client:             self,
+		Client:             addr,
 		ProviderAddress:    miner,
 		MinerWorker:        mw,
 		MinerID:            pid,

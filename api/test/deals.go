@@ -71,7 +71,11 @@ func TestDealFlow(t *testing.T, b APIBuilder) {
 			}
 		}
 	}()
-	deal, err := client.ClientStartDeal(ctx, fcid, maddr, types.NewInt(40000000), 100)
+	addr, err := client.WalletDefaultAddress(ctx)
+	if err != nil {
+		t.Fatal(err)
+	}
+	deal, err := client.ClientStartDeal(ctx, fcid, addr, maddr, types.NewInt(40000000), 100)
 	if err != nil {
 		t.Fatal(err)
 	}

@@ -5,6 +5,8 @@ import (
 	"context"
 	"math/big"
 
+	"github.com/filecoin-project/go-sectorbuilder"
+
 	block "github.com/ipfs/go-block-format"
 	"github.com/ipfs/go-cid"
 	"github.com/minio/sha256-simd"
@@ -12,8 +14,9 @@ import (
 	"go.opencensus.io/trace"
 	xerrors "golang.org/x/xerrors"
 
+	"github.com/filecoin-project/go-address"
+
 	"github.com/filecoin-project/lotus/build"
-	"github.com/filecoin-project/lotus/chain/address"
 )
 
 type Ticket struct {
@@ -176,7 +179,7 @@ const sha256bits = 256
 
 func IsTicketWinner(partialTicket []byte, ssizeI uint64, snum uint64, totpow BigInt) bool {
 	ssize := NewInt(ssizeI)
-	ssampled := ElectionPostChallengeCount(snum)
+	ssampled := ElectionPostChallengeCount(snum, 0) // TODO: faults in epost?
 	/*
 		Need to check that
 		(h(vrfout) + 1) / (max(h) + 1) <= e * sectorSize / totalPower
@@ -213,12 +216,8 @@ func IsTicketWinner(partialTicket []byte, ssizeI uint64, snum uint64, totpow Big
 	return lhs.Cmp(rhs) < 0
 }
 
-func ElectionPostChallengeCount(sectors uint64) uint64 {
-	if sectors == 0 {
-		return 0
-	}
-	// ceil(sectors / build.SectorChallengeRatioDiv)
-	return (sectors-1)/build.SectorChallengeRatioDiv + 1
+func ElectionPostChallengeCount(sectors uint64, faults int) uint64 {
+	return sectorbuilder.ElectionPostChallengeCount(sectors, faults)
 }
 
 func (t *Ticket) Equals(ot *Ticket) bool {

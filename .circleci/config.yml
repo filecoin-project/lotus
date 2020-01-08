@@ -37,14 +37,13 @@ commands:
       - restore_cache:
           name: Restore parameters cache
           keys:
-            - 'v20-1k-lotus-params-{{ checksum "build/proof-params/parameters.json" }}-{{ checksum "build/paramfetch.go" }}'
-            - 'v20-1k-lotus-params-{{ checksum "build/proof-params/parameters.json" }}-'
+            - 'v20-1k-lotus-params'
           paths:
             - /var/tmp/filecoin-proof-parameters/
       - run:  ./lotus fetch-params --proving-params 1024
       - save_cache:
           name: Save parameters cache
-          key: 'v20-1k-lotus-params-{{ checksum "build/proof-params/parameters.json" }}-{{ checksum "build/paramfetch.go" }}'
+          key: 'v20-1k-lotus-params'
           paths:
             - /var/tmp/filecoin-proof-parameters/
 
@@ -157,7 +156,7 @@ jobs:
   test-short: 
     <<: *test
 
-  build_macos:
+  build-macos:
     description: build darwin lotus binary
     macos:
       xcode: "10.0.0"
@@ -187,23 +186,20 @@ jobs:
             chmod +x $HOME/.bin/jq
       - restore_cache:
           name: restore go mod and cargo cache
-          key: v1-go-deps-{{ arch }}-{{ checksum "~/go/src/github.com/filecoin-project/lotus/go.mod" }}
+          key: v3-go-deps-{{ arch }}-{{ checksum "~/go/src/github.com/filecoin-project/lotus/go.sum" }}
       - install-deps
       - go/mod-download
       - run:
-          command: make build
+          command: make buildall
           no_output_timeout: 30m
       - store_artifacts:
           path: lotus
       - store_artifacts:
           path: lotus-storage-miner
       - save_cache:
-          name: save go mod and cargo cache
-          key: v1-go-deps-{{ arch }}-{{ checksum "~/go/src/github.com/filecoin-project/lotus/go.mod" }}
+          name: save cargo cache
+          key: v3-go-deps-{{ arch }}-{{ checksum "~/go/src/github.com/filecoin-project/lotus/go.sum" }}
           paths:
-            - "~/go/pkg"
-            - "~/go/src/github.com"
-            - "~/go/src/golang.org"
             - "~/.rustup"
             - "~/.cargo"
 
@@ -262,7 +258,4 @@ workflows:
           go-test-flags: "--timeout 10m --short"
       - mod-tidy-check
       - build-all
-      - build_macos:
-          filters:
-            branches:
-              only: master
+      - build-macos

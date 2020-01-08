@@ -16,6 +16,7 @@ import (
 	mocknet "github.com/libp2p/go-libp2p/p2p/net/mock"
 	"go.uber.org/fx"
 
+	"github.com/filecoin-project/lotus/build"
 	"github.com/filecoin-project/lotus/node/modules/dtypes"
 	"github.com/filecoin-project/lotus/node/modules/helpers"
 )
@@ -41,7 +42,12 @@ func Host(mctx helpers.MetricsCtx, lc fx.Lifecycle, params P2PHostIn) (RawHost, 
 		return nil, fmt.Errorf("missing private key for node ID: %s", params.ID.Pretty())
 	}
 
-	opts := []libp2p.Option{libp2p.Identity(pkey), libp2p.Peerstore(params.Peerstore), libp2p.NoListenAddrs}
+	opts := []libp2p.Option{
+		libp2p.Identity(pkey),
+		libp2p.Peerstore(params.Peerstore),
+		libp2p.NoListenAddrs,
+		libp2p.Ping(true),
+		libp2p.UserAgent("lotus-" + build.UserVersion)}
 	for _, o := range params.Opts {
 		opts = append(opts, o...)
 	}

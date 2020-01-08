@@ -5,6 +5,7 @@ import (
 	"errors"
 	"time"
 
+	sectorbuilder "github.com/filecoin-project/go-sectorbuilder"
 	blockstore "github.com/ipfs/go-ipfs-blockstore"
 	ci "github.com/libp2p/go-libp2p-core/crypto"
 	"github.com/libp2p/go-libp2p-core/host"
@@ -30,7 +31,6 @@ import (
 	"github.com/filecoin-project/lotus/chain/store"
 	"github.com/filecoin-project/lotus/chain/types"
 	"github.com/filecoin-project/lotus/chain/wallet"
-	"github.com/filecoin-project/lotus/lib/sectorbuilder"
 	"github.com/filecoin-project/lotus/miner"
 	"github.com/filecoin-project/lotus/node/config"
 	"github.com/filecoin-project/lotus/node/hello"
@@ -100,6 +100,7 @@ const (
 	// daemon
 	ExtractApiKey
 	HeadMetricsKey
+	RunPeerTaggerKey
 
 	SetApiEndpointKey
 
@@ -155,7 +156,8 @@ func libp2p() Option {
 		Override(new(routing.Routing), lp2p.Routing),
 
 		Override(NatPortMapKey, lp2p.NatPortMap),
-		Override(ConnectionManagerKey, lp2p.ConnectionManager(50, 200, 20*time.Second)),
+
+		Override(ConnectionManagerKey, lp2p.ConnectionManager(50, 200, 20*time.Second, nil)),
 
 		Override(new(*pubsub.PubSub), lp2p.GossipSub()),
 
@@ -296,6 +298,11 @@ func ConfigCommon(cfg *config.Common) Option {
 
 		ApplyIf(func(s *Settings) bool { return s.Online },
 			Override(StartListeningKey, lp2p.StartListening(cfg.Libp2p.ListenAddresses)),
+			Override(ConnectionManagerKey, lp2p.ConnectionManager(
+				cfg.Libp2p.ConnMgrLow,
+				cfg.Libp2p.ConnMgrHigh,
+				time.Duration(cfg.Libp2p.ConnMgrGrace),
+				cfg.Libp2p.ProtectedPeers)),
 
 			ApplyIf(func(s *Settings) bool { return len(cfg.Libp2p.BootstrapPeers) > 0 },
 				Override(new(dtypes.BootstrapPeers), modules.ConfigBootstrap(cfg.Libp2p.BootstrapPeers)),
