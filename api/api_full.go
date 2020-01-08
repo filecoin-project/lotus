@@ -36,6 +36,7 @@ type FullNode interface {
 	ChainGetGenesis(context.Context) (*types.TipSet, error)
 	ChainTipSetWeight(context.Context, *types.TipSet) (types.BigInt, error)
 	ChainGetNode(ctx context.Context, p string) (interface{}, error)
+	ChainGetMessage(context.Context, cid.Cid) (*types.Message, error)
 
 	// syncer
 	SyncState(context.Context) (*SyncState, error)
@@ -96,6 +97,7 @@ type FullNode interface {
 	StateReplay(context.Context, *types.TipSet, cid.Cid) (*ReplayResults, error)
 	StateGetActor(ctx context.Context, actor address.Address, ts *types.TipSet) (*types.Actor, error)
 	StateReadState(ctx context.Context, act *types.Actor, ts *types.TipSet) (*ActorState, error)
+	StateListMessages(ctx context.Context, match *types.Message, ts *types.TipSet, toht uint64) ([]cid.Cid, error)
 
 	StateMinerSectors(context.Context, address.Address, *types.TipSet) ([]*ChainSectorInfo, error)
 	StateMinerProvingSet(context.Context, address.Address, *types.TipSet) ([]*ChainSectorInfo, error)
