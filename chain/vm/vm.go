@@ -259,7 +259,7 @@ func (bs *gasChargingBlocks) GetBlock(ctx context.Context, c cid.Cid) (block.Blo
 	}
 	blk, err := bs.under.GetBlock(ctx, c)
 	if err != nil {
-		return nil, err
+		return nil, aerrors.Escalate(err, "failed to get block from blockstore")
 	}
 	if err := bs.chargeGas(uint64(len(blk.RawData())) * gasGetPerByte); err != nil {
 		return nil, err
@@ -272,7 +272,10 @@ func (bs *gasChargingBlocks) AddBlock(blk block.Block) error {
 	if err := bs.chargeGas(gasPutObj + uint64(len(blk.RawData()))*gasPutPerByte); err != nil {
 		return err
 	}
-	return bs.under.AddBlock(blk)
+	if err := bs.under.AddBlock(blk); err != nil {
+		return aerrors.Escalate(err, "failed to write data to disk")
+	}
+	return nil
 }
 
 func (vm *VM) makeVMContext(ctx context.Context, sroot cid.Cid, msg *types.Message, origin address.Address, usedGas types.BigInt) *VMContext {
