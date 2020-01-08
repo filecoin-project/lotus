@@ -23,7 +23,7 @@ import (
 	dstore "github.com/ipfs/go-datastore"
 	hamt "github.com/ipfs/go-hamt-ipld"
 	bstore "github.com/ipfs/go-ipfs-blockstore"
-	logging "github.com/ipfs/go-log"
+	logging "github.com/ipfs/go-log/v2"
 	cbg "github.com/whyrusleeping/cbor-gen"
 	pubsub "github.com/whyrusleeping/pubsub"
 	"golang.org/x/xerrors"

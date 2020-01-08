@@ -4,7 +4,7 @@ import (
 	"context"
 	"os"
 
-	logging "github.com/ipfs/go-log"
+	logging "github.com/ipfs/go-log/v2"
 	"go.opencensus.io/trace"
 	"gopkg.in/urfave/cli.v2"
 

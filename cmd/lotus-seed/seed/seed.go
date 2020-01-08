@@ -12,7 +12,7 @@ import (
 
 	sectorbuilder "github.com/filecoin-project/go-sectorbuilder"
 	badger "github.com/ipfs/go-ds-badger2"
-	logging "github.com/ipfs/go-log"
+	logging "github.com/ipfs/go-log/v2"
 	"golang.org/x/xerrors"
 
 	"github.com/filecoin-project/go-address"

@@ -6,7 +6,7 @@ import (
 	"github.com/ipfs/go-datastore/namespace"
 	dshelp "github.com/ipfs/go-ipfs-ds-help"
 	cbor "github.com/ipfs/go-ipld-cbor"
-	logging "github.com/ipfs/go-log"
+	logging "github.com/ipfs/go-log/v2"
 
 	"github.com/filecoin-project/lotus/node/modules/dtypes"
 )

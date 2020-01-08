@@ -4,7 +4,7 @@ import (
 	"os"
 
 	"contrib.go.opencensus.io/exporter/jaeger"
-	logging "github.com/ipfs/go-log"
+	logging "github.com/ipfs/go-log/v2"
 	"go.opencensus.io/trace"
 )
 
