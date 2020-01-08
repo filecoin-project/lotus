@@ -10,7 +10,7 @@ import (
 	cid "github.com/ipfs/go-cid"
 	hamt "github.com/ipfs/go-hamt-ipld"
 	blockstore "github.com/ipfs/go-ipfs-blockstore"
-	logging "github.com/ipfs/go-log"
+	logging "github.com/ipfs/go-log/v2"
 	cbg "github.com/whyrusleeping/cbor-gen"
 	"go.opencensus.io/trace"
 	"golang.org/x/xerrors"

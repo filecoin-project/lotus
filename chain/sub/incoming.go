@@ -4,7 +4,7 @@ import (
 	"context"
 	"time"
 
-	logging "github.com/ipfs/go-log"
+	logging "github.com/ipfs/go-log/v2"
 	connmgr "github.com/libp2p/go-libp2p-core/connmgr"
 	pubsub "github.com/libp2p/go-libp2p-pubsub"
 

@@ -2,7 +2,7 @@ package build
 
 import (
 	rice "github.com/GeertJohan/go.rice"
-	logging "github.com/ipfs/go-log"
+	logging "github.com/ipfs/go-log/v2"
 )
 
 // moved from now-defunct build/paramfetch.go

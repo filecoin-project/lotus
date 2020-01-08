@@ -18,7 +18,7 @@ import (
 	bls "github.com/filecoin-project/filecoin-ffi"
 	"github.com/ipfs/go-cid"
 	hamt "github.com/ipfs/go-hamt-ipld"
-	logging "github.com/ipfs/go-log"
+	logging "github.com/ipfs/go-log/v2"
 	"go.opencensus.io/trace"
 )
 

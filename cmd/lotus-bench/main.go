@@ -17,7 +17,7 @@ import (
 	ffi "github.com/filecoin-project/filecoin-ffi"
 	paramfetch "github.com/filecoin-project/go-paramfetch"
 	"github.com/ipfs/go-datastore"
-	logging "github.com/ipfs/go-log"
+	logging "github.com/ipfs/go-log/v2"
 	"github.com/mitchellh/go-homedir"
 	"golang.org/x/xerrors"
 	"gopkg.in/urfave/cli.v2"

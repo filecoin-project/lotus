@@ -13,7 +13,7 @@ import (
 	"github.com/ipfs/go-car"
 	"github.com/ipfs/go-cid"
 	offline "github.com/ipfs/go-ipfs-exchange-offline"
-	logging "github.com/ipfs/go-log"
+	logging "github.com/ipfs/go-log/v2"
 	"github.com/ipfs/go-merkledag"
 	"github.com/libp2p/go-libp2p-core/peer"
 	"github.com/mitchellh/go-homedir"
