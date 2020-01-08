@@ -43,14 +43,14 @@ func newHandler(api api.FullNode, st *storage) (*handler, error) {
 		"queryNum": h.queryNum,
 		"sizeStr":  sizeStr,
 		"strings":  h.strings,
-		"qstr": h.qstr,
-		"qstrs": h.qstrs,
+		"qstr":     h.qstr,
+		"qstrs":    h.qstrs,
 		"messages": h.messages,
 
 		"pageDown": pageDown,
-		"parseInt": func(s string) (int, error) {i, e := strconv.ParseInt(s, 10, 64); return int(i), e},
-		"substr": func(i, j int, s string,) string {return s[i:j]},
-		"sub": func(a, b int) int {return a - b}, // TODO: really not builtin?
+		"parseInt": func(s string) (int, error) { i, e := strconv.ParseInt(s, 10, 64); return int(i), e },
+		"substr":   func(i, j int, s string) string { return s[i:j] },
+		"sub":      func(a, b int) int { return a - b }, // TODO: really not builtin?
 
 		"param": func(string) string { return "" }, // replaced in request handler
 	}
@@ -248,7 +248,7 @@ func (h *handler) messages(filter string, args ...interface{}) (out []types.Mess
 		filter = " where " + filter
 	}
 
-	log.Info("select * from messages "+filter)
+	log.Info("select * from messages " + filter)
 
 	rws, err := h.st.db.Query("select * from messages "+filter, args...)
 	if err != nil {
