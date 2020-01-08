@@ -45,7 +45,7 @@ func minerAddrFromDS(ds dtypes.MetadataDS) (address.Address, error) {
 }
 
 func GetParams(sbc *sectorbuilder.Config) error {
-	if err := paramfetch.GetParams(sbc.SectorSize); err != nil {
+	if err := paramfetch.GetParams(build.ParametersJson, sbc.SectorSize); err != nil {
 		return xerrors.Errorf("fetching proof parameters: %w", err)
 	}
 
