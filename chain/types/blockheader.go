@@ -59,6 +59,8 @@ type BlockHeader struct {
 	Timestamp uint64
 
 	BlockSig *Signature
+
+	ForkSignaling uint64
 }
 
 func (b *BlockHeader) ToStorageBlock() (block.Block, error) {
