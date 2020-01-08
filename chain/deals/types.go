@@ -108,7 +108,7 @@ func (dv *StorageDataTransferVoucher) FromBytes(raw []byte) error {
 	return dv.UnmarshalCBOR(r)
 }
 
-// Identifier is the unique string identifier for a StorageDataTransferVoucher
-func (dv *StorageDataTransferVoucher) Identifier() string {
+// Type is the unique string identifier for a StorageDataTransferVoucher
+func (dv *StorageDataTransferVoucher) Type() string {
 	return "StorageDataTransferVoucher"
 }
