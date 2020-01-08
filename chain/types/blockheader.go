@@ -216,7 +216,7 @@ func IsTicketWinner(partialTicket []byte, ssizeI uint64, snum uint64, totpow Big
 	return lhs.Cmp(rhs) < 0
 }
 
-func ElectionPostChallengeCount(sectors uint64, faults int) uint64 {
+func ElectionPostChallengeCount(sectors uint64, faults uint64) uint64 {
 	return sectorbuilder.ElectionPostChallengeCount(sectors, faults)
 }
 
