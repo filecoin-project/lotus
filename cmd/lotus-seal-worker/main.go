@@ -5,7 +5,7 @@ import (
 
 	"github.com/mitchellh/go-homedir"
 
-	logging "github.com/ipfs/go-log"
+	logging "github.com/ipfs/go-log/v2"
 	"golang.org/x/xerrors"
 	"gopkg.in/urfave/cli.v2"
 

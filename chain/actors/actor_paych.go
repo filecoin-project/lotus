@@ -116,7 +116,7 @@ func (pca PaymentChannelActor) UpdateChannelState(act *types.Actor, vmctx types.
 
 	vb, nerr := sv.SigningBytes()
 	if nerr != nil {
-		return nil, aerrors.Escalate(nerr, "failed to serialize signedvoucher")
+		return nil, aerrors.Absorb(nerr, 1, "failed to serialize signedvoucher")
 	}
 
 	if err := vmctx.VerifySignature(sv.Signature, self.From, vb); err != nil {

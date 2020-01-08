@@ -12,7 +12,7 @@ import (
 	"sync/atomic"
 
 	"github.com/gorilla/websocket"
-	logging "github.com/ipfs/go-log"
+	logging "github.com/ipfs/go-log/v2"
 	"go.opencensus.io/trace"
 	"go.opencensus.io/trace/propagation"
 	"golang.org/x/xerrors"

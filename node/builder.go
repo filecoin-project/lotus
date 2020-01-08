@@ -243,8 +243,9 @@ func Online() Option {
 			Override(new(storage.TicketFn), modules.SealTicketGen),
 			Override(new(*storage.Miner), modules.StorageMiner),
 
+			Override(new(dtypes.StagingBlockstore), modules.StagingBlockstore),
 			Override(new(dtypes.StagingDAG), modules.StagingDAG),
-
+			Override(new(dtypes.StagingGraphsync), modules.StagingGraphsync),
 			Override(new(*retrieval.Miner), retrieval.NewMiner),
 			Override(new(dtypes.ProviderDealStore), modules.NewProviderDealStore),
 			Override(new(dtypes.ProviderDataTransfer), modules.NewProviderDAGServiceDataTransfer),
@@ -372,6 +373,7 @@ func Repo(r repo.Repo) Option {
 			Override(new(dtypes.ClientFilestore), modules.ClientFstore),
 			Override(new(dtypes.ClientBlockstore), modules.ClientBlockstore),
 			Override(new(dtypes.ClientDAG), modules.ClientDAG),
+			Override(new(dtypes.ClientGraphsync), modules.ClientGraphsync),
 
 			Override(new(ci.PrivKey), lp2p.PrivKey),
 			Override(new(ci.PubKey), ci.PrivKey.GetPublic),

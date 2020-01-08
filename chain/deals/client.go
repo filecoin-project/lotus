@@ -4,7 +4,7 @@ import (
 	"context"
 
 	"github.com/ipfs/go-cid"
-	logging "github.com/ipfs/go-log"
+	logging "github.com/ipfs/go-log/v2"
 	"github.com/libp2p/go-libp2p-core/host"
 	inet "github.com/libp2p/go-libp2p-core/network"
 	"github.com/libp2p/go-libp2p-core/peer"
@@ -23,6 +23,7 @@ import (
 	"github.com/filecoin-project/lotus/chain/wallet"
 	"github.com/filecoin-project/lotus/node/impl/full"
 	"github.com/filecoin-project/lotus/node/modules/dtypes"
+
 	"github.com/filecoin-project/lotus/retrieval/discovery"
 )
 
@@ -35,6 +36,7 @@ type ClientDeal struct {
 	Miner       peer.ID
 	MinerWorker address.Address
 	DealID      uint64
+	PayloadCid  cid.Cid
 
 	PublishMessage *types.SignedMessage
 
@@ -244,8 +246,8 @@ func (c *Client) Start(ctx context.Context, p ClientDealProposal) (cid.Cid, erro
 		State:       api.DealUnknown,
 		Miner:       p.MinerID,
 		MinerWorker: p.MinerWorker,
-
-		s: s,
+		PayloadCid:  p.Data,
+		s:           s,
 	}
 
 	c.incoming <- deal

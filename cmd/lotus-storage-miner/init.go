@@ -13,7 +13,7 @@ import (
 
 	paramfetch "github.com/filecoin-project/go-paramfetch"
 	"github.com/ipfs/go-datastore"
-	badger "github.com/ipfs/go-ds-badger"
+	badger "github.com/ipfs/go-ds-badger2"
 	"github.com/libp2p/go-libp2p-core/crypto"
 	"github.com/libp2p/go-libp2p-core/peer"
 	"github.com/mitchellh/go-homedir"
