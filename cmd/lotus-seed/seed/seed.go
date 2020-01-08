@@ -11,7 +11,7 @@ import (
 	"path/filepath"
 
 	sectorbuilder "github.com/filecoin-project/go-sectorbuilder"
-	badger "github.com/ipfs/go-ds-badger"
+	badger "github.com/ipfs/go-ds-badger2"
 	logging "github.com/ipfs/go-log"
 	"golang.org/x/xerrors"
 
