@@ -54,7 +54,7 @@ var noncefix = &cli.Command{
 				return err
 			}
 
-			err = api.MpoolPush(ctx, smsg)
+			_, err = api.MpoolPush(ctx, smsg)
 			if err != nil {
 				return err
 			}

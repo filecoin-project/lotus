@@ -129,7 +129,7 @@ func (a *PaychAPI) PaychClose(ctx context.Context, addr address.Address) (cid.Ci
 		return cid.Undef, err
 	}
 
-	if err := a.MpoolPush(ctx, smsg); err != nil {
+	if _, err := a.MpoolPush(ctx, smsg); err != nil {
 		return cid.Undef, err
 	}
 
@@ -244,7 +244,7 @@ func (a *PaychAPI) PaychVoucherSubmit(ctx context.Context, ch address.Address, s
 		return cid.Undef, err
 	}
 
-	if err := a.MpoolPush(ctx, smsg); err != nil {
+	if _, err := a.MpoolPush(ctx, smsg); err != nil {
 		return cid.Undef, err
 	}
 
