@@ -13,6 +13,7 @@ import (
 
 	paramfetch "github.com/filecoin-project/go-paramfetch"
 	"github.com/ipfs/go-datastore"
+	"github.com/ipfs/go-datastore/namespace"
 	badger "github.com/ipfs/go-ds-badger"
 	"github.com/libp2p/go-libp2p-core/crypto"
 	"github.com/libp2p/go-libp2p-core/peer"
@@ -174,7 +175,7 @@ var initCmd = &cli.Command{
 				SectorSize:    ssize,
 				WorkerThreads: 2,
 				Dir:           pssb,
-			}, oldmds)
+			}, namespace.Wrap(oldmds, datastore.NewKey("/sectorbuilder")))
 			if err != nil {
 				return xerrors.Errorf("failed to open up preseal sectorbuilder: %w", err)
 			}
@@ -183,7 +184,7 @@ var initCmd = &cli.Command{
 				SectorSize:    ssize,
 				WorkerThreads: 2,
 				Dir:           lr.Path(),
-			}, mds)
+			}, namespace.Wrap(mds, datastore.NewKey("/sectorbuilder")))
 			if err != nil {
 				return xerrors.Errorf("failed to open up sectorbuilder: %w", err)
 			}
