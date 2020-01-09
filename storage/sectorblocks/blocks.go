@@ -47,10 +47,10 @@ type SectorBlocks struct {
 	keyLk sync.Mutex
 }
 
-func NewSectorBlocks(miner *storage.Miner, ds dtypes.MetadataDS, sb *sectorbuilder.SectorBuilder) *SectorBlocks {
+func NewSectorBlocks(miner *storage.Miner, ds dtypes.MetadataDS, sb storage.SectorBuilder) *SectorBlocks {
 	sbc := &SectorBlocks{
 		Miner: miner,
-		sb:    sb,
+		sb:    sb.(*sectorbuilder.SectorBuilder),
 
 		intermediate: blockstore.NewBlockstore(namespace.Wrap(ds, imBlocksPrefix)),
 

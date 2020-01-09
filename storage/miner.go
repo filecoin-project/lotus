@@ -159,8 +159,8 @@ type SectorBuilderEpp struct {
 	sb *sectorbuilder.SectorBuilder
 }
 
-func NewElectionPoStProver(sb *sectorbuilder.SectorBuilder) *SectorBuilderEpp {
-	return &SectorBuilderEpp{sb}
+func NewElectionPoStProver(sb SectorBuilder) *SectorBuilderEpp {
+	return &SectorBuilderEpp{sb.(*sectorbuilder.SectorBuilder)}
 }
 
 var _ gen.ElectionPoStProver = (*SectorBuilderEpp)(nil)
