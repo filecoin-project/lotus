@@ -1,7 +1,7 @@
 package discovery
 
 import (
-	"github.com/filecoin-project/lotus/chain/address"
+	"github.com/filecoin-project/go-address"
 	"github.com/ipfs/go-cid"
 	cbor "github.com/ipfs/go-ipld-cbor"
 	"github.com/libp2p/go-libp2p-core/peer"

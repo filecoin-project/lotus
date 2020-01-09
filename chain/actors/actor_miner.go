@@ -8,11 +8,11 @@ import (
 
 	ffi "github.com/filecoin-project/filecoin-ffi"
 
+	"github.com/filecoin-project/go-address"
+	"github.com/filecoin-project/go-sectorbuilder"
 	"github.com/filecoin-project/lotus/build"
 	"github.com/filecoin-project/lotus/chain/actors/aerrors"
-	"github.com/filecoin-project/lotus/chain/address"
 	"github.com/filecoin-project/lotus/chain/types"
-	"github.com/filecoin-project/lotus/lib/sectorbuilder"
 
 	"github.com/filecoin-project/go-amt-ipld"
 	"github.com/ipfs/go-cid"
@@ -24,6 +24,7 @@ import (
 )
 
 const MaxSectors = 1 << 48
+const RLEMax = 100e3
 
 type StorageMinerActor struct{}
 
@@ -574,6 +575,17 @@ func (sma StorageMinerActor) SubmitFallbackPoSt(act *types.Actor, vmctx types.VM
 	pss, lerr := amt.LoadAMT(types.WrapStorage(vmctx.Storage()), self.ProvingSet)
 	if lerr != nil {
 		return nil, aerrors.HandleExternalError(lerr, "could not load proving set node")
+	}
+
+	{
+		c, nerr := self.FaultSet.Count()
+		if nerr != nil {
+			return nil, aerrors.Absorb(nerr, 6, "invalid bitfield")
+		}
+
+		if c > RLEMax {
+			return nil, aerrors.Newf(7, "too many items in bitfield: %d", c)
+		}
 	}
 
 	faults, nerr := self.FaultSet.AllMap()
@@ -1145,6 +1157,16 @@ func onSuccessfulPoStV1(self *StorageMinerActorState, vmctx types.VMContext) aer
 	pss, nerr := amt.LoadAMT(types.WrapStorage(vmctx.Storage()), self.ProvingSet)
 	if nerr != nil {
 		return aerrors.HandleExternalError(nerr, "failed to load proving set")
+	}
+
+	{
+		c, nerr := self.FaultSet.Count()
+		if nerr != nil {
+			return aerrors.Absorb(nerr, 2, "invalid bitfield")
+		}
+		if c > RLEMax {
+			return aerrors.Newf(3, "too many items in bitfield: %d", c)
+		}
 	}
 
 	faults, nerr := self.FaultSet.All()

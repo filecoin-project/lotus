@@ -3,10 +3,13 @@ package main
 import (
 	"context"
 	"flag"
-	"log"
 	"os"
 	"time"
+
+	logging "github.com/ipfs/go-log"
 )
+
+var log = logging.Logger("stats")
 
 const (
 	INFLUX_ADDR = "INFLUX_ADDR"
@@ -47,7 +50,7 @@ func main() {
 	if !reset && height == 0 {
 		h, err := GetLastRecordedHeight(influx, database)
 		if err != nil {
-			log.Print(err)
+			log.Info(err)
 		}
 
 		height = h
@@ -76,17 +79,17 @@ func main() {
 		height := tipset.Height()
 
 		if err := RecordTipsetPoints(ctx, api, pl, tipset); err != nil {
-			log.Printf("Failed to record tipset at height %d: %w", height, err)
+			log.Warnw("Failed to record tipset", "height", height, "error", err)
 			continue
 		}
 
 		if err := RecordTipsetMessagesPoints(ctx, api, pl, tipset); err != nil {
-			log.Printf("Failed to record messages at height %d: %w", height, err)
+			log.Warnw("Failed to record messages", "height", height, "error", err)
 			continue
 		}
 
 		if err := RecordTipsetStatePoints(ctx, api, pl, tipset); err != nil {
-			log.Printf("Failed to record state at height %d: %w", height, err)
+			log.Warnw("Failed to record state", "height", height, "error", err)
 			continue
 		}
 
@@ -108,7 +111,7 @@ func main() {
 
 		nb.SetDatabase(database)
 
-		log.Printf("Writing %d points for height %d", len(nb.Points()), tipset.Height())
+		log.Infow("Adding points", "count", len(nb.Points()), "height", tipset.Height())
 
 		wq.AddBatch(nb)
 	}

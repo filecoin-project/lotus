@@ -4,7 +4,7 @@ import (
 	"math/rand"
 	"testing"
 
-	"github.com/filecoin-project/lotus/chain/address"
+	"github.com/filecoin-project/go-address"
 )
 
 func blsaddr(n int64) address.Address {

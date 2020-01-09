@@ -5,6 +5,8 @@ import (
 	"context"
 	"math/big"
 
+	"github.com/filecoin-project/go-sectorbuilder"
+
 	block "github.com/ipfs/go-block-format"
 	"github.com/ipfs/go-cid"
 	"github.com/minio/sha256-simd"
@@ -12,8 +14,9 @@ import (
 	"go.opencensus.io/trace"
 	xerrors "golang.org/x/xerrors"
 
+	"github.com/filecoin-project/go-address"
+
 	"github.com/filecoin-project/lotus/build"
-	"github.com/filecoin-project/lotus/chain/address"
 )
 
 type Ticket struct {
@@ -214,11 +217,7 @@ func IsTicketWinner(partialTicket []byte, ssizeI uint64, snum uint64, totpow Big
 }
 
 func ElectionPostChallengeCount(sectors uint64, faults int) uint64 {
-	if sectors == 0 {
-		return 0
-	}
-	// ceil(sectors / build.SectorChallengeRatioDiv)
-	return (sectors-uint64(faults)-1)/build.SectorChallengeRatioDiv + 1
+	return sectorbuilder.ElectionPostChallengeCount(sectors, faults)
 }
 
 func (t *Ticket) Equals(ot *Ticket) bool {

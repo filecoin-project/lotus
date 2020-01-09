@@ -6,9 +6,8 @@ import (
 	"context"
 	"io/ioutil"
 
-	"github.com/filecoin-project/lotus/peermgr"
+	paramfetch "github.com/filecoin-project/go-paramfetch"
 	"github.com/multiformats/go-multiaddr"
-
 	"golang.org/x/xerrors"
 	"gopkg.in/urfave/cli.v2"
 
@@ -18,6 +17,7 @@ import (
 	"github.com/filecoin-project/lotus/node/modules"
 	"github.com/filecoin-project/lotus/node/modules/testing"
 	"github.com/filecoin-project/lotus/node/repo"
+	"github.com/filecoin-project/lotus/peermgr"
 )
 
 const (
@@ -68,7 +68,7 @@ var DaemonCmd = &cli.Command{
 			return xerrors.Errorf("repo init error: %w", err)
 		}
 
-		if err := build.GetParams(0); err != nil {
+		if err := paramfetch.GetParams(build.ParametersJson, 0); err != nil {
 			return xerrors.Errorf("fetching proof parameters: %w", err)
 		}
 

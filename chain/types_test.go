@@ -4,7 +4,7 @@ import (
 	"encoding/json"
 	"testing"
 
-	"github.com/filecoin-project/lotus/chain/address"
+	"github.com/filecoin-project/go-address"
 	"github.com/filecoin-project/lotus/chain/types"
 )
 

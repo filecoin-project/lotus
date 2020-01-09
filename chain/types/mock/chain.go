@@ -4,7 +4,7 @@ import (
 	"context"
 	"fmt"
 
-	"github.com/filecoin-project/lotus/chain/address"
+	"github.com/filecoin-project/go-address"
 	"github.com/filecoin-project/lotus/chain/types"
 	"github.com/filecoin-project/lotus/chain/wallet"
 	"github.com/ipfs/go-cid"

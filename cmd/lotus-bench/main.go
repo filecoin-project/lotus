@@ -15,17 +15,18 @@ import (
 
 	"github.com/docker/go-units"
 	ffi "github.com/filecoin-project/filecoin-ffi"
+	paramfetch "github.com/filecoin-project/go-paramfetch"
 	"github.com/ipfs/go-datastore"
 	logging "github.com/ipfs/go-log"
 	"github.com/mitchellh/go-homedir"
 	"golang.org/x/xerrors"
 	"gopkg.in/urfave/cli.v2"
 
+	"github.com/filecoin-project/go-address"
+	"github.com/filecoin-project/go-sectorbuilder"
 	"github.com/filecoin-project/lotus/build"
-	"github.com/filecoin-project/lotus/chain/address"
 	"github.com/filecoin-project/lotus/chain/types"
 	"github.com/filecoin-project/lotus/genesis"
-	"github.com/filecoin-project/lotus/lib/sectorbuilder"
 )
 
 var log = logging.Logger("lotus-bench")
@@ -154,7 +155,7 @@ func main() {
 				}
 			}
 
-			if err := build.GetParams(sectorSize); err != nil {
+			if err := paramfetch.GetParams(build.ParametersJson, sectorSize); err != nil {
 				return xerrors.Errorf("getting params: %w", err)
 			}
 			sb, err := sectorbuilder.New(cfg, mds)

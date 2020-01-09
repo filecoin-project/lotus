@@ -5,7 +5,7 @@ import "fmt"
 var CurrentCommit string
 
 // BuildVersion is the local build version, set by build system
-const BuildVersion = "0.1.5"
+const BuildVersion = "0.1.6"
 
 var UserVersion = BuildVersion + CurrentCommit
 
@@ -31,7 +31,7 @@ func (ve Version) EqMajorMinor(v2 Version) bool {
 }
 
 // APIVersion is a semver version of the rpc api exposed
-var APIVersion Version = newVer(0, 1, 5)
+var APIVersion Version = newVer(0, 1, 6)
 
 const (
 	majorMask = 0xff0000

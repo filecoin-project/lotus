@@ -131,7 +131,7 @@ func (bi BigInt) SizeStr() string {
 	den := big.NewRat(1, 1024)
 
 	var i int
-	for f, _ := r.Float64(); f >= 1024 && 1 < len(sizeUnits); f, _ = r.Float64() {
+	for f, _ := r.Float64(); f >= 1024 && i+1 < len(sizeUnits); f, _ = r.Float64() {
 		i++
 		r = r.Mul(r, den)
 	}

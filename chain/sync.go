@@ -12,6 +12,7 @@ import (
 	"github.com/Gurpartap/async"
 	bls "github.com/filecoin-project/filecoin-ffi"
 	amt "github.com/filecoin-project/go-amt-ipld"
+	sectorbuilder "github.com/filecoin-project/go-sectorbuilder"
 	"github.com/hashicorp/go-multierror"
 	"github.com/ipfs/go-cid"
 	dstore "github.com/ipfs/go-datastore"
@@ -25,17 +26,17 @@ import (
 	"go.opencensus.io/trace"
 	"golang.org/x/xerrors"
 
+	"github.com/filecoin-project/go-address"
+
 	"github.com/filecoin-project/lotus/api"
 	"github.com/filecoin-project/lotus/build"
 	"github.com/filecoin-project/lotus/chain/actors"
-	"github.com/filecoin-project/lotus/chain/address"
 	"github.com/filecoin-project/lotus/chain/blocksync"
 	"github.com/filecoin-project/lotus/chain/gen"
 	"github.com/filecoin-project/lotus/chain/state"
 	"github.com/filecoin-project/lotus/chain/stmgr"
 	"github.com/filecoin-project/lotus/chain/store"
 	"github.com/filecoin-project/lotus/chain/types"
-	"github.com/filecoin-project/lotus/lib/sectorbuilder"
 )
 
 var log = logging.Logger("chain")
@@ -1179,4 +1180,8 @@ func (syncer *Syncer) State() []SyncerState {
 		out = append(out, ss.Snapshot())
 	}
 	return out
+}
+
+func (syncer *Syncer) MarkBad(blk cid.Cid) {
+	syncer.bad.Add(blk)
 }

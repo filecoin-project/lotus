@@ -14,9 +14,9 @@ import (
 	"go.uber.org/fx"
 	"golang.org/x/xerrors"
 
+	"github.com/filecoin-project/go-address"
 	"github.com/filecoin-project/lotus/api"
 	"github.com/filecoin-project/lotus/chain/actors"
-	"github.com/filecoin-project/lotus/chain/address"
 	"github.com/filecoin-project/lotus/chain/gen"
 	"github.com/filecoin-project/lotus/chain/state"
 	"github.com/filecoin-project/lotus/chain/stmgr"
@@ -350,4 +350,53 @@ func (a *StateAPI) StateChangedActors(ctx context.Context, old cid.Cid, new cid.
 
 func (a *StateAPI) StateMinerSectorCount(ctx context.Context, addr address.Address, ts *types.TipSet) (api.MinerSectors, error) {
 	return stmgr.SectorSetSizes(ctx, a.StateManager, addr, ts)
+}
+
+func (a *StateAPI) StateListMessages(ctx context.Context, match *types.Message, ts *types.TipSet, toheight uint64) ([]cid.Cid, error) {
+	if ts == nil {
+		ts = a.Chain.GetHeaviestTipSet()
+	}
+
+	if match.To == address.Undef && match.From == address.Undef {
+		return nil, xerrors.Errorf("must specify at least To or From in message filter")
+	}
+
+	matchFunc := func(msg *types.Message) bool {
+		if match.From != address.Undef && match.From != msg.From {
+			return false
+		}
+
+		if match.To != address.Undef && match.To != msg.To {
+			return false
+		}
+
+		return true
+	}
+
+	var out []cid.Cid
+	for ts.Height() >= toheight {
+		msgs, err := a.Chain.MessagesForTipset(ts)
+		if err != nil {
+			return nil, xerrors.Errorf("failed to get messages for tipset (%s): %w", ts.Key(), err)
+		}
+
+		for _, msg := range msgs {
+			if matchFunc(msg.VMMessage()) {
+				out = append(out, msg.Cid())
+			}
+		}
+
+		if ts.Height() == 0 {
+			break
+		}
+
+		next, err := a.Chain.LoadTipSet(ts.Parents())
+		if err != nil {
+			return nil, xerrors.Errorf("loading next tipset: %w", err)
+		}
+
+		ts = next
+	}
+
+	return out, nil
 }

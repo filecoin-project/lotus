@@ -56,11 +56,6 @@ const SealRandomnessLookback = Finality
 // Epochs
 const SealRandomnessLookbackLimit = SealRandomnessLookback + 2000
 
-// 1 / n
-const SectorChallengeRatioDiv = 25
-
-const MaxFallbackPostChallengeCount = 10
-
 // /////
 // Mining
 

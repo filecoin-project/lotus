@@ -3,8 +3,8 @@ package state
 import (
 	"testing"
 
+	address "github.com/filecoin-project/go-address"
 	actors "github.com/filecoin-project/lotus/chain/actors"
-	address "github.com/filecoin-project/lotus/chain/address"
 	"github.com/filecoin-project/lotus/chain/types"
 	hamt "github.com/ipfs/go-hamt-ipld"
 )

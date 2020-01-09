@@ -2,12 +2,14 @@ package main
 
 import (
 	"context"
-	"golang.org/x/xerrors"
 	"net/http"
+
+	paramfetch "github.com/filecoin-project/go-paramfetch"
+	"github.com/filecoin-project/go-sectorbuilder"
+	"golang.org/x/xerrors"
 
 	lapi "github.com/filecoin-project/lotus/api"
 	"github.com/filecoin-project/lotus/build"
-	"github.com/filecoin-project/lotus/lib/sectorbuilder"
 )
 
 type worker struct {
@@ -39,7 +41,7 @@ func acceptJobs(ctx context.Context, api lapi.StorageMiner, endpoint string, aut
 		return err
 	}
 
-	if err := build.GetParams(ssize); err != nil {
+	if err := paramfetch.GetParams(build.ParametersJson, ssize); err != nil {
 		return xerrors.Errorf("get params: %w", err)
 	}
 

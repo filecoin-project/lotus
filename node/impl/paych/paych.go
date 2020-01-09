@@ -8,9 +8,9 @@ import (
 	"go.uber.org/fx"
 	"golang.org/x/xerrors"
 
+	"github.com/filecoin-project/go-address"
 	"github.com/filecoin-project/lotus/api"
 	"github.com/filecoin-project/lotus/chain/actors"
-	"github.com/filecoin-project/lotus/chain/address"
 	"github.com/filecoin-project/lotus/chain/types"
 	full "github.com/filecoin-project/lotus/node/impl/full"
 	"github.com/filecoin-project/lotus/paych"
@@ -129,7 +129,7 @@ func (a *PaychAPI) PaychClose(ctx context.Context, addr address.Address) (cid.Ci
 		return cid.Undef, err
 	}
 
-	if err := a.MpoolPush(ctx, smsg); err != nil {
+	if _, err := a.MpoolPush(ctx, smsg); err != nil {
 		return cid.Undef, err
 	}
 
@@ -244,7 +244,7 @@ func (a *PaychAPI) PaychVoucherSubmit(ctx context.Context, ch address.Address, s
 		return cid.Undef, err
 	}
 
-	if err := a.MpoolPush(ctx, smsg); err != nil {
+	if _, err := a.MpoolPush(ctx, smsg); err != nil {
 		return cid.Undef, err
 	}
 

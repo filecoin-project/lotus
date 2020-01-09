@@ -11,6 +11,7 @@ import (
 	"path/filepath"
 	"strconv"
 
+	paramfetch "github.com/filecoin-project/go-paramfetch"
 	"github.com/ipfs/go-datastore"
 	badger "github.com/ipfs/go-ds-badger"
 	"github.com/libp2p/go-libp2p-core/crypto"
@@ -19,16 +20,16 @@ import (
 	"golang.org/x/xerrors"
 	"gopkg.in/urfave/cli.v2"
 
+	"github.com/filecoin-project/go-address"
+	"github.com/filecoin-project/go-cbor-util"
+	"github.com/filecoin-project/go-sectorbuilder"
 	lapi "github.com/filecoin-project/lotus/api"
 	"github.com/filecoin-project/lotus/build"
 	"github.com/filecoin-project/lotus/chain/actors"
-	"github.com/filecoin-project/lotus/chain/address"
 	"github.com/filecoin-project/lotus/chain/deals"
 	"github.com/filecoin-project/lotus/chain/types"
 	lcli "github.com/filecoin-project/lotus/cli"
 	"github.com/filecoin-project/lotus/genesis"
-	"github.com/filecoin-project/lotus/lib/cborutil"
-	"github.com/filecoin-project/lotus/lib/sectorbuilder"
 	"github.com/filecoin-project/lotus/miner"
 	"github.com/filecoin-project/lotus/node/modules"
 	"github.com/filecoin-project/lotus/node/modules/dtypes"
@@ -92,7 +93,7 @@ var initCmd = &cli.Command{
 		}
 
 		log.Info("Checking proof parameters")
-		if err := build.GetParams(ssize); err != nil {
+		if err := paramfetch.GetParams(build.ParametersJson, ssize); err != nil {
 			return xerrors.Errorf("fetching proof parameters: %w", err)
 		}
 
