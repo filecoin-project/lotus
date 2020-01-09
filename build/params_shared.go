@@ -56,6 +56,9 @@ const SealRandomnessLookback = Finality
 // Epochs
 const SealRandomnessLookbackLimit = SealRandomnessLookback + 2000
 
+// Maximum lookback that randomness can be sourced from for a seal proof submission
+const MaxSealLookback = SealRandomnessLookbackLimit + 2000
+
 // /////
 // Mining
 

@@ -321,6 +321,14 @@ func (sma StorageMinerActor) ProveCommitSector(act *types.Actor, vmctx types.VMC
 	// TODO: ensure normalization to ID address
 	maddr := vmctx.Message().To
 
+	if vmctx.BlockHeight()-us.Info.SealEpoch > build.MaxSealLookback {
+		return nil, aerrors.Newf(5, "source randomness for sector SealEpoch too far in past (epoch %d)", us.Info.SealEpoch)
+	}
+
+	if vmctx.BlockHeight()-us.ReceivedEpoch > build.MaxSealLookback {
+		return nil, aerrors.Newf(6, "source randomness for sector ReceivedEpoch too far in past (epoch %d)", us.ReceivedEpoch)
+	}
+
 	ticket, err := vmctx.GetRandomness(us.Info.SealEpoch - build.SealRandomnessLookback)
 	if err != nil {
 		return nil, aerrors.Wrap(err, "failed to get ticket randomness")
