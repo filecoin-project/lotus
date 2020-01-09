@@ -190,7 +190,7 @@ jobs:
       - install-deps
       - go/mod-download
       - run:
-          command: make buildall
+          command: make build
           no_output_timeout: 30m
       - store_artifacts:
           path: lotus
