@@ -100,7 +100,7 @@ jobs:
         description: gotestsum format. https://github.com/gotestyourself/gotestsum#format
       coverage:
         type: string
-        default: -coverprofile=coverage.txt
+        default: -coverprofile=coverage.txt -coverpkg=github.com/filecoin-project/lotus/...
         description: Coverage flag. Set to the empty string to disable.
       codecov-upload:
         type: boolean
