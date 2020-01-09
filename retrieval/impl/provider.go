@@ -4,6 +4,7 @@ import (
 	"context"
 	"io"
 	"reflect"
+	"sync"
 
 	"github.com/ipfs/go-blockservice"
 	"github.com/ipfs/go-cid"
@@ -14,7 +15,7 @@ import (
 	"golang.org/x/xerrors"
 
 	"github.com/filecoin-project/go-address"
-	"github.com/filecoin-project/go-cbor-util"
+	cborutil "github.com/filecoin-project/go-cbor-util"
 	"github.com/filecoin-project/lotus/build"
 	"github.com/filecoin-project/lotus/chain/types"
 	retrievalmarket "github.com/filecoin-project/lotus/retrieval"
@@ -37,7 +38,8 @@ type provider struct {
 
 	pricePerByte retrievalmarket.BigInt
 
-	subscribers []retrievalmarket.ProviderSubscriber
+	subscribersLk sync.RWMutex
+	subscribers   []retrievalmarket.ProviderSubscriber
 }
 
 // NewProvider returns a new retrieval provider
@@ -74,6 +76,8 @@ func (p *provider) SetPaymentInterval(paymentInterval uint64, paymentIntervalInc
 // Subsequent, repeated calls to the func with the same Subscriber are a no-op.
 func (p *provider) unsubscribeAt(sub retrievalmarket.ProviderSubscriber) retrievalmarket.Unsubscribe {
 	return func() {
+		p.subscribersLk.Lock()
+		defer p.subscribersLk.Unlock()
 		curLen := len(p.subscribers)
 		for i, el := range p.subscribers {
 			if reflect.ValueOf(sub) == reflect.ValueOf(el) {
@@ -86,6 +90,8 @@ func (p *provider) unsubscribeAt(sub retrievalmarket.ProviderSubscriber) retriev
 }
 
 func (p *provider) notifySubscribers(evt retrievalmarket.ProviderEvent, ds retrievalmarket.ProviderDealState) {
+	p.subscribersLk.RLock()
+	defer p.subscribersLk.RUnlock()
 	for _, cb := range p.subscribers {
 		cb(evt, ds)
 	}
@@ -94,7 +100,10 @@ func (p *provider) notifySubscribers(evt retrievalmarket.ProviderEvent, ds retri
 // SubscribeToEvents listens for events that happen related to client retrievals
 // TODO: Implement updates as part of https://github.com/filecoin-project/go-retrieval-market-project/issues/7
 func (p *provider) SubscribeToEvents(subscriber retrievalmarket.ProviderSubscriber) retrievalmarket.Unsubscribe {
+	p.subscribersLk.Lock()
 	p.subscribers = append(p.subscribers, subscriber)
+	p.subscribersLk.Unlock()
+
 	return p.unsubscribeAt(subscriber)
 }
 

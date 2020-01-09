@@ -30,9 +30,10 @@ type client struct {
 	node retrievalmarket.RetrievalClientNode
 	// The parameters should be replaced by RetrievalClientNode
 
-	nextDealLk  sync.Mutex
-	nextDealID  retrievalmarket.DealID
-	subscribers []retrievalmarket.ClientSubscriber
+	nextDealLk    sync.Mutex
+	nextDealID    retrievalmarket.DealID
+	subscribersLk sync.RWMutex
+	subscribers   []retrievalmarket.ClientSubscriber
 }
 
 // NewClient creates a new retrieval client
@@ -129,6 +130,8 @@ func (c *client) Retrieve(ctx context.Context, pieceCID []byte, params retrieval
 // Subsequent, repeated calls to the func with the same Subscriber are a no-op.
 func (c *client) unsubscribeAt(sub retrievalmarket.ClientSubscriber) retrievalmarket.Unsubscribe {
 	return func() {
+		c.subscribersLk.Lock()
+		defer c.subscribersLk.Unlock()
 		curLen := len(c.subscribers)
 		for i, el := range c.subscribers {
 			if reflect.ValueOf(sub) == reflect.ValueOf(el) {
@@ -141,13 +144,18 @@ func (c *client) unsubscribeAt(sub retrievalmarket.ClientSubscriber) retrievalma
 }
 
 func (c *client) notifySubscribers(evt retrievalmarket.ClientEvent, ds retrievalmarket.ClientDealState) {
+	c.subscribersLk.RLock()
+	defer c.subscribersLk.RUnlock()
 	for _, cb := range c.subscribers {
 		cb(evt, ds)
 	}
 }
 
 func (c *client) SubscribeToEvents(subscriber retrievalmarket.ClientSubscriber) retrievalmarket.Unsubscribe {
+	c.subscribersLk.Lock()
 	c.subscribers = append(c.subscribers, subscriber)
+	c.subscribersLk.Unlock()
+
 	return c.unsubscribeAt(subscriber)
 }
 
