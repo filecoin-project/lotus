@@ -3,6 +3,7 @@ package storage
 import (
 	"context"
 	"errors"
+	"io"
 	"time"
 
 	"github.com/ipfs/go-cid"
@@ -36,7 +37,7 @@ type Miner struct {
 	worker address.Address
 
 	// Sealing
-	sb      *sectorbuilder.SectorBuilder
+	sb      SectorBuilder
 	sectors *statestore.StateStore
 	tktFn   TicketFn
 
@@ -71,7 +72,18 @@ type storageMinerApi interface {
 	WalletHas(context.Context, address.Address) (bool, error)
 }
 
-func NewMiner(api storageMinerApi, addr address.Address, h host.Host, ds datastore.Batching, sb *sectorbuilder.SectorBuilder, tktFn TicketFn) (*Miner, error) {
+type SectorBuilder interface {
+	RateLimit() func()
+	AddPiece(uint64, uint64, io.Reader, []uint64) (sectorbuilder.PublicPieceInfo, error)
+	SectorSize() uint64
+	AcquireSectorId() (uint64, error)
+	Scrub(sectorbuilder.SortedPublicSectorInfo) []*sectorbuilder.Fault
+	GenerateFallbackPoSt(sectorbuilder.SortedPublicSectorInfo, [sectorbuilder.CommLen]byte, []uint64) ([]sectorbuilder.EPostCandidate, []byte, error)
+	SealPreCommit(uint64, sectorbuilder.SealTicket, []sectorbuilder.PublicPieceInfo) (sectorbuilder.RawSealPreCommitOutput, error)
+	SealCommit(uint64, sectorbuilder.SealTicket, sectorbuilder.SealSeed, []sectorbuilder.PublicPieceInfo, sectorbuilder.RawSealPreCommitOutput) ([]byte, error)
+}
+
+func NewMiner(api storageMinerApi, addr address.Address, h host.Host, ds datastore.Batching, sb SectorBuilder, tktFn TicketFn) (*Miner, error) {
 	return &Miner{
 		api: api,
 
