@@ -253,7 +253,8 @@ workflows:
     jobs:
       - lint-changes:
           args: "--new-from-rev origin/master"
-      - test
+      - test:
+          codecov-upload: true
       - test-short:
           go-test-flags: "--timeout 10m --short"
       - mod-tidy-check
