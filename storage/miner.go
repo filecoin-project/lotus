@@ -79,8 +79,8 @@ type SectorBuilder interface {
 	AcquireSectorId() (uint64, error)
 	Scrub(sectorbuilder.SortedPublicSectorInfo) []*sectorbuilder.Fault
 	GenerateFallbackPoSt(sectorbuilder.SortedPublicSectorInfo, [sectorbuilder.CommLen]byte, []uint64) ([]sectorbuilder.EPostCandidate, []byte, error)
-	SealPreCommit(uint64, sectorbuilder.SealTicket, []sectorbuilder.PublicPieceInfo) (sectorbuilder.RawSealPreCommitOutput, error)
-	SealCommit(uint64, sectorbuilder.SealTicket, sectorbuilder.SealSeed, []sectorbuilder.PublicPieceInfo, sectorbuilder.RawSealPreCommitOutput) ([]byte, error)
+	SealPreCommit(context.Context, uint64, sectorbuilder.SealTicket, []sectorbuilder.PublicPieceInfo) (sectorbuilder.RawSealPreCommitOutput, error)
+	SealCommit(context.Context, uint64, sectorbuilder.SealTicket, sectorbuilder.SealSeed, []sectorbuilder.PublicPieceInfo, sectorbuilder.RawSealPreCommitOutput) ([]byte, error)
 
 	// Not so sure about these being on the interface
 	GetPath(string, string) (string, error)

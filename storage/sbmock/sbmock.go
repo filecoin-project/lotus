@@ -1,13 +1,13 @@
 package sbmock
 
 import (
+	"bytes"
 	"context"
 	"fmt"
 	"io"
 	"io/ioutil"
 	"math/rand"
 	"sync"
-	"time"
 
 	"github.com/filecoin-project/go-sectorbuilder"
 	"golang.org/x/xerrors"
@@ -24,9 +24,6 @@ type SBMock struct {
 	sectorSize   uint64
 	nextSectorID uint64
 	rateLimit    chan struct{}
-
-	preCommitDelay time.Duration
-	commitDelay    time.Duration
 
 	lk sync.Mutex
 }
@@ -102,14 +99,34 @@ func (sb *SBMock) AcquireSectorId() (uint64, error) {
 }
 
 func (sb *SBMock) Scrub(sectorbuilder.SortedPublicSectorInfo) []*sectorbuilder.Fault {
-	return nil
+	sb.lk.Lock()
+	mcopy := make(map[uint64]*sectorState)
+	for k, v := range sb.sectors {
+		mcopy[k] = v
+	}
+	sb.lk.Unlock()
+
+	var out []*sectorbuilder.Fault
+	for sid, ss := range mcopy {
+		ss.lk.Lock()
+		if ss.failed {
+			out = append(out, &sectorbuilder.Fault{
+				SectorID: sid,
+				Err:      fmt.Errorf("mock sector failed"),
+			})
+
+		}
+		ss.lk.Unlock()
+	}
+
+	return out
 }
 
 func (sb *SBMock) GenerateFallbackPoSt(sectorbuilder.SortedPublicSectorInfo, [sectorbuilder.CommLen]byte, []uint64) ([]sectorbuilder.EPostCandidate, []byte, error) {
 	panic("NYI")
 }
 
-func (sb *SBMock) SealPreCommit(sid uint64, ticket sectorbuilder.SealTicket, pieces []sectorbuilder.PublicPieceInfo) (sectorbuilder.RawSealPreCommitOutput, error) {
+func (sb *SBMock) SealPreCommit(ctx context.Context, sid uint64, ticket sectorbuilder.SealTicket, pieces []sectorbuilder.PublicPieceInfo) (sectorbuilder.RawSealPreCommitOutput, error) {
 	sb.lk.Lock()
 	ss, ok := sb.sectors[sid]
 	sb.lk.Unlock()
@@ -137,7 +154,7 @@ func (sb *SBMock) SealPreCommit(sid uint64, ticket sectorbuilder.SealTicket, pie
 		return sectorbuilder.RawSealPreCommitOutput{}, xerrors.Errorf("cannot call pre-seal on sector not in 'packing' state")
 	}
 
-	time.Sleep(sb.preCommitDelay)
+	opFinishWait(ctx)
 
 	ss.state = statePreCommit
 
@@ -147,7 +164,7 @@ func (sb *SBMock) SealPreCommit(sid uint64, ticket sectorbuilder.SealTicket, pie
 	}, nil
 }
 
-func (sb *SBMock) SealCommit(sid uint64, ticket sectorbuilder.SealTicket, seed sectorbuilder.SealSeed, pieces []sectorbuilder.PublicPieceInfo, precommit sectorbuilder.RawSealPreCommitOutput) ([]byte, error) {
+func (sb *SBMock) SealCommit(ctx context.Context, sid uint64, ticket sectorbuilder.SealTicket, seed sectorbuilder.SealSeed, pieces []sectorbuilder.PublicPieceInfo, precommit sectorbuilder.RawSealPreCommitOutput) ([]byte, error) {
 	sb.lk.Lock()
 	ss, ok := sb.sectors[sid]
 	sb.lk.Unlock()
@@ -165,7 +182,7 @@ func (sb *SBMock) SealCommit(sid uint64, ticket sectorbuilder.SealTicket, seed s
 		return nil, xerrors.Errorf("cannot commit sector that has not been precommitted")
 	}
 
-	time.Sleep(sb.commitDelay)
+	opFinishWait(ctx)
 
 	buf := make([]byte, 32)
 	rand.Read(buf)
@@ -202,14 +219,36 @@ func (sb *SBMock) FailSector(sid uint64) error {
 	return nil
 }
 
-func (sb *SBMock) SetPreCommitDelay(d time.Duration) {
-	sb.lk.Lock()
-	defer sb.lk.Unlock()
-	sb.preCommitDelay = d
+func opFinishWait(ctx context.Context) {
+	val, ok := ctx.Value("opfinish").(chan struct{})
+	if !ok {
+		return
+	}
+	<-val
 }
 
-func (sb *SBMock) SetCommitDelay(d time.Duration) {
-	sb.lk.Lock()
-	defer sb.lk.Unlock()
-	sb.commitDelay = d
+func AddOpFinish(ctx context.Context) (context.Context, func()) {
+	done := make(chan struct{})
+
+	return context.WithValue(ctx, "opfinish", done), func() {
+		close(done)
+	}
+}
+
+func (sb *SBMock) StageFakeData() (uint64, []sectorbuilder.PublicPieceInfo, error) {
+	usize := sectorbuilder.UserBytesForSectorSize(sb.sectorSize)
+	sid, err := sb.AcquireSectorId()
+	if err != nil {
+		return 0, nil, err
+	}
+
+	buf := make([]byte, usize)
+	rand.Read(buf)
+
+	pi, err := sb.AddPiece(usize, sid, bytes.NewReader(buf), nil)
+	if err != nil {
+		return 0, nil, err
+	}
+
+	return sid, []sectorbuilder.PublicPieceInfo{pi}, nil
 }

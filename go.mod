@@ -17,7 +17,7 @@ require (
 	github.com/filecoin-project/go-crypto v0.0.0-20191218222705-effae4ea9f03
 	github.com/filecoin-project/go-data-transfer v0.0.0-20191219005021-4accf56bd2ce
 	github.com/filecoin-project/go-paramfetch v0.0.1
-	github.com/filecoin-project/go-sectorbuilder v0.0.0-20200107220006-3361d30ea5ab
+	github.com/filecoin-project/go-sectorbuilder v0.0.0-20200109194458-9656ce473254
 	github.com/filecoin-project/go-statestore v0.0.0-20200102200712-1f63c701c1e5
 	github.com/gbrlsnchs/jwt/v3 v3.0.0-beta.1
 	github.com/go-ole/go-ole v1.2.4 // indirect
@@ -47,7 +47,7 @@ require (
 	github.com/ipfs/go-ipfs-routing v0.1.0
 	github.com/ipfs/go-ipld-cbor v0.0.3
 	github.com/ipfs/go-ipld-format v0.0.2
-	github.com/ipfs/go-log v1.0.1 // indirect
+	github.com/ipfs/go-log v1.0.1
 	github.com/ipfs/go-log/v2 v2.0.2
 	github.com/ipfs/go-merkledag v0.2.4
 	github.com/ipfs/go-path v0.0.7
