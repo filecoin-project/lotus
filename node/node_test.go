@@ -236,7 +236,7 @@ func builder(t *testing.T, nFull int, storage []int) ([]test.TestNode, []test.Te
 			t.Fatal(err)
 		}
 
-		if err := sma.SectorBuilder.ImportFrom(osb, false); err != nil {
+		if err := sma.SectorBuilder.(*sectorbuilder.SectorBuilder).ImportFrom(osb, false); err != nil {
 			t.Fatal(err)
 		}
 

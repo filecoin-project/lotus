@@ -1,6 +1,7 @@
 package sbmock
 
 import (
+	"context"
 	"io"
 	"io/ioutil"
 	"math/rand"
@@ -118,4 +119,20 @@ func (sb *SBMock) SealCommit(sid uint64, ticket sectorbuilder.SealTicket, seed s
 	buf := make([]byte, 32)
 	rand.Read(buf)
 	return buf, nil
+}
+
+func (sb *SBMock) GetPath(string, string) (string, error) {
+	panic("nyi")
+}
+
+func (sb *SBMock) WorkerStats() sectorbuilder.WorkerStats {
+	panic("nyi")
+}
+
+func (sb *SBMock) AddWorker(context.Context, sectorbuilder.WorkerCfg) (<-chan sectorbuilder.WorkerTask, error) {
+	panic("nyi")
+}
+
+func (sb *SBMock) TaskDone(context.Context, uint64, sectorbuilder.SealRes) error {
+	panic("nyi")
 }

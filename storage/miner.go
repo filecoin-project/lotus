@@ -81,6 +81,12 @@ type SectorBuilder interface {
 	GenerateFallbackPoSt(sectorbuilder.SortedPublicSectorInfo, [sectorbuilder.CommLen]byte, []uint64) ([]sectorbuilder.EPostCandidate, []byte, error)
 	SealPreCommit(uint64, sectorbuilder.SealTicket, []sectorbuilder.PublicPieceInfo) (sectorbuilder.RawSealPreCommitOutput, error)
 	SealCommit(uint64, sectorbuilder.SealTicket, sectorbuilder.SealSeed, []sectorbuilder.PublicPieceInfo, sectorbuilder.RawSealPreCommitOutput) ([]byte, error)
+
+	// Not so sure about these being on the interface
+	GetPath(string, string) (string, error)
+	WorkerStats() sectorbuilder.WorkerStats
+	AddWorker(context.Context, sectorbuilder.WorkerCfg) (<-chan sectorbuilder.WorkerTask, error)
+	TaskDone(context.Context, uint64, sectorbuilder.SealRes) error
 }
 
 func NewMiner(api storageMinerApi, addr address.Address, h host.Host, ds datastore.Batching, sb SectorBuilder, tktFn TicketFn) (*Miner, error) {
