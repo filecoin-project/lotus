@@ -2,11 +2,15 @@ package modules
 
 import (
 	"context"
+	"github.com/filecoin-project/lotus/retrievaladapter"
 	"path/filepath"
 	"reflect"
 
 	"github.com/filecoin-project/go-statestore"
 	"github.com/filecoin-project/lotus/node/modules/helpers"
+	"github.com/filecoin-project/lotus/paych"
+	retrievalmarket "github.com/filecoin-project/lotus/retrieval"
+	retrievalimpl "github.com/filecoin-project/lotus/retrieval/impl"
 	"github.com/ipfs/go-bitswap"
 	"github.com/ipfs/go-bitswap/network"
 	graphsync "github.com/ipfs/go-graphsync/impl"
@@ -26,6 +30,7 @@ import (
 
 	"github.com/filecoin-project/go-data-transfer/impl/graphsync"
 	"github.com/filecoin-project/lotus/chain/deals"
+	payapi "github.com/filecoin-project/lotus/node/impl/paych"
 	"github.com/filecoin-project/lotus/node/modules/dtypes"
 	"github.com/filecoin-project/lotus/node/repo"
 )
@@ -96,4 +101,10 @@ func ClientGraphsync(mctx helpers.MetricsCtx, lc fx.Lifecycle, ibs dtypes.Client
 	gs := graphsync.New(helpers.LifecycleCtx(mctx, lc), graphsyncNetwork, ipldBridge, loader, storer)
 
 	return gs
+}
+
+// RetrievalClient creates a new retrieval client attached to the client blockstore
+func RetrievalClient(h host.Host, bs dtypes.ClientBlockstore, pmgr *paych.Manager, payapi payapi.PaychAPI) retrievalmarket.RetrievalClient {
+	adapter := retrievaladapter.NewRetrievalClientNode(pmgr, payapi)
+	return retrievalimpl.NewClient(h, bs, adapter)
 }
