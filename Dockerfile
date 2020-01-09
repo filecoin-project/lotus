@@ -24,5 +24,8 @@ RUN curl --proto '=https' --tlsv1.2 -sSf https://sh.rustup.rs | sh -s -- -y
 # 6. Copy the app
 COPY --chown=lotus:lotus . .
 
-# 7. Build
+#7. Change user
+USER lotus
+
+# 8. Build
 RUN make clean && make all
