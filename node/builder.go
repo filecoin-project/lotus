@@ -34,6 +34,7 @@ import (
 	"github.com/filecoin-project/lotus/chain/store"
 	"github.com/filecoin-project/lotus/chain/types"
 	"github.com/filecoin-project/lotus/chain/wallet"
+	"github.com/filecoin-project/lotus/markets/storageadapter"
 	"github.com/filecoin-project/lotus/miner"
 	"github.com/filecoin-project/lotus/node/config"
 	"github.com/filecoin-project/lotus/node/hello"
@@ -48,7 +49,6 @@ import (
 	"github.com/filecoin-project/lotus/peermgr"
 	"github.com/filecoin-project/lotus/storage"
 	"github.com/filecoin-project/lotus/storage/sectorblocks"
-	"github.com/filecoin-project/lotus/storagemarketadapter"
 )
 
 // special is a type used to give keys to modules which
@@ -230,7 +230,7 @@ func Online() Option {
 			Override(new(dtypes.ClientDataTransfer), modules.NewClientDAGServiceDataTransfer),
 			Override(new(*deals.ClientRequestValidator), modules.NewClientRequestValidator),
 			Override(new(storagemarket.StorageClient), modules.StorageClient),
-			Override(new(storagemarket.StorageClientNode), storagemarketadapter.NewClientNodeAdapter),
+			Override(new(storagemarket.StorageClientNode), storageadapter.NewClientNodeAdapter),
 			Override(RegisterClientValidatorKey, modules.RegisterClientValidator),
 			Override(RunDealClientKey, modules.RunDealClient),
 
@@ -254,7 +254,7 @@ func Online() Option {
 			Override(new(dtypes.ProviderDataTransfer), modules.NewProviderDAGServiceDataTransfer),
 			Override(new(*deals.ProviderRequestValidator), modules.NewProviderRequestValidator),
 			Override(new(storagemarket.StorageProvider), modules.StorageProvider),
-			Override(new(storagemarket.StorageProviderNode), storagemarketadapter.NewProviderNodeAdapter),
+			Override(new(storagemarket.StorageProviderNode), storageadapter.NewProviderNodeAdapter),
 			Override(RegisterProviderValidatorKey, modules.RegisterProviderValidator),
 			Override(HandleRetrievalKey, modules.HandleRetrieval),
 			Override(GetParamsKey, modules.GetParams),

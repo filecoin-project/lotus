@@ -5,7 +5,7 @@ import (
 	"path/filepath"
 	"reflect"
 
-	"github.com/filecoin-project/lotus/retrievaladapter"
+	"github.com/filecoin-project/lotus/markets/retrievaladapter"
 
 	"github.com/filecoin-project/go-fil-markets/retrievalmarket"
 	"github.com/filecoin-project/go-fil-markets/retrievalmarket/discovery"

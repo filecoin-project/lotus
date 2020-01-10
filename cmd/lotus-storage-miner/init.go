@@ -6,7 +6,6 @@ import (
 	"crypto/rand"
 	"encoding/json"
 	"fmt"
-	"github.com/filecoin-project/lotus/storagemarketadapter"
 	"io/ioutil"
 	"os"
 	"path/filepath"
@@ -22,16 +21,17 @@ import (
 	"gopkg.in/urfave/cli.v2"
 
 	"github.com/filecoin-project/go-address"
-	"github.com/filecoin-project/go-cbor-util"
-	"github.com/filecoin-project/go-sectorbuilder"
+	cborutil "github.com/filecoin-project/go-cbor-util"
 	"github.com/filecoin-project/go-fil-markets/storagemarket"
 	deals "github.com/filecoin-project/go-fil-markets/storagemarket/impl"
+	"github.com/filecoin-project/go-sectorbuilder"
 	lapi "github.com/filecoin-project/lotus/api"
 	"github.com/filecoin-project/lotus/build"
 	"github.com/filecoin-project/lotus/chain/actors"
 	"github.com/filecoin-project/lotus/chain/types"
 	lcli "github.com/filecoin-project/lotus/cli"
 	"github.com/filecoin-project/lotus/genesis"
+	"github.com/filecoin-project/lotus/markets/utils"
 	"github.com/filecoin-project/lotus/miner"
 	"github.com/filecoin-project/lotus/node/modules"
 	"github.com/filecoin-project/lotus/node/modules/dtypes"
@@ -283,7 +283,7 @@ func migratePreSealMeta(ctx context.Context, api lapi.FullNode, presealDir strin
 
 		dealKey := datastore.NewKey(deals.ProviderDsPrefix).ChildString(proposalCid.String())
 
-		proposal, err := storagemarketadapter.ToSharedStorageDealProposal(&sector.Deal)
+		proposal, err := utils.ToSharedStorageDealProposal(&sector.Deal)
 		if err != nil {
 			return err
 		}

@@ -40,7 +40,7 @@ import (
 	"github.com/filecoin-project/lotus/node/modules/helpers"
 	"github.com/filecoin-project/lotus/node/repo"
 
-	"github.com/filecoin-project/lotus/retrievaladapter"
+	"github.com/filecoin-project/lotus/markets/retrievaladapter"
 	"github.com/filecoin-project/lotus/storage"
 	"github.com/filecoin-project/lotus/storage/sectorblocks"
 )

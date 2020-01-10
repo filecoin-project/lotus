@@ -1,12 +1,10 @@
-package storagemarketadapter
+package storageadapter
 
 // this file implements storagemarket.StorageProviderNode
 
 import (
 	"bytes"
 	"context"
-
-	"github.com/filecoin-project/lotus/lib/sharedutils"
 
 	"github.com/ipfs/go-cid"
 	logging "github.com/ipfs/go-log"
@@ -21,6 +19,7 @@ import (
 	"github.com/filecoin-project/lotus/chain/actors"
 	"github.com/filecoin-project/lotus/chain/types"
 	"github.com/filecoin-project/lotus/lib/padreader"
+	"github.com/filecoin-project/lotus/markets/utils"
 	"github.com/filecoin-project/lotus/node/modules/dtypes"
 	"github.com/filecoin-project/lotus/storage/sectorblocks"
 )
@@ -52,7 +51,7 @@ func (n *ProviderNodeAdapter) PublishDeals(ctx context.Context, deal storagemark
 		return 0, cid.Undef, err
 	}
 
-	localProposal, err := FromSharedStorageDealProposal(&deal.Proposal)
+	localProposal, err := utils.FromSharedStorageDealProposal(&deal.Proposal)
 	if err != nil {
 		return 0, cid.Undef, err
 	}
@@ -141,7 +140,7 @@ func (n *ProviderNodeAdapter) ListProviderDeals(ctx context.Context, addr addres
 	var out []storagemarket.StorageDeal
 
 	for _, deal := range allDeals {
-		sharedDeal := FromOnChainDeal(deal)
+		sharedDeal := utils.FromOnChainDeal(deal)
 		if sharedDeal.Provider == addr {
 			out = append(out, sharedDeal)
 		}
@@ -160,11 +159,11 @@ func (n *ProviderNodeAdapter) SignBytes(ctx context.Context, signer address.Addr
 	if err != nil {
 		return nil, err
 	}
-	return sharedutils.ToSharedSignature(localSignature)
+	return utils.ToSharedSignature(localSignature)
 }
 
 func (n *ProviderNodeAdapter) EnsureFunds(ctx context.Context, addr address.Address, amt tokenamount.TokenAmount) error {
-	return n.MarketEnsureAvailable(ctx, addr, sharedutils.FromSharedTokenAmount(amt))
+	return n.MarketEnsureAvailable(ctx, addr, utils.FromSharedTokenAmount(amt))
 }
 
 func (n *ProviderNodeAdapter) MostRecentStateId(ctx context.Context) (storagemarket.StateKey, error) {
@@ -177,7 +176,7 @@ func (n *ProviderNodeAdapter) AddFunds(ctx context.Context, addr address.Address
 	smsg, err := n.MpoolPushMessage(ctx, &types.Message{
 		To:       actors.StorageMarketAddress,
 		From:     addr,
-		Value:    sharedutils.FromSharedTokenAmount(amount),
+		Value:    utils.FromSharedTokenAmount(amount),
 		GasPrice: types.NewInt(0),
 		GasLimit: types.NewInt(1000000),
 		Method:   actors.SMAMethods.AddBalance,
@@ -204,7 +203,7 @@ func (n *ProviderNodeAdapter) GetBalance(ctx context.Context, addr address.Addre
 		return storagemarket.Balance{}, err
 	}
 
-	return ToSharedBalance(bal), nil
+	return utils.ToSharedBalance(bal), nil
 }
 
 var _ storagemarket.StorageProviderNode = &ProviderNodeAdapter{}

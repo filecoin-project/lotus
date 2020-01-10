@@ -1,12 +1,10 @@
-package storagemarketadapter
+package storageadapter
 
 // this file implements storagemarket.StorageClientNode
 
 import (
 	"bytes"
 	"context"
-
-	"github.com/filecoin-project/lotus/lib/sharedutils"
 
 	"golang.org/x/xerrors"
 
@@ -23,6 +21,7 @@ import (
 	"github.com/filecoin-project/lotus/chain/stmgr"
 	"github.com/filecoin-project/lotus/chain/store"
 	"github.com/filecoin-project/lotus/chain/types"
+	"github.com/filecoin-project/lotus/markets/utils"
 	"github.com/filecoin-project/lotus/node/impl/full"
 )
 
@@ -83,7 +82,7 @@ func (n *ClientNodeAdapter) ListStorageProviders(ctx context.Context) ([]*storag
 		if err != nil {
 			return nil, err
 		}
-		storageProviderInfo := NewStorageProviderInfo(addr, workerAddr, sectorSize, peerId)
+		storageProviderInfo := utils.NewStorageProviderInfo(addr, workerAddr, sectorSize, peerId)
 		out = append(out, &storageProviderInfo)
 	}
 
@@ -99,7 +98,7 @@ func (n *ClientNodeAdapter) ListClientDeals(ctx context.Context, addr address.Ad
 	var out []storagemarket.StorageDeal
 
 	for _, deal := range allDeals {
-		storageDeal := FromOnChainDeal(deal)
+		storageDeal := utils.FromOnChainDeal(deal)
 		if storageDeal.Client == addr {
 			out = append(out, storageDeal)
 		}
@@ -118,7 +117,7 @@ func (n *ClientNodeAdapter) AddFunds(ctx context.Context, addr address.Address, 
 	smsg, err := n.MpoolPushMessage(ctx, &types.Message{
 		To:       actors.StorageMarketAddress,
 		From:     addr,
-		Value:    sharedutils.FromSharedTokenAmount(amount),
+		Value:    utils.FromSharedTokenAmount(amount),
 		GasPrice: types.NewInt(0),
 		GasLimit: types.NewInt(1000000),
 		Method:   actors.SMAMethods.AddBalance,
@@ -140,7 +139,7 @@ func (n *ClientNodeAdapter) AddFunds(ctx context.Context, addr address.Address, 
 }
 
 func (n *ClientNodeAdapter) EnsureFunds(ctx context.Context, addr address.Address, amount tokenamount.TokenAmount) error {
-	return n.fm.EnsureAvailable(ctx, addr, sharedutils.FromSharedTokenAmount(amount))
+	return n.fm.EnsureAvailable(ctx, addr, utils.FromSharedTokenAmount(amount))
 }
 
 func (n *ClientNodeAdapter) GetBalance(ctx context.Context, addr address.Address) (storagemarket.Balance, error) {
@@ -149,7 +148,7 @@ func (n *ClientNodeAdapter) GetBalance(ctx context.Context, addr address.Address
 		return storagemarket.Balance{}, err
 	}
 
-	return ToSharedBalance(bal), nil
+	return utils.ToSharedBalance(bal), nil
 }
 
 // ValidatePublishedDeal validates that the provided deal has appeared on chain and references the same ClientDeal
@@ -302,7 +301,7 @@ func (c *ClientNodeAdapter) OnDealSectorCommitted(ctx context.Context, provider 
 }
 
 func (n *ClientNodeAdapter) SignProposal(ctx context.Context, signer address.Address, proposal *storagemarket.StorageDealProposal) error {
-	localProposal, err := FromSharedStorageDealProposal(proposal)
+	localProposal, err := utils.FromSharedStorageDealProposal(proposal)
 	if err != nil {
 		return err
 	}
@@ -310,7 +309,7 @@ func (n *ClientNodeAdapter) SignProposal(ctx context.Context, signer address.Add
 	if err != nil {
 		return err
 	}
-	signature, err := sharedutils.ToSharedSignature(localProposal.ProposerSignature)
+	signature, err := utils.ToSharedSignature(localProposal.ProposerSignature)
 	if err != nil {
 		return err
 	}
