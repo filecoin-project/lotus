@@ -11,9 +11,8 @@ import (
 	"github.com/filecoin-project/go-fil-markets/retrievalmarket/discovery"
 	retrievalimpl "github.com/filecoin-project/go-fil-markets/retrievalmarket/impl"
 
-
-	"github.com/filecoin-project/go-statestore"
 	"github.com/filecoin-project/go-fil-markets/storagemarket"
+	"github.com/filecoin-project/go-statestore"
 	"github.com/filecoin-project/lotus/node/modules/helpers"
 	"github.com/filecoin-project/lotus/paych"
 
