@@ -188,7 +188,7 @@ func main() {
 
 				log.Info("Running replication...")
 				pieces := []sectorbuilder.PublicPieceInfo{pi}
-				pco, err := sb.SealPreCommit(i, ticket, pieces)
+				pco, err := sb.SealPreCommit(context.TODO(), i, ticket, pieces)
 				if err != nil {
 					return xerrors.Errorf("commit: %w", err)
 				}
@@ -206,7 +206,7 @@ func main() {
 				}
 
 				log.Info("Generating PoRep for sector")
-				proof, err := sb.SealCommit(i, ticket, seed, pieces, pco)
+				proof, err := sb.SealCommit(context.TODO(), i, ticket, seed, pieces, pco)
 				if err != nil {
 					return err
 				}

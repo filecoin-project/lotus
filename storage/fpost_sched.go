@@ -4,7 +4,6 @@ import (
 	"context"
 	"sync"
 
-	sectorbuilder "github.com/filecoin-project/go-sectorbuilder"
 	"go.opencensus.io/trace"
 	"golang.org/x/xerrors"
 
@@ -20,7 +19,7 @@ const StartConfidence = 4 // TODO: config
 
 type fpostScheduler struct {
 	api storageMinerApi
-	sb  *sectorbuilder.SectorBuilder
+	sb  SectorBuilder
 
 	actor  address.Address
 	worker address.Address
