@@ -4,9 +4,9 @@ import (
 	"context"
 
 	"github.com/filecoin-project/go-address"
-	"github.com/filecoin-project/go-fil-components/retrievalmarket"
-	retrievaltoken "github.com/filecoin-project/go-fil-components/shared/tokenamount"
-	retrievaltypes "github.com/filecoin-project/go-fil-components/shared/types"
+	"github.com/filecoin-project/go-fil-markets/retrievalmarket"
+	retrievaltoken "github.com/filecoin-project/go-fil-markets/shared/tokenamount"
+	retrievaltypes "github.com/filecoin-project/go-fil-markets/shared/types"
 
 	payapi "github.com/filecoin-project/lotus/node/impl/paych"
 	"github.com/filecoin-project/lotus/paych"

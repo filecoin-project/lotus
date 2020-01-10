@@ -2,8 +2,8 @@ package retrievaladapter
 
 import (
 	"bytes"
-	sharedamount "github.com/filecoin-project/go-fil-components/shared/tokenamount"
-	sharedtypes "github.com/filecoin-project/go-fil-components/shared/types"
+	sharedamount "github.com/filecoin-project/go-fil-markets/shared/tokenamount"
+	sharedtypes "github.com/filecoin-project/go-fil-markets/shared/types"
 	"github.com/filecoin-project/lotus/chain/types"
 )
 
