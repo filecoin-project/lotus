@@ -19,10 +19,13 @@ import (
 	"go.uber.org/fx"
 	"golang.org/x/xerrors"
 
+	"github.com/filecoin-project/go-fil-markets/retrievalmarket"
+	"github.com/filecoin-project/go-fil-markets/retrievalmarket/discovery"
+	"github.com/filecoin-project/go-fil-markets/storagemarket"
+	deals "github.com/filecoin-project/go-fil-markets/storagemarket/impl"
 	"github.com/filecoin-project/lotus/api"
 	"github.com/filecoin-project/lotus/chain"
 	"github.com/filecoin-project/lotus/chain/blocksync"
-	"github.com/filecoin-project/lotus/chain/deals"
 	"github.com/filecoin-project/lotus/chain/gen"
 	"github.com/filecoin-project/lotus/chain/market"
 	"github.com/filecoin-project/lotus/chain/messagepool"
@@ -31,6 +34,7 @@ import (
 	"github.com/filecoin-project/lotus/chain/store"
 	"github.com/filecoin-project/lotus/chain/types"
 	"github.com/filecoin-project/lotus/chain/wallet"
+	"github.com/filecoin-project/lotus/markets/storageadapter"
 	"github.com/filecoin-project/lotus/miner"
 	"github.com/filecoin-project/lotus/node/config"
 	"github.com/filecoin-project/lotus/node/hello"
@@ -43,12 +47,8 @@ import (
 	"github.com/filecoin-project/lotus/node/repo"
 	"github.com/filecoin-project/lotus/paych"
 	"github.com/filecoin-project/lotus/peermgr"
-	retrievalmarket "github.com/filecoin-project/lotus/retrieval"
-	"github.com/filecoin-project/lotus/retrieval/discovery"
 	"github.com/filecoin-project/lotus/storage"
 	"github.com/filecoin-project/lotus/storage/sectorblocks"
-	"github.com/filecoin-project/lotus/storagemarket"
-	"github.com/filecoin-project/lotus/storagemarketadapter"
 )
 
 // special is a type used to give keys to modules which
@@ -222,15 +222,15 @@ func Online() Option {
 			Override(RunPeerMgrKey, modules.RunPeerMgr),
 			Override(HandleIncomingBlocksKey, modules.HandleIncomingBlocks),
 
-			Override(new(*discovery.Local), discovery.NewLocal),
+			Override(new(*discovery.Local), modules.NewLocalDiscovery),
 			Override(new(retrievalmarket.PeerResolver), modules.RetrievalResolver),
 
 			Override(new(retrievalmarket.RetrievalClient), modules.RetrievalClient),
 			Override(new(dtypes.ClientDealStore), modules.NewClientDealStore),
 			Override(new(dtypes.ClientDataTransfer), modules.NewClientDAGServiceDataTransfer),
-			Override(new(*deals.ClientRequestValidator), deals.NewClientRequestValidator),
-			Override(new(storagemarket.StorageClient), deals.NewClient),
-			Override(new(storagemarket.StorageClientNode), storagemarketadapter.NewClientNodeAdapter),
+			Override(new(*deals.ClientRequestValidator), modules.NewClientRequestValidator),
+			Override(new(storagemarket.StorageClient), modules.StorageClient),
+			Override(new(storagemarket.StorageClientNode), storageadapter.NewClientNodeAdapter),
 			Override(RegisterClientValidatorKey, modules.RegisterClientValidator),
 			Override(RunDealClientKey, modules.RunDealClient),
 
@@ -252,9 +252,9 @@ func Online() Option {
 			Override(new(retrievalmarket.RetrievalProvider), modules.RetrievalProvider),
 			Override(new(dtypes.ProviderDealStore), modules.NewProviderDealStore),
 			Override(new(dtypes.ProviderDataTransfer), modules.NewProviderDAGServiceDataTransfer),
-			Override(new(*deals.ProviderRequestValidator), deals.NewProviderRequestValidator),
-			Override(new(storagemarket.StorageProvider), deals.NewProvider),
-			Override(new(storagemarket.StorageProviderNode), storagemarketadapter.NewProviderNodeAdapter),
+			Override(new(*deals.ProviderRequestValidator), modules.NewProviderRequestValidator),
+			Override(new(storagemarket.StorageProvider), modules.StorageProvider),
+			Override(new(storagemarket.StorageProviderNode), storageadapter.NewProviderNodeAdapter),
 			Override(RegisterProviderValidatorKey, modules.RegisterProviderValidator),
 			Override(HandleRetrievalKey, modules.HandleRetrieval),
 			Override(GetParamsKey, modules.GetParams),

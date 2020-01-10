@@ -16,6 +16,7 @@ require (
 	github.com/filecoin-project/go-cbor-util v0.0.0-20191219014500-08c40a1e63a2
 	github.com/filecoin-project/go-crypto v0.0.0-20191218222705-effae4ea9f03
 	github.com/filecoin-project/go-data-transfer v0.0.0-20191219005021-4accf56bd2ce
+	github.com/filecoin-project/go-fil-markets v0.0.0-20200110170857-c200f161be42
 	github.com/filecoin-project/go-paramfetch v0.0.1
 	github.com/filecoin-project/go-sectorbuilder v0.0.0-20200109194458-9656ce473254
 	github.com/filecoin-project/go-statestore v0.0.0-20200102200712-1f63c701c1e5
@@ -29,7 +30,7 @@ require (
 	github.com/ipfs/go-bitswap v0.1.8
 	github.com/ipfs/go-block-format v0.0.2
 	github.com/ipfs/go-blockservice v0.1.3-0.20190908200855-f22eea50656c
-	github.com/ipfs/go-car v0.0.2
+	github.com/ipfs/go-car v0.0.3-0.20191203022317-23b0a85fd1b1
 	github.com/ipfs/go-cid v0.0.4
 	github.com/ipfs/go-datastore v0.3.1
 	github.com/ipfs/go-ds-badger2 v0.0.0-20200108185345-7f650e6b2521
@@ -38,7 +39,6 @@ require (
 	github.com/ipfs/go-graphsync v0.0.4
 	github.com/ipfs/go-hamt-ipld v0.0.14-0.20191218031521-b2c774a54db1
 	github.com/ipfs/go-ipfs-blockstore v0.1.1
-	github.com/ipfs/go-ipfs-blocksutil v0.0.1
 	github.com/ipfs/go-ipfs-chunker v0.0.1
 	github.com/ipfs/go-ipfs-ds-help v0.0.1
 	github.com/ipfs/go-ipfs-exchange-interface v0.0.1
@@ -52,7 +52,6 @@ require (
 	github.com/ipfs/go-merkledag v0.2.4
 	github.com/ipfs/go-path v0.0.7
 	github.com/ipfs/go-unixfs v0.2.2-0.20190827150610-868af2e9e5cb
-	github.com/ipld/go-ipld-prime v0.0.2-0.20191108012745-28a82f04c785
 	github.com/libp2p/go-libp2p v0.4.2
 	github.com/libp2p/go-libp2p-circuit v0.1.4
 	github.com/libp2p/go-libp2p-connmgr v0.1.0

@@ -21,15 +21,17 @@ import (
 	"gopkg.in/urfave/cli.v2"
 
 	"github.com/filecoin-project/go-address"
-	"github.com/filecoin-project/go-cbor-util"
+	cborutil "github.com/filecoin-project/go-cbor-util"
+	"github.com/filecoin-project/go-fil-markets/storagemarket"
+	deals "github.com/filecoin-project/go-fil-markets/storagemarket/impl"
 	"github.com/filecoin-project/go-sectorbuilder"
 	lapi "github.com/filecoin-project/lotus/api"
 	"github.com/filecoin-project/lotus/build"
 	"github.com/filecoin-project/lotus/chain/actors"
-	"github.com/filecoin-project/lotus/chain/deals"
 	"github.com/filecoin-project/lotus/chain/types"
 	lcli "github.com/filecoin-project/lotus/cli"
 	"github.com/filecoin-project/lotus/genesis"
+	"github.com/filecoin-project/lotus/markets/utils"
 	"github.com/filecoin-project/lotus/miner"
 	"github.com/filecoin-project/lotus/node/modules"
 	"github.com/filecoin-project/lotus/node/modules/dtypes"
@@ -281,15 +283,21 @@ func migratePreSealMeta(ctx context.Context, api lapi.FullNode, presealDir strin
 
 		dealKey := datastore.NewKey(deals.ProviderDsPrefix).ChildString(proposalCid.String())
 
+		proposal, err := utils.ToSharedStorageDealProposal(&sector.Deal)
+		if err != nil {
+			return err
+		}
 		deal := &deals.MinerDeal{
-			Proposal:    sector.Deal,
-			ProposalCid: proposalCid,
-			State:       lapi.DealComplete,
-			Ref:         proposalCid, // TODO: This is super wrong, but there
-			// are no params for CommP CIDs, we can't recover unixfs cid easily,
-			// and this isn't even used after the deal enters Complete state
-			DealID:   dealID,
-			SectorID: sector.SectorID,
+			MinerDeal: storagemarket.MinerDeal{
+				Proposal:    *proposal,
+				ProposalCid: proposalCid,
+				State:       lapi.DealComplete,
+				Ref:         proposalCid, // TODO: This is super wrong, but there
+				// are no params for CommP CIDs, we can't recover unixfs cid easily,
+				// and this isn't even used after the deal enters Complete state
+				DealID:   dealID,
+				SectorID: sector.SectorID,
+			},
 		}
 
 		b, err = cborutil.Dump(deal)
