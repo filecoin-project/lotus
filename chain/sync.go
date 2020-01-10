@@ -545,7 +545,13 @@ func (syncer *Syncer) ValidateBlock(ctx context.Context, b *types.FullBlock) err
 			return xerrors.Errorf("no candidates")
 		}
 
+		wins := make(map[uint64]bool)
 		for _, t := range h.EPostProof.Candidates {
+			if wins[t.ChallengeIndex] {
+				return xerrors.Errorf("block had duplicate epost candidates")
+			}
+			wins[t.ChallengeIndex] = true
+
 			if !types.IsTicketWinner(t.Partial, ssize, snum.Uint64(), tpow) {
 				return xerrors.Errorf("miner created a block but was not a winner")
 			}
