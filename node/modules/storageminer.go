@@ -233,7 +233,7 @@ func SetupBlockProducer(lc fx.Lifecycle, ds dtypes.MetadataDS, api api.FullNode,
 }
 
 func SectorBuilder(cfg *sectorbuilder.Config, ds dtypes.MetadataDS) (*sectorbuilder.SectorBuilder, error) {
-	sb, err := sectorbuilder.New(cfg, ds)
+	sb, err := sectorbuilder.New(cfg, namespace.Wrap(ds, datastore.NewKey("/sectorbuilder")))
 	if err != nil {
 		return nil, err
 	}

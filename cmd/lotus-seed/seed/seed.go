@@ -11,6 +11,8 @@ import (
 	"path/filepath"
 
 	sectorbuilder "github.com/filecoin-project/go-sectorbuilder"
+	"github.com/ipfs/go-datastore"
+	"github.com/ipfs/go-datastore/namespace"
 	badger "github.com/ipfs/go-ds-badger2"
 	logging "github.com/ipfs/go-log/v2"
 	"golang.org/x/xerrors"
@@ -43,7 +45,7 @@ func PreSeal(maddr address.Address, ssize uint64, offset uint64, sectors int, sb
 		return nil, err
 	}
 
-	sb, err := sectorbuilder.New(cfg, mds)
+	sb, err := sectorbuilder.New(cfg, namespace.Wrap(mds, datastore.NewKey("/sectorbuilder")))
 	if err != nil {
 		return nil, err
 	}
