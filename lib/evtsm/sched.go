@@ -97,3 +97,11 @@ func (s *Sched) Stop(ctx context.Context) error {
 
 	return nil
 }
+
+func (s *Sched) List(out interface{}) error {
+	return s.sts.List(out)
+}
+
+func (s *Sched) Get(i interface{}) *statestore.StoredState {
+	return s.sts.Get(i)
+}

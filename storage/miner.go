@@ -3,11 +3,13 @@ package storage
 import (
 	"context"
 	"errors"
+	"github.com/filecoin-project/lotus/lib/evtsm"
+	"github.com/ipfs/go-datastore/namespace"
+	"reflect"
 	"time"
 
 	"github.com/ipfs/go-cid"
 	"github.com/ipfs/go-datastore"
-	"github.com/ipfs/go-datastore/namespace"
 	logging "github.com/ipfs/go-log"
 	"github.com/libp2p/go-libp2p-core/host"
 	"golang.org/x/xerrors"
@@ -20,7 +22,6 @@ import (
 	"github.com/filecoin-project/lotus/chain/store"
 	"github.com/filecoin-project/lotus/chain/types"
 	"github.com/filecoin-project/lotus/lib/sectorbuilder"
-	"github.com/filecoin-project/lotus/lib/statestore"
 )
 
 var log = logging.Logger("storageminer")
@@ -37,11 +38,10 @@ type Miner struct {
 
 	// Sealing
 	sb      *sectorbuilder.SectorBuilder
-	sectors *statestore.StateStore
+	sectors *evtsm.Sched
 	tktFn   TicketFn
 
 	sectorIncoming chan *SectorInfo
-	sectorUpdated  chan sectorUpdate
 	stop           chan struct{}
 	stopped        chan struct{}
 }
@@ -72,7 +72,7 @@ type storageMinerApi interface {
 }
 
 func NewMiner(api storageMinerApi, addr address.Address, h host.Host, ds datastore.Batching, sb *sectorbuilder.SectorBuilder, tktFn TicketFn) (*Miner, error) {
-	return &Miner{
+	m := &Miner{
 		api: api,
 
 		maddr: addr,
@@ -80,13 +80,15 @@ func NewMiner(api storageMinerApi, addr address.Address, h host.Host, ds datasto
 		sb:    sb,
 		tktFn: tktFn,
 
-		sectors: statestore.New(namespace.Wrap(ds, datastore.NewKey(SectorStorePrefix))),
-
 		sectorIncoming: make(chan *SectorInfo),
-		sectorUpdated:  make(chan sectorUpdate),
 		stop:           make(chan struct{}),
 		stopped:        make(chan struct{}),
-	}, nil
+	}
+
+	// TODO: separate sector stuff from miner struct
+	m.sectors = evtsm.New(namespace.Wrap(ds, datastore.NewKey(SectorStorePrefix)), m, reflect.TypeOf(SectorInfo{}))
+
+	return m, nil
 }
 
 func (m *Miner) Run(ctx context.Context) error {
@@ -104,15 +106,17 @@ func (m *Miner) Run(ctx context.Context) error {
 	}
 
 	go fps.run(ctx)
-	if err := m.sectorStateLoop(ctx); err != nil {
+	if err := m.restartSectors(ctx); err != nil {
 		log.Errorf("%+v", err)
-		return xerrors.Errorf("failed to startup sector state loop: %w", err)
+		return xerrors.Errorf("failed load sector states: %w", err)
 	}
 
 	return nil
 }
 
 func (m *Miner) Stop(ctx context.Context) error {
+	defer m.sectors.Stop(ctx)
+
 	close(m.stop)
 	select {
 	case <-m.stopped:

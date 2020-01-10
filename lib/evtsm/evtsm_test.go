@@ -24,7 +24,7 @@ func (t *testHandler) Plan(events []Event, state interface{}) (interface{}, erro
 	return t.plan(events, state.(*TestState))
 }
 
-func (t *testHandler) plan(events []Event, state *TestState) (interface{}, error) {
+func (t *testHandler) plan(events []Event, state *TestState) (func(Context, TestState) error, error) {
 	for _, event := range events {
 		e := event.User.(*TestEvent)
 		switch e.A {

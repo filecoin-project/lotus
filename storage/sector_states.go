@@ -5,31 +5,14 @@ import (
 
 	"golang.org/x/xerrors"
 
-	"github.com/filecoin-project/lotus/api"
 	"github.com/filecoin-project/lotus/build"
 	"github.com/filecoin-project/lotus/chain/actors"
 	"github.com/filecoin-project/lotus/chain/types"
+	"github.com/filecoin-project/lotus/lib/evtsm"
 	"github.com/filecoin-project/lotus/lib/sectorbuilder"
 )
 
-type providerHandlerFunc func(ctx context.Context, deal SectorInfo) *sectorUpdate
-
-func (m *Miner) handleSectorUpdate(ctx context.Context, sector SectorInfo, cb providerHandlerFunc) {
-	go func() {
-		update := cb(ctx, sector)
-
-		if update == nil {
-			return // async
-		}
-
-		select {
-		case m.sectorUpdated <- *update:
-		case <-m.stop:
-		}
-	}()
-}
-
-func (m *Miner) handlePacking(ctx context.Context, sector SectorInfo) *sectorUpdate {
+func (m *Miner) handlePacking(ctx evtsm.Context, sector SectorInfo) error {
 	log.Infow("performing filling up rest of the sector...", "sector", sector.SectorID)
 
 	var allocated uint64
@@ -40,51 +23,49 @@ func (m *Miner) handlePacking(ctx context.Context, sector SectorInfo) *sectorUpd
 	ubytes := sectorbuilder.UserBytesForSectorSize(m.sb.SectorSize())
 
 	if allocated > ubytes {
-		return sector.upd().fatal(xerrors.Errorf("too much data in sector: %d > %d", allocated, ubytes))
+		return xerrors.Errorf("too much data in sector: %d > %d", allocated, ubytes)
 	}
 
 	fillerSizes, err := fillersFromRem(ubytes - allocated)
 	if err != nil {
-		return sector.upd().fatal(err)
+		return err
 	}
 
 	if len(fillerSizes) > 0 {
 		log.Warnf("Creating %d filler pieces for sector %d", len(fillerSizes), sector.SectorID)
 	}
 
-	pieces, err := m.pledgeSector(ctx, sector.SectorID, sector.existingPieces(), fillerSizes...)
+	pieces, err := m.pledgeSector(ctx.Context(), sector.SectorID, sector.existingPieces(), fillerSizes...)
 	if err != nil {
-		return sector.upd().fatal(xerrors.Errorf("filling up the sector (%v): %w", fillerSizes, err))
+		return xerrors.Errorf("filling up the sector (%v): %w", fillerSizes, err)
 	}
 
-	return sector.upd().to(api.Unsealed).state(func(info *SectorInfo) {
-		info.Pieces = append(info.Pieces, pieces...)
-	})
+	return ctx.Send(SectorPacked{pieces: pieces})
 }
 
-func (m *Miner) handleUnsealed(ctx context.Context, sector SectorInfo) *sectorUpdate {
+func (m *Miner) handleUnsealed(ctx evtsm.Context, sector SectorInfo) error {
 	log.Infow("performing sector replication...", "sector", sector.SectorID)
-	ticket, err := m.tktFn(ctx)
+	ticket, err := m.tktFn(ctx.Context())
 	if err != nil {
-		return sector.upd().fatal(err)
+		return err
 	}
 
 	rspco, err := m.sb.SealPreCommit(sector.SectorID, *ticket, sector.pieceInfos())
 	if err != nil {
-		return sector.upd().to(api.SealFailed).error(xerrors.Errorf("seal pre commit failed: %w", err))
+		return ctx.Send(SectorSealFailed{xerrors.Errorf("seal pre commit failed: %w", err)})
 	}
 
-	return sector.upd().to(api.PreCommitting).state(func(info *SectorInfo) {
-		info.CommD = rspco.CommD[:]
-		info.CommR = rspco.CommR[:]
-		info.Ticket = SealTicket{
+	return ctx.Send(SectorSealed{
+		commD: rspco.CommD[:],
+		commR: rspco.CommR[:],
+		ticket: SealTicket{
 			BlockHeight: ticket.BlockHeight,
 			TicketBytes: ticket.TicketBytes[:],
-		}
+		},
 	})
 }
 
-func (m *Miner) handlePreCommitting(ctx context.Context, sector SectorInfo) *sectorUpdate {
+func (m *Miner) handlePreCommitting(ctx evtsm.Context, sector SectorInfo) error {
 	params := &actors.SectorPreCommitInfo{
 		SectorNumber: sector.SectorID,
 
@@ -94,7 +75,7 @@ func (m *Miner) handlePreCommitting(ctx context.Context, sector SectorInfo) *sec
 	}
 	enc, aerr := actors.SerializeParams(params)
 	if aerr != nil {
-		return sector.upd().to(api.PreCommitFailed).error(xerrors.Errorf("could not serialize commit sector parameters: %w", aerr))
+		return ctx.Send(SectorPreCommitFailed{xerrors.Errorf("could not serialize commit sector parameters: %w", aerr)})
 	}
 
 	msg := &types.Message{
@@ -108,54 +89,45 @@ func (m *Miner) handlePreCommitting(ctx context.Context, sector SectorInfo) *sec
 	}
 
 	log.Info("submitting precommit for sector: ", sector.SectorID)
-	smsg, err := m.api.MpoolPushMessage(ctx, msg)
+	smsg, err := m.api.MpoolPushMessage(ctx.Context(), msg)
 	if err != nil {
-		return sector.upd().to(api.PreCommitFailed).error(xerrors.Errorf("pushing message to mpool: %w", err))
+		return ctx.Send(SectorPreCommitFailed{xerrors.Errorf("pushing message to mpool: %w", err)})
 	}
 
-	return sector.upd().to(api.PreCommitted).state(func(info *SectorInfo) {
-		mcid := smsg.Cid()
-		info.PreCommitMessage = &mcid
-	})
+	return ctx.Send(SectorPreCommitted{message: smsg.Cid()})
 }
 
-func (m *Miner) handlePreCommitted(ctx context.Context, sector SectorInfo) *sectorUpdate {
+func (m *Miner) handlePreCommitted(ctx evtsm.Context, sector SectorInfo) error {
 	// would be ideal to just use the events.Called handler, but it wouldnt be able to handle individual message timeouts
 	log.Info("Sector precommitted: ", sector.SectorID)
-	mw, err := m.api.StateWaitMsg(ctx, *sector.PreCommitMessage)
+	mw, err := m.api.StateWaitMsg(ctx.Context(), *sector.PreCommitMessage)
 	if err != nil {
-		return sector.upd().to(api.PreCommitFailed).error(err)
+		return ctx.Send(SectorPreCommitFailed{err})
 	}
 
 	if mw.Receipt.ExitCode != 0 {
 		log.Error("sector precommit failed: ", mw.Receipt.ExitCode)
 		err := xerrors.Errorf("sector precommit failed: %d", mw.Receipt.ExitCode)
-		return sector.upd().to(api.PreCommitFailed).error(err)
+		return ctx.Send(SectorPreCommitFailed{err})
 	}
 	log.Info("precommit message landed on chain: ", sector.SectorID)
 
 	randHeight := mw.TipSet.Height() + build.InteractivePoRepDelay - 1 // -1 because of how the messages are applied
 	log.Infof("precommit for sector %d made it on chain, will start proof computation at height %d", sector.SectorID, randHeight)
 
-	updateNonce := sector.Nonce
-
-	err = m.events.ChainAt(func(ctx context.Context, ts *types.TipSet, curH uint64) error {
-		rand, err := m.api.ChainGetRandomness(ctx, ts.Key(), int64(randHeight))
+	err = m.events.ChainAt(func(ectx context.Context, ts *types.TipSet, curH uint64) error {
+		rand, err := m.api.ChainGetRandomness(ectx, ts.Key(), int64(randHeight))
 		if err != nil {
 			err = xerrors.Errorf("failed to get randomness for computing seal proof: %w", err)
 
-			m.sectorUpdated <- *sector.upd().fatal(err)
+			ctx.Send(SectorFatalError{error: err})
 			return err
 		}
 
-		m.sectorUpdated <- *sector.upd().to(api.Committing).setNonce(updateNonce).state(func(info *SectorInfo) {
-			info.Seed = SealSeed{
-				BlockHeight: randHeight,
-				TicketBytes: rand,
-			}
-		})
-
-		updateNonce++
+		ctx.Send(SectorSeedReady{seed: SealSeed{
+			BlockHeight: randHeight,
+			TicketBytes: rand,
+		}})
 
 		return nil
 	}, func(ctx context.Context, ts *types.TipSet) error {
@@ -170,12 +142,12 @@ func (m *Miner) handlePreCommitted(ctx context.Context, sector SectorInfo) *sect
 	return nil
 }
 
-func (m *Miner) handleCommitting(ctx context.Context, sector SectorInfo) *sectorUpdate {
+func (m *Miner) handleCommitting(ctx evtsm.Context, sector SectorInfo) error {
 	log.Info("scheduling seal proof computation...")
 
 	proof, err := m.sb.SealCommit(sector.SectorID, sector.Ticket.SB(), sector.Seed.SB(), sector.pieceInfos(), sector.rspco())
 	if err != nil {
-		return sector.upd().to(api.SealCommitFailed).error(xerrors.Errorf("computing seal proof failed: %w", err))
+		return ctx.Send(SectorSealCommitFailed{xerrors.Errorf("computing seal proof failed: %w", err)})
 	}
 
 	// TODO: Consider splitting states and persist proof for faster recovery
@@ -188,7 +160,7 @@ func (m *Miner) handleCommitting(ctx context.Context, sector SectorInfo) *sector
 
 	enc, aerr := actors.SerializeParams(params)
 	if aerr != nil {
-		return sector.upd().to(api.CommitFailed).error(xerrors.Errorf("could not serialize commit sector parameters: %w", aerr))
+		return ctx.Send(SectorCommitFailed{xerrors.Errorf("could not serialize commit sector parameters: %w", aerr)})
 	}
 
 	msg := &types.Message{
@@ -201,40 +173,37 @@ func (m *Miner) handleCommitting(ctx context.Context, sector SectorInfo) *sector
 		GasPrice: types.NewInt(1),
 	}
 
-	smsg, err := m.api.MpoolPushMessage(ctx, msg)
+	smsg, err := m.api.MpoolPushMessage(ctx.Context(), msg)
 	if err != nil {
-		return sector.upd().to(api.CommitFailed).error(xerrors.Errorf("pushing message to mpool: %w", err))
+		return ctx.Send(SectorCommitFailed{xerrors.Errorf("pushing message to mpool: %w", err)})
 	}
 
-	// TODO: Separate state before this wait, so we persist message cid?
-	return sector.upd().to(api.CommitWait).state(func(info *SectorInfo) {
-		mcid := smsg.Cid()
-		info.CommitMessage = &mcid
-		info.Proof = proof
+	return ctx.Send(SectorCommitted{
+		proof:   proof,
+		message: smsg.Cid(),
 	})
 }
 
-func (m *Miner) handleCommitWait(ctx context.Context, sector SectorInfo) *sectorUpdate {
+func (m *Miner) handleCommitWait(ctx evtsm.Context, sector SectorInfo) error {
 	if sector.CommitMessage == nil {
 		log.Errorf("sector %d entered commit wait state without a message cid", sector.SectorID)
-		return sector.upd().to(api.CommitFailed).error(xerrors.Errorf("entered commit wait with no commit cid"))
+		return ctx.Send(SectorCommitFailed{xerrors.Errorf("entered commit wait with no commit cid")})
 	}
 
-	mw, err := m.api.StateWaitMsg(ctx, *sector.CommitMessage)
+	mw, err := m.api.StateWaitMsg(ctx.Context(), *sector.CommitMessage)
 	if err != nil {
-		return sector.upd().to(api.CommitFailed).error(xerrors.Errorf("failed to wait for porep inclusion: %w", err))
+		return ctx.Send(SectorCommitFailed{xerrors.Errorf("failed to wait for porep inclusion: %w", err)})
 	}
 
 	if mw.Receipt.ExitCode != 0 {
 		log.Errorf("UNHANDLED: submitting sector proof failed (exit=%d, msg=%s) (t:%x; s:%x(%d); p:%x)", mw.Receipt.ExitCode, sector.CommitMessage, sector.Ticket.TicketBytes, sector.Seed.TicketBytes, sector.Seed.BlockHeight, sector.Proof)
-		return sector.upd().fatal(xerrors.Errorf("UNHANDLED: submitting sector proof failed (exit: %d)", mw.Receipt.ExitCode))
+		return xerrors.Errorf("UNHANDLED: submitting sector proof failed (exit: %d)", mw.Receipt.ExitCode)
 	}
 
-	return sector.upd().to(api.Proving).state(func(info *SectorInfo) {
-	})
+	return ctx.Send(SectorProving{})
 }
 
-func (m *Miner) handleFaulty(ctx context.Context, sector SectorInfo) *sectorUpdate {
+func (m *Miner) handleFaulty(ctx evtsm.Context, sector SectorInfo) error {
 	// TODO: check if the fault has already been reported, and that this sector is even valid
 
 	// TODO: coalesce faulty sector reporting
@@ -245,7 +214,7 @@ func (m *Miner) handleFaulty(ctx context.Context, sector SectorInfo) *sectorUpda
 	_ = fp
 	enc, aerr := actors.SerializeParams(nil)
 	if aerr != nil {
-		return sector.upd().fatal(xerrors.Errorf("failed to serialize declare fault params: %w", aerr))
+		return xerrors.Errorf("failed to serialize declare fault params: %w", aerr)
 	}
 
 	msg := &types.Message{
@@ -258,32 +227,28 @@ func (m *Miner) handleFaulty(ctx context.Context, sector SectorInfo) *sectorUpda
 		GasPrice: types.NewInt(1),
 	}
 
-	smsg, err := m.api.MpoolPushMessage(ctx, msg)
+	smsg, err := m.api.MpoolPushMessage(ctx.Context(), msg)
 	if err != nil {
-		return sector.upd().to(api.FailedUnrecoverable).error(xerrors.Errorf("failed to push declare faults message to network: %w", err))
+		return xerrors.Errorf("failed to push declare faults message to network: %w", err)
 	}
 
-	return sector.upd().to(api.FaultReported).state(func(info *SectorInfo) {
-		c := smsg.Cid()
-		info.FaultReportMsg = &c
-	})
+	return ctx.Send(SectorFaultReported{reportMsg: smsg.Cid()})
 }
 
-func (m *Miner) handleFaultReported(ctx context.Context, sector SectorInfo) *sectorUpdate {
+func (m *Miner) handleFaultReported(ctx evtsm.Context, sector SectorInfo) error {
 	if sector.FaultReportMsg == nil {
-		return sector.upd().to(api.FailedUnrecoverable).error(xerrors.Errorf("entered fault reported state without a FaultReportMsg cid"))
+		return xerrors.Errorf("entered fault reported state without a FaultReportMsg cid")
 	}
 
-	mw, err := m.api.StateWaitMsg(ctx, *sector.FaultReportMsg)
+	mw, err := m.api.StateWaitMsg(ctx.Context(), *sector.FaultReportMsg)
 	if err != nil {
-		return sector.upd().to(api.CommitFailed).error(xerrors.Errorf("failed to wait for fault declaration: %w", err))
+		return xerrors.Errorf("failed to wait for fault declaration: %w", err)
 	}
 
 	if mw.Receipt.ExitCode != 0 {
 		log.Errorf("UNHANDLED: declaring sector fault failed (exit=%d, msg=%s) (id: %d)", mw.Receipt.ExitCode, *sector.FaultReportMsg, sector.SectorID)
-		return sector.upd().fatal(xerrors.Errorf("UNHANDLED: submitting fault declaration failed (exit %d)", mw.Receipt.ExitCode))
+		return xerrors.Errorf("UNHANDLED: submitting fault declaration failed (exit %d)", mw.Receipt.ExitCode)
 	}
 
-	return sector.upd().to(api.FaultedFinal).state(func(info *SectorInfo) {})
-
+	return ctx.Send(SectorFaultedFinal{})
 }

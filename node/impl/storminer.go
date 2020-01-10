@@ -205,7 +205,7 @@ func (sm *StorageMinerAPI) SectorsRefs(context.Context) (map[string][]api.Sealed
 }
 
 func (sm *StorageMinerAPI) SectorsUpdate(ctx context.Context, id uint64, state api.SectorState) error {
-	return sm.Miner.UpdateSectorState(ctx, id, storage.NonceIncrement, state)
+	return sm.Miner.ForceSectorState(ctx, id, state)
 }
 
 func (sm *StorageMinerAPI) WorkerQueue(ctx context.Context, cfg sectorbuilder.WorkerCfg) (<-chan sectorbuilder.WorkerTask, error) {
