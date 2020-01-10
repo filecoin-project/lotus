@@ -5,9 +5,10 @@ import (
 	"errors"
 	"sync"
 
-	cid "github.com/ipfs/go-cid"
-	datastore "github.com/ipfs/go-datastore"
+	"github.com/ipfs/go-cid"
+	"github.com/ipfs/go-datastore"
 	"github.com/ipfs/go-datastore/namespace"
+	"github.com/libp2p/go-libp2p-core/host"
 	inet "github.com/libp2p/go-libp2p-core/network"
 	"github.com/libp2p/go-libp2p-core/peer"
 	"golang.org/x/xerrors"
@@ -20,8 +21,7 @@ import (
 	"github.com/filecoin-project/lotus/chain/actors"
 	"github.com/filecoin-project/lotus/chain/types"
 	"github.com/filecoin-project/lotus/node/modules/dtypes"
-	"github.com/filecoin-project/lotus/storage"
-	"github.com/filecoin-project/lotus/storage/sectorblocks"
+	"github.com/filecoin-project/lotus/storagemarket"
 )
 
 var ProviderDsPrefix = "/deals/provider"
@@ -47,9 +47,7 @@ type Provider struct {
 	ask   *types.SignedStorageAsk
 	askLk sync.Mutex
 
-	secb   *sectorblocks.SectorBlocks
-	sminer *storage.Miner
-	full   api.FullNode
+	spn storagemarket.StorageProviderNode
 
 	// TODO: This will go away once storage market module + CAR
 	// is implemented
@@ -83,7 +81,7 @@ var (
 	ErrDataTransferFailed = errors.New("deal data transfer failed")
 )
 
-func NewProvider(ds dtypes.MetadataDS, sminer *storage.Miner, secb *sectorblocks.SectorBlocks, dag dtypes.StagingDAG, dataTransfer dtypes.ProviderDataTransfer, fullNode api.FullNode) (*Provider, error) {
+func NewProvider(ds dtypes.MetadataDS, dag dtypes.StagingDAG, dataTransfer dtypes.ProviderDataTransfer, spn storagemarket.StorageProviderNode) (storagemarket.StorageProvider, error) {
 	addr, err := ds.Get(datastore.NewKey("miner-address"))
 	if err != nil {
 		return nil, err
@@ -94,11 +92,9 @@ func NewProvider(ds dtypes.MetadataDS, sminer *storage.Miner, secb *sectorblocks
 	}
 
 	h := &Provider{
-		sminer:       sminer,
 		dag:          dag,
 		dataTransfer: dataTransfer,
-		full:         fullNode,
-		secb:         secb,
+		spn:          spn,
 
 		pricePerByteBlock: types.NewInt(3), // TODO: allow setting
 		minPieceSize:      256,             // TODO: allow setting (BUT KEEP MIN 256! (because of how we fill sectors up))
@@ -135,8 +131,11 @@ func NewProvider(ds dtypes.MetadataDS, sminer *storage.Miner, secb *sectorblocks
 	return h, nil
 }
 
-func (p *Provider) Run(ctx context.Context) {
+func (p *Provider) Run(ctx context.Context, host host.Host) {
 	// TODO: restore state
+
+	host.SetStreamHandler(storagemarket.DealProtocolID, p.HandleStream)
+	host.SetStreamHandler(storagemarket.AskProtocolID, p.HandleAskStream)
 
 	go func() {
 		defer log.Warn("quitting deal provider loop")
@@ -162,7 +161,7 @@ func (p *Provider) onIncoming(deal MinerDeal) {
 
 	if err := p.deals.Begin(deal.ProposalCid, &deal); err != nil {
 		// This can happen when client re-sends proposal
-		p.failDeal(deal.ProposalCid, err)
+		p.failDeal(context.TODO(), deal.ProposalCid, err)
 		log.Errorf("deal tracking failed: %s", err)
 		return
 	}
@@ -180,7 +179,7 @@ func (p *Provider) onUpdated(ctx context.Context, update minerDealUpdate) {
 	log.Infof("Deal %s updated state to %s", update.id, api.DealStates[update.newState])
 	if update.err != nil {
 		log.Errorf("deal %s (newSt: %d) failed: %+v", update.id, update.newState, update.err)
-		p.failDeal(update.id, update.err)
+		p.failDeal(ctx, update.id, update.err)
 		return
 	}
 	var deal MinerDeal
@@ -193,7 +192,7 @@ func (p *Provider) onUpdated(ctx context.Context, update minerDealUpdate) {
 		return nil
 	})
 	if err != nil {
-		p.failDeal(update.id, err)
+		p.failDeal(ctx, update.id, err)
 		return
 	}
 

@@ -21,7 +21,7 @@ func (t *RetParams) MarshalCBOR(w io.Writer) error {
 		return err
 	}
 
-	// t.Unixfs0 (retrieval.Unixfs0Offer) (struct)
+	// t.Unixfs0 (retrievalimpl.Unixfs0Offer) (struct)
 	if err := t.Unixfs0.MarshalCBOR(w); err != nil {
 		return err
 	}
@@ -43,7 +43,7 @@ func (t *RetParams) UnmarshalCBOR(r io.Reader) error {
 		return fmt.Errorf("cbor input had wrong number of fields")
 	}
 
-	// t.Unixfs0 (retrieval.Unixfs0Offer) (struct)
+	// t.Unixfs0 (retrievalimpl.Unixfs0Offer) (struct)
 
 	{
 
@@ -124,7 +124,7 @@ func (t *OldQueryResponse) MarshalCBOR(w io.Writer) error {
 		return err
 	}
 
-	// t.t.Status (retrieval.OldQueryResponseStatus) (uint64)
+	// t.Status (retrievalimpl.OldQueryResponseStatus) (uint64)
 	if _, err := w.Write(cbg.CborEncodeMajorType(cbg.MajUnsignedInt, uint64(t.Status))); err != nil {
 		return err
 	}
@@ -156,7 +156,7 @@ func (t *OldQueryResponse) UnmarshalCBOR(r io.Reader) error {
 		return fmt.Errorf("cbor input had wrong number of fields")
 	}
 
-	// t.t.Status (retrieval.OldQueryResponseStatus) (uint64)
+	// t.Status (retrievalimpl.OldQueryResponseStatus) (uint64)
 
 	maj, extra, err = cbg.CborReadHeader(br)
 	if err != nil {
@@ -166,7 +166,7 @@ func (t *OldQueryResponse) UnmarshalCBOR(r io.Reader) error {
 		return fmt.Errorf("wrong type for uint64 field")
 	}
 	t.Status = OldQueryResponseStatus(extra)
-	// t.t.Size (uint64) (uint64)
+	// t.Size (uint64) (uint64)
 
 	maj, extra, err = cbg.CborReadHeader(br)
 	if err != nil {
@@ -267,7 +267,7 @@ func (t *OldDealProposal) MarshalCBOR(w io.Writer) error {
 		return xerrors.Errorf("failed to write cid field t.Ref: %w", err)
 	}
 
-	// t.Params (retrieval.RetParams) (struct)
+	// t.Params (retrievalimpl.RetParams) (struct)
 	if err := t.Params.MarshalCBOR(w); err != nil {
 		return err
 	}
@@ -310,7 +310,7 @@ func (t *OldDealProposal) UnmarshalCBOR(r io.Reader) error {
 		t.Ref = c
 
 	}
-	// t.Params (retrieval.RetParams) (struct)
+	// t.Params (retrievalimpl.RetParams) (struct)
 
 	{
 

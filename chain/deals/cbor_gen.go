@@ -219,10 +219,18 @@ func (t *Response) MarshalCBOR(w io.Writer) error {
 		return xerrors.Errorf("failed to write cid field t.Proposal: %w", err)
 	}
 
-	// t.StorageDealSubmission (types.SignedMessage) (struct)
-	if err := t.StorageDealSubmission.MarshalCBOR(w); err != nil {
-		return err
+	// t.PublishMessage (cid.Cid) (struct)
+
+	if t.PublishMessage == nil {
+		if _, err := w.Write(cbg.CborNull); err != nil {
+			return err
+		}
+	} else {
+		if err := cbg.WriteCid(w, *t.PublishMessage); err != nil {
+			return xerrors.Errorf("failed to write cid field t.PublishMessage: %w", err)
+		}
 	}
+
 	return nil
 }
 
@@ -273,7 +281,7 @@ func (t *Response) UnmarshalCBOR(r io.Reader) error {
 		t.Proposal = c
 
 	}
-	// t.StorageDealSubmission (types.SignedMessage) (struct)
+	// t.PublishMessage (cid.Cid) (struct)
 
 	{
 
@@ -287,10 +295,13 @@ func (t *Response) UnmarshalCBOR(r io.Reader) error {
 				return err
 			}
 		} else {
-			t.StorageDealSubmission = new(types.SignedMessage)
-			if err := t.StorageDealSubmission.UnmarshalCBOR(br); err != nil {
-				return err
+
+			c, err := cbg.ReadCid(br)
+			if err != nil {
+				return xerrors.Errorf("failed to read cid field t.PublishMessage: %w", err)
 			}
+
+			t.PublishMessage = &c
 		}
 
 	}
@@ -526,56 +537,12 @@ func (t *ClientDeal) MarshalCBOR(w io.Writer) error {
 		_, err := w.Write(cbg.CborNull)
 		return err
 	}
-	if _, err := w.Write([]byte{136}); err != nil {
+	if _, err := w.Write([]byte{129}); err != nil {
 		return err
 	}
 
-	// t.ProposalCid (cid.Cid) (struct)
-
-	if err := cbg.WriteCid(w, t.ProposalCid); err != nil {
-		return xerrors.Errorf("failed to write cid field t.ProposalCid: %w", err)
-	}
-
-	// t.Proposal (actors.StorageDealProposal) (struct)
-	if err := t.Proposal.MarshalCBOR(w); err != nil {
-		return err
-	}
-
-	// t.State (uint64) (uint64)
-	if _, err := w.Write(cbg.CborEncodeMajorType(cbg.MajUnsignedInt, uint64(t.State))); err != nil {
-		return err
-	}
-
-	// t.Miner (peer.ID) (string)
-	if len(t.Miner) > cbg.MaxLength {
-		return xerrors.Errorf("Value in field t.Miner was too long")
-	}
-
-	if _, err := w.Write(cbg.CborEncodeMajorType(cbg.MajTextString, uint64(len(t.Miner)))); err != nil {
-		return err
-	}
-	if _, err := w.Write([]byte(t.Miner)); err != nil {
-		return err
-	}
-
-	// t.MinerWorker (address.Address) (struct)
-	if err := t.MinerWorker.MarshalCBOR(w); err != nil {
-		return err
-	}
-
-	// t.DealID (uint64) (uint64)
-	if _, err := w.Write(cbg.CborEncodeMajorType(cbg.MajUnsignedInt, uint64(t.DealID))); err != nil {
-		return err
-	}
-
-	// t.PayloadCid (cid.Cid) (struct)
-
-	if err := cbg.WriteCid(w, t.PayloadCid); err != nil {
-		return xerrors.Errorf("failed to write cid field t.PayloadCid: %w", err)
-	}
-
-	// t.PublishMessage (types.SignedMessage) (struct)
-	if err := t.PublishMessage.MarshalCBOR(w); err != nil {
+	// t.ClientDeal (storagemarket.ClientDeal) (struct)
+	if err := t.ClientDeal.MarshalCBOR(w); err != nil {
 		return err
 	}
 	return nil
@@ -592,100 +559,16 @@ func (t *ClientDeal) UnmarshalCBOR(r io.Reader) error {
 		return fmt.Errorf("cbor input should be of type array")
 	}
 
-	if extra != 8 {
+	if extra != 1 {
 		return fmt.Errorf("cbor input had wrong number of fields")
 	}
 
-	// t.ProposalCid (cid.Cid) (struct)
+	// t.ClientDeal (storagemarket.ClientDeal) (struct)
 
 	{
 
-		c, err := cbg.ReadCid(br)
-		if err != nil {
-			return xerrors.Errorf("failed to read cid field t.ProposalCid: %w", err)
-		}
-
-		t.ProposalCid = c
-
-	}
-	// t.Proposal (actors.StorageDealProposal) (struct)
-
-	{
-
-		if err := t.Proposal.UnmarshalCBOR(br); err != nil {
+		if err := t.ClientDeal.UnmarshalCBOR(br); err != nil {
 			return err
-		}
-
-	}
-	// t.State (uint64) (uint64)
-
-	maj, extra, err = cbg.CborReadHeader(br)
-	if err != nil {
-		return err
-	}
-	if maj != cbg.MajUnsignedInt {
-		return fmt.Errorf("wrong type for uint64 field")
-	}
-	t.State = uint64(extra)
-	// t.Miner (peer.ID) (string)
-
-	{
-		sval, err := cbg.ReadString(br)
-		if err != nil {
-			return err
-		}
-
-		t.Miner = peer.ID(sval)
-	}
-	// t.MinerWorker (address.Address) (struct)
-
-	{
-
-		if err := t.MinerWorker.UnmarshalCBOR(br); err != nil {
-			return err
-		}
-
-	}
-	// t.DealID (uint64) (uint64)
-
-	maj, extra, err = cbg.CborReadHeader(br)
-	if err != nil {
-		return err
-	}
-	if maj != cbg.MajUnsignedInt {
-		return fmt.Errorf("wrong type for uint64 field")
-	}
-	t.DealID = uint64(extra)
-	// t.PayloadCid (cid.Cid) (struct)
-
-	{
-
-		c, err := cbg.ReadCid(br)
-		if err != nil {
-			return xerrors.Errorf("failed to read cid field t.PayloadCid: %w", err)
-		}
-
-		t.PayloadCid = c
-
-	}
-	// t.PublishMessage (types.SignedMessage) (struct)
-
-	{
-
-		pb, err := br.PeekByte()
-		if err != nil {
-			return err
-		}
-		if pb == cbg.CborNull[0] {
-			var nbuf [1]byte
-			if _, err := br.Read(nbuf[:]); err != nil {
-				return err
-			}
-		} else {
-			t.PublishMessage = new(types.SignedMessage)
-			if err := t.PublishMessage.UnmarshalCBOR(br); err != nil {
-				return err
-			}
 		}
 
 	}

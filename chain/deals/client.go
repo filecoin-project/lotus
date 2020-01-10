@@ -15,39 +15,24 @@ import (
 	"github.com/filecoin-project/go-statestore"
 	"github.com/filecoin-project/lotus/api"
 	"github.com/filecoin-project/lotus/chain/actors"
-	"github.com/filecoin-project/lotus/chain/events"
-	"github.com/filecoin-project/lotus/chain/market"
-	"github.com/filecoin-project/lotus/chain/stmgr"
-	"github.com/filecoin-project/lotus/chain/store"
 	"github.com/filecoin-project/lotus/chain/types"
-	"github.com/filecoin-project/lotus/chain/wallet"
-	"github.com/filecoin-project/lotus/node/impl/full"
 	"github.com/filecoin-project/lotus/node/modules/dtypes"
 	retrievalmarket "github.com/filecoin-project/lotus/retrieval"
 	"github.com/filecoin-project/lotus/retrieval/discovery"
+	"github.com/filecoin-project/lotus/storagemarket"
 )
 
 var log = logging.Logger("deals")
 
 type ClientDeal struct {
-	ProposalCid cid.Cid
-	Proposal    actors.StorageDealProposal
-	State       api.DealState
-	Miner       peer.ID
-	MinerWorker address.Address
-	DealID      uint64
-	PayloadCid  cid.Cid
-
-	PublishMessage *types.SignedMessage
+	storagemarket.ClientDeal
 
 	s inet.Stream
 }
 
 type Client struct {
-	sm    *stmgr.StateManager
-	chain *store.ChainStore
-	h     host.Host
-	w     *wallet.Wallet
+	h host.Host
+
 	// dataTransfer
 	// TODO: once the data transfer module is complete, the
 	// client will listen to events on the data transfer module
@@ -56,8 +41,8 @@ type Client struct {
 	dataTransfer dtypes.ClientDataTransfer
 	dag          dtypes.ClientDAG
 	discovery    *discovery.Local
-	events       *events.Events
-	fm           *market.FundMgr
+
+	node storagemarket.StorageClientNode
 
 	deals *statestore.StateStore
 	conns map[cid.Cid]inet.Stream
@@ -76,22 +61,13 @@ type clientDealUpdate struct {
 	mut      func(*ClientDeal)
 }
 
-type clientApi struct {
-	full.ChainAPI
-	full.StateAPI
-}
-
-func NewClient(sm *stmgr.StateManager, chain *store.ChainStore, h host.Host, w *wallet.Wallet, dag dtypes.ClientDAG, dataTransfer dtypes.ClientDataTransfer, discovery *discovery.Local, fm *market.FundMgr, deals dtypes.ClientDealStore, chainapi full.ChainAPI, stateapi full.StateAPI) *Client {
+func NewClient(h host.Host, dag dtypes.ClientDAG, dataTransfer dtypes.ClientDataTransfer, discovery *discovery.Local, deals dtypes.ClientDealStore, scn storagemarket.StorageClientNode) *Client {
 	c := &Client{
-		sm:           sm,
-		chain:        chain,
 		h:            h,
-		w:            w,
 		dataTransfer: dataTransfer,
 		dag:          dag,
 		discovery:    discovery,
-		fm:           fm,
-		events:       events.NewEvents(context.TODO(), &clientApi{chainapi, stateapi}),
+		node:         scn,
 
 		deals: deals,
 		conns: map[cid.Cid]inet.Stream{},
@@ -196,7 +172,8 @@ type ClientDealProposal struct {
 }
 
 func (c *Client) Start(ctx context.Context, p ClientDealProposal) (cid.Cid, error) {
-	if err := c.fm.EnsureAvailable(ctx, p.Client, types.BigMul(p.PricePerEpoch, types.NewInt(p.Duration))); err != nil {
+	amount := types.BigMul(p.PricePerEpoch, types.NewInt(p.Duration))
+	if err := c.node.EnsureFunds(ctx, p.Client, storagemarket.TokenAmount(amount)); err != nil {
 		return cid.Undef, xerrors.Errorf("adding market funds failed: %w", err)
 	}
 
@@ -216,7 +193,7 @@ func (c *Client) Start(ctx context.Context, p ClientDealProposal) (cid.Cid, erro
 		StorageCollateral:    types.NewInt(uint64(pieceSize)), // TODO: real calc
 	}
 
-	if err := api.SignWith(ctx, c.w.Sign, p.Client, dealProposal); err != nil {
+	if err := c.node.SignProposal(ctx, p.Client, dealProposal); err != nil {
 		return cid.Undef, xerrors.Errorf("signing deal proposal failed: %w", err)
 	}
 
@@ -225,7 +202,7 @@ func (c *Client) Start(ctx context.Context, p ClientDealProposal) (cid.Cid, erro
 		return cid.Undef, xerrors.Errorf("getting proposal node failed: %w", err)
 	}
 
-	s, err := c.h.NewStream(ctx, p.MinerID, DealProtocolID)
+	s, err := c.h.NewStream(ctx, p.MinerID, storagemarket.DealProtocolID)
 	if err != nil {
 		return cid.Undef, xerrors.Errorf("connecting to storage provider failed: %w", err)
 	}
@@ -241,13 +218,16 @@ func (c *Client) Start(ctx context.Context, p ClientDealProposal) (cid.Cid, erro
 	}
 
 	deal := &ClientDeal{
-		ProposalCid: proposalNd.Cid(),
-		Proposal:    *dealProposal,
-		State:       api.DealUnknown,
-		Miner:       p.MinerID,
-		MinerWorker: p.MinerWorker,
-		PayloadCid:  p.Data,
-		s:           s,
+		ClientDeal: storagemarket.ClientDeal{
+			ProposalCid: proposalNd.Cid(),
+			Proposal:    *dealProposal,
+			State:       api.DealUnknown,
+			Miner:       p.MinerID,
+			MinerWorker: p.MinerWorker,
+			PayloadCid:  p.Data,
+		},
+
+		s: s,
 	}
 
 	c.incoming <- deal
@@ -259,7 +239,7 @@ func (c *Client) Start(ctx context.Context, p ClientDealProposal) (cid.Cid, erro
 }
 
 func (c *Client) QueryAsk(ctx context.Context, p peer.ID, a address.Address) (*types.SignedStorageAsk, error) {
-	s, err := c.h.NewStream(ctx, p, AskProtocolID)
+	s, err := c.h.NewStream(ctx, p, storagemarket.AskProtocolID)
 	if err != nil {
 		return nil, xerrors.Errorf("failed to open stream to miner: %w", err)
 	}

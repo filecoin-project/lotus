@@ -4,24 +4,21 @@ import (
 	"context"
 	"runtime"
 
-	datatransfer "github.com/filecoin-project/go-data-transfer"
-	"github.com/filecoin-project/lotus/api"
-	"github.com/filecoin-project/lotus/node/modules/dtypes"
-	"github.com/ipld/go-ipld-prime"
-
 	"github.com/filecoin-project/go-address"
 	"github.com/filecoin-project/go-cbor-util"
+	"github.com/filecoin-project/go-data-transfer"
 	"github.com/filecoin-project/go-statestore"
-	"github.com/filecoin-project/lotus/chain/actors"
-	"github.com/filecoin-project/lotus/chain/types"
-
 	"github.com/ipfs/go-cid"
+	"github.com/ipld/go-ipld-prime"
 	inet "github.com/libp2p/go-libp2p-core/network"
 	"github.com/libp2p/go-libp2p-core/peer"
 	"golang.org/x/xerrors"
+
+	"github.com/filecoin-project/lotus/api"
+	"github.com/filecoin-project/lotus/node/modules/dtypes"
 )
 
-func (p *Provider) failDeal(id cid.Cid, cerr error) {
+func (p *Provider) failDeal(ctx context.Context, id cid.Cid, cerr error) {
 	if err := p.deals.End(id); err != nil {
 		log.Warnf("deals.End: %s", err)
 	}
@@ -33,7 +30,7 @@ func (p *Provider) failDeal(id cid.Cid, cerr error) {
 
 	log.Warnf("deal %s failed: %s", id, cerr)
 
-	err := p.sendSignedResponse(&Response{
+	err := p.sendSignedResponse(ctx, &Response{
 		State:    api.DealFailed,
 		Message:  cerr.Error(),
 		Proposal: id,
@@ -72,7 +69,7 @@ func (p *Provider) readProposal(s inet.Stream) (proposal Proposal, err error) {
 	return
 }
 
-func (p *Provider) sendSignedResponse(resp *Response) error {
+func (p *Provider) sendSignedResponse(ctx context.Context, resp *Response) error {
 	s, ok := p.conns[resp.Proposal]
 	if !ok {
 		return xerrors.New("couldn't send response: not connected")
@@ -83,12 +80,12 @@ func (p *Provider) sendSignedResponse(resp *Response) error {
 		return xerrors.Errorf("serializing response: %w", err)
 	}
 
-	worker, err := p.getWorker(p.actor)
+	worker, err := p.spn.GetMinerWorker(ctx, p.actor)
 	if err != nil {
 		return err
 	}
 
-	sig, err := p.full.WalletSign(context.TODO(), worker, msg)
+	sig, err := p.spn.SignBytes(ctx, worker, msg)
 	if err != nil {
 		return xerrors.Errorf("failed to sign response message: %w", err)
 	}
@@ -116,24 +113,6 @@ func (p *Provider) disconnect(deal MinerDeal) error {
 	err := s.Close()
 	delete(p.conns, deal.ProposalCid)
 	return err
-}
-
-func (p *Provider) getWorker(miner address.Address) (address.Address, error) {
-	getworker := &types.Message{
-		To:     miner,
-		From:   miner,
-		Method: actors.MAMethods.GetWorkerAddr,
-	}
-	r, err := p.full.StateCall(context.TODO(), getworker, nil)
-	if err != nil {
-		return address.Undef, xerrors.Errorf("getting worker address: %w", err)
-	}
-
-	if r.ExitCode != 0 {
-		return address.Undef, xerrors.Errorf("getWorker call failed: %d", r.ExitCode)
-	}
-
-	return address.NewFromBytes(r.Return)
 }
 
 var _ datatransfer.RequestValidator = &ProviderRequestValidator{}
