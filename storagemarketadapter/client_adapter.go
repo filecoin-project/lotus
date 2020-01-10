@@ -5,12 +5,14 @@ package storagemarketadapter
 import (
 	"bytes"
 	"context"
+
 	"github.com/filecoin-project/lotus/lib/sharedutils"
 
 	"golang.org/x/xerrors"
 
 	"github.com/filecoin-project/go-address"
-	"github.com/filecoin-project/go-cbor-util"
+	cborutil "github.com/filecoin-project/go-cbor-util"
+	"github.com/filecoin-project/go-fil-markets/shared/tokenamount"
 	sharedtypes "github.com/filecoin-project/go-fil-markets/shared/types"
 	"github.com/filecoin-project/go-fil-markets/storagemarket"
 	"github.com/filecoin-project/lotus/api"
@@ -115,7 +117,7 @@ func (n *ClientNodeAdapter) AddFunds(ctx context.Context, addr address.Address, 
 	// (Provider Node API)
 	smsg, err := n.MpoolPushMessage(ctx, &types.Message{
 		To:       actors.StorageMarketAddress,
-		From:     sharedutils.FromSharedAddress(addr),
+		From:     addr,
 		Value:    sharedutils.FromSharedTokenAmount(amount),
 		GasPrice: types.NewInt(0),
 		GasLimit: types.NewInt(1000000),
@@ -138,11 +140,11 @@ func (n *ClientNodeAdapter) AddFunds(ctx context.Context, addr address.Address, 
 }
 
 func (n *ClientNodeAdapter) EnsureFunds(ctx context.Context, addr address.Address, amount tokenamount.TokenAmount) error {
-	return n.fm.EnsureAvailable(ctx, sharedutils.FromSharedAddress(addr), sharedutils.FromSharedTokenAmount(amount))
+	return n.fm.EnsureAvailable(ctx, addr, sharedutils.FromSharedTokenAmount(amount))
 }
 
 func (n *ClientNodeAdapter) GetBalance(ctx context.Context, addr address.Address) (storagemarket.Balance, error) {
-	bal, err := n.StateMarketBalance(ctx, sharedutils.FromSharedAddress(addr), nil)
+	bal, err := n.StateMarketBalance(ctx, addr, nil)
 	if err != nil {
 		return storagemarket.Balance{}, err
 	}
@@ -160,7 +162,7 @@ func (c *ClientNodeAdapter) ValidatePublishedDeal(ctx context.Context, deal stor
 		return 0, xerrors.Errorf("getting deal pubsish message: %w", err)
 	}
 
-	pw, err := stmgr.GetMinerWorker(ctx, c.sm, nil, sharedutils.FromSharedAddress(deal.Proposal.Provider))
+	pw, err := stmgr.GetMinerWorker(ctx, c.sm, nil, deal.Proposal.Provider)
 	if err != nil {
 		return 0, xerrors.Errorf("getting miner worker failed: %w", err)
 	}
@@ -268,7 +270,7 @@ func (c *ClientNodeAdapter) OnDealSectorCommitted(ctx context.Context, provider 
 	}
 
 	matchEvent := func(msg *types.Message) (bool, error) {
-		if msg.To != sharedutils.FromSharedAddress(provider) {
+		if msg.To != provider {
 			return false, nil
 		}
 
@@ -304,7 +306,7 @@ func (n *ClientNodeAdapter) SignProposal(ctx context.Context, signer address.Add
 	if err != nil {
 		return err
 	}
-	err = api.SignWith(ctx, n.Wallet.Sign, sharedutils.FromSharedAddress(signer), localProposal)
+	err = api.SignWith(ctx, n.Wallet.Sign, signer, localProposal)
 	if err != nil {
 		return err
 	}
@@ -318,13 +320,13 @@ func (n *ClientNodeAdapter) SignProposal(ctx context.Context, signer address.Add
 
 func (n *ClientNodeAdapter) GetDefaultWalletAddress(ctx context.Context) (address.Address, error) {
 	addr, err := n.Wallet.GetDefault()
-	return sharedutils.ToSharedAddress(addr), err
+	return addr, err
 }
 
 func (n *ClientNodeAdapter) ValidateAskSignature(ask *sharedtypes.SignedStorageAsk) error {
 	tss := n.cs.GetHeaviestTipSet().ParentState()
 
-	w, err := stmgr.GetMinerWorkerRaw(context.TODO(), n.StateManager, tss, sharedutils.FromSharedAddress(ask.Ask.Miner))
+	w, err := stmgr.GetMinerWorkerRaw(context.TODO(), n.StateManager, tss, ask.Ask.Miner)
 	if err != nil {
 		return xerrors.Errorf("failed to get worker for miner in ask", err)
 	}
@@ -334,7 +336,7 @@ func (n *ClientNodeAdapter) ValidateAskSignature(ask *sharedtypes.SignedStorageA
 		return xerrors.Errorf("failed to re-serialize ask")
 	}
 
-	return ask.Signature.Verify(sharedutils.ToSharedAddress(w), sigb)
+	return ask.Signature.Verify(w, sigb)
 }
 
 var _ storagemarket.StorageClientNode = &ClientNodeAdapter{}

@@ -36,7 +36,6 @@ import (
 	"github.com/filecoin-project/lotus/node/impl/full"
 	"github.com/filecoin-project/lotus/node/impl/paych"
 	"github.com/filecoin-project/lotus/node/modules/dtypes"
-	"github.com/filecoin-project/lotus/retrievaladapter"
 	"github.com/filecoin-project/lotus/storagemarketadapter"
 )
 
@@ -79,7 +78,7 @@ func (a *API) ClientStartDeal(ctx context.Context, data cid.Cid, addr address.Ad
 	providerInfo := storagemarketadapter.NewStorageProviderInfo(miner, mw, 0, pid)
 	result, err := a.SMDealClient.ProposeStorageDeal(
 		ctx,
-		sharedutils.ToSharedAddress(addr),
+		addr,
 		&providerInfo,
 		data,
 		storagemarket.Epoch(math.MaxUint64),
@@ -105,7 +104,7 @@ func (a *API) ClientListDeals(ctx context.Context) ([]api.DealInfo, error) {
 		out[k] = api.DealInfo{
 			ProposalCid: v.ProposalCid,
 			State:       v.State,
-			Provider:    sharedutils.FromSharedAddress(v.Proposal.Provider),
+			Provider:    v.Proposal.Provider,
 
 			PieceRef: v.Proposal.PieceRef,
 			Size:     v.Proposal.PieceSize,
@@ -127,7 +126,7 @@ func (a *API) ClientGetDealInfo(ctx context.Context, d cid.Cid) (*api.DealInfo, 
 	return &api.DealInfo{
 		ProposalCid:   v.ProposalCid,
 		State:         v.State,
-		Provider:      sharedutils.FromSharedAddress(v.Proposal.Provider),
+		Provider:      v.Proposal.Provider,
 		PieceRef:      v.Proposal.PieceRef,
 		Size:          v.Proposal.PieceSize,
 		PricePerEpoch: sharedutils.FromSharedTokenAmount(v.Proposal.StoragePricePerEpoch),
@@ -159,13 +158,13 @@ func (a *API) ClientFindData(ctx context.Context, root cid.Cid) ([]api.QueryOffe
 	for k, p := range peers {
 		queryResponse, err := a.Retrieval.Query(ctx, p, root.Bytes(), retrievalmarket.QueryParams{})
 		if err != nil {
-			out[k] = api.QueryOffer{Err: err.Error(), Miner: retrievaladapter.FromSharedAddress(p.Address), MinerPeerID: p.ID}
+			out[k] = api.QueryOffer{Err: err.Error(), Miner: p.Address, MinerPeerID: p.ID}
 		} else {
 			out[k] = api.QueryOffer{
 				Root:        root,
 				Size:        queryResponse.Size,
-				MinPrice:    retrievaladapter.FromSharedTokenAmount(queryResponse.PieceRetrievalPrice()),
-				Miner:       retrievaladapter.FromSharedAddress(p.Address), // TODO: check
+				MinPrice:    sharedutils.FromSharedTokenAmount(queryResponse.PieceRetrievalPrice()),
+				Miner:       p.Address, // TODO: check
 				MinerPeerID: p.ID,
 			}
 		}
@@ -297,8 +296,8 @@ func (a *API) ClientRetrieve(ctx context.Context, order api.RetrievalOrder, path
 		retrievalmarket.NewParamsV0(types.BigDiv(order.Total, types.NewInt(order.Size)).Int, 0, 0),
 		sharedutils.ToSharedTokenAmount(order.Total),
 		order.MinerPeerID,
-		retrievaladapter.ToSharedAddress(order.Client),
-		retrievaladapter.ToSharedAddress(order.Miner))
+		order.Client,
+		order.Miner)
 	select {
 	case <-ctx.Done():
 		return xerrors.New("Retrieval Timed Out")

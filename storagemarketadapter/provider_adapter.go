@@ -47,7 +47,7 @@ func NewProviderNodeAdapter(dag dtypes.StagingDAG, secb *sectorblocks.SectorBloc
 func (n *ProviderNodeAdapter) PublishDeals(ctx context.Context, deal storagemarket.MinerDeal) (storagemarket.DealID, cid.Cid, error) {
 	log.Info("publishing deal")
 
-	worker, err := n.StateMinerWorker(ctx, sharedutils.FromSharedAddress(deal.Proposal.Provider), nil)
+	worker, err := n.StateMinerWorker(ctx, deal.Proposal.Provider, nil)
 	if err != nil {
 		return 0, cid.Undef, err
 	}
@@ -151,12 +151,12 @@ func (n *ProviderNodeAdapter) ListProviderDeals(ctx context.Context, addr addres
 }
 
 func (n *ProviderNodeAdapter) GetMinerWorker(ctx context.Context, miner address.Address) (address.Address, error) {
-	addr, err := n.StateMinerWorker(ctx, sharedutils.FromSharedAddress(miner), nil)
-	return sharedutils.ToSharedAddress(addr), err
+	addr, err := n.StateMinerWorker(ctx, miner, nil)
+	return addr, err
 }
 
 func (n *ProviderNodeAdapter) SignBytes(ctx context.Context, signer address.Address, b []byte) (*sharedtypes.Signature, error) {
-	localSignature, err := n.WalletSign(ctx, sharedutils.FromSharedAddress(signer), b)
+	localSignature, err := n.WalletSign(ctx, signer, b)
 	if err != nil {
 		return nil, err
 	}
@@ -164,7 +164,7 @@ func (n *ProviderNodeAdapter) SignBytes(ctx context.Context, signer address.Addr
 }
 
 func (n *ProviderNodeAdapter) EnsureFunds(ctx context.Context, addr address.Address, amt tokenamount.TokenAmount) error {
-	return n.MarketEnsureAvailable(ctx, sharedutils.FromSharedAddress(addr), sharedutils.FromSharedTokenAmount(amt))
+	return n.MarketEnsureAvailable(ctx, addr, sharedutils.FromSharedTokenAmount(amt))
 }
 
 func (n *ProviderNodeAdapter) MostRecentStateId(ctx context.Context) (storagemarket.StateKey, error) {
@@ -176,7 +176,7 @@ func (n *ProviderNodeAdapter) AddFunds(ctx context.Context, addr address.Address
 	// (Provider Node API)
 	smsg, err := n.MpoolPushMessage(ctx, &types.Message{
 		To:       actors.StorageMarketAddress,
-		From:     sharedutils.FromSharedAddress(addr),
+		From:     addr,
 		Value:    sharedutils.FromSharedTokenAmount(amount),
 		GasPrice: types.NewInt(0),
 		GasLimit: types.NewInt(1000000),
@@ -199,7 +199,7 @@ func (n *ProviderNodeAdapter) AddFunds(ctx context.Context, addr address.Address
 }
 
 func (n *ProviderNodeAdapter) GetBalance(ctx context.Context, addr address.Address) (storagemarket.Balance, error) {
-	bal, err := n.StateMarketBalance(ctx, sharedutils.FromSharedAddress(addr), nil)
+	bal, err := n.StateMarketBalance(ctx, addr, nil)
 	if err != nil {
 		return storagemarket.Balance{}, err
 	}
