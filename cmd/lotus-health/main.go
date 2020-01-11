@@ -2,25 +2,20 @@ package main
 
 import (
 	"context"
-	"net/http"
 	"os"
 	"time"
 
 	"github.com/filecoin-project/lotus/api"
-	"github.com/filecoin-project/lotus/api/client"
 	"github.com/filecoin-project/lotus/build"
-	"github.com/filecoin-project/lotus/lib/jsonrpc"
-	"github.com/filecoin-project/lotus/node/repo"
+	lcli "github.com/filecoin-project/lotus/cli"
 	cid "github.com/ipfs/go-cid"
 	logging "github.com/ipfs/go-log"
-	manet "github.com/multiformats/go-multiaddr-net"
-	"golang.org/x/xerrors"
 	"gopkg.in/urfave/cli.v2"
 )
 
 type CidWindow [][]cid.Cid
 
-var log = logging.Logger("lotus-seed")
+var log = logging.Logger("lotus-health")
 
 func main() {
 	logging.SetLogLevel("*", "INFO")
@@ -36,6 +31,13 @@ func main() {
 		Usage:    "Tools for monitoring lotus daemon health",
 		Version:  build.UserVersion,
 		Commands: local,
+		Flags: []cli.Flag{
+			&cli.StringFlag{
+				Name:    "repo",
+				EnvVars: []string{"LOTUS_PATH"},
+				Value:   "~/.lotus", // TODO: Consider XDG_DATA_HOME
+			},
+		},
 	}
 
 	if err := app.Run(os.Args); err != nil {
@@ -47,11 +49,6 @@ func main() {
 var watchHeadCmd = &cli.Command{
 	Name: "watch-head",
 	Flags: []cli.Flag{
-		&cli.StringFlag{
-			Name:  "repo",
-			Value: "~/.lotus",
-			Usage: "lotus repo path",
-		},
 		&cli.IntFlag{
 			Name:  "threshold",
 			Value: 3,
@@ -59,7 +56,7 @@ var watchHeadCmd = &cli.Command{
 		},
 		&cli.IntFlag{
 			Name:  "interval",
-			Value: 45,
+			Value: build.BlockDelay,
 			Usage: "interval in seconds between chain head checks",
 		},
 		&cli.StringFlag{
@@ -69,19 +66,18 @@ var watchHeadCmd = &cli.Command{
 		},
 	},
 	Action: func(c *cli.Context) error {
-		repo := c.String("repo")
 		threshold := c.Int("threshold")
-		interval := time.Duration(c.Int("interval"))
+		interval := time.Duration(c.Int("interval")) * time.Second
 		name := c.String("systemd-unit")
 
 		var headCheckWindow CidWindow
-		ctx := context.Background()
 
-		api, closer, err := GetFullNodeAPI(repo)
+		api, closer, err := lcli.GetFullNodeAPI(c)
 		if err != nil {
 			return err
 		}
 		defer closer()
+		ctx := lcli.ReqContext(c)
 
 		if err := WaitForSyncComplete(ctx, api); err != nil {
 			log.Fatal(err)
@@ -96,7 +92,7 @@ var watchHeadCmd = &cli.Command{
 				if err != nil {
 					log.Fatal(err)
 				}
-				time.Sleep(interval * time.Second)
+				time.Sleep(interval)
 			}
 		}()
 
@@ -191,44 +187,6 @@ func appendCIDsToWindow(w CidWindow, c []cid.Cid, t int) CidWindow {
 		return append(w[offset:], c)
 	}
 	return append(w, c)
-}
-
-/*
- * initialize and return lotus api
- */
-func getAPI(path string) (string, http.Header, error) {
-	r, err := repo.NewFS(path)
-	if err != nil {
-		return "", nil, err
-	}
-
-	ma, err := r.APIEndpoint()
-	if err != nil {
-		return "", nil, xerrors.Errorf("failed to get api endpoint: %w", err)
-	}
-	_, addr, err := manet.DialArgs(ma)
-	if err != nil {
-		return "", nil, err
-	}
-	var headers http.Header
-	token, err := r.APIToken()
-	if err != nil {
-		log.Warn("Couldn't load CLI token, capabilities may be limited: %w", err)
-	} else {
-		headers = http.Header{}
-		headers.Add("Authorization", "Bearer "+string(token))
-	}
-
-	return "ws://" + addr + "/rpc/v0", headers, nil
-}
-
-func GetFullNodeAPI(repo string) (api.FullNode, jsonrpc.ClientCloser, error) {
-	addr, headers, err := getAPI(repo)
-	if err != nil {
-		return nil, nil, err
-	}
-
-	return client.NewFullNodeRPC(addr, headers)
 }
 
 /*
