@@ -17,7 +17,7 @@ import (
 	"github.com/filecoin-project/lotus/chain/types"
 )
 
-const maxBatch = 10000
+const maxBatch = 3000
 
 func runSyncer(ctx context.Context, api api.FullNode, st *storage) {
 	notifs, err := api.ChainNotify(ctx)
