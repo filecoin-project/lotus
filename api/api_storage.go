@@ -13,7 +13,8 @@ type SectorState = uint64
 const (
 	UndefinedSectorState SectorState = iota
 
-	Empty   // TODO: Is this useful
+	// happy path
+	Empty
 	Packing // sector not in sealStore, and not on chain
 
 	Unsealed      // sealing / queued
@@ -22,13 +23,32 @@ const (
 	Committing
 	CommitWait // waiting for message to land on chain
 	Proving
+	_ // reserved
+	_
+	_
+	_
+
+	// recovery handling
+	// Reseal
+	_
+	_
+	_
+	_
+	_
+	_
+	_
+
+	// error modes
+	FailedUnrecoverable
 
 	SealFailed
 	PreCommitFailed
 	SealCommitFailed
 	CommitFailed
-
-	FailedUnrecoverable
+	_
+	_
+	_
+	_
 
 	Faulty        // sector is corrupted or gone for some reason
 	FaultReported // sector has been declared as a fault on chain
