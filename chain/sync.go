@@ -690,7 +690,7 @@ func (syncer *Syncer) VerifyElectionPoStProof(ctx context.Context, h *types.Bloc
 	}
 	hvrf := sha256.Sum256(h.EPostProof.PostRand)
 
-	ok, err := sectorbuilder.VerifyElectionPost(ctx, ssize, *sectorInfo, hvrf[:], h.EPostProof.Proof, winners, h.Miner)
+	ok, err := sectorbuilder.ProofVerifier.VerifyElectionPost(ctx, ssize, *sectorInfo, hvrf[:], h.EPostProof.Proof, winners, h.Miner)
 	if err != nil {
 		return xerrors.Errorf("failed to verify election post: %w", err)
 	}
