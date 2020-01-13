@@ -12,9 +12,9 @@ import (
 
 	"github.com/ipfs/go-datastore"
 	"github.com/ipfs/go-datastore/namespace"
-	badger "github.com/ipfs/go-ds-badger"
+	badger "github.com/ipfs/go-ds-badger2"
 	fslock "github.com/ipfs/go-fs-lock"
-	logging "github.com/ipfs/go-log"
+	logging "github.com/ipfs/go-log/v2"
 	"github.com/mitchellh/go-homedir"
 	"github.com/multiformats/go-base32"
 	"github.com/multiformats/go-multiaddr"

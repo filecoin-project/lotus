@@ -37,14 +37,13 @@ commands:
       - restore_cache:
           name: Restore parameters cache
           keys:
-            - 'v20-1k-lotus-params-{{ checksum "build/proof-params/parameters.json" }}-{{ checksum "build/paramfetch.go" }}'
-            - 'v20-1k-lotus-params-{{ checksum "build/proof-params/parameters.json" }}-'
+            - 'v20-1k-lotus-params'
           paths:
             - /var/tmp/filecoin-proof-parameters/
       - run:  ./lotus fetch-params --proving-params 1024
       - save_cache:
           name: Save parameters cache
-          key: 'v20-1k-lotus-params-{{ checksum "build/proof-params/parameters.json" }}-{{ checksum "build/paramfetch.go" }}'
+          key: 'v20-1k-lotus-params'
           paths:
             - /var/tmp/filecoin-proof-parameters/
 
@@ -101,7 +100,7 @@ jobs:
         description: gotestsum format. https://github.com/gotestyourself/gotestsum#format
       coverage:
         type: string
-        default: -coverprofile=coverage.txt
+        default: -coverprofile=coverage.txt -coverpkg=github.com/filecoin-project/lotus/...
         description: Coverage flag. Set to the empty string to disable.
       codecov-upload:
         type: boolean
@@ -191,7 +190,7 @@ jobs:
       - install-deps
       - go/mod-download
       - run:
-          command: make buildall
+          command: make build
           no_output_timeout: 30m
       - store_artifacts:
           path: lotus
@@ -254,7 +253,8 @@ workflows:
     jobs:
       - lint-changes:
           args: "--new-from-rev origin/master"
-      - test
+      - test:
+          codecov-upload: true
       - test-short:
           go-test-flags: "--timeout 10m --short"
       - mod-tidy-check

@@ -3,25 +3,26 @@ package storage
 import (
 	"context"
 	"errors"
-	"github.com/filecoin-project/lotus/lib/evtsm"
-	"github.com/ipfs/go-datastore/namespace"
 	"reflect"
 	"time"
 
+	"github.com/filecoin-project/lotus/lib/evtsm"
 	"github.com/ipfs/go-cid"
 	"github.com/ipfs/go-datastore"
-	logging "github.com/ipfs/go-log"
+	"github.com/ipfs/go-datastore/namespace"
+	logging "github.com/ipfs/go-log/v2"
 	"github.com/libp2p/go-libp2p-core/host"
 	"golang.org/x/xerrors"
 
 	"github.com/filecoin-project/go-address"
+	"github.com/filecoin-project/go-sectorbuilder"
+	"github.com/filecoin-project/go-statestore"
 	"github.com/filecoin-project/lotus/api"
 	"github.com/filecoin-project/lotus/build"
 	"github.com/filecoin-project/lotus/chain/events"
 	"github.com/filecoin-project/lotus/chain/gen"
 	"github.com/filecoin-project/lotus/chain/store"
 	"github.com/filecoin-project/lotus/chain/types"
-	"github.com/filecoin-project/lotus/lib/sectorbuilder"
 )
 
 var log = logging.Logger("storageminer")
@@ -37,7 +38,7 @@ type Miner struct {
 	worker address.Address
 
 	// Sealing
-	sb      *sectorbuilder.SectorBuilder
+	sb      SectorBuilder
 	sectors *evtsm.Sched
 	tktFn   TicketFn
 
@@ -71,7 +72,24 @@ type storageMinerApi interface {
 	WalletHas(context.Context, address.Address) (bool, error)
 }
 
-func NewMiner(api storageMinerApi, addr address.Address, h host.Host, ds datastore.Batching, sb *sectorbuilder.SectorBuilder, tktFn TicketFn) (*Miner, error) {
+type SectorBuilder interface {
+	RateLimit() func()
+	AddPiece(uint64, uint64, io.Reader, []uint64) (sectorbuilder.PublicPieceInfo, error)
+	SectorSize() uint64
+	AcquireSectorId() (uint64, error)
+	Scrub(sectorbuilder.SortedPublicSectorInfo) []*sectorbuilder.Fault
+	GenerateFallbackPoSt(sectorbuilder.SortedPublicSectorInfo, [sectorbuilder.CommLen]byte, []uint64) ([]sectorbuilder.EPostCandidate, []byte, error)
+	SealPreCommit(context.Context, uint64, sectorbuilder.SealTicket, []sectorbuilder.PublicPieceInfo) (sectorbuilder.RawSealPreCommitOutput, error)
+	SealCommit(context.Context, uint64, sectorbuilder.SealTicket, sectorbuilder.SealSeed, []sectorbuilder.PublicPieceInfo, sectorbuilder.RawSealPreCommitOutput) ([]byte, error)
+
+	// Not so sure about these being on the interface
+	GetPath(string, string) (string, error)
+	WorkerStats() sectorbuilder.WorkerStats
+	AddWorker(context.Context, sectorbuilder.WorkerCfg) (<-chan sectorbuilder.WorkerTask, error)
+	TaskDone(context.Context, uint64, sectorbuilder.SealRes) error
+}
+
+func NewMiner(api storageMinerApi, addr address.Address, h host.Host, ds datastore.Batching, sb SectorBuilder, tktFn TicketFn) (*Miner, error) {
 	m := &Miner{
 		api: api,
 
@@ -151,8 +169,8 @@ type SectorBuilderEpp struct {
 	sb *sectorbuilder.SectorBuilder
 }
 
-func NewElectionPoStProver(sb *sectorbuilder.SectorBuilder) *SectorBuilderEpp {
-	return &SectorBuilderEpp{sb}
+func NewElectionPoStProver(sb SectorBuilder) *SectorBuilderEpp {
+	return &SectorBuilderEpp{sb.(*sectorbuilder.SectorBuilder)}
 }
 
 var _ gen.ElectionPoStProver = (*SectorBuilderEpp)(nil)

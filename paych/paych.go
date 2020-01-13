@@ -9,7 +9,7 @@ import (
 
 	"golang.org/x/xerrors"
 
-	logging "github.com/ipfs/go-log"
+	logging "github.com/ipfs/go-log/v2"
 	"go.uber.org/fx"
 
 	"github.com/filecoin-project/go-address"

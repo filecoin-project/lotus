@@ -3,7 +3,7 @@ package storage
 import (
 	"math/bits"
 
-	"github.com/filecoin-project/lotus/lib/sectorbuilder"
+	sectorbuilder "github.com/filecoin-project/go-sectorbuilder"
 )
 
 func fillersFromRem(toFill uint64) ([]uint64, error) {

@@ -4,10 +4,11 @@ import (
 	"context"
 	"time"
 
-	logging "github.com/ipfs/go-log"
+	logging "github.com/ipfs/go-log/v2"
 	connmgr "github.com/libp2p/go-libp2p-core/connmgr"
 	pubsub "github.com/libp2p/go-libp2p-pubsub"
 
+	"github.com/filecoin-project/lotus/build"
 	"github.com/filecoin-project/lotus/chain"
 	"github.com/filecoin-project/lotus/chain/messagepool"
 	"github.com/filecoin-project/lotus/chain/types"
@@ -30,6 +31,11 @@ func HandleIncomingBlocks(ctx context.Context, bsub *pubsub.Subscription, s *cha
 		blk, err := types.DecodeBlockMsg(msg.GetData())
 		if err != nil {
 			log.Error("got invalid block over pubsub: ", err)
+			continue
+		}
+
+		if len(blk.BlsMessages)+len(blk.SecpkMessages) > build.BlockMessageLimit {
+			log.Warnf("received block with too many messages over pubsub")
 			continue
 		}
 

@@ -7,8 +7,11 @@ import (
 
 	"encoding/json"
 
-	badger "github.com/ipfs/go-ds-badger"
-	logging "github.com/ipfs/go-log"
+	sectorbuilder "github.com/filecoin-project/go-sectorbuilder"
+	"github.com/ipfs/go-datastore"
+	"github.com/ipfs/go-datastore/namespace"
+	badger "github.com/ipfs/go-ds-badger2"
+	logging "github.com/ipfs/go-log/v2"
 	"github.com/mitchellh/go-homedir"
 	"golang.org/x/xerrors"
 	"gopkg.in/urfave/cli.v2"
@@ -17,7 +20,6 @@ import (
 	"github.com/filecoin-project/lotus/build"
 	"github.com/filecoin-project/lotus/cmd/lotus-seed/seed"
 	"github.com/filecoin-project/lotus/genesis"
-	"github.com/filecoin-project/lotus/lib/sectorbuilder"
 )
 
 var log = logging.Logger("lotus-seed")
@@ -196,7 +198,7 @@ var aggregateSectorDirsCmd = &cli.Command{
 			SectorSize:    ssize,
 			Dir:           destdir,
 			WorkerThreads: 2,
-		}, agmds)
+		}, namespace.Wrap(agmds, datastore.NewKey("/sectorbuilder")))
 		if err != nil {
 			return err
 		}
@@ -257,7 +259,7 @@ var aggregateSectorDirsCmd = &cli.Command{
 				SectorSize:    genm.SectorSize,
 				Dir:           dir,
 				WorkerThreads: 2,
-			}, mds)
+			}, namespace.Wrap(mds, datastore.NewKey("/sectorbuilder")))
 			if err != nil {
 				return err
 			}

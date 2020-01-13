@@ -17,16 +17,16 @@ import (
 	ffi "github.com/filecoin-project/filecoin-ffi"
 	paramfetch "github.com/filecoin-project/go-paramfetch"
 	"github.com/ipfs/go-datastore"
-	logging "github.com/ipfs/go-log"
+	logging "github.com/ipfs/go-log/v2"
 	"github.com/mitchellh/go-homedir"
 	"golang.org/x/xerrors"
 	"gopkg.in/urfave/cli.v2"
 
 	"github.com/filecoin-project/go-address"
+	"github.com/filecoin-project/go-sectorbuilder"
 	"github.com/filecoin-project/lotus/build"
 	"github.com/filecoin-project/lotus/chain/types"
 	"github.com/filecoin-project/lotus/genesis"
-	"github.com/filecoin-project/lotus/lib/sectorbuilder"
 )
 
 var log = logging.Logger("lotus-bench")
@@ -155,7 +155,7 @@ func main() {
 				}
 			}
 
-			if err := paramfetch.GetParams(sectorSize); err != nil {
+			if err := paramfetch.GetParams(build.ParametersJson, sectorSize); err != nil {
 				return xerrors.Errorf("getting params: %w", err)
 			}
 			sb, err := sectorbuilder.New(cfg, mds)
@@ -188,7 +188,7 @@ func main() {
 
 				log.Info("Running replication...")
 				pieces := []sectorbuilder.PublicPieceInfo{pi}
-				pco, err := sb.SealPreCommit(i, ticket, pieces)
+				pco, err := sb.SealPreCommit(context.TODO(), i, ticket, pieces)
 				if err != nil {
 					return xerrors.Errorf("commit: %w", err)
 				}
@@ -206,7 +206,7 @@ func main() {
 				}
 
 				log.Info("Generating PoRep for sector")
-				proof, err := sb.SealCommit(i, ticket, seed, pieces, pco)
+				proof, err := sb.SealCommit(context.TODO(), i, ticket, seed, pieces, pco)
 				if err != nil {
 					return err
 				}

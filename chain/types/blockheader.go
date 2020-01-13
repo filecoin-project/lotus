@@ -5,6 +5,8 @@ import (
 	"context"
 	"math/big"
 
+	"github.com/filecoin-project/go-sectorbuilder"
+
 	block "github.com/ipfs/go-block-format"
 	"github.com/ipfs/go-cid"
 	"github.com/minio/sha256-simd"
@@ -13,6 +15,7 @@ import (
 	xerrors "golang.org/x/xerrors"
 
 	"github.com/filecoin-project/go-address"
+
 	"github.com/filecoin-project/lotus/build"
 )
 
@@ -56,6 +59,8 @@ type BlockHeader struct {
 	Timestamp uint64
 
 	BlockSig *Signature
+
+	ForkSignaling uint64
 }
 
 func (b *BlockHeader) ToStorageBlock() (block.Block, error) {
@@ -213,12 +218,8 @@ func IsTicketWinner(partialTicket []byte, ssizeI uint64, snum uint64, totpow Big
 	return lhs.Cmp(rhs) < 0
 }
 
-func ElectionPostChallengeCount(sectors uint64, faults int) uint64 {
-	if sectors == 0 {
-		return 0
-	}
-	// ceil(sectors / build.SectorChallengeRatioDiv)
-	return (sectors-uint64(faults)-1)/build.SectorChallengeRatioDiv + 1
+func ElectionPostChallengeCount(sectors uint64, faults uint64) uint64 {
+	return sectorbuilder.ElectionPostChallengeCount(sectors, faults)
 }
 
 func (t *Ticket) Equals(ot *Ticket) bool {

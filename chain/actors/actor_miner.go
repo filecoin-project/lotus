@@ -9,10 +9,10 @@ import (
 	ffi "github.com/filecoin-project/filecoin-ffi"
 
 	"github.com/filecoin-project/go-address"
+	"github.com/filecoin-project/go-sectorbuilder"
 	"github.com/filecoin-project/lotus/build"
 	"github.com/filecoin-project/lotus/chain/actors/aerrors"
 	"github.com/filecoin-project/lotus/chain/types"
-	"github.com/filecoin-project/lotus/lib/sectorbuilder"
 
 	"github.com/filecoin-project/go-amt-ipld"
 	"github.com/ipfs/go-cid"
@@ -321,6 +321,14 @@ func (sma StorageMinerActor) ProveCommitSector(act *types.Actor, vmctx types.VMC
 	// TODO: ensure normalization to ID address
 	maddr := vmctx.Message().To
 
+	if vmctx.BlockHeight()-us.Info.SealEpoch > build.MaxSealLookback {
+		return nil, aerrors.Newf(5, "source randomness for sector SealEpoch too far in past (epoch %d)", us.Info.SealEpoch)
+	}
+
+	if vmctx.BlockHeight()-us.ReceivedEpoch > build.MaxSealLookback {
+		return nil, aerrors.Newf(6, "source randomness for sector ReceivedEpoch too far in past (epoch %d)", us.ReceivedEpoch)
+	}
+
 	ticket, err := vmctx.GetRandomness(us.Info.SealEpoch - build.SealRandomnessLookback)
 	if err != nil {
 		return nil, aerrors.Wrap(err, "failed to get ticket randomness")
@@ -467,14 +475,21 @@ func (sma StorageMinerActor) SubmitFallbackPoSt(act *types.Actor, vmctx types.VM
 		return nil, aerrors.HandleExternalError(lerr, "could not load proving set node")
 	}
 
-	faults, nerr := self.FaultSet.AllMap()
+	ss, lerr := amt.LoadAMT(types.WrapStorage(vmctx.Storage()), self.Sectors)
+	if lerr != nil {
+		return nil, aerrors.HandleExternalError(lerr, "could not load proving set node")
+	}
+
+	faults, nerr := self.FaultSet.AllMap(2 * ss.Count)
 	if nerr != nil {
 		return nil, aerrors.Absorb(err, 5, "RLE+ invalid")
 	}
 
+	activeFaults := uint64(0)
 	var sectorInfos []ffi.PublicSectorInfo
 	if err := pss.ForEach(func(id uint64, v *cbg.Deferred) error {
 		if faults[id] {
+			activeFaults++
 			return nil
 		}
 
@@ -512,7 +527,7 @@ func (sma StorageMinerActor) SubmitFallbackPoSt(act *types.Actor, vmctx types.VM
 	}
 
 	if ok, lerr := sectorbuilder.VerifyFallbackPost(vmctx.Context(), mi.SectorSize,
-		sectorbuilder.NewSortedPublicSectorInfo(sectorInfos), seed[:], params.Proof, candidates, proverID, len(faults)); !ok || lerr != nil {
+		sectorbuilder.NewSortedPublicSectorInfo(sectorInfos), seed[:], params.Proof, candidates, proverID, activeFaults); !ok || lerr != nil {
 		if lerr != nil {
 			// TODO: study PoST errors
 			return nil, aerrors.Absorb(lerr, 4, "PoST error")
@@ -523,7 +538,7 @@ func (sma StorageMinerActor) SubmitFallbackPoSt(act *types.Actor, vmctx types.VM
 	}
 
 	// Post submission is successful!
-	if err := onSuccessfulPoSt(self, vmctx); err != nil {
+	if err := onSuccessfulPoSt(self, vmctx, activeFaults); err != nil {
 		return nil, err
 	}
 
@@ -834,6 +849,20 @@ func (sma StorageMinerActor) DeclareFaults(act *types.Actor, vmctx types.VMConte
 		return nil, aerrors.Absorb(err, 1, "failed to merge bitfields")
 	}
 
+	ss, nerr := amt.LoadAMT(types.WrapStorage(vmctx.Storage()), self.Sectors)
+	if nerr != nil {
+		return nil, aerrors.HandleExternalError(nerr, "failed to load sector set")
+	}
+
+	cf, nerr := nfaults.Count()
+	if nerr != nil {
+		return nil, aerrors.Absorb(nerr, 2, "could not decode RLE+")
+	}
+
+	if cf > 2*ss.Count {
+		return nil, aerrors.Newf(3, "too many declared faults: %d > %d", cf, 2*ss.Count)
+	}
+
 	self.FaultSet = nfaults
 
 	self.LastFaultSubmission = vmctx.BlockHeight()
@@ -909,7 +938,41 @@ func (sma StorageMinerActor) SubmitElectionPoSt(act *types.Actor, vmctx types.VM
 		return nil, aerrors.New(1, "slashed miners can't perform election PoSt")
 	}
 
-	if err := onSuccessfulPoSt(self, vmctx); err != nil {
+	pss, nerr := amt.LoadAMT(types.WrapStorage(vmctx.Storage()), self.ProvingSet)
+	if nerr != nil {
+		return nil, aerrors.HandleExternalError(nerr, "failed to load proving set")
+	}
+
+	ss, nerr := amt.LoadAMT(types.WrapStorage(vmctx.Storage()), self.Sectors)
+	if nerr != nil {
+		return nil, aerrors.HandleExternalError(nerr, "failed to load proving set")
+	}
+
+	faults, nerr := self.FaultSet.AllMap(2 * ss.Count)
+	if nerr != nil {
+		return nil, aerrors.Absorb(nerr, 1, "invalid bitfield (fatal?)")
+	}
+
+	activeFaults := uint64(0)
+	for f := range faults {
+		if f > amt.MaxIndex {
+			continue
+		}
+
+		var comms [][]byte
+		err := pss.Get(f, &comms)
+		if err != nil {
+			var notfound *amt.ErrNotFound
+			if !xerrors.As(err, &notfound) {
+				return nil, aerrors.HandleExternalError(err, "failed to find sector in sector set")
+			}
+			continue
+		}
+
+		activeFaults++
+	}
+
+	if err := onSuccessfulPoSt(self, vmctx, activeFaults); err != nil { // TODO
 		return nil, err
 	}
 
@@ -924,7 +987,7 @@ func (sma StorageMinerActor) SubmitElectionPoSt(act *types.Actor, vmctx types.VM
 	return nil, nil
 }
 
-func onSuccessfulPoSt(self *StorageMinerActorState, vmctx types.VMContext) aerrors.ActorError {
+func onSuccessfulPoSt(self *StorageMinerActorState, vmctx types.VMContext, activeFaults uint64) aerrors.ActorError {
 	// TODO: some sector upkeep stuff that is very haphazard and unclear in the spec
 
 	var mi MinerInfo
@@ -937,7 +1000,12 @@ func onSuccessfulPoSt(self *StorageMinerActorState, vmctx types.VMContext) aerro
 		return aerrors.HandleExternalError(nerr, "failed to load proving set")
 	}
 
-	faults, nerr := self.FaultSet.All()
+	ss, nerr := amt.LoadAMT(types.WrapStorage(vmctx.Storage()), self.Sectors)
+	if nerr != nil {
+		return aerrors.HandleExternalError(nerr, "failed to load sector set")
+	}
+
+	faults, nerr := self.FaultSet.All(2 * ss.Count)
 	if nerr != nil {
 		return aerrors.Absorb(nerr, 1, "invalid bitfield (fatal?)")
 	}
@@ -945,7 +1013,7 @@ func onSuccessfulPoSt(self *StorageMinerActorState, vmctx types.VMContext) aerro
 	self.FaultSet = types.NewBitField()
 
 	oldPower := self.Power
-	newPower := types.BigMul(types.NewInt(pss.Count-uint64(len(faults))), types.NewInt(mi.SectorSize))
+	newPower := types.BigMul(types.NewInt(pss.Count-activeFaults), types.NewInt(mi.SectorSize))
 
 	// If below the minimum size requirement, miners have zero power
 	if newPower.LessThan(types.NewInt(build.MinimumMinerPower)) {

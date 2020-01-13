@@ -7,6 +7,7 @@ import (
 	"io"
 	"sync"
 
+	sectorbuilder "github.com/filecoin-project/go-sectorbuilder"
 	"github.com/ipfs/go-cid"
 	"github.com/ipfs/go-datastore"
 	"github.com/ipfs/go-datastore/namespace"
@@ -21,7 +22,6 @@ import (
 	"github.com/filecoin-project/go-cbor-util"
 	"github.com/filecoin-project/lotus/api"
 	"github.com/filecoin-project/lotus/lib/padreader"
-	"github.com/filecoin-project/lotus/lib/sectorbuilder"
 	"github.com/filecoin-project/lotus/node/modules/dtypes"
 	"github.com/filecoin-project/lotus/storage"
 )
@@ -47,10 +47,10 @@ type SectorBlocks struct {
 	keyLk sync.Mutex
 }
 
-func NewSectorBlocks(miner *storage.Miner, ds dtypes.MetadataDS, sb *sectorbuilder.SectorBuilder) *SectorBlocks {
+func NewSectorBlocks(miner *storage.Miner, ds dtypes.MetadataDS, sb storage.SectorBuilder) *SectorBlocks {
 	sbc := &SectorBlocks{
 		Miner: miner,
-		sb:    sb,
+		sb:    sb.(*sectorbuilder.SectorBuilder),
 
 		intermediate: blockstore.NewBlockstore(namespace.Wrap(ds, imBlocksPrefix)),
 

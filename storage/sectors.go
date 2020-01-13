@@ -2,11 +2,11 @@ package storage
 
 import (
 	"context"
-	xerrors "golang.org/x/xerrors"
 	"io"
 
+	xerrors "golang.org/x/xerrors"
+
 	"github.com/filecoin-project/lotus/lib/padreader"
-	"github.com/filecoin-project/lotus/lib/sectorbuilder"
 )
 
 func (m *Miner) AllocatePiece(size uint64) (sectorID uint64, offset uint64, err error) {

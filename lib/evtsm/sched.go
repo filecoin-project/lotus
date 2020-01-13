@@ -5,10 +5,9 @@ import (
 	"reflect"
 	"sync"
 
+	"github.com/filecoin-project/go-statestore"
 	"github.com/ipfs/go-datastore"
 	"golang.org/x/xerrors"
-
-	"github.com/filecoin-project/lotus/lib/statestore"
 )
 
 type StateHandler interface {

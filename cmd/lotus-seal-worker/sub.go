@@ -5,10 +5,11 @@ import (
 	"net/http"
 
 	paramfetch "github.com/filecoin-project/go-paramfetch"
+	"github.com/filecoin-project/go-sectorbuilder"
 	"golang.org/x/xerrors"
 
 	lapi "github.com/filecoin-project/lotus/api"
-	"github.com/filecoin-project/lotus/lib/sectorbuilder"
+	"github.com/filecoin-project/lotus/build"
 )
 
 type worker struct {
@@ -40,7 +41,7 @@ func acceptJobs(ctx context.Context, api lapi.StorageMiner, endpoint string, aut
 		return err
 	}
 
-	if err := paramfetch.GetParams(ssize); err != nil {
+	if err := paramfetch.GetParams(build.ParametersJson, ssize); err != nil {
 		return xerrors.Errorf("get params: %w", err)
 	}
 
@@ -102,7 +103,7 @@ func (w *worker) processTask(ctx context.Context, task sectorbuilder.WorkerTask)
 
 	switch task.Type {
 	case sectorbuilder.WorkerPreCommit:
-		rspco, err := w.sb.SealPreCommit(task.SectorID, task.SealTicket, task.Pieces)
+		rspco, err := w.sb.SealPreCommit(ctx, task.SectorID, task.SealTicket, task.Pieces)
 		if err != nil {
 			return errRes(xerrors.Errorf("precomitting: %w", err))
 		}
@@ -116,7 +117,7 @@ func (w *worker) processTask(ctx context.Context, task sectorbuilder.WorkerTask)
 			return errRes(xerrors.Errorf("pushing precommited data: %w", err))
 		}
 	case sectorbuilder.WorkerCommit:
-		proof, err := w.sb.SealCommit(task.SectorID, task.SealTicket, task.SealSeed, task.Pieces, task.Rspco)
+		proof, err := w.sb.SealCommit(ctx, task.SectorID, task.SealTicket, task.SealSeed, task.Pieces, task.Rspco)
 		if err != nil {
 			return errRes(xerrors.Errorf("comitting: %w", err))
 		}

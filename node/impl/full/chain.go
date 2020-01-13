@@ -299,3 +299,12 @@ func (a *ChainAPI) ChainGetNode(ctx context.Context, p string) (interface{}, err
 
 	return node, nil
 }
+
+func (a *ChainAPI) ChainGetMessage(ctx context.Context, mc cid.Cid) (*types.Message, error) {
+	cm, err := a.Chain.GetCMessage(mc)
+	if err != nil {
+		return nil, err
+	}
+
+	return cm.VMMessage(), nil
+}

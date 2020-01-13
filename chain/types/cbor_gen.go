@@ -5,7 +5,7 @@ import (
 	"io"
 	"math"
 
-	cid "github.com/ipfs/go-cid"
+	"github.com/ipfs/go-cid"
 	cbg "github.com/whyrusleeping/cbor-gen"
 	xerrors "golang.org/x/xerrors"
 )
@@ -19,7 +19,7 @@ func (t *BlockHeader) MarshalCBOR(w io.Writer) error {
 		_, err := w.Write(cbg.CborNull)
 		return err
 	}
-	if _, err := w.Write([]byte{140}); err != nil {
+	if _, err := w.Write([]byte{141}); err != nil {
 		return err
 	}
 
@@ -94,6 +94,11 @@ func (t *BlockHeader) MarshalCBOR(w io.Writer) error {
 	if err := t.BlockSig.MarshalCBOR(w); err != nil {
 		return err
 	}
+
+	// t.ForkSignaling (uint64) (uint64)
+	if _, err := w.Write(cbg.CborEncodeMajorType(cbg.MajUnsignedInt, uint64(t.ForkSignaling))); err != nil {
+		return err
+	}
 	return nil
 }
 
@@ -108,7 +113,7 @@ func (t *BlockHeader) UnmarshalCBOR(r io.Reader) error {
 		return fmt.Errorf("cbor input should be of type array")
 	}
 
-	if extra != 12 {
+	if extra != 13 {
 		return fmt.Errorf("cbor input had wrong number of fields")
 	}
 
@@ -272,6 +277,16 @@ func (t *BlockHeader) UnmarshalCBOR(r io.Reader) error {
 		}
 
 	}
+	// t.ForkSignaling (uint64) (uint64)
+
+	maj, extra, err = cbg.CborReadHeader(br)
+	if err != nil {
+		return err
+	}
+	if maj != cbg.MajUnsignedInt {
+		return fmt.Errorf("wrong type for uint64 field")
+	}
+	t.ForkSignaling = uint64(extra)
 	return nil
 }
 

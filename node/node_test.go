@@ -9,18 +9,18 @@ import (
 	"path/filepath"
 	"testing"
 
+	"github.com/filecoin-project/go-address"
+	sectorbuilder "github.com/filecoin-project/go-sectorbuilder"
 	"github.com/filecoin-project/lotus/build"
-
-	"github.com/libp2p/go-libp2p-core/crypto"
-
 	"github.com/ipfs/go-datastore"
-	badger "github.com/ipfs/go-ds-badger"
-	logging "github.com/ipfs/go-log"
+	"github.com/ipfs/go-datastore/namespace"
+	badger "github.com/ipfs/go-ds-badger2"
+	logging "github.com/ipfs/go-log/v2"
+	"github.com/libp2p/go-libp2p-core/crypto"
 	"github.com/libp2p/go-libp2p-core/peer"
 	mocknet "github.com/libp2p/go-libp2p/p2p/net/mock"
 	"github.com/stretchr/testify/require"
 
-	"github.com/filecoin-project/go-address"
 	"github.com/filecoin-project/lotus/api"
 	"github.com/filecoin-project/lotus/api/client"
 	"github.com/filecoin-project/lotus/api/test"
@@ -30,7 +30,6 @@ import (
 	"github.com/filecoin-project/lotus/cmd/lotus-seed/seed"
 	"github.com/filecoin-project/lotus/genesis"
 	"github.com/filecoin-project/lotus/lib/jsonrpc"
-	"github.com/filecoin-project/lotus/lib/sectorbuilder"
 	"github.com/filecoin-project/lotus/miner"
 	"github.com/filecoin-project/lotus/node"
 	"github.com/filecoin-project/lotus/node/impl"
@@ -230,12 +229,12 @@ func builder(t *testing.T, nFull int, storage []int) ([]test.TestNode, []test.Te
 			WorkerThreads: 2,
 			Miner:         genMiner,
 			Dir:           psd,
-		}, mds)
+		}, namespace.Wrap(mds, datastore.NewKey("/sectorbuilder")))
 		if err != nil {
 			t.Fatal(err)
 		}
 
-		if err := sma.SectorBuilder.ImportFrom(osb, false); err != nil {
+		if err := sma.SectorBuilder.(*sectorbuilder.SectorBuilder).ImportFrom(osb, false); err != nil {
 			t.Fatal(err)
 		}
 

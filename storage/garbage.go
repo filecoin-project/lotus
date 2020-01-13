@@ -7,12 +7,11 @@ import (
 	"math"
 	"math/rand"
 
+	sectorbuilder "github.com/filecoin-project/go-sectorbuilder"
 	"golang.org/x/xerrors"
 
-	"github.com/filecoin-project/lotus/api"
 	"github.com/filecoin-project/lotus/chain/actors"
 	"github.com/filecoin-project/lotus/chain/types"
-	"github.com/filecoin-project/lotus/lib/sectorbuilder"
 )
 
 func (m *Miner) pledgeSector(ctx context.Context, sectorID uint64, existingPieceSizes []uint64, sizes ...uint64) ([]Piece, error) {
@@ -39,11 +38,7 @@ func (m *Miner) pledgeSector(ctx context.Context, sectorID uint64, existingPiece
 			Duration:             math.MaxUint64 / 2, // /2 because overflows
 			StoragePricePerEpoch: types.NewInt(0),
 			StorageCollateral:    types.NewInt(0),
-			ProposerSignature:    nil,
-		}
-
-		if err := api.SignWith(ctx, m.api.WalletSign, m.worker, &sdp); err != nil {
-			return nil, xerrors.Errorf("signing storage deal failed: ", err)
+			ProposerSignature:    nil, // nil because self dealing
 		}
 
 		deals[i] = sdp
