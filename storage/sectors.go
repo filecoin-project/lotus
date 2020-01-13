@@ -4,6 +4,7 @@ import (
 	"context"
 	"io"
 
+	"github.com/filecoin-project/go-sectorbuilder"
 	xerrors "golang.org/x/xerrors"
 
 	"github.com/filecoin-project/lotus/lib/padreader"

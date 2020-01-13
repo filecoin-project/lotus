@@ -5,7 +5,8 @@ import (
 	"reflect"
 	"sync/atomic"
 
-	"github.com/filecoin-project/lotus/lib/statestore"
+	"github.com/filecoin-project/go-statestore"
+
 	logging "github.com/ipfs/go-log"
 )
 
