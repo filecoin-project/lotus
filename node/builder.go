@@ -58,7 +58,6 @@ type special struct{ id int }
 //nolint:golint
 var (
 	DefaultTransportsKey = special{0} // Libp2p option
-	PNetKey              = special{1} // Option + multiret
 	DiscoveryHandlerKey  = special{2} // Private type
 	AddrsFactoryKey      = special{3} // Libp2p option
 	SmuxTransportKey     = special{4} // Libp2p option
@@ -142,7 +141,6 @@ func libp2p() Option {
 		Override(new(peerstore.Peerstore), pstoremem.NewPeerstore),
 
 		Override(DefaultTransportsKey, lp2p.DefaultTransports),
-		Override(PNetKey, lp2p.PNet),
 
 		Override(new(lp2p.RawHost), lp2p.Host),
 		Override(new(host.Host), lp2p.RoutedHost),
