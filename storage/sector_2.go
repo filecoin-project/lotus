@@ -142,6 +142,7 @@ func (m *Miner) plan(events []evtsm.Event, state *SectorInfo) (func(evtsm.Contex
 			state.State = api.SealFailed
 		case SectorCommitted:
 			state.Proof = event.proof
+			state.CommitMessage = &event.message
 			state.State = api.CommitWait
 		case SectorProving:
 			state.State = api.Proving
