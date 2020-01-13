@@ -6,7 +6,6 @@ import (
 	"encoding/json"
 	"fmt"
 	"net/http"
-	"strings"
 	"time"
 
 	rice "github.com/GeertJohan/go.rice"
@@ -16,11 +15,9 @@ import (
 	blockstore "github.com/ipfs/go-ipfs-blockstore"
 	"github.com/libp2p/go-libp2p"
 	"github.com/libp2p/go-libp2p-core/peer"
-	pnet "github.com/libp2p/go-libp2p-pnet"
 	pubsub "github.com/libp2p/go-libp2p-pubsub"
 
 	"github.com/filecoin-project/lotus/build"
-	"github.com/filecoin-project/lotus/node/modules/lp2p"
 )
 
 var topic = "/fil/headnotifs/"
@@ -61,15 +58,9 @@ func main() {
 
 	ctx := context.Background()
 
-	protec, err := pnet.NewProtector(strings.NewReader(lp2p.LotusKey))
-	if err != nil {
-		panic(err)
-	}
-
 	host, err := libp2p.New(
 		ctx,
 		libp2p.Defaults,
-		libp2p.PrivateNetwork(protec),
 	)
 	if err != nil {
 		panic(err)
