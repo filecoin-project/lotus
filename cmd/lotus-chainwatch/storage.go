@@ -2,6 +2,7 @@ package main
 
 import (
 	"database/sql"
+	"fmt"
 	"github.com/filecoin-project/lotus/api"
 	"golang.org/x/xerrors"
 	"sync"
@@ -178,9 +179,9 @@ create table if not exists miner_heads
 	addr text not null,
 	stateroot text not null,
 	sectorset text not null,
-	setsize bigint not null,
+	setsize decimal not null,
 	provingset text not null,
-	provingsize bigint not null,
+	provingsize decimal not null,
 	owner text not null,
 	worker text not null,
 	peerid text not null,
@@ -290,9 +291,9 @@ create temp table mh (like miner_heads excluding constraints) on commit drop;
 			k.addr.String(),
 			k.stateroot.String(),
 			i.state.Sectors.String(),
-			i.ssize,
+			fmt.Sprint(i.ssize),
 			i.state.ProvingSet.String(),
-			i.psize,
+			fmt.Sprint(i.psize),
 			i.info.Owner.String(),
 			i.info.Worker.String(),
 			i.info.PeerID.String(),
