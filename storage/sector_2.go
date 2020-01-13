@@ -8,7 +8,7 @@ import (
 	"golang.org/x/xerrors"
 
 	"github.com/filecoin-project/lotus/api"
-	"github.com/filecoin-project/lotus/lib/evtsm"
+	"github.com/filecoin-project/lotus/lib/statemachine"
 )
 
 type SectorStart struct {
@@ -53,13 +53,13 @@ type SectorForceState struct {
 	state api.SectorState
 }
 
-func (m *Miner) Plan(events []evtsm.Event, user interface{}) (interface{}, error) {
+func (m *Miner) Plan(events []statemachine.Event, user interface{}) (interface{}, error) {
 	next, err := m.plan(events, user.(*SectorInfo))
 	if err != nil || next == nil {
 		return nil, err
 	}
 
-	return func(ctx evtsm.Context, si SectorInfo) error {
+	return func(ctx statemachine.Context, si SectorInfo) error {
 		err := next(ctx, si)
 		if err != nil {
 			if err := ctx.Send(SectorFatalError{error: err}); err != nil {
@@ -71,7 +71,7 @@ func (m *Miner) Plan(events []evtsm.Event, user interface{}) (interface{}, error
 	}, nil
 }
 
-func (m *Miner) plan(events []evtsm.Event, state *SectorInfo) (func(evtsm.Context, SectorInfo) error, error) {
+func (m *Miner) plan(events []statemachine.Event, state *SectorInfo) (func(statemachine.Context, SectorInfo) error, error) {
 	/////
 	// First process all events
 

@@ -9,10 +9,10 @@ import (
 	"github.com/filecoin-project/lotus/build"
 	"github.com/filecoin-project/lotus/chain/actors"
 	"github.com/filecoin-project/lotus/chain/types"
-	"github.com/filecoin-project/lotus/lib/evtsm"
+	"github.com/filecoin-project/lotus/lib/statemachine"
 )
 
-func (m *Miner) handlePacking(ctx evtsm.Context, sector SectorInfo) error {
+func (m *Miner) handlePacking(ctx statemachine.Context, sector SectorInfo) error {
 	log.Infow("performing filling up rest of the sector...", "sector", sector.SectorID)
 
 	var allocated uint64
@@ -43,7 +43,7 @@ func (m *Miner) handlePacking(ctx evtsm.Context, sector SectorInfo) error {
 	return ctx.Send(SectorPacked{pieces: pieces})
 }
 
-func (m *Miner) handleUnsealed(ctx evtsm.Context, sector SectorInfo) error {
+func (m *Miner) handleUnsealed(ctx statemachine.Context, sector SectorInfo) error {
 	log.Infow("performing sector replication...", "sector", sector.SectorID)
 	ticket, err := m.tktFn(ctx.Context())
 	if err != nil {
@@ -65,7 +65,7 @@ func (m *Miner) handleUnsealed(ctx evtsm.Context, sector SectorInfo) error {
 	})
 }
 
-func (m *Miner) handlePreCommitting(ctx evtsm.Context, sector SectorInfo) error {
+func (m *Miner) handlePreCommitting(ctx statemachine.Context, sector SectorInfo) error {
 	params := &actors.SectorPreCommitInfo{
 		SectorNumber: sector.SectorID,
 
@@ -97,7 +97,7 @@ func (m *Miner) handlePreCommitting(ctx evtsm.Context, sector SectorInfo) error 
 	return ctx.Send(SectorPreCommitted{message: smsg.Cid()})
 }
 
-func (m *Miner) handlePreCommitted(ctx evtsm.Context, sector SectorInfo) error {
+func (m *Miner) handlePreCommitted(ctx statemachine.Context, sector SectorInfo) error {
 	// would be ideal to just use the events.Called handler, but it wouldnt be able to handle individual message timeouts
 	log.Info("Sector precommitted: ", sector.SectorID)
 	mw, err := m.api.StateWaitMsg(ctx.Context(), *sector.PreCommitMessage)
@@ -142,7 +142,7 @@ func (m *Miner) handlePreCommitted(ctx evtsm.Context, sector SectorInfo) error {
 	return nil
 }
 
-func (m *Miner) handleCommitting(ctx evtsm.Context, sector SectorInfo) error {
+func (m *Miner) handleCommitting(ctx statemachine.Context, sector SectorInfo) error {
 	log.Info("scheduling seal proof computation...")
 
 	proof, err := m.sb.SealCommit(ctx.Context(), sector.SectorID, sector.Ticket.SB(), sector.Seed.SB(), sector.pieceInfos(), sector.rspco())
@@ -184,7 +184,7 @@ func (m *Miner) handleCommitting(ctx evtsm.Context, sector SectorInfo) error {
 	})
 }
 
-func (m *Miner) handleCommitWait(ctx evtsm.Context, sector SectorInfo) error {
+func (m *Miner) handleCommitWait(ctx statemachine.Context, sector SectorInfo) error {
 	if sector.CommitMessage == nil {
 		log.Errorf("sector %d entered commit wait state without a message cid", sector.SectorID)
 		return ctx.Send(SectorCommitFailed{xerrors.Errorf("entered commit wait with no commit cid")})
@@ -203,7 +203,7 @@ func (m *Miner) handleCommitWait(ctx evtsm.Context, sector SectorInfo) error {
 	return ctx.Send(SectorProving{})
 }
 
-func (m *Miner) handleFaulty(ctx evtsm.Context, sector SectorInfo) error {
+func (m *Miner) handleFaulty(ctx statemachine.Context, sector SectorInfo) error {
 	// TODO: check if the fault has already been reported, and that this sector is even valid
 
 	// TODO: coalesce faulty sector reporting
@@ -235,7 +235,7 @@ func (m *Miner) handleFaulty(ctx evtsm.Context, sector SectorInfo) error {
 	return ctx.Send(SectorFaultReported{reportMsg: smsg.Cid()})
 }
 
-func (m *Miner) handleFaultReported(ctx evtsm.Context, sector SectorInfo) error {
+func (m *Miner) handleFaultReported(ctx statemachine.Context, sector SectorInfo) error {
 	if sector.FaultReportMsg == nil {
 		return xerrors.Errorf("entered fault reported state without a FaultReportMsg cid")
 	}

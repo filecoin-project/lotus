@@ -1,4 +1,4 @@
-package evtsm
+package statemachine
 
 import (
 	"context"
@@ -12,10 +12,14 @@ import (
 
 var log = logging.Logger("evtsm")
 
+type Event struct {
+	User interface{}
+}
+
 // returns func(ctx Context, st <T>) (func(*<T>), error), where <T> is the typeOf(User) param
 type Planner func(events []Event, user interface{}) (interface{}, error)
 
-type ESm struct {
+type StateMachine struct {
 	planner  Planner
 	eventsIn chan Event
 
@@ -30,7 +34,7 @@ type ESm struct {
 	busy int32
 }
 
-func (fsm *ESm) run() {
+func (fsm *StateMachine) run() {
 	defer close(fsm.closed)
 
 	var pendingEvents []Event
@@ -93,7 +97,7 @@ func (fsm *ESm) run() {
 	}
 }
 
-func (fsm *ESm) mutateUser(cb func(user interface{}) error) error {
+func (fsm *StateMachine) mutateUser(cb func(user interface{}) error) error {
 	mutt := reflect.FuncOf([]reflect.Type{reflect.PtrTo(fsm.stateType)}, []reflect.Type{reflect.TypeOf(new(error)).Elem()}, false)
 
 	mutf := reflect.MakeFunc(mutt, func(args []reflect.Value) (results []reflect.Value) {
@@ -104,12 +108,12 @@ func (fsm *ESm) mutateUser(cb func(user interface{}) error) error {
 	return fsm.st.Mutate(mutf.Interface())
 }
 
-func (fsm *ESm) send(evt Event) error {
+func (fsm *StateMachine) send(evt Event) error {
 	fsm.eventsIn <- evt // TODO: ctx, at least
 	return nil
 }
 
-func (fsm *ESm) stop(ctx context.Context) error {
+func (fsm *StateMachine) stop(ctx context.Context) error {
 	close(fsm.closing)
 
 	select {

@@ -10,7 +10,7 @@ import (
 	"github.com/filecoin-project/lotus/chain/actors"
 	"github.com/filecoin-project/lotus/chain/blocksync"
 	"github.com/filecoin-project/lotus/chain/types"
-	"github.com/filecoin-project/lotus/lib/evtsm"
+	"github.com/filecoin-project/lotus/lib/statemachine"
 	"github.com/filecoin-project/lotus/paych"
 	"github.com/filecoin-project/lotus/storage"
 )
@@ -133,9 +133,9 @@ func main() {
 		os.Exit(1)
 	}
 
-	err = gen.WriteMapEncodersToFile("./lib/evtsm/cbor_gen.go", "evtsm",
-		evtsm.TestState{},
-		evtsm.TestEvent{},
+	err = gen.WriteMapEncodersToFile("./lib/statemachine/cbor_gen.go", "statemachine",
+		statemachine.TestState{},
+		statemachine.TestEvent{},
 	)
 	if err != nil {
 		fmt.Printf("%+v\n", err)

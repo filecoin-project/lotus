@@ -1,4 +1,4 @@
-package evtsm
+package statemachine
 
 import "context"
 

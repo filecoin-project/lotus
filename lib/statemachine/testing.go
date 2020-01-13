@@ -1,4 +1,4 @@
-package evtsm
+package statemachine
 
 type TestState struct {
 	A uint64

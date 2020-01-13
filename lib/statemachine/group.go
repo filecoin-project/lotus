@@ -1,4 +1,4 @@
-package evtsm
+package statemachine
 
 import (
 	"context"
@@ -15,43 +15,49 @@ type StateHandler interface {
 	Plan(events []Event, user interface{}) (interface{}, error)
 }
 
-type Sched struct {
+// StateGroup manages a group of state machines sharing the same logic
+type StateGroup struct {
 	sts       *statestore.StateStore
 	hnd       StateHandler
 	stateType reflect.Type
 
 	lk  sync.Mutex
-	sms map[datastore.Key]*ESm
+	sms map[datastore.Key]*StateMachine
 }
 
 // stateType: T - (reflect.TypeOf(MyStateStruct{}))
-func New(ds datastore.Datastore, hnd StateHandler, stateType reflect.Type) *Sched {
-	return &Sched{
+func New(ds datastore.Datastore, hnd StateHandler, stateType reflect.Type) *StateGroup {
+	return &StateGroup{
 		sts:       statestore.New(ds),
 		hnd:       hnd,
 		stateType: stateType,
 
-		sms: map[datastore.Key]*ESm{},
+		sms: map[datastore.Key]*StateMachine{},
 	}
 }
 
-func (s *Sched) Send(to interface{}, evt interface{}) (err error) {
+// Send sends an event to machine identified by `id`.
+// `evt` is going to be passed into StateHandler.Planner, in the events[].User param
+//
+// If a state machine with the specified id doesn't exits, it's created, and it's
+// state is set to zero-value of stateType provided in group constructor
+func (s *StateGroup) Send(id interface{}, evt interface{}) (err error) {
 	s.lk.Lock()
 	defer s.lk.Unlock()
 
-	sm, exist := s.sms[statestore.ToKey(to)]
+	sm, exist := s.sms[statestore.ToKey(id)]
 	if !exist {
-		sm, err = s.loadOrCreate(to)
+		sm, err = s.loadOrCreate(id)
 		if err != nil {
 			return xerrors.Errorf("loadOrCreate state: %w", err)
 		}
-		s.sms[statestore.ToKey(to)] = sm
+		s.sms[statestore.ToKey(id)] = sm
 	}
 
 	return sm.send(Event{User: evt})
 }
 
-func (s *Sched) loadOrCreate(name interface{}) (*ESm, error) {
+func (s *StateGroup) loadOrCreate(name interface{}) (*StateMachine, error) {
 	exists, err := s.sts.Has(name)
 	if err != nil {
 		return nil, xerrors.Errorf("failed to check if state for %v exists: %w", name, err)
@@ -66,7 +72,7 @@ func (s *Sched) loadOrCreate(name interface{}) (*ESm, error) {
 		}
 	}
 
-	res := &ESm{
+	res := &StateMachine{
 		planner:  s.hnd.Plan,
 		eventsIn: make(chan Event),
 
@@ -84,7 +90,8 @@ func (s *Sched) loadOrCreate(name interface{}) (*ESm, error) {
 	return res, nil
 }
 
-func (s *Sched) Stop(ctx context.Context) error {
+// Stop stops all state machines in this group
+func (s *StateGroup) Stop(ctx context.Context) error {
 	s.lk.Lock()
 	defer s.lk.Unlock()
 
@@ -97,10 +104,13 @@ func (s *Sched) Stop(ctx context.Context) error {
 	return nil
 }
 
-func (s *Sched) List(out interface{}) error {
+// List outputs states of all state machines in this group
+// out: *[]StateT
+func (s *StateGroup) List(out interface{}) error {
 	return s.sts.List(out)
 }
 
-func (s *Sched) Get(i interface{}) *statestore.StoredState {
-	return s.sts.Get(i)
+// Get gets state for a single state machine
+func (s *StateGroup) Get(id interface{}) *statestore.StoredState {
+	return s.sts.Get(id)
 }
