@@ -67,7 +67,7 @@ type CreateStorageMinerParams struct {
 
 func (spa StoragePowerActor) CreateStorageMiner(act *types.Actor, vmctx types.VMContext, params *CreateStorageMinerParams) ([]byte, ActorError) {
 	if !build.SupportedSectorSize(params.SectorSize) {
-		return nil, aerrors.New(1, "Unsupported sector size")
+		return nil, aerrors.Newf(1, "Unsupported sector size: %d", params.SectorSize)
 	}
 
 	var self StoragePowerState
@@ -130,6 +130,10 @@ type ArbitrateConsensusFaultParams struct {
 }
 
 func (spa StoragePowerActor) ArbitrateConsensusFault(act *types.Actor, vmctx types.VMContext, params *ArbitrateConsensusFaultParams) ([]byte, ActorError) {
+	if params == nil || params.Block1 == nil || params.Block2 == nil {
+		return nil, aerrors.New(1, "failed to parse params")
+	}
+
 	if params.Block1.Miner != params.Block2.Miner {
 		return nil, aerrors.New(2, "blocks must be from the same miner")
 	}

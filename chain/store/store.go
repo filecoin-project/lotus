@@ -23,7 +23,7 @@ import (
 	dstore "github.com/ipfs/go-datastore"
 	hamt "github.com/ipfs/go-hamt-ipld"
 	bstore "github.com/ipfs/go-ipfs-blockstore"
-	logging "github.com/ipfs/go-log"
+	logging "github.com/ipfs/go-log/v2"
 	cbg "github.com/whyrusleeping/cbor-gen"
 	pubsub "github.com/whyrusleeping/pubsub"
 	"golang.org/x/xerrors"
@@ -51,9 +51,11 @@ type ChainStore struct {
 
 	mmCache *lru.ARCCache
 	tsCache *lru.ARCCache
+
+	vmcalls *types.VMSyscalls
 }
 
-func NewChainStore(bs bstore.Blockstore, ds dstore.Batching) *ChainStore {
+func NewChainStore(bs bstore.Blockstore, ds dstore.Batching, vmcalls *types.VMSyscalls) *ChainStore {
 	c, _ := lru.NewARC(2048)
 	tsc, _ := lru.NewARC(4096)
 	cs := &ChainStore{
@@ -63,6 +65,7 @@ func NewChainStore(bs bstore.Blockstore, ds dstore.Batching) *ChainStore {
 		tipsets:  make(map[uint64][]cid.Cid),
 		mmCache:  c,
 		tsCache:  tsc,
+		vmcalls:  vmcalls,
 	}
 
 	cs.reorgCh = cs.reorgWorker(context.TODO())
@@ -791,6 +794,10 @@ func (cs *ChainStore) LoadSignedMessagesFromCids(cids []cid.Cid) ([]*types.Signe
 
 func (cs *ChainStore) Blockstore() bstore.Blockstore {
 	return cs.bs
+}
+
+func (cs *ChainStore) VMSys() *types.VMSyscalls {
+	return cs.vmcalls
 }
 
 func (cs *ChainStore) TryFillTipSet(ts *types.TipSet) (*FullTipSet, error) {

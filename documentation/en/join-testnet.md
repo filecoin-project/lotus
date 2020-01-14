@@ -47,16 +47,16 @@ lotus sync wait
 
 ## Create your first address
 
-Initialize a wallet using BLS signature formats:
+Initialize a new wallet:
 
 ```sh
-lotus wallet new bls
+lotus wallet new 
 ```
 
 Here is an example of the response:
 
 ```sh
-t3vhfme4qfvegqaz7m7q6o6afjcs67n6kpzv7t2eozio4chwpafwa2y4l7zhwd5eom7jmihzdg4s52dpvnclza
+t1aswwvjsae63tcrniz6x5ykvsuotlgkvlulnqpsi
 ```
 
 - Visit the [faucet](https://lotus-faucet.kittyhawk.wtf/funds.html) to add funds.

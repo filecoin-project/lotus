@@ -18,7 +18,7 @@ import (
 	dstore "github.com/ipfs/go-datastore"
 	hamt "github.com/ipfs/go-hamt-ipld"
 	bstore "github.com/ipfs/go-ipfs-blockstore"
-	logging "github.com/ipfs/go-log"
+	logging "github.com/ipfs/go-log/v2"
 	"github.com/libp2p/go-libp2p-core/connmgr"
 	"github.com/libp2p/go-libp2p-core/peer"
 	cbg "github.com/whyrusleeping/cbor-gen"
@@ -189,6 +189,10 @@ func (syncer *Syncer) IncomingBlocks(ctx context.Context) (<-chan *types.BlockHe
 }
 
 func (syncer *Syncer) ValidateMsgMeta(fblk *types.FullBlock) error {
+	if msgc := len(fblk.BlsMessages) + len(fblk.SecpkMessages); msgc > build.BlockMessageLimit {
+		return xerrors.Errorf("block %s has too many messages (%d)", fblk.Header.Cid(), msgc)
+	}
+
 	var bcids, scids []cbg.CBORMarshaler
 	for _, m := range fblk.BlsMessages {
 		c := cbg.CborCid(m.Cid())
@@ -293,6 +297,10 @@ func zipTipSetAndMessages(bs amt.Blocks, ts *types.TipSet, allbmsgs []*types.Mes
 			bmsgs = append(bmsgs, allbmsgs[m])
 			c := cbg.CborCid(allbmsgs[m].Cid())
 			bmsgCids = append(bmsgCids, &c)
+		}
+
+		if msgc := len(bmsgCids) + len(smsgCids); msgc > build.BlockMessageLimit {
+			return nil, fmt.Errorf("block %q has too many messages (%d)", b.Cid(), msgc)
 		}
 
 		mrcid, err := computeMsgMeta(bs, bmsgCids, smsgCids)
@@ -533,15 +541,17 @@ func (syncer *Syncer) ValidateBlock(ctx context.Context, b *types.FullBlock) err
 
 		snum := types.BigDiv(mpow, types.NewInt(ssize))
 
-		// FORK START
-		if h.Height > build.ForkCCM {
-			if len(h.EPostProof.Candidates) == 0 {
-				return xerrors.Errorf("no candidates")
-			}
+		if len(h.EPostProof.Candidates) == 0 {
+			return xerrors.Errorf("no candidates")
 		}
-		// FORK END
 
+		wins := make(map[uint64]bool)
 		for _, t := range h.EPostProof.Candidates {
+			if wins[t.ChallengeIndex] {
+				return xerrors.Errorf("block had duplicate epost candidates")
+			}
+			wins[t.ChallengeIndex] = true
+
 			if !types.IsTicketWinner(t.Partial, ssize, snum.Uint64(), tpow) {
 				return xerrors.Errorf("miner created a block but was not a winner")
 			}
@@ -662,13 +672,10 @@ func (syncer *Syncer) VerifyElectionPoStProof(ctx context.Context, h *types.Bloc
 			SectorChallengeIndex: t.ChallengeIndex,
 		})
 	}
-	// FORK START
-	if h.Height > build.ForkCCM {
-		if len(winners) == 0 {
-			return xerrors.Errorf("no candidates")
-		}
+
+	if len(winners) == 0 {
+		return xerrors.Errorf("no candidates")
 	}
-	// FORK END
 
 	sectorInfo, err := stmgr.GetSectorsForElectionPost(ctx, syncer.sm, baseTs, h.Miner)
 	if err != nil {
@@ -683,7 +690,7 @@ func (syncer *Syncer) VerifyElectionPoStProof(ctx context.Context, h *types.Bloc
 	}
 	hvrf := sha256.Sum256(h.EPostProof.PostRand)
 
-	ok, err := sectorbuilder.VerifyElectionPost(ctx, ssize, *sectorInfo, hvrf[:], h.EPostProof.Proof, winners, h.Miner)
+	ok, err := sectorbuilder.ProofVerifier.VerifyElectionPost(ctx, ssize, *sectorInfo, hvrf[:], h.EPostProof.Proof, winners, h.Miner)
 	if err != nil {
 		return xerrors.Errorf("failed to verify election post: %w", err)
 	}

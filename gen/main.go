@@ -9,10 +9,8 @@ import (
 	"github.com/filecoin-project/lotus/api"
 	"github.com/filecoin-project/lotus/chain/actors"
 	"github.com/filecoin-project/lotus/chain/blocksync"
-	"github.com/filecoin-project/lotus/chain/deals"
 	"github.com/filecoin-project/lotus/chain/types"
 	"github.com/filecoin-project/lotus/paych"
-	"github.com/filecoin-project/lotus/retrieval"
 	"github.com/filecoin-project/lotus/storage"
 )
 
@@ -53,21 +51,6 @@ func main() {
 		api.PaymentInfo{},
 		api.SealedRef{},
 		api.SealedRefs{},
-	)
-	if err != nil {
-		fmt.Println(err)
-		os.Exit(1)
-	}
-
-	err = gen.WriteTupleEncodersToFile("./retrieval/cbor_gen.go", "retrieval",
-		retrieval.RetParams{},
-
-		retrieval.Query{},
-		retrieval.QueryResponse{},
-		retrieval.Unixfs0Offer{},
-		retrieval.DealProposal{},
-		retrieval.DealResponse{},
-		retrieval.Block{},
 	)
 	if err != nil {
 		fmt.Println(err)
@@ -132,22 +115,6 @@ func main() {
 		actors.SectorProveCommitInfo{},
 		actors.CheckMinerParams{},
 		actors.CronActorState{},
-	)
-	if err != nil {
-		fmt.Println(err)
-		os.Exit(1)
-	}
-
-	err = gen.WriteTupleEncodersToFile("./chain/deals/cbor_gen.go", "deals",
-		deals.AskRequest{},
-		deals.AskResponse{},
-		deals.Proposal{},
-		deals.Response{},
-		deals.SignedResponse{},
-		deals.ClientDealProposal{},
-		deals.ClientDeal{},
-		deals.MinerDeal{},
-		deals.StorageDataTransferVoucher{},
 	)
 	if err != nil {
 		fmt.Println(err)

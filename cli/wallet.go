@@ -41,7 +41,7 @@ var walletNew = &cli.Command{
 
 		t := cctx.Args().First()
 		if t == "" {
-			t = "bls"
+			t = "secp256k1"
 		}
 
 		nk, err := api.WalletNew(ctx, t)

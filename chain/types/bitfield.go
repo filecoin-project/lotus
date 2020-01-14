@@ -1,6 +1,7 @@
 package types
 
 import (
+	"errors"
 	"fmt"
 	"io"
 
@@ -9,6 +10,8 @@ import (
 	"golang.org/x/xerrors"
 )
 
+var ErrBitFieldTooMany = errors.New("to many items in RLE")
+
 type BitField struct {
 	rle rlepluslazy.RLE
 
@@ -16,14 +19,23 @@ type BitField struct {
 }
 
 func NewBitField() BitField {
-	rle, err := rlepluslazy.FromBuf([]byte{})
+	bf, err := NewBitFieldFromBytes([]byte{})
 	if err != nil {
-		panic(err)
+		panic(fmt.Sprintf("creating empty rle: %+v", err))
 	}
-	return BitField{
-		rle:  rle,
-		bits: make(map[uint64]struct{}),
+	return bf
+}
+
+func NewBitFieldFromBytes(rle []byte) (BitField, error) {
+	bf := BitField{}
+	rlep, err := rlepluslazy.FromBuf(rle)
+	if err != nil {
+		return BitField{}, xerrors.Errorf("could not decode rle+: %w", err)
 	}
+	bf.rle = rlep
+	bf.bits = make(map[uint64]struct{})
+	return bf, nil
+
 }
 
 func BitFieldFromSet(setBits []uint64) BitField {
@@ -106,7 +118,14 @@ func (bf BitField) Count() (uint64, error) {
 }
 
 // All returns all set bits
-func (bf BitField) All() ([]uint64, error) {
+func (bf BitField) All(max uint64) ([]uint64, error) {
+	c, err := bf.Count()
+	if err != nil {
+		return nil, xerrors.Errorf("count errror: %w", err)
+	}
+	if c > max {
+		return nil, xerrors.Errorf("expected %d, got %d: %w", max, c, ErrBitFieldTooMany)
+	}
 
 	runs, err := bf.sum()
 	if err != nil {
@@ -121,7 +140,14 @@ func (bf BitField) All() ([]uint64, error) {
 	return res, nil
 }
 
-func (bf BitField) AllMap() (map[uint64]bool, error) {
+func (bf BitField) AllMap(max uint64) (map[uint64]bool, error) {
+	c, err := bf.Count()
+	if err != nil {
+		return nil, xerrors.Errorf("count errror: %w", err)
+	}
+	if c > max {
+		return nil, xerrors.Errorf("expected %d, got %d: %w", max, c, ErrBitFieldTooMany)
+	}
 
 	runs, err := bf.sum()
 	if err != nil {
