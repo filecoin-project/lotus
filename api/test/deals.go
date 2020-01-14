@@ -24,7 +24,7 @@ func init() {
 	build.InsecurePoStValidation = true
 }
 
-func TestDealFlow(t *testing.T, b APIBuilder) {
+func TestDealFlow(t *testing.T, b APIBuilder, blocktime time.Duration) {
 	os.Setenv("BELLMAN_NO_GPU", "1")
 
 	ctx := context.Background()
@@ -64,7 +64,7 @@ func TestDealFlow(t *testing.T, b APIBuilder) {
 	go func() {
 		defer close(done)
 		for mine {
-			time.Sleep(10 * time.Millisecond)
+			time.Sleep(blocktime)
 			fmt.Println("mining a block now")
 			if err := sn[0].MineOne(ctx); err != nil {
 				t.Error(err)

@@ -8,6 +8,7 @@ import (
 	"net/http/httptest"
 	"path/filepath"
 	"testing"
+	"time"
 
 	"github.com/filecoin-project/go-address"
 	sectorbuilder "github.com/filecoin-project/go-sectorbuilder"
@@ -392,12 +393,12 @@ func TestAPIRPC(t *testing.T) {
 }
 
 func TestAPIDealFlow(t *testing.T) {
-	test.TestDealFlow(t, mockSbBuilder)
+	test.TestDealFlow(t, mockSbBuilder, 10 * time.Millisecond)
 }
 
 func TestAPIDealFlowReal(t *testing.T) {
 	if testing.Short() {
 		t.Skip("skipping test in short mode")
 	}
-	test.TestDealFlow(t, builder)
+	test.TestDealFlow(t, builder, time.Second)
 }
