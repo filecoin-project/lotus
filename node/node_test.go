@@ -8,6 +8,7 @@ import (
 	"net/http/httptest"
 	"path/filepath"
 	"testing"
+	"time"
 
 	"github.com/filecoin-project/go-address"
 	sectorbuilder "github.com/filecoin-project/go-sectorbuilder"
@@ -36,6 +37,7 @@ import (
 	"github.com/filecoin-project/lotus/node/modules"
 	modtest "github.com/filecoin-project/lotus/node/modules/testing"
 	"github.com/filecoin-project/lotus/node/repo"
+	"github.com/filecoin-project/lotus/storage/sbmock"
 )
 
 func init() {
@@ -45,7 +47,7 @@ func init() {
 	build.MinimumMinerPower = 1024
 }
 
-func testStorageNode(ctx context.Context, t *testing.T, waddr address.Address, act address.Address, pk crypto.PrivKey, tnd test.TestNode, mn mocknet.Mocknet) test.TestStorageNode {
+func testStorageNode(ctx context.Context, t *testing.T, waddr address.Address, act address.Address, pk crypto.PrivKey, tnd test.TestNode, mn mocknet.Mocknet, opts node.Option) test.TestStorageNode {
 	r := repo.NewMemory(nil)
 
 	lr, err := r.Lock(repo.StorageMiner)
@@ -105,6 +107,8 @@ func testStorageNode(ctx context.Context, t *testing.T, waddr address.Address, a
 
 		node.Override(new(api.FullNode), tnd),
 		node.Override(new(*miner.Miner), miner.NewTestMiner(mineBlock, act)),
+
+		opts,
 	)
 	if err != nil {
 		t.Fatalf("failed to construct node: %v", err)
@@ -214,7 +218,7 @@ func builder(t *testing.T, nFull int, storage []int) ([]test.TestNode, []test.Te
 		genMiner := gmc.MinerAddrs[i]
 		wa := gmc.PreSeals[genMiner.String()].Worker
 
-		storers[i] = testStorageNode(ctx, t, wa, genMiner, pk, f, mn)
+		storers[i] = testStorageNode(ctx, t, wa, genMiner, pk, f, mn, node.Options())
 
 		sma := storers[i].StorageMiner.(*impl.StorageMinerAPI)
 
@@ -238,6 +242,106 @@ func builder(t *testing.T, nFull int, storage []int) ([]test.TestNode, []test.Te
 			t.Fatal(err)
 		}
 
+	}
+
+	if err := mn.LinkAll(); err != nil {
+		t.Fatal(err)
+	}
+
+	return fulls, storers
+}
+
+func mockSbBuilder(t *testing.T, nFull int, storage []int) ([]test.TestNode, []test.TestStorageNode) {
+	ctx := context.Background()
+	mn := mocknet.New(ctx)
+
+	fulls := make([]test.TestNode, nFull)
+	storers := make([]test.TestStorageNode, len(storage))
+
+	pk, _, err := crypto.GenerateEd25519Key(rand.Reader)
+	require.NoError(t, err)
+
+	minerPid, err := peer.IDFromPrivateKey(pk)
+	require.NoError(t, err)
+
+	var genbuf bytes.Buffer
+
+	if len(storage) > 1 {
+		panic("need more peer IDs")
+	}
+	// PRESEAL SECTION, TRY TO REPLACE WITH BETTER IN THE FUTURE
+	// TODO: would be great if there was a better way to fake the preseals
+	gmc := &gen.GenMinerCfg{
+		PeerIDs:  []peer.ID{minerPid}, // TODO: if we have more miners, need more peer IDs
+		PreSeals: map[string]genesis.GenesisMiner{},
+	}
+
+	var presealDirs []string
+	for i := 0; i < len(storage); i++ {
+		maddr, err := address.NewIDAddress(300 + uint64(i))
+		if err != nil {
+			t.Fatal(err)
+		}
+		tdir, err := ioutil.TempDir("", "preseal-memgen")
+		if err != nil {
+			t.Fatal(err)
+		}
+		genm, err := sbmock.PreSeal(1024, maddr, 1)
+		if err != nil {
+			t.Fatal(err)
+		}
+
+		presealDirs = append(presealDirs, tdir)
+		gmc.MinerAddrs = append(gmc.MinerAddrs, maddr)
+		gmc.PreSeals[maddr.String()] = *genm
+	}
+
+	// END PRESEAL SECTION
+
+	for i := 0; i < nFull; i++ {
+		var genesis node.Option
+		if i == 0 {
+			genesis = node.Override(new(modules.Genesis), modtest.MakeGenesisMem(&genbuf, gmc))
+		} else {
+			genesis = node.Override(new(modules.Genesis), modules.LoadGenesis(genbuf.Bytes()))
+		}
+
+		var err error
+		// TODO: Don't ignore stop
+		_, err = node.New(ctx,
+			node.FullAPI(&fulls[i].FullNode),
+			node.Online(),
+			node.Repo(repo.NewMemory(nil)),
+			node.MockHost(mn),
+			node.Test(),
+
+			node.Override(new(sectorbuilder.Verifier), sbmock.MockVerifier),
+
+			genesis,
+		)
+		if err != nil {
+			t.Fatal(err)
+		}
+
+	}
+
+	for i, full := range storage {
+		// TODO: support non-bootstrap miners
+		if i != 0 {
+			t.Fatal("only one storage node supported")
+		}
+		if full != 0 {
+			t.Fatal("storage nodes only supported on the first full node")
+		}
+
+		f := fulls[full]
+
+		genMiner := gmc.MinerAddrs[i]
+		wa := gmc.PreSeals[genMiner.String()].Worker
+
+		storers[i] = testStorageNode(ctx, t, wa, genMiner, pk, f, mn, node.Options(
+			node.Override(new(sectorbuilder.Interface), sbmock.NewMockSectorBuilder(5, build.SectorSizes[0])),
+		))
 	}
 
 	if err := mn.LinkAll(); err != nil {
@@ -289,8 +393,12 @@ func TestAPIRPC(t *testing.T) {
 }
 
 func TestAPIDealFlow(t *testing.T) {
+	test.TestDealFlow(t, mockSbBuilder, 10 * time.Millisecond)
+}
+
+func TestAPIDealFlowReal(t *testing.T) {
 	if testing.Short() {
 		t.Skip("skipping test in short mode")
 	}
-	test.TestDealFlow(t, builder)
+	test.TestDealFlow(t, builder, time.Second)
 }

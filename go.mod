@@ -16,9 +16,9 @@ require (
 	github.com/filecoin-project/go-cbor-util v0.0.0-20191219014500-08c40a1e63a2
 	github.com/filecoin-project/go-crypto v0.0.0-20191218222705-effae4ea9f03
 	github.com/filecoin-project/go-data-transfer v0.0.0-20191219005021-4accf56bd2ce
-	github.com/filecoin-project/go-fil-markets v0.0.0-20200113162334-bcb5c10bdf1b
+	github.com/filecoin-project/go-fil-markets v0.0.0-20200114015428-74d100f305f8
 	github.com/filecoin-project/go-paramfetch v0.0.1
-	github.com/filecoin-project/go-sectorbuilder v0.0.0-20200109194458-9656ce473254
+	github.com/filecoin-project/go-sectorbuilder v0.0.2-0.20200114015900-4103afa82689
 	github.com/filecoin-project/go-statestore v0.1.0
 	github.com/gbrlsnchs/jwt/v3 v3.0.0-beta.1
 	github.com/go-ole/go-ole v1.2.4 // indirect
@@ -52,6 +52,7 @@ require (
 	github.com/ipfs/go-merkledag v0.2.4
 	github.com/ipfs/go-path v0.0.7
 	github.com/ipfs/go-unixfs v0.2.2-0.20190827150610-868af2e9e5cb
+	github.com/lib/pq v1.2.0
 	github.com/libp2p/go-libp2p v0.4.2
 	github.com/libp2p/go-libp2p-circuit v0.1.4
 	github.com/libp2p/go-libp2p-connmgr v0.1.0
@@ -61,7 +62,6 @@ require (
 	github.com/libp2p/go-libp2p-mplex v0.2.1
 	github.com/libp2p/go-libp2p-peer v0.2.0
 	github.com/libp2p/go-libp2p-peerstore v0.1.4
-	github.com/libp2p/go-libp2p-pnet v0.1.0
 	github.com/libp2p/go-libp2p-pubsub v0.2.3
 	github.com/libp2p/go-libp2p-quic-transport v0.1.1
 	github.com/libp2p/go-libp2p-record v0.1.1
@@ -70,7 +70,6 @@ require (
 	github.com/libp2p/go-libp2p-tls v0.1.0
 	github.com/libp2p/go-libp2p-yamux v0.2.1
 	github.com/libp2p/go-maddr-filter v0.0.5
-	github.com/mattn/go-sqlite3 v1.12.0
 	github.com/minio/blake2b-simd v0.0.0-20160723061019-3f5f724cb5b1
 	github.com/minio/sha256-simd v0.1.1
 	github.com/mitchellh/go-homedir v1.1.0

@@ -23,6 +23,7 @@ import (
 	"github.com/filecoin-project/go-fil-markets/retrievalmarket/discovery"
 	"github.com/filecoin-project/go-fil-markets/storagemarket"
 	deals "github.com/filecoin-project/go-fil-markets/storagemarket/impl"
+
 	"github.com/filecoin-project/lotus/api"
 	"github.com/filecoin-project/lotus/chain"
 	"github.com/filecoin-project/lotus/chain/blocksync"
@@ -33,6 +34,7 @@ import (
 	"github.com/filecoin-project/lotus/chain/stmgr"
 	"github.com/filecoin-project/lotus/chain/store"
 	"github.com/filecoin-project/lotus/chain/types"
+	"github.com/filecoin-project/lotus/chain/vm"
 	"github.com/filecoin-project/lotus/chain/wallet"
 	"github.com/filecoin-project/lotus/markets/storageadapter"
 	"github.com/filecoin-project/lotus/miner"
@@ -58,7 +60,6 @@ type special struct{ id int }
 //nolint:golint
 var (
 	DefaultTransportsKey = special{0} // Libp2p option
-	PNetKey              = special{1} // Option + multiret
 	DiscoveryHandlerKey  = special{2} // Private type
 	AddrsFactoryKey      = special{3} // Libp2p option
 	SmuxTransportKey     = special{4} // Libp2p option
@@ -142,7 +143,6 @@ func libp2p() Option {
 		Override(new(peerstore.Peerstore), pstoremem.NewPeerstore),
 
 		Override(DefaultTransportsKey, lp2p.DefaultTransports),
-		Override(PNetKey, lp2p.PNet),
 
 		Override(new(lp2p.RawHost), lp2p.Host),
 		Override(new(host.Host), lp2p.RoutedHost),
@@ -195,6 +195,8 @@ func Online() Option {
 
 			Override(HandleIncomingMessagesKey, modules.HandleIncomingMessages),
 
+			Override(new(sectorbuilder.Verifier), sectorbuilder.ProofVerifier),
+			Override(new(*types.VMSyscalls), vm.Syscalls),
 			Override(new(*store.ChainStore), modules.ChainStore),
 			Override(new(*stmgr.StateManager), stmgr.NewStateManager),
 			Override(new(*wallet.Wallet), wallet.NewWallet),
@@ -241,7 +243,7 @@ func Online() Option {
 
 		// Storage miner
 		ApplyIf(func(s *Settings) bool { return s.nodeType == repo.StorageMiner },
-			Override(new(storage.SectorBuilder), modules.SectorBuilder),
+			Override(new(sectorbuilder.Interface), modules.SectorBuilder),
 			Override(new(*sectorblocks.SectorBlocks), sectorblocks.NewSectorBlocks),
 			Override(new(storage.TicketFn), modules.SealTicketGen),
 			Override(new(*storage.Miner), modules.StorageMiner),

@@ -262,7 +262,6 @@ func (h *Harness) makeFakeDeal(t *testing.T, miner, worker, client address.Addre
 	prop := actors.StorageDealProposal{
 		PieceRef:  commP[:],
 		PieceSize: size,
-		//PieceSerialization SerializationMode // Needs to be here as it tells how data in the sector maps to PieceRef cid
 
 		Client:   client,
 		Provider: miner,

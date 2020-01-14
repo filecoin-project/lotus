@@ -26,7 +26,7 @@ type StorageMinerAPI struct {
 	CommonAPI
 
 	SectorBuilderConfig *sectorbuilder.Config
-	SectorBuilder       storage.SectorBuilder
+	SectorBuilder       sectorbuilder.Interface
 	SectorBlocks        *sectorblocks.SectorBlocks
 
 	Miner      *storage.Miner

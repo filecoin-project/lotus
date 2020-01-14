@@ -3,7 +3,6 @@ package storage
 import (
 	"context"
 	"errors"
-	"io"
 	"reflect"
 	"time"
 
@@ -38,7 +37,7 @@ type Miner struct {
 	worker address.Address
 
 	// Sealing
-	sb      SectorBuilder
+	sb      sectorbuilder.Interface
 	sectors *statemachine.StateGroup
 	tktFn   TicketFn
 
@@ -72,24 +71,7 @@ type storageMinerApi interface {
 	WalletHas(context.Context, address.Address) (bool, error)
 }
 
-type SectorBuilder interface {
-	RateLimit() func()
-	AddPiece(uint64, uint64, io.Reader, []uint64) (sectorbuilder.PublicPieceInfo, error)
-	SectorSize() uint64
-	AcquireSectorId() (uint64, error)
-	Scrub(sectorbuilder.SortedPublicSectorInfo) []*sectorbuilder.Fault
-	GenerateFallbackPoSt(sectorbuilder.SortedPublicSectorInfo, [sectorbuilder.CommLen]byte, []uint64) ([]sectorbuilder.EPostCandidate, []byte, error)
-	SealPreCommit(context.Context, uint64, sectorbuilder.SealTicket, []sectorbuilder.PublicPieceInfo) (sectorbuilder.RawSealPreCommitOutput, error)
-	SealCommit(context.Context, uint64, sectorbuilder.SealTicket, sectorbuilder.SealSeed, []sectorbuilder.PublicPieceInfo, sectorbuilder.RawSealPreCommitOutput) ([]byte, error)
-
-	// Not so sure about these being on the interface
-	GetPath(string, string) (string, error)
-	WorkerStats() sectorbuilder.WorkerStats
-	AddWorker(context.Context, sectorbuilder.WorkerCfg) (<-chan sectorbuilder.WorkerTask, error)
-	TaskDone(context.Context, uint64, sectorbuilder.SealRes) error
-}
-
-func NewMiner(api storageMinerApi, addr address.Address, h host.Host, ds datastore.Batching, sb SectorBuilder, tktFn TicketFn) (*Miner, error) {
+func NewMiner(api storageMinerApi, addr address.Address, h host.Host, ds datastore.Batching, sb sectorbuilder.Interface, tktFn TicketFn) (*Miner, error) {
 	m := &Miner{
 		api: api,
 
@@ -166,11 +148,11 @@ func (m *Miner) runPreflightChecks(ctx context.Context) error {
 }
 
 type SectorBuilderEpp struct {
-	sb *sectorbuilder.SectorBuilder
+	sb sectorbuilder.Interface
 }
 
-func NewElectionPoStProver(sb SectorBuilder) *SectorBuilderEpp {
-	return &SectorBuilderEpp{sb.(*sectorbuilder.SectorBuilder)}
+func NewElectionPoStProver(sb sectorbuilder.Interface) *SectorBuilderEpp {
+	return &SectorBuilderEpp{sb}
 }
 
 var _ gen.ElectionPoStProver = (*SectorBuilderEpp)(nil)

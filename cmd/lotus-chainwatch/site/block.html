@@ -1,0 +1,61 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <title>Lotus ChainWatch</title>
+    <link rel="stylesheet" type="text/css" href="main.css">
+</head>
+<body>
+{{$cid := param "cid"}}
+
+<div class="Index">
+    <div class="Index-header">
+        <div>
+            <span>Lotus ChainWatch - Wallets</span>
+        </div>
+    </div>
+    <div class="Index-nodes">
+        <div class="Index-node">
+            <div>Miner: {{index (strings "blocks" "miner" "cid=$1" $cid) 0}}</div>
+            <div>Parents:</div>
+            <div>
+                {{range strings "block_parents" "parent" "block=$1" $cid}}
+                    {{$parent := .}}
+                    <a href="block.html?cid={{$parent}}">{{. | substr 54 62}}</a>
+                {{end}}
+            </div>
+            <div>Messages:</div>
+            <table>
+                {{range strings "block_messages" "message" "block=$1" $cid}}
+                    {{$msg := .}}
+                    <tr>
+                        <td><a href="message.html?cid={{$msg}}">{{$msg | substr 54 62}}</a></td>
+                        <td>
+                            {{$from := qstr "select \"from\" from messages where cid=$1" $msg}}
+                            {{$nonce := qstr "select nonce from messages where cid=$1" $msg}}
+                            <a href="key.html?w={{$from}}">{{$from}}</a> (N:{{$nonce}})
+                        </td>
+                        <td>-&gt;</td>
+                        <td>
+                            {{$to := qstr "select \"to\" from messages where cid=$1" $msg}}
+                            <a href="key.html?w={{$to}}">{{$to}}</a>
+                        </td>
+                        <td>
+                            Method:<b>{{qstr "select method from messages where cid=$1" $msg}}</b>
+                        </td>
+                        {{$rec := qstrs `select r.exit, r.gas_used from messages
+                            inner join block_messages bm on messages.cid = bm.message
+                            inner join blocks b on bm.block = b.cid
+                            inner join block_parents bp on b.cid = bp.parent
+                            inner join blocks chd on bp.block = chd.cid
+                            inner join receipts r on messages.cid = r.msg and chd.parentStateRoot = r.state
+                            where messages.cid=$1 and b.cid=$2` 2 $msg $cid}}
+                        <td>exit:<b>{{index $rec 0}}</b></td>
+                        <td>gasUsed:<b>{{index $rec 1}}</b></td>
+                    </tr>
+                {{end}}
+            </table>
+        </div>
+    </div>
+</div>
+</body>
+</html>

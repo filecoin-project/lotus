@@ -139,7 +139,7 @@ func (sm *StateManager) computeTipSetState(ctx context.Context, blks []*types.Bl
 
 	r := store.NewChainRand(sm.cs, cids, blks[0].Height)
 
-	vmi, err := vm.NewVM(pstate, blks[0].Height, r, address.Undef, sm.cs.Blockstore())
+	vmi, err := vm.NewVM(pstate, blks[0].Height, r, address.Undef, sm.cs.Blockstore(), sm.cs.VMSys())
 	if err != nil {
 		return cid.Undef, cid.Undef, xerrors.Errorf("instantiating VM failed: %w", err)
 	}

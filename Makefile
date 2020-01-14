@@ -76,6 +76,7 @@ BINS+=lotus-seal-worker
 lotus-shed: $(BUILD_DEPS)
 	rm -f lotus-shed
 	go build $(GOFLAGS) -o lotus-shed ./cmd/lotus-shed
+	go run github.com/GeertJohan/go.rice/rice append --exec lotus-shed -i ./build
 .PHONY: lotus-seal-worker
 BINS+=lotus-seal-worker
 
@@ -144,6 +145,7 @@ BINS+=bench
 stats:
 	rm -f stats
 	go build -o stats ./tools/stats
+	go run github.com/GeertJohan/go.rice/rice append --exec stats -i ./build
 .PHONY: stats
 BINS+=stats
 

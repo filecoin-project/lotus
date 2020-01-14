@@ -4,6 +4,7 @@ import (
 	"bytes"
 	"container/list"
 	"context"
+	"math"
 	"sync"
 
 	"github.com/filecoin-project/go-address"
@@ -15,6 +16,8 @@ import (
 	"github.com/filecoin-project/lotus/chain/store"
 	"github.com/filecoin-project/lotus/chain/types"
 )
+
+const maxBatch = 3000
 
 func runSyncer(ctx context.Context, api api.FullNode, st *storage) {
 	notifs, err := api.ChainNotify(ctx)
@@ -32,6 +35,12 @@ func runSyncer(ctx context.Context, api api.FullNode, st *storage) {
 				case store.HCRevert:
 					log.Warnf("revert todo")
 				}
+
+				if change.Type == store.HCCurrent {
+					go subMpool(ctx, api, st)
+					go subBlocks(ctx, api, st)
+				}
+
 			}
 		}
 	}()
@@ -56,9 +65,13 @@ func syncHead(ctx context.Context, api api.FullNode, st *storage, ts *types.TipS
 	actors := map[address.Address]map[types.Actor]cid.Cid{}
 	var alk sync.Mutex
 
+	log.Infof("Getting synced block list")
+
+	hazlist := st.hasList()
+
 	log.Infof("Getting headers / actors")
 
-	toSync := map[cid.Cid]*types.BlockHeader{}
+	allToSync := map[cid.Cid]*types.BlockHeader{}
 	toVisit := list.New()
 
 	for _, header := range ts.Blocks() {
@@ -68,15 +81,16 @@ func syncHead(ctx context.Context, api api.FullNode, st *storage, ts *types.TipS
 	for toVisit.Len() > 0 {
 		bh := toVisit.Remove(toVisit.Back()).(*types.BlockHeader)
 
-		if _, seen := toSync[bh.Cid()]; seen || st.hasBlock(bh.Cid()) {
+		_, has := hazlist[bh.Cid()]
+		if _, seen := allToSync[bh.Cid()]; seen || has {
 			continue
 		}
 
-		toSync[bh.Cid()] = bh
+		allToSync[bh.Cid()] = bh
 		addresses[bh.Miner] = address.Undef
 
-		if len(toSync)%500 == 10 {
-			log.Infof("todo: (%d) %s", len(toSync), bh.Cid())
+		if len(allToSync)%500 == 10 {
+			log.Infof("todo: (%d) %s @%d", len(allToSync), bh.Cid(), bh.Height)
 		}
 
 		if len(bh.Parents) == 0 {
@@ -94,186 +108,218 @@ func syncHead(ctx context.Context, api api.FullNode, st *storage, ts *types.TipS
 		}
 	}
 
-	log.Infof("Syncing %d blocks", len(toSync))
+	for len(allToSync) > 0 {
+		minH := uint64(math.MaxUint64)
 
-	log.Infof("Persisting actors")
-
-	paDone := 0
-	par(50, maparr(toSync), func(bh *types.BlockHeader) {
-		paDone++
-		if paDone%100 == 0 {
-			log.Infof("pa: %d %d%%", paDone, (paDone*100)/len(toSync))
+		for _, header := range allToSync {
+			if header.Height < minH {
+				minH = header.Height
+			}
 		}
 
-		if len(bh.Parents) == 0 { // genesis case
-			ts, err := types.NewTipSet([]*types.BlockHeader{bh})
-			aadrs, err := api.StateListActors(ctx, ts)
+		toSync := map[cid.Cid]*types.BlockHeader{}
+		for c, header := range allToSync {
+			if header.Height < minH+maxBatch {
+				toSync[c] = header
+			}
+		}
+		for c := range toSync {
+			delete(allToSync, c)
+		}
+
+		log.Infof("Syncing %d blocks", len(toSync))
+
+		paDone := 0
+		par(50, maparr(toSync), func(bh *types.BlockHeader) {
+			paDone++
+			if paDone%100 == 0 {
+				log.Infof("pa: %d %d%%", paDone, (paDone*100)/len(toSync))
+			}
+
+			if len(bh.Parents) == 0 { // genesis case
+				ts, err := types.NewTipSet([]*types.BlockHeader{bh})
+				aadrs, err := api.StateListActors(ctx, ts)
+				if err != nil {
+					log.Error(err)
+					return
+				}
+
+				par(50, aadrs, func(addr address.Address) {
+					act, err := api.StateGetActor(ctx, addr, ts)
+					if err != nil {
+						log.Error(err)
+						return
+					}
+					alk.Lock()
+					_, ok := actors[addr]
+					if !ok {
+						actors[addr] = map[types.Actor]cid.Cid{}
+					}
+					actors[addr][*act] = bh.ParentStateRoot
+					addresses[addr] = address.Undef
+					alk.Unlock()
+				})
+
+				return
+			}
+
+			pts, err := api.ChainGetTipSet(ctx, types.NewTipSetKey(bh.Parents...))
 			if err != nil {
 				log.Error(err)
 				return
 			}
 
-			par(50, aadrs, func(addr address.Address) {
-				act, err := api.StateGetActor(ctx, addr, ts)
+			changes, err := api.StateChangedActors(ctx, pts.ParentState(), bh.ParentStateRoot)
+			if err != nil {
+				log.Error(err)
+				return
+			}
+
+			for a, act := range changes {
+				addr, err := address.NewFromString(a)
 				if err != nil {
 					log.Error(err)
 					return
 				}
+
 				alk.Lock()
 				_, ok := actors[addr]
 				if !ok {
 					actors[addr] = map[types.Actor]cid.Cid{}
 				}
-				actors[addr][*act] = bh.ParentStateRoot
+				actors[addr][act] = bh.ParentStateRoot
 				addresses[addr] = address.Undef
 				alk.Unlock()
-			})
+			}
+		})
 
-			return
+		log.Infof("Getting messages")
+
+		msgs, incls := fetchMessages(ctx, api, toSync)
+
+		log.Infof("Resolving addresses")
+
+		for _, message := range msgs {
+			addresses[message.To] = address.Undef
+			addresses[message.From] = address.Undef
 		}
 
-		pts, err := api.ChainGetTipSet(ctx, types.NewTipSetKey(bh.Parents...))
-		if err != nil {
-			log.Error(err)
-			return
+		par(50, kmaparr(addresses), func(addr address.Address) {
+			raddr, err := api.StateLookupID(ctx, addr, nil)
+			if err != nil {
+				log.Warn(err)
+				return
+			}
+			alk.Lock()
+			addresses[addr] = raddr
+			alk.Unlock()
+		})
+
+		log.Infof("Getting miner info")
+
+		miners := map[minerKey]*minerInfo{}
+
+		for addr, m := range actors {
+			for actor, c := range m {
+				if actor.Code != actors2.StorageMinerCodeCid {
+					continue
+				}
+
+				miners[minerKey{
+					addr:      addr,
+					act:       actor,
+					stateroot: c,
+				}] = &minerInfo{}
+			}
 		}
 
-		changes, err := api.StateChangedActors(ctx, pts.ParentState(), bh.ParentStateRoot)
-		if err != nil {
-			log.Error(err)
-			return
-		}
+		par(50, kvmaparr(miners), func(it func() (minerKey, *minerInfo)) {
+			k, info := it()
 
-		for a, act := range changes {
-			addr, err := address.NewFromString(a)
+			sszs, err := api.StateMinerSectorCount(ctx, k.addr, nil)
+			if err != nil {
+				log.Error(err)
+				return
+			}
+			info.psize = sszs.Pset
+			info.ssize = sszs.Sset
+
+			astb, err := api.ChainReadObj(ctx, k.act.Head)
 			if err != nil {
 				log.Error(err)
 				return
 			}
 
-			alk.Lock()
-			_, ok := actors[addr]
-			if !ok {
-				actors[addr] = map[types.Actor]cid.Cid{}
-			}
-			actors[addr][act] = bh.ParentStateRoot
-			addresses[addr] = address.Undef
-			alk.Unlock()
-		}
-	})
-
-	if err := st.storeActors(actors); err != nil {
-		log.Error(err)
-		return
-	}
-
-	log.Infof("Persisting miners")
-
-	miners := map[minerKey]*minerInfo{}
-
-	for addr, m := range actors {
-		for actor, c := range m {
-			if actor.Code != actors2.StorageMinerCodeCid {
-				continue
+			if err := info.state.UnmarshalCBOR(bytes.NewReader(astb)); err != nil {
+				log.Error(err)
+				return
 			}
 
-			miners[minerKey{
-				addr:      addr,
-				act:       actor,
-				stateroot: c,
-			}] = &minerInfo{}
-		}
-	}
+			ib, err := api.ChainReadObj(ctx, info.state.Info)
+			if err != nil {
+				log.Error(err)
+				return
+			}
 
-	par(50, kvmaparr(miners), func(it func() (minerKey, *minerInfo)) {
-		k, info := it()
+			if err := info.info.UnmarshalCBOR(bytes.NewReader(ib)); err != nil {
+				log.Error(err)
+				return
+			}
+		})
 
-		sszs, err := api.StateMinerSectorCount(ctx, k.addr, nil)
-		if err != nil {
-			log.Error(err)
-			return
-		}
-		info.psize = sszs.Pset
-		info.ssize = sszs.Sset
+		log.Info("Getting receipts")
 
-		astb, err := api.ChainReadObj(ctx, k.act.Head)
-		if err != nil {
-			log.Error(err)
-			return
-		}
+		receipts := fetchParentReceipts(ctx, api, toSync)
 
-		if err := info.state.UnmarshalCBOR(bytes.NewReader(astb)); err != nil {
-			log.Error(err)
+		log.Info("Storing headers")
+
+		if err := st.storeHeaders(toSync, true); err != nil {
+			log.Errorf("%+v", err)
 			return
 		}
 
-		ib, err := api.ChainReadObj(ctx, info.state.Info)
-		if err != nil {
+		log.Info("Storing address mapping")
+
+		if err := st.storeAddressMap(addresses); err != nil {
 			log.Error(err)
 			return
 		}
 
-		if err := info.info.UnmarshalCBOR(bytes.NewReader(ib)); err != nil {
+		log.Info("Storing actors")
+
+		if err := st.storeActors(actors); err != nil {
 			log.Error(err)
 			return
 		}
-	})
 
-	if err := st.storeMiners(miners); err != nil {
-		log.Error(err)
-		return
-	}
+		log.Info("Storing miners")
 
-	log.Infof("Persisting headers")
-	if err := st.storeHeaders(toSync, true); err != nil {
-		log.Error(err)
-		return
-	}
-
-	log.Infof("Getting messages")
-
-	msgs, incls := fetchMessages(ctx, api, toSync)
-
-	if err := st.storeMessages(msgs); err != nil {
-		log.Error(err)
-		return
-	}
-
-	if err := st.storeMsgInclusions(incls); err != nil {
-		log.Error(err)
-		return
-	}
-
-	log.Infof("Getting parent receipts")
-
-	receipts := fetchParentReceipts(ctx, api, toSync)
-
-	if err := st.storeReceipts(receipts); err != nil {
-		log.Error(err)
-		return
-	}
-
-	log.Infof("Resolving addresses")
-
-	for _, message := range msgs {
-		addresses[message.To] = address.Undef
-		addresses[message.From] = address.Undef
-	}
-
-	par(50, kmaparr(addresses), func(addr address.Address) {
-		raddr, err := api.StateLookupID(ctx, addr, nil)
-		if err != nil {
-			log.Warn(err)
+		if err := st.storeMiners(miners); err != nil {
+			log.Error(err)
 			return
 		}
-		alk.Lock()
-		addresses[addr] = raddr
-		alk.Unlock()
-	})
 
-	if err := st.storeAddressMap(addresses); err != nil {
-		log.Error(err)
-		return
+		log.Infof("Storing messages")
+
+		if err := st.storeMessages(msgs); err != nil {
+			log.Error(err)
+			return
+		}
+
+		log.Info("Storing message inclusions")
+
+		if err := st.storeMsgInclusions(incls); err != nil {
+			log.Error(err)
+			return
+		}
+
+		log.Infof("Storing parent receipts")
+
+		if err := st.storeReceipts(receipts); err != nil {
+			log.Error(err)
+			return
+		}
+		log.Infof("Sync stage done")
 	}
 
 	log.Infof("Sync done")

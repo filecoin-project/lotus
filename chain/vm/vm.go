@@ -312,7 +312,7 @@ type VM struct {
 	Syscalls *types.VMSyscalls
 }
 
-func NewVM(base cid.Cid, height uint64, r Rand, maddr address.Address, cbs blockstore.Blockstore) (*VM, error) {
+func NewVM(base cid.Cid, height uint64, r Rand, maddr address.Address, cbs blockstore.Blockstore, syscalls *types.VMSyscalls) (*VM, error) {
 	buf := bufbstore.NewBufferedBstore(cbs)
 	cst := hamt.CSTFromBstore(buf)
 	state, err := state.LoadStateTree(cst, base)
@@ -328,8 +328,8 @@ func NewVM(base cid.Cid, height uint64, r Rand, maddr address.Address, cbs block
 		blockHeight: height,
 		blockMiner:  maddr,
 		inv:         newInvoker(),
-		rand:        r,
-		Syscalls:    DefaultSyscalls(),
+		rand:        r, // TODO: Probably should be a syscall
+		Syscalls:    syscalls,
 	}, nil
 }
 

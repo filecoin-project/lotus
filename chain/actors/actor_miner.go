@@ -19,7 +19,6 @@ import (
 	cbor "github.com/ipfs/go-ipld-cbor"
 	"github.com/libp2p/go-libp2p-core/peer"
 	cbg "github.com/whyrusleeping/cbor-gen"
-	"go.opencensus.io/trace"
 	"golang.org/x/xerrors"
 )
 
@@ -526,7 +525,7 @@ func (sma StorageMinerActor) SubmitFallbackPoSt(act *types.Actor, vmctx types.VM
 		})
 	}
 
-	if ok, lerr := sectorbuilder.VerifyFallbackPost(vmctx.Context(), mi.SectorSize,
+	if ok, lerr := vmctx.Sys().VerifyFallbackPost(vmctx.Context(), mi.SectorSize,
 		sectorbuilder.NewSortedPublicSectorInfo(sectorInfos), seed[:], params.Proof, candidates, proverID, activeFaults); !ok || lerr != nil {
 		if lerr != nil {
 			// TODO: study PoST errors
@@ -639,17 +638,6 @@ func RemoveFromSectorSet(ctx context.Context, s types.Storage, ss cid.Cid, ids [
 	}
 
 	return ncid, nil
-}
-
-func ValidatePoRep(ctx context.Context, maddr address.Address, ssize uint64, commD, commR, ticket, proof, seed []byte, sectorID uint64) (bool, ActorError) {
-	_, span := trace.StartSpan(ctx, "ValidatePoRep")
-	defer span.End()
-	ok, err := sectorbuilder.VerifySeal(ssize, commR, commD, maddr, ticket, seed, sectorID, proof)
-	if err != nil {
-		return false, aerrors.Absorb(err, 25, "verify seal failed")
-	}
-
-	return ok, nil
 }
 
 func CollateralForPower(power types.BigInt) types.BigInt {
