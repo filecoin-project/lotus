@@ -6,6 +6,7 @@ import (
 	"net/http"
 	"os"
 	"path/filepath"
+	"strconv"
 
 	rice "github.com/GeertJohan/go.rice"
 	"github.com/ipfs/go-cid"
@@ -42,7 +43,14 @@ func newHandler(api api.FullNode, st *storage) (*handler, error) {
 		"queryNum": h.queryNum,
 		"sizeStr":  sizeStr,
 		"strings":  h.strings,
+		"qstr":     h.qstr,
+		"qstrs":    h.qstrs,
 		"messages": h.messages,
+
+		"pageDown": pageDown,
+		"parseInt": func(s string) (int, error) { i, e := strconv.ParseInt(s, 10, 64); return int(i), e },
+		"substr":   func(i, j int, s string) string { return s[i:j] },
+		"sub":      func(a, b int) int { return a - b }, // TODO: really not builtin?
 
 		"param": func(string) string { return "" }, // replaced in request handler
 	}
@@ -153,10 +161,9 @@ func (h *handler) netPower(slashFilt string) (types.BigInt, error) {
 	if slashFilt != "" {
 		slashFilt = " where " + slashFilt
 	}
-	return h.queryNum(`select sum(power) from (
-	select miner_heads.power, miner_heads.slashed_at, max(height) from miner_heads
-    	inner join blocks b on miner_heads.stateroot = b.parentStateRoot
-	group by miner_heads.addr)` + slashFilt)
+	return h.queryNum(`select sum(power) from (select distinct on (addr) power, slashed_at from miner_heads
+    inner join blocks b on miner_heads.stateroot = b.parentStateRoot
+order by addr, height desc) as p` + slashFilt)
 }
 
 func (h *handler) queryNum(q string, p ...interface{}) (types.BigInt, error) {
@@ -193,7 +200,7 @@ func (h *handler) strings(table string, col string, filter string, args ...inter
 	if len(filter) > 0 {
 		filter = " where " + filter
 	}
-	log.Info("strings qstr ", "select "+col+" from "+table+filter)
+	log.Info("strings qstr ", "select "+col+" from "+table+filter, args)
 	rws, err := h.st.db.Query("select "+col+" from "+table+filter, args...)
 	if err != nil {
 		return nil, err
@@ -209,10 +216,39 @@ func (h *handler) strings(table string, col string, filter string, args ...inter
 	return
 }
 
+func (h *handler) qstr(q string, p ...interface{}) (string, error) {
+	// explicitly not caring about sql injection too much, this doesn't take user input
+
+	r, err := h.qstrs(q, 1, p...)
+	if err != nil {
+		return "", err
+	}
+	return r[0], nil
+}
+
+func (h *handler) qstrs(q string, n int, p ...interface{}) ([]string, error) {
+	// explicitly not caring about sql injection too much, this doesn't take user input
+
+	c := make([]string, n)
+	ia := make([]interface{}, n)
+	for i := range c {
+		ia[i] = &c[i]
+	}
+	err := h.st.db.QueryRow(q, p...).Scan(ia...)
+	if err != nil {
+		log.Error("qnum ", q, p, err)
+		return nil, err
+	}
+
+	return c, nil
+}
+
 func (h *handler) messages(filter string, args ...interface{}) (out []types.Message, err error) {
 	if len(filter) > 0 {
 		filter = " where " + filter
 	}
+
+	log.Info("select * from messages " + filter)
 
 	rws, err := h.st.db.Query("select * from messages "+filter, args...)
 	if err != nil {
@@ -248,6 +284,15 @@ func (h *handler) messages(filter string, args ...interface{}) (out []types.Mess
 	}
 
 	return
+}
+
+func pageDown(base, n int) []int {
+	out := make([]int, n)
+	for i := range out {
+		out[i] = base - i
+	}
+
+	return out
 }
 
 var _ http.Handler = &handler{}

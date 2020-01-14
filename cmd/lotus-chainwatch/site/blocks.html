@@ -1,0 +1,43 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <title>Lotus ChainWatch</title>
+    <link rel="stylesheet" type="text/css" href="main.css">
+</head>
+<body>
+{{$start := param "start" | parseInt}}
+
+<div class="Index">
+    <div class="Index-header">
+        <div>
+            <span>Lotus ChainWatch - Wallets</span>
+        </div>
+    </div>
+    <div class="Index-nodes">
+        <div class="Index-node">
+            <table>
+                {{range pageDown $start 50}}
+                    <tr>
+                        <td>
+                            {{$h := .}}
+                            {{$h}};
+                        </td>
+                        <td>
+                            <b>{{qstr `select count(distinct block_messages.message) from block_messages
+                                    inner join blocks b on block_messages.block = b.cid
+                                    where b.height = $1` $h}}</b> Msgs
+                        </td>
+                        <td>
+                            {{range strings "blocks" "cid" "height = $1" $h}}
+                                <a href="block.html?cid={{.}}">{{. | substr 54 62}}</a>
+                            {{end}}
+                        </td>
+                    </tr>
+                {{end}}
+            </table>
+            <a href="blocks.html?start={{sub $start 50}}">Next 50</a>
+        </div>
+    </div>
+</div>
+</body>
+</html>
