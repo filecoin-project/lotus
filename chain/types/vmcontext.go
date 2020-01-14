@@ -56,8 +56,6 @@ type VMSyscalls struct {
 		candidates []sectorbuilder.EPostCandidate,
 		proverID address.Address,
 		faults uint64) (bool, error)
-
-	GenerateDataCommitment func(ssize uint64, pieces []sectorbuilder.PublicPieceInfo) ([sectorbuilder.CommLen]byte, error)
 }
 
 type storageWrapper struct {

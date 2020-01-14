@@ -263,12 +263,12 @@ func (sb *SBMock) GenerateEPostCandidates(sectorInfo sectorbuilder.SortedPublicS
 		n = uint64(len(sectorInfo.Values()))
 	}
 
-	out := make([]sectorbuilder.EPostCandidate, len(sectorInfo.Values()))
+	out := make([]sectorbuilder.EPostCandidate, n)
 
 	seed := big.NewInt(0).SetBytes(challengeSeed[:])
 	start := seed.Mod(seed, big.NewInt(int64(len(sectorInfo.Values())))).Int64()
 
-	for i := 0; uint64(i) < n; i++ {
+	for i := range out {
 		out[i] = sectorbuilder.EPostCandidate{
 			SectorID:             uint64((int(start) + i) % len(sectorInfo.Values())),
 			PartialTicket:        challengeSeed,
@@ -280,12 +280,11 @@ func (sb *SBMock) GenerateEPostCandidates(sectorInfo sectorbuilder.SortedPublicS
 	return out, nil
 }
 
-func (sb *SBMock) GeneratePieceCommitment(piece io.Reader, pieceSize uint64) (commP [sectorbuilder.CommLen]byte, err error) {
-	panic("implement me")
-}
-
 func (sb *SBMock) ReadPieceFromSealedSector(sectorID uint64, offset uint64, size uint64, ticket []byte, commD []byte) (io.ReadCloser, error) {
-	panic("implement me")
+	if len(sb.sectors[sectorID].pieces) > 1 {
+		panic("implme")
+	}
+	return ioutil.NopCloser(io.LimitReader(bytes.NewReader(sb.sectors[sectorID].pieces[0][offset:]), int64(size))), nil
 }
 
 func (sb *SBMock) StageFakeData() (uint64, []sectorbuilder.PublicPieceInfo, error) {

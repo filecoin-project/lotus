@@ -649,7 +649,7 @@ func (sma StorageMarketActor) ComputeDataCommitment(act *types.Actor, vmctx type
 		})
 	}
 
-	commd, err := vmctx.Sys().GenerateDataCommitment(params.SectorSize, pieces)
+	commd, err := sectorbuilder.GenerateDataCommitment(params.SectorSize, pieces)
 	if err != nil {
 		return nil, aerrors.Absorb(err, 6, "failed to generate data commitment from pieces")
 	}

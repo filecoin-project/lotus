@@ -1,10 +1,12 @@
 package sbmock
 
 import (
+	"bytes"
 	"crypto/rand"
-	"crypto/sha256"
 	"io"
 	"io/ioutil"
+
+	"github.com/filecoin-project/go-sectorbuilder"
 )
 
 func randB(n uint64) []byte {
@@ -24,5 +26,9 @@ func commDR(in []byte) (out [32]byte) {
 }
 
 func commD(b []byte) [32]byte {
-	return sha256.Sum256(b)
+	c, err := sectorbuilder.GeneratePieceCommitment(bytes.NewReader(b), uint64(len(b)))
+	if err != nil {
+		panic(err)
+	}
+	return c
 }
