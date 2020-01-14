@@ -55,7 +55,7 @@ func BenchmarkGetRandomness(b *testing.B) {
 
 	bs := blockstore.NewBlockstore(bds)
 
-	cs := store.NewChainStore(bs, mds)
+	cs := store.NewChainStore(bs, mds, nil)
 
 	b.ResetTimer()
 

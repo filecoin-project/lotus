@@ -22,6 +22,10 @@ func (t *SealTicket) MarshalCBOR(w io.Writer) error {
 	}
 
 	// t.BlockHeight (uint64) (uint64)
+	if len("BlockHeight") > cbg.MaxLength {
+		return xerrors.Errorf("Value in field \"BlockHeight\" was too long")
+	}
+
 	if _, err := w.Write(cbg.CborEncodeMajorType(cbg.MajTextString, uint64(len("BlockHeight")))); err != nil {
 		return err
 	}
@@ -34,11 +38,19 @@ func (t *SealTicket) MarshalCBOR(w io.Writer) error {
 	}
 
 	// t.TicketBytes ([]uint8) (slice)
+	if len("TicketBytes") > cbg.MaxLength {
+		return xerrors.Errorf("Value in field \"TicketBytes\" was too long")
+	}
+
 	if _, err := w.Write(cbg.CborEncodeMajorType(cbg.MajTextString, uint64(len("TicketBytes")))); err != nil {
 		return err
 	}
 	if _, err := w.Write([]byte("TicketBytes")); err != nil {
 		return err
+	}
+
+	if len(t.TicketBytes) > cbg.ByteArrayMaxLen {
+		return xerrors.Errorf("Byte array in field t.TicketBytes was too long")
 	}
 
 	if _, err := w.Write(cbg.CborEncodeMajorType(cbg.MajByteString, uint64(len(t.TicketBytes)))); err != nil {
@@ -133,6 +145,10 @@ func (t *SealSeed) MarshalCBOR(w io.Writer) error {
 	}
 
 	// t.BlockHeight (uint64) (uint64)
+	if len("BlockHeight") > cbg.MaxLength {
+		return xerrors.Errorf("Value in field \"BlockHeight\" was too long")
+	}
+
 	if _, err := w.Write(cbg.CborEncodeMajorType(cbg.MajTextString, uint64(len("BlockHeight")))); err != nil {
 		return err
 	}
@@ -145,11 +161,19 @@ func (t *SealSeed) MarshalCBOR(w io.Writer) error {
 	}
 
 	// t.TicketBytes ([]uint8) (slice)
+	if len("TicketBytes") > cbg.MaxLength {
+		return xerrors.Errorf("Value in field \"TicketBytes\" was too long")
+	}
+
 	if _, err := w.Write(cbg.CborEncodeMajorType(cbg.MajTextString, uint64(len("TicketBytes")))); err != nil {
 		return err
 	}
 	if _, err := w.Write([]byte("TicketBytes")); err != nil {
 		return err
+	}
+
+	if len(t.TicketBytes) > cbg.ByteArrayMaxLen {
+		return xerrors.Errorf("Byte array in field t.TicketBytes was too long")
 	}
 
 	if _, err := w.Write(cbg.CborEncodeMajorType(cbg.MajByteString, uint64(len(t.TicketBytes)))); err != nil {
@@ -244,6 +268,10 @@ func (t *Piece) MarshalCBOR(w io.Writer) error {
 	}
 
 	// t.DealID (uint64) (uint64)
+	if len("DealID") > cbg.MaxLength {
+		return xerrors.Errorf("Value in field \"DealID\" was too long")
+	}
+
 	if _, err := w.Write(cbg.CborEncodeMajorType(cbg.MajTextString, uint64(len("DealID")))); err != nil {
 		return err
 	}
@@ -256,6 +284,10 @@ func (t *Piece) MarshalCBOR(w io.Writer) error {
 	}
 
 	// t.Size (uint64) (uint64)
+	if len("Size") > cbg.MaxLength {
+		return xerrors.Errorf("Value in field \"Size\" was too long")
+	}
+
 	if _, err := w.Write(cbg.CborEncodeMajorType(cbg.MajTextString, uint64(len("Size")))); err != nil {
 		return err
 	}
@@ -268,11 +300,19 @@ func (t *Piece) MarshalCBOR(w io.Writer) error {
 	}
 
 	// t.CommP ([]uint8) (slice)
+	if len("CommP") > cbg.MaxLength {
+		return xerrors.Errorf("Value in field \"CommP\" was too long")
+	}
+
 	if _, err := w.Write(cbg.CborEncodeMajorType(cbg.MajTextString, uint64(len("CommP")))); err != nil {
 		return err
 	}
 	if _, err := w.Write([]byte("CommP")); err != nil {
 		return err
+	}
+
+	if len(t.CommP) > cbg.ByteArrayMaxLen {
+		return xerrors.Errorf("Byte array in field t.CommP was too long")
 	}
 
 	if _, err := w.Write(cbg.CborEncodeMajorType(cbg.MajByteString, uint64(len(t.CommP)))); err != nil {
@@ -390,6 +430,10 @@ func (t *SectorInfo) MarshalCBOR(w io.Writer) error {
 	}
 
 	// t.State (uint64) (uint64)
+	if len("State") > cbg.MaxLength {
+		return xerrors.Errorf("Value in field \"State\" was too long")
+	}
+
 	if _, err := w.Write(cbg.CborEncodeMajorType(cbg.MajTextString, uint64(len("State")))); err != nil {
 		return err
 	}
@@ -402,6 +446,10 @@ func (t *SectorInfo) MarshalCBOR(w io.Writer) error {
 	}
 
 	// t.SectorID (uint64) (uint64)
+	if len("SectorID") > cbg.MaxLength {
+		return xerrors.Errorf("Value in field \"SectorID\" was too long")
+	}
+
 	if _, err := w.Write(cbg.CborEncodeMajorType(cbg.MajTextString, uint64(len("SectorID")))); err != nil {
 		return err
 	}
@@ -414,6 +462,10 @@ func (t *SectorInfo) MarshalCBOR(w io.Writer) error {
 	}
 
 	// t.Nonce (uint64) (uint64)
+	if len("Nonce") > cbg.MaxLength {
+		return xerrors.Errorf("Value in field \"Nonce\" was too long")
+	}
+
 	if _, err := w.Write(cbg.CborEncodeMajorType(cbg.MajTextString, uint64(len("Nonce")))); err != nil {
 		return err
 	}
@@ -426,11 +478,19 @@ func (t *SectorInfo) MarshalCBOR(w io.Writer) error {
 	}
 
 	// t.Pieces ([]storage.Piece) (slice)
+	if len("Pieces") > cbg.MaxLength {
+		return xerrors.Errorf("Value in field \"Pieces\" was too long")
+	}
+
 	if _, err := w.Write(cbg.CborEncodeMajorType(cbg.MajTextString, uint64(len("Pieces")))); err != nil {
 		return err
 	}
 	if _, err := w.Write([]byte("Pieces")); err != nil {
 		return err
+	}
+
+	if len(t.Pieces) > cbg.MaxLength {
+		return xerrors.Errorf("Slice value in field t.Pieces was too long")
 	}
 
 	if _, err := w.Write(cbg.CborEncodeMajorType(cbg.MajArray, uint64(len(t.Pieces)))); err != nil {
@@ -443,11 +503,19 @@ func (t *SectorInfo) MarshalCBOR(w io.Writer) error {
 	}
 
 	// t.CommD ([]uint8) (slice)
+	if len("CommD") > cbg.MaxLength {
+		return xerrors.Errorf("Value in field \"CommD\" was too long")
+	}
+
 	if _, err := w.Write(cbg.CborEncodeMajorType(cbg.MajTextString, uint64(len("CommD")))); err != nil {
 		return err
 	}
 	if _, err := w.Write([]byte("CommD")); err != nil {
 		return err
+	}
+
+	if len(t.CommD) > cbg.ByteArrayMaxLen {
+		return xerrors.Errorf("Byte array in field t.CommD was too long")
 	}
 
 	if _, err := w.Write(cbg.CborEncodeMajorType(cbg.MajByteString, uint64(len(t.CommD)))); err != nil {
@@ -458,11 +526,19 @@ func (t *SectorInfo) MarshalCBOR(w io.Writer) error {
 	}
 
 	// t.CommR ([]uint8) (slice)
+	if len("CommR") > cbg.MaxLength {
+		return xerrors.Errorf("Value in field \"CommR\" was too long")
+	}
+
 	if _, err := w.Write(cbg.CborEncodeMajorType(cbg.MajTextString, uint64(len("CommR")))); err != nil {
 		return err
 	}
 	if _, err := w.Write([]byte("CommR")); err != nil {
 		return err
+	}
+
+	if len(t.CommR) > cbg.ByteArrayMaxLen {
+		return xerrors.Errorf("Byte array in field t.CommR was too long")
 	}
 
 	if _, err := w.Write(cbg.CborEncodeMajorType(cbg.MajByteString, uint64(len(t.CommR)))); err != nil {
@@ -473,11 +549,19 @@ func (t *SectorInfo) MarshalCBOR(w io.Writer) error {
 	}
 
 	// t.Proof ([]uint8) (slice)
+	if len("Proof") > cbg.MaxLength {
+		return xerrors.Errorf("Value in field \"Proof\" was too long")
+	}
+
 	if _, err := w.Write(cbg.CborEncodeMajorType(cbg.MajTextString, uint64(len("Proof")))); err != nil {
 		return err
 	}
 	if _, err := w.Write([]byte("Proof")); err != nil {
 		return err
+	}
+
+	if len(t.Proof) > cbg.ByteArrayMaxLen {
+		return xerrors.Errorf("Byte array in field t.Proof was too long")
 	}
 
 	if _, err := w.Write(cbg.CborEncodeMajorType(cbg.MajByteString, uint64(len(t.Proof)))); err != nil {
@@ -488,6 +572,10 @@ func (t *SectorInfo) MarshalCBOR(w io.Writer) error {
 	}
 
 	// t.Ticket (storage.SealTicket) (struct)
+	if len("Ticket") > cbg.MaxLength {
+		return xerrors.Errorf("Value in field \"Ticket\" was too long")
+	}
+
 	if _, err := w.Write(cbg.CborEncodeMajorType(cbg.MajTextString, uint64(len("Ticket")))); err != nil {
 		return err
 	}
@@ -500,6 +588,10 @@ func (t *SectorInfo) MarshalCBOR(w io.Writer) error {
 	}
 
 	// t.PreCommitMessage (cid.Cid) (struct)
+	if len("PreCommitMessage") > cbg.MaxLength {
+		return xerrors.Errorf("Value in field \"PreCommitMessage\" was too long")
+	}
+
 	if _, err := w.Write(cbg.CborEncodeMajorType(cbg.MajTextString, uint64(len("PreCommitMessage")))); err != nil {
 		return err
 	}
@@ -518,6 +610,10 @@ func (t *SectorInfo) MarshalCBOR(w io.Writer) error {
 	}
 
 	// t.Seed (storage.SealSeed) (struct)
+	if len("Seed") > cbg.MaxLength {
+		return xerrors.Errorf("Value in field \"Seed\" was too long")
+	}
+
 	if _, err := w.Write(cbg.CborEncodeMajorType(cbg.MajTextString, uint64(len("Seed")))); err != nil {
 		return err
 	}
@@ -530,6 +626,10 @@ func (t *SectorInfo) MarshalCBOR(w io.Writer) error {
 	}
 
 	// t.CommitMessage (cid.Cid) (struct)
+	if len("CommitMessage") > cbg.MaxLength {
+		return xerrors.Errorf("Value in field \"CommitMessage\" was too long")
+	}
+
 	if _, err := w.Write(cbg.CborEncodeMajorType(cbg.MajTextString, uint64(len("CommitMessage")))); err != nil {
 		return err
 	}
@@ -548,6 +648,10 @@ func (t *SectorInfo) MarshalCBOR(w io.Writer) error {
 	}
 
 	// t.FaultReportMsg (cid.Cid) (struct)
+	if len("FaultReportMsg") > cbg.MaxLength {
+		return xerrors.Errorf("Value in field \"FaultReportMsg\" was too long")
+	}
+
 	if _, err := w.Write(cbg.CborEncodeMajorType(cbg.MajTextString, uint64(len("FaultReportMsg")))); err != nil {
 		return err
 	}
@@ -566,11 +670,19 @@ func (t *SectorInfo) MarshalCBOR(w io.Writer) error {
 	}
 
 	// t.LastErr (string) (string)
+	if len("LastErr") > cbg.MaxLength {
+		return xerrors.Errorf("Value in field \"LastErr\" was too long")
+	}
+
 	if _, err := w.Write(cbg.CborEncodeMajorType(cbg.MajTextString, uint64(len("LastErr")))); err != nil {
 		return err
 	}
 	if _, err := w.Write([]byte("LastErr")); err != nil {
 		return err
+	}
+
+	if len(t.LastErr) > cbg.MaxLength {
+		return xerrors.Errorf("Value in field t.LastErr was too long")
 	}
 
 	if _, err := w.Write(cbg.CborEncodeMajorType(cbg.MajTextString, uint64(len(t.LastErr)))); err != nil {

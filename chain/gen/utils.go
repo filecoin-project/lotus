@@ -275,7 +275,7 @@ func mustEnc(i cbg.CBORMarshaler) []byte {
 }
 
 func SetupStorageMiners(ctx context.Context, cs *store.ChainStore, sroot cid.Cid, gmcfg *GenMinerCfg) (cid.Cid, []actors.StorageDealProposal, error) {
-	vm, err := vm.NewVM(sroot, 0, nil, actors.NetworkAddress, cs.Blockstore())
+	vm, err := vm.NewVM(sroot, 0, nil, actors.NetworkAddress, cs.Blockstore(), cs.VMSys())
 	if err != nil {
 		return cid.Undef, nil, xerrors.Errorf("failed to create NewVM: %w", err)
 	}
@@ -555,7 +555,7 @@ func doExecValue(ctx context.Context, vm *vm.VM, to, from address.Address, value
 	return ret.Return, nil
 }
 
-func MakeGenesisBlock(bs bstore.Blockstore, balances map[address.Address]types.BigInt, gmcfg *GenMinerCfg, ts uint64) (*GenesisBootstrap, error) {
+func MakeGenesisBlock(bs bstore.Blockstore, sys *types.VMSyscalls, balances map[address.Address]types.BigInt, gmcfg *GenMinerCfg, ts uint64) (*GenesisBootstrap, error) {
 	ctx := context.Background()
 
 	state, err := MakeInitialStateTree(bs, balances)
@@ -569,7 +569,7 @@ func MakeGenesisBlock(bs bstore.Blockstore, balances map[address.Address]types.B
 	}
 
 	// temp chainstore
-	cs := store.NewChainStore(bs, datastore.NewMapDatastore())
+	cs := store.NewChainStore(bs, datastore.NewMapDatastore(), sys)
 	stateroot, deals, err := SetupStorageMiners(ctx, cs, stateroot, gmcfg)
 	if err != nil {
 		return nil, xerrors.Errorf("setup storage miners failed: %w", err)

@@ -10,7 +10,7 @@ import (
 	cid "github.com/ipfs/go-cid"
 	hamt "github.com/ipfs/go-hamt-ipld"
 	blockstore "github.com/ipfs/go-ipfs-blockstore"
-	logging "github.com/ipfs/go-log"
+	logging "github.com/ipfs/go-log/v2"
 	cbg "github.com/whyrusleeping/cbor-gen"
 	"go.opencensus.io/trace"
 	"golang.org/x/xerrors"
@@ -259,7 +259,7 @@ func (bs *gasChargingBlocks) GetBlock(ctx context.Context, c cid.Cid) (block.Blo
 	}
 	blk, err := bs.under.GetBlock(ctx, c)
 	if err != nil {
-		return nil, err
+		return nil, aerrors.Escalate(err, "failed to get block from blockstore")
 	}
 	if err := bs.chargeGas(uint64(len(blk.RawData())) * gasGetPerByte); err != nil {
 		return nil, err
@@ -272,7 +272,10 @@ func (bs *gasChargingBlocks) AddBlock(blk block.Block) error {
 	if err := bs.chargeGas(gasPutObj + uint64(len(blk.RawData()))*gasPutPerByte); err != nil {
 		return err
 	}
-	return bs.under.AddBlock(blk)
+	if err := bs.under.AddBlock(blk); err != nil {
+		return aerrors.Escalate(err, "failed to write data to disk")
+	}
+	return nil
 }
 
 func (vm *VM) makeVMContext(ctx context.Context, sroot cid.Cid, msg *types.Message, origin address.Address, usedGas types.BigInt) *VMContext {
@@ -309,7 +312,7 @@ type VM struct {
 	Syscalls *types.VMSyscalls
 }
 
-func NewVM(base cid.Cid, height uint64, r Rand, maddr address.Address, cbs blockstore.Blockstore) (*VM, error) {
+func NewVM(base cid.Cid, height uint64, r Rand, maddr address.Address, cbs blockstore.Blockstore, syscalls *types.VMSyscalls) (*VM, error) {
 	buf := bufbstore.NewBufferedBstore(cbs)
 	cst := hamt.CSTFromBstore(buf)
 	state, err := state.LoadStateTree(cst, base)
@@ -325,8 +328,8 @@ func NewVM(base cid.Cid, height uint64, r Rand, maddr address.Address, cbs block
 		blockHeight: height,
 		blockMiner:  maddr,
 		inv:         newInvoker(),
-		rand:        r,
-		Syscalls:    DefaultSyscalls(),
+		rand:        r, // TODO: Probably should be a syscall
+		Syscalls:    syscalls,
 	}, nil
 }
 

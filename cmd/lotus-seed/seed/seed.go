@@ -11,8 +11,10 @@ import (
 	"path/filepath"
 
 	sectorbuilder "github.com/filecoin-project/go-sectorbuilder"
-	badger "github.com/ipfs/go-ds-badger"
-	logging "github.com/ipfs/go-log"
+	"github.com/ipfs/go-datastore"
+	"github.com/ipfs/go-datastore/namespace"
+	badger "github.com/ipfs/go-ds-badger2"
+	logging "github.com/ipfs/go-log/v2"
 	"golang.org/x/xerrors"
 
 	"github.com/filecoin-project/go-address"
@@ -43,7 +45,7 @@ func PreSeal(maddr address.Address, ssize uint64, offset uint64, sectors int, sb
 		return nil, err
 	}
 
-	sb, err := sectorbuilder.New(cfg, mds)
+	sb, err := sectorbuilder.New(cfg, namespace.Wrap(mds, datastore.NewKey("/sectorbuilder")))
 	if err != nil {
 		return nil, err
 	}
@@ -69,7 +71,7 @@ func PreSeal(maddr address.Address, ssize uint64, offset uint64, sectors int, sb
 
 		fmt.Printf("sector-id: %d, piece info: %v", sid, pi)
 
-		pco, err := sb.SealPreCommit(sid, ticket, []sectorbuilder.PublicPieceInfo{pi})
+		pco, err := sb.SealPreCommit(context.TODO(), sid, ticket, []sectorbuilder.PublicPieceInfo{pi})
 		if err != nil {
 			return nil, xerrors.Errorf("commit: %w", err)
 		}

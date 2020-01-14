@@ -11,7 +11,7 @@ import (
 
 	rice "github.com/GeertJohan/go.rice"
 	"github.com/ipfs/go-cid"
-	logging "github.com/ipfs/go-log"
+	logging "github.com/ipfs/go-log/v2"
 	peer "github.com/libp2p/go-libp2p-peer"
 	"golang.org/x/xerrors"
 	"gopkg.in/urfave/cli.v2"

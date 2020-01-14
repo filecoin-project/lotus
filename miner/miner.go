@@ -12,12 +12,10 @@ import (
 	"github.com/filecoin-project/lotus/chain/gen"
 	"github.com/filecoin-project/lotus/chain/types"
 
-	logging "github.com/ipfs/go-log"
+	logging "github.com/ipfs/go-log/v2"
 	"go.opencensus.io/trace"
 	"golang.org/x/xerrors"
 )
-
-const MaxMessagesPerBlock = 4000
 
 var log = logging.Logger("miner")
 
@@ -363,6 +361,11 @@ func (m *Miner) createBlock(base *MiningBase, addr address.Address, ticket *type
 		return nil, xerrors.Errorf("message filtering failed: %w", err)
 	}
 
+	if len(msgs) > build.BlockMessageLimit {
+		log.Error("selectMessages returned too many messages: ", len(msgs))
+		msgs = msgs[:build.BlockMessageLimit]
+	}
+
 	uts := base.ts.MinTimestamp() + uint64(build.BlockDelay*(base.nullRounds+1))
 
 	nheight := base.ts.Height() + base.nullRounds + 1
@@ -383,12 +386,13 @@ func countFrom(msgs []*types.SignedMessage, from address.Address) (out int) {
 }
 
 func selectMessages(ctx context.Context, al actorLookup, base *MiningBase, msgs []*types.SignedMessage) ([]*types.SignedMessage, error) {
-	out := make([]*types.SignedMessage, 0, len(msgs))
+	out := make([]*types.SignedMessage, 0, build.BlockMessageLimit)
 	inclNonces := make(map[address.Address]uint64)
 	inclBalances := make(map[address.Address]types.BigInt)
 	inclCount := make(map[address.Address]int)
 
 	for _, msg := range msgs {
+
 		if msg.Message.To == address.Undef {
 			log.Warnf("message in mempool had bad 'To' address")
 			continue
@@ -426,7 +430,7 @@ func selectMessages(ctx context.Context, al actorLookup, base *MiningBase, msgs 
 		inclCount[from]++
 
 		out = append(out, msg)
-		if len(out) >= MaxMessagesPerBlock {
+		if len(out) >= build.BlockMessageLimit {
 			break
 		}
 	}

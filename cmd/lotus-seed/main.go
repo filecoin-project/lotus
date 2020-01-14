@@ -8,8 +8,10 @@ import (
 	"encoding/json"
 
 	sectorbuilder "github.com/filecoin-project/go-sectorbuilder"
-	badger "github.com/ipfs/go-ds-badger"
-	logging "github.com/ipfs/go-log"
+	"github.com/ipfs/go-datastore"
+	"github.com/ipfs/go-datastore/namespace"
+	badger "github.com/ipfs/go-ds-badger2"
+	logging "github.com/ipfs/go-log/v2"
 	"github.com/mitchellh/go-homedir"
 	"golang.org/x/xerrors"
 	"gopkg.in/urfave/cli.v2"
@@ -196,7 +198,7 @@ var aggregateSectorDirsCmd = &cli.Command{
 			SectorSize:    ssize,
 			Dir:           destdir,
 			WorkerThreads: 2,
-		}, agmds)
+		}, namespace.Wrap(agmds, datastore.NewKey("/sectorbuilder")))
 		if err != nil {
 			return err
 		}
@@ -257,7 +259,7 @@ var aggregateSectorDirsCmd = &cli.Command{
 				SectorSize:    genm.SectorSize,
 				Dir:           dir,
 				WorkerThreads: 2,
-			}, mds)
+			}, namespace.Wrap(mds, datastore.NewKey("/sectorbuilder")))
 			if err != nil {
 				return err
 			}
