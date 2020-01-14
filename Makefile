@@ -152,6 +152,8 @@ BINS+=stats
 health:
 	rm -f lotus-health
 	go build -o lotus-health ./cmd/lotus-health
+	go run github.com/GeertJohan/go.rice/rice append --exec lotus-health -i ./build
+
 .PHONY: health
 BINS+=health
 
