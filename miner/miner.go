@@ -403,7 +403,8 @@ func selectMessages(ctx context.Context, al actorLookup, base *MiningBase, msgs 
 		if _, ok := inclNonces[from]; !ok {
 			act, err := al(ctx, from, base.ts)
 			if err != nil {
-				return nil, xerrors.Errorf("failed to check message sender balance: %w", err)
+				log.Warnf("failed to check message sender balance, skipping message: %+v", err)
+				continue
 			}
 
 			inclNonces[from] = act.Nonce
