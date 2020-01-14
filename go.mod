@@ -52,6 +52,7 @@ require (
 	github.com/ipfs/go-merkledag v0.2.4
 	github.com/ipfs/go-path v0.0.7
 	github.com/ipfs/go-unixfs v0.2.2-0.20190827150610-868af2e9e5cb
+	github.com/lib/pq v1.2.0
 	github.com/libp2p/go-libp2p v0.4.2
 	github.com/libp2p/go-libp2p-circuit v0.1.4
 	github.com/libp2p/go-libp2p-connmgr v0.1.0
@@ -69,7 +70,6 @@ require (
 	github.com/libp2p/go-libp2p-tls v0.1.0
 	github.com/libp2p/go-libp2p-yamux v0.2.1
 	github.com/libp2p/go-maddr-filter v0.0.5
-	github.com/mattn/go-sqlite3 v1.12.0
 	github.com/minio/blake2b-simd v0.0.0-20160723061019-3f5f724cb5b1
 	github.com/minio/sha256-simd v0.1.1
 	github.com/mitchellh/go-homedir v1.1.0
