@@ -5,7 +5,7 @@ import (
 	"context"
 	"math/big"
 
-	"github.com/filecoin-project/go-sectorbuilder"
+	"github.com/xjrwfilecoin/go-sectorbuilder"
 
 	block "github.com/ipfs/go-block-format"
 	"github.com/ipfs/go-cid"

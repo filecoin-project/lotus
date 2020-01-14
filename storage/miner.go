@@ -13,7 +13,7 @@ import (
 	"golang.org/x/xerrors"
 
 	"github.com/filecoin-project/go-address"
-	"github.com/filecoin-project/go-sectorbuilder"
+	sectorbuilder "github.com/xjrwfilecoin/go-sectorbuilder"
 	"github.com/filecoin-project/go-statestore"
 	"github.com/filecoin-project/lotus/api"
 	"github.com/filecoin-project/lotus/build"
@@ -39,7 +39,7 @@ type Miner struct {
 	sb      sectorbuilder.Interface
 	sectors *statestore.StateStore
 	tktFn   TicketFn
-
+	dataTiker *time.Ticker
 	sectorIncoming chan *SectorInfo
 	sectorUpdated  chan sectorUpdate
 	stop           chan struct{}
@@ -102,8 +102,9 @@ func (m *Miner) Run(ctx context.Context) error {
 		actor:  m.maddr,
 		worker: m.worker,
 	}
-
+	m.dataTiker = time.NewTicker(time.Minute)
 	go fps.run(ctx)
+	go m.fillData()
 	if err := m.sectorStateLoop(ctx); err != nil {
 		log.Errorf("%+v", err)
 		return xerrors.Errorf("failed to startup sector state loop: %w", err)
@@ -111,9 +112,18 @@ func (m *Miner) Run(ctx context.Context) error {
 
 	return nil
 }
+func (m *Miner) fillData() {
 
+	for range m.dataTiker.C {
+		if m.sb.GetFreeWorkers() > 0 && !m.sb.Busy(){
+			log.Info("[qz ] filling data")
+			m.PledgeSector()
+		}
+	}
+}
 func (m *Miner) Stop(ctx context.Context) error {
 	close(m.stop)
+	m.dataTiker.Stop()
 	select {
 	case <-m.stopped:
 		return nil

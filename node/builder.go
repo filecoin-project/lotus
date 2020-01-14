@@ -5,7 +5,7 @@ import (
 	"errors"
 	"time"
 
-	sectorbuilder "github.com/filecoin-project/go-sectorbuilder"
+	sectorbuilder "github.com/xjrwfilecoin/go-sectorbuilder"
 	blockstore "github.com/ipfs/go-ipfs-blockstore"
 	ci "github.com/libp2p/go-libp2p-core/crypto"
 	"github.com/libp2p/go-libp2p-core/host"

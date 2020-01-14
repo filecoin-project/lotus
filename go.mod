@@ -18,7 +18,6 @@ require (
 	github.com/filecoin-project/go-data-transfer v0.0.0-20191219005021-4accf56bd2ce
 	github.com/filecoin-project/go-fil-markets v0.0.0-20200114015428-74d100f305f8
 	github.com/filecoin-project/go-paramfetch v0.0.1
-	github.com/filecoin-project/go-sectorbuilder v0.0.2-0.20200114015900-4103afa82689
 	github.com/filecoin-project/go-statestore v0.1.0
 	github.com/gbrlsnchs/jwt/v3 v3.0.0-beta.1
 	github.com/go-ole/go-ole v1.2.4 // indirect
@@ -87,6 +86,7 @@ require (
 	github.com/whyrusleeping/cbor-gen v0.0.0-20200106232624-282db0d37dbe
 	github.com/whyrusleeping/multiaddr-filter v0.0.0-20160516205228-e903e4adabd7
 	github.com/whyrusleeping/pubsub v0.0.0-20131020042734-02de8aa2db3d
+	github.com/xjrwfilecoin/go-sectorbuilder v0.1.11
 	go.opencensus.io v0.22.2
 	go.uber.org/atomic v1.5.1 // indirect
 	go.uber.org/dig v1.7.0 // indirect

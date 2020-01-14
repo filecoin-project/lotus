@@ -12,7 +12,7 @@ import (
 
 	ffi "github.com/filecoin-project/filecoin-ffi"
 
-	sectorbuilder "github.com/filecoin-project/go-sectorbuilder"
+	sectorbuilder "github.com/xjrwfilecoin/go-sectorbuilder"
 	"github.com/ipfs/go-blockservice"
 	"github.com/ipfs/go-car"
 	offline "github.com/ipfs/go-ipfs-exchange-offline"

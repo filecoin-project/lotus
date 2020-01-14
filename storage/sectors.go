@@ -6,7 +6,7 @@ import (
 	"io"
 	"math"
 
-	sectorbuilder "github.com/filecoin-project/go-sectorbuilder"
+	sectorbuilder "github.com/xjrwfilecoin/go-sectorbuilder"
 	xerrors "golang.org/x/xerrors"
 
 	"github.com/filecoin-project/lotus/api"

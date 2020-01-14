@@ -4,7 +4,7 @@ import (
 	"context"
 
 	ffi "github.com/filecoin-project/filecoin-ffi"
-	sectorbuilder "github.com/filecoin-project/go-sectorbuilder"
+	sectorbuilder "github.com/xjrwfilecoin/go-sectorbuilder"
 
 	"github.com/filecoin-project/go-address"
 
