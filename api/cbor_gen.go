@@ -23,6 +23,10 @@ func (t *PaymentInfo) MarshalCBOR(w io.Writer) error {
 	}
 
 	// t.Channel (address.Address) (struct)
+	if len("Channel") > cbg.MaxLength {
+		return xerrors.Errorf("Value in field \"Channel\" was too long")
+	}
+
 	if _, err := w.Write(cbg.CborEncodeMajorType(cbg.MajTextString, uint64(len("Channel")))); err != nil {
 		return err
 	}
@@ -35,6 +39,10 @@ func (t *PaymentInfo) MarshalCBOR(w io.Writer) error {
 	}
 
 	// t.ChannelMessage (cid.Cid) (struct)
+	if len("ChannelMessage") > cbg.MaxLength {
+		return xerrors.Errorf("Value in field \"ChannelMessage\" was too long")
+	}
+
 	if _, err := w.Write(cbg.CborEncodeMajorType(cbg.MajTextString, uint64(len("ChannelMessage")))); err != nil {
 		return err
 	}
@@ -53,11 +61,19 @@ func (t *PaymentInfo) MarshalCBOR(w io.Writer) error {
 	}
 
 	// t.Vouchers ([]*types.SignedVoucher) (slice)
+	if len("Vouchers") > cbg.MaxLength {
+		return xerrors.Errorf("Value in field \"Vouchers\" was too long")
+	}
+
 	if _, err := w.Write(cbg.CborEncodeMajorType(cbg.MajTextString, uint64(len("Vouchers")))); err != nil {
 		return err
 	}
 	if _, err := w.Write([]byte("Vouchers")); err != nil {
 		return err
+	}
+
+	if len(t.Vouchers) > cbg.MaxLength {
+		return xerrors.Errorf("Slice value in field t.Vouchers was too long")
 	}
 
 	if _, err := w.Write(cbg.CborEncodeMajorType(cbg.MajArray, uint64(len(t.Vouchers)))); err != nil {
@@ -200,6 +216,10 @@ func (t *SealedRef) MarshalCBOR(w io.Writer) error {
 	}
 
 	// t.SectorID (uint64) (uint64)
+	if len("SectorID") > cbg.MaxLength {
+		return xerrors.Errorf("Value in field \"SectorID\" was too long")
+	}
+
 	if _, err := w.Write(cbg.CborEncodeMajorType(cbg.MajTextString, uint64(len("SectorID")))); err != nil {
 		return err
 	}
@@ -212,6 +232,10 @@ func (t *SealedRef) MarshalCBOR(w io.Writer) error {
 	}
 
 	// t.Offset (uint64) (uint64)
+	if len("Offset") > cbg.MaxLength {
+		return xerrors.Errorf("Value in field \"Offset\" was too long")
+	}
+
 	if _, err := w.Write(cbg.CborEncodeMajorType(cbg.MajTextString, uint64(len("Offset")))); err != nil {
 		return err
 	}
@@ -224,6 +248,10 @@ func (t *SealedRef) MarshalCBOR(w io.Writer) error {
 	}
 
 	// t.Size (uint64) (uint64)
+	if len("Size") > cbg.MaxLength {
+		return xerrors.Errorf("Value in field \"Size\" was too long")
+	}
+
 	if _, err := w.Write(cbg.CborEncodeMajorType(cbg.MajTextString, uint64(len("Size")))); err != nil {
 		return err
 	}
@@ -336,11 +364,19 @@ func (t *SealedRefs) MarshalCBOR(w io.Writer) error {
 	}
 
 	// t.Refs ([]api.SealedRef) (slice)
+	if len("Refs") > cbg.MaxLength {
+		return xerrors.Errorf("Value in field \"Refs\" was too long")
+	}
+
 	if _, err := w.Write(cbg.CborEncodeMajorType(cbg.MajTextString, uint64(len("Refs")))); err != nil {
 		return err
 	}
 	if _, err := w.Write([]byte("Refs")); err != nil {
 		return err
+	}
+
+	if len(t.Refs) > cbg.MaxLength {
+		return xerrors.Errorf("Slice value in field t.Refs was too long")
 	}
 
 	if _, err := w.Write(cbg.CborEncodeMajorType(cbg.MajArray, uint64(len(t.Refs)))); err != nil {

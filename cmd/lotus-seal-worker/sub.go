@@ -103,7 +103,7 @@ func (w *worker) processTask(ctx context.Context, task sectorbuilder.WorkerTask)
 
 	switch task.Type {
 	case sectorbuilder.WorkerPreCommit:
-		rspco, err := w.sb.SealPreCommit(task.SectorID, task.SealTicket, task.Pieces)
+		rspco, err := w.sb.SealPreCommit(ctx, task.SectorID, task.SealTicket, task.Pieces)
 		if err != nil {
 			return errRes(xerrors.Errorf("precomitting: %w", err))
 		}
@@ -117,7 +117,7 @@ func (w *worker) processTask(ctx context.Context, task sectorbuilder.WorkerTask)
 			return errRes(xerrors.Errorf("pushing precommited data: %w", err))
 		}
 	case sectorbuilder.WorkerCommit:
-		proof, err := w.sb.SealCommit(task.SectorID, task.SealTicket, task.SealSeed, task.Pieces, task.Rspco)
+		proof, err := w.sb.SealCommit(ctx, task.SectorID, task.SealTicket, task.SealSeed, task.Pieces, task.Rspco)
 		if err != nil {
 			return errRes(xerrors.Errorf("comitting: %w", err))
 		}

@@ -19,10 +19,14 @@ import (
 	"go.uber.org/fx"
 	"golang.org/x/xerrors"
 
+	"github.com/filecoin-project/go-fil-markets/retrievalmarket"
+	"github.com/filecoin-project/go-fil-markets/retrievalmarket/discovery"
+	"github.com/filecoin-project/go-fil-markets/storagemarket"
+	deals "github.com/filecoin-project/go-fil-markets/storagemarket/impl"
+
 	"github.com/filecoin-project/lotus/api"
 	"github.com/filecoin-project/lotus/chain"
 	"github.com/filecoin-project/lotus/chain/blocksync"
-	"github.com/filecoin-project/lotus/chain/deals"
 	"github.com/filecoin-project/lotus/chain/gen"
 	"github.com/filecoin-project/lotus/chain/market"
 	"github.com/filecoin-project/lotus/chain/messagepool"
@@ -30,7 +34,9 @@ import (
 	"github.com/filecoin-project/lotus/chain/stmgr"
 	"github.com/filecoin-project/lotus/chain/store"
 	"github.com/filecoin-project/lotus/chain/types"
+	"github.com/filecoin-project/lotus/chain/vm"
 	"github.com/filecoin-project/lotus/chain/wallet"
+	"github.com/filecoin-project/lotus/markets/storageadapter"
 	"github.com/filecoin-project/lotus/miner"
 	"github.com/filecoin-project/lotus/node/config"
 	"github.com/filecoin-project/lotus/node/hello"
@@ -43,8 +49,6 @@ import (
 	"github.com/filecoin-project/lotus/node/repo"
 	"github.com/filecoin-project/lotus/paych"
 	"github.com/filecoin-project/lotus/peermgr"
-	"github.com/filecoin-project/lotus/retrieval"
-	"github.com/filecoin-project/lotus/retrieval/discovery"
 	"github.com/filecoin-project/lotus/storage"
 	"github.com/filecoin-project/lotus/storage/sectorblocks"
 )
@@ -56,7 +60,6 @@ type special struct{ id int }
 //nolint:golint
 var (
 	DefaultTransportsKey = special{0} // Libp2p option
-	PNetKey              = special{1} // Option + multiret
 	DiscoveryHandlerKey  = special{2} // Private type
 	AddrsFactoryKey      = special{3} // Libp2p option
 	SmuxTransportKey     = special{4} // Libp2p option
@@ -140,7 +143,6 @@ func libp2p() Option {
 		Override(new(peerstore.Peerstore), pstoremem.NewPeerstore),
 
 		Override(DefaultTransportsKey, lp2p.DefaultTransports),
-		Override(PNetKey, lp2p.PNet),
 
 		Override(new(lp2p.RawHost), lp2p.Host),
 		Override(new(host.Host), lp2p.RoutedHost),
@@ -193,6 +195,8 @@ func Online() Option {
 
 			Override(HandleIncomingMessagesKey, modules.HandleIncomingMessages),
 
+			Override(new(sectorbuilder.Verifier), sectorbuilder.ProofVerifier),
+			Override(new(*types.VMSyscalls), vm.Syscalls),
 			Override(new(*store.ChainStore), modules.ChainStore),
 			Override(new(*stmgr.StateManager), stmgr.NewStateManager),
 			Override(new(*wallet.Wallet), wallet.NewWallet),
@@ -220,14 +224,15 @@ func Online() Option {
 			Override(RunPeerMgrKey, modules.RunPeerMgr),
 			Override(HandleIncomingBlocksKey, modules.HandleIncomingBlocks),
 
-			Override(new(*discovery.Local), discovery.NewLocal),
-			Override(new(discovery.PeerResolver), modules.RetrievalResolver),
+			Override(new(*discovery.Local), modules.NewLocalDiscovery),
+			Override(new(retrievalmarket.PeerResolver), modules.RetrievalResolver),
 
-			Override(new(*retrieval.Client), retrieval.NewClient),
+			Override(new(retrievalmarket.RetrievalClient), modules.RetrievalClient),
 			Override(new(dtypes.ClientDealStore), modules.NewClientDealStore),
 			Override(new(dtypes.ClientDataTransfer), modules.NewClientDAGServiceDataTransfer),
-			Override(new(*deals.ClientRequestValidator), deals.NewClientRequestValidator),
-			Override(new(*deals.Client), deals.NewClient),
+			Override(new(*deals.ClientRequestValidator), modules.NewClientRequestValidator),
+			Override(new(storagemarket.StorageClient), modules.StorageClient),
+			Override(new(storagemarket.StorageClientNode), storageadapter.NewClientNodeAdapter),
 			Override(RegisterClientValidatorKey, modules.RegisterClientValidator),
 			Override(RunDealClientKey, modules.RunDealClient),
 
@@ -238,18 +243,20 @@ func Online() Option {
 
 		// Storage miner
 		ApplyIf(func(s *Settings) bool { return s.nodeType == repo.StorageMiner },
-			Override(new(*sectorbuilder.SectorBuilder), modules.SectorBuilder),
+			Override(new(sectorbuilder.Interface), modules.SectorBuilder),
 			Override(new(*sectorblocks.SectorBlocks), sectorblocks.NewSectorBlocks),
 			Override(new(storage.TicketFn), modules.SealTicketGen),
 			Override(new(*storage.Miner), modules.StorageMiner),
 
+			Override(new(dtypes.StagingBlockstore), modules.StagingBlockstore),
 			Override(new(dtypes.StagingDAG), modules.StagingDAG),
-
-			Override(new(*retrieval.Miner), retrieval.NewMiner),
+			Override(new(dtypes.StagingGraphsync), modules.StagingGraphsync),
+			Override(new(retrievalmarket.RetrievalProvider), modules.RetrievalProvider),
 			Override(new(dtypes.ProviderDealStore), modules.NewProviderDealStore),
 			Override(new(dtypes.ProviderDataTransfer), modules.NewProviderDAGServiceDataTransfer),
-			Override(new(*deals.ProviderRequestValidator), deals.NewProviderRequestValidator),
-			Override(new(*deals.Provider), deals.NewProvider),
+			Override(new(*deals.ProviderRequestValidator), modules.NewProviderRequestValidator),
+			Override(new(storagemarket.StorageProvider), modules.StorageProvider),
+			Override(new(storagemarket.StorageProviderNode), storageadapter.NewProviderNodeAdapter),
 			Override(RegisterProviderValidatorKey, modules.RegisterProviderValidator),
 			Override(HandleRetrievalKey, modules.HandleRetrieval),
 			Override(GetParamsKey, modules.GetParams),
@@ -372,6 +379,7 @@ func Repo(r repo.Repo) Option {
 			Override(new(dtypes.ClientFilestore), modules.ClientFstore),
 			Override(new(dtypes.ClientBlockstore), modules.ClientBlockstore),
 			Override(new(dtypes.ClientDAG), modules.ClientDAG),
+			Override(new(dtypes.ClientGraphsync), modules.ClientGraphsync),
 
 			Override(new(ci.PrivKey), lp2p.PrivKey),
 			Override(new(ci.PubKey), ci.PrivKey.GetPublic),

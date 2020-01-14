@@ -3,11 +3,12 @@ package impl
 import (
 	"context"
 	"encoding/json"
-	"github.com/filecoin-project/lotus/api/apistruct"
 	"io"
 	"mime"
 	"net/http"
 	"os"
+
+	"github.com/filecoin-project/lotus/api/apistruct"
 
 	"github.com/gorilla/mux"
 	files "github.com/ipfs/go-ipfs-files"
@@ -25,7 +26,7 @@ type StorageMinerAPI struct {
 	CommonAPI
 
 	SectorBuilderConfig *sectorbuilder.Config
-	SectorBuilder       *sectorbuilder.SectorBuilder
+	SectorBuilder       sectorbuilder.Interface
 	SectorBlocks        *sectorblocks.SectorBlocks
 
 	Miner      *storage.Miner

@@ -17,7 +17,7 @@ import (
 	ffi "github.com/filecoin-project/filecoin-ffi"
 	paramfetch "github.com/filecoin-project/go-paramfetch"
 	"github.com/ipfs/go-datastore"
-	logging "github.com/ipfs/go-log"
+	logging "github.com/ipfs/go-log/v2"
 	"github.com/mitchellh/go-homedir"
 	"golang.org/x/xerrors"
 	"gopkg.in/urfave/cli.v2"
@@ -188,7 +188,7 @@ func main() {
 
 				log.Info("Running replication...")
 				pieces := []sectorbuilder.PublicPieceInfo{pi}
-				pco, err := sb.SealPreCommit(i, ticket, pieces)
+				pco, err := sb.SealPreCommit(context.TODO(), i, ticket, pieces)
 				if err != nil {
 					return xerrors.Errorf("commit: %w", err)
 				}
@@ -206,14 +206,14 @@ func main() {
 				}
 
 				log.Info("Generating PoRep for sector")
-				proof, err := sb.SealCommit(i, ticket, seed, pieces, pco)
+				proof, err := sb.SealCommit(context.TODO(), i, ticket, seed, pieces, pco)
 				if err != nil {
 					return err
 				}
 
 				sealcommit := time.Now()
 				commD := pi.CommP
-				ok, err := sectorbuilder.VerifySeal(sectorSize, pco.CommR[:], commD[:], maddr, ticket.TicketBytes[:], seed.TicketBytes[:], i, proof)
+				ok, err := sectorbuilder.ProofVerifier.VerifySeal(sectorSize, pco.CommR[:], commD[:], maddr, ticket.TicketBytes[:], seed.TicketBytes[:], i, proof)
 				if err != nil {
 					return err
 				}
@@ -307,7 +307,7 @@ func main() {
 				log.Warn("separate epost calls returned different proof values (this might be bad)")
 			}
 
-			ok, err := sectorbuilder.VerifyElectionPost(context.TODO(), sectorSize, sinfos, challenge[:], proof1, candidates[:1], maddr)
+			ok, err := sectorbuilder.ProofVerifier.VerifyElectionPost(context.TODO(), sectorSize, sinfos, challenge[:], proof1, candidates[:1], maddr)
 			if err != nil {
 				return err
 			}
@@ -317,7 +317,7 @@ func main() {
 
 			verifypost1 := time.Now()
 
-			ok, err = sectorbuilder.VerifyElectionPost(context.TODO(), sectorSize, sinfos, challenge[:], proof2, candidates[:1], maddr)
+			ok, err = sectorbuilder.ProofVerifier.VerifyElectionPost(context.TODO(), sectorSize, sinfos, challenge[:], proof2, candidates[:1], maddr)
 			if err != nil {
 				return err
 			}

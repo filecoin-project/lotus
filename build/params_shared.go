@@ -56,6 +56,9 @@ const SealRandomnessLookback = Finality
 // Epochs
 const SealRandomnessLookbackLimit = SealRandomnessLookback + 2000
 
+// Maximum lookback that randomness can be sourced from for a seal proof submission
+const MaxSealLookback = SealRandomnessLookbackLimit + 2000
+
 // /////
 // Mining
 
@@ -97,3 +100,8 @@ const BadBlockCacheSize = 1 << 15
 // assuming 4000 messages per round, this lets us not lose any messages across a
 // 10 block reorg.
 const BlsSignatureCacheSize = 40000
+
+// ///////
+// Limits
+
+const BlockMessageLimit = 512

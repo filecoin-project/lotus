@@ -4,12 +4,13 @@ import (
 	bserv "github.com/ipfs/go-blockservice"
 	"github.com/ipfs/go-datastore"
 	"github.com/ipfs/go-filestore"
+	"github.com/ipfs/go-graphsync"
 	blockstore "github.com/ipfs/go-ipfs-blockstore"
 	exchange "github.com/ipfs/go-ipfs-exchange-interface"
 	ipld "github.com/ipfs/go-ipld-format"
 
+	"github.com/filecoin-project/go-data-transfer"
 	"github.com/filecoin-project/go-statestore"
-	"github.com/filecoin-project/lotus/datatransfer"
 )
 
 // MetadataDS stores metadata
@@ -26,6 +27,7 @@ type ChainBlockService bserv.BlockService
 type ClientFilestore *filestore.Filestore
 type ClientBlockstore blockstore.Blockstore
 type ClientDAG ipld.DAGService
+type ClientGraphsync graphsync.GraphExchange
 type ClientDealStore *statestore.StateStore
 
 // ClientDataTransfer is a data transfer manager for the client
@@ -37,3 +39,5 @@ type ProviderDealStore *statestore.StateStore
 type ProviderDataTransfer datatransfer.Manager
 
 type StagingDAG ipld.DAGService
+type StagingBlockstore blockstore.Blockstore
+type StagingGraphsync graphsync.GraphExchange

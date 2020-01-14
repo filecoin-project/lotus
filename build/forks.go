@@ -1,4 +1,3 @@
 package build
 
-const ForkCCM = 1750
-const ForkNoPowerEPSUpdates = 16450
+// No forks yet \o/

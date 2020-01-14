@@ -171,7 +171,8 @@ func HandleExternalError(err error, msg string) ActorError {
 	}
 
 	return &actorError{
-		fatal: true,
+		fatal:   false,
+		retCode: 219,
 
 		msg:   msg,
 		frame: xerrors.Caller(1),

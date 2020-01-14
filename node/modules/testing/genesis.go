@@ -13,7 +13,7 @@ import (
 	"github.com/ipfs/go-car"
 	"github.com/ipfs/go-cid"
 	offline "github.com/ipfs/go-ipfs-exchange-offline"
-	logging "github.com/ipfs/go-log"
+	logging "github.com/ipfs/go-log/v2"
 	"github.com/ipfs/go-merkledag"
 	"github.com/libp2p/go-libp2p-core/peer"
 	"github.com/mitchellh/go-homedir"
@@ -30,8 +30,8 @@ import (
 
 var glog = logging.Logger("genesis")
 
-func MakeGenesisMem(out io.Writer, gmc *gen.GenMinerCfg) func(bs dtypes.ChainBlockstore, w *wallet.Wallet) modules.Genesis {
-	return func(bs dtypes.ChainBlockstore, w *wallet.Wallet) modules.Genesis {
+func MakeGenesisMem(out io.Writer, gmc *gen.GenMinerCfg) func(bs dtypes.ChainBlockstore, w *wallet.Wallet, syscalls *types.VMSyscalls) modules.Genesis {
+	return func(bs dtypes.ChainBlockstore, w *wallet.Wallet, syscalls *types.VMSyscalls) modules.Genesis {
 		return func() (*types.BlockHeader, error) {
 			glog.Warn("Generating new random genesis block, note that this SHOULD NOT happen unless you are setting up new network")
 			defk, err := w.GenerateKey(types.KTBLS)
@@ -51,7 +51,7 @@ func MakeGenesisMem(out io.Writer, gmc *gen.GenMinerCfg) func(bs dtypes.ChainBlo
 				alloc[waddr] = types.FromFil(10000)
 			}
 
-			b, err := gen.MakeGenesisBlock(bs, alloc, gmc, 100000)
+			b, err := gen.MakeGenesisBlock(bs, syscalls, alloc, gmc, 100000)
 			if err != nil {
 				return nil, err
 			}
@@ -68,8 +68,8 @@ func MakeGenesisMem(out io.Writer, gmc *gen.GenMinerCfg) func(bs dtypes.ChainBlo
 	}
 }
 
-func MakeGenesis(outFile, presealInfo, timestamp string) func(bs dtypes.ChainBlockstore, w *wallet.Wallet) modules.Genesis {
-	return func(bs dtypes.ChainBlockstore, w *wallet.Wallet) modules.Genesis {
+func MakeGenesis(outFile, presealInfo, timestamp string) func(bs dtypes.ChainBlockstore, w *wallet.Wallet, syscalls *types.VMSyscalls) modules.Genesis {
+	return func(bs dtypes.ChainBlockstore, w *wallet.Wallet, syscalls *types.VMSyscalls) modules.Genesis {
 		return func() (*types.BlockHeader, error) {
 			glog.Warn("Generating new random genesis block, note that this SHOULD NOT happen unless you are setting up new network")
 			presealInfo, err := homedir.Expand(presealInfo)
@@ -130,7 +130,7 @@ func MakeGenesis(outFile, presealInfo, timestamp string) func(bs dtypes.ChainBlo
 				ts = uint64(t.Unix())
 			}
 
-			b, err := gen.MakeGenesisBlock(bs, addrs, gmc, ts)
+			b, err := gen.MakeGenesisBlock(bs, syscalls, addrs, gmc, ts)
 			if err != nil {
 				return nil, err
 			}
