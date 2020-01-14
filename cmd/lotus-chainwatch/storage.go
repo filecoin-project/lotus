@@ -53,9 +53,7 @@ create unique index if not exists blocks_synced_cid_uindex
 
 create table if not exists block_parents
 (
-	block text not null
-	    constraint block_parents_pk
-			primary key,
+	block text not null,
 	parent text not null
 );
 
