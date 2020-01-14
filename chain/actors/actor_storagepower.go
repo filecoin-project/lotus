@@ -130,6 +130,10 @@ type ArbitrateConsensusFaultParams struct {
 }
 
 func (spa StoragePowerActor) ArbitrateConsensusFault(act *types.Actor, vmctx types.VMContext, params *ArbitrateConsensusFaultParams) ([]byte, ActorError) {
+	if params == nil || params.Block1 == nil || params.Block2 == nil {
+		return nil, aerrors.New(1, "failed to parse params")
+	}
+
 	if params.Block1.Miner != params.Block2.Miner {
 		return nil, aerrors.New(2, "blocks must be from the same miner")
 	}
