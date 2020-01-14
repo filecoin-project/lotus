@@ -6,6 +6,11 @@ Build the Lotus Binaries in debug mode, This enables the use of 1024 byte sector
 make debug
 ```
 
+Download the 1024 byte parameters:
+```sh
+./lotus fetch-params --proving-params 1024
+```
+
 Pre-seal some sectors:
 
 ```sh
