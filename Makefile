@@ -131,7 +131,7 @@ BINS+=fountain
 chainwatch:
 	rm -f chainwatch
 	go build -o chainwatch ./cmd/lotus-chainwatch
-	go run github.com/GeertJohan/go.rice/rice append --exec chainwatch -i ./cmd/lotus-chainwatch
+	go run github.com/GeertJohan/go.rice/rice append --exec chainwatch -i ./cmd/lotus-chainwatch -i ./build
 .PHONY: chainwatch
 BINS+=chainwatch
 
@@ -148,6 +148,14 @@ stats:
 	go run github.com/GeertJohan/go.rice/rice append --exec stats -i ./build
 .PHONY: stats
 BINS+=stats
+
+health:
+	rm -f lotus-health
+	go build -o lotus-health ./cmd/lotus-health
+	go run github.com/GeertJohan/go.rice/rice append --exec lotus-health -i ./build
+
+.PHONY: health
+BINS+=health
 
 # MISC
 
