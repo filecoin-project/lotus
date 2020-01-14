@@ -393,7 +393,7 @@ func TestAPIRPC(t *testing.T) {
 }
 
 func TestAPIDealFlow(t *testing.T) {
-	test.TestDealFlow(t, mockSbBuilder, 10 * time.Millisecond)
+	test.TestDealFlow(t, mockSbBuilder, 10*time.Millisecond)
 }
 
 func TestAPIDealFlowReal(t *testing.T) {
