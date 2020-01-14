@@ -9,7 +9,7 @@ import (
 
 	bls "github.com/filecoin-project/filecoin-ffi"
 
-	logging "github.com/ipfs/go-log"
+	logging "github.com/ipfs/go-log/v2"
 	"github.com/minio/blake2b-simd"
 	"golang.org/x/xerrors"
 

@@ -3,18 +3,22 @@ package actors_test
 import (
 	"bytes"
 	"context"
+	"math"
 	"math/rand"
 	"testing"
 
 	"github.com/filecoin-project/go-address"
 	"github.com/filecoin-project/go-sectorbuilder"
 	"github.com/filecoin-project/lotus/api"
+	"github.com/filecoin-project/lotus/build"
 	"github.com/filecoin-project/lotus/chain/actors"
 	"github.com/filecoin-project/lotus/chain/actors/aerrors"
 	"github.com/filecoin-project/lotus/chain/stmgr"
 	"github.com/filecoin-project/lotus/chain/types"
+	"github.com/filecoin-project/lotus/lib/rlepluslazy"
 	hamt "github.com/ipfs/go-hamt-ipld"
 	blockstore "github.com/ipfs/go-ipfs-blockstore"
+	"github.com/stretchr/testify/assert"
 	cbg "github.com/whyrusleeping/cbor-gen"
 )
 
@@ -50,23 +54,37 @@ func TestMinerCommitSectors(t *testing.T) {
 	addSectorToMiner(h, t, minerAddr, worker, client, 1)
 
 	assertSectorIDs(h, t, minerAddr, []uint64{1})
+
 }
 
+type badRuns struct {
+	done bool
+}
+
+func (br *badRuns) HasNext() bool {
+	return !br.done
+}
+
+func (br *badRuns) NextRun() (rlepluslazy.Run, error) {
+	br.done = true
+	return rlepluslazy.Run{true, math.MaxInt64}, nil
+}
+
+var _ rlepluslazy.RunIterator = (*badRuns)(nil)
+
 func TestMinerSubmitBadFault(t *testing.T) {
+	oldSS, oldMin := build.SectorSizes, build.MinimumMinerPower
+	build.SectorSizes, build.MinimumMinerPower = []uint64{1024}, 1024
+	defer func() {
+		build.SectorSizes, build.MinimumMinerPower = oldSS, oldMin
+	}()
+
 	var worker, client address.Address
 	var minerAddr address.Address
 	opts := []HarnessOpt{
 		HarnessAddr(&worker, 1000000),
 		HarnessAddr(&client, 1000000),
-		HarnessActor(&minerAddr, &worker, actors.StorageMinerCodeCid,
-			func() cbg.CBORMarshaler {
-				return &actors.StorageMinerConstructorParams{
-					Owner:      worker,
-					Worker:     worker,
-					SectorSize: 1024,
-					PeerID:     "fakepeerid",
-				}
-			}),
+		HarnessAddMiner(&minerAddr, &worker),
 	}
 
 	h := NewHarness(t, opts...)
@@ -92,18 +110,52 @@ func TestMinerSubmitBadFault(t *testing.T) {
 
 	ret, _ = h.Invoke(t, actors.NetworkAddress, minerAddr, actors.MAMethods.SubmitElectionPoSt, nil)
 	ApplyOK(t, ret)
-
 	assertSectorIDs(h, t, minerAddr, []uint64{1})
+
+	st, err := getMinerState(context.TODO(), h.vm.StateTree(), h.bs, minerAddr)
+	assert.NoError(t, err)
+	expectedPower := st.Power
+	if types.BigCmp(expectedPower, types.NewInt(1024)) != 0 {
+		t.Errorf("Expected power of 1024, got %s", expectedPower)
+	}
 
 	badnum := uint64(0)
 	badnum--
 	bf = types.NewBitField()
 	bf.Set(badnum)
+	bf.Set(badnum - 1)
 	ret, _ = h.Invoke(t, worker, minerAddr, actors.MAMethods.DeclareFaults, &actors.DeclareFaultsParams{bf})
 	ApplyOK(t, ret)
 
 	ret, _ = h.Invoke(t, actors.NetworkAddress, minerAddr, actors.MAMethods.SubmitElectionPoSt, nil)
+
 	ApplyOK(t, ret)
+	assertSectorIDs(h, t, minerAddr, []uint64{1})
+
+	st, err = getMinerState(context.TODO(), h.vm.StateTree(), h.bs, minerAddr)
+	assert.NoError(t, err)
+	currentPower := st.Power
+	if types.BigCmp(expectedPower, currentPower) != 0 {
+		t.Errorf("power changed and shouldn't have: %s != %s", expectedPower, currentPower)
+	}
+
+	bf.Set(badnum - 2)
+	ret, _ = h.Invoke(t, worker, minerAddr, actors.MAMethods.DeclareFaults, &actors.DeclareFaultsParams{bf})
+	if ret.ExitCode != 3 {
+		t.Errorf("expected exit code 3, got %d: %+v", ret.ExitCode, ret.ActorErr)
+	}
+	assertSectorIDs(h, t, minerAddr, []uint64{1})
+
+	rle, err := rlepluslazy.EncodeRuns(&badRuns{}, []byte{})
+	assert.NoError(t, err)
+
+	bf, err = types.NewBitFieldFromBytes(rle)
+	assert.NoError(t, err)
+	ret, _ = h.Invoke(t, worker, minerAddr, actors.MAMethods.DeclareFaults, &actors.DeclareFaultsParams{bf})
+	if ret.ExitCode != 3 {
+		t.Errorf("expected exit code 3, got %d: %+v", ret.ExitCode, ret.ActorErr)
+	}
+	assertSectorIDs(h, t, minerAddr, []uint64{1})
 
 	bf = types.NewBitField()
 	bf.Set(1)
@@ -175,7 +227,7 @@ func assertSectorIDs(h *Harness, t *testing.T, maddr address.Address, ids []uint
 	}
 }
 
-func getMinerSectorSet(ctx context.Context, st types.StateTree, bs blockstore.Blockstore, maddr address.Address) ([]*api.ChainSectorInfo, error) {
+func getMinerState(ctx context.Context, st types.StateTree, bs blockstore.Blockstore, maddr address.Address) (*actors.StorageMinerActorState, error) {
 	mact, err := st.GetActor(maddr)
 	if err != nil {
 		return nil, err
@@ -185,6 +237,14 @@ func getMinerSectorSet(ctx context.Context, st types.StateTree, bs blockstore.Bl
 
 	var mstate actors.StorageMinerActorState
 	if err := cst.Get(ctx, mact.Head, &mstate); err != nil {
+		return nil, err
+	}
+	return &mstate, nil
+}
+
+func getMinerSectorSet(ctx context.Context, st types.StateTree, bs blockstore.Blockstore, maddr address.Address) ([]*api.ChainSectorInfo, error) {
+	mstate, err := getMinerState(ctx, st, bs, maddr)
+	if err != nil {
 		return nil, err
 	}
 
@@ -202,7 +262,6 @@ func (h *Harness) makeFakeDeal(t *testing.T, miner, worker, client address.Addre
 	prop := actors.StorageDealProposal{
 		PieceRef:  commP[:],
 		PieceSize: size,
-		//PieceSerialization SerializationMode // Needs to be here as it tells how data in the sector maps to PieceRef cid
 
 		Client:   client,
 		Provider: miner,

@@ -3,6 +3,7 @@ package actors_test
 import (
 	"bytes"
 	"context"
+	"github.com/filecoin-project/go-sectorbuilder"
 	"math/rand"
 	"testing"
 
@@ -115,6 +116,32 @@ func HarnessActor(actor *address.Address, creator *address.Address, code cid.Cid
 
 }
 
+func HarnessAddMiner(addr *address.Address, creator *address.Address) HarnessOpt {
+	return func(t testing.TB, h *Harness) error {
+		if h.Stage != HarnessPostInit {
+			return nil
+		}
+		if !addr.Empty() {
+			return xerrors.New("actor address should be empty")
+		}
+		ret, _ := h.InvokeWithValue(t, *creator, actors.StoragePowerAddress,
+			actors.SPAMethods.CreateStorageMiner, types.NewInt(3000), &actors.StorageMinerConstructorParams{
+				Owner:      *creator,
+				Worker:     *creator,
+				SectorSize: 1024,
+				PeerID:     "fakepeerid",
+			})
+
+		if ret.ExitCode != 0 {
+			return xerrors.Errorf("creating actor: %w", ret.ActorErr)
+		}
+		var err error
+		*addr, err = address.NewFromBytes(ret.Return)
+		return err
+
+	}
+}
+
 func HarnessCtx(ctx context.Context) HarnessOpt {
 	return func(t testing.TB, h *Harness) error {
 		h.ctx = ctx
@@ -168,8 +195,8 @@ func NewHarness(t *testing.T, options ...HarnessOpt) *Harness {
 		t.Fatal(err)
 	}
 
-	h.cs = store.NewChainStore(h.bs, nil)
-	h.vm, err = vm.NewVM(stateroot, 1, h.Rand, h.HI.Miner, h.cs.Blockstore())
+	h.cs = store.NewChainStore(h.bs, nil, vm.Syscalls(sectorbuilder.ProofVerifier))
+	h.vm, err = vm.NewVM(stateroot, 1, h.Rand, h.HI.Miner, h.cs.Blockstore(), h.cs.VMSys())
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -177,7 +204,7 @@ func NewHarness(t *testing.T, options ...HarnessOpt) *Harness {
 	for _, opt := range options {
 		err := opt(t, h)
 		if err != nil {
-			t.Fatalf("Applying options: %v", err)
+			t.Fatalf("Applying options: %+v", err)
 		}
 	}
 

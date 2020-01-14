@@ -1,6 +1,6 @@
 package lotuslog
 
-import logging "github.com/ipfs/go-log"
+import logging "github.com/ipfs/go-log/v2"
 
 func SetupLogLevels() {
 	logging.SetLogLevel("*", "INFO")
