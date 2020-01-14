@@ -24,6 +24,6 @@ func Syscalls(verifier sectorbuilder.Verifier) *types.VMSyscalls {
 
 			return ok, nil
 		},
-		VerifyFallbackPost:     verifier.VerifyFallbackPost,
+		VerifyFallbackPost: verifier.VerifyFallbackPost,
 	}
 }

@@ -46,7 +46,7 @@ func init() {
 	build.MinimumMinerPower = 1024
 }
 
-func testStorageNode(ctx context.Context, t *testing.T, waddr address.Address, act address.Address, pk crypto.PrivKey, tnd test.TestNode, mn mocknet.Mocknet) test.TestStorageNode {
+func testStorageNode(ctx context.Context, t *testing.T, waddr address.Address, act address.Address, pk crypto.PrivKey, tnd test.TestNode, mn mocknet.Mocknet, opts node.Option) test.TestStorageNode {
 	r := repo.NewMemory(nil)
 
 	lr, err := r.Lock(repo.StorageMiner)
@@ -103,10 +103,11 @@ func testStorageNode(ctx context.Context, t *testing.T, waddr address.Address, a
 		node.Test(),
 
 		node.MockHost(mn),
-		node.Override(new(sectorbuilder.Interface), sbmock.NewMockSectorBuilder(5, build.SectorSizes[0])),
 
 		node.Override(new(api.FullNode), tnd),
 		node.Override(new(*miner.Miner), miner.NewTestMiner(mineBlock, act)),
+
+		opts,
 	)
 	if err != nil {
 		t.Fatalf("failed to construct node: %v", err)
@@ -216,7 +217,7 @@ func builder(t *testing.T, nFull int, storage []int) ([]test.TestNode, []test.Te
 		genMiner := gmc.MinerAddrs[i]
 		wa := gmc.PreSeals[genMiner.String()].Worker
 
-		storers[i] = testStorageNode(ctx, t, wa, genMiner, pk, f, mn)
+		storers[i] = testStorageNode(ctx, t, wa, genMiner, pk, f, mn, node.Options())
 
 		sma := storers[i].StorageMiner.(*impl.StorageMinerAPI)
 
@@ -337,12 +338,9 @@ func mockSbBuilder(t *testing.T, nFull int, storage []int) ([]test.TestNode, []t
 		genMiner := gmc.MinerAddrs[i]
 		wa := gmc.PreSeals[genMiner.String()].Worker
 
-		storers[i] = testStorageNode(ctx, t, wa, genMiner, pk, f, mn)
-
-		/*if err := sma.SectorBuilder.ImportFrom(osb, false); err != nil {
-			t.Fatal(err)
-		}*/
-
+		storers[i] = testStorageNode(ctx, t, wa, genMiner, pk, f, mn, node.Options(
+			node.Override(new(sectorbuilder.Interface), sbmock.NewMockSectorBuilder(5, build.SectorSizes[0])),
+		))
 	}
 
 	if err := mn.LinkAll(); err != nil {
@@ -351,7 +349,6 @@ func mockSbBuilder(t *testing.T, nFull int, storage []int) ([]test.TestNode, []t
 
 	return fulls, storers
 }
-
 
 func TestAPI(t *testing.T) {
 	test.TestApis(t, builder)
@@ -395,8 +392,12 @@ func TestAPIRPC(t *testing.T) {
 }
 
 func TestAPIDealFlow(t *testing.T) {
+	test.TestDealFlow(t, mockSbBuilder)
+}
+
+func TestAPIDealFlowReal(t *testing.T) {
 	if testing.Short() {
 		t.Skip("skipping test in short mode")
 	}
-	test.TestDealFlow(t, mockSbBuilder)
+	test.TestDealFlow(t, builder)
 }

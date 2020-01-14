@@ -800,7 +800,6 @@ func (cs *ChainStore) VMSys() *types.VMSyscalls {
 	return cs.vmcalls
 }
 
-
 func (cs *ChainStore) TryFillTipSet(ts *types.TipSet) (*FullTipSet, error) {
 	var out []*types.FullBlock
 

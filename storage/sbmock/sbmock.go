@@ -25,7 +25,7 @@ type SBMock struct {
 	lk sync.Mutex
 }
 
-type mockVerif struct {}
+type mockVerif struct{}
 
 func NewMockSectorBuilder(threads int, ssize uint64) *SBMock {
 	return &SBMock{
@@ -80,7 +80,7 @@ func (sb *SBMock) AddPiece(size uint64, sectorId uint64, r io.Reader, existingPi
 
 	ss.pieces = append(ss.pieces, b)
 	return sectorbuilder.PublicPieceInfo{
-		Size: size,
+		Size:  size,
 		CommP: commD(b),
 	}, nil
 }
@@ -160,7 +160,7 @@ func (sb *SBMock) SealPreCommit(ctx context.Context, sid uint64, ticket sectorbu
 	pis := make([]ffi.PublicPieceInfo, len(ss.pieces))
 	for i, piece := range ss.pieces {
 		pis[i] = ffi.PublicPieceInfo{
-			Size: uint64(len(piece)),
+			Size:  uint64(len(piece)),
 			CommP: commD(piece),
 		}
 	}
@@ -198,7 +198,7 @@ func (sb *SBMock) SealCommit(ctx context.Context, sid uint64, ticket sectorbuild
 
 	var out [32]byte
 	for i := range out {
-		out[i] = precommit.CommD[i] + precommit.CommR[31 - i] - ticket.TicketBytes[i] * seed.TicketBytes[i]
+		out[i] = precommit.CommD[i] + precommit.CommR[31-i] - ticket.TicketBytes[i]*seed.TicketBytes[i]
 	}
 	return out[:], nil
 }
@@ -319,7 +319,7 @@ func (m mockVerif) VerifySeal(sectorSize uint64, commR, commD []byte, proverID a
 	}
 
 	for i, b := range proof {
-		if b != commD[i] + commR[31 - i] - ticket[i] * seed[i] {
+		if b != commD[i]+commR[31-i]-ticket[i]*seed[i] {
 			return false, nil
 		}
 	}

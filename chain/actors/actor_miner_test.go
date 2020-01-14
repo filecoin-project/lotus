@@ -254,7 +254,7 @@ func getMinerSectorSet(ctx context.Context, st types.StateTree, bs blockstore.Bl
 func (h *Harness) makeFakeDeal(t *testing.T, miner, worker, client address.Address, size uint64) *actors.StorageDealProposal {
 	data := make([]byte, size)
 	rand.Read(data)
-	commP, err := (&sectorbuilder.SectorBuilder{}).GeneratePieceCommitment(bytes.NewReader(data), size)
+	commP, err := sectorbuilder.GeneratePieceCommitment(bytes.NewReader(data), size)
 	if err != nil {
 		t.Fatal(err)
 	}
