@@ -3,6 +3,7 @@ package actors_test
 import (
 	"bytes"
 	"context"
+	"github.com/filecoin-project/go-sectorbuilder"
 	"math/rand"
 	"testing"
 
@@ -194,8 +195,8 @@ func NewHarness(t *testing.T, options ...HarnessOpt) *Harness {
 		t.Fatal(err)
 	}
 
-	h.cs = store.NewChainStore(h.bs, nil)
-	h.vm, err = vm.NewVM(stateroot, 1, h.Rand, h.HI.Miner, h.cs.Blockstore())
+	h.cs = store.NewChainStore(h.bs, nil, vm.Syscalls(sectorbuilder.ProofVerifier))
+	h.vm, err = vm.NewVM(stateroot, 1, h.Rand, h.HI.Miner, h.cs.Blockstore(), h.cs.VMSys())
 	if err != nil {
 		t.Fatal(err)
 	}

@@ -39,7 +39,7 @@ var ErrNotFound = errors.New("not found")
 
 type SectorBlocks struct {
 	*storage.Miner
-	sb *sectorbuilder.SectorBuilder
+	sb sectorbuilder.Interface
 
 	intermediate blockstore.Blockstore // holds intermediate nodes TODO: consider combining with the staging blockstore
 
@@ -47,10 +47,10 @@ type SectorBlocks struct {
 	keyLk sync.Mutex
 }
 
-func NewSectorBlocks(miner *storage.Miner, ds dtypes.MetadataDS, sb storage.SectorBuilder) *SectorBlocks {
+func NewSectorBlocks(miner *storage.Miner, ds dtypes.MetadataDS, sb sectorbuilder.Interface) *SectorBlocks {
 	sbc := &SectorBlocks{
 		Miner: miner,
-		sb:    sb.(*sectorbuilder.SectorBuilder),
+		sb:    sb,
 
 		intermediate: blockstore.NewBlockstore(namespace.Wrap(ds, imBlocksPrefix)),
 

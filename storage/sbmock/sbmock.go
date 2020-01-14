@@ -6,18 +6,15 @@ import (
 	"fmt"
 	"io"
 	"io/ioutil"
+	"math/big"
 	"math/rand"
 	"sync"
 
+	ffi "github.com/filecoin-project/filecoin-ffi"
+	"github.com/filecoin-project/go-address"
 	"github.com/filecoin-project/go-sectorbuilder"
 	"golang.org/x/xerrors"
 )
-
-func randComm() [sectorbuilder.CommLen]byte {
-	var out [sectorbuilder.CommLen]byte
-	rand.Read(out[:])
-	return out
-}
 
 type SBMock struct {
 	sectors      map[uint64]*sectorState
@@ -28,11 +25,13 @@ type SBMock struct {
 	lk sync.Mutex
 }
 
+type mockVerif struct{}
+
 func NewMockSectorBuilder(threads int, ssize uint64) *SBMock {
 	return &SBMock{
 		sectors:      make(map[uint64]*sectorState),
 		sectorSize:   ssize,
-		nextSectorID: 0,
+		nextSectorID: 5,
 		rateLimit:    make(chan struct{}, threads),
 	}
 }
@@ -81,8 +80,8 @@ func (sb *SBMock) AddPiece(size uint64, sectorId uint64, r io.Reader, existingPi
 
 	ss.pieces = append(ss.pieces, b)
 	return sectorbuilder.PublicPieceInfo{
-		Size: size,
-		// TODO: should we compute a commP? maybe do it when we need it
+		Size:  size,
+		CommP: commD(b),
 	}, nil
 }
 
@@ -158,9 +157,22 @@ func (sb *SBMock) SealPreCommit(ctx context.Context, sid uint64, ticket sectorbu
 
 	ss.state = statePreCommit
 
+	pis := make([]ffi.PublicPieceInfo, len(ss.pieces))
+	for i, piece := range ss.pieces {
+		pis[i] = ffi.PublicPieceInfo{
+			Size:  uint64(len(piece)),
+			CommP: commD(piece),
+		}
+	}
+
+	commd, err := MockVerifier.GenerateDataCommitment(sb.sectorSize, pis)
+	if err != nil {
+		return sectorbuilder.RawSealPreCommitOutput{}, err
+	}
+
 	return sectorbuilder.RawSealPreCommitOutput{
-		CommD: randComm(),
-		CommR: randComm(),
+		CommD: commd,
+		CommR: commDR(commd[:]),
 	}, nil
 }
 
@@ -184,9 +196,11 @@ func (sb *SBMock) SealCommit(ctx context.Context, sid uint64, ticket sectorbuild
 
 	opFinishWait(ctx)
 
-	buf := make([]byte, 32)
-	rand.Read(buf)
-	return buf, nil
+	var out [32]byte
+	for i := range out {
+		out[i] = precommit.CommD[i] + precommit.CommR[31-i] - ticket.TicketBytes[i]*seed.TicketBytes[i]
+	}
+	return out[:], nil
 }
 
 func (sb *SBMock) GetPath(string, string) (string, error) {
@@ -235,6 +249,44 @@ func AddOpFinish(ctx context.Context) (context.Context, func()) {
 	}
 }
 
+func (sb *SBMock) ComputeElectionPoSt(sectorInfo sectorbuilder.SortedPublicSectorInfo, challengeSeed []byte, winners []sectorbuilder.EPostCandidate) ([]byte, error) {
+	panic("implement me")
+}
+
+func (sb *SBMock) GenerateEPostCandidates(sectorInfo sectorbuilder.SortedPublicSectorInfo, challengeSeed [sectorbuilder.CommLen]byte, faults []uint64) ([]sectorbuilder.EPostCandidate, error) {
+	if len(faults) > 0 {
+		panic("todo")
+	}
+
+	n := sectorbuilder.ElectionPostChallengeCount(uint64(len(sectorInfo.Values())), uint64(len(faults)))
+	if n > uint64(len(sectorInfo.Values())) {
+		n = uint64(len(sectorInfo.Values()))
+	}
+
+	out := make([]sectorbuilder.EPostCandidate, n)
+
+	seed := big.NewInt(0).SetBytes(challengeSeed[:])
+	start := seed.Mod(seed, big.NewInt(int64(len(sectorInfo.Values())))).Int64()
+
+	for i := range out {
+		out[i] = sectorbuilder.EPostCandidate{
+			SectorID:             uint64((int(start) + i) % len(sectorInfo.Values())),
+			PartialTicket:        challengeSeed,
+			Ticket:               commDR(challengeSeed[:]),
+			SectorChallengeIndex: 0,
+		}
+	}
+
+	return out, nil
+}
+
+func (sb *SBMock) ReadPieceFromSealedSector(sectorID uint64, offset uint64, size uint64, ticket []byte, commD []byte) (io.ReadCloser, error) {
+	if len(sb.sectors[sectorID].pieces) > 1 {
+		panic("implme")
+	}
+	return ioutil.NopCloser(io.LimitReader(bytes.NewReader(sb.sectors[sectorID].pieces[0][offset:]), int64(size))), nil
+}
+
 func (sb *SBMock) StageFakeData() (uint64, []sectorbuilder.PublicPieceInfo, error) {
 	usize := sectorbuilder.UserBytesForSectorSize(sb.sectorSize)
 	sid, err := sb.AcquireSectorId()
@@ -252,3 +304,40 @@ func (sb *SBMock) StageFakeData() (uint64, []sectorbuilder.PublicPieceInfo, erro
 
 	return sid, []sectorbuilder.PublicPieceInfo{pi}, nil
 }
+
+func (m mockVerif) VerifyElectionPost(ctx context.Context, sectorSize uint64, sectorInfo sectorbuilder.SortedPublicSectorInfo, challengeSeed []byte, proof []byte, candidates []sectorbuilder.EPostCandidate, proverID address.Address) (bool, error) {
+	panic("implement me")
+}
+
+func (m mockVerif) VerifyFallbackPost(ctx context.Context, sectorSize uint64, sectorInfo sectorbuilder.SortedPublicSectorInfo, challengeSeed []byte, proof []byte, candidates []sectorbuilder.EPostCandidate, proverID address.Address, faults uint64) (bool, error) {
+	panic("implement me")
+}
+
+func (m mockVerif) VerifySeal(sectorSize uint64, commR, commD []byte, proverID address.Address, ticket []byte, seed []byte, sectorID uint64, proof []byte) (bool, error) {
+	if len(proof) != 32 { // Real ones are longer, but this should be fine
+		return false, nil
+	}
+
+	for i, b := range proof {
+		if b != commD[i]+commR[31-i]-ticket[i]*seed[i] {
+			return false, nil
+		}
+	}
+
+	return true, nil
+}
+
+func (m mockVerif) GenerateDataCommitment(ssize uint64, pieces []ffi.PublicPieceInfo) ([sectorbuilder.CommLen]byte, error) {
+	if len(pieces) != 1 {
+		panic("todo")
+	}
+	if pieces[0].Size != sectorbuilder.UserBytesForSectorSize(ssize) {
+		panic("todo")
+	}
+	return pieces[0].CommP, nil
+}
+
+var MockVerifier = mockVerif{}
+
+var _ sectorbuilder.Verifier = MockVerifier
+var _ sectorbuilder.Interface = &SBMock{}

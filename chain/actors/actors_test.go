@@ -50,10 +50,10 @@ func setupVMTestEnv(t *testing.T) (*vm.VM, []address.Address, bstore.Blockstore)
 		t.Fatal(err)
 	}
 
-	cs := store.NewChainStore(bs, nil)
+	cs := store.NewChainStore(bs, nil, nil)
 
 	// TODO: should probabaly mock out the randomness bit, nil works for now
-	vm, err := vm.NewVM(stateroot, 1, nil, maddr, cs.Blockstore())
+	vm, err := vm.NewVM(stateroot, 1, nil, maddr, cs.Blockstore(), cs.VMSys())
 	if err != nil {
 		t.Fatal(err)
 	}

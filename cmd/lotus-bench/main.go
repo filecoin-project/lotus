@@ -213,7 +213,7 @@ func main() {
 
 				sealcommit := time.Now()
 				commD := pi.CommP
-				ok, err := sectorbuilder.VerifySeal(sectorSize, pco.CommR[:], commD[:], maddr, ticket.TicketBytes[:], seed.TicketBytes[:], i, proof)
+				ok, err := sectorbuilder.ProofVerifier.VerifySeal(sectorSize, pco.CommR[:], commD[:], maddr, ticket.TicketBytes[:], seed.TicketBytes[:], i, proof)
 				if err != nil {
 					return err
 				}
@@ -307,7 +307,7 @@ func main() {
 				log.Warn("separate epost calls returned different proof values (this might be bad)")
 			}
 
-			ok, err := sectorbuilder.VerifyElectionPost(context.TODO(), sectorSize, sinfos, challenge[:], proof1, candidates[:1], maddr)
+			ok, err := sectorbuilder.ProofVerifier.VerifyElectionPost(context.TODO(), sectorSize, sinfos, challenge[:], proof1, candidates[:1], maddr)
 			if err != nil {
 				return err
 			}
@@ -317,7 +317,7 @@ func main() {
 
 			verifypost1 := time.Now()
 
-			ok, err = sectorbuilder.VerifyElectionPost(context.TODO(), sectorSize, sinfos, challenge[:], proof2, candidates[:1], maddr)
+			ok, err = sectorbuilder.ProofVerifier.VerifyElectionPost(context.TODO(), sectorSize, sinfos, challenge[:], proof2, candidates[:1], maddr)
 			if err != nil {
 				return err
 			}
