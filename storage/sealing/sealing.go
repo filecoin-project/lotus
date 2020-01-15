@@ -27,7 +27,7 @@ var log = logging.Logger("sectors")
 
 type TicketFn func(context.Context) (*sectorbuilder.SealTicket, error)
 
-type sectorsApi interface { // TODO: trim down
+type sealingApi interface { // TODO: trim down
 	// Call a read only method on actors (no interaction with the chain required)
 	StateCall(ctx context.Context, msg *types.Message, ts *types.TipSet) (*types.MessageReceipt, error)
 	StateMinerWorker(context.Context, address.Address, *types.TipSet) (address.Address, error)
@@ -53,7 +53,7 @@ type sectorsApi interface { // TODO: trim down
 }
 
 type Sealing struct {
-	api    sectorsApi
+	api    sealingApi
 	events *events.Events
 
 	maddr  address.Address
@@ -64,7 +64,7 @@ type Sealing struct {
 	tktFn   TicketFn
 }
 
-func New(api sectorsApi, events *events.Events, maddr address.Address, worker address.Address, ds datastore.Batching, sb sectorbuilder.Interface, tktFn TicketFn) *Sealing {
+func New(api sealingApi, events *events.Events, maddr address.Address, worker address.Address, ds datastore.Batching, sb sectorbuilder.Interface, tktFn TicketFn) *Sealing {
 	s := &Sealing{
 		api:            api,
 		events: events,

@@ -4,54 +4,11 @@ import (
 	"context"
 	"fmt"
 
-	"github.com/ipfs/go-cid"
 	"golang.org/x/xerrors"
 
 	"github.com/filecoin-project/lotus/api"
 	"github.com/filecoin-project/lotus/lib/statemachine"
 )
-
-type SectorStart struct {
-	id     uint64
-	pieces []Piece
-}
-type SectorRestart struct{}
-
-type SectorFatalError struct{ error }
-
-type SectorPacked struct{ pieces []Piece }
-
-type SectorSealed struct {
-	commR  []byte
-	commD  []byte
-	ticket SealTicket
-}
-type SectorSealFailed struct{ error }
-
-type SectorPreCommitFailed struct{ error }
-type SectorPreCommitted struct {
-	message cid.Cid
-}
-
-type SectorSeedReady struct {
-	seed SealSeed
-}
-
-type SectorSealCommitFailed struct{ error }
-type SectorCommitFailed struct{ error }
-type SectorCommitted struct {
-	message cid.Cid
-	proof   []byte
-}
-
-type SectorProving struct{}
-
-type SectorFaultReported struct{ reportMsg cid.Cid }
-type SectorFaultedFinal struct{}
-
-type SectorForceState struct {
-	state api.SectorState
-}
 
 func (m *Sealing) Plan(events []statemachine.Event, user interface{}) (interface{}, error) {
 	next, err := m.plan(events, user.(*SectorInfo))

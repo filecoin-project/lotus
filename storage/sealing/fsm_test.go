@@ -10,12 +10,12 @@ import (
 )
 
 func (t *test) planSingle(evt interface{}) {
-	_, err := t.m.plan([]statemachine.Event{{evt}}, t.state)
+	_, err := t.s.plan([]statemachine.Event{{evt}}, t.state)
 	require.NoError(t.t, err)
 }
 
 type test struct {
-	m     *Miner
+	s     *Sealing
 	t     *testing.T
 	state *SectorInfo
 
@@ -24,7 +24,7 @@ type test struct {
 
 func TestHappyPath(t *testing.T) {
 	m := test{
-		m:     &Miner{},
+		s:     &Sealing{},
 		t:     t,
 		state: &SectorInfo{State: api.Packing},
 	}
@@ -50,7 +50,7 @@ func TestHappyPath(t *testing.T) {
 
 func TestSeedRevert(t *testing.T) {
 	m := test{
-		m:     &Miner{},
+		s:     &Sealing{},
 		t:     t,
 		state: &SectorInfo{State: api.Packing},
 	}
@@ -67,7 +67,7 @@ func TestSeedRevert(t *testing.T) {
 	m.planSingle(SectorSeedReady{})
 	require.Equal(m.t, m.state.State, api.Committing)
 
-	_, err := m.m.plan([]statemachine.Event{{SectorSeedReady{}}, {SectorCommitted{}}}, m.state)
+	_, err := m.s.plan([]statemachine.Event{{SectorSeedReady{}}, {SectorCommitted{}}}, m.state)
 	require.NoError(t, err)
 	require.Equal(m.t, m.state.State, api.Committing)
 
