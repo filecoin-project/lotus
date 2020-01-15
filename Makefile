@@ -14,7 +14,7 @@ MODULES:=
 
 CLEAN:=
 BINS:=
-GOFLAGS+=-ldflags="-X "github.com/filecoin-project/lotus/build".CurrentCommit=+git$(subst -,.,$(shell git describe --always --match=NeVeRmAtCh --dirty 2>/dev/null || git rev-parse --short HEAD 2>/dev/null))"
+GOFLAGS+=-ldflags='-X="github.com/filecoin-project/lotus/build".CurrentCommit=+git$(subst -,.,$(shell git describe --always --match=NeVeRmAtCh --dirty 2>/dev/null || git rev-parse --short HEAD 2>/dev/null))'
 
 ## FFI
 
