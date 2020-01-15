@@ -127,6 +127,10 @@ func (w *worker) processTask(ctx context.Context, task sectorbuilder.WorkerTask)
 		if err := w.push("cache", task.SectorID); err != nil {
 			return errRes(xerrors.Errorf("pushing precommited data: %w", err))
 		}
+
+		if err := w.remove("sealed", task.SectorID); err != nil {
+			return errRes(xerrors.Errorf("cleaning up sealed sector: %w", err))
+		}
 	}
 
 	return res
