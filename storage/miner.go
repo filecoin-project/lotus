@@ -3,7 +3,6 @@ package storage
 import (
 	"context"
 	"errors"
-	"reflect"
 	"time"
 
 	"github.com/ipfs/go-cid"
@@ -86,7 +85,7 @@ func NewMiner(api storageMinerApi, addr address.Address, h host.Host, ds datasto
 	}
 
 	// TODO: separate sector stuff from miner struct
-	m.sectors = statemachine.New(namespace.Wrap(ds, datastore.NewKey(SectorStorePrefix)), m, reflect.TypeOf(SectorInfo{}))
+	m.sectors = statemachine.New(namespace.Wrap(ds, datastore.NewKey(SectorStorePrefix)), m, SectorInfo{})
 
 	return m, nil
 }

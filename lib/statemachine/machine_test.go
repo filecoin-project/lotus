@@ -2,7 +2,6 @@ package statemachine
 
 import (
 	"context"
-	"reflect"
 	"testing"
 
 	"github.com/ipfs/go-datastore"
@@ -67,7 +66,7 @@ func TestBasic(t *testing.T) {
 
 		th := &testHandler{t: t, done: make(chan struct{}), proceed: make(chan struct{})}
 		close(th.proceed)
-		smm := New(ds, th, reflect.TypeOf(TestState{}))
+		smm := New(ds, th, TestState{})
 
 		if err := smm.Send(uint64(2), &TestEvent{A: "start"}); err != nil {
 			t.Fatalf("%+v", err)
@@ -82,7 +81,7 @@ func TestPersist(t *testing.T) {
 		ds := datastore.NewMapDatastore()
 
 		th := &testHandler{t: t, done: make(chan struct{}), proceed: make(chan struct{})}
-		smm := New(ds, th, reflect.TypeOf(TestState{}))
+		smm := New(ds, th, TestState{})
 
 		if err := smm.Send(uint64(2), &TestEvent{A: "start"}); err != nil {
 			t.Fatalf("%+v", err)
@@ -93,7 +92,7 @@ func TestPersist(t *testing.T) {
 			return
 		}
 
-		smm = New(ds, th, reflect.TypeOf(TestState{}))
+		smm = New(ds, th, TestState{})
 		if err := smm.Send(uint64(2), &TestEvent{A: "restart"}); err != nil {
 			t.Fatalf("%+v", err)
 		}

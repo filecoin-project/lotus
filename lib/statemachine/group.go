@@ -25,12 +25,12 @@ type StateGroup struct {
 	sms map[datastore.Key]*StateMachine
 }
 
-// stateType: T - (reflect.TypeOf(MyStateStruct{}))
-func New(ds datastore.Datastore, hnd StateHandler, stateType reflect.Type) *StateGroup {
+// stateType: T - (MyStateStruct{})
+func New(ds datastore.Datastore, hnd StateHandler, stateType interface{}) *StateGroup {
 	return &StateGroup{
 		sts:       statestore.New(ds),
 		hnd:       hnd,
-		stateType: stateType,
+		stateType: reflect.TypeOf(stateType),
 
 		sms: map[datastore.Key]*StateMachine{},
 	}
