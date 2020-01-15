@@ -1,4 +1,4 @@
-package storage
+package sealing
 
 import (
 	"math/bits"
@@ -42,7 +42,7 @@ func fillersFromRem(toFill uint64) ([]uint64, error) {
 	return out, nil
 }
 
-func (m *Miner) ListSectors() ([]SectorInfo, error) {
+func (m *Sealing) ListSectors() ([]SectorInfo, error) {
 	var sectors []SectorInfo
 	if err := m.sectors.List(&sectors); err != nil {
 		return nil, err
@@ -50,7 +50,7 @@ func (m *Miner) ListSectors() ([]SectorInfo, error) {
 	return sectors, nil
 }
 
-func (m *Miner) GetSectorInfo(sid uint64) (SectorInfo, error) {
+func (m *Sealing) GetSectorInfo(sid uint64) (SectorInfo, error) {
 	var out SectorInfo
 	err := m.sectors.Get(sid).Get(&out)
 	return out, err

@@ -1,4 +1,4 @@
-package storage
+package sealing
 
 import (
 	"context"
@@ -53,7 +53,7 @@ type SectorForceState struct {
 	state api.SectorState
 }
 
-func (m *Miner) Plan(events []statemachine.Event, user interface{}) (interface{}, error) {
+func (m *Sealing) Plan(events []statemachine.Event, user interface{}) (interface{}, error) {
 	next, err := m.plan(events, user.(*SectorInfo))
 	if err != nil || next == nil {
 		return nil, err
@@ -71,7 +71,7 @@ func (m *Miner) Plan(events []statemachine.Event, user interface{}) (interface{}
 	}, nil
 }
 
-func (m *Miner) plan(events []statemachine.Event, state *SectorInfo) (func(statemachine.Context, SectorInfo) error, error) {
+func (m *Sealing) plan(events []statemachine.Event, state *SectorInfo) (func(statemachine.Context, SectorInfo) error, error) {
 	/////
 	// First process all events
 
@@ -242,7 +242,7 @@ func (m *Miner) plan(events []statemachine.Event, state *SectorInfo) (func(state
 	return nil, nil
 }
 
-func (m *Miner) restartSectors(ctx context.Context) error {
+func (m *Sealing) restartSectors(ctx context.Context) error {
 	trackedSectors, err := m.ListSectors()
 	if err != nil {
 		log.Errorf("loading sector list: %+v", err)
@@ -259,6 +259,6 @@ func (m *Miner) restartSectors(ctx context.Context) error {
 	return nil
 }
 
-func (m *Miner) ForceSectorState(ctx context.Context, id uint64, state api.SectorState) error {
+func (m *Sealing) ForceSectorState(ctx context.Context, id uint64, state api.SectorState) error {
 	return m.sectors.Send(id, SectorForceState{state})
 }

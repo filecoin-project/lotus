@@ -12,7 +12,7 @@ import (
 	"github.com/filecoin-project/lotus/chain/types"
 	"github.com/filecoin-project/lotus/lib/statemachine"
 	"github.com/filecoin-project/lotus/paych"
-	"github.com/filecoin-project/lotus/storage"
+	"github.com/filecoin-project/lotus/storage/sealing"
 )
 
 func main() {
@@ -122,11 +122,11 @@ func main() {
 		os.Exit(1)
 	}
 
-	err = gen.WriteMapEncodersToFile("./storage/cbor_gen.go", "storage",
-		storage.SealTicket{},
-		storage.SealSeed{},
-		storage.Piece{},
-		storage.SectorInfo{},
+	err = gen.WriteMapEncodersToFile("./storage/sectors/cbor_gen.go", "sectors",
+		sealing.SealTicket{},
+		sealing.SealSeed{},
+		sealing.Piece{},
+		sealing.SectorInfo{},
 	)
 	if err != nil {
 		fmt.Println(err)

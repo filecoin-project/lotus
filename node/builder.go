@@ -51,6 +51,7 @@ import (
 	"github.com/filecoin-project/lotus/peermgr"
 	"github.com/filecoin-project/lotus/storage"
 	"github.com/filecoin-project/lotus/storage/sectorblocks"
+	"github.com/filecoin-project/lotus/storage/sealing"
 )
 
 // special is a type used to give keys to modules which
@@ -245,7 +246,7 @@ func Online() Option {
 		ApplyIf(func(s *Settings) bool { return s.nodeType == repo.StorageMiner },
 			Override(new(sectorbuilder.Interface), modules.SectorBuilder),
 			Override(new(*sectorblocks.SectorBlocks), sectorblocks.NewSectorBlocks),
-			Override(new(storage.TicketFn), modules.SealTicketGen),
+			Override(new(sealing.TicketFn), modules.SealTicketGen),
 			Override(new(*storage.Miner), modules.StorageMiner),
 
 			Override(new(dtypes.StagingBlockstore), modules.StagingBlockstore),
