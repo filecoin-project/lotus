@@ -2,12 +2,14 @@ package main
 
 import (
 	"context"
-	"golang.org/x/xerrors"
 	"net/http"
+
+	paramfetch "github.com/filecoin-project/go-paramfetch"
+	"github.com/filecoin-project/go-sectorbuilder"
+	"golang.org/x/xerrors"
 
 	lapi "github.com/filecoin-project/lotus/api"
 	"github.com/filecoin-project/lotus/build"
-	"github.com/filecoin-project/lotus/lib/sectorbuilder"
 )
 
 type worker struct {
@@ -39,7 +41,7 @@ func acceptJobs(ctx context.Context, api lapi.StorageMiner, endpoint string, aut
 		return err
 	}
 
-	if err := build.GetParams(ssize); err != nil {
+	if err := paramfetch.GetParams(build.ParametersJson, ssize); err != nil {
 		return xerrors.Errorf("get params: %w", err)
 	}
 
@@ -101,7 +103,7 @@ func (w *worker) processTask(ctx context.Context, task sectorbuilder.WorkerTask)
 
 	switch task.Type {
 	case sectorbuilder.WorkerPreCommit:
-		rspco, err := w.sb.SealPreCommit(task.SectorID, task.SealTicket, task.Pieces)
+		rspco, err := w.sb.SealPreCommit(ctx, task.SectorID, task.SealTicket, task.Pieces)
 		if err != nil {
 			return errRes(xerrors.Errorf("precomitting: %w", err))
 		}
@@ -114,8 +116,12 @@ func (w *worker) processTask(ctx context.Context, task sectorbuilder.WorkerTask)
 		if err := w.push("cache", task.SectorID); err != nil {
 			return errRes(xerrors.Errorf("pushing precommited data: %w", err))
 		}
+
+		if err := w.remove("staging", task.SectorID); err != nil {
+			return errRes(xerrors.Errorf("cleaning up staged sector: %w", err))
+		}
 	case sectorbuilder.WorkerCommit:
-		proof, err := w.sb.SealCommit(task.SectorID, task.SealTicket, task.SealSeed, task.Pieces, task.Rspco)
+		proof, err := w.sb.SealCommit(ctx, task.SectorID, task.SealTicket, task.SealSeed, task.Pieces, task.Rspco)
 		if err != nil {
 			return errRes(xerrors.Errorf("comitting: %w", err))
 		}
@@ -124,6 +130,10 @@ func (w *worker) processTask(ctx context.Context, task sectorbuilder.WorkerTask)
 
 		if err := w.push("cache", task.SectorID); err != nil {
 			return errRes(xerrors.Errorf("pushing precommited data: %w", err))
+		}
+
+		if err := w.remove("sealed", task.SectorID); err != nil {
+			return errRes(xerrors.Errorf("cleaning up sealed sector: %w", err))
 		}
 	}
 

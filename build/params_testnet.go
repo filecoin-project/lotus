@@ -3,7 +3,6 @@
 package build
 
 var SectorSizes = []uint64{
-	1 << 30,
 	32 << 30,
 }
 

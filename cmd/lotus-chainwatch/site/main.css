@@ -6,6 +6,10 @@ body {
     margin: 0;
 }
 
+b {
+    color: #aff;
+}
+
 .Index {
     width: 100vw;
     height: 100vh;

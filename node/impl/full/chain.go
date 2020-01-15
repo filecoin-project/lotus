@@ -21,8 +21,8 @@ import (
 	"go.uber.org/fx"
 	"golang.org/x/xerrors"
 
+	"github.com/filecoin-project/go-address"
 	"github.com/filecoin-project/lotus/api"
-	"github.com/filecoin-project/lotus/chain/address"
 	"github.com/filecoin-project/lotus/chain/store"
 	"github.com/filecoin-project/lotus/chain/types"
 )
@@ -298,4 +298,13 @@ func (a *ChainAPI) ChainGetNode(ctx context.Context, p string) (interface{}, err
 	}
 
 	return node, nil
+}
+
+func (a *ChainAPI) ChainGetMessage(ctx context.Context, mc cid.Cid) (*types.Message, error) {
+	cm, err := a.Chain.GetCMessage(mc)
+	if err != nil {
+		return nil, err
+	}
+
+	return cm.VMMessage(), nil
 }

@@ -7,9 +7,9 @@ import (
 	"github.com/ipfs/go-cid"
 	"github.com/minio/blake2b-simd"
 
+	"github.com/filecoin-project/go-address"
 	"github.com/filecoin-project/lotus/build"
 	"github.com/filecoin-project/lotus/chain/actors/aerrors"
-	"github.com/filecoin-project/lotus/chain/address"
 	"github.com/filecoin-project/lotus/chain/types"
 )
 
@@ -116,7 +116,7 @@ func (pca PaymentChannelActor) UpdateChannelState(act *types.Actor, vmctx types.
 
 	vb, nerr := sv.SigningBytes()
 	if nerr != nil {
-		return nil, aerrors.Escalate(nerr, "failed to serialize signedvoucher")
+		return nil, aerrors.Absorb(nerr, 1, "failed to serialize signedvoucher")
 	}
 
 	if err := vmctx.VerifySignature(sv.Signature, self.From, vb); err != nil {

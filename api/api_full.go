@@ -8,8 +8,8 @@ import (
 	"github.com/ipfs/go-filestore"
 	"github.com/libp2p/go-libp2p-core/peer"
 
+	"github.com/filecoin-project/go-address"
 	"github.com/filecoin-project/lotus/chain/actors"
-	"github.com/filecoin-project/lotus/chain/address"
 	"github.com/filecoin-project/lotus/chain/store"
 	"github.com/filecoin-project/lotus/chain/types"
 )
@@ -36,15 +36,17 @@ type FullNode interface {
 	ChainGetGenesis(context.Context) (*types.TipSet, error)
 	ChainTipSetWeight(context.Context, *types.TipSet) (types.BigInt, error)
 	ChainGetNode(ctx context.Context, p string) (interface{}, error)
+	ChainGetMessage(context.Context, cid.Cid) (*types.Message, error)
 
 	// syncer
 	SyncState(context.Context) (*SyncState, error)
 	SyncSubmitBlock(ctx context.Context, blk *types.BlockMsg) error
 	SyncIncomingBlocks(ctx context.Context) (<-chan *types.BlockHeader, error)
+	SyncMarkBad(ctx context.Context, bcid cid.Cid) error
 
 	// messages
 	MpoolPending(context.Context, *types.TipSet) ([]*types.SignedMessage, error)
-	MpoolPush(context.Context, *types.SignedMessage) error                          // TODO: remove
+	MpoolPush(context.Context, *types.SignedMessage) (cid.Cid, error)
 	MpoolPushMessage(context.Context, *types.Message) (*types.SignedMessage, error) // get nonce, sign, push
 	MpoolGetNonce(context.Context, address.Address) (uint64, error)
 	MpoolSub(context.Context) (<-chan MpoolUpdate, error)
@@ -95,6 +97,7 @@ type FullNode interface {
 	StateReplay(context.Context, *types.TipSet, cid.Cid) (*ReplayResults, error)
 	StateGetActor(ctx context.Context, actor address.Address, ts *types.TipSet) (*types.Actor, error)
 	StateReadState(ctx context.Context, act *types.Actor, ts *types.TipSet) (*ActorState, error)
+	StateListMessages(ctx context.Context, match *types.Message, ts *types.TipSet, toht uint64) ([]cid.Cid, error)
 
 	StateMinerSectors(context.Context, address.Address, *types.TipSet) ([]*ChainSectorInfo, error)
 	StateMinerProvingSet(context.Context, address.Address, *types.TipSet) ([]*ChainSectorInfo, error)

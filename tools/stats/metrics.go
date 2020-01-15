@@ -4,15 +4,14 @@ import (
 	"context"
 	"encoding/json"
 	"fmt"
-	"log"
 	"math/big"
 	"strings"
 	"time"
 
+	"github.com/filecoin-project/go-address"
 	"github.com/filecoin-project/lotus/api"
 	"github.com/filecoin-project/lotus/build"
 	"github.com/filecoin-project/lotus/chain/actors"
-	"github.com/filecoin-project/lotus/chain/address"
 	"github.com/filecoin-project/lotus/chain/types"
 	"github.com/ipfs/go-cid"
 	"github.com/multiformats/go-multihash"
@@ -57,7 +56,7 @@ func NewInfluxWriteQueue(ctx context.Context, influx client.Client) *InfluxWrite
 			case batch := <-ch:
 				for i := 0; i < maxRetries; i++ {
 					if err := influx.Write(batch); err != nil {
-						log.Printf("Failed to write batch: %w", err)
+						log.Warnw("Failed to write batch", "error", err)
 						time.Sleep(time.Second * 15)
 						continue
 					}
@@ -65,7 +64,7 @@ func NewInfluxWriteQueue(ctx context.Context, influx client.Client) *InfluxWrite
 					continue main
 				}
 
-				log.Printf("Dropping batch due to failure to write")
+				log.Error("Dropping batch due to failure to write")
 			}
 		}
 	}()
@@ -259,14 +258,14 @@ func RecordTipsetMessagesPoints(ctx context.Context, api api.FullNode, pl *Point
 }
 
 func ResetDatabase(influx client.Client, database string) error {
-	log.Print("Resetting database")
+	log.Info("Resetting database")
 	q := client.NewQuery(fmt.Sprintf(`DROP DATABASE "%s"; CREATE DATABASE "%s";`, database, database), "", "")
 	_, err := influx.Query(q)
 	return err
 }
 
 func GetLastRecordedHeight(influx client.Client, database string) (int64, error) {
-	log.Print("Retrieving last record height")
+	log.Info("Retrieving last record height")
 	q := client.NewQuery(`SELECT "value" FROM "chain.height" ORDER BY time DESC LIMIT 1`, database, "")
 	res, err := influx.Query(q)
 	if err != nil {
@@ -286,7 +285,7 @@ func GetLastRecordedHeight(influx client.Client, database string) (int64, error)
 		return 0, err
 	}
 
-	log.Printf("Last record height %d", height)
+	log.Infow("Last record height", "height", height)
 
 	return height, nil
 }

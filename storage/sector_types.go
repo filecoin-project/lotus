@@ -3,10 +3,10 @@ package storage
 import (
 	"context"
 
+	sectorbuilder "github.com/filecoin-project/go-sectorbuilder"
 	"github.com/ipfs/go-cid"
 
 	"github.com/filecoin-project/lotus/api"
-	"github.com/filecoin-project/lotus/lib/sectorbuilder"
 )
 
 type TicketFn func(context.Context) (*sectorbuilder.SealTicket, error)

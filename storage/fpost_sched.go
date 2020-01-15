@@ -7,11 +7,12 @@ import (
 	"go.opencensus.io/trace"
 	"golang.org/x/xerrors"
 
+	"github.com/filecoin-project/go-address"
+	"github.com/filecoin-project/go-sectorbuilder"
+
 	"github.com/filecoin-project/lotus/build"
-	"github.com/filecoin-project/lotus/chain/address"
 	"github.com/filecoin-project/lotus/chain/store"
 	"github.com/filecoin-project/lotus/chain/types"
-	"github.com/filecoin-project/lotus/lib/sectorbuilder"
 )
 
 const Inactive = 0
@@ -20,7 +21,7 @@ const StartConfidence = 4 // TODO: config
 
 type fpostScheduler struct {
 	api storageMinerApi
-	sb  *sectorbuilder.SectorBuilder
+	sb  sectorbuilder.Interface
 
 	actor  address.Address
 	worker address.Address

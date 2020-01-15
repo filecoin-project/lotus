@@ -6,11 +6,13 @@ import (
 	"crypto/sha256"
 	"encoding/binary"
 	"fmt"
+	"github.com/filecoin-project/lotus/chain/vm"
 	"io/ioutil"
 	"sync/atomic"
 
 	ffi "github.com/filecoin-project/filecoin-ffi"
 
+	sectorbuilder "github.com/filecoin-project/go-sectorbuilder"
 	"github.com/ipfs/go-blockservice"
 	"github.com/ipfs/go-car"
 	offline "github.com/ipfs/go-ipfs-exchange-offline"
@@ -19,22 +21,21 @@ import (
 	"go.opencensus.io/trace"
 	"golang.org/x/xerrors"
 
+	"github.com/filecoin-project/go-address"
 	"github.com/filecoin-project/lotus/api"
 	"github.com/filecoin-project/lotus/build"
-	"github.com/filecoin-project/lotus/chain/address"
 	"github.com/filecoin-project/lotus/chain/stmgr"
 	"github.com/filecoin-project/lotus/chain/store"
 	"github.com/filecoin-project/lotus/chain/types"
 	"github.com/filecoin-project/lotus/chain/wallet"
 	"github.com/filecoin-project/lotus/cmd/lotus-seed/seed"
 	"github.com/filecoin-project/lotus/genesis"
-	"github.com/filecoin-project/lotus/lib/sectorbuilder"
 	"github.com/filecoin-project/lotus/node/repo"
 
 	block "github.com/ipfs/go-block-format"
 	"github.com/ipfs/go-cid"
 	blockstore "github.com/ipfs/go-ipfs-blockstore"
-	logging "github.com/ipfs/go-log"
+	logging "github.com/ipfs/go-log/v2"
 )
 
 var log = logging.Logger("gen")
@@ -170,7 +171,9 @@ func NewGenerator() (*ChainGen, error) {
 		MinerAddrs: []address.Address{maddr1, maddr2},
 	}
 
-	genb, err := MakeGenesisBlock(bs, map[address.Address]types.BigInt{
+	sys := vm.Syscalls(sectorbuilder.ProofVerifier)
+
+	genb, err := MakeGenesisBlock(bs, sys, map[address.Address]types.BigInt{
 		mk1:    types.FromFil(40000),
 		mk2:    types.FromFil(40000),
 		banker: types.FromFil(50000),
@@ -179,7 +182,7 @@ func NewGenerator() (*ChainGen, error) {
 		return nil, xerrors.Errorf("make genesis block failed: %w", err)
 	}
 
-	cs := store.NewChainStore(bs, ds)
+	cs := store.NewChainStore(bs, ds, sys)
 
 	genfb := &types.FullBlock{Header: genb.Genesis}
 	gents := store.NewFullTipSet([]*types.FullBlock{genfb})
