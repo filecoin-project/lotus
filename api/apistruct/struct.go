@@ -98,7 +98,7 @@ type FullNodeStruct struct {
 		StateMinerPeerID              func(ctx context.Context, m address.Address, ts *types.TipSet) (peer.ID, error)                   `perm:"read"`
 		StateMinerElectionPeriodStart func(ctx context.Context, actor address.Address, ts *types.TipSet) (uint64, error)                `perm:"read"`
 		StateMinerSectorSize          func(context.Context, address.Address, *types.TipSet) (uint64, error)                             `perm:"read"`
-		StateCall                     func(context.Context, *types.Message, *types.TipSet) (*types.MessageReceipt, error)               `perm:"read"`
+		StateCall                     func(context.Context, *types.Message, *types.TipSet) (*api.MethodCall, error)                     `perm:"read"`
 		StateReplay                   func(context.Context, *types.TipSet, cid.Cid) (*api.ReplayResults, error)                         `perm:"read"`
 		StateGetActor                 func(context.Context, address.Address, *types.TipSet) (*types.Actor, error)                       `perm:"read"`
 		StateReadState                func(context.Context, *types.Actor, *types.TipSet) (*api.ActorState, error)                       `perm:"read"`
@@ -405,7 +405,7 @@ func (c *FullNodeStruct) StateMinerSectorSize(ctx context.Context, actor address
 	return c.Internal.StateMinerSectorSize(ctx, actor, ts)
 }
 
-func (c *FullNodeStruct) StateCall(ctx context.Context, msg *types.Message, ts *types.TipSet) (*types.MessageReceipt, error) {
+func (c *FullNodeStruct) StateCall(ctx context.Context, msg *types.Message, ts *types.TipSet) (*api.MethodCall, error) {
 	return c.Internal.StateCall(ctx, msg, ts)
 }
 

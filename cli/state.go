@@ -1,18 +1,24 @@
 package cli
 
 import (
+	"bytes"
 	"context"
 	"encoding/json"
 	"fmt"
+	"reflect"
+	"strconv"
 	"strings"
 
 	"github.com/filecoin-project/go-address"
 	"github.com/filecoin-project/lotus/api"
+	actors "github.com/filecoin-project/lotus/chain/actors"
 	"github.com/filecoin-project/lotus/chain/types"
 	"github.com/filecoin-project/lotus/miner"
+	"github.com/libp2p/go-libp2p-core/peer"
 	"golang.org/x/xerrors"
 
 	"github.com/ipfs/go-cid"
+	cbg "github.com/whyrusleeping/cbor-gen"
 	"gopkg.in/urfave/cli.v2"
 )
 
@@ -39,6 +45,7 @@ var stateCmd = &cli.Command{
 		stateReadStateCmd,
 		stateListMessagesCmd,
 		stateComputeStateCmd,
+		stateCallCmd,
 	},
 }
 
@@ -647,4 +654,198 @@ var stateComputeStateCmd = &cli.Command{
 		fmt.Println("computed state cid: ", nstate)
 		return nil
 	},
+}
+
+var stateCallCmd = &cli.Command{
+	Name:  "call",
+	Usage: "Invoke a method on an actor locally",
+	Flags: []cli.Flag{
+		&cli.StringFlag{
+			Name:  "from",
+			Usage: "",
+			Value: actors.NetworkAddress.String(),
+		},
+		&cli.StringFlag{
+			Name:  "value",
+			Usage: "specify value field for invocation",
+			Value: "0",
+		},
+		&cli.StringFlag{
+			Name:  "ret",
+			Usage: "specify how to parse output (auto, raw, addr, big)",
+			Value: "auto",
+		},
+	},
+	Action: func(cctx *cli.Context) error {
+		if cctx.Args().Len() < 2 {
+			return fmt.Errorf("must specify at least actor and method to invoke")
+		}
+
+		api, closer, err := GetFullNodeAPI(cctx)
+		if err != nil {
+			return err
+		}
+		defer closer()
+
+		ctx := ReqContext(cctx)
+
+		toa, err := address.NewFromString(cctx.Args().First())
+		if err != nil {
+			return fmt.Errorf("given 'to' address %q was invalid: %w", cctx.Args().First(), err)
+		}
+
+		froma, err := address.NewFromString(cctx.String("from"))
+		if err != nil {
+			return fmt.Errorf("given 'from' address %q was invalid: %w", cctx.String("from"), err)
+		}
+
+		ts, err := loadTipSet(ctx, cctx, api)
+		if err != nil {
+			return err
+		}
+
+		method, err := strconv.ParseUint(cctx.Args().Get(1), 10, 64)
+		if err != nil {
+			return fmt.Errorf("must pass method as a number")
+		}
+
+		value, err := types.ParseFIL(cctx.String("value"))
+		if err != nil {
+			return fmt.Errorf("failed to parse 'value': %s", err)
+		}
+
+		act, err := api.StateGetActor(ctx, toa, ts)
+		if err != nil {
+			return fmt.Errorf("failed to lookup target actor: %s", err)
+		}
+
+		params, err := parseParamsForMethod(act.Code, method, cctx.Args().Slice()[2:])
+		if err != nil {
+			return fmt.Errorf("failed to parse params: %s", err)
+		}
+
+		ret, err := api.StateCall(ctx, &types.Message{
+			From:     froma,
+			To:       toa,
+			Value:    types.BigInt(value),
+			GasLimit: types.NewInt(10000000000),
+			GasPrice: types.NewInt(0),
+			Method:   method,
+			Params:   params,
+		}, ts)
+		if err != nil {
+			return fmt.Errorf("state call failed: %s", err)
+		}
+
+		if ret.ExitCode != 0 {
+			return fmt.Errorf("invocation failed (exit: %d): %s", ret.ExitCode, ret.Error)
+		}
+
+		s, err := formatOutput(cctx.String("ret"), ret.Return)
+		if err != nil {
+			return fmt.Errorf("failed to format output: %s", err)
+		}
+
+		fmt.Printf("return: %s\n", s)
+
+		return nil
+	},
+}
+
+func formatOutput(t string, val []byte) (string, error) {
+	switch t {
+	case "raw", "hex":
+		return fmt.Sprintf("%x", val), nil
+	case "address", "addr", "a":
+		a, err := address.NewFromBytes(val)
+		if err != nil {
+			return "", err
+		}
+		return a.String(), nil
+	case "big", "int", "bigint":
+		bi := types.BigFromBytes(val)
+		return bi.String(), nil
+	case "fil":
+		bi := types.FIL(types.BigFromBytes(val))
+		return bi.String(), nil
+	case "pid", "peerid", "peer":
+		pid, err := peer.IDFromBytes(val)
+		if err != nil {
+			return "", err
+		}
+
+		return pid.Pretty(), nil
+	case "auto":
+		if len(val) == 0 {
+			return "", nil
+		}
+
+		a, err := address.NewFromBytes(val)
+		if err == nil {
+			return "address: " + a.String(), nil
+		}
+
+		pid, err := peer.IDFromBytes(val)
+		if err == nil {
+			return "peerID: " + pid.Pretty(), nil
+		}
+
+		bi := types.BigFromBytes(val)
+		return "bigint: " + bi.String(), nil
+	default:
+		return "", fmt.Errorf("unrecognized output type: %q", t)
+	}
+}
+
+func parseParamsForMethod(act cid.Cid, method uint64, args []string) ([]byte, error) {
+	if len(args) == 0 {
+		return nil, nil
+	}
+
+	var f interface{}
+	switch act {
+	case actors.StorageMarketCodeCid:
+		f = actors.StorageMarketActor{}.Exports()[method]
+	case actors.StorageMinerCodeCid:
+		f = actors.StorageMinerActor{}.Exports()[method]
+	case actors.StoragePowerCodeCid:
+		f = actors.StoragePowerActor{}.Exports()[method]
+	case actors.MultisigCodeCid:
+		f = actors.MultiSigActor{}.Exports()[method]
+	case actors.PaymentChannelCodeCid:
+		f = actors.PaymentChannelActor{}.Exports()[method]
+	default:
+		return nil, fmt.Errorf("the lazy devs didnt add support for that actor to this call yet")
+	}
+
+	rf := reflect.TypeOf(f)
+	if rf.NumIn() != 3 {
+		return nil, fmt.Errorf("expected referenced method to have three arguments")
+	}
+
+	paramObj := rf.In(2).Elem()
+	if paramObj.NumField() != len(args) {
+		return nil, fmt.Errorf("not enough arguments given to call that method (expecting %d)", paramObj.NumField())
+	}
+
+	p := reflect.New(paramObj)
+	for i := 0; i < len(args); i++ {
+		switch paramObj.Field(i).Type {
+		case reflect.TypeOf(address.Address{}):
+			a, err := address.NewFromString(args[i])
+			if err != nil {
+				return nil, err
+			}
+			p.Elem().Field(i).Set(reflect.ValueOf(a))
+		default:
+			return nil, fmt.Errorf("unsupported type for call (TODO): %s", paramObj.Field(i).Type)
+		}
+	}
+
+	m := p.Interface().(cbg.CBORMarshaler)
+	buf := new(bytes.Buffer)
+	if err := m.MarshalCBOR(buf); err != nil {
+		return nil, fmt.Errorf("failed to marshal param object: %s", err)
+	}
+	return buf.Bytes(), nil
 }
