@@ -124,7 +124,7 @@ BINS+=townhall
 fountain:
 	rm -f fountain
 	go build -o fountain ./cmd/lotus-fountain
-	go run github.com/GeertJohan/go.rice/rice append --exec fountain -i ./cmd/lotus-fountain
+	go run github.com/GeertJohan/go.rice/rice append --exec fountain -i ./cmd/lotus-fountain -i ./build
 .PHONY: fountain
 BINS+=fountain
 
