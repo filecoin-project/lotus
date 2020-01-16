@@ -36,8 +36,8 @@ type Miner struct {
 
 	sealing *sealing.Sealing
 
-	stop           chan struct{}
-	stopped        chan struct{}
+	stop    chan struct{}
+	stopped chan struct{}
 }
 
 type storageMinerApi interface {
@@ -67,16 +67,16 @@ type storageMinerApi interface {
 
 func NewMiner(api storageMinerApi, addr address.Address, h host.Host, ds datastore.Batching, sb sectorbuilder.Interface, tktFn sealing.TicketFn) (*Miner, error) {
 	m := &Miner{
-		api: api,
+		api:   api,
 		h:     h,
 		sb:    sb,
-		ds: ds,
+		ds:    ds,
 		tktFn: tktFn,
 
 		maddr: addr,
 
-		stop:           make(chan struct{}),
-		stopped:        make(chan struct{}),
+		stop:    make(chan struct{}),
+		stopped: make(chan struct{}),
 	}
 
 	return m, nil
@@ -88,8 +88,8 @@ func (m *Miner) Run(ctx context.Context) error {
 	}
 
 	fps := &fpostScheduler{
-		api:    m.api,
-		sb:     m.sb,
+		api: m.api,
+		sb:  m.sb,
 
 		actor:  m.maddr,
 		worker: m.worker,

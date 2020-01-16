@@ -66,13 +66,13 @@ type Sealing struct {
 
 func New(api sealingApi, events *events.Events, maddr address.Address, worker address.Address, ds datastore.Batching, sb sectorbuilder.Interface, tktFn TicketFn) *Sealing {
 	s := &Sealing{
-		api:            api,
+		api:    api,
 		events: events,
 
-		maddr:          maddr,
-		worker:         worker,
-		sb:             sb,
-		tktFn:          tktFn,
+		maddr:  maddr,
+		worker: worker,
+		sb:     sb,
+		tktFn:  tktFn,
 	}
 
 	s.sectors = statemachine.New(namespace.Wrap(ds, datastore.NewKey(SectorStorePrefix)), s, SectorInfo{})
@@ -133,4 +133,3 @@ func (m *Sealing) newSector(ctx context.Context, sid uint64, dealID uint64, ppi 
 		},
 	})
 }
-
