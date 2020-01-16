@@ -29,6 +29,10 @@ func (t *SealSeed) SB() sectorbuilder.SealSeed {
 	return out
 }
 
+func (t *SealSeed) Equals(o *SealSeed) bool {
+	return string(t.TicketBytes) == string(o.TicketBytes) && t.BlockHeight == o.BlockHeight
+}
+
 type Piece struct {
 	DealID uint64
 
@@ -70,6 +74,8 @@ type SectorInfo struct {
 
 	// Debug
 	LastErr string
+
+	// TODO: Log []struct{ts, msg, trace string}
 }
 
 func (t *SectorInfo) pieceInfos() []sectorbuilder.PublicPieceInfo {

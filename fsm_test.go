@@ -3,11 +3,16 @@ package sealing
 import (
 	"testing"
 
+	logging "github.com/ipfs/go-log/v2"
 	"github.com/stretchr/testify/require"
 
 	"github.com/filecoin-project/lotus/api"
 	"github.com/filecoin-project/lotus/lib/statemachine"
 )
+
+func init() {
+	_ = logging.SetLogLevel("*", "INFO")
+}
 
 func (t *test) planSingle(evt interface{}) {
 	_, err := t.s.plan([]statemachine.Event{{evt}}, t.state)
@@ -67,11 +72,12 @@ func TestSeedRevert(t *testing.T) {
 	m.planSingle(SectorSeedReady{})
 	require.Equal(m.t, m.state.State, api.Committing)
 
-	_, err := m.s.plan([]statemachine.Event{{SectorSeedReady{}}, {SectorCommitted{}}}, m.state)
+	_, err := m.s.plan([]statemachine.Event{{SectorSeedReady{seed:SealSeed{BlockHeight: 5,}}}, {SectorCommitted{}}}, m.state)
 	require.NoError(t, err)
 	require.Equal(m.t, m.state.State, api.Committing)
 
-	m.planSingle(SectorCommitted{})
+	// not changing the seed this time
+	_, err = m.s.plan([]statemachine.Event{{SectorSeedReady{seed:SealSeed{BlockHeight: 5,}}}, {SectorCommitted{}}}, m.state)
 	require.Equal(m.t, m.state.State, api.CommitWait)
 
 	m.planSingle(SectorProving{})
