@@ -834,9 +834,21 @@ func parseParamsForMethod(act cid.Cid, method uint64, args []string) ([]byte, er
 		case reflect.TypeOf(address.Address{}):
 			a, err := address.NewFromString(args[i])
 			if err != nil {
-				return nil, err
+				return nil, fmt.Errorf("failed to parse address: %s", err)
 			}
 			p.Elem().Field(i).Set(reflect.ValueOf(a))
+		case reflect.TypeOf(uint64(0)):
+			val, err := strconv.ParseUint(args[i], 10, 64)
+			if err != nil {
+				return nil, err
+			}
+			p.Elem().Field(i).Set(reflect.ValueOf(val))
+		case reflect.TypeOf(peer.ID("")):
+			pid, err := peer.IDB58Decode(args[i])
+			if err != nil {
+				return nil, fmt.Errorf("failed to parse peer ID: %s", err)
+			}
+			p.Elem().Field(i).Set(reflect.ValueOf(pid))
 		default:
 			return nil, fmt.Errorf("unsupported type for call (TODO): %s", paramObj.Field(i).Type)
 		}
