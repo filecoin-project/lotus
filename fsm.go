@@ -2,7 +2,6 @@ package sealing
 
 import (
 	"context"
-	"fmt"
 	"reflect"
 
 	"golang.org/x/xerrors"
@@ -32,13 +31,30 @@ func (m *Sealing) Plan(events []statemachine.Event, user interface{}) (interface
 var fsmPlanners = []func(events []statemachine.Event, state *SectorInfo) error {
 	api.UndefinedSectorState: planOne(on(SectorStart{}, api.Packing)),
 	api.Packing: planOne(on(SectorPacked{}, api.Unsealed)),
-	api.Unsealed: planOne(on(SectorSealed{}, api.PreCommitting)),
-	api.PreCommitting: planOne(on(SectorPreCommitted{}, api.PreCommitted)),
-	api.PreCommitted: planOne(on(SectorSeedReady{}, api.Committing)),
+	api.Unsealed: planOne(
+		on(SectorSealed{}, api.PreCommitting),
+		on(SectorSealFailed{}, api.SealFailed),
+	),
+	api.PreCommitting: planOne(
+		on(SectorPreCommitted{}, api.PreCommitted),
+		on(SectorPreCommitFailed{}, api.PreCommitFailed),
+	),
+	api.PreCommitted: planOne(
+		on(SectorSeedReady{}, api.Committing),
+		on(SectorPreCommitFailed{}, api.PreCommitFailed),
+	),
 	api.Committing: planCommitting,
 	api.CommitWait: planOne(on(SectorProving{}, api.Proving)),
 
-	api.Proving: final,
+	api.Proving: planOne(
+		on(SectorFaultReported{}, api.FaultReported),
+		on(SectorFaulty{}, api.Faulty),
+	),
+
+	api.Faulty: planOne(
+		on(SectorFaultReported{}, api.FaultReported),
+	),
+	api.FaultedFinal: final,
 }
 
 func (m *Sealing) plan(events []statemachine.Event, state *SectorInfo) (func(statemachine.Context, SectorInfo) error, error) {
@@ -52,56 +68,6 @@ func (m *Sealing) plan(events []statemachine.Event, state *SectorInfo) (func(sta
 
 	if err := p(events, state); err != nil {
 		return nil, xerrors.Errorf("running planner for state %s failed: %w", api.SectorStates[state.State], err)
-	}
-
-	for _, event := range events {
-		if err, ok := event.User.(error); ok {
-			state.LastErr = fmt.Sprintf("%+v", err)
-		}
-
-		switch event := event.User.(type) {
-		case SectorRestart:
-			// noop
-		case SectorFatalError:
-			log.Errorf("Fatal error on sector %d: %+v", state.SectorID, event.error)
-			// TODO: Do we want to mark the state as unrecoverable?
-			//  I feel like this should be a softer error, where the user would
-			//  be able to send a retry event of some kind
-			return nil, nil
-
-		// // TODO: Incoming
-		// TODO: for those - look at dealIDs matching chain
-
-		// // Unsealed
-
-		case SectorSealFailed:
-			// TODO: try to find out the reason, maybe retry
-			state.State = api.SealFailed
-
-		// // PreCommit
-
-		case SectorPreCommitFailed:
-			// TODO: try to find out the reason, maybe retry
-			state.State = api.PreCommitFailed
-
-		// // Commit
-
-		case SectorSealCommitFailed:
-			// TODO: try to find out the reason, maybe retry
-			state.State = api.SealCommitFailed
-		case SectorCommitFailed:
-			// TODO: try to find out the reason, maybe retry
-			state.State = api.SealFailed
-		case SectorFaultReported:
-			state.FaultReportMsg = &event.reportMsg
-			state.State = api.FaultReported
-		case SectorFaultedFinal:
-			state.State = api.FaultedFinal
-
-		// // Debug triggers
-		case SectorForceState:
-			state.State = event.state
-		}
 	}
 
 	/////
@@ -190,8 +156,10 @@ func (m *Sealing) plan(events []statemachine.Event, state *SectorInfo) (func(sta
 func planCommitting(events []statemachine.Event, state *SectorInfo) error {
 	for _, event := range events {
 		switch e := event.User.(type) {
-		case SectorRestart:
-			// noop
+		case globalMutator:
+			if e.applyGlobal(state) {
+				return nil
+			}
 		case SectorCommitted: // the normal case
 			e.apply(state)
 			state.State = api.CommitWait
@@ -204,6 +172,10 @@ func planCommitting(events []statemachine.Event, state *SectorInfo) error {
 			e.apply(state)
 			state.State = api.Committing
 			return nil
+		case SectorSealCommitFailed:
+			state.State = api.SealCommitFailed
+		case SectorSealFailed:
+			state.State = api.CommitFailed
 		default:
 			return xerrors.Errorf("planCommitting got event of unknown type %T, events: %+v", event.User, events)
 		}
@@ -245,6 +217,12 @@ func on(mut mutator, next api.SectorState) func() (mutator, api.SectorState) {
 func planOne(ts ...func() (mut mutator, next api.SectorState)) func(events []statemachine.Event, state *SectorInfo) error {
 	return func(events []statemachine.Event, state *SectorInfo) error {
 		if len(events) != 1 {
+			for _, event := range events {
+				if gm, ok := event.User.(globalMutator); !ok {
+					gm.applyGlobal(state)
+					return nil
+				}
+			}
 			return xerrors.Errorf("planner for state %s only has a plan for a single event only, got %+v", api.SectorStates[state.State], events)
 		}
 

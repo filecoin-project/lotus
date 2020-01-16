@@ -173,6 +173,8 @@ func (m *Sealing) handleCommitting(ctx statemachine.Context, sector SectorInfo) 
 		GasPrice: types.NewInt(1),
 	}
 
+	// TODO: check seed / ticket are up to date
+
 	smsg, err := m.api.MpoolPushMessage(ctx.Context(), msg)
 	if err != nil {
 		return ctx.Send(SectorCommitFailed{xerrors.Errorf("pushing message to mpool: %w", err)})
