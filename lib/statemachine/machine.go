@@ -16,6 +16,8 @@ type Event struct {
 	User interface{}
 }
 
+// TODO: This probably should be returning an int indicating partial event processing
+//  (or something like errPartial(nEvents))
 // returns func(ctx Context, st <T>) (func(*<T>), error), where <T> is the typeOf(User) param
 type Planner func(events []Event, user interface{}) (interface{}, error)
 

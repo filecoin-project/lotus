@@ -50,8 +50,8 @@ import (
 	"github.com/filecoin-project/lotus/paych"
 	"github.com/filecoin-project/lotus/peermgr"
 	"github.com/filecoin-project/lotus/storage"
-	"github.com/filecoin-project/lotus/storage/sectorblocks"
 	"github.com/filecoin-project/lotus/storage/sealing"
+	"github.com/filecoin-project/lotus/storage/sectorblocks"
 )
 
 // special is a type used to give keys to modules which
