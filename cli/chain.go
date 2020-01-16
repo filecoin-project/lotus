@@ -385,3 +385,17 @@ func printTipSet(format string, ts *types.TipSet) {
 
 	fmt.Println(format)
 }
+
+func chainExportCmd = &cli.Command{
+	Name: "export",
+	Usage: "export chain to a car file",
+	Action: func(cctx *cli.Context) error {
+		api, closer, err := GetFullNodeAPI(cctx)
+		if err != nil {
+			return err
+		}
+		defer closer()
+		ctx := ReqContext(cctx)
+
+	},
+}
