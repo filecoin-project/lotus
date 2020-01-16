@@ -275,7 +275,7 @@ func (h *handler) mkminer(w http.ResponseWriter, r *http.Request) {
 	createStorageMinerMsg := &types.Message{
 		To:    actors.StoragePowerAddress,
 		From:  h.from,
-		Value: collateral,
+		Value: types.BigAdd(collateral, types.BigDiv(collateral, types.NewInt(100))),
 
 		Method: actors.SPAMethods.CreateStorageMiner,
 		Params: params,
