@@ -14,7 +14,7 @@ MODULES:=
 
 CLEAN:=
 BINS:=
-GOFLAGS+=-ldflags="-X "github.com/filecoin-project/lotus/build".CurrentCommit=+git$(subst -,.,$(shell git describe --always --match=NeVeRmAtCh --dirty 2>/dev/null || git rev-parse --short HEAD 2>/dev/null))"
+GOFLAGS+=-ldflags='-X="github.com/filecoin-project/lotus/build".CurrentCommit=+git$(subst -,.,$(shell git describe --always --match=NeVeRmAtCh --dirty 2>/dev/null || git rev-parse --short HEAD 2>/dev/null))'
 
 ## FFI
 
@@ -124,7 +124,7 @@ BINS+=townhall
 fountain:
 	rm -f fountain
 	go build -o fountain ./cmd/lotus-fountain
-	go run github.com/GeertJohan/go.rice/rice append --exec fountain -i ./cmd/lotus-fountain
+	go run github.com/GeertJohan/go.rice/rice append --exec fountain -i ./cmd/lotus-fountain -i ./build
 .PHONY: fountain
 BINS+=fountain
 

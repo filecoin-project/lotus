@@ -37,6 +37,7 @@ type FullNode interface {
 	ChainTipSetWeight(context.Context, *types.TipSet) (types.BigInt, error)
 	ChainGetNode(ctx context.Context, p string) (interface{}, error)
 	ChainGetMessage(context.Context, cid.Cid) (*types.Message, error)
+	ChainGetPath(ctx context.Context, from types.TipSetKey, to types.TipSetKey) ([]*store.HeadChange, error)
 
 	// syncer
 	SyncState(context.Context) (*SyncState, error)
