@@ -28,9 +28,9 @@ func (m *Sealing) Plan(events []statemachine.Event, user interface{}) (interface
 	}, nil
 }
 
-var fsmPlanners = []func(events []statemachine.Event, state *SectorInfo) error {
+var fsmPlanners = []func(events []statemachine.Event, state *SectorInfo) error{
 	api.UndefinedSectorState: planOne(on(SectorStart{}, api.Packing)),
-	api.Packing: planOne(on(SectorPacked{}, api.Unsealed)),
+	api.Packing:              planOne(on(SectorPacked{}, api.Unsealed)),
 	api.Unsealed: planOne(
 		on(SectorSealed{}, api.PreCommitting),
 		on(SectorSealFailed{}, api.SealFailed),
