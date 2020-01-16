@@ -105,3 +105,9 @@ const BlsSignatureCacheSize = 40000
 // Limits
 
 const BlockMessageLimit = 512
+
+/////////////
+// Fork Heights
+//
+
+const ForkBlizzardHeight = 6000
