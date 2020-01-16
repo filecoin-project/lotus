@@ -1,8 +1,9 @@
 package sealing
 
 import (
-	"github.com/filecoin-project/lotus/api"
 	"github.com/ipfs/go-cid"
+
+	"github.com/filecoin-project/lotus/api"
 )
 
 type mutator interface {
