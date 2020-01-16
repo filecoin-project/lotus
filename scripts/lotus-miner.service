@@ -5,8 +5,8 @@ After=lotus-daemon.service
 
 [Service]
 ExecStart=/usr/local/bin/lotus-storage-miner run
-Environment=GOLOG_FILE="/var/log/lotus-miner"
-Environment=GOLOG_LOG_FMT="json"
+Environment=GOLOG_FILE=/var/log/lotus-miner
+Environment=GOLOG_LOG_FMT=json
 
 [Install]
 WantedBy=multiuser.target
