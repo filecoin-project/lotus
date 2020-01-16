@@ -6,12 +6,17 @@ import (
 	"fmt"
 
 	bls "github.com/filecoin-project/filecoin-ffi"
-	"github.com/filecoin-project/lotus/chain/address"
-	"github.com/filecoin-project/lotus/lib/crypto"
+	"github.com/filecoin-project/go-address"
+	"github.com/filecoin-project/go-crypto"
 	"github.com/minio/blake2b-simd"
+	"golang.org/x/xerrors"
 )
 
 func (s *Signature) Verify(addr address.Address, msg []byte) error {
+	if s == nil {
+		return xerrors.Errorf("signature is nil")
+	}
+
 	if addr.Protocol() == address.ID {
 		return fmt.Errorf("must resolve ID addresses before using them to verify a signature")
 	}

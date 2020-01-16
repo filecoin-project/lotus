@@ -12,9 +12,9 @@ import (
 	dsq "github.com/ipfs/go-datastore/query"
 	"golang.org/x/xerrors"
 
-	"github.com/filecoin-project/lotus/chain/address"
+	"github.com/filecoin-project/go-address"
+	cborrpc "github.com/filecoin-project/go-cbor-util"
 	"github.com/filecoin-project/lotus/chain/types"
-	cborrpc "github.com/filecoin-project/lotus/lib/cborutil"
 	"github.com/filecoin-project/lotus/node/modules/dtypes"
 )
 

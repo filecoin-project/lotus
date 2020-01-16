@@ -10,6 +10,14 @@ If you have installed older versions, you may need to clear existing chain data,
 rm -rf ~/.lotus ~/.lotusstorage
 ```
 
+## Note: Using the Lotus Node from China
+
+If you are trying to use `lotus` from China. You should set this **environment variable** on your machine:
+
+```sh
+IPFS_GATEWAY="https://proof-parameters.s3.cn-south-1.jdcloud-oss.com/ipfs/"
+```
+
 ## Get started
 
 Start the **daemon** using the default configuration in `./build`:
@@ -39,16 +47,16 @@ lotus sync wait
 
 ## Create your first address
 
-Initialize a wallet using BLS signature formats:
+Initialize a new wallet:
 
 ```sh
-lotus wallet new bls
+lotus wallet new 
 ```
 
 Here is an example of the response:
 
 ```sh
-t3vhfme4qfvegqaz7m7q6o6afjcs67n6kpzv7t2eozio4chwpafwa2y4l7zhwd5eom7jmihzdg4s52dpvnclza
+t1aswwvjsae63tcrniz6x5ykvsuotlgkvlulnqpsi
 ```
 
 - Visit the [faucet](https://lotus-faucet.kittyhawk.wtf/funds.html) to add funds.

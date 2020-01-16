@@ -2,6 +2,7 @@ package main
 
 import (
 	"context"
+	"time"
 
 	"github.com/ipfs/go-cid"
 
@@ -15,24 +16,45 @@ func subMpool(ctx context.Context, api aapi.FullNode, st *storage) {
 		return
 	}
 
-	for change := range sub {
-		if change.Type != aapi.MpoolAdd {
-			continue
+	for {
+		var updates []aapi.MpoolUpdate
+
+		select {
+		case update := <-sub:
+			updates = append(updates, update)
+		case <-ctx.Done():
+			return
 		}
 
-		log.Info("mpool message")
+	loop:
+		for {
+			time.Sleep(10 * time.Millisecond)
+			select {
+			case update := <-sub:
+				updates = append(updates, update)
+			default:
+				break loop
+			}
+		}
 
-		err := st.storeMessages(map[cid.Cid]*types.Message{
-			change.Message.Message.Cid(): &change.Message.Message,
-		})
+		msgs := map[cid.Cid]*types.Message{}
+		for _, v := range updates {
+			if v.Type != aapi.MpoolAdd {
+				continue
+			}
+
+			msgs[v.Message.Message.Cid()] = &v.Message.Message
+		}
+
+		log.Infof("Processing %d mpool updates", len(msgs))
+
+		err := st.storeMessages(msgs)
 		if err != nil {
 			log.Error(err)
-			continue
 		}
 
-		if err := st.storeMpoolInclusion(change.Message.Message.Cid()); err != nil {
+		if err := st.storeMpoolInclusions(updates); err != nil {
 			log.Error(err)
-			continue
 		}
 	}
 }

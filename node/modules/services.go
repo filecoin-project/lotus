@@ -8,15 +8,17 @@ import (
 	pubsub "github.com/libp2p/go-libp2p-pubsub"
 	"go.uber.org/fx"
 
+	"github.com/filecoin-project/go-fil-markets/retrievalmarket"
+	"github.com/filecoin-project/go-fil-markets/retrievalmarket/discovery"
+	"github.com/filecoin-project/go-fil-markets/storagemarket"
 	"github.com/filecoin-project/lotus/chain"
 	"github.com/filecoin-project/lotus/chain/blocksync"
-	"github.com/filecoin-project/lotus/chain/deals"
 	"github.com/filecoin-project/lotus/chain/messagepool"
 	"github.com/filecoin-project/lotus/chain/sub"
 	"github.com/filecoin-project/lotus/node/hello"
+	"github.com/filecoin-project/lotus/node/modules/dtypes"
 	"github.com/filecoin-project/lotus/node/modules/helpers"
 	"github.com/filecoin-project/lotus/peermgr"
-	"github.com/filecoin-project/lotus/retrieval/discovery"
 )
 
 func RunHello(mctx helpers.MetricsCtx, lc fx.Lifecycle, h host.Host, svc *hello.Service) {
@@ -65,7 +67,7 @@ func HandleIncomingMessages(mctx helpers.MetricsCtx, lc fx.Lifecycle, pubsub *pu
 	go sub.HandleIncomingMessages(ctx, mpool, msgsub)
 }
 
-func RunDealClient(mctx helpers.MetricsCtx, lc fx.Lifecycle, c *deals.Client) {
+func RunDealClient(mctx helpers.MetricsCtx, lc fx.Lifecycle, c storagemarket.StorageClient) {
 	ctx := helpers.LifecycleCtx(mctx, lc)
 
 	lc.Append(fx.Hook{
@@ -80,6 +82,10 @@ func RunDealClient(mctx helpers.MetricsCtx, lc fx.Lifecycle, c *deals.Client) {
 	})
 }
 
-func RetrievalResolver(l *discovery.Local) discovery.PeerResolver {
+func NewLocalDiscovery(ds dtypes.MetadataDS) *discovery.Local {
+	return discovery.NewLocal(ds)
+}
+
+func RetrievalResolver(l *discovery.Local) retrievalmarket.PeerResolver {
 	return discovery.Multi(l)
 }

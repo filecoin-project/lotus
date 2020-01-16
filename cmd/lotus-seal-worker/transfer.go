@@ -6,12 +6,12 @@ import (
 	"net/http"
 	"os"
 
+	sectorbuilder "github.com/filecoin-project/go-sectorbuilder"
 	files "github.com/ipfs/go-ipfs-files"
 	"golang.org/x/xerrors"
 	"gopkg.in/cheggaaa/pb.v1"
 	"path/filepath"
 
-	"github.com/filecoin-project/lotus/lib/sectorbuilder"
 	"github.com/filecoin-project/lotus/lib/tarutil"
 )
 
@@ -125,6 +125,11 @@ func (w *worker) push(typ string, sectorID uint64) error {
 	}
 
 	// TODO: keep files around for later stages of sealing
+	return w.remove(typ, sectorID)
+}
+
+func (w *worker) remove(typ string, sectorID uint64) error {
+	filename := filepath.Join(w.repo, typ, w.sb.SectorName(sectorID))
 	return os.RemoveAll(filename)
 }
 

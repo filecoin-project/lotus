@@ -8,7 +8,7 @@ import (
 	"os"
 	"strings"
 
-	"github.com/filecoin-project/lotus/chain/address"
+	"github.com/filecoin-project/go-address"
 	types "github.com/filecoin-project/lotus/chain/types"
 	"gopkg.in/urfave/cli.v2"
 )
@@ -41,7 +41,7 @@ var walletNew = &cli.Command{
 
 		t := cctx.Args().First()
 		if t == "" {
-			t = "bls"
+			t = "secp256k1"
 		}
 
 		nk, err := api.WalletNew(ctx, t)

@@ -8,7 +8,7 @@ import (
 	"github.com/filecoin-project/lotus/chain/types"
 	"golang.org/x/xerrors"
 
-	logging "github.com/ipfs/go-log"
+	logging "github.com/ipfs/go-log/v2"
 	"github.com/libp2p/go-libp2p"
 	connmgr "github.com/libp2p/go-libp2p-connmgr"
 	"github.com/libp2p/go-libp2p-core/crypto"

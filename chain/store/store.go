@@ -7,8 +7,8 @@ import (
 	"encoding/json"
 	"sync"
 
+	"github.com/filecoin-project/go-address"
 	"github.com/filecoin-project/lotus/build"
-	"github.com/filecoin-project/lotus/chain/address"
 	"github.com/filecoin-project/lotus/chain/state"
 	"github.com/filecoin-project/lotus/chain/vm"
 	"go.opencensus.io/trace"
@@ -23,7 +23,7 @@ import (
 	dstore "github.com/ipfs/go-datastore"
 	hamt "github.com/ipfs/go-hamt-ipld"
 	bstore "github.com/ipfs/go-ipfs-blockstore"
-	logging "github.com/ipfs/go-log"
+	logging "github.com/ipfs/go-log/v2"
 	cbg "github.com/whyrusleeping/cbor-gen"
 	pubsub "github.com/whyrusleeping/pubsub"
 	"golang.org/x/xerrors"
@@ -51,9 +51,11 @@ type ChainStore struct {
 
 	mmCache *lru.ARCCache
 	tsCache *lru.ARCCache
+
+	vmcalls *types.VMSyscalls
 }
 
-func NewChainStore(bs bstore.Blockstore, ds dstore.Batching) *ChainStore {
+func NewChainStore(bs bstore.Blockstore, ds dstore.Batching, vmcalls *types.VMSyscalls) *ChainStore {
 	c, _ := lru.NewARC(2048)
 	tsc, _ := lru.NewARC(4096)
 	cs := &ChainStore{
@@ -63,6 +65,7 @@ func NewChainStore(bs bstore.Blockstore, ds dstore.Batching) *ChainStore {
 		tipsets:  make(map[uint64][]cid.Cid),
 		mmCache:  c,
 		tsCache:  tsc,
+		vmcalls:  vmcalls,
 	}
 
 	cs.reorgCh = cs.reorgWorker(context.TODO())
@@ -727,6 +730,30 @@ func (cs *ChainStore) readMsgMetaCids(mmc cid.Cid) ([]cid.Cid, []cid.Cid, error)
 	return blscids, secpkcids, nil
 }
 
+func (cs *ChainStore) GetPath(ctx context.Context, from types.TipSetKey, to types.TipSetKey) ([]*HeadChange, error) {
+	fts, err := cs.LoadTipSet(from)
+	if err != nil {
+		return nil, xerrors.Errorf("loading from tipset %s: %w", from, err)
+	}
+	tts, err := cs.LoadTipSet(to)
+	if err != nil {
+		return nil, xerrors.Errorf("loading to tipset %s: %w", to, err)
+	}
+	revert, apply, err := cs.ReorgOps(fts, tts)
+	if err != nil {
+		return nil, xerrors.Errorf("error getting tipset branches: %w", err)
+	}
+
+	path := make([]*HeadChange, len(revert)+len(apply))
+	for i, r := range revert {
+		path[i] = &HeadChange{Type: HCRevert, Val: r}
+	}
+	for j, i := 0, len(apply)-1; i >= 0; j, i = j+1, i-1 {
+		path[j+len(revert)] = &HeadChange{Type: HCApply, Val: apply[i]}
+	}
+	return path, nil
+}
+
 func (cs *ChainStore) MessagesForBlock(b *types.BlockHeader) ([]*types.Message, []*types.SignedMessage, error) {
 	blscids, secpkcids, err := cs.readMsgMetaCids(b.Messages)
 	if err != nil {
@@ -791,6 +818,10 @@ func (cs *ChainStore) LoadSignedMessagesFromCids(cids []cid.Cid) ([]*types.Signe
 
 func (cs *ChainStore) Blockstore() bstore.Blockstore {
 	return cs.bs
+}
+
+func (cs *ChainStore) VMSys() *types.VMSyscalls {
+	return cs.vmcalls
 }
 
 func (cs *ChainStore) TryFillTipSet(ts *types.TipSet) (*FullTipSet, error) {

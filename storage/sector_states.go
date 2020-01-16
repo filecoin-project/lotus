@@ -3,13 +3,13 @@ package storage
 import (
 	"context"
 
+	sectorbuilder "github.com/filecoin-project/go-sectorbuilder"
 	"golang.org/x/xerrors"
 
 	"github.com/filecoin-project/lotus/api"
 	"github.com/filecoin-project/lotus/build"
 	"github.com/filecoin-project/lotus/chain/actors"
 	"github.com/filecoin-project/lotus/chain/types"
-	"github.com/filecoin-project/lotus/lib/sectorbuilder"
 )
 
 type providerHandlerFunc func(ctx context.Context, deal SectorInfo) *sectorUpdate
@@ -69,7 +69,7 @@ func (m *Miner) handleUnsealed(ctx context.Context, sector SectorInfo) *sectorUp
 		return sector.upd().fatal(err)
 	}
 
-	rspco, err := m.sb.SealPreCommit(sector.SectorID, *ticket, sector.pieceInfos())
+	rspco, err := m.sb.SealPreCommit(ctx, sector.SectorID, *ticket, sector.pieceInfos())
 	if err != nil {
 		return sector.upd().to(api.SealFailed).error(xerrors.Errorf("seal pre commit failed: %w", err))
 	}
@@ -173,7 +173,7 @@ func (m *Miner) handlePreCommitted(ctx context.Context, sector SectorInfo) *sect
 func (m *Miner) handleCommitting(ctx context.Context, sector SectorInfo) *sectorUpdate {
 	log.Info("scheduling seal proof computation...")
 
-	proof, err := m.sb.SealCommit(sector.SectorID, sector.Ticket.SB(), sector.Seed.SB(), sector.pieceInfos(), sector.rspco())
+	proof, err := m.sb.SealCommit(ctx, sector.SectorID, sector.Ticket.SB(), sector.Seed.SB(), sector.pieceInfos(), sector.rspco())
 	if err != nil {
 		return sector.upd().to(api.SealCommitFailed).error(xerrors.Errorf("computing seal proof failed: %w", err))
 	}

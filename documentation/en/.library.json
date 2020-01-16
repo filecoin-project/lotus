@@ -1,0 +1,168 @@
+{
+  "posts": [
+    {
+      "title": "Hardware Requirements",
+      "slug": "en+hardware",
+      "github": "en/hardware.md",
+      "value": null,
+      "posts": [
+        {
+          "title": "Testing Configuration",
+          "slug": "en+hardware-mining",
+          "github": "en/hardware-mining.md",
+          "value": null
+        }
+      ]
+    },
+    {
+      "title": "Setup",
+      "slug": "en+getting-started",
+      "github": "en/getting-started.md",
+      "value": null,
+      "posts": [
+        {
+          "title": "Arch Linux Installation",
+          "slug": "en+install-lotus-arch",
+          "github": "en/install-lotus-arch.md",
+          "value": null
+        },
+        {
+          "title": "Ubuntu Installation",
+          "slug": "en+install-lotus-ubuntu",
+          "github": "en/install-lotus-ubuntu.md",
+          "value": null
+        },
+        {
+          "title": "MacOS Installation",
+          "slug": "en+install-lotus-macos",
+          "github": "en/install-lotus-macos.md",
+          "value": null
+        },
+        {
+          "title": "Updating Lotus",
+          "slug": "en+updating-lotus",
+          "github": "en/updating-lotus.md",
+          "value": null
+        },
+        {
+          "title": "Join Testnet",
+          "slug": "en+join-testnet",
+          "github": "en/join-testnet.md",
+          "value": null
+        },
+        {
+          "title": "Setup Troubleshooting",
+          "slug": "en+setup-troubleshooting",
+          "github": "en/setup-troubleshooting.md",
+          "value": null
+        }
+      ]
+    },
+    {
+      "title": "Storage Mining",
+      "slug": "en+mining",
+      "github": "en/mining.md",
+      "value": null,
+      "posts": [
+        {
+          "title": "Lotus Seal Worker",
+          "slug": "en+lotus-seal-worker",
+          "github": "en/mining-lotus-seal-worker.md",
+          "value": null
+        },
+        {
+          "title": "Static Ports",
+          "slug": "en+setting-a-static-port",
+          "github": "en/setting-a-static-port.md",
+          "value": null
+        },
+        {
+          "title": "Mining Troubleshooting",
+          "slug": "en+mining-troubleshooting",
+          "github": "en/mining-troubleshooting.md",
+          "value": null
+        }
+      ]
+    },
+    {
+      "title": "Storing Data",
+      "slug": "en+storing-data",
+      "github": "en/storing-data.md",
+      "value": null,
+      "posts": [
+        {
+          "title": "Storage Troubleshooting",
+          "slug": "en+storing-data-troubleshooting",
+          "github": "en/storing-data-troubleshooting.md",
+          "value": null
+        }
+      ]
+    },
+    {
+      "title": "Retrieving Data",
+      "slug": "en+retrieving-data",
+      "github": "en/retrieving-data.md",
+      "value": null,
+      "posts": []
+    },
+    {
+      "title": "API",
+      "slug": "en+api",
+      "github": "en/api.md",
+      "value": null,
+      "posts": [
+        {
+          "title": "API Scripting Support",
+          "slug": "en+api-scripting-support",
+          "github": "en/api-scripting-support.md",
+          "value": null
+        },
+        {
+          "title": "API Troubleshooting",
+          "slug": "en+api-troubleshooting",
+          "github": "en/api-troubleshooting.md",
+          "value": null
+        }
+      ]
+    },
+    {
+      "title": "Developer Tools",
+      "slug": "en+dev-tools",
+      "github": "en/dev-tools.md",
+      "value": null,
+      "posts": [
+        {
+          "title": "Setup Local Devnet",
+          "slug": "en+setup-local-dev-net",
+          "github": "en/local-dev-net.md",
+          "value": null,
+          "posts": []
+        },
+        {
+          "title": "Pond UI",
+          "slug": "en+dev-tools-pond-ui",
+          "github": "en/dev-tools-pond-ui.md",
+          "value": null,
+          "posts": []
+        },
+        {
+          "title": "Jaeger Tracing",
+          "slug": "en+dev-tools-jaeger-tracing",
+          "github": "en/dev-tools-jaeger-tracing.md",
+          "value": null,
+          "posts": []
+        }
+      ]
+    },
+    {
+      "title": "Glossary",
+      "slug": "en+glossary",
+      "github": "en/.glossary.json",
+      "value": null,
+      "custom": {
+        "glossary": true
+      },
+      "posts": []
+    }
+  ]
+}

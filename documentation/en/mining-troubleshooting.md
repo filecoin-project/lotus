@@ -55,3 +55,11 @@ lotus-bench --sector-size=1024
 ```
 
 This process uses a fair amount of GPU, and generally takes ~4 minutes to complete. If you do not see any activity in nvtop from lotus during the entire process, it is likely something is misconfigured with your GPU.
+
+## Checking Sync Progress
+
+You can use this command to check how far behind you are on syncing:
+
+```sh
+date -d @$(./lotus chain getblock $(./lotus chain head) | jq .Timestamp)
+```

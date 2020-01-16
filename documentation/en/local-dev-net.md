@@ -6,6 +6,11 @@ Build the Lotus Binaries in debug mode, This enables the use of 1024 byte sector
 make debug
 ```
 
+Download the 1024 byte parameters:
+```sh
+./lotus fetch-params --proving-params 1024
+```
+
 Pre-seal some sectors:
 
 ```sh
@@ -15,8 +20,7 @@ Pre-seal some sectors:
 Create the genesis block and start up the first node:
 
 ```sh
-./lotus daemon --lotus-make-random-genesis=dev.gen --genesis-presealed-sectors
-=~/.genesis-sectors/pre-seal-t0101.json --bootstrap=false
+./lotus daemon --lotus-make-random-genesis=dev.gen --genesis-presealed-sectors=~/.genesis-sectors/pre-seal-t0101.json --bootstrap=false
 ```
 
 Set up the genesis miner:

@@ -5,13 +5,13 @@ import (
 	"time"
 
 	ffi "github.com/filecoin-project/filecoin-ffi"
+	sectorbuilder "github.com/filecoin-project/go-sectorbuilder"
 	"go.opencensus.io/trace"
 	"golang.org/x/xerrors"
 
 	"github.com/filecoin-project/lotus/build"
 	"github.com/filecoin-project/lotus/chain/actors"
 	"github.com/filecoin-project/lotus/chain/types"
-	"github.com/filecoin-project/lotus/lib/sectorbuilder"
 )
 
 func (s *fpostScheduler) failPost(eps uint64) {

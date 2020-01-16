@@ -6,6 +6,8 @@ import (
 	"github.com/filecoin-project/lotus/api"
 	"github.com/filecoin-project/lotus/chain"
 	"github.com/filecoin-project/lotus/chain/types"
+	cid "github.com/ipfs/go-cid"
+	"github.com/prometheus/common/log"
 
 	pubsub "github.com/libp2p/go-libp2p-pubsub"
 	"go.uber.org/fx"
@@ -79,4 +81,10 @@ func (a *SyncAPI) SyncSubmitBlock(ctx context.Context, blk *types.BlockMsg) erro
 
 func (a *SyncAPI) SyncIncomingBlocks(ctx context.Context) (<-chan *types.BlockHeader, error) {
 	return a.Syncer.IncomingBlocks(ctx)
+}
+
+func (a *SyncAPI) SyncMarkBad(ctx context.Context, bcid cid.Cid) error {
+	log.Warnf("Marking block %s as bad", bcid)
+	a.Syncer.MarkBad(bcid)
+	return nil
 }

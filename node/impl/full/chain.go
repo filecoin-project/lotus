@@ -21,8 +21,8 @@ import (
 	"go.uber.org/fx"
 	"golang.org/x/xerrors"
 
+	"github.com/filecoin-project/go-address"
 	"github.com/filecoin-project/lotus/api"
-	"github.com/filecoin-project/lotus/chain/address"
 	"github.com/filecoin-project/lotus/chain/store"
 	"github.com/filecoin-project/lotus/chain/types"
 )
@@ -81,6 +81,10 @@ func (a *ChainAPI) ChainGetBlockMessages(ctx context.Context, msg cid.Cid) (*api
 		SecpkMessages: smsgs,
 		Cids:          cids,
 	}, nil
+}
+
+func (a *ChainAPI) ChainGetPath(ctx context.Context, from types.TipSetKey, to types.TipSetKey) ([]*store.HeadChange, error) {
+	return a.Chain.GetPath(ctx, from, to)
 }
 
 func (a *ChainAPI) ChainGetParentMessages(ctx context.Context, bcid cid.Cid) ([]api.Message, error) {
@@ -298,4 +302,13 @@ func (a *ChainAPI) ChainGetNode(ctx context.Context, p string) (interface{}, err
 	}
 
 	return node, nil
+}
+
+func (a *ChainAPI) ChainGetMessage(ctx context.Context, mc cid.Cid) (*types.Message, error) {
+	cm, err := a.Chain.GetCMessage(mc)
+	if err != nil {
+		return nil, err
+	}
+
+	return cm.VMMessage(), nil
 }

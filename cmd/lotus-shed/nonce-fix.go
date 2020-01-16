@@ -1,7 +1,7 @@
 package main
 
 import (
-	"github.com/filecoin-project/lotus/chain/address"
+	"github.com/filecoin-project/go-address"
 	"github.com/filecoin-project/lotus/chain/types"
 	lcli "github.com/filecoin-project/lotus/cli"
 	"gopkg.in/urfave/cli.v2"
@@ -54,7 +54,7 @@ var noncefix = &cli.Command{
 				return err
 			}
 
-			err = api.MpoolPush(ctx, smsg)
+			_, err = api.MpoolPush(ctx, smsg)
 			if err != nil {
 				return err
 			}

@@ -6,8 +6,8 @@ import (
 	"fmt"
 	"strings"
 
+	"github.com/filecoin-project/go-address"
 	"github.com/filecoin-project/lotus/api"
-	"github.com/filecoin-project/lotus/chain/address"
 	"github.com/filecoin-project/lotus/chain/types"
 	"golang.org/x/xerrors"
 
@@ -36,6 +36,7 @@ var stateCmd = &cli.Command{
 		stateReplaySetCmd,
 		stateSectorSizeCmd,
 		stateReadStateCmd,
+		stateListMessagesCmd,
 	},
 }
 
@@ -504,6 +505,77 @@ var stateReadStateCmd = &cli.Command{
 			return err
 		}
 		fmt.Println(string(data))
+
+		return nil
+	},
+}
+
+var stateListMessagesCmd = &cli.Command{
+	Name:  "list-messages",
+	Usage: "list messages on chain matching given criteria",
+	Flags: []cli.Flag{
+		&cli.StringFlag{
+			Name:  "to",
+			Usage: "return messages to a given address",
+		},
+		&cli.StringFlag{
+			Name:  "from",
+			Usage: "return messages from a given address",
+		},
+		&cli.Uint64Flag{
+			Name:  "toheight",
+			Usage: "don't look before given block height",
+		},
+	},
+	Action: func(cctx *cli.Context) error {
+		api, closer, err := GetFullNodeAPI(cctx)
+		if err != nil {
+			return err
+		}
+		defer closer()
+
+		ctx := ReqContext(cctx)
+
+		var toa, froma address.Address
+		if tos := cctx.String("to"); tos != "" {
+			a, err := address.NewFromString(tos)
+			if err != nil {
+				return fmt.Errorf("given 'to' address %q was invalid: %w", tos, err)
+			}
+			toa = a
+		}
+
+		if froms := cctx.String("from"); froms != "" {
+			a, err := address.NewFromString(froms)
+			if err != nil {
+				return fmt.Errorf("given 'from' address %q was invalid: %w", froms, err)
+			}
+			froma = a
+		}
+
+		toh := cctx.Uint64("toheight")
+
+		ts, err := loadTipSet(ctx, cctx, api)
+		if err != nil {
+			return err
+		}
+
+		msgs, err := api.StateListMessages(ctx, &types.Message{To: toa, From: froma}, ts, toh)
+		if err != nil {
+			return err
+		}
+
+		for _, c := range msgs {
+			m, err := api.ChainGetMessage(ctx, c)
+			if err != nil {
+				return err
+			}
+			b, err := json.MarshalIndent(m, "", "  ")
+			if err != nil {
+				return err
+			}
+			fmt.Println(string(b))
+		}
 
 		return nil
 	},

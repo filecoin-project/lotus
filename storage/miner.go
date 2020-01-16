@@ -8,19 +8,19 @@ import (
 	"github.com/ipfs/go-cid"
 	"github.com/ipfs/go-datastore"
 	"github.com/ipfs/go-datastore/namespace"
-	logging "github.com/ipfs/go-log"
+	logging "github.com/ipfs/go-log/v2"
 	"github.com/libp2p/go-libp2p-core/host"
 	"golang.org/x/xerrors"
 
+	"github.com/filecoin-project/go-address"
+	"github.com/filecoin-project/go-sectorbuilder"
+	"github.com/filecoin-project/go-statestore"
 	"github.com/filecoin-project/lotus/api"
 	"github.com/filecoin-project/lotus/build"
-	"github.com/filecoin-project/lotus/chain/address"
 	"github.com/filecoin-project/lotus/chain/events"
 	"github.com/filecoin-project/lotus/chain/gen"
 	"github.com/filecoin-project/lotus/chain/store"
 	"github.com/filecoin-project/lotus/chain/types"
-	"github.com/filecoin-project/lotus/lib/sectorbuilder"
-	"github.com/filecoin-project/lotus/lib/statestore"
 )
 
 var log = logging.Logger("storageminer")
@@ -36,7 +36,7 @@ type Miner struct {
 	worker address.Address
 
 	// Sealing
-	sb      *sectorbuilder.SectorBuilder
+	sb      sectorbuilder.Interface
 	sectors *statestore.StateStore
 	tktFn   TicketFn
 
@@ -71,7 +71,7 @@ type storageMinerApi interface {
 	WalletHas(context.Context, address.Address) (bool, error)
 }
 
-func NewMiner(api storageMinerApi, addr address.Address, h host.Host, ds datastore.Batching, sb *sectorbuilder.SectorBuilder, tktFn TicketFn) (*Miner, error) {
+func NewMiner(api storageMinerApi, addr address.Address, h host.Host, ds datastore.Batching, sb sectorbuilder.Interface, tktFn TicketFn) (*Miner, error) {
 	return &Miner{
 		api: api,
 
@@ -144,10 +144,10 @@ func (m *Miner) runPreflightChecks(ctx context.Context) error {
 }
 
 type SectorBuilderEpp struct {
-	sb *sectorbuilder.SectorBuilder
+	sb sectorbuilder.Interface
 }
 
-func NewElectionPoStProver(sb *sectorbuilder.SectorBuilder) *SectorBuilderEpp {
+func NewElectionPoStProver(sb sectorbuilder.Interface) *SectorBuilderEpp {
 	return &SectorBuilderEpp{sb}
 }
 

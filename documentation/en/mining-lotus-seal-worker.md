@@ -2,6 +2,14 @@
 
 The **Lotus Seal Worker** is an extra process that can offload heavy processing tasks from your **Lotus Storage Miner**. It can be run on the same machine as your `lotus-storage-miner`, or on another machine communicating over a fast network.
 
+## Note: Using the Lotus Seal Worker from China
+
+If you are trying to use `lotus-seal-worker` from China. You should set this **environment variable** on your machine:
+
+```sh
+IPFS_GATEWAY="https://proof-parameters.s3.cn-south-1.jdcloud-oss.com/ipfs/"
+```
+
 ## Get Started
 
 Make sure that the `lotus-seal-worker` is installed by running:

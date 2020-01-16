@@ -2,10 +2,11 @@ package types
 
 import (
 	"context"
+	"github.com/filecoin-project/go-sectorbuilder"
 
+	"github.com/filecoin-project/go-address"
 	"github.com/filecoin-project/go-amt-ipld"
 	"github.com/filecoin-project/lotus/chain/actors/aerrors"
-	"github.com/filecoin-project/lotus/chain/address"
 	cid "github.com/ipfs/go-cid"
 	hamt "github.com/ipfs/go-hamt-ipld"
 	cbg "github.com/whyrusleeping/cbor-gen"
@@ -46,7 +47,15 @@ type VMContext interface {
 }
 
 type VMSyscalls struct {
-	ValidatePoRep func(context.Context, address.Address, uint64, []byte, []byte, []byte, []byte, []byte, uint64) (bool, aerrors.ActorError)
+	ValidatePoRep      func(context.Context, address.Address, uint64, []byte, []byte, []byte, []byte, []byte, uint64) (bool, aerrors.ActorError)
+	VerifyFallbackPost func(ctx context.Context,
+		sectorSize uint64,
+		sectorInfo sectorbuilder.SortedPublicSectorInfo,
+		challengeSeed []byte,
+		proof []byte,
+		candidates []sectorbuilder.EPostCandidate,
+		proverID address.Address,
+		faults uint64) (bool, error)
 }
 
 type storageWrapper struct {

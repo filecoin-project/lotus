@@ -26,13 +26,15 @@ var dotCmd = &cli.Command{
 		res, err := st.db.Query(`select block, parent, b.miner, b.height, p.height from block_parents
     inner join blocks b on block_parents.block = b.cid
     inner join blocks p on block_parents.parent = p.cid
-where b.height > ? and b.height < ?`, minH, maxH)
+where b.height > $1 and b.height < $2`, minH, maxH)
 
 		if err != nil {
 			return err
 		}
 
 		fmt.Println("digraph D {")
+
+		hl := st.hasList()
 
 		for res.Next() {
 			var block, parent, miner string
@@ -46,7 +48,7 @@ where b.height > ? and b.height < ?`, minH, maxH)
 				return err
 			}
 
-			has := st.hasBlock(bc)
+			_, has := hl[bc]
 
 			col := crc32.Checksum([]byte(miner), crc32.MakeTable(crc32.Castagnoli))&0xc0c0c0c0 + 0x30303030
 

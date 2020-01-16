@@ -9,13 +9,13 @@ import (
 
 	bls "github.com/filecoin-project/filecoin-ffi"
 
-	logging "github.com/ipfs/go-log"
+	logging "github.com/ipfs/go-log/v2"
 	"github.com/minio/blake2b-simd"
 	"golang.org/x/xerrors"
 
-	"github.com/filecoin-project/lotus/chain/address"
+	"github.com/filecoin-project/go-address"
+	"github.com/filecoin-project/go-crypto"
 	"github.com/filecoin-project/lotus/chain/types"
-	"github.com/filecoin-project/lotus/lib/crypto"
 )
 
 var log = logging.Logger("wallet")

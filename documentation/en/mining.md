@@ -4,13 +4,12 @@ Here are instructions to learn how to perform storage mining. For hardware speci
 
 It is useful to [join the Testnet](https://docs.lotu.sh/en+join-testnet) prior to attempting storage mining for the first time.
 
-## Note: Filecoin Proof Parameters
+## Note: Using the Lotus Storage Miner from China
 
-If you are trying to download the **Filecoin Proof Parameters** from within China, you can download them from [JDCloud CDN](https://s3.cn-south-1.jdcloud-oss.com/proof-parameters/filecoin-proof-parameters-v20-testnet.tar.gz). Once you do you will need to extract them to:
+If you are trying to use `lotus-storage-miner` from China. You should set this **environment variable** on your machine.
 
 ```sh
-# put the .param and .vk files in the directory below
-/var/tmp/filecoin-proof-parameters
+IPFS_GATEWAY="https://proof-parameters.s3.cn-south-1.jdcloud-oss.com/ipfs/"
 ```
 
 ## Get started

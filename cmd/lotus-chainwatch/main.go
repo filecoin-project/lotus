@@ -5,7 +5,7 @@ import (
 	"net/http"
 	"os"
 
-	logging "github.com/ipfs/go-log"
+	logging "github.com/ipfs/go-log/v2"
 	"golang.org/x/xerrors"
 	"gopkg.in/urfave/cli.v2"
 
@@ -38,7 +38,7 @@ func main() {
 			&cli.StringFlag{
 				Name:    "db",
 				EnvVars: []string{"LOTUS_DB"},
-				Value:   "./chainwatch.db",
+				Value:   "",
 			},
 		},
 
@@ -82,8 +82,6 @@ var runCmd = &cli.Command{
 		defer st.close()
 
 		runSyncer(ctx, api, st)
-		go subMpool(ctx, api, st)
-		go subBlocks(ctx, api, st)
 
 		h, err := newHandler(api, st)
 		if err != nil {

@@ -11,15 +11,15 @@ import (
 
 	rice "github.com/GeertJohan/go.rice"
 	"github.com/ipfs/go-cid"
-	logging "github.com/ipfs/go-log"
+	logging "github.com/ipfs/go-log/v2"
 	peer "github.com/libp2p/go-libp2p-peer"
 	"golang.org/x/xerrors"
 	"gopkg.in/urfave/cli.v2"
 
+	"github.com/filecoin-project/go-address"
 	"github.com/filecoin-project/lotus/api"
 	"github.com/filecoin-project/lotus/build"
 	"github.com/filecoin-project/lotus/chain/actors"
-	"github.com/filecoin-project/lotus/chain/address"
 	"github.com/filecoin-project/lotus/chain/types"
 	lcli "github.com/filecoin-project/lotus/cli"
 )
@@ -275,7 +275,7 @@ func (h *handler) mkminer(w http.ResponseWriter, r *http.Request) {
 	createStorageMinerMsg := &types.Message{
 		To:    actors.StoragePowerAddress,
 		From:  h.from,
-		Value: collateral,
+		Value: types.BigAdd(collateral, types.BigDiv(collateral, types.NewInt(100))),
 
 		Method: actors.SPAMethods.CreateStorageMiner,
 		Params: params,

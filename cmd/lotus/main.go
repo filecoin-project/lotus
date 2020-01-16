@@ -4,23 +4,18 @@ import (
 	"context"
 	"os"
 
-	logging "github.com/ipfs/go-log"
 	"go.opencensus.io/trace"
 	"gopkg.in/urfave/cli.v2"
 
 	"github.com/filecoin-project/lotus/build"
 	lcli "github.com/filecoin-project/lotus/cli"
+	"github.com/filecoin-project/lotus/lib/lotuslog"
 	"github.com/filecoin-project/lotus/node/repo"
 	"github.com/filecoin-project/lotus/tracing"
 )
 
 func main() {
-	logging.SetLogLevel("*", "INFO")
-	logging.SetLogLevel("dht", "ERROR")
-	logging.SetLogLevel("swarm2", "WARN")
-	logging.SetLogLevel("bitswap", "WARN")
-	logging.SetLogLevel("pubsub", "WARN")
-	logging.SetLogLevel("connmgr", "WARN")
+	lotuslog.SetupLogLevels()
 
 	local := []*cli.Command{
 		DaemonCmd,

@@ -11,24 +11,28 @@ import (
 	"path/filepath"
 	"strconv"
 
+	paramfetch "github.com/filecoin-project/go-paramfetch"
 	"github.com/ipfs/go-datastore"
-	badger "github.com/ipfs/go-ds-badger"
+	"github.com/ipfs/go-datastore/namespace"
+	badger "github.com/ipfs/go-ds-badger2"
 	"github.com/libp2p/go-libp2p-core/crypto"
 	"github.com/libp2p/go-libp2p-core/peer"
 	"github.com/mitchellh/go-homedir"
 	"golang.org/x/xerrors"
 	"gopkg.in/urfave/cli.v2"
 
+	"github.com/filecoin-project/go-address"
+	cborutil "github.com/filecoin-project/go-cbor-util"
+	"github.com/filecoin-project/go-fil-markets/storagemarket"
+	deals "github.com/filecoin-project/go-fil-markets/storagemarket/impl"
+	"github.com/filecoin-project/go-sectorbuilder"
 	lapi "github.com/filecoin-project/lotus/api"
 	"github.com/filecoin-project/lotus/build"
 	"github.com/filecoin-project/lotus/chain/actors"
-	"github.com/filecoin-project/lotus/chain/address"
-	"github.com/filecoin-project/lotus/chain/deals"
 	"github.com/filecoin-project/lotus/chain/types"
 	lcli "github.com/filecoin-project/lotus/cli"
 	"github.com/filecoin-project/lotus/genesis"
-	"github.com/filecoin-project/lotus/lib/cborutil"
-	"github.com/filecoin-project/lotus/lib/sectorbuilder"
+	"github.com/filecoin-project/lotus/markets/utils"
 	"github.com/filecoin-project/lotus/miner"
 	"github.com/filecoin-project/lotus/node/modules"
 	"github.com/filecoin-project/lotus/node/modules/dtypes"
@@ -92,7 +96,7 @@ var initCmd = &cli.Command{
 		}
 
 		log.Info("Checking proof parameters")
-		if err := build.GetParams(ssize); err != nil {
+		if err := paramfetch.GetParams(build.ParametersJson, ssize); err != nil {
 			return xerrors.Errorf("fetching proof parameters: %w", err)
 		}
 
@@ -173,7 +177,7 @@ var initCmd = &cli.Command{
 				SectorSize:    ssize,
 				WorkerThreads: 2,
 				Dir:           pssb,
-			}, oldmds)
+			}, namespace.Wrap(oldmds, datastore.NewKey("/sectorbuilder")))
 			if err != nil {
 				return xerrors.Errorf("failed to open up preseal sectorbuilder: %w", err)
 			}
@@ -182,7 +186,7 @@ var initCmd = &cli.Command{
 				SectorSize:    ssize,
 				WorkerThreads: 2,
 				Dir:           lr.Path(),
-			}, mds)
+			}, namespace.Wrap(mds, datastore.NewKey("/sectorbuilder")))
 			if err != nil {
 				return xerrors.Errorf("failed to open up sectorbuilder: %w", err)
 			}
@@ -280,15 +284,21 @@ func migratePreSealMeta(ctx context.Context, api lapi.FullNode, presealDir strin
 
 		dealKey := datastore.NewKey(deals.ProviderDsPrefix).ChildString(proposalCid.String())
 
+		proposal, err := utils.ToSharedStorageDealProposal(&sector.Deal)
+		if err != nil {
+			return err
+		}
 		deal := &deals.MinerDeal{
-			Proposal:    sector.Deal,
-			ProposalCid: proposalCid,
-			State:       lapi.DealComplete,
-			Ref:         proposalCid, // TODO: This is super wrong, but there
-			// are no params for CommP CIDs, we can't recover unixfs cid easily,
-			// and this isn't even used after the deal enters Complete state
-			DealID:   dealID,
-			SectorID: sector.SectorID,
+			MinerDeal: storagemarket.MinerDeal{
+				Proposal:    *proposal,
+				ProposalCid: proposalCid,
+				State:       lapi.DealComplete,
+				Ref:         proposalCid, // TODO: This is super wrong, but there
+				// are no params for CommP CIDs, we can't recover unixfs cid easily,
+				// and this isn't even used after the deal enters Complete state
+				DealID:   dealID,
+				SectorID: sector.SectorID,
+			},
 		}
 
 		b, err = cborutil.Dump(deal)
@@ -546,7 +556,7 @@ func createStorageMiner(ctx context.Context, api lapi.FullNode, peerid peer.ID, 
 	createStorageMinerMsg := &types.Message{
 		To:    actors.StoragePowerAddress,
 		From:  owner,
-		Value: collateral,
+		Value: types.BigAdd(collateral, types.BigDiv(collateral, types.NewInt(100))),
 
 		Method: actors.SPAMethods.CreateStorageMiner,
 		Params: params,
