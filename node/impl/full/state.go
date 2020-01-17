@@ -400,3 +400,7 @@ func (a *StateAPI) StateListMessages(ctx context.Context, match *types.Message, 
 
 	return out, nil
 }
+
+func (a *StateAPI) StateCompute(ctx context.Context, height uint64, msgs []*types.Message, ts *types.TipSet) (cid.Cid, error) {
+	return stmgr.ComputeState(ctx, a.StateManager, height, msgs, ts)
+}

@@ -115,6 +115,7 @@ type FullNodeStruct struct {
 		StateGetReceipt               func(context.Context, cid.Cid, *types.TipSet) (*types.MessageReceipt, error)                      `perm:"read"`
 		StateMinerSectorCount         func(context.Context, address.Address, *types.TipSet) (api.MinerSectors, error)                   `perm:"read"`
 		StateListMessages             func(ctx context.Context, match *types.Message, ts *types.TipSet, toht uint64) ([]cid.Cid, error) `perm:"read"`
+		StateCompute                  func(context.Context, uint64, []*types.Message, *types.TipSet) (cid.Cid, error)                   `perm:"read"`
 
 		MarketEnsureAvailable func(context.Context, address.Address, types.BigInt) error `perm:"sign"`
 
@@ -465,6 +466,10 @@ func (c *FullNodeStruct) StateGetReceipt(ctx context.Context, msg cid.Cid, ts *t
 
 func (c *FullNodeStruct) StateListMessages(ctx context.Context, match *types.Message, ts *types.TipSet, toht uint64) ([]cid.Cid, error) {
 	return c.Internal.StateListMessages(ctx, match, ts, toht)
+}
+
+func (c *FullNodeStruct) StateCompute(ctx context.Context, height uint64, msgs []*types.Message, ts *types.TipSet) (cid.Cid, error) {
+	return c.Internal.StateCompute(ctx, height, msgs, ts)
 }
 
 func (c *FullNodeStruct) MarketEnsureAvailable(ctx context.Context, addr address.Address, amt types.BigInt) error {

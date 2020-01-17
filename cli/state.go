@@ -37,6 +37,7 @@ var stateCmd = &cli.Command{
 		stateSectorSizeCmd,
 		stateReadStateCmd,
 		stateListMessagesCmd,
+		stateComputeStateCmd,
 	},
 }
 
@@ -577,6 +578,66 @@ var stateListMessagesCmd = &cli.Command{
 			fmt.Println(string(b))
 		}
 
+		return nil
+	},
+}
+
+var stateComputeStateCmd = &cli.Command{
+	Name:  "compute-state",
+	Usage: "Perform state computations",
+	Flags: []cli.Flag{
+		&cli.Uint64Flag{
+			Name:  "height",
+			Usage: "set the height to compute state at",
+		},
+		&cli.BoolFlag{
+			Name:  "apply-mpool-messages",
+			Usage: "apply messages from the mempool to the computed state",
+		},
+	},
+	Action: func(cctx *cli.Context) error {
+		api, closer, err := GetFullNodeAPI(cctx)
+		if err != nil {
+			return err
+		}
+		defer closer()
+
+		ctx := ReqContext(cctx)
+
+		ts, err := loadTipSet(ctx, cctx, api)
+		if err != nil {
+			return err
+		}
+
+		h := cctx.Uint64("height")
+		if h == 0 {
+			if ts == nil {
+				head, err := api.ChainHead(ctx)
+				if err != nil {
+					return err
+				}
+				ts = head
+			}
+			h = ts.Height()
+		}
+
+		var msgs []*types.Message
+		if cctx.Bool("apply-mpool-messages") {
+			pmsgs, err := api.MpoolPending(ctx, ts)
+			if err != nil {
+				return err
+			}
+			for _, sm := range pmsgs {
+				msgs = append(msgs, &sm.Message)
+			}
+		}
+
+		nstate, err := api.StateCompute(ctx, h, msgs, ts)
+		if err != nil {
+			return err
+		}
+
+		fmt.Println("computed state cid: ", nstate)
 		return nil
 	},
 }
