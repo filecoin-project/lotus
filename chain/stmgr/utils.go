@@ -341,7 +341,7 @@ func ComputeState(ctx context.Context, sm *StateManager, height uint64, msgs []*
 			return cid.Undef, xerrors.Errorf("applying message %s: %w", msg.Cid(), err)
 		}
 		if ret.ExitCode != 0 {
-			log.Info("compute state apply message %d failed (exit: %d): %s", i, ret.ExitCode, ret.ActorErr)
+			log.Infof("compute state apply message %d failed (exit: %d): %s", i, ret.ExitCode, ret.ActorErr)
 		}
 	}
 
