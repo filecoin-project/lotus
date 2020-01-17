@@ -126,6 +126,37 @@ func (vmc *VMContext) Ipld() *hamt.CborIpldStore {
 	return vmc.cst
 }
 
+func (vmc *VMContext) WithState(obj types.CBORObj, f func() ([]byte, aerrors.ActorError)) ([]byte, aerrors.ActorError) {
+	head := vmc.Storage().GetHead()
+	if err := vmc.Storage().Get(head, obj); err != nil {
+		return nil, err
+	}
+
+	rval, err := f()
+	if err != nil {
+		return nil, err
+	}
+
+	nhead, err := vmc.Storage().Put(obj)
+	if err != nil {
+		return nil, err
+	}
+	if err := vmc.Storage().Commit(head, nhead); err != nil {
+		return nil, err
+	}
+
+	return rval, nil
+}
+
+func (vmc *VMContext) WithStateRO(obj types.CBORObj, f func() ([]byte, aerrors.ActorError)) ([]byte, aerrors.ActorError) {
+	head := vmc.Storage().GetHead()
+	if err := vmc.Storage().Get(head, obj); err != nil {
+		return nil, err
+	}
+
+	return f()
+}
+
 func (vmc *VMContext) Origin() address.Address {
 	return vmc.origin
 }

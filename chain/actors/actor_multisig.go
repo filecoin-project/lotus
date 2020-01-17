@@ -56,7 +56,7 @@ func (msas MultiSigActorState) getTransaction(txid uint64) (*MTransaction, Actor
 }
 
 type MTransaction struct {
-	Created uint64 // NOT USED ??
+	Created uint64
 	TxID    uint64
 
 	To     address.Address

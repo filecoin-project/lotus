@@ -2,6 +2,7 @@ package types
 
 import (
 	"context"
+
 	"github.com/filecoin-project/go-sectorbuilder"
 
 	"github.com/filecoin-project/go-address"
@@ -28,10 +29,17 @@ type StateTree interface {
 	GetActor(addr address.Address) (*Actor, error)
 }
 
+type CBORObj interface {
+	cbg.CBORMarshaler
+	cbg.CBORUnmarshaler
+}
+
 type VMContext interface {
 	Message() *Message
 	Origin() address.Address
 	Ipld() *hamt.CborIpldStore
+	WithState(CBORObj, func() ([]byte, aerrors.ActorError)) ([]byte, aerrors.ActorError)
+	WithStateRO(CBORObj, func() ([]byte, aerrors.ActorError)) ([]byte, aerrors.ActorError)
 	Send(to address.Address, method uint64, value BigInt, params []byte) ([]byte, aerrors.ActorError)
 	BlockHeight() uint64
 	GasUsed() BigInt

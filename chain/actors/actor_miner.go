@@ -215,65 +215,55 @@ func (sma StorageMinerActor) StorageMinerConstructor(act *types.Actor, vmctx typ
 }
 
 func (sma StorageMinerActor) PreCommitSector(act *types.Actor, vmctx types.VMContext, params *SectorPreCommitInfo) ([]byte, ActorError) {
-	ctx := vmctx.Context()
-	oldstate, self, err := loadState(vmctx)
-	if err != nil {
-		return nil, err
-	}
+	var self StorageMinerActorState
+	return vmctx.WithState(&self, func() ([]byte, aerrors.ActorError) {
+		ctx := vmctx.Context()
 
-	if params.SealEpoch >= vmctx.BlockHeight()+build.SealRandomnessLookback {
-		return nil, aerrors.Newf(1, "sector commitment must be based off past randomness (%d >= %d)", params.SealEpoch, vmctx.BlockHeight()+build.SealRandomnessLookback)
-	}
+		if params.SealEpoch >= vmctx.BlockHeight()+build.SealRandomnessLookback {
+			return nil, aerrors.Newf(1, "sector commitment must be based off past randomness (%d >= %d)", params.SealEpoch, vmctx.BlockHeight()+build.SealRandomnessLookback)
+		}
 
-	if vmctx.BlockHeight()-params.SealEpoch+build.SealRandomnessLookback > build.SealRandomnessLookbackLimit {
-		return nil, aerrors.Newf(2, "sector commitment must be recent enough (was %d)", vmctx.BlockHeight()-params.SealEpoch+build.SealRandomnessLookback)
-	}
+		if vmctx.BlockHeight()-params.SealEpoch+build.SealRandomnessLookback > build.SealRandomnessLookbackLimit {
+			return nil, aerrors.Newf(2, "sector commitment must be recent enough (was %d)", vmctx.BlockHeight()-params.SealEpoch+build.SealRandomnessLookback)
+		}
 
-	mi, err := loadMinerInfo(vmctx, self)
-	if err != nil {
-		return nil, err
-	}
+		mi, err := loadMinerInfo(vmctx, &self)
+		if err != nil {
+			return nil, err
+		}
 
-	if vmctx.Message().From != mi.Worker {
-		return nil, aerrors.New(1, "not authorized to precommit sector for miner")
-	}
+		if vmctx.Message().From != mi.Worker {
+			return nil, aerrors.New(1, "not authorized to precommit sector for miner")
+		}
 
-	// make sure the miner isnt trying to submit a pre-existing sector
-	unique, err := SectorIsUnique(ctx, vmctx.Storage(), self.Sectors, params.SectorNumber)
-	if err != nil {
-		return nil, err
-	}
-	if !unique {
-		return nil, aerrors.New(3, "sector already committed!")
-	}
+		// make sure the miner isnt trying to submit a pre-existing sector
+		unique, err := SectorIsUnique(ctx, vmctx.Storage(), self.Sectors, params.SectorNumber)
+		if err != nil {
+			return nil, err
+		}
+		if !unique {
+			return nil, aerrors.New(3, "sector already committed!")
+		}
 
-	// Power of the miner after adding this sector
-	futurePower := types.BigAdd(self.Power, types.NewInt(mi.SectorSize))
-	collateralRequired := CollateralForPower(futurePower)
+		// Power of the miner after adding this sector
+		futurePower := types.BigAdd(self.Power, types.NewInt(mi.SectorSize))
+		collateralRequired := CollateralForPower(futurePower)
 
-	// TODO: grab from market?
-	if act.Balance.LessThan(collateralRequired) {
-		return nil, aerrors.New(4, "not enough collateral")
-	}
+		// TODO: grab from market?
+		if act.Balance.LessThan(collateralRequired) {
+			return nil, aerrors.New(4, "not enough collateral")
+		}
 
-	self.PreCommittedSectors[uintToStringKey(params.SectorNumber)] = &PreCommittedSector{
-		Info:          *params,
-		ReceivedEpoch: vmctx.BlockHeight(),
-	}
+		self.PreCommittedSectors[uintToStringKey(params.SectorNumber)] = &PreCommittedSector{
+			Info:          *params,
+			ReceivedEpoch: vmctx.BlockHeight(),
+		}
 
-	if len(self.PreCommittedSectors) > 4096 {
-		return nil, aerrors.New(5, "too many precommitted sectors")
-	}
-
-	nstate, err := vmctx.Storage().Put(self)
-	if err != nil {
-		return nil, err
-	}
-	if err := vmctx.Storage().Commit(oldstate, nstate); err != nil {
-		return nil, err
-	}
-
-	return nil, nil
+		if len(self.PreCommittedSectors) > 4096 {
+			return nil, aerrors.New(5, "too many precommitted sectors")
+		}
+		return nil, nil
+	})
 }
 
 func uintToStringKey(i uint64) string {
@@ -289,106 +279,101 @@ type SectorProveCommitInfo struct {
 }
 
 func (sma StorageMinerActor) ProveCommitSector(act *types.Actor, vmctx types.VMContext, params *SectorProveCommitInfo) ([]byte, ActorError) {
-	ctx := vmctx.Context()
-	oldstate, self, err := loadState(vmctx)
-	if err != nil {
-		return nil, err
-	}
+	var self StorageMinerActorState
+	_, err := vmctx.WithState(&self, func() ([]byte, aerrors.ActorError) {
+		ctx := vmctx.Context()
 
-	mi, err := loadMinerInfo(vmctx, self)
-	if err != nil {
-		return nil, err
-	}
+		mi, err := loadMinerInfo(vmctx, &self)
+		if err != nil {
+			return nil, err
+		}
 
-	if vmctx.Message().From != mi.Worker {
-		return nil, aerrors.New(1, "not authorized to submit sector proof for miner")
-	}
+		if vmctx.Message().From != mi.Worker {
+			return nil, aerrors.New(1, "not authorized to submit sector proof for miner")
+		}
 
-	us, ok := self.PreCommittedSectors[uintToStringKey(params.SectorID)]
-	if !ok {
-		return nil, aerrors.New(1, "no pre-commitment found for sector")
-	}
+		us, ok := self.PreCommittedSectors[uintToStringKey(params.SectorID)]
+		if !ok {
+			return nil, aerrors.New(1, "no pre-commitment found for sector")
+		}
 
-	if us.ReceivedEpoch+build.InteractivePoRepDelay >= vmctx.BlockHeight() {
-		return nil, aerrors.New(2, "too early for proof submission")
-	}
+		if us.ReceivedEpoch+build.InteractivePoRepDelay >= vmctx.BlockHeight() {
+			return nil, aerrors.New(2, "too early for proof submission")
+		}
 
-	delete(self.PreCommittedSectors, uintToStringKey(params.SectorID))
+		delete(self.PreCommittedSectors, uintToStringKey(params.SectorID))
 
-	// TODO: ensure normalization to ID address
-	maddr := vmctx.Message().To
+		// TODO: ensure normalization to ID address
+		maddr := vmctx.Message().To
 
-	if vmctx.BlockHeight()-us.Info.SealEpoch > build.MaxSealLookback {
-		return nil, aerrors.Newf(5, "source randomness for sector SealEpoch too far in past (epoch %d)", us.Info.SealEpoch)
-	}
+		if vmctx.BlockHeight()-us.Info.SealEpoch > build.MaxSealLookback {
+			return nil, aerrors.Newf(5, "source randomness for sector SealEpoch too far in past (epoch %d)", us.Info.SealEpoch)
+		}
 
-	if vmctx.BlockHeight()-us.ReceivedEpoch > build.MaxSealLookback {
-		return nil, aerrors.Newf(6, "source randomness for sector ReceivedEpoch too far in past (epoch %d)", us.ReceivedEpoch)
-	}
+		if vmctx.BlockHeight()-us.ReceivedEpoch > build.MaxSealLookback {
+			return nil, aerrors.Newf(6, "source randomness for sector ReceivedEpoch too far in past (epoch %d)", us.ReceivedEpoch)
+		}
 
-	ticket, err := vmctx.GetRandomness(us.Info.SealEpoch - build.SealRandomnessLookback)
-	if err != nil {
-		return nil, aerrors.Wrap(err, "failed to get ticket randomness")
-	}
+		ticket, err := vmctx.GetRandomness(us.Info.SealEpoch - build.SealRandomnessLookback)
+		if err != nil {
+			return nil, aerrors.Wrap(err, "failed to get ticket randomness")
+		}
 
-	seed, err := vmctx.GetRandomness(us.ReceivedEpoch + build.InteractivePoRepDelay)
-	if err != nil {
-		return nil, aerrors.Wrap(err, "failed to get randomness for prove sector commitment")
-	}
+		seed, err := vmctx.GetRandomness(us.ReceivedEpoch + build.InteractivePoRepDelay)
+		if err != nil {
+			return nil, aerrors.Wrap(err, "failed to get randomness for prove sector commitment")
+		}
 
-	enc, err := SerializeParams(&ComputeDataCommitmentParams{
-		DealIDs:    params.DealIDs,
-		SectorSize: mi.SectorSize,
+		enc, err := SerializeParams(&ComputeDataCommitmentParams{
+			DealIDs:    params.DealIDs,
+			SectorSize: mi.SectorSize,
+		})
+		if err != nil {
+			return nil, aerrors.Wrap(err, "failed to serialize ComputeDataCommitmentParams")
+		}
+
+		commD, err := vmctx.Send(StorageMarketAddress, SMAMethods.ComputeDataCommitment, types.NewInt(0), enc)
+		if err != nil {
+			return nil, aerrors.Wrapf(err, "failed to compute data commitment (sector %d, deals: %v)", params.SectorID, params.DealIDs)
+		}
+
+		if ok, err := vmctx.Sys().ValidatePoRep(ctx, maddr, mi.SectorSize, commD, us.Info.CommR, ticket, params.Proof, seed, params.SectorID); err != nil {
+			return nil, err
+		} else if !ok {
+			return nil, aerrors.Newf(2, "porep proof was invalid (t:%x; s:%x(%d); p:%s)", ticket, seed, us.ReceivedEpoch+build.InteractivePoRepDelay, truncateHexPrint(params.Proof))
+		}
+
+		// Note: There must exist a unique index in the miner's sector set for each
+		// sector ID. The `faults`, `recovered`, and `done` parameters of the
+		// SubmitPoSt method express indices into this sector set.
+		nssroot, err := AddToSectorSet(ctx, types.WrapStorage(vmctx.Storage()), self.Sectors, params.SectorID, us.Info.CommR, commD)
+		if err != nil {
+			return nil, err
+		}
+		self.Sectors = nssroot
+
+		// if miner is not mining, start their proving period now
+		// Note: As written here, every miners first PoSt will only be over one sector.
+		// We could set up a 'grace period' for starting mining that would allow miners
+		// to submit several sectors for their first proving period. Alternatively, we
+		// could simply make the 'PreCommitSector' call take multiple sectors at a time.
+		//
+		// Note: Proving period is a function of sector size; small sectors take less
+		// time to prove than large sectors do. Sector size is selected when pledging.
+		pss, lerr := amt.LoadAMT(types.WrapStorage(vmctx.Storage()), self.ProvingSet)
+		if lerr != nil {
+			return nil, aerrors.HandleExternalError(lerr, "could not load proving set node")
+		}
+
+		if pss.Count == 0 && !self.Active {
+			self.ProvingSet = self.Sectors
+			// TODO: probably want to wait until the miner is above a certain
+			//  threshold before starting this
+			self.ElectionPeriodStart = vmctx.BlockHeight()
+		}
+		return nil, nil
 	})
 	if err != nil {
-		return nil, aerrors.Wrap(err, "failed to serialize ComputeDataCommitmentParams")
-	}
-
-	commD, err := vmctx.Send(StorageMarketAddress, SMAMethods.ComputeDataCommitment, types.NewInt(0), enc)
-	if err != nil {
-		return nil, aerrors.Wrapf(err, "failed to compute data commitment (sector %d, deals: %v)", params.SectorID, params.DealIDs)
-	}
-
-	if ok, err := vmctx.Sys().ValidatePoRep(ctx, maddr, mi.SectorSize, commD, us.Info.CommR, ticket, params.Proof, seed, params.SectorID); err != nil {
-		return nil, err
-	} else if !ok {
-		return nil, aerrors.Newf(2, "porep proof was invalid (t:%x; s:%x(%d); p:%s)", ticket, seed, us.ReceivedEpoch+build.InteractivePoRepDelay, truncateHexPrint(params.Proof))
-	}
-
-	// Note: There must exist a unique index in the miner's sector set for each
-	// sector ID. The `faults`, `recovered`, and `done` parameters of the
-	// SubmitPoSt method express indices into this sector set.
-	nssroot, err := AddToSectorSet(ctx, types.WrapStorage(vmctx.Storage()), self.Sectors, params.SectorID, us.Info.CommR, commD)
-	if err != nil {
-		return nil, err
-	}
-	self.Sectors = nssroot
-
-	// if miner is not mining, start their proving period now
-	// Note: As written here, every miners first PoSt will only be over one sector.
-	// We could set up a 'grace period' for starting mining that would allow miners
-	// to submit several sectors for their first proving period. Alternatively, we
-	// could simply make the 'PreCommitSector' call take multiple sectors at a time.
-	//
-	// Note: Proving period is a function of sector size; small sectors take less
-	// time to prove than large sectors do. Sector size is selected when pledging.
-	pss, lerr := amt.LoadAMT(types.WrapStorage(vmctx.Storage()), self.ProvingSet)
-	if lerr != nil {
-		return nil, aerrors.HandleExternalError(lerr, "could not load proving set node")
-	}
-
-	if pss.Count == 0 && !self.Active {
-		self.ProvingSet = self.Sectors
-		// TODO: probably want to wait until the miner is above a certain
-		//  threshold before starting this
-		self.ElectionPeriodStart = vmctx.BlockHeight()
-	}
-
-	nstate, err := vmctx.Storage().Put(self)
-	if err != nil {
-		return nil, err
-	}
-	if err := vmctx.Storage().Commit(oldstate, nstate); err != nil {
 		return nil, err
 	}
 
@@ -417,138 +402,128 @@ type SubmitFallbackPoStParams struct {
 }
 
 func (sma StorageMinerActor) SubmitFallbackPoSt(act *types.Actor, vmctx types.VMContext, params *SubmitFallbackPoStParams) ([]byte, ActorError) {
-	oldstate, self, err := loadState(vmctx)
-	if err != nil {
-		return nil, err
-	}
+	var self StorageMinerActorState
+	return vmctx.WithState(&self, func() ([]byte, aerrors.ActorError) {
 
-	mi, err := loadMinerInfo(vmctx, self)
-	if err != nil {
-		return nil, err
-	}
-
-	if vmctx.Message().From != mi.Worker {
-		return nil, aerrors.New(1, "not authorized to submit post for miner")
-	}
-
-	/*
-		// TODO: handle fees
-		msgVal := vmctx.Message().Value
-		if msgVal.LessThan(feesRequired) {
-			return nil, aerrors.New(2, "not enough funds to pay post submission fees")
+		mi, err := loadMinerInfo(vmctx, &self)
+		if err != nil {
+			return nil, err
 		}
 
-		if msgVal.GreaterThan(feesRequired) {
-			_, err := vmctx.Send(vmctx.Message().From, 0,
-				types.BigSub(msgVal, feesRequired), nil)
+		if vmctx.Message().From != mi.Worker {
+			return nil, aerrors.New(1, "not authorized to submit post for miner")
+		}
+
+		/*
+			// TODO: handle fees
+			msgVal := vmctx.Message().Value
+			if msgVal.LessThan(feesRequired) {
+				return nil, aerrors.New(2, "not enough funds to pay post submission fees")
+			}
+
+			if msgVal.GreaterThan(feesRequired) {
+				_, err := vmctx.Send(vmctx.Message().From, 0,
+					types.BigSub(msgVal, feesRequired), nil)
+				if err != nil {
+					return nil, aerrors.Wrap(err, "could not refund excess fees")
+				}
+			}
+		*/
+
+		var seed [sectorbuilder.CommLen]byte
+		{
+			randHeight := self.ElectionPeriodStart + build.FallbackPoStDelay
+			if vmctx.BlockHeight() <= randHeight {
+				// TODO: spec, retcode
+				return nil, aerrors.Newf(1, "submit fallback PoSt called too early (%d < %d)", vmctx.BlockHeight(), randHeight)
+			}
+
+			rand, err := vmctx.GetRandomness(randHeight)
+
 			if err != nil {
-				return nil, aerrors.Wrap(err, "could not refund excess fees")
+				return nil, aerrors.Wrap(err, "could not get randomness for PoST")
+			}
+			if len(rand) < len(seed) {
+				return nil, aerrors.Escalate(fmt.Errorf("randomness too small (%d < %d)",
+					len(rand), len(seed)), "improper randomness")
+			}
+			copy(seed[:], rand)
+		}
+
+		pss, lerr := amt.LoadAMT(types.WrapStorage(vmctx.Storage()), self.ProvingSet)
+		if lerr != nil {
+			return nil, aerrors.HandleExternalError(lerr, "could not load proving set node")
+		}
+
+		ss, lerr := amt.LoadAMT(types.WrapStorage(vmctx.Storage()), self.Sectors)
+		if lerr != nil {
+			return nil, aerrors.HandleExternalError(lerr, "could not load proving set node")
+		}
+
+		faults, nerr := self.FaultSet.AllMap(2 * ss.Count)
+		if nerr != nil {
+			return nil, aerrors.Absorb(err, 5, "RLE+ invalid")
+		}
+
+		activeFaults := uint64(0)
+		var sectorInfos []ffi.PublicSectorInfo
+		if err := pss.ForEach(func(id uint64, v *cbg.Deferred) error {
+			if faults[id] {
+				activeFaults++
+				return nil
+			}
+
+			var comms [][]byte
+			if err := cbor.DecodeInto(v.Raw, &comms); err != nil {
+				return xerrors.New("could not decode comms")
+			}
+			si := ffi.PublicSectorInfo{
+				SectorID: id,
+			}
+			commR := comms[0]
+			if len(commR) != len(si.CommR) {
+				return xerrors.Errorf("commR length is wrong: %d", len(commR))
+			}
+			copy(si.CommR[:], commR)
+
+			sectorInfos = append(sectorInfos, si)
+
+			return nil
+		}); err != nil {
+			return nil, aerrors.Absorb(err, 3, "could not decode sectorset")
+		}
+
+		proverID := vmctx.Message().To // TODO: normalize to ID address
+
+		var candidates []sectorbuilder.EPostCandidate
+		for _, t := range params.Candidates {
+			var partial [32]byte
+			copy(partial[:], t.Partial)
+			candidates = append(candidates, sectorbuilder.EPostCandidate{
+				PartialTicket:        partial,
+				SectorID:             t.SectorID,
+				SectorChallengeIndex: t.ChallengeIndex,
+			})
+		}
+
+		if ok, lerr := vmctx.Sys().VerifyFallbackPost(vmctx.Context(), mi.SectorSize,
+			sectorbuilder.NewSortedPublicSectorInfo(sectorInfos), seed[:], params.Proof, candidates, proverID, activeFaults); !ok || lerr != nil {
+			if lerr != nil {
+				// TODO: study PoST errors
+				return nil, aerrors.Absorb(lerr, 4, "PoST error")
+			}
+			if !ok {
+				return nil, aerrors.New(4, "PoST invalid")
 			}
 		}
-	*/
 
-	var seed [sectorbuilder.CommLen]byte
-	{
-		randHeight := self.ElectionPeriodStart + build.FallbackPoStDelay
-		if vmctx.BlockHeight() <= randHeight {
-			// TODO: spec, retcode
-			return nil, aerrors.Newf(1, "submit fallback PoSt called too early (%d < %d)", vmctx.BlockHeight(), randHeight)
+		// Post submission is successful!
+		if err := onSuccessfulPoSt(&self, vmctx, activeFaults); err != nil {
+			return nil, err
 		}
 
-		rand, err := vmctx.GetRandomness(randHeight)
-
-		if err != nil {
-			return nil, aerrors.Wrap(err, "could not get randomness for PoST")
-		}
-		if len(rand) < len(seed) {
-			return nil, aerrors.Escalate(fmt.Errorf("randomness too small (%d < %d)",
-				len(rand), len(seed)), "improper randomness")
-		}
-		copy(seed[:], rand)
-	}
-
-	pss, lerr := amt.LoadAMT(types.WrapStorage(vmctx.Storage()), self.ProvingSet)
-	if lerr != nil {
-		return nil, aerrors.HandleExternalError(lerr, "could not load proving set node")
-	}
-
-	ss, lerr := amt.LoadAMT(types.WrapStorage(vmctx.Storage()), self.Sectors)
-	if lerr != nil {
-		return nil, aerrors.HandleExternalError(lerr, "could not load proving set node")
-	}
-
-	faults, nerr := self.FaultSet.AllMap(2 * ss.Count)
-	if nerr != nil {
-		return nil, aerrors.Absorb(err, 5, "RLE+ invalid")
-	}
-
-	activeFaults := uint64(0)
-	var sectorInfos []ffi.PublicSectorInfo
-	if err := pss.ForEach(func(id uint64, v *cbg.Deferred) error {
-		if faults[id] {
-			activeFaults++
-			return nil
-		}
-
-		var comms [][]byte
-		if err := cbor.DecodeInto(v.Raw, &comms); err != nil {
-			return xerrors.New("could not decode comms")
-		}
-		si := ffi.PublicSectorInfo{
-			SectorID: id,
-		}
-		commR := comms[0]
-		if len(commR) != len(si.CommR) {
-			return xerrors.Errorf("commR length is wrong: %d", len(commR))
-		}
-		copy(si.CommR[:], commR)
-
-		sectorInfos = append(sectorInfos, si)
-
-		return nil
-	}); err != nil {
-		return nil, aerrors.Absorb(err, 3, "could not decode sectorset")
-	}
-
-	proverID := vmctx.Message().To // TODO: normalize to ID address
-
-	var candidates []sectorbuilder.EPostCandidate
-	for _, t := range params.Candidates {
-		var partial [32]byte
-		copy(partial[:], t.Partial)
-		candidates = append(candidates, sectorbuilder.EPostCandidate{
-			PartialTicket:        partial,
-			SectorID:             t.SectorID,
-			SectorChallengeIndex: t.ChallengeIndex,
-		})
-	}
-
-	if ok, lerr := vmctx.Sys().VerifyFallbackPost(vmctx.Context(), mi.SectorSize,
-		sectorbuilder.NewSortedPublicSectorInfo(sectorInfos), seed[:], params.Proof, candidates, proverID, activeFaults); !ok || lerr != nil {
-		if lerr != nil {
-			// TODO: study PoST errors
-			return nil, aerrors.Absorb(lerr, 4, "PoST error")
-		}
-		if !ok {
-			return nil, aerrors.New(4, "PoST invalid")
-		}
-	}
-
-	// Post submission is successful!
-	if err := onSuccessfulPoSt(self, vmctx, activeFaults); err != nil {
-		return nil, err
-	}
-
-	c, err := vmctx.Storage().Put(self)
-	if err != nil {
-		return nil, err
-	}
-
-	if err := vmctx.Storage().Commit(oldstate, c); err != nil {
-		return nil, err
-	}
-
-	return nil, nil
+		return nil, nil
+	})
 }
 
 func (sma StorageMinerActor) GetPower(act *types.Actor, vmctx types.VMContext, params *struct{}) ([]byte, ActorError) {
@@ -652,45 +627,40 @@ func CollateralForPower(power types.BigInt) types.BigInt {
 }
 
 func (sma StorageMinerActor) GetWorkerAddr(act *types.Actor, vmctx types.VMContext, params *struct{}) ([]byte, ActorError) {
-	_, self, err := loadState(vmctx)
-	if err != nil {
-		return nil, err
-	}
+	var self StorageMinerActorState
+	return vmctx.WithStateRO(&self, func() ([]byte, ActorError) {
+		mi, err := loadMinerInfo(vmctx, &self)
+		if err != nil {
+			return nil, err
+		}
 
-	mi, err := loadMinerInfo(vmctx, self)
-	if err != nil {
-		return nil, err
-	}
-
-	return mi.Worker.Bytes(), nil
+		return mi.Worker.Bytes(), nil
+	})
 }
 
 func (sma StorageMinerActor) GetOwner(act *types.Actor, vmctx types.VMContext, params *struct{}) ([]byte, ActorError) {
-	_, self, err := loadState(vmctx)
-	if err != nil {
-		return nil, err
-	}
+	var self StorageMinerActorState
+	return vmctx.WithStateRO(&self, func() ([]byte, ActorError) {
 
-	mi, err := loadMinerInfo(vmctx, self)
-	if err != nil {
-		return nil, err
-	}
+		mi, err := loadMinerInfo(vmctx, &self)
+		if err != nil {
+			return nil, err
+		}
 
-	return mi.Owner.Bytes(), nil
+		return mi.Owner.Bytes(), nil
+	})
 }
 
 func (sma StorageMinerActor) GetPeerID(act *types.Actor, vmctx types.VMContext, params *struct{}) ([]byte, ActorError) {
-	_, self, err := loadState(vmctx)
-	if err != nil {
-		return nil, err
-	}
+	var self StorageMinerActorState
+	return vmctx.WithStateRO(&self, func() ([]byte, ActorError) {
+		mi, err := loadMinerInfo(vmctx, &self)
+		if err != nil {
+			return nil, err
+		}
 
-	mi, err := loadMinerInfo(vmctx, self)
-	if err != nil {
-		return nil, err
-	}
-
-	return []byte(mi.PeerID), nil
+		return []byte(mi.PeerID), nil
+	})
 }
 
 type UpdatePeerIDParams struct {
@@ -698,53 +668,39 @@ type UpdatePeerIDParams struct {
 }
 
 func (sma StorageMinerActor) UpdatePeerID(act *types.Actor, vmctx types.VMContext, params *UpdatePeerIDParams) ([]byte, ActorError) {
-	oldstate, self, err := loadState(vmctx)
-	if err != nil {
-		return nil, err
-	}
+	var self StorageMinerActorState
+	return vmctx.WithState(&self, func() ([]byte, ActorError) {
+		mi, err := loadMinerInfo(vmctx, &self)
+		if err != nil {
+			return nil, err
+		}
 
-	mi, err := loadMinerInfo(vmctx, self)
-	if err != nil {
-		return nil, err
-	}
+		if vmctx.Message().From != mi.Worker {
+			return nil, aerrors.New(2, "only the mine worker may update the peer ID")
+		}
 
-	if vmctx.Message().From != mi.Worker {
-		return nil, aerrors.New(2, "only the mine worker may update the peer ID")
-	}
+		mi.PeerID = params.PeerID
 
-	mi.PeerID = params.PeerID
+		mic, err := vmctx.Storage().Put(mi)
+		if err != nil {
+			return nil, err
+		}
 
-	mic, err := vmctx.Storage().Put(mi)
-	if err != nil {
-		return nil, err
-	}
-
-	self.Info = mic
-
-	c, err := vmctx.Storage().Put(self)
-	if err != nil {
-		return nil, err
-	}
-
-	if err := vmctx.Storage().Commit(oldstate, c); err != nil {
-		return nil, err
-	}
-
-	return nil, nil
+		self.Info = mic
+		return nil, nil
+	})
 }
 
 func (sma StorageMinerActor) GetSectorSize(act *types.Actor, vmctx types.VMContext, params *struct{}) ([]byte, ActorError) {
-	_, self, err := loadState(vmctx)
-	if err != nil {
-		return nil, err
-	}
+	var self StorageMinerActorState
+	return vmctx.WithStateRO(&self, func() ([]byte, ActorError) {
+		mi, err := loadMinerInfo(vmctx, &self)
+		if err != nil {
+			return nil, err
+		}
 
-	mi, err := loadMinerInfo(vmctx, self)
-	if err != nil {
-		return nil, err
-	}
-
-	return types.NewInt(mi.SectorSize).Bytes(), nil
+		return types.NewInt(mi.SectorSize).Bytes(), nil
+	})
 }
 
 func isLate(height uint64, self *StorageMinerActorState) bool {
@@ -752,12 +708,10 @@ func isLate(height uint64, self *StorageMinerActorState) bool {
 }
 
 func (sma StorageMinerActor) IsSlashed(act *types.Actor, vmctx types.VMContext, params *struct{}) ([]byte, ActorError) {
-	_, self, err := loadState(vmctx)
-	if err != nil {
-		return nil, err
-	}
-
-	return cbg.EncodeBool(self.SlashedAt != 0), nil
+	var self StorageMinerActorState
+	return vmctx.WithStateRO(&self, func() ([]byte, ActorError) {
+		return cbg.EncodeBool(self.SlashedAt != 0), nil
+	})
 }
 
 type CheckMinerParams struct {
@@ -766,49 +720,39 @@ type CheckMinerParams struct {
 
 // TODO: better name
 func (sma StorageMinerActor) CheckMiner(act *types.Actor, vmctx types.VMContext, params *CheckMinerParams) ([]byte, ActorError) {
-	if vmctx.Message().From != StoragePowerAddress {
-		return nil, aerrors.New(2, "only the storage power actor can check miner")
-	}
+	var self StorageMinerActorState
+	return vmctx.WithState(&self, func() ([]byte, ActorError) {
+		if vmctx.Message().From != StoragePowerAddress {
+			return nil, aerrors.New(2, "only the storage power actor can check miner")
+		}
 
-	oldstate, self, err := loadState(vmctx)
-	if err != nil {
-		return nil, err
-	}
+		if !isLate(vmctx.BlockHeight(), &self) {
+			// Everything's fine
+			return nil, nil
+		}
 
-	if !isLate(vmctx.BlockHeight(), self) {
-		// Everything's fine
-		return nil, nil
-	}
+		if self.SlashedAt != 0 {
+			// Don't slash more than necessary
+			return nil, nil
+		}
 
-	if self.SlashedAt != 0 {
-		// Don't slash more than necessary
-		return nil, nil
-	}
+		if params.NetworkPower.Equals(self.Power) {
+			// Don't break the network when there's only one miner left
 
-	if params.NetworkPower.Equals(self.Power) {
-		// Don't break the network when there's only one miner left
+			log.Warnf("can't slash miner %s for missed PoSt, no power would be left in the network", vmctx.Message().To)
+			return nil, nil
+		}
 
-		log.Warnf("can't slash miner %s for missed PoSt, no power would be left in the network", vmctx.Message().To)
-		return nil, nil
-	}
+		// Slash for being late
 
-	// Slash for being late
+		self.SlashedAt = vmctx.BlockHeight()
 
-	self.SlashedAt = vmctx.BlockHeight()
-
-	nstate, err := vmctx.Storage().Put(self)
-	if err != nil {
-		return nil, err
-	}
-	if err := vmctx.Storage().Commit(oldstate, nstate); err != nil {
-		return nil, err
-	}
-
-	var out bytes.Buffer
-	if err := self.Power.MarshalCBOR(&out); err != nil {
-		return nil, aerrors.HandleExternalError(err, "marshaling return value")
-	}
-	return out.Bytes(), nil
+		var out bytes.Buffer
+		if err := self.Power.MarshalCBOR(&out); err != nil {
+			return nil, aerrors.HandleExternalError(err, "marshaling return value")
+		}
+		return out.Bytes(), nil
+	})
 }
 
 type DeclareFaultsParams struct {
@@ -816,52 +760,42 @@ type DeclareFaultsParams struct {
 }
 
 func (sma StorageMinerActor) DeclareFaults(act *types.Actor, vmctx types.VMContext, params *DeclareFaultsParams) ([]byte, ActorError) {
-	oldstate, self, aerr := loadState(vmctx)
-	if aerr != nil {
-		return nil, aerr
-	}
+	var self StorageMinerActorState
+	return vmctx.WithState(&self, func() ([]byte, ActorError) {
+		mi, aerr := loadMinerInfo(vmctx, &self)
+		if aerr != nil {
+			return nil, aerr
+		}
 
-	mi, aerr := loadMinerInfo(vmctx, self)
-	if aerr != nil {
-		return nil, aerr
-	}
+		if vmctx.Message().From != mi.Worker {
+			return nil, aerrors.New(1, "not authorized to declare faults for miner")
+		}
 
-	if vmctx.Message().From != mi.Worker {
-		return nil, aerrors.New(1, "not authorized to declare faults for miner")
-	}
+		nfaults, err := types.MergeBitFields(params.Faults, self.FaultSet)
+		if err != nil {
+			return nil, aerrors.Absorb(err, 1, "failed to merge bitfields")
+		}
 
-	nfaults, err := types.MergeBitFields(params.Faults, self.FaultSet)
-	if err != nil {
-		return nil, aerrors.Absorb(err, 1, "failed to merge bitfields")
-	}
+		ss, nerr := amt.LoadAMT(types.WrapStorage(vmctx.Storage()), self.Sectors)
+		if nerr != nil {
+			return nil, aerrors.HandleExternalError(nerr, "failed to load sector set")
+		}
 
-	ss, nerr := amt.LoadAMT(types.WrapStorage(vmctx.Storage()), self.Sectors)
-	if nerr != nil {
-		return nil, aerrors.HandleExternalError(nerr, "failed to load sector set")
-	}
+		cf, nerr := nfaults.Count()
+		if nerr != nil {
+			return nil, aerrors.Absorb(nerr, 2, "could not decode RLE+")
+		}
 
-	cf, nerr := nfaults.Count()
-	if nerr != nil {
-		return nil, aerrors.Absorb(nerr, 2, "could not decode RLE+")
-	}
+		if cf > 2*ss.Count {
+			return nil, aerrors.Newf(3, "too many declared faults: %d > %d", cf, 2*ss.Count)
+		}
 
-	if cf > 2*ss.Count {
-		return nil, aerrors.Newf(3, "too many declared faults: %d > %d", cf, 2*ss.Count)
-	}
+		self.FaultSet = nfaults
 
-	self.FaultSet = nfaults
+		self.LastFaultSubmission = vmctx.BlockHeight()
 
-	self.LastFaultSubmission = vmctx.BlockHeight()
-
-	nstate, aerr := vmctx.Storage().Put(self)
-	if aerr != nil {
-		return nil, aerr
-	}
-	if err := vmctx.Storage().Commit(oldstate, nstate); err != nil {
-		return nil, err
-	}
-
-	return nil, nil
+		return nil, nil
+	})
 }
 
 type MinerSlashConsensusFault struct {
