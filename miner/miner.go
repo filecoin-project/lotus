@@ -2,6 +2,7 @@ package miner
 
 import (
 	"context"
+	"fmt"
 	"sync"
 	"time"
 
@@ -11,6 +12,7 @@ import (
 	"github.com/filecoin-project/lotus/chain/actors"
 	"github.com/filecoin-project/lotus/chain/gen"
 	"github.com/filecoin-project/lotus/chain/types"
+	lru "github.com/hashicorp/golang-lru"
 
 	logging "github.com/ipfs/go-log/v2"
 	"go.opencensus.io/trace"
@@ -22,6 +24,7 @@ var log = logging.Logger("miner")
 type waitFunc func(ctx context.Context, baseTime uint64) error
 
 func NewMiner(api api.FullNode, epp gen.ElectionPoStProver) *Miner {
+	arc, _ := lru.NewARC(10000)
 	return &Miner{
 		api: api,
 		epp: epp,
@@ -32,6 +35,7 @@ func NewMiner(api api.FullNode, epp gen.ElectionPoStProver) *Miner {
 
 			return nil
 		},
+		minedBlockHeights: arc,
 	}
 }
 
@@ -48,6 +52,8 @@ type Miner struct {
 	waitFunc waitFunc
 
 	lastWork *MiningBase
+
+	minedBlockHeights *lru.ARCCache
 }
 
 func (m *Miner) Addresses() ([]address.Address, error) {
@@ -200,6 +206,17 @@ eventLoop:
 				mWon[b.Header.Miner] = struct{}{}
 			}
 			for _, b := range blks {
+				// TODO: this code was written to handle creating blocks for multiple miners.
+				// However, we don't use that, and we probably never will. So even though this code will
+				// never see different miners, i'm going to handle the caching as if it was going to.
+				// We can clean it up later when we remove all the multiple miner logic.
+				blkKey := fmt.Sprintf("%s-%d", b.Header.Miner, b.Header.Height)
+				if _, ok := m.minedBlockHeights.Get(blkKey); ok {
+					log.Warnw("Created a block at the same height as another block we've created", "height", b.Header.Height, "miner", b.Header.Miner, "parents", b.Header.Parents)
+					continue
+				}
+
+				m.minedBlockHeights.Add(blkKey, true)
 				if err := m.api.SyncSubmitBlock(ctx, b); err != nil {
 					log.Errorf("failed to submit newly mined block: %s", err)
 				}
