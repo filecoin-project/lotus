@@ -3,137 +3,25 @@ package actors
 import (
 	"bytes"
 	"context"
-	"encoding/binary"
 	"fmt"
 
 	ffi "github.com/filecoin-project/filecoin-ffi"
+	amt2 "github.com/filecoin-project/go-amt-ipld/v2"
 
-	"github.com/filecoin-project/go-address"
 	"github.com/filecoin-project/go-sectorbuilder"
 	"github.com/filecoin-project/lotus/build"
 	"github.com/filecoin-project/lotus/chain/actors/aerrors"
 	"github.com/filecoin-project/lotus/chain/types"
 
-	"github.com/filecoin-project/go-amt-ipld"
 	"github.com/ipfs/go-cid"
 	cbor "github.com/ipfs/go-ipld-cbor"
-	"github.com/libp2p/go-libp2p-core/peer"
 	cbg "github.com/whyrusleeping/cbor-gen"
 	"golang.org/x/xerrors"
 )
 
-type StorageMinerActor struct{}
+type StorageMinerActor2 struct{}
 
-type StorageMinerActorState struct {
-	// PreCommittedSectors is the set of sectors that have been committed to but not
-	// yet had their proofs submitted
-	PreCommittedSectors map[string]*PreCommittedSector
-
-	// All sectors this miner has committed.
-	//
-	// AMT[sectorID]ffi.PublicSectorInfo
-	Sectors cid.Cid
-
-	// TODO: Spec says 'StagedCommittedSectors', which one is it?
-
-	// Sectors this miner is currently mining. It is only updated
-	// when a PoSt is submitted (not as each new sector commitment is added).
-	//
-	// AMT[sectorID]ffi.PublicSectorInfo
-	ProvingSet cid.Cid
-
-	// TODO: these:
-	//    SectorTable
-	//    SectorExpirationQueue
-	//    ChallengeStatus
-
-	// Contains mostly static info about this miner
-	Info cid.Cid
-
-	// Faulty sectors reported since last SubmitPost
-	FaultSet types.BitField
-
-	LastFaultSubmission uint64
-
-	// Amount of power this miner has.
-	Power types.BigInt
-
-	// Active is set to true after the miner has submitted their first PoSt
-	Active bool
-
-	// The height at which this miner was slashed at.
-	SlashedAt uint64
-
-	ElectionPeriodStart uint64
-}
-
-type MinerInfo struct {
-	// Account that owns this miner.
-	// - Income and returned collateral are paid to this address.
-	// - This address is also allowed to change the worker address for the miner.
-	Owner address.Address
-
-	// Worker account for this miner.
-	// This will be the key that is used to sign blocks created by this miner, and
-	// sign messages sent on behalf of this miner to commit sectors, submit PoSts, and
-	// other day to day miner activities.
-	Worker address.Address
-
-	// Libp2p identity that should be used when connecting to this miner.
-	PeerID peer.ID
-
-	// Amount of space in each sector committed to the network by this miner.
-	SectorSize uint64
-
-	// SubsectorCount
-}
-
-type PreCommittedSector struct {
-	Info          SectorPreCommitInfo
-	ReceivedEpoch uint64
-}
-
-type StorageMinerConstructorParams struct {
-	Owner      address.Address
-	Worker     address.Address
-	SectorSize uint64
-	PeerID     peer.ID
-}
-
-type SectorPreCommitInfo struct {
-	SectorNumber uint64
-
-	CommR     []byte // TODO: Spec says CID
-	SealEpoch uint64
-	DealIDs   []uint64
-}
-
-type maMethods struct {
-	Constructor          uint64
-	PreCommitSector      uint64
-	ProveCommitSector    uint64
-	SubmitFallbackPoSt   uint64
-	SlashStorageFault    uint64
-	GetCurrentProvingSet uint64
-	ArbitrateDeal        uint64
-	DePledge             uint64
-	GetOwner             uint64
-	GetWorkerAddr        uint64
-	GetPower             uint64
-	GetPeerID            uint64
-	GetSectorSize        uint64
-	UpdatePeerID         uint64
-	ChangeWorker         uint64
-	IsSlashed            uint64
-	CheckMiner           uint64
-	DeclareFaults        uint64
-	SlashConsensusFault  uint64
-	SubmitElectionPoSt   uint64
-}
-
-var MAMethods = maMethods{1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16, 17, 18, 19, 20}
-
-func (sma StorageMinerActor) Exports() []interface{} {
+func (sma StorageMinerActor2) Exports() []interface{} {
 	return []interface{}{
 		1: sma.StorageMinerConstructor,
 		2: sma.PreCommitSector,
@@ -158,26 +46,7 @@ func (sma StorageMinerActor) Exports() []interface{} {
 	}
 }
 
-func loadState(vmctx types.VMContext) (cid.Cid, *StorageMinerActorState, ActorError) {
-	var self StorageMinerActorState
-	oldstate := vmctx.Storage().GetHead()
-	if err := vmctx.Storage().Get(oldstate, &self); err != nil {
-		return cid.Undef, nil, err
-	}
-
-	return oldstate, &self, nil
-}
-
-func loadMinerInfo(vmctx types.VMContext, m *StorageMinerActorState) (*MinerInfo, ActorError) {
-	var mi MinerInfo
-	if err := vmctx.Storage().Get(m.Info, &mi); err != nil {
-		return nil, err
-	}
-
-	return &mi, nil
-}
-
-func (sma StorageMinerActor) StorageMinerConstructor(act *types.Actor, vmctx types.VMContext, params *StorageMinerConstructorParams) ([]byte, ActorError) {
+func (sma StorageMinerActor2) StorageMinerConstructor(act *types.Actor, vmctx types.VMContext, params *StorageMinerConstructorParams) ([]byte, ActorError) {
 	minerInfo := &MinerInfo{
 		Owner:      params.Owner,
 		Worker:     params.Worker,
@@ -191,7 +60,7 @@ func (sma StorageMinerActor) StorageMinerConstructor(act *types.Actor, vmctx typ
 	}
 
 	var self StorageMinerActorState
-	sectors := amt.NewAMT(types.WrapStorage(vmctx.Storage()))
+	sectors := amt2.NewAMT(types.WrapStorage(vmctx.Storage()))
 	scid, serr := sectors.Flush()
 	if serr != nil {
 		return nil, aerrors.HandleExternalError(serr, "initializing AMT")
@@ -214,7 +83,8 @@ func (sma StorageMinerActor) StorageMinerConstructor(act *types.Actor, vmctx typ
 	return nil, nil
 }
 
-func (sma StorageMinerActor) PreCommitSector(act *types.Actor, vmctx types.VMContext, params *SectorPreCommitInfo) ([]byte, ActorError) {
+func (sma StorageMinerActor2) PreCommitSector(act *types.Actor, vmctx types.VMContext, params *SectorPreCommitInfo) ([]byte, ActorError) {
+
 	ctx := vmctx.Context()
 	oldstate, self, err := loadState(vmctx)
 	if err != nil {
@@ -276,19 +146,7 @@ func (sma StorageMinerActor) PreCommitSector(act *types.Actor, vmctx types.VMCon
 	return nil, nil
 }
 
-func uintToStringKey(i uint64) string {
-	buf := make([]byte, 10)
-	n := binary.PutUvarint(buf, i)
-	return string(buf[:n])
-}
-
-type SectorProveCommitInfo struct {
-	Proof    []byte
-	SectorID uint64
-	DealIDs  []uint64
-}
-
-func (sma StorageMinerActor) ProveCommitSector(act *types.Actor, vmctx types.VMContext, params *SectorProveCommitInfo) ([]byte, ActorError) {
+func (sma StorageMinerActor2) ProveCommitSector(act *types.Actor, vmctx types.VMContext, params *SectorProveCommitInfo) ([]byte, ActorError) {
 	ctx := vmctx.Context()
 	oldstate, self, err := loadState(vmctx)
 	if err != nil {
@@ -358,7 +216,7 @@ func (sma StorageMinerActor) ProveCommitSector(act *types.Actor, vmctx types.VMC
 	// Note: There must exist a unique index in the miner's sector set for each
 	// sector ID. The `faults`, `recovered`, and `done` parameters of the
 	// SubmitPoSt method express indices into this sector set.
-	nssroot, err := AddToSectorSet(ctx, types.WrapStorage(vmctx.Storage()), self.Sectors, params.SectorID, us.Info.CommR, commD)
+	nssroot, err := AddToSectorSet2(ctx, types.WrapStorage(vmctx.Storage()), self.Sectors, params.SectorID, us.Info.CommR, commD)
 	if err != nil {
 		return nil, err
 	}
@@ -372,7 +230,7 @@ func (sma StorageMinerActor) ProveCommitSector(act *types.Actor, vmctx types.VMC
 	//
 	// Note: Proving period is a function of sector size; small sectors take less
 	// time to prove than large sectors do. Sector size is selected when pledging.
-	pss, lerr := amt.LoadAMT(types.WrapStorage(vmctx.Storage()), self.ProvingSet)
+	pss, lerr := amt2.LoadAMT(types.WrapStorage(vmctx.Storage()), self.ProvingSet)
 	if lerr != nil {
 		return nil, aerrors.HandleExternalError(lerr, "could not load proving set node")
 	}
@@ -403,20 +261,7 @@ func (sma StorageMinerActor) ProveCommitSector(act *types.Actor, vmctx types.VMC
 	return nil, aerrors.Wrapf(err, "calling ActivateStorageDeals failed")
 }
 
-func truncateHexPrint(b []byte) string {
-	s := fmt.Sprintf("%x", b)
-	if len(s) > 60 {
-		return s[:20] + "..." + s[len(s)-20:]
-	}
-	return s
-}
-
-type SubmitFallbackPoStParams struct {
-	Proof      []byte
-	Candidates []types.EPostTicket
-}
-
-func (sma StorageMinerActor) SubmitFallbackPoSt(act *types.Actor, vmctx types.VMContext, params *SubmitFallbackPoStParams) ([]byte, ActorError) {
+func (sma StorageMinerActor2) SubmitFallbackPoSt(act *types.Actor, vmctx types.VMContext, params *SubmitFallbackPoStParams) ([]byte, ActorError) {
 	oldstate, self, err := loadState(vmctx)
 	if err != nil {
 		return nil, err
@@ -467,12 +312,12 @@ func (sma StorageMinerActor) SubmitFallbackPoSt(act *types.Actor, vmctx types.VM
 		copy(seed[:], rand)
 	}
 
-	pss, lerr := amt.LoadAMT(types.WrapStorage(vmctx.Storage()), self.ProvingSet)
+	pss, lerr := amt2.LoadAMT(types.WrapStorage(vmctx.Storage()), self.ProvingSet)
 	if lerr != nil {
 		return nil, aerrors.HandleExternalError(lerr, "could not load proving set node")
 	}
 
-	ss, lerr := amt.LoadAMT(types.WrapStorage(vmctx.Storage()), self.Sectors)
+	ss, lerr := amt2.LoadAMT(types.WrapStorage(vmctx.Storage()), self.Sectors)
 	if lerr != nil {
 		return nil, aerrors.HandleExternalError(lerr, "could not load proving set node")
 	}
@@ -551,7 +396,7 @@ func (sma StorageMinerActor) SubmitFallbackPoSt(act *types.Actor, vmctx types.VM
 	return nil, nil
 }
 
-func (sma StorageMinerActor) GetPower(act *types.Actor, vmctx types.VMContext, params *struct{}) ([]byte, ActorError) {
+func (sma StorageMinerActor2) GetPower(act *types.Actor, vmctx types.VMContext, params *struct{}) ([]byte, ActorError) {
 	_, self, err := loadState(vmctx)
 	if err != nil {
 		return nil, err
@@ -559,8 +404,8 @@ func (sma StorageMinerActor) GetPower(act *types.Actor, vmctx types.VMContext, p
 	return self.Power.Bytes(), nil
 }
 
-func SectorIsUnique(ctx context.Context, s types.Storage, sroot cid.Cid, sid uint64) (bool, ActorError) {
-	found, _, _, err := GetFromSectorSet(ctx, s, sroot, sid)
+func SectorIsUnique2(ctx context.Context, s types.Storage, sroot cid.Cid, sid uint64) (bool, ActorError) {
+	found, _, _, err := GetFromSectorSet2(ctx, s, sroot, sid)
 	if err != nil {
 		return false, err
 	}
@@ -568,11 +413,11 @@ func SectorIsUnique(ctx context.Context, s types.Storage, sroot cid.Cid, sid uin
 	return !found, nil
 }
 
-func AddToSectorSet(ctx context.Context, blks amt.Blocks, ss cid.Cid, sectorID uint64, commR, commD []byte) (cid.Cid, ActorError) {
+func AddToSectorSet2(ctx context.Context, blks amt2.Blocks, ss cid.Cid, sectorID uint64, commR, commD []byte) (cid.Cid, ActorError) {
 	if sectorID >= build.MinerMaxSectors {
 		return cid.Undef, aerrors.Newf(25, "sector ID out of range: %d", sectorID)
 	}
-	ssr, err := amt.LoadAMT(blks, ss)
+	ssr, err := amt2.LoadAMT(blks, ss)
 	if err != nil {
 		return cid.Undef, aerrors.HandleExternalError(err, "could not load sector set node")
 	}
@@ -591,12 +436,12 @@ func AddToSectorSet(ctx context.Context, blks amt.Blocks, ss cid.Cid, sectorID u
 	return ncid, nil
 }
 
-func GetFromSectorSet(ctx context.Context, s types.Storage, ss cid.Cid, sectorID uint64) (bool, []byte, []byte, ActorError) {
+func GetFromSectorSet2(ctx context.Context, s types.Storage, ss cid.Cid, sectorID uint64) (bool, []byte, []byte, ActorError) {
 	if sectorID >= build.MinerMaxSectors {
 		return false, nil, nil, aerrors.Newf(25, "sector ID out of range: %d", sectorID)
 	}
 
-	ssr, err := amt.LoadAMT(types.WrapStorage(s), ss)
+	ssr, err := amt2.LoadAMT(types.WrapStorage(s), ss)
 	if err != nil {
 		return false, nil, nil, aerrors.HandleExternalError(err, "could not load sector set node")
 	}
@@ -604,7 +449,7 @@ func GetFromSectorSet(ctx context.Context, s types.Storage, ss cid.Cid, sectorID
 	var comms [][]byte
 	err = ssr.Get(sectorID, &comms)
 	if err != nil {
-		if _, ok := err.(*amt.ErrNotFound); ok {
+		if _, ok := err.(*amt2.ErrNotFound); ok {
 			return false, nil, nil, nil
 		}
 		return false, nil, nil, aerrors.HandleExternalError(err, "failed to find sector in sector set")
@@ -617,9 +462,9 @@ func GetFromSectorSet(ctx context.Context, s types.Storage, ss cid.Cid, sectorID
 	return true, comms[0], comms[1], nil
 }
 
-func RemoveFromSectorSet(ctx context.Context, s types.Storage, ss cid.Cid, ids []uint64) (cid.Cid, aerrors.ActorError) {
+func RemoveFromSectorSet2(ctx context.Context, s types.Storage, ss cid.Cid, ids []uint64) (cid.Cid, aerrors.ActorError) {
 
-	ssr, err := amt.LoadAMT(types.WrapStorage(s), ss)
+	ssr, err := amt2.LoadAMT(types.WrapStorage(s), ss)
 	if err != nil {
 		return cid.Undef, aerrors.HandleExternalError(err, "could not load sector set node")
 	}
@@ -638,20 +483,7 @@ func RemoveFromSectorSet(ctx context.Context, s types.Storage, ss cid.Cid, ids [
 	return ncid, nil
 }
 
-func CollateralForPower(power types.BigInt) types.BigInt {
-	return types.BigMul(power, types.NewInt(10))
-	/* TODO: this
-	availableFil = FakeGlobalMethods.GetAvailableFil()
-	totalNetworkPower = StorageMinerActor.GetTotalStorage()
-	numMiners = StorageMarket.GetMinerCount()
-	powerCollateral = availableFil * NetworkConstants.POWER_COLLATERAL_PROPORTION * power / totalNetworkPower
-	perCapitaCollateral = availableFil * NetworkConstants.PER_CAPITA_COLLATERAL_PROPORTION / numMiners
-	collateralRequired = math.Ceil(minerPowerCollateral + minerPerCapitaCollateral)
-	return collateralRequired
-	*/
-}
-
-func (sma StorageMinerActor) GetWorkerAddr(act *types.Actor, vmctx types.VMContext, params *struct{}) ([]byte, ActorError) {
+func (sma StorageMinerActor2) GetWorkerAddr(act *types.Actor, vmctx types.VMContext, params *struct{}) ([]byte, ActorError) {
 	_, self, err := loadState(vmctx)
 	if err != nil {
 		return nil, err
@@ -665,7 +497,7 @@ func (sma StorageMinerActor) GetWorkerAddr(act *types.Actor, vmctx types.VMConte
 	return mi.Worker.Bytes(), nil
 }
 
-func (sma StorageMinerActor) GetOwner(act *types.Actor, vmctx types.VMContext, params *struct{}) ([]byte, ActorError) {
+func (sma StorageMinerActor2) GetOwner(act *types.Actor, vmctx types.VMContext, params *struct{}) ([]byte, ActorError) {
 	_, self, err := loadState(vmctx)
 	if err != nil {
 		return nil, err
@@ -679,7 +511,7 @@ func (sma StorageMinerActor) GetOwner(act *types.Actor, vmctx types.VMContext, p
 	return mi.Owner.Bytes(), nil
 }
 
-func (sma StorageMinerActor) GetPeerID(act *types.Actor, vmctx types.VMContext, params *struct{}) ([]byte, ActorError) {
+func (sma StorageMinerActor2) GetPeerID(act *types.Actor, vmctx types.VMContext, params *struct{}) ([]byte, ActorError) {
 	_, self, err := loadState(vmctx)
 	if err != nil {
 		return nil, err
@@ -693,11 +525,7 @@ func (sma StorageMinerActor) GetPeerID(act *types.Actor, vmctx types.VMContext, 
 	return []byte(mi.PeerID), nil
 }
 
-type UpdatePeerIDParams struct {
-	PeerID peer.ID
-}
-
-func (sma StorageMinerActor) UpdatePeerID(act *types.Actor, vmctx types.VMContext, params *UpdatePeerIDParams) ([]byte, ActorError) {
+func (sma StorageMinerActor2) UpdatePeerID(act *types.Actor, vmctx types.VMContext, params *UpdatePeerIDParams) ([]byte, ActorError) {
 	oldstate, self, err := loadState(vmctx)
 	if err != nil {
 		return nil, err
@@ -733,7 +561,7 @@ func (sma StorageMinerActor) UpdatePeerID(act *types.Actor, vmctx types.VMContex
 	return nil, nil
 }
 
-func (sma StorageMinerActor) GetSectorSize(act *types.Actor, vmctx types.VMContext, params *struct{}) ([]byte, ActorError) {
+func (sma StorageMinerActor2) GetSectorSize(act *types.Actor, vmctx types.VMContext, params *struct{}) ([]byte, ActorError) {
 	_, self, err := loadState(vmctx)
 	if err != nil {
 		return nil, err
@@ -747,11 +575,7 @@ func (sma StorageMinerActor) GetSectorSize(act *types.Actor, vmctx types.VMConte
 	return types.NewInt(mi.SectorSize).Bytes(), nil
 }
 
-func isLate(height uint64, self *StorageMinerActorState) bool {
-	return self.ElectionPeriodStart > 0 && height >= self.ElectionPeriodStart+build.SlashablePowerDelay
-}
-
-func (sma StorageMinerActor) IsSlashed(act *types.Actor, vmctx types.VMContext, params *struct{}) ([]byte, ActorError) {
+func (sma StorageMinerActor2) IsSlashed(act *types.Actor, vmctx types.VMContext, params *struct{}) ([]byte, ActorError) {
 	_, self, err := loadState(vmctx)
 	if err != nil {
 		return nil, err
@@ -760,12 +584,8 @@ func (sma StorageMinerActor) IsSlashed(act *types.Actor, vmctx types.VMContext, 
 	return cbg.EncodeBool(self.SlashedAt != 0), nil
 }
 
-type CheckMinerParams struct {
-	NetworkPower types.BigInt
-}
-
 // TODO: better name
-func (sma StorageMinerActor) CheckMiner(act *types.Actor, vmctx types.VMContext, params *CheckMinerParams) ([]byte, ActorError) {
+func (sma StorageMinerActor2) CheckMiner(act *types.Actor, vmctx types.VMContext, params *CheckMinerParams) ([]byte, ActorError) {
 	if vmctx.Message().From != StoragePowerAddress {
 		return nil, aerrors.New(2, "only the storage power actor can check miner")
 	}
@@ -811,11 +631,7 @@ func (sma StorageMinerActor) CheckMiner(act *types.Actor, vmctx types.VMContext,
 	return out.Bytes(), nil
 }
 
-type DeclareFaultsParams struct {
-	Faults types.BitField
-}
-
-func (sma StorageMinerActor) DeclareFaults(act *types.Actor, vmctx types.VMContext, params *DeclareFaultsParams) ([]byte, ActorError) {
+func (sma StorageMinerActor2) DeclareFaults(act *types.Actor, vmctx types.VMContext, params *DeclareFaultsParams) ([]byte, ActorError) {
 	oldstate, self, aerr := loadState(vmctx)
 	if aerr != nil {
 		return nil, aerr
@@ -835,7 +651,7 @@ func (sma StorageMinerActor) DeclareFaults(act *types.Actor, vmctx types.VMConte
 		return nil, aerrors.Absorb(err, 1, "failed to merge bitfields")
 	}
 
-	ss, nerr := amt.LoadAMT(types.WrapStorage(vmctx.Storage()), self.Sectors)
+	ss, nerr := amt2.LoadAMT(types.WrapStorage(vmctx.Storage()), self.Sectors)
 	if nerr != nil {
 		return nil, aerrors.HandleExternalError(nerr, "failed to load sector set")
 	}
@@ -864,13 +680,7 @@ func (sma StorageMinerActor) DeclareFaults(act *types.Actor, vmctx types.VMConte
 	return nil, nil
 }
 
-type MinerSlashConsensusFault struct {
-	Slasher           address.Address
-	AtHeight          uint64
-	SlashedCollateral types.BigInt
-}
-
-func (sma StorageMinerActor) SlashConsensusFault(act *types.Actor, vmctx types.VMContext, params *MinerSlashConsensusFault) ([]byte, ActorError) {
+func (sma StorageMinerActor2) SlashConsensusFault(act *types.Actor, vmctx types.VMContext, params *MinerSlashConsensusFault) ([]byte, ActorError) {
 	if vmctx.Message().From != StoragePowerAddress {
 		return nil, aerrors.New(1, "SlashConsensusFault may only be called by the storage market actor")
 	}
@@ -910,7 +720,7 @@ func (sma StorageMinerActor) SlashConsensusFault(act *types.Actor, vmctx types.V
 	return nil, nil
 }
 
-func (sma StorageMinerActor) SubmitElectionPoSt(act *types.Actor, vmctx types.VMContext, params *struct{}) ([]byte, aerrors.ActorError) {
+func (sma StorageMinerActor2) SubmitElectionPoSt(act *types.Actor, vmctx types.VMContext, params *struct{}) ([]byte, aerrors.ActorError) {
 	if vmctx.Message().From != NetworkAddress {
 		return nil, aerrors.Newf(1, "submit election post can only be called by the storage power actor")
 	}
@@ -924,12 +734,12 @@ func (sma StorageMinerActor) SubmitElectionPoSt(act *types.Actor, vmctx types.VM
 		return nil, aerrors.New(1, "slashed miners can't perform election PoSt")
 	}
 
-	pss, nerr := amt.LoadAMT(types.WrapStorage(vmctx.Storage()), self.ProvingSet)
+	pss, nerr := amt2.LoadAMT(types.WrapStorage(vmctx.Storage()), self.ProvingSet)
 	if nerr != nil {
 		return nil, aerrors.HandleExternalError(nerr, "failed to load proving set")
 	}
 
-	ss, nerr := amt.LoadAMT(types.WrapStorage(vmctx.Storage()), self.Sectors)
+	ss, nerr := amt2.LoadAMT(types.WrapStorage(vmctx.Storage()), self.Sectors)
 	if nerr != nil {
 		return nil, aerrors.HandleExternalError(nerr, "failed to load proving set")
 	}
@@ -941,14 +751,14 @@ func (sma StorageMinerActor) SubmitElectionPoSt(act *types.Actor, vmctx types.VM
 
 	activeFaults := uint64(0)
 	for f := range faults {
-		if f > amt.MaxIndex {
+		if f > amt2.MaxIndex {
 			continue
 		}
 
 		var comms [][]byte
 		err := pss.Get(f, &comms)
 		if err != nil {
-			var notfound *amt.ErrNotFound
+			var notfound *amt2.ErrNotFound
 			if !xerrors.As(err, &notfound) {
 				return nil, aerrors.HandleExternalError(err, "failed to find sector in sector set")
 			}
@@ -971,100 +781,4 @@ func (sma StorageMinerActor) SubmitElectionPoSt(act *types.Actor, vmctx types.VM
 	}
 
 	return nil, nil
-}
-
-func onSuccessfulPoSt(self *StorageMinerActorState, vmctx types.VMContext, activeFaults uint64) aerrors.ActorError {
-	// TODO: some sector upkeep stuff that is very haphazard and unclear in the spec
-
-	var mi MinerInfo
-	if err := vmctx.Storage().Get(self.Info, &mi); err != nil {
-		return err
-	}
-
-	pss, nerr := amt.LoadAMT(types.WrapStorage(vmctx.Storage()), self.ProvingSet)
-	if nerr != nil {
-		return aerrors.HandleExternalError(nerr, "failed to load proving set")
-	}
-
-	ss, nerr := amt.LoadAMT(types.WrapStorage(vmctx.Storage()), self.Sectors)
-	if nerr != nil {
-		return aerrors.HandleExternalError(nerr, "failed to load sector set")
-	}
-
-	faults, nerr := self.FaultSet.All(2 * ss.Count)
-	if nerr != nil {
-		return aerrors.Absorb(nerr, 1, "invalid bitfield (fatal?)")
-	}
-
-	self.FaultSet = types.NewBitField()
-
-	oldPower := self.Power
-	newPower := types.BigMul(types.NewInt(pss.Count-activeFaults), types.NewInt(mi.SectorSize))
-
-	// If below the minimum size requirement, miners have zero power
-	if newPower.LessThan(types.NewInt(build.MinimumMinerPower)) {
-		newPower = types.NewInt(0)
-	}
-
-	self.Power = newPower
-
-	delta := types.BigSub(self.Power, oldPower)
-	if self.SlashedAt != 0 {
-		self.SlashedAt = 0
-		delta = self.Power
-	}
-
-	prevSlashingDeadline := self.ElectionPeriodStart + build.SlashablePowerDelay
-	if !self.Active && newPower.GreaterThan(types.NewInt(0)) {
-		self.Active = true
-		prevSlashingDeadline = 0
-	}
-
-	if !(oldPower.IsZero() && newPower.IsZero()) {
-		enc, err := SerializeParams(&UpdateStorageParams{
-			Delta:                 delta,
-			NextSlashDeadline:     vmctx.BlockHeight() + build.SlashablePowerDelay,
-			PreviousSlashDeadline: prevSlashingDeadline,
-		})
-		if err != nil {
-			return err
-		}
-
-		_, err = vmctx.Send(StoragePowerAddress, SPAMethods.UpdateStorage, types.NewInt(0), enc)
-		if err != nil {
-			return aerrors.Wrap(err, "updating storage failed")
-		}
-
-		self.ElectionPeriodStart = vmctx.BlockHeight()
-	}
-
-	ncid, err := RemoveFromSectorSet(vmctx.Context(), vmctx.Storage(), self.Sectors, faults)
-	if err != nil {
-		return err
-	}
-
-	self.Sectors = ncid
-	self.ProvingSet = ncid
-	return nil
-}
-
-func slasherShare(total types.BigInt, elapsed uint64) types.BigInt {
-	// [int(pow(1.26, n) * 10) for n in range(30)]
-	fracs := []uint64{10, 12, 15, 20, 25, 31, 40, 50, 63, 80, 100, 127, 160, 201, 254, 320, 403, 508, 640, 807, 1017, 1281, 1614, 2034, 2563, 3230, 4070, 5128, 6462, 8142}
-	const precision = 10000
-
-	var frac uint64
-	if elapsed >= uint64(len(fracs)) {
-		return total
-	} else {
-		frac = fracs[elapsed]
-	}
-
-	return types.BigDiv(
-		types.BigMul(
-			types.NewInt(frac),
-			total,
-		),
-		types.NewInt(precision),
-	)
 }

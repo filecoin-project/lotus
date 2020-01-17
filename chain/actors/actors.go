@@ -12,6 +12,7 @@ var CronCodeCid cid.Cid
 var StoragePowerCodeCid cid.Cid
 var StorageMarketCodeCid cid.Cid
 var StorageMinerCodeCid cid.Cid
+var StorageMiner2CodeCid cid.Cid
 var MultisigCodeCid cid.Cid
 var InitCodeCid cid.Cid
 var PaymentChannelCodeCid cid.Cid
@@ -46,6 +47,7 @@ func init() {
 	StoragePowerCodeCid = mustSum("fil/1/power")
 	StorageMarketCodeCid = mustSum("fil/1/market")
 	StorageMinerCodeCid = mustSum("fil/1/miner")
+	StorageMiner2CodeCid = mustSum("fil/1/miner/2")
 	MultisigCodeCid = mustSum("fil/1/multisig")
 	InitCodeCid = mustSum("fil/1/init")
 	PaymentChannelCodeCid = mustSum("fil/1/paych")

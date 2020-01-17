@@ -35,6 +35,7 @@ func newInvoker() *invoker {
 	inv.register(actors.StoragePowerCodeCid, actors.StoragePowerActor{}, actors.StoragePowerState{})
 	inv.register(actors.StorageMarketCodeCid, actors.StorageMarketActor{}, actors.StorageMarketState{})
 	inv.register(actors.StorageMinerCodeCid, actors.StorageMinerActor{}, actors.StorageMinerActorState{})
+	inv.register(actors.StorageMiner2CodeCid, actors.StorageMinerActor2{}, actors.StorageMinerActorState{})
 	inv.register(actors.MultisigCodeCid, actors.MultiSigActor{}, actors.MultiSigActorState{})
 	inv.register(actors.PaymentChannelCodeCid, actors.PaymentChannelActor{}, actors.PaymentChannelActorState{})
 

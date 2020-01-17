@@ -138,6 +138,21 @@ func (spa StoragePowerActor) ArbitrateConsensusFault(act *types.Actor, vmctx typ
 		return nil, aerrors.New(2, "blocks must be from the same miner")
 	}
 
+	// FORK
+	if vmctx.BlockHeight() > build.ForkBlizzardHeight {
+		if params.Block1.Height <= build.ForkBlizzardHeight {
+			return nil, aerrors.New(10, "cannot slash miners with blocks from before blizzard")
+		}
+
+		if params.Block2.Height <= build.ForkBlizzardHeight {
+			return nil, aerrors.New(11, "cannot slash miners with blocks from before blizzard")
+		}
+
+		if params.Block1.Cid() == params.Block2.Cid() {
+			return nil, aerrors.New(3, "blocks must be different")
+		}
+	}
+
 	rval, err := vmctx.Send(params.Block1.Miner, MAMethods.GetWorkerAddr, types.NewInt(0), nil)
 	if err != nil {
 		return nil, aerrors.Wrap(err, "failed to get miner worker")

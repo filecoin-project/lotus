@@ -2,6 +2,7 @@ package miner
 
 import (
 	"context"
+	"fmt"
 	"sync"
 	"time"
 
@@ -11,6 +12,7 @@ import (
 	"github.com/filecoin-project/lotus/chain/actors"
 	"github.com/filecoin-project/lotus/chain/gen"
 	"github.com/filecoin-project/lotus/chain/types"
+	lru "github.com/hashicorp/golang-lru"
 
 	logging "github.com/ipfs/go-log/v2"
 	"go.opencensus.io/trace"
@@ -22,6 +24,11 @@ var log = logging.Logger("miner")
 type waitFunc func(ctx context.Context, baseTime uint64) error
 
 func NewMiner(api api.FullNode, epp gen.ElectionPoStProver) *Miner {
+	arc, err := lru.NewARC(10000)
+	if err != nil {
+		panic(err)
+	}
+
 	return &Miner{
 		api: api,
 		epp: epp,
@@ -32,6 +39,7 @@ func NewMiner(api api.FullNode, epp gen.ElectionPoStProver) *Miner {
 
 			return nil
 		},
+		minedBlockHeights: arc,
 	}
 }
 
@@ -48,6 +56,8 @@ type Miner struct {
 	waitFunc waitFunc
 
 	lastWork *MiningBase
+
+	minedBlockHeights *lru.ARCCache
 }
 
 func (m *Miner) Addresses() ([]address.Address, error) {
@@ -200,6 +210,17 @@ eventLoop:
 				mWon[b.Header.Miner] = struct{}{}
 			}
 			for _, b := range blks {
+				// TODO: this code was written to handle creating blocks for multiple miners.
+				// However, we don't use that, and we probably never will. So even though this code will
+				// never see different miners, i'm going to handle the caching as if it was going to.
+				// We can clean it up later when we remove all the multiple miner logic.
+				blkKey := fmt.Sprintf("%s-%d", b.Header.Miner, b.Header.Height)
+				if _, ok := m.minedBlockHeights.Get(blkKey); ok {
+					log.Warnw("Created a block at the same height as another block we've created", "height", b.Header.Height, "miner", b.Header.Miner, "parents", b.Header.Parents)
+					continue
+				}
+
+				m.minedBlockHeights.Add(blkKey, true)
 				if err := m.api.SyncSubmitBlock(ctx, b); err != nil {
 					log.Errorf("failed to submit newly mined block: %s", err)
 				}
@@ -356,13 +377,13 @@ func (m *Miner) computeTicket(ctx context.Context, addr address.Address, base *M
 }
 
 func (m *Miner) createBlock(base *MiningBase, addr address.Address, ticket *types.Ticket, proof *types.EPostProof, pending []*types.SignedMessage) (*types.BlockMsg, error) {
-	msgs, err := selectMessages(context.TODO(), m.api.StateGetActor, base, pending)
+	msgs, err := SelectMessages(context.TODO(), m.api.StateGetActor, base.ts, pending)
 	if err != nil {
 		return nil, xerrors.Errorf("message filtering failed: %w", err)
 	}
 
 	if len(msgs) > build.BlockMessageLimit {
-		log.Error("selectMessages returned too many messages: ", len(msgs))
+		log.Error("SelectMessages returned too many messages: ", len(msgs))
 		msgs = msgs[:build.BlockMessageLimit]
 	}
 
@@ -374,7 +395,7 @@ func (m *Miner) createBlock(base *MiningBase, addr address.Address, ticket *type
 	return m.api.MinerCreateBlock(context.TODO(), addr, base.ts, ticket, proof, msgs, nheight, uint64(uts))
 }
 
-type actorLookup func(context.Context, address.Address, *types.TipSet) (*types.Actor, error)
+type ActorLookup func(context.Context, address.Address, *types.TipSet) (*types.Actor, error)
 
 func countFrom(msgs []*types.SignedMessage, from address.Address) (out int) {
 	for _, msg := range msgs {
@@ -385,7 +406,7 @@ func countFrom(msgs []*types.SignedMessage, from address.Address) (out int) {
 	return out
 }
 
-func selectMessages(ctx context.Context, al actorLookup, base *MiningBase, msgs []*types.SignedMessage) ([]*types.SignedMessage, error) {
+func SelectMessages(ctx context.Context, al ActorLookup, ts *types.TipSet, msgs []*types.SignedMessage) ([]*types.SignedMessage, error) {
 	out := make([]*types.SignedMessage, 0, build.BlockMessageLimit)
 	inclNonces := make(map[address.Address]uint64)
 	inclBalances := make(map[address.Address]types.BigInt)
@@ -401,7 +422,7 @@ func selectMessages(ctx context.Context, al actorLookup, base *MiningBase, msgs 
 		from := msg.Message.From
 
 		if _, ok := inclNonces[from]; !ok {
-			act, err := al(ctx, from, base.ts)
+			act, err := al(ctx, from, ts)
 			if err != nil {
 				log.Warnf("failed to check message sender balance, skipping message: %+v", err)
 				continue

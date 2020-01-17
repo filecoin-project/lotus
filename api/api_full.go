@@ -119,6 +119,7 @@ type FullNode interface {
 	StateChangedActors(context.Context, cid.Cid, cid.Cid) (map[string]types.Actor, error)
 	StateGetReceipt(context.Context, cid.Cid, *types.TipSet) (*types.MessageReceipt, error)
 	StateMinerSectorCount(context.Context, address.Address, *types.TipSet) (MinerSectors, error)
+	StateCompute(context.Context, uint64, []*types.Message, *types.TipSet) (cid.Cid, error)
 
 	MarketEnsureAvailable(context.Context, address.Address, types.BigInt) error
 	// MarketFreeBalance
