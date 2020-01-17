@@ -242,8 +242,7 @@ func (m *Miner) handleFaulty(ctx context.Context, sector SectorInfo) *sectorUpda
 	bf.Set(sector.SectorID)
 
 	fp := &actors.DeclareFaultsParams{bf}
-	_ = fp
-	enc, aerr := actors.SerializeParams(nil)
+	enc, aerr := actors.SerializeParams(fp)
 	if aerr != nil {
 		return sector.upd().fatal(xerrors.Errorf("failed to serialize declare fault params: %w", aerr))
 	}
