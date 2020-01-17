@@ -24,7 +24,11 @@ var log = logging.Logger("miner")
 type waitFunc func(ctx context.Context, baseTime uint64) error
 
 func NewMiner(api api.FullNode, epp gen.ElectionPoStProver) *Miner {
-	arc, _ := lru.NewARC(10000)
+	arc, err := lru.NewARC(10000)
+	if err != nil {
+		panic(err)
+	}
+
 	return &Miner{
 		api: api,
 		epp: epp,

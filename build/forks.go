@@ -1,3 +1,3 @@
 package build
 
-const ForkBlizzardHeight = 6250
+const ForkBlizzardHeight = 6288
