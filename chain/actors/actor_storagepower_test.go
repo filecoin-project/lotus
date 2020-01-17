@@ -153,7 +153,7 @@ func cheatStorageMarketTotal(t *testing.T, vm *vm.VM, bs bstore.Blockstore) {
 
 func fakeBlock(t *testing.T, minerAddr address.Address, ts uint64) *types.BlockHeader {
 	c := fakeCid(t, 1)
-	return &types.BlockHeader{Height: 5, Miner: minerAddr, Timestamp: ts, ParentStateRoot: c, Messages: c, ParentMessageReceipts: c, BLSAggregate: types.Signature{Type: types.KTBLS}}
+	return &types.BlockHeader{Height: 8000, Miner: minerAddr, Timestamp: ts, ParentStateRoot: c, Messages: c, ParentMessageReceipts: c, BLSAggregate: types.Signature{Type: types.KTBLS}}
 }
 
 func fakeCid(t *testing.T, s int) cid.Cid {
