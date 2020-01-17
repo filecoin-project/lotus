@@ -9,6 +9,7 @@ import (
 	"github.com/filecoin-project/go-address"
 	"github.com/filecoin-project/lotus/api"
 	"github.com/filecoin-project/lotus/chain/types"
+	"github.com/filecoin-project/lotus/miner"
 	"golang.org/x/xerrors"
 
 	"github.com/ipfs/go-cid"
@@ -627,6 +628,12 @@ var stateComputeStateCmd = &cli.Command{
 			if err != nil {
 				return err
 			}
+
+			pmsgs, err = miner.SelectMessages(ctx, api.StateGetActor, ts, pmsgs)
+			if err != nil {
+				return err
+			}
+
 			for _, sm := range pmsgs {
 				msgs = append(msgs, &sm.Message)
 			}

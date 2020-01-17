@@ -356,13 +356,13 @@ func (m *Miner) computeTicket(ctx context.Context, addr address.Address, base *M
 }
 
 func (m *Miner) createBlock(base *MiningBase, addr address.Address, ticket *types.Ticket, proof *types.EPostProof, pending []*types.SignedMessage) (*types.BlockMsg, error) {
-	msgs, err := selectMessages(context.TODO(), m.api.StateGetActor, base, pending)
+	msgs, err := SelectMessages(context.TODO(), m.api.StateGetActor, base.ts, pending)
 	if err != nil {
 		return nil, xerrors.Errorf("message filtering failed: %w", err)
 	}
 
 	if len(msgs) > build.BlockMessageLimit {
-		log.Error("selectMessages returned too many messages: ", len(msgs))
+		log.Error("SelectMessages returned too many messages: ", len(msgs))
 		msgs = msgs[:build.BlockMessageLimit]
 	}
 
@@ -374,7 +374,7 @@ func (m *Miner) createBlock(base *MiningBase, addr address.Address, ticket *type
 	return m.api.MinerCreateBlock(context.TODO(), addr, base.ts, ticket, proof, msgs, nheight, uint64(uts))
 }
 
-type actorLookup func(context.Context, address.Address, *types.TipSet) (*types.Actor, error)
+type ActorLookup func(context.Context, address.Address, *types.TipSet) (*types.Actor, error)
 
 func countFrom(msgs []*types.SignedMessage, from address.Address) (out int) {
 	for _, msg := range msgs {
@@ -385,7 +385,7 @@ func countFrom(msgs []*types.SignedMessage, from address.Address) (out int) {
 	return out
 }
 
-func selectMessages(ctx context.Context, al actorLookup, base *MiningBase, msgs []*types.SignedMessage) ([]*types.SignedMessage, error) {
+func SelectMessages(ctx context.Context, al ActorLookup, ts *types.TipSet, msgs []*types.SignedMessage) ([]*types.SignedMessage, error) {
 	out := make([]*types.SignedMessage, 0, build.BlockMessageLimit)
 	inclNonces := make(map[address.Address]uint64)
 	inclBalances := make(map[address.Address]types.BigInt)
@@ -401,7 +401,7 @@ func selectMessages(ctx context.Context, al actorLookup, base *MiningBase, msgs 
 		from := msg.Message.From
 
 		if _, ok := inclNonces[from]; !ok {
-			act, err := al(ctx, from, base.ts)
+			act, err := al(ctx, from, ts)
 			if err != nil {
 				log.Warnf("failed to check message sender balance, skipping message: %+v", err)
 				continue
