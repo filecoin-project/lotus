@@ -85,7 +85,13 @@ func (spa StoragePowerActor) CreateStorageMiner(act *types.Actor, vmctx types.VM
 		return nil, aerrors.Newf(1, "not enough funds passed to cover required miner collateral (needed %s, got %s)", reqColl, vmctx.Message().Value)
 	}
 
-	encoded, err := CreateExecParams(StorageMinerCodeCid, &StorageMinerConstructorParams{
+	// FORK
+	minerCid := StorageMinerCodeCid
+	if vmctx.BlockHeight() > build.ForkFrigidHeight {
+		minerCid = StorageMiner2CodeCid
+	}
+
+	encoded, err := CreateExecParams(minerCid, &StorageMinerConstructorParams{
 		Owner:      params.Owner,
 		Worker:     params.Worker,
 		SectorSize: params.SectorSize,
