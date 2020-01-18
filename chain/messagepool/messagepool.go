@@ -94,7 +94,7 @@ func (ms *msgSet) add(m *types.SignedMessage) error {
 	if _, has := ms.msgs[m.Message.Nonce]; has {
 		if m.Cid() != ms.msgs[m.Message.Nonce].Cid() {
 			log.Error("Add with duplicate nonce")
-			return xerrors.Errorf("message to %s with nonce %d already in mpool")
+			return xerrors.Errorf("message to %s with nonce %d already in mpool", m.Message.To, m.Message.Nonce)
 		}
 	}
 	ms.msgs[m.Message.Nonce] = m
