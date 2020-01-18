@@ -103,10 +103,15 @@ var chainGetBlock = &cli.Command{
 			return xerrors.Errorf("failed to get parent messages: %w", err)
 		}
 
-		recpts, err := api.ChainGetParentReceipts(ctx, bcid)
+		precpts, err := api.ChainGetParentReceipts(ctx, bcid)
 		if err != nil {
 			log.Warn(err)
 			//return xerrors.Errorf("failed to get receipts: %w", err)
+		}
+
+		recpts, err := api.ChainGetReceipts(ctx,bcid)
+		if err != nil {
+			log.Warn(err)
 		}
 
 		cblock := struct {
@@ -115,13 +120,17 @@ var chainGetBlock = &cli.Command{
 			SecpkMessages  []*types.SignedMessage
 			ParentReceipts []*types.MessageReceipt
 			ParentMessages []cid.Cid
+			Receipts       []*types.MessageReceipt
+			MessageCIDs    []cid.Cid
 		}{}
 
 		cblock.BlockHeader = *blk
 		cblock.BlsMessages = msgs.BlsMessages
 		cblock.SecpkMessages = msgs.SecpkMessages
-		cblock.ParentReceipts = recpts
+		cblock.ParentReceipts = precpts
 		cblock.ParentMessages = apiMsgCids(pmsgs)
+		cblock.MessageCIDs = msgs.Cids
+		cblock.Receipts = recpts
 
 		out, err := json.MarshalIndent(cblock, "", "  ")
 		if err != nil {
