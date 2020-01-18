@@ -70,6 +70,9 @@ func (s *fpostScheduler) run(ctx context.Context) {
 			var lowest, highest *types.TipSet = s.cur, nil
 
 			for _, change := range changes {
+				if change.Val == nil {
+					log.Errorf("change.Val was nil")
+				}
 				switch change.Type {
 				case store.HCRevert:
 					lowest = change.Val
@@ -111,6 +114,9 @@ func (s *fpostScheduler) revert(ctx context.Context, newLowest *types.TipSet) er
 }
 
 func (s *fpostScheduler) update(ctx context.Context, new *types.TipSet) error {
+	if new == nil {
+		return xerrors.Errorf("no new tipset in fpostScheduler.update")
+	}
 	newEPS, start, err := s.shouldFallbackPost(ctx, new)
 	if err != nil {
 		return err
