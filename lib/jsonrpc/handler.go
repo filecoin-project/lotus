@@ -185,14 +185,21 @@ func (h handlers) handle(ctx context.Context, req request, w func(func(io.Writer
 	for i := 0; i < handler.nParams; i++ {
 		rp := reflect.New(handler.paramReceivers[i])
 
-		cbu, canCbor := rp.Interface().(cbg.CBORUnmarshaler)
-		_, customJson := rp.Interface().(json.Unmarshaler)
+		_, canCbor := rp.Elem().Interface().(cbg.CBORUnmarshaler)
+		_, customJson := rp.Elem().Interface().(json.Unmarshaler)
 		if canCbor && !customJson && len(req.Params[i].data) > 0 && req.Params[i].data[0] == '"' {
 			var cborBytes []byte
 			if err := json.NewDecoder(bytes.NewReader(req.Params[i].data)).Decode(&cborBytes); err != nil {
 				rpcError(w, &req, rpcParseError, xerrors.Errorf("unmarshaling cbor byte params for '%s': %w", handler.handlerFunc, err))
 				return
 			}
+
+			if handler.paramReceivers[i].Kind() != reflect.Ptr {
+				rpcError(w, &req, rpcParseError, xerrors.Errorf("params for '%s': expected pointer type", handler.handlerFunc))
+				return
+			}
+			cbu := reflect.New(handler.paramReceivers[i].Elem()).Interface().(cbg.CBORUnmarshaler)
+			rp = reflect.ValueOf(&cbu)
 
 			if err := cbu.UnmarshalCBOR(bytes.NewReader(cborBytes)); err != nil {
 				rpcError(w, &req, rpcParseError, xerrors.Errorf("unmarshaling params as cbor bytes for '%s': %w", handler.handlerFunc, err))
