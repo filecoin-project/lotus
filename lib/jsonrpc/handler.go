@@ -6,6 +6,7 @@ import (
 	"encoding/base64"
 	"encoding/json"
 	"fmt"
+	cbg "github.com/whyrusleeping/cbor-gen"
 	"io"
 	"reflect"
 
@@ -183,10 +184,27 @@ func (h handlers) handle(ctx context.Context, req request, w func(func(io.Writer
 
 	for i := 0; i < handler.nParams; i++ {
 		rp := reflect.New(handler.paramReceivers[i])
-		if err := json.NewDecoder(bytes.NewReader(req.Params[i].data)).Decode(rp.Interface()); err != nil {
-			rpcError(w, &req, rpcParseError, xerrors.Errorf("unmarshaling params for '%s': %w", handler.handlerFunc, err))
-			return
+
+		cbu, canCbor := rp.Interface().(cbg.CBORUnmarshaler)
+		_, customJson := rp.Interface().(json.Unmarshaler)
+		if canCbor && !customJson && len(req.Params[i].data) > 0 && req.Params[i].data[0] == '"' {
+			var cborBytes []byte
+			if err := json.NewDecoder(bytes.NewReader(req.Params[i].data)).Decode(&cborBytes); err != nil {
+				rpcError(w, &req, rpcParseError, xerrors.Errorf("unmarshaling cbor byte params for '%s': %w", handler.handlerFunc, err))
+				return
+			}
+
+			if err := cbu.UnmarshalCBOR(bytes.NewReader(cborBytes)); err != nil {
+				rpcError(w, &req, rpcParseError, xerrors.Errorf("unmarshaling params as cbor bytes for '%s': %w", handler.handlerFunc, err))
+				return
+			}
+		} else {
+			if err := json.NewDecoder(bytes.NewReader(req.Params[i].data)).Decode(rp.Interface()); err != nil {
+				rpcError(w, &req, rpcParseError, xerrors.Errorf("unmarshaling params for '%s': %w", handler.handlerFunc, err))
+				return
+			}
 		}
+
 
 		callParams[i+1+handler.hasCtx] = reflect.ValueOf(rp.Elem().Interface())
 	}
