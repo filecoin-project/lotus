@@ -15,6 +15,7 @@ import (
 	"github.com/filecoin-project/lotus/chain/types"
 
 	"github.com/filecoin-project/go-amt-ipld"
+	amt2 "github.com/filecoin-project/go-amt-ipld/v2"
 	"github.com/ipfs/go-cid"
 	cbor "github.com/ipfs/go-ipld-cbor"
 	"github.com/libp2p/go-libp2p-core/peer"
@@ -638,6 +639,27 @@ func RemoveFromSectorSet(ctx context.Context, s types.Storage, ss cid.Cid, ids [
 	return ncid, nil
 }
 
+func RemoveFromSectorSet2(ctx context.Context, s types.Storage, ss cid.Cid, ids []uint64) (cid.Cid, aerrors.ActorError) {
+
+	ssr, err := amt2.LoadAMT(types.WrapStorage(s), ss)
+	if err != nil {
+		return cid.Undef, aerrors.HandleExternalError(err, "could not load sector set node")
+	}
+
+	for _, id := range ids {
+		if err := ssr.Delete(id); err != nil {
+			log.Warnf("failed to delete sector %d from set: %s", id, err)
+		}
+	}
+
+	ncid, err := ssr.Flush()
+	if err != nil {
+		return cid.Undef, aerrors.HandleExternalError(err, "failed to flush sector set")
+	}
+
+	return ncid, nil
+}
+
 func CollateralForPower(power types.BigInt) types.BigInt {
 	return types.BigMul(power, types.NewInt(10))
 	/* TODO: this
@@ -1038,9 +1060,22 @@ func onSuccessfulPoSt(self *StorageMinerActorState, vmctx types.VMContext, activ
 		self.ElectionPeriodStart = vmctx.BlockHeight()
 	}
 
-	ncid, err := RemoveFromSectorSet(vmctx.Context(), vmctx.Storage(), self.Sectors, faults)
-	if err != nil {
-		return err
+	var ncid cid.Cid
+	var err aerrors.ActorError
+
+	// TODO: should be a non-fork fix here in the future
+	// use the non-empty faults condition to make a minumum change here?
+	if vmctx.BlockHeight() >= build.ForkBootyBayHeight && len(faults) > 0 {
+		ncid, err = RemoveFromSectorSet2(vmctx.Context(), vmctx.Storage(), self.Sectors, faults)
+		if err != nil {
+			return err
+		}
+
+	} else {
+		ncid, err = RemoveFromSectorSet(vmctx.Context(), vmctx.Storage(), self.Sectors, faults)
+		if err != nil {
+			return err
+		}
 	}
 
 	self.Sectors = ncid
