@@ -2,8 +2,6 @@
 
 package build
 
-import "os"
-
 var SectorSizes = []uint64{1024}
 
 // Seconds
@@ -31,7 +29,3 @@ const InteractivePoRepConfidence = 6
 
 // Bytes
 var MinimumMinerPower uint64 = 2 << 10 // 2KiB
-
-func init() {
-	os.Setenv("TRUST_PARAMS", "1")
-}
