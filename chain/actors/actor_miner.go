@@ -15,7 +15,6 @@ import (
 	"github.com/filecoin-project/lotus/chain/types"
 
 	"github.com/filecoin-project/go-amt-ipld"
-	amt2 "github.com/filecoin-project/go-amt-ipld/v2"
 	"github.com/ipfs/go-cid"
 	cbor "github.com/ipfs/go-ipld-cbor"
 	"github.com/libp2p/go-libp2p-core/peer"
@@ -621,27 +620,6 @@ func GetFromSectorSet(ctx context.Context, s types.Storage, ss cid.Cid, sectorID
 func RemoveFromSectorSet(ctx context.Context, s types.Storage, ss cid.Cid, ids []uint64) (cid.Cid, aerrors.ActorError) {
 
 	ssr, err := amt.LoadAMT(types.WrapStorage(s), ss)
-	if err != nil {
-		return cid.Undef, aerrors.HandleExternalError(err, "could not load sector set node")
-	}
-
-	for _, id := range ids {
-		if err := ssr.Delete(id); err != nil {
-			log.Warnf("failed to delete sector %d from set: %s", id, err)
-		}
-	}
-
-	ncid, err := ssr.Flush()
-	if err != nil {
-		return cid.Undef, aerrors.HandleExternalError(err, "failed to flush sector set")
-	}
-
-	return ncid, nil
-}
-
-func RemoveFromSectorSet2(ctx context.Context, s types.Storage, ss cid.Cid, ids []uint64) (cid.Cid, aerrors.ActorError) {
-
-	ssr, err := amt2.LoadAMT(types.WrapStorage(s), ss)
 	if err != nil {
 		return cid.Undef, aerrors.HandleExternalError(err, "could not load sector set node")
 	}
