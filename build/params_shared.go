@@ -105,3 +105,4 @@ const BlsSignatureCacheSize = 40000
 // Limits
 
 const BlockMessageLimit = 512
+const MinerMaxSectors = 1 << 48

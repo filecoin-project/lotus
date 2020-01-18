@@ -40,21 +40,22 @@ type FullNodeStruct struct {
 	CommonStruct
 
 	Internal struct {
-		ChainNotify            func(context.Context) (<-chan []*store.HeadChange, error)           `perm:"read"`
-		ChainHead              func(context.Context) (*types.TipSet, error)                        `perm:"read"`
-		ChainGetRandomness     func(context.Context, types.TipSetKey, int64) ([]byte, error)       `perm:"read"`
-		ChainGetBlock          func(context.Context, cid.Cid) (*types.BlockHeader, error)          `perm:"read"`
-		ChainGetTipSet         func(context.Context, types.TipSetKey) (*types.TipSet, error)       `perm:"read"`
-		ChainGetBlockMessages  func(context.Context, cid.Cid) (*api.BlockMessages, error)          `perm:"read"`
-		ChainGetParentReceipts func(context.Context, cid.Cid) ([]*types.MessageReceipt, error)     `perm:"read"`
-		ChainGetParentMessages func(context.Context, cid.Cid) ([]api.Message, error)               `perm:"read"`
-		ChainGetTipSetByHeight func(context.Context, uint64, *types.TipSet) (*types.TipSet, error) `perm:"read"`
-		ChainReadObj           func(context.Context, cid.Cid) ([]byte, error)                      `perm:"read"`
-		ChainSetHead           func(context.Context, *types.TipSet) error                          `perm:"admin"`
-		ChainGetGenesis        func(context.Context) (*types.TipSet, error)                        `perm:"read"`
-		ChainTipSetWeight      func(context.Context, *types.TipSet) (types.BigInt, error)          `perm:"read"`
-		ChainGetNode           func(ctx context.Context, p string) (interface{}, error)            `perm:"read"`
-		ChainGetMessage        func(context.Context, cid.Cid) (*types.Message, error)              `perm:"read"`
+		ChainNotify            func(context.Context) (<-chan []*store.HeadChange, error)                            `perm:"read"`
+		ChainHead              func(context.Context) (*types.TipSet, error)                                         `perm:"read"`
+		ChainGetRandomness     func(context.Context, types.TipSetKey, int64) ([]byte, error)                        `perm:"read"`
+		ChainGetBlock          func(context.Context, cid.Cid) (*types.BlockHeader, error)                           `perm:"read"`
+		ChainGetTipSet         func(context.Context, types.TipSetKey) (*types.TipSet, error)                        `perm:"read"`
+		ChainGetBlockMessages  func(context.Context, cid.Cid) (*api.BlockMessages, error)                           `perm:"read"`
+		ChainGetParentReceipts func(context.Context, cid.Cid) ([]*types.MessageReceipt, error)                      `perm:"read"`
+		ChainGetParentMessages func(context.Context, cid.Cid) ([]api.Message, error)                                `perm:"read"`
+		ChainGetTipSetByHeight func(context.Context, uint64, *types.TipSet) (*types.TipSet, error)                  `perm:"read"`
+		ChainReadObj           func(context.Context, cid.Cid) ([]byte, error)                                       `perm:"read"`
+		ChainSetHead           func(context.Context, *types.TipSet) error                                           `perm:"admin"`
+		ChainGetGenesis        func(context.Context) (*types.TipSet, error)                                         `perm:"read"`
+		ChainTipSetWeight      func(context.Context, *types.TipSet) (types.BigInt, error)                           `perm:"read"`
+		ChainGetNode           func(ctx context.Context, p string) (interface{}, error)                             `perm:"read"`
+		ChainGetMessage        func(context.Context, cid.Cid) (*types.Message, error)                               `perm:"read"`
+		ChainGetPath           func(context.Context, types.TipSetKey, types.TipSetKey) ([]*store.HeadChange, error) `perm:"read"`
 
 		SyncState          func(context.Context) (*api.SyncState, error)                `perm:"read"`
 		SyncSubmitBlock    func(ctx context.Context, blk *types.BlockMsg) error         `perm:"write"`
@@ -114,6 +115,7 @@ type FullNodeStruct struct {
 		StateGetReceipt               func(context.Context, cid.Cid, *types.TipSet) (*types.MessageReceipt, error)                      `perm:"read"`
 		StateMinerSectorCount         func(context.Context, address.Address, *types.TipSet) (api.MinerSectors, error)                   `perm:"read"`
 		StateListMessages             func(ctx context.Context, match *types.Message, ts *types.TipSet, toht uint64) ([]cid.Cid, error) `perm:"read"`
+		StateCompute                  func(context.Context, uint64, []*types.Message, *types.TipSet) (cid.Cid, error)                   `perm:"read"`
 
 		MarketEnsureAvailable func(context.Context, address.Address, types.BigInt) error `perm:"sign"`
 
@@ -355,6 +357,10 @@ func (c *FullNodeStruct) ChainGetMessage(ctx context.Context, mc cid.Cid) (*type
 	return c.Internal.ChainGetMessage(ctx, mc)
 }
 
+func (c *FullNodeStruct) ChainGetPath(ctx context.Context, from types.TipSetKey, to types.TipSetKey) ([]*store.HeadChange, error) {
+	return c.Internal.ChainGetPath(ctx, from, to)
+}
+
 func (c *FullNodeStruct) SyncState(ctx context.Context) (*api.SyncState, error) {
 	return c.Internal.SyncState(ctx)
 }
@@ -460,6 +466,10 @@ func (c *FullNodeStruct) StateGetReceipt(ctx context.Context, msg cid.Cid, ts *t
 
 func (c *FullNodeStruct) StateListMessages(ctx context.Context, match *types.Message, ts *types.TipSet, toht uint64) ([]cid.Cid, error) {
 	return c.Internal.StateListMessages(ctx, match, ts, toht)
+}
+
+func (c *FullNodeStruct) StateCompute(ctx context.Context, height uint64, msgs []*types.Message, ts *types.TipSet) (cid.Cid, error) {
+	return c.Internal.StateCompute(ctx, height, msgs, ts)
 }
 
 func (c *FullNodeStruct) MarketEnsureAvailable(ctx context.Context, addr address.Address, amt types.BigInt) error {
