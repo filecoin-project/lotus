@@ -18,6 +18,7 @@ func (sm *StateManager) handleStateForks(ctx context.Context, pstate cid.Cid, he
 	for i := parentH; i < height; i++ {
 		switch i {
 		case build.ForkBlizzardHeight:
+			log.Warnw("Executing blizzard fork logic", "height", i)
 			npstate, err := fixBlizzardAMTBug(ctx, sm, pstate)
 			if err != nil {
 				return cid.Undef, xerrors.Errorf("blizzard bug fix failed: %w", err)
@@ -25,6 +26,7 @@ func (sm *StateManager) handleStateForks(ctx context.Context, pstate cid.Cid, he
 
 			return npstate, nil
 		case build.ForkFrigidHeight:
+			log.Warnw("Executing frigid fork logic", "height", i)
 			npstate, err := fixBlizzardAMTBug(ctx, sm, pstate)
 			if err != nil {
 				return cid.Undef, xerrors.Errorf("frigid bug fix failed: %w", err)

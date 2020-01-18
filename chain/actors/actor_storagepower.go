@@ -87,7 +87,7 @@ func (spa StoragePowerActor) CreateStorageMiner(act *types.Actor, vmctx types.VM
 
 	// FORK
 	minerCid := StorageMinerCodeCid
-	if vmctx.BlockHeight() > build.ForkBlizzardHeight {
+	if vmctx.BlockHeight() > build.ForkFrigidHeight {
 		minerCid = StorageMiner2CodeCid
 	}
 
