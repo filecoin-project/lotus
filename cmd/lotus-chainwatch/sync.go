@@ -221,7 +221,7 @@ func syncHead(ctx context.Context, api api.FullNode, st *storage, ts *types.TipS
 
 		for addr, m := range actors {
 			for actor, c := range m {
-				if actor.Code != actors2.StorageMinerCodeCid {
+				if !(actor.Code == actors2.StorageMinerCodeCid || actor.Code == actors2.StorageMiner2CodeCid) {
 					continue
 				}
 

@@ -24,6 +24,13 @@ func (sm *StateManager) handleStateForks(ctx context.Context, pstate cid.Cid, he
 			}
 
 			return npstate, nil
+		case build.ForkFrigidHeight:
+			npstate, err := fixBlizzardAMTBug(ctx, sm, pstate)
+			if err != nil {
+				return cid.Undef, xerrors.Errorf("frigid bug fix failed: %w", err)
+			}
+
+			return npstate, nil
 		}
 	}
 
