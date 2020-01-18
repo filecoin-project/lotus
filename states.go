@@ -212,9 +212,7 @@ func (m *Sealing) handleFaulty(ctx statemachine.Context, sector SectorInfo) erro
 	bf := types.NewBitField()
 	bf.Set(sector.SectorID)
 
-	fp := &actors.DeclareFaultsParams{bf}
-	_ = fp
-	enc, aerr := actors.SerializeParams(nil)
+	enc, aerr := actors.SerializeParams(&actors.DeclareFaultsParams{bf})
 	if aerr != nil {
 		return xerrors.Errorf("failed to serialize declare fault params: %w", aerr)
 	}
