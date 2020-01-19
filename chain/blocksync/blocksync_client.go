@@ -455,7 +455,7 @@ func (bpt *bsPeerTracker) prefSortedPeers() []peer.ID {
 		getPeerInitLat := func(p peer.ID) float64 {
 			var res float64
 			if bpt.pmgr != nil {
-				if lat, ok := bpt.pmgr.GetPeerLatency(out[i]); ok {
+				if lat, ok := bpt.pmgr.GetPeerLatency(p); ok {
 					res = float64(lat)
 				}
 			}
@@ -476,7 +476,7 @@ func (bpt *bsPeerTracker) prefSortedPeers() []peer.ID {
 			failRateJ := float64(pj.failures) / float64(pj.failures+pj.successes)
 			costJ = float64(pj.averageTime) + failRateJ*float64(bpt.avgGlobalTime)
 		} else {
-			costI = getPeerInitLat(out[i])
+			costJ = getPeerInitLat(out[j])
 		}
 
 		return costI < costJ
