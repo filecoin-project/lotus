@@ -746,6 +746,21 @@ func (cs *ChainStore) MessagesForBlock(b *types.BlockHeader) ([]*types.Message, 
 	return blsmsgs, secpkmsgs, nil
 }
 
+func (cs *ChainStore) GetReceipt(b *types.BlockHeader, i int) (*types.MessageReceipt, error) {
+	bs := amt.WrapBlockstore(cs.bs)
+	a, err := amt.LoadAMT(bs, b.MessageReceipts)
+	if err != nil {
+		return nil, xerrors.Errorf("amt load: %w", err)
+	}
+
+	var r types.MessageReceipt
+	if err := a.Get(uint64(i), &r); err != nil {
+		return nil, err
+	}
+
+	return &r, nil
+}
+
 func (cs *ChainStore) GetParentReceipt(b *types.BlockHeader, i int) (*types.MessageReceipt, error) {
 	bs := amt.WrapBlockstore(cs.bs)
 	a, err := amt.LoadAMT(bs, b.ParentMessageReceipts)

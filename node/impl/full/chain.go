@@ -116,6 +116,39 @@ func (a *ChainAPI) ChainGetParentMessages(ctx context.Context, bcid cid.Cid) ([]
 	return out, nil
 }
 
+func (a *ChainAPI) ChainGetReceipts(ctx context.Context, bcid cid.Cid) ([]*types.MessageReceipt,error) {
+	b, err := a.Chain.GetBlock(bcid)
+	if err != nil {
+		return nil, err
+	}
+
+	if b.Height == 0 {
+		return nil,nil
+	}
+
+	pts,err := a.Chain.LoadTipSet(types.NewTipSetKey(b.MessageReceipts))
+	if err != nil {
+		return nil, err
+	}
+
+	cm, err := a.Chain.MessagesForTipset(pts)
+	if err != nil {
+		return nil, err
+	}
+
+	var out []*types.MessageReceipt
+	for i := 0 ; i < len(cm) ; i++ {
+		r,err := a.Chain.GetReceipt(b,i)
+		if err != nil {
+			return nil,err
+		}
+
+		out = append(out, r)
+	}
+
+	return out,nil
+}
+
 func (a *ChainAPI) ChainGetParentReceipts(ctx context.Context, bcid cid.Cid) ([]*types.MessageReceipt, error) {
 	b, err := a.Chain.GetBlock(bcid)
 	if err != nil {

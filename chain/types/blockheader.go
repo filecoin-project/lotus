@@ -50,6 +50,8 @@ type BlockHeader struct {
 
 	ParentStateRoot cid.Cid
 
+	MessageReceipts cid.Cid
+
 	ParentMessageReceipts cid.Cid
 
 	Messages cid.Cid
