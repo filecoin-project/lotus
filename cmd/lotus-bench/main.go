@@ -303,8 +303,8 @@ func main() {
 
 			epost2 := time.Now()
 
-			if !bytes.Equal(proof1, proof2) {
-				log.Warn("separate epost calls returned different proof values (this might be bad)")
+			if bytes.Equal(proof1, proof2) {
+				log.Warn("separate epost calls returned the same proof values (this might be bad)")
 			}
 
 			ok, err := sectorbuilder.ProofVerifier.VerifyElectionPost(context.TODO(), sectorSize, sinfos, challenge[:], proof1, candidates[:1], maddr)
@@ -351,7 +351,9 @@ func main() {
 					fmt.Printf("seal: preCommit: %s (%s)\n", bo.SealingResults[0].PreCommit, bps(bo.SectorSize, bo.SealingResults[0].PreCommit))
 					fmt.Printf("seal: commit: %s (%s)\n", bo.SealingResults[0].Commit, bps(bo.SectorSize, bo.SealingResults[0].Commit))
 					fmt.Printf("seal: verify: %s\n", bo.SealingResults[0].Verify)
-					fmt.Printf("unseal: %s  (%s)\n", bo.SealingResults[0].Unseal, bps(bo.SectorSize, bo.SealingResults[0].Unseal))
+					if !c.Bool("skip-unseal") {
+						fmt.Printf("unseal: %s  (%s)\n", bo.SealingResults[0].Unseal, bps(bo.SectorSize, bo.SealingResults[0].Unseal))
+					}
 				}
 				fmt.Printf("generate candidates: %s (%s)\n", bo.PostGenerateCandidates, bps(bo.SectorSize*uint64(len(bo.SealingResults)), bo.PostGenerateCandidates))
 				fmt.Printf("compute epost proof (cold): %s\n", bo.PostEProofCold)
