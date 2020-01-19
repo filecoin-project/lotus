@@ -784,7 +784,10 @@ func (sma StorageMinerActor2) SubmitElectionPoSt(act *types.Actor, vmctx types.V
 }
 
 func onSuccessfulPoSt2(self *StorageMinerActorState, vmctx types.VMContext, activeFaults uint64) aerrors.ActorError {
-	// TODO: some sector upkeep stuff that is very haphazard and unclear in the spec
+	// FORK
+	if vmctx.BlockHeight() < build.ForkBootyBayHeight {
+		return onSuccessfulPoSt(self, vmctx, activeFaults)
+	}
 
 	var mi MinerInfo
 	if err := vmctx.Storage().Get(self.Info, &mi); err != nil {
@@ -851,19 +854,9 @@ func onSuccessfulPoSt2(self *StorageMinerActorState, vmctx types.VMContext, acti
 	var ncid cid.Cid
 	var err aerrors.ActorError
 
-	// TODO: should be a non-fork fix here in the future
-	// use the non-empty faults condition to make a minumum change here?
-	if vmctx.BlockHeight() >= build.ForkBootyBayHeight && len(faults) > 0 {
-		ncid, err = RemoveFromSectorSet2(vmctx.Context(), vmctx.Storage(), self.Sectors, faults)
-		if err != nil {
-			return err
-		}
-
-	} else {
-		ncid, err = RemoveFromSectorSet(vmctx.Context(), vmctx.Storage(), self.Sectors, faults)
-		if err != nil {
-			return err
-		}
+	ncid, err = RemoveFromSectorSet2(vmctx.Context(), vmctx.Storage(), self.Sectors, faults)
+	if err != nil {
+		return err
 	}
 
 	self.Sectors = ncid
