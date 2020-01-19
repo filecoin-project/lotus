@@ -5,7 +5,16 @@ import (
 	"math"
 	"reflect"
 
+	"github.com/filecoin-project/go-address"
+	dtgraphsync "github.com/filecoin-project/go-data-transfer/impl/graphsync"
+	"github.com/filecoin-project/go-fil-markets/retrievalmarket"
+	retrievalimpl "github.com/filecoin-project/go-fil-markets/retrievalmarket/impl"
+	"github.com/filecoin-project/go-fil-markets/storagemarket"
+	deals "github.com/filecoin-project/go-fil-markets/storagemarket/impl"
+	storageimpl "github.com/filecoin-project/go-fil-markets/storagemarket/impl"
 	paramfetch "github.com/filecoin-project/go-paramfetch"
+	"github.com/filecoin-project/go-sectorbuilder"
+	"github.com/filecoin-project/go-statestore"
 	"github.com/ipfs/go-bitswap"
 	"github.com/ipfs/go-bitswap/network"
 	"github.com/ipfs/go-blockservice"
@@ -23,25 +32,16 @@ import (
 	"go.uber.org/fx"
 	"golang.org/x/xerrors"
 
-	"github.com/filecoin-project/go-address"
-	dtgraphsync "github.com/filecoin-project/go-data-transfer/impl/graphsync"
-	"github.com/filecoin-project/go-fil-markets/retrievalmarket"
-	retrievalimpl "github.com/filecoin-project/go-fil-markets/retrievalmarket/impl"
-	"github.com/filecoin-project/go-fil-markets/storagemarket"
-	deals "github.com/filecoin-project/go-fil-markets/storagemarket/impl"
-	storageimpl "github.com/filecoin-project/go-fil-markets/storagemarket/impl"
-	"github.com/filecoin-project/go-sectorbuilder"
-	"github.com/filecoin-project/go-statestore"
 	"github.com/filecoin-project/lotus/api"
 	"github.com/filecoin-project/lotus/build"
 	"github.com/filecoin-project/lotus/chain/gen"
+	"github.com/filecoin-project/lotus/markets/retrievaladapter"
 	"github.com/filecoin-project/lotus/miner"
 	"github.com/filecoin-project/lotus/node/modules/dtypes"
 	"github.com/filecoin-project/lotus/node/modules/helpers"
 	"github.com/filecoin-project/lotus/node/repo"
-
-	"github.com/filecoin-project/lotus/markets/retrievaladapter"
 	"github.com/filecoin-project/lotus/storage"
+	"github.com/filecoin-project/lotus/storage/sealing"
 	"github.com/filecoin-project/lotus/storage/sectorblocks"
 )
 
@@ -98,7 +98,7 @@ func SectorBuilderConfig(storagePath string, threads uint, noprecommit, nocommit
 	}
 }
 
-func StorageMiner(mctx helpers.MetricsCtx, lc fx.Lifecycle, api api.FullNode, h host.Host, ds dtypes.MetadataDS, sb sectorbuilder.Interface, tktFn storage.TicketFn) (*storage.Miner, error) {
+func StorageMiner(mctx helpers.MetricsCtx, lc fx.Lifecycle, api api.FullNode, h host.Host, ds dtypes.MetadataDS, sb sectorbuilder.Interface, tktFn sealing.TicketFn) (*storage.Miner, error) {
 	maddr, err := minerAddrFromDS(ds)
 	if err != nil {
 		return nil, err
@@ -241,7 +241,7 @@ func SectorBuilder(cfg *sectorbuilder.Config, ds dtypes.MetadataDS) (*sectorbuil
 	return sb, nil
 }
 
-func SealTicketGen(api api.FullNode) storage.TicketFn {
+func SealTicketGen(api api.FullNode) sealing.TicketFn {
 	return func(ctx context.Context) (*sectorbuilder.SealTicket, error) {
 		ts, err := api.ChainHead(ctx)
 		if err != nil {

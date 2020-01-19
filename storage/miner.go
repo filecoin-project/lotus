@@ -5,45 +5,39 @@ import (
 	"errors"
 	"time"
 
+	"github.com/filecoin-project/go-address"
+	"github.com/filecoin-project/go-sectorbuilder"
 	"github.com/ipfs/go-cid"
 	"github.com/ipfs/go-datastore"
-	"github.com/ipfs/go-datastore/namespace"
 	logging "github.com/ipfs/go-log/v2"
 	"github.com/libp2p/go-libp2p-core/host"
 	"golang.org/x/xerrors"
 
-	"github.com/filecoin-project/go-address"
-	"github.com/filecoin-project/go-sectorbuilder"
-	"github.com/filecoin-project/go-statestore"
 	"github.com/filecoin-project/lotus/api"
 	"github.com/filecoin-project/lotus/build"
 	"github.com/filecoin-project/lotus/chain/events"
 	"github.com/filecoin-project/lotus/chain/gen"
 	"github.com/filecoin-project/lotus/chain/store"
 	"github.com/filecoin-project/lotus/chain/types"
+	"github.com/filecoin-project/lotus/storage/sealing"
 )
 
 var log = logging.Logger("storageminer")
 
-const SectorStorePrefix = "/sectors"
-
 type Miner struct {
-	api    storageMinerApi
-	events *events.Events
-	h      host.Host
+	api   storageMinerApi
+	h     host.Host
+	sb    sectorbuilder.Interface
+	ds    datastore.Batching
+	tktFn sealing.TicketFn
 
 	maddr  address.Address
 	worker address.Address
 
-	// Sealing
-	sb      sectorbuilder.Interface
-	sectors *statestore.StateStore
-	tktFn   TicketFn
+	sealing *sealing.Sealing
 
-	sectorIncoming chan *SectorInfo
-	sectorUpdated  chan sectorUpdate
-	stop           chan struct{}
-	stopped        chan struct{}
+	stop    chan struct{}
+	stopped chan struct{}
 }
 
 type storageMinerApi interface {
@@ -71,22 +65,21 @@ type storageMinerApi interface {
 	WalletHas(context.Context, address.Address) (bool, error)
 }
 
-func NewMiner(api storageMinerApi, addr address.Address, h host.Host, ds datastore.Batching, sb sectorbuilder.Interface, tktFn TicketFn) (*Miner, error) {
-	return &Miner{
-		api: api,
-
-		maddr: addr,
+func NewMiner(api storageMinerApi, addr address.Address, h host.Host, ds datastore.Batching, sb sectorbuilder.Interface, tktFn sealing.TicketFn) (*Miner, error) {
+	m := &Miner{
+		api:   api,
 		h:     h,
 		sb:    sb,
+		ds:    ds,
 		tktFn: tktFn,
 
-		sectors: statestore.New(namespace.Wrap(ds, datastore.NewKey(SectorStorePrefix))),
+		maddr: addr,
 
-		sectorIncoming: make(chan *SectorInfo),
-		sectorUpdated:  make(chan sectorUpdate),
-		stop:           make(chan struct{}),
-		stopped:        make(chan struct{}),
-	}, nil
+		stop:    make(chan struct{}),
+		stopped: make(chan struct{}),
+	}
+
+	return m, nil
 }
 
 func (m *Miner) Run(ctx context.Context) error {
@@ -94,25 +87,25 @@ func (m *Miner) Run(ctx context.Context) error {
 		return xerrors.Errorf("miner preflight checks failed: %w", err)
 	}
 
-	m.events = events.NewEvents(ctx, m.api)
-
 	fps := &fpostScheduler{
-		api:    m.api,
-		sb:     m.sb,
+		api: m.api,
+		sb:  m.sb,
+
 		actor:  m.maddr,
 		worker: m.worker,
 	}
 
 	go fps.run(ctx)
-	if err := m.sectorStateLoop(ctx); err != nil {
-		log.Errorf("%+v", err)
-		return xerrors.Errorf("failed to startup sector state loop: %w", err)
-	}
+
+	evts := events.NewEvents(ctx, m.api)
+	m.sealing = sealing.New(m.api, evts, m.maddr, m.worker, m.ds, m.sb, m.tktFn)
 
 	return nil
 }
 
 func (m *Miner) Stop(ctx context.Context) error {
+	defer m.sealing.Stop(ctx)
+
 	close(m.stop)
 	select {
 	case <-m.stopped:

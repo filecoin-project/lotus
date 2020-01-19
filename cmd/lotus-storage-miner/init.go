@@ -11,7 +11,12 @@ import (
 	"path/filepath"
 	"strconv"
 
+	"github.com/filecoin-project/go-address"
+	cborutil "github.com/filecoin-project/go-cbor-util"
+	"github.com/filecoin-project/go-fil-markets/storagemarket"
+	deals "github.com/filecoin-project/go-fil-markets/storagemarket/impl"
 	paramfetch "github.com/filecoin-project/go-paramfetch"
+	"github.com/filecoin-project/go-sectorbuilder"
 	"github.com/ipfs/go-datastore"
 	"github.com/ipfs/go-datastore/namespace"
 	badger "github.com/ipfs/go-ds-badger2"
@@ -21,11 +26,6 @@ import (
 	"golang.org/x/xerrors"
 	"gopkg.in/urfave/cli.v2"
 
-	"github.com/filecoin-project/go-address"
-	cborutil "github.com/filecoin-project/go-cbor-util"
-	"github.com/filecoin-project/go-fil-markets/storagemarket"
-	deals "github.com/filecoin-project/go-fil-markets/storagemarket/impl"
-	"github.com/filecoin-project/go-sectorbuilder"
 	lapi "github.com/filecoin-project/lotus/api"
 	"github.com/filecoin-project/lotus/build"
 	"github.com/filecoin-project/lotus/chain/actors"
@@ -38,6 +38,7 @@ import (
 	"github.com/filecoin-project/lotus/node/modules/dtypes"
 	"github.com/filecoin-project/lotus/node/repo"
 	"github.com/filecoin-project/lotus/storage"
+	"github.com/filecoin-project/lotus/storage/sealing"
 )
 
 var initCmd = &cli.Command{
@@ -242,17 +243,17 @@ func migratePreSealMeta(ctx context.Context, api lapi.FullNode, presealDir strin
 	}
 
 	for _, sector := range meta.Sectors {
-		sectorKey := datastore.NewKey(storage.SectorStorePrefix).ChildString(fmt.Sprint(sector.SectorID))
+		sectorKey := datastore.NewKey(sealing.SectorStorePrefix).ChildString(fmt.Sprint(sector.SectorID))
 
 		dealID, err := findMarketDealID(ctx, api, sector.Deal)
 		if err != nil {
 			return xerrors.Errorf("finding storage deal for pre-sealed sector %d: %w", sector.SectorID, err)
 		}
 
-		info := &storage.SectorInfo{
+		info := &sealing.SectorInfo{
 			State:    lapi.Proving,
 			SectorID: sector.SectorID,
-			Pieces: []storage.Piece{
+			Pieces: []sealing.Piece{
 				{
 					DealID: dealID,
 					Size:   meta.SectorSize,
@@ -262,9 +263,9 @@ func migratePreSealMeta(ctx context.Context, api lapi.FullNode, presealDir strin
 			CommD:            sector.CommD[:],
 			CommR:            sector.CommR[:],
 			Proof:            nil,
-			Ticket:           storage.SealTicket{},
+			Ticket:           sealing.SealTicket{},
 			PreCommitMessage: nil,
-			Seed:             storage.SealSeed{},
+			Seed:             sealing.SealSeed{},
 			CommitMessage:    nil,
 		}
 
