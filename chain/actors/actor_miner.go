@@ -1038,22 +1038,9 @@ func onSuccessfulPoSt(self *StorageMinerActorState, vmctx types.VMContext, activ
 		self.ElectionPeriodStart = vmctx.BlockHeight()
 	}
 
-	var ncid cid.Cid
-	var err aerrors.ActorError
-
-	// TODO: should be a non-fork fix here in the future
-	// use the non-empty faults condition to make a minumum change here?
-	if vmctx.BlockHeight() >= build.ForkBootyBayHeight && len(faults) > 0 {
-		ncid, err = RemoveFromSectorSet2(vmctx.Context(), vmctx.Storage(), self.Sectors, faults)
-		if err != nil {
-			return err
-		}
-
-	} else {
-		ncid, err = RemoveFromSectorSet(vmctx.Context(), vmctx.Storage(), self.Sectors, faults)
-		if err != nil {
-			return err
-		}
+	ncid, err := RemoveFromSectorSet(vmctx.Context(), vmctx.Storage(), self.Sectors, faults)
+	if err != nil {
+		return err
 	}
 
 	self.Sectors = ncid
