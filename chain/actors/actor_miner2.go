@@ -380,7 +380,7 @@ func (sma StorageMinerActor2) SubmitFallbackPoSt(act *types.Actor, vmctx types.V
 	}
 
 	// Post submission is successful!
-	if err := onSuccessfulPoSt(self, vmctx, activeFaults); err != nil {
+	if err := onSuccessfulPoSt2(self, vmctx, activeFaults); err != nil {
 		return nil, err
 	}
 
@@ -768,7 +768,7 @@ func (sma StorageMinerActor2) SubmitElectionPoSt(act *types.Actor, vmctx types.V
 		activeFaults++
 	}
 
-	if err := onSuccessfulPoSt(self, vmctx, activeFaults); err != nil { // TODO
+	if err := onSuccessfulPoSt2(self, vmctx, activeFaults); err != nil { // TODO
 		return nil, err
 	}
 
@@ -781,4 +781,85 @@ func (sma StorageMinerActor2) SubmitElectionPoSt(act *types.Actor, vmctx types.V
 	}
 
 	return nil, nil
+}
+
+func onSuccessfulPoSt2(self *StorageMinerActorState, vmctx types.VMContext, activeFaults uint64) aerrors.ActorError {
+	// FORK
+	if vmctx.BlockHeight() < build.ForkBootyBayHeight {
+		return onSuccessfulPoSt(self, vmctx, activeFaults)
+	}
+
+	var mi MinerInfo
+	if err := vmctx.Storage().Get(self.Info, &mi); err != nil {
+		return err
+	}
+
+	pss, nerr := amt2.LoadAMT(types.WrapStorage(vmctx.Storage()), self.ProvingSet)
+	if nerr != nil {
+		return aerrors.HandleExternalError(nerr, "failed to load proving set")
+	}
+
+	ss, nerr := amt2.LoadAMT(types.WrapStorage(vmctx.Storage()), self.Sectors)
+	if nerr != nil {
+		return aerrors.HandleExternalError(nerr, "failed to load sector set")
+	}
+
+	faults, nerr := self.FaultSet.All(2 * ss.Count)
+	if nerr != nil {
+		return aerrors.Absorb(nerr, 1, "invalid bitfield (fatal?)")
+	}
+
+	self.FaultSet = types.NewBitField()
+
+	oldPower := self.Power
+	newPower := types.BigMul(types.NewInt(pss.Count-activeFaults), types.NewInt(mi.SectorSize))
+
+	// If below the minimum size requirement, miners have zero power
+	if newPower.LessThan(types.NewInt(build.MinimumMinerPower)) {
+		newPower = types.NewInt(0)
+	}
+
+	self.Power = newPower
+
+	delta := types.BigSub(self.Power, oldPower)
+	if self.SlashedAt != 0 {
+		self.SlashedAt = 0
+		delta = self.Power
+	}
+
+	prevSlashingDeadline := self.ElectionPeriodStart + build.SlashablePowerDelay
+	if !self.Active && newPower.GreaterThan(types.NewInt(0)) {
+		self.Active = true
+		prevSlashingDeadline = 0
+	}
+
+	if !(oldPower.IsZero() && newPower.IsZero()) {
+		enc, err := SerializeParams(&UpdateStorageParams{
+			Delta:                 delta,
+			NextSlashDeadline:     vmctx.BlockHeight() + build.SlashablePowerDelay,
+			PreviousSlashDeadline: prevSlashingDeadline,
+		})
+		if err != nil {
+			return err
+		}
+
+		_, err = vmctx.Send(StoragePowerAddress, SPAMethods.UpdateStorage, types.NewInt(0), enc)
+		if err != nil {
+			return aerrors.Wrap(err, "updating storage failed")
+		}
+
+		self.ElectionPeriodStart = vmctx.BlockHeight()
+	}
+
+	var ncid cid.Cid
+	var err aerrors.ActorError
+
+	ncid, err = RemoveFromSectorSet2(vmctx.Context(), vmctx.Storage(), self.Sectors, faults)
+	if err != nil {
+		return err
+	}
+
+	self.Sectors = ncid
+	self.ProvingSet = ncid
+	return nil
 }
