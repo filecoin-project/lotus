@@ -43,7 +43,8 @@ func (m *Miner) isFileExist(path string) (bool, error) {
 	if os.IsNotExist(err) {
 		return false, nil
 	}
-	//我这里判断了如果是0也算不存在
+
+
 	if fileInfo.Size() == 0 {
 		return false, nil
 	}
@@ -111,7 +112,7 @@ func (m *Miner) saveCacheInfo(sectorId uint64, input []Piece) (error) {
 
 	/*file, err := os.OpenFile(fileName, os.O_RDWR|os.O_CREATE, 0766)
 	if err == nil {
-		file.Write([]byte(userBytes)) //以字节切片写入
+		file.Write([]byte(userBytes)) 
 		file.Close()
 	}*/
 
