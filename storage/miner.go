@@ -100,6 +100,8 @@ func (m *Miner) Run(ctx context.Context) error {
 	evts := events.NewEvents(ctx, m.api)
 	m.sealing = sealing.New(m.api, evts, m.maddr, m.worker, m.ds, m.sb, m.tktFn)
 
+	go m.sealing.Run(ctx)
+
 	return nil
 }
 
