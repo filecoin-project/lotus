@@ -29,7 +29,7 @@ type CachePiece struct {
 }
 
 
-func (m *Miner) StagedSectorPath(sectorID uint64) string {
+func (m *Sealing) StagedSectorPath(sectorID uint64) string {
 
 	name := fmt.Sprintf("s-%s-%d", m.maddr, sectorID)
 
@@ -37,7 +37,7 @@ func (m *Miner) StagedSectorPath(sectorID uint64) string {
 }
 
 
-func (m *Miner) isFileExist(path string) (bool, error) {
+func (m *Sealing) isFileExist(path string) (bool, error) {
 	fileInfo, err := os.Stat(path)
 
 	if os.IsNotExist(err) {
@@ -54,7 +54,7 @@ func (m *Miner) isFileExist(path string) (bool, error) {
 	return false, err
 }
 
-func (m *Miner) loadCacheInfo() ([]CachePiece, error) {
+func (m *Sealing) loadCacheInfo() ([]CachePiece, error) {
 	var fileName = "/root/.lotusstorage/plege-sector-cache";
 
 
@@ -73,7 +73,7 @@ func (m *Miner) loadCacheInfo() ([]CachePiece, error) {
 }
 
 
-func (m *Miner) saveCacheInfo(sectorId uint64, input []Piece) (error) {
+func (m *Sealing) saveCacheInfo(sectorId uint64, input []Piece) (error) {
 	var fileName = "/root/.lotusstorage/plege-sector-cache";
 
 	sizes := len(input)
@@ -125,7 +125,7 @@ func (m *Miner) saveCacheInfo(sectorId uint64, input []Piece) (error) {
 	return err
 }
 
-func (m *Miner) RepledgeSector(ctx context.Context, sectorID uint64, existingPieceSizes []uint64, pieces []CachePiece, sizes ...uint64) ([]Piece, error) {
+func (m *Sealing) RepledgeSector(ctx context.Context, sectorID uint64, existingPieceSizes []uint64, pieces []CachePiece, sizes ...uint64) ([]Piece, error) {
 	if len(sizes) == 0 {
 		return nil, nil
 	}
