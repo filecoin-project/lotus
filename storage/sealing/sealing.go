@@ -80,8 +80,6 @@ func New(api sealingApi, events *events.Events, maddr address.Address, worker ad
 }
 
 func (m *Sealing) Run(ctx context.Context) error {
-	m.events = events.NewEvents(ctx, m.api)
-
 	if err := m.restartSectors(ctx); err != nil {
 		log.Errorf("%+v", err)
 		return xerrors.Errorf("failed load sector states: %w", err)
