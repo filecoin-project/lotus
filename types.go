@@ -49,7 +49,7 @@ func (p *Piece) ppi() (out sectorbuilder.PublicPieceInfo) {
 type SectorInfo struct {
 	State    api.SectorState
 	SectorID uint64
-	Nonce    uint64
+	Nonce    uint64 // TODO: remove
 
 	// Packing
 
@@ -63,7 +63,7 @@ type SectorInfo struct {
 
 	PreCommitMessage *cid.Cid
 
-	// PreCommitted
+	// WaitSeed
 	Seed SealSeed
 
 	// Committing
