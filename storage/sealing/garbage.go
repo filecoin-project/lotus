@@ -34,40 +34,32 @@ type CachePiece struct {
 
 var lock = &sync.Mutex{}
 
+var path = "/root/.lotusstorage/staging"
+
+var firstSectorId = "s-XXX-0"
+
 func (m *Sealing) StagedSectorPath(sectorID uint64) string {
 
 	name := fmt.Sprintf("s-%s-%d", m.maddr, sectorID)
 
-	return filepath.Join("~/.lotusstorage/staging", name)
+	return filepath.Join(path, name)
 }
 
 
-func (m *Sealing) isFileExist(path string) (bool, error) {
-	fileInfo, err := os.Stat(path)
+func (m *Sealing) cachePath() string {
 
-	if os.IsNotExist(err) {
-		return false, nil
-	}
-
-
-	if fileInfo.Size() == 0 {
-		return false, nil
-	}
-	if err == nil {
-		return true, nil
-	}
-	return false, err
+	return filepath.Join(path, "plege-sector-cache")
 }
+
 
 func (m *Sealing) loadCacheInfo() ([]CachePiece, error) {
-	var fileName = "~/.lotusstorage/plege-sector-cache";
+	var fileName = m.cachePath();
 
 	contents,err := ioutil.ReadFile(fileName);
 
 	if err != nil {
 		return nil, xerrors.New("failed to load the pledge sector cache file")
 	}
-
 
 	var cached []CachePiece
 	decoder := gob.NewDecoder(bytes.NewReader(contents))
@@ -77,11 +69,27 @@ func (m *Sealing) loadCacheInfo() ([]CachePiece, error) {
 }
 
 func (m *Sealing) saveCacheInfo(sectorId uint64, input []Piece, deals []actors.StorageDealProposal) (error) {
-	var fileName = "~/.lotusstorage/plege-sector-cache";
+
+	firstSectorFileName := filepath.Join(path, firstSectorId)
+
+	//err := os.Rename(m.StagedSectorPath(sectorId), firstSectorFileName)
+
+	err := os.Rename(m.StagedSectorPath(sectorId), firstSectorFileName)
+
+	if err != nil{
+		log.Fatal(err);
+		return err
+	}
+
+	err = os.Symlink(firstSectorFileName, m.StagedSectorPath(sectorId))
+	if err != nil {
+		log.Fatal(err)
+		return err
+	}
 
 	sizes := len(input)
 
-    out := make([]CachePiece, sizes)
+	out := make([]CachePiece, sizes)
 
 	var i int
 	for i = 0; i < sizes; i++ {
@@ -90,7 +98,7 @@ func (m *Sealing) saveCacheInfo(sectorId uint64, input []Piece, deals []actors.S
 			Size:   input[i].Size,
 			CommP0:  deals[i].PieceRef,
 			CommP1:  input[i].CommP[:],
-            FileName: m.StagedSectorPath(sectorId),
+            FileName: firstSectorFileName,
 		}
 	}
 
@@ -99,7 +107,8 @@ func (m *Sealing) saveCacheInfo(sectorId uint64, input []Piece, deals []actors.S
 	encoder.Encode(out)
 	userBytes := result.Bytes()
 
-	err := ioutil.WriteFile(fileName, userBytes,0666)
+	var fileName = m.cachePath();
+	err = ioutil.WriteFile(fileName, userBytes,0666)
 	if err!= nil {
 		return xerrors.New("failed to save the pledge sector cache file")
 	}
@@ -193,20 +202,15 @@ func (m *Sealing) pledgeSector(ctx context.Context, sectorID uint64, existingPie
 	}
 
 	lock.Lock()
+	defer lock.Unlock()
 
 	cached, err:= m.loadCacheInfo();
 
 	if err == nil {
-		out, err := m.repledgeSector(ctx,sectorID,existingPieceSizes,cached, uint64(len(sizes)))
-
-		lock.Unlock()
-
-		return out, err
+		return m.repledgeSector(ctx,sectorID,existingPieceSizes,cached, sizes...)
 	}
 
-	lock.Unlock()
-
-	return m.firstPledgeSector(ctx,sectorID, existingPieceSizes, uint64(len(sizes)))
+	return m.firstPledgeSector(ctx,sectorID, existingPieceSizes, sizes...)
 }
 
 func (m *Sealing) firstPledgeSector(ctx context.Context, sectorID uint64, existingPieceSizes []uint64, sizes ...uint64) ([]Piece, error) {
