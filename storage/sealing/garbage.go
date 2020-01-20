@@ -11,6 +11,7 @@ import (
 	"math/rand"
 	"os"
 	"path/filepath"
+	"sync"
 
 	sectorbuilder "github.com/filecoin-project/go-sectorbuilder"
 	"golang.org/x/xerrors"
@@ -24,16 +25,20 @@ type CachePiece struct {
 	DealID uint64
 
 	Size  uint64
-	CommP []byte
+
+	CommP0 []byte
+	CommP1 []byte
 	FileName string
 }
 
+
+var lock = &sync.Mutex{}
 
 func (m *Sealing) StagedSectorPath(sectorID uint64) string {
 
 	name := fmt.Sprintf("s-%s-%d", m.maddr, sectorID)
 
-	return filepath.Join("/root/.lotusstorage/staging", name)
+	return filepath.Join("~/.lotusstorage/staging", name)
 }
 
 
@@ -55,8 +60,7 @@ func (m *Sealing) isFileExist(path string) (bool, error) {
 }
 
 func (m *Sealing) loadCacheInfo() ([]CachePiece, error) {
-	var fileName = "/root/.lotusstorage/plege-sector-cache";
-
+	var fileName = "~/.lotusstorage/plege-sector-cache";
 
 	contents,err := ioutil.ReadFile(fileName);
 
@@ -65,16 +69,15 @@ func (m *Sealing) loadCacheInfo() ([]CachePiece, error) {
 	}
 
 
-	var saved []CachePiece
+	var cached []CachePiece
 	decoder := gob.NewDecoder(bytes.NewReader(contents))
-	err = decoder.Decode(&saved)
+	err = decoder.Decode(&cached)
 
-	return saved, err
+	return cached, err
 }
 
-
-func (m *Sealing) saveCacheInfo(sectorId uint64, input []Piece) (error) {
-	var fileName = "/root/.lotusstorage/plege-sector-cache";
+func (m *Sealing) saveCacheInfo(sectorId uint64, input []Piece, deals []actors.StorageDealProposal) (error) {
+	var fileName = "~/.lotusstorage/plege-sector-cache";
 
 	sizes := len(input)
 
@@ -82,11 +85,11 @@ func (m *Sealing) saveCacheInfo(sectorId uint64, input []Piece) (error) {
 
 	var i int
 	for i = 0; i < sizes; i++ {
-
 		out[i] = CachePiece{
 			DealID: input[i].DealID,
 			Size:   input[i].Size,
-			CommP:  input[i].CommP[:],
+			CommP0:  deals[i].PieceRef,
+			CommP1:  input[i].CommP[:],
             FileName: m.StagedSectorPath(sectorId),
 		}
 	}
@@ -96,27 +99,6 @@ func (m *Sealing) saveCacheInfo(sectorId uint64, input []Piece) (error) {
 	encoder.Encode(out)
 	userBytes := result.Bytes()
 
-	/*isFileExist,err := m.isFileExist(fileName)
-
-	if err != nil{
-		return err
-	}
-
-	if !isFileExist{
-		file,err:=os.Create(fileName)
-		if err!=nil{
-			fmt.Println(err)
-		}
-		file.Close()
-	}*/
-
-	/*file, err := os.OpenFile(fileName, os.O_RDWR|os.O_CREATE, 0766)
-	if err == nil {
-		file.Write([]byte(userBytes)) 
-		file.Close()
-	}*/
-
-
 	err := ioutil.WriteFile(fileName, userBytes,0666)
 	if err!= nil {
 		return xerrors.New("failed to save the pledge sector cache file")
@@ -125,7 +107,7 @@ func (m *Sealing) saveCacheInfo(sectorId uint64, input []Piece) (error) {
 	return err
 }
 
-func (m *Sealing) RepledgeSector(ctx context.Context, sectorID uint64, existingPieceSizes []uint64, pieces []CachePiece, sizes ...uint64) ([]Piece, error) {
+func (m *Sealing) repledgeSector(ctx context.Context, sectorID uint64, existingPieceSizes []uint64, pieces []CachePiece, sizes ...uint64) ([]Piece, error) {
 	if len(sizes) == 0 {
 		return nil, nil
 	}
@@ -137,7 +119,7 @@ func (m *Sealing) RepledgeSector(ctx context.Context, sectorID uint64, existingP
 	for i, size := range sizes {
 
 		sdp := actors.StorageDealProposal{
-			PieceRef:             pieces[i].CommP[:],
+			PieceRef:             pieces[i].CommP0[:],
 			PieceSize:            size,
 			Client:               m.worker,
 			Provider:             m.maddr,
@@ -192,7 +174,7 @@ func (m *Sealing) RepledgeSector(ctx context.Context, sectorID uint64, existingP
 		out[i] = Piece{
 			DealID: resp.DealIDs[i],
 			Size:   pieces[i].Size,
-			CommP:  pieces[i].CommP[:],
+			CommP:  pieces[i].CommP1[:],
 		}
 
 		err = os.Symlink(pieces[i].FileName, m.StagedSectorPath(sectorID))
@@ -200,7 +182,6 @@ func (m *Sealing) RepledgeSector(ctx context.Context, sectorID uint64, existingP
 			log.Fatal(err)
 		}
 	}
-
 
 	return out, nil
 }
@@ -211,12 +192,24 @@ func (m *Sealing) pledgeSector(ctx context.Context, sectorID uint64, existingPie
 		return nil, nil
 	}
 
-	saved, err:= m.loadCacheInfo();
+	lock.Lock()
+
+	cached, err:= m.loadCacheInfo();
 
 	if err == nil {
-		return m.RepledgeSector(ctx,sectorID,existingPieceSizes,saved, uint64(len(sizes)))
+		out, err := m.repledgeSector(ctx,sectorID,existingPieceSizes,cached, uint64(len(sizes)))
+
+		lock.Unlock()
+
+		return out, err
 	}
 
+	lock.Unlock()
+
+	return m.firstPledgeSector(ctx,sectorID, existingPieceSizes, uint64(len(sizes)))
+}
+
+func (m *Sealing) firstPledgeSector(ctx context.Context, sectorID uint64, existingPieceSizes []uint64, sizes ...uint64) ([]Piece, error) {
 	deals := make([]actors.StorageDealProposal, len(sizes))
 	for i, size := range sizes {
 		release := m.sb.RateLimit()
@@ -293,7 +286,7 @@ func (m *Sealing) pledgeSector(ctx context.Context, sectorID uint64, existingPie
 		}
 	}
 
-	m.saveCacheInfo(sectorID, out)
+	m.saveCacheInfo(sectorID, out,deals)
 
 	return out, nil
 }
