@@ -37,6 +37,7 @@ type FullNode interface {
 	ChainTipSetWeight(context.Context, *types.TipSet) (types.BigInt, error)
 	ChainGetNode(ctx context.Context, p string) (interface{}, error)
 	ChainGetMessage(context.Context, cid.Cid) (*types.Message, error)
+	ChainGetPath(ctx context.Context, from types.TipSetKey, to types.TipSetKey) ([]*store.HeadChange, error)
 
 	// syncer
 	SyncState(context.Context) (*SyncState, error)
@@ -118,6 +119,7 @@ type FullNode interface {
 	StateChangedActors(context.Context, cid.Cid, cid.Cid) (map[string]types.Actor, error)
 	StateGetReceipt(context.Context, cid.Cid, *types.TipSet) (*types.MessageReceipt, error)
 	StateMinerSectorCount(context.Context, address.Address, *types.TipSet) (MinerSectors, error)
+	StateCompute(context.Context, uint64, []*types.Message, *types.TipSet) (cid.Cid, error)
 
 	MarketEnsureAvailable(context.Context, address.Address, types.BigInt) error
 	// MarketFreeBalance

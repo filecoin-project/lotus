@@ -120,6 +120,10 @@ func (blk *BlockHeader) CheckBlockSignature(ctx context.Context, worker address.
 	_, span := trace.StartSpan(ctx, "checkBlockSignature")
 	defer span.End()
 
+	if blk.BlockSig == nil {
+		return xerrors.New("block signature not present")
+	}
+
 	sigb, err := blk.SigningBytes()
 	if err != nil {
 		return xerrors.Errorf("failed to get block signing bytes: %w", err)

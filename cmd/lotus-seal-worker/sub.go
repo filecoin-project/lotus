@@ -116,6 +116,12 @@ func (w *worker) processTask(ctx context.Context, task sectorbuilder.WorkerTask)
 		//if err := w.push("cache", task.SectorID); err != nil {
 		//	return errRes(xerrors.Errorf("pushing precommited data: %w", err))
 		//}
+
+		
+		//if err := w.remove("staging", task.SectorID); err != nil {
+		//	return errRes(xerrors.Errorf("cleaning up staged sector: %w", err))
+		//}
+
 	case sectorbuilder.WorkerCommit:
 		proof, err := w.sb.SealCommit(ctx, task.SectorID, task.SealTicket, task.SealSeed, task.Pieces, task.Rspco)
 		if err != nil {
@@ -124,9 +130,19 @@ func (w *worker) processTask(ctx context.Context, task sectorbuilder.WorkerTask)
 
 		res.Proof = proof
 
+<<<<<<< HEAD
 		//if err := w.push("cache", task.SectorID); err != nil {
 		//	return errRes(xerrors.Errorf("pushing precommited data: %w", err))
 		//}
+=======
+		if err := w.push("cache", task.SectorID); err != nil {
+			return errRes(xerrors.Errorf("pushing precommited data: %w", err))
+		}
+
+		if err := w.remove("sealed", task.SectorID); err != nil {
+			return errRes(xerrors.Errorf("cleaning up sealed sector: %w", err))
+		}
+>>>>>>> 4436148fa13196f4316f44e7194b52d82d2bf151
 	}
 
 	return res

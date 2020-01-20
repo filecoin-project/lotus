@@ -125,6 +125,11 @@ func (w *worker) push(typ string, sectorID uint64) error {
 	}
 
 	// TODO: keep files around for later stages of sealing
+	return w.remove(typ, sectorID)
+}
+
+func (w *worker) remove(typ string, sectorID uint64) error {
+	filename := filepath.Join(w.repo, typ, w.sb.SectorName(sectorID))
 	return os.RemoveAll(filename)
 }
 

@@ -85,7 +85,13 @@ func (spa StoragePowerActor) CreateStorageMiner(act *types.Actor, vmctx types.VM
 		return nil, aerrors.Newf(1, "not enough funds passed to cover required miner collateral (needed %s, got %s)", reqColl, vmctx.Message().Value)
 	}
 
-	encoded, err := CreateExecParams(StorageMinerCodeCid, &StorageMinerConstructorParams{
+	// FORK
+	minerCid := StorageMinerCodeCid
+	if vmctx.BlockHeight() > build.ForkFrigidHeight {
+		minerCid = StorageMiner2CodeCid
+	}
+
+	encoded, err := CreateExecParams(minerCid, &StorageMinerConstructorParams{
 		Owner:      params.Owner,
 		Worker:     params.Worker,
 		SectorSize: params.SectorSize,
@@ -136,6 +142,21 @@ func (spa StoragePowerActor) ArbitrateConsensusFault(act *types.Actor, vmctx typ
 
 	if params.Block1.Miner != params.Block2.Miner {
 		return nil, aerrors.New(2, "blocks must be from the same miner")
+	}
+
+	// FORK
+	if vmctx.BlockHeight() > build.ForkBlizzardHeight {
+		if params.Block1.Height <= build.ForkBlizzardHeight {
+			return nil, aerrors.New(10, "cannot slash miners with blocks from before blizzard")
+		}
+
+		if params.Block2.Height <= build.ForkBlizzardHeight {
+			return nil, aerrors.New(11, "cannot slash miners with blocks from before blizzard")
+		}
+
+		if params.Block1.Cid() == params.Block2.Cid() {
+			return nil, aerrors.New(3, "blocks must be different")
+		}
 	}
 
 	rval, err := vmctx.Send(params.Block1.Miner, MAMethods.GetWorkerAddr, types.NewInt(0), nil)
