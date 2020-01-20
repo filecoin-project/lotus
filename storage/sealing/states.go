@@ -97,7 +97,7 @@ func (m *Sealing) handlePreCommitting(ctx statemachine.Context, sector SectorInf
 	return ctx.Send(SectorPreCommitted{message: smsg.Cid()})
 }
 
-func (m *Sealing) handlePreCommitted(ctx statemachine.Context, sector SectorInfo) error {
+func (m *Sealing) handleWaitSeed(ctx statemachine.Context, sector SectorInfo) error {
 	// would be ideal to just use the events.Called handler, but it wouldnt be able to handle individual message timeouts
 	log.Info("Sector precommitted: ", sector.SectorID)
 	mw, err := m.api.StateWaitMsg(ctx.Context(), *sector.PreCommitMessage)
@@ -147,7 +147,7 @@ func (m *Sealing) handleCommitting(ctx statemachine.Context, sector SectorInfo) 
 
 	proof, err := m.sb.SealCommit(ctx.Context(), sector.SectorID, sector.Ticket.SB(), sector.Seed.SB(), sector.pieceInfos(), sector.rspco())
 	if err != nil {
-		return ctx.Send(SectorSealCommitFailed{xerrors.Errorf("computing seal proof failed: %w", err)})
+		return ctx.Send(SectorComputeProofFailed{xerrors.Errorf("computing seal proof failed: %w", err)})
 	}
 
 	// TODO: Consider splitting states and persist proof for faster recovery

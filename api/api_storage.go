@@ -19,7 +19,7 @@ const (
 
 	Unsealed      // sealing / queued
 	PreCommitting // on chain pre-commit
-	PreCommitted  // waiting for seed
+	WaitSeed      // waiting for seed
 	Committing
 	CommitWait // waiting for message to land on chain
 	Proving
@@ -61,7 +61,7 @@ var SectorStates = []string{
 	Packing:              "Packing",
 	Unsealed:             "Unsealed",
 	PreCommitting:        "PreCommitting",
-	PreCommitted:         "PreCommitted",
+	WaitSeed:             "WaitSeed",
 	Committing:           "Committing",
 	CommitWait:           "CommitWait",
 	Proving:              "Proving",

@@ -96,7 +96,7 @@ func (evt SectorSeedReady) apply(state *SectorInfo) {
 	state.Seed = evt.seed
 }
 
-type SectorSealCommitFailed struct{ error }
+type SectorComputeProofFailed struct{ error }
 type SectorCommitFailed struct{ error }
 type SectorCommitted struct {
 	message cid.Cid

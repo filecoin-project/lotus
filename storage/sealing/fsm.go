@@ -36,10 +36,10 @@ var fsmPlanners = []func(events []statemachine.Event, state *SectorInfo) error{
 		on(SectorSealFailed{}, api.SealFailed),
 	),
 	api.PreCommitting: planOne(
-		on(SectorPreCommitted{}, api.PreCommitted),
+		on(SectorPreCommitted{}, api.WaitSeed),
 		on(SectorPreCommitFailed{}, api.PreCommitFailed),
 	),
-	api.PreCommitted: planOne(
+	api.WaitSeed: planOne(
 		on(SectorSeedReady{}, api.Committing),
 		on(SectorPreCommitFailed{}, api.PreCommitFailed),
 	),
@@ -87,7 +87,7 @@ func (m *Sealing) plan(events []statemachine.Event, state *SectorInfo) (func(sta
 		*   PreCommitting <--> PreCommitFailed
 		|   |                  ^
 		|   v                  |
-		*<- PreCommitted ------/
+		*<- WaitSeed ----------/
 		|   |||
 		|   vvv      v--> SealCommitFailed
 		*<- Committing
@@ -115,8 +115,8 @@ func (m *Sealing) plan(events []statemachine.Event, state *SectorInfo) (func(sta
 		return m.handleUnsealed, nil
 	case api.PreCommitting:
 		return m.handlePreCommitting, nil
-	case api.PreCommitted:
-		return m.handlePreCommitted, nil
+	case api.WaitSeed:
+		return m.handleWaitSeed, nil
 	case api.Committing:
 		return m.handleCommitting, nil
 	case api.CommitWait:
@@ -172,7 +172,7 @@ func planCommitting(events []statemachine.Event, state *SectorInfo) error {
 			e.apply(state)
 			state.State = api.Committing
 			return nil
-		case SectorSealCommitFailed:
+		case SectorComputeProofFailed:
 			state.State = api.SealCommitFailed
 		case SectorSealFailed:
 			state.State = api.CommitFailed
