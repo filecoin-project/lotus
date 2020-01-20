@@ -1,15 +1,11 @@
-package storage
+package sealing
 
 import (
-	"context"
-
 	sectorbuilder "github.com/filecoin-project/go-sectorbuilder"
 	"github.com/ipfs/go-cid"
 
 	"github.com/filecoin-project/lotus/api"
 )
-
-type TicketFn func(context.Context) (*sectorbuilder.SealTicket, error)
 
 type SealTicket struct {
 	BlockHeight uint64
@@ -31,6 +27,10 @@ func (t *SealSeed) SB() sectorbuilder.SealSeed {
 	out := sectorbuilder.SealSeed{BlockHeight: t.BlockHeight}
 	copy(out.TicketBytes[:], t.TicketBytes)
 	return out
+}
+
+func (t *SealSeed) Equals(o *SealSeed) bool {
+	return string(t.TicketBytes) == string(o.TicketBytes) && t.BlockHeight == o.BlockHeight
 }
 
 type Piece struct {
@@ -74,10 +74,8 @@ type SectorInfo struct {
 
 	// Debug
 	LastErr string
-}
 
-func (t *SectorInfo) upd() *sectorUpdate {
-	return &sectorUpdate{id: t.SectorID, nonce: t.Nonce}
+	// TODO: Log []struct{ts, msg, trace string}
 }
 
 func (t *SectorInfo) pieceInfos() []sectorbuilder.PublicPieceInfo {

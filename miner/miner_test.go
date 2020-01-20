@@ -80,7 +80,7 @@ func TestMessageFiltering(t *testing.T) {
 		},
 	}
 
-	outmsgs, err := selectMessages(ctx, af, &MiningBase{}, wrapMsgs(msgs))
+	outmsgs, err := SelectMessages(ctx, af, nil, wrapMsgs(msgs))
 	if err != nil {
 		t.Fatal(err)
 	}

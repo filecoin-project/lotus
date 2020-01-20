@@ -10,7 +10,9 @@ import (
 
 	"github.com/filecoin-project/lotus/api"
 	"github.com/filecoin-project/lotus/chain/actors"
+	"github.com/filecoin-project/lotus/chain/store"
 	"github.com/filecoin-project/lotus/chain/types"
+	"github.com/filecoin-project/lotus/chain/vm"
 
 	amt "github.com/filecoin-project/go-amt-ipld"
 	cid "github.com/ipfs/go-cid"
@@ -310,4 +312,38 @@ func LoadSectorsFromSet(ctx context.Context, bs blockstore.Blockstore, ssc cid.C
 	}
 
 	return sset, nil
+}
+
+func ComputeState(ctx context.Context, sm *StateManager, height uint64, msgs []*types.Message, ts *types.TipSet) (cid.Cid, error) {
+	if ts == nil {
+		ts = sm.cs.GetHeaviestTipSet()
+	}
+
+	base, _, err := sm.TipSetState(ctx, ts)
+	if err != nil {
+		return cid.Undef, err
+	}
+
+	fstate, err := sm.handleStateForks(ctx, base, height, ts.Height())
+	if err != nil {
+		return cid.Undef, err
+	}
+
+	r := store.NewChainRand(sm.cs, ts.Cids(), height)
+	vmi, err := vm.NewVM(fstate, height, r, actors.NetworkAddress, sm.cs.Blockstore(), sm.cs.VMSys())
+	if err != nil {
+		return cid.Undef, err
+	}
+
+	for i, msg := range msgs {
+		ret, err := vmi.ApplyMessage(ctx, msg)
+		if err != nil {
+			return cid.Undef, xerrors.Errorf("applying message %s: %w", msg.Cid(), err)
+		}
+		if ret.ExitCode != 0 {
+			log.Infof("compute state apply message %d failed (exit: %d): %s", i, ret.ExitCode, ret.ActorErr)
+		}
+	}
+
+	return vmi.Flush(ctx)
 }

@@ -116,5 +116,8 @@ func (s *Signature) UnmarshalCBOR(br io.Reader) error {
 }
 
 func (s *Signature) Equals(o *Signature) bool {
+	if s == nil || o == nil {
+		return s == o
+	}
 	return s.Type == o.Type && bytes.Equal(s.Data, o.Data)
 }
