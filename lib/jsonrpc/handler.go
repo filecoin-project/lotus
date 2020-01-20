@@ -99,7 +99,7 @@ func (h handlers) register(namespace string, r interface{}) {
 // Handle
 
 type rpcErrFunc func(w func(func(io.Writer)), req *request, code int, err error)
-type chanOut func(reflect.Value) interface{}
+type chanOut func(reflect.Value) (interface{}, error)
 
 func (h handlers) handleReader(ctx context.Context, r io.Reader, w io.Writer, rpcError rpcErrFunc) {
 	wf := func(cb func(io.Writer)) {
@@ -229,7 +229,14 @@ func (h handlers) handle(ctx context.Context, req request, w func(func(io.Writer
 			// channel messages before we send this response
 
 			//noinspection GoNilness // already checked above
-			resp.Result = chOut(callResult[handler.valOut])
+			resp.Result, err = chOut(callResult[handler.valOut])
+			if err != nil {
+				log.Warnf("failed to setup channel in RPC call to '%s': %+v", req.Method, err)
+				resp.Error = &respError{
+					Code:    1,
+					Message: err.(error).Error(),
+				}
+			}
 		}
 
 		if err := json.NewEncoder(w).Encode(resp); err != nil {

@@ -11,6 +11,7 @@ import (
 	"sync/atomic"
 
 	"github.com/gorilla/websocket"
+	"golang.org/x/xerrors"
 )
 
 const wsCancel = "xrpc.cancel"
@@ -134,25 +135,30 @@ func (c *wsConn) sendRequest(req request) {
 // (forwards channel messages to client)
 func (c *wsConn) handleOutChans() {
 	regV := reflect.ValueOf(c.registerCh)
+	exitV := reflect.ValueOf(c.exiting)
 
 	cases := []reflect.SelectCase{
 		{ // registration chan always 0
 			Dir:  reflect.SelectRecv,
 			Chan: regV,
 		},
+		{ // exit chan always 1
+			Dir:  reflect.SelectRecv,
+			Chan: exitV,
+		},
 	}
+	internal := len(cases)
 	var caseToID []uint64
 
 	for {
 		chosen, val, ok := reflect.Select(cases)
 
-		if chosen == 0 { // control channel
+		switch chosen {
+		case 0: // control channel
 			if !ok {
 				// control channel closed - signals closed connection
-				//
-				// We're not closing any channels as we're on receiving end.
-				// Also, context cancellation below should take care of any running
-				// requests
+				// This shouldn't happen, instead the exiting channel should get closed
+				log.Warn("control channel closed")
 				return
 			}
 
@@ -165,20 +171,31 @@ func (c *wsConn) handleOutChans() {
 			})
 
 			continue
+		case 1: // exiting channel
+			if !ok {
+				// exiting channel closed - signals closed connection
+				//
+				// We're not closing any channels as we're on receiving end.
+				// Also, context cancellation below should take care of any running
+				// requests
+				return
+			}
+			log.Warn("exiting channel received a message")
+			continue
 		}
 
 		if !ok {
 			// Output channel closed, cleanup, and tell remote that this happened
 
-			n := len(caseToID)
+			n := len(cases) - 1
 			if n > 0 {
 				cases[chosen] = cases[n]
-				caseToID[chosen-1] = caseToID[n-1]
+				caseToID[chosen-internal] = caseToID[n-internal]
 			}
 
-			id := caseToID[chosen-1]
+			id := caseToID[chosen-internal]
 			cases = cases[:n]
-			caseToID = caseToID[:n-1]
+			caseToID = caseToID[:n-internal]
 
 			c.sendRequest(request{
 				Jsonrpc: "2.0",
@@ -194,24 +211,27 @@ func (c *wsConn) handleOutChans() {
 			Jsonrpc: "2.0",
 			ID:      nil, // notification
 			Method:  chValue,
-			Params:  []param{{v: reflect.ValueOf(caseToID[chosen-1])}, {v: val}},
+			Params:  []param{{v: reflect.ValueOf(caseToID[chosen-internal])}, {v: val}},
 		})
 	}
 }
 
 // handleChanOut registers output channel for forwarding to client
-func (c *wsConn) handleChanOut(ch reflect.Value) interface{} {
+func (c *wsConn) handleChanOut(ch reflect.Value) (interface{}, error) {
 	c.spawnOutChanHandlerOnce.Do(func() {
 		go c.handleOutChans()
 	})
 	id := atomic.AddUint64(&c.chanCtr, 1)
 
-	c.registerCh <- outChanReg{
+	select {
+	case c.registerCh <- outChanReg{
 		id: id,
 		ch: ch,
+	}:
+		return id, nil
+	case <-c.exiting:
+		return nil, xerrors.New("connection closing")
 	}
-
-	return id
 }
 
 //                          //
@@ -389,7 +409,6 @@ func (c *wsConn) handleWsConn(ctx context.Context) {
 	c.chanHandlers = map[uint64]func(m []byte, ok bool){}
 
 	c.registerCh = make(chan outChanReg)
-	defer close(c.registerCh)
 	defer close(c.exiting)
 
 	// ////
