@@ -355,6 +355,22 @@ func syncHead(ctx context.Context, api api.FullNode, st *storage, ts *types.TipS
 		log.Infof("Sync stage done")
 	}
 
+	log.Infof("Get deals")
+
+	// TODO: incremental, gather expired
+	deals, err := api.StateMarketDeals(ctx, ts)
+	if err != nil {
+		log.Error(err)
+		return
+	}
+
+	log.Infof("Store deals")
+
+	if err := st.storeDeals(deals); err != nil {
+		log.Error(err)
+		return
+	}
+
 	log.Infof("Sync done")
 }
 
