@@ -4,6 +4,7 @@ import (
 	"context"
 	"encoding/json"
 	"fmt"
+	"os"
 	"strings"
 	"time"
 
@@ -26,6 +27,7 @@ var chainCmd = &cli.Command{
 		chainSetHeadCmd,
 		chainListCmd,
 		chainGetCmd,
+		chainExportCmd,
 	},
 }
 
@@ -386,8 +388,8 @@ func printTipSet(format string, ts *types.TipSet) {
 	fmt.Println(format)
 }
 
-func chainExportCmd = &cli.Command{
-	Name: "export",
+var chainExportCmd = &cli.Command{
+	Name:  "export",
 	Usage: "export chain to a car file",
 	Action: func(cctx *cli.Context) error {
 		api, closer, err := GetFullNodeAPI(cctx)
@@ -397,5 +399,33 @@ func chainExportCmd = &cli.Command{
 		defer closer()
 		ctx := ReqContext(cctx)
 
+		if !cctx.Args().Present() {
+			return fmt.Errorf("must specify filename to export chain to")
+		}
+
+		ts, err := parseTipSet(api, ctx, cctx.Args().Slice())
+		if err != nil {
+			return err
+		}
+
+		fi, err := os.Create(cctx.Args().First())
+		if err != nil {
+			return err
+		}
+		defer fi.Close()
+
+		stream, err := api.ChainExport(ctx, ts)
+		if err != nil {
+			return err
+		}
+
+		for b := range stream {
+			_, err := fi.Write(b)
+			if err != nil {
+				return err
+			}
+		}
+
+		return nil
 	},
 }

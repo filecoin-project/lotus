@@ -56,6 +56,7 @@ type FullNodeStruct struct {
 		ChainGetNode           func(ctx context.Context, p string) (interface{}, error)                             `perm:"read"`
 		ChainGetMessage        func(context.Context, cid.Cid) (*types.Message, error)                               `perm:"read"`
 		ChainGetPath           func(context.Context, types.TipSetKey, types.TipSetKey) ([]*store.HeadChange, error) `perm:"read"`
+		ChainExport            func(context.Context, *types.TipSet) (<-chan []byte, error)                          `perm:"read"`
 
 		SyncState          func(context.Context) (*api.SyncState, error)                `perm:"read"`
 		SyncSubmitBlock    func(ctx context.Context, blk *types.BlockMsg) error         `perm:"write"`
@@ -359,6 +360,10 @@ func (c *FullNodeStruct) ChainGetMessage(ctx context.Context, mc cid.Cid) (*type
 
 func (c *FullNodeStruct) ChainGetPath(ctx context.Context, from types.TipSetKey, to types.TipSetKey) ([]*store.HeadChange, error) {
 	return c.Internal.ChainGetPath(ctx, from, to)
+}
+
+func (c *FullNodeStruct) ChainExport(ctx context.Context, ts *types.TipSet) (<-chan []byte, error) {
+	return c.Internal.ChainExport(ctx, ts)
 }
 
 func (c *FullNodeStruct) SyncState(ctx context.Context) (*api.SyncState, error) {

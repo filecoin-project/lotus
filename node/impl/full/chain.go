@@ -3,6 +3,7 @@ package full
 import (
 	"context"
 	"fmt"
+	"io"
 	"strconv"
 	"strings"
 
@@ -18,6 +19,7 @@ import (
 	"github.com/ipfs/go-path"
 	"github.com/ipfs/go-path/resolver"
 	mh "github.com/multiformats/go-multihash"
+	"github.com/prometheus/common/log"
 	"go.uber.org/fx"
 	"golang.org/x/xerrors"
 
@@ -311,4 +313,35 @@ func (a *ChainAPI) ChainGetMessage(ctx context.Context, mc cid.Cid) (*types.Mess
 	}
 
 	return cm.VMMessage(), nil
+}
+
+func (a *ChainAPI) ChainExport(ctx context.Context, ts *types.TipSet) (<-chan []byte, error) {
+	r, w := io.Pipe()
+	out := make(chan []byte)
+	go func() {
+		defer close(out)
+		if err := a.Chain.Export(ctx, ts, w); err != nil {
+			log.Errorf("chain export call failed: %s", err)
+			return
+		}
+	}()
+
+	go func() {
+		defer r.Close()
+		for {
+			buf := make([]byte, 4096)
+			n, err := r.Read(buf)
+			if err != nil {
+				log.Errorf("chain export pipe read failed: %s", err)
+				return
+			}
+			select {
+			case out <- buf[:n]:
+			case <-ctx.Done():
+				log.Warnf("export writer failed: %s", ctx.Done())
+			}
+		}
+	}()
+
+	return out, nil
 }
