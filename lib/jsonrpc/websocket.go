@@ -388,7 +388,8 @@ func (c *wsConn) handleWsConn(ctx context.Context) {
 	c.handling = map[int64]context.CancelFunc{}
 	c.chanHandlers = map[uint64]func(m []byte, ok bool){}
 
-	c.registerCh = make(chan outChanReg)
+	// multiple concurrent chan-kind-returned calls would cause a deadlock, set a buffer here
+	c.registerCh = make(chan outChanReg, 16)
 	defer close(c.registerCh)
 	defer close(c.exiting)
 
