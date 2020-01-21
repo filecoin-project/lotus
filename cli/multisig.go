@@ -108,7 +108,7 @@ var msigCreateCmd = &cli.Command{
 			Method:   actors.IAMethods.Exec,
 			Params:   enc,
 			GasPrice: types.NewInt(1),
-			GasLimit: types.NewInt(100000),
+			GasLimit: types.NewInt(1000000),
 			Value:    types.BigInt(filval),
 		}
 
