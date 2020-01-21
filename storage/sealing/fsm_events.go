@@ -97,7 +97,11 @@ func (evt SectorSeedReady) apply(state *SectorInfo) {
 }
 
 type SectorSealCommitFailed struct{ error }
+
 type SectorCommitFailed struct{ error }
+
+func (evt SectorCommitFailed) apply(*SectorInfo) {}
+
 type SectorCommitted struct {
 	message cid.Cid
 	proof   []byte
