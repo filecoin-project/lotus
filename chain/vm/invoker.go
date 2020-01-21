@@ -161,6 +161,10 @@ func DecodeParams(b []byte, out interface{}) error {
 }
 
 func DumpActorState(code cid.Cid, b []byte) (interface{}, error) {
+	if code == actors.AccountCodeCid { // Account code special case
+		return nil, nil
+	}
+
 	i := newInvoker() // TODO: register builtins in init block
 
 	typ, ok := i.builtInState[code]
