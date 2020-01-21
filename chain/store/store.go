@@ -948,6 +948,9 @@ func recurseLinks(bs blockstore.Blockstore, root cid.Cid, in []cid.Cid) ([]cid.C
 }
 
 func (cs *ChainStore) Export(ctx context.Context, ts *types.TipSet, w io.Writer) error {
+	if ts == nil {
+		ts = cs.GetHeaviestTipSet()
+	}
 	bsrv := blockservice.New(cs.bs, nil)
 	dserv := dag.NewDAGService(bsrv)
 	return car.WriteCarWithWalker(ctx, dserv, ts.Cids(), w, func(nd format.Node) ([]*format.Link, error) {
@@ -983,6 +986,20 @@ func (cs *ChainStore) Export(ctx context.Context, ts *types.TipSet, w io.Writer)
 
 		return out, nil
 	})
+}
+
+func (cs *ChainStore) Import(r io.Reader) (*types.TipSet, error) {
+	header, err := car.LoadCar(cs.Blockstore(), r)
+	if err != nil {
+		return nil, xerrors.Errorf("loadcar failed: %w", err)
+	}
+
+	root, err := cs.LoadTipSet(types.NewTipSetKey(header.Roots...))
+	if err != nil {
+		return nil, xerrors.Errorf("failed to load root tipset from chainfile: %w", err)
+	}
+
+	return root, nil
 }
 
 type chainRand struct {

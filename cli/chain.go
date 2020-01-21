@@ -391,6 +391,11 @@ func printTipSet(format string, ts *types.TipSet) {
 var chainExportCmd = &cli.Command{
 	Name:  "export",
 	Usage: "export chain to a car file",
+	Flags: []cli.Flag{
+		&cli.StringFlag{
+			Name: "tipset",
+		},
+	},
 	Action: func(cctx *cli.Context) error {
 		api, closer, err := GetFullNodeAPI(cctx)
 		if err != nil {
@@ -403,16 +408,16 @@ var chainExportCmd = &cli.Command{
 			return fmt.Errorf("must specify filename to export chain to")
 		}
 
-		ts, err := parseTipSet(api, ctx, cctx.Args().Slice())
-		if err != nil {
-			return err
-		}
-
 		fi, err := os.Create(cctx.Args().First())
 		if err != nil {
 			return err
 		}
 		defer fi.Close()
+
+		ts, err := loadTipSet(ctx, cctx, api)
+		if err != nil {
+			return err
+		}
 
 		stream, err := api.ChainExport(ctx, ts)
 		if err != nil {

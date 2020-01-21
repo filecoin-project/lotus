@@ -319,7 +319,7 @@ func (a *ChainAPI) ChainExport(ctx context.Context, ts *types.TipSet) (<-chan []
 	r, w := io.Pipe()
 	out := make(chan []byte)
 	go func() {
-		defer close(out)
+		defer w.Close()
 		if err := a.Chain.Export(ctx, ts, w); err != nil {
 			log.Errorf("chain export call failed: %s", err)
 			return
@@ -327,7 +327,7 @@ func (a *ChainAPI) ChainExport(ctx context.Context, ts *types.TipSet) (<-chan []
 	}()
 
 	go func() {
-		defer r.Close()
+		defer close(out)
 		for {
 			buf := make([]byte, 4096)
 			n, err := r.Read(buf)
@@ -338,7 +338,7 @@ func (a *ChainAPI) ChainExport(ctx context.Context, ts *types.TipSet) (<-chan []
 			select {
 			case out <- buf[:n]:
 			case <-ctx.Done():
-				log.Warnf("export writer failed: %s", ctx.Done())
+				log.Warnf("export writer failed: %s", ctx.Err())
 			}
 		}
 	}()
