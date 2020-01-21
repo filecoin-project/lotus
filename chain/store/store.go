@@ -1,10 +1,12 @@
 package store
 
 import (
+	"bytes"
 	"context"
 	"crypto/sha256"
 	"encoding/binary"
 	"encoding/json"
+	"io"
 	"sync"
 
 	"github.com/filecoin-project/go-address"
@@ -19,11 +21,16 @@ import (
 
 	lru "github.com/hashicorp/golang-lru"
 	block "github.com/ipfs/go-block-format"
+	"github.com/ipfs/go-blockservice"
+	car "github.com/ipfs/go-car"
 	"github.com/ipfs/go-cid"
 	dstore "github.com/ipfs/go-datastore"
 	hamt "github.com/ipfs/go-hamt-ipld"
+	blockstore "github.com/ipfs/go-ipfs-blockstore"
 	bstore "github.com/ipfs/go-ipfs-blockstore"
+	format "github.com/ipfs/go-ipld-format"
 	logging "github.com/ipfs/go-log/v2"
+	dag "github.com/ipfs/go-merkledag"
 	cbg "github.com/whyrusleeping/cbor-gen"
 	pubsub "github.com/whyrusleeping/pubsub"
 	"golang.org/x/xerrors"
@@ -915,6 +922,84 @@ func (cs *ChainStore) GetTipsetByHeight(ctx context.Context, h uint64, ts *types
 
 		ts = pts
 	}
+}
+
+func recurseLinks(bs blockstore.Blockstore, root cid.Cid, in []cid.Cid) ([]cid.Cid, error) {
+	data, err := bs.Get(root)
+	if err != nil {
+		return nil, err
+	}
+
+	top, err := cbg.ScanForLinks(bytes.NewReader(data.RawData()))
+	if err != nil {
+		return nil, err
+	}
+
+	in = append(in, top...)
+	for _, c := range top {
+		var err error
+		in, err = recurseLinks(bs, c, in)
+		if err != nil {
+			return nil, err
+		}
+	}
+
+	return in, nil
+}
+
+func (cs *ChainStore) Export(ctx context.Context, ts *types.TipSet, w io.Writer) error {
+	if ts == nil {
+		ts = cs.GetHeaviestTipSet()
+	}
+	bsrv := blockservice.New(cs.bs, nil)
+	dserv := dag.NewDAGService(bsrv)
+	return car.WriteCarWithWalker(ctx, dserv, ts.Cids(), w, func(nd format.Node) ([]*format.Link, error) {
+		var b types.BlockHeader
+		if err := b.UnmarshalCBOR(bytes.NewBuffer(nd.RawData())); err != nil {
+			return nil, err
+		}
+
+		var out []*format.Link
+		for _, p := range b.Parents {
+			out = append(out, &format.Link{Cid: p})
+		}
+
+		cids, err := recurseLinks(cs.bs, b.Messages, nil)
+		if err != nil {
+			return nil, err
+		}
+
+		for _, c := range cids {
+			out = append(out, &format.Link{Cid: c})
+		}
+
+		if b.Height == 0 {
+			cids, err := recurseLinks(cs.bs, b.ParentStateRoot, nil)
+			if err != nil {
+				return nil, err
+			}
+
+			for _, c := range cids {
+				out = append(out, &format.Link{Cid: c})
+			}
+		}
+
+		return out, nil
+	})
+}
+
+func (cs *ChainStore) Import(r io.Reader) (*types.TipSet, error) {
+	header, err := car.LoadCar(cs.Blockstore(), r)
+	if err != nil {
+		return nil, xerrors.Errorf("loadcar failed: %w", err)
+	}
+
+	root, err := cs.LoadTipSet(types.NewTipSetKey(header.Roots...))
+	if err != nil {
+		return nil, xerrors.Errorf("failed to load root tipset from chainfile: %w", err)
+	}
+
+	return root, nil
 }
 
 type chainRand struct {
