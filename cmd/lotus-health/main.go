@@ -135,14 +135,14 @@ func checkWindow(ch chan CidWindow, t int) bool {
 		windowLen := len(window)
 		if windowLen >= t {
 		cidWindow:
-			for i, cids := range window {
+			for i := range window {
 				next := windowLen - 1 - i
 				// if array length is different, head is changing
 				if next >= 1 && len(window[next]) != len(window[next-1]) {
 					break cidWindow
 				}
 				// if cids are different, head is changing
-				for j := range cids {
+				for j := range window[next] {
 					if next >= 1 && window[next][j] != window[next-1][j] {
 						break cidWindow
 					}
