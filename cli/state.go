@@ -535,6 +535,10 @@ var stateListMessagesCmd = &cli.Command{
 			Name:  "toheight",
 			Usage: "don't look before given block height",
 		},
+		&cli.BoolFlag{
+			Name:  "cids",
+			Usage: "print message CIDs instead of messages",
+		},
 	},
 	Action: func(cctx *cli.Context) error {
 		api, closer, err := GetFullNodeAPI(cctx)
@@ -575,6 +579,11 @@ var stateListMessagesCmd = &cli.Command{
 		}
 
 		for _, c := range msgs {
+			if cctx.Bool("cids") {
+				fmt.Println(c.String())
+				continue
+			}
+
 			m, err := api.ChainGetMessage(ctx, c)
 			if err != nil {
 				return err
