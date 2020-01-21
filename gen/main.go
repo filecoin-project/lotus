@@ -122,7 +122,7 @@ func main() {
 		os.Exit(1)
 	}
 
-	err = gen.WriteMapEncodersToFile("./storage/sectors/cbor_gen.go", "sectors",
+	err = gen.WriteMapEncodersToFile("./storage/sealing/cbor_gen.go", "sealing",
 		sealing.SealTicket{},
 		sealing.SealSeed{},
 		sealing.Piece{},

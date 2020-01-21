@@ -66,61 +66,54 @@ func (t *TestState) UnmarshalCBOR(r io.Reader) error {
 		return fmt.Errorf("cbor input should be of type map")
 	}
 
-	if extra != 2 {
-		return fmt.Errorf("cbor input had wrong number of fields")
+	if extra > cbg.MaxLength {
+		return fmt.Errorf("TestState: map struct too large (%d)", extra)
 	}
 
 	var name string
+	n := extra
 
-	// t.A (uint64) (uint64)
+	for i := uint64(0); i < n; i++ {
 
-	{
-		sval, err := cbg.ReadString(br)
-		if err != nil {
-			return err
+		{
+			sval, err := cbg.ReadString(br)
+			if err != nil {
+				return err
+			}
+
+			name = string(sval)
 		}
 
-		name = string(sval)
-	}
+		switch name {
+		// t.A (uint64) (uint64)
+		case "A":
 
-	if name != "A" {
-		return fmt.Errorf("expected struct map entry %s to be A", name)
-	}
+			maj, extra, err = cbg.CborReadHeader(br)
+			if err != nil {
+				return err
+			}
+			if maj != cbg.MajUnsignedInt {
+				return fmt.Errorf("wrong type for uint64 field")
+			}
+			t.A = uint64(extra)
+			// t.B (uint64) (uint64)
+		case "B":
 
-	maj, extra, err = cbg.CborReadHeader(br)
-	if err != nil {
-		return err
-	}
-	if maj != cbg.MajUnsignedInt {
-		return fmt.Errorf("wrong type for uint64 field")
-	}
-	t.A = uint64(extra)
-	// t.B (uint64) (uint64)
+			maj, extra, err = cbg.CborReadHeader(br)
+			if err != nil {
+				return err
+			}
+			if maj != cbg.MajUnsignedInt {
+				return fmt.Errorf("wrong type for uint64 field")
+			}
+			t.B = uint64(extra)
 
-	{
-		sval, err := cbg.ReadString(br)
-		if err != nil {
-			return err
+		default:
 		}
-
-		name = string(sval)
 	}
 
-	if name != "B" {
-		return fmt.Errorf("expected struct map entry %s to be B", name)
-	}
-
-	maj, extra, err = cbg.CborReadHeader(br)
-	if err != nil {
-		return err
-	}
-	if maj != cbg.MajUnsignedInt {
-		return fmt.Errorf("wrong type for uint64 field")
-	}
-	t.B = uint64(extra)
 	return nil
 }
-
 func (t *TestEvent) MarshalCBOR(w io.Writer) error {
 	if t == nil {
 		_, err := w.Write(cbg.CborNull)
@@ -182,57 +175,51 @@ func (t *TestEvent) UnmarshalCBOR(r io.Reader) error {
 		return fmt.Errorf("cbor input should be of type map")
 	}
 
-	if extra != 2 {
-		return fmt.Errorf("cbor input had wrong number of fields")
+	if extra > cbg.MaxLength {
+		return fmt.Errorf("TestEvent: map struct too large (%d)", extra)
 	}
 
 	var name string
+	n := extra
 
-	// t.A (string) (string)
+	for i := uint64(0); i < n; i++ {
 
-	{
-		sval, err := cbg.ReadString(br)
-		if err != nil {
-			return err
+		{
+			sval, err := cbg.ReadString(br)
+			if err != nil {
+				return err
+			}
+
+			name = string(sval)
 		}
 
-		name = string(sval)
-	}
+		switch name {
+		// t.A (string) (string)
+		case "A":
 
-	if name != "A" {
-		return fmt.Errorf("expected struct map entry %s to be A", name)
-	}
+			{
+				sval, err := cbg.ReadString(br)
+				if err != nil {
+					return err
+				}
 
-	{
-		sval, err := cbg.ReadString(br)
-		if err != nil {
-			return err
+				t.A = string(sval)
+			}
+			// t.Val (uint64) (uint64)
+		case "Val":
+
+			maj, extra, err = cbg.CborReadHeader(br)
+			if err != nil {
+				return err
+			}
+			if maj != cbg.MajUnsignedInt {
+				return fmt.Errorf("wrong type for uint64 field")
+			}
+			t.Val = uint64(extra)
+
+		default:
 		}
-
-		t.A = string(sval)
-	}
-	// t.Val (uint64) (uint64)
-
-	{
-		sval, err := cbg.ReadString(br)
-		if err != nil {
-			return err
-		}
-
-		name = string(sval)
 	}
 
-	if name != "Val" {
-		return fmt.Errorf("expected struct map entry %s to be Val", name)
-	}
-
-	maj, extra, err = cbg.CborReadHeader(br)
-	if err != nil {
-		return err
-	}
-	if maj != cbg.MajUnsignedInt {
-		return fmt.Errorf("wrong type for uint64 field")
-	}
-	t.Val = uint64(extra)
 	return nil
 }
