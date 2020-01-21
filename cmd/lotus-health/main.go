@@ -111,7 +111,7 @@ var watchHeadCmd = &cli.Command{
 		}()
 
 		for {
-			ok := checkWindow(ch, int(interval))
+			ok := checkWindow(ch, threshold)
 			if !ok {
 				log.Warn("chain head has not updated. Restarting systemd service")
 				aCh <- nil
@@ -161,9 +161,9 @@ func checkWindow(ch chan CidWindow, t int) bool {
 }
 
 /*
- * reads channel of slices of slices of Cids
- * compares Cids when len of window is greater or equal to `t` - threshold
- * if all slices are the equal, head has not updated and returns false
+ * get chain head from API
+ * returns a slice of slices of Cids
+ * len of slice <= `t` - threshold
  */
 func updateWindow(ctx context.Context, a api.FullNode, w CidWindow, t int, ch chan CidWindow) (CidWindow, error) {
 	head, err := a.ChainHead(ctx)
