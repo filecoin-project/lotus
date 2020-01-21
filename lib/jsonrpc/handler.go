@@ -99,7 +99,7 @@ func (h handlers) register(namespace string, r interface{}) {
 // Handle
 
 type rpcErrFunc func(w func(func(io.Writer)), req *request, code int, err error)
-type chanOut func(reflect.Value) interface{}
+type chanOut func(reflect.Value, int64) error
 
 func (h handlers) handleReader(ctx context.Context, r io.Reader, w io.Writer, rpcError rpcErrFunc) {
 	wf := func(cb func(io.Writer)) {
@@ -222,16 +222,25 @@ func (h handlers) handle(ctx context.Context, req request, w func(func(io.Writer
 	if handler.valOut != -1 {
 		resp.Result = callResult[handler.valOut].Interface()
 	}
+	if resp.Result != nil && reflect.TypeOf(resp.Result).Kind() == reflect.Chan {
+		// Channel responses are sent from channel control goroutine.
+		// Sending responses here could cause deadlocks on writeLk, or allow
+		// sending channel messages before this rpc call returns
 
-	w(func(w io.Writer) {
-		if resp.Result != nil && reflect.TypeOf(resp.Result).Kind() == reflect.Chan {
-			// this must happen in the writer callback, otherwise we may start sending
-			// channel messages before we send this response
-
-			//noinspection GoNilness // already checked above
-			resp.Result = chOut(callResult[handler.valOut])
+		//noinspection GoNilness // already checked above
+		err = chOut(callResult[handler.valOut], *req.ID)
+		if err == nil {
+			return // channel goroutine handles responding
 		}
 
+		log.Warnf("failed to setup channel in RPC call to '%s': %+v", req.Method, err)
+		resp.Error = &respError{
+			Code:    1,
+			Message: err.(error).Error(),
+		}
+	}
+
+	w(func(w io.Writer) {
 		if err := json.NewEncoder(w).Encode(resp); err != nil {
 			log.Error(err)
 			return
