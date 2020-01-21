@@ -123,6 +123,7 @@ func (t *SealTicket) UnmarshalCBOR(r io.Reader) error {
 			}
 
 		default:
+			return fmt.Errorf("unknown struct field %d: '%s'", i, name)
 		}
 	}
 
@@ -239,6 +240,7 @@ func (t *SealSeed) UnmarshalCBOR(r io.Reader) error {
 			}
 
 		default:
+			return fmt.Errorf("unknown struct field %d: '%s'", i, name)
 		}
 	}
 
@@ -382,6 +384,7 @@ func (t *Piece) UnmarshalCBOR(r io.Reader) error {
 			}
 
 		default:
+			return fmt.Errorf("unknown struct field %d: '%s'", i, name)
 		}
 	}
 
@@ -914,6 +917,7 @@ func (t *SectorInfo) UnmarshalCBOR(r io.Reader) error {
 			}
 
 		default:
+			return fmt.Errorf("unknown struct field %d: '%s'", i, name)
 		}
 	}
 
