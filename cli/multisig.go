@@ -137,7 +137,7 @@ var msigCreateCmd = &cli.Command{
 		}
 
 		fmt.Println("Created new multisig: ", msigaddr.String())
-		// TODO: maybe register this somewhereg
+		// TODO: maybe register this somewhere
 		return nil
 	},
 }
