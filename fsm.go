@@ -236,6 +236,10 @@ func planOne(ts ...func() (mut mutator, next api.SectorState)) func(events []sta
 				continue
 			}
 
+			if err, iserr := events[0].User.(error); iserr {
+				log.Warnf("sector %d got error event %T: %+v", state.SectorID, events[0].User, err)
+			}
+
 			events[0].User.(mutator).apply(state)
 			state.State = next
 			return nil
