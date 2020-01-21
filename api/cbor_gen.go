@@ -181,6 +181,7 @@ func (t *PaymentInfo) UnmarshalCBOR(r io.Reader) error {
 			}
 
 		default:
+			return fmt.Errorf("unknown struct field %d: '%s'", i, name)
 		}
 	}
 
@@ -310,6 +311,7 @@ func (t *SealedRef) UnmarshalCBOR(r io.Reader) error {
 			t.Size = uint64(extra)
 
 		default:
+			return fmt.Errorf("unknown struct field %d: '%s'", i, name)
 		}
 	}
 
@@ -410,6 +412,7 @@ func (t *SealedRefs) UnmarshalCBOR(r io.Reader) error {
 			}
 
 		default:
+			return fmt.Errorf("unknown struct field %d: '%s'", i, name)
 		}
 	}
 

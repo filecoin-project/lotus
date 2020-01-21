@@ -109,6 +109,7 @@ func (t *TestState) UnmarshalCBOR(r io.Reader) error {
 			t.B = uint64(extra)
 
 		default:
+			return fmt.Errorf("unknown struct field %d: '%s'", i, name)
 		}
 	}
 
@@ -218,6 +219,7 @@ func (t *TestEvent) UnmarshalCBOR(r io.Reader) error {
 			t.Val = uint64(extra)
 
 		default:
+			return fmt.Errorf("unknown struct field %d: '%s'", i, name)
 		}
 	}
 
