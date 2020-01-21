@@ -66,6 +66,10 @@ var DaemonCmd = &cli.Command{
 			Name:  "import-chain",
 			Usage: "on first run, load chain from given file",
 		},
+		&cli.BoolFlag{
+			Name:  "halt-after-import",
+			Usage: "halt the process after importing chain from file",
+		},
 	},
 	Action: func(cctx *cli.Context) error {
 		ctx := context.Background()
@@ -95,6 +99,9 @@ var DaemonCmd = &cli.Command{
 		if chainfile != "" {
 			if err := ImportChain(r, chainfile); err != nil {
 				return err
+			}
+			if cctx.Bool("halt-after-import") {
+				return nil
 			}
 		}
 
