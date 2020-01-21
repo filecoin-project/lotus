@@ -202,6 +202,7 @@ var Commands = []*cli.Command{
 	clientCmd,
 	fetchParamCmd,
 	mpoolCmd,
+	multisigCmd,
 	netCmd,
 	paychCmd,
 	sendCmd,
