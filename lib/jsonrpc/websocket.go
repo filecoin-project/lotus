@@ -34,8 +34,10 @@ type frame struct {
 }
 
 type outChanReg struct {
-	id uint64
-	ch reflect.Value
+	reqID int64
+
+	chID uint64
+	ch   reflect.Value
 }
 
 type wsConn struct {
@@ -154,7 +156,7 @@ func (c *wsConn) handleOutChans() {
 		chosen, val, ok := reflect.Select(cases)
 
 		switch chosen {
-		case 0: // control channel
+		case 0: // registration channel
 			if !ok {
 				// control channel closed - signals closed connection
 				// This shouldn't happen, instead the exiting channel should get closed
@@ -164,10 +166,23 @@ func (c *wsConn) handleOutChans() {
 
 			registration := val.Interface().(outChanReg)
 
-			caseToID = append(caseToID, registration.id)
+			caseToID = append(caseToID, registration.chID)
 			cases = append(cases, reflect.SelectCase{
 				Dir:  reflect.SelectRecv,
 				Chan: registration.ch,
+			})
+
+			c.nextWriter(func(w io.Writer) {
+				resp := &response{
+					Jsonrpc: "2.0",
+					ID:      registration.reqID,
+					Result:  registration.chID,
+				}
+
+				if err := json.NewEncoder(w).Encode(resp); err != nil {
+					log.Error(err)
+					return
+				}
 			})
 
 			continue
@@ -217,7 +232,7 @@ func (c *wsConn) handleOutChans() {
 }
 
 // handleChanOut registers output channel for forwarding to client
-func (c *wsConn) handleChanOut(ch reflect.Value) (interface{}, error) {
+func (c *wsConn) handleChanOut(ch reflect.Value, req int64) error {
 	c.spawnOutChanHandlerOnce.Do(func() {
 		go c.handleOutChans()
 	})
@@ -225,12 +240,14 @@ func (c *wsConn) handleChanOut(ch reflect.Value) (interface{}, error) {
 
 	select {
 	case c.registerCh <- outChanReg{
-		id: id,
-		ch: ch,
+		reqID: req,
+
+		chID: id,
+		ch:   ch,
 	}:
-		return id, nil
+		return nil
 	case <-c.exiting:
-		return nil, xerrors.New("connection closing")
+		return xerrors.New("connection closing")
 	}
 }
 
