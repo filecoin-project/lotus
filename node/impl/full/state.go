@@ -108,7 +108,7 @@ func (a *StateAPI) StatePledgeCollateral(ctx context.Context, ts *types.TipSet) 
 	return types.BigFromBytes(ret.Return), nil
 }
 
-func (a *StateAPI) StateCall(ctx context.Context, msg *types.Message, ts *types.TipSet) (*types.MessageReceipt, error) {
+func (a *StateAPI) StateCall(ctx context.Context, msg *types.Message, ts *types.TipSet) (*api.MethodCall, error) {
 	return a.StateManager.Call(ctx, msg, ts)
 }
 

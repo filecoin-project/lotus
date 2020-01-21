@@ -174,6 +174,10 @@ var chainGetMsgCmd = &cli.Command{
 	Name:  "getmessage",
 	Usage: "Get and print a message by its cid",
 	Action: func(cctx *cli.Context) error {
+		if !cctx.Args().Present() {
+			return fmt.Errorf("must pass a cid of a message to get")
+		}
+
 		api, closer, err := GetFullNodeAPI(cctx)
 		if err != nil {
 			return err
