@@ -95,11 +95,12 @@ func (m *Miner) Run(ctx context.Context) error {
 		worker: m.worker,
 	}
 
-	go fps.run(ctx)
-
 	evts := events.NewEvents(ctx, m.api)
 	m.sealing = sealing.New(m.api, evts, m.maddr, m.worker, m.ds, m.sb, m.tktFn)
 
+	// if this happens before events.NewEvents, two concurrent ChianNotify calls are likely to block each other
+	// try to fix https://github.com/filecoin-project/lotus/issues/1126
+	go fps.run(ctx)
 	go m.sealing.Run(ctx)
 
 	return nil
