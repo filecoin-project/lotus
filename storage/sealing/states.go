@@ -51,7 +51,7 @@ func (m *Sealing) handleUnsealed(ctx statemachine.Context, sector SectorInfo) er
 	log.Infow("performing sector replication...", "sector", sector.SectorID)
 	ticket, err := m.tktFn(ctx.Context())
 	if err != nil {
-		return err
+		return ctx.Send(SectorSealFailed{xerrors.Errorf("getting ticket failed: %w", err)})
 	}
 
 	rspco, err := m.sb.SealPreCommit(ctx.Context(), sector.SectorID, *ticket, sector.pieceInfos())
