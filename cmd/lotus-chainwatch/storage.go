@@ -84,6 +84,15 @@ create table if not exists blocks
 create unique index if not exists block_cid_uindex
 	on blocks (cid);
 
+create materialized view if not exists state_heights
+    as select distinct height, parentstateroot from blocks;
+
+create unique index if not exists state_heights_uindex
+	on state_heights (height);
+
+create index if not exists state_heights_height_index
+	on state_heights (parentstateroot);
+
 create table if not exists id_address_map
 (
 	id text not null,
@@ -118,6 +127,22 @@ create index if not exists id_address_map_address_index
 
 create index if not exists id_address_map_id_index
 	on id_address_map (id);
+
+create or replace function actor_tips(epoch bigint)
+    returns table (id text,
+                    code text,
+                    head text,
+                    nonce int,
+                    balance text,
+                    stateroot text,
+                    height bigint,
+                    parentstateroot text) as
+$body$
+    select distinct on (id) * from actors
+        inner join state_heights sh on sh.parentstateroot = stateroot
+        where height < $1
+		order by id, height desc;
+$body$ language sql;
 
 create table if not exists actor_states
 (
@@ -209,6 +234,31 @@ create table if not exists miner_heads
 	constraint miner_heads_pk
 		primary key (head, addr)
 );
+
+create or replace function miner_tips(epoch bigint)
+    returns table (head text,
+                   addr text,
+                   stateroot text,
+                   sectorset text,
+                   setsize decimal,
+                   provingset text,
+                   provingsize decimal,
+                   owner text,
+                   worker text,
+                   peerid text,
+                   sectorsize bigint,
+                   power decimal,
+                   active bool,
+                   ppe bigint,
+                   slashed_at bigint,
+                   height bigint,
+                   parentstateroot text) as
+    $body$
+        select distinct on (addr) * from miner_heads
+            inner join state_heights sh on sh.parentstateroot = stateroot
+            where height < $1
+            order by addr, height desc;
+    $body$ language sql;
 
 create table if not exists deals
 (
@@ -826,6 +876,14 @@ func (st *storage) storeDeals(deals map[string]actors.OnChainDeal) error {
 	}
 
 	if err := tx.Commit(); err != nil {
+		return err
+	}
+
+	return nil
+}
+
+func (st *storage) refreshViews() error {
+	if _, err := st.db.Exec(`refresh materialized view state_heights`); err != nil {
 		return err
 	}
 
