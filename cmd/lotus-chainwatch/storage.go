@@ -237,6 +237,21 @@ create index if not exists deals_pieceRef_index
 create index if not exists deals_provider_index
 	on deals (provider);
 
+create table if not exists deal_activations
+(
+	deal bigint not null
+		constraint deal_activations_deals_id_fk
+			references deals,
+	activation_epoch bigint not null,
+	constraint deal_activations_pk
+		primary key (deal)
+);
+
+create index if not exists deal_activations_activation_epoch_index
+	on deal_activations (activation_epoch);
+
+create unique index if not exists deal_activations_deal_uindex
+	on deal_activations (deal);
 `)
 	if err != nil {
 		return err
@@ -769,7 +784,52 @@ func (st *storage) storeDeals(deals map[string]actors.OnChainDeal) error {
 		return xerrors.Errorf("actor put: %w", err)
 	}
 
-	return tx.Commit()
+	if err := tx.Commit(); err != nil {
+		return err
+	}
+
+	// Activations
+
+	tx, err = st.db.Begin()
+	if err != nil {
+		return err
+	}
+
+	if _, err := tx.Exec(`
+		create temp table d (like deal_activations excluding constraints) on commit drop;
+	`); err != nil {
+		return xerrors.Errorf("prep temp: %w", err)
+	}
+
+	stmt, err = tx.Prepare(`copy d (deal, activation_epoch) from stdin `)
+	if err != nil {
+		return err
+	}
+
+	for id, deal := range deals {
+		if deal.ActivationEpoch == 0 {
+			continue
+		}
+		if _, err := stmt.Exec(
+			id,
+			deal.ActivationEpoch,
+		); err != nil {
+			return err
+		}
+	}
+	if err := stmt.Close(); err != nil {
+		return err
+	}
+
+	if _, err := tx.Exec(`insert into deal_activations select * from d on conflict do nothing `); err != nil {
+		return xerrors.Errorf("actor put: %w", err)
+	}
+
+	if err := tx.Commit(); err != nil {
+		return err
+	}
+
+	return nil
 }
 
 func (st *storage) close() error {
