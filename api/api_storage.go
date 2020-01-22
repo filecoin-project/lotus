@@ -45,7 +45,7 @@ const (
 	PreCommitFailed
 	SealCommitFailed
 	CommitFailed
-	_
+	PackingFailed
 	_
 	_
 	_

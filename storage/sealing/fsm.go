@@ -34,8 +34,10 @@ var fsmPlanners = []func(events []statemachine.Event, state *SectorInfo) error{
 	api.Unsealed: planOne(
 		on(SectorSealed{}, api.PreCommitting),
 		on(SectorSealFailed{}, api.SealFailed),
+		on(SectorPackingFailed{}, api.PackingFailed),
 	),
 	api.PreCommitting: planOne(
+		on(SectorSealFailed{}, api.SealFailed),
 		on(SectorPreCommitted{}, api.WaitSeed),
 		on(SectorPreCommitFailed{}, api.PreCommitFailed),
 	),
@@ -221,7 +223,7 @@ func planOne(ts ...func() (mut mutator, next api.SectorState)) func(events []sta
 	return func(events []statemachine.Event, state *SectorInfo) error {
 		if len(events) != 1 {
 			for _, event := range events {
-				if gm, ok := event.User.(globalMutator); !ok {
+				if gm, ok := event.User.(globalMutator); ok {
 					gm.applyGlobal(state)
 					return nil
 				}
@@ -229,7 +231,7 @@ func planOne(ts ...func() (mut mutator, next api.SectorState)) func(events []sta
 			return xerrors.Errorf("planner for state %s only has a plan for a single event only, got %+v", api.SectorStates[state.State], events)
 		}
 
-		if gm, ok := events[0].User.(globalMutator); !ok {
+		if gm, ok := events[0].User.(globalMutator); ok {
 			gm.applyGlobal(state)
 			return nil
 		}

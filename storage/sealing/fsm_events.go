@@ -60,6 +60,10 @@ func (evt SectorPacked) apply(state *SectorInfo) {
 	state.Pieces = append(state.Pieces, evt.pieces...)
 }
 
+type SectorPackingFailed struct{ error }
+
+func (evt SectorPackingFailed) apply(*SectorInfo) {}
+
 type SectorSealed struct {
 	commR  []byte
 	commD  []byte
