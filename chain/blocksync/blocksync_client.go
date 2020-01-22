@@ -18,9 +18,10 @@ import (
 	"go.opencensus.io/trace"
 	"golang.org/x/xerrors"
 
-	"github.com/filecoin-project/go-cbor-util"
+	cborutil "github.com/filecoin-project/go-cbor-util"
 	"github.com/filecoin-project/lotus/chain/store"
 	"github.com/filecoin-project/lotus/chain/types"
+	incrt "github.com/filecoin-project/lotus/lib/increadtimeout"
 	"github.com/filecoin-project/lotus/node/modules/dtypes"
 	"github.com/filecoin-project/lotus/peermgr"
 )
@@ -241,16 +242,19 @@ func (bs *BlockSync) sendRequestToPeer(ctx context.Context, p peer.ID, req *Bloc
 		bs.RemovePeer(p)
 		return nil, xerrors.Errorf("failed to open stream to peer: %w", err)
 	}
-	s.SetDeadline(time.Now().Add(10 * time.Second))
-	defer s.SetDeadline(time.Time{})
+	s.SetWriteDeadline(time.Now().Add(5 * time.Second))
 
 	if err := cborutil.WriteCborRPC(s, req); err != nil {
+		s.SetWriteDeadline(time.Time{})
 		bs.syncPeers.logFailure(p, time.Since(start))
 		return nil, err
 	}
+	s.SetWriteDeadline(time.Time{})
 
 	var res BlockSyncResponse
-	if err := cborutil.ReadCborRPC(bufio.NewReader(s), &res); err != nil {
+	r := incrt.New(s, 50<<10, 5*time.Second)
+
+	if err := cborutil.ReadCborRPC(bufio.NewReader(r), &res); err != nil {
 		bs.syncPeers.logFailure(p, time.Since(start))
 		return nil, err
 	}
