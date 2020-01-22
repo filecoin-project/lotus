@@ -8,13 +8,14 @@ import (
 	"go.opencensus.io/trace"
 	"golang.org/x/xerrors"
 
+	"github.com/filecoin-project/lotus/api"
 	"github.com/filecoin-project/lotus/chain/actors"
 	"github.com/filecoin-project/lotus/chain/store"
 	"github.com/filecoin-project/lotus/chain/types"
 	"github.com/filecoin-project/lotus/chain/vm"
 )
 
-func (sm *StateManager) CallRaw(ctx context.Context, msg *types.Message, bstate cid.Cid, r vm.Rand, bheight uint64) (*types.MessageReceipt, error) {
+func (sm *StateManager) CallRaw(ctx context.Context, msg *types.Message, bstate cid.Cid, r vm.Rand, bheight uint64) (*api.MethodCall, error) {
 	ctx, span := trace.StartSpan(ctx, "statemanager.CallRaw")
 	defer span.End()
 
@@ -54,14 +55,19 @@ func (sm *StateManager) CallRaw(ctx context.Context, msg *types.Message, bstate 
 		return nil, xerrors.Errorf("apply message failed: %w", err)
 	}
 
+	var errs string
 	if ret.ActorErr != nil {
+		errs = ret.ActorErr.Error()
 		log.Warnf("chain call failed: %s", ret.ActorErr)
 	}
-	return &ret.MessageReceipt, nil
+	return &api.MethodCall{
+		MessageReceipt: ret.MessageReceipt,
+		Error:          errs,
+	}, nil
 
 }
 
-func (sm *StateManager) Call(ctx context.Context, msg *types.Message, ts *types.TipSet) (*types.MessageReceipt, error) {
+func (sm *StateManager) Call(ctx context.Context, msg *types.Message, ts *types.TipSet) (*api.MethodCall, error) {
 	if ts == nil {
 		ts = sm.cs.GetHeaviestTipSet()
 	}

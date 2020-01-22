@@ -375,5 +375,51 @@ func TestChan(t *testing.T) {
 	serverHandler.wait <- struct{}{}
 	_, ok = <-sub
 	require.Equal(t, false, ok)
+}
 
+func TestControlChanDeadlock(t *testing.T) {
+	for r := 0; r < 20; r++ {
+		testControlChanDeadlock(t)
+	}
+}
+
+func testControlChanDeadlock(t *testing.T) {
+	var client struct {
+		Sub func(context.Context, int, int) (<-chan int, error)
+	}
+
+	n := 5000
+
+	serverHandler := &ChanHandler{
+		wait: make(chan struct{}, n),
+	}
+
+	rpcServer := NewServer()
+	rpcServer.Register("ChanHandler", serverHandler)
+
+	testServ := httptest.NewServer(rpcServer)
+	defer testServ.Close()
+
+	closer, err := NewClient("ws://"+testServ.Listener.Addr().String(), "ChanHandler", &client, nil)
+	require.NoError(t, err)
+
+	defer closer()
+
+	for i := 0; i < n; i++ {
+		serverHandler.wait <- struct{}{}
+	}
+
+	ctx, _ := context.WithCancel(context.Background())
+
+	sub, err := client.Sub(ctx, 1, -1)
+	require.NoError(t, err)
+
+	go func() {
+		for i := 0; i < n; i++ {
+			require.Equal(t, i+1, <-sub)
+		}
+	}()
+
+	_, err = client.Sub(ctx, 2, -1)
+	require.NoError(t, err)
 }
