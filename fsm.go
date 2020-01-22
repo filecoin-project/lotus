@@ -229,6 +229,11 @@ func planOne(ts ...func() (mut mutator, next api.SectorState)) func(events []sta
 			return xerrors.Errorf("planner for state %s only has a plan for a single event only, got %+v", api.SectorStates[state.State], events)
 		}
 
+		if gm, ok := events[0].User.(globalMutator); !ok {
+			gm.applyGlobal(state)
+			return nil
+		}
+
 		for _, t := range ts {
 			mut, next := t()
 
@@ -245,6 +250,6 @@ func planOne(ts ...func() (mut mutator, next api.SectorState)) func(events []sta
 			return nil
 		}
 
-		return xerrors.Errorf("planner for state %s received unexpected event %+v", api.SectorStates[state.State], events[0])
+		return xerrors.Errorf("planner for state %s received unexpected event %T (%+v)", api.SectorStates[state.State], events[0].User, events[0])
 	}
 }
