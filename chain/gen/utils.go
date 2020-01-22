@@ -381,7 +381,7 @@ func SetupStorageMiners(ctx context.Context, cs *store.ChainStore, sroot cid.Cid
 	return c, deals, err
 }
 
-func reassignMinerActorAddress(vm *vm.VM, cst *hamt.CborIpldStore, from, to address.Address) error {
+func reassignMinerActorAddress(vm *vm.VM, cst hamt.CborIpldStore, from, to address.Address) error {
 	if from == to {
 		return nil
 	}
@@ -406,7 +406,7 @@ func reassignMinerActorAddress(vm *vm.VM, cst *hamt.CborIpldStore, from, to addr
 	return initActorReassign(vm, cst, from, to)
 }
 
-func adjustStorageMarketTracking(vm *vm.VM, cst *hamt.CborIpldStore, from, to address.Address) error {
+func adjustStorageMarketTracking(vm *vm.VM, cst hamt.CborIpldStore, from, to address.Address) error {
 	ctx := context.TODO()
 	act, err := vm.StateTree().GetActor(actors.StoragePowerAddress)
 	if err != nil {
@@ -451,7 +451,7 @@ func adjustStorageMarketTracking(vm *vm.VM, cst *hamt.CborIpldStore, from, to ad
 	return nil
 }
 
-func initActorReassign(vm *vm.VM, cst *hamt.CborIpldStore, from, to address.Address) error {
+func initActorReassign(vm *vm.VM, cst hamt.CborIpldStore, from, to address.Address) error {
 	ctx := context.TODO()
 	initact, err := vm.StateTree().GetActor(actors.InitAddress)
 	if err != nil {

@@ -2,6 +2,7 @@ package types
 
 import (
 	"context"
+
 	"github.com/filecoin-project/go-sectorbuilder"
 
 	"github.com/filecoin-project/go-address"
@@ -31,7 +32,7 @@ type StateTree interface {
 type VMContext interface {
 	Message() *Message
 	Origin() address.Address
-	Ipld() *hamt.CborIpldStore
+	Ipld() hamt.CborIpldStore
 	Send(to address.Address, method uint64, value BigInt, params []byte) ([]byte, aerrors.ActorError)
 	BlockHeight() uint64
 	GasUsed() BigInt

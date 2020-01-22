@@ -243,6 +243,8 @@ github.com/ipfs/go-graphsync v0.0.4 h1:iF98+J8pcqvEb48IM0TemqeGARsCDtwQ73P9ejMZI
 github.com/ipfs/go-graphsync v0.0.4/go.mod h1:6UACBjfOXEa8rQL3Q/JpZpWS0nZDCLx134WUkjrmFpQ=
 github.com/ipfs/go-hamt-ipld v0.0.14-0.20191218031521-b2c774a54db1 h1:0xpCaaXvN8bPyws3ObiCn7G0KIfgbS9E132eL57dHx8=
 github.com/ipfs/go-hamt-ipld v0.0.14-0.20191218031521-b2c774a54db1/go.mod h1:8yRx0xLUps1Xq8ZDnIwIVdQRp7JjA55gGvCiRHT91Vk=
+github.com/ipfs/go-hamt-ipld v0.0.14 h1:yNMDYacEGKg9UYZ1AmHjbetiKLMQQZRVHF8EW+2+O5w=
+github.com/ipfs/go-hamt-ipld v0.0.14/go.mod h1:9qtwSG3ADoN1lo0Y+1+nsIY7aovJ1BP8g2P++igXuPo=
 github.com/ipfs/go-ipfs-blockstore v0.0.1/go.mod h1:d3WClOmRQKFnJ0Jz/jj/zmksX0ma1gROTlovZKBmN08=
 github.com/ipfs/go-ipfs-blockstore v0.1.0/go.mod h1:5aD0AvHPi7mZc6Ci1WCAhiBQu2IsfTduLl+422H6Rqw=
 github.com/ipfs/go-ipfs-blockstore v0.1.1 h1:+PAFREAlSxLs9IEtrRcnJ/DqWkGlDa+l547WFZnohNw=

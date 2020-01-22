@@ -170,7 +170,7 @@ func (a *StateAPI) StateReadState(ctx context.Context, act *types.Actor, ts *typ
 		return nil, err
 	}
 
-	blk, err := state.Store.Blocks.GetBlock(ctx, act.Head)
+	blk, err := state.Store.(*hamt.BasicCborIpldStore).Blocks.GetBlock(ctx, act.Head)
 	if err != nil {
 		return nil, err
 	}
