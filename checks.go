@@ -10,7 +10,7 @@ import (
 	"github.com/filecoin-project/lotus/chain/types"
 )
 
-func checkPieces(ctx context.Context, si *SectorInfo, api sealingApi) error {
+func checkPieces(ctx context.Context, si SectorInfo, api sealingApi) error {
 	for i, piece := range si.Pieces {
 		deal, err := api.StateMarketStorageDeal(ctx, piece.DealID, nil)
 		if err != nil {
@@ -29,7 +29,7 @@ func checkPieces(ctx context.Context, si *SectorInfo, api sealingApi) error {
 	return nil
 }
 
-func checkSeal(ctx context.Context, maddr address.Address, si *SectorInfo, api sealingApi) (err error) {
+func checkSeal(ctx context.Context, maddr address.Address, si SectorInfo, api sealingApi) (err error) {
 	ssize, err := api.StateMinerSectorSize(ctx, maddr, nil)
 	if err != nil {
 		return err
@@ -45,7 +45,7 @@ func checkSeal(ctx context.Context, maddr address.Address, si *SectorInfo, api s
 
 	ccmt := &types.Message{
 		To:       actors.StorageMarketAddress,
-		From:     actors.StorageMarketAddress,
+		From:     maddr,
 		Value:    types.NewInt(0),
 		GasPrice: types.NewInt(0),
 		GasLimit: types.NewInt(9999999999),
@@ -57,7 +57,7 @@ func checkSeal(ctx context.Context, maddr address.Address, si *SectorInfo, api s
 		return xerrors.Errorf("calling ComputeDataCommitment: %w", err)
 	}
 	if r.ExitCode != 0 {
-		return xerrors.Errorf("receipt for ComputeDataCommitment han exit code %d", r.ExitCode)
+		return xerrors.Errorf("receipt for ComputeDataCommitment had exit code %d", r.ExitCode)
 	}
 	if string(r.Return) != string(si.CommD) {
 		return xerrors.Errorf("on chain CommD differs from sector: %x != %x", r.Return, si.CommD)

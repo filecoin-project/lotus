@@ -44,6 +44,10 @@ func (m *Sealing) handlePacking(ctx statemachine.Context, sector SectorInfo) err
 }
 
 func (m *Sealing) handleUnsealed(ctx statemachine.Context, sector SectorInfo) error {
+	if err := checkPieces(ctx.Context(), sector, m.api); err != nil { // Sanity check state
+		return ctx.Send(SectorPackingFailed{xerrors.Errorf("checkPieces error: %w", err)})
+	}
+
 	log.Infow("performing sector replication...", "sector", sector.SectorID)
 	ticket, err := m.tktFn(ctx.Context())
 	if err != nil {
@@ -66,6 +70,10 @@ func (m *Sealing) handleUnsealed(ctx statemachine.Context, sector SectorInfo) er
 }
 
 func (m *Sealing) handlePreCommitting(ctx statemachine.Context, sector SectorInfo) error {
+	if err := checkSeal(ctx.Context(), m.maddr, sector, m.api); err != nil {
+		return ctx.Send(SectorSealFailed{xerrors.Errorf("checkPieces error: %w", err)})
+	}
+
 	params := &actors.SectorPreCommitInfo{
 		SectorNumber: sector.SectorID,
 
