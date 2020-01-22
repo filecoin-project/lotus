@@ -980,7 +980,7 @@ func (t *Log) MarshalCBOR(w io.Writer) error {
 		_, err := w.Write(cbg.CborNull)
 		return err
 	}
-	if _, err := w.Write([]byte{165}); err != nil {
+	if _, err := w.Write([]byte{164}); err != nil {
 		return err
 	}
 
@@ -1068,29 +1068,6 @@ func (t *Log) MarshalCBOR(w io.Writer) error {
 	if _, err := w.Write([]byte(t.Kind)); err != nil {
 		return err
 	}
-
-	// t.Params ([]uint8) (slice)
-	if len("Params") > cbg.MaxLength {
-		return xerrors.Errorf("Value in field \"Params\" was too long")
-	}
-
-	if _, err := w.Write(cbg.CborEncodeMajorType(cbg.MajTextString, uint64(len("Params")))); err != nil {
-		return err
-	}
-	if _, err := w.Write([]byte("Params")); err != nil {
-		return err
-	}
-
-	if len(t.Params) > cbg.ByteArrayMaxLen {
-		return xerrors.Errorf("Byte array in field t.Params was too long")
-	}
-
-	if _, err := w.Write(cbg.CborEncodeMajorType(cbg.MajByteString, uint64(len(t.Params)))); err != nil {
-		return err
-	}
-	if _, err := w.Write(t.Params); err != nil {
-		return err
-	}
 	return nil
 }
 
@@ -1167,24 +1144,6 @@ func (t *Log) UnmarshalCBOR(r io.Reader) error {
 				}
 
 				t.Kind = string(sval)
-			}
-			// t.Params ([]uint8) (slice)
-		case "Params":
-
-			maj, extra, err = cbg.CborReadHeader(br)
-			if err != nil {
-				return err
-			}
-
-			if extra > cbg.ByteArrayMaxLen {
-				return fmt.Errorf("t.Params: byte array too large (%d)", extra)
-			}
-			if maj != cbg.MajByteString {
-				return fmt.Errorf("expected byte array")
-			}
-			t.Params = make([]byte, extra)
-			if _, err := io.ReadFull(br, t.Params); err != nil {
-				return err
 			}
 
 		default:

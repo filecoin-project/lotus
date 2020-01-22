@@ -53,7 +53,6 @@ type Log struct {
 
 	// additional data (Event info)
 	Kind   string
-	Params []byte
 }
 
 type SectorInfo struct {

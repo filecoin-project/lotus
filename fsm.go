@@ -2,7 +2,9 @@ package sealing
 
 import (
 	"context"
+	"fmt"
 	"reflect"
+	"time"
 
 	"golang.org/x/xerrors"
 
@@ -65,6 +67,20 @@ var fsmPlanners = []func(events []statemachine.Event, state *SectorInfo) error{
 func (m *Sealing) plan(events []statemachine.Event, state *SectorInfo) (func(statemachine.Context, SectorInfo) error, error) {
 	/////
 	// First process all events
+
+	for _, event := range events {
+		l := Log{
+			Timestamp: uint64(time.Now().Unix()),
+			Message:   fmt.Sprintf("%+v", event),
+			Kind:      fmt.Sprintf("event;%T", event.User),
+		}
+
+		if err, iserr := event.User.(xerrors.Formatter); iserr {
+			l.Trace = fmt.Sprintf("%+v", err)
+		}
+
+		state.Log = append(state.Log, l)
+	}
 
 	p := fsmPlanners[state.State]
 	if p == nil {
