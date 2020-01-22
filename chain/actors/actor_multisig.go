@@ -1,29 +1,25 @@
 package actors
 
 import (
-	"github.com/ipfs/go-cid"
+	"bytes"
+	"fmt"
+	"runtime/debug"
 
 	"github.com/filecoin-project/go-address"
 	"github.com/filecoin-project/lotus/chain/actors/aerrors"
 	"github.com/filecoin-project/lotus/chain/types"
+	"github.com/ipfs/go-cid"
+
+	samsig "github.com/filecoin-project/specs-actors/actors/builtin/multisig"
+	vmr "github.com/filecoin-project/specs-actors/actors/runtime"
 
 	cbg "github.com/whyrusleeping/cbor-gen"
 )
 
 type MultiSigActor struct{}
-type MultiSigActorState struct {
-	Signers  []address.Address
-	Required uint64
-	NextTxID uint64
+type MultiSigActorState = samsig.MultiSigActorState
 
-	InitialBalance types.BigInt
-	StartingBlock  uint64
-	UnlockDuration uint64
-
-	//TODO: make this map/sharray/whatever
-	Transactions []MTransaction
-}
-
+/*
 func (msas MultiSigActorState) canSpend(act *types.Actor, amnt types.BigInt, height uint64) bool {
 	if msas.UnlockDuration == 0 {
 		return true
@@ -54,6 +50,7 @@ func (msas MultiSigActorState) getTransaction(txid uint64) (*MTransaction, Actor
 	}
 	return &msas.Transactions[txid], nil
 }
+*/
 
 type MTransaction struct {
 	Created uint64 // NOT USED ??
@@ -108,43 +105,76 @@ func (msa MultiSigActor) Exports() []interface{} {
 	}
 }
 
-type MultiSigConstructorParams struct {
-	Signers        []address.Address
-	Required       uint64
-	UnlockDuration uint64
+type runtimeShim struct {
+	vmctx types.VMContext
+	vmr.Runtime
 }
+
+func (rs *runtimeShim) shimCall(f func() interface{}) (rval []byte, aerr ActorError) {
+	defer func() {
+		if r := recover(); r != nil {
+			fmt.Println("caught one of those actor errors: ", r)
+			debug.PrintStack()
+			log.Errorf("ERROR")
+			aerr = aerrors.Newf(1, "generic spec actors failure")
+		}
+	}()
+
+	ret := f()
+	switch ret := ret.(type) {
+	case []byte:
+		return ret, nil
+	case cbg.CBORMarshaler:
+		buf := new(bytes.Buffer)
+		if err := ret.MarshalCBOR(buf); err != nil {
+			return nil, aerrors.Absorb(err, 2, "failed to marshal response to cbor")
+		}
+		return buf.Bytes(), nil
+	case nil:
+		return nil, nil
+	default:
+		return nil, aerrors.New(3, "could not determine type for response from call")
+	}
+}
+
+func (rs *runtimeShim) ValidateImmediateCallerIs(as ...address.Address) {
+	for _, a := range as {
+		if rs.vmctx.Message().From == a {
+			return
+		}
+	}
+	fmt.Println("Caller: ", rs.vmctx.Message().From, as)
+	panic("we like to panic when people call the wrong methods")
+}
+
+type shimStateHandle struct {
+	vmctx types.VMContext
+}
+
+func (ssh *shimStateHandle) Release(c cid.Cid) {
+
+}
+
+func (ssh *shimStateHandle) Take() {
+
+}
+
+func (rs *runtimeShim) AcquireState() vmr.ActorStateHandle {
+	return &shimStateHandle{rs.vmctx}
+}
+
+type MultiSigConstructorParams = samsig.ConstructorParams
 
 func (MultiSigActor) MultiSigConstructor(act *types.Actor, vmctx types.VMContext,
 	params *MultiSigConstructorParams) ([]byte, ActorError) {
-	self := &MultiSigActorState{
-		Signers:  params.Signers,
-		Required: params.Required,
-	}
 
-	if params.UnlockDuration != 0 {
-		self.InitialBalance = vmctx.Message().Value
-		self.UnlockDuration = params.UnlockDuration
-		self.StartingBlock = vmctx.BlockHeight()
-	}
-
-	head, err := vmctx.Storage().Put(self)
-	if err != nil {
-		return nil, aerrors.Wrap(err, "could not put new head")
-	}
-	err = vmctx.Storage().Commit(EmptyCBOR, head)
-	if err != nil {
-		return nil, aerrors.Wrap(err, "could not commit new head")
-	}
-	return nil, nil
+	shim := &runtimeShim{vmctx: vmctx}
+	return shim.shimCall(func() interface{} {
+		return (&samsig.MultiSigActor{}).Constructor(shim, params)
+	})
 }
 
-type MultiSigProposeParams struct {
-	To     address.Address
-	Value  types.BigInt
-	Method uint64
-	Params []byte
-}
-
+/*
 func (MultiSigActor) load(vmctx types.VMContext) (cid.Cid, *MultiSigActorState, ActorError) {
 	var self MultiSigActorState
 	head := vmctx.Storage().GetHead()
@@ -180,252 +210,79 @@ func (MultiSigActor) save(vmctx types.VMContext, oldHead cid.Cid, self *MultiSig
 	return nil
 
 }
+*/
+
+type MultiSigProposeParams = samsig.ProposeParams
 
 func (msa MultiSigActor) Propose(act *types.Actor, vmctx types.VMContext,
 	params *MultiSigProposeParams) ([]byte, ActorError) {
 
-	head, self, err := msa.loadAndVerify(vmctx)
-	if err != nil {
-		return nil, err
-	}
-
-	txid := self.NextTxID
-	self.NextTxID++
-
-	{
-		tx := MTransaction{
-			TxID:     txid,
-			To:       params.To,
-			Value:    params.Value,
-			Method:   params.Method,
-			Params:   params.Params,
-			Approved: []address.Address{vmctx.Message().From},
-		}
-		self.Transactions = append(self.Transactions, tx)
-	}
-
-	tx, err := self.getTransaction(txid)
-	if err != nil {
-		return nil, err
-	}
-
-	if self.Required == 1 {
-		if !self.canSpend(act, tx.Value, vmctx.BlockHeight()) {
-			return nil, aerrors.New(100, "transaction amount exceeds available")
-		}
-		_, err := vmctx.Send(tx.To, tx.Method, tx.Value, tx.Params)
-		if aerrors.IsFatal(err) {
-			return nil, err
-		}
-		tx.RetCode = uint64(aerrors.RetCode(err))
-		tx.Complete = true
-	}
-
-	err = msa.save(vmctx, head, self)
-	if err != nil {
-		return nil, aerrors.Wrap(err, "saving state")
-	}
-
-	// REVIEW: On one hand, I like being very explicit about how we're doing the serialization
-	// on the other, maybe we shouldnt do direct calls to underlying serialization libs?
-	return cbg.CborEncodeMajorType(cbg.MajUnsignedInt, tx.TxID), nil
+	shim := &runtimeShim{vmctx: vmctx}
+	return shim.shimCall(func() interface{} {
+		return (&samsig.MultiSigActor{}).Propose(shim, params)
+	})
 }
 
-type MultiSigTxID struct {
-	TxID uint64
-}
+type MultiSigTxID = samsig.TxnIDParams
 
 func (msa MultiSigActor) Approve(act *types.Actor, vmctx types.VMContext,
 	params *MultiSigTxID) ([]byte, ActorError) {
 
-	head, self, err := msa.loadAndVerify(vmctx)
-	if err != nil {
-		return nil, err
-	}
-
-	tx, err := self.getTransaction(params.TxID)
-	if err != nil {
-		return nil, err
-	}
-
-	if err := tx.Active(); err != nil {
-		return nil, aerrors.Wrap(err, "could not approve")
-	}
-
-	for _, signer := range tx.Approved {
-		if signer == vmctx.Message().From {
-			return nil, aerrors.New(4, "already signed this message")
-		}
-	}
-	tx.Approved = append(tx.Approved, vmctx.Message().From)
-	if uint64(len(tx.Approved)) >= self.Required {
-		if !self.canSpend(act, tx.Value, vmctx.BlockHeight()) {
-			return nil, aerrors.New(100, "transaction amount exceeds available")
-		}
-		_, err := vmctx.Send(tx.To, tx.Method, tx.Value, tx.Params)
-		if aerrors.IsFatal(err) {
-			return nil, err
-		}
-		tx.RetCode = uint64(aerrors.RetCode(err))
-		tx.Complete = true
-	}
-
-	return nil, msa.save(vmctx, head, self)
+	shim := &runtimeShim{vmctx: vmctx}
+	return shim.shimCall(func() interface{} {
+		return (&samsig.MultiSigActor{}).Approve(shim, params)
+	})
 }
 
 func (msa MultiSigActor) Cancel(act *types.Actor, vmctx types.VMContext,
 	params *MultiSigTxID) ([]byte, ActorError) {
 
-	head, self, err := msa.loadAndVerify(vmctx)
-	if err != nil {
-		return nil, err
-	}
-
-	tx, err := self.getTransaction(params.TxID)
-	if err != nil {
-		return nil, err
-	}
-
-	if err := tx.Active(); err != nil {
-		return nil, aerrors.Wrap(err, "could not cancel")
-	}
-
-	proposer := tx.Approved[0]
-	if proposer != vmctx.Message().From && self.isSigner(proposer) {
-		return nil, aerrors.New(4, "cannot cancel another signers transaction")
-	}
-	tx.Canceled = true
-
-	return nil, msa.save(vmctx, head, self)
+	shim := &runtimeShim{vmctx: vmctx}
+	return shim.shimCall(func() interface{} {
+		return (&samsig.MultiSigActor{}).Cancel(shim, params)
+	})
 }
 
-type MultiSigAddSignerParam struct {
-	Signer   address.Address
-	Increase bool
-}
+type MultiSigAddSignerParam = samsig.AddSigner
 
 func (msa MultiSigActor) AddSigner(act *types.Actor, vmctx types.VMContext,
 	params *MultiSigAddSignerParam) ([]byte, ActorError) {
 
-	head, self, err := msa.load(vmctx)
-	if err != nil {
-		return nil, err
-	}
-
-	msg := vmctx.Message()
-	if msg.From != msg.To {
-		return nil, aerrors.New(4, "add signer must be called by wallet itself")
-	}
-	if self.isSigner(params.Signer) {
-		return nil, aerrors.New(5, "new address is already a signer")
-	}
-
-	self.Signers = append(self.Signers, params.Signer)
-	if params.Increase {
-		self.Required = self.Required + 1
-	}
-
-	return nil, msa.save(vmctx, head, self)
+	shim := &runtimeShim{vmctx: vmctx}
+	return shim.shimCall(func() interface{} {
+		return (&samsig.MultiSigActor{}).AddSigner(shim, params)
+	})
 }
 
-type MultiSigRemoveSignerParam struct {
-	Signer   address.Address
-	Decrease bool
-}
+type MultiSigRemoveSignerParam = samsig.RemoveSigner
 
 func (msa MultiSigActor) RemoveSigner(act *types.Actor, vmctx types.VMContext,
 	params *MultiSigRemoveSignerParam) ([]byte, ActorError) {
 
-	head, self, err := msa.load(vmctx)
-	if err != nil {
-		return nil, err
-	}
-
-	msg := vmctx.Message()
-	if msg.From != msg.To {
-		return nil, aerrors.New(4, "remove signer must be called by wallet itself")
-	}
-	if !self.isSigner(params.Signer) {
-		return nil, aerrors.New(5, "given address was not a signer")
-	}
-
-	newSigners := make([]address.Address, 0, len(self.Signers)-1)
-	for _, s := range self.Signers {
-		if s != params.Signer {
-			newSigners = append(newSigners, s)
-		}
-	}
-	if params.Decrease || uint64(len(self.Signers)-1) < self.Required {
-		self.Required = self.Required - 1
-	}
-
-	self.Signers = newSigners
-
-	return nil, msa.save(vmctx, head, self)
+	shim := &runtimeShim{vmctx: vmctx}
+	return shim.shimCall(func() interface{} {
+		return (&samsig.MultiSigActor{}).RemoveSigner(shim, params)
+	})
 }
 
-type MultiSigSwapSignerParams struct {
-	From address.Address
-	To   address.Address
-}
+type MultiSigSwapSignerParams = samsig.SwapSignerParams
 
 func (msa MultiSigActor) SwapSigner(act *types.Actor, vmctx types.VMContext,
 	params *MultiSigSwapSignerParams) ([]byte, ActorError) {
 
-	head, self, err := msa.load(vmctx)
-	if err != nil {
-		return nil, err
-	}
-
-	msg := vmctx.Message()
-	if msg.From != msg.To {
-		return nil, aerrors.New(4, "swap signer must be called by wallet itself")
-	}
-
-	if !self.isSigner(params.From) {
-		return nil, aerrors.New(5, "given old address was not a signer")
-	}
-	if self.isSigner(params.To) {
-		return nil, aerrors.New(6, "given new address was already a signer")
-	}
-
-	newSigners := make([]address.Address, 0, len(self.Signers))
-	for _, s := range self.Signers {
-		if s != params.From {
-			newSigners = append(newSigners, s)
-		}
-	}
-	newSigners = append(newSigners, params.To)
-	self.Signers = newSigners
-
-	return nil, msa.save(vmctx, head, self)
+	shim := &runtimeShim{vmctx: vmctx}
+	return shim.shimCall(func() interface{} {
+		return (&samsig.MultiSigActor{}).SwapSigner(shim, params)
+	})
 }
 
-type MultiSigChangeReqParams struct {
-	Req uint64
-}
+type MultiSigChangeReqParams = samsig.ChangeNumApprovalsThresholdParams
 
 func (msa MultiSigActor) ChangeRequirement(act *types.Actor, vmctx types.VMContext,
 	params *MultiSigChangeReqParams) ([]byte, ActorError) {
 
-	head, self, err := msa.load(vmctx)
-	if err != nil {
-		return nil, err
-	}
-
-	msg := vmctx.Message()
-	if msg.From != msg.To {
-		return nil, aerrors.New(4, "change requirement must be called by wallet itself")
-	}
-
-	if params.Req < 1 {
-		return nil, aerrors.New(5, "requirement must be at least 1")
-	}
-
-	if params.Req > uint64(len(self.Signers)) {
-		return nil, aerrors.New(6, "requirement must be at most the numbers of signers")
-	}
-
-	self.Required = params.Req
-	return nil, msa.save(vmctx, head, self)
+	shim := &runtimeShim{vmctx: vmctx}
+	return shim.shimCall(func() interface{} {
+		return (&samsig.MultiSigActor{}).ChangeNumApprovalsThreshold(shim, params)
+	})
 }
