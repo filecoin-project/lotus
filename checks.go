@@ -63,11 +63,9 @@ func checkSeal(ctx context.Context, maddr address.Address, si *SectorInfo, api s
 		return xerrors.Errorf("on chain CommD differs from sector: %x != %x", r.Return, si.CommD)
 	}
 
-
 	// TODO: Validate ticket
 	// TODO: Verify commp / commr / proof
 	// TODO: (StateCall PreCommit)
 	return nil
-
 
 }
