@@ -254,7 +254,7 @@ func SetupStorageMarketActor(bs bstore.Blockstore, sroot cid.Cid, deals []actors
 		return cid.Undef, xerrors.Errorf("set storage market actor: %w", err)
 	}
 
-	return state.Flush()
+	return state.Flush(context.TODO())
 }
 
 type GenMinerCfg struct {
@@ -563,7 +563,7 @@ func MakeGenesisBlock(bs bstore.Blockstore, sys *types.VMSyscalls, balances map[
 		return nil, xerrors.Errorf("make initial state tree failed: %w", err)
 	}
 
-	stateroot, err := state.Flush()
+	stateroot, err := state.Flush(ctx)
 	if err != nil {
 		return nil, xerrors.Errorf("flush state tree failed: %w", err)
 	}
@@ -673,5 +673,5 @@ func AdjustInitActorStartID(ctx context.Context, bs blockstore.Blockstore, state
 		return cid.Undef, err
 	}
 
-	return tree.Flush()
+	return tree.Flush(ctx)
 }
