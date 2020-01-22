@@ -1,6 +1,7 @@
 package state
 
 import (
+	"context"
 	"testing"
 
 	address "github.com/filecoin-project/go-address"
@@ -60,7 +61,7 @@ func BenchmarkStateTreeSetFlush(b *testing.B) {
 		if err != nil {
 			b.Fatal(err)
 		}
-		if _, err := st.Flush(); err != nil {
+		if _, err := st.Flush(context.TODO()); err != nil {
 			b.Fatal(err)
 		}
 	}
@@ -88,7 +89,7 @@ func BenchmarkStateTree10kGetActor(b *testing.B) {
 		}
 	}
 
-	if _, err := st.Flush(); err != nil {
+	if _, err := st.Flush(context.TODO()); err != nil {
 		b.Fatal(err)
 	}
 

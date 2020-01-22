@@ -45,7 +45,7 @@ func setupVMTestEnv(t *testing.T) (*vm.VM, []address.Address, bstore.Blockstore)
 		t.Fatal(err)
 	}
 
-	stateroot, err := st.Flush()
+	stateroot, err := st.Flush(context.TODO())
 	if err != nil {
 		t.Fatal(err)
 	}

@@ -59,7 +59,7 @@ func NewState() *StateWrapper {
 	if err != nil {
 		panic(err) // Never returns error, the error return should be removed.
 	}
-	root, err := treeImpl.Flush()
+	root, err := treeImpl.Flush(context.TODO())
 	if err != nil {
 		panic(err)
 	}
@@ -208,7 +208,7 @@ func (s *StateWrapper) Signer() *keyStore {
 
 // Flushes a state tree to storage and sets this state's root to that tree's root CID.
 func (s *StateWrapper) flush(tree *state.StateTree) (err error) {
-	s.stateRoot, err = tree.Flush()
+	s.stateRoot, err = tree.Flush(context.TODO())
 	return
 }
 

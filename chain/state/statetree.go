@@ -7,6 +7,7 @@ import (
 	"github.com/ipfs/go-cid"
 	hamt "github.com/ipfs/go-hamt-ipld"
 	logging "github.com/ipfs/go-log/v2"
+	"go.opencensus.io/trace"
 	"golang.org/x/xerrors"
 
 	"github.com/filecoin-project/go-address"
@@ -116,23 +117,29 @@ func (st *StateTree) GetActor(addr address.Address) (*types.Actor, error) {
 	return &act, nil
 }
 
-func (st *StateTree) Flush() (cid.Cid, error) {
+func (st *StateTree) Flush(ctx context.Context) (cid.Cid, error) {
+	ctx, span := trace.StartSpan(ctx, "stateTree.Flush")
+	defer span.End()
+
 	for addr, act := range st.actorcache {
-		if err := st.root.Set(context.TODO(), string(addr.Bytes()), act); err != nil {
+		if err := st.root.Set(ctx, string(addr.Bytes()), act); err != nil {
 			return cid.Undef, err
 		}
 	}
 	st.actorcache = make(map[address.Address]*types.Actor)
 
-	if err := st.root.Flush(context.TODO()); err != nil {
+	if err := st.root.Flush(ctx); err != nil {
 		return cid.Undef, err
 	}
 
-	return st.Store.Put(context.TODO(), st.root)
+	return st.Store.Put(ctx, st.root)
 }
 
-func (st *StateTree) Snapshot() error {
-	ss, err := st.Flush()
+func (st *StateTree) Snapshot(ctx context.Context) error {
+	ctx, span := trace.StartSpan(ctx, "stateTree.SnapShot")
+	defer span.End()
+
+	ss, err := st.Flush(ctx)
 	if err != nil {
 		return err
 	}
