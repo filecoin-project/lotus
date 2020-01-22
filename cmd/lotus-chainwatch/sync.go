@@ -4,6 +4,7 @@ import (
 	"bytes"
 	"container/list"
 	"context"
+	"encoding/json"
 	"math"
 	"sync"
 
@@ -60,9 +61,14 @@ type minerInfo struct {
 	psize uint64
 }
 
+type actorInfo struct {
+	stateroot cid.Cid
+	state     string
+}
+
 func syncHead(ctx context.Context, api api.FullNode, st *storage, ts *types.TipSet) {
 	addresses := map[address.Address]address.Address{}
-	actors := map[address.Address]map[types.Actor]cid.Cid{}
+	actors := map[address.Address]map[types.Actor]actorInfo{}
 	var alk sync.Mutex
 
 	log.Infof("Getting synced block list")
@@ -150,12 +156,26 @@ func syncHead(ctx context.Context, api api.FullNode, st *storage, ts *types.TipS
 						log.Error(err)
 						return
 					}
+					ast, err := api.StateReadState(ctx, act, ts)
+					if err != nil {
+						log.Error(err)
+						return
+					}
+					state, err := json.Marshal(ast.State)
+					if err != nil {
+						log.Error(err)
+						return
+					}
+
 					alk.Lock()
 					_, ok := actors[addr]
 					if !ok {
-						actors[addr] = map[types.Actor]cid.Cid{}
+						actors[addr] = map[types.Actor]actorInfo{}
 					}
-					actors[addr][*act] = bh.ParentStateRoot
+					actors[addr][*act] = actorInfo{
+						stateroot: bh.ParentStateRoot,
+						state:     string(state),
+					}
 					addresses[addr] = address.Undef
 					alk.Unlock()
 				})
@@ -181,13 +201,26 @@ func syncHead(ctx context.Context, api api.FullNode, st *storage, ts *types.TipS
 					log.Error(err)
 					return
 				}
+				ast, err := api.StateReadState(ctx, &act, ts)
+				if err != nil {
+					log.Error(err)
+					return
+				}
+				state, err := json.Marshal(ast.State)
+				if err != nil {
+					log.Error(err)
+					return
+				}
 
 				alk.Lock()
 				_, ok := actors[addr]
 				if !ok {
-					actors[addr] = map[types.Actor]cid.Cid{}
+					actors[addr] = map[types.Actor]actorInfo{}
 				}
-				actors[addr][act] = bh.ParentStateRoot
+				actors[addr][act] = actorInfo{
+					stateroot: bh.ParentStateRoot,
+					state:     string(state),
+				}
 				addresses[addr] = address.Undef
 				alk.Unlock()
 			}
@@ -228,7 +261,7 @@ func syncHead(ctx context.Context, api api.FullNode, st *storage, ts *types.TipS
 				miners[minerKey{
 					addr:      addr,
 					act:       actor,
-					stateroot: c,
+					stateroot: c.stateroot,
 				}] = &minerInfo{}
 			}
 		}
@@ -320,6 +353,22 @@ func syncHead(ctx context.Context, api api.FullNode, st *storage, ts *types.TipS
 			return
 		}
 		log.Infof("Sync stage done")
+	}
+
+	log.Infof("Get deals")
+
+	// TODO: incremental, gather expired
+	deals, err := api.StateMarketDeals(ctx, ts)
+	if err != nil {
+		log.Error(err)
+		return
+	}
+
+	log.Infof("Store deals")
+
+	if err := st.storeDeals(deals); err != nil {
+		log.Error(err)
+		return
 	}
 
 	log.Infof("Sync done")

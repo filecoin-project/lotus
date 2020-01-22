@@ -607,3 +607,32 @@ func (sm *StateManager) MarketBalance(ctx context.Context, addr address.Address,
 
 	return b[0], nil
 }
+
+func (sm *StateManager) ValidateChain(ctx context.Context, ts *types.TipSet) error {
+	tschain := []*types.TipSet{ts}
+	for ts.Height() != 0 {
+		next, err := sm.cs.LoadTipSet(ts.Parents())
+		if err != nil {
+			return err
+		}
+
+		tschain = append(tschain, next)
+		ts = next
+	}
+
+	lastState := tschain[len(tschain)-1].ParentState()
+	for i := len(tschain) - 1; i >= 0; i-- {
+		cur := tschain[i]
+		log.Infof("computing state (height: %d, ts=%s)", cur.Height(), cur.Cids())
+		if cur.ParentState() != lastState {
+			return xerrors.Errorf("tipset chain had state mismatch at height %d", cur.Height())
+		}
+		st, _, err := sm.TipSetState(ctx, cur)
+		if err != nil {
+			return err
+		}
+		lastState = st
+	}
+
+	return nil
+}

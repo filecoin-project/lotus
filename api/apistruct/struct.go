@@ -56,6 +56,7 @@ type FullNodeStruct struct {
 		ChainGetNode           func(ctx context.Context, p string) (interface{}, error)                             `perm:"read"`
 		ChainGetMessage        func(context.Context, cid.Cid) (*types.Message, error)                               `perm:"read"`
 		ChainGetPath           func(context.Context, types.TipSetKey, types.TipSetKey) ([]*store.HeadChange, error) `perm:"read"`
+		ChainExport            func(context.Context, *types.TipSet) (<-chan []byte, error)                          `perm:"read"`
 
 		SyncState          func(context.Context) (*api.SyncState, error)                `perm:"read"`
 		SyncSubmitBlock    func(ctx context.Context, blk *types.BlockMsg) error         `perm:"write"`
@@ -98,7 +99,7 @@ type FullNodeStruct struct {
 		StateMinerPeerID              func(ctx context.Context, m address.Address, ts *types.TipSet) (peer.ID, error)                   `perm:"read"`
 		StateMinerElectionPeriodStart func(ctx context.Context, actor address.Address, ts *types.TipSet) (uint64, error)                `perm:"read"`
 		StateMinerSectorSize          func(context.Context, address.Address, *types.TipSet) (uint64, error)                             `perm:"read"`
-		StateCall                     func(context.Context, *types.Message, *types.TipSet) (*types.MessageReceipt, error)               `perm:"read"`
+		StateCall                     func(context.Context, *types.Message, *types.TipSet) (*api.MethodCall, error)                     `perm:"read"`
 		StateReplay                   func(context.Context, *types.TipSet, cid.Cid) (*api.ReplayResults, error)                         `perm:"read"`
 		StateGetActor                 func(context.Context, address.Address, *types.TipSet) (*types.Actor, error)                       `perm:"read"`
 		StateReadState                func(context.Context, *types.Actor, *types.TipSet) (*api.ActorState, error)                       `perm:"read"`
@@ -361,6 +362,10 @@ func (c *FullNodeStruct) ChainGetPath(ctx context.Context, from types.TipSetKey,
 	return c.Internal.ChainGetPath(ctx, from, to)
 }
 
+func (c *FullNodeStruct) ChainExport(ctx context.Context, ts *types.TipSet) (<-chan []byte, error) {
+	return c.Internal.ChainExport(ctx, ts)
+}
+
 func (c *FullNodeStruct) SyncState(ctx context.Context) (*api.SyncState, error) {
 	return c.Internal.SyncState(ctx)
 }
@@ -405,7 +410,7 @@ func (c *FullNodeStruct) StateMinerSectorSize(ctx context.Context, actor address
 	return c.Internal.StateMinerSectorSize(ctx, actor, ts)
 }
 
-func (c *FullNodeStruct) StateCall(ctx context.Context, msg *types.Message, ts *types.TipSet) (*types.MessageReceipt, error) {
+func (c *FullNodeStruct) StateCall(ctx context.Context, msg *types.Message, ts *types.TipSet) (*api.MethodCall, error) {
 	return c.Internal.StateCall(ctx, msg, ts)
 }
 

@@ -38,6 +38,7 @@ type FullNode interface {
 	ChainGetNode(ctx context.Context, p string) (interface{}, error)
 	ChainGetMessage(context.Context, cid.Cid) (*types.Message, error)
 	ChainGetPath(ctx context.Context, from types.TipSetKey, to types.TipSetKey) ([]*store.HeadChange, error)
+	ChainExport(context.Context, *types.TipSet) (<-chan []byte, error)
 
 	// syncer
 	SyncState(context.Context) (*SyncState, error)
@@ -94,7 +95,7 @@ type FullNode interface {
 	//ClientListAsks() []Ask
 
 	// if tipset is nil, we'll use heaviest
-	StateCall(context.Context, *types.Message, *types.TipSet) (*types.MessageReceipt, error)
+	StateCall(context.Context, *types.Message, *types.TipSet) (*MethodCall, error)
 	StateReplay(context.Context, *types.TipSet, cid.Cid) (*ReplayResults, error)
 	StateGetActor(ctx context.Context, actor address.Address, ts *types.TipSet) (*types.Actor, error)
 	StateReadState(ctx context.Context, act *types.Actor, ts *types.TipSet) (*ActorState, error)
@@ -268,6 +269,11 @@ type ReplayResults struct {
 	Msg     *types.Message
 	Receipt *types.MessageReceipt
 	Error   string
+}
+
+type MethodCall struct {
+	types.MessageReceipt
+	Error string
 }
 
 type ActiveSync struct {

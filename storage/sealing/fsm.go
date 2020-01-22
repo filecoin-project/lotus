@@ -44,7 +44,10 @@ var fsmPlanners = []func(events []statemachine.Event, state *SectorInfo) error{
 		on(SectorPreCommitFailed{}, api.PreCommitFailed),
 	),
 	api.Committing: planCommitting,
-	api.CommitWait: planOne(on(SectorProving{}, api.Proving)),
+	api.CommitWait: planOne(
+		on(SectorProving{}, api.Proving),
+		on(SectorCommitFailed{}, api.CommitFailed),
+	),
 
 	api.Proving: planOne(
 		on(SectorFaultReported{}, api.FaultReported),
@@ -233,11 +236,15 @@ func planOne(ts ...func() (mut mutator, next api.SectorState)) func(events []sta
 				continue
 			}
 
+			if err, iserr := events[0].User.(error); iserr {
+				log.Warnf("sector %d got error event %T: %+v", state.SectorID, events[0].User, err)
+			}
+
 			events[0].User.(mutator).apply(state)
 			state.State = next
 			return nil
 		}
 
-		return xerrors.Errorf("planner for state %s received unexpected event %+v", events[0])
+		return xerrors.Errorf("planner for state %s received unexpected event %+v", api.SectorStates[state.State], events[0])
 	}
 }

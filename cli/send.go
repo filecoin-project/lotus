@@ -15,7 +15,7 @@ var sendCmd = &cli.Command{
 	Flags: []cli.Flag{
 		&cli.StringFlag{
 			Name:  "source",
-			Usage: "optinally specifiy the account to send funds from",
+			Usage: "optionally specify the account to send funds from",
 		},
 	},
 	Action: func(cctx *cli.Context) error {

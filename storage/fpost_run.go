@@ -117,7 +117,10 @@ func (s *fpostScheduler) runPost(ctx context.Context, eps uint64, ts *types.TipS
 		return nil, xerrors.Errorf("getting sorted sector info: %w", err)
 	}
 
-	log.Infow("running fPoSt", "chain-random", rand, "eps", eps, "height", ts.Height())
+	log.Infow("running fPoSt",
+		"chain-random", rand,
+		"eps", eps,
+		"height", ts.Height())
 
 	faults, err := s.checkFaults(ctx, ssi)
 	if err != nil {
@@ -128,6 +131,10 @@ func (s *fpostScheduler) runPost(ctx context.Context, eps uint64, ts *types.TipS
 
 	var seed [32]byte
 	copy(seed[:], rand)
+
+	log.Infow("generating fPoSt",
+		"sectors", len(ssi.Values()),
+		"faults", len(faults))
 
 	scandidates, proof, err := s.sb.GenerateFallbackPoSt(ssi, seed, faults)
 	if err != nil {
