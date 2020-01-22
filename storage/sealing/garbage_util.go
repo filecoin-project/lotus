@@ -129,9 +129,15 @@ func (m *Sealing) saveCacheInfo(sectorId uint64, input []Piece, deals []actors.S
 	return err
 }
 
-func (m *Sealing) repledgeSector(ctx context.Context, sectorID uint64, existingPieceSizes []uint64, pieces []CachePiece, sizes ...uint64) ([]Piece, error) {
+func (m *Sealing) repledgeSector(ctx context.Context, sectorID uint64, existingPieceSizes []uint64,  sizes ...uint64) ([]Piece, error) {
 	if len(sizes) == 0 {
 		return nil, nil
+	}
+
+	pieces, err:= m.loadCacheInfo();
+
+	if err != nil{
+		return nil, err
 	}
 
 	deals := make([]actors.StorageDealProposal, len(sizes))

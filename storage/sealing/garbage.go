@@ -17,13 +17,14 @@ func (m *Sealing) pledgeSector(ctx context.Context, sectorID uint64, existingPie
 	if len(sizes) == 0 {
 		return nil, nil
 	}
+
 	lock.Lock()
 	defer lock.Unlock()
 
-	cached, err:= m.loadCacheInfo();
+	out, err := m.repledgeSector(ctx,sectorID,existingPieceSizes, sizes...)
 
-	if err == nil {
-		return m.repledgeSector(ctx,sectorID,existingPieceSizes,cached, sizes...)
+	if err == nil{
+		return out, nil
 	}
 
 	return m.firstPledgeSector(ctx,sectorID, existingPieceSizes, sizes...)
