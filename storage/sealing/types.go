@@ -2,9 +2,8 @@ package sealing
 
 import (
 	sectorbuilder "github.com/filecoin-project/go-sectorbuilder"
-	"github.com/ipfs/go-cid"
-
 	"github.com/filecoin-project/lotus/api"
+	"github.com/ipfs/go-cid"
 )
 
 type SealTicket struct {
@@ -46,6 +45,17 @@ func (p *Piece) ppi() (out sectorbuilder.PublicPieceInfo) {
 	return out
 }
 
+type Log struct {
+	Timestamp uint64
+	Trace     string // for errors
+
+	Message string
+
+	// additional data (Event info)
+	Kind   string
+	Params []byte
+}
+
 type SectorInfo struct {
 	State    api.SectorState
 	SectorID uint64
@@ -75,7 +85,7 @@ type SectorInfo struct {
 	// Debug
 	LastErr string
 
-	// TODO: Log []struct{ts, msg, trace string}
+	Log []Log
 }
 
 func (t *SectorInfo) pieceInfos() []sectorbuilder.PublicPieceInfo {

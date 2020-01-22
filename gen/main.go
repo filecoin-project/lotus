@@ -127,6 +127,7 @@ func main() {
 		sealing.SealSeed{},
 		sealing.Piece{},
 		sealing.SectorInfo{},
+		sealing.Log{},
 	)
 	if err != nil {
 		fmt.Println(err)
