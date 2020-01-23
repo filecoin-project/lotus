@@ -8,7 +8,6 @@ import (
 	"github.com/filecoin-project/go-address"
 	"github.com/filecoin-project/lotus/chain/actors/aerrors"
 	"github.com/filecoin-project/lotus/chain/types"
-	"github.com/ipfs/go-cid"
 
 	samsig "github.com/filecoin-project/specs-actors/actors/builtin/multisig"
 	vmr "github.com/filecoin-project/specs-actors/actors/runtime"
@@ -147,6 +146,11 @@ func (rs *runtimeShim) ValidateImmediateCallerIs(as ...address.Address) {
 	panic("we like to panic when people call the wrong methods")
 }
 
+func (rs *runtimeShim) State() vmr.StateHandle {
+
+}
+
+/*
 type shimStateHandle struct {
 	vmctx types.VMContext
 }
@@ -162,6 +166,7 @@ func (ssh *shimStateHandle) Take() {
 func (rs *runtimeShim) AcquireState() vmr.ActorStateHandle {
 	return &shimStateHandle{rs.vmctx}
 }
+*/
 
 type MultiSigConstructorParams = samsig.ConstructorParams
 
