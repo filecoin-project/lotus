@@ -58,6 +58,10 @@ var fsmPlanners = []func(events []statemachine.Event, state *SectorInfo) error{
 		on(SectorFaulty{}, api.Faulty),
 	),
 
+	api.SealFailed: planOne(
+		on(SectorRetrySeal{}, api.Unsealed),
+	),
+
 	api.Faulty: planOne(
 		on(SectorFaultReported{}, api.FaultReported),
 	),
@@ -84,7 +88,7 @@ func (m *Sealing) plan(events []statemachine.Event, state *SectorInfo) (func(sta
 
 	p := fsmPlanners[state.State]
 	if p == nil {
-		return nil, xerrors.Errorf("planner for state %d not found", state.State)
+		return nil, xerrors.Errorf("planner for state %s not found", state.State, api.SectorStates[state.State])
 	}
 
 	if err := p(events, state); err != nil {
