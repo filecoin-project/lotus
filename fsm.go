@@ -21,9 +21,8 @@ func (m *Sealing) Plan(events []statemachine.Event, user interface{}) (interface
 	return func(ctx statemachine.Context, si SectorInfo) error {
 		err := next(ctx, si)
 		if err != nil {
-			if err := ctx.Send(SectorFatalError{error: err}); err != nil {
-				return xerrors.Errorf("error while sending error: reporting %+v: %w", err, err)
-			}
+			log.Errorf("unhandled sector error (%d): %+v", si.SectorID, err)
+			return nil
 		}
 
 		return nil
