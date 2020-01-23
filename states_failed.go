@@ -13,7 +13,7 @@ const minRetryTime = 1 * time.Minute
 func failedCooldown(ctx statemachine.Context, sector SectorInfo) error {
 	retryStart := time.Unix(int64(sector.Log[len(sector.Log)-1].Timestamp), 0).Add(minRetryTime)
 	if len(sector.Log) > 0 && !time.Now().After(retryStart) {
-		log.Infof("%s(%d), waiting %s before retrying", api.SectorStates[sector.State], time.Until(retryStart))
+		log.Infof("%s(%d), waiting %s before retrying", api.SectorStates[sector.State], sector.SectorID, time.Until(retryStart))
 		select {
 		case <-time.After(time.Until(retryStart)):
 		case <-ctx.Context().Done():
