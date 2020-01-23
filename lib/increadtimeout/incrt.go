@@ -52,7 +52,7 @@ func (crt *incrt) Read(buf []byte) (int, error) {
 
 	err := crt.rd.SetReadDeadline(start.Add(crt.wait))
 	if err != nil {
-		log.Warn("unable to set daedline")
+		log.Warnf("unable to set daedline: %+v", err)
 	}
 
 	n, err := crt.rd.Read(buf)
