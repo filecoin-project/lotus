@@ -88,7 +88,7 @@ func (m *Sealing) plan(events []statemachine.Event, state *SectorInfo) (func(sta
 
 	p := fsmPlanners[state.State]
 	if p == nil {
-		return nil, xerrors.Errorf("planner for state %s not found", state.State, api.SectorStates[state.State])
+		return nil, xerrors.Errorf("planner for state %s not found", api.SectorStates[state.State])
 	}
 
 	if err := p(events, state); err != nil {
@@ -152,7 +152,7 @@ func (m *Sealing) plan(events []statemachine.Event, state *SectorInfo) (func(sta
 
 	// Handled failure modes
 	case api.SealFailed:
-		log.Warnf("sector %d entered unimplemented state 'SealFailed'", state.SectorID)
+		return m.handleSealFailed, nil
 	case api.PreCommitFailed:
 		log.Warnf("sector %d entered unimplemented state 'PreCommitFailed'", state.SectorID)
 	case api.SealCommitFailed:
