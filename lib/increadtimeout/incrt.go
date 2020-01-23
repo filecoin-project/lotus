@@ -54,7 +54,6 @@ func (crt *incrt) Read(buf []byte) (n int, err error) {
 			if crt.wait > crt.maxWait {
 				crt.wait = crt.maxWait
 			}
-			log.Warnf("max wait: %s, dur: %s, n: %d", crt.wait.String(), dur.String(), n)
 		}
 	}()
 
