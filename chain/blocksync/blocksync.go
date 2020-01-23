@@ -13,7 +13,6 @@ import (
 	"github.com/filecoin-project/lotus/chain/types"
 
 	"github.com/ipfs/go-cid"
-	cbor "github.com/ipfs/go-ipld-cbor"
 	logging "github.com/ipfs/go-log/v2"
 	inet "github.com/libp2p/go-libp2p-core/network"
 	"github.com/libp2p/go-libp2p-core/peer"
@@ -24,12 +23,6 @@ var log = logging.Logger("blocksync")
 type NewStreamFunc func(context.Context, peer.ID, ...protocol.ID) (inet.Stream, error)
 
 const BlockSyncProtocolID = "/fil/sync/blk/0.0.1"
-
-func init() {
-	cbor.RegisterCborType(BlockSyncRequest{})
-	cbor.RegisterCborType(BlockSyncResponse{})
-	cbor.RegisterCborType(BSTipSet{})
-}
 
 type BlockSyncService struct {
 	cs *store.ChainStore
@@ -55,8 +48,8 @@ func ParseBSOptions(optfield uint64) *BSOptions {
 }
 
 const (
-	BSOptBlocks   = 1 << 0
-	BSOptMessages = 1 << 1
+	BSOptBlocks = 1 << iota
+	BSOptMessages
 )
 
 type BlockSyncResponse struct {
