@@ -2,15 +2,18 @@ package actors
 
 import (
 	"bytes"
+	"context"
 	"fmt"
 	"runtime/debug"
 
 	"github.com/filecoin-project/go-address"
 	"github.com/filecoin-project/lotus/chain/actors/aerrors"
 	"github.com/filecoin-project/lotus/chain/types"
+	"github.com/ipfs/go-cid"
 
 	samsig "github.com/filecoin-project/specs-actors/actors/builtin/multisig"
 	vmr "github.com/filecoin-project/specs-actors/actors/runtime"
+	"github.com/filecoin-project/specs-actors/actors/runtime/exitcode"
 
 	cbg "github.com/whyrusleeping/cbor-gen"
 )
@@ -112,6 +115,10 @@ type runtimeShim struct {
 func (rs *runtimeShim) shimCall(f func() interface{}) (rval []byte, aerr ActorError) {
 	defer func() {
 		if r := recover(); r != nil {
+			if ar, ok := r.(ActorError); ok {
+				aerr = ar
+				return
+			}
 			fmt.Println("caught one of those actor errors: ", r)
 			debug.PrintStack()
 			log.Errorf("ERROR")
@@ -146,27 +153,81 @@ func (rs *runtimeShim) ValidateImmediateCallerIs(as ...address.Address) {
 	panic("we like to panic when people call the wrong methods")
 }
 
+func (rs *runtimeShim) ImmediateCaller() address.Address {
+	return rs.vmctx.Message().From
+}
+
+func (rs *runtimeShim) Context() context.Context {
+	return rs.vmctx.Context()
+}
+
+func (rs *runtimeShim) IpldGet(c cid.Cid, o vmr.CBORUnmarshalable) bool {
+	if err := rs.vmctx.Storage().Get(c, o); err != nil {
+		panic(err) // y o o o o o l l l l o o o o o
+	}
+	return true
+}
+
+func (rs *runtimeShim) IpldPut(o vmr.CBORMarshalable) cid.Cid {
+	c, err := rs.vmctx.Storage().Put(o)
+	if err != nil {
+		panic(err)
+	}
+	return c
+}
+
+func (rs *runtimeShim) Abort(code exitcode.ExitCode, msg string, args ...interface{}) {
+	panic(aerrors.Newf(uint8(code), msg, args...))
+}
+
+func (rs *runtimeShim) AbortStateMsg(msg string) {
+	rs.Abort(101, msg)
+}
+
 func (rs *runtimeShim) State() vmr.StateHandle {
-
+	return &shimStateHandle{rs: rs}
 }
 
-/*
 type shimStateHandle struct {
-	vmctx types.VMContext
+	rs *runtimeShim
 }
 
-func (ssh *shimStateHandle) Release(c cid.Cid) {
-
+func (ssh *shimStateHandle) Readonly(obj vmr.CBORUnmarshalable) {
+	if err := ssh.rs.vmctx.Storage().Get(ssh.rs.vmctx.Storage().GetHead(), obj); err != nil {
+		panic(err)
+	}
 }
 
-func (ssh *shimStateHandle) Take() {
+func (ssh *shimStateHandle) Transaction(obj vmr.CBORAble, f func() interface{}) interface{} {
+	head := ssh.rs.vmctx.Storage().GetHead()
+	if err := ssh.rs.vmctx.Storage().Get(head, obj); err != nil {
+		panic(err)
+	}
 
+	out := f()
+
+	c, err := ssh.rs.vmctx.Storage().Put(obj)
+	if err != nil {
+		panic(err)
+	}
+	if err := ssh.rs.vmctx.Storage().Commit(head, c); err != nil {
+		panic(err)
+	}
+
+	return out
 }
 
-func (rs *runtimeShim) AcquireState() vmr.ActorStateHandle {
-	return &shimStateHandle{rs.vmctx}
+func (ssh *shimStateHandle) Construct(f func() vmr.CBORMarshalable) {
+	out := f()
+
+	c, err := ssh.rs.vmctx.Storage().Put(out)
+	if err != nil {
+		panic(err)
+	}
+	if err := ssh.rs.vmctx.Storage().Commit(EmptyCBOR, c); err != nil {
+		panic(err)
+	}
 }
-*/
 
 type MultiSigConstructorParams = samsig.ConstructorParams
 

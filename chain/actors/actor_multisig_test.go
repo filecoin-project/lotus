@@ -85,7 +85,7 @@ func TestMultiSigOps(t *testing.T) {
 
 		ret, _ = h.Invoke(t, outsideAddr, multSigAddr, actors.MultiSigMethods.Approve,
 			&txIDParam)
-		assert.Equal(t, uint8(1), ret.ExitCode, "outsideAddr should not approve")
+		assert.Equal(t, uint8(18), ret.ExitCode, "outsideAddr should not approve")
 		h.AssertBalanceChange(t, multSigAddr, 0)
 
 		ret2, _ := h.Invoke(t, sig1Addr, multSigAddr, actors.MultiSigMethods.Approve,
