@@ -35,28 +35,39 @@ func New(rd ReaderDeadline, minSpeed int64, maxWait time.Duration) io.Reader {
 	}
 }
 
-func (crt *incrt) Read(buf []byte) (n int, err error) {
+type errNoWait struct{}
+
+func (err errNoWait) Error() string {
+	return "wait time exceeded"
+}
+func (err errNoWait) Timeout() bool {
+	return true
+}
+
+func (crt *incrt) Read(buf []byte) (int, error) {
 	start := now()
-	err = crt.rd.SetReadDeadline(start.Add(crt.wait))
-	if err != nil {
-		return 0, err
+	if crt.wait == 0 {
+		return 0, errNoWait{}
 	}
 
-	defer func() {
-		crt.rd.SetReadDeadline(time.Time{})
-		if err == nil {
-			dur := now().Sub(start)
-			crt.wait -= dur
-			crt.wait += time.Duration(n) * crt.waitPerByte
-			if crt.wait < 0 {
-				crt.wait = 0
-			}
-			if crt.wait > crt.maxWait {
-				crt.wait = crt.maxWait
-			}
-		}
-	}()
+	err := crt.rd.SetReadDeadline(start.Add(crt.wait))
+	if err != nil {
+		log.Warn("unable to set daedline")
+	}
 
-	n, err = crt.rd.Read(buf)
+	n, err := crt.rd.Read(buf)
+
+	crt.rd.SetReadDeadline(time.Time{})
+	if err == nil {
+		dur := now().Sub(start)
+		crt.wait -= dur
+		crt.wait += time.Duration(n) * crt.waitPerByte
+		if crt.wait < 0 {
+			crt.wait = 0
+		}
+		if crt.wait > crt.maxWait {
+			crt.wait = crt.maxWait
+		}
+	}
 	return n, err
 }

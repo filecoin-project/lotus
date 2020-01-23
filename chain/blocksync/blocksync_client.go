@@ -253,7 +253,6 @@ func (bs *BlockSync) sendRequestToPeer(ctx context.Context, p peer.ID, req *Bloc
 
 	var res BlockSyncResponse
 	r := incrt.New(s, 50<<10, 5*time.Second)
-
 	if err := cborutil.ReadCborRPC(bufio.NewReader(r), &res); err != nil {
 		bs.syncPeers.logFailure(p, time.Since(start))
 		return nil, err
