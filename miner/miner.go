@@ -227,7 +227,16 @@ eventLoop:
 			}
 		} else {
 			nextRound := time.Unix(int64(base.ts.MinTimestamp()+uint64(build.BlockDelay*base.nullRounds)), 0)
-			time.Sleep(time.Until(nextRound))
+
+			select {
+			case <-time.After(time.Until(nextRound)):
+			case <-m.stop:
+				stopping := m.stopping
+				m.stop = nil
+				m.stopping = nil
+				close(stopping)
+				return
+			}
 		}
 	}
 }
