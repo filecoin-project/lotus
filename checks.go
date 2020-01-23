@@ -10,19 +10,33 @@ import (
 	"github.com/filecoin-project/lotus/chain/types"
 )
 
+type ErrApi error
+
+type ErrInvalidDeals error
+type ErrExpiredDeals error
+
 func checkPieces(ctx context.Context, si SectorInfo, api sealingApi) error {
+	head, err := api.ChainHead(ctx)
+	if err != nil {
+		return ErrApi(xerrors.Errorf("getting chain head: %w", err))
+	}
+
 	for i, piece := range si.Pieces {
 		deal, err := api.StateMarketStorageDeal(ctx, piece.DealID, nil)
 		if err != nil {
-			return xerrors.Errorf("getting deal %d for piece %d: %w", piece.DealID, i, err)
+			return ErrApi(xerrors.Errorf("getting deal %d for piece %d: %w", piece.DealID, i, err))
 		}
 
 		if string(deal.PieceRef) != string(piece.CommP) {
-			return xerrors.Errorf("piece %d of sector %d refers deal %d with wrong CommP: %x != %x", i, si.SectorID, piece.DealID, piece.CommP, deal.PieceRef)
+			return ErrInvalidDeals(xerrors.Errorf("piece %d of sector %d refers deal %d with wrong CommP: %x != %x", i, si.SectorID, piece.DealID, piece.CommP, deal.PieceRef))
 		}
 
 		if piece.Size != deal.PieceSize {
-			return xerrors.Errorf("piece %d of sector %d refers deal %d with different size: %d != %d", i, si.SectorID, piece.DealID, piece.Size, deal.PieceSize)
+			return ErrInvalidDeals(xerrors.Errorf("piece %d of sector %d refers deal %d with different size: %d != %d", i, si.SectorID, piece.DealID, piece.Size, deal.PieceSize))
+		}
+
+		if head.Height() >= deal.ProposalExpiration {
+			return ErrExpiredDeals(xerrors.Errorf("piece %d of sector %d refers expired deal %d - expires %d, head %d", i, si.SectorID, piece.DealID, deal.ProposalExpiration, head.Height()))
 		}
 	}
 
