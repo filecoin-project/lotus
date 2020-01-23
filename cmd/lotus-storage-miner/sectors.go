@@ -4,6 +4,7 @@ import (
 	"fmt"
 	"sort"
 	"strconv"
+	"time"
 
 	"golang.org/x/xerrors"
 	"gopkg.in/urfave/cli.v2"
@@ -41,6 +42,12 @@ var sectorsCmd = &cli.Command{
 var sectorsStatusCmd = &cli.Command{
 	Name:  "status",
 	Usage: "Get the seal status of a sector by its ID",
+	Flags: []cli.Flag{
+		&cli.BoolFlag{
+			Name:  "log",
+			Usage: "display event log",
+		},
+	},
 	Action: func(cctx *cli.Context) error {
 		nodeApi, closer, err := lcli.GetStorageMinerAPI(cctx)
 		if err != nil {
@@ -76,6 +83,17 @@ var sectorsStatusCmd = &cli.Command{
 		fmt.Printf("Retries:\t\t%d\n", status.Retries)
 		if status.LastErr != "" {
 			fmt.Printf("Last Error:\t\t%s\n", status.LastErr)
+		}
+
+		if cctx.Bool("log") {
+			fmt.Printf("--------\nEvent Log:\n")
+
+			for i, l := range status.Log {
+				fmt.Printf("%d.\t%s:\t[%s]\t%s\n", i, time.Unix(int64(l.Timestamp), 0), l.Kind, l.Message)
+				if l.Trace != "" {
+					fmt.Printf("\t%s\n", l.Trace)
+				}
+			}
 		}
 		return nil
 	},

@@ -87,8 +87,8 @@ func checkSeal(ctx context.Context, maddr address.Address, si SectorInfo, api se
 		return ErrBadCommD(xerrors.Errorf("on chain CommD differs from sector: %x != %x", r.Return, si.CommD))
 	}
 
-	if int64(head.Height()) - int64(si.Ticket.BlockHeight + build.SealRandomnessLookback) > build.SealRandomnessLookbackLimit {
-		return ErrExpiredTicket(xerrors.Errorf("ticket expired: seal height: %d, head: %d", si.Ticket.BlockHeight + build.SealRandomnessLookback, head.Height()))
+	if int64(head.Height())-int64(si.Ticket.BlockHeight+build.SealRandomnessLookback) > build.SealRandomnessLookbackLimit {
+		return ErrExpiredTicket(xerrors.Errorf("ticket expired: seal height: %d, head: %d", si.Ticket.BlockHeight+build.SealRandomnessLookback, head.Height()))
 	}
 
 	return nil

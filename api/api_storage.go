@@ -107,6 +107,15 @@ type StorageMiner interface {
 	WorkerDone(ctx context.Context, task uint64, res sectorbuilder.SealRes) error
 }
 
+type SectorLog struct {
+	Kind      string
+	Timestamp uint64
+
+	Trace string
+
+	Message string
+}
+
 type SectorInfo struct {
 	SectorID uint64
 	State    SectorState
@@ -119,6 +128,8 @@ type SectorInfo struct {
 	Retries  uint64
 
 	LastErr string
+
+	Log []SectorLog
 }
 
 type SealedRef struct {
