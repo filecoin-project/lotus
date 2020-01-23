@@ -3,9 +3,10 @@ package actors_test
 import (
 	"bytes"
 	"context"
-	"github.com/filecoin-project/go-sectorbuilder"
 	"math/rand"
 	"testing"
+
+	"github.com/filecoin-project/go-sectorbuilder"
 
 	"github.com/ipfs/go-cid"
 	dstore "github.com/ipfs/go-datastore"
@@ -185,7 +186,7 @@ func NewHarness(t *testing.T, options ...HarnessOpt) *Harness {
 		t.Fatal(err)
 	}
 
-	stateroot, err := st.Flush()
+	stateroot, err := st.Flush(context.TODO())
 	if err != nil {
 		t.Fatal(err)
 	}

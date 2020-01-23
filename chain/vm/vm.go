@@ -430,7 +430,7 @@ func (vm *VM) ApplyMessage(ctx context.Context, msg *types.Message) (*ApplyRet, 
 	}
 
 	st := vm.cstate
-	if err := st.Snapshot(); err != nil {
+	if err := st.Snapshot(ctx); err != nil {
 		return nil, xerrors.Errorf("snapshot failed: %w", err)
 	}
 
@@ -534,7 +534,7 @@ func (vm *VM) Flush(ctx context.Context) (cid.Cid, error) {
 	from := vm.buf
 	to := vm.buf.Read()
 
-	root, err := vm.cstate.Flush()
+	root, err := vm.cstate.Flush(ctx)
 	if err != nil {
 		return cid.Undef, xerrors.Errorf("flushing vm: %w", err)
 	}

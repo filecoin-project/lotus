@@ -6,6 +6,7 @@ import (
 	"context"
 	"io/ioutil"
 	"os"
+	"runtime/pprof"
 
 	paramfetch "github.com/filecoin-project/go-paramfetch"
 	"github.com/filecoin-project/go-sectorbuilder"
@@ -70,8 +71,24 @@ var DaemonCmd = &cli.Command{
 			Name:  "halt-after-import",
 			Usage: "halt the process after importing chain from file",
 		},
+		&cli.StringFlag{
+			Name:  "pprof",
+			Usage: "specify name of file for writing cpu profile to",
+		},
 	},
 	Action: func(cctx *cli.Context) error {
+		if prof := cctx.String("pprof"); prof != "" {
+			profile, err := os.Create(prof)
+			if err != nil {
+				return err
+			}
+
+			if err := pprof.StartCPUProfile(profile); err != nil {
+				return err
+			}
+			defer pprof.StopCPUProfile()
+		}
+
 		ctx := context.Background()
 		r, err := repo.NewFS(cctx.String("repo"))
 		if err != nil {
