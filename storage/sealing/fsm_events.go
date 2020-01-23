@@ -126,6 +126,14 @@ type SectorRetrySeal struct{}
 
 func (evt SectorRetrySeal) apply(state *SectorInfo) {}
 
+type SectorRetryPreCommit struct{}
+
+func (evt SectorRetryPreCommit) apply(state *SectorInfo) {}
+
+type SectorRetryWaitSeed struct{}
+
+func (evt SectorRetryWaitSeed) apply(state *SectorInfo) {}
+
 // Faults
 
 type SectorFaulty struct{}

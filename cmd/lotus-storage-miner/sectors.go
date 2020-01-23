@@ -151,7 +151,7 @@ var sectorsListCmd = &cli.Command{
 			return list[i] < list[j]
 		})
 
-		w := tabwriter.NewWriter(os.Stdout, 8, 4, 0, ' ', 0)
+		w := tabwriter.NewWriter(os.Stdout, 8, 4, 1, ' ', 0)
 
 		for _, s := range list {
 			st, err := nodeApi.SectorsStatus(ctx, s)

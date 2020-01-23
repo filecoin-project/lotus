@@ -50,7 +50,6 @@ type storageMinerApi interface {
 	StateGetActor(ctx context.Context, actor address.Address, ts *types.TipSet) (*types.Actor, error)
 	StateGetReceipt(context.Context, cid.Cid, *types.TipSet) (*types.MessageReceipt, error)
 	StateMarketStorageDeal(context.Context, uint64, *types.TipSet) (*actors.OnChainDeal, error)
-	StateReadState(ctx context.Context, act *types.Actor, ts *types.TipSet) (*api.ActorState, error)
 
 	MpoolPushMessage(context.Context, *types.Message) (*types.SignedMessage, error)
 
@@ -59,6 +58,7 @@ type storageMinerApi interface {
 	ChainGetRandomness(context.Context, types.TipSetKey, int64) ([]byte, error)
 	ChainGetTipSetByHeight(context.Context, uint64, *types.TipSet) (*types.TipSet, error)
 	ChainGetBlockMessages(context.Context, cid.Cid) (*api.BlockMessages, error)
+	ChainReadObj(context.Context, cid.Cid) ([]byte, error)
 
 	WalletSign(context.Context, address.Address, []byte) (*types.Signature, error)
 	WalletBalance(context.Context, address.Address) (types.BigInt, error)
