@@ -91,7 +91,7 @@ func fixBlizzardAMTBug(ctx context.Context, sm *StateManager, pstate cid.Cid) (c
 		}
 	}
 
-	return st.Flush()
+	return st.Flush(ctx)
 }
 
 func fixMiner(ctx context.Context, cst *hamt.CborIpldStore, bs blockstore.Blockstore, mscid cid.Cid) (cid.Cid, error) {
