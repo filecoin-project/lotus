@@ -36,9 +36,6 @@ type Miner struct {
 	worker address.Address
 
 	sealing *sealing.Sealing
-
-	stop    chan struct{}
-	stopped chan struct{}
 }
 
 type storageMinerApi interface {
@@ -76,9 +73,6 @@ func NewMiner(api storageMinerApi, addr address.Address, h host.Host, ds datasto
 		tktFn: tktFn,
 
 		maddr: addr,
-
-		stop:    make(chan struct{}),
-		stopped: make(chan struct{}),
 	}
 
 	return m, nil
@@ -109,14 +103,7 @@ func (m *Miner) Run(ctx context.Context) error {
 
 func (m *Miner) Stop(ctx context.Context) error {
 	defer m.sealing.Stop(ctx)
-
-	close(m.stop)
-	select {
-	case <-m.stopped:
-		return nil
-	case <-ctx.Done():
-		return ctx.Err()
-	}
+	return nil
 }
 
 func (m *Miner) runPreflightChecks(ctx context.Context) error {
