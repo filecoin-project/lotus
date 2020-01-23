@@ -70,6 +70,7 @@ var SectorStates = []string{
 	PreCommitFailed:  "PreCommitFailed",
 	SealCommitFailed: "SealCommitFailed",
 	CommitFailed:     "CommitFailed",
+	PackingFailed:    "PackingFailed",
 
 	FailedUnrecoverable: "FailedUnrecoverable",
 

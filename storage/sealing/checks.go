@@ -12,6 +12,8 @@ import (
 	"github.com/filecoin-project/lotus/chain/types"
 )
 
+// TODO: For now we handle this by halting state execution, when we get jsonrpc reconnecting
+//  We should implement some wait-for-api logic
 type ErrApi error
 
 type ErrInvalidDeals error
@@ -78,7 +80,7 @@ func checkSeal(ctx context.Context, maddr address.Address, si SectorInfo, api se
 	}
 	r, err := api.StateCall(ctx, ccmt, nil)
 	if err != nil {
-		return xerrors.Errorf("calling ComputeDataCommitment: %w", err)
+		return ErrApi(xerrors.Errorf("calling ComputeDataCommitment: %w", err))
 	}
 	if r.ExitCode != 0 {
 		return ErrBadCommD(xerrors.Errorf("receipt for ComputeDataCommitment had exit code %d", r.ExitCode))

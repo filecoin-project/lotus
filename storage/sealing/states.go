@@ -45,7 +45,17 @@ func (m *Sealing) handlePacking(ctx statemachine.Context, sector SectorInfo) err
 
 func (m *Sealing) handleUnsealed(ctx statemachine.Context, sector SectorInfo) error {
 	if err := checkPieces(ctx.Context(), sector, m.api); err != nil { // Sanity check state
-		return ctx.Send(SectorPackingFailed{xerrors.Errorf("checkPieces error: %w", err)})
+		switch err.(type) {
+		case ErrApi:
+			log.Errorf("handleUnsealed: api error, not proceeding: %+v", err)
+			return nil
+		case ErrInvalidDeals:
+			return ctx.Send(SectorPackingFailed{xerrors.Errorf("invalid deals in sector: %w", err)})
+		case ErrExpiredDeals: // Probably not much we can do here, maybe re-pack the sector?
+			return ctx.Send(SectorPackingFailed{xerrors.Errorf("expired deals in sector: %w", err)})
+		default:
+			return xerrors.Errorf("checkPieces sanity check error: %w", err)
+		}
 	}
 
 	log.Infow("performing sector replication...", "sector", sector.SectorID)
@@ -71,7 +81,17 @@ func (m *Sealing) handleUnsealed(ctx statemachine.Context, sector SectorInfo) er
 
 func (m *Sealing) handlePreCommitting(ctx statemachine.Context, sector SectorInfo) error {
 	if err := checkSeal(ctx.Context(), m.maddr, sector, m.api); err != nil {
-		return ctx.Send(SectorSealFailed{xerrors.Errorf("checkPieces error: %w", err)})
+		switch err.(type) {
+		case ErrApi:
+			log.Errorf("handlePreCommitting: api error, not proceeding: %+v", err)
+			return nil
+		case ErrBadCommD: // TODO: Should this just back to packing? (not really needed since handleUnsealed will do that too)
+			return ctx.Send(SectorSealFailed{xerrors.Errorf("bad CommD error: %w", err)})
+		case ErrExpiredTicket:
+			return ctx.Send(SectorSealFailed{xerrors.Errorf("bad CommD error: %w", err)})
+		default:
+			return xerrors.Errorf("checkSeal sanity check error: %w", err)
+		}
 	}
 
 	params := &actors.SectorPreCommitInfo{

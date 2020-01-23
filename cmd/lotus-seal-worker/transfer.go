@@ -14,6 +14,7 @@ import (
 
 	"github.com/filecoin-project/lotus/lib/tarutil"
 )
+
 func (w *worker) sizeForType(typ string) int64 {
 	size := int64(w.sb.SectorSize())
 	if typ == "cache" {
