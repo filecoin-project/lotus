@@ -63,6 +63,7 @@ var fsmPlanners = []func(events []statemachine.Event, state *SectorInfo) error{
 	api.PreCommitFailed: planOne(
 		on(SectorRetryPreCommit{}, api.PreCommitting),
 		on(SectorRetryWaitSeed{}, api.WaitSeed),
+		on(SectorSealFailed{}, api.SealFailed),
 	),
 
 	api.Faulty: planOne(
