@@ -6,6 +6,8 @@ import (
 	"golang.org/x/xerrors"
 
 	"github.com/filecoin-project/go-address"
+
+	"github.com/filecoin-project/lotus/build"
 	"github.com/filecoin-project/lotus/chain/actors"
 	"github.com/filecoin-project/lotus/chain/types"
 )
@@ -14,6 +16,9 @@ type ErrApi error
 
 type ErrInvalidDeals error
 type ErrExpiredDeals error
+
+type ErrBadCommD error
+type ErrExpiredTicket error
 
 func checkPieces(ctx context.Context, si SectorInfo, api sealingApi) error {
 	head, err := api.ChainHead(ctx)
@@ -44,9 +49,14 @@ func checkPieces(ctx context.Context, si SectorInfo, api sealingApi) error {
 }
 
 func checkSeal(ctx context.Context, maddr address.Address, si SectorInfo, api sealingApi) (err error) {
-	ssize, err := api.StateMinerSectorSize(ctx, maddr, nil)
+	head, err := api.ChainHead(ctx)
 	if err != nil {
-		return err
+		return ErrApi(xerrors.Errorf("getting chain head: %w", err))
+	}
+
+	ssize, err := api.StateMinerSectorSize(ctx, maddr, head)
+	if err != nil {
+		return ErrApi(err)
 	}
 
 	ccparams, err := actors.SerializeParams(&actors.ComputeDataCommitmentParams{
@@ -71,10 +81,14 @@ func checkSeal(ctx context.Context, maddr address.Address, si SectorInfo, api se
 		return xerrors.Errorf("calling ComputeDataCommitment: %w", err)
 	}
 	if r.ExitCode != 0 {
-		return xerrors.Errorf("receipt for ComputeDataCommitment had exit code %d", r.ExitCode)
+		return ErrBadCommD(xerrors.Errorf("receipt for ComputeDataCommitment had exit code %d", r.ExitCode))
 	}
 	if string(r.Return) != string(si.CommD) {
-		return xerrors.Errorf("on chain CommD differs from sector: %x != %x", r.Return, si.CommD)
+		return ErrBadCommD(xerrors.Errorf("on chain CommD differs from sector: %x != %x", r.Return, si.CommD))
+	}
+
+	if int64(head.Height()) - int64(si.Ticket.BlockHeight + build.SealRandomnessLookback) > build.SealRandomnessLookbackLimit {
+		return ErrExpiredTicket(xerrors.Errorf("ticket expired: seal height: %d, head: %d", si.Ticket.BlockHeight + build.SealRandomnessLookback, head.Height()))
 	}
 
 	return nil
