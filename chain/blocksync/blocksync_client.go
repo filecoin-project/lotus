@@ -45,15 +45,15 @@ func NewBlockSyncClient(bserv dtypes.ChainBlockService, h host.Host, pmgr peermg
 
 func (bs *BlockSync) processStatus(req *BlockSyncRequest, res *BlockSyncResponse) error {
 	switch res.Status {
-	case 101: // Partial Response
+	case StatusPartial: // Partial Response
 		return xerrors.Errorf("not handling partial blocksync responses yet")
-	case 201: // req.Start not found
+	case StatusNotFound: // req.Start not found
 		return xerrors.Errorf("not found")
-	case 202: // Go Away
+	case StatusGoAway: // Go Away
 		return xerrors.Errorf("not handling 'go away' blocksync responses yet")
-	case 203: // Internal Error
+	case StatusInternalError: // Internal Error
 		return xerrors.Errorf("block sync peer errored: %s", res.Message)
-	case 204:
+	case StatusBadRequest:
 		return xerrors.Errorf("block sync request invalid: %s", res.Message)
 	default:
 		return xerrors.Errorf("unrecognized response code: %d", res.Status)
@@ -195,9 +195,14 @@ func (bs *BlockSync) GetChainMessages(ctx context.Context, h *types.TipSet, coun
 			continue
 		}
 
-		if res.Status == 0 {
+		if res.Status == StatusOK {
 			bs.syncPeers.logGlobalSuccess(time.Since(start))
 			return res.Chain, nil
+		}
+
+		if res.Status == StatusPartial {
+			log.Warn("dont yet handle partial responses")
+			continue
 		}
 
 		err = bs.processStatus(req, res)
