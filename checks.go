@@ -14,13 +14,13 @@ import (
 
 // TODO: For now we handle this by halting state execution, when we get jsonrpc reconnecting
 //  We should implement some wait-for-api logic
-type ErrApi struct{error}
+type ErrApi struct{ error }
 
-type ErrInvalidDeals struct{error}
-type ErrExpiredDeals struct{error}
+type ErrInvalidDeals struct{ error }
+type ErrExpiredDeals struct{ error }
 
-type ErrBadCommD struct{error}
-type ErrExpiredTicket struct{error}
+type ErrBadCommD struct{ error }
+type ErrExpiredTicket struct{ error }
 
 func checkPieces(ctx context.Context, si SectorInfo, api sealingApi) error {
 	head, err := api.ChainHead(ctx)
