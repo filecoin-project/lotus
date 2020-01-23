@@ -14,6 +14,13 @@ import (
 
 	"github.com/filecoin-project/lotus/lib/tarutil"
 )
+func (w *worker) sizeForType(typ string) int64 {
+	size := int64(w.sb.SectorSize())
+	if typ == "cache" {
+		size *= 10
+	}
+	return size
+}
 
 func (w *worker) fetch(typ string, sectorID uint64) error {
 	outname := filepath.Join(w.repo, typ, w.sb.SectorName(sectorID))
@@ -37,7 +44,7 @@ func (w *worker) fetch(typ string, sectorID uint64) error {
 		return xerrors.Errorf("non-200 code: %d", resp.StatusCode)
 	}
 
-	bar := pb.New64(resp.ContentLength)
+	bar := pb.New64(w.sizeForType(typ))
 	bar.ShowPercent = true
 	bar.ShowSpeed = true
 	bar.Units = pb.U_BYTES
@@ -88,7 +95,7 @@ func (w *worker) push(typ string, sectorID uint64) error {
 		return xerrors.Errorf("opening push reader: %w", err)
 	}
 
-	bar := pb.New64(0)
+	bar := pb.New64(w.sizeForType(typ))
 	bar.ShowPercent = true
 	bar.ShowSpeed = true
 	bar.ShowCounters = true
