@@ -52,7 +52,7 @@ type Log struct {
 	Message string
 
 	// additional data (Event info)
-	Kind   string
+	Kind string
 }
 
 type SectorInfo struct {
