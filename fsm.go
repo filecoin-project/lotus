@@ -60,6 +60,10 @@ var fsmPlanners = []func(events []statemachine.Event, state *SectorInfo) error{
 	api.SealFailed: planOne(
 		on(SectorRetrySeal{}, api.Unsealed),
 	),
+	api.PreCommitFailed: planOne(
+		on(SectorRetryPreCommit{}, api.PreCommitting),
+		on(SectorRetryWaitSeed{}, api.WaitSeed),
+	),
 
 	api.Faulty: planOne(
 		on(SectorFaultReported{}, api.FaultReported),
@@ -153,7 +157,7 @@ func (m *Sealing) plan(events []statemachine.Event, state *SectorInfo) (func(sta
 	case api.SealFailed:
 		return m.handleSealFailed, nil
 	case api.PreCommitFailed:
-		log.Warnf("sector %d entered unimplemented state 'PreCommitFailed'", state.SectorID)
+		return m.handlePreCommitFailed, nil
 	case api.SealCommitFailed:
 		log.Warnf("sector %d entered unimplemented state 'SealCommitFailed'", state.SectorID)
 	case api.CommitFailed:
