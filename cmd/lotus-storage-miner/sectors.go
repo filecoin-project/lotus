@@ -2,8 +2,10 @@ package main
 
 import (
 	"fmt"
+	"os"
 	"sort"
 	"strconv"
+	"text/tabwriter"
 	"time"
 
 	"golang.org/x/xerrors"
@@ -149,17 +151,19 @@ var sectorsListCmd = &cli.Command{
 			return list[i] < list[j]
 		})
 
+		w := tabwriter.NewWriter(os.Stdout, 8, 4, 0, ' ', 0)
+
 		for _, s := range list {
 			st, err := nodeApi.SectorsStatus(ctx, s)
 			if err != nil {
-				fmt.Printf("%d:\tError: %s\n", s, err)
+				fmt.Fprintf(w, "%d:\tError: %s\n", s, err)
 				continue
 			}
 
 			_, inSSet := commitedIDs[s]
 			_, inPSet := provingIDs[s]
 
-			fmt.Printf("%d: %s\tsSet: %s\tpSet: %s\ttktH: %d\tseedH: %d\tdeals: %v\n",
+			fmt.Fprintf(w, "%d: %s\tsSet: %s\tpSet: %s\ttktH: %d\tseedH: %d\tdeals: %v\n",
 				s,
 				api.SectorStates[st.State],
 				yesno(inSSet),
@@ -169,7 +173,8 @@ var sectorsListCmd = &cli.Command{
 				st.Deals,
 			)
 		}
-		return nil
+
+		return w.Flush()
 	},
 }
 
