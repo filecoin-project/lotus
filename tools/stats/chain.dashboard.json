@@ -62,7 +62,7 @@
   "panels": [
     {
       "aliasColors": {},
-      "bars": false,
+      "bars": true,
       "dashLength": 10,
       "dashes": false,
       "datasource": "${DS_INFLUXDB}",
@@ -70,7 +70,7 @@
       "fill": 3,
       "fillGradient": 0,
       "gridPos": {
-        "h": 16,
+        "h": 9,
         "w": 24,
         "x": 0,
         "y": 0
@@ -80,18 +80,18 @@
       "interval": "",
       "legend": {
         "alignAsTable": true,
-        "avg": false,
-        "current": true,
+        "avg": true,
+        "current": false,
         "max": false,
         "min": false,
         "rightSide": true,
         "show": true,
-        "sort": "current",
+        "sort": "avg",
         "sortDesc": true,
         "total": false,
         "values": true
       },
-      "lines": true,
+      "lines": false,
       "linewidth": 1,
       "nullPointMode": "null",
       "options": {
@@ -131,7 +131,7 @@
           "measurement": "chain.election",
           "orderByTime": "ASC",
           "policy": "default",
-          "query": "SELECT moving_average(count(\"value\"), 10) FROM \"chain.election\" WHERE $timeFilter -10m GROUP BY time($__interval), \"miner\" fill(null)",
+          "query": "SELECT count(\"value\") FROM \"chain.election\" WHERE $timeFilter -10m GROUP BY time($__interval), \"miner\" fill(null)",
           "rawQuery": true,
           "refId": "A",
           "resultFormat": "time_series",
@@ -214,9 +214,10 @@
         "h": 4,
         "w": 8,
         "x": 0,
-        "y": 16
+        "y": 9
       },
       "id": 22,
+      "interval": "",
       "legend": {
         "avg": false,
         "current": false,
@@ -268,7 +269,7 @@
         }
       ],
       "thresholds": [],
-      "timeFrom": null,
+      "timeFrom": "4h",
       "timeRegions": [],
       "timeShift": null,
       "title": "Total Power",
@@ -287,9 +288,8 @@
       },
       "yaxes": [
         {
-          "decimals": 2,
           "format": "bytes",
-          "label": "",
+          "label": null,
           "logBase": 1,
           "max": null,
           "min": null,
@@ -329,9 +329,9 @@
       },
       "gridPos": {
         "h": 4,
-        "w": 8,
+        "w": 4,
         "x": 8,
-        "y": 16
+        "y": 9
       },
       "id": 12,
       "interval": null,
@@ -423,6 +423,122 @@
         "#d44a3a"
       ],
       "datasource": "${DS_INFLUXDB}",
+      "format": "bytes",
+      "gauge": {
+        "maxValue": 100,
+        "minValue": 0,
+        "show": false,
+        "thresholdLabels": false,
+        "thresholdMarkers": true
+      },
+      "gridPos": {
+        "h": 4,
+        "w": 4,
+        "x": 12,
+        "y": 9
+      },
+      "id": 42,
+      "interval": "",
+      "links": [],
+      "mappingType": 1,
+      "mappingTypes": [
+        {
+          "name": "value to text",
+          "value": 1
+        },
+        {
+          "name": "range to text",
+          "value": 2
+        }
+      ],
+      "maxDataPoints": 100,
+      "nullPointMode": "connected",
+      "nullText": null,
+      "options": {},
+      "postfix": "",
+      "postfixFontSize": "50%",
+      "prefix": "",
+      "prefixFontSize": "50%",
+      "rangeMaps": [
+        {
+          "from": "null",
+          "text": "N/A",
+          "to": "null"
+        }
+      ],
+      "sparkline": {
+        "fillColor": "rgba(31, 118, 189, 0.18)",
+        "full": false,
+        "lineColor": "rgb(31, 120, 193)",
+        "show": true,
+        "ymax": null,
+        "ymin": 0
+      },
+      "tableColumn": "",
+      "targets": [
+        {
+          "groupBy": [
+            {
+              "params": [
+                "$__interval"
+              ],
+              "type": "time"
+            },
+            {
+              "params": [
+                "null"
+              ],
+              "type": "fill"
+            }
+          ],
+          "orderByTime": "ASC",
+          "policy": "default",
+          "query": "SELECT sum(\"value\") FROM \"chain.miner_power\" WHERE $timeFilter GROUP BY time(45s)",
+          "rawQuery": true,
+          "refId": "A",
+          "resultFormat": "time_series",
+          "select": [
+            [
+              {
+                "params": [
+                  "value"
+                ],
+                "type": "field"
+              },
+              {
+                "params": [],
+                "type": "mean"
+              }
+            ]
+          ],
+          "tags": []
+        }
+      ],
+      "thresholds": "",
+      "timeFrom": null,
+      "timeShift": null,
+      "title": "Network Storage",
+      "type": "singlestat",
+      "valueFontSize": "80%",
+      "valueMaps": [
+        {
+          "op": "=",
+          "text": "N/A",
+          "value": "null"
+        }
+      ],
+      "valueName": "current"
+    },
+    {
+      "cacheTimeout": null,
+      "colorBackground": false,
+      "colorValue": false,
+      "colors": [
+        "#299c46",
+        "rgba(237, 129, 40, 0.89)",
+        "#d44a3a"
+      ],
+      "datasource": "${DS_INFLUXDB}",
       "format": "none",
       "gauge": {
         "maxValue": 100,
@@ -435,7 +551,7 @@
         "h": 4,
         "w": 8,
         "x": 16,
-        "y": 16
+        "y": 9
       },
       "id": 6,
       "interval": null,
@@ -477,8 +593,15 @@
       "tableColumn": "",
       "targets": [
         {
-          "groupBy": [],
-          "measurement": "chain.block_count",
+          "groupBy": [
+            {
+              "params": [
+                "$interval"
+              ],
+              "type": "time"
+            }
+          ],
+          "measurement": "chain.election",
           "orderByTime": "ASC",
           "policy": "default",
           "refId": "A",
@@ -490,6 +613,10 @@
                   "value"
                 ],
                 "type": "field"
+              },
+              {
+                "params": [],
+                "type": "sum"
               }
             ]
           ],
@@ -509,7 +636,7 @@
           "value": "null"
         }
       ],
-      "valueName": "current"
+      "valueName": "avg"
     },
     {
       "cacheTimeout": null,
@@ -534,7 +661,7 @@
         "h": 3,
         "w": 4,
         "x": 0,
-        "y": 20
+        "y": 13
       },
       "id": 4,
       "interval": null,
@@ -632,7 +759,7 @@
         "h": 3,
         "w": 4,
         "x": 4,
-        "y": 20
+        "y": 13
       },
       "id": 14,
       "interval": null,
@@ -734,7 +861,7 @@
         "h": 3,
         "w": 4,
         "x": 8,
-        "y": 20
+        "y": 13
       },
       "id": 32,
       "interval": null,
@@ -849,7 +976,7 @@
         "h": 3,
         "w": 4,
         "x": 12,
-        "y": 20
+        "y": 13
       },
       "id": 20,
       "interval": null,
@@ -964,7 +1091,7 @@
         "h": 3,
         "w": 4,
         "x": 16,
-        "y": 20
+        "y": 13
       },
       "id": 8,
       "interval": null,
@@ -1079,7 +1206,7 @@
         "h": 3,
         "w": 4,
         "x": 20,
-        "y": 20
+        "y": 13
       },
       "id": 10,
       "interval": null,
@@ -1131,7 +1258,7 @@
             },
             {
               "params": [
-                "0"
+                "null"
               ],
               "type": "fill"
             }
@@ -1139,8 +1266,8 @@
           "measurement": "chain.message_count",
           "orderByTime": "ASC",
           "policy": "default",
-          "query": "SELECT sum(\"value\") FROM (SELECT \"value\" FROM \"chain.message_count\" GROUP BY \"height\") WHERE $timeFilter GROUP BY time($__interval) fill(0)",
-          "rawQuery": true,
+          "query": "SELECT \"value\" FROM \"chain.message_count\" WHERE $timeFilter ",
+          "rawQuery": false,
           "refId": "A",
           "resultFormat": "time_series",
           "select": [
@@ -1153,7 +1280,7 @@
               },
               {
                 "params": [],
-                "type": "mean"
+                "type": "sum"
               }
             ]
           ],
@@ -1198,7 +1325,7 @@
         "h": 3,
         "w": 4,
         "x": 0,
-        "y": 23
+        "y": 16
       },
       "id": 16,
       "interval": "",
@@ -1293,16 +1420,16 @@
         "h": 3,
         "w": 16,
         "x": 4,
-        "y": 23
+        "y": 16
       },
       "id": 2,
       "legend": {
         "alignAsTable": true,
         "avg": true,
-        "current": false,
+        "current": true,
         "hideEmpty": false,
         "hideZero": false,
-        "max": false,
+        "max": true,
         "min": false,
         "rightSide": true,
         "show": true,
@@ -1321,10 +1448,6 @@
       "points": false,
       "renderer": "flot",
       "seriesOverrides": [
-        {
-          "alias": "chain.height.difference",
-          "yaxis": 2
-        },
         {
           "alias": "Null Blocks",
           "yaxis": 2
@@ -1399,7 +1522,7 @@
       "timeFrom": null,
       "timeRegions": [],
       "timeShift": null,
-      "title": "",
+      "title": "Tipsets",
       "tooltip": {
         "shared": true,
         "sort": 0,
@@ -1416,7 +1539,7 @@
       "yaxes": [
         {
           "format": "s",
-          "label": "Time delta",
+          "label": "Time between tipsets",
           "logBase": 1,
           "max": null,
           "min": null,
@@ -1425,7 +1548,7 @@
         {
           "decimals": 0,
           "format": "short",
-          "label": "# null blocks",
+          "label": "Number of Null blocks",
           "logBase": 1,
           "max": null,
           "min": "0",
@@ -1459,7 +1582,7 @@
         "h": 3,
         "w": 4,
         "x": 20,
-        "y": 23
+        "y": 16
       },
       "id": 30,
       "interval": null,
@@ -1540,10 +1663,10 @@
       "datasource": "${DS_INFLUXDB}",
       "fontSize": "100%",
       "gridPos": {
-        "h": 16,
+        "h": 21,
         "w": 4,
         "x": 0,
-        "y": 26
+        "y": 19
       },
       "id": 28,
       "options": {},
@@ -1627,13 +1750,13 @@
       "dashLength": 10,
       "dashes": false,
       "datasource": "${DS_INFLUXDB}",
-      "fill": 4,
+      "fill": 5,
       "fillGradient": 0,
       "gridPos": {
         "h": 8,
         "w": 12,
         "x": 4,
-        "y": 26
+        "y": 19
       },
       "id": 40,
       "interval": "",
@@ -1641,8 +1764,8 @@
         "alignAsTable": true,
         "avg": false,
         "current": true,
-        "hideEmpty": false,
-        "hideZero": false,
+        "hideEmpty": true,
+        "hideZero": true,
         "max": false,
         "min": false,
         "rightSide": true,
@@ -1765,10 +1888,10 @@
       "datasource": "${DS_INFLUXDB}",
       "fontSize": "100%",
       "gridPos": {
-        "h": 16,
+        "h": 21,
         "w": 8,
         "x": 16,
-        "y": 26
+        "y": 19
       },
       "id": 18,
       "options": {},
@@ -1862,10 +1985,10 @@
       "fill": 1,
       "fillGradient": 0,
       "gridPos": {
-        "h": 8,
+        "h": 6,
         "w": 12,
         "x": 4,
-        "y": 34
+        "y": 27
       },
       "id": 24,
       "legend": {
@@ -1981,6 +2104,128 @@
     {
       "aliasColors": {},
       "bars": false,
+      "cacheTimeout": null,
+      "dashLength": 10,
+      "dashes": false,
+      "datasource": "${DS_INFLUXDB}",
+      "fill": 1,
+      "fillGradient": 0,
+      "gridPos": {
+        "h": 7,
+        "w": 12,
+        "x": 4,
+        "y": 33
+      },
+      "id": 44,
+      "legend": {
+        "avg": false,
+        "current": false,
+        "max": false,
+        "min": false,
+        "show": true,
+        "total": false,
+        "values": false
+      },
+      "lines": true,
+      "linewidth": 1,
+      "links": [],
+      "nullPointMode": "null",
+      "options": {
+        "dataLinks": []
+      },
+      "percentage": false,
+      "pointradius": 2,
+      "points": false,
+      "renderer": "flot",
+      "seriesOverrides": [],
+      "spaceLength": 10,
+      "stack": false,
+      "steppedLine": false,
+      "targets": [
+        {
+          "groupBy": [
+            {
+              "params": [
+                "$__interval"
+              ],
+              "type": "time"
+            },
+            {
+              "params": [
+                "previous"
+              ],
+              "type": "fill"
+            }
+          ],
+          "measurement": "chain.miner_power",
+          "orderByTime": "ASC",
+          "policy": "default",
+          "query": "SELECT count(\"value\") FROM \"chain.miner_power\" WHERE $timeFilter GROUP BY time($__interval)",
+          "rawQuery": false,
+          "refId": "A",
+          "resultFormat": "time_series",
+          "select": [
+            [
+              {
+                "params": [
+                  "value"
+                ],
+                "type": "field"
+              },
+              {
+                "params": [],
+                "type": "count"
+              }
+            ]
+          ],
+          "tags": []
+        }
+      ],
+      "thresholds": [],
+      "timeFrom": null,
+      "timeRegions": [],
+      "timeShift": null,
+      "title": "Miners on Chain",
+      "tooltip": {
+        "shared": true,
+        "sort": 0,
+        "value_type": "individual"
+      },
+      "type": "graph",
+      "xaxis": {
+        "buckets": null,
+        "mode": "time",
+        "name": null,
+        "show": true,
+        "values": []
+      },
+      "yaxes": [
+        {
+          "decimals": 0,
+          "format": "none",
+          "label": null,
+          "logBase": 1,
+          "max": null,
+          "min": null,
+          "show": true
+        },
+        {
+          "format": "short",
+          "label": null,
+          "logBase": 1,
+          "max": null,
+          "min": null,
+          "show": true
+        }
+      ],
+      "yaxis": {
+        "align": false,
+        "alignLevel": null
+      }
+    },
+    {
+      "aliasColors": {},
+      "bars": true,
       "dashLength": 10,
       "dashes": false,
       "datasource": "${DS_INFLUXDB}",
@@ -1990,7 +2235,7 @@
         "h": 9,
         "w": 12,
         "x": 0,
-        "y": 42
+        "y": 40
       },
       "id": 34,
       "legend": {
@@ -2004,7 +2249,7 @@
         "total": false,
         "values": false
       },
-      "lines": true,
+      "lines": false,
       "linewidth": 1,
       "nullPointMode": "null",
       "options": {
@@ -2050,8 +2295,6 @@
           "measurement": "chain.message_count",
           "orderByTime": "ASC",
           "policy": "default",
-          "query": "SELECT moving_average(count(\"value\"), 2) FROM \"chain.message_count\" WHERE $timeFilter -4m GROUP BY time($__interval), \"actor\", \"method\" fill(null)",
-          "rawQuery": true,
           "refId": "A",
           "resultFormat": "time_series",
           "select": [
@@ -2064,7 +2307,7 @@
               },
               {
                 "params": [],
-                "type": "count"
+                "type": "sum"
               }
             ]
           ],
@@ -2114,35 +2357,35 @@
     },
     {
       "aliasColors": {},
-      "bars": false,
+      "bars": true,
       "dashLength": 10,
       "dashes": false,
       "datasource": "${DS_INFLUXDB}",
-      "decimals": 2,
       "fill": 1,
       "fillGradient": 0,
       "gridPos": {
         "h": 9,
         "w": 12,
         "x": 12,
-        "y": 42
+        "y": 40
       },
       "id": 36,
-      "interval": "",
       "legend": {
         "alignAsTable": true,
-        "avg": true,
+        "avg": false,
         "current": false,
-        "max": true,
+        "hideEmpty": true,
+        "hideZero": true,
+        "max": false,
         "min": false,
         "rightSide": true,
         "show": true,
         "sort": "avg",
-        "sortDesc": true,
+        "sortDesc": false,
         "total": false,
-        "values": true
+        "values": false
       },
-      "lines": true,
+      "lines": false,
       "linewidth": 1,
       "nullPointMode": "null",
       "options": {
@@ -2168,6 +2411,12 @@
             },
             {
               "params": [
+                "method"
+              ],
+              "type": "tag"
+            },
+            {
+              "params": [
                 "exitcode"
               ],
               "type": "tag"
@@ -2175,12 +2424,6 @@
             {
               "params": [
                 "actor"
-              ],
-              "type": "tag"
-            },
-            {
-              "params": [
-                "method"
               ],
               "type": "tag"
             },
@@ -2194,7 +2437,7 @@
           "measurement": "chain.message_count",
           "orderByTime": "ASC",
           "policy": "default",
-          "query": "SELECT moving_average(count(\"value\"), 10) FROM \"chain.message_count\" WHERE $timeFilter -10m GROUP BY time($__interval), \"exitcode\", \"actor\", \"method\" fill(null)",
+          "query": "SELECT sum(\"value\") FROM \"chain.message_count\" WHERE $timeFilter GROUP BY time($__interval), \"method\", \"exitcode\", \"actor\" fill(null)",
           "rawQuery": true,
           "refId": "A",
           "resultFormat": "time_series",
@@ -2209,12 +2452,6 @@
               {
                 "params": [],
                 "type": "count"
-              },
-              {
-                "params": [
-                  10
-                ],
-                "type": "moving_average"
               }
             ]
           ],
@@ -2241,7 +2478,6 @@
       },
       "yaxes": [
         {
-          "decimals": null,
           "format": "short",
           "label": "",
           "logBase": 1,
@@ -2264,7 +2500,7 @@
       }
     }
   ],
-  "refresh": "30s",
+  "refresh": "45s",
   "schemaVersion": 20,
   "style": "dark",
   "tags": [],
@@ -2280,6 +2516,7 @@
       "5s",
       "10s",
       "30s",
+      "45s",
       "1m",
       "5m",
       "15m",
@@ -2292,5 +2529,5 @@
   "timezone": "",
   "title": "Chain",
   "uid": "z6FtI92Zz",
-  "version": 8
+  "version": 9
 }
