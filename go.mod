@@ -18,7 +18,7 @@ require (
 	github.com/filecoin-project/go-cbor-util v0.0.0-20191219014500-08c40a1e63a2
 	github.com/filecoin-project/go-crypto v0.0.0-20191218222705-effae4ea9f03
 	github.com/filecoin-project/go-data-transfer v0.0.0-20191219005021-4accf56bd2ce
-	github.com/filecoin-project/go-fil-markets v0.0.0-20200114015428-74d100f305f8
+	github.com/filecoin-project/go-fil-markets v0.0.0-20200124174839-9211de075b61
 	github.com/filecoin-project/go-paramfetch v0.0.1
 	github.com/filecoin-project/go-sectorbuilder v0.0.2-0.20200123143044-d9cc96c53c55
 	github.com/filecoin-project/go-statestore v0.1.0
@@ -32,7 +32,7 @@ require (
 	github.com/ipfs/go-bitswap v0.1.8
 	github.com/ipfs/go-block-format v0.0.2
 	github.com/ipfs/go-blockservice v0.1.3-0.20190908200855-f22eea50656c
-	github.com/ipfs/go-car v0.0.3-0.20200121013634-f188c0e24291
+	github.com/ipfs/go-car v0.0.3-0.20200124090545-1a340009d896
 	github.com/ipfs/go-cid v0.0.4
 	github.com/ipfs/go-datastore v0.3.1
 	github.com/ipfs/go-ds-badger2 v0.0.0-20200123200730-d75eb2678a5d
@@ -83,7 +83,7 @@ require (
 	github.com/multiformats/go-varint v0.0.2
 	github.com/opentracing/opentracing-go v1.1.0
 	github.com/polydawn/refmt v0.0.0-20190809202753-05966cbd336a
-	github.com/prometheus/common v0.2.0
+	github.com/prometheus/common v0.4.0
 	github.com/stretchr/testify v1.4.0
 	github.com/whyrusleeping/bencher v0.0.0-20190829221104-bb6607aa8bba
 	github.com/whyrusleeping/cbor-gen v0.0.0-20200121162646-b63bacf5eaf8

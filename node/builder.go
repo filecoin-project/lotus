@@ -256,6 +256,7 @@ func Online() Option {
 			Override(new(dtypes.ProviderDealStore), modules.NewProviderDealStore),
 			Override(new(dtypes.ProviderDataTransfer), modules.NewProviderDAGServiceDataTransfer),
 			Override(new(*deals.ProviderRequestValidator), modules.NewProviderRequestValidator),
+			Override(new(dtypes.ProviderPieceStore), modules.NewProviderPieceStore),
 			Override(new(storagemarket.StorageProvider), modules.StorageProvider),
 			Override(new(storagemarket.StorageProviderNode), storageadapter.NewProviderNodeAdapter),
 			Override(RegisterProviderValidatorKey, modules.RegisterProviderValidator),
