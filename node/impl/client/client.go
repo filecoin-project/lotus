@@ -281,7 +281,7 @@ func (a *API) ClientRetrieve(ctx context.Context, order api.RetrievalOrder, path
 		if state.PayloadCID.Equals(order.Root) {
 			switch event {
 			case retrievalmarket.ClientEventError:
-				retrievalResult <- xerrors.New("Retrieval Error")
+				retrievalResult <- xerrors.Errorf("Retrieval Error: %s", state.Message)
 			case retrievalmarket.ClientEventComplete:
 				retrievalResult <- nil
 			}
@@ -301,7 +301,7 @@ func (a *API) ClientRetrieve(ctx context.Context, order api.RetrievalOrder, path
 		return xerrors.New("Retrieval Timed Out")
 	case err := <-retrievalResult:
 		if err != nil {
-			return xerrors.Errorf("RetrieveUnixfs: %w", err)
+			return xerrors.Errorf("Retrieve: %w", err)
 		}
 	}
 
