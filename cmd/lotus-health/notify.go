@@ -1,11 +1,14 @@
 package main
 
 import (
+	"os"
+
 	"github.com/coreos/go-systemd/dbus"
 )
 
-func alertHandler(n string, ch chan interface{}) (string, error) {
+func notifyHandler(n string, ch chan interface{}, sCh chan os.Signal) (string, error) {
 	select {
+	// alerts to restart systemd unit
 	case <-ch:
 		statusCh := make(chan string, 1)
 		c, err := dbus.New()
@@ -20,5 +23,9 @@ func alertHandler(n string, ch chan interface{}) (string, error) {
 		case result := <-statusCh:
 			return result, nil
 		}
+	// SIGTERM
+	case <-sCh:
+		os.Exit(1)
+		return "", nil
 	}
 }
