@@ -207,6 +207,10 @@ func (sb *SBMock) GetPath(string, string) (string, error) {
 	panic("nyi")
 }
 
+func (sb *SBMock) CanCommit(sectorID uint64) (bool, error) {
+	return true, nil
+}
+
 func (sb *SBMock) WorkerStats() sectorbuilder.WorkerStats {
 	panic("nyi")
 }

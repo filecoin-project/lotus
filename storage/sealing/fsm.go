@@ -2,7 +2,9 @@ package sealing
 
 import (
 	"context"
+	"fmt"
 	"reflect"
+	"time"
 
 	"golang.org/x/xerrors"
 
@@ -19,9 +21,8 @@ func (m *Sealing) Plan(events []statemachine.Event, user interface{}) (interface
 	return func(ctx statemachine.Context, si SectorInfo) error {
 		err := next(ctx, si)
 		if err != nil {
-			if err := ctx.Send(SectorFatalError{error: err}); err != nil {
-				return xerrors.Errorf("error while sending error: reporting %+v: %w", err, err)
-			}
+			log.Errorf("unhandled sector error (%d): %+v", si.SectorID, err)
+			return nil
 		}
 
 		return nil
@@ -34,12 +35,14 @@ var fsmPlanners = []func(events []statemachine.Event, state *SectorInfo) error{
 	api.Unsealed: planOne(
 		on(SectorSealed{}, api.PreCommitting),
 		on(SectorSealFailed{}, api.SealFailed),
+		on(SectorPackingFailed{}, api.PackingFailed),
 	),
 	api.PreCommitting: planOne(
-		on(SectorPreCommitted{}, api.PreCommitted),
+		on(SectorSealFailed{}, api.SealFailed),
+		on(SectorPreCommitted{}, api.WaitSeed),
 		on(SectorPreCommitFailed{}, api.PreCommitFailed),
 	),
-	api.PreCommitted: planOne(
+	api.WaitSeed: planOne(
 		on(SectorSeedReady{}, api.Committing),
 		on(SectorPreCommitFailed{}, api.PreCommitFailed),
 	),
@@ -54,6 +57,15 @@ var fsmPlanners = []func(events []statemachine.Event, state *SectorInfo) error{
 		on(SectorFaulty{}, api.Faulty),
 	),
 
+	api.SealFailed: planOne(
+		on(SectorRetrySeal{}, api.Unsealed),
+	),
+	api.PreCommitFailed: planOne(
+		on(SectorRetryPreCommit{}, api.PreCommitting),
+		on(SectorRetryWaitSeed{}, api.WaitSeed),
+		on(SectorSealFailed{}, api.SealFailed),
+	),
+
 	api.Faulty: planOne(
 		on(SectorFaultReported{}, api.FaultReported),
 	),
@@ -64,9 +76,23 @@ func (m *Sealing) plan(events []statemachine.Event, state *SectorInfo) (func(sta
 	/////
 	// First process all events
 
+	for _, event := range events {
+		l := Log{
+			Timestamp: uint64(time.Now().Unix()),
+			Message:   fmt.Sprintf("%+v", event),
+			Kind:      fmt.Sprintf("event;%T", event.User),
+		}
+
+		if err, iserr := event.User.(xerrors.Formatter); iserr {
+			l.Trace = fmt.Sprintf("%+v", err)
+		}
+
+		state.Log = append(state.Log, l)
+	}
+
 	p := fsmPlanners[state.State]
 	if p == nil {
-		return nil, xerrors.Errorf("planner for state %d not found", state.State)
+		return nil, xerrors.Errorf("planner for state %s not found", api.SectorStates[state.State])
 	}
 
 	if err := p(events, state); err != nil {
@@ -90,7 +116,7 @@ func (m *Sealing) plan(events []statemachine.Event, state *SectorInfo) (func(sta
 		*   PreCommitting <--> PreCommitFailed
 		|   |                  ^
 		|   v                  |
-		*<- PreCommitted ------/
+		*<- WaitSeed ----------/
 		|   |||
 		|   vvv      v--> SealCommitFailed
 		*<- Committing
@@ -118,8 +144,8 @@ func (m *Sealing) plan(events []statemachine.Event, state *SectorInfo) (func(sta
 		return m.handleUnsealed, nil
 	case api.PreCommitting:
 		return m.handlePreCommitting, nil
-	case api.PreCommitted:
-		return m.handlePreCommitted, nil
+	case api.WaitSeed:
+		return m.handleWaitSeed, nil
 	case api.Committing:
 		return m.handleCommitting, nil
 	case api.CommitWait:
@@ -130,9 +156,9 @@ func (m *Sealing) plan(events []statemachine.Event, state *SectorInfo) (func(sta
 
 	// Handled failure modes
 	case api.SealFailed:
-		log.Warnf("sector %d entered unimplemented state 'SealFailed'", state.SectorID)
+		return m.handleSealFailed, nil
 	case api.PreCommitFailed:
-		log.Warnf("sector %d entered unimplemented state 'PreCommitFailed'", state.SectorID)
+		return m.handlePreCommitFailed, nil
 	case api.SealCommitFailed:
 		log.Warnf("sector %d entered unimplemented state 'SealCommitFailed'", state.SectorID)
 	case api.CommitFailed:
@@ -175,7 +201,7 @@ func planCommitting(events []statemachine.Event, state *SectorInfo) error {
 			e.apply(state)
 			state.State = api.Committing
 			return nil
-		case SectorSealCommitFailed:
+		case SectorComputeProofFailed:
 			state.State = api.SealCommitFailed
 		case SectorSealFailed:
 			state.State = api.CommitFailed
@@ -221,12 +247,17 @@ func planOne(ts ...func() (mut mutator, next api.SectorState)) func(events []sta
 	return func(events []statemachine.Event, state *SectorInfo) error {
 		if len(events) != 1 {
 			for _, event := range events {
-				if gm, ok := event.User.(globalMutator); !ok {
+				if gm, ok := event.User.(globalMutator); ok {
 					gm.applyGlobal(state)
 					return nil
 				}
 			}
 			return xerrors.Errorf("planner for state %s only has a plan for a single event only, got %+v", api.SectorStates[state.State], events)
+		}
+
+		if gm, ok := events[0].User.(globalMutator); ok {
+			gm.applyGlobal(state)
+			return nil
 		}
 
 		for _, t := range ts {
@@ -245,6 +276,6 @@ func planOne(ts ...func() (mut mutator, next api.SectorState)) func(events []sta
 			return nil
 		}
 
-		return xerrors.Errorf("planner for state %s received unexpected event %+v", api.SectorStates[state.State], events[0])
+		return xerrors.Errorf("planner for state %s received unexpected event %T (%+v)", api.SectorStates[state.State], events[0].User, events[0])
 	}
 }

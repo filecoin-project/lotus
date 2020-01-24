@@ -60,6 +60,10 @@ func (evt SectorPacked) apply(state *SectorInfo) {
 	state.Pieces = append(state.Pieces, evt.pieces...)
 }
 
+type SectorPackingFailed struct{ error }
+
+func (evt SectorPackingFailed) apply(*SectorInfo) {}
+
 type SectorSealed struct {
 	commR  []byte
 	commD  []byte
@@ -96,7 +100,7 @@ func (evt SectorSeedReady) apply(state *SectorInfo) {
 	state.Seed = evt.seed
 }
 
-type SectorSealCommitFailed struct{ error }
+type SectorComputeProofFailed struct{ error }
 
 type SectorCommitFailed struct{ error }
 
@@ -115,6 +119,22 @@ func (evt SectorCommitted) apply(state *SectorInfo) {
 type SectorProving struct{}
 
 func (evt SectorProving) apply(*SectorInfo) {}
+
+// Failed state recovery
+
+type SectorRetrySeal struct{}
+
+func (evt SectorRetrySeal) apply(state *SectorInfo) {}
+
+type SectorRetryPreCommit struct{}
+
+func (evt SectorRetryPreCommit) apply(state *SectorInfo) {}
+
+type SectorRetryWaitSeed struct{}
+
+func (evt SectorRetryWaitSeed) apply(state *SectorInfo) {}
+
+// Faults
 
 type SectorFaulty struct{}
 

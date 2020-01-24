@@ -15,6 +15,7 @@ import (
 
 	"github.com/filecoin-project/lotus/api"
 	"github.com/filecoin-project/lotus/build"
+	"github.com/filecoin-project/lotus/chain/actors"
 	"github.com/filecoin-project/lotus/chain/events"
 	"github.com/filecoin-project/lotus/chain/gen"
 	"github.com/filecoin-project/lotus/chain/store"
@@ -35,9 +36,6 @@ type Miner struct {
 	worker address.Address
 
 	sealing *sealing.Sealing
-
-	stop    chan struct{}
-	stopped chan struct{}
 }
 
 type storageMinerApi interface {
@@ -51,6 +49,7 @@ type storageMinerApi interface {
 	StateWaitMsg(context.Context, cid.Cid) (*api.MsgWait, error) // TODO: removeme eventually
 	StateGetActor(ctx context.Context, actor address.Address, ts *types.TipSet) (*types.Actor, error)
 	StateGetReceipt(context.Context, cid.Cid, *types.TipSet) (*types.MessageReceipt, error)
+	StateMarketStorageDeal(context.Context, uint64, *types.TipSet) (*actors.OnChainDeal, error)
 
 	MpoolPushMessage(context.Context, *types.Message) (*types.SignedMessage, error)
 
@@ -59,6 +58,7 @@ type storageMinerApi interface {
 	ChainGetRandomness(context.Context, types.TipSetKey, int64) ([]byte, error)
 	ChainGetTipSetByHeight(context.Context, uint64, *types.TipSet) (*types.TipSet, error)
 	ChainGetBlockMessages(context.Context, cid.Cid) (*api.BlockMessages, error)
+	ChainReadObj(context.Context, cid.Cid) ([]byte, error)
 
 	WalletSign(context.Context, address.Address, []byte) (*types.Signature, error)
 	WalletBalance(context.Context, address.Address) (types.BigInt, error)
@@ -74,9 +74,6 @@ func NewMiner(api storageMinerApi, addr address.Address, h host.Host, ds datasto
 		tktFn: tktFn,
 
 		maddr: addr,
-
-		stop:    make(chan struct{}),
-		stopped: make(chan struct{}),
 	}
 
 	return m, nil
@@ -107,14 +104,7 @@ func (m *Miner) Run(ctx context.Context) error {
 
 func (m *Miner) Stop(ctx context.Context) error {
 	defer m.sealing.Stop(ctx)
-
-	close(m.stop)
-	select {
-	case <-m.stopped:
-		return nil
-	case <-ctx.Done():
-		return ctx.Err()
-	}
+	return nil
 }
 
 func (m *Miner) runPreflightChecks(ctx context.Context) error {

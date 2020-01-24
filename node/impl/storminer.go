@@ -160,6 +160,16 @@ func (sm *StorageMinerAPI) SectorsStatus(ctx context.Context, sid uint64) (api.S
 		deals[i] = piece.DealID
 	}
 
+	log := make([]api.SectorLog, len(info.Log))
+	for i, l := range info.Log {
+		log[i] = api.SectorLog{
+			Kind:      l.Kind,
+			Timestamp: l.Timestamp,
+			Trace:     l.Trace,
+			Message:   l.Message,
+		}
+	}
+
 	return api.SectorInfo{
 		SectorID: sid,
 		State:    info.State,
@@ -172,6 +182,7 @@ func (sm *StorageMinerAPI) SectorsStatus(ctx context.Context, sid uint64) (api.S
 		Retries:  info.Nonce,
 
 		LastErr: info.LastErr,
+		Log:     log,
 	}, nil
 }
 
