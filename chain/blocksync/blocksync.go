@@ -3,6 +3,7 @@ package blocksync
 import (
 	"bufio"
 	"context"
+	"time"
 
 	"github.com/libp2p/go-libp2p-core/protocol"
 	"go.opencensus.io/trace"
@@ -13,7 +14,6 @@ import (
 	"github.com/filecoin-project/lotus/chain/types"
 
 	"github.com/ipfs/go-cid"
-	cbor "github.com/ipfs/go-ipld-cbor"
 	logging "github.com/ipfs/go-log/v2"
 	inet "github.com/libp2p/go-libp2p-core/network"
 	"github.com/libp2p/go-libp2p-core/peer"
@@ -25,11 +25,7 @@ type NewStreamFunc func(context.Context, peer.ID, ...protocol.ID) (inet.Stream, 
 
 const BlockSyncProtocolID = "/fil/sync/blk/0.0.1"
 
-func init() {
-	cbor.RegisterCborType(BlockSyncRequest{})
-	cbor.RegisterCborType(BlockSyncResponse{})
-	cbor.RegisterCborType(BSTipSet{})
-}
+const BlockSyncMaxRequestLength = 800
 
 type BlockSyncService struct {
 	cs *store.ChainStore
@@ -55,8 +51,17 @@ func ParseBSOptions(optfield uint64) *BSOptions {
 }
 
 const (
-	BSOptBlocks   = 1 << 0
-	BSOptMessages = 1 << 1
+	BSOptBlocks = 1 << iota
+	BSOptMessages
+)
+
+const (
+	StatusOK            = uint64(0)
+	StatusPartial       = uint64(101)
+	StatusNotFound      = uint64(201)
+	StatusGoAway        = uint64(202)
+	StatusInternalError = uint64(203)
+	StatusBadRequest    = uint64(204)
 )
 
 type BlockSyncResponse struct {
@@ -93,28 +98,30 @@ func (bss *BlockSyncService) HandleStream(s inet.Stream) {
 		log.Warnf("failed to read block sync request: %s", err)
 		return
 	}
-	log.Infof("block sync request for: %s %d", req.Start, req.RequestLength)
+	log.Infow("block sync request", "start", req.Start, "len", req.RequestLength)
 
-	resp, err := bss.processRequest(ctx, &req)
+	resp, err := bss.processRequest(ctx, s.Conn().RemotePeer(), &req)
 	if err != nil {
 		log.Warn("failed to process block sync request: ", err)
 		return
 	}
 
+	writeDeadline := 60 * time.Second
+	s.SetDeadline(time.Now().Add(writeDeadline))
 	if err := cborutil.WriteCborRPC(s, resp); err != nil {
-		log.Warn("failed to write back response for handle stream: ", err)
+		log.Warnw("failed to write back response for handle stream", "err", err, "peer", s.Conn().RemotePeer())
 		return
 	}
 }
 
-func (bss *BlockSyncService) processRequest(ctx context.Context, req *BlockSyncRequest) (*BlockSyncResponse, error) {
+func (bss *BlockSyncService) processRequest(ctx context.Context, p peer.ID, req *BlockSyncRequest) (*BlockSyncResponse, error) {
 	_, span := trace.StartSpan(ctx, "blocksync.ProcessRequest")
 	defer span.End()
 
 	opts := ParseBSOptions(req.Options)
 	if len(req.Start) == 0 {
 		return &BlockSyncResponse{
-			Status:  204,
+			Status:  StatusBadRequest,
 			Message: "no cids given in blocksync request",
 		}, nil
 	}
@@ -122,20 +129,32 @@ func (bss *BlockSyncService) processRequest(ctx context.Context, req *BlockSyncR
 	span.AddAttributes(
 		trace.BoolAttribute("blocks", opts.IncludeBlocks),
 		trace.BoolAttribute("messages", opts.IncludeMessages),
+		trace.Int64Attribute("reqlen", int64(req.RequestLength)),
 	)
 
-	chain, err := bss.collectChainSegment(types.NewTipSetKey(req.Start...), req.RequestLength, opts)
+	reqlen := req.RequestLength
+	if reqlen > BlockSyncMaxRequestLength {
+		log.Warnw("limiting blocksync request length", "orig", req.RequestLength, "peer", p)
+		reqlen = BlockSyncMaxRequestLength
+	}
+
+	chain, err := bss.collectChainSegment(types.NewTipSetKey(req.Start...), reqlen, opts)
 	if err != nil {
 		log.Warn("encountered error while responding to block sync request: ", err)
 		return &BlockSyncResponse{
-			Status:  203,
+			Status:  StatusInternalError,
 			Message: err.Error(),
 		}, nil
 	}
 
+	status := StatusOK
+	if reqlen < req.RequestLength {
+		status = StatusPartial
+	}
+
 	return &BlockSyncResponse{
 		Chain:  chain,
-		Status: 0,
+		Status: status,
 	}, nil
 }
 

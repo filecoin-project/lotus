@@ -371,6 +371,13 @@ func syncHead(ctx context.Context, api api.FullNode, st *storage, ts *types.TipS
 		return
 	}
 
+	log.Infof("Refresh views")
+
+	if err := st.refreshViews(); err != nil {
+		log.Error(err)
+		return
+	}
+
 	log.Infof("Sync done")
 }
 

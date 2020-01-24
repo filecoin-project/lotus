@@ -50,7 +50,7 @@ func (m *Sealing) checkPreCommitted(ctx statemachine.Context, sector SectorInfo)
 	pci, found := state.PreCommittedSectors[fmt.Sprint(sector.SectorID)]
 	if found {
 		// TODO: If not expired yet, we can just try reusing sealticket
-		log.Errorf("sector %d found in miner preseal array: %+v", sector.SectorID, err)
+		log.Warnf("sector %d found in miner preseal array", sector.SectorID)
 		return pci, true
 	}
 

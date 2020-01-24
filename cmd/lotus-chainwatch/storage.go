@@ -84,6 +84,15 @@ create table if not exists blocks
 create unique index if not exists block_cid_uindex
 	on blocks (cid);
 
+create materialized view if not exists state_heights
+    as select distinct height, parentstateroot from blocks;
+
+create unique index if not exists state_heights_uindex
+	on state_heights (height);
+
+create index if not exists state_heights_height_index
+	on state_heights (parentstateroot);
+
 create table if not exists id_address_map
 (
 	id text not null,
@@ -118,6 +127,22 @@ create index if not exists id_address_map_address_index
 
 create index if not exists id_address_map_id_index
 	on id_address_map (id);
+
+create or replace function actor_tips(epoch bigint)
+    returns table (id text,
+                    code text,
+                    head text,
+                    nonce int,
+                    balance text,
+                    stateroot text,
+                    height bigint,
+                    parentstateroot text) as
+$body$
+    select distinct on (id) * from actors
+        inner join state_heights sh on sh.parentstateroot = stateroot
+        where height < $1
+		order by id, height desc;
+$body$ language sql;
 
 create table if not exists actor_states
 (
@@ -210,6 +235,31 @@ create table if not exists miner_heads
 		primary key (head, addr)
 );
 
+create or replace function miner_tips(epoch bigint)
+    returns table (head text,
+                   addr text,
+                   stateroot text,
+                   sectorset text,
+                   setsize decimal,
+                   provingset text,
+                   provingsize decimal,
+                   owner text,
+                   worker text,
+                   peerid text,
+                   sectorsize bigint,
+                   power decimal,
+                   active bool,
+                   ppe bigint,
+                   slashed_at bigint,
+                   height bigint,
+                   parentstateroot text) as
+    $body$
+        select distinct on (addr) * from miner_heads
+            inner join state_heights sh on sh.parentstateroot = stateroot
+            where height < $1
+            order by addr, height desc;
+    $body$ language sql;
+
 create table if not exists deals
 (
 	id int not null,
@@ -237,6 +287,21 @@ create index if not exists deals_pieceRef_index
 create index if not exists deals_provider_index
 	on deals (provider);
 
+create table if not exists deal_activations
+(
+	deal bigint not null
+		constraint deal_activations_deals_id_fk
+			references deals,
+	activation_epoch bigint not null,
+	constraint deal_activations_pk
+		primary key (deal)
+);
+
+create index if not exists deal_activations_activation_epoch_index
+	on deal_activations (activation_epoch);
+
+create unique index if not exists deal_activations_deal_uindex
+	on deal_activations (deal);
 `)
 	if err != nil {
 		return err
@@ -769,7 +834,60 @@ func (st *storage) storeDeals(deals map[string]actors.OnChainDeal) error {
 		return xerrors.Errorf("actor put: %w", err)
 	}
 
-	return tx.Commit()
+	if err := tx.Commit(); err != nil {
+		return err
+	}
+
+	// Activations
+
+	tx, err = st.db.Begin()
+	if err != nil {
+		return err
+	}
+
+	if _, err := tx.Exec(`
+		create temp table d (like deal_activations excluding constraints) on commit drop;
+	`); err != nil {
+		return xerrors.Errorf("prep temp: %w", err)
+	}
+
+	stmt, err = tx.Prepare(`copy d (deal, activation_epoch) from stdin `)
+	if err != nil {
+		return err
+	}
+
+	for id, deal := range deals {
+		if deal.ActivationEpoch == 0 {
+			continue
+		}
+		if _, err := stmt.Exec(
+			id,
+			deal.ActivationEpoch,
+		); err != nil {
+			return err
+		}
+	}
+	if err := stmt.Close(); err != nil {
+		return err
+	}
+
+	if _, err := tx.Exec(`insert into deal_activations select * from d on conflict do nothing `); err != nil {
+		return xerrors.Errorf("actor put: %w", err)
+	}
+
+	if err := tx.Commit(); err != nil {
+		return err
+	}
+
+	return nil
+}
+
+func (st *storage) refreshViews() error {
+	if _, err := st.db.Exec(`refresh materialized view state_heights`); err != nil {
+		return err
+	}
+
+	return nil
 }
 
 func (st *storage) close() error {
