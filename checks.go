@@ -22,6 +22,11 @@ type ErrExpiredDeals struct{ error }
 type ErrBadCommD struct{ error }
 type ErrExpiredTicket struct{ error }
 
+// checkPieces validates that:
+//  - Each piece han a corresponding on chain deal
+//  - Piece commitments match with on chain deals
+//  - Piece sizes match
+//  - Deals aren't expired
 func checkPieces(ctx context.Context, si SectorInfo, api sealingApi) error {
 	head, err := api.ChainHead(ctx)
 	if err != nil {
@@ -50,6 +55,8 @@ func checkPieces(ctx context.Context, si SectorInfo, api sealingApi) error {
 	return nil
 }
 
+// checkSeal checks that data commitment generated in the sealing process
+//  matches pieces, and that the seal ticket isn't expired
 func checkSeal(ctx context.Context, maddr address.Address, si SectorInfo, api sealingApi) (err error) {
 	head, err := api.ChainHead(ctx)
 	if err != nil {
