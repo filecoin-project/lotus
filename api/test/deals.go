@@ -13,7 +13,7 @@ import (
 
 	logging "github.com/ipfs/go-log/v2"
 
-	"github.com/filecoin-project/lotus/api"
+	"github.com/filecoin-project/go-fil-markets/storagemarket"
 	"github.com/filecoin-project/lotus/build"
 	"github.com/filecoin-project/lotus/chain/types"
 	"github.com/filecoin-project/lotus/node/impl"
@@ -88,17 +88,17 @@ loop:
 			t.Fatal(err)
 		}
 		switch di.State {
-		case api.DealRejected:
+		case storagemarket.StorageDealProposalRejected:
 			t.Fatal("deal rejected")
-		case api.DealFailed:
+		case storagemarket.StorageDealFailing:
 			t.Fatal("deal failed")
-		case api.DealError:
+		case storagemarket.StorageDealError:
 			t.Fatal("deal errored")
-		case api.DealComplete:
+		case storagemarket.StorageDealActive:
 			fmt.Println("COMPLETE", di)
 			break loop
 		}
-		fmt.Println("Deal state: ", api.DealStates[di.State])
+		fmt.Println("Deal state: ", storagemarket.DealStates[di.State])
 		time.Sleep(time.Second / 2)
 	}
 

@@ -9,6 +9,7 @@ import (
 	"github.com/libp2p/go-libp2p-core/peer"
 
 	"github.com/filecoin-project/go-address"
+	"github.com/filecoin-project/go-fil-markets/storagemarket"
 	"github.com/filecoin-project/lotus/chain/actors"
 	"github.com/filecoin-project/lotus/chain/store"
 	"github.com/filecoin-project/lotus/chain/types"
@@ -153,7 +154,7 @@ type Import struct {
 
 type DealInfo struct {
 	ProposalCid cid.Cid
-	State       DealState
+	State       storagemarket.StorageDealStatus
 	Provider    address.Address
 
 	PieceRef []byte // cid bytes
