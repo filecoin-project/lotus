@@ -35,7 +35,7 @@ require (
 	github.com/ipfs/go-car v0.0.3-0.20200121013634-f188c0e24291
 	github.com/ipfs/go-cid v0.0.4
 	github.com/ipfs/go-datastore v0.3.1
-	github.com/ipfs/go-ds-badger2 v0.0.0-20200108185345-7f650e6b2521
+	github.com/ipfs/go-ds-badger2 v0.0.0-20200123200730-d75eb2678a5d
 	github.com/ipfs/go-filestore v0.0.2
 	github.com/ipfs/go-fs-lock v0.0.1
 	github.com/ipfs/go-graphsync v0.0.4
