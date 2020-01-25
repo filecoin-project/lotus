@@ -20,7 +20,7 @@ require (
 	github.com/filecoin-project/go-data-transfer v0.0.0-20191219005021-4accf56bd2ce
 	github.com/filecoin-project/go-fil-markets v0.0.0-20200114015428-74d100f305f8
 	github.com/filecoin-project/go-paramfetch v0.0.1
-	github.com/filecoin-project/go-sectorbuilder v0.0.2-0.20200122195713-697609991669
+	github.com/filecoin-project/go-sectorbuilder v0.0.2-0.20200123143044-d9cc96c53c55
 	github.com/filecoin-project/go-statestore v0.1.0
 	github.com/gbrlsnchs/jwt/v3 v3.0.0-beta.1
 	github.com/go-ole/go-ole v1.2.4 // indirect
@@ -35,7 +35,7 @@ require (
 	github.com/ipfs/go-car v0.0.3-0.20200121013634-f188c0e24291
 	github.com/ipfs/go-cid v0.0.4
 	github.com/ipfs/go-datastore v0.3.1
-	github.com/ipfs/go-ds-badger2 v0.0.0-20200108185345-7f650e6b2521
+	github.com/ipfs/go-ds-badger2 v0.0.0-20200123200730-d75eb2678a5d
 	github.com/ipfs/go-filestore v0.0.2
 	github.com/ipfs/go-fs-lock v0.0.1
 	github.com/ipfs/go-graphsync v0.0.4

@@ -44,10 +44,24 @@ func (m *Sealing) handlePacking(ctx statemachine.Context, sector SectorInfo) err
 }
 
 func (m *Sealing) handleUnsealed(ctx statemachine.Context, sector SectorInfo) error {
+	if err := checkPieces(ctx.Context(), sector, m.api); err != nil { // Sanity check state
+		switch err.(type) {
+		case *ErrApi:
+			log.Errorf("handleUnsealed: api error, not proceeding: %+v", err)
+			return nil
+		case *ErrInvalidDeals:
+			return ctx.Send(SectorPackingFailed{xerrors.Errorf("invalid deals in sector: %w", err)})
+		case *ErrExpiredDeals: // Probably not much we can do here, maybe re-pack the sector?
+			return ctx.Send(SectorPackingFailed{xerrors.Errorf("expired deals in sector: %w", err)})
+		default:
+			return xerrors.Errorf("checkPieces sanity check error: %w", err)
+		}
+	}
+
 	log.Infow("performing sector replication...", "sector", sector.SectorID)
 	ticket, err := m.tktFn(ctx.Context())
 	if err != nil {
-		return err
+		return ctx.Send(SectorSealFailed{xerrors.Errorf("getting ticket failed: %w", err)})
 	}
 
 	rspco, err := m.sb.SealPreCommit(ctx.Context(), sector.SectorID, *ticket, sector.pieceInfos())
@@ -66,6 +80,20 @@ func (m *Sealing) handleUnsealed(ctx statemachine.Context, sector SectorInfo) er
 }
 
 func (m *Sealing) handlePreCommitting(ctx statemachine.Context, sector SectorInfo) error {
+	if err := checkSeal(ctx.Context(), m.maddr, sector, m.api); err != nil {
+		switch err.(type) {
+		case *ErrApi:
+			log.Errorf("handlePreCommitting: api error, not proceeding: %+v", err)
+			return nil
+		case *ErrBadCommD: // TODO: Should this just back to packing? (not really needed since handleUnsealed will do that too)
+			return ctx.Send(SectorSealFailed{xerrors.Errorf("bad CommD error: %w", err)})
+		case *ErrExpiredTicket:
+			return ctx.Send(SectorSealFailed{xerrors.Errorf("bad CommD error: %w", err)})
+		default:
+			return xerrors.Errorf("checkSeal sanity check error: %w", err)
+		}
+	}
+
 	params := &actors.SectorPreCommitInfo{
 		SectorNumber: sector.SectorID,
 
@@ -97,7 +125,7 @@ func (m *Sealing) handlePreCommitting(ctx statemachine.Context, sector SectorInf
 	return ctx.Send(SectorPreCommitted{message: smsg.Cid()})
 }
 
-func (m *Sealing) handlePreCommitted(ctx statemachine.Context, sector SectorInfo) error {
+func (m *Sealing) handleWaitSeed(ctx statemachine.Context, sector SectorInfo) error {
 	// would be ideal to just use the events.Called handler, but it wouldnt be able to handle individual message timeouts
 	log.Info("Sector precommitted: ", sector.SectorID)
 	mw, err := m.api.StateWaitMsg(ctx.Context(), *sector.PreCommitMessage)
@@ -147,7 +175,7 @@ func (m *Sealing) handleCommitting(ctx statemachine.Context, sector SectorInfo) 
 
 	proof, err := m.sb.SealCommit(ctx.Context(), sector.SectorID, sector.Ticket.SB(), sector.Seed.SB(), sector.pieceInfos(), sector.rspco())
 	if err != nil {
-		return ctx.Send(SectorSealCommitFailed{xerrors.Errorf("computing seal proof failed: %w", err)})
+		return ctx.Send(SectorComputeProofFailed{xerrors.Errorf("computing seal proof failed: %w", err)})
 	}
 
 	// TODO: Consider splitting states and persist proof for faster recovery
@@ -198,8 +226,7 @@ func (m *Sealing) handleCommitWait(ctx statemachine.Context, sector SectorInfo) 
 	}
 
 	if mw.Receipt.ExitCode != 0 {
-		log.Errorf("UNHANDLED: submitting sector proof failed (exit=%d, msg=%s) (t:%x; s:%x(%d); p:%x)", mw.Receipt.ExitCode, sector.CommitMessage, sector.Ticket.TicketBytes, sector.Seed.TicketBytes, sector.Seed.BlockHeight, sector.Proof)
-		return xerrors.Errorf("UNHANDLED: submitting sector proof failed (exit: %d)", mw.Receipt.ExitCode)
+		return ctx.Send(SectorCommitFailed{xerrors.Errorf("submitting sector proof failed (exit=%d, msg=%s) (t:%x; s:%x(%d); p:%x)", mw.Receipt.ExitCode, sector.CommitMessage, sector.Ticket.TicketBytes, sector.Seed.TicketBytes, sector.Seed.BlockHeight, sector.Proof)})
 	}
 
 	return ctx.Send(SectorProving{})

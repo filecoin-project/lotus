@@ -42,7 +42,7 @@ type PeerMgr struct {
 	maxFilPeers int
 	minFilPeers int
 
-	expanding bool
+	expanding chan struct{}
 
 	h   host.Host
 	dht *dht.IpfsDHT
@@ -56,7 +56,8 @@ func NewPeerMgr(h host.Host, dht *dht.IpfsDHT, bootstrap dtypes.BootstrapPeers) 
 		dht:           dht,
 		bootstrappers: bootstrap,
 
-		peers: make(map[peer.ID]time.Duration),
+		peers:     make(map[peer.ID]time.Duration),
+		expanding: make(chan struct{}, 1),
 
 		maxFilPeers: MaxFilPeers,
 		minFilPeers: MinFilPeers,
@@ -125,18 +126,19 @@ func (pmgr *PeerMgr) getPeerCount() int {
 }
 
 func (pmgr *PeerMgr) expandPeers() {
-	if pmgr.expanding {
+	select {
+	case pmgr.expanding <- struct{}{}:
+	default:
 		return
 	}
-	pmgr.expanding = true
+
 	go func() {
-		defer func() {
-			pmgr.expanding = false
-		}()
 		ctx, cancel := context.WithTimeout(context.TODO(), time.Second*30)
 		defer cancel()
 
 		pmgr.doExpand(ctx)
+
+		<-pmgr.expanding
 	}()
 }
 

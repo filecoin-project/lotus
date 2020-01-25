@@ -73,7 +73,7 @@ func prepSyncTest(t testing.TB, h int) *syncTestUtil {
 
 	g, err := gen.NewGenerator()
 	if err != nil {
-		t.Fatal(err)
+		t.Fatalf("%+v", err)
 	}
 
 	ctx, cancel := context.WithCancel(context.Background())

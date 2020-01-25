@@ -19,7 +19,7 @@ const (
 
 	Unsealed      // sealing / queued
 	PreCommitting // on chain pre-commit
-	PreCommitted  // waiting for seed
+	WaitSeed      // waiting for seed
 	Committing
 	CommitWait // waiting for message to land on chain
 	Proving
@@ -45,7 +45,7 @@ const (
 	PreCommitFailed
 	SealCommitFailed
 	CommitFailed
-	_
+	PackingFailed
 	_
 	_
 	_
@@ -61,7 +61,7 @@ var SectorStates = []string{
 	Packing:              "Packing",
 	Unsealed:             "Unsealed",
 	PreCommitting:        "PreCommitting",
-	PreCommitted:         "PreCommitted",
+	WaitSeed:             "WaitSeed",
 	Committing:           "Committing",
 	CommitWait:           "CommitWait",
 	Proving:              "Proving",
@@ -70,6 +70,7 @@ var SectorStates = []string{
 	PreCommitFailed:  "PreCommitFailed",
 	SealCommitFailed: "SealCommitFailed",
 	CommitFailed:     "CommitFailed",
+	PackingFailed:    "PackingFailed",
 
 	FailedUnrecoverable: "FailedUnrecoverable",
 
@@ -107,6 +108,15 @@ type StorageMiner interface {
 	WorkerDone(ctx context.Context, task uint64, res sectorbuilder.SealRes) error
 }
 
+type SectorLog struct {
+	Kind      string
+	Timestamp uint64
+
+	Trace string
+
+	Message string
+}
+
 type SectorInfo struct {
 	SectorID uint64
 	State    SectorState
@@ -119,6 +129,8 @@ type SectorInfo struct {
 	Retries  uint64
 
 	LastErr string
+
+	Log []SectorLog
 }
 
 type SealedRef struct {
