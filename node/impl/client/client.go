@@ -159,11 +159,13 @@ func (a *API) ClientFindData(ctx context.Context, root cid.Cid) ([]api.QueryOffe
 			out[k] = api.QueryOffer{Err: err.Error(), Miner: p.Address, MinerPeerID: p.ID}
 		} else {
 			out[k] = api.QueryOffer{
-				Root:        root,
-				Size:        queryResponse.Size,
-				MinPrice:    utils.FromSharedTokenAmount(queryResponse.PieceRetrievalPrice()),
-				Miner:       p.Address, // TODO: check
-				MinerPeerID: p.ID,
+				Root:                    root,
+				Size:                    queryResponse.Size,
+				MinPrice:                utils.FromSharedTokenAmount(queryResponse.PieceRetrievalPrice()),
+				PaymentInterval:         queryResponse.MaxPaymentInterval,
+				PaymentIntervalIncrease: queryResponse.MaxPaymentIntervalIncrease,
+				Miner:                   p.Address, // TODO: check
+				MinerPeerID:             p.ID,
 			}
 		}
 	}
@@ -291,7 +293,7 @@ func (a *API) ClientRetrieve(ctx context.Context, order api.RetrievalOrder, path
 	a.Retrieval.Retrieve(
 		ctx,
 		order.Root,
-		retrievalmarket.NewParamsV0(types.BigDiv(order.Total, types.NewInt(order.Size)).Int, 0, 0),
+		retrievalmarket.NewParamsV0(types.BigDiv(order.Total, types.NewInt(order.Size)).Int, order.PaymentInterval, order.PaymentIntervalIncrease),
 		utils.ToSharedTokenAmount(order.Total),
 		order.MinerPeerID,
 		order.Client,
