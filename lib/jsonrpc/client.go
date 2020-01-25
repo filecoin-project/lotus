@@ -385,7 +385,7 @@ func (fn *rpcFunc) handleRpcCall(args []reflect.Value) (results []reflect.Value)
 
 			retVal = func() reflect.Value { return val.Elem() }
 		}
-		retry := resp.Error != nil && resp.Error.Code == 0 && fn.retry
+		retry := resp.Error != nil && resp.Error.Code == 2 && fn.retry
 		if !retry {
 			break
 		}

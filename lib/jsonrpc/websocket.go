@@ -429,6 +429,7 @@ func (c *wsConn) closeInFlight() {
 			ID:      id,
 			Error: &respError{
 				Message: "handler: websocket connection closed",
+				Code:    2,
 			},
 		}
 
@@ -438,6 +439,8 @@ func (c *wsConn) closeInFlight() {
 		}
 		c.handlingLk.Unlock()
 	}
+	c.inflight = map[int64]clientRequest{}
+	c.handling = map[int64]context.CancelFunc{}
 }
 
 func (c *wsConn) closeChans() {
@@ -519,6 +522,7 @@ func (c *wsConn) handleWsConn(ctx context.Context) {
 						ID:      *req.req.ID,
 						Error: &respError{
 							Message: "handler: websocket connection closed",
+							Code:    2,
 						},
 					}
 					c.writeLk.Unlock()
