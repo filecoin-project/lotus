@@ -46,6 +46,7 @@ var stateCmd = &cli.Command{
 		stateListMessagesCmd,
 		stateComputeStateCmd,
 		stateCallCmd,
+		stateGetDealSetCmd,
 	},
 }
 
@@ -295,6 +296,47 @@ var statePledgeCollateralCmd = &cli.Command{
 		}
 
 		fmt.Println(types.FIL(coll))
+		return nil
+	},
+}
+
+var stateGetDealSetCmd = &cli.Command{
+	Name:  "get-deal",
+	Usage: "View on-chain deal info",
+	Action: func(cctx *cli.Context) error {
+		api, closer, err := GetFullNodeAPI(cctx)
+		if err != nil {
+			return err
+		}
+		defer closer()
+
+		ctx := ReqContext(cctx)
+
+		if !cctx.Args().Present() {
+			return fmt.Errorf("must specify miner to list sectors for")
+		}
+
+		dealid, err := strconv.ParseUint(cctx.Args().First(), 10, 64)
+		if err != nil {
+			return xerrors.Errorf("parsing deal ID: %w", err)
+		}
+
+		ts, err := loadTipSet(ctx, cctx, api)
+		if err != nil {
+			return err
+		}
+
+		deal, err := api.StateMarketStorageDeal(ctx, dealid, ts)
+		if err != nil {
+			return err
+		}
+
+		data, err := json.MarshalIndent(deal, "", "  ")
+		if err != nil {
+			return err
+		}
+		fmt.Println(string(data))
+
 		return nil
 	},
 }
