@@ -6,6 +6,7 @@ import (
 	"github.com/filecoin-project/go-sectorbuilder"
 	"golang.org/x/xerrors"
 	"net/http"
+	"time"
 
 	lapi "github.com/filecoin-project/lotus/api"
 	"github.com/filecoin-project/lotus/build"
@@ -79,6 +80,8 @@ loop:
 		//case <-ctx.Done():
 			log.Infof("get quit flag from ch and break loop")
 			break loop
+		default:
+			time.Sleep(time.Second * 10)
 		}
 	}
 
