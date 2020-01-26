@@ -1,13 +1,12 @@
 package main
 
 import (
-	"os"
-
-	"github.com/mitchellh/go-homedir"
-
 	logging "github.com/ipfs/go-log/v2"
+	"github.com/mitchellh/go-homedir"
 	"golang.org/x/xerrors"
 	"gopkg.in/urfave/cli.v2"
+	"os"
+	"time"
 
 	"github.com/filecoin-project/lotus/api"
 	"github.com/filecoin-project/lotus/build"
@@ -62,51 +61,136 @@ func main() {
 	app.Setup()
 	app.Metadata["repoType"] = repo.StorageMiner
 
+
 	if err := app.Run(os.Args); err != nil {
 		log.Warnf("%+v", err)
 		return
 	}
 }
 
+const (checkHealthSleepDuration = 30)
+const (startErrorSleepDuration = 10)
+
+
 var runCmd = &cli.Command{
 	Name:  "run",
 	Usage: "Start lotus worker",
 	Action: func(cctx *cli.Context) error {
-		if !cctx.Bool("enable-gpu-proving") {
-			os.Setenv("BELLMAN_NO_GPU", "true")
-		}
 
-		nodeApi, closer, err := lcli.GetStorageMinerAPI(cctx)
-		if err != nil {
-			return xerrors.Errorf("getting miner api: %w", err)
-		}
-		defer closer()
 		ctx := lcli.ReqContext(cctx)
 
-		ainfo, err := lcli.GetAPIInfo(cctx, repo.StorageMiner)
-		if err != nil {
-			return xerrors.Errorf("could not get api info: %w", err)
-		}
-		_, storageAddr, err := manet.DialArgs(ainfo.Addr)
+		quit := make(chan int)
 
-		r, err := homedir.Expand(cctx.String("repo"))
-		if err != nil {
-			return err
-		}
+		start(cctx, quit)
 
-		v, err := nodeApi.Version(ctx)
-		if err != nil {
-			return err
-		}
-		if v.APIVersion != build.APIVersion {
-			return xerrors.Errorf("lotus-storage-miner API version doesn't match: local: ", api.Version{APIVersion: build.APIVersion})
-		}
+		time.Sleep(time.Second * checkHealthSleepDuration)
+	loop:
+		for {
+			select {
+			case <-ctx.Done():
+				quit <- 1
+				log.Warn("Shutting down..")
+				break loop
+			default:
+				_, closer, err := lcli.GetStorageMinerAPI(cctx)
+				if err != nil {
+					restart(cctx, quit)
+					time.Sleep(time.Second * checkHealthSleepDuration)
+					continue;
+				}
 
-		go func() {
-			<-ctx.Done()
-			log.Warn("Shutting down..")
-		}()
+				defer closer()
 
-		return acceptJobs(ctx, nodeApi, "http://"+storageAddr, ainfo.AuthHeader(), r, cctx.Bool("no-precommit"), cctx.Bool("no-commit"))
+				_, err = lcli.GetAPIInfo(cctx, repo.StorageMiner)
+				if err != nil {
+					restart(cctx, quit)
+					time.Sleep(time.Second * checkHealthSleepDuration)
+					continue;
+				}
+
+				log.Infof("the health check is ok")
+
+				time.Sleep(time.Second * checkHealthSleepDuration)
+				//return acceptJobs(ctx, nodeApi, "http://"+storageAddr, ainfo.AuthHeader(), r, cctx.Bool("no-precommit"), cctx.Bool("no-commit"))
+			}
+		}
+		return nil
 	},
 }
+
+
+func startCMD(cctx *cli.Context, ch chan int)error{
+	if !cctx.Bool("enable-gpu-proving") {
+		os.Setenv("BELLMAN_NO_GPU", "true")
+	}
+
+	nodeApi, closer, err := lcli.GetStorageMinerAPI(cctx)
+	if err != nil {
+		return xerrors.Errorf("getting miner api: %w", err)
+	}
+	defer closer()
+	ctx := lcli.ReqContext(cctx)
+
+	ainfo, err := lcli.GetAPIInfo(cctx, repo.StorageMiner)
+	if err != nil {
+		return xerrors.Errorf("could not get api info: %w", err)
+	}
+	_, storageAddr, err := manet.DialArgs(ainfo.Addr)
+
+	r, err := homedir.Expand(cctx.String("repo"))
+	if err != nil {
+		return err
+	}
+
+	v, err := nodeApi.Version(ctx)
+	if err != nil {
+		return err
+	}
+	if v.APIVersion != build.APIVersion {
+		return xerrors.Errorf("lotus-storage-miner API version doesn't match: local: ", api.Version{APIVersion: build.APIVersion})
+	}
+
+
+	return	acceptJobs(ctx, nodeApi, "http://"+storageAddr, ainfo.AuthHeader(), r, cctx.Bool("no-precommit"), cctx.Bool("no-commit"), ch)
+}
+
+func start(cctx *cli.Context, ch chan int) {
+	go func() {
+		for {
+			err := startCMD(cctx, ch)
+			if (err != nil) {
+				time.Sleep(time.Second * startErrorSleepDuration)
+				continue
+			} else {
+				break
+			}
+		}
+	}()
+}
+
+func restart(cctx *cli.Context, ch chan int){
+	log.Infof("the miner disconnected, waiting for restart")
+
+	ch <- 1
+
+	go func() {
+		for {
+			err := startCMD(cctx, ch)
+			if (err != nil) {
+				time.Sleep(time.Second * startErrorSleepDuration)
+				continue
+			} else {
+				break
+			}
+		}
+	}()
+
+	log.Infof("the restart is completed")
+}
+
+
+
+
+
+
+

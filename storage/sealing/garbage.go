@@ -18,9 +18,6 @@ func (m *Sealing) pledgeSector(ctx context.Context, sectorID uint64, existingPie
 		return nil, nil
 	}
 
-	lock.Lock()
-	defer lock.Unlock()
-
 	out, err := m.repledgeSector(ctx,sectorID,existingPieceSizes, sizes...)
 
 	if err == nil{
@@ -126,6 +123,9 @@ func (m *Sealing) PledgeSector() error {
 			log.Errorf("%+v", err)
 			return
 		}
+
+		lock.Lock()
+		defer lock.Unlock()
 
 		pieces, err := m.pledgeSector(ctx, sid, []uint64{}, size)
 		if err != nil {

@@ -2,11 +2,10 @@ package main
 
 import (
 	"context"
-	"net/http"
-
 	paramfetch "github.com/filecoin-project/go-paramfetch"
 	"github.com/filecoin-project/go-sectorbuilder"
 	"golang.org/x/xerrors"
+	"net/http"
 
 	lapi "github.com/filecoin-project/lotus/api"
 	"github.com/filecoin-project/lotus/build"
@@ -21,7 +20,7 @@ type worker struct {
 	sb *sectorbuilder.SectorBuilder
 }
 
-func acceptJobs(ctx context.Context, api lapi.StorageMiner, endpoint string, auth http.Header, repo string, noprecommit, nocommit bool) error {
+func acceptJobs(ctx context.Context, api lapi.StorageMiner, endpoint string, auth http.Header, repo string, noprecommit, nocommit bool, quit chan int) error {
 	act, err := api.ActorAddress(ctx)
 	if err != nil {
 		return err
@@ -76,7 +75,9 @@ loop:
 			if err := api.WorkerDone(ctx, task.TaskID, res); err != nil {
 				log.Error(err)
 			}
-		case <-ctx.Done():
+		case <-quit:
+		//case <-ctx.Done():
+			log.Infof("get quit flag from ch and break loop")
 			break loop
 		}
 	}
