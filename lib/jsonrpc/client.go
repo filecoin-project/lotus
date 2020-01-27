@@ -19,11 +19,15 @@ import (
 	"golang.org/x/xerrors"
 )
 
-var log = logging.Logger("rpc")
+const (
+	methodRetryFrequency = time.Second * 3
+)
 
 var (
 	errorType   = reflect.TypeOf(new(error)).Elem()
 	contextType = reflect.TypeOf(new(context.Context)).Elem()
+
+	log = logging.Logger("rpc")
 )
 
 // ErrClient is an error which occurred on the client side the library
@@ -389,7 +393,7 @@ func (fn *rpcFunc) handleRpcCall(args []reflect.Value) (results []reflect.Value)
 		if !retry {
 			break
 		}
-		time.Sleep(time.Second * 3)
+		time.Sleep(methodRetryFrequency)
 	}
 
 	return fn.processResponse(resp, retVal())
