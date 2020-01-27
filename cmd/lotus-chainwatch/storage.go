@@ -501,6 +501,7 @@ func (st *storage) storeHeaders(bhs map[cid.Cid]*types.BlockHeader, sync bool) e
 create temp table tbp (like block_parents excluding constraints) on commit drop;
 create temp table bs (like blocks_synced excluding constraints) on commit drop;
 create temp table b (like blocks excluding constraints) on commit drop;
+create temp table c (like blocks_challenges excluding constraints) on commit drop;
 
 
 `); err != nil {
@@ -588,7 +589,7 @@ create temp table b (like blocks excluding constraints) on commit drop;
 		return xerrors.Errorf("blk put: %w", err)
 	}
 
-	stmt3, err := tx.Prepare(`copy c(block, index, sector_id, parital) from stdin`)
+	stmt3, err := tx.Prepare(`copy c (block, index, sector_id, parital) from stdin`)
 	if err != nil {
 		return xerrors.Errorf("s3 create: %w", err)
 	}
