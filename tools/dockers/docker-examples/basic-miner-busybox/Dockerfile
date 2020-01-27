@@ -79,13 +79,15 @@ EXPOSE 5678
 ENV HOME_PATH /data
 ENV PARAMCACHE_PATH /var/tmp/filecoin-proof-parameters
 
-RUN mkdir -p $HOME_PATH \
+RUN mkdir -p $HOME_PATH $PARAMCACHE_PATH \
   && adduser -D -h $HOME_PATH -u 1000 -G users lotus \
-  && chown lotus:users $HOME_PATH
+  && chown lotus:users $HOME_PATH $PARAMCACHE_PATH
 
 
 VOLUME $HOME_PATH
 VOLUME $PARAMCACHE_PATH
+
+USER lotus
 
 # Execute the daemon subcommand by default
 CMD ["/sbin/tini", "--", "lotus", "daemon"]
