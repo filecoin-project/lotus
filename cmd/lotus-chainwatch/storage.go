@@ -605,8 +605,8 @@ create temp table c (like blocks_challenges excluding constraints) on commit dro
 			if _, err := stmt3.Exec(
 				bh.Cid().String(),
 				index,
-				c.Partial,
 				c.SectorID,
+				c.Partial,
 				c.ChallengeIndex); err != nil {
 				log.Error(err)
 			}
