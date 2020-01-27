@@ -617,7 +617,7 @@ create temp table c (like blocks_challenges excluding constraints) on commit dro
 		return xerrors.Errorf("s2 close: %w", err)
 	}
 
-	if _, err := tx.Exec(`insert into blocks_challenges * from c on conflict do nothing `); err != nil {
+	if _, err := tx.Exec(`insert into blocks_challenges select * from c on conflict do nothing `); err != nil {
 		return xerrors.Errorf("blk put: %w", err)
 	}
 
