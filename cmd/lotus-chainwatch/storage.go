@@ -588,12 +588,6 @@ create temp table b (like blocks excluding constraints) on commit drop;
 		return xerrors.Errorf("blk put: %w", err)
 	}
 
-	err = tx.Commit()
-
-	if err != nil {
-		return xerrors.Errorf("commit: %w", err)
-	}
-
 	stmt3, err := tx.Prepare(`copy c(block, index, sector_id, parital) from stdin`)
 	if err != nil {
 		return xerrors.Errorf("s3 create: %w")
@@ -620,7 +614,6 @@ create temp table b (like blocks excluding constraints) on commit drop;
 	}
 
 	err = tx.Commit()
-
 	if err != nil {
 		return xerrors.Errorf("commit: %w", err)
 	}
