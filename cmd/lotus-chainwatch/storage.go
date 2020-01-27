@@ -589,7 +589,7 @@ create temp table c (like blocks_challenges excluding constraints) on commit dro
 		return xerrors.Errorf("blk put: %w", err)
 	}
 
-	stmt3, err := tx.Prepare(`copy c (block, index, sector_id, parital) from stdin`)
+	stmt3, err := tx.Prepare(`copy c (block, index, sector_id, partial) from stdin`)
 	if err != nil {
 		return xerrors.Errorf("s3 create: %w", err)
 	}
