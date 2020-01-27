@@ -590,7 +590,7 @@ create temp table b (like blocks excluding constraints) on commit drop;
 
 	stmt3, err := tx.Prepare(`copy c(block, index, sector_id, parital) from stdin`)
 	if err != nil {
-		return xerrors.Errorf("s3 create: %w")
+		return xerrors.Errorf("s3 create: %w", err)
 	}
 	for _, bh := range bhs {
 		for index, c := range bh.EPostProof.Candidates {
