@@ -313,6 +313,7 @@ create table if not exists blocks_challenges
 	index bigint not null,
 	sector_id bigint not null,
 	partial bytea not null,
+	candidate bigint not null,
 	constraint blocks_challenges_pk
 		unique (block, index)
 );
@@ -320,8 +321,14 @@ create table if not exists blocks_challenges
 create index if not exists blocks_challenges_block_index
 	on blocks_challenges (block);
 
+create index if not exists blocks_challenges_block_candidate_index
+	on blocks_challenges (block,candidate);
+
 create index if not exists blocks_challenges_block_index_index
 	on blocks_challenges (block, index);
+
+create index if not exists blocks_challenges_candidate_index
+	on blocks_challenges (candidate);
 
 create index if not exists blocks_challenges_index_index
 	on blocks_challenges (index);
@@ -589,7 +596,7 @@ create temp table c (like blocks_challenges excluding constraints) on commit dro
 		return xerrors.Errorf("blk put: %w", err)
 	}
 
-	stmt3, err := tx.Prepare(`copy c (block, index, sector_id, partial) from stdin`)
+	stmt3, err := tx.Prepare(`copy c (block, index, sector_id, partial, candidate) from stdin`)
 	if err != nil {
 		return xerrors.Errorf("s3 create: %w", err)
 	}
