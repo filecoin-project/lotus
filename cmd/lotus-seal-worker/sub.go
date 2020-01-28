@@ -2,27 +2,18 @@ package main
 
 import (
 	"context"
+	"net/http"
+
 	paramfetch "github.com/filecoin-project/go-paramfetch"
 	"github.com/filecoin-project/go-sectorbuilder"
 	"golang.org/x/xerrors"
-	"net/http"
-	"time"
 
-	"github.com/filecoin-project/go-address"
 	lapi "github.com/filecoin-project/lotus/api"
 	"github.com/filecoin-project/lotus/build"
 )
 
-const retryLimit = 5
-
-var w *worker
-var tasks <-chan sectorbuilder.WorkerTask
-var act address.Address
-var sb *sectorbuilder.SectorBuilder
-
-
 type worker struct {
-	api           lapi.StorageMiner
+	//api           lapi.StorageMiner
 	minerEndpoint string
 	repo          string
 	auth          http.Header
@@ -30,109 +21,12 @@ type worker struct {
 	sb *sectorbuilder.SectorBuilder
 }
 
-func registerToMiner(ctx context.Context, endpoint string, auth http.Header, repo string, noprecommit, nocommit bool) (error) {
-
-	var err error
-
-	act, err = nodeApi.ActorAddress(ctx)
+func acceptJobs(ctx context.Context, api lapi.StorageMiner, endpoint string, auth http.Header, repo string, noprecommit, nocommit bool) error {
+	act, err := api.ActorAddress(ctx)
 	if err != nil {
 		return err
 	}
-
-	ssize, err1 := nodeApi.ActorSectorSize(ctx, act)
-	if err1 != nil {
-		return err1
-	}
-
-	if sb == nil {
-		sb, err = sectorbuilder.NewStandalone(&sectorbuilder.Config{
-			SectorSize:    ssize,
-			Miner:         act,
-			WorkerThreads: 1,
-			Dir:           repo,
-		})
-		if err != nil {
-			return err
-		}
-	}
-
-	if err := paramfetch.GetParams(build.ParametersJson, ssize); err != nil {
-		return xerrors.Errorf("get params: %w", err)
-	}
-
-	if w == nil {
-		w = &worker{
-			api:           nodeApi,
-			minerEndpoint: endpoint,
-			auth:          auth,
-			repo:          repo,
-			sb:            sb,
-		}
-	}
-
-	tasks, err = nodeApi.WorkerQueue(ctx, sectorbuilder.WorkerCfg{
-		NoPreCommit: noprecommit,
-		NoCommit:    nocommit,
-	})
-
-	return err
-}
-
-func acceptJobs(ctx context.Context,/* w *worker, tasks <-chan sectorbuilder.WorkerTask,*/ quit chan int) error {
-
-loop:
-	for {
-		log.Infof("Waiting for new task")
-
-		select {
-		case task := <-tasks:
-			log.Infof("New task: %d, sector %d, action: %d", task.TaskID, task.SectorID, task.Type)
-
-			res := w.processTask(ctx, task)
-
-			log.Infof("Task %d done, err: %+v", task.TaskID, res.GoErr)
-
-			retry := 0
-
-			for{
-				if err := nodeApi.WorkerDone(ctx, task.TaskID, res); err != nil {
-					retry+=1
-
-					if(retry == retryLimit){
-						log.Warn("WorkerDone failed with retry %d times", retry)
-						break;
-					}
-
-					log.Warn(err)
-
-					time.Sleep(time.Second * 10)
-					continue;
-				}
-				break
-			}
-
-			//log.Infof("Task %d done, call WorkerDone successfully", task.TaskID)
-
-		case <-quit:
-			//case <-ctx.Done():
-			log.Infof("get quit flag from ch and break loop")
-			break loop
-		default:
-			time.Sleep(time.Second * 10)
-		}
-	}
-
-	log.Warn("acceptJobs exit")
-	return nil
-}
-
-/*func acceptJobs(ctx context.Context, endpoint string, auth http.Header, repo string, noprecommit, nocommit bool, quit chan int) error {
-
-	act, err := nodeApi.ActorAddress(ctx)
-	if err != nil {
-		return err
-	}
-	ssize, err := nodeApi.ActorSectorSize(ctx, act)
+	ssize, err := api.ActorSectorSize(ctx, act)
 	if err != nil {
 		return err
 	}
@@ -152,14 +46,14 @@ loop:
 	}
 
 	w := &worker{
-		api:           nodeApi,
+		//api:           api,
 		minerEndpoint: endpoint,
 		auth:          auth,
 		repo:          repo,
 		sb:            sb,
 	}
 
-	tasks, err := nodeApi.WorkerQueue(ctx, sectorbuilder.WorkerCfg{
+	tasks, err := api.WorkerQueue(ctx, sectorbuilder.WorkerCfg{
 		NoPreCommit: noprecommit,
 		NoCommit:    nocommit,
 	})
@@ -179,44 +73,17 @@ loop:
 
 			log.Infof("Task %d done, err: %+v", task.TaskID, res.GoErr)
 
-
-			if err := nodeApi.WorkerDone(ctx, task.TaskID, res); err != nil {
-				log.Warn(err)
-				for{
-					lnodeApi, lcloser, err := getNodeApi()
-
-					if err != nil {
-						log.Warn(err)
-						time.Sleep(time.Second * 10)
-						continue;
-					}
-					defer lcloser()
-
-					err = lnodeApi.WorkerDone(ctx, task.TaskID, res)
-
-					if(err != nil){
-						log.Warn(err)
-						time.Sleep(time.Second * 10)
-						continue;
-					}
-					break
-				}
+			if err := api.WorkerDone(ctx, task.TaskID, res); err != nil {
+				log.Error(err)
 			}
-
-			log.Infof("Task %d done, call WorkerDone successfully", task.TaskID)
-
-		case <-quit:
-		//case <-ctx.Done():
-			log.Infof("get quit flag from ch and break loop")
+		case <-ctx.Done():
 			break loop
-		default:
-			time.Sleep(time.Second * 10)
 		}
 	}
 
 	log.Warn("acceptJobs exit")
 	return nil
-}*/
+}
 
 func (w *worker) processTask(ctx context.Context, task sectorbuilder.WorkerTask) sectorbuilder.SealRes {
 	switch task.Type {
@@ -226,9 +93,9 @@ func (w *worker) processTask(ctx context.Context, task sectorbuilder.WorkerTask)
 		return errRes(xerrors.Errorf("unknown task type %d", task.Type))
 	}
 
-	//if err := w.fetchSector(task.SectorID, task.Type); err != nil {
-	//	return errRes(xerrors.Errorf("fetching sector: %w", err))
-	//}
+	if err := w.fetchSector(task.SectorID, task.Type); err != nil {
+		return errRes(xerrors.Errorf("fetching sector: %w", err))
+	}
 
 	log.Infof("Data fetched, starting computation")
 
@@ -242,19 +109,17 @@ func (w *worker) processTask(ctx context.Context, task sectorbuilder.WorkerTask)
 		}
 		res.Rspco = rspco.ToJson()
 
-		//if err := w.push("sealed", task.SectorID); err != nil {
-		//	return errRes(xerrors.Errorf("pushing precommited data: %w", err))
-		//}
+		if err := w.push("sealed", task.SectorID); err != nil {
+			return errRes(xerrors.Errorf("pushing precommited data: %w", err))
+		}
 
-		//if err := w.push("cache", task.SectorID); err != nil {
-		//	return errRes(xerrors.Errorf("pushing precommited data: %w", err))
-		//}
+		if err := w.push("cache", task.SectorID); err != nil {
+			return errRes(xerrors.Errorf("pushing precommited data: %w", err))
+		}
 
-		
-		//if err := w.remove("staging", task.SectorID); err != nil {
-		//	return errRes(xerrors.Errorf("cleaning up staged sector: %w", err))
-		//}
-
+		if err := w.remove("staging", task.SectorID); err != nil {
+			return errRes(xerrors.Errorf("cleaning up staged sector: %w", err))
+		}
 	case sectorbuilder.WorkerCommit:
 		proof, err := w.sb.SealCommit(ctx, task.SectorID, task.SealTicket, task.SealSeed, task.Pieces, task.Rspco)
 		if err != nil {
@@ -263,15 +128,13 @@ func (w *worker) processTask(ctx context.Context, task sectorbuilder.WorkerTask)
 
 		res.Proof = proof
 
-		//if err := w.push("cache", task.SectorID); err != nil {
-		//	return errRes(xerrors.Errorf("pushing precommited data: %w", err))
-		//}
+		if err := w.push("cache", task.SectorID); err != nil {
+			return errRes(xerrors.Errorf("pushing precommited data: %w", err))
+		}
 
-
-		//if err := w.remove("sealed", task.SectorID); err != nil {
-		//	return errRes(xerrors.Errorf("cleaning up sealed sector: %w", err))
-		//}
-
+		if err := w.remove("sealed", task.SectorID); err != nil {
+			return errRes(xerrors.Errorf("cleaning up sealed sector: %w", err))
+		}
 	}
 
 	return res
