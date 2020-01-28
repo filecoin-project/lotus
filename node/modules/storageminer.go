@@ -91,7 +91,7 @@ func SectorBuilderConfig(storagePath string, threads uint, noprecommit, nocommit
 			NoPreCommit:   noprecommit,
 			NoCommit:      nocommit,
 
-			Dir: sp,
+			Paths: sectorbuilder.SimplePath(sp),
 		}
 
 		return sb, nil

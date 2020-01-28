@@ -177,7 +177,7 @@ var initCmd = &cli.Command{
 			oldsb, err := sectorbuilder.New(&sectorbuilder.Config{
 				SectorSize:    ssize,
 				WorkerThreads: 2,
-				Dir:           pssb,
+				Paths:         sectorbuilder.SimplePath(pssb),
 			}, namespace.Wrap(oldmds, datastore.NewKey("/sectorbuilder")))
 			if err != nil {
 				return xerrors.Errorf("failed to open up preseal sectorbuilder: %w", err)
@@ -186,7 +186,7 @@ var initCmd = &cli.Command{
 			nsb, err := sectorbuilder.New(&sectorbuilder.Config{
 				SectorSize:    ssize,
 				WorkerThreads: 2,
-				Dir:           lr.Path(),
+				Paths:         sectorbuilder.SimplePath(lr.Path()),
 			}, namespace.Wrap(mds, datastore.NewKey("/sectorbuilder")))
 			if err != nil {
 				return xerrors.Errorf("failed to open up sectorbuilder: %w", err)

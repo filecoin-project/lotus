@@ -81,9 +81,9 @@ func (m *Sealing) pledgeSector(ctx context.Context, sectorID uint64, existingPie
 	out := make([]Piece, len(sizes))
 
 	for i, size := range sizes {
-		ppi, err := m.sb.AddPiece(size, sectorID, io.LimitReader(rand.New(rand.NewSource(42)), int64(size)), existingPieceSizes)
+		ppi, err := m.sb.AddPiece(ctx, size, sectorID, io.LimitReader(rand.New(rand.NewSource(42)), int64(size)), existingPieceSizes)
 		if err != nil {
-			return nil, err
+			return nil, xerrors.Errorf("add piece: %w", err)
 		}
 
 		existingPieceSizes = append(existingPieceSizes, size)

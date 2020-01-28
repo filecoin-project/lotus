@@ -35,7 +35,7 @@ func acceptJobs(ctx context.Context, api lapi.StorageMiner, endpoint string, aut
 		SectorSize:    ssize,
 		Miner:         act,
 		WorkerThreads: 1,
-		Dir:           repo,
+		Paths:         sectorbuilder.SimplePath(repo),
 	})
 	if err != nil {
 		return err

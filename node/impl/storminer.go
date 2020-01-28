@@ -7,15 +7,16 @@ import (
 	"mime"
 	"net/http"
 	"os"
-
-	"github.com/filecoin-project/lotus/api/apistruct"
+	"strconv"
 
 	"github.com/gorilla/mux"
 	files "github.com/ipfs/go-ipfs-files"
 
 	"github.com/filecoin-project/go-address"
 	"github.com/filecoin-project/go-sectorbuilder"
+	"github.com/filecoin-project/go-sectorbuilder/fs"
 	"github.com/filecoin-project/lotus/api"
+	"github.com/filecoin-project/lotus/api/apistruct"
 	"github.com/filecoin-project/lotus/lib/tarutil"
 	"github.com/filecoin-project/lotus/miner"
 	"github.com/filecoin-project/lotus/storage"
@@ -43,8 +44,8 @@ func (sm *StorageMinerAPI) ServeRemote(w http.ResponseWriter, r *http.Request) {
 
 	mux := mux.NewRouter()
 
-	mux.HandleFunc("/remote/{type}/{sname}", sm.remoteGetSector).Methods("GET")
-	mux.HandleFunc("/remote/{type}/{sname}", sm.remotePutSector).Methods("PUT")
+	mux.HandleFunc("/remote/{type}/{id}", sm.remoteGetSector).Methods("GET")
+	mux.HandleFunc("/remote/{type}/{id}", sm.remotePutSector).Methods("PUT")
 
 	log.Infof("SERVEGETREMOTE %s", r.URL)
 
@@ -54,14 +55,21 @@ func (sm *StorageMinerAPI) ServeRemote(w http.ResponseWriter, r *http.Request) {
 func (sm *StorageMinerAPI) remoteGetSector(w http.ResponseWriter, r *http.Request) {
 	vars := mux.Vars(r)
 
-	path, err := sm.SectorBuilder.GetPath(vars["type"], vars["sname"])
+	id, err := strconv.ParseUint(vars["id"], 10, 64)
+	if err != nil {
+		log.Error("parsing sector id: ", err)
+		w.WriteHeader(500)
+		return
+	}
+
+	path, err := sm.SectorBuilder.SectorPath(fs.DataType(vars["type"]), id)
 	if err != nil {
 		log.Error(err)
 		w.WriteHeader(500)
 		return
 	}
 
-	stat, err := os.Stat(path)
+	stat, err := os.Stat(string(path))
 	if err != nil {
 		log.Error(err)
 		w.WriteHeader(500)
@@ -70,10 +78,10 @@ func (sm *StorageMinerAPI) remoteGetSector(w http.ResponseWriter, r *http.Reques
 
 	var rd io.Reader
 	if stat.IsDir() {
-		rd, err = tarutil.TarDirectory(path)
+		rd, err = tarutil.TarDirectory(string(path))
 		w.Header().Set("Content-Type", "application/x-tar")
 	} else {
-		rd, err = os.OpenFile(path, os.O_RDONLY, 0644)
+		rd, err = os.OpenFile(string(path), os.O_RDONLY, 0644)
 		w.Header().Set("Content-Type", "application/octet-stream")
 	}
 	if err != nil {
@@ -92,7 +100,14 @@ func (sm *StorageMinerAPI) remoteGetSector(w http.ResponseWriter, r *http.Reques
 func (sm *StorageMinerAPI) remotePutSector(w http.ResponseWriter, r *http.Request) {
 	vars := mux.Vars(r)
 
-	path, err := sm.SectorBuilder.GetPath(vars["type"], vars["sname"])
+	id, err := strconv.ParseUint(vars["id"], 10, 64)
+	if err != nil {
+		log.Error("parsing sector id: ", err)
+		w.WriteHeader(500)
+		return
+	}
+
+	path, err := sm.SectorBuilder.SectorPath(fs.DataType(vars["type"]), id)
 	if err != nil {
 		log.Error(err)
 		w.WriteHeader(500)
@@ -106,7 +121,7 @@ func (sm *StorageMinerAPI) remotePutSector(w http.ResponseWriter, r *http.Reques
 		return
 	}
 
-	if err := os.RemoveAll(path); err != nil {
+	if err := os.RemoveAll(string(path)); err != nil {
 		log.Error(err)
 		w.WriteHeader(500)
 		return
@@ -114,13 +129,13 @@ func (sm *StorageMinerAPI) remotePutSector(w http.ResponseWriter, r *http.Reques
 
 	switch mediatype {
 	case "application/x-tar":
-		if err := tarutil.ExtractTar(r.Body, path); err != nil {
+		if err := tarutil.ExtractTar(r.Body, string(path)); err != nil {
 			log.Error(err)
 			w.WriteHeader(500)
 			return
 		}
 	default:
-		if err := files.WriteTo(files.NewReaderFile(r.Body), path); err != nil {
+		if err := files.WriteTo(files.NewReaderFile(r.Body), string(path)); err != nil {
 			log.Error(err)
 			w.WriteHeader(500)
 			return
