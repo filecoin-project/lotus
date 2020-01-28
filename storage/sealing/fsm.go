@@ -205,6 +205,8 @@ func planCommitting(events []statemachine.Event, state *SectorInfo) error {
 			state.State = api.SealCommitFailed
 		case SectorSealFailed:
 			state.State = api.CommitFailed
+		case SectorCommitFailed:
+			state.State = api.CommitFailed
 		default:
 			return xerrors.Errorf("planCommitting got event of unknown type %T, events: %+v", event.User, events)
 		}
