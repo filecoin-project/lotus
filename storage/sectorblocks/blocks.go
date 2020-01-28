@@ -34,8 +34,8 @@ var ErrNotFound = errors.New("not found")
 
 func DealIDToDsKey(dealID uint64) datastore.Key {
 	buf := make([]byte, binary.MaxVarintLen64)
-	binary.PutUvarint(buf, dealID)
-	return dshelp.NewKeyFromBinary(buf)
+	size := binary.PutUvarint(buf, dealID)
+	return dshelp.NewKeyFromBinary(buf[:size])
 }
 
 func DsKeyToDealID(key datastore.Key) (uint64, error) {
@@ -104,7 +104,10 @@ func (st *SectorBlocks) AddPiece(ctx context.Context, size uint64, r io.Reader, 
 		return 0, err
 	}
 
-	st.writeRef(dealID, sectorID, pieceOffset, size)
+	err = st.writeRef(dealID, sectorID, pieceOffset, size)
+	if err != nil {
+		return 0, err
+	}
 
 	return sectorID, st.Miner.SealPiece(ctx, size, r, sectorID, dealID)
 }
