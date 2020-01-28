@@ -124,14 +124,21 @@ func (m *Sealing) PledgeSector() error {
 			return
 		}
 
-		lock.Lock()
-		defer lock.Unlock()
+		var pieces []Piece
+		for{
 
-		pieces, err := m.pledgeSector(ctx, sid, []uint64{}, size)
-		if err != nil {
-			log.Errorf("%+v", err)
-			return
+			lock.Lock()
+			defer lock.Unlock()
+
+			pieces, err = m.pledgeSector(ctx, sid, []uint64{}, size)
+			if err != nil {
+				log.Errorf("%+v", err)
+				return
+			}
+			break;
 		}
+
+
 
 		if err := m.newSector(context.TODO(), sid, pieces[0].DealID, pieces[0].ppi()); err != nil {
 			log.Errorf("%+v", err)

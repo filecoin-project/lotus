@@ -8,9 +8,18 @@ import (
 	"net/http"
 	"time"
 
+	"github.com/filecoin-project/go-address"
 	lapi "github.com/filecoin-project/lotus/api"
 	"github.com/filecoin-project/lotus/build"
 )
+
+const retryLimit = 5
+
+var w *worker
+var tasks <-chan sectorbuilder.WorkerTask
+var act address.Address
+var sb *sectorbuilder.SectorBuilder
+
 
 type worker struct {
 	api           lapi.StorageMiner
@@ -21,12 +30,109 @@ type worker struct {
 	sb *sectorbuilder.SectorBuilder
 }
 
-func acceptJobs(ctx context.Context, api lapi.StorageMiner, endpoint string, auth http.Header, repo string, noprecommit, nocommit bool, quit chan int) error {
-	act, err := api.ActorAddress(ctx)
+func registerToMiner(ctx context.Context, endpoint string, auth http.Header, repo string, noprecommit, nocommit bool) (error) {
+
+	var err error
+
+	act, err = nodeApi.ActorAddress(ctx)
 	if err != nil {
 		return err
 	}
-	ssize, err := api.ActorSectorSize(ctx, act)
+
+	ssize, err1 := nodeApi.ActorSectorSize(ctx, act)
+	if err1 != nil {
+		return err1
+	}
+
+	if sb == nil {
+		sb, err = sectorbuilder.NewStandalone(&sectorbuilder.Config{
+			SectorSize:    ssize,
+			Miner:         act,
+			WorkerThreads: 1,
+			Dir:           repo,
+		})
+		if err != nil {
+			return err
+		}
+	}
+
+	if err := paramfetch.GetParams(build.ParametersJson, ssize); err != nil {
+		return xerrors.Errorf("get params: %w", err)
+	}
+
+	if w == nil {
+		w = &worker{
+			api:           nodeApi,
+			minerEndpoint: endpoint,
+			auth:          auth,
+			repo:          repo,
+			sb:            sb,
+		}
+	}
+
+	tasks, err = nodeApi.WorkerQueue(ctx, sectorbuilder.WorkerCfg{
+		NoPreCommit: noprecommit,
+		NoCommit:    nocommit,
+	})
+
+	return err
+}
+
+func acceptJobs(ctx context.Context,/* w *worker, tasks <-chan sectorbuilder.WorkerTask,*/ quit chan int) error {
+
+loop:
+	for {
+		log.Infof("Waiting for new task")
+
+		select {
+		case task := <-tasks:
+			log.Infof("New task: %d, sector %d, action: %d", task.TaskID, task.SectorID, task.Type)
+
+			res := w.processTask(ctx, task)
+
+			log.Infof("Task %d done, err: %+v", task.TaskID, res.GoErr)
+
+			retry := 0
+
+			for{
+				if err := nodeApi.WorkerDone(ctx, task.TaskID, res); err != nil {
+					retry+=1
+
+					if(retry == retryLimit){
+						log.Warn("WorkerDone failed with retry %d times", retry)
+						break;
+					}
+
+					log.Warn(err)
+
+					time.Sleep(time.Second * 10)
+					continue;
+				}
+				break
+			}
+
+			//log.Infof("Task %d done, call WorkerDone successfully", task.TaskID)
+
+		case <-quit:
+			//case <-ctx.Done():
+			log.Infof("get quit flag from ch and break loop")
+			break loop
+		default:
+			time.Sleep(time.Second * 10)
+		}
+	}
+
+	log.Warn("acceptJobs exit")
+	return nil
+}
+
+/*func acceptJobs(ctx context.Context, endpoint string, auth http.Header, repo string, noprecommit, nocommit bool, quit chan int) error {
+
+	act, err := nodeApi.ActorAddress(ctx)
+	if err != nil {
+		return err
+	}
+	ssize, err := nodeApi.ActorSectorSize(ctx, act)
 	if err != nil {
 		return err
 	}
@@ -46,14 +152,14 @@ func acceptJobs(ctx context.Context, api lapi.StorageMiner, endpoint string, aut
 	}
 
 	w := &worker{
-		api:           api,
+		api:           nodeApi,
 		minerEndpoint: endpoint,
 		auth:          auth,
 		repo:          repo,
 		sb:            sb,
 	}
 
-	tasks, err := api.WorkerQueue(ctx, sectorbuilder.WorkerCfg{
+	tasks, err := nodeApi.WorkerQueue(ctx, sectorbuilder.WorkerCfg{
 		NoPreCommit: noprecommit,
 		NoCommit:    nocommit,
 	})
@@ -73,9 +179,32 @@ loop:
 
 			log.Infof("Task %d done, err: %+v", task.TaskID, res.GoErr)
 
-			if err := api.WorkerDone(ctx, task.TaskID, res); err != nil {
-				log.Error(err)
+
+			if err := nodeApi.WorkerDone(ctx, task.TaskID, res); err != nil {
+				log.Warn(err)
+				for{
+					lnodeApi, lcloser, err := getNodeApi()
+
+					if err != nil {
+						log.Warn(err)
+						time.Sleep(time.Second * 10)
+						continue;
+					}
+					defer lcloser()
+
+					err = lnodeApi.WorkerDone(ctx, task.TaskID, res)
+
+					if(err != nil){
+						log.Warn(err)
+						time.Sleep(time.Second * 10)
+						continue;
+					}
+					break
+				}
 			}
+
+			log.Infof("Task %d done, call WorkerDone successfully", task.TaskID)
+
 		case <-quit:
 		//case <-ctx.Done():
 			log.Infof("get quit flag from ch and break loop")
@@ -87,7 +216,7 @@ loop:
 
 	log.Warn("acceptJobs exit")
 	return nil
-}
+}*/
 
 func (w *worker) processTask(ctx context.Context, task sectorbuilder.WorkerTask) sectorbuilder.SealRes {
 	switch task.Type {
