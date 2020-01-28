@@ -90,6 +90,7 @@ var DaemonCmd = &cli.Command{
 		}
 
 		ctx := context.Background()
+		log.Infof("lotus repo: %s", cctx.String("repo"))
 		r, err := repo.NewFS(cctx.String("repo"))
 		if err != nil {
 			return xerrors.Errorf("opening fs repo: %w", err)
