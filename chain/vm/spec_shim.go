@@ -1,4 +1,4 @@
-package actors
+package vm
 
 import (
 	"bytes"
@@ -7,6 +7,7 @@ import (
 	"runtime/debug"
 
 	"github.com/filecoin-project/go-address"
+	"github.com/filecoin-project/lotus/chain/actors"
 	"github.com/filecoin-project/lotus/chain/actors/aerrors"
 	"github.com/filecoin-project/lotus/chain/types"
 	"github.com/filecoin-project/specs-actors/actors/abi"
@@ -21,10 +22,10 @@ type runtimeShim struct {
 	vmr.Runtime
 }
 
-func (rs *runtimeShim) shimCall(f func() interface{}) (rval []byte, aerr ActorError) {
+func (rs *runtimeShim) shimCall(f func() interface{}) (rval []byte, aerr aerrors.ActorError) {
 	defer func() {
 		if r := recover(); r != nil {
-			if ar, ok := r.(ActorError); ok {
+			if ar, ok := r.(aerrors.ActorError); ok {
 				aerr = ar
 				return
 			}
@@ -169,7 +170,7 @@ func (ssh *shimStateHandle) Construct(f func() vmr.CBORMarshaler) {
 	if err != nil {
 		panic(err)
 	}
-	if err := ssh.rs.vmctx.Storage().Commit(EmptyCBOR, c); err != nil {
+	if err := ssh.rs.vmctx.Storage().Commit(actors.EmptyCBOR, c); err != nil {
 		panic(err)
 	}
 }
