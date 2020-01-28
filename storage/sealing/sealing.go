@@ -3,6 +3,7 @@ package sealing
 import (
 	"context"
 	"io"
+	"sync"
 
 	"github.com/filecoin-project/go-address"
 	"github.com/filecoin-project/go-sectorbuilder"
@@ -64,6 +65,10 @@ type Sealing struct {
 	sb      sectorbuilder.Interface
 	sectors *statemachine.StateGroup
 	tktFn   TicketFn
+
+	// runWg is used to prevent sectors from being added before the Sealing#Run
+	// method exits (and existing sectors have been restarted).
+	runWg sync.WaitGroup
 }
 
 func New(api sealingApi, events *events.Events, maddr address.Address, worker address.Address, ds datastore.Batching, sb sectorbuilder.Interface, tktFn TicketFn) *Sealing {
@@ -77,12 +82,16 @@ func New(api sealingApi, events *events.Events, maddr address.Address, worker ad
 		tktFn:  tktFn,
 	}
 
+	s.runWg.Add(1)
+
 	s.sectors = statemachine.New(namespace.Wrap(ds, datastore.NewKey(SectorStorePrefix)), s, SectorInfo{})
 
 	return s
 }
 
 func (m *Sealing) Run(ctx context.Context) error {
+	defer m.runWg.Done()
+
 	if err := m.restartSectors(ctx); err != nil {
 		log.Errorf("%+v", err)
 		return xerrors.Errorf("failed load sector states: %w", err)
@@ -92,6 +101,8 @@ func (m *Sealing) Run(ctx context.Context) error {
 }
 
 func (m *Sealing) Stop(ctx context.Context) error {
+	m.runWg.Add(1)
+
 	return m.sectors.Stop(ctx)
 }
 
@@ -121,6 +132,8 @@ func (m *Sealing) SealPiece(ctx context.Context, size uint64, r io.Reader, secto
 }
 
 func (m *Sealing) newSector(ctx context.Context, sid uint64, dealID uint64, ppi sectorbuilder.PublicPieceInfo) error {
+	m.runWg.Wait()
+
 	return m.sectors.Send(sid, SectorStart{
 		id: sid,
 		pieces: []Piece{
