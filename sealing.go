@@ -112,7 +112,7 @@ func (m *Sealing) AllocatePiece(size uint64) (sectorID uint64, offset uint64, er
 func (m *Sealing) SealPiece(ctx context.Context, size uint64, r io.Reader, sectorID uint64, dealID uint64) error {
 	log.Infof("Seal piece for deal %d", dealID)
 
-	ppi, err := m.sb.AddPiece(size, sectorID, r, []uint64{})
+	ppi, err := m.sb.AddPiece(ctx, size, sectorID, r, []uint64{})
 	if err != nil {
 		return xerrors.Errorf("adding piece to sector: %w", err)
 	}
