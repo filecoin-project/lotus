@@ -302,6 +302,37 @@ create index if not exists deal_activations_activation_epoch_index
 
 create unique index if not exists deal_activations_deal_uindex
 	on deal_activations (deal);
+
+create table if not exists blocks_challenges
+(
+	block text not null
+		constraint blocks_challenges_pk_2
+			primary key
+		constraint blocks_challenges_blocks_cid_fk
+			references blocks,
+	index bigint not null,
+	sector_id bigint not null,
+	partial bytea not null,
+	candidate bigint not null,
+	constraint blocks_challenges_pk
+		unique (block, index)
+);
+
+create index if not exists blocks_challenges_block_index
+	on blocks_challenges (block);
+
+create index if not exists blocks_challenges_block_candidate_index
+	on blocks_challenges (block,candidate);
+
+create index if not exists blocks_challenges_block_index_index
+	on blocks_challenges (block, index);
+
+create index if not exists blocks_challenges_candidate_index
+	on blocks_challenges (candidate);
+
+create index if not exists blocks_challenges_index_index
+	on blocks_challenges (index);
+
 `)
 	if err != nil {
 		return err
@@ -477,6 +508,7 @@ func (st *storage) storeHeaders(bhs map[cid.Cid]*types.BlockHeader, sync bool) e
 create temp table tbp (like block_parents excluding constraints) on commit drop;
 create temp table bs (like blocks_synced excluding constraints) on commit drop;
 create temp table b (like blocks excluding constraints) on commit drop;
+create temp table c (like blocks_challenges excluding constraints) on commit drop;
 
 
 `); err != nil {
@@ -527,7 +559,7 @@ create temp table b (like blocks excluding constraints) on commit drop;
 		}
 	}
 
-	stmt2, err := tx.Prepare(`copy b (cid, parentWeight, parentStateRoot, height, miner, "timestamp", vrfproof, tickets, eprof, prand, ep0partial, ep0sector, ep0challangei) from stdin `)
+	stmt2, err := tx.Prepare(`copy b (cid, parentWeight, parentStateRoot, height, miner, "timestamp", vrfproof, tickets, eprof, prand, ep0partial, ep0sector, ep0challangei) from stdin`)
 	if err != nil {
 		return err
 	}
@@ -564,10 +596,36 @@ create temp table b (like blocks excluding constraints) on commit drop;
 		return xerrors.Errorf("blk put: %w", err)
 	}
 
+	stmt3, err := tx.Prepare(`copy c (block, index, sector_id, partial, candidate) from stdin`)
+	if err != nil {
+		return xerrors.Errorf("s3 create: %w", err)
+	}
+	for _, bh := range bhs {
+		for index, c := range bh.EPostProof.Candidates {
+			if _, err := stmt3.Exec(
+				bh.Cid().String(),
+				index,
+				c.SectorID,
+				c.Partial,
+				c.ChallengeIndex); err != nil {
+				log.Error(err)
+			}
+		}
+	}
+
+	if err := stmt3.Close(); err != nil {
+		return xerrors.Errorf("s2 close: %w", err)
+	}
+
+	if _, err := tx.Exec(`insert into blocks_challenges select * from c on conflict do nothing `); err != nil {
+		return xerrors.Errorf("blk put: %w", err)
+	}
+
 	err = tx.Commit()
 	if err != nil {
 		return xerrors.Errorf("commit: %w", err)
 	}
+
 	return nil
 }
 
