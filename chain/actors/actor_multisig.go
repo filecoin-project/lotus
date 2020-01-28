@@ -11,6 +11,7 @@ import (
 	"github.com/filecoin-project/lotus/chain/types"
 	"github.com/ipfs/go-cid"
 
+	"github.com/filecoin-project/specs-actors/actors/abi"
 	samsig "github.com/filecoin-project/specs-actors/actors/builtin/multisig"
 	vmr "github.com/filecoin-project/specs-actors/actors/runtime"
 	"github.com/filecoin-project/specs-actors/actors/runtime/exitcode"
@@ -161,14 +162,14 @@ func (rs *runtimeShim) Context() context.Context {
 	return rs.vmctx.Context()
 }
 
-func (rs *runtimeShim) IpldGet(c cid.Cid, o vmr.CBORUnmarshalable) bool {
+func (rs *runtimeShim) IpldGet(c cid.Cid, o vmr.CBORUnmarshaler) bool {
 	if err := rs.vmctx.Storage().Get(c, o); err != nil {
 		panic(err) // y o o o o o l l l l o o o o o
 	}
 	return true
 }
 
-func (rs *runtimeShim) IpldPut(o vmr.CBORMarshalable) cid.Cid {
+func (rs *runtimeShim) IpldPut(o vmr.CBORMarshaler) cid.Cid {
 	c, err := rs.vmctx.Storage().Put(o)
 	if err != nil {
 		panic(err)
@@ -184,6 +185,42 @@ func (rs *runtimeShim) AbortStateMsg(msg string) {
 	rs.Abort(101, msg)
 }
 
+func (rs *runtimeShim) ValidateImmediateCallerType(...cid.Cid) {
+	log.Info("validate caller type is dumb")
+}
+
+func (rs *runtimeShim) CurrentBalance() abi.TokenAmount {
+	b, err := rs.vmctx.GetBalance(rs.vmctx.Message().From)
+	if err != nil {
+		rs.Abort(1, err.Error())
+	}
+
+	return abi.TokenAmount(b)
+}
+
+func (rs *runtimeShim) CurrEpoch() abi.ChainEpoch {
+	return abi.ChainEpoch(rs.vmctx.BlockHeight())
+}
+
+type dumbWrapperType struct {
+	val []byte
+}
+
+func (dwt *dumbWrapperType) Into(um vmr.CBORUnmarshaler) error {
+	return um.UnmarshalCBOR(bytes.NewReader(dwt.val))
+}
+
+func (rs *runtimeShim) Send(to address.Address, method abi.MethodNum, params abi.MethodParams, value abi.TokenAmount) (vmr.SendReturn, exitcode.ExitCode) {
+	ret, err := rs.vmctx.Send(to, uint64(method), types.BigInt(value), []byte(params))
+	if err != nil {
+		if err.IsFatal() {
+			panic(err)
+		}
+		return nil, exitcode.ExitCode(err.RetCode())
+	}
+	return &dumbWrapperType{ret}, 0
+}
+
 func (rs *runtimeShim) State() vmr.StateHandle {
 	return &shimStateHandle{rs: rs}
 }
@@ -192,13 +229,13 @@ type shimStateHandle struct {
 	rs *runtimeShim
 }
 
-func (ssh *shimStateHandle) Readonly(obj vmr.CBORUnmarshalable) {
+func (ssh *shimStateHandle) Readonly(obj vmr.CBORUnmarshaler) {
 	if err := ssh.rs.vmctx.Storage().Get(ssh.rs.vmctx.Storage().GetHead(), obj); err != nil {
 		panic(err)
 	}
 }
 
-func (ssh *shimStateHandle) Transaction(obj vmr.CBORAble, f func() interface{}) interface{} {
+func (ssh *shimStateHandle) Transaction(obj vmr.CBORer, f func() interface{}) interface{} {
 	head := ssh.rs.vmctx.Storage().GetHead()
 	if err := ssh.rs.vmctx.Storage().Get(head, obj); err != nil {
 		panic(err)
@@ -217,7 +254,7 @@ func (ssh *shimStateHandle) Transaction(obj vmr.CBORAble, f func() interface{}) 
 	return out
 }
 
-func (ssh *shimStateHandle) Construct(f func() vmr.CBORMarshalable) {
+func (ssh *shimStateHandle) Construct(f func() vmr.CBORMarshaler) {
 	out := f()
 
 	c, err := ssh.rs.vmctx.Storage().Put(out)
