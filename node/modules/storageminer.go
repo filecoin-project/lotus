@@ -14,6 +14,7 @@ import (
 	storageimpl "github.com/filecoin-project/go-fil-markets/storagemarket/impl"
 	paramfetch "github.com/filecoin-project/go-paramfetch"
 	"github.com/filecoin-project/go-sectorbuilder"
+	"github.com/filecoin-project/go-sectorbuilder/fs"
 	"github.com/filecoin-project/go-statestore"
 	"github.com/ipfs/go-bitswap"
 	"github.com/ipfs/go-bitswap/network"
@@ -62,7 +63,7 @@ func GetParams(sbc *sectorbuilder.Config) error {
 	return nil
 }
 
-func SectorBuilderConfig(storagePath string, threads uint, noprecommit, nocommit bool) func(dtypes.MetadataDS, api.FullNode) (*sectorbuilder.Config, error) {
+func SectorBuilderConfig(storage []fs.PathConfig, threads uint, noprecommit, nocommit bool) func(dtypes.MetadataDS, api.FullNode) (*sectorbuilder.Config, error) {
 	return func(ds dtypes.MetadataDS, api api.FullNode) (*sectorbuilder.Config, error) {
 		minerAddr, err := minerAddrFromDS(ds)
 		if err != nil {
@@ -74,9 +75,11 @@ func SectorBuilderConfig(storagePath string, threads uint, noprecommit, nocommit
 			return nil, err
 		}
 
-		sp, err := homedir.Expand(storagePath)
-		if err != nil {
-			return nil, err
+		for i := range storage {
+			storage[i].Path, err = homedir.Expand(storage[i].Path)
+			if err != nil {
+				return nil, err
+			}
 		}
 
 		if threads > math.MaxUint8 {
@@ -91,7 +94,7 @@ func SectorBuilderConfig(storagePath string, threads uint, noprecommit, nocommit
 			NoPreCommit:   noprecommit,
 			NoCommit:      nocommit,
 
-			Paths: sectorbuilder.SimplePath(sp),
+			Paths: storage,
 		}
 
 		return sb, nil

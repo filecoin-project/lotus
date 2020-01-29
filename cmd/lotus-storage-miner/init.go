@@ -369,7 +369,7 @@ func storageMinerInit(ctx context.Context, cctx *cli.Context, api lapi.FullNode,
 				return err
 			}
 
-			sbcfg, err := modules.SectorBuilderConfig(lr.Path(), 2, false, false)(mds, api)
+			sbcfg, err := modules.SectorBuilderConfig(sectorbuilder.SimplePath(lr.Path()), 2, false, false)(mds, api)
 			if err != nil {
 				return xerrors.Errorf("getting genesis miner sector builder config: %w", err)
 			}
