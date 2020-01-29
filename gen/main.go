@@ -4,13 +4,13 @@ import (
 	"fmt"
 	"os"
 
+	"github.com/filecoin-project/go-statemachine"
 	gen "github.com/whyrusleeping/cbor-gen"
 
 	"github.com/filecoin-project/lotus/api"
 	"github.com/filecoin-project/lotus/chain/actors"
 	"github.com/filecoin-project/lotus/chain/blocksync"
 	"github.com/filecoin-project/lotus/chain/types"
-	"github.com/filecoin-project/lotus/lib/statemachine"
 	"github.com/filecoin-project/lotus/paych"
 	"github.com/filecoin-project/lotus/storage/sealing"
 )

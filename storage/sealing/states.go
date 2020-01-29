@@ -4,12 +4,12 @@ import (
 	"context"
 
 	sectorbuilder "github.com/filecoin-project/go-sectorbuilder"
+	"github.com/filecoin-project/go-statemachine"
 	"golang.org/x/xerrors"
 
 	"github.com/filecoin-project/lotus/build"
 	"github.com/filecoin-project/lotus/chain/actors"
 	"github.com/filecoin-project/lotus/chain/types"
-	"github.com/filecoin-project/lotus/lib/statemachine"
 )
 
 func (m *Sealing) handlePacking(ctx statemachine.Context, sector SectorInfo) error {

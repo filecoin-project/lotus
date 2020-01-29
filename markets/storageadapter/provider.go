@@ -6,6 +6,7 @@ import (
 	"bytes"
 	"context"
 
+	"github.com/filecoin-project/go-padreader"
 	"github.com/ipfs/go-cid"
 	logging "github.com/ipfs/go-log"
 	unixfile "github.com/ipfs/go-unixfs/file"
@@ -18,7 +19,6 @@ import (
 	"github.com/filecoin-project/lotus/api"
 	"github.com/filecoin-project/lotus/chain/actors"
 	"github.com/filecoin-project/lotus/chain/types"
-	"github.com/filecoin-project/lotus/lib/padreader"
 	"github.com/filecoin-project/lotus/markets/utils"
 	"github.com/filecoin-project/lotus/node/modules/dtypes"
 	"github.com/filecoin-project/lotus/storage/sectorblocks"

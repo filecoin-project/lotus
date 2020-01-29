@@ -19,8 +19,10 @@ require (
 	github.com/filecoin-project/go-crypto v0.0.0-20191218222705-effae4ea9f03
 	github.com/filecoin-project/go-data-transfer v0.0.0-20191219005021-4accf56bd2ce
 	github.com/filecoin-project/go-fil-markets v0.0.0-20200114015428-74d100f305f8
+	github.com/filecoin-project/go-padreader v0.0.0-20200129223301-c0b2156f8348
 	github.com/filecoin-project/go-paramfetch v0.0.1
 	github.com/filecoin-project/go-sectorbuilder v0.0.2-0.20200123143044-d9cc96c53c55
+	github.com/filecoin-project/go-statemachine v0.0.0-20200129223247-008dd1f98b28
 	github.com/filecoin-project/go-statestore v0.1.0
 	github.com/gbrlsnchs/jwt/v3 v3.0.0-beta.1
 	github.com/go-ole/go-ole v1.2.4 // indirect
@@ -86,7 +88,7 @@ require (
 	github.com/prometheus/common v0.2.0
 	github.com/stretchr/testify v1.4.0
 	github.com/whyrusleeping/bencher v0.0.0-20190829221104-bb6607aa8bba
-	github.com/whyrusleeping/cbor-gen v0.0.0-20200121162646-b63bacf5eaf8
+	github.com/whyrusleeping/cbor-gen v0.0.0-20200123233031-1cdf64d27158
 	github.com/whyrusleeping/multiaddr-filter v0.0.0-20160516205228-e903e4adabd7
 	github.com/whyrusleeping/pubsub v0.0.0-20131020042734-02de8aa2db3d
 	go.opencensus.io v0.22.2

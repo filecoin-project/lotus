@@ -3,11 +3,11 @@ package sealing
 import (
 	"testing"
 
+	"github.com/filecoin-project/go-statemachine"
 	logging "github.com/ipfs/go-log/v2"
 	"github.com/stretchr/testify/require"
 
 	"github.com/filecoin-project/lotus/api"
-	"github.com/filecoin-project/lotus/lib/statemachine"
 )
 
 func init() {

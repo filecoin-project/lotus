@@ -5,7 +5,9 @@ import (
 	"io"
 
 	"github.com/filecoin-project/go-address"
+	"github.com/filecoin-project/go-padreader"
 	"github.com/filecoin-project/go-sectorbuilder"
+	"github.com/filecoin-project/go-statemachine"
 	"github.com/ipfs/go-cid"
 	"github.com/ipfs/go-datastore"
 	"github.com/ipfs/go-datastore/namespace"
@@ -17,8 +19,6 @@ import (
 	"github.com/filecoin-project/lotus/chain/events"
 	"github.com/filecoin-project/lotus/chain/store"
 	"github.com/filecoin-project/lotus/chain/types"
-	"github.com/filecoin-project/lotus/lib/padreader"
-	"github.com/filecoin-project/lotus/lib/statemachine"
 )
 
 const SectorStorePrefix = "/sectors"
