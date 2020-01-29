@@ -7,6 +7,9 @@ executors:
     docker:
       - image: circleci/golang:1.13
     resource_class: 2xlarge
+  ubuntu:
+    docker:
+      - image: ubuntu:19.10
 
 commands:
   install-deps:
@@ -24,6 +27,8 @@ commands:
         description: is a darwin build environment?
         type: boolean
     steps:
+      - checkout
+      - git_fetch_all_tags
       - checkout
       - when:
           condition: << parameters.linux >>
@@ -46,7 +51,27 @@ commands:
           key: 'v20-1k-lotus-params'
           paths:
             - /var/tmp/filecoin-proof-parameters/
-
+  install_ipfs:
+    steps:
+      - run: |
+          apt update
+          apt install -y wget
+          wget https://github.com/ipfs/go-ipfs/releases/download/v0.4.22/go-ipfs_v0.4.22_linux-amd64.tar.gz
+          wget https://github.com/ipfs/go-ipfs/releases/download/v0.4.22/go-ipfs_v0.4.22_linux-amd64.tar.gz.sha512
+          if [ "$(sha512sum go-ipfs_v0.4.22_linux-amd64.tar.gz)" != "$(cat go-ipfs_v0.4.22_linux-amd64.tar.gz.sha512)" ]
+          then
+            echo "ipfs failed checksum check"
+            exit 1
+          fi
+          tar -xf go-ipfs_v0.4.22_linux-amd64.tar.gz
+          mv go-ipfs/ipfs /usr/local/bin/ipfs
+          chmod +x /usr/local/bin/ipfs
+  git_fetch_all_tags:
+    steps:
+      - run:
+          name: fetch all tags
+          command: |
+            git fetch --all
 
 jobs:
   mod-tidy-check:
@@ -74,6 +99,13 @@ jobs:
           path: lotus
       - store_artifacts:
           path: lotus-storage-miner
+      - store_artifacts:
+          path: lotus-seal-worker
+      - run: mkdir linux && mv lotus lotus-storage-miner lotus-seal-worker linux/
+      - persist_to_workspace:
+          root: "."
+          paths:
+            - linux
 
   test: &test
     description: |
@@ -153,7 +185,7 @@ jobs:
             - "~/go/src/github.com"
             - "~/go/src/golang.org"
 
-  test-short: 
+  test-short:
     <<: *test
 
   build-macos:
@@ -196,6 +228,13 @@ jobs:
           path: lotus
       - store_artifacts:
           path: lotus-storage-miner
+      - store_artifacts:
+          path: lotus-seal-worker
+      - run: mkdir darwin && mv lotus lotus-storage-miner lotus-seal-worker darwin/
+      - persist_to_workspace:
+          root: "."
+          paths:
+            - darwin
       - save_cache:
           name: save cargo cache
           key: v3-go-deps-{{ arch }}-{{ checksum "~/go/src/github.com/filecoin-project/lotus/go.sum" }}
@@ -246,6 +285,26 @@ jobs:
   lint-all:
     <<: *lint
 
+  publish:
+    description: publish binary artifacts
+    executor: ubuntu
+    steps:
+      - run:
+          name: Install git jq curl
+          command: apt update && apt install -y git jq curl
+      - checkout
+      - git_fetch_all_tags
+      - checkout
+      - install_ipfs
+      - attach_workspace:
+          at: "."
+      - run:
+          name: Create bundles
+          command: ./scripts/build-bundle.sh
+      - run:
+          name: Publish release
+          command: ./scripts/publish-release.sh
+
 
 workflows:
   version: 2.1
@@ -255,8 +314,38 @@ workflows:
           args: "--new-from-rev origin/master"
       - test:
           codecov-upload: true
+      - mod-tidy-check
       - test-short:
           go-test-flags: "--timeout 10m --short"
-      - mod-tidy-check
-      - build-all
-      - build-macos
+          filters:
+            tags:
+              only:
+                - /^v\d+\.\d+\.\d+$/
+      - build-all:
+          requires:
+            - test-short
+          filters:
+            tags:
+              only:
+                - /^v\d+\.\d+\.\d+$/
+      - build-macos:
+          requires:
+            - test-short
+          filters:
+            branches:
+              ignore:
+                - /.*/
+            tags:
+              only:
+                - /^v\d+\.\d+\.\d+$/
+      - publish:
+          requires:
+            - build-all
+            - build-macos
+          filters:
+            branches:
+              ignore:
+                - /.*/
+            tags:
+              only:
+                - /^v\d+\.\d+\.\d+$/
