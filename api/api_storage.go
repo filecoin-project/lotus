@@ -22,9 +22,9 @@ const (
 	WaitSeed      // waiting for seed
 	Committing
 	CommitWait // waiting for message to land on chain
+	FinalizeSector
 	Proving
 	_ // reserved
-	_
 	_
 	_
 

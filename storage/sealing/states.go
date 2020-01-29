@@ -232,6 +232,14 @@ func (m *Sealing) handleCommitWait(ctx statemachine.Context, sector SectorInfo) 
 	return ctx.Send(SectorProving{})
 }
 
+func (m *Sealing) handleFinalizeSector(ctx statemachine.Context, sector SectorInfo) error {
+	if err := m.sb.FinalizeSector(ctx.Context(), sector.SectorID); err != nil {
+		return ctx.Send(SectorCommitFailed{err})
+	}
+
+	return ctx.Send(SectorFinalized{})
+}
+
 func (m *Sealing) handleFaulty(ctx statemachine.Context, sector SectorInfo) error {
 	// TODO: check if the fault has already been reported, and that this sector is even valid
 
