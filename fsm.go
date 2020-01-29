@@ -155,7 +155,7 @@ func (m *Sealing) plan(events []statemachine.Event, state *SectorInfo) (func(sta
 	case api.CommitWait:
 		return m.handleCommitWait, nil
 	case api.FinalizeSector:
-
+		return m.handleFinalizeSector, nil
 	case api.Proving:
 		// TODO: track sector health / expiration
 		log.Infof("Proving sector %d", state.SectorID)
