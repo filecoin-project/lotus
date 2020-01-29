@@ -233,8 +233,14 @@ func (m *Sealing) handleCommitWait(ctx statemachine.Context, sector SectorInfo) 
 }
 
 func (m *Sealing) handleFinalizeSector(ctx statemachine.Context, sector SectorInfo) error {
+	// TODO: Maybe wait for some finality
+
 	if err := m.sb.FinalizeSector(ctx.Context(), sector.SectorID); err != nil {
-		return ctx.Send(SectorCommitFailed{err})
+		return ctx.Send(SectorCommitFailed{xerrors.Errorf("finalize sector: %w", err)})
+	}
+
+	if err := m.sb.DropStaged(ctx.Context(), sector.SectorID); err != nil {
+		return ctx.Send(SectorCommitFailed{xerrors.Errorf("drop staged: %w", err)})
 	}
 
 	return ctx.Send(SectorFinalized{})
