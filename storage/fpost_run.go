@@ -211,5 +211,19 @@ func (s *fpostScheduler) submitPost(ctx context.Context, proof *actors.SubmitFal
 
 	log.Infof("Submitted fallback post: %s", sm.Cid())
 
+	go func() {
+		rec, err := s.api.StateWaitMsg(context.TODO(), sm.Cid())
+		if err != nil {
+			log.Error(err)
+			return
+		}
+
+		if rec.Receipt.ExitCode == 0 {
+			return
+		}
+
+		log.Errorf("Submitting fallback post %s failed: exit %d", sm.Cid(), rec.Receipt.ExitCode)
+	}()
+
 	return nil
 }

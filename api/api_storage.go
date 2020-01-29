@@ -64,6 +64,7 @@ var SectorStates = []string{
 	WaitSeed:             "WaitSeed",
 	Committing:           "Committing",
 	CommitWait:           "CommitWait",
+	FinalizeSector:       "FinalizeSector",
 	Proving:              "Proving",
 
 	SealFailed:       "SealFailed",
