@@ -5,53 +5,15 @@ import (
 	"context"
 	"io"
 	"math"
-	"math/bits"
 	"math/rand"
 	"runtime"
-	"sync"
 
 	sectorbuilder "github.com/filecoin-project/go-sectorbuilder"
-	"github.com/hashicorp/go-multierror"
 	"golang.org/x/xerrors"
 
 	"github.com/filecoin-project/lotus/chain/actors"
 	"github.com/filecoin-project/lotus/chain/types"
 )
-
-func (m *Sealing) fastPledgeCommitment(size uint64, parts uint64) (commP [sectorbuilder.CommLen]byte, err error) {
-	parts = 1 << bits.Len64(parts) // round down to nearest power of 2
-
-	piece := sectorbuilder.UserBytesForSectorSize((size/127 + size) / parts)
-	out := make([]sectorbuilder.PublicPieceInfo, parts)
-	var lk sync.Mutex
-
-	var wg sync.WaitGroup
-	wg.Add(int(parts))
-	for i := uint64(0); i < parts; i++ {
-		go func(i uint64) {
-			defer wg.Done()
-
-			commP, perr := sectorbuilder.GeneratePieceCommitment(io.LimitReader(rand.New(rand.NewSource(42+int64(i))), int64(piece)), piece)
-
-			lk.Lock()
-			if perr != nil {
-				err = multierror.Append(err, perr)
-			}
-			out[i] = sectorbuilder.PublicPieceInfo{
-				Size:  piece,
-				CommP: commP,
-			}
-			lk.Unlock()
-		}(i)
-	}
-	wg.Wait()
-
-	if err != nil {
-		return [32]byte{}, err
-	}
-
-	return sectorbuilder.GenerateDataCommitment(m.sb.SectorSize(), out)
-}
 
 func (m *Sealing) pledgeReader(size uint64, parts uint64) io.Reader {
 	piece := sectorbuilder.UserBytesForSectorSize((size/127 + size) / parts)
