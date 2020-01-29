@@ -5,6 +5,7 @@ import (
 	"context"
 	"io"
 	"math"
+	"math/bits"
 	"math/rand"
 	"runtime"
 	"sync"
@@ -18,7 +19,9 @@ import (
 )
 
 func (m *Sealing) fastPledgeCommitment(size uint64, parts uint64) (commP [sectorbuilder.CommLen]byte, err error) {
-	piece := sectorbuilder.UserBytesForSectorSize((size / 127 + size) / parts)
+	parts = 1 << bits.Len64(parts) // round down to nearest power of 2
+
+	piece := sectorbuilder.UserBytesForSectorSize((size/127 + size) / parts)
 	out := make([]sectorbuilder.PublicPieceInfo, parts)
 	var lk sync.Mutex
 
@@ -28,7 +31,7 @@ func (m *Sealing) fastPledgeCommitment(size uint64, parts uint64) (commP [sector
 		go func(i uint64) {
 			defer wg.Done()
 
-			commP, perr := sectorbuilder.GeneratePieceCommitment(io.LimitReader(rand.New(rand.NewSource(42 + int64(i))), int64(piece)), piece)
+			commP, perr := sectorbuilder.GeneratePieceCommitment(io.LimitReader(rand.New(rand.NewSource(42+int64(i))), int64(piece)), piece)
 
 			lk.Lock()
 			if perr != nil {
@@ -51,11 +54,11 @@ func (m *Sealing) fastPledgeCommitment(size uint64, parts uint64) (commP [sector
 }
 
 func (m *Sealing) pledgeReader(size uint64, parts uint64) io.Reader {
-	piece := sectorbuilder.UserBytesForSectorSize((size / 127 + size) / parts)
+	piece := sectorbuilder.UserBytesForSectorSize((size/127 + size) / parts)
 
 	readers := make([]io.Reader, parts)
 	for i := range readers {
-		readers[i] = io.LimitReader(rand.New(rand.NewSource(42 + int64(i))), int64(piece))
+		readers[i] = io.LimitReader(rand.New(rand.NewSource(42+int64(i))), int64(piece))
 	}
 
 	return io.MultiReader(readers...)
