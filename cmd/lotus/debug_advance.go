@@ -28,11 +28,11 @@ func init() {
 			ctx := lcli.ReqContext(cctx)
 			head, err := api.ChainHead(ctx)
 			if err != nil {
-
+				return err
 			}
 			pending, err := api.MpoolPending(ctx, head)
 			if err != nil {
-
+				return err
 			}
 
 			msgs, err := miner.SelectMessages(ctx, api.StateGetActor, head, pending)
