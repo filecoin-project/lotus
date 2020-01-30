@@ -17,6 +17,9 @@ import (
 	"github.com/filecoin-project/lotus/build"
 	"github.com/filecoin-project/lotus/chain/actors/aerrors"
 	"github.com/filecoin-project/lotus/chain/types"
+	"github.com/filecoin-project/lotus/lib/sigs"
+	_ "github.com/filecoin-project/lotus/lib/sigs/bls"
+	_ "github.com/filecoin-project/lotus/lib/sigs/secp"
 )
 
 type StoragePowerActor struct{}
@@ -170,11 +173,11 @@ func (spa StoragePowerActor) ArbitrateConsensusFault(act *types.Actor, vmctx typ
 		return nil, aerrors.Absorb(oerr, 3, "response from 'GetWorkerAddr' was not a valid address")
 	}
 
-	if err := params.Block1.CheckBlockSignature(vmctx.Context(), worker); err != nil {
+	if err := sigs.CheckBlockSignature(params.Block1, vmctx.Context(), worker); err != nil {
 		return nil, aerrors.Absorb(err, 4, "block1 did not have valid signature")
 	}
 
-	if err := params.Block2.CheckBlockSignature(vmctx.Context(), worker); err != nil {
+	if err := sigs.CheckBlockSignature(params.Block2, vmctx.Context(), worker); err != nil {
 		return nil, aerrors.Absorb(err, 5, "block2 did not have valid signature")
 	}
 

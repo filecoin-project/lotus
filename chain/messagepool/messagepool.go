@@ -25,6 +25,9 @@ import (
 	"github.com/filecoin-project/lotus/chain/stmgr"
 	"github.com/filecoin-project/lotus/chain/store"
 	"github.com/filecoin-project/lotus/chain/types"
+	"github.com/filecoin-project/lotus/lib/sigs"
+	_ "github.com/filecoin-project/lotus/lib/sigs/bls"
+	_ "github.com/filecoin-project/lotus/lib/sigs/secp"
 	"github.com/filecoin-project/lotus/node/modules/dtypes"
 )
 
@@ -303,7 +306,7 @@ func (mp *MessagePool) addTs(m *types.SignedMessage, curTs *types.TipSet) error 
 		return ErrMessageValueTooHigh
 	}
 
-	if err := m.Signature.Verify(m.Message.From, m.Message.Cid().Bytes()); err != nil {
+	if err := sigs.Verify(&m.Signature, m.Message.From, m.Message.Cid().Bytes()); err != nil {
 		log.Warnf("mpooladd signature verification failed: %s", err)
 		return err
 	}
