@@ -262,7 +262,7 @@ func (rm *rpcMethod) processSingleCall(rctx *rpcContext, de dataOrErr) []reflect
 		return rm.processError(err)
 	}
 
-	return rm.processResponse(val)
+	return rm.processResponse(val.Elem())
 }
 
 func (rm *rpcMethod) processOutChan(cli Client, rctx *rpcContext) []reflect.Value {

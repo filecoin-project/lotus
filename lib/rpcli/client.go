@@ -247,7 +247,7 @@ CLIENT_LOOP:
 
 			}
 
-			err := conn.sendFrame(newReq.ctx, newReq.req)
+			err := safeSendFrame(newReq.ctx, conn, newReq.req)
 			if err != nil {
 				isConnErr := isWsConnectionErr(err)
 				if isConnErr {
@@ -259,6 +259,8 @@ CLIENT_LOOP:
 					newReq.finish(nil, err)
 					continue CLIENT_LOOP
 				}
+
+				newReq.logger.Debug("fail to make request, wait for next available connection")
 			}
 
 			sc.registerRequest(newReq)
@@ -272,7 +274,7 @@ CLIENT_LOOP:
 
 			// send wsCancel for continuous requesst
 			if rctx.isChan {
-				if err := conn.sendFrame(sc.running, frame{
+				if err := safeSendFrame(sc.running, conn, frame{
 					Jsonrpc: "2.0",
 					Method:  wsCancel,
 					Params:  []param{{v: reflect.ValueOf(rctx.id)}},
@@ -290,7 +292,7 @@ CLIENT_LOOP:
 			// resend requests for non-failfast calls
 			for reqID := range sc.handling {
 				rctx := sc.handling[reqID]
-				if err := conn.sendFrame(rctx.ctx, rctx.req); err != nil {
+				if err := safeSendFrame(rctx.ctx, conn, rctx.req); err != nil {
 					if isWsConnectionErr(err) {
 						cleanupBadConn()
 						break
@@ -335,6 +337,8 @@ RE_LOOP:
 
 				continue RE_LOOP
 			}
+
+			log.Debug("new connection established")
 
 			select {
 			case <-sc.running.Done():

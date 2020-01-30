@@ -167,3 +167,11 @@ type rawMsgOrErr struct {
 	frame
 	err error
 }
+
+func safeSendFrame(ctx context.Context, conn RawConn, f frame) error {
+	if conn == nil {
+		return ErrNoAvailableConnection
+	}
+
+	return conn.sendFrame(ctx, f)
+}
