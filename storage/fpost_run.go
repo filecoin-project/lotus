@@ -50,52 +50,85 @@ func (s *fpostScheduler) doPost(ctx context.Context, eps uint64, ts *types.TipSe
 	}()
 }
 
+func (s *fpostScheduler) declareFaults(ctx context.Context, fc uint64, params *actors.DeclareFaultsParams) error {
+	log.Warnf("DECLARING %d FAULTS", fc)
+
+	enc, aerr := actors.SerializeParams(params)
+	if aerr != nil {
+		return xerrors.Errorf("could not serialize declare faults parameters: %w", aerr)
+	}
+
+	msg := &types.Message{
+		To:       s.actor,
+		From:     s.worker,
+		Method:   actors.MAMethods.DeclareFaults,
+		Params:   enc,
+		Value:    types.NewInt(0),
+		GasLimit: types.NewInt(10000000), // i dont know help
+		GasPrice: types.NewInt(1),
+	}
+
+	sm, err := s.api.MpoolPushMessage(ctx, msg)
+	if err != nil {
+		return xerrors.Errorf("pushing faults message to mpool: %w", err)
+	}
+
+	rec, err := s.api.StateWaitMsg(ctx, sm.Cid())
+	if err != nil {
+		return xerrors.Errorf("waiting for declare faults: %w", err)
+	}
+
+	if rec.Receipt.ExitCode != 0 {
+		return xerrors.Errorf("declare faults exit %d", rec.Receipt.ExitCode)
+	}
+
+	log.Infof("Faults declared successfully")
+	return nil
+}
+
 func (s *fpostScheduler) checkFaults(ctx context.Context, ssi sectorbuilder.SortedPublicSectorInfo) ([]uint64, error) {
 	faults := s.sb.Scrub(ssi)
-	var faultIDs []uint64
+
+	declaredFaults := map[uint64]struct{}{}
+
+	{
+		chainFaults, err := s.api.StateMinerFaults(ctx, s.actor, nil)
+		if err != nil {
+			return nil, xerrors.Errorf("checking on-chain faults: %w", err)
+		}
+
+		for _, fault := range chainFaults {
+			declaredFaults[fault] = struct{}{}
+		}
+	}
 
 	if len(faults) > 0 {
 		params := &actors.DeclareFaultsParams{Faults: types.NewBitField()}
 
 		for _, fault := range faults {
-			log.Warnf("fault detected: sector %d: %s", fault.SectorID, fault.Err)
-			faultIDs = append(faultIDs, fault.SectorID)
+			if _, ok := declaredFaults[fault.SectorID]; ok {
+				continue
+			}
 
-			// TODO: omit already declared (with finality in mind though..)
+			log.Warnf("new fault detected: sector %d: %s", fault.SectorID, fault.Err)
+			declaredFaults[fault.SectorID] = struct{}{}
 			params.Faults.Set(fault.SectorID)
 		}
 
-		log.Warnf("DECLARING %d FAULTS", len(faults))
-
-		enc, aerr := actors.SerializeParams(params)
-		if aerr != nil {
-			return nil, xerrors.Errorf("could not serialize declare faults parameters: %w", aerr)
-		}
-
-		msg := &types.Message{
-			To:       s.actor,
-			From:     s.worker,
-			Method:   actors.MAMethods.DeclareFaults,
-			Params:   enc,
-			Value:    types.NewInt(0),
-			GasLimit: types.NewInt(10000000), // i dont know help
-			GasPrice: types.NewInt(1),
-		}
-
-		sm, err := s.api.MpoolPushMessage(ctx, msg)
+		pc, err := params.Faults.Count()
 		if err != nil {
-			return nil, xerrors.Errorf("pushing faults message to mpool: %w", err)
+			return nil, xerrors.Errorf("counting faults: %w", err)
 		}
+		if pc > 0 {
+			if err := s.declareFaults(ctx, pc, params); err != nil {
+				return nil, err
+			}
+		}
+	}
 
-		rec, err := s.api.StateWaitMsg(ctx, sm.Cid())
-		if err != nil {
-			return nil, xerrors.Errorf("waiting for declare faults: %w", err)
-		}
-
-		if rec.Receipt.ExitCode != 0 {
-			return nil, xerrors.Errorf("declare faults exit %d", rec.Receipt.ExitCode)
-		}
-		log.Infof("Faults declared successfully")
+	faultIDs := make([]uint64, 0, len(declaredFaults))
+	for fault := range declaredFaults {
+		faultIDs = append(faultIDs, fault)
 	}
 
 	return faultIDs, nil
