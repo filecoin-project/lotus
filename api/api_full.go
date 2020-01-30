@@ -122,6 +122,8 @@ type FullNode interface {
 	StateMinerSectorCount(context.Context, address.Address, *types.TipSet) (MinerSectors, error)
 	StateCompute(context.Context, uint64, []*types.Message, *types.TipSet) (cid.Cid, error)
 
+	MsigGetAvailableBalance(context.Context, address.Address, *types.TipSet) (types.BigInt, error)
+
 	MarketEnsureAvailable(context.Context, address.Address, types.BigInt) error
 	// MarketFreeBalance
 
