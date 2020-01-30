@@ -57,8 +57,20 @@ var infoCmd = &cli.Command{
 		if err != nil {
 			return err
 		}
+		faults, err := api.StateMinerFaults(ctx, maddr, nil)
+		if err != nil {
+			return err
+		}
+
 		fmt.Printf("\tCommitted: %s\n", types.BigMul(types.NewInt(secCounts.Sset), types.NewInt(sizeByte)).SizeStr())
-		fmt.Printf("\tProving: %s\n", types.BigMul(types.NewInt(secCounts.Pset), types.NewInt(sizeByte)).SizeStr())
+		if len(faults) == 0 {
+			fmt.Printf("\tProving: %s\n", types.BigMul(types.NewInt(secCounts.Pset), types.NewInt(sizeByte)).SizeStr())
+		} else {
+			fmt.Printf("\tProving: %s (%s Faulty, %.2f%%)\n",
+				types.BigMul(types.NewInt(secCounts.Pset - uint64(len(faults))), types.NewInt(sizeByte)).SizeStr(),
+				types.BigMul(types.NewInt(uint64(len(faults))), types.NewInt(sizeByte)).SizeStr(),
+				float64(10000 * uint64(len(faults)) / secCounts.Pset) / 100.)
+		}
 
 		// TODO: indicate whether the post worker is in use
 		wstat, err := nodeApi.WorkerStats(ctx)
