@@ -324,7 +324,7 @@ RE_LOOP:
 			}
 
 		case <-reconnTimer:
-			conn, err := sc.Dial(sc.running)
+			conn, err := sc.connect()
 			if err != nil {
 				interval *= 2
 				if interval > reconnectMaxInterval {
@@ -351,6 +351,17 @@ RE_LOOP:
 			}
 		}
 	}
+}
+
+func (sc *simpleClient) connect() (RawConn, error) {
+	ctx := sc.running
+	if sc.opt.dialTimeout > 0 {
+		var cancel context.CancelFunc
+		ctx, cancel = context.WithTimeout(ctx, sc.opt.dialTimeout)
+		defer cancel()
+	}
+
+	return sc.Connector.Dial(ctx)
 }
 
 func (sc *simpleClient) startRawConn(ctx context.Context, conn RawConn) (<-chan rawMsgOrErr, context.CancelFunc) {
