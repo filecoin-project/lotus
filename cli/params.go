@@ -24,7 +24,7 @@ var fetchParamCmd = &cli.Command{
 			return err
 		}
 		sectorSize := uint64(sectorSizeInt)
-		err = paramfetch.GetParams(build.ParametersJson, sectorSize)
+		err = paramfetch.GetParams(build.ParametersJson(), sectorSize)
 		if err != nil {
 			return xerrors.Errorf("fetching proof parameters: %w", err)
 		}

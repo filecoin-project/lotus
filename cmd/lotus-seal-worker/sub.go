@@ -41,7 +41,7 @@ func acceptJobs(ctx context.Context, api lapi.StorageMiner, endpoint string, aut
 		return err
 	}
 
-	if err := paramfetch.GetParams(build.ParametersJson, ssize); err != nil {
+	if err := paramfetch.GetParams(build.ParametersJson(), ssize); err != nil {
 		return xerrors.Errorf("get params: %w", err)
 	}
 
