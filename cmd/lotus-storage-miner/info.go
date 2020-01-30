@@ -50,8 +50,8 @@ var infoCmd = &cli.Command{
 			return err
 		}
 
-		percI := types.BigDiv(types.BigMul(pow.MinerPower, types.NewInt(1000)), pow.TotalPower)
-		fmt.Printf("Power: %s / %s (%0.4f%%)\n", pow.MinerPower.SizeStr(), pow.TotalPower.SizeStr(), float64(percI.Int64())/100000*10000)
+		percI := types.BigDiv(types.BigMul(pow.MinerPower, types.NewInt(1000000)), pow.TotalPower)
+		fmt.Printf("Power: %s / %s (%0.4f%%)\n", pow.MinerPower.SizeStr(), pow.TotalPower.SizeStr(), float64(percI.Int64())/10000)
 
 		secCounts, err := api.StateMinerSectorCount(ctx, maddr, nil)
 		if err != nil {
