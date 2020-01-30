@@ -49,7 +49,7 @@ func TestFastPledge(t *testing.T) {
 	sz := uint64(16 << 20)
 
 	s := Sealing{sb: sbmock.NewMockSectorBuilder(0, sz)}
-	if _, err := s.fastPledgeCommitment(sz, 5); err != nil {
+	if _, err := s.fastPledgeCommitment(sectorbuilder.UserBytesForSectorSize(sz), 5); err != nil {
 		t.Fatalf("%+v", err)
 	}
 }
