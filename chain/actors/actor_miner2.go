@@ -33,7 +33,10 @@ func (sma StorageMinerActor2) Exports() []interface{} {
 		//8:  sma.DePledge,
 		9:  sma.GetOwner,
 		10: sma.GetWorkerAddr,
-		11: sma.GetPower, // TODO: Remove
+		11: withUpdates(
+			update{0, sma.GetPower},
+			update{build.ForkMissingSnowballs, sma.GetPower2},
+		), // TODO: Remove
 		12: sma.GetPeerID,
 		13: sma.GetSectorSize,
 		14: sma.UpdatePeerID,
@@ -401,6 +404,19 @@ func (sma StorageMinerActor2) GetPower(act *types.Actor, vmctx types.VMContext, 
 	if err != nil {
 		return nil, err
 	}
+	return self.Power.Bytes(), nil
+}
+
+func (sma StorageMinerActor2) GetPower2(act *types.Actor, vmctx types.VMContext, params *struct{}) ([]byte, ActorError) {
+	_, self, err := loadState(vmctx)
+	if err != nil {
+		return nil, err
+	}
+
+	if self.SlashedAt != 0 {
+		return types.NewInt(0).Bytes(), nil
+	}
+
 	return self.Power.Bytes(), nil
 }
 
