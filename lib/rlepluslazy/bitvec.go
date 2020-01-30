@@ -84,7 +84,7 @@ func (bv *wbitvec) Out() []byte {
 	}
 	if bv.bitCap > 8 {
 		// if we store some needed bits in second byte, save them also
-		bv.buf = append(bv.buf, byte(bv.bitCap>>8))
+		bv.buf = append(bv.buf, byte(bv.bits>>8))
 		bv.index++
 		bv.bits = bv.bits - 8
 	}
