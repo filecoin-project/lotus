@@ -1,10 +1,13 @@
 package cli
 
 import (
+	"bytes"
 	"context"
 	"encoding/json"
 	"fmt"
 	"os"
+	"os/exec"
+	"strconv"
 	"strings"
 	"time"
 
@@ -28,6 +31,7 @@ var chainCmd = &cli.Command{
 		chainSetHeadCmd,
 		chainListCmd,
 		chainGetCmd,
+		chainBisectCmd,
 		chainExportCmd,
 		slashConsensusFault,
 	},
@@ -392,6 +396,113 @@ func printTipSet(format string, ts *types.TipSet) {
 	format = strings.ReplaceAll(format, "<weight>", fmt.Sprint(ts.Blocks()[0].ParentWeight))
 
 	fmt.Println(format)
+}
+
+var chainBisectCmd = &cli.Command{
+	Name:  "bisect",
+	Usage: "bisect chain for an event",
+	Description: `Bisect the chain state tree:
+
+   lotus chain bisect [min height] [max height] '1/2/3/state/path' 'jq script'
+
+   Returns the first tipset in which jq condition is true
+                  v
+   [start] FFFFFFFTTT [end]
+
+   Example: find height at which deal ID 100 000 appeared
+    - lotus chain bisect 1 32000 '@Ha:t03/1' '.[2] > 100000'
+
+   For special path elements see 'chain get' help
+`,
+	Action: func(cctx *cli.Context) error {
+		api, closer, err := GetFullNodeAPI(cctx)
+		if err != nil {
+			return err
+		}
+		defer closer()
+		ctx := ReqContext(cctx)
+
+		if cctx.Args().Len() != 4 {
+			return xerrors.New("need 4 args")
+		}
+
+		start, err := strconv.ParseUint(cctx.Args().Get(0), 10, 64)
+		if err != nil {
+			return err
+		}
+
+		end, err := strconv.ParseUint(cctx.Args().Get(1), 10, 64)
+		if err != nil {
+			return err
+		}
+
+		subPath := cctx.Args().Get(2)
+		jqs := cctx.Args().Get(3)
+
+		highest, err := api.ChainGetTipSetByHeight(ctx, end, nil)
+		if err != nil {
+			return err
+		}
+
+		prev := highest.Height()
+
+		for {
+			mid := (start + end) / 2
+			if end - start == 1 {
+				mid = end
+				start = end
+			}
+
+			midTs, err := api.ChainGetTipSetByHeight(ctx, mid, highest)
+			if err != nil {
+				return err
+			}
+
+			path := "/ipld/" + midTs.ParentState().String() + "/" + subPath
+			fmt.Printf("* Testing %d (%d - %d) (%s): ", mid, start, end, path)
+
+			nd, err := api.ChainGetNode(ctx, path)
+			if err != nil {
+				return err
+			}
+
+			b, err := json.MarshalIndent(nd, "", "\t")
+			if err != nil {
+				return err
+			}
+
+			cmd := exec.CommandContext(ctx, "jq", jqs)
+			cmd.Stdin = bytes.NewReader(b)
+
+			var out bytes.Buffer
+			cmd.Stdout = &out
+
+			if err := cmd.Run(); err != nil {
+				return err
+			}
+
+			if strings.TrimSpace(out.String()) == "true" {
+				fmt.Println("true")
+				// it's lower
+				end = mid
+				highest = midTs
+			} else {
+				fmt.Println("false")
+				start = mid
+			}
+
+			if start == end {
+				if strings.TrimSpace(out.String()) == "true" {
+					fmt.Println(midTs.Height())
+				} else {
+					fmt.Println(prev)
+				}
+				return nil
+			}
+
+			prev = mid
+		}
+	},
 }
 
 var chainExportCmd = &cli.Command{
