@@ -5,6 +5,7 @@ import (
 	"context"
 	"io"
 	"math"
+	"math/bits"
 	"math/rand"
 	"runtime"
 
@@ -16,6 +17,8 @@ import (
 )
 
 func (m *Sealing) pledgeReader(size uint64, parts uint64) io.Reader {
+	parts = 1 << bits.Len64(parts) // round down to nearest power of 2
+
 	piece := sectorbuilder.UserBytesForSectorSize((size/127 + size) / parts)
 
 	readers := make([]io.Reader, parts)
