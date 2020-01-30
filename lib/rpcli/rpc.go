@@ -28,9 +28,10 @@ type rpcContext struct {
 	// we take the advantage of mutex fairness since go1.12 here
 	// to keep incoming dataOrErrs ordered
 	// and since there can be only 1 receiver, no need to acquire mutex before consuming
-	resChMu sync.Mutex
-	resCh   chan dataOrErr
-	logger  logging.StandardLogger
+	resChMu   sync.Mutex
+	resCh     chan dataOrErr
+	logger    logging.StandardLogger
+	streaming bool
 }
 
 func (rc *rpcContext) send(de dataOrErr) {
@@ -343,7 +344,7 @@ func (rs *rpcStream) start() {
 			selCases[1] = reflect.SelectCase{
 				Dir:  reflect.SelectSend,
 				Chan: rs.outCh,
-				Send: val,
+				Send: val.Elem(),
 			}
 
 			choose, _, _ := reflect.Select(selCases[:])

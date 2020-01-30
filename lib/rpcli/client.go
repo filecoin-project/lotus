@@ -468,12 +468,19 @@ func (sc *simpleClient) handleResponseFrame(ctx context.Context, connID uint64, 
 		return
 	}
 
+	rctx.logger.Debugf("assigned to conn %d chan %d", connID, chanID)
 	sc.registerChanMap(connID, chanID, reqID)
-	rctx.send(dataOrErr{
-		connID: &connID,
-		err:    nil,
-		r:      nil,
-	})
+
+	// we only send mapping frame on init
+	if !rctx.streaming {
+		rctx.send(dataOrErr{
+			connID: &connID,
+			err:    nil,
+			r:      nil,
+		})
+
+		rctx.streaming = true
+	}
 }
 
 func (sc *simpleClient) handleChanMessageFrame(ctx context.Context, connID uint64, f frame) {
