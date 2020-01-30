@@ -1,4 +1,4 @@
-FROM golang:1.13.4-buster
+FROM golang:1.13-buster
 MAINTAINER ldoublewood <ldoublewood@gmail.com>
 
 ENV SRC_DIR /lotus
@@ -44,10 +44,12 @@ RUN cd $SRC_DIR \
 
 COPY . $SRC_DIR
 
+ARG MAKE_TARGET=all
+
 # Build the thing.
 RUN cd $SRC_DIR \
   && . $HOME/.cargo/env \
-  && make
+  && make $MAKE_TARGET
 
 # Now comes the actual target image, which aims to be as small as possible.
 FROM busybox:1-glibc
@@ -56,7 +58,7 @@ MAINTAINER ldoublewood <ldoublewood@gmail.com>
 # Get the executable binary and TLS CAs from the build container.
 ENV SRC_DIR /lotus
 COPY --from=0 $SRC_DIR/lotus /usr/local/bin/lotus
-COPY --from=0 $SRC_DIR/lotus-storage-miner /usr/local/bin/lotus-storage-miner
+COPY --from=0 $SRC_DIR/lotus-* /usr/local/bin/
 COPY --from=0 /tmp/su-exec/su-exec /sbin/su-exec
 COPY --from=0 /tmp/tini /sbin/tini
 COPY --from=0 /etc/ssl/certs /etc/ssl/certs
@@ -79,13 +81,15 @@ EXPOSE 5678
 ENV HOME_PATH /data
 ENV PARAMCACHE_PATH /var/tmp/filecoin-proof-parameters
 
-RUN mkdir -p $HOME_PATH \
+RUN mkdir -p $HOME_PATH $PARAMCACHE_PATH \
   && adduser -D -h $HOME_PATH -u 1000 -G users lotus \
-  && chown lotus:users $HOME_PATH
+  && chown lotus:users $HOME_PATH $PARAMCACHE_PATH
 
 
 VOLUME $HOME_PATH
 VOLUME $PARAMCACHE_PATH
+
+USER lotus
 
 # Execute the daemon subcommand by default
 CMD ["/sbin/tini", "--", "lotus", "daemon"]

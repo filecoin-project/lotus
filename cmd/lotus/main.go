@@ -14,12 +14,18 @@ import (
 	"github.com/filecoin-project/lotus/tracing"
 )
 
+var AdvanceBlockCmd *cli.Command
+
 func main() {
 	lotuslog.SetupLogLevels()
 
 	local := []*cli.Command{
 		DaemonCmd,
 	}
+	if AdvanceBlockCmd != nil {
+		local = append(local, AdvanceBlockCmd)
+	}
+
 	jaeger := tracing.SetupJaegerTracing("lotus")
 	defer func() {
 		if jaeger != nil {

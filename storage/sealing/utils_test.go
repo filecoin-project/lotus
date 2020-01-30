@@ -1,6 +1,7 @@
 package sealing
 
 import (
+	"github.com/filecoin-project/lotus/storage/sbmock"
 	"testing"
 
 	"github.com/stretchr/testify/assert"
@@ -42,5 +43,13 @@ func TestFillersFromRem(t *testing.T) {
 		ub = sectorbuilder.UserBytesForSectorSize(uint64(9) << i)
 		testFill(t, ub, []uint64{ub1, ub4})
 	}
+}
 
+func TestFastPledge(t *testing.T) {
+	sz := uint64(16 << 20)
+
+	s := Sealing{sb: sbmock.NewMockSectorBuilder(0, sz)}
+	if _, err := s.fastPledgeCommitment(sectorbuilder.UserBytesForSectorSize(sz), 5); err != nil {
+		t.Fatalf("%+v", err)
+	}
 }
