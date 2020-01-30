@@ -2,7 +2,7 @@ package rpcli
 
 import (
 	"context"
-	"io"
+	"encoding/json"
 	"net/http"
 
 	"github.com/gorilla/websocket"
@@ -63,13 +63,13 @@ func (c *wsConn) startIncomingLoop(ctx context.Context) <-chan rawMsgOrErr {
 			c.ws.Close()
 		}()
 
-		onNext := func(r io.Reader) {
+		onNext := func(f frame) {
 			select {
 			case <-ctx.Done():
 
 			case out <- rawMsgOrErr{
 				connID: c.id,
-				r:      r,
+				frame:  f,
 			}:
 
 			}
@@ -87,6 +87,7 @@ func (c *wsConn) startIncomingLoop(ctx context.Context) <-chan rawMsgOrErr {
 			}
 		}
 
+	READER_LOOP:
 		for {
 			select {
 			case <-ctx.Done():
@@ -107,7 +108,13 @@ func (c *wsConn) startIncomingLoop(ctx context.Context) <-chan rawMsgOrErr {
 				return
 			}
 
-			onNext(reader)
+			var f frame
+			if err := json.NewDecoder(reader).Decode(&f); err != nil {
+				log.Warnf("unable to unmarshasl frame data: %s", err)
+				continue READER_LOOP
+			}
+
+			onNext(f)
 		}
 	}()
 
@@ -157,6 +164,6 @@ func isWsConnectionErr(err error) bool {
 
 type rawMsgOrErr struct {
 	connID uint64
-	r      io.Reader
-	err    error
+	frame
+	err error
 }

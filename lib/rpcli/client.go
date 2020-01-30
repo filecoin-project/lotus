@@ -21,7 +21,7 @@ const (
 )
 
 // NewMergeClient parses struct and set it's field with method
-func NewMergeClient(addr string, header http.Header, namespace string, outs []interface{}) (ClientCloser, error) {
+func NewMergeClient(addr string, namespace string, outs []interface{}, header http.Header) (ClientCloser, error) {
 	connector := NewWebsocketConnector(addr, header)
 	client, closer, err := NewSimpleClient(connector, nil)
 	if err != nil {
@@ -224,11 +224,6 @@ CLIENT_LOOP:
 			if msgOrErr.err != nil {
 				log.Warnf("get error from underlying incoming message loop: %s", msgOrErr.err)
 
-				// TODO: we may use this reader to debug
-				if msgOrErr.r != nil {
-
-				}
-
 				if isWsConnectionErr(msgOrErr.err) {
 					cleanupBadConn()
 				}
@@ -236,13 +231,7 @@ CLIENT_LOOP:
 				continue CLIENT_LOOP
 			}
 
-			var f frame
-			if err := json.NewDecoder(msgOrErr.r).Decode(&f); err != nil {
-				log.Warnf("unable to unmarshal incoming data into a frame: %s", err)
-				continue CLIENT_LOOP
-			}
-
-			sc.handleFrame(sc.running, msgOrErr.connID, f)
+			sc.handleFrame(sc.running, msgOrErr.connID, msgOrErr.frame)
 
 		// new rpc request
 		case newReq := <-sc.reqIn:
@@ -466,8 +455,8 @@ func (sc *simpleClient) handleResponseFrame(ctx context.Context, connID uint64, 
 
 	handshaked := false
 	var chanID uint64
-	if len(f.Params) == 1 {
-		if err := json.Unmarshal(f.Params[0].data, &chanID); err != nil {
+	if f.Result != nil {
+		if err := json.Unmarshal(f.Result, &chanID); err != nil {
 			rctx.logger.Warnf("unable to parse chan id: %s", err)
 		} else {
 			handshaked = true
