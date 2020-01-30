@@ -196,6 +196,8 @@ func (sc *simpleClient) run() {
 			return
 		}
 
+		log.Debug("cleanup due to bad connectiosn")
+
 		connCancel()
 
 		connCancel = nil
@@ -237,6 +239,7 @@ CLIENT_LOOP:
 		case newReq := <-sc.reqIn:
 			select {
 			case <-newReq.ctx.Done():
+				newReq.logger.Debug("request already canceled")
 				newReq.finish(nil, nil)
 				continue CLIENT_LOOP
 
@@ -293,6 +296,7 @@ CLIENT_LOOP:
 						break
 					}
 
+					rctx.logger.Debug("request retried but failed")
 					sc.onRequestErr(reqID, nil, err)
 				}
 			}
@@ -327,7 +331,7 @@ RE_LOOP:
 
 				reconnTimer = time.After(interval)
 
-				log.Warnf("unable to establish a websocket connection: %s, will auto-recoonect after %s", err, interval)
+				log.Warnf("unable to establish a websocket connection: %s, will recoonect after %s", err, interval)
 
 				continue RE_LOOP
 			}
@@ -532,6 +536,7 @@ func (sc *simpleClient) finishFailFastRequests(ctx context.Context) {
 	for reqID := range sc.handling {
 		rctx := sc.handling[reqID]
 		if rctx.opt.failfast {
+			rctx.logger.Debug("finish request due to failfast option")
 			sc.onRequestErr(reqID, nil, ErrNoAvailableConnection)
 		}
 	}
