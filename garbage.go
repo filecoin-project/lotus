@@ -37,6 +37,8 @@ func (m *Sealing) pledgeSector(ctx context.Context, sectorID uint64, existingPie
 		return nil, nil
 	}
 
+	log.Infof("Pledge %d, contains %+v", sectorID, existingPieceSizes)
+
 	deals := make([]actors.StorageDealProposal, len(sizes))
 	for i, size := range sizes {
 		commP, err := m.fastPledgeCommitment(size, uint64(runtime.NumCPU()))
@@ -59,6 +61,8 @@ func (m *Sealing) pledgeSector(ctx context.Context, sectorID uint64, existingPie
 		deals[i] = sdp
 	}
 
+	log.Infof("Publishing deals for %d", sectorID)
+
 	params, aerr := actors.SerializeParams(&actors.PublishStorageDealsParams{
 		Deals: deals,
 	})
@@ -78,7 +82,7 @@ func (m *Sealing) pledgeSector(ctx context.Context, sectorID uint64, existingPie
 	if err != nil {
 		return nil, err
 	}
-	r, err := m.api.StateWaitMsg(ctx, smsg.Cid())
+	r, err := m.api.StateWaitMsg(ctx, smsg.Cid()) // TODO: more finality
 	if err != nil {
 		return nil, err
 	}
@@ -93,8 +97,9 @@ func (m *Sealing) pledgeSector(ctx context.Context, sectorID uint64, existingPie
 		return nil, xerrors.New("got unexpected number of DealIDs from PublishStorageDeals")
 	}
 
-	out := make([]Piece, len(sizes))
+	log.Infof("Deals for sector %d: %+v", sectorID, resp.DealIDs)
 
+	out := make([]Piece, len(sizes))
 	for i, size := range sizes {
 		ppi, err := m.sb.AddPiece(ctx, size, sectorID, m.pledgeReader(size, uint64(runtime.NumCPU())), existingPieceSizes)
 		if err != nil {

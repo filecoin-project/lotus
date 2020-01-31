@@ -121,6 +121,7 @@ func (m *Sealing) SealPiece(ctx context.Context, size uint64, r io.Reader, secto
 }
 
 func (m *Sealing) newSector(ctx context.Context, sid uint64, dealID uint64, ppi sectorbuilder.PublicPieceInfo) error {
+	log.Infof("Start sealing %d", sid)
 	return m.sectors.Send(sid, SectorStart{
 		id: sid,
 		pieces: []Piece{
