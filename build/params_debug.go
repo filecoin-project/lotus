@@ -2,6 +2,10 @@
 
 package build
 
+func init() {
+	InsecurePoStValidation = true
+}
+
 var SectorSizes = []uint64{1024}
 
 // Seconds
