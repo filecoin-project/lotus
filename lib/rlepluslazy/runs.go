@@ -8,8 +8,8 @@ import (
 
 func Sum(a, b RunIterator) (RunIterator, error) {
 	it := addIt{a: a, b: b}
-
-	return &it, it.prep()
+	it.prep()
+	return &it, nil
 }
 
 type addIt struct {
