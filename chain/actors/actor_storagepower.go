@@ -704,7 +704,7 @@ func checkProofSubmissionsAtH(vmctx types.VMContext, self *StoragePowerState, he
 		return aerrors.HandleExternalError(err, "iterating miners in proving bucket")
 	}
 
-	if vmctx.BlockHeight() > build.ForkMissingSnowballs {
+	if vmctx.BlockHeight() > build.ForkMissingSnowballs && len(forRemoval) > 0 {
 		nBucket, err := MinerSetRemove(vmctx.Context(), vmctx, bucket, forRemoval...)
 
 		if err != nil {

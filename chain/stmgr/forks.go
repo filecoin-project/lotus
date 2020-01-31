@@ -2,12 +2,12 @@ package stmgr
 
 import (
 	"context"
-	"math/big"
 
 	amt "github.com/filecoin-project/go-amt-ipld/v2"
 	"github.com/filecoin-project/lotus/build"
 	"github.com/filecoin-project/lotus/chain/actors"
 	"github.com/filecoin-project/lotus/chain/state"
+	"github.com/filecoin-project/lotus/chain/types"
 	"github.com/ipfs/go-cid"
 	hamt "github.com/ipfs/go-hamt-ipld"
 	blockstore "github.com/ipfs/go-ipfs-blockstore"
@@ -70,7 +70,7 @@ func fixTooFewSnowballs(ctx context.Context, sm *StateManager, pstate cid.Cid) (
 		return cid.Undef, err
 	}
 
-	sum := new(big.Int)
+	sum := types.NewInt(0)
 	for _, m := range miners {
 		mact, err := st.GetActor(m)
 		if err != nil {
@@ -85,10 +85,10 @@ func fixTooFewSnowballs(ctx context.Context, sm *StateManager, pstate cid.Cid) (
 		if mstate.SlashedAt != 0 {
 			continue
 		}
-		sum = sum.Add(sum, mstate.Power.Int)
+		sum = types.BigAdd(sum, mstate.Power)
 	}
 
-	spast.TotalStorage.Int = sum
+	spast.TotalStorage = sum
 	nspahead, err := cst.Put(ctx, &spast)
 	if err != nil {
 		return cid.Undef, err
