@@ -97,7 +97,7 @@ var initCmd = &cli.Command{
 		}
 
 		log.Info("Checking proof parameters")
-		if err := paramfetch.GetParams(build.ParametersJson, ssize); err != nil {
+		if err := paramfetch.GetParams(build.ParametersJson(), ssize); err != nil {
 			return xerrors.Errorf("fetching proof parameters: %w", err)
 		}
 

@@ -155,7 +155,7 @@ func main() {
 				}
 			}
 
-			if err := paramfetch.GetParams(build.ParametersJson, sectorSize); err != nil {
+			if err := paramfetch.GetParams(build.ParametersJson(), sectorSize); err != nil {
 				return xerrors.Errorf("getting params: %w", err)
 			}
 			sb, err := sectorbuilder.New(cfg, mds)
