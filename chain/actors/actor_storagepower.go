@@ -659,7 +659,7 @@ func checkProofSubmissionsAtH(vmctx types.VMContext, self *StoragePowerState, he
 			return aerrors.Escalate(err, "parsing miner address")
 		}
 
-		if vmctx.BlockHeight() >= build.ForkMissingSnowballs {
+		if vmctx.BlockHeight() > build.ForkMissingSnowballs {
 			has, aerr := MinerSetHas(vmctx, self.Miners, maddr)
 			if aerr != nil {
 				return aerr
@@ -704,7 +704,7 @@ func checkProofSubmissionsAtH(vmctx types.VMContext, self *StoragePowerState, he
 		return aerrors.HandleExternalError(err, "iterating miners in proving bucket")
 	}
 
-	if vmctx.BlockHeight() >= build.ForkMissingSnowballs {
+	if vmctx.BlockHeight() > build.ForkMissingSnowballs {
 		nBucket, err := MinerSetRemove(vmctx.Context(), vmctx, bucket, forRemoval...)
 
 		if err != nil {
