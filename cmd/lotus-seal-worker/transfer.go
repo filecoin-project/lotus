@@ -1,12 +1,14 @@
 package main
 
 import (
+	"fmt"
 	"io"
 	"mime"
 	"net/http"
 	"os"
 
 	sectorbuilder "github.com/filecoin-project/go-sectorbuilder"
+	"github.com/filecoin-project/go-sectorbuilder/fs"
 	files "github.com/ipfs/go-ipfs-files"
 	"golang.org/x/xerrors"
 	"gopkg.in/cheggaaa/pb.v1"
@@ -26,7 +28,7 @@ func (w *worker) sizeForType(typ string) int64 {
 func (w *worker) fetch(typ string, sectorID uint64) error {
 	outname := filepath.Join(w.repo, typ, w.sb.SectorName(sectorID))
 
-	url := w.minerEndpoint + "/remote/" + typ + "/" + w.sb.SectorName(sectorID)
+	url := w.minerEndpoint + "/remote/" + typ + "/" + fmt.Sprint(sectorID)
 	log.Infof("Fetch %s %s", typ, url)
 
 	req, err := http.NewRequest("GET", url, nil)
@@ -76,21 +78,24 @@ func (w *worker) fetch(typ string, sectorID uint64) error {
 }
 
 func (w *worker) push(typ string, sectorID uint64) error {
-	filename := filepath.Join(w.repo, typ, w.sb.SectorName(sectorID))
+	filename, err := w.sb.SectorPath(fs.DataType(typ), sectorID)
+	if err != nil {
+		return err
+	}
 
-	url := w.minerEndpoint + "/remote/" + typ + "/" + w.sb.SectorName(sectorID)
+	url := w.minerEndpoint + "/remote/" + typ + "/" + fmt.Sprint(sectorID)
 	log.Infof("Push %s %s", typ, url)
 
-	stat, err := os.Stat(filename)
+	stat, err := os.Stat(string(filename))
 	if err != nil {
 		return err
 	}
 
 	var r io.Reader
 	if stat.IsDir() {
-		r, err = tarutil.TarDirectory(filename)
+		r, err = tarutil.TarDirectory(string(filename))
 	} else {
-		r, err = os.OpenFile(filename, os.O_RDONLY, 0644)
+		r, err = os.OpenFile(string(filename), os.O_RDONLY, 0644)
 	}
 	if err != nil {
 		return xerrors.Errorf("opening push reader: %w", err)
