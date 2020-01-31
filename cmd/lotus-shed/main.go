@@ -20,6 +20,7 @@ func main() {
 		keyinfoCmd,
 		peerkeyCmd,
 		noncefix,
+		bigIntParseCmd,
 	}
 
 	app := &cli.App{

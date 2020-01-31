@@ -33,7 +33,10 @@ func (sma StorageMinerActor2) Exports() []interface{} {
 		//8:  sma.DePledge,
 		9:  sma.GetOwner,
 		10: sma.GetWorkerAddr,
-		11: sma.GetPower, // TODO: Remove
+		11: withUpdates(
+			update{0, sma.GetPower},
+			update{build.ForkMissingSnowballs, sma.GetPower2},
+		), // FORK
 		12: sma.GetPeerID,
 		13: sma.GetSectorSize,
 		14: sma.UpdatePeerID,
@@ -401,6 +404,20 @@ func (sma StorageMinerActor2) GetPower(act *types.Actor, vmctx types.VMContext, 
 	if err != nil {
 		return nil, err
 	}
+
+	return self.Power.Bytes(), nil
+}
+
+func (sma StorageMinerActor2) GetPower2(act *types.Actor, vmctx types.VMContext, params *struct{}) ([]byte, ActorError) {
+	_, self, err := loadState(vmctx)
+	if err != nil {
+		return nil, err
+	}
+
+	if self.SlashedAt != 0 {
+		return types.NewInt(0).Bytes(), nil
+	}
+
 	return self.Power.Bytes(), nil
 }
 
@@ -615,6 +632,11 @@ func (sma StorageMinerActor2) CheckMiner(act *types.Actor, vmctx types.VMContext
 	// Slash for being late
 
 	self.SlashedAt = vmctx.BlockHeight()
+	oldPower := self.Power
+
+	if vmctx.BlockHeight() > build.ForkMissingSnowballs {
+		self.Power = types.NewInt(0)
+	}
 
 	nstate, err := vmctx.Storage().Put(self)
 	if err != nil {
@@ -625,7 +647,7 @@ func (sma StorageMinerActor2) CheckMiner(act *types.Actor, vmctx types.VMContext
 	}
 
 	var out bytes.Buffer
-	if err := self.Power.MarshalCBOR(&out); err != nil {
+	if err := oldPower.MarshalCBOR(&out); err != nil {
 		return nil, aerrors.HandleExternalError(err, "marshaling return value")
 	}
 	return out.Bytes(), nil
@@ -708,6 +730,23 @@ func (sma StorageMinerActor2) SlashConsensusFault(act *types.Actor, vmctx types.
 	_, err = vmctx.Send(BurntFundsAddress, 0, burnPortion, nil)
 	if err != nil {
 		return nil, aerrors.Wrap(err, "failed to burn funds")
+	}
+
+	if vmctx.BlockHeight() > build.ForkMissingSnowballs {
+		oldstate, self, err := loadState(vmctx)
+		if err != nil {
+			return nil, aerrors.Wrap(err, "failed to load state for slashing")
+		}
+
+		self.Power = types.NewInt(0)
+
+		ncid, err := vmctx.Storage().Put(self)
+		if err != nil {
+			return nil, err
+		}
+		if err := vmctx.Storage().Commit(oldstate, ncid); err != nil {
+			return nil, err
+		}
 	}
 
 	// TODO: this still allows the miner to commit sectors and submit posts,

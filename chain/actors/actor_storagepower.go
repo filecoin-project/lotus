@@ -648,6 +648,8 @@ func checkProofSubmissionsAtH(vmctx types.VMContext, self *StoragePowerState, he
 		return aerrors.HandleExternalError(err, "failed to load proving bucket")
 	}
 
+	forRemoval := make([]address.Address, 0)
+
 	err = bhamt.ForEach(vmctx.Context(), func(k string, val interface{}) error {
 		_, span := trace.StartSpan(vmctx.Context(), "StoragePowerActor.CheckProofSubmissions.loop")
 		defer span.End()
@@ -655,6 +657,18 @@ func checkProofSubmissionsAtH(vmctx types.VMContext, self *StoragePowerState, he
 		maddr, err := address.NewFromBytes([]byte(k))
 		if err != nil {
 			return aerrors.Escalate(err, "parsing miner address")
+		}
+
+		if vmctx.BlockHeight() > build.ForkMissingSnowballs {
+			has, aerr := MinerSetHas(vmctx, self.Miners, maddr)
+			if aerr != nil {
+				return aerr
+			}
+
+			if !has {
+				forRemoval = append(forRemoval, maddr)
+			}
+
 		}
 
 		span.AddAttributes(trace.StringAttribute("miner", maddr.String()))
@@ -688,6 +702,24 @@ func checkProofSubmissionsAtH(vmctx types.VMContext, self *StoragePowerState, he
 
 	if err != nil {
 		return aerrors.HandleExternalError(err, "iterating miners in proving bucket")
+	}
+
+	if vmctx.BlockHeight() > build.ForkMissingSnowballs && len(forRemoval) > 0 {
+		nBucket, err := MinerSetRemove(vmctx.Context(), vmctx, bucket, forRemoval...)
+
+		if err != nil {
+			return aerrors.Wrap(err, "could not remove miners from set")
+		}
+
+		eerr := buckets.Set(bucketID, nBucket)
+		if err != nil {
+			return aerrors.HandleExternalError(eerr, "could not set the bucket")
+		}
+		ncid, eerr := buckets.Flush()
+		if err != nil {
+			return aerrors.HandleExternalError(eerr, "could not flush buckets")
+		}
+		self.ProvingBuckets = ncid
 	}
 
 	return nil
@@ -764,19 +796,21 @@ func MinerSetAdd(ctx context.Context, vmctx types.VMContext, rcid cid.Cid, maddr
 	return c, nil
 }
 
-func MinerSetRemove(ctx context.Context, vmctx types.VMContext, rcid cid.Cid, maddr address.Address) (cid.Cid, aerrors.ActorError) {
+func MinerSetRemove(ctx context.Context, vmctx types.VMContext, rcid cid.Cid, maddrs ...address.Address) (cid.Cid, aerrors.ActorError) {
 	nd, err := hamt.LoadNode(ctx, vmctx.Ipld(), rcid)
 	if err != nil {
 		return cid.Undef, aerrors.HandleExternalError(err, "failed to load miner set")
 	}
 
-	mkey := string(maddr.Bytes())
-	switch nd.Delete(ctx, mkey) {
-	default:
-		return cid.Undef, aerrors.HandleExternalError(err, "failed to delete miner from set")
-	case hamt.ErrNotFound:
-		return cid.Undef, aerrors.New(1, "miner not found in set on delete")
-	case nil:
+	for _, maddr := range maddrs {
+		mkey := string(maddr.Bytes())
+		switch nd.Delete(ctx, mkey) {
+		default:
+			return cid.Undef, aerrors.HandleExternalError(err, "failed to delete miner from set")
+		case hamt.ErrNotFound:
+			return cid.Undef, aerrors.New(1, "miner not found in set on delete")
+		case nil:
+		}
 	}
 
 	if err := nd.Flush(ctx); err != nil {
