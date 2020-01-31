@@ -50,6 +50,9 @@ func TestHappyPath(t *testing.T) {
 	require.Equal(m.t, m.state.State, api.CommitWait)
 
 	m.planSingle(SectorProving{})
+	require.Equal(m.t, m.state.State, api.FinalizeSector)
+
+	m.planSingle(SectorFinalized{})
 	require.Equal(m.t, m.state.State, api.Proving)
 }
 
@@ -81,6 +84,9 @@ func TestSeedRevert(t *testing.T) {
 	require.Equal(m.t, m.state.State, api.CommitWait)
 
 	m.planSingle(SectorProving{})
+	require.Equal(m.t, m.state.State, api.FinalizeSector)
+
+	m.planSingle(SectorFinalized{})
 	require.Equal(m.t, m.state.State, api.Proving)
 }
 

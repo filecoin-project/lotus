@@ -311,11 +311,11 @@ func (sb *SBMock) StageFakeData() (uint64, []sectorbuilder.PublicPieceInfo, erro
 }
 
 func (sb *SBMock) FinalizeSector(context.Context, uint64) error {
-	panic("implement me")
+	return nil
 }
 
 func (sb *SBMock) DropStaged(context.Context, uint64) error {
-	panic("implement me")
+	return nil
 }
 
 func (sb *SBMock) SectorPath(typ fs.DataType, sectorID uint64) (fs.SectorPath, error) {
