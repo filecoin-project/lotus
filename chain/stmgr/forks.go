@@ -40,7 +40,7 @@ func (sm *StateManager) handleStateForks(ctx context.Context, pstate cid.Cid, he
 			log.Warnw("Adding more snow to the world", "height", i)
 			pstate, err = fixTooFewSnowballs(ctx, sm, pstate)
 			if err != nil {
-				return cid.Undef, xerrors.Errorf("booty bay bug fix failed: %w", err)
+				return cid.Undef, xerrors.Errorf("missing snowballs bug fix failed: %w", err)
 			}
 		}
 	}
@@ -89,7 +89,7 @@ func fixTooFewSnowballs(ctx context.Context, sm *StateManager, pstate cid.Cid) (
 	}
 
 	spast.TotalStorage.Int = sum
-	nspahead, err := cst.Put(ctx, spast)
+	nspahead, err := cst.Put(ctx, &spast)
 	if err != nil {
 		return cid.Undef, err
 	}
