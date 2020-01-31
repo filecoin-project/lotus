@@ -18,6 +18,9 @@ import (
 
 func (m *Sealing) pledgeReader(size uint64, parts uint64) io.Reader {
 	parts = 1 << bits.Len64(parts) // round down to nearest power of 2
+	if size/parts < 127 {
+		parts = size / 127
+	}
 
 	piece := sectorbuilder.UserBytesForSectorSize((size/127 + size) / parts)
 
