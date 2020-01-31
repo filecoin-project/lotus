@@ -633,7 +633,10 @@ func (sma StorageMinerActor2) CheckMiner(act *types.Actor, vmctx types.VMContext
 
 	self.SlashedAt = vmctx.BlockHeight()
 	oldPower := self.Power
-	self.Power = types.NewInt(0)
+
+	if vmctx.BlockHeight() > build.ForkMissingSnowballs {
+		self.Power = types.NewInt(0)
+	}
 
 	nstate, err := vmctx.Storage().Put(self)
 	if err != nil {
@@ -729,19 +732,21 @@ func (sma StorageMinerActor2) SlashConsensusFault(act *types.Actor, vmctx types.
 		return nil, aerrors.Wrap(err, "failed to burn funds")
 	}
 
-	oldstate, self, err := loadState(vmctx)
-	if err != nil {
-		return nil, aerrors.Wrap(err, "failed to load state for slashing")
-	}
+	if vmctx.BlockHeight() > build.ForkMissingSnowballs {
+		oldstate, self, err := loadState(vmctx)
+		if err != nil {
+			return nil, aerrors.Wrap(err, "failed to load state for slashing")
+		}
 
-	self.Power = types.NewInt(0)
+		self.Power = types.NewInt(0)
 
-	ncid, err := vmctx.Storage().Put(self)
-	if err != nil {
-		return nil, err
-	}
-	if err := vmctx.Storage().Commit(oldstate, ncid); err != nil {
-		return nil, err
+		ncid, err := vmctx.Storage().Put(self)
+		if err != nil {
+			return nil, err
+		}
+		if err := vmctx.Storage().Commit(oldstate, ncid); err != nil {
+			return nil, err
+		}
 	}
 
 	// TODO: this still allows the miner to commit sectors and submit posts,
