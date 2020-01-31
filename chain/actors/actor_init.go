@@ -27,6 +27,8 @@ const (
 	GasCreateActor = 100
 )
 
+var BuiltInActors map[cid.Cid]bool
+
 func init() {
 
 	n, err := cbor.WrapObject(map[string]string{}, mh.SHA2_256, -1)
@@ -160,12 +162,7 @@ func (ia InitActor) Exec(act *types.Actor, vmctx types.VMContext, p *ExecParams)
 }
 
 func IsBuiltinActor(code cid.Cid) bool {
-	switch code {
-	case StorageMarketCodeCid, StoragePowerCodeCid, StorageMinerCodeCid, StorageMiner2CodeCid, AccountCodeCid, InitCodeCid, MultisigCodeCid, PaymentChannelCodeCid:
-		return true
-	default:
-		return false
-	}
+	return BuiltInActors[code]
 }
 
 func IsSingletonActor(code cid.Cid) bool {

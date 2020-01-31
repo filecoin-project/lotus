@@ -51,4 +51,15 @@ func init() {
 	MultisigCodeCid = mustSum("fil/1/multisig")
 	InitCodeCid = mustSum("fil/1/init")
 	PaymentChannelCodeCid = mustSum("fil/1/paych")
+
+	BuiltInActors = map[cid.Cid]bool{
+		StorageMarketCodeCid:  true,
+		StoragePowerCodeCid:   true,
+		StorageMinerCodeCid:   true,
+		StorageMiner2CodeCid:  true,
+		AccountCodeCid:        true,
+		InitCodeCid:           true,
+		MultisigCodeCid:       true,
+		PaymentChannelCodeCid: true,
+	}
 }

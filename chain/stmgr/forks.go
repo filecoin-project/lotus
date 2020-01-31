@@ -15,33 +15,50 @@ import (
 	"golang.org/x/xerrors"
 )
 
+var ForksAtHeight = map[uint64]func(context.Context, *StateManager, cid.Cid) (cid.Cid, error){
+	build.ForkBlizzardHeight: func(ctx context.Context, sm *StateManager, pstate cid.Cid) (cid.Cid, error) {
+		log.Warnw("Executing blizzard fork logic")
+		nstate, err := fixBlizzardAMTBug(ctx, sm, pstate)
+		if err != nil {
+			return cid.Undef, xerrors.Errorf("blizzard bug fix failed: %w", err)
+		}
+		return nstate, nil
+	},
+	build.ForkFrigidHeight: func(ctx context.Context, sm *StateManager, pstate cid.Cid) (cid.Cid, error) {
+		log.Warnw("Executing frigid fork logic")
+		nstate, err := fixBlizzardAMTBug(ctx, sm, pstate)
+		if err != nil {
+			return cid.Undef, xerrors.Errorf("frigid bug fix failed: %w", err)
+		}
+		return nstate, nil
+	},
+	build.ForkBootyBayHeight: func(ctx context.Context, sm *StateManager, pstate cid.Cid) (cid.Cid, error) {
+		log.Warnw("Executing booty bay fork logic")
+		nstate, err := fixBlizzardAMTBug(ctx, sm, pstate)
+		if err != nil {
+			return cid.Undef, xerrors.Errorf("booty bay bug fix failed: %w", err)
+		}
+		return nstate, nil
+	},
+	build.ForkMissingSnowballs: func(ctx context.Context, sm *StateManager, pstate cid.Cid) (cid.Cid, error) {
+		log.Warnw("Adding more snow to the world")
+		nstate, err := fixTooFewSnowballs(ctx, sm, pstate)
+		if err != nil {
+			return cid.Undef, xerrors.Errorf("missing snowballs bug fix failed: %w", err)
+		}
+		return nstate, nil
+	},
+}
+
 func (sm *StateManager) handleStateForks(ctx context.Context, pstate cid.Cid, height, parentH uint64) (_ cid.Cid, err error) {
 	for i := parentH; i < height; i++ {
-		switch i {
-		case build.ForkBlizzardHeight:
-			log.Warnw("Executing blizzard fork logic", "height", i)
-			pstate, err = fixBlizzardAMTBug(ctx, sm, pstate)
+		f, ok := ForksAtHeight[i]
+		if ok {
+			nstate, err := f(ctx, sm, pstate)
 			if err != nil {
-				return cid.Undef, xerrors.Errorf("blizzard bug fix failed: %w", err)
+				return cid.Undef, err
 			}
-		case build.ForkFrigidHeight:
-			log.Warnw("Executing frigid fork logic", "height", i)
-			pstate, err = fixBlizzardAMTBug(ctx, sm, pstate)
-			if err != nil {
-				return cid.Undef, xerrors.Errorf("frigid bug fix failed: %w", err)
-			}
-		case build.ForkBootyBayHeight:
-			log.Warnw("Executing booty bay fork logic", "height", i)
-			pstate, err = fixBlizzardAMTBug(ctx, sm, pstate)
-			if err != nil {
-				return cid.Undef, xerrors.Errorf("booty bay bug fix failed: %w", err)
-			}
-		case build.ForkMissingSnowballs:
-			log.Warnw("Adding more snow to the world", "height", i)
-			pstate, err = fixTooFewSnowballs(ctx, sm, pstate)
-			if err != nil {
-				return cid.Undef, xerrors.Errorf("missing snowballs bug fix failed: %w", err)
-			}
+			pstate = nstate
 		}
 	}
 
