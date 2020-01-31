@@ -36,7 +36,7 @@ func (sma StorageMinerActor2) Exports() []interface{} {
 		11: withUpdates(
 			update{0, sma.GetPower},
 			update{build.ForkMissingSnowballs, sma.GetPower2},
-		), // TODO: Remove
+		), // FORK
 		12: sma.GetPeerID,
 		13: sma.GetSectorSize,
 		14: sma.UpdatePeerID,
