@@ -2,11 +2,10 @@ package main
 
 import (
 	"context"
-	"net/http"
-
 	paramfetch "github.com/filecoin-project/go-paramfetch"
 	"github.com/filecoin-project/go-sectorbuilder"
 	"golang.org/x/xerrors"
+	"net/http"
 
 	lapi "github.com/filecoin-project/lotus/api"
 	"github.com/filecoin-project/lotus/build"
@@ -85,6 +84,7 @@ loop:
 	return nil
 }
 
+
 func (w *worker) processTask(ctx context.Context, task sectorbuilder.WorkerTask) sectorbuilder.SealRes {
 	switch task.Type {
 	case sectorbuilder.WorkerPreCommit:
@@ -93,9 +93,9 @@ func (w *worker) processTask(ctx context.Context, task sectorbuilder.WorkerTask)
 		return errRes(xerrors.Errorf("unknown task type %d", task.Type))
 	}
 
-	//if err := w.fetchSector(task.SectorID, task.Type); err != nil {
-	//	return errRes(xerrors.Errorf("fetching sector: %w", err))
-	//}
+	if err := w.fetchSector(task.SectorID, task.Type); err != nil {
+		return errRes(xerrors.Errorf("fetching sector: %w", err))
+	}
 
 	log.Infof("Data fetched, starting computation")
 
@@ -109,6 +109,7 @@ func (w *worker) processTask(ctx context.Context, task sectorbuilder.WorkerTask)
 		}
 		res.Rspco = rspco.ToJson()
 
+
 		//if err := w.push("sealed", task.SectorID); err != nil {
 		//	return errRes(xerrors.Errorf("pushing precommited data: %w", err))
 		//}
@@ -116,7 +117,6 @@ func (w *worker) processTask(ctx context.Context, task sectorbuilder.WorkerTask)
 		//if err := w.push("cache", task.SectorID); err != nil {
 		//	return errRes(xerrors.Errorf("pushing precommited data: %w", err))
 		//}
-
 
 		//if err := w.remove("staging", task.SectorID); err != nil {
 		//	return errRes(xerrors.Errorf("cleaning up staged sector: %w", err))
@@ -130,10 +130,24 @@ func (w *worker) processTask(ctx context.Context, task sectorbuilder.WorkerTask)
 
 		res.Proof = proof
 
+		w.sb.TrimCache(task.SectorID)
+
+		if err := w.push("sealed", task.SectorID); err != nil {
+			return errRes(xerrors.Errorf("pushing precommited data: %w", err))
+		}
+
+		if err := w.push("cache", task.SectorID); err != nil {
+			return errRes(xerrors.Errorf("pushing precommited data: %w", err))
+		}
+
+		if err := w.remove("staging", task.SectorID); err != nil {
+			return errRes(xerrors.Errorf("cleaning up sealed sector: %w", err))
+		}
+
+
 		//if err := w.push("cache", task.SectorID); err != nil {
 		//	return errRes(xerrors.Errorf("pushing precommited data: %w", err))
 		//}
-
 
 		//if err := w.remove("sealed", task.SectorID); err != nil {
 		//	return errRes(xerrors.Errorf("cleaning up sealed sector: %w", err))

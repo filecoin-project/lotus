@@ -19,6 +19,8 @@ import (
 
 var log = logging.Logger("main")
 
+var storagerepo = ""
+
 func main() {
 	lotuslog.SetupLogLevels()
 
@@ -36,13 +38,13 @@ func main() {
 			&cli.StringFlag{
 				Name:    "repo",
 				EnvVars: []string{"WORKER_PATH"},
-				//Value:   "~/.lotusworker", // TODO: Consider XDG_DATA_HOME
-				Value:   "~/.lotusstorage", // TODO: Consider XDG_DATA_HOME
+				Value:   "/root/.lotusworker", // TODO: Consider XDG_DATA_HOME
+				//Value:   "~/.lotusstorage", // TODO: Consider XDG_DATA_HOME
 			},
 			&cli.StringFlag{
 				Name:    "storagerepo",
 				EnvVars: []string{"LOTUS_STORAGE_PATH"},
-				Value:   "~/.lotusstorage", // TODO: Consider XDG_DATA_HOME
+				Value:   "/root/.lotusstorage", // TODO: Consider XDG_DATA_HOME
 			},
 			&cli.BoolFlag{
 				Name:  "enable-gpu-proving",
@@ -75,6 +77,8 @@ var runCmd = &cli.Command{
 		if !cctx.Bool("enable-gpu-proving") {
 			os.Setenv("BELLMAN_NO_GPU", "true")
 		}
+
+		storagerepo = cctx.String("storagerepo")
 
 		nodeApi, closer, err := lcli.GetStorageMinerAPI(cctx)
 		if err != nil {

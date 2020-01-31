@@ -1,7 +1,6 @@
 package main
 
 import (
-	"io"
 	"mime"
 	"net/http"
 	"os"
@@ -72,10 +71,9 @@ func (w *worker) fetch(typ string, sectorID uint64) error {
 	default:
 		return xerrors.Errorf("unknown content type: '%s'", mediatype)
 	}
-
 }
 
-func (w *worker) push(typ string, sectorID uint64) error {
+/*func (w *worker) push(typ string, sectorID uint64) error {
 	filename := filepath.Join(w.repo, typ, w.sb.SectorName(sectorID))
 
 	url := w.minerEndpoint + "/remote/" + typ + "/" + w.sb.SectorName(sectorID)
@@ -134,6 +132,87 @@ func (w *worker) push(typ string, sectorID uint64) error {
 
 	// TODO: keep files around for later stages of sealing
 	return w.remove(typ, sectorID)
+}*/
+
+
+func (w *worker) push(typ string, sectorID uint64) error {
+	filename := filepath.Join(w.repo, typ, w.sb.SectorName(sectorID))
+
+	//url := w.minerEndpoint + "/remote/" + typ + "/" + w.sb.SectorName(sectorID)
+	//log.Infof("Push %s %s", typ, url)
+
+	//stat, err := os.Stat(filename)
+	//if err != nil {
+	//	return err
+	//}
+
+	//var r io.Reader
+	//if stat.IsDir() {
+	//	r, err = tarutil.TarDirectory(filename)
+
+	//} else {
+		//r, err = os.OpenFile(filename, os.O_RDONLY, 0644)
+		//err := os.Rename(filename, minerFilename)
+		//if err != nil {
+		//	log.Fatal(err)
+		//}
+	//}
+
+	//if err != nil {
+	//	return xerrors.Errorf("opening push reader: %w", err)
+	//}
+
+	bar := pb.New64(w.sizeForType(typ))
+	bar.ShowPercent = true
+	bar.ShowSpeed = true
+	bar.ShowCounters = true
+	bar.Units = pb.U_BYTES
+
+	bar.Start()
+	defer bar.Finish()
+	//todo set content size
+
+	//header := w.auth
+
+	//if stat.IsDir() {
+	//	header.Set("Content-Type", "application/x-tar")
+	//} else {
+	//	header.Set("Content-Type", "application/octet-stream")
+	//}
+
+	//req, err := http.NewRequest("PUT", url, bar.NewProxyReader(r))
+	//if err != nil {
+	//	return err
+	//}
+	//req.Header = header
+
+	//resp, err := http.DefaultClient.Do(req)
+	//if err != nil {
+	//	return err
+	//}
+	//if resp.StatusCode != 200 {
+	//	return xerrors.Errorf("non-200 response: %d", resp.StatusCode)
+	//}
+
+	//if err := resp.Body.Close(); err != nil {
+	//	return err
+	//}
+
+
+	minerFilename := filepath.Join(storagerepo, typ, w.sb.SectorName(sectorID))
+
+	os.Remove(minerFilename)
+
+	err := os.Rename(filename, minerFilename)
+	if err != nil {
+		log.Fatal(err)
+	}
+
+	return err
+
+
+	// TODO: keep files around for later stages of sealing
+	//return w.remove(typ, sectorID)
 }
 
 func (w *worker) remove(typ string, sectorID uint64) error {
@@ -141,7 +220,8 @@ func (w *worker) remove(typ string, sectorID uint64) error {
 	return os.RemoveAll(filename)
 }
 
-func (w *worker) fetchSector(sectorID uint64, typ sectorbuilder.WorkerTaskType) error {
+
+/*func (w *worker) fetchSector(sectorID uint64, typ sectorbuilder.WorkerTaskType) error {
 	var err error
 	switch typ {
 	case sectorbuilder.WorkerPreCommit:
@@ -152,6 +232,36 @@ func (w *worker) fetchSector(sectorID uint64, typ sectorbuilder.WorkerTaskType) 
 			return xerrors.Errorf("fetch sealed: %w", err)
 		}
 		err = w.fetch("cache", sectorID)
+	}
+	if err != nil {
+		return xerrors.Errorf("fetch failed: %w", err)
+	}
+	return nil
+}
+*/
+
+func (w *worker) fetchSector(sectorID uint64, typ sectorbuilder.WorkerTaskType) error {
+	var err error
+	switch typ {
+	case sectorbuilder.WorkerPreCommit:
+		//err = w.fetch("staging", sectorID)
+		//link to staging file
+		filename := filepath.Join(w.repo, "staging", w.sb.SectorName(sectorID))
+
+		minerFilename := filepath.Join(storagerepo, "staging", w.sb.SectorName(sectorID))
+		os.Remove(filename)
+		err := os.Symlink(minerFilename, filename)
+
+		if err != nil {
+			return xerrors.Errorf("fetch failed: %w", err)
+		}
+
+	case sectorbuilder.WorkerCommit:
+		//err = w.fetch("sealed", sectorID)
+		//if err != nil {
+		//	return xerrors.Errorf("fetch sealed: %w", err)
+		//}
+		//err = w.fetch("cache", sectorID)
 	}
 	if err != nil {
 		return xerrors.Errorf("fetch failed: %w", err)
