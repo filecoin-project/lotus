@@ -404,6 +404,7 @@ func (sma StorageMinerActor2) GetPower(act *types.Actor, vmctx types.VMContext, 
 	if err != nil {
 		return nil, err
 	}
+
 	return self.Power.Bytes(), nil
 }
 
@@ -631,6 +632,8 @@ func (sma StorageMinerActor2) CheckMiner(act *types.Actor, vmctx types.VMContext
 	// Slash for being late
 
 	self.SlashedAt = vmctx.BlockHeight()
+	oldPower := self.Power
+	self.Power = types.NewInt(0)
 
 	nstate, err := vmctx.Storage().Put(self)
 	if err != nil {
@@ -641,7 +644,7 @@ func (sma StorageMinerActor2) CheckMiner(act *types.Actor, vmctx types.VMContext
 	}
 
 	var out bytes.Buffer
-	if err := self.Power.MarshalCBOR(&out); err != nil {
+	if err := oldPower.MarshalCBOR(&out); err != nil {
 		return nil, aerrors.HandleExternalError(err, "marshaling return value")
 	}
 	return out.Bytes(), nil
@@ -724,6 +727,21 @@ func (sma StorageMinerActor2) SlashConsensusFault(act *types.Actor, vmctx types.
 	_, err = vmctx.Send(BurntFundsAddress, 0, burnPortion, nil)
 	if err != nil {
 		return nil, aerrors.Wrap(err, "failed to burn funds")
+	}
+
+	oldstate, self, err := loadState(vmctx)
+	if err != nil {
+		return nil, aerrors.Wrap(err, "failed to load state for slashing")
+	}
+
+	self.Power = types.NewInt(0)
+
+	ncid, err := vmctx.Storage().Put(self)
+	if err != nil {
+		return nil, err
+	}
+	if err := vmctx.Storage().Commit(oldstate, ncid); err != nil {
+		return nil, err
 	}
 
 	// TODO: this still allows the miner to commit sectors and submit posts,
