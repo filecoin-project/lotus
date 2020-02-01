@@ -249,11 +249,20 @@ type hBlocks interface {
 var _ hBlocks = (*gasChargingBlocks)(nil)
 
 type gasChargingBlocks struct {
-	chargeGas func(uint64) aerrors.ActorError
-	under     hBlocks
+	disableGetCost bool
+	chargeGas      func(uint64) aerrors.ActorError
+	under          hBlocks
 }
 
 func (bs *gasChargingBlocks) GetBlock(ctx context.Context, c cid.Cid) (block.Block, error) {
+	if bs.disableGetCost {
+		blk, err := bs.under.GetBlock(ctx, c)
+		if err != nil {
+			return nil, aerrors.Escalate(err, "failed to get block from blockstore")
+		}
+		return blk, nil
+	}
+
 	if err := bs.chargeGas(gasGetObj); err != nil {
 		return nil, err
 	}
@@ -293,7 +302,7 @@ func (vm *VM) makeVMContext(ctx context.Context, sroot cid.Cid, msg *types.Messa
 		gasAvailable: msg.GasLimit,
 	}
 	vmc.cst = &hamt.CborIpldStore{
-		Blocks: &gasChargingBlocks{vmc.ChargeGas, vm.cst.Blocks},
+		Blocks: &gasChargingBlocks{vm.blockHeight > build.ForkGoGreen, vmc.ChargeGas, vm.cst.Blocks},
 		Atlas:  vm.cst.Atlas,
 	}
 	return vmc

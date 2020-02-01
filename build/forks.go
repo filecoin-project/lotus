@@ -7,3 +7,5 @@ const ForkFrigidHeight = 7950
 const ForkBootyBayHeight = 11000
 
 const ForkMissingSnowballs = 34000
+
+const ForkGoGreen = 36000
