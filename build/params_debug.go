@@ -3,7 +3,7 @@
 package build
 
 func init() {
-	InsecurePoStValidation = true
+	InsecurePoStValidation = false
 }
 
 var SectorSizes = []uint64{1024}

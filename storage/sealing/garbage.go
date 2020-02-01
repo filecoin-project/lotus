@@ -4,14 +4,12 @@ import (
 	"bytes"
 	"context"
 	sectorbuilder "github.com/filecoin-project/go-sectorbuilder"
+	"github.com/filecoin-project/lotus/chain/actors"
+	"github.com/filecoin-project/lotus/chain/types"
 	"golang.org/x/xerrors"
 	"io"
 	"math"
 	"math/rand"
-	"runtime"
-
-	"github.com/filecoin-project/lotus/chain/actors"
-	"github.com/filecoin-project/lotus/chain/types"
 )
 
 func (m *Sealing) pledgeReader(size uint64, parts uint64) io.Reader {
@@ -43,7 +41,16 @@ func (m *Sealing) pledgeSector(ctx context.Context, sectorID uint64, existingPie
 func (m *Sealing) firstPledgeSector(ctx context.Context, sectorID uint64, existingPieceSizes []uint64, sizes ...uint64) ([]Piece, error) {
 	deals := make([]actors.StorageDealProposal, len(sizes))
 	for i, size := range sizes {
-		commP, err := m.fastPledgeCommitment(size, uint64(runtime.NumCPU()))
+
+		//commP, err := m.fastPledgeCommitment(size, uint64(runtime.NumCPU()))
+
+
+		release := m.sb.RateLimit()
+		commP, err := sectorbuilder.GeneratePieceCommitment(io.LimitReader(rand.New(rand.NewSource(42)), int64(size)), size)
+		release()
+
+
+
 		if err != nil {
 			return nil, err
 		}
@@ -100,7 +107,9 @@ func (m *Sealing) firstPledgeSector(ctx context.Context, sectorID uint64, existi
 	out := make([]Piece, len(sizes))
 
 	for i, size := range sizes {
-		ppi, err := m.sb.AddPiece(size, sectorID, m.pledgeReader(size, uint64(runtime.NumCPU())), existingPieceSizes)
+
+		//ppi, err := m.sb.AddPiece(size, sectorID, m.pledgeReader(size, uint64(runtime.NumCPU())), existingPieceSizes)
+		ppi, err := m.sb.AddPiece(size, sectorID, io.LimitReader(rand.New(rand.NewSource(42)), int64(size)), existingPieceSizes)
 		if err != nil {
 			return nil, err
 		}
@@ -146,8 +155,6 @@ func (m *Sealing) PledgeSector() error {
 			}
 			break;
 		}
-
-
 
 		if err := m.newSector(context.TODO(), sid, pieces[0].DealID, pieces[0].ppi()); err != nil {
 			log.Errorf("%+v", err)
