@@ -388,6 +388,14 @@ func printTipSet(format string, ts *types.TipSet) {
 		blks += fmt.Sprintf("%s: %s,", b.Cid(), b.Miner)
 	}
 	blks += " ]"
+
+	sCids := make([]string, 0, len(blks))
+
+	for _, c := range ts.Cids() {
+		sCids = append(sCids, c.String())
+	}
+
+	format = strings.ReplaceAll(format, "<tipset>", strings.Join(sCids, ","))
 	format = strings.ReplaceAll(format, "<blocks>", blks)
 	format = strings.ReplaceAll(format, "<weight>", fmt.Sprint(ts.Blocks()[0].ParentWeight))
 

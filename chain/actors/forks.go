@@ -26,7 +26,7 @@ func withUpdates(updates ...update) interface{} {
 		vmctx := args[1].Interface().(types.VMContext)
 
 		for _, u := range updates {
-			if vmctx.BlockHeight() >= u.start {
+			if vmctx.BlockHeight() > u.start {
 				return reflect.ValueOf(u.method).Call(args)
 			}
 		}
