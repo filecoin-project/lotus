@@ -40,7 +40,6 @@ func (m *Sealing) StagedSectorPath(sectorID uint64) string {
 	dir,err:= homedir.Dir()
 	if err == nil{
 		return filepath.Join(dir,path, name)
-
 	}
 
 	return filepath.Join("root",path, name)

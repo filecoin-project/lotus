@@ -1,14 +1,13 @@
 package main
 
 import (
-	"mime"
-	"net/http"
-	"os"
-
 	sectorbuilder "github.com/filecoin-project/go-sectorbuilder"
 	files "github.com/ipfs/go-ipfs-files"
 	"golang.org/x/xerrors"
 	"gopkg.in/cheggaaa/pb.v1"
+	"mime"
+	"net/http"
+	"os"
 	"path/filepath"
 
 	"github.com/filecoin-project/lotus/lib/tarutil"
@@ -201,14 +200,19 @@ func (w *worker) push(typ string, sectorID uint64) error {
 
 	minerFilename := filepath.Join(storagerepo, typ, w.sb.SectorName(sectorID))
 
-	os.Remove(minerFilename)
 
-	err := os.Rename(filename, minerFilename)
-	if err != nil {
-		log.Fatal(err)
+	if (minerFilename != filename) {
+
+		os.Remove(minerFilename)
+
+		err := os.Rename(filename, minerFilename)
+		if err != nil {
+			log.Fatal(err)
+		}
+		return err
 	}
 
-	return err
+
 
 
 	// TODO: keep files around for later stages of sealing
@@ -249,11 +253,14 @@ func (w *worker) fetchSector(sectorID uint64, typ sectorbuilder.WorkerTaskType) 
 		filename := filepath.Join(w.repo, "staging", w.sb.SectorName(sectorID))
 
 		minerFilename := filepath.Join(storagerepo, "staging", w.sb.SectorName(sectorID))
-		os.Remove(filename)
-		err := os.Symlink(minerFilename, filename)
 
-		if err != nil {
-			return xerrors.Errorf("fetch failed: %w", err)
+		if (minerFilename != filename){
+			os.Remove(filename)
+			err := os.Symlink(minerFilename, filename)
+
+			if err != nil {
+				return xerrors.Errorf("fetch failed: %w", err)
+			}
 		}
 
 	case sectorbuilder.WorkerCommit:
