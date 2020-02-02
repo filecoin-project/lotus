@@ -213,7 +213,7 @@ func (w *worker) push(typ string, sectorID uint64) error {
 	}
 
 
-
+    return nil
 
 	// TODO: keep files around for later stages of sealing
 	//return w.remove(typ, sectorID)
