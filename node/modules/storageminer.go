@@ -104,15 +104,21 @@ func StorageMiner(mctx helpers.MetricsCtx, lc fx.Lifecycle, api api.FullNode, h 
 		return nil, err
 	}
 
-	sm, err := storage.NewMiner(api, maddr, h, ds, sb, tktFn)
+	worker, err := api.StateMinerWorker(helpers.LifecycleCtx(mctx, lc), maddr, nil)
 	if err != nil {
 		return nil, err
 	}
 
-	ctx := helpers.LifecycleCtx(mctx, lc)
+	fps := storage.NewFPoStScheduler(api, sb, maddr, worker)
+
+	sm, err := storage.NewMiner(api, maddr, worker, h, ds, sb, tktFn)
+	if err != nil {
+		return nil, err
+	}
 
 	lc.Append(fx.Hook{
-		OnStart: func(context.Context) error {
+		OnStart: func(ctx context.Context) error {
+			go fps.Run(ctx)
 			return sm.Run(ctx)
 		},
 		OnStop: sm.Stop,
