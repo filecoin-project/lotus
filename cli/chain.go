@@ -470,7 +470,7 @@ var slashConsensusFault = &cli.Command{
 			return xerrors.Errorf("getting block 1: %w", err)
 		}
 
-		c2, err := cid.Parse(cctx.Args().Get(0))
+		c2, err := cid.Parse(cctx.Args().Get(1))
 		if err != nil {
 			return xerrors.Errorf("parsing cid 2: %w", err)
 		}
