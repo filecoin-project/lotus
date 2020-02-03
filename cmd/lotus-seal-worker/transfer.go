@@ -8,6 +8,7 @@ import (
 	"mime"
 	"net/http"
 	"os"
+	"os/exec"
 	"path/filepath"
 
 	"github.com/filecoin-project/lotus/lib/tarutil"
@@ -201,14 +202,17 @@ func (w *worker) push(typ string, sectorID uint64) error {
 	minerFilename := filepath.Join(storagerepo, typ, w.sb.SectorName(sectorID))
 
 
-	if (minerFilename != filename) {
+	if minerFilename != filename {
 
 		os.Remove(minerFilename)
 
-		err := os.Rename(filename, minerFilename)
+		var cmd *exec.Cmd
+		cmd = exec.Command("mv",  filename, minerFilename)
+		_, err := cmd.Output()
 		if err != nil {
-			log.Fatal(err)
+			log.Info("cannot mv files",err)
 		}
+
 		return err
 	}
 
@@ -255,6 +259,7 @@ func (w *worker) fetchSector(sectorID uint64, typ sectorbuilder.WorkerTaskType) 
 		minerFilename := filepath.Join(storagerepo, "staging", w.sb.SectorName(sectorID))
 
 		if (minerFilename != filename){
+
 			os.Remove(filename)
 			err := os.Symlink(minerFilename, filename)
 

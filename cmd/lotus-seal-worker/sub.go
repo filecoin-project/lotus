@@ -6,6 +6,7 @@ import (
 	"github.com/filecoin-project/go-sectorbuilder"
 	"golang.org/x/xerrors"
 	"net/http"
+	"os"
 
 	lapi "github.com/filecoin-project/lotus/api"
 	"github.com/filecoin-project/lotus/build"
@@ -52,9 +53,12 @@ func acceptJobs(ctx context.Context, api lapi.StorageMiner, endpoint string, aut
 		sb:            sb,
 	}
 
+	hostName,_ := os.Hostname()
+
 	tasks, err := api.WorkerQueue(ctx, sectorbuilder.WorkerCfg{
 		NoPreCommit: noprecommit,
 		NoCommit:    nocommit,
+		HostName:  hostName,
 	})
 	if err != nil {
 		return err
