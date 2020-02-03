@@ -104,7 +104,9 @@ func StorageMiner(mctx helpers.MetricsCtx, lc fx.Lifecycle, api api.FullNode, h 
 		return nil, err
 	}
 
-	worker, err := api.StateMinerWorker(helpers.LifecycleCtx(mctx, lc), maddr, nil)
+	ctx := helpers.LifecycleCtx(mctx, lc)
+
+	worker, err := api.StateMinerWorker(ctx, maddr, nil)
 	if err != nil {
 		return nil, err
 	}
@@ -117,7 +119,7 @@ func StorageMiner(mctx helpers.MetricsCtx, lc fx.Lifecycle, api api.FullNode, h 
 	}
 
 	lc.Append(fx.Hook{
-		OnStart: func(ctx context.Context) error {
+		OnStart: func(context.Context) error {
 			go fps.Run(ctx)
 			return sm.Run(ctx)
 		},
