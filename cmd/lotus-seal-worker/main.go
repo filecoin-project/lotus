@@ -2,7 +2,9 @@ package main
 
 import (
 	"os"
+	"sync"
 
+	"github.com/filecoin-project/go-sectorbuilder"
 	"github.com/mitchellh/go-homedir"
 
 	logging "github.com/ipfs/go-log/v2"
@@ -18,6 +20,11 @@ import (
 )
 
 var log = logging.Logger("main")
+
+const (
+	workers   = 1 // TODO: Configurability
+	transfers = 1
+)
 
 func main() {
 	lotuslog.SetupLogLevels()
@@ -67,6 +74,11 @@ func main() {
 	}
 }
 
+type limits struct {
+	workLimit     chan struct{}
+	transferLimit chan struct{}
+}
+
 var runCmd = &cli.Command{
 	Name:  "run",
 	Usage: "Start lotus worker",
@@ -106,6 +118,46 @@ var runCmd = &cli.Command{
 			log.Warn("Shutting down..")
 		}()
 
-		return acceptJobs(ctx, nodeApi, "http://"+storageAddr, ainfo.AuthHeader(), r, cctx.Bool("no-precommit"), cctx.Bool("no-commit"))
+		limiter := &limits{
+			workLimit:     make(chan struct{}, workers),
+			transferLimit: make(chan struct{}, transfers),
+		}
+
+		act, err := nodeApi.ActorAddress(ctx)
+		if err != nil {
+			return err
+		}
+		ssize, err := nodeApi.ActorSectorSize(ctx, act)
+		if err != nil {
+			return err
+		}
+
+		sb, err := sectorbuilder.NewStandalone(&sectorbuilder.Config{
+			SectorSize:    ssize,
+			Miner:         act,
+			WorkerThreads: workers,
+			Paths:         sectorbuilder.SimplePath(r),
+		})
+		if err != nil {
+			return err
+		}
+
+		nQueues := workers + transfers
+		var wg sync.WaitGroup
+		wg.Add(nQueues)
+
+		for i := 0; i < nQueues; i++ {
+			go func() {
+				defer wg.Done()
+
+				if err := acceptJobs(ctx, nodeApi, sb, limiter, "http://"+storageAddr, ainfo.AuthHeader(), r, cctx.Bool("no-precommit"), cctx.Bool("no-commit")); err != nil {
+					log.Warnf("%+v", err)
+					return
+				}
+			}()
+		}
+
+		wg.Wait()
+		return nil
 	},
 }

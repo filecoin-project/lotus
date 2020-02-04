@@ -18,30 +18,12 @@ type worker struct {
 	repo          string
 	auth          http.Header
 
-	sb *sectorbuilder.SectorBuilder
+	limiter *limits
+	sb      *sectorbuilder.SectorBuilder
 }
 
-func acceptJobs(ctx context.Context, api lapi.StorageMiner, endpoint string, auth http.Header, repo string, noprecommit, nocommit bool) error {
-	act, err := api.ActorAddress(ctx)
-	if err != nil {
-		return err
-	}
-	ssize, err := api.ActorSectorSize(ctx, act)
-	if err != nil {
-		return err
-	}
-
-	sb, err := sectorbuilder.NewStandalone(&sectorbuilder.Config{
-		SectorSize:    ssize,
-		Miner:         act,
-		WorkerThreads: 1,
-		Paths:         sectorbuilder.SimplePath(repo),
-	})
-	if err != nil {
-		return err
-	}
-
-	if err := paramfetch.GetParams(build.ParametersJson(), ssize); err != nil {
+func acceptJobs(ctx context.Context, api lapi.StorageMiner, sb *sectorbuilder.SectorBuilder, limiter *limits, endpoint string, auth http.Header, repo string, noprecommit, nocommit bool) error {
+	if err := paramfetch.GetParams(build.ParametersJson(), sb.SectorSize()); err != nil {
 		return xerrors.Errorf("get params: %w", err)
 	}
 
@@ -50,7 +32,9 @@ func acceptJobs(ctx context.Context, api lapi.StorageMiner, endpoint string, aut
 		minerEndpoint: endpoint,
 		auth:          auth,
 		repo:          repo,
-		sb:            sb,
+
+		limiter: limiter,
+		sb:      sb,
 	}
 
 	tasks, err := api.WorkerQueue(ctx, sectorbuilder.WorkerCfg{
@@ -103,7 +87,10 @@ func (w *worker) processTask(ctx context.Context, task sectorbuilder.WorkerTask)
 
 	switch task.Type {
 	case sectorbuilder.WorkerPreCommit:
+		w.limiter.workLimit <- struct{}{}
 		rspco, err := w.sb.SealPreCommit(ctx, task.SectorID, task.SealTicket, task.Pieces)
+		<-w.limiter.workLimit
+
 		if err != nil {
 			return errRes(xerrors.Errorf("precomitting: %w", err))
 		}
@@ -121,7 +108,10 @@ func (w *worker) processTask(ctx context.Context, task sectorbuilder.WorkerTask)
 			return errRes(xerrors.Errorf("cleaning up staged sector: %w", err))
 		}
 	case sectorbuilder.WorkerCommit:
+		w.limiter.workLimit <- struct{}{}
 		proof, err := w.sb.SealCommit(ctx, task.SectorID, task.SealTicket, task.SealSeed, task.Pieces, task.Rspco)
+		<-w.limiter.workLimit
+
 		if err != nil {
 			return errRes(xerrors.Errorf("comitting: %w", err))
 		}
