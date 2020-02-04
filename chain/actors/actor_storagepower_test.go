@@ -15,7 +15,6 @@ import (
 	"github.com/filecoin-project/lotus/chain/wallet"
 
 	cid "github.com/ipfs/go-cid"
-	hamt "github.com/ipfs/go-hamt-ipld"
 	bstore "github.com/ipfs/go-ipfs-blockstore"
 	cbor "github.com/ipfs/go-ipld-cbor"
 	mh "github.com/multiformats/go-multihash"
@@ -130,7 +129,7 @@ func cheatStorageMarketTotal(t *testing.T, vm *vm.VM, bs bstore.Blockstore) {
 		t.Fatal(err)
 	}
 
-	cst := hamt.CSTFromBstore(bs)
+	cst := cbor.NewCborStore(bs)
 
 	var smastate StoragePowerState
 	if err := cst.Get(context.TODO(), sma.Head, &smastate); err != nil {

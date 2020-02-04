@@ -9,8 +9,8 @@ import (
 	"github.com/filecoin-project/lotus/chain/state"
 	"github.com/filecoin-project/lotus/chain/types"
 	"github.com/ipfs/go-cid"
-	hamt "github.com/ipfs/go-hamt-ipld"
 	blockstore "github.com/ipfs/go-ipfs-blockstore"
+	cbor "github.com/ipfs/go-ipld-cbor"
 	cbg "github.com/whyrusleeping/cbor-gen"
 	"golang.org/x/xerrors"
 )
@@ -66,7 +66,7 @@ func (sm *StateManager) handleStateForks(ctx context.Context, pstate cid.Cid, he
 }
 
 func fixTooFewSnowballs(ctx context.Context, sm *StateManager, pstate cid.Cid) (cid.Cid, error) {
-	cst := hamt.CSTFromBstore(sm.cs.Blockstore())
+	cst := cbor.NewCborStore(sm.cs.Blockstore())
 	st, err := state.LoadStateTree(cst, pstate)
 	if err != nil {
 		return cid.Undef, err
@@ -122,7 +122,7 @@ func fixTooFewSnowballs(ctx context.Context, sm *StateManager, pstate cid.Cid) (
 	1.2) Change their code cid to point to the new miner actor code
 */
 func fixBlizzardAMTBug(ctx context.Context, sm *StateManager, pstate cid.Cid) (cid.Cid, error) {
-	cst := hamt.CSTFromBstore(sm.cs.Blockstore())
+	cst := cbor.NewCborStore(sm.cs.Blockstore())
 	st, err := state.LoadStateTree(cst, pstate)
 	if err != nil {
 		return cid.Undef, err
@@ -169,21 +169,19 @@ func fixBlizzardAMTBug(ctx context.Context, sm *StateManager, pstate cid.Cid) (c
 	return st.Flush(ctx)
 }
 
-func fixMiner(ctx context.Context, cst hamt.CborIpldStore, bs blockstore.Blockstore, mscid cid.Cid) (cid.Cid, error) {
+func fixMiner(ctx context.Context, cst cbor.IpldStore, bs blockstore.Blockstore, mscid cid.Cid) (cid.Cid, error) {
 	var mstate actors.StorageMinerActorState
 	if err := cst.Get(ctx, mscid, &mstate); err != nil {
 		return cid.Undef, xerrors.Errorf("failed to load miner actor state: %w", err)
 	}
 
-	amts := amt.WrapBlockstore(bs)
-
-	nsectors, err := amtFsck(amts, mstate.Sectors)
+	nsectors, err := amtFsck(cst, mstate.Sectors)
 	if err != nil {
 		return cid.Undef, xerrors.Errorf("error fsck'ing sector set: %w", err)
 	}
 	mstate.Sectors = nsectors
 
-	nproving, err := amtFsck(amts, mstate.ProvingSet)
+	nproving, err := amtFsck(cst, mstate.ProvingSet)
 	if err != nil {
 		return cid.Undef, xerrors.Errorf("error fsck'ing proving set: %w", err)
 	}
@@ -197,16 +195,17 @@ func fixMiner(ctx context.Context, cst hamt.CborIpldStore, bs blockstore.Blockst
 	return nmcid, nil
 }
 
-func amtFsck(s amt.Blocks, ss cid.Cid) (cid.Cid, error) {
-	a, err := amt.LoadAMT(s, ss)
+func amtFsck(cst cbor.IpldStore, ss cid.Cid) (cid.Cid, error) {
+	ctx := context.TODO()
+	a, err := amt.LoadAMT(ctx, cst, ss)
 	if err != nil {
 		return cid.Undef, xerrors.Errorf("could not load AMT: %w", a)
 	}
 
-	b := amt.NewAMT(s)
+	b := amt.NewAMT(cst)
 
-	err = a.ForEach(func(id uint64, data *cbg.Deferred) error {
-		err := b.Set(id, data)
+	err = a.ForEach(ctx, func(id uint64, data *cbg.Deferred) error {
+		err := b.Set(ctx, id, data)
 		if err != nil {
 			return xerrors.Errorf("could not copy at idx (%d): %w", id, err)
 		}
@@ -217,7 +216,7 @@ func amtFsck(s amt.Blocks, ss cid.Cid) (cid.Cid, error) {
 		return cid.Undef, xerrors.Errorf("could not copy: %w", err)
 	}
 
-	nss, err := b.Flush()
+	nss, err := b.Flush(ctx)
 	if err != nil {
 		return cid.Undef, xerrors.Errorf("could not flush: %w", err)
 	}

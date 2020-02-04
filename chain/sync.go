@@ -16,8 +16,8 @@ import (
 	"github.com/hashicorp/go-multierror"
 	"github.com/ipfs/go-cid"
 	dstore "github.com/ipfs/go-datastore"
-	hamt "github.com/ipfs/go-hamt-ipld"
 	bstore "github.com/ipfs/go-ipfs-blockstore"
+	cbor "github.com/ipfs/go-ipld-cbor"
 	logging "github.com/ipfs/go-log/v2"
 	"github.com/libp2p/go-libp2p-core/connmgr"
 	"github.com/libp2p/go-libp2p-core/peer"
@@ -731,7 +731,7 @@ func (syncer *Syncer) checkBlockMessages(ctx context.Context, b *types.FullBlock
 		return err
 	}
 
-	cst := hamt.CSTFromBstore(syncer.store.Blockstore())
+	cst := cbor.NewCborStore(syncer.store.Blockstore())
 	st, err := state.LoadStateTree(cst, stateroot)
 	if err != nil {
 		return xerrors.Errorf("failed to load base state tree: %w", err)

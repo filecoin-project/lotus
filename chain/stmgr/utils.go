@@ -16,7 +16,6 @@ import (
 
 	amt "github.com/filecoin-project/go-amt-ipld"
 	cid "github.com/ipfs/go-cid"
-	hamt "github.com/ipfs/go-hamt-ipld"
 	blockstore "github.com/ipfs/go-ipfs-blockstore"
 	cbor "github.com/ipfs/go-ipld-cbor"
 	"github.com/libp2p/go-libp2p-core/peer"
@@ -234,7 +233,7 @@ func GetMinerSectorSize(ctx context.Context, sm *StateManager, ts *types.TipSet,
 		return 0, xerrors.Errorf("(get ssize) failed to load miner actor state: %w", err)
 	}
 
-	cst := hamt.CSTFromBstore(sm.cs.Blockstore())
+	cst := cbor.NewCborStore(sm.cs.Blockstore())
 	var minfo actors.MinerInfo
 	if err := cst.Get(ctx, mas.Info, &minfo); err != nil {
 		return 0, xerrors.Errorf("failed to read miner info: %w", err)
@@ -279,7 +278,7 @@ func ListMinerActors(ctx context.Context, sm *StateManager, ts *types.TipSet) ([
 		return nil, err
 	}
 
-	cst := hamt.CSTFromBstore(sm.ChainStore().Blockstore())
+	cst := cbor.NewCborStore(sm.ChainStore().Blockstore())
 	miners, err := actors.MinerSetList(ctx, cst, state.Miners)
 	if err != nil {
 		return nil, err
