@@ -403,14 +403,14 @@ var chainBisectCmd = &cli.Command{
 	Usage: "bisect chain for an event",
 	Description: `Bisect the chain state tree:
 
-   lotus chain bisect [min height] [max height] '1/2/3/state/path' 'jq script'
+   lotus chain bisect [min height] [max height] '1/2/3/state/path' 'shell command' 'args'
 
-   Returns the first tipset in which jq condition is true
+   Returns the first tipset in which condition is true
                   v
    [start] FFFFFFFTTT [end]
 
    Example: find height at which deal ID 100 000 appeared
-    - lotus chain bisect 1 32000 '@Ha:t03/1' '.[2] > 100000'
+    - lotus chain bisect 1 32000 '@Ha:t03/1' jq -e '.[2] > 100000'
 
    For special path elements see 'chain get' help
 `,
@@ -422,8 +422,8 @@ var chainBisectCmd = &cli.Command{
 		defer closer()
 		ctx := ReqContext(cctx)
 
-		if cctx.Args().Len() != 4 {
-			return xerrors.New("need 4 args")
+		if cctx.Args().Len() < 4 {
+			return xerrors.New("need at least 4 args")
 		}
 
 		start, err := strconv.ParseUint(cctx.Args().Get(0), 10, 64)
@@ -437,7 +437,6 @@ var chainBisectCmd = &cli.Command{
 		}
 
 		subPath := cctx.Args().Get(2)
-		jqs := cctx.Args().Get(3)
 
 		highest, err := api.ChainGetTipSetByHeight(ctx, end, nil)
 		if err != nil {
@@ -471,24 +470,23 @@ var chainBisectCmd = &cli.Command{
 				return err
 			}
 
-			cmd := exec.CommandContext(ctx, "jq", jqs)
+			cmd := exec.CommandContext(ctx, cctx.Args().Get(3), cctx.Args().Slice()[4:]...)
 			cmd.Stdin = bytes.NewReader(b)
 
 			var out bytes.Buffer
 			cmd.Stdout = &out
 
-			if err := cmd.Run(); err != nil {
-				return err
-			}
-
-			if strings.TrimSpace(out.String()) == "true" {
-				fmt.Println("true")
+			switch cmd.Run().(type) {
+			case nil:
 				// it's lower
 				end = mid
 				highest = midTs
-			} else {
-				fmt.Println("false")
+				fmt.Println("true")
+			case *exec.ExitError:
 				start = mid
+				fmt.Println("false")
+			default:
+				return err
 			}
 
 			if start == end {
