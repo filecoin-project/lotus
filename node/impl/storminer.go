@@ -108,11 +108,21 @@ func (sm *StorageMinerAPI) remotePutSector(w http.ResponseWriter, r *http.Reques
 	}
 
 	// This is going to get better with worker-to-worker transfers
-	path, err := sm.SectorBuilder.AllocSectorPath(fs.DataType(vars["type"]), id, true)
+
+	path, err := sm.SectorBuilder.SectorPath(fs.DataType(vars["type"]), id)
 	if err != nil {
-		log.Error(err)
-		w.WriteHeader(500)
-		return
+		if err != fs.ErrNotFound {
+			log.Error(err)
+			w.WriteHeader(500)
+			return
+		}
+
+		path, err = sm.SectorBuilder.AllocSectorPath(fs.DataType(vars["type"]), id, true)
+		if err != nil {
+			log.Error(err)
+			w.WriteHeader(500)
+			return
+		}
 	}
 
 	mediatype, _, err := mime.ParseMediaType(r.Header.Get("Content-Type"))
