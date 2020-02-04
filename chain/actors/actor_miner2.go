@@ -63,8 +63,8 @@ func (sma StorageMinerActor2) StorageMinerConstructor(act *types.Actor, vmctx ty
 	}
 
 	var self StorageMinerActorState
-	sectors := amt2.NewAMT(types.WrapStorage(vmctx.Storage()))
-	scid, serr := sectors.Flush()
+	sectors := amt2.NewAMT(vmctx.Ipld())
+	scid, serr := sectors.Flush(context.TODO())
 	if serr != nil {
 		return nil, aerrors.HandleExternalError(serr, "initializing AMT")
 	}
@@ -219,7 +219,7 @@ func (sma StorageMinerActor2) ProveCommitSector(act *types.Actor, vmctx types.VM
 	// Note: There must exist a unique index in the miner's sector set for each
 	// sector ID. The `faults`, `recovered`, and `done` parameters of the
 	// SubmitPoSt method express indices into this sector set.
-	nssroot, err := AddToSectorSet2(ctx, types.WrapStorage(vmctx.Storage()), self.Sectors, params.SectorID, us.Info.CommR, commD)
+	nssroot, err := AddToSectorSet2(ctx, vmctx.Ipld(), self.Sectors, params.SectorID, us.Info.CommR, commD)
 	if err != nil {
 		return nil, err
 	}
@@ -233,7 +233,7 @@ func (sma StorageMinerActor2) ProveCommitSector(act *types.Actor, vmctx types.VM
 	//
 	// Note: Proving period is a function of sector size; small sectors take less
 	// time to prove than large sectors do. Sector size is selected when pledging.
-	pss, lerr := amt2.LoadAMT(types.WrapStorage(vmctx.Storage()), self.ProvingSet)
+	pss, lerr := amt2.LoadAMT(vmctx.Context(), vmctx.Ipld(), self.ProvingSet)
 	if lerr != nil {
 		return nil, aerrors.HandleExternalError(lerr, "could not load proving set node")
 	}
@@ -315,12 +315,12 @@ func (sma StorageMinerActor2) SubmitFallbackPoSt(act *types.Actor, vmctx types.V
 		copy(seed[:], rand)
 	}
 
-	pss, lerr := amt2.LoadAMT(types.WrapStorage(vmctx.Storage()), self.ProvingSet)
+	pss, lerr := amt2.LoadAMT(vmctx.Context(), vmctx.Ipld(), self.ProvingSet)
 	if lerr != nil {
 		return nil, aerrors.HandleExternalError(lerr, "could not load proving set node")
 	}
 
-	ss, lerr := amt2.LoadAMT(types.WrapStorage(vmctx.Storage()), self.Sectors)
+	ss, lerr := amt2.LoadAMT(vmctx.Context(), vmctx.Ipld(), self.Sectors)
 	if lerr != nil {
 		return nil, aerrors.HandleExternalError(lerr, "could not load proving set node")
 	}
@@ -332,7 +332,7 @@ func (sma StorageMinerActor2) SubmitFallbackPoSt(act *types.Actor, vmctx types.V
 
 	activeFaults := uint64(0)
 	var sectorInfos []ffi.PublicSectorInfo
-	if err := pss.ForEach(func(id uint64, v *cbg.Deferred) error {
+	if err := pss.ForEach(vmctx.Context(), func(id uint64, v *cbg.Deferred) error {
 		if faults[id] {
 			activeFaults++
 			return nil
@@ -421,7 +421,7 @@ func (sma StorageMinerActor2) GetPower2(act *types.Actor, vmctx types.VMContext,
 	return self.Power.Bytes(), nil
 }
 
-func SectorIsUnique2(ctx context.Context, s types.Storage, sroot cid.Cid, sid uint64) (bool, ActorError) {
+func SectorIsUnique2(ctx context.Context, s cbor.IpldStore, sroot cid.Cid, sid uint64) (bool, ActorError) {
 	found, _, _, err := GetFromSectorSet2(ctx, s, sroot, sid)
 	if err != nil {
 		return false, err
@@ -430,22 +430,22 @@ func SectorIsUnique2(ctx context.Context, s types.Storage, sroot cid.Cid, sid ui
 	return !found, nil
 }
 
-func AddToSectorSet2(ctx context.Context, blks amt2.Blocks, ss cid.Cid, sectorID uint64, commR, commD []byte) (cid.Cid, ActorError) {
+func AddToSectorSet2(ctx context.Context, blks cbor.IpldStore, ss cid.Cid, sectorID uint64, commR, commD []byte) (cid.Cid, ActorError) {
 	if sectorID >= build.MinerMaxSectors {
 		return cid.Undef, aerrors.Newf(25, "sector ID out of range: %d", sectorID)
 	}
-	ssr, err := amt2.LoadAMT(blks, ss)
+	ssr, err := amt2.LoadAMT(ctx, blks, ss)
 	if err != nil {
 		return cid.Undef, aerrors.HandleExternalError(err, "could not load sector set node")
 	}
 
 	// TODO: Spec says to use SealCommitment, and construct commD from deals each time,
 	//  but that would make SubmitPoSt way, way more expensive
-	if err := ssr.Set(sectorID, [][]byte{commR, commD}); err != nil {
+	if err := ssr.Set(ctx, sectorID, [][]byte{commR, commD}); err != nil {
 		return cid.Undef, aerrors.HandleExternalError(err, "failed to set commitment in sector set")
 	}
 
-	ncid, err := ssr.Flush()
+	ncid, err := ssr.Flush(ctx)
 	if err != nil {
 		return cid.Undef, aerrors.HandleExternalError(err, "failed to flush sector set")
 	}
@@ -453,18 +453,18 @@ func AddToSectorSet2(ctx context.Context, blks amt2.Blocks, ss cid.Cid, sectorID
 	return ncid, nil
 }
 
-func GetFromSectorSet2(ctx context.Context, s types.Storage, ss cid.Cid, sectorID uint64) (bool, []byte, []byte, ActorError) {
+func GetFromSectorSet2(ctx context.Context, cst cbor.IpldStore, ss cid.Cid, sectorID uint64) (bool, []byte, []byte, ActorError) {
 	if sectorID >= build.MinerMaxSectors {
 		return false, nil, nil, aerrors.Newf(25, "sector ID out of range: %d", sectorID)
 	}
 
-	ssr, err := amt2.LoadAMT(types.WrapStorage(s), ss)
+	ssr, err := amt2.LoadAMT(ctx, cst, ss)
 	if err != nil {
 		return false, nil, nil, aerrors.HandleExternalError(err, "could not load sector set node")
 	}
 
 	var comms [][]byte
-	err = ssr.Get(sectorID, &comms)
+	err = ssr.Get(ctx, sectorID, &comms)
 	if err != nil {
 		if _, ok := err.(*amt2.ErrNotFound); ok {
 			return false, nil, nil, nil
@@ -479,20 +479,20 @@ func GetFromSectorSet2(ctx context.Context, s types.Storage, ss cid.Cid, sectorI
 	return true, comms[0], comms[1], nil
 }
 
-func RemoveFromSectorSet2(ctx context.Context, s types.Storage, ss cid.Cid, ids []uint64) (cid.Cid, aerrors.ActorError) {
+func RemoveFromSectorSet2(ctx context.Context, cst cbor.IpldStore, ss cid.Cid, ids []uint64) (cid.Cid, aerrors.ActorError) {
 
-	ssr, err := amt2.LoadAMT(types.WrapStorage(s), ss)
+	ssr, err := amt2.LoadAMT(ctx, cst, ss)
 	if err != nil {
 		return cid.Undef, aerrors.HandleExternalError(err, "could not load sector set node")
 	}
 
 	for _, id := range ids {
-		if err := ssr.Delete(id); err != nil {
+		if err := ssr.Delete(ctx, id); err != nil {
 			log.Warnf("failed to delete sector %d from set: %s", id, err)
 		}
 	}
 
-	ncid, err := ssr.Flush()
+	ncid, err := ssr.Flush(ctx)
 	if err != nil {
 		return cid.Undef, aerrors.HandleExternalError(err, "failed to flush sector set")
 	}
@@ -673,7 +673,7 @@ func (sma StorageMinerActor2) DeclareFaults(act *types.Actor, vmctx types.VMCont
 		return nil, aerrors.Absorb(err, 1, "failed to merge bitfields")
 	}
 
-	ss, nerr := amt2.LoadAMT(types.WrapStorage(vmctx.Storage()), self.Sectors)
+	ss, nerr := amt2.LoadAMT(vmctx.Context(), vmctx.Ipld(), self.Sectors)
 	if nerr != nil {
 		return nil, aerrors.HandleExternalError(nerr, "failed to load sector set")
 	}
@@ -760,6 +760,8 @@ func (sma StorageMinerActor2) SlashConsensusFault(act *types.Actor, vmctx types.
 }
 
 func (sma StorageMinerActor2) SubmitElectionPoSt(act *types.Actor, vmctx types.VMContext, params *struct{}) ([]byte, aerrors.ActorError) {
+	ctx := vmctx.Context()
+
 	if vmctx.Message().From != NetworkAddress {
 		return nil, aerrors.Newf(1, "submit election post can only be called by the storage power actor")
 	}
@@ -773,12 +775,12 @@ func (sma StorageMinerActor2) SubmitElectionPoSt(act *types.Actor, vmctx types.V
 		return nil, aerrors.New(1, "slashed miners can't perform election PoSt")
 	}
 
-	pss, nerr := amt2.LoadAMT(types.WrapStorage(vmctx.Storage()), self.ProvingSet)
+	pss, nerr := amt2.LoadAMT(ctx, vmctx.Ipld(), self.ProvingSet)
 	if nerr != nil {
 		return nil, aerrors.HandleExternalError(nerr, "failed to load proving set")
 	}
 
-	ss, nerr := amt2.LoadAMT(types.WrapStorage(vmctx.Storage()), self.Sectors)
+	ss, nerr := amt2.LoadAMT(ctx, vmctx.Ipld(), self.Sectors)
 	if nerr != nil {
 		return nil, aerrors.HandleExternalError(nerr, "failed to load proving set")
 	}
@@ -795,7 +797,7 @@ func (sma StorageMinerActor2) SubmitElectionPoSt(act *types.Actor, vmctx types.V
 		}
 
 		var comms [][]byte
-		err := pss.Get(f, &comms)
+		err := pss.Get(ctx, f, &comms)
 		if err != nil {
 			var notfound *amt2.ErrNotFound
 			if !xerrors.As(err, &notfound) {
@@ -823,6 +825,7 @@ func (sma StorageMinerActor2) SubmitElectionPoSt(act *types.Actor, vmctx types.V
 }
 
 func onSuccessfulPoSt2(self *StorageMinerActorState, vmctx types.VMContext, activeFaults uint64) aerrors.ActorError {
+	ctx := vmctx.Context()
 	// FORK
 	if vmctx.BlockHeight() < build.ForkBootyBayHeight {
 		return onSuccessfulPoSt(self, vmctx, activeFaults)
@@ -833,12 +836,12 @@ func onSuccessfulPoSt2(self *StorageMinerActorState, vmctx types.VMContext, acti
 		return err
 	}
 
-	pss, nerr := amt2.LoadAMT(types.WrapStorage(vmctx.Storage()), self.ProvingSet)
+	pss, nerr := amt2.LoadAMT(ctx, vmctx.Ipld(), self.ProvingSet)
 	if nerr != nil {
 		return aerrors.HandleExternalError(nerr, "failed to load proving set")
 	}
 
-	ss, nerr := amt2.LoadAMT(types.WrapStorage(vmctx.Storage()), self.Sectors)
+	ss, nerr := amt2.LoadAMT(ctx, vmctx.Ipld(), self.Sectors)
 	if nerr != nil {
 		return aerrors.HandleExternalError(nerr, "failed to load sector set")
 	}
@@ -893,7 +896,7 @@ func onSuccessfulPoSt2(self *StorageMinerActorState, vmctx types.VMContext, acti
 	var ncid cid.Cid
 	var err aerrors.ActorError
 
-	ncid, err = RemoveFromSectorSet2(vmctx.Context(), vmctx.Storage(), self.Sectors, faults)
+	ncid, err = RemoveFromSectorSet2(ctx, vmctx.Ipld(), self.Sectors, faults)
 	if err != nil {
 		return err
 	}

@@ -18,8 +18,8 @@ import (
 	"github.com/filecoin-project/lotus/chain/vm"
 
 	"github.com/ipfs/go-cid"
-	hamt "github.com/ipfs/go-hamt-ipld"
 	blockstore "github.com/ipfs/go-ipfs-blockstore"
+	cbor "github.com/ipfs/go-ipld-cbor"
 	logging "github.com/ipfs/go-log"
 	mh "github.com/multiformats/go-multihash"
 	cbg "github.com/whyrusleeping/cbor-gen"
@@ -121,7 +121,7 @@ func TestForkHeightTriggers(t *testing.T) {
 	}
 
 	stmgr.ForksAtHeight[testForkHeight] = func(ctx context.Context, sm *StateManager, pstate cid.Cid) (cid.Cid, error) {
-		cst := hamt.CSTFromBstore(sm.ChainStore().Blockstore())
+		cst := cbor.NewCborStore(sm.ChainStore().Blockstore())
 		st, err := state.LoadStateTree(cst, pstate)
 		if err != nil {
 			return cid.Undef, err

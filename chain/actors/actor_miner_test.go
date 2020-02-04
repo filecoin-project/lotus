@@ -16,8 +16,8 @@ import (
 	"github.com/filecoin-project/lotus/chain/stmgr"
 	"github.com/filecoin-project/lotus/chain/types"
 	"github.com/filecoin-project/lotus/lib/rlepluslazy"
-	hamt "github.com/ipfs/go-hamt-ipld"
 	blockstore "github.com/ipfs/go-ipfs-blockstore"
+	cbor "github.com/ipfs/go-ipld-cbor"
 	"github.com/stretchr/testify/assert"
 	cbg "github.com/whyrusleeping/cbor-gen"
 )
@@ -233,7 +233,7 @@ func getMinerState(ctx context.Context, st types.StateTree, bs blockstore.Blocks
 		return nil, err
 	}
 
-	cst := hamt.CSTFromBstore(bs)
+	cst := cbor.NewCborStore(bs)
 
 	var mstate actors.StorageMinerActorState
 	if err := cst.Get(ctx, mact.Head, &mstate); err != nil {

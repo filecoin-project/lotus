@@ -19,6 +19,7 @@ import (
 	"github.com/filecoin-project/specs-actors/actors/abi"
 	cid "github.com/ipfs/go-cid"
 	"github.com/ipfs/go-hamt-ipld"
+	cbor "github.com/ipfs/go-ipld-cbor"
 	cbg "github.com/whyrusleeping/cbor-gen"
 	"golang.org/x/xerrors"
 	"gopkg.in/urfave/cli.v2"
@@ -224,7 +225,7 @@ var msigInspectCmd = &cli.Command{
 
 func GetMultisigPending(ctx context.Context, lapi api.FullNode, hroot cid.Cid) (map[int64]*actors.MultiSigTransaction, error) {
 	bs := apibstore.NewAPIBlockstore(lapi)
-	cst := hamt.CSTFromBstore(bs)
+	cst := cbor.NewCborStore(bs)
 
 	nd, err := hamt.LoadNode(ctx, cst, hroot)
 	if err != nil {

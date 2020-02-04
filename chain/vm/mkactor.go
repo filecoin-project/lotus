@@ -4,9 +4,7 @@ import (
 	"context"
 
 	"github.com/ipfs/go-cid"
-	dstore "github.com/ipfs/go-datastore"
-	hamt "github.com/ipfs/go-hamt-ipld"
-	bstore "github.com/ipfs/go-ipfs-blockstore"
+	cbor "github.com/ipfs/go-ipld-cbor"
 
 	"github.com/filecoin-project/go-address"
 	"github.com/filecoin-project/lotus/chain/actors"
@@ -16,8 +14,7 @@ import (
 )
 
 func init() {
-	bs := bstore.NewBlockstore(dstore.NewMapDatastore())
-	cst := hamt.CSTFromBstore(bs)
+	cst := cbor.NewMemCborStore()
 	emptyobject, err := cst.Put(context.TODO(), map[string]string{})
 	if err != nil {
 		panic(err)

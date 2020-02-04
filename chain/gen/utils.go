@@ -11,6 +11,7 @@ import (
 	hamt "github.com/ipfs/go-hamt-ipld"
 	blockstore "github.com/ipfs/go-ipfs-blockstore"
 	bstore "github.com/ipfs/go-ipfs-blockstore"
+	cbor "github.com/ipfs/go-ipld-cbor"
 	peer "github.com/libp2p/go-libp2p-core/peer"
 	cbg "github.com/whyrusleeping/cbor-gen"
 	"golang.org/x/xerrors"
@@ -33,7 +34,7 @@ func SetupInitActor(bs bstore.Blockstore, addrs []address.Address) (*types.Actor
 	var ias actors.InitActorState
 	ias.NextID = 100
 
-	cst := hamt.CSTFromBstore(bs)
+	cst := cbor.NewCborStore(bs)
 	amap := hamt.NewNode(cst)
 
 	for i, a := range addrs {
@@ -67,7 +68,7 @@ func SetupInitActor(bs bstore.Blockstore, addrs []address.Address) (*types.Actor
 }
 
 func MakeInitialStateTree(bs bstore.Blockstore, actmap map[address.Address]types.BigInt) (*state.StateTree, error) {
-	cst := hamt.CSTFromBstore(bs)
+	cst := cbor.NewCborStore(bs)
 	state, err := state.NewStateTree(cst)
 	if err != nil {
 		return nil, xerrors.Errorf("making new state tree: %w", err)
@@ -148,7 +149,7 @@ func MakeInitialStateTree(bs bstore.Blockstore, actmap map[address.Address]types
 }
 
 func SetupCronActor(bs bstore.Blockstore) (*types.Actor, error) {
-	cst := hamt.CSTFromBstore(bs)
+	cst := cbor.NewCborStore(bs)
 	cas := &actors.CronActorState{}
 
 	stcid, err := cst.Put(context.TODO(), cas)
@@ -165,7 +166,7 @@ func SetupCronActor(bs bstore.Blockstore) (*types.Actor, error) {
 }
 
 func SetupStoragePowerActor(bs bstore.Blockstore) (*types.Actor, error) {
-	cst := hamt.CSTFromBstore(bs)
+	cst := cbor.NewCborStore(bs)
 	nd := hamt.NewNode(cst)
 	emptyhamt, err := cst.Put(context.TODO(), nd)
 	if err != nil {
@@ -198,7 +199,7 @@ func SetupStoragePowerActor(bs bstore.Blockstore) (*types.Actor, error) {
 }
 
 func SetupStorageMarketActor(bs bstore.Blockstore, sroot cid.Cid, deals []actors.StorageDealProposal) (cid.Cid, error) {
-	cst := hamt.CSTFromBstore(bs)
+	cst := cbor.NewCborStore(bs)
 	nd := hamt.NewNode(cst)
 	emptyHAMT, err := cst.Put(context.TODO(), nd)
 	if err != nil {
@@ -322,7 +323,7 @@ func SetupStorageMiners(ctx context.Context, cs *store.ChainStore, sroot cid.Cid
 			return cid.Undef, nil, err
 		}
 
-		cst := hamt.CSTFromBstore(cs.Blockstore())
+		cst := cbor.NewCborStore(cs.Blockstore())
 		if err := reassignMinerActorAddress(vm, cst, maddrret, maddr); err != nil {
 			return cid.Undef, nil, err
 		}
@@ -381,7 +382,7 @@ func SetupStorageMiners(ctx context.Context, cs *store.ChainStore, sroot cid.Cid
 	return c, deals, err
 }
 
-func reassignMinerActorAddress(vm *vm.VM, cst hamt.CborIpldStore, from, to address.Address) error {
+func reassignMinerActorAddress(vm *vm.VM, cst cbor.IpldStore, from, to address.Address) error {
 	if from == to {
 		return nil
 	}
@@ -406,7 +407,7 @@ func reassignMinerActorAddress(vm *vm.VM, cst hamt.CborIpldStore, from, to addre
 	return initActorReassign(vm, cst, from, to)
 }
 
-func adjustStorageMarketTracking(vm *vm.VM, cst hamt.CborIpldStore, from, to address.Address) error {
+func adjustStorageMarketTracking(vm *vm.VM, cst cbor.IpldStore, from, to address.Address) error {
 	ctx := context.TODO()
 	act, err := vm.StateTree().GetActor(actors.StoragePowerAddress)
 	if err != nil {
@@ -451,7 +452,7 @@ func adjustStorageMarketTracking(vm *vm.VM, cst hamt.CborIpldStore, from, to add
 	return nil
 }
 
-func initActorReassign(vm *vm.VM, cst hamt.CborIpldStore, from, to address.Address) error {
+func initActorReassign(vm *vm.VM, cst cbor.IpldStore, from, to address.Address) error {
 	ctx := context.TODO()
 	initact, err := vm.StateTree().GetActor(actors.InitAddress)
 	if err != nil {
@@ -643,7 +644,7 @@ func MakeGenesisBlock(bs bstore.Blockstore, sys *types.VMSyscalls, balances map[
 }
 
 func AdjustInitActorStartID(ctx context.Context, bs blockstore.Blockstore, stateroot cid.Cid, val uint64) (cid.Cid, error) {
-	cst := hamt.CSTFromBstore(bs)
+	cst := cbor.NewCborStore(bs)
 
 	tree, err := state.LoadStateTree(cst, stateroot)
 	if err != nil {
