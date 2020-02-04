@@ -14,7 +14,7 @@ import (
 	"github.com/filecoin-project/lotus/chain/types"
 )
 
-func (s *fpostScheduler) failPost(eps uint64) {
+func (s *FPoStScheduler) failPost(eps uint64) {
 	s.failLk.Lock()
 	if eps > s.failed {
 		s.failed = eps
@@ -22,7 +22,7 @@ func (s *fpostScheduler) failPost(eps uint64) {
 	s.failLk.Unlock()
 }
 
-func (s *fpostScheduler) doPost(ctx context.Context, eps uint64, ts *types.TipSet) {
+func (s *FPoStScheduler) doPost(ctx context.Context, eps uint64, ts *types.TipSet) {
 	ctx, abort := context.WithCancel(ctx)
 
 	s.abort = abort
@@ -31,7 +31,7 @@ func (s *fpostScheduler) doPost(ctx context.Context, eps uint64, ts *types.TipSe
 	go func() {
 		defer abort()
 
-		ctx, span := trace.StartSpan(ctx, "fpostScheduler.doPost")
+		ctx, span := trace.StartSpan(ctx, "FPoStScheduler.doPost")
 		defer span.End()
 
 		proof, err := s.runPost(ctx, eps, ts)
@@ -50,7 +50,7 @@ func (s *fpostScheduler) doPost(ctx context.Context, eps uint64, ts *types.TipSe
 	}()
 }
 
-func (s *fpostScheduler) checkFaults(ctx context.Context, ssi sectorbuilder.SortedPublicSectorInfo) ([]uint64, error) {
+func (s *FPoStScheduler) checkFaults(ctx context.Context, ssi sectorbuilder.SortedPublicSectorInfo) ([]uint64, error) {
 	faults := s.sb.Scrub(ssi)
 	var faultIDs []uint64
 
@@ -101,7 +101,7 @@ func (s *fpostScheduler) checkFaults(ctx context.Context, ssi sectorbuilder.Sort
 	return faultIDs, nil
 }
 
-func (s *fpostScheduler) runPost(ctx context.Context, eps uint64, ts *types.TipSet) (*actors.SubmitFallbackPoStParams, error) {
+func (s *FPoStScheduler) runPost(ctx context.Context, eps uint64, ts *types.TipSet) (*actors.SubmitFallbackPoStParams, error) {
 	ctx, span := trace.StartSpan(ctx, "storage.runPost")
 	defer span.End()
 
@@ -161,7 +161,7 @@ func (s *fpostScheduler) runPost(ctx context.Context, eps uint64, ts *types.TipS
 	}, nil
 }
 
-func (s *fpostScheduler) sortedSectorInfo(ctx context.Context, ts *types.TipSet) (sectorbuilder.SortedPublicSectorInfo, error) {
+func (s *FPoStScheduler) sortedSectorInfo(ctx context.Context, ts *types.TipSet) (sectorbuilder.SortedPublicSectorInfo, error) {
 	sset, err := s.api.StateMinerProvingSet(ctx, s.actor, ts)
 	if err != nil {
 		return sectorbuilder.SortedPublicSectorInfo{}, xerrors.Errorf("failed to get proving set for miner (tsH: %d): %w", ts.Height(), err)
@@ -184,7 +184,7 @@ func (s *fpostScheduler) sortedSectorInfo(ctx context.Context, ts *types.TipSet)
 	return sectorbuilder.NewSortedPublicSectorInfo(sbsi), nil
 }
 
-func (s *fpostScheduler) submitPost(ctx context.Context, proof *actors.SubmitFallbackPoStParams) error {
+func (s *FPoStScheduler) submitPost(ctx context.Context, proof *actors.SubmitFallbackPoStParams) error {
 	ctx, span := trace.StartSpan(ctx, "storage.commitPost")
 	defer span.End()
 
