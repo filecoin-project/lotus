@@ -22,6 +22,7 @@ require (
 	github.com/filecoin-project/go-paramfetch v0.0.1
 	github.com/filecoin-project/go-sectorbuilder v0.0.2-0.20200203173614-42d67726bb62
 	github.com/filecoin-project/go-statestore v0.1.0
+	github.com/filecoin-project/go-storage-miner v0.0.0-00010101000000-000000000000
 	github.com/gbrlsnchs/jwt/v3 v3.0.0-beta.1
 	github.com/go-ole/go-ole v1.2.4 // indirect
 	github.com/gorilla/mux v1.7.3
@@ -86,7 +87,7 @@ require (
 	github.com/prometheus/common v0.2.0
 	github.com/stretchr/testify v1.4.0
 	github.com/whyrusleeping/bencher v0.0.0-20190829221104-bb6607aa8bba
-	github.com/whyrusleeping/cbor-gen v0.0.0-20200121162646-b63bacf5eaf8
+	github.com/whyrusleeping/cbor-gen v0.0.0-20200123233031-1cdf64d27158
 	github.com/whyrusleeping/multiaddr-filter v0.0.0-20160516205228-e903e4adabd7
 	github.com/whyrusleeping/pubsub v0.0.0-20131020042734-02de8aa2db3d
 	go.opencensus.io v0.22.2
@@ -111,5 +112,7 @@ require (
 replace github.com/golangci/golangci-lint => github.com/golangci/golangci-lint v1.18.0
 
 replace github.com/filecoin-project/filecoin-ffi => ./extern/filecoin-ffi
+
+replace github.com/filecoin-project/go-storage-miner => /Users/erinswenson-healey/dev/go-storage-mining
 
 replace github.com/coreos/go-systemd => github.com/coreos/go-systemd/v22 v22.0.0

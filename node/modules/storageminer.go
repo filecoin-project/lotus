@@ -16,6 +16,7 @@ import (
 	"github.com/filecoin-project/go-sectorbuilder"
 	"github.com/filecoin-project/go-sectorbuilder/fs"
 	"github.com/filecoin-project/go-statestore"
+	s2 "github.com/filecoin-project/go-storage-miner"
 	"github.com/ipfs/go-bitswap"
 	"github.com/ipfs/go-bitswap/network"
 	"github.com/ipfs/go-blockservice"
@@ -35,6 +36,7 @@ import (
 
 	"github.com/filecoin-project/lotus/api"
 	"github.com/filecoin-project/lotus/build"
+	"github.com/filecoin-project/lotus/chain/events"
 	"github.com/filecoin-project/lotus/chain/gen"
 	"github.com/filecoin-project/lotus/markets/retrievaladapter"
 	"github.com/filecoin-project/lotus/miner"
@@ -42,7 +44,6 @@ import (
 	"github.com/filecoin-project/lotus/node/modules/helpers"
 	"github.com/filecoin-project/lotus/node/repo"
 	"github.com/filecoin-project/lotus/storage"
-	"github.com/filecoin-project/lotus/storage/sealing"
 	"github.com/filecoin-project/lotus/storage/sectorblocks"
 )
 
@@ -101,7 +102,7 @@ func SectorBuilderConfig(storage []fs.PathConfig, threads uint, noprecommit, noc
 	}
 }
 
-func StorageMiner(mctx helpers.MetricsCtx, lc fx.Lifecycle, api api.FullNode, h host.Host, ds dtypes.MetadataDS, sb sectorbuilder.Interface, tktFn sealing.TicketFn) (*storage.Miner, error) {
+func StorageMiner(mctx helpers.MetricsCtx, lc fx.Lifecycle, api api.FullNode, h host.Host, ds dtypes.MetadataDS, sb sectorbuilder.Interface, tktFn storage.TicketFn) (*s2.Miner, error) {
 	maddr, err := minerAddrFromDS(ds)
 	if err != nil {
 		return nil, err
@@ -109,14 +110,16 @@ func StorageMiner(mctx helpers.MetricsCtx, lc fx.Lifecycle, api api.FullNode, h 
 
 	ctx := helpers.LifecycleCtx(mctx, lc)
 
-	worker, err := api.StateMinerWorker(ctx, maddr, nil)
+	waddr, err := api.StateMinerWorker(ctx, maddr, nil)
 	if err != nil {
 		return nil, err
 	}
 
-	fps := storage.NewFPoStScheduler(api, sb, maddr, worker)
+	evts := events.NewEvents(ctx, api)
 
-	sm, err := storage.NewMiner(api, maddr, worker, h, ds, sb, tktFn)
+	fps := storage.NewFPoStScheduler(api, sb, maddr, waddr)
+
+	sm, err := s2.NewMiner(storage.NewStorageMinerNodeAdapter(api, evts, maddr, waddr, tktFn), ds, sb, maddr, waddr)
 	if err != nil {
 		return nil, err
 	}
@@ -252,7 +255,7 @@ func SectorBuilder(cfg *sectorbuilder.Config, ds dtypes.MetadataDS) (*sectorbuil
 	return sb, nil
 }
 
-func SealTicketGen(api api.FullNode) sealing.TicketFn {
+func SealTicketGen(api api.FullNode) storage.TicketFn {
 	return func(ctx context.Context) (*sectorbuilder.SealTicket, error) {
 		ts, err := api.ChainHead(ctx)
 		if err != nil {

@@ -24,6 +24,7 @@ import (
 	"github.com/filecoin-project/go-fil-markets/retrievalmarket/discovery"
 	"github.com/filecoin-project/go-fil-markets/storagemarket"
 	deals "github.com/filecoin-project/go-fil-markets/storagemarket/impl"
+	s2 "github.com/filecoin-project/go-storage-miner"
 
 	"github.com/filecoin-project/lotus/api"
 	"github.com/filecoin-project/lotus/chain"
@@ -51,7 +52,6 @@ import (
 	"github.com/filecoin-project/lotus/paych"
 	"github.com/filecoin-project/lotus/peermgr"
 	"github.com/filecoin-project/lotus/storage"
-	"github.com/filecoin-project/lotus/storage/sealing"
 	"github.com/filecoin-project/lotus/storage/sectorblocks"
 )
 
@@ -249,8 +249,8 @@ func Online() Option {
 		ApplyIf(func(s *Settings) bool { return s.nodeType == repo.StorageMiner },
 			Override(new(sectorbuilder.Interface), modules.SectorBuilder),
 			Override(new(*sectorblocks.SectorBlocks), sectorblocks.NewSectorBlocks),
-			Override(new(sealing.TicketFn), modules.SealTicketGen),
-			Override(new(*storage.Miner), modules.StorageMiner),
+			Override(new(storage.TicketFn), modules.SealTicketGen),
+			Override(new(*s2.Miner), modules.StorageMiner),
 
 			Override(new(dtypes.StagingBlockstore), modules.StagingBlockstore),
 			Override(new(dtypes.StagingDAG), modules.StagingDAG),
