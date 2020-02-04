@@ -8,6 +8,8 @@ import (
 
 type MultiSigActor struct{}
 type MultiSigActorState = samsig.MultiSigActorState
+type MultiSigTransaction = samsig.MultiSigTransaction
+type TxnID = samsig.TxnID
 
 type musigMethods struct {
 	MultiSigConstructor uint64
