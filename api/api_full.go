@@ -5,6 +5,7 @@ import (
 	"time"
 
 	"github.com/filecoin-project/go-address"
+	"github.com/filecoin-project/go-fil-markets/storagemarket"
 	"github.com/ipfs/go-cid"
 	"github.com/ipfs/go-filestore"
 	"github.com/libp2p/go-libp2p-core/peer"
@@ -157,7 +158,7 @@ type Import struct {
 
 type DealInfo struct {
 	ProposalCid cid.Cid
-	State       DealState
+	State       storagemarket.StorageDealStatus
 	Provider    address.Address
 
 	PieceRef []byte // cid bytes
@@ -237,20 +238,22 @@ type QueryOffer struct {
 
 	Root cid.Cid
 
-	Size     uint64
-	MinPrice types.BigInt
-
-	Miner       address.Address
-	MinerPeerID peer.ID
+	Size                    uint64
+	MinPrice                types.BigInt
+	PaymentInterval         uint64
+	PaymentIntervalIncrease uint64
+	Miner                   address.Address
+	MinerPeerID             peer.ID
 }
 
 func (o *QueryOffer) Order(client address.Address) RetrievalOrder {
 	return RetrievalOrder{
-		Root:  o.Root,
-		Size:  o.Size,
-		Total: o.MinPrice,
-
-		Client: client,
+		Root:                    o.Root,
+		Size:                    o.Size,
+		Total:                   o.MinPrice,
+		PaymentInterval:         o.PaymentInterval,
+		PaymentIntervalIncrease: o.PaymentIntervalIncrease,
+		Client:                  client,
 
 		Miner:       o.Miner,
 		MinerPeerID: o.MinerPeerID,
@@ -262,11 +265,12 @@ type RetrievalOrder struct {
 	Root cid.Cid
 	Size uint64
 	// TODO: support offset
-	Total types.BigInt
-
-	Client      address.Address
-	Miner       address.Address
-	MinerPeerID peer.ID
+	Total                   types.BigInt
+	PaymentInterval         uint64
+	PaymentIntervalIncrease uint64
+	Client                  address.Address
+	Miner                   address.Address
+	MinerPeerID             peer.ID
 }
 
 type ReplayResults struct {

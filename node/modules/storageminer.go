@@ -7,8 +7,11 @@ import (
 
 	"github.com/filecoin-project/go-address"
 	dtgraphsync "github.com/filecoin-project/go-data-transfer/impl/graphsync"
+	piecefilestore "github.com/filecoin-project/go-fil-markets/filestore"
+	"github.com/filecoin-project/go-fil-markets/piecestore"
 	"github.com/filecoin-project/go-fil-markets/retrievalmarket"
 	retrievalimpl "github.com/filecoin-project/go-fil-markets/retrievalmarket/impl"
+	rmnet "github.com/filecoin-project/go-fil-markets/retrievalmarket/network"
 	"github.com/filecoin-project/go-fil-markets/storagemarket"
 	deals "github.com/filecoin-project/go-fil-markets/storagemarket/impl"
 	storageimpl "github.com/filecoin-project/go-fil-markets/storagemarket/impl"
@@ -43,7 +46,6 @@ import (
 	"github.com/filecoin-project/lotus/node/repo"
 	"github.com/filecoin-project/lotus/storage"
 	"github.com/filecoin-project/lotus/storage/sealing"
-	"github.com/filecoin-project/lotus/storage/sectorblocks"
 )
 
 func minerAddrFromDS(ds dtypes.MetadataDS) (address.Address, error) {
@@ -135,7 +137,11 @@ func StorageMiner(mctx helpers.MetricsCtx, lc fx.Lifecycle, api api.FullNode, h 
 func HandleRetrieval(host host.Host, lc fx.Lifecycle, m retrievalmarket.RetrievalProvider) {
 	lc.Append(fx.Hook{
 		OnStart: func(context.Context) error {
-			m.Start(host)
+			m.Start()
+			return nil
+		},
+		OnStop: func(context.Context) error {
+			m.Stop()
 			return nil
 		},
 	})
@@ -174,6 +180,12 @@ func NewProviderDAGServiceDataTransfer(h host.Host, gs dtypes.StagingGraphsync) 
 // NewProviderDealStore creates a statestore for the client to store its deals
 func NewProviderDealStore(ds dtypes.MetadataDS) dtypes.ProviderDealStore {
 	return statestore.New(namespace.Wrap(ds, datastore.NewKey("/deals/client")))
+}
+
+// NewProviderPieceStore creates a statestore for storing metadata about pieces
+// shared by the storage and retrieval providers
+func NewProviderPieceStore(ds dtypes.MetadataDS) dtypes.ProviderPieceStore {
+	return piecestore.NewPieceStore(ds)
 }
 
 // StagingBlockstore creates a blockstore for staging blocks for a miner
@@ -280,12 +292,21 @@ func NewProviderRequestValidator(deals dtypes.ProviderDealStore) *storageimpl.Pr
 	return storageimpl.NewProviderRequestValidator(deals)
 }
 
-func StorageProvider(ds dtypes.MetadataDS, dag dtypes.StagingDAG, dataTransfer dtypes.ProviderDataTransfer, spn storagemarket.StorageProviderNode) (storagemarket.StorageProvider, error) {
-	return storageimpl.NewProvider(ds, dag, dataTransfer, spn)
+func StorageProvider(ds dtypes.MetadataDS, ibs dtypes.StagingBlockstore, r repo.LockedRepo, pieceStore dtypes.ProviderPieceStore, dataTransfer dtypes.ProviderDataTransfer, spn storagemarket.StorageProviderNode) (storagemarket.StorageProvider, error) {
+	store, err := piecefilestore.NewLocalFileStore(piecefilestore.OsPath(r.Path()))
+	if err != nil {
+		return nil, err
+	}
+	return storageimpl.NewProvider(ds, ibs, store, pieceStore, dataTransfer, spn)
 }
 
 // RetrievalProvider creates a new retrieval provider attached to the provider blockstore
-func RetrievalProvider(sblks *sectorblocks.SectorBlocks, full api.FullNode) retrievalmarket.RetrievalProvider {
-	adapter := retrievaladapter.NewRetrievalProviderNode(sblks, full)
-	return retrievalimpl.NewProvider(adapter)
+func RetrievalProvider(h host.Host, miner *storage.Miner, sb sectorbuilder.Interface, full api.FullNode, ds dtypes.MetadataDS, pieceStore dtypes.ProviderPieceStore, ibs dtypes.StagingBlockstore) (retrievalmarket.RetrievalProvider, error) {
+	adapter := retrievaladapter.NewRetrievalProviderNode(miner, sb, full)
+	address, err := minerAddrFromDS(ds)
+	if err != nil {
+		return nil, err
+	}
+	network := rmnet.NewFromLibp2pHost(h)
+	return retrievalimpl.NewProvider(address, adapter, network, pieceStore, ibs), nil
 }

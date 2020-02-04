@@ -5,10 +5,12 @@ import (
 	"path/filepath"
 	"reflect"
 
-	"github.com/filecoin-project/go-data-transfer/impl/graphsync"
+	graphsyncimpl "github.com/filecoin-project/go-data-transfer/impl/graphsync"
+	piecefilestore "github.com/filecoin-project/go-fil-markets/filestore"
 	"github.com/filecoin-project/go-fil-markets/retrievalmarket"
 	"github.com/filecoin-project/go-fil-markets/retrievalmarket/discovery"
 	retrievalimpl "github.com/filecoin-project/go-fil-markets/retrievalmarket/impl"
+	rmnet "github.com/filecoin-project/go-fil-markets/retrievalmarket/network"
 	"github.com/filecoin-project/go-fil-markets/storagemarket"
 	deals "github.com/filecoin-project/go-fil-markets/storagemarket/impl"
 	storageimpl "github.com/filecoin-project/go-fil-markets/storagemarket/impl"
@@ -109,12 +111,17 @@ func NewClientRequestValidator(deals dtypes.ClientDealStore) *storageimpl.Client
 	return storageimpl.NewClientRequestValidator(deals)
 }
 
-func StorageClient(h host.Host, dag dtypes.ClientDAG, dataTransfer dtypes.ClientDataTransfer, discovery *discovery.Local, deals dtypes.ClientDealStore, scn storagemarket.StorageClientNode) storagemarket.StorageClient {
-	return storageimpl.NewClient(h, dag, dataTransfer, discovery, deals, scn)
+func StorageClient(h host.Host, ibs dtypes.ClientBlockstore, r repo.LockedRepo, dataTransfer dtypes.ClientDataTransfer, discovery *discovery.Local, deals dtypes.ClientDealStore, scn storagemarket.StorageClientNode) (storagemarket.StorageClient, error) {
+	store, err := piecefilestore.NewLocalFileStore(piecefilestore.OsPath(r.Path()))
+	if err != nil {
+		return nil, err
+	}
+	return storageimpl.NewClient(h, ibs, store, dataTransfer, discovery, deals, scn), nil
 }
 
 // RetrievalClient creates a new retrieval client attached to the client blockstore
-func RetrievalClient(h host.Host, bs dtypes.ClientBlockstore, pmgr *paych.Manager, payapi payapi.PaychAPI) retrievalmarket.RetrievalClient {
+func RetrievalClient(h host.Host, bs dtypes.ClientBlockstore, pmgr *paych.Manager, payapi payapi.PaychAPI, resolver retrievalmarket.PeerResolver) retrievalmarket.RetrievalClient {
 	adapter := retrievaladapter.NewRetrievalClientNode(pmgr, payapi)
-	return retrievalimpl.NewClient(h, bs, adapter)
+	network := rmnet.NewFromLibp2pHost(h)
+	return retrievalimpl.NewClient(network, bs, adapter, resolver)
 }

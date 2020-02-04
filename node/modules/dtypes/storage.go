@@ -1,6 +1,8 @@
 package dtypes
 
 import (
+	datatransfer "github.com/filecoin-project/go-data-transfer"
+	"github.com/filecoin-project/go-fil-markets/piecestore"
 	bserv "github.com/ipfs/go-blockservice"
 	"github.com/ipfs/go-datastore"
 	"github.com/ipfs/go-filestore"
@@ -9,7 +11,6 @@ import (
 	exchange "github.com/ipfs/go-ipfs-exchange-interface"
 	ipld "github.com/ipfs/go-ipld-format"
 
-	"github.com/filecoin-project/go-data-transfer"
 	"github.com/filecoin-project/go-statestore"
 )
 
@@ -34,6 +35,7 @@ type ClientDealStore *statestore.StateStore
 type ClientDataTransfer datatransfer.Manager
 
 type ProviderDealStore *statestore.StateStore
+type ProviderPieceStore piecestore.PieceStore
 
 // ProviderDataTransfer is a data transfer manager for the provider
 type ProviderDataTransfer datatransfer.Manager

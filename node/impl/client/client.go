@@ -1,7 +1,6 @@
 package client
 
 import (
-	"bytes"
 	"context"
 	"errors"
 	"io"
@@ -155,16 +154,18 @@ func (a *API) ClientFindData(ctx context.Context, root cid.Cid) ([]api.QueryOffe
 
 	out := make([]api.QueryOffer, len(peers))
 	for k, p := range peers {
-		queryResponse, err := a.Retrieval.Query(ctx, p, root.Bytes(), retrievalmarket.QueryParams{})
+		queryResponse, err := a.Retrieval.Query(ctx, p, root, retrievalmarket.QueryParams{})
 		if err != nil {
 			out[k] = api.QueryOffer{Err: err.Error(), Miner: p.Address, MinerPeerID: p.ID}
 		} else {
 			out[k] = api.QueryOffer{
-				Root:        root,
-				Size:        queryResponse.Size,
-				MinPrice:    utils.FromSharedTokenAmount(queryResponse.PieceRetrievalPrice()),
-				Miner:       p.Address, // TODO: check
-				MinerPeerID: p.ID,
+				Root:                    root,
+				Size:                    queryResponse.Size,
+				MinPrice:                utils.FromSharedTokenAmount(queryResponse.PieceRetrievalPrice()),
+				PaymentInterval:         queryResponse.MaxPaymentInterval,
+				PaymentIntervalIncrease: queryResponse.MaxPaymentIntervalIncrease,
+				Miner:                   p.Address, // TODO: check
+				MinerPeerID:             p.ID,
 			}
 		}
 	}
@@ -279,10 +280,10 @@ func (a *API) ClientRetrieve(ctx context.Context, order api.RetrievalOrder, path
 	retrievalResult := make(chan error, 1)
 
 	unsubscribe := a.Retrieval.SubscribeToEvents(func(event retrievalmarket.ClientEvent, state retrievalmarket.ClientDealState) {
-		if bytes.Equal(state.PieceCID, order.Root.Bytes()) {
+		if state.PayloadCID.Equals(order.Root) {
 			switch event {
 			case retrievalmarket.ClientEventError:
-				retrievalResult <- xerrors.New("Retrieval Error")
+				retrievalResult <- xerrors.Errorf("Retrieval Error: %s", state.Message)
 			case retrievalmarket.ClientEventComplete:
 				retrievalResult <- nil
 			}
@@ -291,8 +292,8 @@ func (a *API) ClientRetrieve(ctx context.Context, order api.RetrievalOrder, path
 
 	a.Retrieval.Retrieve(
 		ctx,
-		order.Root.Bytes(),
-		retrievalmarket.NewParamsV0(types.BigDiv(order.Total, types.NewInt(order.Size)).Int, 0, 0),
+		order.Root,
+		retrievalmarket.NewParamsV0(types.BigDiv(order.Total, types.NewInt(order.Size)).Int, order.PaymentInterval, order.PaymentIntervalIncrease),
 		utils.ToSharedTokenAmount(order.Total),
 		order.MinerPeerID,
 		order.Client,
@@ -302,7 +303,7 @@ func (a *API) ClientRetrieve(ctx context.Context, order api.RetrievalOrder, path
 		return xerrors.New("Retrieval Timed Out")
 	case err := <-retrievalResult:
 		if err != nil {
-			return xerrors.Errorf("RetrieveUnixfs: %w", err)
+			return xerrors.Errorf("Retrieve: %w", err)
 		}
 	}
 
