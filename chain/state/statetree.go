@@ -19,13 +19,13 @@ var log = logging.Logger("statetree")
 
 type StateTree struct {
 	root  *hamt.Node
-	Store *hamt.CborIpldStore
+	Store hamt.CborIpldStore
 
 	actorcache map[address.Address]*types.Actor
 	snapshot   cid.Cid
 }
 
-func NewStateTree(cst *hamt.CborIpldStore) (*StateTree, error) {
+func NewStateTree(cst hamt.CborIpldStore) (*StateTree, error) {
 	return &StateTree{
 		root:       hamt.NewNode(cst),
 		Store:      cst,
@@ -33,7 +33,7 @@ func NewStateTree(cst *hamt.CborIpldStore) (*StateTree, error) {
 	}, nil
 }
 
-func LoadStateTree(cst *hamt.CborIpldStore, c cid.Cid) (*StateTree, error) {
+func LoadStateTree(cst hamt.CborIpldStore, c cid.Cid) (*StateTree, error) {
 	nd, err := hamt.LoadNode(context.Background(), cst, c)
 	if err != nil {
 		log.Errorf("loading hamt node %s failed: %s", c, err)

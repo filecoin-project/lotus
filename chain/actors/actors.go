@@ -17,11 +17,15 @@ var MultisigCodeCid cid.Cid
 var InitCodeCid cid.Cid
 var PaymentChannelCodeCid cid.Cid
 
-var InitAddress = mustIDAddress(0)
-var NetworkAddress = mustIDAddress(1)
-var StoragePowerAddress = mustIDAddress(2)
-var StorageMarketAddress = mustIDAddress(3) // TODO: missing from spec
-var CronAddress = mustIDAddress(4)
+var SystemAddress = mustIDAddress(0)
+var InitAddress = mustIDAddress(1)
+var RewardActor = mustIDAddress(2)
+var CronAddress = mustIDAddress(3)
+var StoragePowerAddress = mustIDAddress(4)
+var StorageMarketAddress = mustIDAddress(5)
+
+var NetworkAddress = mustIDAddress(17) // TODO: needs to be removed in favor of reward actor
+
 var BurntFundsAddress = mustIDAddress(99)
 
 func mustIDAddress(i uint64) address.Address {

@@ -174,7 +174,7 @@ func (a *StateAPI) StateReadState(ctx context.Context, act *types.Actor, ts *typ
 		return nil, err
 	}
 
-	blk, err := state.Store.Blocks.GetBlock(ctx, act.Head)
+	blk, err := state.Store.(*hamt.BasicCborIpldStore).Blocks.GetBlock(ctx, act.Head)
 	if err != nil {
 		return nil, err
 	}
@@ -429,12 +429,12 @@ func (a *StateAPI) MsigGetAvailableBalance(ctx context.Context, addr address.Add
 		return act.Balance, nil
 	}
 
-	offset := ts.Height() - st.StartingBlock
-	if offset > st.UnlockDuration {
+	offset := ts.Height() - uint64(st.StartEpoch)
+	if offset > uint64(st.UnlockDuration) {
 		return act.Balance, nil
 	}
 
-	minBalance := types.BigDiv(st.InitialBalance, types.NewInt(st.UnlockDuration))
+	minBalance := types.BigDiv(types.BigInt(st.InitialBalance), types.NewInt(uint64(st.UnlockDuration)))
 	minBalance = types.BigMul(minBalance, types.NewInt(offset))
 	return types.BigSub(act.Balance, minBalance), nil
 }

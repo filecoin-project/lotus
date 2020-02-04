@@ -49,7 +49,7 @@ type VMContext struct {
 	state  *state.StateTree
 	msg    *types.Message
 	height uint64
-	cst    *hamt.CborIpldStore
+	cst    hamt.CborIpldStore
 
 	gasAvailable types.BigInt
 	gasUsed      types.BigInt
@@ -122,7 +122,7 @@ func (vmc *VMContext) Storage() types.Storage {
 	return vmc
 }
 
-func (vmc *VMContext) Ipld() *hamt.CborIpldStore {
+func (vmc *VMContext) Ipld() hamt.CborIpldStore {
 	return vmc.cst
 }
 
@@ -203,7 +203,7 @@ func (vmctx *VMContext) VerifySignature(sig *types.Signature, act address.Addres
 	return nil
 }
 
-func ResolveToKeyAddr(state types.StateTree, cst *hamt.CborIpldStore, addr address.Address) (address.Address, aerrors.ActorError) {
+func ResolveToKeyAddr(state types.StateTree, cst hamt.CborIpldStore, addr address.Address) (address.Address, aerrors.ActorError) {
 	if addr.Protocol() == address.BLS || addr.Protocol() == address.SECP256K1 {
 		return addr, nil
 	}
@@ -292,7 +292,7 @@ func (vm *VM) makeVMContext(ctx context.Context, sroot cid.Cid, msg *types.Messa
 		gasUsed:      usedGas,
 		gasAvailable: msg.GasLimit,
 	}
-	vmc.cst = &hamt.CborIpldStore{
+	vmc.cst = &hamt.BasicCborIpldStore{
 		Blocks: &gasChargingBlocks{vmc.ChargeGas, vm.cst.Blocks},
 		Atlas:  vm.cst.Atlas,
 	}
@@ -302,7 +302,7 @@ func (vm *VM) makeVMContext(ctx context.Context, sroot cid.Cid, msg *types.Messa
 type VM struct {
 	cstate      *state.StateTree
 	base        cid.Cid
-	cst         *hamt.CborIpldStore
+	cst         *hamt.BasicCborIpldStore
 	buf         *bufbstore.BufferedBS
 	blockHeight uint64
 	blockMiner  address.Address

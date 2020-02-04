@@ -11,6 +11,8 @@ import (
 	"github.com/filecoin-project/lotus/chain/actors"
 	"github.com/filecoin-project/lotus/chain/types"
 	"github.com/filecoin-project/lotus/chain/vm"
+
+	"github.com/filecoin-project/specs-actors/actors/abi/big"
 )
 
 func TestMultiSigCreate(t *testing.T) {
@@ -25,8 +27,8 @@ func TestMultiSigCreate(t *testing.T) {
 	h := NewHarness(t, opts...)
 	ret, _ := h.CreateActor(t, creatorAddr, actors.MultisigCodeCid,
 		&actors.MultiSigConstructorParams{
-			Signers:  []address.Address{creatorAddr, sig1Addr, sig2Addr},
-			Required: 2,
+			Signers:               []address.Address{creatorAddr, sig1Addr, sig2Addr},
+			NumApprovalsThreshold: 2,
 		})
 	ApplyOK(t, ret)
 }
@@ -52,8 +54,8 @@ func TestMultiSigOps(t *testing.T) {
 		HarnessActor(&multSigAddr, &creatorAddr, actors.MultisigCodeCid,
 			func() cbg.CBORMarshaler {
 				return &actors.MultiSigConstructorParams{
-					Signers:  []address.Address{creatorAddr, sig1Addr, sig2Addr},
-					Required: 2,
+					Signers:               []address.Address{creatorAddr, sig1Addr, sig2Addr},
+					NumApprovalsThreshold: 2,
 				}
 			}),
 	}
@@ -74,16 +76,16 @@ func TestMultiSigOps(t *testing.T) {
 		ret, _ := h.Invoke(t, creatorAddr, multSigAddr, actors.MultiSigMethods.Propose,
 			&actors.MultiSigProposeParams{
 				To:    outsideAddr,
-				Value: types.NewInt(sendVal),
+				Value: big.NewInt(sendVal),
 			})
 		ApplyOK(t, ret)
 		var txIDParam actors.MultiSigTxID
-		err := cbor.DecodeInto(ret.Return, &txIDParam.TxID)
+		err := cbor.DecodeInto(ret.Return, &txIDParam.ID)
 		assert.NoError(t, err, "decoding txid")
 
 		ret, _ = h.Invoke(t, outsideAddr, multSigAddr, actors.MultiSigMethods.Approve,
 			&txIDParam)
-		assert.Equal(t, uint8(1), ret.ExitCode, "outsideAddr should not approve")
+		assert.Equal(t, uint8(18), ret.ExitCode, "outsideAddr should not approve")
 		h.AssertBalanceChange(t, multSigAddr, 0)
 
 		ret2, _ := h.Invoke(t, sig1Addr, multSigAddr, actors.MultiSigMethods.Approve,

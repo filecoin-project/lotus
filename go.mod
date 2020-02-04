@@ -22,6 +22,7 @@ require (
 	github.com/filecoin-project/go-paramfetch v0.0.1
 	github.com/filecoin-project/go-sectorbuilder v0.0.2-0.20200203173614-42d67726bb62
 	github.com/filecoin-project/go-statestore v0.1.0
+	github.com/filecoin-project/specs-actors v0.0.0-20200122220748-cd3f221cb40b
 	github.com/gbrlsnchs/jwt/v3 v3.0.0-beta.1
 	github.com/go-ole/go-ole v1.2.4 // indirect
 	github.com/gorilla/mux v1.7.3
@@ -39,7 +40,7 @@ require (
 	github.com/ipfs/go-filestore v0.0.2
 	github.com/ipfs/go-fs-lock v0.0.1
 	github.com/ipfs/go-graphsync v0.0.4
-	github.com/ipfs/go-hamt-ipld v0.0.14-0.20191218031521-b2c774a54db1
+	github.com/ipfs/go-hamt-ipld v0.0.14
 	github.com/ipfs/go-ipfs-blockstore v0.1.1
 	github.com/ipfs/go-ipfs-chunker v0.0.1
 	github.com/ipfs/go-ipfs-ds-help v0.0.1
@@ -58,7 +59,7 @@ require (
 	github.com/libp2p/go-libp2p v0.4.2
 	github.com/libp2p/go-libp2p-circuit v0.1.4
 	github.com/libp2p/go-libp2p-connmgr v0.1.0
-	github.com/libp2p/go-libp2p-core v0.2.4
+	github.com/libp2p/go-libp2p-core v0.3.0
 	github.com/libp2p/go-libp2p-discovery v0.2.0
 	github.com/libp2p/go-libp2p-kad-dht v0.1.1
 	github.com/libp2p/go-libp2p-mplex v0.2.1
@@ -76,7 +77,7 @@ require (
 	github.com/minio/sha256-simd v0.1.1
 	github.com/mitchellh/go-homedir v1.1.0
 	github.com/multiformats/go-base32 v0.0.3
-	github.com/multiformats/go-multiaddr v0.1.1
+	github.com/multiformats/go-multiaddr v0.2.0
 	github.com/multiformats/go-multiaddr-dns v0.2.0
 	github.com/multiformats/go-multiaddr-net v0.1.1
 	github.com/multiformats/go-multihash v0.0.10
@@ -86,7 +87,7 @@ require (
 	github.com/prometheus/common v0.4.0
 	github.com/stretchr/testify v1.4.0
 	github.com/whyrusleeping/bencher v0.0.0-20190829221104-bb6607aa8bba
-	github.com/whyrusleeping/cbor-gen v0.0.0-20200121162646-b63bacf5eaf8
+	github.com/whyrusleeping/cbor-gen v0.0.0-20200123233031-1cdf64d27158
 	github.com/whyrusleeping/multiaddr-filter v0.0.0-20160516205228-e903e4adabd7
 	github.com/whyrusleeping/pubsub v0.0.0-20131020042734-02de8aa2db3d
 	go.opencensus.io v0.22.2
@@ -113,3 +114,5 @@ replace github.com/golangci/golangci-lint => github.com/golangci/golangci-lint v
 replace github.com/filecoin-project/filecoin-ffi => ./extern/filecoin-ffi
 
 replace github.com/coreos/go-systemd => github.com/coreos/go-systemd/v22 v22.0.0
+
+replace github.com/filecoin-project/specs-actors => ../specs-actors

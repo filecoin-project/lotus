@@ -742,7 +742,7 @@ func MinerSetHas(vmctx types.VMContext, rcid cid.Cid, maddr address.Address) (bo
 	}
 }
 
-func MinerSetList(ctx context.Context, cst *hamt.CborIpldStore, rcid cid.Cid) ([]address.Address, error) {
+func MinerSetList(ctx context.Context, cst hamt.CborIpldStore, rcid cid.Cid) ([]address.Address, error) {
 	nd, err := hamt.LoadNode(ctx, cst, rcid)
 	if err != nil {
 		return nil, xerrors.Errorf("failed to load miner set: %w", err)
