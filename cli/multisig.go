@@ -2,16 +2,25 @@ package cli
 
 import (
 	"bytes"
+	"context"
+	"encoding/binary"
 	"encoding/hex"
 	"fmt"
 	"os"
+	"sort"
 	"strconv"
 	"text/tabwriter"
 
 	"github.com/filecoin-project/go-address"
+	"github.com/filecoin-project/lotus/api"
+	"github.com/filecoin-project/lotus/api/apibstore"
 	actors "github.com/filecoin-project/lotus/chain/actors"
 	types "github.com/filecoin-project/lotus/chain/types"
+	"github.com/filecoin-project/specs-actors/actors/abi"
+	cid "github.com/ipfs/go-cid"
+	"github.com/ipfs/go-hamt-ipld"
 	cbg "github.com/whyrusleeping/cbor-gen"
+	"golang.org/x/xerrors"
 	"gopkg.in/urfave/cli.v2"
 )
 
@@ -36,7 +45,7 @@ var msigCreateCmd = &cli.Command{
 	Name:  "create",
 	Usage: "Create a new multisig wallet",
 	Flags: []cli.Flag{
-		&cli.Uint64Flag{
+		&cli.Int64Flag{
 			Name: "required",
 		},
 		&cli.StringFlag{
@@ -74,15 +83,15 @@ var msigCreateCmd = &cli.Command{
 			return err
 		}
 
-		required := cctx.Uint64("required")
+		required := cctx.Int64("required")
 		if required == 0 {
-			required = uint64(len(addrs))
+			required = int64(len(addrs))
 		}
 
 		// Set up constructor parameters for multisig
 		msigParams := &actors.MultiSigConstructorParams{
-			Signers:  addrs,
-			Required: required,
+			Signers:               addrs,
+			NumApprovalsThreshold: required,
 		}
 
 		enc, err := actors.SerializeParams(msigParams)
@@ -179,17 +188,32 @@ var msigInspectCmd = &cli.Command{
 		}
 
 		fmt.Printf("Balance: %sfil\n", types.FIL(act.Balance))
-		fmt.Printf("Threshold: %d / %d\n", mstate.Required, len(mstate.Signers))
+		fmt.Printf("Threshold: %d / %d\n", mstate.NumApprovalsThreshold, len(mstate.Signers))
 		fmt.Println("Signers:")
 		for _, s := range mstate.Signers {
 			fmt.Printf("\t%s\n", s)
 		}
-		fmt.Println("Transactions: ", len(mstate.Transactions))
-		if len(mstate.Transactions) > 0 {
+
+		pending, err := GetMultisigPending(ctx, api, mstate.PendingTxns)
+		if err != nil {
+			return fmt.Errorf("reading pending transactions: %w", err)
+		}
+
+		fmt.Println("Transactions: ", len(pending))
+		if len(pending) > 0 {
+			var txids []int64
+			for txid := range pending {
+				txids = append(txids, txid)
+			}
+			sort.Slice(txids, func(i, j int) bool {
+				return txids[i] < txids[j]
+			})
+
 			w := tabwriter.NewWriter(os.Stdout, 8, 4, 0, ' ', 0)
 			fmt.Fprintf(w, "ID\tState\tTo\tValue\tMethod\tParams\n")
-			for _, tx := range mstate.Transactions {
-				fmt.Fprintf(w, "%d\t%s\t%s\t%s\t%d\t%x\n", tx.TxID, state(tx), tx.To, types.FIL(tx.Value), tx.Method, tx.Params)
+			for _, txid := range txids {
+				tx := pending[txid]
+				fmt.Fprintf(w, "%d\t%s\t%s\t%s\t%d\t%x\n", txid, state(tx), tx.To, types.FIL(tx.Value), tx.Method, tx.Params)
 			}
 			w.Flush()
 		}
@@ -198,13 +222,44 @@ var msigInspectCmd = &cli.Command{
 	},
 }
 
-func state(tx actors.MTransaction) string {
+func GetMultisigPending(ctx context.Context, lapi api.FullNode, hroot cid.Cid) (map[int64]*actors.MultiSigTransaction, error) {
+	bs := apibstore.NewAPIBlockstore(lapi)
+	cst := hamt.CSTFromBstore(bs)
+
+	nd, err := hamt.LoadNode(ctx, cst, hroot)
+	if err != nil {
+		return nil, err
+	}
+
+	txs := make(map[int64]*actors.MultiSigTransaction)
+	err = nd.ForEach(ctx, func(k string, val interface{}) error {
+		d := val.(*cbg.Deferred)
+		var tx actors.MultiSigTransaction
+		if err := tx.UnmarshalCBOR(bytes.NewReader(d.Raw)); err != nil {
+			return err
+		}
+
+		txid, _ := binary.Varint([]byte(k))
+
+		txs[txid] = &tx
+		return nil
+	})
+	if err != nil {
+		return nil, xerrors.Errorf("failed to iterate transactions hamt: %w", err)
+	}
+
+	return txs, nil
+}
+
+func state(tx *actors.MultiSigTransaction) string {
+	/* // TODO(why): I strongly disagree with not having these... but i need to move forward
 	if tx.Complete {
 		return "done"
 	}
 	if tx.Canceled {
 		return "canceled"
 	}
+	*/
 	return "pending"
 }
 
@@ -261,8 +316,8 @@ var msigProposeCmd = &cli.Command{
 
 		enc, err := actors.SerializeParams(&actors.MultiSigProposeParams{
 			To:     dest,
-			Value:  types.BigInt(value),
-			Method: method,
+			Value:  abi.TokenAmount(types.BigInt(value)),
+			Method: abi.MethodNum(method),
 			Params: params,
 		})
 		if err != nil {
@@ -348,7 +403,7 @@ var msigApproveCmd = &cli.Command{
 		}
 
 		enc, err := actors.SerializeParams(&actors.MultiSigTxID{
-			TxID: txid,
+			ID: actors.TxnID(txid),
 		})
 		if err != nil {
 			return err

@@ -32,7 +32,7 @@ type StateWrapper struct {
 	// The blockstore underlying the state tree and storage.
 	bs blockstore.Blockstore
 	// HAMT-CBOR store on top of the blockstore.
-	cst *hamt.CborIpldStore
+	cst hamt.CborIpldStore
 	// A store for encryption keys.
 	keys *keyStore
 
@@ -302,7 +302,7 @@ func (a *actorWrapper) Balance() vtypes.BigInt {
 //
 
 type directStorage struct {
-	cst *hamt.CborIpldStore
+	cst hamt.CborIpldStore
 }
 
 func (d *directStorage) Get(c cid.Cid, out interface{}) error {

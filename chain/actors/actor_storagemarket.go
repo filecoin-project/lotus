@@ -260,7 +260,7 @@ func setMarketBalances(vmctx types.VMContext, nd *hamt.Node, set map[address.Add
 	return c, nil
 }
 
-func GetMarketBalances(ctx context.Context, store *hamt.CborIpldStore, rcid cid.Cid, addrs ...address.Address) ([]StorageParticipantBalance, *hamt.Node, ActorError) {
+func GetMarketBalances(ctx context.Context, store hamt.CborIpldStore, rcid cid.Cid, addrs ...address.Address) ([]StorageParticipantBalance, *hamt.Node, ActorError) {
 	ctx, span := trace.StartSpan(ctx, "GetMarketBalances")
 	defer span.End()
 

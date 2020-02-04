@@ -18,6 +18,12 @@ type apiBStore struct {
 	api ChainIO
 }
 
+func NewAPIBlockstore(cio ChainIO) blockstore.Blockstore {
+	return &apiBStore{
+		api: cio,
+	}
+}
+
 func (a *apiBStore) DeleteBlock(cid.Cid) error {
 	return xerrors.New("not supported")
 }
