@@ -2,20 +2,16 @@ package wallet
 
 import (
 	"context"
-	"fmt"
 	"sort"
 	"strings"
 	"sync"
 
-	bls "github.com/filecoin-project/filecoin-ffi"
-
 	logging "github.com/ipfs/go-log/v2"
-	"github.com/minio/blake2b-simd"
 	"golang.org/x/xerrors"
 
 	"github.com/filecoin-project/go-address"
-	"github.com/filecoin-project/go-crypto"
 	"github.com/filecoin-project/lotus/chain/types"
+	"github.com/filecoin-project/lotus/lib/sigs"
 )
 
 var log = logging.Logger("wallet")
@@ -61,31 +57,7 @@ func (w *Wallet) Sign(ctx context.Context, addr address.Address, msg []byte) (*t
 		return nil, xerrors.Errorf("signing using key '%s': %w", addr.String(), types.ErrKeyInfoNotFound)
 	}
 
-	switch ki.Type {
-	case types.KTSecp256k1:
-		b2sum := blake2b.Sum256(msg)
-		sig, err := crypto.Sign(ki.PrivateKey, b2sum[:])
-		if err != nil {
-			return nil, err
-		}
-
-		return &types.Signature{
-			Type: types.KTSecp256k1,
-			Data: sig,
-		}, nil
-	case types.KTBLS:
-		var pk bls.PrivateKey
-		copy(pk[:], ki.PrivateKey)
-		sig := bls.PrivateKeySign(pk, msg)
-
-		return &types.Signature{
-			Type: types.KTBLS,
-			Data: sig[:],
-		}, nil
-
-	default:
-		return nil, fmt.Errorf("cannot sign with unsupported key type: %q", ki.Type)
-	}
+	return sigs.Sign(ki.Type, ki.PrivateKey, msg)
 }
 
 func (w *Wallet) findKey(addr address.Address) (*Key, error) {
@@ -204,29 +176,15 @@ func (w *Wallet) SetDefault(a address.Address) error {
 }
 
 func GenerateKey(typ string) (*Key, error) {
-	switch typ {
-	case types.KTSecp256k1:
-		priv, err := crypto.GenerateKey()
-		if err != nil {
-			return nil, err
-		}
-		ki := types.KeyInfo{
-			Type:       typ,
-			PrivateKey: priv,
-		}
-
-		return NewKey(ki)
-	case types.KTBLS:
-		priv := bls.PrivateKeyGenerate()
-		ki := types.KeyInfo{
-			Type:       typ,
-			PrivateKey: priv[:],
-		}
-
-		return NewKey(ki)
-	default:
-		return nil, xerrors.Errorf("invalid key type: %s", typ)
+	pk, err := sigs.Generate(typ)
+	if err != nil {
+		return nil, err
 	}
+	ki := types.KeyInfo{
+		Type:       typ,
+		PrivateKey: pk,
+	}
+	return NewKey(ki)
 }
 
 func (w *Wallet) GenerateKey(typ string) (address.Address, error) {
@@ -277,28 +235,23 @@ func NewKey(keyinfo types.KeyInfo) (*Key, error) {
 		KeyInfo: keyinfo,
 	}
 
+	var err error
+	k.PublicKey, err = sigs.ToPublic(k.Type, k.PrivateKey)
+	if err != nil {
+		return nil, err
+	}
+
 	switch k.Type {
 	case types.KTSecp256k1:
-		k.PublicKey = crypto.PublicKey(k.PrivateKey)
-
-		var err error
 		k.Address, err = address.NewSecp256k1Address(k.PublicKey)
 		if err != nil {
 			return nil, xerrors.Errorf("converting Secp256k1 to address: %w", err)
 		}
-
 	case types.KTBLS:
-		var pk bls.PrivateKey
-		copy(pk[:], k.PrivateKey)
-		pub := bls.PrivateKeyPublicKey(pk)
-		k.PublicKey = pub[:]
-
-		var err error
 		k.Address, err = address.NewBLSAddress(k.PublicKey)
 		if err != nil {
 			return nil, xerrors.Errorf("converting BLS to address: %w", err)
 		}
-
 	default:
 		return nil, xerrors.Errorf("unknown key type")
 	}

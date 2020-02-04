@@ -16,6 +16,7 @@ import (
 	"github.com/filecoin-project/lotus/chain/actors"
 	"github.com/filecoin-project/lotus/chain/stmgr"
 	"github.com/filecoin-project/lotus/chain/types"
+	"github.com/filecoin-project/lotus/lib/sigs"
 	"github.com/filecoin-project/lotus/node/impl/full"
 )
 
@@ -138,7 +139,7 @@ func (pm *Manager) CheckVoucherValid(ctx context.Context, ch address.Address, sv
 	// TODO: technically, either party may create and sign a voucher.
 	// However, for now, we only accept them from the channel creator.
 	// More complex handling logic can be added later
-	if err := sv.Signature.Verify(pca.From, vb); err != nil {
+	if err := sigs.Verify(sv.Signature, pca.From, vb); err != nil {
 		return err
 	}
 

@@ -22,6 +22,7 @@ import (
 	"github.com/filecoin-project/lotus/chain/state"
 	"github.com/filecoin-project/lotus/chain/types"
 	"github.com/filecoin-project/lotus/lib/bufbstore"
+	"github.com/filecoin-project/lotus/lib/sigs"
 )
 
 var log = logging.Logger("vm")
@@ -196,7 +197,7 @@ func (vmctx *VMContext) VerifySignature(sig *types.Signature, act address.Addres
 		act = kaddr
 	}
 
-	if err := sig.Verify(act, data); err != nil {
+	if err := sigs.Verify(sig, act, data); err != nil {
 		return aerrors.New(2, "signature verification failed")
 	}
 
