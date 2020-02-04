@@ -22,8 +22,8 @@ const (
 	WaitSeed      // waiting for seed
 	Committing
 	CommitWait // waiting for message to land on chain
-	FinalizeSector
 	Proving
+	FinalizeSector
 	_ // reserved
 	_
 	_
@@ -64,8 +64,8 @@ var SectorStates = []string{
 	WaitSeed:             "WaitSeed",
 	Committing:           "Committing",
 	CommitWait:           "CommitWait",
-	FinalizeSector:       "FinalizeSector",
 	Proving:              "Proving",
+	FinalizeSector:       "FinalizeSector",
 
 	SealFailed:       "SealFailed",
 	PreCommitFailed:  "PreCommitFailed",
