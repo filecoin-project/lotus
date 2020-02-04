@@ -4,7 +4,7 @@ import (
 	"errors"
 	"fmt"
 
-	hamt "github.com/ipfs/go-hamt-ipld"
+	cbor "github.com/ipfs/go-ipld-cbor"
 	"golang.org/x/xerrors"
 )
 
@@ -160,7 +160,7 @@ func HandleExternalError(err error, msg string) ActorError {
 		}
 	}
 
-	if xerrors.Is(err, &hamt.SerializationError{}) {
+	if xerrors.Is(err, &cbor.SerializationError{}) {
 		return &actorError{
 			fatal:   false,
 			retCode: 253,

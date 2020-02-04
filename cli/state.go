@@ -14,6 +14,7 @@ import (
 	actors "github.com/filecoin-project/lotus/chain/actors"
 	"github.com/filecoin-project/lotus/chain/types"
 	"github.com/filecoin-project/lotus/miner"
+	samsig "github.com/filecoin-project/specs-actors/actors/builtin/multisig"
 	"github.com/libp2p/go-libp2p-core/peer"
 	"golang.org/x/xerrors"
 
@@ -862,7 +863,7 @@ func parseParamsForMethod(act cid.Cid, method uint64, args []string) ([]byte, er
 	case actors.StoragePowerCodeCid:
 		f = actors.StoragePowerActor{}.Exports()[method]
 	case actors.MultisigCodeCid:
-		f = actors.MultiSigActor{}.Exports()[method]
+		f = samsig.MultiSigActor{}.Exports()[method]
 	case actors.PaymentChannelCodeCid:
 		f = actors.PaymentChannelActor{}.Exports()[method]
 	default:

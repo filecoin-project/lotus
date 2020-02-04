@@ -7,11 +7,11 @@ import (
 	address "github.com/filecoin-project/go-address"
 	actors "github.com/filecoin-project/lotus/chain/actors"
 	"github.com/filecoin-project/lotus/chain/types"
-	hamt "github.com/ipfs/go-hamt-ipld"
+	cbor "github.com/ipfs/go-ipld-cbor"
 )
 
 func BenchmarkStateTreeSet(b *testing.B) {
-	cst := hamt.NewCborStore()
+	cst := cbor.NewMemCborStore()
 	st, err := NewStateTree(cst)
 	if err != nil {
 		b.Fatal(err)
@@ -38,7 +38,7 @@ func BenchmarkStateTreeSet(b *testing.B) {
 }
 
 func BenchmarkStateTreeSetFlush(b *testing.B) {
-	cst := hamt.NewCborStore()
+	cst := cbor.NewMemCborStore()
 	st, err := NewStateTree(cst)
 	if err != nil {
 		b.Fatal(err)
@@ -68,7 +68,7 @@ func BenchmarkStateTreeSetFlush(b *testing.B) {
 }
 
 func BenchmarkStateTree10kGetActor(b *testing.B) {
-	cst := hamt.NewCborStore()
+	cst := cbor.NewMemCborStore()
 	st, err := NewStateTree(cst)
 	if err != nil {
 		b.Fatal(err)
@@ -110,7 +110,7 @@ func BenchmarkStateTree10kGetActor(b *testing.B) {
 }
 
 func TestSetCache(t *testing.T) {
-	cst := hamt.NewCborStore()
+	cst := cbor.NewMemCborStore()
 	st, err := NewStateTree(cst)
 	if err != nil {
 		t.Fatal(err)

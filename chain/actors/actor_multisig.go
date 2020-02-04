@@ -26,8 +26,8 @@ var MultiSigMethods = musigMethods{1, 2, 3, 4, 5, 6, 7, 8, 9}
 type MultiSigConstructorParams = samsig.ConstructorParams
 type MultiSigProposeParams = samsig.ProposeParams
 type MultiSigTxID = samsig.TxnIDParams
-type MultiSigAddSignerParam = samsig.AddSigner
-type MultiSigRemoveSignerParam = samsig.RemoveSigner
+type MultiSigAddSignerParam = samsig.AddSignerParams
+type MultiSigRemoveSignerParam = samsig.RemoveSignerParams
 type MultiSigSwapSignerParams = samsig.SwapSignerParams
 type MultiSigChangeReqParams = samsig.ChangeNumApprovalsThresholdParams
 

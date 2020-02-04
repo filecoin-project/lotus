@@ -9,7 +9,7 @@ import (
 	"github.com/filecoin-project/go-amt-ipld"
 	"github.com/filecoin-project/lotus/chain/actors/aerrors"
 	cid "github.com/ipfs/go-cid"
-	hamt "github.com/ipfs/go-hamt-ipld"
+	cbor "github.com/ipfs/go-ipld-cbor"
 	cbg "github.com/whyrusleeping/cbor-gen"
 )
 
@@ -32,7 +32,7 @@ type StateTree interface {
 type VMContext interface {
 	Message() *Message
 	Origin() address.Address
-	Ipld() hamt.CborIpldStore
+	Ipld() cbor.IpldStore
 	Send(to address.Address, method uint64, value BigInt, params []byte) ([]byte, aerrors.ActorError)
 	BlockHeight() uint64
 	GasUsed() BigInt

@@ -7,8 +7,8 @@ import (
 
 	"github.com/ipfs/go-cid"
 	"github.com/ipfs/go-datastore"
-	"github.com/ipfs/go-hamt-ipld"
 	blockstore "github.com/ipfs/go-ipfs-blockstore"
+	cbor "github.com/ipfs/go-ipld-cbor"
 	"github.com/minio/blake2b-simd"
 	cbg "github.com/whyrusleeping/cbor-gen"
 	"golang.org/x/xerrors"
@@ -32,7 +32,7 @@ type StateWrapper struct {
 	// The blockstore underlying the state tree and storage.
 	bs blockstore.Blockstore
 	// HAMT-CBOR store on top of the blockstore.
-	cst hamt.CborIpldStore
+	cst cbor.IpldStore
 	// A store for encryption keys.
 	keys *keyStore
 
@@ -48,7 +48,7 @@ var _ vstate.Wrapper = &StateWrapper{}
 
 func NewState() *StateWrapper {
 	bs := blockstore.NewBlockstore(datastore.NewMapDatastore())
-	cst := hamt.CSTFromBstore(bs)
+	cst := cbor.NewCborStore(bs)
 	// Put EmptyObjectCid value in the store. When an actor is initially created its Head is set to this value.
 	_, err := cst.Put(context.TODO(), map[string]string{})
 	if err != nil {
@@ -302,7 +302,7 @@ func (a *actorWrapper) Balance() vtypes.BigInt {
 //
 
 type directStorage struct {
-	cst hamt.CborIpldStore
+	cst cbor.IpldStore
 }
 
 func (d *directStorage) Get(c cid.Cid, out interface{}) error {
