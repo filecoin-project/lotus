@@ -13,7 +13,7 @@ import (
 	"gopkg.in/urfave/cli.v2"
 
 	"github.com/filecoin-project/go-address"
-	lapi "github.com/filecoin-project/lotus/api"
+	"github.com/filecoin-project/go-fil-markets/storagemarket"
 	actors "github.com/filecoin-project/lotus/chain/actors"
 	"github.com/filecoin-project/lotus/chain/types"
 )
@@ -359,7 +359,7 @@ var clientListDeals = &cli.Command{
 		w := tabwriter.NewWriter(os.Stdout, 2, 4, 2, ' ', 0)
 		fmt.Fprintf(w, "DealCid\tProvider\tState\tPieceRef\tSize\tPrice\tDuration\n")
 		for _, d := range deals {
-			fmt.Fprintf(w, "%s\t%s\t%s\t%x\t%d\t%s\t%d\n", d.ProposalCid, d.Provider, lapi.DealStates[d.State], d.PieceRef, d.Size, d.PricePerEpoch, d.Duration)
+			fmt.Fprintf(w, "%s\t%s\t%s\t%x\t%d\t%s\t%d\n", d.ProposalCid, d.Provider, storagemarket.DealStates[d.State], d.PieceRef, d.Size, d.PricePerEpoch, d.Duration)
 		}
 		return w.Flush()
 	},

@@ -5,10 +5,10 @@ package storageadapter
 import (
 	"bytes"
 	"context"
+	"io"
 
 	"github.com/ipfs/go-cid"
 	logging "github.com/ipfs/go-log"
-	unixfile "github.com/ipfs/go-unixfs/file"
 	"golang.org/x/xerrors"
 
 	"github.com/filecoin-project/go-address"
@@ -16,11 +16,13 @@ import (
 	sharedtypes "github.com/filecoin-project/go-fil-markets/shared/types"
 	"github.com/filecoin-project/go-fil-markets/storagemarket"
 	"github.com/filecoin-project/lotus/api"
+	"github.com/filecoin-project/lotus/build"
 	"github.com/filecoin-project/lotus/chain/actors"
+	"github.com/filecoin-project/lotus/chain/events"
 	"github.com/filecoin-project/lotus/chain/types"
-	"github.com/filecoin-project/lotus/lib/padreader"
 	"github.com/filecoin-project/lotus/markets/utils"
 	"github.com/filecoin-project/lotus/node/modules/dtypes"
+	"github.com/filecoin-project/lotus/storage/sealing"
 	"github.com/filecoin-project/lotus/storage/sectorblocks"
 )
 
@@ -33,6 +35,7 @@ type ProviderNodeAdapter struct {
 	dag dtypes.StagingDAG
 
 	secb *sectorblocks.SectorBlocks
+	ev   *events.Events
 }
 
 func NewProviderNodeAdapter(dag dtypes.StagingDAG, secb *sectorblocks.SectorBlocks, full api.FullNode) storagemarket.StorageProviderNode {
@@ -40,6 +43,7 @@ func NewProviderNodeAdapter(dag dtypes.StagingDAG, secb *sectorblocks.SectorBloc
 		FullNode: full,
 		dag:      dag,
 		secb:     secb,
+		ev:       events.NewEvents(context.TODO(), full),
 	}
 }
 
@@ -94,35 +98,9 @@ func (n *ProviderNodeAdapter) PublishDeals(ctx context.Context, deal storagemark
 	return storagemarket.DealID(resp.DealIDs[0]), smsg.Cid(), nil
 }
 
-func (n *ProviderNodeAdapter) OnDealComplete(ctx context.Context, deal storagemarket.MinerDeal, piecePath string) (uint64, error) {
-	root, err := n.dag.Get(ctx, deal.Ref)
-	if err != nil {
-		return 0, xerrors.Errorf("failed to get file root for deal: %s", err)
-	}
+func (n *ProviderNodeAdapter) OnDealComplete(ctx context.Context, deal storagemarket.MinerDeal, pieceSize uint64, pieceData io.Reader) (uint64, error) {
 
-	// TODO: abstract this away into ReadSizeCloser + implement different modes
-	node, err := unixfile.NewUnixfsFile(ctx, n.dag, root)
-	if err != nil {
-		return 0, xerrors.Errorf("cannot open unixfs file: %s", err)
-	}
-
-	uf, ok := node.(sectorblocks.UnixfsReader)
-	if !ok {
-		// we probably got directory, unsupported for now
-		return 0, xerrors.Errorf("unsupported unixfs file type")
-	}
-
-	// TODO: uf.Size() is user input, not trusted
-	// This won't be useful / here after we migrate to putting CARs into sectors
-	size, err := uf.Size()
-	if err != nil {
-		return 0, xerrors.Errorf("getting unixfs file size: %w", err)
-	}
-	if padreader.PaddedSize(uint64(size)) != deal.Proposal.PieceSize {
-		return 0, xerrors.Errorf("deal.Proposal.PieceSize didn't match padded unixfs file size")
-	}
-
-	sectorID, err := n.secb.AddUnixfsPiece(ctx, uf, deal.DealID)
+	sectorID, err := n.secb.AddPiece(ctx, pieceSize, pieceData, deal.DealID)
 	if err != nil {
 		return 0, xerrors.Errorf("AddPiece failed: %s", err)
 	}
@@ -204,6 +182,119 @@ func (n *ProviderNodeAdapter) GetBalance(ctx context.Context, addr address.Addre
 	}
 
 	return utils.ToSharedBalance(bal), nil
+}
+
+func (n *ProviderNodeAdapter) LocatePieceForDealWithinSector(ctx context.Context, dealID uint64) (sectorID uint64, offset uint64, length uint64, err error) {
+
+	refs, err := n.secb.GetRefs(dealID)
+	if err != nil {
+		return 0, 0, 0, err
+	}
+	if len(refs) == 0 {
+		return 0, 0, 0, xerrors.New("no sector information for deal ID")
+	}
+
+	// TODO: better strategy (e.g. look for already unsealed)
+	var best api.SealedRef
+	var bestSi sealing.SectorInfo
+	for _, r := range refs {
+		si, err := n.secb.Miner.GetSectorInfo(r.SectorID)
+		if err != nil {
+			return 0, 0, 0, xerrors.Errorf("getting sector info: %w", err)
+		}
+		if si.State == api.Proving {
+			best = r
+			bestSi = si
+			break
+		}
+	}
+	if bestSi.State == api.UndefinedSectorState {
+		return 0, 0, 0, xerrors.New("no sealed sector found")
+	}
+	return best.SectorID, best.Offset, best.Size, nil
+}
+
+func (n *ProviderNodeAdapter) OnDealSectorCommitted(ctx context.Context, provider address.Address, dealID uint64, cb storagemarket.DealSectorCommittedCallback) error {
+	checkFunc := func(ts *types.TipSet) (done bool, more bool, err error) {
+		sd, err := n.StateMarketStorageDeal(ctx, dealID, ts)
+
+		if err != nil {
+			// TODO: This may be fine for some errors
+			return false, false, xerrors.Errorf("failed to look up deal on chain: %w", err)
+		}
+
+		if sd.ActivationEpoch > 0 {
+			cb(nil)
+			return true, false, nil
+		}
+
+		return false, true, nil
+	}
+
+	called := func(msg *types.Message, rec *types.MessageReceipt, ts *types.TipSet, curH uint64) (more bool, err error) {
+		defer func() {
+			if err != nil {
+				cb(xerrors.Errorf("handling applied event: %w", err))
+			}
+		}()
+
+		if msg == nil {
+			log.Error("timed out waiting for deal activation... what now?")
+			return false, nil
+		}
+
+		sd, err := n.StateMarketStorageDeal(ctx, dealID, ts)
+		if err != nil {
+			return false, xerrors.Errorf("failed to look up deal on chain: %w", err)
+		}
+
+		if sd.ActivationEpoch == 0 {
+			return false, xerrors.Errorf("deal wasn't active: deal=%d, parentState=%s, h=%d", dealID, ts.ParentState(), ts.Height())
+		}
+
+		log.Infof("Storage deal %d activated at epoch %d", dealID, sd.ActivationEpoch)
+
+		cb(nil)
+
+		return false, nil
+	}
+
+	revert := func(ctx context.Context, ts *types.TipSet) error {
+		log.Warn("deal activation reverted; TODO: actually handle this!")
+		// TODO: Just go back to DealSealing?
+		return nil
+	}
+
+	matchEvent := func(msg *types.Message) (bool, error) {
+		if msg.To != provider {
+			return false, nil
+		}
+
+		if msg.Method != actors.MAMethods.ProveCommitSector {
+			return false, nil
+		}
+
+		var params actors.SectorProveCommitInfo
+		if err := params.UnmarshalCBOR(bytes.NewReader(msg.Params)); err != nil {
+			return false, err
+		}
+
+		var found bool
+		for _, did := range params.DealIDs {
+			if did == dealID {
+				found = true
+				break
+			}
+		}
+
+		return found, nil
+	}
+
+	if err := n.ev.Called(checkFunc, called, revert, 3, build.SealRandomnessLookbackLimit, matchEvent); err != nil {
+		return xerrors.Errorf("failed to set up called handler")
+	}
+
+	return nil
 }
 
 var _ storagemarket.StorageProviderNode = &ProviderNodeAdapter{}
