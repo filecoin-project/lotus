@@ -7,7 +7,9 @@ import (
 	"io"
 	"sync"
 
+	cborutil "github.com/filecoin-project/go-cbor-util"
 	sectorbuilder "github.com/filecoin-project/go-sectorbuilder"
+	s2 "github.com/filecoin-project/go-storage-miner"
 	"github.com/ipfs/go-cid"
 	"github.com/ipfs/go-datastore"
 	"github.com/ipfs/go-datastore/namespace"
@@ -19,11 +21,9 @@ import (
 	"github.com/ipfs/go-unixfs"
 	"golang.org/x/xerrors"
 
-	"github.com/filecoin-project/go-cbor-util"
 	"github.com/filecoin-project/lotus/api"
 	"github.com/filecoin-project/lotus/lib/padreader"
 	"github.com/filecoin-project/lotus/node/modules/dtypes"
-	"github.com/filecoin-project/lotus/storage"
 )
 
 type SealSerialization uint8
@@ -38,7 +38,7 @@ var imBlocksPrefix = datastore.NewKey("/intermediate")
 var ErrNotFound = errors.New("not found")
 
 type SectorBlocks struct {
-	*storage.Miner
+	*s2.Miner
 	sb sectorbuilder.Interface
 
 	intermediate blockstore.Blockstore // holds intermediate nodes TODO: consider combining with the staging blockstore
@@ -47,7 +47,7 @@ type SectorBlocks struct {
 	keyLk sync.Mutex
 }
 
-func NewSectorBlocks(miner *storage.Miner, ds dtypes.MetadataDS, sb sectorbuilder.Interface) *SectorBlocks {
+func NewSectorBlocks(miner *s2.Miner, ds dtypes.MetadataDS, sb sectorbuilder.Interface) *SectorBlocks {
 	sbc := &SectorBlocks{
 		Miner: miner,
 		sb:    sb,

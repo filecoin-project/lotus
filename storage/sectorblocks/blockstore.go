@@ -10,8 +10,8 @@ import (
 	logging "github.com/ipfs/go-log/v2"
 	"golang.org/x/xerrors"
 
+	s2 "github.com/filecoin-project/go-storage-miner"
 	"github.com/filecoin-project/lotus/api"
-	"github.com/filecoin-project/lotus/storage/sealing"
 )
 
 var log = logging.Logger("sectorblocks")
@@ -77,19 +77,19 @@ func (s *SectorBlockStore) Get(c cid.Cid) (blocks.Block, error) {
 
 	// TODO: better strategy (e.g. look for already unsealed)
 	var best api.SealedRef
-	var bestSi sealing.SectorInfo
+	var bestSi s2.SectorInfo
 	for _, r := range refs {
 		si, err := s.sectorBlocks.Miner.GetSectorInfo(r.SectorID)
 		if err != nil {
 			return nil, xerrors.Errorf("getting sector info: %w", err)
 		}
-		if si.State == api.Proving {
+		if si.State == s2.Proving {
 			best = r
 			bestSi = si
 			break
 		}
 	}
-	if bestSi.State == api.UndefinedSectorState {
+	if bestSi.State == s2.UndefinedSectorState {
 		return nil, xerrors.New("no sealed sector found")
 	}
 

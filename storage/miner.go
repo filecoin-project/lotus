@@ -2,41 +2,22 @@ package storage
 
 import (
 	"context"
-	"errors"
 	"time"
 
 	"github.com/filecoin-project/go-address"
 	"github.com/filecoin-project/go-sectorbuilder"
 	"github.com/ipfs/go-cid"
-	"github.com/ipfs/go-datastore"
 	logging "github.com/ipfs/go-log/v2"
-	"github.com/libp2p/go-libp2p-core/host"
-	"golang.org/x/xerrors"
 
 	"github.com/filecoin-project/lotus/api"
 	"github.com/filecoin-project/lotus/build"
 	"github.com/filecoin-project/lotus/chain/actors"
-	"github.com/filecoin-project/lotus/chain/events"
 	"github.com/filecoin-project/lotus/chain/gen"
 	"github.com/filecoin-project/lotus/chain/store"
 	"github.com/filecoin-project/lotus/chain/types"
-	"github.com/filecoin-project/lotus/storage/sealing"
 )
 
 var log = logging.Logger("storageminer")
-
-type Miner struct {
-	api   storageMinerApi
-	h     host.Host
-	sb    sectorbuilder.Interface
-	ds    datastore.Batching
-	tktFn sealing.TicketFn
-
-	maddr  address.Address
-	worker address.Address
-
-	sealing *sealing.Sealing
-}
 
 type storageMinerApi interface {
 	// Call a read only method on actors (no interaction with the chain required)
@@ -64,53 +45,6 @@ type storageMinerApi interface {
 	WalletSign(context.Context, address.Address, []byte) (*types.Signature, error)
 	WalletBalance(context.Context, address.Address) (types.BigInt, error)
 	WalletHas(context.Context, address.Address) (bool, error)
-}
-
-func NewMiner(api storageMinerApi, maddr, worker address.Address, h host.Host, ds datastore.Batching, sb sectorbuilder.Interface, tktFn sealing.TicketFn) (*Miner, error) {
-	m := &Miner{
-		api:   api,
-		h:     h,
-		sb:    sb,
-		ds:    ds,
-		tktFn: tktFn,
-
-		maddr:  maddr,
-		worker: worker,
-	}
-
-	return m, nil
-}
-
-func (m *Miner) Run(ctx context.Context) error {
-	if err := m.runPreflightChecks(ctx); err != nil {
-		return xerrors.Errorf("miner preflight checks failed: %w", err)
-	}
-
-	evts := events.NewEvents(ctx, m.api)
-	m.sealing = sealing.New(m.api, evts, m.maddr, m.worker, m.ds, m.sb, m.tktFn)
-
-	go m.sealing.Run(ctx)
-
-	return nil
-}
-
-func (m *Miner) Stop(ctx context.Context) error {
-	defer m.sealing.Stop(ctx)
-	return nil
-}
-
-func (m *Miner) runPreflightChecks(ctx context.Context) error {
-	has, err := m.api.WalletHas(ctx, m.worker)
-	if err != nil {
-		return xerrors.Errorf("failed to check wallet for worker key: %w", err)
-	}
-
-	if !has {
-		return errors.New("key for worker not found in local wallet")
-	}
-
-	log.Infof("starting up miner %s, worker addr %s", m.maddr, m.worker)
-	return nil
 }
 
 type SectorBuilderEpp struct {
