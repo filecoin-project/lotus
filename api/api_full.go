@@ -4,12 +4,12 @@ import (
 	"context"
 	"time"
 
+	"github.com/filecoin-project/go-address"
+	"github.com/filecoin-project/go-fil-markets/storagemarket"
 	"github.com/ipfs/go-cid"
 	"github.com/ipfs/go-filestore"
 	"github.com/libp2p/go-libp2p-core/peer"
 
-	"github.com/filecoin-project/go-address"
-	"github.com/filecoin-project/go-fil-markets/storagemarket"
 	"github.com/filecoin-project/lotus/chain/actors"
 	"github.com/filecoin-project/lotus/chain/store"
 	"github.com/filecoin-project/lotus/chain/types"
@@ -33,6 +33,7 @@ type FullNode interface {
 	ChainGetParentMessages(context.Context, cid.Cid) ([]Message, error)
 	ChainGetTipSetByHeight(context.Context, uint64, *types.TipSet) (*types.TipSet, error)
 	ChainReadObj(context.Context, cid.Cid) ([]byte, error)
+	ChainHasObj(context.Context, cid.Cid) (bool, error)
 	ChainSetHead(context.Context, *types.TipSet) error
 	ChainGetGenesis(context.Context) (*types.TipSet, error)
 	ChainTipSetWeight(context.Context, *types.TipSet) (types.BigInt, error)
@@ -109,6 +110,7 @@ type FullNode interface {
 	StateMinerPeerID(ctx context.Context, m address.Address, ts *types.TipSet) (peer.ID, error)
 	StateMinerElectionPeriodStart(ctx context.Context, actor address.Address, ts *types.TipSet) (uint64, error)
 	StateMinerSectorSize(context.Context, address.Address, *types.TipSet) (uint64, error)
+	StateMinerFaults(context.Context, address.Address, *types.TipSet) ([]uint64, error)
 	StatePledgeCollateral(context.Context, *types.TipSet) (types.BigInt, error)
 	StateWaitMsg(context.Context, cid.Cid) (*MsgWait, error)
 	StateListMiners(context.Context, *types.TipSet) ([]address.Address, error)
@@ -122,6 +124,8 @@ type FullNode interface {
 	StateGetReceipt(context.Context, cid.Cid, *types.TipSet) (*types.MessageReceipt, error)
 	StateMinerSectorCount(context.Context, address.Address, *types.TipSet) (MinerSectors, error)
 	StateCompute(context.Context, uint64, []*types.Message, *types.TipSet) (cid.Cid, error)
+
+	MsigGetAvailableBalance(context.Context, address.Address, *types.TipSet) (types.BigInt, error)
 
 	MarketEnsureAvailable(context.Context, address.Address, types.BigInt) error
 	// MarketFreeBalance

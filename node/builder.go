@@ -7,6 +7,7 @@ import (
 
 	sectorbuilder "github.com/filecoin-project/go-sectorbuilder"
 	blockstore "github.com/ipfs/go-ipfs-blockstore"
+	logging "github.com/ipfs/go-log"
 	ci "github.com/libp2p/go-libp2p-core/crypto"
 	"github.com/libp2p/go-libp2p-core/host"
 	"github.com/libp2p/go-libp2p-core/peer"
@@ -53,6 +54,8 @@ import (
 	"github.com/filecoin-project/lotus/storage/sealing"
 	"github.com/filecoin-project/lotus/storage/sectorblocks"
 )
+
+var log = logging.Logger("builder")
 
 // special is a type used to give keys to modules which
 //  can't really be identified by the returned type
@@ -343,15 +346,20 @@ func ConfigStorageMiner(c interface{}, lr repo.LockedRepo) Option {
 		return Error(xerrors.Errorf("invalid config from repo, got: %T", c))
 	}
 
-	path := cfg.SectorBuilder.Path
-	if path == "" {
-		path = lr.Path()
+	scfg := sectorbuilder.SimplePath(lr.Path())
+	if cfg.SectorBuilder.Path == "" {
+		if len(cfg.SectorBuilder.Storage) > 0 {
+			scfg = cfg.SectorBuilder.Storage
+		}
+	} else {
+		scfg = sectorbuilder.SimplePath(cfg.SectorBuilder.Path)
+		log.Warn("LEGACY SectorBuilder.Path FOUND IN CONFIG. Please use the new storage config")
 	}
 
 	return Options(
 		ConfigCommon(&cfg.Common),
 
-		Override(new(*sectorbuilder.Config), modules.SectorBuilderConfig(path,
+		Override(new(*sectorbuilder.Config), modules.SectorBuilderConfig(scfg,
 			cfg.SectorBuilder.WorkerCount,
 			cfg.SectorBuilder.DisableLocalPreCommit,
 			cfg.SectorBuilder.DisableLocalCommit)),

@@ -33,6 +33,12 @@
           "value": null
         },
         {
+          "title": "Fedora Installation",
+          "slug": "en+install-lotus-fedora",
+          "github": "en/install-lotus-fedora.md",
+          "value": null
+        },
+        {
           "title": "MacOS Installation",
           "slug": "en+install-lotus-macos",
           "github": "en/install-lotus-macos.md",

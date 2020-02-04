@@ -49,6 +49,12 @@ Store a **Data CID** with a miner:
 lotus client deal <Data CID> <miner> <price> <duration>
 ```
 
+Check the status of a deal:
+
+```sh
+lotus client list-deals
+```
+
 - Price is in attoFIL.
 - The `duration`, which represents how long the miner will keep your file hosted, is represented in blocks. Each block represents 45 seconds.
 

@@ -50,6 +50,7 @@ type storageMinerApi interface {
 	StateGetActor(ctx context.Context, actor address.Address, ts *types.TipSet) (*types.Actor, error)
 	StateGetReceipt(context.Context, cid.Cid, *types.TipSet) (*types.MessageReceipt, error)
 	StateMarketStorageDeal(context.Context, uint64, *types.TipSet) (*actors.OnChainDeal, error)
+	StateMinerFaults(context.Context, address.Address, *types.TipSet) ([]uint64, error)
 
 	MpoolPushMessage(context.Context, *types.Message) (*types.SignedMessage, error)
 
@@ -65,7 +66,7 @@ type storageMinerApi interface {
 	WalletHas(context.Context, address.Address) (bool, error)
 }
 
-func NewMiner(api storageMinerApi, addr address.Address, h host.Host, ds datastore.Batching, sb sectorbuilder.Interface, tktFn sealing.TicketFn) (*Miner, error) {
+func NewMiner(api storageMinerApi, maddr, worker address.Address, h host.Host, ds datastore.Batching, sb sectorbuilder.Interface, tktFn sealing.TicketFn) (*Miner, error) {
 	m := &Miner{
 		api:   api,
 		h:     h,
@@ -73,7 +74,8 @@ func NewMiner(api storageMinerApi, addr address.Address, h host.Host, ds datasto
 		ds:    ds,
 		tktFn: tktFn,
 
-		maddr: addr,
+		maddr:  maddr,
+		worker: worker,
 	}
 
 	return m, nil
@@ -83,16 +85,6 @@ func (m *Miner) Run(ctx context.Context) error {
 	if err := m.runPreflightChecks(ctx); err != nil {
 		return xerrors.Errorf("miner preflight checks failed: %w", err)
 	}
-
-	fps := &fpostScheduler{
-		api: m.api,
-		sb:  m.sb,
-
-		actor:  m.maddr,
-		worker: m.worker,
-	}
-
-	go fps.run(ctx)
 
 	evts := events.NewEvents(ctx, m.api)
 	m.sealing = sealing.New(m.api, evts, m.maddr, m.worker, m.ds, m.sb, m.tktFn)
@@ -108,14 +100,7 @@ func (m *Miner) Stop(ctx context.Context) error {
 }
 
 func (m *Miner) runPreflightChecks(ctx context.Context) error {
-	worker, err := m.api.StateMinerWorker(ctx, m.maddr, nil)
-	if err != nil {
-		return err
-	}
-
-	m.worker = worker
-
-	has, err := m.api.WalletHas(ctx, worker)
+	has, err := m.api.WalletHas(ctx, m.worker)
 	if err != nil {
 		return xerrors.Errorf("failed to check wallet for worker key: %w", err)
 	}

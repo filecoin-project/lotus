@@ -50,15 +50,27 @@ var infoCmd = &cli.Command{
 			return err
 		}
 
-		percI := types.BigDiv(types.BigMul(pow.MinerPower, types.NewInt(1000)), pow.TotalPower)
-		fmt.Printf("Power: %s / %s (%0.4f%%)\n", pow.MinerPower.SizeStr(), pow.TotalPower.SizeStr(), float64(percI.Int64())/100000*10000)
+		percI := types.BigDiv(types.BigMul(pow.MinerPower, types.NewInt(1000000)), pow.TotalPower)
+		fmt.Printf("Power: %s / %s (%0.4f%%)\n", pow.MinerPower.SizeStr(), pow.TotalPower.SizeStr(), float64(percI.Int64())/10000)
 
 		secCounts, err := api.StateMinerSectorCount(ctx, maddr, nil)
 		if err != nil {
 			return err
 		}
+		faults, err := api.StateMinerFaults(ctx, maddr, nil)
+		if err != nil {
+			return err
+		}
+
 		fmt.Printf("\tCommitted: %s\n", types.BigMul(types.NewInt(secCounts.Sset), types.NewInt(sizeByte)).SizeStr())
-		fmt.Printf("\tProving: %s\n", types.BigMul(types.NewInt(secCounts.Pset), types.NewInt(sizeByte)).SizeStr())
+		if len(faults) == 0 {
+			fmt.Printf("\tProving: %s\n", types.BigMul(types.NewInt(secCounts.Pset), types.NewInt(sizeByte)).SizeStr())
+		} else {
+			fmt.Printf("\tProving: %s (%s Faulty, %.2f%%)\n",
+				types.BigMul(types.NewInt(secCounts.Pset-uint64(len(faults))), types.NewInt(sizeByte)).SizeStr(),
+				types.BigMul(types.NewInt(uint64(len(faults))), types.NewInt(sizeByte)).SizeStr(),
+				float64(10000*uint64(len(faults))/secCounts.Pset)/100.)
+		}
 
 		// TODO: indicate whether the post worker is in use
 		wstat, err := nodeApi.WorkerStats(ctx)
