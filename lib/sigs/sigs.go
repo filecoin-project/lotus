@@ -10,23 +10,8 @@ import (
 	"golang.org/x/xerrors"
 )
 
-type SigShim interface {
-	GenPrivate() ([]byte, error)
-	ToPublic(pk []byte) ([]byte, error)
-	Sign(pk []byte, msg []byte) ([]byte, error)
-	Verify(sig []byte, a address.Address, msg []byte) error
-}
-
-var sigs map[string]SigShim
-
-// RegisterSig should be only used during init
-func RegisterSignature(name string, vs SigShim) {
-	if sigs == nil {
-		sigs = make(map[string]SigShim)
-	}
-	sigs[name] = vs
-}
-
+// Sign takes in signature type, private key and message. Returns a signature for that message.
+// Valid sigTypes are: "secp256k1" and "bls"
 func Sign(sigType string, privkey []byte, msg []byte) (*types.Signature, error) {
 	sv, ok := sigs[sigType]
 	if !ok {
@@ -43,6 +28,7 @@ func Sign(sigType string, privkey []byte, msg []byte) (*types.Signature, error) 
 	}, nil
 }
 
+// Verify verifies signatures
 func Verify(sig *types.Signature, addr address.Address, msg []byte) error {
 	if sig == nil {
 		return xerrors.Errorf("signature is nil")
@@ -60,6 +46,7 @@ func Verify(sig *types.Signature, addr address.Address, msg []byte) error {
 	return sv.Verify(sig.Data, addr, msg)
 }
 
+// Generate generates private key of given type
 func Generate(sigType string) ([]byte, error) {
 	sv, ok := sigs[sigType]
 	if !ok {
@@ -69,6 +56,7 @@ func Generate(sigType string) ([]byte, error) {
 	return sv.GenPrivate()
 }
 
+// ToPublic converts private key to public key
 func ToPublic(sigType string, pk []byte) ([]byte, error) {
 	sv, ok := sigs[sigType]
 	if !ok {
@@ -92,6 +80,23 @@ func CheckBlockSignature(blk *types.BlockHeader, ctx context.Context, worker add
 	}
 
 	_ = sigb
-	//return blk.BlockSig.Verify(worker, sigb)
-	return nil
+	return Verify(blk.BlockSig, worker, sigb)
+}
+
+// SigShim is used for introducing signature functions
+type SigShim interface {
+	GenPrivate() ([]byte, error)
+	ToPublic(pk []byte) ([]byte, error)
+	Sign(pk []byte, msg []byte) ([]byte, error)
+	Verify(sig []byte, a address.Address, msg []byte) error
+}
+
+var sigs map[string]SigShim
+
+// RegisterSig should be only used during init
+func RegisterSignature(name string, vs SigShim) {
+	if sigs == nil {
+		sigs = make(map[string]SigShim)
+	}
+	sigs[name] = vs
 }
