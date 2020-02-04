@@ -126,8 +126,6 @@ github.com/filecoin-project/go-statemachine v0.0.0-20200129214539-c78c5f7e9f9c h
 github.com/filecoin-project/go-statemachine v0.0.0-20200129214539-c78c5f7e9f9c/go.mod h1:1K7s8n65xznskrVYhwalQDO5blLMIZlf96OYQilZVJY=
 github.com/filecoin-project/go-statestore v0.1.0 h1:t56reH59843TwXHkMcwyuayStBIiWBRilQjQ+5IiwdQ=
 github.com/filecoin-project/go-statestore v0.1.0/go.mod h1:LFc9hD+fRxPqiHiaqUEZOinUJB4WARkRfNl10O7kTnI=
-github.com/filecoin-project/go-storage-miner v0.0.0-20200204193928-55416b7d04cb h1:xO6eEe9xzqGjX1jAl7ELYTLER+qCmwH3sf/zNiToCE8=
-github.com/filecoin-project/go-storage-miner v0.0.0-20200204193928-55416b7d04cb/go.mod h1:vj642jZLUVC3N+LsDIK+iFuP7IpsbzSL3Yl0yW0qH2A=
 github.com/filecoin-project/go-storage-miner v0.0.0-20200204210104-6a78dcbdccfa h1:/RTMy1ldip64xIAe6Lq2a+dUbHB71e/xdboz7+Yd0MU=
 github.com/filecoin-project/go-storage-miner v0.0.0-20200204210104-6a78dcbdccfa/go.mod h1:vj642jZLUVC3N+LsDIK+iFuP7IpsbzSL3Yl0yW0qH2A=
 github.com/fsnotify/fsnotify v1.4.7 h1:IXs+QLmnXW2CcXuY+8Mzv/fWEsPGWxqefPtCP5CnV9I=
