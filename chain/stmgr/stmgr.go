@@ -19,6 +19,7 @@ import (
 	"github.com/ipfs/go-cid"
 	hamt "github.com/ipfs/go-hamt-ipld"
 	blockstore "github.com/ipfs/go-ipfs-blockstore"
+	cbor "github.com/ipfs/go-ipld-cbor"
 	logging "github.com/ipfs/go-log/v2"
 	"go.opencensus.io/trace"
 )
@@ -301,7 +302,7 @@ func (sm *StateManager) GetActor(addr address.Address, ts *types.TipSet) (*types
 
 	stcid := ts.ParentState()
 
-	cst := hamt.CSTFromBstore(sm.cs.Blockstore())
+	cst := cbor.NewCborStore(sm.cs.Blockstore())
 	state, err := state.LoadStateTree(cst, stcid)
 	if err != nil {
 		return nil, xerrors.Errorf("load state tree: %w", err)
@@ -332,7 +333,7 @@ func (sm *StateManager) LoadActorState(ctx context.Context, a address.Address, o
 		return nil, err
 	}
 
-	cst := hamt.CSTFromBstore(sm.cs.Blockstore())
+	cst := cbor.NewCborStore(sm.cs.Blockstore())
 	if err := cst.Get(ctx, act.Head, out); err != nil {
 		return nil, err
 	}
@@ -357,7 +358,7 @@ func (sm *StateManager) ResolveToKeyAddress(ctx context.Context, addr address.Ad
 		return address.Undef, xerrors.Errorf("resolve address failed to get tipset state: %w", err)
 	}
 
-	cst := hamt.CSTFromBstore(sm.cs.Blockstore())
+	cst := cbor.NewCborStore(sm.cs.Blockstore())
 	tree, err := state.LoadStateTree(cst, st)
 	if err != nil {
 		return address.Undef, xerrors.Errorf("failed to load state tree")
@@ -575,7 +576,7 @@ func (sm *StateManager) ListAllActors(ctx context.Context, ts *types.TipSet) ([]
 		return nil, err
 	}
 
-	cst := hamt.CSTFromBstore(sm.cs.Blockstore())
+	cst := cbor.NewCborStore(sm.cs.Blockstore())
 	r, err := hamt.LoadNode(ctx, cst, st)
 	if err != nil {
 		return nil, err
@@ -602,7 +603,7 @@ func (sm *StateManager) MarketBalance(ctx context.Context, addr address.Address,
 	if _, err := sm.LoadActorState(ctx, actors.StorageMarketAddress, &state, ts); err != nil {
 		return actors.StorageParticipantBalance{}, err
 	}
-	cst := hamt.CSTFromBstore(sm.cs.Blockstore())
+	cst := cbor.NewCborStore(sm.cs.Blockstore())
 	b, _, err := actors.GetMarketBalances(ctx, cst, state.Balances, addr)
 	if err != nil {
 		return actors.StorageParticipantBalance{}, err

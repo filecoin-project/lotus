@@ -11,6 +11,7 @@ import (
 	"github.com/filecoin-project/lotus/chain/actors/aerrors"
 	"github.com/filecoin-project/lotus/chain/types"
 	"github.com/filecoin-project/specs-actors/actors/abi"
+	"github.com/filecoin-project/specs-actors/actors/runtime"
 	vmr "github.com/filecoin-project/specs-actors/actors/runtime"
 	"github.com/filecoin-project/specs-actors/actors/runtime/exitcode"
 	"github.com/ipfs/go-cid"
@@ -21,6 +22,8 @@ type runtimeShim struct {
 	vmctx types.VMContext
 	vmr.Runtime
 }
+
+var _ runtime.Runtime = (*runtimeShim)(nil)
 
 func (rs *runtimeShim) shimCall(f func() interface{}) (rval []byte, aerr aerrors.ActorError) {
 	defer func() {
@@ -119,8 +122,13 @@ func (dwt *dumbWrapperType) Into(um vmr.CBORUnmarshaler) error {
 	return um.UnmarshalCBOR(bytes.NewReader(dwt.val))
 }
 
-func (rs *runtimeShim) Send(to address.Address, method abi.MethodNum, params abi.MethodParams, value abi.TokenAmount) (vmr.SendReturn, exitcode.ExitCode) {
-	ret, err := rs.vmctx.Send(to, uint64(method), types.BigInt(value), []byte(params))
+func (rs *runtimeShim) Send(to address.Address, method abi.MethodNum, m runtime.CBORMarshaler, value abi.TokenAmount) (vmr.SendReturn, exitcode.ExitCode) {
+	buf := new(bytes.Buffer)
+	if err := m.MarshalCBOR(buf); err != nil {
+		rs.Abort(exitcode.SysErrInvalidParameters, "failed to marshal input parameters: %s", err)
+	}
+
+	ret, err := rs.vmctx.Send(to, uint64(method), types.BigInt(value), buf.Bytes())
 	if err != nil {
 		if err.IsFatal() {
 			panic(err)

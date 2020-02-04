@@ -10,6 +10,7 @@ import (
 
 	cid "github.com/ipfs/go-cid"
 	"github.com/ipfs/go-hamt-ipld"
+	cbor "github.com/ipfs/go-ipld-cbor"
 	"github.com/libp2p/go-libp2p-core/peer"
 	cbg "github.com/whyrusleeping/cbor-gen"
 	"go.uber.org/fx"
@@ -146,7 +147,7 @@ func (a *StateAPI) stateForTs(ctx context.Context, ts *types.TipSet) (*state.Sta
 	}
 
 	buf := bufbstore.NewBufferedBstore(a.Chain.Blockstore())
-	cst := hamt.CSTFromBstore(buf)
+	cst := cbor.NewCborStore(buf)
 	return state.LoadStateTree(cst, st)
 }
 
@@ -174,7 +175,7 @@ func (a *StateAPI) StateReadState(ctx context.Context, act *types.Actor, ts *typ
 		return nil, err
 	}
 
-	blk, err := state.Store.(*hamt.BasicCborIpldStore).Blocks.GetBlock(ctx, act.Head)
+	blk, err := state.Store.(*cbor.BasicIpldStore).Blocks.Get(act.Head)
 	if err != nil {
 		return nil, err
 	}
@@ -246,7 +247,7 @@ func (a *StateAPI) StateMarketParticipants(ctx context.Context, ts *types.TipSet
 	if _, err := a.StateManager.LoadActorState(ctx, actors.StorageMarketAddress, &state, ts); err != nil {
 		return nil, err
 	}
-	cst := hamt.CSTFromBstore(a.StateManager.ChainStore().Blockstore())
+	cst := cbor.NewCborStore(a.StateManager.ChainStore().Blockstore())
 	nd, err := hamt.LoadNode(ctx, cst, state.Balances)
 	if err != nil {
 		return nil, err
@@ -303,7 +304,7 @@ func (a *StateAPI) StateMarketStorageDeal(ctx context.Context, dealId uint64, ts
 }
 
 func (a *StateAPI) StateChangedActors(ctx context.Context, old cid.Cid, new cid.Cid) (map[string]types.Actor, error) {
-	cst := hamt.CSTFromBstore(a.Chain.Blockstore())
+	cst := cbor.NewCborStore(a.Chain.Blockstore())
 
 	nh, err := hamt.LoadNode(ctx, cst, new)
 	if err != nil {

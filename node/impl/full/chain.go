@@ -203,7 +203,7 @@ func resolveOnce(bs blockstore.Blockstore) func(ctx context.Context, ds ipld.Nod
 		}
 
 		if strings.HasPrefix(names[0], "@H:") {
-			cst := hamt.CSTFromBstore(bs)
+			cst := cbor.NewCborStore(bs)
 
 			h, err := hamt.LoadNode(ctx, cst, nd.Cid())
 			if err != nil {

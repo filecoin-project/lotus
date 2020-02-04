@@ -8,6 +8,7 @@ import (
 	"github.com/filecoin-project/go-amt-ipld"
 	cid "github.com/ipfs/go-cid"
 	hamt "github.com/ipfs/go-hamt-ipld"
+	cbor "github.com/ipfs/go-ipld-cbor"
 	"github.com/libp2p/go-libp2p-core/peer"
 	cbg "github.com/whyrusleeping/cbor-gen"
 	"go.opencensus.io/trace"
@@ -742,7 +743,7 @@ func MinerSetHas(vmctx types.VMContext, rcid cid.Cid, maddr address.Address) (bo
 	}
 }
 
-func MinerSetList(ctx context.Context, cst hamt.CborIpldStore, rcid cid.Cid) ([]address.Address, error) {
+func MinerSetList(ctx context.Context, cst cbor.IpldStore, rcid cid.Cid) ([]address.Address, error) {
 	nd, err := hamt.LoadNode(ctx, cst, rcid)
 	if err != nil {
 		return nil, xerrors.Errorf("failed to load miner set: %w", err)

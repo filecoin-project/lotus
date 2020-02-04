@@ -10,6 +10,7 @@ import (
 	cid "github.com/ipfs/go-cid"
 	hamt "github.com/ipfs/go-hamt-ipld"
 	blockstore "github.com/ipfs/go-ipfs-blockstore"
+	cbor "github.com/ipfs/go-ipld-cbor"
 	logging "github.com/ipfs/go-log/v2"
 	cbg "github.com/whyrusleeping/cbor-gen"
 	"go.opencensus.io/trace"
@@ -49,7 +50,7 @@ type VMContext struct {
 	state  *state.StateTree
 	msg    *types.Message
 	height uint64
-	cst    hamt.CborIpldStore
+	cst    cbor.IpldStore
 
 	gasAvailable types.BigInt
 	gasUsed      types.BigInt
@@ -122,7 +123,7 @@ func (vmc *VMContext) Storage() types.Storage {
 	return vmc
 }
 
-func (vmc *VMContext) Ipld() hamt.CborIpldStore {
+func (vmc *VMContext) Ipld() cbor.IpldStore {
 	return vmc.cst
 }
 
@@ -203,7 +204,7 @@ func (vmctx *VMContext) VerifySignature(sig *types.Signature, act address.Addres
 	return nil
 }
 
-func ResolveToKeyAddr(state types.StateTree, cst hamt.CborIpldStore, addr address.Address) (address.Address, aerrors.ActorError) {
+func ResolveToKeyAddr(state types.StateTree, cst cbor.IpldStore, addr address.Address) (address.Address, aerrors.ActorError) {
 	if addr.Protocol() == address.BLS || addr.Protocol() == address.SECP256K1 {
 		return addr, nil
 	}
@@ -241,23 +242,18 @@ func (vmctx *VMContext) Context() context.Context {
 	return vmctx.ctx
 }
 
-type hBlocks interface {
-	GetBlock(context.Context, cid.Cid) (block.Block, error)
-	AddBlock(block.Block) error
-}
-
-var _ hBlocks = (*gasChargingBlocks)(nil)
+var _ cbor.IpldBlockstore = (*gasChargingBlocks)(nil)
 
 type gasChargingBlocks struct {
 	chargeGas func(uint64) aerrors.ActorError
-	under     hBlocks
+	under     cbor.IpldBlockstore
 }
 
-func (bs *gasChargingBlocks) GetBlock(ctx context.Context, c cid.Cid) (block.Block, error) {
+func (bs *gasChargingBlocks) Get(c cid.Cid) (block.Block, error) {
 	if err := bs.chargeGas(gasGetObj); err != nil {
 		return nil, err
 	}
-	blk, err := bs.under.GetBlock(ctx, c)
+	blk, err := bs.under.Get(c)
 	if err != nil {
 		return nil, aerrors.Escalate(err, "failed to get block from blockstore")
 	}
@@ -268,11 +264,11 @@ func (bs *gasChargingBlocks) GetBlock(ctx context.Context, c cid.Cid) (block.Blo
 	return blk, nil
 }
 
-func (bs *gasChargingBlocks) AddBlock(blk block.Block) error {
+func (bs *gasChargingBlocks) Put(blk block.Block) error {
 	if err := bs.chargeGas(gasPutObj + uint64(len(blk.RawData()))*gasPutPerByte); err != nil {
 		return err
 	}
-	if err := bs.under.AddBlock(blk); err != nil {
+	if err := bs.under.Put(blk); err != nil {
 		return aerrors.Escalate(err, "failed to write data to disk")
 	}
 	return nil
@@ -292,7 +288,7 @@ func (vm *VM) makeVMContext(ctx context.Context, sroot cid.Cid, msg *types.Messa
 		gasUsed:      usedGas,
 		gasAvailable: msg.GasLimit,
 	}
-	vmc.cst = &hamt.BasicCborIpldStore{
+	vmc.cst = &cbor.BasicIpldStore{
 		Blocks: &gasChargingBlocks{vmc.ChargeGas, vm.cst.Blocks},
 		Atlas:  vm.cst.Atlas,
 	}
@@ -302,7 +298,7 @@ func (vm *VM) makeVMContext(ctx context.Context, sroot cid.Cid, msg *types.Messa
 type VM struct {
 	cstate      *state.StateTree
 	base        cid.Cid
-	cst         *hamt.BasicCborIpldStore
+	cst         *cbor.BasicIpldStore
 	buf         *bufbstore.BufferedBS
 	blockHeight uint64
 	blockMiner  address.Address
@@ -314,7 +310,7 @@ type VM struct {
 
 func NewVM(base cid.Cid, height uint64, r Rand, maddr address.Address, cbs blockstore.Blockstore, syscalls *types.VMSyscalls) (*VM, error) {
 	buf := bufbstore.NewBufferedBstore(cbs)
-	cst := hamt.CSTFromBstore(buf)
+	cst := cbor.NewCborStore(buf)
 	state, err := state.LoadStateTree(cst, base)
 	if err != nil {
 		return nil, err

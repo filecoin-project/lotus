@@ -6,7 +6,7 @@ import (
 	bls "github.com/filecoin-project/filecoin-ffi"
 	amt "github.com/filecoin-project/go-amt-ipld"
 	cid "github.com/ipfs/go-cid"
-	hamt "github.com/ipfs/go-hamt-ipld"
+	cbor "github.com/ipfs/go-ipld-cbor"
 	cbg "github.com/whyrusleeping/cbor-gen"
 	"golang.org/x/xerrors"
 
@@ -99,7 +99,7 @@ func MinerCreateBlock(ctx context.Context, sm *stmgr.StateManager, w *wallet.Wal
 	}
 	next.ParentWeight = pweight
 
-	cst := hamt.CSTFromBstore(sm.ChainStore().Blockstore())
+	cst := cbor.NewCborStore(sm.ChainStore().Blockstore())
 	tree, err := state.LoadStateTree(cst, st)
 	if err != nil {
 		return nil, xerrors.Errorf("failed to load state tree: %w", err)

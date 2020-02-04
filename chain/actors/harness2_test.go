@@ -10,9 +10,9 @@ import (
 
 	"github.com/ipfs/go-cid"
 	dstore "github.com/ipfs/go-datastore"
-	hamt "github.com/ipfs/go-hamt-ipld"
 	blockstore "github.com/ipfs/go-ipfs-blockstore"
 	bstore "github.com/ipfs/go-ipfs-blockstore"
+	cbor "github.com/ipfs/go-ipld-cbor"
 	cbg "github.com/whyrusleeping/cbor-gen"
 	"golang.org/x/xerrors"
 
@@ -236,7 +236,7 @@ func (h *Harness) Apply(t testing.TB, msg types.Message) (*vm.ApplyRet, *state.S
 	if err != nil {
 		t.Fatalf("Flushing VM: %+v", err)
 	}
-	cst := hamt.CSTFromBstore(h.bs)
+	cst := cbor.NewCborStore(h.bs)
 	state, err := state.LoadStateTree(cst, stateroot)
 	if err != nil {
 		t.Fatalf("Loading state tree: %+v", err)

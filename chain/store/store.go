@@ -25,9 +25,9 @@ import (
 	car "github.com/ipfs/go-car"
 	"github.com/ipfs/go-cid"
 	dstore "github.com/ipfs/go-datastore"
-	hamt "github.com/ipfs/go-hamt-ipld"
 	blockstore "github.com/ipfs/go-ipfs-blockstore"
 	bstore "github.com/ipfs/go-ipfs-blockstore"
+	cbor "github.com/ipfs/go-ipld-cbor"
 	format "github.com/ipfs/go-ipld-format"
 	logging "github.com/ipfs/go-log/v2"
 	dag "github.com/ipfs/go-merkledag"
@@ -644,7 +644,7 @@ func (cs *ChainStore) MessagesForTipset(ts *types.TipSet) ([]ChainMsg, error) {
 	applied := make(map[address.Address]uint64)
 	balances := make(map[address.Address]types.BigInt)
 
-	cst := hamt.CSTFromBstore(cs.bs)
+	cst := cbor.NewCborStore(cs.bs)
 	st, err := state.LoadStateTree(cst, ts.Blocks()[0].ParentStateRoot)
 	if err != nil {
 		return nil, xerrors.Errorf("failed to load state tree")
@@ -713,7 +713,7 @@ func (cs *ChainStore) readMsgMetaCids(mmc cid.Cid) ([]cid.Cid, []cid.Cid, error)
 		return mmcids.bls, mmcids.secpk, nil
 	}
 
-	cst := hamt.CSTFromBstore(cs.bs)
+	cst := cbor.NewCborStore(cs.bs)
 	var msgmeta types.MsgMeta
 	if err := cst.Get(context.TODO(), mmc, &msgmeta); err != nil {
 		return nil, nil, xerrors.Errorf("failed to load msgmeta: %w", err)
