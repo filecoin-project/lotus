@@ -22,7 +22,7 @@ require (
 	github.com/filecoin-project/go-paramfetch v0.0.1
 	github.com/filecoin-project/go-sectorbuilder v0.0.2-0.20200203173614-42d67726bb62
 	github.com/filecoin-project/go-statestore v0.1.0
-	github.com/filecoin-project/go-storage-miner v0.0.0-00010101000000-000000000000
+	github.com/filecoin-project/go-storage-miner v0.0.0-20200204193928-55416b7d04cb
 	github.com/gbrlsnchs/jwt/v3 v3.0.0-beta.1
 	github.com/go-ole/go-ole v1.2.4 // indirect
 	github.com/gorilla/mux v1.7.3
@@ -112,7 +112,5 @@ require (
 replace github.com/golangci/golangci-lint => github.com/golangci/golangci-lint v1.18.0
 
 replace github.com/filecoin-project/filecoin-ffi => ./extern/filecoin-ffi
-
-replace github.com/filecoin-project/go-storage-miner => /Users/erinswenson-healey/dev/go-storage-mining
 
 replace github.com/coreos/go-systemd => github.com/coreos/go-systemd/v22 v22.0.0
