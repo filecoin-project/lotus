@@ -29,6 +29,7 @@ var log = logging.Logger("vm")
 const (
 	gasFundTransfer = 10
 	gasInvoke       = 5
+	gasSend         = 1000
 
 	gasGetObj         = 10
 	gasGetPerByte     = 1
@@ -151,7 +152,11 @@ func (vmc *VMContext) Send(to address.Address, method uint64, value types.BigInt
 		GasLimit: vmc.gasAvailable,
 	}
 
-	ret, err, _ := vmc.vm.send(ctx, msg, vmc, 0)
+	var gasCost uint64
+	if vmc.BlockHeight() > build.ForkGoGreen {
+		gasCost = gasSend
+	}
+	ret, err, _ := vmc.vm.send(ctx, msg, vmc, gasCost)
 	return ret, err
 }
 
@@ -470,6 +475,10 @@ func (vm *VM) ApplyMessage(ctx context.Context, msg *types.Message) (*ApplyRet, 
 	}
 	fromActor.Nonce++
 
+	var gasCost uint64 = msgGasCost
+	if vm.blockHeight > build.ForkGoGreen {
+		gasCost += gasSend
+	}
 	ret, actorErr, vmctx := vm.send(ctx, msg, nil, msgGasCost)
 
 	if aerrors.IsFatal(actorErr) {
