@@ -8,7 +8,10 @@ import (
 	"net/http"
 	"os"
 
+	"github.com/filecoin-project/go-fil-markets/shared/tokenamount"
+	"github.com/filecoin-project/go-fil-markets/storagemarket"
 	"github.com/filecoin-project/lotus/api/apistruct"
+	"github.com/filecoin-project/lotus/chain/types"
 
 	"github.com/gorilla/mux"
 	files "github.com/ipfs/go-ipfs-files"
@@ -28,6 +31,8 @@ type StorageMinerAPI struct {
 	SectorBuilderConfig *sectorbuilder.Config
 	SectorBuilder       sectorbuilder.Interface
 	SectorBlocks        *sectorblocks.SectorBlocks
+
+	StorageProvider storagemarket.StorageProvider
 
 	Miner      *storage.Miner
 	BlockMiner *miner.Miner
@@ -226,6 +231,10 @@ func (sm *StorageMinerAPI) WorkerQueue(ctx context.Context, cfg sectorbuilder.Wo
 
 func (sm *StorageMinerAPI) WorkerDone(ctx context.Context, task uint64, res sectorbuilder.SealRes) error {
 	return sm.SectorBuilder.TaskDone(ctx, task, res)
+}
+
+func (sm *StorageMinerAPI) SetPrice(ctx context.Context, p types.BigInt) error {
+	return sm.StorageProvider.AddAsk(tokenamount.TokenAmount(p), 60*60*24*100) // lasts for 100 days?
 }
 
 var _ api.StorageMiner = &StorageMinerAPI{}

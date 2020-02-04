@@ -5,6 +5,7 @@ import (
 
 	"github.com/filecoin-project/go-address"
 	"github.com/filecoin-project/go-sectorbuilder"
+	"github.com/filecoin-project/lotus/chain/types"
 )
 
 // alias because cbor-gen doesn't like non-alias types
@@ -106,6 +107,8 @@ type StorageMiner interface {
 	WorkerQueue(context.Context, sectorbuilder.WorkerCfg) (<-chan sectorbuilder.WorkerTask, error)
 
 	WorkerDone(ctx context.Context, task uint64, res sectorbuilder.SealRes) error
+
+	SetPrice(context.Context, types.BigInt) error
 }
 
 type SectorLog struct {

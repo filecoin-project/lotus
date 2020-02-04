@@ -22,11 +22,12 @@ func main() {
 	lotuslog.SetupLogLevels()
 
 	local := []*cli.Command{
-		runCmd,
-		initCmd,
 		infoCmd,
+		initCmd,
 		pledgeSectorCmd,
+		runCmd,
 		sectorsCmd,
+		setPriceCmd,
 	}
 	jaeger := tracing.SetupJaegerTracing("lotus")
 	defer func() {

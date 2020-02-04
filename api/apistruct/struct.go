@@ -158,6 +158,8 @@ type StorageMinerStruct struct {
 
 		WorkerQueue func(ctx context.Context, cfg sectorbuilder.WorkerCfg) (<-chan sectorbuilder.WorkerTask, error) `perm:"admin"` // TODO: worker perm
 		WorkerDone  func(ctx context.Context, task uint64, res sectorbuilder.SealRes) error                         `perm:"admin"`
+
+		SetPrice func(context.Context, types.BigInt) error `perm:"admin"`
 	}
 }
 
@@ -569,6 +571,10 @@ func (c *StorageMinerStruct) WorkerQueue(ctx context.Context, cfg sectorbuilder.
 
 func (c *StorageMinerStruct) WorkerDone(ctx context.Context, task uint64, res sectorbuilder.SealRes) error {
 	return c.Internal.WorkerDone(ctx, task, res)
+}
+
+func (c *StorageMinerStruct) SetPrice(ctx context.Context, p types.BigInt) error {
+	return c.Internal.SetPrice(ctx, p)
 }
 
 var _ api.Common = &CommonStruct{}
