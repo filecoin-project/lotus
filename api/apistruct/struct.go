@@ -50,6 +50,7 @@ type FullNodeStruct struct {
 		ChainGetParentMessages func(context.Context, cid.Cid) ([]api.Message, error)                                `perm:"read"`
 		ChainGetTipSetByHeight func(context.Context, uint64, *types.TipSet) (*types.TipSet, error)                  `perm:"read"`
 		ChainReadObj           func(context.Context, cid.Cid) ([]byte, error)                                       `perm:"read"`
+		ChainHasObj            func(context.Context, cid.Cid) (bool, error)                                         `perm:"read"`
 		ChainSetHead           func(context.Context, *types.TipSet) error                                           `perm:"admin"`
 		ChainGetGenesis        func(context.Context) (*types.TipSet, error)                                         `perm:"read"`
 		ChainTipSetWeight      func(context.Context, *types.TipSet) (types.BigInt, error)                           `perm:"read"`
@@ -338,6 +339,10 @@ func (c *FullNodeStruct) ChainNotify(ctx context.Context) (<-chan []*store.HeadC
 
 func (c *FullNodeStruct) ChainReadObj(ctx context.Context, obj cid.Cid) ([]byte, error) {
 	return c.Internal.ChainReadObj(ctx, obj)
+}
+
+func (c *FullNodeStruct) ChainHasObj(ctx context.Context, o cid.Cid) (bool, error) {
+	return c.Internal.ChainHasObj(ctx, o)
 }
 
 func (c *FullNodeStruct) ChainSetHead(ctx context.Context, ts *types.TipSet) error {
