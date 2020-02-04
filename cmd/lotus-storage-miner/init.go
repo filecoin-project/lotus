@@ -77,6 +77,10 @@ var initCmd = &cli.Command{
 			Name:  "pre-sealed-sectors",
 			Usage: "specify set of presealed sectors for starting as a genesis miner",
 		},
+		&cli.StringFlag{
+			Name:  "pre-sealed-metadata",
+			Usage: "specify the metadata file for the presealed sectors",
+		},
 		&cli.BoolFlag{
 			Name:  "nosync",
 			Usage: "don't check full-node sync status",
@@ -220,13 +224,13 @@ var initCmd = &cli.Command{
 	},
 }
 
-func migratePreSealMeta(ctx context.Context, api lapi.FullNode, presealDir string, maddr address.Address, mds dtypes.MetadataDS) error {
-	presealDir, err := homedir.Expand(presealDir)
+func migratePreSealMeta(ctx context.Context, api lapi.FullNode, metadata string, maddr address.Address, mds dtypes.MetadataDS) error {
+	metadata, err := homedir.Expand(metadata)
 	if err != nil {
 		return xerrors.Errorf("expanding preseal dir: %w", err)
 	}
 
-	b, err := ioutil.ReadFile(filepath.Join(presealDir, "pre-seal-"+maddr.String()+".json"))
+	b, err := ioutil.ReadFile(metadata)
 	if err != nil {
 		return xerrors.Errorf("reading preseal metadata: %w", err)
 	}
@@ -396,20 +400,20 @@ func storageMinerInit(ctx context.Context, cctx *cli.Context, api lapi.FullNode,
 				}
 			}
 
-			if pssb := cctx.String("pre-sealed-sectors"); pssb != "" {
-				pssb, err := homedir.Expand(pssb)
-				if err != nil {
-					return err
-				}
+			return nil
+		}
 
-				log.Infof("Importing pre-sealed sector metadata for %s", a)
-
-				if err := migratePreSealMeta(ctx, api, pssb, a, mds); err != nil {
-					return xerrors.Errorf("migrating presealed sector metadata: %w", err)
-				}
+		if pssb := cctx.String("pre-sealed-metadata"); pssb != "" {
+			pssb, err := homedir.Expand(pssb)
+			if err != nil {
+				return err
 			}
 
-			return nil
+			log.Infof("Importing pre-sealed sector metadata for %s", a)
+
+			if err := migratePreSealMeta(ctx, api, pssb, a, mds); err != nil {
+				return xerrors.Errorf("migrating presealed sector metadata: %w", err)
+			}
 		}
 
 		if err := configureStorageMiner(ctx, api, a, peerid); err != nil {
