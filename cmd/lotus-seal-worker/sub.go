@@ -4,12 +4,10 @@ import (
 	"context"
 	"net/http"
 
-	paramfetch "github.com/filecoin-project/go-paramfetch"
 	"github.com/filecoin-project/go-sectorbuilder"
 	"golang.org/x/xerrors"
 
 	lapi "github.com/filecoin-project/lotus/api"
-	"github.com/filecoin-project/lotus/build"
 )
 
 type worker struct {
@@ -23,10 +21,6 @@ type worker struct {
 }
 
 func acceptJobs(ctx context.Context, api lapi.StorageMiner, sb *sectorbuilder.SectorBuilder, limiter *limits, endpoint string, auth http.Header, repo string, noprecommit, nocommit bool) error {
-	if err := paramfetch.GetParams(build.ParametersJson(), sb.SectorSize()); err != nil {
-		return xerrors.Errorf("get params: %w", err)
-	}
-
 	w := &worker{
 		api:           api,
 		minerEndpoint: endpoint,

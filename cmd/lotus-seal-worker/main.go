@@ -4,6 +4,7 @@ import (
 	"os"
 	"sync"
 
+	paramfetch "github.com/filecoin-project/go-paramfetch"
 	"github.com/filecoin-project/go-sectorbuilder"
 	"github.com/mitchellh/go-homedir"
 
@@ -11,12 +12,13 @@ import (
 	"golang.org/x/xerrors"
 	"gopkg.in/urfave/cli.v2"
 
+	manet "github.com/multiformats/go-multiaddr-net"
+
 	"github.com/filecoin-project/lotus/api"
 	"github.com/filecoin-project/lotus/build"
 	lcli "github.com/filecoin-project/lotus/cli"
 	"github.com/filecoin-project/lotus/lib/lotuslog"
 	"github.com/filecoin-project/lotus/node/repo"
-	manet "github.com/multiformats/go-multiaddr-net"
 )
 
 var log = logging.Logger("main")
@@ -130,6 +132,10 @@ var runCmd = &cli.Command{
 		ssize, err := nodeApi.ActorSectorSize(ctx, act)
 		if err != nil {
 			return err
+		}
+
+		if err := paramfetch.GetParams(build.ParametersJson(), ssize); err != nil {
+			return xerrors.Errorf("get params: %w", err)
 		}
 
 		sb, err := sectorbuilder.NewStandalone(&sectorbuilder.Config{
