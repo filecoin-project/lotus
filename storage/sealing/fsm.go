@@ -48,8 +48,12 @@ var fsmPlanners = []func(events []statemachine.Event, state *SectorInfo) error{
 	),
 	api.Committing: planCommitting,
 	api.CommitWait: planOne(
-		on(SectorProving{}, api.Proving),
+		on(SectorProving{}, api.FinalizeSector),
 		on(SectorCommitFailed{}, api.CommitFailed),
+	),
+
+	api.FinalizeSector: planOne(
+		on(SectorFinalized{}, api.Proving),
 	),
 
 	api.Proving: planOne(
@@ -150,6 +154,8 @@ func (m *Sealing) plan(events []statemachine.Event, state *SectorInfo) (func(sta
 		return m.handleCommitting, nil
 	case api.CommitWait:
 		return m.handleCommitWait, nil
+	case api.FinalizeSector:
+		return m.handleFinalizeSector, nil
 	case api.Proving:
 		// TODO: track sector health / expiration
 		log.Infof("Proving sector %d", state.SectorID)

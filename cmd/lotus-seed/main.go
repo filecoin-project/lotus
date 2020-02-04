@@ -196,7 +196,7 @@ var aggregateSectorDirsCmd = &cli.Command{
 		agsb, err := sectorbuilder.New(&sectorbuilder.Config{
 			Miner:         maddr,
 			SectorSize:    ssize,
-			Dir:           destdir,
+			Paths:         sectorbuilder.SimplePath(destdir),
 			WorkerThreads: 2,
 		}, namespace.Wrap(agmds, datastore.NewKey("/sectorbuilder")))
 		if err != nil {
@@ -257,7 +257,7 @@ var aggregateSectorDirsCmd = &cli.Command{
 			sb, err := sectorbuilder.New(&sectorbuilder.Config{
 				Miner:         maddr,
 				SectorSize:    genm.SectorSize,
-				Dir:           dir,
+				Paths:         sectorbuilder.SimplePath(dir),
 				WorkerThreads: 2,
 			}, namespace.Wrap(mds, datastore.NewKey("/sectorbuilder")))
 			if err != nil {

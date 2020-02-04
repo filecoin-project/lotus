@@ -177,7 +177,7 @@ var initCmd = &cli.Command{
 			oldsb, err := sectorbuilder.New(&sectorbuilder.Config{
 				SectorSize:    ssize,
 				WorkerThreads: 2,
-				Dir:           pssb,
+				Paths:         sectorbuilder.SimplePath(pssb),
 			}, namespace.Wrap(oldmds, datastore.NewKey("/sectorbuilder")))
 			if err != nil {
 				return xerrors.Errorf("failed to open up preseal sectorbuilder: %w", err)
@@ -186,7 +186,7 @@ var initCmd = &cli.Command{
 			nsb, err := sectorbuilder.New(&sectorbuilder.Config{
 				SectorSize:    ssize,
 				WorkerThreads: 2,
-				Dir:           lr.Path(),
+				Paths:         sectorbuilder.SimplePath(lr.Path()),
 			}, namespace.Wrap(mds, datastore.NewKey("/sectorbuilder")))
 			if err != nil {
 				return xerrors.Errorf("failed to open up sectorbuilder: %w", err)
@@ -369,7 +369,7 @@ func storageMinerInit(ctx context.Context, cctx *cli.Context, api lapi.FullNode,
 				return err
 			}
 
-			sbcfg, err := modules.SectorBuilderConfig(lr.Path(), 2, false, false)(mds, api)
+			sbcfg, err := modules.SectorBuilderConfig(sectorbuilder.SimplePath(lr.Path()), 2, false, false)(mds, api)
 			if err != nil {
 				return xerrors.Errorf("getting genesis miner sector builder config: %w", err)
 			}

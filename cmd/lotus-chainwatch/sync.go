@@ -41,7 +41,6 @@ func runSyncer(ctx context.Context, api api.FullNode, st *storage) {
 					go subMpool(ctx, api, st)
 					go subBlocks(ctx, api, st)
 				}
-
 			}
 		}
 	}()
