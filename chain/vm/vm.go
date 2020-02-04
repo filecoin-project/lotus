@@ -327,7 +327,7 @@ func NewVM(base cid.Cid, height uint64, r Rand, maddr address.Address, cbs block
 		buf:         buf,
 		blockHeight: height,
 		blockMiner:  maddr,
-		inv:         newInvoker(),
+		inv:         NewInvoker(),
 		rand:        r, // TODO: Probably should be a syscall
 		Syscalls:    syscalls,
 	}, nil
@@ -669,6 +669,10 @@ func Transfer(from, to *types.Actor, amt types.BigInt) error {
 	}
 	depositFunds(to, amt)
 	return nil
+}
+
+func (vm *VM) SetInvoker(i *invoker) {
+	vm.inv = i
 }
 
 func deductFunds(act *types.Actor, amt types.BigInt) error {

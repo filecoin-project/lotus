@@ -50,6 +50,7 @@ type FullNodeStruct struct {
 		ChainGetParentMessages func(context.Context, cid.Cid) ([]api.Message, error)                                `perm:"read"`
 		ChainGetTipSetByHeight func(context.Context, uint64, *types.TipSet) (*types.TipSet, error)                  `perm:"read"`
 		ChainReadObj           func(context.Context, cid.Cid) ([]byte, error)                                       `perm:"read"`
+		ChainHasObj            func(context.Context, cid.Cid) (bool, error)                                         `perm:"read"`
 		ChainSetHead           func(context.Context, *types.TipSet) error                                           `perm:"admin"`
 		ChainGetGenesis        func(context.Context) (*types.TipSet, error)                                         `perm:"read"`
 		ChainTipSetWeight      func(context.Context, *types.TipSet) (types.BigInt, error)                           `perm:"read"`
@@ -118,6 +119,8 @@ type FullNodeStruct struct {
 		StateMinerSectorCount         func(context.Context, address.Address, *types.TipSet) (api.MinerSectors, error)                   `perm:"read"`
 		StateListMessages             func(ctx context.Context, match *types.Message, ts *types.TipSet, toht uint64) ([]cid.Cid, error) `perm:"read"`
 		StateCompute                  func(context.Context, uint64, []*types.Message, *types.TipSet) (cid.Cid, error)                   `perm:"read"`
+
+		MsigGetAvailableBalance func(context.Context, address.Address, *types.TipSet) (types.BigInt, error) `perm:"read"`
 
 		MarketEnsureAvailable func(context.Context, address.Address, types.BigInt) error `perm:"sign"`
 
@@ -339,6 +342,10 @@ func (c *FullNodeStruct) ChainReadObj(ctx context.Context, obj cid.Cid) ([]byte,
 	return c.Internal.ChainReadObj(ctx, obj)
 }
 
+func (c *FullNodeStruct) ChainHasObj(ctx context.Context, o cid.Cid) (bool, error) {
+	return c.Internal.ChainHasObj(ctx, o)
+}
+
 func (c *FullNodeStruct) ChainSetHead(ctx context.Context, ts *types.TipSet) error {
 	return c.Internal.ChainSetHead(ctx, ts)
 }
@@ -480,6 +487,10 @@ func (c *FullNodeStruct) StateListMessages(ctx context.Context, match *types.Mes
 
 func (c *FullNodeStruct) StateCompute(ctx context.Context, height uint64, msgs []*types.Message, ts *types.TipSet) (cid.Cid, error) {
 	return c.Internal.StateCompute(ctx, height, msgs, ts)
+}
+
+func (c *FullNodeStruct) MsigGetAvailableBalance(ctx context.Context, a address.Address, ts *types.TipSet) (types.BigInt, error) {
+	return c.Internal.MsigGetAvailableBalance(ctx, a, ts)
 }
 
 func (c *FullNodeStruct) MarketEnsureAvailable(ctx context.Context, addr address.Address, amt types.BigInt) error {

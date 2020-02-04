@@ -19,7 +19,7 @@ const Inactive = 0
 
 const StartConfidence = 4 // TODO: config
 
-type fpostScheduler struct {
+type FPoStScheduler struct {
 	api storageMinerApi
 	sb  sectorbuilder.Interface
 
@@ -36,7 +36,11 @@ type fpostScheduler struct {
 	failLk sync.Mutex
 }
 
-func (s *fpostScheduler) run(ctx context.Context) {
+func NewFPoStScheduler(api storageMinerApi, sb sectorbuilder.Interface, actor address.Address, worker address.Address) *FPoStScheduler {
+	return &FPoStScheduler{api: api, sb: sb, actor: actor, worker: worker}
+}
+
+func (s *FPoStScheduler) Run(ctx context.Context) {
 	notifs, err := s.api.ChainNotify(ctx)
 	if err != nil {
 		return
@@ -61,11 +65,11 @@ func (s *fpostScheduler) run(ctx context.Context) {
 		select {
 		case changes, ok := <-notifs:
 			if !ok {
-				log.Warn("fpostScheduler notifs channel closed")
+				log.Warn("FPoStScheduler notifs channel closed")
 				return
 			}
 
-			ctx, span := trace.StartSpan(ctx, "fpostScheduler.headChange")
+			ctx, span := trace.StartSpan(ctx, "FPoStScheduler.headChange")
 
 			var lowest, highest *types.TipSet = s.cur, nil
 
@@ -95,7 +99,7 @@ func (s *fpostScheduler) run(ctx context.Context) {
 	}
 }
 
-func (s *fpostScheduler) revert(ctx context.Context, newLowest *types.TipSet) error {
+func (s *FPoStScheduler) revert(ctx context.Context, newLowest *types.TipSet) error {
 	if s.cur == newLowest {
 		return nil
 	}
@@ -113,9 +117,9 @@ func (s *fpostScheduler) revert(ctx context.Context, newLowest *types.TipSet) er
 	return nil
 }
 
-func (s *fpostScheduler) update(ctx context.Context, new *types.TipSet) error {
+func (s *FPoStScheduler) update(ctx context.Context, new *types.TipSet) error {
 	if new == nil {
-		return xerrors.Errorf("no new tipset in fpostScheduler.update")
+		return xerrors.Errorf("no new tipset in FPoStScheduler.update")
 	}
 	newEPS, start, err := s.shouldFallbackPost(ctx, new)
 	if err != nil {
@@ -142,7 +146,7 @@ func (s *fpostScheduler) update(ctx context.Context, new *types.TipSet) error {
 	return nil
 }
 
-func (s *fpostScheduler) abortActivePoSt() {
+func (s *FPoStScheduler) abortActivePoSt() {
 	if s.activeEPS == Inactive {
 		return // noop
 	}
@@ -157,7 +161,7 @@ func (s *fpostScheduler) abortActivePoSt() {
 	s.abort = nil
 }
 
-func (s *fpostScheduler) shouldFallbackPost(ctx context.Context, ts *types.TipSet) (uint64, bool, error) {
+func (s *FPoStScheduler) shouldFallbackPost(ctx context.Context, ts *types.TipSet) (uint64, bool, error) {
 	eps, err := s.api.StateMinerElectionPeriodStart(ctx, s.actor, ts)
 	if err != nil {
 		return 0, false, xerrors.Errorf("getting ElectionPeriodStart: %w", err)
