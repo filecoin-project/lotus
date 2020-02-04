@@ -1,8 +1,6 @@
 package actors
 
 import (
-	"github.com/filecoin-project/lotus/chain/types"
-
 	samsig "github.com/filecoin-project/specs-actors/actors/builtin/multisig"
 )
 
@@ -25,6 +23,15 @@ type musigMethods struct {
 
 var MultiSigMethods = musigMethods{1, 2, 3, 4, 5, 6, 7, 8, 9}
 
+type MultiSigConstructorParams = samsig.ConstructorParams
+type MultiSigProposeParams = samsig.ProposeParams
+type MultiSigTxID = samsig.TxnIDParams
+type MultiSigAddSignerParam = samsig.AddSigner
+type MultiSigRemoveSignerParam = samsig.RemoveSigner
+type MultiSigSwapSignerParams = samsig.SwapSignerParams
+type MultiSigChangeReqParams = samsig.ChangeNumApprovalsThresholdParams
+
+/*
 func (msa MultiSigActor) Exports() []interface{} {
 	return []interface{}{
 		1: msa.MultiSigConstructor,
@@ -39,7 +46,7 @@ func (msa MultiSigActor) Exports() []interface{} {
 	}
 }
 
-type MultiSigConstructorParams = samsig.ConstructorParams
+
 
 func (MultiSigActor) MultiSigConstructor(act *types.Actor, vmctx types.VMContext,
 	params *MultiSigConstructorParams) ([]byte, ActorError) {
@@ -50,7 +57,6 @@ func (MultiSigActor) MultiSigConstructor(act *types.Actor, vmctx types.VMContext
 	})
 }
 
-type MultiSigProposeParams = samsig.ProposeParams
 
 func (msa MultiSigActor) Propose(act *types.Actor, vmctx types.VMContext,
 	params *MultiSigProposeParams) ([]byte, ActorError) {
@@ -61,7 +67,6 @@ func (msa MultiSigActor) Propose(act *types.Actor, vmctx types.VMContext,
 	})
 }
 
-type MultiSigTxID = samsig.TxnIDParams
 
 func (msa MultiSigActor) Approve(act *types.Actor, vmctx types.VMContext,
 	params *MultiSigTxID) ([]byte, ActorError) {
@@ -81,7 +86,6 @@ func (msa MultiSigActor) Cancel(act *types.Actor, vmctx types.VMContext,
 	})
 }
 
-type MultiSigAddSignerParam = samsig.AddSigner
 
 func (msa MultiSigActor) AddSigner(act *types.Actor, vmctx types.VMContext,
 	params *MultiSigAddSignerParam) ([]byte, ActorError) {
@@ -92,7 +96,6 @@ func (msa MultiSigActor) AddSigner(act *types.Actor, vmctx types.VMContext,
 	})
 }
 
-type MultiSigRemoveSignerParam = samsig.RemoveSigner
 
 func (msa MultiSigActor) RemoveSigner(act *types.Actor, vmctx types.VMContext,
 	params *MultiSigRemoveSignerParam) ([]byte, ActorError) {
@@ -103,7 +106,6 @@ func (msa MultiSigActor) RemoveSigner(act *types.Actor, vmctx types.VMContext,
 	})
 }
 
-type MultiSigSwapSignerParams = samsig.SwapSignerParams
 
 func (msa MultiSigActor) SwapSigner(act *types.Actor, vmctx types.VMContext,
 	params *MultiSigSwapSignerParams) ([]byte, ActorError) {
@@ -114,7 +116,6 @@ func (msa MultiSigActor) SwapSigner(act *types.Actor, vmctx types.VMContext,
 	})
 }
 
-type MultiSigChangeReqParams = samsig.ChangeNumApprovalsThresholdParams
 
 func (msa MultiSigActor) ChangeRequirement(act *types.Actor, vmctx types.VMContext,
 	params *MultiSigChangeReqParams) ([]byte, ActorError) {
@@ -124,3 +125,4 @@ func (msa MultiSigActor) ChangeRequirement(act *types.Actor, vmctx types.VMConte
 		return (&samsig.MultiSigActor{}).ChangeNumApprovalsThreshold(shim, params)
 	})
 }
+*/

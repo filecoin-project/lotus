@@ -5,6 +5,7 @@ import (
 	"encoding/hex"
 	"fmt"
 	"reflect"
+	"strings"
 
 	"github.com/ipfs/go-cid"
 	cbg "github.com/whyrusleeping/cbor-gen"
@@ -13,6 +14,8 @@ import (
 	"github.com/filecoin-project/lotus/chain/actors"
 	"github.com/filecoin-project/lotus/chain/actors/aerrors"
 	"github.com/filecoin-project/lotus/chain/types"
+	"github.com/filecoin-project/specs-actors/actors/builtin/multisig"
+	vmr "github.com/filecoin-project/specs-actors/actors/runtime"
 )
 
 type invoker struct {
@@ -36,7 +39,7 @@ func NewInvoker() *invoker {
 	inv.Register(actors.StorageMarketCodeCid, actors.StorageMarketActor{}, actors.StorageMarketState{})
 	inv.Register(actors.StorageMinerCodeCid, actors.StorageMinerActor{}, actors.StorageMinerActorState{})
 	inv.Register(actors.StorageMiner2CodeCid, actors.StorageMinerActor2{}, actors.StorageMinerActorState{})
-	inv.Register(actors.MultisigCodeCid, actors.MultiSigActor{}, actors.MultiSigActorState{})
+	inv.Register(actors.MultisigCodeCid, multisig.MultiSigActor{}, multisig.MultiSigActorState{})
 	inv.Register(actors.PaymentChannelCodeCid, actors.PaymentChannelActor{}, actors.PaymentChannelActorState{})
 
 	return inv
@@ -76,7 +79,96 @@ type Invokee interface {
 var tVMContext = reflect.TypeOf((*types.VMContext)(nil)).Elem()
 var tAError = reflect.TypeOf((*aerrors.ActorError)(nil)).Elem()
 
-func (*invoker) transform(instance Invokee) (nativeCode, error) {
+func (i *invoker) transform(instance Invokee) (nativeCode, error) {
+	itype := reflect.TypeOf(instance)
+	if strings.Contains(itype.PkgPath(), "github.com/filecoin-project/specs-actors/") {
+		return i.transformSpec(instance)
+	} else {
+		return i.transformLotus(instance)
+	}
+
+}
+
+func (*invoker) transformSpec(instance Invokee) (nativeCode, error) {
+	itype := reflect.TypeOf(instance)
+	exports := instance.Exports()
+	for i, m := range exports {
+		i := i
+		newErr := func(format string, args ...interface{}) error {
+			str := fmt.Sprintf(format, args...)
+			return fmt.Errorf("transform(%s) export(%d): %s", itype.Name(), i, str)
+		}
+
+		if m == nil {
+			continue
+		}
+
+		meth := reflect.ValueOf(m)
+		t := meth.Type()
+		if t.Kind() != reflect.Func {
+			return nil, newErr("is not a function")
+		}
+		if t.NumIn() != 2 {
+			return nil, newErr("wrong number of inputs should be: " +
+				"vmr.Runtime, <parameter>")
+		}
+		if t.In(0) != reflect.TypeOf((*vmr.Runtime)(nil)).Elem() {
+			return nil, newErr("first arguemnt should be vmr.Runtime")
+		}
+		if t.In(1).Kind() != reflect.Ptr {
+			return nil, newErr("second argument should be types.VMContext")
+		}
+
+		if t.NumOut() != 1 {
+			return nil, newErr("wrong number of outputs should be: " +
+				"cbg.CBORMarshaler")
+		}
+		o0 := t.Out(0)
+		if !o0.Implements(reflect.TypeOf((*cbg.CBORMarshaler)(nil)).Elem()) {
+			return nil, newErr("output needs to implement cgb.CBORMarshaler")
+
+		}
+	}
+	code := make(nativeCode, len(exports))
+	for id, m := range exports {
+		meth := reflect.ValueOf(m)
+		code[id] = reflect.MakeFunc(reflect.TypeOf((invokeFunc)(nil)),
+			func(in []reflect.Value) []reflect.Value {
+				paramT := meth.Type().In(1).Elem()
+				param := reflect.New(paramT)
+
+				inBytes := in[2].Interface().([]byte)
+				if len(inBytes) > 0 {
+					if err := DecodeParams(inBytes, param.Interface()); err != nil {
+						aerr := aerrors.Absorb(err, 1, "failed to decode parameters")
+						return []reflect.Value{
+							reflect.ValueOf([]byte{}),
+							// Below is a hack, fixed in Go 1.13
+							// https://git.io/fjXU6
+							reflect.ValueOf(&aerr).Elem(),
+						}
+					}
+				}
+				shim := &runtimeShim{vmctx: in[1].Interface().(*VMContext)}
+				rval, aerror := shim.shimCall(func() interface{} {
+					ret := meth.Call([]reflect.Value{
+						reflect.ValueOf(shim),
+						param,
+					})
+					return ret[0].Interface()
+				})
+
+				return []reflect.Value{
+					reflect.ValueOf(&rval).Elem(),
+					reflect.ValueOf(&aerror).Elem(),
+				}
+			}).Interface().(invokeFunc)
+
+	}
+	return code, nil
+}
+
+func (*invoker) transformLotus(instance Invokee) (nativeCode, error) {
 	itype := reflect.TypeOf(instance)
 	exports := instance.Exports()
 	for i, m := range exports {
