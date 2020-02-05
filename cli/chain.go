@@ -455,7 +455,7 @@ var chainBisectCmd = &cli.Command{
 
 		for {
 			mid := (start + end) / 2
-			if end - start == 1 {
+			if end-start == 1 {
 				mid = end
 				start = end
 			}
