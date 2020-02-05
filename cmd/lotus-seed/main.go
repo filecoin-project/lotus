@@ -8,6 +8,9 @@ import (
 	"encoding/json"
 
 	sectorbuilder "github.com/filecoin-project/go-sectorbuilder"
+	_ "github.com/filecoin-project/lotus/lib/sigs/bls"
+	_ "github.com/filecoin-project/lotus/lib/sigs/secp"
+
 	"github.com/ipfs/go-datastore"
 	"github.com/ipfs/go-datastore/namespace"
 	badger "github.com/ipfs/go-ds-badger2"

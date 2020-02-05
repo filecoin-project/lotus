@@ -78,6 +78,11 @@ func (w *worker) fetch(typ string, sectorID uint64) error {
 }
 
 func (w *worker) push(typ string, sectorID uint64) error {
+	w.limiter.transferLimit <- struct{}{}
+	defer func() {
+		<-w.limiter.transferLimit
+	}()
+
 	filename, err := w.sb.SectorPath(fs.DataType(typ), sectorID)
 	if err != nil {
 		return err
@@ -147,6 +152,11 @@ func (w *worker) remove(typ string, sectorID uint64) error {
 }
 
 func (w *worker) fetchSector(sectorID uint64, typ sectorbuilder.WorkerTaskType) error {
+	w.limiter.transferLimit <- struct{}{}
+	defer func() {
+		<-w.limiter.transferLimit
+	}()
+
 	var err error
 	switch typ {
 	case sectorbuilder.WorkerPreCommit:

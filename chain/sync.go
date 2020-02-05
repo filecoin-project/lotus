@@ -37,6 +37,7 @@ import (
 	"github.com/filecoin-project/lotus/chain/stmgr"
 	"github.com/filecoin-project/lotus/chain/store"
 	"github.com/filecoin-project/lotus/chain/types"
+	"github.com/filecoin-project/lotus/lib/sigs"
 )
 
 var log = logging.Logger("chain")
@@ -604,7 +605,7 @@ func (syncer *Syncer) ValidateBlock(ctx context.Context, b *types.FullBlock) err
 	}
 
 	blockSigCheck := async.Err(func() error {
-		if err := h.CheckBlockSignature(ctx, waddr); err != nil {
+		if err := sigs.CheckBlockSignature(h, ctx, waddr); err != nil {
 			return xerrors.Errorf("check block signature failed: %w", err)
 		}
 		return nil
@@ -787,7 +788,7 @@ func (syncer *Syncer) checkBlockMessages(ctx context.Context, b *types.FullBlock
 			return xerrors.Errorf("failed to resolve key addr: %w", err)
 		}
 
-		if err := m.Signature.Verify(kaddr, m.Message.Cid().Bytes()); err != nil {
+		if err := sigs.Verify(&m.Signature, kaddr, m.Message.Cid().Bytes()); err != nil {
 			return xerrors.Errorf("secpk message %s has invalid signature: %w", m.Cid(), err)
 		}
 
