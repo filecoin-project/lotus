@@ -7,7 +7,6 @@ import (
 	"math"
 	"math/bits"
 	"math/rand"
-	"runtime"
 
 	sectorbuilder "github.com/filecoin-project/go-sectorbuilder"
 	"golang.org/x/xerrors"
@@ -41,7 +40,7 @@ func (m *Sealing) pledgeSector(ctx context.Context, sectorID uint64, existingPie
 
 	deals := make([]actors.StorageDealProposal, len(sizes))
 	for i, size := range sizes {
-		commP, err := m.fastPledgeCommitment(size, uint64(runtime.NumCPU()))
+		commP, err := m.fastPledgeCommitment(size, uint64(1))
 		if err != nil {
 			return nil, err
 		}
@@ -101,7 +100,7 @@ func (m *Sealing) pledgeSector(ctx context.Context, sectorID uint64, existingPie
 
 	out := make([]Piece, len(sizes))
 	for i, size := range sizes {
-		ppi, err := m.sb.AddPiece(ctx, size, sectorID, m.pledgeReader(size, uint64(runtime.NumCPU())), existingPieceSizes)
+		ppi, err := m.sb.AddPiece(ctx, size, sectorID, m.pledgeReader(size, uint64(1)), existingPieceSizes)
 		if err != nil {
 			return nil, xerrors.Errorf("add piece: %w", err)
 		}
