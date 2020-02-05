@@ -8,7 +8,7 @@ import (
 	"go.opencensus.io/trace"
 	"golang.org/x/xerrors"
 
-	"github.com/filecoin-project/go-amt-ipld"
+	"github.com/filecoin-project/go-amt-ipld/v2"
 	"github.com/ipfs/go-cid"
 	"github.com/ipfs/go-hamt-ipld"
 	cbor "github.com/ipfs/go-ipld-cbor"
@@ -313,7 +313,7 @@ func (sma StorageMarketActor) PublishStorageDeals(act *types.Actor, vmctx types.
 		return nil, err
 	}
 
-	deals, err := amt.LoadAMT(types.WrapStorage(vmctx.Storage()), self.Deals)
+	deals, err := amt.LoadAMT(vmctx.Context(), vmctx.Ipld(), self.Deals)
 	if err != nil {
 		return nil, aerrors.HandleExternalError(err, "loading deals amt")
 	}
@@ -344,7 +344,7 @@ func (sma StorageMarketActor) PublishStorageDeals(act *types.Actor, vmctx types.
 			return nil, err
 		}
 
-		err := deals.Set(self.NextDealID, &OnChainDeal{
+		err := deals.Set(vmctx.Context(), self.NextDealID, &OnChainDeal{
 			PieceRef:  deal.PieceRef,
 			PieceSize: deal.PieceSize,
 
@@ -366,7 +366,7 @@ func (sma StorageMarketActor) PublishStorageDeals(act *types.Actor, vmctx types.
 		self.NextDealID++
 	}
 
-	dealsCid, err := deals.Flush()
+	dealsCid, err := deals.Flush(vmctx.Context())
 	if err != nil {
 		return nil, aerrors.HandleExternalError(err, "saving deals AMT")
 	}
@@ -450,20 +450,21 @@ type ActivateStorageDealsParams struct {
 }
 
 func (sma StorageMarketActor) ActivateStorageDeals(act *types.Actor, vmctx types.VMContext, params *ActivateStorageDealsParams) ([]byte, ActorError) {
+	ctx := vmctx.Context()
 	var self StorageMarketState
 	old := vmctx.Storage().GetHead()
 	if err := vmctx.Storage().Get(old, &self); err != nil {
 		return nil, err
 	}
 
-	deals, err := amt.LoadAMT(types.WrapStorage(vmctx.Storage()), self.Deals)
+	deals, err := amt.LoadAMT(ctx, vmctx.Ipld(), self.Deals)
 	if err != nil {
 		return nil, aerrors.HandleExternalError(err, "loading deals amt")
 	}
 
 	for _, deal := range params.Deals {
 		var dealInfo OnChainDeal
-		if err := deals.Get(deal, &dealInfo); err != nil {
+		if err := deals.Get(ctx, deal, &dealInfo); err != nil {
 			if _, is := err.(*amt.ErrNotFound); is {
 				return nil, aerrors.New(3, "deal not found")
 			}
@@ -485,12 +486,12 @@ func (sma StorageMarketActor) ActivateStorageDeals(act *types.Actor, vmctx types
 
 		dealInfo.ActivationEpoch = vmctx.BlockHeight()
 
-		if err := deals.Set(deal, &dealInfo); err != nil {
+		if err := deals.Set(ctx, deal, &dealInfo); err != nil {
 			return nil, aerrors.HandleExternalError(err, "setting deal info in AMT failed")
 		}
 	}
 
-	dealsCid, err := deals.Flush()
+	dealsCid, err := deals.Flush(ctx)
 	if err != nil {
 		return nil, aerrors.HandleExternalError(err, "saving deals AMT")
 	}
@@ -515,13 +516,14 @@ type ProcessStorageDealsPaymentParams struct {
 }
 
 func (sma StorageMarketActor) ProcessStorageDealsPayment(act *types.Actor, vmctx types.VMContext, params *ProcessStorageDealsPaymentParams) ([]byte, ActorError) {
+	ctx := vmctx.Context()
 	var self StorageMarketState
 	old := vmctx.Storage().GetHead()
 	if err := vmctx.Storage().Get(old, &self); err != nil {
 		return nil, err
 	}
 
-	deals, err := amt.LoadAMT(types.WrapStorage(vmctx.Storage()), self.Deals)
+	deals, err := amt.LoadAMT(ctx, vmctx.Ipld(), self.Deals)
 	if err != nil {
 		return nil, aerrors.HandleExternalError(err, "loading deals amt")
 	}
@@ -538,7 +540,7 @@ func (sma StorageMarketActor) ProcessStorageDealsPayment(act *types.Actor, vmctx
 
 	for _, deal := range params.DealIDs {
 		var dealInfo OnChainDeal
-		if err := deals.Get(deal, &dealInfo); err != nil {
+		if err := deals.Get(ctx, deal, &dealInfo); err != nil {
 			if _, is := err.(*amt.ErrNotFound); is {
 				return nil, aerrors.New(2, "deal not found")
 			}
@@ -612,13 +614,14 @@ type ComputeDataCommitmentParams struct {
 }
 
 func (sma StorageMarketActor) ComputeDataCommitment(act *types.Actor, vmctx types.VMContext, params *ComputeDataCommitmentParams) ([]byte, ActorError) {
+	ctx := vmctx.Context()
 	var self StorageMarketState
 	old := vmctx.Storage().GetHead()
 	if err := vmctx.Storage().Get(old, &self); err != nil {
 		return nil, err
 	}
 
-	deals, err := amt.LoadAMT(types.WrapStorage(vmctx.Storage()), self.Deals)
+	deals, err := amt.LoadAMT(ctx, vmctx.Ipld(), self.Deals)
 	if err != nil {
 		return nil, aerrors.HandleExternalError(err, "loading deals amt")
 	}
@@ -630,7 +633,7 @@ func (sma StorageMarketActor) ComputeDataCommitment(act *types.Actor, vmctx type
 	var pieces []sectorbuilder.PublicPieceInfo
 	for _, deal := range params.DealIDs {
 		var dealInfo OnChainDeal
-		if err := deals.Get(deal, &dealInfo); err != nil {
+		if err := deals.Get(ctx, deal, &dealInfo); err != nil {
 			if _, is := err.(*amt.ErrNotFound); is {
 				return nil, aerrors.New(4, "deal not found")
 			}

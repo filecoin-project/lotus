@@ -6,7 +6,7 @@ import (
 	"sync"
 
 	"github.com/filecoin-project/go-address"
-	amt "github.com/filecoin-project/go-amt-ipld"
+	amt "github.com/filecoin-project/go-amt-ipld/v2"
 	"github.com/filecoin-project/lotus/chain/actors"
 	"github.com/filecoin-project/lotus/chain/state"
 	"github.com/filecoin-project/lotus/chain/store"
@@ -281,8 +281,8 @@ func (sm *StateManager) computeTipSetState(ctx context.Context, blks []*types.Bl
 		return cid.Undef, cid.Undef, xerrors.Errorf("CheckProofSubmissions exit was non-zero: %d", ret.ExitCode)
 	}
 
-	bs := amt.WrapBlockstore(sm.cs.Blockstore())
-	rectroot, err := amt.FromArray(bs, receipts)
+	bs := cbor.NewCborStore(sm.cs.Blockstore())
+	rectroot, err := amt.FromArray(ctx, bs, receipts)
 	if err != nil {
 		return cid.Undef, cid.Undef, xerrors.Errorf("failed to build receipts amt: %w", err)
 	}

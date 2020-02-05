@@ -6,6 +6,7 @@ import (
 	"fmt"
 
 	ffi "github.com/filecoin-project/filecoin-ffi"
+	"github.com/filecoin-project/go-amt-ipld/v2"
 	amt2 "github.com/filecoin-project/go-amt-ipld/v2"
 
 	"github.com/filecoin-project/go-sectorbuilder"
@@ -19,9 +20,9 @@ import (
 	"golang.org/x/xerrors"
 )
 
-type StorageMinerActor2 struct{}
+type StorageMinerActor struct{}
 
-func (sma StorageMinerActor2) Exports() []interface{} {
+func (sma StorageMinerActor) Exports() []interface{} {
 	return []interface{}{
 		1: sma.StorageMinerConstructor,
 		2: sma.PreCommitSector,
@@ -33,10 +34,7 @@ func (sma StorageMinerActor2) Exports() []interface{} {
 		//8:  sma.DePledge,
 		9:  sma.GetOwner,
 		10: sma.GetWorkerAddr,
-		11: withUpdates(
-			update{0, sma.GetPower},
-			update{build.ForkMissingSnowballs, sma.GetPower2},
-		), // FORK
+		11: sma.GetPower,
 		12: sma.GetPeerID,
 		13: sma.GetSectorSize,
 		14: sma.UpdatePeerID,
@@ -49,7 +47,7 @@ func (sma StorageMinerActor2) Exports() []interface{} {
 	}
 }
 
-func (sma StorageMinerActor2) StorageMinerConstructor(act *types.Actor, vmctx types.VMContext, params *StorageMinerConstructorParams) ([]byte, ActorError) {
+func (sma StorageMinerActor) StorageMinerConstructor(act *types.Actor, vmctx types.VMContext, params *StorageMinerConstructorParams) ([]byte, ActorError) {
 	minerInfo := &MinerInfo{
 		Owner:      params.Owner,
 		Worker:     params.Worker,
@@ -86,7 +84,7 @@ func (sma StorageMinerActor2) StorageMinerConstructor(act *types.Actor, vmctx ty
 	return nil, nil
 }
 
-func (sma StorageMinerActor2) PreCommitSector(act *types.Actor, vmctx types.VMContext, params *SectorPreCommitInfo) ([]byte, ActorError) {
+func (sma StorageMinerActor) PreCommitSector(act *types.Actor, vmctx types.VMContext, params *SectorPreCommitInfo) ([]byte, ActorError) {
 
 	ctx := vmctx.Context()
 	oldstate, self, err := loadState(vmctx)
@@ -112,7 +110,7 @@ func (sma StorageMinerActor2) PreCommitSector(act *types.Actor, vmctx types.VMCo
 	}
 
 	// make sure the miner isnt trying to submit a pre-existing sector
-	unique, err := SectorIsUnique(ctx, vmctx.Storage(), self.Sectors, params.SectorNumber)
+	unique, err := SectorIsUnique(ctx, vmctx.Ipld(), self.Sectors, params.SectorNumber)
 	if err != nil {
 		return nil, err
 	}
@@ -149,7 +147,7 @@ func (sma StorageMinerActor2) PreCommitSector(act *types.Actor, vmctx types.VMCo
 	return nil, nil
 }
 
-func (sma StorageMinerActor2) ProveCommitSector(act *types.Actor, vmctx types.VMContext, params *SectorProveCommitInfo) ([]byte, ActorError) {
+func (sma StorageMinerActor) ProveCommitSector(act *types.Actor, vmctx types.VMContext, params *SectorProveCommitInfo) ([]byte, ActorError) {
 	ctx := vmctx.Context()
 	oldstate, self, err := loadState(vmctx)
 	if err != nil {
@@ -264,7 +262,7 @@ func (sma StorageMinerActor2) ProveCommitSector(act *types.Actor, vmctx types.VM
 	return nil, aerrors.Wrapf(err, "calling ActivateStorageDeals failed")
 }
 
-func (sma StorageMinerActor2) SubmitFallbackPoSt(act *types.Actor, vmctx types.VMContext, params *SubmitFallbackPoStParams) ([]byte, ActorError) {
+func (sma StorageMinerActor) SubmitFallbackPoSt(act *types.Actor, vmctx types.VMContext, params *SubmitFallbackPoStParams) ([]byte, ActorError) {
 	oldstate, self, err := loadState(vmctx)
 	if err != nil {
 		return nil, err
@@ -399,16 +397,7 @@ func (sma StorageMinerActor2) SubmitFallbackPoSt(act *types.Actor, vmctx types.V
 	return nil, nil
 }
 
-func (sma StorageMinerActor2) GetPower(act *types.Actor, vmctx types.VMContext, params *struct{}) ([]byte, ActorError) {
-	_, self, err := loadState(vmctx)
-	if err != nil {
-		return nil, err
-	}
-
-	return self.Power.Bytes(), nil
-}
-
-func (sma StorageMinerActor2) GetPower2(act *types.Actor, vmctx types.VMContext, params *struct{}) ([]byte, ActorError) {
+func (sma StorageMinerActor) GetPower(act *types.Actor, vmctx types.VMContext, params *struct{}) ([]byte, ActorError) {
 	_, self, err := loadState(vmctx)
 	if err != nil {
 		return nil, err
@@ -500,7 +489,7 @@ func RemoveFromSectorSet2(ctx context.Context, cst cbor.IpldStore, ss cid.Cid, i
 	return ncid, nil
 }
 
-func (sma StorageMinerActor2) GetWorkerAddr(act *types.Actor, vmctx types.VMContext, params *struct{}) ([]byte, ActorError) {
+func (sma StorageMinerActor) GetWorkerAddr(act *types.Actor, vmctx types.VMContext, params *struct{}) ([]byte, ActorError) {
 	_, self, err := loadState(vmctx)
 	if err != nil {
 		return nil, err
@@ -514,7 +503,7 @@ func (sma StorageMinerActor2) GetWorkerAddr(act *types.Actor, vmctx types.VMCont
 	return mi.Worker.Bytes(), nil
 }
 
-func (sma StorageMinerActor2) GetOwner(act *types.Actor, vmctx types.VMContext, params *struct{}) ([]byte, ActorError) {
+func (sma StorageMinerActor) GetOwner(act *types.Actor, vmctx types.VMContext, params *struct{}) ([]byte, ActorError) {
 	_, self, err := loadState(vmctx)
 	if err != nil {
 		return nil, err
@@ -528,7 +517,7 @@ func (sma StorageMinerActor2) GetOwner(act *types.Actor, vmctx types.VMContext, 
 	return mi.Owner.Bytes(), nil
 }
 
-func (sma StorageMinerActor2) GetPeerID(act *types.Actor, vmctx types.VMContext, params *struct{}) ([]byte, ActorError) {
+func (sma StorageMinerActor) GetPeerID(act *types.Actor, vmctx types.VMContext, params *struct{}) ([]byte, ActorError) {
 	_, self, err := loadState(vmctx)
 	if err != nil {
 		return nil, err
@@ -542,7 +531,7 @@ func (sma StorageMinerActor2) GetPeerID(act *types.Actor, vmctx types.VMContext,
 	return []byte(mi.PeerID), nil
 }
 
-func (sma StorageMinerActor2) UpdatePeerID(act *types.Actor, vmctx types.VMContext, params *UpdatePeerIDParams) ([]byte, ActorError) {
+func (sma StorageMinerActor) UpdatePeerID(act *types.Actor, vmctx types.VMContext, params *UpdatePeerIDParams) ([]byte, ActorError) {
 	oldstate, self, err := loadState(vmctx)
 	if err != nil {
 		return nil, err
@@ -578,7 +567,7 @@ func (sma StorageMinerActor2) UpdatePeerID(act *types.Actor, vmctx types.VMConte
 	return nil, nil
 }
 
-func (sma StorageMinerActor2) GetSectorSize(act *types.Actor, vmctx types.VMContext, params *struct{}) ([]byte, ActorError) {
+func (sma StorageMinerActor) GetSectorSize(act *types.Actor, vmctx types.VMContext, params *struct{}) ([]byte, ActorError) {
 	_, self, err := loadState(vmctx)
 	if err != nil {
 		return nil, err
@@ -592,7 +581,7 @@ func (sma StorageMinerActor2) GetSectorSize(act *types.Actor, vmctx types.VMCont
 	return types.NewInt(mi.SectorSize).Bytes(), nil
 }
 
-func (sma StorageMinerActor2) IsSlashed(act *types.Actor, vmctx types.VMContext, params *struct{}) ([]byte, ActorError) {
+func (sma StorageMinerActor) IsSlashed(act *types.Actor, vmctx types.VMContext, params *struct{}) ([]byte, ActorError) {
 	_, self, err := loadState(vmctx)
 	if err != nil {
 		return nil, err
@@ -602,7 +591,7 @@ func (sma StorageMinerActor2) IsSlashed(act *types.Actor, vmctx types.VMContext,
 }
 
 // TODO: better name
-func (sma StorageMinerActor2) CheckMiner(act *types.Actor, vmctx types.VMContext, params *CheckMinerParams) ([]byte, ActorError) {
+func (sma StorageMinerActor) CheckMiner(act *types.Actor, vmctx types.VMContext, params *CheckMinerParams) ([]byte, ActorError) {
 	if vmctx.Message().From != StoragePowerAddress {
 		return nil, aerrors.New(2, "only the storage power actor can check miner")
 	}
@@ -633,10 +622,7 @@ func (sma StorageMinerActor2) CheckMiner(act *types.Actor, vmctx types.VMContext
 
 	self.SlashedAt = vmctx.BlockHeight()
 	oldPower := self.Power
-
-	if vmctx.BlockHeight() > build.ForkMissingSnowballs {
-		self.Power = types.NewInt(0)
-	}
+	self.Power = types.NewInt(0)
 
 	nstate, err := vmctx.Storage().Put(self)
 	if err != nil {
@@ -653,7 +639,7 @@ func (sma StorageMinerActor2) CheckMiner(act *types.Actor, vmctx types.VMContext
 	return out.Bytes(), nil
 }
 
-func (sma StorageMinerActor2) DeclareFaults(act *types.Actor, vmctx types.VMContext, params *DeclareFaultsParams) ([]byte, ActorError) {
+func (sma StorageMinerActor) DeclareFaults(act *types.Actor, vmctx types.VMContext, params *DeclareFaultsParams) ([]byte, ActorError) {
 	oldstate, self, aerr := loadState(vmctx)
 	if aerr != nil {
 		return nil, aerr
@@ -702,7 +688,7 @@ func (sma StorageMinerActor2) DeclareFaults(act *types.Actor, vmctx types.VMCont
 	return nil, nil
 }
 
-func (sma StorageMinerActor2) SlashConsensusFault(act *types.Actor, vmctx types.VMContext, params *MinerSlashConsensusFault) ([]byte, ActorError) {
+func (sma StorageMinerActor) SlashConsensusFault(act *types.Actor, vmctx types.VMContext, params *MinerSlashConsensusFault) ([]byte, ActorError) {
 	if vmctx.Message().From != StoragePowerAddress {
 		return nil, aerrors.New(1, "SlashConsensusFault may only be called by the storage market actor")
 	}
@@ -732,21 +718,19 @@ func (sma StorageMinerActor2) SlashConsensusFault(act *types.Actor, vmctx types.
 		return nil, aerrors.Wrap(err, "failed to burn funds")
 	}
 
-	if vmctx.BlockHeight() > build.ForkMissingSnowballs {
-		oldstate, self, err := loadState(vmctx)
-		if err != nil {
-			return nil, aerrors.Wrap(err, "failed to load state for slashing")
-		}
+	oldstate, self, err := loadState(vmctx)
+	if err != nil {
+		return nil, aerrors.Wrap(err, "failed to load state for slashing")
+	}
 
-		self.Power = types.NewInt(0)
+	self.Power = types.NewInt(0)
 
-		ncid, err := vmctx.Storage().Put(self)
-		if err != nil {
-			return nil, err
-		}
-		if err := vmctx.Storage().Commit(oldstate, ncid); err != nil {
-			return nil, err
-		}
+	ncid, err := vmctx.Storage().Put(self)
+	if err != nil {
+		return nil, err
+	}
+	if err := vmctx.Storage().Commit(oldstate, ncid); err != nil {
+		return nil, err
 	}
 
 	// TODO: this still allows the miner to commit sectors and submit posts,
@@ -759,7 +743,7 @@ func (sma StorageMinerActor2) SlashConsensusFault(act *types.Actor, vmctx types.
 	return nil, nil
 }
 
-func (sma StorageMinerActor2) SubmitElectionPoSt(act *types.Actor, vmctx types.VMContext, params *struct{}) ([]byte, aerrors.ActorError) {
+func (sma StorageMinerActor) SubmitElectionPoSt(act *types.Actor, vmctx types.VMContext, params *struct{}) ([]byte, aerrors.ActorError) {
 	ctx := vmctx.Context()
 
 	if vmctx.Message().From != NetworkAddress {
@@ -826,10 +810,6 @@ func (sma StorageMinerActor2) SubmitElectionPoSt(act *types.Actor, vmctx types.V
 
 func onSuccessfulPoSt2(self *StorageMinerActorState, vmctx types.VMContext, activeFaults uint64) aerrors.ActorError {
 	ctx := vmctx.Context()
-	// FORK
-	if vmctx.BlockHeight() < build.ForkBootyBayHeight {
-		return onSuccessfulPoSt(self, vmctx, activeFaults)
-	}
 
 	var mi MinerInfo
 	if err := vmctx.Storage().Get(self.Info, &mi); err != nil {
@@ -904,4 +884,62 @@ func onSuccessfulPoSt2(self *StorageMinerActorState, vmctx types.VMContext, acti
 	self.Sectors = ncid
 	self.ProvingSet = ncid
 	return nil
+}
+
+func SectorIsUnique(ctx context.Context, cst cbor.IpldStore, sroot cid.Cid, sid uint64) (bool, ActorError) {
+	found, _, _, err := GetFromSectorSet(ctx, cst, sroot, sid)
+	if err != nil {
+		return false, err
+	}
+
+	return !found, nil
+}
+
+func GetFromSectorSet(ctx context.Context, cst cbor.IpldStore, ss cid.Cid, sectorID uint64) (bool, []byte, []byte, ActorError) {
+	if sectorID >= build.MinerMaxSectors {
+		return false, nil, nil, aerrors.Newf(25, "sector ID out of range: %d", sectorID)
+	}
+
+	ssr, err := amt.LoadAMT(ctx, cst, ss)
+	if err != nil {
+		return false, nil, nil, aerrors.HandleExternalError(err, "could not load sector set node")
+	}
+
+	var comms [][]byte
+	err = ssr.Get(ctx, sectorID, &comms)
+	if err != nil {
+		if _, ok := err.(*amt.ErrNotFound); ok {
+			return false, nil, nil, nil
+		}
+		return false, nil, nil, aerrors.HandleExternalError(err, "failed to find sector in sector set")
+	}
+
+	if len(comms) != 2 {
+		return false, nil, nil, aerrors.Newf(20, "sector set entry should only have 2 elements")
+	}
+
+	return true, comms[0], comms[1], nil
+}
+
+func AddToSectorSet(ctx context.Context, blks cbor.IpldStore, ss cid.Cid, sectorID uint64, commR, commD []byte) (cid.Cid, ActorError) {
+	if sectorID >= build.MinerMaxSectors {
+		return cid.Undef, aerrors.Newf(25, "sector ID out of range: %d", sectorID)
+	}
+	ssr, err := amt.LoadAMT(ctx, blks, ss)
+	if err != nil {
+		return cid.Undef, aerrors.HandleExternalError(err, "could not load sector set node")
+	}
+
+	// TODO: Spec says to use SealCommitment, and construct commD from deals each time,
+	//  but that would make SubmitPoSt way, way more expensive
+	if err := ssr.Set(ctx, sectorID, [][]byte{commR, commD}); err != nil {
+		return cid.Undef, aerrors.HandleExternalError(err, "failed to set commitment in sector set")
+	}
+
+	ncid, err := ssr.Flush(ctx)
+	if err != nil {
+		return cid.Undef, aerrors.HandleExternalError(err, "failed to flush sector set")
+	}
+
+	return ncid, nil
 }

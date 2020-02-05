@@ -6,7 +6,6 @@ import (
 	"github.com/filecoin-project/go-sectorbuilder"
 
 	"github.com/filecoin-project/go-address"
-	"github.com/filecoin-project/go-amt-ipld"
 	"github.com/filecoin-project/lotus/chain/actors/aerrors"
 	cid "github.com/ipfs/go-cid"
 	cbor "github.com/ipfs/go-ipld-cbor"
@@ -78,8 +77,4 @@ func (sw *storageWrapper) Get(c cid.Cid, out cbg.CBORUnmarshaler) error {
 	}
 
 	return nil
-}
-
-func WrapStorage(s Storage) amt.Blocks {
-	return &storageWrapper{s}
 }

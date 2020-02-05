@@ -4,7 +4,7 @@ import (
 	"context"
 
 	bls "github.com/filecoin-project/filecoin-ffi"
-	amt "github.com/filecoin-project/go-amt-ipld"
+	amt "github.com/filecoin-project/go-amt-ipld/v2"
 	cid "github.com/ipfs/go-cid"
 	cbor "github.com/ipfs/go-ipld-cbor"
 	cbg "github.com/whyrusleeping/cbor-gen"
@@ -68,17 +68,17 @@ func MinerCreateBlock(ctx context.Context, sm *stmgr.StateManager, w *wallet.Wal
 		}
 	}
 
-	bs := amt.WrapBlockstore(sm.ChainStore().Blockstore())
-	blsmsgroot, err := amt.FromArray(bs, toIfArr(blsMsgCids))
+	bs := cbor.NewCborStore(sm.ChainStore().Blockstore())
+	blsmsgroot, err := amt.FromArray(ctx, bs, toIfArr(blsMsgCids))
 	if err != nil {
 		return nil, xerrors.Errorf("building bls amt: %w", err)
 	}
-	secpkmsgroot, err := amt.FromArray(bs, toIfArr(secpkMsgCids))
+	secpkmsgroot, err := amt.FromArray(ctx, bs, toIfArr(secpkMsgCids))
 	if err != nil {
 		return nil, xerrors.Errorf("building secpk amt: %w", err)
 	}
 
-	mmcid, err := bs.Put(&types.MsgMeta{
+	mmcid, err := bs.Put(ctx, &types.MsgMeta{
 		BlsMessages:   blsmsgroot,
 		SecpkMessages: secpkmsgroot,
 	})
