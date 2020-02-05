@@ -16,7 +16,7 @@ import (
 	"go.opencensus.io/trace"
 	"go.uber.org/multierr"
 
-	amt "github.com/filecoin-project/go-amt-ipld"
+	amt "github.com/filecoin-project/go-amt-ipld/v2"
 	"github.com/filecoin-project/lotus/chain/types"
 
 	lru "github.com/hashicorp/golang-lru"
@@ -615,8 +615,9 @@ func (cs *ChainStore) GetSignedMessage(c cid.Cid) (*types.SignedMessage, error) 
 }
 
 func (cs *ChainStore) readAMTCids(root cid.Cid) ([]cid.Cid, error) {
-	bs := amt.WrapBlockstore(cs.bs)
-	a, err := amt.LoadAMT(bs, root)
+	ctx := context.TODO()
+	bs := cbor.NewCborStore(cs.bs)
+	a, err := amt.LoadAMT(ctx, bs, root)
 	if err != nil {
 		return nil, xerrors.Errorf("amt load: %w", err)
 	}
@@ -624,7 +625,7 @@ func (cs *ChainStore) readAMTCids(root cid.Cid) ([]cid.Cid, error) {
 	var cids []cid.Cid
 	for i := uint64(0); i < a.Count; i++ {
 		var c cbg.CborCid
-		if err := a.Get(i, &c); err != nil {
+		if err := a.Get(ctx, i, &c); err != nil {
 			return nil, xerrors.Errorf("failed to load cid from amt: %w", err)
 		}
 
@@ -781,14 +782,15 @@ func (cs *ChainStore) MessagesForBlock(b *types.BlockHeader) ([]*types.Message, 
 }
 
 func (cs *ChainStore) GetParentReceipt(b *types.BlockHeader, i int) (*types.MessageReceipt, error) {
-	bs := amt.WrapBlockstore(cs.bs)
-	a, err := amt.LoadAMT(bs, b.ParentMessageReceipts)
+	ctx := context.TODO()
+	bs := cbor.NewCborStore(cs.bs)
+	a, err := amt.LoadAMT(ctx, bs, b.ParentMessageReceipts)
 	if err != nil {
 		return nil, xerrors.Errorf("amt load: %w", err)
 	}
 
 	var r types.MessageReceipt
-	if err := a.Get(uint64(i), &r); err != nil {
+	if err := a.Get(ctx, uint64(i), &r); err != nil {
 		return nil, err
 	}
 

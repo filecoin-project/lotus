@@ -6,7 +6,7 @@ import (
 	"fmt"
 	"strconv"
 
-	"github.com/filecoin-project/go-amt-ipld"
+	"github.com/filecoin-project/go-amt-ipld/v2"
 
 	cid "github.com/ipfs/go-cid"
 	"github.com/ipfs/go-hamt-ipld"
@@ -280,13 +280,13 @@ func (a *StateAPI) StateMarketDeals(ctx context.Context, ts *types.TipSet) (map[
 		return nil, err
 	}
 
-	blks := amt.WrapBlockstore(a.StateManager.ChainStore().Blockstore())
-	da, err := amt.LoadAMT(blks, state.Deals)
+	blks := cbor.NewCborStore(a.StateManager.ChainStore().Blockstore())
+	da, err := amt.LoadAMT(ctx, blks, state.Deals)
 	if err != nil {
 		return nil, err
 	}
 
-	if err := da.ForEach(func(i uint64, v *cbg.Deferred) error {
+	if err := da.ForEach(ctx, func(i uint64, v *cbg.Deferred) error {
 		var d actors.OnChainDeal
 		if err := d.UnmarshalCBOR(bytes.NewReader(v.Raw)); err != nil {
 			return err
