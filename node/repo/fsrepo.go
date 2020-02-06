@@ -12,7 +12,7 @@ import (
 
 	"github.com/ipfs/go-datastore"
 	"github.com/ipfs/go-datastore/namespace"
-	badger "github.com/ipfs/go-ds-badger2"
+	bitcaskds "github.com/ipfs/go-ds-bitcask"
 	fslock "github.com/ipfs/go-fs-lock"
 	logging "github.com/ipfs/go-log/v2"
 	"github.com/mitchellh/go-homedir"
@@ -255,10 +255,7 @@ func (fsr *fsLockedRepo) stillValid() error {
 
 func (fsr *fsLockedRepo) Datastore(ns string) (datastore.Batching, error) {
 	fsr.dsOnce.Do(func() {
-		opts := badger.DefaultOptions
-		opts.Truncate = true
-
-		fsr.ds, fsr.dsErr = badger.NewDatastore(fsr.join(fsDatastore), &opts)
+		fsr.ds, fsr.dsErr = bitcaskds.NewDatastore(fsr.join(fsDatastore))
 		/*if fsr.dsErr == nil {
 			fsr.ds = datastore.NewLogDatastore(fsr.ds, "fsrepo")
 		}*/
