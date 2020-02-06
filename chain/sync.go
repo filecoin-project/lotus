@@ -11,7 +11,7 @@ import (
 
 	"github.com/Gurpartap/async"
 	bls "github.com/filecoin-project/filecoin-ffi"
-	amt "github.com/filecoin-project/go-amt-ipld"
+	amt "github.com/filecoin-project/go-amt-ipld/v2"
 	sectorbuilder "github.com/filecoin-project/go-sectorbuilder"
 	"github.com/hashicorp/go-multierror"
 	"github.com/ipfs/go-cid"
@@ -210,7 +210,7 @@ func (syncer *Syncer) ValidateMsgMeta(fblk *types.FullBlock) error {
 	// we implement that
 	blockstore := syncer.store.Blockstore()
 
-	bs := amt.WrapBlockstore(blockstore)
+	bs := cbor.NewCborStore(blockstore)
 	smroot, err := computeMsgMeta(bs, bcids, scids)
 	if err != nil {
 		return xerrors.Errorf("validating msgmeta, compute failed: %w", err)
@@ -277,7 +277,7 @@ func copyBlockstore(from, to bstore.Blockstore) error {
 // either validate it here, or ensure that its validated elsewhere (maybe make
 // sure the blocksync code checks it?)
 // maybe this code should actually live in blocksync??
-func zipTipSetAndMessages(bs amt.Blocks, ts *types.TipSet, allbmsgs []*types.Message, allsmsgs []*types.SignedMessage, bmi, smi [][]uint64) (*store.FullTipSet, error) {
+func zipTipSetAndMessages(bs cbor.IpldStore, ts *types.TipSet, allbmsgs []*types.Message, allsmsgs []*types.SignedMessage, bmi, smi [][]uint64) (*store.FullTipSet, error) {
 	if len(ts.Blocks()) != len(smi) || len(ts.Blocks()) != len(bmi) {
 		return nil, fmt.Errorf("msgincl length didnt match tipset size")
 	}
@@ -325,18 +325,19 @@ func zipTipSetAndMessages(bs amt.Blocks, ts *types.TipSet, allbmsgs []*types.Mes
 	return fts, nil
 }
 
-func computeMsgMeta(bs amt.Blocks, bmsgCids, smsgCids []cbg.CBORMarshaler) (cid.Cid, error) {
-	bmroot, err := amt.FromArray(bs, bmsgCids)
+func computeMsgMeta(bs cbor.IpldStore, bmsgCids, smsgCids []cbg.CBORMarshaler) (cid.Cid, error) {
+	ctx := context.TODO()
+	bmroot, err := amt.FromArray(ctx, bs, bmsgCids)
 	if err != nil {
 		return cid.Undef, err
 	}
 
-	smroot, err := amt.FromArray(bs, smsgCids)
+	smroot, err := amt.FromArray(ctx, bs, smsgCids)
 	if err != nil {
 		return cid.Undef, err
 	}
 
-	mrcid, err := bs.Put(&types.MsgMeta{
+	mrcid, err := bs.Put(ctx, &types.MsgMeta{
 		BlsMessages:   bmroot,
 		SecpkMessages: smroot,
 	})
@@ -765,7 +766,6 @@ func (syncer *Syncer) checkBlockMessages(ctx context.Context, b *types.FullBlock
 		return nil
 	}
 
-	bs := amt.WrapBlockstore(syncer.store.Blockstore())
 	var blsCids []cbg.CBORMarshaler
 
 	for i, m := range b.BlsMessages {
@@ -796,17 +796,17 @@ func (syncer *Syncer) checkBlockMessages(ctx context.Context, b *types.FullBlock
 		secpkCids = append(secpkCids, &c)
 	}
 
-	bmroot, err := amt.FromArray(bs, blsCids)
+	bmroot, err := amt.FromArray(ctx, cst, blsCids)
 	if err != nil {
 		return xerrors.Errorf("failed to build amt from bls msg cids: %w", err)
 	}
 
-	smroot, err := amt.FromArray(bs, secpkCids)
+	smroot, err := amt.FromArray(ctx, cst, secpkCids)
 	if err != nil {
 		return xerrors.Errorf("failed to build amt from bls msg cids: %w", err)
 	}
 
-	mrcid, err := bs.Put(&types.MsgMeta{
+	mrcid, err := cst.Put(ctx, &types.MsgMeta{
 		BlsMessages:   bmroot,
 		SecpkMessages: smroot,
 	})
@@ -1076,7 +1076,7 @@ func (syncer *Syncer) iterFullTipsets(ctx context.Context, headers []*types.TipS
 			// temp storage so we don't persist data we dont want to
 			ds := dstore.NewMapDatastore()
 			bs := bstore.NewBlockstore(ds)
-			blks := amt.WrapBlockstore(bs)
+			blks := cbor.NewCborStore(bs)
 
 			this := headers[i-bsi]
 			bstip := bstips[len(bstips)-(bsi+1)]

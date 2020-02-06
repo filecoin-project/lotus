@@ -7,7 +7,7 @@ import (
 	"strconv"
 	"strings"
 
-	"github.com/filecoin-project/go-amt-ipld"
+	"github.com/filecoin-project/go-amt-ipld/v2"
 	"github.com/ipfs/go-blockservice"
 	"github.com/ipfs/go-cid"
 	"github.com/ipfs/go-hamt-ipld"
@@ -241,7 +241,7 @@ func resolveOnce(bs blockstore.Blockstore) func(ctx context.Context, ds ipld.Nod
 		}
 
 		if strings.HasPrefix(names[0], "@A:") {
-			a, err := amt.LoadAMT(amt.WrapBlockstore(bs), nd.Cid())
+			a, err := amt.LoadAMT(ctx, cbor.NewCborStore(bs), nd.Cid())
 			if err != nil {
 				return nil, nil, xerrors.Errorf("load amt: %w", err)
 			}
@@ -252,7 +252,7 @@ func resolveOnce(bs blockstore.Blockstore) func(ctx context.Context, ds ipld.Nod
 			}
 
 			var m interface{}
-			if err := a.Get(idx, &m); err != nil {
+			if err := a.Get(ctx, idx, &m); err != nil {
 				return nil, nil, xerrors.Errorf("amt get: %w", err)
 			}
 			fmt.Printf("AG %T %v\n", m, m)

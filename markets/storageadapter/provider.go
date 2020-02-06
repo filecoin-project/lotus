@@ -98,15 +98,15 @@ func (n *ProviderNodeAdapter) PublishDeals(ctx context.Context, deal storagemark
 	return storagemarket.DealID(resp.DealIDs[0]), smsg.Cid(), nil
 }
 
-func (n *ProviderNodeAdapter) OnDealComplete(ctx context.Context, deal storagemarket.MinerDeal, pieceSize uint64, pieceData io.Reader) (uint64, error) {
+func (n *ProviderNodeAdapter) OnDealComplete(ctx context.Context, deal storagemarket.MinerDeal, pieceSize uint64, pieceData io.Reader) error {
 
-	sectorID, err := n.secb.AddPiece(ctx, pieceSize, pieceData, deal.DealID)
+	_, err := n.secb.AddPiece(ctx, pieceSize, pieceData, deal.DealID)
 	if err != nil {
-		return 0, xerrors.Errorf("AddPiece failed: %s", err)
+		return xerrors.Errorf("AddPiece failed: %s", err)
 	}
-	log.Warnf("New Sector: %d (deal %d)", sectorID, deal.DealID)
+	log.Warnf("New Deal: deal %d", deal.DealID)
 
-	return sectorID, nil
+	return nil
 }
 
 func (n *ProviderNodeAdapter) ListProviderDeals(ctx context.Context, addr address.Address) ([]storagemarket.StorageDeal, error) {
