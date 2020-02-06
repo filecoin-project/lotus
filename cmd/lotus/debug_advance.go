@@ -36,6 +36,9 @@ func init() {
 			}
 
 			msgs, err := miner.SelectMessages(ctx, api.StateGetActor, head, pending)
+			if err != nil {
+				return err
+			}
 			if len(msgs) > build.BlockMessageLimit {
 				log.Error("SelectMessages returned too many messages: ", len(msgs))
 				msgs = msgs[:build.BlockMessageLimit]
