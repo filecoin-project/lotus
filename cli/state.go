@@ -120,12 +120,15 @@ var statePowerCmd = &cli.Command{
 			return err
 		}
 
-		res := power.TotalPower
+		tp := power.TotalPower
 		if cctx.Args().Present() {
-			res = power.MinerPower
+			mp := power.MinerPower
+			percI := types.BigDiv(types.BigMul(mp, types.NewInt(1000000)), tp)
+			fmt.Printf("%s(%s) / %s(%s) ~= %0.4f%%\n", mp.String(), mp.SizeStr(), tp.String(), tp.SizeStr(), float64(percI.Int64())/10000)
+		} else {
+			fmt.Printf("%s(%s)\n", tp.String(), tp.SizeStr())
 		}
 
-		fmt.Println(res.String())
 		return nil
 	},
 }
