@@ -22,7 +22,7 @@ type Message struct {
 	GasPrice BigInt
 	GasLimit BigInt
 
-	Method uint64
+	Method uint64 // TODO: decide
 	Params []byte
 }
 

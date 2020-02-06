@@ -7,6 +7,7 @@ import (
 	"strconv"
 
 	"github.com/filecoin-project/go-amt-ipld/v2"
+	samsig "github.com/filecoin-project/specs-actors/actors/builtin/multisig"
 
 	cid "github.com/ipfs/go-cid"
 	"github.com/ipfs/go-hamt-ipld"
@@ -416,7 +417,7 @@ func (a *StateAPI) MsigGetAvailableBalance(ctx context.Context, addr address.Add
 		ts = a.Chain.GetHeaviestTipSet()
 	}
 
-	var st actors.MultiSigActorState
+	var st samsig.MultiSigActorState
 	act, err := a.StateManager.LoadActorState(ctx, addr, &st, ts)
 	if err != nil {
 		return types.EmptyInt, xerrors.Errorf("failed to load multisig actor state: %w", err)
