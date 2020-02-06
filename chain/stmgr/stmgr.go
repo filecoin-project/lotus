@@ -18,6 +18,7 @@ import (
 	bls "github.com/filecoin-project/filecoin-ffi"
 	"github.com/ipfs/go-cid"
 	hamt "github.com/ipfs/go-hamt-ipld"
+	blockstore "github.com/ipfs/go-ipfs-blockstore"
 	logging "github.com/ipfs/go-log/v2"
 	"go.opencensus.io/trace"
 )
@@ -30,10 +31,12 @@ type StateManager struct {
 	stCache  map[string][]cid.Cid
 	compWait map[string]chan struct{}
 	stlk     sync.Mutex
+	newVM    func(cid.Cid, uint64, vm.Rand, address.Address, blockstore.Blockstore, *types.VMSyscalls) (*vm.VM, error)
 }
 
 func NewStateManager(cs *store.ChainStore) *StateManager {
 	return &StateManager{
+		newVM:    vm.NewVM,
 		cs:       cs,
 		stCache:  make(map[string][]cid.Cid),
 		compWait: make(map[string]chan struct{}),
@@ -139,7 +142,7 @@ func (sm *StateManager) computeTipSetState(ctx context.Context, blks []*types.Bl
 
 	r := store.NewChainRand(sm.cs, cids, blks[0].Height)
 
-	vmi, err := vm.NewVM(pstate, blks[0].Height, r, address.Undef, sm.cs.Blockstore(), sm.cs.VMSys())
+	vmi, err := sm.newVM(pstate, blks[0].Height, r, address.Undef, sm.cs.Blockstore(), sm.cs.VMSys())
 	if err != nil {
 		return cid.Undef, cid.Undef, xerrors.Errorf("instantiating VM failed: %w", err)
 	}
@@ -635,4 +638,8 @@ func (sm *StateManager) ValidateChain(ctx context.Context, ts *types.TipSet) err
 	}
 
 	return nil
+}
+
+func (sm *StateManager) SetVMConstructor(nvm func(cid.Cid, uint64, vm.Rand, address.Address, blockstore.Blockstore, *types.VMSyscalls) (*vm.VM, error)) {
+	sm.newVM = nvm
 }

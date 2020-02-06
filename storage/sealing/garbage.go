@@ -3,16 +3,23 @@ package sealing
 import (
 	"bytes"
 	"context"
+	"io"
+	"math"
+	"math/bits"
+	"math/rand"
+
 	sectorbuilder "github.com/filecoin-project/go-sectorbuilder"
 	"github.com/filecoin-project/lotus/chain/actors"
 	"github.com/filecoin-project/lotus/chain/types"
 	"golang.org/x/xerrors"
-	"io"
-	"math"
-	"math/rand"
 )
 
 func (m *Sealing) pledgeReader(size uint64, parts uint64) io.Reader {
+	parts = 1 << bits.Len64(parts) // round down to nearest power of 2
+	if size/parts < 127 {
+		parts = size / 127
+	}
+
 	piece := sectorbuilder.UserBytesForSectorSize((size/127 + size) / parts)
 
 	readers := make([]io.Reader, parts)
@@ -22,6 +29,7 @@ func (m *Sealing) pledgeReader(size uint64, parts uint64) io.Reader {
 
 	return io.MultiReader(readers...)
 }
+
 
 func (m *Sealing) pledgeSector(ctx context.Context, sectorID uint64, existingPieceSizes []uint64, sizes ...uint64) ([]Piece, error) {
 	if len(sizes) == 0 {
@@ -38,19 +46,26 @@ func (m *Sealing) pledgeSector(ctx context.Context, sectorID uint64, existingPie
 }
 
 
+
+
+
+
+
+
+
+
+
+
 func (m *Sealing) firstPledgeSector(ctx context.Context, sectorID uint64, existingPieceSizes []uint64, sizes ...uint64) ([]Piece, error) {
+	if len(sizes) == 0 {
+		return nil, nil
+	}
+
+	log.Infof("Pledge %d, contains %+v", sectorID, existingPieceSizes)
+
 	deals := make([]actors.StorageDealProposal, len(sizes))
 	for i, size := range sizes {
-
-		//commP, err := m.fastPledgeCommitment(size, uint64(runtime.NumCPU()))
-
-
-		release := m.sb.RateLimit()
-		commP, err := sectorbuilder.GeneratePieceCommitment(io.LimitReader(rand.New(rand.NewSource(42)), int64(size)), size)
-		release()
-
-
-
+		commP, err := m.fastPledgeCommitment(size, uint64(1))
 		if err != nil {
 			return nil, err
 		}
@@ -69,6 +84,8 @@ func (m *Sealing) firstPledgeSector(ctx context.Context, sectorID uint64, existi
 
 		deals[i] = sdp
 	}
+
+	log.Infof("Publishing deals for %d", sectorID)
 
 	params, aerr := actors.SerializeParams(&actors.PublishStorageDealsParams{
 		Deals: deals,
@@ -89,7 +106,7 @@ func (m *Sealing) firstPledgeSector(ctx context.Context, sectorID uint64, existi
 	if err != nil {
 		return nil, err
 	}
-	r, err := m.api.StateWaitMsg(ctx, smsg.Cid())
+	r, err := m.api.StateWaitMsg(ctx, smsg.Cid()) // TODO: more finality
 	if err != nil {
 		return nil, err
 	}
@@ -104,14 +121,13 @@ func (m *Sealing) firstPledgeSector(ctx context.Context, sectorID uint64, existi
 		return nil, xerrors.New("got unexpected number of DealIDs from PublishStorageDeals")
 	}
 
+	log.Infof("Deals for sector %d: %+v", sectorID, resp.DealIDs)
+
 	out := make([]Piece, len(sizes))
-
 	for i, size := range sizes {
-
-		//ppi, err := m.sb.AddPiece(size, sectorID, m.pledgeReader(size, uint64(runtime.NumCPU())), existingPieceSizes)
-		ppi, err := m.sb.AddPiece(size, sectorID, io.LimitReader(rand.New(rand.NewSource(42)), int64(size)), existingPieceSizes)
+		ppi, err := m.sb.AddPiece(ctx, size, sectorID, m.pledgeReader(size, uint64(1)), existingPieceSizes)
 		if err != nil {
-			return nil, err
+			return nil, xerrors.Errorf("add piece: %w", err)
 		}
 
 		existingPieceSizes = append(existingPieceSizes, size)

@@ -3,6 +3,7 @@ package full
 import (
 	"bytes"
 	"context"
+	"fmt"
 	"strconv"
 
 	"github.com/filecoin-project/go-amt-ipld"
@@ -82,6 +83,10 @@ func (a *StateAPI) StateMinerElectionPeriodStart(ctx context.Context, actor addr
 
 func (a *StateAPI) StateMinerSectorSize(ctx context.Context, actor address.Address, ts *types.TipSet) (uint64, error) {
 	return stmgr.GetMinerSectorSize(ctx, a.StateManager, ts, actor)
+}
+
+func (a *StateAPI) StateMinerFaults(ctx context.Context, addr address.Address, ts *types.TipSet) ([]uint64, error) {
+	return stmgr.GetMinerFaults(ctx, a.StateManager, ts, addr)
 }
 
 func (a *StateAPI) StatePledgeCollateral(ctx context.Context, ts *types.TipSet) (types.BigInt, error) {
@@ -403,4 +408,33 @@ func (a *StateAPI) StateListMessages(ctx context.Context, match *types.Message, 
 
 func (a *StateAPI) StateCompute(ctx context.Context, height uint64, msgs []*types.Message, ts *types.TipSet) (cid.Cid, error) {
 	return stmgr.ComputeState(ctx, a.StateManager, height, msgs, ts)
+}
+
+func (a *StateAPI) MsigGetAvailableBalance(ctx context.Context, addr address.Address, ts *types.TipSet) (types.BigInt, error) {
+	if ts == nil {
+		ts = a.Chain.GetHeaviestTipSet()
+	}
+
+	var st actors.MultiSigActorState
+	act, err := a.StateManager.LoadActorState(ctx, addr, &st, ts)
+	if err != nil {
+		return types.EmptyInt, xerrors.Errorf("failed to load multisig actor state: %w", err)
+	}
+
+	if act.Code != actors.MultisigCodeCid {
+		return types.EmptyInt, fmt.Errorf("given actor was not a multisig")
+	}
+
+	if st.UnlockDuration == 0 {
+		return act.Balance, nil
+	}
+
+	offset := ts.Height() - st.StartingBlock
+	if offset > st.UnlockDuration {
+		return act.Balance, nil
+	}
+
+	minBalance := types.BigDiv(st.InitialBalance, types.NewInt(st.UnlockDuration))
+	minBalance = types.BigMul(minBalance, types.NewInt(offset))
+	return types.BigSub(act.Balance, minBalance), nil
 }

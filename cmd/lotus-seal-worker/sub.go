@@ -2,14 +2,13 @@ package main
 
 import (
 	"context"
-	paramfetch "github.com/filecoin-project/go-paramfetch"
+
 	"github.com/filecoin-project/go-sectorbuilder"
 	"golang.org/x/xerrors"
 	"net/http"
 	"os"
 
 	lapi "github.com/filecoin-project/lotus/api"
-	"github.com/filecoin-project/lotus/build"
 )
 
 type worker struct {
@@ -18,39 +17,19 @@ type worker struct {
 	repo          string
 	auth          http.Header
 
-	sb *sectorbuilder.SectorBuilder
+	limiter *limits
+	sb      *sectorbuilder.SectorBuilder
 }
 
-func acceptJobs(ctx context.Context, api lapi.StorageMiner, endpoint string, auth http.Header, repo string, noprecommit, nocommit bool) error {
-	act, err := api.ActorAddress(ctx)
-	if err != nil {
-		return err
-	}
-	ssize, err := api.ActorSectorSize(ctx, act)
-	if err != nil {
-		return err
-	}
-
-	sb, err := sectorbuilder.NewStandalone(&sectorbuilder.Config{
-		SectorSize:    ssize,
-		Miner:         act,
-		WorkerThreads: 1,
-		Dir:           repo,
-	})
-	if err != nil {
-		return err
-	}
-
-	if err := paramfetch.GetParams(build.ParametersJson(), ssize); err != nil {
-		return xerrors.Errorf("get params: %w", err)
-	}
-
+func acceptJobs(ctx context.Context, api lapi.StorageMiner, sb *sectorbuilder.SectorBuilder, limiter *limits, endpoint string, auth http.Header, repo string, noprecommit, nocommit bool) error {
 	w := &worker{
 		api:           api,
 		minerEndpoint: endpoint,
 		auth:          auth,
 		repo:          repo,
-		sb:            sb,
+
+		limiter: limiter,
+		sb:      sb,
 	}
 
 	hostName,_ := os.Hostname()
@@ -107,34 +86,40 @@ func (w *worker) processTask(ctx context.Context, task sectorbuilder.WorkerTask)
 
 	switch task.Type {
 	case sectorbuilder.WorkerPreCommit:
+		w.limiter.workLimit <- struct{}{}
 		rspco, err := w.sb.SealPreCommit(ctx, task.SectorID, task.SealTicket, task.Pieces)
+		<-w.limiter.workLimit
+
 		if err != nil {
 			return errRes(xerrors.Errorf("precomitting: %w", err))
 		}
 		res.Rspco = rspco.ToJson()
 
 
-		//if err := w.push("sealed", task.SectorID); err != nil {
-		//	return errRes(xerrors.Errorf("pushing precommited data: %w", err))
-		//}
+		/*if err := w.push("sealed", task.SectorID); err != nil {
+			return errRes(xerrors.Errorf("pushing precommited data: %w", err))
+		}
 
-		//if err := w.push("cache", task.SectorID); err != nil {
-		//	return errRes(xerrors.Errorf("pushing precommited data: %w", err))
-		//}
+		if err := w.push("cache", task.SectorID); err != nil {
+			return errRes(xerrors.Errorf("pushing precommited data: %w", err))
+		}
 
-		//if err := w.remove("staging", task.SectorID); err != nil {
-		//	return errRes(xerrors.Errorf("cleaning up staged sector: %w", err))
-		//}
+		if err := w.remove("staging", task.SectorID); err != nil {
+			return errRes(xerrors.Errorf("cleaning up staged sector: %w", err))
+		}*/
 
 	case sectorbuilder.WorkerCommit:
+		w.limiter.workLimit <- struct{}{}
 		proof, err := w.sb.SealCommit(ctx, task.SectorID, task.SealTicket, task.SealSeed, task.Pieces, task.Rspco)
+		<-w.limiter.workLimit
+
 		if err != nil {
 			return errRes(xerrors.Errorf("comitting: %w", err))
 		}
 
 		res.Proof = proof
 
-		w.sb.TrimCache(task.SectorID)
+		w.sb.TrimCache(ctx, task.SectorID)
 
 		if err := w.push("sealed", task.SectorID); err != nil {
 			return errRes(xerrors.Errorf("pushing precommited data: %w", err))
@@ -149,13 +134,13 @@ func (w *worker) processTask(ctx context.Context, task sectorbuilder.WorkerTask)
 		}
 
 
-		//if err := w.push("cache", task.SectorID); err != nil {
-		//	return errRes(xerrors.Errorf("pushing precommited data: %w", err))
-		//}
+		/*if err := w.push("cache", task.SectorID); err != nil {
+			return errRes(xerrors.Errorf("pushing precommited data: %w", err))
+		}
 
-		//if err := w.remove("sealed", task.SectorID); err != nil {
-		//	return errRes(xerrors.Errorf("cleaning up sealed sector: %w", err))
-		//}
+		if err := w.remove("sealed", task.SectorID); err != nil {
+			return errRes(xerrors.Errorf("cleaning up sealed sector: %w", err))
+		}*/
 
 	}
 

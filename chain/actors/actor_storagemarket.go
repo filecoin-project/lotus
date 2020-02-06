@@ -18,6 +18,7 @@ import (
 	"github.com/filecoin-project/lotus/build"
 	"github.com/filecoin-project/lotus/chain/actors/aerrors"
 	"github.com/filecoin-project/lotus/chain/types"
+	"github.com/filecoin-project/lotus/lib/sigs"
 )
 
 type StorageMarketActor struct{}
@@ -131,7 +132,7 @@ func (sdp *StorageDealProposal) Verify(worker address.Address) error {
 			return err
 		}
 
-		if err := sdp.ProposerSignature.Verify(sdp.Client, buf.Bytes()); err != nil {
+		if err := sigs.Verify(sdp.ProposerSignature, sdp.Client, buf.Bytes()); err != nil {
 			return err
 		}
 	}

@@ -8,6 +8,9 @@ import (
 	"encoding/json"
 
 	sectorbuilder "github.com/filecoin-project/go-sectorbuilder"
+	_ "github.com/filecoin-project/lotus/lib/sigs/bls"
+	_ "github.com/filecoin-project/lotus/lib/sigs/secp"
+
 	"github.com/ipfs/go-datastore"
 	"github.com/ipfs/go-datastore/namespace"
 	badger "github.com/ipfs/go-ds-badger2"
@@ -196,7 +199,7 @@ var aggregateSectorDirsCmd = &cli.Command{
 		agsb, err := sectorbuilder.New(&sectorbuilder.Config{
 			Miner:         maddr,
 			SectorSize:    ssize,
-			Dir:           destdir,
+			Paths:         sectorbuilder.SimplePath(destdir),
 			WorkerThreads: 2,
 		}, namespace.Wrap(agmds, datastore.NewKey("/sectorbuilder")))
 		if err != nil {
@@ -257,7 +260,7 @@ var aggregateSectorDirsCmd = &cli.Command{
 			sb, err := sectorbuilder.New(&sectorbuilder.Config{
 				Miner:         maddr,
 				SectorSize:    genm.SectorSize,
-				Dir:           dir,
+				Paths:         sectorbuilder.SimplePath(dir),
 				WorkerThreads: 2,
 			}, namespace.Wrap(mds, datastore.NewKey("/sectorbuilder")))
 			if err != nil {

@@ -2,6 +2,8 @@ package stmgr
 
 import (
 	"context"
+	amt2 "github.com/filecoin-project/go-amt-ipld/v2"
+	"github.com/filecoin-project/lotus/chain/actors/aerrors"
 
 	ffi "github.com/filecoin-project/filecoin-ffi"
 	sectorbuilder "github.com/filecoin-project/go-sectorbuilder"
@@ -251,6 +253,21 @@ func GetMinerSlashed(ctx context.Context, sm *StateManager, ts *types.TipSet, ma
 	}
 
 	return mas.SlashedAt, nil
+}
+
+func GetMinerFaults(ctx context.Context, sm *StateManager, ts *types.TipSet, maddr address.Address) ([]uint64, error) {
+	var mas actors.StorageMinerActorState
+	_, err := sm.LoadActorState(ctx, maddr, &mas, ts)
+	if err != nil {
+		return nil, xerrors.Errorf("(get ssize) failed to load miner actor state: %w", err)
+	}
+
+	ss, lerr := amt2.LoadAMT(amt.WrapBlockstore(sm.cs.Blockstore()), mas.Sectors)
+	if lerr != nil {
+		return nil, aerrors.HandleExternalError(lerr, "could not load proving set node")
+	}
+
+	return mas.FaultSet.All(2 * ss.Count)
 }
 
 func GetStorageDeal(ctx context.Context, sm *StateManager, dealId uint64, ts *types.TipSet) (*actors.OnChainDeal, error) {
