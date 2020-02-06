@@ -10,7 +10,9 @@ import (
 	vaddress "github.com/filecoin-project/chain-validation/pkg/state/address"
 	vtypes "github.com/filecoin-project/chain-validation/pkg/state/types"
 
+	"github.com/filecoin-project/specs-actors/actors/builtin"
 	"github.com/filecoin-project/go-address"
+
 	"github.com/filecoin-project/lotus/chain/actors"
 	"github.com/filecoin-project/lotus/chain/types"
 )
@@ -83,14 +85,14 @@ var methods = []uint64{
 	vchain.StorageMinerGetPeerID:     actors.MAMethods.GetPeerID,
 	vchain.StorageMinerGetSectorSize: actors.MAMethods.GetSectorSize,
 
-	vchain.MultiSigConstructor:       actors.MultiSigMethods.MultiSigConstructor,
-	vchain.MultiSigPropose:           actors.MultiSigMethods.Propose,
-	vchain.MultiSigApprove:           actors.MultiSigMethods.Approve,
-	vchain.MultiSigCancel:            actors.MultiSigMethods.Cancel,
-	vchain.MultiSigClearCompleted:    actors.MultiSigMethods.ClearCompleted,
-	vchain.MultiSigAddSigner:         actors.MultiSigMethods.AddSigner,
-	vchain.MultiSigRemoveSigner:      actors.MultiSigMethods.RemoveSigner,
-	vchain.MultiSigSwapSigner:        actors.MultiSigMethods.SwapSigner,
-	vchain.MultiSigChangeRequirement: actors.MultiSigMethods.ChangeRequirement,
+	vchain.MultiSigConstructor:       uint64(builtin.MethodsMultisig.Constructor),
+	vchain.MultiSigPropose:           uint64(builtin.MethodsMultisig.Propose),
+	vchain.MultiSigApprove:           uint64(builtin.MethodsMultisig.Approve),
+	vchain.MultiSigCancel:            uint64(builtin.MethodsMultisig.Cancel),
+	vchain.MultiSigClearCompleted:    uint64(builtin.MethodsMultisig.ClearCompleted),
+	vchain.MultiSigAddSigner:         uint64(builtin.MethodsMultisig.AddSigner),
+	vchain.MultiSigRemoveSigner:      uint64(builtin.MethodsMultisig.RemoveSigner),
+	vchain.MultiSigSwapSigner:        uint64(builtin.MethodsMultisig.SwapSigner),
+	vchain.MultiSigChangeRequirement: uint64(builtin.MethodsMultisig.ChangeNumApprovalsThreshold),
 	// More to follow...
 }
