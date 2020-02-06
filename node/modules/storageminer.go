@@ -15,6 +15,7 @@ import (
 	"github.com/filecoin-project/go-fil-markets/storagemarket"
 	deals "github.com/filecoin-project/go-fil-markets/storagemarket/impl"
 	storageimpl "github.com/filecoin-project/go-fil-markets/storagemarket/impl"
+	smnet "github.com/filecoin-project/go-fil-markets/storagemarket/network"
 	paramfetch "github.com/filecoin-project/go-paramfetch"
 	"github.com/filecoin-project/go-sectorbuilder"
 	"github.com/filecoin-project/go-sectorbuilder/fs"
@@ -152,7 +153,7 @@ func HandleDeals(mctx helpers.MetricsCtx, lc fx.Lifecycle, host host.Host, h sto
 
 	lc.Append(fx.Hook{
 		OnStart: func(context.Context) error {
-			h.Run(ctx, host)
+			h.Start(ctx)
 			return nil
 		},
 		OnStop: func(context.Context) error {
@@ -292,12 +293,21 @@ func NewProviderRequestValidator(deals dtypes.ProviderDealStore) *storageimpl.Pr
 	return storageimpl.NewProviderRequestValidator(deals)
 }
 
-func StorageProvider(ds dtypes.MetadataDS, ibs dtypes.StagingBlockstore, r repo.LockedRepo, pieceStore dtypes.ProviderPieceStore, dataTransfer dtypes.ProviderDataTransfer, spn storagemarket.StorageProviderNode) (storagemarket.StorageProvider, error) {
+func StorageProvider(h host.Host, ds dtypes.MetadataDS, ibs dtypes.StagingBlockstore, r repo.LockedRepo, pieceStore dtypes.ProviderPieceStore, dataTransfer dtypes.ProviderDataTransfer, spn storagemarket.StorageProviderNode) (storagemarket.StorageProvider, error) {
 	store, err := piecefilestore.NewLocalFileStore(piecefilestore.OsPath(r.Path()))
 	if err != nil {
 		return nil, err
 	}
-	return storageimpl.NewProvider(ds, ibs, store, pieceStore, dataTransfer, spn)
+	net := smnet.NewFromLibp2pHost(h)
+	addr, err := ds.Get(datastore.NewKey("miner-address"))
+	if err != nil {
+		return nil, err
+	}
+	minerAddress, err := address.NewFromBytes(addr)
+	if err != nil {
+		return nil, err
+	}
+	return storageimpl.NewProvider(net, ds, ibs, store, pieceStore, dataTransfer, spn, minerAddress)
 }
 
 // RetrievalProvider creates a new retrieval provider attached to the provider blockstore
