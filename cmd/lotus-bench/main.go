@@ -146,7 +146,7 @@ func main() {
 				Miner:         maddr,
 				SectorSize:    sectorSize,
 				WorkerThreads: 2,
-				Dir:           sbdir,
+				Paths:         sectorbuilder.SimplePath(sbdir),
 			}
 
 			if robench == "" {
@@ -174,7 +174,7 @@ func main() {
 
 				r := rand.New(rand.NewSource(100 + int64(i)))
 
-				pi, err := sb.AddPiece(dataSize, i, r, nil)
+				pi, err := sb.AddPiece(context.TODO(), dataSize, i, r, nil)
 				if err != nil {
 					return err
 				}
@@ -225,7 +225,7 @@ func main() {
 
 				if !c.Bool("skip-unseal") {
 					log.Info("Unsealing sector")
-					rc, err := sb.ReadPieceFromSealedSector(1, 0, dataSize, ticket.TicketBytes[:], commD[:])
+					rc, err := sb.ReadPieceFromSealedSector(context.TODO(), 1, 0, dataSize, ticket.TicketBytes[:], commD[:])
 					if err != nil {
 						return err
 					}

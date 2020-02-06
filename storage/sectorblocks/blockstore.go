@@ -96,6 +96,7 @@ func (s *SectorBlockStore) Get(c cid.Cid) (blocks.Block, error) {
 	log.Infof("reading block %s from sector %d(+%d;%d)", c, best.SectorID, best.Offset, best.Size)
 
 	r, err := s.sectorBlocks.sb.ReadPieceFromSealedSector(
+		context.TODO(),
 		best.SectorID,
 		best.Offset,
 		best.Size,

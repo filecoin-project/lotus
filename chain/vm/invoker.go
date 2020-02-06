@@ -23,21 +23,21 @@ type invoker struct {
 type invokeFunc func(act *types.Actor, vmctx types.VMContext, params []byte) ([]byte, aerrors.ActorError)
 type nativeCode []invokeFunc
 
-func newInvoker() *invoker {
+func NewInvoker() *invoker {
 	inv := &invoker{
 		builtInCode:  make(map[cid.Cid]nativeCode),
 		builtInState: make(map[cid.Cid]reflect.Type),
 	}
 
 	// add builtInCode using: register(cid, singleton)
-	inv.register(actors.InitCodeCid, actors.InitActor{}, actors.InitActorState{})
-	inv.register(actors.CronCodeCid, actors.CronActor{}, actors.CronActorState{})
-	inv.register(actors.StoragePowerCodeCid, actors.StoragePowerActor{}, actors.StoragePowerState{})
-	inv.register(actors.StorageMarketCodeCid, actors.StorageMarketActor{}, actors.StorageMarketState{})
-	inv.register(actors.StorageMinerCodeCid, actors.StorageMinerActor{}, actors.StorageMinerActorState{})
-	inv.register(actors.StorageMiner2CodeCid, actors.StorageMinerActor2{}, actors.StorageMinerActorState{})
-	inv.register(actors.MultisigCodeCid, actors.MultiSigActor{}, actors.MultiSigActorState{})
-	inv.register(actors.PaymentChannelCodeCid, actors.PaymentChannelActor{}, actors.PaymentChannelActorState{})
+	inv.Register(actors.InitCodeCid, actors.InitActor{}, actors.InitActorState{})
+	inv.Register(actors.CronCodeCid, actors.CronActor{}, actors.CronActorState{})
+	inv.Register(actors.StoragePowerCodeCid, actors.StoragePowerActor{}, actors.StoragePowerState{})
+	inv.Register(actors.StorageMarketCodeCid, actors.StorageMarketActor{}, actors.StorageMarketState{})
+	inv.Register(actors.StorageMinerCodeCid, actors.StorageMinerActor{}, actors.StorageMinerActorState{})
+	inv.Register(actors.StorageMiner2CodeCid, actors.StorageMinerActor2{}, actors.StorageMinerActorState{})
+	inv.Register(actors.MultisigCodeCid, actors.MultiSigActor{}, actors.MultiSigActorState{})
+	inv.Register(actors.PaymentChannelCodeCid, actors.PaymentChannelActor{}, actors.PaymentChannelActorState{})
 
 	return inv
 }
@@ -60,7 +60,7 @@ func (inv *invoker) Invoke(act *types.Actor, vmctx types.VMContext, method uint6
 
 }
 
-func (inv *invoker) register(c cid.Cid, instance Invokee, state interface{}) {
+func (inv *invoker) Register(c cid.Cid, instance Invokee, state interface{}) {
 	code, err := inv.transform(instance)
 	if err != nil {
 		panic(err)
@@ -165,7 +165,7 @@ func DumpActorState(code cid.Cid, b []byte) (interface{}, error) {
 		return nil, nil
 	}
 
-	i := newInvoker() // TODO: register builtins in init block
+	i := NewInvoker() // TODO: register builtins in init block
 
 	typ, ok := i.builtInState[code]
 	if !ok {

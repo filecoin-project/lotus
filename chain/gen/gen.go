@@ -6,36 +6,36 @@ import (
 	"crypto/sha256"
 	"encoding/binary"
 	"fmt"
-	"github.com/filecoin-project/lotus/chain/vm"
 	"io/ioutil"
 	"sync/atomic"
 
-	ffi "github.com/filecoin-project/filecoin-ffi"
-
-	sectorbuilder "github.com/filecoin-project/go-sectorbuilder"
+	block "github.com/ipfs/go-block-format"
 	"github.com/ipfs/go-blockservice"
 	"github.com/ipfs/go-car"
+	"github.com/ipfs/go-cid"
+	blockstore "github.com/ipfs/go-ipfs-blockstore"
 	offline "github.com/ipfs/go-ipfs-exchange-offline"
+	logging "github.com/ipfs/go-log/v2"
 	"github.com/ipfs/go-merkledag"
 	peer "github.com/libp2p/go-libp2p-core/peer"
-	"go.opencensus.io/trace"
-	"golang.org/x/xerrors"
 
+	ffi "github.com/filecoin-project/filecoin-ffi"
 	"github.com/filecoin-project/go-address"
+	sectorbuilder "github.com/filecoin-project/go-sectorbuilder"
 	"github.com/filecoin-project/lotus/api"
 	"github.com/filecoin-project/lotus/build"
 	"github.com/filecoin-project/lotus/chain/stmgr"
 	"github.com/filecoin-project/lotus/chain/store"
 	"github.com/filecoin-project/lotus/chain/types"
+	"github.com/filecoin-project/lotus/chain/vm"
 	"github.com/filecoin-project/lotus/chain/wallet"
 	"github.com/filecoin-project/lotus/cmd/lotus-seed/seed"
 	"github.com/filecoin-project/lotus/genesis"
+	"github.com/filecoin-project/lotus/lib/sigs"
 	"github.com/filecoin-project/lotus/node/repo"
 
-	block "github.com/ipfs/go-block-format"
-	"github.com/ipfs/go-cid"
-	blockstore "github.com/ipfs/go-ipfs-blockstore"
-	logging "github.com/ipfs/go-log/v2"
+	"go.opencensus.io/trace"
+	"golang.org/x/xerrors"
 )
 
 var log = logging.Logger("gen")
@@ -55,6 +55,8 @@ type ChainGen struct {
 	CurTipset *store.FullTipSet
 
 	Timestamper func(*types.TipSet, uint64) uint64
+
+	GetMessages func(*ChainGen) ([]*types.SignedMessage, error)
 
 	w *wallet.Wallet
 
@@ -210,10 +212,11 @@ func NewGenerator() (*ChainGen, error) {
 		genesis:      genb.Genesis,
 		w:            w,
 
-		Miners:    minercfg.MinerAddrs,
-		eppProvs:  mgen,
-		banker:    banker,
-		receivers: receievers,
+		GetMessages: getRandomMessages,
+		Miners:      minercfg.MinerAddrs,
+		eppProvs:    mgen,
+		banker:      banker,
+		receivers:   receievers,
 
 		CurTipset: gents,
 
@@ -222,6 +225,14 @@ func NewGenerator() (*ChainGen, error) {
 	}
 
 	return gen, nil
+}
+
+func (cg *ChainGen) SetStateManager(sm *stmgr.StateManager) {
+	cg.sm = sm
+}
+
+func (cg *ChainGen) ChainStore() *store.ChainStore {
+	return cg.cs
 }
 
 func (cg *ChainGen) Genesis() *types.BlockHeader {
@@ -295,7 +306,7 @@ func (cg *ChainGen) NextTipSet() (*MinedTipSet, error) {
 func (cg *ChainGen) NextTipSetFromMiners(base *types.TipSet, miners []address.Address) (*MinedTipSet, error) {
 	var blks []*types.FullBlock
 
-	msgs, err := cg.getRandomMessages()
+	msgs, err := cg.GetMessages(cg)
 	if err != nil {
 		return nil, xerrors.Errorf("get random messages: %w", err)
 	}
@@ -359,7 +370,15 @@ func (cg *ChainGen) ResyncBankerNonce(ts *types.TipSet) error {
 	return nil
 }
 
-func (cg *ChainGen) getRandomMessages() ([]*types.SignedMessage, error) {
+func (cg *ChainGen) Banker() address.Address {
+	return cg.banker
+}
+
+func (cg *ChainGen) Wallet() *wallet.Wallet {
+	return cg.w
+}
+
+func getRandomMessages(cg *ChainGen) ([]*types.SignedMessage, error) {
 	msgs := make([]*types.SignedMessage, cg.msgsPerBlock)
 	for m := range msgs {
 		msg := types.Message{
@@ -611,7 +630,7 @@ func VerifyVRF(ctx context.Context, worker, miner address.Address, p uint64, inp
 		Data: vrfproof,
 	}
 
-	if err := sig.Verify(worker, vrfBase); err != nil {
+	if err := sigs.Verify(sig, worker, vrfBase); err != nil {
 		return xerrors.Errorf("vrf was invalid: %w", err)
 	}
 

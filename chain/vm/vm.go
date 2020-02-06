@@ -22,6 +22,7 @@ import (
 	"github.com/filecoin-project/lotus/chain/state"
 	"github.com/filecoin-project/lotus/chain/types"
 	"github.com/filecoin-project/lotus/lib/bufbstore"
+	"github.com/filecoin-project/lotus/lib/sigs"
 )
 
 var log = logging.Logger("vm")
@@ -196,7 +197,7 @@ func (vmctx *VMContext) VerifySignature(sig *types.Signature, act address.Addres
 		act = kaddr
 	}
 
-	if err := sig.Verify(act, data); err != nil {
+	if err := sigs.Verify(sig, act, data); err != nil {
 		return aerrors.New(2, "signature verification failed")
 	}
 
@@ -327,7 +328,7 @@ func NewVM(base cid.Cid, height uint64, r Rand, maddr address.Address, cbs block
 		buf:         buf,
 		blockHeight: height,
 		blockMiner:  maddr,
-		inv:         newInvoker(),
+		inv:         NewInvoker(),
 		rand:        r, // TODO: Probably should be a syscall
 		Syscalls:    syscalls,
 	}, nil
@@ -669,6 +670,10 @@ func Transfer(from, to *types.Actor, amt types.BigInt) error {
 	}
 	depositFunds(to, amt)
 	return nil
+}
+
+func (vm *VM) SetInvoker(i *invoker) {
+	vm.inv = i
 }
 
 func deductFunds(act *types.Actor, amt types.BigInt) error {

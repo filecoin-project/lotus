@@ -13,6 +13,7 @@ import (
 	ffi "github.com/filecoin-project/filecoin-ffi"
 	"github.com/filecoin-project/go-address"
 	"github.com/filecoin-project/go-sectorbuilder"
+	"github.com/filecoin-project/go-sectorbuilder/fs"
 	"golang.org/x/xerrors"
 )
 
@@ -60,7 +61,7 @@ func (sb *SBMock) RateLimit() func() {
 	}
 }
 
-func (sb *SBMock) AddPiece(size uint64, sectorId uint64, r io.Reader, existingPieces []uint64) (sectorbuilder.PublicPieceInfo, error) {
+func (sb *SBMock) AddPiece(ctx context.Context, size uint64, sectorId uint64, r io.Reader, existingPieces []uint64) (sectorbuilder.PublicPieceInfo, error) {
 	sb.lk.Lock()
 	ss, ok := sb.sectors[sectorId]
 	if !ok {
@@ -284,7 +285,7 @@ func (sb *SBMock) GenerateEPostCandidates(sectorInfo sectorbuilder.SortedPublicS
 	return out, nil
 }
 
-func (sb *SBMock) ReadPieceFromSealedSector(sectorID uint64, offset uint64, size uint64, ticket []byte, commD []byte) (io.ReadCloser, error) {
+func (sb *SBMock) ReadPieceFromSealedSector(ctx context.Context, sectorID uint64, offset uint64, size uint64, ticket []byte, commD []byte) (io.ReadCloser, error) {
 	if len(sb.sectors[sectorID].pieces) > 1 {
 		panic("implme")
 	}
@@ -301,12 +302,32 @@ func (sb *SBMock) StageFakeData() (uint64, []sectorbuilder.PublicPieceInfo, erro
 	buf := make([]byte, usize)
 	rand.Read(buf)
 
-	pi, err := sb.AddPiece(usize, sid, bytes.NewReader(buf), nil)
+	pi, err := sb.AddPiece(context.TODO(), usize, sid, bytes.NewReader(buf), nil)
 	if err != nil {
 		return 0, nil, err
 	}
 
 	return sid, []sectorbuilder.PublicPieceInfo{pi}, nil
+}
+
+func (sb *SBMock) FinalizeSector(context.Context, uint64) error {
+	return nil
+}
+
+func (sb *SBMock) DropStaged(context.Context, uint64) error {
+	return nil
+}
+
+func (sb *SBMock) SectorPath(typ fs.DataType, sectorID uint64) (fs.SectorPath, error) {
+	panic("implement me")
+}
+
+func (sb *SBMock) AllocSectorPath(typ fs.DataType, sectorID uint64, cache bool) (fs.SectorPath, error) {
+	panic("implement me")
+}
+
+func (sb *SBMock) ReleaseSector(fs.DataType, fs.SectorPath) {
+	panic("implement me")
 }
 
 func (m mockVerif) VerifyElectionPost(ctx context.Context, sectorSize uint64, sectorInfo sectorbuilder.SortedPublicSectorInfo, challengeSeed []byte, proof []byte, candidates []sectorbuilder.EPostCandidate, proverID address.Address) (bool, error) {

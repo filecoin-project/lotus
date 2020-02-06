@@ -14,7 +14,7 @@ import (
 	"github.com/filecoin-project/lotus/chain/types"
 )
 
-func (s *fpostScheduler) failPost(eps uint64) {
+func (s *FPoStScheduler) failPost(eps uint64) {
 	s.failLk.Lock()
 	if eps > s.failed {
 		s.failed = eps
@@ -22,7 +22,7 @@ func (s *fpostScheduler) failPost(eps uint64) {
 	s.failLk.Unlock()
 }
 
-func (s *fpostScheduler) doPost(ctx context.Context, eps uint64, ts *types.TipSet) {
+func (s *FPoStScheduler) doPost(ctx context.Context, eps uint64, ts *types.TipSet) {
 	ctx, abort := context.WithCancel(ctx)
 
 	s.abort = abort
@@ -31,7 +31,7 @@ func (s *fpostScheduler) doPost(ctx context.Context, eps uint64, ts *types.TipSe
 	go func() {
 		defer abort()
 
-		ctx, span := trace.StartSpan(ctx, "fpostScheduler.doPost")
+		ctx, span := trace.StartSpan(ctx, "FPoStScheduler.doPost")
 		defer span.End()
 
 		proof, err := s.runPost(ctx, eps, ts)
@@ -50,58 +50,91 @@ func (s *fpostScheduler) doPost(ctx context.Context, eps uint64, ts *types.TipSe
 	}()
 }
 
-func (s *fpostScheduler) checkFaults(ctx context.Context, ssi sectorbuilder.SortedPublicSectorInfo) ([]uint64, error) {
+func (s *FPoStScheduler) declareFaults(ctx context.Context, fc uint64, params *actors.DeclareFaultsParams) error {
+	log.Warnf("DECLARING %d FAULTS", fc)
+
+	enc, aerr := actors.SerializeParams(params)
+	if aerr != nil {
+		return xerrors.Errorf("could not serialize declare faults parameters: %w", aerr)
+	}
+
+	msg := &types.Message{
+		To:       s.actor,
+		From:     s.worker,
+		Method:   actors.MAMethods.DeclareFaults,
+		Params:   enc,
+		Value:    types.NewInt(0),
+		GasLimit: types.NewInt(10000000), // i dont know help
+		GasPrice: types.NewInt(1),
+	}
+
+	sm, err := s.api.MpoolPushMessage(ctx, msg)
+	if err != nil {
+		return xerrors.Errorf("pushing faults message to mpool: %w", err)
+	}
+
+	rec, err := s.api.StateWaitMsg(ctx, sm.Cid())
+	if err != nil {
+		return xerrors.Errorf("waiting for declare faults: %w", err)
+	}
+
+	if rec.Receipt.ExitCode != 0 {
+		return xerrors.Errorf("declare faults exit %d", rec.Receipt.ExitCode)
+	}
+
+	log.Infof("Faults declared successfully")
+	return nil
+}
+
+func (s *FPoStScheduler) checkFaults(ctx context.Context, ssi sectorbuilder.SortedPublicSectorInfo) ([]uint64, error) {
 	faults := s.sb.Scrub(ssi)
-	var faultIDs []uint64
+
+	declaredFaults := map[uint64]struct{}{}
+
+	{
+		chainFaults, err := s.api.StateMinerFaults(ctx, s.actor, nil)
+		if err != nil {
+			return nil, xerrors.Errorf("checking on-chain faults: %w", err)
+		}
+
+		for _, fault := range chainFaults {
+			declaredFaults[fault] = struct{}{}
+		}
+	}
 
 	if len(faults) > 0 {
 		params := &actors.DeclareFaultsParams{Faults: types.NewBitField()}
 
 		for _, fault := range faults {
-			log.Warnf("fault detected: sector %d: %s", fault.SectorID, fault.Err)
-			faultIDs = append(faultIDs, fault.SectorID)
+			if _, ok := declaredFaults[fault.SectorID]; ok {
+				continue
+			}
 
-			// TODO: omit already declared (with finality in mind though..)
+			log.Warnf("new fault detected: sector %d: %s", fault.SectorID, fault.Err)
+			declaredFaults[fault.SectorID] = struct{}{}
 			params.Faults.Set(fault.SectorID)
 		}
 
-		log.Warnf("DECLARING %d FAULTS", len(faults))
-
-		enc, aerr := actors.SerializeParams(params)
-		if aerr != nil {
-			return nil, xerrors.Errorf("could not serialize declare faults parameters: %w", aerr)
-		}
-
-		msg := &types.Message{
-			To:       s.actor,
-			From:     s.worker,
-			Method:   actors.MAMethods.DeclareFaults,
-			Params:   enc,
-			Value:    types.NewInt(0),
-			GasLimit: types.NewInt(10000000), // i dont know help
-			GasPrice: types.NewInt(1),
-		}
-
-		sm, err := s.api.MpoolPushMessage(ctx, msg)
+		pc, err := params.Faults.Count()
 		if err != nil {
-			return nil, xerrors.Errorf("pushing faults message to mpool: %w", err)
+			return nil, xerrors.Errorf("counting faults: %w", err)
 		}
+		if pc > 0 {
+			if err := s.declareFaults(ctx, pc, params); err != nil {
+				return nil, err
+			}
+		}
+	}
 
-		rec, err := s.api.StateWaitMsg(ctx, sm.Cid())
-		if err != nil {
-			return nil, xerrors.Errorf("waiting for declare faults: %w", err)
-		}
-
-		if rec.Receipt.ExitCode != 0 {
-			return nil, xerrors.Errorf("declare faults exit %d", rec.Receipt.ExitCode)
-		}
-		log.Infof("Faults declared successfully")
+	faultIDs := make([]uint64, 0, len(declaredFaults))
+	for fault := range declaredFaults {
+		faultIDs = append(faultIDs, fault)
 	}
 
 	return faultIDs, nil
 }
 
-func (s *fpostScheduler) runPost(ctx context.Context, eps uint64, ts *types.TipSet) (*actors.SubmitFallbackPoStParams, error) {
+func (s *FPoStScheduler) runPost(ctx context.Context, eps uint64, ts *types.TipSet) (*actors.SubmitFallbackPoStParams, error) {
 	ctx, span := trace.StartSpan(ctx, "storage.runPost")
 	defer span.End()
 
@@ -161,7 +194,7 @@ func (s *fpostScheduler) runPost(ctx context.Context, eps uint64, ts *types.TipS
 	}, nil
 }
 
-func (s *fpostScheduler) sortedSectorInfo(ctx context.Context, ts *types.TipSet) (sectorbuilder.SortedPublicSectorInfo, error) {
+func (s *FPoStScheduler) sortedSectorInfo(ctx context.Context, ts *types.TipSet) (sectorbuilder.SortedPublicSectorInfo, error) {
 	sset, err := s.api.StateMinerProvingSet(ctx, s.actor, ts)
 	if err != nil {
 		return sectorbuilder.SortedPublicSectorInfo{}, xerrors.Errorf("failed to get proving set for miner (tsH: %d): %w", ts.Height(), err)
@@ -184,7 +217,7 @@ func (s *fpostScheduler) sortedSectorInfo(ctx context.Context, ts *types.TipSet)
 	return sectorbuilder.NewSortedPublicSectorInfo(sbsi), nil
 }
 
-func (s *fpostScheduler) submitPost(ctx context.Context, proof *actors.SubmitFallbackPoStParams) error {
+func (s *FPoStScheduler) submitPost(ctx context.Context, proof *actors.SubmitFallbackPoStParams) error {
 	ctx, span := trace.StartSpan(ctx, "storage.commitPost")
 	defer span.End()
 
@@ -210,6 +243,20 @@ func (s *fpostScheduler) submitPost(ctx context.Context, proof *actors.SubmitFal
 	}
 
 	log.Infof("Submitted fallback post: %s", sm.Cid())
+
+	go func() {
+		rec, err := s.api.StateWaitMsg(context.TODO(), sm.Cid())
+		if err != nil {
+			log.Error(err)
+			return
+		}
+
+		if rec.Receipt.ExitCode == 0 {
+			return
+		}
+
+		log.Errorf("Submitting fallback post %s failed: exit %d", sm.Cid(), rec.Receipt.ExitCode)
+	}()
 
 	return nil
 }

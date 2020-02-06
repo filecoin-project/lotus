@@ -49,8 +49,11 @@ func fillersFromRem(toFill uint64) ([]uint64, error) {
 
 func (m *Sealing) fastPledgeCommitment(size uint64, parts uint64) (commP [sectorbuilder.CommLen]byte, err error) {
 	parts = 1 << bits.Len64(parts) // round down to nearest power of 2
+	if size/parts < 127 {
+		parts = size / 127
+	}
 
-	piece := sectorbuilder.UserBytesForSectorSize((size + size / 127) / parts)
+	piece := sectorbuilder.UserBytesForSectorSize((size + size/127) / parts)
 	out := make([]sectorbuilder.PublicPieceInfo, parts)
 	var lk sync.Mutex
 
