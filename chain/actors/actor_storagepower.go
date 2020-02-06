@@ -464,7 +464,8 @@ func powerLookup(ctx context.Context, vmctx types.VMContext, self *StoragePowerS
 	}
 
 	if !has {
-		return types.EmptyInt, aerrors.New(1, "miner not registered with storage power actor")
+		// A miner could be registered with storage power actor, but removed for some reasons, e.g. consensus fault
+		return types.EmptyInt, aerrors.New(1, "miner not registered with storage power actor, or removed already")
 	}
 
 	// TODO: Use local amt
