@@ -5,7 +5,7 @@ import (
 	"context"
 	"io"
 
-	"github.com/filecoin-project/go-amt-ipld"
+	"github.com/filecoin-project/go-amt-ipld/v2"
 	cid "github.com/ipfs/go-cid"
 	hamt "github.com/ipfs/go-hamt-ipld"
 	cbor "github.com/ipfs/go-ipld-cbor"
@@ -87,11 +87,7 @@ func (spa StoragePowerActor) CreateStorageMiner(act *types.Actor, vmctx types.VM
 		return nil, aerrors.Newf(1, "not enough funds passed to cover required miner collateral (needed %s, got %s)", reqColl, vmctx.Message().Value)
 	}
 
-	// FORK
 	minerCid := StorageMinerCodeCid
-	if vmctx.BlockHeight() > build.ForkFrigidHeight {
-		minerCid = StorageMiner2CodeCid
-	}
 
 	encoded, err := CreateExecParams(minerCid, &StorageMinerConstructorParams{
 		Owner:      params.Owner,
@@ -146,19 +142,8 @@ func (spa StoragePowerActor) ArbitrateConsensusFault(act *types.Actor, vmctx typ
 		return nil, aerrors.New(2, "blocks must be from the same miner")
 	}
 
-	// FORK
-	if vmctx.BlockHeight() > build.ForkBlizzardHeight {
-		if params.Block1.Height <= build.ForkBlizzardHeight {
-			return nil, aerrors.New(10, "cannot slash miners with blocks from before blizzard")
-		}
-
-		if params.Block2.Height <= build.ForkBlizzardHeight {
-			return nil, aerrors.New(11, "cannot slash miners with blocks from before blizzard")
-		}
-
-		if params.Block1.Cid() == params.Block2.Cid() {
-			return nil, aerrors.New(3, "blocks must be different")
-		}
+	if params.Block1.Cid() == params.Block2.Cid() {
+		return nil, aerrors.New(3, "blocks must be different")
 	}
 
 	rval, err := vmctx.Send(params.Block1.Miner, MAMethods.GetWorkerAddr, types.NewInt(0), nil)
@@ -300,6 +285,7 @@ type UpdateStorageParams struct {
 }
 
 func (spa StoragePowerActor) UpdateStorage(act *types.Actor, vmctx types.VMContext, params *UpdateStorageParams) ([]byte, ActorError) {
+	ctx := vmctx.Context()
 	var self StoragePowerState
 	old := vmctx.Storage().GetHead()
 	if err := vmctx.Storage().Get(old, &self); err != nil {
@@ -332,7 +318,7 @@ func (spa StoragePowerActor) UpdateStorage(act *types.Actor, vmctx types.VMConte
 		return nil, nil // Nothing to do
 	}
 
-	buckets, eerr := amt.LoadAMT(types.WrapStorage(vmctx.Storage()), self.ProvingBuckets)
+	buckets, eerr := amt.LoadAMT(ctx, vmctx.Ipld(), self.ProvingBuckets)
 	if eerr != nil {
 		return nil, aerrors.HandleExternalError(eerr, "loading proving buckets amt")
 	}
@@ -349,7 +335,7 @@ func (spa StoragePowerActor) UpdateStorage(act *types.Actor, vmctx types.VMConte
 		return nil, err
 	}
 
-	self.ProvingBuckets, eerr = buckets.Flush()
+	self.ProvingBuckets, eerr = buckets.Flush(ctx)
 	if eerr != nil {
 		return nil, aerrors.HandleExternalError(eerr, "flushing proving buckets")
 	}
@@ -367,8 +353,9 @@ func (spa StoragePowerActor) UpdateStorage(act *types.Actor, vmctx types.VMConte
 }
 
 func deleteMinerFromBucket(vmctx types.VMContext, buckets *amt.Root, previousBucket uint64) aerrors.ActorError {
+	ctx := vmctx.Context()
 	var bucket cid.Cid
-	err := buckets.Get(previousBucket, &bucket)
+	err := buckets.Get(ctx, previousBucket, &bucket)
 	switch err.(type) {
 	case *amt.ErrNotFound:
 		return aerrors.HandleExternalError(err, "proving bucket missing")
@@ -396,7 +383,7 @@ func deleteMinerFromBucket(vmctx types.VMContext, buckets *amt.Root, previousBuc
 		return aerrors.HandleExternalError(err, "putting previous proving bucket hamt")
 	}
 
-	err = buckets.Set(previousBucket, bucket)
+	err = buckets.Set(ctx, previousBucket, bucket)
 	if err != nil {
 		return aerrors.HandleExternalError(err, "setting previous proving bucket cid in amt")
 	}
@@ -405,9 +392,10 @@ func deleteMinerFromBucket(vmctx types.VMContext, buckets *amt.Root, previousBuc
 }
 
 func addMinerToBucket(vmctx types.VMContext, buckets *amt.Root, nextBucket uint64) aerrors.ActorError {
+	ctx := vmctx.Context()
 	var bhamt *hamt.Node
 	var bucket cid.Cid
-	err := buckets.Get(nextBucket, &bucket)
+	err := buckets.Get(ctx, nextBucket, &bucket)
 	switch err.(type) {
 	case *amt.ErrNotFound:
 		bhamt = hamt.NewNode(vmctx.Ipld())
@@ -435,7 +423,7 @@ func addMinerToBucket(vmctx types.VMContext, buckets *amt.Root, nextBucket uint6
 		return aerrors.HandleExternalError(err, "putting previous proving bucket hamt")
 	}
 
-	err = buckets.Set(nextBucket, bucket)
+	err = buckets.Set(ctx, nextBucket, bucket)
 	if err != nil {
 		return aerrors.HandleExternalError(err, "setting previous proving bucket cid in amt")
 	}
@@ -628,15 +616,16 @@ func (spa StoragePowerActor) CheckProofSubmissions(act *types.Actor, vmctx types
 }
 
 func checkProofSubmissionsAtH(vmctx types.VMContext, self *StoragePowerState, height uint64) aerrors.ActorError {
+	ctx := vmctx.Context()
 	bucketID := height % build.SlashablePowerDelay
 
-	buckets, eerr := amt.LoadAMT(types.WrapStorage(vmctx.Storage()), self.ProvingBuckets)
+	buckets, eerr := amt.LoadAMT(ctx, vmctx.Ipld(), self.ProvingBuckets)
 	if eerr != nil {
 		return aerrors.HandleExternalError(eerr, "loading proving buckets amt")
 	}
 
 	var bucket cid.Cid
-	err := buckets.Get(bucketID, &bucket)
+	err := buckets.Get(ctx, bucketID, &bucket)
 	switch err.(type) {
 	case *amt.ErrNotFound:
 		return nil // nothing to do
@@ -661,16 +650,13 @@ func checkProofSubmissionsAtH(vmctx types.VMContext, self *StoragePowerState, he
 			return aerrors.Escalate(err, "parsing miner address")
 		}
 
-		if vmctx.BlockHeight() > build.ForkMissingSnowballs {
-			has, aerr := MinerSetHas(vmctx, self.Miners, maddr)
-			if aerr != nil {
-				return aerr
-			}
+		has, aerr := MinerSetHas(vmctx, self.Miners, maddr)
+		if aerr != nil {
+			return aerr
+		}
 
-			if !has {
-				forRemoval = append(forRemoval, maddr)
-			}
-
+		if !has {
+			forRemoval = append(forRemoval, maddr)
 		}
 
 		span.AddAttributes(trace.StringAttribute("miner", maddr.String()))
@@ -706,18 +692,18 @@ func checkProofSubmissionsAtH(vmctx types.VMContext, self *StoragePowerState, he
 		return aerrors.HandleExternalError(err, "iterating miners in proving bucket")
 	}
 
-	if vmctx.BlockHeight() > build.ForkMissingSnowballs && len(forRemoval) > 0 {
+	if len(forRemoval) > 0 {
 		nBucket, err := MinerSetRemove(vmctx.Context(), vmctx, bucket, forRemoval...)
 
 		if err != nil {
 			return aerrors.Wrap(err, "could not remove miners from set")
 		}
 
-		eerr := buckets.Set(bucketID, nBucket)
+		eerr := buckets.Set(ctx, bucketID, nBucket)
 		if err != nil {
 			return aerrors.HandleExternalError(eerr, "could not set the bucket")
 		}
-		ncid, eerr := buckets.Flush()
+		ncid, eerr := buckets.Flush(ctx)
 		if err != nil {
 			return aerrors.HandleExternalError(eerr, "could not flush buckets")
 		}

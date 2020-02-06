@@ -5,7 +5,7 @@ import (
 	"context"
 	"fmt"
 
-	amt "github.com/filecoin-project/go-amt-ipld"
+	amt "github.com/filecoin-project/go-amt-ipld/v2"
 	"github.com/ipfs/go-cid"
 	"github.com/ipfs/go-datastore"
 	hamt "github.com/ipfs/go-hamt-ipld"
@@ -166,15 +166,16 @@ func SetupCronActor(bs bstore.Blockstore) (*types.Actor, error) {
 }
 
 func SetupStoragePowerActor(bs bstore.Blockstore) (*types.Actor, error) {
+	ctx := context.TODO()
 	cst := cbor.NewCborStore(bs)
 	nd := hamt.NewNode(cst)
-	emptyhamt, err := cst.Put(context.TODO(), nd)
+	emptyhamt, err := cst.Put(ctx, nd)
 	if err != nil {
 		return nil, err
 	}
 
-	blks := amt.WrapBlockstore(bs)
-	emptyamt, err := amt.FromArray(blks, nil)
+	blks := cbor.NewCborStore(bs)
+	emptyamt, err := amt.FromArray(ctx, blks, nil)
 	if err != nil {
 		return nil, xerrors.Errorf("amt build failed: %w", err)
 	}
@@ -185,7 +186,7 @@ func SetupStoragePowerActor(bs bstore.Blockstore) (*types.Actor, error) {
 		TotalStorage:   types.NewInt(0),
 	}
 
-	stcid, err := cst.Put(context.TODO(), sms)
+	stcid, err := cst.Put(ctx, sms)
 	if err != nil {
 		return nil, err
 	}
@@ -199,14 +200,13 @@ func SetupStoragePowerActor(bs bstore.Blockstore) (*types.Actor, error) {
 }
 
 func SetupStorageMarketActor(bs bstore.Blockstore, sroot cid.Cid, deals []actors.StorageDealProposal) (cid.Cid, error) {
+	ctx := context.TODO()
 	cst := cbor.NewCborStore(bs)
 	nd := hamt.NewNode(cst)
-	emptyHAMT, err := cst.Put(context.TODO(), nd)
+	emptyHAMT, err := cst.Put(ctx, nd)
 	if err != nil {
 		return cid.Undef, err
 	}
-
-	blks := amt.WrapBlockstore(bs)
 
 	cdeals := make([]cbg.CBORMarshaler, len(deals))
 	for i, deal := range deals {
@@ -223,7 +223,7 @@ func SetupStorageMarketActor(bs bstore.Blockstore, sroot cid.Cid, deals []actors
 		}
 	}
 
-	dealAmt, err := amt.FromArray(blks, cdeals)
+	dealAmt, err := amt.FromArray(ctx, cst, cdeals)
 	if err != nil {
 		return cid.Undef, xerrors.Errorf("amt build failed: %w", err)
 	}
@@ -354,10 +354,8 @@ func SetupStorageMiners(ctx context.Context, cs *store.ChainStore, sroot cid.Cid
 		}
 		mstate.Power = types.BigMul(types.NewInt(ps.SectorSize), types.NewInt(uint64(len(ps.Sectors))))
 
-		blks := amt.WrapBlockstore(cs.Blockstore())
-
 		for _, s := range ps.Sectors {
-			nssroot, err := actors.AddToSectorSet(ctx, blks, mstate.Sectors, s.SectorID, s.CommR[:], s.CommD[:])
+			nssroot, err := actors.AddToSectorSet(ctx, cst, mstate.Sectors, s.SectorID, s.CommR[:], s.CommD[:])
 			if err != nil {
 				return cid.Undef, nil, xerrors.Errorf("failed to add fake sector to sector set: %w", err)
 			}
@@ -557,7 +555,7 @@ func doExecValue(ctx context.Context, vm *vm.VM, to, from address.Address, value
 }
 
 func MakeGenesisBlock(bs bstore.Blockstore, sys *types.VMSyscalls, balances map[address.Address]types.BigInt, gmcfg *GenMinerCfg, ts uint64) (*GenesisBootstrap, error) {
-	ctx := context.Background()
+	ctx := context.TODO()
 
 	state, err := MakeInitialStateTree(bs, balances)
 	if err != nil {
@@ -586,9 +584,9 @@ func MakeGenesisBlock(bs bstore.Blockstore, sys *types.VMSyscalls, balances map[
 		return nil, xerrors.Errorf("failed to adjust init actor start ID: %w", err)
 	}
 
-	blks := amt.WrapBlockstore(bs)
+	cst := cbor.NewCborStore(bs)
 
-	emptyroot, err := amt.FromArray(blks, nil)
+	emptyroot, err := amt.FromArray(ctx, cst, nil)
 	if err != nil {
 		return nil, xerrors.Errorf("amt build failed: %w", err)
 	}

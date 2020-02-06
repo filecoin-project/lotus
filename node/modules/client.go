@@ -6,7 +6,6 @@ import (
 	"reflect"
 
 	graphsyncimpl "github.com/filecoin-project/go-data-transfer/impl/graphsync"
-	piecefilestore "github.com/filecoin-project/go-fil-markets/filestore"
 	"github.com/filecoin-project/go-fil-markets/retrievalmarket"
 	"github.com/filecoin-project/go-fil-markets/retrievalmarket/discovery"
 	retrievalimpl "github.com/filecoin-project/go-fil-markets/retrievalmarket/impl"
@@ -14,6 +13,7 @@ import (
 	"github.com/filecoin-project/go-fil-markets/storagemarket"
 	deals "github.com/filecoin-project/go-fil-markets/storagemarket/impl"
 	storageimpl "github.com/filecoin-project/go-fil-markets/storagemarket/impl"
+	smnet "github.com/filecoin-project/go-fil-markets/storagemarket/network"
 	"github.com/filecoin-project/go-statestore"
 	"github.com/ipfs/go-bitswap"
 	"github.com/ipfs/go-bitswap/network"
@@ -111,12 +111,9 @@ func NewClientRequestValidator(deals dtypes.ClientDealStore) *storageimpl.Client
 	return storageimpl.NewClientRequestValidator(deals)
 }
 
-func StorageClient(h host.Host, ibs dtypes.ClientBlockstore, r repo.LockedRepo, dataTransfer dtypes.ClientDataTransfer, discovery *discovery.Local, deals dtypes.ClientDealStore, scn storagemarket.StorageClientNode) (storagemarket.StorageClient, error) {
-	store, err := piecefilestore.NewLocalFileStore(piecefilestore.OsPath(r.Path()))
-	if err != nil {
-		return nil, err
-	}
-	return storageimpl.NewClient(h, ibs, store, dataTransfer, discovery, deals, scn), nil
+func StorageClient(h host.Host, ibs dtypes.ClientBlockstore, r repo.LockedRepo, dataTransfer dtypes.ClientDataTransfer, discovery *discovery.Local, deals dtypes.ClientDealStore, scn storagemarket.StorageClientNode) storagemarket.StorageClient {
+	net := smnet.NewFromLibp2pHost(h)
+	return storageimpl.NewClient(net, ibs, dataTransfer, discovery, deals, scn)
 }
 
 // RetrievalClient creates a new retrieval client attached to the client blockstore

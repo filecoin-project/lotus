@@ -94,7 +94,6 @@ func TestStorageMarketCreateAndSlashMiner(t *testing.T) {
 		signBlock(t, h.w, workerAddr, b1)
 		signBlock(t, h.w, workerAddr, b2)
 
-		h.BlockHeight = build.ForkBlizzardHeight + 1
 		ret, _ := h.Invoke(t, ownerAddr, StoragePowerAddress, SPAMethods.ArbitrateConsensusFault,
 			&ArbitrateConsensusFaultParams{
 				Block1: b1,

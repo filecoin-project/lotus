@@ -2,7 +2,8 @@ package stmgr
 
 import (
 	"context"
-	amt2 "github.com/filecoin-project/go-amt-ipld/v2"
+
+	amt "github.com/filecoin-project/go-amt-ipld/v2"
 	"github.com/filecoin-project/lotus/chain/actors/aerrors"
 
 	ffi "github.com/filecoin-project/filecoin-ffi"
@@ -16,7 +17,6 @@ import (
 	"github.com/filecoin-project/lotus/chain/types"
 	"github.com/filecoin-project/lotus/chain/vm"
 
-	amt "github.com/filecoin-project/go-amt-ipld"
 	cid "github.com/ipfs/go-cid"
 	blockstore "github.com/ipfs/go-ipfs-blockstore"
 	cbor "github.com/ipfs/go-ipld-cbor"
@@ -171,13 +171,13 @@ func SectorSetSizes(ctx context.Context, sm *StateManager, maddr address.Address
 		return api.MinerSectors{}, xerrors.Errorf("(get sset) failed to load miner actor state: %w", err)
 	}
 
-	blks := amt.WrapBlockstore(sm.ChainStore().Blockstore())
-	ss, err := amt.LoadAMT(blks, mas.Sectors)
+	blks := cbor.NewCborStore(sm.ChainStore().Blockstore())
+	ss, err := amt.LoadAMT(ctx, blks, mas.Sectors)
 	if err != nil {
 		return api.MinerSectors{}, err
 	}
 
-	ps, err := amt.LoadAMT(blks, mas.ProvingSet)
+	ps, err := amt.LoadAMT(ctx, blks, mas.ProvingSet)
 	if err != nil {
 		return api.MinerSectors{}, err
 	}
@@ -261,7 +261,7 @@ func GetMinerFaults(ctx context.Context, sm *StateManager, ts *types.TipSet, mad
 		return nil, xerrors.Errorf("(get ssize) failed to load miner actor state: %w", err)
 	}
 
-	ss, lerr := amt2.LoadAMT(amt.WrapBlockstore(sm.cs.Blockstore()), mas.Sectors)
+	ss, lerr := amt.LoadAMT(ctx, cbor.NewCborStore(sm.cs.Blockstore()), mas.Sectors)
 	if lerr != nil {
 		return nil, aerrors.HandleExternalError(lerr, "could not load proving set node")
 	}
@@ -275,14 +275,13 @@ func GetStorageDeal(ctx context.Context, sm *StateManager, dealId uint64, ts *ty
 		return nil, err
 	}
 
-	blks := amt.WrapBlockstore(sm.ChainStore().Blockstore())
-	da, err := amt.LoadAMT(blks, state.Deals)
+	da, err := amt.LoadAMT(ctx, cbor.NewCborStore(sm.ChainStore().Blockstore()), state.Deals)
 	if err != nil {
 		return nil, err
 	}
 
 	var ocd actors.OnChainDeal
-	if err := da.Get(dealId, &ocd); err != nil {
+	if err := da.Get(ctx, dealId, &ocd); err != nil {
 		return nil, err
 	}
 
@@ -305,14 +304,13 @@ func ListMinerActors(ctx context.Context, sm *StateManager, ts *types.TipSet) ([
 }
 
 func LoadSectorsFromSet(ctx context.Context, bs blockstore.Blockstore, ssc cid.Cid) ([]*api.ChainSectorInfo, error) {
-	blks := amt.WrapBlockstore(bs)
-	a, err := amt.LoadAMT(blks, ssc)
+	a, err := amt.LoadAMT(ctx, cbor.NewCborStore(bs), ssc)
 	if err != nil {
 		return nil, err
 	}
 
 	var sset []*api.ChainSectorInfo
-	if err := a.ForEach(func(i uint64, v *cbg.Deferred) error {
+	if err := a.ForEach(ctx, func(i uint64, v *cbg.Deferred) error {
 		var comms [][]byte
 		if err := cbor.DecodeInto(v.Raw, &comms); err != nil {
 			return err
