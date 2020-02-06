@@ -123,8 +123,6 @@ github.com/filecoin-project/go-sectorbuilder v0.0.2-0.20200203173614-42d67726bb6
 github.com/filecoin-project/go-sectorbuilder v0.0.2-0.20200203173614-42d67726bb62/go.mod h1:jNGVCDihkMFnraYVLH1xl4ceZQVxx/u4dOORrTKeRi0=
 github.com/filecoin-project/go-statestore v0.1.0 h1:t56reH59843TwXHkMcwyuayStBIiWBRilQjQ+5IiwdQ=
 github.com/filecoin-project/go-statestore v0.1.0/go.mod h1:LFc9hD+fRxPqiHiaqUEZOinUJB4WARkRfNl10O7kTnI=
-github.com/filecoin-project/specs-actors v0.0.0-20200204204849-b1474eeb2fb5 h1:rDyP5UTPFxdfS7D5I0XLdaQZZoNGYTic1X9ptKmRSlM=
-github.com/filecoin-project/specs-actors v0.0.0-20200204204849-b1474eeb2fb5/go.mod h1:9vrrnLVhF2Zz6R3VBI7lKxQYRvPpsc1FTUyNqCvuYME=
 github.com/filecoin-project/specs-actors v0.0.0-20200206185502-20fc70907293 h1:k/xtj90OknHTVOJikJ9mnf81UN2BaflS3R83OUg3BJM=
 github.com/filecoin-project/specs-actors v0.0.0-20200206185502-20fc70907293/go.mod h1:gx4vDpIVf3AfF23iyVn9PNQhKy7wGQDrhxNyCHDzG8I=
 github.com/fsnotify/fsnotify v1.4.7 h1:IXs+QLmnXW2CcXuY+8Mzv/fWEsPGWxqefPtCP5CnV9I=
