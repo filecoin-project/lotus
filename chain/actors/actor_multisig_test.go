@@ -3,6 +3,8 @@ package actors_test
 import (
 	"testing"
 
+	"github.com/filecoin-project/specs-actors/actors/builtin"
+	samsig "github.com/filecoin-project/specs-actors/actors/builtin/multisig"
 	cbor "github.com/ipfs/go-ipld-cbor"
 	"github.com/stretchr/testify/assert"
 	cbg "github.com/whyrusleeping/cbor-gen"
@@ -26,7 +28,7 @@ func TestMultiSigCreate(t *testing.T) {
 
 	h := NewHarness(t, opts...)
 	ret, _ := h.CreateActor(t, creatorAddr, actors.MultisigCodeCid,
-		&actors.MultiSigConstructorParams{
+		&samsig.ConstructorParams{
 			Signers:               []address.Address{creatorAddr, sig1Addr, sig2Addr},
 			NumApprovalsThreshold: 2,
 		})
@@ -53,7 +55,7 @@ func TestMultiSigOps(t *testing.T) {
 		HarnessAddr(&outsideAddr, 100000),
 		HarnessActor(&multSigAddr, &creatorAddr, actors.MultisigCodeCid,
 			func() cbg.CBORMarshaler {
-				return &actors.MultiSigConstructorParams{
+				return &samsig.ConstructorParams{
 					Signers:               []address.Address{creatorAddr, sig1Addr, sig2Addr},
 					NumApprovalsThreshold: 2,
 				}
@@ -73,22 +75,22 @@ func TestMultiSigOps(t *testing.T) {
 	{
 		// Transfer funds outside of multsig
 		const sendVal = 1000
-		ret, _ := h.Invoke(t, creatorAddr, multSigAddr, actors.MultiSigMethods.Propose,
-			&actors.MultiSigProposeParams{
+		ret, _ := h.Invoke(t, creatorAddr, multSigAddr, uint64(builtin.MethodsMultisig.Propose),
+			&samsig.ProposeParams{
 				To:    outsideAddr,
 				Value: big.NewInt(sendVal),
 			})
 		ApplyOK(t, ret)
-		var txIDParam actors.MultiSigTxID
+		var txIDParam samsig.TxnIDParams
 		err := cbor.DecodeInto(ret.Return, &txIDParam.ID)
 		assert.NoError(t, err, "decoding txid")
 
-		ret, _ = h.Invoke(t, outsideAddr, multSigAddr, actors.MultiSigMethods.Approve,
+		ret, _ = h.Invoke(t, outsideAddr, multSigAddr, uint64(builtin.MethodsMultisig.Approve),
 			&txIDParam)
 		assert.Equal(t, uint8(18), ret.ExitCode, "outsideAddr should not approve")
 		h.AssertBalanceChange(t, multSigAddr, 0)
 
-		ret2, _ := h.Invoke(t, sig1Addr, multSigAddr, actors.MultiSigMethods.Approve,
+		ret2, _ := h.Invoke(t, sig1Addr, multSigAddr, uint64(builtin.MethodsMultisig.Approve),
 			&txIDParam)
 		ApplyOK(t, ret2)
 

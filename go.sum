@@ -125,6 +125,8 @@ github.com/filecoin-project/go-statestore v0.1.0 h1:t56reH59843TwXHkMcwyuayStBIi
 github.com/filecoin-project/go-statestore v0.1.0/go.mod h1:LFc9hD+fRxPqiHiaqUEZOinUJB4WARkRfNl10O7kTnI=
 github.com/filecoin-project/specs-actors v0.0.0-20200204204849-b1474eeb2fb5 h1:rDyP5UTPFxdfS7D5I0XLdaQZZoNGYTic1X9ptKmRSlM=
 github.com/filecoin-project/specs-actors v0.0.0-20200204204849-b1474eeb2fb5/go.mod h1:9vrrnLVhF2Zz6R3VBI7lKxQYRvPpsc1FTUyNqCvuYME=
+github.com/filecoin-project/specs-actors v0.0.0-20200206185502-20fc70907293 h1:k/xtj90OknHTVOJikJ9mnf81UN2BaflS3R83OUg3BJM=
+github.com/filecoin-project/specs-actors v0.0.0-20200206185502-20fc70907293/go.mod h1:gx4vDpIVf3AfF23iyVn9PNQhKy7wGQDrhxNyCHDzG8I=
 github.com/fsnotify/fsnotify v1.4.7 h1:IXs+QLmnXW2CcXuY+8Mzv/fWEsPGWxqefPtCP5CnV9I=
 github.com/fsnotify/fsnotify v1.4.7/go.mod h1:jwhsz4b93w/PPRr/qN1Yymfu8t87LnFCMoQvtojpjFo=
 github.com/gbrlsnchs/jwt/v3 v3.0.0-beta.1 h1:EzDjxMg43q1tA2c0MV3tNbaontnHLplHyFF6M5KiVP0=
