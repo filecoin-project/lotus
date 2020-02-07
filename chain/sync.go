@@ -118,6 +118,10 @@ func (syncer *Syncer) InformNewHead(from peer.ID, fts *store.FullTipSet) bool {
 	}
 
 	for _, b := range fts.Blocks {
+		if syncer.bad.Has(b.Cid()) {
+			log.Warnf("InformNewHead called on block marked as bad: %s", b.Cid())
+			return false
+		}
 		if err := syncer.ValidateMsgMeta(b); err != nil {
 			log.Warnf("invalid block received: %s", err)
 			return false
