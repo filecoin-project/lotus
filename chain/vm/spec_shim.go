@@ -89,6 +89,10 @@ func (rs *runtimeShim) IpldPut(o vmr.CBORMarshaler) cid.Cid {
 	return c
 }
 
+func (re *runtimeShim) ValueReceived() abi.TokenAmount {
+	return abi.TokenAmount{re.vmctx.Message().Value.Int}
+}
+
 func (rs *runtimeShim) Abort(code exitcode.ExitCode, msg string, args ...interface{}) {
 	panic(aerrors.Newf(uint8(code), msg, args...))
 }

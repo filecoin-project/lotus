@@ -5,6 +5,7 @@ import (
 
 	"github.com/filecoin-project/go-address"
 	"github.com/filecoin-project/go-sectorbuilder"
+	"github.com/filecoin-project/specs-actors/actors/runtime/exitcode"
 
 	vchain "github.com/filecoin-project/chain-validation/pkg/chain"
 	vstate "github.com/filecoin-project/chain-validation/pkg/state"
@@ -51,7 +52,7 @@ func (a *Applier) ApplyMessage(eCtx *vchain.ExecutionContext, state vstate.Wrapp
 	}
 
 	mr := vchain.MessageReceipt{
-		ExitCode:    ret.ExitCode,
+		ExitCode:    exitcode.ExitCode(ret.ExitCode),
 		ReturnValue: ret.Return,
 		GasUsed:     big.Int{ret.GasUsed.Int},
 	}

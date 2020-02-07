@@ -29,7 +29,6 @@ func TestValueTransfer(t *testing.T) {
 */
 
 func TestMultiSig(t *testing.T) {
-	t.SkipNow()
 	factory := validation.NewFactories()
 	suites.MultiSigActorConstructor(t, factory)
 	suites.MultiSigActorProposeApprove(t, factory)

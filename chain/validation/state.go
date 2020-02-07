@@ -161,7 +161,7 @@ func (s *StateWrapper) SetSingletonActor(addr address.Address, balance big.Int) 
 			return nil, nil, xerrors.Errorf("set network storage market actor: %w", err)
 		}
 		return &actorWrapper{*spact}, s.storage, s.flush(tree)
-	case actors.NetworkAddress: // TODO special case for lotus, should be combined with BurntFundAddress
+	case actors.NetworkAddress: // TODO special case for lotus, should be combined with Reward Actor
 	panic("see TODO")
 		ntwkact := &types.Actor{
 			Code:    actors.AccountCodeCid,
@@ -172,6 +172,17 @@ func (s *StateWrapper) SetSingletonActor(addr address.Address, balance big.Int) 
 			return nil, nil, xerrors.Errorf("set network actor: %w", err)
 		}
 		return &actorWrapper{*ntwkact}, s.storage, s.flush(tree)
+	case builtin.RewardActorAddr:
+		ntwkact := &types.Actor{
+			Code:    actors.AccountCodeCid,
+			Balance: types.BigInt{balance.Int},
+			Head:    vm.EmptyObjectCid,
+		}
+		if err := tree.SetActor(builtin.RewardActorAddr, ntwkact); err != nil {
+			return nil, nil, xerrors.Errorf("set reward actor: %w", err)
+		}
+		return &actorWrapper{*ntwkact}, s.storage, s.flush(tree)
+
 	case builtin.BurntFundsActorAddr:
 		ntwkact := &types.Actor{
 			Code:    actors.AccountCodeCid,
@@ -179,7 +190,7 @@ func (s *StateWrapper) SetSingletonActor(addr address.Address, balance big.Int) 
 			Head:    vm.EmptyObjectCid,
 		}
 		if err := tree.SetActor(actors.BurntFundsAddress, ntwkact); err != nil {
-			return nil, nil, xerrors.Errorf("set network actor: %w", err)
+			return nil, nil, xerrors.Errorf("set burntfunds actor: %w", err)
 		}
 		return &actorWrapper{*ntwkact}, s.storage, s.flush(tree)
 	default:
