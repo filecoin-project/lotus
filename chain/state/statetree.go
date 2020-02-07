@@ -49,10 +49,16 @@ func LoadStateTree(cst *hamt.CborIpldStore, c cid.Cid) (*StateTree, error) {
 		return nil, err
 	}
 
+	idCache, err := lru.NewLRU(1024, nil)
+	if err != nil {
+		return nil, xerrors.Errorf("creating cache: %w", idCache)
+	}
+
 	return &StateTree{
 		root:       nd,
 		Store:      cst,
 		actorcache: make(map[address.Address]*types.Actor),
+		idCache:    idCache,
 	}, nil
 }
 
@@ -205,6 +211,10 @@ func (st *StateTree) Revert() error {
 	if err != nil {
 		return err
 	}
+
+	// TODO: should it clean actorcache? Probably yes
+
+	st.idCache.Purge()
 
 	st.root = nd
 	return nil
