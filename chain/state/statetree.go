@@ -102,7 +102,7 @@ func (st *StateTree) LookupID(addr address.Address) (address.Address, error) {
 
 	id, err = ias.Lookup(st.Store, addr)
 	if err != nil {
-		return address.Undef, xerrors.Errorf("resolving id addr: %d", err)
+		return address.Undef, xerrors.Errorf("resolving id addr: %w", err)
 	}
 
 	st.idCache.Add(addr, id)
