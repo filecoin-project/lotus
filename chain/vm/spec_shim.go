@@ -90,7 +90,7 @@ func (rs *runtimeShim) IpldPut(o vmr.CBORMarshaler) cid.Cid {
 }
 
 func (re *runtimeShim) ValueReceived() abi.TokenAmount {
-	return abi.TokenAmount{re.vmctx.Message().Value.Int}
+	return abi.TokenAmount(re.vmctx.Message().Value)
 }
 
 func (rs *runtimeShim) Abort(code exitcode.ExitCode, msg string, args ...interface{}) {
