@@ -7,6 +7,8 @@ import (
 
 	"github.com/filecoin-project/lotus/build"
 	"github.com/filecoin-project/lotus/chain/types"
+
+	_ "github.com/filecoin-project/lotus/lib/sigs/secp"
 )
 
 const HalvingPeriodEpochs = 6 * 365 * 24 * 60 * 2
