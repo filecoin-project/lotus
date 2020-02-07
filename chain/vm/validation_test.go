@@ -7,18 +7,11 @@ import (
 
 	"github.com/filecoin-project/lotus/chain/validation"
 )
-/*
-func TestStorageMinerValidation(t *testing.T) {
-	t.SkipNow()
-	factory := validation.NewFactories()
-	suites.CreateStorageMinerAndUpdatePeerID(t, factory)
-
-}
 
 func TestValueTransfer(t *testing.T) {
 	factory := validation.NewFactories()
-	suites.AccountValueTransferSuccess(t, factory, 126)
-	suites.AccountValueTransferZeroFunds(t, factory, 112)
+	suites.AccountValueTransferSuccess(t, factory, 128)
+	suites.AccountValueTransferZeroFunds(t, factory, 114)
 	suites.AccountValueTransferOverBalanceNonZero(t, factory, 0)
 	suites.AccountValueTransferOverBalanceZero(t, factory, 0)
 	suites.AccountValueTransferToSelf(t, factory, 0)
@@ -26,7 +19,6 @@ func TestValueTransfer(t *testing.T) {
 	suites.AccountValueTransferFromUnknownToKnownAccount(t, factory, 0)
 	suites.AccountValueTransferFromUnknownToUnknownAccount(t, factory, 0)
 }
-*/
 
 func TestMultiSig(t *testing.T) {
 	factory := validation.NewFactories()
