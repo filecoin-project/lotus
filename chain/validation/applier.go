@@ -2,13 +2,15 @@ package validation
 
 import (
 	"context"
+
+	"github.com/filecoin-project/go-address"
 	"github.com/filecoin-project/go-sectorbuilder"
 
 	vchain "github.com/filecoin-project/chain-validation/pkg/chain"
 	vstate "github.com/filecoin-project/chain-validation/pkg/state"
-	vtypes "github.com/filecoin-project/chain-validation/pkg/state/types"
 
-	"github.com/filecoin-project/go-address"
+	"github.com/filecoin-project/specs-actors/actors/abi/big"
+
 	"github.com/filecoin-project/lotus/chain/types"
 	"github.com/filecoin-project/lotus/chain/vm"
 )
@@ -23,7 +25,7 @@ func NewApplier() *Applier {
 	return &Applier{}
 }
 
-func (a *Applier) ApplyMessage(eCtx *vchain.ExecutionContext, state vstate.Wrapper, message interface{}) (vchain.MessageReceipt, error) {
+func (a *Applier) ApplyMessage(eCtx *vchain.ExecutionContext, state vstate.Wrapper, message *vchain.Message) (vchain.MessageReceipt, error) {
 	ctx := context.TODO()
 	st := state.(*StateWrapper)
 
@@ -33,12 +35,12 @@ func (a *Applier) ApplyMessage(eCtx *vchain.ExecutionContext, state vstate.Wrapp
 	if err != nil {
 		return vchain.MessageReceipt{}, err
 	}
-	lotusVM, err := vm.NewVM(base, eCtx.Epoch, randSrc, minerAddr, st.bs, vm.Syscalls(sectorbuilder.ProofVerifier))
+	lotusVM, err := vm.NewVM(base, uint64(eCtx.Epoch), randSrc, minerAddr, st.bs, vm.Syscalls(sectorbuilder.ProofVerifier))
 	if err != nil {
 		return vchain.MessageReceipt{}, err
 	}
 
-	ret, err := lotusVM.ApplyMessage(ctx, message.(*types.Message))
+	ret, err := lotusVM.ApplyMessage(ctx, toLotusMsg(message))
 	if err != nil {
 		return vchain.MessageReceipt{}, err
 	}
@@ -51,7 +53,7 @@ func (a *Applier) ApplyMessage(eCtx *vchain.ExecutionContext, state vstate.Wrapp
 	mr := vchain.MessageReceipt{
 		ExitCode:    ret.ExitCode,
 		ReturnValue: ret.Return,
-		GasUsed:     vtypes.GasUnit(ret.GasUsed.Uint64()),
+		GasUsed:     big.Int{ret.GasUsed.Int},
 	}
 
 	return mr, ret.ActorErr
@@ -63,4 +65,20 @@ type vmRand struct {
 
 func (*vmRand) GetRandomness(ctx context.Context, h int64) ([]byte, error) {
 	panic("implement me")
+}
+
+func toLotusMsg(msg *vchain.Message) *types.Message {
+	return &types.Message{
+		To:       msg.To,
+		From:     msg.From,
+
+		Nonce:    uint64(msg.CallSeqNum),
+		Method:   uint64(msg.Method),
+
+		Value:    types.BigInt{msg.Value.Int},
+		GasPrice: types.BigInt{msg.GasPrice.Int},
+		GasLimit: types.BigInt{msg.GasLimit.Int},
+
+		Params:   msg.Params,
+	}
 }

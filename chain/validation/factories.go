@@ -1,7 +1,6 @@
 package validation
 
 import (
-	vchain "github.com/filecoin-project/chain-validation/pkg/chain"
 	vstate "github.com/filecoin-project/chain-validation/pkg/state"
 	"github.com/filecoin-project/chain-validation/pkg/suites"
 )
@@ -19,9 +18,4 @@ func NewFactories() *factories {
 
 func (f *factories) NewState() vstate.Wrapper {
 	return NewState()
-}
-
-func (f *factories) NewMessageFactory(wrapper vstate.Wrapper) vchain.MessageFactory {
-	signer := wrapper.(*StateWrapper).Signer()
-	return NewMessageFactory(signer)
 }

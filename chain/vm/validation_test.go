@@ -7,7 +7,7 @@ import (
 
 	"github.com/filecoin-project/lotus/chain/validation"
 )
-
+/*
 func TestStorageMinerValidation(t *testing.T) {
 	t.SkipNow()
 	factory := validation.NewFactories()
@@ -26,6 +26,7 @@ func TestValueTransfer(t *testing.T) {
 	suites.AccountValueTransferFromUnknownToKnownAccount(t, factory, 0)
 	suites.AccountValueTransferFromUnknownToUnknownAccount(t, factory, 0)
 }
+*/
 
 func TestMultiSig(t *testing.T) {
 	t.SkipNow()
