@@ -4,11 +4,13 @@ import (
 	"context"
 	"fmt"
 
+	lru "github.com/hashicorp/golang-lru/simplelru"
+	"go.opencensus.io/trace"
+	"golang.org/x/xerrors"
+
 	"github.com/ipfs/go-cid"
 	hamt "github.com/ipfs/go-hamt-ipld"
 	logging "github.com/ipfs/go-log/v2"
-	"go.opencensus.io/trace"
-	"golang.org/x/xerrors"
 
 	"github.com/filecoin-project/go-address"
 	"github.com/filecoin-project/lotus/chain/actors"
@@ -23,13 +25,20 @@ type StateTree struct {
 
 	actorcache map[address.Address]*types.Actor
 	snapshot   cid.Cid
+
+	idCache *lru.LRU
 }
 
 func NewStateTree(cst *hamt.CborIpldStore) (*StateTree, error) {
+	idCache, err := lru.NewLRU(1024, nil)
+	if err != nil {
+		return nil, xerrors.Errorf("creating cache: %w", idCache)
+	}
 	return &StateTree{
 		root:       hamt.NewNode(cst),
 		Store:      cst,
 		actorcache: make(map[address.Address]*types.Actor),
+		idCache:    idCache,
 	}, nil
 }
 
@@ -67,6 +76,10 @@ func (st *StateTree) SetActor(addr address.Address, act *types.Actor) error {
 }
 
 func (st *StateTree) LookupID(addr address.Address) (address.Address, error) {
+	id, ok := st.idCache.Get(addr)
+	if ok {
+		return id.(address.Address), nil
+	}
 	if addr.Protocol() == address.ID {
 		return addr, nil
 	}
@@ -81,7 +94,13 @@ func (st *StateTree) LookupID(addr address.Address) (address.Address, error) {
 		return address.Undef, xerrors.Errorf("loading init actor state: %w", err)
 	}
 
-	return ias.Lookup(st.Store, addr)
+	id, err = ias.Lookup(st.Store, addr)
+	if err != nil {
+		return address.Undef, xerrors.Errorf("resolving id addr: %d", err)
+	}
+
+	st.idCache.Add(addr, id)
+	return id.(address.Address), nil
 }
 
 func (st *StateTree) GetActor(addr address.Address) (*types.Actor, error) {
