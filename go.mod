@@ -10,7 +10,7 @@ require (
 	github.com/StackExchange/wmi v0.0.0-20190523213315-cbe66965904d // indirect
 	github.com/coreos/go-systemd v0.0.0-00010101000000-000000000000
 	github.com/docker/go-units v0.4.0
-	github.com/filecoin-project/chain-validation v0.0.3
+	github.com/filecoin-project/chain-validation v0.0.6-0.20200207212916-68480069c137
 	github.com/filecoin-project/filecoin-ffi v0.0.0-20191219131535-bb699517a590
 	github.com/filecoin-project/go-address v0.0.0-20200107215422-da8eea2842b5
 	github.com/filecoin-project/go-amt-ipld/v2 v2.0.1-0.20200131012142-05d80eeccc5e
@@ -113,5 +113,3 @@ replace github.com/golangci/golangci-lint => github.com/golangci/golangci-lint v
 replace github.com/filecoin-project/filecoin-ffi => ./extern/filecoin-ffi
 
 replace github.com/coreos/go-systemd => github.com/coreos/go-systemd/v22 v22.0.0
-
-replace github.com/filecoin-project/chain-validation => ../chain-validation

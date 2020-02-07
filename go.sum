@@ -97,8 +97,8 @@ github.com/fatih/color v1.7.0/go.mod h1:Zm6kSWBoL9eyXnKyktHP6abPY2pDugNf5Kwzbycv
 github.com/fatih/color v1.8.0 h1:5bzFgL+oy7JITMTxUPJ00n7VxmYd/PdMp5mHFX40/RY=
 github.com/fatih/color v1.8.0/go.mod h1:3l45GVGkyrnYNl9HoIjnp2NnNWvh6hLAqD8yTfGjnw8=
 github.com/fd/go-nat v1.0.0/go.mod h1:BTBu/CKvMmOMUPkKVef1pngt2WFH/lg7E6yQnulfp6E=
-github.com/filecoin-project/chain-validation v0.0.3 h1:luT/8kJ0WdMIqQ9Bm31W4JkuYCW0wUb26AvnD4WK59M=
-github.com/filecoin-project/chain-validation v0.0.3/go.mod h1:NCEGFjcWRjb8akWFSOXvU6n2efkWIqAeOKU6o5WBGQw=
+github.com/filecoin-project/chain-validation v0.0.6-0.20200207212916-68480069c137 h1:H5q5nSyRrLLoGXrvd+1kJ3ylbXTQVN1Q7KtpmMcZpYs=
+github.com/filecoin-project/chain-validation v0.0.6-0.20200207212916-68480069c137/go.mod h1:gMY2FXeId5rY6+N9R738oYH3dxcJsHnXgwoyQHXIczo=
 github.com/filecoin-project/go-address v0.0.0-20191219011437-af739c490b4f h1:L2jaVU8TvWTx7iZPhlYvUE8vkoOnj778XuKavz8W36g=
 github.com/filecoin-project/go-address v0.0.0-20191219011437-af739c490b4f/go.mod h1:rCbpXPva2NKF9/J4X6sr7hbKBgQCxyFtRj7KOZqoIms=
 github.com/filecoin-project/go-address v0.0.0-20200107215422-da8eea2842b5 h1:/MmWluswvDIbuPvBct4q6HeQgVm62O2DzWYTB38kt4A=
@@ -741,7 +741,6 @@ github.com/whyrusleeping/base32 v0.0.0-20170828182744-c30ac30633cc h1:BCPnHtcboa
 github.com/whyrusleeping/base32 v0.0.0-20170828182744-c30ac30633cc/go.mod h1:r45hJU7yEoA81k6MWNhpMj/kms0n14dkzkxYHoB96UM=
 github.com/whyrusleeping/bencher v0.0.0-20190829221104-bb6607aa8bba h1:X4n8JG2e2biEZZXdBKt9HX7DN3bYGFUqljqqy0DqgnY=
 github.com/whyrusleeping/bencher v0.0.0-20190829221104-bb6607aa8bba/go.mod h1:CHQnYnQUEPydYCwuy8lmTHfGmdw9TKrhWV0xLx8l0oM=
-github.com/whyrusleeping/cbor-gen v0.0.0-20191116002219-891f55cd449d/go.mod h1:xdlJQaiqipF0HW+Mzpg7XRM3fWbGvfgFlcppuvlkIvY=
 github.com/whyrusleeping/cbor-gen v0.0.0-20191212224538-d370462a7e8a/go.mod h1:xdlJQaiqipF0HW+Mzpg7XRM3fWbGvfgFlcppuvlkIvY=
 github.com/whyrusleeping/cbor-gen v0.0.0-20191216205031-b047b6acb3c0/go.mod h1:xdlJQaiqipF0HW+Mzpg7XRM3fWbGvfgFlcppuvlkIvY=
 github.com/whyrusleeping/cbor-gen v0.0.0-20200123233031-1cdf64d27158 h1:WXhVOwj2USAXB5oMDwRl3piOux2XMV9TANaYxXHdkoE=
