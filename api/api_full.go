@@ -6,11 +6,13 @@ import (
 
 	"github.com/filecoin-project/go-address"
 	"github.com/filecoin-project/go-fil-markets/storagemarket"
+	"github.com/filecoin-project/specs-actors/actors/abi"
+	"github.com/filecoin-project/specs-actors/actors/abi/big"
+	"github.com/filecoin-project/specs-actors/actors/builtin/market"
 	"github.com/ipfs/go-cid"
 	"github.com/ipfs/go-filestore"
 	"github.com/libp2p/go-libp2p-core/peer"
 
-	"github.com/filecoin-project/lotus/chain/actors"
 	"github.com/filecoin-project/lotus/chain/store"
 	"github.com/filecoin-project/lotus/chain/types"
 )
@@ -18,6 +20,8 @@ import (
 // FullNode API is a low-level interface to the Filecoin network full node
 type FullNode interface {
 	Common
+
+	// TODO: TipSetKeys
 
 	// chain
 
@@ -31,7 +35,7 @@ type FullNode interface {
 	ChainGetBlockMessages(context.Context, cid.Cid) (*BlockMessages, error)
 	ChainGetParentReceipts(context.Context, cid.Cid) ([]*types.MessageReceipt, error)
 	ChainGetParentMessages(context.Context, cid.Cid) ([]Message, error)
-	ChainGetTipSetByHeight(context.Context, uint64, *types.TipSet) (*types.TipSet, error)
+	ChainGetTipSetByHeight(context.Context, abi.ChainEpoch, *types.TipSet) (*types.TipSet, error)
 	ChainReadObj(context.Context, cid.Cid) ([]byte, error)
 	ChainHasObj(context.Context, cid.Cid) (bool, error)
 	ChainSetHead(context.Context, *types.TipSet) error
@@ -59,7 +63,7 @@ type FullNode interface {
 
 	// miner
 
-	MinerCreateBlock(context.Context, address.Address, *types.TipSet, *types.Ticket, *types.EPostProof, []*types.SignedMessage, uint64, uint64) (*types.BlockMsg, error)
+	MinerCreateBlock(context.Context, address.Address, *types.TipSet, *types.Ticket, *types.EPostProof, []*types.SignedMessage, abi.ChainEpoch, uint64) (*types.BlockMsg, error)
 
 	// // UX ?
 
@@ -101,7 +105,7 @@ type FullNode interface {
 	StateReplay(context.Context, *types.TipSet, cid.Cid) (*ReplayResults, error)
 	StateGetActor(ctx context.Context, actor address.Address, ts *types.TipSet) (*types.Actor, error)
 	StateReadState(ctx context.Context, act *types.Actor, ts *types.TipSet) (*ActorState, error)
-	StateListMessages(ctx context.Context, match *types.Message, ts *types.TipSet, toht uint64) ([]cid.Cid, error)
+	StateListMessages(ctx context.Context, match *types.Message, ts *types.TipSet, toht abi.ChainEpoch) ([]cid.Cid, error)
 
 	StateMinerSectors(context.Context, address.Address, *types.TipSet) ([]*ChainSectorInfo, error)
 	StateMinerProvingSet(context.Context, address.Address, *types.TipSet) ([]*ChainSectorInfo, error)
@@ -109,21 +113,21 @@ type FullNode interface {
 	StateMinerWorker(context.Context, address.Address, *types.TipSet) (address.Address, error)
 	StateMinerPeerID(ctx context.Context, m address.Address, ts *types.TipSet) (peer.ID, error)
 	StateMinerElectionPeriodStart(ctx context.Context, actor address.Address, ts *types.TipSet) (uint64, error)
-	StateMinerSectorSize(context.Context, address.Address, *types.TipSet) (uint64, error)
+	StateMinerSectorSize(context.Context, address.Address, *types.TipSet) (abi.SectorSize, error)
 	StateMinerFaults(context.Context, address.Address, *types.TipSet) ([]uint64, error)
 	StatePledgeCollateral(context.Context, *types.TipSet) (types.BigInt, error)
 	StateWaitMsg(context.Context, cid.Cid) (*MsgWait, error)
 	StateListMiners(context.Context, *types.TipSet) ([]address.Address, error)
 	StateListActors(context.Context, *types.TipSet) ([]address.Address, error)
-	StateMarketBalance(context.Context, address.Address, *types.TipSet) (actors.StorageParticipantBalance, error)
-	StateMarketParticipants(context.Context, *types.TipSet) (map[string]actors.StorageParticipantBalance, error)
-	StateMarketDeals(context.Context, *types.TipSet) (map[string]actors.OnChainDeal, error)
-	StateMarketStorageDeal(context.Context, uint64, *types.TipSet) (*actors.OnChainDeal, error)
+	StateMarketBalance(context.Context, address.Address, *types.TipSet) (MarketBalance, error)
+	StateMarketParticipants(context.Context, *types.TipSet) (map[string]MarketBalance, error)
+	StateMarketDeals(context.Context, *types.TipSet) (map[string]market.DealProposal, error)
+	StateMarketStorageDeal(context.Context, abi.DealID, *types.TipSet) (*market.DealProposal, error)
 	StateLookupID(context.Context, address.Address, *types.TipSet) (address.Address, error)
 	StateChangedActors(context.Context, cid.Cid, cid.Cid) (map[string]types.Actor, error)
 	StateGetReceipt(context.Context, cid.Cid, *types.TipSet) (*types.MessageReceipt, error)
 	StateMinerSectorCount(context.Context, address.Address, *types.TipSet) (MinerSectors, error)
-	StateCompute(context.Context, uint64, []*types.Message, *types.TipSet) (cid.Cid, error)
+	StateCompute(context.Context, abi.ChainEpoch, []*types.Message, *types.TipSet) (cid.Cid, error)
 
 	MsigGetAvailableBalance(context.Context, address.Address, *types.TipSet) (types.BigInt, error)
 
@@ -260,6 +264,11 @@ func (o *QueryOffer) Order(client address.Address) RetrievalOrder {
 	}
 }
 
+type MarketBalance struct {
+	Escrow big.Int
+	Locked big.Int
+}
+
 type RetrievalOrder struct {
 	// TODO: make this less unixfs specific
 	Root cid.Cid
@@ -289,7 +298,7 @@ type ActiveSync struct {
 	Target *types.TipSet
 
 	Stage  SyncStateStage
-	Height uint64
+	Height abi.ChainEpoch
 
 	Start   time.Time
 	End     time.Time

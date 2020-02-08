@@ -186,7 +186,7 @@ var msigInspectCmd = &cli.Command{
 			return err
 		}
 
-		var mstate samsig.MultiSigActorState
+		var mstate samsig.State
 		if err := mstate.UnmarshalCBOR(bytes.NewReader(obj)); err != nil {
 			return err
 		}
@@ -226,7 +226,7 @@ var msigInspectCmd = &cli.Command{
 	},
 }
 
-func GetMultisigPending(ctx context.Context, lapi api.FullNode, hroot cid.Cid) (map[int64]*samsig.MultiSigTransaction, error) {
+func GetMultisigPending(ctx context.Context, lapi api.FullNode, hroot cid.Cid) (map[int64]*samsig.Transaction, error) {
 	bs := apibstore.NewAPIBlockstore(lapi)
 	cst := cbor.NewCborStore(bs)
 
@@ -235,10 +235,10 @@ func GetMultisigPending(ctx context.Context, lapi api.FullNode, hroot cid.Cid) (
 		return nil, err
 	}
 
-	txs := make(map[int64]*samsig.MultiSigTransaction)
+	txs := make(map[int64]*samsig.Transaction)
 	err = nd.ForEach(ctx, func(k string, val interface{}) error {
 		d := val.(*cbg.Deferred)
-		var tx samsig.MultiSigTransaction
+		var tx samsig.Transaction
 		if err := tx.UnmarshalCBOR(bytes.NewReader(d.Raw)); err != nil {
 			return err
 		}
@@ -255,7 +255,7 @@ func GetMultisigPending(ctx context.Context, lapi api.FullNode, hroot cid.Cid) (
 	return txs, nil
 }
 
-func state(tx *samsig.MultiSigTransaction) string {
+func state(tx *samsig.Transaction) string {
 	/* // TODO(why): I strongly disagree with not having these... but i need to move forward
 	if tx.Complete {
 		return "done"

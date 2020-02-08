@@ -7,8 +7,9 @@ import (
 	"strconv"
 
 	"github.com/filecoin-project/go-amt-ipld/v2"
+	"github.com/filecoin-project/specs-actors/actors/abi"
+	"github.com/filecoin-project/specs-actors/actors/builtin/market"
 	samsig "github.com/filecoin-project/specs-actors/actors/builtin/multisig"
-
 	cid "github.com/ipfs/go-cid"
 	"github.com/ipfs/go-hamt-ipld"
 	cbor "github.com/ipfs/go-ipld-cbor"
@@ -18,6 +19,7 @@ import (
 	"golang.org/x/xerrors"
 
 	"github.com/filecoin-project/go-address"
+
 	"github.com/filecoin-project/lotus/api"
 	"github.com/filecoin-project/lotus/chain/actors"
 	"github.com/filecoin-project/lotus/chain/gen"
@@ -83,7 +85,7 @@ func (a *StateAPI) StateMinerElectionPeriodStart(ctx context.Context, actor addr
 	return stmgr.GetMinerElectionPeriodStart(ctx, a.StateManager, ts, actor)
 }
 
-func (a *StateAPI) StateMinerSectorSize(ctx context.Context, actor address.Address, ts *types.TipSet) (uint64, error) {
+func (a *StateAPI) StateMinerSectorSize(ctx context.Context, actor address.Address, ts *types.TipSet) (abi.SectorSize, error) {
 	return stmgr.GetMinerSectorSize(ctx, a.StateManager, ts, actor)
 }
 
@@ -193,7 +195,7 @@ func (a *StateAPI) StateReadState(ctx context.Context, act *types.Actor, ts *typ
 }
 
 // This is on StateAPI because miner.Miner requires this, and MinerAPI requires miner.Miner
-func (a *StateAPI) MinerCreateBlock(ctx context.Context, addr address.Address, parents *types.TipSet, ticket *types.Ticket, proof *types.EPostProof, msgs []*types.SignedMessage, height, ts uint64) (*types.BlockMsg, error) {
+func (a *StateAPI) MinerCreateBlock(ctx context.Context, addr address.Address, parents *types.TipSet, ticket *types.Ticket, proof *types.EPostProof, msgs []*types.SignedMessage, height abi.ChainEpoch, ts uint64) (*types.BlockMsg, error) {
 	fblk, err := gen.MinerCreateBlock(ctx, a.StateManager, a.Wallet, addr, parents, ticket, proof, msgs, height, ts)
 	if err != nil {
 		return nil, err
@@ -237,34 +239,47 @@ func (a *StateAPI) StateListActors(ctx context.Context, ts *types.TipSet) ([]add
 	return a.StateManager.ListAllActors(ctx, ts)
 }
 
-func (a *StateAPI) StateMarketBalance(ctx context.Context, addr address.Address, ts *types.TipSet) (actors.StorageParticipantBalance, error) {
+func (a *StateAPI) StateMarketBalance(ctx context.Context, addr address.Address, ts *types.TipSet) (api.MarketBalance, error) {
 	return a.StateManager.MarketBalance(ctx, addr, ts)
 }
 
-func (a *StateAPI) StateMarketParticipants(ctx context.Context, ts *types.TipSet) (map[string]actors.StorageParticipantBalance, error) {
-	out := map[string]actors.StorageParticipantBalance{}
+func (a *StateAPI) StateMarketParticipants(ctx context.Context, ts *types.TipSet) (map[string]api.MarketBalance, error) {
+	out := map[string]api.MarketBalance{}
 
 	var state actors.StorageMarketState
 	if _, err := a.StateManager.LoadActorState(ctx, actors.StorageMarketAddress, &state, ts); err != nil {
 		return nil, err
 	}
 	cst := cbor.NewCborStore(a.StateManager.ChainStore().Blockstore())
-	nd, err := hamt.LoadNode(ctx, cst, state.Balances)
+	escrow, err := hamt.LoadNode(ctx, cst, state.EscrowTable)
+	if err != nil {
+		return nil, err
+	}
+	locked, err := hamt.LoadNode(ctx, cst, state.EscrowTable)
 	if err != nil {
 		return nil, err
 	}
 
-	err = nd.ForEach(ctx, func(k string, val interface{}) error {
+	err = escrow.ForEach(ctx, func(k string, val interface{}) error {
 		cv := val.(*cbg.Deferred)
 		a, err := address.NewFromBytes([]byte(k))
 		if err != nil {
 			return err
 		}
-		var b actors.StorageParticipantBalance
-		if err := b.UnmarshalCBOR(bytes.NewReader(cv.Raw)); err != nil {
+
+		var es abi.TokenAmount
+		if err := es.UnmarshalCBOR(bytes.NewReader(cv.Raw)); err != nil {
 			return err
 		}
-		out[a.String()] = b
+		var lk abi.TokenAmount
+		if err := locked.Find(ctx, k, &es); err != nil {
+			return err
+		}
+
+		out[a.String()] = api.MarketBalance{
+			Escrow: es,
+			Locked: lk,
+		}
 		return nil
 	})
 	if err != nil {
@@ -273,8 +288,8 @@ func (a *StateAPI) StateMarketParticipants(ctx context.Context, ts *types.TipSet
 	return out, nil
 }
 
-func (a *StateAPI) StateMarketDeals(ctx context.Context, ts *types.TipSet) (map[string]actors.OnChainDeal, error) {
-	out := map[string]actors.OnChainDeal{}
+func (a *StateAPI) StateMarketDeals(ctx context.Context, ts *types.TipSet) (map[string]market.DealProposal, error) {
+	out := map[string]market.DealProposal{}
 
 	var state actors.StorageMarketState
 	if _, err := a.StateManager.LoadActorState(ctx, actors.StorageMarketAddress, &state, ts); err != nil {
@@ -282,13 +297,13 @@ func (a *StateAPI) StateMarketDeals(ctx context.Context, ts *types.TipSet) (map[
 	}
 
 	blks := cbor.NewCborStore(a.StateManager.ChainStore().Blockstore())
-	da, err := amt.LoadAMT(ctx, blks, state.Deals)
+	da, err := amt.LoadAMT(ctx, blks, state.Proposals)
 	if err != nil {
 		return nil, err
 	}
 
 	if err := da.ForEach(ctx, func(i uint64, v *cbg.Deferred) error {
-		var d actors.OnChainDeal
+		var d market.DealProposal
 		if err := d.UnmarshalCBOR(bytes.NewReader(v.Raw)); err != nil {
 			return err
 		}
@@ -300,7 +315,7 @@ func (a *StateAPI) StateMarketDeals(ctx context.Context, ts *types.TipSet) (map[
 	return out, nil
 }
 
-func (a *StateAPI) StateMarketStorageDeal(ctx context.Context, dealId uint64, ts *types.TipSet) (*actors.OnChainDeal, error) {
+func (a *StateAPI) StateMarketStorageDeal(ctx context.Context, dealId uint64, ts *types.TipSet) (*market.DealProposal, error) {
 	return stmgr.GetStorageDeal(ctx, a.StateManager, dealId, ts)
 }
 
@@ -359,7 +374,7 @@ func (a *StateAPI) StateMinerSectorCount(ctx context.Context, addr address.Addre
 	return stmgr.SectorSetSizes(ctx, a.StateManager, addr, ts)
 }
 
-func (a *StateAPI) StateListMessages(ctx context.Context, match *types.Message, ts *types.TipSet, toheight uint64) ([]cid.Cid, error) {
+func (a *StateAPI) StateListMessages(ctx context.Context, match *types.Message, ts *types.TipSet, toheight abi.ChainEpoch) ([]cid.Cid, error) {
 	if ts == nil {
 		ts = a.Chain.GetHeaviestTipSet()
 	}
@@ -408,7 +423,7 @@ func (a *StateAPI) StateListMessages(ctx context.Context, match *types.Message, 
 	return out, nil
 }
 
-func (a *StateAPI) StateCompute(ctx context.Context, height uint64, msgs []*types.Message, ts *types.TipSet) (cid.Cid, error) {
+func (a *StateAPI) StateCompute(ctx context.Context, height abi.ChainEpoch, msgs []*types.Message, ts *types.TipSet) (cid.Cid, error) {
 	return stmgr.ComputeState(ctx, a.StateManager, height, msgs, ts)
 }
 
@@ -417,7 +432,7 @@ func (a *StateAPI) MsigGetAvailableBalance(ctx context.Context, addr address.Add
 		ts = a.Chain.GetHeaviestTipSet()
 	}
 
-	var st samsig.MultiSigActorState
+	var st samsig.State
 	act, err := a.StateManager.LoadActorState(ctx, addr, &st, ts)
 	if err != nil {
 		return types.EmptyInt, xerrors.Errorf("failed to load multisig actor state: %w", err)
@@ -431,12 +446,12 @@ func (a *StateAPI) MsigGetAvailableBalance(ctx context.Context, addr address.Add
 		return act.Balance, nil
 	}
 
-	offset := ts.Height() - uint64(st.StartEpoch)
-	if offset > uint64(st.UnlockDuration) {
+	offset := ts.Height() - st.StartEpoch
+	if offset > st.UnlockDuration {
 		return act.Balance, nil
 	}
 
 	minBalance := types.BigDiv(types.BigInt(st.InitialBalance), types.NewInt(uint64(st.UnlockDuration)))
-	minBalance = types.BigMul(minBalance, types.NewInt(offset))
+	minBalance = types.BigMul(minBalance, types.NewInt(uint64(offset)))
 	return types.BigSub(act.Balance, minBalance), nil
 }

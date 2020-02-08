@@ -286,7 +286,6 @@ func (t *SealedRef) UnmarshalCBOR(r io.Reader) error {
 			if maj != cbg.MajUnsignedInt {
 				return fmt.Errorf("wrong type for uint64 field")
 			}
-			t.SectorID = uint64(extra)
 			// t.Offset (uint64) (uint64)
 		case "Offset":
 
@@ -308,7 +307,6 @@ func (t *SealedRef) UnmarshalCBOR(r io.Reader) error {
 			if maj != cbg.MajUnsignedInt {
 				return fmt.Errorf("wrong type for uint64 field")
 			}
-			t.Size = uint64(extra)
 
 		default:
 			return fmt.Errorf("unknown struct field %d: '%s'", i, name)

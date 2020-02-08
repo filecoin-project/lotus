@@ -11,11 +11,14 @@ import (
 	cbg "github.com/whyrusleeping/cbor-gen"
 	"golang.org/x/xerrors"
 
+	"github.com/filecoin-project/specs-actors/actors/builtin/multisig"
+	vmr "github.com/filecoin-project/specs-actors/actors/runtime"
+
+	"github.com/filecoin-project/specs-actors/actors/builtin/market"
+
 	"github.com/filecoin-project/lotus/chain/actors"
 	"github.com/filecoin-project/lotus/chain/actors/aerrors"
 	"github.com/filecoin-project/lotus/chain/types"
-	"github.com/filecoin-project/specs-actors/actors/builtin/multisig"
-	vmr "github.com/filecoin-project/specs-actors/actors/runtime"
 )
 
 type invoker struct {
@@ -36,9 +39,9 @@ func NewInvoker() *invoker {
 	inv.Register(actors.InitCodeCid, actors.InitActor{}, actors.InitActorState{})
 	inv.Register(actors.CronCodeCid, actors.CronActor{}, actors.CronActorState{})
 	inv.Register(actors.StoragePowerCodeCid, actors.StoragePowerActor{}, actors.StoragePowerState{})
-	inv.Register(actors.StorageMarketCodeCid, actors.StorageMarketActor{}, actors.StorageMarketState{})
+	inv.Register(actors.StorageMarketCodeCid, market.Actor{}, market.State{})
 	inv.Register(actors.StorageMinerCodeCid, actors.StorageMinerActor{}, actors.StorageMinerActorState{})
-	inv.Register(actors.MultisigCodeCid, multisig.MultiSigActor{}, multisig.MultiSigActorState{})
+	inv.Register(actors.MultisigCodeCid, multisig.Actor{}, multisig.State{})
 	inv.Register(actors.PaymentChannelCodeCid, actors.PaymentChannelActor{}, actors.PaymentChannelActorState{})
 
 	return inv

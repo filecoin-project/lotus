@@ -10,16 +10,21 @@ import (
 	"os"
 	"path/filepath"
 
-	sectorbuilder "github.com/filecoin-project/go-sectorbuilder"
+	"github.com/filecoin-project/specs-actors/actors/abi"
+	"github.com/filecoin-project/specs-actors/actors/abi/big"
+	"github.com/filecoin-project/specs-actors/actors/builtin/market"
+	"github.com/ipfs/go-cid"
 	"github.com/ipfs/go-datastore"
 	"github.com/ipfs/go-datastore/namespace"
 	badger "github.com/ipfs/go-ds-badger2"
 	logging "github.com/ipfs/go-log/v2"
+	"github.com/multiformats/go-multihash"
 	"golang.org/x/xerrors"
 
+	sectorbuilder "github.com/filecoin-project/go-sectorbuilder"
+
 	"github.com/filecoin-project/go-address"
-	"github.com/filecoin-project/lotus/api"
-	"github.com/filecoin-project/lotus/chain/actors"
+
 	"github.com/filecoin-project/lotus/chain/types"
 	"github.com/filecoin-project/lotus/chain/wallet"
 	"github.com/filecoin-project/lotus/genesis"
@@ -27,7 +32,7 @@ import (
 
 var log = logging.Logger("preseal")
 
-func PreSeal(maddr address.Address, ssize uint64, offset uint64, sectors int, sbroot string, preimage []byte) (*genesis.GenesisMiner, error) {
+func PreSeal(maddr address.Address, ssize abi.SectorSize, offset uint64, sectors int, sbroot string, preimage []byte) (*genesis.GenesisMiner, error) {
 	cfg := &sectorbuilder.Config{
 		Miner:          maddr,
 		SectorSize:     ssize,
@@ -50,8 +55,6 @@ func PreSeal(maddr address.Address, ssize uint64, offset uint64, sectors int, sb
 		return nil, err
 	}
 
-	size := sectorbuilder.UserBytesForSectorSize(ssize)
-
 	var sealedSectors []*genesis.PreSeal
 	for i := 0; i < sectors; i++ {
 		sid, err := sb.AcquireSectorId()
@@ -59,7 +62,7 @@ func PreSeal(maddr address.Address, ssize uint64, offset uint64, sectors int, sb
 			return nil, err
 		}
 
-		pi, err := sb.AddPiece(context.TODO(), size, sid, rand.Reader, nil)
+		pi, err := sb.AddPiece(context.TODO(), abi.PaddedPieceSize(ssize).Unpadded(), sid, rand.Reader, nil)
 		if err != nil {
 			return nil, err
 		}
@@ -104,7 +107,7 @@ func PreSeal(maddr address.Address, ssize uint64, offset uint64, sectors int, sb
 		Key: minerAddr.KeyInfo,
 	}
 
-	if err := createDeals(miner, minerAddr, maddr, ssize); err != nil {
+	if err := createDeals(miner, minerAddr, maddr, abi.SectorSize(ssize)); err != nil {
 		return nil, xerrors.Errorf("creating deals: %w", err)
 	}
 
@@ -132,25 +135,33 @@ func WriteGenesisMiner(maddr address.Address, sbroot string, gm *genesis.Genesis
 	return nil
 }
 
-func createDeals(m *genesis.GenesisMiner, k *wallet.Key, maddr address.Address, ssize uint64) error {
+func commDCID(commd []byte) cid.Cid {
+	d, err := cid.Prefix{
+		Version:  1,
+		Codec:    cid.Raw,
+		MhType:   multihash.IDENTITY,
+		MhLength: len(commd),
+	}.Sum(commd)
+	if err != nil {
+		panic(err)
+	}
+	return d
+}
+
+func createDeals(m *genesis.GenesisMiner, k *wallet.Key, maddr address.Address, ssize abi.SectorSize) error {
 	for _, sector := range m.Sectors {
 		pref := make([]byte, len(sector.CommD))
 		copy(pref, sector.CommD[:])
-		proposal := &actors.StorageDealProposal{
-			PieceRef:             pref, // just one deal so this == CommP
-			PieceSize:            sectorbuilder.UserBytesForSectorSize(ssize),
+		proposal := &market.DealProposal{
+			PieceCID:             commDCID(pref), // just one deal so this == CommP
+			PieceSize:            abi.PaddedPieceSize(ssize),
 			Client:               k.Address,
 			Provider:             maddr,
-			ProposalExpiration:   9000, // TODO: allow setting
-			Duration:             9000,
-			StoragePricePerEpoch: types.NewInt(0),
-			StorageCollateral:    types.NewInt(0),
-			ProposerSignature:    nil,
-		}
-
-		// TODO: pretty sure we don't even need to sign this
-		if err := api.SignWith(context.TODO(), wallet.KeyWallet(k).Sign, k.Address, proposal); err != nil {
-			return err
+			StartEpoch:           1, // TODO: allow setting
+			EndEpoch:             9001,
+			StoragePricePerEpoch: big.Zero(),
+			ProviderCollateral:    big.Zero(),
+			ClientCollateral:    big.Zero(),
 		}
 
 		sector.Deal = *proposal

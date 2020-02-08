@@ -3,6 +3,7 @@ package sealing
 import (
 	"context"
 
+	"github.com/multiformats/go-multihash"
 	"golang.org/x/xerrors"
 
 	"github.com/filecoin-project/go-address"
@@ -39,16 +40,21 @@ func checkPieces(ctx context.Context, si SectorInfo, api sealingApi) error {
 			return &ErrApi{xerrors.Errorf("getting deal %d for piece %d: %w", piece.DealID, i, err)}
 		}
 
-		if string(deal.PieceRef) != string(piece.CommP) {
-			return &ErrInvalidDeals{xerrors.Errorf("piece %d (or %d) of sector %d refers deal %d with wrong CommP: %x != %x", i, len(si.Pieces), si.SectorID, piece.DealID, piece.CommP, deal.PieceRef)}
+		h, err := multihash.Decode(deal.PieceCID.Hash())
+		if err != nil {
+			return &ErrInvalidDeals{xerrors.Errorf("decoding piece CID: %w", err)}
 		}
 
-		if piece.Size != deal.PieceSize {
+		if string(h.Digest) != string(piece.CommP) {
+			return &ErrInvalidDeals{xerrors.Errorf("piece %d (or %d) of sector %d refers deal %d with wrong CommP: %x != %x", i, len(si.Pieces), si.SectorID, piece.DealID, piece.CommP, h.Digest)}
+		}
+
+		if piece.Size != deal.PieceSize.Unpadded() {
 			return &ErrInvalidDeals{xerrors.Errorf("piece %d (or %d) of sector %d refers deal %d with different size: %d != %d", i, len(si.Pieces), si.SectorID, piece.DealID, piece.Size, deal.PieceSize)}
 		}
 
-		if head.Height() >= deal.ProposalExpiration {
-			return &ErrExpiredDeals{xerrors.Errorf("piece %d (or %d) of sector %d refers expired deal %d - expires %d, head %d", i, len(si.Pieces), si.SectorID, piece.DealID, deal.ProposalExpiration, head.Height())}
+		if head.Height() >= deal.StartEpoch {
+			return &ErrExpiredDeals{xerrors.Errorf("piece %d (or %d) of sector %d refers expired deal %d - should start at %d, head %d", i, len(si.Pieces), si.SectorID, piece.DealID, deal.StartEpoch, head.Height())}
 		}
 	}
 

@@ -6,6 +6,7 @@ import (
 	"fmt"
 
 	amt "github.com/filecoin-project/go-amt-ipld/v2"
+	"github.com/filecoin-project/specs-actors/actors/builtin/market"
 	"github.com/ipfs/go-cid"
 	"github.com/ipfs/go-datastore"
 	hamt "github.com/ipfs/go-hamt-ipld"
@@ -17,6 +18,7 @@ import (
 	"golang.org/x/xerrors"
 
 	"github.com/filecoin-project/go-address"
+
 	"github.com/filecoin-project/lotus/build"
 	actors "github.com/filecoin-project/lotus/chain/actors"
 	"github.com/filecoin-project/lotus/chain/state"
@@ -202,24 +204,26 @@ func SetupStoragePowerActor(bs bstore.Blockstore) (*types.Actor, error) {
 func SetupStorageMarketActor(bs bstore.Blockstore, sroot cid.Cid, deals []actors.StorageDealProposal) (cid.Cid, error) {
 	ctx := context.TODO()
 	cst := cbor.NewCborStore(bs)
-	nd := hamt.NewNode(cst)
-	emptyHAMT, err := cst.Put(ctx, nd)
-	if err != nil {
-		return cid.Undef, err
-	}
+	ast := store.ActorStore(context.TODO(), bs)
 
 	cdeals := make([]cbg.CBORMarshaler, len(deals))
+	sdeals := make([]cbg.CBORMarshaler, len(deals))
 	for i, deal := range deals {
-		cdeals[i] = &actors.OnChainDeal{
-			PieceRef:             deal.PieceRef,
+		cdeals[i] = &market.DealProposal{
+			PieceCID:             deal.PieceCID,
 			PieceSize:            deal.PieceSize,
 			Client:               deal.Client,
 			Provider:             deal.Provider,
-			ProposalExpiration:   deal.ProposalExpiration,
-			Duration:             deal.Duration,
+			StartEpoch:           deal.StartEpoch,
+			EndEpoch:             deal.EndEpoch,
 			StoragePricePerEpoch: deal.StoragePricePerEpoch,
-			StorageCollateral:    deal.StorageCollateral,
-			ActivationEpoch:      1,
+			ProviderCollateral:   deal.ProviderCollateral,
+			ClientCollateral:     deal.ClientCollateral,
+		}
+		sdeals[i] = &market.DealState{
+			SectorStartEpoch: 1,
+			LastUpdatedEpoch: -1,
+			SlashEpoch:       -1,
 		}
 	}
 
@@ -228,16 +232,25 @@ func SetupStorageMarketActor(bs bstore.Blockstore, sroot cid.Cid, deals []actors
 		return cid.Undef, xerrors.Errorf("amt build failed: %w", err)
 	}
 
-	sms := &actors.StorageMarketState{
-		Balances:   emptyHAMT,
-		Deals:      dealAmt,
-		NextDealID: uint64(len(deals)),
+	stateAmt, err := amt.FromArray(ctx, cst, sdeals)
+	if err != nil {
+		return cid.Undef, xerrors.Errorf("amt build failed: %w", err)
 	}
+
+	sms, err := market.ConstructState(ast)
+	if err != nil {
+		return cid.Cid{}, err
+	}
+
+	sms.Proposals = dealAmt
+	sms.States = stateAmt
 
 	stcid, err := cst.Put(context.TODO(), sms)
 	if err != nil {
 		return cid.Undef, err
 	}
+
+	// TODO: MARKET BALANCES!!!!!!111
 
 	act := &types.Actor{
 		Code:    actors.StorageMarketCodeCid,
@@ -328,7 +341,7 @@ func SetupStorageMiners(ctx context.Context, cs *store.ChainStore, sroot cid.Cid
 			return cid.Undef, nil, err
 		}
 
-		power := types.BigMul(types.NewInt(minerParams.SectorSize), types.NewInt(uint64(len(ps.Sectors))))
+		power := types.BigMul(types.NewInt(uint64(minerParams.SectorSize)), types.NewInt(uint64(len(ps.Sectors))))
 
 		params = mustEnc(&actors.UpdateStorageParams{Delta: power})
 
@@ -352,7 +365,7 @@ func SetupStorageMiners(ctx context.Context, cs *store.ChainStore, sroot cid.Cid
 		if err := cst.Get(ctx, mact.Head, &mstate); err != nil {
 			return cid.Undef, nil, xerrors.Errorf("getting miner actor state failed: %w", err)
 		}
-		mstate.Power = types.BigMul(types.NewInt(ps.SectorSize), types.NewInt(uint64(len(ps.Sectors))))
+		mstate.Power = types.BigMul(types.NewInt(uint64(ps.SectorSize)), types.NewInt(uint64(len(ps.Sectors))))
 
 		for _, s := range ps.Sectors {
 			nssroot, err := actors.AddToSectorSet(ctx, cst, mstate.Sectors, s.SectorID, s.CommR[:], s.CommD[:])

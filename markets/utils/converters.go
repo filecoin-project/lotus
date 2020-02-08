@@ -3,6 +3,9 @@ package utils
 import (
 	"bytes"
 
+	"github.com/filecoin-project/specs-actors/actors/abi"
+	"github.com/filecoin-project/specs-actors/actors/abi/big"
+	"github.com/filecoin-project/specs-actors/actors/builtin/market"
 	peer "github.com/libp2p/go-libp2p-peer"
 
 	"github.com/filecoin-project/go-address"
@@ -17,7 +20,7 @@ func FromSharedTokenAmount(in sharedamount.TokenAmount) types.BigInt {
 	return types.BigInt{Int: in.Int}
 }
 
-func ToSharedTokenAmount(in types.BigInt) sharedamount.TokenAmount {
+func ToSharedTokenAmount(in abi.TokenAmount) sharedamount.TokenAmount {
 	return sharedamount.TokenAmount{Int: in.Int}
 }
 
@@ -105,43 +108,31 @@ func FromSignedStorageAsk(in *sharedtypes.SignedStorageAsk) (*types.SignedStorag
 	return &out, nil
 }
 
-func NewStorageProviderInfo(address address.Address, miner address.Address, sectorSize uint64, peer peer.ID) storagemarket.StorageProviderInfo {
+func NewStorageProviderInfo(address address.Address, miner address.Address, sectorSize abi.SectorSize, peer peer.ID) storagemarket.StorageProviderInfo {
 	return storagemarket.StorageProviderInfo{
 		Address:    address,
 		Worker:     miner,
-		SectorSize: sectorSize,
+		SectorSize: uint64(sectorSize),
 		PeerID:     peer,
 	}
 }
 
-func FromOnChainDeal(deal actors.OnChainDeal) storagemarket.StorageDeal {
+func FromOnChainDeal(proposal market.DealProposal, state market.DealState) storagemarket.StorageDeal {
 	return storagemarket.StorageDeal{
-		PieceRef:             deal.PieceRef,
-		PieceSize:            deal.PieceSize,
-		Client:               deal.Client,
-		Provider:             deal.Provider,
-		StoragePricePerEpoch: ToSharedTokenAmount(deal.StoragePricePerEpoch),
-		StorageCollateral:    ToSharedTokenAmount(deal.StorageCollateral),
-		ActivationEpoch:      deal.ActivationEpoch,
+		PieceRef:             proposal.PieceCID.Bytes(),
+		PieceSize:            uint64(proposal.PieceSize.Unpadded()),
+		Client:               proposal.Client,
+		Provider:             proposal.Provider,
+		StoragePricePerEpoch: ToSharedTokenAmount(proposal.StoragePricePerEpoch),
+		StorageCollateral:    ToSharedTokenAmount(proposal.ProviderCollateral),
+		ActivationEpoch:      uint64(state.SectorStartEpoch),
 	}
 }
 
-func ToOnChainDeal(deal storagemarket.StorageDeal) actors.OnChainDeal {
-	return actors.OnChainDeal{
-		PieceRef:             deal.PieceRef,
-		PieceSize:            deal.PieceSize,
-		Client:               deal.Client,
-		Provider:             deal.Provider,
-		StoragePricePerEpoch: FromSharedTokenAmount(deal.StoragePricePerEpoch),
-		StorageCollateral:    FromSharedTokenAmount(deal.StorageCollateral),
-		ActivationEpoch:      deal.ActivationEpoch,
-	}
-}
-
-func ToSharedBalance(balance actors.StorageParticipantBalance) storagemarket.Balance {
+func ToSharedBalance(escrow, locked abi.TokenAmount) storagemarket.Balance {
 	return storagemarket.Balance{
-		Locked:    ToSharedTokenAmount(balance.Locked),
-		Available: ToSharedTokenAmount(balance.Available),
+		Locked:    ToSharedTokenAmount(locked),
+		Available: ToSharedTokenAmount(big.Sub(escrow, locked)),
 	}
 }
 

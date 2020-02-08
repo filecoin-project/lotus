@@ -4,6 +4,9 @@ import (
 	"context"
 
 	amt "github.com/filecoin-project/go-amt-ipld/v2"
+	"github.com/filecoin-project/specs-actors/actors/abi"
+	"github.com/filecoin-project/specs-actors/actors/builtin/market"
+
 	"github.com/filecoin-project/lotus/chain/actors/aerrors"
 
 	ffi "github.com/filecoin-project/filecoin-ffi"
@@ -228,7 +231,7 @@ func GetSectorsForElectionPost(ctx context.Context, sm *StateManager, ts *types.
 	return &ssi, nil
 }
 
-func GetMinerSectorSize(ctx context.Context, sm *StateManager, ts *types.TipSet, maddr address.Address) (uint64, error) {
+func GetMinerSectorSize(ctx context.Context, sm *StateManager, ts *types.TipSet, maddr address.Address) (abi.SectorSize, error) {
 	var mas actors.StorageMinerActorState
 	_, err := sm.LoadActorState(ctx, maddr, &mas, ts)
 	if err != nil {
@@ -269,18 +272,18 @@ func GetMinerFaults(ctx context.Context, sm *StateManager, ts *types.TipSet, mad
 	return mas.FaultSet.All(2 * ss.Count)
 }
 
-func GetStorageDeal(ctx context.Context, sm *StateManager, dealId uint64, ts *types.TipSet) (*actors.OnChainDeal, error) {
+func GetStorageDeal(ctx context.Context, sm *StateManager, dealId uint64, ts *types.TipSet) (*market.DealProposal, error) {
 	var state actors.StorageMarketState
 	if _, err := sm.LoadActorState(ctx, actors.StorageMarketAddress, &state, ts); err != nil {
 		return nil, err
 	}
 
-	da, err := amt.LoadAMT(ctx, cbor.NewCborStore(sm.ChainStore().Blockstore()), state.Deals)
+	da, err := amt.LoadAMT(ctx, cbor.NewCborStore(sm.ChainStore().Blockstore()), state.Proposals)
 	if err != nil {
 		return nil, err
 	}
 
-	var ocd actors.OnChainDeal
+	var ocd market.DealProposal
 	if err := da.Get(ctx, dealId, &ocd); err != nil {
 		return nil, err
 	}
@@ -328,7 +331,7 @@ func LoadSectorsFromSet(ctx context.Context, bs blockstore.Blockstore, ssc cid.C
 	return sset, nil
 }
 
-func ComputeState(ctx context.Context, sm *StateManager, height uint64, msgs []*types.Message, ts *types.TipSet) (cid.Cid, error) {
+func ComputeState(ctx context.Context, sm *StateManager, height abi.ChainEpoch, msgs []*types.Message, ts *types.TipSet) (cid.Cid, error) {
 	if ts == nil {
 		ts = sm.cs.GetHeaviestTipSet()
 	}

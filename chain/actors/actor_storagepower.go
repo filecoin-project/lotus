@@ -6,6 +6,7 @@ import (
 	"io"
 
 	"github.com/filecoin-project/go-amt-ipld/v2"
+	"github.com/filecoin-project/specs-actors/actors/abi"
 	cid "github.com/ipfs/go-cid"
 	hamt "github.com/ipfs/go-hamt-ipld"
 	cbor "github.com/ipfs/go-ipld-cbor"
@@ -63,12 +64,12 @@ type StoragePowerState struct {
 type CreateStorageMinerParams struct {
 	Owner      address.Address
 	Worker     address.Address
-	SectorSize uint64
+	SectorSize abi.SectorSize
 	PeerID     peer.ID
 }
 
 func (spa StoragePowerActor) CreateStorageMiner(act *types.Actor, vmctx types.VMContext, params *CreateStorageMinerParams) ([]byte, ActorError) {
-	if !build.SupportedSectorSize(params.SectorSize) {
+	if !build.SupportedSectorSize(uint64(params.SectorSize)) {
 		return nil, aerrors.Newf(1, "Unsupported sector size: %d", params.SectorSize)
 	}
 
@@ -593,7 +594,7 @@ func (spa StoragePowerActor) CheckProofSubmissions(act *types.Actor, vmctx types
 		return nil, err
 	}
 
-	for i := self.LastMinerCheck; i < vmctx.BlockHeight(); i++ {
+	for i := self.LastMinerCheck; i < uint64(vmctx.BlockHeight()); i++ {
 		height := i + 1
 
 		err := checkProofSubmissionsAtH(vmctx, &self, height)
@@ -602,7 +603,7 @@ func (spa StoragePowerActor) CheckProofSubmissions(act *types.Actor, vmctx types
 		}
 	}
 
-	self.LastMinerCheck = vmctx.BlockHeight()
+	self.LastMinerCheck = uint64(vmctx.BlockHeight())
 
 	nroot, aerr := vmctx.Storage().Put(&self)
 	if aerr != nil {

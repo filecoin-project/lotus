@@ -4,6 +4,8 @@ import (
 	"context"
 
 	"github.com/filecoin-project/go-address"
+	"github.com/filecoin-project/specs-actors/actors/abi"
+
 	"github.com/filecoin-project/go-sectorbuilder"
 )
 
@@ -135,9 +137,9 @@ type SectorInfo struct {
 }
 
 type SealedRef struct {
-	SectorID uint64
+	SectorID abi.SectorNumber
 	Offset   uint64
-	Size     uint64
+	Size     abi.UnpaddedPieceSize
 }
 
 type SealedRefs struct {

@@ -11,6 +11,7 @@ import (
 	"strings"
 	"time"
 
+	"github.com/filecoin-project/specs-actors/actors/abi"
 	cid "github.com/ipfs/go-cid"
 	"golang.org/x/xerrors"
 	"gopkg.in/urfave/cli.v2"
@@ -250,7 +251,7 @@ var chainSetHeadCmd = &cli.Command{
 			ts, err = api.ChainGetGenesis(ctx)
 		}
 		if ts == nil && cctx.IsSet("epoch") {
-			ts, err = api.ChainGetTipSetByHeight(ctx, cctx.Uint64("epoch"), nil)
+			ts, err = api.ChainGetTipSetByHeight(ctx, abi.ChainEpoch(cctx.Uint64("epoch")), nil)
 		}
 		if ts == nil {
 			ts, err = parseTipSet(api, ctx, cctx.Args().Slice())
@@ -313,7 +314,7 @@ var chainListCmd = &cli.Command{
 		var head *types.TipSet
 
 		if cctx.IsSet("height") {
-			head, err = api.ChainGetTipSetByHeight(ctx, cctx.Uint64("height"), nil)
+			head, err = api.ChainGetTipSetByHeight(ctx, abi.ChainEpoch(cctx.Uint64("height")), nil)
 		} else {
 			head, err = api.ChainHead(ctx)
 		}
@@ -446,7 +447,7 @@ var chainBisectCmd = &cli.Command{
 
 		subPath := cctx.Args().Get(2)
 
-		highest, err := api.ChainGetTipSetByHeight(ctx, end, nil)
+		highest, err := api.ChainGetTipSetByHeight(ctx, abi.ChainEpoch(end), nil)
 		if err != nil {
 			return err
 		}
@@ -460,7 +461,7 @@ var chainBisectCmd = &cli.Command{
 				start = end
 			}
 
-			midTs, err := api.ChainGetTipSetByHeight(ctx, mid, highest)
+			midTs, err := api.ChainGetTipSetByHeight(ctx, abi.ChainEpoch(mid), highest)
 			if err != nil {
 				return err
 			}
@@ -506,7 +507,7 @@ var chainBisectCmd = &cli.Command{
 				return nil
 			}
 
-			prev = mid
+			prev = abi.ChainEpoch(mid)
 		}
 	},
 }

@@ -10,13 +10,17 @@ import (
 	"sync"
 
 	"github.com/filecoin-project/go-address"
-	"github.com/filecoin-project/lotus/build"
-	"github.com/filecoin-project/lotus/chain/state"
-	"github.com/filecoin-project/lotus/chain/vm"
+	"github.com/filecoin-project/specs-actors/actors/abi"
+	"github.com/filecoin-project/specs-actors/actors/util/adt"
 	"go.opencensus.io/trace"
 	"go.uber.org/multierr"
 
+	"github.com/filecoin-project/lotus/build"
+	"github.com/filecoin-project/lotus/chain/state"
+	"github.com/filecoin-project/lotus/chain/vm"
+
 	amt "github.com/filecoin-project/go-amt-ipld/v2"
+
 	"github.com/filecoin-project/lotus/chain/types"
 
 	lru "github.com/hashicorp/golang-lru"
@@ -51,7 +55,7 @@ type ChainStore struct {
 	pubLk    sync.Mutex
 
 	tstLk   sync.Mutex
-	tipsets map[uint64][]cid.Cid
+	tipsets map[abi.ChainEpoch][]cid.Cid
 
 	reorgCh          chan<- reorg
 	headChangeNotifs []func(rev, app []*types.TipSet) error
@@ -69,7 +73,7 @@ func NewChainStore(bs bstore.Blockstore, ds dstore.Batching, vmcalls *types.VMSy
 		bs:       bs,
 		ds:       ds,
 		bestTips: pubsub.New(64),
-		tipsets:  make(map[uint64][]cid.Cid),
+		tipsets:  make(map[abi.ChainEpoch][]cid.Cid),
 		mmCache:  c,
 		tsCache:  tsc,
 		vmcalls:  vmcalls,
@@ -829,6 +833,34 @@ func (cs *ChainStore) Blockstore() bstore.Blockstore {
 	return cs.bs
 }
 
+func ActorStore(ctx context.Context, bs blockstore.Blockstore) adt.Store {
+	return &astore{
+		cst:  cbor.NewCborStore(bs),
+		ctx: ctx,
+	}
+}
+
+type astore struct {
+	cst cbor.IpldStore
+	ctx context.Context
+}
+
+func (a *astore) Context() context.Context {
+	return a.ctx
+}
+
+func (a *astore) Get(ctx context.Context, c cid.Cid, out interface{}) error {
+	return a.cst.Get(ctx, c, out)
+}
+
+func (a *astore) Put(ctx context.Context, v interface{}) (cid.Cid, error) {
+	return a.cst.Put(ctx, v)
+}
+
+func (cs *ChainStore) Store(ctx context.Context) adt.Store {
+	return ActorStore(ctx, cs.bs)
+}
+
 func (cs *ChainStore) VMSys() *types.VMSyscalls {
 	return cs.vmcalls
 }
@@ -899,7 +931,7 @@ func (cs *ChainStore) GetRandomness(ctx context.Context, blks []cid.Cid, round i
 	}
 }
 
-func (cs *ChainStore) GetTipsetByHeight(ctx context.Context, h uint64, ts *types.TipSet) (*types.TipSet, error) {
+func (cs *ChainStore) GetTipsetByHeight(ctx context.Context, h abi.ChainEpoch, ts *types.TipSet) (*types.TipSet, error) {
 	if ts == nil {
 		ts = cs.GetHeaviestTipSet()
 	}
@@ -1007,10 +1039,10 @@ func (cs *ChainStore) Import(r io.Reader) (*types.TipSet, error) {
 type chainRand struct {
 	cs   *ChainStore
 	blks []cid.Cid
-	bh   uint64
+	bh   abi.ChainEpoch
 }
 
-func NewChainRand(cs *ChainStore, blks []cid.Cid, bheight uint64) vm.Rand {
+func NewChainRand(cs *ChainStore, blks []cid.Cid, bheight abi.ChainEpoch) vm.Rand {
 	return &chainRand{
 		cs:   cs,
 		blks: blks,

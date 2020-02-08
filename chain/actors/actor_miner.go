@@ -10,6 +10,7 @@ import (
 	"github.com/filecoin-project/go-address"
 	"github.com/filecoin-project/go-amt-ipld/v2"
 	amt2 "github.com/filecoin-project/go-amt-ipld/v2"
+	"github.com/filecoin-project/specs-actors/actors/abi"
 	"github.com/libp2p/go-libp2p-core/peer"
 
 	"github.com/filecoin-project/go-sectorbuilder"
@@ -93,6 +94,8 @@ type StorageMinerActorState struct {
 	ElectionPeriodStart uint64
 }
 
+// 46356:
+
 type MinerInfo struct {
 	// Account that owns this miner.
 	// - Income and returned collateral are paid to this address.
@@ -109,7 +112,7 @@ type MinerInfo struct {
 	PeerID peer.ID
 
 	// Amount of space in each sector committed to the network by this miner.
-	SectorSize uint64
+	SectorSize abi.SectorSize
 
 	// SubsectorCount
 }
@@ -122,12 +125,12 @@ type PreCommittedSector struct {
 type StorageMinerConstructorParams struct {
 	Owner      address.Address
 	Worker     address.Address
-	SectorSize uint64
+	SectorSize abi.SectorSize
 	PeerID     peer.ID
 }
 
 type SectorPreCommitInfo struct {
-	SectorNumber uint64
+	SectorNumber abi.SectorNumber
 
 	CommR     []byte // TODO: Spec says CID
 	SealEpoch uint64
@@ -204,12 +207,12 @@ func (sma StorageMinerActor) PreCommitSector(act *types.Actor, vmctx types.VMCon
 		return nil, err
 	}
 
-	if params.SealEpoch >= vmctx.BlockHeight()+build.SealRandomnessLookback {
+	if params.SealEpoch >= uint64(vmctx.BlockHeight())+build.SealRandomnessLookback {
 		return nil, aerrors.Newf(1, "sector commitment must be based off past randomness (%d >= %d)", params.SealEpoch, vmctx.BlockHeight()+build.SealRandomnessLookback)
 	}
 
-	if vmctx.BlockHeight()-params.SealEpoch+build.SealRandomnessLookback > build.SealRandomnessLookbackLimit {
-		return nil, aerrors.Newf(2, "sector commitment must be recent enough (was %d)", vmctx.BlockHeight()-params.SealEpoch+build.SealRandomnessLookback)
+	if uint64(vmctx.BlockHeight())-params.SealEpoch+build.SealRandomnessLookback > build.SealRandomnessLookbackLimit {
+		return nil, aerrors.Newf(2, "sector commitment must be recent enough (was %d)", uint64(vmctx.BlockHeight())-params.SealEpoch+build.SealRandomnessLookback)
 	}
 
 	mi, err := loadMinerInfo(vmctx, self)
@@ -222,7 +225,7 @@ func (sma StorageMinerActor) PreCommitSector(act *types.Actor, vmctx types.VMCon
 	}
 
 	// make sure the miner isnt trying to submit a pre-existing sector
-	unique, err := SectorIsUnique(ctx, vmctx.Ipld(), self.Sectors, params.SectorNumber)
+	unique, err := SectorIsUnique(ctx, vmctx.Ipld(), self.Sectors, uint64(params.SectorNumber))
 	if err != nil {
 		return nil, err
 	}
@@ -231,7 +234,7 @@ func (sma StorageMinerActor) PreCommitSector(act *types.Actor, vmctx types.VMCon
 	}
 
 	// Power of the miner after adding this sector
-	futurePower := types.BigAdd(self.Power, types.NewInt(mi.SectorSize))
+	futurePower := types.BigAdd(self.Power, types.NewInt(uint64(mi.SectorSize)))
 	collateralRequired := CollateralForPower(futurePower)
 
 	// TODO: grab from market?
@@ -239,9 +242,9 @@ func (sma StorageMinerActor) PreCommitSector(act *types.Actor, vmctx types.VMCon
 		return nil, aerrors.New(4, "not enough collateral")
 	}
 
-	self.PreCommittedSectors[uintToStringKey(params.SectorNumber)] = &PreCommittedSector{
+	self.PreCommittedSectors[uintToStringKey(uint64(params.SectorNumber))] = &PreCommittedSector{
 		Info:          *params,
-		ReceivedEpoch: vmctx.BlockHeight(),
+		ReceivedEpoch: uint64(vmctx.BlockHeight()),
 	}
 
 	if len(self.PreCommittedSectors) > 4096 {
@@ -275,41 +278,41 @@ func (sma StorageMinerActor) ProveCommitSector(act *types.Actor, vmctx types.VMC
 		return nil, aerrors.New(1, "not authorized to submit sector proof for miner")
 	}
 
-	us, ok := self.PreCommittedSectors[uintToStringKey(params.SectorID)]
+	us, ok := self.PreCommittedSectors[uintToStringKey(uint64(params.SectorID))]
 	if !ok {
 		return nil, aerrors.New(1, "no pre-commitment found for sector")
 	}
 
-	if us.ReceivedEpoch+build.InteractivePoRepDelay >= vmctx.BlockHeight() {
+	if us.ReceivedEpoch+build.InteractivePoRepDelay >= uint64(vmctx.BlockHeight()){
 		return nil, aerrors.New(2, "too early for proof submission")
 	}
 
-	delete(self.PreCommittedSectors, uintToStringKey(params.SectorID))
+	delete(self.PreCommittedSectors, uintToStringKey(uint64(params.SectorID)))
 
 	// TODO: ensure normalization to ID address
 	maddr := vmctx.Message().To
 
-	if vmctx.BlockHeight()-us.Info.SealEpoch > build.MaxSealLookback {
+	if uint64(vmctx.BlockHeight())-us.Info.SealEpoch > build.MaxSealLookback {
 		return nil, aerrors.Newf(5, "source randomness for sector SealEpoch too far in past (epoch %d)", us.Info.SealEpoch)
 	}
 
-	if vmctx.BlockHeight()-us.ReceivedEpoch > build.MaxSealLookback {
+	if uint64(vmctx.BlockHeight())-us.ReceivedEpoch > build.MaxSealLookback {
 		return nil, aerrors.Newf(6, "source randomness for sector ReceivedEpoch too far in past (epoch %d)", us.ReceivedEpoch)
 	}
 
-	ticket, err := vmctx.GetRandomness(us.Info.SealEpoch - build.SealRandomnessLookback)
+	ticket, err := vmctx.GetRandomness(abi.ChainEpoch(0))
 	if err != nil {
 		return nil, aerrors.Wrap(err, "failed to get ticket randomness")
 	}
 
-	seed, err := vmctx.GetRandomness(us.ReceivedEpoch + build.InteractivePoRepDelay)
+	seed, err := vmctx.GetRandomness(abi.ChainEpoch(0))
 	if err != nil {
 		return nil, aerrors.Wrap(err, "failed to get randomness for prove sector commitment")
 	}
 
 	enc, err := SerializeParams(&ComputeDataCommitmentParams{
 		DealIDs:    params.DealIDs,
-		SectorSize: mi.SectorSize,
+		SectorSize: abi.SectorSize(mi.SectorSize),
 	})
 	if err != nil {
 		return nil, aerrors.Wrap(err, "failed to serialize ComputeDataCommitmentParams")
@@ -329,7 +332,7 @@ func (sma StorageMinerActor) ProveCommitSector(act *types.Actor, vmctx types.VMC
 	// Note: There must exist a unique index in the miner's sector set for each
 	// sector ID. The `faults`, `recovered`, and `done` parameters of the
 	// SubmitPoSt method express indices into this sector set.
-	nssroot, err := AddToSectorSet2(ctx, vmctx.Ipld(), self.Sectors, params.SectorID, us.Info.CommR, commD)
+	nssroot, err := AddToSectorSet2(ctx, vmctx.Ipld(), self.Sectors, uint64(params.SectorID), us.Info.CommR, commD)
 	if err != nil {
 		return nil, err
 	}
@@ -352,7 +355,7 @@ func (sma StorageMinerActor) ProveCommitSector(act *types.Actor, vmctx types.VMC
 		self.ProvingSet = self.Sectors
 		// TODO: probably want to wait until the miner is above a certain
 		//  threshold before starting this
-		self.ElectionPeriodStart = vmctx.BlockHeight()
+		self.ElectionPeriodStart = uint64(vmctx.BlockHeight())
 	}
 
 	nstate, err := vmctx.Storage().Put(self)
@@ -364,7 +367,7 @@ func (sma StorageMinerActor) ProveCommitSector(act *types.Actor, vmctx types.VMC
 	}
 
 	activateParams, err := SerializeParams(&ActivateStorageDealsParams{
-		Deals: params.DealIDs,
+		DealIDs: params.DealIDs,
 	})
 	if err != nil {
 		return nil, err
@@ -408,12 +411,12 @@ func (sma StorageMinerActor) SubmitFallbackPoSt(act *types.Actor, vmctx types.VM
 	var seed [sectorbuilder.CommLen]byte
 	{
 		randHeight := self.ElectionPeriodStart + build.FallbackPoStDelay
-		if vmctx.BlockHeight() <= randHeight {
+		if uint64(vmctx.BlockHeight()) <= randHeight {
 			// TODO: spec, retcode
 			return nil, aerrors.Newf(1, "submit fallback PoSt called too early (%d < %d)", vmctx.BlockHeight(), randHeight)
 		}
 
-		rand, err := vmctx.GetRandomness(randHeight)
+		rand, err := vmctx.GetRandomness(0)
 
 		if err != nil {
 			return nil, aerrors.Wrap(err, "could not get randomness for PoST")
@@ -690,7 +693,7 @@ func (sma StorageMinerActor) GetSectorSize(act *types.Actor, vmctx types.VMConte
 		return nil, err
 	}
 
-	return types.NewInt(mi.SectorSize).Bytes(), nil
+	return types.NewInt(uint64(mi.SectorSize)).Bytes(), nil
 }
 
 func (sma StorageMinerActor) IsSlashed(act *types.Actor, vmctx types.VMContext, params *struct{}) ([]byte, ActorError) {
@@ -713,7 +716,7 @@ func (sma StorageMinerActor) CheckMiner(act *types.Actor, vmctx types.VMContext,
 		return nil, err
 	}
 
-	if !isLate(vmctx.BlockHeight(), self) {
+	if !isLate(uint64(vmctx.BlockHeight()), self) {
 		// Everything's fine
 		return nil, nil
 	}
@@ -732,7 +735,7 @@ func (sma StorageMinerActor) CheckMiner(act *types.Actor, vmctx types.VMContext,
 
 	// Slash for being late
 
-	self.SlashedAt = vmctx.BlockHeight()
+	self.SlashedAt = uint64(vmctx.BlockHeight())
 	oldPower := self.Power
 	self.Power = types.NewInt(0)
 
@@ -787,7 +790,7 @@ func (sma StorageMinerActor) DeclareFaults(act *types.Actor, vmctx types.VMConte
 
 	self.FaultSet = nfaults
 
-	self.LastFaultSubmission = vmctx.BlockHeight()
+	self.LastFaultSubmission = uint64(vmctx.BlockHeight())
 
 	nstate, aerr := vmctx.Storage().Put(self)
 	if aerr != nil {
@@ -814,7 +817,7 @@ func (sma StorageMinerActor) SlashConsensusFault(act *types.Actor, vmctx types.V
 	// GROWTH_RATE determines how fast the slasher share of slashed collateral will increase as block elapses
 	// current GROWTH_RATE results in SLASHER_SHARE reaches 1 after 30 blocks
 	// TODO: define arithmetic precision and rounding for this operation
-	blockElapsed := vmctx.BlockHeight() - params.AtHeight
+	blockElapsed := uint64(vmctx.BlockHeight()) - uint64(params.AtHeight)
 
 	slasherShare := slasherShare(params.SlashedCollateral, blockElapsed)
 
@@ -946,7 +949,7 @@ func onSuccessfulPoSt2(self *StorageMinerActorState, vmctx types.VMContext, acti
 	self.FaultSet = types.NewBitField()
 
 	oldPower := self.Power
-	newPower := types.BigMul(types.NewInt(pss.Count-activeFaults), types.NewInt(mi.SectorSize))
+	newPower := types.BigMul(types.NewInt(pss.Count-activeFaults), types.NewInt(uint64(mi.SectorSize)))
 
 	// If below the minimum size requirement, miners have zero power
 	if newPower.LessThan(types.NewInt(build.MinimumMinerPower)) {
@@ -970,7 +973,7 @@ func onSuccessfulPoSt2(self *StorageMinerActorState, vmctx types.VMContext, acti
 	if !(oldPower.IsZero() && newPower.IsZero()) {
 		enc, err := SerializeParams(&UpdateStorageParams{
 			Delta:                 delta,
-			NextSlashDeadline:     vmctx.BlockHeight() + build.SlashablePowerDelay,
+			NextSlashDeadline: uint64(vmctx.BlockHeight())+ build.SlashablePowerDelay,
 			PreviousSlashDeadline: prevSlashingDeadline,
 		})
 		if err != nil {
@@ -982,7 +985,7 @@ func onSuccessfulPoSt2(self *StorageMinerActorState, vmctx types.VMContext, acti
 			return aerrors.Wrap(err, "updating storage failed")
 		}
 
-		self.ElectionPeriodStart = vmctx.BlockHeight()
+		self.ElectionPeriodStart = uint64(vmctx.BlockHeight())
 	}
 
 	var ncid cid.Cid
@@ -1033,7 +1036,7 @@ func GetFromSectorSet(ctx context.Context, cst cbor.IpldStore, ss cid.Cid, secto
 	return true, comms[0], comms[1], nil
 }
 
-func AddToSectorSet(ctx context.Context, blks cbor.IpldStore, ss cid.Cid, sectorID uint64, commR, commD []byte) (cid.Cid, ActorError) {
+func AddToSectorSet(ctx context.Context, blks cbor.IpldStore, ss cid.Cid, sectorID abi.SectorNumber, commR, commD []byte) (cid.Cid, ActorError) {
 	if sectorID >= build.MinerMaxSectors {
 		return cid.Undef, aerrors.Newf(25, "sector ID out of range: %d", sectorID)
 	}
@@ -1044,7 +1047,7 @@ func AddToSectorSet(ctx context.Context, blks cbor.IpldStore, ss cid.Cid, sector
 
 	// TODO: Spec says to use SealCommitment, and construct commD from deals each time,
 	//  but that would make SubmitPoSt way, way more expensive
-	if err := ssr.Set(ctx, sectorID, [][]byte{commR, commD}); err != nil {
+	if err := ssr.Set(ctx, uint64(sectorID), [][]byte{commR, commD}); err != nil {
 		return cid.Undef, aerrors.HandleExternalError(err, "failed to set commitment in sector set")
 	}
 
@@ -1083,8 +1086,8 @@ func uintToStringKey(i uint64) string {
 
 type SectorProveCommitInfo struct {
 	Proof    []byte
-	SectorID uint64
-	DealIDs  []uint64
+	SectorID abi.SectorNumber
+	DealIDs  []abi.DealID
 }
 
 func truncateHexPrint(b []byte) string {
@@ -1131,7 +1134,7 @@ type DeclareFaultsParams struct {
 
 type MinerSlashConsensusFault struct {
 	Slasher           address.Address
-	AtHeight          uint64
+	AtHeight          abi.ChainEpoch
 	SlashedCollateral types.BigInt
 }
 

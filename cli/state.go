@@ -10,13 +10,16 @@ import (
 	"strings"
 
 	"github.com/filecoin-project/go-address"
+	"github.com/filecoin-project/specs-actors/actors/abi"
+	"github.com/filecoin-project/specs-actors/actors/builtin/market"
+	samsig "github.com/filecoin-project/specs-actors/actors/builtin/multisig"
+	"github.com/libp2p/go-libp2p-core/peer"
+	"golang.org/x/xerrors"
+
 	"github.com/filecoin-project/lotus/api"
 	actors "github.com/filecoin-project/lotus/chain/actors"
 	"github.com/filecoin-project/lotus/chain/types"
 	"github.com/filecoin-project/lotus/miner"
-	samsig "github.com/filecoin-project/specs-actors/actors/builtin/multisig"
-	"github.com/libp2p/go-libp2p-core/peer"
-	"golang.org/x/xerrors"
 
 	"github.com/ipfs/go-cid"
 	cbg "github.com/whyrusleeping/cbor-gen"
@@ -124,9 +127,9 @@ var statePowerCmd = &cli.Command{
 		if cctx.Args().Present() {
 			mp := power.MinerPower
 			percI := types.BigDiv(types.BigMul(mp, types.NewInt(1000000)), tp)
-			fmt.Printf("%s(%s) / %s(%s) ~= %0.4f%%\n", mp.String(), mp.SizeStr(), tp.String(), tp.SizeStr(), float64(percI.Int64())/10000)
+			fmt.Printf("%s(%s) / %s(%s) ~= %0.4f%%\n", mp.String(), types.SizeStr(mp), tp.String(), types.SizeStr(tp), float64(percI.Int64())/10000)
 		} else {
-			fmt.Printf("%s(%s)\n", tp.String(), tp.SizeStr())
+			fmt.Printf("%s(%s)\n", tp.String(), types.SizeStr(tp))
 		}
 
 		return nil
@@ -330,7 +333,7 @@ var stateGetDealSetCmd = &cli.Command{
 			return err
 		}
 
-		deal, err := api.StateMarketStorageDeal(ctx, dealid, ts)
+		deal, err := api.StateMarketStorageDeal(ctx, abi.DealID(dealid), ts)
 		if err != nil {
 			return err
 		}
@@ -619,7 +622,7 @@ var stateListMessagesCmd = &cli.Command{
 			return err
 		}
 
-		msgs, err := api.StateListMessages(ctx, &types.Message{To: toa, From: froma}, ts, toh)
+		msgs, err := api.StateListMessages(ctx, &types.Message{To: toa, From: froma}, ts, abi.ChainEpoch(toh))
 		if err != nil {
 			return err
 		}
@@ -672,7 +675,7 @@ var stateComputeStateCmd = &cli.Command{
 			return err
 		}
 
-		h := cctx.Uint64("height")
+		h := abi.ChainEpoch(cctx.Uint64("height"))
 		if h == 0 {
 			if ts == nil {
 				head, err := api.ChainHead(ctx)
@@ -860,13 +863,13 @@ func parseParamsForMethod(act cid.Cid, method uint64, args []string) ([]byte, er
 	var f interface{}
 	switch act {
 	case actors.StorageMarketCodeCid:
-		f = actors.StorageMarketActor{}.Exports()[method]
+		f = market.Actor{}.Exports()[method]
 	case actors.StorageMinerCodeCid:
 		f = actors.StorageMinerActor{}.Exports()[method]
 	case actors.StoragePowerCodeCid:
 		f = actors.StoragePowerActor{}.Exports()[method]
 	case actors.MultisigCodeCid:
-		f = samsig.MultiSigActor{}.Exports()[method]
+		f = samsig.Actor{}.Exports()[method]
 	case actors.PaymentChannelCodeCid:
 		f = actors.PaymentChannelActor{}.Exports()[method]
 	default:

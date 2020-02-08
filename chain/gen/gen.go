@@ -9,6 +9,7 @@ import (
 	"io/ioutil"
 	"sync/atomic"
 
+	"github.com/filecoin-project/specs-actors/actors/abi"
 	block "github.com/ipfs/go-block-format"
 	"github.com/ipfs/go-blockservice"
 	"github.com/ipfs/go-car"
@@ -54,7 +55,7 @@ type ChainGen struct {
 	genesis   *types.BlockHeader
 	CurTipset *store.FullTipSet
 
-	Timestamper func(*types.TipSet, uint64) uint64
+	Timestamper func(*types.TipSet, abi.ChainEpoch) uint64
 
 	GetMessages func(*ChainGen) ([]*types.SignedMessage, error)
 
@@ -319,7 +320,7 @@ func (cg *ChainGen) NextTipSetFromMiners(base *types.TipSet, miners []address.Ad
 			}
 
 			if proof != nil {
-				fblk, err := cg.makeBlock(base, m, proof, t, uint64(round), msgs)
+				fblk, err := cg.makeBlock(base, m, proof, t, abi.ChainEpoch(round), msgs)
 				if err != nil {
 					return nil, xerrors.Errorf("making a block for next tipset failed: %w", err)
 				}
@@ -341,13 +342,13 @@ func (cg *ChainGen) NextTipSetFromMiners(base *types.TipSet, miners []address.Ad
 	}, nil
 }
 
-func (cg *ChainGen) makeBlock(parents *types.TipSet, m address.Address, eproof *types.EPostProof, ticket *types.Ticket, height uint64, msgs []*types.SignedMessage) (*types.FullBlock, error) {
+func (cg *ChainGen) makeBlock(parents *types.TipSet, m address.Address, eproof *types.EPostProof, ticket *types.Ticket, height abi.ChainEpoch, msgs []*types.SignedMessage) (*types.FullBlock, error) {
 
 	var ts uint64
 	if cg.Timestamper != nil {
 		ts = cg.Timestamper(parents, height-parents.Height())
 	} else {
-		ts = parents.MinTimestamp() + ((height - parents.Height()) * build.BlockDelay)
+		ts = parents.MinTimestamp() + uint64((height - parents.Height()) * build.BlockDelay)
 	}
 
 	fblk, err := MinerCreateBlock(context.TODO(), cg.sm, cg.w, m, parents, ticket, eproof, msgs, height, ts)
@@ -423,7 +424,7 @@ type MiningCheckAPI interface {
 
 	StateMinerWorker(context.Context, address.Address, *types.TipSet) (address.Address, error)
 
-	StateMinerSectorSize(context.Context, address.Address, *types.TipSet) (uint64, error)
+	StateMinerSectorSize(context.Context, address.Address, *types.TipSet) (abi.SectorSize, error)
 
 	StateMinerProvingSet(context.Context, address.Address, *types.TipSet) ([]*api.ChainSectorInfo, error)
 
@@ -455,7 +456,7 @@ func (mca mca) StateMinerWorker(ctx context.Context, maddr address.Address, ts *
 	return stmgr.GetMinerWorkerRaw(ctx, mca.sm, ts.ParentState(), maddr)
 }
 
-func (mca mca) StateMinerSectorSize(ctx context.Context, maddr address.Address, ts *types.TipSet) (uint64, error) {
+func (mca mca) StateMinerSectorSize(ctx context.Context, maddr address.Address, ts *types.TipSet) (abi.SectorSize, error) {
 	return stmgr.GetMinerSectorSize(ctx, mca.sm, ts, maddr)
 }
 

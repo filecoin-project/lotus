@@ -193,26 +193,7 @@ func (t *BlockHeader) UnmarshalCBOR(r io.Reader) error {
 	}
 	// t.Height (uint64) (uint64)
 
-	maj, extra, err = cbg.CborReadHeader(br)
-	if err != nil {
-		return err
-	}
-	if maj != cbg.MajUnsignedInt {
-		return fmt.Errorf("wrong type for uint64 field")
-	}
-	t.Height = uint64(extra)
-	// t.ParentStateRoot (cid.Cid) (struct)
 
-	{
-
-		c, err := cbg.ReadCid(br)
-		if err != nil {
-			return xerrors.Errorf("failed to read cid field t.ParentStateRoot: %w", err)
-		}
-
-		t.ParentStateRoot = c
-
-	}
 	// t.ParentMessageReceipts (cid.Cid) (struct)
 
 	{
@@ -1845,15 +1826,5 @@ func (t *ExpTipSet) UnmarshalCBOR(r io.Reader) error {
 		t.Blocks[i] = &v
 	}
 
-	// t.Height (uint64) (uint64)
-
-	maj, extra, err = cbg.CborReadHeader(br)
-	if err != nil {
-		return err
-	}
-	if maj != cbg.MajUnsignedInt {
-		return fmt.Errorf("wrong type for uint64 field")
-	}
-	t.Height = uint64(extra)
 	return nil
 }
