@@ -81,6 +81,12 @@ var clientLocalCmd = &cli.Command{
 var clientDealCmd = &cli.Command{
 	Name:  "deal",
 	Usage: "Initialize storage deal with a miner",
+	Flags: []cli.Flag{
+		&cli.BoolFlag{
+			Name:  "manual-transfer",
+			Usage: "data will be transferred out of band",
+		},
+	},
 	Action: func(cctx *cli.Context) error {
 		api, closer, err := GetFullNodeAPI(cctx)
 		if err != nil {
@@ -119,7 +125,16 @@ var clientDealCmd = &cli.Command{
 		if err != nil {
 			return err
 		}
-		proposal, err := api.ClientStartDeal(ctx, data, a, miner, types.BigInt(price), uint64(dur))
+
+		ref := &storagemarket.DataRef{
+			TransferType: storagemarket.TTGraphsync,
+			Root:         data,
+		}
+		if cctx.Bool("manual-transfer") {
+			ref.TransferType = storagemarket.TTManual
+		}
+
+		proposal, err := api.ClientStartDeal(ctx, ref, a, miner, types.BigInt(price), uint64(dur))
 		if err != nil {
 			return err
 		}
