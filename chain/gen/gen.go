@@ -348,7 +348,7 @@ func (cg *ChainGen) makeBlock(parents *types.TipSet, m address.Address, eproof *
 	if cg.Timestamper != nil {
 		ts = cg.Timestamper(parents, height-parents.Height())
 	} else {
-		ts = parents.MinTimestamp() + uint64((height - parents.Height()) * build.BlockDelay)
+		ts = parents.MinTimestamp() + uint64((height-parents.Height())*build.BlockDelay)
 	}
 
 	fblk, err := MinerCreateBlock(context.TODO(), cg.sm, cg.w, m, parents, ticket, eproof, msgs, height, ts)

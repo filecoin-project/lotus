@@ -193,7 +193,6 @@ func (t *BlockHeader) UnmarshalCBOR(r io.Reader) error {
 	}
 	// t.Height (uint64) (uint64)
 
-
 	// t.ParentMessageReceipts (cid.Cid) (struct)
 
 	{

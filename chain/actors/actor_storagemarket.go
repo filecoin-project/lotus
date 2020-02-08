@@ -4,7 +4,6 @@ import (
 	"github.com/filecoin-project/specs-actors/actors/builtin/market"
 )
 
-
 type smaMethods struct {
 	Constructor                  uint64
 	WithdrawBalance              uint64
@@ -43,7 +42,6 @@ type PublishStorageDealResponse = market.PublishStorageDealsReturn
 type ActivateStorageDealsParams = market.VerifyDealsOnSectorProveCommitParams
 
 type ComputeDataCommitmentParams = market.ComputeDataCommitmentParams
-
 
 /*
 func (sma StorageMarketActor) HandleCronAction(act *types.Actor, vmctx types.VMContext, params *struct{}) ([]byte, ActorError) {

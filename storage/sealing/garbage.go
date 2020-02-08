@@ -52,14 +52,14 @@ func (m *Sealing) pledgeSector(ctx context.Context, sectorID abi.SectorNumber, e
 			PieceSize:            size.Padded(),
 			Client:               m.worker,
 			Provider:             m.maddr,
-			StartEpoch:   math.MaxInt64,
+			StartEpoch:           math.MaxInt64,
 			EndEpoch:             math.MaxInt64,
 			StoragePricePerEpoch: types.NewInt(0),
-			ProviderCollateral:    types.NewInt(0),
+			ProviderCollateral:   types.NewInt(0),
 		}
 
 		deals[i] = market.ClientDealProposal{
-			Proposal:        sdp,
+			Proposal: sdp,
 		}
 	}
 
