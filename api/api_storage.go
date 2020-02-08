@@ -8,7 +8,9 @@ import (
 	"github.com/filecoin-project/specs-actors/actors/abi"
 	"github.com/ipfs/go-cid"
 
+	"github.com/filecoin-project/go-fil-markets/storagemarket"
 	"github.com/filecoin-project/go-sectorbuilder"
+	"github.com/filecoin-project/lotus/chain/types"
 )
 
 // alias because cbor-gen doesn't like non-alias types
@@ -111,6 +113,11 @@ type StorageMiner interface {
 	WorkerQueue(context.Context, sectorbuilder.WorkerCfg) (<-chan sectorbuilder.WorkerTask, error)
 
 	WorkerDone(ctx context.Context, task uint64, res sectorbuilder.SealRes) error
+
+	MarketImportDealData(ctx context.Context, propcid cid.Cid, path string) error
+	MarketListDeals(ctx context.Context) ([]storagemarket.StorageDeal, error)
+	MarketListIncompleteDeals(ctx context.Context) ([]storagemarket.MinerDeal, error)
+	SetPrice(context.Context, types.BigInt) error
 }
 
 type SectorLog struct {

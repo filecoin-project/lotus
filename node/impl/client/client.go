@@ -58,7 +58,7 @@ type API struct {
 	Filestore  dtypes.ClientFilestore `optional:"true"`
 }
 
-func (a *API) ClientStartDeal(ctx context.Context, data cid.Cid, addr address.Address, miner address.Address, epochPrice types.BigInt, blocksDuration uint64) (*cid.Cid, error) {
+func (a *API) ClientStartDeal(ctx context.Context, data *storagemarket.DataRef, addr address.Address, miner address.Address, epochPrice types.BigInt, blocksDuration uint64) (*cid.Cid, error) {
 	exist, err := a.WalletHas(ctx, addr)
 	if err != nil {
 		return nil, xerrors.Errorf("failed getting addr from wallet: %w", addr)
@@ -96,10 +96,7 @@ func (a *API) ClientStartDeal(ctx context.Context, data cid.Cid, addr address.Ad
 		ctx,
 		addr,
 		&providerInfo,
-		&storagemarket.DataRef{
-			TransferType: storagemarket.TTGraphsync,
-			Root:         data,
-		},
+		data,
 		ts.Height()+dealStartBuffer,
 		ts.Height()+dealStartBuffer+abi.ChainEpoch(blocksDuration),
 		epochPrice,
@@ -332,7 +329,7 @@ func (a *API) ClientRetrieve(ctx context.Context, order api.RetrievalOrder, path
 		return xerrors.New("Retrieval Timed Out")
 	case err := <-retrievalResult:
 		if err != nil {
-			return xerrors.Errorf("Retrieve: %w", err)
+			return xerrors.Errorf("RetrieveUnixfs: %w", err)
 		}
 	}
 
