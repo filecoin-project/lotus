@@ -8,20 +8,22 @@ import (
 	"math/bits"
 	"math/rand"
 
-	sectorbuilder "github.com/filecoin-project/go-sectorbuilder"
+	commcid "github.com/filecoin-project/go-fil-commcid"
+	"github.com/filecoin-project/specs-actors/actors/abi"
+	"github.com/filecoin-project/specs-actors/actors/builtin/market"
 	"golang.org/x/xerrors"
 
 	"github.com/filecoin-project/lotus/chain/actors"
 	"github.com/filecoin-project/lotus/chain/types"
 )
 
-func (m *Sealing) pledgeReader(size uint64, parts uint64) io.Reader {
+func (m *Sealing) pledgeReader(size abi.UnpaddedPieceSize, parts uint64) io.Reader {
 	parts = 1 << bits.Len64(parts) // round down to nearest power of 2
-	if size/parts < 127 {
-		parts = size / 127
+	if uint64(size)/parts < 127 {
+		parts = uint64(size) / 127
 	}
 
-	piece := sectorbuilder.UserBytesForSectorSize((size/127 + size) / parts)
+	piece := abi.PaddedPieceSize(uint64(size.Padded()) / parts).Unpadded()
 
 	readers := make([]io.Reader, parts)
 	for i := range readers {
@@ -31,33 +33,34 @@ func (m *Sealing) pledgeReader(size uint64, parts uint64) io.Reader {
 	return io.MultiReader(readers...)
 }
 
-func (m *Sealing) pledgeSector(ctx context.Context, sectorID uint64, existingPieceSizes []uint64, sizes ...uint64) ([]Piece, error) {
+func (m *Sealing) pledgeSector(ctx context.Context, sectorID abi.SectorNumber, existingPieceSizes []abi.UnpaddedPieceSize, sizes ...abi.UnpaddedPieceSize) ([]Piece, error) {
 	if len(sizes) == 0 {
 		return nil, nil
 	}
 
 	log.Infof("Pledge %d, contains %+v", sectorID, existingPieceSizes)
 
-	deals := make([]actors.StorageDealProposal, len(sizes))
+	deals := make([]market.ClientDealProposal, len(sizes))
 	for i, size := range sizes {
 		commP, err := m.fastPledgeCommitment(size, uint64(1))
 		if err != nil {
 			return nil, err
 		}
 
-		sdp := actors.StorageDealProposal{
-			PieceRef:             commP[:],
-			PieceSize:            size,
+		sdp := market.DealProposal{
+			PieceCID:             commcid.PieceCommitmentV1ToCID(commP[:]),
+			PieceSize:            size.Padded(),
 			Client:               m.worker,
 			Provider:             m.maddr,
-			ProposalExpiration:   math.MaxUint64,
-			Duration:             math.MaxUint64 / 2, // /2 because overflows
+			StartEpoch:   math.MaxInt64,
+			EndEpoch:             math.MaxInt64,
 			StoragePricePerEpoch: types.NewInt(0),
-			StorageCollateral:    types.NewInt(0),
-			ProposerSignature:    nil, // nil because self dealing
+			ProviderCollateral:    types.NewInt(0),
 		}
 
-		deals[i] = sdp
+		deals[i] = market.ClientDealProposal{
+			Proposal:        sdp,
+		}
 	}
 
 	log.Infof("Publishing deals for %d", sectorID)
@@ -92,11 +95,11 @@ func (m *Sealing) pledgeSector(ctx context.Context, sectorID uint64, existingPie
 	if err := resp.UnmarshalCBOR(bytes.NewReader(r.Receipt.Return)); err != nil {
 		return nil, err
 	}
-	if len(resp.DealIDs) != len(sizes) {
+	if len(resp.IDs) != len(sizes) {
 		return nil, xerrors.New("got unexpected number of DealIDs from PublishStorageDeals")
 	}
 
-	log.Infof("Deals for sector %d: %+v", sectorID, resp.DealIDs)
+	log.Infof("Deals for sector %d: %+v", sectorID, resp.IDs)
 
 	out := make([]Piece, len(sizes))
 	for i, size := range sizes {
@@ -108,8 +111,8 @@ func (m *Sealing) pledgeSector(ctx context.Context, sectorID uint64, existingPie
 		existingPieceSizes = append(existingPieceSizes, size)
 
 		out[i] = Piece{
-			DealID: resp.DealIDs[i],
-			Size:   ppi.Size,
+			DealID: resp.IDs[i],
+			Size:   abi.UnpaddedPieceSize(ppi.Size),
 			CommP:  ppi.CommP[:],
 		}
 	}
@@ -123,7 +126,7 @@ func (m *Sealing) PledgeSector() error {
 		// this, as we run everything here async, and it's cancelled when the
 		// command exits
 
-		size := sectorbuilder.UserBytesForSectorSize(m.sb.SectorSize())
+		size := abi.PaddedPieceSize(m.sb.SectorSize()).Unpadded()
 
 		sid, err := m.sb.AcquireSectorId()
 		if err != nil {
@@ -131,7 +134,7 @@ func (m *Sealing) PledgeSector() error {
 			return
 		}
 
-		pieces, err := m.pledgeSector(ctx, sid, []uint64{}, size)
+		pieces, err := m.pledgeSector(ctx, sid, []abi.UnpaddedPieceSize{}, abi.UnpaddedPieceSize(size))
 		if err != nil {
 			log.Errorf("%+v", err)
 			return

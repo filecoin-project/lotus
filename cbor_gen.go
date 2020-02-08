@@ -218,9 +218,7 @@ func (t *SealSeed) UnmarshalCBOR(r io.Reader) error {
 			}
 			if maj != cbg.MajUnsignedInt {
 				return fmt.Errorf("wrong type for uint64 field")
-			}
-			t.BlockHeight = uint64(extra)
-			// t.TicketBytes ([]uint8) (slice)
+			} // t.TicketBytes ([]uint8) (slice)
 		case "TicketBytes":
 
 			maj, extra, err = cbg.CborReadHeader(br)
@@ -352,18 +350,9 @@ func (t *Piece) UnmarshalCBOR(r io.Reader) error {
 			if maj != cbg.MajUnsignedInt {
 				return fmt.Errorf("wrong type for uint64 field")
 			}
-			t.DealID = uint64(extra)
 			// t.Size (uint64) (uint64)
 		case "Size":
 
-			maj, extra, err = cbg.CborReadHeader(br)
-			if err != nil {
-				return err
-			}
-			if maj != cbg.MajUnsignedInt {
-				return fmt.Errorf("wrong type for uint64 field")
-			}
-			t.Size = uint64(extra)
 			// t.CommP ([]uint8) (slice)
 		case "CommP":
 
@@ -740,7 +729,6 @@ func (t *SectorInfo) UnmarshalCBOR(r io.Reader) error {
 			if maj != cbg.MajUnsignedInt {
 				return fmt.Errorf("wrong type for uint64 field")
 			}
-			t.SectorID = uint64(extra)
 			// t.Nonce (uint64) (uint64)
 		case "Nonce":
 
