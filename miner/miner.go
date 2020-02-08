@@ -12,6 +12,7 @@ import (
 	"github.com/filecoin-project/lotus/chain/actors"
 	"github.com/filecoin-project/lotus/chain/gen"
 	"github.com/filecoin-project/lotus/chain/types"
+	"github.com/filecoin-project/specs-actors/actors/abi"
 	lru "github.com/hashicorp/golang-lru"
 
 	logging "github.com/ipfs/go-log/v2"
@@ -243,7 +244,7 @@ eventLoop:
 
 type MiningBase struct {
 	ts         *types.TipSet
-	nullRounds uint64
+	nullRounds abi.ChainEpoch
 }
 
 func (m *Miner) GetBestMiningCandidate(ctx context.Context) (*MiningBase, error) {

@@ -6,12 +6,13 @@ import (
 	"math/rand"
 	"sync"
 
+	"github.com/filecoin-project/specs-actors/actors/abi"
 	"github.com/hashicorp/go-multierror"
 
 	sectorbuilder "github.com/filecoin-project/go-sectorbuilder"
 )
 
-func fillersFromRem(toFill uint64) ([]uint64, error) {
+func fillersFromRem(in abi.UnpaddedPieceSize) ([]abi.UnpaddedPieceSize, error) {
 	// Convert to in-sector bytes for easier math:
 	//
 	// Sector size to user bytes ratio is constant, e.g. for 1024B we have 1016B
@@ -24,13 +25,13 @@ func fillersFromRem(toFill uint64) ([]uint64, error) {
 	//
 	// (we convert to sector bytes as they are nice round binary numbers)
 
-	toFill += toFill / 127
+	toFill := uint64(in + (in / 127))
 
 	// We need to fill the sector with pieces that are powers of 2. Conveniently
 	// computers store numbers in binary, which means we can look at 1s to get
 	// all the piece sizes we need to fill the sector. It also means that number
 	// of pieces is the number of 1s in the number of remaining bytes to fill
-	out := make([]uint64, bits.OnesCount64(toFill))
+	out := make([]abi.UnpaddedPieceSize, bits.OnesCount64(toFill))
 	for i := range out {
 		// Extract the next lowest non-zero bit
 		next := bits.TrailingZeros64(toFill)
@@ -42,18 +43,18 @@ func fillersFromRem(toFill uint64) ([]uint64, error) {
 		toFill ^= psize
 
 		// Add the piece size to the list of pieces we need to create
-		out[i] = sectorbuilder.UserBytesForSectorSize(psize)
+		out[i] = abi.PaddedPieceSize(psize).Unpadded()
 	}
 	return out, nil
 }
 
-func (m *Sealing) fastPledgeCommitment(size uint64, parts uint64) (commP [sectorbuilder.CommLen]byte, err error) {
+func (m *Sealing) fastPledgeCommitment(size abi.UnpaddedPieceSize, parts uint64) (commP [sectorbuilder.CommLen]byte, err error) {
 	parts = 1 << bits.Len64(parts) // round down to nearest power of 2
-	if size/parts < 127 {
-		parts = size / 127
+	if uint64(size)/parts < 127 {
+		parts = uint64(size) / 127
 	}
 
-	piece := sectorbuilder.UserBytesForSectorSize((size + size/127) / parts)
+	piece := abi.PaddedPieceSize(uint64(size.Padded()) / parts).Unpadded()
 	out := make([]sectorbuilder.PublicPieceInfo, parts)
 	var lk sync.Mutex
 
@@ -70,7 +71,7 @@ func (m *Sealing) fastPledgeCommitment(size uint64, parts uint64) (commP [sector
 				err = multierror.Append(err, perr)
 			}
 			out[i] = sectorbuilder.PublicPieceInfo{
-				Size:  piece,
+				Size: uint64(piece),
 				CommP: commP,
 			}
 			lk.Unlock()

@@ -7,6 +7,7 @@ import (
 	"github.com/filecoin-project/lotus/chain/actors"
 	"github.com/filecoin-project/lotus/chain/actors/aerrors"
 	"github.com/filecoin-project/lotus/chain/types"
+	"github.com/filecoin-project/specs-actors/actors/abi"
 	"go.opencensus.io/trace"
 )
 
@@ -14,7 +15,7 @@ import (
 
 func Syscalls(verifier sectorbuilder.Verifier) *types.VMSyscalls {
 	return &types.VMSyscalls{
-		ValidatePoRep: func(ctx context.Context, maddr address.Address, ssize uint64, commD, commR, ticket, proof, seed []byte, sectorID uint64) (bool, actors.ActorError) {
+		ValidatePoRep: func(ctx context.Context, maddr address.Address, ssize abi.SectorSize, commD, commR, ticket, proof, seed []byte, sectorID abi.SectorNumber) (bool, actors.ActorError) {
 			_, span := trace.StartSpan(ctx, "ValidatePoRep")
 			defer span.End()
 			ok, err := verifier.VerifySeal(ssize, commR, commD, maddr, ticket, seed, sectorID, proof)

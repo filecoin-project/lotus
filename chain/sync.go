@@ -516,7 +516,7 @@ func (syncer *Syncer) ValidateBlock(ctx context.Context, b *types.FullBlock) err
 		log.Warn("Got block from the future, but within threshold", h.Timestamp, time.Now().Unix())
 	}
 
-	if h.Timestamp < baseTs.MinTimestamp()+(build.BlockDelay*(h.Height-baseTs.Height())) {
+	if h.Timestamp < baseTs.MinTimestamp()+(build.BlockDelay*uint64(h.Height-baseTs.Height())) {
 		log.Warn("timestamp funtimes: ", h.Timestamp, baseTs.MinTimestamp(), h.Height, baseTs.Height())
 		return xerrors.Errorf("block was generated too soon (h.ts:%d < base.mints:%d + BLOCK_DELAY:%d * deltaH:%d)", h.Timestamp, baseTs.MinTimestamp(), build.BlockDelay, h.Height-baseTs.Height())
 	}
@@ -541,7 +541,7 @@ func (syncer *Syncer) ValidateBlock(ctx context.Context, b *types.FullBlock) err
 			return xerrors.Errorf("failed to get sector size for block miner: %w", err)
 		}
 
-		snum := types.BigDiv(mpow, types.NewInt(ssize))
+		snum := types.BigDiv(mpow, types.NewInt(uint64(ssize)))
 
 		if len(h.EPostProof.Candidates) == 0 {
 			return xerrors.Errorf("no candidates")

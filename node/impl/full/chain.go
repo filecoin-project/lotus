@@ -8,6 +8,7 @@ import (
 	"strings"
 
 	"github.com/filecoin-project/go-amt-ipld/v2"
+	"github.com/filecoin-project/specs-actors/actors/abi"
 	"github.com/ipfs/go-blockservice"
 	"github.com/ipfs/go-cid"
 	"github.com/ipfs/go-hamt-ipld"
@@ -157,7 +158,7 @@ func (a *ChainAPI) ChainGetParentReceipts(ctx context.Context, bcid cid.Cid) ([]
 	return out, nil
 }
 
-func (a *ChainAPI) ChainGetTipSetByHeight(ctx context.Context, h uint64, ts *types.TipSet) (*types.TipSet, error) {
+func (a *ChainAPI) ChainGetTipSetByHeight(ctx context.Context, h abi.ChainEpoch, ts *types.TipSet) (*types.TipSet, error) {
 	return a.Chain.GetTipsetByHeight(ctx, h, ts)
 }
 

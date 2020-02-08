@@ -3,8 +3,8 @@ package sealing
 import (
 	"context"
 
-	sectorbuilder "github.com/filecoin-project/go-sectorbuilder"
 	"github.com/filecoin-project/go-sectorbuilder/fs"
+	"github.com/filecoin-project/specs-actors/actors/abi"
 	"golang.org/x/xerrors"
 
 	"github.com/filecoin-project/lotus/build"
@@ -16,12 +16,12 @@ import (
 func (m *Sealing) handlePacking(ctx statemachine.Context, sector SectorInfo) error {
 	log.Infow("performing filling up rest of the sector...", "sector", sector.SectorID)
 
-	var allocated uint64
+	var allocated abi.UnpaddedPieceSize
 	for _, piece := range sector.Pieces {
 		allocated += piece.Size
 	}
 
-	ubytes := sectorbuilder.UserBytesForSectorSize(m.sb.SectorSize())
+	ubytes := abi.PaddedPieceSize(m.sb.SectorSize()).Unpadded()
 
 	if allocated > ubytes {
 		return xerrors.Errorf("too much data in sector: %d > %d", allocated, ubytes)
@@ -100,7 +100,7 @@ func (m *Sealing) handlePreCommitting(ctx statemachine.Context, sector SectorInf
 
 		CommR:     sector.CommR,
 		SealEpoch: sector.Ticket.BlockHeight,
-		DealIDs:   sector.deals(),
+		DealIDs:   nil, // sector.deals(), // TODO: REFACTOR
 	}
 	enc, aerr := actors.SerializeParams(params)
 	if aerr != nil {
@@ -144,7 +144,7 @@ func (m *Sealing) handleWaitSeed(ctx statemachine.Context, sector SectorInfo) er
 	randHeight := mw.TipSet.Height() + build.InteractivePoRepDelay - 1 // -1 because of how the messages are applied
 	log.Infof("precommit for sector %d made it on chain, will start proof computation at height %d", sector.SectorID, randHeight)
 
-	err = m.events.ChainAt(func(ectx context.Context, ts *types.TipSet, curH uint64) error {
+	err = m.events.ChainAt(func(ectx context.Context, ts *types.TipSet, curH abi.ChainEpoch) error {
 		rand, err := m.api.ChainGetRandomness(ectx, ts.Key(), int64(randHeight))
 		if err != nil {
 			err = xerrors.Errorf("failed to get randomness for computing seal proof: %w", err)
@@ -181,13 +181,13 @@ func (m *Sealing) handleCommitting(ctx statemachine.Context, sector SectorInfo) 
 
 	// TODO: Consider splitting states and persist proof for faster recovery
 
-	params := &actors.SectorProveCommitInfo{
+	/*params := &actors.SectorProveCommitInfo{
 		Proof:    proof,
 		SectorID: sector.SectorID,
 		DealIDs:  sector.deals(),
-	}
+	}*/
 
-	enc, aerr := actors.SerializeParams(params)
+	enc, aerr := actors.SerializeParams(nil) // TODO: REFACTOR: Fix
 	if aerr != nil {
 		return ctx.Send(SectorCommitFailed{xerrors.Errorf("could not serialize commit sector parameters: %w", aerr)})
 	}
@@ -255,7 +255,7 @@ func (m *Sealing) handleFaulty(ctx statemachine.Context, sector SectorInfo) erro
 
 	// TODO: coalesce faulty sector reporting
 	bf := types.NewBitField()
-	bf.Set(sector.SectorID)
+	bf.Set(uint64(sector.SectorID))
 
 	enc, aerr := actors.SerializeParams(&actors.DeclareFaultsParams{bf})
 	if aerr != nil {

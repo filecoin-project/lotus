@@ -40,7 +40,7 @@ func (fm *FundMgr) EnsureAvailable(ctx context.Context, addr address.Address, am
 			return err
 		}
 
-		avail = bal.Available
+		avail = types.BigSub(bal.Escrow, bal.Locked)
 	}
 
 	toAdd := types.NewInt(0)

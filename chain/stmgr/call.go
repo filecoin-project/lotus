@@ -4,6 +4,7 @@ import (
 	"context"
 	"fmt"
 
+	"github.com/filecoin-project/specs-actors/actors/abi"
 	"github.com/ipfs/go-cid"
 	"go.opencensus.io/trace"
 	"golang.org/x/xerrors"
@@ -15,7 +16,7 @@ import (
 	"github.com/filecoin-project/lotus/chain/vm"
 )
 
-func (sm *StateManager) CallRaw(ctx context.Context, msg *types.Message, bstate cid.Cid, r vm.Rand, bheight uint64) (*api.MethodCall, error) {
+func (sm *StateManager) CallRaw(ctx context.Context, msg *types.Message, bstate cid.Cid, r vm.Rand, bheight abi.ChainEpoch) (*api.MethodCall, error) {
 	ctx, span := trace.StartSpan(ctx, "statemanager.CallRaw")
 	defer span.End()
 

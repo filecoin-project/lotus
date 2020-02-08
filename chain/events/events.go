@@ -5,6 +5,7 @@ import (
 	"sync"
 	"time"
 
+	"github.com/filecoin-project/specs-actors/actors/abi"
 	"github.com/ipfs/go-cid"
 	logging "github.com/ipfs/go-log/v2"
 	"golang.org/x/xerrors"
@@ -19,7 +20,7 @@ import (
 var log = logging.Logger("events")
 
 // `curH`-`ts.Height` = `confidence`
-type HeightHandler func(ctx context.Context, ts *types.TipSet, curH uint64) error
+type HeightHandler func(ctx context.Context, ts *types.TipSet, curH abi.ChainEpoch) error
 type RevertHandler func(ctx context.Context, ts *types.TipSet) error
 
 type heightHandler struct {
@@ -33,7 +34,7 @@ type heightHandler struct {
 type eventApi interface {
 	ChainNotify(context.Context) (<-chan []*store.HeadChange, error)
 	ChainGetBlockMessages(context.Context, cid.Cid) (*api.BlockMessages, error)
-	ChainGetTipSetByHeight(context.Context, uint64, *types.TipSet) (*types.TipSet, error)
+	ChainGetTipSetByHeight(context.Context, abi.ChainEpoch, *types.TipSet) (*types.TipSet, error)
 	StateGetReceipt(context.Context, cid.Cid, *types.TipSet) (*types.MessageReceipt, error)
 
 	StateGetActor(ctx context.Context, actor address.Address, ts *types.TipSet) (*types.Actor, error) // optional / for CalledMsg
@@ -65,11 +66,11 @@ func NewEvents(ctx context.Context, api eventApi) *Events {
 		heightEvents: heightEvents{
 			tsc:          tsc,
 			ctx:          ctx,
-			gcConfidence: uint64(gcConfidence),
+			gcConfidence: abi.ChainEpoch(gcConfidence),
 
 			heightTriggers:   map[uint64]*heightHandler{},
-			htTriggerHeights: map[uint64][]uint64{},
-			htHeights:        map[uint64][]uint64{},
+			htTriggerHeights: map[abi.ChainEpoch][]uint64{},
+			htHeights:        map[abi.ChainEpoch][]uint64{},
 		},
 
 		calledEvents: calledEvents{
@@ -82,7 +83,7 @@ func NewEvents(ctx context.Context, api eventApi) *Events {
 			revertQueue: map[msgH][]triggerH{},
 			triggers:    map[triggerId]*callHandler{},
 			matchers:    map[triggerId][]MatchFunc{},
-			timeouts:    map[uint64]map[triggerId]int{},
+			timeouts:    map[abi.ChainEpoch]map[triggerId]int{},
 		},
 	}
 

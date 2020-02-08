@@ -6,6 +6,7 @@ import (
 	"fmt"
 	"math/big"
 
+	"github.com/filecoin-project/specs-actors/actors/abi"
 	block "github.com/ipfs/go-block-format"
 	cid "github.com/ipfs/go-cid"
 	hamt "github.com/ipfs/go-hamt-ipld"
@@ -50,7 +51,7 @@ type VMContext struct {
 	vm     *VM
 	state  *state.StateTree
 	msg    *types.Message
-	height uint64
+	height abi.ChainEpoch
 	cst    cbor.IpldStore
 
 	gasAvailable types.BigInt
@@ -70,7 +71,7 @@ func (vmc *VMContext) Message() *types.Message {
 	return vmc.msg
 }
 
-func (vmc *VMContext) GetRandomness(height uint64) ([]byte, aerrors.ActorError) {
+func (vmc *VMContext) GetRandomness(height abi.ChainEpoch) ([]byte, aerrors.ActorError) {
 
 	res, err := vmc.vm.rand.GetRandomness(vmc.ctx, int64(height))
 	if err != nil {
@@ -158,7 +159,7 @@ func (vmc *VMContext) Send(to address.Address, method uint64, value types.BigInt
 }
 
 // BlockHeight returns the height of the block this message was added to the chain in
-func (vmc *VMContext) BlockHeight() uint64 {
+func (vmc *VMContext) BlockHeight() abi.ChainEpoch {
 	return vmc.height
 }
 
@@ -301,7 +302,7 @@ type VM struct {
 	base        cid.Cid
 	cst         *cbor.BasicIpldStore
 	buf         *bufbstore.BufferedBS
-	blockHeight uint64
+	blockHeight abi.ChainEpoch
 	blockMiner  address.Address
 	inv         *invoker
 	rand        Rand
@@ -309,7 +310,7 @@ type VM struct {
 	Syscalls *types.VMSyscalls
 }
 
-func NewVM(base cid.Cid, height uint64, r Rand, maddr address.Address, cbs blockstore.Blockstore, syscalls *types.VMSyscalls) (*VM, error) {
+func NewVM(base cid.Cid, height abi.ChainEpoch, r Rand, maddr address.Address, cbs blockstore.Blockstore, syscalls *types.VMSyscalls) (*VM, error) {
 	buf := bufbstore.NewBufferedBstore(cbs)
 	cst := cbor.NewCborStore(buf)
 	state, err := state.LoadStateTree(cst, base)
@@ -622,7 +623,7 @@ func (vm *VM) StateTree() types.StateTree {
 	return vm.cstate
 }
 
-func (vm *VM) SetBlockHeight(h uint64) {
+func (vm *VM) SetBlockHeight(h abi.ChainEpoch) {
 	vm.blockHeight = h
 }
 

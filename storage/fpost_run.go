@@ -6,6 +6,7 @@ import (
 
 	ffi "github.com/filecoin-project/filecoin-ffi"
 	sectorbuilder "github.com/filecoin-project/go-sectorbuilder"
+	"github.com/filecoin-project/specs-actors/actors/abi"
 	"go.opencensus.io/trace"
 	"golang.org/x/xerrors"
 
@@ -14,7 +15,7 @@ import (
 	"github.com/filecoin-project/lotus/chain/types"
 )
 
-func (s *FPoStScheduler) failPost(eps uint64) {
+func (s *FPoStScheduler) failPost(eps abi.ChainEpoch) {
 	s.failLk.Lock()
 	if eps > s.failed {
 		s.failed = eps
@@ -22,7 +23,7 @@ func (s *FPoStScheduler) failPost(eps uint64) {
 	s.failLk.Unlock()
 }
 
-func (s *FPoStScheduler) doPost(ctx context.Context, eps uint64, ts *types.TipSet) {
+func (s *FPoStScheduler) doPost(ctx context.Context, eps abi.ChainEpoch, ts *types.TipSet) {
 	ctx, abort := context.WithCancel(ctx)
 
 	s.abort = abort
@@ -86,10 +87,10 @@ func (s *FPoStScheduler) declareFaults(ctx context.Context, fc uint64, params *a
 	return nil
 }
 
-func (s *FPoStScheduler) checkFaults(ctx context.Context, ssi sectorbuilder.SortedPublicSectorInfo) ([]uint64, error) {
+func (s *FPoStScheduler) checkFaults(ctx context.Context, ssi sectorbuilder.SortedPublicSectorInfo) ([]abi.SectorNumber, error) {
 	faults := s.sb.Scrub(ssi)
 
-	declaredFaults := map[uint64]struct{}{}
+	declaredFaults := map[abi.SectorNumber]struct{}{}
 
 	{
 		chainFaults, err := s.api.StateMinerFaults(ctx, s.actor, nil)
@@ -106,12 +107,12 @@ func (s *FPoStScheduler) checkFaults(ctx context.Context, ssi sectorbuilder.Sort
 		params := &actors.DeclareFaultsParams{Faults: types.NewBitField()}
 
 		for _, fault := range faults {
-			if _, ok := declaredFaults[fault.SectorID]; ok {
+			if _, ok := declaredFaults[abi.SectorNumber(fault.SectorID)]; ok {
 				continue
 			}
 
 			log.Warnf("new fault detected: sector %d: %s", fault.SectorID, fault.Err)
-			declaredFaults[fault.SectorID] = struct{}{}
+			declaredFaults[abi.SectorNumber(fault.SectorID)] = struct{}{}
 			params.Faults.Set(fault.SectorID)
 		}
 
@@ -126,15 +127,15 @@ func (s *FPoStScheduler) checkFaults(ctx context.Context, ssi sectorbuilder.Sort
 		}
 	}
 
-	faultIDs := make([]uint64, 0, len(declaredFaults))
+	faultIDs := make([]abi.SectorNumber, 0, len(declaredFaults))
 	for fault := range declaredFaults {
-		faultIDs = append(faultIDs, fault)
+		faultIDs = append(faultIDs, abi.SectorNumber(fault))
 	}
 
 	return faultIDs, nil
 }
 
-func (s *FPoStScheduler) runPost(ctx context.Context, eps uint64, ts *types.TipSet) (*actors.SubmitFallbackPoStParams, error) {
+func (s *FPoStScheduler) runPost(ctx context.Context, eps abi.ChainEpoch, ts *types.TipSet) (*actors.SubmitFallbackPoStParams, error) {
 	ctx, span := trace.StartSpan(ctx, "storage.runPost")
 	defer span.End()
 

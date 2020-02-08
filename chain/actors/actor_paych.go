@@ -123,7 +123,7 @@ func (pca PaymentChannelActor) UpdateChannelState(act *types.Actor, vmctx types.
 		return nil, err
 	}
 
-	if vmctx.BlockHeight() < sv.TimeLock {
+	if uint64(vmctx.BlockHeight()) < sv.TimeLock {
 		return nil, aerrors.New(2, "cannot use this voucher yet!")
 	}
 
@@ -228,7 +228,7 @@ func (pca PaymentChannelActor) Close(act *types.Actor, vmctx types.VMContext, pa
 		return nil, aerrors.New(2, "channel already closing")
 	}
 
-	self.ClosingAt = vmctx.BlockHeight() + build.PaymentChannelClosingDelay
+	self.ClosingAt = uint64(vmctx.BlockHeight()) + build.PaymentChannelClosingDelay
 	if self.ClosingAt < self.MinCloseHeight {
 		self.ClosingAt = self.MinCloseHeight
 	}
@@ -256,7 +256,7 @@ func (pca PaymentChannelActor) Collect(act *types.Actor, vmctx types.VMContext, 
 		return nil, aerrors.New(1, "payment channel not closing or closed")
 	}
 
-	if vmctx.BlockHeight() < self.ClosingAt {
+	if uint64(vmctx.BlockHeight()) < self.ClosingAt {
 		return nil, aerrors.New(2, "payment channel not closed yet")
 	}
 	_, err := vmctx.Send(self.From, 0, types.BigSub(act.Balance, self.ToSend), nil)

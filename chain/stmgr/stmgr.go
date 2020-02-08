@@ -7,11 +7,14 @@ import (
 
 	"github.com/filecoin-project/go-address"
 	amt "github.com/filecoin-project/go-amt-ipld/v2"
+	"github.com/filecoin-project/lotus/api"
 	"github.com/filecoin-project/lotus/chain/actors"
 	"github.com/filecoin-project/lotus/chain/state"
 	"github.com/filecoin-project/lotus/chain/store"
 	"github.com/filecoin-project/lotus/chain/types"
 	"github.com/filecoin-project/lotus/chain/vm"
+	"github.com/filecoin-project/specs-actors/actors/abi"
+	"github.com/filecoin-project/specs-actors/actors/util/adt"
 	cbg "github.com/whyrusleeping/cbor-gen"
 	"golang.org/x/xerrors"
 
@@ -32,7 +35,7 @@ type StateManager struct {
 	stCache  map[string][]cid.Cid
 	compWait map[string]chan struct{}
 	stlk     sync.Mutex
-	newVM    func(cid.Cid, uint64, vm.Rand, address.Address, blockstore.Blockstore, *types.VMSyscalls) (*vm.VM, error)
+	newVM    func(cid.Cid, abi.ChainEpoch, vm.Rand, address.Address, blockstore.Blockstore, *types.VMSyscalls) (*vm.VM, error)
 }
 
 func NewStateManager(cs *store.ChainStore) *StateManager {
@@ -598,18 +601,25 @@ func (sm *StateManager) ListAllActors(ctx context.Context, ts *types.TipSet) ([]
 	return out, nil
 }
 
-func (sm *StateManager) MarketBalance(ctx context.Context, addr address.Address, ts *types.TipSet) (actors.StorageParticipantBalance, error) {
+func (sm *StateManager) MarketBalance(ctx context.Context, addr address.Address, ts *types.TipSet) (api.MarketBalance, error) {
 	var state actors.StorageMarketState
-	if _, err := sm.LoadActorState(ctx, actors.StorageMarketAddress, &state, ts); err != nil {
-		return actors.StorageParticipantBalance{}, err
-	}
-	cst := cbor.NewCborStore(sm.cs.Blockstore())
-	b, _, err := actors.GetMarketBalances(ctx, cst, state.Balances, addr)
+	_, err := sm.LoadActorState(ctx, actors.StorageMarketAddress, &state, ts)
 	if err != nil {
-		return actors.StorageParticipantBalance{}, err
+		return api.MarketBalance{}, err
 	}
 
-	return b[0], nil
+	var out api.MarketBalance
+	out.Escrow, err = adt.AsBalanceTable(sm.cs.Store(ctx), state.EscrowTable).Get(addr)
+	if err != nil {
+		return api.MarketBalance{}, xerrors.Errorf("getting escrow balance: %w", err)
+	}
+
+	out.Locked, err = adt.AsBalanceTable(sm.cs.Store(ctx), state.LockedTable).Get(addr)
+	if err != nil {
+		return api.MarketBalance{}, xerrors.Errorf("getting locked balance: %w", err)
+	}
+
+	return out, nil
 }
 
 func (sm *StateManager) ValidateChain(ctx context.Context, ts *types.TipSet) error {
@@ -641,6 +651,6 @@ func (sm *StateManager) ValidateChain(ctx context.Context, ts *types.TipSet) err
 	return nil
 }
 
-func (sm *StateManager) SetVMConstructor(nvm func(cid.Cid, uint64, vm.Rand, address.Address, blockstore.Blockstore, *types.VMSyscalls) (*vm.VM, error)) {
+func (sm *StateManager) SetVMConstructor(nvm func(cid.Cid, abi.ChainEpoch, vm.Rand, address.Address, blockstore.Blockstore, *types.VMSyscalls) (*vm.VM, error)) {
 	sm.newVM = nvm
 }

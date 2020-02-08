@@ -5,6 +5,7 @@ import (
 	"math/big"
 
 	"github.com/filecoin-project/go-sectorbuilder"
+	"github.com/filecoin-project/specs-actors/actors/abi"
 
 	block "github.com/ipfs/go-block-format"
 	"github.com/ipfs/go-cid"
@@ -44,7 +45,7 @@ type BlockHeader struct {
 
 	ParentWeight BigInt // 4
 
-	Height uint64 // 5
+	Height abi.ChainEpoch // 5
 
 	ParentStateRoot cid.Cid // 6
 
@@ -165,8 +166,8 @@ var blocksPerEpoch = NewInt(build.BlocksPerEpoch)
 
 const sha256bits = 256
 
-func IsTicketWinner(partialTicket []byte, ssizeI uint64, snum uint64, totpow BigInt) bool {
-	ssize := NewInt(ssizeI)
+func IsTicketWinner(partialTicket []byte, ssizeI abi.SectorSize, snum uint64, totpow BigInt) bool {
+	ssize := NewInt(uint64(ssizeI))
 	ssampled := ElectionPostChallengeCount(snum, 0) // TODO: faults in epost?
 	/*
 		Need to check that
