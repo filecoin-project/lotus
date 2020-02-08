@@ -501,7 +501,6 @@ func (t *StorageMinerConstructorParams) MarshalCBOR(w io.Writer) error {
 	return nil
 }
 
-
 func (t *SectorPreCommitInfo) MarshalCBOR(w io.Writer) error {
 	if t == nil {
 		_, err := w.Write(cbg.CborNull)
@@ -1763,7 +1762,6 @@ func (t *CreateStorageMinerParams) MarshalCBOR(w io.Writer) error {
 	return nil
 }
 
-
 func (t *PowerLookupParams) MarshalCBOR(w io.Writer) error {
 	if t == nil {
 		_, err := w.Write(cbg.CborNull)
@@ -2055,7 +2053,6 @@ func (t *MinerSlashConsensusFault) UnmarshalCBOR(r io.Reader) error {
 
 	}
 	// t.AtHeight (uint64) (uint64)
-
 
 	// t.SlashedCollateral (types.BigInt) (struct)
 

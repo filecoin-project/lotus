@@ -283,7 +283,7 @@ func (sma StorageMinerActor) ProveCommitSector(act *types.Actor, vmctx types.VMC
 		return nil, aerrors.New(1, "no pre-commitment found for sector")
 	}
 
-	if us.ReceivedEpoch+build.InteractivePoRepDelay >= uint64(vmctx.BlockHeight()){
+	if us.ReceivedEpoch+build.InteractivePoRepDelay >= uint64(vmctx.BlockHeight()) {
 		return nil, aerrors.New(2, "too early for proof submission")
 	}
 
@@ -973,7 +973,7 @@ func onSuccessfulPoSt2(self *StorageMinerActorState, vmctx types.VMContext, acti
 	if !(oldPower.IsZero() && newPower.IsZero()) {
 		enc, err := SerializeParams(&UpdateStorageParams{
 			Delta:                 delta,
-			NextSlashDeadline: uint64(vmctx.BlockHeight())+ build.SlashablePowerDelay,
+			NextSlashDeadline:     uint64(vmctx.BlockHeight()) + build.SlashablePowerDelay,
 			PreviousSlashDeadline: prevSlashingDeadline,
 		})
 		if err != nil {

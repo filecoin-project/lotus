@@ -835,7 +835,7 @@ func (cs *ChainStore) Blockstore() bstore.Blockstore {
 
 func ActorStore(ctx context.Context, bs blockstore.Blockstore) adt.Store {
 	return &astore{
-		cst:  cbor.NewCborStore(bs),
+		cst: cbor.NewCborStore(bs),
 		ctx: ctx,
 	}
 }

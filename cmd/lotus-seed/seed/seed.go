@@ -160,8 +160,8 @@ func createDeals(m *genesis.GenesisMiner, k *wallet.Key, maddr address.Address, 
 			StartEpoch:           1, // TODO: allow setting
 			EndEpoch:             9001,
 			StoragePricePerEpoch: big.Zero(),
-			ProviderCollateral:    big.Zero(),
-			ClientCollateral:    big.Zero(),
+			ProviderCollateral:   big.Zero(),
+			ClientCollateral:     big.Zero(),
 		}
 
 		sector.Deal = *proposal
