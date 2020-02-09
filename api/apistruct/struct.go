@@ -3,9 +3,9 @@ package apistruct
 import (
 	"context"
 
-	sectorbuilder "github.com/filecoin-project/go-sectorbuilder"
 	"github.com/filecoin-project/specs-actors/actors/abi"
-	"github.com/filecoin-project/specs-actors/actors/builtin/market"
+
+	sectorbuilder "github.com/filecoin-project/go-sectorbuilder"
 
 	"github.com/ipfs/go-cid"
 	"github.com/libp2p/go-libp2p-core/network"
@@ -100,9 +100,9 @@ type FullNodeStruct struct {
 		StateMinerPower               func(context.Context, address.Address, *types.TipSet) (api.MinerPower, error)                             `perm:"read"`
 		StateMinerWorker              func(context.Context, address.Address, *types.TipSet) (address.Address, error)                            `perm:"read"`
 		StateMinerPeerID              func(ctx context.Context, m address.Address, ts *types.TipSet) (peer.ID, error)                           `perm:"read"`
-		StateMinerElectionPeriodStart func(ctx context.Context, actor address.Address, ts *types.TipSet) (uint64, error)                        `perm:"read"`
+		StateMinerElectionPeriodStart func(ctx context.Context, actor address.Address, ts *types.TipSet) (abi.ChainEpoch, error)                `perm:"read"`
 		StateMinerSectorSize          func(context.Context, address.Address, *types.TipSet) (abi.SectorSize, error)                             `perm:"read"`
-		StateMinerFaults              func(context.Context, address.Address, *types.TipSet) ([]uint64, error)                                   `perm:"read"`
+		StateMinerFaults              func(context.Context, address.Address, *types.TipSet) ([]abi.SectorNumber, error)                         `perm:"read"`
 		StateCall                     func(context.Context, *types.Message, *types.TipSet) (*api.MethodCall, error)                             `perm:"read"`
 		StateReplay                   func(context.Context, *types.TipSet, cid.Cid) (*api.ReplayResults, error)                                 `perm:"read"`
 		StateGetActor                 func(context.Context, address.Address, *types.TipSet) (*types.Actor, error)                               `perm:"read"`
@@ -113,8 +113,8 @@ type FullNodeStruct struct {
 		StateListActors               func(context.Context, *types.TipSet) ([]address.Address, error)                                           `perm:"read"`
 		StateMarketBalance            func(context.Context, address.Address, *types.TipSet) (api.MarketBalance, error)                          `perm:"read"`
 		StateMarketParticipants       func(context.Context, *types.TipSet) (map[string]api.MarketBalance, error)                                `perm:"read"`
-		StateMarketDeals              func(context.Context, *types.TipSet) (map[string]market.DealProposal, error)                              `perm:"read"`
-		StateMarketStorageDeal        func(context.Context, abi.DealID, *types.TipSet) (*market.DealProposal, error)                            `perm:"read"`
+		StateMarketDeals              func(context.Context, *types.TipSet) (map[string]api.MarketDeal, error)                                   `perm:"read"`
+		StateMarketStorageDeal        func(context.Context, abi.DealID, *types.TipSet) (*api.MarketDeal, error)                                 `perm:"read"`
 		StateLookupID                 func(ctx context.Context, addr address.Address, ts *types.TipSet) (address.Address, error)                `perm:"read"`
 		StateChangedActors            func(context.Context, cid.Cid, cid.Cid) (map[string]types.Actor, error)                                   `perm:"read"`
 		StateGetReceipt               func(context.Context, cid.Cid, *types.TipSet) (*types.MessageReceipt, error)                              `perm:"read"`
@@ -150,15 +150,15 @@ type StorageMinerStruct struct {
 	CommonStruct
 
 	Internal struct {
-		ActorAddress    func(context.Context) (address.Address, error)         `perm:"read"`
-		ActorSectorSize func(context.Context, address.Address) (uint64, error) `perm:"read"`
+		ActorAddress    func(context.Context) (address.Address, error)                 `perm:"read"`
+		ActorSectorSize func(context.Context, address.Address) (abi.SectorSize, error) `perm:"read"`
 
 		PledgeSector func(context.Context) error `perm:"write"`
 
-		SectorsStatus func(context.Context, uint64) (api.SectorInfo, error)     `perm:"read"`
-		SectorsList   func(context.Context) ([]uint64, error)                   `perm:"read"`
-		SectorsRefs   func(context.Context) (map[string][]api.SealedRef, error) `perm:"read"`
-		SectorsUpdate func(context.Context, uint64, api.SectorState) error      `perm:"write"`
+		SectorsStatus func(context.Context, abi.SectorNumber) (api.SectorInfo, error) `perm:"read"`
+		SectorsList   func(context.Context) ([]abi.SectorNumber, error)               `perm:"read"`
+		SectorsRefs   func(context.Context) (map[string][]api.SealedRef, error)       `perm:"read"`
+		SectorsUpdate func(context.Context, abi.SectorNumber, api.SectorState) error  `perm:"write"`
 
 		WorkerStats func(context.Context) (sectorbuilder.WorkerStats, error) `perm:"read"`
 
@@ -412,7 +412,7 @@ func (c *FullNodeStruct) StateMinerPeerID(ctx context.Context, m address.Address
 	return c.Internal.StateMinerPeerID(ctx, m, ts)
 }
 
-func (c *FullNodeStruct) StateMinerElectionPeriodStart(ctx context.Context, actor address.Address, ts *types.TipSet) (uint64, error) {
+func (c *FullNodeStruct) StateMinerElectionPeriodStart(ctx context.Context, actor address.Address, ts *types.TipSet) (abi.ChainEpoch, error) {
 	return c.Internal.StateMinerElectionPeriodStart(ctx, actor, ts)
 }
 
@@ -420,7 +420,7 @@ func (c *FullNodeStruct) StateMinerSectorSize(ctx context.Context, actor address
 	return c.Internal.StateMinerSectorSize(ctx, actor, ts)
 }
 
-func (c *FullNodeStruct) StateMinerFaults(ctx context.Context, actor address.Address, ts *types.TipSet) ([]uint64, error) {
+func (c *FullNodeStruct) StateMinerFaults(ctx context.Context, actor address.Address, ts *types.TipSet) ([]abi.SectorNumber, error) {
 	return c.Internal.StateMinerFaults(ctx, actor, ts)
 }
 
@@ -463,11 +463,11 @@ func (c *FullNodeStruct) StateMarketParticipants(ctx context.Context, ts *types.
 	return c.Internal.StateMarketParticipants(ctx, ts)
 }
 
-func (c *FullNodeStruct) StateMarketDeals(ctx context.Context, ts *types.TipSet) (map[string]market.DealProposal, error) {
+func (c *FullNodeStruct) StateMarketDeals(ctx context.Context, ts *types.TipSet) (map[string]api.MarketDeal, error) {
 	return c.Internal.StateMarketDeals(ctx, ts)
 }
 
-func (c *FullNodeStruct) StateMarketStorageDeal(ctx context.Context, dealid abi.DealID, ts *types.TipSet) (*market.DealProposal, error) {
+func (c *FullNodeStruct) StateMarketStorageDeal(ctx context.Context, dealid abi.DealID, ts *types.TipSet) (*api.MarketDeal, error) {
 	return c.Internal.StateMarketStorageDeal(ctx, dealid, ts)
 }
 
@@ -551,7 +551,7 @@ func (c *StorageMinerStruct) ActorAddress(ctx context.Context) (address.Address,
 	return c.Internal.ActorAddress(ctx)
 }
 
-func (c *StorageMinerStruct) ActorSectorSize(ctx context.Context, addr address.Address) (uint64, error) {
+func (c *StorageMinerStruct) ActorSectorSize(ctx context.Context, addr address.Address) (abi.SectorSize, error) {
 	return c.Internal.ActorSectorSize(ctx, addr)
 }
 
@@ -560,12 +560,12 @@ func (c *StorageMinerStruct) PledgeSector(ctx context.Context) error {
 }
 
 // Get the status of a given sector by ID
-func (c *StorageMinerStruct) SectorsStatus(ctx context.Context, sid uint64) (api.SectorInfo, error) {
+func (c *StorageMinerStruct) SectorsStatus(ctx context.Context, sid abi.SectorNumber) (api.SectorInfo, error) {
 	return c.Internal.SectorsStatus(ctx, sid)
 }
 
 // List all staged sectors
-func (c *StorageMinerStruct) SectorsList(ctx context.Context) ([]uint64, error) {
+func (c *StorageMinerStruct) SectorsList(ctx context.Context) ([]abi.SectorNumber, error) {
 	return c.Internal.SectorsList(ctx)
 }
 
@@ -573,7 +573,7 @@ func (c *StorageMinerStruct) SectorsRefs(ctx context.Context) (map[string][]api.
 	return c.Internal.SectorsRefs(ctx)
 }
 
-func (c *StorageMinerStruct) SectorsUpdate(ctx context.Context, id uint64, state api.SectorState) error {
+func (c *StorageMinerStruct) SectorsUpdate(ctx context.Context, id abi.SectorNumber, state api.SectorState) error {
 	return c.Internal.SectorsUpdate(ctx, id, state)
 }
 

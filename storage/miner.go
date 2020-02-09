@@ -7,7 +7,6 @@ import (
 
 	"github.com/filecoin-project/go-address"
 	"github.com/filecoin-project/specs-actors/actors/abi"
-	"github.com/filecoin-project/specs-actors/actors/builtin/market"
 	"github.com/ipfs/go-cid"
 	"github.com/ipfs/go-datastore"
 	logging "github.com/ipfs/go-log/v2"
@@ -51,7 +50,7 @@ type storageMinerApi interface {
 	StateWaitMsg(context.Context, cid.Cid) (*api.MsgWait, error) // TODO: removeme eventually
 	StateGetActor(ctx context.Context, actor address.Address, ts *types.TipSet) (*types.Actor, error)
 	StateGetReceipt(context.Context, cid.Cid, *types.TipSet) (*types.MessageReceipt, error)
-	StateMarketStorageDeal(context.Context, abi.DealID, *types.TipSet) (*market.DealProposal, error)
+	StateMarketStorageDeal(context.Context, abi.DealID, *types.TipSet) (*api.MarketDeal, error)
 	StateMinerFaults(context.Context, address.Address, *types.TipSet) ([]abi.SectorNumber, error)
 
 	MpoolPushMessage(context.Context, *types.Message) (*types.SignedMessage, error)

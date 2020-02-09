@@ -527,7 +527,7 @@ func IsRoundWinner(ctx context.Context, ts *types.TipSet, round int64, miner add
 		var commRa [32]byte
 		copy(commRa[:], s.CommR)
 		sinfos = append(sinfos, ffi.PublicSectorInfo{
-			SectorID: s.SectorID,
+			SectorID: uint64(s.SectorID),
 			CommR:    commRa,
 		})
 	}

@@ -210,7 +210,7 @@ func (s *FPoStScheduler) sortedSectorInfo(ctx context.Context, ts *types.TipSet)
 		copy(commR[:], sector.CommR)
 
 		sbsi[k] = ffi.PublicSectorInfo{
-			SectorID: sector.SectorID,
+			SectorID: uint64(sector.SectorID),
 			CommR:    commR,
 		}
 	}

@@ -59,7 +59,7 @@ func minerAddrFromDS(ds dtypes.MetadataDS) (address.Address, error) {
 }
 
 func GetParams(sbc *sectorbuilder.Config) error {
-	if err := paramfetch.GetParams(build.ParametersJson(), sbc.SectorSize); err != nil {
+	if err := paramfetch.GetParams(build.ParametersJson(), uint64(sbc.SectorSize)); err != nil {
 		return xerrors.Errorf("fetching proof parameters: %w", err)
 	}
 
@@ -283,7 +283,7 @@ func SealTicketGen(api api.FullNode) sealing.TicketFn {
 		}
 
 		return &sectorbuilder.SealTicket{
-			BlockHeight: ts.Height(),
+			BlockHeight: uint64(ts.Height()),
 			TicketBytes: tkt,
 		}, nil
 	}

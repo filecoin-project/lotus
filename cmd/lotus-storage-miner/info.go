@@ -43,7 +43,7 @@ var infoCmd = &cli.Command{
 			return err
 		}
 
-		fmt.Printf("Sector Size: %s\n", types.NewInt(sizeByte).SizeStr())
+		fmt.Printf("Sector Size: %s\n", types.SizeStr(types.NewInt(uint64(sizeByte))))
 
 		pow, err := api.StateMinerPower(ctx, maddr, nil)
 		if err != nil {
@@ -51,7 +51,7 @@ var infoCmd = &cli.Command{
 		}
 
 		percI := types.BigDiv(types.BigMul(pow.MinerPower, types.NewInt(1000000)), pow.TotalPower)
-		fmt.Printf("Power: %s / %s (%0.4f%%)\n", pow.MinerPower.SizeStr(), pow.TotalPower.SizeStr(), float64(percI.Int64())/10000)
+		fmt.Printf("Power: %s / %s (%0.4f%%)\n", types.SizeStr(pow.MinerPower), types.SizeStr(pow.TotalPower), float64(percI.Int64())/10000)
 
 		secCounts, err := api.StateMinerSectorCount(ctx, maddr, nil)
 		if err != nil {
@@ -62,13 +62,13 @@ var infoCmd = &cli.Command{
 			return err
 		}
 
-		fmt.Printf("\tCommitted: %s\n", types.BigMul(types.NewInt(secCounts.Sset), types.NewInt(sizeByte)).SizeStr())
+		fmt.Printf("\tCommitted: %s\n", types.SizeStr(types.BigMul(types.NewInt(secCounts.Sset), types.NewInt(uint64(sizeByte)))))
 		if len(faults) == 0 {
-			fmt.Printf("\tProving: %s\n", types.BigMul(types.NewInt(secCounts.Pset), types.NewInt(sizeByte)).SizeStr())
+			fmt.Printf("\tProving: %s\n", types.SizeStr(types.BigMul(types.NewInt(secCounts.Pset), types.NewInt(uint64(sizeByte)))))
 		} else {
 			fmt.Printf("\tProving: %s (%s Faulty, %.2f%%)\n",
-				types.BigMul(types.NewInt(secCounts.Pset-uint64(len(faults))), types.NewInt(sizeByte)).SizeStr(),
-				types.BigMul(types.NewInt(uint64(len(faults))), types.NewInt(sizeByte)).SizeStr(),
+				types.SizeStr(types.BigMul(types.NewInt(secCounts.Pset-uint64(len(faults))), types.NewInt(uint64(sizeByte)))),
+				types.SizeStr(types.BigMul(types.NewInt(uint64(len(faults))), types.NewInt(uint64(sizeByte)))),
 				float64(10000*uint64(len(faults))/secCounts.Pset)/100.)
 		}
 
