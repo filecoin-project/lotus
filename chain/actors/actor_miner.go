@@ -91,7 +91,7 @@ type StorageMinerActorState struct {
 	// The height at which this miner was slashed at.
 	SlashedAt uint64
 
-	ElectionPeriodStart uint64
+	ElectionPeriodStart abi.ChainEpoch
 }
 
 // 46356:
@@ -355,7 +355,7 @@ func (sma StorageMinerActor) ProveCommitSector(act *types.Actor, vmctx types.VMC
 		self.ProvingSet = self.Sectors
 		// TODO: probably want to wait until the miner is above a certain
 		//  threshold before starting this
-		self.ElectionPeriodStart = uint64(vmctx.BlockHeight())
+		self.ElectionPeriodStart = (vmctx.BlockHeight())
 	}
 
 	nstate, err := vmctx.Storage().Put(self)
@@ -411,7 +411,7 @@ func (sma StorageMinerActor) SubmitFallbackPoSt(act *types.Actor, vmctx types.VM
 	var seed [sectorbuilder.CommLen]byte
 	{
 		randHeight := self.ElectionPeriodStart + build.FallbackPoStDelay
-		if uint64(vmctx.BlockHeight()) <= randHeight {
+		if (vmctx.BlockHeight()) <= randHeight {
 			// TODO: spec, retcode
 			return nil, aerrors.Newf(1, "submit fallback PoSt called too early (%d < %d)", vmctx.BlockHeight(), randHeight)
 		}
@@ -974,7 +974,7 @@ func onSuccessfulPoSt2(self *StorageMinerActorState, vmctx types.VMContext, acti
 		enc, err := SerializeParams(&UpdateStorageParams{
 			Delta:                 delta,
 			NextSlashDeadline:     uint64(vmctx.BlockHeight()) + build.SlashablePowerDelay,
-			PreviousSlashDeadline: prevSlashingDeadline,
+			PreviousSlashDeadline: uint64(prevSlashingDeadline),
 		})
 		if err != nil {
 			return err
@@ -985,7 +985,7 @@ func onSuccessfulPoSt2(self *StorageMinerActorState, vmctx types.VMContext, acti
 			return aerrors.Wrap(err, "updating storage failed")
 		}
 
-		self.ElectionPeriodStart = uint64(vmctx.BlockHeight())
+		self.ElectionPeriodStart = vmctx.BlockHeight()
 	}
 
 	var ncid cid.Cid
@@ -1121,7 +1121,7 @@ type UpdatePeerIDParams struct {
 }
 
 func isLate(height uint64, self *StorageMinerActorState) bool {
-	return self.ElectionPeriodStart > 0 && height >= self.ElectionPeriodStart+build.SlashablePowerDelay
+	return self.ElectionPeriodStart > 0 && height >= uint64(self.ElectionPeriodStart+build.SlashablePowerDelay)
 }
 
 type CheckMinerParams struct {

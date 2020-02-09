@@ -88,20 +88,20 @@ type StorageMiner interface {
 
 	ActorAddress(context.Context) (address.Address, error)
 
-	ActorSectorSize(context.Context, address.Address) (uint64, error)
+	ActorSectorSize(context.Context, address.Address) (abi.SectorSize, error)
 
 	// Temp api for testing
 	PledgeSector(context.Context) error
 
 	// Get the status of a given sector by ID
-	SectorsStatus(context.Context, uint64) (SectorInfo, error)
+	SectorsStatus(context.Context, abi.SectorNumber) (SectorInfo, error)
 
 	// List all staged sectors
-	SectorsList(context.Context) ([]uint64, error)
+	SectorsList(context.Context) ([]abi.SectorNumber, error)
 
 	SectorsRefs(context.Context) (map[string][]SealedRef, error)
 
-	SectorsUpdate(context.Context, uint64, SectorState) error
+	SectorsUpdate(context.Context, abi.SectorNumber, SectorState) error
 
 	WorkerStats(context.Context) (sectorbuilder.WorkerStats, error)
 
@@ -121,12 +121,12 @@ type SectorLog struct {
 }
 
 type SectorInfo struct {
-	SectorID uint64
+	SectorID abi.SectorNumber
 	State    SectorState
 	CommD    []byte
 	CommR    []byte
 	Proof    []byte
-	Deals    []uint64
+	Deals    []abi.DealID
 	Ticket   sectorbuilder.SealTicket
 	Seed     sectorbuilder.SealSeed
 	Retries  uint64

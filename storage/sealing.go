@@ -24,7 +24,7 @@ func (m *Miner) ListSectors() ([]sealing.SectorInfo, error) {
 	return m.sealing.ListSectors()
 }
 
-func (m *Miner) GetSectorInfo(sid uint64) (sealing.SectorInfo, error) {
+func (m *Miner) GetSectorInfo(sid abi.SectorNumber) (sealing.SectorInfo, error) {
 	return m.sealing.GetSectorInfo(sid)
 }
 
@@ -32,6 +32,6 @@ func (m *Miner) PledgeSector() error {
 	return m.sealing.PledgeSector()
 }
 
-func (m *Miner) ForceSectorState(ctx context.Context, id uint64, state api.SectorState) error {
+func (m *Miner) ForceSectorState(ctx context.Context, id abi.SectorNumber, state api.SectorState) error {
 	return m.sealing.ForceSectorState(ctx, id, state)
 }

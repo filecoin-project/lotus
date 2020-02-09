@@ -17,6 +17,7 @@ import (
 	deals "github.com/filecoin-project/go-fil-markets/storagemarket/impl"
 	paramfetch "github.com/filecoin-project/go-paramfetch"
 	"github.com/filecoin-project/go-sectorbuilder"
+	"github.com/filecoin-project/specs-actors/actors/abi"
 	"github.com/ipfs/go-datastore"
 	"github.com/ipfs/go-datastore/namespace"
 	badger "github.com/ipfs/go-ds-badger2"
@@ -89,7 +90,7 @@ var initCmd = &cli.Command{
 	Action: func(cctx *cli.Context) error {
 		log.Info("Initializing lotus storage miner")
 
-		ssize := cctx.Uint64("sector-size")
+		ssize := abi.SectorSize(cctx.Uint64("sector-size"))
 
 		symlink := cctx.Bool("symlink-imported-sectors")
 		if symlink {
@@ -97,7 +98,7 @@ var initCmd = &cli.Command{
 		}
 
 		log.Info("Checking proof parameters")
-		if err := paramfetch.GetParams(build.ParametersJson(), ssize); err != nil {
+		if err := paramfetch.GetParams(build.ParametersJson(), uint64(ssize)); err != nil {
 			return xerrors.Errorf("fetching proof parameters: %w", err)
 		}
 
@@ -256,7 +257,7 @@ func migratePreSealMeta(ctx context.Context, api lapi.FullNode, presealDir strin
 			Pieces: []sealing.Piece{
 				{
 					DealID: dealID,
-					Size:   meta.SectorSize,
+					Size:   abi.PaddedPieceSize(meta.SectorSize).Unpadded(),
 					CommP:  sector.CommD[:],
 				},
 			},
@@ -314,7 +315,7 @@ func migratePreSealMeta(ctx context.Context, api lapi.FullNode, presealDir strin
 	return nil
 }
 
-func findMarketDealID(ctx context.Context, api lapi.FullNode, deal actors.StorageDealProposal) (uint64, error) {
+func findMarketDealID(ctx context.Context, api lapi.FullNode, deal actors.StorageDealProposal) (abi.DealID, error) {
 	// TODO: find a better way
 	//  (this is only used by genesis miners)
 
@@ -546,7 +547,7 @@ func createStorageMiner(ctx context.Context, api lapi.FullNode, peerid peer.ID, 
 	params, err := actors.SerializeParams(&actors.CreateStorageMinerParams{
 		Owner:      owner,
 		Worker:     worker,
-		SectorSize: ssize,
+		SectorSize: abi.SectorSize(ssize),
 		PeerID:     peerid,
 	})
 	if err != nil {

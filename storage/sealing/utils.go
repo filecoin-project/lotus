@@ -94,7 +94,7 @@ func (m *Sealing) ListSectors() ([]SectorInfo, error) {
 	return sectors, nil
 }
 
-func (m *Sealing) GetSectorInfo(sid uint64) (SectorInfo, error) {
+func (m *Sealing) GetSectorInfo(sid abi.SectorNumber) (SectorInfo, error) {
 	var out SectorInfo
 	err := m.sectors.Get(sid).Get(&out)
 	return out, err

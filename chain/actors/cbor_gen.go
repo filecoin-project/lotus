@@ -459,7 +459,6 @@ func (t *StorageMinerActorState) UnmarshalCBOR(r io.Reader) error {
 	if maj != cbg.MajUnsignedInt {
 		return fmt.Errorf("wrong type for uint64 field")
 	}
-	t.ElectionPeriodStart = uint64(extra)
 	return nil
 }
 

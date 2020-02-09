@@ -157,7 +157,7 @@ func GetMinerWorker(ctx context.Context, sm *StateManager, ts *types.TipSet, mad
 	return address.NewFromBytes(recp.Return)
 }
 
-func GetMinerElectionPeriodStart(ctx context.Context, sm *StateManager, ts *types.TipSet, maddr address.Address) (uint64, error) {
+func GetMinerElectionPeriodStart(ctx context.Context, sm *StateManager, ts *types.TipSet, maddr address.Address) (abi.ChainEpoch, error) {
 	var mas actors.StorageMinerActorState
 	_, err := sm.LoadActorState(ctx, maddr, &mas, ts)
 	if err != nil {
@@ -222,7 +222,7 @@ func GetSectorsForElectionPost(ctx context.Context, sm *StateManager, ts *types.
 		var uselessBuffer [32]byte
 		copy(uselessBuffer[:], s.CommR)
 		uselessOtherArray = append(uselessOtherArray, ffi.PublicSectorInfo{
-			SectorID: s.SectorID,
+			SectorID: uint64(s.SectorID),
 			CommR:    uselessBuffer,
 		})
 	}
@@ -257,7 +257,7 @@ func GetMinerSlashed(ctx context.Context, sm *StateManager, ts *types.TipSet, ma
 	return mas.SlashedAt, nil
 }
 
-func GetMinerFaults(ctx context.Context, sm *StateManager, ts *types.TipSet, maddr address.Address) ([]uint64, error) {
+func GetMinerFaults(ctx context.Context, sm *StateManager, ts *types.TipSet, maddr address.Address) ([]abi.SectorNumber, error) {
 	var mas actors.StorageMinerActorState
 	_, err := sm.LoadActorState(ctx, maddr, &mas, ts)
 	if err != nil {
@@ -269,10 +269,20 @@ func GetMinerFaults(ctx context.Context, sm *StateManager, ts *types.TipSet, mad
 		return nil, aerrors.HandleExternalError(lerr, "could not load proving set node")
 	}
 
-	return mas.FaultSet.All(2 * ss.Count)
+	faults, err := mas.FaultSet.All(2 * ss.Count)
+	if err != nil {
+		return nil, xerrors.Errorf("reading fault bit set: %w", err)
+	}
+
+	out := make([]abi.SectorNumber, len(faults))
+	for i, fault := range faults {
+		out[i] = abi.SectorNumber(fault)
+	}
+
+	return out, nil
 }
 
-func GetStorageDeal(ctx context.Context, sm *StateManager, dealId uint64, ts *types.TipSet) (*market.DealProposal, error) {
+func GetStorageDeal(ctx context.Context, sm *StateManager, dealId abi.DealID, ts *types.TipSet) (*api.MarketDeal, error) {
 	var state actors.StorageMarketState
 	if _, err := sm.LoadActorState(ctx, actors.StorageMarketAddress, &state, ts); err != nil {
 		return nil, err
@@ -283,12 +293,25 @@ func GetStorageDeal(ctx context.Context, sm *StateManager, dealId uint64, ts *ty
 		return nil, err
 	}
 
-	var ocd market.DealProposal
-	if err := da.Get(ctx, dealId, &ocd); err != nil {
+	var dp market.DealProposal
+	if err := da.Get(ctx, uint64(dealId), &dp); err != nil {
 		return nil, err
 	}
 
-	return &ocd, nil
+	sa, err := amt.LoadAMT(ctx, cbor.NewCborStore(sm.ChainStore().Blockstore()), state.States)
+	if err != nil {
+		return nil, err
+	}
+
+	var st market.DealState
+	if err := sa.Get(ctx, uint64(dealId), &st); err != nil {
+		return nil, err
+	}
+
+	return &api.MarketDeal{
+		Proposal: dp,
+		State:    st,
+	}, nil
 }
 
 func ListMinerActors(ctx context.Context, sm *StateManager, ts *types.TipSet) ([]address.Address, error) {
@@ -319,7 +342,7 @@ func LoadSectorsFromSet(ctx context.Context, bs blockstore.Blockstore, ssc cid.C
 			return err
 		}
 		sset = append(sset, &api.ChainSectorInfo{
-			SectorID: i,
+			SectorID: abi.SectorNumber(i),
 			CommR:    comms[0],
 			CommD:    comms[1],
 		})

@@ -112,17 +112,17 @@ type FullNode interface {
 	StateMinerPower(context.Context, address.Address, *types.TipSet) (MinerPower, error)
 	StateMinerWorker(context.Context, address.Address, *types.TipSet) (address.Address, error)
 	StateMinerPeerID(ctx context.Context, m address.Address, ts *types.TipSet) (peer.ID, error)
-	StateMinerElectionPeriodStart(ctx context.Context, actor address.Address, ts *types.TipSet) (uint64, error)
+	StateMinerElectionPeriodStart(ctx context.Context, actor address.Address, ts *types.TipSet) (abi.ChainEpoch, error)
 	StateMinerSectorSize(context.Context, address.Address, *types.TipSet) (abi.SectorSize, error)
-	StateMinerFaults(context.Context, address.Address, *types.TipSet) ([]uint64, error)
+	StateMinerFaults(context.Context, address.Address, *types.TipSet) ([]abi.SectorNumber, error)
 	StatePledgeCollateral(context.Context, *types.TipSet) (types.BigInt, error)
 	StateWaitMsg(context.Context, cid.Cid) (*MsgWait, error)
 	StateListMiners(context.Context, *types.TipSet) ([]address.Address, error)
 	StateListActors(context.Context, *types.TipSet) ([]address.Address, error)
 	StateMarketBalance(context.Context, address.Address, *types.TipSet) (MarketBalance, error)
 	StateMarketParticipants(context.Context, *types.TipSet) (map[string]MarketBalance, error)
-	StateMarketDeals(context.Context, *types.TipSet) (map[string]market.DealProposal, error)
-	StateMarketStorageDeal(context.Context, abi.DealID, *types.TipSet) (*market.DealProposal, error)
+	StateMarketDeals(context.Context, *types.TipSet) (map[string]MarketDeal, error)
+	StateMarketStorageDeal(context.Context, abi.DealID, *types.TipSet) (*MarketDeal, error)
 	StateLookupID(context.Context, address.Address, *types.TipSet) (address.Address, error)
 	StateChangedActors(context.Context, cid.Cid, cid.Cid) (map[string]types.Actor, error)
 	StateGetReceipt(context.Context, cid.Cid, *types.TipSet) (*types.MessageReceipt, error)
@@ -190,7 +190,7 @@ type Message struct {
 }
 
 type ChainSectorInfo struct {
-	SectorID uint64
+	SectorID abi.SectorNumber
 	CommD    []byte
 	CommR    []byte
 }
@@ -267,6 +267,11 @@ func (o *QueryOffer) Order(client address.Address) RetrievalOrder {
 type MarketBalance struct {
 	Escrow big.Int
 	Locked big.Int
+}
+
+type MarketDeal struct {
+	Proposal market.DealProposal
+	State    market.DealState
 }
 
 type RetrievalOrder struct {

@@ -12,6 +12,7 @@ import (
 	sharedamount "github.com/filecoin-project/go-fil-markets/shared/tokenamount"
 	sharedtypes "github.com/filecoin-project/go-fil-markets/shared/types"
 	"github.com/filecoin-project/go-fil-markets/storagemarket"
+	"github.com/filecoin-project/lotus/api"
 	"github.com/filecoin-project/lotus/chain/actors"
 	"github.com/filecoin-project/lotus/chain/types"
 )
@@ -129,10 +130,10 @@ func FromOnChainDeal(proposal market.DealProposal, state market.DealState) stora
 	}
 }
 
-func ToSharedBalance(escrow, locked abi.TokenAmount) storagemarket.Balance {
+func ToSharedBalance(bal api.MarketBalance) storagemarket.Balance {
 	return storagemarket.Balance{
-		Locked:    ToSharedTokenAmount(locked),
-		Available: ToSharedTokenAmount(big.Sub(escrow, locked)),
+		Locked:    ToSharedTokenAmount(bal.Locked),
+		Available: ToSharedTokenAmount(big.Sub(bal.Escrow, bal.Locked)),
 	}
 }
 
@@ -150,16 +151,7 @@ func ToSharedStorageDealProposal(proposal *actors.StorageDealProposal) (*storage
 	return &out, nil
 }
 
-func FromSharedStorageDealProposal(proposal *storagemarket.StorageDealProposal) (*actors.StorageDealProposal, error) {
-	var encoded bytes.Buffer
-	err := proposal.MarshalCBOR(&encoded)
-	if err != nil {
-		return nil, err
-	}
-	var out actors.StorageDealProposal
-	err = out.UnmarshalCBOR(&encoded)
-	if err != nil {
-		return nil, err
-	}
-	return &out, nil
+func FromSharedStorageDealProposal(proposal *storagemarket.StorageDealProposal) (*market.ClientDealProposal, error) {
+	panic("todo")
+	return nil, nil
 }

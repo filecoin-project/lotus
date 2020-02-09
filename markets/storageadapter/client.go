@@ -6,6 +6,8 @@ import (
 	"bytes"
 	"context"
 
+	"github.com/filecoin-project/specs-actors/actors/abi"
+	"github.com/filecoin-project/specs-actors/actors/builtin/miner"
 	"golang.org/x/xerrors"
 
 	"github.com/filecoin-project/go-address"
@@ -13,7 +15,7 @@ import (
 	"github.com/filecoin-project/go-fil-markets/shared/tokenamount"
 	sharedtypes "github.com/filecoin-project/go-fil-markets/shared/types"
 	"github.com/filecoin-project/go-fil-markets/storagemarket"
-	"github.com/filecoin-project/lotus/api"
+
 	"github.com/filecoin-project/lotus/build"
 	"github.com/filecoin-project/lotus/chain/actors"
 	"github.com/filecoin-project/lotus/chain/events"
@@ -98,7 +100,7 @@ func (n *ClientNodeAdapter) ListClientDeals(ctx context.Context, addr address.Ad
 	var out []storagemarket.StorageDeal
 
 	for _, deal := range allDeals {
-		storageDeal := utils.FromOnChainDeal(deal)
+		storageDeal := utils.FromOnChainDeal(deal.Proposal, deal.State)
 		if storageDeal.Client == addr {
 			out = append(out, storageDeal)
 		}
@@ -215,19 +217,19 @@ func (c *ClientNodeAdapter) ValidatePublishedDeal(ctx context.Context, deal stor
 		return 0, err
 	}
 
-	return res.DealIDs[dealIdx], nil
+	return uint64(res.IDs[dealIdx]), nil
 }
 
 func (c *ClientNodeAdapter) OnDealSectorCommitted(ctx context.Context, provider address.Address, dealId uint64, cb storagemarket.DealSectorCommittedCallback) error {
 	checkFunc := func(ts *types.TipSet) (done bool, more bool, err error) {
-		sd, err := stmgr.GetStorageDeal(ctx, c.StateManager, dealId, ts)
+		sd, err := stmgr.GetStorageDeal(ctx, c.StateManager, abi.DealID(dealId), ts)
 
 		if err != nil {
 			// TODO: This may be fine for some errors
 			return false, false, xerrors.Errorf("failed to look up deal on chain: %w", err)
 		}
 
-		if sd.ActivationEpoch > 0 {
+		if sd.Proposal.StartEpoch > 0 {
 			cb(nil)
 			return true, false, nil
 		}
@@ -235,7 +237,7 @@ func (c *ClientNodeAdapter) OnDealSectorCommitted(ctx context.Context, provider 
 		return false, true, nil
 	}
 
-	called := func(msg *types.Message, rec *types.MessageReceipt, ts *types.TipSet, curH uint64) (more bool, err error) {
+	called := func(msg *types.Message, rec *types.MessageReceipt, ts *types.TipSet, curH abi.ChainEpoch) (more bool, err error) {
 		defer func() {
 			if err != nil {
 				cb(xerrors.Errorf("handling applied event: %w", err))
@@ -247,16 +249,16 @@ func (c *ClientNodeAdapter) OnDealSectorCommitted(ctx context.Context, provider 
 			return false, nil
 		}
 
-		sd, err := stmgr.GetStorageDeal(ctx, c.StateManager, dealId, ts)
+		sd, err := stmgr.GetStorageDeal(ctx, c.StateManager, abi.DealID(dealId), ts)
 		if err != nil {
 			return false, xerrors.Errorf("failed to look up deal on chain: %w", err)
 		}
 
-		if sd.ActivationEpoch == 0 {
+		if sd.Proposal.StartEpoch == 0 {
 			return false, xerrors.Errorf("deal wasn't active: deal=%d, parentState=%s, h=%d", dealId, ts.ParentState(), ts.Height())
 		}
 
-		log.Infof("Storage deal %d activated at epoch %d", dealId, sd.ActivationEpoch)
+		log.Infof("Storage deal %d activated at epoch %d", dealId, sd.State.SectorStartEpoch)
 
 		cb(nil)
 
@@ -278,14 +280,14 @@ func (c *ClientNodeAdapter) OnDealSectorCommitted(ctx context.Context, provider 
 			return false, nil
 		}
 
-		var params actors.SectorProveCommitInfo
+		var params miner.SectorPreCommitInfo
 		if err := params.UnmarshalCBOR(bytes.NewReader(msg.Params)); err != nil {
 			return false, err
 		}
 
 		var found bool
 		for _, dealID := range params.DealIDs {
-			if dealID == dealId {
+			if uint64(dealID) == dealId {
 				found = true
 				break
 			}
@@ -302,19 +304,7 @@ func (c *ClientNodeAdapter) OnDealSectorCommitted(ctx context.Context, provider 
 }
 
 func (n *ClientNodeAdapter) SignProposal(ctx context.Context, signer address.Address, proposal *storagemarket.StorageDealProposal) error {
-	localProposal, err := utils.FromSharedStorageDealProposal(proposal)
-	if err != nil {
-		return err
-	}
-	err = api.SignWith(ctx, n.Wallet.Sign, signer, localProposal)
-	if err != nil {
-		return err
-	}
-	signature, err := utils.ToSharedSignature(localProposal.ProposerSignature)
-	if err != nil {
-		return err
-	}
-	proposal.ProposerSignature = signature
+	// TODO: output spec signed proposal
 	return nil
 }
 

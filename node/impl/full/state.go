@@ -81,7 +81,7 @@ func (a *StateAPI) StateMinerPeerID(ctx context.Context, m address.Address, ts *
 	return stmgr.GetMinerPeerID(ctx, a.StateManager, ts, m)
 }
 
-func (a *StateAPI) StateMinerElectionPeriodStart(ctx context.Context, actor address.Address, ts *types.TipSet) (uint64, error) {
+func (a *StateAPI) StateMinerElectionPeriodStart(ctx context.Context, actor address.Address, ts *types.TipSet) (abi.ChainEpoch, error) {
 	return stmgr.GetMinerElectionPeriodStart(ctx, a.StateManager, ts, actor)
 }
 
@@ -89,7 +89,7 @@ func (a *StateAPI) StateMinerSectorSize(ctx context.Context, actor address.Addre
 	return stmgr.GetMinerSectorSize(ctx, a.StateManager, ts, actor)
 }
 
-func (a *StateAPI) StateMinerFaults(ctx context.Context, addr address.Address, ts *types.TipSet) ([]uint64, error) {
+func (a *StateAPI) StateMinerFaults(ctx context.Context, addr address.Address, ts *types.TipSet) ([]abi.SectorNumber, error) {
 	return stmgr.GetMinerFaults(ctx, a.StateManager, ts, addr)
 }
 
@@ -288,8 +288,8 @@ func (a *StateAPI) StateMarketParticipants(ctx context.Context, ts *types.TipSet
 	return out, nil
 }
 
-func (a *StateAPI) StateMarketDeals(ctx context.Context, ts *types.TipSet) (map[string]market.DealProposal, error) {
-	out := map[string]market.DealProposal{}
+func (a *StateAPI) StateMarketDeals(ctx context.Context, ts *types.TipSet) (map[string]api.MarketDeal, error) {
+	out := map[string]api.MarketDeal{}
 
 	var state actors.StorageMarketState
 	if _, err := a.StateManager.LoadActorState(ctx, actors.StorageMarketAddress, &state, ts); err != nil {
@@ -302,12 +302,25 @@ func (a *StateAPI) StateMarketDeals(ctx context.Context, ts *types.TipSet) (map[
 		return nil, err
 	}
 
+	sa, err := amt.LoadAMT(ctx, blks, state.States)
+	if err != nil {
+		return nil, err
+	}
+
 	if err := da.ForEach(ctx, func(i uint64, v *cbg.Deferred) error {
 		var d market.DealProposal
 		if err := d.UnmarshalCBOR(bytes.NewReader(v.Raw)); err != nil {
 			return err
 		}
-		out[strconv.FormatInt(int64(i), 10)] = d
+
+		var s market.DealState
+		if err := sa.Get(ctx, i, &s); err != nil {
+			return err
+		}
+		out[strconv.FormatInt(int64(i), 10)] = api.MarketDeal{
+			Proposal: d,
+			State:    s,
+		}
 		return nil
 	}); err != nil {
 		return nil, err
@@ -315,7 +328,7 @@ func (a *StateAPI) StateMarketDeals(ctx context.Context, ts *types.TipSet) (map[
 	return out, nil
 }
 
-func (a *StateAPI) StateMarketStorageDeal(ctx context.Context, dealId uint64, ts *types.TipSet) (*market.DealProposal, error) {
+func (a *StateAPI) StateMarketStorageDeal(ctx context.Context, dealId abi.DealID, ts *types.TipSet) (*api.MarketDeal, error) {
 	return stmgr.GetStorageDeal(ctx, a.StateManager, dealId, ts)
 }
 

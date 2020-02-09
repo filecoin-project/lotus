@@ -8,6 +8,8 @@ import (
 	"github.com/filecoin-project/go-fil-markets/retrievalmarket"
 	retrievaltoken "github.com/filecoin-project/go-fil-markets/shared/tokenamount"
 	retrievaltypes "github.com/filecoin-project/go-fil-markets/shared/types"
+	"github.com/filecoin-project/specs-actors/actors/abi"
+
 	"github.com/filecoin-project/go-sectorbuilder"
 	"github.com/filecoin-project/lotus/api"
 	"github.com/filecoin-project/lotus/markets/utils"
@@ -26,7 +28,7 @@ func NewRetrievalProviderNode(miner *storage.Miner, sb sectorbuilder.Interface, 
 	return &retrievalProviderNode{miner, sb, full}
 }
 
-func (rpn *retrievalProviderNode) UnsealSector(ctx context.Context, sectorID uint64, offset uint64, length uint64) (io.ReadCloser, error) {
+func (rpn *retrievalProviderNode) UnsealSector(ctx context.Context, sectorID abi.SectorNumber, offset uint64, length uint64) (io.ReadCloser, error) {
 	si, err := rpn.miner.GetSectorInfo(sectorID)
 	if err != nil {
 		return nil, err

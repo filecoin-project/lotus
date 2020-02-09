@@ -40,7 +40,7 @@ func checkPieces(ctx context.Context, si SectorInfo, api sealingApi) error {
 			return &ErrApi{xerrors.Errorf("getting deal %d for piece %d: %w", piece.DealID, i, err)}
 		}
 
-		h, err := multihash.Decode(deal.PieceCID.Hash())
+		h, err := multihash.Decode(deal.Proposal.PieceCID.Hash())
 		if err != nil {
 			return &ErrInvalidDeals{xerrors.Errorf("decoding piece CID: %w", err)}
 		}
@@ -49,12 +49,12 @@ func checkPieces(ctx context.Context, si SectorInfo, api sealingApi) error {
 			return &ErrInvalidDeals{xerrors.Errorf("piece %d (or %d) of sector %d refers deal %d with wrong CommP: %x != %x", i, len(si.Pieces), si.SectorID, piece.DealID, piece.CommP, h.Digest)}
 		}
 
-		if piece.Size != deal.PieceSize.Unpadded() {
-			return &ErrInvalidDeals{xerrors.Errorf("piece %d (or %d) of sector %d refers deal %d with different size: %d != %d", i, len(si.Pieces), si.SectorID, piece.DealID, piece.Size, deal.PieceSize)}
+		if piece.Size != deal.Proposal.PieceSize.Unpadded() {
+			return &ErrInvalidDeals{xerrors.Errorf("piece %d (or %d) of sector %d refers deal %d with different size: %d != %d", i, len(si.Pieces), si.SectorID, piece.DealID, piece.Size, deal.Proposal.PieceSize)}
 		}
 
-		if head.Height() >= deal.StartEpoch {
-			return &ErrExpiredDeals{xerrors.Errorf("piece %d (or %d) of sector %d refers expired deal %d - should start at %d, head %d", i, len(si.Pieces), si.SectorID, piece.DealID, deal.StartEpoch, head.Height())}
+		if head.Height() >= deal.Proposal.StartEpoch {
+			return &ErrExpiredDeals{xerrors.Errorf("piece %d (or %d) of sector %d refers expired deal %d - should start at %d, head %d", i, len(si.Pieces), si.SectorID, piece.DealID, deal.Proposal.StartEpoch, head.Height())}
 		}
 	}
 
