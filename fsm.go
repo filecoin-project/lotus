@@ -6,6 +6,7 @@ import (
 	"reflect"
 	"time"
 
+	"github.com/filecoin-project/specs-actors/actors/abi"
 	"golang.org/x/xerrors"
 
 	"github.com/filecoin-project/lotus/api"
@@ -237,7 +238,7 @@ func (m *Sealing) restartSectors(ctx context.Context) error {
 	return nil
 }
 
-func (m *Sealing) ForceSectorState(ctx context.Context, id uint64, state api.SectorState) error {
+func (m *Sealing) ForceSectorState(ctx context.Context, id abi.SectorNumber, state api.SectorState) error {
 	return m.sectors.Send(id, SectorForceState{state})
 }
 
