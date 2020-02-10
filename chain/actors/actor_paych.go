@@ -298,5 +298,5 @@ func (pca PaymentChannelActor) GetToSend(act *types.Actor, vmctx types.VMContext
 		return nil, err
 	}
 
-	return self.ToSend.Bytes(), nil
+	return nil, nil
 }

@@ -233,14 +233,6 @@ func (sma StorageMinerActor) PreCommitSector(act *types.Actor, vmctx types.VMCon
 		return nil, aerrors.New(3, "sector already committed!")
 	}
 
-	// Power of the miner after adding this sector
-	futurePower := types.BigAdd(self.Power, types.NewInt(uint64(mi.SectorSize)))
-	collateralRequired := CollateralForPower(futurePower)
-
-	// TODO: grab from market?
-	if act.Balance.LessThan(collateralRequired) {
-		return nil, aerrors.New(4, "not enough collateral")
-	}
 
 	self.PreCommittedSectors[uintToStringKey(uint64(params.SectorNumber))] = &PreCommittedSector{
 		Info:          *params,
@@ -519,10 +511,10 @@ func (sma StorageMinerActor) GetPower(act *types.Actor, vmctx types.VMContext, p
 	}
 
 	if self.SlashedAt != 0 {
-		return types.NewInt(0).Bytes(), nil
+		return nil, nil
 	}
 
-	return self.Power.Bytes(), nil
+	return nil, nil
 }
 
 func SectorIsUnique2(ctx context.Context, s cbor.IpldStore, sroot cid.Cid, sid uint64) (bool, ActorError) {
@@ -683,17 +675,9 @@ func (sma StorageMinerActor) UpdatePeerID(act *types.Actor, vmctx types.VMContex
 }
 
 func (sma StorageMinerActor) GetSectorSize(act *types.Actor, vmctx types.VMContext, params *struct{}) ([]byte, ActorError) {
-	_, self, err := loadState(vmctx)
-	if err != nil {
-		return nil, err
-	}
 
-	mi, err := loadMinerInfo(vmctx, self)
-	if err != nil {
-		return nil, err
-	}
 
-	return types.NewInt(uint64(mi.SectorSize)).Bytes(), nil
+	return nil, nil
 }
 
 func (sma StorageMinerActor) IsSlashed(act *types.Actor, vmctx types.VMContext, params *struct{}) ([]byte, ActorError) {
@@ -723,13 +707,6 @@ func (sma StorageMinerActor) CheckMiner(act *types.Actor, vmctx types.VMContext,
 
 	if self.SlashedAt != 0 {
 		// Don't slash more than necessary
-		return nil, nil
-	}
-
-	if params.NetworkPower.Equals(self.Power) {
-		// Don't break the network when there's only one miner left
-
-		log.Warnf("can't slash miner %s for missed PoSt, no power would be left in the network", vmctx.Message().To)
 		return nil, nil
 	}
 
@@ -809,9 +786,6 @@ func (sma StorageMinerActor) SlashConsensusFault(act *types.Actor, vmctx types.V
 	}
 
 	slashedCollateral := params.SlashedCollateral
-	if slashedCollateral.LessThan(act.Balance) {
-		slashedCollateral = act.Balance
-	}
 
 	// Some of the slashed collateral should be paid to the slasher
 	// GROWTH_RATE determines how fast the slasher share of slashed collateral will increase as block elapses
@@ -924,80 +898,8 @@ func (sma StorageMinerActor) SubmitElectionPoSt(act *types.Actor, vmctx types.VM
 }
 
 func onSuccessfulPoSt2(self *StorageMinerActorState, vmctx types.VMContext, activeFaults uint64) aerrors.ActorError {
-	ctx := vmctx.Context()
 
-	var mi MinerInfo
-	if err := vmctx.Storage().Get(self.Info, &mi); err != nil {
-		return err
-	}
 
-	pss, nerr := amt2.LoadAMT(ctx, vmctx.Ipld(), self.ProvingSet)
-	if nerr != nil {
-		return aerrors.HandleExternalError(nerr, "failed to load proving set")
-	}
-
-	ss, nerr := amt2.LoadAMT(ctx, vmctx.Ipld(), self.Sectors)
-	if nerr != nil {
-		return aerrors.HandleExternalError(nerr, "failed to load sector set")
-	}
-
-	faults, nerr := self.FaultSet.All(2 * ss.Count)
-	if nerr != nil {
-		return aerrors.Absorb(nerr, 1, "invalid bitfield (fatal?)")
-	}
-
-	self.FaultSet = types.NewBitField()
-
-	oldPower := self.Power
-	newPower := types.BigMul(types.NewInt(pss.Count-activeFaults), types.NewInt(uint64(mi.SectorSize)))
-
-	// If below the minimum size requirement, miners have zero power
-	if newPower.LessThan(types.NewInt(build.MinimumMinerPower)) {
-		newPower = types.NewInt(0)
-	}
-
-	self.Power = newPower
-
-	delta := types.BigSub(self.Power, oldPower)
-	if self.SlashedAt != 0 {
-		self.SlashedAt = 0
-		delta = self.Power
-	}
-
-	prevSlashingDeadline := self.ElectionPeriodStart + build.SlashablePowerDelay
-	if !self.Active && newPower.GreaterThan(types.NewInt(0)) {
-		self.Active = true
-		prevSlashingDeadline = 0
-	}
-
-	if !(oldPower.IsZero() && newPower.IsZero()) {
-		enc, err := SerializeParams(&UpdateStorageParams{
-			Delta:                 delta,
-			NextSlashDeadline:     uint64(vmctx.BlockHeight()) + build.SlashablePowerDelay,
-			PreviousSlashDeadline: uint64(prevSlashingDeadline),
-		})
-		if err != nil {
-			return err
-		}
-
-		_, err = vmctx.Send(StoragePowerAddress, SPAMethods.UpdateStorage, types.NewInt(0), enc)
-		if err != nil {
-			return aerrors.Wrap(err, "updating storage failed")
-		}
-
-		self.ElectionPeriodStart = vmctx.BlockHeight()
-	}
-
-	var ncid cid.Cid
-	var err aerrors.ActorError
-
-	ncid, err = RemoveFromSectorSet2(ctx, vmctx.Ipld(), self.Sectors, faults)
-	if err != nil {
-		return err
-	}
-
-	self.Sectors = ncid
-	self.ProvingSet = ncid
 	return nil
 }
 

@@ -437,7 +437,7 @@ func (spa StoragePowerActor) GetTotalStorage(act *types.Actor, vmctx types.VMCon
 		return nil, err
 	}
 
-	return self.TotalStorage.Bytes(), nil
+	return nil, nil
 }
 
 type PowerLookupParams struct {
@@ -450,12 +450,8 @@ func (spa StoragePowerActor) PowerLookup(act *types.Actor, vmctx types.VMContext
 		return nil, aerrors.Wrap(err, "getting head")
 	}
 
-	pow, err := powerLookup(context.TODO(), vmctx, &self, params.Miner)
-	if err != nil {
-		return nil, err
-	}
 
-	return pow.Bytes(), nil
+	return nil, nil
 }
 
 func powerLookup(ctx context.Context, vmctx types.VMContext, self *StoragePowerState, miner address.Address) (types.BigInt, ActorError) {
@@ -523,12 +519,7 @@ func (spa StoragePowerActor) PledgeCollateralForSize(act *types.Actor, vmctx typ
 		return nil, err
 	}
 
-	totalCollateral, err := pledgeCollateralForSize(vmctx, param.Size, self.TotalStorage, self.MinerCount)
-	if err != nil {
-		return nil, err
-	}
-
-	return totalCollateral.Bytes(), nil
+	return nil, nil
 }
 
 func pledgeCollateralForSize(vmctx types.VMContext, size, totalStorage types.BigInt, minerCount uint64) (types.BigInt, aerrors.ActorError) {
@@ -682,11 +673,6 @@ func checkProofSubmissionsAtH(vmctx types.VMContext, self *StoragePowerState, he
 			return xerrors.Errorf("unmarshaling CheckMiner response (%x): %w", ret, err)
 		}
 
-		if power.GreaterThan(types.NewInt(0)) {
-			log.Warnf("slashing miner %s for missed PoSt (%s B, H: %d, Bucket: %d)", maddr, power, height, bucketID)
-
-			self.TotalStorage = types.BigSub(self.TotalStorage, power)
-		}
 		return nil
 	})
 
