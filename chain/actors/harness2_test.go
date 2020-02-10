@@ -6,6 +6,8 @@ import (
 	"math/rand"
 	"testing"
 
+	"github.com/filecoin-project/specs-actors/actors/abi"
+
 	"github.com/filecoin-project/go-sectorbuilder"
 
 	"github.com/ipfs/go-cid"
@@ -49,7 +51,7 @@ type Harness struct {
 	Nonces      map[address.Address]uint64
 	GasCharges  map[address.Address]types.BigInt
 	Rand        vm.Rand
-	BlockHeight uint64
+	BlockHeight abi.ChainEpoch
 
 	lastBalanceCheck map[address.Address]types.BigInt
 

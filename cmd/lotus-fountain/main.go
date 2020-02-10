@@ -10,6 +10,7 @@ import (
 	"time"
 
 	rice "github.com/GeertJohan/go.rice"
+	"github.com/filecoin-project/specs-actors/actors/abi"
 	"github.com/ipfs/go-cid"
 	logging "github.com/ipfs/go-log/v2"
 	peer "github.com/libp2p/go-libp2p-peer"
@@ -263,7 +264,7 @@ func (h *handler) mkminer(w http.ResponseWriter, r *http.Request) {
 	params, err := actors.SerializeParams(&actors.CreateStorageMinerParams{
 		Owner:      owner,
 		Worker:     owner,
-		SectorSize: uint64(ssize),
+		SectorSize: abi.SectorSize(ssize),
 		PeerID:     peer.ID("SETME"),
 	})
 	if err != nil {

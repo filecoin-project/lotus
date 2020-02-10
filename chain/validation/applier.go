@@ -2,6 +2,9 @@ package validation
 
 import (
 	"context"
+
+	"github.com/filecoin-project/specs-actors/actors/abi"
+
 	"github.com/filecoin-project/go-sectorbuilder"
 
 	vchain "github.com/filecoin-project/chain-validation/pkg/chain"
@@ -33,7 +36,7 @@ func (a *Applier) ApplyMessage(eCtx *vchain.ExecutionContext, state vstate.Wrapp
 	if err != nil {
 		return vchain.MessageReceipt{}, err
 	}
-	lotusVM, err := vm.NewVM(base, eCtx.Epoch, randSrc, minerAddr, st.bs, vm.Syscalls(sectorbuilder.ProofVerifier))
+	lotusVM, err := vm.NewVM(base, abi.ChainEpoch(eCtx.Epoch), randSrc, minerAddr, st.bs, vm.Syscalls(sectorbuilder.ProofVerifier))
 	if err != nil {
 		return vchain.MessageReceipt{}, err
 	}

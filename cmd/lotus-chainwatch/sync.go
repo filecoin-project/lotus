@@ -9,6 +9,8 @@ import (
 	"sync"
 
 	"github.com/filecoin-project/go-address"
+	"github.com/filecoin-project/specs-actors/actors/abi"
+
 	actors2 "github.com/filecoin-project/lotus/chain/actors"
 
 	"github.com/ipfs/go-cid"
@@ -114,7 +116,7 @@ func syncHead(ctx context.Context, api api.FullNode, st *storage, ts *types.TipS
 	}
 
 	for len(allToSync) > 0 {
-		minH := uint64(math.MaxUint64)
+		minH := abi.ChainEpoch(math.MaxInt64)
 
 		for _, header := range allToSync {
 			if header.Height < minH {
