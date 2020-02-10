@@ -69,7 +69,7 @@ type CreateStorageMinerParams struct {
 }
 
 func (spa StoragePowerActor) CreateStorageMiner(act *types.Actor, vmctx types.VMContext, params *CreateStorageMinerParams) ([]byte, ActorError) {
-	if !build.SupportedSectorSize(uint64(params.SectorSize)) {
+	if !build.SupportedSectorSize(params.SectorSize) {
 		return nil, aerrors.Newf(1, "Unsupported sector size: %d", params.SectorSize)
 	}
 
