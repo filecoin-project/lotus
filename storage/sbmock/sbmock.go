@@ -14,13 +14,14 @@ import (
 	"github.com/filecoin-project/go-address"
 	"github.com/filecoin-project/go-sectorbuilder"
 	"github.com/filecoin-project/go-sectorbuilder/fs"
+	"github.com/filecoin-project/specs-actors/actors/abi"
 	"golang.org/x/xerrors"
 )
 
 type SBMock struct {
-	sectors      map[uint64]*sectorState
-	sectorSize   uint64
-	nextSectorID uint64
+	sectors      map[abi.SectorNumber]*sectorState
+	sectorSize   abi.SectorSize
+	nextSectorID abi.SectorNumber
 	rateLimit    chan struct{}
 
 	lk sync.Mutex
@@ -28,9 +29,9 @@ type SBMock struct {
 
 type mockVerif struct{}
 
-func NewMockSectorBuilder(threads int, ssize uint64) *SBMock {
+func NewMockSectorBuilder(threads int, ssize abi.SectorSize) *SBMock {
 	return &SBMock{
-		sectors:      make(map[uint64]*sectorState),
+		sectors:      make(map[abi.SectorNumber]*sectorState),
 		sectorSize:   ssize,
 		nextSectorID: 5,
 		rateLimit:    make(chan struct{}, threads),
@@ -61,7 +62,7 @@ func (sb *SBMock) RateLimit() func() {
 	}
 }
 
-func (sb *SBMock) AddPiece(ctx context.Context, size uint64, sectorId uint64, r io.Reader, existingPieces []uint64) (sectorbuilder.PublicPieceInfo, error) {
+func (sb *SBMock) AddPiece(ctx context.Context, size abi.UnpaddedPieceSize, sectorId abi.SectorNumber, r io.Reader, existingPieces []abi.UnpaddedPieceSize) (sectorbuilder.PublicPieceInfo, error) {
 	sb.lk.Lock()
 	ss, ok := sb.sectors[sectorId]
 	if !ok {
@@ -81,16 +82,16 @@ func (sb *SBMock) AddPiece(ctx context.Context, size uint64, sectorId uint64, r 
 
 	ss.pieces = append(ss.pieces, b)
 	return sectorbuilder.PublicPieceInfo{
-		Size:  size,
+		Size:  uint64(size),
 		CommP: commD(b),
 	}, nil
 }
 
-func (sb *SBMock) SectorSize() uint64 {
+func (sb *SBMock) SectorSize() abi.SectorSize {
 	return sb.sectorSize
 }
 
-func (sb *SBMock) AcquireSectorId() (uint64, error) {
+func (sb *SBMock) AcquireSectorId() (abi.SectorNumber, error) {
 	sb.lk.Lock()
 	defer sb.lk.Unlock()
 	id := sb.nextSectorID
@@ -100,7 +101,7 @@ func (sb *SBMock) AcquireSectorId() (uint64, error) {
 
 func (sb *SBMock) Scrub(sectorbuilder.SortedPublicSectorInfo) []*sectorbuilder.Fault {
 	sb.lk.Lock()
-	mcopy := make(map[uint64]*sectorState)
+	mcopy := make(map[abi.SectorNumber]*sectorState)
 	for k, v := range sb.sectors {
 		mcopy[k] = v
 	}
@@ -111,7 +112,7 @@ func (sb *SBMock) Scrub(sectorbuilder.SortedPublicSectorInfo) []*sectorbuilder.F
 		ss.lk.Lock()
 		if ss.failed {
 			out = append(out, &sectorbuilder.Fault{
-				SectorID: sid,
+				SectorID: uint64(sid),
 				Err:      fmt.Errorf("mock sector failed"),
 			})
 
@@ -122,11 +123,11 @@ func (sb *SBMock) Scrub(sectorbuilder.SortedPublicSectorInfo) []*sectorbuilder.F
 	return out
 }
 
-func (sb *SBMock) GenerateFallbackPoSt(sectorbuilder.SortedPublicSectorInfo, [sectorbuilder.CommLen]byte, []uint64) ([]sectorbuilder.EPostCandidate, []byte, error) {
+func (sb *SBMock) GenerateFallbackPoSt(sectorbuilder.SortedPublicSectorInfo, [sectorbuilder.CommLen]byte, []abi.SectorNumber) ([]sectorbuilder.EPostCandidate, []byte, error) {
 	panic("NYI")
 }
 
-func (sb *SBMock) SealPreCommit(ctx context.Context, sid uint64, ticket sectorbuilder.SealTicket, pieces []sectorbuilder.PublicPieceInfo) (sectorbuilder.RawSealPreCommitOutput, error) {
+func (sb *SBMock) SealPreCommit(ctx context.Context, sid abi.SectorNumber, ticket sectorbuilder.SealTicket, pieces []sectorbuilder.PublicPieceInfo) (sectorbuilder.RawSealPreCommitOutput, error) {
 	sb.lk.Lock()
 	ss, ok := sb.sectors[sid]
 	sb.lk.Unlock()
@@ -137,13 +138,13 @@ func (sb *SBMock) SealPreCommit(ctx context.Context, sid uint64, ticket sectorbu
 	ss.lk.Lock()
 	defer ss.lk.Unlock()
 
-	ussize := sectorbuilder.UserBytesForSectorSize(sb.sectorSize)
+	ussize := abi.UnpaddedPieceSize(sb.sectorSize)
 
 	// TODO: verify pieces in sinfo.pieces match passed in pieces
 
-	var sum uint64
+	var sum abi.UnpaddedPieceSize
 	for _, p := range pieces {
-		sum += p.Size
+		sum += abi.UnpaddedPieceSize(p.Size)
 	}
 
 	if sum != ussize {
@@ -166,7 +167,7 @@ func (sb *SBMock) SealPreCommit(ctx context.Context, sid uint64, ticket sectorbu
 		}
 	}
 
-	commd, err := MockVerifier.GenerateDataCommitment(sb.sectorSize, pis)
+	commd, err := MockVerifier.GenerateDataCommitment(abi.PaddedPieceSize(sb.sectorSize), pis)
 	if err != nil {
 		return sectorbuilder.RawSealPreCommitOutput{}, err
 	}
@@ -177,7 +178,7 @@ func (sb *SBMock) SealPreCommit(ctx context.Context, sid uint64, ticket sectorbu
 	}, nil
 }
 
-func (sb *SBMock) SealCommit(ctx context.Context, sid uint64, ticket sectorbuilder.SealTicket, seed sectorbuilder.SealSeed, pieces []sectorbuilder.PublicPieceInfo, precommit sectorbuilder.RawSealPreCommitOutput) ([]byte, error) {
+func (sb *SBMock) SealCommit(ctx context.Context, sid abi.SectorNumber, ticket sectorbuilder.SealTicket, seed sectorbuilder.SealSeed, pieces []sectorbuilder.PublicPieceInfo, precommit sectorbuilder.RawSealPreCommitOutput) ([]byte, error) {
 	sb.lk.Lock()
 	ss, ok := sb.sectors[sid]
 	sb.lk.Unlock()
@@ -208,7 +209,7 @@ func (sb *SBMock) GetPath(string, string) (string, error) {
 	panic("nyi")
 }
 
-func (sb *SBMock) CanCommit(sectorID uint64) (bool, error) {
+func (sb *SBMock) CanCommit(sectorID abi.SectorNumber) (bool, error) {
 	return true, nil
 }
 
@@ -226,7 +227,7 @@ func (sb *SBMock) TaskDone(context.Context, uint64, sectorbuilder.SealRes) error
 
 // Test Instrumentation Methods
 
-func (sb *SBMock) FailSector(sid uint64) error {
+func (sb *SBMock) FailSector(sid abi.SectorNumber) error {
 	sb.lk.Lock()
 	defer sb.lk.Unlock()
 	ss, ok := sb.sectors[sid]
@@ -258,7 +259,7 @@ func (sb *SBMock) ComputeElectionPoSt(sectorInfo sectorbuilder.SortedPublicSecto
 	panic("implement me")
 }
 
-func (sb *SBMock) GenerateEPostCandidates(sectorInfo sectorbuilder.SortedPublicSectorInfo, challengeSeed [sectorbuilder.CommLen]byte, faults []uint64) ([]sectorbuilder.EPostCandidate, error) {
+func (sb *SBMock) GenerateEPostCandidates(sectorInfo sectorbuilder.SortedPublicSectorInfo, challengeSeed [sectorbuilder.CommLen]byte, faults []abi.SectorNumber) ([]sectorbuilder.EPostCandidate, error) {
 	if len(faults) > 0 {
 		panic("todo")
 	}
@@ -285,15 +286,15 @@ func (sb *SBMock) GenerateEPostCandidates(sectorInfo sectorbuilder.SortedPublicS
 	return out, nil
 }
 
-func (sb *SBMock) ReadPieceFromSealedSector(ctx context.Context, sectorID uint64, offset uint64, size uint64, ticket []byte, commD []byte) (io.ReadCloser, error) {
+func (sb *SBMock) ReadPieceFromSealedSector(ctx context.Context, sectorID abi.SectorNumber, offset uint64, size uint64, ticket []byte, commD []byte) (io.ReadCloser, error) {
 	if len(sb.sectors[sectorID].pieces) > 1 {
 		panic("implme")
 	}
 	return ioutil.NopCloser(io.LimitReader(bytes.NewReader(sb.sectors[sectorID].pieces[0][offset:]), int64(size))), nil
 }
 
-func (sb *SBMock) StageFakeData() (uint64, []sectorbuilder.PublicPieceInfo, error) {
-	usize := sectorbuilder.UserBytesForSectorSize(sb.sectorSize)
+func (sb *SBMock) StageFakeData() (abi.SectorNumber, []sectorbuilder.PublicPieceInfo, error) {
+	usize := abi.UnpaddedPieceSize(sb.sectorSize)
 	sid, err := sb.AcquireSectorId()
 	if err != nil {
 		return 0, nil, err
@@ -310,19 +311,19 @@ func (sb *SBMock) StageFakeData() (uint64, []sectorbuilder.PublicPieceInfo, erro
 	return sid, []sectorbuilder.PublicPieceInfo{pi}, nil
 }
 
-func (sb *SBMock) FinalizeSector(context.Context, uint64) error {
+func (sb *SBMock) FinalizeSector(context.Context, abi.SectorNumber) error {
 	return nil
 }
 
-func (sb *SBMock) DropStaged(context.Context, uint64) error {
+func (sb *SBMock) DropStaged(context.Context, abi.SectorNumber) error {
 	return nil
 }
 
-func (sb *SBMock) SectorPath(typ fs.DataType, sectorID uint64) (fs.SectorPath, error) {
+func (sb *SBMock) SectorPath(typ fs.DataType, sectorID abi.SectorNumber) (fs.SectorPath, error) {
 	panic("implement me")
 }
 
-func (sb *SBMock) AllocSectorPath(typ fs.DataType, sectorID uint64, cache bool) (fs.SectorPath, error) {
+func (sb *SBMock) AllocSectorPath(typ fs.DataType, sectorID abi.SectorNumber, cache bool) (fs.SectorPath, error) {
 	panic("implement me")
 }
 
@@ -330,15 +331,15 @@ func (sb *SBMock) ReleaseSector(fs.DataType, fs.SectorPath) {
 	panic("implement me")
 }
 
-func (m mockVerif) VerifyElectionPost(ctx context.Context, sectorSize uint64, sectorInfo sectorbuilder.SortedPublicSectorInfo, challengeSeed []byte, proof []byte, candidates []sectorbuilder.EPostCandidate, proverID address.Address) (bool, error) {
+func (m mockVerif) VerifyElectionPost(ctx context.Context, sectorSize abi.SectorSize, sectorInfo sectorbuilder.SortedPublicSectorInfo, challengeSeed []byte, proof []byte, candidates []sectorbuilder.EPostCandidate, proverID address.Address) (bool, error) {
 	panic("implement me")
 }
 
-func (m mockVerif) VerifyFallbackPost(ctx context.Context, sectorSize uint64, sectorInfo sectorbuilder.SortedPublicSectorInfo, challengeSeed []byte, proof []byte, candidates []sectorbuilder.EPostCandidate, proverID address.Address, faults uint64) (bool, error) {
+func (m mockVerif) VerifyFallbackPost(ctx context.Context, sectorSize abi.SectorSize, sectorInfo sectorbuilder.SortedPublicSectorInfo, challengeSeed []byte, proof []byte, candidates []sectorbuilder.EPostCandidate, proverID address.Address, faults uint64) (bool, error) {
 	panic("implement me")
 }
 
-func (m mockVerif) VerifySeal(sectorSize uint64, commR, commD []byte, proverID address.Address, ticket []byte, seed []byte, sectorID uint64, proof []byte) (bool, error) {
+func (m mockVerif) VerifySeal(sectorSize abi.SectorSize, commR, commD []byte, proverID address.Address, ticket []byte, seed []byte, sectorID abi.SectorNumber, proof []byte) (bool, error) {
 	if len(proof) != 32 { // Real ones are longer, but this should be fine
 		return false, nil
 	}
@@ -352,11 +353,11 @@ func (m mockVerif) VerifySeal(sectorSize uint64, commR, commD []byte, proverID a
 	return true, nil
 }
 
-func (m mockVerif) GenerateDataCommitment(ssize uint64, pieces []ffi.PublicPieceInfo) ([sectorbuilder.CommLen]byte, error) {
+func (m mockVerif) GenerateDataCommitment(ssize abi.PaddedPieceSize, pieces []ffi.PublicPieceInfo) ([sectorbuilder.CommLen]byte, error) {
 	if len(pieces) != 1 {
 		panic("todo")
 	}
-	if pieces[0].Size != sectorbuilder.UserBytesForSectorSize(ssize) {
+	if pieces[0].Size != uint64(ssize) {
 		panic("todo")
 	}
 	return pieces[0].CommP, nil

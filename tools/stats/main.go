@@ -6,6 +6,7 @@ import (
 	"os"
 	"time"
 
+	"github.com/filecoin-project/specs-actors/actors/abi"
 	logging "github.com/ipfs/go-log/v2"
 )
 
@@ -66,7 +67,7 @@ func main() {
 		log.Fatal(err)
 	}
 
-	tipsetsCh, err := GetTips(ctx, api, uint64(height))
+	tipsetsCh, err := GetTips(ctx, api, abi.ChainEpoch(height))
 	if err != nil {
 		log.Fatal(err)
 	}

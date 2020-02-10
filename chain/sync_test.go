@@ -7,6 +7,7 @@ import (
 	"testing"
 	"time"
 
+	"github.com/filecoin-project/specs-actors/actors/abi"
 	logging "github.com/ipfs/go-log/v2"
 	"github.com/libp2p/go-libp2p-core/peer"
 	mocknet "github.com/libp2p/go-libp2p/p2p/net/mock"
@@ -27,7 +28,7 @@ import (
 func init() {
 	build.InsecurePoStValidation = true
 	os.Setenv("TRUST_PARAMS", "1")
-	build.SectorSizes = []uint64{1024}
+	build.SectorSizes = []abi.SectorSize{1024}
 	build.MinimumMinerPower = 1024
 }
 
@@ -398,7 +399,7 @@ func TestSyncBadTimestamp(t *testing.T) {
 	tu.waitUntilSync(0, client)
 
 	base := tu.g.CurTipset
-	tu.g.Timestamper = func(pts *types.TipSet, tl uint64) uint64 {
+	tu.g.Timestamper = func(pts *types.TipSet, tl abi.ChainEpoch) uint64 {
 		return pts.MinTimestamp() + (build.BlockDelay / 2)
 	}
 

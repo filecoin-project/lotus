@@ -6,6 +6,8 @@ import (
 	"os"
 	"path/filepath"
 
+	"github.com/filecoin-project/specs-actors/actors/abi"
+
 	sectorbuilder "github.com/filecoin-project/go-sectorbuilder"
 
 	"github.com/ipfs/go-datastore"
@@ -66,7 +68,7 @@ var preSealCmd = &cli.Command{
 		},
 		&cli.Uint64Flag{
 			Name:  "sector-size",
-			Value: build.SectorSizes[0],
+			Value: uint64(build.SectorSizes[0]),
 			Usage: "specify size of sectors to pre-seal",
 		},
 		&cli.StringFlag{
@@ -97,7 +99,7 @@ var preSealCmd = &cli.Command{
 			return err
 		}
 
-		gm, err := seed.PreSeal(maddr, c.Uint64("sector-size"), c.Uint64("sector-offset"), c.Int("num-sectors"), sbroot, []byte(c.String("ticket-preimage")))
+		gm, err := seed.PreSeal(maddr, abi.SectorSize(c.Uint64("sector-size")), c.Uint64("sector-offset"), c.Int("num-sectors"), sbroot, []byte(c.String("ticket-preimage")))
 		if err != nil {
 			return err
 		}
@@ -192,7 +194,7 @@ var aggregateSectorDirsCmd = &cli.Command{
 		}
 		defer agmds.Close()
 
-		ssize := cctx.Uint64("sector-size")
+		ssize := abi.SectorSize(cctx.Uint64("sector-size"))
 
 		agsb, err := sectorbuilder.New(&sectorbuilder.Config{
 			Miner:         maddr,
@@ -205,7 +207,7 @@ var aggregateSectorDirsCmd = &cli.Command{
 		}
 
 		var aggrGenMiner genesis.GenesisMiner
-		var highestSectorID uint64
+		var highestSectorID abi.SectorNumber
 		for _, dir := range cctx.Args().Slice() {
 			dir, err := homedir.Expand(dir)
 			if err != nil {

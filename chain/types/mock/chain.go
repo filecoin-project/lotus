@@ -7,6 +7,7 @@ import (
 	"github.com/filecoin-project/go-address"
 	"github.com/filecoin-project/lotus/chain/types"
 	"github.com/filecoin-project/lotus/chain/wallet"
+	"github.com/filecoin-project/specs-actors/actors/abi"
 	"github.com/ipfs/go-cid"
 )
 
@@ -47,7 +48,7 @@ func MkBlock(parents *types.TipSet, weightInc uint64, ticketNonce uint64) *types
 	}
 
 	var pcids []cid.Cid
-	var height uint64
+	var height abi.ChainEpoch
 	weight := types.NewInt(weightInc)
 	if parents != nil {
 		pcids = parents.Cids()

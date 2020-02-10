@@ -3,11 +3,13 @@ package gen
 import (
 	"testing"
 
+	"github.com/filecoin-project/specs-actors/actors/abi"
+
 	"github.com/filecoin-project/lotus/build"
 )
 
 func init() {
-	build.SectorSizes = []uint64{1024}
+	build.SectorSizes = []abi.SectorSize{1024}
 	build.MinimumMinerPower = 1024
 }
 

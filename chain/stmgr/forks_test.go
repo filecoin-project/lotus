@@ -7,6 +7,8 @@ import (
 	"testing"
 
 	"github.com/filecoin-project/go-address"
+	"github.com/filecoin-project/specs-actors/actors/abi"
+
 	"github.com/filecoin-project/lotus/build"
 	"github.com/filecoin-project/lotus/chain/actors"
 	"github.com/filecoin-project/lotus/chain/actors/aerrors"
@@ -26,7 +28,7 @@ import (
 )
 
 func init() {
-	build.SectorSizes = []uint64{1024}
+	build.SectorSizes = []abi.SectorSize{1024}
 	build.MinimumMinerPower = 1024
 }
 
@@ -154,7 +156,7 @@ func TestForkHeightTriggers(t *testing.T) {
 	}
 
 	inv.Register(actcid, &testActor{}, &testActorState{})
-	sm.SetVMConstructor(func(c cid.Cid, h uint64, r vm.Rand, a address.Address, b blockstore.Blockstore, s *types.VMSyscalls) (*vm.VM, error) {
+	sm.SetVMConstructor(func(c cid.Cid, h abi.ChainEpoch, r vm.Rand, a address.Address, b blockstore.Blockstore, s *types.VMSyscalls) (*vm.VM, error) {
 		nvm, err := vm.NewVM(c, h, r, a, b, s)
 		if err != nil {
 			return nil, err

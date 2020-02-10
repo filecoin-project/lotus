@@ -4,7 +4,8 @@ import (
 	"math"
 
 	"github.com/filecoin-project/go-address"
-	"github.com/filecoin-project/go-sectorbuilder"
+	commcid "github.com/filecoin-project/go-fil-commcid"
+	"github.com/filecoin-project/specs-actors/actors/abi"
 
 	"github.com/filecoin-project/lotus/chain/actors"
 	"github.com/filecoin-project/lotus/chain/types"
@@ -12,7 +13,7 @@ import (
 	"github.com/filecoin-project/lotus/genesis"
 )
 
-func PreSeal(ssize uint64, maddr address.Address, sectors int) (*genesis.GenesisMiner, error) {
+func PreSeal(ssize abi.SectorSize, maddr address.Address, sectors int) (*genesis.GenesisMiner, error) {
 	k, err := wallet.GenerateKey(types.KTBLS)
 	if err != nil {
 		return nil, err
@@ -28,21 +29,20 @@ func PreSeal(ssize uint64, maddr address.Address, sectors int) (*genesis.Genesis
 
 	for i := range genm.Sectors {
 		preseal := &genesis.PreSeal{}
-		sdata := randB(sectorbuilder.UserBytesForSectorSize(ssize))
+		sdata := randB(uint64(abi.PaddedPieceSize(ssize).Unpadded()))
 
 		preseal.CommD = commD(sdata)
 		preseal.CommR = commDR(preseal.CommD[:])
-		preseal.SectorID = uint64(i + 1)
+		preseal.SectorID = abi.SectorNumber(i + 1)
 		preseal.Deal = actors.StorageDealProposal{
-			PieceRef:             preseal.CommD[:],
-			PieceSize:            sectorbuilder.UserBytesForSectorSize(ssize),
+			PieceCID:             commcid.PieceCommitmentV1ToCID(preseal.CommD[:]),
+			PieceSize:            abi.PaddedPieceSize(ssize),
 			Client:               maddr,
 			Provider:             maddr,
-			ProposalExpiration:   math.MaxUint64,
-			Duration:             math.MaxUint64,
+			StartEpoch:           1,
+			EndEpoch:             math.MaxInt64,
 			StoragePricePerEpoch: types.NewInt(0),
-			StorageCollateral:    types.NewInt(0),
-			ProposerSignature:    nil,
+			ProviderCollateral:   types.NewInt(0),
 		}
 
 		genm.Sectors[i] = preseal

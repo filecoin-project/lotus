@@ -8,6 +8,16 @@ import (
 	"testing"
 
 	"github.com/filecoin-project/go-address"
+	commcid "github.com/filecoin-project/go-fil-commcid"
+	"github.com/filecoin-project/specs-actors/actors/abi"
+	"github.com/filecoin-project/specs-actors/actors/builtin/market"
+	"github.com/filecoin-project/specs-actors/actors/builtin/miner"
+	"github.com/filecoin-project/specs-actors/actors/crypto"
+	blockstore "github.com/ipfs/go-ipfs-blockstore"
+	cbor "github.com/ipfs/go-ipld-cbor"
+	"github.com/stretchr/testify/assert"
+	cbg "github.com/whyrusleeping/cbor-gen"
+
 	"github.com/filecoin-project/go-sectorbuilder"
 	"github.com/filecoin-project/lotus/api"
 	"github.com/filecoin-project/lotus/build"
@@ -16,10 +26,6 @@ import (
 	"github.com/filecoin-project/lotus/chain/stmgr"
 	"github.com/filecoin-project/lotus/chain/types"
 	"github.com/filecoin-project/lotus/lib/rlepluslazy"
-	blockstore "github.com/ipfs/go-ipfs-blockstore"
-	cbor "github.com/ipfs/go-ipld-cbor"
-	"github.com/stretchr/testify/assert"
-	cbg "github.com/whyrusleeping/cbor-gen"
 )
 
 func TestMinerCommitSectors(t *testing.T) {
@@ -40,7 +46,7 @@ func TestMinerCommitSectors(t *testing.T) {
 	}
 
 	h := NewHarness(t, opts...)
-	h.vm.Syscalls.ValidatePoRep = func(ctx context.Context, maddr address.Address, ssize uint64, commD, commR, ticket, proof, seed []byte, sectorID uint64) (bool, aerrors.ActorError) {
+	h.vm.Syscalls.ValidatePoRep = func(ctx context.Context, maddr address.Address, ssize abi.SectorSize, commD, commR, ticket, proof, seed []byte, sectorID abi.SectorNumber) (bool, aerrors.ActorError) {
 		// all proofs are valid
 		return true, nil
 	}
@@ -53,7 +59,7 @@ func TestMinerCommitSectors(t *testing.T) {
 
 	addSectorToMiner(h, t, minerAddr, worker, client, 1)
 
-	assertSectorIDs(h, t, minerAddr, []uint64{1})
+	assertSectorIDs(h, t, minerAddr, []abi.SectorNumber{1})
 
 }
 
@@ -74,7 +80,7 @@ var _ rlepluslazy.RunIterator = (*badRuns)(nil)
 
 func TestMinerSubmitBadFault(t *testing.T) {
 	oldSS, oldMin := build.SectorSizes, build.MinimumMinerPower
-	build.SectorSizes, build.MinimumMinerPower = []uint64{1024}, 1024
+	build.SectorSizes, build.MinimumMinerPower = []abi.SectorSize{1024}, 1024
 	defer func() {
 		build.SectorSizes, build.MinimumMinerPower = oldSS, oldMin
 	}()
@@ -88,7 +94,7 @@ func TestMinerSubmitBadFault(t *testing.T) {
 	}
 
 	h := NewHarness(t, opts...)
-	h.vm.Syscalls.ValidatePoRep = func(ctx context.Context, maddr address.Address, ssize uint64, commD, commR, ticket, proof, seed []byte, sectorID uint64) (bool, aerrors.ActorError) {
+	h.vm.Syscalls.ValidatePoRep = func(ctx context.Context, maddr address.Address, ssize abi.SectorSize, commD, commR, ticket, proof, seed []byte, sectorID abi.SectorNumber) (bool, aerrors.ActorError) {
 		// all proofs are valid
 		return true, nil
 	}
@@ -101,7 +107,7 @@ func TestMinerSubmitBadFault(t *testing.T) {
 
 	addSectorToMiner(h, t, minerAddr, worker, client, 1)
 
-	assertSectorIDs(h, t, minerAddr, []uint64{1})
+	assertSectorIDs(h, t, minerAddr, []abi.SectorNumber{1})
 
 	bf := types.NewBitField()
 	bf.Set(6)
@@ -110,7 +116,7 @@ func TestMinerSubmitBadFault(t *testing.T) {
 
 	ret, _ = h.Invoke(t, actors.NetworkAddress, minerAddr, actors.MAMethods.SubmitElectionPoSt, nil)
 	ApplyOK(t, ret)
-	assertSectorIDs(h, t, minerAddr, []uint64{1})
+	assertSectorIDs(h, t, minerAddr, []abi.SectorNumber{1})
 
 	st, err := getMinerState(context.TODO(), h.vm.StateTree(), h.bs, minerAddr)
 	assert.NoError(t, err)
@@ -130,7 +136,7 @@ func TestMinerSubmitBadFault(t *testing.T) {
 	ret, _ = h.Invoke(t, actors.NetworkAddress, minerAddr, actors.MAMethods.SubmitElectionPoSt, nil)
 
 	ApplyOK(t, ret)
-	assertSectorIDs(h, t, minerAddr, []uint64{1})
+	assertSectorIDs(h, t, minerAddr, []abi.SectorNumber{1})
 
 	st, err = getMinerState(context.TODO(), h.vm.StateTree(), h.bs, minerAddr)
 	assert.NoError(t, err)
@@ -144,7 +150,7 @@ func TestMinerSubmitBadFault(t *testing.T) {
 	if ret.ExitCode != 3 {
 		t.Errorf("expected exit code 3, got %d: %+v", ret.ExitCode, ret.ActorErr)
 	}
-	assertSectorIDs(h, t, minerAddr, []uint64{1})
+	assertSectorIDs(h, t, minerAddr, []abi.SectorNumber{1})
 
 	rle, err := rlepluslazy.EncodeRuns(&badRuns{}, []byte{})
 	assert.NoError(t, err)
@@ -155,7 +161,7 @@ func TestMinerSubmitBadFault(t *testing.T) {
 	if ret.ExitCode != 3 {
 		t.Errorf("expected exit code 3, got %d: %+v", ret.ExitCode, ret.ActorErr)
 	}
-	assertSectorIDs(h, t, minerAddr, []uint64{1})
+	assertSectorIDs(h, t, minerAddr, []abi.SectorNumber{1})
 
 	bf = types.NewBitField()
 	bf.Set(1)
@@ -165,17 +171,17 @@ func TestMinerSubmitBadFault(t *testing.T) {
 	ret, _ = h.Invoke(t, actors.NetworkAddress, minerAddr, actors.MAMethods.SubmitElectionPoSt, nil)
 	ApplyOK(t, ret)
 
-	assertSectorIDs(h, t, minerAddr, []uint64{})
+	assertSectorIDs(h, t, minerAddr, []abi.SectorNumber{})
 
 }
 
-func addSectorToMiner(h *Harness, t *testing.T, minerAddr, worker, client address.Address, sid uint64) {
+func addSectorToMiner(h *Harness, t *testing.T, minerAddr, worker, client address.Address, sid abi.SectorNumber) {
 	t.Helper()
-	s := sectorbuilder.UserBytesForSectorSize(1024)
+	s := abi.PaddedPieceSize(1024).Unpadded()
 	deal := h.makeFakeDeal(t, minerAddr, worker, client, s)
 	ret, _ := h.Invoke(t, worker, actors.StorageMarketAddress, actors.SMAMethods.PublishStorageDeals,
 		&actors.PublishStorageDealsParams{
-			Deals: []actors.StorageDealProposal{*deal},
+			Deals: []market.ClientDealProposal{*deal},
 		})
 	ApplyOK(t, ret)
 	var dealIds actors.PublishStorageDealResponse
@@ -183,28 +189,27 @@ func addSectorToMiner(h *Harness, t *testing.T, minerAddr, worker, client addres
 		t.Fatal(err)
 	}
 
-	dealid := dealIds.DealIDs[0]
+	dealid := dealIds.IDs[0]
 
 	ret, _ = h.Invoke(t, worker, minerAddr, actors.MAMethods.PreCommitSector,
-		&actors.SectorPreCommitInfo{
+		&miner.SectorPreCommitInfo{
 			SectorNumber: sid,
-			CommR:        []byte("cats"),
+			SealedCID:    commcid.ReplicaCommitmentV1ToCID([]byte("cats")),
 			SealEpoch:    10,
-			DealIDs:      []uint64{dealid},
+			DealIDs:      []abi.DealID{dealid},
 		})
 	ApplyOK(t, ret)
 
 	h.BlockHeight += 100
 	ret, _ = h.Invoke(t, worker, minerAddr, actors.MAMethods.ProveCommitSector,
-		&actors.SectorProveCommitInfo{
-			Proof:    []byte("prooofy"),
-			SectorID: sid,
-			DealIDs:  []uint64{dealid}, // TODO: weird that i have to pass this again
+		&miner.ProveCommitSectorParams{
+			SectorNumber: sid,
+			Proof:        abi.SealProof{ProofBytes: []byte("prooofy")},
 		})
 	ApplyOK(t, ret)
 }
 
-func assertSectorIDs(h *Harness, t *testing.T, maddr address.Address, ids []uint64) {
+func assertSectorIDs(h *Harness, t *testing.T, maddr address.Address, ids []abi.SectorNumber) {
 	t.Helper()
 	sectors, err := getMinerSectorSet(context.TODO(), h.vm.StateTree(), h.bs, maddr)
 	if err != nil {
@@ -215,7 +220,7 @@ func assertSectorIDs(h *Harness, t *testing.T, maddr address.Address, ids []uint
 		t.Fatal("miner has wrong number of sectors in their sector set")
 	}
 
-	all := make(map[uint64]bool)
+	all := make(map[abi.SectorNumber]bool)
 	for _, s := range sectors {
 		all[s.SectorID] = true
 	}
@@ -251,7 +256,7 @@ func getMinerSectorSet(ctx context.Context, st types.StateTree, bs blockstore.Bl
 	return stmgr.LoadSectorsFromSet(ctx, bs, mstate.Sectors)
 }
 
-func (h *Harness) makeFakeDeal(t *testing.T, miner, worker, client address.Address, size uint64) *actors.StorageDealProposal {
+func (h *Harness) makeFakeDeal(t *testing.T, miner, worker, client address.Address, size abi.UnpaddedPieceSize) *market.ClientDealProposal {
 	data := make([]byte, size)
 	rand.Read(data)
 	commP, err := sectorbuilder.GeneratePieceCommitment(bytes.NewReader(data), size)
@@ -259,23 +264,22 @@ func (h *Harness) makeFakeDeal(t *testing.T, miner, worker, client address.Addre
 		t.Fatal(err)
 	}
 
-	prop := actors.StorageDealProposal{
-		PieceRef:  commP[:],
-		PieceSize: size,
+	prop := market.DealProposal{
+		PieceCID:  commcid.PieceCommitmentV1ToCID(commP[:]),
+		PieceSize: size.Padded(),
 
 		Client:   client,
 		Provider: miner,
 
-		ProposalExpiration: 10000,
-		Duration:           150,
+		StartEpoch: 10000,
+		EndEpoch:   10150,
 
 		StoragePricePerEpoch: types.NewInt(1),
-		StorageCollateral:    types.NewInt(0),
+		ProviderCollateral:   types.NewInt(0),
 	}
 
-	if err := api.SignWith(context.TODO(), h.w.Sign, client, &prop); err != nil {
-		t.Fatal(err)
+	return &market.ClientDealProposal{
+		Proposal:        prop,
+		ClientSignature: crypto.Signature{}, // TODO: not quite correct
 	}
-
-	return &prop
 }
