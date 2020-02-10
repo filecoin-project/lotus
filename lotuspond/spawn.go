@@ -10,6 +10,7 @@ import (
 	"sync/atomic"
 	"time"
 
+	"github.com/filecoin-project/specs-actors/actors/abi"
 	"golang.org/x/xerrors"
 
 	"github.com/filecoin-project/go-address"
@@ -18,7 +19,7 @@ import (
 )
 
 func init() {
-	build.SectorSizes = []uint64{1024}
+	build.SectorSizes = []abi.SectorSize{1024}
 }
 
 func (api *api) Spawn() (nodeInfo, error) {

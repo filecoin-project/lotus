@@ -2,6 +2,8 @@ package build
 
 import (
 	"math/big"
+
+	"github.com/filecoin-project/specs-actors/actors/abi"
 )
 
 // Core network constants
@@ -12,7 +14,7 @@ import (
 const UnixfsChunkSize uint64 = 1 << 20
 const UnixfsLinksPerLevel = 1024
 
-func SupportedSectorSize(ssize uint64) bool {
+func SupportedSectorSize(ssize abi.SectorSize) bool {
 	for _, ss := range SectorSizes {
 		if ssize == ss {
 			return true

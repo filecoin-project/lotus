@@ -134,7 +134,7 @@ var runCmd = &cli.Command{
 			return err
 		}
 
-		if err := paramfetch.GetParams(build.ParametersJson(), ssize); err != nil {
+		if err := paramfetch.GetParams(build.ParametersJson(), uint64(ssize)); err != nil {
 			return xerrors.Errorf("get params: %w", err)
 		}
 

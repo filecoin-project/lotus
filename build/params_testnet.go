@@ -2,7 +2,11 @@
 
 package build
 
-var SectorSizes = []uint64{
+import (
+	"github.com/filecoin-project/specs-actors/actors/abi"
+)
+
+var SectorSizes = []abi.SectorSize{
 	32 << 30,
 }
 

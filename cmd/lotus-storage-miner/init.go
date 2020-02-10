@@ -1,7 +1,6 @@
 package main
 
 import (
-	"bytes"
 	"context"
 	"crypto/rand"
 	"encoding/json"
@@ -72,7 +71,7 @@ var initCmd = &cli.Command{
 		&cli.Uint64Flag{
 			Name:  "sector-size",
 			Usage: "specify sector size to use",
-			Value: build.SectorSizes[0],
+			Value: uint64(build.SectorSizes[0]),
 		},
 		&cli.StringFlag{
 			Name:  "pre-sealed-sectors",
@@ -279,12 +278,12 @@ func migratePreSealMeta(ctx context.Context, api lapi.FullNode, presealDir strin
 			return err
 		}
 
-		proposalCid, err := sector.Deal.Cid()
+		pnd, err := cborutil.AsIpld(sector.Deal)
 		if err != nil {
 			return err
 		}
 
-		dealKey := datastore.NewKey(deals.ProviderDsPrefix).ChildString(proposalCid.String())
+		dealKey := datastore.NewKey(deals.ProviderDsPrefix).ChildString(pnd.Cid().String())
 
 		proposal, err := utils.ToSharedStorageDealProposal(&sector.Deal)
 		if err != nil {
@@ -293,9 +292,9 @@ func migratePreSealMeta(ctx context.Context, api lapi.FullNode, presealDir strin
 		deal := &deals.MinerDeal{
 			MinerDeal: storagemarket.MinerDeal{
 				Proposal:    *proposal,
-				ProposalCid: proposalCid,
+				ProposalCid: pnd.Cid(),
 				State:       storagemarket.StorageDealActive,
-				Ref:         proposalCid, // TODO: This is super wrong, but there
+				Ref:         pnd.Cid(), // TODO: This is super wrong, but there
 				// are no params for CommP CIDs, we can't recover unixfs cid easily,
 				// and this isn't even used after the deal enters Complete state
 				DealID: dealID,
@@ -325,8 +324,9 @@ func findMarketDealID(ctx context.Context, api lapi.FullNode, deal actors.Storag
 	}
 
 	for k, v := range deals {
-		if bytes.Equal(v.PieceRef, deal.PieceRef) {
-			return strconv.ParseUint(k, 10, 64)
+		if v.Proposal.PieceCID.Equals(deal.PieceCID) {
+			id, err := strconv.ParseUint(k, 10, 64)
+			return abi.DealID(id), err
 		}
 	}
 
