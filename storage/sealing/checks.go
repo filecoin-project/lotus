@@ -3,6 +3,7 @@ package sealing
 import (
 	"context"
 
+	"github.com/filecoin-project/specs-actors/actors/builtin"
 	"github.com/multiformats/go-multihash"
 	"golang.org/x/xerrors"
 
@@ -88,7 +89,7 @@ func checkSeal(ctx context.Context, maddr address.Address, si SectorInfo, api se
 		Value:    types.NewInt(0),
 		GasPrice: types.NewInt(0),
 		GasLimit: types.NewInt(9999999999),
-		Method:   actors.SMAMethods.ComputeDataCommitment,
+		Method:   builtin.MethodsMarket.ComputeDataCommitment,
 		Params:   ccparams,
 	}
 	r, err := api.StateCall(ctx, ccmt, nil)
