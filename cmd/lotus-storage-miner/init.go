@@ -324,7 +324,7 @@ func findMarketDealID(ctx context.Context, api lapi.FullNode, deal actors.Storag
 	// TODO: find a better way
 	//  (this is only used by genesis miners)
 
-	deals, err := api.StateMarketDeals(ctx, nil)
+	deals, err := api.StateMarketDeals(ctx, types.EmptyTSK)
 	if err != nil {
 		return 0, xerrors.Errorf("getting market deals: %w", err)
 	}
@@ -486,7 +486,7 @@ func configureStorageMiner(ctx context.Context, api lapi.FullNode, addr address.
 		To:     addr,
 		From:   addr,
 		Method: actors.MAMethods.GetWorkerAddr,
-	}, nil)
+	}, types.EmptyTSK)
 	if err != nil {
 		return xerrors.Errorf("failed to get worker address: %w", err)
 	}
@@ -559,7 +559,7 @@ func createStorageMiner(ctx context.Context, api lapi.FullNode, peerid peer.ID, 
 		return address.Undef, err
 	}
 
-	collateral, err := api.StatePledgeCollateral(ctx, nil)
+	collateral, err := api.StatePledgeCollateral(ctx, types.EmptyTSK)
 	if err != nil {
 		return address.Undef, err
 	}

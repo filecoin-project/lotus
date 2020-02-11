@@ -9,6 +9,8 @@ import (
 	"github.com/multiformats/go-multihash"
 )
 
+var EmptyTSK = TipSetKey{}
+
 // The length of a block header CID in bytes.
 var blockHeaderCIDLen int
 
@@ -88,6 +90,10 @@ func (k *TipSetKey) UnmarshalJSON(b []byte) error {
 	}
 	k.value = string(encodeKey(cids))
 	return nil
+}
+
+func (k TipSetKey) IsEmpty() bool {
+	return len(k.value) == 0
 }
 
 func encodeKey(cids []cid.Cid) []byte {

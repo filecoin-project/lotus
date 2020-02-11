@@ -11,7 +11,7 @@ import (
 )
 
 func TestTsCache(t *testing.T) {
-	tsc := newTSCache(50, func(context.Context, uint64, *types.TipSet) (*types.TipSet, error) {
+	tsc := newTSCache(50, func(context.Context, uint64, types.TipSetKey) (*types.TipSet, error) {
 		t.Fatal("storage call")
 		return &types.TipSet{}, nil
 	})
@@ -54,7 +54,7 @@ func TestTsCache(t *testing.T) {
 }
 
 func TestTsCacheNulls(t *testing.T) {
-	tsc := newTSCache(50, func(context.Context, uint64, *types.TipSet) (*types.TipSet, error) {
+	tsc := newTSCache(50, func(context.Context, uint64, types.TipSetKey) (*types.TipSet, error) {
 		t.Fatal("storage call")
 		return &types.TipSet{}, nil
 	})

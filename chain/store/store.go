@@ -1019,3 +1019,11 @@ func NewChainRand(cs *ChainStore, blks []cid.Cid, bheight uint64) vm.Rand {
 func (cr *chainRand) GetRandomness(ctx context.Context, round int64) ([]byte, error) {
 	return cr.cs.GetRandomness(ctx, cr.blks, round)
 }
+
+func (cs *ChainStore) GetTipSetFromKey(tsk types.TipSetKey) (*types.TipSet, error) {
+	if tsk.IsEmpty() {
+		return cs.GetHeaviestTipSet(), nil
+	} else {
+		return cs.LoadTipSet(tsk)
+	}
+}

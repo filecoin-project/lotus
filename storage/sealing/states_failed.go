@@ -3,6 +3,7 @@ package sealing
 import (
 	"bytes"
 	"fmt"
+	"github.com/filecoin-project/lotus/chain/types"
 	"time"
 
 	"golang.org/x/xerrors"
@@ -29,7 +30,7 @@ func failedCooldown(ctx statemachine.Context, sector SectorInfo) error {
 }
 
 func (m *Sealing) checkPreCommitted(ctx statemachine.Context, sector SectorInfo) (*actors.PreCommittedSector, bool) {
-	act, err := m.api.StateGetActor(ctx.Context(), m.maddr, nil)
+	act, err := m.api.StateGetActor(ctx.Context(), m.maddr, types.EmptyTSK)
 	if err != nil {
 		log.Errorf("handleSealFailed(%d): temp error: %+v", sector.SectorID, err)
 		return nil, true

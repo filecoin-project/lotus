@@ -24,7 +24,11 @@ type MpoolAPI struct {
 	Mpool *messagepool.MessagePool
 }
 
-func (a *MpoolAPI) MpoolPending(ctx context.Context, ts *types.TipSet) ([]*types.SignedMessage, error) {
+func (a *MpoolAPI) MpoolPending(ctx context.Context, tsk types.TipSetKey) ([]*types.SignedMessage, error) {
+	ts, err := a.Chain.GetTipSetFromKey(tsk)
+	if err != nil {
+		return nil, xerrors.Errorf("loading tipset %s: %w", tsk, err)
+	}
 	pending, mpts := a.Mpool.Pending()
 
 	haveCids := map[cid.Cid]struct{}{}
