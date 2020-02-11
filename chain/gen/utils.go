@@ -6,7 +6,11 @@ import (
 	"fmt"
 
 	amt "github.com/filecoin-project/go-amt-ipld/v2"
+	"github.com/filecoin-project/specs-actors/actors/abi"
+	"github.com/filecoin-project/specs-actors/actors/abi/big"
 	"github.com/filecoin-project/specs-actors/actors/builtin/market"
+	"github.com/filecoin-project/specs-actors/actors/builtin/miner"
+	"github.com/filecoin-project/specs-actors/actors/builtin/power"
 	"github.com/ipfs/go-cid"
 	"github.com/ipfs/go-datastore"
 	hamt "github.com/ipfs/go-hamt-ipld"
@@ -176,16 +180,14 @@ func SetupStoragePowerActor(bs bstore.Blockstore) (*types.Actor, error) {
 		return nil, err
 	}
 
-	blks := cbor.NewCborStore(bs)
-	emptyamt, err := amt.FromArray(ctx, blks, nil)
-	if err != nil {
-		return nil, xerrors.Errorf("amt build failed: %w", err)
-	}
-
-	sms := &actors.StoragePowerState{
-		Miners:         emptyhamt,
-		ProvingBuckets: emptyamt,
-		TotalStorage:   types.NewInt(0),
+	sms := &power.State{
+		TotalNetworkPower:        big.Zero(),
+		MinerCount:               0,
+		EscrowTable:              emptyhamt,
+		CronEventQueue:           emptyhamt,
+		PoStDetectedFaultMiners:  emptyhamt,
+		Claims:                   emptyhamt,
+		NumMinersMeetingMinPower: 0,
 	}
 
 	stcid, err := cst.Put(ctx, sms)
@@ -310,18 +312,18 @@ func SetupStorageMiners(ctx context.Context, cs *store.ChainStore, sroot cid.Cid
 			return cid.Undef, nil, xerrors.Errorf("no preseal for miner %s", maddr)
 		}
 
-		minerParams := &actors.CreateStorageMinerParams{
-			Owner:      ps.Owner,
-			Worker:     ps.Worker,
+		minerParams := &miner.ConstructorParams{
+			OwnerAddr:      ps.Owner,
+			WorkerAddr:     ps.Worker,
 			SectorSize: ps.SectorSize,
-			PeerID:     gmcfg.PeerIDs[i], // TODO: grab from preseal too
+			PeerId:     gmcfg.PeerIDs[i], // TODO: grab from preseal too
 		}
 
 		params := mustEnc(minerParams)
 
 		// TODO: hardcoding 6500 here is a little fragile, it changes any
 		// time anyone changes the initial account allocations
-		rval, err := doExecValue(ctx, vm, actors.StoragePowerAddress, ps.Worker, types.FromFil(6500), actors.SPAMethods.CreateStorageMiner, params)
+		rval, err := doExecValue(ctx, vm, actors.StoragePowerAddress, ps.Worker, types.FromFil(6500), actors.SPAMethods.CreateMiner, params)
 		if err != nil {
 			return cid.Undef, nil, xerrors.Errorf("failed to create genesis miner: %w", err)
 		}
@@ -540,7 +542,7 @@ func doExec(ctx context.Context, vm *vm.VM, to, from address.Address, method uin
 	return doExecValue(ctx, vm, to, from, types.NewInt(0), method, params)
 }
 
-func doExecValue(ctx context.Context, vm *vm.VM, to, from address.Address, value types.BigInt, method uint64, params []byte) ([]byte, error) {
+func doExecValue(ctx context.Context, vm *vm.VM, to, from address.Address, value types.BigInt, method abi.MethodNum, params []byte) ([]byte, error) {
 	act, err := vm.StateTree().GetActor(from)
 	if err != nil {
 		return nil, xerrors.Errorf("doExec failed to get from actor: %w", err)
