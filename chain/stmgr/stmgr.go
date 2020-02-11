@@ -14,6 +14,7 @@ import (
 	"github.com/filecoin-project/lotus/chain/types"
 	"github.com/filecoin-project/lotus/chain/vm"
 	"github.com/filecoin-project/specs-actors/actors/abi"
+	"github.com/filecoin-project/specs-actors/actors/builtin"
 	"github.com/filecoin-project/specs-actors/actors/util/adt"
 	cbg "github.com/whyrusleeping/cbor-gen"
 	"golang.org/x/xerrors"
@@ -178,11 +179,12 @@ func (sm *StateManager) computeTipSetState(ctx context.Context, blks []*types.Bl
 		}
 
 		// all block miners created a valid post, go update the actor state
+		panic("sys actor call")
 		postSubmitMsg := &types.Message{
 			From:     actors.NetworkAddress,
 			Nonce:    netact.Nonce,
 			To:       b.Miner,
-			Method:   actors.MAMethods.SubmitElectionPoSt,
+			Method:   builtin.MethodsMiner.OnVerifiedElectionPoSt,
 			GasPrice: types.NewInt(0),
 			GasLimit: types.NewInt(10000000000),
 			Value:    types.NewInt(0),
@@ -274,7 +276,7 @@ func (sm *StateManager) computeTipSetState(ctx context.Context, blks []*types.Bl
 		Value:    types.NewInt(0),
 		GasPrice: types.NewInt(0),
 		GasLimit: types.NewInt(1 << 30), // Make super sure this is never too little
-		Method:   actors.CAMethods.EpochTick,
+		Method:   builtin.MethodsCron.EpochTick,
 		Params:   nil,
 	})
 	if err != nil {

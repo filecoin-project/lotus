@@ -7,6 +7,7 @@ import (
 	"reflect"
 	"strings"
 
+	"github.com/filecoin-project/specs-actors/actors/abi"
 	"github.com/ipfs/go-cid"
 	cbg "github.com/whyrusleeping/cbor-gen"
 	"golang.org/x/xerrors"
@@ -47,7 +48,7 @@ func NewInvoker() *invoker {
 	return inv
 }
 
-func (inv *invoker) Invoke(act *types.Actor, vmctx types.VMContext, method uint64, params []byte) ([]byte, aerrors.ActorError) {
+func (inv *invoker) Invoke(act *types.Actor, vmctx types.VMContext, method abi.MethodNum, params []byte) ([]byte, aerrors.ActorError) {
 
 	if act.Code == actors.AccountCodeCid {
 		return nil, aerrors.Newf(254, "cannot invoke methods on account actors")
@@ -58,7 +59,7 @@ func (inv *invoker) Invoke(act *types.Actor, vmctx types.VMContext, method uint6
 		log.Errorf("no code for actor %s (Addr: %s)", act.Code, vmctx.Message().To)
 		return nil, aerrors.Newf(255, "no code for actor %s(%d)(%s)", act.Code, method, hex.EncodeToString(params))
 	}
-	if method >= uint64(len(code)) || code[method] == nil {
+	if method >= abi.MethodNum(len(code)) || code[method] == nil {
 		return nil, aerrors.Newf(255, "no method %d on actor", method)
 	}
 	return code[method](act, vmctx, params)

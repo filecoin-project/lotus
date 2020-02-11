@@ -23,10 +23,11 @@ func (cs *ChainStore) Weight(ctx context.Context, ts *types.TipSet) (types.BigIn
 
 	// >>> wFunction(totalPowerAtTipset(ts)) * 2^8 <<< + (wFunction(totalPowerAtTipset(ts)) * len(ts.blocks) * wRatio_num * 2^8) / (e * wRatio_den)
 
+	panic("TODO")
 	ret, err := cs.call(ctx, &types.Message{
 		From:   actors.StoragePowerAddress,
 		To:     actors.StoragePowerAddress,
-		Method: actors.SPAMethods.GetTotalStorage,
+		Method: 999, // actors.SPAMethods.GetTotalStorage,
 	}, ts)
 	if err != nil {
 		return types.EmptyInt, xerrors.Errorf("failed to get total power from chain: %w", err)

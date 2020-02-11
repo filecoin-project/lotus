@@ -33,7 +33,7 @@ type VMContext interface {
 	Message() *Message
 	Origin() address.Address
 	Ipld() cbor.IpldStore
-	Send(to address.Address, method uint64, value BigInt, params []byte) ([]byte, aerrors.ActorError)
+	Send(to address.Address, method abi.MethodNum, value BigInt, params []byte) ([]byte, aerrors.ActorError)
 	BlockHeight() abi.ChainEpoch
 	GasUsed() BigInt
 	Storage() Storage

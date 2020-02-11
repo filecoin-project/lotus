@@ -128,7 +128,7 @@ func (rs *runtimeShim) Send(to address.Address, method abi.MethodNum, m runtime.
 		rs.Abort(exitcode.SysErrInvalidParameters, "failed to marshal input parameters: %s", err)
 	}
 
-	ret, err := rs.vmctx.Send(to, uint64(method), types.BigInt(value), buf.Bytes())
+	ret, err := rs.vmctx.Send(to, method, types.BigInt(value), buf.Bytes())
 	if err != nil {
 		if err.IsFatal() {
 			panic(err)
