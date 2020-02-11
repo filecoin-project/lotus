@@ -82,7 +82,7 @@ func (sb *SBMock) AddPiece(ctx context.Context, size abi.UnpaddedPieceSize, sect
 
 	ss.pieces = append(ss.pieces, b)
 	return sectorbuilder.PublicPieceInfo{
-		Size:  uint64(size),
+		Size:  size,
 		CommP: commD(b),
 	}, nil
 }
@@ -91,7 +91,7 @@ func (sb *SBMock) SectorSize() abi.SectorSize {
 	return sb.sectorSize
 }
 
-func (sb *SBMock) AcquireSectorId() (abi.SectorNumber, error) {
+func (sb *SBMock) AcquireSectorNumber() (abi.SectorNumber, error) {
 	sb.lk.Lock()
 	defer sb.lk.Unlock()
 	id := sb.nextSectorID
@@ -112,8 +112,8 @@ func (sb *SBMock) Scrub(sectorbuilder.SortedPublicSectorInfo) []*sectorbuilder.F
 		ss.lk.Lock()
 		if ss.failed {
 			out = append(out, &sectorbuilder.Fault{
-				SectorID: uint64(sid),
-				Err:      fmt.Errorf("mock sector failed"),
+				SectorNum: sid,
+				Err:       fmt.Errorf("mock sector failed"),
 			})
 
 		}
@@ -162,7 +162,7 @@ func (sb *SBMock) SealPreCommit(ctx context.Context, sid abi.SectorNumber, ticke
 	pis := make([]ffi.PublicPieceInfo, len(ss.pieces))
 	for i, piece := range ss.pieces {
 		pis[i] = ffi.PublicPieceInfo{
-			Size:  uint64(len(piece)),
+			Size:  abi.UnpaddedPieceSize(len(piece)),
 			CommP: commD(piece),
 		}
 	}
@@ -276,7 +276,7 @@ func (sb *SBMock) GenerateEPostCandidates(sectorInfo sectorbuilder.SortedPublicS
 
 	for i := range out {
 		out[i] = sectorbuilder.EPostCandidate{
-			SectorID:             uint64((int(start) + i) % len(sectorInfo.Values())),
+			SectorNum:            abi.SectorNumber((int(start) + i) % len(sectorInfo.Values())),
 			PartialTicket:        challengeSeed,
 			Ticket:               commDR(challengeSeed[:]),
 			SectorChallengeIndex: 0,
@@ -286,7 +286,7 @@ func (sb *SBMock) GenerateEPostCandidates(sectorInfo sectorbuilder.SortedPublicS
 	return out, nil
 }
 
-func (sb *SBMock) ReadPieceFromSealedSector(ctx context.Context, sectorID abi.SectorNumber, offset uint64, size uint64, ticket []byte, commD []byte) (io.ReadCloser, error) {
+func (sb *SBMock) ReadPieceFromSealedSector(ctx context.Context, sectorID abi.SectorNumber, offset sectorbuilder.UnpaddedByteIndex, size abi.UnpaddedPieceSize, ticket []byte, commD []byte) (io.ReadCloser, error) {
 	if len(sb.sectors[sectorID].pieces) > 1 {
 		panic("implme")
 	}
@@ -295,7 +295,7 @@ func (sb *SBMock) ReadPieceFromSealedSector(ctx context.Context, sectorID abi.Se
 
 func (sb *SBMock) StageFakeData() (abi.SectorNumber, []sectorbuilder.PublicPieceInfo, error) {
 	usize := abi.UnpaddedPieceSize(sb.sectorSize)
-	sid, err := sb.AcquireSectorId()
+	sid, err := sb.AcquireSectorNumber()
 	if err != nil {
 		return 0, nil, err
 	}
@@ -357,7 +357,7 @@ func (m mockVerif) GenerateDataCommitment(ssize abi.PaddedPieceSize, pieces []ff
 	if len(pieces) != 1 {
 		panic("todo")
 	}
-	if pieces[0].Size != uint64(ssize) {
+	if pieces[0].Size != abi.UnpaddedPieceSize(ssize) {
 		panic("todo")
 	}
 	return pieces[0].CommP, nil
