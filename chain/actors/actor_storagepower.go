@@ -475,7 +475,9 @@ func powerLookup(ctx context.Context, vmctx types.VMContext, self *StoragePowerS
 	}
 
 	if !has {
+		/*aaa*/
 		return types.EmptyInt, aerrors.New(1, "miner not registered with storage power actor")
+		/*****/
 	}
 
 	// TODO: Use local amt
