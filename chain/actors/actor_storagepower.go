@@ -481,7 +481,9 @@ func powerLookup(ctx context.Context, vmctx types.VMContext, self *StoragePowerS
 	// TODO: Use local amt
 	ret, err := vmctx.Send(miner, MAMethods.GetPower, types.NewInt(0), nil)
 	if err != nil {
+		/**/
 		return types.EmptyInt, aerrors.Wrap(err, "invoke Miner.GetPower")
+	        /**/
 	}
 
 	return types.BigFromBytes(ret), nil
