@@ -10,6 +10,7 @@ import (
 
 	commcid "github.com/filecoin-project/go-fil-commcid"
 	"github.com/filecoin-project/specs-actors/actors/abi"
+	"github.com/filecoin-project/specs-actors/actors/builtin"
 	"github.com/filecoin-project/specs-actors/actors/builtin/market"
 	"golang.org/x/xerrors"
 
@@ -65,7 +66,7 @@ func (m *Sealing) pledgeSector(ctx context.Context, sectorID abi.SectorNumber, e
 
 	log.Infof("Publishing deals for %d", sectorID)
 
-	params, aerr := actors.SerializeParams(&actors.PublishStorageDealsParams{
+	params, aerr := actors.SerializeParams(&market.PublishStorageDealsParams{
 		Deals: deals,
 	})
 	if aerr != nil {
@@ -78,7 +79,7 @@ func (m *Sealing) pledgeSector(ctx context.Context, sectorID abi.SectorNumber, e
 		Value:    types.NewInt(0),
 		GasPrice: types.NewInt(0),
 		GasLimit: types.NewInt(1000000),
-		Method:   actors.SMAMethods.PublishStorageDeals,
+		Method:   builtin.MethodsMarket.PublishStorageDeals,
 		Params:   params,
 	})
 	if err != nil {
