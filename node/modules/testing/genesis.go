@@ -20,7 +20,8 @@ import (
 	"golang.org/x/xerrors"
 
 	"github.com/filecoin-project/go-address"
-	"github.com/filecoin-project/lotus/chain/gen"
+
+	genesis2 "github.com/filecoin-project/lotus/chain/gen/genesis"
 	"github.com/filecoin-project/lotus/chain/types"
 	"github.com/filecoin-project/lotus/chain/wallet"
 	"github.com/filecoin-project/lotus/genesis"
@@ -30,7 +31,7 @@ import (
 
 var glog = logging.Logger("genesis")
 
-func MakeGenesisMem(out io.Writer, gmc *gen.GenMinerCfg) func(bs dtypes.ChainBlockstore, w *wallet.Wallet, syscalls *types.VMSyscalls) modules.Genesis {
+func MakeGenesisMem(out io.Writer, gmc *genesis2.GenMinerCfg) func(bs dtypes.ChainBlockstore, w *wallet.Wallet, syscalls *types.VMSyscalls) modules.Genesis {
 	return func(bs dtypes.ChainBlockstore, w *wallet.Wallet, syscalls *types.VMSyscalls) modules.Genesis {
 		return func() (*types.BlockHeader, error) {
 			glog.Warn("Generating new random genesis block, note that this SHOULD NOT happen unless you are setting up new network")
@@ -51,7 +52,7 @@ func MakeGenesisMem(out io.Writer, gmc *gen.GenMinerCfg) func(bs dtypes.ChainBlo
 				alloc[waddr] = types.FromFil(10000)
 			}
 
-			b, err := gen.MakeGenesisBlock(bs, syscalls, alloc, gmc, 100000)
+			b, err := genesis2.MakeGenesisBlock(bs, syscalls, alloc, gmc, 100000)
 			if err != nil {
 				return nil, err
 			}
@@ -101,7 +102,7 @@ func MakeGenesis(outFile, presealInfo, timestamp string) func(bs dtypes.ChainBlo
 				fakePeerIDs = append(fakePeerIDs, peer.ID("peer"+a.String()))
 			}
 
-			gmc := &gen.GenMinerCfg{
+			gmc := &genesis2.GenMinerCfg{
 				PeerIDs:    fakePeerIDs,
 				PreSeals:   preseals,
 				MinerAddrs: minerAddresses,
@@ -130,7 +131,7 @@ func MakeGenesis(outFile, presealInfo, timestamp string) func(bs dtypes.ChainBlo
 				ts = uint64(t.Unix())
 			}
 
-			b, err := gen.MakeGenesisBlock(bs, syscalls, addrs, gmc, ts)
+			b, err := genesis2.MakeGenesisBlock(bs, syscalls, addrs, gmc, ts)
 			if err != nil {
 				return nil, err
 			}

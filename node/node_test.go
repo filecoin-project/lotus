@@ -12,7 +12,10 @@ import (
 
 	"github.com/filecoin-project/go-address"
 	sectorbuilder "github.com/filecoin-project/go-sectorbuilder"
+
 	"github.com/filecoin-project/lotus/build"
+	genesis2 "github.com/filecoin-project/lotus/chain/gen/genesis"
+
 	"github.com/filecoin-project/specs-actors/actors/abi"
 	"github.com/ipfs/go-datastore"
 	"github.com/ipfs/go-datastore/namespace"
@@ -27,7 +30,6 @@ import (
 	"github.com/filecoin-project/lotus/api/client"
 	"github.com/filecoin-project/lotus/api/test"
 	"github.com/filecoin-project/lotus/chain/actors"
-	"github.com/filecoin-project/lotus/chain/gen"
 	"github.com/filecoin-project/lotus/chain/types"
 	"github.com/filecoin-project/lotus/cmd/lotus-seed/seed"
 	"github.com/filecoin-project/lotus/genesis"
@@ -153,7 +155,7 @@ func builder(t *testing.T, nFull int, storage []int) ([]test.TestNode, []test.Te
 	}
 	// PRESEAL SECTION, TRY TO REPLACE WITH BETTER IN THE FUTURE
 	// TODO: would be great if there was a better way to fake the preseals
-	gmc := &gen.GenMinerCfg{
+	gmc := &genesis2.GenMinerCfg{
 		PeerIDs:  []peer.ID{minerPid}, // TODO: if we have more miners, need more peer IDs
 		PreSeals: map[string]genesis.GenesisMiner{},
 	}
@@ -272,7 +274,7 @@ func mockSbBuilder(t *testing.T, nFull int, storage []int) ([]test.TestNode, []t
 	}
 	// PRESEAL SECTION, TRY TO REPLACE WITH BETTER IN THE FUTURE
 	// TODO: would be great if there was a better way to fake the preseals
-	gmc := &gen.GenMinerCfg{
+	gmc := &genesis2.GenMinerCfg{
 		PeerIDs:  []peer.ID{minerPid}, // TODO: if we have more miners, need more peer IDs
 		PreSeals: map[string]genesis.GenesisMiner{},
 	}

@@ -19,8 +19,9 @@ import (
 	"golang.org/x/xerrors"
 
 	"github.com/filecoin-project/go-address"
+
 	"github.com/filecoin-project/lotus/chain/actors"
-	"github.com/filecoin-project/lotus/chain/gen"
+	"github.com/filecoin-project/lotus/chain/gen/genesis"
 	"github.com/filecoin-project/lotus/chain/state"
 	"github.com/filecoin-project/lotus/chain/store"
 	"github.com/filecoin-project/lotus/chain/types"
@@ -183,7 +184,7 @@ func NewHarness(t *testing.T, options ...HarnessOpt) *Harness {
 		}
 	}
 
-	st, err := gen.MakeInitialStateTree(h.bs, h.HI.Addrs)
+	st, err := genesis.MakeInitialStateTree(h.bs, h.HI.Addrs)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -193,7 +194,7 @@ func NewHarness(t *testing.T, options ...HarnessOpt) *Harness {
 		t.Fatal(err)
 	}
 
-	stateroot, err = gen.SetupStorageMarketActor(h.bs, stateroot, nil)
+	stateroot, err = genesis.SetupStorageMarketActor(h.bs, stateroot, nil)
 	if err != nil {
 		t.Fatal(err)
 	}

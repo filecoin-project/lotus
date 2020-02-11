@@ -34,11 +34,11 @@ var log = logging.Logger("preseal")
 
 func PreSeal(maddr address.Address, ssize abi.SectorSize, offset abi.SectorNumber, sectors int, sbroot string, preimage []byte) (*genesis.GenesisMiner, error) {
 	cfg := &sectorbuilder.Config{
-		Miner:          maddr,
-		SectorSize:     ssize,
+		Miner:           maddr,
+		SectorSize:      ssize,
 		FallbackLastNum: offset,
-		Paths:          sectorbuilder.SimplePath(sbroot),
-		WorkerThreads:  2,
+		Paths:           sectorbuilder.SimplePath(sbroot),
+		WorkerThreads:   2,
 	}
 
 	if err := os.MkdirAll(sbroot, 0775); err != nil {
@@ -157,7 +157,7 @@ func createDeals(m *genesis.GenesisMiner, k *wallet.Key, maddr address.Address, 
 			PieceSize:            abi.PaddedPieceSize(ssize),
 			Client:               k.Address,
 			Provider:             maddr,
-			StartEpoch:           1, // TODO: allow setting
+			StartEpoch:           0,
 			EndEpoch:             9001,
 			StoragePricePerEpoch: big.Zero(),
 			ProviderCollateral:   big.Zero(),

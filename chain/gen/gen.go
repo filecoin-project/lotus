@@ -20,11 +20,13 @@ import (
 	"github.com/ipfs/go-merkledag"
 	peer "github.com/libp2p/go-libp2p-core/peer"
 
-	ffi "github.com/filecoin-project/filecoin-ffi"
 	"github.com/filecoin-project/go-address"
 	sectorbuilder "github.com/filecoin-project/go-sectorbuilder"
+
+	ffi "github.com/filecoin-project/filecoin-ffi"
 	"github.com/filecoin-project/lotus/api"
 	"github.com/filecoin-project/lotus/build"
+	genesis2 "github.com/filecoin-project/lotus/chain/gen/genesis"
 	"github.com/filecoin-project/lotus/chain/stmgr"
 	"github.com/filecoin-project/lotus/chain/store"
 	"github.com/filecoin-project/lotus/chain/types"
@@ -165,7 +167,7 @@ func NewGenerator() (*ChainGen, error) {
 		return nil, err
 	}
 
-	minercfg := &GenMinerCfg{
+	minercfg := &genesis2.GenMinerCfg{
 		PeerIDs: []peer.ID{"peerID1", "peerID2"},
 		PreSeals: map[string]genesis.GenesisMiner{
 			maddr1.String(): *genm1,
@@ -176,7 +178,7 @@ func NewGenerator() (*ChainGen, error) {
 
 	sys := vm.Syscalls(sectorbuilder.ProofVerifier)
 
-	genb, err := MakeGenesisBlock(bs, sys, map[address.Address]types.BigInt{
+	genb, err := genesis2.MakeGenesisBlock(bs, sys, map[address.Address]types.BigInt{
 		mk1:    types.FromFil(40000),
 		mk2:    types.FromFil(40000),
 		banker: types.FromFil(50000),
@@ -478,7 +480,7 @@ type eppProvider struct{}
 func (epp *eppProvider) GenerateCandidates(ctx context.Context, _ sectorbuilder.SortedPublicSectorInfo, eprand []byte) ([]sectorbuilder.EPostCandidate, error) {
 	return []sectorbuilder.EPostCandidate{
 		{
-			SectorNum:             1,
+			SectorNum:            1,
 			PartialTicket:        [32]byte{},
 			Ticket:               [32]byte{},
 			SectorChallengeIndex: 1,
