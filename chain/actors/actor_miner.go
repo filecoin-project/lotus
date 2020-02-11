@@ -448,7 +448,7 @@ func (sma StorageMinerActor) SubmitFallbackPoSt(act *types.Actor, vmctx types.VM
 			return xerrors.New("could not decode comms")
 		}
 		si := ffi.PublicSectorInfo{
-			SectorID: id,
+			SectorNum: abi.SectorNumber(id),
 		}
 		commR := comms[0]
 		if len(commR) != len(si.CommR) {
@@ -471,7 +471,7 @@ func (sma StorageMinerActor) SubmitFallbackPoSt(act *types.Actor, vmctx types.VM
 		copy(partial[:], t.Partial)
 		candidates = append(candidates, sectorbuilder.EPostCandidate{
 			PartialTicket:        partial,
-			SectorID:             t.SectorID,
+			SectorNum: t.SectorID,
 			SectorChallengeIndex: t.ChallengeIndex,
 		})
 	}

@@ -71,7 +71,7 @@ func (m *Sealing) fastPledgeCommitment(size abi.UnpaddedPieceSize, parts uint64)
 				err = multierror.Append(err, perr)
 			}
 			out[i] = sectorbuilder.PublicPieceInfo{
-				Size:  uint64(piece),
+				Size:  piece,
 				CommP: commP,
 			}
 			lk.Unlock()

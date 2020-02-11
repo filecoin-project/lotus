@@ -107,13 +107,13 @@ func (s *FPoStScheduler) checkFaults(ctx context.Context, ssi sectorbuilder.Sort
 		params := &actors.DeclareFaultsParams{Faults: types.NewBitField()}
 
 		for _, fault := range faults {
-			if _, ok := declaredFaults[abi.SectorNumber(fault.SectorID)]; ok {
+			if _, ok := declaredFaults[abi.SectorNumber(fault.SectorNum)]; ok {
 				continue
 			}
 
-			log.Warnf("new fault detected: sector %d: %s", fault.SectorID, fault.Err)
-			declaredFaults[abi.SectorNumber(fault.SectorID)] = struct{}{}
-			params.Faults.Set(fault.SectorID)
+			log.Warnf("new fault detected: sector %d: %s", fault.SectorNum, fault.Err)
+			declaredFaults[fault.SectorNum] = struct{}{}
+			params.Faults.Set(uint64(fault.SectorNum))
 		}
 
 		pc, err := params.Faults.Count()
@@ -184,7 +184,7 @@ func (s *FPoStScheduler) runPost(ctx context.Context, eps abi.ChainEpoch, ts *ty
 		copy(part, sc.PartialTicket[:])
 		candidates[i] = types.EPostTicket{
 			Partial:        part,
-			SectorID:       sc.SectorID,
+			SectorID:       sc.SectorNum,
 			ChallengeIndex: sc.SectorChallengeIndex,
 		}
 	}
@@ -210,8 +210,8 @@ func (s *FPoStScheduler) sortedSectorInfo(ctx context.Context, ts *types.TipSet)
 		copy(commR[:], sector.CommR)
 
 		sbsi[k] = ffi.PublicSectorInfo{
-			SectorID: uint64(sector.SectorID),
-			CommR:    commR,
+			SectorNum: sector.SectorID,
+			CommR:     commR,
 		}
 	}
 

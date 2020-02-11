@@ -670,7 +670,7 @@ func (syncer *Syncer) VerifyElectionPoStProof(ctx context.Context, h *types.Bloc
 		copy(partial[:], t.Partial)
 		winners = append(winners, sectorbuilder.EPostCandidate{
 			PartialTicket:        partial,
-			SectorID:             t.SectorID,
+			SectorNum:             t.SectorID,
 			SectorChallengeIndex: t.ChallengeIndex,
 		})
 	}
