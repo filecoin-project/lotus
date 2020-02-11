@@ -5,6 +5,7 @@ import (
 
 	"github.com/filecoin-project/go-sectorbuilder/fs"
 	"github.com/filecoin-project/specs-actors/actors/abi"
+	"github.com/filecoin-project/specs-actors/actors/builtin/miner"
 	"golang.org/x/xerrors"
 
 	"github.com/filecoin-project/lotus/build"
@@ -95,7 +96,7 @@ func (m *Sealing) handlePreCommitting(ctx statemachine.Context, sector SectorInf
 		}
 	}
 
-	params := &actors.SectorPreCommitInfo{
+	params := &miner.PreCommitSectorParams{
 		SectorNumber: sector.SectorID,
 
 		CommR:     sector.CommR,
