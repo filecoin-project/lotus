@@ -478,7 +478,7 @@ type eppProvider struct{}
 func (epp *eppProvider) GenerateCandidates(ctx context.Context, _ sectorbuilder.SortedPublicSectorInfo, eprand []byte) ([]sectorbuilder.EPostCandidate, error) {
 	return []sectorbuilder.EPostCandidate{
 		{
-			SectorID:             1,
+			SectorNum:             1,
 			PartialTicket:        [32]byte{},
 			Ticket:               [32]byte{},
 			SectorChallengeIndex: 1,
@@ -527,8 +527,8 @@ func IsRoundWinner(ctx context.Context, ts *types.TipSet, round int64, miner add
 		var commRa [32]byte
 		copy(commRa[:], s.CommR)
 		sinfos = append(sinfos, ffi.PublicSectorInfo{
-			SectorID: uint64(s.SectorID),
-			CommR:    commRa,
+			SectorNum: s.SectorID,
+			CommR:     commRa,
 		})
 	}
 	sectors := sectorbuilder.NewSortedPublicSectorInfo(sinfos)
@@ -584,7 +584,7 @@ func ComputeProof(ctx context.Context, epp ElectionPoStProver, pi *ProofInput) (
 		copy(part, win.PartialTicket[:])
 		ept.Candidates = append(ept.Candidates, types.EPostTicket{
 			Partial:        part,
-			SectorID:       win.SectorID,
+			SectorID:       win.SectorNum,
 			ChallengeIndex: win.SectorChallengeIndex,
 		})
 	}

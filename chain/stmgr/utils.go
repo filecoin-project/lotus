@@ -222,7 +222,7 @@ func GetSectorsForElectionPost(ctx context.Context, sm *StateManager, ts *types.
 		var uselessBuffer [32]byte
 		copy(uselessBuffer[:], s.CommR)
 		uselessOtherArray = append(uselessOtherArray, ffi.PublicSectorInfo{
-			SectorID: uint64(s.SectorID),
+			SectorNum: s.SectorID,
 			CommR:    uselessBuffer,
 		})
 	}

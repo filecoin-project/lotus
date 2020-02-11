@@ -12,7 +12,7 @@ import (
 
 // TODO: refactor this to be direct somehow
 
-func (m *Miner) AllocatePiece(size uint64) (sectorID abi.SectorNumber, offset uint64, err error) {
+func (m *Miner) AllocatePiece(size abi.UnpaddedPieceSize) (sectorID abi.SectorNumber, offset uint64, err error) {
 	return m.sealing.AllocatePiece(size)
 }
 

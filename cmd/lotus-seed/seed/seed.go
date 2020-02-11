@@ -32,11 +32,11 @@ import (
 
 var log = logging.Logger("preseal")
 
-func PreSeal(maddr address.Address, ssize abi.SectorSize, offset uint64, sectors int, sbroot string, preimage []byte) (*genesis.GenesisMiner, error) {
+func PreSeal(maddr address.Address, ssize abi.SectorSize, offset abi.SectorNumber, sectors int, sbroot string, preimage []byte) (*genesis.GenesisMiner, error) {
 	cfg := &sectorbuilder.Config{
 		Miner:          maddr,
 		SectorSize:     ssize,
-		FallbackLastID: offset,
+		FallbackLastNum: offset,
 		Paths:          sectorbuilder.SimplePath(sbroot),
 		WorkerThreads:  2,
 	}
@@ -57,7 +57,7 @@ func PreSeal(maddr address.Address, ssize abi.SectorSize, offset uint64, sectors
 
 	var sealedSectors []*genesis.PreSeal
 	for i := 0; i < sectors; i++ {
-		sid, err := sb.AcquireSectorId()
+		sid, err := sb.AcquireSectorNumber()
 		if err != nil {
 			return nil, err
 		}

@@ -195,8 +195,8 @@ func main() {
 				precommit := time.Now()
 
 				sealedSectors = append(sealedSectors, ffi.PublicSectorInfo{
-					CommR:    pco.CommR,
-					SectorID: uint64(i),
+					CommR:     pco.CommR,
+					SectorNum: i,
 				})
 
 				seed := sectorbuilder.SealSeed{
@@ -224,7 +224,7 @@ func main() {
 
 				if !c.Bool("skip-unseal") {
 					log.Info("Unsealing sector")
-					rc, err := sb.ReadPieceFromSealedSector(context.TODO(), 1, 0, uint64(sectorSize), ticket.TicketBytes[:], commD[:])
+					rc, err := sb.ReadPieceFromSealedSector(context.TODO(), 1, 0, abi.UnpaddedPieceSize(sectorSize), ticket.TicketBytes[:], commD[:])
 					if err != nil {
 						return err
 					}
@@ -271,8 +271,8 @@ func main() {
 
 				for _, s := range genm.Sectors {
 					sealedSectors = append(sealedSectors, ffi.PublicSectorInfo{
-						CommR:    s.CommR,
-						SectorID: uint64(s.SectorID),
+						CommR:     s.CommR,
+						SectorNum: s.SectorID,
 					})
 				}
 			}

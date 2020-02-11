@@ -12,13 +12,13 @@ import (
 	logging "github.com/ipfs/go-log/v2"
 	"golang.org/x/xerrors"
 
+	"github.com/filecoin-project/go-padreader"
 	"github.com/filecoin-project/go-sectorbuilder"
 
 	"github.com/filecoin-project/lotus/api"
 	"github.com/filecoin-project/lotus/chain/events"
 	"github.com/filecoin-project/lotus/chain/store"
 	"github.com/filecoin-project/lotus/chain/types"
-	"github.com/filecoin-project/lotus/lib/padreader"
 	"github.com/filecoin-project/lotus/lib/statemachine"
 )
 
@@ -96,12 +96,12 @@ func (m *Sealing) Stop(ctx context.Context) error {
 	return m.sectors.Stop(ctx)
 }
 
-func (m *Sealing) AllocatePiece(size uint64) (sectorID abi.SectorNumber, offset uint64, err error) {
-	if padreader.PaddedSize(size) != size {
+func (m *Sealing) AllocatePiece(size abi.UnpaddedPieceSize) (sectorID abi.SectorNumber, offset uint64, err error) {
+	if (padreader.PaddedSize(uint64(size))) != size {
 		return 0, 0, xerrors.Errorf("cannot allocate unpadded piece")
 	}
 
-	sid, err := m.sb.AcquireSectorId() // TODO: Put more than one thing in a sector
+	sid, err := m.sb.AcquireSectorNumber() // TODO: Put more than one thing in a sector
 	if err != nil {
 		return 0, 0, xerrors.Errorf("acquiring sector ID: %w", err)
 	}

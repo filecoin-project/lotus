@@ -33,7 +33,7 @@ func (rpn *retrievalProviderNode) UnsealSector(ctx context.Context, sectorID abi
 	if err != nil {
 		return nil, err
 	}
-	return rpn.sb.ReadPieceFromSealedSector(ctx, sectorID, offset, length, si.Ticket.TicketBytes, si.CommD)
+	return rpn.sb.ReadPieceFromSealedSector(ctx, sectorID, sectorbuilder.UnpaddedByteIndex(offset), abi.UnpaddedPieceSize(length), si.Ticket.TicketBytes, si.CommD)
 }
 
 func (rpn *retrievalProviderNode) SavePaymentVoucher(ctx context.Context, paymentChannel address.Address, voucher *retrievaltypes.SignedVoucher, proof []byte, expectedAmount retrievaltoken.TokenAmount) (retrievaltoken.TokenAmount, error) {

@@ -99,7 +99,7 @@ var preSealCmd = &cli.Command{
 			return err
 		}
 
-		gm, err := seed.PreSeal(maddr, abi.SectorSize(c.Uint64("sector-size")), c.Uint64("sector-offset"), c.Int("num-sectors"), sbroot, []byte(c.String("ticket-preimage")))
+		gm, err := seed.PreSeal(maddr, abi.SectorSize(c.Uint64("sector-size")), abi.SectorNumber(c.Uint64("sector-offset")), c.Int("num-sectors"), sbroot, []byte(c.String("ticket-preimage")))
 		if err != nil {
 			return err
 		}
@@ -272,7 +272,7 @@ var aggregateSectorDirsCmd = &cli.Command{
 			}
 		}
 
-		if err := agsb.SetLastSectorID(highestSectorID); err != nil {
+		if err := agsb.SetLastSectorNum(highestSectorID); err != nil {
 			return err
 		}
 

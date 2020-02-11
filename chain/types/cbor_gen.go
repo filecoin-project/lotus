@@ -530,7 +530,6 @@ func (t *EPostTicket) UnmarshalCBOR(r io.Reader) error {
 	if maj != cbg.MajUnsignedInt {
 		return fmt.Errorf("wrong type for uint64 field")
 	}
-	t.SectorID = uint64(extra)
 	// t.ChallengeIndex (uint64) (uint64)
 
 	maj, extra, err = cbg.CborReadHeader(br)

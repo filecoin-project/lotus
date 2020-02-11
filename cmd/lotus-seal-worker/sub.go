@@ -45,7 +45,7 @@ loop:
 
 		select {
 		case task := <-tasks:
-			log.Infof("New task: %d, sector %d, action: %d", task.TaskID, task.SectorID, task.Type)
+			log.Infof("New task: %d, sector %d, action: %d", task.TaskID, task.SectorNum, task.Type)
 
 			res := w.processTask(ctx, task)
 
@@ -71,7 +71,7 @@ func (w *worker) processTask(ctx context.Context, task sectorbuilder.WorkerTask)
 		return errRes(xerrors.Errorf("unknown task type %d", task.Type))
 	}
 
-	if err := w.fetchSector(task.SectorID, task.Type); err != nil {
+	if err := w.fetchSector(task.SectorNum, task.Type); err != nil {
 		return errRes(xerrors.Errorf("fetching sector: %w", err))
 	}
 
@@ -82,7 +82,7 @@ func (w *worker) processTask(ctx context.Context, task sectorbuilder.WorkerTask)
 	switch task.Type {
 	case sectorbuilder.WorkerPreCommit:
 		w.limiter.workLimit <- struct{}{}
-		rspco, err := w.sb.SealPreCommit(ctx, task.SectorID, task.SealTicket, task.Pieces)
+		rspco, err := w.sb.SealPreCommit(ctx, task.SectorNum, task.SealTicket, task.Pieces)
 		<-w.limiter.workLimit
 
 		if err != nil {
@@ -90,20 +90,20 @@ func (w *worker) processTask(ctx context.Context, task sectorbuilder.WorkerTask)
 		}
 		res.Rspco = rspco.ToJson()
 
-		if err := w.push("sealed", task.SectorID); err != nil {
+		if err := w.push("sealed", task.SectorNum); err != nil {
 			return errRes(xerrors.Errorf("pushing precommited data: %w", err))
 		}
 
-		if err := w.push("cache", task.SectorID); err != nil {
+		if err := w.push("cache", task.SectorNum); err != nil {
 			return errRes(xerrors.Errorf("pushing precommited data: %w", err))
 		}
 
-		if err := w.remove("staging", task.SectorID); err != nil {
+		if err := w.remove("staging", task.SectorNum); err != nil {
 			return errRes(xerrors.Errorf("cleaning up staged sector: %w", err))
 		}
 	case sectorbuilder.WorkerCommit:
 		w.limiter.workLimit <- struct{}{}
-		proof, err := w.sb.SealCommit(ctx, task.SectorID, task.SealTicket, task.SealSeed, task.Pieces, task.Rspco)
+		proof, err := w.sb.SealCommit(ctx, task.SectorNum, task.SealTicket, task.SealSeed, task.Pieces, task.Rspco)
 		<-w.limiter.workLimit
 
 		if err != nil {
@@ -112,11 +112,11 @@ func (w *worker) processTask(ctx context.Context, task sectorbuilder.WorkerTask)
 
 		res.Proof = proof
 
-		if err := w.push("cache", task.SectorID); err != nil {
+		if err := w.push("cache", task.SectorNum); err != nil {
 			return errRes(xerrors.Errorf("pushing precommited data: %w", err))
 		}
 
-		if err := w.remove("sealed", task.SectorID); err != nil {
+		if err := w.remove("sealed", task.SectorNum); err != nil {
 			return errRes(xerrors.Errorf("cleaning up sealed sector: %w", err))
 		}
 	}

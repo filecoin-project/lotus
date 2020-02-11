@@ -24,7 +24,7 @@ type Ticket struct {
 
 type EPostTicket struct {
 	Partial        []byte
-	SectorID       uint64
+	SectorID       abi.SectorNumber
 	ChallengeIndex uint64
 }
 

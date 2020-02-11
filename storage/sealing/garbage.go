@@ -128,7 +128,7 @@ func (m *Sealing) PledgeSector() error {
 
 		size := abi.PaddedPieceSize(m.sb.SectorSize()).Unpadded()
 
-		sid, err := m.sb.AcquireSectorId()
+		sid, err := m.sb.AcquireSectorNumber()
 		if err != nil {
 			log.Errorf("%+v", err)
 			return

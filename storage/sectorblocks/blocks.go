@@ -8,6 +8,7 @@ import (
 	"io"
 	"sync"
 
+	"github.com/filecoin-project/go-padreader"
 	sectorbuilder "github.com/filecoin-project/go-sectorbuilder"
 	"github.com/filecoin-project/specs-actors/actors/abi"
 	"github.com/ipfs/go-datastore"
@@ -17,8 +18,8 @@ import (
 	"golang.org/x/xerrors"
 
 	cborutil "github.com/filecoin-project/go-cbor-util"
+
 	"github.com/filecoin-project/lotus/api"
-	"github.com/filecoin-project/lotus/lib/padreader"
 	"github.com/filecoin-project/lotus/node/modules/dtypes"
 	"github.com/filecoin-project/lotus/storage"
 )
