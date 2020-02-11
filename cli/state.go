@@ -47,6 +47,7 @@ var stateCmd = &cli.Command{
 		stateComputeStateCmd,
 		stateCallCmd,
 		stateGetDealSetCmd,
+		stateWaitMsgCmd,
 	},
 }
 
@@ -706,6 +707,46 @@ var stateComputeStateCmd = &cli.Command{
 		}
 
 		fmt.Println("computed state cid: ", nstate)
+		return nil
+	},
+}
+
+var stateWaitMsgCmd = &cli.Command{
+	Name:  "wait-msg",
+	Usage: "Wait for a message to appear on chain",
+	Flags: []cli.Flag{
+		&cli.StringFlag{
+			Name:  "timeout",
+			Value: "10m",
+		},
+	},
+	Action: func(cctx *cli.Context) error {
+		if !cctx.Args().Present() {
+			return fmt.Errorf("must specify message cid to wait for")
+		}
+
+		api, closer, err := GetFullNodeAPI(cctx)
+		if err != nil {
+			return err
+		}
+		defer closer()
+
+		ctx := ReqContext(cctx)
+
+		msg, err := cid.Decode(cctx.Args().First())
+		if err != nil {
+			return err
+		}
+
+		mw, err := api.StateWaitMsg(ctx, msg)
+		if err != nil {
+			return err
+		}
+
+		fmt.Printf("message was executed in tipset: %s", mw.TipSet.Cids())
+		fmt.Printf("Exit Code: %d", mw.Receipt.ExitCode)
+		fmt.Printf("Gas Used: %s", mw.Receipt.GasUsed)
+		fmt.Printf("Return: %x", mw.Receipt.Return)
 		return nil
 	},
 }
