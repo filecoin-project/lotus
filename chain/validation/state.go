@@ -20,8 +20,9 @@ import (
 
 	"github.com/filecoin-project/go-address"
 	"github.com/filecoin-project/go-crypto"
+
 	"github.com/filecoin-project/lotus/chain/actors"
-	"github.com/filecoin-project/lotus/chain/gen"
+	"github.com/filecoin-project/lotus/chain/gen/genesis"
 	"github.com/filecoin-project/lotus/chain/state"
 	"github.com/filecoin-project/lotus/chain/types"
 	"github.com/filecoin-project/lotus/chain/vm"
@@ -132,7 +133,7 @@ func (s *StateWrapper) SetSingletonActor(addr vactors.SingletonActorID, balance 
 
 	switch lotusAddr {
 	case actors.InitAddress:
-		initact, err := gen.SetupInitActor(s.bs, nil)
+		initact, err := genesis.SetupInitActor(s.bs, nil)
 		if err != nil {
 			return nil, nil, err
 		}
@@ -142,7 +143,7 @@ func (s *StateWrapper) SetSingletonActor(addr vactors.SingletonActorID, balance 
 
 		return &actorWrapper{*initact}, s.storage, s.flush(tree)
 	case actors.StorageMarketAddress:
-		nsroot, err := gen.SetupStorageMarketActor(s.bs, s.stateRoot, nil)
+		nsroot, err := genesis.SetupStorageMarketActor(s.bs, s.stateRoot, nil)
 		if err != nil {
 			return nil, nil, err
 		}
@@ -158,7 +159,7 @@ func (s *StateWrapper) SetSingletonActor(addr vactors.SingletonActorID, balance 
 		}
 		return &actorWrapper{*smact}, s.storage, s.flush(tree)
 	case actors.StoragePowerAddress:
-		spact, err := gen.SetupStoragePowerActor(s.bs)
+		spact, err := genesis.SetupStoragePowerActor(s.bs)
 		if err != nil {
 			return nil, nil, err
 		}

@@ -2,19 +2,19 @@ package actors
 
 import (
 	"github.com/filecoin-project/go-address"
+	"github.com/filecoin-project/specs-actors/actors/builtin"
 
 	"github.com/ipfs/go-cid"
-	mh "github.com/multiformats/go-multihash"
 )
 
-var AccountCodeCid cid.Cid
-var CronCodeCid cid.Cid
-var StoragePowerCodeCid cid.Cid
-var StorageMarketCodeCid cid.Cid
-var StorageMinerCodeCid cid.Cid
-var MultisigCodeCid cid.Cid
-var InitCodeCid cid.Cid
-var PaymentChannelCodeCid cid.Cid
+var AccountCodeCid = builtin.AccountActorCodeID
+var CronCodeCid = builtin.CronActorCodeID
+var StoragePowerCodeCid = builtin.StoragePowerActorCodeID
+var StorageMarketCodeCid = builtin.StorageMarketActorCodeID
+var StorageMinerCodeCid = builtin.StorageMinerActorCodeID
+var MultisigCodeCid = builtin.MultisigActorCodeID
+var InitCodeCid = builtin.InitActorCodeID
+var PaymentChannelCodeCid = builtin.PaymentChannelActorCodeID
 
 var SystemAddress = mustIDAddress(0)
 var InitAddress = mustIDAddress(1)
@@ -36,24 +36,6 @@ func mustIDAddress(i uint64) address.Address {
 }
 
 func init() {
-	pref := cid.NewPrefixV1(cid.Raw, mh.IDENTITY)
-	mustSum := func(s string) cid.Cid {
-		c, err := pref.Sum([]byte(s))
-		if err != nil {
-			panic(err) // ok
-		}
-		return c
-	}
-
-	AccountCodeCid = mustSum("fil/1/account") // TODO: spec
-	CronCodeCid = mustSum("fil/1/cron")
-	StoragePowerCodeCid = mustSum("fil/1/power")
-	StorageMarketCodeCid = mustSum("fil/1/market")
-	StorageMinerCodeCid = mustSum("fil/1/miner")
-	MultisigCodeCid = mustSum("fil/1/multisig")
-	InitCodeCid = mustSum("fil/1/init")
-	PaymentChannelCodeCid = mustSum("fil/1/paych")
-
 	BuiltInActors = map[cid.Cid]bool{
 		StorageMarketCodeCid:  true,
 		StoragePowerCodeCid:   true,
