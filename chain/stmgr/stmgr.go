@@ -300,15 +300,27 @@ func (sm *StateManager) computeTipSetState(ctx context.Context, blks []*types.Bl
 	return st, rectroot, nil
 }
 
-func (sm *StateManager) GetActor(addr address.Address, ts *types.TipSet) (*types.Actor, error) {
+func (sm *StateManager) parentState(ts *types.TipSet) cid.Cid {
 	if ts == nil {
 		ts = sm.cs.GetHeaviestTipSet()
 	}
 
-	stcid := ts.ParentState()
+	return ts.ParentState()
+}
 
+func (sm *StateManager) GetActor(addr address.Address, ts *types.TipSet) (*types.Actor, error) {
 	cst := cbor.NewCborStore(sm.cs.Blockstore())
-	state, err := state.LoadStateTree(cst, stcid)
+	state, err := state.LoadStateTree(cst, sm.parentState(ts))
+	if err != nil {
+		return nil, xerrors.Errorf("load state tree: %w", err)
+	}
+
+	return state.GetActor(addr)
+}
+
+func (sm *StateManager) getActorRaw(addr address.Address, st cid.Cid) (*types.Actor, error) {
+	cst := cbor.NewCborStore(sm.cs.Blockstore())
+	state, err := state.LoadStateTree(cst, st)
 	if err != nil {
 		return nil, xerrors.Errorf("load state tree: %w", err)
 	}
@@ -345,6 +357,21 @@ func (sm *StateManager) LoadActorState(ctx context.Context, a address.Address, o
 
 	return act, nil
 }
+
+func (sm *StateManager) LoadActorStateRaw(ctx context.Context, a address.Address, out interface{}, st cid.Cid) (*types.Actor, error) {
+	act, err := sm.getActorRaw(a, st)
+	if err != nil {
+		return nil, err
+	}
+
+	cst := cbor.NewCborStore(sm.cs.Blockstore())
+	if err := cst.Get(ctx, act.Head, out); err != nil {
+		return nil, err
+	}
+
+	return act, nil
+}
+
 func (sm *StateManager) ResolveToKeyAddress(ctx context.Context, addr address.Address, ts *types.TipSet) (address.Address, error) {
 	switch addr.Protocol() {
 	case address.BLS, address.SECP256K1:

@@ -82,7 +82,7 @@ func (a *StateAPI) StateMinerPeerID(ctx context.Context, m address.Address, ts *
 }
 
 func (a *StateAPI) StateMinerElectionPeriodStart(ctx context.Context, actor address.Address, ts *types.TipSet) (abi.ChainEpoch, error) {
-	return stmgr.GetMinerElectionPeriodStart(ctx, a.StateManager, ts, actor)
+	return stmgr.GetMinerPostState(ctx, a.StateManager, ts, actor)
 }
 
 func (a *StateAPI) StateMinerSectorSize(ctx context.Context, actor address.Address, ts *types.TipSet) (abi.SectorSize, error) {
