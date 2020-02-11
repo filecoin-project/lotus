@@ -50,8 +50,10 @@ lotus sync wait
 Initialize a new wallet:
 
 ```sh
-lotus wallet new 
+lotus wallet new
 ```
+
+Sometimes your operating system may limit file name length to under 150 characters. You need to use a file system that supports long filenames.
 
 Here is an example of the response:
 
