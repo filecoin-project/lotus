@@ -680,7 +680,6 @@ func (t *Message) UnmarshalCBOR(r io.Reader) error {
 	if maj != cbg.MajUnsignedInt {
 		return fmt.Errorf("wrong type for uint64 field")
 	}
-	t.Method = uint64(extra)
 	// t.Params ([]uint8) (slice)
 
 	maj, extra, err = cbg.CborReadHeader(br)

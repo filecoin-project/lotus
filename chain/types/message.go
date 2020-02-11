@@ -4,6 +4,7 @@ import (
 	"bytes"
 	"fmt"
 
+	"github.com/filecoin-project/specs-actors/actors/abi"
 	block "github.com/ipfs/go-block-format"
 	"github.com/ipfs/go-cid"
 	"github.com/multiformats/go-multihash"
@@ -22,7 +23,7 @@ type Message struct {
 	GasPrice BigInt
 	GasLimit BigInt
 
-	Method uint64 // TODO: decide
+	Method abi.MethodNum
 	Params []byte
 }
 

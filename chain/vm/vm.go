@@ -134,7 +134,7 @@ func (vmc *VMContext) Origin() address.Address {
 }
 
 // Send allows the current execution context to invoke methods on other actors in the system
-func (vmc *VMContext) Send(to address.Address, method uint64, value types.BigInt, params []byte) ([]byte, aerrors.ActorError) {
+func (vmc *VMContext) Send(to address.Address, method abi.MethodNum, value types.BigInt, params []byte) ([]byte, aerrors.ActorError) {
 	ctx, span := trace.StartSpan(vmc.ctx, "vmc.Send")
 	defer span.End()
 	if span.IsRecordingEvents() {
@@ -627,7 +627,7 @@ func (vm *VM) SetBlockHeight(h abi.ChainEpoch) {
 	vm.blockHeight = h
 }
 
-func (vm *VM) Invoke(act *types.Actor, vmctx *VMContext, method uint64, params []byte) ([]byte, aerrors.ActorError) {
+func (vm *VM) Invoke(act *types.Actor, vmctx *VMContext, method abi.MethodNum, params []byte) ([]byte, aerrors.ActorError) {
 	ctx, span := trace.StartSpan(vmctx.ctx, "vm.Invoke")
 	defer span.End()
 	if span.IsRecordingEvents() {
