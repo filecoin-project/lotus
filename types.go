@@ -41,7 +41,7 @@ type Piece struct {
 }
 
 func (p *Piece) ppi() (out sectorbuilder.PublicPieceInfo) {
-	out.Size = uint64(p.Size)
+	out.Size = p.Size
 	copy(out.CommP[:], p.CommP)
 	return out
 }
