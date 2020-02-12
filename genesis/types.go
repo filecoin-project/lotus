@@ -6,6 +6,7 @@ import (
 	"github.com/filecoin-project/go-address"
 	"github.com/filecoin-project/specs-actors/actors/abi"
 	"github.com/filecoin-project/specs-actors/actors/builtin/market"
+	"github.com/libp2p/go-libp2p-core/peer"
 )
 
 type ActorType string
@@ -24,6 +25,7 @@ type PreSeal struct {
 type Miner struct {
 	Owner  address.Address
 	Worker address.Address
+	PeerId peer.ID
 
 	MarketBalance abi.TokenAmount
 	PowerBalance  abi.TokenAmount
