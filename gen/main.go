@@ -59,7 +59,7 @@ func main() {
 		os.Exit(1)
 	}
 
-	err = gen.WriteMapEncodersToFile("./node/hello/cbor_gen.go", "hello",
+	err = gen.WriteTupleEncodersToFile("./node/hello/cbor_gen.go", "hello",
 		hello.HelloMessage{},
 		hello.LatencyMessage{},
 	)
