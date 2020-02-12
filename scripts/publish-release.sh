@@ -72,3 +72,23 @@ do
 
   echo "Release bundle uploaded: ${RELEASE_FILE}"
 done
+
+popd
+
+miscellaneous=(
+  "README.md"
+  "LICENSE-MIT"
+  "LICENSE-APACHE"
+)
+for MISC in "${miscellaneous[@]}"
+do
+  echo "Uploading release bundle: ${MISC}"
+  curl \
+    --request POST \
+    --header "Authorization: token ${GITHUB_TOKEN}" \
+    --header "Content-Type: application/octet-stream" \
+    --data-binary "@${MISC}" \
+    "$RELEASE_UPLOAD_URL?name=$(basename "${MISC}")"
+
+  echo "Release bundle uploaded: ${MISC}"
+done
