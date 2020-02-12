@@ -1197,3 +1197,7 @@ func (syncer *Syncer) State() []SyncerState {
 func (syncer *Syncer) MarkBad(blk cid.Cid) {
 	syncer.bad.Add(blk, "manually marked bad")
 }
+
+func (syncer *Syncer) CheckBadBlockCache(blk cid.Cid) (string, bool) {
+	return syncer.bad.Has(blk)
+}
