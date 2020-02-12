@@ -3,6 +3,7 @@ package vm
 import (
 	"context"
 
+	"github.com/filecoin-project/specs-actors/actors/builtin/account"
 	"github.com/ipfs/go-cid"
 	cbor "github.com/ipfs/go-ipld-cbor"
 
@@ -54,7 +55,7 @@ func makeActor(st *state.StateTree, addr address.Address) (*types.Actor, aerrors
 }
 
 func NewBLSAccountActor(st *state.StateTree, addr address.Address) (*types.Actor, aerrors.ActorError) {
-	var acstate actors.AccountActorState
+	var acstate account.State
 	acstate.Address = addr
 
 	c, err := st.Store.Put(context.TODO(), &acstate)

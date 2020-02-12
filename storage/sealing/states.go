@@ -6,6 +6,7 @@ import (
 	commcid "github.com/filecoin-project/go-fil-commcid"
 	"github.com/filecoin-project/go-sectorbuilder/fs"
 	"github.com/filecoin-project/specs-actors/actors/abi"
+	"github.com/filecoin-project/specs-actors/actors/builtin"
 	"github.com/filecoin-project/specs-actors/actors/builtin/miner"
 	"golang.org/x/xerrors"
 
@@ -76,7 +77,7 @@ func (m *Sealing) handleUnsealed(ctx statemachine.Context, sector SectorInfo) er
 		commD: rspco.CommD[:],
 		commR: rspco.CommR[:],
 		ticket: SealTicket{
-			BlockHeight: ticket.BlockHeight,
+			BlockHeight: abi.ChainEpoch(ticket.BlockHeight),
 			TicketBytes: ticket.TicketBytes[:],
 		},
 	})
@@ -116,7 +117,7 @@ func (m *Sealing) handlePreCommitting(ctx statemachine.Context, sector SectorInf
 	msg := &types.Message{
 		To:       m.maddr,
 		From:     m.worker,
-		Method:   actors.MAMethods.PreCommitSector,
+		Method:   builtin.MethodsMiner.PreCommitSector,
 		Params:   enc,
 		Value:    types.NewInt(0), // TODO: need to ensure sufficient collateral
 		GasLimit: types.NewInt(1000000 /* i dont know help */),
@@ -187,13 +188,12 @@ func (m *Sealing) handleCommitting(ctx statemachine.Context, sector SectorInfo) 
 
 	// TODO: Consider splitting states and persist proof for faster recovery
 
-	/*params := &actors.SectorProveCommitInfo{
-		Proof:    proof,
-		SectorID: sector.SectorID,
-		DealIDs:  sector.deals(),
-	}*/
+	params := &miner.ProveCommitSectorParams{
+		SectorNumber: sector.SectorID,
+		Proof:        abi.SealProof{ProofBytes:proof},
+	}
 
-	enc, aerr := actors.SerializeParams(nil) // TODO: REFACTOR: Fix
+	enc, aerr := actors.SerializeParams(params)
 	if aerr != nil {
 		return ctx.Send(SectorCommitFailed{xerrors.Errorf("could not serialize commit sector parameters: %w", aerr)})
 	}
@@ -201,7 +201,7 @@ func (m *Sealing) handleCommitting(ctx statemachine.Context, sector SectorInfo) 
 	msg := &types.Message{
 		To:       m.maddr,
 		From:     m.worker,
-		Method:   actors.MAMethods.ProveCommitSector,
+		Method:   builtin.MethodsMiner.ProveCommitSector,
 		Params:   enc,
 		Value:    types.NewInt(0), // TODO: need to ensure sufficient collateral
 		GasLimit: types.NewInt(1000000 /* i dont know help */),
@@ -260,10 +260,13 @@ func (m *Sealing) handleFaulty(ctx statemachine.Context, sector SectorInfo) erro
 	// TODO: check if the fault has already been reported, and that this sector is even valid
 
 	// TODO: coalesce faulty sector reporting
-	bf := types.NewBitField()
-	bf.Set(uint64(sector.SectorID))
+	/*bf := types.NewBitField()
+	bf.Set(uint64(sector.SectorID))*/
 
-	enc, aerr := actors.SerializeParams(&actors.DeclareFaultsParams{bf})
+	enc, aerr := actors.SerializeParams(&miner.DeclareTemporaryFaultsParams{
+		SectorNumbers: []abi.SectorNumber{sector.SectorID},
+		Duration:      99999999, // TODO: This is very unlikely to be the correct number
+	})
 	if aerr != nil {
 		return xerrors.Errorf("failed to serialize declare fault params: %w", aerr)
 	}
@@ -271,7 +274,7 @@ func (m *Sealing) handleFaulty(ctx statemachine.Context, sector SectorInfo) erro
 	msg := &types.Message{
 		To:       m.maddr,
 		From:     m.worker,
-		Method:   actors.MAMethods.DeclareFaults,
+		Method:   builtin.MethodsMiner.DeclareTemporaryFaults,
 		Params:   enc,
 		Value:    types.NewInt(0), // TODO: need to ensure sufficient collateral
 		GasLimit: types.NewInt(1000000 /* i dont know help */),

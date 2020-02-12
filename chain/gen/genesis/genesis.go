@@ -141,7 +141,7 @@ func MakeInitialStateTree(ctx context.Context, bs bstore.Blockstore, template ge
 	}
 
 	// Create empty market actor
-	marketact, err := SetupStorageMarketActor(bs, template.Miners)
+	marketact, err := SetupStorageMarketActor(bs)
 	if err != nil {
 		return nil, xerrors.Errorf("setup storage market actor: %w", err)
 	}
