@@ -11,6 +11,7 @@ import (
 	"github.com/filecoin-project/lotus/chain/blocksync"
 	"github.com/filecoin-project/lotus/chain/types"
 	"github.com/filecoin-project/lotus/lib/statemachine"
+	"github.com/filecoin-project/lotus/node/hello"
 	"github.com/filecoin-project/lotus/paych"
 	"github.com/filecoin-project/lotus/storage/sealing"
 )
@@ -52,6 +53,15 @@ func main() {
 		api.PaymentInfo{},
 		api.SealedRef{},
 		api.SealedRefs{},
+	)
+	if err != nil {
+		fmt.Println(err)
+		os.Exit(1)
+	}
+
+	err = gen.WriteTupleEncodersToFile("./node/hello/cbor_gen.go", "hello",
+		hello.HelloMessage{},
+		hello.LatencyMessage{},
 	)
 	if err != nil {
 		fmt.Println(err)
