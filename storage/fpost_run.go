@@ -7,6 +7,8 @@ import (
 	ffi "github.com/filecoin-project/filecoin-ffi"
 	sectorbuilder "github.com/filecoin-project/go-sectorbuilder"
 	"github.com/filecoin-project/specs-actors/actors/abi"
+	"github.com/filecoin-project/specs-actors/actors/builtin"
+	"github.com/filecoin-project/specs-actors/actors/builtin/miner"
 	"go.opencensus.io/trace"
 	"golang.org/x/xerrors"
 
@@ -51,7 +53,7 @@ func (s *FPoStScheduler) doPost(ctx context.Context, eps abi.ChainEpoch, ts *typ
 	}()
 }
 
-func (s *FPoStScheduler) declareFaults(ctx context.Context, fc uint64, params *actors.DeclareFaultsParams) error {
+func (s *FPoStScheduler) declareFaults(ctx context.Context, fc uint64, params *miner.DeclareTemporaryFaultsParams) error {
 	log.Warnf("DECLARING %d FAULTS", fc)
 
 	enc, aerr := actors.SerializeParams(params)
@@ -62,7 +64,7 @@ func (s *FPoStScheduler) declareFaults(ctx context.Context, fc uint64, params *a
 	msg := &types.Message{
 		To:       s.actor,
 		From:     s.worker,
-		Method:   actors.MAMethods.DeclareFaults,
+		Method:   builtin.MethodsMiner.DeclareTemporaryFaults,
 		Params:   enc,
 		Value:    types.NewInt(0),
 		GasLimit: types.NewInt(10000000), // i dont know help
@@ -103,33 +105,30 @@ func (s *FPoStScheduler) checkFaults(ctx context.Context, ssi sectorbuilder.Sort
 		}
 	}
 
+	var faultIDs []abi.SectorNumber
 	if len(faults) > 0 {
-		params := &actors.DeclareFaultsParams{Faults: types.NewBitField()}
+		params := &miner.DeclareTemporaryFaultsParams{Duration: 900} // TODO: duration is annoying
 
 		for _, fault := range faults {
-			if _, ok := declaredFaults[abi.SectorNumber(fault.SectorNum)]; ok {
+			if _, ok := declaredFaults[(fault.SectorNum)]; ok {
 				continue
 			}
 
 			log.Warnf("new fault detected: sector %d: %s", fault.SectorNum, fault.Err)
 			declaredFaults[fault.SectorNum] = struct{}{}
-			params.Faults.Set(uint64(fault.SectorNum))
 		}
 
-		pc, err := params.Faults.Count()
-		if err != nil {
-			return nil, xerrors.Errorf("counting faults: %w", err)
+		faultIDs = make([]abi.SectorNumber, 0, len(declaredFaults))
+		for fault := range declaredFaults {
+			faultIDs = append(faultIDs, abi.SectorNumber(fault))
 		}
-		if pc > 0 {
-			if err := s.declareFaults(ctx, pc, params); err != nil {
+		params.SectorNumbers = faultIDs
+
+		if len(faultIDs) > 0 {
+			if err := s.declareFaults(ctx, uint64(len(faultIDs)), params); err != nil {
 				return nil, err
 			}
 		}
-	}
-
-	faultIDs := make([]abi.SectorNumber, 0, len(declaredFaults))
-	for fault := range declaredFaults {
-		faultIDs = append(faultIDs, abi.SectorNumber(fault))
 	}
 
 	return faultIDs, nil

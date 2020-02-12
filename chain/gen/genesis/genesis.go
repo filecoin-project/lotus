@@ -40,32 +40,32 @@ From a list of parameters, create a genesis block / initial state
 
 The process:
 - Bootstrap state (MakeInitialStateTree)
-	- Create empty state
-	- Make init actor
+  - Create empty state
+  - Make init actor
     - Create accounts mappings
     - Set NextID to MinerStart
   - Setup Reward (1.4B fil)
   - Setup Cron
-	- Create empty power actor
+  - Create empty power actor
   - Create empty market
   - Setup burnt fund address
-	- Initialize account / msig balances
+  - Initialize account / msig balances
 - Instantiate early vm with genesis syscalls
   - Create miners
-	  - Each:
-	    - power.CreateMiner, set msg value to PowerBalance
+    - Each:
+      - power.CreateMiner, set msg value to PowerBalance
       - market.AddFunds with correct value
       - market.PublishDeals for related sectors
-	    - Set precommits
-	    - Commit presealed sectors
+      - Set precommits
+      - Commit presealed sectors
 
 Data Types:
 
 PreSeal :{
-	CommR    CID
-	CommD    CID
-	SectorID SectorNumber
-	Deal     market.DealProposal # Start at 0, self-deal!
+  CommR    CID
+  CommD    CID
+  SectorID SectorNumber
+  Deal     market.DealProposal # Start at 0, self-deal!
 }
 
 Genesis: {
