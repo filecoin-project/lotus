@@ -3,6 +3,7 @@ package sealing
 import (
 	"context"
 
+	commcid "github.com/filecoin-project/go-fil-commcid"
 	"github.com/filecoin-project/go-sectorbuilder/fs"
 	"github.com/filecoin-project/specs-actors/actors/abi"
 	"github.com/filecoin-project/specs-actors/actors/builtin/miner"
@@ -97,11 +98,15 @@ func (m *Sealing) handlePreCommitting(ctx statemachine.Context, sector SectorInf
 	}
 
 	params := &miner.PreCommitSectorParams{
-		SectorNumber: sector.SectorID,
+		Info: miner.SectorPreCommitInfo{
+			Expiration:   0,
+			SectorNumber: sector.SectorID,
 
-		CommR:     sector.CommR,
-		SealEpoch: sector.Ticket.BlockHeight,
-		DealIDs:   nil, // sector.deals(), // TODO: REFACTOR
+			SealedCID: commcid.ReplicaCommitmentV1ToCID(sector.CommR),
+			SealEpoch: sector.Ticket.BlockHeight,
+			DealIDs:   nil, // sector.deals(), // TODO: REFACTOR
+		},
+
 	}
 	enc, aerr := actors.SerializeParams(params)
 	if aerr != nil {

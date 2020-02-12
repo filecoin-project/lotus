@@ -1,11 +1,17 @@
 package genesis
 
 import (
+	"encoding/json"
+
 	"github.com/filecoin-project/go-address"
 	"github.com/filecoin-project/specs-actors/actors/abi"
 	"github.com/filecoin-project/specs-actors/actors/builtin/market"
+)
 
-	"github.com/filecoin-project/lotus/chain/types"
+type ActorType string
+const (
+	TAccount  ActorType = "account"
+	TMultisig ActorType = "multisig"
 )
 
 type PreSeal struct {
@@ -15,17 +21,37 @@ type PreSeal struct {
 	Deal     market.DealProposal
 }
 
-type GenesisMiner struct {
+type Miner struct {
 	Owner  address.Address
 	Worker address.Address
 
 	MarketBalance abi.TokenAmount
 	PowerBalance  abi.TokenAmount
-	WorkerBalance abi.TokenAmount
 
 	SectorSize abi.SectorSize
 
 	Sectors []*PreSeal
+}
 
-	Key types.KeyInfo // TODO: separate file
+type AccountMeta struct {
+	Owner address.Address // bls / secpk
+}
+
+type MultisigMeta struct {
+	// TODO
+}
+
+type Actor struct {
+	Type    ActorType
+	Balance abi.TokenAmount
+
+	Meta json.RawMessage
+}
+
+type Template struct {
+	Accounts []Actor
+	Miners   []Miner
+
+	NetworkName string
+	Timestamp   uint64
 }

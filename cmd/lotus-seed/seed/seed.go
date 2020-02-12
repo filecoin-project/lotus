@@ -32,7 +32,7 @@ import (
 
 var log = logging.Logger("preseal")
 
-func PreSeal(maddr address.Address, ssize abi.SectorSize, offset abi.SectorNumber, sectors int, sbroot string, preimage []byte) (*genesis.GenesisMiner, error) {
+func PreSeal(maddr address.Address, ssize abi.SectorSize, offset abi.SectorNumber, sectors int, sbroot string, preimage []byte) (*genesis.Miner, error) {
 	cfg := &sectorbuilder.Config{
 		Miner:           maddr,
 		SectorSize:      ssize,
@@ -96,7 +96,7 @@ func PreSeal(maddr address.Address, ssize abi.SectorSize, offset abi.SectorNumbe
 		return nil, err
 	}
 
-	miner := &genesis.GenesisMiner{
+	miner := &genesis.Miner{
 		Owner:  minerAddr.Address,
 		Worker: minerAddr.Address,
 
@@ -104,10 +104,10 @@ func PreSeal(maddr address.Address, ssize abi.SectorSize, offset abi.SectorNumbe
 
 		Sectors: sealedSectors,
 
-		Key: minerAddr.KeyInfo,
+		// Key: minerAddr.KeyInfo, // TODO: Export separately
 	}
 
-	if err := createDeals(miner, minerAddr, maddr, abi.SectorSize(ssize)); err != nil {
+	if err := createDeals(miner, minerAddr, maddr, ssize); err != nil {
 		return nil, xerrors.Errorf("creating deals: %w", err)
 	}
 
@@ -118,8 +118,8 @@ func PreSeal(maddr address.Address, ssize abi.SectorSize, offset abi.SectorNumbe
 	return miner, nil
 }
 
-func WriteGenesisMiner(maddr address.Address, sbroot string, gm *genesis.GenesisMiner) error {
-	output := map[string]genesis.GenesisMiner{
+func WriteGenesisMiner(maddr address.Address, sbroot string, gm *genesis.Miner) error {
+	output := map[string]genesis.Miner{
 		maddr.String(): *gm,
 	}
 
@@ -148,7 +148,7 @@ func commDCID(commd []byte) cid.Cid {
 	return d
 }
 
-func createDeals(m *genesis.GenesisMiner, k *wallet.Key, maddr address.Address, ssize abi.SectorSize) error {
+func createDeals(m *genesis.Miner, k *wallet.Key, maddr address.Address, ssize abi.SectorSize) error {
 	for _, sector := range m.Sectors {
 		pref := make([]byte, len(sector.CommD))
 		copy(pref, sector.CommD[:])

@@ -16,16 +16,24 @@ var MultisigCodeCid = builtin.MultisigActorCodeID
 var InitCodeCid = builtin.InitActorCodeID
 var PaymentChannelCodeCid = builtin.PaymentChannelActorCodeID
 
-var SystemAddress = mustIDAddress(0)
-var InitAddress = mustIDAddress(1)
-var RewardActor = mustIDAddress(2)
-var CronAddress = mustIDAddress(3)
-var StoragePowerAddress = mustIDAddress(4)
-var StorageMarketAddress = mustIDAddress(5)
+var SystemAddress = builtin.SystemActorAddr
+var InitAddress = builtin.InitActorAddr
+var RewardActor = builtin.RewardActorAddr
+var CronAddress = builtin.CronActorAddr
+var StoragePowerAddress = builtin.StoragePowerActorAddr
+var StorageMarketAddress = builtin.StorageMarketActorAddr
+var BurntFundsAddress = builtin.BurntFundsActorAddr
 
-var NetworkAddress = mustIDAddress(17) // TODO: needs to be removed in favor of reward actor
-
-var BurntFundsAddress = mustIDAddress(99)
+/*
+SystemActorAddr        = mustMakeAddress(0)
+	InitActorAddr          = mustMakeAddress(1)
+	RewardActorAddr        = mustMakeAddress(2)
+	CronActorAddr          = mustMakeAddress(3)
+	StoragePowerActorAddr  = mustMakeAddress(4)
+	StorageMarketActorAddr = mustMakeAddress(5)
+	// Distinguished AccountActor that is the destination of all burnt funds.
+	BurntFundsActorAddr = mustMakeAddress(99)
+ */
 
 func mustIDAddress(i uint64) address.Address {
 	a, err := address.NewIDAddress(i)
