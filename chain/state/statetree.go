@@ -4,6 +4,7 @@ import (
 	"context"
 	"fmt"
 
+	"github.com/filecoin-project/specs-actors/actors/util/adt"
 	"github.com/ipfs/go-cid"
 	hamt "github.com/ipfs/go-hamt-ipld"
 	cbor "github.com/ipfs/go-ipld-cbor"
@@ -82,7 +83,7 @@ func (st *StateTree) LookupID(addr address.Address) (address.Address, error) {
 		return address.Undef, xerrors.Errorf("loading init actor state: %w", err)
 	}
 
-	return ias.Lookup(st.Store, addr)
+	return ias.ResolveAddress(&adtStore{st.Store}, addr)
 }
 
 func (st *StateTree) GetActor(addr address.Address) (*types.Actor, error) {
@@ -157,7 +158,7 @@ func (st *StateTree) RegisterNewAddress(addr address.Address, act *types.Actor) 
 			return err
 		}
 
-		oaddr, err := ias.AddActor(st.Store, addr)
+		oaddr, err := ias.MapAddressToNewID(&adtStore{st.Store}, addr)
 		if err != nil {
 			return err
 		}
@@ -181,6 +182,15 @@ func (st *StateTree) RegisterNewAddress(addr address.Address, act *types.Actor) 
 
 	return out, nil
 }
+
+
+type adtStore struct {cbor.IpldStore}
+
+func (a *adtStore) Context() context.Context {
+	return context.TODO()
+}
+
+var _ adt.Store = (*adtStore)(nil)
 
 func (st *StateTree) Revert() error {
 	nd, err := hamt.LoadNode(context.Background(), st.Store, st.snapshot)
