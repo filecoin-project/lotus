@@ -7,13 +7,13 @@ import (
 	"time"
 
 	"github.com/filecoin-project/go-address"
-	"github.com/filecoin-project/lotus/api"
-	"github.com/filecoin-project/lotus/build"
-	"github.com/filecoin-project/lotus/chain/actors"
-	"github.com/filecoin-project/lotus/chain/gen"
-	"github.com/filecoin-project/lotus/chain/types"
 	"github.com/filecoin-project/specs-actors/actors/abi"
 	lru "github.com/hashicorp/golang-lru"
+
+	"github.com/filecoin-project/lotus/api"
+	"github.com/filecoin-project/lotus/build"
+	"github.com/filecoin-project/lotus/chain/gen"
+	"github.com/filecoin-project/lotus/chain/types"
 
 	logging "github.com/ipfs/go-log/v2"
 	"go.opencensus.io/trace"
@@ -342,34 +342,12 @@ func (m *Miner) mineOne(ctx context.Context, addr address.Address, base *MiningB
 }
 
 func (m *Miner) computeVRF(ctx context.Context, addr address.Address, input []byte) ([]byte, error) {
-	w, err := m.getMinerWorker(ctx, addr, nil)
+	w, err := m.api.StateMinerWorker(ctx, addr, nil)
 	if err != nil {
 		return nil, err
 	}
 
 	return gen.ComputeVRF(ctx, m.api.WalletSign, w, addr, gen.DSepTicket, input)
-}
-
-func (m *Miner) getMinerWorker(ctx context.Context, addr address.Address, ts *types.TipSet) (address.Address, error) {
-	ret, err := m.api.StateCall(ctx, &types.Message{
-		From:   addr,
-		To:     addr,
-		Method: actors.MAMethods.GetWorkerAddr,
-	}, ts)
-	if err != nil {
-		return address.Undef, xerrors.Errorf("failed to get miner worker addr: %w", err)
-	}
-
-	if ret.ExitCode != 0 {
-		return address.Undef, xerrors.Errorf("failed to get miner worker addr (exit code %d)", ret.ExitCode)
-	}
-
-	w, err := address.NewFromBytes(ret.Return)
-	if err != nil {
-		return address.Undef, xerrors.Errorf("GetWorkerAddr returned malformed address: %w", err)
-	}
-
-	return w, nil
 }
 
 func (m *Miner) computeTicket(ctx context.Context, addr address.Address, base *MiningBase) (*types.Ticket, error) {
