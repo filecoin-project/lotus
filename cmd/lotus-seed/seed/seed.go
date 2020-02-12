@@ -4,6 +4,7 @@ import (
 	"context"
 	"crypto/rand"
 	"crypto/sha256"
+	"encoding/hex"
 	"encoding/json"
 	"fmt"
 	"io/ioutil"
@@ -32,7 +33,7 @@ import (
 
 var log = logging.Logger("preseal")
 
-func PreSeal(maddr address.Address, ssize abi.SectorSize, offset abi.SectorNumber, sectors int, sbroot string, preimage []byte) (*genesis.Miner, error) {
+func PreSeal(maddr address.Address, ssize abi.SectorSize, offset abi.SectorNumber, sectors int, sbroot string, preimage []byte, key *types.KeyInfo) (*genesis.Miner, *types.KeyInfo, error) {
 	cfg := &sectorbuilder.Config{
 		Miner:           maddr,
 		SectorSize:      ssize,
@@ -42,29 +43,29 @@ func PreSeal(maddr address.Address, ssize abi.SectorSize, offset abi.SectorNumbe
 	}
 
 	if err := os.MkdirAll(sbroot, 0775); err != nil {
-		return nil, err
+		return nil, nil, err
 	}
 
 	mds, err := badger.NewDatastore(filepath.Join(sbroot, "badger"), nil)
 	if err != nil {
-		return nil, err
+		return nil, nil, err
 	}
 
 	sb, err := sectorbuilder.New(cfg, namespace.Wrap(mds, datastore.NewKey("/sectorbuilder")))
 	if err != nil {
-		return nil, err
+		return nil, nil, err
 	}
 
 	var sealedSectors []*genesis.PreSeal
 	for i := 0; i < sectors; i++ {
 		sid, err := sb.AcquireSectorNumber()
 		if err != nil {
-			return nil, err
+			return nil, nil, err
 		}
 
 		pi, err := sb.AddPiece(context.TODO(), abi.PaddedPieceSize(ssize).Unpadded(), sid, rand.Reader, nil)
 		if err != nil {
-			return nil, err
+			return nil, nil, err
 		}
 
 		trand := sha256.Sum256(preimage)
@@ -76,11 +77,11 @@ func PreSeal(maddr address.Address, ssize abi.SectorSize, offset abi.SectorNumbe
 
 		pco, err := sb.SealPreCommit(context.TODO(), sid, ticket, []sectorbuilder.PublicPieceInfo{pi})
 		if err != nil {
-			return nil, xerrors.Errorf("commit: %w", err)
+			return nil, nil, xerrors.Errorf("commit: %w", err)
 		}
 
 		if err := sb.TrimCache(context.TODO(), sid); err != nil {
-			return nil, xerrors.Errorf("trim cache: %w", err)
+			return nil, nil, xerrors.Errorf("trim cache: %w", err)
 		}
 
 		log.Warn("PreCommitOutput: ", sid, pco)
@@ -91,9 +92,17 @@ func PreSeal(maddr address.Address, ssize abi.SectorSize, offset abi.SectorNumbe
 		})
 	}
 
-	minerAddr, err := wallet.GenerateKey(types.KTBLS)
-	if err != nil {
-		return nil, err
+	var minerAddr *wallet.Key
+	if key != nil {
+		minerAddr, err = wallet.NewKey(*key)
+		if err != nil {
+			return nil, nil, err
+		}
+	} else {
+		minerAddr, err = wallet.GenerateKey(types.KTBLS)
+		if err != nil {
+			return nil, nil, err
+		}
 	}
 
 	miner := &genesis.Miner{
@@ -103,22 +112,20 @@ func PreSeal(maddr address.Address, ssize abi.SectorSize, offset abi.SectorNumbe
 		SectorSize: ssize,
 
 		Sectors: sealedSectors,
-
-		// Key: minerAddr.KeyInfo, // TODO: Export separately
 	}
 
 	if err := createDeals(miner, minerAddr, maddr, ssize); err != nil {
-		return nil, xerrors.Errorf("creating deals: %w", err)
+		return nil, nil, xerrors.Errorf("creating deals: %w", err)
 	}
 
 	if err := mds.Close(); err != nil {
-		return nil, xerrors.Errorf("closing datastore: %w", err)
+		return nil, nil, xerrors.Errorf("closing datastore: %w", err)
 	}
 
-	return miner, nil
+	return miner, &minerAddr.KeyInfo, nil
 }
 
-func WriteGenesisMiner(maddr address.Address, sbroot string, gm *genesis.Miner) error {
+func WriteGenesisMiner(maddr address.Address, sbroot string, gm *genesis.Miner, key *types.KeyInfo) error {
 	output := map[string]genesis.Miner{
 		maddr.String(): *gm,
 	}
@@ -130,6 +137,18 @@ func WriteGenesisMiner(maddr address.Address, sbroot string, gm *genesis.Miner) 
 
 	if err := ioutil.WriteFile(filepath.Join(sbroot, "pre-seal-"+maddr.String()+".json"), out, 0664); err != nil {
 		return err
+	}
+
+	if key != nil {
+		b, err := json.Marshal(key)
+		if err != nil {
+			return err
+		}
+
+		// TODO: allow providing key
+		if err := ioutil.WriteFile(filepath.Join(sbroot, "pre-seal-"+maddr.String()+".key"), []byte(hex.EncodeToString(b)), 0664); err != nil {
+			return err
+		}
 	}
 
 	return nil
