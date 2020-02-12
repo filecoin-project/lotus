@@ -5,14 +5,13 @@ import (
 	"time"
 
 	"github.com/ipfs/go-cid"
-	cbor "github.com/ipfs/go-ipld-cbor"
 	logging "github.com/ipfs/go-log/v2"
 	"github.com/libp2p/go-libp2p-core/host"
 	inet "github.com/libp2p/go-libp2p-core/network"
 	"github.com/libp2p/go-libp2p-core/peer"
 	protocol "github.com/libp2p/go-libp2p-core/protocol"
 
-	"github.com/filecoin-project/go-cbor-util"
+	cborutil "github.com/filecoin-project/go-cbor-util"
 	"github.com/filecoin-project/lotus/chain"
 	"github.com/filecoin-project/lotus/chain/store"
 	"github.com/filecoin-project/lotus/chain/types"
@@ -23,17 +22,15 @@ const ProtocolID = "/fil/hello/1.0.0"
 
 var log = logging.Logger("hello")
 
-func init() {
-	cbor.RegisterCborType(Message{})
-}
-
-type Message struct {
+type HelloMessage struct {
 	HeaviestTipSet       []cid.Cid
+	HeaviestTipSetHeight uint64
 	HeaviestTipSetWeight types.BigInt
 	GenesisHash          cid.Cid
-
-	TArrial int64
-	TSent   int64
+}
+type LatencyMessage struct {
+	TArrial uint64
+	TSent   uint64
 }
 
 type NewStreamFunc func(context.Context, peer.ID, ...protocol.ID) (inet.Stream, error)
@@ -61,7 +58,7 @@ func NewHelloService(h host.Host, cs *store.ChainStore, syncer *chain.Syncer, pm
 
 func (hs *Service) HandleStream(s inet.Stream) {
 
-	var hmsg Message
+	var hmsg HelloMessage
 	if err := cborutil.ReadCborRPC(s, &hmsg); err != nil {
 		log.Infow("failed to read hello message, diconnecting", "error", err)
 		s.Conn().Close()
@@ -83,9 +80,9 @@ func (hs *Service) HandleStream(s inet.Stream) {
 		defer s.Close()
 
 		sent := time.Now()
-		msg := &Message{
-			TArrial: arrived.UnixNano(),
-			TSent:   sent.UnixNano(),
+		msg := &LatencyMessage{
+			TArrial: uint64(arrived.UnixNano()),
+			TSent:   uint64(sent.UnixNano()),
 		}
 		if err := cborutil.WriteCborRPC(s, msg); err != nil {
 			log.Debugf("error while responding to latency: %v", err)
@@ -128,8 +125,9 @@ func (hs *Service) SayHello(ctx context.Context, pid peer.ID) error {
 		return err
 	}
 
-	hmsg := &Message{
+	hmsg := &HelloMessage{
 		HeaviestTipSet:       hts.Cids(),
+		HeaviestTipSetHeight: hts.Height(),
 		HeaviestTipSetWeight: weight,
 		GenesisHash:          gen.Cid(),
 	}
@@ -143,10 +141,12 @@ func (hs *Service) SayHello(ctx context.Context, pid peer.ID) error {
 	go func() {
 		defer s.Close()
 
-		hmsg = &Message{}
+		lmsg := &LatencyMessage{}
 		s.SetReadDeadline(time.Now().Add(10 * time.Second))
-		err := cborutil.ReadCborRPC(s, hmsg)
-		ok := err == nil
+		err := cborutil.ReadCborRPC(s, lmsg)
+		if err != nil {
+			log.Infow("reading latency message", "error", err)
+		}
 
 		t3 := time.Now()
 		lat := t3.Sub(t0)
@@ -155,10 +155,10 @@ func (hs *Service) SayHello(ctx context.Context, pid peer.ID) error {
 			hs.pmgr.SetPeerLatency(pid, lat)
 		}
 
-		if ok {
-			if hmsg.TArrial != 0 && hmsg.TSent != 0 {
-				t1 := time.Unix(0, hmsg.TArrial)
-				t2 := time.Unix(0, hmsg.TSent)
+		if err == nil {
+			if lmsg.TArrial != 0 && lmsg.TSent != 0 {
+				t1 := time.Unix(0, int64(lmsg.TArrial))
+				t2 := time.Unix(0, int64(lmsg.TSent))
 				offset := t0.Sub(t1) + t3.Sub(t2)
 				offset /= 2
 				log.Infow("time offset", "offset", offset.Seconds(), "peerid", pid.String())
