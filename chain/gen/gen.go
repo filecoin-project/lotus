@@ -18,7 +18,6 @@ import (
 	offline "github.com/ipfs/go-ipfs-exchange-offline"
 	logging "github.com/ipfs/go-log/v2"
 	"github.com/ipfs/go-merkledag"
-	peer "github.com/libp2p/go-libp2p-core/peer"
 
 	"github.com/filecoin-project/go-address"
 	sectorbuilder "github.com/filecoin-project/go-sectorbuilder"
@@ -128,61 +127,68 @@ func NewGenerator() (*ChainGen, error) {
 		}
 	}
 
-	maddr1, err := address.NewFromString("t0300")
-	if err != nil {
-		return nil, err
-	}
+	maddr1 := genesis2.MinerAddress(0)
 
 	m1temp, err := ioutil.TempDir("", "preseal")
 	if err != nil {
 		return nil, err
 	}
 
-	genm1, err := seed.PreSeal(maddr1, 1024, 0, 1, m1temp, []byte("some randomness"))
+	genm1, k1, err := seed.PreSeal(maddr1, 1024, 0, 1, m1temp, []byte("some randomness"), nil)
 	if err != nil {
 		return nil, err
 	}
 
-	maddr2, err := address.NewFromString("t0301")
-	if err != nil {
-		return nil, err
-	}
+	maddr2 := genesis2.MinerAddress(1)
 
 	m2temp, err := ioutil.TempDir("", "preseal")
 	if err != nil {
 		return nil, err
 	}
 
-	genm2, err := seed.PreSeal(maddr2, 1024, 0, 1, m2temp, []byte("some randomness"))
+	genm2, k2, err := seed.PreSeal(maddr2, 1024, 0, 1, m2temp, []byte("some randomness"), nil)
 	if err != nil {
 		return nil, err
 	}
 
-	mk1, err := w.Import(&genm1.Key)
+	mk1, err := w.Import(k1)
 	if err != nil {
 		return nil, err
 	}
-	mk2, err := w.Import(&genm2.Key)
+	mk2, err := w.Import(k2)
 	if err != nil {
 		return nil, err
-	}
-
-	minercfg := &genesis2.GenMinerCfg{
-		PeerIDs: []peer.ID{"peerID1", "peerID2"},
-		PreSeals: map[string]genesis.GenesisMiner{
-			maddr1.String(): *genm1,
-			maddr2.String(): *genm2,
-		},
-		MinerAddrs: []address.Address{maddr1, maddr2},
 	}
 
 	sys := vm.Syscalls(sectorbuilder.ProofVerifier)
 
-	genb, err := genesis2.MakeGenesisBlock(bs, sys, map[address.Address]types.BigInt{
-		mk1:    types.FromFil(40000),
-		mk2:    types.FromFil(40000),
-		banker: types.FromFil(50000),
-	}, minercfg, 100000)
+	tpl := genesis.Template{
+		Accounts:    []genesis.Actor{
+			{
+				Type:    genesis.TAccount,
+				Balance: types.FromFil(40000),
+				Meta:    (&genesis.AccountMeta{Owner: mk1}).ActorMeta(),
+			},
+			{
+				Type:    genesis.TAccount,
+				Balance: types.FromFil(40000),
+				Meta:    (&genesis.AccountMeta{Owner: mk2}).ActorMeta(),
+			},
+			{
+				Type:    genesis.TAccount,
+				Balance: types.FromFil(50000),
+				Meta:    (&genesis.AccountMeta{Owner: banker}).ActorMeta(),
+			},
+		},
+		Miners:      []genesis.Miner{
+			*genm1,
+			*genm2,
+		},
+		NetworkName: "",
+		Timestamp:   100000,
+	}
+
+	genb, err := genesis2.MakeGenesisBlock(context.TODO(), bs, sys, tpl)
 	if err != nil {
 		return nil, xerrors.Errorf("make genesis block failed: %w", err)
 	}
@@ -196,16 +202,14 @@ func NewGenerator() (*ChainGen, error) {
 		return nil, xerrors.Errorf("set genesis failed: %w", err)
 	}
 
-	if len(minercfg.MinerAddrs) == 0 {
-		return nil, xerrors.Errorf("MakeGenesisBlock failed to set miner address")
-	}
-
 	mgen := make(map[address.Address]ElectionPoStProver)
-	for _, m := range minercfg.MinerAddrs {
-		mgen[m] = &eppProvider{}
+	for i := range tpl.Miners {
+		mgen[genesis2.MinerAddress(uint64(i))] = &eppProvider{}
 	}
 
 	sm := stmgr.NewStateManager(cs)
+
+	miners := []address.Address{maddr1, maddr2}
 
 	gen := &ChainGen{
 		bs:           bs,
@@ -216,7 +220,7 @@ func NewGenerator() (*ChainGen, error) {
 		w:            w,
 
 		GetMessages: getRandomMessages,
-		Miners:      minercfg.MinerAddrs,
+		Miners:      miners,
 		eppProvs:    mgen,
 		banker:      banker,
 		receivers:   receievers,

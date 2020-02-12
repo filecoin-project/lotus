@@ -21,6 +21,15 @@ import (
 	"github.com/filecoin-project/lotus/genesis"
 )
 
+func MinerAddress(genesisIndex uint64) address.Address {
+	maddr, err := address.NewIDAddress(MinerStart + genesisIndex)
+	if err != nil {
+		panic(err)
+	}
+
+	return maddr
+}
+
 func SetupStorageMiners(ctx context.Context, cs *store.ChainStore, sroot cid.Cid, miners []genesis.Miner) (cid.Cid, error) {
 	vm, err := vm.NewVM(sroot, 0, nil, actors.SystemAddress, cs.Blockstore(), cs.VMSys())
 	if err != nil {
@@ -53,10 +62,8 @@ func SetupStorageMiners(ctx context.Context, cs *store.ChainStore, sroot cid.Cid
 			if err != nil {
 				return cid.Undef, err
 			}
-			expma, err := address.NewIDAddress(uint64(MinerStart + i))
-			if err != nil {
-				return cid.Undef, err
-			}
+
+			expma := MinerAddress(uint64(i))
 			if maddrret != expma {
 				return cid.Undef, xerrors.Errorf("miner assigned wrong address: %s != %s", maddrret, expma)
 			}

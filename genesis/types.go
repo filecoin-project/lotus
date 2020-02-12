@@ -39,6 +39,14 @@ type AccountMeta struct {
 	Owner address.Address // bls / secpk
 }
 
+func (am *AccountMeta) ActorMeta() json.RawMessage {
+	out, err := json.Marshal(am)
+	if err != nil {
+		panic(err)
+	}
+	return out
+}
+
 type MultisigMeta struct {
 	// TODO
 }
