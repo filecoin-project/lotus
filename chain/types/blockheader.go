@@ -6,6 +6,7 @@ import (
 
 	"github.com/filecoin-project/go-sectorbuilder"
 	"github.com/filecoin-project/specs-actors/actors/abi"
+	"github.com/filecoin-project/specs-actors/actors/crypto"
 
 	block "github.com/ipfs/go-block-format"
 	"github.com/ipfs/go-cid"
@@ -53,11 +54,11 @@ type BlockHeader struct {
 
 	Messages cid.Cid // 8
 
-	BLSAggregate Signature // 9
+	BLSAggregate crypto.Signature // 9
 
 	Timestamp uint64 // 10
 
-	BlockSig *Signature // 11
+	BlockSig *crypto.Signature // 11
 
 	ForkSignaling uint64 // 12
 }

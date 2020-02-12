@@ -8,6 +8,7 @@ import (
 
 	"github.com/filecoin-project/specs-actors/actors/abi"
 	"github.com/filecoin-project/specs-actors/actors/builtin/account"
+	"github.com/filecoin-project/specs-actors/actors/crypto"
 	block "github.com/ipfs/go-block-format"
 	cid "github.com/ipfs/go-cid"
 	hamt "github.com/ipfs/go-hamt-ipld"
@@ -187,7 +188,7 @@ func (vmc *VMContext) StateTree() (types.StateTree, aerrors.ActorError) {
 
 const GasVerifySignature = 50
 
-func (vmctx *VMContext) VerifySignature(sig *types.Signature, act address.Address, data []byte) aerrors.ActorError {
+func (vmctx *VMContext) VerifySignature(sig *crypto.Signature, act address.Address, data []byte) aerrors.ActorError {
 	if err := vmctx.ChargeGas(GasVerifySignature); err != nil {
 		return err
 	}

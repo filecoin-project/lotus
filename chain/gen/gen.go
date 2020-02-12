@@ -10,6 +10,7 @@ import (
 	"sync/atomic"
 
 	"github.com/filecoin-project/specs-actors/actors/abi"
+	"github.com/filecoin-project/specs-actors/actors/crypto"
 	block "github.com/ipfs/go-block-format"
 	"github.com/ipfs/go-blockservice"
 	"github.com/ipfs/go-car"
@@ -114,14 +115,14 @@ func NewGenerator() (*ChainGen, error) {
 		return nil, xerrors.Errorf("creating memrepo wallet failed: %w", err)
 	}
 
-	banker, err := w.GenerateKey(types.KTSecp256k1)
+	banker, err := w.GenerateKey(crypto.SigTypeSecp256k1)
 	if err != nil {
 		return nil, xerrors.Errorf("failed to generate banker key: %w", err)
 	}
 
 	receievers := make([]address.Address, msgsPerBlock)
 	for r := range receievers {
-		receievers[r], err = w.GenerateKey(types.KTBLS)
+		receievers[r], err = w.GenerateKey(crypto.SigTypeBLS)
 		if err != nil {
 			return nil, xerrors.Errorf("failed to generate receiver key: %w", err)
 		}
@@ -434,7 +435,7 @@ type MiningCheckAPI interface {
 
 	StateMinerProvingSet(context.Context, address.Address, *types.TipSet) ([]*api.ChainSectorInfo, error)
 
-	WalletSign(context.Context, address.Address, []byte) (*types.Signature, error)
+	WalletSign(context.Context, address.Address, []byte) (*crypto.Signature, error)
 }
 
 type mca struct {
@@ -470,7 +471,7 @@ func (mca mca) StateMinerProvingSet(ctx context.Context, maddr address.Address, 
 	return stmgr.GetMinerProvingSet(ctx, mca.sm, ts, maddr)
 }
 
-func (mca mca) WalletSign(ctx context.Context, a address.Address, v []byte) (*types.Signature, error) {
+func (mca mca) WalletSign(ctx context.Context, a address.Address, v []byte) (*crypto.Signature, error) {
 	return mca.w.Sign(ctx, a, v)
 }
 
@@ -598,7 +599,7 @@ func ComputeProof(ctx context.Context, epp ElectionPoStProver, pi *ProofInput) (
 	return &ept, nil
 }
 
-type SignFunc func(context.Context, address.Address, []byte) (*types.Signature, error)
+type SignFunc func(context.Context, address.Address, []byte) (*crypto.Signature, error)
 
 const (
 	DSepTicket       = 1
@@ -632,8 +633,8 @@ func VerifyVRF(ctx context.Context, worker, miner address.Address, p uint64, inp
 		return xerrors.Errorf("computing vrf base failed: %w", err)
 	}
 
-	sig := &types.Signature{
-		Type: types.KTBLS,
+	sig := &crypto.Signature{
+		Type: crypto.SigTypeBLS,
 		Data: vrfproof,
 	}
 
@@ -655,7 +656,7 @@ func ComputeVRF(ctx context.Context, sign SignFunc, worker, miner address.Addres
 		return nil, err
 	}
 
-	if sig.Type != types.KTBLS {
+	if sig.Type != crypto.SigTypeBLS {
 		return nil, fmt.Errorf("miner worker address was not a BLS key")
 	}
 

@@ -8,7 +8,9 @@ import (
 
 	"github.com/filecoin-project/go-amt-ipld/v2"
 	"github.com/filecoin-project/specs-actors/actors/abi"
+	"github.com/filecoin-project/specs-actors/actors/abi/big"
 	"github.com/filecoin-project/specs-actors/actors/builtin/market"
+	"github.com/filecoin-project/specs-actors/actors/builtin/miner"
 	samsig "github.com/filecoin-project/specs-actors/actors/builtin/multisig"
 	cid "github.com/ipfs/go-cid"
 	"github.com/ipfs/go-hamt-ipld"
@@ -81,7 +83,7 @@ func (a *StateAPI) StateMinerPeerID(ctx context.Context, m address.Address, ts *
 	return stmgr.GetMinerPeerID(ctx, a.StateManager, ts, m)
 }
 
-func (a *StateAPI) StateMinerElectionPeriodStart(ctx context.Context, actor address.Address, ts *types.TipSet) (abi.ChainEpoch, error) {
+func (a *StateAPI) StateMinerPostState(ctx context.Context, actor address.Address, ts *types.TipSet) (*miner.PoStState, error) {
 	return stmgr.GetMinerPostState(ctx, a.StateManager, ts, actor)
 }
 
@@ -94,7 +96,7 @@ func (a *StateAPI) StateMinerFaults(ctx context.Context, addr address.Address, t
 }
 
 func (a *StateAPI) StatePledgeCollateral(ctx context.Context, ts *types.TipSet) (types.BigInt, error) {
-	param, err := actors.SerializeParams(&actors.PledgeCollateralParams{Size: types.NewInt(0)})
+	/*param, err := actors.SerializeParams(&actors.PledgeCollateralParams{Size: types.NewInt(0)})
 	if err != nil {
 		return types.NewInt(0), err
 	}
@@ -114,7 +116,8 @@ func (a *StateAPI) StatePledgeCollateral(ctx context.Context, ts *types.TipSet) 
 		return types.NewInt(0), xerrors.Errorf("failed to get miner worker addr (exit code %d)", ret.ExitCode)
 	}
 
-	return types.BigFromBytes(ret.Return), nil
+	return types.BigFromBytes(ret.Return), nil*/
+	return big.Zero(), nil
 }
 
 func (a *StateAPI) StateCall(ctx context.Context, msg *types.Message, ts *types.TipSet) (*api.MethodCall, error) {

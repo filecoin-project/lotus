@@ -5,6 +5,7 @@ import (
 
 	"github.com/filecoin-project/go-sectorbuilder"
 	"github.com/filecoin-project/specs-actors/actors/abi"
+	"github.com/filecoin-project/specs-actors/actors/crypto"
 
 	"github.com/filecoin-project/go-address"
 	"github.com/filecoin-project/lotus/chain/actors/aerrors"
@@ -38,7 +39,7 @@ type VMContext interface {
 	GasUsed() BigInt
 	Storage() Storage
 	StateTree() (StateTree, aerrors.ActorError)
-	VerifySignature(sig *Signature, from address.Address, data []byte) aerrors.ActorError
+	VerifySignature(sig *crypto.Signature, from address.Address, data []byte) aerrors.ActorError
 	ChargeGas(uint64) aerrors.ActorError
 	GetRandomness(height abi.ChainEpoch) ([]byte, aerrors.ActorError)
 	GetBalance(address.Address) (BigInt, aerrors.ActorError)

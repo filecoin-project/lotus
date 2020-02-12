@@ -4,6 +4,8 @@ import (
 	"context"
 
 	"github.com/filecoin-project/specs-actors/actors/abi"
+	"github.com/filecoin-project/specs-actors/actors/builtin/miner"
+	"github.com/filecoin-project/specs-actors/actors/crypto"
 
 	sectorbuilder "github.com/filecoin-project/go-sectorbuilder"
 
@@ -74,11 +76,11 @@ type FullNodeStruct struct {
 
 		MinerCreateBlock func(context.Context, address.Address, *types.TipSet, *types.Ticket, *types.EPostProof, []*types.SignedMessage, abi.ChainEpoch, uint64) (*types.BlockMsg, error) `perm:"write"`
 
-		WalletNew            func(context.Context, string) (address.Address, error)                               `perm:"write"`
+		WalletNew            func(context.Context, crypto.SigType) (address.Address, error)                               `perm:"write"`
 		WalletHas            func(context.Context, address.Address) (bool, error)                                 `perm:"write"`
 		WalletList           func(context.Context) ([]address.Address, error)                                     `perm:"write"`
 		WalletBalance        func(context.Context, address.Address) (types.BigInt, error)                         `perm:"read"`
-		WalletSign           func(context.Context, address.Address, []byte) (*types.Signature, error)             `perm:"sign"`
+		WalletSign           func(context.Context, address.Address, []byte) (*crypto.Signature, error)             `perm:"sign"`
 		WalletSignMessage    func(context.Context, address.Address, *types.Message) (*types.SignedMessage, error) `perm:"sign"`
 		WalletDefaultAddress func(context.Context) (address.Address, error)                                       `perm:"write"`
 		WalletSetDefault     func(context.Context, address.Address) error                                         `perm:"admin"`
@@ -100,7 +102,7 @@ type FullNodeStruct struct {
 		StateMinerPower               func(context.Context, address.Address, *types.TipSet) (api.MinerPower, error)                             `perm:"read"`
 		StateMinerWorker              func(context.Context, address.Address, *types.TipSet) (address.Address, error)                            `perm:"read"`
 		StateMinerPeerID              func(ctx context.Context, m address.Address, ts *types.TipSet) (peer.ID, error)                           `perm:"read"`
-		StateMinerElectionPeriodStart func(ctx context.Context, actor address.Address, ts *types.TipSet) (abi.ChainEpoch, error)                `perm:"read"`
+		StateMinerPostState func(ctx context.Context, actor address.Address, ts *types.TipSet) (*miner.PoStState, error)                `perm:"read"`
 		StateMinerSectorSize          func(context.Context, address.Address, *types.TipSet) (abi.SectorSize, error)                             `perm:"read"`
 		StateMinerFaults              func(context.Context, address.Address, *types.TipSet) ([]abi.SectorNumber, error)                         `perm:"read"`
 		StateCall                     func(context.Context, *types.Message, *types.TipSet) (*api.MethodCall, error)                             `perm:"read"`
@@ -272,7 +274,7 @@ func (c *FullNodeStruct) ChainGetTipSetByHeight(ctx context.Context, h abi.Chain
 	return c.Internal.ChainGetTipSetByHeight(ctx, h, ts)
 }
 
-func (c *FullNodeStruct) WalletNew(ctx context.Context, typ string) (address.Address, error) {
+func (c *FullNodeStruct) WalletNew(ctx context.Context, typ crypto.SigType) (address.Address, error) {
 	return c.Internal.WalletNew(ctx, typ)
 }
 
@@ -288,7 +290,7 @@ func (c *FullNodeStruct) WalletBalance(ctx context.Context, a address.Address) (
 	return c.Internal.WalletBalance(ctx, a)
 }
 
-func (c *FullNodeStruct) WalletSign(ctx context.Context, k address.Address, msg []byte) (*types.Signature, error) {
+func (c *FullNodeStruct) WalletSign(ctx context.Context, k address.Address, msg []byte) (*crypto.Signature, error) {
 	return c.Internal.WalletSign(ctx, k, msg)
 }
 
@@ -412,8 +414,8 @@ func (c *FullNodeStruct) StateMinerPeerID(ctx context.Context, m address.Address
 	return c.Internal.StateMinerPeerID(ctx, m, ts)
 }
 
-func (c *FullNodeStruct) StateMinerElectionPeriodStart(ctx context.Context, actor address.Address, ts *types.TipSet) (abi.ChainEpoch, error) {
-	return c.Internal.StateMinerElectionPeriodStart(ctx, actor, ts)
+func (c *FullNodeStruct) StateMinerPostState(ctx context.Context, actor address.Address, ts *types.TipSet) (*miner.PoStState, error) {
+	return c.Internal.StateMinerPostState(ctx, actor, ts)
 }
 
 func (c *FullNodeStruct) StateMinerSectorSize(ctx context.Context, actor address.Address, ts *types.TipSet) (abi.SectorSize, error) {

@@ -8,6 +8,7 @@ import (
 	"github.com/filecoin-project/specs-actors/actors/abi/big"
 	"github.com/filecoin-project/specs-actors/actors/builtin"
 	"github.com/filecoin-project/specs-actors/actors/builtin/account"
+	"github.com/filecoin-project/specs-actors/actors/crypto"
 	"github.com/ipfs/go-cid"
 	"github.com/ipfs/go-datastore"
 	bstore "github.com/ipfs/go-ipfs-blockstore"
@@ -249,8 +250,8 @@ func MakeGenesisBlock(ctx context.Context, bs bstore.Blockstore, sys *types.VMSy
 		ParentStateRoot:       stateroot,
 		Messages:              mmb.Cid(),
 		ParentMessageReceipts: emptyroot,
-		BLSAggregate:          types.Signature{Type: types.KTBLS, Data: []byte("signatureeee")},
-		BlockSig:              &types.Signature{Type: types.KTBLS, Data: []byte("block signatureeee")},
+		BLSAggregate:          crypto.Signature{Type: crypto.SigTypeBLS, Data: []byte("signatureeee")},
+		BlockSig:              &crypto.Signature{Type: crypto.SigTypeBLS, Data: []byte("block signatureeee")},
 		Timestamp:             template.Timestamp,
 	}
 

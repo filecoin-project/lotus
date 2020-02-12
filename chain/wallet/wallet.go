@@ -6,6 +6,7 @@ import (
 	"strings"
 	"sync"
 
+	"github.com/filecoin-project/specs-actors/actors/crypto"
 	logging "github.com/ipfs/go-log/v2"
 	"golang.org/x/xerrors"
 
@@ -52,7 +53,7 @@ func KeyWallet(keys ...*Key) *Wallet {
 	}
 }
 
-func (w *Wallet) Sign(ctx context.Context, addr address.Address, msg []byte) (*types.Signature, error) {
+func (w *Wallet) Sign(ctx context.Context, addr address.Address, msg []byte) (*crypto.Signature, error) {
 	ki, err := w.findKey(addr)
 	if err != nil {
 		return nil, err
@@ -179,7 +180,7 @@ func (w *Wallet) SetDefault(a address.Address) error {
 	return nil
 }
 
-func GenerateKey(typ string) (*Key, error) {
+func GenerateKey(typ crypto.SigType) (*Key, error) {
 	pk, err := sigs.Generate(typ)
 	if err != nil {
 		return nil, err
@@ -191,7 +192,7 @@ func GenerateKey(typ string) (*Key, error) {
 	return NewKey(ki)
 }
 
-func (w *Wallet) GenerateKey(typ string) (address.Address, error) {
+func (w *Wallet) GenerateKey(typ crypto.SigType) (address.Address, error) {
 	w.lk.Lock()
 	defer w.lk.Unlock()
 
@@ -246,12 +247,12 @@ func NewKey(keyinfo types.KeyInfo) (*Key, error) {
 	}
 
 	switch k.Type {
-	case types.KTSecp256k1:
+	case crypto.SigTypeSecp256k1:
 		k.Address, err = address.NewSecp256k1Address(k.PublicKey)
 		if err != nil {
 			return nil, xerrors.Errorf("converting Secp256k1 to address: %w", err)
 		}
-	case types.KTBLS:
+	case crypto.SigTypeBLS:
 		k.Address, err = address.NewBLSAddress(k.PublicKey)
 		if err != nil {
 			return nil, xerrors.Errorf("converting BLS to address: %w", err)
