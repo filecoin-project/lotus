@@ -55,6 +55,7 @@ The process:
 	  - Each:
 	    - power.CreateMiner, set msg value to PowerBalance
       - market.AddFunds with correct value
+      - market.PublishDeals for related sectors
 	    - Set precommits
 	    - Commit presealed sectors
 
@@ -205,7 +206,7 @@ func MakeGenesisBlock(ctx context.Context, bs bstore.Blockstore, sys *types.VMSy
 
 	// temp chainstore
 	cs := store.NewChainStore(bs, datastore.NewMapDatastore(), sys)
-	stateroot, deals, err := SetupStorageMiners(ctx, cs, stateroot, gmcfg)
+	stateroot, err = SetupStorageMiners(ctx, cs, stateroot, template.Miners)
 	if err != nil {
 		return nil, xerrors.Errorf("setup storage miners failed: %w", err)
 	}

@@ -32,7 +32,7 @@ func doExecValue(ctx context.Context, vm *vm.VM, to, from address.Address, value
 		return nil, xerrors.Errorf("doExec failed to get from actor: %w", err)
 	}
 
-	ret, err := vm.ApplyMessage(context.TODO(), &types.Message{
+	ret, err := vm.ApplyMessage(ctx, &types.Message{
 		To:       to,
 		From:     from,
 		Method:   method,
