@@ -11,6 +11,7 @@ import (
 	paramfetch "github.com/filecoin-project/go-paramfetch"
 	"github.com/filecoin-project/go-sectorbuilder"
 	blockstore "github.com/ipfs/go-ipfs-blockstore"
+	"github.com/mitchellh/go-homedir"
 	"github.com/multiformats/go-multiaddr"
 	"golang.org/x/xerrors"
 	"gopkg.in/urfave/cli.v2"
@@ -90,7 +91,15 @@ var DaemonCmd = &cli.Command{
 		}
 
 		ctx := context.Background()
-		log.Infof("lotus repo: %s", cctx.String("repo"))
+		{
+			dir, err := homedir.Expand(cctx.String("repo"))
+			if err != nil {
+				log.Warnw("could not expand repo location", "error", err)
+			} else {
+				log.Infof("lotus repo: %s", dir)
+			}
+		}
+
 		r, err := repo.NewFS(cctx.String("repo"))
 		if err != nil {
 			return xerrors.Errorf("opening fs repo: %w", err)
