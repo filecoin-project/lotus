@@ -9,6 +9,8 @@ import (
 	"github.com/filecoin-project/specs-actors/actors/abi"
 	"github.com/filecoin-project/specs-actors/actors/abi/big"
 	"github.com/filecoin-project/specs-actors/actors/builtin/market"
+	"github.com/filecoin-project/specs-actors/actors/builtin/miner"
+	"github.com/filecoin-project/specs-actors/actors/crypto"
 	"github.com/ipfs/go-cid"
 	"github.com/ipfs/go-filestore"
 	"github.com/libp2p/go-libp2p-core/peer"
@@ -69,11 +71,11 @@ type FullNode interface {
 
 	// wallet
 
-	WalletNew(context.Context, string) (address.Address, error)
+	WalletNew(context.Context, crypto.SigType) (address.Address, error)
 	WalletHas(context.Context, address.Address) (bool, error)
 	WalletList(context.Context) ([]address.Address, error)
 	WalletBalance(context.Context, address.Address) (types.BigInt, error)
-	WalletSign(context.Context, address.Address, []byte) (*types.Signature, error)
+	WalletSign(context.Context, address.Address, []byte) (*crypto.Signature, error)
 	WalletSignMessage(context.Context, address.Address, *types.Message) (*types.SignedMessage, error)
 	WalletDefaultAddress(context.Context) (address.Address, error)
 	WalletSetDefault(context.Context, address.Address) error
@@ -112,7 +114,7 @@ type FullNode interface {
 	StateMinerPower(context.Context, address.Address, *types.TipSet) (MinerPower, error)
 	StateMinerWorker(context.Context, address.Address, *types.TipSet) (address.Address, error)
 	StateMinerPeerID(ctx context.Context, m address.Address, ts *types.TipSet) (peer.ID, error)
-	StateMinerElectionPeriodStart(ctx context.Context, actor address.Address, ts *types.TipSet) (abi.ChainEpoch, error)
+	StateMinerPostState(ctx context.Context, actor address.Address, ts *types.TipSet) (*miner.PoStState, error)
 	StateMinerSectorSize(context.Context, address.Address, *types.TipSet) (abi.SectorSize, error)
 	StateMinerFaults(context.Context, address.Address, *types.TipSet) ([]abi.SectorNumber, error)
 	StatePledgeCollateral(context.Context, *types.TipSet) (types.BigInt, error)

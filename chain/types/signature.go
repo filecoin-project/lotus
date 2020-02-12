@@ -6,58 +6,24 @@ import (
 	"fmt"
 	"io"
 
+	"github.com/filecoin-project/specs-actors/actors/crypto"
 	cbg "github.com/whyrusleeping/cbor-gen"
 )
 
 const SignatureMaxLength = 200
 
-const (
-	KTSecp256k1 = "secp256k1"
-	KTBLS       = "bls"
-)
-
-const (
-	IKTUnknown = -1
-
-	IKTSecp256k1 = iota
-	IKTBLS
-)
-
-type Signature struct {
-	Type string
-	Data []byte
-}
+type Signature crypto.Signature
 
 func SignatureFromBytes(x []byte) (Signature, error) {
 	val, nr := binary.Uvarint(x)
 	if nr != 1 {
 		return Signature{}, fmt.Errorf("signatures with type field longer than one byte are invalid")
 	}
-	var ts string
-	switch val {
-	case IKTSecp256k1:
-		ts = KTSecp256k1
-	case IKTBLS:
-		ts = KTBLS
-	default:
-		return Signature{}, fmt.Errorf("unsupported signature type: %d", val)
-	}
 
 	return Signature{
-		Type: ts,
+		Type: crypto.SigType(val),
 		Data: x[1:],
 	}, nil
-}
-
-func (s *Signature) TypeCode() int {
-	switch s.Type {
-	case KTSecp256k1:
-		return IKTSecp256k1
-	case KTBLS:
-		return IKTBLS
-	default:
-		return IKTUnknown
-	}
 }
 
 func (s *Signature) MarshalCBOR(w io.Writer) error {
@@ -72,7 +38,7 @@ func (s *Signature) MarshalCBOR(w io.Writer) error {
 		return err
 	}
 
-	if _, err := w.Write([]byte{byte(s.TypeCode())}); err != nil {
+	if _, err := w.Write([]byte{byte(s.Type)}); err != nil {
 		return err
 	}
 
@@ -102,14 +68,11 @@ func (s *Signature) UnmarshalCBOR(br io.Reader) error {
 		return err
 	}
 
-	switch buf[0] {
-	default:
+	if buf[0] != byte(crypto.SigTypeSecp256k1) || buf[0] != byte(crypto.SigTypeBLS) {
 		return fmt.Errorf("invalid signature type in cbor input: %d", buf[0])
-	case IKTSecp256k1:
-		s.Type = KTSecp256k1
-	case IKTBLS:
-		s.Type = KTBLS
 	}
+
+	s.Type = crypto.SigType(buf[0])
 	s.Data = buf[1:]
 
 	return nil

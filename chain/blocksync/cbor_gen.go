@@ -274,7 +274,7 @@ func (t *BSTipSet) MarshalCBOR(w io.Writer) error {
 			return err
 		}
 		for _, v := range v {
-			if err := cbg.CborWriteHeader(w, cbg.MajUnsignedInt, v); err != nil {
+			if err := cbg.CborWriteHeader(w, cbg.MajUnsignedInt, uint64(v)); err != nil {
 				return err
 			}
 		}
@@ -311,7 +311,7 @@ func (t *BSTipSet) MarshalCBOR(w io.Writer) error {
 			return err
 		}
 		for _, v := range v {
-			if err := cbg.CborWriteHeader(w, cbg.MajUnsignedInt, v); err != nil {
+			if err := cbg.CborWriteHeader(w, cbg.MajUnsignedInt, uint64(v)); err != nil {
 				return err
 			}
 		}
@@ -437,7 +437,7 @@ func (t *BSTipSet) UnmarshalCBOR(r io.Reader) error {
 					return xerrors.Errorf("value read for array t.BlsMsgIncludes[i] was not a uint, instead got %d", maj)
 				}
 
-				t.BlsMsgIncludes[i][j] = val
+				t.BlsMsgIncludes[i][j] = uint64(val)
 			}
 
 		}
@@ -519,7 +519,7 @@ func (t *BSTipSet) UnmarshalCBOR(r io.Reader) error {
 					return xerrors.Errorf("value read for array t.SecpkMsgIncludes[i] was not a uint, instead got %d", maj)
 				}
 
-				t.SecpkMsgIncludes[i][j] = val
+				t.SecpkMsgIncludes[i][j] = uint64(val)
 			}
 
 		}

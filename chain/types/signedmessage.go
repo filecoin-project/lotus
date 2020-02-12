@@ -3,13 +3,14 @@ package types
 import (
 	"bytes"
 
+	"github.com/filecoin-project/specs-actors/actors/crypto"
 	block "github.com/ipfs/go-block-format"
 	"github.com/ipfs/go-cid"
 	"github.com/multiformats/go-multihash"
 )
 
 func (m *SignedMessage) ToStorageBlock() (block.Block, error) {
-	if m.Signature.Type == KTBLS {
+	if m.Signature.Type == crypto.SigTypeBLS {
 		return m.Message.ToStorageBlock()
 	}
 
@@ -28,7 +29,7 @@ func (m *SignedMessage) ToStorageBlock() (block.Block, error) {
 }
 
 func (m *SignedMessage) Cid() cid.Cid {
-	if m.Signature.Type == KTBLS {
+	if m.Signature.Type == crypto.SigTypeBLS {
 		return m.Message.Cid()
 	}
 
@@ -42,7 +43,7 @@ func (m *SignedMessage) Cid() cid.Cid {
 
 type SignedMessage struct {
 	Message   Message
-	Signature Signature
+	Signature crypto.Signature
 }
 
 func DecodeSignedMessage(data []byte) (*SignedMessage, error) {

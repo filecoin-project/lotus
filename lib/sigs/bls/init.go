@@ -3,9 +3,11 @@ package bls
 import (
 	"fmt"
 
-	ffi "github.com/filecoin-project/filecoin-ffi"
 	"github.com/filecoin-project/go-address"
-	"github.com/filecoin-project/lotus/chain/types"
+	"github.com/filecoin-project/specs-actors/actors/crypto"
+
+	ffi "github.com/filecoin-project/filecoin-ffi"
+
 	"github.com/filecoin-project/lotus/lib/sigs"
 )
 
@@ -48,5 +50,5 @@ func (blsSigner) Verify(sig []byte, a address.Address, msg []byte) error {
 }
 
 func init() {
-	sigs.RegisterSignature(types.KTBLS, blsSigner{})
+	sigs.RegisterSignature(crypto.SigTypeBLS, blsSigner{})
 }

@@ -6,13 +6,14 @@ import (
 
 	"github.com/filecoin-project/go-address"
 	"github.com/filecoin-project/lotus/chain/types"
+	"github.com/filecoin-project/specs-actors/actors/crypto"
 	"go.opencensus.io/trace"
 	"golang.org/x/xerrors"
 )
 
 // Sign takes in signature type, private key and message. Returns a signature for that message.
 // Valid sigTypes are: "secp256k1" and "bls"
-func Sign(sigType string, privkey []byte, msg []byte) (*types.Signature, error) {
+func Sign(sigType crypto.SigType, privkey []byte, msg []byte) (*crypto.Signature, error) {
 	sv, ok := sigs[sigType]
 	if !ok {
 		return nil, fmt.Errorf("cannot sign message with signature of unsupported type: %s", sigType)
@@ -22,14 +23,14 @@ func Sign(sigType string, privkey []byte, msg []byte) (*types.Signature, error) 
 	if err != nil {
 		return nil, err
 	}
-	return &types.Signature{
+	return &crypto.Signature{
 		Type: sigType,
 		Data: sb,
 	}, nil
 }
 
 // Verify verifies signatures
-func Verify(sig *types.Signature, addr address.Address, msg []byte) error {
+func Verify(sig *crypto.Signature, addr address.Address, msg []byte) error {
 	if sig == nil {
 		return xerrors.Errorf("signature is nil")
 	}
@@ -47,7 +48,7 @@ func Verify(sig *types.Signature, addr address.Address, msg []byte) error {
 }
 
 // Generate generates private key of given type
-func Generate(sigType string) ([]byte, error) {
+func Generate(sigType crypto.SigType) ([]byte, error) {
 	sv, ok := sigs[sigType]
 	if !ok {
 		return nil, fmt.Errorf("cannot generate private key of unsupported type: %s", sigType)
@@ -57,7 +58,7 @@ func Generate(sigType string) ([]byte, error) {
 }
 
 // ToPublic converts private key to public key
-func ToPublic(sigType string, pk []byte) ([]byte, error) {
+func ToPublic(sigType crypto.SigType, pk []byte) ([]byte, error) {
 	sv, ok := sigs[sigType]
 	if !ok {
 		return nil, fmt.Errorf("cannot generate public key of unsupported type: %s", sigType)
@@ -91,12 +92,12 @@ type SigShim interface {
 	Verify(sig []byte, a address.Address, msg []byte) error
 }
 
-var sigs map[string]SigShim
+var sigs map[crypto.SigType]SigShim
 
 // RegisterSig should be only used during init
-func RegisterSignature(name string, vs SigShim) {
+func RegisterSignature(typ crypto.SigType, vs SigShim) {
 	if sigs == nil {
-		sigs = make(map[string]SigShim)
+		sigs = make(map[crypto.SigType]SigShim)
 	}
-	sigs[name] = vs
+	sigs[typ] = vs
 }

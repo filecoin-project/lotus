@@ -6,7 +6,8 @@ import (
 	"fmt"
 	"io"
 
-	"github.com/filecoin-project/lotus/chain/types"
+	"github.com/filecoin-project/specs-actors/actors/abi"
+	"github.com/filecoin-project/specs-actors/actors/builtin/paych"
 	cbg "github.com/whyrusleeping/cbor-gen"
 	xerrors "golang.org/x/xerrors"
 )
@@ -60,7 +61,7 @@ func (t *PaymentInfo) MarshalCBOR(w io.Writer) error {
 		}
 	}
 
-	// t.Vouchers ([]*types.SignedVoucher) (slice)
+	// t.Vouchers ([]*paych.SignedVoucher) (slice)
 	if len("Vouchers") > cbg.MaxLength {
 		return xerrors.Errorf("Value in field \"Vouchers\" was too long")
 	}
@@ -152,7 +153,7 @@ func (t *PaymentInfo) UnmarshalCBOR(r io.Reader) error {
 				}
 
 			}
-			// t.Vouchers ([]*types.SignedVoucher) (slice)
+			// t.Vouchers ([]*paych.SignedVoucher) (slice)
 		case "Vouchers":
 
 			maj, extra, err = cbg.CborReadHeader(br)
@@ -168,11 +169,11 @@ func (t *PaymentInfo) UnmarshalCBOR(r io.Reader) error {
 				return fmt.Errorf("expected cbor array")
 			}
 			if extra > 0 {
-				t.Vouchers = make([]*types.SignedVoucher, extra)
+				t.Vouchers = make([]*paych.SignedVoucher, extra)
 			}
 			for i := 0; i < int(extra); i++ {
 
-				var v types.SignedVoucher
+				var v paych.SignedVoucher
 				if err := v.UnmarshalCBOR(br); err != nil {
 					return err
 				}
@@ -196,7 +197,7 @@ func (t *SealedRef) MarshalCBOR(w io.Writer) error {
 		return err
 	}
 
-	// t.SectorID (uint64) (uint64)
+	// t.SectorID (abi.SectorNumber) (uint64)
 	if len("SectorID") > cbg.MaxLength {
 		return xerrors.Errorf("Value in field \"SectorID\" was too long")
 	}
@@ -228,7 +229,7 @@ func (t *SealedRef) MarshalCBOR(w io.Writer) error {
 		return err
 	}
 
-	// t.Size (uint64) (uint64)
+	// t.Size (abi.UnpaddedPieceSize) (uint64)
 	if len("Size") > cbg.MaxLength {
 		return xerrors.Errorf("Value in field \"Size\" was too long")
 	}
@@ -276,7 +277,7 @@ func (t *SealedRef) UnmarshalCBOR(r io.Reader) error {
 		}
 
 		switch name {
-		// t.SectorID (uint64) (uint64)
+		// t.SectorID (abi.SectorNumber) (uint64)
 		case "SectorID":
 
 			maj, extra, err = cbg.CborReadHeader(br)
@@ -286,6 +287,7 @@ func (t *SealedRef) UnmarshalCBOR(r io.Reader) error {
 			if maj != cbg.MajUnsignedInt {
 				return fmt.Errorf("wrong type for uint64 field")
 			}
+			t.SectorID = abi.SectorNumber(extra)
 			// t.Offset (uint64) (uint64)
 		case "Offset":
 
@@ -297,7 +299,7 @@ func (t *SealedRef) UnmarshalCBOR(r io.Reader) error {
 				return fmt.Errorf("wrong type for uint64 field")
 			}
 			t.Offset = uint64(extra)
-			// t.Size (uint64) (uint64)
+			// t.Size (abi.UnpaddedPieceSize) (uint64)
 		case "Size":
 
 			maj, extra, err = cbg.CborReadHeader(br)
@@ -307,6 +309,7 @@ func (t *SealedRef) UnmarshalCBOR(r io.Reader) error {
 			if maj != cbg.MajUnsignedInt {
 				return fmt.Errorf("wrong type for uint64 field")
 			}
+			t.Size = abi.UnpaddedPieceSize(extra)
 
 		default:
 			return fmt.Errorf("unknown struct field %d: '%s'", i, name)

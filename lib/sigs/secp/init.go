@@ -5,9 +5,10 @@ import (
 
 	"github.com/filecoin-project/go-address"
 	"github.com/filecoin-project/go-crypto"
-	"github.com/filecoin-project/lotus/chain/types"
-	"github.com/filecoin-project/lotus/lib/sigs"
+	crypto2 "github.com/libp2p/go-libp2p-core/crypto"
 	"github.com/minio/blake2b-simd"
+
+	"github.com/filecoin-project/lotus/lib/sigs"
 )
 
 type secpSigner struct{}
@@ -54,5 +55,5 @@ func (secpSigner) Verify(sig []byte, a address.Address, msg []byte) error {
 }
 
 func init() {
-	sigs.RegisterSignature(types.KTSecp256k1, secpSigner{})
+	sigs.RegisterSignature(crypto2.Secp256k1, secpSigner{})
 }

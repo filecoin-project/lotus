@@ -14,6 +14,7 @@ import (
 	"github.com/filecoin-project/specs-actors/actors/abi"
 	"github.com/filecoin-project/specs-actors/actors/abi/big"
 	"github.com/filecoin-project/specs-actors/actors/builtin/market"
+	"github.com/filecoin-project/specs-actors/actors/crypto"
 	"github.com/ipfs/go-cid"
 	"github.com/ipfs/go-datastore"
 	"github.com/ipfs/go-datastore/namespace"
@@ -99,7 +100,7 @@ func PreSeal(maddr address.Address, ssize abi.SectorSize, offset abi.SectorNumbe
 			return nil, nil, err
 		}
 	} else {
-		minerAddr, err = wallet.GenerateKey(types.KTBLS)
+		minerAddr, err = wallet.GenerateKey(crypto.SigTypeBLS)
 		if err != nil {
 			return nil, nil, err
 		}

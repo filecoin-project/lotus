@@ -1,7 +1,6 @@
 package chain
 
 import (
-	"bytes"
 	"context"
 	"crypto/sha256"
 	"errors"
@@ -10,9 +9,11 @@ import (
 	"time"
 
 	"github.com/Gurpartap/async"
-	bls "github.com/filecoin-project/filecoin-ffi"
 	amt "github.com/filecoin-project/go-amt-ipld/v2"
 	sectorbuilder "github.com/filecoin-project/go-sectorbuilder"
+	"github.com/filecoin-project/specs-actors/actors/builtin/power"
+	"github.com/filecoin-project/specs-actors/actors/crypto"
+	"github.com/filecoin-project/specs-actors/actors/util/adt"
 	"github.com/hashicorp/go-multierror"
 	"github.com/ipfs/go-cid"
 	dstore "github.com/ipfs/go-datastore"
@@ -25,6 +26,8 @@ import (
 	"github.com/whyrusleeping/pubsub"
 	"go.opencensus.io/trace"
 	"golang.org/x/xerrors"
+
+	bls "github.com/filecoin-project/filecoin-ffi"
 
 	"github.com/filecoin-project/go-address"
 
@@ -460,30 +463,21 @@ func (syncer *Syncer) ValidateTipSet(ctx context.Context, fts *store.FullTipSet)
 }
 
 func (syncer *Syncer) minerIsValid(ctx context.Context, maddr address.Address, baseTs *types.TipSet) error {
-	var err error
-	enc, err := actors.SerializeParams(&actors.IsValidMinerParam{Addr: maddr})
+	var spast power.State
+
+	_, err := syncer.sm.LoadActorState(ctx, actors.StoragePowerAddress, &spast, baseTs)
 	if err != nil {
 		return err
 	}
 
-	ret, err := syncer.sm.Call(ctx, &types.Message{
-		To:     actors.StoragePowerAddress,
-		From:   maddr,
-		Method: actors.SPAMethods.IsValidMiner,
-		Params: enc,
-	}, baseTs)
+	var claim power.Claim
+	exist, err := adt.AsMap(syncer.store.Store(ctx), spast.Claims).Get(adt.AddrKey(maddr), &claim)
 	if err != nil {
-		return xerrors.Errorf("checking if block miner is valid failed: %w", err)
+		return err
 	}
-
-	if ret.ExitCode != 0 {
-		return xerrors.Errorf("StorageMarket.IsValidMiner check failed (exit code %d)", ret.ExitCode)
-	}
-
-	if !bytes.Equal(ret.Return, cbg.CborBoolTrue) {
+	if !exist {
 		return xerrors.New("miner isn't valid")
 	}
-
 	return nil
 }
 
@@ -821,7 +815,7 @@ func (syncer *Syncer) checkBlockMessages(ctx context.Context, b *types.FullBlock
 	return nil
 }
 
-func (syncer *Syncer) verifyBlsAggregate(ctx context.Context, sig types.Signature, msgs []cid.Cid, pubks []bls.PublicKey) error {
+func (syncer *Syncer) verifyBlsAggregate(ctx context.Context, sig crypto.Signature, msgs []cid.Cid, pubks []bls.PublicKey) error {
 	_, span := trace.StartSpan(ctx, "syncer.verifyBlsAggregate")
 	defer span.End()
 	span.AddAttributes(
@@ -1115,8 +1109,8 @@ func persistMessages(bs bstore.Blockstore, bst *blocksync.BSTipSet) error {
 		}
 	}
 	for _, m := range bst.SecpkMessages {
-		if m.Signature.Type != types.KTSecp256k1 {
-			return xerrors.Errorf("unknown signature type on message %s: %q", m.Cid(), m.Signature.TypeCode)
+		if m.Signature.Type != crypto.SigTypeSecp256k1 {
+			return xerrors.Errorf("unknown signature type on message %s: %q", m.Cid(), m.Signature.Type)
 		}
 		//log.Infof("putting secp256k1 message: %s", m.Cid())
 		if _, err := store.PutMessage(bs, m); err != nil {
