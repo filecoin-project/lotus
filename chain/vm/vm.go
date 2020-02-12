@@ -7,6 +7,7 @@ import (
 	"math/big"
 
 	"github.com/filecoin-project/specs-actors/actors/abi"
+	"github.com/filecoin-project/specs-actors/actors/builtin/account"
 	block "github.com/ipfs/go-block-format"
 	cid "github.com/ipfs/go-cid"
 	hamt "github.com/ipfs/go-hamt-ipld"
@@ -220,7 +221,7 @@ func ResolveToKeyAddr(state types.StateTree, cst cbor.IpldStore, addr address.Ad
 		return address.Undef, aerrors.New(1, "address was not for an account actor")
 	}
 
-	var aast actors.AccountActorState
+	var aast account.State
 	if err := cst.Get(context.TODO(), act.Head, &aast); err != nil {
 		return address.Undef, aerrors.Escalate(err, fmt.Sprintf("failed to get account actor state for %s", addr))
 	}

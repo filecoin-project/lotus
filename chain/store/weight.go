@@ -61,7 +61,7 @@ func (cs *ChainStore) call(ctx context.Context, msg *types.Message, ts *types.Ti
 
 	r := NewChainRand(cs, ts.Cids(), ts.Height())
 
-	vmi, err := vm.NewVM(bstate, ts.Height(), r, actors.NetworkAddress, cs.bs, cs.vmcalls)
+	vmi, err := vm.NewVM(bstate, ts.Height(), r, actors.SystemAddress, cs.bs, cs.vmcalls)
 	if err != nil {
 		return nil, xerrors.Errorf("failed to set up vm: %w", err)
 	}

@@ -295,7 +295,7 @@ func ComputeState(ctx context.Context, sm *StateManager, height abi.ChainEpoch, 
 	}
 
 	r := store.NewChainRand(sm.cs, ts.Cids(), height)
-	vmi, err := vm.NewVM(fstate, height, r, actors.NetworkAddress, sm.cs.Blockstore(), sm.cs.VMSys())
+	vmi, err := vm.NewVM(fstate, height, r, actors.SystemAddress, sm.cs.Blockstore(), sm.cs.VMSys())
 	if err != nil {
 		return cid.Undef, err
 	}

@@ -20,7 +20,7 @@ func (sm *StateManager) CallRaw(ctx context.Context, msg *types.Message, bstate 
 	ctx, span := trace.StartSpan(ctx, "statemanager.CallRaw")
 	defer span.End()
 
-	vmi, err := vm.NewVM(bstate, bheight, r, actors.NetworkAddress, sm.cs.Blockstore(), sm.cs.VMSys())
+	vmi, err := vm.NewVM(bstate, bheight, r, actors.SystemAddress, sm.cs.Blockstore(), sm.cs.VMSys())
 	if err != nil {
 		return nil, xerrors.Errorf("failed to set up vm: %w", err)
 	}

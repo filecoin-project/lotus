@@ -152,13 +152,13 @@ func (sm *StateManager) computeTipSetState(ctx context.Context, blks []*types.Bl
 		return cid.Undef, cid.Undef, xerrors.Errorf("instantiating VM failed: %w", err)
 	}
 
-	netact, err := vmi.StateTree().GetActor(actors.NetworkAddress)
+	rewardActor, err := vmi.StateTree().GetActor(actors.RewardActor)
 	if err != nil {
 		return cid.Undef, cid.Undef, xerrors.Errorf("failed to get network actor: %w", err)
 	}
-	reward := vm.MiningReward(netact.Balance)
+	reward := vm.MiningReward(rewardActor.Balance)
 	for tsi, b := range blks {
-		netact, err = vmi.StateTree().GetActor(actors.NetworkAddress)
+		rewardActor, err = vmi.StateTree().GetActor(actors.RewardActor)
 		if err != nil {
 			return cid.Undef, cid.Undef, xerrors.Errorf("failed to get network actor: %w", err)
 		}
@@ -174,15 +174,14 @@ func (sm *StateManager) computeTipSetState(ctx context.Context, blks []*types.Bl
 			return cid.Undef, cid.Undef, xerrors.Errorf("failed to get miner owner actor")
 		}
 
-		if err := vm.Transfer(netact, act, reward); err != nil {
+		if err := vm.Transfer(rewardActor, act, reward); err != nil {
 			return cid.Undef, cid.Undef, xerrors.Errorf("failed to deduct funds from network actor: %w", err)
 		}
 
 		// all block miners created a valid post, go update the actor state
-		panic("sys actor call")
 		postSubmitMsg := &types.Message{
-			From:     actors.NetworkAddress,
-			Nonce:    netact.Nonce,
+			From:     actors.SystemAddress,
+			Nonce:    rewardActor.Nonce,
 			To:       b.Miner,
 			Method:   builtin.MethodsMiner.OnVerifiedElectionPoSt,
 			GasPrice: types.NewInt(0),

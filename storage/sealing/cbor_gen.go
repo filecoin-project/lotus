@@ -102,7 +102,6 @@ func (t *SealTicket) UnmarshalCBOR(r io.Reader) error {
 			if maj != cbg.MajUnsignedInt {
 				return fmt.Errorf("wrong type for uint64 field")
 			}
-			t.BlockHeight = uint64(extra)
 			// t.TicketBytes ([]uint8) (slice)
 		case "TicketBytes":
 
