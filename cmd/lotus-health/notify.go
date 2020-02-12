@@ -3,7 +3,7 @@ package main
 import (
 	"os"
 
-	"github.com/coreos/go-systemd/dbus"
+	"github.com/coreos/go-systemd/v22/dbus"
 )
 
 func notifyHandler(n string, ch chan interface{}, sCh chan os.Signal) (string, error) {
