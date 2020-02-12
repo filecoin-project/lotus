@@ -21,10 +21,15 @@ func NewBadBlockCache() *BadBlockCache {
 	}
 }
 
-func (bts *BadBlockCache) Add(c cid.Cid) {
-	bts.badBlocks.Add(c, nil)
+func (bts *BadBlockCache) Add(c cid.Cid, reason string) {
+	bts.badBlocks.Add(c, reason)
 }
 
-func (bts *BadBlockCache) Has(c cid.Cid) bool {
-	return bts.badBlocks.Contains(c)
+func (bts *BadBlockCache) Has(c cid.Cid) (string, bool) {
+	rval, ok := bts.badBlocks.Get(c)
+	if !ok {
+		return "", false
+	}
+
+	return rval.(string), true
 }
