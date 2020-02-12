@@ -10,13 +10,12 @@ import (
 	"github.com/filecoin-project/specs-actors/actors/abi"
 	"github.com/filecoin-project/specs-actors/actors/builtin/market"
 	"github.com/filecoin-project/specs-actors/actors/builtin/miner"
+	"github.com/filecoin-project/specs-actors/actors/crypto"
 	"github.com/ipfs/go-cid"
 	logging "github.com/ipfs/go-log"
 	"golang.org/x/xerrors"
 
 	"github.com/filecoin-project/go-address"
-	"github.com/filecoin-project/go-fil-markets/shared/tokenamount"
-	sharedtypes "github.com/filecoin-project/go-fil-markets/shared/types"
 	"github.com/filecoin-project/go-fil-markets/storagemarket"
 	"github.com/filecoin-project/lotus/api"
 	"github.com/filecoin-project/lotus/build"
@@ -58,12 +57,8 @@ func (n *ProviderNodeAdapter) PublishDeals(ctx context.Context, deal storagemark
 		return 0, cid.Undef, err
 	}
 
-	localProposal, err := utils.FromSharedStorageDealProposal(&deal.Proposal)
-	if err != nil {
-		return 0, cid.Undef, err
-	}
 	params, err := actors.SerializeParams(&actors.PublishStorageDealsParams{
-		Deals: []market.ClientDealProposal{*localProposal},
+		Deals: []market.ClientDealProposal{deal.ClientDealProposal},
 	})
 
 	if err != nil {
@@ -134,16 +129,16 @@ func (n *ProviderNodeAdapter) GetMinerWorker(ctx context.Context, miner address.
 	return addr, err
 }
 
-func (n *ProviderNodeAdapter) SignBytes(ctx context.Context, signer address.Address, b []byte) (*sharedtypes.Signature, error) {
+func (n *ProviderNodeAdapter) SignBytes(ctx context.Context, signer address.Address, b []byte) (*crypto.Signature, error) {
 	localSignature, err := n.WalletSign(ctx, signer, b)
 	if err != nil {
 		return nil, err
 	}
-	return utils.ToSharedSignature(localSignature)
+	return localSignature
 }
 
-func (n *ProviderNodeAdapter) EnsureFunds(ctx context.Context, addr address.Address, amt tokenamount.TokenAmount) error {
-	return n.MarketEnsureAvailable(ctx, addr, utils.FromSharedTokenAmount(amt))
+func (n *ProviderNodeAdapter) EnsureFunds(ctx context.Context, addr address.Address, amt abi.TokenAmount) error {
+	return n.MarketEnsureAvailable(ctx, addr, amt)
 }
 
 func (n *ProviderNodeAdapter) MostRecentStateId(ctx context.Context) (storagemarket.StateKey, error) {
@@ -151,12 +146,12 @@ func (n *ProviderNodeAdapter) MostRecentStateId(ctx context.Context) (storagemar
 }
 
 // Adds funds with the StorageMinerActor for a storage participant.  Used by both providers and clients.
-func (n *ProviderNodeAdapter) AddFunds(ctx context.Context, addr address.Address, amount tokenamount.TokenAmount) error {
+func (n *ProviderNodeAdapter) AddFunds(ctx context.Context, addr address.Address, amount abi.TokenAmount) error {
 	// (Provider Node API)
 	smsg, err := n.MpoolPushMessage(ctx, &types.Message{
 		To:       actors.StorageMarketAddress,
 		From:     addr,
-		Value:    utils.FromSharedTokenAmount(amount),
+		Value:    amount,
 		GasPrice: types.NewInt(0),
 		GasLimit: types.NewInt(1000000),
 		Method:   actors.SMAMethods.AddBalance,
@@ -183,7 +178,7 @@ func (n *ProviderNodeAdapter) GetBalance(ctx context.Context, addr address.Addre
 		return storagemarket.Balance{}, err
 	}
 
-	return utils.ToSharedBalance(bal), nil
+	return bal, nil
 }
 
 func (n *ProviderNodeAdapter) LocatePieceForDealWithinSector(ctx context.Context, dealID uint64) (sectorID uint64, offset uint64, length uint64, err error) {
