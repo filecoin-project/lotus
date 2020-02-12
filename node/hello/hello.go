@@ -29,8 +29,8 @@ type HelloMessage struct {
 	GenesisHash          cid.Cid
 }
 type LatencyMessage struct {
-	TArrial uint64
-	TSent   uint64
+	TArrial int64
+	TSent   int64
 }
 
 type NewStreamFunc func(context.Context, peer.ID, ...protocol.ID) (inet.Stream, error)
@@ -81,8 +81,8 @@ func (hs *Service) HandleStream(s inet.Stream) {
 
 		sent := time.Now()
 		msg := &LatencyMessage{
-			TArrial: uint64(arrived.UnixNano()),
-			TSent:   uint64(sent.UnixNano()),
+			TArrial: arrived.UnixNano(),
+			TSent:   sent.UnixNano(),
 		}
 		if err := cborutil.WriteCborRPC(s, msg); err != nil {
 			log.Debugf("error while responding to latency: %v", err)
@@ -157,8 +157,8 @@ func (hs *Service) SayHello(ctx context.Context, pid peer.ID) error {
 
 		if err == nil {
 			if lmsg.TArrial != 0 && lmsg.TSent != 0 {
-				t1 := time.Unix(0, int64(lmsg.TArrial))
-				t2 := time.Unix(0, int64(lmsg.TSent))
+				t1 := time.Unix(0, lmsg.TArrial)
+				t2 := time.Unix(0, lmsg.TSent)
 				offset := t0.Sub(t1) + t3.Sub(t2)
 				offset /= 2
 				log.Infow("time offset", "offset", offset.Seconds(), "peerid", pid.String())
