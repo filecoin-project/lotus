@@ -7,15 +7,16 @@ import (
 	"runtime/debug"
 
 	"github.com/filecoin-project/go-address"
-	"github.com/filecoin-project/lotus/chain/actors"
-	"github.com/filecoin-project/lotus/chain/actors/aerrors"
-	"github.com/filecoin-project/lotus/chain/types"
 	"github.com/filecoin-project/specs-actors/actors/abi"
 	"github.com/filecoin-project/specs-actors/actors/runtime"
 	vmr "github.com/filecoin-project/specs-actors/actors/runtime"
 	"github.com/filecoin-project/specs-actors/actors/runtime/exitcode"
 	"github.com/ipfs/go-cid"
 	cbg "github.com/whyrusleeping/cbor-gen"
+
+	"github.com/filecoin-project/lotus/chain/actors"
+	"github.com/filecoin-project/lotus/chain/actors/aerrors"
+	"github.com/filecoin-project/lotus/chain/types"
 )
 
 type runtimeShim struct {
@@ -146,6 +147,16 @@ type shimStateHandle struct {
 	rs *runtimeShim
 }
 
+func (ssh *shimStateHandle) Create(obj vmr.CBORMarshaler) {
+	c, err := ssh.rs.vmctx.Storage().Put(obj)
+	if err != nil {
+		panic(err)
+	}
+	if err := ssh.rs.vmctx.Storage().Commit(actors.EmptyCBOR, c); err != nil {
+		panic(err)
+	}
+}
+
 func (ssh *shimStateHandle) Readonly(obj vmr.CBORUnmarshaler) {
 	if err := ssh.rs.vmctx.Storage().Get(ssh.rs.vmctx.Storage().GetHead(), obj); err != nil {
 		panic(err)
@@ -169,16 +180,4 @@ func (ssh *shimStateHandle) Transaction(obj vmr.CBORer, f func() interface{}) in
 	}
 
 	return out
-}
-
-func (ssh *shimStateHandle) Construct(f func() vmr.CBORMarshaler) {
-	out := f()
-
-	c, err := ssh.rs.vmctx.Storage().Put(out)
-	if err != nil {
-		panic(err)
-	}
-	if err := ssh.rs.vmctx.Storage().Commit(actors.EmptyCBOR, c); err != nil {
-		panic(err)
-	}
 }

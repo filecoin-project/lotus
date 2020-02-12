@@ -7,10 +7,12 @@ import (
 	"fmt"
 
 	"github.com/filecoin-project/go-address"
-	"github.com/filecoin-project/lotus/chain/actors/aerrors"
-	"github.com/filecoin-project/lotus/chain/types"
+	init_ "github.com/filecoin-project/specs-actors/actors/builtin/init"
 	cbg "github.com/whyrusleeping/cbor-gen"
 	"golang.org/x/xerrors"
+
+	"github.com/filecoin-project/lotus/chain/actors/aerrors"
+	"github.com/filecoin-project/lotus/chain/types"
 
 	"github.com/ipfs/go-cid"
 	"github.com/ipfs/go-hamt-ipld"
@@ -41,11 +43,7 @@ func init() {
 
 type InitActor struct{}
 
-type InitActorState struct {
-	AddressMap cid.Cid
-
-	NextID uint64
-}
+type InitActorState = init_.State
 
 type iAMethods struct {
 	Exec uint64

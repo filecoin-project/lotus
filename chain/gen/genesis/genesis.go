@@ -2,8 +2,12 @@ package genesis
 
 import (
 	"context"
+	"encoding/json"
 
 	"github.com/filecoin-project/go-amt-ipld/v2"
+	"github.com/filecoin-project/specs-actors/actors/abi/big"
+	"github.com/filecoin-project/specs-actors/actors/builtin"
+	"github.com/filecoin-project/specs-actors/actors/builtin/account"
 	"github.com/ipfs/go-cid"
 	"github.com/ipfs/go-datastore"
 	bstore "github.com/ipfs/go-ipfs-blockstore"
@@ -18,12 +22,173 @@ import (
 	"github.com/filecoin-project/lotus/chain/state"
 	"github.com/filecoin-project/lotus/chain/store"
 	"github.com/filecoin-project/lotus/chain/types"
+	"github.com/filecoin-project/lotus/genesis"
 )
+
+const AccountStart = 100
+const MinerStart = 1000
+const MaxAccounts = MinerStart - AccountStart
 
 var log = logging.Logger("genesis")
 
 type GenesisBootstrap struct {
 	Genesis *types.BlockHeader
+}
+
+/*
+From a list of parameters, create a genesis block / initial state
+
+The process:
+- Bootstrap state
+	- Create empty state
+	- Make init actor
+    - Create accounts mappings
+    - Set NextID to MinerStart
+  - Setup Reward (1.4B fil)
+  - Setup Cron
+	- Create empty power actor
+  - Create empty market
+  - Setup burnt fund address
+	- Initialize account / msig balances
+- Instantiate early vm with genesis syscalls
+  - Create miners
+	  - Each:
+	    - power.CreateMiner, set msg value to PowerBalance
+      - market.AddFunds with correct value
+	    - Set precommits
+	    - Commit presealed sectors
+
+Data Types:
+
+PreSeal :{
+	CommR    CID
+	CommD    CID
+	SectorID SectorNumber
+	Deal     market.DealProposal # Start at 0, self-deal!
+}
+
+Genesis: {
+	Accounts: [ # non-miner, non-singleton actors, max len = MaxAccounts
+		{
+			Type: "account" / "multisig",
+			Value: "attofil",
+			[Meta: {msig settings, account key..}]
+		},...
+	],
+	Miners: [
+		{
+			Owner, Worker Addr # ID
+			MarketBalance, PowerBalance TokenAmount
+			SectorSize uint64
+			PreSeals []PreSeal
+		},...
+	],
+}
+
+*/
+
+func MakeInitialStateTree(ctx context.Context, bs bstore.Blockstore, template genesis.Template) (*state.StateTree, error) {
+	// Create empty state tree
+
+	cst := cbor.NewCborStore(bs)
+	state, err := state.NewStateTree(cst)
+	if err != nil {
+		return nil, xerrors.Errorf("making new state tree: %w", err)
+	}
+
+	emptyobject, err := cst.Put(context.TODO(), []struct{}{})
+	if err != nil {
+		return nil, xerrors.Errorf("failed putting empty object: %w", err)
+	}
+
+	// Create init actor
+
+	initact, err := SetupInitActor(bs, template.NetworkName, template.Accounts)
+	if err != nil {
+		return nil, xerrors.Errorf("setup init actor: %w", err)
+	}
+	if err := state.SetActor(actors.InitAddress, initact); err != nil {
+		return nil, xerrors.Errorf("set init actor: %w", err)
+	}
+
+	// Create accounts
+
+	for id, info := range template.Accounts {
+		if info.Type != genesis.TAccount {
+			return nil, xerrors.New("unsupported account type") // TODO: msigs
+		}
+
+		ida, err := address.NewIDAddress(uint64(AccountStart + id))
+		if err != nil {
+			return nil, err
+		}
+
+		var ainfo genesis.AccountMeta
+		if err := json.Unmarshal(info.Meta, &ainfo); err != nil {
+			return nil, xerrors.Errorf("unmarshaling account meta: %w", err)
+		}
+
+		st, err := cst.Put(ctx, account.State{Address: ainfo.Owner})
+		if err != nil {
+			return nil, err
+		}
+
+		err = state.SetActor(ida, &types.Actor{
+			Code:    actors.AccountCodeCid,
+			Balance: info.Balance,
+			Head:    st,
+		})
+		if err != nil {
+			return nil, xerrors.Errorf("setting account from actmap: %w", err)
+		}
+	}
+
+	// Setup initial market state
+
+	marketact, err := SetupStorageMarketActor(bs, template.Miners)
+	if err != nil {
+		return nil, xerrors.Errorf("setup storage market actor: %w", err)
+	}
+	if err := state.SetActor(actors.StorageMarketAddress, marketact); err != nil {
+		return nil, xerrors.Errorf("set market actor: %w", err)
+	}
+
+	spact, err := SetupStoragePowerActor(bs)
+	if err != nil {
+		return nil, xerrors.Errorf("setup storage market actor: %w", err)
+	}
+
+	if err := state.SetActor(actors.StoragePowerAddress, spact); err != nil {
+		return nil, xerrors.Errorf("set storage market actor: %w", err)
+	}
+
+	err = state.SetActor(actors.RewardActor, &types.Actor{
+		Code:    builtin.RewardActorCodeID,
+		Balance: big.Int{Int: build.InitialReward},
+		Head:    emptyobject,
+	})
+	if err != nil {
+		return nil, xerrors.Errorf("set network account actor: %w", err)
+	}
+
+	cronact, err := SetupCronActor(bs)
+	if err != nil {
+		return nil, xerrors.Errorf("setup cron actor: %w", err)
+	}
+	if err := state.SetActor(actors.CronAddress, cronact); err != nil {
+		return nil, xerrors.Errorf("set cron actor: %w", err)
+	}
+
+	err = state.SetActor(actors.BurntFundsAddress, &types.Actor{
+		Code:    actors.AccountCodeCid,
+		Balance: types.NewInt(0),
+		Head:    emptyobject,
+	})
+	if err != nil {
+		return nil, xerrors.Errorf("set burnt funds account actor: %w", err)
+	}
+
+	return state, nil
 }
 
 func MakeGenesisBlock(bs bstore.Blockstore, sys *types.VMSyscalls, balances map[address.Address]types.BigInt, gmcfg *GenMinerCfg, ts uint64) (*GenesisBootstrap, error) {
@@ -44,16 +209,6 @@ func MakeGenesisBlock(bs bstore.Blockstore, sys *types.VMSyscalls, balances map[
 	stateroot, deals, err := SetupStorageMiners(ctx, cs, stateroot, gmcfg)
 	if err != nil {
 		return nil, xerrors.Errorf("setup storage miners failed: %w", err)
-	}
-
-	stateroot, err = SetupStorageMarketActor(bs, stateroot, deals)
-	if err != nil {
-		return nil, xerrors.Errorf("setup storage market actor: %w", err)
-	}
-
-	stateroot, err = AdjustInitActorStartID(ctx, bs, stateroot, 1000)
-	if err != nil {
-		return nil, xerrors.Errorf("failed to adjust init actor start ID: %w", err)
 	}
 
 	cst := cbor.NewCborStore(bs)
@@ -111,85 +266,4 @@ func MakeGenesisBlock(bs bstore.Blockstore, sys *types.VMSyscalls, balances map[
 	return &GenesisBootstrap{
 		Genesis: b,
 	}, nil
-}
-
-func MakeInitialStateTree(bs bstore.Blockstore, actmap map[address.Address]types.BigInt) (*state.StateTree, error) {
-	cst := cbor.NewCborStore(bs)
-	state, err := state.NewStateTree(cst)
-	if err != nil {
-		return nil, xerrors.Errorf("making new state tree: %w", err)
-	}
-
-	emptyobject, err := cst.Put(context.TODO(), []struct{}{})
-	if err != nil {
-		return nil, xerrors.Errorf("failed putting empty object: %w", err)
-	}
-
-	var addrs []address.Address
-	for a := range actmap {
-		addrs = append(addrs, a)
-	}
-
-	initact, err := SetupInitActor(bs, addrs)
-	if err != nil {
-		return nil, xerrors.Errorf("setup init actor: %w", err)
-	}
-
-	if err := state.SetActor(actors.InitAddress, initact); err != nil {
-		return nil, xerrors.Errorf("set init actor: %w", err)
-	}
-
-	cronact, err := SetupCronActor(bs)
-	if err != nil {
-		return nil, xerrors.Errorf("setup cron actor: %w", err)
-	}
-
-	if err := state.SetActor(actors.CronAddress, cronact); err != nil {
-		return nil, xerrors.Errorf("set cron actor: %w", err)
-	}
-
-	spact, err := SetupStoragePowerActor(bs)
-	if err != nil {
-		return nil, xerrors.Errorf("setup storage market actor: %w", err)
-	}
-
-	if err := state.SetActor(actors.StoragePowerAddress, spact); err != nil {
-		return nil, xerrors.Errorf("set storage market actor: %w", err)
-	}
-
-	netAmt := types.FromFil(build.TotalFilecoin)
-	for _, amt := range actmap {
-		netAmt = types.BigSub(netAmt, amt)
-	}
-
-	err = state.SetActor(actors.NetworkAddress, &types.Actor{
-		Code:    actors.AccountCodeCid,
-		Balance: netAmt,
-		Head:    emptyobject,
-	})
-	if err != nil {
-		return nil, xerrors.Errorf("set network account actor: %w", err)
-	}
-
-	err = state.SetActor(actors.BurntFundsAddress, &types.Actor{
-		Code:    actors.AccountCodeCid,
-		Balance: types.NewInt(0),
-		Head:    emptyobject,
-	})
-	if err != nil {
-		return nil, xerrors.Errorf("set burnt funds account actor: %w", err)
-	}
-
-	for a, v := range actmap {
-		err = state.SetActor(a, &types.Actor{
-			Code:    actors.AccountCodeCid,
-			Balance: v,
-			Head:    emptyobject,
-		})
-		if err != nil {
-			return nil, xerrors.Errorf("setting account from actmap: %w", err)
-		}
-	}
-
-	return state, nil
 }

@@ -8,12 +8,12 @@ import (
 )
 
 type SealTicket struct {
-	BlockHeight uint64
+	BlockHeight abi.ChainEpoch
 	TicketBytes []byte
 }
 
 func (t *SealTicket) SB() sectorbuilder.SealTicket {
-	out := sectorbuilder.SealTicket{BlockHeight: t.BlockHeight}
+	out := sectorbuilder.SealTicket{BlockHeight: uint64(t.BlockHeight)}
 	copy(out.TicketBytes[:], t.TicketBytes)
 	return out
 }

@@ -25,7 +25,7 @@ import (
 )
 
 type GenMinerCfg struct {
-	PreSeals map[string]genesis.GenesisMiner
+	PreSeals map[string]genesis.Miner
 
 	// The addresses of the created miner, this is set by the genesis setup
 	MinerAddrs []address.Address
