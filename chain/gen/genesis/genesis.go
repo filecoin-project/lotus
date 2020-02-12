@@ -39,7 +39,7 @@ type GenesisBootstrap struct {
 From a list of parameters, create a genesis block / initial state
 
 The process:
-- Bootstrap state
+- Bootstrap state (MakeInitialStateTree)
 	- Create empty state
 	- Make init actor
     - Create accounts mappings
@@ -111,8 +111,54 @@ func MakeInitialStateTree(ctx context.Context, bs bstore.Blockstore, template ge
 		return nil, xerrors.Errorf("set init actor: %w", err)
 	}
 
-	// Create accounts
+	// Setup reward
+	err = state.SetActor(actors.RewardActor, &types.Actor{
+		Code:    builtin.RewardActorCodeID,
+		Balance: big.Int{Int: build.InitialReward},
+		Head:    emptyobject, // TODO ?
+	})
+	if err != nil {
+		return nil, xerrors.Errorf("set network account actor: %w", err)
+	}
 
+	// Setup cron
+	cronact, err := SetupCronActor(bs)
+	if err != nil {
+		return nil, xerrors.Errorf("setup cron actor: %w", err)
+	}
+	if err := state.SetActor(actors.CronAddress, cronact); err != nil {
+		return nil, xerrors.Errorf("set cron actor: %w", err)
+	}
+
+	// Create empty power actor
+	spact, err := SetupStoragePowerActor(bs)
+	if err != nil {
+		return nil, xerrors.Errorf("setup storage market actor: %w", err)
+	}
+	if err := state.SetActor(actors.StoragePowerAddress, spact); err != nil {
+		return nil, xerrors.Errorf("set storage market actor: %w", err)
+	}
+
+	// Create empty market actor
+	marketact, err := SetupStorageMarketActor(bs, template.Miners)
+	if err != nil {
+		return nil, xerrors.Errorf("setup storage market actor: %w", err)
+	}
+	if err := state.SetActor(actors.StorageMarketAddress, marketact); err != nil {
+		return nil, xerrors.Errorf("set market actor: %w", err)
+	}
+
+	// Setup burnt-funds
+	err = state.SetActor(actors.BurntFundsAddress, &types.Actor{
+		Code:    actors.AccountCodeCid,
+		Balance: types.NewInt(0),
+		Head:    emptyobject,
+	})
+	if err != nil {
+		return nil, xerrors.Errorf("set burnt funds account actor: %w", err)
+	}
+
+	// Create accounts
 	for id, info := range template.Accounts {
 		if info.Type != genesis.TAccount {
 			return nil, xerrors.New("unsupported account type") // TODO: msigs
@@ -143,63 +189,16 @@ func MakeInitialStateTree(ctx context.Context, bs bstore.Blockstore, template ge
 		}
 	}
 
-	// Setup initial market state
-
-	marketact, err := SetupStorageMarketActor(bs, template.Miners)
-	if err != nil {
-		return nil, xerrors.Errorf("setup storage market actor: %w", err)
-	}
-	if err := state.SetActor(actors.StorageMarketAddress, marketact); err != nil {
-		return nil, xerrors.Errorf("set market actor: %w", err)
-	}
-
-	spact, err := SetupStoragePowerActor(bs)
-	if err != nil {
-		return nil, xerrors.Errorf("setup storage market actor: %w", err)
-	}
-
-	if err := state.SetActor(actors.StoragePowerAddress, spact); err != nil {
-		return nil, xerrors.Errorf("set storage market actor: %w", err)
-	}
-
-	err = state.SetActor(actors.RewardActor, &types.Actor{
-		Code:    builtin.RewardActorCodeID,
-		Balance: big.Int{Int: build.InitialReward},
-		Head:    emptyobject,
-	})
-	if err != nil {
-		return nil, xerrors.Errorf("set network account actor: %w", err)
-	}
-
-	cronact, err := SetupCronActor(bs)
-	if err != nil {
-		return nil, xerrors.Errorf("setup cron actor: %w", err)
-	}
-	if err := state.SetActor(actors.CronAddress, cronact); err != nil {
-		return nil, xerrors.Errorf("set cron actor: %w", err)
-	}
-
-	err = state.SetActor(actors.BurntFundsAddress, &types.Actor{
-		Code:    actors.AccountCodeCid,
-		Balance: types.NewInt(0),
-		Head:    emptyobject,
-	})
-	if err != nil {
-		return nil, xerrors.Errorf("set burnt funds account actor: %w", err)
-	}
-
 	return state, nil
 }
 
-func MakeGenesisBlock(bs bstore.Blockstore, sys *types.VMSyscalls, balances map[address.Address]types.BigInt, gmcfg *GenMinerCfg, ts uint64) (*GenesisBootstrap, error) {
-	ctx := context.TODO()
-
-	state, err := MakeInitialStateTree(bs, balances)
+func MakeGenesisBlock(ctx context.Context, bs bstore.Blockstore, sys *types.VMSyscalls, template genesis.Template) (*GenesisBootstrap, error) {
+	st, err := MakeInitialStateTree(ctx, bs, template)
 	if err != nil {
 		return nil, xerrors.Errorf("make initial state tree failed: %w", err)
 	}
 
-	stateroot, err := state.Flush(ctx)
+	stateroot, err := st.Flush(ctx)
 	if err != nil {
 		return nil, xerrors.Errorf("flush state tree failed: %w", err)
 	}
@@ -251,7 +250,7 @@ func MakeGenesisBlock(bs bstore.Blockstore, sys *types.VMSyscalls, balances map[
 		ParentMessageReceipts: emptyroot,
 		BLSAggregate:          types.Signature{Type: types.KTBLS, Data: []byte("signatureeee")},
 		BlockSig:              &types.Signature{Type: types.KTBLS, Data: []byte("block signatureeee")},
-		Timestamp:             ts,
+		Timestamp:             template.Timestamp,
 	}
 
 	sb, err := b.ToStorageBlock()
