@@ -4,23 +4,27 @@ import (
 	"context"
 	"fmt"
 
+	"github.com/filecoin-project/specs-actors/actors/builtin"
+	init_ "github.com/filecoin-project/specs-actors/actors/builtin/init"
+	"github.com/filecoin-project/specs-actors/actors/builtin/paych"
 	"github.com/ipfs/go-cid"
 	"golang.org/x/xerrors"
 
 	"github.com/filecoin-project/go-address"
+
 	"github.com/filecoin-project/lotus/chain/actors"
 	"github.com/filecoin-project/lotus/chain/types"
 )
 
 func (pm *Manager) createPaych(ctx context.Context, from, to address.Address, amt types.BigInt) (address.Address, cid.Cid, error) {
-	params, aerr := actors.SerializeParams(&actors.PCAConstructorParams{To: to})
+	params, aerr := actors.SerializeParams(&paych.ConstructorParams{To: to})
 	if aerr != nil {
 		return address.Undef, cid.Undef, aerr
 	}
 
-	enc, aerr := actors.SerializeParams(&actors.ExecParams{
-		Params: params,
-		Code:   actors.PaymentChannelCodeCid,
+	enc, aerr := actors.SerializeParams(&init_.ExecParams{
+		CodeCID:   actors.PaymentChannelCodeCid,
+		ConstructorParams: params,
 	})
 	if aerr != nil {
 		return address.Undef, cid.Undef, aerr
@@ -30,7 +34,7 @@ func (pm *Manager) createPaych(ctx context.Context, from, to address.Address, am
 		To:       actors.InitAddress,
 		From:     from,
 		Value:    amt,
-		Method:   actors.IAMethods.Exec,
+		Method:   builtin.MethodsInit.Exec,
 		Params:   enc,
 		GasLimit: types.NewInt(1000000),
 		GasPrice: types.NewInt(0),
