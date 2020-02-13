@@ -10,6 +10,7 @@ import (
 )
 
 type ActorType string
+
 const (
 	TAccount  ActorType = "account"
 	TMultisig ActorType = "multisig"

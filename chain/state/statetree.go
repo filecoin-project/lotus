@@ -183,8 +183,7 @@ func (st *StateTree) RegisterNewAddress(addr address.Address, act *types.Actor) 
 	return out, nil
 }
 
-
-type adtStore struct {cbor.IpldStore}
+type adtStore struct{ cbor.IpldStore }
 
 func (a *adtStore) Context() context.Context {
 	return context.TODO()

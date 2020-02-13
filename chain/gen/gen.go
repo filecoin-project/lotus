@@ -164,7 +164,7 @@ func NewGenerator() (*ChainGen, error) {
 	sys := vm.Syscalls(sectorbuilder.ProofVerifier)
 
 	tpl := genesis.Template{
-		Accounts:    []genesis.Actor{
+		Accounts: []genesis.Actor{
 			{
 				Type:    genesis.TAccount,
 				Balance: types.FromFil(40000),
@@ -181,7 +181,7 @@ func NewGenerator() (*ChainGen, error) {
 				Meta:    (&genesis.AccountMeta{Owner: banker}).ActorMeta(),
 			},
 		},
-		Miners:      []genesis.Miner{
+		Miners: []genesis.Miner{
 			*genm1,
 			*genm2,
 		},
