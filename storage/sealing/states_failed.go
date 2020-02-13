@@ -53,7 +53,7 @@ func (m *Sealing) checkPreCommitted(ctx statemachine.Context, sector SectorInfo)
 
 	var pci miner.SectorPreCommitOnChainInfo
 	precommits := adt.AsMap(store.ActorStore(ctx.Context(), apibstore.NewAPIBlockstore(m.api)), state.PreCommittedSectors)
-	if _, err := precommits.Get(adt.IntKey(sector.SectorID), &pci); err != nil {
+	if _, err := precommits.Get(adt.UIntKey(uint64(sector.SectorID)), &pci); err != nil {
 		log.Error(err)
 		return nil, true
 	}
