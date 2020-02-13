@@ -45,7 +45,7 @@ func (pm *Manager) laneState(ctx context.Context, ch address.Address, lane uint6
 	ls := findLane(state.LaneStates, lane)
 	if ls == nil {
 		ls = &paych.LaneState{
-			ID: int64(lane),
+			ID:       lane,
 			Redeemed: types.NewInt(0),
 			Nonce:    0,
 		}
@@ -64,16 +64,16 @@ func (pm *Manager) laneState(ctx context.Context, ch address.Address, lane uint6
 			return paych.LaneState{}, xerrors.Errorf("paych merges not handled yet")
 		}
 
-		if uint64(v.Voucher.Lane) != lane {
+		if v.Voucher.Lane != lane {
 			continue
 		}
 
-		if uint64(v.Voucher.Nonce) < uint64(ls.Nonce) {
+		if v.Voucher.Nonce < ls.Nonce {
 			log.Warnf("Found outdated voucher: ch=%s, lane=%d, v.nonce=%d lane.nonce=%d", ch, lane, v.Voucher.Nonce, ls.Nonce)
 			continue
 		}
 
-		ls.Nonce = int64(v.Voucher.Nonce)
+		ls.Nonce = v.Voucher.Nonce
 		ls.Redeemed = v.Voucher.Amount
 	}
 

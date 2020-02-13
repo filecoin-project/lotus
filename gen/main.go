@@ -23,9 +23,6 @@ func main() {
 		types.Message{},
 		types.SignedMessage{},
 		types.MsgMeta{},
-		types.SignedVoucher{},
-		types.ModVerifyParams{},
-		types.Merge{},
 		types.Actor{},
 		types.MessageReceipt{},
 		types.BlockMsg{},
@@ -38,7 +35,7 @@ func main() {
 		os.Exit(1)
 	}
 
-	err = gen.WriteTupleEncodersToFile("./paych/cbor_gen.go", "paych",
+	err = gen.WriteMapEncodersToFile("./paych/cbor_gen.go", "paych",
 		paych.VoucherInfo{},
 		paych.ChannelInfo{},
 	)
