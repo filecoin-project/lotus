@@ -10,7 +10,7 @@ import (
 	"github.com/filecoin-project/lotus/chain/blocksync"
 	"github.com/filecoin-project/lotus/chain/types"
 	"github.com/filecoin-project/lotus/lib/statemachine"
-	"github.com/filecoin-project/lotus/paych"
+	"github.com/filecoin-project/lotus/paychmgr"
 	"github.com/filecoin-project/lotus/storage/sealing"
 )
 
@@ -26,8 +26,6 @@ func main() {
 		types.Actor{},
 		types.MessageReceipt{},
 		types.BlockMsg{},
-		types.SignedStorageAsk{},
-		types.StorageAsk{},
 		types.ExpTipSet{},
 	)
 	if err != nil {
@@ -35,9 +33,9 @@ func main() {
 		os.Exit(1)
 	}
 
-	err = gen.WriteMapEncodersToFile("./paych/cbor_gen.go", "paych",
-		paych.VoucherInfo{},
-		paych.ChannelInfo{},
+	err = gen.WriteMapEncodersToFile("./paychmgr/cbor_gen.go", "paychmgr",
+		paychmgr.VoucherInfo{},
+		paychmgr.ChannelInfo{},
 	)
 	if err != nil {
 		fmt.Println(err)

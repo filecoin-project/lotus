@@ -10,7 +10,7 @@ import (
 
 	"github.com/filecoin-project/go-sectorbuilder"
 	"github.com/filecoin-project/lotus/api"
-	"github.com/filecoin-project/lotus/paych"
+	"github.com/filecoin-project/lotus/paychmgr"
 	"github.com/filecoin-project/lotus/storage"
 )
 
@@ -34,7 +34,7 @@ func (rpn *retrievalProviderNode) UnsealSector(ctx context.Context, sectorID abi
 	return rpn.sb.ReadPieceFromSealedSector(ctx, sectorID, sectorbuilder.UnpaddedByteIndex(offset), abi.UnpaddedPieceSize(length), si.Ticket.TicketBytes, si.CommD)
 }
 
-func (rpn *retrievalProviderNode) SavePaymentVoucher(ctx context.Context, paymentChannel address.Address, voucher *paych.SignedVoucher, proof []byte, expectedAmount abi.TokenAmount) (abi.TokenAmount, error) {
+func (rpn *retrievalProviderNode) SavePaymentVoucher(ctx context.Context, paymentChannel address.Address, voucher *paychmgr.SignedVoucher, proof []byte, expectedAmount abi.TokenAmount) (abi.TokenAmount, error) {
 	added, err := rpn.full.PaychVoucherAdd(ctx, paymentChannel, voucher, proof, expectedAmount)
 	return added, err
 }

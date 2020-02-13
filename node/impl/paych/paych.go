@@ -13,7 +13,7 @@ import (
 	"github.com/filecoin-project/lotus/chain/actors"
 	"github.com/filecoin-project/lotus/chain/types"
 	full "github.com/filecoin-project/lotus/node/impl/full"
-	"github.com/filecoin-project/lotus/paych"
+	"github.com/filecoin-project/lotus/paychmgr"
 )
 
 type PaychAPI struct {
@@ -23,7 +23,7 @@ type PaychAPI struct {
 	full.WalletAPI
 	full.ChainAPI
 
-	PaychMgr *paych.Manager
+	PaychMgr *paychmgr.Manager
 }
 
 func (a *PaychAPI) PaychGet(ctx context.Context, from, to address.Address, ensureFunds types.BigInt) (*api.ChannelInfo, error) {

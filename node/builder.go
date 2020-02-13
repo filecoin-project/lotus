@@ -50,7 +50,7 @@ import (
 	"github.com/filecoin-project/lotus/node/modules/lp2p"
 	"github.com/filecoin-project/lotus/node/modules/testing"
 	"github.com/filecoin-project/lotus/node/repo"
-	"github.com/filecoin-project/lotus/paych"
+	"github.com/filecoin-project/lotus/paychmgr"
 	"github.com/filecoin-project/lotus/peermgr"
 	"github.com/filecoin-project/lotus/storage"
 	"github.com/filecoin-project/lotus/storage/sealing"
@@ -242,8 +242,8 @@ func Online() Option {
 			Override(RegisterClientValidatorKey, modules.RegisterClientValidator),
 			Override(RunDealClientKey, modules.RunDealClient),
 
-			Override(new(*paych.Store), paych.NewStore),
-			Override(new(*paych.Manager), paych.NewManager),
+			Override(new(*paychmgr.Store), paychmgr.NewStore),
+			Override(new(*paychmgr.Manager), paychmgr.NewManager),
 			Override(new(*market.FundMgr), market.NewFundMgr),
 		),
 

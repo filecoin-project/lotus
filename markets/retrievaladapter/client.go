@@ -6,18 +6,18 @@ import (
 	"github.com/filecoin-project/go-address"
 	"github.com/filecoin-project/go-fil-markets/retrievalmarket"
 	payapi "github.com/filecoin-project/lotus/node/impl/paych"
-	"github.com/filecoin-project/lotus/paych"
+	"github.com/filecoin-project/lotus/paychmgr"
 	"github.com/filecoin-project/specs-actors/actors/abi"
 )
 
 type retrievalClientNode struct {
-	pmgr   *paych.Manager
+	pmgr   *paychmgr.Manager
 	payapi payapi.PaychAPI
 }
 
 // NewRetrievalClientNode returns a new node adapter for a retrieval client that talks to the
 // Lotus Node
-func NewRetrievalClientNode(pmgr *paych.Manager, payapi payapi.PaychAPI) retrievalmarket.RetrievalClientNode {
+func NewRetrievalClientNode(pmgr *paychmgr.Manager, payapi payapi.PaychAPI) retrievalmarket.RetrievalClientNode {
 	return &retrievalClientNode{pmgr: pmgr, payapi: payapi}
 }
 
@@ -38,7 +38,7 @@ func (rcn *retrievalClientNode) AllocateLane(paymentChannel address.Address) (ui
 // CreatePaymentVoucher creates a new payment voucher in the given lane for a
 // given payment channel so that all the payment vouchers in the lane add up
 // to the given amount (so the payment voucher will be for the difference)
-func (rcn *retrievalClientNode) CreatePaymentVoucher(ctx context.Context, paymentChannel address.Address, amount abi.TokenAmount, lane uint64) (*paych.SignedVoucher, error) {
+func (rcn *retrievalClientNode) CreatePaymentVoucher(ctx context.Context, paymentChannel address.Address, amount abi.TokenAmount, lane uint64) (*paychmgr.SignedVoucher, error) {
 	voucher, err := rcn.payapi.PaychVoucherCreate(ctx, paymentChannel, amount, lane)
 	if err != nil {
 		return nil, err

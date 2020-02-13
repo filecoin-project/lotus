@@ -1,4 +1,4 @@
-package paych
+package paychmgr
 
 import (
 	"bytes"
