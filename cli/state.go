@@ -721,7 +721,7 @@ var stateCallCmd = &cli.Command{
 		&cli.StringFlag{
 			Name:  "from",
 			Usage: "",
-			Value: actors.NetworkAddress.String(),
+			Value: actors.SystemAddress.String(),
 		},
 		&cli.StringFlag{
 			Name:  "value",
@@ -788,7 +788,7 @@ var stateCallCmd = &cli.Command{
 			Value:    types.BigInt(value),
 			GasLimit: types.NewInt(10000000000),
 			GasPrice: types.NewInt(0),
-			Method:   method,
+			Method:   abi.MethodNum(method),
 			Params:   params,
 		}, ts)
 		if err != nil {

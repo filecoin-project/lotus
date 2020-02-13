@@ -227,9 +227,9 @@ type PaymentInfo struct {
 }
 
 type VoucherSpec struct {
-	Amount   types.BigInt
-	TimeLock uint64
-	MinClose uint64
+	Amount    types.BigInt
+	TimeLock  abi.ChainEpoch
+	MinSettle abi.ChainEpoch
 
 	Extra *types.ModVerifyParams
 }

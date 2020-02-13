@@ -61,6 +61,7 @@ type storageMinerApi interface {
 	ChainGetTipSetByHeight(context.Context, abi.ChainEpoch, *types.TipSet) (*types.TipSet, error)
 	ChainGetBlockMessages(context.Context, cid.Cid) (*api.BlockMessages, error)
 	ChainReadObj(context.Context, cid.Cid) ([]byte, error)
+	ChainHasObj(context.Context, cid.Cid) (bool, error)
 
 	WalletSign(context.Context, address.Address, []byte) (*types.Signature, error)
 	WalletBalance(context.Context, address.Address) (types.BigInt, error)

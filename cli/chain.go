@@ -11,7 +11,11 @@ import (
 	"strings"
 	"time"
 
+	"github.com/filecoin-project/go-address"
+	cborutil "github.com/filecoin-project/go-cbor-util"
 	"github.com/filecoin-project/specs-actors/actors/abi"
+	"github.com/filecoin-project/specs-actors/actors/builtin"
+	"github.com/filecoin-project/specs-actors/actors/builtin/power"
 	cid "github.com/ipfs/go-cid"
 	"golang.org/x/xerrors"
 	"gopkg.in/urfave/cli.v2"
@@ -595,9 +599,22 @@ var slashConsensusFault = &cli.Command{
 			return err
 		}
 
-		params, err := actors.SerializeParams(&actors.ArbitrateConsensusFaultParams{
-			Block1: b1,
-			Block2: b2,
+		bh1, err := cborutil.Dump(b1)
+		if err != nil {
+			return err
+		}
+
+		bh2, err := cborutil.Dump(b2)
+		if err != nil {
+			return err
+		}
+
+		params, err := actors.SerializeParams(&power.ReportConsensusFaultParams{
+			BlockHeader1: bh1,
+			BlockHeader2: bh2,
+			Target:       address.Address{},
+			FaultEpoch:   0,
+			FaultType:    0,
 		})
 
 		msg := &types.Message{
@@ -606,7 +623,7 @@ var slashConsensusFault = &cli.Command{
 			Value:    types.NewInt(0),
 			GasPrice: types.NewInt(1),
 			GasLimit: types.NewInt(10000000),
-			Method:   actors.SPAMethods.ArbitrateConsensusFault,
+			Method:   builtin.MethodsPower.ReportConsensusFault,
 			Params:   params,
 		}
 
