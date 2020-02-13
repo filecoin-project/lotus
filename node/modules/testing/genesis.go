@@ -83,7 +83,7 @@ func MakeGenesis(outFile, presealInfo, timestamp string) func(bs dtypes.ChainBlo
 				return nil, xerrors.Errorf("reading preseals json: %w", err)
 			}
 
-			var preseals map[string]genesis.GenesisMiner
+			var preseals map[string]genesis.Miner
 			if err := json.Unmarshal(fdata, &preseals); err != nil {
 				return nil, err
 			}
