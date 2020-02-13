@@ -107,7 +107,6 @@ func (m *Sealing) handlePreCommitting(ctx statemachine.Context, sector SectorInf
 			SealEpoch: sector.Ticket.BlockHeight,
 			DealIDs:   nil, // sector.deals(), // TODO: REFACTOR
 		},
-
 	}
 	enc, aerr := actors.SerializeParams(params)
 	if aerr != nil {
@@ -190,7 +189,7 @@ func (m *Sealing) handleCommitting(ctx statemachine.Context, sector SectorInfo) 
 
 	params := &miner.ProveCommitSectorParams{
 		SectorNumber: sector.SectorID,
-		Proof:        abi.SealProof{ProofBytes:proof},
+		Proof:        abi.SealProof{ProofBytes: proof},
 	}
 
 	enc, aerr := actors.SerializeParams(params)
