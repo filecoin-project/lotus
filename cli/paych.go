@@ -1,11 +1,15 @@
 package cli
 
 import (
+	"bytes"
+	"encoding/base64"
 	"fmt"
 
 	"github.com/filecoin-project/go-address"
-	types "github.com/filecoin-project/lotus/chain/types"
+	"github.com/filecoin-project/specs-actors/actors/builtin/paych"
 	"gopkg.in/urfave/cli.v2"
+
+	types "github.com/filecoin-project/lotus/chain/types"
 )
 
 var paychCmd = &cli.Command{
@@ -136,7 +140,7 @@ var paychVoucherCreateCmd = &cli.Command{
 			return err
 		}
 
-		enc, err := sv.EncodedString()
+		enc, err := EncodedString(sv)
 		if err != nil {
 			return err
 		}
@@ -250,7 +254,7 @@ var paychVoucherListCmd = &cli.Command{
 
 		for _, v := range vouchers {
 			if cctx.Bool("export") {
-				enc, err := v.EncodedString()
+				enc, err := EncodedString(v)
 				if err != nil {
 					return err
 				}
@@ -308,7 +312,7 @@ var paychVoucherBestSpendableCmd = &cli.Command{
 			return fmt.Errorf("No spendable vouchers for that channel")
 		}
 
-		enc, err := best.EncodedString()
+		enc, err := EncodedString(best)
 		if err != nil {
 			return err
 		}
@@ -363,4 +367,13 @@ var paychVoucherSubmitCmd = &cli.Command{
 
 		return nil
 	},
+}
+
+func EncodedString(sv *paych.SignedVoucher) (string, error) {
+	buf := new(bytes.Buffer)
+	if err := sv.MarshalCBOR(buf); err != nil {
+		return "", err
+	}
+
+	return base64.RawURLEncoding.EncodeToString(buf.Bytes()), nil
 }

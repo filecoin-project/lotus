@@ -4,6 +4,8 @@ import (
 	"context"
 	"fmt"
 
+	"github.com/filecoin-project/specs-actors/actors/builtin"
+	"github.com/filecoin-project/specs-actors/actors/builtin/paych"
 	"github.com/ipfs/go-cid"
 	"go.uber.org/fx"
 	"golang.org/x/xerrors"
@@ -64,9 +66,9 @@ func (a *PaychAPI) PaychNewPayment(ctx context.Context, from, to address.Address
 			Amount: v.Amount,
 			Lane:   lane,
 
-			Extra:          v.Extra,
-			TimeLock:       v.TimeLock,
-			MinCloseHeight: v.MinClose,
+			Extra:           v.Extra,
+			TimeLock:        v.TimeLock,
+			MinSettleHeight: v.MinSettle,
 		})
 		if err != nil {
 			return nil, err
@@ -103,6 +105,8 @@ func (a *PaychAPI) PaychStatus(ctx context.Context, pch address.Address) (*api.P
 }
 
 func (a *PaychAPI) PaychClose(ctx context.Context, addr address.Address) (cid.Cid, error) {
+	panic("TODO Settle logic")
+
 	ci, err := a.PaychMgr.GetChannelInfo(addr)
 	if err != nil {
 		return cid.Undef, err
@@ -117,7 +121,7 @@ func (a *PaychAPI) PaychClose(ctx context.Context, addr address.Address) (cid.Ci
 		To:     addr,
 		From:   ci.Control,
 		Value:  types.NewInt(0),
-		Method: actors.PCAMethods.Close,
+		Method: builtin.MethodsPaych.Settle,
 		Nonce:  nonce,
 
 		GasLimit: types.NewInt(500),
@@ -221,7 +225,7 @@ func (a *PaychAPI) PaychVoucherSubmit(ctx context.Context, ch address.Address, s
 		return cid.Undef, fmt.Errorf("cant handle more advanced payment channel stuff yet")
 	}
 
-	enc, err := actors.SerializeParams(&actors.PCAUpdateChannelStateParams{
+	enc, err := actors.SerializeParams(&paych.UpdateChannelStateParams{
 		Sv: *sv,
 	})
 	if err != nil {
@@ -233,7 +237,7 @@ func (a *PaychAPI) PaychVoucherSubmit(ctx context.Context, ch address.Address, s
 		To:       ch,
 		Value:    types.NewInt(0),
 		Nonce:    nonce,
-		Method:   actors.PCAMethods.UpdateChannelState,
+		Method:   builtin.MethodsPaych.UpdateChannelState,
 		Params:   enc,
 		GasLimit: types.NewInt(100000),
 		GasPrice: types.NewInt(0),

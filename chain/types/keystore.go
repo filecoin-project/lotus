@@ -2,8 +2,6 @@ package types
 
 import (
 	"fmt"
-
-	"github.com/filecoin-project/specs-actors/actors/crypto"
 )
 
 var (
@@ -13,7 +11,7 @@ var (
 
 // KeyInfo is used for storing keys in KeyStore
 type KeyInfo struct {
-	Type       crypto.SigType
+	Type       string
 	PrivateKey []byte
 }
 

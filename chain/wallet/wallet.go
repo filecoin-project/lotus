@@ -24,6 +24,8 @@ var log = logging.Logger("wallet")
 const (
 	KNamePrefix = "wallet-"
 	KDefault    = "default"
+	KTBLS       = "bls"
+	KTSecp256k1 = "secp256k1"
 )
 
 type Wallet struct {
@@ -62,7 +64,7 @@ func (w *Wallet) Sign(ctx context.Context, addr address.Address, msg []byte) (*c
 		return nil, xerrors.Errorf("signing using key '%s': %w", addr.String(), types.ErrKeyInfoNotFound)
 	}
 
-	return sigs.Sign(ki.Type, ki.PrivateKey, msg)
+	return sigs.Sign(ActSigType(ki.Type), ki.PrivateKey, msg)
 }
 
 func (w *Wallet) findKey(addr address.Address) (*Key, error) {
@@ -186,7 +188,7 @@ func GenerateKey(typ crypto.SigType) (*Key, error) {
 		return nil, err
 	}
 	ki := types.KeyInfo{
-		Type:       typ,
+		Type:       kstoreSigType(typ),
 		PrivateKey: pk,
 	}
 	return NewKey(ki)
@@ -241,18 +243,18 @@ func NewKey(keyinfo types.KeyInfo) (*Key, error) {
 	}
 
 	var err error
-	k.PublicKey, err = sigs.ToPublic(k.Type, k.PrivateKey)
+	k.PublicKey, err = sigs.ToPublic(ActSigType(k.Type), k.PrivateKey)
 	if err != nil {
 		return nil, err
 	}
 
 	switch k.Type {
-	case crypto.SigTypeSecp256k1:
+	case KTSecp256k1:
 		k.Address, err = address.NewSecp256k1Address(k.PublicKey)
 		if err != nil {
 			return nil, xerrors.Errorf("converting Secp256k1 to address: %w", err)
 		}
-	case crypto.SigTypeBLS:
+	case KTBLS:
 		k.Address, err = address.NewBLSAddress(k.PublicKey)
 		if err != nil {
 			return nil, xerrors.Errorf("converting BLS to address: %w", err)
@@ -262,4 +264,26 @@ func NewKey(keyinfo types.KeyInfo) (*Key, error) {
 	}
 	return k, nil
 
+}
+
+func kstoreSigType(typ crypto.SigType) string {
+	switch typ {
+	case crypto.SigTypeBLS:
+		return KTBLS
+	case crypto.SigTypeSecp256k1:
+		return KTSecp256k1
+	default:
+		return ""
+	}
+}
+
+func ActSigType(typ string) crypto.SigType {
+	switch typ {
+	case KTBLS:
+		return crypto.SigTypeBLS
+	case KTSecp256k1:
+		return crypto.SigTypeSecp256k1
+	default:
+		return 0
+	}
 }

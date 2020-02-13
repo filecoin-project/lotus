@@ -85,6 +85,7 @@ require (
 	github.com/multiformats/go-varint v0.0.5
 	github.com/opentracing/opentracing-go v1.1.0
 	github.com/prometheus/common v0.4.0
+	github.com/rogpeppe/go-internal v1.3.0
 	github.com/stretchr/testify v1.4.0
 	github.com/whyrusleeping/bencher v0.0.0-20190829221104-bb6607aa8bba
 	github.com/whyrusleeping/cbor-gen v0.0.0-20200213013405-80352c7ae952

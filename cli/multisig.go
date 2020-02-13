@@ -14,6 +14,7 @@ import (
 	"github.com/filecoin-project/go-address"
 	"github.com/filecoin-project/specs-actors/actors/abi"
 	"github.com/filecoin-project/specs-actors/actors/builtin"
+	init_ "github.com/filecoin-project/specs-actors/actors/builtin/init"
 	samsig "github.com/filecoin-project/specs-actors/actors/builtin/multisig"
 	cid "github.com/ipfs/go-cid"
 	"github.com/ipfs/go-hamt-ipld"
@@ -104,9 +105,9 @@ var msigCreateCmd = &cli.Command{
 		}
 
 		// new actors are created by invoking 'exec' on the init actor with the constructor params
-		execParams := &actors.ExecParams{
-			Code:   actors.MultisigCodeCid,
-			Params: enc,
+		execParams := &init_.ExecParams{
+			CodeCID:           actors.MultisigCodeCid,
+			ConstructorParams: enc,
 		}
 
 		enc, err = actors.SerializeParams(execParams)
@@ -118,7 +119,7 @@ var msigCreateCmd = &cli.Command{
 		msg := types.Message{
 			To:       actors.InitAddress,
 			From:     sendAddr,
-			Method:   actors.IAMethods.Exec,
+			Method:   builtin.MethodsInit.Exec,
 			Params:   enc,
 			GasPrice: types.NewInt(1),
 			GasLimit: types.NewInt(1000000),
@@ -347,7 +348,7 @@ var msigProposeCmd = &cli.Command{
 			To:       msig,
 			From:     from,
 			Value:    types.NewInt(0),
-			Method:   uint64(builtin.MethodsMultisig.Propose),
+			Method:   builtin.MethodsMultisig.Propose,
 			Params:   enc,
 			GasLimit: types.NewInt(100000),
 			GasPrice: types.NewInt(1),
@@ -432,7 +433,7 @@ var msigApproveCmd = &cli.Command{
 			To:       msig,
 			From:     from,
 			Value:    types.NewInt(0),
-			Method:   uint64(builtin.MethodsMultisig.Approve),
+			Method:   builtin.MethodsMultisig.Approve,
 			Params:   enc,
 			GasLimit: types.NewInt(100000),
 			GasPrice: types.NewInt(1),

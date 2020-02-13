@@ -229,7 +229,7 @@ func (s *FPoStScheduler) submitPost(ctx context.Context, proof *actors.SubmitFal
 	msg := &types.Message{
 		To:       s.actor,
 		From:     s.worker,
-		Method:   actors.MAMethods.SubmitFallbackPoSt,
+		Method:   builtin.MethodsMiner.SubmitFallbackPoSt,
 		Params:   enc,
 		Value:    types.NewInt(1000),     // currently hard-coded late fee in actor, returned if not late
 		GasLimit: types.NewInt(10000000), // i dont know help

@@ -14,7 +14,7 @@ import (
 
 	"github.com/filecoin-project/go-address"
 	"github.com/filecoin-project/go-fil-markets/storagemarket"
-	actors "github.com/filecoin-project/lotus/chain/actors"
+
 	"github.com/filecoin-project/lotus/chain/types"
 )
 
@@ -291,25 +291,13 @@ var clientQueryAskCmd = &cli.Command{
 			}
 			pid = p
 		} else {
-			ret, err := api.StateCall(ctx, &types.Message{
-				To:     maddr,
-				From:   maddr,
-				Method: actors.MAMethods.GetPeerID,
-			}, nil)
+			p, err := api.StateMinerPeerID(ctx, maddr, nil)
 			if err != nil {
 				return xerrors.Errorf("failed to get peerID for miner: %w", err)
 			}
 
-			if ret.ExitCode != 0 {
-				return fmt.Errorf("call to GetPeerID was unsuccesful (exit code %d)", ret.ExitCode)
-			}
-			if peer.ID(ret.Return) == peer.ID("SETME") {
+			if p == peer.ID("SETME") {
 				return fmt.Errorf("the miner hasn't initialized yet")
-			}
-
-			p, err := peer.IDFromBytes(ret.Return)
-			if err != nil {
-				return err
 			}
 
 			pid = p
