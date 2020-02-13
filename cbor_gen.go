@@ -6,6 +6,7 @@ import (
 	"fmt"
 	"io"
 
+	"github.com/filecoin-project/specs-actors/actors/abi"
 	cbg "github.com/whyrusleeping/cbor-gen"
 	xerrors "golang.org/x/xerrors"
 )
@@ -21,7 +22,7 @@ func (t *SealTicket) MarshalCBOR(w io.Writer) error {
 		return err
 	}
 
-	// t.BlockHeight (uint64) (uint64)
+	// t.BlockHeight (abi.ChainEpoch) (int64)
 	if len("BlockHeight") > cbg.MaxLength {
 		return xerrors.Errorf("Value in field \"BlockHeight\" was too long")
 	}
@@ -33,8 +34,14 @@ func (t *SealTicket) MarshalCBOR(w io.Writer) error {
 		return err
 	}
 
-	if _, err := w.Write(cbg.CborEncodeMajorType(cbg.MajUnsignedInt, uint64(t.BlockHeight))); err != nil {
-		return err
+	if t.BlockHeight >= 0 {
+		if _, err := w.Write(cbg.CborEncodeMajorType(cbg.MajUnsignedInt, uint64(t.BlockHeight))); err != nil {
+			return err
+		}
+	} else {
+		if _, err := w.Write(cbg.CborEncodeMajorType(cbg.MajNegativeInt, uint64(-t.BlockHeight)-1)); err != nil {
+			return err
+		}
 	}
 
 	// t.TicketBytes ([]uint8) (slice)
@@ -92,15 +99,31 @@ func (t *SealTicket) UnmarshalCBOR(r io.Reader) error {
 		}
 
 		switch name {
-		// t.BlockHeight (uint64) (uint64)
+		// t.BlockHeight (abi.ChainEpoch) (int64)
 		case "BlockHeight":
+			{
+				maj, extra, err := cbg.CborReadHeader(br)
+				var extraI int64
+				if err != nil {
+					return err
+				}
+				switch maj {
+				case cbg.MajUnsignedInt:
+					extraI = int64(extra)
+					if extraI < 0 {
+						return fmt.Errorf("int64 positive overflow")
+					}
+				case cbg.MajNegativeInt:
+					extraI = int64(extra)
+					if extraI < 0 {
+						return fmt.Errorf("int64 negative oveflow")
+					}
+					extraI = -1 - extraI
+				default:
+					return fmt.Errorf("wrong type for int64 field: %d", maj)
+				}
 
-			maj, extra, err = cbg.CborReadHeader(br)
-			if err != nil {
-				return err
-			}
-			if maj != cbg.MajUnsignedInt {
-				return fmt.Errorf("wrong type for uint64 field")
+				t.BlockHeight = abi.ChainEpoch(extraI)
 			}
 			// t.TicketBytes ([]uint8) (slice)
 		case "TicketBytes":
@@ -137,7 +160,7 @@ func (t *SealSeed) MarshalCBOR(w io.Writer) error {
 		return err
 	}
 
-	// t.BlockHeight (uint64) (uint64)
+	// t.BlockHeight (abi.ChainEpoch) (int64)
 	if len("BlockHeight") > cbg.MaxLength {
 		return xerrors.Errorf("Value in field \"BlockHeight\" was too long")
 	}
@@ -149,8 +172,14 @@ func (t *SealSeed) MarshalCBOR(w io.Writer) error {
 		return err
 	}
 
-	if _, err := w.Write(cbg.CborEncodeMajorType(cbg.MajUnsignedInt, uint64(t.BlockHeight))); err != nil {
-		return err
+	if t.BlockHeight >= 0 {
+		if _, err := w.Write(cbg.CborEncodeMajorType(cbg.MajUnsignedInt, uint64(t.BlockHeight))); err != nil {
+			return err
+		}
+	} else {
+		if _, err := w.Write(cbg.CborEncodeMajorType(cbg.MajNegativeInt, uint64(-t.BlockHeight)-1)); err != nil {
+			return err
+		}
 	}
 
 	// t.TicketBytes ([]uint8) (slice)
@@ -208,16 +237,33 @@ func (t *SealSeed) UnmarshalCBOR(r io.Reader) error {
 		}
 
 		switch name {
-		// t.BlockHeight (uint64) (uint64)
+		// t.BlockHeight (abi.ChainEpoch) (int64)
 		case "BlockHeight":
+			{
+				maj, extra, err := cbg.CborReadHeader(br)
+				var extraI int64
+				if err != nil {
+					return err
+				}
+				switch maj {
+				case cbg.MajUnsignedInt:
+					extraI = int64(extra)
+					if extraI < 0 {
+						return fmt.Errorf("int64 positive overflow")
+					}
+				case cbg.MajNegativeInt:
+					extraI = int64(extra)
+					if extraI < 0 {
+						return fmt.Errorf("int64 negative oveflow")
+					}
+					extraI = -1 - extraI
+				default:
+					return fmt.Errorf("wrong type for int64 field: %d", maj)
+				}
 
-			maj, extra, err = cbg.CborReadHeader(br)
-			if err != nil {
-				return err
+				t.BlockHeight = abi.ChainEpoch(extraI)
 			}
-			if maj != cbg.MajUnsignedInt {
-				return fmt.Errorf("wrong type for uint64 field")
-			} // t.TicketBytes ([]uint8) (slice)
+			// t.TicketBytes ([]uint8) (slice)
 		case "TicketBytes":
 
 			maj, extra, err = cbg.CborReadHeader(br)
@@ -252,7 +298,7 @@ func (t *Piece) MarshalCBOR(w io.Writer) error {
 		return err
 	}
 
-	// t.DealID (uint64) (uint64)
+	// t.DealID (abi.DealID) (uint64)
 	if len("DealID") > cbg.MaxLength {
 		return xerrors.Errorf("Value in field \"DealID\" was too long")
 	}
@@ -268,7 +314,7 @@ func (t *Piece) MarshalCBOR(w io.Writer) error {
 		return err
 	}
 
-	// t.Size (uint64) (uint64)
+	// t.Size (abi.UnpaddedPieceSize) (uint64)
 	if len("Size") > cbg.MaxLength {
 		return xerrors.Errorf("Value in field \"Size\" was too long")
 	}
@@ -339,7 +385,7 @@ func (t *Piece) UnmarshalCBOR(r io.Reader) error {
 		}
 
 		switch name {
-		// t.DealID (uint64) (uint64)
+		// t.DealID (abi.DealID) (uint64)
 		case "DealID":
 
 			maj, extra, err = cbg.CborReadHeader(br)
@@ -349,9 +395,18 @@ func (t *Piece) UnmarshalCBOR(r io.Reader) error {
 			if maj != cbg.MajUnsignedInt {
 				return fmt.Errorf("wrong type for uint64 field")
 			}
-			// t.Size (uint64) (uint64)
+			t.DealID = abi.DealID(extra)
+			// t.Size (abi.UnpaddedPieceSize) (uint64)
 		case "Size":
 
+			maj, extra, err = cbg.CborReadHeader(br)
+			if err != nil {
+				return err
+			}
+			if maj != cbg.MajUnsignedInt {
+				return fmt.Errorf("wrong type for uint64 field")
+			}
+			t.Size = abi.UnpaddedPieceSize(extra)
 			// t.CommP ([]uint8) (slice)
 		case "CommP":
 
@@ -403,7 +458,7 @@ func (t *SectorInfo) MarshalCBOR(w io.Writer) error {
 		return err
 	}
 
-	// t.SectorID (uint64) (uint64)
+	// t.SectorID (abi.SectorNumber) (uint64)
 	if len("SectorID") > cbg.MaxLength {
 		return xerrors.Errorf("Value in field \"SectorID\" was too long")
 	}
@@ -718,7 +773,7 @@ func (t *SectorInfo) UnmarshalCBOR(r io.Reader) error {
 				return fmt.Errorf("wrong type for uint64 field")
 			}
 			t.State = uint64(extra)
-			// t.SectorID (uint64) (uint64)
+			// t.SectorID (abi.SectorNumber) (uint64)
 		case "SectorID":
 
 			maj, extra, err = cbg.CborReadHeader(br)
@@ -728,6 +783,7 @@ func (t *SectorInfo) UnmarshalCBOR(r io.Reader) error {
 			if maj != cbg.MajUnsignedInt {
 				return fmt.Errorf("wrong type for uint64 field")
 			}
+			t.SectorID = abi.SectorNumber(extra)
 			// t.Nonce (uint64) (uint64)
 		case "Nonce":
 
