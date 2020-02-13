@@ -2,6 +2,7 @@ package types
 
 import (
 	"github.com/filecoin-project/go-address"
+	"github.com/filecoin-project/go-fil-markets/storagemarket"
 	cbor "github.com/ipfs/go-ipld-cbor"
 )
 
@@ -10,10 +11,7 @@ func init() {
 	cbor.RegisterCborType(StorageAsk{})
 }
 
-type SignedStorageAsk struct {
-	Ask       *StorageAsk
-	Signature *Signature
-}
+type SignedStorageAsk = storagemarket.SignedStorageAsk
 
 type StorageAsk struct {
 	// Price per GiB / Epoch
