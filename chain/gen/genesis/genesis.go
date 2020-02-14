@@ -176,7 +176,7 @@ func MakeInitialStateTree(ctx context.Context, bs bstore.Blockstore, template ge
 			return nil, xerrors.Errorf("unmarshaling account meta: %w", err)
 		}
 
-		st, err := cst.Put(ctx, account.State{Address: ainfo.Owner})
+		st, err := cst.Put(ctx, &account.State{Address: ainfo.Owner})
 		if err != nil {
 			return nil, err
 		}

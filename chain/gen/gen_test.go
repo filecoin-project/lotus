@@ -5,6 +5,9 @@ import (
 
 	"github.com/filecoin-project/specs-actors/actors/abi"
 
+	_ "github.com/filecoin-project/lotus/lib/sigs/bls"
+	_ "github.com/filecoin-project/lotus/lib/sigs/secp"
+
 	"github.com/filecoin-project/lotus/build"
 )
 
@@ -16,7 +19,7 @@ func init() {
 func testGeneration(t testing.TB, n int, msgs int) {
 	g, err := NewGenerator()
 	if err != nil {
-		t.Fatal(err)
+		t.Fatalf("%+v", err)
 	}
 
 	g.msgsPerBlock = msgs

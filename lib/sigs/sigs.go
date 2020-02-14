@@ -5,10 +5,11 @@ import (
 	"fmt"
 
 	"github.com/filecoin-project/go-address"
-	"github.com/filecoin-project/lotus/chain/types"
 	"github.com/filecoin-project/specs-actors/actors/crypto"
 	"go.opencensus.io/trace"
 	"golang.org/x/xerrors"
+
+	"github.com/filecoin-project/lotus/chain/types"
 )
 
 // Sign takes in signature type, private key and message. Returns a signature for that message.

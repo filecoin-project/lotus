@@ -608,7 +608,7 @@ func (sm *StateManager) ListAllActors(ctx context.Context, ts *types.TipSet) ([]
 	}
 
 	cst := cbor.NewCborStore(sm.cs.Blockstore())
-	r, err := hamt.LoadNode(ctx, cst, st)
+	r, err := hamt.LoadNode(ctx, cst, st, hamt.UseTreeBitWidth(5))
 	if err != nil {
 		return nil, err
 	}
