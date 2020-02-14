@@ -29,7 +29,7 @@ type StateTree struct {
 
 func NewStateTree(cst cbor.IpldStore) (*StateTree, error) {
 	return &StateTree{
-		root:       hamt.NewNode(cst),
+		root:       hamt.NewNode(cst, hamt.UseTreeBitWidth(5)),
 		Store:      cst,
 		actorcache: make(map[address.Address]*types.Actor),
 	}, nil
