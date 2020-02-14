@@ -120,7 +120,7 @@ func (s *FPoStScheduler) checkFaults(ctx context.Context, ssi sectorbuilder.Sort
 
 		faultIDs = make([]abi.SectorNumber, 0, len(declaredFaults))
 		for fault := range declaredFaults {
-			faultIDs = append(faultIDs, abi.SectorNumber(fault))
+			faultIDs = append(faultIDs, fault)
 		}
 		params.SectorNumbers = faultIDs
 

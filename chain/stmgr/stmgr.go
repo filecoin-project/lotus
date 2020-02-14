@@ -183,7 +183,7 @@ func (sm *StateManager) computeTipSetState(ctx context.Context, blks []*types.Bl
 			From:     actors.SystemAddress,
 			Nonce:    rewardActor.Nonce,
 			To:       b.Miner,
-			Method:   builtin.MethodsMiner.OnVerifiedElectionPoSt,
+			Method:   builtin.MethodsMiner.SubmitWindowedPoSt,
 			GasPrice: types.NewInt(0),
 			GasLimit: types.NewInt(10000000000),
 			Value:    types.NewInt(0),
