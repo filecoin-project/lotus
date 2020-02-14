@@ -109,8 +109,8 @@ func (s *FPoStScheduler) checkFaults(ctx context.Context, ssi sectorbuilder.Sort
 	var faultIDs []abi.SectorNumber
 	if len(faults) > 0 {
 		params := &miner.DeclareTemporaryFaultsParams{
-			Duration: 900,  // TODO: duration is annoying
-			SectorNumbers:abi.NewBitField(),
+			Duration:      900, // TODO: duration is annoying
+			SectorNumbers: abi.NewBitField(),
 		}
 
 		for _, fault := range faults {
@@ -192,8 +192,8 @@ func (s *FPoStScheduler) runPost(ctx context.Context, eps abi.ChainEpoch, ts *ty
 		copy(part, sc.PartialTicket[:])
 		candidates[i] = abi.PoStCandidate{
 			RegisteredProof: abi.RegisteredProof_StackedDRG32GiBPoSt, // TODO: build setting
-			PartialTicket:        part,
-			SectorID:       abi.SectorID{
+			PartialTicket:   part,
+			SectorID: abi.SectorID{
 				Miner:  abi.ActorID(mid),
 				Number: sc.SectorNum,
 			},
@@ -202,7 +202,7 @@ func (s *FPoStScheduler) runPost(ctx context.Context, eps abi.ChainEpoch, ts *ty
 	}
 
 	return &abi.OnChainPoStVerifyInfo{
-		ProofType: abi.RegisteredProof_StackedDRG32GiBPoSt, // TODO: build setting
+		ProofType:  abi.RegisteredProof_StackedDRG32GiBPoSt, // TODO: build setting
 		Proof:      proof,
 		Candidates: candidates,
 	}, nil

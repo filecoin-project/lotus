@@ -99,13 +99,13 @@ func (m *Sealing) handlePreCommitting(ctx statemachine.Context, sector SectorInf
 	}
 
 	params := &miner.SectorPreCommitInfo{
-			Expiration:   0,
-			SectorNumber: sector.SectorID,
+		Expiration:   0,
+		SectorNumber: sector.SectorID,
 
-			SealedCID: commcid.ReplicaCommitmentV1ToCID(sector.CommR),
-			SealEpoch: sector.Ticket.BlockHeight,
-			DealIDs:   nil, // sector.deals(), // TODO: REFACTOR
-		}
+		SealedCID: commcid.ReplicaCommitmentV1ToCID(sector.CommR),
+		SealEpoch: sector.Ticket.BlockHeight,
+		DealIDs:   nil, // sector.deals(), // TODO: REFACTOR
+	}
 	enc, aerr := actors.SerializeParams(params)
 	if aerr != nil {
 		return ctx.Send(SectorPreCommitFailed{xerrors.Errorf("could not serialize commit sector parameters: %w", aerr)})
