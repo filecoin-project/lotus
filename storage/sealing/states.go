@@ -98,16 +98,14 @@ func (m *Sealing) handlePreCommitting(ctx statemachine.Context, sector SectorInf
 		}
 	}
 
-	params := &miner.PreCommitSectorParams{
-		Info: miner.SectorPreCommitInfo{
+	params := &miner.SectorPreCommitInfo{
 			Expiration:   0,
 			SectorNumber: sector.SectorID,
 
 			SealedCID: commcid.ReplicaCommitmentV1ToCID(sector.CommR),
 			SealEpoch: sector.Ticket.BlockHeight,
 			DealIDs:   nil, // sector.deals(), // TODO: REFACTOR
-		},
-	}
+		}
 	enc, aerr := actors.SerializeParams(params)
 	if aerr != nil {
 		return ctx.Send(SectorPreCommitFailed{xerrors.Errorf("could not serialize commit sector parameters: %w", aerr)})
@@ -259,11 +257,11 @@ func (m *Sealing) handleFaulty(ctx statemachine.Context, sector SectorInfo) erro
 	// TODO: check if the fault has already been reported, and that this sector is even valid
 
 	// TODO: coalesce faulty sector reporting
-	/*bf := types.NewBitField()
-	bf.Set(uint64(sector.SectorID))*/
+	bf := abi.NewBitField()
+	bf.Set(uint64(sector.SectorID))
 
 	enc, aerr := actors.SerializeParams(&miner.DeclareTemporaryFaultsParams{
-		SectorNumbers: []abi.SectorNumber{sector.SectorID},
+		SectorNumbers: bf,
 		Duration:      99999999, // TODO: This is very unlikely to be the correct number
 	})
 	if aerr != nil {

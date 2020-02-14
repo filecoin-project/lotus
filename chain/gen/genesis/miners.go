@@ -110,13 +110,13 @@ func SetupStorageMiners(ctx context.Context, cs *store.ChainStore, sroot cid.Cid
 			for pi, preseal := range m.Sectors {
 				// Precommit
 				{
-					params := &miner.PreCommitSectorParams{Info: miner.SectorPreCommitInfo{
+					params := &miner.SectorPreCommitInfo{
 						SectorNumber: preseal.SectorID,
 						SealedCID:    commcid.ReplicaCommitmentV1ToCID(preseal.CommR[:]),
 						SealEpoch:    0,
 						DealIDs:      []abi.DealID{dealIDs[pi]},
 						Expiration:   preseal.Deal.EndEpoch,
-					}}
+					}
 					_, err := doExecValue(ctx, vm, maddr, m.Worker, big.Zero(), builtin.MethodsMiner.PreCommitSector, mustEnc(params))
 					if err != nil {
 						return cid.Undef, xerrors.Errorf("failed to create genesis miner: %w", err)
