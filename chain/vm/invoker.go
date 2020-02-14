@@ -7,16 +7,18 @@ import (
 	"reflect"
 	"strings"
 
-	"github.com/filecoin-project/specs-actors/actors/abi"
-	"github.com/filecoin-project/specs-actors/actors/builtin/miner"
 	"github.com/ipfs/go-cid"
 	cbg "github.com/whyrusleeping/cbor-gen"
 	"golang.org/x/xerrors"
 
-	"github.com/filecoin-project/specs-actors/actors/builtin/multisig"
-	vmr "github.com/filecoin-project/specs-actors/actors/runtime"
-
+	"github.com/filecoin-project/specs-actors/actors/abi"
+	"github.com/filecoin-project/specs-actors/actors/builtin"
 	"github.com/filecoin-project/specs-actors/actors/builtin/market"
+	"github.com/filecoin-project/specs-actors/actors/builtin/miner"
+	"github.com/filecoin-project/specs-actors/actors/builtin/multisig"
+	"github.com/filecoin-project/specs-actors/actors/builtin/system"
+	vmr "github.com/filecoin-project/specs-actors/actors/runtime"
+	"github.com/filecoin-project/specs-actors/actors/util/adt"
 
 	"github.com/filecoin-project/lotus/chain/actors"
 	"github.com/filecoin-project/lotus/chain/actors/aerrors"
@@ -38,6 +40,7 @@ func NewInvoker() *invoker {
 	}
 
 	// add builtInCode using: register(cid, singleton)
+	inv.Register(builtin.SystemActorCodeID, system.Actor{}, adt.EmptyValue{})
 	inv.Register(actors.InitCodeCid, actors.InitActor{}, actors.InitActorState{})
 	inv.Register(actors.CronCodeCid, actors.CronActor{}, actors.CronActorState{})
 	inv.Register(actors.StoragePowerCodeCid, actors.StoragePowerActor{}, actors.StoragePowerState{})
