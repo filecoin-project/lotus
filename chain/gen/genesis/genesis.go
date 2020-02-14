@@ -42,6 +42,7 @@ From a list of parameters, create a genesis block / initial state
 The process:
 - Bootstrap state (MakeInitialStateTree)
   - Create empty state
+  - Create system actor
   - Make init actor
     - Create accounts mappings
     - Set NextID to MinerStart
@@ -101,6 +102,16 @@ func MakeInitialStateTree(ctx context.Context, bs bstore.Blockstore, template ge
 	emptyobject, err := cst.Put(context.TODO(), []struct{}{})
 	if err != nil {
 		return nil, xerrors.Errorf("failed putting empty object: %w", err)
+	}
+
+	// Create system actor
+
+	sysact, err := SetupSystemActor(bs)
+	if err != nil {
+		return nil, xerrors.Errorf("setup init actor: %w", err)
+	}
+	if err := state.SetActor(actors.SystemAddress, sysact); err != nil {
+		return nil, xerrors.Errorf("set init actor: %w", err)
 	}
 
 	// Create init actor

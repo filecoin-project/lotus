@@ -3,6 +3,7 @@ package genesis
 import (
 	"bytes"
 	"context"
+	"github.com/filecoin-project/specs-actors/actors/builtin/power"
 
 	"github.com/filecoin-project/go-address"
 	commcid "github.com/filecoin-project/go-fil-commcid"
@@ -45,15 +46,14 @@ func SetupStorageMiners(ctx context.Context, cs *store.ChainStore, sroot cid.Cid
 
 		var maddr address.Address
 		{
-			constructorParams := &miner.ConstructorParams{
-				OwnerAddr:  m.Owner,
-				WorkerAddr: m.Worker,
+			constructorParams := &power.CreateMinerParams{
+				Worker: m.Worker,
 				SectorSize: m.SectorSize,
-				PeerId:     m.PeerId,
+				Peer:     m.PeerId,
 			}
 
 			params := mustEnc(constructorParams)
-			rval, err := doExecValue(ctx, vm, actors.StoragePowerAddress, m.Worker, m.PowerBalance, actors.SPAMethods.CreateMiner, params)
+			rval, err := doExecValue(ctx, vm, actors.StoragePowerAddress, m.Owner, m.PowerBalance, actors.SPAMethods.CreateMiner, params)
 			if err != nil {
 				return cid.Undef, xerrors.Errorf("failed to create genesis miner: %w", err)
 			}
