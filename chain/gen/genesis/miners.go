@@ -47,9 +47,9 @@ func SetupStorageMiners(ctx context.Context, cs *store.ChainStore, sroot cid.Cid
 		var maddr address.Address
 		{
 			constructorParams := &power.CreateMinerParams{
-				Worker: m.Worker,
+				Worker:     m.Worker,
 				SectorSize: m.SectorSize,
-				Peer:     m.PeerId,
+				Peer:       m.PeerId,
 			}
 
 			params := mustEnc(constructorParams)
