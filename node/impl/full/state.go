@@ -254,11 +254,11 @@ func (a *StateAPI) StateMarketParticipants(ctx context.Context, ts *types.TipSet
 		return nil, err
 	}
 	cst := cbor.NewCborStore(a.StateManager.ChainStore().Blockstore())
-	escrow, err := hamt.LoadNode(ctx, cst, state.EscrowTable)
+	escrow, err := hamt.LoadNode(ctx, cst, state.EscrowTable, hamt.UseTreeBitWidth(5)) // todo: adt map
 	if err != nil {
 		return nil, err
 	}
-	locked, err := hamt.LoadNode(ctx, cst, state.EscrowTable)
+	locked, err := hamt.LoadNode(ctx, cst, state.EscrowTable, hamt.UseTreeBitWidth(5))
 	if err != nil {
 		return nil, err
 	}
@@ -338,12 +338,12 @@ func (a *StateAPI) StateMarketStorageDeal(ctx context.Context, dealId abi.DealID
 func (a *StateAPI) StateChangedActors(ctx context.Context, old cid.Cid, new cid.Cid) (map[string]types.Actor, error) {
 	cst := cbor.NewCborStore(a.Chain.Blockstore())
 
-	nh, err := hamt.LoadNode(ctx, cst, new)
+	nh, err := hamt.LoadNode(ctx, cst, new, hamt.UseTreeBitWidth(5))
 	if err != nil {
 		return nil, err
 	}
 
-	oh, err := hamt.LoadNode(ctx, cst, old)
+	oh, err := hamt.LoadNode(ctx, cst, old, hamt.UseTreeBitWidth(5))
 	if err != nil {
 		return nil, err
 	}

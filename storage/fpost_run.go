@@ -5,6 +5,7 @@ import (
 	"time"
 
 	ffi "github.com/filecoin-project/filecoin-ffi"
+	"github.com/filecoin-project/go-address"
 	sectorbuilder "github.com/filecoin-project/go-sectorbuilder"
 	"github.com/filecoin-project/specs-actors/actors/abi"
 	"github.com/filecoin-project/specs-actors/actors/builtin"
@@ -107,7 +108,10 @@ func (s *FPoStScheduler) checkFaults(ctx context.Context, ssi sectorbuilder.Sort
 
 	var faultIDs []abi.SectorNumber
 	if len(faults) > 0 {
-		params := &miner.DeclareTemporaryFaultsParams{Duration: 900} // TODO: duration is annoying
+		params := &miner.DeclareTemporaryFaultsParams{
+			Duration: 900,  // TODO: duration is annoying
+			SectorNumbers:abi.NewBitField(),
+		}
 
 		for _, fault := range faults {
 			if _, ok := declaredFaults[(fault.SectorNum)]; ok {
@@ -121,8 +125,8 @@ func (s *FPoStScheduler) checkFaults(ctx context.Context, ssi sectorbuilder.Sort
 		faultIDs = make([]abi.SectorNumber, 0, len(declaredFaults))
 		for fault := range declaredFaults {
 			faultIDs = append(faultIDs, fault)
+			params.SectorNumbers.Set(uint64(fault))
 		}
-		params.SectorNumbers = faultIDs
 
 		if len(faultIDs) > 0 {
 			if err := s.declareFaults(ctx, uint64(len(faultIDs)), params); err != nil {
@@ -134,7 +138,7 @@ func (s *FPoStScheduler) checkFaults(ctx context.Context, ssi sectorbuilder.Sort
 	return faultIDs, nil
 }
 
-func (s *FPoStScheduler) runPost(ctx context.Context, eps abi.ChainEpoch, ts *types.TipSet) (*actors.SubmitFallbackPoStParams, error) {
+func (s *FPoStScheduler) runPost(ctx context.Context, eps abi.ChainEpoch, ts *types.TipSet) (*abi.OnChainPoStVerifyInfo, error) {
 	ctx, span := trace.StartSpan(ctx, "storage.runPost")
 	defer span.End()
 
@@ -177,18 +181,28 @@ func (s *FPoStScheduler) runPost(ctx context.Context, eps abi.ChainEpoch, ts *ty
 	elapsed := time.Since(tsStart)
 	log.Infow("submitting PoSt", "pLen", len(proof), "elapsed", elapsed)
 
-	candidates := make([]types.EPostTicket, len(scandidates))
+	mid, err := address.IDFromAddress(s.actor)
+	if err != nil {
+		return nil, err
+	}
+
+	candidates := make([]abi.PoStCandidate, len(scandidates))
 	for i, sc := range scandidates {
 		part := make([]byte, 32)
 		copy(part, sc.PartialTicket[:])
-		candidates[i] = types.EPostTicket{
-			Partial:        part,
-			SectorID:       sc.SectorNum,
-			ChallengeIndex: sc.SectorChallengeIndex,
+		candidates[i] = abi.PoStCandidate{
+			RegisteredProof: abi.RegisteredProof_StackedDRG32GiBPoSt, // TODO: build setting
+			PartialTicket:        part,
+			SectorID:       abi.SectorID{
+				Miner:  abi.ActorID(mid),
+				Number: sc.SectorNum,
+			},
+			ChallengeIndex: int64(sc.SectorChallengeIndex), // TODO: fix spec
 		}
 	}
 
-	return &actors.SubmitFallbackPoStParams{
+	return &abi.OnChainPoStVerifyInfo{
+		ProofType: abi.RegisteredProof_StackedDRG32GiBPoSt, // TODO: build setting
 		Proof:      proof,
 		Candidates: candidates,
 	}, nil
@@ -217,7 +231,7 @@ func (s *FPoStScheduler) sortedSectorInfo(ctx context.Context, ts *types.TipSet)
 	return sectorbuilder.NewSortedPublicSectorInfo(sbsi), nil
 }
 
-func (s *FPoStScheduler) submitPost(ctx context.Context, proof *actors.SubmitFallbackPoStParams) error {
+func (s *FPoStScheduler) submitPost(ctx context.Context, proof *abi.OnChainPoStVerifyInfo) error {
 	ctx, span := trace.StartSpan(ctx, "storage.commitPost")
 	defer span.End()
 
@@ -229,7 +243,7 @@ func (s *FPoStScheduler) submitPost(ctx context.Context, proof *actors.SubmitFal
 	msg := &types.Message{
 		To:       s.actor,
 		From:     s.worker,
-		Method:   builtin.MethodsMiner.SubmitFallbackPoSt,
+		Method:   builtin.MethodsMiner.SubmitWindowedPoSt,
 		Params:   enc,
 		Value:    types.NewInt(1000),     // currently hard-coded late fee in actor, returned if not late
 		GasLimit: types.NewInt(10000000), // i dont know help

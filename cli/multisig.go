@@ -231,7 +231,7 @@ func GetMultisigPending(ctx context.Context, lapi api.FullNode, hroot cid.Cid) (
 	bs := apibstore.NewAPIBlockstore(lapi)
 	cst := cbor.NewCborStore(bs)
 
-	nd, err := hamt.LoadNode(ctx, cst, hroot)
+	nd, err := hamt.LoadNode(ctx, cst, hroot, hamt.UseTreeBitWidth(5))
 	if err != nil {
 		return nil, err
 	}

@@ -24,7 +24,7 @@ func SetupInitActor(bs bstore.Blockstore, netname string, initialActors []genesi
 	ias.NetworkName = netname
 
 	cst := cbor.NewCborStore(bs)
-	amap := hamt.NewNode(cst)
+	amap := hamt.NewNode(cst, hamt.UseTreeBitWidth(5)) // TODO: use spec adt map
 
 	for i, a := range initialActors {
 		if a.Type != genesis.TAccount {

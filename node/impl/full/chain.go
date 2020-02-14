@@ -206,7 +206,7 @@ func resolveOnce(bs blockstore.Blockstore) func(ctx context.Context, ds ipld.Nod
 		if strings.HasPrefix(names[0], "@H:") {
 			cst := cbor.NewCborStore(bs)
 
-			h, err := hamt.LoadNode(ctx, cst, nd.Cid())
+			h, err := hamt.LoadNode(ctx, cst, nd.Cid(), hamt.UseTreeBitWidth(5))
 			if err != nil {
 				return nil, nil, xerrors.Errorf("resolving hamt link: %w", err)
 			}

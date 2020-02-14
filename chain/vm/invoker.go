@@ -8,6 +8,7 @@ import (
 	"strings"
 
 	"github.com/filecoin-project/specs-actors/actors/abi"
+	"github.com/filecoin-project/specs-actors/actors/builtin/miner"
 	"github.com/ipfs/go-cid"
 	cbg "github.com/whyrusleeping/cbor-gen"
 	"golang.org/x/xerrors"
@@ -41,7 +42,7 @@ func NewInvoker() *invoker {
 	inv.Register(actors.CronCodeCid, actors.CronActor{}, actors.CronActorState{})
 	inv.Register(actors.StoragePowerCodeCid, actors.StoragePowerActor{}, actors.StoragePowerState{})
 	inv.Register(actors.StorageMarketCodeCid, market.Actor{}, market.State{})
-	inv.Register(actors.StorageMinerCodeCid, actors.StorageMinerActor{}, actors.StorageMinerActorState{})
+	inv.Register(actors.StorageMinerCodeCid, miner.Actor{}, miner.State{})
 	inv.Register(actors.MultisigCodeCid, multisig.Actor{}, multisig.State{})
 	inv.Register(actors.PaymentChannelCodeCid, actors.PaymentChannelActor{}, actors.PaymentChannelActorState{})
 

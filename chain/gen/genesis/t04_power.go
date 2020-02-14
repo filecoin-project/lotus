@@ -16,7 +16,7 @@ import (
 func SetupStoragePowerActor(bs bstore.Blockstore) (*types.Actor, error) {
 	ctx := context.TODO()
 	cst := cbor.NewCborStore(bs)
-	nd := hamt.NewNode(cst)
+	nd := hamt.NewNode(cst, hamt.UseTreeBitWidth(5))
 	emptyhamt, err := cst.Put(ctx, nd)
 	if err != nil {
 		return nil, err
