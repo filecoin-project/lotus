@@ -4,6 +4,7 @@ import (
 	"encoding/hex"
 	"encoding/json"
 	"fmt"
+	"github.com/filecoin-project/specs-actors/actors/abi/big"
 	"io/ioutil"
 	"os"
 	"path/filepath"
@@ -311,9 +312,12 @@ func mergeGenMiners(a, b genesis.Miner) genesis.Miner {
 	}
 
 	return genesis.Miner{
-		Owner:      a.Owner,
-		Worker:     a.Worker,
-		SectorSize: a.SectorSize,
-		Sectors:    append(a.Sectors, b.Sectors...),
+		Owner:         a.Owner,
+		Worker:        a.Worker,
+		PeerId:        "",
+		MarketBalance: big.Zero(),
+		PowerBalance:  big.Zero(),
+		SectorSize:    a.SectorSize,
+		Sectors:       append(a.Sectors, b.Sectors...),
 	}
 }

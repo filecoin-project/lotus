@@ -107,12 +107,13 @@ func PreSeal(maddr address.Address, ssize abi.SectorSize, offset abi.SectorNumbe
 	}
 
 	miner := &genesis.Miner{
-		Owner:  minerAddr.Address,
-		Worker: minerAddr.Address,
-
-		SectorSize: ssize,
-
-		Sectors: sealedSectors,
+		Owner:         minerAddr.Address,
+		Worker:        minerAddr.Address,
+		PeerId:        "",
+		MarketBalance: big.Zero(),
+		PowerBalance:  big.Zero(),
+		SectorSize:    ssize,
+		Sectors:       sealedSectors,
 	}
 
 	if err := createDeals(miner, minerAddr, maddr, ssize); err != nil {
