@@ -32,6 +32,9 @@ type CommonStruct struct {
 
 		ID      func(context.Context) (peer.ID, error)     `perm:"read"`
 		Version func(context.Context) (api.Version, error) `perm:"read"`
+
+		LogList     func(context.Context) ([]string, error)     `perm:"write"`
+		LogSetLevel func(context.Context, string, string) error `perm:"write"`
 	}
 }
 
@@ -201,6 +204,14 @@ func (c *CommonStruct) ID(ctx context.Context) (peer.ID, error) {
 // Version implements API.Version
 func (c *CommonStruct) Version(ctx context.Context) (api.Version, error) {
 	return c.Internal.Version(ctx)
+}
+
+func (c *CommonStruct) LogList(ctx context.Context) ([]string, error) {
+	return c.Internal.LogList(ctx)
+}
+
+func (c *CommonStruct) LogSetLevel(ctx context.Context, group, level string) error {
+	return c.Internal.LogSetLevel(ctx, group, level)
 }
 
 func (c *FullNodeStruct) ClientListImports(ctx context.Context) ([]api.Import, error) {
