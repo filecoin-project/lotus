@@ -8,7 +8,6 @@ import (
 
 	"github.com/filecoin-project/go-address"
 	"github.com/filecoin-project/specs-actors/actors/abi"
-	"github.com/filecoin-project/specs-actors/actors/runtime"
 	vmr "github.com/filecoin-project/specs-actors/actors/runtime"
 	"github.com/filecoin-project/specs-actors/actors/runtime/exitcode"
 	"github.com/ipfs/go-cid"
@@ -20,10 +19,25 @@ import (
 
 type runtimeShim struct {
 	vmctx types.VMContext
-	vmr.Runtime
 }
 
-var _ runtime.Runtime = (*runtimeShim)(nil)
+func (rs *runtimeShim) Get(c cid.Cid, o vmr.CBORUnmarshaler) bool {
+	err := rs.vmctx.Storage().Get(c, o)
+	if err != nil { // todo: not found
+		rs.Abortf(exitcode.ErrPlaceholder, "storage get: %v", err)
+	}
+	return true
+}
+
+func (rs *runtimeShim) Put(x vmr.CBORMarshaler) cid.Cid {
+	c, err := rs.vmctx.Storage().Put(x)
+	if err != nil {
+		rs.Abortf(exitcode.ErrPlaceholder, "storage put: %v", err) // todo: spec code?
+	}
+	return c
+}
+
+var _ vmr.Runtime = (*runtimeShim)(nil)
 
 func (rs *runtimeShim) shimCall(f func() interface{}) (rval []byte, aerr aerrors.ActorError) {
 	defer func() {
@@ -56,6 +70,65 @@ func (rs *runtimeShim) shimCall(f func() interface{}) (rval []byte, aerr aerrors
 	}
 }
 
+func (rs *runtimeShim) Message() vmr.Message {
+	return rs.vmctx.Message()
+}
+
+func (rs *runtimeShim) ValidateImmediateCallerAcceptAny() {
+	return
+}
+
+func (rs *runtimeShim) CurrentBalance() abi.TokenAmount {
+	b, err := rs.vmctx.GetBalance(rs.vmctx.Message().To)
+	if err != nil {
+		rs.Abortf(exitcode.ExitCode(err.RetCode()), "get current balance: %v", err)
+	}
+	return b
+}
+
+func (rs *runtimeShim) GetActorCodeCID(addr address.Address) (ret cid.Cid, ok bool) {
+	var err error
+	st, err := rs.vmctx.StateTree()
+	if err != nil {
+		rs.Abortf(exitcode.ErrPlaceholder, "%v", err)
+	}
+
+	act, err := st.GetActor(addr)
+	if err != nil {
+		// todo: notfound
+		rs.Abortf(exitcode.ErrPlaceholder, "%v", err)
+	}
+	return act.Code, true
+}
+
+func (rs *runtimeShim) GetRandomness(epoch abi.ChainEpoch) abi.RandomnessSeed {
+	panic("implement me")
+}
+
+func (rs *runtimeShim) Store() vmr.Store {
+	return rs
+}
+
+func (rs *runtimeShim) NewActorAddress() address.Address {
+	panic("implement me")
+}
+
+func (rs *runtimeShim) CreateActor(codeId cid.Cid, address address.Address) {
+	panic("implement me")
+}
+
+func (rs *runtimeShim) DeleteActor() {
+	panic("implement me")
+}
+
+func (rs *runtimeShim) Syscalls() vmr.Syscalls {
+	panic("implement me")
+}
+
+func (rs *runtimeShim) StartSpan(name string) vmr.TraceSpan {
+	panic("implement me")
+}
+
 func (rs *runtimeShim) ValidateImmediateCallerIs(as ...address.Address) {
 	for _, a := range as {
 		if rs.vmctx.Message().From == a {
@@ -74,44 +147,20 @@ func (rs *runtimeShim) Context() context.Context {
 	return rs.vmctx.Context()
 }
 
-func (rs *runtimeShim) IpldGet(c cid.Cid, o vmr.CBORUnmarshaler) bool {
-	if err := rs.vmctx.Storage().Get(c, o); err != nil {
-		panic(err) // y o o o o o l l l l o o o o o
-	}
-	return true
-}
-
-func (rs *runtimeShim) IpldPut(o vmr.CBORMarshaler) cid.Cid {
-	c, err := rs.vmctx.Storage().Put(o)
-	if err != nil {
-		panic(err)
-	}
-	return c
-}
-
-func (rs *runtimeShim) Abort(code exitcode.ExitCode, msg string, args ...interface{}) {
+func (rs *runtimeShim) Abortf(code exitcode.ExitCode, msg string, args ...interface{}) {
 	panic(aerrors.Newf(uint8(code), msg, args...))
 }
 
 func (rs *runtimeShim) AbortStateMsg(msg string) {
-	rs.Abort(101, msg)
+	rs.Abortf(101, msg)
 }
 
 func (rs *runtimeShim) ValidateImmediateCallerType(...cid.Cid) {
 	log.Info("validate caller type is dumb")
 }
 
-func (rs *runtimeShim) CurrentBalance() abi.TokenAmount {
-	b, err := rs.vmctx.GetBalance(rs.vmctx.Message().From)
-	if err != nil {
-		rs.Abort(1, err.Error())
-	}
-
-	return abi.TokenAmount(b)
-}
-
 func (rs *runtimeShim) CurrEpoch() abi.ChainEpoch {
-	return abi.ChainEpoch(rs.vmctx.BlockHeight())
+	return rs.vmctx.BlockHeight()
 }
 
 type dumbWrapperType struct {
@@ -122,10 +171,10 @@ func (dwt *dumbWrapperType) Into(um vmr.CBORUnmarshaler) error {
 	return um.UnmarshalCBOR(bytes.NewReader(dwt.val))
 }
 
-func (rs *runtimeShim) Send(to address.Address, method abi.MethodNum, m runtime.CBORMarshaler, value abi.TokenAmount) (vmr.SendReturn, exitcode.ExitCode) {
+func (rs *runtimeShim) Send(to address.Address, method abi.MethodNum, m vmr.CBORMarshaler, value abi.TokenAmount) (vmr.SendReturn, exitcode.ExitCode) {
 	buf := new(bytes.Buffer)
 	if err := m.MarshalCBOR(buf); err != nil {
-		rs.Abort(exitcode.SysErrInvalidParameters, "failed to marshal input parameters: %s", err)
+		rs.Abortf(exitcode.SysErrInvalidParameters, "failed to marshal input parameters: %s", err)
 	}
 
 	ret, err := rs.vmctx.Send(to, method, types.BigInt(value), buf.Bytes())
