@@ -203,7 +203,7 @@ func (s *FPoStScheduler) runPost(ctx context.Context, eps abi.ChainEpoch, ts *ty
 
 	return &abi.OnChainPoStVerifyInfo{
 		ProofType:  abi.RegisteredProof_StackedDRG32GiBPoSt, // TODO: build setting
-		Proof:      proof,
+		Proofs:     []abi.PoStProof{{proof}},
 		Candidates: candidates,
 	}, nil
 }

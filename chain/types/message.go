@@ -27,6 +27,22 @@ type Message struct {
 	Params []byte
 }
 
+func (t *Message) BlockMiner() address.Address {
+	panic("implement me")
+}
+
+func (t *Message) Caller() address.Address {
+	return t.From
+}
+
+func (t *Message) Receiver() address.Address {
+	return t.To
+}
+
+func (t *Message) ValueReceived() abi.TokenAmount {
+	return t.Value
+}
+
 func DecodeMessage(b []byte) (*Message, error) {
 	var msg Message
 	if err := msg.UnmarshalCBOR(bytes.NewReader(b)); err != nil {
