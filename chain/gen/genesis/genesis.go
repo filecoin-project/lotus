@@ -94,6 +94,11 @@ func MakeInitialStateTree(ctx context.Context, bs bstore.Blockstore, template ge
 	// Create empty state tree
 
 	cst := cbor.NewCborStore(bs)
+	_, err := cst.Put(context.TODO(), []struct{}{})
+	if err != nil {
+		return nil, xerrors.Errorf("putting empty object: %w", err)
+	}
+
 	state, err := state.NewStateTree(cst)
 	if err != nil {
 		return nil, xerrors.Errorf("making new state tree: %w", err)
