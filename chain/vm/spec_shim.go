@@ -10,9 +10,11 @@ import (
 	"github.com/filecoin-project/go-address"
 	"github.com/filecoin-project/specs-actors/actors/abi"
 	"github.com/filecoin-project/specs-actors/actors/abi/big"
+	"github.com/filecoin-project/specs-actors/actors/crypto"
 	vmr "github.com/filecoin-project/specs-actors/actors/runtime"
 	"github.com/filecoin-project/specs-actors/actors/runtime/exitcode"
 	"github.com/ipfs/go-cid"
+	"github.com/minio/blake2b-simd"
 	cbg "github.com/whyrusleeping/cbor-gen"
 
 	"github.com/filecoin-project/lotus/chain/actors/aerrors"
@@ -103,13 +105,20 @@ func (rs *runtimeShim) GetActorCodeCID(addr address.Address) (ret cid.Cid, ok bo
 	return act.Code, true
 }
 
-func (rs *runtimeShim) GetRandomness(epoch abi.ChainEpoch) abi.RandomnessSeed {
-	r, err := rs.vmctx.GetRandomness(epoch)
+func (rs *runtimeShim) GetRandomness(personalization crypto.DomainSeparationTag, randEpoch abi.ChainEpoch, entropy []byte) abi.Randomness {
+	r, err := rs.vmctx.GetRandomness(randEpoch)
 	if err != nil {
 		rs.Abortf(exitcode.SysErrInternal, "getting randomness: %v", err)
 	}
 
-	return r
+	h := blake2b.New256()
+	if err := binary.Write(h, binary.BigEndian, int64(personalization)); err != nil {
+		rs.Abortf(exitcode.SysErrInternal, "deriving randomness: %v", err)
+	}
+	h.Write(r)
+	h.Write(entropy)
+
+	return h.Sum(nil)
 }
 
 func (rs *runtimeShim) Store() vmr.Store {
