@@ -14,10 +14,16 @@ IPFS_GATEWAY="https://proof-parameters.s3.cn-south-1.jdcloud-oss.com/ipfs/"
 
 ## Get started
 
-Please ensure that at least one **BLS address** in your wallet exists with the following command:
+Please ensure that at least one **BLS address** (starts with `t3`) in your wallet exists with the following command:
 
 ```sh
 lotus wallet list
+```
+
+If you do not have a bls address, create a new bls wallet:
+
+```sh
+lotus wallet new bls
 ```
 
 With your wallet address:
