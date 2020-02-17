@@ -258,7 +258,7 @@ func (ssh *shimStateHandle) Create(obj vmr.CBORMarshaler) {
 	if err != nil {
 		panic(err)
 	}
-	if err := ssh.rs.vmctx.Storage().Commit(cid.Undef, c); err != nil { // todo: empty cbor thing may have been here for a good reason
+	if err := ssh.rs.vmctx.Storage().Commit(EmptyObjectCid, c); err != nil {
 		panic(err)
 	}
 }
