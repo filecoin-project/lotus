@@ -91,6 +91,7 @@ const (
 
 	RunHelloKey
 	RunBlockSyncKey
+	RunChainGraphsync
 	RunPeerMgrKey
 
 	HandleIncomingBlocksKey
@@ -227,6 +228,7 @@ func Online() Option {
 
 			Override(RunHelloKey, modules.RunHello),
 			Override(RunBlockSyncKey, modules.RunBlockSync),
+			Override(RunChainGraphsync, modules.ChainGraphsync),
 			Override(RunPeerMgrKey, modules.RunPeerMgr),
 			Override(HandleIncomingBlocksKey, modules.HandleIncomingBlocks),
 
