@@ -91,18 +91,13 @@ func (rs *runtimeShim) CurrentBalance() abi.TokenAmount {
 }
 
 func (rs *runtimeShim) GetActorCodeCID(addr address.Address) (ret cid.Cid, ok bool) {
-	var err error
-	st, err := rs.vmctx.StateTree()
-	if err != nil {
-		rs.Abortf(exitcode.ErrPlaceholder, "%v", err)
-	}
-
-	act, err := st.GetActor(addr)
+	ret, err := rs.vmctx.ActorCodeCID(addr)
 	if err != nil {
 		// todo: notfound
 		rs.Abortf(exitcode.ErrPlaceholder, "%v", err)
 	}
-	return act.Code, true
+
+	return ret, true
 }
 
 func (rs *runtimeShim) GetRandomness(personalization crypto.DomainSeparationTag, randEpoch abi.ChainEpoch, entropy []byte) abi.Randomness {

@@ -39,6 +39,7 @@ type VMContext interface {
 	GasUsed() BigInt
 	Storage() Storage
 	StateTree() (StateTree, aerrors.ActorError)
+	ActorCodeCID(address.Address) (cid.Cid, error)
 	VerifySignature(sig *crypto.Signature, from address.Address, data []byte) aerrors.ActorError
 	ChargeGas(uint64) aerrors.ActorError
 	GetRandomness(height abi.ChainEpoch) ([]byte, aerrors.ActorError)
