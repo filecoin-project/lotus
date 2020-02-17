@@ -4,6 +4,7 @@ package types
 
 import (
 	"bytes"
+
 	"github.com/filecoin-project/go-address"
 )
 
@@ -34,6 +35,9 @@ func FuzzMessageDecoder(data []byte) int {
 }
 
 func FuzzAddressEncoder(data []byte) int {
+	if len(data) == 0 {
+		return -2
+	}
 	ads, err := address.NewFromBytes(data)
 	if err != nil {
 		return -1
