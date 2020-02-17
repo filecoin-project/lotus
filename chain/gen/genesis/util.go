@@ -2,7 +2,6 @@ package genesis
 
 import (
 	"context"
-	"fmt"
 
 	"github.com/filecoin-project/go-address"
 	"github.com/filecoin-project/specs-actors/actors/abi"
@@ -47,7 +46,7 @@ func doExecValue(ctx context.Context, vm *vm.VM, to, from address.Address, value
 	}
 
 	if ret.ExitCode != 0 {
-		return nil, fmt.Errorf("failed to call method: %s", ret.ActorErr)
+		return nil, xerrors.Errorf("failed to call method: %w", ret.ActorErr)
 	}
 
 	return ret.Return, nil
