@@ -20,6 +20,7 @@ import (
 	"golang.org/x/xerrors"
 
 	"github.com/filecoin-project/go-address"
+
 	"github.com/filecoin-project/lotus/build"
 	"github.com/filecoin-project/lotus/chain/actors"
 	"github.com/filecoin-project/lotus/chain/actors/aerrors"
@@ -184,6 +185,14 @@ func (vmc *VMContext) StateTree() (types.StateTree, aerrors.ActorError) {
 	}
 
 	return vmc.state, nil
+}
+
+func (vmc *VMContext) ActorCodeCID(addr address.Address) (ret cid.Cid, err error) {
+	act, err := vmc.state.GetActor(addr)
+	if err != nil {
+		return cid.Undef, err
+	}
+	return act.Code, nil
 }
 
 const GasVerifySignature = 50
