@@ -58,16 +58,16 @@ func SetupStorageMiners(ctx context.Context, cs *store.ChainStore, sroot cid.Cid
 				return cid.Undef, xerrors.Errorf("failed to create genesis miner: %w", err)
 			}
 
-			maddrret, err := address.NewFromBytes(rval)
-			if err != nil {
+			var ma power.CreateMinerReturn
+			if err := ma.UnmarshalCBOR(bytes.NewReader(rval)); err != nil {
 				return cid.Undef, err
 			}
 
 			expma := MinerAddress(uint64(i))
-			if maddrret != expma {
-				return cid.Undef, xerrors.Errorf("miner assigned wrong address: %s != %s", maddrret, expma)
+			if ma.IDAddress != expma {
+				return cid.Undef, xerrors.Errorf("miner assigned wrong address: %s != %s", ma.IDAddress, expma)
 			}
-			maddr = maddrret
+			maddr = ma.IDAddress
 		}
 
 		// Add market funds
