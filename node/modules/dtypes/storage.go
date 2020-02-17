@@ -24,6 +24,7 @@ type ChainGCLocker blockstore.GCLocker
 type ChainGCBlockstore blockstore.GCBlockstore
 type ChainExchange exchange.Interface
 type ChainBlockService bserv.BlockService
+type ChainGraphsync graphsync.GraphExchange
 
 type ClientFilestore *filestore.Filestore
 type ClientBlockstore blockstore.Blockstore
