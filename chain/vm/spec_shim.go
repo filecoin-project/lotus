@@ -3,6 +3,7 @@ package vm
 import (
 	"bytes"
 	"context"
+	"encoding/binary"
 	"fmt"
 	"runtime/debug"
 
@@ -110,7 +111,33 @@ func (rs *runtimeShim) Store() vmr.Store {
 }
 
 func (rs *runtimeShim) NewActorAddress() address.Address {
-	panic("implement me")
+	var b bytes.Buffer
+	if err := rs.ImmediateCaller().MarshalCBOR(&b); err != nil { // todo: spec says cbor; why not just bytes?
+		rs.Abortf(exitcode.ErrSerialization, "writing caller address into a buffer: %v", err)
+	}
+
+	var err error
+	st, err := rs.vmctx.StateTree()
+	if err != nil {
+		rs.Abortf(exitcode.SysErrInternal, "getting statetree: %v", err)
+	}
+	act, err := st.GetActor(rs.vmctx.Origin())
+	if err != nil {
+		rs.Abortf(exitcode.SysErrInternal, "getting top level actor: %v", err)
+	}
+
+	if err := binary.Write(&b, binary.BigEndian, act.Nonce); err != nil {
+		rs.Abortf(exitcode.ErrSerialization, "writing nonce address into a buffer: %v", err)
+	}
+	if err := binary.Write(&b, binary.BigEndian, uint64(0)); err != nil { // TODO: expose on vm
+		rs.Abortf(exitcode.ErrSerialization, "writing callSeqNum address into a buffer: %v", err)
+	}
+	addr, err := address.NewActorAddress(b.Bytes())
+	if err != nil {
+		rs.Abortf(exitcode.ErrSerialization, "create actor address: %v", err)
+	}
+
+	return addr
 }
 
 func (rs *runtimeShim) CreateActor(codeId cid.Cid, address address.Address) {
@@ -148,11 +175,11 @@ func (rs *runtimeShim) Context() context.Context {
 }
 
 func (rs *runtimeShim) Abortf(code exitcode.ExitCode, msg string, args ...interface{}) {
-	panic(aerrors.Newf(uint8(code), msg, args...))
+	panic(aerrors.NewfSkip(2, uint8(code), msg, args...))
 }
 
 func (rs *runtimeShim) AbortStateMsg(msg string) {
-	rs.Abortf(101, msg)
+	panic(aerrors.NewfSkip(3, 101, msg))
 }
 
 func (rs *runtimeShim) ValidateImmediateCallerType(...cid.Cid) {
