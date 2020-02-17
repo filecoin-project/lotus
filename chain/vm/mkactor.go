@@ -16,7 +16,7 @@ import (
 
 func init() {
 	cst := cbor.NewMemCborStore()
-	emptyobject, err := cst.Put(context.TODO(), map[string]string{})
+	emptyobject, err := cst.Put(context.TODO(), []struct{}{})
 	if err != nil {
 		panic(err)
 	}
