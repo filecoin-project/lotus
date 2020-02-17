@@ -4,8 +4,11 @@ import (
 	"context"
 	"time"
 
+	lru "github.com/hashicorp/golang-lru"
+	"github.com/ipfs/go-cid"
 	logging "github.com/ipfs/go-log/v2"
 	connmgr "github.com/libp2p/go-libp2p-core/connmgr"
+	peer "github.com/libp2p/go-libp2p-peer"
 	pubsub "github.com/libp2p/go-libp2p-pubsub"
 
 	"github.com/filecoin-project/lotus/build"
@@ -28,15 +31,9 @@ func HandleIncomingBlocks(ctx context.Context, bsub *pubsub.Subscription, s *cha
 			continue
 		}
 
-		blk, err := types.DecodeBlockMsg(msg.GetData())
-		if err != nil {
-			log.Error("got invalid block over pubsub: ", err)
-			continue
-		}
-
-		if len(blk.BlsMessages)+len(blk.SecpkMessages) > build.BlockMessageLimit {
-			log.Warnf("received block with too many messages over pubsub")
-			continue
+		blk, ok := msg.ValidatorData.(*types.BlockMsg)
+		if !ok {
+			log.Warnf("pubsub block validator passed on wrong type: %#v", msg.ValidatorData)
 		}
 
 		go func() {
@@ -73,6 +70,89 @@ func HandleIncomingBlocks(ctx context.Context, bsub *pubsub.Subscription, s *cha
 	}
 }
 
+type BlockValidator struct {
+	peers *lru.TwoQueueCache
+
+	killThresh int
+
+	recvBlocks *blockReceiptCache
+
+	blacklist func(peer.ID)
+}
+
+func NewBlockValidator(blacklist func(peer.ID)) *BlockValidator {
+	p, _ := lru.New2Q(4096)
+	return &BlockValidator{
+		peers:      p,
+		killThresh: 5,
+		blacklist:  blacklist,
+		recvBlocks: newBlockReceiptCache(),
+	}
+}
+
+func (bv *BlockValidator) flagPeer(p peer.ID) {
+	v, ok := bv.peers.Get(p)
+	if !ok {
+		bv.peers.Add(p, int(1))
+		return
+	}
+
+	val := v.(int)
+
+	if val >= bv.killThresh {
+		bv.blacklist(p)
+	}
+
+	bv.peers.Add(p, v.(int)+1)
+}
+
+func (bv *BlockValidator) Validate(ctx context.Context, pid peer.ID, msg *pubsub.Message) bool {
+	blk, err := types.DecodeBlockMsg(msg.GetData())
+	if err != nil {
+		log.Error("got invalid block over pubsub: ", err)
+		bv.flagPeer(pid)
+		return false
+	}
+
+	if len(blk.BlsMessages)+len(blk.SecpkMessages) > build.BlockMessageLimit {
+		log.Warnf("received block with too many messages over pubsub")
+		bv.flagPeer(pid)
+		return false
+	}
+
+	if bv.recvBlocks.add(blk.Header.Cid()) > 0 {
+		// TODO: once these changes propagate to the network, we can consider
+		// dropping peers who send us the same block multiple times
+		return false
+	}
+
+	msg.ValidatorData = blk
+	return true
+}
+
+type blockReceiptCache struct {
+	blocks *lru.TwoQueueCache
+}
+
+func newBlockReceiptCache() *blockReceiptCache {
+	c, _ := lru.New2Q(8192)
+
+	return &blockReceiptCache{
+		blocks: c,
+	}
+}
+
+func (brc *blockReceiptCache) add(bcid cid.Cid) int {
+	val, ok := brc.blocks.Get(bcid)
+	if !ok {
+		brc.blocks.Add(bcid, int(1))
+		return 0
+	}
+
+	brc.blocks.Add(bcid, val.(int)+1)
+	return val.(int)
+}
+
 func HandleIncomingMessages(ctx context.Context, mpool *messagepool.MessagePool, msub *pubsub.Subscription) {
 	for {
 		msg, err := msub.Next(ctx)
@@ -85,9 +165,9 @@ func HandleIncomingMessages(ctx context.Context, mpool *messagepool.MessagePool,
 			continue
 		}
 
-		m, err := types.DecodeSignedMessage(msg.GetData())
-		if err != nil {
-			log.Errorf("got incorrectly formatted Message: %s", err)
+		m, ok := msg.ValidatorData.(*types.SignedMessage)
+		if !ok {
+			log.Errorf("message validator func passed on wrong type: %#v", msg.ValidatorData)
 			continue
 		}
 
