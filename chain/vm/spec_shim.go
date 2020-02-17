@@ -9,6 +9,7 @@ import (
 
 	"github.com/filecoin-project/go-address"
 	"github.com/filecoin-project/specs-actors/actors/abi"
+	"github.com/filecoin-project/specs-actors/actors/abi/big"
 	vmr "github.com/filecoin-project/specs-actors/actors/runtime"
 	"github.com/filecoin-project/specs-actors/actors/runtime/exitcode"
 	"github.com/ipfs/go-cid"
@@ -103,7 +104,12 @@ func (rs *runtimeShim) GetActorCodeCID(addr address.Address) (ret cid.Cid, ok bo
 }
 
 func (rs *runtimeShim) GetRandomness(epoch abi.ChainEpoch) abi.RandomnessSeed {
-	panic("implement me")
+	r, err := rs.vmctx.GetRandomness(epoch)
+	if err != nil {
+		rs.Abortf(exitcode.SysErrInternal, "getting randomness: %v", err)
+	}
+
+	return r
 }
 
 func (rs *runtimeShim) Store() vmr.Store {
@@ -141,7 +147,23 @@ func (rs *runtimeShim) NewActorAddress() address.Address {
 }
 
 func (rs *runtimeShim) CreateActor(codeId cid.Cid, address address.Address) {
-	panic("implement me")
+	var err error
+	st,err := rs.vmctx.StateTree()
+	if err != nil {
+		rs.Abortf(exitcode.SysErrInternal, "getting statetree: %v", err)
+	}
+
+	err = st.SetActor(address, &types.Actor{
+		Code:    codeId,
+		Head:    EmptyObjectCid,
+		Nonce:   0,
+		Balance: big.Zero(),
+	})
+	if err != nil {
+		rs.Abortf(exitcode.SysErrInternal, "creating actor entry: %v", err)
+	}
+
+	return
 }
 
 func (rs *runtimeShim) DeleteActor() {
