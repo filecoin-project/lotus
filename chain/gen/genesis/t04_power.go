@@ -23,7 +23,7 @@ func SetupStoragePowerActor(bs bstore.Blockstore) (*types.Actor, error) {
 	}
 
 	sms := &power.State{
-		TotalNetworkPower:        big.Zero(),
+		TotalNetworkPower:        big.NewInt(1),
 		MinerCount:               0,
 		EscrowTable:              emptyhamt,
 		CronEventQueue:           emptyhamt,

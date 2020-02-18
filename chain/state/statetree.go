@@ -83,7 +83,7 @@ func (st *StateTree) LookupID(addr address.Address) (address.Address, error) {
 		return address.Undef, xerrors.Errorf("loading init actor state: %w", err)
 	}
 
-	return ias.ResolveAddress(&adtStore{st.Store}, addr)
+	return ias.ResolveAddress(&AdtStore{st.Store}, addr)
 }
 
 func (st *StateTree) GetActor(addr address.Address) (*types.Actor, error) {
@@ -158,7 +158,7 @@ func (st *StateTree) RegisterNewAddress(addr address.Address, act *types.Actor) 
 			return err
 		}
 
-		oaddr, err := ias.MapAddressToNewID(&adtStore{st.Store}, addr)
+		oaddr, err := ias.MapAddressToNewID(&AdtStore{st.Store}, addr)
 		if err != nil {
 			return err
 		}
@@ -183,13 +183,13 @@ func (st *StateTree) RegisterNewAddress(addr address.Address, act *types.Actor) 
 	return out, nil
 }
 
-type adtStore struct{ cbor.IpldStore }
+type AdtStore struct{ cbor.IpldStore }
 
-func (a *adtStore) Context() context.Context {
+func (a *AdtStore) Context() context.Context {
 	return context.TODO()
 }
 
-var _ adt.Store = (*adtStore)(nil)
+var _ adt.Store = (*AdtStore)(nil)
 
 func (st *StateTree) Revert() error {
 	nd, err := hamt.LoadNode(context.Background(), st.Store, st.snapshot, hamt.UseTreeBitWidth(5))

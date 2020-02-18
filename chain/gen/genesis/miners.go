@@ -6,10 +6,12 @@ import (
 	"fmt"
 	"math/rand"
 
+	cborutil "github.com/filecoin-project/go-cbor-util"
+	commcid "github.com/filecoin-project/go-fil-commcid"
 	"github.com/filecoin-project/specs-actors/actors/builtin/power"
+	cbor "github.com/ipfs/go-ipld-cbor"
 
 	"github.com/filecoin-project/go-address"
-	commcid "github.com/filecoin-project/go-fil-commcid"
 	"github.com/filecoin-project/specs-actors/actors/abi"
 	"github.com/filecoin-project/specs-actors/actors/abi/big"
 	"github.com/filecoin-project/specs-actors/actors/builtin"
@@ -20,6 +22,7 @@ import (
 	"golang.org/x/xerrors"
 
 	"github.com/filecoin-project/lotus/chain/actors"
+	"github.com/filecoin-project/lotus/chain/state"
 	"github.com/filecoin-project/lotus/chain/store"
 	"github.com/filecoin-project/lotus/chain/vm"
 	"github.com/filecoin-project/lotus/genesis"
@@ -35,11 +38,20 @@ func MinerAddress(genesisIndex uint64) address.Address {
 }
 
 func SetupStorageMiners(ctx context.Context, cs *store.ChainStore, sroot cid.Cid, miners []genesis.Miner) (cid.Cid, error) {
+	networkPower := big.Zero()
+	for _, m := range miners {
+		networkPower = big.Add(networkPower, big.NewInt(int64(m.SectorSize)*int64(len(m.Sectors))))
+	}
 
 	vm, err := vm.NewVM(sroot, 0, &fakeRand{}, actors.SystemAddress, cs.Blockstore(), cs.VMSys())
 	if err != nil {
 		return cid.Undef, xerrors.Errorf("failed to create NewVM: %w", err)
 	}
+
+	err = vm.MutateState(ctx, builtin.StoragePowerActorAddr, func(cst cbor.IpldStore, st *power.State) error {
+		st.TotalNetworkPower = networkPower
+		return nil
+	})
 
 	if len(miners) == 0 {
 		return cid.Undef, xerrors.New("no genesis miners")
@@ -110,37 +122,122 @@ func SetupStorageMiners(ctx context.Context, cs *store.ChainStore, sroot cid.Cid
 			dealIDs = ids.IDs
 		}
 
-		// Publish preseals
+		// setup windowed post
+		{
+			err = vm.MutateState(ctx, maddr, func(cst cbor.IpldStore, st *miner.State) error {
+				// TODO: Randomize so all genesis miners don't fall on the same epoch
+				st.PoStState.ProvingPeriodStart = miner.ProvingPeriod
+				return nil
+			})
 
+			payload, err := cborutil.Dump(&miner.CronEventPayload{
+				EventType: miner.CronEventWindowedPoStExpiration,
+			})
+			if err != nil {
+				return cid.Undef, err
+			}
+			params := &power.EnrollCronEventParams{
+				EventEpoch: miner.ProvingPeriod,
+				Payload:    payload,
+			}
+
+			_, err = doExecValue(ctx, vm, builtin.StoragePowerActorAddr, maddr, big.Zero(), builtin.MethodsPower.EnrollCronEvent, mustEnc(params))
+			if err != nil {
+				return cid.Undef, xerrors.Errorf("failed to verify preseal deals miner: %w", err)
+			}
+		}
+
+		// Commit sectors
 		for pi, preseal := range m.Sectors {
-			// Precommit
-			params := &miner.SectorPreCommitInfo{
-				SectorNumber: preseal.SectorID,
-				SealedCID:    commcid.ReplicaCommitmentV1ToCID(preseal.CommR[:]),
-				SealEpoch:    0,
-				DealIDs:      []abi.DealID{dealIDs[pi]},
-				Expiration:   preseal.Deal.EndEpoch,
+			// TODO: Maybe check seal (Can just be snark inputs, doesn't go into the genesis file)
+
+			dealWeight := big.Zero()
+			{
+				params := &market.VerifyDealsOnSectorProveCommitParams{
+					DealIDs:      []abi.DealID{dealIDs[pi]},
+					SectorExpiry: preseal.Deal.EndEpoch,
+				}
+
+				ret, err := doExecValue(ctx, vm, builtin.StorageMarketActorAddr, maddr, big.Zero(), builtin.MethodsMarket.VerifyDealsOnSectorProveCommit, mustEnc(params))
+				if err != nil {
+					return cid.Undef, xerrors.Errorf("failed to verify preseal deals miner: %w", err)
+				}
+				if err := dealWeight.UnmarshalCBOR(bytes.NewReader(ret)); err != nil {
+					return cid.Undef, err
+				}
 			}
-			_, err := doExecValue(ctx, vm, maddr, m.Worker, big.Zero(), builtin.MethodsMiner.PreCommitSector, mustEnc(params))
-			if err != nil {
-				return cid.Undef, xerrors.Errorf("failed to create genesis miner: %w", err)
+
+			pledge := big.Zero()
+			{
+				err = vm.MutateState(ctx, builtin.StoragePowerActorAddr, func(cst cbor.IpldStore, st *power.State) error {
+					weight := &power.SectorStorageWeightDesc{
+						SectorSize: m.SectorSize,
+						Duration:   preseal.Deal.Duration(),
+						DealWeight: dealWeight,
+					}
+
+					spower := power.ConsensusPowerForWeight(weight)
+					pledge = power.PledgeForWeight(weight, big.Sub(st.TotalNetworkPower, spower))
+					err := st.AddToClaim(&state.AdtStore{cst}, maddr, spower, pledge)
+					if err != nil {
+						return xerrors.Errorf("add to claim: %w", err)
+					}
+					return nil
+				})
+				if err != nil {
+					return cid.Undef, xerrors.Errorf("register power claim in power actor: %w", err)
+				}
+			}
+
+			{
+				newSectorInfo := &miner.SectorOnChainInfo{
+					Info: miner.SectorPreCommitInfo{
+						SectorNumber: preseal.SectorID,
+						SealedCID:    commcid.ReplicaCommitmentV1ToCID(preseal.CommR[:]),
+						SealEpoch:    0,
+						DealIDs:      []abi.DealID{dealIDs[pi]},
+						Expiration:   preseal.Deal.EndEpoch,
+					},
+					ActivationEpoch:   0,
+					DealWeight:        dealWeight,
+					PledgeRequirement: pledge,
+				}
+
+				err = vm.MutateState(ctx, maddr, func(cst cbor.IpldStore, st *miner.State) error {
+					store := &state.AdtStore{cst}
+
+					if err = st.PutSector(store, newSectorInfo); err != nil {
+						return xerrors.Errorf("failed to prove commit: %v", err)
+					}
+
+					st.ProvingSet = st.Sectors
+					return nil
+				})
+			}
+
+			{
+				sectorBf := abi.NewBitField()
+				sectorBf.Set(uint64(preseal.SectorID))
+
+				payload, err := cborutil.Dump(&miner.CronEventPayload{
+					EventType: miner.CronEventSectorExpiry,
+					Sectors:   &sectorBf,
+				})
+				if err != nil {
+					return cid.Undef, err
+				}
+				params := &power.EnrollCronEventParams{
+					EventEpoch: preseal.Deal.EndEpoch,
+					Payload:    payload,
+				}
+
+				_, err = doExecValue(ctx, vm, builtin.StoragePowerActorAddr, maddr, big.Zero(), builtin.MethodsPower.EnrollCronEvent, mustEnc(params))
+				if err != nil {
+					return cid.Undef, xerrors.Errorf("failed to verify preseal deals miner: %w", err)
+				}
 			}
 		}
 
-		// You can't prove sector commitments at the same height that you precommit them
-		vm.SetBlockHeight(7) // needs to be between PorepMinDelay and PorepMaxDelay
-
-		// Commit
-		for _, preseal := range m.Sectors {
-			params := &miner.ProveCommitSectorParams{
-				SectorNumber: preseal.SectorID,
-				Proof:        nil,
-			}
-			_, err := doExecValue(ctx, vm, maddr, m.Worker, big.Zero(), builtin.MethodsMiner.ProveCommitSector, mustEnc(params))
-			if err != nil {
-				return cid.Undef, xerrors.Errorf("failed to create genesis miner: %w", err)
-			}
-		}
 	}
 
 	c, err := vm.Flush(ctx)
