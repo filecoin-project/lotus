@@ -3,6 +3,9 @@ package genesis
 import (
 	"bytes"
 	"context"
+	"fmt"
+	"math/rand"
+
 	"github.com/filecoin-project/specs-actors/actors/builtin/power"
 
 	"github.com/filecoin-project/go-address"
@@ -32,7 +35,8 @@ func MinerAddress(genesisIndex uint64) address.Address {
 }
 
 func SetupStorageMiners(ctx context.Context, cs *store.ChainStore, sroot cid.Cid, miners []genesis.Miner) (cid.Cid, error) {
-	vm, err := vm.NewVM(sroot, 0, nil, actors.SystemAddress, cs.Blockstore(), cs.VMSys())
+
+	vm, err := vm.NewVM(sroot, 0, &fakeRand{}, actors.SystemAddress, cs.Blockstore(), cs.VMSys())
 	if err != nil {
 		return cid.Undef, xerrors.Errorf("failed to create NewVM: %w", err)
 	}
@@ -73,7 +77,7 @@ func SetupStorageMiners(ctx context.Context, cs *store.ChainStore, sroot cid.Cid
 		// Add market funds
 
 		{
-			params := mustEnc(&m.Worker)
+			params := mustEnc(&maddr)
 			_, err := doExecValue(ctx, vm, actors.StorageMarketAddress, m.Worker, m.MarketBalance, builtin.MethodsMarket.AddBalance, params)
 			if err != nil {
 				return cid.Undef, xerrors.Errorf("failed to create genesis miner: %w", err)
@@ -86,10 +90,12 @@ func SetupStorageMiners(ctx context.Context, cs *store.ChainStore, sroot cid.Cid
 		{
 			params := &market.PublishStorageDealsParams{}
 			for _, preseal := range m.Sectors {
+
 				params.Deals = append(params.Deals, market.ClientDealProposal{
 					Proposal:        preseal.Deal,
-					ClientSignature: crypto.Signature{},
+					ClientSignature: crypto.Signature{}, // TODO: do we want to sign these? Or do we want to fake signatures for genesis setup?
 				})
+				fmt.Printf("calling publish storage deals on miner %s with worker %s\n", preseal.Deal.Provider, m.Worker)
 			}
 
 			ret, err := doExecValue(ctx, vm, builtin.StorageMarketActorAddr, m.Worker, big.Zero(), builtin.MethodsMarket.PublishStorageDeals, mustEnc(params))
@@ -106,38 +112,46 @@ func SetupStorageMiners(ctx context.Context, cs *store.ChainStore, sroot cid.Cid
 
 		// Publish preseals
 
-		{
-			for pi, preseal := range m.Sectors {
-				// Precommit
-				{
-					params := &miner.SectorPreCommitInfo{
-						SectorNumber: preseal.SectorID,
-						SealedCID:    commcid.ReplicaCommitmentV1ToCID(preseal.CommR[:]),
-						SealEpoch:    0,
-						DealIDs:      []abi.DealID{dealIDs[pi]},
-						Expiration:   preseal.Deal.EndEpoch,
-					}
-					_, err := doExecValue(ctx, vm, maddr, m.Worker, big.Zero(), builtin.MethodsMiner.PreCommitSector, mustEnc(params))
-					if err != nil {
-						return cid.Undef, xerrors.Errorf("failed to create genesis miner: %w", err)
-					}
-				}
+		for pi, preseal := range m.Sectors {
+			// Precommit
+			params := &miner.SectorPreCommitInfo{
+				SectorNumber: preseal.SectorID,
+				SealedCID:    commcid.ReplicaCommitmentV1ToCID(preseal.CommR[:]),
+				SealEpoch:    0,
+				DealIDs:      []abi.DealID{dealIDs[pi]},
+				Expiration:   preseal.Deal.EndEpoch,
+			}
+			_, err := doExecValue(ctx, vm, maddr, m.Worker, big.Zero(), builtin.MethodsMiner.PreCommitSector, mustEnc(params))
+			if err != nil {
+				return cid.Undef, xerrors.Errorf("failed to create genesis miner: %w", err)
+			}
+		}
 
-				// Commit
-				{
-					params := &miner.ProveCommitSectorParams{
-						SectorNumber: preseal.SectorID,
-						Proof:        abi.SealProof{},
-					}
-					_, err := doExecValue(ctx, vm, maddr, m.Worker, big.Zero(), builtin.MethodsMiner.ProveCommitSector, mustEnc(params))
-					if err != nil {
-						return cid.Undef, xerrors.Errorf("failed to create genesis miner: %w", err)
-					}
-				}
+		// You can't prove sector commitments at the same height that you precommit them
+		vm.SetBlockHeight(7) // needs to be between PorepMinDelay and PorepMaxDelay
+
+		// Commit
+		for _, preseal := range m.Sectors {
+			params := &miner.ProveCommitSectorParams{
+				SectorNumber: preseal.SectorID,
+				Proof:        nil,
+			}
+			_, err := doExecValue(ctx, vm, maddr, m.Worker, big.Zero(), builtin.MethodsMiner.ProveCommitSector, mustEnc(params))
+			if err != nil {
+				return cid.Undef, xerrors.Errorf("failed to create genesis miner: %w", err)
 			}
 		}
 	}
 
 	c, err := vm.Flush(ctx)
 	return c, err
+}
+
+// TODO: copied from actors test harness, deduplicate or remove from here
+type fakeRand struct{}
+
+func (fr *fakeRand) GetRandomness(ctx context.Context, h int64) ([]byte, error) {
+	out := make([]byte, 32)
+	rand.New(rand.NewSource(h)).Read(out)
+	return out, nil
 }

@@ -6,6 +6,7 @@ import (
 	"github.com/filecoin-project/go-address"
 	commcid "github.com/filecoin-project/go-fil-commcid"
 	"github.com/filecoin-project/specs-actors/actors/abi"
+	"github.com/filecoin-project/specs-actors/actors/crypto"
 
 	"github.com/filecoin-project/lotus/chain/actors"
 	"github.com/filecoin-project/lotus/chain/types"
@@ -13,18 +14,18 @@ import (
 	"github.com/filecoin-project/lotus/genesis"
 )
 
-func PreSeal(ssize abi.SectorSize, maddr address.Address, sectors int) (*genesis.GenesisMiner, error) {
-	k, err := wallet.GenerateKey(types.KTBLS)
+func PreSeal(ssize abi.SectorSize, maddr address.Address, sectors int) (*genesis.Miner, error) {
+	k, err := wallet.GenerateKey(crypto.SigTypeBLS)
 	if err != nil {
 		return nil, err
 	}
 
-	genm := &genesis.GenesisMiner{
+	genm := &genesis.Miner{
 		Owner:      k.Address,
 		Worker:     k.Address,
 		SectorSize: ssize,
 		Sectors:    make([]*genesis.PreSeal, sectors),
-		Key:        k.KeyInfo,
+		//Key:        k.KeyInfo,
 	}
 
 	for i := range genm.Sectors {

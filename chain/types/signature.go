@@ -68,7 +68,7 @@ func (s *Signature) UnmarshalCBOR(br io.Reader) error {
 		return err
 	}
 
-	if buf[0] != byte(crypto.SigTypeSecp256k1) || buf[0] != byte(crypto.SigTypeBLS) {
+	if buf[0] != byte(crypto.SigTypeSecp256k1) && buf[0] != byte(crypto.SigTypeBLS) {
 		return fmt.Errorf("invalid signature type in cbor input: %d", buf[0])
 	}
 
