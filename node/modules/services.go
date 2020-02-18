@@ -58,7 +58,10 @@ func HandleIncomingBlocks(mctx helpers.MetricsCtx, lc fx.Lifecycle, ps *pubsub.P
 		panic(err)
 	}
 
-	v := sub.NewBlockValidator(ps.BlacklistPeer)
+	v := sub.NewBlockValidator(func(p peer.ID) {
+		ps.BlacklistPeer(p)
+		h.ConnManager().TagPeer(p, "badblock", -1000)
+	})
 
 	if err := ps.RegisterTopicValidator(BlocksTopic, v.Validate); err != nil {
 		panic(err)
