@@ -30,6 +30,22 @@ sudo apt update
 sudo apt install golang-go gcc git bzr jq pkg-config mesa-opencl-icd ocl-icd-opencl-dev
 ```
 
+Install Rust
+
+*(Using the interactive installer from [rustup.rs](https://rustup.rs/))*
+
+```sh
+curl --proto '=https' --tlsv1.2 -sSf https://sh.rustup.rs | sh
+```
+
+You can just choose the default options.
+
+This will modify your `.profile` login shell script to include the rust tools when you log in. You can either log out and log in again, or run the following command to set up the rust tools for your current session:
+
+```sh
+source $HOME/.cargo/env
+```
+
 Clone
 
 ```sh
@@ -40,7 +56,13 @@ cd lotus/
 Install
 
 ```sh
-make clean && make all
+make clean
+```
+
+*Note: This may fail with errors if run for first time*
+
+```sg
+make all
 sudo make install
 ```
 
