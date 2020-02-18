@@ -47,6 +47,8 @@ func (rs *runtimeShim) shimCall(f func() interface{}) (rval []byte, aerr aerrors
 	defer func() {
 		if r := recover(); r != nil {
 			if ar, ok := r.(aerrors.ActorError); ok {
+				fmt.Println("VM.Call failure: ", ar)
+				debug.PrintStack()
 				aerr = ar
 				return
 			}
@@ -152,7 +154,7 @@ func (rs *runtimeShim) NewActorAddress() address.Address {
 
 func (rs *runtimeShim) CreateActor(codeId cid.Cid, address address.Address) {
 	var err error
-	st,err := rs.vmctx.StateTree()
+	st, err := rs.vmctx.StateTree()
 	if err != nil {
 		rs.Abortf(exitcode.SysErrInternal, "getting statetree: %v", err)
 	}
@@ -175,7 +177,7 @@ func (rs *runtimeShim) DeleteActor() {
 }
 
 func (rs *runtimeShim) Syscalls() vmr.Syscalls {
-	panic("implement me")
+	return rs.vmctx.Sys()
 }
 
 func (rs *runtimeShim) StartSpan(name string) vmr.TraceSpan {
@@ -188,8 +190,7 @@ func (rs *runtimeShim) ValidateImmediateCallerIs(as ...address.Address) {
 			return
 		}
 	}
-	fmt.Println("Caller: ", rs.vmctx.Message().From, as)
-	panic("we like to panic when people call the wrong methods")
+	rs.Abortf(exitcode.ErrForbidden, "caller %s is not one of %s", rs.vmctx.Message().From, as)
 }
 
 func (rs *runtimeShim) ImmediateCaller() address.Address {
@@ -225,12 +226,16 @@ func (dwt *dumbWrapperType) Into(um vmr.CBORUnmarshaler) error {
 }
 
 func (rs *runtimeShim) Send(to address.Address, method abi.MethodNum, m vmr.CBORMarshaler, value abi.TokenAmount) (vmr.SendReturn, exitcode.ExitCode) {
-	buf := new(bytes.Buffer)
-	if err := m.MarshalCBOR(buf); err != nil {
-		rs.Abortf(exitcode.SysErrInvalidParameters, "failed to marshal input parameters: %s", err)
+	var params []byte
+	if m != nil {
+		buf := new(bytes.Buffer)
+		if err := m.MarshalCBOR(buf); err != nil {
+			rs.Abortf(exitcode.SysErrInvalidParameters, "failed to marshal input parameters: %s", err)
+		}
+		params = buf.Bytes()
 	}
 
-	ret, err := rs.vmctx.Send(to, method, types.BigInt(value), buf.Bytes())
+	ret, err := rs.vmctx.Send(to, method, types.BigInt(value), params)
 	if err != nil {
 		if err.IsFatal() {
 			panic(err)

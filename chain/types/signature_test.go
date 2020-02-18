@@ -3,12 +3,14 @@ package types
 import (
 	"bytes"
 	"testing"
+
+	"github.com/filecoin-project/specs-actors/actors/crypto"
 )
 
 func TestSignatureSerializeRoundTrip(t *testing.T) {
 	s := &Signature{
 		Data: []byte("foo bar cat dog"),
-		Type: KTBLS,
+		Type: crypto.SigTypeBLS,
 	}
 
 	buf := new(bytes.Buffer)

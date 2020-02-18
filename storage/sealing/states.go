@@ -187,7 +187,7 @@ func (m *Sealing) handleCommitting(ctx statemachine.Context, sector SectorInfo) 
 
 	params := &miner.ProveCommitSectorParams{
 		SectorNumber: sector.SectorID,
-		Proof:        abi.SealProof{ProofBytes: proof},
+		Proof:        proof,
 	}
 
 	enc, aerr := actors.SerializeParams(params)

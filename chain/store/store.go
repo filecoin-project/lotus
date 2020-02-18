@@ -11,6 +11,7 @@ import (
 
 	"github.com/filecoin-project/go-address"
 	"github.com/filecoin-project/specs-actors/actors/abi"
+	"github.com/filecoin-project/specs-actors/actors/runtime"
 	"github.com/filecoin-project/specs-actors/actors/util/adt"
 	"go.opencensus.io/trace"
 	"go.uber.org/multierr"
@@ -63,10 +64,10 @@ type ChainStore struct {
 	mmCache *lru.ARCCache
 	tsCache *lru.ARCCache
 
-	vmcalls *types.VMSyscalls
+	vmcalls runtime.Syscalls
 }
 
-func NewChainStore(bs bstore.Blockstore, ds dstore.Batching, vmcalls *types.VMSyscalls) *ChainStore {
+func NewChainStore(bs bstore.Blockstore, ds dstore.Batching, vmcalls runtime.Syscalls) *ChainStore {
 	c, _ := lru.NewARC(2048)
 	tsc, _ := lru.NewARC(4096)
 	cs := &ChainStore{
@@ -861,7 +862,7 @@ func (cs *ChainStore) Store(ctx context.Context) adt.Store {
 	return ActorStore(ctx, cs.bs)
 }
 
-func (cs *ChainStore) VMSys() *types.VMSyscalls {
+func (cs *ChainStore) VMSys() runtime.Syscalls {
 	return cs.vmcalls
 }
 

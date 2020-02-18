@@ -9,6 +9,7 @@ import (
 	"github.com/filecoin-project/specs-actors/actors/abi"
 	"github.com/filecoin-project/specs-actors/actors/builtin/account"
 	"github.com/filecoin-project/specs-actors/actors/crypto"
+	"github.com/filecoin-project/specs-actors/actors/runtime"
 	block "github.com/ipfs/go-block-format"
 	cid "github.com/ipfs/go-cid"
 	hamt "github.com/ipfs/go-hamt-ipld"
@@ -60,7 +61,7 @@ type VMContext struct {
 	gasAvailable types.BigInt
 	gasUsed      types.BigInt
 
-	sys *types.VMSyscalls
+	sys runtime.Syscalls
 
 	// root cid of the state of the actor this invocation will be on
 	sroot cid.Cid
@@ -83,7 +84,7 @@ func (vmc *VMContext) GetRandomness(height abi.ChainEpoch) ([]byte, aerrors.Acto
 	return res, nil
 }
 
-func (vmc *VMContext) Sys() *types.VMSyscalls {
+func (vmc *VMContext) Sys() runtime.Syscalls {
 	return vmc.sys
 }
 
@@ -318,10 +319,10 @@ type VM struct {
 	inv         *invoker
 	rand        Rand
 
-	Syscalls *types.VMSyscalls
+	Syscalls runtime.Syscalls
 }
 
-func NewVM(base cid.Cid, height abi.ChainEpoch, r Rand, maddr address.Address, cbs blockstore.Blockstore, syscalls *types.VMSyscalls) (*VM, error) {
+func NewVM(base cid.Cid, height abi.ChainEpoch, r Rand, maddr address.Address, cbs blockstore.Blockstore, syscalls runtime.Syscalls) (*VM, error) {
 	buf := bufbstore.NewBufferedBstore(cbs)
 	cst := cbor.NewCborStore(buf)
 	state, err := state.LoadStateTree(cst, base)

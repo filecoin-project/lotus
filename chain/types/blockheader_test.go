@@ -7,6 +7,7 @@ import (
 	"testing"
 
 	"github.com/filecoin-project/go-address"
+	"github.com/filecoin-project/specs-actors/actors/crypto"
 	cid "github.com/ipfs/go-cid"
 )
 
@@ -34,12 +35,12 @@ func testBlockHeader(t testing.TB) *BlockHeader {
 		},
 		Parents:               []cid.Cid{c, c},
 		ParentMessageReceipts: c,
-		BLSAggregate:          Signature{Type: KTBLS, Data: []byte("boo! im a signature")},
+		BLSAggregate:          crypto.Signature{Type: crypto.SigTypeBLS, Data: []byte("boo! im a signature")},
 		ParentWeight:          NewInt(123125126212),
 		Messages:              c,
 		Height:                85919298723,
 		ParentStateRoot:       c,
-		BlockSig:              &Signature{Type: KTBLS, Data: []byte("boo! im a signature")},
+		BlockSig:              &crypto.Signature{Type: crypto.SigTypeBLS, Data: []byte("boo! im a signature")},
 	}
 }
 

@@ -36,6 +36,7 @@ import (
 	"github.com/filecoin-project/lotus/genesis"
 	"github.com/filecoin-project/lotus/lib/sigs"
 	"github.com/filecoin-project/lotus/node/repo"
+	"github.com/filecoin-project/lotus/storage/sbmock"
 
 	"go.opencensus.io/trace"
 	"golang.org/x/xerrors"
@@ -161,7 +162,7 @@ func NewGenerator() (*ChainGen, error) {
 		return nil, err
 	}
 
-	sys := vm.Syscalls(sectorbuilder.ProofVerifier)
+	sys := vm.Syscalls(&genFakeVerifier{})
 
 	tpl := genesis.Template{
 		Accounts: []genesis.Actor{
@@ -661,4 +662,23 @@ func ComputeVRF(ctx context.Context, sign SignFunc, worker, miner address.Addres
 	}
 
 	return sig.Data, nil
+}
+
+type genFakeVerifier struct{}
+
+var _ sectorbuilder.Verifier = (*genFakeVerifier)(nil)
+
+func (m genFakeVerifier) VerifyElectionPost(ctx context.Context, sectorSize abi.SectorSize, sectorInfo sectorbuilder.SortedPublicSectorInfo, challengeSeed []byte, proof []byte, candidates []sectorbuilder.EPostCandidate, proverID address.Address) (bool, error) {
+	panic("nyi")
+}
+func (m genFakeVerifier) GenerateDataCommitment(ssize abi.PaddedPieceSize, pieces []ffi.PublicPieceInfo) ([sectorbuilder.CommLen]byte, error) {
+	return sbmock.MockVerifier.GenerateDataCommitment(ssize, pieces)
+}
+
+func (m genFakeVerifier) VerifySeal(sectorSize abi.SectorSize, commR, commD []byte, proverID address.Address, ticket []byte, seed []byte, sectorID abi.SectorNumber, proof []byte) (bool, error) {
+	return true, nil
+}
+
+func (m genFakeVerifier) VerifyFallbackPost(ctx context.Context, sectorSize abi.SectorSize, sectorInfo sectorbuilder.SortedPublicSectorInfo, challengeSeed []byte, proof []byte, candidates []sectorbuilder.EPostCandidate, proverID address.Address, faults uint64) (bool, error) {
+	panic("nyi")
 }
