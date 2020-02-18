@@ -40,15 +40,15 @@ type fakeCS struct {
 	sub func(rev, app []*types.TipSet)
 }
 
-func (fcs *fakeCS) StateGetReceipt(context.Context, cid.Cid, *types.TipSet) (*types.MessageReceipt, error) {
+func (fcs *fakeCS) StateGetReceipt(context.Context, cid.Cid, types.TipSetKey) (*types.MessageReceipt, error) {
 	return nil, nil
 }
 
-func (fcs *fakeCS) StateGetActor(ctx context.Context, actor address.Address, ts *types.TipSet) (*types.Actor, error) {
+func (fcs *fakeCS) StateGetActor(ctx context.Context, actor address.Address, tsk types.TipSetKey) (*types.Actor, error) {
 	panic("Not Implemented")
 }
 
-func (fcs *fakeCS) ChainGetTipSetByHeight(context.Context, uint64, *types.TipSet) (*types.TipSet, error) {
+func (fcs *fakeCS) ChainGetTipSetByHeight(context.Context, uint64, types.TipSetKey) (*types.TipSet, error) {
 	panic("Not Implemented")
 }
 

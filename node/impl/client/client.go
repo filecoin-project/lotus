@@ -65,12 +65,12 @@ func (a *API) ClientStartDeal(ctx context.Context, data cid.Cid, addr address.Ad
 		return nil, xerrors.Errorf("provided address doesn't exist in wallet")
 	}
 
-	pid, err := a.StateMinerPeerID(ctx, miner, nil)
+	pid, err := a.StateMinerPeerID(ctx, miner, types.EmptyTSK)
 	if err != nil {
 		return nil, xerrors.Errorf("failed getting peer ID: %w", err)
 	}
 
-	mw, err := a.StateMinerWorker(ctx, miner, nil)
+	mw, err := a.StateMinerWorker(ctx, miner, types.EmptyTSK)
 	if err != nil {
 		return nil, xerrors.Errorf("failed getting miner worker: %w", err)
 	}
@@ -268,7 +268,7 @@ func (a *API) ClientListImports(ctx context.Context) ([]api.Import, error) {
 
 func (a *API) ClientRetrieve(ctx context.Context, order api.RetrievalOrder, path string) error {
 	if order.MinerPeerID == "" {
-		pid, err := a.StateMinerPeerID(ctx, order.Miner, nil)
+		pid, err := a.StateMinerPeerID(ctx, order.Miner, types.EmptyTSK)
 		if err != nil {
 			return err
 		}

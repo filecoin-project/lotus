@@ -33,7 +33,7 @@ var mpoolPending = &cli.Command{
 
 		ctx := ReqContext(cctx)
 
-		msgs, err := api.MpoolPending(ctx, nil)
+		msgs, err := api.MpoolPending(ctx, types.EmptyTSK)
 		if err != nil {
 			return err
 		}
@@ -103,7 +103,7 @@ var mpoolStat = &cli.Command{
 			return xerrors.Errorf("getting chain head: %w", err)
 		}
 
-		msgs, err := api.MpoolPending(ctx, nil)
+		msgs, err := api.MpoolPending(ctx, types.EmptyTSK)
 		if err != nil {
 			return err
 		}
@@ -122,7 +122,7 @@ var mpoolStat = &cli.Command{
 			bkt.msgs[v.Message.Nonce] = v
 		}
 		for a, bkt := range buckets {
-			act, err := api.StateGetActor(ctx, a, ts)
+			act, err := api.StateGetActor(ctx, a, ts.Key())
 			if err != nil {
 				fmt.Printf("%s, err: %s\n", a, err)
 				continue

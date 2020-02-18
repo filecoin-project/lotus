@@ -30,7 +30,7 @@ func init() {
 			if err != nil {
 				return err
 			}
-			pending, err := api.MpoolPending(ctx, head)
+			pending, err := api.MpoolPending(ctx, head.Key())
 			if err != nil {
 				return err
 			}
@@ -90,7 +90,7 @@ func init() {
 				if err != nil {
 					return xerrors.Errorf("chain get randomness: %w", err)
 				}
-				mworker, err := api.StateMinerWorker(ctx, addr, head)
+				mworker, err := api.StateMinerWorker(ctx, addr, head.Key())
 				if err != nil {
 					return xerrors.Errorf("failed to get miner worker: %w", err)
 				}

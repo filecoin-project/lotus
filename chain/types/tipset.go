@@ -129,6 +129,9 @@ func (ts *TipSet) Cids() []cid.Cid {
 }
 
 func (ts *TipSet) Key() TipSetKey {
+	if ts == nil {
+		return EmptyTSK
+	}
 	return NewTipSetKey(ts.cids...)
 }
 

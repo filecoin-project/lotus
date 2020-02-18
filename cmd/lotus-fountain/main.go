@@ -239,7 +239,7 @@ func (h *handler) mkminer(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	collateral, err := h.api.StatePledgeCollateral(r.Context(), nil)
+	collateral, err := h.api.StatePledgeCollateral(r.Context(), types.EmptyTSK)
 	if err != nil {
 		w.WriteHeader(400)
 		w.Write([]byte(err.Error()))
