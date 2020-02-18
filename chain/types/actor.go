@@ -9,6 +9,7 @@ import (
 var ErrActorNotFound = init_.ErrAddressNotFound
 
 type Actor struct {
+	// Identifies the type of actor (string coded as a CID), see `chain/actors/actors.go`.
 	Code    cid.Cid
 	Head    cid.Cid
 	Nonce   uint64
