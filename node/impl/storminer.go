@@ -3,6 +3,7 @@ package impl
 import (
 	"context"
 	"encoding/json"
+	"github.com/filecoin-project/lotus/chain/types"
 	"io"
 	"mime"
 	"net/http"
@@ -169,7 +170,7 @@ func (sm *StorageMinerAPI) ActorAddress(context.Context) (address.Address, error
 }
 
 func (sm *StorageMinerAPI) ActorSectorSize(ctx context.Context, addr address.Address) (uint64, error) {
-	return sm.Full.StateMinerSectorSize(ctx, addr, nil)
+	return sm.Full.StateMinerSectorSize(ctx, addr, types.EmptyTSK)
 }
 
 func (sm *StorageMinerAPI) PledgeSector(ctx context.Context) error {

@@ -192,7 +192,7 @@ func (e *calledEvents) applyWithConfidence(ts *types.TipSet) {
 				continue
 			}
 
-			rec, err := e.cs.StateGetReceipt(e.ctx, event.msg.Cid(), ts)
+			rec, err := e.cs.StateGetReceipt(e.ctx, event.msg.Cid(), ts.Key())
 			if err != nil {
 				log.Error(err)
 				return

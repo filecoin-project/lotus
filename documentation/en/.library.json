@@ -161,6 +161,13 @@
       ]
     },
     {
+      "title": "FAQs",
+      "slug": "en+faqs",
+      "github": "en/faqs.md",
+      "value": null,
+      "posts": []
+    },
+    {
       "title": "Glossary",
       "slug": "en+glossary",
       "github": "en/.glossary.json",

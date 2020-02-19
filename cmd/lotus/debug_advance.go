@@ -30,7 +30,7 @@ func init() {
 			if err != nil {
 				return err
 			}
-			pending, err := api.MpoolPending(ctx, head)
+			pending, err := api.MpoolPending(ctx, head.Key())
 			if err != nil {
 				return err
 			}
@@ -52,7 +52,7 @@ func init() {
 					From:   addr,
 					To:     addr,
 					Method: actors.MAMethods.GetWorkerAddr,
-				}, head)
+				}, head.Key())
 				if err != nil {
 					return xerrors.Errorf("failed to get miner worker addr: %w", err)
 				}
@@ -90,7 +90,7 @@ func init() {
 				if err != nil {
 					return xerrors.Errorf("chain get randomness: %w", err)
 				}
-				mworker, err := api.StateMinerWorker(ctx, addr, head)
+				mworker, err := api.StateMinerWorker(ctx, addr, head.Key())
 				if err != nil {
 					return xerrors.Errorf("failed to get miner worker: %w", err)
 				}
@@ -104,7 +104,7 @@ func init() {
 
 			uts := head.MinTimestamp() + uint64(build.BlockDelay)
 			nheight := head.Height() + 1
-			blk, err := api.MinerCreateBlock(ctx, addr, head, ticket, epostp, msgs, nheight, uts)
+			blk, err := api.MinerCreateBlock(ctx, addr, head.Key(), ticket, epostp, msgs, nheight, uts)
 			if err != nil {
 				return xerrors.Errorf("creating block: %w", err)
 			}

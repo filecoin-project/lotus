@@ -295,7 +295,7 @@ var clientQueryAskCmd = &cli.Command{
 				To:     maddr,
 				From:   maddr,
 				Method: actors.MAMethods.GetPeerID,
-			}, nil)
+			}, types.EmptyTSK)
 			if err != nil {
 				return xerrors.Errorf("failed to get peerID for miner: %w", err)
 			}

@@ -20,6 +20,7 @@ var syncCmd = &cli.Command{
 		syncStatusCmd,
 		syncWaitCmd,
 		syncMarkBadCmd,
+		syncCheckBadCmd,
 	},
 }
 
@@ -112,6 +113,41 @@ var syncMarkBadCmd = &cli.Command{
 		}
 
 		return napi.SyncMarkBad(ctx, bcid)
+	},
+}
+
+var syncCheckBadCmd = &cli.Command{
+	Name:  "check-bad",
+	Usage: "check if the given block was marked bad, and for what reason",
+	Action: func(cctx *cli.Context) error {
+		napi, closer, err := GetFullNodeAPI(cctx)
+		if err != nil {
+			return err
+		}
+		defer closer()
+		ctx := ReqContext(cctx)
+
+		if !cctx.Args().Present() {
+			return fmt.Errorf("must specify block cid to check")
+		}
+
+		bcid, err := cid.Decode(cctx.Args().First())
+		if err != nil {
+			return fmt.Errorf("failed to decode input as a cid: %s", err)
+		}
+
+		reason, err := napi.SyncCheckBad(ctx, bcid)
+		if err != nil {
+			return err
+		}
+
+		if reason == "" {
+			fmt.Println("block was not marked as bad")
+			return nil
+		}
+
+		fmt.Println(reason)
+		return nil
 	},
 }
 

@@ -48,6 +48,7 @@ var stateCmd = &cli.Command{
 		stateComputeStateCmd,
 		stateCallCmd,
 		stateGetDealSetCmd,
+		stateWaitMsgCmd,
 	},
 }
 
@@ -115,7 +116,7 @@ var statePowerCmd = &cli.Command{
 			return err
 		}
 
-		power, err := api.StateMinerPower(ctx, maddr, ts)
+		power, err := api.StateMinerPower(ctx, maddr, ts.Key())
 		if err != nil {
 			return err
 		}
@@ -159,7 +160,7 @@ var stateSectorsCmd = &cli.Command{
 			return err
 		}
 
-		sectors, err := api.StateMinerSectors(ctx, maddr, ts)
+		sectors, err := api.StateMinerSectors(ctx, maddr, ts.Key())
 		if err != nil {
 			return err
 		}
@@ -198,7 +199,7 @@ var stateProvingSetCmd = &cli.Command{
 			return err
 		}
 
-		sectors, err := api.StateMinerProvingSet(ctx, maddr, ts)
+		sectors, err := api.StateMinerProvingSet(ctx, maddr, ts.Key())
 		if err != nil {
 			return err
 		}
@@ -260,7 +261,7 @@ var stateReplaySetCmd = &cli.Command{
 			return err
 		}
 
-		res, err := api.StateReplay(ctx, ts, mcid)
+		res, err := api.StateReplay(ctx, ts.Key(), mcid)
 		if err != nil {
 			return xerrors.Errorf("replay call failed: %w", err)
 		}
@@ -294,7 +295,7 @@ var statePledgeCollateralCmd = &cli.Command{
 			return err
 		}
 
-		coll, err := api.StatePledgeCollateral(ctx, ts)
+		coll, err := api.StatePledgeCollateral(ctx, ts.Key())
 		if err != nil {
 			return err
 		}
@@ -330,7 +331,7 @@ var stateGetDealSetCmd = &cli.Command{
 			return err
 		}
 
-		deal, err := api.StateMarketStorageDeal(ctx, dealid, ts)
+		deal, err := api.StateMarketStorageDeal(ctx, dealid, ts.Key())
 		if err != nil {
 			return err
 		}
@@ -362,7 +363,7 @@ var stateListMinersCmd = &cli.Command{
 			return err
 		}
 
-		miners, err := api.StateListMiners(ctx, ts)
+		miners, err := api.StateListMiners(ctx, ts.Key())
 		if err != nil {
 			return err
 		}
@@ -392,7 +393,7 @@ var stateListActorsCmd = &cli.Command{
 			return err
 		}
 
-		actors, err := api.StateListActors(ctx, ts)
+		actors, err := api.StateListActors(ctx, ts.Key())
 		if err != nil {
 			return err
 		}
@@ -431,7 +432,7 @@ var stateGetActorCmd = &cli.Command{
 			return err
 		}
 
-		a, err := api.StateGetActor(ctx, addr, ts)
+		a, err := api.StateGetActor(ctx, addr, ts.Key())
 		if err != nil {
 			return err
 		}
@@ -472,7 +473,7 @@ var stateLookupIDCmd = &cli.Command{
 			return err
 		}
 
-		a, err := api.StateLookupID(ctx, addr, ts)
+		a, err := api.StateLookupID(ctx, addr, ts.Key())
 		if err != nil {
 			return err
 		}
@@ -509,7 +510,7 @@ var stateSectorSizeCmd = &cli.Command{
 			return err
 		}
 
-		ssize, err := api.StateMinerSectorSize(ctx, addr, ts)
+		ssize, err := api.StateMinerSectorSize(ctx, addr, ts.Key())
 		if err != nil {
 			return err
 		}
@@ -545,12 +546,12 @@ var stateReadStateCmd = &cli.Command{
 			return err
 		}
 
-		act, err := api.StateGetActor(ctx, addr, ts)
+		act, err := api.StateGetActor(ctx, addr, ts.Key())
 		if err != nil {
 			return err
 		}
 
-		as, err := api.StateReadState(ctx, act, ts)
+		as, err := api.StateReadState(ctx, act, ts.Key())
 		if err != nil {
 			return err
 		}
@@ -619,7 +620,7 @@ var stateListMessagesCmd = &cli.Command{
 			return err
 		}
 
-		msgs, err := api.StateListMessages(ctx, &types.Message{To: toa, From: froma}, ts, toh)
+		msgs, err := api.StateListMessages(ctx, &types.Message{To: toa, From: froma}, ts.Key(), toh)
 		if err != nil {
 			return err
 		}
@@ -686,7 +687,7 @@ var stateComputeStateCmd = &cli.Command{
 
 		var msgs []*types.Message
 		if cctx.Bool("apply-mpool-messages") {
-			pmsgs, err := api.MpoolPending(ctx, ts)
+			pmsgs, err := api.MpoolPending(ctx, ts.Key())
 			if err != nil {
 				return err
 			}
@@ -701,12 +702,52 @@ var stateComputeStateCmd = &cli.Command{
 			}
 		}
 
-		nstate, err := api.StateCompute(ctx, h, msgs, ts)
+		nstate, err := api.StateCompute(ctx, h, msgs, ts.Key())
 		if err != nil {
 			return err
 		}
 
 		fmt.Println("computed state cid: ", nstate)
+		return nil
+	},
+}
+
+var stateWaitMsgCmd = &cli.Command{
+	Name:  "wait-msg",
+	Usage: "Wait for a message to appear on chain",
+	Flags: []cli.Flag{
+		&cli.StringFlag{
+			Name:  "timeout",
+			Value: "10m",
+		},
+	},
+	Action: func(cctx *cli.Context) error {
+		if !cctx.Args().Present() {
+			return fmt.Errorf("must specify message cid to wait for")
+		}
+
+		api, closer, err := GetFullNodeAPI(cctx)
+		if err != nil {
+			return err
+		}
+		defer closer()
+
+		ctx := ReqContext(cctx)
+
+		msg, err := cid.Decode(cctx.Args().First())
+		if err != nil {
+			return err
+		}
+
+		mw, err := api.StateWaitMsg(ctx, msg)
+		if err != nil {
+			return err
+		}
+
+		fmt.Printf("message was executed in tipset: %s", mw.TipSet.Cids())
+		fmt.Printf("Exit Code: %d", mw.Receipt.ExitCode)
+		fmt.Printf("Gas Used: %s", mw.Receipt.GasUsed)
+		fmt.Printf("Return: %x", mw.Receipt.Return)
 		return nil
 	},
 }
@@ -769,7 +810,7 @@ var stateCallCmd = &cli.Command{
 			return fmt.Errorf("failed to parse 'value': %s", err)
 		}
 
-		act, err := api.StateGetActor(ctx, toa, ts)
+		act, err := api.StateGetActor(ctx, toa, ts.Key())
 		if err != nil {
 			return fmt.Errorf("failed to lookup target actor: %s", err)
 		}
@@ -787,7 +828,7 @@ var stateCallCmd = &cli.Command{
 			GasPrice: types.NewInt(0),
 			Method:   method,
 			Params:   params,
-		}, ts)
+		}, ts.Key())
 		if err != nil {
 			return fmt.Errorf("state call failed: %s", err)
 		}

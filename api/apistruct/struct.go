@@ -32,6 +32,9 @@ type CommonStruct struct {
 
 		ID      func(context.Context) (peer.ID, error)     `perm:"read"`
 		Version func(context.Context) (api.Version, error) `perm:"read"`
+
+		LogList     func(context.Context) ([]string, error)     `perm:"write"`
+		LogSetLevel func(context.Context, string, string) error `perm:"write"`
 	}
 }
 
@@ -48,29 +51,30 @@ type FullNodeStruct struct {
 		ChainGetBlockMessages  func(context.Context, cid.Cid) (*api.BlockMessages, error)                           `perm:"read"`
 		ChainGetParentReceipts func(context.Context, cid.Cid) ([]*types.MessageReceipt, error)                      `perm:"read"`
 		ChainGetParentMessages func(context.Context, cid.Cid) ([]api.Message, error)                                `perm:"read"`
-		ChainGetTipSetByHeight func(context.Context, uint64, *types.TipSet) (*types.TipSet, error)                  `perm:"read"`
+		ChainGetTipSetByHeight func(context.Context, uint64, types.TipSetKey) (*types.TipSet, error)                  `perm:"read"`
 		ChainReadObj           func(context.Context, cid.Cid) ([]byte, error)                                       `perm:"read"`
 		ChainHasObj            func(context.Context, cid.Cid) (bool, error)                                         `perm:"read"`
-		ChainSetHead           func(context.Context, *types.TipSet) error                                           `perm:"admin"`
+		ChainSetHead           func(context.Context, types.TipSetKey) error                                           `perm:"admin"`
 		ChainGetGenesis        func(context.Context) (*types.TipSet, error)                                         `perm:"read"`
-		ChainTipSetWeight      func(context.Context, *types.TipSet) (types.BigInt, error)                           `perm:"read"`
+		ChainTipSetWeight      func(context.Context, types.TipSetKey) (types.BigInt, error)                           `perm:"read"`
 		ChainGetNode           func(ctx context.Context, p string) (interface{}, error)                             `perm:"read"`
 		ChainGetMessage        func(context.Context, cid.Cid) (*types.Message, error)                               `perm:"read"`
 		ChainGetPath           func(context.Context, types.TipSetKey, types.TipSetKey) ([]*store.HeadChange, error) `perm:"read"`
-		ChainExport            func(context.Context, *types.TipSet) (<-chan []byte, error)                          `perm:"read"`
+		ChainExport            func(context.Context, types.TipSetKey) (<-chan []byte, error)                          `perm:"read"`
 
 		SyncState          func(context.Context) (*api.SyncState, error)                `perm:"read"`
 		SyncSubmitBlock    func(ctx context.Context, blk *types.BlockMsg) error         `perm:"write"`
 		SyncIncomingBlocks func(ctx context.Context) (<-chan *types.BlockHeader, error) `perm:"read"`
 		SyncMarkBad        func(ctx context.Context, bcid cid.Cid) error                `perm:"admin"`
+		SyncCheckBad       func(ctx context.Context, bcid cid.Cid) (string, error)      `perm:"read"`
 
-		MpoolPending     func(context.Context, *types.TipSet) ([]*types.SignedMessage, error) `perm:"read"`
+		MpoolPending     func(context.Context, types.TipSetKey) ([]*types.SignedMessage, error) `perm:"read"`
 		MpoolPush        func(context.Context, *types.SignedMessage) (cid.Cid, error)         `perm:"write"`
 		MpoolPushMessage func(context.Context, *types.Message) (*types.SignedMessage, error)  `perm:"sign"`
 		MpoolGetNonce    func(context.Context, address.Address) (uint64, error)               `perm:"read"`
 		MpoolSub         func(context.Context) (<-chan api.MpoolUpdate, error)                `perm:"read"`
 
-		MinerCreateBlock func(context.Context, address.Address, *types.TipSet, *types.Ticket, *types.EPostProof, []*types.SignedMessage, uint64, uint64) (*types.BlockMsg, error) `perm:"write"`
+		MinerCreateBlock func(context.Context, address.Address, types.TipSetKey, *types.Ticket, *types.EPostProof, []*types.SignedMessage, uint64, uint64) (*types.BlockMsg, error) `perm:"write"`
 
 		WalletNew            func(context.Context, string) (address.Address, error)                               `perm:"write"`
 		WalletHas            func(context.Context, address.Address) (bool, error)                                 `perm:"write"`
@@ -93,34 +97,34 @@ type FullNodeStruct struct {
 		ClientRetrieve    func(ctx context.Context, order api.RetrievalOrder, path string) error                                                                            `perm:"admin"`
 		ClientQueryAsk    func(ctx context.Context, p peer.ID, miner address.Address) (*types.SignedStorageAsk, error)                                                      `perm:"read"`
 
-		StateMinerSectors             func(context.Context, address.Address, *types.TipSet) ([]*api.ChainSectorInfo, error)             `perm:"read"`
-		StateMinerProvingSet          func(context.Context, address.Address, *types.TipSet) ([]*api.ChainSectorInfo, error)             `perm:"read"`
-		StateMinerPower               func(context.Context, address.Address, *types.TipSet) (api.MinerPower, error)                     `perm:"read"`
-		StateMinerWorker              func(context.Context, address.Address, *types.TipSet) (address.Address, error)                    `perm:"read"`
-		StateMinerPeerID              func(ctx context.Context, m address.Address, ts *types.TipSet) (peer.ID, error)                   `perm:"read"`
-		StateMinerElectionPeriodStart func(ctx context.Context, actor address.Address, ts *types.TipSet) (uint64, error)                `perm:"read"`
-		StateMinerSectorSize          func(context.Context, address.Address, *types.TipSet) (uint64, error)                             `perm:"read"`
-		StateMinerFaults              func(context.Context, address.Address, *types.TipSet) ([]uint64, error)                           `perm:"read"`
-		StateCall                     func(context.Context, *types.Message, *types.TipSet) (*api.MethodCall, error)                     `perm:"read"`
-		StateReplay                   func(context.Context, *types.TipSet, cid.Cid) (*api.ReplayResults, error)                         `perm:"read"`
-		StateGetActor                 func(context.Context, address.Address, *types.TipSet) (*types.Actor, error)                       `perm:"read"`
-		StateReadState                func(context.Context, *types.Actor, *types.TipSet) (*api.ActorState, error)                       `perm:"read"`
-		StatePledgeCollateral         func(context.Context, *types.TipSet) (types.BigInt, error)                                        `perm:"read"`
+		StateMinerSectors             func(context.Context, address.Address, types.TipSetKey) ([]*api.ChainSectorInfo, error)             `perm:"read"`
+		StateMinerProvingSet          func(context.Context, address.Address, types.TipSetKey) ([]*api.ChainSectorInfo, error)             `perm:"read"`
+		StateMinerPower               func(context.Context, address.Address, types.TipSetKey) (api.MinerPower, error)                     `perm:"read"`
+		StateMinerWorker              func(context.Context, address.Address, types.TipSetKey) (address.Address, error)                    `perm:"read"`
+		StateMinerPeerID              func(ctx context.Context, m address.Address, tsk types.TipSetKey) (peer.ID, error)                   `perm:"read"`
+		StateMinerElectionPeriodStart func(ctx context.Context, actor address.Address, tsk types.TipSetKey) (uint64, error)                `perm:"read"`
+		StateMinerSectorSize          func(context.Context, address.Address, types.TipSetKey) (uint64, error)                             `perm:"read"`
+		StateMinerFaults              func(context.Context, address.Address, types.TipSetKey) ([]uint64, error)                           `perm:"read"`
+		StateCall                     func(context.Context, *types.Message, types.TipSetKey) (*api.MethodCall, error)                     `perm:"read"`
+		StateReplay                   func(context.Context, types.TipSetKey, cid.Cid) (*api.ReplayResults, error)                         `perm:"read"`
+		StateGetActor                 func(context.Context, address.Address, types.TipSetKey) (*types.Actor, error)                       `perm:"read"`
+		StateReadState                func(context.Context, *types.Actor, types.TipSetKey) (*api.ActorState, error)                       `perm:"read"`
+		StatePledgeCollateral         func(context.Context, types.TipSetKey) (types.BigInt, error)                                        `perm:"read"`
 		StateWaitMsg                  func(context.Context, cid.Cid) (*api.MsgWait, error)                                              `perm:"read"`
-		StateListMiners               func(context.Context, *types.TipSet) ([]address.Address, error)                                   `perm:"read"`
-		StateListActors               func(context.Context, *types.TipSet) ([]address.Address, error)                                   `perm:"read"`
-		StateMarketBalance            func(context.Context, address.Address, *types.TipSet) (actors.StorageParticipantBalance, error)   `perm:"read"`
-		StateMarketParticipants       func(context.Context, *types.TipSet) (map[string]actors.StorageParticipantBalance, error)         `perm:"read"`
-		StateMarketDeals              func(context.Context, *types.TipSet) (map[string]actors.OnChainDeal, error)                       `perm:"read"`
-		StateMarketStorageDeal        func(context.Context, uint64, *types.TipSet) (*actors.OnChainDeal, error)                         `perm:"read"`
-		StateLookupID                 func(ctx context.Context, addr address.Address, ts *types.TipSet) (address.Address, error)        `perm:"read"`
+		StateListMiners               func(context.Context, types.TipSetKey) ([]address.Address, error)                                   `perm:"read"`
+		StateListActors               func(context.Context, types.TipSetKey) ([]address.Address, error)                                   `perm:"read"`
+		StateMarketBalance            func(context.Context, address.Address, types.TipSetKey) (actors.StorageParticipantBalance, error)   `perm:"read"`
+		StateMarketParticipants       func(context.Context, types.TipSetKey) (map[string]actors.StorageParticipantBalance, error)         `perm:"read"`
+		StateMarketDeals              func(context.Context, types.TipSetKey) (map[string]actors.OnChainDeal, error)                       `perm:"read"`
+		StateMarketStorageDeal        func(context.Context, uint64, types.TipSetKey) (*actors.OnChainDeal, error)                         `perm:"read"`
+		StateLookupID                 func(ctx context.Context, addr address.Address, tsk types.TipSetKey) (address.Address, error)        `perm:"read"`
 		StateChangedActors            func(context.Context, cid.Cid, cid.Cid) (map[string]types.Actor, error)                           `perm:"read"`
-		StateGetReceipt               func(context.Context, cid.Cid, *types.TipSet) (*types.MessageReceipt, error)                      `perm:"read"`
-		StateMinerSectorCount         func(context.Context, address.Address, *types.TipSet) (api.MinerSectors, error)                   `perm:"read"`
-		StateListMessages             func(ctx context.Context, match *types.Message, ts *types.TipSet, toht uint64) ([]cid.Cid, error) `perm:"read"`
-		StateCompute                  func(context.Context, uint64, []*types.Message, *types.TipSet) (cid.Cid, error)                   `perm:"read"`
+		StateGetReceipt               func(context.Context, cid.Cid, types.TipSetKey) (*types.MessageReceipt, error)                      `perm:"read"`
+		StateMinerSectorCount         func(context.Context, address.Address, types.TipSetKey) (api.MinerSectors, error)                   `perm:"read"`
+		StateListMessages             func(ctx context.Context, match *types.Message, tsk types.TipSetKey, toht uint64) ([]cid.Cid, error) `perm:"read"`
+		StateCompute                  func(context.Context, uint64, []*types.Message, types.TipSetKey) (cid.Cid, error)                   `perm:"read"`
 
-		MsigGetAvailableBalance func(context.Context, address.Address, *types.TipSet) (types.BigInt, error) `perm:"read"`
+		MsigGetAvailableBalance func(context.Context, address.Address, types.TipSetKey) (types.BigInt, error) `perm:"read"`
 
 		MarketEnsureAvailable func(context.Context, address.Address, types.BigInt) error `perm:"sign"`
 
@@ -140,8 +144,8 @@ type FullNodeStruct struct {
 	}
 }
 
-func (c *FullNodeStruct) StateMinerSectorCount(ctx context.Context, addr address.Address, ts *types.TipSet) (api.MinerSectors, error) {
-	return c.Internal.StateMinerSectorCount(ctx, addr, ts)
+func (c *FullNodeStruct) StateMinerSectorCount(ctx context.Context, addr address.Address, tsk types.TipSetKey) (api.MinerSectors, error) {
+	return c.Internal.StateMinerSectorCount(ctx, addr, tsk)
 }
 
 type StorageMinerStruct struct {
@@ -203,6 +207,14 @@ func (c *CommonStruct) Version(ctx context.Context) (api.Version, error) {
 	return c.Internal.Version(ctx)
 }
 
+func (c *CommonStruct) LogList(ctx context.Context) ([]string, error) {
+	return c.Internal.LogList(ctx)
+}
+
+func (c *CommonStruct) LogSetLevel(ctx context.Context, group, level string) error {
+	return c.Internal.LogSetLevel(ctx, group, level)
+}
+
 func (c *FullNodeStruct) ClientListImports(ctx context.Context) ([]api.Import, error) {
 	return c.Internal.ClientListImports(ctx)
 }
@@ -238,8 +250,8 @@ func (c *FullNodeStruct) ClientQueryAsk(ctx context.Context, p peer.ID, miner ad
 	return c.Internal.ClientQueryAsk(ctx, p, miner)
 }
 
-func (c *FullNodeStruct) MpoolPending(ctx context.Context, ts *types.TipSet) ([]*types.SignedMessage, error) {
-	return c.Internal.MpoolPending(ctx, ts)
+func (c *FullNodeStruct) MpoolPending(ctx context.Context, tsk types.TipSetKey) ([]*types.SignedMessage, error) {
+	return c.Internal.MpoolPending(ctx, tsk)
 }
 
 func (c *FullNodeStruct) MpoolPush(ctx context.Context, smsg *types.SignedMessage) (cid.Cid, error) {
@@ -254,7 +266,7 @@ func (c *FullNodeStruct) MpoolSub(ctx context.Context) (<-chan api.MpoolUpdate, 
 	return c.Internal.MpoolSub(ctx)
 }
 
-func (c *FullNodeStruct) MinerCreateBlock(ctx context.Context, addr address.Address, base *types.TipSet, ticket *types.Ticket, eproof *types.EPostProof, msgs []*types.SignedMessage, height, ts uint64) (*types.BlockMsg, error) {
+func (c *FullNodeStruct) MinerCreateBlock(ctx context.Context, addr address.Address, base types.TipSetKey, ticket *types.Ticket, eproof *types.EPostProof, msgs []*types.SignedMessage, height, ts uint64) (*types.BlockMsg, error) {
 	return c.Internal.MinerCreateBlock(ctx, addr, base, ticket, eproof, msgs, height, ts)
 }
 
@@ -266,8 +278,8 @@ func (c *FullNodeStruct) ChainGetRandomness(ctx context.Context, pts types.TipSe
 	return c.Internal.ChainGetRandomness(ctx, pts, round)
 }
 
-func (c *FullNodeStruct) ChainGetTipSetByHeight(ctx context.Context, h uint64, ts *types.TipSet) (*types.TipSet, error) {
-	return c.Internal.ChainGetTipSetByHeight(ctx, h, ts)
+func (c *FullNodeStruct) ChainGetTipSetByHeight(ctx context.Context, h uint64, tsk types.TipSetKey) (*types.TipSet, error) {
+	return c.Internal.ChainGetTipSetByHeight(ctx, h, tsk)
 }
 
 func (c *FullNodeStruct) WalletNew(ctx context.Context, typ string) (address.Address, error) {
@@ -346,16 +358,16 @@ func (c *FullNodeStruct) ChainHasObj(ctx context.Context, o cid.Cid) (bool, erro
 	return c.Internal.ChainHasObj(ctx, o)
 }
 
-func (c *FullNodeStruct) ChainSetHead(ctx context.Context, ts *types.TipSet) error {
-	return c.Internal.ChainSetHead(ctx, ts)
+func (c *FullNodeStruct) ChainSetHead(ctx context.Context, tsk types.TipSetKey) error {
+	return c.Internal.ChainSetHead(ctx, tsk)
 }
 
 func (c *FullNodeStruct) ChainGetGenesis(ctx context.Context) (*types.TipSet, error) {
 	return c.Internal.ChainGetGenesis(ctx)
 }
 
-func (c *FullNodeStruct) ChainTipSetWeight(ctx context.Context, ts *types.TipSet) (types.BigInt, error) {
-	return c.Internal.ChainTipSetWeight(ctx, ts)
+func (c *FullNodeStruct) ChainTipSetWeight(ctx context.Context, tsk types.TipSetKey) (types.BigInt, error) {
+	return c.Internal.ChainTipSetWeight(ctx, tsk)
 }
 
 func (c *FullNodeStruct) ChainGetNode(ctx context.Context, p string) (interface{}, error) {
@@ -370,8 +382,8 @@ func (c *FullNodeStruct) ChainGetPath(ctx context.Context, from types.TipSetKey,
 	return c.Internal.ChainGetPath(ctx, from, to)
 }
 
-func (c *FullNodeStruct) ChainExport(ctx context.Context, ts *types.TipSet) (<-chan []byte, error) {
-	return c.Internal.ChainExport(ctx, ts)
+func (c *FullNodeStruct) ChainExport(ctx context.Context, tsk types.TipSetKey) (<-chan []byte, error) {
+	return c.Internal.ChainExport(ctx, tsk)
 }
 
 func (c *FullNodeStruct) SyncState(ctx context.Context) (*api.SyncState, error) {
@@ -390,107 +402,111 @@ func (c *FullNodeStruct) SyncMarkBad(ctx context.Context, bcid cid.Cid) error {
 	return c.Internal.SyncMarkBad(ctx, bcid)
 }
 
-func (c *FullNodeStruct) StateMinerSectors(ctx context.Context, addr address.Address, ts *types.TipSet) ([]*api.ChainSectorInfo, error) {
-	return c.Internal.StateMinerSectors(ctx, addr, ts)
+func (c *FullNodeStruct) SyncCheckBad(ctx context.Context, bcid cid.Cid) (string, error) {
+	return c.Internal.SyncCheckBad(ctx, bcid)
 }
 
-func (c *FullNodeStruct) StateMinerProvingSet(ctx context.Context, addr address.Address, ts *types.TipSet) ([]*api.ChainSectorInfo, error) {
-	return c.Internal.StateMinerProvingSet(ctx, addr, ts)
+func (c *FullNodeStruct) StateMinerSectors(ctx context.Context, addr address.Address, tsk types.TipSetKey) ([]*api.ChainSectorInfo, error) {
+	return c.Internal.StateMinerSectors(ctx, addr, tsk)
 }
 
-func (c *FullNodeStruct) StateMinerPower(ctx context.Context, a address.Address, ts *types.TipSet) (api.MinerPower, error) {
-	return c.Internal.StateMinerPower(ctx, a, ts)
+func (c *FullNodeStruct) StateMinerProvingSet(ctx context.Context, addr address.Address, tsk types.TipSetKey) ([]*api.ChainSectorInfo, error) {
+	return c.Internal.StateMinerProvingSet(ctx, addr, tsk)
 }
 
-func (c *FullNodeStruct) StateMinerWorker(ctx context.Context, m address.Address, ts *types.TipSet) (address.Address, error) {
-	return c.Internal.StateMinerWorker(ctx, m, ts)
+func (c *FullNodeStruct) StateMinerPower(ctx context.Context, a address.Address, tsk types.TipSetKey) (api.MinerPower, error) {
+	return c.Internal.StateMinerPower(ctx, a, tsk)
 }
 
-func (c *FullNodeStruct) StateMinerPeerID(ctx context.Context, m address.Address, ts *types.TipSet) (peer.ID, error) {
-	return c.Internal.StateMinerPeerID(ctx, m, ts)
+func (c *FullNodeStruct) StateMinerWorker(ctx context.Context, m address.Address, tsk types.TipSetKey) (address.Address, error) {
+	return c.Internal.StateMinerWorker(ctx, m, tsk)
 }
 
-func (c *FullNodeStruct) StateMinerElectionPeriodStart(ctx context.Context, actor address.Address, ts *types.TipSet) (uint64, error) {
-	return c.Internal.StateMinerElectionPeriodStart(ctx, actor, ts)
+func (c *FullNodeStruct) StateMinerPeerID(ctx context.Context, m address.Address, tsk types.TipSetKey) (peer.ID, error) {
+	return c.Internal.StateMinerPeerID(ctx, m, tsk)
 }
 
-func (c *FullNodeStruct) StateMinerSectorSize(ctx context.Context, actor address.Address, ts *types.TipSet) (uint64, error) {
-	return c.Internal.StateMinerSectorSize(ctx, actor, ts)
+func (c *FullNodeStruct) StateMinerElectionPeriodStart(ctx context.Context, actor address.Address, tsk types.TipSetKey) (uint64, error) {
+	return c.Internal.StateMinerElectionPeriodStart(ctx, actor, tsk)
 }
 
-func (c *FullNodeStruct) StateMinerFaults(ctx context.Context, actor address.Address, ts *types.TipSet) ([]uint64, error) {
-	return c.Internal.StateMinerFaults(ctx, actor, ts)
+func (c *FullNodeStruct) StateMinerSectorSize(ctx context.Context, actor address.Address, tsk types.TipSetKey) (uint64, error) {
+	return c.Internal.StateMinerSectorSize(ctx, actor, tsk)
 }
 
-func (c *FullNodeStruct) StateCall(ctx context.Context, msg *types.Message, ts *types.TipSet) (*api.MethodCall, error) {
-	return c.Internal.StateCall(ctx, msg, ts)
+func (c *FullNodeStruct) StateMinerFaults(ctx context.Context, actor address.Address, tsk types.TipSetKey) ([]uint64, error) {
+	return c.Internal.StateMinerFaults(ctx, actor, tsk)
 }
 
-func (c *FullNodeStruct) StateReplay(ctx context.Context, ts *types.TipSet, mc cid.Cid) (*api.ReplayResults, error) {
-	return c.Internal.StateReplay(ctx, ts, mc)
+func (c *FullNodeStruct) StateCall(ctx context.Context, msg *types.Message, tsk types.TipSetKey) (*api.MethodCall, error) {
+	return c.Internal.StateCall(ctx, msg, tsk)
 }
 
-func (c *FullNodeStruct) StateGetActor(ctx context.Context, actor address.Address, ts *types.TipSet) (*types.Actor, error) {
-	return c.Internal.StateGetActor(ctx, actor, ts)
+func (c *FullNodeStruct) StateReplay(ctx context.Context, tsk types.TipSetKey, mc cid.Cid) (*api.ReplayResults, error) {
+	return c.Internal.StateReplay(ctx, tsk, mc)
 }
 
-func (c *FullNodeStruct) StateReadState(ctx context.Context, act *types.Actor, ts *types.TipSet) (*api.ActorState, error) {
-	return c.Internal.StateReadState(ctx, act, ts)
+func (c *FullNodeStruct) StateGetActor(ctx context.Context, actor address.Address, tsk types.TipSetKey) (*types.Actor, error) {
+	return c.Internal.StateGetActor(ctx, actor, tsk)
 }
 
-func (c *FullNodeStruct) StatePledgeCollateral(ctx context.Context, ts *types.TipSet) (types.BigInt, error) {
-	return c.Internal.StatePledgeCollateral(ctx, ts)
+func (c *FullNodeStruct) StateReadState(ctx context.Context, act *types.Actor, tsk types.TipSetKey) (*api.ActorState, error) {
+	return c.Internal.StateReadState(ctx, act, tsk)
+}
+
+func (c *FullNodeStruct) StatePledgeCollateral(ctx context.Context, tsk types.TipSetKey) (types.BigInt, error) {
+	return c.Internal.StatePledgeCollateral(ctx, tsk)
 }
 
 func (c *FullNodeStruct) StateWaitMsg(ctx context.Context, msgc cid.Cid) (*api.MsgWait, error) {
 	return c.Internal.StateWaitMsg(ctx, msgc)
 }
-func (c *FullNodeStruct) StateListMiners(ctx context.Context, ts *types.TipSet) ([]address.Address, error) {
-	return c.Internal.StateListMiners(ctx, ts)
+func (c *FullNodeStruct) StateListMiners(ctx context.Context, tsk types.TipSetKey) ([]address.Address, error) {
+	return c.Internal.StateListMiners(ctx, tsk)
 }
 
-func (c *FullNodeStruct) StateListActors(ctx context.Context, ts *types.TipSet) ([]address.Address, error) {
-	return c.Internal.StateListActors(ctx, ts)
+func (c *FullNodeStruct) StateListActors(ctx context.Context, tsk types.TipSetKey) ([]address.Address, error) {
+	return c.Internal.StateListActors(ctx, tsk)
 }
 
-func (c *FullNodeStruct) StateMarketBalance(ctx context.Context, addr address.Address, ts *types.TipSet) (actors.StorageParticipantBalance, error) {
-	return c.Internal.StateMarketBalance(ctx, addr, ts)
+func (c *FullNodeStruct) StateMarketBalance(ctx context.Context, addr address.Address, tsk types.TipSetKey) (actors.StorageParticipantBalance, error) {
+	return c.Internal.StateMarketBalance(ctx, addr, tsk)
 }
 
-func (c *FullNodeStruct) StateMarketParticipants(ctx context.Context, ts *types.TipSet) (map[string]actors.StorageParticipantBalance, error) {
-	return c.Internal.StateMarketParticipants(ctx, ts)
+func (c *FullNodeStruct) StateMarketParticipants(ctx context.Context, tsk types.TipSetKey) (map[string]actors.StorageParticipantBalance, error) {
+	return c.Internal.StateMarketParticipants(ctx, tsk)
 }
 
-func (c *FullNodeStruct) StateMarketDeals(ctx context.Context, ts *types.TipSet) (map[string]actors.OnChainDeal, error) {
-	return c.Internal.StateMarketDeals(ctx, ts)
+func (c *FullNodeStruct) StateMarketDeals(ctx context.Context, tsk types.TipSetKey) (map[string]actors.OnChainDeal, error) {
+	return c.Internal.StateMarketDeals(ctx, tsk)
 }
 
-func (c *FullNodeStruct) StateMarketStorageDeal(ctx context.Context, dealid uint64, ts *types.TipSet) (*actors.OnChainDeal, error) {
-	return c.Internal.StateMarketStorageDeal(ctx, dealid, ts)
+func (c *FullNodeStruct) StateMarketStorageDeal(ctx context.Context, dealid uint64, tsk types.TipSetKey) (*actors.OnChainDeal, error) {
+	return c.Internal.StateMarketStorageDeal(ctx, dealid, tsk)
 }
 
-func (c *FullNodeStruct) StateLookupID(ctx context.Context, addr address.Address, ts *types.TipSet) (address.Address, error) {
-	return c.Internal.StateLookupID(ctx, addr, ts)
+func (c *FullNodeStruct) StateLookupID(ctx context.Context, addr address.Address, tsk types.TipSetKey) (address.Address, error) {
+	return c.Internal.StateLookupID(ctx, addr, tsk)
 }
 
 func (c *FullNodeStruct) StateChangedActors(ctx context.Context, olnstate cid.Cid, newstate cid.Cid) (map[string]types.Actor, error) {
 	return c.Internal.StateChangedActors(ctx, olnstate, newstate)
 }
 
-func (c *FullNodeStruct) StateGetReceipt(ctx context.Context, msg cid.Cid, ts *types.TipSet) (*types.MessageReceipt, error) {
-	return c.Internal.StateGetReceipt(ctx, msg, ts)
+func (c *FullNodeStruct) StateGetReceipt(ctx context.Context, msg cid.Cid, tsk types.TipSetKey) (*types.MessageReceipt, error) {
+	return c.Internal.StateGetReceipt(ctx, msg, tsk)
 }
 
-func (c *FullNodeStruct) StateListMessages(ctx context.Context, match *types.Message, ts *types.TipSet, toht uint64) ([]cid.Cid, error) {
-	return c.Internal.StateListMessages(ctx, match, ts, toht)
+func (c *FullNodeStruct) StateListMessages(ctx context.Context, match *types.Message, tsk types.TipSetKey, toht uint64) ([]cid.Cid, error) {
+	return c.Internal.StateListMessages(ctx, match, tsk, toht)
 }
 
-func (c *FullNodeStruct) StateCompute(ctx context.Context, height uint64, msgs []*types.Message, ts *types.TipSet) (cid.Cid, error) {
-	return c.Internal.StateCompute(ctx, height, msgs, ts)
+func (c *FullNodeStruct) StateCompute(ctx context.Context, height uint64, msgs []*types.Message, tsk types.TipSetKey) (cid.Cid, error) {
+	return c.Internal.StateCompute(ctx, height, msgs, tsk)
 }
 
-func (c *FullNodeStruct) MsigGetAvailableBalance(ctx context.Context, a address.Address, ts *types.TipSet) (types.BigInt, error) {
-	return c.Internal.MsigGetAvailableBalance(ctx, a, ts)
+func (c *FullNodeStruct) MsigGetAvailableBalance(ctx context.Context, a address.Address, tsk types.TipSetKey) (types.BigInt, error) {
+	return c.Internal.MsigGetAvailableBalance(ctx, a, tsk)
 }
 
 func (c *FullNodeStruct) MarketEnsureAvailable(ctx context.Context, addr address.Address, amt types.BigInt) error {

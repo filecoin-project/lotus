@@ -2,6 +2,7 @@ package modules
 
 import (
 	"context"
+	"github.com/filecoin-project/lotus/chain/types"
 	"math"
 	"reflect"
 
@@ -73,7 +74,7 @@ func SectorBuilderConfig(storage []fs.PathConfig, threads uint, noprecommit, noc
 			return nil, err
 		}
 
-		ssize, err := api.StateMinerSectorSize(context.TODO(), minerAddr, nil)
+		ssize, err := api.StateMinerSectorSize(context.TODO(), minerAddr, types.EmptyTSK)
 		if err != nil {
 			return nil, err
 		}
@@ -112,7 +113,7 @@ func StorageMiner(mctx helpers.MetricsCtx, lc fx.Lifecycle, api api.FullNode, h 
 
 	ctx := helpers.LifecycleCtx(mctx, lc)
 
-	worker, err := api.StateMinerWorker(ctx, maddr, nil)
+	worker, err := api.StateMinerWorker(ctx, maddr, types.EmptyTSK)
 	if err != nil {
 		return nil, err
 	}

@@ -4,8 +4,6 @@ import (
 	"bytes"
 	"math/big"
 
-	"github.com/filecoin-project/go-sectorbuilder"
-
 	block "github.com/ipfs/go-block-format"
 	"github.com/ipfs/go-cid"
 	"github.com/minio/sha256-simd"
@@ -205,7 +203,11 @@ func IsTicketWinner(partialTicket []byte, ssizeI uint64, snum uint64, totpow Big
 }
 
 func ElectionPostChallengeCount(sectors uint64, faults uint64) uint64 {
-	return sectorbuilder.ElectionPostChallengeCount(sectors, faults)
+	if sectors-faults == 0 {
+		return 0
+	}
+	// ceil(sectors / SectorChallengeRatioDiv)
+	return (sectors-faults-1)/build.SectorChallengeRatioDiv + 1
 }
 
 func (t *Ticket) Equals(ot *Ticket) bool {

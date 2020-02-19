@@ -137,7 +137,7 @@ func RecordTipsetPoints(ctx context.Context, api api.FullNode, pl *PointList, ti
 }
 
 func RecordTipsetStatePoints(ctx context.Context, api api.FullNode, pl *PointList, tipset *types.TipSet) error {
-	pc, err := api.StatePledgeCollateral(ctx, tipset)
+	pc, err := api.StatePledgeCollateral(ctx, tipset.Key())
 	if err != nil {
 		return err
 	}
@@ -159,7 +159,7 @@ func RecordTipsetStatePoints(ctx context.Context, api api.FullNode, pl *PointLis
 	p = NewPoint("network.balance", netBalFilFloat)
 	pl.AddPoint(p)
 
-	power, err := api.StateMinerPower(ctx, address.Address{}, tipset)
+	power, err := api.StateMinerPower(ctx, address.Address{}, tipset.Key())
 	if err != nil {
 		return err
 	}
@@ -167,9 +167,9 @@ func RecordTipsetStatePoints(ctx context.Context, api api.FullNode, pl *PointLis
 	p = NewPoint("chain.power", power.TotalPower.Int64())
 	pl.AddPoint(p)
 
-	miners, err := api.StateListMiners(ctx, tipset)
+	miners, err := api.StateListMiners(ctx, tipset.Key())
 	for _, miner := range miners {
-		power, err := api.StateMinerPower(ctx, miner, tipset)
+		power, err := api.StateMinerPower(ctx, miner, tipset.Key())
 		if err != nil {
 			return err
 		}
@@ -218,7 +218,7 @@ func RecordTipsetMessagesPoints(ctx context.Context, api api.FullNode, pl *Point
 		p = NewPoint("chain.message_size", len(bs))
 		pl.AddPoint(p)
 
-		actor, err := api.StateGetActor(ctx, msg.Message.To, tipset)
+		actor, err := api.StateGetActor(ctx, msg.Message.To, tipset.Key())
 		if err != nil {
 			return err
 		}

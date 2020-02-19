@@ -143,19 +143,19 @@ func syncHead(ctx context.Context, api api.FullNode, st *storage, ts *types.TipS
 
 			if len(bh.Parents) == 0 { // genesis case
 				ts, err := types.NewTipSet([]*types.BlockHeader{bh})
-				aadrs, err := api.StateListActors(ctx, ts)
+				aadrs, err := api.StateListActors(ctx, ts.Key())
 				if err != nil {
 					log.Error(err)
 					return
 				}
 
 				par(50, aadrs, func(addr address.Address) {
-					act, err := api.StateGetActor(ctx, addr, ts)
+					act, err := api.StateGetActor(ctx, addr, ts.Key())
 					if err != nil {
 						log.Error(err)
 						return
 					}
-					ast, err := api.StateReadState(ctx, act, ts)
+					ast, err := api.StateReadState(ctx, act, ts.Key())
 					if err != nil {
 						log.Error(err)
 						return
@@ -200,7 +200,7 @@ func syncHead(ctx context.Context, api api.FullNode, st *storage, ts *types.TipS
 					log.Error(err)
 					return
 				}
-				ast, err := api.StateReadState(ctx, &act, ts)
+				ast, err := api.StateReadState(ctx, &act, ts.Key())
 				if err != nil {
 					log.Error(err)
 					return
@@ -237,7 +237,7 @@ func syncHead(ctx context.Context, api api.FullNode, st *storage, ts *types.TipS
 		}
 
 		par(50, kmaparr(addresses), func(addr address.Address) {
-			raddr, err := api.StateLookupID(ctx, addr, nil)
+			raddr, err := api.StateLookupID(ctx, addr, types.EmptyTSK)
 			if err != nil {
 				log.Warn(err)
 				return
@@ -268,7 +268,7 @@ func syncHead(ctx context.Context, api api.FullNode, st *storage, ts *types.TipS
 		par(50, kvmaparr(miners), func(it func() (minerKey, *minerInfo)) {
 			k, info := it()
 
-			sszs, err := api.StateMinerSectorCount(ctx, k.addr, nil)
+			sszs, err := api.StateMinerSectorCount(ctx, k.addr, types.EmptyTSK)
 			if err != nil {
 				log.Error(err)
 				return
@@ -357,7 +357,7 @@ func syncHead(ctx context.Context, api api.FullNode, st *storage, ts *types.TipS
 	log.Infof("Get deals")
 
 	// TODO: incremental, gather expired
-	deals, err := api.StateMarketDeals(ctx, ts)
+	deals, err := api.StateMarketDeals(ctx, ts.Key())
 	if err != nil {
 		log.Error(err)
 		return

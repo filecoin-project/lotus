@@ -26,7 +26,7 @@ Create the genesis block and start up the first node:
 Set up the genesis miner:
 
 ```sh
-./lotus-storage-miner init --genesis-miner --actor=t0101 --sector-size=1024 --pre-sealed-sectors=~/.genesis-sectors --nosync
+./lotus-storage-miner init --genesis-miner --actor=t0101 --sector-size=1024 --pre-sealed-sectors=~/.genesis-sectors --pre-sealed-metadata=~/.genesis-sectors/pre-seal-t0101.json --nosync
 ```
 
 Now, finally, start up the miner:

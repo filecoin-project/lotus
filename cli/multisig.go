@@ -176,7 +176,7 @@ var msigInspectCmd = &cli.Command{
 			return err
 		}
 
-		act, err := api.StateGetActor(ctx, maddr, nil)
+		act, err := api.StateGetActor(ctx, maddr, types.EmptyTSK)
 		if err != nil {
 			return err
 		}

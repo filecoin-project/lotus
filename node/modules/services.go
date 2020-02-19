@@ -5,6 +5,7 @@ import (
 
 	"github.com/libp2p/go-libp2p-core/host"
 	inet "github.com/libp2p/go-libp2p-core/network"
+	peer "github.com/libp2p/go-libp2p-peer"
 	pubsub "github.com/libp2p/go-libp2p-pubsub"
 	"go.uber.org/fx"
 
@@ -15,11 +16,15 @@ import (
 	"github.com/filecoin-project/lotus/chain/blocksync"
 	"github.com/filecoin-project/lotus/chain/messagepool"
 	"github.com/filecoin-project/lotus/chain/sub"
+	"github.com/filecoin-project/lotus/chain/types"
 	"github.com/filecoin-project/lotus/node/hello"
 	"github.com/filecoin-project/lotus/node/modules/dtypes"
 	"github.com/filecoin-project/lotus/node/modules/helpers"
 	"github.com/filecoin-project/lotus/peermgr"
 )
+
+const BlocksTopic = "/fil/blocks"
+const MessagesTopic = "/fil/messages"
 
 func RunHello(mctx helpers.MetricsCtx, lc fx.Lifecycle, h host.Host, svc *hello.Service) {
 	h.SetStreamHandler(hello.ProtocolID, svc.HandleStream)
@@ -45,22 +50,46 @@ func RunBlockSync(h host.Host, svc *blocksync.BlockSyncService) {
 	h.SetStreamHandler(blocksync.BlockSyncProtocolID, svc.HandleStream)
 }
 
-func HandleIncomingBlocks(mctx helpers.MetricsCtx, lc fx.Lifecycle, pubsub *pubsub.PubSub, s *chain.Syncer, h host.Host) {
+func HandleIncomingBlocks(mctx helpers.MetricsCtx, lc fx.Lifecycle, ps *pubsub.PubSub, s *chain.Syncer, h host.Host) {
 	ctx := helpers.LifecycleCtx(mctx, lc)
 
-	blocksub, err := pubsub.Subscribe("/fil/blocks")
+	blocksub, err := ps.Subscribe(BlocksTopic)
 	if err != nil {
+		panic(err)
+	}
+
+	v := sub.NewBlockValidator(func(p peer.ID) {
+		ps.BlacklistPeer(p)
+		h.ConnManager().TagPeer(p, "badblock", -1000)
+	})
+
+	if err := ps.RegisterTopicValidator(BlocksTopic, v.Validate); err != nil {
 		panic(err)
 	}
 
 	go sub.HandleIncomingBlocks(ctx, blocksub, s, h.ConnManager())
 }
 
-func HandleIncomingMessages(mctx helpers.MetricsCtx, lc fx.Lifecycle, pubsub *pubsub.PubSub, mpool *messagepool.MessagePool) {
+func HandleIncomingMessages(mctx helpers.MetricsCtx, lc fx.Lifecycle, ps *pubsub.PubSub, mpool *messagepool.MessagePool) {
 	ctx := helpers.LifecycleCtx(mctx, lc)
 
-	msgsub, err := pubsub.Subscribe("/fil/messages")
+	msgsub, err := ps.Subscribe(MessagesTopic)
 	if err != nil {
+		panic(err)
+	}
+
+	v := func(ctx context.Context, pid peer.ID, msg *pubsub.Message) bool {
+		m, err := types.DecodeSignedMessage(msg.GetData())
+		if err != nil {
+			log.Errorf("got incorrectly formatted Message: %s", err)
+			return false
+		}
+
+		msg.ValidatorData = m
+		return true
+	}
+
+	if err := ps.RegisterTopicValidator(MessagesTopic, v); err != nil {
 		panic(err)
 	}
 
