@@ -272,14 +272,7 @@ func LoadSectorsFromSet(ctx context.Context, bs blockstore.Blockstore, ssc cid.C
 			return err
 		}
 		sset = append(sset, &api.ChainSectorInfo{
-			Info: miner.SectorOnChainInfo{
-				Info:                  miner.SectorPreCommitInfo{},
-				ActivationEpoch:       0,
-				DealWeight:            abi.DealWeight{},
-				PledgeRequirement:     abi.TokenAmount{},
-				DeclaredFaultEpoch:    0,
-				DeclaredFaultDuration: 0,
-			},
+			Info: oci,
 			ID: abi.SectorNumber(i),
 		})
 		return nil
