@@ -4,6 +4,7 @@ import (
 	"context"
 
 	amt "github.com/filecoin-project/go-amt-ipld/v2"
+	commcid "github.com/filecoin-project/go-fil-commcid"
 	"github.com/filecoin-project/specs-actors/actors/abi"
 	"github.com/filecoin-project/specs-actors/actors/abi/big"
 	"github.com/filecoin-project/specs-actors/actors/builtin/market"
@@ -149,10 +150,14 @@ func GetSectorsForElectionPost(ctx context.Context, sm *StateManager, ts *types.
 
 	var uselessOtherArray []ffi.PublicSectorInfo
 	for _, s := range sectors {
+		cr, err := commcid.CIDToReplicaCommitmentV1(s.Info.Info.SealedCID)
+		if err != nil {
+			return nil, err
+		}
 		var uselessBuffer [32]byte
-		copy(uselessBuffer[:], s.CommR)
+		copy(uselessBuffer[:], cr)
 		uselessOtherArray = append(uselessOtherArray, ffi.PublicSectorInfo{
-			SectorNum: s.SectorID,
+			SectorNum: s.ID,
 			CommR:     uselessBuffer,
 		})
 	}
@@ -262,14 +267,20 @@ func LoadSectorsFromSet(ctx context.Context, bs blockstore.Blockstore, ssc cid.C
 
 	var sset []*api.ChainSectorInfo
 	if err := a.ForEach(ctx, func(i uint64, v *cbg.Deferred) error {
-		var comms [][]byte
-		if err := cbor.DecodeInto(v.Raw, &comms); err != nil {
+		var oci miner.SectorOnChainInfo
+		if err := cbor.DecodeInto(v.Raw, &oci); err != nil {
 			return err
 		}
 		sset = append(sset, &api.ChainSectorInfo{
-			SectorID: abi.SectorNumber(i),
-			CommR:    comms[0],
-			CommD:    comms[1],
+			Info: miner.SectorOnChainInfo{
+				Info:                  miner.SectorPreCommitInfo{},
+				ActivationEpoch:       0,
+				DealWeight:            abi.DealWeight{},
+				PledgeRequirement:     abi.TokenAmount{},
+				DeclaredFaultEpoch:    0,
+				DeclaredFaultDuration: 0,
+			},
+			ID: abi.SectorNumber(i),
 		})
 		return nil
 	}); err != nil {
