@@ -27,7 +27,7 @@ func testGeneration(t testing.TB, n int, msgs int) {
 	for i := 0; i < n; i++ {
 		mts, err := g.NextTipSet()
 		if err != nil {
-			t.Fatalf("error at H:%d, %s", i, err)
+			t.Fatalf("error at H:%d, %+v", i, err)
 		}
 		_ = mts
 	}
