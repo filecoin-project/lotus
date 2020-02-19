@@ -9,6 +9,7 @@ import (
 	"io/ioutil"
 	"sync/atomic"
 
+	commcid "github.com/filecoin-project/go-fil-commcid"
 	"github.com/filecoin-project/specs-actors/actors/abi"
 	"github.com/filecoin-project/specs-actors/actors/crypto"
 	block "github.com/ipfs/go-block-format"
@@ -532,10 +533,14 @@ func IsRoundWinner(ctx context.Context, ts *types.TipSet, round int64, miner add
 
 	var sinfos []ffi.PublicSectorInfo
 	for _, s := range pset {
+		cr, err := commcid.CIDToReplicaCommitmentV1(s.Info.Info.SealedCID)
+		if err != nil {
+			return nil, err
+		}
 		var commRa [32]byte
-		copy(commRa[:], s.CommR)
+		copy(commRa[:], cr)
 		sinfos = append(sinfos, ffi.PublicSectorInfo{
-			SectorNum: s.SectorID,
+			SectorNum: s.ID,
 			CommR:     commRa,
 		})
 	}

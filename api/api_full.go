@@ -192,9 +192,8 @@ type Message struct {
 }
 
 type ChainSectorInfo struct {
-	SectorID abi.SectorNumber
-	CommD    []byte
-	CommR    []byte
+	Info miner.SectorOnChainInfo
+	ID abi.SectorNumber
 }
 
 type ActorState struct {

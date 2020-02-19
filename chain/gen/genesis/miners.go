@@ -151,6 +151,7 @@ func SetupStorageMiners(ctx context.Context, cs *store.ChainStore, sroot cid.Cid
 		for pi, preseal := range m.Sectors {
 			// TODO: Maybe check seal (Can just be snark inputs, doesn't go into the genesis file)
 
+			// check deals, get dealWeight
 			dealWeight := big.Zero()
 			{
 				params := &market.VerifyDealsOnSectorProveCommitParams{
@@ -167,6 +168,7 @@ func SetupStorageMiners(ctx context.Context, cs *store.ChainStore, sroot cid.Cid
 				}
 			}
 
+			// update power claims
 			pledge := big.Zero()
 			{
 				err = vm.MutateState(ctx, builtin.StoragePowerActorAddr, func(cst cbor.IpldStore, st *power.State) error {
@@ -189,6 +191,7 @@ func SetupStorageMiners(ctx context.Context, cs *store.ChainStore, sroot cid.Cid
 				}
 			}
 
+			// Put sectors to miner sector sets
 			{
 				newSectorInfo := &miner.SectorOnChainInfo{
 					Info: miner.SectorPreCommitInfo{
@@ -213,6 +216,9 @@ func SetupStorageMiners(ctx context.Context, cs *store.ChainStore, sroot cid.Cid
 					st.ProvingSet = st.Sectors
 					return nil
 				})
+				if err != nil {
+					return cid.Cid{}, xerrors.Errorf("put to sset: %w", err)
+				}
 			}
 
 			{
