@@ -24,7 +24,7 @@ import (
 )
 
 const BlocksTopic = "/fil/blocks"
-const MessagesTopic = "/fil/messages"
+const MessagesTopic = "/fil/msgs"
 
 func RunHello(mctx helpers.MetricsCtx, lc fx.Lifecycle, h host.Host, svc *hello.Service) {
 	h.SetStreamHandler(hello.ProtocolID, svc.HandleStream)

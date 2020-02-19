@@ -21,6 +21,8 @@ import (
 	"github.com/filecoin-project/lotus/node/modules/helpers"
 )
 
+const KadProtocolID = "/fil/kad/1.0.0"
+
 type P2PHostIn struct {
 	fx.In
 
@@ -80,7 +82,7 @@ func DHTRouting(client bool) interface{} {
 			dhtopts.Client(client),
 			dhtopts.Datastore(dstore),
 			dhtopts.Validator(validator),
-			dhtopts.Protocols("/lotus/kad/1.0.0"),
+			dhtopts.Protocols(KadProtocolID),
 		)
 
 		if err != nil {
