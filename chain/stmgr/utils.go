@@ -7,6 +7,7 @@ import (
 	commcid "github.com/filecoin-project/go-fil-commcid"
 	"github.com/filecoin-project/specs-actors/actors/abi"
 	"github.com/filecoin-project/specs-actors/actors/abi/big"
+	"github.com/filecoin-project/specs-actors/actors/builtin"
 	"github.com/filecoin-project/specs-actors/actors/builtin/market"
 	"github.com/filecoin-project/specs-actors/actors/builtin/miner"
 	"github.com/filecoin-project/specs-actors/actors/builtin/power"
@@ -56,9 +57,9 @@ func GetMinerOwner(ctx context.Context, sm *StateManager, st cid.Cid, maddr addr
 
 func GetPower(ctx context.Context, sm *StateManager, ts *types.TipSet, maddr address.Address) (types.BigInt, types.BigInt, error) {
 	var ps power.State
-	_, err := sm.LoadActorState(ctx, maddr, &ps, ts)
+	_, err := sm.LoadActorState(ctx, builtin.StoragePowerActorAddr, &ps, ts)
 	if err != nil {
-		return big.Zero(), big.Zero(), xerrors.Errorf("(get sset) failed to load miner actor state: %w", err)
+		return big.Zero(), big.Zero(), xerrors.Errorf("(get sset) failed to load power actor state: %w", err)
 	}
 
 	var mpow big.Int
