@@ -21,6 +21,8 @@ func SupportedSectorSize(ssize uint64) bool {
 	return false
 }
 
+const SectorChallengeRatioDiv = 25
+
 // /////
 // Payments
 

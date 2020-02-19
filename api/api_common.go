@@ -29,6 +29,9 @@ type Common interface {
 
 	// Version provides information about API provider
 	Version(context.Context) (Version, error)
+
+	LogList(context.Context) ([]string, error)
+	LogSetLevel(context.Context, string, string) error
 }
 
 // Version provides various build-time information

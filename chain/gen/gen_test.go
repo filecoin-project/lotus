@@ -4,6 +4,8 @@ import (
 	"testing"
 
 	"github.com/filecoin-project/lotus/build"
+	_ "github.com/filecoin-project/lotus/lib/sigs/bls"
+	_ "github.com/filecoin-project/lotus/lib/sigs/secp"
 )
 
 func init() {

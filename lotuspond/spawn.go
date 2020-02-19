@@ -142,7 +142,8 @@ func (api *api) SpawnStorage(fullNodeRepo string) (nodeInfo, error) {
 
 	initArgs := []string{"init", "--nosync"}
 	if fullNodeRepo == api.running[1].meta.Repo {
-		initArgs = []string{"init", "--actor=t0101", "--genesis-miner", "--pre-sealed-sectors=" + filepath.Join(fullNodeRepo, "preseal")}
+		presealPrefix := filepath.Join(fullNodeRepo, "preseal")
+		initArgs = []string{"init", "--actor=t0101", "--genesis-miner", "--pre-sealed-sectors=" + presealPrefix, "--pre-sealed-metadata=" + filepath.Join(presealPrefix, "pre-seal-t0101.json")}
 	}
 
 	id := atomic.AddInt32(&api.cmds, 1)

@@ -50,7 +50,7 @@ func NewProviderNodeAdapter(dag dtypes.StagingDAG, secb *sectorblocks.SectorBloc
 func (n *ProviderNodeAdapter) PublishDeals(ctx context.Context, deal storagemarket.MinerDeal) (storagemarket.DealID, cid.Cid, error) {
 	log.Info("publishing deal")
 
-	worker, err := n.StateMinerWorker(ctx, deal.Proposal.Provider, nil)
+	worker, err := n.StateMinerWorker(ctx, deal.Proposal.Provider, types.EmptyTSK)
 	if err != nil {
 		return 0, cid.Undef, err
 	}
@@ -110,7 +110,7 @@ func (n *ProviderNodeAdapter) OnDealComplete(ctx context.Context, deal storagema
 }
 
 func (n *ProviderNodeAdapter) ListProviderDeals(ctx context.Context, addr address.Address) ([]storagemarket.StorageDeal, error) {
-	allDeals, err := n.StateMarketDeals(ctx, nil)
+	allDeals, err := n.StateMarketDeals(ctx, types.EmptyTSK)
 	if err != nil {
 		return nil, err
 	}
@@ -128,7 +128,7 @@ func (n *ProviderNodeAdapter) ListProviderDeals(ctx context.Context, addr addres
 }
 
 func (n *ProviderNodeAdapter) GetMinerWorker(ctx context.Context, miner address.Address) (address.Address, error) {
-	addr, err := n.StateMinerWorker(ctx, miner, nil)
+	addr, err := n.StateMinerWorker(ctx, miner, types.EmptyTSK)
 	return addr, err
 }
 
@@ -176,7 +176,7 @@ func (n *ProviderNodeAdapter) AddFunds(ctx context.Context, addr address.Address
 }
 
 func (n *ProviderNodeAdapter) GetBalance(ctx context.Context, addr address.Address) (storagemarket.Balance, error) {
-	bal, err := n.StateMarketBalance(ctx, addr, nil)
+	bal, err := n.StateMarketBalance(ctx, addr, types.EmptyTSK)
 	if err != nil {
 		return storagemarket.Balance{}, err
 	}
@@ -216,7 +216,7 @@ func (n *ProviderNodeAdapter) LocatePieceForDealWithinSector(ctx context.Context
 
 func (n *ProviderNodeAdapter) OnDealSectorCommitted(ctx context.Context, provider address.Address, dealID uint64, cb storagemarket.DealSectorCommittedCallback) error {
 	checkFunc := func(ts *types.TipSet) (done bool, more bool, err error) {
-		sd, err := n.StateMarketStorageDeal(ctx, dealID, ts)
+		sd, err := n.StateMarketStorageDeal(ctx, dealID, ts.Key())
 
 		if err != nil {
 			// TODO: This may be fine for some errors
@@ -243,7 +243,7 @@ func (n *ProviderNodeAdapter) OnDealSectorCommitted(ctx context.Context, provide
 			return false, nil
 		}
 
-		sd, err := n.StateMarketStorageDeal(ctx, dealID, ts)
+		sd, err := n.StateMarketStorageDeal(ctx, dealID, ts.Key())
 		if err != nil {
 			return false, xerrors.Errorf("failed to look up deal on chain: %w", err)
 		}

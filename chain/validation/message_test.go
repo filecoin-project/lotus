@@ -16,6 +16,7 @@ import (
 	"github.com/filecoin-project/lotus/chain/actors"
 	"github.com/filecoin-project/lotus/chain/types"
 	"github.com/filecoin-project/lotus/chain/wallet"
+	_ "github.com/filecoin-project/lotus/lib/sigs/secp"
 )
 
 func TestMessageFactory(t *testing.T) {

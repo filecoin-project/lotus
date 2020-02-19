@@ -47,7 +47,8 @@ func Host(mctx helpers.MetricsCtx, lc fx.Lifecycle, params P2PHostIn) (RawHost, 
 		libp2p.Peerstore(params.Peerstore),
 		libp2p.NoListenAddrs,
 		libp2p.Ping(true),
-		libp2p.UserAgent("lotus-" + build.UserVersion)}
+		libp2p.UserAgent("lotus-" + build.UserVersion),
+	}
 	for _, o := range params.Opts {
 		opts = append(opts, o...)
 	}

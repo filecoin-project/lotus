@@ -157,7 +157,11 @@ func (a *ChainAPI) ChainGetParentReceipts(ctx context.Context, bcid cid.Cid) ([]
 	return out, nil
 }
 
-func (a *ChainAPI) ChainGetTipSetByHeight(ctx context.Context, h uint64, ts *types.TipSet) (*types.TipSet, error) {
+func (a *ChainAPI) ChainGetTipSetByHeight(ctx context.Context, h uint64, tsk types.TipSetKey) (*types.TipSet, error) {
+	ts, err := a.Chain.GetTipSetFromKey(tsk)
+	if err != nil {
+		return nil, xerrors.Errorf("loading tipset %s: %w", tsk, err)
+	}
 	return a.Chain.GetTipsetByHeight(ctx, h, ts)
 }
 
@@ -174,7 +178,11 @@ func (a *ChainAPI) ChainHasObj(ctx context.Context, obj cid.Cid) (bool, error) {
 	return a.Chain.Blockstore().Has(obj)
 }
 
-func (a *ChainAPI) ChainSetHead(ctx context.Context, ts *types.TipSet) error {
+func (a *ChainAPI) ChainSetHead(ctx context.Context, tsk types.TipSetKey) error {
+	ts, err := a.Chain.GetTipSetFromKey(tsk)
+	if err != nil {
+		return xerrors.Errorf("loading tipset %s: %w", tsk, err)
+	}
 	return a.Chain.SetHead(ts)
 }
 
@@ -187,7 +195,11 @@ func (a *ChainAPI) ChainGetGenesis(ctx context.Context) (*types.TipSet, error) {
 	return types.NewTipSet([]*types.BlockHeader{genb})
 }
 
-func (a *ChainAPI) ChainTipSetWeight(ctx context.Context, ts *types.TipSet) (types.BigInt, error) {
+func (a *ChainAPI) ChainTipSetWeight(ctx context.Context, tsk types.TipSetKey) (types.BigInt, error) {
+	ts, err := a.Chain.GetTipSetFromKey(tsk)
+	if err != nil {
+		return types.EmptyInt, xerrors.Errorf("loading tipset %s: %w", tsk, err)
+	}
 	return a.Chain.Weight(ctx, ts)
 }
 
@@ -320,7 +332,11 @@ func (a *ChainAPI) ChainGetMessage(ctx context.Context, mc cid.Cid) (*types.Mess
 	return cm.VMMessage(), nil
 }
 
-func (a *ChainAPI) ChainExport(ctx context.Context, ts *types.TipSet) (<-chan []byte, error) {
+func (a *ChainAPI) ChainExport(ctx context.Context, tsk types.TipSetKey) (<-chan []byte, error) {
+	ts, err := a.Chain.GetTipSetFromKey(tsk)
+	if err != nil {
+		return nil, xerrors.Errorf("loading tipset %s: %w", tsk, err)
+	}
 	r, w := io.Pipe()
 	out := make(chan []byte)
 	go func() {

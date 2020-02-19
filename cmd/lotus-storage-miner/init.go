@@ -34,6 +34,7 @@ import (
 	"github.com/filecoin-project/lotus/genesis"
 	"github.com/filecoin-project/lotus/markets/utils"
 	"github.com/filecoin-project/lotus/miner"
+	"github.com/filecoin-project/lotus/node/config"
 	"github.com/filecoin-project/lotus/node/modules"
 	"github.com/filecoin-project/lotus/node/modules/dtypes"
 	"github.com/filecoin-project/lotus/node/repo"
@@ -76,6 +77,10 @@ var initCmd = &cli.Command{
 		&cli.StringFlag{
 			Name:  "pre-sealed-sectors",
 			Usage: "specify set of presealed sectors for starting as a genesis miner",
+		},
+		&cli.StringFlag{
+			Name:  "pre-sealed-metadata",
+			Usage: "specify the metadata file for the presealed sectors",
 		},
 		&cli.BoolFlag{
 			Name:  "nosync",
@@ -220,13 +225,13 @@ var initCmd = &cli.Command{
 	},
 }
 
-func migratePreSealMeta(ctx context.Context, api lapi.FullNode, presealDir string, maddr address.Address, mds dtypes.MetadataDS) error {
-	presealDir, err := homedir.Expand(presealDir)
+func migratePreSealMeta(ctx context.Context, api lapi.FullNode, metadata string, maddr address.Address, mds dtypes.MetadataDS) error {
+	metadata, err := homedir.Expand(metadata)
 	if err != nil {
 		return xerrors.Errorf("expanding preseal dir: %w", err)
 	}
 
-	b, err := ioutil.ReadFile(filepath.Join(presealDir, "pre-seal-"+maddr.String()+".json"))
+	b, err := ioutil.ReadFile(metadata)
 	if err != nil {
 		return xerrors.Errorf("reading preseal metadata: %w", err)
 	}
@@ -318,7 +323,7 @@ func findMarketDealID(ctx context.Context, api lapi.FullNode, deal actors.Storag
 	// TODO: find a better way
 	//  (this is only used by genesis miners)
 
-	deals, err := api.StateMarketDeals(ctx, nil)
+	deals, err := api.StateMarketDeals(ctx, types.EmptyTSK)
 	if err != nil {
 		return 0, xerrors.Errorf("getting market deals: %w", err)
 	}
@@ -368,7 +373,22 @@ func storageMinerInit(ctx context.Context, cctx *cli.Context, api lapi.FullNode,
 				return err
 			}
 
-			sbcfg, err := modules.SectorBuilderConfig(sectorbuilder.SimplePath(lr.Path()), 2, false, false)(mds, api)
+			c, err := lr.Config()
+			if err != nil {
+				return err
+			}
+
+			cfg, ok := c.(*config.StorageMiner)
+			if !ok {
+				return xerrors.Errorf("invalid config from repo, got: %T", c)
+			}
+
+			scfg := sectorbuilder.SimplePath(lr.Path())
+			if len(cfg.SectorBuilder.Storage) > 0 {
+				scfg = cfg.SectorBuilder.Storage
+			}
+
+			sbcfg, err := modules.SectorBuilderConfig(scfg, 2, false, false)(mds, api)
 			if err != nil {
 				return xerrors.Errorf("getting genesis miner sector builder config: %w", err)
 			}
@@ -395,20 +415,20 @@ func storageMinerInit(ctx context.Context, cctx *cli.Context, api lapi.FullNode,
 				}
 			}
 
-			if pssb := cctx.String("pre-sealed-sectors"); pssb != "" {
-				pssb, err := homedir.Expand(pssb)
-				if err != nil {
-					return err
-				}
+			return nil
+		}
 
-				log.Infof("Importing pre-sealed sector metadata for %s", a)
-
-				if err := migratePreSealMeta(ctx, api, pssb, a, mds); err != nil {
-					return xerrors.Errorf("migrating presealed sector metadata: %w", err)
-				}
+		if pssb := cctx.String("pre-sealed-metadata"); pssb != "" {
+			pssb, err := homedir.Expand(pssb)
+			if err != nil {
+				return err
 			}
 
-			return nil
+			log.Infof("Importing pre-sealed sector metadata for %s", a)
+
+			if err := migratePreSealMeta(ctx, api, pssb, a, mds); err != nil {
+				return xerrors.Errorf("migrating presealed sector metadata: %w", err)
+			}
 		}
 
 		if err := configureStorageMiner(ctx, api, a, peerid); err != nil {
@@ -465,7 +485,7 @@ func configureStorageMiner(ctx context.Context, api lapi.FullNode, addr address.
 		To:     addr,
 		From:   addr,
 		Method: actors.MAMethods.GetWorkerAddr,
-	}, nil)
+	}, types.EmptyTSK)
 	if err != nil {
 		return xerrors.Errorf("failed to get worker address: %w", err)
 	}
@@ -538,7 +558,7 @@ func createStorageMiner(ctx context.Context, api lapi.FullNode, peerid peer.ID, 
 		return address.Undef, err
 	}
 
-	collateral, err := api.StatePledgeCollateral(ctx, nil)
+	collateral, err := api.StatePledgeCollateral(ctx, types.EmptyTSK)
 	if err != nil {
 		return address.Undef, err
 	}
