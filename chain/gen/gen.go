@@ -535,7 +535,7 @@ func IsRoundWinner(ctx context.Context, ts *types.TipSet, round int64, miner add
 	for _, s := range pset {
 		cr, err := commcid.CIDToReplicaCommitmentV1(s.Info.Info.SealedCID)
 		if err != nil {
-			return nil, err
+			return nil, xerrors.Errorf("get sealed cid: %w", err)
 		}
 		var commRa [32]byte
 		copy(commRa[:], cr)
