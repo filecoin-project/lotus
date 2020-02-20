@@ -8,6 +8,7 @@ import (
 	"io"
 
 	"github.com/filecoin-project/specs-actors/actors/abi"
+	"github.com/filecoin-project/specs-actors/actors/builtin"
 	"github.com/filecoin-project/specs-actors/actors/builtin/market"
 	"github.com/filecoin-project/specs-actors/actors/builtin/miner"
 	"github.com/filecoin-project/specs-actors/actors/crypto"
@@ -72,7 +73,7 @@ func (n *ProviderNodeAdapter) PublishDeals(ctx context.Context, deal storagemark
 		Value:    types.NewInt(0),
 		GasPrice: types.NewInt(0),
 		GasLimit: types.NewInt(1000000),
-		Method:   actors.SMAMethods.PublishStorageDeals,
+		Method:   builtin.MethodsMarket.PublishStorageDeals,
 		Params:   params,
 	})
 	if err != nil {
@@ -93,17 +94,22 @@ func (n *ProviderNodeAdapter) PublishDeals(ctx context.Context, deal storagemark
 		return 0, cid.Undef, xerrors.Errorf("got unexpected number of DealIDs from")
 	}
 
-	return resp.IDs[0], smsg.Cid(), nil
+	// TODO: bad types here
+	return storagemarket.DealID(resp.IDs[0]), smsg.Cid(), nil
 }
 
-func (n *ProviderNodeAdapter) OnDealComplete(ctx context.Context, deal storagemarket.MinerDeal, pieceSize uint64, pieceData io.Reader) error {
-	_, err := n.secb.AddPiece(ctx, abi.UnpaddedPieceSize(pieceSize), pieceData, deal.DealID)
+func (n *ProviderNodeAdapter) OnDealComplete(ctx context.Context, deal storagemarket.MinerDeal, pieceSize abi.UnpaddedPieceSize, pieceData io.Reader) error {
+	_, err := n.secb.AddPiece(ctx, abi.UnpaddedPieceSize(pieceSize), pieceData, abi.DealID(deal.DealID))
 	if err != nil {
 		return xerrors.Errorf("AddPiece failed: %s", err)
 	}
 	log.Warnf("New Deal: deal %d", deal.DealID)
 
 	return nil
+}
+
+func (n *ProviderNodeAdapter) VerifySignature(sig crypto.Signature, addr address.Address, input []byte) bool {
+	panic("nyi")
 }
 
 func (n *ProviderNodeAdapter) ListProviderDeals(ctx context.Context, addr address.Address) ([]storagemarket.StorageDeal, error) {
@@ -134,7 +140,7 @@ func (n *ProviderNodeAdapter) SignBytes(ctx context.Context, signer address.Addr
 	if err != nil {
 		return nil, err
 	}
-	return localSignature
+	return localSignature, nil
 }
 
 func (n *ProviderNodeAdapter) EnsureFunds(ctx context.Context, addr address.Address, amt abi.TokenAmount) error {
@@ -154,7 +160,7 @@ func (n *ProviderNodeAdapter) AddFunds(ctx context.Context, addr address.Address
 		Value:    amount,
 		GasPrice: types.NewInt(0),
 		GasLimit: types.NewInt(1000000),
-		Method:   actors.SMAMethods.AddBalance,
+		Method:   builtin.MethodsMarket.AddBalance,
 	})
 	if err != nil {
 		return err
@@ -178,7 +184,7 @@ func (n *ProviderNodeAdapter) GetBalance(ctx context.Context, addr address.Addre
 		return storagemarket.Balance{}, err
 	}
 
-	return bal, nil
+	return utils.ToSharedBalance(bal), nil
 }
 
 func (n *ProviderNodeAdapter) LocatePieceForDealWithinSector(ctx context.Context, dealID uint64) (sectorID uint64, offset uint64, length uint64, err error) {
@@ -267,7 +273,7 @@ func (n *ProviderNodeAdapter) OnDealSectorCommitted(ctx context.Context, provide
 			return false, nil
 		}
 
-		if msg.Method != actors.MAMethods.ProveCommitSector {
+		if msg.Method != builtin.MethodsMiner.ProveCommitSector {
 			return false, nil
 		}
 

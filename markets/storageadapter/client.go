@@ -7,7 +7,10 @@ import (
 	"context"
 
 	"github.com/filecoin-project/specs-actors/actors/abi"
+	"github.com/filecoin-project/specs-actors/actors/builtin"
+	samarket "github.com/filecoin-project/specs-actors/actors/builtin/market"
 	"github.com/filecoin-project/specs-actors/actors/builtin/miner"
+	"github.com/filecoin-project/specs-actors/actors/crypto"
 	"golang.org/x/xerrors"
 
 	"github.com/filecoin-project/go-address"
@@ -21,6 +24,7 @@ import (
 	"github.com/filecoin-project/lotus/chain/stmgr"
 	"github.com/filecoin-project/lotus/chain/store"
 	"github.com/filecoin-project/lotus/chain/types"
+	"github.com/filecoin-project/lotus/markets/utils"
 	"github.com/filecoin-project/lotus/node/impl/full"
 )
 
@@ -88,6 +92,10 @@ func (n *ClientNodeAdapter) ListStorageProviders(ctx context.Context) ([]*storag
 	return out, nil
 }
 
+func (n *ClientNodeAdapter) VerifySignature(sig crypto.Signature, addr address.Address, input []byte) bool {
+	panic("TODO")
+}
+
 func (n *ClientNodeAdapter) ListClientDeals(ctx context.Context, addr address.Address) ([]storagemarket.StorageDeal, error) {
 	allDeals, err := n.StateMarketDeals(ctx, nil)
 	if err != nil {
@@ -119,7 +127,7 @@ func (n *ClientNodeAdapter) AddFunds(ctx context.Context, addr address.Address, 
 		Value:    amount,
 		GasPrice: types.NewInt(0),
 		GasLimit: types.NewInt(1000000),
-		Method:   actors.SMAMethods.AddBalance,
+		Method:   builtin.MethodsMarket.AddBalance,
 	})
 	if err != nil {
 		return err
@@ -173,7 +181,7 @@ func (c *ClientNodeAdapter) ValidatePublishedDeal(ctx context.Context, deal stor
 		return 0, xerrors.Errorf("deal publish message wasn't set to StorageMarket actor (to=%s)", pubmsg.To)
 	}
 
-	if pubmsg.Method != actors.SMAMethods.PublishStorageDeals {
+	if pubmsg.Method != builtin.MethodsMarket.PublishStorageDeals {
 		return 0, xerrors.Errorf("deal publish message called incorrect method (method=%s)", pubmsg.Method)
 	}
 
@@ -273,7 +281,7 @@ func (c *ClientNodeAdapter) OnDealSectorCommitted(ctx context.Context, provider 
 			return false, nil
 		}
 
-		if msg.Method != actors.MAMethods.ProveCommitSector {
+		if msg.Method != builtin.MethodsMiner.ProveCommitSector {
 			return false, nil
 		}
 
@@ -300,9 +308,10 @@ func (c *ClientNodeAdapter) OnDealSectorCommitted(ctx context.Context, provider 
 	return nil
 }
 
-func (n *ClientNodeAdapter) SignProposal(ctx context.Context, signer address.Address, proposal *storagemarket.StorageDealProposal) error {
+func (n *ClientNodeAdapter) SignProposal(ctx context.Context, signer address.Address, proposal samarket.DealProposal) (*samarket.ClientDealProposal, error) {
 	// TODO: output spec signed proposal
-	return nil
+	panic("nyi")
+	return nil, nil
 }
 
 func (n *ClientNodeAdapter) GetDefaultWalletAddress(ctx context.Context) (address.Address, error) {
@@ -323,7 +332,9 @@ func (n *ClientNodeAdapter) ValidateAskSignature(ask *storagemarket.SignedStorag
 		return xerrors.Errorf("failed to re-serialize ask")
 	}
 
-	return ask.Signature.Verify(w, sigb)
+	_ = w
+	_ = sigb
+	panic("verify signature")
 }
 
 var _ storagemarket.StorageClientNode = &ClientNodeAdapter{}

@@ -51,7 +51,7 @@ type ChannelInfo struct {
 
 	Direction uint64
 	Vouchers  []*VoucherInfo
-	NextLane  uint64
+	NextLane  int64
 }
 
 func dskeyForChannel(addr address.Address) datastore.Key {
@@ -177,7 +177,7 @@ func (ps *Store) findChan(filter func(*ChannelInfo) bool) (address.Address, erro
 	return address.Undef, nil
 }
 
-func (ps *Store) AllocateLane(ch address.Address) (uint64, error) {
+func (ps *Store) AllocateLane(ch address.Address) (int64, error) {
 	ps.lk.Lock()
 	defer ps.lk.Unlock()
 

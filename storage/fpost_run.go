@@ -220,10 +220,11 @@ func (s *FPoStScheduler) sortedSectorInfo(ctx context.Context, ts *types.TipSet)
 	sbsi := make([]ffi.PublicSectorInfo, len(sset))
 	for k, sector := range sset {
 		var commR [sectorbuilder.CommLen]byte
-		copy(commR[:], sector.CommR)
+		scid := sector.Info.Info.SealedCID.Bytes()
+		copy(commR[:], scid[len(scid)-32:])
 
 		sbsi[k] = ffi.PublicSectorInfo{
-			SectorNum: sector.SectorID,
+			SectorNum: sector.Info.Info.SectorNumber,
 			CommR:     commR,
 		}
 	}
