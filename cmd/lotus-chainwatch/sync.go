@@ -67,7 +67,6 @@ type actorInfo struct {
 
 func syncHead(ctx context.Context, api api.FullNode, st *storage, ts *types.TipSet) {
 	addresses := map[address.Address]address.Address{}
-	actors := map[address.Address]map[types.Actor]actorInfo{}
 	var alk sync.Mutex
 
 	log.Infof("Getting synced block list")
@@ -114,6 +113,7 @@ func syncHead(ctx context.Context, api api.FullNode, st *storage, ts *types.TipS
 	}
 
 	for len(allToSync) > 0 {
+		actors := map[address.Address]map[types.Actor]actorInfo{}
 		minH := uint64(math.MaxUint64)
 
 		for _, header := range allToSync {
@@ -200,7 +200,7 @@ func syncHead(ctx context.Context, api api.FullNode, st *storage, ts *types.TipS
 					log.Error(err)
 					return
 				}
-				ast, err := api.StateReadState(ctx, &act, ts.Key())
+				ast, err := api.StateReadState(ctx, &act, pts.Key())
 				if err != nil {
 					log.Error(err)
 					return
