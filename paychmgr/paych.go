@@ -53,11 +53,11 @@ func NewManager(sm *stmgr.StateManager, pchstore *Store, api ManagerApi) *Manage
 	}
 }
 
-func maxLaneFromState(st *actors.PaymentChannelActorState) (uint64, error) {
-	maxLane := uint64(math.MaxUint64)
+func maxLaneFromState(st *actors.PaymentChannelActorState) (int64, error) {
+	maxLane := int64(math.MaxInt64)
 	for _, state := range st.LaneStates {
-		if uint64(state.ID)+1 > maxLane+1 {
-			maxLane = uint64(state.ID)
+		if int64(state.ID)+1 > maxLane+1 {
+			maxLane = int64(state.ID)
 		}
 	}
 	return maxLane, nil
@@ -293,14 +293,14 @@ func (pm *Manager) AddVoucher(ctx context.Context, ch address.Address, sv *types
 		Proof:   proof,
 	})
 
-	if ci.NextLane <= uint64(sv.Lane) {
-		ci.NextLane = uint64(sv.Lane + 1)
+	if ci.NextLane <= int64(sv.Lane) {
+		ci.NextLane = int64(sv.Lane + 1)
 	}
 
 	return delta, pm.store.putChannelInfo(ci)
 }
 
-func (pm *Manager) AllocateLane(ch address.Address) (uint64, error) {
+func (pm *Manager) AllocateLane(ch address.Address) (int64, error) {
 	return pm.store.AllocateLane(ch)
 }
 

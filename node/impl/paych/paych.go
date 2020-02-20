@@ -40,7 +40,7 @@ func (a *PaychAPI) PaychGet(ctx context.Context, from, to address.Address, ensur
 	}, nil
 }
 
-func (a *PaychAPI) PaychAllocateLane(ctx context.Context, ch address.Address) (uint64, error) {
+func (a *PaychAPI) PaychAllocateLane(ctx context.Context, ch address.Address) (int64, error) {
 	return a.PaychMgr.AllocateLane(ch)
 }
 
@@ -64,7 +64,7 @@ func (a *PaychAPI) PaychNewPayment(ctx context.Context, from, to address.Address
 	for i, v := range vouchers {
 		sv, err := a.paychVoucherCreate(ctx, ch.Channel, types.SignedVoucher{
 			Amount: v.Amount,
-			Lane:   lane,
+			Lane:   uint64(lane),
 
 			Extra:           v.Extra,
 			TimeLock:        v.TimeLock,

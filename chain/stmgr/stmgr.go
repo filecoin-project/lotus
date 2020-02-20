@@ -158,7 +158,7 @@ func (sm *StateManager) computeTipSetState(ctx context.Context, blks []*types.Bl
 		return cid.Undef, cid.Undef, xerrors.Errorf("failed to get network actor: %w", err)
 	}
 	reward := vm.MiningReward(rewardActor.Balance)
-	for tsi, b := range blks {
+	for _, b := range blks {
 		rewardActor, err = vmi.StateTree().GetActor(actors.RewardActor)
 		if err != nil {
 			return cid.Undef, cid.Undef, xerrors.Errorf("failed to get network actor: %w", err)
@@ -177,24 +177,6 @@ func (sm *StateManager) computeTipSetState(ctx context.Context, blks []*types.Bl
 
 		if err := vm.Transfer(rewardActor, act, reward); err != nil {
 			return cid.Undef, cid.Undef, xerrors.Errorf("failed to deduct funds from network actor: %w", err)
-		}
-
-		// all block miners created a valid post, go update the actor state
-		postSubmitMsg := &types.Message{
-			From:     actors.SystemAddress,
-			Nonce:    rewardActor.Nonce,
-			To:       b.Miner,
-			Method:   builtin.MethodsMiner.SubmitWindowedPoSt,
-			GasPrice: types.NewInt(0),
-			GasLimit: types.NewInt(10000000000),
-			Value:    types.NewInt(0),
-		}
-		ret, err := vmi.ApplyMessage(ctx, postSubmitMsg)
-		if err != nil {
-			return cid.Undef, cid.Undef, xerrors.Errorf("submit election post message for block %s (miner %s) invocation failed: %w", b.Cid(), b.Miner, err)
-		}
-		if ret.ExitCode != 0 {
-			return cid.Undef, cid.Undef, xerrors.Errorf("submit election post invocation returned nonzero exit code: %d (err = %s, block = %s, miner = %s, tsi = %d)", ret.ExitCode, ret.ActorErr, b.Cid(), b.Miner, tsi)
 		}
 	}
 
@@ -264,14 +246,14 @@ func (sm *StateManager) computeTipSetState(ctx context.Context, blks []*types.Bl
 	}
 
 	// TODO: this nonce-getting is a tiny bit ugly
-	ca, err := vmi.StateTree().GetActor(actors.CronAddress)
+	ca, err := vmi.StateTree().GetActor(actors.SystemAddress)
 	if err != nil {
 		return cid.Undef, cid.Undef, err
 	}
 
 	ret, err := vmi.ApplyMessage(ctx, &types.Message{
 		To:       actors.CronAddress,
-		From:     actors.CronAddress,
+		From:     actors.SystemAddress,
 		Nonce:    ca.Nonce,
 		Value:    types.NewInt(0),
 		GasPrice: types.NewInt(0),

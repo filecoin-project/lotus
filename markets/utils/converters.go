@@ -1,7 +1,9 @@
 package utils
 
 import (
+	"github.com/filecoin-project/lotus/api"
 	"github.com/filecoin-project/specs-actors/actors/abi"
+	"github.com/filecoin-project/specs-actors/actors/builtin/market"
 	peer "github.com/libp2p/go-libp2p-peer"
 
 	"github.com/filecoin-project/go-address"
@@ -14,5 +16,19 @@ func NewStorageProviderInfo(address address.Address, miner address.Address, sect
 		Worker:     miner,
 		SectorSize: uint64(sectorSize),
 		PeerID:     peer,
+	}
+}
+
+func FromOnChainDeal(prop market.DealProposal, state market.DealState) storagemarket.StorageDeal {
+	return storagemarket.StorageDeal{
+		DealProposal: prop,
+		DealState:    state,
+	}
+}
+
+func ToSharedBalance(bal api.MarketBalance) storagemarket.Balance {
+	return storagemarket.Balance{
+		Locked:    bal.Locked,
+		Available: bal.Escrow,
 	}
 }

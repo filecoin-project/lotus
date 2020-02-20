@@ -140,7 +140,7 @@ type FullNode interface {
 	PaychList(context.Context) ([]address.Address, error)
 	PaychStatus(context.Context, address.Address) (*PaychStatus, error)
 	PaychClose(context.Context, address.Address) (cid.Cid, error)
-	PaychAllocateLane(ctx context.Context, ch address.Address) (uint64, error)
+	PaychAllocateLane(ctx context.Context, ch address.Address) (int64, error)
 	PaychNewPayment(ctx context.Context, from, to address.Address, vouchers []VoucherSpec) (*PaymentInfo, error)
 	PaychVoucherCheckValid(context.Context, address.Address, *types.SignedVoucher) error
 	PaychVoucherCheckSpendable(context.Context, address.Address, *types.SignedVoucher, []byte, []byte) (bool, error)
@@ -193,7 +193,7 @@ type Message struct {
 
 type ChainSectorInfo struct {
 	Info miner.SectorOnChainInfo
-	ID abi.SectorNumber
+	ID   abi.SectorNumber
 }
 
 type ActorState struct {

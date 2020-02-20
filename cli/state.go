@@ -168,7 +168,7 @@ var stateSectorsCmd = &cli.Command{
 		}
 
 		for _, s := range sectors {
-			fmt.Printf("%d: %x %x\n", s.SectorID, s.CommR, s.CommD)
+			fmt.Printf("%d: %x\n", s.Info.Info.SectorNumber, s.Info.Info.SealedCID)
 		}
 
 		return nil
@@ -207,7 +207,7 @@ var stateProvingSetCmd = &cli.Command{
 		}
 
 		for _, s := range sectors {
-			fmt.Printf("%d: %x %x\n", s.SectorID, s.CommR, s.CommD)
+			fmt.Printf("%d: %x\n", s.Info.Info.SectorNumber, s.Info.Info.SealedCID)
 		}
 
 		return nil
