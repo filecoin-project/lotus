@@ -118,8 +118,8 @@ func (syncer *Syncer) InformNewHead(from peer.ID, fts *store.FullTipSet) bool {
 	}
 
 	for _, b := range fts.Blocks {
-		if syncer.bad.Has(b.Cid()) {
-			log.Warnf("InformNewHead called on block marked as bad: %s", b.Cid())
+		if reason, ok := syncer.bad.Has(b.Cid()); ok {
+			log.Warnf("InformNewHead called on block marked as bad: %s (reason: %s)", b.Cid(), reason)
 			return false
 		}
 		if err := syncer.ValidateMsgMeta(b); err != nil {
@@ -450,7 +450,7 @@ func (syncer *Syncer) ValidateTipSet(ctx context.Context, fts *store.FullTipSet)
 	for _, b := range fts.Blocks {
 		if err := syncer.ValidateBlock(ctx, b); err != nil {
 			if isPermanent(err) {
-				syncer.bad.Add(b.Cid())
+				syncer.bad.Add(b.Cid(), err.Error())
 			}
 			return xerrors.Errorf("validating block %s: %w", b.Cid(), err)
 		}
@@ -876,11 +876,11 @@ func (syncer *Syncer) collectHeaders(ctx context.Context, from *types.TipSet, to
 	)
 
 	for _, pcid := range from.Parents().Cids() {
-		if syncer.bad.Has(pcid) {
+		if reason, ok := syncer.bad.Has(pcid); ok {
 			for _, b := range from.Cids() {
-				syncer.bad.Add(b)
+				syncer.bad.Add(b, fmt.Sprintf("linked to %s", pcid))
 			}
-			return nil, xerrors.Errorf("chain linked to block marked previously as bad (%s, %s)", from.Cids(), pcid)
+			return nil, xerrors.Errorf("chain linked to block marked previously as bad (%s, %s) (reason: %s)", from.Cids(), pcid, reason)
 		}
 	}
 
@@ -898,12 +898,12 @@ func (syncer *Syncer) collectHeaders(ctx context.Context, from *types.TipSet, to
 loop:
 	for blockSet[len(blockSet)-1].Height() > untilHeight {
 		for _, bc := range at.Cids() {
-			if syncer.bad.Has(bc) {
+			if reason, ok := syncer.bad.Has(bc); ok {
 				for _, b := range acceptedBlocks {
-					syncer.bad.Add(b)
+					syncer.bad.Add(b, fmt.Sprintf("chain contained %s", bc))
 				}
 
-				return nil, xerrors.Errorf("chain contained block marked previously as bad (%s, %s)", from.Cids(), bc)
+				return nil, xerrors.Errorf("chain contained block marked previously as bad (%s, %s) (reason: %s)", from.Cids(), bc, reason)
 			}
 		}
 
@@ -946,12 +946,12 @@ loop:
 				break loop
 			}
 			for _, bc := range b.Cids() {
-				if syncer.bad.Has(bc) {
+				if reason, ok := syncer.bad.Has(bc); ok {
 					for _, b := range acceptedBlocks {
-						syncer.bad.Add(b)
+						syncer.bad.Add(b, fmt.Sprintf("chain contained %s", bc))
 					}
 
-					return nil, xerrors.Errorf("chain contained block marked previously as bad (%s, %s)", from.Cids(), bc)
+					return nil, xerrors.Errorf("chain contained block marked previously as bad (%s, %s) (reason: %s)", from.Cids(), bc, reason)
 				}
 			}
 			blockSet = append(blockSet, b)
@@ -978,7 +978,7 @@ loop:
 				// TODO: we're marking this block bad in the same way that we mark invalid blocks bad. Maybe distinguish?
 				log.Warn("adding forked chain to our bad tipset cache")
 				for _, b := range from.Blocks() {
-					syncer.bad.Add(b.Cid())
+					syncer.bad.Add(b.Cid(), "fork past finality")
 				}
 			}
 			return nil, xerrors.Errorf("failed to sync fork: %w", err)
@@ -1195,5 +1195,9 @@ func (syncer *Syncer) State() []SyncerState {
 }
 
 func (syncer *Syncer) MarkBad(blk cid.Cid) {
-	syncer.bad.Add(blk)
+	syncer.bad.Add(blk, "manually marked bad")
+}
+
+func (syncer *Syncer) CheckBadBlockCache(blk cid.Cid) (string, bool) {
+	return syncer.bad.Has(blk)
 }

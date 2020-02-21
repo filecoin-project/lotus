@@ -95,7 +95,7 @@ func sendHeadNotifs(ctx context.Context, ps *pubsub.PubSub, topic string, chain 
 		case notif := <-notifs:
 			n := notif[len(notif)-1]
 
-			w, err := chain.ChainTipSetWeight(ctx, n.Val)
+			w, err := chain.ChainTipSetWeight(ctx, n.Val.Key())
 			if err != nil {
 				return err
 			}

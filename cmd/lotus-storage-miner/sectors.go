@@ -2,6 +2,7 @@ package main
 
 import (
 	"fmt"
+	"github.com/filecoin-project/lotus/chain/types"
 	"os"
 	"sort"
 	"strconv"
@@ -129,7 +130,7 @@ var sectorsListCmd = &cli.Command{
 			return err
 		}
 
-		pset, err := fullApi.StateMinerProvingSet(ctx, maddr, nil)
+		pset, err := fullApi.StateMinerProvingSet(ctx, maddr, types.EmptyTSK)
 		if err != nil {
 			return err
 		}
@@ -138,7 +139,7 @@ var sectorsListCmd = &cli.Command{
 			provingIDs[info.SectorID] = struct{}{}
 		}
 
-		sset, err := fullApi.StateMinerSectors(ctx, maddr, nil)
+		sset, err := fullApi.StateMinerSectors(ctx, maddr, types.EmptyTSK)
 		if err != nil {
 			return err
 		}

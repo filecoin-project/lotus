@@ -3,6 +3,8 @@ package impl
 import (
 	"context"
 
+	logging "github.com/ipfs/go-log/v2"
+
 	"github.com/gbrlsnchs/jwt/v3"
 	"github.com/libp2p/go-libp2p-core/host"
 	"github.com/libp2p/go-libp2p-core/network"
@@ -90,6 +92,14 @@ func (a *CommonAPI) Version(context.Context) (api.Version, error) {
 
 		BlockDelay: build.BlockDelay,
 	}, nil
+}
+
+func (a *CommonAPI) LogList(context.Context) ([]string, error) {
+	return logging.GetSubsystems(), nil
+}
+
+func (a *CommonAPI) LogSetLevel(ctx context.Context, subsystem, level string) error {
+	return logging.SetLogLevel(subsystem, level)
 }
 
 var _ api.Common = &CommonAPI{}

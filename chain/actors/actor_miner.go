@@ -6,8 +6,6 @@ import (
 	"encoding/binary"
 	"fmt"
 
-	ffi "github.com/filecoin-project/filecoin-ffi"
-
 	"github.com/filecoin-project/go-address"
 	"github.com/filecoin-project/go-sectorbuilder"
 	"github.com/filecoin-project/lotus/build"
@@ -483,7 +481,7 @@ func (sma StorageMinerActor) SubmitFallbackPoSt(act *types.Actor, vmctx types.VM
 	}
 
 	activeFaults := uint64(0)
-	var sectorInfos []ffi.PublicSectorInfo
+	var sectorInfos []types.PublicSectorInfo
 	if err := pss.ForEach(func(id uint64, v *cbg.Deferred) error {
 		if faults[id] {
 			activeFaults++
@@ -494,7 +492,7 @@ func (sma StorageMinerActor) SubmitFallbackPoSt(act *types.Actor, vmctx types.VM
 		if err := cbor.DecodeInto(v.Raw, &comms); err != nil {
 			return xerrors.New("could not decode comms")
 		}
-		si := ffi.PublicSectorInfo{
+		si := types.PublicSectorInfo{
 			SectorID: id,
 		}
 		commR := comms[0]
@@ -512,11 +510,11 @@ func (sma StorageMinerActor) SubmitFallbackPoSt(act *types.Actor, vmctx types.VM
 
 	proverID := vmctx.Message().To // TODO: normalize to ID address
 
-	var candidates []sectorbuilder.EPostCandidate
+	var candidates []types.Candidate
 	for _, t := range params.Candidates {
 		var partial [32]byte
 		copy(partial[:], t.Partial)
-		candidates = append(candidates, sectorbuilder.EPostCandidate{
+		candidates = append(candidates, types.Candidate{
 			PartialTicket:        partial,
 			SectorID:             t.SectorID,
 			SectorChallengeIndex: t.ChallengeIndex,
@@ -524,7 +522,7 @@ func (sma StorageMinerActor) SubmitFallbackPoSt(act *types.Actor, vmctx types.VM
 	}
 
 	if ok, lerr := vmctx.Sys().VerifyFallbackPost(vmctx.Context(), mi.SectorSize,
-		sectorbuilder.NewSortedPublicSectorInfo(sectorInfos), seed[:], params.Proof, candidates, proverID, activeFaults); !ok || lerr != nil {
+		sectorInfos, seed[:], params.Proof, candidates, proverID, activeFaults); !ok || lerr != nil {
 		if lerr != nil {
 			// TODO: study PoST errors
 			return nil, aerrors.Absorb(lerr, 4, "PoST error")

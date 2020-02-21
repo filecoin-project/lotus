@@ -33,7 +33,7 @@ func TestMessageFiltering(t *testing.T) {
 		},
 	}
 
-	af := func(ctx context.Context, addr address.Address, ts *types.TipSet) (*types.Actor, error) {
+	af := func(ctx context.Context, addr address.Address, tsk types.TipSetKey) (*types.Actor, error) {
 		return actors[addr], nil
 	}
 

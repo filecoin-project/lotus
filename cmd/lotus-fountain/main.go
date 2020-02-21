@@ -207,7 +207,8 @@ func (h *handler) mkminer(w http.ResponseWriter, r *http.Request) {
 
 	if owner.Protocol() != address.BLS {
 		w.WriteHeader(400)
-		w.Write([]byte("Miner address must use BLS"))
+		w.Write([]byte("Miner address must use BLS. A BLS address starts with the prefix 't3'."))
+		w.Write([]byte("Please create a BLS address by running \"lotus wallet new bls\" while connected to a Lotus node."))
 		return
 	}
 
@@ -238,7 +239,7 @@ func (h *handler) mkminer(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	collateral, err := h.api.StatePledgeCollateral(r.Context(), nil)
+	collateral, err := h.api.StatePledgeCollateral(r.Context(), types.EmptyTSK)
 	if err != nil {
 		w.WriteHeader(400)
 		w.Write([]byte(err.Error()))
