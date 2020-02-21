@@ -10,6 +10,7 @@ import (
 	"github.com/filecoin-project/lotus/chain/blocksync"
 	"github.com/filecoin-project/lotus/chain/types"
 	"github.com/filecoin-project/lotus/lib/statemachine"
+	"github.com/filecoin-project/lotus/node/hello"
 	"github.com/filecoin-project/lotus/paychmgr"
 	"github.com/filecoin-project/lotus/storage/sealing"
 )
@@ -77,6 +78,14 @@ func main() {
 	err = gen.WriteMapEncodersToFile("./lib/statemachine/cbor_gen.go", "statemachine",
 		statemachine.TestState{},
 		statemachine.TestEvent{},
+	)
+	if err != nil {
+		fmt.Printf("%+v\n", err)
+		os.Exit(1)
+	}
+
+	err = gen.WriteMapEncodersToFile("./node/hello/cbor_gen.go", "hello",
+		hello.Message{},
 	)
 	if err != nil {
 		fmt.Printf("%+v\n", err)
