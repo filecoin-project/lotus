@@ -4,14 +4,9 @@ import (
 	"encoding/hex"
 	"encoding/json"
 	"fmt"
-	"github.com/filecoin-project/specs-actors/actors/abi/big"
 	"io/ioutil"
 	"os"
 	"path/filepath"
-
-	"github.com/filecoin-project/specs-actors/actors/abi"
-
-	sectorbuilder "github.com/filecoin-project/go-sectorbuilder"
 
 	"github.com/ipfs/go-datastore"
 	"github.com/ipfs/go-datastore/namespace"
@@ -22,6 +17,9 @@ import (
 	"gopkg.in/urfave/cli.v2"
 
 	"github.com/filecoin-project/go-address"
+	"github.com/filecoin-project/go-sectorbuilder"
+	"github.com/filecoin-project/specs-actors/actors/abi"
+	"github.com/filecoin-project/specs-actors/actors/abi/big"
 
 	"github.com/filecoin-project/lotus/build"
 	"github.com/filecoin-project/lotus/chain/types"
@@ -34,9 +32,9 @@ var log = logging.Logger("lotus-seed")
 func main() {
 	logging.SetLogLevel("*", "INFO")
 
-	log.Info("Starting seed")
-
 	local := []*cli.Command{
+		genesisCmd,
+
 		preSealCmd,
 		aggregateManifestsCmd,
 		aggregateSectorDirsCmd,
@@ -58,7 +56,7 @@ func main() {
 
 	if err := app.Run(os.Args); err != nil {
 		log.Warn(err)
-		return
+		os.Exit(1)
 	}
 }
 
@@ -67,7 +65,7 @@ var preSealCmd = &cli.Command{
 	Flags: []cli.Flag{
 		&cli.StringFlag{
 			Name:  "miner-addr",
-			Value: "t0101",
+			Value: "t01000",
 			Usage: "specify the future address of your miner",
 		},
 		&cli.Uint64Flag{

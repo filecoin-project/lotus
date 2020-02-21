@@ -109,7 +109,6 @@ func PreSeal(maddr address.Address, ssize abi.SectorSize, offset abi.SectorNumbe
 	miner := &genesis.Miner{
 		Owner:         minerAddr.Address,
 		Worker:        minerAddr.Address,
-		PeerId:        "",
 		MarketBalance: big.Zero(),
 		PowerBalance:  big.Zero(),
 		SectorSize:    ssize,
@@ -136,6 +135,8 @@ func WriteGenesisMiner(maddr address.Address, sbroot string, gm *genesis.Miner, 
 	if err != nil {
 		return err
 	}
+
+	log.Infof("Writing preseal manifest to %s", filepath.Join(sbroot, "pre-seal-"+maddr.String()+".json"))
 
 	if err := ioutil.WriteFile(filepath.Join(sbroot, "pre-seal-"+maddr.String()+".json"), out, 0664); err != nil {
 		return err

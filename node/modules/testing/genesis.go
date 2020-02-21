@@ -65,7 +65,7 @@ func MakeGenesis(outFile, genesisTemplate string) func(bs dtypes.ChainBlockstore
 			}
 
 			var template genesis.Template
-			if err := json.Unmarshal(fdata, template); err != nil {
+			if err := json.Unmarshal(fdata, &template); err != nil {
 				return nil, err
 			}
 

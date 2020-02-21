@@ -20,7 +20,10 @@ Pre-seal some sectors:
 Create the genesis block and start up the first node:
 
 ```sh
-./lotus daemon --lotus-make-random-genesis=dev.gen --genesis-presealed-sectors=~/.genesis-sectors/pre-seal-t0101.json --bootstrap=false
+./lotus-seed genesis new localnet.json
+./lotus-seed genesis add-miner localnet.json ~/.genesis-sectors/pre-seal-t0101.json
+./lotus daemon --lotus-make-genesis=dev.gen --genesis-template=localnet.json --bootstrap=false
+# TODO Key import
 ```
 
 Set up the genesis miner:

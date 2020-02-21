@@ -26,7 +26,7 @@ type PreSeal struct {
 type Miner struct {
 	Owner  address.Address
 	Worker address.Address
-	PeerId peer.ID
+	PeerId peer.ID `json:",omitempty"`
 
 	MarketBalance abi.TokenAmount
 	PowerBalance  abi.TokenAmount
@@ -64,5 +64,5 @@ type Template struct {
 	Miners   []Miner
 
 	NetworkName string
-	Timestamp   uint64
+	Timestamp   uint64 `json:",omitempty"`
 }
