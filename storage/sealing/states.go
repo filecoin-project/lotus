@@ -102,9 +102,9 @@ func (m *Sealing) handlePreCommitting(ctx statemachine.Context, sector SectorInf
 		Expiration:   0,
 		SectorNumber: sector.SectorID,
 
-		SealedCID: commcid.ReplicaCommitmentV1ToCID(sector.CommR),
+		SealedCID:     commcid.ReplicaCommitmentV1ToCID(sector.CommR),
 		SealRandEpoch: sector.Ticket.BlockHeight,
-		DealIDs:   nil, // sector.deals(), // TODO: REFACTOR
+		DealIDs:       nil, // sector.deals(), // TODO: REFACTOR
 	}
 	enc, aerr := actors.SerializeParams(params)
 	if aerr != nil {

@@ -13,7 +13,6 @@ require (
 	github.com/filecoin-project/chain-validation v0.0.3
 	github.com/filecoin-project/filecoin-ffi v0.0.0-20191219131535-bb699517a590
 	github.com/filecoin-project/go-address v0.0.2-0.20200218010043-eb9bb40ed5be
-	github.com/filecoin-project/go-amt-ipld v1.0.0 // indirect
 	github.com/filecoin-project/go-amt-ipld/v2 v2.0.1-0.20200131012142-05d80eeccc5e
 	github.com/filecoin-project/go-cbor-util v0.0.0-20191219014500-08c40a1e63a2
 	github.com/filecoin-project/go-crypto v0.0.0-20191218222705-effae4ea9f03

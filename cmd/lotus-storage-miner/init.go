@@ -522,7 +522,7 @@ func createStorageMiner(ctx context.Context, api lapi.FullNode, peerid peer.ID, 
 	params, err := actors.SerializeParams(&power.CreateMinerParams{
 		Worker:     worker,
 		SectorSize: abi.SectorSize(ssize),
-		Peer:     peerid,
+		Peer:       peerid,
 	})
 	if err != nil {
 		return address.Undef, err

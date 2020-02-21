@@ -287,7 +287,7 @@ func LoadSectorsFromSet(ctx context.Context, bs blockstore.Blockstore, ssc cid.C
 		}
 		sset = append(sset, &api.ChainSectorInfo{
 			Info: oci,
-			ID: abi.SectorNumber(i),
+			ID:   abi.SectorNumber(i),
 		})
 		return nil
 	}); err != nil {

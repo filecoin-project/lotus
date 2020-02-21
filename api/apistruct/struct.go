@@ -132,7 +132,7 @@ type FullNodeStruct struct {
 		PaychList                  func(context.Context) ([]address.Address, error)                                                          `perm:"read"`
 		PaychStatus                func(context.Context, address.Address) (*api.PaychStatus, error)                                          `perm:"read"`
 		PaychClose                 func(context.Context, address.Address) (cid.Cid, error)                                                   `perm:"sign"`
-		PaychAllocateLane          func(context.Context, address.Address) (uint64, error)                                                     `perm:"sign"`
+		PaychAllocateLane          func(context.Context, address.Address) (uint64, error)                                                    `perm:"sign"`
 		PaychNewPayment            func(ctx context.Context, from, to address.Address, vouchers []api.VoucherSpec) (*api.PaymentInfo, error) `perm:"sign"`
 		PaychVoucherCheck          func(context.Context, *types.SignedVoucher) error                                                         `perm:"read"`
 		PaychVoucherCheckValid     func(context.Context, address.Address, *types.SignedVoucher) error                                        `perm:"read"`
