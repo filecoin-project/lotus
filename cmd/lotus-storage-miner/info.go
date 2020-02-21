@@ -88,16 +88,16 @@ var infoCmd = &cli.Command{
 		fmt.Printf("\tCommit: %d\n", wstat.CommitWait)
 		fmt.Printf("\tUnseal: %d\n", wstat.UnsealWait)
 
-		eps, err := api.StateMinerElectionPeriodStart(ctx, maddr, nil)
+		ps, err := api.StateMinerPostState(ctx, maddr, nil)
 		if err != nil {
 			return err
 		}
-		if eps != 0 {
+		if ps.ProvingPeriodStart != 0 {
 			head, err := api.ChainHead(ctx)
 			if err != nil {
 				return err
 			}
-			lastEps := int64(head.Height() - eps)
+			lastEps := int64(head.Height() - ps.ProvingPeriodStart)
 			lastEpsS := lastEps * build.BlockDelay
 
 			fallback := lastEps + build.FallbackPoStDelay
@@ -107,10 +107,10 @@ var infoCmd = &cli.Command{
 			nextS := next * build.BlockDelay
 
 			fmt.Printf("PoSt Submissions:\n")
-			fmt.Printf("\tPrevious: Epoch %d (%d block(s), ~%dm %ds ago)\n", eps, lastEps, lastEpsS/60, lastEpsS%60)
-			fmt.Printf("\tFallback: Epoch %d (in %d blocks, ~%dm %ds)\n", eps+build.FallbackPoStDelay, fallback, fallbackS/60, fallbackS%60)
-			fmt.Printf("\tDeadline: Epoch %d (in %d blocks, ~%dm %ds)\n", eps+build.SlashablePowerDelay, next, nextS/60, nextS%60)
-
+			fmt.Printf("\tPrevious: Epoch %d (%d block(s), ~%dm %ds ago)\n", ps.ProvingPeriodStart, lastEps, lastEpsS/60, lastEpsS%60)
+			fmt.Printf("\tFallback: Epoch %d (in %d blocks, ~%dm %ds)\n", ps.ProvingPeriodStart+build.FallbackPoStDelay, fallback, fallbackS/60, fallbackS%60)
+			fmt.Printf("\tDeadline: Epoch %d (in %d blocks, ~%dm %ds)\n", ps.ProvingPeriodStart+build.SlashablePowerDelay, next, nextS/60, nextS%60)
+			fmt.Printf("\tConsecutive Failures: %d\n", ps.NumConsecutiveFailures)
 		} else {
 			fmt.Printf("Proving Period: Not Proving\n")
 		}
