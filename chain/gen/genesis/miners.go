@@ -112,7 +112,7 @@ func SetupStorageMiners(ctx context.Context, cs *store.ChainStore, sroot cid.Cid
 
 				params.Deals = append(params.Deals, market.ClientDealProposal{
 					Proposal:        preseal.Deal,
-					ClientSignature: crypto.Signature{Type:crypto.SigTypeBLS}, // TODO: do we want to sign these? Or do we want to fake signatures for genesis setup?
+					ClientSignature: crypto.Signature{Type: crypto.SigTypeBLS}, // TODO: do we want to sign these? Or do we want to fake signatures for genesis setup?
 				})
 				fmt.Printf("calling publish storage deals on miner %s with worker %s\n", preseal.Deal.Provider, m.Worker)
 			}
@@ -202,11 +202,11 @@ func SetupStorageMiners(ctx context.Context, cs *store.ChainStore, sroot cid.Cid
 			{
 				newSectorInfo := &miner.SectorOnChainInfo{
 					Info: miner.SectorPreCommitInfo{
-						SectorNumber: preseal.SectorID,
-						SealedCID:    commcid.ReplicaCommitmentV1ToCID(preseal.CommR[:]),
-						SealRandEpoch:    0,
-						DealIDs:      []abi.DealID{dealIDs[pi]},
-						Expiration:   preseal.Deal.EndEpoch,
+						SectorNumber:  preseal.SectorID,
+						SealedCID:     commcid.ReplicaCommitmentV1ToCID(preseal.CommR[:]),
+						SealRandEpoch: 0,
+						DealIDs:       []abi.DealID{dealIDs[pi]},
+						Expiration:    preseal.Deal.EndEpoch,
 					},
 					ActivationEpoch:   0,
 					DealWeight:        dealWeight,
