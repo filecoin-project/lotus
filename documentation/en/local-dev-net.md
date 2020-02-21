@@ -21,7 +21,7 @@ Create the genesis block and start up the first node:
 
 ```sh
 ./lotus-seed genesis new localnet.json
-./lotus-seed genesis add-miner localnet.json ~/.genesis-sectors/pre-seal-t0101.json
+./lotus-seed genesis add-miner localnet.json ~/.genesis-sectors/pre-seal-t01000.json
 ./lotus daemon --lotus-make-genesis=dev.gen --genesis-template=localnet.json --bootstrap=false
 # TODO Key import
 ```
