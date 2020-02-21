@@ -5,6 +5,7 @@ import (
 	"context"
 	"encoding/binary"
 	"fmt"
+	"os"
 	"runtime/debug"
 
 	"github.com/filecoin-project/go-address"
@@ -23,6 +24,14 @@ import (
 
 type runtimeShim struct {
 	vmctx types.VMContext
+}
+
+func (rs *runtimeShim) ResolveAddress(address address.Address) (ret address.Address, ok bool) {
+	r, err := rs.vmctx.LookupID(address)
+	if err != nil { // TODO: check notfound
+		rs.Abortf(exitcode.ErrPlaceholder, "resolve address: %v", err)
+	}
+	return r, true
 }
 
 func (rs *runtimeShim) Get(c cid.Cid, o vmr.CBORUnmarshaler) bool {
@@ -47,12 +56,12 @@ func (rs *runtimeShim) shimCall(f func() interface{}) (rval []byte, aerr aerrors
 	defer func() {
 		if r := recover(); r != nil {
 			if ar, ok := r.(aerrors.ActorError); ok {
-				fmt.Println("VM.Call failure: ", ar)
+				fmt.Fprintln(os.Stderr, "VM.Call failure: ", ar)
 				debug.PrintStack()
 				aerr = ar
 				return
 			}
-			fmt.Println("caught one of those actor errors: ", r)
+			fmt.Fprintln(os.Stderr, "caught one of those actor errors: ", r)
 			debug.PrintStack()
 			log.Errorf("ERROR")
 			aerr = aerrors.Newf(1, "generic spec actors failure")
@@ -77,7 +86,20 @@ func (rs *runtimeShim) shimCall(f func() interface{}) (rval []byte, aerr aerrors
 }
 
 func (rs *runtimeShim) Message() vmr.Message {
-	return rs.vmctx.Message()
+	var err error
+
+	rawm := *rs.vmctx.Message() // TODO: normalize addresses earlier
+	rawm.From, err = rs.vmctx.LookupID(rawm.From)
+	if err != nil {
+		rs.Abortf(exitcode.ErrPlaceholder, "resolve from address: %v", err)
+	}
+
+	rawm.To, err = rs.vmctx.LookupID(rawm.To)
+	if err != nil {
+		rs.Abortf(exitcode.ErrPlaceholder, "resolve to address: %v", err)
+	}
+
+	return &rawm
 }
 
 func (rs *runtimeShim) ValidateImmediateCallerAcceptAny() {
@@ -185,8 +207,13 @@ func (rs *runtimeShim) StartSpan(name string) vmr.TraceSpan {
 }
 
 func (rs *runtimeShim) ValidateImmediateCallerIs(as ...address.Address) {
+	imm, err := rs.vmctx.LookupID(rs.vmctx.Message().From)
+	if err != nil {
+		rs.Abortf(exitcode.ErrIllegalState, "couldn't resolve immediate caller")
+	}
+
 	for _, a := range as {
-		if rs.vmctx.Message().From == a {
+		if imm == a {
 			return
 		}
 	}

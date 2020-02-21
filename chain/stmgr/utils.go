@@ -2,6 +2,7 @@ package stmgr
 
 import (
 	"context"
+	"github.com/filecoin-project/lotus/chain/state"
 
 	amt "github.com/filecoin-project/go-amt-ipld/v2"
 	commcid "github.com/filecoin-project/go-fil-commcid"
@@ -42,7 +43,13 @@ func GetMinerWorkerRaw(ctx context.Context, sm *StateManager, st cid.Cid, maddr 
 		return address.Undef, xerrors.Errorf("(get sset) failed to load miner actor state: %w", err)
 	}
 
-	return mas.Info.Worker, nil
+	cst := cbor.NewCborStore(sm.cs.Blockstore())
+	state, err := state.LoadStateTree(cst, st)
+	if err != nil {
+		return address.Undef, xerrors.Errorf("load state tree: %w", err)
+	}
+
+	return vm.ResolveToKeyAddr(state, cst, mas.Info.Worker)
 }
 
 func GetMinerOwner(ctx context.Context, sm *StateManager, st cid.Cid, maddr address.Address) (address.Address, error) {
@@ -52,7 +59,13 @@ func GetMinerOwner(ctx context.Context, sm *StateManager, st cid.Cid, maddr addr
 		return address.Undef, xerrors.Errorf("(get sset) failed to load miner actor state: %w", err)
 	}
 
-	return mas.Info.Owner, nil
+	cst := cbor.NewCborStore(sm.cs.Blockstore())
+	state, err := state.LoadStateTree(cst, st)
+	if err != nil {
+		return address.Undef, xerrors.Errorf("load state tree: %w", err)
+	}
+
+	return vm.ResolveToKeyAddr(state, cst, mas.Info.Owner)
 }
 
 func GetPower(ctx context.Context, sm *StateManager, ts *types.TipSet, maddr address.Address) (types.BigInt, types.BigInt, error) {
