@@ -18,9 +18,7 @@ import (
 	"github.com/filecoin-project/lotus/chain/types"
 )
 
-const maxBatch = 3000
-
-func runSyncer(ctx context.Context, api api.FullNode, st *storage) {
+func runSyncer(ctx context.Context, api api.FullNode, st *storage, maxBatch int) {
 	notifs, err := api.ChainNotify(ctx)
 	if err != nil {
 		panic(err)
@@ -32,7 +30,7 @@ func runSyncer(ctx context.Context, api api.FullNode, st *storage) {
 				case store.HCCurrent:
 					fallthrough
 				case store.HCApply:
-					syncHead(ctx, api, st, change.Val)
+					syncHead(ctx, api, st, change.Val, maxBatch)
 				case store.HCRevert:
 					log.Warnf("revert todo")
 				}
@@ -65,7 +63,7 @@ type actorInfo struct {
 	state     string
 }
 
-func syncHead(ctx context.Context, api api.FullNode, st *storage, ts *types.TipSet) {
+func syncHead(ctx context.Context, api api.FullNode, st *storage, ts *types.TipSet, maxBatch int) {
 	var alk sync.Mutex
 
 	log.Infof("Getting synced block list")
@@ -123,7 +121,7 @@ func syncHead(ctx context.Context, api api.FullNode, st *storage, ts *types.TipS
 
 		toSync := map[cid.Cid]*types.BlockHeader{}
 		for c, header := range allToSync {
-			if header.Height < minH+maxBatch {
+			if header.Height < minH+uint64(maxBatch) {
 				toSync[c] = header
 				addresses[header.Miner] = address.Undef
 			}
