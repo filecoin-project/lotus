@@ -366,7 +366,7 @@ func (t *ChannelInfo) UnmarshalCBOR(r io.Reader) error {
 			if maj != cbg.MajUnsignedInt {
 				return fmt.Errorf("wrong type for uint64 field")
 			}
-			t.NextLane = int64(extra)
+			t.NextLane = uint64(extra)
 
 		default:
 			return fmt.Errorf("unknown struct field %d: '%s'", i, name)

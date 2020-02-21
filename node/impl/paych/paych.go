@@ -40,7 +40,7 @@ func (a *PaychAPI) PaychGet(ctx context.Context, from, to address.Address, ensur
 	}, nil
 }
 
-func (a *PaychAPI) PaychAllocateLane(ctx context.Context, ch address.Address) (int64, error) {
+func (a *PaychAPI) PaychAllocateLane(ctx context.Context, ch address.Address) (uint64, error) {
 	return a.PaychMgr.AllocateLane(ch)
 }
 

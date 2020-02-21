@@ -32,7 +32,7 @@ func (rcn *retrievalClientNode) GetOrCreatePaymentChannel(ctx context.Context, c
 // Allocate late creates a lane within a payment channel so that calls to
 // CreatePaymentVoucher will automatically make vouchers only for the difference
 // in total
-func (rcn *retrievalClientNode) AllocateLane(paymentChannel address.Address) (int64, error) {
+func (rcn *retrievalClientNode) AllocateLane(paymentChannel address.Address) (uint64, error) {
 	return rcn.pmgr.AllocateLane(paymentChannel)
 }
 
@@ -44,5 +44,5 @@ func (rcn *retrievalClientNode) CreatePaymentVoucher(ctx context.Context, paymen
 	if err != nil {
 		return nil, err
 	}
-	return voucher
+	return voucher, nil
 }
