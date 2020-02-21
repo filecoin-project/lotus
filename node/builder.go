@@ -3,6 +3,7 @@ package node
 import (
 	"context"
 	"errors"
+	"github.com/filecoin-project/specs-actors/actors/runtime"
 	"time"
 
 	sectorbuilder "github.com/filecoin-project/go-sectorbuilder"
@@ -202,7 +203,7 @@ func Online() Option {
 			Override(HandleIncomingMessagesKey, modules.HandleIncomingMessages),
 
 			Override(new(sectorbuilder.Verifier), sectorbuilder.ProofVerifier),
-			Override(new(*types.VMSyscalls), vm.Syscalls),
+			Override(new(runtime.Syscalls), vm.Syscalls),
 			Override(new(*store.ChainStore), modules.ChainStore),
 			Override(new(*stmgr.StateManager), stmgr.NewStateManager),
 			Override(new(*wallet.Wallet), wallet.NewWallet),
