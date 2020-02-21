@@ -6,6 +6,7 @@ import (
 	"crypto/sha256"
 	"encoding/binary"
 	"fmt"
+	format "github.com/ipfs/go-ipld-format"
 	"io/ioutil"
 	"sync/atomic"
 
@@ -256,11 +257,22 @@ func (cg *ChainGen) GenesisCar() ([]byte, error) {
 
 	out := new(bytes.Buffer)
 
-	if err := car.WriteCar(context.TODO(), dserv, []cid.Cid{cg.Genesis().Cid()}, out); err != nil {
+	if err := car.WriteCarWithWalker(context.TODO(), dserv, []cid.Cid{cg.Genesis().Cid()}, out, CarWalkFunc); err != nil {
 		return nil, xerrors.Errorf("genesis car write car failed: %w", err)
 	}
 
 	return out.Bytes(), nil
+}
+
+func CarWalkFunc(nd format.Node) (out []*format.Link, err error) {
+	for _, link := range nd.Links() {
+		if link.Cid.Prefix().MhType == uint64(commcid.FC_SEALED_V1) || link.Cid.Prefix().MhType == uint64(commcid.FC_UNSEALED_V1) {
+			continue
+		}
+		out = append(out, link)
+	}
+
+	return out, nil
 }
 
 func (cg *ChainGen) nextBlockProof(ctx context.Context, pts *types.TipSet, m address.Address, round int64) (*types.EPostProof, *types.Ticket, error) {
