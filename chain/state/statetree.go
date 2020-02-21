@@ -3,6 +3,7 @@ package state
 import (
 	"context"
 	"fmt"
+	init_ "github.com/filecoin-project/specs-actors/actors/builtin/init"
 
 	"github.com/filecoin-project/specs-actors/actors/util/adt"
 	"github.com/ipfs/go-cid"
@@ -93,7 +94,7 @@ func (st *StateTree) GetActor(addr address.Address) (*types.Actor, error) {
 
 	iaddr, err := st.LookupID(addr)
 	if err != nil {
-		if xerrors.Is(err, hamt.ErrNotFound) {
+		if xerrors.Is(err, init_.ErrAddressNotFound) {
 			return nil, xerrors.Errorf("resolution lookup failed (%s): %w", addr, types.ErrActorNotFound)
 		}
 		return nil, xerrors.Errorf("address resolution: %w", err)

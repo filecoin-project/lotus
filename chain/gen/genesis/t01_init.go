@@ -3,6 +3,7 @@ package genesis
 import (
 	"context"
 	"encoding/json"
+	"fmt"
 
 	"github.com/ipfs/go-hamt-ipld"
 	bstore "github.com/ipfs/go-ipfs-blockstore"
@@ -35,6 +36,8 @@ func SetupInitActor(bs bstore.Blockstore, netname string, initialActors []genesi
 		if err := json.Unmarshal(a.Meta, &ainfo); err != nil {
 			return nil, xerrors.Errorf("unmarshaling account meta: %w", err)
 		}
+
+		fmt.Printf("init set %s t0%d\n", ainfo.Owner, AccountStart+uint64(i))
 
 		if err := amap.Set(context.TODO(), string(ainfo.Owner.Bytes()), AccountStart+uint64(i)); err != nil {
 			return nil, err
