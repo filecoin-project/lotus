@@ -66,7 +66,6 @@ type actorInfo struct {
 }
 
 func syncHead(ctx context.Context, api api.FullNode, st *storage, ts *types.TipSet) {
-	addresses := map[address.Address]address.Address{}
 	var alk sync.Mutex
 
 	log.Infof("Getting synced block list")
@@ -91,7 +90,6 @@ func syncHead(ctx context.Context, api api.FullNode, st *storage, ts *types.TipS
 		}
 
 		allToSync[bh.Cid()] = bh
-		addresses[bh.Miner] = address.Undef
 
 		if len(allToSync)%500 == 10 {
 			log.Infof("todo: (%d) %s @%d", len(allToSync), bh.Cid(), bh.Height)
@@ -114,6 +112,7 @@ func syncHead(ctx context.Context, api api.FullNode, st *storage, ts *types.TipS
 
 	for len(allToSync) > 0 {
 		actors := map[address.Address]map[types.Actor]actorInfo{}
+		addresses := map[address.Address]address.Address{}
 		minH := uint64(math.MaxUint64)
 
 		for _, header := range allToSync {
@@ -126,6 +125,7 @@ func syncHead(ctx context.Context, api api.FullNode, st *storage, ts *types.TipS
 		for c, header := range allToSync {
 			if header.Height < minH+maxBatch {
 				toSync[c] = header
+				addresses[header.Miner] = address.Undef
 			}
 		}
 		for c := range toSync {
