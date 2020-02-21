@@ -4,6 +4,7 @@ package build
 
 import (
 	"github.com/filecoin-project/specs-actors/actors/abi"
+	"github.com/filecoin-project/specs-actors/actors/builtin/miner"
 )
 
 var SectorSizes = []abi.SectorSize{
@@ -19,13 +20,13 @@ const PropagationDelay = 6
 //  ElectionPeriodStart before starting fallback post computation
 //
 // Epochs
-const FallbackPoStDelay = 30
+const FallbackPoStDelay = miner.ProvingPeriod
 
 // SlashablePowerDelay is the number of epochs after ElectionPeriodStart, after
 // which the miner is slashed
 //
 // Epochs
-const SlashablePowerDelay = 200
+const SlashablePowerDelay = miner.ProvingPeriod * 3 // TODO: remove
 
 // Epochs
 const InteractivePoRepDelay = 8

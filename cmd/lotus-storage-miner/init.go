@@ -5,6 +5,10 @@ import (
 	"crypto/rand"
 	"encoding/json"
 	"fmt"
+	"github.com/filecoin-project/specs-actors/actors/builtin"
+	miner2 "github.com/filecoin-project/specs-actors/actors/builtin/miner"
+	"github.com/filecoin-project/specs-actors/actors/builtin/power"
+	crypto2 "github.com/filecoin-project/specs-actors/actors/crypto"
 	"io/ioutil"
 	"os"
 	"path/filepath"
@@ -12,8 +16,6 @@ import (
 
 	"github.com/filecoin-project/go-address"
 	cborutil "github.com/filecoin-project/go-cbor-util"
-	"github.com/filecoin-project/go-fil-markets/storagemarket"
-	deals "github.com/filecoin-project/go-fil-markets/storagemarket/impl"
 	paramfetch "github.com/filecoin-project/go-paramfetch"
 	"github.com/filecoin-project/go-sectorbuilder"
 	"github.com/filecoin-project/specs-actors/actors/abi"
@@ -32,7 +34,6 @@ import (
 	"github.com/filecoin-project/lotus/chain/types"
 	lcli "github.com/filecoin-project/lotus/cli"
 	"github.com/filecoin-project/lotus/genesis"
-	"github.com/filecoin-project/lotus/markets/utils"
 	"github.com/filecoin-project/lotus/miner"
 	"github.com/filecoin-project/lotus/node/modules"
 	"github.com/filecoin-project/lotus/node/modules/dtypes"
@@ -231,15 +232,9 @@ func migratePreSealMeta(ctx context.Context, api lapi.FullNode, presealDir strin
 		return xerrors.Errorf("reading preseal metadata: %w", err)
 	}
 
-	preseals := map[string]genesis.GenesisMiner{}
-
-	if err := json.Unmarshal(b, &preseals); err != nil {
+	meta := genesis.Miner{}
+	if err := json.Unmarshal(b, &meta); err != nil {
 		return xerrors.Errorf("unmarshaling preseal metadata: %w", err)
-	}
-
-	meta, ok := preseals[maddr.String()]
-	if !ok {
-		return xerrors.New("got wrong preseal info")
 	}
 
 	for _, sector := range meta.Sectors {
@@ -278,6 +273,7 @@ func migratePreSealMeta(ctx context.Context, api lapi.FullNode, presealDir strin
 			return err
 		}
 
+		/* // TODO: Import deals into market
 		pnd, err := cborutil.AsIpld(sector.Deal)
 		if err != nil {
 			return err
@@ -285,19 +281,12 @@ func migratePreSealMeta(ctx context.Context, api lapi.FullNode, presealDir strin
 
 		dealKey := datastore.NewKey(deals.ProviderDsPrefix).ChildString(pnd.Cid().String())
 
-		proposal, err := utils.ToSharedStorageDealProposal(&sector.Deal)
-		if err != nil {
-			return err
-		}
 		deal := &deals.MinerDeal{
 			MinerDeal: storagemarket.MinerDeal{
-				Proposal:    *proposal,
+				ClientDealProposal: sector.Deal,
 				ProposalCid: pnd.Cid(),
 				State:       storagemarket.StorageDealActive,
-				Ref:         pnd.Cid(), // TODO: This is super wrong, but there
-				// are no params for CommP CIDs, we can't recover unixfs cid easily,
-				// and this isn't even used after the deal enters Complete state
-				DealID: dealID,
+				DealID: sector.,
 			},
 		}
 
@@ -308,7 +297,7 @@ func migratePreSealMeta(ctx context.Context, api lapi.FullNode, presealDir strin
 
 		if err := mds.Put(dealKey, b); err != nil {
 			return err
-		}
+		}*/
 	}
 
 	return nil
@@ -461,26 +450,12 @@ func makeHostKey(lr repo.LockedRepo) (crypto.PrivKey, error) {
 }
 
 func configureStorageMiner(ctx context.Context, api lapi.FullNode, addr address.Address, peerid peer.ID) error {
-	// This really just needs to be an api call at this point...
-	recp, err := api.StateCall(ctx, &types.Message{
-		To:     addr,
-		From:   addr,
-		Method: actors.MAMethods.GetWorkerAddr,
-	}, nil)
-	if err != nil {
-		return xerrors.Errorf("failed to get worker address: %w", err)
-	}
-
-	if recp.ExitCode != 0 {
-		return xerrors.Errorf("getWorkerAddr returned exit code %d", recp.ExitCode)
-	}
-
-	waddr, err := address.NewFromBytes(recp.Return)
+	waddr, err := api.StateMinerWorker(ctx, addr, nil)
 	if err != nil {
 		return xerrors.Errorf("getWorkerAddr returned bad address: %w", err)
 	}
 
-	enc, err := actors.SerializeParams(&actors.UpdatePeerIDParams{PeerID: peerid})
+	enc, err := actors.SerializeParams(&miner2.ChangePeerIDParams{NewID: peerid})
 	if err != nil {
 		return err
 	}
@@ -488,7 +463,7 @@ func configureStorageMiner(ctx context.Context, api lapi.FullNode, addr address.
 	msg := &types.Message{
 		To:       addr,
 		From:     waddr,
-		Method:   actors.MAMethods.UpdatePeerID,
+		Method:   builtin.MethodsMiner.ChangePeerID,
 		Params:   enc,
 		Value:    types.NewInt(0),
 		GasPrice: types.NewInt(0),
@@ -532,7 +507,7 @@ func createStorageMiner(ctx context.Context, api lapi.FullNode, peerid peer.ID, 
 	if cctx.String("worker") != "" {
 		worker, err = address.NewFromString(cctx.String("worker"))
 	} else if cctx.Bool("create-worker-key") { // TODO: Do we need to force this if owner is Secpk?
-		worker, err = api.WalletNew(ctx, types.KTBLS)
+		worker, err = api.WalletNew(ctx, crypto2.SigTypeBLS)
 	}
 	// TODO: Transfer some initial funds to worker
 	if err != nil {
@@ -544,11 +519,10 @@ func createStorageMiner(ctx context.Context, api lapi.FullNode, peerid peer.ID, 
 		return address.Undef, err
 	}
 
-	params, err := actors.SerializeParams(&actors.CreateStorageMinerParams{
-		Owner:      owner,
+	params, err := actors.SerializeParams(&power.CreateMinerParams{
 		Worker:     worker,
 		SectorSize: abi.SectorSize(ssize),
-		PeerID:     peerid,
+		Peer:     peerid,
 	})
 	if err != nil {
 		return address.Undef, err
@@ -559,7 +533,7 @@ func createStorageMiner(ctx context.Context, api lapi.FullNode, peerid peer.ID, 
 		From:  owner,
 		Value: types.BigAdd(collateral, types.BigDiv(collateral, types.NewInt(100))),
 
-		Method: actors.SPAMethods.CreateStorageMiner,
+		Method: builtin.MethodsPower.CreateMiner,
 		Params: params,
 
 		GasLimit: types.NewInt(10000000),

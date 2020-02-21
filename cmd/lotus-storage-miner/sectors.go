@@ -136,7 +136,7 @@ var sectorsListCmd = &cli.Command{
 		}
 		provingIDs := make(map[abi.SectorNumber]struct{}, len(pset))
 		for _, info := range pset {
-			provingIDs[info.SectorID] = struct{}{}
+			provingIDs[info.ID] = struct{}{}
 		}
 
 		sset, err := fullApi.StateMinerSectors(ctx, maddr, nil)
@@ -145,7 +145,7 @@ var sectorsListCmd = &cli.Command{
 		}
 		commitedIDs := make(map[abi.SectorNumber]struct{}, len(pset))
 		for _, info := range sset {
-			commitedIDs[info.SectorID] = struct{}{}
+			commitedIDs[info.ID] = struct{}{}
 		}
 
 		sort.Slice(list, func(i, j int) bool {
