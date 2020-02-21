@@ -4,8 +4,8 @@ import (
 	"context"
 	"time"
 
+	"github.com/filecoin-project/specs-actors/actors/abi/big"
 	"github.com/ipfs/go-cid"
-	cbor "github.com/ipfs/go-ipld-cbor"
 	logging "github.com/ipfs/go-log/v2"
 	"github.com/libp2p/go-libp2p-core/host"
 	inet "github.com/libp2p/go-libp2p-core/network"
@@ -23,13 +23,9 @@ const ProtocolID = "/fil/hello/1.0.0"
 
 var log = logging.Logger("hello")
 
-func init() {
-	cbor.RegisterCborType(Message{})
-}
-
 type Message struct {
 	HeaviestTipSet       []cid.Cid
-	HeaviestTipSetWeight types.BigInt
+	HeaviestTipSetWeight big.Int
 	GenesisHash          cid.Cid
 
 	TArrial int64
