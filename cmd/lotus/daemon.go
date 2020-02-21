@@ -28,7 +28,7 @@ import (
 )
 
 const (
-	makeGenFlag     = "lotus-make-random-genesis"
+	makeGenFlag     = "lotus-make-genesis"
 	preTemplateFlag = "genesis-template"
 )
 
@@ -53,11 +53,6 @@ var DaemonCmd = &cli.Command{
 		&cli.StringFlag{
 			Name:  "genesis",
 			Usage: "genesis file to use for first node run",
-		},
-		&cli.StringFlag{
-			Name:   "genesis-timestamp",
-			Hidden: true,
-			Usage:  "set the timestamp for the genesis block that will be created",
 		},
 		&cli.BoolFlag{
 			Name:  "bootstrap",
