@@ -117,6 +117,8 @@ github.com/filecoin-project/go-fil-commcid v0.0.0-20200208005934-2b8bd03caca5 h1
 github.com/filecoin-project/go-fil-commcid v0.0.0-20200208005934-2b8bd03caca5/go.mod h1:JbkIgFF/Z9BDlvrJO1FuKkaWsH673/UdFaiVS6uIHlA=
 github.com/filecoin-project/go-fil-markets v0.0.0-20200212222958-2202549b86ee h1:DAV4RFTUBM1120KSI++jySWKDWpZ0njO57byuKFksuc=
 github.com/filecoin-project/go-fil-markets v0.0.0-20200212222958-2202549b86ee/go.mod h1:CUIM9THHU1A4tz5SIuVfqz+GPgWwUNVGa5ub7HaMC2o=
+github.com/filecoin-project/go-fil-markets v0.0.0-20200220181918-bfd030852a59 h1:AULXvl86fSjh1gS3V/xo2YEWntAOSe3HGAHO0+S2h8k=
+github.com/filecoin-project/go-fil-markets v0.0.0-20200220181918-bfd030852a59/go.mod h1:ftsiBbjLjNLAZ52FVDigkdCp73ltdcvAzAXav6drSLA=
 github.com/filecoin-project/go-padreader v0.0.0-20200210211231-548257017ca6 h1:92PET+sx1Hb4W/8CgFwGuxaKbttwY+UNspYZTvXY0vs=
 github.com/filecoin-project/go-padreader v0.0.0-20200210211231-548257017ca6/go.mod h1:0HgYnrkeSU4lu1p+LEOeDpFsNBssa0OGGriWdA4hvaE=
 github.com/filecoin-project/go-paramfetch v0.0.0-20200102181131-b20d579f2878/go.mod h1:40kI2Gv16mwcRsHptI3OAV4nlOEU7wVDc4RgMylNFjU=
@@ -132,6 +134,7 @@ github.com/filecoin-project/specs-actors v0.0.0-20200218211922-372fea3f131f h1:x
 github.com/filecoin-project/specs-actors v0.0.0-20200218211922-372fea3f131f/go.mod h1:Ecx+3v6Bn4exCS0NbPu7VjrDCu2J+t1PdEpYin1/qOU=
 github.com/filecoin-project/specs-actors v0.0.0-20200219191759-7e15e5c89659 h1:qHn5166bAy0dVEZr1Z4TPoveZNEEcFVz+RumCSM6QqA=
 github.com/filecoin-project/specs-actors v0.0.0-20200219191759-7e15e5c89659/go.mod h1:Ecx+3v6Bn4exCS0NbPu7VjrDCu2J+t1PdEpYin1/qOU=
+github.com/filecoin-project/specs-actors v0.0.0-20200220011005-b2a2fbf40362/go.mod h1:xtDZUB6pe4Pksa/bAJbJ693OilaC5Wbot9jMhLm3cZA=
 github.com/filecoin-project/specs-actors v0.0.0-20200221134721-ef38bdd3e05f h1:XplJWD0+rmozthAz4idL2wGyScmw9XlEZDaNmUKoY00=
 github.com/filecoin-project/specs-actors v0.0.0-20200221134721-ef38bdd3e05f/go.mod h1:0HAWYrvajFHDgRaKbF0rl+IybVLZL5z4gQ8koCMPhoU=
 github.com/filecoin-project/specs-actors v0.0.0-20200221155838-19bb26c4b9d7 h1:iBqYva5s34J0LVBe7Fqrv/ToNVUFyKwpaXLk47wjq3A=
