@@ -3,7 +3,6 @@ package types
 import (
 	"context"
 
-	"github.com/filecoin-project/go-sectorbuilder"
 	"github.com/filecoin-project/specs-actors/actors/abi"
 	"github.com/filecoin-project/specs-actors/actors/crypto"
 	"github.com/filecoin-project/specs-actors/actors/runtime"
@@ -49,18 +48,6 @@ type VMContext interface {
 	Sys() runtime.Syscalls
 
 	Context() context.Context
-}
-
-type VMSyscalls struct {
-	ValidatePoRep      func(context.Context, address.Address, abi.SectorSize, []byte, []byte, []byte, []byte, []byte, abi.SectorNumber) (bool, aerrors.ActorError)
-	VerifyFallbackPost func(ctx context.Context,
-		sectorSize abi.SectorSize,
-		sectorInfo sectorbuilder.SortedPublicSectorInfo,
-		challengeSeed []byte,
-		proof []byte,
-		candidates []sectorbuilder.EPostCandidate,
-		proverID address.Address,
-		faults uint64) (bool, error)
 }
 
 type storageWrapper struct {
