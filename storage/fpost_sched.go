@@ -163,13 +163,13 @@ func (s *FPoStScheduler) abortActivePoSt() {
 }
 
 func (s *FPoStScheduler) shouldFallbackPost(ctx context.Context, ts *types.TipSet) (abi.ChainEpoch, bool, error) {
-	eps, err := s.api.StateMinerElectionPeriodStart(ctx, s.actor, ts)
+	ps, err := s.api.StateMinerPostState(ctx, s.actor, ts)
 	if err != nil {
 		return 0, false, xerrors.Errorf("getting ElectionPeriodStart: %w", err)
 	}
 
-	if ts.Height() >= eps+build.FallbackPoStDelay {
-		return eps, ts.Height() >= eps+build.FallbackPoStDelay+StartConfidence, nil
+	if ts.Height() >= ps.ProvingPeriodStart+build.FallbackPoStDelay {
+		return ps.ProvingPeriodStart, ts.Height() >= ps.ProvingPeriodStart+build.FallbackPoStDelay+StartConfidence, nil
 	}
 	return 0, false, nil
 }

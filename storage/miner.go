@@ -6,7 +6,6 @@ import (
 	"time"
 
 	"github.com/filecoin-project/go-address"
-	"github.com/filecoin-project/specs-actors/actors/abi"
 	"github.com/ipfs/go-cid"
 	"github.com/ipfs/go-datastore"
 	logging "github.com/ipfs/go-log/v2"
@@ -14,6 +13,8 @@ import (
 	"golang.org/x/xerrors"
 
 	"github.com/filecoin-project/go-sectorbuilder"
+	"github.com/filecoin-project/specs-actors/actors/abi"
+	"github.com/filecoin-project/specs-actors/actors/builtin/miner"
 
 	"github.com/filecoin-project/lotus/api"
 	"github.com/filecoin-project/lotus/build"
@@ -43,7 +44,7 @@ type storageMinerApi interface {
 	// Call a read only method on actors (no interaction with the chain required)
 	StateCall(context.Context, *types.Message, *types.TipSet) (*api.MethodCall, error)
 	StateMinerWorker(context.Context, address.Address, *types.TipSet) (address.Address, error)
-	StateMinerElectionPeriodStart(ctx context.Context, actor address.Address, ts *types.TipSet) (abi.ChainEpoch, error)
+	StateMinerPostState(ctx context.Context, actor address.Address, ts *types.TipSet) (*miner.PoStState, error)
 	StateMinerSectors(context.Context, address.Address, *types.TipSet) ([]*api.ChainSectorInfo, error)
 	StateMinerProvingSet(context.Context, address.Address, *types.TipSet) ([]*api.ChainSectorInfo, error)
 	StateMinerSectorSize(context.Context, address.Address, *types.TipSet) (abi.SectorSize, error)

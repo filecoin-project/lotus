@@ -3,6 +3,7 @@ package modules
 import (
 	"bytes"
 	"context"
+	"github.com/filecoin-project/specs-actors/actors/runtime"
 
 	"github.com/ipfs/go-bitswap"
 	"github.com/ipfs/go-bitswap/network"
@@ -73,7 +74,7 @@ func ChainBlockservice(bs dtypes.ChainBlockstore, rem dtypes.ChainExchange) dtyp
 	return blockservice.New(bs, rem)
 }
 
-func ChainStore(lc fx.Lifecycle, bs dtypes.ChainBlockstore, ds dtypes.MetadataDS, syscalls *types.VMSyscalls) *store.ChainStore {
+func ChainStore(lc fx.Lifecycle, bs dtypes.ChainBlockstore, ds dtypes.MetadataDS, syscalls runtime.Syscalls) *store.ChainStore {
 	chain := store.NewChainStore(bs, ds, syscalls)
 
 	if err := chain.Load(); err != nil {
