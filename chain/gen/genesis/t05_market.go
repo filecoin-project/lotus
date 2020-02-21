@@ -2,24 +2,30 @@ package genesis
 
 import (
 	"context"
+	"github.com/filecoin-project/go-amt-ipld/v2"
+	"github.com/ipfs/go-hamt-ipld"
 
 	"github.com/filecoin-project/specs-actors/actors/builtin/market"
 	bstore "github.com/ipfs/go-ipfs-blockstore"
 	cbor "github.com/ipfs/go-ipld-cbor"
 
 	"github.com/filecoin-project/lotus/chain/actors"
-	"github.com/filecoin-project/lotus/chain/store"
 	"github.com/filecoin-project/lotus/chain/types"
 )
 
 func SetupStorageMarketActor(bs bstore.Blockstore) (*types.Actor, error) {
 	cst := cbor.NewCborStore(bs)
-	ast := store.ActorStore(context.TODO(), bs)
 
-	sms, err := market.ConstructState(ast)
+	a, err := amt.NewAMT(cst).Flush(context.TODO())
 	if err != nil {
 		return nil, err
 	}
+	h, err := cst.Put(context.TODO(), hamt.NewNode(cst, hamt.UseTreeBitWidth(5)))
+	if err != nil {
+		return nil, err
+	}
+
+	sms := market.ConstructState(a, h, h)
 
 	stcid, err := cst.Put(context.TODO(), sms)
 	if err != nil {

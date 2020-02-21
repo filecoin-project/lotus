@@ -199,6 +199,10 @@ func (vmc *VMContext) ActorCodeCID(addr address.Address) (ret cid.Cid, err error
 	return act.Code, nil
 }
 
+func (vmc *VMContext) LookupID(a address.Address) (address.Address, error) {
+	return vmc.state.LookupID(a)
+}
+
 const GasVerifySignature = 50
 
 func (vmctx *VMContext) VerifySignature(sig *crypto.Signature, act address.Address, data []byte) aerrors.ActorError {

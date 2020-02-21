@@ -74,7 +74,7 @@ func PreSeal(maddr address.Address, ssize abi.SectorSize, offset abi.SectorNumbe
 			TicketBytes: trand,
 		}
 
-		fmt.Printf("sector-id: %d, piece info: %v", sid, pi)
+		fmt.Printf("sector-id: %d, piece info: %v\n", sid, pi)
 
 		pco, err := sb.SealPreCommit(context.TODO(), sid, ticket, []sectorbuilder.PublicPieceInfo{pi})
 		if err != nil {

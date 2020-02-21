@@ -95,6 +95,13 @@ func SetupStorageMiners(ctx context.Context, cs *store.ChainStore, sroot cid.Cid
 				return cid.Undef, xerrors.Errorf("failed to create genesis miner: %w", err)
 			}
 		}
+		{
+			params := mustEnc(&m.Worker)
+			_, err := doExecValue(ctx, vm, actors.StorageMarketAddress, m.Worker, big.Zero(), builtin.MethodsMarket.AddBalance, params)
+			if err != nil {
+				return cid.Undef, xerrors.Errorf("failed to create genesis miner: %w", err)
+			}
+		}
 
 		// Publish preseal deals
 
@@ -105,7 +112,7 @@ func SetupStorageMiners(ctx context.Context, cs *store.ChainStore, sroot cid.Cid
 
 				params.Deals = append(params.Deals, market.ClientDealProposal{
 					Proposal:        preseal.Deal,
-					ClientSignature: crypto.Signature{}, // TODO: do we want to sign these? Or do we want to fake signatures for genesis setup?
+					ClientSignature: crypto.Signature{Type:crypto.SigTypeBLS}, // TODO: do we want to sign these? Or do we want to fake signatures for genesis setup?
 				})
 				fmt.Printf("calling publish storage deals on miner %s with worker %s\n", preseal.Deal.Provider, m.Worker)
 			}
@@ -197,7 +204,7 @@ func SetupStorageMiners(ctx context.Context, cs *store.ChainStore, sroot cid.Cid
 					Info: miner.SectorPreCommitInfo{
 						SectorNumber: preseal.SectorID,
 						SealedCID:    commcid.ReplicaCommitmentV1ToCID(preseal.CommR[:]),
-						SealEpoch:    0,
+						SealRandEpoch:    0,
 						DealIDs:      []abi.DealID{dealIDs[pi]},
 						Expiration:   preseal.Deal.EndEpoch,
 					},
