@@ -17,7 +17,7 @@ import (
 func Sign(sigType crypto.SigType, privkey []byte, msg []byte) (*crypto.Signature, error) {
 	sv, ok := sigs[sigType]
 	if !ok {
-		return nil, fmt.Errorf("cannot sign message with signature of unsupported type: %s", sigType)
+		return nil, fmt.Errorf("cannot sign message with signature of unsupported type: %v", sigType)
 	}
 
 	sb, err := sv.Sign(privkey, msg)
@@ -42,7 +42,7 @@ func Verify(sig *crypto.Signature, addr address.Address, msg []byte) error {
 
 	sv, ok := sigs[sig.Type]
 	if !ok {
-		return fmt.Errorf("cannot verify signature of unsupported type: %s", sig.Type)
+		return fmt.Errorf("cannot verify signature of unsupported type: %v", sig.Type)
 	}
 
 	return sv.Verify(sig.Data, addr, msg)
@@ -52,7 +52,7 @@ func Verify(sig *crypto.Signature, addr address.Address, msg []byte) error {
 func Generate(sigType crypto.SigType) ([]byte, error) {
 	sv, ok := sigs[sigType]
 	if !ok {
-		return nil, fmt.Errorf("cannot generate private key of unsupported type: %s", sigType)
+		return nil, fmt.Errorf("cannot generate private key of unsupported type: %v", sigType)
 	}
 
 	return sv.GenPrivate()
@@ -62,7 +62,7 @@ func Generate(sigType crypto.SigType) ([]byte, error) {
 func ToPublic(sigType crypto.SigType, pk []byte) ([]byte, error) {
 	sv, ok := sigs[sigType]
 	if !ok {
-		return nil, fmt.Errorf("cannot generate public key of unsupported type: %s", sigType)
+		return nil, fmt.Errorf("cannot generate public key of unsupported type: %v", sigType)
 	}
 
 	return sv.ToPublic(pk)

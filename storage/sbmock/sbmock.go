@@ -138,13 +138,13 @@ func (sb *SBMock) SealPreCommit(ctx context.Context, sid abi.SectorNumber, ticke
 	ss.lk.Lock()
 	defer ss.lk.Unlock()
 
-	ussize := abi.UnpaddedPieceSize(sb.sectorSize)
+	ussize := abi.PaddedPieceSize(sb.sectorSize).Unpadded()
 
 	// TODO: verify pieces in sinfo.pieces match passed in pieces
 
 	var sum abi.UnpaddedPieceSize
 	for _, p := range pieces {
-		sum += abi.UnpaddedPieceSize(p.Size)
+		sum += p.Size
 	}
 
 	if sum != ussize {
@@ -294,7 +294,7 @@ func (sb *SBMock) ReadPieceFromSealedSector(ctx context.Context, sectorID abi.Se
 }
 
 func (sb *SBMock) StageFakeData() (abi.SectorNumber, []sectorbuilder.PublicPieceInfo, error) {
-	usize := abi.UnpaddedPieceSize(sb.sectorSize)
+	usize := abi.PaddedPieceSize(sb.sectorSize).Unpadded()
 	sid, err := sb.AcquireSectorNumber()
 	if err != nil {
 		return 0, nil, err
@@ -357,7 +357,7 @@ func (m mockVerif) GenerateDataCommitment(ssize abi.PaddedPieceSize, pieces []ff
 	if len(pieces) != 1 {
 		panic("todo")
 	}
-	if pieces[0].Size != abi.UnpaddedPieceSize(ssize) {
+	if pieces[0].Size != ssize.Unpadded() {
 		panic("todo")
 	}
 	return pieces[0].CommP, nil

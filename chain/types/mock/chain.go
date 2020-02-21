@@ -5,10 +5,12 @@ import (
 	"fmt"
 
 	"github.com/filecoin-project/go-address"
+	"github.com/filecoin-project/specs-actors/actors/abi"
+	"github.com/filecoin-project/specs-actors/actors/crypto"
+	"github.com/ipfs/go-cid"
+
 	"github.com/filecoin-project/lotus/chain/types"
 	"github.com/filecoin-project/lotus/chain/wallet"
-	"github.com/filecoin-project/specs-actors/actors/abi"
-	"github.com/ipfs/go-cid"
 )
 
 func Address(i uint64) address.Address {
@@ -66,12 +68,12 @@ func MkBlock(parents *types.TipSet, weightInc uint64, ticketNonce uint64) *types
 		},
 		Parents:               pcids,
 		ParentMessageReceipts: c,
-		BLSAggregate:          types.Signature{Type: types.KTBLS, Data: []byte("boo! im a signature")},
+		BLSAggregate:          crypto.Signature{Type: crypto.SigTypeBLS, Data: []byte("boo! im a signature")},
 		ParentWeight:          weight,
 		Messages:              c,
 		Height:                height,
 		ParentStateRoot:       c,
-		BlockSig:              &types.Signature{Type: types.KTBLS, Data: []byte("boo! im a signature")},
+		BlockSig:              &crypto.Signature{Type: crypto.SigTypeBLS, Data: []byte("boo! im a signature")},
 	}
 }
 
