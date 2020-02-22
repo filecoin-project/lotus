@@ -7,11 +7,6 @@ import (
 	"math/big"
 	"reflect"
 
-	commcid "github.com/filecoin-project/go-fil-commcid"
-	"github.com/filecoin-project/specs-actors/actors/abi"
-	"github.com/filecoin-project/specs-actors/actors/builtin/account"
-	"github.com/filecoin-project/specs-actors/actors/crypto"
-	"github.com/filecoin-project/specs-actors/actors/runtime"
 	block "github.com/ipfs/go-block-format"
 	cid "github.com/ipfs/go-cid"
 	hamt "github.com/ipfs/go-hamt-ipld"
@@ -24,6 +19,12 @@ import (
 	"golang.org/x/xerrors"
 
 	"github.com/filecoin-project/go-address"
+	commcid "github.com/filecoin-project/go-fil-commcid"
+	"github.com/filecoin-project/specs-actors/actors/abi"
+	"github.com/filecoin-project/specs-actors/actors/builtin/account"
+	init_ "github.com/filecoin-project/specs-actors/actors/builtin/init"
+	"github.com/filecoin-project/specs-actors/actors/crypto"
+	"github.com/filecoin-project/specs-actors/actors/runtime"
 
 	"github.com/filecoin-project/lotus/build"
 	"github.com/filecoin-project/lotus/chain/actors"
@@ -370,7 +371,7 @@ func (vm *VM) send(ctx context.Context, msg *types.Message, parent *VMContext,
 
 	toActor, err := st.GetActor(msg.To)
 	if err != nil {
-		if xerrors.Is(err, types.ErrActorNotFound) {
+		if xerrors.Is(err, init_.ErrAddressNotFound) {
 			a, err := TryCreateAccountActor(st, msg.To)
 			if err != nil {
 				return nil, aerrors.Absorb(err, 1, "could not create account"), nil

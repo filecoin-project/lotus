@@ -43,7 +43,7 @@ func init() {
 				msgs = msgs[:build.BlockMessageLimit]
 			}
 
-			addr, _ := address.NewIDAddress(101)
+			addr, _ := address.NewIDAddress(1000)
 			var ticket *types.Ticket
 			{
 				vrfBase := head.MinTicket().VRFProof
