@@ -16,7 +16,7 @@ import (
 	"github.com/filecoin-project/lotus/chain"
 	"github.com/filecoin-project/lotus/chain/store"
 	"github.com/filecoin-project/lotus/chain/types"
-	"github.com/filecoin-project/lotus/peermgr"
+	"github.com/filecoin-project/lotus/lib/peermgr"
 )
 
 const ProtocolID = "/fil/hello/1.0.0"
