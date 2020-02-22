@@ -84,7 +84,11 @@ func (st *StateTree) LookupID(addr address.Address) (address.Address, error) {
 		return address.Undef, xerrors.Errorf("loading init actor state: %w", err)
 	}
 
-	return ias.ResolveAddress(&AdtStore{st.Store}, addr)
+	a, err := ias.ResolveAddress(&AdtStore{st.Store}, addr)
+	if err != nil {
+		return address.Undef, xerrors.Errorf("resolve address %s: %w", addr, err)
+	}
+	return a, nil
 }
 
 func (st *StateTree) GetActor(addr address.Address) (*types.Actor, error) {
@@ -95,7 +99,7 @@ func (st *StateTree) GetActor(addr address.Address) (*types.Actor, error) {
 	iaddr, err := st.LookupID(addr)
 	if err != nil {
 		if xerrors.Is(err, init_.ErrAddressNotFound) {
-			return nil, xerrors.Errorf("resolution lookup failed (%s): %w", addr, types.ErrActorNotFound)
+			return nil, xerrors.Errorf("resolution lookup failed (%s): %w", addr, err)
 		}
 		return nil, xerrors.Errorf("address resolution: %w", err)
 	}

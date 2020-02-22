@@ -191,7 +191,8 @@ func GetMinerSectorSize(ctx context.Context, sm *StateManager, ts *types.TipSet,
 }
 
 func GetMinerSlashed(ctx context.Context, sm *StateManager, ts *types.TipSet, maddr address.Address) (uint64, error) {
-	panic("TODO")
+	log.Warn("stub GetMinerSlashed")
+	return 0, nil
 }
 
 func GetMinerFaults(ctx context.Context, sm *StateManager, ts *types.TipSet, maddr address.Address) ([]abi.SectorNumber, error) {

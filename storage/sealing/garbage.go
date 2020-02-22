@@ -135,7 +135,7 @@ func (m *Sealing) PledgeSector() error {
 			return
 		}
 
-		pieces, err := m.pledgeSector(ctx, sid, []abi.UnpaddedPieceSize{}, abi.UnpaddedPieceSize(size))
+		pieces, err := m.pledgeSector(ctx, sid, []abi.UnpaddedPieceSize{}, size)
 		if err != nil {
 			log.Errorf("%+v", err)
 			return
