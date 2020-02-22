@@ -90,7 +90,7 @@ func (m *Sealing) pledgeSector(ctx context.Context, sectorID abi.SectorNumber, e
 		return nil, err
 	}
 	if r.Receipt.ExitCode != 0 {
-		log.Error(xerrors.Errorf("publishing deal failed: exit %d", r.Receipt.ExitCode))
+		log.Error(xerrors.Errorf("publishing deal (ts %s) %s failed: exit %d", r.TipSet.Key(), smsg.Cid(), r.Receipt.ExitCode))
 	}
 	var resp actors.PublishStorageDealResponse
 	if err := resp.UnmarshalCBOR(bytes.NewReader(r.Receipt.Return)); err != nil {
