@@ -218,8 +218,8 @@ var stateReplaySetCmd = &cli.Command{
 	Name:  "replay",
 	Usage: "Replay a particular message within a tipset",
 	Action: func(cctx *cli.Context) error {
-		if cctx.Args().Len() < 2 {
-			fmt.Println("usage: <tipset> <message cid>")
+		if cctx.Args().Len() < 1 {
+			fmt.Println("usage: [tipset] <message cid>")
 			fmt.Println("The last cid passed will be used as the message CID")
 			fmt.Println("All preceding ones will be used as the tipset")
 			return nil
@@ -231,15 +231,6 @@ var stateReplaySetCmd = &cli.Command{
 			return fmt.Errorf("message cid was invalid: %s", err)
 		}
 
-		var tscids []cid.Cid
-		for _, s := range args[:len(args)-1] {
-			c, err := cid.Decode(s)
-			if err != nil {
-				return fmt.Errorf("tipset cid was invalid: %s", err)
-			}
-			tscids = append(tscids, c)
-		}
-
 		api, closer, err := GetFullNodeAPI(cctx)
 		if err != nil {
 			return err
@@ -248,20 +239,44 @@ var stateReplaySetCmd = &cli.Command{
 
 		ctx := ReqContext(cctx)
 
-		var headers []*types.BlockHeader
-		for _, c := range tscids {
-			h, err := api.ChainGetBlock(ctx, c)
+		var ts *types.TipSet
+		{
+			var tscids []cid.Cid
+			for _, s := range args[:len(args)-1] {
+				c, err := cid.Decode(s)
+				if err != nil {
+					return fmt.Errorf("tipset cid was invalid: %s", err)
+				}
+				tscids = append(tscids, c)
+			}
+
+			if len(tscids) > 0 {
+				var headers []*types.BlockHeader
+				for _, c := range tscids {
+					h, err := api.ChainGetBlock(ctx, c)
+					if err != nil {
+						return err
+					}
+
+					headers = append(headers, h)
+				}
+
+				ts, err = types.NewTipSet(headers)
+			} else {
+				r, err := api.StateWaitMsg(ctx, mcid)
+				if err != nil {
+					return xerrors.Errorf("finding message in chain: %w", err)
+				}
+
+				ts, err = api.ChainGetTipSet(ctx, r.TipSet.Parents())
+			}
 			if err != nil {
 				return err
 			}
 
-			headers = append(headers, h)
+
 		}
 
-		ts, err := types.NewTipSet(headers)
-		if err != nil {
-			return err
-		}
 
 		res, err := api.StateReplay(ctx, ts, mcid)
 		if err != nil {
