@@ -20,6 +20,7 @@ import (
 
 	"github.com/filecoin-project/specs-actors/actors/runtime"
 
+	"github.com/filecoin-project/lotus/chain/gen"
 	genesis2 "github.com/filecoin-project/lotus/chain/gen/genesis"
 	"github.com/filecoin-project/lotus/chain/types"
 	"github.com/filecoin-project/lotus/genesis"
@@ -41,7 +42,7 @@ func MakeGenesisMem(out io.Writer, template genesis.Template) func(bs dtypes.Cha
 			blkserv := blockservice.New(bs, offl)
 			dserv := merkledag.NewDAGService(blkserv)
 
-			if err := car.WriteCar(context.TODO(), dserv, []cid.Cid{b.Genesis.Cid()}, out); err != nil {
+			if err := car.WriteCarWithWalker(context.TODO(), dserv, []cid.Cid{b.Genesis.Cid()}, out, gen.CarWalkFunc); err != nil {
 				return nil, err
 			}
 
@@ -75,7 +76,7 @@ func MakeGenesis(outFile, genesisTemplate string) func(bs dtypes.ChainBlockstore
 
 			b, err := genesis2.MakeGenesisBlock(context.TODO(), bs, syscalls, template)
 			if err != nil {
-				return nil, err
+				return nil, xerrors.Errorf("make genesis block: %w", err)
 			}
 
 			fmt.Printf("GENESIS MINER ADDRESS: t0%d\n", genesis2.MinerStart)
@@ -89,7 +90,7 @@ func MakeGenesis(outFile, genesisTemplate string) func(bs dtypes.ChainBlockstore
 			blkserv := blockservice.New(bs, offl)
 			dserv := merkledag.NewDAGService(blkserv)
 
-			if err := car.WriteCar(context.TODO(), dserv, []cid.Cid{b.Genesis.Cid()}, f); err != nil {
+			if err := car.WriteCarWithWalker(context.TODO(), dserv, []cid.Cid{b.Genesis.Cid()}, f, gen.CarWalkFunc); err != nil {
 				return nil, err
 			}
 
