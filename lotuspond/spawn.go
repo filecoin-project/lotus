@@ -1,7 +1,11 @@
 package main
 
 import (
+	"encoding/json"
 	"fmt"
+	genesis2 "github.com/filecoin-project/lotus/chain/gen/genesis"
+	"github.com/filecoin-project/lotus/genesis"
+	"github.com/filecoin-project/specs-actors/actors/abi/big"
 	"io"
 	"io/ioutil"
 	"os"
@@ -35,7 +39,7 @@ func (api *api) Spawn() (nodeInfo, error) {
 	if id == 1 {
 		// preseal
 
-		genMiner, err := address.NewIDAddress(101)
+		genMiner, err := address.NewIDAddress(genesis2.MinerStart)
 		if err != nil {
 			return nodeInfo{}, err
 		}
@@ -49,7 +53,27 @@ func (api *api) Spawn() (nodeInfo, error) {
 		if err := seed.WriteGenesisMiner(genMiner, sbroot, genm, ki); err != nil {
 			return nodeInfo{}, xerrors.Errorf("failed to write genminer info: %w", err)
 		}
-		params = append(params, "--genesis-presealed-sectors="+filepath.Join(dir, "preseal", "pre-seal-t0101.json"))
+		params = append(params, "--import-key="+filepath.Join(dir, "preseal", "pre-seal-t01000.key"))
+		params = append(params, "--genesis-template="+filepath.Join(dir, "preseal", "genesis-template.json"))
+
+		// Create template
+
+		var template genesis.Template
+		template.Miners = append(template.Miners, *genm)
+		template.Accounts = append(template.Accounts, genesis.Actor{
+			Type:    genesis.TAccount,
+			Balance: big.NewInt(100000000000000),
+			Meta:    (&genesis.AccountMeta{Owner: genm.Owner}).ActorMeta(),
+		})
+
+		tb, err := json.Marshal(&template)
+		if err != nil {
+			return nodeInfo{}, xerrors.Errorf("marshal genesis template: %w", err)
+		}
+
+		if err := ioutil.WriteFile(filepath.Join(dir, "preseal", "genesis-template.json"), tb, 0664); err != nil {
+			return nodeInfo{}, xerrors.Errorf("write genesis template: %w", err)
+		}
 
 		// make genesis
 		genf, err := ioutil.TempFile(os.TempDir(), "lotus-genesis-")
@@ -58,7 +82,7 @@ func (api *api) Spawn() (nodeInfo, error) {
 		}
 
 		api.genesis = genf.Name()
-		genParam = "--lotus-make-random-genesis=" + api.genesis
+		genParam = "--lotus-make-genesis=" + api.genesis
 
 		if err := genf.Close(); err != nil {
 			return nodeInfo{}, err
@@ -143,7 +167,7 @@ func (api *api) SpawnStorage(fullNodeRepo string) (nodeInfo, error) {
 
 	initArgs := []string{"init", "--nosync"}
 	if fullNodeRepo == api.running[1].meta.Repo {
-		initArgs = []string{"init", "--actor=t0101", "--genesis-miner", "--pre-sealed-sectors=" + filepath.Join(fullNodeRepo, "preseal")}
+		initArgs = []string{"init", "--actor=t01000", "--genesis-miner", "--pre-sealed-sectors=" + filepath.Join(fullNodeRepo, "preseal")}
 	}
 
 	id := atomic.AddInt32(&api.cmds, 1)
