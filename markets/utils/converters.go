@@ -3,6 +3,7 @@ package utils
 import (
 	"github.com/filecoin-project/lotus/api"
 	"github.com/filecoin-project/specs-actors/actors/abi"
+	"github.com/filecoin-project/specs-actors/actors/abi/big"
 	"github.com/filecoin-project/specs-actors/actors/builtin/market"
 	peer "github.com/libp2p/go-libp2p-peer"
 
@@ -29,6 +30,6 @@ func FromOnChainDeal(prop market.DealProposal, state market.DealState) storagema
 func ToSharedBalance(bal api.MarketBalance) storagemarket.Balance {
 	return storagemarket.Balance{
 		Locked:    bal.Locked,
-		Available: bal.Escrow,
+		Available: big.Sub(bal.Escrow, bal.Locked),
 	}
 }

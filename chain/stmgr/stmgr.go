@@ -14,6 +14,7 @@ import (
 	"github.com/filecoin-project/lotus/chain/types"
 	"github.com/filecoin-project/lotus/chain/vm"
 	"github.com/filecoin-project/specs-actors/actors/abi"
+	"github.com/filecoin-project/specs-actors/actors/abi/big"
 	"github.com/filecoin-project/specs-actors/actors/builtin"
 	"github.com/filecoin-project/specs-actors/actors/runtime"
 	"github.com/filecoin-project/specs-actors/actors/util/adt"
@@ -399,6 +400,15 @@ func (sm *StateManager) GetBlsPublicKey(ctx context.Context, addr address.Addres
 	return pubk, nil
 }
 
+func (sm *StateManager) LookupID(ctx context.Context, addr address.Address, ts *types.TipSet) (address.Address, error) {
+	cst := cbor.NewCborStore(sm.cs.Blockstore())
+	state, err := state.LoadStateTree(cst, sm.parentState(ts))
+	if err != nil {
+		return address.Undef, xerrors.Errorf("load state tree: %w", err)
+	}
+	return state.LookupID(addr)
+}
+
 func (sm *StateManager) GetReceipt(ctx context.Context, msg cid.Cid, ts *types.TipSet) (*types.MessageReceipt, error) {
 	m, err := sm.cs.GetCMessage(msg)
 	if err != nil {
@@ -623,15 +633,39 @@ func (sm *StateManager) MarketBalance(ctx context.Context, addr address.Address,
 		return api.MarketBalance{}, err
 	}
 
-	var out api.MarketBalance
-	out.Escrow, err = adt.AsBalanceTable(sm.cs.Store(ctx), state.EscrowTable).Get(addr)
+	addr, err = sm.LookupID(ctx, addr, ts)
 	if err != nil {
-		return api.MarketBalance{}, xerrors.Errorf("getting escrow balance: %w", err)
+		return api.MarketBalance{}, err
 	}
 
-	out.Locked, err = adt.AsBalanceTable(sm.cs.Store(ctx), state.LockedTable).Get(addr)
+	var out api.MarketBalance
+
+	et := adt.AsBalanceTable(sm.cs.Store(ctx), state.EscrowTable)
+	ehas, err := et.Has(addr)
 	if err != nil {
-		return api.MarketBalance{}, xerrors.Errorf("getting locked balance: %w", err)
+		return api.MarketBalance{}, err
+	}
+	if ehas {
+		out.Escrow, err = et.Get(addr)
+		if err != nil {
+			return api.MarketBalance{}, xerrors.Errorf("getting escrow balance: %w", err)
+		}
+	} else {
+		out.Escrow = big.Zero()
+	}
+
+	lt := adt.AsBalanceTable(sm.cs.Store(ctx), state.LockedTable)
+	lhas, err := lt.Has(addr)
+	if err != nil {
+		return api.MarketBalance{}, err
+	}
+	if lhas {
+		out.Locked, err = lt.Get(addr)
+		if err != nil {
+			return api.MarketBalance{}, xerrors.Errorf("getting locked balance: %w", err)
+		}
+	} else {
+		out.Locked = big.Zero()
 	}
 
 	return out, nil

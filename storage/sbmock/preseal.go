@@ -1,11 +1,10 @@
 package sbmock
 
 import (
-	"math"
-
 	"github.com/filecoin-project/go-address"
 	commcid "github.com/filecoin-project/go-fil-commcid"
 	"github.com/filecoin-project/specs-actors/actors/abi"
+	"github.com/filecoin-project/specs-actors/actors/abi/big"
 	"github.com/filecoin-project/specs-actors/actors/crypto"
 
 	"github.com/filecoin-project/lotus/chain/actors"
@@ -14,18 +13,19 @@ import (
 	"github.com/filecoin-project/lotus/genesis"
 )
 
-func PreSeal(ssize abi.SectorSize, maddr address.Address, sectors int) (*genesis.Miner, error) {
+func PreSeal(ssize abi.SectorSize, maddr address.Address, sectors int) (*genesis.Miner, *types.KeyInfo, error) {
 	k, err := wallet.GenerateKey(crypto.SigTypeBLS)
 	if err != nil {
-		return nil, err
+		return nil, nil, err
 	}
 
 	genm := &genesis.Miner{
-		Owner:      k.Address,
-		Worker:     k.Address,
-		SectorSize: ssize,
-		Sectors:    make([]*genesis.PreSeal, sectors),
-		//Key:        k.KeyInfo,
+		Owner:         k.Address,
+		Worker:        k.Address,
+		MarketBalance: big.NewInt(0),
+		PowerBalance:  big.NewInt(0),
+		SectorSize:    ssize,
+		Sectors:       make([]*genesis.PreSeal, sectors),
 	}
 
 	for i := range genm.Sectors {
@@ -41,13 +41,14 @@ func PreSeal(ssize abi.SectorSize, maddr address.Address, sectors int) (*genesis
 			Client:               maddr,
 			Provider:             maddr,
 			StartEpoch:           1,
-			EndEpoch:             math.MaxInt64,
-			StoragePricePerEpoch: types.NewInt(0),
-			ProviderCollateral:   types.NewInt(0),
+			EndEpoch:             10000,
+			StoragePricePerEpoch: big.Zero(),
+			ProviderCollateral:   big.Zero(),
+			ClientCollateral:     big.Zero(),
 		}
 
 		genm.Sectors[i] = preseal
 	}
 
-	return genm, nil
+	return genm, &k.KeyInfo, nil
 }

@@ -221,7 +221,7 @@ func GetMinerFaults(ctx context.Context, sm *StateManager, ts *types.TipSet, mad
 }
 
 func GetStorageDeal(ctx context.Context, sm *StateManager, dealId abi.DealID, ts *types.TipSet) (*api.MarketDeal, error) {
-	var state actors.StorageMarketState
+	var state market.State
 	if _, err := sm.LoadActorState(ctx, actors.StorageMarketAddress, &state, ts); err != nil {
 		return nil, err
 	}
@@ -236,19 +236,15 @@ func GetStorageDeal(ctx context.Context, sm *StateManager, dealId abi.DealID, ts
 		return nil, err
 	}
 
-	sa, err := amt.LoadAMT(ctx, cbor.NewCborStore(sm.ChainStore().Blockstore()), state.States)
+	sa := market.AsDealStateArray(sm.ChainStore().Store(ctx), state.States)
+	st, err := sa.Get(dealId)
 	if err != nil {
-		return nil, err
-	}
-
-	var st market.DealState
-	if err := sa.Get(ctx, uint64(dealId), &st); err != nil {
 		return nil, err
 	}
 
 	return &api.MarketDeal{
 		Proposal: dp,
-		State:    st,
+		State:    *st,
 	}, nil
 }
 
