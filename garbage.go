@@ -9,7 +9,7 @@ import (
 	"github.com/filecoin-project/specs-actors/actors/abi"
 )
 
-type nullReader struct {}
+type nullReader struct{}
 
 func (nullReader) Read(out []byte) (int, error) {
 	for i := range out {

@@ -127,13 +127,13 @@ func (m *Sealing) SealPiece(ctx context.Context, size abi.UnpaddedPieceSize, r i
 			Size:  ppi.Size,
 			CommP: ppi.CommP[:],
 		},
-	},)
+	})
 }
 
 func (m *Sealing) newSector(sid abi.SectorNumber, pieces []Piece) error {
 	log.Infof("Start sealing %d", sid)
 	return m.sectors.Send(uint64(sid), SectorStart{
-		id: sid,
+		id:     sid,
 		pieces: pieces,
 	})
 }
