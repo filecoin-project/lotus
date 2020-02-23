@@ -4,9 +4,14 @@ package main
 
 import (
 	"context"
+	"encoding/hex"
+	"encoding/json"
+	"github.com/filecoin-project/lotus/chain/types"
+	"github.com/mitchellh/go-homedir"
 	"io/ioutil"
 	"os"
 	"runtime/pprof"
+	"strings"
 
 	paramfetch "github.com/filecoin-project/go-paramfetch"
 	"github.com/filecoin-project/go-sectorbuilder"
@@ -48,6 +53,11 @@ var DaemonCmd = &cli.Command{
 		},
 		&cli.StringFlag{
 			Name:   preTemplateFlag,
+			Hidden: true,
+		},
+		&cli.StringFlag{
+			Name:  "import-key",
+			Usage: "on first run, import a default key from a given file",
 			Hidden: true,
 		},
 		&cli.StringFlag{
@@ -157,6 +167,12 @@ var DaemonCmd = &cli.Command{
 			return xerrors.Errorf("initializing node: %w", err)
 		}
 
+		if cctx.String("import-key") != "" {
+			if err := importKey(ctx, api, cctx.String("import-key")); err != nil {
+				log.Errorf("importing key failed: %+v", err)
+			}
+		}
+
 		endpoint, err := r.APIEndpoint()
 		if err != nil {
 			return xerrors.Errorf("getting api endpoint: %w", err)
@@ -165,6 +181,40 @@ var DaemonCmd = &cli.Command{
 		// TODO: properly parse api endpoint (or make it a URL)
 		return serveRPC(api, stop, endpoint)
 	},
+}
+
+func importKey(ctx context.Context, api api.FullNode, f string) error {
+	f, err := homedir.Expand(f)
+	if err != nil {
+		return err
+	}
+
+	hexdata, err := ioutil.ReadFile(f)
+	if err != nil {
+		return err
+	}
+
+	data, err := hex.DecodeString(strings.TrimSpace(string(hexdata)))
+	if err != nil {
+		return err
+	}
+
+	var ki types.KeyInfo
+	if err := json.Unmarshal(data, &ki); err != nil {
+		return err
+	}
+
+	addr, err := api.WalletImport(ctx, &ki)
+	if err != nil {
+		return err
+	}
+
+	if err := api.WalletSetDefault(ctx, addr); err != nil {
+		return err
+	}
+
+	log.Info("successfully imported key for %s", addr)
+	return nil
 }
 
 func ImportChain(r repo.Repo, fname string) error {
