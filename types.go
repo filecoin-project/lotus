@@ -34,7 +34,7 @@ func (t *SealSeed) Equals(o *SealSeed) bool {
 }
 
 type Piece struct {
-	DealID abi.DealID
+	DealID *abi.DealID
 
 	Size  abi.UnpaddedPieceSize
 	CommP []byte
@@ -97,9 +97,12 @@ func (t *SectorInfo) pieceInfos() []sectorbuilder.PublicPieceInfo {
 }
 
 func (t *SectorInfo) deals() []abi.DealID {
-	out := make([]abi.DealID, len(t.Pieces))
-	for i, piece := range t.Pieces {
-		out[i] = piece.DealID
+	out := make([]abi.DealID, 0, len(t.Pieces))
+	for _, piece := range t.Pieces {
+		if piece.DealID == nil {
+			continue
+		}
+		out = append(out, *piece.DealID)
 	}
 	return out
 }

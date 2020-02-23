@@ -1,7 +1,12 @@
 package sealing
 
 import (
+	"bytes"
 	"context"
+	commcid "github.com/filecoin-project/go-fil-commcid"
+	"github.com/filecoin-project/lotus/lib/zerocomm"
+	"github.com/ipfs/go-cid"
+	cbg "github.com/whyrusleeping/cbor-gen"
 
 	"github.com/filecoin-project/specs-actors/actors/builtin"
 	"github.com/multiformats/go-multihash"
@@ -19,6 +24,7 @@ import (
 type ErrApi struct{ error }
 
 type ErrInvalidDeals struct{ error }
+type ErrInvalidPiece struct{ error }
 type ErrExpiredDeals struct{ error }
 
 type ErrBadCommD struct{ error }
@@ -36,7 +42,14 @@ func checkPieces(ctx context.Context, si SectorInfo, api sealingApi) error {
 	}
 
 	for i, piece := range si.Pieces {
-		deal, err := api.StateMarketStorageDeal(ctx, piece.DealID, nil)
+		if piece.DealID == nil {
+			exp := zerocomm.ForSize(piece.Size)
+			if string(piece.CommP) != string(exp[:]) {
+				return &ErrInvalidPiece{xerrors.Errorf("deal %d piece %d had non-zero CommP %+v", piece.DealID, i, piece.CommP)}
+			}
+			continue
+		}
+		deal, err := api.StateMarketStorageDeal(ctx, *piece.DealID, nil)
 		if err != nil {
 			return &ErrApi{xerrors.Errorf("getting deal %d for piece %d: %w", piece.DealID, i, err)}
 		}
@@ -99,7 +112,17 @@ func checkSeal(ctx context.Context, maddr address.Address, si SectorInfo, api se
 	if r.ExitCode != 0 {
 		return &ErrBadCommD{xerrors.Errorf("receipt for ComputeDataCommitment had exit code %d", r.ExitCode)}
 	}
-	if string(r.Return) != string(si.CommD) {
+
+	var c cbg.CborCid
+	if err := c.UnmarshalCBOR(bytes.NewReader(r.Return)); err != nil {
+		return err
+	}
+	cd, err := commcid.CIDToDataCommitmentV1(cid.Cid(c))
+	if err != nil {
+		return err
+	}
+
+	if string(cd) != string(si.CommD) {
 		return &ErrBadCommD{xerrors.Errorf("on chain CommD differs from sector: %x != %x", r.Return, si.CommD)}
 	}
 

@@ -228,7 +228,7 @@ func (m *Sealing) restartSectors(ctx context.Context) error {
 	}
 
 	for _, sector := range trackedSectors {
-		if err := m.sectors.Send(sector.SectorID, SectorRestart{}); err != nil {
+		if err := m.sectors.Send(uint64(sector.SectorID), SectorRestart{}); err != nil {
 			log.Errorf("restarting sector %d: %+v", sector.SectorID, err)
 		}
 	}
