@@ -9,6 +9,7 @@ import (
 	"github.com/filecoin-project/lotus/chain/types"
 	lcli "github.com/filecoin-project/lotus/cli"
 	"github.com/filecoin-project/lotus/miner"
+	"github.com/filecoin-project/specs-actors/actors/crypto"
 	"golang.org/x/xerrors"
 
 	"gopkg.in/urfave/cli.v2"
@@ -46,13 +47,17 @@ func init() {
 			addr, _ := address.NewIDAddress(1000)
 			var ticket *types.Ticket
 			{
-				vrfBase := head.MinTicket().VRFProof
-
 				w, err := api.StateMinerWorker(ctx, addr, nil)
 				if err != nil {
 					return xerrors.Errorf("StateMinerWorker: %w", err)
 				}
-				t, err := gen.ComputeVRF(ctx, api.WalletSign, w, addr, gen.DSepTicket, vrfBase)
+
+				rand, err := api.ChainGetRandomness(ctx, head.Key(), crypto.DomainSeparationTag_TicketProduction, head.Height(), addr.Bytes())
+				if err != nil {
+					return xerrors.Errorf("failed to get randomness: %w", err)
+				}
+
+				t, err := gen.ComputeVRF(ctx, api.WalletSign, w, rand)
 				if err != nil {
 					return xerrors.Errorf("compute vrf failed: %w", err)
 				}
@@ -73,7 +78,7 @@ func init() {
 			}
 
 			{
-				r, err := api.ChainGetRandomness(ctx, head.Key(), int64(head.Height()+1)-build.EcRandomnessLookback)
+				r, err := api.ChainGetRandomness(ctx, head.Key(), crypto.DomainSeparationTag_ElectionPoStChallengeSeed, (head.Height()+1)-build.EcRandomnessLookback, addr.Bytes())
 				if err != nil {
 					return xerrors.Errorf("chain get randomness: %w", err)
 				}
@@ -82,7 +87,7 @@ func init() {
 					return xerrors.Errorf("failed to get miner worker: %w", err)
 				}
 
-				vrfout, err := gen.ComputeVRF(ctx, api.WalletSign, mworker, addr, gen.DSepElectionPost, r)
+				vrfout, err := gen.ComputeVRF(ctx, api.WalletSign, mworker, r)
 				if err != nil {
 					return xerrors.Errorf("failed to compute VRF: %w", err)
 				}
