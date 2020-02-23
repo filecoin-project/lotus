@@ -46,12 +46,12 @@ func serveRPC(a api.FullNode, stop node.StopFunc, addr multiaddr.Multiaddr) erro
 
 	http.Handle("/rest/v0/import", importAH)
 
+	http.Handle("/metrics", promhttp.Handler())
+
 	lst, err := manet.Listen(addr)
 	if err != nil {
 		return xerrors.Errorf("could not listen: %w", err)
 	}
-
-	http.Handle("/metrics", promhttp.Handler())
 
 	srv := &http.Server{Handler: http.DefaultServeMux}
 
