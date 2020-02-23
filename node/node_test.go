@@ -151,8 +151,6 @@ func builder(t *testing.T, nFull int, storage []int) ([]test.TestNode, []test.Te
 	minerPid, err := peer.IDFromPrivateKey(pk)
 	require.NoError(t, err)
 
-	_ = minerPid // TODO: what do we do with this now?
-
 	var genbuf bytes.Buffer
 
 	if len(storage) > 1 {
@@ -163,6 +161,8 @@ func builder(t *testing.T, nFull int, storage []int) ([]test.TestNode, []test.Te
 
 	var genms []genesis.Miner
 	var maddrs []address.Address
+	var genaccs []genesis.Actor
+	var keys []*wallet.Key
 
 	var presealDirs []string
 	for i := 0; i < len(storage); i++ {
@@ -174,18 +174,32 @@ func builder(t *testing.T, nFull int, storage []int) ([]test.TestNode, []test.Te
 		if err != nil {
 			t.Fatal(err)
 		}
-		genm, _, err := seed.PreSeal(maddr, 1024, 0, 2, tdir, []byte("make genesis mem random"), nil)
+		genm, k, err := seed.PreSeal(maddr, 1024, 0, 2, tdir, []byte("make genesis mem random"), nil)
 		if err != nil {
 			t.Fatal(err)
 		}
+		genm.PeerId = minerPid
 
+		wk, err := wallet.NewKey(*k)
+		if err != nil {
+			return nil, nil
+		}
+
+		genaccs = append(genaccs, genesis.Actor{
+			Type:    genesis.TAccount,
+			Balance: big.NewInt(40000000000),
+			Meta:    (&genesis.AccountMeta{Owner: wk.Address}).ActorMeta(),
+		})
+
+		keys = append(keys, wk)
 		presealDirs = append(presealDirs, tdir)
 		maddrs = append(maddrs, maddr)
 		genms = append(genms, *genm)
 	}
 
 	templ := &genesis.Template{
-		Miners: genms,
+		Accounts: genaccs,
+		Miners:   genms,
 	}
 
 	// END PRESEAL SECTION
@@ -225,6 +239,12 @@ func builder(t *testing.T, nFull int, storage []int) ([]test.TestNode, []test.Te
 		}
 
 		f := fulls[full]
+		if _, err := f.FullNode.WalletImport(ctx, &keys[i].KeyInfo); err != nil {
+			return nil, nil
+		}
+		if err := f.FullNode.WalletSetDefault(ctx, keys[i].Address); err != nil {
+			return nil, nil
+		}
 
 		genMiner := maddrs[i]
 		wa := genms[i].Worker

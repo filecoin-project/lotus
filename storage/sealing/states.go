@@ -106,7 +106,7 @@ func (m *Sealing) handlePreCommitting(ctx statemachine.Context, sector SectorInf
 
 		SealedCID:     commcid.ReplicaCommitmentV1ToCID(sector.CommR),
 		SealRandEpoch: sector.Ticket.BlockHeight,
-		DealIDs:       nil, // sector.deals(), // TODO: REFACTOR
+		DealIDs:       sector.deals(),
 	}
 	enc, aerr := actors.SerializeParams(params)
 	if aerr != nil {
@@ -179,6 +179,8 @@ func (m *Sealing) handleWaitSeed(ctx statemachine.Context, sector SectorInfo) er
 
 func (m *Sealing) handleCommitting(ctx statemachine.Context, sector SectorInfo) error {
 	log.Info("scheduling seal proof computation...")
+
+	log.Infof("KOMIT %d %x(%d); %x(%d); %v; r:%x; d:%x", sector.SectorID, sector.Ticket.TicketBytes, sector.Ticket.BlockHeight, sector.Seed.TicketBytes, sector.Seed.BlockHeight, sector.pieceInfos(), sector.CommR, sector.CommD)
 
 	proof, err := m.sb.SealCommit(ctx.Context(), sector.SectorID, sector.Ticket.SB(), sector.Seed.SB(), sector.pieceInfos(), sector.rspco())
 	if err != nil {

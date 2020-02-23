@@ -109,6 +109,8 @@ func (ss *syscallShim) VerifySeal(ssize abi.SectorSize, info abi.SealVerifyInfo)
 	proof := []byte(info.OnChain.Proof)
 	seed := []byte(info.InteractiveRandomness)
 
+	log.Infof("Werif %d r:%x; d:%x; m:%s; t:%x; s:%x; N:%d; p:%x", ssize, commR, commD, miner, ticket, seed, info.SectorID.Number, proof)
+
 	//func(ctx context.Context, maddr address.Address, ssize abi.SectorSize, commD, commR, ticket, proof, seed []byte, sectorID abi.SectorNumber)
 	ok, err := ss.verifier.VerifySeal(ssize, commR[:], commD[:], miner, ticket, seed, info.SectorID.Number, proof)
 	if err != nil {
