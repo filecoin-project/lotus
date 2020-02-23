@@ -71,9 +71,9 @@ func (w *worker) processTask(ctx context.Context, task sectorbuilder.WorkerTask)
 		return errRes(xerrors.Errorf("unknown task type %d", task.Type))
 	}
 
-	if err := w.fetchSector(task.SectorID, task.Type); err != nil {
-		return errRes(xerrors.Errorf("fetching sector: %w", err))
-	}
+	//if err := w.fetchSector(task.SectorID, task.Type); err != nil {
+	//	return errRes(xerrors.Errorf("fetching sector: %w", err))
+	//}
 
 	log.Infof("Data fetched, starting computation")
 
