@@ -2,6 +2,7 @@ package storage
 
 import (
 	"context"
+	"github.com/filecoin-project/specs-actors/actors/crypto"
 	"time"
 
 	ffi "github.com/filecoin-project/filecoin-ffi"
@@ -142,9 +143,9 @@ func (s *FPoStScheduler) runPost(ctx context.Context, eps abi.ChainEpoch, ts *ty
 	ctx, span := trace.StartSpan(ctx, "storage.runPost")
 	defer span.End()
 
-	challengeRound := int64(eps + build.FallbackPoStDelay)
+	challengeRound := eps + build.FallbackPoStDelay
 
-	rand, err := s.api.ChainGetRandomness(ctx, ts.Key(), challengeRound)
+	rand, err := s.api.ChainGetRandomness(ctx, ts.Key(), crypto.DomainSeparationTag_WindowedPoStChallengeSeed, challengeRound, s.actor.Bytes())
 	if err != nil {
 		return nil, xerrors.Errorf("failed to get chain randomness for fpost (ts=%d; eps=%d): %w", ts.Height(), eps, err)
 	}

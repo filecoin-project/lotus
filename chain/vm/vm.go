@@ -79,9 +79,8 @@ func (vmc *VMContext) Message() *types.Message {
 	return vmc.msg
 }
 
-func (vmc *VMContext) GetRandomness(height abi.ChainEpoch) ([]byte, aerrors.ActorError) {
-
-	res, err := vmc.vm.rand.GetRandomness(vmc.ctx, int64(height))
+func (vmc *VMContext) GetRandomness(personalization crypto.DomainSeparationTag, randEpoch abi.ChainEpoch, entropy []byte) ([]byte, aerrors.ActorError) {
+	res, err := vmc.vm.rand.GetRandomness(vmc.ctx, personalization, int64(randEpoch), entropy)
 	if err != nil {
 		return nil, aerrors.Escalate(err, "could not get randomness")
 	}
@@ -352,7 +351,7 @@ func NewVM(base cid.Cid, height abi.ChainEpoch, r Rand, maddr address.Address, c
 }
 
 type Rand interface {
-	GetRandomness(ctx context.Context, h int64) ([]byte, error)
+	GetRandomness(ctx context.Context, pers crypto.DomainSeparationTag, round int64, entropy []byte) ([]byte, error)
 }
 
 type ApplyRet struct {

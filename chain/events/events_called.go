@@ -130,7 +130,7 @@ func (e *calledEvents) checkNewCalls(ts *types.TipSet) {
 			for _, matchFn := range matchFns {
 				ok, err := matchFn(msg)
 				if err != nil {
-					log.Warnf("event matcher failed: %s")
+					log.Warnf("event matcher failed: %s", err)
 					continue
 				}
 				matched = ok

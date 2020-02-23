@@ -4,13 +4,13 @@ import (
 	"bytes"
 	"context"
 	"crypto/sha256"
-	"encoding/binary"
 	"fmt"
-	format "github.com/ipfs/go-ipld-format"
 	"io/ioutil"
 	"sync/atomic"
 
+	"github.com/filecoin-project/go-address"
 	commcid "github.com/filecoin-project/go-fil-commcid"
+	sectorbuilder "github.com/filecoin-project/go-sectorbuilder"
 	"github.com/filecoin-project/specs-actors/actors/abi"
 	"github.com/filecoin-project/specs-actors/actors/crypto"
 	block "github.com/ipfs/go-block-format"
@@ -19,11 +19,9 @@ import (
 	"github.com/ipfs/go-cid"
 	blockstore "github.com/ipfs/go-ipfs-blockstore"
 	offline "github.com/ipfs/go-ipfs-exchange-offline"
+	format "github.com/ipfs/go-ipld-format"
 	logging "github.com/ipfs/go-log/v2"
 	"github.com/ipfs/go-merkledag"
-
-	"github.com/filecoin-project/go-address"
-	sectorbuilder "github.com/filecoin-project/go-sectorbuilder"
 
 	ffi "github.com/filecoin-project/filecoin-ffi"
 	"github.com/filecoin-project/lotus/api"
@@ -276,8 +274,13 @@ func CarWalkFunc(nd format.Node) (out []*format.Link, err error) {
 }
 
 func (cg *ChainGen) nextBlockProof(ctx context.Context, pts *types.TipSet, m address.Address, round int64) (*types.EPostProof, *types.Ticket, error) {
+	mc := &mca{w: cg.w, sm: cg.sm}
 
-	lastTicket := pts.MinTicket()
+	// TODO: REVIEW: Am I doing this correctly?
+	ticketRand, err := mc.ChainGetRandomness(ctx, pts.Key(), crypto.DomainSeparationTag_TicketProduction, pts.Height(), m.Bytes())
+	if err != nil {
+		return nil, nil, err
+	}
 
 	st := pts.ParentState()
 
@@ -286,7 +289,7 @@ func (cg *ChainGen) nextBlockProof(ctx context.Context, pts *types.TipSet, m add
 		return nil, nil, xerrors.Errorf("get miner worker: %w", err)
 	}
 
-	vrfout, err := ComputeVRF(ctx, cg.w.Sign, worker, m, DSepTicket, lastTicket.VRFProof)
+	vrfout, err := ComputeVRF(ctx, cg.w.Sign, worker, ticketRand)
 	if err != nil {
 		return nil, nil, xerrors.Errorf("compute VRF: %w", err)
 	}
@@ -295,7 +298,7 @@ func (cg *ChainGen) nextBlockProof(ctx context.Context, pts *types.TipSet, m add
 		VRFProof: vrfout,
 	}
 
-	eproofin, err := IsRoundWinner(ctx, pts, round, m, cg.eppProvs[m], &mca{w: cg.w, sm: cg.sm})
+	eproofin, err := IsRoundWinner(ctx, pts, round, m, cg.eppProvs[m], mc)
 	if err != nil {
 		return nil, nil, xerrors.Errorf("checking round winner failed: %w", err)
 	}
@@ -439,7 +442,7 @@ func (cg *ChainGen) YieldRepo() (repo.Repo, error) {
 }
 
 type MiningCheckAPI interface {
-	ChainGetRandomness(context.Context, types.TipSetKey, int64) ([]byte, error)
+	ChainGetRandomness(ctx context.Context, tsk types.TipSetKey, personalization crypto.DomainSeparationTag, randEpoch abi.ChainEpoch, entropy []byte) (abi.Randomness, error)
 
 	StateMinerPower(context.Context, address.Address, *types.TipSet) (api.MinerPower, error)
 
@@ -457,8 +460,13 @@ type mca struct {
 	sm *stmgr.StateManager
 }
 
-func (mca mca) ChainGetRandomness(ctx context.Context, pts types.TipSetKey, lb int64) ([]byte, error) {
-	return mca.sm.ChainStore().GetRandomness(ctx, pts.Cids(), int64(lb))
+func (mca mca) ChainGetRandomness(ctx context.Context, tsk types.TipSetKey, personalization crypto.DomainSeparationTag, randEpoch abi.ChainEpoch, entropy []byte) (abi.Randomness, error) {
+	pts, err := mca.sm.ChainStore().LoadTipSet(tsk)
+	if err != nil {
+		return nil, xerrors.Errorf("loading tipset key: %w", err)
+	}
+
+	return mca.sm.ChainStore().GetRandomness(ctx, pts.Cids(), personalization, int64(randEpoch), entropy)
 }
 
 func (mca mca) StateMinerPower(ctx context.Context, maddr address.Address, ts *types.TipSet) (api.MinerPower, error) {
@@ -520,7 +528,7 @@ type ProofInput struct {
 }
 
 func IsRoundWinner(ctx context.Context, ts *types.TipSet, round int64, miner address.Address, epp ElectionPoStProver, a MiningCheckAPI) (*ProofInput, error) {
-	r, err := a.ChainGetRandomness(ctx, ts.Key(), round-build.EcRandomnessLookback)
+	epostRand, err := a.ChainGetRandomness(ctx, ts.Key(), crypto.DomainSeparationTag_ElectionPoStChallengeSeed, abi.ChainEpoch(round-build.EcRandomnessLookback), miner.Bytes())
 	if err != nil {
 		return nil, xerrors.Errorf("chain get randomness: %w", err)
 	}
@@ -530,7 +538,7 @@ func IsRoundWinner(ctx context.Context, ts *types.TipSet, round int64, miner add
 		return nil, xerrors.Errorf("failed to get miner worker: %w", err)
 	}
 
-	vrfout, err := ComputeVRF(ctx, a.WalletSign, mworker, miner, DSepElectionPost, r)
+	vrfout, err := ComputeVRF(ctx, a.WalletSign, mworker, epostRand)
 	if err != nil {
 		return nil, xerrors.Errorf("failed to compute VRF: %w", err)
 	}
@@ -619,37 +627,9 @@ func ComputeProof(ctx context.Context, epp ElectionPoStProver, pi *ProofInput) (
 
 type SignFunc func(context.Context, address.Address, []byte) (*crypto.Signature, error)
 
-const (
-	DSepTicket       = 1
-	DSepElectionPost = 2
-)
-
-func hashVRFBase(personalization uint64, miner address.Address, input []byte) ([]byte, error) {
-	if miner.Protocol() != address.ID {
-		return nil, xerrors.Errorf("miner address for compute VRF must be an ID address")
-	}
-
-	var persbuf [8]byte
-	binary.LittleEndian.PutUint64(persbuf[:], personalization)
-
-	h := sha256.New()
-	h.Write(persbuf[:])
-	h.Write([]byte{0})
-	h.Write(input)
-	h.Write([]byte{0})
-	h.Write(miner.Bytes())
-
-	return h.Sum(nil), nil
-}
-
-func VerifyVRF(ctx context.Context, worker, miner address.Address, p uint64, input, vrfproof []byte) error {
+func VerifyVRF(ctx context.Context, worker address.Address, vrfBase, vrfproof []byte) error {
 	_, span := trace.StartSpan(ctx, "VerifyVRF")
 	defer span.End()
-
-	vrfBase, err := hashVRFBase(p, miner, input)
-	if err != nil {
-		return xerrors.Errorf("computing vrf base failed: %w", err)
-	}
 
 	sig := &crypto.Signature{
 		Type: crypto.SigTypeBLS,
@@ -663,12 +643,7 @@ func VerifyVRF(ctx context.Context, worker, miner address.Address, p uint64, inp
 	return nil
 }
 
-func ComputeVRF(ctx context.Context, sign SignFunc, worker, miner address.Address, p uint64, input []byte) ([]byte, error) {
-	sigInput, err := hashVRFBase(p, miner, input)
-	if err != nil {
-		return nil, err
-	}
-
+func ComputeVRF(ctx context.Context, sign SignFunc, worker address.Address, sigInput []byte) ([]byte, error) {
 	sig, err := sign(ctx, worker, sigInput)
 	if err != nil {
 		return nil, err

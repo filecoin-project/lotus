@@ -3,9 +3,10 @@ package store
 import (
 	"bytes"
 	"context"
-	"crypto/sha256"
 	"encoding/binary"
 	"encoding/json"
+	"github.com/filecoin-project/specs-actors/actors/crypto"
+	"github.com/minio/blake2b-simd"
 	"io"
 	"sync"
 
@@ -888,21 +889,29 @@ func (cs *ChainStore) TryFillTipSet(ts *types.TipSet) (*FullTipSet, error) {
 	return NewFullTipSet(out), nil
 }
 
-func drawRandomness(t *types.Ticket, round int64) []byte {
-	h := sha256.New()
-	var buf [8]byte
-	binary.LittleEndian.PutUint64(buf[:], uint64(round))
-
+func drawRandomness(t *types.Ticket, pers crypto.DomainSeparationTag, round int64, entropy []byte) ([]byte, error) {
+	// TODO: Make this spec compliant
+	h := blake2b.New256()
+	if err := binary.Write(h, binary.BigEndian, int64(pers)); err != nil {
+		return nil, xerrors.Errorf("deriving randomness: %w", err)
+	}
 	h.Write(t.VRFProof)
-	h.Write(buf[:])
+	if err := binary.Write(h, binary.BigEndian, round); err != nil {
+		return nil, xerrors.Errorf("deriving randomness: %w", err)
+	}
+	h.Write(entropy)
 
-	return h.Sum(nil)
+	return h.Sum(nil), nil
 }
 
-func (cs *ChainStore) GetRandomness(ctx context.Context, blks []cid.Cid, round int64) ([]byte, error) {
+func (cs *ChainStore) GetRandomness(ctx context.Context, blks []cid.Cid, pers crypto.DomainSeparationTag, round int64, entropy []byte) (out []byte, err error) {
 	_, span := trace.StartSpan(ctx, "store.GetRandomness")
 	defer span.End()
 	span.AddAttributes(trace.Int64Attribute("round", round))
+
+	defer func() {
+		log.Warnf("getRand %v %d %d %x -> %x", blks, pers, round, entropy, out)
+	}()
 
 	for {
 		nts, err := cs.LoadTipSet(types.NewTipSetKey(blks...))
@@ -913,7 +922,7 @@ func (cs *ChainStore) GetRandomness(ctx context.Context, blks []cid.Cid, round i
 		mtb := nts.MinTicketBlock()
 
 		if int64(nts.Height()) <= round {
-			return drawRandomness(nts.MinTicketBlock().Ticket, round), nil
+			return drawRandomness(nts.MinTicketBlock().Ticket, pers, round, entropy)
 		}
 
 		// special case for lookback behind genesis block
@@ -921,10 +930,13 @@ func (cs *ChainStore) GetRandomness(ctx context.Context, blks []cid.Cid, round i
 		if mtb.Height == 0 {
 
 			// round is negative
-			thash := drawRandomness(mtb.Ticket, round*-1)
+			thash, err := drawRandomness(mtb.Ticket, pers, round*-1, entropy)
+			if err != nil {
+				return nil, err
+			}
 
 			// for negative lookbacks, just use the hash of the positive tickethash value
-			h := sha256.Sum256(thash)
+			h := blake2b.Sum256(thash)
 			return h[:], nil
 		}
 
@@ -1051,6 +1063,6 @@ func NewChainRand(cs *ChainStore, blks []cid.Cid, bheight abi.ChainEpoch) vm.Ran
 	}
 }
 
-func (cr *chainRand) GetRandomness(ctx context.Context, round int64) ([]byte, error) {
-	return cr.cs.GetRandomness(ctx, cr.blks, round)
+func (cr *chainRand) GetRandomness(ctx context.Context, pers crypto.DomainSeparationTag, round int64, entropy []byte) ([]byte, error) {
+	return cr.cs.GetRandomness(ctx, cr.blks, pers, round, entropy)
 }

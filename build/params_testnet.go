@@ -29,9 +29,6 @@ const FallbackPoStDelay = miner.ProvingPeriod
 const SlashablePowerDelay = miner.ProvingPeriod * 3 // TODO: remove
 
 // Epochs
-const InteractivePoRepDelay = 8
-
-// Epochs
 const InteractivePoRepConfidence = 6
 
 // Bytes

@@ -609,10 +609,12 @@ func (syncer *Syncer) ValidateBlock(ctx context.Context, b *types.FullBlock) err
 	})
 
 	tktsCheck := async.Err(func() error {
-		vrfBase := baseTs.MinTicket().VRFProof
+		vrfBase, err := syncer.sm.ChainStore().GetRandomness(ctx, baseTs.Cids(), crypto.DomainSeparationTag_TicketProduction, int64(baseTs.Height()), h.Miner.Bytes())
+		if err != nil {
+			return xerrors.Errorf("failed to get randomness for verifying election proof: %w", err)
+		}
 
-		err := gen.VerifyVRF(ctx, waddr, h.Miner, gen.DSepTicket, vrfBase, h.Ticket.VRFProof)
-
+		err = gen.VerifyVRF(ctx, waddr, vrfBase, h.Ticket.VRFProof)
 		if err != nil {
 			return xerrors.Errorf("validating block tickets failed: %w", err)
 		}
@@ -646,12 +648,12 @@ func (syncer *Syncer) ValidateBlock(ctx context.Context, b *types.FullBlock) err
 }
 
 func (syncer *Syncer) VerifyElectionPoStProof(ctx context.Context, h *types.BlockHeader, baseTs *types.TipSet, waddr address.Address) error {
-	rand, err := syncer.sm.ChainStore().GetRandomness(ctx, baseTs.Cids(), int64(h.Height-build.EcRandomnessLookback))
+	rand, err := syncer.sm.ChainStore().GetRandomness(ctx, baseTs.Cids(), crypto.DomainSeparationTag_ElectionPoStChallengeSeed, int64(h.Height-build.EcRandomnessLookback), h.Miner.Bytes())
 	if err != nil {
 		return xerrors.Errorf("failed to get randomness for verifying election proof: %w", err)
 	}
 
-	if err := VerifyElectionPoStVRF(ctx, h.EPostProof.PostRand, rand, waddr, h.Miner); err != nil {
+	if err := VerifyElectionPoStVRF(ctx, h.EPostProof.PostRand, rand, waddr); err != nil {
 		return xerrors.Errorf("checking eproof failed: %w", err)
 	}
 
@@ -1170,8 +1172,8 @@ func (syncer *Syncer) collectChain(ctx context.Context, ts *types.TipSet) error 
 	return nil
 }
 
-func VerifyElectionPoStVRF(ctx context.Context, evrf []byte, rand []byte, worker, miner address.Address) error {
-	if err := gen.VerifyVRF(ctx, worker, miner, gen.DSepElectionPost, rand, evrf); err != nil {
+func VerifyElectionPoStVRF(ctx context.Context, evrf []byte, rand []byte, worker address.Address) error {
+	if err := gen.VerifyVRF(ctx, worker, rand, evrf); err != nil {
 		return xerrors.Errorf("failed to verify post_randomness vrf: %w", err)
 	}
 

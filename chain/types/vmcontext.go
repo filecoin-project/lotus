@@ -43,7 +43,7 @@ type VMContext interface {
 	LookupID(address.Address) (address.Address, error)
 	VerifySignature(sig *crypto.Signature, from address.Address, data []byte) aerrors.ActorError
 	ChargeGas(uint64) aerrors.ActorError
-	GetRandomness(height abi.ChainEpoch) ([]byte, aerrors.ActorError)
+	GetRandomness(personalization crypto.DomainSeparationTag, randEpoch abi.ChainEpoch, entropy []byte) ([]byte, aerrors.ActorError)
 	GetBalance(address.Address) (BigInt, aerrors.ActorError)
 	Sys() runtime.Syscalls
 
