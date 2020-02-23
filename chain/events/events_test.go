@@ -7,6 +7,7 @@ import (
 	"time"
 
 	"github.com/filecoin-project/specs-actors/actors/abi"
+	"github.com/filecoin-project/specs-actors/actors/crypto"
 
 	"github.com/filecoin-project/lotus/api"
 	"github.com/filecoin-project/lotus/chain/store"
@@ -68,8 +69,8 @@ func makeTs(t *testing.T, h abi.ChainEpoch, msgcid cid.Cid) *types.TipSet {
 			Messages:              msgcid,
 			ParentMessageReceipts: dummyCid,
 
-			BlockSig:     &types.Signature{Type: types.KTBLS},
-			BLSAggregate: types.Signature{Type: types.KTBLS},
+			BlockSig:     &types.Signature{Type: crypto.SigTypeBLS},
+			BLSAggregate: types.Signature{Type: crypto.SigTypeBLS},
 		},
 		{
 			Height: h,
@@ -81,8 +82,8 @@ func makeTs(t *testing.T, h abi.ChainEpoch, msgcid cid.Cid) *types.TipSet {
 			Messages:              msgcid,
 			ParentMessageReceipts: dummyCid,
 
-			BlockSig:     &types.Signature{Type: types.KTBLS},
-			BLSAggregate: types.Signature{Type: types.KTBLS},
+			BlockSig:     &types.Signature{Type: crypto.SigTypeBLS},
+			BLSAggregate: types.Signature{Type: crypto.SigTypeBLS},
 		},
 	})
 
@@ -536,7 +537,7 @@ func TestAtChainedConfidenceNull(t *testing.T) {
 	require.Equal(t, false, reverted)
 }
 
-func matchAddrMethod(to address.Address, m uint64) func(msg *types.Message) (bool, error) {
+func matchAddrMethod(to address.Address, m abi.MethodNum) func(msg *types.Message) (bool, error) {
 	return func(msg *types.Message) (bool, error) {
 		return to == msg.To && m == msg.Method, nil
 	}
@@ -617,7 +618,7 @@ func TestCalled(t *testing.T) {
 	require.Equal(t, abi.ChainEpoch(10), appliedH)
 	require.Equal(t, t0123, appliedMsg.To)
 	require.Equal(t, uint64(1), appliedMsg.Nonce)
-	require.Equal(t, uint64(5), appliedMsg.Method)
+	require.Equal(t, abi.MethodNum(5), appliedMsg.Method)
 
 	// revert some blocks, keep the message
 
@@ -654,7 +655,7 @@ func TestCalled(t *testing.T) {
 	require.Equal(t, abi.ChainEpoch(12), appliedH)
 	require.Equal(t, t0123, appliedMsg.To)
 	require.Equal(t, uint64(2), appliedMsg.Nonce)
-	require.Equal(t, uint64(5), appliedMsg.Method)
+	require.Equal(t, abi.MethodNum(5), appliedMsg.Method)
 
 	// revert and apply at different height
 
@@ -675,7 +676,7 @@ func TestCalled(t *testing.T) {
 	require.Equal(t, abi.ChainEpoch(14), appliedH)
 	require.Equal(t, t0123, appliedMsg.To)
 	require.Equal(t, uint64(2), appliedMsg.Nonce)
-	require.Equal(t, uint64(5), appliedMsg.Method)
+	require.Equal(t, abi.MethodNum(5), appliedMsg.Method)
 
 	// call method again
 

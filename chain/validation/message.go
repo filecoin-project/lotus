@@ -2,6 +2,7 @@ package validation
 
 import (
 	"context"
+
 	"github.com/ipfs/go-cid"
 	"golang.org/x/xerrors"
 
@@ -11,9 +12,9 @@ import (
 	vtypes "github.com/filecoin-project/chain-validation/pkg/state/types"
 
 	"github.com/filecoin-project/go-address"
+	"github.com/filecoin-project/specs-actors/actors/abi"
 	"github.com/filecoin-project/specs-actors/actors/builtin"
 
-	"github.com/filecoin-project/lotus/chain/actors"
 	"github.com/filecoin-project/lotus/chain/types"
 )
 
@@ -53,7 +54,7 @@ func (mf *MessageFactory) MakeMessage(from, to vaddress.Address, method vchain.M
 		valueDec,
 		types.BigInt{gasPrice.Int},
 		types.NewInt(uint64(gasLimit)),
-		methodId,
+		abi.MethodNum(methodId),
 		params,
 	}
 
@@ -72,18 +73,17 @@ func (mf *MessageFactory) FromActorCodeCid(code vactors.ActorCodeID) cid.Cid {
 // This will change to a mapping to method ids when method dispatch is updated to use integers.
 var methods = []uint64{
 	vchain.NoMethod: 0,
-	vchain.InitExec: actors.IAMethods.Exec,
+	vchain.InitExec: uint64(builtin.MethodsInit.Exec),
 
-	vchain.StoragePowerConstructor:        actors.SPAMethods.Constructor,
-	vchain.StoragePowerCreateStorageMiner: actors.SPAMethods.CreateStorageMiner,
-	vchain.StoragePowerUpdatePower:        actors.SPAMethods.UpdateStorage,
+	vchain.StoragePowerConstructor:        uint64(builtin.MethodsPower.Constructor),
+	vchain.StoragePowerCreateStorageMiner: uint64(builtin.MethodsPower.CreateMiner),
 
-	vchain.StorageMinerUpdatePeerID:  actors.MAMethods.UpdatePeerID,
-	vchain.StorageMinerGetOwner:      actors.MAMethods.GetOwner,
-	vchain.StorageMinerGetPower:      actors.MAMethods.GetPower,
-	vchain.StorageMinerGetWorkerAddr: actors.MAMethods.GetWorkerAddr,
-	vchain.StorageMinerGetPeerID:     actors.MAMethods.GetPeerID,
-	vchain.StorageMinerGetSectorSize: actors.MAMethods.GetSectorSize,
+	vchain.StorageMinerUpdatePeerID:  0, //actors.MAMethods.UpdatePeerID,
+	vchain.StorageMinerGetOwner:      0, //actors.MAMethods.GetOwner,
+	vchain.StorageMinerGetPower:      0, //actors.MAMethods.GetPower,
+	vchain.StorageMinerGetWorkerAddr: 0, //actors.MAMethods.GetWorkerAddr,
+	vchain.StorageMinerGetPeerID:     0, //actors.MAMethods.GetPeerID,
+	vchain.StorageMinerGetSectorSize: 0, //actors.MAMethods.GetSectorSize,
 
 	vchain.MultiSigConstructor:       uint64(builtin.MethodsMultisig.Constructor),
 	vchain.MultiSigPropose:           uint64(builtin.MethodsMultisig.Propose),

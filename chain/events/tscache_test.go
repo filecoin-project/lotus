@@ -5,6 +5,7 @@ import (
 	"testing"
 
 	"github.com/filecoin-project/specs-actors/actors/abi"
+	"github.com/filecoin-project/specs-actors/actors/crypto"
 	"github.com/stretchr/testify/require"
 
 	"github.com/filecoin-project/go-address"
@@ -28,8 +29,8 @@ func TestTsCache(t *testing.T) {
 			ParentStateRoot:       dummyCid,
 			Messages:              dummyCid,
 			ParentMessageReceipts: dummyCid,
-			BlockSig:              &types.Signature{Type: types.KTBLS},
-			BLSAggregate:          types.Signature{Type: types.KTBLS},
+			BlockSig:              &types.Signature{Type: crypto.SigTypeBLS},
+			BLSAggregate:          types.Signature{Type: crypto.SigTypeBLS},
 		}})
 		if err != nil {
 			t.Fatal(err)
@@ -70,8 +71,8 @@ func TestTsCacheNulls(t *testing.T) {
 			ParentStateRoot:       dummyCid,
 			Messages:              dummyCid,
 			ParentMessageReceipts: dummyCid,
-			BlockSig:              &types.Signature{Type: types.KTBLS},
-			BLSAggregate:          types.Signature{Type: types.KTBLS},
+			BlockSig:              &types.Signature{Type: crypto.SigTypeBLS},
+			BLSAggregate:          types.Signature{Type: crypto.SigTypeBLS},
 		}})
 		if err != nil {
 			t.Fatal(err)
