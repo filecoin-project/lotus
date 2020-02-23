@@ -1,15 +1,8 @@
 package sealing
 
 import (
-	"io"
-	"math/bits"
-	"math/rand"
-	"sync"
-
 	"github.com/filecoin-project/specs-actors/actors/abi"
-	"github.com/hashicorp/go-multierror"
-
-	sectorbuilder "github.com/filecoin-project/go-sectorbuilder"
+	"math/bits"
 )
 
 func fillersFromRem(in abi.UnpaddedPieceSize) ([]abi.UnpaddedPieceSize, error) {
@@ -48,44 +41,6 @@ func fillersFromRem(in abi.UnpaddedPieceSize) ([]abi.UnpaddedPieceSize, error) {
 	return out, nil
 }
 
-func (m *Sealing) fastPledgeCommitment(size abi.UnpaddedPieceSize, parts uint64) (commP [sectorbuilder.CommLen]byte, err error) {
-	parts = 1 << bits.Len64(parts) // round down to nearest power of 2
-	if uint64(size)/parts < 127 {
-		parts = uint64(size) / 127
-	}
-
-	piece := abi.PaddedPieceSize(uint64(size.Padded()) / parts).Unpadded()
-	out := make([]sectorbuilder.PublicPieceInfo, parts)
-	var lk sync.Mutex
-
-	var wg sync.WaitGroup
-	wg.Add(int(parts))
-	for i := uint64(0); i < parts; i++ {
-		go func(i uint64) {
-			defer wg.Done()
-
-			commP, perr := sectorbuilder.GeneratePieceCommitment(io.LimitReader(rand.New(rand.NewSource(42+int64(i))), int64(piece)), piece)
-
-			lk.Lock()
-			if perr != nil {
-				err = multierror.Append(err, perr)
-			}
-			out[i] = sectorbuilder.PublicPieceInfo{
-				Size:  piece,
-				CommP: commP,
-			}
-			lk.Unlock()
-		}(i)
-	}
-	wg.Wait()
-
-	if err != nil {
-		return [32]byte{}, err
-	}
-
-	return sectorbuilder.GenerateDataCommitment(m.sb.SectorSize(), out)
-}
-
 func (m *Sealing) ListSectors() ([]SectorInfo, error) {
 	var sectors []SectorInfo
 	if err := m.sectors.List(&sectors); err != nil {
@@ -96,6 +51,6 @@ func (m *Sealing) ListSectors() ([]SectorInfo, error) {
 
 func (m *Sealing) GetSectorInfo(sid abi.SectorNumber) (SectorInfo, error) {
 	var out SectorInfo
-	err := m.sectors.Get(sid).Get(&out)
+	err := m.sectors.Get(uint64(sid)).Get(&out)
 	return out, err
 }

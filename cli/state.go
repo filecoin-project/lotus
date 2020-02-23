@@ -274,9 +274,7 @@ var stateReplaySetCmd = &cli.Command{
 				return err
 			}
 
-
 		}
-
 
 		res, err := api.StateReplay(ctx, ts, mcid)
 		if err != nil {

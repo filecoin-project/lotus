@@ -3,13 +3,16 @@ package vm
 import (
 	ffi "github.com/filecoin-project/filecoin-ffi"
 	"github.com/filecoin-project/go-address"
+	commcid "github.com/filecoin-project/go-fil-commcid"
 	"github.com/filecoin-project/go-sectorbuilder"
+	"github.com/filecoin-project/lotus/lib/zerocomm"
 	"github.com/filecoin-project/specs-actors/actors/abi"
 	"github.com/filecoin-project/specs-actors/actors/crypto"
 	"github.com/filecoin-project/specs-actors/actors/runtime"
 	"github.com/ipfs/go-cid"
 	mh "github.com/multiformats/go-multihash"
 	"golang.org/x/xerrors"
+	"math/bits"
 )
 
 func init() {
@@ -29,11 +32,30 @@ type syscallShim struct {
 func (ss *syscallShim) ComputeUnsealedSectorCID(ssize abi.SectorSize, pieces []abi.PieceInfo) (cid.Cid, error) {
 	// TODO: does this pull in unwanted dependencies?
 	var ffipieces []ffi.PublicPieceInfo
+	var sum abi.PaddedPieceSize
 	for _, p := range pieces {
 		ffipieces = append(ffipieces, ffi.PublicPieceInfo{
 			Size:  p.Size.Unpadded(),
 			CommP: cidToCommD(p.PieceCID),
 		})
+		sum += p.Size
+	}
+
+	{
+		// pad remaining space with 0 CommPs
+		toFill := uint64(abi.PaddedPieceSize(ssize) - sum)
+		n := bits.OnesCount64(toFill)
+		for i := 0; i < n; i++ {
+			next := bits.TrailingZeros64(toFill)
+			psize := uint64(1) << next
+			toFill ^= psize
+
+			unpadded := abi.PaddedPieceSize(psize).Unpadded()
+			ffipieces = append(ffipieces, ffi.PublicPieceInfo{
+				Size:  unpadded,
+				CommP: zerocomm.ForSize(unpadded),
+			})
+		}
 	}
 
 	commd, err := sectorbuilder.GenerateDataCommitment(ssize, ffipieces)
@@ -42,14 +64,7 @@ func (ss *syscallShim) ComputeUnsealedSectorCID(ssize abi.SectorSize, pieces []a
 		return cid.Undef, err
 	}
 
-	// TODO: pulling these numbers kinda out of an unmerged PR
-	hb, err := mh.Encode(commd[:], 0xf104)
-	if err != nil {
-		log.Errorf("mh encode failed: %s", err)
-		return cid.Undef, err
-	}
-
-	return cid.NewCidV1(0xf101, mh.Multihash(hb)), nil
+	return commcid.DataCommitmentV1ToCID(commd[:]), nil
 }
 
 func (ss *syscallShim) HashBlake2b(data []byte) [32]byte {

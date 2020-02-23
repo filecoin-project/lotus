@@ -310,8 +310,14 @@ func (t *Piece) MarshalCBOR(w io.Writer) error {
 		return err
 	}
 
-	if _, err := w.Write(cbg.CborEncodeMajorType(cbg.MajUnsignedInt, uint64(t.DealID))); err != nil {
-		return err
+	if t.DealID == nil {
+		if _, err := w.Write(cbg.CborNull); err != nil {
+			return err
+		}
+	} else {
+		if _, err := w.Write(cbg.CborEncodeMajorType(cbg.MajUnsignedInt, uint64(*t.DealID))); err != nil {
+			return err
+		}
 	}
 
 	// t.Size (abi.UnpaddedPieceSize) (uint64)
@@ -388,25 +394,45 @@ func (t *Piece) UnmarshalCBOR(r io.Reader) error {
 		// t.DealID (abi.DealID) (uint64)
 		case "DealID":
 
-			maj, extra, err = cbg.CborReadHeader(br)
-			if err != nil {
-				return err
+			{
+
+				pb, err := br.PeekByte()
+				if err != nil {
+					return err
+				}
+				if pb == cbg.CborNull[0] {
+					var nbuf [1]byte
+					if _, err := br.Read(nbuf[:]); err != nil {
+						return err
+					}
+				} else {
+					maj, extra, err = cbg.CborReadHeader(br)
+					if err != nil {
+						return err
+					}
+					if maj != cbg.MajUnsignedInt {
+						return fmt.Errorf("wrong type for uint64 field")
+					}
+					typed := abi.DealID(extra)
+					t.DealID = &typed
+				}
+
 			}
-			if maj != cbg.MajUnsignedInt {
-				return fmt.Errorf("wrong type for uint64 field")
-			}
-			t.DealID = abi.DealID(extra)
 			// t.Size (abi.UnpaddedPieceSize) (uint64)
 		case "Size":
 
-			maj, extra, err = cbg.CborReadHeader(br)
-			if err != nil {
-				return err
+			{
+
+				maj, extra, err = cbg.CborReadHeader(br)
+				if err != nil {
+					return err
+				}
+				if maj != cbg.MajUnsignedInt {
+					return fmt.Errorf("wrong type for uint64 field")
+				}
+				t.Size = abi.UnpaddedPieceSize(extra)
+
 			}
-			if maj != cbg.MajUnsignedInt {
-				return fmt.Errorf("wrong type for uint64 field")
-			}
-			t.Size = abi.UnpaddedPieceSize(extra)
 			// t.CommP ([]uint8) (slice)
 		case "CommP":
 
@@ -765,36 +791,48 @@ func (t *SectorInfo) UnmarshalCBOR(r io.Reader) error {
 		// t.State (uint64) (uint64)
 		case "State":
 
-			maj, extra, err = cbg.CborReadHeader(br)
-			if err != nil {
-				return err
+			{
+
+				maj, extra, err = cbg.CborReadHeader(br)
+				if err != nil {
+					return err
+				}
+				if maj != cbg.MajUnsignedInt {
+					return fmt.Errorf("wrong type for uint64 field")
+				}
+				t.State = uint64(extra)
+
 			}
-			if maj != cbg.MajUnsignedInt {
-				return fmt.Errorf("wrong type for uint64 field")
-			}
-			t.State = uint64(extra)
 			// t.SectorID (abi.SectorNumber) (uint64)
 		case "SectorID":
 
-			maj, extra, err = cbg.CborReadHeader(br)
-			if err != nil {
-				return err
+			{
+
+				maj, extra, err = cbg.CborReadHeader(br)
+				if err != nil {
+					return err
+				}
+				if maj != cbg.MajUnsignedInt {
+					return fmt.Errorf("wrong type for uint64 field")
+				}
+				t.SectorID = abi.SectorNumber(extra)
+
 			}
-			if maj != cbg.MajUnsignedInt {
-				return fmt.Errorf("wrong type for uint64 field")
-			}
-			t.SectorID = abi.SectorNumber(extra)
 			// t.Nonce (uint64) (uint64)
 		case "Nonce":
 
-			maj, extra, err = cbg.CborReadHeader(br)
-			if err != nil {
-				return err
+			{
+
+				maj, extra, err = cbg.CborReadHeader(br)
+				if err != nil {
+					return err
+				}
+				if maj != cbg.MajUnsignedInt {
+					return fmt.Errorf("wrong type for uint64 field")
+				}
+				t.Nonce = uint64(extra)
+
 			}
-			if maj != cbg.MajUnsignedInt {
-				return fmt.Errorf("wrong type for uint64 field")
-			}
-			t.Nonce = uint64(extra)
 			// t.Pieces ([]sealing.Piece) (slice)
 		case "Pieces":
 
@@ -1147,14 +1185,18 @@ func (t *Log) UnmarshalCBOR(r io.Reader) error {
 		// t.Timestamp (uint64) (uint64)
 		case "Timestamp":
 
-			maj, extra, err = cbg.CborReadHeader(br)
-			if err != nil {
-				return err
+			{
+
+				maj, extra, err = cbg.CborReadHeader(br)
+				if err != nil {
+					return err
+				}
+				if maj != cbg.MajUnsignedInt {
+					return fmt.Errorf("wrong type for uint64 field")
+				}
+				t.Timestamp = uint64(extra)
+
 			}
-			if maj != cbg.MajUnsignedInt {
-				return fmt.Errorf("wrong type for uint64 field")
-			}
-			t.Timestamp = uint64(extra)
 			// t.Trace (string) (string)
 		case "Trace":
 
