@@ -99,8 +99,9 @@ func (m *Sealing) handlePreCommitting(ctx statemachine.Context, sector SectorInf
 	}
 
 	params := &miner.SectorPreCommitInfo{
-		Expiration:   0,
+		Expiration:   10000000, // TODO: implement
 		SectorNumber: sector.SectorID,
+		RegisteredProof: abi.RegisteredProof_StackedDRG32GiBSeal,
 
 		SealedCID:     commcid.ReplicaCommitmentV1ToCID(sector.CommR),
 		SealRandEpoch: sector.Ticket.BlockHeight,

@@ -254,6 +254,7 @@ func (t *ChannelInfo) MarshalCBOR(w io.Writer) error {
 	if _, err := w.Write(cbg.CborEncodeMajorType(cbg.MajUnsignedInt, uint64(t.NextLane))); err != nil {
 		return err
 	}
+
 	return nil
 }
 
@@ -320,14 +321,18 @@ func (t *ChannelInfo) UnmarshalCBOR(r io.Reader) error {
 			// t.Direction (uint64) (uint64)
 		case "Direction":
 
-			maj, extra, err = cbg.CborReadHeader(br)
-			if err != nil {
-				return err
+			{
+
+				maj, extra, err = cbg.CborReadHeader(br)
+				if err != nil {
+					return err
+				}
+				if maj != cbg.MajUnsignedInt {
+					return fmt.Errorf("wrong type for uint64 field")
+				}
+				t.Direction = uint64(extra)
+
 			}
-			if maj != cbg.MajUnsignedInt {
-				return fmt.Errorf("wrong type for uint64 field")
-			}
-			t.Direction = uint64(extra)
 			// t.Vouchers ([]*paychmgr.VoucherInfo) (slice)
 		case "Vouchers":
 
@@ -359,14 +364,18 @@ func (t *ChannelInfo) UnmarshalCBOR(r io.Reader) error {
 			// t.NextLane (uint64) (uint64)
 		case "NextLane":
 
-			maj, extra, err = cbg.CborReadHeader(br)
-			if err != nil {
-				return err
+			{
+
+				maj, extra, err = cbg.CborReadHeader(br)
+				if err != nil {
+					return err
+				}
+				if maj != cbg.MajUnsignedInt {
+					return fmt.Errorf("wrong type for uint64 field")
+				}
+				t.NextLane = uint64(extra)
+
 			}
-			if maj != cbg.MajUnsignedInt {
-				return fmt.Errorf("wrong type for uint64 field")
-			}
-			t.NextLane = uint64(extra)
 
 		default:
 			return fmt.Errorf("unknown struct field %d: '%s'", i, name)

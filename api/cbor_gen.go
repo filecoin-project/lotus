@@ -244,6 +244,7 @@ func (t *SealedRef) MarshalCBOR(w io.Writer) error {
 	if _, err := w.Write(cbg.CborEncodeMajorType(cbg.MajUnsignedInt, uint64(t.Size))); err != nil {
 		return err
 	}
+
 	return nil
 }
 
@@ -280,36 +281,48 @@ func (t *SealedRef) UnmarshalCBOR(r io.Reader) error {
 		// t.SectorID (abi.SectorNumber) (uint64)
 		case "SectorID":
 
-			maj, extra, err = cbg.CborReadHeader(br)
-			if err != nil {
-				return err
+			{
+
+				maj, extra, err = cbg.CborReadHeader(br)
+				if err != nil {
+					return err
+				}
+				if maj != cbg.MajUnsignedInt {
+					return fmt.Errorf("wrong type for uint64 field")
+				}
+				t.SectorID = abi.SectorNumber(extra)
+
 			}
-			if maj != cbg.MajUnsignedInt {
-				return fmt.Errorf("wrong type for uint64 field")
-			}
-			t.SectorID = abi.SectorNumber(extra)
 			// t.Offset (uint64) (uint64)
 		case "Offset":
 
-			maj, extra, err = cbg.CborReadHeader(br)
-			if err != nil {
-				return err
+			{
+
+				maj, extra, err = cbg.CborReadHeader(br)
+				if err != nil {
+					return err
+				}
+				if maj != cbg.MajUnsignedInt {
+					return fmt.Errorf("wrong type for uint64 field")
+				}
+				t.Offset = uint64(extra)
+
 			}
-			if maj != cbg.MajUnsignedInt {
-				return fmt.Errorf("wrong type for uint64 field")
-			}
-			t.Offset = uint64(extra)
 			// t.Size (abi.UnpaddedPieceSize) (uint64)
 		case "Size":
 
-			maj, extra, err = cbg.CborReadHeader(br)
-			if err != nil {
-				return err
+			{
+
+				maj, extra, err = cbg.CborReadHeader(br)
+				if err != nil {
+					return err
+				}
+				if maj != cbg.MajUnsignedInt {
+					return fmt.Errorf("wrong type for uint64 field")
+				}
+				t.Size = abi.UnpaddedPieceSize(extra)
+
 			}
-			if maj != cbg.MajUnsignedInt {
-				return fmt.Errorf("wrong type for uint64 field")
-			}
-			t.Size = abi.UnpaddedPieceSize(extra)
 
 		default:
 			return fmt.Errorf("unknown struct field %d: '%s'", i, name)

@@ -250,7 +250,7 @@ func migratePreSealMeta(ctx context.Context, api lapi.FullNode, presealDir strin
 			SectorID: sector.SectorID,
 			Pieces: []sealing.Piece{
 				{
-					DealID: dealID,
+					DealID: &dealID,
 					Size:   abi.PaddedPieceSize(meta.SectorSize).Unpadded(),
 					CommP:  sector.CommD[:],
 				},

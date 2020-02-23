@@ -120,20 +120,20 @@ func (m *Sealing) SealPiece(ctx context.Context, size abi.UnpaddedPieceSize, r i
 		return xerrors.Errorf("adding piece to sector: %w", err)
 	}
 
-	return m.newSector(ctx, sectorID, dealID, ppi)
+	return m.newSector(sectorID, []Piece{
+		{
+			DealID: &dealID,
+
+			Size:  ppi.Size,
+			CommP: ppi.CommP[:],
+		},
+	},)
 }
 
-func (m *Sealing) newSector(ctx context.Context, sid abi.SectorNumber, dealID abi.DealID, ppi sectorbuilder.PublicPieceInfo) error {
+func (m *Sealing) newSector(sid abi.SectorNumber, pieces []Piece) error {
 	log.Infof("Start sealing %d", sid)
-	return m.sectors.Send(sid, SectorStart{
+	return m.sectors.Send(uint64(sid), SectorStart{
 		id: sid,
-		pieces: []Piece{
-			{
-				DealID: dealID,
-
-				Size:  abi.UnpaddedPieceSize(ppi.Size),
-				CommP: ppi.CommP[:],
-			},
-		},
+		pieces: pieces,
 	})
 }

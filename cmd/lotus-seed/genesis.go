@@ -39,15 +39,15 @@ var genesisNewCmd = &cli.Command{
 		}
 
 		out := genesis.Template{
-			Accounts: []genesis.Actor{},
-			Miners: []genesis.Miner{},
+			Accounts:    []genesis.Actor{},
+			Miners:      []genesis.Miner{},
 			NetworkName: cctx.String("network-name"),
 		}
 		if out.NetworkName == "" {
 			out.NetworkName = "localnet-" + uuid.New().String()
 		}
 
-		genb, err := json.MarshalIndent(&out, "","  ")
+		genb, err := json.MarshalIndent(&out, "", "  ")
 		if err != nil {
 			return err
 		}
@@ -68,7 +68,7 @@ var genesisNewCmd = &cli.Command{
 var genesisAddMinerCmd = &cli.Command{
 	Name:        "add-miner",
 	Description: "add genesis miner",
-	Flags: []cli.Flag{},
+	Flags:       []cli.Flag{},
 	Action: func(cctx *cli.Context) error {
 		if cctx.Args().Len() != 2 {
 			return xerrors.New("seed genesis add-miner [genesis.json] [preseal.json]")
@@ -128,7 +128,7 @@ var genesisAddMinerCmd = &cli.Command{
 			})
 		}
 
-		genb, err = json.MarshalIndent(&template, "","  ")
+		genb, err = json.MarshalIndent(&template, "", "  ")
 		if err != nil {
 			return err
 		}
