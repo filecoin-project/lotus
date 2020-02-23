@@ -14,9 +14,11 @@ import (
 	sectorbuilder "github.com/filecoin-project/go-sectorbuilder"
 
 	"github.com/filecoin-project/lotus/build"
-	genesis2 "github.com/filecoin-project/lotus/chain/gen/genesis"
+	genesis "github.com/filecoin-project/lotus/genesis"
 
 	"github.com/filecoin-project/specs-actors/actors/abi"
+	"github.com/filecoin-project/specs-actors/actors/builtin"
+	saminer "github.com/filecoin-project/specs-actors/actors/builtin/miner"
 	"github.com/ipfs/go-datastore"
 	"github.com/ipfs/go-datastore/namespace"
 	badger "github.com/ipfs/go-ds-badger2"
@@ -32,7 +34,6 @@ import (
 	"github.com/filecoin-project/lotus/chain/actors"
 	"github.com/filecoin-project/lotus/chain/types"
 	"github.com/filecoin-project/lotus/cmd/lotus-seed/seed"
-	"github.com/filecoin-project/lotus/genesis"
 	"github.com/filecoin-project/lotus/lib/jsonrpc"
 	"github.com/filecoin-project/lotus/miner"
 	"github.com/filecoin-project/lotus/node"
@@ -79,13 +80,13 @@ func testStorageNode(ctx context.Context, t *testing.T, waddr address.Address, a
 	peerid, err := peer.IDFromPrivateKey(pk)
 	require.NoError(t, err)
 
-	enc, err := actors.SerializeParams(&actors.UpdatePeerIDParams{PeerID: peerid})
+	enc, err := actors.SerializeParams(&saminer.ChangePeerIDParams{NewID: peerid})
 	require.NoError(t, err)
 
 	msg := &types.Message{
 		To:       act,
 		From:     waddr,
-		Method:   actors.MAMethods.UpdatePeerID,
+		Method:   builtin.MethodsMiner.ChangePeerID,
 		Params:   enc,
 		Value:    types.NewInt(0),
 		GasPrice: types.NewInt(0),
@@ -148,6 +149,8 @@ func builder(t *testing.T, nFull int, storage []int) ([]test.TestNode, []test.Te
 	minerPid, err := peer.IDFromPrivateKey(pk)
 	require.NoError(t, err)
 
+	_ = minerPid // TODO: what do we do with this now?
+
 	var genbuf bytes.Buffer
 
 	if len(storage) > 1 {
@@ -155,10 +158,9 @@ func builder(t *testing.T, nFull int, storage []int) ([]test.TestNode, []test.Te
 	}
 	// PRESEAL SECTION, TRY TO REPLACE WITH BETTER IN THE FUTURE
 	// TODO: would be great if there was a better way to fake the preseals
-	gmc := &genesis2.GenMinerCfg{
-		PeerIDs:  []peer.ID{minerPid}, // TODO: if we have more miners, need more peer IDs
-		PreSeals: map[string]genesis.GenesisMiner{},
-	}
+
+	var genms []genesis.Miner
+	var maddrs []address.Address
 
 	var presealDirs []string
 	for i := 0; i < len(storage); i++ {
@@ -170,14 +172,18 @@ func builder(t *testing.T, nFull int, storage []int) ([]test.TestNode, []test.Te
 		if err != nil {
 			t.Fatal(err)
 		}
-		genm, err := seed.PreSeal(maddr, 1024, 0, 1, tdir, []byte("make genesis mem random"))
+		genm, _, err := seed.PreSeal(maddr, 1024, 0, 1, tdir, []byte("make genesis mem random"), nil)
 		if err != nil {
 			t.Fatal(err)
 		}
 
 		presealDirs = append(presealDirs, tdir)
-		gmc.MinerAddrs = append(gmc.MinerAddrs, maddr)
-		gmc.PreSeals[maddr.String()] = *genm
+		maddrs = append(maddrs, maddr)
+		genms = append(genms, *genm)
+	}
+
+	templ := &genesis.Template{
+		Miners: genms,
 	}
 
 	// END PRESEAL SECTION
@@ -185,7 +191,7 @@ func builder(t *testing.T, nFull int, storage []int) ([]test.TestNode, []test.Te
 	for i := 0; i < nFull; i++ {
 		var genesis node.Option
 		if i == 0 {
-			genesis = node.Override(new(modules.Genesis), modtest.MakeGenesisMem(&genbuf, gmc))
+			genesis = node.Override(new(modules.Genesis), modtest.MakeGenesisMem(&genbuf, *templ))
 		} else {
 			genesis = node.Override(new(modules.Genesis), modules.LoadGenesis(genbuf.Bytes()))
 		}
@@ -218,8 +224,8 @@ func builder(t *testing.T, nFull int, storage []int) ([]test.TestNode, []test.Te
 
 		f := fulls[full]
 
-		genMiner := gmc.MinerAddrs[i]
-		wa := gmc.PreSeals[genMiner.String()].Worker
+		genMiner := maddrs[i]
+		wa := genms[i].Worker
 
 		storers[i] = testStorageNode(ctx, t, wa, genMiner, pk, f, mn, node.Options())
 
@@ -267,6 +273,8 @@ func mockSbBuilder(t *testing.T, nFull int, storage []int) ([]test.TestNode, []t
 	minerPid, err := peer.IDFromPrivateKey(pk)
 	require.NoError(t, err)
 
+	_ = minerPid // TODO
+
 	var genbuf bytes.Buffer
 
 	if len(storage) > 1 {
@@ -274,11 +282,9 @@ func mockSbBuilder(t *testing.T, nFull int, storage []int) ([]test.TestNode, []t
 	}
 	// PRESEAL SECTION, TRY TO REPLACE WITH BETTER IN THE FUTURE
 	// TODO: would be great if there was a better way to fake the preseals
-	gmc := &genesis2.GenMinerCfg{
-		PeerIDs:  []peer.ID{minerPid}, // TODO: if we have more miners, need more peer IDs
-		PreSeals: map[string]genesis.GenesisMiner{},
-	}
 
+	var genms []genesis.Miner
+	var maddrs []address.Address
 	var presealDirs []string
 	for i := 0; i < len(storage); i++ {
 		maddr, err := address.NewIDAddress(300 + uint64(i))
@@ -295,8 +301,11 @@ func mockSbBuilder(t *testing.T, nFull int, storage []int) ([]test.TestNode, []t
 		}
 
 		presealDirs = append(presealDirs, tdir)
-		gmc.MinerAddrs = append(gmc.MinerAddrs, maddr)
-		gmc.PreSeals[maddr.String()] = *genm
+		maddrs = append(maddrs, maddr)
+		genms = append(genms, *genm)
+	}
+	templ := &genesis.Template{
+		Miners: genms,
 	}
 
 	// END PRESEAL SECTION
@@ -304,7 +313,7 @@ func mockSbBuilder(t *testing.T, nFull int, storage []int) ([]test.TestNode, []t
 	for i := 0; i < nFull; i++ {
 		var genesis node.Option
 		if i == 0 {
-			genesis = node.Override(new(modules.Genesis), modtest.MakeGenesisMem(&genbuf, gmc))
+			genesis = node.Override(new(modules.Genesis), modtest.MakeGenesisMem(&genbuf, *templ))
 		} else {
 			genesis = node.Override(new(modules.Genesis), modules.LoadGenesis(genbuf.Bytes()))
 		}
@@ -339,8 +348,8 @@ func mockSbBuilder(t *testing.T, nFull int, storage []int) ([]test.TestNode, []t
 
 		f := fulls[full]
 
-		genMiner := gmc.MinerAddrs[i]
-		wa := gmc.PreSeals[genMiner.String()].Worker
+		genMiner := maddrs[i]
+		wa := genms[i].Worker
 
 		storers[i] = testStorageNode(ctx, t, wa, genMiner, pk, f, mn, node.Options(
 			node.Override(new(sectorbuilder.Interface), sbmock.NewMockSectorBuilder(5, build.SectorSizes[0])),

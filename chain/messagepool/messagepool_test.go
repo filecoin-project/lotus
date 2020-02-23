@@ -11,6 +11,7 @@ import (
 	"github.com/filecoin-project/lotus/chain/wallet"
 	_ "github.com/filecoin-project/lotus/lib/sigs/bls"
 	_ "github.com/filecoin-project/lotus/lib/sigs/secp"
+	"github.com/filecoin-project/specs-actors/actors/crypto"
 	"github.com/ipfs/go-cid"
 	"github.com/ipfs/go-datastore"
 )
@@ -146,7 +147,7 @@ func TestMessagePool(t *testing.T) {
 
 	a := mock.MkBlock(nil, 1, 1)
 
-	sender, err := w.GenerateKey(types.KTBLS)
+	sender, err := w.GenerateKey(crypto.SigTypeBLS)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -188,7 +189,7 @@ func TestRevertMessages(t *testing.T) {
 	a := mock.MkBlock(nil, 1, 1)
 	b := mock.MkBlock(mock.TipSet(a), 1, 1)
 
-	sender, err := w.GenerateKey(types.KTBLS)
+	sender, err := w.GenerateKey(crypto.SigTypeBLS)
 	if err != nil {
 		t.Fatal(err)
 	}

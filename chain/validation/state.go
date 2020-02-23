@@ -133,7 +133,7 @@ func (s *StateWrapper) SetSingletonActor(addr vactors.SingletonActorID, balance 
 
 	switch lotusAddr {
 	case actors.InitAddress:
-		initact, err := genesis.SetupInitActor(s.bs, nil)
+		initact, err := genesis.SetupInitActor(s.bs, "testing", nil)
 		if err != nil {
 			return nil, nil, err
 		}
@@ -143,7 +143,7 @@ func (s *StateWrapper) SetSingletonActor(addr vactors.SingletonActorID, balance 
 
 		return &actorWrapper{*initact}, s.storage, s.flush(tree)
 	case actors.StorageMarketAddress:
-		nsroot, err := genesis.SetupStorageMarketActor(s.bs, s.stateRoot, nil)
+		nsroot, err := genesis.SetupStorageMarketActor(s.bs)
 		if err != nil {
 			return nil, nil, err
 		}
