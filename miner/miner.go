@@ -8,6 +8,7 @@ import (
 
 	"github.com/filecoin-project/go-address"
 	"github.com/filecoin-project/specs-actors/actors/abi"
+	"github.com/filecoin-project/specs-actors/actors/crypto"
 	lru "github.com/hashicorp/golang-lru"
 
 	"github.com/filecoin-project/lotus/api"
@@ -341,20 +342,18 @@ func (m *Miner) mineOne(ctx context.Context, addr address.Address, base *MiningB
 	return b, nil
 }
 
-func (m *Miner) computeVRF(ctx context.Context, addr address.Address, input []byte) ([]byte, error) {
+func (m *Miner) computeTicket(ctx context.Context, addr address.Address, base *MiningBase) (*types.Ticket, error) {
 	w, err := m.api.StateMinerWorker(ctx, addr, nil)
 	if err != nil {
 		return nil, err
 	}
 
-	return gen.ComputeVRF(ctx, m.api.WalletSign, w, addr, gen.DSepTicket, input)
-}
+	input, err := m.api.ChainGetRandomness(ctx, base.ts.Key(), crypto.DomainSeparationTag_TicketProduction, base.ts.Height(), addr.Bytes())
+	if err != nil {
+		return nil, err
+	}
 
-func (m *Miner) computeTicket(ctx context.Context, addr address.Address, base *MiningBase) (*types.Ticket, error) {
-
-	vrfBase := base.ts.MinTicket().VRFProof
-
-	vrfOut, err := m.computeVRF(ctx, addr, vrfBase)
+	vrfOut, err := gen.ComputeVRF(ctx, m.api.WalletSign, w, input)
 	if err != nil {
 		return nil, err
 	}
