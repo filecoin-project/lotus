@@ -57,7 +57,7 @@ func (fm *FundMgr) EnsureAvailable(ctx context.Context, addr address.Address, am
 	fm.lk.Unlock()
 
 	var err error
-	params, err := actors.SerializeParams(&toAdd)
+	params, err := actors.SerializeParams(&addr)
 	if err != nil {
 		return err
 	}

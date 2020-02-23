@@ -647,7 +647,7 @@ func copyRec(from, to blockstore.Blockstore, root cid.Cid, cp func(block.Block) 
 	}
 
 	for _, link := range links {
-		if link.Prefix().MhType == mh.IDENTITY || link.Prefix().MhType == uint64(commcid.FC_SEALED_V1) {
+		if link.Prefix().MhType == mh.IDENTITY || link.Prefix().MhType == uint64(commcid.FC_SEALED_V1) || link.Prefix().MhType == uint64(commcid.FC_UNSEALED_V1) {
 			continue
 		}
 

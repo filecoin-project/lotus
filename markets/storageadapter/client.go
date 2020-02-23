@@ -93,7 +93,8 @@ func (n *ClientNodeAdapter) ListStorageProviders(ctx context.Context) ([]*storag
 }
 
 func (n *ClientNodeAdapter) VerifySignature(sig crypto.Signature, addr address.Address, input []byte) bool {
-	panic("TODO")
+	log.Warn("stub VerifySignature")
+	return true
 }
 
 func (n *ClientNodeAdapter) ListClientDeals(ctx context.Context, addr address.Address) ([]storagemarket.StorageDeal, error) {
@@ -194,7 +195,7 @@ func (c *ClientNodeAdapter) ValidatePublishedDeal(ctx context.Context, deal stor
 	for i, storageDeal := range params.Deals {
 		// TODO: make it less hacky
 		sd := storageDeal
-		eq, err := cborutil.Equals(&deal.Proposal, &sd)
+		eq, err := cborutil.Equals(&deal.ClientDealProposal, &sd)
 		if err != nil {
 			return 0, err
 		}
@@ -302,7 +303,7 @@ func (c *ClientNodeAdapter) OnDealSectorCommitted(ctx context.Context, provider 
 	}
 
 	if err := c.ev.Called(checkFunc, called, revert, 3, build.SealRandomnessLookbackLimit, matchEvent); err != nil {
-		return xerrors.Errorf("failed to set up called handler")
+		return xerrors.Errorf("failed to set up called handler: %w", err)
 	}
 
 	return nil
@@ -310,8 +311,14 @@ func (c *ClientNodeAdapter) OnDealSectorCommitted(ctx context.Context, provider 
 
 func (n *ClientNodeAdapter) SignProposal(ctx context.Context, signer address.Address, proposal samarket.DealProposal) (*samarket.ClientDealProposal, error) {
 	// TODO: output spec signed proposal
-	panic("nyi")
-	return nil, nil
+	log.Warn("TODO: stub SignProposal")
+	return &samarket.ClientDealProposal{
+		Proposal: proposal,
+		ClientSignature: crypto.Signature{
+			Type: crypto.SigTypeBLS,
+			Data: []byte{},
+		},
+	}, nil
 }
 
 func (n *ClientNodeAdapter) GetDefaultWalletAddress(ctx context.Context) (address.Address, error) {

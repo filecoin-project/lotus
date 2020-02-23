@@ -74,9 +74,9 @@ func TestDealFlow(t *testing.T, b APIBuilder, blocktime time.Duration) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	deal, err := client.ClientStartDeal(ctx, fcid, addr, maddr, types.NewInt(40000000), 100)
+	deal, err := client.ClientStartDeal(ctx, fcid, addr, maddr, types.NewInt(1000000), 100)
 	if err != nil {
-		t.Fatal(err)
+		t.Fatalf("%+v", err)
 	}
 
 	// TODO: this sleep is only necessary because deals don't immediately get logged in the dealstore, we should fix this

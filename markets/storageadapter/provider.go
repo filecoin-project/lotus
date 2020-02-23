@@ -109,7 +109,8 @@ func (n *ProviderNodeAdapter) OnDealComplete(ctx context.Context, deal storagema
 }
 
 func (n *ProviderNodeAdapter) VerifySignature(sig crypto.Signature, addr address.Address, input []byte) bool {
-	panic("nyi")
+	log.Warn("stub VerifySignature")
+	return true
 }
 
 func (n *ProviderNodeAdapter) ListProviderDeals(ctx context.Context, addr address.Address) ([]storagemarket.StorageDeal, error) {
@@ -294,7 +295,7 @@ func (n *ProviderNodeAdapter) OnDealSectorCommitted(ctx context.Context, provide
 	}
 
 	if err := n.ev.Called(checkFunc, called, revert, 3, build.SealRandomnessLookbackLimit, matchEvent); err != nil {
-		return xerrors.Errorf("failed to set up called handler")
+		return xerrors.Errorf("failed to set up called handler: %w", err)
 	}
 
 	return nil

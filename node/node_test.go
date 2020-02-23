@@ -10,15 +10,6 @@ import (
 	"testing"
 	"time"
 
-	"github.com/filecoin-project/go-address"
-	sectorbuilder "github.com/filecoin-project/go-sectorbuilder"
-
-	"github.com/filecoin-project/lotus/build"
-	genesis "github.com/filecoin-project/lotus/genesis"
-
-	"github.com/filecoin-project/specs-actors/actors/abi"
-	"github.com/filecoin-project/specs-actors/actors/builtin"
-	saminer "github.com/filecoin-project/specs-actors/actors/builtin/miner"
 	"github.com/ipfs/go-datastore"
 	"github.com/ipfs/go-datastore/namespace"
 	badger "github.com/ipfs/go-ds-badger2"
@@ -28,12 +19,23 @@ import (
 	mocknet "github.com/libp2p/go-libp2p/p2p/net/mock"
 	"github.com/stretchr/testify/require"
 
+	"github.com/filecoin-project/go-address"
+	sectorbuilder "github.com/filecoin-project/go-sectorbuilder"
+	"github.com/filecoin-project/specs-actors/actors/abi"
+	"github.com/filecoin-project/specs-actors/actors/abi/big"
+	"github.com/filecoin-project/specs-actors/actors/builtin"
+	saminer "github.com/filecoin-project/specs-actors/actors/builtin/miner"
+
 	"github.com/filecoin-project/lotus/api"
 	"github.com/filecoin-project/lotus/api/client"
 	"github.com/filecoin-project/lotus/api/test"
+	"github.com/filecoin-project/lotus/build"
 	"github.com/filecoin-project/lotus/chain/actors"
+	genesis2 "github.com/filecoin-project/lotus/chain/gen/genesis"
 	"github.com/filecoin-project/lotus/chain/types"
+	"github.com/filecoin-project/lotus/chain/wallet"
 	"github.com/filecoin-project/lotus/cmd/lotus-seed/seed"
+	genesis "github.com/filecoin-project/lotus/genesis"
 	"github.com/filecoin-project/lotus/lib/jsonrpc"
 	"github.com/filecoin-project/lotus/miner"
 	"github.com/filecoin-project/lotus/node"
@@ -164,7 +166,7 @@ func builder(t *testing.T, nFull int, storage []int) ([]test.TestNode, []test.Te
 
 	var presealDirs []string
 	for i := 0; i < len(storage); i++ {
-		maddr, err := address.NewIDAddress(300 + uint64(i))
+		maddr, err := address.NewIDAddress(genesis2.MinerStart + uint64(i))
 		if err != nil {
 			t.Fatal(err)
 		}
@@ -172,7 +174,7 @@ func builder(t *testing.T, nFull int, storage []int) ([]test.TestNode, []test.Te
 		if err != nil {
 			t.Fatal(err)
 		}
-		genm, _, err := seed.PreSeal(maddr, 1024, 0, 1, tdir, []byte("make genesis mem random"), nil)
+		genm, _, err := seed.PreSeal(maddr, 1024, 0, 2, tdir, []byte("make genesis mem random"), nil)
 		if err != nil {
 			t.Fatal(err)
 		}
@@ -273,8 +275,6 @@ func mockSbBuilder(t *testing.T, nFull int, storage []int) ([]test.TestNode, []t
 	minerPid, err := peer.IDFromPrivateKey(pk)
 	require.NoError(t, err)
 
-	_ = minerPid // TODO
-
 	var genbuf bytes.Buffer
 
 	if len(storage) > 1 {
@@ -284,10 +284,12 @@ func mockSbBuilder(t *testing.T, nFull int, storage []int) ([]test.TestNode, []t
 	// TODO: would be great if there was a better way to fake the preseals
 
 	var genms []genesis.Miner
+	var genaccs []genesis.Actor
 	var maddrs []address.Address
 	var presealDirs []string
+	var keys []*wallet.Key
 	for i := 0; i < len(storage); i++ {
-		maddr, err := address.NewIDAddress(300 + uint64(i))
+		maddr, err := address.NewIDAddress(genesis2.MinerStart + uint64(i))
 		if err != nil {
 			t.Fatal(err)
 		}
@@ -295,17 +297,31 @@ func mockSbBuilder(t *testing.T, nFull int, storage []int) ([]test.TestNode, []t
 		if err != nil {
 			t.Fatal(err)
 		}
-		genm, err := sbmock.PreSeal(1024, maddr, 1)
+		genm, k, err := sbmock.PreSeal(1024, maddr, 2)
 		if err != nil {
 			t.Fatal(err)
 		}
+		genm.PeerId = minerPid
 
+		wk, err := wallet.NewKey(*k)
+		if err != nil {
+			return nil, nil
+		}
+
+		genaccs = append(genaccs, genesis.Actor{
+			Type:    genesis.TAccount,
+			Balance: big.NewInt(40000000000),
+			Meta:    (&genesis.AccountMeta{Owner: wk.Address}).ActorMeta(),
+		})
+
+		keys = append(keys, wk)
 		presealDirs = append(presealDirs, tdir)
 		maddrs = append(maddrs, maddr)
 		genms = append(genms, *genm)
 	}
 	templ := &genesis.Template{
-		Miners: genms,
+		Accounts: genaccs,
+		Miners:   genms,
 	}
 
 	// END PRESEAL SECTION
@@ -332,9 +348,8 @@ func mockSbBuilder(t *testing.T, nFull int, storage []int) ([]test.TestNode, []t
 			genesis,
 		)
 		if err != nil {
-			t.Fatal(err)
+			t.Fatalf("%+v", err)
 		}
-
 	}
 
 	for i, full := range storage {
@@ -347,6 +362,12 @@ func mockSbBuilder(t *testing.T, nFull int, storage []int) ([]test.TestNode, []t
 		}
 
 		f := fulls[full]
+		if _, err := f.FullNode.WalletImport(ctx, &keys[i].KeyInfo); err != nil {
+			return nil, nil
+		}
+		if err := f.FullNode.WalletSetDefault(ctx, keys[i].Address); err != nil {
+			return nil, nil
+		}
 
 		genMiner := maddrs[i]
 		wa := genms[i].Worker
