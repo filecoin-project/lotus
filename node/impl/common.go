@@ -2,6 +2,7 @@ package impl
 
 import (
 	"context"
+	"github.com/filecoin-project/lotus/node/modules/lp2p"
 
 	logging "github.com/ipfs/go-log/v2"
 
@@ -23,6 +24,7 @@ type CommonAPI struct {
 
 	APISecret *dtypes.APIAlg
 	Host      host.Host
+	Router    lp2p.BaseIpfsRouting
 }
 
 type jwtPayload struct {
@@ -79,6 +81,10 @@ func (a *CommonAPI) NetAddrsListen(context.Context) (peer.AddrInfo, error) {
 
 func (a *CommonAPI) NetDisconnect(ctx context.Context, p peer.ID) error {
 	return a.Host.Network().ClosePeer(p)
+}
+
+func (a *CommonAPI) NetFindPeer(ctx context.Context, p peer.ID) (peer.AddrInfo, error) {
+	return a.Router.FindPeer(ctx, p)
 }
 
 func (a *CommonAPI) ID(context.Context) (peer.ID, error) {

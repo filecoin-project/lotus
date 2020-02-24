@@ -29,6 +29,7 @@ type CommonStruct struct {
 		NetConnect       func(context.Context, peer.AddrInfo) error                    `perm:"write"`
 		NetAddrsListen   func(context.Context) (peer.AddrInfo, error)                  `perm:"read"`
 		NetDisconnect    func(context.Context, peer.ID) error                          `perm:"write"`
+		NetFindPeer      func(context.Context, peer.ID) (peer.AddrInfo, error)         `perm:"read"`
 
 		ID      func(context.Context) (peer.ID, error)     `perm:"read"`
 		Version func(context.Context) (api.Version, error) `perm:"read"`
@@ -195,6 +196,10 @@ func (c *CommonStruct) NetAddrsListen(ctx context.Context) (peer.AddrInfo, error
 
 func (c *CommonStruct) NetDisconnect(ctx context.Context, p peer.ID) error {
 	return c.Internal.NetDisconnect(ctx, p)
+}
+
+func (c *CommonStruct) NetFindPeer(ctx context.Context, p peer.ID) (peer.AddrInfo, error) {
+	return c.Internal.NetFindPeer(ctx, p)
 }
 
 // ID implements API.ID

@@ -3,6 +3,7 @@ package main
 import (
 	"fmt"
 	"net/http"
+	_ "net/http/pprof"
 	"os"
 
 	logging "github.com/ipfs/go-log/v2"
@@ -59,6 +60,10 @@ var runCmd = &cli.Command{
 			Name:  "front",
 			Value: "127.0.0.1:8418",
 		},
+		&cli.IntFlag{
+			Name:  "max-batch",
+			Value: 1000,
+		},
 	},
 	Action: func(cctx *cli.Context) error {
 		api, closer, err := lcli.GetFullNodeAPI(cctx)
@@ -75,13 +80,15 @@ var runCmd = &cli.Command{
 
 		log.Info("Remote version: %s", v.Version)
 
+		maxBatch := cctx.Int("max-batch")
+
 		st, err := openStorage(cctx.String("db"))
 		if err != nil {
 			return err
 		}
 		defer st.close()
 
-		runSyncer(ctx, api, st)
+		runSyncer(ctx, api, st, maxBatch)
 
 		h, err := newHandler(api, st)
 		if err != nil {
