@@ -18,6 +18,7 @@ import (
 	"github.com/libp2p/go-libp2p-core/peer"
 	"golang.org/x/xerrors"
 
+	"github.com/docker/go-units"
 	"github.com/ipfs/go-cid"
 	cbg "github.com/whyrusleeping/cbor-gen"
 	"gopkg.in/urfave/cli.v2"
@@ -49,6 +50,67 @@ var stateCmd = &cli.Command{
 		stateCallCmd,
 		stateGetDealSetCmd,
 		stateWaitMsgCmd,
+		stateMinerInfo,
+	},
+}
+
+var stateMinerInfo = &cli.Command{
+	Name:  "miner-info",
+	Usage: "Retrieve miner information",
+	Action: func(cctx *cli.Context) error {
+		api, closer, err := GetFullNodeAPI(cctx)
+		if err != nil {
+			return err
+		}
+		defer closer()
+
+		ctx := ReqContext(cctx)
+
+		if !cctx.Args().Present() {
+			return fmt.Errorf("must specify miner to get information for")
+		}
+
+		addr, err := address.NewFromString(cctx.Args().First())
+		if err != nil {
+			return err
+		}
+
+		ts, err := loadTipSet(ctx, cctx, api)
+		if err != nil {
+			return err
+		}
+
+		act, err := api.StateGetActor(ctx, addr, ts.Key())
+		if err != nil {
+			return err
+		}
+
+		aso, err := api.ChainReadObj(ctx, act.Head)
+		if err != nil {
+			return err
+		}
+
+		var mst actors.StorageMinerActorState
+		if err := mst.UnmarshalCBOR(bytes.NewReader(aso)); err != nil {
+			return err
+		}
+
+		mio, err := api.ChainReadObj(ctx, mst.Info)
+		if err != nil {
+			return err
+		}
+
+		var mi actors.MinerInfo
+		if err := mi.UnmarshalCBOR(bytes.NewReader(mio)); err != nil {
+			return err
+		}
+
+		fmt.Printf("Owner:\t%s\n", mi.Owner)
+		fmt.Printf("Worker:\t%s\n", mi.Worker)
+		fmt.Printf("PeerID:\t%s\n", mi.PeerID)
+		fmt.Printf("SectorSize:\t%s (%d)\n", units.BytesSize(float64(mi.SectorSize)), mi.SectorSize)
+
+		return nil
 	},
 }
 

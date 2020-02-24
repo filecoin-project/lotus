@@ -3,12 +3,13 @@ package main
 import (
 	"context"
 	"encoding/json"
-	"github.com/filecoin-project/lotus/api/apistruct"
 	"net/http"
 	_ "net/http/pprof"
 	"os"
 	"os/signal"
 	"syscall"
+
+	"github.com/filecoin-project/lotus/api/apistruct"
 
 	"github.com/filecoin-project/lotus/api"
 	"github.com/filecoin-project/lotus/lib/auth"
@@ -21,6 +22,8 @@ import (
 	"github.com/multiformats/go-multiaddr"
 	manet "github.com/multiformats/go-multiaddr-net"
 	"golang.org/x/xerrors"
+
+	"github.com/prometheus/client_golang/prometheus/promhttp"
 )
 
 var log = logging.Logger("main")
@@ -42,6 +45,8 @@ func serveRPC(a api.FullNode, stop node.StopFunc, addr multiaddr.Multiaddr) erro
 	}
 
 	http.Handle("/rest/v0/import", importAH)
+
+	http.Handle("/metrics", promhttp.Handler())
 
 	lst, err := manet.Listen(addr)
 	if err != nil {
