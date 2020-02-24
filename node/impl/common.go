@@ -2,6 +2,9 @@ package impl
 
 import (
 	"context"
+	"github.com/filecoin-project/lotus/node/modules/lp2p"
+
+	logging "github.com/ipfs/go-log/v2"
 
 	"github.com/gbrlsnchs/jwt/v3"
 	"github.com/libp2p/go-libp2p-core/host"
@@ -21,6 +24,7 @@ type CommonAPI struct {
 
 	APISecret *dtypes.APIAlg
 	Host      host.Host
+	Router    lp2p.BaseIpfsRouting
 }
 
 type jwtPayload struct {
@@ -79,6 +83,10 @@ func (a *CommonAPI) NetDisconnect(ctx context.Context, p peer.ID) error {
 	return a.Host.Network().ClosePeer(p)
 }
 
+func (a *CommonAPI) NetFindPeer(ctx context.Context, p peer.ID) (peer.AddrInfo, error) {
+	return a.Router.FindPeer(ctx, p)
+}
+
 func (a *CommonAPI) ID(context.Context) (peer.ID, error) {
 	return a.Host.ID(), nil
 }
@@ -90,6 +98,14 @@ func (a *CommonAPI) Version(context.Context) (api.Version, error) {
 
 		BlockDelay: build.BlockDelay,
 	}, nil
+}
+
+func (a *CommonAPI) LogList(context.Context) ([]string, error) {
+	return logging.GetSubsystems(), nil
+}
+
+func (a *CommonAPI) LogSetLevel(ctx context.Context, subsystem, level string) error {
+	return logging.SetLogLevel(subsystem, level)
 }
 
 var _ api.Common = &CommonAPI{}

@@ -38,14 +38,14 @@ var infoCmd = &cli.Command{
 		fmt.Printf("Miner: %s\n", maddr)
 
 		// Sector size
-		sizeByte, err := api.StateMinerSectorSize(ctx, maddr, nil)
+		sizeByte, err := api.StateMinerSectorSize(ctx, maddr, types.EmptyTSK)
 		if err != nil {
 			return err
 		}
 
 		fmt.Printf("Sector Size: %s\n", types.SizeStr(types.NewInt(uint64(sizeByte))))
 
-		pow, err := api.StateMinerPower(ctx, maddr, nil)
+		pow, err := api.StateMinerPower(ctx, maddr, types.EmptyTSK)
 		if err != nil {
 			return err
 		}
@@ -53,11 +53,11 @@ var infoCmd = &cli.Command{
 		percI := types.BigDiv(types.BigMul(pow.MinerPower, types.NewInt(1000000)), pow.TotalPower)
 		fmt.Printf("Power: %s / %s (%0.4f%%)\n", types.SizeStr(pow.MinerPower), types.SizeStr(pow.TotalPower), float64(percI.Int64())/10000)
 
-		secCounts, err := api.StateMinerSectorCount(ctx, maddr, nil)
+		secCounts, err := api.StateMinerSectorCount(ctx, maddr, types.EmptyTSK)
 		if err != nil {
 			return err
 		}
-		faults, err := api.StateMinerFaults(ctx, maddr, nil)
+		faults, err := api.StateMinerFaults(ctx, maddr, types.EmptyTSK)
 		if err != nil {
 			return err
 		}
@@ -88,7 +88,7 @@ var infoCmd = &cli.Command{
 		fmt.Printf("\tCommit: %d\n", wstat.CommitWait)
 		fmt.Printf("\tUnseal: %d\n", wstat.UnsealWait)
 
-		ps, err := api.StateMinerPostState(ctx, maddr, nil)
+		ps, err := api.StateMinerPostState(ctx, maddr, types.EmptyTSK)
 		if err != nil {
 			return err
 		}

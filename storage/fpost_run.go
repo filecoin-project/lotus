@@ -97,7 +97,7 @@ func (s *FPoStScheduler) checkFaults(ctx context.Context, ssi sectorbuilder.Sort
 	declaredFaults := map[abi.SectorNumber]struct{}{}
 
 	{
-		chainFaults, err := s.api.StateMinerFaults(ctx, s.actor, nil)
+		chainFaults, err := s.api.StateMinerFaults(ctx, s.actor, types.EmptyTSK)
 		if err != nil {
 			return nil, xerrors.Errorf("checking on-chain faults: %w", err)
 		}
@@ -210,7 +210,7 @@ func (s *FPoStScheduler) runPost(ctx context.Context, eps abi.ChainEpoch, ts *ty
 }
 
 func (s *FPoStScheduler) sortedSectorInfo(ctx context.Context, ts *types.TipSet) (sectorbuilder.SortedPublicSectorInfo, error) {
-	sset, err := s.api.StateMinerProvingSet(ctx, s.actor, ts)
+	sset, err := s.api.StateMinerProvingSet(ctx, s.actor, ts.Key())
 	if err != nil {
 		return sectorbuilder.SortedPublicSectorInfo{}, xerrors.Errorf("failed to get proving set for miner (tsH: %d): %w", ts.Height(), err)
 	}

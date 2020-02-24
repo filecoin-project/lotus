@@ -4,7 +4,6 @@ import (
 	"bytes"
 	"math/big"
 
-	"github.com/filecoin-project/go-sectorbuilder"
 	"github.com/filecoin-project/specs-actors/actors/abi"
 	"github.com/filecoin-project/specs-actors/actors/crypto"
 
@@ -207,7 +206,11 @@ func IsTicketWinner(partialTicket []byte, ssizeI abi.SectorSize, snum uint64, to
 }
 
 func ElectionPostChallengeCount(sectors uint64, faults uint64) uint64 {
-	return sectorbuilder.ElectionPostChallengeCount(sectors, faults)
+	if sectors-faults == 0 {
+		return 0
+	}
+	// ceil(sectors / SectorChallengeRatioDiv)
+	return (sectors-faults-1)/build.SectorChallengeRatioDiv + 1
 }
 
 func (t *Ticket) Equals(ot *Ticket) bool {

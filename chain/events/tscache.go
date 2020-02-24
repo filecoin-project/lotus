@@ -9,7 +9,7 @@ import (
 	"github.com/filecoin-project/lotus/chain/types"
 )
 
-type tsByHFunc func(context.Context, abi.ChainEpoch, *types.TipSet) (*types.TipSet, error)
+type tsByHFunc func(context.Context, abi.ChainEpoch, types.TipSetKey) (*types.TipSet, error)
 
 // tipSetCache implements a simple ring-buffer cache to keep track of recent
 // tipsets
@@ -94,7 +94,7 @@ func (tsc *tipSetCache) getNonNull(height abi.ChainEpoch) (*types.TipSet, error)
 func (tsc *tipSetCache) get(height abi.ChainEpoch) (*types.TipSet, error) {
 	if tsc.len == 0 {
 		log.Warnf("tipSetCache.get: cache is empty, requesting from storage (h=%d)", height)
-		return tsc.storage(context.TODO(), height, nil)
+		return tsc.storage(context.TODO(), height, types.EmptyTSK)
 	}
 
 	headH := tsc.cache[tsc.start].Height()
@@ -114,7 +114,7 @@ func (tsc *tipSetCache) get(height abi.ChainEpoch) (*types.TipSet, error) {
 
 	if height < tail.Height() {
 		log.Warnf("tipSetCache.get: requested tipset not in cache, requesting from storage (h=%d; tail=%d)", height, tail.Height())
-		return tsc.storage(context.TODO(), height, tail)
+		return tsc.storage(context.TODO(), height, tail.Key())
 	}
 
 	return tsc.cache[normalModulo(tsc.start-int(headH-height), clen)], nil

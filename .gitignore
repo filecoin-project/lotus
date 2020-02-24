@@ -26,6 +26,9 @@ build/paramfetch.sh
 /blocks.svg
 /chainwatch
 /chainwatch.db
+/bundle
+/darwin
+/linux
 
 *-fuzz.zip
 /chain/types/work_msg/
