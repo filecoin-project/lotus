@@ -13,6 +13,8 @@ import (
 	blockstore "github.com/ipfs/go-ipfs-blockstore"
 	"github.com/mitchellh/go-homedir"
 	"github.com/multiformats/go-multiaddr"
+	"github.com/prometheus/client_golang/prometheus"
+	"github.com/prometheus/client_golang/prometheus/promauto"
 	"golang.org/x/xerrors"
 	"gopkg.in/urfave/cli.v2"
 
@@ -170,6 +172,17 @@ var DaemonCmd = &cli.Command{
 		if err != nil {
 			return xerrors.Errorf("initializing node: %w", err)
 		}
+
+		// Add lotus version info to prometheus metrics
+		var lotusInfoMetric = promauto.NewGaugeVec(prometheus.GaugeOpts{
+			Name: "lotus_info",
+			Help: "Lotus version information.",
+		}, []string{"version"})
+
+		// Setting to 1 lets us multiply it with other stats to add the version labels
+		lotusInfoMetric.With(prometheus.Labels{
+			"version": build.UserVersion,
+		}).Set(1)
 
 		endpoint, err := r.APIEndpoint()
 		if err != nil {
