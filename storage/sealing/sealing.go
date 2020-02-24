@@ -45,7 +45,7 @@ type sealingApi interface { // TODO: trim down
 
 	MpoolPushMessage(context.Context, *types.Message) (*types.SignedMessage, error)
 
-	ChainHead(context.Context) (types.TipSetKey, error)
+	ChainHead(context.Context) (*types.TipSet, error)
 	ChainNotify(context.Context) (<-chan []*store.HeadChange, error)
 	ChainGetRandomness(ctx context.Context, tsk types.TipSetKey, personalization crypto.DomainSeparationTag, randEpoch abi.ChainEpoch, entropy []byte) (abi.Randomness, error)
 	ChainGetTipSetByHeight(context.Context, abi.ChainEpoch, types.TipSetKey) (*types.TipSet, error)
