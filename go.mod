@@ -8,7 +8,7 @@ require (
 	github.com/GeertJohan/go.rice v1.0.0
 	github.com/Gurpartap/async v0.0.0-20180927173644-4f7f499dd9ee
 	github.com/StackExchange/wmi v0.0.0-20190523213315-cbe66965904d // indirect
-	github.com/coreos/go-systemd v0.0.0-00010101000000-000000000000
+	github.com/coreos/go-systemd/v22 v22.0.0
 	github.com/docker/go-units v0.4.0
 	github.com/filecoin-project/chain-validation v0.0.3
 	github.com/filecoin-project/filecoin-ffi v0.0.0-20191219131535-bb699517a590
@@ -30,7 +30,7 @@ require (
 	github.com/gorilla/mux v1.7.3
 	github.com/gorilla/websocket v1.4.1
 	github.com/hashicorp/go-multierror v1.0.0
-	github.com/hashicorp/golang-lru v0.5.3
+	github.com/hashicorp/golang-lru v0.5.4
 	github.com/influxdata/influxdb1-client v0.0.0-20190809212627-fc22c7df067e
 	github.com/ipfs/go-bitswap v0.1.8
 	github.com/ipfs/go-block-format v0.0.2
@@ -67,7 +67,7 @@ require (
 	github.com/libp2p/go-libp2p-mplex v0.2.1
 	github.com/libp2p/go-libp2p-peer v0.2.0
 	github.com/libp2p/go-libp2p-peerstore v0.1.4
-	github.com/libp2p/go-libp2p-pubsub v0.2.3
+	github.com/libp2p/go-libp2p-pubsub v0.2.6
 	github.com/libp2p/go-libp2p-quic-transport v0.1.1
 	github.com/libp2p/go-libp2p-record v0.1.1
 	github.com/libp2p/go-libp2p-routing-helpers v0.1.0
@@ -85,6 +85,7 @@ require (
 	github.com/multiformats/go-multihash v0.0.13
 	github.com/multiformats/go-varint v0.0.5
 	github.com/opentracing/opentracing-go v1.1.0
+	github.com/prometheus/client_golang v0.9.3-0.20190127221311-3c4408c8b829
 	github.com/prometheus/common v0.4.0
 	github.com/stretchr/testify v1.4.0
 	github.com/whyrusleeping/bencher v0.0.0-20190829221104-bb6607aa8bba
@@ -113,5 +114,3 @@ require (
 replace github.com/golangci/golangci-lint => github.com/golangci/golangci-lint v1.18.0
 
 replace github.com/filecoin-project/filecoin-ffi => ./extern/filecoin-ffi
-
-replace github.com/coreos/go-systemd => github.com/coreos/go-systemd/v22 v22.0.0

@@ -3,9 +3,11 @@ package modules
 import (
 	"context"
 	"crypto/rand"
-	"github.com/filecoin-project/lotus/api/apistruct"
+	"errors"
 	"io"
 	"io/ioutil"
+
+	"github.com/filecoin-project/lotus/api/apistruct"
 
 	"github.com/filecoin-project/lotus/build"
 	"github.com/filecoin-project/lotus/chain/types"
@@ -38,7 +40,8 @@ type jwtPayload struct {
 
 func APISecret(keystore types.KeyStore, lr repo.LockedRepo) (*dtypes.APIAlg, error) {
 	key, err := keystore.Get(JWTSecretName)
-	if err != nil {
+
+	if errors.Is(err, types.ErrKeyInfoNotFound) {
 		log.Warn("Generating new API secret")
 
 		sk, err := ioutil.ReadAll(io.LimitReader(rand.Reader, 32))
@@ -68,6 +71,8 @@ func APISecret(keystore types.KeyStore, lr repo.LockedRepo) (*dtypes.APIAlg, err
 		if err := lr.SetAPIToken(cliToken); err != nil {
 			return nil, err
 		}
+	} else if err != nil {
+		return nil, xerrors.Errorf("could not get JWT Token: %w", err)
 	}
 
 	return (*dtypes.APIAlg)(jwt.NewHS256(key.PrivateKey)), nil

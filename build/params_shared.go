@@ -23,6 +23,8 @@ func SupportedSectorSize(ssize abi.SectorSize) bool {
 	return false
 }
 
+const SectorChallengeRatioDiv = 25
+
 // /////
 // Payments
 

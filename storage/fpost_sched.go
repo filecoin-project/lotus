@@ -163,7 +163,7 @@ func (s *FPoStScheduler) abortActivePoSt() {
 }
 
 func (s *FPoStScheduler) shouldFallbackPost(ctx context.Context, ts *types.TipSet) (abi.ChainEpoch, bool, error) {
-	ps, err := s.api.StateMinerPostState(ctx, s.actor, ts)
+	ps, err := s.api.StateMinerPostState(ctx, s.actor, ts.Key())
 	if err != nil {
 		return 0, false, xerrors.Errorf("getting ElectionPeriodStart: %w", err)
 	}

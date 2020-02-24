@@ -346,7 +346,7 @@ func (fsr *fsLockedRepo) Get(name string) (types.KeyInfo, error) {
 	}
 
 	if fstat.Mode()&0077 != 0 {
-		return types.KeyInfo{}, xerrors.Errorf(kstrPermissionMsg, name, err)
+		return types.KeyInfo{}, xerrors.Errorf(kstrPermissionMsg, name, fstat.Mode())
 	}
 
 	file, err := os.Open(keyPath)

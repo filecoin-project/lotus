@@ -10,6 +10,10 @@ import (
 	"github.com/ipfs/go-blockservice"
 	"github.com/ipfs/go-car"
 	"github.com/ipfs/go-datastore"
+	graphsync "github.com/ipfs/go-graphsync/impl"
+	"github.com/ipfs/go-graphsync/ipldbridge"
+	gsnet "github.com/ipfs/go-graphsync/network"
+	"github.com/ipfs/go-graphsync/storeutil"
 	blockstore "github.com/ipfs/go-ipfs-blockstore"
 	"github.com/libp2p/go-libp2p-core/host"
 	"github.com/libp2p/go-libp2p-core/routing"
@@ -72,6 +76,15 @@ func ChainGCBlockstore(bs dtypes.ChainBlockstore, gcl dtypes.ChainGCLocker) dtyp
 
 func ChainBlockservice(bs dtypes.ChainBlockstore, rem dtypes.ChainExchange) dtypes.ChainBlockService {
 	return blockservice.New(bs, rem)
+}
+
+func ChainGraphsync(mctx helpers.MetricsCtx, lc fx.Lifecycle, ibs dtypes.ChainGCBlockstore, h host.Host) dtypes.ClientGraphsync {
+	graphsyncNetwork := gsnet.NewFromLibp2pHost(h)
+	ipldBridge := ipldbridge.NewIPLDBridge()
+	loader := storeutil.LoaderForBlockstore(ibs)
+	gs := graphsync.New(helpers.LifecycleCtx(mctx, lc), graphsyncNetwork, ipldBridge, loader, nil)
+
+	return gs
 }
 
 func ChainStore(lc fx.Lifecycle, bs dtypes.ChainBlockstore, ds dtypes.MetadataDS, syscalls runtime.Syscalls) *store.ChainStore {

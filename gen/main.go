@@ -53,6 +53,15 @@ func main() {
 		os.Exit(1)
 	}
 
+	err = gen.WriteTupleEncodersToFile("./node/hello/cbor_gen.go", "hello",
+		hello.HelloMessage{},
+		hello.LatencyMessage{},
+	)
+	if err != nil {
+		fmt.Println(err)
+		os.Exit(1)
+	}
+
 	err = gen.WriteTupleEncodersToFile("./chain/blocksync/cbor_gen.go", "blocksync",
 		blocksync.BlockSyncRequest{},
 		blocksync.BlockSyncResponse{},
@@ -78,14 +87,6 @@ func main() {
 	err = gen.WriteMapEncodersToFile("./lib/statemachine/cbor_gen.go", "statemachine",
 		statemachine.TestState{},
 		statemachine.TestEvent{},
-	)
-	if err != nil {
-		fmt.Printf("%+v\n", err)
-		os.Exit(1)
-	}
-
-	err = gen.WriteMapEncodersToFile("./node/hello/cbor_gen.go", "hello",
-		hello.Message{},
 	)
 	if err != nil {
 		fmt.Printf("%+v\n", err)

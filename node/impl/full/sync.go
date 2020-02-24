@@ -88,3 +88,12 @@ func (a *SyncAPI) SyncMarkBad(ctx context.Context, bcid cid.Cid) error {
 	a.Syncer.MarkBad(bcid)
 	return nil
 }
+
+func (a *SyncAPI) SyncCheckBad(ctx context.Context, bcid cid.Cid) (string, error) {
+	reason, ok := a.Syncer.CheckBadBlockCache(bcid)
+	if !ok {
+		return "", nil
+	}
+
+	return reason, nil
+}

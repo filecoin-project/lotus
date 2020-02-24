@@ -22,6 +22,8 @@ import (
 	. "github.com/filecoin-project/lotus/chain/stmgr"
 	"github.com/filecoin-project/lotus/chain/types"
 	"github.com/filecoin-project/lotus/chain/vm"
+	_ "github.com/filecoin-project/lotus/lib/sigs/bls"
+	_ "github.com/filecoin-project/lotus/lib/sigs/secp"
 
 	"github.com/ipfs/go-cid"
 	blockstore "github.com/ipfs/go-ipfs-blockstore"

@@ -16,7 +16,10 @@ import (
 	paramfetch "github.com/filecoin-project/go-paramfetch"
 	"github.com/filecoin-project/go-sectorbuilder"
 	blockstore "github.com/ipfs/go-ipfs-blockstore"
+	"github.com/mitchellh/go-homedir"
 	"github.com/multiformats/go-multiaddr"
+	"github.com/prometheus/client_golang/prometheus"
+	"github.com/prometheus/client_golang/prometheus/promauto"
 	"golang.org/x/xerrors"
 	"gopkg.in/urfave/cli.v2"
 
@@ -95,7 +98,15 @@ var DaemonCmd = &cli.Command{
 		}
 
 		ctx := context.Background()
-		log.Infof("lotus repo: %s", cctx.String("repo"))
+		{
+			dir, err := homedir.Expand(cctx.String("repo"))
+			if err != nil {
+				log.Warnw("could not expand repo location", "error", err)
+			} else {
+				log.Infof("lotus repo: %s", dir)
+			}
+		}
+
 		r, err := repo.NewFS(cctx.String("repo"))
 		if err != nil {
 			return xerrors.Errorf("opening fs repo: %w", err)
@@ -172,6 +183,17 @@ var DaemonCmd = &cli.Command{
 				log.Errorf("importing key failed: %+v", err)
 			}
 		}
+
+		// Add lotus version info to prometheus metrics
+		var lotusInfoMetric = promauto.NewGaugeVec(prometheus.GaugeOpts{
+			Name: "lotus_info",
+			Help: "Lotus version information.",
+		}, []string{"version"})
+
+		// Setting to 1 lets us multiply it with other stats to add the version labels
+		lotusInfoMetric.With(prometheus.Labels{
+			"version": build.UserVersion,
+		}).Set(1)
 
 		endpoint, err := r.APIEndpoint()
 		if err != nil {

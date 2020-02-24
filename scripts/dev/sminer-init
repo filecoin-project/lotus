@@ -4,4 +4,4 @@ set -o xtrace
 
 export TRUST_PARAMS=1
 
-go run -tags=debug ./cmd/lotus-storage-miner init --actor=t0101 --genesis-miner --pre-sealed-sectors=~/.genesis-sectors
+go run -tags=debug ./cmd/lotus-storage-miner init --actor=t0101 --genesis-miner --pre-sealed-sectors=~/.genesis-sectors --pre-sealed-metadata=~/.genesis-sectors/pre-seal-t0101.json

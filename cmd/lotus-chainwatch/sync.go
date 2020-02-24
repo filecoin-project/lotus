@@ -20,9 +20,7 @@ import (
 	"github.com/filecoin-project/lotus/chain/types"
 )
 
-const maxBatch = 3000
-
-func runSyncer(ctx context.Context, api api.FullNode, st *storage) {
+func runSyncer(ctx context.Context, api api.FullNode, st *storage, maxBatch int) {
 	notifs, err := api.ChainNotify(ctx)
 	if err != nil {
 		panic(err)
@@ -34,7 +32,7 @@ func runSyncer(ctx context.Context, api api.FullNode, st *storage) {
 				case store.HCCurrent:
 					fallthrough
 				case store.HCApply:
-					syncHead(ctx, api, st, change.Val)
+					syncHead(ctx, api, st, change.Val, maxBatch)
 				case store.HCRevert:
 					log.Warnf("revert todo")
 				}
@@ -67,9 +65,7 @@ type actorInfo struct {
 	state     string
 }
 
-func syncHead(ctx context.Context, api api.FullNode, st *storage, ts *types.TipSet) {
-	addresses := map[address.Address]address.Address{}
-	actors := map[address.Address]map[types.Actor]actorInfo{}
+func syncHead(ctx context.Context, api api.FullNode, st *storage, ts *types.TipSet, maxBatch int) {
 	var alk sync.Mutex
 
 	log.Infof("Getting synced block list")
@@ -94,7 +90,6 @@ func syncHead(ctx context.Context, api api.FullNode, st *storage, ts *types.TipS
 		}
 
 		allToSync[bh.Cid()] = bh
-		addresses[bh.Miner] = address.Undef
 
 		if len(allToSync)%500 == 10 {
 			log.Infof("todo: (%d) %s @%d", len(allToSync), bh.Cid(), bh.Height)
@@ -116,7 +111,9 @@ func syncHead(ctx context.Context, api api.FullNode, st *storage, ts *types.TipS
 	}
 
 	for len(allToSync) > 0 {
-		minH := abi.ChainEpoch(math.MaxInt64)
+		actors := map[address.Address]map[types.Actor]actorInfo{}
+		addresses := map[address.Address]address.Address{}
+		minH := abi.ChainEpoch(math.MaxUint64)
 
 		for _, header := range allToSync {
 			if header.Height < minH {
@@ -126,8 +123,9 @@ func syncHead(ctx context.Context, api api.FullNode, st *storage, ts *types.TipS
 
 		toSync := map[cid.Cid]*types.BlockHeader{}
 		for c, header := range allToSync {
-			if header.Height < minH+maxBatch {
+			if header.Height < minH+uint64(maxBatch) {
 				toSync[c] = header
+				addresses[header.Miner] = address.Undef
 			}
 		}
 		for c := range toSync {
@@ -145,19 +143,19 @@ func syncHead(ctx context.Context, api api.FullNode, st *storage, ts *types.TipS
 
 			if len(bh.Parents) == 0 { // genesis case
 				ts, err := types.NewTipSet([]*types.BlockHeader{bh})
-				aadrs, err := api.StateListActors(ctx, ts)
+				aadrs, err := api.StateListActors(ctx, ts.Key())
 				if err != nil {
 					log.Error(err)
 					return
 				}
 
 				par(50, aadrs, func(addr address.Address) {
-					act, err := api.StateGetActor(ctx, addr, ts)
+					act, err := api.StateGetActor(ctx, addr, ts.Key())
 					if err != nil {
 						log.Error(err)
 						return
 					}
-					ast, err := api.StateReadState(ctx, act, ts)
+					ast, err := api.StateReadState(ctx, act, ts.Key())
 					if err != nil {
 						log.Error(err)
 						return
@@ -202,7 +200,7 @@ func syncHead(ctx context.Context, api api.FullNode, st *storage, ts *types.TipS
 					log.Error(err)
 					return
 				}
-				ast, err := api.StateReadState(ctx, &act, ts)
+				ast, err := api.StateReadState(ctx, &act, pts.Key())
 				if err != nil {
 					log.Error(err)
 					return
@@ -239,7 +237,7 @@ func syncHead(ctx context.Context, api api.FullNode, st *storage, ts *types.TipS
 		}
 
 		par(50, kmaparr(addresses), func(addr address.Address) {
-			raddr, err := api.StateLookupID(ctx, addr, nil)
+			raddr, err := api.StateLookupID(ctx, addr, types.EmptyTSK)
 			if err != nil {
 				log.Warn(err)
 				return
@@ -270,7 +268,7 @@ func syncHead(ctx context.Context, api api.FullNode, st *storage, ts *types.TipS
 		par(50, kvmaparr(miners), func(it func() (minerKey, *minerInfo)) {
 			k, info := it()
 
-			sszs, err := api.StateMinerSectorCount(ctx, k.addr, nil)
+			sszs, err := api.StateMinerSectorCount(ctx, k.addr, types.EmptyTSK)
 			if err != nil {
 				log.Error(err)
 				return
@@ -359,7 +357,7 @@ func syncHead(ctx context.Context, api api.FullNode, st *storage, ts *types.TipS
 	log.Infof("Get deals")
 
 	// TODO: incremental, gather expired
-	deals, err := api.StateMarketDeals(ctx, ts)
+	deals, err := api.StateMarketDeals(ctx, ts.Key())
 	if err != nil {
 		log.Error(err)
 		return

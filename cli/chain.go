@@ -255,7 +255,7 @@ var chainSetHeadCmd = &cli.Command{
 			ts, err = api.ChainGetGenesis(ctx)
 		}
 		if ts == nil && cctx.IsSet("epoch") {
-			ts, err = api.ChainGetTipSetByHeight(ctx, abi.ChainEpoch(cctx.Uint64("epoch")), nil)
+			ts, err = api.ChainGetTipSetByHeight(ctx, abi.ChainEpoch(cctx.Uint64("epoch")), types.EmptyTSK)
 		}
 		if ts == nil {
 			ts, err = parseTipSet(api, ctx, cctx.Args().Slice())
@@ -268,7 +268,7 @@ var chainSetHeadCmd = &cli.Command{
 			return fmt.Errorf("must pass cids for tipset to set as head")
 		}
 
-		if err := api.ChainSetHead(ctx, ts); err != nil {
+		if err := api.ChainSetHead(ctx, ts.Key()); err != nil {
 			return err
 		}
 
@@ -318,7 +318,7 @@ var chainListCmd = &cli.Command{
 		var head *types.TipSet
 
 		if cctx.IsSet("height") {
-			head, err = api.ChainGetTipSetByHeight(ctx, abi.ChainEpoch(cctx.Uint64("height")), nil)
+			head, err = api.ChainGetTipSetByHeight(ctx, abi.ChainEpoch(cctx.Uint64("height")), types.EmptyTSK)
 		} else {
 			head, err = api.ChainHead(ctx)
 		}
@@ -451,7 +451,7 @@ var chainBisectCmd = &cli.Command{
 
 		subPath := cctx.Args().Get(2)
 
-		highest, err := api.ChainGetTipSetByHeight(ctx, abi.ChainEpoch(end), nil)
+		highest, err := api.ChainGetTipSetByHeight(ctx, abi.ChainEpoch(end), types.EmptyTSK)
 		if err != nil {
 			return err
 		}
@@ -465,7 +465,7 @@ var chainBisectCmd = &cli.Command{
 				start = end
 			}
 
-			midTs, err := api.ChainGetTipSetByHeight(ctx, abi.ChainEpoch(mid), highest)
+			midTs, err := api.ChainGetTipSetByHeight(ctx, abi.ChainEpoch(mid), highest.Key())
 			if err != nil {
 				return err
 			}
@@ -547,7 +547,7 @@ var chainExportCmd = &cli.Command{
 			return err
 		}
 
-		stream, err := api.ChainExport(ctx, ts)
+		stream, err := api.ChainExport(ctx, ts.Key())
 		if err != nil {
 			return err
 		}

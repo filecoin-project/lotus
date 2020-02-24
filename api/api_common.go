@@ -23,12 +23,16 @@ type Common interface {
 	NetConnect(context.Context, peer.AddrInfo) error
 	NetAddrsListen(context.Context) (peer.AddrInfo, error)
 	NetDisconnect(context.Context, peer.ID) error
+	NetFindPeer(context.Context, peer.ID) (peer.AddrInfo, error)
 
 	// ID returns peerID of libp2p node backing this API
 	ID(context.Context) (peer.ID, error)
 
 	// Version provides information about API provider
 	Version(context.Context) (Version, error)
+
+	LogList(context.Context) ([]string, error)
+	LogSetLevel(context.Context, string, string) error
 }
 
 // Version provides various build-time information

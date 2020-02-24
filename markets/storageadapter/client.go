@@ -63,7 +63,7 @@ func (n *ClientNodeAdapter) ListStorageProviders(ctx context.Context) ([]*storag
 		return nil, err
 	}
 
-	addresses, err := n.StateListMiners(ctx, ts)
+	addresses, err := n.StateListMiners(ctx, ts.Key())
 	if err != nil {
 		return nil, err
 	}
@@ -71,17 +71,17 @@ func (n *ClientNodeAdapter) ListStorageProviders(ctx context.Context) ([]*storag
 	var out []*storagemarket.StorageProviderInfo
 
 	for _, addr := range addresses {
-		workerAddr, err := n.StateMinerWorker(ctx, addr, ts)
+		workerAddr, err := n.StateMinerWorker(ctx, addr, ts.Key())
 		if err != nil {
 			return nil, err
 		}
 
-		sectorSize, err := n.StateMinerSectorSize(ctx, addr, ts)
+		sectorSize, err := n.StateMinerSectorSize(ctx, addr, ts.Key())
 		if err != nil {
 			return nil, err
 		}
 
-		peerId, err := n.StateMinerPeerID(ctx, addr, ts)
+		peerId, err := n.StateMinerPeerID(ctx, addr, ts.Key())
 		if err != nil {
 			return nil, err
 		}
@@ -98,7 +98,7 @@ func (n *ClientNodeAdapter) VerifySignature(sig crypto.Signature, addr address.A
 }
 
 func (n *ClientNodeAdapter) ListClientDeals(ctx context.Context, addr address.Address) ([]storagemarket.StorageDeal, error) {
-	allDeals, err := n.StateMarketDeals(ctx, nil)
+	allDeals, err := n.StateMarketDeals(ctx, types.EmptyTSK)
 	if err != nil {
 		return nil, err
 	}
@@ -151,7 +151,7 @@ func (n *ClientNodeAdapter) EnsureFunds(ctx context.Context, addr address.Addres
 }
 
 func (n *ClientNodeAdapter) GetBalance(ctx context.Context, addr address.Address) (storagemarket.Balance, error) {
-	bal, err := n.StateMarketBalance(ctx, addr, nil)
+	bal, err := n.StateMarketBalance(ctx, addr, types.EmptyTSK)
 	if err != nil {
 		return storagemarket.Balance{}, err
 	}

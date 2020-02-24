@@ -1066,3 +1066,11 @@ func NewChainRand(cs *ChainStore, blks []cid.Cid, bheight abi.ChainEpoch) vm.Ran
 func (cr *chainRand) GetRandomness(ctx context.Context, pers crypto.DomainSeparationTag, round int64, entropy []byte) ([]byte, error) {
 	return cr.cs.GetRandomness(ctx, cr.blks, pers, round, entropy)
 }
+
+func (cs *ChainStore) GetTipSetFromKey(tsk types.TipSetKey) (*types.TipSet, error) {
+	if tsk.IsEmpty() {
+		return cs.GetHeaviestTipSet(), nil
+	} else {
+		return cs.LoadTipSet(tsk)
+	}
+}

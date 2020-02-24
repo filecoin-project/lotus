@@ -13,6 +13,7 @@ import (
 	"github.com/filecoin-project/lotus/api/apibstore"
 	"github.com/filecoin-project/lotus/chain/actors"
 	"github.com/filecoin-project/lotus/chain/store"
+	"github.com/filecoin-project/lotus/chain/types"
 	"github.com/filecoin-project/lotus/lib/statemachine"
 )
 
@@ -33,7 +34,7 @@ func failedCooldown(ctx statemachine.Context, sector SectorInfo) error {
 }
 
 func (m *Sealing) checkPreCommitted(ctx statemachine.Context, sector SectorInfo) (*miner.SectorPreCommitOnChainInfo, bool) {
-	act, err := m.api.StateGetActor(ctx.Context(), m.maddr, nil)
+	act, err := m.api.StateGetActor(ctx.Context(), m.maddr, types.EmptyTSK)
 	if err != nil {
 		log.Errorf("handleSealFailed(%d): temp error: %+v", sector.SectorID, err)
 		return nil, true

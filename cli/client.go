@@ -291,7 +291,7 @@ var clientQueryAskCmd = &cli.Command{
 			}
 			pid = p
 		} else {
-			p, err := api.StateMinerPeerID(ctx, maddr, nil)
+			p, err := api.StateMinerPeerID(ctx, maddr, types.EmptyTSK)
 			if err != nil {
 				return xerrors.Errorf("failed to get peerID for miner: %w", err)
 			}
