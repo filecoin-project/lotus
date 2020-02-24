@@ -58,8 +58,8 @@ var DaemonCmd = &cli.Command{
 			Hidden: true,
 		},
 		&cli.StringFlag{
-			Name:  "import-key",
-			Usage: "on first run, import a default key from a given file",
+			Name:   "import-key",
+			Usage:  "on first run, import a default key from a given file",
 			Hidden: true,
 		},
 		&cli.StringFlag{
