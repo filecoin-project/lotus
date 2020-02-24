@@ -2,6 +2,7 @@ package cli
 
 import (
 	"fmt"
+	"github.com/libp2p/go-libp2p-core/peer"
 	"sort"
 	"strings"
 
@@ -18,6 +19,7 @@ var netCmd = &cli.Command{
 		netConnect,
 		netListen,
 		netId,
+		netFindPeer,
 	},
 }
 
@@ -120,6 +122,40 @@ var netId = &cli.Command{
 		}
 
 		fmt.Println(pid)
+		return nil
+	},
+}
+
+var netFindPeer = &cli.Command{
+	Name:      "findpeer",
+	Usage:     "Find the addresses of a given peerID",
+	ArgsUsage: "<peer ID>",
+	Action: func(cctx *cli.Context) error {
+		if cctx.NArg() != 1 {
+			fmt.Println("Usage: findpeer [peer ID]")
+			return nil
+		}
+
+		pid, err := peer.IDB58Decode(cctx.Args().First())
+		if err != nil {
+			return err
+		}
+
+		api, closer, err := GetAPI(cctx)
+		if err != nil {
+			return err
+		}
+		defer closer()
+
+		ctx := ReqContext(cctx)
+
+		addrs, err := api.NetFindPeer(ctx, pid)
+
+		if err != nil {
+			return err
+		}
+
+		fmt.Println(addrs)
 		return nil
 	},
 }
