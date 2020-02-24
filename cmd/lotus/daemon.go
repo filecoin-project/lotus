@@ -7,7 +7,6 @@ import (
 	"encoding/hex"
 	"encoding/json"
 	"github.com/filecoin-project/lotus/chain/types"
-	"github.com/mitchellh/go-homedir"
 	"io/ioutil"
 	"os"
 	"runtime/pprof"

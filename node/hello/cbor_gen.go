@@ -105,7 +105,6 @@ func (t *HelloMessage) UnmarshalCBOR(r io.Reader) error {
 	if maj != cbg.MajUnsignedInt {
 		return fmt.Errorf("wrong type for uint64 field")
 	}
-	t.HeaviestTipSetHeight = uint64(extra)
 	// t.HeaviestTipSetWeight (types.BigInt) (struct)
 
 	{

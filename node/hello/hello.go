@@ -2,6 +2,7 @@ package hello
 
 import (
 	"context"
+	"github.com/filecoin-project/specs-actors/actors/abi"
 	"time"
 
 	"github.com/filecoin-project/specs-actors/actors/abi/big"
@@ -25,7 +26,7 @@ var log = logging.Logger("hello")
 
 type HelloMessage struct {
 	HeaviestTipSet       []cid.Cid
-	HeaviestTipSetHeight uint64
+	HeaviestTipSetHeight abi.ChainEpoch
 	HeaviestTipSetWeight big.Int
 	GenesisHash          cid.Cid
 }

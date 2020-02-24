@@ -5,6 +5,7 @@ import (
 	"context"
 	"encoding/json"
 	"fmt"
+	miner2 "github.com/filecoin-project/specs-actors/actors/builtin/miner"
 	"reflect"
 	"strconv"
 	"strings"
@@ -93,24 +94,16 @@ var stateMinerInfo = &cli.Command{
 			return err
 		}
 
-		var mst actors.StorageMinerActorState
+		var mst miner2.State
 		if err := mst.UnmarshalCBOR(bytes.NewReader(aso)); err != nil {
 			return err
 		}
 
-		mio, err := api.ChainReadObj(ctx, mst.Info)
-		if err != nil {
-			return err
-		}
-
-		var mi actors.MinerInfo
-		if err := mi.UnmarshalCBOR(bytes.NewReader(mio)); err != nil {
-			return err
-		}
+		mi := mst.Info
 
 		fmt.Printf("Owner:\t%s\n", mi.Owner)
 		fmt.Printf("Worker:\t%s\n", mi.Worker)
-		fmt.Printf("PeerID:\t%s\n", mi.PeerID)
+		fmt.Printf("PeerID:\t%s\n", mi.PeerId)
 		fmt.Printf("SectorSize:\t%s (%d)\n", units.BytesSize(float64(mi.SectorSize)), mi.SectorSize)
 
 		return nil
