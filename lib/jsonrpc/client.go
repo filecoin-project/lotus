@@ -10,6 +10,7 @@ import (
 	"reflect"
 	"sync"
 	"sync/atomic"
+	"time"
 
 	"github.com/gorilla/websocket"
 	logging "github.com/ipfs/go-log/v2"
@@ -18,11 +19,15 @@ import (
 	"golang.org/x/xerrors"
 )
 
-var log = logging.Logger("rpc")
+const (
+	methodRetryFrequency = time.Second * 3
+)
 
 var (
 	errorType   = reflect.TypeOf(new(error)).Elem()
 	contextType = reflect.TypeOf(new(context.Context)).Elem()
+
+	log = logging.Logger("rpc")
 )
 
 // ErrClient is an error which occurred on the client side the library
@@ -78,10 +83,19 @@ type client struct {
 
 // NewMergeClient is like NewClient, but allows to specify multiple structs
 // to be filled in the same namespace, using one connection
-func NewMergeClient(addr string, namespace string, outs []interface{}, requestHeader http.Header) (ClientCloser, error) {
-	conn, _, err := websocket.DefaultDialer.Dial(addr, requestHeader)
+func NewMergeClient(addr string, namespace string, outs []interface{}, requestHeader http.Header, opts ...Option) (ClientCloser, error) {
+	connFactory := func() (*websocket.Conn, error) {
+		conn, _, err := websocket.DefaultDialer.Dial(addr, requestHeader)
+		return conn, err
+	}
+	conn, err := connFactory()
 	if err != nil {
 		return nil, err
+	}
+
+	var config Config
+	for _, o := range opts {
+		o(&config)
 	}
 
 	c := client{
@@ -95,11 +109,13 @@ func NewMergeClient(addr string, namespace string, outs []interface{}, requestHe
 
 	handlers := map[string]rpcHandler{}
 	go (&wsConn{
-		conn:     conn,
-		handler:  handlers,
-		requests: c.requests,
-		stop:     stop,
-		exiting:  exiting,
+		conn:              conn,
+		connFactory:       connFactory,
+		reconnectInterval: config.ReconnectInterval,
+		handler:           handlers,
+		requests:          c.requests,
+		stop:              stop,
+		exiting:           exiting,
 	}).handleWsConn(context.TODO())
 
 	for _, handler := range outs {
@@ -269,6 +285,8 @@ type rpcFunc struct {
 
 	hasCtx int
 	retCh  bool
+
+	retry bool
 }
 
 func (fn *rpcFunc) processResponse(resp clientResponse, rval reflect.Value) []reflect.Value {
@@ -344,27 +362,38 @@ func (fn *rpcFunc) handleRpcCall(args []reflect.Value) (results []reflect.Value)
 		}
 	}
 
-	resp, err := fn.client.sendRequest(ctx, req, chCtor)
-	if err != nil {
-		return fn.processError(fmt.Errorf("sendRequest failed: %w", err))
-	}
-
-	if resp.ID != *req.ID {
-		return fn.processError(xerrors.New("request and response id didn't match"))
-	}
-
-	if fn.valOut != -1 && !fn.retCh {
-		val := reflect.New(fn.ftyp.Out(fn.valOut))
-
-		if resp.Result != nil {
-			log.Debugw("rpc result", "type", fn.ftyp.Out(fn.valOut))
-			if err := json.Unmarshal(resp.Result, val.Interface()); err != nil {
-				log.Warnw("unmarshaling failed", "message", string(resp.Result))
-				return fn.processError(xerrors.Errorf("unmarshaling result: %w", err))
-			}
+	var resp clientResponse
+	var err error
+	// keep retrying if got a forced closed websocket conn and calling method
+	// has retry annotation
+	for {
+		resp, err = fn.client.sendRequest(ctx, req, chCtor)
+		if err != nil {
+			return fn.processError(fmt.Errorf("sendRequest failed: %w", err))
 		}
 
-		retVal = func() reflect.Value { return val.Elem() }
+		if resp.ID != *req.ID {
+			return fn.processError(xerrors.New("request and response id didn't match"))
+		}
+
+		if fn.valOut != -1 && !fn.retCh {
+			val := reflect.New(fn.ftyp.Out(fn.valOut))
+
+			if resp.Result != nil {
+				log.Debugw("rpc result", "type", fn.ftyp.Out(fn.valOut))
+				if err := json.Unmarshal(resp.Result, val.Interface()); err != nil {
+					log.Warnw("unmarshaling failed", "message", string(resp.Result))
+					return fn.processError(xerrors.Errorf("unmarshaling result: %w", err))
+				}
+			}
+
+			retVal = func() reflect.Value { return val.Elem() }
+		}
+		retry := resp.Error != nil && resp.Error.Code == 2 && fn.retry
+		if !retry {
+			break
+		}
+		time.Sleep(methodRetryFrequency)
 	}
 
 	return fn.processResponse(resp, retVal())
@@ -380,6 +409,7 @@ func (c *client) makeRpcFunc(f reflect.StructField) (reflect.Value, error) {
 		client: c,
 		ftyp:   ftyp,
 		name:   f.Name,
+		retry:  f.Tag.Get("retry") == "true",
 	}
 	fun.valOut, fun.errOut, fun.nout = processFuncOut(ftyp)
 
