@@ -2,8 +2,10 @@ package hello
 
 import (
 	"context"
+	"github.com/filecoin-project/specs-actors/actors/abi"
 	"time"
 
+	"github.com/filecoin-project/specs-actors/actors/abi/big"
 	"github.com/ipfs/go-cid"
 	logging "github.com/ipfs/go-log/v2"
 	"github.com/libp2p/go-libp2p-core/host"
@@ -15,7 +17,7 @@ import (
 	"github.com/filecoin-project/lotus/chain"
 	"github.com/filecoin-project/lotus/chain/store"
 	"github.com/filecoin-project/lotus/chain/types"
-	"github.com/filecoin-project/lotus/peermgr"
+	"github.com/filecoin-project/lotus/lib/peermgr"
 )
 
 const ProtocolID = "/fil/hello/1.0.0"
@@ -24,8 +26,8 @@ var log = logging.Logger("hello")
 
 type HelloMessage struct {
 	HeaviestTipSet       []cid.Cid
-	HeaviestTipSetHeight uint64
-	HeaviestTipSetWeight types.BigInt
+	HeaviestTipSetHeight abi.ChainEpoch
+	HeaviestTipSetWeight big.Int
 	GenesisHash          cid.Cid
 }
 type LatencyMessage struct {

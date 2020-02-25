@@ -7,6 +7,7 @@ import (
 	"io"
 	"sort"
 
+	"github.com/filecoin-project/specs-actors/actors/abi"
 	"github.com/ipfs/go-cid"
 	logging "github.com/ipfs/go-log/v2"
 	cbg "github.com/whyrusleeping/cbor-gen"
@@ -18,7 +19,7 @@ var log = logging.Logger("types")
 type TipSet struct {
 	cids   []cid.Cid
 	blks   []*BlockHeader
-	height uint64
+	height abi.ChainEpoch
 }
 
 // why didnt i just export the fields? Because the struct has methods with the
@@ -26,7 +27,7 @@ type TipSet struct {
 type ExpTipSet struct {
 	Cids   []cid.Cid
 	Blocks []*BlockHeader
-	Height uint64
+	Height abi.ChainEpoch
 }
 
 func (ts *TipSet) MarshalJSON() ([]byte, error) {
@@ -135,7 +136,7 @@ func (ts *TipSet) Key() TipSetKey {
 	return NewTipSetKey(ts.cids...)
 }
 
-func (ts *TipSet) Height() uint64 {
+func (ts *TipSet) Height() abi.ChainEpoch {
 	return ts.height
 }
 

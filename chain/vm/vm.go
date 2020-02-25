@@ -4,7 +4,9 @@ import (
 	"bytes"
 	"context"
 	"fmt"
+	"github.com/filecoin-project/specs-actors/actors/builtin"
 	"math/big"
+	"reflect"
 
 	block "github.com/ipfs/go-block-format"
 	cid "github.com/ipfs/go-cid"
@@ -12,13 +14,20 @@ import (
 	blockstore "github.com/ipfs/go-ipfs-blockstore"
 	cbor "github.com/ipfs/go-ipld-cbor"
 	logging "github.com/ipfs/go-log/v2"
+	mh "github.com/multiformats/go-multihash"
 	cbg "github.com/whyrusleeping/cbor-gen"
 	"go.opencensus.io/trace"
 	"golang.org/x/xerrors"
 
 	"github.com/filecoin-project/go-address"
+	commcid "github.com/filecoin-project/go-fil-commcid"
+	"github.com/filecoin-project/specs-actors/actors/abi"
+	"github.com/filecoin-project/specs-actors/actors/builtin/account"
+	init_ "github.com/filecoin-project/specs-actors/actors/builtin/init"
+	"github.com/filecoin-project/specs-actors/actors/crypto"
+	"github.com/filecoin-project/specs-actors/actors/runtime"
+
 	"github.com/filecoin-project/lotus/build"
-	"github.com/filecoin-project/lotus/chain/actors"
 	"github.com/filecoin-project/lotus/chain/actors/aerrors"
 	"github.com/filecoin-project/lotus/chain/state"
 	"github.com/filecoin-project/lotus/chain/types"
@@ -50,13 +59,13 @@ type VMContext struct {
 	vm     *VM
 	state  *state.StateTree
 	msg    *types.Message
-	height uint64
+	height abi.ChainEpoch
 	cst    cbor.IpldStore
 
 	gasAvailable types.BigInt
 	gasUsed      types.BigInt
 
-	sys *types.VMSyscalls
+	sys runtime.Syscalls
 
 	// root cid of the state of the actor this invocation will be on
 	sroot cid.Cid
@@ -70,16 +79,15 @@ func (vmc *VMContext) Message() *types.Message {
 	return vmc.msg
 }
 
-func (vmc *VMContext) GetRandomness(height uint64) ([]byte, aerrors.ActorError) {
-
-	res, err := vmc.vm.rand.GetRandomness(vmc.ctx, int64(height))
+func (vmc *VMContext) GetRandomness(personalization crypto.DomainSeparationTag, randEpoch abi.ChainEpoch, entropy []byte) ([]byte, aerrors.ActorError) {
+	res, err := vmc.vm.rand.GetRandomness(vmc.ctx, personalization, int64(randEpoch), entropy)
 	if err != nil {
 		return nil, aerrors.Escalate(err, "could not get randomness")
 	}
 	return res, nil
 }
 
-func (vmc *VMContext) Sys() *types.VMSyscalls {
+func (vmc *VMContext) Sys() runtime.Syscalls {
 	return vmc.sys
 }
 
@@ -133,7 +141,7 @@ func (vmc *VMContext) Origin() address.Address {
 }
 
 // Send allows the current execution context to invoke methods on other actors in the system
-func (vmc *VMContext) Send(to address.Address, method uint64, value types.BigInt, params []byte) ([]byte, aerrors.ActorError) {
+func (vmc *VMContext) Send(to address.Address, method abi.MethodNum, value types.BigInt, params []byte) ([]byte, aerrors.ActorError) {
 	ctx, span := trace.StartSpan(vmc.ctx, "vmc.Send")
 	defer span.End()
 	if span.IsRecordingEvents() {
@@ -158,7 +166,7 @@ func (vmc *VMContext) Send(to address.Address, method uint64, value types.BigInt
 }
 
 // BlockHeight returns the height of the block this message was added to the chain in
-func (vmc *VMContext) BlockHeight() uint64 {
+func (vmc *VMContext) BlockHeight() abi.ChainEpoch {
 	return vmc.height
 }
 
@@ -176,16 +184,28 @@ func (vmc *VMContext) ChargeGas(amount uint64) aerrors.ActorError {
 }
 
 func (vmc *VMContext) StateTree() (types.StateTree, aerrors.ActorError) {
-	if vmc.msg.To != actors.InitAddress {
+	if vmc.msg.To != builtin.InitActorAddr {
 		return nil, aerrors.Escalate(fmt.Errorf("only init actor can access state tree directly"), "invalid use of StateTree")
 	}
 
 	return vmc.state, nil
 }
 
+func (vmc *VMContext) ActorCodeCID(addr address.Address) (ret cid.Cid, err error) {
+	act, err := vmc.state.GetActor(addr)
+	if err != nil {
+		return cid.Undef, err
+	}
+	return act.Code, nil
+}
+
+func (vmc *VMContext) LookupID(a address.Address) (address.Address, error) {
+	return vmc.state.LookupID(a)
+}
+
 const GasVerifySignature = 50
 
-func (vmctx *VMContext) VerifySignature(sig *types.Signature, act address.Address, data []byte) aerrors.ActorError {
+func (vmctx *VMContext) VerifySignature(sig *crypto.Signature, act address.Address, data []byte) aerrors.ActorError {
 	if err := vmctx.ChargeGas(GasVerifySignature); err != nil {
 		return err
 	}
@@ -215,11 +235,11 @@ func ResolveToKeyAddr(state types.StateTree, cst cbor.IpldStore, addr address.Ad
 		return address.Undef, aerrors.Newf(1, "failed to find actor: %s", addr)
 	}
 
-	if act.Code != actors.AccountCodeCid {
+	if act.Code != builtin.AccountActorCodeID {
 		return address.Undef, aerrors.New(1, "address was not for an account actor")
 	}
 
-	var aast actors.AccountActorState
+	var aast account.State
 	if err := cst.Get(context.TODO(), act.Head, &aast); err != nil {
 		return address.Undef, aerrors.Escalate(err, fmt.Sprintf("failed to get account actor state for %s", addr))
 	}
@@ -301,15 +321,15 @@ type VM struct {
 	base        cid.Cid
 	cst         *cbor.BasicIpldStore
 	buf         *bufbstore.BufferedBS
-	blockHeight uint64
+	blockHeight abi.ChainEpoch
 	blockMiner  address.Address
 	inv         *invoker
 	rand        Rand
 
-	Syscalls *types.VMSyscalls
+	Syscalls runtime.Syscalls
 }
 
-func NewVM(base cid.Cid, height uint64, r Rand, maddr address.Address, cbs blockstore.Blockstore, syscalls *types.VMSyscalls) (*VM, error) {
+func NewVM(base cid.Cid, height abi.ChainEpoch, r Rand, maddr address.Address, cbs blockstore.Blockstore, syscalls runtime.Syscalls) (*VM, error) {
 	buf := bufbstore.NewBufferedBstore(cbs)
 	cst := cbor.NewCborStore(buf)
 	state, err := state.LoadStateTree(cst, base)
@@ -331,7 +351,7 @@ func NewVM(base cid.Cid, height uint64, r Rand, maddr address.Address, cbs block
 }
 
 type Rand interface {
-	GetRandomness(ctx context.Context, h int64) ([]byte, error)
+	GetRandomness(ctx context.Context, pers crypto.DomainSeparationTag, round int64, entropy []byte) ([]byte, error)
 }
 
 type ApplyRet struct {
@@ -350,7 +370,7 @@ func (vm *VM) send(ctx context.Context, msg *types.Message, parent *VMContext,
 
 	toActor, err := st.GetActor(msg.To)
 	if err != nil {
-		if xerrors.Is(err, types.ErrActorNotFound) {
+		if xerrors.Is(err, init_.ErrAddressNotFound) {
 			a, err := TryCreateAccountActor(st, msg.To)
 			if err != nil {
 				return nil, aerrors.Absorb(err, 1, "could not create account"), nil
@@ -543,6 +563,37 @@ func (vm *VM) Flush(ctx context.Context) (cid.Cid, error) {
 	return root, nil
 }
 
+// vm.MutateState(idAddr, func(cst cbor.IpldStore, st *ActorStateType) error {...})
+func (vm *VM) MutateState(ctx context.Context, addr address.Address, fn interface{}) error {
+	act, err := vm.cstate.GetActor(addr)
+	if err != nil {
+		return xerrors.Errorf("actor not found: %w", err)
+	}
+
+	st := reflect.New(reflect.TypeOf(fn).In(1).Elem())
+	if err := vm.cst.Get(ctx, act.Head, st.Interface()); err != nil {
+		return xerrors.Errorf("read actor head: %w", err)
+	}
+
+	out := reflect.ValueOf(fn).Call([]reflect.Value{reflect.ValueOf(vm.cst), st})
+	if !out[0].IsNil() && out[0].Interface().(error) != nil {
+		return out[0].Interface().(error)
+	}
+
+	head, err := vm.cst.Put(ctx, st.Interface())
+	if err != nil {
+		return xerrors.Errorf("put new actor head: %w", err)
+	}
+
+	act.Head = head
+
+	if err := vm.cstate.SetActor(addr, act); err != nil {
+		return xerrors.Errorf("set actor: %w", err)
+	}
+
+	return nil
+}
+
 func linksForObj(blk block.Block) ([]cid.Cid, error) {
 	switch blk.Cid().Prefix().Codec {
 	case cid.DagCBOR:
@@ -595,7 +646,7 @@ func copyRec(from, to blockstore.Blockstore, root cid.Cid, cp func(block.Block) 
 	}
 
 	for _, link := range links {
-		if link.Prefix().MhType == 0 {
+		if link.Prefix().MhType == mh.IDENTITY || link.Prefix().MhType == uint64(commcid.FC_SEALED_V1) || link.Prefix().MhType == uint64(commcid.FC_UNSEALED_V1) {
 			continue
 		}
 
@@ -622,11 +673,11 @@ func (vm *VM) StateTree() types.StateTree {
 	return vm.cstate
 }
 
-func (vm *VM) SetBlockHeight(h uint64) {
+func (vm *VM) SetBlockHeight(h abi.ChainEpoch) {
 	vm.blockHeight = h
 }
 
-func (vm *VM) Invoke(act *types.Actor, vmctx *VMContext, method uint64, params []byte) ([]byte, aerrors.ActorError) {
+func (vm *VM) Invoke(act *types.Actor, vmctx *VMContext, method abi.MethodNum, params []byte) ([]byte, aerrors.ActorError) {
 	ctx, span := trace.StartSpan(vmctx.ctx, "vm.Invoke")
 	defer span.End()
 	if span.IsRecordingEvents() {

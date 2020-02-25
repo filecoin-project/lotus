@@ -11,11 +11,21 @@ import (
 	cbg "github.com/whyrusleeping/cbor-gen"
 	"golang.org/x/xerrors"
 
-	"github.com/filecoin-project/lotus/chain/actors"
+	"github.com/filecoin-project/specs-actors/actors/abi"
+	"github.com/filecoin-project/specs-actors/actors/builtin"
+	"github.com/filecoin-project/specs-actors/actors/builtin/cron"
+	init_ "github.com/filecoin-project/specs-actors/actors/builtin/init"
+	"github.com/filecoin-project/specs-actors/actors/builtin/market"
+	"github.com/filecoin-project/specs-actors/actors/builtin/miner"
+	"github.com/filecoin-project/specs-actors/actors/builtin/multisig"
+	"github.com/filecoin-project/specs-actors/actors/builtin/paych"
+	"github.com/filecoin-project/specs-actors/actors/builtin/power"
+	"github.com/filecoin-project/specs-actors/actors/builtin/system"
+	vmr "github.com/filecoin-project/specs-actors/actors/runtime"
+	"github.com/filecoin-project/specs-actors/actors/util/adt"
+
 	"github.com/filecoin-project/lotus/chain/actors/aerrors"
 	"github.com/filecoin-project/lotus/chain/types"
-	"github.com/filecoin-project/specs-actors/actors/builtin/multisig"
-	vmr "github.com/filecoin-project/specs-actors/actors/runtime"
 )
 
 type invoker struct {
@@ -33,20 +43,21 @@ func NewInvoker() *invoker {
 	}
 
 	// add builtInCode using: register(cid, singleton)
-	inv.Register(actors.InitCodeCid, actors.InitActor{}, actors.InitActorState{})
-	inv.Register(actors.CronCodeCid, actors.CronActor{}, actors.CronActorState{})
-	inv.Register(actors.StoragePowerCodeCid, actors.StoragePowerActor{}, actors.StoragePowerState{})
-	inv.Register(actors.StorageMarketCodeCid, actors.StorageMarketActor{}, actors.StorageMarketState{})
-	inv.Register(actors.StorageMinerCodeCid, actors.StorageMinerActor{}, actors.StorageMinerActorState{})
-	inv.Register(actors.MultisigCodeCid, multisig.MultiSigActor{}, multisig.MultiSigActorState{})
-	inv.Register(actors.PaymentChannelCodeCid, actors.PaymentChannelActor{}, actors.PaymentChannelActorState{})
+	inv.Register(builtin.SystemActorCodeID, system.Actor{}, adt.EmptyValue{})
+	inv.Register(builtin.InitActorCodeID, init_.Actor{}, init_.State{})
+	inv.Register(builtin.CronActorCodeID, cron.Actor{}, cron.State{})
+	inv.Register(builtin.StoragePowerActorCodeID, power.Actor{}, power.State{})
+	inv.Register(builtin.StorageMarketActorCodeID, market.Actor{}, market.State{})
+	inv.Register(builtin.StorageMinerActorCodeID, miner.Actor{}, miner.State{})
+	inv.Register(builtin.MultisigActorCodeID, multisig.Actor{}, multisig.State{})
+	inv.Register(builtin.PaymentChannelActorCodeID, paych.Actor{}, paych.State{})
 
 	return inv
 }
 
-func (inv *invoker) Invoke(act *types.Actor, vmctx types.VMContext, method uint64, params []byte) ([]byte, aerrors.ActorError) {
+func (inv *invoker) Invoke(act *types.Actor, vmctx types.VMContext, method abi.MethodNum, params []byte) ([]byte, aerrors.ActorError) {
 
-	if act.Code == actors.AccountCodeCid {
+	if act.Code == builtin.AccountActorCodeID {
 		return nil, aerrors.Newf(254, "cannot invoke methods on account actors")
 	}
 
@@ -55,7 +66,7 @@ func (inv *invoker) Invoke(act *types.Actor, vmctx types.VMContext, method uint6
 		log.Errorf("no code for actor %s (Addr: %s)", act.Code, vmctx.Message().To)
 		return nil, aerrors.Newf(255, "no code for actor %s(%d)(%s)", act.Code, method, hex.EncodeToString(params))
 	}
-	if method >= uint64(len(code)) || code[method] == nil {
+	if method >= abi.MethodNum(len(code)) || code[method] == nil {
 		return nil, aerrors.Newf(255, "no method %d on actor", method)
 	}
 	return code[method](act, vmctx, params)
@@ -252,7 +263,7 @@ func DecodeParams(b []byte, out interface{}) error {
 }
 
 func DumpActorState(code cid.Cid, b []byte) (interface{}, error) {
-	if code == actors.AccountCodeCid { // Account code special case
+	if code == builtin.AccountActorCodeID { // Account code special case
 		return nil, nil
 	}
 

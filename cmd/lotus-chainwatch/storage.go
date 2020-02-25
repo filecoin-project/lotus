@@ -2,7 +2,6 @@ package main
 
 import (
 	"database/sql"
-	"encoding/hex"
 	"fmt"
 	"sync"
 	"time"
@@ -13,7 +12,6 @@ import (
 	"golang.org/x/xerrors"
 
 	"github.com/filecoin-project/lotus/api"
-	"github.com/filecoin-project/lotus/chain/actors"
 	"github.com/filecoin-project/lotus/chain/types"
 )
 
@@ -267,8 +265,8 @@ create table if not exists deals
 	pieceSize bigint not null,
 	client text not null,
 	provider text not null,
-	expiration decimal not null,
-	duration decimal not null,
+	start decimal not null,
+	end decimal not null,
 	epochPrice decimal not null,
 	collateral decimal not null,
 	constraint deals_pk
@@ -473,11 +471,11 @@ create temp table mh (like miner_heads excluding constraints) on commit drop;
 			fmt.Sprint(i.psize),
 			i.info.Owner.String(),
 			i.info.Worker.String(),
-			i.info.PeerID.String(),
+			i.info.PeerId.String(),
 			i.info.SectorSize,
-			i.state.Power.String(),
+			i.state.Power.String(), // TODO: SPA
 			i.state.Active,
-			i.state.ElectionPeriodStart,
+			i.state.PoStState.ProvingPeriodStart,
 			i.state.SlashedAt,
 		); err != nil {
 			return err
@@ -842,7 +840,7 @@ func (st *storage) storeMpoolInclusions(msgs []api.MpoolUpdate) error {
 	return tx.Commit()
 }
 
-func (st *storage) storeDeals(deals map[string]actors.OnChainDeal) error {
+func (st *storage) storeDeals(deals map[string]api.MarketDeal) error {
 	tx, err := st.db.Begin()
 	if err != nil {
 		return err
@@ -854,7 +852,7 @@ func (st *storage) storeDeals(deals map[string]actors.OnChainDeal) error {
 		return xerrors.Errorf("prep temp: %w", err)
 	}
 
-	stmt, err := tx.Prepare(`copy d (id, pieceref, piecesize, client, "provider", expiration, duration, epochprice, collateral) from stdin `)
+	stmt, err := tx.Prepare(`copy d (id, pieceref, piecesize, client, "provider", "start", "end", epochprice, collateral) from stdin `)
 	if err != nil {
 		return err
 	}
@@ -862,20 +860,20 @@ func (st *storage) storeDeals(deals map[string]actors.OnChainDeal) error {
 	var bloat uint64
 
 	for id, deal := range deals {
-		if len(deal.PieceRef) > 40 {
-			bloat += uint64(len(deal.PieceRef))
+		if len(deal.Proposal.PieceCID.String()) > 100 {
+			bloat += uint64(len(deal.Proposal.PieceCID.String()))
 			continue
 		}
 		if _, err := stmt.Exec(
 			id,
-			hex.EncodeToString(deal.PieceRef),
-			deal.PieceSize,
-			deal.Client.String(),
-			deal.Provider.String(),
-			fmt.Sprint(deal.ProposalExpiration),
-			fmt.Sprint(deal.Duration),
-			deal.StoragePricePerEpoch.String(),
-			deal.StorageCollateral.String(),
+			deal.Proposal.PieceCID.String(),
+			deal.Proposal.PieceSize,
+			deal.Proposal.Client.String(),
+			deal.Proposal.Provider.String(),
+			fmt.Sprint(deal.Proposal.StartEpoch),
+			fmt.Sprint(deal.Proposal.EndEpoch),
+			deal.Proposal.StoragePricePerEpoch.String(),
+			deal.Proposal.ProviderCollateral.String(),
 		); err != nil {
 			return err
 		}
@@ -915,12 +913,12 @@ func (st *storage) storeDeals(deals map[string]actors.OnChainDeal) error {
 	}
 
 	for id, deal := range deals {
-		if deal.ActivationEpoch == 0 {
+		if deal.State.SectorStartEpoch <= 0 {
 			continue
 		}
 		if _, err := stmt.Exec(
 			id,
-			deal.ActivationEpoch,
+			deal.State.SectorStartEpoch,
 		); err != nil {
 			return err
 		}

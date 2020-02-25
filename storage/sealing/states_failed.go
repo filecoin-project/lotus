@@ -2,14 +2,17 @@ package sealing
 
 import (
 	"bytes"
-	"fmt"
-	"github.com/filecoin-project/lotus/chain/types"
 	"time"
 
+	commcid "github.com/filecoin-project/go-fil-commcid"
+	"github.com/filecoin-project/specs-actors/actors/builtin/miner"
+	"github.com/filecoin-project/specs-actors/actors/util/adt"
 	"golang.org/x/xerrors"
 
 	"github.com/filecoin-project/lotus/api"
-	"github.com/filecoin-project/lotus/chain/actors"
+	"github.com/filecoin-project/lotus/api/apibstore"
+	"github.com/filecoin-project/lotus/chain/store"
+	"github.com/filecoin-project/lotus/chain/types"
 	"github.com/filecoin-project/lotus/lib/statemachine"
 )
 
@@ -29,7 +32,7 @@ func failedCooldown(ctx statemachine.Context, sector SectorInfo) error {
 	return nil
 }
 
-func (m *Sealing) checkPreCommitted(ctx statemachine.Context, sector SectorInfo) (*actors.PreCommittedSector, bool) {
+func (m *Sealing) checkPreCommitted(ctx statemachine.Context, sector SectorInfo) (*miner.SectorPreCommitOnChainInfo, bool) {
 	act, err := m.api.StateGetActor(ctx.Context(), m.maddr, types.EmptyTSK)
 	if err != nil {
 		log.Errorf("handleSealFailed(%d): temp error: %+v", sector.SectorID, err)
@@ -42,20 +45,20 @@ func (m *Sealing) checkPreCommitted(ctx statemachine.Context, sector SectorInfo)
 		return nil, true
 	}
 
-	var state actors.StorageMinerActorState
+	var state miner.State
 	if err := state.UnmarshalCBOR(bytes.NewReader(st)); err != nil {
 		log.Errorf("handleSealFailed(%d): temp error: unmarshaling miner state: %+v", sector.SectorID, err)
 		return nil, true
 	}
 
-	pci, found := state.PreCommittedSectors[fmt.Sprint(sector.SectorID)]
-	if found {
-		// TODO: If not expired yet, we can just try reusing sealticket
-		log.Warnf("sector %d found in miner preseal array", sector.SectorID)
-		return pci, true
+	var pci miner.SectorPreCommitOnChainInfo
+	precommits := adt.AsMap(store.ActorStore(ctx.Context(), apibstore.NewAPIBlockstore(m.api)), state.PreCommittedSectors)
+	if _, err := precommits.Get(adt.UIntKey(uint64(sector.SectorID)), &pci); err != nil {
+		log.Error(err)
+		return nil, true
 	}
 
-	return nil, false
+	return &pci, false
 }
 
 func (m *Sealing) handleSealFailed(ctx statemachine.Context, sector SectorInfo) error {
@@ -93,8 +96,13 @@ func (m *Sealing) handlePreCommitFailed(ctx statemachine.Context, sector SectorI
 			return nil // TODO: SeedWait needs this currently
 		}
 
-		if string(pci.Info.CommR) != string(sector.CommR) {
-			log.Warn("sector %d is precommitted on chain, with different CommR: %x != %x", sector.SectorID, pci.Info.CommR, sector.CommR)
+		pciR, err := commcid.CIDToReplicaCommitmentV1(pci.Info.SealedCID)
+		if err != nil {
+			return err
+		}
+
+		if string(pciR) != string(sector.CommR) {
+			log.Warn("sector %d is precommitted on chain, with different CommR: %x != %x", sector.SectorID, pciR, sector.CommR)
 			return nil // TODO: remove when the actor allows re-precommit
 		}
 

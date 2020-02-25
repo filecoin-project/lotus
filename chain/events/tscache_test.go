@@ -4,6 +4,8 @@ import (
 	"context"
 	"testing"
 
+	"github.com/filecoin-project/specs-actors/actors/abi"
+	"github.com/filecoin-project/specs-actors/actors/crypto"
 	"github.com/stretchr/testify/require"
 
 	"github.com/filecoin-project/go-address"
@@ -11,12 +13,12 @@ import (
 )
 
 func TestTsCache(t *testing.T) {
-	tsc := newTSCache(50, func(context.Context, uint64, types.TipSetKey) (*types.TipSet, error) {
+	tsc := newTSCache(50, func(context.Context, abi.ChainEpoch, types.TipSetKey) (*types.TipSet, error) {
 		t.Fatal("storage call")
 		return &types.TipSet{}, nil
 	})
 
-	h := uint64(75)
+	h := abi.ChainEpoch(75)
 
 	a, _ := address.NewFromString("t00")
 
@@ -27,8 +29,8 @@ func TestTsCache(t *testing.T) {
 			ParentStateRoot:       dummyCid,
 			Messages:              dummyCid,
 			ParentMessageReceipts: dummyCid,
-			BlockSig:              &types.Signature{Type: types.KTBLS},
-			BLSAggregate:          types.Signature{Type: types.KTBLS},
+			BlockSig:              &types.Signature{Type: crypto.SigTypeBLS},
+			BLSAggregate:          types.Signature{Type: crypto.SigTypeBLS},
 		}})
 		if err != nil {
 			t.Fatal(err)
@@ -54,12 +56,12 @@ func TestTsCache(t *testing.T) {
 }
 
 func TestTsCacheNulls(t *testing.T) {
-	tsc := newTSCache(50, func(context.Context, uint64, types.TipSetKey) (*types.TipSet, error) {
+	tsc := newTSCache(50, func(context.Context, abi.ChainEpoch, types.TipSetKey) (*types.TipSet, error) {
 		t.Fatal("storage call")
 		return &types.TipSet{}, nil
 	})
 
-	h := uint64(75)
+	h := abi.ChainEpoch(75)
 
 	a, _ := address.NewFromString("t00")
 	add := func() {
@@ -69,8 +71,8 @@ func TestTsCacheNulls(t *testing.T) {
 			ParentStateRoot:       dummyCid,
 			Messages:              dummyCid,
 			ParentMessageReceipts: dummyCid,
-			BlockSig:              &types.Signature{Type: types.KTBLS},
-			BLSAggregate:          types.Signature{Type: types.KTBLS},
+			BlockSig:              &types.Signature{Type: crypto.SigTypeBLS},
+			BLSAggregate:          types.Signature{Type: crypto.SigTypeBLS},
 		}})
 		if err != nil {
 			t.Fatal(err)

@@ -21,6 +21,7 @@ import (
 	"github.com/filecoin-project/go-sectorbuilder"
 	"github.com/filecoin-project/go-sectorbuilder/fs"
 	"github.com/filecoin-project/go-statestore"
+	"github.com/filecoin-project/specs-actors/actors/crypto"
 	"github.com/ipfs/go-bitswap"
 	"github.com/ipfs/go-bitswap/network"
 	"github.com/ipfs/go-blockservice"
@@ -60,7 +61,7 @@ func minerAddrFromDS(ds dtypes.MetadataDS) (address.Address, error) {
 }
 
 func GetParams(sbc *sectorbuilder.Config) error {
-	if err := paramfetch.GetParams(build.ParametersJson(), sbc.SectorSize); err != nil {
+	if err := paramfetch.GetParams(build.ParametersJson(), uint64(sbc.SectorSize)); err != nil {
 		return xerrors.Errorf("fetching proof parameters: %w", err)
 	}
 
@@ -273,7 +274,7 @@ func SealTicketGen(api api.FullNode) sealing.TicketFn {
 			return nil, xerrors.Errorf("getting head ts for SealTicket failed: %w", err)
 		}
 
-		r, err := api.ChainGetRandomness(ctx, ts.Key(), int64(ts.Height())-build.SealRandomnessLookback)
+		r, err := api.ChainGetRandomness(ctx, ts.Key(), crypto.DomainSeparationTag_SealRandomness, ts.Height()-build.SealRandomnessLookback, nil)
 		if err != nil {
 			return nil, xerrors.Errorf("getting randomness for SealTicket failed: %w", err)
 		}
@@ -284,7 +285,7 @@ func SealTicketGen(api api.FullNode) sealing.TicketFn {
 		}
 
 		return &sectorbuilder.SealTicket{
-			BlockHeight: ts.Height(),
+			BlockHeight: uint64(ts.Height() - build.SealRandomnessLookback),
 			TicketBytes: tkt,
 		}, nil
 	}

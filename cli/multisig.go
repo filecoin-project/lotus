@@ -14,6 +14,7 @@ import (
 	"github.com/filecoin-project/go-address"
 	"github.com/filecoin-project/specs-actors/actors/abi"
 	"github.com/filecoin-project/specs-actors/actors/builtin"
+	init_ "github.com/filecoin-project/specs-actors/actors/builtin/init"
 	samsig "github.com/filecoin-project/specs-actors/actors/builtin/multisig"
 	cid "github.com/ipfs/go-cid"
 	"github.com/ipfs/go-hamt-ipld"
@@ -104,9 +105,9 @@ var msigCreateCmd = &cli.Command{
 		}
 
 		// new actors are created by invoking 'exec' on the init actor with the constructor params
-		execParams := &actors.ExecParams{
-			Code:   actors.MultisigCodeCid,
-			Params: enc,
+		execParams := &init_.ExecParams{
+			CodeCID:           builtin.MultisigActorCodeID,
+			ConstructorParams: enc,
 		}
 
 		enc, err = actors.SerializeParams(execParams)
@@ -116,9 +117,9 @@ var msigCreateCmd = &cli.Command{
 
 		// now we create the message to send this with
 		msg := types.Message{
-			To:       actors.InitAddress,
+			To:       builtin.InitActorAddr,
 			From:     sendAddr,
-			Method:   actors.IAMethods.Exec,
+			Method:   builtin.MethodsInit.Exec,
 			Params:   enc,
 			GasPrice: types.NewInt(1),
 			GasLimit: types.NewInt(1000000),
@@ -186,7 +187,7 @@ var msigInspectCmd = &cli.Command{
 			return err
 		}
 
-		var mstate samsig.MultiSigActorState
+		var mstate samsig.State
 		if err := mstate.UnmarshalCBOR(bytes.NewReader(obj)); err != nil {
 			return err
 		}
@@ -226,19 +227,19 @@ var msigInspectCmd = &cli.Command{
 	},
 }
 
-func GetMultisigPending(ctx context.Context, lapi api.FullNode, hroot cid.Cid) (map[int64]*samsig.MultiSigTransaction, error) {
+func GetMultisigPending(ctx context.Context, lapi api.FullNode, hroot cid.Cid) (map[int64]*samsig.Transaction, error) {
 	bs := apibstore.NewAPIBlockstore(lapi)
 	cst := cbor.NewCborStore(bs)
 
-	nd, err := hamt.LoadNode(ctx, cst, hroot)
+	nd, err := hamt.LoadNode(ctx, cst, hroot, hamt.UseTreeBitWidth(5))
 	if err != nil {
 		return nil, err
 	}
 
-	txs := make(map[int64]*samsig.MultiSigTransaction)
+	txs := make(map[int64]*samsig.Transaction)
 	err = nd.ForEach(ctx, func(k string, val interface{}) error {
 		d := val.(*cbg.Deferred)
-		var tx samsig.MultiSigTransaction
+		var tx samsig.Transaction
 		if err := tx.UnmarshalCBOR(bytes.NewReader(d.Raw)); err != nil {
 			return err
 		}
@@ -255,7 +256,7 @@ func GetMultisigPending(ctx context.Context, lapi api.FullNode, hroot cid.Cid) (
 	return txs, nil
 }
 
-func state(tx *samsig.MultiSigTransaction) string {
+func state(tx *samsig.Transaction) string {
 	/* // TODO(why): I strongly disagree with not having these... but i need to move forward
 	if tx.Complete {
 		return "done"
@@ -347,7 +348,7 @@ var msigProposeCmd = &cli.Command{
 			To:       msig,
 			From:     from,
 			Value:    types.NewInt(0),
-			Method:   uint64(builtin.MethodsMultisig.Propose),
+			Method:   builtin.MethodsMultisig.Propose,
 			Params:   enc,
 			GasLimit: types.NewInt(100000),
 			GasPrice: types.NewInt(1),
@@ -432,7 +433,7 @@ var msigApproveCmd = &cli.Command{
 			To:       msig,
 			From:     from,
 			Value:    types.NewInt(0),
-			Method:   uint64(builtin.MethodsMultisig.Approve),
+			Method:   builtin.MethodsMultisig.Approve,
 			Params:   enc,
 			GasLimit: types.NewInt(100000),
 			GasPrice: types.NewInt(1),

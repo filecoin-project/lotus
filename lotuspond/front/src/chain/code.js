@@ -1,9 +1,12 @@
 export default {
-  account: "fil/1/account",
-  power: "fil/1/power",
-  market: "fil/1/market",
-  miner: "fil/1/miner",
-  multisig: "fil/1/multisig",
+  system: "fil/1/system",
   init: "fil/1/init",
-  paych: "fil/1/paych",
+  cron: "fil/1/cron",
+  account: "fil/1/account",
+  power: "fil/1/storagepower",
+  miner: "fil/1/storageminer",
+  market: "fil/1/storagemarket",
+  paych: "fil/1/paymentchannel",
+  multisig: "fil/1/multisig",
+  reward: "fil/1/reward",
 }

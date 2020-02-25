@@ -48,6 +48,26 @@ func Newf(retCode uint8, format string, args ...interface{}) ActorError {
 	}
 }
 
+// todo: bit hacky
+func NewfSkip(skip int, retCode uint8, format string, args ...interface{}) ActorError {
+	if retCode == 0 {
+		return &actorError{
+			fatal:   true,
+			retCode: 0,
+
+			msg:   "tried creating an error and setting RetCode to 0",
+			frame: xerrors.Caller(skip),
+			err:   fmt.Errorf(format, args...),
+		}
+	}
+	return &actorError{
+		retCode: retCode,
+
+		msg:   fmt.Sprintf(format, args...),
+		frame: xerrors.Caller(skip),
+	}
+}
+
 func Fatal(message string, args ...interface{}) ActorError {
 	return &actorError{
 		fatal: true,

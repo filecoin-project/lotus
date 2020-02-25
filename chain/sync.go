@@ -1,18 +1,20 @@
 package chain
 
 import (
-	"bytes"
 	"context"
 	"crypto/sha256"
 	"errors"
 	"fmt"
+	"github.com/filecoin-project/specs-actors/actors/builtin"
 	"sync"
 	"time"
 
 	"github.com/Gurpartap/async"
-	bls "github.com/filecoin-project/filecoin-ffi"
 	amt "github.com/filecoin-project/go-amt-ipld/v2"
 	sectorbuilder "github.com/filecoin-project/go-sectorbuilder"
+	"github.com/filecoin-project/specs-actors/actors/builtin/power"
+	"github.com/filecoin-project/specs-actors/actors/crypto"
+	"github.com/filecoin-project/specs-actors/actors/util/adt"
 	"github.com/hashicorp/go-multierror"
 	"github.com/ipfs/go-cid"
 	dstore "github.com/ipfs/go-datastore"
@@ -26,11 +28,12 @@ import (
 	"go.opencensus.io/trace"
 	"golang.org/x/xerrors"
 
+	bls "github.com/filecoin-project/filecoin-ffi"
+
 	"github.com/filecoin-project/go-address"
 
 	"github.com/filecoin-project/lotus/api"
 	"github.com/filecoin-project/lotus/build"
-	"github.com/filecoin-project/lotus/chain/actors"
 	"github.com/filecoin-project/lotus/chain/blocksync"
 	"github.com/filecoin-project/lotus/chain/gen"
 	"github.com/filecoin-project/lotus/chain/state"
@@ -464,30 +467,21 @@ func (syncer *Syncer) ValidateTipSet(ctx context.Context, fts *store.FullTipSet)
 }
 
 func (syncer *Syncer) minerIsValid(ctx context.Context, maddr address.Address, baseTs *types.TipSet) error {
-	var err error
-	enc, err := actors.SerializeParams(&actors.IsValidMinerParam{Addr: maddr})
+	var spast power.State
+
+	_, err := syncer.sm.LoadActorState(ctx, builtin.StoragePowerActorAddr, &spast, baseTs)
 	if err != nil {
 		return err
 	}
 
-	ret, err := syncer.sm.Call(ctx, &types.Message{
-		To:     actors.StoragePowerAddress,
-		From:   maddr,
-		Method: actors.SPAMethods.IsValidMiner,
-		Params: enc,
-	}, baseTs)
+	var claim power.Claim
+	exist, err := adt.AsMap(syncer.store.Store(ctx), spast.Claims).Get(adt.AddrKey(maddr), &claim)
 	if err != nil {
-		return xerrors.Errorf("checking if block miner is valid failed: %w", err)
+		return err
 	}
-
-	if ret.ExitCode != 0 {
-		return xerrors.Errorf("StorageMarket.IsValidMiner check failed (exit code %d)", ret.ExitCode)
-	}
-
-	if !bytes.Equal(ret.Return, cbg.CborBoolTrue) {
+	if !exist {
 		return xerrors.New("miner isn't valid")
 	}
-
 	return nil
 }
 
@@ -520,9 +514,11 @@ func (syncer *Syncer) ValidateBlock(ctx context.Context, b *types.FullBlock) err
 		log.Warn("Got block from the future, but within threshold", h.Timestamp, time.Now().Unix())
 	}
 
-	if h.Timestamp < baseTs.MinTimestamp()+(build.BlockDelay*(h.Height-baseTs.Height())) {
+	if h.Timestamp < baseTs.MinTimestamp()+(build.BlockDelay*uint64(h.Height-baseTs.Height())) {
 		log.Warn("timestamp funtimes: ", h.Timestamp, baseTs.MinTimestamp(), h.Height, baseTs.Height())
-		return xerrors.Errorf("block was generated too soon (h.ts:%d < base.mints:%d + BLOCK_DELAY:%d * deltaH:%d)", h.Timestamp, baseTs.MinTimestamp(), build.BlockDelay, h.Height-baseTs.Height())
+		diff := (baseTs.MinTimestamp() + (build.BlockDelay * uint64(h.Height-baseTs.Height()))) - h.Timestamp
+
+		return xerrors.Errorf("block was generated too soon (h.ts:%d < base.mints:%d + BLOCK_DELAY:%d * deltaH:%d; diff %d)", h.Timestamp, baseTs.MinTimestamp(), build.BlockDelay, h.Height-baseTs.Height(), diff)
 	}
 
 	winnerCheck := async.Err(func() error {
@@ -545,7 +541,7 @@ func (syncer *Syncer) ValidateBlock(ctx context.Context, b *types.FullBlock) err
 			return xerrors.Errorf("failed to get sector size for block miner: %w", err)
 		}
 
-		snum := types.BigDiv(mpow, types.NewInt(ssize))
+		snum := types.BigDiv(mpow, types.NewInt(uint64(ssize)))
 
 		if len(h.EPostProof.Candidates) == 0 {
 			return xerrors.Errorf("no candidates")
@@ -617,10 +613,12 @@ func (syncer *Syncer) ValidateBlock(ctx context.Context, b *types.FullBlock) err
 	})
 
 	tktsCheck := async.Err(func() error {
-		vrfBase := baseTs.MinTicket().VRFProof
+		vrfBase, err := syncer.sm.ChainStore().GetRandomness(ctx, baseTs.Cids(), crypto.DomainSeparationTag_TicketProduction, int64(baseTs.Height()), h.Miner.Bytes())
+		if err != nil {
+			return xerrors.Errorf("failed to get randomness for verifying election proof: %w", err)
+		}
 
-		err := gen.VerifyVRF(ctx, waddr, h.Miner, gen.DSepTicket, vrfBase, h.Ticket.VRFProof)
-
+		err = gen.VerifyVRF(ctx, waddr, vrfBase, h.Ticket.VRFProof)
 		if err != nil {
 			return xerrors.Errorf("validating block tickets failed: %w", err)
 		}
@@ -654,12 +652,12 @@ func (syncer *Syncer) ValidateBlock(ctx context.Context, b *types.FullBlock) err
 }
 
 func (syncer *Syncer) VerifyElectionPoStProof(ctx context.Context, h *types.BlockHeader, baseTs *types.TipSet, waddr address.Address) error {
-	rand, err := syncer.sm.ChainStore().GetRandomness(ctx, baseTs.Cids(), int64(h.Height-build.EcRandomnessLookback))
+	rand, err := syncer.sm.ChainStore().GetRandomness(ctx, baseTs.Cids(), crypto.DomainSeparationTag_ElectionPoStChallengeSeed, int64(h.Height-build.EcRandomnessLookback), h.Miner.Bytes())
 	if err != nil {
 		return xerrors.Errorf("failed to get randomness for verifying election proof: %w", err)
 	}
 
-	if err := VerifyElectionPoStVRF(ctx, h.EPostProof.PostRand, rand, waddr, h.Miner); err != nil {
+	if err := VerifyElectionPoStVRF(ctx, h.EPostProof.PostRand, rand, waddr); err != nil {
 		return xerrors.Errorf("checking eproof failed: %w", err)
 	}
 
@@ -674,7 +672,7 @@ func (syncer *Syncer) VerifyElectionPoStProof(ctx context.Context, h *types.Bloc
 		copy(partial[:], t.Partial)
 		winners = append(winners, sectorbuilder.EPostCandidate{
 			PartialTicket:        partial,
-			SectorID:             t.SectorID,
+			SectorNum:            t.SectorID,
 			SectorChallengeIndex: t.ChallengeIndex,
 		})
 	}
@@ -825,7 +823,7 @@ func (syncer *Syncer) checkBlockMessages(ctx context.Context, b *types.FullBlock
 	return nil
 }
 
-func (syncer *Syncer) verifyBlsAggregate(ctx context.Context, sig types.Signature, msgs []cid.Cid, pubks []bls.PublicKey) error {
+func (syncer *Syncer) verifyBlsAggregate(ctx context.Context, sig crypto.Signature, msgs []cid.Cid, pubks []bls.PublicKey) error {
 	_, span := trace.StartSpan(ctx, "syncer.verifyBlsAggregate")
 	defer span.End()
 	span.AddAttributes(
@@ -1119,8 +1117,8 @@ func persistMessages(bs bstore.Blockstore, bst *blocksync.BSTipSet) error {
 		}
 	}
 	for _, m := range bst.SecpkMessages {
-		if m.Signature.Type != types.KTSecp256k1 {
-			return xerrors.Errorf("unknown signature type on message %s: %q", m.Cid(), m.Signature.TypeCode)
+		if m.Signature.Type != crypto.SigTypeSecp256k1 {
+			return xerrors.Errorf("unknown signature type on message %s: %q", m.Cid(), m.Signature.Type)
 		}
 		//log.Infof("putting secp256k1 message: %s", m.Cid())
 		if _, err := store.PutMessage(bs, m); err != nil {
@@ -1178,8 +1176,8 @@ func (syncer *Syncer) collectChain(ctx context.Context, ts *types.TipSet) error 
 	return nil
 }
 
-func VerifyElectionPoStVRF(ctx context.Context, evrf []byte, rand []byte, worker, miner address.Address) error {
-	if err := gen.VerifyVRF(ctx, worker, miner, gen.DSepElectionPost, rand, evrf); err != nil {
+func VerifyElectionPoStVRF(ctx context.Context, evrf []byte, rand []byte, worker address.Address) error {
+	if err := gen.VerifyVRF(ctx, worker, rand, evrf); err != nil {
 		return xerrors.Errorf("failed to verify post_randomness vrf: %w", err)
 	}
 

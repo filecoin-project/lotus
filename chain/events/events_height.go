@@ -4,6 +4,7 @@ import (
 	"context"
 	"sync"
 
+	"github.com/filecoin-project/specs-actors/actors/abi"
 	"go.opencensus.io/trace"
 
 	"github.com/filecoin-project/lotus/chain/types"
@@ -12,7 +13,7 @@ import (
 type heightEvents struct {
 	lk           sync.Mutex
 	tsc          *tipSetCache
-	gcConfidence uint64
+	gcConfidence abi.ChainEpoch
 
 	ctr triggerId
 
@@ -35,7 +36,7 @@ func (e *heightEvents) headChangeAt(rev, app []*types.TipSet) error {
 		// TODO: log error if h below gcconfidence
 		// revert height-based triggers
 
-		revert := func(h uint64, ts *types.TipSet) {
+		revert := func(h abi.ChainEpoch, ts *types.TipSet) {
 			for _, tid := range e.htHeights[h] {
 				ctx, span := trace.StartSpan(ctx, "events.HeightRevert")
 
@@ -80,7 +81,7 @@ func (e *heightEvents) headChangeAt(rev, app []*types.TipSet) error {
 
 		// height triggers
 
-		apply := func(h uint64, ts *types.TipSet) error {
+		apply := func(h abi.ChainEpoch, ts *types.TipSet) error {
 			for _, tid := range e.htTriggerHeights[h] {
 				hnd := e.heightTriggers[tid]
 				if hnd.called {
@@ -88,7 +89,7 @@ func (e *heightEvents) headChangeAt(rev, app []*types.TipSet) error {
 				}
 				hnd.called = true
 
-				triggerH := h - uint64(hnd.confidence)
+				triggerH := h - abi.ChainEpoch(hnd.confidence)
 
 				incTs, err := e.tsc.getNonNull(triggerH)
 				if err != nil {
@@ -139,13 +140,13 @@ func (e *heightEvents) headChangeAt(rev, app []*types.TipSet) error {
 //  specified height, `RevertHandler` will be called.
 //
 // ts passed to handlers is the tipset at the specified, or above, if lower tipsets were null
-func (e *heightEvents) ChainAt(hnd HeightHandler, rev RevertHandler, confidence int, h uint64) error {
+func (e *heightEvents) ChainAt(hnd HeightHandler, rev RevertHandler, confidence int, h abi.ChainEpoch) error {
 
 	e.lk.Lock() // Tricky locking, check your locks if you modify this function!
 
 	bestH := e.tsc.best().Height()
 
-	if bestH >= h+uint64(confidence) {
+	if bestH >= h+abi.ChainEpoch(confidence) {
 		ts, err := e.tsc.getNonNull(h)
 		if err != nil {
 			log.Warnf("events.ChainAt: calling HandleFunc with nil tipset, not found in cache: %s", err)
@@ -168,11 +169,11 @@ func (e *heightEvents) ChainAt(hnd HeightHandler, rev RevertHandler, confidence 
 
 	defer e.lk.Unlock()
 
-	if bestH >= h+uint64(confidence)+e.gcConfidence {
+	if bestH >= h+abi.ChainEpoch(confidence)+e.gcConfidence {
 		return nil
 	}
 
-	triggerAt := h + uint64(confidence)
+	triggerAt := h + abi.ChainEpoch(confidence)
 
 	id := e.ctr
 	e.ctr++

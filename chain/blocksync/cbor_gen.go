@@ -7,7 +7,7 @@ import (
 	"io"
 
 	"github.com/filecoin-project/lotus/chain/types"
-	"github.com/ipfs/go-cid"
+	cid "github.com/ipfs/go-cid"
 	cbg "github.com/whyrusleeping/cbor-gen"
 	xerrors "golang.org/x/xerrors"
 )
@@ -38,14 +38,17 @@ func (t *BlockSyncRequest) MarshalCBOR(w io.Writer) error {
 	}
 
 	// t.RequestLength (uint64) (uint64)
+
 	if _, err := w.Write(cbg.CborEncodeMajorType(cbg.MajUnsignedInt, uint64(t.RequestLength))); err != nil {
 		return err
 	}
 
 	// t.Options (uint64) (uint64)
+
 	if _, err := w.Write(cbg.CborEncodeMajorType(cbg.MajUnsignedInt, uint64(t.Options))); err != nil {
 		return err
 	}
+
 	return nil
 }
 
@@ -92,24 +95,32 @@ func (t *BlockSyncRequest) UnmarshalCBOR(r io.Reader) error {
 
 	// t.RequestLength (uint64) (uint64)
 
-	maj, extra, err = cbg.CborReadHeader(br)
-	if err != nil {
-		return err
+	{
+
+		maj, extra, err = cbg.CborReadHeader(br)
+		if err != nil {
+			return err
+		}
+		if maj != cbg.MajUnsignedInt {
+			return fmt.Errorf("wrong type for uint64 field")
+		}
+		t.RequestLength = uint64(extra)
+
 	}
-	if maj != cbg.MajUnsignedInt {
-		return fmt.Errorf("wrong type for uint64 field")
-	}
-	t.RequestLength = uint64(extra)
 	// t.Options (uint64) (uint64)
 
-	maj, extra, err = cbg.CborReadHeader(br)
-	if err != nil {
-		return err
+	{
+
+		maj, extra, err = cbg.CborReadHeader(br)
+		if err != nil {
+			return err
+		}
+		if maj != cbg.MajUnsignedInt {
+			return fmt.Errorf("wrong type for uint64 field")
+		}
+		t.Options = uint64(extra)
+
 	}
-	if maj != cbg.MajUnsignedInt {
-		return fmt.Errorf("wrong type for uint64 field")
-	}
-	t.Options = uint64(extra)
 	return nil
 }
 
@@ -137,6 +148,7 @@ func (t *BlockSyncResponse) MarshalCBOR(w io.Writer) error {
 	}
 
 	// t.Status (uint64) (uint64)
+
 	if _, err := w.Write(cbg.CborEncodeMajorType(cbg.MajUnsignedInt, uint64(t.Status))); err != nil {
 		return err
 	}
@@ -199,14 +211,18 @@ func (t *BlockSyncResponse) UnmarshalCBOR(r io.Reader) error {
 
 	// t.Status (uint64) (uint64)
 
-	maj, extra, err = cbg.CborReadHeader(br)
-	if err != nil {
-		return err
+	{
+
+		maj, extra, err = cbg.CborReadHeader(br)
+		if err != nil {
+			return err
+		}
+		if maj != cbg.MajUnsignedInt {
+			return fmt.Errorf("wrong type for uint64 field")
+		}
+		t.Status = uint64(extra)
+
 	}
-	if maj != cbg.MajUnsignedInt {
-		return fmt.Errorf("wrong type for uint64 field")
-	}
-	t.Status = uint64(extra)
 	// t.Message (string) (string)
 
 	{

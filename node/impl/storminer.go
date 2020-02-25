@@ -10,6 +10,7 @@ import (
 	"os"
 	"strconv"
 
+	"github.com/filecoin-project/specs-actors/actors/abi"
 	"github.com/gorilla/mux"
 	files "github.com/ipfs/go-ipfs-files"
 
@@ -64,7 +65,7 @@ func (sm *StorageMinerAPI) remoteGetSector(w http.ResponseWriter, r *http.Reques
 		return
 	}
 
-	path, err := sm.SectorBuilder.SectorPath(fs.DataType(vars["type"]), id)
+	path, err := sm.SectorBuilder.SectorPath(fs.DataType(vars["type"]), abi.SectorNumber(id))
 	if err != nil {
 		log.Error(err)
 		w.WriteHeader(500)
@@ -111,7 +112,7 @@ func (sm *StorageMinerAPI) remotePutSector(w http.ResponseWriter, r *http.Reques
 
 	// This is going to get better with worker-to-worker transfers
 
-	path, err := sm.SectorBuilder.SectorPath(fs.DataType(vars["type"]), id)
+	path, err := sm.SectorBuilder.SectorPath(fs.DataType(vars["type"]), abi.SectorNumber(id))
 	if err != nil {
 		if err != fs.ErrNotFound {
 			log.Error(err)
@@ -119,7 +120,7 @@ func (sm *StorageMinerAPI) remotePutSector(w http.ResponseWriter, r *http.Reques
 			return
 		}
 
-		path, err = sm.SectorBuilder.AllocSectorPath(fs.DataType(vars["type"]), id, true)
+		path, err = sm.SectorBuilder.AllocSectorPath(fs.DataType(vars["type"]), abi.SectorNumber(id), true)
 		if err != nil {
 			log.Error(err)
 			w.WriteHeader(500)
@@ -169,7 +170,7 @@ func (sm *StorageMinerAPI) ActorAddress(context.Context) (address.Address, error
 	return sm.SectorBuilderConfig.Miner, nil
 }
 
-func (sm *StorageMinerAPI) ActorSectorSize(ctx context.Context, addr address.Address) (uint64, error) {
+func (sm *StorageMinerAPI) ActorSectorSize(ctx context.Context, addr address.Address) (abi.SectorSize, error) {
 	return sm.Full.StateMinerSectorSize(ctx, addr, types.EmptyTSK)
 }
 
@@ -177,15 +178,18 @@ func (sm *StorageMinerAPI) PledgeSector(ctx context.Context) error {
 	return sm.Miner.PledgeSector()
 }
 
-func (sm *StorageMinerAPI) SectorsStatus(ctx context.Context, sid uint64) (api.SectorInfo, error) {
+func (sm *StorageMinerAPI) SectorsStatus(ctx context.Context, sid abi.SectorNumber) (api.SectorInfo, error) {
 	info, err := sm.Miner.GetSectorInfo(sid)
 	if err != nil {
 		return api.SectorInfo{}, err
 	}
 
-	deals := make([]uint64, len(info.Pieces))
+	deals := make([]abi.DealID, len(info.Pieces))
 	for i, piece := range info.Pieces {
-		deals[i] = piece.DealID
+		if piece.DealID == nil {
+			continue
+		}
+		deals[i] = *piece.DealID
 	}
 
 	log := make([]api.SectorLog, len(info.Log))
@@ -215,13 +219,13 @@ func (sm *StorageMinerAPI) SectorsStatus(ctx context.Context, sid uint64) (api.S
 }
 
 // List all staged sectors
-func (sm *StorageMinerAPI) SectorsList(context.Context) ([]uint64, error) {
+func (sm *StorageMinerAPI) SectorsList(context.Context) ([]abi.SectorNumber, error) {
 	sectors, err := sm.Miner.ListSectors()
 	if err != nil {
 		return nil, err
 	}
 
-	out := make([]uint64, len(sectors))
+	out := make([]abi.SectorNumber, len(sectors))
 	for i, sector := range sectors {
 		out[i] = sector.SectorID
 	}
@@ -244,7 +248,7 @@ func (sm *StorageMinerAPI) SectorsRefs(context.Context) (map[string][]api.Sealed
 	return out, nil
 }
 
-func (sm *StorageMinerAPI) SectorsUpdate(ctx context.Context, id uint64, state api.SectorState) error {
+func (sm *StorageMinerAPI) SectorsUpdate(ctx context.Context, id abi.SectorNumber, state api.SectorState) error {
 	return sm.Miner.ForceSectorState(ctx, id, state)
 }
 

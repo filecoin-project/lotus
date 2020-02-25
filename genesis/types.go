@@ -1,25 +1,68 @@
 package genesis
 
 import (
+	"encoding/json"
+
 	"github.com/filecoin-project/go-address"
-	"github.com/filecoin-project/lotus/chain/actors"
-	"github.com/filecoin-project/lotus/chain/types"
+	"github.com/filecoin-project/specs-actors/actors/abi"
+	"github.com/filecoin-project/specs-actors/actors/builtin/market"
+	"github.com/libp2p/go-libp2p-core/peer"
+)
+
+type ActorType string
+
+const (
+	TAccount  ActorType = "account"
+	TMultisig ActorType = "multisig"
 )
 
 type PreSeal struct {
 	CommR    [32]byte
 	CommD    [32]byte
-	SectorID uint64
-	Deal     actors.StorageDealProposal
+	SectorID abi.SectorNumber
+	Deal     market.DealProposal
 }
 
-type GenesisMiner struct {
+type Miner struct {
 	Owner  address.Address
 	Worker address.Address
+	PeerId peer.ID `json:",omitempty"`
 
-	SectorSize uint64
+	MarketBalance abi.TokenAmount
+	PowerBalance  abi.TokenAmount
+
+	SectorSize abi.SectorSize
 
 	Sectors []*PreSeal
+}
 
-	Key types.KeyInfo // TODO: separate file
+type AccountMeta struct {
+	Owner address.Address // bls / secpk
+}
+
+func (am *AccountMeta) ActorMeta() json.RawMessage {
+	out, err := json.Marshal(am)
+	if err != nil {
+		panic(err)
+	}
+	return out
+}
+
+type MultisigMeta struct {
+	// TODO
+}
+
+type Actor struct {
+	Type    ActorType
+	Balance abi.TokenAmount
+
+	Meta json.RawMessage
+}
+
+type Template struct {
+	Accounts []Actor
+	Miners   []Miner
+
+	NetworkName string
+	Timestamp   uint64 `json:",omitempty"`
 }

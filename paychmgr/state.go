@@ -1,17 +1,17 @@
-package paych
+package paychmgr
 
 import (
 	"context"
-	"fmt"
 
 	"github.com/filecoin-project/go-address"
-	"github.com/filecoin-project/lotus/chain/actors"
-	"github.com/filecoin-project/lotus/chain/types"
+	"github.com/filecoin-project/specs-actors/actors/builtin/paych"
 	xerrors "golang.org/x/xerrors"
+
+	"github.com/filecoin-project/lotus/chain/types"
 )
 
-func (pm *Manager) loadPaychState(ctx context.Context, ch address.Address) (*types.Actor, *actors.PaymentChannelActorState, error) {
-	var pcast actors.PaymentChannelActorState
+func (pm *Manager) loadPaychState(ctx context.Context, ch address.Address) (*types.Actor, *paych.State, error) {
+	var pcast paych.State
 	act, err := pm.sm.LoadActorState(ctx, ch, &pcast, nil)
 	if err != nil {
 		return nil, nil, err
@@ -20,27 +20,34 @@ func (pm *Manager) loadPaychState(ctx context.Context, ch address.Address) (*typ
 	return act, &pcast, nil
 }
 
-func (pm *Manager) laneState(ctx context.Context, ch address.Address, lane uint64) (actors.LaneState, error) {
+func findLane(states []*paych.LaneState, lane uint64) *paych.LaneState {
+	var ls *paych.LaneState
+	for _, laneState := range states {
+		if uint64(laneState.ID) == lane {
+			ls = laneState
+			break
+		}
+	}
+	return ls
+}
+
+func (pm *Manager) laneState(ctx context.Context, ch address.Address, lane uint64) (paych.LaneState, error) {
 	_, state, err := pm.loadPaychState(ctx, ch)
 	if err != nil {
-		return actors.LaneState{}, err
+		return paych.LaneState{}, err
 	}
 
 	// TODO: we probably want to call UpdateChannelState with all vouchers to be fully correct
 	//  (but technically dont't need to)
 	// TODO: make sure this is correct
 
-	ls, ok := state.LaneStates[fmt.Sprintf("%d", lane)]
-	if !ok {
-		ls = &actors.LaneState{
-			Closed:   false,
+	ls := findLane(state.LaneStates, lane)
+	if ls == nil {
+		ls = &paych.LaneState{
+			ID:       lane,
 			Redeemed: types.NewInt(0),
 			Nonce:    0,
 		}
-	}
-
-	if ls.Closed {
-		return *ls, nil
 	}
 
 	vouchers, err := pm.store.VouchersForPaych(ch)
@@ -48,12 +55,12 @@ func (pm *Manager) laneState(ctx context.Context, ch address.Address, lane uint6
 		if err == ErrChannelNotTracked {
 			return *ls, nil
 		}
-		return actors.LaneState{}, err
+		return paych.LaneState{}, err
 	}
 
 	for _, v := range vouchers {
 		for range v.Voucher.Merges {
-			return actors.LaneState{}, xerrors.Errorf("paych merges not handled yet")
+			return paych.LaneState{}, xerrors.Errorf("paych merges not handled yet")
 		}
 
 		if v.Voucher.Lane != lane {

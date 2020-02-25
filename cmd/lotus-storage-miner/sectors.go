@@ -9,6 +9,7 @@ import (
 	"text/tabwriter"
 	"time"
 
+	"github.com/filecoin-project/specs-actors/actors/abi"
 	"golang.org/x/xerrors"
 	"gopkg.in/urfave/cli.v2"
 
@@ -68,7 +69,7 @@ var sectorsStatusCmd = &cli.Command{
 			return err
 		}
 
-		status, err := nodeApi.SectorsStatus(ctx, id)
+		status, err := nodeApi.SectorsStatus(ctx, abi.SectorNumber(id))
 		if err != nil {
 			return err
 		}
@@ -134,18 +135,18 @@ var sectorsListCmd = &cli.Command{
 		if err != nil {
 			return err
 		}
-		provingIDs := make(map[uint64]struct{}, len(pset))
+		provingIDs := make(map[abi.SectorNumber]struct{}, len(pset))
 		for _, info := range pset {
-			provingIDs[info.SectorID] = struct{}{}
+			provingIDs[info.ID] = struct{}{}
 		}
 
 		sset, err := fullApi.StateMinerSectors(ctx, maddr, types.EmptyTSK)
 		if err != nil {
 			return err
 		}
-		commitedIDs := make(map[uint64]struct{}, len(pset))
+		commitedIDs := make(map[abi.SectorNumber]struct{}, len(pset))
 		for _, info := range sset {
-			commitedIDs[info.SectorID] = struct{}{}
+			commitedIDs[info.ID] = struct{}{}
 		}
 
 		sort.Slice(list, func(i, j int) bool {
@@ -240,7 +241,7 @@ var sectorsUpdateCmd = &cli.Command{
 			}
 		}
 
-		return nodeApi.SectorsUpdate(ctx, id, st)
+		return nodeApi.SectorsUpdate(ctx, abi.SectorNumber(id), st)
 	},
 }
 

@@ -8,6 +8,8 @@ import (
 	"strings"
 
 	"github.com/filecoin-project/go-amt-ipld/v2"
+	"github.com/filecoin-project/specs-actors/actors/abi"
+	"github.com/filecoin-project/specs-actors/actors/crypto"
 	"github.com/ipfs/go-blockservice"
 	"github.com/ipfs/go-cid"
 	"github.com/ipfs/go-hamt-ipld"
@@ -46,8 +48,13 @@ func (a *ChainAPI) ChainHead(context.Context) (*types.TipSet, error) {
 	return a.Chain.GetHeaviestTipSet(), nil
 }
 
-func (a *ChainAPI) ChainGetRandomness(ctx context.Context, pts types.TipSetKey, round int64) ([]byte, error) {
-	return a.Chain.GetRandomness(ctx, pts.Cids(), round)
+func (a *ChainAPI) ChainGetRandomness(ctx context.Context, tsk types.TipSetKey, personalization crypto.DomainSeparationTag, randEpoch abi.ChainEpoch, entropy []byte) (abi.Randomness, error) {
+	pts, err := a.Chain.LoadTipSet(tsk)
+	if err != nil {
+		return nil, xerrors.Errorf("loading tipset key: %w", err)
+	}
+
+	return a.Chain.GetRandomness(ctx, pts.Cids(), personalization, int64(randEpoch), entropy)
 }
 
 func (a *ChainAPI) ChainGetBlock(ctx context.Context, msg cid.Cid) (*types.BlockHeader, error) {
@@ -157,7 +164,7 @@ func (a *ChainAPI) ChainGetParentReceipts(ctx context.Context, bcid cid.Cid) ([]
 	return out, nil
 }
 
-func (a *ChainAPI) ChainGetTipSetByHeight(ctx context.Context, h uint64, tsk types.TipSetKey) (*types.TipSet, error) {
+func (a *ChainAPI) ChainGetTipSetByHeight(ctx context.Context, h abi.ChainEpoch, tsk types.TipSetKey) (*types.TipSet, error) {
 	ts, err := a.Chain.GetTipSetFromKey(tsk)
 	if err != nil {
 		return nil, xerrors.Errorf("loading tipset %s: %w", tsk, err)
@@ -217,7 +224,7 @@ func resolveOnce(bs blockstore.Blockstore) func(ctx context.Context, ds ipld.Nod
 		if strings.HasPrefix(names[0], "@H:") {
 			cst := cbor.NewCborStore(bs)
 
-			h, err := hamt.LoadNode(ctx, cst, nd.Cid())
+			h, err := hamt.LoadNode(ctx, cst, nd.Cid(), hamt.UseTreeBitWidth(5))
 			if err != nil {
 				return nil, nil, xerrors.Errorf("resolving hamt link: %w", err)
 			}

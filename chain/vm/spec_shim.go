@@ -3,36 +3,62 @@ package vm
 import (
 	"bytes"
 	"context"
-	"fmt"
+	"encoding/binary"
 	"runtime/debug"
 
 	"github.com/filecoin-project/go-address"
-	"github.com/filecoin-project/lotus/chain/actors"
-	"github.com/filecoin-project/lotus/chain/actors/aerrors"
-	"github.com/filecoin-project/lotus/chain/types"
 	"github.com/filecoin-project/specs-actors/actors/abi"
-	"github.com/filecoin-project/specs-actors/actors/runtime"
+	"github.com/filecoin-project/specs-actors/actors/abi/big"
+	"github.com/filecoin-project/specs-actors/actors/crypto"
 	vmr "github.com/filecoin-project/specs-actors/actors/runtime"
 	"github.com/filecoin-project/specs-actors/actors/runtime/exitcode"
 	"github.com/ipfs/go-cid"
 	cbg "github.com/whyrusleeping/cbor-gen"
+
+	"github.com/filecoin-project/lotus/chain/actors/aerrors"
+	"github.com/filecoin-project/lotus/chain/types"
 )
 
 type runtimeShim struct {
 	vmctx types.VMContext
-	vmr.Runtime
 }
 
-var _ runtime.Runtime = (*runtimeShim)(nil)
+func (rs *runtimeShim) ResolveAddress(address address.Address) (ret address.Address, ok bool) {
+	r, err := rs.vmctx.LookupID(address)
+	if err != nil { // TODO: check notfound
+		rs.Abortf(exitcode.ErrPlaceholder, "resolve address: %v", err)
+	}
+	return r, true
+}
+
+func (rs *runtimeShim) Get(c cid.Cid, o vmr.CBORUnmarshaler) bool {
+	err := rs.vmctx.Storage().Get(c, o)
+	if err != nil { // todo: not found
+		rs.Abortf(exitcode.ErrPlaceholder, "storage get: %v", err)
+	}
+	return true
+}
+
+func (rs *runtimeShim) Put(x vmr.CBORMarshaler) cid.Cid {
+	c, err := rs.vmctx.Storage().Put(x)
+	if err != nil {
+		rs.Abortf(exitcode.ErrPlaceholder, "storage put: %v", err) // todo: spec code?
+	}
+	return c
+}
+
+var _ vmr.Runtime = (*runtimeShim)(nil)
 
 func (rs *runtimeShim) shimCall(f func() interface{}) (rval []byte, aerr aerrors.ActorError) {
 	defer func() {
 		if r := recover(); r != nil {
 			if ar, ok := r.(aerrors.ActorError); ok {
+				log.Warn("VM.Call failure: ", ar)
+				debug.PrintStack()
 				aerr = ar
 				return
 			}
-			fmt.Println("caught one of those actor errors: ", r)
+			log.Warn("caught one of those actor errors: ", r)
 			debug.PrintStack()
 			log.Errorf("ERROR")
 			aerr = aerrors.Newf(1, "generic spec actors failure")
@@ -56,14 +82,132 @@ func (rs *runtimeShim) shimCall(f func() interface{}) (rval []byte, aerr aerrors
 	}
 }
 
+func (rs *runtimeShim) Message() vmr.Message {
+	var err error
+
+	rawm := *rs.vmctx.Message() // TODO: normalize addresses earlier
+	rawm.From, err = rs.vmctx.LookupID(rawm.From)
+	if err != nil {
+		rs.Abortf(exitcode.ErrPlaceholder, "resolve from address: %v", err)
+	}
+
+	rawm.To, err = rs.vmctx.LookupID(rawm.To)
+	if err != nil {
+		rs.Abortf(exitcode.ErrPlaceholder, "resolve to address: %v", err)
+	}
+
+	return &rawm
+}
+
+func (rs *runtimeShim) ValidateImmediateCallerAcceptAny() {
+	return
+}
+
+func (rs *runtimeShim) CurrentBalance() abi.TokenAmount {
+	b, err := rs.vmctx.GetBalance(rs.vmctx.Message().To)
+	if err != nil {
+		rs.Abortf(exitcode.ExitCode(err.RetCode()), "get current balance: %v", err)
+	}
+	return b
+}
+
+func (rs *runtimeShim) GetActorCodeCID(addr address.Address) (ret cid.Cid, ok bool) {
+	ret, err := rs.vmctx.ActorCodeCID(addr)
+	if err != nil {
+		// todo: notfound
+		rs.Abortf(exitcode.ErrPlaceholder, "%v", err)
+	}
+
+	return ret, true
+}
+
+func (rs *runtimeShim) GetRandomness(personalization crypto.DomainSeparationTag, randEpoch abi.ChainEpoch, entropy []byte) abi.Randomness {
+	r, err := rs.vmctx.GetRandomness(personalization, randEpoch, entropy)
+	if err != nil {
+		rs.Abortf(exitcode.SysErrInternal, "getting randomness: %v", err)
+	}
+
+	return r
+}
+
+func (rs *runtimeShim) Store() vmr.Store {
+	return rs
+}
+
+func (rs *runtimeShim) NewActorAddress() address.Address {
+	var b bytes.Buffer
+	if err := rs.ImmediateCaller().MarshalCBOR(&b); err != nil { // todo: spec says cbor; why not just bytes?
+		rs.Abortf(exitcode.ErrSerialization, "writing caller address into a buffer: %v", err)
+	}
+
+	var err error
+	st, err := rs.vmctx.StateTree()
+	if err != nil {
+		rs.Abortf(exitcode.SysErrInternal, "getting statetree: %v", err)
+	}
+	act, err := st.GetActor(rs.vmctx.Origin())
+	if err != nil {
+		rs.Abortf(exitcode.SysErrInternal, "getting top level actor: %v", err)
+	}
+
+	if err := binary.Write(&b, binary.BigEndian, act.Nonce); err != nil {
+		rs.Abortf(exitcode.ErrSerialization, "writing nonce address into a buffer: %v", err)
+	}
+	if err := binary.Write(&b, binary.BigEndian, uint64(0)); err != nil { // TODO: expose on vm
+		rs.Abortf(exitcode.ErrSerialization, "writing callSeqNum address into a buffer: %v", err)
+	}
+	addr, err := address.NewActorAddress(b.Bytes())
+	if err != nil {
+		rs.Abortf(exitcode.ErrSerialization, "create actor address: %v", err)
+	}
+
+	return addr
+}
+
+func (rs *runtimeShim) CreateActor(codeId cid.Cid, address address.Address) {
+	var err error
+	st, err := rs.vmctx.StateTree()
+	if err != nil {
+		rs.Abortf(exitcode.SysErrInternal, "getting statetree: %v", err)
+	}
+
+	err = st.SetActor(address, &types.Actor{
+		Code:    codeId,
+		Head:    EmptyObjectCid,
+		Nonce:   0,
+		Balance: big.Zero(),
+	})
+	if err != nil {
+		rs.Abortf(exitcode.SysErrInternal, "creating actor entry: %v", err)
+	}
+
+	return
+}
+
+func (rs *runtimeShim) DeleteActor() {
+	panic("implement me")
+}
+
+func (rs *runtimeShim) Syscalls() vmr.Syscalls {
+	return rs.vmctx.Sys()
+}
+
+func (rs *runtimeShim) StartSpan(name string) vmr.TraceSpan {
+	panic("implement me")
+}
+
 func (rs *runtimeShim) ValidateImmediateCallerIs(as ...address.Address) {
+	imm, err := rs.vmctx.LookupID(rs.vmctx.Message().From)
+	if err != nil {
+		rs.Abortf(exitcode.ErrIllegalState, "couldn't resolve immediate caller")
+	}
+
 	for _, a := range as {
-		if rs.vmctx.Message().From == a {
+		if imm == a {
 			return
 		}
 	}
-	fmt.Println("Caller: ", rs.vmctx.Message().From, as)
-	panic("we like to panic when people call the wrong methods")
+	rs.Abortf(exitcode.ErrForbidden, "caller %s is not one of %s", rs.vmctx.Message().From, as)
 }
 
 func (rs *runtimeShim) ImmediateCaller() address.Address {
@@ -74,44 +218,20 @@ func (rs *runtimeShim) Context() context.Context {
 	return rs.vmctx.Context()
 }
 
-func (rs *runtimeShim) IpldGet(c cid.Cid, o vmr.CBORUnmarshaler) bool {
-	if err := rs.vmctx.Storage().Get(c, o); err != nil {
-		panic(err) // y o o o o o l l l l o o o o o
-	}
-	return true
-}
-
-func (rs *runtimeShim) IpldPut(o vmr.CBORMarshaler) cid.Cid {
-	c, err := rs.vmctx.Storage().Put(o)
-	if err != nil {
-		panic(err)
-	}
-	return c
-}
-
-func (rs *runtimeShim) Abort(code exitcode.ExitCode, msg string, args ...interface{}) {
-	panic(aerrors.Newf(uint8(code), msg, args...))
+func (rs *runtimeShim) Abortf(code exitcode.ExitCode, msg string, args ...interface{}) {
+	panic(aerrors.NewfSkip(2, uint8(code), msg, args...))
 }
 
 func (rs *runtimeShim) AbortStateMsg(msg string) {
-	rs.Abort(101, msg)
+	panic(aerrors.NewfSkip(3, 101, msg))
 }
 
 func (rs *runtimeShim) ValidateImmediateCallerType(...cid.Cid) {
 	log.Info("validate caller type is dumb")
 }
 
-func (rs *runtimeShim) CurrentBalance() abi.TokenAmount {
-	b, err := rs.vmctx.GetBalance(rs.vmctx.Message().From)
-	if err != nil {
-		rs.Abort(1, err.Error())
-	}
-
-	return abi.TokenAmount(b)
-}
-
 func (rs *runtimeShim) CurrEpoch() abi.ChainEpoch {
-	return abi.ChainEpoch(rs.vmctx.BlockHeight())
+	return rs.vmctx.BlockHeight()
 }
 
 type dumbWrapperType struct {
@@ -122,13 +242,17 @@ func (dwt *dumbWrapperType) Into(um vmr.CBORUnmarshaler) error {
 	return um.UnmarshalCBOR(bytes.NewReader(dwt.val))
 }
 
-func (rs *runtimeShim) Send(to address.Address, method abi.MethodNum, m runtime.CBORMarshaler, value abi.TokenAmount) (vmr.SendReturn, exitcode.ExitCode) {
-	buf := new(bytes.Buffer)
-	if err := m.MarshalCBOR(buf); err != nil {
-		rs.Abort(exitcode.SysErrInvalidParameters, "failed to marshal input parameters: %s", err)
+func (rs *runtimeShim) Send(to address.Address, method abi.MethodNum, m vmr.CBORMarshaler, value abi.TokenAmount) (vmr.SendReturn, exitcode.ExitCode) {
+	var params []byte
+	if m != nil {
+		buf := new(bytes.Buffer)
+		if err := m.MarshalCBOR(buf); err != nil {
+			rs.Abortf(exitcode.SysErrInvalidParameters, "failed to marshal input parameters: %s", err)
+		}
+		params = buf.Bytes()
 	}
 
-	ret, err := rs.vmctx.Send(to, uint64(method), types.BigInt(value), buf.Bytes())
+	ret, err := rs.vmctx.Send(to, method, types.BigInt(value), params)
 	if err != nil {
 		if err.IsFatal() {
 			panic(err)
@@ -144,6 +268,16 @@ func (rs *runtimeShim) State() vmr.StateHandle {
 
 type shimStateHandle struct {
 	rs *runtimeShim
+}
+
+func (ssh *shimStateHandle) Create(obj vmr.CBORMarshaler) {
+	c, err := ssh.rs.vmctx.Storage().Put(obj)
+	if err != nil {
+		panic(err)
+	}
+	if err := ssh.rs.vmctx.Storage().Commit(EmptyObjectCid, c); err != nil {
+		panic(err)
+	}
 }
 
 func (ssh *shimStateHandle) Readonly(obj vmr.CBORUnmarshaler) {
@@ -169,16 +303,4 @@ func (ssh *shimStateHandle) Transaction(obj vmr.CBORer, f func() interface{}) in
 	}
 
 	return out
-}
-
-func (ssh *shimStateHandle) Construct(f func() vmr.CBORMarshaler) {
-	out := f()
-
-	c, err := ssh.rs.vmctx.Storage().Put(out)
-	if err != nil {
-		panic(err)
-	}
-	if err := ssh.rs.vmctx.Storage().Commit(actors.EmptyCBOR, c); err != nil {
-		panic(err)
-	}
 }

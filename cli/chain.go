@@ -11,6 +11,11 @@ import (
 	"strings"
 	"time"
 
+	"github.com/filecoin-project/go-address"
+	cborutil "github.com/filecoin-project/go-cbor-util"
+	"github.com/filecoin-project/specs-actors/actors/abi"
+	"github.com/filecoin-project/specs-actors/actors/builtin"
+	"github.com/filecoin-project/specs-actors/actors/builtin/power"
 	cid "github.com/ipfs/go-cid"
 	"golang.org/x/xerrors"
 	"gopkg.in/urfave/cli.v2"
@@ -250,7 +255,7 @@ var chainSetHeadCmd = &cli.Command{
 			ts, err = api.ChainGetGenesis(ctx)
 		}
 		if ts == nil && cctx.IsSet("epoch") {
-			ts, err = api.ChainGetTipSetByHeight(ctx, cctx.Uint64("epoch"), types.EmptyTSK)
+			ts, err = api.ChainGetTipSetByHeight(ctx, abi.ChainEpoch(cctx.Uint64("epoch")), types.EmptyTSK)
 		}
 		if ts == nil {
 			ts, err = parseTipSet(api, ctx, cctx.Args().Slice())
@@ -313,7 +318,7 @@ var chainListCmd = &cli.Command{
 		var head *types.TipSet
 
 		if cctx.IsSet("height") {
-			head, err = api.ChainGetTipSetByHeight(ctx, cctx.Uint64("height"), types.EmptyTSK)
+			head, err = api.ChainGetTipSetByHeight(ctx, abi.ChainEpoch(cctx.Uint64("height")), types.EmptyTSK)
 		} else {
 			head, err = api.ChainHead(ctx)
 		}
@@ -446,7 +451,7 @@ var chainBisectCmd = &cli.Command{
 
 		subPath := cctx.Args().Get(2)
 
-		highest, err := api.ChainGetTipSetByHeight(ctx, end, types.EmptyTSK)
+		highest, err := api.ChainGetTipSetByHeight(ctx, abi.ChainEpoch(end), types.EmptyTSK)
 		if err != nil {
 			return err
 		}
@@ -460,7 +465,7 @@ var chainBisectCmd = &cli.Command{
 				start = end
 			}
 
-			midTs, err := api.ChainGetTipSetByHeight(ctx, mid, highest.Key())
+			midTs, err := api.ChainGetTipSetByHeight(ctx, abi.ChainEpoch(mid), highest.Key())
 			if err != nil {
 				return err
 			}
@@ -506,7 +511,7 @@ var chainBisectCmd = &cli.Command{
 				return nil
 			}
 
-			prev = mid
+			prev = abi.ChainEpoch(mid)
 		}
 	},
 }
@@ -594,18 +599,31 @@ var slashConsensusFault = &cli.Command{
 			return err
 		}
 
-		params, err := actors.SerializeParams(&actors.ArbitrateConsensusFaultParams{
-			Block1: b1,
-			Block2: b2,
+		bh1, err := cborutil.Dump(b1)
+		if err != nil {
+			return err
+		}
+
+		bh2, err := cborutil.Dump(b2)
+		if err != nil {
+			return err
+		}
+
+		params, err := actors.SerializeParams(&power.ReportConsensusFaultParams{
+			BlockHeader1: bh1,
+			BlockHeader2: bh2,
+			Target:       address.Address{},
+			FaultEpoch:   0,
+			FaultType:    0,
 		})
 
 		msg := &types.Message{
-			To:       actors.StoragePowerAddress,
+			To:       builtin.StoragePowerActorAddr,
 			From:     def,
 			Value:    types.NewInt(0),
 			GasPrice: types.NewInt(1),
 			GasLimit: types.NewInt(10000000),
-			Method:   actors.SPAMethods.ArbitrateConsensusFault,
+			Method:   builtin.MethodsPower.ReportConsensusFault,
 			Params:   params,
 		}
 

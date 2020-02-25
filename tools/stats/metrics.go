@@ -11,8 +11,8 @@ import (
 	"github.com/filecoin-project/go-address"
 	"github.com/filecoin-project/lotus/api"
 	"github.com/filecoin-project/lotus/build"
-	"github.com/filecoin-project/lotus/chain/actors"
 	"github.com/filecoin-project/lotus/chain/types"
+	"github.com/filecoin-project/specs-actors/actors/builtin"
 	"github.com/ipfs/go-cid"
 	"github.com/multiformats/go-multihash"
 
@@ -149,7 +149,7 @@ func RecordTipsetStatePoints(ctx context.Context, api api.FullNode, pl *PointLis
 	p := NewPoint("chain.pledge_collateral", pcFilFloat)
 	pl.AddPoint(p)
 
-	netBal, err := api.WalletBalance(ctx, actors.NetworkAddress)
+	netBal, err := api.WalletBalance(ctx, builtin.RewardActorAddr)
 	if err != nil {
 		return err
 	}
@@ -229,7 +229,7 @@ func RecordTipsetMessagesPoints(ctx context.Context, api api.FullNode, pl *Point
 		}
 		tag := msgTag{
 			actor:    string(dm.Digest),
-			method:   msg.Message.Method,
+			method:   uint64(msg.Message.Method),
 			exitcode: recp[i].ExitCode,
 		}
 

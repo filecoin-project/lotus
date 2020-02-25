@@ -3,23 +3,24 @@ package stmgr
 import (
 	"context"
 	"fmt"
+	"github.com/filecoin-project/specs-actors/actors/builtin"
 
+	"github.com/filecoin-project/specs-actors/actors/abi"
 	"github.com/ipfs/go-cid"
 	"go.opencensus.io/trace"
 	"golang.org/x/xerrors"
 
 	"github.com/filecoin-project/lotus/api"
-	"github.com/filecoin-project/lotus/chain/actors"
 	"github.com/filecoin-project/lotus/chain/store"
 	"github.com/filecoin-project/lotus/chain/types"
 	"github.com/filecoin-project/lotus/chain/vm"
 )
 
-func (sm *StateManager) CallRaw(ctx context.Context, msg *types.Message, bstate cid.Cid, r vm.Rand, bheight uint64) (*api.MethodCall, error) {
+func (sm *StateManager) CallRaw(ctx context.Context, msg *types.Message, bstate cid.Cid, r vm.Rand, bheight abi.ChainEpoch) (*api.MethodCall, error) {
 	ctx, span := trace.StartSpan(ctx, "statemanager.CallRaw")
 	defer span.End()
 
-	vmi, err := vm.NewVM(bstate, bheight, r, actors.NetworkAddress, sm.cs.Blockstore(), sm.cs.VMSys())
+	vmi, err := vm.NewVM(bstate, bheight, r, builtin.SystemActorAddr, sm.cs.Blockstore(), sm.cs.VMSys())
 	if err != nil {
 		return nil, xerrors.Errorf("failed to set up vm: %w", err)
 	}

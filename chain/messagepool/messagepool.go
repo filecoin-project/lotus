@@ -8,6 +8,7 @@ import (
 	"sync"
 	"time"
 
+	"github.com/filecoin-project/specs-actors/actors/crypto"
 	lru "github.com/hashicorp/golang-lru"
 	"github.com/ipfs/go-cid"
 	"github.com/ipfs/go-datastore"
@@ -342,7 +343,7 @@ func (mp *MessagePool) addSkipChecks(m *types.SignedMessage) error {
 
 func (mp *MessagePool) addLocked(m *types.SignedMessage) error {
 	log.Debugf("mpooladd: %s %s", m.Message.From, m.Message.Nonce)
-	if m.Signature.Type == types.KTBLS {
+	if m.Signature.Type == crypto.SigTypeBLS {
 		mp.blsSigCache.Add(m.Cid(), m.Signature)
 	}
 
@@ -656,7 +657,7 @@ func (mp *MessagePool) RecoverSig(msg *types.Message) *types.SignedMessage {
 	if !ok {
 		return nil
 	}
-	sig, ok := val.(types.Signature)
+	sig, ok := val.(crypto.Signature)
 	if !ok {
 		log.Errorf("value in signature cache was not a signature (got %T)", val)
 		return nil

@@ -10,6 +10,8 @@ import (
 
 	"github.com/filecoin-project/go-address"
 	types "github.com/filecoin-project/lotus/chain/types"
+	"github.com/filecoin-project/lotus/chain/wallet"
+
 	"gopkg.in/urfave/cli.v2"
 )
 
@@ -44,7 +46,7 @@ var walletNew = &cli.Command{
 			t = "secp256k1"
 		}
 
-		nk, err := api.WalletNew(ctx, t)
+		nk, err := api.WalletNew(ctx, wallet.ActSigType(t))
 		if err != nil {
 			return err
 		}

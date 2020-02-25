@@ -52,6 +52,7 @@ func (t *TestState) MarshalCBOR(w io.Writer) error {
 	if _, err := w.Write(cbg.CborEncodeMajorType(cbg.MajUnsignedInt, uint64(t.B))); err != nil {
 		return err
 	}
+
 	return nil
 }
 
@@ -88,25 +89,33 @@ func (t *TestState) UnmarshalCBOR(r io.Reader) error {
 		// t.A (uint64) (uint64)
 		case "A":
 
-			maj, extra, err = cbg.CborReadHeader(br)
-			if err != nil {
-				return err
+			{
+
+				maj, extra, err = cbg.CborReadHeader(br)
+				if err != nil {
+					return err
+				}
+				if maj != cbg.MajUnsignedInt {
+					return fmt.Errorf("wrong type for uint64 field")
+				}
+				t.A = uint64(extra)
+
 			}
-			if maj != cbg.MajUnsignedInt {
-				return fmt.Errorf("wrong type for uint64 field")
-			}
-			t.A = uint64(extra)
 			// t.B (uint64) (uint64)
 		case "B":
 
-			maj, extra, err = cbg.CborReadHeader(br)
-			if err != nil {
-				return err
+			{
+
+				maj, extra, err = cbg.CborReadHeader(br)
+				if err != nil {
+					return err
+				}
+				if maj != cbg.MajUnsignedInt {
+					return fmt.Errorf("wrong type for uint64 field")
+				}
+				t.B = uint64(extra)
+
 			}
-			if maj != cbg.MajUnsignedInt {
-				return fmt.Errorf("wrong type for uint64 field")
-			}
-			t.B = uint64(extra)
 
 		default:
 			return fmt.Errorf("unknown struct field %d: '%s'", i, name)
@@ -162,6 +171,7 @@ func (t *TestEvent) MarshalCBOR(w io.Writer) error {
 	if _, err := w.Write(cbg.CborEncodeMajorType(cbg.MajUnsignedInt, uint64(t.Val))); err != nil {
 		return err
 	}
+
 	return nil
 }
 
@@ -209,14 +219,18 @@ func (t *TestEvent) UnmarshalCBOR(r io.Reader) error {
 			// t.Val (uint64) (uint64)
 		case "Val":
 
-			maj, extra, err = cbg.CborReadHeader(br)
-			if err != nil {
-				return err
+			{
+
+				maj, extra, err = cbg.CborReadHeader(br)
+				if err != nil {
+					return err
+				}
+				if maj != cbg.MajUnsignedInt {
+					return fmt.Errorf("wrong type for uint64 field")
+				}
+				t.Val = uint64(extra)
+
 			}
-			if maj != cbg.MajUnsignedInt {
-				return fmt.Errorf("wrong type for uint64 field")
-			}
-			t.Val = uint64(extra)
 
 		default:
 			return fmt.Errorf("unknown struct field %d: '%s'", i, name)

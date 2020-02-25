@@ -3,20 +3,26 @@ package store
 import (
 	"bytes"
 	"context"
-	"crypto/sha256"
 	"encoding/binary"
 	"encoding/json"
+	"github.com/filecoin-project/specs-actors/actors/crypto"
+	"github.com/minio/blake2b-simd"
 	"io"
 	"sync"
 
 	"github.com/filecoin-project/go-address"
-	"github.com/filecoin-project/lotus/build"
-	"github.com/filecoin-project/lotus/chain/state"
-	"github.com/filecoin-project/lotus/chain/vm"
+	"github.com/filecoin-project/specs-actors/actors/abi"
+	"github.com/filecoin-project/specs-actors/actors/runtime"
+	"github.com/filecoin-project/specs-actors/actors/util/adt"
 	"go.opencensus.io/trace"
 	"go.uber.org/multierr"
 
+	"github.com/filecoin-project/lotus/build"
+	"github.com/filecoin-project/lotus/chain/state"
+	"github.com/filecoin-project/lotus/chain/vm"
+
 	amt "github.com/filecoin-project/go-amt-ipld/v2"
+
 	"github.com/filecoin-project/lotus/chain/types"
 
 	lru "github.com/hashicorp/golang-lru"
@@ -51,7 +57,7 @@ type ChainStore struct {
 	pubLk    sync.Mutex
 
 	tstLk   sync.Mutex
-	tipsets map[uint64][]cid.Cid
+	tipsets map[abi.ChainEpoch][]cid.Cid
 
 	reorgCh          chan<- reorg
 	headChangeNotifs []func(rev, app []*types.TipSet) error
@@ -59,17 +65,17 @@ type ChainStore struct {
 	mmCache *lru.ARCCache
 	tsCache *lru.ARCCache
 
-	vmcalls *types.VMSyscalls
+	vmcalls runtime.Syscalls
 }
 
-func NewChainStore(bs bstore.Blockstore, ds dstore.Batching, vmcalls *types.VMSyscalls) *ChainStore {
+func NewChainStore(bs bstore.Blockstore, ds dstore.Batching, vmcalls runtime.Syscalls) *ChainStore {
 	c, _ := lru.NewARC(2048)
 	tsc, _ := lru.NewARC(4096)
 	cs := &ChainStore{
 		bs:       bs,
 		ds:       ds,
 		bestTips: pubsub.New(64),
-		tipsets:  make(map[uint64][]cid.Cid),
+		tipsets:  make(map[abi.ChainEpoch][]cid.Cid),
 		mmCache:  c,
 		tsCache:  tsc,
 		vmcalls:  vmcalls,
@@ -829,7 +835,35 @@ func (cs *ChainStore) Blockstore() bstore.Blockstore {
 	return cs.bs
 }
 
-func (cs *ChainStore) VMSys() *types.VMSyscalls {
+func ActorStore(ctx context.Context, bs blockstore.Blockstore) adt.Store {
+	return &astore{
+		cst: cbor.NewCborStore(bs),
+		ctx: ctx,
+	}
+}
+
+type astore struct {
+	cst cbor.IpldStore
+	ctx context.Context
+}
+
+func (a *astore) Context() context.Context {
+	return a.ctx
+}
+
+func (a *astore) Get(ctx context.Context, c cid.Cid, out interface{}) error {
+	return a.cst.Get(ctx, c, out)
+}
+
+func (a *astore) Put(ctx context.Context, v interface{}) (cid.Cid, error) {
+	return a.cst.Put(ctx, v)
+}
+
+func (cs *ChainStore) Store(ctx context.Context) adt.Store {
+	return ActorStore(ctx, cs.bs)
+}
+
+func (cs *ChainStore) VMSys() runtime.Syscalls {
 	return cs.vmcalls
 }
 
@@ -855,21 +889,29 @@ func (cs *ChainStore) TryFillTipSet(ts *types.TipSet) (*FullTipSet, error) {
 	return NewFullTipSet(out), nil
 }
 
-func drawRandomness(t *types.Ticket, round int64) []byte {
-	h := sha256.New()
-	var buf [8]byte
-	binary.LittleEndian.PutUint64(buf[:], uint64(round))
-
+func drawRandomness(t *types.Ticket, pers crypto.DomainSeparationTag, round int64, entropy []byte) ([]byte, error) {
+	// TODO: Make this spec compliant
+	h := blake2b.New256()
+	if err := binary.Write(h, binary.BigEndian, int64(pers)); err != nil {
+		return nil, xerrors.Errorf("deriving randomness: %w", err)
+	}
 	h.Write(t.VRFProof)
-	h.Write(buf[:])
+	if err := binary.Write(h, binary.BigEndian, round); err != nil {
+		return nil, xerrors.Errorf("deriving randomness: %w", err)
+	}
+	h.Write(entropy)
 
-	return h.Sum(nil)
+	return h.Sum(nil), nil
 }
 
-func (cs *ChainStore) GetRandomness(ctx context.Context, blks []cid.Cid, round int64) ([]byte, error) {
+func (cs *ChainStore) GetRandomness(ctx context.Context, blks []cid.Cid, pers crypto.DomainSeparationTag, round int64, entropy []byte) (out []byte, err error) {
 	_, span := trace.StartSpan(ctx, "store.GetRandomness")
 	defer span.End()
 	span.AddAttributes(trace.Int64Attribute("round", round))
+
+	defer func() {
+		log.Infof("getRand %v %d %d %x -> %x", blks, pers, round, entropy, out)
+	}()
 
 	for {
 		nts, err := cs.LoadTipSet(types.NewTipSetKey(blks...))
@@ -880,7 +922,7 @@ func (cs *ChainStore) GetRandomness(ctx context.Context, blks []cid.Cid, round i
 		mtb := nts.MinTicketBlock()
 
 		if int64(nts.Height()) <= round {
-			return drawRandomness(nts.MinTicketBlock().Ticket, round), nil
+			return drawRandomness(nts.MinTicketBlock().Ticket, pers, round, entropy)
 		}
 
 		// special case for lookback behind genesis block
@@ -888,10 +930,13 @@ func (cs *ChainStore) GetRandomness(ctx context.Context, blks []cid.Cid, round i
 		if mtb.Height == 0 {
 
 			// round is negative
-			thash := drawRandomness(mtb.Ticket, round*-1)
+			thash, err := drawRandomness(mtb.Ticket, pers, round*-1, entropy)
+			if err != nil {
+				return nil, err
+			}
 
 			// for negative lookbacks, just use the hash of the positive tickethash value
-			h := sha256.Sum256(thash)
+			h := blake2b.Sum256(thash)
 			return h[:], nil
 		}
 
@@ -899,7 +944,7 @@ func (cs *ChainStore) GetRandomness(ctx context.Context, blks []cid.Cid, round i
 	}
 }
 
-func (cs *ChainStore) GetTipsetByHeight(ctx context.Context, h uint64, ts *types.TipSet) (*types.TipSet, error) {
+func (cs *ChainStore) GetTipsetByHeight(ctx context.Context, h abi.ChainEpoch, ts *types.TipSet) (*types.TipSet, error) {
 	if ts == nil {
 		ts = cs.GetHeaviestTipSet()
 	}
@@ -1007,10 +1052,10 @@ func (cs *ChainStore) Import(r io.Reader) (*types.TipSet, error) {
 type chainRand struct {
 	cs   *ChainStore
 	blks []cid.Cid
-	bh   uint64
+	bh   abi.ChainEpoch
 }
 
-func NewChainRand(cs *ChainStore, blks []cid.Cid, bheight uint64) vm.Rand {
+func NewChainRand(cs *ChainStore, blks []cid.Cid, bheight abi.ChainEpoch) vm.Rand {
 	return &chainRand{
 		cs:   cs,
 		blks: blks,
@@ -1018,8 +1063,8 @@ func NewChainRand(cs *ChainStore, blks []cid.Cid, bheight uint64) vm.Rand {
 	}
 }
 
-func (cr *chainRand) GetRandomness(ctx context.Context, round int64) ([]byte, error) {
-	return cr.cs.GetRandomness(ctx, cr.blks, round)
+func (cr *chainRand) GetRandomness(ctx context.Context, pers crypto.DomainSeparationTag, round int64, entropy []byte) ([]byte, error) {
+	return cr.cs.GetRandomness(ctx, cr.blks, pers, round, entropy)
 }
 
 func (cs *ChainStore) GetTipSetFromKey(tsk types.TipSetKey) (*types.TipSet, error) {

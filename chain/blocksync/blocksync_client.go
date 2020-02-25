@@ -22,8 +22,8 @@ import (
 	"github.com/filecoin-project/lotus/chain/store"
 	"github.com/filecoin-project/lotus/chain/types"
 	incrt "github.com/filecoin-project/lotus/lib/increadtimeout"
+	"github.com/filecoin-project/lotus/lib/peermgr"
 	"github.com/filecoin-project/lotus/node/modules/dtypes"
-	"github.com/filecoin-project/lotus/peermgr"
 )
 
 type BlockSync struct {

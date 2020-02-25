@@ -8,7 +8,9 @@ import (
 	"io"
 	"sync"
 
+	"github.com/filecoin-project/go-padreader"
 	sectorbuilder "github.com/filecoin-project/go-sectorbuilder"
+	"github.com/filecoin-project/specs-actors/actors/abi"
 	"github.com/ipfs/go-datastore"
 	"github.com/ipfs/go-datastore/namespace"
 	"github.com/ipfs/go-datastore/query"
@@ -16,8 +18,8 @@ import (
 	"golang.org/x/xerrors"
 
 	cborutil "github.com/filecoin-project/go-cbor-util"
+
 	"github.com/filecoin-project/lotus/api"
-	"github.com/filecoin-project/lotus/lib/padreader"
 	"github.com/filecoin-project/lotus/node/modules/dtypes"
 	"github.com/filecoin-project/lotus/storage"
 )
@@ -32,9 +34,9 @@ var dsPrefix = datastore.NewKey("/sealedblocks")
 
 var ErrNotFound = errors.New("not found")
 
-func DealIDToDsKey(dealID uint64) datastore.Key {
+func DealIDToDsKey(dealID abi.DealID) datastore.Key {
 	buf := make([]byte, binary.MaxVarintLen64)
-	size := binary.PutUvarint(buf, dealID)
+	size := binary.PutUvarint(buf, uint64(dealID))
 	return dshelp.NewKeyFromBinary(buf[:size])
 }
 
@@ -65,7 +67,7 @@ func NewSectorBlocks(miner *storage.Miner, ds dtypes.MetadataDS, sb sectorbuilde
 	return sbc
 }
 
-func (st *SectorBlocks) writeRef(dealID uint64, sectorID uint64, offset uint64, size uint64) error {
+func (st *SectorBlocks) writeRef(dealID abi.DealID, sectorID abi.SectorNumber, offset uint64, size abi.UnpaddedPieceSize) error {
 	st.keyLk.Lock() // TODO: make this multithreaded
 	defer st.keyLk.Unlock()
 
@@ -97,8 +99,7 @@ func (st *SectorBlocks) writeRef(dealID uint64, sectorID uint64, offset uint64, 
 	return st.keys.Put(DealIDToDsKey(dealID), newRef) // TODO: batch somehow
 }
 
-func (st *SectorBlocks) AddPiece(ctx context.Context, size uint64, r io.Reader, dealID uint64) (sectorID uint64, err error) {
-
+func (st *SectorBlocks) AddPiece(ctx context.Context, size abi.UnpaddedPieceSize, r io.Reader, dealID abi.DealID) (sectorID abi.SectorNumber, err error) {
 	sectorID, pieceOffset, err := st.Miner.AllocatePiece(padreader.PaddedSize(uint64(size)))
 	if err != nil {
 		return 0, err
@@ -141,7 +142,7 @@ func (st *SectorBlocks) List() (map[uint64][]api.SealedRef, error) {
 	return out, nil
 }
 
-func (st *SectorBlocks) GetRefs(dealID uint64) ([]api.SealedRef, error) { // TODO: track local sectors
+func (st *SectorBlocks) GetRefs(dealID abi.DealID) ([]api.SealedRef, error) { // TODO: track local sectors
 	ent, err := st.keys.Get(DealIDToDsKey(dealID))
 	if err == datastore.ErrNotFound {
 		err = ErrNotFound
@@ -158,7 +159,7 @@ func (st *SectorBlocks) GetRefs(dealID uint64) ([]api.SealedRef, error) { // TOD
 	return refs.Refs, nil
 }
 
-func (st *SectorBlocks) GetSize(dealID uint64) (uint64, error) {
+func (st *SectorBlocks) GetSize(dealID abi.DealID) (uint64, error) {
 	refs, err := st.GetRefs(dealID)
 	if err != nil {
 		return 0, err
@@ -167,7 +168,7 @@ func (st *SectorBlocks) GetSize(dealID uint64) (uint64, error) {
 	return uint64(refs[0].Size), nil
 }
 
-func (st *SectorBlocks) Has(dealID uint64) (bool, error) {
+func (st *SectorBlocks) Has(dealID abi.DealID) (bool, error) {
 	// TODO: ensure sector is still there
 	return st.keys.Has(DealIDToDsKey(dealID))
 }

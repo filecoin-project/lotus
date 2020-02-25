@@ -5,18 +5,24 @@ import (
 	"context"
 	"encoding/json"
 	"fmt"
+	"github.com/filecoin-project/specs-actors/actors/builtin"
 	"reflect"
 	"strconv"
 	"strings"
 
 	"github.com/filecoin-project/go-address"
-	"github.com/filecoin-project/lotus/api"
-	actors "github.com/filecoin-project/lotus/chain/actors"
-	"github.com/filecoin-project/lotus/chain/types"
-	"github.com/filecoin-project/lotus/miner"
+	"github.com/filecoin-project/specs-actors/actors/abi"
+	"github.com/filecoin-project/specs-actors/actors/builtin/market"
+	miner2 "github.com/filecoin-project/specs-actors/actors/builtin/miner"
 	samsig "github.com/filecoin-project/specs-actors/actors/builtin/multisig"
+	"github.com/filecoin-project/specs-actors/actors/builtin/paych"
+	"github.com/filecoin-project/specs-actors/actors/builtin/power"
 	"github.com/libp2p/go-libp2p-core/peer"
 	"golang.org/x/xerrors"
+
+	"github.com/filecoin-project/lotus/api"
+	"github.com/filecoin-project/lotus/chain/types"
+	"github.com/filecoin-project/lotus/miner"
 
 	"github.com/docker/go-units"
 	"github.com/ipfs/go-cid"
@@ -90,24 +96,16 @@ var stateMinerInfo = &cli.Command{
 			return err
 		}
 
-		var mst actors.StorageMinerActorState
+		var mst miner2.State
 		if err := mst.UnmarshalCBOR(bytes.NewReader(aso)); err != nil {
 			return err
 		}
 
-		mio, err := api.ChainReadObj(ctx, mst.Info)
-		if err != nil {
-			return err
-		}
-
-		var mi actors.MinerInfo
-		if err := mi.UnmarshalCBOR(bytes.NewReader(mio)); err != nil {
-			return err
-		}
+		mi := mst.Info
 
 		fmt.Printf("Owner:\t%s\n", mi.Owner)
 		fmt.Printf("Worker:\t%s\n", mi.Worker)
-		fmt.Printf("PeerID:\t%s\n", mi.PeerID)
+		fmt.Printf("PeerID:\t%s\n", mi.PeerId)
 		fmt.Printf("SectorSize:\t%s (%d)\n", units.BytesSize(float64(mi.SectorSize)), mi.SectorSize)
 
 		return nil
@@ -187,9 +185,9 @@ var statePowerCmd = &cli.Command{
 		if cctx.Args().Present() {
 			mp := power.MinerPower
 			percI := types.BigDiv(types.BigMul(mp, types.NewInt(1000000)), tp)
-			fmt.Printf("%s(%s) / %s(%s) ~= %0.4f%%\n", mp.String(), mp.SizeStr(), tp.String(), tp.SizeStr(), float64(percI.Int64())/10000)
+			fmt.Printf("%s(%s) / %s(%s) ~= %0.4f%%\n", mp.String(), types.SizeStr(mp), tp.String(), types.SizeStr(tp), float64(percI.Int64())/10000)
 		} else {
-			fmt.Printf("%s(%s)\n", tp.String(), tp.SizeStr())
+			fmt.Printf("%s(%s)\n", tp.String(), types.SizeStr(tp))
 		}
 
 		return nil
@@ -228,7 +226,7 @@ var stateSectorsCmd = &cli.Command{
 		}
 
 		for _, s := range sectors {
-			fmt.Printf("%d: %x %x\n", s.SectorID, s.CommR, s.CommD)
+			fmt.Printf("%d: %x\n", s.Info.Info.SectorNumber, s.Info.Info.SealedCID)
 		}
 
 		return nil
@@ -267,7 +265,7 @@ var stateProvingSetCmd = &cli.Command{
 		}
 
 		for _, s := range sectors {
-			fmt.Printf("%d: %x %x\n", s.SectorID, s.CommR, s.CommD)
+			fmt.Printf("%d: %x\n", s.Info.Info.SectorNumber, s.Info.Info.SealedCID)
 		}
 
 		return nil
@@ -278,8 +276,8 @@ var stateReplaySetCmd = &cli.Command{
 	Name:  "replay",
 	Usage: "Replay a particular message within a tipset",
 	Action: func(cctx *cli.Context) error {
-		if cctx.Args().Len() < 2 {
-			fmt.Println("usage: <tipset> <message cid>")
+		if cctx.Args().Len() < 1 {
+			fmt.Println("usage: [tipset] <message cid>")
 			fmt.Println("The last cid passed will be used as the message CID")
 			fmt.Println("All preceding ones will be used as the tipset")
 			return nil
@@ -291,15 +289,6 @@ var stateReplaySetCmd = &cli.Command{
 			return fmt.Errorf("message cid was invalid: %s", err)
 		}
 
-		var tscids []cid.Cid
-		for _, s := range args[:len(args)-1] {
-			c, err := cid.Decode(s)
-			if err != nil {
-				return fmt.Errorf("tipset cid was invalid: %s", err)
-			}
-			tscids = append(tscids, c)
-		}
-
 		api, closer, err := GetFullNodeAPI(cctx)
 		if err != nil {
 			return err
@@ -308,19 +297,41 @@ var stateReplaySetCmd = &cli.Command{
 
 		ctx := ReqContext(cctx)
 
-		var headers []*types.BlockHeader
-		for _, c := range tscids {
-			h, err := api.ChainGetBlock(ctx, c)
+		var ts *types.TipSet
+		{
+			var tscids []cid.Cid
+			for _, s := range args[:len(args)-1] {
+				c, err := cid.Decode(s)
+				if err != nil {
+					return fmt.Errorf("tipset cid was invalid: %s", err)
+				}
+				tscids = append(tscids, c)
+			}
+
+			if len(tscids) > 0 {
+				var headers []*types.BlockHeader
+				for _, c := range tscids {
+					h, err := api.ChainGetBlock(ctx, c)
+					if err != nil {
+						return err
+					}
+
+					headers = append(headers, h)
+				}
+
+				ts, err = types.NewTipSet(headers)
+			} else {
+				r, err := api.StateWaitMsg(ctx, mcid)
+				if err != nil {
+					return xerrors.Errorf("finding message in chain: %w", err)
+				}
+
+				ts, err = api.ChainGetTipSet(ctx, r.TipSet.Parents())
+			}
 			if err != nil {
 				return err
 			}
 
-			headers = append(headers, h)
-		}
-
-		ts, err := types.NewTipSet(headers)
-		if err != nil {
-			return err
 		}
 
 		res, err := api.StateReplay(ctx, ts.Key(), mcid)
@@ -393,7 +404,7 @@ var stateGetDealSetCmd = &cli.Command{
 			return err
 		}
 
-		deal, err := api.StateMarketStorageDeal(ctx, dealid, ts.Key())
+		deal, err := api.StateMarketStorageDeal(ctx, abi.DealID(dealid), ts.Key())
 		if err != nil {
 			return err
 		}
@@ -682,7 +693,7 @@ var stateListMessagesCmd = &cli.Command{
 			return err
 		}
 
-		msgs, err := api.StateListMessages(ctx, &types.Message{To: toa, From: froma}, ts.Key(), toh)
+		msgs, err := api.StateListMessages(ctx, &types.Message{To: toa, From: froma}, ts.Key(), abi.ChainEpoch(toh))
 		if err != nil {
 			return err
 		}
@@ -735,7 +746,7 @@ var stateComputeStateCmd = &cli.Command{
 			return err
 		}
 
-		h := cctx.Uint64("height")
+		h := abi.ChainEpoch(cctx.Uint64("height"))
 		if h == 0 {
 			if ts == nil {
 				head, err := api.ChainHead(ctx)
@@ -821,7 +832,7 @@ var stateCallCmd = &cli.Command{
 		&cli.StringFlag{
 			Name:  "from",
 			Usage: "",
-			Value: actors.NetworkAddress.String(),
+			Value: builtin.SystemActorAddr.String(),
 		},
 		&cli.StringFlag{
 			Name:  "value",
@@ -888,7 +899,7 @@ var stateCallCmd = &cli.Command{
 			Value:    types.BigInt(value),
 			GasLimit: types.NewInt(10000000000),
 			GasPrice: types.NewInt(0),
-			Method:   method,
+			Method:   abi.MethodNum(method),
 			Params:   params,
 		}, ts.Key())
 		if err != nil {
@@ -962,16 +973,16 @@ func parseParamsForMethod(act cid.Cid, method uint64, args []string) ([]byte, er
 
 	var f interface{}
 	switch act {
-	case actors.StorageMarketCodeCid:
-		f = actors.StorageMarketActor{}.Exports()[method]
-	case actors.StorageMinerCodeCid:
-		f = actors.StorageMinerActor{}.Exports()[method]
-	case actors.StoragePowerCodeCid:
-		f = actors.StoragePowerActor{}.Exports()[method]
-	case actors.MultisigCodeCid:
-		f = samsig.MultiSigActor{}.Exports()[method]
-	case actors.PaymentChannelCodeCid:
-		f = actors.PaymentChannelActor{}.Exports()[method]
+	case builtin.StorageMarketActorCodeID:
+		f = market.Actor{}.Exports()[method]
+	case builtin.StorageMinerActorCodeID:
+		f = miner2.Actor{}.Exports()[method]
+	case builtin.StoragePowerActorCodeID:
+		f = power.Actor{}.Exports()[method]
+	case builtin.MultisigActorCodeID:
+		f = samsig.Actor{}.Exports()[method]
+	case builtin.PaymentChannelActorCodeID:
+		f = paych.Actor{}.Exports()[method]
 	default:
 		return nil, fmt.Errorf("the lazy devs didnt add support for that actor to this call yet")
 	}

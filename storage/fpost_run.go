@@ -2,10 +2,15 @@ package storage
 
 import (
 	"context"
+	"github.com/filecoin-project/specs-actors/actors/crypto"
 	"time"
 
 	ffi "github.com/filecoin-project/filecoin-ffi"
+	"github.com/filecoin-project/go-address"
 	sectorbuilder "github.com/filecoin-project/go-sectorbuilder"
+	"github.com/filecoin-project/specs-actors/actors/abi"
+	"github.com/filecoin-project/specs-actors/actors/builtin"
+	"github.com/filecoin-project/specs-actors/actors/builtin/miner"
 	"go.opencensus.io/trace"
 	"golang.org/x/xerrors"
 
@@ -14,7 +19,7 @@ import (
 	"github.com/filecoin-project/lotus/chain/types"
 )
 
-func (s *FPoStScheduler) failPost(eps uint64) {
+func (s *FPoStScheduler) failPost(eps abi.ChainEpoch) {
 	s.failLk.Lock()
 	if eps > s.failed {
 		s.failed = eps
@@ -22,7 +27,7 @@ func (s *FPoStScheduler) failPost(eps uint64) {
 	s.failLk.Unlock()
 }
 
-func (s *FPoStScheduler) doPost(ctx context.Context, eps uint64, ts *types.TipSet) {
+func (s *FPoStScheduler) doPost(ctx context.Context, eps abi.ChainEpoch, ts *types.TipSet) {
 	ctx, abort := context.WithCancel(ctx)
 
 	s.abort = abort
@@ -50,7 +55,7 @@ func (s *FPoStScheduler) doPost(ctx context.Context, eps uint64, ts *types.TipSe
 	}()
 }
 
-func (s *FPoStScheduler) declareFaults(ctx context.Context, fc uint64, params *actors.DeclareFaultsParams) error {
+func (s *FPoStScheduler) declareFaults(ctx context.Context, fc uint64, params *miner.DeclareTemporaryFaultsParams) error {
 	log.Warnf("DECLARING %d FAULTS", fc)
 
 	enc, aerr := actors.SerializeParams(params)
@@ -61,7 +66,7 @@ func (s *FPoStScheduler) declareFaults(ctx context.Context, fc uint64, params *a
 	msg := &types.Message{
 		To:       s.actor,
 		From:     s.worker,
-		Method:   actors.MAMethods.DeclareFaults,
+		Method:   builtin.MethodsMiner.DeclareTemporaryFaults,
 		Params:   enc,
 		Value:    types.NewInt(0),
 		GasLimit: types.NewInt(10000000), // i dont know help
@@ -86,10 +91,10 @@ func (s *FPoStScheduler) declareFaults(ctx context.Context, fc uint64, params *a
 	return nil
 }
 
-func (s *FPoStScheduler) checkFaults(ctx context.Context, ssi sectorbuilder.SortedPublicSectorInfo) ([]uint64, error) {
+func (s *FPoStScheduler) checkFaults(ctx context.Context, ssi sectorbuilder.SortedPublicSectorInfo) ([]abi.SectorNumber, error) {
 	faults := s.sb.Scrub(ssi)
 
-	declaredFaults := map[uint64]struct{}{}
+	declaredFaults := map[abi.SectorNumber]struct{}{}
 
 	{
 		chainFaults, err := s.api.StateMinerFaults(ctx, s.actor, types.EmptyTSK)
@@ -102,45 +107,45 @@ func (s *FPoStScheduler) checkFaults(ctx context.Context, ssi sectorbuilder.Sort
 		}
 	}
 
+	var faultIDs []abi.SectorNumber
 	if len(faults) > 0 {
-		params := &actors.DeclareFaultsParams{Faults: types.NewBitField()}
+		params := &miner.DeclareTemporaryFaultsParams{
+			Duration:      900, // TODO: duration is annoying
+			SectorNumbers: abi.NewBitField(),
+		}
 
 		for _, fault := range faults {
-			if _, ok := declaredFaults[fault.SectorID]; ok {
+			if _, ok := declaredFaults[(fault.SectorNum)]; ok {
 				continue
 			}
 
-			log.Warnf("new fault detected: sector %d: %s", fault.SectorID, fault.Err)
-			declaredFaults[fault.SectorID] = struct{}{}
-			params.Faults.Set(fault.SectorID)
+			log.Warnf("new fault detected: sector %d: %s", fault.SectorNum, fault.Err)
+			declaredFaults[fault.SectorNum] = struct{}{}
 		}
 
-		pc, err := params.Faults.Count()
-		if err != nil {
-			return nil, xerrors.Errorf("counting faults: %w", err)
+		faultIDs = make([]abi.SectorNumber, 0, len(declaredFaults))
+		for fault := range declaredFaults {
+			faultIDs = append(faultIDs, fault)
+			params.SectorNumbers.Set(uint64(fault))
 		}
-		if pc > 0 {
-			if err := s.declareFaults(ctx, pc, params); err != nil {
+
+		if len(faultIDs) > 0 {
+			if err := s.declareFaults(ctx, uint64(len(faultIDs)), params); err != nil {
 				return nil, err
 			}
 		}
 	}
 
-	faultIDs := make([]uint64, 0, len(declaredFaults))
-	for fault := range declaredFaults {
-		faultIDs = append(faultIDs, fault)
-	}
-
 	return faultIDs, nil
 }
 
-func (s *FPoStScheduler) runPost(ctx context.Context, eps uint64, ts *types.TipSet) (*actors.SubmitFallbackPoStParams, error) {
+func (s *FPoStScheduler) runPost(ctx context.Context, eps abi.ChainEpoch, ts *types.TipSet) (*abi.OnChainPoStVerifyInfo, error) {
 	ctx, span := trace.StartSpan(ctx, "storage.runPost")
 	defer span.End()
 
-	challengeRound := int64(eps + build.FallbackPoStDelay)
+	challengeRound := eps + build.FallbackPoStDelay
 
-	rand, err := s.api.ChainGetRandomness(ctx, ts.Key(), challengeRound)
+	rand, err := s.api.ChainGetRandomness(ctx, ts.Key(), crypto.DomainSeparationTag_WindowedPoStChallengeSeed, challengeRound, s.actor.Bytes())
 	if err != nil {
 		return nil, xerrors.Errorf("failed to get chain randomness for fpost (ts=%d; eps=%d): %w", ts.Height(), eps, err)
 	}
@@ -177,19 +182,29 @@ func (s *FPoStScheduler) runPost(ctx context.Context, eps uint64, ts *types.TipS
 	elapsed := time.Since(tsStart)
 	log.Infow("submitting PoSt", "pLen", len(proof), "elapsed", elapsed)
 
-	candidates := make([]types.EPostTicket, len(scandidates))
+	mid, err := address.IDFromAddress(s.actor)
+	if err != nil {
+		return nil, err
+	}
+
+	candidates := make([]abi.PoStCandidate, len(scandidates))
 	for i, sc := range scandidates {
 		part := make([]byte, 32)
 		copy(part, sc.PartialTicket[:])
-		candidates[i] = types.EPostTicket{
-			Partial:        part,
-			SectorID:       sc.SectorID,
-			ChallengeIndex: sc.SectorChallengeIndex,
+		candidates[i] = abi.PoStCandidate{
+			RegisteredProof: abi.RegisteredProof_StackedDRG32GiBPoSt, // TODO: build setting
+			PartialTicket:   part,
+			SectorID: abi.SectorID{
+				Miner:  abi.ActorID(mid),
+				Number: sc.SectorNum,
+			},
+			ChallengeIndex: int64(sc.SectorChallengeIndex), // TODO: fix spec
 		}
 	}
 
-	return &actors.SubmitFallbackPoStParams{
-		Proof:      proof,
+	return &abi.OnChainPoStVerifyInfo{
+		ProofType:  abi.RegisteredProof_StackedDRG32GiBPoSt, // TODO: build setting
+		Proofs:     []abi.PoStProof{{proof}},
 		Candidates: candidates,
 	}, nil
 }
@@ -206,18 +221,19 @@ func (s *FPoStScheduler) sortedSectorInfo(ctx context.Context, ts *types.TipSet)
 	sbsi := make([]ffi.PublicSectorInfo, len(sset))
 	for k, sector := range sset {
 		var commR [sectorbuilder.CommLen]byte
-		copy(commR[:], sector.CommR)
+		scid := sector.Info.Info.SealedCID.Bytes()
+		copy(commR[:], scid[len(scid)-32:])
 
 		sbsi[k] = ffi.PublicSectorInfo{
-			SectorID: sector.SectorID,
-			CommR:    commR,
+			SectorNum: sector.Info.Info.SectorNumber,
+			CommR:     commR,
 		}
 	}
 
 	return sectorbuilder.NewSortedPublicSectorInfo(sbsi), nil
 }
 
-func (s *FPoStScheduler) submitPost(ctx context.Context, proof *actors.SubmitFallbackPoStParams) error {
+func (s *FPoStScheduler) submitPost(ctx context.Context, proof *abi.OnChainPoStVerifyInfo) error {
 	ctx, span := trace.StartSpan(ctx, "storage.commitPost")
 	defer span.End()
 
@@ -229,7 +245,7 @@ func (s *FPoStScheduler) submitPost(ctx context.Context, proof *actors.SubmitFal
 	msg := &types.Message{
 		To:       s.actor,
 		From:     s.worker,
-		Method:   actors.MAMethods.SubmitFallbackPoSt,
+		Method:   builtin.MethodsMiner.SubmitWindowedPoSt,
 		Params:   enc,
 		Value:    types.NewInt(1000),     // currently hard-coded late fee in actor, returned if not late
 		GasLimit: types.NewInt(10000000), // i dont know help

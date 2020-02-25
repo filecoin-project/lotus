@@ -3,6 +3,7 @@ package main
 import (
 	"context"
 	"fmt"
+	"github.com/filecoin-project/specs-actors/actors/crypto"
 	"math/rand"
 	"os"
 	"time"
@@ -59,7 +60,7 @@ var runCmd = &cli.Command{
 func sendSmallFundsTxs(ctx context.Context, api api.FullNode, from address.Address, rate int) error {
 	var sendSet []address.Address
 	for i := 0; i < 20; i++ {
-		naddr, err := api.WalletNew(ctx, "bls")
+		naddr, err := api.WalletNew(ctx, crypto.SigTypeSecp256k1)
 		if err != nil {
 			return err
 		}

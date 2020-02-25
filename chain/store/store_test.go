@@ -9,11 +9,12 @@ import (
 	"github.com/filecoin-project/lotus/chain/store"
 	"github.com/filecoin-project/lotus/chain/types"
 	"github.com/filecoin-project/lotus/node/repo"
+	"github.com/filecoin-project/specs-actors/actors/abi"
 	blockstore "github.com/ipfs/go-ipfs-blockstore"
 )
 
 func init() {
-	build.SectorSizes = []uint64{1024}
+	build.SectorSizes = []abi.SectorSize{1024}
 	build.MinimumMinerPower = 1024
 }
 

@@ -20,13 +20,21 @@ Pre-seal some sectors:
 Create the genesis block and start up the first node:
 
 ```sh
-./lotus daemon --lotus-make-random-genesis=dev.gen --genesis-presealed-sectors=~/.genesis-sectors/pre-seal-t0101.json --bootstrap=false
+./lotus-seed genesis new localnet.json
+./lotus-seed genesis add-miner localnet.json ~/.genesis-sectors/pre-seal-t01000.json
+./lotus daemon --lotus-make-genesis=dev.gen --genesis-template=localnet.json --bootstrap=false
+```
+
+Then, in another console, import the genesis miner key:
+
+```sh
+./lotus wallet import ~/.genesis-sectors/pre-seal-t01000.key
 ```
 
 Set up the genesis miner:
 
 ```sh
-./lotus-storage-miner init --genesis-miner --actor=t0101 --sector-size=1024 --pre-sealed-sectors=~/.genesis-sectors --pre-sealed-metadata=~/.genesis-sectors/pre-seal-t0101.json --nosync
+./lotus-storage-miner init --genesis-miner --actor=t01000 --sector-size=1024 --pre-sealed-sectors=~/.genesis-sectors --pre-sealed-metadata=~/.genesis-sectors/pre-seal-t0101.json --nosync
 ```
 
 Now, finally, start up the miner:

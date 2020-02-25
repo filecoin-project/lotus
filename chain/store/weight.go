@@ -5,9 +5,13 @@ import (
 	"math/big"
 
 	"github.com/filecoin-project/lotus/build"
-	"github.com/filecoin-project/lotus/chain/actors"
+	"github.com/filecoin-project/lotus/chain/state"
 	"github.com/filecoin-project/lotus/chain/types"
 	"github.com/filecoin-project/lotus/chain/vm"
+	big2 "github.com/filecoin-project/specs-actors/actors/abi/big"
+	"github.com/filecoin-project/specs-actors/actors/builtin"
+	"github.com/filecoin-project/specs-actors/actors/builtin/power"
+	cbor "github.com/ipfs/go-ipld-cbor"
 	"golang.org/x/xerrors"
 )
 
@@ -23,19 +27,27 @@ func (cs *ChainStore) Weight(ctx context.Context, ts *types.TipSet) (types.BigIn
 
 	// >>> wFunction(totalPowerAtTipset(ts)) * 2^8 <<< + (wFunction(totalPowerAtTipset(ts)) * len(ts.blocks) * wRatio_num * 2^8) / (e * wRatio_den)
 
-	ret, err := cs.call(ctx, &types.Message{
-		From:   actors.StoragePowerAddress,
-		To:     actors.StoragePowerAddress,
-		Method: actors.SPAMethods.GetTotalStorage,
-	}, ts)
-	if err != nil {
-		return types.EmptyInt, xerrors.Errorf("failed to get total power from chain: %w", err)
+	tpow := big2.Zero()
+	{
+		cst := cbor.NewCborStore(cs.Blockstore())
+		state, err := state.LoadStateTree(cst, ts.ParentState())
+		if err != nil {
+			return types.NewInt(0), xerrors.Errorf("load state tree: %w", err)
+		}
+
+		act, err := state.GetActor(builtin.StoragePowerActorAddr)
+		if err != nil {
+			return types.NewInt(0), xerrors.Errorf("get power actor: %w", err)
+		}
+
+		var st power.State
+		if err := cst.Get(ctx, act.Head, &st); err != nil {
+			return types.NewInt(0), xerrors.Errorf("get power actor head: %w", err)
+		}
+		tpow = st.TotalNetworkPower
 	}
-	if ret.ExitCode != 0 {
-		return types.EmptyInt, xerrors.Errorf("failed to get total power from chain (exit code %d)", ret.ExitCode)
-	}
+
 	log2P := int64(0)
-	tpow := types.BigFromBytes(ret.Return)
 	if tpow.GreaterThan(zero) {
 		log2P = int64(tpow.BitLen() - 1)
 	} else {
@@ -60,7 +72,7 @@ func (cs *ChainStore) call(ctx context.Context, msg *types.Message, ts *types.Ti
 
 	r := NewChainRand(cs, ts.Cids(), ts.Height())
 
-	vmi, err := vm.NewVM(bstate, ts.Height(), r, actors.NetworkAddress, cs.bs, cs.vmcalls)
+	vmi, err := vm.NewVM(bstate, ts.Height(), r, builtin.SystemActorAddr, cs.bs, cs.vmcalls)
 	if err != nil {
 		return nil, xerrors.Errorf("failed to set up vm: %w", err)
 	}

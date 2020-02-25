@@ -1,12 +1,12 @@
 package main
 
 import (
+	"encoding/hex"
 	"encoding/json"
 	"fmt"
+	"io/ioutil"
 	"os"
 	"path/filepath"
-
-	sectorbuilder "github.com/filecoin-project/go-sectorbuilder"
 
 	"github.com/ipfs/go-datastore"
 	"github.com/ipfs/go-datastore/namespace"
@@ -17,8 +17,12 @@ import (
 	"gopkg.in/urfave/cli.v2"
 
 	"github.com/filecoin-project/go-address"
+	"github.com/filecoin-project/go-sectorbuilder"
+	"github.com/filecoin-project/specs-actors/actors/abi"
+	"github.com/filecoin-project/specs-actors/actors/abi/big"
 
 	"github.com/filecoin-project/lotus/build"
+	"github.com/filecoin-project/lotus/chain/types"
 	"github.com/filecoin-project/lotus/cmd/lotus-seed/seed"
 	"github.com/filecoin-project/lotus/genesis"
 )
@@ -28,9 +32,9 @@ var log = logging.Logger("lotus-seed")
 func main() {
 	logging.SetLogLevel("*", "INFO")
 
-	log.Info("Starting seed")
-
 	local := []*cli.Command{
+		genesisCmd,
+
 		preSealCmd,
 		aggregateManifestsCmd,
 		aggregateSectorDirsCmd,
@@ -52,7 +56,7 @@ func main() {
 
 	if err := app.Run(os.Args); err != nil {
 		log.Warn(err)
-		return
+		os.Exit(1)
 	}
 }
 
@@ -61,12 +65,12 @@ var preSealCmd = &cli.Command{
 	Flags: []cli.Flag{
 		&cli.StringFlag{
 			Name:  "miner-addr",
-			Value: "t0101",
+			Value: "t01000",
 			Usage: "specify the future address of your miner",
 		},
 		&cli.Uint64Flag{
 			Name:  "sector-size",
-			Value: build.SectorSizes[0],
+			Value: uint64(build.SectorSizes[0]),
 			Usage: "specify size of sectors to pre-seal",
 		},
 		&cli.StringFlag{
@@ -84,6 +88,11 @@ var preSealCmd = &cli.Command{
 			Value: 0,
 			Usage: "how many sector ids to skip when starting to seal",
 		},
+		&cli.StringFlag{
+			Name:  "key",
+			Value: "",
+			Usage: "(optional) Key to use for signing / owner/worker addresses",
+		},
 	},
 	Action: func(c *cli.Context) error {
 		sdir := c.String("sectorbuilder-dir")
@@ -97,12 +106,25 @@ var preSealCmd = &cli.Command{
 			return err
 		}
 
-		gm, err := seed.PreSeal(maddr, c.Uint64("sector-size"), c.Uint64("sector-offset"), c.Int("num-sectors"), sbroot, []byte(c.String("ticket-preimage")))
+		var k *types.KeyInfo
+		if c.String("key") != "" {
+			k = new(types.KeyInfo)
+			kh, err := ioutil.ReadFile(c.String("key"))
+			if err != nil {
+				return err
+			}
+			kb, err := hex.DecodeString(string(kh))
+			if err := json.Unmarshal(kb, k); err != nil {
+				return err
+			}
+		}
+
+		gm, key, err := seed.PreSeal(maddr, abi.SectorSize(c.Uint64("sector-size")), abi.SectorNumber(c.Uint64("sector-offset")), c.Int("num-sectors"), sbroot, []byte(c.String("ticket-preimage")), k)
 		if err != nil {
 			return err
 		}
 
-		return seed.WriteGenesisMiner(maddr, sbroot, gm)
+		return seed.WriteGenesisMiner(maddr, sbroot, gm, key)
 	},
 }
 
@@ -110,14 +132,14 @@ var aggregateManifestsCmd = &cli.Command{
 	Name:  "aggregate-manifests",
 	Usage: "aggregate a set of preseal manifests into a single file",
 	Action: func(cctx *cli.Context) error {
-		var inputs []map[string]genesis.GenesisMiner
+		var inputs []map[string]genesis.Miner
 		for _, infi := range cctx.Args().Slice() {
 			fi, err := os.Open(infi)
 			if err != nil {
 				return err
 			}
 			defer fi.Close()
-			var val map[string]genesis.GenesisMiner
+			var val map[string]genesis.Miner
 			if err := json.NewDecoder(fi).Decode(&val); err != nil {
 				return err
 			}
@@ -125,7 +147,7 @@ var aggregateManifestsCmd = &cli.Command{
 			inputs = append(inputs, val)
 		}
 
-		output := make(map[string]genesis.GenesisMiner)
+		output := make(map[string]genesis.Miner)
 		for _, in := range inputs {
 			for maddr, val := range in {
 				if gm, ok := output[maddr]; ok {
@@ -192,7 +214,7 @@ var aggregateSectorDirsCmd = &cli.Command{
 		}
 		defer agmds.Close()
 
-		ssize := cctx.Uint64("sector-size")
+		ssize := abi.SectorSize(cctx.Uint64("sector-size"))
 
 		agsb, err := sectorbuilder.New(&sectorbuilder.Config{
 			Miner:         maddr,
@@ -204,8 +226,8 @@ var aggregateSectorDirsCmd = &cli.Command{
 			return err
 		}
 
-		var aggrGenMiner genesis.GenesisMiner
-		var highestSectorID uint64
+		var aggrGenMiner genesis.Miner
+		var highestSectorID abi.SectorNumber
 		for _, dir := range cctx.Args().Slice() {
 			dir, err := homedir.Expand(dir)
 			if err != nil {
@@ -225,7 +247,7 @@ var aggregateSectorDirsCmd = &cli.Command{
 				return err
 			}
 
-			var genmm map[string]genesis.GenesisMiner
+			var genmm map[string]genesis.Miner
 			if err := json.NewDecoder(fi).Decode(&genmm); err != nil {
 				return err
 			}
@@ -270,11 +292,11 @@ var aggregateSectorDirsCmd = &cli.Command{
 			}
 		}
 
-		if err := agsb.SetLastSectorID(highestSectorID); err != nil {
+		if err := agsb.SetLastSectorNum(highestSectorID); err != nil {
 			return err
 		}
 
-		if err := seed.WriteGenesisMiner(maddr, destdir, &aggrGenMiner); err != nil {
+		if err := seed.WriteGenesisMiner(maddr, destdir, &aggrGenMiner, nil); err != nil {
 			return err
 		}
 
@@ -282,16 +304,18 @@ var aggregateSectorDirsCmd = &cli.Command{
 	},
 }
 
-func mergeGenMiners(a, b genesis.GenesisMiner) genesis.GenesisMiner {
+func mergeGenMiners(a, b genesis.Miner) genesis.Miner {
 	if a.SectorSize != b.SectorSize {
 		panic("sector sizes mismatch")
 	}
 
-	return genesis.GenesisMiner{
-		Owner:      a.Owner,
-		Worker:     a.Worker,
-		SectorSize: a.SectorSize,
-		Key:        a.Key,
-		Sectors:    append(a.Sectors, b.Sectors...),
+	return genesis.Miner{
+		Owner:         a.Owner,
+		Worker:        a.Worker,
+		PeerId:        "",
+		MarketBalance: big.Zero(),
+		PowerBalance:  big.Zero(),
+		SectorSize:    a.SectorSize,
+		Sectors:       append(a.Sectors, b.Sectors...),
 	}
 }

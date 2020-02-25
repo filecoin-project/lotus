@@ -9,6 +9,7 @@ import (
 
 	sectorbuilder "github.com/filecoin-project/go-sectorbuilder"
 	"github.com/filecoin-project/go-sectorbuilder/fs"
+	"github.com/filecoin-project/specs-actors/actors/abi"
 	files "github.com/ipfs/go-ipfs-files"
 	"golang.org/x/xerrors"
 	"gopkg.in/cheggaaa/pb.v1"
@@ -25,7 +26,7 @@ func (w *worker) sizeForType(typ string) int64 {
 	return size
 }
 
-func (w *worker) fetch(typ string, sectorID uint64) error {
+func (w *worker) fetch(typ string, sectorID abi.SectorNumber) error {
 	outname := filepath.Join(w.repo, typ, w.sb.SectorName(sectorID))
 
 	url := w.minerEndpoint + "/remote/" + typ + "/" + fmt.Sprint(sectorID)
@@ -77,7 +78,7 @@ func (w *worker) fetch(typ string, sectorID uint64) error {
 
 }
 
-func (w *worker) push(typ string, sectorID uint64) error {
+func (w *worker) push(typ string, sectorID abi.SectorNumber) error {
 	w.limiter.transferLimit <- struct{}{}
 	defer func() {
 		<-w.limiter.transferLimit
@@ -146,12 +147,12 @@ func (w *worker) push(typ string, sectorID uint64) error {
 	return w.remove(typ, sectorID)
 }
 
-func (w *worker) remove(typ string, sectorID uint64) error {
+func (w *worker) remove(typ string, sectorID abi.SectorNumber) error {
 	filename := filepath.Join(w.repo, typ, w.sb.SectorName(sectorID))
 	return os.RemoveAll(filename)
 }
 
-func (w *worker) fetchSector(sectorID uint64, typ sectorbuilder.WorkerTaskType) error {
+func (w *worker) fetchSector(sectorID abi.SectorNumber, typ sectorbuilder.WorkerTaskType) error {
 	w.limiter.transferLimit <- struct{}{}
 	defer func() {
 		<-w.limiter.transferLimit

@@ -1,20 +1,21 @@
 package sealing
 
 import (
-	"github.com/filecoin-project/lotus/storage/sbmock"
 	"testing"
 
-	"github.com/stretchr/testify/assert"
+	"github.com/filecoin-project/specs-actors/actors/abi"
 
-	sectorbuilder "github.com/filecoin-project/go-sectorbuilder"
+	"github.com/filecoin-project/lotus/storage/sbmock"
+
+	"github.com/stretchr/testify/assert"
 )
 
-func testFill(t *testing.T, n uint64, exp []uint64) {
+func testFill(t *testing.T, n abi.UnpaddedPieceSize, exp []abi.UnpaddedPieceSize) {
 	f, err := fillersFromRem(n)
 	assert.NoError(t, err)
 	assert.Equal(t, exp, f)
 
-	var sum uint64
+	var sum abi.UnpaddedPieceSize
 	for _, u := range f {
 		sum += u
 	}
@@ -24,39 +25,39 @@ func testFill(t *testing.T, n uint64, exp []uint64) {
 func TestFillersFromRem(t *testing.T) {
 	for i := 8; i < 32; i++ {
 		// single
-		ub := sectorbuilder.UserBytesForSectorSize(uint64(1) << i)
-		testFill(t, ub, []uint64{ub})
+		ub := abi.PaddedPieceSize(uint64(1) << i).Unpadded()
+		testFill(t, ub, []abi.UnpaddedPieceSize{ub})
 
 		// 2
-		ub = sectorbuilder.UserBytesForSectorSize(uint64(5) << i)
-		ub1 := sectorbuilder.UserBytesForSectorSize(uint64(1) << i)
-		ub3 := sectorbuilder.UserBytesForSectorSize(uint64(4) << i)
-		testFill(t, ub, []uint64{ub1, ub3})
+		ub = abi.PaddedPieceSize(uint64(5) << i).Unpadded()
+		ub1 := abi.PaddedPieceSize(uint64(1) << i).Unpadded()
+		ub3 := abi.PaddedPieceSize(uint64(4) << i).Unpadded()
+		testFill(t, ub, []abi.UnpaddedPieceSize{ub1, ub3})
 
 		// 4
-		ub = sectorbuilder.UserBytesForSectorSize(uint64(15) << i)
-		ub2 := sectorbuilder.UserBytesForSectorSize(uint64(2) << i)
-		ub4 := sectorbuilder.UserBytesForSectorSize(uint64(8) << i)
-		testFill(t, ub, []uint64{ub1, ub2, ub3, ub4})
+		ub = abi.PaddedPieceSize(uint64(15) << i).Unpadded()
+		ub2 := abi.PaddedPieceSize(uint64(2) << i).Unpadded()
+		ub4 := abi.PaddedPieceSize(uint64(8) << i).Unpadded()
+		testFill(t, ub, []abi.UnpaddedPieceSize{ub1, ub2, ub3, ub4})
 
 		// different 2
-		ub = sectorbuilder.UserBytesForSectorSize(uint64(9) << i)
-		testFill(t, ub, []uint64{ub1, ub4})
+		ub = abi.PaddedPieceSize(uint64(9) << i).Unpadded()
+		testFill(t, ub, []abi.UnpaddedPieceSize{ub1, ub4})
 	}
 }
 
 func TestFastPledge(t *testing.T) {
-	sz := uint64(16 << 20)
+	sz := abi.PaddedPieceSize(16 << 20)
 
-	s := Sealing{sb: sbmock.NewMockSectorBuilder(0, sz)}
-	if _, err := s.fastPledgeCommitment(sectorbuilder.UserBytesForSectorSize(sz), 5); err != nil {
+	s := Sealing{sb: sbmock.NewMockSectorBuilder(0, abi.SectorSize(sz))}
+	if _, err := s.fastPledgeCommitment(sz.Unpadded(), 5); err != nil {
 		t.Fatalf("%+v", err)
 	}
 
-	sz = uint64(1024)
+	sz = abi.PaddedPieceSize(1024)
 
-	s = Sealing{sb: sbmock.NewMockSectorBuilder(0, sz)}
-	if _, err := s.fastPledgeCommitment(sectorbuilder.UserBytesForSectorSize(sz), 64); err != nil {
+	s = Sealing{sb: sbmock.NewMockSectorBuilder(0, abi.SectorSize(sz))}
+	if _, err := s.fastPledgeCommitment(sz.Unpadded(), 64); err != nil {
 		t.Fatalf("%+v", err)
 	}
 }
