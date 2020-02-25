@@ -20,7 +20,6 @@ import (
 	"github.com/filecoin-project/go-address"
 
 	"github.com/filecoin-project/lotus/build"
-	actors "github.com/filecoin-project/lotus/chain/actors"
 	"github.com/filecoin-project/lotus/chain/state"
 	"github.com/filecoin-project/lotus/chain/store"
 	"github.com/filecoin-project/lotus/chain/types"
@@ -116,7 +115,7 @@ func MakeInitialStateTree(ctx context.Context, bs bstore.Blockstore, template ge
 	if err != nil {
 		return nil, xerrors.Errorf("setup init actor: %w", err)
 	}
-	if err := state.SetActor(actors.SystemAddress, sysact); err != nil {
+	if err := state.SetActor(builtin.SystemActorAddr, sysact); err != nil {
 		return nil, xerrors.Errorf("set init actor: %w", err)
 	}
 
@@ -126,12 +125,12 @@ func MakeInitialStateTree(ctx context.Context, bs bstore.Blockstore, template ge
 	if err != nil {
 		return nil, xerrors.Errorf("setup init actor: %w", err)
 	}
-	if err := state.SetActor(actors.InitAddress, initact); err != nil {
+	if err := state.SetActor(builtin.InitActorAddr, initact); err != nil {
 		return nil, xerrors.Errorf("set init actor: %w", err)
 	}
 
 	// Setup reward
-	err = state.SetActor(actors.RewardActor, &types.Actor{
+	err = state.SetActor(builtin.RewardActorAddr, &types.Actor{
 		Code:    builtin.RewardActorCodeID,
 		Balance: big.Int{Int: build.InitialReward},
 		Head:    emptyobject, // TODO ?
@@ -145,7 +144,7 @@ func MakeInitialStateTree(ctx context.Context, bs bstore.Blockstore, template ge
 	if err != nil {
 		return nil, xerrors.Errorf("setup cron actor: %w", err)
 	}
-	if err := state.SetActor(actors.CronAddress, cronact); err != nil {
+	if err := state.SetActor(builtin.CronActorAddr, cronact); err != nil {
 		return nil, xerrors.Errorf("set cron actor: %w", err)
 	}
 
@@ -154,7 +153,7 @@ func MakeInitialStateTree(ctx context.Context, bs bstore.Blockstore, template ge
 	if err != nil {
 		return nil, xerrors.Errorf("setup storage market actor: %w", err)
 	}
-	if err := state.SetActor(actors.StoragePowerAddress, spact); err != nil {
+	if err := state.SetActor(builtin.StoragePowerActorAddr, spact); err != nil {
 		return nil, xerrors.Errorf("set storage market actor: %w", err)
 	}
 
@@ -163,13 +162,13 @@ func MakeInitialStateTree(ctx context.Context, bs bstore.Blockstore, template ge
 	if err != nil {
 		return nil, xerrors.Errorf("setup storage market actor: %w", err)
 	}
-	if err := state.SetActor(actors.StorageMarketAddress, marketact); err != nil {
+	if err := state.SetActor(builtin.StorageMarketActorAddr, marketact); err != nil {
 		return nil, xerrors.Errorf("set market actor: %w", err)
 	}
 
 	// Setup burnt-funds
-	err = state.SetActor(actors.BurntFundsAddress, &types.Actor{
-		Code:    actors.AccountCodeCid,
+	err = state.SetActor(builtin.BurntFundsActorAddr, &types.Actor{
+		Code:    builtin.AccountActorCodeID,
 		Balance: types.NewInt(0),
 		Head:    emptyobject,
 	})
@@ -199,7 +198,7 @@ func MakeInitialStateTree(ctx context.Context, bs bstore.Blockstore, template ge
 		}
 
 		err = state.SetActor(ida, &types.Actor{
-			Code:    actors.AccountCodeCid,
+			Code:    builtin.AccountActorCodeID,
 			Balance: info.Balance,
 			Head:    st,
 		})
@@ -255,7 +254,7 @@ func MakeGenesisBlock(ctx context.Context, bs bstore.Blockstore, sys runtime.Sys
 	}
 
 	b := &types.BlockHeader{
-		Miner:  actors.InitAddress,
+		Miner:  builtin.InitActorAddr,
 		Ticket: genesisticket,
 		EPostProof: types.EPostProof{
 			Proof:    []byte("not a real proof"),

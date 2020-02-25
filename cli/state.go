@@ -5,6 +5,7 @@ import (
 	"context"
 	"encoding/json"
 	"fmt"
+	"github.com/filecoin-project/specs-actors/actors/builtin"
 	"reflect"
 	"strconv"
 	"strings"
@@ -20,7 +21,6 @@ import (
 	"golang.org/x/xerrors"
 
 	"github.com/filecoin-project/lotus/api"
-	actors "github.com/filecoin-project/lotus/chain/actors"
 	"github.com/filecoin-project/lotus/chain/types"
 	"github.com/filecoin-project/lotus/miner"
 
@@ -832,7 +832,7 @@ var stateCallCmd = &cli.Command{
 		&cli.StringFlag{
 			Name:  "from",
 			Usage: "",
-			Value: actors.SystemAddress.String(),
+			Value: builtin.SystemActorAddr.String(),
 		},
 		&cli.StringFlag{
 			Name:  "value",
@@ -973,15 +973,15 @@ func parseParamsForMethod(act cid.Cid, method uint64, args []string) ([]byte, er
 
 	var f interface{}
 	switch act {
-	case actors.StorageMarketCodeCid:
+	case builtin.StorageMarketActorCodeID:
 		f = market.Actor{}.Exports()[method]
-	case actors.StorageMinerCodeCid:
+	case builtin.StorageMinerActorCodeID:
 		f = miner2.Actor{}.Exports()[method]
-	case actors.StoragePowerCodeCid:
+	case builtin.StoragePowerActorCodeID:
 		f = power.Actor{}.Exports()[method]
-	case actors.MultisigCodeCid:
+	case builtin.MultisigActorCodeID:
 		f = samsig.Actor{}.Exports()[method]
-	case actors.PaymentChannelCodeCid:
+	case builtin.PaymentChannelActorCodeID:
 		f = paych.Actor{}.Exports()[method]
 	default:
 		return nil, fmt.Errorf("the lazy devs didnt add support for that actor to this call yet")

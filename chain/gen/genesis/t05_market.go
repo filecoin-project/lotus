@@ -2,14 +2,14 @@ package genesis
 
 import (
 	"context"
-	"github.com/filecoin-project/go-amt-ipld/v2"
 	"github.com/ipfs/go-hamt-ipld"
 
+	"github.com/filecoin-project/go-amt-ipld/v2"
+	"github.com/filecoin-project/specs-actors/actors/builtin"
 	"github.com/filecoin-project/specs-actors/actors/builtin/market"
 	bstore "github.com/ipfs/go-ipfs-blockstore"
 	cbor "github.com/ipfs/go-ipld-cbor"
 
-	"github.com/filecoin-project/lotus/chain/actors"
 	"github.com/filecoin-project/lotus/chain/types"
 )
 
@@ -33,7 +33,7 @@ func SetupStorageMarketActor(bs bstore.Blockstore) (*types.Actor, error) {
 	}
 
 	act := &types.Actor{
-		Code:    actors.StorageMarketCodeCid,
+		Code:    builtin.StorageMarketActorCodeID,
 		Head:    stcid,
 		Balance: types.NewInt(0),
 	}

@@ -618,7 +618,7 @@ var slashConsensusFault = &cli.Command{
 		})
 
 		msg := &types.Message{
-			To:       actors.StoragePowerAddress,
+			To:       builtin.StoragePowerActorAddr,
 			From:     def,
 			Value:    types.NewInt(0),
 			GasPrice: types.NewInt(1),

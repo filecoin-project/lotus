@@ -8,7 +8,6 @@ import (
 	"github.com/filecoin-project/go-address"
 	amt "github.com/filecoin-project/go-amt-ipld/v2"
 	"github.com/filecoin-project/lotus/api"
-	"github.com/filecoin-project/lotus/chain/actors"
 	"github.com/filecoin-project/lotus/chain/state"
 	"github.com/filecoin-project/lotus/chain/store"
 	"github.com/filecoin-project/lotus/chain/types"
@@ -155,13 +154,13 @@ func (sm *StateManager) computeTipSetState(ctx context.Context, blks []*types.Bl
 		return cid.Undef, cid.Undef, xerrors.Errorf("instantiating VM failed: %w", err)
 	}
 
-	rewardActor, err := vmi.StateTree().GetActor(actors.RewardActor)
+	rewardActor, err := vmi.StateTree().GetActor(builtin.RewardActorAddr)
 	if err != nil {
 		return cid.Undef, cid.Undef, xerrors.Errorf("failed to get network actor: %w", err)
 	}
 	reward := vm.MiningReward(rewardActor.Balance)
 	for _, b := range blks {
-		rewardActor, err = vmi.StateTree().GetActor(actors.RewardActor)
+		rewardActor, err = vmi.StateTree().GetActor(builtin.RewardActorAddr)
 		if err != nil {
 			return cid.Undef, cid.Undef, xerrors.Errorf("failed to get network actor: %w", err)
 		}
@@ -248,14 +247,14 @@ func (sm *StateManager) computeTipSetState(ctx context.Context, blks []*types.Bl
 	}
 
 	// TODO: this nonce-getting is a tiny bit ugly
-	ca, err := vmi.StateTree().GetActor(actors.SystemAddress)
+	ca, err := vmi.StateTree().GetActor(builtin.SystemActorAddr)
 	if err != nil {
 		return cid.Undef, cid.Undef, err
 	}
 
 	ret, err := vmi.ApplyMessage(ctx, &types.Message{
-		To:       actors.CronAddress,
-		From:     actors.SystemAddress,
+		To:       builtin.CronActorAddr,
+		From:     builtin.SystemActorAddr,
 		Nonce:    ca.Nonce,
 		Value:    types.NewInt(0),
 		GasPrice: types.NewInt(0),
@@ -629,7 +628,7 @@ func (sm *StateManager) ListAllActors(ctx context.Context, ts *types.TipSet) ([]
 
 func (sm *StateManager) MarketBalance(ctx context.Context, addr address.Address, ts *types.TipSet) (api.MarketBalance, error) {
 	var state market.State
-	_, err := sm.LoadActorState(ctx, actors.StorageMarketAddress, &state, ts)
+	_, err := sm.LoadActorState(ctx, builtin.StorageMarketActorAddr, &state, ts)
 	if err != nil {
 		return api.MarketBalance{}, err
 	}

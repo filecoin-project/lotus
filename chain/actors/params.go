@@ -7,10 +7,6 @@ import (
 	cbg "github.com/whyrusleeping/cbor-gen"
 )
 
-var (
-	EmptyStructCBOR = []byte{0xa0}
-)
-
 func SerializeParams(i cbg.CBORMarshaler) ([]byte, aerrors.ActorError) {
 	buf := new(bytes.Buffer)
 	if err := i.MarshalCBOR(buf); err != nil {

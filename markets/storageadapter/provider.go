@@ -68,7 +68,7 @@ func (n *ProviderNodeAdapter) PublishDeals(ctx context.Context, deal storagemark
 
 	// TODO: We may want this to happen after fetching data
 	smsg, err := n.MpoolPushMessage(ctx, &types.Message{
-		To:       actors.StorageMarketAddress,
+		To:       builtin.StorageMarketActorAddr,
 		From:     worker,
 		Value:    types.NewInt(0),
 		GasPrice: types.NewInt(0),
@@ -156,7 +156,7 @@ func (n *ProviderNodeAdapter) MostRecentStateId(ctx context.Context) (storagemar
 func (n *ProviderNodeAdapter) AddFunds(ctx context.Context, addr address.Address, amount abi.TokenAmount) error {
 	// (Provider Node API)
 	smsg, err := n.MpoolPushMessage(ctx, &types.Message{
-		To:       actors.StorageMarketAddress,
+		To:       builtin.StorageMarketActorAddr,
 		From:     addr,
 		Value:    amount,
 		GasPrice: types.NewInt(0),

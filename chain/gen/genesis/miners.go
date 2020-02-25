@@ -21,7 +21,6 @@ import (
 	"github.com/ipfs/go-cid"
 	"golang.org/x/xerrors"
 
-	"github.com/filecoin-project/lotus/chain/actors"
 	"github.com/filecoin-project/lotus/chain/state"
 	"github.com/filecoin-project/lotus/chain/store"
 	"github.com/filecoin-project/lotus/chain/vm"
@@ -43,7 +42,7 @@ func SetupStorageMiners(ctx context.Context, cs *store.ChainStore, sroot cid.Cid
 		networkPower = big.Add(networkPower, big.NewInt(int64(m.SectorSize)*int64(len(m.Sectors))))
 	}
 
-	vm, err := vm.NewVM(sroot, 0, &fakeRand{}, actors.SystemAddress, cs.Blockstore(), cs.VMSys())
+	vm, err := vm.NewVM(sroot, 0, &fakeRand{}, builtin.SystemActorAddr, cs.Blockstore(), cs.VMSys())
 	if err != nil {
 		return cid.Undef, xerrors.Errorf("failed to create NewVM: %w", err)
 	}
@@ -69,7 +68,7 @@ func SetupStorageMiners(ctx context.Context, cs *store.ChainStore, sroot cid.Cid
 			}
 
 			params := mustEnc(constructorParams)
-			rval, err := doExecValue(ctx, vm, actors.StoragePowerAddress, m.Owner, m.PowerBalance, builtin.MethodsPower.CreateMiner, params)
+			rval, err := doExecValue(ctx, vm, builtin.StoragePowerActorAddr, m.Owner, m.PowerBalance, builtin.MethodsPower.CreateMiner, params)
 			if err != nil {
 				return cid.Undef, xerrors.Errorf("failed to create genesis miner: %w", err)
 			}
@@ -90,14 +89,14 @@ func SetupStorageMiners(ctx context.Context, cs *store.ChainStore, sroot cid.Cid
 
 		{
 			params := mustEnc(&maddr)
-			_, err := doExecValue(ctx, vm, actors.StorageMarketAddress, m.Worker, m.MarketBalance, builtin.MethodsMarket.AddBalance, params)
+			_, err := doExecValue(ctx, vm, builtin.StorageMarketActorAddr, m.Worker, m.MarketBalance, builtin.MethodsMarket.AddBalance, params)
 			if err != nil {
 				return cid.Undef, xerrors.Errorf("failed to create genesis miner: %w", err)
 			}
 		}
 		{
 			params := mustEnc(&m.Worker)
-			_, err := doExecValue(ctx, vm, actors.StorageMarketAddress, m.Worker, big.Zero(), builtin.MethodsMarket.AddBalance, params)
+			_, err := doExecValue(ctx, vm, builtin.StorageMarketActorAddr, m.Worker, big.Zero(), builtin.MethodsMarket.AddBalance, params)
 			if err != nil {
 				return cid.Undef, xerrors.Errorf("failed to create genesis miner: %w", err)
 			}

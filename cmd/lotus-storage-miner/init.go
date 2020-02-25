@@ -550,7 +550,7 @@ func createStorageMiner(ctx context.Context, api lapi.FullNode, peerid peer.ID, 
 	}
 
 	createStorageMinerMsg := &types.Message{
-		To:    actors.StoragePowerAddress,
+		To:    builtin.StoragePowerActorAddr,
 		From:  owner,
 		Value: types.BigAdd(collateral, types.BigDiv(collateral, types.NewInt(100))),
 

@@ -23,7 +23,7 @@ func (pm *Manager) createPaych(ctx context.Context, from, to address.Address, am
 	}
 
 	enc, aerr := actors.SerializeParams(&init_.ExecParams{
-		CodeCID:           actors.PaymentChannelCodeCid,
+		CodeCID:           builtin.PaymentChannelActorCodeID,
 		ConstructorParams: params,
 	})
 	if aerr != nil {
@@ -31,7 +31,7 @@ func (pm *Manager) createPaych(ctx context.Context, from, to address.Address, am
 	}
 
 	msg := &types.Message{
-		To:       actors.InitAddress,
+		To:       builtin.InitActorAddr,
 		From:     from,
 		Value:    amt,
 		Method:   builtin.MethodsInit.Exec,

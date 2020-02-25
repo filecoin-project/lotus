@@ -5,6 +5,7 @@ import (
 	"crypto/sha256"
 	"errors"
 	"fmt"
+	"github.com/filecoin-project/specs-actors/actors/builtin"
 	"sync"
 	"time"
 
@@ -33,7 +34,6 @@ import (
 
 	"github.com/filecoin-project/lotus/api"
 	"github.com/filecoin-project/lotus/build"
-	"github.com/filecoin-project/lotus/chain/actors"
 	"github.com/filecoin-project/lotus/chain/blocksync"
 	"github.com/filecoin-project/lotus/chain/gen"
 	"github.com/filecoin-project/lotus/chain/state"
@@ -469,7 +469,7 @@ func (syncer *Syncer) ValidateTipSet(ctx context.Context, fts *store.FullTipSet)
 func (syncer *Syncer) minerIsValid(ctx context.Context, maddr address.Address, baseTs *types.TipSet) error {
 	var spast power.State
 
-	_, err := syncer.sm.LoadActorState(ctx, actors.StoragePowerAddress, &spast, baseTs)
+	_, err := syncer.sm.LoadActorState(ctx, builtin.StoragePowerActorAddr, &spast, baseTs)
 	if err != nil {
 		return err
 	}

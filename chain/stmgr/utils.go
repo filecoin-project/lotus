@@ -23,7 +23,6 @@ import (
 	"github.com/filecoin-project/go-address"
 
 	"github.com/filecoin-project/lotus/api"
-	"github.com/filecoin-project/lotus/chain/actors"
 	"github.com/filecoin-project/lotus/chain/store"
 	"github.com/filecoin-project/lotus/chain/types"
 	"github.com/filecoin-project/lotus/chain/vm"
@@ -222,7 +221,7 @@ func GetMinerFaults(ctx context.Context, sm *StateManager, ts *types.TipSet, mad
 
 func GetStorageDeal(ctx context.Context, sm *StateManager, dealId abi.DealID, ts *types.TipSet) (*api.MarketDeal, error) {
 	var state market.State
-	if _, err := sm.LoadActorState(ctx, actors.StorageMarketAddress, &state, ts); err != nil {
+	if _, err := sm.LoadActorState(ctx, builtin.StorageMarketActorAddr, &state, ts); err != nil {
 		return nil, err
 	}
 
@@ -250,7 +249,7 @@ func GetStorageDeal(ctx context.Context, sm *StateManager, dealId abi.DealID, ts
 
 func ListMinerActors(ctx context.Context, sm *StateManager, ts *types.TipSet) ([]address.Address, error) {
 	var state power.State
-	if _, err := sm.LoadActorState(ctx, actors.StoragePowerAddress, &state, ts); err != nil {
+	if _, err := sm.LoadActorState(ctx, builtin.StoragePowerActorAddr, &state, ts); err != nil {
 		return nil, err
 	}
 
@@ -310,7 +309,7 @@ func ComputeState(ctx context.Context, sm *StateManager, height abi.ChainEpoch, 
 	}
 
 	r := store.NewChainRand(sm.cs, ts.Cids(), height)
-	vmi, err := vm.NewVM(fstate, height, r, actors.SystemAddress, sm.cs.Blockstore(), sm.cs.VMSys())
+	vmi, err := vm.NewVM(fstate, height, r, builtin.SystemActorAddr, sm.cs.Blockstore(), sm.cs.VMSys())
 	if err != nil {
 		return cid.Undef, err
 	}

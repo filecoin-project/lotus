@@ -4,27 +4,27 @@ import (
 	"bytes"
 	"context"
 	"fmt"
-	"github.com/prometheus/common/log"
 	"strconv"
 
-	"github.com/filecoin-project/go-amt-ipld/v2"
-	"github.com/filecoin-project/specs-actors/actors/abi"
-	"github.com/filecoin-project/specs-actors/actors/abi/big"
-	"github.com/filecoin-project/specs-actors/actors/builtin/market"
-	"github.com/filecoin-project/specs-actors/actors/builtin/miner"
-	samsig "github.com/filecoin-project/specs-actors/actors/builtin/multisig"
 	cid "github.com/ipfs/go-cid"
 	"github.com/ipfs/go-hamt-ipld"
 	cbor "github.com/ipfs/go-ipld-cbor"
 	"github.com/libp2p/go-libp2p-core/peer"
+	"github.com/prometheus/common/log"
 	cbg "github.com/whyrusleeping/cbor-gen"
 	"go.uber.org/fx"
 	"golang.org/x/xerrors"
 
 	"github.com/filecoin-project/go-address"
+	"github.com/filecoin-project/go-amt-ipld/v2"
+	"github.com/filecoin-project/specs-actors/actors/abi"
+	"github.com/filecoin-project/specs-actors/actors/abi/big"
+	"github.com/filecoin-project/specs-actors/actors/builtin"
+	"github.com/filecoin-project/specs-actors/actors/builtin/market"
+	"github.com/filecoin-project/specs-actors/actors/builtin/miner"
+	samsig "github.com/filecoin-project/specs-actors/actors/builtin/multisig"
 
 	"github.com/filecoin-project/lotus/api"
-	"github.com/filecoin-project/lotus/chain/actors"
 	"github.com/filecoin-project/lotus/chain/gen"
 	"github.com/filecoin-project/lotus/chain/state"
 	"github.com/filecoin-project/lotus/chain/stmgr"
@@ -333,7 +333,7 @@ func (a *StateAPI) StateMarketParticipants(ctx context.Context, tsk types.TipSet
 	if err != nil {
 		return nil, xerrors.Errorf("loading tipset %s: %w", tsk, err)
 	}
-	if _, err := a.StateManager.LoadActorState(ctx, actors.StorageMarketAddress, &state, ts); err != nil {
+	if _, err := a.StateManager.LoadActorState(ctx, builtin.StorageMarketActorAddr, &state, ts); err != nil {
 		return nil, err
 	}
 	cst := cbor.NewCborStore(a.StateManager.ChainStore().Blockstore())
@@ -382,7 +382,7 @@ func (a *StateAPI) StateMarketDeals(ctx context.Context, tsk types.TipSetKey) (m
 	if err != nil {
 		return nil, xerrors.Errorf("loading tipset %s: %w", tsk, err)
 	}
-	if _, err := a.StateManager.LoadActorState(ctx, actors.StorageMarketAddress, &state, ts); err != nil {
+	if _, err := a.StateManager.LoadActorState(ctx, builtin.StorageMarketActorAddr, &state, ts); err != nil {
 		return nil, err
 	}
 
@@ -558,7 +558,7 @@ func (a *StateAPI) MsigGetAvailableBalance(ctx context.Context, addr address.Add
 		return types.EmptyInt, xerrors.Errorf("failed to load multisig actor state: %w", err)
 	}
 
-	if act.Code != actors.MultisigCodeCid {
+	if act.Code != builtin.MultisigActorCodeID {
 		return types.EmptyInt, fmt.Errorf("given actor was not a multisig")
 	}
 
