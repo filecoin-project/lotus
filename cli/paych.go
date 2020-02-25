@@ -295,7 +295,7 @@ var paychVoucherBestSpendableCmd = &cli.Command{
 			return err
 		}
 
-		var best *types.SignedVoucher
+		var best *paych.SignedVoucher
 		for _, v := range vouchers {
 			spendable, err := api.PaychVoucherCheckSpendable(ctx, ch, v, nil, nil)
 			if err != nil {

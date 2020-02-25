@@ -123,7 +123,7 @@ func (pm *Manager) GetChannelInfo(addr address.Address) (*ChannelInfo, error) {
 }
 
 // checks if the given voucher is valid (is or could become spendable at some point)
-func (pm *Manager) CheckVoucherValid(ctx context.Context, ch address.Address, sv *types.SignedVoucher) error {
+func (pm *Manager) CheckVoucherValid(ctx context.Context, ch address.Address, sv *paych.SignedVoucher) error {
 	act, pca, err := pm.loadPaychState(ctx, ch)
 	if err != nil {
 		return err
@@ -171,7 +171,7 @@ func (pm *Manager) CheckVoucherValid(ctx context.Context, ch address.Address, sv
 }
 
 // checks if the given voucher is currently spendable
-func (pm *Manager) CheckVoucherSpendable(ctx context.Context, ch address.Address, sv *types.SignedVoucher, secret []byte, proof []byte) (bool, error) {
+func (pm *Manager) CheckVoucherSpendable(ctx context.Context, ch address.Address, sv *paych.SignedVoucher, secret []byte, proof []byte) (bool, error) {
 	owner, err := pm.getPaychOwner(ctx, ch)
 	if err != nil {
 		return false, err
@@ -234,7 +234,7 @@ func (pm *Manager) getPaychOwner(ctx context.Context, ch address.Address) (addre
 	return state.From, nil
 }
 
-func (pm *Manager) AddVoucher(ctx context.Context, ch address.Address, sv *types.SignedVoucher, proof []byte, minDelta types.BigInt) (types.BigInt, error) {
+func (pm *Manager) AddVoucher(ctx context.Context, ch address.Address, sv *paych.SignedVoucher, proof []byte, minDelta types.BigInt) (types.BigInt, error) {
 	if err := pm.CheckVoucherValid(ctx, ch, sv); err != nil {
 		return types.NewInt(0), err
 	}
