@@ -4,9 +4,13 @@ import (
 	"reflect"
 	"sort"
 
+	logging "github.com/ipfs/go-log/v2"
+
 	"github.com/filecoin-project/lotus/chain/actors/aerrors"
 	"github.com/filecoin-project/lotus/chain/types"
 )
+
+var log = logging.Logger("actors")
 
 type update struct {
 	start  uint64

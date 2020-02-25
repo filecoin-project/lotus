@@ -58,7 +58,7 @@ func (n *ProviderNodeAdapter) PublishDeals(ctx context.Context, deal storagemark
 		return 0, cid.Undef, err
 	}
 
-	params, err := actors.SerializeParams(&actors.PublishStorageDealsParams{
+	params, err := actors.SerializeParams(&market.PublishStorageDealsParams{
 		Deals: []market.ClientDealProposal{deal.ClientDealProposal},
 	})
 
@@ -86,7 +86,7 @@ func (n *ProviderNodeAdapter) PublishDeals(ctx context.Context, deal storagemark
 	if r.Receipt.ExitCode != 0 {
 		return 0, cid.Undef, xerrors.Errorf("publishing deal failed: exit %d", r.Receipt.ExitCode)
 	}
-	var resp actors.PublishStorageDealResponse
+	var resp market.PublishStorageDealsReturn
 	if err := resp.UnmarshalCBOR(bytes.NewReader(r.Receipt.Return)); err != nil {
 		return 0, cid.Undef, err
 	}

@@ -79,7 +79,7 @@ func (st *StateTree) LookupID(addr address.Address) (address.Address, error) {
 		return address.Undef, xerrors.Errorf("getting init actor: %w", err)
 	}
 
-	var ias actors.InitActorState
+	var ias init_.State
 	if err := st.Store.Get(context.TODO(), act.Head, &ias); err != nil {
 		return address.Undef, xerrors.Errorf("loading init actor state: %w", err)
 	}
@@ -158,7 +158,7 @@ func (st *StateTree) Snapshot(ctx context.Context) error {
 func (st *StateTree) RegisterNewAddress(addr address.Address, act *types.Actor) (address.Address, error) {
 	var out address.Address
 	err := st.MutateActor(actors.InitAddress, func(initact *types.Actor) error {
-		var ias actors.InitActorState
+		var ias init_.State
 		if err := st.Store.Get(context.TODO(), initact.Head, &ias); err != nil {
 			return err
 		}

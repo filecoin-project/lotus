@@ -328,7 +328,7 @@ func (a *StateAPI) StateMarketBalance(ctx context.Context, addr address.Address,
 func (a *StateAPI) StateMarketParticipants(ctx context.Context, tsk types.TipSetKey) (map[string]api.MarketBalance, error) {
 	out := map[string]api.MarketBalance{}
 
-	var state actors.StorageMarketState
+	var state market.State
 	ts, err := a.Chain.GetTipSetFromKey(tsk)
 	if err != nil {
 		return nil, xerrors.Errorf("loading tipset %s: %w", tsk, err)
@@ -377,7 +377,7 @@ func (a *StateAPI) StateMarketParticipants(ctx context.Context, tsk types.TipSet
 func (a *StateAPI) StateMarketDeals(ctx context.Context, tsk types.TipSetKey) (map[string]api.MarketDeal, error) {
 	out := map[string]api.MarketDeal{}
 
-	var state actors.StorageMarketState
+	var state market.State
 	ts, err := a.Chain.GetTipSetFromKey(tsk)
 	if err != nil {
 		return nil, xerrors.Errorf("loading tipset %s: %w", tsk, err)

@@ -69,7 +69,7 @@ func SetupStorageMiners(ctx context.Context, cs *store.ChainStore, sroot cid.Cid
 			}
 
 			params := mustEnc(constructorParams)
-			rval, err := doExecValue(ctx, vm, actors.StoragePowerAddress, m.Owner, m.PowerBalance, actors.SPAMethods.CreateMiner, params)
+			rval, err := doExecValue(ctx, vm, actors.StoragePowerAddress, m.Owner, m.PowerBalance, builtin.MethodsPower.CreateMiner, params)
 			if err != nil {
 				return cid.Undef, xerrors.Errorf("failed to create genesis miner: %w", err)
 			}

@@ -5,6 +5,7 @@ import (
 	"encoding/json"
 	"fmt"
 
+	init_ "github.com/filecoin-project/specs-actors/actors/builtin/init"
 	"github.com/ipfs/go-hamt-ipld"
 	bstore "github.com/ipfs/go-ipfs-blockstore"
 	cbor "github.com/ipfs/go-ipld-cbor"
@@ -20,7 +21,7 @@ func SetupInitActor(bs bstore.Blockstore, netname string, initialActors []genesi
 		return nil, xerrors.New("too many initial actors")
 	}
 
-	var ias actors.InitActorState
+	var ias init_.State
 	ias.NextID = MinerStart
 	ias.NetworkName = netname
 

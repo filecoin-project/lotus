@@ -103,7 +103,7 @@ func GetMinerWorker(ctx context.Context, sm *StateManager, ts *types.TipSet, mad
 }
 
 func GetMinerPostState(ctx context.Context, sm *StateManager, ts *types.TipSet, maddr address.Address) (*miner.PoStState, error) {
-	var mas actors.StorageMinerActorState
+	var mas miner.State
 	_, err := sm.LoadActorState(ctx, maddr, &mas, ts)
 	if err != nil {
 		return nil, xerrors.Errorf("(get eps) failed to load miner actor state: %w", err)
@@ -113,7 +113,7 @@ func GetMinerPostState(ctx context.Context, sm *StateManager, ts *types.TipSet, 
 }
 
 func SectorSetSizes(ctx context.Context, sm *StateManager, maddr address.Address, ts *types.TipSet) (api.MinerSectors, error) {
-	var mas actors.StorageMinerActorState
+	var mas miner.State
 	_, err := sm.LoadActorState(ctx, maddr, &mas, ts)
 	if err != nil {
 		return api.MinerSectors{}, xerrors.Errorf("(get sset) failed to load miner actor state: %w", err)
@@ -137,7 +137,7 @@ func SectorSetSizes(ctx context.Context, sm *StateManager, maddr address.Address
 }
 
 func GetMinerProvingSet(ctx context.Context, sm *StateManager, ts *types.TipSet, maddr address.Address) ([]*api.ChainSectorInfo, error) {
-	var mas actors.StorageMinerActorState
+	var mas miner.State
 	_, err := sm.LoadActorState(ctx, maddr, &mas, ts)
 	if err != nil {
 		return nil, xerrors.Errorf("(get pset) failed to load miner actor state: %w", err)
@@ -147,7 +147,7 @@ func GetMinerProvingSet(ctx context.Context, sm *StateManager, ts *types.TipSet,
 }
 
 func GetMinerSectorSet(ctx context.Context, sm *StateManager, ts *types.TipSet, maddr address.Address) ([]*api.ChainSectorInfo, error) {
-	var mas actors.StorageMinerActorState
+	var mas miner.State
 	_, err := sm.LoadActorState(ctx, maddr, &mas, ts)
 	if err != nil {
 		return nil, xerrors.Errorf("(get sset) failed to load miner actor state: %w", err)
@@ -181,7 +181,7 @@ func GetSectorsForElectionPost(ctx context.Context, sm *StateManager, ts *types.
 }
 
 func GetMinerSectorSize(ctx context.Context, sm *StateManager, ts *types.TipSet, maddr address.Address) (abi.SectorSize, error) {
-	var mas actors.StorageMinerActorState
+	var mas miner.State
 	_, err := sm.LoadActorState(ctx, maddr, &mas, ts)
 	if err != nil {
 		return 0, xerrors.Errorf("(get ssize) failed to load miner actor state: %w", err)
@@ -196,7 +196,7 @@ func GetMinerSlashed(ctx context.Context, sm *StateManager, ts *types.TipSet, ma
 }
 
 func GetMinerFaults(ctx context.Context, sm *StateManager, ts *types.TipSet, maddr address.Address) ([]abi.SectorNumber, error) {
-	var mas actors.StorageMinerActorState
+	var mas miner.State
 	_, err := sm.LoadActorState(ctx, maddr, &mas, ts)
 	if err != nil {
 		return nil, xerrors.Errorf("(get ssize) failed to load miner actor state: %w", err)
@@ -249,7 +249,7 @@ func GetStorageDeal(ctx context.Context, sm *StateManager, dealId abi.DealID, ts
 }
 
 func ListMinerActors(ctx context.Context, sm *StateManager, ts *types.TipSet) ([]address.Address, error) {
-	var state actors.StoragePowerState
+	var state power.State
 	if _, err := sm.LoadActorState(ctx, actors.StoragePowerAddress, &state, ts); err != nil {
 		return nil, err
 	}

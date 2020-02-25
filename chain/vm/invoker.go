@@ -13,9 +13,13 @@ import (
 
 	"github.com/filecoin-project/specs-actors/actors/abi"
 	"github.com/filecoin-project/specs-actors/actors/builtin"
+	"github.com/filecoin-project/specs-actors/actors/builtin/cron"
+	init_ "github.com/filecoin-project/specs-actors/actors/builtin/init"
 	"github.com/filecoin-project/specs-actors/actors/builtin/market"
 	"github.com/filecoin-project/specs-actors/actors/builtin/miner"
 	"github.com/filecoin-project/specs-actors/actors/builtin/multisig"
+	"github.com/filecoin-project/specs-actors/actors/builtin/paych"
+	"github.com/filecoin-project/specs-actors/actors/builtin/power"
 	"github.com/filecoin-project/specs-actors/actors/builtin/system"
 	vmr "github.com/filecoin-project/specs-actors/actors/runtime"
 	"github.com/filecoin-project/specs-actors/actors/util/adt"
@@ -41,13 +45,13 @@ func NewInvoker() *invoker {
 
 	// add builtInCode using: register(cid, singleton)
 	inv.Register(builtin.SystemActorCodeID, system.Actor{}, adt.EmptyValue{})
-	inv.Register(actors.InitCodeCid, actors.InitActor{}, actors.InitActorState{})
-	inv.Register(actors.CronCodeCid, actors.CronActor{}, actors.CronActorState{})
-	inv.Register(actors.StoragePowerCodeCid, actors.StoragePowerActor{}, actors.StoragePowerState{})
+	inv.Register(actors.InitCodeCid, init_.Actor{}, init_.State{})
+	inv.Register(actors.CronCodeCid, cron.Actor{}, cron.State{})
+	inv.Register(actors.StoragePowerCodeCid, power.Actor{}, power.State{})
 	inv.Register(actors.StorageMarketCodeCid, market.Actor{}, market.State{})
 	inv.Register(actors.StorageMinerCodeCid, miner.Actor{}, miner.State{})
 	inv.Register(actors.MultisigCodeCid, multisig.Actor{}, multisig.State{})
-	inv.Register(actors.PaymentChannelCodeCid, actors.PaymentChannelActor{}, actors.PaymentChannelActorState{})
+	inv.Register(actors.PaymentChannelCodeCid, paych.Actor{}, paych.State{})
 
 	return inv
 }

@@ -3,20 +3,21 @@ package sealing
 import (
 	"bytes"
 	"context"
-	commcid "github.com/filecoin-project/go-fil-commcid"
-	"github.com/filecoin-project/lotus/lib/zerocomm"
-	"github.com/ipfs/go-cid"
-	cbg "github.com/whyrusleeping/cbor-gen"
 
-	"github.com/filecoin-project/specs-actors/actors/builtin"
+	"github.com/ipfs/go-cid"
 	"github.com/multiformats/go-multihash"
+	cbg "github.com/whyrusleeping/cbor-gen"
 	"golang.org/x/xerrors"
 
 	"github.com/filecoin-project/go-address"
+	commcid "github.com/filecoin-project/go-fil-commcid"
+	"github.com/filecoin-project/specs-actors/actors/builtin"
+	"github.com/filecoin-project/specs-actors/actors/builtin/market"
 
 	"github.com/filecoin-project/lotus/build"
 	"github.com/filecoin-project/lotus/chain/actors"
 	"github.com/filecoin-project/lotus/chain/types"
+	"github.com/filecoin-project/lotus/lib/zerocomm"
 )
 
 // TODO: For now we handle this by halting state execution, when we get jsonrpc reconnecting
@@ -88,7 +89,7 @@ func checkSeal(ctx context.Context, maddr address.Address, si SectorInfo, api se
 		return &ErrApi{err}
 	}
 
-	ccparams, err := actors.SerializeParams(&actors.ComputeDataCommitmentParams{
+	ccparams, err := actors.SerializeParams(&market.ComputeDataCommitmentParams{
 		DealIDs:    si.deals(),
 		SectorSize: ssize,
 	})

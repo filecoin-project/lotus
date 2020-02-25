@@ -186,7 +186,7 @@ func (c *ClientNodeAdapter) ValidatePublishedDeal(ctx context.Context, deal stor
 		return 0, xerrors.Errorf("deal publish message called incorrect method (method=%s)", pubmsg.Method)
 	}
 
-	var params actors.PublishStorageDealsParams
+	var params samarket.PublishStorageDealsParams
 	if err := params.UnmarshalCBOR(bytes.NewReader(pubmsg.Params)); err != nil {
 		return 0, err
 	}
@@ -218,7 +218,7 @@ func (c *ClientNodeAdapter) ValidatePublishedDeal(ctx context.Context, deal stor
 		return 0, xerrors.Errorf("deal publish failed: exit=%d", ret.ExitCode)
 	}
 
-	var res actors.PublishStorageDealResponse
+	var res samarket.PublishStorageDealsReturn
 	if err := res.UnmarshalCBOR(bytes.NewReader(ret.Return)); err != nil {
 		return 0, err
 	}

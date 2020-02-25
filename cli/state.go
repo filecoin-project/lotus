@@ -5,7 +5,6 @@ import (
 	"context"
 	"encoding/json"
 	"fmt"
-	miner2 "github.com/filecoin-project/specs-actors/actors/builtin/miner"
 	"reflect"
 	"strconv"
 	"strings"
@@ -13,7 +12,10 @@ import (
 	"github.com/filecoin-project/go-address"
 	"github.com/filecoin-project/specs-actors/actors/abi"
 	"github.com/filecoin-project/specs-actors/actors/builtin/market"
+	miner2 "github.com/filecoin-project/specs-actors/actors/builtin/miner"
 	samsig "github.com/filecoin-project/specs-actors/actors/builtin/multisig"
+	"github.com/filecoin-project/specs-actors/actors/builtin/paych"
+	"github.com/filecoin-project/specs-actors/actors/builtin/power"
 	"github.com/libp2p/go-libp2p-core/peer"
 	"golang.org/x/xerrors"
 
@@ -974,13 +976,13 @@ func parseParamsForMethod(act cid.Cid, method uint64, args []string) ([]byte, er
 	case actors.StorageMarketCodeCid:
 		f = market.Actor{}.Exports()[method]
 	case actors.StorageMinerCodeCid:
-		f = actors.StorageMinerActor{}.Exports()[method]
+		f = miner2.Actor{}.Exports()[method]
 	case actors.StoragePowerCodeCid:
-		f = actors.StoragePowerActor{}.Exports()[method]
+		f = power.Actor{}.Exports()[method]
 	case actors.MultisigCodeCid:
 		f = samsig.Actor{}.Exports()[method]
 	case actors.PaymentChannelCodeCid:
-		f = actors.PaymentChannelActor{}.Exports()[method]
+		f = paych.Actor{}.Exports()[method]
 	default:
 		return nil, fmt.Errorf("the lazy devs didnt add support for that actor to this call yet")
 	}
