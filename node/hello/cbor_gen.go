@@ -6,7 +6,8 @@ import (
 	"fmt"
 	"io"
 
-	"github.com/ipfs/go-cid"
+	"github.com/filecoin-project/specs-actors/actors/abi"
+	cid "github.com/ipfs/go-cid"
 	cbg "github.com/whyrusleeping/cbor-gen"
 	xerrors "golang.org/x/xerrors"
 )
@@ -36,12 +37,18 @@ func (t *HelloMessage) MarshalCBOR(w io.Writer) error {
 		}
 	}
 
-	// t.HeaviestTipSetHeight (uint64) (uint64)
-	if _, err := w.Write(cbg.CborEncodeMajorType(cbg.MajUnsignedInt, uint64(t.HeaviestTipSetHeight))); err != nil {
-		return err
+	// t.HeaviestTipSetHeight (abi.ChainEpoch) (int64)
+	if t.HeaviestTipSetHeight >= 0 {
+		if _, err := w.Write(cbg.CborEncodeMajorType(cbg.MajUnsignedInt, uint64(t.HeaviestTipSetHeight))); err != nil {
+			return err
+		}
+	} else {
+		if _, err := w.Write(cbg.CborEncodeMajorType(cbg.MajNegativeInt, uint64(-t.HeaviestTipSetHeight)-1)); err != nil {
+			return err
+		}
 	}
 
-	// t.HeaviestTipSetWeight (types.BigInt) (struct)
+	// t.HeaviestTipSetWeight (big.Int) (struct)
 	if err := t.HeaviestTipSetWeight.MarshalCBOR(w); err != nil {
 		return err
 	}
@@ -96,16 +103,32 @@ func (t *HelloMessage) UnmarshalCBOR(r io.Reader) error {
 		t.HeaviestTipSet[i] = c
 	}
 
-	// t.HeaviestTipSetHeight (uint64) (uint64)
+	// t.HeaviestTipSetHeight (abi.ChainEpoch) (int64)
+	{
+		maj, extra, err := cbg.CborReadHeader(br)
+		var extraI int64
+		if err != nil {
+			return err
+		}
+		switch maj {
+		case cbg.MajUnsignedInt:
+			extraI = int64(extra)
+			if extraI < 0 {
+				return fmt.Errorf("int64 positive overflow")
+			}
+		case cbg.MajNegativeInt:
+			extraI = int64(extra)
+			if extraI < 0 {
+				return fmt.Errorf("int64 negative oveflow")
+			}
+			extraI = -1 - extraI
+		default:
+			return fmt.Errorf("wrong type for int64 field: %d", maj)
+		}
 
-	maj, extra, err = cbg.CborReadHeader(br)
-	if err != nil {
-		return err
+		t.HeaviestTipSetHeight = abi.ChainEpoch(extraI)
 	}
-	if maj != cbg.MajUnsignedInt {
-		return fmt.Errorf("wrong type for uint64 field")
-	}
-	// t.HeaviestTipSetWeight (types.BigInt) (struct)
+	// t.HeaviestTipSetWeight (big.Int) (struct)
 
 	{
 
