@@ -259,7 +259,7 @@ func main() {
 					return err
 				}
 
-				var genmm map[string]genesis.GenesisMiner
+				var genmm map[string]genesis.Miner
 				if err := json.Unmarshal(fdata, &genmm); err != nil {
 					return err
 				}

@@ -14,12 +14,13 @@ import (
 	"github.com/filecoin-project/go-address"
 	"github.com/filecoin-project/specs-actors/actors/abi"
 	"github.com/filecoin-project/specs-actors/actors/builtin"
+	"github.com/filecoin-project/specs-actors/actors/crypto"
 
 	"github.com/filecoin-project/lotus/chain/types"
 )
 
 type Signer interface {
-	Sign(ctx context.Context, addr vaddress.Address, msg []byte) (*types.Signature, error)
+	Sign(ctx context.Context, addr vaddress.Address, msg []byte) (*crypto.Signature, error)
 }
 
 type MessageFactory struct {

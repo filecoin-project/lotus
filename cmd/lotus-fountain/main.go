@@ -11,6 +11,8 @@ import (
 
 	rice "github.com/GeertJohan/go.rice"
 	"github.com/filecoin-project/specs-actors/actors/abi"
+	"github.com/filecoin-project/specs-actors/actors/builtin"
+	"github.com/filecoin-project/specs-actors/actors/builtin/power"
 	"github.com/ipfs/go-cid"
 	logging "github.com/ipfs/go-log/v2"
 	peer "github.com/libp2p/go-libp2p-peer"
@@ -262,11 +264,11 @@ func (h *handler) mkminer(w http.ResponseWriter, r *http.Request) {
 	}
 	log.Infof("%s: push funds %s", owner, smsg.Cid())
 
-	params, err := actors.SerializeParams(&actors.CreateStorageMinerParams{
-		Owner:      owner,
+	params, err := actors.SerializeParams(&power.CreateMinerParams{
+		Owner:      owner, // TODO: That is useful
 		Worker:     owner,
 		SectorSize: abi.SectorSize(ssize),
-		PeerID:     peer.ID("SETME"),
+		Peer:     peer.ID("SETME"),
 	})
 	if err != nil {
 		w.WriteHeader(400)
@@ -275,11 +277,11 @@ func (h *handler) mkminer(w http.ResponseWriter, r *http.Request) {
 	}
 
 	createStorageMinerMsg := &types.Message{
-		To:    actors.StoragePowerAddress,
+		To:    builtin.StoragePowerActorAddr,
 		From:  h.from,
 		Value: types.BigAdd(collateral, types.BigDiv(collateral, types.NewInt(100))),
 
-		Method: actors.SPAMethods.CreateStorageMiner,
+		Method: builtin.MethodsPower.CreateMiner,
 		Params: params,
 
 		GasLimit: types.NewInt(10000000),

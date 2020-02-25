@@ -3,17 +3,18 @@ package apistruct
 import (
 	"context"
 
-	"github.com/filecoin-project/specs-actors/actors/abi"
-	"github.com/filecoin-project/specs-actors/actors/builtin/miner"
-	"github.com/filecoin-project/specs-actors/actors/crypto"
-
-	sectorbuilder "github.com/filecoin-project/go-sectorbuilder"
-
 	"github.com/ipfs/go-cid"
 	"github.com/libp2p/go-libp2p-core/network"
 	"github.com/libp2p/go-libp2p-core/peer"
 
 	"github.com/filecoin-project/go-address"
+	"github.com/filecoin-project/go-fil-markets/storagemarket"
+	sectorbuilder "github.com/filecoin-project/go-sectorbuilder"
+	"github.com/filecoin-project/specs-actors/actors/abi"
+	"github.com/filecoin-project/specs-actors/actors/abi/big"
+	"github.com/filecoin-project/specs-actors/actors/builtin/miner"
+	"github.com/filecoin-project/specs-actors/actors/builtin/paych"
+	"github.com/filecoin-project/specs-actors/actors/crypto"
 
 	"github.com/filecoin-project/lotus/api"
 	"github.com/filecoin-project/lotus/chain/store"
@@ -100,7 +101,7 @@ type FullNodeStruct struct {
 		ClientGetDealInfo func(context.Context, cid.Cid) (*api.DealInfo, error)                                                                                             `perm:"read"`
 		ClientListDeals   func(ctx context.Context) ([]api.DealInfo, error)                                                                                                 `perm:"write"`
 		ClientRetrieve    func(ctx context.Context, order api.RetrievalOrder, path string) error                                                                            `perm:"admin"`
-		ClientQueryAsk    func(ctx context.Context, p peer.ID, miner address.Address) (*types.SignedStorageAsk, error)                                                      `perm:"read"`
+		ClientQueryAsk    func(ctx context.Context, p peer.ID, miner address.Address) (*storagemarket.SignedStorageAsk, error)                                                      `perm:"read"`
 
 		StateMinerSectors       func(context.Context, address.Address, types.TipSetKey) ([]*api.ChainSectorInfo, error)                      `perm:"read"`
 		StateMinerProvingSet    func(context.Context, address.Address, types.TipSetKey) ([]*api.ChainSectorInfo, error)                      `perm:"read"`
@@ -139,13 +140,13 @@ type FullNodeStruct struct {
 		PaychClose                 func(context.Context, address.Address) (cid.Cid, error)                                                   `perm:"sign"`
 		PaychAllocateLane          func(context.Context, address.Address) (uint64, error)                                                    `perm:"sign"`
 		PaychNewPayment            func(ctx context.Context, from, to address.Address, vouchers []api.VoucherSpec) (*api.PaymentInfo, error) `perm:"sign"`
-		PaychVoucherCheck          func(context.Context, *types.SignedVoucher) error                                                         `perm:"read"`
-		PaychVoucherCheckValid     func(context.Context, address.Address, *types.SignedVoucher) error                                        `perm:"read"`
-		PaychVoucherCheckSpendable func(context.Context, address.Address, *types.SignedVoucher, []byte, []byte) (bool, error)                `perm:"read"`
-		PaychVoucherAdd            func(context.Context, address.Address, *types.SignedVoucher, []byte, types.BigInt) (types.BigInt, error)  `perm:"write"`
-		PaychVoucherCreate         func(context.Context, address.Address, types.BigInt, uint64) (*types.SignedVoucher, error)                `perm:"sign"`
-		PaychVoucherList           func(context.Context, address.Address) ([]*types.SignedVoucher, error)                                    `perm:"write"`
-		PaychVoucherSubmit         func(context.Context, address.Address, *types.SignedVoucher) (cid.Cid, error)                             `perm:"sign"`
+		PaychVoucherCheck          func(context.Context, *paych.SignedVoucher) error                                                         `perm:"read"`
+		PaychVoucherCheckValid     func(context.Context, address.Address, *paych.SignedVoucher) error                                        `perm:"read"`
+		PaychVoucherCheckSpendable func(context.Context, address.Address, *paych.SignedVoucher, []byte, []byte) (bool, error)                `perm:"read"`
+		PaychVoucherAdd            func(context.Context, address.Address, *paych.SignedVoucher, []byte, types.BigInt) (types.BigInt, error)  `perm:"write"`
+		PaychVoucherCreate         func(context.Context, address.Address, big.Int, uint64) (*paych.SignedVoucher, error)                `perm:"sign"`
+		PaychVoucherList           func(context.Context, address.Address) ([]*paych.SignedVoucher, error)                                    `perm:"write"`
+		PaychVoucherSubmit         func(context.Context, address.Address, *paych.SignedVoucher) (cid.Cid, error)                             `perm:"sign"`
 	}
 }
 
@@ -255,7 +256,7 @@ func (c *FullNodeStruct) ClientRetrieve(ctx context.Context, order api.Retrieval
 	return c.Internal.ClientRetrieve(ctx, order, path)
 }
 
-func (c *FullNodeStruct) ClientQueryAsk(ctx context.Context, p peer.ID, miner address.Address) (*types.SignedStorageAsk, error) {
+func (c *FullNodeStruct) ClientQueryAsk(ctx context.Context, p peer.ID, miner address.Address) (*storagemarket.SignedStorageAsk, error) {
 	return c.Internal.ClientQueryAsk(ctx, p, miner)
 }
 
@@ -534,23 +535,23 @@ func (c *FullNodeStruct) PaychStatus(ctx context.Context, pch address.Address) (
 	return c.Internal.PaychStatus(ctx, pch)
 }
 
-func (c *FullNodeStruct) PaychVoucherCheckValid(ctx context.Context, addr address.Address, sv *types.SignedVoucher) error {
+func (c *FullNodeStruct) PaychVoucherCheckValid(ctx context.Context, addr address.Address, sv *paych.SignedVoucher) error {
 	return c.Internal.PaychVoucherCheckValid(ctx, addr, sv)
 }
 
-func (c *FullNodeStruct) PaychVoucherCheckSpendable(ctx context.Context, addr address.Address, sv *types.SignedVoucher, secret []byte, proof []byte) (bool, error) {
+func (c *FullNodeStruct) PaychVoucherCheckSpendable(ctx context.Context, addr address.Address, sv *paych.SignedVoucher, secret []byte, proof []byte) (bool, error) {
 	return c.Internal.PaychVoucherCheckSpendable(ctx, addr, sv, secret, proof)
 }
 
-func (c *FullNodeStruct) PaychVoucherAdd(ctx context.Context, addr address.Address, sv *types.SignedVoucher, proof []byte, minDelta types.BigInt) (types.BigInt, error) {
+func (c *FullNodeStruct) PaychVoucherAdd(ctx context.Context, addr address.Address, sv *paych.SignedVoucher, proof []byte, minDelta types.BigInt) (types.BigInt, error) {
 	return c.Internal.PaychVoucherAdd(ctx, addr, sv, proof, minDelta)
 }
 
-func (c *FullNodeStruct) PaychVoucherCreate(ctx context.Context, pch address.Address, amt types.BigInt, lane uint64) (*types.SignedVoucher, error) {
+func (c *FullNodeStruct) PaychVoucherCreate(ctx context.Context, pch address.Address, amt types.BigInt, lane uint64) (*paych.SignedVoucher, error) {
 	return c.Internal.PaychVoucherCreate(ctx, pch, amt, lane)
 }
 
-func (c *FullNodeStruct) PaychVoucherList(ctx context.Context, pch address.Address) ([]*types.SignedVoucher, error) {
+func (c *FullNodeStruct) PaychVoucherList(ctx context.Context, pch address.Address) ([]*paych.SignedVoucher, error) {
 	return c.Internal.PaychVoucherList(ctx, pch)
 }
 
@@ -566,7 +567,7 @@ func (c *FullNodeStruct) PaychNewPayment(ctx context.Context, from, to address.A
 	return c.Internal.PaychNewPayment(ctx, from, to, vouchers)
 }
 
-func (c *FullNodeStruct) PaychVoucherSubmit(ctx context.Context, ch address.Address, sv *types.SignedVoucher) (cid.Cid, error) {
+func (c *FullNodeStruct) PaychVoucherSubmit(ctx context.Context, ch address.Address, sv *paych.SignedVoucher) (cid.Cid, error) {
 	return c.Internal.PaychVoucherSubmit(ctx, ch, sv)
 }
 

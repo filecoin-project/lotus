@@ -10,6 +10,7 @@ import (
 	"github.com/filecoin-project/specs-actors/actors/abi/big"
 	"github.com/filecoin-project/specs-actors/actors/builtin/market"
 	"github.com/filecoin-project/specs-actors/actors/builtin/miner"
+	"github.com/filecoin-project/specs-actors/actors/builtin/paych"
 	"github.com/filecoin-project/specs-actors/actors/crypto"
 	"github.com/ipfs/go-cid"
 	"github.com/ipfs/go-filestore"
@@ -93,7 +94,7 @@ type FullNode interface {
 	ClientHasLocal(ctx context.Context, root cid.Cid) (bool, error)
 	ClientFindData(ctx context.Context, root cid.Cid) ([]QueryOffer, error)
 	ClientRetrieve(ctx context.Context, order RetrievalOrder, path string) error
-	ClientQueryAsk(ctx context.Context, p peer.ID, miner address.Address) (*types.SignedStorageAsk, error)
+	ClientQueryAsk(ctx context.Context, p peer.ID, miner address.Address) (*storagemarket.SignedStorageAsk, error)
 
 	// ClientUnimport removes references to the specified file from filestore
 	//ClientUnimport(path string)
@@ -143,12 +144,12 @@ type FullNode interface {
 	PaychClose(context.Context, address.Address) (cid.Cid, error)
 	PaychAllocateLane(ctx context.Context, ch address.Address) (uint64, error)
 	PaychNewPayment(ctx context.Context, from, to address.Address, vouchers []VoucherSpec) (*PaymentInfo, error)
-	PaychVoucherCheckValid(context.Context, address.Address, *types.SignedVoucher) error
-	PaychVoucherCheckSpendable(context.Context, address.Address, *types.SignedVoucher, []byte, []byte) (bool, error)
-	PaychVoucherCreate(context.Context, address.Address, types.BigInt, uint64) (*types.SignedVoucher, error)
-	PaychVoucherAdd(context.Context, address.Address, *types.SignedVoucher, []byte, types.BigInt) (types.BigInt, error)
-	PaychVoucherList(context.Context, address.Address) ([]*types.SignedVoucher, error)
-	PaychVoucherSubmit(context.Context, address.Address, *types.SignedVoucher) (cid.Cid, error)
+	PaychVoucherCheckValid(context.Context, address.Address, *paych.SignedVoucher) error
+	PaychVoucherCheckSpendable(context.Context, address.Address, *paych.SignedVoucher, []byte, []byte) (bool, error)
+	PaychVoucherCreate(context.Context, address.Address, types.BigInt, uint64) (*paych.SignedVoucher, error)
+	PaychVoucherAdd(context.Context, address.Address, *paych.SignedVoucher, []byte, types.BigInt) (types.BigInt, error)
+	PaychVoucherList(context.Context, address.Address) ([]*paych.SignedVoucher, error)
+	PaychVoucherSubmit(context.Context, address.Address, *paych.SignedVoucher) (cid.Cid, error)
 }
 
 type MinerSectors struct {
@@ -223,7 +224,7 @@ type ChannelInfo struct {
 type PaymentInfo struct {
 	Channel        address.Address
 	ChannelMessage *cid.Cid
-	Vouchers       []*types.SignedVoucher
+	Vouchers       []*paych.SignedVoucher
 }
 
 type VoucherSpec struct {
@@ -231,7 +232,7 @@ type VoucherSpec struct {
 	TimeLock  abi.ChainEpoch
 	MinSettle abi.ChainEpoch
 
-	Extra *types.ModVerifyParams
+	Extra *paych.ModVerifyParams
 }
 
 type MinerPower struct {

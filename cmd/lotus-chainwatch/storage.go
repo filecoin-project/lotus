@@ -471,11 +471,11 @@ create temp table mh (like miner_heads excluding constraints) on commit drop;
 			fmt.Sprint(i.psize),
 			i.info.Owner.String(),
 			i.info.Worker.String(),
-			i.info.PeerID.String(),
+			i.info.PeerId.String(),
 			i.info.SectorSize,
-			i.state.Power.String(),
+			i.state.Power.String(), // TODO: SPA
 			i.state.Active,
-			i.state.ElectionPeriodStart,
+			i.state.PoStState.ProvingPeriodStart,
 			i.state.SlashedAt,
 		); err != nil {
 			return err

@@ -184,7 +184,7 @@ func TestForkHeightTriggers(t *testing.T) {
 
 	m := &types.Message{
 		From:     cg.Banker(),
-		To:       actors.InitAddress,
+		To:       builtin.InitActorAddr,
 		Method:   builtin.MethodsInit.Exec,
 		Params:   enc,
 		GasLimit: types.NewInt(10000),
