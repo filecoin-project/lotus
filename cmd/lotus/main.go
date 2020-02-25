@@ -73,7 +73,12 @@ func main() {
 			Code:    trace.StatusCodeFailedPrecondition,
 			Message: err.Error(),
 		})
-		log.Warnf("%+v", err)
+		_, ok := err.(*lcli.ErrCmdFailed)
+		if ok {
+			log.Debugf("%+v", err)
+		} else {
+			log.Warnf("%+v", err)
+		}
 		os.Exit(1)
 	}
 }

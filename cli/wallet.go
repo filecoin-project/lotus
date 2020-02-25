@@ -25,6 +25,7 @@ var walletCmd = &cli.Command{
 		walletGetDefault,
 		walletSetDefault,
 		walletSign,
+		walletVerify,
 	},
 }
 
@@ -275,5 +276,55 @@ var walletSign = &cli.Command{
 
 		fmt.Println(hex.EncodeToString(sigBytes))
 		return nil
+	},
+}
+
+var walletVerify = &cli.Command{
+	Name:      "verify",
+	Usage:     "verify the signature of a message",
+	ArgsUsage: "<signing address> <hexMessage> <signature>",
+	Action: func(cctx *cli.Context) error {
+		api, closer, err := GetFullNodeAPI(cctx)
+		if err != nil {
+			return err
+		}
+		defer closer()
+		ctx := ReqContext(cctx)
+
+		if !cctx.Args().Present() || cctx.NArg() != 3 {
+			return fmt.Errorf("must specify signing address, message, and signature to verify")
+		}
+
+		addr, err := address.NewFromString(cctx.Args().First())
+
+		if err != nil {
+			return err
+		}
+
+		msg, err := hex.DecodeString(cctx.Args().Get(1))
+
+		if err != nil {
+			return err
+		}
+
+		sigBytes, err := hex.DecodeString(cctx.Args().Get(2))
+
+		if err != nil {
+			return err
+		}
+
+		sig, err := types.SignatureFromBytes(sigBytes)
+
+		if err != nil {
+			return err
+		}
+
+		if api.WalletVerify(ctx, addr, msg, &sig) {
+			fmt.Println("valid")
+			return nil
+		} else {
+			fmt.Println("invalid")
+			return NewCliError("CLI Verify called with invalid signature")
+		}
 	},
 }
