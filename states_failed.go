@@ -11,7 +11,6 @@ import (
 
 	"github.com/filecoin-project/lotus/api"
 	"github.com/filecoin-project/lotus/api/apibstore"
-	"github.com/filecoin-project/lotus/chain/actors"
 	"github.com/filecoin-project/lotus/chain/store"
 	"github.com/filecoin-project/lotus/chain/types"
 	"github.com/filecoin-project/lotus/lib/statemachine"
@@ -46,7 +45,7 @@ func (m *Sealing) checkPreCommitted(ctx statemachine.Context, sector SectorInfo)
 		return nil, true
 	}
 
-	var state actors.StorageMinerActorState
+	var state miner.State
 	if err := state.UnmarshalCBOR(bytes.NewReader(st)); err != nil {
 		log.Errorf("handleSealFailed(%d): temp error: unmarshaling miner state: %+v", sector.SectorID, err)
 		return nil, true
