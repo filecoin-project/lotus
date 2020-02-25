@@ -98,7 +98,7 @@ func checkSeal(ctx context.Context, maddr address.Address, si SectorInfo, api se
 	}
 
 	ccmt := &types.Message{
-		To:       actors.StorageMarketAddress,
+		To:       builtin.StorageMarketActorAddr,
 		From:     maddr,
 		Value:    types.NewInt(0),
 		GasPrice: types.NewInt(0),
