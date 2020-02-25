@@ -24,6 +24,7 @@ var walletCmd = &cli.Command{
 		walletImport,
 		walletGetDefault,
 		walletSetDefault,
+		walletSign,
 	},
 }
 
@@ -232,6 +233,47 @@ var walletImport = &cli.Command{
 		}
 
 		fmt.Printf("imported key %s successfully!\n", addr)
+		return nil
+	},
+}
+
+var walletSign = &cli.Command{
+	Name:      "sign",
+	Usage:     "sign a message",
+	ArgsUsage: "<signing address> <hexMessage>",
+	Action: func(cctx *cli.Context) error {
+		api, closer, err := GetFullNodeAPI(cctx)
+		if err != nil {
+			return err
+		}
+		defer closer()
+		ctx := ReqContext(cctx)
+
+		if !cctx.Args().Present() || cctx.NArg() != 2 {
+			return fmt.Errorf("must specify signing address and message to sign")
+		}
+
+		addr, err := address.NewFromString(cctx.Args().First())
+
+		if err != nil {
+			return err
+		}
+
+		msg, err := hex.DecodeString(cctx.Args().Get(1))
+
+		if err != nil {
+			return err
+		}
+
+		sig, err := api.WalletSign(ctx, addr, msg)
+
+		if err != nil {
+			return err
+		}
+
+		sigBytes := append([]byte{byte(sig.TypeCode())}, sig.Data...)
+
+		fmt.Println(hex.EncodeToString(sigBytes))
 		return nil
 	},
 }
