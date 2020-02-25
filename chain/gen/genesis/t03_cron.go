@@ -8,7 +8,6 @@ import (
 	bstore "github.com/ipfs/go-ipfs-blockstore"
 	cbor "github.com/ipfs/go-ipld-cbor"
 
-	"github.com/filecoin-project/lotus/chain/actors"
 	"github.com/filecoin-project/lotus/chain/types"
 )
 
@@ -26,7 +25,7 @@ func SetupCronActor(bs bstore.Blockstore) (*types.Actor, error) {
 	}
 
 	return &types.Actor{
-		Code:    actors.CronCodeCid,
+		Code:    builtin.CronActorCodeID,
 		Head:    stcid,
 		Nonce:   0,
 		Balance: types.NewInt(0),

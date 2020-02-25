@@ -2,13 +2,13 @@ package vm
 
 import (
 	"context"
+	"github.com/filecoin-project/specs-actors/actors/builtin"
 
 	"github.com/filecoin-project/specs-actors/actors/builtin/account"
 	"github.com/ipfs/go-cid"
 	cbor "github.com/ipfs/go-ipld-cbor"
 
 	"github.com/filecoin-project/go-address"
-	"github.com/filecoin-project/lotus/chain/actors"
 	"github.com/filecoin-project/lotus/chain/actors/aerrors"
 	"github.com/filecoin-project/lotus/chain/state"
 	"github.com/filecoin-project/lotus/chain/types"
@@ -64,7 +64,7 @@ func NewBLSAccountActor(st *state.StateTree, addr address.Address) (*types.Actor
 	}
 
 	nact := &types.Actor{
-		Code:    actors.AccountCodeCid,
+		Code:    builtin.AccountActorCodeID,
 		Balance: types.NewInt(0),
 		Head:    c,
 	}
@@ -74,7 +74,7 @@ func NewBLSAccountActor(st *state.StateTree, addr address.Address) (*types.Actor
 
 func NewSecp256k1AccountActor(st *state.StateTree, addr address.Address) (*types.Actor, aerrors.ActorError) {
 	nact := &types.Actor{
-		Code:    actors.AccountCodeCid,
+		Code:    builtin.AccountActorCodeID,
 		Balance: types.NewInt(0),
 		Head:    EmptyObjectCid,
 	}

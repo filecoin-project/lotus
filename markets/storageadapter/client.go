@@ -18,7 +18,6 @@ import (
 	"github.com/filecoin-project/go-fil-markets/storagemarket"
 
 	"github.com/filecoin-project/lotus/build"
-	"github.com/filecoin-project/lotus/chain/actors"
 	"github.com/filecoin-project/lotus/chain/events"
 	"github.com/filecoin-project/lotus/chain/market"
 	"github.com/filecoin-project/lotus/chain/stmgr"
@@ -123,7 +122,7 @@ func (n *ClientNodeAdapter) MostRecentStateId(ctx context.Context) (storagemarke
 func (n *ClientNodeAdapter) AddFunds(ctx context.Context, addr address.Address, amount abi.TokenAmount) error {
 	// (Provider Node API)
 	smsg, err := n.MpoolPushMessage(ctx, &types.Message{
-		To:       actors.StorageMarketAddress,
+		To:       builtin.StorageMarketActorAddr,
 		From:     addr,
 		Value:    amount,
 		GasPrice: types.NewInt(0),
@@ -178,7 +177,7 @@ func (c *ClientNodeAdapter) ValidatePublishedDeal(ctx context.Context, deal stor
 		return 0, xerrors.Errorf("deal wasn't published by storage provider: from=%s, provider=%s", pubmsg.From, deal.Proposal.Provider)
 	}
 
-	if pubmsg.To != actors.StorageMarketAddress {
+	if pubmsg.To != builtin.StorageMarketActorAddr {
 		return 0, xerrors.Errorf("deal publish message wasn't set to StorageMarket actor (to=%s)", pubmsg.To)
 	}
 

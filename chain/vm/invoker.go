@@ -24,7 +24,6 @@ import (
 	vmr "github.com/filecoin-project/specs-actors/actors/runtime"
 	"github.com/filecoin-project/specs-actors/actors/util/adt"
 
-	"github.com/filecoin-project/lotus/chain/actors"
 	"github.com/filecoin-project/lotus/chain/actors/aerrors"
 	"github.com/filecoin-project/lotus/chain/types"
 )
@@ -45,20 +44,20 @@ func NewInvoker() *invoker {
 
 	// add builtInCode using: register(cid, singleton)
 	inv.Register(builtin.SystemActorCodeID, system.Actor{}, adt.EmptyValue{})
-	inv.Register(actors.InitCodeCid, init_.Actor{}, init_.State{})
-	inv.Register(actors.CronCodeCid, cron.Actor{}, cron.State{})
-	inv.Register(actors.StoragePowerCodeCid, power.Actor{}, power.State{})
-	inv.Register(actors.StorageMarketCodeCid, market.Actor{}, market.State{})
-	inv.Register(actors.StorageMinerCodeCid, miner.Actor{}, miner.State{})
-	inv.Register(actors.MultisigCodeCid, multisig.Actor{}, multisig.State{})
-	inv.Register(actors.PaymentChannelCodeCid, paych.Actor{}, paych.State{})
+	inv.Register(builtin.InitActorCodeID, init_.Actor{}, init_.State{})
+	inv.Register(builtin.CronActorCodeID, cron.Actor{}, cron.State{})
+	inv.Register(builtin.StoragePowerActorCodeID, power.Actor{}, power.State{})
+	inv.Register(builtin.StorageMarketActorCodeID, market.Actor{}, market.State{})
+	inv.Register(builtin.StorageMinerActorCodeID, miner.Actor{}, miner.State{})
+	inv.Register(builtin.MultisigActorCodeID, multisig.Actor{}, multisig.State{})
+	inv.Register(builtin.PaymentChannelActorCodeID, paych.Actor{}, paych.State{})
 
 	return inv
 }
 
 func (inv *invoker) Invoke(act *types.Actor, vmctx types.VMContext, method abi.MethodNum, params []byte) ([]byte, aerrors.ActorError) {
 
-	if act.Code == actors.AccountCodeCid {
+	if act.Code == builtin.AccountActorCodeID {
 		return nil, aerrors.Newf(254, "cannot invoke methods on account actors")
 	}
 
@@ -264,7 +263,7 @@ func DecodeParams(b []byte, out interface{}) error {
 }
 
 func DumpActorState(code cid.Cid, b []byte) (interface{}, error) {
-	if code == actors.AccountCodeCid { // Account code special case
+	if code == builtin.AccountActorCodeID { // Account code special case
 		return nil, nil
 	}
 

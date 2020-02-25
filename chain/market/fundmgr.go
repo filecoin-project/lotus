@@ -63,7 +63,7 @@ func (fm *FundMgr) EnsureAvailable(ctx context.Context, addr address.Address, am
 	}
 
 	smsg, err := fm.mpool.MpoolPushMessage(ctx, &types.Message{
-		To:       actors.StorageMarketAddress,
+		To:       builtin.StorageMarketActorAddr,
 		From:     addr,
 		Value:    toAdd,
 		GasPrice: types.NewInt(0),

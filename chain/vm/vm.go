@@ -4,6 +4,7 @@ import (
 	"bytes"
 	"context"
 	"fmt"
+	"github.com/filecoin-project/specs-actors/actors/builtin"
 	"math/big"
 	"reflect"
 
@@ -27,7 +28,6 @@ import (
 	"github.com/filecoin-project/specs-actors/actors/runtime"
 
 	"github.com/filecoin-project/lotus/build"
-	"github.com/filecoin-project/lotus/chain/actors"
 	"github.com/filecoin-project/lotus/chain/actors/aerrors"
 	"github.com/filecoin-project/lotus/chain/state"
 	"github.com/filecoin-project/lotus/chain/types"
@@ -184,7 +184,7 @@ func (vmc *VMContext) ChargeGas(amount uint64) aerrors.ActorError {
 }
 
 func (vmc *VMContext) StateTree() (types.StateTree, aerrors.ActorError) {
-	if vmc.msg.To != actors.InitAddress {
+	if vmc.msg.To != builtin.InitActorAddr {
 		return nil, aerrors.Escalate(fmt.Errorf("only init actor can access state tree directly"), "invalid use of StateTree")
 	}
 
@@ -235,7 +235,7 @@ func ResolveToKeyAddr(state types.StateTree, cst cbor.IpldStore, addr address.Ad
 		return address.Undef, aerrors.Newf(1, "failed to find actor: %s", addr)
 	}
 
-	if act.Code != actors.AccountCodeCid {
+	if act.Code != builtin.AccountActorCodeID {
 		return address.Undef, aerrors.New(1, "address was not for an account actor")
 	}
 

@@ -106,7 +106,7 @@ var msigCreateCmd = &cli.Command{
 
 		// new actors are created by invoking 'exec' on the init actor with the constructor params
 		execParams := &init_.ExecParams{
-			CodeCID:           actors.MultisigCodeCid,
+			CodeCID:           builtin.MultisigActorCodeID,
 			ConstructorParams: enc,
 		}
 
@@ -117,7 +117,7 @@ var msigCreateCmd = &cli.Command{
 
 		// now we create the message to send this with
 		msg := types.Message{
-			To:       actors.InitAddress,
+			To:       builtin.InitActorAddr,
 			From:     sendAddr,
 			Method:   builtin.MethodsInit.Exec,
 			Params:   enc,

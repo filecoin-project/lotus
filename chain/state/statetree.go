@@ -3,6 +3,7 @@ package state
 import (
 	"context"
 	"fmt"
+	"github.com/filecoin-project/specs-actors/actors/builtin"
 	init_ "github.com/filecoin-project/specs-actors/actors/builtin/init"
 
 	"github.com/filecoin-project/specs-actors/actors/util/adt"
@@ -14,7 +15,6 @@ import (
 	"golang.org/x/xerrors"
 
 	"github.com/filecoin-project/go-address"
-	"github.com/filecoin-project/lotus/chain/actors"
 	"github.com/filecoin-project/lotus/chain/types"
 )
 
@@ -74,7 +74,7 @@ func (st *StateTree) LookupID(addr address.Address) (address.Address, error) {
 		return addr, nil
 	}
 
-	act, err := st.GetActor(actors.InitAddress)
+	act, err := st.GetActor(builtin.InitActorAddr)
 	if err != nil {
 		return address.Undef, xerrors.Errorf("getting init actor: %w", err)
 	}
@@ -157,7 +157,7 @@ func (st *StateTree) Snapshot(ctx context.Context) error {
 
 func (st *StateTree) RegisterNewAddress(addr address.Address, act *types.Actor) (address.Address, error) {
 	var out address.Address
-	err := st.MutateActor(actors.InitAddress, func(initact *types.Actor) error {
+	err := st.MutateActor(builtin.InitActorAddr, func(initact *types.Actor) error {
 		var ias init_.State
 		if err := st.Store.Get(context.TODO(), initact.Head, &ias); err != nil {
 			return err

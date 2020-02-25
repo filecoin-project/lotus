@@ -4,6 +4,7 @@ import (
 	"context"
 	"encoding/json"
 	"fmt"
+	"github.com/filecoin-project/specs-actors/actors/builtin"
 
 	init_ "github.com/filecoin-project/specs-actors/actors/builtin/init"
 	"github.com/ipfs/go-hamt-ipld"
@@ -11,7 +12,6 @@ import (
 	cbor "github.com/ipfs/go-ipld-cbor"
 	"golang.org/x/xerrors"
 
-	"github.com/filecoin-project/lotus/chain/actors"
 	"github.com/filecoin-project/lotus/chain/types"
 	"github.com/filecoin-project/lotus/genesis"
 )
@@ -61,7 +61,7 @@ func SetupInitActor(bs bstore.Blockstore, netname string, initialActors []genesi
 	}
 
 	act := &types.Actor{
-		Code: actors.InitCodeCid,
+		Code: builtin.InitActorCodeID,
 		Head: statecid,
 	}
 
