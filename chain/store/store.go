@@ -910,7 +910,7 @@ func (cs *ChainStore) GetRandomness(ctx context.Context, blks []cid.Cid, pers cr
 	span.AddAttributes(trace.Int64Attribute("round", round))
 
 	defer func() {
-		log.Warnf("getRand %v %d %d %x -> %x", blks, pers, round, entropy, out)
+		log.Infof("getRand %v %d %d %x -> %x", blks, pers, round, entropy, out)
 	}()
 
 	for {

@@ -4,8 +4,6 @@ import (
 	"bytes"
 	"context"
 	"encoding/binary"
-	"fmt"
-	"os"
 	"runtime/debug"
 
 	"github.com/filecoin-project/go-address"
@@ -55,12 +53,12 @@ func (rs *runtimeShim) shimCall(f func() interface{}) (rval []byte, aerr aerrors
 	defer func() {
 		if r := recover(); r != nil {
 			if ar, ok := r.(aerrors.ActorError); ok {
-				fmt.Fprintln(os.Stderr, "VM.Call failure: ", ar)
+				log.Warn("VM.Call failure: ", ar)
 				debug.PrintStack()
 				aerr = ar
 				return
 			}
-			fmt.Fprintln(os.Stderr, "caught one of those actor errors: ", r)
+			log.Warn("caught one of those actor errors: ", r)
 			debug.PrintStack()
 			log.Errorf("ERROR")
 			aerr = aerrors.Newf(1, "generic spec actors failure")
