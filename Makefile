@@ -77,8 +77,8 @@ lotus-shed: $(BUILD_DEPS)
 	rm -f lotus-shed
 	go build $(GOFLAGS) -o lotus-shed ./cmd/lotus-shed
 	go run github.com/GeertJohan/go.rice/rice append --exec lotus-shed -i ./build
-.PHONY: lotus-seal-worker
-BINS+=lotus-seal-worker
+.PHONY: lotus-shed
+BINS+=lotus-shed
 
 build: lotus lotus-storage-miner lotus-seal-worker
 	@[[ $$(type -P "lotus") ]] && echo "Caution: you have \
