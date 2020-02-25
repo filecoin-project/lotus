@@ -112,6 +112,13 @@
       "posts": []
     },
     {
+      "title": "Command Line Interface",
+      "slug": "en+cli",
+      "github": "en/cli.md",
+      "value": null,
+      "posts": []
+    },
+    {
       "title": "API",
       "slug": "en+api",
       "github": "en/api.md",
