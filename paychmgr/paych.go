@@ -53,7 +53,7 @@ func NewManager(sm *stmgr.StateManager, pchstore *Store, api ManagerApi) *Manage
 	}
 }
 
-func maxLaneFromState(st *actors.PaymentChannelActorState) (uint64, error) {
+func maxLaneFromState(st *paych.State) (uint64, error) {
 	maxLane := uint64(math.MaxInt64)
 	for _, state := range st.LaneStates {
 		if (state.ID)+1 > maxLane+1 {

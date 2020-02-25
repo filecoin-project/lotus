@@ -6,6 +6,7 @@ import (
 	"encoding/json"
 	"fmt"
 	"github.com/filecoin-project/specs-actors/actors/builtin"
+	"github.com/filecoin-project/specs-actors/actors/builtin/market"
 	miner2 "github.com/filecoin-project/specs-actors/actors/builtin/miner"
 	"github.com/filecoin-project/specs-actors/actors/builtin/power"
 	crypto2 "github.com/filecoin-project/specs-actors/actors/crypto"
@@ -308,7 +309,7 @@ func migratePreSealMeta(ctx context.Context, api lapi.FullNode, metadata string,
 	return nil
 }
 
-func findMarketDealID(ctx context.Context, api lapi.FullNode, deal actors.StorageDealProposal) (abi.DealID, error) {
+func findMarketDealID(ctx context.Context, api lapi.FullNode, deal market.DealProposal) (abi.DealID, error) {
 	// TODO: find a better way
 	//  (this is only used by genesis miners)
 

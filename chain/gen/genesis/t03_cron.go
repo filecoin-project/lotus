@@ -14,7 +14,7 @@ import (
 
 func SetupCronActor(bs bstore.Blockstore) (*types.Actor, error) {
 	cst := cbor.NewCborStore(bs)
-	cas := &actors.CronActorState{Entries: []cron.Entry{{
+	cas := &cron.State{Entries: []cron.Entry{{
 		Receiver:  builtin.StoragePowerActorAddr,
 		MethodNum: builtin.MethodsPower.OnEpochTickEnd,
 	},

@@ -7,12 +7,11 @@ import (
 	"github.com/filecoin-project/specs-actors/actors/builtin/paych"
 	xerrors "golang.org/x/xerrors"
 
-	"github.com/filecoin-project/lotus/chain/actors"
 	"github.com/filecoin-project/lotus/chain/types"
 )
 
-func (pm *Manager) loadPaychState(ctx context.Context, ch address.Address) (*types.Actor, *actors.PaymentChannelActorState, error) {
-	var pcast actors.PaymentChannelActorState
+func (pm *Manager) loadPaychState(ctx context.Context, ch address.Address) (*types.Actor, *paych.State, error) {
+	var pcast paych.State
 	act, err := pm.sm.LoadActorState(ctx, ch, &pcast, nil)
 	if err != nil {
 		return nil, nil, err

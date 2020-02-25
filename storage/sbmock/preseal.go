@@ -5,9 +5,9 @@ import (
 	commcid "github.com/filecoin-project/go-fil-commcid"
 	"github.com/filecoin-project/specs-actors/actors/abi"
 	"github.com/filecoin-project/specs-actors/actors/abi/big"
+	"github.com/filecoin-project/specs-actors/actors/builtin/market"
 	"github.com/filecoin-project/specs-actors/actors/crypto"
 
-	"github.com/filecoin-project/lotus/chain/actors"
 	"github.com/filecoin-project/lotus/chain/types"
 	"github.com/filecoin-project/lotus/chain/wallet"
 	"github.com/filecoin-project/lotus/genesis"
@@ -35,7 +35,7 @@ func PreSeal(ssize abi.SectorSize, maddr address.Address, sectors int) (*genesis
 		preseal.CommD = commD(sdata)
 		preseal.CommR = commDR(preseal.CommD[:])
 		preseal.SectorID = abi.SectorNumber(i + 1)
-		preseal.Deal = actors.StorageDealProposal{
+		preseal.Deal = market.DealProposal{
 			PieceCID:             commcid.PieceCommitmentV1ToCID(preseal.CommD[:]),
 			PieceSize:            abi.PaddedPieceSize(ssize),
 			Client:               maddr,
