@@ -6,6 +6,8 @@ import (
 	"io"
 	"io/ioutil"
 
+	"github.com/filecoin-project/specs-actors/actors/abi"
+
 	"github.com/filecoin-project/go-sectorbuilder"
 )
 
@@ -26,7 +28,7 @@ func commDR(in []byte) (out [32]byte) {
 }
 
 func commD(b []byte) [32]byte {
-	c, err := sectorbuilder.GeneratePieceCommitment(bytes.NewReader(b), uint64(len(b)))
+	c, err := sectorbuilder.GeneratePieceCommitment(bytes.NewReader(b), abi.UnpaddedPieceSize(len(b)))
 	if err != nil {
 		panic(err)
 	}

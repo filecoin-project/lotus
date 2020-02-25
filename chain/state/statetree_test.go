@@ -2,10 +2,10 @@ package state
 
 import (
 	"context"
+	"github.com/filecoin-project/specs-actors/actors/builtin"
 	"testing"
 
 	address "github.com/filecoin-project/go-address"
-	actors "github.com/filecoin-project/lotus/chain/actors"
 	"github.com/filecoin-project/lotus/chain/types"
 	cbor "github.com/ipfs/go-ipld-cbor"
 )
@@ -27,8 +27,8 @@ func BenchmarkStateTreeSet(b *testing.B) {
 		}
 		err = st.SetActor(a, &types.Actor{
 			Balance: types.NewInt(1258812523),
-			Code:    actors.StorageMinerCodeCid,
-			Head:    actors.AccountCodeCid,
+			Code:    builtin.StorageMinerActorCodeID,
+			Head:    builtin.AccountActorCodeID,
 			Nonce:   uint64(i),
 		})
 		if err != nil {
@@ -54,8 +54,8 @@ func BenchmarkStateTreeSetFlush(b *testing.B) {
 		}
 		err = st.SetActor(a, &types.Actor{
 			Balance: types.NewInt(1258812523),
-			Code:    actors.StorageMinerCodeCid,
-			Head:    actors.AccountCodeCid,
+			Code:    builtin.StorageMinerActorCodeID,
+			Head:    builtin.AccountActorCodeID,
 			Nonce:   uint64(i),
 		})
 		if err != nil {
@@ -80,8 +80,8 @@ func BenchmarkStateTree10kGetActor(b *testing.B) {
 		}
 		err = st.SetActor(a, &types.Actor{
 			Balance: types.NewInt(1258812523 + uint64(i)),
-			Code:    actors.StorageMinerCodeCid,
-			Head:    actors.AccountCodeCid,
+			Code:    builtin.StorageMinerActorCodeID,
+			Head:    builtin.AccountActorCodeID,
 			Nonce:   uint64(i),
 		})
 		if err != nil {
@@ -123,8 +123,8 @@ func TestSetCache(t *testing.T) {
 
 	act := &types.Actor{
 		Balance: types.NewInt(0),
-		Code:    actors.StorageMinerCodeCid,
-		Head:    actors.AccountCodeCid,
+		Code:    builtin.StorageMinerActorCodeID,
+		Head:    builtin.AccountActorCodeID,
 		Nonce:   0,
 	}
 

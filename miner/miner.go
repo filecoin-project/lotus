@@ -7,12 +7,14 @@ import (
 	"time"
 
 	"github.com/filecoin-project/go-address"
+	"github.com/filecoin-project/specs-actors/actors/abi"
+	"github.com/filecoin-project/specs-actors/actors/crypto"
+	lru "github.com/hashicorp/golang-lru"
+
 	"github.com/filecoin-project/lotus/api"
 	"github.com/filecoin-project/lotus/build"
-	"github.com/filecoin-project/lotus/chain/actors"
 	"github.com/filecoin-project/lotus/chain/gen"
 	"github.com/filecoin-project/lotus/chain/types"
-	lru "github.com/hashicorp/golang-lru"
 
 	logging "github.com/ipfs/go-log/v2"
 	"go.opencensus.io/trace"
@@ -243,7 +245,7 @@ eventLoop:
 
 type MiningBase struct {
 	ts         *types.TipSet
-	nullRounds uint64
+	nullRounds abi.ChainEpoch
 }
 
 func (m *Miner) GetBestMiningCandidate(ctx context.Context) (*MiningBase, error) {
@@ -340,42 +342,18 @@ func (m *Miner) mineOne(ctx context.Context, addr address.Address, base *MiningB
 	return b, nil
 }
 
-func (m *Miner) computeVRF(ctx context.Context, addr address.Address, input []byte) ([]byte, error) {
-	w, err := m.getMinerWorker(ctx, addr, types.EmptyTSK)
+func (m *Miner) computeTicket(ctx context.Context, addr address.Address, base *MiningBase) (*types.Ticket, error) {
+	w, err := m.api.StateMinerWorker(ctx, addr, types.EmptyTSK)
 	if err != nil {
 		return nil, err
 	}
 
-	return gen.ComputeVRF(ctx, m.api.WalletSign, w, addr, gen.DSepTicket, input)
-}
-
-func (m *Miner) getMinerWorker(ctx context.Context, addr address.Address, tsk types.TipSetKey) (address.Address, error) {
-	ret, err := m.api.StateCall(ctx, &types.Message{
-		From:   addr,
-		To:     addr,
-		Method: actors.MAMethods.GetWorkerAddr,
-	}, tsk)
+	input, err := m.api.ChainGetRandomness(ctx, base.ts.Key(), crypto.DomainSeparationTag_TicketProduction, base.ts.Height(), addr.Bytes())
 	if err != nil {
-		return address.Undef, xerrors.Errorf("failed to get miner worker addr: %w", err)
+		return nil, err
 	}
 
-	if ret.ExitCode != 0 {
-		return address.Undef, xerrors.Errorf("failed to get miner worker addr (exit code %d)", ret.ExitCode)
-	}
-
-	w, err := address.NewFromBytes(ret.Return)
-	if err != nil {
-		return address.Undef, xerrors.Errorf("GetWorkerAddr returned malformed address: %w", err)
-	}
-
-	return w, nil
-}
-
-func (m *Miner) computeTicket(ctx context.Context, addr address.Address, base *MiningBase) (*types.Ticket, error) {
-
-	vrfBase := base.ts.MinTicket().VRFProof
-
-	vrfOut, err := m.computeVRF(ctx, addr, vrfBase)
+	vrfOut, err := gen.ComputeVRF(ctx, m.api.WalletSign, w, input)
 	if err != nil {
 		return nil, err
 	}

@@ -3,6 +3,7 @@ package node
 import (
 	"context"
 	"errors"
+	"github.com/filecoin-project/specs-actors/actors/runtime"
 	"time"
 
 	sectorbuilder "github.com/filecoin-project/go-sectorbuilder"
@@ -37,6 +38,7 @@ import (
 	"github.com/filecoin-project/lotus/chain/types"
 	"github.com/filecoin-project/lotus/chain/vm"
 	"github.com/filecoin-project/lotus/chain/wallet"
+	"github.com/filecoin-project/lotus/lib/peermgr"
 	_ "github.com/filecoin-project/lotus/lib/sigs/bls"
 	_ "github.com/filecoin-project/lotus/lib/sigs/secp"
 	"github.com/filecoin-project/lotus/markets/storageadapter"
@@ -50,8 +52,7 @@ import (
 	"github.com/filecoin-project/lotus/node/modules/lp2p"
 	"github.com/filecoin-project/lotus/node/modules/testing"
 	"github.com/filecoin-project/lotus/node/repo"
-	"github.com/filecoin-project/lotus/paych"
-	"github.com/filecoin-project/lotus/peermgr"
+	"github.com/filecoin-project/lotus/paychmgr"
 	"github.com/filecoin-project/lotus/storage"
 	"github.com/filecoin-project/lotus/storage/sealing"
 	"github.com/filecoin-project/lotus/storage/sectorblocks"
@@ -203,7 +204,7 @@ func Online() Option {
 			Override(HandleIncomingMessagesKey, modules.HandleIncomingMessages),
 
 			Override(new(sectorbuilder.Verifier), sectorbuilder.ProofVerifier),
-			Override(new(*types.VMSyscalls), vm.Syscalls),
+			Override(new(runtime.Syscalls), vm.Syscalls),
 			Override(new(*store.ChainStore), modules.ChainStore),
 			Override(new(*stmgr.StateManager), stmgr.NewStateManager),
 			Override(new(*wallet.Wallet), wallet.NewWallet),
@@ -244,8 +245,8 @@ func Online() Option {
 			Override(RegisterClientValidatorKey, modules.RegisterClientValidator),
 			Override(RunDealClientKey, modules.RunDealClient),
 
-			Override(new(*paych.Store), paych.NewStore),
-			Override(new(*paych.Manager), paych.NewManager),
+			Override(new(*paychmgr.Store), paychmgr.NewStore),
+			Override(new(*paychmgr.Manager), paychmgr.NewManager),
 			Override(new(*market.FundMgr), market.NewFundMgr),
 		),
 

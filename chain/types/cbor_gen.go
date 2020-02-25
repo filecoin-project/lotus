@@ -7,7 +7,9 @@ import (
 	"io"
 	"math"
 
-	"github.com/ipfs/go-cid"
+	"github.com/filecoin-project/specs-actors/actors/abi"
+	"github.com/filecoin-project/specs-actors/actors/crypto"
+	cid "github.com/ipfs/go-cid"
 	cbg "github.com/whyrusleeping/cbor-gen"
 	xerrors "golang.org/x/xerrors"
 )
@@ -52,14 +54,20 @@ func (t *BlockHeader) MarshalCBOR(w io.Writer) error {
 		}
 	}
 
-	// t.ParentWeight (types.BigInt) (struct)
+	// t.ParentWeight (big.Int) (struct)
 	if err := t.ParentWeight.MarshalCBOR(w); err != nil {
 		return err
 	}
 
-	// t.Height (uint64) (uint64)
-	if _, err := w.Write(cbg.CborEncodeMajorType(cbg.MajUnsignedInt, uint64(t.Height))); err != nil {
-		return err
+	// t.Height (abi.ChainEpoch) (int64)
+	if t.Height >= 0 {
+		if _, err := w.Write(cbg.CborEncodeMajorType(cbg.MajUnsignedInt, uint64(t.Height))); err != nil {
+			return err
+		}
+	} else {
+		if _, err := w.Write(cbg.CborEncodeMajorType(cbg.MajNegativeInt, uint64(-t.Height)-1)); err != nil {
+			return err
+		}
 	}
 
 	// t.ParentStateRoot (cid.Cid) (struct)
@@ -80,25 +88,28 @@ func (t *BlockHeader) MarshalCBOR(w io.Writer) error {
 		return xerrors.Errorf("failed to write cid field t.Messages: %w", err)
 	}
 
-	// t.BLSAggregate (types.Signature) (struct)
+	// t.BLSAggregate (crypto.Signature) (struct)
 	if err := t.BLSAggregate.MarshalCBOR(w); err != nil {
 		return err
 	}
 
 	// t.Timestamp (uint64) (uint64)
+
 	if _, err := w.Write(cbg.CborEncodeMajorType(cbg.MajUnsignedInt, uint64(t.Timestamp))); err != nil {
 		return err
 	}
 
-	// t.BlockSig (types.Signature) (struct)
+	// t.BlockSig (crypto.Signature) (struct)
 	if err := t.BlockSig.MarshalCBOR(w); err != nil {
 		return err
 	}
 
 	// t.ForkSignaling (uint64) (uint64)
+
 	if _, err := w.Write(cbg.CborEncodeMajorType(cbg.MajUnsignedInt, uint64(t.ForkSignaling))); err != nil {
 		return err
 	}
+
 	return nil
 }
 
@@ -182,7 +193,7 @@ func (t *BlockHeader) UnmarshalCBOR(r io.Reader) error {
 		t.Parents[i] = c
 	}
 
-	// t.ParentWeight (types.BigInt) (struct)
+	// t.ParentWeight (big.Int) (struct)
 
 	{
 
@@ -191,16 +202,31 @@ func (t *BlockHeader) UnmarshalCBOR(r io.Reader) error {
 		}
 
 	}
-	// t.Height (uint64) (uint64)
+	// t.Height (abi.ChainEpoch) (int64)
+	{
+		maj, extra, err := cbg.CborReadHeader(br)
+		var extraI int64
+		if err != nil {
+			return err
+		}
+		switch maj {
+		case cbg.MajUnsignedInt:
+			extraI = int64(extra)
+			if extraI < 0 {
+				return fmt.Errorf("int64 positive overflow")
+			}
+		case cbg.MajNegativeInt:
+			extraI = int64(extra)
+			if extraI < 0 {
+				return fmt.Errorf("int64 negative oveflow")
+			}
+			extraI = -1 - extraI
+		default:
+			return fmt.Errorf("wrong type for int64 field: %d", maj)
+		}
 
-	maj, extra, err = cbg.CborReadHeader(br)
-	if err != nil {
-		return err
+		t.Height = abi.ChainEpoch(extraI)
 	}
-	if maj != cbg.MajUnsignedInt {
-		return fmt.Errorf("wrong type for uint64 field")
-	}
-	t.Height = uint64(extra)
 	// t.ParentStateRoot (cid.Cid) (struct)
 
 	{
@@ -237,7 +263,7 @@ func (t *BlockHeader) UnmarshalCBOR(r io.Reader) error {
 		t.Messages = c
 
 	}
-	// t.BLSAggregate (types.Signature) (struct)
+	// t.BLSAggregate (crypto.Signature) (struct)
 
 	{
 
@@ -248,15 +274,19 @@ func (t *BlockHeader) UnmarshalCBOR(r io.Reader) error {
 	}
 	// t.Timestamp (uint64) (uint64)
 
-	maj, extra, err = cbg.CborReadHeader(br)
-	if err != nil {
-		return err
+	{
+
+		maj, extra, err = cbg.CborReadHeader(br)
+		if err != nil {
+			return err
+		}
+		if maj != cbg.MajUnsignedInt {
+			return fmt.Errorf("wrong type for uint64 field")
+		}
+		t.Timestamp = uint64(extra)
+
 	}
-	if maj != cbg.MajUnsignedInt {
-		return fmt.Errorf("wrong type for uint64 field")
-	}
-	t.Timestamp = uint64(extra)
-	// t.BlockSig (types.Signature) (struct)
+	// t.BlockSig (crypto.Signature) (struct)
 
 	{
 
@@ -270,7 +300,7 @@ func (t *BlockHeader) UnmarshalCBOR(r io.Reader) error {
 				return err
 			}
 		} else {
-			t.BlockSig = new(Signature)
+			t.BlockSig = new(crypto.Signature)
 			if err := t.BlockSig.UnmarshalCBOR(br); err != nil {
 				return err
 			}
@@ -279,14 +309,18 @@ func (t *BlockHeader) UnmarshalCBOR(r io.Reader) error {
 	}
 	// t.ForkSignaling (uint64) (uint64)
 
-	maj, extra, err = cbg.CborReadHeader(br)
-	if err != nil {
-		return err
+	{
+
+		maj, extra, err = cbg.CborReadHeader(br)
+		if err != nil {
+			return err
+		}
+		if maj != cbg.MajUnsignedInt {
+			return fmt.Errorf("wrong type for uint64 field")
+		}
+		t.ForkSignaling = uint64(extra)
+
 	}
-	if maj != cbg.MajUnsignedInt {
-		return fmt.Errorf("wrong type for uint64 field")
-	}
-	t.ForkSignaling = uint64(extra)
 	return nil
 }
 
@@ -497,15 +531,18 @@ func (t *EPostTicket) MarshalCBOR(w io.Writer) error {
 		return err
 	}
 
-	// t.SectorID (uint64) (uint64)
+	// t.SectorID (abi.SectorNumber) (uint64)
+
 	if _, err := w.Write(cbg.CborEncodeMajorType(cbg.MajUnsignedInt, uint64(t.SectorID))); err != nil {
 		return err
 	}
 
 	// t.ChallengeIndex (uint64) (uint64)
+
 	if _, err := w.Write(cbg.CborEncodeMajorType(cbg.MajUnsignedInt, uint64(t.ChallengeIndex))); err != nil {
 		return err
 	}
+
 	return nil
 }
 
@@ -541,26 +578,34 @@ func (t *EPostTicket) UnmarshalCBOR(r io.Reader) error {
 	if _, err := io.ReadFull(br, t.Partial); err != nil {
 		return err
 	}
-	// t.SectorID (uint64) (uint64)
+	// t.SectorID (abi.SectorNumber) (uint64)
 
-	maj, extra, err = cbg.CborReadHeader(br)
-	if err != nil {
-		return err
+	{
+
+		maj, extra, err = cbg.CborReadHeader(br)
+		if err != nil {
+			return err
+		}
+		if maj != cbg.MajUnsignedInt {
+			return fmt.Errorf("wrong type for uint64 field")
+		}
+		t.SectorID = abi.SectorNumber(extra)
+
 	}
-	if maj != cbg.MajUnsignedInt {
-		return fmt.Errorf("wrong type for uint64 field")
-	}
-	t.SectorID = uint64(extra)
 	// t.ChallengeIndex (uint64) (uint64)
 
-	maj, extra, err = cbg.CborReadHeader(br)
-	if err != nil {
-		return err
+	{
+
+		maj, extra, err = cbg.CborReadHeader(br)
+		if err != nil {
+			return err
+		}
+		if maj != cbg.MajUnsignedInt {
+			return fmt.Errorf("wrong type for uint64 field")
+		}
+		t.ChallengeIndex = uint64(extra)
+
 	}
-	if maj != cbg.MajUnsignedInt {
-		return fmt.Errorf("wrong type for uint64 field")
-	}
-	t.ChallengeIndex = uint64(extra)
 	return nil
 }
 
@@ -584,26 +629,28 @@ func (t *Message) MarshalCBOR(w io.Writer) error {
 	}
 
 	// t.Nonce (uint64) (uint64)
+
 	if _, err := w.Write(cbg.CborEncodeMajorType(cbg.MajUnsignedInt, uint64(t.Nonce))); err != nil {
 		return err
 	}
 
-	// t.Value (types.BigInt) (struct)
+	// t.Value (big.Int) (struct)
 	if err := t.Value.MarshalCBOR(w); err != nil {
 		return err
 	}
 
-	// t.GasPrice (types.BigInt) (struct)
+	// t.GasPrice (big.Int) (struct)
 	if err := t.GasPrice.MarshalCBOR(w); err != nil {
 		return err
 	}
 
-	// t.GasLimit (types.BigInt) (struct)
+	// t.GasLimit (big.Int) (struct)
 	if err := t.GasLimit.MarshalCBOR(w); err != nil {
 		return err
 	}
 
-	// t.Method (uint64) (uint64)
+	// t.Method (abi.MethodNum) (uint64)
+
 	if _, err := w.Write(cbg.CborEncodeMajorType(cbg.MajUnsignedInt, uint64(t.Method))); err != nil {
 		return err
 	}
@@ -657,15 +704,19 @@ func (t *Message) UnmarshalCBOR(r io.Reader) error {
 	}
 	// t.Nonce (uint64) (uint64)
 
-	maj, extra, err = cbg.CborReadHeader(br)
-	if err != nil {
-		return err
+	{
+
+		maj, extra, err = cbg.CborReadHeader(br)
+		if err != nil {
+			return err
+		}
+		if maj != cbg.MajUnsignedInt {
+			return fmt.Errorf("wrong type for uint64 field")
+		}
+		t.Nonce = uint64(extra)
+
 	}
-	if maj != cbg.MajUnsignedInt {
-		return fmt.Errorf("wrong type for uint64 field")
-	}
-	t.Nonce = uint64(extra)
-	// t.Value (types.BigInt) (struct)
+	// t.Value (big.Int) (struct)
 
 	{
 
@@ -674,7 +725,7 @@ func (t *Message) UnmarshalCBOR(r io.Reader) error {
 		}
 
 	}
-	// t.GasPrice (types.BigInt) (struct)
+	// t.GasPrice (big.Int) (struct)
 
 	{
 
@@ -683,7 +734,7 @@ func (t *Message) UnmarshalCBOR(r io.Reader) error {
 		}
 
 	}
-	// t.GasLimit (types.BigInt) (struct)
+	// t.GasLimit (big.Int) (struct)
 
 	{
 
@@ -692,16 +743,20 @@ func (t *Message) UnmarshalCBOR(r io.Reader) error {
 		}
 
 	}
-	// t.Method (uint64) (uint64)
+	// t.Method (abi.MethodNum) (uint64)
 
-	maj, extra, err = cbg.CborReadHeader(br)
-	if err != nil {
-		return err
+	{
+
+		maj, extra, err = cbg.CborReadHeader(br)
+		if err != nil {
+			return err
+		}
+		if maj != cbg.MajUnsignedInt {
+			return fmt.Errorf("wrong type for uint64 field")
+		}
+		t.Method = abi.MethodNum(extra)
+
 	}
-	if maj != cbg.MajUnsignedInt {
-		return fmt.Errorf("wrong type for uint64 field")
-	}
-	t.Method = uint64(extra)
 	// t.Params ([]uint8) (slice)
 
 	maj, extra, err = cbg.CborReadHeader(br)
@@ -736,7 +791,7 @@ func (t *SignedMessage) MarshalCBOR(w io.Writer) error {
 		return err
 	}
 
-	// t.Signature (types.Signature) (struct)
+	// t.Signature (crypto.Signature) (struct)
 	if err := t.Signature.MarshalCBOR(w); err != nil {
 		return err
 	}
@@ -767,7 +822,7 @@ func (t *SignedMessage) UnmarshalCBOR(r io.Reader) error {
 		}
 
 	}
-	// t.Signature (types.Signature) (struct)
+	// t.Signature (crypto.Signature) (struct)
 
 	{
 
@@ -845,377 +900,6 @@ func (t *MsgMeta) UnmarshalCBOR(r io.Reader) error {
 	return nil
 }
 
-func (t *SignedVoucher) MarshalCBOR(w io.Writer) error {
-	if t == nil {
-		_, err := w.Write(cbg.CborNull)
-		return err
-	}
-	if _, err := w.Write([]byte{137}); err != nil {
-		return err
-	}
-
-	// t.TimeLock (uint64) (uint64)
-	if _, err := w.Write(cbg.CborEncodeMajorType(cbg.MajUnsignedInt, uint64(t.TimeLock))); err != nil {
-		return err
-	}
-
-	// t.SecretPreimage ([]uint8) (slice)
-	if len(t.SecretPreimage) > cbg.ByteArrayMaxLen {
-		return xerrors.Errorf("Byte array in field t.SecretPreimage was too long")
-	}
-
-	if _, err := w.Write(cbg.CborEncodeMajorType(cbg.MajByteString, uint64(len(t.SecretPreimage)))); err != nil {
-		return err
-	}
-	if _, err := w.Write(t.SecretPreimage); err != nil {
-		return err
-	}
-
-	// t.Extra (types.ModVerifyParams) (struct)
-	if err := t.Extra.MarshalCBOR(w); err != nil {
-		return err
-	}
-
-	// t.Lane (uint64) (uint64)
-	if _, err := w.Write(cbg.CborEncodeMajorType(cbg.MajUnsignedInt, uint64(t.Lane))); err != nil {
-		return err
-	}
-
-	// t.Nonce (uint64) (uint64)
-	if _, err := w.Write(cbg.CborEncodeMajorType(cbg.MajUnsignedInt, uint64(t.Nonce))); err != nil {
-		return err
-	}
-
-	// t.Amount (types.BigInt) (struct)
-	if err := t.Amount.MarshalCBOR(w); err != nil {
-		return err
-	}
-
-	// t.MinCloseHeight (uint64) (uint64)
-	if _, err := w.Write(cbg.CborEncodeMajorType(cbg.MajUnsignedInt, uint64(t.MinCloseHeight))); err != nil {
-		return err
-	}
-
-	// t.Merges ([]types.Merge) (slice)
-	if len(t.Merges) > cbg.MaxLength {
-		return xerrors.Errorf("Slice value in field t.Merges was too long")
-	}
-
-	if _, err := w.Write(cbg.CborEncodeMajorType(cbg.MajArray, uint64(len(t.Merges)))); err != nil {
-		return err
-	}
-	for _, v := range t.Merges {
-		if err := v.MarshalCBOR(w); err != nil {
-			return err
-		}
-	}
-
-	// t.Signature (types.Signature) (struct)
-	if err := t.Signature.MarshalCBOR(w); err != nil {
-		return err
-	}
-	return nil
-}
-
-func (t *SignedVoucher) UnmarshalCBOR(r io.Reader) error {
-	br := cbg.GetPeeker(r)
-
-	maj, extra, err := cbg.CborReadHeader(br)
-	if err != nil {
-		return err
-	}
-	if maj != cbg.MajArray {
-		return fmt.Errorf("cbor input should be of type array")
-	}
-
-	if extra != 9 {
-		return fmt.Errorf("cbor input had wrong number of fields")
-	}
-
-	// t.TimeLock (uint64) (uint64)
-
-	maj, extra, err = cbg.CborReadHeader(br)
-	if err != nil {
-		return err
-	}
-	if maj != cbg.MajUnsignedInt {
-		return fmt.Errorf("wrong type for uint64 field")
-	}
-	t.TimeLock = uint64(extra)
-	// t.SecretPreimage ([]uint8) (slice)
-
-	maj, extra, err = cbg.CborReadHeader(br)
-	if err != nil {
-		return err
-	}
-
-	if extra > cbg.ByteArrayMaxLen {
-		return fmt.Errorf("t.SecretPreimage: byte array too large (%d)", extra)
-	}
-	if maj != cbg.MajByteString {
-		return fmt.Errorf("expected byte array")
-	}
-	t.SecretPreimage = make([]byte, extra)
-	if _, err := io.ReadFull(br, t.SecretPreimage); err != nil {
-		return err
-	}
-	// t.Extra (types.ModVerifyParams) (struct)
-
-	{
-
-		pb, err := br.PeekByte()
-		if err != nil {
-			return err
-		}
-		if pb == cbg.CborNull[0] {
-			var nbuf [1]byte
-			if _, err := br.Read(nbuf[:]); err != nil {
-				return err
-			}
-		} else {
-			t.Extra = new(ModVerifyParams)
-			if err := t.Extra.UnmarshalCBOR(br); err != nil {
-				return err
-			}
-		}
-
-	}
-	// t.Lane (uint64) (uint64)
-
-	maj, extra, err = cbg.CborReadHeader(br)
-	if err != nil {
-		return err
-	}
-	if maj != cbg.MajUnsignedInt {
-		return fmt.Errorf("wrong type for uint64 field")
-	}
-	t.Lane = uint64(extra)
-	// t.Nonce (uint64) (uint64)
-
-	maj, extra, err = cbg.CborReadHeader(br)
-	if err != nil {
-		return err
-	}
-	if maj != cbg.MajUnsignedInt {
-		return fmt.Errorf("wrong type for uint64 field")
-	}
-	t.Nonce = uint64(extra)
-	// t.Amount (types.BigInt) (struct)
-
-	{
-
-		if err := t.Amount.UnmarshalCBOR(br); err != nil {
-			return err
-		}
-
-	}
-	// t.MinCloseHeight (uint64) (uint64)
-
-	maj, extra, err = cbg.CborReadHeader(br)
-	if err != nil {
-		return err
-	}
-	if maj != cbg.MajUnsignedInt {
-		return fmt.Errorf("wrong type for uint64 field")
-	}
-	t.MinCloseHeight = uint64(extra)
-	// t.Merges ([]types.Merge) (slice)
-
-	maj, extra, err = cbg.CborReadHeader(br)
-	if err != nil {
-		return err
-	}
-
-	if extra > cbg.MaxLength {
-		return fmt.Errorf("t.Merges: array too large (%d)", extra)
-	}
-
-	if maj != cbg.MajArray {
-		return fmt.Errorf("expected cbor array")
-	}
-	if extra > 0 {
-		t.Merges = make([]Merge, extra)
-	}
-	for i := 0; i < int(extra); i++ {
-
-		var v Merge
-		if err := v.UnmarshalCBOR(br); err != nil {
-			return err
-		}
-
-		t.Merges[i] = v
-	}
-
-	// t.Signature (types.Signature) (struct)
-
-	{
-
-		pb, err := br.PeekByte()
-		if err != nil {
-			return err
-		}
-		if pb == cbg.CborNull[0] {
-			var nbuf [1]byte
-			if _, err := br.Read(nbuf[:]); err != nil {
-				return err
-			}
-		} else {
-			t.Signature = new(Signature)
-			if err := t.Signature.UnmarshalCBOR(br); err != nil {
-				return err
-			}
-		}
-
-	}
-	return nil
-}
-
-func (t *ModVerifyParams) MarshalCBOR(w io.Writer) error {
-	if t == nil {
-		_, err := w.Write(cbg.CborNull)
-		return err
-	}
-	if _, err := w.Write([]byte{131}); err != nil {
-		return err
-	}
-
-	// t.Actor (address.Address) (struct)
-	if err := t.Actor.MarshalCBOR(w); err != nil {
-		return err
-	}
-
-	// t.Method (uint64) (uint64)
-	if _, err := w.Write(cbg.CborEncodeMajorType(cbg.MajUnsignedInt, uint64(t.Method))); err != nil {
-		return err
-	}
-
-	// t.Data ([]uint8) (slice)
-	if len(t.Data) > cbg.ByteArrayMaxLen {
-		return xerrors.Errorf("Byte array in field t.Data was too long")
-	}
-
-	if _, err := w.Write(cbg.CborEncodeMajorType(cbg.MajByteString, uint64(len(t.Data)))); err != nil {
-		return err
-	}
-	if _, err := w.Write(t.Data); err != nil {
-		return err
-	}
-	return nil
-}
-
-func (t *ModVerifyParams) UnmarshalCBOR(r io.Reader) error {
-	br := cbg.GetPeeker(r)
-
-	maj, extra, err := cbg.CborReadHeader(br)
-	if err != nil {
-		return err
-	}
-	if maj != cbg.MajArray {
-		return fmt.Errorf("cbor input should be of type array")
-	}
-
-	if extra != 3 {
-		return fmt.Errorf("cbor input had wrong number of fields")
-	}
-
-	// t.Actor (address.Address) (struct)
-
-	{
-
-		if err := t.Actor.UnmarshalCBOR(br); err != nil {
-			return err
-		}
-
-	}
-	// t.Method (uint64) (uint64)
-
-	maj, extra, err = cbg.CborReadHeader(br)
-	if err != nil {
-		return err
-	}
-	if maj != cbg.MajUnsignedInt {
-		return fmt.Errorf("wrong type for uint64 field")
-	}
-	t.Method = uint64(extra)
-	// t.Data ([]uint8) (slice)
-
-	maj, extra, err = cbg.CborReadHeader(br)
-	if err != nil {
-		return err
-	}
-
-	if extra > cbg.ByteArrayMaxLen {
-		return fmt.Errorf("t.Data: byte array too large (%d)", extra)
-	}
-	if maj != cbg.MajByteString {
-		return fmt.Errorf("expected byte array")
-	}
-	t.Data = make([]byte, extra)
-	if _, err := io.ReadFull(br, t.Data); err != nil {
-		return err
-	}
-	return nil
-}
-
-func (t *Merge) MarshalCBOR(w io.Writer) error {
-	if t == nil {
-		_, err := w.Write(cbg.CborNull)
-		return err
-	}
-	if _, err := w.Write([]byte{130}); err != nil {
-		return err
-	}
-
-	// t.Lane (uint64) (uint64)
-	if _, err := w.Write(cbg.CborEncodeMajorType(cbg.MajUnsignedInt, uint64(t.Lane))); err != nil {
-		return err
-	}
-
-	// t.Nonce (uint64) (uint64)
-	if _, err := w.Write(cbg.CborEncodeMajorType(cbg.MajUnsignedInt, uint64(t.Nonce))); err != nil {
-		return err
-	}
-	return nil
-}
-
-func (t *Merge) UnmarshalCBOR(r io.Reader) error {
-	br := cbg.GetPeeker(r)
-
-	maj, extra, err := cbg.CborReadHeader(br)
-	if err != nil {
-		return err
-	}
-	if maj != cbg.MajArray {
-		return fmt.Errorf("cbor input should be of type array")
-	}
-
-	if extra != 2 {
-		return fmt.Errorf("cbor input had wrong number of fields")
-	}
-
-	// t.Lane (uint64) (uint64)
-
-	maj, extra, err = cbg.CborReadHeader(br)
-	if err != nil {
-		return err
-	}
-	if maj != cbg.MajUnsignedInt {
-		return fmt.Errorf("wrong type for uint64 field")
-	}
-	t.Lane = uint64(extra)
-	// t.Nonce (uint64) (uint64)
-
-	maj, extra, err = cbg.CborReadHeader(br)
-	if err != nil {
-		return err
-	}
-	if maj != cbg.MajUnsignedInt {
-		return fmt.Errorf("wrong type for uint64 field")
-	}
-	t.Nonce = uint64(extra)
-	return nil
-}
-
 func (t *Actor) MarshalCBOR(w io.Writer) error {
 	if t == nil {
 		_, err := w.Write(cbg.CborNull)
@@ -1238,11 +922,12 @@ func (t *Actor) MarshalCBOR(w io.Writer) error {
 	}
 
 	// t.Nonce (uint64) (uint64)
+
 	if _, err := w.Write(cbg.CborEncodeMajorType(cbg.MajUnsignedInt, uint64(t.Nonce))); err != nil {
 		return err
 	}
 
-	// t.Balance (types.BigInt) (struct)
+	// t.Balance (big.Int) (struct)
 	if err := t.Balance.MarshalCBOR(w); err != nil {
 		return err
 	}
@@ -1290,15 +975,19 @@ func (t *Actor) UnmarshalCBOR(r io.Reader) error {
 	}
 	// t.Nonce (uint64) (uint64)
 
-	maj, extra, err = cbg.CborReadHeader(br)
-	if err != nil {
-		return err
+	{
+
+		maj, extra, err = cbg.CborReadHeader(br)
+		if err != nil {
+			return err
+		}
+		if maj != cbg.MajUnsignedInt {
+			return fmt.Errorf("wrong type for uint64 field")
+		}
+		t.Nonce = uint64(extra)
+
 	}
-	if maj != cbg.MajUnsignedInt {
-		return fmt.Errorf("wrong type for uint64 field")
-	}
-	t.Nonce = uint64(extra)
-	// t.Balance (types.BigInt) (struct)
+	// t.Balance (big.Int) (struct)
 
 	{
 
@@ -1336,7 +1025,7 @@ func (t *MessageReceipt) MarshalCBOR(w io.Writer) error {
 		return err
 	}
 
-	// t.GasUsed (types.BigInt) (struct)
+	// t.GasUsed (big.Int) (struct)
 	if err := t.GasUsed.MarshalCBOR(w); err != nil {
 		return err
 	}
@@ -1388,7 +1077,7 @@ func (t *MessageReceipt) UnmarshalCBOR(r io.Reader) error {
 	if _, err := io.ReadFull(br, t.Return); err != nil {
 		return err
 	}
-	// t.GasUsed (types.BigInt) (struct)
+	// t.GasUsed (big.Int) (struct)
 
 	{
 
@@ -1535,204 +1224,6 @@ func (t *BlockMsg) UnmarshalCBOR(r io.Reader) error {
 	return nil
 }
 
-func (t *SignedStorageAsk) MarshalCBOR(w io.Writer) error {
-	if t == nil {
-		_, err := w.Write(cbg.CborNull)
-		return err
-	}
-	if _, err := w.Write([]byte{130}); err != nil {
-		return err
-	}
-
-	// t.Ask (types.StorageAsk) (struct)
-	if err := t.Ask.MarshalCBOR(w); err != nil {
-		return err
-	}
-
-	// t.Signature (types.Signature) (struct)
-	if err := t.Signature.MarshalCBOR(w); err != nil {
-		return err
-	}
-	return nil
-}
-
-func (t *SignedStorageAsk) UnmarshalCBOR(r io.Reader) error {
-	br := cbg.GetPeeker(r)
-
-	maj, extra, err := cbg.CborReadHeader(br)
-	if err != nil {
-		return err
-	}
-	if maj != cbg.MajArray {
-		return fmt.Errorf("cbor input should be of type array")
-	}
-
-	if extra != 2 {
-		return fmt.Errorf("cbor input had wrong number of fields")
-	}
-
-	// t.Ask (types.StorageAsk) (struct)
-
-	{
-
-		pb, err := br.PeekByte()
-		if err != nil {
-			return err
-		}
-		if pb == cbg.CborNull[0] {
-			var nbuf [1]byte
-			if _, err := br.Read(nbuf[:]); err != nil {
-				return err
-			}
-		} else {
-			t.Ask = new(StorageAsk)
-			if err := t.Ask.UnmarshalCBOR(br); err != nil {
-				return err
-			}
-		}
-
-	}
-	// t.Signature (types.Signature) (struct)
-
-	{
-
-		pb, err := br.PeekByte()
-		if err != nil {
-			return err
-		}
-		if pb == cbg.CborNull[0] {
-			var nbuf [1]byte
-			if _, err := br.Read(nbuf[:]); err != nil {
-				return err
-			}
-		} else {
-			t.Signature = new(Signature)
-			if err := t.Signature.UnmarshalCBOR(br); err != nil {
-				return err
-			}
-		}
-
-	}
-	return nil
-}
-
-func (t *StorageAsk) MarshalCBOR(w io.Writer) error {
-	if t == nil {
-		_, err := w.Write(cbg.CborNull)
-		return err
-	}
-	if _, err := w.Write([]byte{134}); err != nil {
-		return err
-	}
-
-	// t.Price (types.BigInt) (struct)
-	if err := t.Price.MarshalCBOR(w); err != nil {
-		return err
-	}
-
-	// t.MinPieceSize (uint64) (uint64)
-	if _, err := w.Write(cbg.CborEncodeMajorType(cbg.MajUnsignedInt, uint64(t.MinPieceSize))); err != nil {
-		return err
-	}
-
-	// t.Miner (address.Address) (struct)
-	if err := t.Miner.MarshalCBOR(w); err != nil {
-		return err
-	}
-
-	// t.Timestamp (uint64) (uint64)
-	if _, err := w.Write(cbg.CborEncodeMajorType(cbg.MajUnsignedInt, uint64(t.Timestamp))); err != nil {
-		return err
-	}
-
-	// t.Expiry (uint64) (uint64)
-	if _, err := w.Write(cbg.CborEncodeMajorType(cbg.MajUnsignedInt, uint64(t.Expiry))); err != nil {
-		return err
-	}
-
-	// t.SeqNo (uint64) (uint64)
-	if _, err := w.Write(cbg.CborEncodeMajorType(cbg.MajUnsignedInt, uint64(t.SeqNo))); err != nil {
-		return err
-	}
-	return nil
-}
-
-func (t *StorageAsk) UnmarshalCBOR(r io.Reader) error {
-	br := cbg.GetPeeker(r)
-
-	maj, extra, err := cbg.CborReadHeader(br)
-	if err != nil {
-		return err
-	}
-	if maj != cbg.MajArray {
-		return fmt.Errorf("cbor input should be of type array")
-	}
-
-	if extra != 6 {
-		return fmt.Errorf("cbor input had wrong number of fields")
-	}
-
-	// t.Price (types.BigInt) (struct)
-
-	{
-
-		if err := t.Price.UnmarshalCBOR(br); err != nil {
-			return err
-		}
-
-	}
-	// t.MinPieceSize (uint64) (uint64)
-
-	maj, extra, err = cbg.CborReadHeader(br)
-	if err != nil {
-		return err
-	}
-	if maj != cbg.MajUnsignedInt {
-		return fmt.Errorf("wrong type for uint64 field")
-	}
-	t.MinPieceSize = uint64(extra)
-	// t.Miner (address.Address) (struct)
-
-	{
-
-		if err := t.Miner.UnmarshalCBOR(br); err != nil {
-			return err
-		}
-
-	}
-	// t.Timestamp (uint64) (uint64)
-
-	maj, extra, err = cbg.CborReadHeader(br)
-	if err != nil {
-		return err
-	}
-	if maj != cbg.MajUnsignedInt {
-		return fmt.Errorf("wrong type for uint64 field")
-	}
-	t.Timestamp = uint64(extra)
-	// t.Expiry (uint64) (uint64)
-
-	maj, extra, err = cbg.CborReadHeader(br)
-	if err != nil {
-		return err
-	}
-	if maj != cbg.MajUnsignedInt {
-		return fmt.Errorf("wrong type for uint64 field")
-	}
-	t.Expiry = uint64(extra)
-	// t.SeqNo (uint64) (uint64)
-
-	maj, extra, err = cbg.CborReadHeader(br)
-	if err != nil {
-		return err
-	}
-	if maj != cbg.MajUnsignedInt {
-		return fmt.Errorf("wrong type for uint64 field")
-	}
-	t.SeqNo = uint64(extra)
-	return nil
-}
-
 func (t *ExpTipSet) MarshalCBOR(w io.Writer) error {
 	if t == nil {
 		_, err := w.Write(cbg.CborNull)
@@ -1770,9 +1261,15 @@ func (t *ExpTipSet) MarshalCBOR(w io.Writer) error {
 		}
 	}
 
-	// t.Height (uint64) (uint64)
-	if _, err := w.Write(cbg.CborEncodeMajorType(cbg.MajUnsignedInt, uint64(t.Height))); err != nil {
-		return err
+	// t.Height (abi.ChainEpoch) (int64)
+	if t.Height >= 0 {
+		if _, err := w.Write(cbg.CborEncodeMajorType(cbg.MajUnsignedInt, uint64(t.Height))); err != nil {
+			return err
+		}
+	} else {
+		if _, err := w.Write(cbg.CborEncodeMajorType(cbg.MajNegativeInt, uint64(-t.Height)-1)); err != nil {
+			return err
+		}
 	}
 	return nil
 }
@@ -1845,15 +1342,30 @@ func (t *ExpTipSet) UnmarshalCBOR(r io.Reader) error {
 		t.Blocks[i] = &v
 	}
 
-	// t.Height (uint64) (uint64)
+	// t.Height (abi.ChainEpoch) (int64)
+	{
+		maj, extra, err := cbg.CborReadHeader(br)
+		var extraI int64
+		if err != nil {
+			return err
+		}
+		switch maj {
+		case cbg.MajUnsignedInt:
+			extraI = int64(extra)
+			if extraI < 0 {
+				return fmt.Errorf("int64 positive overflow")
+			}
+		case cbg.MajNegativeInt:
+			extraI = int64(extra)
+			if extraI < 0 {
+				return fmt.Errorf("int64 negative oveflow")
+			}
+			extraI = -1 - extraI
+		default:
+			return fmt.Errorf("wrong type for int64 field: %d", maj)
+		}
 
-	maj, extra, err = cbg.CborReadHeader(br)
-	if err != nil {
-		return err
+		t.Height = abi.ChainEpoch(extraI)
 	}
-	if maj != cbg.MajUnsignedInt {
-		return fmt.Errorf("wrong type for uint64 field")
-	}
-	t.Height = uint64(extra)
 	return nil
 }

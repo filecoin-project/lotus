@@ -8,20 +8,27 @@ const stateConnecting = 'connecting'
 const stateGettingToken = 'getting-token'
 
 let sealCodes = [
-  "Undefined",
-  "Empty",
-  "Packing",
-  "Unsealed",
-  "PreCommitting",
-  "PreCommitted",
-  "Committing",
-  "CommitWait",
-  "Proving",
+ "UndefinedSectorState",
+ "Empty",
+ "Packing",
+ "Unsealed",
+ "PreCommitting",
+ "WaitSeed",
+ "Committing",
+ "CommitWait",
+ "FinalizeSector",
+ "Proving",
 
-  "SealFailed",
-  "PreCommitFailed",
-  "SealCommitFailed",
-  "CommitFailed",
+ "SealFailed",
+ "PreCommitFailed",
+ "SealCommitFailed",
+ "CommitFailed",
+ "PackingFailed",
+
+ "FailedUnrecoverable",
+ "Faulty",
+ "FaultReported",
+ "FaultedFinal",
 ]
 
 class StorageNode extends React.Component {

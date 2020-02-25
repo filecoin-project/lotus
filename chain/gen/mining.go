@@ -5,6 +5,8 @@ import (
 
 	bls "github.com/filecoin-project/filecoin-ffi"
 	amt "github.com/filecoin-project/go-amt-ipld/v2"
+	"github.com/filecoin-project/specs-actors/actors/abi"
+	"github.com/filecoin-project/specs-actors/actors/crypto"
 	cid "github.com/ipfs/go-cid"
 	cbor "github.com/ipfs/go-ipld-cbor"
 	cbg "github.com/whyrusleeping/cbor-gen"
@@ -18,7 +20,7 @@ import (
 	"github.com/filecoin-project/lotus/chain/wallet"
 )
 
-func MinerCreateBlock(ctx context.Context, sm *stmgr.StateManager, w *wallet.Wallet, miner address.Address, parents *types.TipSet, ticket *types.Ticket, proof *types.EPostProof, msgs []*types.SignedMessage, height, timestamp uint64) (*types.FullBlock, error) {
+func MinerCreateBlock(ctx context.Context, sm *stmgr.StateManager, w *wallet.Wallet, miner address.Address, parents *types.TipSet, ticket *types.Ticket, proof *types.EPostProof, msgs []*types.SignedMessage, height abi.ChainEpoch, timestamp uint64) (*types.FullBlock, error) {
 	st, recpts, err := sm.TipSetState(ctx, parents)
 	if err != nil {
 		return nil, xerrors.Errorf("failed to load tipset state: %w", err)
@@ -44,9 +46,9 @@ func MinerCreateBlock(ctx context.Context, sm *stmgr.StateManager, w *wallet.Wal
 	var secpkMessages []*types.SignedMessage
 
 	var blsMsgCids, secpkMsgCids []cid.Cid
-	var blsSigs []types.Signature
+	var blsSigs []crypto.Signature
 	for _, msg := range msgs {
-		if msg.Signature.TypeCode() == types.IKTBLS {
+		if msg.Signature.Type == crypto.SigTypeBLS {
 			blsSigs = append(blsSigs, msg.Signature)
 			blsMessages = append(blsMessages, &msg.Message)
 
@@ -131,7 +133,7 @@ func MinerCreateBlock(ctx context.Context, sm *stmgr.StateManager, w *wallet.Wal
 	return fullBlock, nil
 }
 
-func aggregateSignatures(sigs []types.Signature) (types.Signature, error) {
+func aggregateSignatures(sigs []crypto.Signature) (crypto.Signature, error) {
 	var blsSigs []bls.Signature
 	for _, s := range sigs {
 		var bsig bls.Signature
@@ -140,8 +142,8 @@ func aggregateSignatures(sigs []types.Signature) (types.Signature, error) {
 	}
 
 	aggSig := bls.Aggregate(blsSigs)
-	return types.Signature{
-		Type: types.KTBLS,
+	return crypto.Signature{
+		Type: crypto.SigTypeBLS,
 		Data: aggSig[:],
 	}, nil
 }

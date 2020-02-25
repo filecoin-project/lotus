@@ -3,27 +3,28 @@ package sealing
 import (
 	sectorbuilder "github.com/filecoin-project/go-sectorbuilder"
 	"github.com/filecoin-project/lotus/api"
+	"github.com/filecoin-project/specs-actors/actors/abi"
 	"github.com/ipfs/go-cid"
 )
 
 type SealTicket struct {
-	BlockHeight uint64
+	BlockHeight abi.ChainEpoch
 	TicketBytes []byte
 }
 
 func (t *SealTicket) SB() sectorbuilder.SealTicket {
-	out := sectorbuilder.SealTicket{BlockHeight: t.BlockHeight}
+	out := sectorbuilder.SealTicket{BlockHeight: uint64(t.BlockHeight)}
 	copy(out.TicketBytes[:], t.TicketBytes)
 	return out
 }
 
 type SealSeed struct {
-	BlockHeight uint64
+	BlockHeight abi.ChainEpoch
 	TicketBytes []byte
 }
 
 func (t *SealSeed) SB() sectorbuilder.SealSeed {
-	out := sectorbuilder.SealSeed{BlockHeight: t.BlockHeight}
+	out := sectorbuilder.SealSeed{BlockHeight: uint64(t.BlockHeight)}
 	copy(out.TicketBytes[:], t.TicketBytes)
 	return out
 }
@@ -33,9 +34,9 @@ func (t *SealSeed) Equals(o *SealSeed) bool {
 }
 
 type Piece struct {
-	DealID uint64
+	DealID *abi.DealID
 
-	Size  uint64
+	Size  abi.UnpaddedPieceSize
 	CommP []byte
 }
 
@@ -57,7 +58,7 @@ type Log struct {
 
 type SectorInfo struct {
 	State    api.SectorState
-	SectorID uint64
+	SectorID abi.SectorNumber
 	Nonce    uint64 // TODO: remove
 
 	// Packing
@@ -95,16 +96,19 @@ func (t *SectorInfo) pieceInfos() []sectorbuilder.PublicPieceInfo {
 	return out
 }
 
-func (t *SectorInfo) deals() []uint64 {
-	out := make([]uint64, len(t.Pieces))
-	for i, piece := range t.Pieces {
-		out[i] = piece.DealID
+func (t *SectorInfo) deals() []abi.DealID {
+	out := make([]abi.DealID, 0, len(t.Pieces))
+	for _, piece := range t.Pieces {
+		if piece.DealID == nil {
+			continue
+		}
+		out = append(out, *piece.DealID)
 	}
 	return out
 }
 
-func (t *SectorInfo) existingPieces() []uint64 {
-	out := make([]uint64, len(t.Pieces))
+func (t *SectorInfo) existingPieces() []abi.UnpaddedPieceSize {
+	out := make([]abi.UnpaddedPieceSize, len(t.Pieces))
 	for i, piece := range t.Pieces {
 		out[i] = piece.Size
 	}

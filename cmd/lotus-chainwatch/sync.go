@@ -5,11 +5,13 @@ import (
 	"container/list"
 	"context"
 	"encoding/json"
+	"github.com/filecoin-project/specs-actors/actors/builtin"
+	"github.com/filecoin-project/specs-actors/actors/builtin/miner"
 	"math"
 	"sync"
 
 	"github.com/filecoin-project/go-address"
-	actors2 "github.com/filecoin-project/lotus/chain/actors"
+	"github.com/filecoin-project/specs-actors/actors/abi"
 
 	"github.com/ipfs/go-cid"
 
@@ -51,8 +53,8 @@ type minerKey struct {
 }
 
 type minerInfo struct {
-	state actors2.StorageMinerActorState
-	info  actors2.MinerInfo
+	state miner.State
+	info  miner.MinerInfo
 
 	ssize uint64
 	psize uint64
@@ -111,7 +113,7 @@ func syncHead(ctx context.Context, api api.FullNode, st *storage, ts *types.TipS
 	for len(allToSync) > 0 {
 		actors := map[address.Address]map[types.Actor]actorInfo{}
 		addresses := map[address.Address]address.Address{}
-		minH := uint64(math.MaxUint64)
+		minH := abi.ChainEpoch(math.MaxUint64)
 
 		for _, header := range allToSync {
 			if header.Height < minH {
@@ -251,7 +253,7 @@ func syncHead(ctx context.Context, api api.FullNode, st *storage, ts *types.TipS
 
 		for addr, m := range actors {
 			for actor, c := range m {
-				if actor.Code != actors2.StorageMinerCodeCid {
+				if actor.Code != builtin.StorageMinerActorCodeID {
 					continue
 				}
 
@@ -285,16 +287,7 @@ func syncHead(ctx context.Context, api api.FullNode, st *storage, ts *types.TipS
 				return
 			}
 
-			ib, err := api.ChainReadObj(ctx, info.state.Info)
-			if err != nil {
-				log.Error(err)
-				return
-			}
-
-			if err := info.info.UnmarshalCBOR(bytes.NewReader(ib)); err != nil {
-				log.Error(err)
-				return
-			}
+			info.info = info.state.Info
 		})
 
 		log.Info("Getting receipts")

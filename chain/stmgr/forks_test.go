@@ -7,6 +7,12 @@ import (
 	"testing"
 
 	"github.com/filecoin-project/go-address"
+	"github.com/filecoin-project/specs-actors/actors/abi"
+	"github.com/filecoin-project/specs-actors/actors/builtin"
+	init_ "github.com/filecoin-project/specs-actors/actors/builtin/init"
+	"github.com/filecoin-project/specs-actors/actors/runtime"
+	"github.com/filecoin-project/specs-actors/actors/util/adt"
+
 	"github.com/filecoin-project/lotus/build"
 	"github.com/filecoin-project/lotus/chain/actors"
 	"github.com/filecoin-project/lotus/chain/actors/aerrors"
@@ -28,7 +34,7 @@ import (
 )
 
 func init() {
-	build.SectorSizes = []uint64{1024}
+	build.SectorSizes = []abi.SectorSize{1024}
 	build.MinimumMinerPower = 1024
 }
 
@@ -69,10 +75,14 @@ func (ta *testActor) Constructor(act *types.Actor, vmctx types.VMContext, params
 	if err != nil {
 		return nil, err
 	}
+	empty, err := vmctx.Storage().Put(&adt.EmptyValue{})
+	if err != nil {
+		return nil, err
+	}
 
 	fmt.Println("NEW ACTOR ADDRESS IS: ", vmctx.Message().To.String())
 
-	return nil, vmctx.Storage().Commit(actors.EmptyCBOR, c)
+	return nil, vmctx.Storage().Commit(empty, c)
 }
 
 func (ta *testActor) TestMethod(act *types.Actor, vmctx types.VMContext, params *struct{}) ([]byte, aerrors.ActorError) {
@@ -114,8 +124,6 @@ func TestForkHeightTriggers(t *testing.T) {
 		t.Fatal(err)
 	}
 
-	actors.BuiltInActors[actcid] = true
-
 	// predicting the address here... may break if other assumptions change
 	taddr, err := address.NewIDAddress(1000)
 	if err != nil {
@@ -156,7 +164,7 @@ func TestForkHeightTriggers(t *testing.T) {
 	}
 
 	inv.Register(actcid, &testActor{}, &testActorState{})
-	sm.SetVMConstructor(func(c cid.Cid, h uint64, r vm.Rand, a address.Address, b blockstore.Blockstore, s *types.VMSyscalls) (*vm.VM, error) {
+	sm.SetVMConstructor(func(c cid.Cid, h abi.ChainEpoch, r vm.Rand, a address.Address, b blockstore.Blockstore, s runtime.Syscalls) (*vm.VM, error) {
 		nvm, err := vm.NewVM(c, h, r, a, b, s)
 		if err != nil {
 			return nil, err
@@ -169,15 +177,15 @@ func TestForkHeightTriggers(t *testing.T) {
 
 	var msgs []*types.SignedMessage
 
-	enc, err := actors.SerializeParams(&actors.ExecParams{Code: actcid})
+	enc, err := actors.SerializeParams(&init_.ExecParams{CodeCID: actcid})
 	if err != nil {
 		t.Fatal(err)
 	}
 
 	m := &types.Message{
 		From:     cg.Banker(),
-		To:       actors.InitAddress,
-		Method:   actors.IAMethods.Exec,
+		To:       builtin.InitActorAddr,
+		Method:   builtin.MethodsInit.Exec,
 		Params:   enc,
 		GasLimit: types.NewInt(10000),
 		GasPrice: types.NewInt(0),

@@ -4,6 +4,9 @@ import (
 	"bytes"
 	"math/big"
 
+	"github.com/filecoin-project/specs-actors/actors/abi"
+	"github.com/filecoin-project/specs-actors/actors/crypto"
+
 	block "github.com/ipfs/go-block-format"
 	"github.com/ipfs/go-cid"
 	"github.com/minio/sha256-simd"
@@ -21,7 +24,7 @@ type Ticket struct {
 
 type EPostTicket struct {
 	Partial        []byte
-	SectorID       uint64
+	SectorID       abi.SectorNumber
 	ChallengeIndex uint64
 }
 
@@ -42,7 +45,7 @@ type BlockHeader struct {
 
 	ParentWeight BigInt // 4
 
-	Height uint64 // 5
+	Height abi.ChainEpoch // 5
 
 	ParentStateRoot cid.Cid // 6
 
@@ -50,11 +53,11 @@ type BlockHeader struct {
 
 	Messages cid.Cid // 8
 
-	BLSAggregate Signature // 9
+	BLSAggregate crypto.Signature // 9
 
 	Timestamp uint64 // 10
 
-	BlockSig *Signature // 11
+	BlockSig *crypto.Signature // 11
 
 	ForkSignaling uint64 // 12
 }
@@ -163,8 +166,8 @@ var blocksPerEpoch = NewInt(build.BlocksPerEpoch)
 
 const sha256bits = 256
 
-func IsTicketWinner(partialTicket []byte, ssizeI uint64, snum uint64, totpow BigInt) bool {
-	ssize := NewInt(ssizeI)
+func IsTicketWinner(partialTicket []byte, ssizeI abi.SectorSize, snum uint64, totpow BigInt) bool {
+	ssize := NewInt(uint64(ssizeI))
 	ssampled := ElectionPostChallengeCount(snum, 0) // TODO: faults in epost?
 	/*
 		Need to check that

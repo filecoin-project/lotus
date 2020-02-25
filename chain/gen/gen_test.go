@@ -3,20 +3,25 @@ package gen
 import (
 	"testing"
 
+	"github.com/filecoin-project/specs-actors/actors/abi"
+
+	_ "github.com/filecoin-project/lotus/lib/sigs/bls"
+	_ "github.com/filecoin-project/lotus/lib/sigs/secp"
+
 	"github.com/filecoin-project/lotus/build"
 	_ "github.com/filecoin-project/lotus/lib/sigs/bls"
 	_ "github.com/filecoin-project/lotus/lib/sigs/secp"
 )
 
 func init() {
-	build.SectorSizes = []uint64{1024}
+	build.SectorSizes = []abi.SectorSize{1024}
 	build.MinimumMinerPower = 1024
 }
 
 func testGeneration(t testing.TB, n int, msgs int) {
 	g, err := NewGenerator()
 	if err != nil {
-		t.Fatal(err)
+		t.Fatalf("%+v", err)
 	}
 
 	g.msgsPerBlock = msgs
@@ -24,7 +29,7 @@ func testGeneration(t testing.TB, n int, msgs int) {
 	for i := 0; i < n; i++ {
 		mts, err := g.NextTipSet()
 		if err != nil {
-			t.Fatalf("error at H:%d, %s", i, err)
+			t.Fatalf("error at H:%d, %+v", i, err)
 		}
 		_ = mts
 	}

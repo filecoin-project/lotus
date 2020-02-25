@@ -1,15 +1,23 @@
 package sealing
 
 import (
+	"bytes"
 	"context"
 
+	"github.com/ipfs/go-cid"
+	"github.com/multiformats/go-multihash"
+	cbg "github.com/whyrusleeping/cbor-gen"
 	"golang.org/x/xerrors"
 
 	"github.com/filecoin-project/go-address"
+	commcid "github.com/filecoin-project/go-fil-commcid"
+	"github.com/filecoin-project/specs-actors/actors/builtin"
+	"github.com/filecoin-project/specs-actors/actors/builtin/market"
 
 	"github.com/filecoin-project/lotus/build"
 	"github.com/filecoin-project/lotus/chain/actors"
 	"github.com/filecoin-project/lotus/chain/types"
+	"github.com/filecoin-project/lotus/lib/zerocomm"
 )
 
 // TODO: For now we handle this by halting state execution, when we get jsonrpc reconnecting
@@ -17,6 +25,7 @@ import (
 type ErrApi struct{ error }
 
 type ErrInvalidDeals struct{ error }
+type ErrInvalidPiece struct{ error }
 type ErrExpiredDeals struct{ error }
 
 type ErrBadCommD struct{ error }
@@ -34,21 +43,33 @@ func checkPieces(ctx context.Context, si SectorInfo, api sealingApi) error {
 	}
 
 	for i, piece := range si.Pieces {
-		deal, err := api.StateMarketStorageDeal(ctx, piece.DealID, types.EmptyTSK)
+		if piece.DealID == nil {
+			exp := zerocomm.ForSize(piece.Size)
+			if string(piece.CommP) != string(exp[:]) {
+				return &ErrInvalidPiece{xerrors.Errorf("deal %d piece %d had non-zero CommP %+v", piece.DealID, i, piece.CommP)}
+			}
+			continue
+		}
+		deal, err := api.StateMarketStorageDeal(ctx, *piece.DealID, types.EmptyTSK)
 		if err != nil {
 			return &ErrApi{xerrors.Errorf("getting deal %d for piece %d: %w", piece.DealID, i, err)}
 		}
 
-		if string(deal.PieceRef) != string(piece.CommP) {
-			return &ErrInvalidDeals{xerrors.Errorf("piece %d (or %d) of sector %d refers deal %d with wrong CommP: %x != %x", i, len(si.Pieces), si.SectorID, piece.DealID, piece.CommP, deal.PieceRef)}
+		h, err := multihash.Decode(deal.Proposal.PieceCID.Hash())
+		if err != nil {
+			return &ErrInvalidDeals{xerrors.Errorf("decoding piece CID: %w", err)}
 		}
 
-		if piece.Size != deal.PieceSize {
-			return &ErrInvalidDeals{xerrors.Errorf("piece %d (or %d) of sector %d refers deal %d with different size: %d != %d", i, len(si.Pieces), si.SectorID, piece.DealID, piece.Size, deal.PieceSize)}
+		if string(h.Digest) != string(piece.CommP) {
+			return &ErrInvalidDeals{xerrors.Errorf("piece %d (or %d) of sector %d refers deal %d with wrong CommP: %x != %x", i, len(si.Pieces), si.SectorID, piece.DealID, piece.CommP, h.Digest)}
 		}
 
-		if head.Height() >= deal.ProposalExpiration {
-			return &ErrExpiredDeals{xerrors.Errorf("piece %d (or %d) of sector %d refers expired deal %d - expires %d, head %d", i, len(si.Pieces), si.SectorID, piece.DealID, deal.ProposalExpiration, head.Height())}
+		if piece.Size != deal.Proposal.PieceSize.Unpadded() {
+			return &ErrInvalidDeals{xerrors.Errorf("piece %d (or %d) of sector %d refers deal %d with different size: %d != %d", i, len(si.Pieces), si.SectorID, piece.DealID, piece.Size, deal.Proposal.PieceSize)}
+		}
+
+		if head.Height() >= deal.Proposal.StartEpoch {
+			return &ErrExpiredDeals{xerrors.Errorf("piece %d (or %d) of sector %d refers expired deal %d - should start at %d, head %d", i, len(si.Pieces), si.SectorID, piece.DealID, deal.Proposal.StartEpoch, head.Height())}
 		}
 	}
 
@@ -68,7 +89,7 @@ func checkSeal(ctx context.Context, maddr address.Address, si SectorInfo, api se
 		return &ErrApi{err}
 	}
 
-	ccparams, err := actors.SerializeParams(&actors.ComputeDataCommitmentParams{
+	ccparams, err := actors.SerializeParams(&market.ComputeDataCommitmentParams{
 		DealIDs:    si.deals(),
 		SectorSize: ssize,
 	})
@@ -77,12 +98,12 @@ func checkSeal(ctx context.Context, maddr address.Address, si SectorInfo, api se
 	}
 
 	ccmt := &types.Message{
-		To:       actors.StorageMarketAddress,
+		To:       builtin.StorageMarketActorAddr,
 		From:     maddr,
 		Value:    types.NewInt(0),
 		GasPrice: types.NewInt(0),
 		GasLimit: types.NewInt(9999999999),
-		Method:   actors.SMAMethods.ComputeDataCommitment,
+		Method:   builtin.MethodsMarket.ComputeDataCommitment,
 		Params:   ccparams,
 	}
 	r, err := api.StateCall(ctx, ccmt, types.EmptyTSK)
@@ -92,7 +113,17 @@ func checkSeal(ctx context.Context, maddr address.Address, si SectorInfo, api se
 	if r.ExitCode != 0 {
 		return &ErrBadCommD{xerrors.Errorf("receipt for ComputeDataCommitment had exit code %d", r.ExitCode)}
 	}
-	if string(r.Return) != string(si.CommD) {
+
+	var c cbg.CborCid
+	if err := c.UnmarshalCBOR(bytes.NewReader(r.Return)); err != nil {
+		return err
+	}
+	cd, err := commcid.CIDToDataCommitmentV1(cid.Cid(c))
+	if err != nil {
+		return err
+	}
+
+	if string(cd) != string(si.CommD) {
 		return &ErrBadCommD{xerrors.Errorf("on chain CommD differs from sector: %x != %x", r.Return, si.CommD)}
 	}
 

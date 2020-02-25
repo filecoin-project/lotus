@@ -4,6 +4,7 @@ import (
 	"context"
 	"sync"
 
+	"github.com/filecoin-project/specs-actors/actors/abi"
 	"go.opencensus.io/trace"
 	"golang.org/x/xerrors"
 
@@ -29,10 +30,10 @@ type FPoStScheduler struct {
 	cur *types.TipSet
 
 	// if a post is in progress, this indicates for which ElectionPeriodStart
-	activeEPS uint64
+	activeEPS abi.ChainEpoch
 	abort     context.CancelFunc
 
-	failed uint64 // eps
+	failed abi.ChainEpoch // eps
 	failLk sync.Mutex
 }
 
@@ -161,14 +162,14 @@ func (s *FPoStScheduler) abortActivePoSt() {
 	s.abort = nil
 }
 
-func (s *FPoStScheduler) shouldFallbackPost(ctx context.Context, ts *types.TipSet) (uint64, bool, error) {
-	eps, err := s.api.StateMinerElectionPeriodStart(ctx, s.actor, ts.Key())
+func (s *FPoStScheduler) shouldFallbackPost(ctx context.Context, ts *types.TipSet) (abi.ChainEpoch, bool, error) {
+	ps, err := s.api.StateMinerPostState(ctx, s.actor, ts.Key())
 	if err != nil {
 		return 0, false, xerrors.Errorf("getting ElectionPeriodStart: %w", err)
 	}
 
-	if ts.Height() >= eps+build.FallbackPoStDelay {
-		return eps, ts.Height() >= eps+build.FallbackPoStDelay+StartConfidence, nil
+	if ts.Height() >= ps.ProvingPeriodStart+build.FallbackPoStDelay {
+		return ps.ProvingPeriodStart, ts.Height() >= ps.ProvingPeriodStart+build.FallbackPoStDelay+StartConfidence, nil
 	}
 	return 0, false, nil
 }

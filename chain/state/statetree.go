@@ -3,7 +3,10 @@ package state
 import (
 	"context"
 	"fmt"
+	"github.com/filecoin-project/specs-actors/actors/builtin"
+	init_ "github.com/filecoin-project/specs-actors/actors/builtin/init"
 
+	"github.com/filecoin-project/specs-actors/actors/util/adt"
 	"github.com/ipfs/go-cid"
 	hamt "github.com/ipfs/go-hamt-ipld"
 	cbor "github.com/ipfs/go-ipld-cbor"
@@ -12,7 +15,6 @@ import (
 	"golang.org/x/xerrors"
 
 	"github.com/filecoin-project/go-address"
-	"github.com/filecoin-project/lotus/chain/actors"
 	"github.com/filecoin-project/lotus/chain/types"
 )
 
@@ -28,14 +30,14 @@ type StateTree struct {
 
 func NewStateTree(cst cbor.IpldStore) (*StateTree, error) {
 	return &StateTree{
-		root:       hamt.NewNode(cst),
+		root:       hamt.NewNode(cst, hamt.UseTreeBitWidth(5)),
 		Store:      cst,
 		actorcache: make(map[address.Address]*types.Actor),
 	}, nil
 }
 
 func LoadStateTree(cst cbor.IpldStore, c cid.Cid) (*StateTree, error) {
-	nd, err := hamt.LoadNode(context.Background(), cst, c)
+	nd, err := hamt.LoadNode(context.Background(), cst, c, hamt.UseTreeBitWidth(5))
 	if err != nil {
 		log.Errorf("loading hamt node %s failed: %s", c, err)
 		return nil, err
@@ -72,17 +74,21 @@ func (st *StateTree) LookupID(addr address.Address) (address.Address, error) {
 		return addr, nil
 	}
 
-	act, err := st.GetActor(actors.InitAddress)
+	act, err := st.GetActor(builtin.InitActorAddr)
 	if err != nil {
 		return address.Undef, xerrors.Errorf("getting init actor: %w", err)
 	}
 
-	var ias actors.InitActorState
+	var ias init_.State
 	if err := st.Store.Get(context.TODO(), act.Head, &ias); err != nil {
 		return address.Undef, xerrors.Errorf("loading init actor state: %w", err)
 	}
 
-	return ias.Lookup(st.Store, addr)
+	a, err := ias.ResolveAddress(&AdtStore{st.Store}, addr)
+	if err != nil {
+		return address.Undef, xerrors.Errorf("resolve address %s: %w", addr, err)
+	}
+	return a, nil
 }
 
 func (st *StateTree) GetActor(addr address.Address) (*types.Actor, error) {
@@ -92,8 +98,8 @@ func (st *StateTree) GetActor(addr address.Address) (*types.Actor, error) {
 
 	iaddr, err := st.LookupID(addr)
 	if err != nil {
-		if xerrors.Is(err, hamt.ErrNotFound) {
-			return nil, xerrors.Errorf("resolution lookup failed (%s): %w", addr, types.ErrActorNotFound)
+		if xerrors.Is(err, init_.ErrAddressNotFound) {
+			return nil, xerrors.Errorf("resolution lookup failed (%s): %w", addr, err)
 		}
 		return nil, xerrors.Errorf("address resolution: %w", err)
 	}
@@ -151,13 +157,13 @@ func (st *StateTree) Snapshot(ctx context.Context) error {
 
 func (st *StateTree) RegisterNewAddress(addr address.Address, act *types.Actor) (address.Address, error) {
 	var out address.Address
-	err := st.MutateActor(actors.InitAddress, func(initact *types.Actor) error {
-		var ias actors.InitActorState
+	err := st.MutateActor(builtin.InitActorAddr, func(initact *types.Actor) error {
+		var ias init_.State
 		if err := st.Store.Get(context.TODO(), initact.Head, &ias); err != nil {
 			return err
 		}
 
-		oaddr, err := ias.AddActor(st.Store, addr)
+		oaddr, err := ias.MapAddressToNewID(&AdtStore{st.Store}, addr)
 		if err != nil {
 			return err
 		}
@@ -182,8 +188,16 @@ func (st *StateTree) RegisterNewAddress(addr address.Address, act *types.Actor) 
 	return out, nil
 }
 
+type AdtStore struct{ cbor.IpldStore }
+
+func (a *AdtStore) Context() context.Context {
+	return context.TODO()
+}
+
+var _ adt.Store = (*AdtStore)(nil)
+
 func (st *StateTree) Revert() error {
-	nd, err := hamt.LoadNode(context.Background(), st.Store, st.snapshot)
+	nd, err := hamt.LoadNode(context.Background(), st.Store, st.snapshot, hamt.UseTreeBitWidth(5))
 	if err != nil {
 		return err
 	}

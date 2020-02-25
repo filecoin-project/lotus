@@ -6,6 +6,7 @@ import (
 	"reflect"
 	"time"
 
+	"github.com/filecoin-project/specs-actors/actors/abi"
 	"golang.org/x/xerrors"
 
 	"github.com/filecoin-project/lotus/api"
@@ -227,7 +228,7 @@ func (m *Sealing) restartSectors(ctx context.Context) error {
 	}
 
 	for _, sector := range trackedSectors {
-		if err := m.sectors.Send(sector.SectorID, SectorRestart{}); err != nil {
+		if err := m.sectors.Send(uint64(sector.SectorID), SectorRestart{}); err != nil {
 			log.Errorf("restarting sector %d: %+v", sector.SectorID, err)
 		}
 	}
@@ -237,7 +238,7 @@ func (m *Sealing) restartSectors(ctx context.Context) error {
 	return nil
 }
 
-func (m *Sealing) ForceSectorState(ctx context.Context, id uint64, state api.SectorState) error {
+func (m *Sealing) ForceSectorState(ctx context.Context, id abi.SectorNumber, state api.SectorState) error {
 	return m.sectors.Send(id, SectorForceState{state})
 }
 

@@ -36,7 +36,7 @@ import (
 	"github.com/filecoin-project/lotus/node/modules/dtypes"
 	"github.com/filecoin-project/lotus/node/modules/helpers"
 	"github.com/filecoin-project/lotus/node/repo"
-	"github.com/filecoin-project/lotus/paych"
+	"github.com/filecoin-project/lotus/paychmgr"
 )
 
 func ClientFstore(r repo.LockedRepo) (dtypes.ClientFilestore, error) {
@@ -117,7 +117,7 @@ func StorageClient(h host.Host, ibs dtypes.ClientBlockstore, r repo.LockedRepo, 
 }
 
 // RetrievalClient creates a new retrieval client attached to the client blockstore
-func RetrievalClient(h host.Host, bs dtypes.ClientBlockstore, pmgr *paych.Manager, payapi payapi.PaychAPI, resolver retrievalmarket.PeerResolver) retrievalmarket.RetrievalClient {
+func RetrievalClient(h host.Host, bs dtypes.ClientBlockstore, pmgr *paychmgr.Manager, payapi payapi.PaychAPI, resolver retrievalmarket.PeerResolver) retrievalmarket.RetrievalClient {
 	adapter := retrievaladapter.NewRetrievalClientNode(pmgr, payapi)
 	network := rmnet.NewFromLibp2pHost(h)
 	return retrievalimpl.NewClient(network, bs, adapter, resolver)

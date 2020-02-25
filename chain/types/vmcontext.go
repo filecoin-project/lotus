@@ -3,6 +3,10 @@ package types
 import (
 	"context"
 
+	"github.com/filecoin-project/specs-actors/actors/abi"
+	"github.com/filecoin-project/specs-actors/actors/crypto"
+	"github.com/filecoin-project/specs-actors/actors/runtime"
+
 	"github.com/filecoin-project/go-address"
 	"github.com/filecoin-project/lotus/chain/actors/aerrors"
 
@@ -31,44 +35,20 @@ type VMContext interface {
 	Message() *Message
 	Origin() address.Address
 	Ipld() cbor.IpldStore
-	Send(to address.Address, method uint64, value BigInt, params []byte) ([]byte, aerrors.ActorError)
-	BlockHeight() uint64
+	Send(to address.Address, method abi.MethodNum, value BigInt, params []byte) ([]byte, aerrors.ActorError)
+	BlockHeight() abi.ChainEpoch
 	GasUsed() BigInt
 	Storage() Storage
 	StateTree() (StateTree, aerrors.ActorError)
-	VerifySignature(sig *Signature, from address.Address, data []byte) aerrors.ActorError
+	ActorCodeCID(address.Address) (cid.Cid, error)
+	LookupID(address.Address) (address.Address, error)
+	VerifySignature(sig *crypto.Signature, from address.Address, data []byte) aerrors.ActorError
 	ChargeGas(uint64) aerrors.ActorError
-	GetRandomness(height uint64) ([]byte, aerrors.ActorError)
+	GetRandomness(personalization crypto.DomainSeparationTag, randEpoch abi.ChainEpoch, entropy []byte) ([]byte, aerrors.ActorError)
 	GetBalance(address.Address) (BigInt, aerrors.ActorError)
-	Sys() *VMSyscalls
+	Sys() runtime.Syscalls
 
 	Context() context.Context
-}
-
-const CommitmentBytesLen = 32
-
-type PublicSectorInfo struct {
-	SectorID uint64
-	CommR    [CommitmentBytesLen]byte
-}
-
-type Candidate struct {
-	SectorID             uint64
-	PartialTicket        [32]byte
-	Ticket               [32]byte
-	SectorChallengeIndex uint64
-}
-
-type VMSyscalls struct {
-	ValidatePoRep      func(context.Context, address.Address, uint64, []byte, []byte, []byte, []byte, []byte, uint64) (bool, aerrors.ActorError)
-	VerifyFallbackPost func(ctx context.Context,
-		sectorSize uint64,
-		sectorInfo []PublicSectorInfo,
-		challengeSeed []byte,
-		proof []byte,
-		candidates []Candidate,
-		proverID address.Address,
-		faults uint64) (bool, error)
 }
 
 type storageWrapper struct {

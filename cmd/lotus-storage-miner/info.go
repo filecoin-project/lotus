@@ -43,7 +43,7 @@ var infoCmd = &cli.Command{
 			return err
 		}
 
-		fmt.Printf("Sector Size: %s\n", types.NewInt(sizeByte).SizeStr())
+		fmt.Printf("Sector Size: %s\n", types.SizeStr(types.NewInt(uint64(sizeByte))))
 
 		pow, err := api.StateMinerPower(ctx, maddr, types.EmptyTSK)
 		if err != nil {
@@ -51,7 +51,7 @@ var infoCmd = &cli.Command{
 		}
 
 		percI := types.BigDiv(types.BigMul(pow.MinerPower, types.NewInt(1000000)), pow.TotalPower)
-		fmt.Printf("Power: %s / %s (%0.4f%%)\n", pow.MinerPower.SizeStr(), pow.TotalPower.SizeStr(), float64(percI.Int64())/10000)
+		fmt.Printf("Power: %s / %s (%0.4f%%)\n", types.SizeStr(pow.MinerPower), types.SizeStr(pow.TotalPower), float64(percI.Int64())/10000)
 
 		secCounts, err := api.StateMinerSectorCount(ctx, maddr, types.EmptyTSK)
 		if err != nil {
@@ -62,13 +62,13 @@ var infoCmd = &cli.Command{
 			return err
 		}
 
-		fmt.Printf("\tCommitted: %s\n", types.BigMul(types.NewInt(secCounts.Sset), types.NewInt(sizeByte)).SizeStr())
+		fmt.Printf("\tCommitted: %s\n", types.SizeStr(types.BigMul(types.NewInt(secCounts.Sset), types.NewInt(uint64(sizeByte)))))
 		if len(faults) == 0 {
-			fmt.Printf("\tProving: %s\n", types.BigMul(types.NewInt(secCounts.Pset), types.NewInt(sizeByte)).SizeStr())
+			fmt.Printf("\tProving: %s\n", types.SizeStr(types.BigMul(types.NewInt(secCounts.Pset), types.NewInt(uint64(sizeByte)))))
 		} else {
 			fmt.Printf("\tProving: %s (%s Faulty, %.2f%%)\n",
-				types.BigMul(types.NewInt(secCounts.Pset-uint64(len(faults))), types.NewInt(sizeByte)).SizeStr(),
-				types.BigMul(types.NewInt(uint64(len(faults))), types.NewInt(sizeByte)).SizeStr(),
+				types.SizeStr(types.BigMul(types.NewInt(secCounts.Pset-uint64(len(faults))), types.NewInt(uint64(sizeByte)))),
+				types.SizeStr(types.BigMul(types.NewInt(uint64(len(faults))), types.NewInt(uint64(sizeByte)))),
 				float64(10000*uint64(len(faults))/secCounts.Pset)/100.)
 		}
 
@@ -88,16 +88,16 @@ var infoCmd = &cli.Command{
 		fmt.Printf("\tCommit: %d\n", wstat.CommitWait)
 		fmt.Printf("\tUnseal: %d\n", wstat.UnsealWait)
 
-		eps, err := api.StateMinerElectionPeriodStart(ctx, maddr, types.EmptyTSK)
+		ps, err := api.StateMinerPostState(ctx, maddr, types.EmptyTSK)
 		if err != nil {
 			return err
 		}
-		if eps != 0 {
+		if ps.ProvingPeriodStart != 0 {
 			head, err := api.ChainHead(ctx)
 			if err != nil {
 				return err
 			}
-			lastEps := int64(head.Height() - eps)
+			lastEps := int64(head.Height() - ps.ProvingPeriodStart)
 			lastEpsS := lastEps * build.BlockDelay
 
 			fallback := lastEps + build.FallbackPoStDelay
@@ -107,10 +107,10 @@ var infoCmd = &cli.Command{
 			nextS := next * build.BlockDelay
 
 			fmt.Printf("PoSt Submissions:\n")
-			fmt.Printf("\tPrevious: Epoch %d (%d block(s), ~%dm %ds ago)\n", eps, lastEps, lastEpsS/60, lastEpsS%60)
-			fmt.Printf("\tFallback: Epoch %d (in %d blocks, ~%dm %ds)\n", eps+build.FallbackPoStDelay, fallback, fallbackS/60, fallbackS%60)
-			fmt.Printf("\tDeadline: Epoch %d (in %d blocks, ~%dm %ds)\n", eps+build.SlashablePowerDelay, next, nextS/60, nextS%60)
-
+			fmt.Printf("\tPrevious: Epoch %d (%d block(s), ~%dm %ds ago)\n", ps.ProvingPeriodStart, lastEps, lastEpsS/60, lastEpsS%60)
+			fmt.Printf("\tFallback: Epoch %d (in %d blocks, ~%dm %ds)\n", ps.ProvingPeriodStart+build.FallbackPoStDelay, fallback, fallbackS/60, fallbackS%60)
+			fmt.Printf("\tDeadline: Epoch %d (in %d blocks, ~%dm %ds)\n", ps.ProvingPeriodStart+build.SlashablePowerDelay, next, nextS/60, nextS%60)
+			fmt.Printf("\tConsecutive Failures: %d\n", ps.NumConsecutiveFailures)
 		} else {
 			fmt.Printf("Proving Period: Not Proving\n")
 		}

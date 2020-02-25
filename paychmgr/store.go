@@ -1,4 +1,4 @@
-package paych
+package paychmgr
 
 import (
 	"bytes"
@@ -7,6 +7,7 @@ import (
 	"strings"
 	"sync"
 
+	"github.com/filecoin-project/specs-actors/actors/builtin/paych"
 	"github.com/ipfs/go-datastore"
 	"github.com/ipfs/go-datastore/namespace"
 	dsq "github.com/ipfs/go-datastore/query"
@@ -14,7 +15,7 @@ import (
 
 	"github.com/filecoin-project/go-address"
 	cborrpc "github.com/filecoin-project/go-cbor-util"
-	"github.com/filecoin-project/lotus/chain/types"
+
 	"github.com/filecoin-project/lotus/node/modules/dtypes"
 )
 
@@ -39,7 +40,7 @@ const (
 )
 
 type VoucherInfo struct {
-	Voucher *types.SignedVoucher
+	Voucher *paych.SignedVoucher
 	Proof   []byte
 }
 

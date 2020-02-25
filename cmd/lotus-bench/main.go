@@ -16,6 +16,7 @@ import (
 	"github.com/docker/go-units"
 	ffi "github.com/filecoin-project/filecoin-ffi"
 	paramfetch "github.com/filecoin-project/go-paramfetch"
+	"github.com/filecoin-project/specs-actors/actors/abi"
 	"github.com/ipfs/go-datastore"
 	logging "github.com/ipfs/go-log/v2"
 	"github.com/mitchellh/go-homedir"
@@ -32,7 +33,7 @@ import (
 var log = logging.Logger("lotus-bench")
 
 type BenchResults struct {
-	SectorSize uint64
+	SectorSize abi.SectorSize
 
 	SealingResults []SealingResult
 
@@ -139,7 +140,7 @@ func main() {
 			if err != nil {
 				return err
 			}
-			sectorSize := uint64(sectorSizeInt)
+			sectorSize := abi.SectorSize(sectorSizeInt)
 
 			mds := datastore.NewMapDatastore()
 			cfg := &sectorbuilder.Config{
@@ -155,7 +156,7 @@ func main() {
 				}
 			}
 
-			if err := paramfetch.GetParams(build.ParametersJson(), sectorSize); err != nil {
+			if err := paramfetch.GetParams(build.ParametersJson(), uint64(sectorSize)); err != nil {
 				return xerrors.Errorf("getting params: %w", err)
 			}
 			sb, err := sectorbuilder.New(cfg, mds)
@@ -163,18 +164,16 @@ func main() {
 				return err
 			}
 
-			dataSize := sectorbuilder.UserBytesForSectorSize(sectorSize)
-
 			var sealTimings []SealingResult
 			var sealedSectors []ffi.PublicSectorInfo
-			numSectors := uint64(1)
-			for i := uint64(1); i <= numSectors && robench == ""; i++ {
+			numSectors := abi.SectorNumber(1)
+			for i := abi.SectorNumber(1); i <= numSectors && robench == ""; i++ {
 				start := time.Now()
 				log.Info("Writing piece into sector...")
 
 				r := rand.New(rand.NewSource(100 + int64(i)))
 
-				pi, err := sb.AddPiece(context.TODO(), dataSize, i, r, nil)
+				pi, err := sb.AddPiece(context.TODO(), abi.UnpaddedPieceSize(sectorSize), i, r, nil)
 				if err != nil {
 					return err
 				}
@@ -196,8 +195,8 @@ func main() {
 				precommit := time.Now()
 
 				sealedSectors = append(sealedSectors, ffi.PublicSectorInfo{
-					CommR:    pco.CommR,
-					SectorID: i,
+					CommR:     pco.CommR,
+					SectorNum: i,
 				})
 
 				seed := sectorbuilder.SealSeed{
@@ -225,7 +224,7 @@ func main() {
 
 				if !c.Bool("skip-unseal") {
 					log.Info("Unsealing sector")
-					rc, err := sb.ReadPieceFromSealedSector(context.TODO(), 1, 0, dataSize, ticket.TicketBytes[:], commD[:])
+					rc, err := sb.ReadPieceFromSealedSector(context.TODO(), 1, 0, abi.UnpaddedPieceSize(sectorSize), ticket.TicketBytes[:], commD[:])
 					if err != nil {
 						return err
 					}
@@ -260,7 +259,7 @@ func main() {
 					return err
 				}
 
-				var genmm map[string]genesis.GenesisMiner
+				var genmm map[string]genesis.Miner
 				if err := json.Unmarshal(fdata, &genmm); err != nil {
 					return err
 				}
@@ -272,15 +271,15 @@ func main() {
 
 				for _, s := range genm.Sectors {
 					sealedSectors = append(sealedSectors, ffi.PublicSectorInfo{
-						CommR:    s.CommR,
-						SectorID: s.SectorID,
+						CommR:     s.CommR,
+						SectorNum: s.SectorID,
 					})
 				}
 			}
 
 			log.Info("generating election post candidates")
 			sinfos := sectorbuilder.NewSortedPublicSectorInfo(sealedSectors)
-			candidates, err := sb.GenerateEPostCandidates(sinfos, challenge, []uint64{})
+			candidates, err := sb.GenerateEPostCandidates(sinfos, challenge, []abi.SectorNumber{})
 			if err != nil {
 				return err
 			}
@@ -355,7 +354,7 @@ func main() {
 						fmt.Printf("unseal: %s  (%s)\n", bo.SealingResults[0].Unseal, bps(bo.SectorSize, bo.SealingResults[0].Unseal))
 					}
 				}
-				fmt.Printf("generate candidates: %s (%s)\n", bo.PostGenerateCandidates, bps(bo.SectorSize*uint64(len(bo.SealingResults)), bo.PostGenerateCandidates))
+				fmt.Printf("generate candidates: %s (%s)\n", bo.PostGenerateCandidates, bps(bo.SectorSize*abi.SectorSize(len(bo.SealingResults)), bo.PostGenerateCandidates))
 				fmt.Printf("compute epost proof (cold): %s\n", bo.PostEProofCold)
 				fmt.Printf("compute epost proof (hot): %s\n", bo.PostEProofHot)
 				fmt.Printf("verify epost proof (cold): %s\n", bo.VerifyEPostCold)
@@ -371,9 +370,9 @@ func main() {
 	}
 }
 
-func bps(data uint64, d time.Duration) string {
-	bdata := new(big.Int).SetUint64(data)
+func bps(data abi.SectorSize, d time.Duration) string {
+	bdata := new(big.Int).SetUint64(uint64(data))
 	bdata = bdata.Mul(bdata, big.NewInt(time.Second.Nanoseconds()))
 	bps := bdata.Div(bdata, big.NewInt(d.Nanoseconds()))
-	return (types.BigInt{bps}).SizeStr() + "/s"
+	return types.SizeStr(types.BigInt{bps}) + "/s"
 }

@@ -2,11 +2,15 @@
 
 package build
 
+import (
+	"github.com/filecoin-project/specs-actors/actors/abi"
+)
+
 func init() {
 	InsecurePoStValidation = true
 }
 
-var SectorSizes = []uint64{1024}
+var SectorSizes = []abi.SectorSize{1024}
 
 // Seconds
 const BlockDelay = 6

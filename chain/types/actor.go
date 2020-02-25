@@ -1,12 +1,12 @@
 package types
 
 import (
-	"fmt"
-
 	"github.com/ipfs/go-cid"
+
+	init_ "github.com/filecoin-project/specs-actors/actors/builtin/init"
 )
 
-var ErrActorNotFound = fmt.Errorf("actor not found")
+var ErrActorNotFound = init_.ErrAddressNotFound
 
 type Actor struct {
 	Code    cid.Cid
