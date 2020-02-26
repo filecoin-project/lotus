@@ -23,7 +23,7 @@ import (
 	manet "github.com/multiformats/go-multiaddr-net"
 	"golang.org/x/xerrors"
 
-	"github.com/prometheus/client_golang/prometheus/promhttp"
+	"contrib.go.opencensus.io/exporter/prometheus"
 )
 
 var log = logging.Logger("main")
@@ -46,7 +46,14 @@ func serveRPC(a api.FullNode, stop node.StopFunc, addr multiaddr.Multiaddr) erro
 
 	http.Handle("/rest/v0/import", importAH)
 
-	http.Handle("/metrics", promhttp.Handler())
+	exporter, err := prometheus.NewExporter(prometheus.Options{
+		Namespace: "lotus",
+	})
+	if err != nil {
+		log.Fatalf("could not create the prometheus stats exporter: %v", err)
+	}
+
+	http.Handle("/metrics", exporter)
 
 	lst, err := manet.Listen(addr)
 	if err != nil {
