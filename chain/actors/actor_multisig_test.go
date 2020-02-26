@@ -10,7 +10,7 @@ import (
 	cbg "github.com/whyrusleeping/cbor-gen"
 
 	"github.com/filecoin-project/go-address"
-	"github.com/filecoin-project/lotus/chain/actors"
+
 	"github.com/filecoin-project/lotus/chain/types"
 	"github.com/filecoin-project/lotus/chain/vm"
 
@@ -27,7 +27,7 @@ func TestMultiSigCreate(t *testing.T) {
 	}
 
 	h := NewHarness(t, opts...)
-	ret, _ := h.CreateActor(t, creatorAddr, actors.MultisigCodeCid,
+	ret, _ := h.CreateActor(t, creatorAddr, builtin.MultisigActorCodeID,
 		&samsig.ConstructorParams{
 			Signers:               []address.Address{creatorAddr, sig1Addr, sig2Addr},
 			NumApprovalsThreshold: 2,
@@ -53,7 +53,7 @@ func TestMultiSigOps(t *testing.T) {
 		HarnessAddr(&sig1Addr, 100000),
 		HarnessAddr(&sig2Addr, 100000),
 		HarnessAddr(&outsideAddr, 100000),
-		HarnessActor(&multSigAddr, &creatorAddr, actors.MultisigCodeCid,
+		HarnessActor(&multSigAddr, &creatorAddr, builtin.MultisigActorCodeID,
 			func() cbg.CBORMarshaler {
 				return &samsig.ConstructorParams{
 					Signers:               []address.Address{creatorAddr, sig1Addr, sig2Addr},
