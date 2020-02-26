@@ -5,7 +5,9 @@ import (
 	"sync"
 	"time"
 
+	"github.com/filecoin-project/lotus/metrics"
 	"github.com/filecoin-project/lotus/node/modules/dtypes"
+	"go.opencensus.io/stats"
 	"go.uber.org/fx"
 
 	host "github.com/libp2p/go-libp2p-core/host"
@@ -115,6 +117,7 @@ func (pmgr *PeerMgr) Run(ctx context.Context) {
 			} else if pcount > pmgr.maxFilPeers {
 				log.Debug("peer count about threshold: %d > %d", pcount, pmgr.maxFilPeers)
 			}
+			stats.Record(ctx, metrics.PeerCount.M(int64(pmgr.getPeerCount())))
 		}
 	}
 }

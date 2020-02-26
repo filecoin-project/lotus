@@ -24,6 +24,7 @@ import (
 	"github.com/filecoin-project/lotus/chain/stmgr"
 	"github.com/filecoin-project/lotus/chain/store"
 	"github.com/filecoin-project/lotus/chain/vm"
+	"github.com/filecoin-project/lotus/metrics"
 	"github.com/filecoin-project/lotus/node"
 	"github.com/filecoin-project/lotus/node/modules"
 	"github.com/filecoin-project/lotus/node/modules/testing"
@@ -34,12 +35,6 @@ import (
 const (
 	makeGenFlag          = "lotus-make-random-genesis"
 	preSealedSectorsFlag = "genesis-presealed-sectors"
-)
-
-var (
-	lotusInfo  = stats.Int64("info", "Arbitrary counter to tag lotus info to", stats.UnitDimensionless)
-	version, _ = tag.NewKey("version")
-	commit, _  = tag.NewKey("commit")
 )
 
 // DaemonCmd is the `go-lotus daemon` command
@@ -99,7 +94,7 @@ var DaemonCmd = &cli.Command{
 			defer pprof.StopCPUProfile()
 		}
 
-		ctx, _ := tag.New(context.Background(), tag.Insert(version, build.BuildVersion), tag.Insert(commit, build.CurrentCommit))
+		ctx, _ := tag.New(context.Background(), tag.Insert(metrics.Version, build.BuildVersion), tag.Insert(metrics.Commit, build.CurrentCommit))
 		{
 			dir, err := homedir.Expand(cctx.String("repo"))
 			if err != nil {
@@ -180,21 +175,15 @@ var DaemonCmd = &cli.Command{
 			return xerrors.Errorf("initializing node: %w", err)
 		}
 
-		// We are using this metric to tag info about lotus even though
-		// it doesn't contain any actual metrics
+		// Register all metric views
 		if err = view.Register(
-			&view.View{
-				Name:        "info",
-				Description: "Lotus node information",
-				Measure:     lotusInfo,
-				Aggregation: view.LastValue(),
-				TagKeys:     []tag.Key{version, commit},
-			},
+			metrics.DefaultViews...,
 		); err != nil {
 			log.Fatalf("Cannot register the view: %v", err)
 		}
+
 		// Set the metric to one so it is published to the exporter
-		stats.Record(ctx, lotusInfo.M(1))
+		stats.Record(ctx, metrics.LotusInfo.M(1))
 
 		endpoint, err := r.APIEndpoint()
 		if err != nil {

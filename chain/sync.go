@@ -23,6 +23,7 @@ import (
 	"github.com/libp2p/go-libp2p-core/peer"
 	cbg "github.com/whyrusleeping/cbor-gen"
 	"github.com/whyrusleeping/pubsub"
+	"go.opencensus.io/stats"
 	"go.opencensus.io/trace"
 	"golang.org/x/xerrors"
 
@@ -38,6 +39,7 @@ import (
 	"github.com/filecoin-project/lotus/chain/store"
 	"github.com/filecoin-project/lotus/chain/types"
 	"github.com/filecoin-project/lotus/lib/sigs"
+	"github.com/filecoin-project/lotus/metrics"
 )
 
 var log = logging.Logger("chain")
@@ -393,6 +395,9 @@ func (syncer *Syncer) Sync(ctx context.Context, maybeHead *types.TipSet) error {
 			trace.Int64Attribute("height", int64(maybeHead.Height())),
 		)
 	}
+
+	// Record current network chain height when sync is called
+	stats.Record(ctx, metrics.ChainHeight.M(int64(maybeHead.Height())))
 
 	if syncer.store.GetHeaviestTipSet().ParentWeight().GreaterThan(maybeHead.ParentWeight()) {
 		return nil
@@ -1038,6 +1043,8 @@ func (syncer *Syncer) syncMessagesAndCheckState(ctx context.Context, headers []*
 			return xerrors.Errorf("message processing failed: %w", err)
 		}
 
+		// Set current node sync height
+		stats.Record(ctx, metrics.ChainNodeHeight.M(int64(fts.TipSet().Height())))
 		ss.SetHeight(fts.TipSet().Height())
 
 		return nil

@@ -9,6 +9,9 @@ import (
 	"io"
 	"reflect"
 
+	"github.com/filecoin-project/lotus/metrics"
+	"go.opencensus.io/stats"
+	"go.opencensus.io/tag"
 	"go.opencensus.io/trace"
 	"go.opencensus.io/trace/propagation"
 	"golang.org/x/xerrors"
@@ -151,12 +154,15 @@ func (handlers) getSpan(ctx context.Context, req request) (context.Context, *tra
 }
 
 func (h handlers) handle(ctx context.Context, req request, w func(func(io.Writer)), rpcError rpcErrFunc, done func(keepCtx bool), chOut chanOut) {
+	// Not sure if we need to sanitize the incoming req.Method or not.
 	ctx, span := h.getSpan(ctx, req)
+	ctx, _ = tag.New(context.Background(), tag.Insert(metrics.RPCMethod, req.Method))
 	defer span.End()
 
 	handler, ok := h[req.Method]
 	if !ok {
 		rpcError(w, &req, rpcMethodNotFound, fmt.Errorf("method '%s' not found", req.Method))
+		stats.Record(ctx, metrics.RPCInvalidMethod.M(1))
 		done(false)
 		return
 	}
@@ -201,6 +207,7 @@ func (h handlers) handle(ctx context.Context, req request, w func(func(io.Writer
 	if req.ID == nil {
 		return // notification
 	}
+	stats.Record(ctx, metrics.RPCRequestSuccess.M(1))
 
 	///////////////////
 
@@ -245,5 +252,6 @@ func (h handlers) handle(ctx context.Context, req request, w func(func(io.Writer
 			log.Error(err)
 			return
 		}
+		stats.Record(ctx, metrics.RPCResponseSuccess.M(1))
 	})
 }
