@@ -39,6 +39,7 @@ const (
 var (
 	lotusInfo  = stats.Int64("version", "Arbitrary counter to tag lotus info to", stats.UnitDimensionless)
 	version, _ = tag.NewKey("version")
+	commit, _  = tag.NewKey("commit")
 )
 
 // DaemonCmd is the `go-lotus daemon` command
@@ -98,7 +99,7 @@ var DaemonCmd = &cli.Command{
 			defer pprof.StopCPUProfile()
 		}
 
-		ctx, _ := tag.New(context.Background(), tag.Insert(version, build.BuildVersion))
+		ctx, _ := tag.New(context.Background(), tag.Insert(version, build.BuildVersion), tag.Insert(commit, build.CurrentCommit))
 		{
 			dir, err := homedir.Expand(cctx.String("repo"))
 			if err != nil {
@@ -187,7 +188,7 @@ var DaemonCmd = &cli.Command{
 				Description: "Lotus node information",
 				Measure:     lotusInfo,
 				Aggregation: view.LastValue(),
-				TagKeys:     []tag.Key{version},
+				TagKeys:     []tag.Key{version, commit},
 			},
 		); err != nil {
 			log.Fatalf("Cannot register the view: %v", err)
