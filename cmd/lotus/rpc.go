@@ -53,7 +53,7 @@ func serveRPC(a api.FullNode, stop node.StopFunc, addr multiaddr.Multiaddr) erro
 		log.Fatalf("could not create the prometheus stats exporter: %v", err)
 	}
 
-	http.Handle("/metrics", exporter)
+	http.Handle("/debug/metrics", exporter)
 
 	lst, err := manet.Listen(addr)
 	if err != nil {
