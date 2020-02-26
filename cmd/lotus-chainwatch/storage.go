@@ -456,7 +456,7 @@ create temp table mh (like miner_heads excluding constraints) on commit drop;
 		return xerrors.Errorf("prep temp: %w", err)
 	}
 
-	stmt, err := tx.Prepare(`copy mh (head, addr, stateroot, sectorset, setsize, provingset, provingsize, owner, worker, peerid, sectorsize, power, active, ppe, slashed_at) from STDIN`)
+	stmt, err := tx.Prepare(`copy mh (head, addr, stateroot, sectorset, setsize, provingset, provingsize, owner, worker, peerid, sectorsize, power, ppe) from STDIN`)
 	if err != nil {
 		return err
 	}
@@ -473,10 +473,8 @@ create temp table mh (like miner_heads excluding constraints) on commit drop;
 			i.info.Worker.String(),
 			i.info.PeerId.String(),
 			i.info.SectorSize,
-			i.state.Power.String(), // TODO: SPA
-			i.state.Active,
+			i.power.String(), // TODO: SPA
 			i.state.PoStState.ProvingPeriodStart,
-			i.state.SlashedAt,
 		); err != nil {
 			return err
 		}

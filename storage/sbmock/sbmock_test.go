@@ -5,7 +5,7 @@ import (
 	"testing"
 	"time"
 
-	"github.com/filecoin-project/go-sectorbuilder"
+	"github.com/filecoin-project/specs-actors/actors/abi"
 )
 
 func TestOpFinish(t *testing.T) {
@@ -20,7 +20,7 @@ func TestOpFinish(t *testing.T) {
 
 	finished := make(chan struct{})
 	go func() {
-		_, err := sb.SealPreCommit(ctx, sid, sectorbuilder.SealTicket{}, pieces)
+		_, _, err := sb.SealPreCommit(ctx, sid, abi.SealRandomness{}, pieces)
 		if err != nil {
 			t.Error(err)
 			return
