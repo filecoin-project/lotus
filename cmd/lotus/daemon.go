@@ -13,8 +13,9 @@ import (
 	blockstore "github.com/ipfs/go-ipfs-blockstore"
 	"github.com/mitchellh/go-homedir"
 	"github.com/multiformats/go-multiaddr"
-	"github.com/prometheus/client_golang/prometheus"
-	"github.com/prometheus/client_golang/prometheus/promauto"
+	"go.opencensus.io/stats"
+	"go.opencensus.io/stats/view"
+	"go.opencensus.io/tag"
 	"golang.org/x/xerrors"
 	"gopkg.in/urfave/cli.v2"
 
@@ -33,6 +34,12 @@ import (
 const (
 	makeGenFlag          = "lotus-make-random-genesis"
 	preSealedSectorsFlag = "genesis-presealed-sectors"
+)
+
+var (
+	lotusInfo  = stats.Int64("info", "Arbitrary counter to tag lotus info to", stats.UnitDimensionless)
+	version, _ = tag.NewKey("version")
+	commit, _  = tag.NewKey("commit")
 )
 
 // DaemonCmd is the `go-lotus daemon` command
@@ -92,7 +99,7 @@ var DaemonCmd = &cli.Command{
 			defer pprof.StopCPUProfile()
 		}
 
-		ctx := context.Background()
+		ctx, _ := tag.New(context.Background(), tag.Insert(version, build.BuildVersion), tag.Insert(commit, build.CurrentCommit))
 		{
 			dir, err := homedir.Expand(cctx.String("repo"))
 			if err != nil {
@@ -173,16 +180,21 @@ var DaemonCmd = &cli.Command{
 			return xerrors.Errorf("initializing node: %w", err)
 		}
 
-		// Add lotus version info to prometheus metrics
-		var lotusInfoMetric = promauto.NewGaugeVec(prometheus.GaugeOpts{
-			Name: "lotus_info",
-			Help: "Lotus version information.",
-		}, []string{"version"})
-
-		// Setting to 1 lets us multiply it with other stats to add the version labels
-		lotusInfoMetric.With(prometheus.Labels{
-			"version": build.UserVersion,
-		}).Set(1)
+		// We are using this metric to tag info about lotus even though
+		// it doesn't contain any actual metrics
+		if err = view.Register(
+			&view.View{
+				Name:        "info",
+				Description: "Lotus node information",
+				Measure:     lotusInfo,
+				Aggregation: view.LastValue(),
+				TagKeys:     []tag.Key{version, commit},
+			},
+		); err != nil {
+			log.Fatalf("Cannot register the view: %v", err)
+		}
+		// Set the metric to one so it is published to the exporter
+		stats.Record(ctx, lotusInfo.M(1))
 
 		endpoint, err := r.APIEndpoint()
 		if err != nil {
