@@ -234,7 +234,7 @@ func (c *ClientNodeAdapter) OnDealSectorCommitted(ctx context.Context, provider 
 			return false, false, xerrors.Errorf("failed to look up deal on chain: %w", err)
 		}
 
-		if sd.Proposal.StartEpoch > 0 {
+		if sd.State.SectorStartEpoch > 0 {
 			cb(nil)
 			return true, false, nil
 		}
@@ -259,7 +259,7 @@ func (c *ClientNodeAdapter) OnDealSectorCommitted(ctx context.Context, provider 
 			return false, xerrors.Errorf("failed to look up deal on chain: %w", err)
 		}
 
-		if sd.Proposal.StartEpoch == 0 {
+		if sd.State.SectorStartEpoch < 1 {
 			return false, xerrors.Errorf("deal wasn't active: deal=%d, parentState=%s, h=%d", dealId, ts.ParentState(), ts.Height())
 		}
 
