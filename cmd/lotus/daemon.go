@@ -37,7 +37,7 @@ const (
 )
 
 var (
-	lotusInfo  = stats.Int64("version", "Arbitrary counter to tag lotus info to", stats.UnitDimensionless)
+	lotusInfo  = stats.Int64("info", "Arbitrary counter to tag lotus info to", stats.UnitDimensionless)
 	version, _ = tag.NewKey("version")
 	commit, _  = tag.NewKey("commit")
 )
