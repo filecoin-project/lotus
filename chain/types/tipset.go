@@ -10,6 +10,7 @@ import (
 	"github.com/filecoin-project/specs-actors/actors/abi"
 	"github.com/ipfs/go-cid"
 	logging "github.com/ipfs/go-log/v2"
+	"github.com/minio/blake2b-simd"
 	cbg "github.com/whyrusleeping/cbor-gen"
 	"golang.org/x/xerrors"
 )
@@ -170,7 +171,9 @@ func (ts *TipSet) Equals(ots *TipSet) bool {
 }
 
 func (t *Ticket) Less(o *Ticket) bool {
-	return bytes.Compare(t.VRFProof, o.VRFProof) < 0
+	tDigest := blake2b.Sum256(t.VRFProof)
+	oDigest := blake2b.Sum256(o.VRFProof)
+	return bytes.Compare(tDigest[:], oDigest[:]) < 0
 }
 
 func (ts *TipSet) MinTicket() *Ticket {
