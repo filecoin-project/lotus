@@ -3,7 +3,9 @@ package zerocomm
 import (
 	"math/bits"
 
+	commcid "github.com/filecoin-project/go-fil-commcid"
 	"github.com/filecoin-project/specs-actors/actors/abi"
+	"github.com/ipfs/go-cid"
 )
 
 const levels = 37
@@ -47,7 +49,7 @@ var pieceComms = [levels - skip][32]byte{
 	{0xaa, 0xaa, 0x8c, 0x4c, 0xb4, 0xa, 0xac, 0xee, 0x1e, 0x2, 0xdc, 0x65, 0x42, 0x4b, 0x2a, 0x6c, 0x8e, 0x99, 0xf8, 0x3, 0xb7, 0x2f, 0x79, 0x29, 0xc4, 0x10, 0x1d, 0x7f, 0xae, 0x6b, 0xff, 0x32},
 }
 
-func ForSize(sz abi.UnpaddedPieceSize) [32]byte {
+func ForSize(sz abi.UnpaddedPieceSize) cid.Cid {
 	level := bits.TrailingZeros64(uint64(sz.Padded())) - skip - 5 // 2^5 = 32
-	return pieceComms[level]
+	return commcid.DataCommitmentV1ToCID(pieceComms[level][:])
 }

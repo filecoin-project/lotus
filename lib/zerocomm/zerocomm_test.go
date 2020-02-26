@@ -6,13 +6,15 @@ import (
 	"testing"
 
 	"github.com/filecoin-project/go-sectorbuilder"
+	abi "github.com/filecoin-project/specs-actors/actors/abi"
+	"github.com/ipfs/go-cid"
 )
 
 func TestComms(t *testing.T) {
-	var expPieceComms [levels - skip][32]byte
+	var expPieceComms [levels - skip]cid.Cid
 
 	{
-		l2, err := sectorbuilder.GeneratePieceCommitment(bytes.NewReader(make([]byte, 127)), 127)
+		l2, err := sectorbuilder.GeneratePieceCIDFromFile(abi.RegisteredProof_StackedDRG2KiBPoSt, bytes.NewReader(make([]byte, 127)), 127)
 		if err != nil {
 			return
 		}
@@ -21,6 +23,7 @@ func TestComms(t *testing.T) {
 
 	for i := 1; i < levels-2; i++ {
 		var err error
+		sectorbuilder.GenerateUnsealedCID()
 		expPieceComms[i], err = sectorbuilder.GenerateDataCommitment(128<<i, []sectorbuilder.PublicPieceInfo{
 			{
 				Size:  127 << (i - 1),

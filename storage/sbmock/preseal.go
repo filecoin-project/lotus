@@ -32,7 +32,7 @@ func PreSeal(ssize abi.SectorSize, maddr address.Address, sectors int) (*genesis
 		preseal := &genesis.PreSeal{}
 		sdata := randB(uint64(abi.PaddedPieceSize(ssize).Unpadded()))
 
-		preseal.CommD = commD(sdata)
+		preseal.CommD = commDR(sdata)
 		preseal.CommR = commDR(preseal.CommD[:])
 		preseal.SectorID = abi.SectorNumber(i + 1)
 		preseal.Deal = market.DealProposal{
