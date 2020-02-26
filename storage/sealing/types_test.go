@@ -4,18 +4,21 @@ import (
 	"bytes"
 	"testing"
 
+	"github.com/filecoin-project/specs-actors/actors/abi"
 	"gotest.tools/assert"
 
 	"github.com/filecoin-project/go-cbor-util"
 )
 
 func TestSectorInfoSelialization(t *testing.T) {
+	d := abi.DealID(1234)
+
 	si := &SectorInfo{
 		State:    123,
 		SectorID: 234,
 		Nonce:    345,
 		Pieces: []Piece{{
-			DealID: 1234,
+			DealID: &d,
 			Size:   5,
 			CommP:  []byte{3},
 		}},

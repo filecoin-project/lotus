@@ -113,7 +113,7 @@ func syncHead(ctx context.Context, api api.FullNode, st *storage, ts *types.TipS
 	for len(allToSync) > 0 {
 		actors := map[address.Address]map[types.Actor]actorInfo{}
 		addresses := map[address.Address]address.Address{}
-		minH := abi.ChainEpoch(math.MaxUint64)
+		minH := abi.ChainEpoch(math.MaxInt64)
 
 		for _, header := range allToSync {
 			if header.Height < minH {
@@ -123,7 +123,7 @@ func syncHead(ctx context.Context, api api.FullNode, st *storage, ts *types.TipS
 
 		toSync := map[cid.Cid]*types.BlockHeader{}
 		for c, header := range allToSync {
-			if header.Height < minH+uint64(maxBatch) {
+			if header.Height < minH+abi.ChainEpoch(maxBatch) {
 				toSync[c] = header
 				addresses[header.Miner] = address.Undef
 			}
