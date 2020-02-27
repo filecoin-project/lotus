@@ -348,16 +348,6 @@ func (t *Piece) MarshalCBOR(w io.Writer) error {
 		return err
 	}
 
-	if len(t.CommP) > cbg.ByteArrayMaxLen {
-		return xerrors.Errorf("Byte array in field t.CommP was too long")
-	}
-
-	if _, err := w.Write(cbg.CborEncodeMajorType(cbg.MajByteString, uint64(len(t.CommP)))); err != nil {
-		return err
-	}
-	if _, err := w.Write(t.CommP); err != nil {
-		return err
-	}
 	return nil
 }
 
@@ -446,10 +436,6 @@ func (t *Piece) UnmarshalCBOR(r io.Reader) error {
 			}
 			if maj != cbg.MajByteString {
 				return fmt.Errorf("expected byte array")
-			}
-			t.CommP = make([]byte, extra)
-			if _, err := io.ReadFull(br, t.CommP); err != nil {
-				return err
 			}
 
 		default:
@@ -553,17 +539,6 @@ func (t *SectorInfo) MarshalCBOR(w io.Writer) error {
 		return err
 	}
 
-	if len(t.CommD) > cbg.ByteArrayMaxLen {
-		return xerrors.Errorf("Byte array in field t.CommD was too long")
-	}
-
-	if _, err := w.Write(cbg.CborEncodeMajorType(cbg.MajByteString, uint64(len(t.CommD)))); err != nil {
-		return err
-	}
-	if _, err := w.Write(t.CommD); err != nil {
-		return err
-	}
-
 	// t.CommR ([]uint8) (slice)
 	if len("CommR") > cbg.MaxLength {
 		return xerrors.Errorf("Value in field \"CommR\" was too long")
@@ -573,17 +548,6 @@ func (t *SectorInfo) MarshalCBOR(w io.Writer) error {
 		return err
 	}
 	if _, err := w.Write([]byte("CommR")); err != nil {
-		return err
-	}
-
-	if len(t.CommR) > cbg.ByteArrayMaxLen {
-		return xerrors.Errorf("Byte array in field t.CommR was too long")
-	}
-
-	if _, err := w.Write(cbg.CborEncodeMajorType(cbg.MajByteString, uint64(len(t.CommR)))); err != nil {
-		return err
-	}
-	if _, err := w.Write(t.CommR); err != nil {
 		return err
 	}
 
@@ -619,10 +583,6 @@ func (t *SectorInfo) MarshalCBOR(w io.Writer) error {
 		return err
 	}
 	if _, err := w.Write([]byte("Ticket")); err != nil {
-		return err
-	}
-
-	if err := t.Ticket.MarshalCBOR(w); err != nil {
 		return err
 	}
 
@@ -875,10 +835,6 @@ func (t *SectorInfo) UnmarshalCBOR(r io.Reader) error {
 			if maj != cbg.MajByteString {
 				return fmt.Errorf("expected byte array")
 			}
-			t.CommD = make([]byte, extra)
-			if _, err := io.ReadFull(br, t.CommD); err != nil {
-				return err
-			}
 			// t.CommR ([]uint8) (slice)
 		case "CommR":
 
@@ -892,10 +848,6 @@ func (t *SectorInfo) UnmarshalCBOR(r io.Reader) error {
 			}
 			if maj != cbg.MajByteString {
 				return fmt.Errorf("expected byte array")
-			}
-			t.CommR = make([]byte, extra)
-			if _, err := io.ReadFull(br, t.CommR); err != nil {
-				return err
 			}
 			// t.Proof ([]uint8) (slice)
 		case "Proof":
@@ -919,10 +871,6 @@ func (t *SectorInfo) UnmarshalCBOR(r io.Reader) error {
 		case "Ticket":
 
 			{
-
-				if err := t.Ticket.UnmarshalCBOR(br); err != nil {
-					return err
-				}
 
 			}
 			// t.PreCommitMessage (cid.Cid) (struct)
