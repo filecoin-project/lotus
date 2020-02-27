@@ -2,7 +2,6 @@ package sbmock
 
 import (
 	"github.com/filecoin-project/go-address"
-	commcid "github.com/filecoin-project/go-fil-commcid"
 	"github.com/filecoin-project/specs-actors/actors/abi"
 	"github.com/filecoin-project/specs-actors/actors/abi/big"
 	"github.com/filecoin-project/specs-actors/actors/builtin/market"
@@ -11,6 +10,7 @@ import (
 	"github.com/filecoin-project/lotus/chain/types"
 	"github.com/filecoin-project/lotus/chain/wallet"
 	"github.com/filecoin-project/lotus/genesis"
+	"github.com/filecoin-project/lotus/lib/zerocomm"
 )
 
 func PreSeal(ssize abi.SectorSize, maddr address.Address, sectors int) (*genesis.Miner, *types.KeyInfo, error) {
@@ -30,13 +30,12 @@ func PreSeal(ssize abi.SectorSize, maddr address.Address, sectors int) (*genesis
 
 	for i := range genm.Sectors {
 		preseal := &genesis.PreSeal{}
-		sdata := randB(uint64(abi.PaddedPieceSize(ssize).Unpadded()))
 
-		preseal.CommD = commDR(sdata)
-		preseal.CommR = commDR(preseal.CommD[:])
+		preseal.CommD = zerocomm.ForSize(abi.PaddedPieceSize(ssize).Unpadded())
+		preseal.CommR = zerocomm.ForSize(abi.PaddedPieceSize(ssize).Unpadded())
 		preseal.SectorID = abi.SectorNumber(i + 1)
 		preseal.Deal = market.DealProposal{
-			PieceCID:             commcid.PieceCommitmentV1ToCID(preseal.CommD[:]),
+			PieceCID:             preseal.CommD,
 			PieceSize:            abi.PaddedPieceSize(ssize),
 			Client:               maddr,
 			Provider:             maddr,
