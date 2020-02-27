@@ -49,8 +49,8 @@ import (
 func init() {
 	_ = logging.SetLogLevel("*", "INFO")
 
-	build.SectorSizes = []abi.SectorSize{1024}
-	build.MinimumMinerPower = 1024
+	build.SectorSizes = []abi.SectorSize{2048}
+	build.MinimumMinerPower = 2048
 }
 
 func testStorageNode(ctx context.Context, t *testing.T, waddr address.Address, act address.Address, pk crypto.PrivKey, tnd test.TestNode, mn mocknet.Mocknet, opts node.Option) test.TestStorageNode {
@@ -174,7 +174,7 @@ func builder(t *testing.T, nFull int, storage []int) ([]test.TestNode, []test.Te
 		if err != nil {
 			t.Fatal(err)
 		}
-		genm, k, err := seed.PreSeal(maddr, 1024, 0, 2, tdir, []byte("make genesis mem random"), nil)
+		genm, k, err := seed.PreSeal(maddr, abi.RegisteredProof_StackedDRG2KiBPoSt, 0, 2, tdir, []byte("make genesis mem random"), nil)
 		if err != nil {
 			t.Fatal(err)
 		}
@@ -260,7 +260,8 @@ func builder(t *testing.T, nFull int, storage []int) ([]test.TestNode, []test.Te
 		}
 
 		osb, err := sectorbuilder.New(&sectorbuilder.Config{
-			SectorSize:    1024,
+			SealProofType: abi.RegisteredProof_StackedDRG2KiBSeal,
+			PoStProofType: abi.RegisteredProof_StackedDRG2KiBPoSt,
 			WorkerThreads: 2,
 			Miner:         genMiner,
 			Paths:         sectorbuilder.SimplePath(psd),
@@ -317,7 +318,7 @@ func mockSbBuilder(t *testing.T, nFull int, storage []int) ([]test.TestNode, []t
 		if err != nil {
 			t.Fatal(err)
 		}
-		genm, k, err := sbmock.PreSeal(1024, maddr, 2)
+		genm, k, err := sbmock.PreSeal(2048, maddr, 2)
 		if err != nil {
 			t.Fatal(err)
 		}

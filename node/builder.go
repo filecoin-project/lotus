@@ -3,8 +3,9 @@ package node
 import (
 	"context"
 	"errors"
-	"github.com/filecoin-project/specs-actors/actors/runtime"
 	"time"
+
+	"github.com/filecoin-project/specs-actors/actors/runtime"
 
 	sectorbuilder "github.com/filecoin-project/go-sectorbuilder"
 	blockstore "github.com/ipfs/go-ipfs-blockstore"
@@ -428,7 +429,7 @@ func New(ctx context.Context, opts ...Option) (StopFunc, error) {
 
 	// apply module options in the right order
 	if err := Options(Options(defaults()...), Options(opts...))(&settings); err != nil {
-		return nil, err
+		return nil, xerrors.Errorf("applying node options failed: %w", err)
 	}
 
 	// gather constructors for fx.Options
@@ -456,7 +457,7 @@ func New(ctx context.Context, opts ...Option) (StopFunc, error) {
 	//  correctly
 	if err := app.Start(ctx); err != nil {
 		// comment fx.NopLogger few lines above for easier debugging
-		return nil, err
+		return nil, xerrors.Errorf("starting node: %w", err)
 	}
 
 	return app.Stop, nil
