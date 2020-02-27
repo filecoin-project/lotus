@@ -392,16 +392,6 @@ func (t *EPostProof) MarshalCBOR(w io.Writer) error {
 	}
 
 	// t.Proof ([]uint8) (slice)
-	if len(t.Proof) > cbg.ByteArrayMaxLen {
-		return xerrors.Errorf("Byte array in field t.Proof was too long")
-	}
-
-	if _, err := w.Write(cbg.CborEncodeMajorType(cbg.MajByteString, uint64(len(t.Proof)))); err != nil {
-		return err
-	}
-	if _, err := w.Write(t.Proof); err != nil {
-		return err
-	}
 
 	// t.PostRand ([]uint8) (slice)
 	if len(t.PostRand) > cbg.ByteArrayMaxLen {
@@ -458,10 +448,6 @@ func (t *EPostProof) UnmarshalCBOR(r io.Reader) error {
 	}
 	if maj != cbg.MajByteString {
 		return fmt.Errorf("expected byte array")
-	}
-	t.Proof = make([]byte, extra)
-	if _, err := io.ReadFull(br, t.Proof); err != nil {
-		return err
 	}
 	// t.PostRand ([]uint8) (slice)
 

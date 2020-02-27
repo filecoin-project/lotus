@@ -5,6 +5,7 @@ import (
 	"encoding/json"
 
 	"github.com/filecoin-project/go-amt-ipld/v2"
+	"github.com/filecoin-project/specs-actors/actors/abi"
 	"github.com/filecoin-project/specs-actors/actors/abi/big"
 	"github.com/filecoin-project/specs-actors/actors/builtin"
 	"github.com/filecoin-project/specs-actors/actors/builtin/account"
@@ -257,7 +258,7 @@ func MakeGenesisBlock(ctx context.Context, bs bstore.Blockstore, sys runtime.Sys
 		Miner:  builtin.InitActorAddr,
 		Ticket: genesisticket,
 		EPostProof: types.EPostProof{
-			Proof:    []byte("not a real proof"),
+			Proofs:   []abi.PoStProof{{ProofBytes: []byte("not a real proof")}},
 			PostRand: []byte("i guess this is kinda random"),
 		},
 		Parents:               []cid.Cid{},

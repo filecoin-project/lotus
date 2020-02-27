@@ -29,7 +29,7 @@ type EPostTicket struct {
 }
 
 type EPostProof struct {
-	Proof      []byte
+	Proofs     []abi.PoStProof
 	PostRand   []byte
 	Candidates []EPostTicket
 }

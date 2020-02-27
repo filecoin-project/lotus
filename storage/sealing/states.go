@@ -11,6 +11,7 @@ import (
 	"github.com/filecoin-project/specs-actors/actors/builtin/miner"
 	"golang.org/x/xerrors"
 
+	"github.com/filecoin-project/lotus/api"
 	"github.com/filecoin-project/lotus/build"
 	"github.com/filecoin-project/lotus/chain/actors"
 	"github.com/filecoin-project/lotus/chain/types"
@@ -69,7 +70,7 @@ func (m *Sealing) handleUnsealed(ctx statemachine.Context, sector SectorInfo) er
 		return ctx.Send(SectorSealFailed{xerrors.Errorf("getting ticket failed: %w", err)})
 	}
 
-	sealed, unsealed, err := m.sb.SealPreCommit(ctx.Context(), sector.SectorID, ticket.TicketBytes, sector.pieceInfos())
+	sealed, unsealed, err := m.sb.SealPreCommit(ctx.Context(), sector.SectorID, ticket.Value, sector.pieceInfos())
 	if err != nil {
 		return ctx.Send(SectorSealFailed{xerrors.Errorf("seal pre commit failed: %w", err)})
 	}
@@ -77,7 +78,7 @@ func (m *Sealing) handleUnsealed(ctx statemachine.Context, sector SectorInfo) er
 	return ctx.Send(SectorSealed{
 		commD:  unsealed,
 		commR:  sealed,
-		ticket: ticket,
+		ticket: *ticket,
 	})
 }
 
@@ -102,7 +103,7 @@ func (m *Sealing) handlePreCommitting(ctx statemachine.Context, sector SectorInf
 		RegisteredProof: abi.RegisteredProof_StackedDRG32GiBSeal,
 
 		SealedCID:     *sector.CommR,
-		SealRandEpoch: sector.Ticket.BlockHeight,
+		SealRandEpoch: sector.Ticket.Epoch,
 		DealIDs:       sector.deals(),
 	}
 	enc, aerr := actors.SerializeParams(params)
@@ -156,9 +157,9 @@ func (m *Sealing) handleWaitSeed(ctx statemachine.Context, sector SectorInfo) er
 			return err
 		}
 
-		ctx.Send(SectorSeedReady{seed: SealSeed{
-			BlockHeight: randHeight,
-			TicketBytes: abi.InteractiveSealRandomness(rand),
+		ctx.Send(SectorSeedReady{seed: api.SealSeed{
+			Epoch: randHeight,
+			Value: abi.InteractiveSealRandomness(rand),
 		}})
 
 		return nil
@@ -177,9 +178,9 @@ func (m *Sealing) handleWaitSeed(ctx statemachine.Context, sector SectorInfo) er
 func (m *Sealing) handleCommitting(ctx statemachine.Context, sector SectorInfo) error {
 	log.Info("scheduling seal proof computation...")
 
-	log.Infof("KOMIT %d %x(%d); %x(%d); %v; r:%x; d:%x", sector.SectorID, sector.Ticket.TicketBytes, sector.Ticket.BlockHeight, sector.Seed.TicketBytes, sector.Seed.BlockHeight, sector.pieceInfos(), sector.CommR, sector.CommD)
+	log.Infof("KOMIT %d %x(%d); %x(%d); %v; r:%x; d:%x", sector.SectorID, sector.Ticket.Value, sector.Ticket.Epoch, sector.Seed.Value, sector.Seed.Epoch, sector.pieceInfos(), sector.CommR, sector.CommD)
 
-	proof, err := m.sb.SealCommit(ctx.Context(), sector.SectorID, sector.Ticket.TicketBytes, sector.Seed.TicketBytes, sector.pieceInfos(), *sector.CommR, *sector.CommD)
+	proof, err := m.sb.SealCommit(ctx.Context(), sector.SectorID, sector.Ticket.Value, sector.Seed.Value, sector.pieceInfos(), *sector.CommR, *sector.CommD)
 	if err != nil {
 		return ctx.Send(SectorComputeProofFailed{xerrors.Errorf("computing seal proof failed: %w", err)})
 	}
@@ -231,7 +232,7 @@ func (m *Sealing) handleCommitWait(ctx statemachine.Context, sector SectorInfo) 
 	}
 
 	if mw.Receipt.ExitCode != 0 {
-		return ctx.Send(SectorCommitFailed{xerrors.Errorf("submitting sector proof failed (exit=%d, msg=%s) (t:%x; s:%x(%d); p:%x)", mw.Receipt.ExitCode, sector.CommitMessage, sector.Ticket.TicketBytes, sector.Seed.TicketBytes, sector.Seed.BlockHeight, sector.Proof)})
+		return ctx.Send(SectorCommitFailed{xerrors.Errorf("submitting sector proof failed (exit=%d, msg=%s) (t:%x; s:%x(%d); p:%x)", mw.Receipt.ExitCode, sector.CommitMessage, sector.Ticket.Value, sector.Seed.Value, sector.Seed.Epoch, sector.Proof)})
 	}
 
 	return ctx.Send(SectorProving{})

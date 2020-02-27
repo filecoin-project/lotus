@@ -4,6 +4,7 @@ import (
 	"bytes"
 	"testing"
 
+	"github.com/filecoin-project/lotus/api"
 	"github.com/filecoin-project/specs-actors/actors/abi"
 	"github.com/filecoin-project/specs-actors/actors/builtin"
 	"gotest.tools/assert"
@@ -28,12 +29,12 @@ func TestSectorInfoSelialization(t *testing.T) {
 		CommD: &dummyCid,
 		CommR: nil,
 		Proof: nil,
-		Ticket: SealTicket{
-			BlockHeight: 345,
-			TicketBytes: []byte{87, 78, 7, 87},
+		Ticket: api.SealTicket{
+			Epoch: 345,
+			Value: []byte{87, 78, 7, 87},
 		},
 		PreCommitMessage: nil,
-		Seed:             SealSeed{},
+		Seed:             api.SealSeed{},
 		CommitMessage:    nil,
 		FaultReportMsg:   nil,
 		LastErr:          "hi",

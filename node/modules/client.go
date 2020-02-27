@@ -14,6 +14,7 @@ import (
 	deals "github.com/filecoin-project/go-fil-markets/storagemarket/impl"
 	storageimpl "github.com/filecoin-project/go-fil-markets/storagemarket/impl"
 	smnet "github.com/filecoin-project/go-fil-markets/storagemarket/network"
+	"github.com/filecoin-project/go-fil-markets/storedcounter"
 	"github.com/filecoin-project/go-statestore"
 	"github.com/ipfs/go-bitswap"
 	"github.com/ipfs/go-bitswap/network"
@@ -117,8 +118,9 @@ func StorageClient(h host.Host, ibs dtypes.ClientBlockstore, r repo.LockedRepo, 
 }
 
 // RetrievalClient creates a new retrieval client attached to the client blockstore
-func RetrievalClient(h host.Host, bs dtypes.ClientBlockstore, pmgr *paychmgr.Manager, payapi payapi.PaychAPI, resolver retrievalmarket.PeerResolver) retrievalmarket.RetrievalClient {
+func RetrievalClient(h host.Host, bs dtypes.ClientBlockstore, pmgr *paychmgr.Manager, payapi payapi.PaychAPI, resolver retrievalmarket.PeerResolver, ds dtypes.MetadataDS) (retrievalmarket.RetrievalClient, error) {
 	adapter := retrievaladapter.NewRetrievalClientNode(pmgr, payapi)
 	network := rmnet.NewFromLibp2pHost(h)
-	return retrievalimpl.NewClient(network, bs, adapter, resolver)
+	sc := storedcounter.New(ds, datastore.NewKey("/retr"))
+	return retrievalimpl.NewClient(network, bs, adapter, resolver, ds, sc)
 }

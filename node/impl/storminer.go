@@ -3,12 +3,13 @@ package impl
 import (
 	"context"
 	"encoding/json"
-	"github.com/filecoin-project/lotus/chain/types"
 	"io"
 	"mime"
 	"net/http"
 	"os"
 	"strconv"
+
+	"github.com/filecoin-project/lotus/chain/types"
 
 	"github.com/filecoin-project/specs-actors/actors/abi"
 	"github.com/gorilla/mux"
@@ -209,8 +210,8 @@ func (sm *StorageMinerAPI) SectorsStatus(ctx context.Context, sid abi.SectorNumb
 		CommR:    info.CommR,
 		Proof:    info.Proof,
 		Deals:    deals,
-		Ticket:   info.Ticket.SB(),
-		Seed:     info.Seed.SB(),
+		Ticket:   info.Ticket,
+		Seed:     info.Seed,
 		Retries:  info.Nonce,
 
 		LastErr: info.LastErr,
