@@ -47,6 +47,8 @@ func main() {
 		api.PaymentInfo{},
 		api.SealedRef{},
 		api.SealedRefs{},
+		api.SealTicket{},
+		api.SealSeed{},
 	)
 	if err != nil {
 		fmt.Println(err)
@@ -73,8 +75,6 @@ func main() {
 	}
 
 	err = gen.WriteMapEncodersToFile("./storage/sealing/cbor_gen.go", "sealing",
-		sealing.SealTicket{},
-		sealing.SealSeed{},
 		sealing.Piece{},
 		sealing.SectorInfo{},
 		sealing.Log{},

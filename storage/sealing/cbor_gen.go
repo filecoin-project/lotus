@@ -60,7 +60,7 @@ func (t *Piece) MarshalCBOR(w io.Writer) error {
 		return err
 	}
 
-	// t.CommP ([]uint8) (slice)
+	// t.CommP (cid.Cid) (struct)
 	if len("CommP") > cbg.MaxLength {
 		return xerrors.Errorf("Value in field \"CommP\" was too long")
 	}
@@ -70,6 +70,10 @@ func (t *Piece) MarshalCBOR(w io.Writer) error {
 	}
 	if _, err := w.Write([]byte("CommP")); err != nil {
 		return err
+	}
+
+	if err := cbg.WriteCid(w, t.CommP); err != nil {
+		return xerrors.Errorf("failed to write cid field t.CommP: %w", err)
 	}
 
 	return nil
@@ -147,19 +151,18 @@ func (t *Piece) UnmarshalCBOR(r io.Reader) error {
 				t.Size = abi.UnpaddedPieceSize(extra)
 
 			}
-			// t.CommP ([]uint8) (slice)
+			// t.CommP (cid.Cid) (struct)
 		case "CommP":
 
-			maj, extra, err = cbg.CborReadHeader(br)
-			if err != nil {
-				return err
-			}
+			{
 
-			if extra > cbg.ByteArrayMaxLen {
-				return fmt.Errorf("t.CommP: byte array too large (%d)", extra)
-			}
-			if maj != cbg.MajByteString {
-				return fmt.Errorf("expected byte array")
+				c, err := cbg.ReadCid(br)
+				if err != nil {
+					return xerrors.Errorf("failed to read cid field t.CommP: %w", err)
+				}
+
+				t.CommP = c
+
 			}
 
 		default:
@@ -174,7 +177,7 @@ func (t *SectorInfo) MarshalCBOR(w io.Writer) error {
 		_, err := w.Write(cbg.CborNull)
 		return err
 	}
-	if _, err := w.Write([]byte{174}); err != nil {
+	if _, err := w.Write([]byte{175}); err != nil {
 		return err
 	}
 
@@ -226,6 +229,28 @@ func (t *SectorInfo) MarshalCBOR(w io.Writer) error {
 		return err
 	}
 
+	// t.SectorType (abi.RegisteredProof) (int64)
+	if len("SectorType") > cbg.MaxLength {
+		return xerrors.Errorf("Value in field \"SectorType\" was too long")
+	}
+
+	if _, err := w.Write(cbg.CborEncodeMajorType(cbg.MajTextString, uint64(len("SectorType")))); err != nil {
+		return err
+	}
+	if _, err := w.Write([]byte("SectorType")); err != nil {
+		return err
+	}
+
+	if t.SectorType >= 0 {
+		if _, err := w.Write(cbg.CborEncodeMajorType(cbg.MajUnsignedInt, uint64(t.SectorType))); err != nil {
+			return err
+		}
+	} else {
+		if _, err := w.Write(cbg.CborEncodeMajorType(cbg.MajNegativeInt, uint64(-t.SectorType)-1)); err != nil {
+			return err
+		}
+	}
+
 	// t.Pieces ([]sealing.Piece) (slice)
 	if len("Pieces") > cbg.MaxLength {
 		return xerrors.Errorf("Value in field \"Pieces\" was too long")
@@ -251,7 +276,7 @@ func (t *SectorInfo) MarshalCBOR(w io.Writer) error {
 		}
 	}
 
-	// t.CommD ([]uint8) (slice)
+	// t.CommD (cid.Cid) (struct)
 	if len("CommD") > cbg.MaxLength {
 		return xerrors.Errorf("Value in field \"CommD\" was too long")
 	}
@@ -263,7 +288,17 @@ func (t *SectorInfo) MarshalCBOR(w io.Writer) error {
 		return err
 	}
 
-	// t.CommR ([]uint8) (slice)
+	if t.CommD == nil {
+		if _, err := w.Write(cbg.CborNull); err != nil {
+			return err
+		}
+	} else {
+		if err := cbg.WriteCid(w, *t.CommD); err != nil {
+			return xerrors.Errorf("failed to write cid field t.CommD: %w", err)
+		}
+	}
+
+	// t.CommR (cid.Cid) (struct)
 	if len("CommR") > cbg.MaxLength {
 		return xerrors.Errorf("Value in field \"CommR\" was too long")
 	}
@@ -273,6 +308,16 @@ func (t *SectorInfo) MarshalCBOR(w io.Writer) error {
 	}
 	if _, err := w.Write([]byte("CommR")); err != nil {
 		return err
+	}
+
+	if t.CommR == nil {
+		if _, err := w.Write(cbg.CborNull); err != nil {
+			return err
+		}
+	} else {
+		if err := cbg.WriteCid(w, *t.CommR); err != nil {
+			return xerrors.Errorf("failed to write cid field t.CommR: %w", err)
+		}
 	}
 
 	// t.Proof ([]uint8) (slice)
@@ -298,7 +343,7 @@ func (t *SectorInfo) MarshalCBOR(w io.Writer) error {
 		return err
 	}
 
-	// t.Ticket (sealing.SealTicket) (struct)
+	// t.Ticket (api.SealTicket) (struct)
 	if len("Ticket") > cbg.MaxLength {
 		return xerrors.Errorf("Value in field \"Ticket\" was too long")
 	}
@@ -307,6 +352,10 @@ func (t *SectorInfo) MarshalCBOR(w io.Writer) error {
 		return err
 	}
 	if _, err := w.Write([]byte("Ticket")); err != nil {
+		return err
+	}
+
+	if err := t.Ticket.MarshalCBOR(w); err != nil {
 		return err
 	}
 
@@ -332,7 +381,7 @@ func (t *SectorInfo) MarshalCBOR(w io.Writer) error {
 		}
 	}
 
-	// t.Seed (sealing.SealSeed) (struct)
+	// t.Seed (api.SealSeed) (struct)
 	if len("Seed") > cbg.MaxLength {
 		return xerrors.Errorf("Value in field \"Seed\" was too long")
 	}
@@ -341,6 +390,10 @@ func (t *SectorInfo) MarshalCBOR(w io.Writer) error {
 		return err
 	}
 	if _, err := w.Write([]byte("Seed")); err != nil {
+		return err
+	}
+
+	if err := t.Seed.MarshalCBOR(w); err != nil {
 		return err
 	}
 
@@ -513,6 +566,32 @@ func (t *SectorInfo) UnmarshalCBOR(r io.Reader) error {
 				t.Nonce = uint64(extra)
 
 			}
+			// t.SectorType (abi.RegisteredProof) (int64)
+		case "SectorType":
+			{
+				maj, extra, err := cbg.CborReadHeader(br)
+				var extraI int64
+				if err != nil {
+					return err
+				}
+				switch maj {
+				case cbg.MajUnsignedInt:
+					extraI = int64(extra)
+					if extraI < 0 {
+						return fmt.Errorf("int64 positive overflow")
+					}
+				case cbg.MajNegativeInt:
+					extraI = int64(extra)
+					if extraI < 0 {
+						return fmt.Errorf("int64 negative oveflow")
+					}
+					extraI = -1 - extraI
+				default:
+					return fmt.Errorf("wrong type for int64 field: %d", maj)
+				}
+
+				t.SectorType = abi.RegisteredProof(extraI)
+			}
 			// t.Pieces ([]sealing.Piece) (slice)
 		case "Pieces":
 
@@ -541,33 +620,55 @@ func (t *SectorInfo) UnmarshalCBOR(r io.Reader) error {
 				t.Pieces[i] = v
 			}
 
-			// t.CommD ([]uint8) (slice)
+			// t.CommD (cid.Cid) (struct)
 		case "CommD":
 
-			maj, extra, err = cbg.CborReadHeader(br)
-			if err != nil {
-				return err
-			}
+			{
 
-			if extra > cbg.ByteArrayMaxLen {
-				return fmt.Errorf("t.CommD: byte array too large (%d)", extra)
+				pb, err := br.PeekByte()
+				if err != nil {
+					return err
+				}
+				if pb == cbg.CborNull[0] {
+					var nbuf [1]byte
+					if _, err := br.Read(nbuf[:]); err != nil {
+						return err
+					}
+				} else {
+
+					c, err := cbg.ReadCid(br)
+					if err != nil {
+						return xerrors.Errorf("failed to read cid field t.CommD: %w", err)
+					}
+
+					t.CommD = &c
+				}
+
 			}
-			if maj != cbg.MajByteString {
-				return fmt.Errorf("expected byte array")
-			}
-			// t.CommR ([]uint8) (slice)
+			// t.CommR (cid.Cid) (struct)
 		case "CommR":
 
-			maj, extra, err = cbg.CborReadHeader(br)
-			if err != nil {
-				return err
-			}
+			{
 
-			if extra > cbg.ByteArrayMaxLen {
-				return fmt.Errorf("t.CommR: byte array too large (%d)", extra)
-			}
-			if maj != cbg.MajByteString {
-				return fmt.Errorf("expected byte array")
+				pb, err := br.PeekByte()
+				if err != nil {
+					return err
+				}
+				if pb == cbg.CborNull[0] {
+					var nbuf [1]byte
+					if _, err := br.Read(nbuf[:]); err != nil {
+						return err
+					}
+				} else {
+
+					c, err := cbg.ReadCid(br)
+					if err != nil {
+						return xerrors.Errorf("failed to read cid field t.CommR: %w", err)
+					}
+
+					t.CommR = &c
+				}
+
 			}
 			// t.Proof ([]uint8) (slice)
 		case "Proof":
@@ -587,10 +688,14 @@ func (t *SectorInfo) UnmarshalCBOR(r io.Reader) error {
 			if _, err := io.ReadFull(br, t.Proof); err != nil {
 				return err
 			}
-			// t.Ticket (sealing.SealTicket) (struct)
+			// t.Ticket (api.SealTicket) (struct)
 		case "Ticket":
 
 			{
+
+				if err := t.Ticket.UnmarshalCBOR(br); err != nil {
+					return err
+				}
 
 			}
 			// t.PreCommitMessage (cid.Cid) (struct)
@@ -618,10 +723,14 @@ func (t *SectorInfo) UnmarshalCBOR(r io.Reader) error {
 				}
 
 			}
-			// t.Seed (sealing.SealSeed) (struct)
+			// t.Seed (api.SealSeed) (struct)
 		case "Seed":
 
 			{
+
+				if err := t.Seed.UnmarshalCBOR(br); err != nil {
+					return err
+				}
 
 			}
 			// t.CommitMessage (cid.Cid) (struct)
