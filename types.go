@@ -1,7 +1,6 @@
 package sealing
 
 import (
-	sectorbuilder "github.com/filecoin-project/go-sectorbuilder"
 	"github.com/filecoin-project/lotus/api"
 	"github.com/filecoin-project/specs-actors/actors/abi"
 	"github.com/ipfs/go-cid"
@@ -9,24 +8,12 @@ import (
 
 type SealTicket struct {
 	BlockHeight abi.ChainEpoch
-	TicketBytes []byte
-}
-
-func (t *SealTicket) SB() sectorbuilder.SealTicket {
-	out := sectorbuilder.SealTicket{BlockHeight: uint64(t.BlockHeight)}
-	copy(out.TicketBytes[:], t.TicketBytes)
-	return out
+	TicketBytes abi.SealRandomness
 }
 
 type SealSeed struct {
 	BlockHeight abi.ChainEpoch
-	TicketBytes []byte
-}
-
-func (t *SealSeed) SB() sectorbuilder.SealSeed {
-	out := sectorbuilder.SealSeed{BlockHeight: uint64(t.BlockHeight)}
-	copy(out.TicketBytes[:], t.TicketBytes)
-	return out
+	TicketBytes abi.InteractiveSealRandomness
 }
 
 func (t *SealSeed) Equals(o *SealSeed) bool {
@@ -37,13 +24,7 @@ type Piece struct {
 	DealID *abi.DealID
 
 	Size  abi.UnpaddedPieceSize
-	CommP []byte
-}
-
-func (p *Piece) ppi() (out sectorbuilder.PublicPieceInfo) {
-	out.Size = p.Size
-	copy(out.CommP[:], p.CommP)
-	return out
+	CommP cid.Cid
 }
 
 type Log struct {
@@ -61,13 +42,15 @@ type SectorInfo struct {
 	SectorID abi.SectorNumber
 	Nonce    uint64 // TODO: remove
 
+	SectorType abi.RegisteredProof
+
 	// Packing
 
 	Pieces []Piece
 
 	// PreCommit
-	CommD  []byte
-	CommR  []byte
+	CommD  *cid.Cid
+	CommR  *cid.Cid
 	Proof  []byte
 	Ticket SealTicket
 
@@ -88,10 +71,13 @@ type SectorInfo struct {
 	Log []Log
 }
 
-func (t *SectorInfo) pieceInfos() []sectorbuilder.PublicPieceInfo {
-	out := make([]sectorbuilder.PublicPieceInfo, len(t.Pieces))
+func (t *SectorInfo) pieceInfos() []abi.PieceInfo {
+	out := make([]abi.PieceInfo, len(t.Pieces))
 	for i, piece := range t.Pieces {
-		out[i] = piece.ppi()
+		out[i] = abi.PieceInfo{
+			Size:     piece.Size.Padded(),
+			PieceCID: piece.CommP,
+		}
 	}
 	return out
 }
@@ -112,14 +98,5 @@ func (t *SectorInfo) existingPieces() []abi.UnpaddedPieceSize {
 	for i, piece := range t.Pieces {
 		out[i] = piece.Size
 	}
-	return out
-}
-
-func (t *SectorInfo) rspco() sectorbuilder.RawSealPreCommitOutput {
-	var out sectorbuilder.RawSealPreCommitOutput
-
-	copy(out.CommD[:], t.CommD)
-	copy(out.CommR[:], t.CommR)
-
 	return out
 }

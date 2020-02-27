@@ -66,14 +66,16 @@ type SectorPackingFailed struct{ error }
 func (evt SectorPackingFailed) apply(*SectorInfo) {}
 
 type SectorSealed struct {
-	commR  []byte
-	commD  []byte
+	commR  cid.Cid
+	commD  cid.Cid
 	ticket SealTicket
 }
 
 func (evt SectorSealed) apply(state *SectorInfo) {
-	state.CommD = evt.commD
-	state.CommR = evt.commR
+	commd := evt.commD
+	state.CommD = &commd
+	commr := evt.commR
+	state.CommR = &commr
 	state.Ticket = evt.ticket
 }
 
