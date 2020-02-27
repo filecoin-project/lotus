@@ -3,34 +3,36 @@ package vm_test
 import (
 	"testing"
 
-	"github.com/filecoin-project/chain-validation/pkg/suites"
+	vsuites "github.com/filecoin-project/chain-validation/suites"
 
-	"github.com/filecoin-project/lotus/chain/validation"
+	vfactory "github.com/filecoin-project/lotus/chain/validation"
 )
 
-func TestStorageMinerValidation(t *testing.T) {
-	t.SkipNow()
-	factory := validation.NewFactories()
-	suites.CreateStorageMinerAndUpdatePeerID(t, factory)
+func TestChainValidationSuite(t *testing.T) {
+	f := vfactory.NewFactories()
 
+	vsuites.TestValueTransferSimple(t, f)
+	vsuites.TestValueTransferAdvance(t, f)
+	vsuites.TestAccountActorCreation(t, f)
+
+	vsuites.TestInitActorSequentialIDAddressCreate(t, f)
+
+	// Skipping since multisig address resolution breaks tests
+	// https://github.com/filecoin-project/specs-actors/issues/184
+	// vsuites.TestMultiSigActor(t, f)
+
+	// Skipping since payment channel because runtime sys calls are not implemented in runtime adapter
+	// vsuites.TestPaych(t, f)
 }
 
-func TestValueTransfer(t *testing.T) {
-	factory := validation.NewFactories()
-	suites.AccountValueTransferSuccess(t, factory, 126)
-	suites.AccountValueTransferZeroFunds(t, factory, 112)
-	suites.AccountValueTransferOverBalanceNonZero(t, factory, 0)
-	suites.AccountValueTransferOverBalanceZero(t, factory, 0)
-	suites.AccountValueTransferToSelf(t, factory, 0)
-	suites.AccountValueTransferFromKnownToUnknownAccount(t, factory, 0)
-	suites.AccountValueTransferFromUnknownToKnownAccount(t, factory, 0)
-	suites.AccountValueTransferFromUnknownToUnknownAccount(t, factory, 0)
+func TestMessageApplication(t *testing.T) {
+	f := vfactory.NewFactories()
+
+	vsuites.TestMessageApplicationEdgecases(t, f)
 }
 
-func TestMultiSig(t *testing.T) {
-	t.SkipNow()
-	factory := validation.NewFactories()
-	suites.MultiSigActorConstructor(t, factory)
-	suites.MultiSigActorProposeApprove(t, factory)
-	suites.MultiSigActorProposeCancel(t, factory)
+func TestTipSetStuff(t *testing.T) {
+	f := vfactory.NewFactories()
+
+	vsuites.TestBlockMessageInfoApplication(t, f)
 }
