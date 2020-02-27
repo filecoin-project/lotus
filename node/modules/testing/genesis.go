@@ -36,14 +36,14 @@ func MakeGenesisMem(out io.Writer, template genesis.Template) func(bs dtypes.Cha
 			glog.Warn("Generating new random genesis block, note that this SHOULD NOT happen unless you are setting up new network")
 			b, err := genesis2.MakeGenesisBlock(context.TODO(), bs, syscalls, template)
 			if err != nil {
-				return nil, err
+				return nil, xerrors.Errorf("make genesis block failed: %w", err)
 			}
 			offl := offline.Exchange(bs)
 			blkserv := blockservice.New(bs, offl)
 			dserv := merkledag.NewDAGService(blkserv)
 
 			if err := car.WriteCarWithWalker(context.TODO(), dserv, []cid.Cid{b.Genesis.Cid()}, out, gen.CarWalkFunc); err != nil {
-				return nil, err
+				return nil, xerrors.Errorf("failed to write car file: %w", err)
 			}
 
 			return b.Genesis, nil
