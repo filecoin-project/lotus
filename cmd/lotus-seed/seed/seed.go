@@ -34,10 +34,21 @@ import (
 
 var log = logging.Logger("preseal")
 
-func PreSeal(maddr address.Address, ssize abi.SectorSize, offset abi.SectorNumber, sectors int, sbroot string, preimage []byte, key *types.KeyInfo) (*genesis.Miner, *types.KeyInfo, error) {
+func PreSeal(maddr address.Address, pt abi.RegisteredProof, offset abi.SectorNumber, sectors int, sbroot string, preimage []byte, key *types.KeyInfo) (*genesis.Miner, *types.KeyInfo, error) {
+	ppt, err := pt.RegisteredPoStProof()
+	if err != nil {
+		return nil, nil, err
+	}
+
+	spt, err := pt.RegisteredSealProof()
+	if err != nil {
+		return nil, nil, err
+	}
+
 	cfg := &sectorbuilder.Config{
 		Miner:           maddr,
-		SectorSize:      ssize,
+		SealProofType:   spt,
+		PoStProofType:   ppt,
 		FallbackLastNum: offset,
 		Paths:           sectorbuilder.SimplePath(sbroot),
 		WorkerThreads:   2,
@@ -57,6 +68,11 @@ func PreSeal(maddr address.Address, ssize abi.SectorSize, offset abi.SectorNumbe
 		return nil, nil, err
 	}
 
+	ssize, err := pt.SectorSize()
+	if err != nil {
+		return nil, nil, err
+	}
+
 	var sealedSectors []*genesis.PreSeal
 	for i := 0; i < sectors; i++ {
 		sid, err := sb.AcquireSectorNumber()
@@ -70,13 +86,11 @@ func PreSeal(maddr address.Address, ssize abi.SectorSize, offset abi.SectorNumbe
 		}
 
 		trand := sha256.Sum256(preimage)
-		ticket := sectorbuilder.SealTicket{
-			TicketBytes: trand,
-		}
+		ticket := abi.SealRandomness(trand[:])
 
 		fmt.Printf("sector-id: %d, piece info: %v\n", sid, pi)
 
-		pco, err := sb.SealPreCommit(context.TODO(), sid, ticket, []sectorbuilder.PublicPieceInfo{pi})
+		scid, ucid, err := sb.SealPreCommit(context.TODO(), sid, ticket, []abi.PieceInfo{pi})
 		if err != nil {
 			return nil, nil, xerrors.Errorf("commit: %w", err)
 		}
@@ -85,10 +99,10 @@ func PreSeal(maddr address.Address, ssize abi.SectorSize, offset abi.SectorNumbe
 			return nil, nil, xerrors.Errorf("trim cache: %w", err)
 		}
 
-		log.Warn("PreCommitOutput: ", sid, pco)
+		log.Warn("PreCommitOutput: ", sid, scid, ucid)
 		sealedSectors = append(sealedSectors, &genesis.PreSeal{
-			CommR:    pco.CommR,
-			CommD:    pco.CommD,
+			CommR:    scid,
+			CommD:    ucid,
 			SectorID: sid,
 		})
 	}
@@ -172,10 +186,8 @@ func commDCID(commd []byte) cid.Cid {
 
 func createDeals(m *genesis.Miner, k *wallet.Key, maddr address.Address, ssize abi.SectorSize) error {
 	for _, sector := range m.Sectors {
-		pref := make([]byte, len(sector.CommD))
-		copy(pref, sector.CommD[:])
 		proposal := &market.DealProposal{
-			PieceCID:             commDCID(pref), // just one deal so this == CommP
+			PieceCID:             sector.CommD,
 			PieceSize:            abi.PaddedPieceSize(ssize),
 			Client:               k.Address,
 			Provider:             maddr,

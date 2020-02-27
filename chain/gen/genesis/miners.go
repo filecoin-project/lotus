@@ -7,7 +7,6 @@ import (
 	"math/rand"
 
 	cborutil "github.com/filecoin-project/go-cbor-util"
-	commcid "github.com/filecoin-project/go-fil-commcid"
 	"github.com/filecoin-project/specs-actors/actors/builtin/power"
 	cbor "github.com/ipfs/go-ipld-cbor"
 
@@ -202,7 +201,7 @@ func SetupStorageMiners(ctx context.Context, cs *store.ChainStore, sroot cid.Cid
 				newSectorInfo := &miner.SectorOnChainInfo{
 					Info: miner.SectorPreCommitInfo{
 						SectorNumber:  preseal.SectorID,
-						SealedCID:     commcid.ReplicaCommitmentV1ToCID(preseal.CommR[:]),
+						SealedCID:     preseal.CommR,
 						SealRandEpoch: 0,
 						DealIDs:       []abi.DealID{dealIDs[pi]},
 						Expiration:    preseal.Deal.EndEpoch,

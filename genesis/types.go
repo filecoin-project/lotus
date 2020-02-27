@@ -6,6 +6,7 @@ import (
 	"github.com/filecoin-project/go-address"
 	"github.com/filecoin-project/specs-actors/actors/abi"
 	"github.com/filecoin-project/specs-actors/actors/builtin/market"
+	"github.com/ipfs/go-cid"
 	"github.com/libp2p/go-libp2p-core/peer"
 )
 
@@ -17,8 +18,8 @@ const (
 )
 
 type PreSeal struct {
-	CommR    [32]byte
-	CommD    [32]byte
+	CommR    cid.Cid
+	CommD    cid.Cid
 	SectorID abi.SectorNumber
 	Deal     market.DealProposal
 }

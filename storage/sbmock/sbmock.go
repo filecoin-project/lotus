@@ -81,15 +81,11 @@ func (sb *SBMock) AddPiece(ctx context.Context, size abi.UnpaddedPieceSize, sect
 		return abi.PieceInfo{}, err
 	}
 
-	// TODO: no idea what i'm doing here, just making a cid
-	c, err := cid.NewPrefixV1(cid.DagCBOR, 0xf104).Sum(b)
-	if err != nil {
-		return abi.PieceInfo{}, err
-	}
+	c := commcid.DataCommitmentV1ToCID(b[:32]) // hax
 
 	ss.pieces = append(ss.pieces, c)
 	return abi.PieceInfo{
-		Size:     abi.PaddedPieceSize(size),
+		Size:     size.Padded(),
 		PieceCID: c,
 	}, nil
 }
@@ -169,7 +165,7 @@ func (sb *SBMock) SealPreCommit(ctx context.Context, sid abi.SectorNumber, ticke
 	pis := make([]abi.PieceInfo, len(ss.pieces))
 	for i, piece := range ss.pieces {
 		pis[i] = abi.PieceInfo{
-			Size:     abi.UnpaddedPieceSize(32).Padded(),
+			Size:     pieces[i].Size,
 			PieceCID: piece,
 		}
 	}
@@ -183,10 +179,10 @@ func (sb *SBMock) SealPreCommit(ctx context.Context, sid abi.SectorNumber, ticke
 	if err != nil {
 		panic(err)
 	}
+
 	commr := make([]byte, 32)
 	for i := range cc {
-		commr[32-i] = cc[i]
-
+		commr[32-(i+1)] = cc[i]
 	}
 
 	commR := commcid.DataCommitmentV1ToCID(commr)
@@ -378,6 +374,7 @@ func (m mockVerif) GenerateDataCommitment(ssize abi.PaddedPieceSize, pieces []ab
 		panic("todo")
 	}
 	if pieces[0].Size != ssize {
+		fmt.Println("wrong sizes? ", pieces[0].Size, ssize)
 		panic("todo")
 	}
 	return pieces[0].PieceCID, nil

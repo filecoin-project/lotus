@@ -2,9 +2,9 @@ package sealing
 
 import (
 	"context"
+
 	"github.com/filecoin-project/specs-actors/actors/crypto"
 
-	commcid "github.com/filecoin-project/go-fil-commcid"
 	"github.com/filecoin-project/go-sectorbuilder/fs"
 	"github.com/filecoin-project/specs-actors/actors/abi"
 	"github.com/filecoin-project/specs-actors/actors/builtin"
@@ -69,18 +69,15 @@ func (m *Sealing) handleUnsealed(ctx statemachine.Context, sector SectorInfo) er
 		return ctx.Send(SectorSealFailed{xerrors.Errorf("getting ticket failed: %w", err)})
 	}
 
-	rspco, err := m.sb.SealPreCommit(ctx.Context(), sector.SectorID, *ticket, sector.pieceInfos())
+	sealed, unsealed, err := m.sb.SealPreCommit(ctx.Context(), sector.SectorID, ticket.TicketBytes, sector.pieceInfos())
 	if err != nil {
 		return ctx.Send(SectorSealFailed{xerrors.Errorf("seal pre commit failed: %w", err)})
 	}
 
 	return ctx.Send(SectorSealed{
-		commD: rspco.CommD[:],
-		commR: rspco.CommR[:],
-		ticket: SealTicket{
-			BlockHeight: abi.ChainEpoch(ticket.BlockHeight),
-			TicketBytes: ticket.TicketBytes[:],
-		},
+		commD:  unsealed,
+		commR:  sealed,
+		ticket: ticket,
 	})
 }
 
@@ -104,7 +101,7 @@ func (m *Sealing) handlePreCommitting(ctx statemachine.Context, sector SectorInf
 		SectorNumber:    sector.SectorID,
 		RegisteredProof: abi.RegisteredProof_StackedDRG32GiBSeal,
 
-		SealedCID:     commcid.ReplicaCommitmentV1ToCID(sector.CommR),
+		SealedCID:     *sector.CommR,
 		SealRandEpoch: sector.Ticket.BlockHeight,
 		DealIDs:       sector.deals(),
 	}
@@ -161,7 +158,7 @@ func (m *Sealing) handleWaitSeed(ctx statemachine.Context, sector SectorInfo) er
 
 		ctx.Send(SectorSeedReady{seed: SealSeed{
 			BlockHeight: randHeight,
-			TicketBytes: rand,
+			TicketBytes: abi.InteractiveSealRandomness(rand),
 		}})
 
 		return nil
@@ -182,7 +179,7 @@ func (m *Sealing) handleCommitting(ctx statemachine.Context, sector SectorInfo) 
 
 	log.Infof("KOMIT %d %x(%d); %x(%d); %v; r:%x; d:%x", sector.SectorID, sector.Ticket.TicketBytes, sector.Ticket.BlockHeight, sector.Seed.TicketBytes, sector.Seed.BlockHeight, sector.pieceInfos(), sector.CommR, sector.CommD)
 
-	proof, err := m.sb.SealCommit(ctx.Context(), sector.SectorID, sector.Ticket.SB(), sector.Seed.SB(), sector.pieceInfos(), sector.rspco())
+	proof, err := m.sb.SealCommit(ctx.Context(), sector.SectorID, sector.Ticket.TicketBytes, sector.Seed.TicketBytes, sector.pieceInfos(), *sector.CommR, *sector.CommD)
 	if err != nil {
 		return ctx.Send(SectorComputeProofFailed{xerrors.Errorf("computing seal proof failed: %w", err)})
 	}

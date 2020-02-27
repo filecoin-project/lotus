@@ -6,7 +6,6 @@ import (
 	"math/bits"
 
 	"github.com/filecoin-project/go-address"
-	commcid "github.com/filecoin-project/go-fil-commcid"
 	"github.com/filecoin-project/go-sectorbuilder"
 	"github.com/filecoin-project/lotus/lib/zerocomm"
 	"github.com/filecoin-project/specs-actors/actors/abi"
@@ -31,10 +30,15 @@ type syscallShim struct {
 	verifier sectorbuilder.Verifier
 }
 
-func (ss *syscallShim) ComputeUnsealedSectorCID(ssize abi.SectorSize, pieces []abi.PieceInfo) (cid.Cid, error) {
+func (ss *syscallShim) ComputeUnsealedSectorCID(st abi.RegisteredProof, pieces []abi.PieceInfo) (cid.Cid, error) {
 	var sum abi.PaddedPieceSize
 	for _, p := range pieces {
 		sum += p.Size
+	}
+
+	ssize, err := st.SectorSize()
+	if err != nil {
+		return cid.Undef, err
 	}
 
 	{
@@ -54,13 +58,13 @@ func (ss *syscallShim) ComputeUnsealedSectorCID(ssize abi.SectorSize, pieces []a
 		}
 	}
 
-	commd, err := sectorbuilder.GenerateDataCommitment(ssize, ffipieces)
+	commd, err := sectorbuilder.GenerateUnsealedCID(st, pieces)
 	if err != nil {
 		log.Errorf("generate data commitment failed: %s", err)
 		return cid.Undef, err
 	}
 
-	return commcid.DataCommitmentV1ToCID(commd[:]), nil
+	return commd, nil
 }
 
 func (ss *syscallShim) HashBlake2b(data []byte) [32]byte {
@@ -106,17 +110,17 @@ func (ss *syscallShim) VerifySeal(info abi.SealVerifyInfo) error {
 
 	miner, err := address.NewIDAddress(uint64(info.Miner))
 	if err != nil {
-		return false, xerrors.Errorf("weirdly failed to construct address: %w", err)
+		return xerrors.Errorf("weirdly failed to construct address: %w", err)
 	}
 
 	ticket := []byte(info.Randomness)
 	proof := []byte(info.OnChain.Proof)
 	seed := []byte(info.InteractiveRandomness)
 
-	log.Infof("Werif %d r:%x; d:%x; m:%s; t:%x; s:%x; N:%d; p:%x", ssize, commR, commD, miner, ticket, seed, info.SectorID.Number, proof)
+	log.Infof("Verif r:%x; d:%x; m:%s; t:%x; s:%x; N:%d; p:%x", commR, commD, miner, ticket, seed, info.SectorID.Number, proof)
 
 	//func(ctx context.Context, maddr address.Address, ssize abi.SectorSize, commD, commR, ticket, proof, seed []byte, sectorID abi.SectorNumber)
-	ok, err := ss.verifier.VerifySeal(ssize, commR[:], commD[:], miner, ticket, seed, info.SectorID.Number, proof)
+	ok, err := ss.verifier.VerifySeal(info)
 	if err != nil {
 		return xerrors.Errorf("failed to validate PoRep: %w", err)
 	}
