@@ -10,7 +10,7 @@ require (
 	github.com/StackExchange/wmi v0.0.0-20190523213315-cbe66965904d // indirect
 	github.com/coreos/go-systemd/v22 v22.0.0
 	github.com/docker/go-units v0.4.0
-	github.com/filecoin-project/chain-validation v0.0.3
+	github.com/filecoin-project/chain-validation v0.0.6-0.20200227010210-ab4704e894ef
 	github.com/filecoin-project/filecoin-ffi v0.0.0-20200226205820-4da0bccccefb
 	github.com/filecoin-project/go-address v0.0.2-0.20200218010043-eb9bb40ed5be
 	github.com/filecoin-project/go-amt-ipld/v2 v2.0.1-0.20200131012142-05d80eeccc5e
@@ -23,7 +23,7 @@ require (
 	github.com/filecoin-project/go-paramfetch v0.0.2-0.20200218225740-47c639bab663
 	github.com/filecoin-project/go-sectorbuilder v0.0.2-0.20200228181617-f00e2c4cc050
 	github.com/filecoin-project/go-statestore v0.1.0
-	github.com/filecoin-project/specs-actors v0.0.0-20200302011114-7d19171ad051
+	github.com/filecoin-project/specs-actors v0.0.0-20200226225703-1fa643f1847f
 	github.com/gbrlsnchs/jwt/v3 v3.0.0-beta.1
 	github.com/go-ole/go-ole v1.2.4 // indirect
 	github.com/google/uuid v1.1.1
@@ -43,7 +43,7 @@ require (
 	github.com/ipfs/go-fs-lock v0.0.1
 	github.com/ipfs/go-graphsync v0.0.4
 	github.com/ipfs/go-hamt-ipld v0.0.15-0.20200204200533-99b8553ef242
-	github.com/ipfs/go-ipfs-blockstore v0.1.1
+	github.com/ipfs/go-ipfs-blockstore v0.1.3
 	github.com/ipfs/go-ipfs-chunker v0.0.1
 	github.com/ipfs/go-ipfs-ds-help v0.0.1
 	github.com/ipfs/go-ipfs-exchange-interface v0.0.1
