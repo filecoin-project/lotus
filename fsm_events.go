@@ -68,7 +68,7 @@ func (evt SectorPackingFailed) apply(*SectorInfo) {}
 type SectorSealed struct {
 	commR  cid.Cid
 	commD  cid.Cid
-	ticket SealTicket
+	ticket api.SealTicket
 }
 
 func (evt SectorSealed) apply(state *SectorInfo) {
@@ -96,7 +96,7 @@ func (evt SectorPreCommitted) apply(state *SectorInfo) {
 }
 
 type SectorSeedReady struct {
-	seed SealSeed
+	seed api.SealSeed
 }
 
 func (evt SectorSeedReady) apply(state *SectorInfo) {
