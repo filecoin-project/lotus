@@ -4,6 +4,7 @@ import (
 	"context"
 
 	"github.com/filecoin-project/specs-actors/actors/abi"
+	"github.com/filecoin-project/specs-actors/actors/crypto"
 
 	"github.com/filecoin-project/go-sectorbuilder"
 
@@ -64,6 +65,6 @@ type vmRand struct {
 	eCtx *vchain.ExecutionContext
 }
 
-func (*vmRand) GetRandomness(ctx context.Context, h int64) ([]byte, error) {
+func (*vmRand) GetRandomness(ctx context.Context, dst crypto.DomainSeparationTag, h int64, input []byte) ([]byte, error) {
 	panic("implement me")
 }

@@ -127,8 +127,8 @@ type SectorInfo struct {
 	CommR    []byte
 	Proof    []byte
 	Deals    []abi.DealID
-	Ticket   sectorbuilder.SealTicket
-	Seed     sectorbuilder.SealSeed
+	Ticket   abi.SealRandomness
+	Seed     abi.Randomness
 	Retries  uint64
 
 	LastErr string

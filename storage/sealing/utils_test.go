@@ -5,8 +5,6 @@ import (
 
 	"github.com/filecoin-project/specs-actors/actors/abi"
 
-	"github.com/filecoin-project/lotus/storage/sbmock"
-
 	"github.com/stretchr/testify/assert"
 )
 
@@ -43,21 +41,5 @@ func TestFillersFromRem(t *testing.T) {
 		// different 2
 		ub = abi.PaddedPieceSize(uint64(9) << i).Unpadded()
 		testFill(t, ub, []abi.UnpaddedPieceSize{ub1, ub4})
-	}
-}
-
-func TestFastPledge(t *testing.T) {
-	sz := abi.PaddedPieceSize(16 << 20)
-
-	s := Sealing{sb: sbmock.NewMockSectorBuilder(0, abi.SectorSize(sz))}
-	if _, err := s.fastPledgeCommitment(sz.Unpadded(), 5); err != nil {
-		t.Fatalf("%+v", err)
-	}
-
-	sz = abi.PaddedPieceSize(1024)
-
-	s = Sealing{sb: sbmock.NewMockSectorBuilder(0, abi.SectorSize(sz))}
-	if _, err := s.fastPledgeCommitment(sz.Unpadded(), 64); err != nil {
-		t.Fatalf("%+v", err)
 	}
 }

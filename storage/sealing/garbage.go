@@ -32,8 +32,8 @@ func (m *Sealing) pledgeSector(ctx context.Context, sectorID abi.SectorNumber, e
 		existingPieceSizes = append(existingPieceSizes, size)
 
 		out[i] = Piece{
-			Size:  ppi.Size,
-			CommP: ppi.CommP[:],
+			Size:  ppi.Size.Unpadded(),
+			CommP: ppi.PieceCID,
 		}
 	}
 
