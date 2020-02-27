@@ -2,6 +2,7 @@ package sbmock
 
 import (
 	"github.com/filecoin-project/go-address"
+	commcid "github.com/filecoin-project/go-fil-commcid"
 	"github.com/filecoin-project/specs-actors/actors/abi"
 	"github.com/filecoin-project/specs-actors/actors/abi/big"
 	"github.com/filecoin-project/specs-actors/actors/builtin/market"
@@ -32,7 +33,9 @@ func PreSeal(ssize abi.SectorSize, maddr address.Address, sectors int) (*genesis
 		preseal := &genesis.PreSeal{}
 
 		preseal.CommD = zerocomm.ForSize(abi.PaddedPieceSize(ssize).Unpadded())
-		preseal.CommR = zerocomm.ForSize(abi.PaddedPieceSize(ssize).Unpadded())
+		d, _ := commcid.CIDToPieceCommitmentV1(preseal.CommD)
+		r := commDR(d)
+		preseal.CommR = commcid.ReplicaCommitmentV1ToCID(r[:])
 		preseal.SectorID = abi.SectorNumber(i + 1)
 		preseal.Deal = market.DealProposal{
 			PieceCID:             preseal.CommD,
