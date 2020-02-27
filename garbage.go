@@ -7,19 +7,12 @@ import (
 	"golang.org/x/xerrors"
 
 	"github.com/filecoin-project/specs-actors/actors/abi"
+
+	"github.com/filecoin-project/lotus/lib/nullreader"
 )
 
-type nullReader struct{}
-
-func (nullReader) Read(out []byte) (int, error) {
-	for i := range out {
-		out[i] = 0
-	}
-	return len(out), nil
-}
-
 func (m *Sealing) pledgeReader(size abi.UnpaddedPieceSize) io.Reader {
-	return io.LimitReader(&nullReader{}, int64(size))
+	return io.LimitReader(&nullreader.Reader{}, int64(size))
 }
 
 func (m *Sealing) pledgeSector(ctx context.Context, sectorID abi.SectorNumber, existingPieceSizes []abi.UnpaddedPieceSize, sizes ...abi.UnpaddedPieceSize) ([]Piece, error) {
