@@ -2,12 +2,10 @@ package storage
 
 import (
 	"context"
-	"github.com/filecoin-project/specs-actors/actors/crypto"
 	"time"
 
-	ffi "github.com/filecoin-project/filecoin-ffi"
-	"github.com/filecoin-project/go-address"
-	sectorbuilder "github.com/filecoin-project/go-sectorbuilder"
+	"github.com/filecoin-project/specs-actors/actors/crypto"
+
 	"github.com/filecoin-project/specs-actors/actors/abi"
 	"github.com/filecoin-project/specs-actors/actors/builtin"
 	"github.com/filecoin-project/specs-actors/actors/builtin/miner"
@@ -91,7 +89,7 @@ func (s *FPoStScheduler) declareFaults(ctx context.Context, fc uint64, params *m
 	return nil
 }
 
-func (s *FPoStScheduler) checkFaults(ctx context.Context, ssi sectorbuilder.SortedPublicSectorInfo) ([]abi.SectorNumber, error) {
+func (s *FPoStScheduler) checkFaults(ctx context.Context, ssi []abi.SectorNumber) ([]abi.SectorNumber, error) {
 	faults := s.sb.Scrub(ssi)
 
 	declaredFaults := map[abi.SectorNumber]struct{}{}
@@ -160,21 +158,23 @@ func (s *FPoStScheduler) runPost(ctx context.Context, eps abi.ChainEpoch, ts *ty
 		"eps", eps,
 		"height", ts.Height())
 
-	faults, err := s.checkFaults(ctx, ssi)
+	var snums []abi.SectorNumber
+	for _, si := range ssi {
+		snums = append(snums, si.SectorNumber)
+	}
+
+	faults, err := s.checkFaults(ctx, snums)
 	if err != nil {
 		log.Errorf("Failed to declare faults: %+v", err)
 	}
 
 	tsStart := time.Now()
 
-	var seed [32]byte
-	copy(seed[:], rand)
-
 	log.Infow("generating fPoSt",
-		"sectors", len(ssi.Values()),
+		"sectors", len(ssi),
 		"faults", len(faults))
 
-	scandidates, proof, err := s.sb.GenerateFallbackPoSt(ssi, seed, faults)
+	scandidates, proof, err := s.sb.GenerateFallbackPoSt(ssi, abi.PoStRandomness(rand), faults)
 	if err != nil {
 		return nil, xerrors.Errorf("running post failed: %w", err)
 	}
@@ -182,55 +182,43 @@ func (s *FPoStScheduler) runPost(ctx context.Context, eps abi.ChainEpoch, ts *ty
 	elapsed := time.Since(tsStart)
 	log.Infow("submitting PoSt", "pLen", len(proof), "elapsed", elapsed)
 
-	mid, err := address.IDFromAddress(s.actor)
-	if err != nil {
-		return nil, err
-	}
-
 	candidates := make([]abi.PoStCandidate, len(scandidates))
 	for i, sc := range scandidates {
 		part := make([]byte, 32)
-		copy(part, sc.PartialTicket[:])
+		copy(part, sc.Candidate.PartialTicket[:])
 		candidates[i] = abi.PoStCandidate{
 			RegisteredProof: abi.RegisteredProof_StackedDRG32GiBPoSt, // TODO: build setting
 			PartialTicket:   part,
-			SectorID: abi.SectorID{
-				Miner:  abi.ActorID(mid),
-				Number: sc.SectorNum,
-			},
-			ChallengeIndex: int64(sc.SectorChallengeIndex), // TODO: fix spec
+			SectorID:        sc.Candidate.SectorID,
+			ChallengeIndex:  sc.Candidate.ChallengeIndex,
 		}
 	}
 
 	return &abi.OnChainPoStVerifyInfo{
-		ProofType:  abi.RegisteredProof_StackedDRG32GiBPoSt, // TODO: build setting
-		Proofs:     []abi.PoStProof{{proof}},
+		Proofs:     proof,
 		Candidates: candidates,
 	}, nil
 }
 
-func (s *FPoStScheduler) sortedSectorInfo(ctx context.Context, ts *types.TipSet) (sectorbuilder.SortedPublicSectorInfo, error) {
+func (s *FPoStScheduler) sortedSectorInfo(ctx context.Context, ts *types.TipSet) ([]abi.SectorInfo, error) {
 	sset, err := s.api.StateMinerProvingSet(ctx, s.actor, ts.Key())
 	if err != nil {
-		return sectorbuilder.SortedPublicSectorInfo{}, xerrors.Errorf("failed to get proving set for miner (tsH: %d): %w", ts.Height(), err)
+		return nil, xerrors.Errorf("failed to get proving set for miner (tsH: %d): %w", ts.Height(), err)
 	}
 	if len(sset) == 0 {
 		log.Warn("empty proving set! (ts.H: %d)", ts.Height())
 	}
 
-	sbsi := make([]ffi.PublicSectorInfo, len(sset))
+	sbsi := make([]abi.SectorInfo, len(sset))
 	for k, sector := range sset {
-		var commR [sectorbuilder.CommLen]byte
-		scid := sector.Info.Info.SealedCID.Bytes()
-		copy(commR[:], scid[len(scid)-32:])
 
-		sbsi[k] = ffi.PublicSectorInfo{
-			SectorNum: sector.Info.Info.SectorNumber,
-			CommR:     commR,
+		sbsi[k] = abi.SectorInfo{
+			SectorNumber: sector.Info.Info.SectorNumber,
+			SealedCID:    sector.Info.Info.SealedCID,
 		}
 	}
 
-	return sectorbuilder.NewSortedPublicSectorInfo(sbsi), nil
+	return sbsi, nil
 }
 
 func (s *FPoStScheduler) submitPost(ctx context.Context, proof *abi.OnChainPoStVerifyInfo) error {

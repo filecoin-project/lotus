@@ -76,6 +76,17 @@ func (a *API) ClientStartDeal(ctx context.Context, data cid.Cid, addr address.Ad
 	if err != nil {
 		return nil, xerrors.Errorf("failed getting miner worker: %w", err)
 	}
+
+	ssize, err := a.StateMinerSectorSize(ctx, miner, types.EmptyTSK)
+	if err != nil {
+		return nil, xerrors.Errorf("failed checking miners sector size: %w", err)
+	}
+
+	rt, _, err := api.ProofTypeFromSectorSize(ssize)
+	if err != nil {
+		return nil, xerrors.Errorf("bad sector size: %w", err)
+	}
+
 	providerInfo := utils.NewStorageProviderInfo(miner, mw, 0, pid)
 	ts, err := a.ChainHead(ctx)
 	if err != nil {
@@ -92,7 +103,9 @@ func (a *API) ClientStartDeal(ctx context.Context, data cid.Cid, addr address.Ad
 		ts.Height()+dealStartBuffer,
 		ts.Height()+dealStartBuffer+abi.ChainEpoch(blocksDuration),
 		epochPrice,
-		big.Zero())
+		big.Zero(),
+		rt,
+	)
 
 	if err != nil {
 		return nil, xerrors.Errorf("failed to start deal: %w", err)

@@ -5,15 +5,16 @@ import (
 	"crypto/rand"
 	"encoding/json"
 	"fmt"
+	"io/ioutil"
+	"os"
+	"path/filepath"
+	"strconv"
+
 	"github.com/filecoin-project/specs-actors/actors/builtin"
 	"github.com/filecoin-project/specs-actors/actors/builtin/market"
 	miner2 "github.com/filecoin-project/specs-actors/actors/builtin/miner"
 	"github.com/filecoin-project/specs-actors/actors/builtin/power"
 	crypto2 "github.com/filecoin-project/specs-actors/actors/crypto"
-	"io/ioutil"
-	"os"
-	"path/filepath"
-	"strconv"
 
 	"github.com/filecoin-project/go-address"
 	cborutil "github.com/filecoin-project/go-cbor-util"
@@ -181,8 +182,14 @@ var initCmd = &cli.Command{
 				return err
 			}
 
+			ppt, spt, err := lapi.ProofTypeFromSectorSize(ssize)
+			if err != nil {
+				return err
+			}
+
 			oldsb, err := sectorbuilder.New(&sectorbuilder.Config{
-				SectorSize:    ssize,
+				SealProofType: spt,
+				PoStProofType: ppt,
 				WorkerThreads: 2,
 				Paths:         sectorbuilder.SimplePath(pssb),
 			}, namespace.Wrap(oldmds, datastore.NewKey("/sectorbuilder")))
@@ -191,7 +198,8 @@ var initCmd = &cli.Command{
 			}
 
 			nsb, err := sectorbuilder.New(&sectorbuilder.Config{
-				SectorSize:    ssize,
+				SealProofType: spt,
+				PoStProofType: ppt,
 				WorkerThreads: 2,
 				Paths:         sectorbuilder.SimplePath(lr.Path()),
 			}, namespace.Wrap(mds, datastore.NewKey("/sectorbuilder")))
@@ -250,6 +258,8 @@ func migratePreSealMeta(ctx context.Context, api lapi.FullNode, metadata string,
 		if err != nil {
 			return xerrors.Errorf("finding storage deal for pre-sealed sector %d: %w", sector.SectorID, err)
 		}
+		commD := sector.CommD
+		commR := sector.CommR
 
 		info := &sealing.SectorInfo{
 			State:    lapi.Proving,
@@ -258,15 +268,15 @@ func migratePreSealMeta(ctx context.Context, api lapi.FullNode, metadata string,
 				{
 					DealID: &dealID,
 					Size:   abi.PaddedPieceSize(meta.SectorSize).Unpadded(),
-					CommP:  sector.CommD[:],
+					CommP:  sector.CommD,
 				},
 			},
-			CommD:            sector.CommD[:],
-			CommR:            sector.CommR[:],
+			CommD:            &commD,
+			CommR:            &commR,
 			Proof:            nil,
-			Ticket:           sealing.SealTicket{},
+			Ticket:           lapi.SealTicket{},
 			PreCommitMessage: nil,
-			Seed:             sealing.SealSeed{},
+			Seed:             lapi.SealSeed{},
 			CommitMessage:    nil,
 		}
 

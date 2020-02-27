@@ -6,20 +6,6 @@ import (
 	"github.com/ipfs/go-cid"
 )
 
-type SealTicket struct {
-	BlockHeight abi.ChainEpoch
-	TicketBytes abi.SealRandomness
-}
-
-type SealSeed struct {
-	BlockHeight abi.ChainEpoch
-	TicketBytes abi.InteractiveSealRandomness
-}
-
-func (t *SealSeed) Equals(o *SealSeed) bool {
-	return string(t.TicketBytes) == string(o.TicketBytes) && t.BlockHeight == o.BlockHeight
-}
-
 type Piece struct {
 	DealID *abi.DealID
 
@@ -52,12 +38,12 @@ type SectorInfo struct {
 	CommD  *cid.Cid
 	CommR  *cid.Cid
 	Proof  []byte
-	Ticket SealTicket
+	Ticket api.SealTicket
 
 	PreCommitMessage *cid.Cid
 
 	// WaitSeed
-	Seed SealSeed
+	Seed api.SealSeed
 
 	// Committing
 	CommitMessage *cid.Cid

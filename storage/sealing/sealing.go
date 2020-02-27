@@ -28,7 +28,7 @@ const SectorStorePrefix = "/sectors"
 
 var log = logging.Logger("sectors")
 
-type TicketFn func(context.Context) (SealTicket, error)
+type TicketFn func(context.Context) (*api.SealTicket, error)
 
 type sealingApi interface { // TODO: trim down
 	// Call a read only method on actors (no interaction with the chain required)

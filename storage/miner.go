@@ -12,6 +12,7 @@ import (
 	"github.com/libp2p/go-libp2p-core/host"
 	"golang.org/x/xerrors"
 
+	ffi "github.com/filecoin-project/filecoin-ffi"
 	"github.com/filecoin-project/go-sectorbuilder"
 	"github.com/filecoin-project/specs-actors/actors/abi"
 	"github.com/filecoin-project/specs-actors/actors/builtin/miner"
@@ -127,13 +128,11 @@ func NewElectionPoStProver(sb sectorbuilder.Interface) *SectorBuilderEpp {
 
 var _ gen.ElectionPoStProver = (*SectorBuilderEpp)(nil)
 
-func (epp *SectorBuilderEpp) GenerateCandidates(ctx context.Context, ssi sectorbuilder.SortedPublicSectorInfo, rand []byte) ([]sectorbuilder.EPostCandidate, error) {
+func (epp *SectorBuilderEpp) GenerateCandidates(ctx context.Context, ssi []abi.SectorInfo, rand abi.PoStRandomness) ([]ffi.PoStCandidateWithTicket, error) {
 	start := time.Now()
 	var faults []abi.SectorNumber // TODO
 
-	var randbuf [32]byte
-	copy(randbuf[:], rand)
-	cds, err := epp.sb.GenerateEPostCandidates(ssi, randbuf, faults)
+	cds, err := epp.sb.GenerateEPostCandidates(ssi, rand, faults)
 	if err != nil {
 		return nil, err
 	}
@@ -141,13 +140,19 @@ func (epp *SectorBuilderEpp) GenerateCandidates(ctx context.Context, ssi sectorb
 	return cds, nil
 }
 
-func (epp *SectorBuilderEpp) ComputeProof(ctx context.Context, ssi sectorbuilder.SortedPublicSectorInfo, rand []byte, winners []sectorbuilder.EPostCandidate) ([]byte, error) {
+func (epp *SectorBuilderEpp) ComputeProof(ctx context.Context, ssi []abi.SectorInfo, rand []byte, winners []ffi.PoStCandidateWithTicket) ([]abi.PoStProof, error) {
 	if build.InsecurePoStValidation {
 		log.Warn("Generating fake EPost proof! You should only see this while running tests!")
-		return []byte("valid proof"), nil
+		return []abi.PoStProof{{ProofBytes: []byte("valid proof")}}, nil
 	}
+
+	owins := make([]abi.PoStCandidate, 0, len(winners))
+	for _, w := range winners {
+		owins = append(owins, w.Candidate)
+	}
+
 	start := time.Now()
-	proof, err := epp.sb.ComputeElectionPoSt(ssi, rand, winners)
+	proof, err := epp.sb.ComputeElectionPoSt(ssi, rand, owins)
 	if err != nil {
 		return nil, err
 	}

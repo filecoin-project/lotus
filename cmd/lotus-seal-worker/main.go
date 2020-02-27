@@ -138,8 +138,14 @@ var runCmd = &cli.Command{
 			return xerrors.Errorf("get params: %w", err)
 		}
 
+		ppt, spt, err := api.ProofTypeFromSectorSize(ssize)
+		if err != nil {
+			return err
+		}
+
 		sb, err := sectorbuilder.NewStandalone(&sectorbuilder.Config{
-			SectorSize:    ssize,
+			SealProofType: spt,
+			PoStProofType: ppt,
 			Miner:         act,
 			WorkerThreads: workers,
 			Paths:         sectorbuilder.SimplePath(r),

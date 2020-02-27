@@ -7,6 +7,7 @@ import (
 	"testing"
 
 	"github.com/filecoin-project/go-address"
+	"github.com/filecoin-project/specs-actors/actors/abi"
 	"github.com/filecoin-project/specs-actors/actors/crypto"
 	cid "github.com/ipfs/go-cid"
 )
@@ -27,7 +28,7 @@ func testBlockHeader(t testing.TB) *BlockHeader {
 	return &BlockHeader{
 		Miner: addr,
 		EPostProof: EPostProof{
-			Proof:    []byte("pruuf"),
+			Proofs:   []abi.PoStProof{{ProofBytes: []byte("pruuf")}},
 			PostRand: []byte("random"),
 		},
 		Ticket: &Ticket{

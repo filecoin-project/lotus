@@ -67,7 +67,8 @@ func (a *PaychAPI) PaychNewPayment(ctx context.Context, from, to address.Address
 			Lane:   uint64(lane),
 
 			Extra:           v.Extra,
-			TimeLock:        v.TimeLock,
+			TimeLockMin:     v.TimeLockMin,
+			TimeLockMax:     v.TimeLockMax,
 			MinSettleHeight: v.MinSettle,
 		})
 		if err != nil {

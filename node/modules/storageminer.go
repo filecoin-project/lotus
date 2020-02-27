@@ -2,9 +2,10 @@ package modules
 
 import (
 	"context"
-	"github.com/filecoin-project/lotus/chain/types"
 	"math"
 	"reflect"
+
+	"github.com/filecoin-project/lotus/chain/types"
 
 	"github.com/filecoin-project/go-address"
 	dtgraphsync "github.com/filecoin-project/go-data-transfer/impl/graphsync"
@@ -21,6 +22,7 @@ import (
 	"github.com/filecoin-project/go-sectorbuilder"
 	"github.com/filecoin-project/go-sectorbuilder/fs"
 	"github.com/filecoin-project/go-statestore"
+	"github.com/filecoin-project/specs-actors/actors/abi"
 	"github.com/filecoin-project/specs-actors/actors/crypto"
 	"github.com/ipfs/go-bitswap"
 	"github.com/ipfs/go-bitswap/network"
@@ -61,7 +63,12 @@ func minerAddrFromDS(ds dtypes.MetadataDS) (address.Address, error) {
 }
 
 func GetParams(sbc *sectorbuilder.Config) error {
-	if err := paramfetch.GetParams(build.ParametersJson(), uint64(sbc.SectorSize)); err != nil {
+	ssize, err := sbc.SealProofType.SectorSize()
+	if err != nil {
+		return err
+	}
+
+	if err := paramfetch.GetParams(build.ParametersJson(), uint64(ssize)); err != nil {
 		return xerrors.Errorf("fetching proof parameters: %w", err)
 	}
 
@@ -69,13 +76,13 @@ func GetParams(sbc *sectorbuilder.Config) error {
 }
 
 func SectorBuilderConfig(storage []fs.PathConfig, threads uint, noprecommit, nocommit bool) func(dtypes.MetadataDS, api.FullNode) (*sectorbuilder.Config, error) {
-	return func(ds dtypes.MetadataDS, api api.FullNode) (*sectorbuilder.Config, error) {
+	return func(ds dtypes.MetadataDS, fnapi api.FullNode) (*sectorbuilder.Config, error) {
 		minerAddr, err := minerAddrFromDS(ds)
 		if err != nil {
 			return nil, err
 		}
 
-		ssize, err := api.StateMinerSectorSize(context.TODO(), minerAddr, types.EmptyTSK)
+		ssize, err := fnapi.StateMinerSectorSize(context.TODO(), minerAddr, types.EmptyTSK)
 		if err != nil {
 			return nil, err
 		}
@@ -91,9 +98,15 @@ func SectorBuilderConfig(storage []fs.PathConfig, threads uint, noprecommit, noc
 			return nil, xerrors.Errorf("too many sectorbuilder threads specified: %d, max allowed: %d", threads, math.MaxUint8)
 		}
 
+		ppt, spt, err := api.ProofTypeFromSectorSize(ssize)
+		if err != nil {
+			return nil, xerrors.Errorf("bad sector size: %w", err)
+		}
+
 		sb := &sectorbuilder.Config{
-			Miner:      minerAddr,
-			SectorSize: ssize,
+			Miner:         minerAddr,
+			SealProofType: spt,
+			PoStProofType: ppt,
 
 			WorkerThreads: uint8(threads),
 			NoPreCommit:   noprecommit,
@@ -267,26 +280,21 @@ func SectorBuilder(cfg *sectorbuilder.Config, ds dtypes.MetadataDS) (*sectorbuil
 	return sb, nil
 }
 
-func SealTicketGen(api api.FullNode) sealing.TicketFn {
-	return func(ctx context.Context) (*sectorbuilder.SealTicket, error) {
-		ts, err := api.ChainHead(ctx)
+func SealTicketGen(fapi api.FullNode) sealing.TicketFn {
+	return func(ctx context.Context) (*api.SealTicket, error) {
+		ts, err := fapi.ChainHead(ctx)
 		if err != nil {
 			return nil, xerrors.Errorf("getting head ts for SealTicket failed: %w", err)
 		}
 
-		r, err := api.ChainGetRandomness(ctx, ts.Key(), crypto.DomainSeparationTag_SealRandomness, ts.Height()-build.SealRandomnessLookback, nil)
+		r, err := fapi.ChainGetRandomness(ctx, ts.Key(), crypto.DomainSeparationTag_SealRandomness, ts.Height()-build.SealRandomnessLookback, nil)
 		if err != nil {
 			return nil, xerrors.Errorf("getting randomness for SealTicket failed: %w", err)
 		}
 
-		var tkt [sectorbuilder.CommLen]byte
-		if n := copy(tkt[:], r); n != sectorbuilder.CommLen {
-			return nil, xerrors.Errorf("unexpected randomness len: %d (expected %d)", n, sectorbuilder.CommLen)
-		}
-
-		return &sectorbuilder.SealTicket{
-			BlockHeight: uint64(ts.Height() - build.SealRandomnessLookback),
-			TicketBytes: tkt,
+		return &api.SealTicket{
+			Epoch: ts.Height() - build.SealRandomnessLookback,
+			Value: abi.SealRandomness(r),
 		}, nil
 	}
 }
@@ -295,7 +303,7 @@ func NewProviderRequestValidator(deals dtypes.ProviderDealStore) *storageimpl.Pr
 	return storageimpl.NewProviderRequestValidator(deals)
 }
 
-func StorageProvider(h host.Host, ds dtypes.MetadataDS, ibs dtypes.StagingBlockstore, r repo.LockedRepo, pieceStore dtypes.ProviderPieceStore, dataTransfer dtypes.ProviderDataTransfer, spn storagemarket.StorageProviderNode) (storagemarket.StorageProvider, error) {
+func StorageProvider(ctx helpers.MetricsCtx, fapi api.FullNode, h host.Host, ds dtypes.MetadataDS, ibs dtypes.StagingBlockstore, r repo.LockedRepo, pieceStore dtypes.ProviderPieceStore, dataTransfer dtypes.ProviderDataTransfer, spn storagemarket.StorageProviderNode) (storagemarket.StorageProvider, error) {
 	store, err := piecefilestore.NewLocalFileStore(piecefilestore.OsPath(r.Path()))
 	if err != nil {
 		return nil, err
@@ -305,11 +313,23 @@ func StorageProvider(h host.Host, ds dtypes.MetadataDS, ibs dtypes.StagingBlocks
 	if err != nil {
 		return nil, err
 	}
+
 	minerAddress, err := address.NewFromBytes(addr)
 	if err != nil {
 		return nil, err
 	}
-	return storageimpl.NewProvider(net, ds, ibs, store, pieceStore, dataTransfer, spn, minerAddress)
+
+	ssize, err := fapi.StateMinerSectorSize(ctx, minerAddress, types.EmptyTSK)
+	if err != nil {
+		return nil, err
+	}
+
+	rt, _, err := api.ProofTypeFromSectorSize(ssize)
+	if err != nil {
+		return nil, err
+	}
+
+	return storageimpl.NewProvider(net, ds, ibs, store, pieceStore, dataTransfer, spn, minerAddress, rt)
 }
 
 // RetrievalProvider creates a new retrieval provider attached to the provider blockstore
@@ -320,5 +340,5 @@ func RetrievalProvider(h host.Host, miner *storage.Miner, sb sectorbuilder.Inter
 		return nil, err
 	}
 	network := rmnet.NewFromLibp2pHost(h)
-	return retrievalimpl.NewProvider(address, adapter, network, pieceStore, ibs), nil
+	return retrievalimpl.NewProvider(address, adapter, network, pieceStore, ibs, ds)
 }
