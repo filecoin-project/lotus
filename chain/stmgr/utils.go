@@ -2,6 +2,7 @@ package stmgr
 
 import (
 	"context"
+
 	"github.com/filecoin-project/lotus/chain/state"
 
 	amt "github.com/filecoin-project/go-amt-ipld/v2"
@@ -15,10 +16,6 @@ import (
 	"github.com/filecoin-project/specs-actors/actors/util/adt"
 
 	"github.com/filecoin-project/lotus/chain/actors/aerrors"
-
-	sectorbuilder "github.com/filecoin-project/go-sectorbuilder"
-
-	ffi "github.com/filecoin-project/filecoin-ffi"
 
 	"github.com/filecoin-project/go-address"
 
@@ -155,13 +152,13 @@ func GetMinerSectorSet(ctx context.Context, sm *StateManager, ts *types.TipSet, 
 	return LoadSectorsFromSet(ctx, sm.ChainStore().Blockstore(), mas.Sectors)
 }
 
-func GetSectorsForElectionPost(ctx context.Context, sm *StateManager, ts *types.TipSet, maddr address.Address) (*sectorbuilder.SortedPublicSectorInfo, error) {
+func GetSectorsForElectionPost(ctx context.Context, sm *StateManager, ts *types.TipSet, maddr address.Address) ([]abi.SectorInfo, error) {
 	sectors, err := GetMinerProvingSet(ctx, sm, ts, maddr)
 	if err != nil {
 		return nil, xerrors.Errorf("failed to get sector set for miner: %w", err)
 	}
 
-	var uselessOtherArray []ffi.PublicSectorInfo
+	var uselessOtherArray []abi.SectorInfo
 	for _, s := range sectors {
 		cr, err := commcid.CIDToReplicaCommitmentV1(s.Info.Info.SealedCID)
 		if err != nil {
@@ -169,14 +166,14 @@ func GetSectorsForElectionPost(ctx context.Context, sm *StateManager, ts *types.
 		}
 		var uselessBuffer [32]byte
 		copy(uselessBuffer[:], cr)
-		uselessOtherArray = append(uselessOtherArray, ffi.PublicSectorInfo{
-			SectorNum: s.ID,
-			CommR:     uselessBuffer,
+		uselessOtherArray = append(uselessOtherArray, abi.SectorInfo{
+			RegisteredProof: s.Info.Info.RegisteredProof,
+			SectorNumber:    s.ID,
+			SealedCID:       s.Info.Info.SealedCID,
 		})
 	}
 
-	ssi := sectorbuilder.NewSortedPublicSectorInfo(uselessOtherArray)
-	return &ssi, nil
+	return uselessOtherArray, nil
 }
 
 func GetMinerSectorSize(ctx context.Context, sm *StateManager, ts *types.TipSet, maddr address.Address) (abi.SectorSize, error) {

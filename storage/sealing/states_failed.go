@@ -4,7 +4,6 @@ import (
 	"bytes"
 	"time"
 
-	commcid "github.com/filecoin-project/go-fil-commcid"
 	"github.com/filecoin-project/specs-actors/actors/builtin/miner"
 	"github.com/filecoin-project/specs-actors/actors/util/adt"
 	"golang.org/x/xerrors"
@@ -96,13 +95,8 @@ func (m *Sealing) handlePreCommitFailed(ctx statemachine.Context, sector SectorI
 			return nil // TODO: SeedWait needs this currently
 		}
 
-		pciR, err := commcid.CIDToReplicaCommitmentV1(pci.Info.SealedCID)
-		if err != nil {
-			return err
-		}
-
-		if string(pciR) != string(sector.CommR) {
-			log.Warn("sector %d is precommitted on chain, with different CommR: %x != %x", sector.SectorID, pciR, sector.CommR)
+		if pci.Info.SealedCID != *sector.CommR {
+			log.Warn("sector %d is precommitted on chain, with different CommR: %x != %x", sector.SectorID, pci.Info.SealedCID, sector.CommR)
 			return nil // TODO: remove when the actor allows re-precommit
 		}
 

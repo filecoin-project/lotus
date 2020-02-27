@@ -5,13 +5,16 @@ import (
 	"testing"
 
 	"github.com/filecoin-project/specs-actors/actors/abi"
+	"github.com/filecoin-project/specs-actors/actors/builtin"
 	"gotest.tools/assert"
 
-	"github.com/filecoin-project/go-cbor-util"
+	cborutil "github.com/filecoin-project/go-cbor-util"
 )
 
 func TestSectorInfoSelialization(t *testing.T) {
 	d := abi.DealID(1234)
+
+	dummyCid := builtin.AccountActorCodeID
 
 	si := &SectorInfo{
 		State:    123,
@@ -20,9 +23,9 @@ func TestSectorInfoSelialization(t *testing.T) {
 		Pieces: []Piece{{
 			DealID: &d,
 			Size:   5,
-			CommP:  []byte{3},
+			CommP:  dummyCid,
 		}},
-		CommD: []byte{32, 4},
+		CommD: &dummyCid,
 		CommR: nil,
 		Proof: nil,
 		Ticket: SealTicket{
