@@ -8,6 +8,7 @@ import (
 
 	"github.com/filecoin-project/specs-actors/actors/abi"
 
+	"github.com/filecoin-project/lotus/api"
 	"github.com/filecoin-project/lotus/lib/nullreader"
 )
 
@@ -48,6 +49,12 @@ func (m *Sealing) PledgeSector() error {
 
 		size := abi.PaddedPieceSize(m.sb.SectorSize()).Unpadded()
 
+		rt, _, err := api.ProofTypeFromSectorSize(m.sb.SectorSize())
+		if err != nil {
+			log.Error(err)
+			return
+		}
+
 		sid, err := m.sb.AcquireSectorNumber()
 		if err != nil {
 			log.Errorf("%+v", err)
@@ -60,7 +67,7 @@ func (m *Sealing) PledgeSector() error {
 			return
 		}
 
-		if err := m.newSector(sid, pieces); err != nil {
+		if err := m.newSector(sid, rt, pieces); err != nil {
 			log.Errorf("%+v", err)
 			return
 		}
