@@ -146,7 +146,7 @@ func (n *ClientNodeAdapter) AddFunds(ctx context.Context, addr address.Address, 
 }
 
 func (n *ClientNodeAdapter) EnsureFunds(ctx context.Context, addr address.Address, amount abi.TokenAmount) error {
-	return n.fm.EnsureAvailable(ctx, addr, amount)
+	return n.fm.EnsureAvailable(ctx, addr, addr, amount)
 }
 
 func (n *ClientNodeAdapter) GetBalance(ctx context.Context, addr address.Address) (storagemarket.Balance, error) {

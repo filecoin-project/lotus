@@ -300,6 +300,10 @@ func (a *API) ClientRetrieve(ctx context.Context, order api.RetrievalOrder, path
 		order.MinerPeerID = pid
 	}
 
+	if order.Size == 0 {
+		return xerrors.Errorf("cannot make retrieval deal for zero bytes")
+	}
+
 	retrievalResult := make(chan error, 1)
 
 	unsubscribe := a.Retrieval.SubscribeToEvents(func(event retrievalmarket.ClientEvent, state retrievalmarket.ClientDealState) {
@@ -313,10 +317,12 @@ func (a *API) ClientRetrieve(ctx context.Context, order api.RetrievalOrder, path
 		}
 	})
 
+	ppb := types.BigDiv(order.Total, types.NewInt(order.Size))
+
 	a.Retrieval.Retrieve(
 		ctx,
 		order.Root,
-		retrievalmarket.NewParamsV0(types.BigDiv(order.Total, types.NewInt(order.Size)), order.PaymentInterval, order.PaymentIntervalIncrease),
+		retrievalmarket.NewParamsV0(ppb, order.PaymentInterval, order.PaymentIntervalIncrease),
 		order.Total,
 		order.MinerPeerID,
 		order.Client,
