@@ -14,8 +14,8 @@ import (
 
 	"github.com/docker/go-units"
 	paramfetch "github.com/filecoin-project/go-paramfetch"
+	"github.com/filecoin-project/go-sectorbuilder/fs"
 	"github.com/filecoin-project/specs-actors/actors/abi"
-	"github.com/ipfs/go-datastore"
 	logging "github.com/ipfs/go-log/v2"
 	"github.com/mitchellh/go-homedir"
 	"golang.org/x/xerrors"
@@ -23,6 +23,7 @@ import (
 
 	"github.com/filecoin-project/go-address"
 	"github.com/filecoin-project/go-sectorbuilder"
+
 	lapi "github.com/filecoin-project/lotus/api"
 	"github.com/filecoin-project/lotus/build"
 	"github.com/filecoin-project/lotus/chain/types"
@@ -44,11 +45,13 @@ type BenchResults struct {
 }
 
 type SealingResult struct {
-	AddPiece  time.Duration
-	PreCommit time.Duration
-	Commit    time.Duration
-	Verify    time.Duration
-	Unseal    time.Duration
+	AddPiece   time.Duration
+	PreCommit1 time.Duration
+	PreCommit2 time.Duration
+	Commit1    time.Duration
+	Commit2    time.Duration
+	Verify     time.Duration
+	Unseal     time.Duration
 }
 
 func main() {
@@ -70,7 +73,7 @@ func main() {
 			},
 			&cli.StringFlag{
 				Name:  "sector-size",
-				Value: "1GiB",
+				Value: "512MiB",
 				Usage: "size of the sectors in bytes, i.e. 32GiB",
 			},
 			&cli.BoolFlag{
@@ -80,7 +83,7 @@ func main() {
 			&cli.StringFlag{
 				Name:  "miner-addr",
 				Usage: "pass miner address (only necessary if using existing sectorbuilder)",
-				Value: "t0101",
+				Value: "t01000",
 			},
 			&cli.StringFlag{
 				Name:  "benchmark-existing-sectorbuilder",
@@ -146,13 +149,10 @@ func main() {
 				return err
 			}
 
-			mds := datastore.NewMapDatastore()
 			cfg := &sectorbuilder.Config{
 				Miner:         maddr,
 				SealProofType: spt,
 				PoStProofType: ppt,
-				WorkerThreads: 2,
-				Paths:         sectorbuilder.SimplePath(sbdir),
 			}
 
 			if robench == "" {
@@ -164,7 +164,14 @@ func main() {
 			if err := paramfetch.GetParams(build.ParametersJson(), uint64(sectorSize)); err != nil {
 				return xerrors.Errorf("getting params: %w", err)
 			}
-			sb, err := sectorbuilder.New(cfg, mds)
+
+			sbfs := &fs.Basic{
+				Miner:  maddr,
+				NextID: 1,
+				Root:   sbdir,
+			}
+
+			sb, err := sectorbuilder.New(sbfs, cfg)
 			if err != nil {
 				return err
 			}
@@ -195,14 +202,22 @@ func main() {
 				trand := sha256.Sum256([]byte(c.String("ticket-preimage")))
 				ticket := abi.SealRandomness(trand[:])
 
-				log.Info("Running replication...")
+				log.Info("Running replication(1)...")
 				pieces := []abi.PieceInfo{pi}
-				commR, commD, err := sb.SealPreCommit(context.TODO(), i, ticket, pieces)
+				pc1o, err := sb.SealPreCommit1(context.TODO(), i, ticket, pieces)
 				if err != nil {
 					return xerrors.Errorf("commit: %w", err)
 				}
 
-				precommit := time.Now()
+				precommit1 := time.Now()
+
+				log.Info("Running replication(2)...")
+				commR, commD, err := sb.SealPreCommit2(context.TODO(), i, pc1o)
+				if err != nil {
+					return xerrors.Errorf("commit: %w", err)
+				}
+
+				precommit2 := time.Now()
 
 				sealedSectors = append(sealedSectors, abi.SectorInfo{
 					RegisteredProof: ppt,
@@ -215,13 +230,22 @@ func main() {
 					Value: []byte{1, 2, 3, 4, 5},
 				}
 
-				log.Info("Generating PoRep for sector")
-				proof, err := sb.SealCommit(context.TODO(), i, ticket, seed.Value, pieces, commR, commD)
+				log.Info("Generating PoRep for sector (1)")
+				c1o, err := sb.SealCommit1(context.TODO(), i, ticket, seed.Value, pieces, commR, commD)
 				if err != nil {
 					return err
 				}
 
-				sealcommit := time.Now()
+				sealcommit1 := time.Now()
+
+				log.Info("Generating PoRep for sector (2)")
+
+				proof, err := sb.SealCommit2(context.TODO(), i, c1o)
+				if err != nil {
+					return err
+				}
+
+				sealcommit2 := time.Now()
 
 				svi := abi.SealVerifyInfo{
 					SectorID: abi.SectorID{Miner: abi.ActorID(mid), Number: i},
@@ -263,11 +287,13 @@ func main() {
 				unseal := time.Now()
 
 				sealTimings = append(sealTimings, SealingResult{
-					AddPiece:  addpiece.Sub(start),
-					PreCommit: precommit.Sub(addpiece),
-					Commit:    sealcommit.Sub(precommit),
-					Verify:    verifySeal.Sub(sealcommit),
-					Unseal:    unseal.Sub(verifySeal),
+					AddPiece:   addpiece.Sub(start),
+					PreCommit1: precommit1.Sub(addpiece),
+					PreCommit2: precommit2.Sub(precommit1),
+					Commit1:    sealcommit1.Sub(precommit2),
+					Commit2:    sealcommit2.Sub(sealcommit1),
+					Verify:     verifySeal.Sub(sealcommit2),
+					Unseal:     unseal.Sub(verifySeal),
 				})
 			}
 
@@ -390,11 +416,13 @@ func main() {
 
 				fmt.Println(string(data))
 			} else {
-				fmt.Printf("results (%d)\n", sectorSize)
+				fmt.Printf("----\nresults (v23) (%d)\n", sectorSize)
 				if robench == "" {
 					fmt.Printf("seal: addPiece: %s (%s)\n", bo.SealingResults[0].AddPiece, bps(bo.SectorSize, bo.SealingResults[0].AddPiece)) // TODO: average across multiple sealings
-					fmt.Printf("seal: preCommit: %s (%s)\n", bo.SealingResults[0].PreCommit, bps(bo.SectorSize, bo.SealingResults[0].PreCommit))
-					fmt.Printf("seal: commit: %s (%s)\n", bo.SealingResults[0].Commit, bps(bo.SectorSize, bo.SealingResults[0].Commit))
+					fmt.Printf("seal: preCommit phase 1: %s (%s)\n", bo.SealingResults[0].PreCommit1, bps(bo.SectorSize, bo.SealingResults[0].PreCommit1))
+					fmt.Printf("seal: preCommit phase 2: %s (%s)\n", bo.SealingResults[0].PreCommit2, bps(bo.SectorSize, bo.SealingResults[0].PreCommit2))
+					fmt.Printf("seal: commit phase 1: %s (%s)\n", bo.SealingResults[0].Commit1, bps(bo.SectorSize, bo.SealingResults[0].Commit1))
+					fmt.Printf("seal: commit phase 2: %s (%s)\n", bo.SealingResults[0].Commit2, bps(bo.SectorSize, bo.SealingResults[0].Commit2))
 					fmt.Printf("seal: verify: %s\n", bo.SealingResults[0].Verify)
 					if !c.Bool("skip-unseal") {
 						fmt.Printf("unseal: %s  (%s)\n", bo.SealingResults[0].Unseal, bps(bo.SectorSize, bo.SealingResults[0].Unseal))

@@ -7,8 +7,6 @@ import (
 	"github.com/filecoin-project/go-address"
 	"github.com/filecoin-project/specs-actors/actors/abi"
 	"github.com/ipfs/go-cid"
-
-	"github.com/filecoin-project/go-sectorbuilder"
 )
 
 // alias because cbor-gen doesn't like non-alias types
@@ -105,12 +103,35 @@ type StorageMiner interface {
 
 	SectorsUpdate(context.Context, abi.SectorNumber, SectorState) error
 
-	WorkerStats(context.Context) (sectorbuilder.WorkerStats, error)
+	WorkerStats(context.Context) (WorkerStats, error)
 
 	// WorkerQueue registers a remote worker
-	WorkerQueue(context.Context, sectorbuilder.WorkerCfg) (<-chan sectorbuilder.WorkerTask, error)
+	WorkerQueue(context.Context, WorkerCfg) (<-chan WorkerTask, error)
 
-	WorkerDone(ctx context.Context, task uint64, res sectorbuilder.SealRes) error
+	WorkerDone(ctx context.Context, task uint64, res SealRes) error
+}
+
+type WorkerStats struct {
+	Total int
+	Free  int
+
+	AddPieceWait  int
+	PreCommitWait int
+	CommitWait    int
+	UnsealWait    int
+}
+
+type WorkerTask struct {
+}
+type WorkerCfg struct {
+	NoPreCommit bool
+	NoCommit    bool
+}
+type SealRes struct {
+	Err   string
+	GoErr error `json:"-"`
+
+	Proof []byte
 }
 
 type SectorLog struct {

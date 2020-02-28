@@ -101,7 +101,7 @@ type FullNodeStruct struct {
 		ClientGetDealInfo func(context.Context, cid.Cid) (*api.DealInfo, error)                                                                                             `perm:"read"`
 		ClientListDeals   func(ctx context.Context) ([]api.DealInfo, error)                                                                                                 `perm:"write"`
 		ClientRetrieve    func(ctx context.Context, order api.RetrievalOrder, path string) error                                                                            `perm:"admin"`
-		ClientQueryAsk    func(ctx context.Context, p peer.ID, miner address.Address) (*storagemarket.SignedStorageAsk, error)                                                      `perm:"read"`
+		ClientQueryAsk    func(ctx context.Context, p peer.ID, miner address.Address) (*storagemarket.SignedStorageAsk, error)                                              `perm:"read"`
 
 		StateMinerSectors       func(context.Context, address.Address, types.TipSetKey) ([]*api.ChainSectorInfo, error)                      `perm:"read"`
 		StateMinerProvingSet    func(context.Context, address.Address, types.TipSetKey) ([]*api.ChainSectorInfo, error)                      `perm:"read"`
@@ -144,7 +144,7 @@ type FullNodeStruct struct {
 		PaychVoucherCheckValid     func(context.Context, address.Address, *paych.SignedVoucher) error                                        `perm:"read"`
 		PaychVoucherCheckSpendable func(context.Context, address.Address, *paych.SignedVoucher, []byte, []byte) (bool, error)                `perm:"read"`
 		PaychVoucherAdd            func(context.Context, address.Address, *paych.SignedVoucher, []byte, types.BigInt) (types.BigInt, error)  `perm:"write"`
-		PaychVoucherCreate         func(context.Context, address.Address, big.Int, uint64) (*paych.SignedVoucher, error)                `perm:"sign"`
+		PaychVoucherCreate         func(context.Context, address.Address, big.Int, uint64) (*paych.SignedVoucher, error)                     `perm:"sign"`
 		PaychVoucherList           func(context.Context, address.Address) ([]*paych.SignedVoucher, error)                                    `perm:"write"`
 		PaychVoucherSubmit         func(context.Context, address.Address, *paych.SignedVoucher) (cid.Cid, error)                             `perm:"sign"`
 	}
