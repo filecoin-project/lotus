@@ -1,24 +1,31 @@
 package validation
 
 //
-// ValidationConfig
+// Config
 //
 
-type ValidationConfig struct {
+type Config struct {
 	trackGas         bool
 	checkExitCode    bool
 	checkReturnValue bool
 }
 
-func (v ValidationConfig) ValidateGas() bool {
+func NewConfig(gas, exit, ret bool) *Config {
+	return &Config{
+		trackGas:         gas,
+		checkExitCode:    exit,
+		checkReturnValue: ret,
+	}
+}
+
+func (v Config) ValidateGas() bool {
 	return v.trackGas
 }
 
-func (v ValidationConfig) ValidateExitCode() bool {
+func (v Config) ValidateExitCode() bool {
 	return v.checkExitCode
 }
 
-func (v ValidationConfig) ValidateReturnValue() bool {
+func (v Config) ValidateReturnValue() bool {
 	return v.checkReturnValue
 }
-
