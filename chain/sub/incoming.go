@@ -153,9 +153,32 @@ func (brc *blockReceiptCache) add(bcid cid.Cid) int {
 	return val.(int)
 }
 
+type MessageValidator struct {
+	mpool *messagepool.MessagePool
+}
+
+func NewMessageValidator(mp *messagepool.MessagePool) *MessageValidator {
+	return &MessageValidator{mp}
+}
+
+func (mv *MessageValidator) Validate(ctx context.Context, pid peer.ID, msg *pubsub.Message) bool {
+	m, err := types.DecodeSignedMessage(msg.Message.GetData())
+	if err != nil {
+		log.Warnf("failed to decode incoming message: %s", err)
+		return false
+	}
+
+	if err := mv.mpool.Add(m); err != nil {
+		log.Warnf("failed to add message from network to message pool (From: %s, To: %s, Nonce: %d, Value: %s): %s", m.Message.From, m.Message.To, m.Message.Nonce, types.FIL(m.Message.Value), err)
+		return false
+	}
+
+	return true
+}
+
 func HandleIncomingMessages(ctx context.Context, mpool *messagepool.MessagePool, msub *pubsub.Subscription) {
 	for {
-		msg, err := msub.Next(ctx)
+		_, err := msub.Next(ctx)
 		if err != nil {
 			log.Warn("error from message subscription: ", err)
 			if ctx.Err() != nil {
@@ -165,15 +188,6 @@ func HandleIncomingMessages(ctx context.Context, mpool *messagepool.MessagePool,
 			continue
 		}
 
-		m, ok := msg.ValidatorData.(*types.SignedMessage)
-		if !ok {
-			log.Errorf("message validator func passed on wrong type: %#v", msg.ValidatorData)
-			continue
-		}
-
-		if err := mpool.Add(m); err != nil {
-			log.Warnf("failed to add message from network to message pool (From: %s, To: %s, Nonce: %d, Value: %s): %s", m.Message.From, m.Message.To, m.Message.Nonce, types.FIL(m.Message.Value), err)
-			continue
-		}
+		// Do nothing... everything happens in validate
 	}
 }

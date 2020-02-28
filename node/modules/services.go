@@ -16,7 +16,6 @@ import (
 	"github.com/filecoin-project/lotus/chain/blocksync"
 	"github.com/filecoin-project/lotus/chain/messagepool"
 	"github.com/filecoin-project/lotus/chain/sub"
-	"github.com/filecoin-project/lotus/chain/types"
 	"github.com/filecoin-project/lotus/node/hello"
 	"github.com/filecoin-project/lotus/node/modules/dtypes"
 	"github.com/filecoin-project/lotus/node/modules/helpers"
@@ -78,18 +77,9 @@ func HandleIncomingMessages(mctx helpers.MetricsCtx, lc fx.Lifecycle, ps *pubsub
 		panic(err)
 	}
 
-	v := func(ctx context.Context, pid peer.ID, msg *pubsub.Message) bool {
-		m, err := types.DecodeSignedMessage(msg.GetData())
-		if err != nil {
-			log.Errorf("got incorrectly formatted Message: %s", err)
-			return false
-		}
+	v := sub.NewMessageValidator(mpool)
 
-		msg.ValidatorData = m
-		return true
-	}
-
-	if err := ps.RegisterTopicValidator(MessagesTopic, v); err != nil {
+	if err := ps.RegisterTopicValidator(MessagesTopic, v.Validate); err != nil {
 		panic(err)
 	}
 
