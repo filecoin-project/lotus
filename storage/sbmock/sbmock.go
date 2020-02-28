@@ -198,7 +198,7 @@ func (sb *SBMock) SealCommit1(ctx context.Context, sid abi.SectorNumber, ticket 
 
 	var out [32]byte
 	for i := range out {
-		out[i] = unsealed.Bytes()[i] + sealedCid.Bytes()[31-i] - ticket[i]*seed[i] ^ byte(sid & 0xff)
+		out[i] = unsealed.Bytes()[i] + sealedCid.Bytes()[31-i] - ticket[i]*seed[i] ^ byte(sid&0xff)
 	}
 
 	return out[:], nil
@@ -207,7 +207,7 @@ func (sb *SBMock) SealCommit1(ctx context.Context, sid abi.SectorNumber, ticket 
 func (sb *SBMock) SealCommit2(ctx context.Context, sectorNum abi.SectorNumber, phase1Out []byte) (proof []byte, err error) {
 	var out [32]byte
 	for i := range out {
-		out[i] = phase1Out[i] ^ byte(sectorNum & 0xff)
+		out[i] = phase1Out[i] ^ byte(sectorNum&0xff)
 	}
 
 	return out[:], nil
