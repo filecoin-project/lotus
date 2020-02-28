@@ -121,7 +121,7 @@ func (m *Sealing) SealPiece(ctx context.Context, size abi.UnpaddedPieceSize, r i
 		return xerrors.Errorf("adding piece to sector: %w", err)
 	}
 
-	rt, _, err := api.ProofTypeFromSectorSize(m.sb.SectorSize())
+	_, rt, err := api.ProofTypeFromSectorSize(m.sb.SectorSize())
 	if err != nil {
 		return xerrors.Errorf("bad sector size: %w", err)
 	}
