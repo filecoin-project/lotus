@@ -4,8 +4,8 @@ import (
 	"context"
 
 	vstate "github.com/filecoin-project/chain-validation/state"
-	acrypto "github.com/filecoin-project/specs-actors/actors/crypto"
 	"github.com/filecoin-project/specs-actors/actors/abi"
+	acrypto "github.com/filecoin-project/specs-actors/actors/crypto"
 )
 
 type Factories struct {
@@ -42,6 +42,6 @@ func (f *Factories) NewValidationConfig() vstate.ValidationConfig {
 	return &ValidationConfig{
 		trackGas:         false,
 		checkExitCode:    true,
-		checkReturnValue: true,
+		checkReturnValue: false,
 	}
 }
