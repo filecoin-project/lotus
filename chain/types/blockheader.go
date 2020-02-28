@@ -9,7 +9,6 @@ import (
 
 	block "github.com/ipfs/go-block-format"
 	"github.com/ipfs/go-cid"
-	"github.com/minio/blake2b-simd"
 	"github.com/minio/sha256-simd"
 	"github.com/multiformats/go-multihash"
 	xerrors "golang.org/x/xerrors"
@@ -215,7 +214,5 @@ func ElectionPostChallengeCount(sectors uint64, faults uint64) uint64 {
 }
 
 func (t *Ticket) Equals(ot *Ticket) bool {
-	tDigest := blake2b.Sum256(t.VRFProof)
-	otDigest := blake2b.Sum256(ot.VRFProof)
-	return bytes.Equal(tDigest[:], otDigest[:])
+	return bytes.Equal(t.VRFProof, ot.VRFProof)
 }
