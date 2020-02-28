@@ -121,7 +121,12 @@ func (m *Sealing) SealPiece(ctx context.Context, size abi.UnpaddedPieceSize, r i
 		return xerrors.Errorf("adding piece to sector: %w", err)
 	}
 
-	return m.newSector(sectorID, []Piece{
+	rt, _, err := api.ProofTypeFromSectorSize(m.sb.SectorSize())
+	if err != nil {
+		return xerrors.Errorf("bad sector size: %w", err)
+	}
+
+	return m.newSector(sectorID, rt, []Piece{
 		{
 			DealID: &dealID,
 
@@ -131,10 +136,11 @@ func (m *Sealing) SealPiece(ctx context.Context, size abi.UnpaddedPieceSize, r i
 	})
 }
 
-func (m *Sealing) newSector(sid abi.SectorNumber, pieces []Piece) error {
+func (m *Sealing) newSector(sid abi.SectorNumber, rt abi.RegisteredProof, pieces []Piece) error {
 	log.Infof("Start sealing %d", sid)
 	return m.sectors.Send(uint64(sid), SectorStart{
-		id:     sid,
-		pieces: pieces,
+		id:         sid,
+		pieces:     pieces,
+		sectorType: rt,
 	})
 }

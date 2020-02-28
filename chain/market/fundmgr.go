@@ -5,6 +5,7 @@ import (
 	"sync"
 
 	"github.com/filecoin-project/specs-actors/actors/builtin"
+	logging "github.com/ipfs/go-log"
 	"golang.org/x/xerrors"
 
 	"github.com/filecoin-project/go-address"
@@ -13,6 +14,8 @@ import (
 	"github.com/filecoin-project/lotus/chain/types"
 	"github.com/filecoin-project/lotus/node/impl/full"
 )
+
+var log = logging.Logger("market_adapter")
 
 type FundMgr struct {
 	sm    *stmgr.StateManager
@@ -31,7 +34,8 @@ func NewFundMgr(sm *stmgr.StateManager, mpool full.MpoolAPI) *FundMgr {
 	}
 }
 
-func (fm *FundMgr) EnsureAvailable(ctx context.Context, addr address.Address, amt types.BigInt) error {
+func (fm *FundMgr) EnsureAvailable(ctx context.Context, addr, wallet address.Address, amt types.BigInt) error {
+	log.Error("ensure available: ", addr, amt)
 	fm.lk.Lock()
 	avail, ok := fm.available[addr]
 	if !ok {
@@ -64,7 +68,7 @@ func (fm *FundMgr) EnsureAvailable(ctx context.Context, addr address.Address, am
 
 	smsg, err := fm.mpool.MpoolPushMessage(ctx, &types.Message{
 		To:       builtin.StorageMarketActorAddr,
-		From:     addr,
+		From:     wallet,
 		Value:    toAdd,
 		GasPrice: types.NewInt(0),
 		GasLimit: types.NewInt(1000000),
@@ -77,6 +81,7 @@ func (fm *FundMgr) EnsureAvailable(ctx context.Context, addr address.Address, am
 
 	_, r, err := fm.sm.WaitForMessage(ctx, smsg.Cid())
 	if err != nil {
+		log.Error("waiting for message: ", err)
 		return err
 	}
 

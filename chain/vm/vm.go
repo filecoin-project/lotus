@@ -4,9 +4,10 @@ import (
 	"bytes"
 	"context"
 	"fmt"
-	"github.com/filecoin-project/specs-actors/actors/builtin"
 	"math/big"
 	"reflect"
+
+	"github.com/filecoin-project/specs-actors/actors/builtin"
 
 	block "github.com/ipfs/go-block-format"
 	cid "github.com/ipfs/go-cid"

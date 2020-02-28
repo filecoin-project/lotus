@@ -144,8 +144,8 @@ func (n *ProviderNodeAdapter) SignBytes(ctx context.Context, signer address.Addr
 	return localSignature, nil
 }
 
-func (n *ProviderNodeAdapter) EnsureFunds(ctx context.Context, addr address.Address, amt abi.TokenAmount) error {
-	return n.MarketEnsureAvailable(ctx, addr, amt)
+func (n *ProviderNodeAdapter) EnsureFunds(ctx context.Context, addr, wallet address.Address, amt abi.TokenAmount) error {
+	return n.MarketEnsureAvailable(ctx, addr, wallet, amt)
 }
 
 func (n *ProviderNodeAdapter) MostRecentStateId(ctx context.Context) (storagemarket.StateKey, error) {
