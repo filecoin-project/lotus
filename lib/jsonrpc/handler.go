@@ -156,7 +156,7 @@ func (handlers) getSpan(ctx context.Context, req request) (context.Context, *tra
 func (h handlers) handle(ctx context.Context, req request, w func(func(io.Writer)), rpcError rpcErrFunc, done func(keepCtx bool), chOut chanOut) {
 	// Not sure if we need to sanitize the incoming req.Method or not.
 	ctx, span := h.getSpan(ctx, req)
-	ctx, _ = tag.New(context.Background(), tag.Insert(metrics.RPCMethod, req.Method))
+	ctx, _ = tag.New(ctx, tag.Insert(metrics.RPCMethod, req.Method))
 	defer span.End()
 
 	handler, ok := h[req.Method]
@@ -169,6 +169,7 @@ func (h handlers) handle(ctx context.Context, req request, w func(func(io.Writer
 
 	if len(req.Params) != handler.nParams {
 		rpcError(w, &req, rpcInvalidParams, fmt.Errorf("wrong param count"))
+		stats.Record(ctx, metrics.RPCRequestError.M(1))
 		done(false)
 		return
 	}
@@ -178,6 +179,7 @@ func (h handlers) handle(ctx context.Context, req request, w func(func(io.Writer
 
 	if chOut == nil && outCh {
 		rpcError(w, &req, rpcMethodNotFound, fmt.Errorf("method '%s' not supported in this mode (no out channel support)", req.Method))
+		stats.Record(ctx, metrics.RPCRequestError.M(1))
 		return
 	}
 
@@ -191,6 +193,7 @@ func (h handlers) handle(ctx context.Context, req request, w func(func(io.Writer
 		rp := reflect.New(handler.paramReceivers[i])
 		if err := json.NewDecoder(bytes.NewReader(req.Params[i].data)).Decode(rp.Interface()); err != nil {
 			rpcError(w, &req, rpcParseError, xerrors.Errorf("unmarshaling params for '%s': %w", handler.handlerFunc, err))
+			stats.Record(ctx, metrics.RPCRequestError.M(1))
 			return
 		}
 
@@ -202,12 +205,12 @@ func (h handlers) handle(ctx context.Context, req request, w func(func(io.Writer
 	callResult, err := doCall(req.Method, handler.handlerFunc, callParams)
 	if err != nil {
 		rpcError(w, &req, 0, xerrors.Errorf("fatal error calling '%s': %w", req.Method, err))
+		stats.Record(ctx, metrics.RPCRequestError.M(1))
 		return
 	}
 	if req.ID == nil {
 		return // notification
 	}
-	stats.Record(ctx, metrics.RPCRequestSuccess.M(1))
 
 	///////////////////
 
@@ -220,6 +223,7 @@ func (h handlers) handle(ctx context.Context, req request, w func(func(io.Writer
 		err := callResult[handler.errOut].Interface()
 		if err != nil {
 			log.Warnf("error in RPC call to '%s': %+v", req.Method, err)
+			stats.Record(ctx, metrics.RPCResponseError.M(1))
 			resp.Error = &respError{
 				Code:    1,
 				Message: err.(error).Error(),
@@ -241,6 +245,7 @@ func (h handlers) handle(ctx context.Context, req request, w func(func(io.Writer
 		}
 
 		log.Warnf("failed to setup channel in RPC call to '%s': %+v", req.Method, err)
+		stats.Record(ctx, metrics.RPCResponseError.M(1))
 		resp.Error = &respError{
 			Code:    1,
 			Message: err.(error).Error(),
@@ -250,8 +255,8 @@ func (h handlers) handle(ctx context.Context, req request, w func(func(io.Writer
 	w(func(w io.Writer) {
 		if err := json.NewEncoder(w).Encode(resp); err != nil {
 			log.Error(err)
+			stats.Record(ctx, metrics.RPCResponseError.M(1))
 			return
 		}
-		stats.Record(ctx, metrics.RPCResponseSuccess.M(1))
 	})
 }

@@ -15,13 +15,13 @@ var (
 
 // Measures
 var (
-	LotusInfo          = stats.Int64("info", "Arbitrary counter to tag lotus info to", stats.UnitDimensionless)
-	ChainHeight        = stats.Int64("chain/height", "Current Height of the chain", stats.UnitDimensionless)
-	ChainNodeHeight    = stats.Int64("chain/node_height", "Current Height of the node", stats.UnitDimensionless)
-	PeerCount          = stats.Int64("peer/count", "Current number of FIL peers", stats.UnitDimensionless)
-	RPCInvalidMethod   = stats.Int64("rpc/invalid_method", "Total number of invalid RPC methods called", stats.UnitDimensionless)
-	RPCRequestSuccess  = stats.Int64("rpc/request_success", "Total number of successful requests handled", stats.UnitDimensionless)
-	RPCResponseSuccess = stats.Int64("rpc/response_success", "Total number of succeessful responses handled", stats.UnitDimensionless)
+	LotusInfo        = stats.Int64("info", "Arbitrary counter to tag lotus info to", stats.UnitDimensionless)
+	ChainHeight      = stats.Int64("chain/height", "Current Height of the chain", stats.UnitDimensionless)
+	ChainNodeHeight  = stats.Int64("chain/node_height", "Current Height of the node", stats.UnitDimensionless)
+	PeerCount        = stats.Int64("peer/count", "Current number of FIL peers", stats.UnitDimensionless)
+	RPCInvalidMethod = stats.Int64("rpc/invalid_method", "Total number of invalid RPC methods called", stats.UnitDimensionless)
+	RPCRequestError  = stats.Int64("rpc/request_error", "Total number of request errors handled", stats.UnitDimensionless)
+	RPCResponseError = stats.Int64("rpc/response_error", "Total number of responses errors handled", stats.UnitDimensionless)
 )
 
 // DefaultViews is an array of Consensus views for metric gathering purposes
@@ -48,12 +48,12 @@ var DefaultViews = []*view.View{
 		TagKeys:     []tag.Key{RPCMethod},
 	},
 	&view.View{
-		Measure:     RPCRequestSuccess,
+		Measure:     RPCRequestError,
 		Aggregation: view.Count(),
 		TagKeys:     []tag.Key{RPCMethod},
 	},
 	&view.View{
-		Measure:     RPCResponseSuccess,
+		Measure:     RPCResponseError,
 		Aggregation: view.Count(),
 		TagKeys:     []tag.Key{RPCMethod},
 	},
