@@ -257,6 +257,7 @@ func (rs *runtimeShim) Send(to address.Address, method abi.MethodNum, m vmr.CBOR
 		if err.IsFatal() {
 			panic(err)
 		}
+		log.Warnf("vmctx send failed: to: %s, method: %d: ret: %d, err: %s", to, method, ret, err)
 		return nil, exitcode.ExitCode(err.RetCode())
 	}
 	return &dumbWrapperType{ret}, 0
