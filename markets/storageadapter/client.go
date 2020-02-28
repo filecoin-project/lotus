@@ -145,8 +145,8 @@ func (n *ClientNodeAdapter) AddFunds(ctx context.Context, addr address.Address, 
 	return nil
 }
 
-func (n *ClientNodeAdapter) EnsureFunds(ctx context.Context, addr address.Address, amount abi.TokenAmount) error {
-	return n.fm.EnsureAvailable(ctx, addr, addr, amount)
+func (n *ClientNodeAdapter) EnsureFunds(ctx context.Context, addr, wallet address.Address, amount abi.TokenAmount) error {
+	return n.fm.EnsureAvailable(ctx, addr, wallet, amount)
 }
 
 func (n *ClientNodeAdapter) GetBalance(ctx context.Context, addr address.Address) (storagemarket.Balance, error) {

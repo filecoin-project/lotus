@@ -120,6 +120,8 @@ github.com/filecoin-project/go-fil-markets v0.0.0-20200227185910-091d5f0ab546 h1
 github.com/filecoin-project/go-fil-markets v0.0.0-20200227185910-091d5f0ab546/go.mod h1:f272JjgKXzn2OxdlmVhq6CjvlX5FfV743TvWLirsDpk=
 github.com/filecoin-project/go-fil-markets v0.0.0-20200227194154-8ef88c730c81 h1:3jFhWp4lC7irXg/d4Q4p3FQtw0m8hne+9GHveViCM04=
 github.com/filecoin-project/go-fil-markets v0.0.0-20200227194154-8ef88c730c81/go.mod h1:rfRwhd3ujcCXnD4N9oEM2wjh8GRZGoeNXME+UPG/9ts=
+github.com/filecoin-project/go-fil-markets v0.0.0-20200228192824-ee51014cc8c6 h1:xYldVV9fZ+nsykQnEVMwcLU+6R5EshzmOWcyQDpludc=
+github.com/filecoin-project/go-fil-markets v0.0.0-20200228192824-ee51014cc8c6/go.mod h1:rfRwhd3ujcCXnD4N9oEM2wjh8GRZGoeNXME+UPG/9ts=
 github.com/filecoin-project/go-padreader v0.0.0-20200210211231-548257017ca6 h1:92PET+sx1Hb4W/8CgFwGuxaKbttwY+UNspYZTvXY0vs=
 github.com/filecoin-project/go-padreader v0.0.0-20200210211231-548257017ca6/go.mod h1:0HgYnrkeSU4lu1p+LEOeDpFsNBssa0OGGriWdA4hvaE=
 github.com/filecoin-project/go-paramfetch v0.0.0-20200102181131-b20d579f2878/go.mod h1:40kI2Gv16mwcRsHptI3OAV4nlOEU7wVDc4RgMylNFjU=
@@ -137,6 +139,8 @@ github.com/filecoin-project/go-sectorbuilder v0.0.2-0.20200227214127-332d57b390a
 github.com/filecoin-project/go-sectorbuilder v0.0.2-0.20200227214127-332d57b390aa/go.mod h1:u8n91UJUua9zEiyAPw8wRAgUEoyTH8BBM9LWJ5WuxOM=
 github.com/filecoin-project/go-sectorbuilder v0.0.2-0.20200227214225-a550d0267977 h1:Q4VnMiorS/AcZMDHtoi+7lVzkTj+qDa0bmgMkwmvxIM=
 github.com/filecoin-project/go-sectorbuilder v0.0.2-0.20200227214225-a550d0267977/go.mod h1:tzTc9BxxSbjlIzhFwm5h9oBkXKkRuLxeiWspntwnKyw=
+github.com/filecoin-project/go-sectorbuilder v0.0.2-0.20200228181617-f00e2c4cc050 h1:mUr2IegjC5TumVe7opY7CuXS/Ud4VCmDLidJDFeBNJQ=
+github.com/filecoin-project/go-sectorbuilder v0.0.2-0.20200228181617-f00e2c4cc050/go.mod h1:tzTc9BxxSbjlIzhFwm5h9oBkXKkRuLxeiWspntwnKyw=
 github.com/filecoin-project/go-statemachine v0.0.0-20200226041606-2074af6d51d9 h1:k9qVR9ItcziSB2rxtlkN/MDWNlbsI6yzec+zjUatLW0=
 github.com/filecoin-project/go-statemachine v0.0.0-20200226041606-2074af6d51d9/go.mod h1:FGwQgZAt2Gh5mjlwJUlVB62JeYdo+if0xWxSEfBD9ig=
 github.com/filecoin-project/go-statestore v0.1.0 h1:t56reH59843TwXHkMcwyuayStBIiWBRilQjQ+5IiwdQ=
@@ -157,6 +161,8 @@ github.com/filecoin-project/specs-actors v0.0.0-20200226232338-edd04eb6eda5 h1:B
 github.com/filecoin-project/specs-actors v0.0.0-20200226232338-edd04eb6eda5/go.mod h1:0HAWYrvajFHDgRaKbF0rl+IybVLZL5z4gQ8koCMPhoU=
 github.com/filecoin-project/specs-actors v0.0.0-20200226233922-9ed222007d11 h1:IJJmTpNWYSdPPyMGP7ET3JE04jjZl7AzGiLTDcJOL04=
 github.com/filecoin-project/specs-actors v0.0.0-20200226233922-9ed222007d11/go.mod h1:0HAWYrvajFHDgRaKbF0rl+IybVLZL5z4gQ8koCMPhoU=
+github.com/filecoin-project/specs-actors v0.0.0-20200228183246-c3624e024ec6 h1:9RaejLsXHzVLXPrpmJsZwROx1rmy5h6OGYMCd3K3F88=
+github.com/filecoin-project/specs-actors v0.0.0-20200228183246-c3624e024ec6/go.mod h1:0HAWYrvajFHDgRaKbF0rl+IybVLZL5z4gQ8koCMPhoU=
 github.com/fsnotify/fsnotify v1.4.7 h1:IXs+QLmnXW2CcXuY+8Mzv/fWEsPGWxqefPtCP5CnV9I=
 github.com/fsnotify/fsnotify v1.4.7/go.mod h1:jwhsz4b93w/PPRr/qN1Yymfu8t87LnFCMoQvtojpjFo=
 github.com/gbrlsnchs/jwt/v3 v3.0.0-beta.1 h1:EzDjxMg43q1tA2c0MV3tNbaontnHLplHyFF6M5KiVP0=
