@@ -23,7 +23,7 @@ import (
 )
 
 func init() {
-	build.SectorSizes = []abi.SectorSize{1024}
+	build.SectorSizes = []abi.SectorSize{2048}
 }
 
 func (api *api) Spawn() (nodeInfo, error) {

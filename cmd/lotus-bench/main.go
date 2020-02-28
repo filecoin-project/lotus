@@ -56,7 +56,7 @@ func main() {
 
 	log.Info("Starting lotus-bench")
 
-	build.SectorSizes = append(build.SectorSizes, 1024)
+	build.SectorSizes = append(build.SectorSizes, 2048)
 
 	app := &cli.App{
 		Name:    "lotus-bench",

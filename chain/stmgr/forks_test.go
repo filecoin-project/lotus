@@ -34,8 +34,8 @@ import (
 )
 
 func init() {
-	build.SectorSizes = []abi.SectorSize{1024}
-	build.MinimumMinerPower = 1024
+	build.SectorSizes = []abi.SectorSize{2048}
+	build.MinimumMinerPower = 2048
 }
 
 const testForkHeight = 40
