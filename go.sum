@@ -126,6 +126,8 @@ github.com/filecoin-project/go-sectorbuilder v0.0.2-0.20200227214225-a550d026797
 github.com/filecoin-project/go-sectorbuilder v0.0.2-0.20200227214225-a550d0267977/go.mod h1:tzTc9BxxSbjlIzhFwm5h9oBkXKkRuLxeiWspntwnKyw=
 github.com/filecoin-project/go-sectorbuilder v0.0.2-0.20200228064721-be233370d8e9 h1:P4IMEn3GDtAJzIVL/DqwHH8jotvafn6FLuxFhUNKhEI=
 github.com/filecoin-project/go-sectorbuilder v0.0.2-0.20200228064721-be233370d8e9/go.mod h1:gEQJVRVqQX8Vx02IosTdC2UA4l2MgHfG3POJEI2GIpc=
+github.com/filecoin-project/go-sectorbuilder v0.0.2-0.20200229022239-442fe78a3168 h1:6fBZezecouqHNRi4Q4YlH7QqgJ3yZZ7adMBpUBAx4F8=
+github.com/filecoin-project/go-sectorbuilder v0.0.2-0.20200229022239-442fe78a3168/go.mod h1:gEQJVRVqQX8Vx02IosTdC2UA4l2MgHfG3POJEI2GIpc=
 github.com/filecoin-project/go-statemachine v0.0.0-20200226041606-2074af6d51d9 h1:k9qVR9ItcziSB2rxtlkN/MDWNlbsI6yzec+zjUatLW0=
 github.com/filecoin-project/go-statemachine v0.0.0-20200226041606-2074af6d51d9/go.mod h1:FGwQgZAt2Gh5mjlwJUlVB62JeYdo+if0xWxSEfBD9ig=
 github.com/filecoin-project/go-statestore v0.1.0 h1:t56reH59843TwXHkMcwyuayStBIiWBRilQjQ+5IiwdQ=
