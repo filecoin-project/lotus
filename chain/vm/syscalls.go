@@ -1,9 +1,11 @@
 package vm
 
 import (
-	ffi "github.com/filecoin-project/filecoin-ffi"
+	"context"
+	"fmt"
+	"math/bits"
+
 	"github.com/filecoin-project/go-address"
-	commcid "github.com/filecoin-project/go-fil-commcid"
 	"github.com/filecoin-project/go-sectorbuilder"
 	"github.com/filecoin-project/lotus/lib/zerocomm"
 	"github.com/filecoin-project/specs-actors/actors/abi"
@@ -12,7 +14,6 @@ import (
 	"github.com/ipfs/go-cid"
 	mh "github.com/multiformats/go-multihash"
 	"golang.org/x/xerrors"
-	"math/bits"
 )
 
 func init() {
@@ -29,16 +30,15 @@ type syscallShim struct {
 	verifier sectorbuilder.Verifier
 }
 
-func (ss *syscallShim) ComputeUnsealedSectorCID(ssize abi.SectorSize, pieces []abi.PieceInfo) (cid.Cid, error) {
-	// TODO: does this pull in unwanted dependencies?
-	var ffipieces []ffi.PublicPieceInfo
+func (ss *syscallShim) ComputeUnsealedSectorCID(st abi.RegisteredProof, pieces []abi.PieceInfo) (cid.Cid, error) {
 	var sum abi.PaddedPieceSize
 	for _, p := range pieces {
-		ffipieces = append(ffipieces, ffi.PublicPieceInfo{
-			Size:  p.Size.Unpadded(),
-			CommP: cidToCommD(p.PieceCID),
-		})
 		sum += p.Size
+	}
+
+	ssize, err := st.SectorSize()
+	if err != nil {
+		return cid.Undef, err
 	}
 
 	{
@@ -51,32 +51,39 @@ func (ss *syscallShim) ComputeUnsealedSectorCID(ssize abi.SectorSize, pieces []a
 			toFill ^= psize
 
 			unpadded := abi.PaddedPieceSize(psize).Unpadded()
-			ffipieces = append(ffipieces, ffi.PublicPieceInfo{
-				Size:  unpadded,
-				CommP: zerocomm.ForSize(unpadded),
+			pieces = append(pieces, abi.PieceInfo{
+				Size:     unpadded.Padded(),
+				PieceCID: zerocomm.ForSize(unpadded),
 			})
 		}
 	}
 
-	commd, err := sectorbuilder.GenerateDataCommitment(ssize, ffipieces)
+	commd, err := sectorbuilder.GenerateUnsealedCID(st, pieces)
 	if err != nil {
 		log.Errorf("generate data commitment failed: %s", err)
 		return cid.Undef, err
 	}
 
-	return commcid.DataCommitmentV1ToCID(commd[:]), nil
+	return commd, nil
 }
 
 func (ss *syscallShim) HashBlake2b(data []byte) [32]byte {
 	panic("NYI")
 }
 
-func (ss *syscallShim) VerifyConsensusFault(a, b []byte) bool {
+func (ss *syscallShim) VerifyConsensusFault(a, b []byte) error {
 	panic("NYI")
 }
 
-func (ss *syscallShim) VerifyPoSt(ssize abi.SectorSize, proof abi.PoStVerifyInfo) (bool, error) {
-	panic("NYI")
+func (ss *syscallShim) VerifyPoSt(proof abi.PoStVerifyInfo) error {
+	ok, err := ss.verifier.VerifyFallbackPost(context.TODO(), proof)
+	if err != nil {
+		return err
+	}
+	if !ok {
+		return fmt.Errorf("proof was invalid")
+	}
+	return nil
 }
 
 func cidToCommD(c cid.Cid) [32]byte {
@@ -93,35 +100,35 @@ func cidToCommR(c cid.Cid) [32]byte {
 	return out
 }
 
-func (ss *syscallShim) VerifySeal(ssize abi.SectorSize, info abi.SealVerifyInfo) (bool, error) {
+func (ss *syscallShim) VerifySeal(info abi.SealVerifyInfo) error {
 	//_, span := trace.StartSpan(ctx, "ValidatePoRep")
 	//defer span.End()
 
-	commD := cidToCommD(info.UnsealedCID)
-	commR := cidToCommR(info.OnChain.SealedCID)
-
 	miner, err := address.NewIDAddress(uint64(info.Miner))
 	if err != nil {
-		return false, xerrors.Errorf("weirdly failed to construct address: %w", err)
+		return xerrors.Errorf("weirdly failed to construct address: %w", err)
 	}
 
 	ticket := []byte(info.Randomness)
 	proof := []byte(info.OnChain.Proof)
 	seed := []byte(info.InteractiveRandomness)
 
-	log.Infof("Werif %d r:%x; d:%x; m:%s; t:%x; s:%x; N:%d; p:%x", ssize, commR, commD, miner, ticket, seed, info.SectorID.Number, proof)
+	log.Infof("Verif r:%x; d:%x; m:%s; t:%x; s:%x; N:%d; p:%x", info.OnChain.SealedCID, info.UnsealedCID, miner, ticket, seed, info.SectorID.Number, proof)
 
 	//func(ctx context.Context, maddr address.Address, ssize abi.SectorSize, commD, commR, ticket, proof, seed []byte, sectorID abi.SectorNumber)
-	ok, err := ss.verifier.VerifySeal(ssize, commR[:], commD[:], miner, ticket, seed, info.SectorID.Number, proof)
+	ok, err := ss.verifier.VerifySeal(info)
 	if err != nil {
-		return false, xerrors.Errorf("failed to validate PoRep: %w", err)
+		return xerrors.Errorf("failed to validate PoRep: %w", err)
+	}
+	if !ok {
+		return fmt.Errorf("invalid proof")
 	}
 
-	return ok, nil
+	return nil
 }
 
-func (ss *syscallShim) VerifySignature(sig crypto.Signature, addr address.Address, input []byte) bool {
-	return true
+func (ss *syscallShim) VerifySignature(sig crypto.Signature, addr address.Address, input []byte) error {
+	return nil
 	/* // TODO: in genesis setup, we are currently faking signatures
 	if err := ss.rt.vmctx.VerifySignature(&sig, addr, input); err != nil {
 		return false

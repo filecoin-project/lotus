@@ -1,10 +1,12 @@
 package api
 
 import (
+	"bytes"
 	"context"
 
 	"github.com/filecoin-project/go-address"
 	"github.com/filecoin-project/specs-actors/actors/abi"
+	"github.com/ipfs/go-cid"
 
 	"github.com/filecoin-project/go-sectorbuilder"
 )
@@ -123,12 +125,12 @@ type SectorLog struct {
 type SectorInfo struct {
 	SectorID abi.SectorNumber
 	State    SectorState
-	CommD    []byte
-	CommR    []byte
+	CommD    *cid.Cid
+	CommR    *cid.Cid
 	Proof    []byte
 	Deals    []abi.DealID
-	Ticket   sectorbuilder.SealTicket
-	Seed     sectorbuilder.SealSeed
+	Ticket   SealTicket
+	Seed     SealSeed
 	Retries  uint64
 
 	LastErr string
@@ -144,4 +146,22 @@ type SealedRef struct {
 
 type SealedRefs struct {
 	Refs []SealedRef
+}
+
+type SealTicket struct {
+	Value abi.SealRandomness
+	Epoch abi.ChainEpoch
+}
+
+type SealSeed struct {
+	Value abi.InteractiveSealRandomness
+	Epoch abi.ChainEpoch
+}
+
+func (st *SealTicket) Equals(ost *SealTicket) bool {
+	return bytes.Equal(st.Value, ost.Value) && st.Epoch == ost.Epoch
+}
+
+func (st *SealSeed) Equals(ost *SealSeed) bool {
+	return bytes.Equal(st.Value, ost.Value) && st.Epoch == ost.Epoch
 }

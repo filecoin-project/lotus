@@ -28,7 +28,7 @@ const SectorStorePrefix = "/sectors"
 
 var log = logging.Logger("sectors")
 
-type TicketFn func(context.Context) (*sectorbuilder.SealTicket, error)
+type TicketFn func(context.Context) (*api.SealTicket, error)
 
 type sealingApi interface { // TODO: trim down
 	// Call a read only method on actors (no interaction with the chain required)
@@ -121,20 +121,26 @@ func (m *Sealing) SealPiece(ctx context.Context, size abi.UnpaddedPieceSize, r i
 		return xerrors.Errorf("adding piece to sector: %w", err)
 	}
 
-	return m.newSector(sectorID, []Piece{
+	_, rt, err := api.ProofTypeFromSectorSize(m.sb.SectorSize())
+	if err != nil {
+		return xerrors.Errorf("bad sector size: %w", err)
+	}
+
+	return m.newSector(sectorID, rt, []Piece{
 		{
 			DealID: &dealID,
 
-			Size:  ppi.Size,
-			CommP: ppi.CommP[:],
+			Size:  ppi.Size.Unpadded(),
+			CommP: ppi.PieceCID,
 		},
 	})
 }
 
-func (m *Sealing) newSector(sid abi.SectorNumber, pieces []Piece) error {
+func (m *Sealing) newSector(sid abi.SectorNumber, rt abi.RegisteredProof, pieces []Piece) error {
 	log.Infof("Start sealing %d", sid)
 	return m.sectors.Send(uint64(sid), SectorStart{
-		id:     sid,
-		pieces: pieces,
+		id:         sid,
+		pieces:     pieces,
+		sectorType: rt,
 	})
 }

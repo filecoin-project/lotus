@@ -76,6 +76,17 @@ func (a *API) ClientStartDeal(ctx context.Context, data cid.Cid, addr address.Ad
 	if err != nil {
 		return nil, xerrors.Errorf("failed getting miner worker: %w", err)
 	}
+
+	ssize, err := a.StateMinerSectorSize(ctx, miner, types.EmptyTSK)
+	if err != nil {
+		return nil, xerrors.Errorf("failed checking miners sector size: %w", err)
+	}
+
+	rt, _, err := api.ProofTypeFromSectorSize(ssize)
+	if err != nil {
+		return nil, xerrors.Errorf("bad sector size: %w", err)
+	}
+
 	providerInfo := utils.NewStorageProviderInfo(miner, mw, 0, pid)
 	ts, err := a.ChainHead(ctx)
 	if err != nil {
@@ -92,7 +103,9 @@ func (a *API) ClientStartDeal(ctx context.Context, data cid.Cid, addr address.Ad
 		ts.Height()+dealStartBuffer,
 		ts.Height()+dealStartBuffer+abi.ChainEpoch(blocksDuration),
 		epochPrice,
-		big.Zero())
+		big.Zero(),
+		rt,
+	)
 
 	if err != nil {
 		return nil, xerrors.Errorf("failed to start deal: %w", err)
@@ -287,6 +300,10 @@ func (a *API) ClientRetrieve(ctx context.Context, order api.RetrievalOrder, path
 		order.MinerPeerID = pid
 	}
 
+	if order.Size == 0 {
+		return xerrors.Errorf("cannot make retrieval deal for zero bytes")
+	}
+
 	retrievalResult := make(chan error, 1)
 
 	unsubscribe := a.Retrieval.SubscribeToEvents(func(event retrievalmarket.ClientEvent, state retrievalmarket.ClientDealState) {
@@ -300,10 +317,12 @@ func (a *API) ClientRetrieve(ctx context.Context, order api.RetrievalOrder, path
 		}
 	})
 
+	ppb := types.BigDiv(order.Total, types.NewInt(order.Size))
+
 	a.Retrieval.Retrieve(
 		ctx,
 		order.Root,
-		retrievalmarket.NewParamsV0(types.BigDiv(order.Total, types.NewInt(order.Size)), order.PaymentInterval, order.PaymentIntervalIncrease),
+		retrievalmarket.NewParamsV0(ppb, order.PaymentInterval, order.PaymentIntervalIncrease),
 		order.Total,
 		order.MinerPeerID,
 		order.Client,

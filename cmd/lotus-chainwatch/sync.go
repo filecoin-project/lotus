@@ -5,13 +5,15 @@ import (
 	"container/list"
 	"context"
 	"encoding/json"
-	"github.com/filecoin-project/specs-actors/actors/builtin"
-	"github.com/filecoin-project/specs-actors/actors/builtin/miner"
 	"math"
 	"sync"
 
+	"github.com/filecoin-project/specs-actors/actors/builtin"
+	"github.com/filecoin-project/specs-actors/actors/builtin/miner"
+
 	"github.com/filecoin-project/go-address"
 	"github.com/filecoin-project/specs-actors/actors/abi"
+	"github.com/filecoin-project/specs-actors/actors/abi/big"
 
 	"github.com/ipfs/go-cid"
 
@@ -56,6 +58,7 @@ type minerInfo struct {
 	state miner.State
 	info  miner.MinerInfo
 
+	power big.Int
 	ssize uint64
 	psize uint64
 }
@@ -267,6 +270,13 @@ func syncHead(ctx context.Context, api api.FullNode, st *storage, ts *types.TipS
 
 		par(50, kvmaparr(miners), func(it func() (minerKey, *minerInfo)) {
 			k, info := it()
+
+			pow, err := api.StateMinerPower(ctx, k.addr, types.EmptyTSK)
+			if err != nil {
+				log.Error(err)
+				// Not sure why this would fail, but its probably worth continuing
+			}
+			info.power = pow.MinerPower
 
 			sszs, err := api.StateMinerSectorCount(ctx, k.addr, types.EmptyTSK)
 			if err != nil {

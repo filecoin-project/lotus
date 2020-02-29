@@ -28,8 +28,8 @@ import (
 func init() {
 	build.InsecurePoStValidation = true
 	os.Setenv("TRUST_PARAMS", "1")
-	build.SectorSizes = []abi.SectorSize{1024}
-	build.MinimumMinerPower = 1024
+	build.SectorSizes = []abi.SectorSize{2048}
+	build.MinimumMinerPower = 2048
 }
 
 const source = 0
