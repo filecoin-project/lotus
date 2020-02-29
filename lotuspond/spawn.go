@@ -3,9 +3,6 @@ package main
 import (
 	"encoding/json"
 	"fmt"
-	genesis2 "github.com/filecoin-project/lotus/chain/gen/genesis"
-	"github.com/filecoin-project/lotus/genesis"
-	"github.com/filecoin-project/specs-actors/actors/abi/big"
 	"io"
 	"io/ioutil"
 	"os"
@@ -13,6 +10,10 @@ import (
 	"path/filepath"
 	"sync/atomic"
 	"time"
+
+	genesis2 "github.com/filecoin-project/lotus/chain/gen/genesis"
+	"github.com/filecoin-project/lotus/genesis"
+	"github.com/filecoin-project/specs-actors/actors/abi/big"
 
 	"github.com/filecoin-project/specs-actors/actors/abi"
 	"golang.org/x/xerrors"
@@ -45,7 +46,7 @@ func (api *api) Spawn() (nodeInfo, error) {
 		}
 
 		sbroot := filepath.Join(dir, "preseal")
-		genm, ki, err := seed.PreSeal(genMiner, build.SectorSizes[0], 0, 2, sbroot, []byte("8"), nil)
+		genm, ki, err := seed.PreSeal(genMiner, abi.RegisteredProof_StackedDRG2KiBSeal, 0, 2, sbroot, []byte("8"), nil)
 		if err != nil {
 			return nodeInfo{}, xerrors.Errorf("preseal failed: %w", err)
 		}
