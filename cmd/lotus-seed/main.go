@@ -21,6 +21,7 @@ import (
 	"github.com/filecoin-project/specs-actors/actors/abi"
 	"github.com/filecoin-project/specs-actors/actors/abi/big"
 
+	lapi "github.com/filecoin-project/lotus/api"
 	"github.com/filecoin-project/lotus/build"
 	"github.com/filecoin-project/lotus/chain/types"
 	"github.com/filecoin-project/lotus/cmd/lotus-seed/seed"
@@ -119,7 +120,12 @@ var preSealCmd = &cli.Command{
 			}
 		}
 
-		gm, key, err := seed.PreSeal(maddr, abi.SectorSize(c.Uint64("sector-size")), abi.SectorNumber(c.Uint64("sector-offset")), c.Int("num-sectors"), sbroot, []byte(c.String("ticket-preimage")), k)
+		rp, _, err := lapi.ProofTypeFromSectorSize(abi.SectorSize(c.Uint64("sector-size")))
+		if err != nil {
+			return err
+		}
+
+		gm, key, err := seed.PreSeal(maddr, rp, abi.SectorNumber(c.Uint64("sector-offset")), c.Int("num-sectors"), sbroot, []byte(c.String("ticket-preimage")), k)
 		if err != nil {
 			return err
 		}
@@ -216,9 +222,15 @@ var aggregateSectorDirsCmd = &cli.Command{
 
 		ssize := abi.SectorSize(cctx.Uint64("sector-size"))
 
+		ppt, spt, err := lapi.ProofTypeFromSectorSize(abi.SectorSize(cctx.Uint64("sector-size")))
+		if err != nil {
+			return err
+		}
+
 		agsb, err := sectorbuilder.New(&sectorbuilder.Config{
 			Miner:         maddr,
-			SectorSize:    ssize,
+			SealProofType: spt,
+			PoStProofType: ppt,
 			Paths:         sectorbuilder.SimplePath(destdir),
 			WorkerThreads: 2,
 		}, namespace.Wrap(agmds, datastore.NewKey("/sectorbuilder")))
@@ -279,7 +291,8 @@ var aggregateSectorDirsCmd = &cli.Command{
 
 			sb, err := sectorbuilder.New(&sectorbuilder.Config{
 				Miner:         maddr,
-				SectorSize:    genm.SectorSize,
+				SealProofType: spt,
+				PoStProofType: ppt,
 				Paths:         sectorbuilder.SimplePath(dir),
 				WorkerThreads: 2,
 			}, namespace.Wrap(mds, datastore.NewKey("/sectorbuilder")))

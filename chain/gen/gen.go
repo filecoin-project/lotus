@@ -8,6 +8,7 @@ import (
 	"io/ioutil"
 	"sync/atomic"
 
+	ffi "github.com/filecoin-project/filecoin-ffi"
 	"github.com/filecoin-project/go-address"
 	commcid "github.com/filecoin-project/go-fil-commcid"
 	sectorbuilder "github.com/filecoin-project/go-sectorbuilder"
@@ -23,7 +24,6 @@ import (
 	logging "github.com/ipfs/go-log/v2"
 	"github.com/ipfs/go-merkledag"
 
-	ffi "github.com/filecoin-project/filecoin-ffi"
 	"github.com/filecoin-project/lotus/api"
 	"github.com/filecoin-project/lotus/build"
 	genesis2 "github.com/filecoin-project/lotus/chain/gen/genesis"
@@ -136,7 +136,7 @@ func NewGenerator() (*ChainGen, error) {
 		return nil, err
 	}
 
-	genm1, k1, err := seed.PreSeal(maddr1, 1024, 0, 1, m1temp, []byte("some randomness"), nil)
+	genm1, k1, err := seed.PreSeal(maddr1, abi.RegisteredProof_StackedDRG2KiBPoSt, 0, 1, m1temp, []byte("some randomness"), nil)
 	if err != nil {
 		return nil, err
 	}
@@ -148,7 +148,7 @@ func NewGenerator() (*ChainGen, error) {
 		return nil, err
 	}
 
-	genm2, k2, err := seed.PreSeal(maddr2, 1024, 0, 1, m2temp, []byte("some randomness"), nil)
+	genm2, k2, err := seed.PreSeal(maddr2, abi.RegisteredProof_StackedDRG2KiBPoSt, 0, 1, m2temp, []byte("some randomness"), nil)
 	if err != nil {
 		return nil, err
 	}
@@ -514,32 +514,37 @@ func (mca mca) WalletSign(ctx context.Context, a address.Address, v []byte) (*cr
 }
 
 type ElectionPoStProver interface {
-	GenerateCandidates(context.Context, sectorbuilder.SortedPublicSectorInfo, []byte) ([]sectorbuilder.EPostCandidate, error)
-	ComputeProof(context.Context, sectorbuilder.SortedPublicSectorInfo, []byte, []sectorbuilder.EPostCandidate) ([]byte, error)
+	GenerateCandidates(context.Context, []abi.SectorInfo, abi.PoStRandomness) ([]ffi.PoStCandidateWithTicket, error)
+	ComputeProof(context.Context, []abi.SectorInfo, []byte, []ffi.PoStCandidateWithTicket) ([]abi.PoStProof, error)
 }
 
 type eppProvider struct{}
 
-func (epp *eppProvider) GenerateCandidates(ctx context.Context, _ sectorbuilder.SortedPublicSectorInfo, eprand []byte) ([]sectorbuilder.EPostCandidate, error) {
-	return []sectorbuilder.EPostCandidate{
+func (epp *eppProvider) GenerateCandidates(ctx context.Context, _ []abi.SectorInfo, eprand abi.PoStRandomness) ([]ffi.PoStCandidateWithTicket, error) {
+	return []ffi.PoStCandidateWithTicket{
 		{
-			SectorNum:            1,
-			PartialTicket:        [32]byte{},
-			Ticket:               [32]byte{},
-			SectorChallengeIndex: 1,
+			Candidate: abi.PoStCandidate{
+				RegisteredProof: abi.RegisteredProof_StackedDRG2KiBPoSt,
+				SectorID:        abi.SectorID{Number: 1},
+				PartialTicket:   abi.PartialTicket{},
+				PrivateProof:    abi.PrivatePoStCandidateProof{},
+				ChallengeIndex:  1,
+			},
 		},
 	}, nil
 }
 
-func (epp *eppProvider) ComputeProof(ctx context.Context, _ sectorbuilder.SortedPublicSectorInfo, eprand []byte, winners []sectorbuilder.EPostCandidate) ([]byte, error) {
+func (epp *eppProvider) ComputeProof(ctx context.Context, _ []abi.SectorInfo, eprand []byte, winners []ffi.PoStCandidateWithTicket) ([]abi.PoStProof, error) {
 
-	return []byte("valid proof"), nil
+	return []abi.PoStProof{{
+		ProofBytes: []byte("valid proof"),
+	}}, nil
 }
 
 type ProofInput struct {
-	sectors sectorbuilder.SortedPublicSectorInfo
+	sectors []abi.SectorInfo
 	hvrf    []byte
-	winners []sectorbuilder.EPostCandidate
+	winners []ffi.PoStCandidateWithTicket
 	vrfout  []byte
 }
 
@@ -567,23 +572,20 @@ func IsRoundWinner(ctx context.Context, ts *types.TipSet, round int64, miner add
 		return nil, nil
 	}
 
-	var sinfos []ffi.PublicSectorInfo
+	var sinfos []abi.SectorInfo
 	for _, s := range pset {
-		cr, err := commcid.CIDToReplicaCommitmentV1(s.Info.Info.SealedCID)
-		if err != nil {
-			return nil, xerrors.Errorf("get sealed cid: %w", err)
+		if s.Info.Info.RegisteredProof == 0 {
+			return nil, xerrors.Errorf("sector %d in proving set had registered type of zero", s.ID)
 		}
-		var commRa [32]byte
-		copy(commRa[:], cr)
-		sinfos = append(sinfos, ffi.PublicSectorInfo{
-			SectorNum: s.ID,
-			CommR:     commRa,
+		sinfos = append(sinfos, abi.SectorInfo{
+			SectorNumber:    s.ID,
+			SealedCID:       s.Info.Info.SealedCID,
+			RegisteredProof: s.Info.Info.RegisteredProof,
 		})
 	}
-	sectors := sectorbuilder.NewSortedPublicSectorInfo(sinfos)
 
 	hvrf := sha256.Sum256(vrfout)
-	candidates, err := epp.GenerateCandidates(ctx, sectors, hvrf[:])
+	candidates, err := epp.GenerateCandidates(ctx, sinfos, hvrf[:])
 	if err != nil {
 		return nil, xerrors.Errorf("failed to generate electionPoSt candidates: %w", err)
 	}
@@ -598,9 +600,9 @@ func IsRoundWinner(ctx context.Context, ts *types.TipSet, round int64, miner add
 		return nil, xerrors.Errorf("failed to look up miners sector size: %w", err)
 	}
 
-	var winners []sectorbuilder.EPostCandidate
+	var winners []ffi.PoStCandidateWithTicket
 	for _, c := range candidates {
-		if types.IsTicketWinner(c.PartialTicket[:], ssize, uint64(len(sinfos)), pow.TotalPower) {
+		if types.IsTicketWinner(c.Candidate.PartialTicket, ssize, uint64(len(sinfos)), pow.TotalPower) {
 			winners = append(winners, c)
 		}
 	}
@@ -611,7 +613,7 @@ func IsRoundWinner(ctx context.Context, ts *types.TipSet, round int64, miner add
 	}
 
 	return &ProofInput{
-		sectors: sectors,
+		sectors: sinfos,
 		hvrf:    hvrf[:],
 		winners: winners,
 		vrfout:  vrfout,
@@ -625,16 +627,16 @@ func ComputeProof(ctx context.Context, epp ElectionPoStProver, pi *ProofInput) (
 	}
 
 	ept := types.EPostProof{
-		Proof:    proof,
+		Proofs:   proof,
 		PostRand: pi.vrfout,
 	}
 	for _, win := range pi.winners {
 		part := make([]byte, 32)
-		copy(part, win.PartialTicket[:])
+		copy(part, win.Candidate.PartialTicket)
 		ept.Candidates = append(ept.Candidates, types.EPostTicket{
 			Partial:        part,
-			SectorID:       win.SectorNum,
-			ChallengeIndex: win.SectorChallengeIndex,
+			SectorID:       win.Candidate.SectorID.Number,
+			ChallengeIndex: uint64(win.Candidate.ChallengeIndex),
 		})
 	}
 
@@ -676,17 +678,17 @@ type genFakeVerifier struct{}
 
 var _ sectorbuilder.Verifier = (*genFakeVerifier)(nil)
 
-func (m genFakeVerifier) VerifyElectionPost(ctx context.Context, sectorSize abi.SectorSize, sectorInfo sectorbuilder.SortedPublicSectorInfo, challengeSeed []byte, proof []byte, candidates []sectorbuilder.EPostCandidate, proverID address.Address) (bool, error) {
+func (m genFakeVerifier) VerifyElectionPost(ctx context.Context, pvi abi.PoStVerifyInfo) (bool, error) {
 	panic("nyi")
 }
-func (m genFakeVerifier) GenerateDataCommitment(ssize abi.PaddedPieceSize, pieces []ffi.PublicPieceInfo) ([sectorbuilder.CommLen]byte, error) {
+func (m genFakeVerifier) GenerateDataCommitment(ssize abi.PaddedPieceSize, pieces []abi.PieceInfo) (cid.Cid, error) {
 	return sbmock.MockVerifier.GenerateDataCommitment(ssize, pieces)
 }
 
-func (m genFakeVerifier) VerifySeal(sectorSize abi.SectorSize, commR, commD []byte, proverID address.Address, ticket []byte, seed []byte, sectorID abi.SectorNumber, proof []byte) (bool, error) {
+func (m genFakeVerifier) VerifySeal(svi abi.SealVerifyInfo) (bool, error) {
 	return true, nil
 }
 
-func (m genFakeVerifier) VerifyFallbackPost(ctx context.Context, sectorSize abi.SectorSize, sectorInfo sectorbuilder.SortedPublicSectorInfo, challengeSeed []byte, proof []byte, candidates []sectorbuilder.EPostCandidate, proverID address.Address, faults uint64) (bool, error) {
+func (m genFakeVerifier) VerifyFallbackPost(ctx context.Context, pvi abi.PoStVerifyInfo) (bool, error) {
 	panic("nyi")
 }

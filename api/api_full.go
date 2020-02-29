@@ -15,6 +15,7 @@ import (
 	"github.com/ipfs/go-cid"
 	"github.com/ipfs/go-filestore"
 	"github.com/libp2p/go-libp2p-core/peer"
+	xerrors "golang.org/x/xerrors"
 
 	"github.com/filecoin-project/lotus/chain/store"
 	"github.com/filecoin-project/lotus/chain/types"
@@ -135,7 +136,7 @@ type FullNode interface {
 
 	MsigGetAvailableBalance(context.Context, address.Address, types.TipSetKey) (types.BigInt, error)
 
-	MarketEnsureAvailable(context.Context, address.Address, types.BigInt) error
+	MarketEnsureAvailable(context.Context, address.Address, address.Address, types.BigInt) error
 	// MarketFreeBalance
 
 	PaychGet(ctx context.Context, from, to address.Address, ensureFunds types.BigInt) (*ChannelInfo, error)
@@ -228,9 +229,10 @@ type PaymentInfo struct {
 }
 
 type VoucherSpec struct {
-	Amount    types.BigInt
-	TimeLock  abi.ChainEpoch
-	MinSettle abi.ChainEpoch
+	Amount      types.BigInt
+	TimeLockMin abi.ChainEpoch
+	TimeLockMax abi.ChainEpoch
+	MinSettle   abi.ChainEpoch
 
 	Extra *paych.ModVerifyParams
 }
@@ -338,4 +340,19 @@ const (
 type MpoolUpdate struct {
 	Type    MpoolChange
 	Message *types.SignedMessage
+}
+
+func ProofTypeFromSectorSize(ssize abi.SectorSize) (abi.RegisteredProof, abi.RegisteredProof, error) {
+	switch ssize {
+	case 2 << 10:
+		return abi.RegisteredProof_StackedDRG2KiBPoSt, abi.RegisteredProof_StackedDRG2KiBSeal, nil
+	case 8 << 20:
+		return abi.RegisteredProof_StackedDRG8MiBPoSt, abi.RegisteredProof_StackedDRG8MiBSeal, nil
+	case 512 << 20:
+		return abi.RegisteredProof_StackedDRG512MiBPoSt, abi.RegisteredProof_StackedDRG512MiBSeal, nil
+	case 32 << 30:
+		return abi.RegisteredProof_StackedDRG32GiBPoSt, abi.RegisteredProof_StackedDRG32GiBSeal, nil
+	default:
+		return 0, 0, xerrors.Errorf("unsupported sector size for miner: %v", ssize)
+	}
 }

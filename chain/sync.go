@@ -2,12 +2,13 @@ package chain
 
 import (
 	"context"
-	"crypto/sha256"
 	"errors"
 	"fmt"
-	"github.com/filecoin-project/specs-actors/actors/builtin"
 	"sync"
 	"time"
+
+	"github.com/filecoin-project/specs-actors/actors/abi"
+	"github.com/filecoin-project/specs-actors/actors/builtin"
 
 	"github.com/Gurpartap/async"
 	amt "github.com/filecoin-project/go-amt-ipld/v2"
@@ -666,14 +667,20 @@ func (syncer *Syncer) VerifyElectionPoStProof(ctx context.Context, h *types.Bloc
 		return xerrors.Errorf("failed to get sector size for miner: %w", err)
 	}
 
-	var winners []sectorbuilder.EPostCandidate
+	mid, err := address.IDFromAddress(h.Miner)
+	if err != nil {
+		return xerrors.Errorf("failed to get ID from miner address %s: %w", h.Miner, err)
+	}
+
+	var winners []abi.PoStCandidate
 	for _, t := range h.EPostProof.Candidates {
-		var partial [32]byte
-		copy(partial[:], t.Partial)
-		winners = append(winners, sectorbuilder.EPostCandidate{
-			PartialTicket:        partial,
-			SectorNum:            t.SectorID,
-			SectorChallengeIndex: t.ChallengeIndex,
+		winners = append(winners, abi.PoStCandidate{
+			PartialTicket: t.Partial,
+			SectorID: abi.SectorID{
+				Number: t.SectorID,
+				Miner:  abi.ActorID(mid),
+			},
+			ChallengeIndex: int64(t.ChallengeIndex),
 		})
 	}
 
@@ -687,14 +694,44 @@ func (syncer *Syncer) VerifyElectionPoStProof(ctx context.Context, h *types.Bloc
 	}
 
 	if build.InsecurePoStValidation {
-		if string(h.EPostProof.Proof) == "valid proof" {
+		if len(h.EPostProof.Proofs) == 0 {
+			return xerrors.Errorf("[TESTING] No election post proof given")
+		}
+
+		if string(h.EPostProof.Proofs[0].ProofBytes) == "valid proof" {
 			return nil
 		}
 		return xerrors.Errorf("[TESTING] election post was invalid")
 	}
-	hvrf := sha256.Sum256(h.EPostProof.PostRand)
 
-	ok, err := sectorbuilder.ProofVerifier.VerifyElectionPost(ctx, ssize, *sectorInfo, hvrf[:], h.EPostProof.Proof, winners, h.Miner)
+	rt, _, err := api.ProofTypeFromSectorSize(ssize)
+	if err != nil {
+		return err
+	}
+
+	candidates := make([]abi.PoStCandidate, 0, len(h.EPostProof.Candidates))
+	for _, c := range h.EPostProof.Candidates {
+		candidates = append(candidates, abi.PoStCandidate{
+			RegisteredProof: rt,
+			PartialTicket:   c.Partial,
+			SectorID:        abi.SectorID{Number: c.SectorID}, // this should not be an ID, we already know who the miner is...
+			ChallengeIndex:  int64(c.ChallengeIndex),
+		})
+	}
+
+	// TODO: why do we need this here?
+	challengeCount := sectorbuilder.ElectionPostChallengeCount(uint64(len(sectorInfo)), 0)
+
+	pvi := abi.PoStVerifyInfo{
+		Randomness:      h.EPostProof.PostRand,
+		Candidates:      candidates,
+		Proofs:          h.EPostProof.Proofs,
+		EligibleSectors: sectorInfo,
+		Prover:          abi.ActorID(mid),
+		ChallengeCount:  challengeCount,
+	}
+
+	ok, err := sectorbuilder.ProofVerifier.VerifyElectionPost(ctx, pvi)
 	if err != nil {
 		return xerrors.Errorf("failed to verify election post: %w", err)
 	}

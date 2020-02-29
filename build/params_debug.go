@@ -10,7 +10,7 @@ func init() {
 	InsecurePoStValidation = true
 }
 
-var SectorSizes = []abi.SectorSize{1024}
+var SectorSizes = []abi.SectorSize{2048}
 
 // Seconds
 const BlockDelay = 6

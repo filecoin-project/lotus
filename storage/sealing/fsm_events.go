@@ -46,13 +46,15 @@ func (evt SectorForceState) applyGlobal(state *SectorInfo) bool {
 // Normal path
 
 type SectorStart struct {
-	id     abi.SectorNumber
-	pieces []Piece
+	id         abi.SectorNumber
+	sectorType abi.RegisteredProof
+	pieces     []Piece
 }
 
 func (evt SectorStart) apply(state *SectorInfo) {
 	state.SectorID = evt.id
 	state.Pieces = evt.pieces
+	state.SectorType = evt.sectorType
 }
 
 type SectorPacked struct{ pieces []Piece }
@@ -66,14 +68,16 @@ type SectorPackingFailed struct{ error }
 func (evt SectorPackingFailed) apply(*SectorInfo) {}
 
 type SectorSealed struct {
-	commR  []byte
-	commD  []byte
-	ticket SealTicket
+	commR  cid.Cid
+	commD  cid.Cid
+	ticket api.SealTicket
 }
 
 func (evt SectorSealed) apply(state *SectorInfo) {
-	state.CommD = evt.commD
-	state.CommR = evt.commR
+	commd := evt.commD
+	state.CommD = &commd
+	commr := evt.commR
+	state.CommR = &commr
 	state.Ticket = evt.ticket
 }
 
@@ -94,7 +98,7 @@ func (evt SectorPreCommitted) apply(state *SectorInfo) {
 }
 
 type SectorSeedReady struct {
-	seed SealSeed
+	seed api.SealSeed
 }
 
 func (evt SectorSeedReady) apply(state *SectorInfo) {

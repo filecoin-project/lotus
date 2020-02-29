@@ -3,6 +3,7 @@ package modules
 import (
 	"bytes"
 	"context"
+
 	"github.com/filecoin-project/specs-actors/actors/runtime"
 
 	"github.com/ipfs/go-bitswap"
@@ -108,17 +109,21 @@ func LoadGenesis(genBytes []byte) func(dtypes.ChainBlockstore) Genesis {
 		return func() (header *types.BlockHeader, e error) {
 			c, err := car.LoadCar(bs, bytes.NewReader(genBytes))
 			if err != nil {
-				return nil, err
+				return nil, xerrors.Errorf("loading genesis car file failed: %w", err)
 			}
 			if len(c.Roots) != 1 {
 				return nil, xerrors.New("expected genesis file to have one root")
 			}
 			root, err := bs.Get(c.Roots[0])
 			if err != nil {
-				return &types.BlockHeader{}, err
+				return nil, err
 			}
 
-			return types.DecodeBlock(root.RawData())
+			h, err := types.DecodeBlock(root.RawData())
+			if err != nil {
+				return nil, xerrors.Errorf("decoding block failed: %w", err)
+			}
+			return h, nil
 		}
 	}
 }
@@ -129,12 +134,12 @@ func SetGenesis(cs *store.ChainStore, g Genesis) error {
 		return nil // already set, noop
 	}
 	if err != datastore.ErrNotFound {
-		return err
+		return xerrors.Errorf("getting genesis block failed: %w", err)
 	}
 
 	genesis, err := g()
 	if err != nil {
-		return err
+		return xerrors.Errorf("genesis func failed: %w", err)
 	}
 
 	return cs.SetGenesis(genesis)

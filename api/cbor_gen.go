@@ -432,3 +432,279 @@ func (t *SealedRefs) UnmarshalCBOR(r io.Reader) error {
 
 	return nil
 }
+func (t *SealTicket) MarshalCBOR(w io.Writer) error {
+	if t == nil {
+		_, err := w.Write(cbg.CborNull)
+		return err
+	}
+	if _, err := w.Write([]byte{162}); err != nil {
+		return err
+	}
+
+	// t.Value (abi.SealRandomness) (slice)
+	if len("Value") > cbg.MaxLength {
+		return xerrors.Errorf("Value in field \"Value\" was too long")
+	}
+
+	if _, err := w.Write(cbg.CborEncodeMajorType(cbg.MajTextString, uint64(len("Value")))); err != nil {
+		return err
+	}
+	if _, err := w.Write([]byte("Value")); err != nil {
+		return err
+	}
+
+	if len(t.Value) > cbg.ByteArrayMaxLen {
+		return xerrors.Errorf("Byte array in field t.Value was too long")
+	}
+
+	if _, err := w.Write(cbg.CborEncodeMajorType(cbg.MajByteString, uint64(len(t.Value)))); err != nil {
+		return err
+	}
+	if _, err := w.Write(t.Value); err != nil {
+		return err
+	}
+
+	// t.Epoch (abi.ChainEpoch) (int64)
+	if len("Epoch") > cbg.MaxLength {
+		return xerrors.Errorf("Value in field \"Epoch\" was too long")
+	}
+
+	if _, err := w.Write(cbg.CborEncodeMajorType(cbg.MajTextString, uint64(len("Epoch")))); err != nil {
+		return err
+	}
+	if _, err := w.Write([]byte("Epoch")); err != nil {
+		return err
+	}
+
+	if t.Epoch >= 0 {
+		if _, err := w.Write(cbg.CborEncodeMajorType(cbg.MajUnsignedInt, uint64(t.Epoch))); err != nil {
+			return err
+		}
+	} else {
+		if _, err := w.Write(cbg.CborEncodeMajorType(cbg.MajNegativeInt, uint64(-t.Epoch)-1)); err != nil {
+			return err
+		}
+	}
+	return nil
+}
+
+func (t *SealTicket) UnmarshalCBOR(r io.Reader) error {
+	br := cbg.GetPeeker(r)
+
+	maj, extra, err := cbg.CborReadHeader(br)
+	if err != nil {
+		return err
+	}
+	if maj != cbg.MajMap {
+		return fmt.Errorf("cbor input should be of type map")
+	}
+
+	if extra > cbg.MaxLength {
+		return fmt.Errorf("SealTicket: map struct too large (%d)", extra)
+	}
+
+	var name string
+	n := extra
+
+	for i := uint64(0); i < n; i++ {
+
+		{
+			sval, err := cbg.ReadString(br)
+			if err != nil {
+				return err
+			}
+
+			name = string(sval)
+		}
+
+		switch name {
+		// t.Value (abi.SealRandomness) (slice)
+		case "Value":
+
+			maj, extra, err = cbg.CborReadHeader(br)
+			if err != nil {
+				return err
+			}
+
+			if extra > cbg.ByteArrayMaxLen {
+				return fmt.Errorf("t.Value: byte array too large (%d)", extra)
+			}
+			if maj != cbg.MajByteString {
+				return fmt.Errorf("expected byte array")
+			}
+			t.Value = make([]byte, extra)
+			if _, err := io.ReadFull(br, t.Value); err != nil {
+				return err
+			}
+			// t.Epoch (abi.ChainEpoch) (int64)
+		case "Epoch":
+			{
+				maj, extra, err := cbg.CborReadHeader(br)
+				var extraI int64
+				if err != nil {
+					return err
+				}
+				switch maj {
+				case cbg.MajUnsignedInt:
+					extraI = int64(extra)
+					if extraI < 0 {
+						return fmt.Errorf("int64 positive overflow")
+					}
+				case cbg.MajNegativeInt:
+					extraI = int64(extra)
+					if extraI < 0 {
+						return fmt.Errorf("int64 negative oveflow")
+					}
+					extraI = -1 - extraI
+				default:
+					return fmt.Errorf("wrong type for int64 field: %d", maj)
+				}
+
+				t.Epoch = abi.ChainEpoch(extraI)
+			}
+
+		default:
+			return fmt.Errorf("unknown struct field %d: '%s'", i, name)
+		}
+	}
+
+	return nil
+}
+func (t *SealSeed) MarshalCBOR(w io.Writer) error {
+	if t == nil {
+		_, err := w.Write(cbg.CborNull)
+		return err
+	}
+	if _, err := w.Write([]byte{162}); err != nil {
+		return err
+	}
+
+	// t.Value (abi.InteractiveSealRandomness) (slice)
+	if len("Value") > cbg.MaxLength {
+		return xerrors.Errorf("Value in field \"Value\" was too long")
+	}
+
+	if _, err := w.Write(cbg.CborEncodeMajorType(cbg.MajTextString, uint64(len("Value")))); err != nil {
+		return err
+	}
+	if _, err := w.Write([]byte("Value")); err != nil {
+		return err
+	}
+
+	if len(t.Value) > cbg.ByteArrayMaxLen {
+		return xerrors.Errorf("Byte array in field t.Value was too long")
+	}
+
+	if _, err := w.Write(cbg.CborEncodeMajorType(cbg.MajByteString, uint64(len(t.Value)))); err != nil {
+		return err
+	}
+	if _, err := w.Write(t.Value); err != nil {
+		return err
+	}
+
+	// t.Epoch (abi.ChainEpoch) (int64)
+	if len("Epoch") > cbg.MaxLength {
+		return xerrors.Errorf("Value in field \"Epoch\" was too long")
+	}
+
+	if _, err := w.Write(cbg.CborEncodeMajorType(cbg.MajTextString, uint64(len("Epoch")))); err != nil {
+		return err
+	}
+	if _, err := w.Write([]byte("Epoch")); err != nil {
+		return err
+	}
+
+	if t.Epoch >= 0 {
+		if _, err := w.Write(cbg.CborEncodeMajorType(cbg.MajUnsignedInt, uint64(t.Epoch))); err != nil {
+			return err
+		}
+	} else {
+		if _, err := w.Write(cbg.CborEncodeMajorType(cbg.MajNegativeInt, uint64(-t.Epoch)-1)); err != nil {
+			return err
+		}
+	}
+	return nil
+}
+
+func (t *SealSeed) UnmarshalCBOR(r io.Reader) error {
+	br := cbg.GetPeeker(r)
+
+	maj, extra, err := cbg.CborReadHeader(br)
+	if err != nil {
+		return err
+	}
+	if maj != cbg.MajMap {
+		return fmt.Errorf("cbor input should be of type map")
+	}
+
+	if extra > cbg.MaxLength {
+		return fmt.Errorf("SealSeed: map struct too large (%d)", extra)
+	}
+
+	var name string
+	n := extra
+
+	for i := uint64(0); i < n; i++ {
+
+		{
+			sval, err := cbg.ReadString(br)
+			if err != nil {
+				return err
+			}
+
+			name = string(sval)
+		}
+
+		switch name {
+		// t.Value (abi.InteractiveSealRandomness) (slice)
+		case "Value":
+
+			maj, extra, err = cbg.CborReadHeader(br)
+			if err != nil {
+				return err
+			}
+
+			if extra > cbg.ByteArrayMaxLen {
+				return fmt.Errorf("t.Value: byte array too large (%d)", extra)
+			}
+			if maj != cbg.MajByteString {
+				return fmt.Errorf("expected byte array")
+			}
+			t.Value = make([]byte, extra)
+			if _, err := io.ReadFull(br, t.Value); err != nil {
+				return err
+			}
+			// t.Epoch (abi.ChainEpoch) (int64)
+		case "Epoch":
+			{
+				maj, extra, err := cbg.CborReadHeader(br)
+				var extraI int64
+				if err != nil {
+					return err
+				}
+				switch maj {
+				case cbg.MajUnsignedInt:
+					extraI = int64(extra)
+					if extraI < 0 {
+						return fmt.Errorf("int64 positive overflow")
+					}
+				case cbg.MajNegativeInt:
+					extraI = int64(extra)
+					if extraI < 0 {
+						return fmt.Errorf("int64 negative oveflow")
+					}
+					extraI = -1 - extraI
+				default:
+					return fmt.Errorf("wrong type for int64 field: %d", maj)
+				}
+
+				t.Epoch = abi.ChainEpoch(extraI)
+			}
+
+		default:
+			return fmt.Errorf("unknown struct field %d: '%s'", i, name)
+		}
+	}
+
+	return nil
+}

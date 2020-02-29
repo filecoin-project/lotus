@@ -12,6 +12,7 @@ import (
 	init_ "github.com/filecoin-project/specs-actors/actors/builtin/init"
 	"github.com/filecoin-project/specs-actors/actors/runtime"
 	"github.com/filecoin-project/specs-actors/actors/util/adt"
+	"golang.org/x/xerrors"
 
 	"github.com/filecoin-project/lotus/build"
 	"github.com/filecoin-project/lotus/chain/actors"
@@ -34,8 +35,8 @@ import (
 )
 
 func init() {
-	build.SectorSizes = []abi.SectorSize{1024}
-	build.MinimumMinerPower = 1024
+	build.SectorSizes = []abi.SectorSize{2048}
+	build.MinimumMinerPower = 2048
 }
 
 const testForkHeight = 40
@@ -57,7 +58,7 @@ func (tas *testActorState) UnmarshalCBOR(r io.Reader) error {
 		return err
 	}
 	if t != cbg.MajUnsignedInt {
-		return fmt.Errorf("wrong type in test actor state")
+		return fmt.Errorf("wrong type in test actor state (got %d)", t)
 	}
 	tas.HasUpgraded = v
 	return nil
@@ -70,38 +71,29 @@ func (ta *testActor) Exports() []interface{} {
 	}
 }
 
-func (ta *testActor) Constructor(act *types.Actor, vmctx types.VMContext, params *struct{}) ([]byte, aerrors.ActorError) {
-	c, err := vmctx.Storage().Put(&testActorState{11})
-	if err != nil {
-		return nil, err
-	}
-	empty, err := vmctx.Storage().Put(&adt.EmptyValue{})
-	if err != nil {
-		return nil, err
-	}
+func (ta *testActor) Constructor(rt runtime.Runtime, params *adt.EmptyValue) *adt.EmptyValue {
 
-	fmt.Println("NEW ACTOR ADDRESS IS: ", vmctx.Message().To.String())
+	rt.State().Create(&testActorState{11})
+	fmt.Println("NEW ACTOR ADDRESS IS: ", rt.Message().Receiver())
 
-	return nil, vmctx.Storage().Commit(empty, c)
+	return &adt.EmptyValue{}
 }
 
-func (ta *testActor) TestMethod(act *types.Actor, vmctx types.VMContext, params *struct{}) ([]byte, aerrors.ActorError) {
+func (ta *testActor) TestMethod(rt runtime.Runtime, params *adt.EmptyValue) *adt.EmptyValue {
 	var st testActorState
-	if err := vmctx.Storage().Get(vmctx.Storage().GetHead(), &st); err != nil {
-		return nil, err
-	}
+	rt.State().Readonly(&st)
 
-	if vmctx.BlockHeight() > testForkHeight {
+	if rt.CurrEpoch() > testForkHeight {
 		if st.HasUpgraded != 55 {
-			return nil, aerrors.Fatal("fork updating applied in wrong order")
+			panic(aerrors.Fatal("fork updating applied in wrong order"))
 		}
 	} else {
 		if st.HasUpgraded != 11 {
-			return nil, aerrors.Fatal("fork updating happened too early")
+			panic(aerrors.Fatal("fork updating happened too early"))
 		}
 	}
 
-	return nil, nil
+	return &adt.EmptyValue{}
 }
 
 func TestForkHeightTriggers(t *testing.T) {
@@ -125,7 +117,7 @@ func TestForkHeightTriggers(t *testing.T) {
 	}
 
 	// predicting the address here... may break if other assumptions change
-	taddr, err := address.NewIDAddress(1000)
+	taddr, err := address.NewIDAddress(1002)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -144,7 +136,7 @@ func TestForkHeightTriggers(t *testing.T) {
 
 		var tas testActorState
 		if err := cst.Get(ctx, act.Head, &tas); err != nil {
-			return cid.Undef, err
+			return cid.Undef, xerrors.Errorf("in fork handler, failed to run get: %w", err)
 		}
 
 		tas.HasUpgraded = 55

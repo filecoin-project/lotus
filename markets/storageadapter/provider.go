@@ -144,8 +144,8 @@ func (n *ProviderNodeAdapter) SignBytes(ctx context.Context, signer address.Addr
 	return localSignature, nil
 }
 
-func (n *ProviderNodeAdapter) EnsureFunds(ctx context.Context, addr address.Address, amt abi.TokenAmount) error {
-	return n.MarketEnsureAvailable(ctx, addr, amt)
+func (n *ProviderNodeAdapter) EnsureFunds(ctx context.Context, addr, wallet address.Address, amt abi.TokenAmount) error {
+	return n.MarketEnsureAvailable(ctx, addr, wallet, amt)
 }
 
 func (n *ProviderNodeAdapter) MostRecentStateId(ctx context.Context) (storagemarket.StateKey, error) {
@@ -269,29 +269,49 @@ func (n *ProviderNodeAdapter) OnDealSectorCommitted(ctx context.Context, provide
 		return nil
 	}
 
+	var sectorNumber abi.SectorNumber
+	var sectorFound bool
+
 	matchEvent := func(msg *types.Message) (bool, error) {
 		if msg.To != provider {
 			return false, nil
 		}
 
-		if msg.Method != builtin.MethodsMiner.ProveCommitSector {
+		switch msg.Method {
+		case builtin.MethodsMiner.PreCommitSector:
+			var params miner.SectorPreCommitInfo
+			if err := params.UnmarshalCBOR(bytes.NewReader(msg.Params)); err != nil {
+				return false, xerrors.Errorf("unmarshal pre commit: %w", err)
+			}
+
+			for _, did := range params.DealIDs {
+				if did == abi.DealID(dealID) {
+					sectorNumber = params.SectorNumber
+					sectorFound = true
+					return false, nil
+				}
+			}
+
+			return false, nil
+		case builtin.MethodsMiner.ProveCommitSector:
+			var params miner.ProveCommitSectorParams
+			if err := params.UnmarshalCBOR(bytes.NewReader(msg.Params)); err != nil {
+				return false, xerrors.Errorf("failed to unmarshal prove commit sector params: %w", err)
+			}
+
+			if !sectorFound {
+				return false, nil
+			}
+
+			if params.SectorNumber != sectorNumber {
+				return false, nil
+			}
+
+			return true, nil
+		default:
 			return false, nil
 		}
 
-		var params miner.SectorPreCommitInfo
-		if err := params.UnmarshalCBOR(bytes.NewReader(msg.Params)); err != nil {
-			return false, err
-		}
-
-		var found bool
-		for _, did := range params.DealIDs {
-			if did == abi.DealID(dealID) {
-				found = true
-				break
-			}
-		}
-
-		return found, nil
 	}
 
 	if err := n.ev.Called(checkFunc, called, revert, 3, build.SealRandomnessLookbackLimit, matchEvent); err != nil {

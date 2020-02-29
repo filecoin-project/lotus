@@ -5,7 +5,6 @@ import (
 	"encoding/hex"
 	"fmt"
 	"reflect"
-	"strings"
 
 	"github.com/ipfs/go-cid"
 	cbg "github.com/whyrusleeping/cbor-gen"
@@ -89,17 +88,7 @@ type Invokee interface {
 var tVMContext = reflect.TypeOf((*types.VMContext)(nil)).Elem()
 var tAError = reflect.TypeOf((*aerrors.ActorError)(nil)).Elem()
 
-func (i *invoker) transform(instance Invokee) (nativeCode, error) {
-	itype := reflect.TypeOf(instance)
-	if strings.Contains(itype.PkgPath(), "github.com/filecoin-project/specs-actors/") {
-		return i.transformSpec(instance)
-	} else {
-		return i.transformLotus(instance)
-	}
-
-}
-
-func (*invoker) transformSpec(instance Invokee) (nativeCode, error) {
+func (*invoker) transform(instance Invokee) (nativeCode, error) {
 	itype := reflect.TypeOf(instance)
 	exports := instance.Exports()
 	for i, m := range exports {
@@ -172,81 +161,6 @@ func (*invoker) transformSpec(instance Invokee) (nativeCode, error) {
 					reflect.ValueOf(&rval).Elem(),
 					reflect.ValueOf(&aerror).Elem(),
 				}
-			}).Interface().(invokeFunc)
-
-	}
-	return code, nil
-}
-
-func (*invoker) transformLotus(instance Invokee) (nativeCode, error) {
-	itype := reflect.TypeOf(instance)
-	exports := instance.Exports()
-	for i, m := range exports {
-		i := i
-		newErr := func(format string, args ...interface{}) error {
-			str := fmt.Sprintf(format, args...)
-			return fmt.Errorf("transform(%s) export(%d): %s", itype.Name(), i, str)
-		}
-		if m == nil {
-			continue
-		}
-		meth := reflect.ValueOf(m)
-		t := meth.Type()
-		if t.Kind() != reflect.Func {
-			return nil, newErr("is not a function")
-		}
-		if t.NumIn() != 3 {
-			return nil, newErr("wrong number of inputs should be: " +
-				"*types.Actor, *VMContext, <type of parameter>")
-		}
-		if t.In(0) != reflect.TypeOf(&types.Actor{}) {
-			return nil, newErr("first arguemnt should be *types.Actor")
-		}
-		if t.In(1) != tVMContext {
-			return nil, newErr("second argument should be types.VMContext")
-		}
-
-		if t.In(2).Kind() != reflect.Ptr {
-			return nil, newErr("parameter has to be a pointer to parameter, is: %s",
-				t.In(2).Kind())
-		}
-
-		if t.NumOut() != 2 {
-			return nil, newErr("wrong number of outputs should be: " +
-				"(InvokeRet, error)")
-		}
-		if t.Out(0) != reflect.TypeOf([]byte{}) {
-			return nil, newErr("first output should be slice of bytes")
-		}
-		if !t.Out(1).Implements(tAError) {
-			return nil, newErr("second output should be ActorError type")
-		}
-
-	}
-	code := make(nativeCode, len(exports))
-	for id, m := range exports {
-		meth := reflect.ValueOf(m)
-		code[id] = reflect.MakeFunc(reflect.TypeOf((invokeFunc)(nil)),
-			func(in []reflect.Value) []reflect.Value {
-				paramT := meth.Type().In(2).Elem()
-				param := reflect.New(paramT)
-
-				inBytes := in[2].Interface().([]byte)
-				if len(inBytes) > 0 {
-					if err := DecodeParams(inBytes, param.Interface()); err != nil {
-						aerr := aerrors.Absorb(err, 1, "failed to decode parameters")
-						return []reflect.Value{
-							reflect.ValueOf([]byte{}),
-							// Below is a hack, fixed in Go 1.13
-							// https://git.io/fjXU6
-							reflect.ValueOf(&aerr).Elem(),
-						}
-					}
-				}
-
-				return meth.Call([]reflect.Value{
-					in[0], in[1], param,
-				})
 			}).Interface().(invokeFunc)
 
 	}

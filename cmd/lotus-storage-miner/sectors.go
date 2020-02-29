@@ -2,12 +2,13 @@ package main
 
 import (
 	"fmt"
-	"github.com/filecoin-project/lotus/chain/types"
 	"os"
 	"sort"
 	"strconv"
 	"text/tabwriter"
 	"time"
+
+	"github.com/filecoin-project/lotus/chain/types"
 
 	"github.com/filecoin-project/specs-actors/actors/abi"
 	"golang.org/x/xerrors"
@@ -78,10 +79,10 @@ var sectorsStatusCmd = &cli.Command{
 		fmt.Printf("Status:\t%s\n", api.SectorStates[status.State])
 		fmt.Printf("CommD:\t\t%x\n", status.CommD)
 		fmt.Printf("CommR:\t\t%x\n", status.CommR)
-		fmt.Printf("Ticket:\t\t%x\n", status.Ticket.TicketBytes)
-		fmt.Printf("TicketH:\t\t%d\n", status.Ticket.BlockHeight)
-		fmt.Printf("Seed:\t\t%x\n", status.Seed.TicketBytes)
-		fmt.Printf("SeedH:\t\t%d\n", status.Seed.BlockHeight)
+		fmt.Printf("Ticket:\t\t%x\n", status.Ticket.Value)
+		fmt.Printf("TicketH:\t\t%d\n", status.Ticket.Epoch)
+		fmt.Printf("Seed:\t\t%x\n", status.Seed.Value)
+		fmt.Printf("SeedH:\t\t%d\n", status.Seed.Epoch)
 		fmt.Printf("Proof:\t\t%x\n", status.Proof)
 		fmt.Printf("Deals:\t\t%v\n", status.Deals)
 		fmt.Printf("Retries:\t\t%d\n", status.Retries)
@@ -170,8 +171,8 @@ var sectorsListCmd = &cli.Command{
 				api.SectorStates[st.State],
 				yesno(inSSet),
 				yesno(inPSet),
-				st.Ticket.BlockHeight,
-				st.Seed.BlockHeight,
+				st.Ticket.Epoch,
+				st.Seed.Epoch,
 				st.Deals,
 			)
 		}
