@@ -574,9 +574,13 @@ func IsRoundWinner(ctx context.Context, ts *types.TipSet, round int64, miner add
 
 	var sinfos []abi.SectorInfo
 	for _, s := range pset {
+		if s.Info.Info.RegisteredProof == 0 {
+			return nil, xerrors.Errorf("sector %d in proving set had registered type of zero", s.ID)
+		}
 		sinfos = append(sinfos, abi.SectorInfo{
-			SectorNumber: s.ID,
-			SealedCID:    s.Info.Info.SealedCID,
+			SectorNumber:    s.ID,
+			SealedCID:       s.Info.Info.SealedCID,
+			RegisteredProof: s.Info.Info.RegisteredProof,
 		})
 	}
 

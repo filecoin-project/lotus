@@ -46,13 +46,15 @@ func (evt SectorForceState) applyGlobal(state *SectorInfo) bool {
 // Normal path
 
 type SectorStart struct {
-	id     abi.SectorNumber
-	pieces []Piece
+	id         abi.SectorNumber
+	sectorType abi.RegisteredProof
+	pieces     []Piece
 }
 
 func (evt SectorStart) apply(state *SectorInfo) {
 	state.SectorID = evt.id
 	state.Pieces = evt.pieces
+	state.SectorType = evt.sectorType
 }
 
 type SectorPacked struct{ pieces []Piece }

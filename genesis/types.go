@@ -18,10 +18,11 @@ const (
 )
 
 type PreSeal struct {
-	CommR    cid.Cid
-	CommD    cid.Cid
-	SectorID abi.SectorNumber
-	Deal     market.DealProposal
+	CommR     cid.Cid
+	CommD     cid.Cid
+	SectorID  abi.SectorNumber
+	Deal      market.DealProposal
+	ProofType abi.RegisteredProof
 }
 
 type Miner struct {

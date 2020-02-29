@@ -145,8 +145,8 @@ func (n *ClientNodeAdapter) AddFunds(ctx context.Context, addr address.Address, 
 	return nil
 }
 
-func (n *ClientNodeAdapter) EnsureFunds(ctx context.Context, addr address.Address, amount abi.TokenAmount) error {
-	return n.fm.EnsureAvailable(ctx, addr, amount)
+func (n *ClientNodeAdapter) EnsureFunds(ctx context.Context, addr, wallet address.Address, amount abi.TokenAmount) error {
+	return n.fm.EnsureAvailable(ctx, addr, wallet, amount)
 }
 
 func (n *ClientNodeAdapter) GetBalance(ctx context.Context, addr address.Address) (storagemarket.Balance, error) {
@@ -234,7 +234,7 @@ func (c *ClientNodeAdapter) OnDealSectorCommitted(ctx context.Context, provider 
 			return false, false, xerrors.Errorf("failed to look up deal on chain: %w", err)
 		}
 
-		if sd.Proposal.StartEpoch > 0 {
+		if sd.State.SectorStartEpoch > 0 {
 			cb(nil)
 			return true, false, nil
 		}
@@ -259,7 +259,7 @@ func (c *ClientNodeAdapter) OnDealSectorCommitted(ctx context.Context, provider 
 			return false, xerrors.Errorf("failed to look up deal on chain: %w", err)
 		}
 
-		if sd.Proposal.StartEpoch == 0 {
+		if sd.State.SectorStartEpoch < 1 {
 			return false, xerrors.Errorf("deal wasn't active: deal=%d, parentState=%s, h=%d", dealId, ts.ParentState(), ts.Height())
 		}
 
@@ -276,29 +276,47 @@ func (c *ClientNodeAdapter) OnDealSectorCommitted(ctx context.Context, provider 
 		return nil
 	}
 
+	var sectorNumber abi.SectorNumber
+	var sectorFound bool
 	matchEvent := func(msg *types.Message) (bool, error) {
 		if msg.To != provider {
 			return false, nil
 		}
 
-		if msg.Method != builtin.MethodsMiner.ProveCommitSector {
+		switch msg.Method {
+		case builtin.MethodsMiner.PreCommitSector:
+			var params miner.SectorPreCommitInfo
+			if err := params.UnmarshalCBOR(bytes.NewReader(msg.Params)); err != nil {
+				return false, xerrors.Errorf("unmarshal pre commit: %w", err)
+			}
+
+			for _, did := range params.DealIDs {
+				if did == abi.DealID(dealId) {
+					sectorNumber = params.SectorNumber
+					sectorFound = true
+					return false, nil
+				}
+			}
+
+			return false, nil
+		case builtin.MethodsMiner.ProveCommitSector:
+			var params miner.ProveCommitSectorParams
+			if err := params.UnmarshalCBOR(bytes.NewReader(msg.Params)); err != nil {
+				return false, xerrors.Errorf("failed to unmarshal prove commit sector params: %w", err)
+			}
+
+			if !sectorFound {
+				return false, nil
+			}
+
+			if params.SectorNumber != sectorNumber {
+				return false, nil
+			}
+
+			return true, nil
+		default:
 			return false, nil
 		}
-
-		var params miner.SectorPreCommitInfo
-		if err := params.UnmarshalCBOR(bytes.NewReader(msg.Params)); err != nil {
-			return false, err
-		}
-
-		var found bool
-		for _, dealID := range params.DealIDs {
-			if uint64(dealID) == dealId {
-				found = true
-				break
-			}
-		}
-
-		return found, nil
 	}
 
 	if err := c.ev.Called(checkFunc, called, revert, 3, build.SealRandomnessLookbackLimit, matchEvent); err != nil {

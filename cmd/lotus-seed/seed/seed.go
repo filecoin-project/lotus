@@ -101,9 +101,10 @@ func PreSeal(maddr address.Address, pt abi.RegisteredProof, offset abi.SectorNum
 
 		log.Warn("PreCommitOutput: ", sid, scid, ucid)
 		sealedSectors = append(sealedSectors, &genesis.PreSeal{
-			CommR:    scid,
-			CommD:    ucid,
-			SectorID: sid,
+			CommR:     scid,
+			CommD:     ucid,
+			SectorID:  sid,
+			ProofType: pt,
 		})
 	}
 

@@ -132,7 +132,7 @@ type FullNodeStruct struct {
 
 		MsigGetAvailableBalance func(context.Context, address.Address, types.TipSetKey) (types.BigInt, error) `perm:"read"`
 
-		MarketEnsureAvailable func(context.Context, address.Address, types.BigInt) error `perm:"sign"`
+		MarketEnsureAvailable func(context.Context, address.Address, address.Address, types.BigInt) error `perm:"sign"`
 
 		PaychGet                   func(ctx context.Context, from, to address.Address, ensureFunds types.BigInt) (*api.ChannelInfo, error)   `perm:"sign"`
 		PaychList                  func(context.Context) ([]address.Address, error)                                                          `perm:"read"`
@@ -519,8 +519,8 @@ func (c *FullNodeStruct) MsigGetAvailableBalance(ctx context.Context, a address.
 	return c.Internal.MsigGetAvailableBalance(ctx, a, tsk)
 }
 
-func (c *FullNodeStruct) MarketEnsureAvailable(ctx context.Context, addr address.Address, amt types.BigInt) error {
-	return c.Internal.MarketEnsureAvailable(ctx, addr, amt)
+func (c *FullNodeStruct) MarketEnsureAvailable(ctx context.Context, addr, wallet address.Address, amt types.BigInt) error {
+	return c.Internal.MarketEnsureAvailable(ctx, addr, wallet, amt)
 }
 
 func (c *FullNodeStruct) PaychGet(ctx context.Context, from, to address.Address, ensureFunds types.BigInt) (*api.ChannelInfo, error) {
