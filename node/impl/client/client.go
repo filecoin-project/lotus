@@ -187,7 +187,7 @@ func (a *API) ClientFindData(ctx context.Context, root cid.Cid) ([]api.QueryOffe
 				MinPrice:                queryResponse.PieceRetrievalPrice(),
 				PaymentInterval:         queryResponse.MaxPaymentInterval,
 				PaymentIntervalIncrease: queryResponse.MaxPaymentIntervalIncrease,
-				Miner:                   p.Address, // TODO: check
+				Miner:                   queryResponse.PaymentAddress, // TODO: check
 				MinerPeerID:             p.ID,
 			}
 		}

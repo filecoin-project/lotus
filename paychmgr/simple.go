@@ -1,6 +1,7 @@
 package paychmgr
 
 import (
+	"bytes"
 	"context"
 	"fmt"
 
@@ -58,10 +59,12 @@ func (pm *Manager) createPaych(ctx context.Context, from, to address.Address, am
 		return address.Undef, cid.Undef, fmt.Errorf("payment channel creation failed (exit code %d)", mwait.Receipt.ExitCode)
 	}
 
-	paychaddr, err := address.NewFromBytes(mwait.Receipt.Return)
+	var decodedReturn init_.ExecReturn
+	err = decodedReturn.UnmarshalCBOR(bytes.NewReader(mwait.Receipt.Return))
 	if err != nil {
 		return address.Undef, cid.Undef, err
 	}
+	paychaddr := decodedReturn.RobustAddress
 
 	ci, err := pm.loadOutboundChannelInfo(ctx, paychaddr)
 	if err != nil {
