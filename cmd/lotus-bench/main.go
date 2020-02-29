@@ -54,6 +54,12 @@ type SealingResult struct {
 	Unseal     time.Duration
 }
 
+type Commit2In struct {
+	SectorNum int64
+	Phase1Out []byte
+	SectorSize uint64 // for stats
+}
+
 func main() {
 	logging.SetLogLevel("*", "INFO")
 
@@ -96,6 +102,10 @@ func main() {
 			&cli.BoolFlag{
 				Name:  "skip-unseal",
 				Usage: "skip the unseal portion of the benchmark",
+			},
+			&cli.StringFlag{
+				Name:  "save-commit2-input",
+				Usage: "Save commit2 input to a file",
 			},
 		},
 		Action: func(c *cli.Context) error {
@@ -239,6 +249,23 @@ func main() {
 				sealcommit1 := time.Now()
 
 				log.Info("Generating PoRep for sector (2)")
+
+				if c.String("save-commit2-input") != "" {
+					c2in := Commit2In{
+						SectorNum: int64(i),
+						Phase1Out:  c1o,
+						SectorSize: 0,
+					}
+
+					b, err := json.Marshal(&c2in)
+					if err != nil {
+						return err
+					}
+
+					if err := ioutil.WriteFile(c.String("save-commit2-input"), b, 0664); err != nil {
+						log.Warnf("%+v", err)
+					}
+				}
 
 				proof, err := sb.SealCommit2(context.TODO(), i, c1o)
 				if err != nil {
