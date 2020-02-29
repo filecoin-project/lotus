@@ -219,7 +219,6 @@ func (n *ProviderNodeAdapter) LocatePieceForDealWithinSector(ctx context.Context
 }
 
 func (n *ProviderNodeAdapter) OnDealSectorCommitted(ctx context.Context, provider address.Address, dealID uint64, cb storagemarket.DealSectorCommittedCallback) error {
-	log.Errorf("ON DEAL SECTOR COMMITTED", provider, dealID)
 	checkFunc := func(ts *types.TipSet) (done bool, more bool, err error) {
 		sd, err := n.StateMarketStorageDeal(ctx, abi.DealID(dealID), ts.Key())
 
@@ -237,7 +236,6 @@ func (n *ProviderNodeAdapter) OnDealSectorCommitted(ctx context.Context, provide
 	}
 
 	called := func(msg *types.Message, rec *types.MessageReceipt, ts *types.TipSet, curH abi.ChainEpoch) (more bool, err error) {
-		log.Errorf("CAllled callllllback")
 		defer func() {
 			if err != nil {
 				cb(xerrors.Errorf("handling applied event: %w", err))
@@ -288,7 +286,6 @@ func (n *ProviderNodeAdapter) OnDealSectorCommitted(ctx context.Context, provide
 
 			for _, did := range params.DealIDs {
 				if did == abi.DealID(dealID) {
-					log.Error("FOUND OUR SECTOR!", params.SectorNumber)
 					sectorNumber = params.SectorNumber
 					sectorFound = true
 					return false, nil
@@ -297,12 +294,10 @@ func (n *ProviderNodeAdapter) OnDealSectorCommitted(ctx context.Context, provide
 
 			return false, nil
 		case builtin.MethodsMiner.ProveCommitSector:
-			log.Errorf("Look! a prove commit!")
 			var params miner.ProveCommitSectorParams
 			if err := params.UnmarshalCBOR(bytes.NewReader(msg.Params)); err != nil {
 				return false, xerrors.Errorf("failed to unmarshal prove commit sector params: %w", err)
 			}
-			log.Warn("prove commit: ", params.SectorNumber, sectorFound, sectorNumber)
 
 			if !sectorFound {
 				return false, nil
@@ -312,7 +307,6 @@ func (n *ProviderNodeAdapter) OnDealSectorCommitted(ctx context.Context, provide
 				return false, nil
 			}
 
-			log.Warn("getting out of here")
 			return true, nil
 		default:
 			return false, nil
