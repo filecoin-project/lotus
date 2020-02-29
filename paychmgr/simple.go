@@ -17,7 +17,7 @@ import (
 )
 
 func (pm *Manager) createPaych(ctx context.Context, from, to address.Address, amt types.BigInt) (address.Address, cid.Cid, error) {
-	params, aerr := actors.SerializeParams(&paych.ConstructorParams{To: to})
+	params, aerr := actors.SerializeParams(&paych.ConstructorParams{From: from, To: to})
 	if aerr != nil {
 		return address.Undef, cid.Undef, aerr
 	}

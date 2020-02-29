@@ -308,10 +308,10 @@ func (a *API) ClientRetrieve(ctx context.Context, order api.RetrievalOrder, path
 
 	unsubscribe := a.Retrieval.SubscribeToEvents(func(event retrievalmarket.ClientEvent, state retrievalmarket.ClientDealState) {
 		if state.PayloadCID.Equals(order.Root) {
-			switch event {
-			case retrievalmarket.ClientEventError:
+			switch state.Status {
+			case retrievalmarket.DealStatusFailed, retrievalmarket.DealStatusErrored:
 				retrievalResult <- xerrors.Errorf("Retrieval Error: %s", state.Message)
-			case retrievalmarket.ClientEventComplete:
+			case retrievalmarket.DealStatusCompleted:
 				retrievalResult <- nil
 			}
 		}
