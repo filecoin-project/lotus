@@ -5,10 +5,11 @@ import (
 	"context"
 	"encoding/binary"
 	"encoding/json"
-	"github.com/filecoin-project/specs-actors/actors/crypto"
-	"github.com/minio/blake2b-simd"
 	"io"
 	"sync"
+
+	"github.com/filecoin-project/specs-actors/actors/crypto"
+	"github.com/minio/blake2b-simd"
 
 	"github.com/filecoin-project/go-address"
 	"github.com/filecoin-project/specs-actors/actors/abi"
@@ -909,9 +910,11 @@ func (cs *ChainStore) GetRandomness(ctx context.Context, blks []cid.Cid, pers cr
 	defer span.End()
 	span.AddAttributes(trace.Int64Attribute("round", round))
 
-	defer func() {
-		log.Infof("getRand %v %d %d %x -> %x", blks, pers, round, entropy, out)
-	}()
+	/*
+		defer func() {
+			log.Infof("getRand %v %d %d %x -> %x", blks, pers, round, entropy, out)
+		}()
+	*/
 
 	for {
 		nts, err := cs.LoadTipSet(types.NewTipSetKey(blks...))
