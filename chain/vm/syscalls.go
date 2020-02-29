@@ -76,7 +76,6 @@ func (ss *syscallShim) VerifyConsensusFault(a, b []byte) error {
 }
 
 func (ss *syscallShim) VerifyPoSt(proof abi.PoStVerifyInfo) error {
-	//VerifyFallbackPost(ctx context.Context, sectorSize abi.SectorSize, sectorInfo SortedPublicSectorInfo, challengeSeed []byte, proof []byte, candidates []EPostCandidate, proverID address.Address, faults uint64) (bool, error)
 	ok, err := ss.verifier.VerifyFallbackPost(context.TODO(), proof)
 	if err != nil {
 		return err
@@ -105,9 +104,6 @@ func (ss *syscallShim) VerifySeal(info abi.SealVerifyInfo) error {
 	//_, span := trace.StartSpan(ctx, "ValidatePoRep")
 	//defer span.End()
 
-	commD := cidToCommD(info.UnsealedCID)
-	commR := cidToCommR(info.OnChain.SealedCID)
-
 	miner, err := address.NewIDAddress(uint64(info.Miner))
 	if err != nil {
 		return xerrors.Errorf("weirdly failed to construct address: %w", err)
@@ -117,7 +113,7 @@ func (ss *syscallShim) VerifySeal(info abi.SealVerifyInfo) error {
 	proof := []byte(info.OnChain.Proof)
 	seed := []byte(info.InteractiveRandomness)
 
-	log.Infof("Verif r:%x; d:%x; m:%s; t:%x; s:%x; N:%d; p:%x", commR, commD, miner, ticket, seed, info.SectorID.Number, proof)
+	log.Infof("Verif r:%x; d:%x; m:%s; t:%x; s:%x; N:%d; p:%x", info.OnChain.SealedCID, info.UnsealedCID, miner, ticket, seed, info.SectorID.Number, proof)
 
 	//func(ctx context.Context, maddr address.Address, ssize abi.SectorSize, commD, commR, ticket, proof, seed []byte, sectorID abi.SectorNumber)
 	ok, err := ss.verifier.VerifySeal(info)

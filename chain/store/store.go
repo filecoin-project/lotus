@@ -5,10 +5,11 @@ import (
 	"context"
 	"encoding/binary"
 	"encoding/json"
-	"github.com/filecoin-project/specs-actors/actors/crypto"
-	"github.com/minio/blake2b-simd"
 	"io"
 	"sync"
+
+	"github.com/filecoin-project/specs-actors/actors/crypto"
+	"github.com/minio/blake2b-simd"
 
 	"github.com/filecoin-project/go-address"
 	"github.com/filecoin-project/specs-actors/actors/abi"
@@ -890,12 +891,12 @@ func (cs *ChainStore) TryFillTipSet(ts *types.TipSet) (*FullTipSet, error) {
 }
 
 func drawRandomness(t *types.Ticket, pers crypto.DomainSeparationTag, round int64, entropy []byte) ([]byte, error) {
-	// TODO: Make this spec compliant
 	h := blake2b.New256()
 	if err := binary.Write(h, binary.BigEndian, int64(pers)); err != nil {
 		return nil, xerrors.Errorf("deriving randomness: %w", err)
 	}
-	h.Write(t.VRFProof)
+	VRFDigest := blake2b.Sum256(t.VRFProof)
+	h.Write(VRFDigest[:])
 	if err := binary.Write(h, binary.BigEndian, round); err != nil {
 		return nil, xerrors.Errorf("deriving randomness: %w", err)
 	}
@@ -909,9 +910,11 @@ func (cs *ChainStore) GetRandomness(ctx context.Context, blks []cid.Cid, pers cr
 	defer span.End()
 	span.AddAttributes(trace.Int64Attribute("round", round))
 
-	defer func() {
-		log.Infof("getRand %v %d %d %x -> %x", blks, pers, round, entropy, out)
-	}()
+	/*
+		defer func() {
+			log.Infof("getRand %v %d %d %x -> %x", blks, pers, round, entropy, out)
+		}()
+	*/
 
 	for {
 		nts, err := cs.LoadTipSet(types.NewTipSetKey(blks...))
@@ -921,23 +924,10 @@ func (cs *ChainStore) GetRandomness(ctx context.Context, blks []cid.Cid, pers cr
 
 		mtb := nts.MinTicketBlock()
 
-		if int64(nts.Height()) <= round {
+		// if at (or just past -- for null epochs) appropriate epoch
+		// or at genesis (works for negative epochs)
+		if int64(nts.Height()) <= round || mtb.Height == 0 {
 			return drawRandomness(nts.MinTicketBlock().Ticket, pers, round, entropy)
-		}
-
-		// special case for lookback behind genesis block
-		// TODO(spec): this is not in the spec, need to sync that
-		if mtb.Height == 0 {
-
-			// round is negative
-			thash, err := drawRandomness(mtb.Ticket, pers, round*-1, entropy)
-			if err != nil {
-				return nil, err
-			}
-
-			// for negative lookbacks, just use the hash of the positive tickethash value
-			h := blake2b.Sum256(thash)
-			return h[:], nil
 		}
 
 		blks = mtb.Parents

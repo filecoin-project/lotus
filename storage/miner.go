@@ -134,7 +134,7 @@ func (epp *SectorBuilderEpp) GenerateCandidates(ctx context.Context, ssi []abi.S
 
 	cds, err := epp.sb.GenerateEPostCandidates(ssi, rand, faults)
 	if err != nil {
-		return nil, err
+		return nil, xerrors.Errorf("failed to generate candidates: %w", err)
 	}
 	log.Infof("Generate candidates took %s", time.Since(start))
 	return cds, nil
