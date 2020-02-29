@@ -555,7 +555,7 @@ create temp table c (like blocks_challenges excluding constraints) on commit dro
 		}
 	}
 
-	stmt2, err := tx.Prepare(`copy b (cid, parentWeight, parentStateRoot, height, miner, "timestamp", vrfproof, tickets, eprof, prand, ep0partial, ep0sector, ep0challangei) from stdin`)
+	stmt2, err := tx.Prepare(`copy b (cid, parentWeight, parentStateRoot, height, miner, "timestamp", vrfproof, tickets, prand, ep0partial, ep0sector, ep0challangei) from stdin`)
 	if err != nil {
 		return err
 	}
@@ -575,7 +575,7 @@ create temp table c (like blocks_challenges excluding constraints) on commit dro
 			bh.Timestamp,
 			bh.Ticket.VRFProof,
 			l,
-			bh.EPostProof.Proof,
+			//bh.EPostProof.Proof,
 			bh.EPostProof.PostRand,
 			bh.EPostProof.Candidates[0].Partial,
 			bh.EPostProof.Candidates[0].SectorID,
