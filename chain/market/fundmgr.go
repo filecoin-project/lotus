@@ -35,7 +35,6 @@ func NewFundMgr(sm *stmgr.StateManager, mpool full.MpoolAPI) *FundMgr {
 }
 
 func (fm *FundMgr) EnsureAvailable(ctx context.Context, addr, wallet address.Address, amt types.BigInt) error {
-	log.Error("ensure available: ", addr, amt)
 	fm.lk.Lock()
 	avail, ok := fm.available[addr]
 	if !ok {
@@ -81,8 +80,7 @@ func (fm *FundMgr) EnsureAvailable(ctx context.Context, addr, wallet address.Add
 
 	_, r, err := fm.sm.WaitForMessage(ctx, smsg.Cid())
 	if err != nil {
-		log.Error("waiting for message: ", err)
-		return err
+		return xerrors.Errorf("failed waiting for market AddBalance message: %w", err)
 	}
 
 	if r.ExitCode != 0 {

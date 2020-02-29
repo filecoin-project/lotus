@@ -21,6 +21,7 @@ import (
 	"github.com/filecoin-project/specs-actors/actors/abi"
 	"github.com/filecoin-project/specs-actors/actors/abi/big"
 
+	lapi "github.com/filecoin-project/lotus/api"
 	"github.com/filecoin-project/lotus/build"
 	"github.com/filecoin-project/lotus/chain/types"
 	"github.com/filecoin-project/lotus/cmd/lotus-seed/seed"
@@ -119,7 +120,7 @@ var preSealCmd = &cli.Command{
 			}
 		}
 
-		rp, err := registeredProofFromSsize(c.Uint64("sector-size"))
+		rp, _, err := lapi.ProofTypeFromSectorSize(abi.SectorSize(c.Uint64("sector-size")))
 		if err != nil {
 			return err
 		}
@@ -221,20 +222,15 @@ var aggregateSectorDirsCmd = &cli.Command{
 
 		ssize := abi.SectorSize(cctx.Uint64("sector-size"))
 
-		rp, err := registeredProofFromSsize(cctx.Uint64("sector-size"))
-		if err != nil {
-			return err
-		}
-
-		sp, err := rp.RegisteredSealProof()
+		ppt, spt, err := lapi.ProofTypeFromSectorSize(abi.SectorSize(cctx.Uint64("sector-size")))
 		if err != nil {
 			return err
 		}
 
 		agsb, err := sectorbuilder.New(&sectorbuilder.Config{
 			Miner:         maddr,
-			SealProofType: sp,
-			PoStProofType: rp,
+			SealProofType: spt,
+			PoStProofType: ppt,
 			Paths:         sectorbuilder.SimplePath(destdir),
 			WorkerThreads: 2,
 		}, namespace.Wrap(agmds, datastore.NewKey("/sectorbuilder")))
@@ -295,8 +291,8 @@ var aggregateSectorDirsCmd = &cli.Command{
 
 			sb, err := sectorbuilder.New(&sectorbuilder.Config{
 				Miner:         maddr,
-				SealProofType: sp,
-				PoStProofType: rp,
+				SealProofType: spt,
+				PoStProofType: ppt,
 				Paths:         sectorbuilder.SimplePath(dir),
 				WorkerThreads: 2,
 			}, namespace.Wrap(mds, datastore.NewKey("/sectorbuilder")))
@@ -334,21 +330,5 @@ func mergeGenMiners(a, b genesis.Miner) genesis.Miner {
 		PowerBalance:  big.Zero(),
 		SectorSize:    a.SectorSize,
 		Sectors:       append(a.Sectors, b.Sectors...),
-	}
-}
-
-func registeredProofFromSsize(ssize uint64) (abi.RegisteredProof, error) {
-	// TODO: this should be provided to us by something lower down...
-	switch ssize {
-	case 2 << 10:
-		return abi.RegisteredProof_StackedDRG2KiBPoSt, nil
-	case 32 << 30:
-		return abi.RegisteredProof_StackedDRG32GiBPoSt, nil
-	case 8 << 20:
-		return abi.RegisteredProof_StackedDRG8MiBPoSt, nil
-	case 512 << 20:
-		return abi.RegisteredProof_StackedDRG512MiBPoSt, nil
-	default:
-		return 0, fmt.Errorf("unsupported sector size: %d", ssize)
 	}
 }

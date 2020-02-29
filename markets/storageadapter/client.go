@@ -292,7 +292,6 @@ func (c *ClientNodeAdapter) OnDealSectorCommitted(ctx context.Context, provider 
 
 			for _, did := range params.DealIDs {
 				if did == abi.DealID(dealId) {
-					log.Error("FOUND OUR SECTOR!", params.SectorNumber)
 					sectorNumber = params.SectorNumber
 					sectorFound = true
 					return false, nil
@@ -301,12 +300,10 @@ func (c *ClientNodeAdapter) OnDealSectorCommitted(ctx context.Context, provider 
 
 			return false, nil
 		case builtin.MethodsMiner.ProveCommitSector:
-			log.Errorf("Look! a prove commit!")
 			var params miner.ProveCommitSectorParams
 			if err := params.UnmarshalCBOR(bytes.NewReader(msg.Params)); err != nil {
 				return false, xerrors.Errorf("failed to unmarshal prove commit sector params: %w", err)
 			}
-			log.Warn("prove commit: ", params.SectorNumber, sectorFound, sectorNumber)
 
 			if !sectorFound {
 				return false, nil
@@ -316,7 +313,6 @@ func (c *ClientNodeAdapter) OnDealSectorCommitted(ctx context.Context, provider 
 				return false, nil
 			}
 
-			log.Warn("getting out of here")
 			return true, nil
 		default:
 			return false, nil

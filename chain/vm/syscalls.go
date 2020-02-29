@@ -76,7 +76,6 @@ func (ss *syscallShim) VerifyConsensusFault(a, b []byte) error {
 }
 
 func (ss *syscallShim) VerifyPoSt(proof abi.PoStVerifyInfo) error {
-	//VerifyFallbackPost(ctx context.Context, sectorSize abi.SectorSize, sectorInfo SortedPublicSectorInfo, challengeSeed []byte, proof []byte, candidates []EPostCandidate, proverID address.Address, faults uint64) (bool, error)
 	ok, err := ss.verifier.VerifyFallbackPost(context.TODO(), proof)
 	if err != nil {
 		return err
