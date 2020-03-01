@@ -233,7 +233,7 @@ func main() {
 				precommit2 := time.Now()
 
 				sealedSectors = append(sealedSectors, abi.SectorInfo{
-					RegisteredProof: ppt,
+					RegisteredProof: spt,
 					SectorNumber:    i,
 					SealedCID:       commR,
 				})
@@ -282,7 +282,7 @@ func main() {
 					OnChain: abi.OnChainSealVerifyInfo{
 						SealedCID:        commR,
 						InteractiveEpoch: seed.Epoch,
-						RegisteredProof:  ppt,
+						RegisteredProof:  spt,
 						Proof:            proof,
 						DealIDs:          nil,
 						SectorNumber:     i,
@@ -368,6 +368,7 @@ func main() {
 
 			var candidates []abi.PoStCandidate
 			for _, c := range fcandidates {
+				c.Candidate.RegisteredProof = ppt
 				candidates = append(candidates, c.Candidate)
 			}
 
