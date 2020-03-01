@@ -257,7 +257,7 @@ func main() {
 					c2in := Commit2In{
 						SectorNum:  int64(i),
 						Phase1Out:  c1o,
-						SectorSize: 0,
+						SectorSize: uint64(sectorSize),
 					}
 
 					b, err := json.Marshal(&c2in)
@@ -278,7 +278,7 @@ func main() {
 				sealcommit2 := time.Now()
 
 				svi := abi.SealVerifyInfo{
-					SectorID: abi.SectorID{Miner: abi.ActorID(mid), Number: i},
+					SectorID: abi.SectorID{Miner: mid, Number: i},
 					OnChain: abi.OnChainSealVerifyInfo{
 						SealedCID:        commR,
 						InteractiveEpoch: seed.Epoch,
