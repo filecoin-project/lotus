@@ -55,9 +55,9 @@ type SealingResult struct {
 }
 
 type Commit2In struct {
-	SectorNum int64
-	Phase1Out []byte
-	SectorSize uint64 // for stats
+	SectorNum  int64
+	Phase1Out  []byte
+	SectorSize uint64
 }
 
 func main() {
@@ -71,6 +71,9 @@ func main() {
 		Name:    "lotus-bench",
 		Usage:   "Benchmark performance of lotus on your hardware",
 		Version: build.UserVersion,
+		Commands: []*cli.Command{
+			proveCmd,
+		},
 		Flags: []cli.Flag{
 			&cli.StringFlag{
 				Name:  "storage-dir",
@@ -252,7 +255,7 @@ func main() {
 
 				if c.String("save-commit2-input") != "" {
 					c2in := Commit2In{
-						SectorNum: int64(i),
+						SectorNum:  int64(i),
 						Phase1Out:  c1o,
 						SectorSize: 0,
 					}
@@ -393,7 +396,7 @@ func main() {
 				Candidates:      candidates[:1],
 				Proofs:          proof1,
 				EligibleSectors: sealedSectors,
-				Prover:          abi.ActorID(mid),
+				Prover:          mid,
 				ChallengeCount:  ccount,
 			}
 			ok, err := sectorbuilder.ProofVerifier.VerifyElectionPost(context.TODO(), pvi1)
@@ -411,7 +414,7 @@ func main() {
 				Candidates:      candidates[:1],
 				Proofs:          proof2,
 				EligibleSectors: sealedSectors,
-				Prover:          abi.ActorID(mid),
+				Prover:          mid,
 				ChallengeCount:  ccount,
 			}
 
@@ -469,6 +472,78 @@ func main() {
 		log.Warn(err)
 		return
 	}
+}
+
+var proveCmd = &cli.Command{
+	Name:  "prove",
+	Usage: "Benchmark a proof computation",
+	Flags: []cli.Flag{
+		&cli.BoolFlag{
+			Name:  "no-gpu",
+			Usage: "disable gpu usage for the benchmark run",
+		},
+	},
+	Action: func(c *cli.Context) error {
+		if c.Bool("no-gpu") {
+			os.Setenv("BELLMAN_NO_GPU", "1")
+		}
+
+		if !c.Args().Present() {
+			return xerrors.Errorf("Usage: lotus-bench prove [input.json]")
+		}
+
+		inb, err := ioutil.ReadFile(c.Args().First())
+		if err != nil {
+			return xerrors.Errorf("reading input file: %w", err)
+		}
+
+		var c2in Commit2In
+		if err := json.Unmarshal(inb, &c2in); err != nil {
+			return xerrors.Errorf("unmarshalling input file: %w", err)
+		}
+
+		if err := paramfetch.GetParams(build.ParametersJson(), c2in.SectorSize); err != nil {
+			return xerrors.Errorf("getting params: %w", err)
+		}
+
+		maddr, err := address.NewFromString(c.String("miner-addr"))
+		if err != nil {
+			return err
+		}
+
+		ppt, spt, err := lapi.ProofTypeFromSectorSize(abi.SectorSize(c2in.SectorSize))
+		if err != nil {
+			return err
+		}
+
+		cfg := &sectorbuilder.Config{
+			Miner:         maddr,
+			SealProofType: spt,
+			PoStProofType: ppt,
+		}
+
+		sb, err := sectorbuilder.New(nil, cfg)
+		if err != nil {
+			return err
+		}
+
+		start := time.Now()
+
+		proof, err := sb.SealCommit2(context.TODO(), abi.SectorNumber(c2in.SectorNum), c2in.Phase1Out)
+		if err != nil {
+			return err
+		}
+
+		sealCommit2 := time.Now()
+
+		fmt.Printf("proof: %x\n", proof)
+
+		fmt.Printf("----\nresults (v23) (%d)\n", c2in.SectorSize)
+		dur := sealCommit2.Sub(start)
+
+		fmt.Printf("seal: commit phase 2: %s (%s)\n", dur, bps(abi.SectorSize(c2in.SectorSize), dur))
+		return nil
+	},
 }
 
 func bps(data abi.SectorSize, d time.Duration) string {
