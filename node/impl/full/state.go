@@ -77,7 +77,7 @@ func (a *StateAPI) StateMinerPower(ctx context.Context, maddr address.Address, t
 		if err != nil {
 			return api.MinerPower{}, err
 		}
-		if slashed != 0 {
+		if slashed {
 			mpow = types.NewInt(0)
 		}
 	}

@@ -14,16 +14,21 @@ import (
 	commcid "github.com/filecoin-project/go-fil-commcid"
 	"github.com/filecoin-project/go-sectorbuilder"
 	"github.com/filecoin-project/go-sectorbuilder/fs"
+	"github.com/filecoin-project/lotus/api"
 	"github.com/filecoin-project/specs-actors/actors/abi"
 	"github.com/ipfs/go-cid"
+	logging "github.com/ipfs/go-log"
 	"golang.org/x/xerrors"
 )
+
+var log = logging.Logger("sbmock")
 
 type SBMock struct {
 	sectors      map[abi.SectorNumber]*sectorState
 	sectorSize   abi.SectorSize
 	nextSectorID abi.SectorNumber
 	rateLimit    chan struct{}
+	proofType    abi.RegisteredProof
 
 	lk sync.Mutex
 }
@@ -31,11 +36,17 @@ type SBMock struct {
 type mockVerif struct{}
 
 func NewMockSectorBuilder(threads int, ssize abi.SectorSize) *SBMock {
+	rt, _, err := api.ProofTypeFromSectorSize(ssize)
+	if err != nil {
+		panic(err)
+	}
+
 	return &SBMock{
 		sectors:      make(map[abi.SectorNumber]*sectorState),
 		sectorSize:   ssize,
 		nextSectorID: 5,
 		rateLimit:    make(chan struct{}, threads),
+		proofType:    rt,
 	}
 }
 
@@ -64,6 +75,7 @@ func (sb *SBMock) RateLimit() func() {
 }
 
 func (sb *SBMock) AddPiece(ctx context.Context, size abi.UnpaddedPieceSize, sectorId abi.SectorNumber, r io.Reader, existingPieces []abi.UnpaddedPieceSize) (abi.PieceInfo, error) {
+	log.Warn("Add piece: ", sectorId, size, sb.proofType)
 	sb.lk.Lock()
 	ss, ok := sb.sectors[sectorId]
 	if !ok {
@@ -76,12 +88,12 @@ func (sb *SBMock) AddPiece(ctx context.Context, size abi.UnpaddedPieceSize, sect
 	ss.lk.Lock()
 	defer ss.lk.Unlock()
 
-	b, err := ioutil.ReadAll(r)
+	c, err := sectorbuilder.GeneratePieceCIDFromFile(sb.proofType, r, size)
 	if err != nil {
-		return abi.PieceInfo{}, err
+		return abi.PieceInfo{}, xerrors.Errorf("failed to generate piece cid: %w", err)
 	}
 
-	c := commcid.DataCommitmentV1ToCID(b[:32]) // hax
+	log.Warn("Generated Piece CID: ", c)
 
 	ss.pieces = append(ss.pieces, c)
 	return abi.PieceInfo{
@@ -131,6 +143,7 @@ func (sb *SBMock) GenerateFallbackPoSt([]abi.SectorInfo, abi.PoStRandomness, []a
 }
 
 func (sb *SBMock) SealPreCommit(ctx context.Context, sid abi.SectorNumber, ticket abi.SealRandomness, pieces []abi.PieceInfo) (cid.Cid, cid.Cid, error) {
+	log.Warn("Seal PreCommit", sid)
 	sb.lk.Lock()
 	ss, ok := sb.sectors[sid]
 	sb.lk.Unlock()
@@ -175,7 +188,14 @@ func (sb *SBMock) SealPreCommit(ctx context.Context, sid abi.SectorNumber, ticke
 		return cid.Undef, cid.Undef, err
 	}
 
-	cc, _, err := commcid.CIDToCommitment(commd)
+	commR := commRfromD(commd)
+
+	return commR, commd, nil
+}
+
+// so we can 'verify' that the commR comes from the commD
+func commRfromD(commD cid.Cid) cid.Cid {
+	cc, _, err := commcid.CIDToCommitment(commD)
 	if err != nil {
 		panic(err)
 	}
@@ -185,12 +205,11 @@ func (sb *SBMock) SealPreCommit(ctx context.Context, sid abi.SectorNumber, ticke
 		commr[32-(i+1)] = cc[i]
 	}
 
-	commR := commcid.DataCommitmentV1ToCID(commr)
-
-	return commd, commR, nil
+	return commcid.DataCommitmentV1ToCID(commr)
 }
 
 func (sb *SBMock) SealCommit(ctx context.Context, sid abi.SectorNumber, ticket abi.SealRandomness, seed abi.InteractiveSealRandomness, pieces []abi.PieceInfo, sealedCid cid.Cid, unsealed cid.Cid) ([]byte, error) {
+	log.Warn("Seal Commit!", sid, sealedCid, unsealed)
 	sb.lk.Lock()
 	ss, ok := sb.sectors[sid]
 	sb.lk.Unlock()

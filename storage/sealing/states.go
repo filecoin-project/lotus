@@ -91,7 +91,7 @@ func (m *Sealing) handlePreCommitting(ctx statemachine.Context, sector SectorInf
 		case *ErrBadCommD: // TODO: Should this just back to packing? (not really needed since handleUnsealed will do that too)
 			return ctx.Send(SectorSealFailed{xerrors.Errorf("bad CommD error: %w", err)})
 		case *ErrExpiredTicket:
-			return ctx.Send(SectorSealFailed{xerrors.Errorf("bad CommD error: %w", err)})
+			return ctx.Send(SectorSealFailed{xerrors.Errorf("ticket expired: %w", err)})
 		default:
 			return xerrors.Errorf("checkSeal sanity check error: %w", err)
 		}
