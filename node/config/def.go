@@ -96,7 +96,7 @@ func DefaultStorageMiner() *StorageMiner {
 		Common: defCommon(),
 
 		SectorBuilder: SectorBuilder{
-			WorkerCount: 5,
+			WorkerCount: 2,
 		},
 	}
 	cfg.Common.API.ListenAddress = "/ip4/127.0.0.1/tcp/2345/http"
