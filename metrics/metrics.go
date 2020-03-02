@@ -60,7 +60,7 @@ var DefaultViews = []*view.View{
 	&view.View{
 		Measure:     BlockValidationFailure,
 		Aggregation: view.Count(),
-		TagKeys:     []tag.Key{FailureType, PeerID},
+		TagKeys:     []tag.Key{FailureType, PeerID, ReceivedFrom},
 	},
 	&view.View{
 		Measure:     BlockValidationSuccess,
