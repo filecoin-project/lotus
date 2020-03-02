@@ -396,9 +396,6 @@ func (syncer *Syncer) Sync(ctx context.Context, maybeHead *types.TipSet) error {
 		)
 	}
 
-	// Record current network chain height when sync is called
-	stats.Record(ctx, metrics.ChainHeight.M(int64(maybeHead.Height())))
-
 	if syncer.store.GetHeaviestTipSet().ParentWeight().GreaterThan(maybeHead.ParentWeight()) {
 		return nil
 	}
@@ -1043,8 +1040,7 @@ func (syncer *Syncer) syncMessagesAndCheckState(ctx context.Context, headers []*
 			return xerrors.Errorf("message processing failed: %w", err)
 		}
 
-		// Set current node sync height
-		stats.Record(ctx, metrics.ChainNodeHeight.M(int64(fts.TipSet().Height())))
+		stats.Record(ctx, metrics.ChainNodeWorkerHeight.M(int64(fts.TipSet().Height())))
 		ss.SetHeight(fts.TipSet().Height())
 
 		return nil

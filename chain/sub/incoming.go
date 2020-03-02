@@ -2,6 +2,7 @@ package sub
 
 import (
 	"context"
+	"fmt"
 	"time"
 
 	lru "github.com/hashicorp/golang-lru"
@@ -10,11 +11,14 @@ import (
 	connmgr "github.com/libp2p/go-libp2p-core/connmgr"
 	peer "github.com/libp2p/go-libp2p-peer"
 	pubsub "github.com/libp2p/go-libp2p-pubsub"
+	"go.opencensus.io/stats"
+	"go.opencensus.io/tag"
 
 	"github.com/filecoin-project/lotus/build"
 	"github.com/filecoin-project/lotus/chain"
 	"github.com/filecoin-project/lotus/chain/messagepool"
 	"github.com/filecoin-project/lotus/chain/types"
+	"github.com/filecoin-project/lotus/metrics"
 )
 
 var log = logging.Logger("sub")
@@ -162,14 +166,23 @@ func NewMessageValidator(mp *messagepool.MessagePool) *MessageValidator {
 }
 
 func (mv *MessageValidator) Validate(ctx context.Context, pid peer.ID, msg *pubsub.Message) bool {
+	ctx, _ = tag.New(ctx, tag.Insert(metrics.PeerID, pid.String()))
 	m, err := types.DecodeSignedMessage(msg.Message.GetData())
 	if err != nil {
 		log.Warnf("failed to decode incoming message: %s", err)
+		stats.Record(ctx, metrics.MessageDecodeFailure.M(1))
 		return false
 	}
 
 	if err := mv.mpool.Add(m); err != nil {
 		log.Warnf("failed to add message from network to message pool (From: %s, To: %s, Nonce: %d, Value: %s): %s", m.Message.From, m.Message.To, m.Message.Nonce, types.FIL(m.Message.Value), err)
+		ctx, _ = tag.New(
+			ctx,
+			tag.Insert(metrics.MessageFrom, m.Message.From.String()),
+			tag.Insert(metrics.MessageTo, m.Message.To.String()),
+			tag.Insert(metrics.MessageNonce, fmt.Sprint(m.Message.Nonce)),
+		)
+		stats.Record(ctx, metrics.MessageAddFailure.M(1))
 		return false
 	}
 
