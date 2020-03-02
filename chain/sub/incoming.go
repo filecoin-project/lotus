@@ -111,15 +111,25 @@ func (bv *BlockValidator) flagPeer(p peer.ID) {
 }
 
 func (bv *BlockValidator) Validate(ctx context.Context, pid peer.ID, msg *pubsub.Message) bool {
+	stats.Record(ctx, metrics.BlockReceived.M(1))
+	ctx, _ = tag.New(
+		ctx,
+		tag.Insert(metrics.PeerID, pid.String()),
+		tag.Insert(metrics.ReceivedFrom, msg.ReceivedFrom.String()),
+	)
 	blk, err := types.DecodeBlockMsg(msg.GetData())
 	if err != nil {
 		log.Error("got invalid block over pubsub: ", err)
+		ctx, _ = tag.New(ctx, tag.Insert(metrics.FailureType, "invalid"))
+		stats.Record(ctx, metrics.BlockValidationFailure.M(1))
 		bv.flagPeer(pid)
 		return false
 	}
 
 	if len(blk.BlsMessages)+len(blk.SecpkMessages) > build.BlockMessageLimit {
 		log.Warnf("received block with too many messages over pubsub")
+		ctx, _ = tag.New(ctx, tag.Insert(metrics.FailureType, "too_many_messages"))
+		stats.Record(ctx, metrics.BlockValidationFailure.M(1))
 		bv.flagPeer(pid)
 		return false
 	}
@@ -131,6 +141,7 @@ func (bv *BlockValidator) Validate(ctx context.Context, pid peer.ID, msg *pubsub
 	}
 
 	msg.ValidatorData = blk
+	stats.Record(ctx, metrics.BlockValidationSuccess.M(1))
 	return true
 }
 
@@ -166,11 +177,13 @@ func NewMessageValidator(mp *messagepool.MessagePool) *MessageValidator {
 }
 
 func (mv *MessageValidator) Validate(ctx context.Context, pid peer.ID, msg *pubsub.Message) bool {
+	stats.Record(ctx, metrics.MessageReceived.M(1))
 	ctx, _ = tag.New(ctx, tag.Insert(metrics.PeerID, pid.String()))
 	m, err := types.DecodeSignedMessage(msg.Message.GetData())
 	if err != nil {
 		log.Warnf("failed to decode incoming message: %s", err)
-		stats.Record(ctx, metrics.MessageDecodeFailure.M(1))
+		ctx, _ = tag.New(ctx, tag.Insert(metrics.FailureType, "decode"))
+		stats.Record(ctx, metrics.MessageValidationFailure.M(1))
 		return false
 	}
 
@@ -181,11 +194,12 @@ func (mv *MessageValidator) Validate(ctx context.Context, pid peer.ID, msg *pubs
 			tag.Insert(metrics.MessageFrom, m.Message.From.String()),
 			tag.Insert(metrics.MessageTo, m.Message.To.String()),
 			tag.Insert(metrics.MessageNonce, fmt.Sprint(m.Message.Nonce)),
+			tag.Insert(metrics.FailureType, "add"),
 		)
-		stats.Record(ctx, metrics.MessageAddFailure.M(1))
+		stats.Record(ctx, metrics.MessageValidationFailure.M(1))
 		return false
 	}
-
+	stats.Record(ctx, metrics.MessageValidationSuccess.M(1))
 	return true
 }
 
