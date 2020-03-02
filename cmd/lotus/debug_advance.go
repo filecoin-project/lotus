@@ -9,6 +9,7 @@ import (
 	"github.com/filecoin-project/lotus/chain/types"
 	lcli "github.com/filecoin-project/lotus/cli"
 	"github.com/filecoin-project/lotus/miner"
+	"github.com/filecoin-project/specs-actors/actors/abi"
 	"github.com/filecoin-project/specs-actors/actors/crypto"
 	"golang.org/x/xerrors"
 
@@ -68,7 +69,7 @@ func init() {
 			}
 
 			epostp := &types.EPostProof{
-				Proof: []byte("valid proof"),
+				Proofs: []abi.PoStProof{{ProofBytes: []byte("valid proof")}},
 				Candidates: []types.EPostTicket{
 					{
 						ChallengeIndex: 0,

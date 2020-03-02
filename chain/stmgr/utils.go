@@ -186,9 +186,34 @@ func GetMinerSectorSize(ctx context.Context, sm *StateManager, ts *types.TipSet,
 	return mas.Info.SectorSize, nil
 }
 
-func GetMinerSlashed(ctx context.Context, sm *StateManager, ts *types.TipSet, maddr address.Address) (uint64, error) {
-	log.Warn("stub GetMinerSlashed")
-	return 0, nil
+func GetMinerSlashed(ctx context.Context, sm *StateManager, ts *types.TipSet, maddr address.Address) (bool, error) {
+	var mas miner.State
+	_, err := sm.LoadActorState(ctx, maddr, &mas, ts)
+	if err != nil {
+		return false, xerrors.Errorf("(get miner slashed) failed to load miner actor state")
+	}
+
+	if mas.PoStState.HasFailedPost() {
+		return true, nil
+	}
+
+	var spas power.State
+	_, err = sm.LoadActorState(ctx, builtin.StoragePowerActorAddr, &spas, ts)
+	if err != nil {
+		return false, xerrors.Errorf("(get miner slashed) failed to load power actor state")
+	}
+
+	store := sm.cs.Store(ctx)
+	claims := adt.AsMap(store, spas.Claims)
+	ok, err := claims.Get(power.AddrKey(maddr), nil)
+	if err != nil {
+		return false, err
+	}
+	if !ok {
+		return true, nil
+	}
+
+	return false, nil
 }
 
 func GetMinerFaults(ctx context.Context, sm *StateManager, ts *types.TipSet, maddr address.Address) ([]abi.SectorNumber, error) {
