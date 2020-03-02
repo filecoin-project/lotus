@@ -6,7 +6,6 @@ import (
 	"github.com/filecoin-project/lotus/chain/state"
 
 	amt "github.com/filecoin-project/go-amt-ipld/v2"
-	commcid "github.com/filecoin-project/go-fil-commcid"
 	"github.com/filecoin-project/specs-actors/actors/abi"
 	"github.com/filecoin-project/specs-actors/actors/abi/big"
 	"github.com/filecoin-project/specs-actors/actors/builtin"
@@ -160,12 +159,6 @@ func GetSectorsForElectionPost(ctx context.Context, sm *StateManager, ts *types.
 
 	var uselessOtherArray []abi.SectorInfo
 	for _, s := range sectors {
-		cr, err := commcid.CIDToReplicaCommitmentV1(s.Info.Info.SealedCID)
-		if err != nil {
-			return nil, err
-		}
-		var uselessBuffer [32]byte
-		copy(uselessBuffer[:], cr)
 		uselessOtherArray = append(uselessOtherArray, abi.SectorInfo{
 			RegisteredProof: s.Info.Info.RegisteredProof,
 			SectorNumber:    s.ID,
