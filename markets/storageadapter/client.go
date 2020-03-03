@@ -23,6 +23,7 @@ import (
 	"github.com/filecoin-project/lotus/chain/stmgr"
 	"github.com/filecoin-project/lotus/chain/store"
 	"github.com/filecoin-project/lotus/chain/types"
+	"github.com/filecoin-project/lotus/lib/sigs"
 	"github.com/filecoin-project/lotus/markets/utils"
 	"github.com/filecoin-project/lotus/node/impl/full"
 )
@@ -92,8 +93,8 @@ func (n *ClientNodeAdapter) ListStorageProviders(ctx context.Context) ([]*storag
 }
 
 func (n *ClientNodeAdapter) VerifySignature(sig crypto.Signature, addr address.Address, input []byte) bool {
-	log.Warn("stub VerifySignature")
-	return true
+	err := sigs.Verify(&sig, addr, input)
+	return err == nil
 }
 
 func (n *ClientNodeAdapter) ListClientDeals(ctx context.Context, addr address.Address) ([]storagemarket.StorageDeal, error) {
@@ -328,13 +329,19 @@ func (c *ClientNodeAdapter) OnDealSectorCommitted(ctx context.Context, provider 
 
 func (n *ClientNodeAdapter) SignProposal(ctx context.Context, signer address.Address, proposal samarket.DealProposal) (*samarket.ClientDealProposal, error) {
 	// TODO: output spec signed proposal
-	log.Warn("TODO: stub SignProposal")
+	buf, err := cborutil.Dump(&proposal)
+	if err != nil {
+		return nil, err
+	}
+
+	sig, err := n.Wallet.Sign(ctx, signer, buf)
+	if err != nil {
+		return nil, err
+	}
+
 	return &samarket.ClientDealProposal{
-		Proposal: proposal,
-		ClientSignature: crypto.Signature{
-			Type: crypto.SigTypeBLS,
-			Data: []byte{},
-		},
+		Proposal:        proposal,
+		ClientSignature: *sig,
 	}, nil
 }
 
@@ -356,9 +363,8 @@ func (n *ClientNodeAdapter) ValidateAskSignature(ask *storagemarket.SignedStorag
 		return xerrors.Errorf("failed to re-serialize ask")
 	}
 
-	_ = w
-	_ = sigb
-	panic("verify signature")
+	return sigs.Verify(ask.Signature, w, sigb)
+
 }
 
 var _ storagemarket.StorageClientNode = &ClientNodeAdapter{}
