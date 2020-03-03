@@ -8,6 +8,11 @@ import (
 
 // Core network constants
 
+const NetworkName = "interop"
+const BlocksTopic = "/fil/blocks/" + NetworkName
+const MessagesTopic = "/fil/msgs/" + NetworkName
+const DhtProtocolName = "/fil/kad/" + NetworkName
+
 // /////
 // Storage
 
