@@ -2,6 +2,7 @@ package sub
 
 import (
 	"context"
+	"fmt"
 	"time"
 
 	lru "github.com/hashicorp/golang-lru"
@@ -10,11 +11,14 @@ import (
 	connmgr "github.com/libp2p/go-libp2p-core/connmgr"
 	peer "github.com/libp2p/go-libp2p-peer"
 	pubsub "github.com/libp2p/go-libp2p-pubsub"
+	"go.opencensus.io/stats"
+	"go.opencensus.io/tag"
 
 	"github.com/filecoin-project/lotus/build"
 	"github.com/filecoin-project/lotus/chain"
 	"github.com/filecoin-project/lotus/chain/messagepool"
 	"github.com/filecoin-project/lotus/chain/types"
+	"github.com/filecoin-project/lotus/metrics"
 )
 
 var log = logging.Logger("sub")
@@ -107,15 +111,25 @@ func (bv *BlockValidator) flagPeer(p peer.ID) {
 }
 
 func (bv *BlockValidator) Validate(ctx context.Context, pid peer.ID, msg *pubsub.Message) bool {
+	stats.Record(ctx, metrics.BlockReceived.M(1))
+	ctx, _ = tag.New(
+		ctx,
+		tag.Insert(metrics.PeerID, pid.String()),
+		tag.Insert(metrics.ReceivedFrom, msg.ReceivedFrom.String()),
+	)
 	blk, err := types.DecodeBlockMsg(msg.GetData())
 	if err != nil {
 		log.Error("got invalid block over pubsub: ", err)
+		ctx, _ = tag.New(ctx, tag.Insert(metrics.FailureType, "invalid"))
+		stats.Record(ctx, metrics.BlockValidationFailure.M(1))
 		bv.flagPeer(pid)
 		return false
 	}
 
 	if len(blk.BlsMessages)+len(blk.SecpkMessages) > build.BlockMessageLimit {
 		log.Warnf("received block with too many messages over pubsub")
+		ctx, _ = tag.New(ctx, tag.Insert(metrics.FailureType, "too_many_messages"))
+		stats.Record(ctx, metrics.BlockValidationFailure.M(1))
 		bv.flagPeer(pid)
 		return false
 	}
@@ -127,6 +141,7 @@ func (bv *BlockValidator) Validate(ctx context.Context, pid peer.ID, msg *pubsub
 	}
 
 	msg.ValidatorData = blk
+	stats.Record(ctx, metrics.BlockValidationSuccess.M(1))
 	return true
 }
 
@@ -162,17 +177,29 @@ func NewMessageValidator(mp *messagepool.MessagePool) *MessageValidator {
 }
 
 func (mv *MessageValidator) Validate(ctx context.Context, pid peer.ID, msg *pubsub.Message) bool {
+	stats.Record(ctx, metrics.MessageReceived.M(1))
+	ctx, _ = tag.New(ctx, tag.Insert(metrics.PeerID, pid.String()))
 	m, err := types.DecodeSignedMessage(msg.Message.GetData())
 	if err != nil {
 		log.Warnf("failed to decode incoming message: %s", err)
+		ctx, _ = tag.New(ctx, tag.Insert(metrics.FailureType, "decode"))
+		stats.Record(ctx, metrics.MessageValidationFailure.M(1))
 		return false
 	}
 
 	if err := mv.mpool.Add(m); err != nil {
 		log.Warnf("failed to add message from network to message pool (From: %s, To: %s, Nonce: %d, Value: %s): %s", m.Message.From, m.Message.To, m.Message.Nonce, types.FIL(m.Message.Value), err)
+		ctx, _ = tag.New(
+			ctx,
+			tag.Insert(metrics.MessageFrom, m.Message.From.String()),
+			tag.Insert(metrics.MessageTo, m.Message.To.String()),
+			tag.Insert(metrics.MessageNonce, fmt.Sprint(m.Message.Nonce)),
+			tag.Insert(metrics.FailureType, "add"),
+		)
+		stats.Record(ctx, metrics.MessageValidationFailure.M(1))
 		return false
 	}
-
+	stats.Record(ctx, metrics.MessageValidationSuccess.M(1))
 	return true
 }
 
