@@ -12,6 +12,7 @@ import (
 	"github.com/filecoin-project/go-fil-markets/retrievalmarket"
 	"github.com/filecoin-project/go-fil-markets/retrievalmarket/discovery"
 	"github.com/filecoin-project/go-fil-markets/storagemarket"
+	"github.com/filecoin-project/lotus/build"
 	"github.com/filecoin-project/lotus/chain"
 	"github.com/filecoin-project/lotus/chain/blocksync"
 	"github.com/filecoin-project/lotus/chain/messagepool"
@@ -22,9 +23,6 @@ import (
 	"github.com/filecoin-project/lotus/node/modules/dtypes"
 	"github.com/filecoin-project/lotus/node/modules/helpers"
 )
-
-const BlocksTopic = "/fil/blocks"
-const MessagesTopic = "/fil/msgs"
 
 func RunHello(mctx helpers.MetricsCtx, lc fx.Lifecycle, h host.Host, svc *hello.Service) {
 	h.SetStreamHandler(hello.ProtocolID, svc.HandleStream)
@@ -53,7 +51,7 @@ func RunBlockSync(h host.Host, svc *blocksync.BlockSyncService) {
 func HandleIncomingBlocks(mctx helpers.MetricsCtx, lc fx.Lifecycle, ps *pubsub.PubSub, s *chain.Syncer, h host.Host) {
 	ctx := helpers.LifecycleCtx(mctx, lc)
 
-	blocksub, err := ps.Subscribe(BlocksTopic)
+	blocksub, err := ps.Subscribe(build.BlocksTopic)
 	if err != nil {
 		panic(err)
 	}
@@ -63,7 +61,7 @@ func HandleIncomingBlocks(mctx helpers.MetricsCtx, lc fx.Lifecycle, ps *pubsub.P
 		h.ConnManager().TagPeer(p, "badblock", -1000)
 	})
 
-	if err := ps.RegisterTopicValidator(BlocksTopic, v.Validate); err != nil {
+	if err := ps.RegisterTopicValidator(build.BlocksTopic, v.Validate); err != nil {
 		panic(err)
 	}
 
@@ -73,7 +71,7 @@ func HandleIncomingBlocks(mctx helpers.MetricsCtx, lc fx.Lifecycle, ps *pubsub.P
 func HandleIncomingMessages(mctx helpers.MetricsCtx, lc fx.Lifecycle, ps *pubsub.PubSub, mpool *messagepool.MessagePool) {
 	ctx := helpers.LifecycleCtx(mctx, lc)
 
-	msgsub, err := ps.Subscribe(MessagesTopic)
+	msgsub, err := ps.Subscribe(build.MessagesTopic)
 	if err != nil {
 		panic(err)
 	}
@@ -89,7 +87,7 @@ func HandleIncomingMessages(mctx helpers.MetricsCtx, lc fx.Lifecycle, ps *pubsub
 		return true
 	}
 
-	if err := ps.RegisterTopicValidator(MessagesTopic, v); err != nil {
+	if err := ps.RegisterTopicValidator(build.MessagesTopic, v); err != nil {
 		panic(err)
 	}
 
