@@ -15,6 +15,7 @@ import (
 	"github.com/filecoin-project/go-address"
 	"github.com/filecoin-project/go-fil-markets/storagemarket"
 
+	lapi "github.com/filecoin-project/lotus/api"
 	"github.com/filecoin-project/lotus/chain/types"
 )
 
@@ -86,6 +87,10 @@ var clientDealCmd = &cli.Command{
 			Name:  "manual-transfer",
 			Usage: "data will be transferred out of band",
 		},
+		&cli.StringFlag{
+			Name:  "manual-piece-cid",
+			Usage: "manually specify piece commitment for data",
+		},
 	},
 	Action: func(cctx *cli.Context) error {
 		api, closer, err := GetFullNodeAPI(cctx)
@@ -134,7 +139,24 @@ var clientDealCmd = &cli.Command{
 			ref.TransferType = storagemarket.TTManual
 		}
 
-		proposal, err := api.ClientStartDeal(ctx, ref, a, miner, types.BigInt(price), uint64(dur))
+		var pcid *cid.Cid
+		if mpc := cctx.String("manual-piece-cid"); mpc != "" {
+			c, err := cid.Parse(mpc)
+			if err != nil {
+				return xerrors.Errorf("failed to parse provided manual piece cid: %w", err)
+			}
+
+			pcid = &c
+		}
+
+		proposal, err := api.ClientStartDeal(ctx, &lapi.StartDealParams{
+			Data:            ref,
+			Wallet:          a,
+			Miner:           miner,
+			EpochPrice:      types.BigInt(price),
+			BlocksDuration:  uint64(dur),
+			PieceCommitment: pcid,
+		})
 		if err != nil {
 			return err
 		}

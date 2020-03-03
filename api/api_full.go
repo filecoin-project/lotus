@@ -89,7 +89,7 @@ type FullNode interface {
 
 	// ClientImport imports file under the specified path into filestore
 	ClientImport(ctx context.Context, path string) (cid.Cid, error)
-	ClientStartDeal(ctx context.Context, data *storagemarket.DataRef, addr address.Address, miner address.Address, epochPrice types.BigInt, blocksDuration uint64) (*cid.Cid, error)
+	ClientStartDeal(ctx context.Context, params *StartDealParams) (*cid.Cid, error)
 	ClientGetDealInfo(context.Context, cid.Cid) (*DealInfo, error)
 	ClientListDeals(ctx context.Context) ([]DealInfo, error)
 	ClientHasLocal(ctx context.Context, root cid.Cid) (bool, error)
@@ -301,6 +301,16 @@ type ReplayResults struct {
 type MethodCall struct {
 	types.MessageReceipt
 	Error string
+}
+
+type StartDealParams struct {
+	Data           *storagemarket.DataRef
+	Wallet         address.Address
+	Miner          address.Address
+	EpochPrice     types.BigInt
+	BlocksDuration uint64
+
+	PieceCommitment *cid.Cid
 }
 
 type ActiveSync struct {

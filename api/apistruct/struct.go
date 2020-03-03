@@ -93,15 +93,15 @@ type FullNodeStruct struct {
 		WalletExport         func(context.Context, address.Address) (*types.KeyInfo, error)                       `perm:"admin"`
 		WalletImport         func(context.Context, *types.KeyInfo) (address.Address, error)                       `perm:"admin"`
 
-		ClientImport      func(ctx context.Context, path string) (cid.Cid, error)                                                                                                          `perm:"admin"`
-		ClientListImports func(ctx context.Context) ([]api.Import, error)                                                                                                                  `perm:"write"`
-		ClientHasLocal    func(ctx context.Context, root cid.Cid) (bool, error)                                                                                                            `perm:"write"`
-		ClientFindData    func(ctx context.Context, root cid.Cid) ([]api.QueryOffer, error)                                                                                                `perm:"read"`
-		ClientStartDeal   func(ctx context.Context, data *storagemarket.DataRef, addr address.Address, miner address.Address, price types.BigInt, blocksDuration uint64) (*cid.Cid, error) `perm:"admin"`
-		ClientGetDealInfo func(context.Context, cid.Cid) (*api.DealInfo, error)                                                                                                            `perm:"read"`
-		ClientListDeals   func(ctx context.Context) ([]api.DealInfo, error)                                                                                                                `perm:"write"`
-		ClientRetrieve    func(ctx context.Context, order api.RetrievalOrder, path string) error                                                                                           `perm:"admin"`
-		ClientQueryAsk    func(ctx context.Context, p peer.ID, miner address.Address) (*storagemarket.SignedStorageAsk, error)                                                             `perm:"read"`
+		ClientImport      func(ctx context.Context, path string) (cid.Cid, error)                                              `perm:"admin"`
+		ClientListImports func(ctx context.Context) ([]api.Import, error)                                                      `perm:"write"`
+		ClientHasLocal    func(ctx context.Context, root cid.Cid) (bool, error)                                                `perm:"write"`
+		ClientFindData    func(ctx context.Context, root cid.Cid) ([]api.QueryOffer, error)                                    `perm:"read"`
+		ClientStartDeal   func(ctx context.Context, params *api.StartDealParams) (*cid.Cid, error)                             `perm:"admin"`
+		ClientGetDealInfo func(context.Context, cid.Cid) (*api.DealInfo, error)                                                `perm:"read"`
+		ClientListDeals   func(ctx context.Context) ([]api.DealInfo, error)                                                    `perm:"write"`
+		ClientRetrieve    func(ctx context.Context, order api.RetrievalOrder, path string) error                               `perm:"admin"`
+		ClientQueryAsk    func(ctx context.Context, p peer.ID, miner address.Address) (*storagemarket.SignedStorageAsk, error) `perm:"read"`
 
 		StateMinerSectors       func(context.Context, address.Address, types.TipSetKey) ([]*api.ChainSectorInfo, error)                      `perm:"read"`
 		StateMinerProvingSet    func(context.Context, address.Address, types.TipSetKey) ([]*api.ChainSectorInfo, error)                      `perm:"read"`
@@ -247,8 +247,8 @@ func (c *FullNodeStruct) ClientFindData(ctx context.Context, root cid.Cid) ([]ap
 	return c.Internal.ClientFindData(ctx, root)
 }
 
-func (c *FullNodeStruct) ClientStartDeal(ctx context.Context, data *storagemarket.DataRef, addr address.Address, miner address.Address, price types.BigInt, blocksDuration uint64) (*cid.Cid, error) {
-	return c.Internal.ClientStartDeal(ctx, data, addr, miner, price, blocksDuration)
+func (c *FullNodeStruct) ClientStartDeal(ctx context.Context, params *api.StartDealParams) (*cid.Cid, error) {
+	return c.Internal.ClientStartDeal(ctx, params)
 }
 func (c *FullNodeStruct) ClientGetDealInfo(ctx context.Context, deal cid.Cid) (*api.DealInfo, error) {
 	return c.Internal.ClientGetDealInfo(ctx, deal)
