@@ -11,25 +11,23 @@ import (
 	"os"
 	"path/filepath"
 
+	"github.com/google/uuid"
+	badger "github.com/ipfs/go-ds-badger2"
+	logging "github.com/ipfs/go-log/v2"
+	"golang.org/x/xerrors"
+
+	"github.com/filecoin-project/go-address"
+	sectorbuilder "github.com/filecoin-project/go-sectorbuilder"
+	"github.com/filecoin-project/go-sectorbuilder/fs"
 	"github.com/filecoin-project/specs-actors/actors/abi"
 	"github.com/filecoin-project/specs-actors/actors/abi/big"
 	"github.com/filecoin-project/specs-actors/actors/builtin/market"
 	"github.com/filecoin-project/specs-actors/actors/crypto"
-	"github.com/ipfs/go-cid"
-	"github.com/ipfs/go-datastore"
-	"github.com/ipfs/go-datastore/namespace"
-	badger "github.com/ipfs/go-ds-badger2"
-	logging "github.com/ipfs/go-log/v2"
-	"github.com/multiformats/go-multihash"
-	"golang.org/x/xerrors"
-
-	sectorbuilder "github.com/filecoin-project/go-sectorbuilder"
-
-	"github.com/filecoin-project/go-address"
 
 	"github.com/filecoin-project/lotus/chain/types"
 	"github.com/filecoin-project/lotus/chain/wallet"
 	"github.com/filecoin-project/lotus/genesis"
+	"github.com/filecoin-project/lotus/node/config"
 )
 
 var log = logging.Logger("preseal")
@@ -46,12 +44,9 @@ func PreSeal(maddr address.Address, pt abi.RegisteredProof, offset abi.SectorNum
 	}
 
 	cfg := &sectorbuilder.Config{
-		Miner:           maddr,
-		SealProofType:   spt,
-		PoStProofType:   ppt,
-		FallbackLastNum: offset,
-		Paths:           sectorbuilder.SimplePath(sbroot),
-		WorkerThreads:   2,
+		Miner:         maddr,
+		SealProofType: spt,
+		PoStProofType: ppt,
 	}
 
 	if err := os.MkdirAll(sbroot, 0775); err != nil {
@@ -63,7 +58,13 @@ func PreSeal(maddr address.Address, pt abi.RegisteredProof, offset abi.SectorNum
 		return nil, nil, err
 	}
 
-	sb, err := sectorbuilder.New(cfg, namespace.Wrap(mds, datastore.NewKey("/sectorbuilder")))
+	sbfs := &fs.Basic{
+		Miner:  maddr,
+		NextID: offset,
+		Root:   sbroot,
+	}
+
+	sb, err := sectorbuilder.New(sbfs, cfg)
 	if err != nil {
 		return nil, nil, err
 	}
@@ -75,7 +76,7 @@ func PreSeal(maddr address.Address, pt abi.RegisteredProof, offset abi.SectorNum
 
 	var sealedSectors []*genesis.PreSeal
 	for i := 0; i < sectors; i++ {
-		sid, err := sb.AcquireSectorNumber()
+		sid, err := sbfs.AcquireSectorNumber()
 		if err != nil {
 			return nil, nil, err
 		}
@@ -90,12 +91,17 @@ func PreSeal(maddr address.Address, pt abi.RegisteredProof, offset abi.SectorNum
 
 		fmt.Printf("sector-id: %d, piece info: %v\n", sid, pi)
 
-		scid, ucid, err := sb.SealPreCommit(context.TODO(), sid, ticket, []abi.PieceInfo{pi})
+		in2, err := sb.SealPreCommit1(context.TODO(), sid, ticket, []abi.PieceInfo{pi})
 		if err != nil {
 			return nil, nil, xerrors.Errorf("commit: %w", err)
 		}
 
-		if err := sb.TrimCache(context.TODO(), sid); err != nil {
+		scid, ucid, err := sb.SealPreCommit2(context.TODO(), sid, in2)
+		if err != nil {
+			return nil, nil, xerrors.Errorf("commit: %w", err)
+		}
+
+		if err := sb.FinalizeSector(context.TODO(), sid); err != nil {
 			return nil, nil, xerrors.Errorf("trim cache: %w", err)
 		}
 
@@ -138,6 +144,22 @@ func PreSeal(maddr address.Address, pt abi.RegisteredProof, offset abi.SectorNum
 		return nil, nil, xerrors.Errorf("closing datastore: %w", err)
 	}
 
+	{
+		b, err := json.Marshal(&config.StorageMeta{
+			ID:        uuid.New().String(),
+			Weight:    0, // read-only
+			CanCommit: false,
+			CanStore:  false,
+		})
+		if err != nil {
+			return nil, nil, xerrors.Errorf("marshaling storage config: %w", err)
+		}
+
+		if err := ioutil.WriteFile(filepath.Join(sbroot, "storage.json"), b, 0644); err != nil {
+			return nil, nil, xerrors.Errorf("persisting storage metadata (%s): %w", filepath.Join(sbroot, "storage.json"), err)
+		}
+	}
+
 	return miner, &minerAddr.KeyInfo, nil
 }
 
@@ -170,19 +192,6 @@ func WriteGenesisMiner(maddr address.Address, sbroot string, gm *genesis.Miner, 
 	}
 
 	return nil
-}
-
-func commDCID(commd []byte) cid.Cid {
-	d, err := cid.Prefix{
-		Version:  1,
-		Codec:    cid.Raw,
-		MhType:   multihash.IDENTITY,
-		MhLength: len(commd),
-	}.Sum(commd)
-	if err != nil {
-		panic(err)
-	}
-	return d
 }
 
 func createDeals(m *genesis.Miner, k *wallet.Key, maddr address.Address, ssize abi.SectorSize) error {

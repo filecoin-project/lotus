@@ -7,7 +7,6 @@ import (
 	"fmt"
 	"io/ioutil"
 	"os"
-	"path/filepath"
 	"strconv"
 
 	"github.com/filecoin-project/specs-actors/actors/builtin"
@@ -19,11 +18,8 @@ import (
 	"github.com/filecoin-project/go-address"
 	cborutil "github.com/filecoin-project/go-cbor-util"
 	paramfetch "github.com/filecoin-project/go-paramfetch"
-	"github.com/filecoin-project/go-sectorbuilder"
 	"github.com/filecoin-project/specs-actors/actors/abi"
 	"github.com/ipfs/go-datastore"
-	"github.com/ipfs/go-datastore/namespace"
-	badger "github.com/ipfs/go-ds-badger2"
 	"github.com/libp2p/go-libp2p-core/crypto"
 	"github.com/libp2p/go-libp2p-core/peer"
 	"github.com/mitchellh/go-homedir"
@@ -38,11 +34,11 @@ import (
 	"github.com/filecoin-project/lotus/genesis"
 	"github.com/filecoin-project/lotus/miner"
 	"github.com/filecoin-project/lotus/node/config"
-	"github.com/filecoin-project/lotus/node/modules"
 	"github.com/filecoin-project/lotus/node/modules/dtypes"
 	"github.com/filecoin-project/lotus/node/repo"
 	"github.com/filecoin-project/lotus/storage"
 	"github.com/filecoin-project/lotus/storage/sealing"
+	"github.com/filecoin-project/lotus/storage/sealmgr/advmgr"
 )
 
 var initCmd = &cli.Command{
@@ -77,7 +73,7 @@ var initCmd = &cli.Command{
 			Usage: "specify sector size to use",
 			Value: uint64(build.SectorSizes[0]),
 		},
-		&cli.StringFlag{
+		&cli.StringSliceFlag{
 			Name:  "pre-sealed-sectors",
 			Usage: "specify set of presealed sectors for starting as a genesis miner",
 		},
@@ -159,60 +155,33 @@ var initCmd = &cli.Command{
 			return err
 		}
 
-		if pssb := cctx.String("pre-sealed-sectors"); pssb != "" {
-			pssb, err := homedir.Expand(pssb)
-			if err != nil {
-				return err
-			}
+		if pssb := cctx.StringSlice("pre-sealed-sectors"); len(pssb) != 0 {
+			log.Infof("Setting up storage config with presealed sector", pssb)
 
-			log.Infof("moving pre-sealed-sectors from %s into newly created storage miner repo", pssb)
 			lr, err := r.Lock(repo.StorageMiner)
 			if err != nil {
 				return err
 			}
-			mds, err := lr.Datastore("/metadata")
+			sc, err := lr.GetStorage()
 			if err != nil {
-				return err
+				return xerrors.Errorf("get storage config: %w", err)
 			}
 
-			bopts := badger.DefaultOptions
-			bopts.ReadOnly = true
-			oldmds, err := badger.NewDatastore(filepath.Join(pssb, "badger"), &bopts)
-			if err != nil {
-				return err
+			for _, psp := range pssb {
+				psp, err := homedir.Expand(psp)
+				if err != nil {
+					return err
+				}
+				sc.StoragePaths = append(sc.StoragePaths, config.LocalPath{
+					Path: psp,
+				})
 			}
 
-			ppt, spt, err := lapi.ProofTypeFromSectorSize(ssize)
-			if err != nil {
-				return err
+			if err := lr.SetStorage(sc); err != nil {
+				return xerrors.Errorf("set storage config: %w", err)
 			}
 
-			oldsb, err := sectorbuilder.New(&sectorbuilder.Config{
-				SealProofType: spt,
-				PoStProofType: ppt,
-				WorkerThreads: 2,
-				Paths:         sectorbuilder.SimplePath(pssb),
-			}, namespace.Wrap(oldmds, datastore.NewKey("/sectorbuilder")))
-			if err != nil {
-				return xerrors.Errorf("failed to open up preseal sectorbuilder: %w", err)
-			}
-
-			nsb, err := sectorbuilder.New(&sectorbuilder.Config{
-				SealProofType: spt,
-				PoStProofType: ppt,
-				WorkerThreads: 2,
-				Paths:         sectorbuilder.SimplePath(lr.Path()),
-			}, namespace.Wrap(mds, datastore.NewKey("/sectorbuilder")))
-			if err != nil {
-				return xerrors.Errorf("failed to open up sectorbuilder: %w", err)
-			}
-
-			if err := nsb.ImportFrom(oldsb, symlink); err != nil {
-				return err
-			}
-			if err := lr.Close(); err != nil {
-				return xerrors.Errorf("unlocking repo after preseal migration: %w", err)
-			}
+			panic("persist last sector id somehow")
 		}
 
 		if err := storageMinerInit(ctx, cctx, api, r); err != nil {
@@ -374,30 +343,8 @@ func storageMinerInit(ctx context.Context, cctx *cli.Context, api lapi.FullNode,
 				return err
 			}
 
-			c, err := lr.Config()
-			if err != nil {
-				return err
-			}
-
-			cfg, ok := c.(*config.StorageMiner)
-			if !ok {
-				return xerrors.Errorf("invalid config from repo, got: %T", c)
-			}
-
-			scfg := sectorbuilder.SimplePath(lr.Path())
-			if len(cfg.SectorBuilder.Storage) > 0 {
-				scfg = cfg.SectorBuilder.Storage
-			}
-
-			sbcfg, err := modules.SectorBuilderConfig(scfg, 2, false, false)(mds, api)
-			if err != nil {
-				return xerrors.Errorf("getting genesis miner sector builder config: %w", err)
-			}
-			sb, err := sectorbuilder.New(sbcfg, mds)
-			if err != nil {
-				return xerrors.Errorf("failed to set up sectorbuilder for genesis mining: %w", err)
-			}
-			epp := storage.NewElectionPoStProver(sb)
+			smgr := advmgr.New(lr)
+			epp := storage.NewElectionPoStProver(smgr)
 
 			m := miner.NewMiner(api, epp)
 			{

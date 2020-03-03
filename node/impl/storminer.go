@@ -3,25 +3,18 @@ package impl
 import (
 	"context"
 	"encoding/json"
-	"io"
-	"mime"
 	"net/http"
-	"os"
 	"strconv"
 
 	"github.com/filecoin-project/lotus/chain/types"
 
-	"github.com/filecoin-project/specs-actors/actors/abi"
-	"github.com/gorilla/mux"
-	files "github.com/ipfs/go-ipfs-files"
-
 	"github.com/filecoin-project/go-address"
 	"github.com/filecoin-project/go-sectorbuilder"
-	"github.com/filecoin-project/go-sectorbuilder/fs"
+	"github.com/filecoin-project/specs-actors/actors/abi"
+	"github.com/gorilla/mux"
 
 	"github.com/filecoin-project/lotus/api"
 	"github.com/filecoin-project/lotus/api/apistruct"
-	"github.com/filecoin-project/lotus/lib/tarutil"
 	"github.com/filecoin-project/lotus/miner"
 	"github.com/filecoin-project/lotus/storage"
 	"github.com/filecoin-project/lotus/storage/sectorblocks"
@@ -31,7 +24,7 @@ type StorageMinerAPI struct {
 	CommonAPI
 
 	SectorBuilderConfig *sectorbuilder.Config
-	SectorBuilder       sectorbuilder.Interface
+	//SectorBuilder       sectorbuilder.Interface
 	SectorBlocks        *sectorblocks.SectorBlocks
 
 	Miner      *storage.Miner
@@ -57,7 +50,8 @@ func (sm *StorageMinerAPI) ServeRemote(w http.ResponseWriter, r *http.Request) {
 }
 
 func (sm *StorageMinerAPI) remoteGetSector(w http.ResponseWriter, r *http.Request) {
-	vars := mux.Vars(r)
+	panic("todo")
+/*	vars := mux.Vars(r)
 
 	id, err := strconv.ParseUint(vars["id"], 10, 64)
 	if err != nil {
@@ -98,11 +92,12 @@ func (sm *StorageMinerAPI) remoteGetSector(w http.ResponseWriter, r *http.Reques
 	if _, err := io.Copy(w, rd); err != nil {
 		log.Error(err)
 		return
-	}
+	}*/
 }
 
 func (sm *StorageMinerAPI) remotePutSector(w http.ResponseWriter, r *http.Request) {
-	vars := mux.Vars(r)
+	panic("todo")
+/*	vars := mux.Vars(r)
 
 	id, err := strconv.ParseUint(vars["id"], 10, 64)
 	if err != nil {
@@ -159,13 +154,13 @@ func (sm *StorageMinerAPI) remotePutSector(w http.ResponseWriter, r *http.Reques
 
 	w.WriteHeader(200)
 
-	log.Infof("received %s sector (%s): %d bytes", vars["type"], vars["sname"], r.ContentLength)
+	log.Infof("received %s sector (%s): %d bytes", vars["type"], vars["sname"], r.ContentLength)*/
 }
-
+/*
 func (sm *StorageMinerAPI) WorkerStats(context.Context) (sectorbuilder.WorkerStats, error) {
 	stat := sm.SectorBuilder.WorkerStats()
 	return stat, nil
-}
+}*/
 
 func (sm *StorageMinerAPI) ActorAddress(context.Context) (address.Address, error) {
 	return sm.SectorBuilderConfig.Miner, nil
@@ -252,7 +247,7 @@ func (sm *StorageMinerAPI) SectorsRefs(context.Context) (map[string][]api.Sealed
 func (sm *StorageMinerAPI) SectorsUpdate(ctx context.Context, id abi.SectorNumber, state api.SectorState) error {
 	return sm.Miner.ForceSectorState(ctx, id, state)
 }
-
+/*
 func (sm *StorageMinerAPI) WorkerQueue(ctx context.Context, cfg sectorbuilder.WorkerCfg) (<-chan sectorbuilder.WorkerTask, error) {
 	return sm.SectorBuilder.AddWorker(ctx, cfg)
 }
@@ -260,5 +255,5 @@ func (sm *StorageMinerAPI) WorkerQueue(ctx context.Context, cfg sectorbuilder.Wo
 func (sm *StorageMinerAPI) WorkerDone(ctx context.Context, task uint64, res sectorbuilder.SealRes) error {
 	return sm.SectorBuilder.TaskDone(ctx, task, res)
 }
-
+*/
 var _ api.StorageMiner = &StorageMinerAPI{}

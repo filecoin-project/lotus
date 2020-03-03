@@ -12,7 +12,6 @@ import (
 	"golang.org/x/xerrors"
 
 	"github.com/filecoin-project/go-padreader"
-	"github.com/filecoin-project/go-sectorbuilder"
 	"github.com/filecoin-project/specs-actors/actors/abi"
 	"github.com/filecoin-project/specs-actors/actors/builtin/miner"
 	"github.com/filecoin-project/specs-actors/actors/crypto"
@@ -22,6 +21,7 @@ import (
 	"github.com/filecoin-project/lotus/chain/store"
 	"github.com/filecoin-project/lotus/chain/types"
 	"github.com/filecoin-project/lotus/lib/statemachine"
+	"github.com/filecoin-project/lotus/storage/sealmgr"
 )
 
 const SectorStorePrefix = "/sectors"
@@ -65,19 +65,19 @@ type Sealing struct {
 	maddr  address.Address
 	worker address.Address
 
-	sb      sectorbuilder.Interface
+	sealer  sealmgr.Manager
 	sectors *statemachine.StateGroup
 	tktFn   TicketFn
 }
 
-func New(api sealingApi, events *events.Events, maddr address.Address, worker address.Address, ds datastore.Batching, sb sectorbuilder.Interface, tktFn TicketFn) *Sealing {
+func New(api sealingApi, events *events.Events, maddr address.Address, worker address.Address, ds datastore.Batching, sealer sealmgr.Manager, tktFn TicketFn) *Sealing {
 	s := &Sealing{
 		api:    api,
 		events: events,
 
 		maddr:  maddr,
 		worker: worker,
-		sb:     sb,
+		sealer: sealer,
 		tktFn:  tktFn,
 	}
 
@@ -104,7 +104,7 @@ func (m *Sealing) AllocatePiece(size abi.UnpaddedPieceSize) (sectorID abi.Sector
 		return 0, 0, xerrors.Errorf("cannot allocate unpadded piece")
 	}
 
-	sid, err := m.sb.AcquireSectorNumber() // TODO: Put more than one thing in a sector
+	sid, err := m.sealer.NewSector() // TODO: Put more than one thing in a sector
 	if err != nil {
 		return 0, 0, xerrors.Errorf("acquiring sector ID: %w", err)
 	}
@@ -116,12 +116,12 @@ func (m *Sealing) AllocatePiece(size abi.UnpaddedPieceSize) (sectorID abi.Sector
 func (m *Sealing) SealPiece(ctx context.Context, size abi.UnpaddedPieceSize, r io.Reader, sectorID abi.SectorNumber, dealID abi.DealID) error {
 	log.Infof("Seal piece for deal %d", dealID)
 
-	ppi, err := m.sb.AddPiece(ctx, size, sectorID, r, []abi.UnpaddedPieceSize{})
+	ppi, err := m.sealer.AddPiece(ctx, size, sectorID, r, []abi.UnpaddedPieceSize{})
 	if err != nil {
 		return xerrors.Errorf("adding piece to sector: %w", err)
 	}
 
-	_, rt, err := api.ProofTypeFromSectorSize(m.sb.SectorSize())
+	_, rt, err := api.ProofTypeFromSectorSize(m.sealer.SectorSize())
 	if err != nil {
 		return xerrors.Errorf("bad sector size: %w", err)
 	}

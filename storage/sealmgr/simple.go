@@ -26,15 +26,13 @@ type Simple struct {
 	worker      Worker
 }
 
-func NewSimpleManager(sc *storedcounter.StoredCounter, maddr address.Address, sb sectorbuilder.Basic) (*Simple, error) {
-	mid, err := address.IDFromAddress(maddr)
-	if err != nil {
-		return nil, xerrors.Errorf("get miner id: %w", err)
-	}
+func (s *Simple) SectorSize() abi.SectorSize {
+	panic("implement me")
+}
 
+func NewSimpleManager(sc *storedcounter.StoredCounter, maddr address.Address, sb sectorbuilder.Basic) (*Simple, error) {
 	w := &LocalWorker{
-		sealer: sb,
-		mid:    abi.ActorID(mid),
+		sb,
 	}
 
 	return &Simple{
@@ -44,49 +42,71 @@ func NewSimpleManager(sc *storedcounter.StoredCounter, maddr address.Address, sb
 	}, nil
 }
 
-func (s *Simple) NewSector() (SectorInfo, error) {
+func (s *Simple) NewSector() (abi.SectorNumber, error) {
 	n, err := s.sc.Next()
 	if err != nil {
-		return SectorInfo{}, xerrors.Errorf("acquire sector number: %w", err)
+		return 0, xerrors.Errorf("acquire sector number: %w", err)
 	}
 
-	mid, err := address.IDFromAddress(s.maddr)
-	if err != nil {
-		return SectorInfo{}, xerrors.Errorf("get miner id: %w", err)
-	}
-
-	return SectorInfo{
-		ID: abi.SectorID{
-			Miner:  abi.ActorID(mid),
-			Number: abi.SectorNumber(n),
-		},
-	}, nil
+	return abi.SectorNumber(n), nil
 }
 
-func (s *Simple) AddPiece(ctx context.Context, si SectorInfo, sz abi.UnpaddedPieceSize, r io.Reader) (cid.Cid, SectorInfo, error) {
+func (s *Simple) AddPiece(ctx context.Context, sz abi.UnpaddedPieceSize, sectorNum abi.SectorNumber, r io.Reader, existingPieces []abi.UnpaddedPieceSize) (abi.PieceInfo, error) {
 	s.rateLimiter.Lock()
 	defer s.rateLimiter.Unlock()
 
-	return s.worker.AddPiece(ctx, si, sz, r)
+	return s.worker.AddPiece(ctx, sz, sectorNum, r, existingPieces)
 }
 
-func (s *Simple) RunSeal(ctx context.Context, task TaskType, si SectorInfo) (SectorInfo, error) {
+func (s *Simple) SealPreCommit1(ctx context.Context, sectorNum abi.SectorNumber, ticket abi.SealRandomness, pieces []abi.PieceInfo) (out []byte, err error) {
 	s.rateLimiter.Lock()
 	defer s.rateLimiter.Unlock()
 
-	return s.worker.Run(ctx, task, si)
+	return s.worker.SealPreCommit1(ctx, sectorNum, ticket, pieces)
+}
+
+func (s *Simple) SealPreCommit2(ctx context.Context, sectorNum abi.SectorNumber, phase1Out []byte) (sealedCID cid.Cid, unsealedCID cid.Cid, err error) {
+	s.rateLimiter.Lock()
+	defer s.rateLimiter.Unlock()
+
+	return s.worker.SealPreCommit2(ctx, sectorNum, phase1Out)
+}
+
+func (s *Simple) SealCommit1(ctx context.Context, sectorNum abi.SectorNumber, ticket abi.SealRandomness, seed abi.InteractiveSealRandomness, pieces []abi.PieceInfo, sealedCID cid.Cid, unsealedCID cid.Cid) (output []byte, err error) {
+	s.rateLimiter.Lock()
+	defer s.rateLimiter.Unlock()
+
+	return s.worker.SealCommit1(ctx, sectorNum, ticket, seed, pieces, sealedCID, unsealedCID)
+}
+
+func (s *Simple) SealCommit2(ctx context.Context, sectorNum abi.SectorNumber, phase1Out []byte) (proof []byte, err error) {
+	s.rateLimiter.Lock()
+	defer s.rateLimiter.Unlock()
+
+	return s.worker.SealCommit2(ctx, sectorNum, phase1Out)
+}
+
+func (s *Simple) FinalizeSector(ctx context.Context, sectorNum abi.SectorNumber) error {
+	s.rateLimiter.Lock()
+	defer s.rateLimiter.Unlock()
+
+	return s.worker.FinalizeSector(ctx, sectorNum)
 }
 
 func (s *Simple) GenerateEPostCandidates(sectorInfo []abi.SectorInfo, challengeSeed abi.PoStRandomness, faults []abi.SectorNumber) ([]ffi.PoStCandidateWithTicket, error) {
-	return s.worker.(*LocalWorker).sealer.GenerateEPostCandidates(sectorInfo, challengeSeed, faults)
+	return s.worker.GenerateEPostCandidates(sectorInfo, challengeSeed, faults)
 }
 
 func (s *Simple) GenerateFallbackPoSt(sectorInfo []abi.SectorInfo, challengeSeed abi.PoStRandomness, faults []abi.SectorNumber) ([]ffi.PoStCandidateWithTicket, []abi.PoStProof, error) {
-	return s.worker.(*LocalWorker).sealer.GenerateFallbackPoSt(sectorInfo, challengeSeed, faults)
+	return s.worker.GenerateFallbackPoSt(sectorInfo, challengeSeed, faults)
 }
 
 func (s *Simple) ComputeElectionPoSt(sectorInfo []abi.SectorInfo, challengeSeed abi.PoStRandomness, winners []abi.PoStCandidate) ([]abi.PoStProof, error) {
-	return s.worker.(*LocalWorker).sealer.ComputeElectionPoSt(sectorInfo, challengeSeed, winners)
+	return s.worker.ComputeElectionPoSt(sectorInfo, challengeSeed, winners)
+}
+
+func (s *Simple) ReadPieceFromSealedSector(context.Context, abi.SectorNumber, sectorbuilder.UnpaddedByteIndex, abi.UnpaddedPieceSize, abi.SealRandomness, cid.Cid) (io.ReadCloser, error) {
+	panic("todo")
 }
 
 var _ Manager = &Simple{}

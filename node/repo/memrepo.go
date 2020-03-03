@@ -12,6 +12,7 @@ import (
 	"golang.org/x/xerrors"
 
 	"github.com/filecoin-project/lotus/chain/types"
+	"github.com/filecoin-project/lotus/node/config"
 )
 
 type MemRepo struct {
@@ -36,6 +37,14 @@ type lockedMemRepo struct {
 
 	tempDir string
 	token   *byte
+}
+
+func (lmem *lockedMemRepo) GetStorage() (config.StorageConfig, error) {
+	panic("implement me")
+}
+
+func (lmem *lockedMemRepo) SetStorage(config.StorageConfig) error {
+	panic("implement me")
 }
 
 func (lmem *lockedMemRepo) Path() string {
@@ -167,6 +176,10 @@ func (lmem *lockedMemRepo) Config() (interface{}, error) {
 		return nil, err
 	}
 	return lmem.mem.configF(lmem.t), nil
+}
+
+func (lmem *lockedMemRepo) Storage() (config.StorageConfig, error) {
+	panic("implement me")
 }
 
 func (lmem *lockedMemRepo) SetAPIEndpoint(ma multiaddr.Multiaddr) error {

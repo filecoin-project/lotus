@@ -22,7 +22,7 @@ const StartConfidence = 4 // TODO: config
 
 type FPoStScheduler struct {
 	api storageMinerApi
-	sb  sectorbuilder.Interface
+	sb  sectorbuilder.Prover
 
 	actor  address.Address
 	worker address.Address
@@ -37,7 +37,7 @@ type FPoStScheduler struct {
 	failLk sync.Mutex
 }
 
-func NewFPoStScheduler(api storageMinerApi, sb sectorbuilder.Interface, actor address.Address, worker address.Address) *FPoStScheduler {
+func NewFPoStScheduler(api storageMinerApi, sb sectorbuilder.Prover, actor address.Address, worker address.Address) *FPoStScheduler {
 	return &FPoStScheduler{api: api, sb: sb, actor: actor, worker: worker}
 }
 

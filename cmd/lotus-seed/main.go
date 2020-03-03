@@ -6,18 +6,12 @@ import (
 	"fmt"
 	"io/ioutil"
 	"os"
-	"path/filepath"
 
-	"github.com/ipfs/go-datastore"
-	"github.com/ipfs/go-datastore/namespace"
-	badger "github.com/ipfs/go-ds-badger2"
 	logging "github.com/ipfs/go-log/v2"
 	"github.com/mitchellh/go-homedir"
-	"golang.org/x/xerrors"
 	"gopkg.in/urfave/cli.v2"
 
 	"github.com/filecoin-project/go-address"
-	"github.com/filecoin-project/go-sectorbuilder"
 	"github.com/filecoin-project/specs-actors/actors/abi"
 	"github.com/filecoin-project/specs-actors/actors/abi/big"
 
@@ -38,7 +32,6 @@ func main() {
 
 		preSealCmd,
 		aggregateManifestsCmd,
-		aggregateSectorDirsCmd,
 	}
 
 	app := &cli.App{
@@ -170,149 +163,6 @@ var aggregateManifestsCmd = &cli.Command{
 		}
 
 		fmt.Println(string(blob))
-		return nil
-	},
-}
-
-var aggregateSectorDirsCmd = &cli.Command{
-	Name:  "aggregate-sector-dirs",
-	Usage: "aggregate a set of preseal manifests into a single file",
-	Flags: []cli.Flag{
-		&cli.StringFlag{
-			Name:  "miner",
-			Usage: "Specify address of miner to aggregate sectorbuilders for",
-		},
-		&cli.StringFlag{
-			Name:  "dest",
-			Usage: "specify directory to create aggregate sector store in",
-		},
-		&cli.Uint64Flag{
-			Name:  "sector-size",
-			Usage: "specify size of sectors to aggregate",
-			Value: 32 * 1024 * 1024 * 1024,
-		},
-	},
-	Action: func(cctx *cli.Context) error {
-		if cctx.String("miner") == "" {
-			return fmt.Errorf("must specify miner address with --miner")
-		}
-		if cctx.String("dest") == "" {
-			return fmt.Errorf("must specify dest directory with --dest")
-		}
-
-		maddr, err := address.NewFromString(cctx.String("miner"))
-		if err != nil {
-			return err
-		}
-
-		destdir, err := homedir.Expand(cctx.String("dest"))
-		if err != nil {
-			return err
-		}
-
-		if err := os.MkdirAll(destdir, 0755); err != nil {
-			return err
-		}
-
-		agmds, err := badger.NewDatastore(filepath.Join(destdir, "badger"), nil)
-		if err != nil {
-			return err
-		}
-		defer agmds.Close()
-
-		ssize := abi.SectorSize(cctx.Uint64("sector-size"))
-
-		ppt, spt, err := lapi.ProofTypeFromSectorSize(abi.SectorSize(cctx.Uint64("sector-size")))
-		if err != nil {
-			return err
-		}
-
-		agsb, err := sectorbuilder.New(&sectorbuilder.Config{
-			Miner:         maddr,
-			SealProofType: spt,
-			PoStProofType: ppt,
-			Paths:         sectorbuilder.SimplePath(destdir),
-			WorkerThreads: 2,
-		}, namespace.Wrap(agmds, datastore.NewKey("/sectorbuilder")))
-		if err != nil {
-			return err
-		}
-
-		var aggrGenMiner genesis.Miner
-		var highestSectorID abi.SectorNumber
-		for _, dir := range cctx.Args().Slice() {
-			dir, err := homedir.Expand(dir)
-			if err != nil {
-				return xerrors.Errorf("failed to expand %q: %w", dir, err)
-			}
-
-			st, err := os.Stat(dir)
-			if err != nil {
-				return err
-			}
-			if !st.IsDir() {
-				return fmt.Errorf("%q was not a directory", dir)
-			}
-
-			fi, err := os.Open(filepath.Join(dir, "pre-seal-"+maddr.String()+".json"))
-			if err != nil {
-				return err
-			}
-
-			var genmm map[string]genesis.Miner
-			if err := json.NewDecoder(fi).Decode(&genmm); err != nil {
-				return err
-			}
-
-			genm, ok := genmm[maddr.String()]
-			if !ok {
-				return xerrors.Errorf("input data did not have our miner in it (%s)", maddr)
-			}
-
-			if genm.SectorSize != ssize {
-				return xerrors.Errorf("sector size mismatch in %q (%d != %d)", dir)
-			}
-
-			for _, s := range genm.Sectors {
-				if s.SectorID > highestSectorID {
-					highestSectorID = s.SectorID
-				}
-			}
-
-			aggrGenMiner = mergeGenMiners(aggrGenMiner, genm)
-
-			opts := badger.DefaultOptions
-			opts.ReadOnly = true
-			mds, err := badger.NewDatastore(filepath.Join(dir, "badger"), &opts)
-			if err != nil {
-				return err
-			}
-			defer mds.Close()
-
-			sb, err := sectorbuilder.New(&sectorbuilder.Config{
-				Miner:         maddr,
-				SealProofType: spt,
-				PoStProofType: ppt,
-				Paths:         sectorbuilder.SimplePath(dir),
-				WorkerThreads: 2,
-			}, namespace.Wrap(mds, datastore.NewKey("/sectorbuilder")))
-			if err != nil {
-				return err
-			}
-
-			if err := agsb.ImportFrom(sb, false); err != nil {
-				return xerrors.Errorf("importing sectors from %q failed: %w", dir, err)
-			}
-		}
-
-		if err := agsb.SetLastSectorNum(highestSectorID); err != nil {
-			return err
-		}
-
-		if err := seed.WriteGenesisMiner(maddr, destdir, &aggrGenMiner, nil); err != nil {
-			return err
-		}
-
 		return nil
 	},
 }

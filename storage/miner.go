@@ -13,6 +13,8 @@ import (
 	"golang.org/x/xerrors"
 
 	ffi "github.com/filecoin-project/filecoin-ffi"
+	"github.com/filecoin-project/lotus/storage/sealmgr"
+
 	"github.com/filecoin-project/go-sectorbuilder"
 	"github.com/filecoin-project/specs-actors/actors/abi"
 	"github.com/filecoin-project/specs-actors/actors/builtin/miner"
@@ -30,11 +32,11 @@ import (
 var log = logging.Logger("storageminer")
 
 type Miner struct {
-	api   storageMinerApi
-	h     host.Host
-	sb    sectorbuilder.Interface
-	ds    datastore.Batching
-	tktFn sealing.TicketFn
+	api    storageMinerApi
+	h      host.Host
+	sealer sealmgr.Manager
+	ds     datastore.Batching
+	tktFn  sealing.TicketFn
 
 	maddr  address.Address
 	worker address.Address
@@ -71,13 +73,13 @@ type storageMinerApi interface {
 	WalletHas(context.Context, address.Address) (bool, error)
 }
 
-func NewMiner(api storageMinerApi, maddr, worker address.Address, h host.Host, ds datastore.Batching, sb sectorbuilder.Interface, tktFn sealing.TicketFn) (*Miner, error) {
+func NewMiner(api storageMinerApi, maddr, worker address.Address, h host.Host, ds datastore.Batching, sealer sealmgr.Manager, tktFn sealing.TicketFn) (*Miner, error) {
 	m := &Miner{
-		api:   api,
-		h:     h,
-		sb:    sb,
-		ds:    ds,
-		tktFn: tktFn,
+		api:    api,
+		h:      h,
+		sealer: sealer,
+		ds:     ds,
+		tktFn:  tktFn,
 
 		maddr:  maddr,
 		worker: worker,
@@ -92,7 +94,7 @@ func (m *Miner) Run(ctx context.Context) error {
 	}
 
 	evts := events.NewEvents(ctx, m.api)
-	m.sealing = sealing.New(m.api, evts, m.maddr, m.worker, m.ds, m.sb, m.tktFn)
+	m.sealing = sealing.New(m.api, evts, m.maddr, m.worker, m.ds, m.sealer, m.tktFn)
 
 	go m.sealing.Run(ctx)
 
@@ -119,10 +121,10 @@ func (m *Miner) runPreflightChecks(ctx context.Context) error {
 }
 
 type SectorBuilderEpp struct {
-	sb sectorbuilder.Interface
+	prover sectorbuilder.Prover
 }
 
-func NewElectionPoStProver(sb sectorbuilder.Interface) *SectorBuilderEpp {
+func NewElectionPoStProver(sb sectorbuilder.Prover) *SectorBuilderEpp {
 	return &SectorBuilderEpp{sb}
 }
 
@@ -132,7 +134,7 @@ func (epp *SectorBuilderEpp) GenerateCandidates(ctx context.Context, ssi []abi.S
 	start := time.Now()
 	var faults []abi.SectorNumber // TODO
 
-	cds, err := epp.sb.GenerateEPostCandidates(ssi, rand, faults)
+	cds, err := epp.prover.GenerateEPostCandidates(ssi, rand, faults)
 	if err != nil {
 		return nil, xerrors.Errorf("failed to generate candidates: %w", err)
 	}
@@ -152,7 +154,7 @@ func (epp *SectorBuilderEpp) ComputeProof(ctx context.Context, ssi []abi.SectorI
 	}
 
 	start := time.Now()
-	proof, err := epp.sb.ComputeElectionPoSt(ssi, rand, owins)
+	proof, err := epp.prover.ComputeElectionPoSt(ssi, rand, owins)
 	if err != nil {
 		return nil, err
 	}

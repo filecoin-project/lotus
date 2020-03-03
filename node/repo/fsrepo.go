@@ -28,6 +28,7 @@ const (
 	fsAPI       = "api"
 	fsAPIToken  = "token"
 	fsConfig    = "config.toml"
+	fsStorageConfig = "storage.json"
 	fsDatastore = "datastore"
 	fsLock      = "repo.lock"
 	fsKeystore  = "keystore"
@@ -87,7 +88,7 @@ func (fsr *FsRepo) Exists() (bool, error) {
 
 func (fsr *FsRepo) Init(t RepoType) error {
 	exist, err := fsr.Exists()
-	if err != nil {
+	if err != nil{
 		return err
 	}
 	if exist {
@@ -274,6 +275,18 @@ func (fsr *fsLockedRepo) Config() (interface{}, error) {
 		return nil, err
 	}
 	return config.FromFile(fsr.join(fsConfig), defConfForType(fsr.repoType))
+}
+
+func (fsr *fsLockedRepo) GetStorage() (config.StorageConfig, error) {
+	c, err := config.StorageFromFile(fsr.join(fsStorageConfig), nil)
+	if err != nil {
+		return config.StorageConfig{}, err
+	}
+	return *c, nil
+}
+
+func (fsr *fsLockedRepo) SetStorage(c config.StorageConfig) error {
+	return config.WriteStorageFile(fsr.join(fsStorageConfig), c)
 }
 
 func (fsr *fsLockedRepo) SetAPIEndpoint(ma multiaddr.Multiaddr) error {
