@@ -11,7 +11,9 @@ import (
 
 	"github.com/filecoin-project/lotus/chain/actors"
 	"github.com/filecoin-project/lotus/chain/actors/aerrors"
-	"github.com/filecoin-project/lotus/chain/types"
+	"github.com/filecoin-project/specs-actors/actors/runtime"
+	"github.com/filecoin-project/specs-actors/actors/runtime/exitcode"
+	"github.com/filecoin-project/specs-actors/actors/util/adt"
 )
 
 type basicContract struct{}
@@ -58,19 +60,19 @@ func (b basicContract) Exports() []interface{} {
 	}
 }
 
-func (basicContract) InvokeSomething0(act *types.Actor, vmctx types.VMContext,
-	params *basicParams) ([]byte, aerrors.ActorError) {
-	return nil, aerrors.New(params.B, "params.B")
+func (basicContract) InvokeSomething0(rt runtime.Runtime, params *basicParams) *adt.EmptyValue {
+	rt.Abortf(exitcode.ExitCode(params.B), "params.B")
+	return nil
 }
 
-func (basicContract) BadParam(act *types.Actor, vmctx types.VMContext,
-	params *basicParams) ([]byte, aerrors.ActorError) {
-	return nil, aerrors.New(255, "bad params")
+func (basicContract) BadParam(rt runtime.Runtime, params *basicParams) *adt.EmptyValue {
+	rt.Abortf(255, "bad params")
+	return nil
 }
 
-func (basicContract) InvokeSomething10(act *types.Actor, vmctx types.VMContext,
-	params *basicParams) ([]byte, aerrors.ActorError) {
-	return nil, aerrors.New(params.B+10, "params.B")
+func (basicContract) InvokeSomething10(rt runtime.Runtime, params *basicParams) *adt.EmptyValue {
+	rt.Abortf(exitcode.ExitCode(params.B+10), "params.B")
+	return nil
 }
 
 func TestInvokerBasic(t *testing.T) {
