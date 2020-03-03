@@ -5,7 +5,6 @@ import (
 
 	"github.com/filecoin-project/specs-actors/actors/crypto"
 
-	"github.com/filecoin-project/go-sectorbuilder/fs"
 	"github.com/filecoin-project/specs-actors/actors/abi"
 	"github.com/filecoin-project/specs-actors/actors/builtin"
 	"github.com/filecoin-project/specs-actors/actors/builtin/miner"
@@ -26,7 +25,7 @@ func (m *Sealing) handlePacking(ctx statemachine.Context, sector SectorInfo) err
 		allocated += piece.Size
 	}
 
-	ubytes := abi.PaddedPieceSize(m.sb.SectorSize()).Unpadded()
+	ubytes := abi.PaddedPieceSize(m.sealer.SectorSize()).Unpadded()
 
 	if allocated > ubytes {
 		return xerrors.Errorf("too much data in sector: %d > %d", allocated, ubytes)
@@ -70,7 +69,12 @@ func (m *Sealing) handleUnsealed(ctx statemachine.Context, sector SectorInfo) er
 		return ctx.Send(SectorSealFailed{xerrors.Errorf("getting ticket failed: %w", err)})
 	}
 
-	sealed, unsealed, err := m.sb.SealPreCommit(ctx.Context(), sector.SectorID, ticket.Value, sector.pieceInfos())
+	pc1o, err := m.sealer.SealPreCommit1(ctx.Context(), sector.SectorID, ticket.Value, sector.pieceInfos())
+	if err != nil {
+		return ctx.Send(SectorSealFailed{xerrors.Errorf("seal pre commit failed: %w", err)})
+	}
+
+	sealed, unsealed, err := m.sealer.SealPreCommit2(ctx.Context(), sector.SectorID, pc1o)
 	if err != nil {
 		return ctx.Send(SectorSealFailed{xerrors.Errorf("seal pre commit failed: %w", err)})
 	}
@@ -180,7 +184,12 @@ func (m *Sealing) handleCommitting(ctx statemachine.Context, sector SectorInfo) 
 
 	log.Infof("KOMIT %d %x(%d); %x(%d); %v; r:%x; d:%x", sector.SectorID, sector.Ticket.Value, sector.Ticket.Epoch, sector.Seed.Value, sector.Seed.Epoch, sector.pieceInfos(), sector.CommR, sector.CommD)
 
-	proof, err := m.sb.SealCommit(ctx.Context(), sector.SectorID, sector.Ticket.Value, sector.Seed.Value, sector.pieceInfos(), *sector.CommR, *sector.CommD)
+	c2in, err := m.sealer.SealCommit1(ctx.Context(), sector.SectorID, sector.Ticket.Value, sector.Seed.Value, sector.pieceInfos(), *sector.CommR, *sector.CommD)
+	if err != nil {
+		return ctx.Send(SectorComputeProofFailed{xerrors.Errorf("computing seal proof failed: %w", err)})
+	}
+
+	proof, err := m.sealer.SealCommit2(ctx.Context(), sector.SectorID, c2in)
 	if err != nil {
 		return ctx.Send(SectorComputeProofFailed{xerrors.Errorf("computing seal proof failed: %w", err)})
 	}
@@ -241,15 +250,8 @@ func (m *Sealing) handleCommitWait(ctx statemachine.Context, sector SectorInfo) 
 func (m *Sealing) handleFinalizeSector(ctx statemachine.Context, sector SectorInfo) error {
 	// TODO: Maybe wait for some finality
 
-	if err := m.sb.FinalizeSector(ctx.Context(), sector.SectorID); err != nil {
-		if !xerrors.Is(err, fs.ErrNoSuitablePath) {
-			return ctx.Send(SectorFinalizeFailed{xerrors.Errorf("finalize sector: %w", err)})
-		}
-		log.Warnf("finalize sector: %v", err)
-	}
-
-	if err := m.sb.DropStaged(ctx.Context(), sector.SectorID); err != nil {
-		return ctx.Send(SectorFinalizeFailed{xerrors.Errorf("drop staged: %w", err)})
+	if err := m.sealer.FinalizeSector(ctx.Context(), sector.SectorID); err != nil {
+		return ctx.Send(SectorFinalizeFailed{xerrors.Errorf("finalize sector: %w", err)})
 	}
 
 	return ctx.Send(SectorFinalized{})

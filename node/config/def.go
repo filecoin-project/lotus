@@ -3,8 +3,6 @@ package config
 import (
 	"encoding"
 	"time"
-
-	"github.com/filecoin-project/go-sectorbuilder/fs"
 )
 
 // Common is common config between full node and miner
@@ -25,7 +23,7 @@ type FullNode struct {
 type StorageMiner struct {
 	Common
 
-	SectorBuilder SectorBuilder
+	Storage Storage
 }
 
 // API contains configs for API endpoint
@@ -54,14 +52,8 @@ type Metrics struct {
 }
 
 // // Storage Miner
+type Storage struct {
 
-type SectorBuilder struct {
-	Path        string // TODO: remove // FORK (-ish)
-	Storage     []fs.PathConfig
-	WorkerCount uint
-
-	DisableLocalPreCommit bool
-	DisableLocalCommit    bool
 }
 
 func defCommon() Common {
@@ -95,9 +87,7 @@ func DefaultStorageMiner() *StorageMiner {
 	cfg := &StorageMiner{
 		Common: defCommon(),
 
-		SectorBuilder: SectorBuilder{
-			WorkerCount: 5,
-		},
+		Storage: Storage{},
 	}
 	cfg.Common.API.ListenAddress = "/ip4/127.0.0.1/tcp/2345/http"
 	return cfg
