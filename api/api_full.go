@@ -89,13 +89,13 @@ type FullNode interface {
 	// Other
 
 	// ClientImport imports file under the specified path into filestore
-	ClientImport(ctx context.Context, path string) (cid.Cid, error)
+	ClientImport(ctx context.Context, ref FileRef) (cid.Cid, error)
 	ClientStartDeal(ctx context.Context, params *StartDealParams) (*cid.Cid, error)
 	ClientGetDealInfo(context.Context, cid.Cid) (*DealInfo, error)
 	ClientListDeals(ctx context.Context) ([]DealInfo, error)
 	ClientHasLocal(ctx context.Context, root cid.Cid) (bool, error)
 	ClientFindData(ctx context.Context, root cid.Cid) ([]QueryOffer, error)
-	ClientRetrieve(ctx context.Context, order RetrievalOrder, path string) error
+	ClientRetrieve(ctx context.Context, order RetrievalOrder, ref FileRef) error
 	ClientQueryAsk(ctx context.Context, p peer.ID, miner address.Address) (*storagemarket.SignedStorageAsk, error)
 
 	// ClientUnimport removes references to the specified file from filestore
@@ -153,6 +153,11 @@ type FullNode interface {
 	PaychVoucherAdd(context.Context, address.Address, *paych.SignedVoucher, []byte, types.BigInt) (types.BigInt, error)
 	PaychVoucherList(context.Context, address.Address) ([]*paych.SignedVoucher, error)
 	PaychVoucherSubmit(context.Context, address.Address, *paych.SignedVoucher) (cid.Cid, error)
+}
+
+type FileRef struct {
+	Path  string
+	IsCAR bool
 }
 
 type MinerSectors struct {
