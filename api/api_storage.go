@@ -1,12 +1,14 @@
 package api
 
 import (
-	"bytes"
 	"context"
+
+	"github.com/ipfs/go-cid"
 
 	"github.com/filecoin-project/go-address"
 	"github.com/filecoin-project/specs-actors/actors/abi"
-	"github.com/ipfs/go-cid"
+
+	"github.com/filecoin-project/lotus/storage/sealmgr"
 )
 
 // alias because cbor-gen doesn't like non-alias types
@@ -103,30 +105,14 @@ type StorageMiner interface {
 
 	SectorsUpdate(context.Context, abi.SectorNumber, SectorState) error
 
-	WorkerStats(context.Context) (WorkerStats, error)
+	/*WorkerStats(context.Context) (sealsched.WorkerStats, error)*/
 
-	// WorkerQueue registers a remote worker
+	/*// WorkerQueue registers a remote worker
 	WorkerQueue(context.Context, WorkerCfg) (<-chan WorkerTask, error)
 
-	WorkerDone(ctx context.Context, task uint64, res SealRes) error
+	WorkerDone(ctx context.Context, task uint64, res SealRes) error*/
 }
 
-type WorkerStats struct {
-	Total int
-	Free  int
-
-	AddPieceWait  int
-	PreCommitWait int
-	CommitWait    int
-	UnsealWait    int
-}
-
-type WorkerTask struct {
-}
-type WorkerCfg struct {
-	NoPreCommit bool
-	NoCommit    bool
-}
 type SealRes struct {
 	Err   string
 	GoErr error `json:"-"`
@@ -150,8 +136,8 @@ type SectorInfo struct {
 	CommR    *cid.Cid
 	Proof    []byte
 	Deals    []abi.DealID
-	Ticket   SealTicket
-	Seed     SealSeed
+	Ticket   sealmgr.SealTicket
+	Seed     sealmgr.SealSeed
 	Retries  uint64
 
 	LastErr string
@@ -167,22 +153,4 @@ type SealedRef struct {
 
 type SealedRefs struct {
 	Refs []SealedRef
-}
-
-type SealTicket struct {
-	Value abi.SealRandomness
-	Epoch abi.ChainEpoch
-}
-
-type SealSeed struct {
-	Value abi.InteractiveSealRandomness
-	Epoch abi.ChainEpoch
-}
-
-func (st *SealTicket) Equals(ost *SealTicket) bool {
-	return bytes.Equal(st.Value, ost.Value) && st.Epoch == ost.Epoch
-}
-
-func (st *SealSeed) Equals(ost *SealSeed) bool {
-	return bytes.Equal(st.Value, ost.Value) && st.Epoch == ost.Epoch
 }
