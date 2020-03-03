@@ -129,34 +129,35 @@ func (sm *StateManager) ApplyBlocks(ctx context.Context, pstate cid.Cid, bms []B
 		return cid.Undef, cid.Undef, xerrors.Errorf("instantiating VM failed: %w", err)
 	}
 
-	rewardActor, err := vmi.StateTree().GetActor(builtin.RewardActorAddr)
-	if err != nil {
-		return cid.Undef, cid.Undef, xerrors.Errorf("failed to get network actor: %w", err)
-	}
-	reward := vm.MiningReward(rewardActor.Balance)
-	for _, b := range bms {
-		rewardActor, err = vmi.StateTree().GetActor(builtin.RewardActorAddr)
+	/*
+		rewardActor, err := vmi.StateTree().GetActor(builtin.RewardActorAddr)
 		if err != nil {
 			return cid.Undef, cid.Undef, xerrors.Errorf("failed to get network actor: %w", err)
 		}
-		vmi.SetBlockMiner(b.Miner)
+		reward := vm.MiningReward(rewardActor.Balance)
+		for _, b := range bms {
+			rewardActor, err = vmi.StateTree().GetActor(builtin.RewardActorAddr)
+			if err != nil {
+				return cid.Undef, cid.Undef, xerrors.Errorf("failed to get network actor: %w", err)
+			}
+			vmi.SetBlockMiner(b.Miner)
 
-		owner, err := GetMinerOwner(ctx, sm, pstate, b.Miner)
-		if err != nil {
-			return cid.Undef, cid.Undef, xerrors.Errorf("failed to get owner for miner %s: %w", b.Miner, err)
+			owner, err := GetMinerOwner(ctx, sm, pstate, b.Miner)
+			if err != nil {
+				return cid.Undef, cid.Undef, xerrors.Errorf("failed to get owner for miner %s: %w", b.Miner, err)
+			}
+
+			act, err := vmi.StateTree().GetActor(owner)
+			if err != nil {
+				return cid.Undef, cid.Undef, xerrors.Errorf("failed to get miner owner actor")
+			}
+
+			if err := vm.Transfer(rewardActor, act, reward); err != nil {
+				return cid.Undef, cid.Undef, xerrors.Errorf("failed to deduct funds from network actor: %w", err)
+			}
 		}
+	*/
 
-		act, err := vmi.StateTree().GetActor(owner)
-		if err != nil {
-			return cid.Undef, cid.Undef, xerrors.Errorf("failed to get miner owner actor")
-		}
-
-		if err := vm.Transfer(rewardActor, act, reward); err != nil {
-			return cid.Undef, cid.Undef, xerrors.Errorf("failed to deduct funds from network actor: %w", err)
-		}
-	}
-
-	// TODO: can't use method from chainstore because it doesnt let us know who the block miners were
 	applied := make(map[address.Address]uint64)
 	balances := make(map[address.Address]types.BigInt)
 

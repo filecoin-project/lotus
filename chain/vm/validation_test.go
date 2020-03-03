@@ -8,7 +8,6 @@ import (
 
 	suites "github.com/filecoin-project/chain-validation/suites"
 	"github.com/filecoin-project/chain-validation/suites/message"
-	"github.com/filecoin-project/chain-validation/suites/tipset"
 
 	factory "github.com/filecoin-project/lotus/chain/validation"
 )
@@ -35,22 +34,13 @@ var TestSuiteSkipper TestSkipper
 func init() {
 	// initialize the test skipper with tests being skipped
 	TestSuiteSkipper = TestSkipper{testSkips: []suites.TestCase{
-		// Fails since deprecated network actor is required.
-		tipset.TestBlockMessageInfoApplication,
 
-		// Fails because ApplyMessage returns error instead of message receipt with unsuccessful exit code.
-		message.TestValueTransferSimple,
-		// Fails because ApplyMessage returns error instead of message receipt with unsuccessful exit code.
-		message.TestValueTransferAdvance,
-		// Fails because ApplyMessage returns error instead of message receipt with unsuccessful exit code.
-		message.TestAccountActorCreation,
-
-		// Fails due to state initialization
+		// Fails due to gas mismatches
 		message.TestPaych,
 		// Fails due to state initialization
 		message.TestMultiSigActor,
 		// Fails due to state initialization
-		message.TestMessageApplicationEdgecases,
+		//message.TestMessageApplicationEdgecases,
 	}}
 }
 

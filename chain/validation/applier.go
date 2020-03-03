@@ -82,7 +82,7 @@ func (a *Applier) ApplyTipSetMessages(state vstate.VMWrapper, blocks []vtypes.Bl
 	}
 
 	var receipts []vtypes.MessageReceipt
-	_, _, err := sm.ApplyBlocks(context.TODO(), state.Root(), bms, epoch, &randWrapper{rnd}, func(c cid.Cid, msg *types.Message, ret *vm.ApplyRet) error {
+	sroot, _, err := sm.ApplyBlocks(context.TODO(), state.Root(), bms, epoch, &randWrapper{rnd}, func(c cid.Cid, msg *types.Message, ret *vm.ApplyRet) error {
 		receipts = append(receipts, vtypes.MessageReceipt{
 			ExitCode:    exitcode.ExitCode(ret.ExitCode),
 			ReturnValue: ret.Return,
@@ -91,10 +91,11 @@ func (a *Applier) ApplyTipSetMessages(state vstate.VMWrapper, blocks []vtypes.Bl
 		})
 		return nil
 	})
-
 	if err != nil {
 		return nil, err
 	}
+
+	state.(*StateWrapper).stateRoot = sroot
 
 	return receipts, nil
 }
