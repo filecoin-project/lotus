@@ -103,8 +103,6 @@ func cidToCommR(c cid.Cid) [32]byte {
 func (ss *syscallShim) VerifySeal(info abi.SealVerifyInfo) error {
 	//_, span := trace.StartSpan(ctx, "ValidatePoRep")
 	//defer span.End()
-	// FIXME: sectorSize has been removed from the specs-actors syscall interface but is still required here.
-	ssize := abi.SectorSize(0)
 
 	miner, err := address.NewIDAddress(uint64(info.Miner))
 	if err != nil {

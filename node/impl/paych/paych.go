@@ -7,7 +7,6 @@ import (
 	"github.com/filecoin-project/specs-actors/actors/builtin"
 	"github.com/filecoin-project/specs-actors/actors/builtin/paych"
 	"github.com/ipfs/go-cid"
-	cid "github.com/ipfs/go-cid/_rsrch/cidiface"
 	"go.uber.org/fx"
 	"golang.org/x/xerrors"
 
