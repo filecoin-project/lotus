@@ -28,6 +28,8 @@ var _ vstate.VMWrapper = &StateWrapper{}
 type StateWrapper struct {
 	// The blockstore underlying the state tree and storage.
 	bs blockstore.Blockstore
+
+	ds datastore.Batching
 	// HAMT-CBOR store on top of the blockstore.
 	cst cbor.IpldStore
 
@@ -52,7 +54,12 @@ func NewState() *StateWrapper {
 	if err != nil {
 		panic(err)
 	}
-	return &StateWrapper{bs, cst, root}
+	return &StateWrapper{
+		bs:        bs,
+		ds:        datastore.NewMapDatastore(),
+		cst:       cst,
+		stateRoot: root,
+	}
 }
 
 func (s *StateWrapper) Root() cid.Cid {

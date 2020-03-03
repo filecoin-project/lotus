@@ -115,41 +115,16 @@ func (sm *StateManager) TipSetState(ctx context.Context, ts *types.TipSet) (st c
 	return st, rec, nil
 }
 
-func (sm *StateManager) computeTipSetState(ctx context.Context, blks []*types.BlockHeader, cb func(cid.Cid, *types.Message, *vm.ApplyRet) error) (cid.Cid, cid.Cid, error) {
-	ctx, span := trace.StartSpan(ctx, "computeTipSetState")
-	defer span.End()
+type BlockMessages struct {
+	Miner         address.Address
+	BlsMessages   []store.ChainMsg
+	SecpkMessages []store.ChainMsg
+}
 
-	for i := 0; i < len(blks); i++ {
-		for j := i + 1; j < len(blks); j++ {
-			if blks[i].Miner == blks[j].Miner {
-				return cid.Undef, cid.Undef,
-					xerrors.Errorf("duplicate miner in a tipset (%s %s)",
-						blks[i].Miner, blks[j].Miner)
-			}
-		}
-	}
+type ExecCallback func(cid.Cid, *types.Message, *vm.ApplyRet) error
 
-	pstate := blks[0].ParentStateRoot
-	if len(blks[0].Parents) > 0 { // don't support forks on genesis
-		parent, err := sm.cs.GetBlock(blks[0].Parents[0])
-		if err != nil {
-			return cid.Undef, cid.Undef, xerrors.Errorf("getting parent block: %w", err)
-		}
-
-		pstate, err = sm.handleStateForks(ctx, blks[0].ParentStateRoot, blks[0].Height, parent.Height)
-		if err != nil {
-			return cid.Undef, cid.Undef, xerrors.Errorf("error handling state forks: %w", err)
-		}
-	}
-
-	cids := make([]cid.Cid, len(blks))
-	for i, v := range blks {
-		cids[i] = v.Cid()
-	}
-
-	r := store.NewChainRand(sm.cs, cids, blks[0].Height)
-
-	vmi, err := sm.newVM(pstate, blks[0].Height, r, address.Undef, sm.cs.Blockstore(), sm.cs.VMSys())
+func (sm *StateManager) ApplyBlocks(ctx context.Context, pstate cid.Cid, bms []BlockMessages, epoch abi.ChainEpoch, r vm.Rand, cb ExecCallback) (cid.Cid, cid.Cid, error) {
+	vmi, err := sm.newVM(pstate, epoch, r, address.Undef, sm.cs.Blockstore(), sm.cs.VMSys())
 	if err != nil {
 		return cid.Undef, cid.Undef, xerrors.Errorf("instantiating VM failed: %w", err)
 	}
@@ -159,7 +134,7 @@ func (sm *StateManager) computeTipSetState(ctx context.Context, blks []*types.Bl
 		return cid.Undef, cid.Undef, xerrors.Errorf("failed to get network actor: %w", err)
 	}
 	reward := vm.MiningReward(rewardActor.Balance)
-	for _, b := range blks {
+	for _, b := range bms {
 		rewardActor, err = vmi.StateTree().GetActor(builtin.RewardActorAddr)
 		if err != nil {
 			return cid.Undef, cid.Undef, xerrors.Errorf("failed to get network actor: %w", err)
@@ -199,21 +174,10 @@ func (sm *StateManager) computeTipSetState(ctx context.Context, blks []*types.Bl
 	}
 
 	var receipts []cbg.CBORMarshaler
-	for _, b := range blks {
+	for _, b := range bms {
 		vmi.SetBlockMiner(b.Miner)
 
-		bms, sms, err := sm.cs.MessagesForBlock(b)
-		if err != nil {
-			return cid.Undef, cid.Undef, xerrors.Errorf("failed to get messages for block: %w", err)
-		}
-
-		cmsgs := make([]store.ChainMsg, 0, len(bms)+len(sms))
-		for _, m := range bms {
-			cmsgs = append(cmsgs, m)
-		}
-		for _, sm := range sms {
-			cmsgs = append(cmsgs, sm)
-		}
+		cmsgs := append(b.BlsMessages, b.SecpkMessages...)
 
 		for _, cm := range cmsgs {
 			m := cm.VMMessage()
@@ -281,6 +245,68 @@ func (sm *StateManager) computeTipSetState(ctx context.Context, blks []*types.Bl
 	}
 
 	return st, rectroot, nil
+
+}
+
+func (sm *StateManager) computeTipSetState(ctx context.Context, blks []*types.BlockHeader, cb ExecCallback) (cid.Cid, cid.Cid, error) {
+	ctx, span := trace.StartSpan(ctx, "computeTipSetState")
+	defer span.End()
+
+	for i := 0; i < len(blks); i++ {
+		for j := i + 1; j < len(blks); j++ {
+			if blks[i].Miner == blks[j].Miner {
+				return cid.Undef, cid.Undef,
+					xerrors.Errorf("duplicate miner in a tipset (%s %s)",
+						blks[i].Miner, blks[j].Miner)
+			}
+		}
+	}
+
+	pstate := blks[0].ParentStateRoot
+	if len(blks[0].Parents) > 0 { // don't support forks on genesis
+		parent, err := sm.cs.GetBlock(blks[0].Parents[0])
+		if err != nil {
+			return cid.Undef, cid.Undef, xerrors.Errorf("getting parent block: %w", err)
+		}
+
+		pstate, err = sm.handleStateForks(ctx, blks[0].ParentStateRoot, blks[0].Height, parent.Height)
+		if err != nil {
+			return cid.Undef, cid.Undef, xerrors.Errorf("error handling state forks: %w", err)
+		}
+	}
+
+	cids := make([]cid.Cid, len(blks))
+	for i, v := range blks {
+		cids[i] = v.Cid()
+	}
+
+	r := store.NewChainRand(sm.cs, cids, blks[0].Height)
+
+	var blkmsgs []BlockMessages
+	for _, b := range blks {
+		bms, sms, err := sm.cs.MessagesForBlock(b)
+		if err != nil {
+			return cid.Undef, cid.Undef, xerrors.Errorf("failed to get messages for block: %w", err)
+		}
+
+		bm := BlockMessages{
+			Miner:         b.Miner,
+			BlsMessages:   make([]store.ChainMsg, 0, len(bms)),
+			SecpkMessages: make([]store.ChainMsg, 0, len(sms)),
+		}
+
+		for _, m := range bms {
+			bm.BlsMessages = append(bm.BlsMessages, m)
+		}
+
+		for _, m := range sms {
+			bm.SecpkMessages = append(bm.SecpkMessages, m)
+		}
+
+		blkmsgs = append(blkmsgs, bm)
+	}
+
+	return sm.ApplyBlocks(ctx, pstate, blkmsgs, abi.ChainEpoch(blks[0].Height), r, cb)
 }
 
 func (sm *StateManager) parentState(ts *types.TipSet) cid.Cid {

@@ -6,12 +6,15 @@ import (
 	"github.com/filecoin-project/specs-actors/actors/abi"
 	"github.com/filecoin-project/specs-actors/actors/crypto"
 	"github.com/filecoin-project/specs-actors/actors/runtime/exitcode"
+	"github.com/ipfs/go-cid"
 
 	"github.com/filecoin-project/go-sectorbuilder"
 
 	vtypes "github.com/filecoin-project/chain-validation/chain/types"
 	vstate "github.com/filecoin-project/chain-validation/state"
 
+	"github.com/filecoin-project/lotus/chain/stmgr"
+	"github.com/filecoin-project/lotus/chain/store"
 	"github.com/filecoin-project/lotus/chain/types"
 	"github.com/filecoin-project/lotus/chain/vm"
 )
@@ -57,7 +60,51 @@ func (a *Applier) ApplyMessage(eCtx *vtypes.ExecutionContext, state vstate.VMWra
 }
 
 func (a *Applier) ApplyTipSetMessages(state vstate.VMWrapper, blocks []vtypes.BlockMessagesInfo, epoch abi.ChainEpoch, rnd vstate.RandomnessSource) ([]vtypes.MessageReceipt, error) {
-	panic("implement me")
+	sw := state.(*StateWrapper)
+	cs := store.NewChainStore(sw.bs, sw.ds, nil)
+	sm := stmgr.NewStateManager(cs)
+
+	var bms []stmgr.BlockMessages
+	for _, b := range blocks {
+		bm := stmgr.BlockMessages{
+			Miner: b.Miner,
+		}
+
+		for _, m := range b.BLSMessages {
+			bm.BlsMessages = append(bm.BlsMessages, toLotusMsg(m))
+		}
+
+		for _, m := range b.SECPMessages {
+			bm.SecpkMessages = append(bm.SecpkMessages, toLotusMsg(&m.Message))
+		}
+
+		bms = append(bms, bm)
+	}
+
+	var receipts []vtypes.MessageReceipt
+	_, _, err := sm.ApplyBlocks(context.TODO(), state.Root(), bms, epoch, &randWrapper{rnd}, func(c cid.Cid, msg *types.Message, ret *vm.ApplyRet) error {
+		receipts = append(receipts, vtypes.MessageReceipt{
+			ExitCode:    exitcode.ExitCode(ret.ExitCode),
+			ReturnValue: ret.Return,
+
+			GasUsed: ret.GasUsed,
+		})
+		return nil
+	})
+
+	if err != nil {
+		return nil, err
+	}
+
+	return receipts, nil
+}
+
+type randWrapper struct {
+	rnd vstate.RandomnessSource
+}
+
+func (w *randWrapper) GetRandomness(ctx context.Context, pers crypto.DomainSeparationTag, round int64, entropy []byte) ([]byte, error) {
+	return w.rnd.Randomness(ctx, pers, abi.ChainEpoch(round), entropy)
 }
 
 type vmRand struct {
