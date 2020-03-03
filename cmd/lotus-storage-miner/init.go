@@ -491,11 +491,11 @@ func configureStorageMiner(ctx context.Context, api lapi.FullNode, addr address.
 		return xerrors.Errorf("failed to get worker address: %w", err)
 	}
 
-	if recp.ExitCode != 0 {
-		return xerrors.Errorf("getWorkerAddr returned exit code %d", recp.ExitCode)
+	if recp.MsgRct.ExitCode != 0 {
+		return xerrors.Errorf("getWorkerAddr returned exit code %d", recp.MsgRct.ExitCode)
 	}
 
-	waddr, err := address.NewFromBytes(recp.Return)
+	waddr, err := address.NewFromBytes(recp.MsgRct.Return)
 	if err != nil {
 		return xerrors.Errorf("getWorkerAddr returned bad address: %w", err)
 	}

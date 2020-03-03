@@ -218,7 +218,7 @@ func (pm *Manager) CheckVoucherSpendable(ctx context.Context, ch address.Address
 		return false, err
 	}
 
-	if ret.ExitCode != 0 {
+	if ret.MsgRct.ExitCode != 0 {
 		return false, nil
 	}
 
@@ -235,11 +235,11 @@ func (pm *Manager) getPaychOwner(ctx context.Context, ch address.Address) (addre
 		return address.Undef, err
 	}
 
-	if ret.ExitCode != 0 {
-		return address.Undef, fmt.Errorf("failed to get payment channel owner (exit code %d)", ret.ExitCode)
+	if ret.MsgRct.ExitCode != 0 {
+		return address.Undef, fmt.Errorf("failed to get payment channel owner (exit code %d)", ret.MsgRct.ExitCode)
 	}
 
-	return address.NewFromBytes(ret.Return)
+	return address.NewFromBytes(ret.MsgRct.Return)
 }
 
 func (pm *Manager) AddVoucher(ctx context.Context, ch address.Address, sv *types.SignedVoucher, proof []byte, minDelta types.BigInt) (types.BigInt, error) {

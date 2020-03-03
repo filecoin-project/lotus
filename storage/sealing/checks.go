@@ -89,11 +89,11 @@ func checkSeal(ctx context.Context, maddr address.Address, si SectorInfo, api se
 	if err != nil {
 		return &ErrApi{xerrors.Errorf("calling ComputeDataCommitment: %w", err)}
 	}
-	if r.ExitCode != 0 {
-		return &ErrBadCommD{xerrors.Errorf("receipt for ComputeDataCommitment had exit code %d", r.ExitCode)}
+	if r.MsgRct.ExitCode != 0 {
+		return &ErrBadCommD{xerrors.Errorf("receipt for ComputeDataCommitment had exit code %d", r.MsgRct.ExitCode)}
 	}
-	if string(r.Return) != string(si.CommD) {
-		return &ErrBadCommD{xerrors.Errorf("on chain CommD differs from sector: %x != %x", r.Return, si.CommD)}
+	if string(r.MsgRct.Return) != string(si.CommD) {
+		return &ErrBadCommD{xerrors.Errorf("on chain CommD differs from sector: %x != %x", r.MsgRct.Return, si.CommD)}
 	}
 
 	if int64(head.Height())-int64(si.Ticket.BlockHeight+build.SealRandomnessLookback) > build.SealRandomnessLookbackLimit {

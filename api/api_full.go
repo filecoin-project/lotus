@@ -98,8 +98,8 @@ type FullNode interface {
 	//ClientListAsks() []Ask
 
 	// if tipset is nil, we'll use heaviest
-	StateCall(context.Context, *types.Message, types.TipSetKey) (*MethodCall, error)
-	StateReplay(context.Context, types.TipSetKey, cid.Cid) (*ReplayResults, error)
+	StateCall(context.Context, *types.Message, types.TipSetKey) (*InvocResult, error)
+	StateReplay(context.Context, types.TipSetKey, cid.Cid) (*InvocResult, error)
 	StateGetActor(ctx context.Context, actor address.Address, tsk types.TipSetKey) (*types.Actor, error)
 	StateReadState(ctx context.Context, act *types.Actor, tsk types.TipSetKey) (*ActorState, error)
 	StateListMessages(ctx context.Context, match *types.Message, tsk types.TipSetKey, toht uint64) ([]cid.Cid, error)
@@ -271,15 +271,10 @@ type RetrievalOrder struct {
 	MinerPeerID peer.ID
 }
 
-type ReplayResults struct {
-	Msg     *types.Message
-	Receipt *types.MessageReceipt
+type InvocResult struct {
+	Msg *types.Message
+	MsgRct *types.MessageReceipt
 	Error   string
-}
-
-type MethodCall struct {
-	types.MessageReceipt
-	Error string
 }
 
 type ActiveSync struct {

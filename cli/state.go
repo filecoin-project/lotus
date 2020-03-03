@@ -328,10 +328,10 @@ var stateReplaySetCmd = &cli.Command{
 		}
 
 		fmt.Println("Replay receipt:")
-		fmt.Printf("Exit code: %d\n", res.Receipt.ExitCode)
-		fmt.Printf("Return: %x\n", res.Receipt.Return)
-		fmt.Printf("Gas Used: %s\n", res.Receipt.GasUsed)
-		if res.Receipt.ExitCode != 0 {
+		fmt.Printf("Exit code: %d\n", res.MsgRct.ExitCode)
+		fmt.Printf("Return: %x\n", res.MsgRct.Return)
+		fmt.Printf("Gas Used: %s\n", res.MsgRct.GasUsed)
+		if res.MsgRct.ExitCode != 0 {
 			fmt.Printf("Error message: %q\n", res.Error)
 		}
 
@@ -894,11 +894,11 @@ var stateCallCmd = &cli.Command{
 			return fmt.Errorf("state call failed: %s", err)
 		}
 
-		if ret.ExitCode != 0 {
-			return fmt.Errorf("invocation failed (exit: %d): %s", ret.ExitCode, ret.Error)
+		if ret.MsgRct.ExitCode != 0 {
+			return fmt.Errorf("invocation failed (exit: %d): %s", ret.MsgRct.ExitCode, ret.Error)
 		}
 
-		s, err := formatOutput(cctx.String("ret"), ret.Return)
+		s, err := formatOutput(cctx.String("ret"), ret.MsgRct.Return)
 		if err != nil {
 			return fmt.Errorf("failed to format output: %s", err)
 		}
