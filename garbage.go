@@ -25,7 +25,7 @@ func (m *Sealing) pledgeSector(ctx context.Context, sectorID abi.SectorNumber, e
 
 	out := make([]Piece, len(sizes))
 	for i, size := range sizes {
-		ppi, err := m.sb.AddPiece(ctx, size, sectorID, m.pledgeReader(size), existingPieceSizes)
+		ppi, err := m.sealer.AddPiece(ctx, size, sectorID, m.pledgeReader(size), existingPieceSizes)
 		if err != nil {
 			return nil, xerrors.Errorf("add piece: %w", err)
 		}
@@ -47,15 +47,15 @@ func (m *Sealing) PledgeSector() error {
 		// this, as we run everything here async, and it's cancelled when the
 		// command exits
 
-		size := abi.PaddedPieceSize(m.sb.SectorSize()).Unpadded()
+		size := abi.PaddedPieceSize(m.sealer.SectorSize()).Unpadded()
 
-		rt, _, err := api.ProofTypeFromSectorSize(m.sb.SectorSize())
+		rt, _, err := api.ProofTypeFromSectorSize(m.sealer.SectorSize())
 		if err != nil {
 			log.Error(err)
 			return
 		}
 
-		sid, err := m.sb.AcquireSectorNumber()
+		sid, err := m.sealer.NewSector()
 		if err != nil {
 			log.Errorf("%+v", err)
 			return

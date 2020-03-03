@@ -1,9 +1,10 @@
 package sealing
 
 import (
-	"github.com/filecoin-project/lotus/api"
 	"github.com/filecoin-project/specs-actors/actors/abi"
 	"github.com/ipfs/go-cid"
+
+	"github.com/filecoin-project/lotus/api"
 )
 
 type Piece struct {
