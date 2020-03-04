@@ -1,6 +1,7 @@
 package cli
 
 import (
+	"bufio"
 	"encoding/hex"
 	"encoding/json"
 	"fmt"
@@ -205,7 +206,9 @@ var walletImport = &cli.Command{
 
 		var hexdata []byte
 		if !cctx.Args().Present() || cctx.Args().First() == "-" {
-			indata, err := ioutil.ReadAll(os.Stdin)
+			reader := bufio.NewReader(os.Stdin)
+			fmt.Print("Enter private key: ")
+			indata, err := reader.ReadBytes('\n')
 			if err != nil {
 				return err
 			}
