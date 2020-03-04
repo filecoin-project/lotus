@@ -33,7 +33,7 @@ var walletCmd = &cli.Command{
 var walletNew = &cli.Command{
 	Name:      "new",
 	Usage:     "Generate a new key of the given type",
-	ArgsUsage: "[bls|secp256k1]",
+	ArgsUsage: "[bls|secp256k1 (default secp256k1)]",
 	Action: func(cctx *cli.Context) error {
 		api, closer, err := GetFullNodeAPI(cctx)
 		if err != nil {
@@ -84,7 +84,7 @@ var walletList = &cli.Command{
 var walletBalance = &cli.Command{
 	Name:      "balance",
 	Usage:     "Get account balance",
-	ArgsUsage: "[account address]",
+	ArgsUsage: "[address]",
 	Action: func(cctx *cli.Context) error {
 		api, closer, err := GetFullNodeAPI(cctx)
 		if err != nil {
@@ -137,6 +137,7 @@ var walletGetDefault = &cli.Command{
 var walletSetDefault = &cli.Command{
 	Name:  "set-default",
 	Usage: "Set default wallet address",
+	ArgsUsage: "[address]",
 	Action: func(cctx *cli.Context) error {
 		api, closer, err := GetFullNodeAPI(cctx)
 		if err != nil {
@@ -161,6 +162,7 @@ var walletSetDefault = &cli.Command{
 var walletExport = &cli.Command{
 	Name:  "export",
 	Usage: "export keys",
+	ArgsUsage: "[address]",
 	Action: func(cctx *cli.Context) error {
 		api, closer, err := GetFullNodeAPI(cctx)
 		if err != nil {
@@ -196,6 +198,7 @@ var walletExport = &cli.Command{
 var walletImport = &cli.Command{
 	Name:  "import",
 	Usage: "import keys",
+	ArgsUsage: "[<path> (optional, will read from stdin if omitted)]",
 	Action: func(cctx *cli.Context) error {
 		api, closer, err := GetFullNodeAPI(cctx)
 		if err != nil {
