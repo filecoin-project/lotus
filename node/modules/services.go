@@ -71,7 +71,7 @@ func HandleIncomingBlocks(mctx helpers.MetricsCtx, lc fx.Lifecycle, ps *pubsub.P
 func HandleIncomingMessages(mctx helpers.MetricsCtx, lc fx.Lifecycle, ps *pubsub.PubSub, mpool *messagepool.MessagePool) {
 	ctx := helpers.LifecycleCtx(mctx, lc)
 
-	msgsub, err := ps.Subscribe(build.MessagesTopic)
+	msgsub, err := ps.Subscribe(build.BlocksTopic)
 	if err != nil {
 		panic(err)
 	}
