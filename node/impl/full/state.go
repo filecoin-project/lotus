@@ -174,9 +174,10 @@ func (a *StateAPI) StateReplay(ctx context.Context, tsk types.TipSetKey, mc cid.
 	}
 
 	return &api.InvocResult{
-		Msg:    m,
-		MsgRct: &r.MessageReceipt,
-		Error:	errstr,
+		Msg:     		m,
+		MsgRct: 	&r.MessageReceipt,
+		InternalExecutions: r.InternalExecutions,
+		Error:   			errstr,
 	}, nil
 }
 

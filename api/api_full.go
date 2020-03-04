@@ -2,6 +2,7 @@ package api
 
 import (
 	"context"
+	"github.com/filecoin-project/lotus/chain/vm"
 	"time"
 
 	"github.com/filecoin-project/go-address"
@@ -274,6 +275,7 @@ type RetrievalOrder struct {
 type InvocResult struct {
 	Msg *types.Message
 	MsgRct *types.MessageReceipt
+	InternalExecutions []*vm.ExecutionResult
 	Error   string
 }
 

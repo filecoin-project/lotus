@@ -43,6 +43,12 @@ const (
 	outOfGasErrCode = 200
 )
 
+type ExecutionResult struct {
+	Msg		*types.Message
+	MsgRct	*types.MessageReceipt
+	Error   string
+}
+
 type VMContext struct {
 	ctx context.Context
 
@@ -62,6 +68,8 @@ type VMContext struct {
 
 	// address that started invoke chain
 	origin address.Address
+
+	internalExecutions []*ExecutionResult
 }
 
 // Message is the message that kicked off the current invocation
@@ -153,6 +161,24 @@ func (vmc *VMContext) Send(to address.Address, method uint64, value types.BigInt
 	}
 
 	ret, err, _ := vmc.vm.send(ctx, msg, vmc, 0)
+
+	mr := types.MessageReceipt{
+		ExitCode: aerrors.RetCode(err),
+		Return:   ret,
+		GasUsed:  types.EmptyInt,
+	}
+
+	var es = ""
+	if err != nil {
+		es = err.Error()
+	}
+	er := ExecutionResult{
+		Msg:        msg,
+		MsgRct: &mr,
+		Error:          es,
+	}
+
+	vmc.internalExecutions = append(vmc.internalExecutions, &er)
 	return ret, err
 }
 
@@ -341,6 +367,7 @@ type Rand interface {
 type ApplyRet struct {
 	types.MessageReceipt
 	ActorErr aerrors.ActorError
+	InternalExecutions []*ExecutionResult
 }
 
 func (vm *VM) send(ctx context.Context, msg *types.Message, parent *VMContext,
@@ -512,6 +539,7 @@ func (vm *VM) ApplyMessage(ctx context.Context, msg *types.Message) (*ApplyRet, 
 			GasUsed:  gasUsed,
 		},
 		ActorErr: actorErr,
+		InternalExecutions: vmctx.internalExecutions,
 	}, nil
 }
 

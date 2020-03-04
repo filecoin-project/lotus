@@ -60,10 +60,12 @@ func (sm *StateManager) CallRaw(ctx context.Context, msg *types.Message, bstate 
 		errs = ret.ActorErr.Error()
 		log.Warnf("chain call failed: %s", ret.ActorErr)
 	}
+
 	return &api.InvocResult{
-		Msg: 		msg,
+		Msg: 			msg,
 		MsgRct: 	&ret.MessageReceipt,
-		Error:  	errs,
+		InternalExecutions: ret.InternalExecutions,
+		Error:          	errs,
 	}, nil
 
 }
