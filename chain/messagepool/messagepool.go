@@ -45,8 +45,6 @@ var (
 )
 
 const (
-	msgTopic = "/fil/messages"
-
 	localMsgsDs = "/mpool/local"
 
 	localUpdates = "update"
@@ -237,7 +235,7 @@ func (mp *MessagePool) repubLocal() {
 					continue
 				}
 
-				err = mp.api.PubSubPublish(msgTopic, msgb)
+				err = mp.api.PubSubPublish(build.MessagesTopic, msgb)
 				if err != nil {
 					errout = multierr.Append(errout, xerrors.Errorf("could not publish: %w", err))
 					continue
@@ -282,7 +280,7 @@ func (mp *MessagePool) Push(m *types.SignedMessage) (cid.Cid, error) {
 	}
 	mp.lk.Unlock()
 
-	return m.Cid(), mp.api.PubSubPublish(msgTopic, msgb)
+	return m.Cid(), mp.api.PubSubPublish(build.MessagesTopic, msgb)
 }
 
 func (mp *MessagePool) Add(m *types.SignedMessage) error {
@@ -480,7 +478,7 @@ func (mp *MessagePool) PushWithNonce(addr address.Address, cb func(uint64) (*typ
 		log.Errorf("addLocal failed: %+v", err)
 	}
 
-	return msg, mp.api.PubSubPublish(msgTopic, msgb)
+	return msg, mp.api.PubSubPublish(build.MessagesTopic, msgb)
 }
 
 func (mp *MessagePool) Remove(from address.Address, nonce uint64) {
