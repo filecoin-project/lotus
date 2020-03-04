@@ -14,6 +14,7 @@ import (
 
 	"github.com/filecoin-project/go-address"
 	"github.com/filecoin-project/go-fil-markets/storagemarket"
+	"github.com/filecoin-project/specs-actors/actors/abi"
 
 	lapi "github.com/filecoin-project/lotus/api"
 	"github.com/filecoin-project/lotus/chain/types"
@@ -91,6 +92,10 @@ var clientDealCmd = &cli.Command{
 			Name:  "manual-piece-cid",
 			Usage: "manually specify piece commitment for data",
 		},
+		&cli.Int64Flag{
+			Name:  "manual-piece-size",
+			Usage: "if manually specifying piece cid, used to specify size",
+		},
 	},
 	Action: func(cctx *cli.Context) error {
 		api, closer, err := GetFullNodeAPI(cctx)
@@ -139,23 +144,28 @@ var clientDealCmd = &cli.Command{
 			ref.TransferType = storagemarket.TTManual
 		}
 
-		var pcid *cid.Cid
 		if mpc := cctx.String("manual-piece-cid"); mpc != "" {
 			c, err := cid.Parse(mpc)
 			if err != nil {
 				return xerrors.Errorf("failed to parse provided manual piece cid: %w", err)
 			}
 
-			pcid = &c
+			ref.PieceCid = &c
+
+			psize := cctx.Int64("manual-piece-size")
+			if psize == 0 {
+				return xerrors.Errorf("must specify piece size when manually setting cid")
+			}
+
+			ref.PieceSize = abi.UnpaddedPieceSize(psize)
 		}
 
 		proposal, err := api.ClientStartDeal(ctx, &lapi.StartDealParams{
-			Data:            ref,
-			Wallet:          a,
-			Miner:           miner,
-			EpochPrice:      types.BigInt(price),
-			BlocksDuration:  uint64(dur),
-			PieceCommitment: pcid,
+			Data:           ref,
+			Wallet:         a,
+			Miner:          miner,
+			EpochPrice:     types.BigInt(price),
+			BlocksDuration: uint64(dur),
 		})
 		if err != nil {
 			return err

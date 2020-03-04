@@ -309,8 +309,6 @@ type StartDealParams struct {
 	Miner          address.Address
 	EpochPrice     types.BigInt
 	BlocksDuration uint64
-
-	PieceCommitment *cid.Cid
 }
 
 type ActiveSync struct {

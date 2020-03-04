@@ -92,6 +92,7 @@ func (a *API) ClientStartDeal(ctx context.Context, params *api.StartDealParams) 
 	if err != nil {
 		return nil, xerrors.Errorf("failed getting chain height: %w", err)
 	}
+
 	result, err := a.SMDealClient.ProposeStorageDeal(
 		ctx,
 		params.Wallet,
