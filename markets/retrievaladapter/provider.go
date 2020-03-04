@@ -11,6 +11,7 @@ import (
 	"github.com/filecoin-project/specs-actors/actors/builtin/paych"
 
 	"github.com/filecoin-project/lotus/api"
+	"github.com/filecoin-project/lotus/chain/types"
 	"github.com/filecoin-project/lotus/storage"
 	"github.com/filecoin-project/lotus/storage/sealmgr"
 )
@@ -25,6 +26,11 @@ type retrievalProviderNode struct {
 // Lotus Node
 func NewRetrievalProviderNode(miner *storage.Miner, sealer sealmgr.Manager, full api.FullNode) retrievalmarket.RetrievalProviderNode {
 	return &retrievalProviderNode{miner, sealer, full}
+}
+
+func (rpn *retrievalProviderNode) GetMinerWorker(ctx context.Context, miner address.Address) (address.Address, error) {
+	addr, err := rpn.full.StateMinerWorker(ctx, miner, types.EmptyTSK)
+	return addr, err
 }
 
 func (rpn *retrievalProviderNode) UnsealSector(ctx context.Context, sectorID uint64, offset uint64, length uint64) (io.ReadCloser, error) {
