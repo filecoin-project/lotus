@@ -8,6 +8,7 @@ import (
 
 	cborutil "github.com/filecoin-project/go-cbor-util"
 	"github.com/filecoin-project/specs-actors/actors/builtin"
+	"github.com/filecoin-project/specs-actors/actors/builtin/account"
 	"github.com/filecoin-project/specs-actors/actors/builtin/paych"
 	"golang.org/x/xerrors"
 
@@ -69,6 +70,18 @@ func (pm *Manager) TrackInboundChannel(ctx context.Context, ch address.Address) 
 		return err
 	}
 
+	var account account.State
+	_, err = pm.sm.LoadActorState(ctx, st.From, &account, nil)
+	if err != nil {
+		return err
+	}
+	from := account.Address
+	_, err = pm.sm.LoadActorState(ctx, st.From, &account, nil)
+	if err != nil {
+		return err
+	}
+	to := account.Address
+
 	maxLane, err := maxLaneFromState(st)
 	if err != nil {
 		return err
@@ -76,8 +89,8 @@ func (pm *Manager) TrackInboundChannel(ctx context.Context, ch address.Address) 
 
 	return pm.store.TrackChannel(&ChannelInfo{
 		Channel: ch,
-		Control: st.To,
-		Target:  st.From,
+		Control: to,
+		Target:  from,
 
 		Direction: DirInbound,
 		NextLane:  maxLane + 1,
@@ -95,10 +108,22 @@ func (pm *Manager) loadOutboundChannelInfo(ctx context.Context, ch address.Addre
 		return nil, err
 	}
 
+	var account account.State
+	_, err = pm.sm.LoadActorState(ctx, st.From, &account, nil)
+	if err != nil {
+		return nil, err
+	}
+	from := account.Address
+	_, err = pm.sm.LoadActorState(ctx, st.From, &account, nil)
+	if err != nil {
+		return nil, err
+	}
+	to := account.Address
+
 	return &ChannelInfo{
 		Channel: ch,
-		Control: st.From,
-		Target:  st.To,
+		Control: from,
+		Target:  to,
 
 		Direction: DirOutbound,
 		NextLane:  maxLane + 1,
@@ -129,6 +154,13 @@ func (pm *Manager) CheckVoucherValid(ctx context.Context, ch address.Address, sv
 		return err
 	}
 
+	var account account.State
+	_, err = pm.sm.LoadActorState(ctx, pca.From, &account, nil)
+	if err != nil {
+		return err
+	}
+	from := account.Address
+
 	// verify signature
 	vb, err := sv.SigningBytes()
 	if err != nil {
@@ -138,7 +170,7 @@ func (pm *Manager) CheckVoucherValid(ctx context.Context, ch address.Address, sv
 	// TODO: technically, either party may create and sign a voucher.
 	// However, for now, we only accept them from the channel creator.
 	// More complex handling logic can be added later
-	if err := sigs.Verify(sv.Signature, pca.From, vb); err != nil {
+	if err := sigs.Verify(sv.Signature, from, vb); err != nil {
 		return err
 	}
 
@@ -258,7 +290,7 @@ func (pm *Manager) AddVoucher(ctx context.Context, ch address.Address, sv *paych
 
 	// look for duplicates
 	for i, v := range ci.Vouchers {
-		eq, err := cborutil.Equals(sv, v)
+		eq, err := cborutil.Equals(sv, v.Voucher)
 		if err != nil {
 			return types.BigInt{}, err
 		}

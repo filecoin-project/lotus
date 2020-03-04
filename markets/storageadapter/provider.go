@@ -13,7 +13,7 @@ import (
 	"github.com/filecoin-project/specs-actors/actors/builtin/miner"
 	"github.com/filecoin-project/specs-actors/actors/crypto"
 	"github.com/ipfs/go-cid"
-	logging "github.com/ipfs/go-log"
+	logging "github.com/ipfs/go-log/v2"
 	"golang.org/x/xerrors"
 
 	"github.com/filecoin-project/go-address"
@@ -23,6 +23,7 @@ import (
 	"github.com/filecoin-project/lotus/chain/actors"
 	"github.com/filecoin-project/lotus/chain/events"
 	"github.com/filecoin-project/lotus/chain/types"
+	"github.com/filecoin-project/lotus/lib/sigs"
 	"github.com/filecoin-project/lotus/markets/utils"
 	"github.com/filecoin-project/lotus/node/modules/dtypes"
 	"github.com/filecoin-project/lotus/storage/sealing"
@@ -109,8 +110,8 @@ func (n *ProviderNodeAdapter) OnDealComplete(ctx context.Context, deal storagema
 }
 
 func (n *ProviderNodeAdapter) VerifySignature(sig crypto.Signature, addr address.Address, input []byte) bool {
-	log.Warn("stub VerifySignature")
-	return true
+	err := sigs.Verify(&sig, addr, input)
+	return err == nil
 }
 
 func (n *ProviderNodeAdapter) ListProviderDeals(ctx context.Context, addr address.Address) ([]storagemarket.StorageDeal, error) {
