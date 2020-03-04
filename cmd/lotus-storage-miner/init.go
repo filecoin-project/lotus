@@ -3,12 +3,14 @@ package main
 import (
 	"context"
 	"crypto/rand"
+	"encoding/binary"
 	"encoding/json"
 	"fmt"
 	"io/ioutil"
 	"os"
 	"strconv"
 
+	"github.com/filecoin-project/go-sectorbuilder"
 	"github.com/filecoin-project/specs-actors/actors/builtin"
 	"github.com/filecoin-project/specs-actors/actors/builtin/market"
 	miner2 "github.com/filecoin-project/specs-actors/actors/builtin/miner"
@@ -162,10 +164,7 @@ var initCmd = &cli.Command{
 			if err != nil {
 				return err
 			}
-			sc, err := lr.GetStorage()
-			if err != nil {
-				return xerrors.Errorf("get storage config: %w", err)
-			}
+			var sc config.StorageConfig
 
 			for _, psp := range pssb {
 				psp, err := homedir.Expand(psp)
@@ -181,10 +180,12 @@ var initCmd = &cli.Command{
 				return xerrors.Errorf("set storage config: %w", err)
 			}
 
-			panic("persist last sector id somehow")
+			if err := lr.Close(); err != nil {
+				return err
+			}
 		}
 
-		if err := storageMinerInit(ctx, cctx, api, r); err != nil {
+		if err := storageMinerInit(ctx, cctx, api, r, ssize); err != nil {
 			log.Errorf("Failed to initialize lotus-storage-miner: %+v", err)
 			path, err := homedir.Expand(repoPath)
 			if err != nil {
@@ -220,6 +221,7 @@ func migratePreSealMeta(ctx context.Context, api lapi.FullNode, metadata string,
 		return xerrors.Errorf("unmarshaling preseal metadata: %w", err)
 	}
 
+	maxSectorID := abi.SectorNumber(0)
 	for _, sector := range meta.Sectors {
 		sectorKey := datastore.NewKey(sealing.SectorStorePrefix).ChildString(fmt.Sprint(sector.SectorID))
 
@@ -258,6 +260,10 @@ func migratePreSealMeta(ctx context.Context, api lapi.FullNode, metadata string,
 			return err
 		}
 
+		if sector.SectorID > maxSectorID {
+			maxSectorID = sector.SectorID
+		}
+
 		/* // TODO: Import deals into market
 		pnd, err := cborutil.AsIpld(sector.Deal)
 		if err != nil {
@@ -285,7 +291,9 @@ func migratePreSealMeta(ctx context.Context, api lapi.FullNode, metadata string,
 		}*/
 	}
 
-	return nil
+	buf := make([]byte, binary.MaxVarintLen64)
+	size := binary.PutUvarint(buf, uint64(maxSectorID+1))
+	return mds.Put(datastore.NewKey("/storage/nextid"), buf[:size])
 }
 
 func findMarketDealID(ctx context.Context, api lapi.FullNode, deal market.DealProposal) (abi.DealID, error) {
@@ -307,7 +315,7 @@ func findMarketDealID(ctx context.Context, api lapi.FullNode, deal market.DealPr
 	return 0, xerrors.New("deal not found")
 }
 
-func storageMinerInit(ctx context.Context, cctx *cli.Context, api lapi.FullNode, r repo.Repo) error {
+func storageMinerInit(ctx context.Context, cctx *cli.Context, api lapi.FullNode, r repo.Repo, ssize abi.SectorSize) error {
 	lr, err := r.Lock(repo.StorageMiner)
 	if err != nil {
 		return err
@@ -343,7 +351,19 @@ func storageMinerInit(ctx context.Context, cctx *cli.Context, api lapi.FullNode,
 				return err
 			}
 
-			smgr := advmgr.New(lr)
+			ppt, spt, err := lapi.ProofTypeFromSectorSize(ssize)
+			if err != nil {
+				return err
+			}
+
+			smgr, err := advmgr.New(lr, &sectorbuilder.Config{
+				SealProofType: spt,
+				PoStProofType: ppt,
+				Miner:         a,
+			})
+			if err != nil {
+				return err
+			}
 			epp := storage.NewElectionPoStProver(smgr)
 
 			m := miner.NewMiner(api, epp)

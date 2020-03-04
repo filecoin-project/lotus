@@ -12,7 +12,6 @@ import (
 	"path/filepath"
 
 	"github.com/google/uuid"
-	badger "github.com/ipfs/go-ds-badger2"
 	logging "github.com/ipfs/go-log/v2"
 	"golang.org/x/xerrors"
 
@@ -50,11 +49,6 @@ func PreSeal(maddr address.Address, pt abi.RegisteredProof, offset abi.SectorNum
 	}
 
 	if err := os.MkdirAll(sbroot, 0775); err != nil {
-		return nil, nil, err
-	}
-
-	mds, err := badger.NewDatastore(filepath.Join(sbroot, "badger"), nil)
-	if err != nil {
 		return nil, nil, err
 	}
 
@@ -140,17 +134,13 @@ func PreSeal(maddr address.Address, pt abi.RegisteredProof, offset abi.SectorNum
 		return nil, nil, xerrors.Errorf("creating deals: %w", err)
 	}
 
-	if err := mds.Close(); err != nil {
-		return nil, nil, xerrors.Errorf("closing datastore: %w", err)
-	}
-
 	{
-		b, err := json.Marshal(&config.StorageMeta{
+		b, err := json.MarshalIndent(&config.StorageMeta{
 			ID:        uuid.New().String(),
 			Weight:    0, // read-only
 			CanCommit: false,
 			CanStore:  false,
-		})
+		}, "", "  ")
 		if err != nil {
 			return nil, nil, xerrors.Errorf("marshaling storage config: %w", err)
 		}
