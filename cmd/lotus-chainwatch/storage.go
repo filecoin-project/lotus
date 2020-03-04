@@ -235,6 +235,9 @@ create table if not exists miner_heads
 		primary key (head, addr)
 );
 
+create index if not exists miner_heads_stateroot_index
+	on miner_heads (stateroot);
+
 create or replace function miner_tips(epoch bigint)
     returns table (head text,
                    addr text,
