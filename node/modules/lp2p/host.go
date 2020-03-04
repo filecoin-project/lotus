@@ -80,7 +80,7 @@ func DHTRouting(client bool) interface{} {
 			dhtopts.Client(client),
 			dhtopts.Datastore(dstore),
 			dhtopts.Validator(validator),
-			dhtopts.Protocols("/lotus/kad/1.0.0"),
+			dhtopts.Protocols(build.DhtProtocolName),
 		)
 
 		if err != nil {
