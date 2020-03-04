@@ -2,10 +2,12 @@ package types
 
 import (
 	"bytes"
+
+	"github.com/filecoin-project/specs-actors/actors/runtime/exitcode"
 )
 
 type MessageReceipt struct {
-	ExitCode uint8
+	ExitCode exitcode.ExitCode
 	Return   []byte
 	GasUsed  BigInt
 }

@@ -14,6 +14,7 @@ import (
 const HalvingPeriodEpochs = 6 * 365 * 24 * 60 * 2
 
 func TestBlockReward(t *testing.T) {
+	t.Skip()
 	coffer := types.FromFil(build.MiningRewardTotal).Int
 	sum := new(big.Int)
 	N := HalvingPeriodEpochs

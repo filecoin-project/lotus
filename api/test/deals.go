@@ -74,6 +74,7 @@ func TestDealFlow(t *testing.T, b APIBuilder, blocktime time.Duration) {
 	if err != nil {
 		t.Fatal(err)
 	}
+	fmt.Println("Client data cid: ", fcid)
 	deal, err := client.ClientStartDeal(ctx, fcid, addr, maddr, types.NewInt(1000000), 100)
 	if err != nil {
 		t.Fatalf("%+v", err)

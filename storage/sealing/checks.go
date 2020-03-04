@@ -108,7 +108,7 @@ func checkSeal(ctx context.Context, maddr address.Address, si SectorInfo, api se
 	}
 
 	if cid.Cid(c) != *si.CommD {
-		return &ErrBadCommD{xerrors.Errorf("on chain CommD differs from sector: %x != %x", r.Return, si.CommD)}
+		return &ErrBadCommD{xerrors.Errorf("on chain CommD differs from sector: %s != %s", cid.Cid(c), si.CommD)}
 	}
 
 	if int64(head.Height())-int64(si.Ticket.Epoch+build.SealRandomnessLookback) > build.SealRandomnessLookbackLimit {

@@ -27,6 +27,7 @@ import (
 	init_ "github.com/filecoin-project/specs-actors/actors/builtin/init"
 	"github.com/filecoin-project/specs-actors/actors/crypto"
 	"github.com/filecoin-project/specs-actors/actors/runtime"
+	"github.com/filecoin-project/specs-actors/actors/runtime/exitcode"
 
 	"github.com/filecoin-project/lotus/build"
 	"github.com/filecoin-project/lotus/chain/actors/aerrors"
@@ -358,6 +359,7 @@ type Rand interface {
 type ApplyRet struct {
 	types.MessageReceipt
 	ActorErr aerrors.ActorError
+	Penalty  big.Int
 }
 
 func (vm *VM) send(ctx context.Context, msg *types.Message, parent *VMContext,
@@ -454,7 +456,15 @@ func (vm *VM) ApplyMessage(ctx context.Context, msg *types.Message) (*ApplyRet, 
 
 	fromActor, err := st.GetActor(msg.From)
 	if err != nil {
-		return nil, xerrors.Errorf("from actor not found: %w", err)
+		if xerrors.Is(err, types.ErrActorNotFound) {
+			return &ApplyRet{
+				MessageReceipt: types.MessageReceipt{
+					ExitCode: exitcode.SysErrActorNotFound,
+					GasUsed:  msg.GasLimit,
+				},
+			}, nil
+		}
+		return nil, xerrors.Errorf("failed to look up from actor: %w", err)
 	}
 
 	serMsg, err := msg.Serialize()
@@ -466,7 +476,12 @@ func (vm *VM) ApplyMessage(ctx context.Context, msg *types.Message) (*ApplyRet, 
 	gascost := types.BigMul(msg.GasLimit, msg.GasPrice)
 	totalCost := types.BigAdd(gascost, msg.Value)
 	if fromActor.Balance.LessThan(totalCost) {
-		return nil, xerrors.Errorf("not enough funds (%s < %s)", fromActor.Balance, totalCost)
+		return &ApplyRet{
+			MessageReceipt: types.MessageReceipt{
+				ExitCode: exitcode.SysErrInsufficientFunds,
+				GasUsed:  msg.GasLimit,
+			},
+		}, nil
 	}
 
 	gasHolder := &types.Actor{Balance: types.NewInt(0)}
@@ -475,7 +490,12 @@ func (vm *VM) ApplyMessage(ctx context.Context, msg *types.Message) (*ApplyRet, 
 	}
 
 	if msg.Nonce != fromActor.Nonce {
-		return nil, xerrors.Errorf("invalid nonce (got %d, expected %d)", msg.Nonce, fromActor.Nonce)
+		return &ApplyRet{
+			MessageReceipt: types.MessageReceipt{
+				ExitCode: exitcode.SysErrInvalidCallSeqNum,
+				GasUsed:  msg.GasLimit,
+			},
+		}, nil
 	}
 	fromActor.Nonce++
 
@@ -506,15 +526,15 @@ func (vm *VM) ApplyMessage(ctx context.Context, msg *types.Message) (*ApplyRet, 
 		}
 	}
 
-	miner, err := st.GetActor(vm.blockMiner)
+	bfact, err := st.GetActor(builtin.BurntFundsActorAddr)
 	if err != nil {
-		return nil, xerrors.Errorf("getting block miner actor (%s) failed: %w", vm.blockMiner, err)
+		return nil, xerrors.Errorf("getting burnt funds actor failed: %w", err)
 	}
 
 	// TODO: support multiple blocks in a tipset
 	// TODO: actually wire this up (miner is undef for now)
 	gasReward := types.BigMul(msg.GasPrice, gasUsed)
-	if err := Transfer(gasHolder, miner, gasReward); err != nil {
+	if err := Transfer(gasHolder, bfact, gasReward); err != nil {
 		return nil, xerrors.Errorf("failed to give miner gas reward: %w", err)
 	}
 
@@ -524,7 +544,7 @@ func (vm *VM) ApplyMessage(ctx context.Context, msg *types.Message) (*ApplyRet, 
 
 	return &ApplyRet{
 		MessageReceipt: types.MessageReceipt{
-			ExitCode: errcode,
+			ExitCode: exitcode.ExitCode(errcode),
 			Return:   ret,
 			GasUsed:  gasUsed,
 		},

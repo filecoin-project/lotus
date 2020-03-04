@@ -14,16 +14,22 @@ import (
 	"github.com/filecoin-project/go-sectorbuilder"
 	"github.com/filecoin-project/specs-actors/actors/abi"
 	"github.com/ipfs/go-cid"
+	logging "github.com/ipfs/go-log"
 	"golang.org/x/xerrors"
+
+	"github.com/filecoin-project/lotus/api"
 
 	ffi "github.com/filecoin-project/filecoin-ffi"
 )
+
+var log = logging.Logger("sbmock")
 
 type SBMock struct {
 	sectors      map[abi.SectorNumber]*sectorState
 	sectorSize   abi.SectorSize
 	nextSectorID abi.SectorNumber
 	rateLimit    chan struct{}
+	proofType    abi.RegisteredProof
 
 	lk sync.Mutex
 }
@@ -31,11 +37,17 @@ type SBMock struct {
 type mockVerif struct{}
 
 func NewMockSectorBuilder(threads int, ssize abi.SectorSize) *SBMock {
+	rt, _, err := api.ProofTypeFromSectorSize(ssize)
+	if err != nil {
+		panic(err)
+	}
+
 	return &SBMock{
 		sectors:      make(map[abi.SectorNumber]*sectorState),
 		sectorSize:   ssize,
 		nextSectorID: 5,
 		rateLimit:    make(chan struct{}, threads),
+		proofType:    rt,
 	}
 }
 
@@ -64,6 +76,7 @@ func (sb *SBMock) RateLimit() func() {
 }
 
 func (sb *SBMock) AddPiece(ctx context.Context, size abi.UnpaddedPieceSize, sectorId abi.SectorNumber, r io.Reader, existingPieces []abi.UnpaddedPieceSize) (abi.PieceInfo, error) {
+	log.Warn("Add piece: ", sectorId, size, sb.proofType)
 	sb.lk.Lock()
 	ss, ok := sb.sectors[sectorId]
 	if !ok {
@@ -76,12 +89,12 @@ func (sb *SBMock) AddPiece(ctx context.Context, size abi.UnpaddedPieceSize, sect
 	ss.lk.Lock()
 	defer ss.lk.Unlock()
 
-	b, err := ioutil.ReadAll(r)
+	c, err := sectorbuilder.GeneratePieceCIDFromFile(sb.proofType, r, size)
 	if err != nil {
-		return abi.PieceInfo{}, err
+		return abi.PieceInfo{}, xerrors.Errorf("failed to generate piece cid: %w", err)
 	}
 
-	c := commcid.DataCommitmentV1ToCID(b[:32]) // hax
+	log.Warn("Generated Piece CID: ", c)
 
 	ss.pieces = append(ss.pieces, c)
 	return abi.PieceInfo{
@@ -155,13 +168,14 @@ func (sb *SBMock) SealPreCommit1(ctx context.Context, sid abi.SectorNumber, tick
 	if err != nil {
 		panic(err)
 	}
+
 	cc[0] ^= 'd'
 
 	return cc, nil
 }
 
 func (sb *SBMock) SealPreCommit2(ctx context.Context, sid abi.SectorNumber, phase1Out []byte) (sealedCID cid.Cid, unsealedCID cid.Cid, err error) {
-	db := []byte(string(phase1Out[0]))
+	db := []byte(string(phase1Out))
 	db[0] ^= 'd'
 
 	d := commcid.DataCommitmentV1ToCID(db)

@@ -523,13 +523,13 @@ func (syncer *Syncer) ValidateBlock(ctx context.Context, b *types.FullBlock) err
 	}
 
 	winnerCheck := async.Err(func() error {
-		slashedAt, err := stmgr.GetMinerSlashed(ctx, syncer.sm, baseTs, h.Miner)
+		slashed, err := stmgr.GetMinerSlashed(ctx, syncer.sm, baseTs, h.Miner)
 		if err != nil {
 			return xerrors.Errorf("failed to check if block miner was slashed: %w", err)
 		}
 
-		if slashedAt != 0 {
-			return xerrors.Errorf("received block was from miner slashed at height %d", slashedAt)
+		if slashed {
+			return xerrors.Errorf("received block was from slashed or invalid miner")
 		}
 
 		mpow, tpow, err := stmgr.GetPower(ctx, syncer.sm, baseTs, h.Miner)
