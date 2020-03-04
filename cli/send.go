@@ -11,7 +11,7 @@ import (
 var sendCmd = &cli.Command{
 	Name:      "send",
 	Usage:     "Send funds between accounts",
-	ArgsUsage: "<target> <amount>",
+	ArgsUsage: "[targetAddress] [amount]",
 	Flags: []cli.Flag{
 		&cli.StringFlag{
 			Name:  "source",
