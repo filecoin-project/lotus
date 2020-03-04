@@ -2,6 +2,7 @@ package impl
 
 import (
 	"context"
+
 	"github.com/filecoin-project/lotus/node/modules/lp2p"
 
 	logging "github.com/ipfs/go-log/v2"
@@ -10,6 +11,7 @@ import (
 	"github.com/libp2p/go-libp2p-core/host"
 	"github.com/libp2p/go-libp2p-core/network"
 	"github.com/libp2p/go-libp2p-core/peer"
+	swarm "github.com/libp2p/go-libp2p-swarm"
 	ma "github.com/multiformats/go-multiaddr"
 	"go.uber.org/fx"
 	"golang.org/x/xerrors"
@@ -69,6 +71,10 @@ func (a *CommonAPI) NetPeers(context.Context) ([]peer.AddrInfo, error) {
 }
 
 func (a *CommonAPI) NetConnect(ctx context.Context, p peer.AddrInfo) error {
+	if swrm, ok := a.Host.Network().(*swarm.Swarm); ok {
+		swrm.Backoff().Clear(p.ID)
+	}
+
 	return a.Host.Connect(ctx, p)
 }
 

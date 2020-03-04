@@ -285,7 +285,7 @@ var clientQueryAskCmd = &cli.Command{
 
 		var pid peer.ID
 		if pidstr := cctx.String("peerid"); pidstr != "" {
-			p, err := peer.IDFromString(pidstr)
+			p, err := peer.Decode(pidstr)
 			if err != nil {
 				return err
 			}
