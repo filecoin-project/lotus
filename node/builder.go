@@ -56,6 +56,8 @@ import (
 	"github.com/filecoin-project/lotus/paychmgr"
 	"github.com/filecoin-project/lotus/storage"
 	"github.com/filecoin-project/lotus/storage/sealing"
+	"github.com/filecoin-project/lotus/storage/sealmgr"
+	"github.com/filecoin-project/lotus/storage/sealmgr/advmgr"
 	"github.com/filecoin-project/lotus/storage/sectorblocks"
 )
 
@@ -253,6 +255,13 @@ func Online() Option {
 
 		// Storage miner
 		ApplyIf(func(s *Settings) bool { return s.nodeType == repo.StorageMiner },
+			Override(new(*sectorbuilder.Config), modules.SectorBuilderConfig),
+			Override(new(advmgr.LocalStorage), From(new(repo.LockedRepo))),
+			Override(new(*advmgr.Manager), advmgr.New),
+
+			Override(new(sealmgr.Manager), From(new(*advmgr.Manager))),
+			Override(new(sectorbuilder.Prover), From(new(sealmgr.Manager))),
+
 			Override(new(*sectorblocks.SectorBlocks), sectorblocks.NewSectorBlocks),
 			Override(new(sealing.TicketFn), modules.SealTicketGen),
 			Override(new(*storage.Miner), modules.StorageMiner),
