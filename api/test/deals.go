@@ -14,6 +14,7 @@ import (
 	logging "github.com/ipfs/go-log/v2"
 
 	"github.com/filecoin-project/go-fil-markets/storagemarket"
+	"github.com/filecoin-project/lotus/api"
 	"github.com/filecoin-project/lotus/build"
 	"github.com/filecoin-project/lotus/chain/types"
 	"github.com/filecoin-project/lotus/node/impl"
@@ -74,8 +75,13 @@ func TestDealFlow(t *testing.T, b APIBuilder, blocktime time.Duration) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	fmt.Println("Client data cid: ", fcid)
-	deal, err := client.ClientStartDeal(ctx, fcid, addr, maddr, types.NewInt(1000000), 100)
+	deal, err := client.ClientStartDeal(ctx, &api.StartDealParams{
+		Data:           &storagemarket.DataRef{Root: fcid},
+		Wallet:         addr,
+		Miner:          maddr,
+		EpochPrice:     types.NewInt(1000000),
+		BlocksDuration: 100,
+	})
 	if err != nil {
 		t.Fatalf("%+v", err)
 	}

@@ -14,7 +14,9 @@ import (
 
 	"github.com/filecoin-project/go-address"
 	"github.com/filecoin-project/go-fil-markets/storagemarket"
+	"github.com/filecoin-project/specs-actors/actors/abi"
 
+	lapi "github.com/filecoin-project/lotus/api"
 	"github.com/filecoin-project/lotus/chain/types"
 )
 
@@ -81,6 +83,24 @@ var clientLocalCmd = &cli.Command{
 var clientDealCmd = &cli.Command{
 	Name:  "deal",
 	Usage: "Initialize storage deal with a miner",
+	Flags: []cli.Flag{
+		&cli.BoolFlag{
+			Name:  "manual-transfer",
+			Usage: "data will be transferred out of band",
+		},
+		&cli.StringFlag{
+			Name:  "manual-piece-cid",
+			Usage: "manually specify piece commitment for data",
+		},
+		&cli.Int64Flag{
+			Name:  "manual-piece-size",
+			Usage: "if manually specifying piece cid, used to specify size",
+		},
+		&cli.StringFlag{
+			Name:  "from",
+			Usage: "specify address to fund the deal with",
+		},
+	},
 	Action: func(cctx *cli.Context) error {
 		api, closer, err := GetFullNodeAPI(cctx)
 		if err != nil {
@@ -115,11 +135,52 @@ var clientDealCmd = &cli.Command{
 			return err
 		}
 
-		a, err := api.WalletDefaultAddress(ctx)
-		if err != nil {
-			return err
+		var a address.Address
+		if from := cctx.String("from"); from != "" {
+			faddr, err := address.NewFromString(from)
+			if err != nil {
+				return xerrors.Errorf("failed to parse 'from' address: %w", err)
+			}
+			a = faddr
+		} else {
+			def, err := api.WalletDefaultAddress(ctx)
+			if err != nil {
+				return err
+			}
+			a = def
 		}
-		proposal, err := api.ClientStartDeal(ctx, data, a, miner, types.BigInt(price), uint64(dur))
+
+		ref := &storagemarket.DataRef{
+			TransferType: storagemarket.TTGraphsync,
+			Root:         data,
+		}
+		if cctx.Bool("manual-transfer") {
+			ref.TransferType = storagemarket.TTManual
+		}
+
+		if mpc := cctx.String("manual-piece-cid"); mpc != "" {
+			c, err := cid.Parse(mpc)
+			if err != nil {
+				return xerrors.Errorf("failed to parse provided manual piece cid: %w", err)
+			}
+
+			ref.PieceCid = &c
+
+			psize := cctx.Int64("manual-piece-size")
+			if psize == 0 {
+				return xerrors.Errorf("must specify piece size when manually setting cid")
+			}
+
+			ref.PieceSize = abi.UnpaddedPieceSize(psize)
+		}
+
+		proposal, err := api.ClientStartDeal(ctx, &lapi.StartDealParams{
+			Data:           ref,
+			Wallet:         a,
+			Miner:          miner,
+			EpochPrice:     types.BigInt(price),
+			BlocksDuration: uint64(dur),
+		})
 		if err != nil {
 			return err
 		}

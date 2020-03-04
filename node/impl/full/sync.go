@@ -77,7 +77,7 @@ func (a *SyncAPI) SyncSubmitBlock(ctx context.Context, blk *types.BlockMsg) erro
 	}
 
 	// TODO: anything else to do here?
-	return a.PubSub.Publish(build.MessagesTopic, b)
+	return a.PubSub.Publish(build.BlocksTopic, b)
 }
 
 func (a *SyncAPI) SyncIncomingBlocks(ctx context.Context) (<-chan *types.BlockHeader, error) {
