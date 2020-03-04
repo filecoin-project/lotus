@@ -6,11 +6,13 @@ import (
 	"context"
 	"encoding/hex"
 	"encoding/json"
-	"github.com/filecoin-project/lotus/chain/types"
+	"fmt"
 	"io/ioutil"
 	"os"
 	"runtime/pprof"
 	"strings"
+
+	"github.com/filecoin-project/lotus/chain/types"
 
 	paramfetch "github.com/filecoin-project/go-paramfetch"
 	"github.com/filecoin-project/go-sectorbuilder"
@@ -134,6 +136,7 @@ var DaemonCmd = &cli.Command{
 				return err
 			}
 			if cctx.Bool("halt-after-import") {
+				fmt.Println("Chain import complete, halting as requested...")
 				return nil
 			}
 		}

@@ -6,7 +6,6 @@ import (
 
 	"github.com/filecoin-project/go-amt-ipld/v2"
 	"github.com/filecoin-project/specs-actors/actors/abi"
-	"github.com/filecoin-project/specs-actors/actors/abi/big"
 	"github.com/filecoin-project/specs-actors/actors/builtin"
 	"github.com/filecoin-project/specs-actors/actors/builtin/account"
 	"github.com/filecoin-project/specs-actors/actors/crypto"
@@ -20,7 +19,6 @@ import (
 
 	"github.com/filecoin-project/go-address"
 
-	"github.com/filecoin-project/lotus/build"
 	"github.com/filecoin-project/lotus/chain/state"
 	"github.com/filecoin-project/lotus/chain/store"
 	"github.com/filecoin-project/lotus/chain/types"
@@ -131,11 +129,12 @@ func MakeInitialStateTree(ctx context.Context, bs bstore.Blockstore, template ge
 	}
 
 	// Setup reward
-	err = state.SetActor(builtin.RewardActorAddr, &types.Actor{
-		Code:    builtin.RewardActorCodeID,
-		Balance: big.Int{Int: build.InitialReward},
-		Head:    emptyobject, // TODO ?
-	})
+	rewact, err := SetupRewardActor(bs)
+	if err != nil {
+		return nil, xerrors.Errorf("setup init actor: %w", err)
+	}
+
+	err = state.SetActor(builtin.RewardActorAddr, rewact)
 	if err != nil {
 		return nil, xerrors.Errorf("set network account actor: %w", err)
 	}

@@ -526,15 +526,13 @@ func (vm *VM) ApplyMessage(ctx context.Context, msg *types.Message) (*ApplyRet, 
 		}
 	}
 
-	bfact, err := st.GetActor(builtin.BurntFundsActorAddr)
+	rwAct, err := st.GetActor(builtin.RewardActorAddr)
 	if err != nil {
 		return nil, xerrors.Errorf("getting burnt funds actor failed: %w", err)
 	}
 
-	// TODO: support multiple blocks in a tipset
-	// TODO: actually wire this up (miner is undef for now)
 	gasReward := types.BigMul(msg.GasPrice, gasUsed)
-	if err := Transfer(gasHolder, bfact, gasReward); err != nil {
+	if err := Transfer(gasHolder, rwAct, gasReward); err != nil {
 		return nil, xerrors.Errorf("failed to give miner gas reward: %w", err)
 	}
 
