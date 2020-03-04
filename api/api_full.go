@@ -43,6 +43,7 @@ type FullNode interface {
 	ChainGetTipSetByHeight(context.Context, abi.ChainEpoch, types.TipSetKey) (*types.TipSet, error)
 	ChainReadObj(context.Context, cid.Cid) ([]byte, error)
 	ChainHasObj(context.Context, cid.Cid) (bool, error)
+	ChainStatObj(context.Context, cid.Cid, cid.Cid) (ObjStat, error)
 	ChainSetHead(context.Context, types.TipSetKey) error
 	ChainGetGenesis(context.Context) (*types.TipSet, error)
 	ChainTipSetWeight(context.Context, types.TipSetKey) (types.BigInt, error)
