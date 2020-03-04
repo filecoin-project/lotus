@@ -230,7 +230,7 @@ func RecordTipsetMessagesPoints(ctx context.Context, api api.FullNode, pl *Point
 		tag := msgTag{
 			actor:    string(dm.Digest),
 			method:   uint64(msg.Message.Method),
-			exitcode: recp[i].ExitCode,
+			exitcode: uint8(recp[i].ExitCode),
 		}
 
 		found := false
