@@ -8,7 +8,6 @@ import (
 
 	suites "github.com/filecoin-project/chain-validation/suites"
 	"github.com/filecoin-project/chain-validation/suites/message"
-
 	factory "github.com/filecoin-project/lotus/chain/validation"
 )
 
@@ -39,8 +38,6 @@ func init() {
 		message.TestPaych,
 		// Fails due to state initialization
 		message.TestMultiSigActor,
-		// Fails due to state initialization
-		//message.TestMessageApplicationEdgecases,
 	}}
 }
 
