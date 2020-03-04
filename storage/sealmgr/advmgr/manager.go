@@ -3,14 +3,14 @@ package advmgr
 import (
 	"context"
 	"io"
-	"sync"
 
+	"github.com/filecoin-project/go-address"
 	"github.com/ipfs/go-cid"
+	"golang.org/x/xerrors"
 
 	"github.com/filecoin-project/go-sectorbuilder"
 	"github.com/filecoin-project/specs-actors/actors/abi"
 
-	ffi "github.com/filecoin-project/filecoin-ffi"
 	"github.com/filecoin-project/lotus/node/config"
 	"github.com/filecoin-project/lotus/storage/sealmgr"
 )
@@ -39,8 +39,34 @@ type Worker interface {
 type Manager struct {
 	workers []sealmgr.Worker
 
-	localLk sync.RWMutex
-	localStorage LocalStorage
+	sectorbuilder.Prover
+}
+
+func New(ls LocalStorage, cfg *sectorbuilder.Config) (*Manager, error) {
+	stor := &storage{
+		localStorage: ls,
+	}
+	if err := stor.open(); err != nil {
+		return nil, err
+	}
+
+	mid, err := address.IDFromAddress(cfg.Miner)
+	if err != nil {
+		return nil, xerrors.Errorf("getting miner id: %w", err)
+	}
+
+	prover, err := sectorbuilder.New(&readonlyProvider{stor: stor, miner: abi.ActorID(mid)}, cfg)
+	if err != nil {
+		return nil, xerrors.Errorf("creating prover instance: %w", err)
+	}
+
+	m := &Manager{
+		workers:      nil,
+
+		Prover: prover,
+	}
+
+	return m, nil
 }
 
 func (m Manager) SectorSize() abi.SectorSize {
@@ -77,26 +103,6 @@ func (m Manager) SealCommit2(ctx context.Context, sectorNum abi.SectorNumber, ph
 
 func (m Manager) FinalizeSector(context.Context, abi.SectorNumber) error {
 	panic("implement me")
-}
-
-func (m Manager) GenerateEPostCandidates(sectorInfo []abi.SectorInfo, challengeSeed abi.PoStRandomness, faults []abi.SectorNumber) ([]ffi.PoStCandidateWithTicket, error) {
-	panic("implement me")
-}
-
-func (m Manager) GenerateFallbackPoSt(sectorInfo []abi.SectorInfo, challengeSeed abi.PoStRandomness, faults []abi.SectorNumber) ([]ffi.PoStCandidateWithTicket, []abi.PoStProof, error) {
-	panic("implement me")
-}
-
-func (m Manager) ComputeElectionPoSt(sectorInfo []abi.SectorInfo, challengeSeed abi.PoStRandomness, winners []abi.PoStCandidate) ([]abi.PoStProof, error) {
-	panic("implement me")
-}
-
-func New(ls LocalStorage) *Manager {
-	return &Manager{
-		workers:      nil,
-
-		localStorage: ls,
-	}
 }
 
 var _ sealmgr.Manager = &Manager{}

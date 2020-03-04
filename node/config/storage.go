@@ -40,11 +40,11 @@ func StorageFromFile(path string, def *StorageConfig) (*StorageConfig, error) {
 	}
 
 	defer file.Close() //nolint:errcheck // The file is RO
-	return StorageFromReader(file, *def)
+	return StorageFromReader(file)
 }
 
-func StorageFromReader(reader io.Reader, def StorageConfig) (*StorageConfig, error) {
-	cfg := def
+func StorageFromReader(reader io.Reader) (*StorageConfig, error) {
+	var cfg StorageConfig
 	err := json.NewDecoder(reader).Decode(&cfg)
 	if err != nil {
 		return nil, err
@@ -54,7 +54,7 @@ func StorageFromReader(reader io.Reader, def StorageConfig) (*StorageConfig, err
 }
 
 func WriteStorageFile(path string, config StorageConfig) error {
-	b, err := json.Marshal(config)
+	b, err := json.MarshalIndent(config, "", "  ")
 	if err != nil {
 		return xerrors.Errorf("marshaling storage config: %w", err)
 	}
