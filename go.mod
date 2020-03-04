@@ -21,7 +21,7 @@ require (
 	github.com/filecoin-project/go-fil-markets v0.0.0-20200303015849-1159079679ca
 	github.com/filecoin-project/go-padreader v0.0.0-20200210211231-548257017ca6
 	github.com/filecoin-project/go-paramfetch v0.0.2-0.20200218225740-47c639bab663
-	github.com/filecoin-project/go-sectorbuilder v0.0.2-0.20200229022239-442fe78a3168
+	github.com/filecoin-project/go-sectorbuilder v0.0.2-0.20200304050010-2cfac00a93e7
 	github.com/filecoin-project/go-statestore v0.1.0
 	github.com/filecoin-project/specs-actors v0.0.0-20200302223606-0eaf97b10aaf
 	github.com/filecoin-project/specs-storage v0.0.0-20200303230804-16c9a38030eb
