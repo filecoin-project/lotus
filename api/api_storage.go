@@ -118,6 +118,9 @@ type StorageMiner interface {
 	MarketListDeals(ctx context.Context) ([]storagemarket.StorageDeal, error)
 	MarketListIncompleteDeals(ctx context.Context) ([]storagemarket.MinerDeal, error)
 	SetPrice(context.Context, types.BigInt) error
+
+	DealsImportData(ctx context.Context, dealPropCid cid.Cid, file string) error
+	DealsList(ctx context.Context) ([]storagemarket.StorageDeal, error)
 }
 
 type SectorLog struct {
