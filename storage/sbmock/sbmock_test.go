@@ -9,7 +9,7 @@ import (
 )
 
 func TestOpFinish(t *testing.T) {
-	sb := NewMockSectorBuilder(1, 1024)
+	sb := NewMockSectorBuilder(1, 2048)
 
 	sid, pieces, err := sb.StageFakeData()
 	if err != nil {
