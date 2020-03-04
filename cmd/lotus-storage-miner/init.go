@@ -302,7 +302,10 @@ func migratePreSealMeta(ctx context.Context, api lapi.FullNode, metadata string,
 				ClientDealProposal: sector.Deal,
 				ProposalCid: pnd.Cid(),
 				State:       storagemarket.StorageDealActive,
-				DealID: sector.,
+				Ref:         &storagemarket.DataRef{Root: proposalCid}, // TODO: This is super wrong, but there
+				// are no params for CommP CIDs, we can't recover unixfs cid easily,
+				// and this isn't even used after the deal enters Complete state
+				DealID: dealID,
 			},
 		}
 
