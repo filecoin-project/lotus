@@ -10,12 +10,15 @@ import (
 	"strconv"
 
 	"github.com/filecoin-project/lotus/chain/types"
-
 	"github.com/filecoin-project/specs-actors/actors/abi"
+
 	"github.com/gorilla/mux"
+	"github.com/ipfs/go-cid"
 	files "github.com/ipfs/go-ipfs-files"
+	"golang.org/x/xerrors"
 
 	"github.com/filecoin-project/go-address"
+	storagemarket "github.com/filecoin-project/go-fil-markets/storagemarket"
 	"github.com/filecoin-project/go-sectorbuilder"
 	"github.com/filecoin-project/go-sectorbuilder/fs"
 
@@ -34,9 +37,10 @@ type StorageMinerAPI struct {
 	SectorBuilder       sectorbuilder.Interface
 	SectorBlocks        *sectorblocks.SectorBlocks
 
-	Miner      *storage.Miner
-	BlockMiner *miner.Miner
-	Full       api.FullNode
+	StorageProvider storagemarket.StorageProvider
+	Miner           *storage.Miner
+	BlockMiner      *miner.Miner
+	Full            api.FullNode
 }
 
 func (sm *StorageMinerAPI) ServeRemote(w http.ResponseWriter, r *http.Request) {
@@ -259,6 +263,42 @@ func (sm *StorageMinerAPI) WorkerQueue(ctx context.Context, cfg sectorbuilder.Wo
 
 func (sm *StorageMinerAPI) WorkerDone(ctx context.Context, task uint64, res sectorbuilder.SealRes) error {
 	return sm.SectorBuilder.TaskDone(ctx, task, res)
+}
+
+func (sm *StorageMinerAPI) MarketImportDealData(ctx context.Context, propCid cid.Cid, path string) error {
+	fi, err := os.Open(path)
+	if err != nil {
+		return xerrors.Errorf("failed to open file: %w", err)
+	}
+	defer fi.Close()
+
+	return sm.StorageProvider.ImportDataForDeal(ctx, propCid, fi)
+}
+
+func (sm *StorageMinerAPI) MarketListDeals(ctx context.Context) ([]storagemarket.StorageDeal, error) {
+	return sm.StorageProvider.ListDeals(ctx)
+}
+
+func (sm *StorageMinerAPI) MarketListIncompleteDeals(ctx context.Context) ([]storagemarket.MinerDeal, error) {
+	return sm.StorageProvider.ListIncompleteDeals()
+}
+
+func (sm *StorageMinerAPI) SetPrice(ctx context.Context, p types.BigInt) error {
+	return sm.StorageProvider.AddAsk(abi.TokenAmount(p), 60*60*24*100) // lasts for 100 days?
+}
+
+func (sm *StorageMinerAPI) DealsList(ctx context.Context) ([]storagemarket.StorageDeal, error) {
+	return sm.StorageProvider.ListDeals(ctx)
+}
+
+func (sm *StorageMinerAPI) DealsImportData(ctx context.Context, deal cid.Cid, fname string) error {
+	fi, err := os.Open(fname)
+	if err != nil {
+		return xerrors.Errorf("failed to open given file: %w", err)
+	}
+	defer fi.Close()
+
+	return sm.StorageProvider.ImportDataForDeal(ctx, deal, fi)
 }
 
 var _ api.StorageMiner = &StorageMinerAPI{}
