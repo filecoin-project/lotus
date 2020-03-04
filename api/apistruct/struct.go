@@ -92,15 +92,15 @@ type FullNodeStruct struct {
 		WalletExport         func(context.Context, address.Address) (*types.KeyInfo, error)                       `perm:"admin"`
 		WalletImport         func(context.Context, *types.KeyInfo) (address.Address, error)                       `perm:"admin"`
 
-		ClientImport      func(ctx context.Context, path string) (cid.Cid, error)                                                                                           `perm:"admin"`
-		ClientListImports func(ctx context.Context) ([]api.Import, error)                                                                                                   `perm:"write"`
-		ClientHasLocal    func(ctx context.Context, root cid.Cid) (bool, error)                                                                                             `perm:"write"`
-		ClientFindData    func(ctx context.Context, root cid.Cid) ([]api.QueryOffer, error)                                                                                 `perm:"read"`
-		ClientStartDeal   func(ctx context.Context, data cid.Cid, addr address.Address, miner address.Address, price types.BigInt, blocksDuration uint64) (*cid.Cid, error) `perm:"admin"`
-		ClientGetDealInfo func(context.Context, cid.Cid) (*api.DealInfo, error)                                                                                             `perm:"read"`
-		ClientListDeals   func(ctx context.Context) ([]api.DealInfo, error)                                                                                                 `perm:"write"`
-		ClientRetrieve    func(ctx context.Context, order api.RetrievalOrder, path string) error                                                                            `perm:"admin"`
-		ClientQueryAsk    func(ctx context.Context, p peer.ID, miner address.Address) (*storagemarket.SignedStorageAsk, error)                                              `perm:"read"`
+		ClientImport      func(ctx context.Context, path string) (cid.Cid, error)                                              `perm:"admin"`
+		ClientListImports func(ctx context.Context) ([]api.Import, error)                                                      `perm:"write"`
+		ClientHasLocal    func(ctx context.Context, root cid.Cid) (bool, error)                                                `perm:"write"`
+		ClientFindData    func(ctx context.Context, root cid.Cid) ([]api.QueryOffer, error)                                    `perm:"read"`
+		ClientStartDeal   func(ctx context.Context, params *api.StartDealParams) (*cid.Cid, error)                             `perm:"admin"`
+		ClientGetDealInfo func(context.Context, cid.Cid) (*api.DealInfo, error)                                                `perm:"read"`
+		ClientListDeals   func(ctx context.Context) ([]api.DealInfo, error)                                                    `perm:"write"`
+		ClientRetrieve    func(ctx context.Context, order api.RetrievalOrder, path string) error                               `perm:"admin"`
+		ClientQueryAsk    func(ctx context.Context, p peer.ID, miner address.Address) (*storagemarket.SignedStorageAsk, error) `perm:"read"`
 
 		StateMinerSectors       func(context.Context, address.Address, types.TipSetKey) ([]*api.ChainSectorInfo, error)                      `perm:"read"`
 		StateMinerProvingSet    func(context.Context, address.Address, types.TipSetKey) ([]*api.ChainSectorInfo, error)                      `perm:"read"`
@@ -160,6 +160,10 @@ type StorageMinerStruct struct {
 		ActorAddress    func(context.Context) (address.Address, error)                 `perm:"read"`
 		ActorSectorSize func(context.Context, address.Address) (abi.SectorSize, error) `perm:"read"`
 
+		MarketImportDealData      func(context.Context, cid.Cid, string) error                   `perm:"write"`
+		MarketListDeals           func(ctx context.Context) ([]storagemarket.StorageDeal, error) `perm:"read"`
+		MarketListIncompleteDeals func(ctx context.Context) ([]storagemarket.MinerDeal, error)   `perm:"read"`
+
 		PledgeSector func(context.Context) error `perm:"write"`
 
 		SectorsStatus func(context.Context, abi.SectorNumber) (api.SectorInfo, error) `perm:"read"`
@@ -167,10 +171,15 @@ type StorageMinerStruct struct {
 		SectorsRefs   func(context.Context) (map[string][]api.SealedRef, error)       `perm:"read"`
 		SectorsUpdate func(context.Context, abi.SectorNumber, api.SectorState) error  `perm:"write"`
 
-		/*		WorkerStats func(context.Context) (sealsched.WorkerStats, error) `perm:"read"`
-		 */
-		/*		WorkerQueue func(ctx context.Context, cfg sealsched.WorkerCfg) (<-chan sealsched.WorkerTask, error) `perm:"admin"` // TODO: worker perm
-				WorkerDone  func(ctx context.Context, task uint64, res sealsched.SealRes) error                         `perm:"admin"`*/
+/*		WorkerStats func(context.Context) (sectorbuilder.WorkerStats, error) `perm:"read"`
+
+		WorkerQueue func(ctx context.Context, cfg sectorbuilder.WorkerCfg) (<-chan sectorbuilder.WorkerTask, error) `perm:"admin"` // TODO: worker perm
+		WorkerDone  func(ctx context.Context, task uint64, res sectorbuilder.SealRes) error                         `perm:"admin"`
+*/
+		SetPrice func(context.Context, types.BigInt) error `perm:"admin"`
+
+		DealsImportData func(ctx context.Context, dealPropCid cid.Cid, file string) error `perm:"write"`
+		DealsList       func(ctx context.Context) ([]storagemarket.StorageDeal, error)    `perm:"read"`
 	}
 }
 
@@ -240,8 +249,8 @@ func (c *FullNodeStruct) ClientFindData(ctx context.Context, root cid.Cid) ([]ap
 	return c.Internal.ClientFindData(ctx, root)
 }
 
-func (c *FullNodeStruct) ClientStartDeal(ctx context.Context, data cid.Cid, addr address.Address, miner address.Address, price types.BigInt, blocksDuration uint64) (*cid.Cid, error) {
-	return c.Internal.ClientStartDeal(ctx, data, addr, miner, price, blocksDuration)
+func (c *FullNodeStruct) ClientStartDeal(ctx context.Context, params *api.StartDealParams) (*cid.Cid, error) {
+	return c.Internal.ClientStartDeal(ctx, params)
 }
 func (c *FullNodeStruct) ClientGetDealInfo(ctx context.Context, deal cid.Cid) (*api.DealInfo, error) {
 	return c.Internal.ClientGetDealInfo(ctx, deal)
@@ -611,6 +620,30 @@ func (c *StorageMinerStruct) SectorsUpdate(ctx context.Context, id abi.SectorNum
 func (c *StorageMinerStruct) WorkerDone(ctx context.Context, task uint64, res sectorbuilder.SealRes) error {
 	return c.Internal.WorkerDone(ctx, task, res)
 }*/
+
+func (c *StorageMinerStruct) MarketImportDealData(ctx context.Context, propcid cid.Cid, path string) error {
+	return c.Internal.MarketImportDealData(ctx, propcid, path)
+}
+
+func (c *StorageMinerStruct) MarketListDeals(ctx context.Context) ([]storagemarket.StorageDeal, error) {
+	return c.Internal.MarketListDeals(ctx)
+}
+
+func (c *StorageMinerStruct) MarketListIncompleteDeals(ctx context.Context) ([]storagemarket.MinerDeal, error) {
+	return c.Internal.MarketListIncompleteDeals(ctx)
+}
+
+func (c *StorageMinerStruct) SetPrice(ctx context.Context, p types.BigInt) error {
+	return c.Internal.SetPrice(ctx, p)
+}
+
+func (c *StorageMinerStruct) DealsImportData(ctx context.Context, dealPropCid cid.Cid, file string) error {
+	return c.Internal.DealsImportData(ctx, dealPropCid, file)
+}
+
+func (c *StorageMinerStruct) DealsList(ctx context.Context) ([]storagemarket.StorageDeal, error) {
+	return c.Internal.DealsList(ctx)
+}
 
 var _ api.Common = &CommonStruct{}
 var _ api.FullNode = &FullNodeStruct{}

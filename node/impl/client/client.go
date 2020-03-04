@@ -58,26 +58,26 @@ type API struct {
 	Filestore  dtypes.ClientFilestore `optional:"true"`
 }
 
-func (a *API) ClientStartDeal(ctx context.Context, data cid.Cid, addr address.Address, miner address.Address, epochPrice types.BigInt, blocksDuration uint64) (*cid.Cid, error) {
-	exist, err := a.WalletHas(ctx, addr)
+func (a *API) ClientStartDeal(ctx context.Context, params *api.StartDealParams) (*cid.Cid, error) {
+	exist, err := a.WalletHas(ctx, params.Wallet)
 	if err != nil {
-		return nil, xerrors.Errorf("failed getting addr from wallet: %w", addr)
+		return nil, xerrors.Errorf("failed getting addr from wallet: %w", params.Wallet)
 	}
 	if !exist {
 		return nil, xerrors.Errorf("provided address doesn't exist in wallet")
 	}
 
-	pid, err := a.StateMinerPeerID(ctx, miner, types.EmptyTSK)
+	pid, err := a.StateMinerPeerID(ctx, params.Miner, types.EmptyTSK)
 	if err != nil {
 		return nil, xerrors.Errorf("failed getting peer ID: %w", err)
 	}
 
-	mw, err := a.StateMinerWorker(ctx, miner, types.EmptyTSK)
+	mw, err := a.StateMinerWorker(ctx, params.Miner, types.EmptyTSK)
 	if err != nil {
 		return nil, xerrors.Errorf("failed getting miner worker: %w", err)
 	}
 
-	ssize, err := a.StateMinerSectorSize(ctx, miner, types.EmptyTSK)
+	ssize, err := a.StateMinerSectorSize(ctx, params.Miner, types.EmptyTSK)
 	if err != nil {
 		return nil, xerrors.Errorf("failed checking miners sector size: %w", err)
 	}
@@ -87,22 +87,20 @@ func (a *API) ClientStartDeal(ctx context.Context, data cid.Cid, addr address.Ad
 		return nil, xerrors.Errorf("bad sector size: %w", err)
 	}
 
-	providerInfo := utils.NewStorageProviderInfo(miner, mw, 0, pid)
+	providerInfo := utils.NewStorageProviderInfo(params.Miner, mw, 0, pid)
 	ts, err := a.ChainHead(ctx)
 	if err != nil {
 		return nil, xerrors.Errorf("failed getting chain height: %w", err)
 	}
+
 	result, err := a.SMDealClient.ProposeStorageDeal(
 		ctx,
-		addr,
+		params.Wallet,
 		&providerInfo,
-		&storagemarket.DataRef{
-			TransferType: storagemarket.TTGraphsync,
-			Root:         data,
-		},
+		params.Data,
 		ts.Height()+dealStartBuffer,
-		ts.Height()+dealStartBuffer+abi.ChainEpoch(blocksDuration),
-		epochPrice,
+		ts.Height()+dealStartBuffer+abi.ChainEpoch(params.BlocksDuration),
+		params.EpochPrice,
 		big.Zero(),
 		rt,
 	)
@@ -332,7 +330,7 @@ func (a *API) ClientRetrieve(ctx context.Context, order api.RetrievalOrder, path
 		return xerrors.New("Retrieval Timed Out")
 	case err := <-retrievalResult:
 		if err != nil {
-			return xerrors.Errorf("Retrieve: %w", err)
+			return xerrors.Errorf("RetrieveUnixfs: %w", err)
 		}
 	}
 
