@@ -96,6 +96,10 @@ var clientDealCmd = &cli.Command{
 			Name:  "manual-piece-size",
 			Usage: "if manually specifying piece cid, used to specify size",
 		},
+		&cli.StringFlag{
+			Name:  "from",
+			Usage: "specify address to fund the deal with",
+		},
 	},
 	Action: func(cctx *cli.Context) error {
 		api, closer, err := GetFullNodeAPI(cctx)
@@ -131,9 +135,19 @@ var clientDealCmd = &cli.Command{
 			return err
 		}
 
-		a, err := api.WalletDefaultAddress(ctx)
-		if err != nil {
-			return err
+		var a address.Address
+		if from := cctx.String("from"); from != "" {
+			faddr, err := address.NewFromString(from)
+			if err != nil {
+				return xerrors.Errorf("failed to parse 'from' address: %w", err)
+			}
+			a = faddr
+		} else {
+			def, err := api.WalletDefaultAddress(ctx)
+			if err != nil {
+				return err
+			}
+			a = def
 		}
 
 		ref := &storagemarket.DataRef{

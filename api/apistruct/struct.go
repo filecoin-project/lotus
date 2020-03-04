@@ -178,6 +178,9 @@ type StorageMinerStruct struct {
 		WorkerDone  func(ctx context.Context, task uint64, res sectorbuilder.SealRes) error                         `perm:"admin"`
 
 		SetPrice func(context.Context, types.BigInt) error `perm:"admin"`
+
+		DealsImportData func(ctx context.Context, dealPropCid cid.Cid, file string) error `perm:"write"`
+		DealsList       func(ctx context.Context) ([]storagemarket.StorageDeal, error)    `perm:"read"`
 	}
 }
 
@@ -633,6 +636,14 @@ func (c *StorageMinerStruct) MarketListIncompleteDeals(ctx context.Context) ([]s
 
 func (c *StorageMinerStruct) SetPrice(ctx context.Context, p types.BigInt) error {
 	return c.Internal.SetPrice(ctx, p)
+}
+
+func (c *StorageMinerStruct) DealsImportData(ctx context.Context, dealPropCid cid.Cid, file string) error {
+	return c.Internal.DealsImportData(ctx, dealPropCid, file)
+}
+
+func (c *StorageMinerStruct) DealsList(ctx context.Context) ([]storagemarket.StorageDeal, error) {
+	return c.Internal.DealsList(ctx)
 }
 
 var _ api.Common = &CommonStruct{}

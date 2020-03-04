@@ -287,4 +287,18 @@ func (sm *StorageMinerAPI) SetPrice(ctx context.Context, p types.BigInt) error {
 	return sm.StorageProvider.AddAsk(abi.TokenAmount(p), 60*60*24*100) // lasts for 100 days?
 }
 
+func (sm *StorageMinerAPI) DealsList(ctx context.Context) ([]storagemarket.StorageDeal, error) {
+	return sm.StorageProvider.ListDeals(ctx)
+}
+
+func (sm *StorageMinerAPI) DealsImportData(ctx context.Context, deal cid.Cid, fname string) error {
+	fi, err := os.Open(fname)
+	if err != nil {
+		return xerrors.Errorf("failed to open given file: %w", err)
+	}
+	defer fi.Close()
+
+	return sm.StorageProvider.ImportDataForDeal(ctx, deal, fi)
+}
+
 var _ api.StorageMiner = &StorageMinerAPI{}
