@@ -8,7 +8,6 @@ import (
 
 	suites "github.com/filecoin-project/chain-validation/suites"
 	"github.com/filecoin-project/chain-validation/suites/message"
-	"github.com/filecoin-project/chain-validation/suites/tipset"
 
 	factory "github.com/filecoin-project/lotus/chain/validation"
 )
@@ -35,7 +34,6 @@ var TestSuiteSkipper TestSkipper
 func init() {
 	// initialize the test skipper with tests being skipped
 	TestSuiteSkipper = TestSkipper{testSkips: []suites.TestCase{
-		tipset.TestInternalMessageApplicationFailure,
 
 		// Fails due to gas mismatches
 		message.TestPaych,

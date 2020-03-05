@@ -26,7 +26,7 @@ type StateTree struct {
 	Store cbor.IpldStore
 
 	actorcache map[address.Address]*types.Actor
-	snapshot   cid.Cid
+	snapshots  []cid.Cid
 }
 
 func NewStateTree(cst cbor.IpldStore) (*StateTree, error) {
@@ -134,7 +134,6 @@ func (st *StateTree) Flush(ctx context.Context) (cid.Cid, error) {
 			return cid.Undef, err
 		}
 	}
-	st.actorcache = make(map[address.Address]*types.Actor)
 
 	if err := st.root.Flush(ctx); err != nil {
 		return cid.Undef, err
@@ -152,8 +151,12 @@ func (st *StateTree) Snapshot(ctx context.Context) error {
 		return err
 	}
 
-	st.snapshot = ss
+	st.snapshots = append(st.snapshots, ss)
 	return nil
+}
+
+func (st *StateTree) ClearSnapshot() {
+	st.snapshots = st.snapshots[:len(st.snapshots)-1]
 }
 
 func (st *StateTree) RegisterNewAddress(addr address.Address, act *types.Actor) (address.Address, error) {
@@ -198,10 +201,12 @@ func (a *AdtStore) Context() context.Context {
 var _ adt.Store = (*AdtStore)(nil)
 
 func (st *StateTree) Revert() error {
-	nd, err := hamt.LoadNode(context.Background(), st.Store, st.snapshot, hamt.UseTreeBitWidth(5))
+	revTo := st.snapshots[len(st.snapshots)-1]
+	nd, err := hamt.LoadNode(context.Background(), st.Store, revTo, hamt.UseTreeBitWidth(5))
 	if err != nil {
 		return err
 	}
+	st.actorcache = make(map[address.Address]*types.Actor)
 
 	st.root = nd
 	return nil
