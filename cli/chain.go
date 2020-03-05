@@ -68,6 +68,7 @@ var chainHeadCmd = &cli.Command{
 var chainGetBlock = &cli.Command{
 	Name:  "getblock",
 	Usage: "Get a block and print its details",
+	ArgsUsage: "[blockCid]",
 	Flags: []cli.Flag{
 		&cli.BoolFlag{
 			Name:  "raw",
@@ -158,6 +159,7 @@ func apiMsgCids(in []api.Message) []cid.Cid {
 var chainReadObjCmd = &cli.Command{
 	Name:  "read-obj",
 	Usage: "Read the raw bytes of an object",
+	ArgsUsage: "[objectCid]",
 	Action: func(cctx *cli.Context) error {
 		api, closer, err := GetFullNodeAPI(cctx)
 		if err != nil {
@@ -184,6 +186,7 @@ var chainReadObjCmd = &cli.Command{
 var chainGetMsgCmd = &cli.Command{
 	Name:  "getmessage",
 	Usage: "Get and print a message by its cid",
+	ArgsUsage: "[messageCid]",
 	Action: func(cctx *cli.Context) error {
 		if !cctx.Args().Present() {
 			return fmt.Errorf("must pass a cid of a message to get")
@@ -231,6 +234,7 @@ var chainGetMsgCmd = &cli.Command{
 var chainSetHeadCmd = &cli.Command{
 	Name:  "sethead",
 	Usage: "manually set the local nodes head tipset (Caution: normally only used for recovery)",
+	ArgsUsage: "[tipsetkey]",
 	Flags: []cli.Flag{
 		&cli.BoolFlag{
 			Name:  "genesis",
@@ -357,6 +361,7 @@ var chainListCmd = &cli.Command{
 var chainGetCmd = &cli.Command{
 	Name:  "get",
 	Usage: "Get chain DAG node by path",
+	ArgsUsage: "[path]",
 	Description: `Get ipld node under a specified path:
 
    lotus chain get /ipfs/[cid]/some/path
@@ -414,6 +419,7 @@ func printTipSet(format string, ts *types.TipSet) {
 var chainBisectCmd = &cli.Command{
 	Name:  "bisect",
 	Usage: "bisect chain for an event",
+	ArgsUsage: "[minHeight maxHeight path shellCommand <shellCommandArgs (if any)>]",
 	Description: `Bisect the chain state tree:
 
    lotus chain bisect [min height] [max height] '1/2/3/state/path' 'shell command' 'args'
@@ -519,6 +525,7 @@ var chainBisectCmd = &cli.Command{
 var chainExportCmd = &cli.Command{
 	Name:  "export",
 	Usage: "export chain to a car file",
+	ArgsUsage: "[outputPath]",
 	Flags: []cli.Flag{
 		&cli.StringFlag{
 			Name: "tipset",
@@ -566,6 +573,7 @@ var chainExportCmd = &cli.Command{
 var slashConsensusFault = &cli.Command{
 	Name:  "slash-consensus",
 	Usage: "Report consensus fault",
+	ArgsUsage: "[blockCid1 blockCid2]",
 	Action: func(cctx *cli.Context) error {
 		api, closer, err := GetFullNodeAPI(cctx)
 		if err != nil {

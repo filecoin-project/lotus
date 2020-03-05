@@ -37,6 +37,7 @@ var clientCmd = &cli.Command{
 var clientImportCmd = &cli.Command{
 	Name:  "import",
 	Usage: "Import data",
+	ArgsUsage: "[inputPath]",
 	Action: func(cctx *cli.Context) error {
 		api, closer, err := GetFullNodeAPI(cctx)
 		if err != nil {
@@ -83,6 +84,7 @@ var clientLocalCmd = &cli.Command{
 var clientDealCmd = &cli.Command{
 	Name:  "deal",
 	Usage: "Initialize storage deal with a miner",
+	ArgsUsage: "[dataCid miner price duration]",
 	Flags: []cli.Flag{
 		&cli.BoolFlag{
 			Name:  "manual-transfer",
@@ -193,6 +195,7 @@ var clientDealCmd = &cli.Command{
 var clientFindCmd = &cli.Command{
 	Name:  "find",
 	Usage: "find data in the network",
+	ArgsUsage: "[dataCid]",
 	Action: func(cctx *cli.Context) error {
 		if !cctx.Args().Present() {
 			fmt.Println("Usage: find [CID]")
@@ -242,6 +245,7 @@ var clientFindCmd = &cli.Command{
 var clientRetrieveCmd = &cli.Command{
 	Name:  "retrieve",
 	Usage: "retrieve data from network",
+	ArgsUsage: "[dataCid outputPath]",
 	Flags: []cli.Flag{
 		&cli.StringFlag{
 			Name:  "address",
@@ -312,6 +316,7 @@ var clientRetrieveCmd = &cli.Command{
 var clientQueryAskCmd = &cli.Command{
 	Name:  "query-ask",
 	Usage: "find a miners ask",
+	ArgsUsage: "[minerAddress]",
 	Flags: []cli.Flag{
 		&cli.StringFlag{
 			Name:  "peerid",

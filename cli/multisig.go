@@ -49,6 +49,7 @@ var multisigCmd = &cli.Command{
 var msigCreateCmd = &cli.Command{
 	Name:  "create",
 	Usage: "Create a new multisig wallet",
+	ArgsUsage: "[address1 address2 ...]",
 	Flags: []cli.Flag{
 		&cli.Int64Flag{
 			Name: "required",
@@ -159,6 +160,7 @@ var msigCreateCmd = &cli.Command{
 var msigInspectCmd = &cli.Command{
 	Name:  "inspect",
 	Usage: "Inspect a multisig wallet",
+	ArgsUsage: "[address]",
 	Flags: []cli.Flag{},
 	Action: func(cctx *cli.Context) error {
 		api, closer, err := GetFullNodeAPI(cctx)
@@ -271,6 +273,7 @@ func state(tx *samsig.Transaction) string {
 var msigProposeCmd = &cli.Command{
 	Name:  "propose",
 	Usage: "Propose a multisig transaction",
+	ArgsUsage: "[multisigAddress destinationAddress value <methodName methodParams> (optional)]",
 	Flags: []cli.Flag{},
 	Action: func(cctx *cli.Context) error {
 		api, closer, err := GetFullNodeAPI(cctx)
@@ -383,7 +386,8 @@ var msigProposeCmd = &cli.Command{
 
 var msigApproveCmd = &cli.Command{
 	Name:  "approve",
-	Usage: "Approve a multisig transaction",
+	Usage: "Approve a multisig message",
+	ArgsUsage: "[multisigAddress messageId]",
 	Flags: []cli.Flag{},
 	Action: func(cctx *cli.Context) error {
 		api, closer, err := GetFullNodeAPI(cctx)
@@ -393,8 +397,8 @@ var msigApproveCmd = &cli.Command{
 		defer closer()
 		ctx := ReqContext(cctx)
 
-		if cctx.Args().Len() < 2 {
-			return fmt.Errorf("must pass multisig address and transaction ID")
+		if cctx.Args().Len() != 2 {
+			return fmt.Errorf("must pass multisig address and message ID")
 		}
 
 		msig, err := address.NewFromString(cctx.Args().Get(0))
