@@ -257,6 +257,7 @@ func Online() Option {
 		ApplyIf(func(s *Settings) bool { return s.nodeType == repo.StorageMiner },
 			Override(new(*sectorbuilder.Config), modules.SectorBuilderConfig),
 			Override(new(advmgr.LocalStorage), From(new(repo.LockedRepo))),
+			Override(new(advmgr.SectorIDCounter), modules.SectorIDCounter),
 			Override(new(*advmgr.Manager), advmgr.New),
 
 			Override(new(sealmgr.Manager), From(new(*advmgr.Manager))),

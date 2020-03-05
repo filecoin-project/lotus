@@ -21,9 +21,9 @@ type StorageConfig struct {
 // [path]/metadata.json
 type StorageMeta struct {
 	ID string
-	Weight int // 0 = readonly
+	Weight uint64 // 0 = readonly
 
-	CanCommit bool
+	CanSeal  bool
 	CanStore bool
 }
 

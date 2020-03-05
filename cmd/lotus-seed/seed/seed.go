@@ -136,10 +136,10 @@ func PreSeal(maddr address.Address, pt abi.RegisteredProof, offset abi.SectorNum
 
 	{
 		b, err := json.MarshalIndent(&config.StorageMeta{
-			ID:        uuid.New().String(),
-			Weight:    0, // read-only
-			CanCommit: false,
-			CanStore:  false,
+			ID:       uuid.New().String(),
+			Weight:   0, // read-only
+			CanSeal:  false,
+			CanStore: false,
 		}, "", "  ")
 		if err != nil {
 			return nil, nil, xerrors.Errorf("marshaling storage config: %w", err)

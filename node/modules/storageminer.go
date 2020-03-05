@@ -15,6 +15,7 @@ import (
 	deals "github.com/filecoin-project/go-fil-markets/storagemarket/impl"
 	storageimpl "github.com/filecoin-project/go-fil-markets/storagemarket/impl"
 	smnet "github.com/filecoin-project/go-fil-markets/storagemarket/network"
+	"github.com/filecoin-project/go-fil-markets/storedcounter"
 	paramfetch "github.com/filecoin-project/go-paramfetch"
 	"github.com/filecoin-project/go-sectorbuilder"
 	"github.com/filecoin-project/go-statestore"
@@ -38,6 +39,7 @@ import (
 
 	"github.com/filecoin-project/lotus/chain/types"
 	"github.com/filecoin-project/lotus/storage/sealmgr"
+	"github.com/filecoin-project/lotus/storage/sealmgr/advmgr"
 
 	"github.com/filecoin-project/lotus/api"
 	"github.com/filecoin-project/lotus/build"
@@ -96,6 +98,20 @@ func SectorBuilderConfig(ds dtypes.MetadataDS, fnapi api.FullNode) (*sectorbuild
 	}
 
 	return sb, nil
+}
+
+type sidsc struct {
+	sc *storedcounter.StoredCounter
+}
+
+func (s *sidsc) Next() (abi.SectorNumber, error) {
+	i, err := s.sc.Next()
+	return abi.SectorNumber(i), err
+}
+
+func SectorIDCounter(ds dtypes.MetadataDS) advmgr.SectorIDCounter {
+	sc := storedcounter.New(ds, datastore.NewKey("/storage/nextid"))
+	return &sidsc{sc}
 }
 
 func StorageMiner(mctx helpers.MetricsCtx, lc fx.Lifecycle, api api.FullNode, h host.Host, ds dtypes.MetadataDS, sealer sealmgr.Manager, tktFn sealing.TicketFn) (*storage.Miner, error) {

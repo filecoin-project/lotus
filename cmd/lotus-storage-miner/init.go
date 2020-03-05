@@ -363,7 +363,7 @@ func storageMinerInit(ctx context.Context, cctx *cli.Context, api lapi.FullNode,
 				SealProofType: spt,
 				PoStProofType: ppt,
 				Miner:         a,
-			})
+			}, nil)
 			if err != nil {
 				return err
 			}
