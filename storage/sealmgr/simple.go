@@ -16,6 +16,13 @@ import (
 	ffi "github.com/filecoin-project/filecoin-ffi"
 )
 
+
+type LocalWorker struct {
+	sectorbuilder.Basic
+}
+
+var _ Worker = &LocalWorker{}
+
 // Simple implements a very basic storage manager which has one local worker,
 // running one thing locally
 type Simple struct {
