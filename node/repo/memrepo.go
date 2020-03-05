@@ -88,9 +88,6 @@ func (lmem *lockedMemRepo) Path() string {
 		}
 	}
 
-
-
-
 	lmem.tempDir = t
 	return t
 }

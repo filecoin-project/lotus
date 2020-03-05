@@ -32,8 +32,12 @@ type Simple struct {
 	worker      Worker
 }
 
+type sszgetter interface {
+	SectorSize() abi.SectorSize
+}
+
 func (s *Simple) SectorSize() abi.SectorSize {
-	panic("implement me")
+	return s.worker.(sszgetter).SectorSize()
 }
 
 func NewSimpleManager(sc *storedcounter.StoredCounter, maddr address.Address, sb sectorbuilder.Basic) (*Simple, error) {
