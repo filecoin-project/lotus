@@ -8,6 +8,8 @@ import (
 
 	suites "github.com/filecoin-project/chain-validation/suites"
 	"github.com/filecoin-project/chain-validation/suites/message"
+	"github.com/filecoin-project/chain-validation/suites/tipset"
+
 	factory "github.com/filecoin-project/lotus/chain/validation"
 )
 
@@ -38,6 +40,10 @@ func init() {
 		message.TestPaych,
 		// Fails due to state initialization
 		message.TestMultiSigActor,
+
+		// Fails due to incorrect implicit actor creation
+		// https://filecoinproject.slack.com/archives/CHMNDCK9P/p1583358693160000
+		tipset.TestInternalMessageApplicationFailure,
 	}}
 }
 
