@@ -6,13 +6,11 @@ import (
 	"crypto/rand"
 	"io/ioutil"
 	"net/http/httptest"
-	"path/filepath"
 	"testing"
 	"time"
 
+	"github.com/filecoin-project/go-fil-markets/storedcounter"
 	"github.com/ipfs/go-datastore"
-	"github.com/ipfs/go-datastore/namespace"
-	badger "github.com/ipfs/go-ds-badger2"
 	logging "github.com/ipfs/go-log/v2"
 	"github.com/libp2p/go-libp2p-core/crypto"
 	"github.com/libp2p/go-libp2p-core/peer"
@@ -39,11 +37,12 @@ import (
 	"github.com/filecoin-project/lotus/lib/jsonrpc"
 	"github.com/filecoin-project/lotus/miner"
 	"github.com/filecoin-project/lotus/node"
-	"github.com/filecoin-project/lotus/node/impl"
 	"github.com/filecoin-project/lotus/node/modules"
 	modtest "github.com/filecoin-project/lotus/node/modules/testing"
 	"github.com/filecoin-project/lotus/node/repo"
 	"github.com/filecoin-project/lotus/storage/sbmock"
+	"github.com/filecoin-project/lotus/storage/sealmgr"
+	"github.com/filecoin-project/lotus/storage/sealmgr/advmgr"
 )
 
 func init() {
@@ -240,40 +239,24 @@ func builder(t *testing.T, nFull int, storage []int) ([]test.TestNode, []test.Te
 
 		f := fulls[full]
 		if _, err := f.FullNode.WalletImport(ctx, &keys[i].KeyInfo); err != nil {
-			return nil, nil
+			t.Fatal(err)
 		}
 		if err := f.FullNode.WalletSetDefault(ctx, keys[i].Address); err != nil {
-			return nil, nil
+			t.Fatal(err)
 		}
 
 		genMiner := maddrs[i]
 		wa := genms[i].Worker
 
 		storers[i] = testStorageNode(ctx, t, wa, genMiner, pk, f, mn, node.Options())
-
-		sma := storers[i].StorageMiner.(*impl.StorageMinerAPI)
-
-		psd := presealDirs[i]
-		mds, err := badger.NewDatastore(filepath.Join(psd, "badger"), nil)
-		if err != nil {
+		if err := storers[i].StorageAddLocal(ctx, presealDirs[i]); err != nil {
 			t.Fatal(err)
 		}
+		/*
+			sma := storers[i].StorageMiner.(*impl.StorageMinerAPI)
 
-		osb, err := sectorbuilder.New(&sectorbuilder.Config{
-			SealProofType: abi.RegisteredProof_StackedDRG2KiBSeal,
-			PoStProofType: abi.RegisteredProof_StackedDRG2KiBPoSt,
-			WorkerThreads: 2,
-			Miner:         genMiner,
-			Paths:         sectorbuilder.SimplePath(psd),
-		}, namespace.Wrap(mds, datastore.NewKey("/sectorbuilder")))
-		if err != nil {
-			t.Fatal(err)
-		}
-
-		if err := sma.SectorBuilder.(*sectorbuilder.SectorBuilder).ImportFrom(osb, false); err != nil {
-			t.Fatal(err)
-		}
-
+			psd := presealDirs[i]
+		*/
 	}
 
 	if err := mn.LinkAll(); err != nil {
@@ -394,7 +377,10 @@ func mockSbBuilder(t *testing.T, nFull int, storage []int) ([]test.TestNode, []t
 		wa := genms[i].Worker
 
 		storers[i] = testStorageNode(ctx, t, wa, genMiner, pk, f, mn, node.Options(
-			node.Override(new(sectorbuilder.Interface), sbmock.NewMockSectorBuilder(5, build.SectorSizes[0])),
+			node.Override(new(sealmgr.Manager), func() (sealmgr.Manager, error) {
+				return sealmgr.NewSimpleManager(storedcounter.New(datastore.NewMapDatastore(), datastore.NewKey("/potato")), genMiner, sbmock.NewMockSectorBuilder(5, build.SectorSizes[0]))
+			}),
+			node.Unset(new(*advmgr.Manager)),
 		))
 	}
 

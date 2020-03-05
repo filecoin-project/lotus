@@ -72,7 +72,7 @@ var infoCmd = &cli.Command{
 				float64(10000*uint64(len(faults))/secCounts.Pset)/100.)
 		}
 
-		// TODO: indicate whether the post worker is in use
+		/*// TODO: indicate whether the post worker is in use
 		wstat, err := nodeApi.WorkerStats(ctx)
 		if err != nil {
 			return err
@@ -86,7 +86,7 @@ var infoCmd = &cli.Command{
 		fmt.Printf("\tAddPiece: %d\n", wstat.AddPieceWait)
 		fmt.Printf("\tPreCommit: %d\n", wstat.PreCommitWait)
 		fmt.Printf("\tCommit: %d\n", wstat.CommitWait)
-		fmt.Printf("\tUnseal: %d\n", wstat.UnsealWait)
+		fmt.Printf("\tUnseal: %d\n", wstat.UnsealWait)*/
 
 		ps, err := api.StateMinerPostState(ctx, maddr, types.EmptyTSK)
 		if err != nil {

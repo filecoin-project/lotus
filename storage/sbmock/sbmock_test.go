@@ -20,7 +20,7 @@ func TestOpFinish(t *testing.T) {
 
 	finished := make(chan struct{})
 	go func() {
-		_, _, err := sb.SealPreCommit(ctx, sid, abi.SealRandomness{}, pieces)
+		_, err := sb.SealPreCommit1(ctx, sid, abi.SealRandomness{}, pieces)
 		if err != nil {
 			t.Error(err)
 			return

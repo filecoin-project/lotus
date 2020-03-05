@@ -56,6 +56,8 @@ import (
 	"github.com/filecoin-project/lotus/paychmgr"
 	"github.com/filecoin-project/lotus/storage"
 	"github.com/filecoin-project/lotus/storage/sealing"
+	"github.com/filecoin-project/lotus/storage/sealmgr"
+	"github.com/filecoin-project/lotus/storage/sealmgr/advmgr"
 	"github.com/filecoin-project/lotus/storage/sectorblocks"
 )
 
@@ -253,7 +255,14 @@ func Online() Option {
 
 		// Storage miner
 		ApplyIf(func(s *Settings) bool { return s.nodeType == repo.StorageMiner },
-			Override(new(sectorbuilder.Interface), modules.SectorBuilder),
+			Override(new(*sectorbuilder.Config), modules.SectorBuilderConfig),
+			Override(new(advmgr.LocalStorage), From(new(repo.LockedRepo))),
+			Override(new(advmgr.SectorIDCounter), modules.SectorIDCounter),
+			Override(new(*advmgr.Manager), advmgr.New),
+
+			Override(new(sealmgr.Manager), From(new(*advmgr.Manager))),
+			Override(new(sectorbuilder.Prover), From(new(sealmgr.Manager))),
+
 			Override(new(*sectorblocks.SectorBlocks), sectorblocks.NewSectorBlocks),
 			Override(new(sealing.TicketFn), modules.SealTicketGen),
 			Override(new(*storage.Miner), modules.StorageMiner),
@@ -346,30 +355,13 @@ func ConfigFullNode(c interface{}) Option {
 	)
 }
 
-func ConfigStorageMiner(c interface{}, lr repo.LockedRepo) Option {
+func ConfigStorageMiner(c interface{}) Option {
 	cfg, ok := c.(*config.StorageMiner)
 	if !ok {
 		return Error(xerrors.Errorf("invalid config from repo, got: %T", c))
 	}
 
-	scfg := sectorbuilder.SimplePath(lr.Path())
-	if cfg.SectorBuilder.Path == "" {
-		if len(cfg.SectorBuilder.Storage) > 0 {
-			scfg = cfg.SectorBuilder.Storage
-		}
-	} else {
-		scfg = sectorbuilder.SimplePath(cfg.SectorBuilder.Path)
-		log.Warn("LEGACY SectorBuilder.Path FOUND IN CONFIG. Please use the new storage config")
-	}
-
-	return Options(
-		ConfigCommon(&cfg.Common),
-
-		Override(new(*sectorbuilder.Config), modules.SectorBuilderConfig(scfg,
-			cfg.SectorBuilder.WorkerCount,
-			cfg.SectorBuilder.DisableLocalPreCommit,
-			cfg.SectorBuilder.DisableLocalCommit)),
-	)
+	return Options(ConfigCommon(&cfg.Common))
 }
 
 func Repo(r repo.Repo) Option {
@@ -387,7 +379,7 @@ func Repo(r repo.Repo) Option {
 			Override(new(repo.LockedRepo), modules.LockedRepo(lr)), // module handles closing
 
 			ApplyIf(isType(repo.FullNode), ConfigFullNode(c)),
-			ApplyIf(isType(repo.StorageMiner), ConfigStorageMiner(c, lr)),
+			ApplyIf(isType(repo.StorageMiner), ConfigStorageMiner(c)),
 
 			Override(new(dtypes.MetadataDS), modules.Datastore),
 			Override(new(dtypes.ChainBlockstore), modules.ChainBlockstore),
