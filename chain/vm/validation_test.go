@@ -36,8 +36,6 @@ func init() {
 	// initialize the test skipper with tests being skipped
 	TestSuiteSkipper = TestSkipper{testSkips: []suites.TestCase{
 
-		// Fails due to gas mismatches
-		message.TestPaych,
 		// Fails due to state initialization
 		message.TestMultiSigActor,
 
