@@ -72,7 +72,6 @@ var infoCmd = &cli.Command{
 				float64(10000*uint64(len(faults))/secCounts.Pset)/100.)
 		}
 
-		panic("todo")
 		/*// TODO: indicate whether the post worker is in use
 		wstat, err := nodeApi.WorkerStats(ctx)
 		if err != nil {
