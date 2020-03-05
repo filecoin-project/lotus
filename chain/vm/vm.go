@@ -191,7 +191,7 @@ func (vmc *VMContext) ChargeGas(amount uint64) aerrors.ActorError {
 	toUse := types.NewInt(amount)
 	vmc.gasUsed = types.BigAdd(vmc.gasUsed, toUse)
 	if vmc.gasUsed.GreaterThan(vmc.gasAvailable) {
-		return aerrors.Newf(outOfGasErrCode, "not enough gas: used=%s, available=%s", vmc.gasUsed, vmc.gasAvailable)
+		return aerrors.Newf(uint8(exitcode.SysErrOutOfGas), "not enough gas: used=%s, available=%s", vmc.gasUsed, vmc.gasAvailable)
 	}
 	return nil
 }
@@ -461,6 +461,20 @@ func (vm *VM) ApplyMessage(ctx context.Context, msg *types.Message) (*ApplyRet, 
 		return nil, err
 	}
 
+	serMsg, err := msg.Serialize()
+	if err != nil {
+		return nil, xerrors.Errorf("could not serialize message: %w", err)
+	}
+	msgGasCost := uint64(len(serMsg)) * gasPerMessageByte
+	if msgGasCost > msg.GasLimit.Uint64() {
+		return &ApplyRet{
+			MessageReceipt: types.MessageReceipt{
+				ExitCode: exitcode.SysErrOutOfGas,
+				GasUsed:  msg.GasLimit,
+			},
+		}, nil
+	}
+
 	st := vm.cstate
 	if err := st.Snapshot(ctx); err != nil {
 		return nil, xerrors.Errorf("snapshot failed: %w", err)
@@ -480,11 +494,6 @@ func (vm *VM) ApplyMessage(ctx context.Context, msg *types.Message) (*ApplyRet, 
 		return nil, xerrors.Errorf("failed to look up from actor: %w", err)
 	}
 
-	serMsg, err := msg.Serialize()
-	if err != nil {
-		return nil, xerrors.Errorf("could not serialize message: %w", err)
-	}
-	msgGasCost := uint64(len(serMsg)) * gasPerMessageByte
 
 	gascost := types.BigMul(msg.GasLimit, msg.GasPrice)
 	totalCost := types.BigAdd(gascost, msg.Value)
