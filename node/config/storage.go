@@ -20,7 +20,7 @@ type StorageConfig struct {
 
 // [path]/metadata.json
 type StorageMeta struct {
-	ID string
+	ID     string
 	Weight uint64 // 0 = readonly
 
 	CanSeal  bool
@@ -65,4 +65,3 @@ func WriteStorageFile(path string, config StorageConfig) error {
 
 	return nil
 }
-

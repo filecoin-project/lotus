@@ -15,7 +15,7 @@ import (
 )
 
 type localWorker struct {
-	scfg *sectorbuilder.Config
+	scfg    *sectorbuilder.Config
 	storage *storage
 }
 
@@ -41,7 +41,7 @@ func (l *localWorkerPathProvider) AcquireSector(id abi.SectorNumber, existing se
 }
 
 func (l *localWorker) sb() (sectorbuilder.Basic, error) {
-	return sectorbuilder.New(&localWorkerPathProvider{w:l}, l.scfg)
+	return sectorbuilder.New(&localWorkerPathProvider{w: l}, l.scfg)
 }
 
 func (l *localWorker) AddPiece(ctx context.Context, sz abi.UnpaddedPieceSize, sn abi.SectorNumber, r io.Reader, epcs []abi.UnpaddedPieceSize) (abi.PieceInfo, error) {
@@ -100,10 +100,10 @@ func (l *localWorker) FinalizeSector(ctx context.Context, sectorNum abi.SectorNu
 
 func (l *localWorker) TaskTypes() map[sealmgr.TaskType]struct{} {
 	return map[sealmgr.TaskType]struct{}{
-		sealmgr.TTAddPiece: {},
+		sealmgr.TTAddPiece:   {},
 		sealmgr.TTPreCommit1: {},
 		sealmgr.TTPreCommit2: {},
-		sealmgr.TTCommit2: {},
+		sealmgr.TTCommit2:    {},
 	}
 }
 

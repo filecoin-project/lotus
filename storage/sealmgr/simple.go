@@ -16,7 +16,6 @@ import (
 	ffi "github.com/filecoin-project/filecoin-ffi"
 )
 
-
 type LocalWorker struct {
 	sectorbuilder.Basic
 }
