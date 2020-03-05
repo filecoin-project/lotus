@@ -54,23 +54,48 @@ func (l *localWorker) AddPiece(ctx context.Context, sz abi.UnpaddedPieceSize, sn
 }
 
 func (l *localWorker) SealPreCommit1(ctx context.Context, sectorNum abi.SectorNumber, ticket abi.SealRandomness, pieces []abi.PieceInfo) (out []byte, err error) {
-	panic("implement me")
+	sb, err := l.sb()
+	if err != nil {
+		return nil, err
+	}
+
+	return sb.SealPreCommit1(ctx, sectorNum, ticket, pieces)
 }
 
 func (l *localWorker) SealPreCommit2(ctx context.Context, sectorNum abi.SectorNumber, phase1Out []byte) (sealedCID cid.Cid, unsealedCID cid.Cid, err error) {
-	panic("implement me")
+	sb, err := l.sb()
+	if err != nil {
+		return cid.Undef, cid.Undef, err
+	}
+
+	return sb.SealPreCommit2(ctx, sectorNum, phase1Out)
 }
 
 func (l *localWorker) SealCommit1(ctx context.Context, sectorNum abi.SectorNumber, ticket abi.SealRandomness, seed abi.InteractiveSealRandomness, pieces []abi.PieceInfo, sealedCID cid.Cid, unsealedCID cid.Cid) (output []byte, err error) {
-	panic("implement me")
+	sb, err := l.sb()
+	if err != nil {
+		return nil, err
+	}
+
+	return sb.SealCommit1(ctx, sectorNum, ticket, seed, pieces, sealedCID, unsealedCID)
 }
 
 func (l *localWorker) SealCommit2(ctx context.Context, sectorNum abi.SectorNumber, phase1Out []byte) (proof []byte, err error) {
-	panic("implement me")
+	sb, err := l.sb()
+	if err != nil {
+		return nil, err
+	}
+
+	return sb.SealCommit2(ctx, sectorNum, phase1Out)
 }
 
-func (l *localWorker) FinalizeSector(context.Context, abi.SectorNumber) error {
-	panic("implement me")
+func (l *localWorker) FinalizeSector(ctx context.Context, sectorNum abi.SectorNumber) error {
+	sb, err := l.sb()
+	if err != nil {
+		return err
+	}
+
+	return sb.FinalizeSector(ctx, sectorNum)
 }
 
 func (l *localWorker) TaskTypes() map[sealmgr.TaskType]struct{} {
