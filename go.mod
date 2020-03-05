@@ -23,7 +23,7 @@ require (
 	github.com/filecoin-project/go-paramfetch v0.0.2-0.20200218225740-47c639bab663
 	github.com/filecoin-project/go-sectorbuilder v0.0.2-0.20200228181617-f00e2c4cc050
 	github.com/filecoin-project/go-statestore v0.1.0
-	github.com/filecoin-project/specs-actors v0.0.0-20200304210626-21ee86aadcb9
+	github.com/filecoin-project/specs-actors v0.0.0-20200305205312-53bb01da9aeb
 	github.com/gbrlsnchs/jwt/v3 v3.0.0-beta.1
 	github.com/go-ole/go-ole v1.2.4 // indirect
 	github.com/google/uuid v1.1.1
