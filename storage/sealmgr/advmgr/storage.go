@@ -156,6 +156,10 @@ func (st *storage) acquireSector(mid abi.ActorID, id abi.SectorNumber, existing 
 			if !sealing && !p.meta.CanStore {
 				continue
 			}
+			p.sectors[abi.SectorID{
+				Miner:  mid,
+				Number: id,
+			}] |= fileType
 
 			// TODO: Check free space
 			// TODO: Calc weights
