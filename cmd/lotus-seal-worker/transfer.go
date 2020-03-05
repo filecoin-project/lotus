@@ -1,5 +1,5 @@
 package main
-
+/*
 import (
 	"fmt"
 	"io"
@@ -174,3 +174,4 @@ func (w *worker) fetchSector(sectorID abi.SectorNumber, typ sectorbuilder.Worker
 	}
 	return nil
 }
+*/
