@@ -1,5 +1,5 @@
 package main
-
+/*
 import (
 	"context"
 	"net/http"
@@ -128,3 +128,4 @@ func (w *worker) processTask(ctx context.Context, task sectorbuilder.WorkerTask)
 func errRes(err error) sectorbuilder.SealRes {
 	return sectorbuilder.SealRes{Err: err.Error(), GoErr: err}
 }
+*/

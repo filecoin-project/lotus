@@ -2,21 +2,11 @@ package main
 
 import (
 	"os"
-	"sync"
-
-	paramfetch "github.com/filecoin-project/go-paramfetch"
-	"github.com/filecoin-project/go-sectorbuilder"
-	"github.com/mitchellh/go-homedir"
 
 	logging "github.com/ipfs/go-log/v2"
-	"golang.org/x/xerrors"
 	"gopkg.in/urfave/cli.v2"
 
-	manet "github.com/multiformats/go-multiaddr-net"
-
-	"github.com/filecoin-project/lotus/api"
 	"github.com/filecoin-project/lotus/build"
-	lcli "github.com/filecoin-project/lotus/cli"
 	"github.com/filecoin-project/lotus/lib/lotuslog"
 	"github.com/filecoin-project/lotus/node/repo"
 )
@@ -85,7 +75,7 @@ var runCmd = &cli.Command{
 	Name:  "run",
 	Usage: "Start lotus worker",
 	Action: func(cctx *cli.Context) error {
-		if !cctx.Bool("enable-gpu-proving") {
+	/*	if !cctx.Bool("enable-gpu-proving") {
 			os.Setenv("BELLMAN_NO_GPU", "true")
 		}
 
@@ -138,12 +128,12 @@ var runCmd = &cli.Command{
 			return xerrors.Errorf("get params: %w", err)
 		}
 
-		ppt, spt, err := api.ProofTypeFromSectorSize(ssize)
+		/*ppt, spt, err := api.ProofTypeFromSectorSize(ssize)
 		if err != nil {
 			return err
 		}
 
-		sb, err := sectorbuilder.NewStandalone(&sectorbuilder.Config{
+		/*sb, err := sectorbuilder.NewStandalone(&sectorbuilder.Config{
 			SealProofType: spt,
 			PoStProofType: ppt,
 			Miner:         act,
@@ -162,14 +152,14 @@ var runCmd = &cli.Command{
 			go func() {
 				defer wg.Done()
 
-				if err := acceptJobs(ctx, nodeApi, sb, limiter, "http://"+storageAddr, ainfo.AuthHeader(), r, cctx.Bool("no-precommit"), cctx.Bool("no-commit")); err != nil {
+			/*	if err := acceptJobs(ctx, nodeApi, sb, limiter, "http://"+storageAddr, ainfo.AuthHeader(), r, cctx.Bool("no-precommit"), cctx.Bool("no-commit")); err != nil {
 					log.Warnf("%+v", err)
 					return
 				}
 			}()
 		}
 
-		wg.Wait()
+		wg.Wait()*/
 		return nil
 	},
 }
