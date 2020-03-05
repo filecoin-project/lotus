@@ -157,17 +157,6 @@ func (st *storage) acquireSector(mid abi.ActorID, id abi.SectorNumber, existing 
 				continue
 			}
 
-			s, ok := p.sectors[abi.SectorID{
-				Miner:  mid,
-				Number: id,
-			}]
-			if !ok {
-				continue
-			}
-			if s & fileType == 0 {
-				continue
-			}
-
 			// TODO: Check free space
 			// TODO: Calc weights
 
@@ -236,6 +225,25 @@ func (st *storage) findSector(mid abi.ActorID, sn abi.SectorNumber, typ sectorbu
 	}
 
 	return out, nil
+}
+
+func (st *storage) local() []Path {
+	var out []Path
+	for _, p := range st.paths {
+		if p.local == "" {
+			continue
+		}
+
+		out = append(out, Path{
+			ID:        p.meta.ID,
+			Weight:    p.meta.Weight,
+			LocalPath: p.local,
+			CanSeal:   p.meta.CanSeal,
+			CanStore:  p.meta.CanStore,
+		})
+	}
+
+	return out
 }
 
 func parseSectorID(baseName string) (abi.SectorID, error) {
