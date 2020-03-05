@@ -8,7 +8,6 @@ import (
 	"github.com/filecoin-project/go-crypto"
 	acrypto "github.com/filecoin-project/specs-actors/actors/crypto"
 
-	ffi "github.com/filecoin-project/filecoin-ffi"
 	"github.com/filecoin-project/lotus/chain/types"
 	"github.com/filecoin-project/lotus/chain/wallet"
 )
@@ -87,7 +86,8 @@ func (k *KeyManager) newBLSKey() *wallet.Key {
 	// FIXME: bls needs deterministic key generation
 	//sk := ffi.PrivateKeyGenerate(s.blsSeed)
 	// s.blsSeed++
-	sk := ffi.PrivateKeyGenerate()
+	sk := [32]byte{}
+	sk[0] = uint8(k.blsSeed+1) // hack to keep gas values determinist
 	key, err := wallet.NewKey(types.KeyInfo{
 		Type:       wallet.KTBLS,
 		PrivateKey: sk[:],

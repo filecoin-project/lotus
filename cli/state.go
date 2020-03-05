@@ -63,6 +63,7 @@ var stateCmd = &cli.Command{
 var stateMinerInfo = &cli.Command{
 	Name:  "miner-info",
 	Usage: "Retrieve miner information",
+	ArgsUsage: "[minerAddress]",
 	Action: func(cctx *cli.Context) error {
 		api, closer, err := GetFullNodeAPI(cctx)
 		if err != nil {
@@ -154,6 +155,7 @@ func loadTipSet(ctx context.Context, cctx *cli.Context, api api.FullNode) (*type
 var statePowerCmd = &cli.Command{
 	Name:  "power",
 	Usage: "Query network or miner power",
+	ArgsUsage: "[<minerAddress> (optional)]",
 	Action: func(cctx *cli.Context) error {
 		api, closer, err := GetFullNodeAPI(cctx)
 		if err != nil {
@@ -197,6 +199,7 @@ var statePowerCmd = &cli.Command{
 var stateSectorsCmd = &cli.Command{
 	Name:  "sectors",
 	Usage: "Query the sector set of a miner",
+	ArgsUsage: "[minerAddress]",
 	Action: func(cctx *cli.Context) error {
 		api, closer, err := GetFullNodeAPI(cctx)
 		if err != nil {
@@ -236,6 +239,7 @@ var stateSectorsCmd = &cli.Command{
 var stateProvingSetCmd = &cli.Command{
 	Name:  "proving",
 	Usage: "Query the proving set of a miner",
+	ArgsUsage: "[minerAddress]",
 	Action: func(cctx *cli.Context) error {
 		api, closer, err := GetFullNodeAPI(cctx)
 		if err != nil {
@@ -275,6 +279,7 @@ var stateProvingSetCmd = &cli.Command{
 var stateReplaySetCmd = &cli.Command{
 	Name:  "replay",
 	Usage: "Replay a particular message within a tipset",
+	ArgsUsage: "[tipsetKey messageCid]",
 	Action: func(cctx *cli.Context) error {
 		if cctx.Args().Len() < 1 {
 			fmt.Println("usage: [tipset] <message cid>")
@@ -381,6 +386,7 @@ var statePledgeCollateralCmd = &cli.Command{
 var stateGetDealSetCmd = &cli.Command{
 	Name:  "get-deal",
 	Usage: "View on-chain deal info",
+	ArgsUsage: "[dealId]",
 	Action: func(cctx *cli.Context) error {
 		api, closer, err := GetFullNodeAPI(cctx)
 		if err != nil {
@@ -391,7 +397,7 @@ var stateGetDealSetCmd = &cli.Command{
 		ctx := ReqContext(cctx)
 
 		if !cctx.Args().Present() {
-			return fmt.Errorf("must specify miner to list sectors for")
+			return fmt.Errorf("must specify deal ID")
 		}
 
 		dealid, err := strconv.ParseUint(cctx.Args().First(), 10, 64)
@@ -482,6 +488,7 @@ var stateListActorsCmd = &cli.Command{
 var stateGetActorCmd = &cli.Command{
 	Name:  "get-actor",
 	Usage: "Print actor information",
+	ArgsUsage: "[actorrAddress]",
 	Action: func(cctx *cli.Context) error {
 		api, closer, err := GetFullNodeAPI(cctx)
 		if err != nil {
@@ -523,6 +530,7 @@ var stateGetActorCmd = &cli.Command{
 var stateLookupIDCmd = &cli.Command{
 	Name:  "lookup",
 	Usage: "Find corresponding ID address",
+	ArgsUsage: "[address]",
 	Action: func(cctx *cli.Context) error {
 		api, closer, err := GetFullNodeAPI(cctx)
 		if err != nil {
@@ -560,6 +568,7 @@ var stateLookupIDCmd = &cli.Command{
 var stateSectorSizeCmd = &cli.Command{
 	Name:  "sector-size",
 	Usage: "Look up miners sector size",
+	ArgsUsage: "[minerAddress]",
 	Action: func(cctx *cli.Context) error {
 		api, closer, err := GetFullNodeAPI(cctx)
 		if err != nil {
@@ -570,7 +579,7 @@ var stateSectorSizeCmd = &cli.Command{
 		ctx := ReqContext(cctx)
 
 		if !cctx.Args().Present() {
-			return fmt.Errorf("must pass address of actor to get")
+			return fmt.Errorf("must pass miner's address")
 		}
 
 		addr, err := address.NewFromString(cctx.Args().First())
@@ -596,6 +605,7 @@ var stateSectorSizeCmd = &cli.Command{
 var stateReadStateCmd = &cli.Command{
 	Name:  "read-state",
 	Usage: "View a json representation of an actors state",
+	ArgsUsage: "[actorAddress]",
 	Action: func(cctx *cli.Context) error {
 		api, closer, err := GetFullNodeAPI(cctx)
 		if err != nil {
@@ -788,6 +798,7 @@ var stateComputeStateCmd = &cli.Command{
 var stateWaitMsgCmd = &cli.Command{
 	Name:  "wait-msg",
 	Usage: "Wait for a message to appear on chain",
+	ArgsUsage: "[messageCid]",
 	Flags: []cli.Flag{
 		&cli.StringFlag{
 			Name:  "timeout",
@@ -828,6 +839,7 @@ var stateWaitMsgCmd = &cli.Command{
 var stateCallCmd = &cli.Command{
 	Name:  "call",
 	Usage: "Invoke a method on an actor locally",
+	ArgsUsage: "[toAddress methodId <param1 param2 ...> (optional)]",
 	Flags: []cli.Flag{
 		&cli.StringFlag{
 			Name:  "from",

@@ -188,15 +188,11 @@ func (sm *StateManager) ApplyBlocks(ctx context.Context, pstate cid.Cid, bms []B
 			}
 		}
 
-		owner, err := GetMinerOwner(ctx, sm, pstate, b.Miner)
-		if err != nil {
-			return cid.Undef, cid.Undef, xerrors.Errorf("failed to get owner for miner %s: %w", b.Miner, err)
-		}
-
+		var err error
 		params, err := actors.SerializeParams(&reward.AwardBlockRewardParams{
-			MinerOwner: owner,
-			Penalty:    penalty,
-			GasReward:  gasReward,
+			Miner:     b.Miner,
+			Penalty:   penalty,
+			GasReward: gasReward,
 		})
 		if err != nil {
 			return cid.Undef, cid.Undef, xerrors.Errorf("failed to serialize award params: %w", err)

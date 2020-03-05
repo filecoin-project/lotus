@@ -39,9 +39,9 @@ func (f *Factories) NewRandomnessSource() vstate.RandomnessSource {
 }
 
 func (f *Factories) NewValidationConfig() vstate.ValidationConfig {
-	trackGas := false
-	checkExit := false
-	checkRet := false
+	trackGas := true
+	checkExit := true
+	checkRet := false // TODO enable return value checking once https://github.com/filecoin-project/specs-actors/pull/230 lands
 	// ignore gas and return value assertions
 	return NewConfig(trackGas, checkExit, checkRet)
 }
