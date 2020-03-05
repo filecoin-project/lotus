@@ -19,6 +19,7 @@ import (
 	"github.com/filecoin-project/specs-actors/actors/builtin/multisig"
 	"github.com/filecoin-project/specs-actors/actors/builtin/paych"
 	"github.com/filecoin-project/specs-actors/actors/builtin/power"
+	"github.com/filecoin-project/specs-actors/actors/builtin/reward"
 	"github.com/filecoin-project/specs-actors/actors/builtin/system"
 	vmr "github.com/filecoin-project/specs-actors/actors/runtime"
 	"github.com/filecoin-project/specs-actors/actors/util/adt"
@@ -44,6 +45,7 @@ func NewInvoker() *invoker {
 	// add builtInCode using: register(cid, singleton)
 	inv.Register(builtin.SystemActorCodeID, system.Actor{}, adt.EmptyValue{})
 	inv.Register(builtin.InitActorCodeID, init_.Actor{}, init_.State{})
+	inv.Register(builtin.RewardActorCodeID, reward.Actor{}, reward.State{})
 	inv.Register(builtin.CronActorCodeID, cron.Actor{}, cron.State{})
 	inv.Register(builtin.StoragePowerActorCodeID, power.Actor{}, power.State{})
 	inv.Register(builtin.StorageMarketActorCodeID, market.Actor{}, market.State{})

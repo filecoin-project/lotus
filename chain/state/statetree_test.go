@@ -2,8 +2,9 @@ package state
 
 import (
 	"context"
-	"github.com/filecoin-project/specs-actors/actors/builtin"
 	"testing"
+
+	"github.com/filecoin-project/specs-actors/actors/builtin"
 
 	address "github.com/filecoin-project/go-address"
 	"github.com/filecoin-project/lotus/chain/types"
@@ -142,5 +143,87 @@ func TestSetCache(t *testing.T) {
 
 	if outact.Nonce != act.Nonce {
 		t.Error("nonce didn't match")
+	}
+}
+
+func TestSnapshots(t *testing.T) {
+	ctx := context.Background()
+	cst := cbor.NewMemCborStore()
+	st, err := NewStateTree(cst)
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	var addrs []address.Address
+	//for _, a := range []string{"t15ocrptbu4i5qucjvvwecihd7fqqgzb27pz5l5zy", "t1dpyvgavvl3f4ujlk6odedss54z6rt5gyuknsuva", "t1feiejbkcvozy7iltt2pxzuoq4d2kpbsusugan7a", "t3rgjfqybjx7bahuhfv7nwfg3tlm4i4zyvldfirjvzm5z5xwjoqbj3rfi2mpmlxpqwxxxafgpkjilqzpg7cefa"} {
+	for _, a := range []string{"t0100", "t0101", "t0102", "t0103"} {
+		addr, err := address.NewFromString(a)
+		if err != nil {
+			t.Fatal(err)
+		}
+		addrs = append(addrs, addr)
+	}
+
+	if err := st.Snapshot(ctx); err != nil {
+		t.Fatal(err)
+	}
+
+	if err := st.SetActor(addrs[0], &types.Actor{Code: builtin.AccountActorCodeID, Head: builtin.AccountActorCodeID, Balance: types.NewInt(55)}); err != nil {
+		t.Fatal(err)
+	}
+
+	{ // sub call that will fail
+		if err := st.Snapshot(ctx); err != nil {
+			t.Fatal(err)
+		}
+
+		if err := st.SetActor(addrs[1], &types.Actor{Code: builtin.AccountActorCodeID, Head: builtin.AccountActorCodeID, Balance: types.NewInt(77)}); err != nil {
+			t.Fatal(err)
+		}
+
+		if err := st.Revert(); err != nil {
+			t.Fatal(err)
+		}
+		st.ClearSnapshot()
+	}
+
+	// more operations in top level call...
+	if err := st.SetActor(addrs[2], &types.Actor{Code: builtin.AccountActorCodeID, Head: builtin.AccountActorCodeID, Balance: types.NewInt(123)}); err != nil {
+		t.Fatal(err)
+	}
+
+	{ // sub call that succeeds
+		if err := st.Snapshot(ctx); err != nil {
+			t.Fatal(err)
+		}
+
+		if err := st.SetActor(addrs[3], &types.Actor{Code: builtin.AccountActorCodeID, Head: builtin.AccountActorCodeID, Balance: types.NewInt(5)}); err != nil {
+			t.Fatal(err)
+		}
+
+		st.ClearSnapshot()
+	}
+
+	if _, err := st.Flush(ctx); err != nil {
+		t.Fatal(err)
+	}
+
+	assertHas(t, st, addrs[0])
+	assertNotHas(t, st, addrs[1])
+	assertHas(t, st, addrs[2])
+	assertHas(t, st, addrs[3])
+}
+
+func assertHas(t *testing.T, st *StateTree, addr address.Address) {
+	_, err := st.GetActor(addr)
+	if err != nil {
+		t.Fatal(err)
+	}
+}
+
+func assertNotHas(t *testing.T, st *StateTree, addr address.Address) {
+	_, err := st.GetActor(addr)
+	if err == nil {
+		t.Fatal("shouldnt have found actor", addr)
 	}
 }
