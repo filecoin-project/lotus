@@ -75,91 +75,91 @@ var runCmd = &cli.Command{
 	Name:  "run",
 	Usage: "Start lotus worker",
 	Action: func(cctx *cli.Context) error {
-	/*	if !cctx.Bool("enable-gpu-proving") {
-			os.Setenv("BELLMAN_NO_GPU", "true")
-		}
+		/*	if !cctx.Bool("enable-gpu-proving") {
+				os.Setenv("BELLMAN_NO_GPU", "true")
+			}
 
-		nodeApi, closer, err := lcli.GetStorageMinerAPI(cctx)
-		if err != nil {
-			return xerrors.Errorf("getting miner api: %w", err)
-		}
-		defer closer()
-		ctx := lcli.ReqContext(cctx)
+			nodeApi, closer, err := lcli.GetStorageMinerAPI(cctx)
+			if err != nil {
+				return xerrors.Errorf("getting miner api: %w", err)
+			}
+			defer closer()
+			ctx := lcli.ReqContext(cctx)
 
-		ainfo, err := lcli.GetAPIInfo(cctx, repo.StorageMiner)
-		if err != nil {
-			return xerrors.Errorf("could not get api info: %w", err)
-		}
-		_, storageAddr, err := manet.DialArgs(ainfo.Addr)
+			ainfo, err := lcli.GetAPIInfo(cctx, repo.StorageMiner)
+			if err != nil {
+				return xerrors.Errorf("could not get api info: %w", err)
+			}
+			_, storageAddr, err := manet.DialArgs(ainfo.Addr)
 
-		r, err := homedir.Expand(cctx.String("repo"))
-		if err != nil {
-			return err
-		}
+			r, err := homedir.Expand(cctx.String("repo"))
+			if err != nil {
+				return err
+			}
 
-		v, err := nodeApi.Version(ctx)
-		if err != nil {
-			return err
-		}
-		if v.APIVersion != build.APIVersion {
-			return xerrors.Errorf("lotus-storage-miner API version doesn't match: local: ", api.Version{APIVersion: build.APIVersion})
-		}
+			v, err := nodeApi.Version(ctx)
+			if err != nil {
+				return err
+			}
+			if v.APIVersion != build.APIVersion {
+				return xerrors.Errorf("lotus-storage-miner API version doesn't match: local: ", api.Version{APIVersion: build.APIVersion})
+			}
 
-		go func() {
-			<-ctx.Done()
-			log.Warn("Shutting down..")
-		}()
-
-		limiter := &limits{
-			workLimit:     make(chan struct{}, workers),
-			transferLimit: make(chan struct{}, transfers),
-		}
-
-		act, err := nodeApi.ActorAddress(ctx)
-		if err != nil {
-			return err
-		}
-		ssize, err := nodeApi.ActorSectorSize(ctx, act)
-		if err != nil {
-			return err
-		}
-
-		if err := paramfetch.GetParams(build.ParametersJson(), uint64(ssize)); err != nil {
-			return xerrors.Errorf("get params: %w", err)
-		}
-
-		/*ppt, spt, err := api.ProofTypeFromSectorSize(ssize)
-		if err != nil {
-			return err
-		}
-
-		/*sb, err := sectorbuilder.NewStandalone(&sectorbuilder.Config{
-			SealProofType: spt,
-			PoStProofType: ppt,
-			Miner:         act,
-			WorkerThreads: workers,
-			Paths:         sectorbuilder.SimplePath(r),
-		})
-		if err != nil {
-			return err
-		}
-
-		nQueues := workers + transfers
-		var wg sync.WaitGroup
-		wg.Add(nQueues)
-
-		for i := 0; i < nQueues; i++ {
 			go func() {
-				defer wg.Done()
-
-			/*	if err := acceptJobs(ctx, nodeApi, sb, limiter, "http://"+storageAddr, ainfo.AuthHeader(), r, cctx.Bool("no-precommit"), cctx.Bool("no-commit")); err != nil {
-					log.Warnf("%+v", err)
-					return
-				}
+				<-ctx.Done()
+				log.Warn("Shutting down..")
 			}()
-		}
 
-		wg.Wait()*/
+			limiter := &limits{
+				workLimit:     make(chan struct{}, workers),
+				transferLimit: make(chan struct{}, transfers),
+			}
+
+			act, err := nodeApi.ActorAddress(ctx)
+			if err != nil {
+				return err
+			}
+			ssize, err := nodeApi.ActorSectorSize(ctx, act)
+			if err != nil {
+				return err
+			}
+
+			if err := paramfetch.GetParams(build.ParametersJson(), uint64(ssize)); err != nil {
+				return xerrors.Errorf("get params: %w", err)
+			}
+
+			/*ppt, spt, err := api.ProofTypeFromSectorSize(ssize)
+			if err != nil {
+				return err
+			}
+
+			/*sb, err := sectorbuilder.NewStandalone(&sectorbuilder.Config{
+				SealProofType: spt,
+				PoStProofType: ppt,
+				Miner:         act,
+				WorkerThreads: workers,
+				Paths:         sectorbuilder.SimplePath(r),
+			})
+			if err != nil {
+				return err
+			}
+
+			nQueues := workers + transfers
+			var wg sync.WaitGroup
+			wg.Add(nQueues)
+
+			for i := 0; i < nQueues; i++ {
+				go func() {
+					defer wg.Done()
+
+				/*	if err := acceptJobs(ctx, nodeApi, sb, limiter, "http://"+storageAddr, ainfo.AuthHeader(), r, cctx.Bool("no-precommit"), cctx.Bool("no-commit")); err != nil {
+						log.Warnf("%+v", err)
+						return
+					}
+				}()
+			}
+
+			wg.Wait()*/
 		return nil
 	},
 }
