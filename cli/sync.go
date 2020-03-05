@@ -96,6 +96,7 @@ var syncWaitCmd = &cli.Command{
 var syncMarkBadCmd = &cli.Command{
 	Name:  "mark-bad",
 	Usage: "Mark the given block as bad, will prevent syncing to a chain that contains it",
+	ArgsUsage: "[blockCid]",
 	Action: func(cctx *cli.Context) error {
 		napi, closer, err := GetFullNodeAPI(cctx)
 		if err != nil {
@@ -120,6 +121,7 @@ var syncMarkBadCmd = &cli.Command{
 var syncCheckBadCmd = &cli.Command{
 	Name:  "check-bad",
 	Usage: "check if the given block was marked bad, and for what reason",
+	ArgsUsage: "[blockCid]",
 	Action: func(cctx *cli.Context) error {
 		napi, closer, err := GetFullNodeAPI(cctx)
 		if err != nil {
