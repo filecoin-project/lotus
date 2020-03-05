@@ -180,6 +180,8 @@ type StorageMinerStruct struct {
 
 		DealsImportData func(ctx context.Context, dealPropCid cid.Cid, file string) error `perm:"write"`
 		DealsList       func(ctx context.Context) ([]storagemarket.StorageDeal, error)    `perm:"read"`
+
+		StorageAddLocal func(ctx context.Context, path string) error `perm:"admin"`
 	}
 }
 
@@ -643,6 +645,10 @@ func (c *StorageMinerStruct) DealsImportData(ctx context.Context, dealPropCid ci
 
 func (c *StorageMinerStruct) DealsList(ctx context.Context) ([]storagemarket.StorageDeal, error) {
 	return c.Internal.DealsList(ctx)
+}
+
+func (c *StorageMinerStruct) StorageAddLocal(ctx context.Context, path string) error {
+	return c.Internal.StorageAddLocal(ctx, path)
 }
 
 var _ api.Common = &CommonStruct{}

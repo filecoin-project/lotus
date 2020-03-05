@@ -1,10 +1,13 @@
 package repo
 
 import (
+	"encoding/json"
 	"io/ioutil"
 	"os"
+	"path/filepath"
 	"sync"
 
+	"github.com/google/uuid"
 	"github.com/ipfs/go-datastore"
 	"github.com/ipfs/go-datastore/namespace"
 	dssync "github.com/ipfs/go-datastore/sync"
@@ -40,7 +43,9 @@ type lockedMemRepo struct {
 }
 
 func (lmem *lockedMemRepo) GetStorage() (config.StorageConfig, error) {
-	panic("implement me")
+	return config.StorageConfig{StoragePaths: []config.LocalPath{
+		{Path: lmem.Path()},
+	}}, nil
 }
 
 func (lmem *lockedMemRepo) SetStorage(config.StorageConfig) error {
@@ -48,14 +53,45 @@ func (lmem *lockedMemRepo) SetStorage(config.StorageConfig) error {
 }
 
 func (lmem *lockedMemRepo) Path() string {
+	lmem.Lock()
+	defer lmem.Unlock()
+
+	if lmem.tempDir != "" {
+		return lmem.tempDir
+	}
+
 	t, err := ioutil.TempDir(os.TempDir(), "lotus-memrepo-temp-")
 	if err != nil {
 		panic(err) // only used in tests, probably fine
 	}
 
-	lmem.Lock()
+	if lmem.t == StorageMiner {
+		if err := config.WriteStorageFile(filepath.Join(t, fsStorageConfig), config.StorageConfig{
+			StoragePaths: []config.LocalPath{
+				{Path: t},
+			}}); err != nil {
+			panic(err)
+		}
+
+		b, err := json.MarshalIndent(&config.StorageMeta{
+			ID:       uuid.New().String(),
+			Weight:   10,
+			CanSeal:  true,
+			CanStore: true,
+		}, "", "  ")
+		if err != nil {
+			panic(err)
+		}
+
+		if err := ioutil.WriteFile(filepath.Join(t, "sectorstore.json"), b, 0644); err != nil {
+			panic(err)
+		}
+	}
+
+
+
+
 	lmem.tempDir = t
-	lmem.Unlock()
 	return t
 }
 
