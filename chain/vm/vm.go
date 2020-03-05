@@ -163,7 +163,18 @@ func (vmc *VMContext) Send(to address.Address, method abi.MethodNum, value types
 		GasLimit: vmc.gasAvailable,
 	}
 
+	st := vmc.state
+	if err := st.Snapshot(ctx); err != nil {
+		return nil, aerrors.Fatalf("snapshot failed: %s", err)
+	}
+	defer st.ClearSnapshot()
+
 	ret, err, _ := vmc.vm.send(ctx, msg, vmc, 0)
+	if err != nil {
+		if err := st.Revert(); err != nil {
+			return nil, aerrors.Escalate(err, "failed to revert state tree after failed subcall")
+		}
+	}
 	return ret, err
 }
 
@@ -366,6 +377,7 @@ func (vm *VM) send(ctx context.Context, msg *types.Message, parent *VMContext,
 	gasCharge uint64) ([]byte, aerrors.ActorError, *VMContext) {
 
 	st := vm.cstate
+
 	fromActor, err := st.GetActor(msg.From)
 	if err != nil {
 		return nil, aerrors.Absorb(err, 1, "could not find source actor"), nil
@@ -453,6 +465,7 @@ func (vm *VM) ApplyMessage(ctx context.Context, msg *types.Message) (*ApplyRet, 
 	if err := st.Snapshot(ctx); err != nil {
 		return nil, xerrors.Errorf("snapshot failed: %w", err)
 	}
+	defer st.ClearSnapshot()
 
 	fromActor, err := st.GetActor(msg.From)
 	if err != nil {
@@ -526,15 +539,13 @@ func (vm *VM) ApplyMessage(ctx context.Context, msg *types.Message) (*ApplyRet, 
 		}
 	}
 
-	bfact, err := st.GetActor(builtin.BurntFundsActorAddr)
+	rwAct, err := st.GetActor(builtin.RewardActorAddr)
 	if err != nil {
 		return nil, xerrors.Errorf("getting burnt funds actor failed: %w", err)
 	}
 
-	// TODO: support multiple blocks in a tipset
-	// TODO: actually wire this up (miner is undef for now)
 	gasReward := types.BigMul(msg.GasPrice, gasUsed)
-	if err := Transfer(gasHolder, bfact, gasReward); err != nil {
+	if err := Transfer(gasHolder, rwAct, gasReward); err != nil {
 		return nil, xerrors.Errorf("failed to give miner gas reward: %w", err)
 	}
 

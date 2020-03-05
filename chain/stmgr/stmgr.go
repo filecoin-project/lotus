@@ -8,6 +8,7 @@ import (
 	"github.com/filecoin-project/go-address"
 	amt "github.com/filecoin-project/go-amt-ipld/v2"
 	"github.com/filecoin-project/lotus/api"
+	"github.com/filecoin-project/lotus/chain/actors"
 	"github.com/filecoin-project/lotus/chain/state"
 	"github.com/filecoin-project/lotus/chain/store"
 	"github.com/filecoin-project/lotus/chain/types"
@@ -16,6 +17,7 @@ import (
 	"github.com/filecoin-project/specs-actors/actors/abi/big"
 	"github.com/filecoin-project/specs-actors/actors/builtin"
 	"github.com/filecoin-project/specs-actors/actors/builtin/market"
+	"github.com/filecoin-project/specs-actors/actors/builtin/reward"
 	"github.com/filecoin-project/specs-actors/actors/runtime"
 	"github.com/filecoin-project/specs-actors/actors/util/adt"
 	cbg "github.com/whyrusleeping/cbor-gen"
@@ -130,31 +132,6 @@ func (sm *StateManager) ApplyBlocks(ctx context.Context, pstate cid.Cid, bms []B
 	}
 
 	/*
-		rewardActor, err := vmi.StateTree().GetActor(builtin.RewardActorAddr)
-		if err != nil {
-			return cid.Undef, cid.Undef, xerrors.Errorf("failed to get network actor: %w", err)
-		}
-		reward := vm.MiningReward(rewardActor.Balance)
-		for _, b := range bms {
-			rewardActor, err = vmi.StateTree().GetActor(builtin.RewardActorAddr)
-			if err != nil {
-				return cid.Undef, cid.Undef, xerrors.Errorf("failed to get network actor: %w", err)
-			}
-			vmi.SetBlockMiner(b.Miner)
-
-			owner, err := GetMinerOwner(ctx, sm, pstate, b.Miner)
-			if err != nil {
-				return cid.Undef, cid.Undef, xerrors.Errorf("failed to get owner for miner %s: %w", b.Miner, err)
-			}
-
-			act, err := vmi.StateTree().GetActor(owner)
-			if err != nil {
-				return cid.Undef, cid.Undef, xerrors.Errorf("failed to get miner owner actor")
-			}
-
-			if err := vm.Transfer(rewardActor, act, reward); err != nil {
-				return cid.Undef, cid.Undef, xerrors.Errorf("failed to deduct funds from network actor: %w", err)
-			}
 		}
 	*/
 
@@ -178,9 +155,10 @@ func (sm *StateManager) ApplyBlocks(ctx context.Context, pstate cid.Cid, bms []B
 	for _, b := range bms {
 		vmi.SetBlockMiner(b.Miner)
 
-		cmsgs := append(b.BlsMessages, b.SecpkMessages...)
+		penalty := types.NewInt(0)
+		gasReward := types.NewInt(0)
 
-		for _, cm := range cmsgs {
+		for _, cm := range append(b.BlsMessages, b.SecpkMessages...) {
 			m := cm.VMMessage()
 			if err := preloadAddr(m.From); err != nil {
 				return cid.Undef, cid.Undef, err
@@ -209,6 +187,43 @@ func (sm *StateManager) ApplyBlocks(ctx context.Context, pstate cid.Cid, bms []B
 				}
 			}
 		}
+
+		owner, err := GetMinerOwner(ctx, sm, pstate, b.Miner)
+		if err != nil {
+			return cid.Undef, cid.Undef, xerrors.Errorf("failed to get owner for miner %s: %w", b.Miner, err)
+		}
+
+		params, err := actors.SerializeParams(&reward.AwardBlockRewardParams{
+			MinerOwner: owner,
+			Penalty:    penalty,
+			GasReward:  gasReward,
+		})
+		if err != nil {
+			return cid.Undef, cid.Undef, xerrors.Errorf("failed to serialize award params: %w", err)
+		}
+
+		sysAct, err := vmi.StateTree().GetActor(builtin.SystemActorAddr)
+		if err != nil {
+			return cid.Undef, cid.Undef, xerrors.Errorf("failed to get system actor: %w", err)
+		}
+
+		ret, err := vmi.ApplyMessage(ctx, &types.Message{
+			From:     builtin.SystemActorAddr,
+			To:       builtin.RewardActorAddr,
+			Nonce:    sysAct.Nonce,
+			Value:    types.NewInt(0),
+			GasPrice: types.NewInt(0),
+			GasLimit: types.NewInt(1 << 30),
+			Method:   builtin.MethodsReward.AwardBlockReward,
+			Params:   params,
+		})
+		if err != nil {
+			return cid.Undef, cid.Undef, xerrors.Errorf("failed to apply reward message for miner %s: %w", b.Miner, err)
+		}
+		if ret.ExitCode != 0 {
+			return cid.Undef, cid.Undef, xerrors.Errorf("reward application message failed (exit %d): %s", ret.ExitCode, ret.ActorErr)
+		}
+
 	}
 
 	// TODO: this nonce-getting is a tiny bit ugly

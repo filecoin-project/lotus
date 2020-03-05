@@ -58,10 +58,9 @@ func (rs *runtimeShim) shimCall(f func() interface{}) (rval []byte, aerr aerrors
 				aerr = ar
 				return
 			}
-			log.Warn("caught one of those actor errors: ", r)
 			debug.PrintStack()
 			log.Errorf("ERROR")
-			aerr = aerrors.Newf(1, "generic spec actors failure")
+			aerr = aerrors.Newf(1, "spec actors failure: %s", r)
 		}
 	}()
 
