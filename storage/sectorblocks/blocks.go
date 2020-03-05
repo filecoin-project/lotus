@@ -9,7 +9,6 @@ import (
 	"sync"
 
 	"github.com/filecoin-project/go-padreader"
-	sectorbuilder "github.com/filecoin-project/go-sectorbuilder"
 	"github.com/filecoin-project/specs-actors/actors/abi"
 	"github.com/ipfs/go-datastore"
 	"github.com/ipfs/go-datastore/namespace"
@@ -51,16 +50,14 @@ func DsKeyToDealID(key datastore.Key) (uint64, error) {
 
 type SectorBlocks struct {
 	*storage.Miner
-	sb sectorbuilder.Interface
 
 	keys  datastore.Batching
 	keyLk sync.Mutex
 }
 
-func NewSectorBlocks(miner *storage.Miner, ds dtypes.MetadataDS, sb sectorbuilder.Interface) *SectorBlocks {
+func NewSectorBlocks(miner *storage.Miner, ds dtypes.MetadataDS) *SectorBlocks {
 	sbc := &SectorBlocks{
 		Miner: miner,
-		sb:    sb,
 		keys:  namespace.Wrap(ds, dsPrefix),
 	}
 

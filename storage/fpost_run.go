@@ -90,7 +90,12 @@ func (s *FPoStScheduler) declareFaults(ctx context.Context, fc uint64, params *m
 }
 
 func (s *FPoStScheduler) checkFaults(ctx context.Context, ssi []abi.SectorNumber) ([]abi.SectorNumber, error) {
-	faults := s.sb.Scrub(ssi)
+	//faults := s.sb.Scrub(ssi)
+	log.Warnf("Stub checkFaults")
+	var faults []struct {
+		SectorNum abi.SectorNumber
+		Err       error
+	}
 
 	declaredFaults := map[abi.SectorNumber]struct{}{}
 

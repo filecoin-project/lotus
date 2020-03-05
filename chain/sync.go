@@ -2,6 +2,7 @@ package chain
 
 import (
 	"context"
+	"crypto/sha256"
 	"errors"
 	"fmt"
 	"sync"
@@ -722,8 +723,9 @@ func (syncer *Syncer) VerifyElectionPoStProof(ctx context.Context, h *types.Bloc
 	// TODO: why do we need this here?
 	challengeCount := sectorbuilder.ElectionPostChallengeCount(uint64(len(sectorInfo)), 0)
 
+	hvrf := sha256.Sum256(h.EPostProof.PostRand)
 	pvi := abi.PoStVerifyInfo{
-		Randomness:      h.EPostProof.PostRand,
+		Randomness:      hvrf[:],
 		Candidates:      candidates,
 		Proofs:          h.EPostProof.Proofs,
 		EligibleSectors: sectorInfo,
@@ -737,6 +739,7 @@ func (syncer *Syncer) VerifyElectionPoStProof(ctx context.Context, h *types.Bloc
 	}
 
 	if !ok {
+		log.Errorf("invalid election post (%x; %v)", pvi.Randomness, candidates)
 		return xerrors.Errorf("election post was invalid")
 	}
 

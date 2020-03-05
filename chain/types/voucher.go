@@ -1,6 +1,6 @@
 package types
 
-import(
+import (
 	"encoding/base64"
 
 	"github.com/filecoin-project/specs-actors/actors/builtin/paych"

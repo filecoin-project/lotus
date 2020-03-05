@@ -480,12 +480,16 @@ func (c *wsConn) handleWsConn(ctx context.Context) {
 						c.closeChans()
 						c.incoming = make(chan io.Reader) // listen again for responses
 						go func() {
+							if c.connFactory == nil { // likely the server side, don't try to reconnect
+								return
+							}
+
 							var conn *websocket.Conn
 							for conn == nil {
 								time.Sleep(c.reconnectInterval)
 								var err error
 								if conn, err = c.connFactory(); err != nil {
-									log.Debugw("websocket connection retried failed", "error", err)
+									log.Debugw("websocket connection retry failed", "error", err)
 								}
 							}
 

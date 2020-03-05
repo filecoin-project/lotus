@@ -10,15 +10,16 @@ import (
 	"math/rand"
 	"sync"
 
-	ffi "github.com/filecoin-project/filecoin-ffi"
 	commcid "github.com/filecoin-project/go-fil-commcid"
 	"github.com/filecoin-project/go-sectorbuilder"
-	"github.com/filecoin-project/go-sectorbuilder/fs"
-	"github.com/filecoin-project/lotus/api"
 	"github.com/filecoin-project/specs-actors/actors/abi"
 	"github.com/ipfs/go-cid"
 	logging "github.com/ipfs/go-log"
 	"golang.org/x/xerrors"
+
+	"github.com/filecoin-project/lotus/api"
+
+	ffi "github.com/filecoin-project/filecoin-ffi"
 )
 
 var log = logging.Logger("sbmock")
@@ -114,41 +115,16 @@ func (sb *SBMock) AcquireSectorNumber() (abi.SectorNumber, error) {
 	return id, nil
 }
 
-func (sb *SBMock) Scrub([]abi.SectorNumber) []*sectorbuilder.Fault {
-	sb.lk.Lock()
-	mcopy := make(map[abi.SectorNumber]*sectorState)
-	for k, v := range sb.sectors {
-		mcopy[k] = v
-	}
-	sb.lk.Unlock()
-
-	var out []*sectorbuilder.Fault
-	for sid, ss := range mcopy {
-		ss.lk.Lock()
-		if ss.failed {
-			out = append(out, &sectorbuilder.Fault{
-				SectorNum: sid,
-				Err:       fmt.Errorf("mock sector failed"),
-			})
-
-		}
-		ss.lk.Unlock()
-	}
-
-	return out
-}
-
 func (sb *SBMock) GenerateFallbackPoSt([]abi.SectorInfo, abi.PoStRandomness, []abi.SectorNumber) ([]ffi.PoStCandidateWithTicket, []abi.PoStProof, error) {
 	panic("NYI")
 }
 
-func (sb *SBMock) SealPreCommit(ctx context.Context, sid abi.SectorNumber, ticket abi.SealRandomness, pieces []abi.PieceInfo) (cid.Cid, cid.Cid, error) {
-	log.Warn("Seal PreCommit", sid)
+func (sb *SBMock) SealPreCommit1(ctx context.Context, sid abi.SectorNumber, ticket abi.SealRandomness, pieces []abi.PieceInfo) (out []byte, err error) {
 	sb.lk.Lock()
 	ss, ok := sb.sectors[sid]
 	sb.lk.Unlock()
 	if !ok {
-		return cid.Undef, cid.Undef, xerrors.Errorf("no sector with id %d in sectorbuilder", sid)
+		return nil, xerrors.Errorf("no sector with id %d in sectorbuilder", sid)
 	}
 
 	ss.lk.Lock()
@@ -164,11 +140,11 @@ func (sb *SBMock) SealPreCommit(ctx context.Context, sid abi.SectorNumber, ticke
 	}
 
 	if sum != ussize {
-		return cid.Undef, cid.Undef, xerrors.Errorf("aggregated piece sizes don't match up: %d != %d", sum, ussize)
+		return nil, xerrors.Errorf("aggregated piece sizes don't match up: %d != %d", sum, ussize)
 	}
 
 	if ss.state != statePacking {
-		return cid.Undef, cid.Undef, xerrors.Errorf("cannot call pre-seal on sector not in 'packing' state")
+		return nil, xerrors.Errorf("cannot call pre-seal on sector not in 'packing' state")
 	}
 
 	opFinishWait(ctx)
@@ -185,31 +161,36 @@ func (sb *SBMock) SealPreCommit(ctx context.Context, sid abi.SectorNumber, ticke
 
 	commd, err := MockVerifier.GenerateDataCommitment(abi.PaddedPieceSize(sb.sectorSize), pis)
 	if err != nil {
-		return cid.Undef, cid.Undef, err
+		return nil, err
 	}
 
-	commR := commRfromD(commd)
-
-	return commR, commd, nil
-}
-
-// so we can 'verify' that the commR comes from the commD
-func commRfromD(commD cid.Cid) cid.Cid {
-	cc, _, err := commcid.CIDToCommitment(commD)
+	cc, _, err := commcid.CIDToCommitment(commd)
 	if err != nil {
 		panic(err)
 	}
 
-	commr := make([]byte, 32)
-	for i := range cc {
-		commr[32-(i+1)] = cc[i]
-	}
+	cc[0] ^= 'd'
 
-	return commcid.DataCommitmentV1ToCID(commr)
+	return cc, nil
 }
 
-func (sb *SBMock) SealCommit(ctx context.Context, sid abi.SectorNumber, ticket abi.SealRandomness, seed abi.InteractiveSealRandomness, pieces []abi.PieceInfo, sealedCid cid.Cid, unsealed cid.Cid) ([]byte, error) {
-	log.Warn("Seal Commit!", sid, sealedCid, unsealed)
+func (sb *SBMock) SealPreCommit2(ctx context.Context, sid abi.SectorNumber, phase1Out []byte) (sealedCID cid.Cid, unsealedCID cid.Cid, err error) {
+	db := []byte(string(phase1Out))
+	db[0] ^= 'd'
+
+	d := commcid.DataCommitmentV1ToCID(db)
+
+	commr := make([]byte, 32)
+	for i := range db {
+		commr[32-(i+1)] = db[i]
+	}
+
+	commR := commcid.DataCommitmentV1ToCID(commr)
+
+	return commR, d, nil
+}
+
+func (sb *SBMock) SealCommit1(ctx context.Context, sid abi.SectorNumber, ticket abi.SealRandomness, seed abi.InteractiveSealRandomness, pieces []abi.PieceInfo, sealedCid cid.Cid, unsealed cid.Cid) (output []byte, err error) {
 	sb.lk.Lock()
 	ss, ok := sb.sectors[sid]
 	sb.lk.Unlock()
@@ -231,30 +212,19 @@ func (sb *SBMock) SealCommit(ctx context.Context, sid abi.SectorNumber, ticket a
 
 	var out [32]byte
 	for i := range out {
-		out[i] = unsealed.Bytes()[i] + sealedCid.Bytes()[31-i] - ticket[i]*seed[i]
+		out[i] = unsealed.Bytes()[i] + sealedCid.Bytes()[31-i] - ticket[i]*seed[i] ^ byte(sid&0xff)
 	}
 
 	return out[:], nil
 }
 
-func (sb *SBMock) GetPath(string, string) (string, error) {
-	panic("nyi")
-}
+func (sb *SBMock) SealCommit2(ctx context.Context, sectorNum abi.SectorNumber, phase1Out []byte) (proof []byte, err error) {
+	var out [32]byte
+	for i := range out {
+		out[i] = phase1Out[i] ^ byte(sectorNum&0xff)
+	}
 
-func (sb *SBMock) CanCommit(sectorID abi.SectorNumber) (bool, error) {
-	return true, nil
-}
-
-func (sb *SBMock) WorkerStats() sectorbuilder.WorkerStats {
-	panic("nyi")
-}
-
-func (sb *SBMock) AddWorker(context.Context, sectorbuilder.WorkerCfg) (<-chan sectorbuilder.WorkerTask, error) {
-	panic("nyi")
-}
-
-func (sb *SBMock) TaskDone(context.Context, uint64, sectorbuilder.SealRes) error {
-	panic("nyi")
+	return out[:], nil
 }
 
 // Test Instrumentation Methods
@@ -350,22 +320,6 @@ func (sb *SBMock) FinalizeSector(context.Context, abi.SectorNumber) error {
 	return nil
 }
 
-func (sb *SBMock) DropStaged(context.Context, abi.SectorNumber) error {
-	return nil
-}
-
-func (sb *SBMock) SectorPath(typ fs.DataType, sectorID abi.SectorNumber) (fs.SectorPath, error) {
-	panic("implement me")
-}
-
-func (sb *SBMock) AllocSectorPath(typ fs.DataType, sectorID abi.SectorNumber, cache bool) (fs.SectorPath, error) {
-	panic("implement me")
-}
-
-func (sb *SBMock) ReleaseSector(fs.DataType, fs.SectorPath) {
-	panic("implement me")
-}
-
 func (m mockVerif) VerifyElectionPost(ctx context.Context, pvi abi.PoStVerifyInfo) (bool, error) {
 	panic("implement me")
 }
@@ -402,4 +356,4 @@ func (m mockVerif) GenerateDataCommitment(ssize abi.PaddedPieceSize, pieces []ab
 var MockVerifier = mockVerif{}
 
 var _ sectorbuilder.Verifier = MockVerifier
-var _ sectorbuilder.Interface = &SBMock{}
+var _ sectorbuilder.Basic = &SBMock{}
