@@ -36,7 +36,7 @@ type StorageMinerAPI struct {
 	Miner           *storage.Miner
 	BlockMiner      *miner.Miner
 	Full            api.FullNode
-	StorageMgr *advmgr.Manager `optional:"true"`
+	StorageMgr      *advmgr.Manager `optional:"true"`
 }
 
 func (sm *StorageMinerAPI) ServeRemote(w http.ResponseWriter, r *http.Request) {

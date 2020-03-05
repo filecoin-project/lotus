@@ -9,6 +9,7 @@ import (
 	"testing"
 	"time"
 
+	"github.com/filecoin-project/go-fil-markets/storedcounter"
 	"github.com/ipfs/go-datastore"
 	logging "github.com/ipfs/go-log/v2"
 	"github.com/libp2p/go-libp2p-core/crypto"
@@ -377,7 +378,7 @@ func mockSbBuilder(t *testing.T, nFull int, storage []int) ([]test.TestNode, []t
 
 		storers[i] = testStorageNode(ctx, t, wa, genMiner, pk, f, mn, node.Options(
 			node.Override(new(sealmgr.Manager), func() (sealmgr.Manager, error) {
-				return sealmgr.NewSimpleManager(nil, genMiner, sbmock.NewMockSectorBuilder(5, build.SectorSizes[0]))
+				return sealmgr.NewSimpleManager(storedcounter.New(datastore.NewMapDatastore(), datastore.NewKey("/potato")), genMiner, sbmock.NewMockSectorBuilder(5, build.SectorSizes[0]))
 			}),
 			node.Unset(new(*advmgr.Manager)),
 		))
