@@ -17,17 +17,18 @@ import (
 )
 
 const metaFile = "sectorstore.json"
+
 var pathTypes = []sectorbuilder.SectorFileType{sectorbuilder.FTUnsealed, sectorbuilder.FTSealed, sectorbuilder.FTCache}
 
 type storage struct {
-	localLk sync.RWMutex
+	localLk      sync.RWMutex
 	localStorage LocalStorage
 
 	paths []path
 }
 
 type path struct {
-	meta config.StorageMeta
+	meta  config.StorageMeta
 	local string
 
 	sectors map[abi.SectorID]sectorbuilder.SectorFileType
@@ -102,7 +103,7 @@ func (st *storage) open() error {
 }
 
 func (st *storage) acquireSector(mid abi.ActorID, id abi.SectorNumber, existing sectorbuilder.SectorFileType, allocate sectorbuilder.SectorFileType, sealing bool) (sectorbuilder.SectorPaths, func(), error) {
-	if existing | allocate != existing ^ allocate {
+	if existing|allocate != existing^allocate {
 		return sectorbuilder.SectorPaths{}, nil, xerrors.New("can't both find and allocate a sector")
 	}
 
@@ -111,7 +112,7 @@ func (st *storage) acquireSector(mid abi.ActorID, id abi.SectorNumber, existing 
 	var out sectorbuilder.SectorPaths
 
 	for _, fileType := range pathTypes {
-		if fileType & existing == 0 {
+		if fileType&existing == 0 {
 			continue
 		}
 
@@ -123,7 +124,7 @@ func (st *storage) acquireSector(mid abi.ActorID, id abi.SectorNumber, existing 
 			if !ok {
 				continue
 			}
-			if s & fileType == 0 {
+			if s&fileType == 0 {
 				continue
 			}
 
@@ -143,7 +144,7 @@ func (st *storage) acquireSector(mid abi.ActorID, id abi.SectorNumber, existing 
 	}
 
 	for _, fileType := range pathTypes {
-		if fileType & allocate == 0 {
+		if fileType&allocate == 0 {
 			continue
 		}
 
@@ -219,7 +220,7 @@ func (st *storage) findSector(mid abi.ActorID, sn abi.SectorNumber, typ sectorbu
 			Miner:  mid,
 			Number: sn,
 		}]
-		if t | typ == 0 {
+		if t|typ == 0 {
 			continue
 		}
 		out = append(out, p.meta)

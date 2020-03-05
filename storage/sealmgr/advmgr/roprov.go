@@ -8,7 +8,7 @@ import (
 
 type readonlyProvider struct {
 	miner abi.ActorID
-	stor *storage
+	stor  *storage
 }
 
 func (l *readonlyProvider) AcquireSectorNumber() (abi.SectorNumber, error) {

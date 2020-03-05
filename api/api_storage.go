@@ -116,7 +116,7 @@ type StorageMiner interface {
 	WorkerQueue(context.Context, sectorbuilder.WorkerCfg) (<-chan sectorbuilder.WorkerTask, error)
 
 	WorkerDone(ctx context.Context, task uint64, res sectorbuilder.SealRes) error
-*/
+	*/
 	MarketImportDealData(ctx context.Context, propcid cid.Cid, path string) error
 	MarketListDeals(ctx context.Context) ([]storagemarket.StorageDeal, error)
 	MarketListIncompleteDeals(ctx context.Context) ([]storagemarket.MinerDeal, error)

@@ -186,19 +186,19 @@ var initCmd = &cli.Command{
 			}
 
 			if !cctx.Bool("no-local-storage") {
-					b, err := json.MarshalIndent(&config.StorageMeta{
-						ID:       uuid.New().String(),
-						Weight:   10,
-						CanSeal:  true,
-						CanStore: true,
-					}, "", "  ")
-					if err != nil {
-						return xerrors.Errorf("marshaling storage config: %w", err)
-					}
+				b, err := json.MarshalIndent(&config.StorageMeta{
+					ID:       uuid.New().String(),
+					Weight:   10,
+					CanSeal:  true,
+					CanStore: true,
+				}, "", "  ")
+				if err != nil {
+					return xerrors.Errorf("marshaling storage config: %w", err)
+				}
 
-					if err := ioutil.WriteFile(filepath.Join(lr.Path(), "sectorstore.json"), b, 0644); err != nil {
-						return xerrors.Errorf("persisting storage metadata (%s): %w", filepath.Join(lr.Path(), "storage.json"), err)
-					}
+				if err := ioutil.WriteFile(filepath.Join(lr.Path(), "sectorstore.json"), b, 0644); err != nil {
+					return xerrors.Errorf("persisting storage metadata (%s): %w", filepath.Join(lr.Path(), "storage.json"), err)
+				}
 			}
 
 			sc.StoragePaths = append(sc.StoragePaths, config.LocalPath{
@@ -213,7 +213,6 @@ var initCmd = &cli.Command{
 				return err
 			}
 		}
-
 
 		if err := storageMinerInit(ctx, cctx, api, r, ssize); err != nil {
 			log.Errorf("Failed to initialize lotus-storage-miner: %+v", err)

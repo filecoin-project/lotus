@@ -25,13 +25,13 @@ import (
 )
 
 const (
-	fsAPI       = "api"
-	fsAPIToken  = "token"
-	fsConfig    = "config.toml"
+	fsAPI           = "api"
+	fsAPIToken      = "token"
+	fsConfig        = "config.toml"
 	fsStorageConfig = "storage.json"
-	fsDatastore = "datastore"
-	fsLock      = "repo.lock"
-	fsKeystore  = "keystore"
+	fsDatastore     = "datastore"
+	fsLock          = "repo.lock"
+	fsKeystore      = "keystore"
 )
 
 type RepoType int
@@ -88,7 +88,7 @@ func (fsr *FsRepo) Exists() (bool, error) {
 
 func (fsr *FsRepo) Init(t RepoType) error {
 	exist, err := fsr.Exists()
-	if err != nil{
+	if err != nil {
 		return err
 	}
 	if exist {

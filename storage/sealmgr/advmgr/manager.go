@@ -25,12 +25,12 @@ type LocalStorage interface {
 }
 
 type Path struct {
-	ID string
+	ID     string
 	Weight uint64
 
 	LocalPath string
 
-	CanSeal bool
+	CanSeal  bool
 	CanStore bool
 }
 
@@ -43,8 +43,8 @@ type Worker interface {
 
 type Manager struct {
 	workers []Worker
-	scfg *sectorbuilder.Config
-	sc SectorIDCounter
+	scfg    *sectorbuilder.Config
+	sc      SectorIDCounter
 
 	storage *storage
 
@@ -70,11 +70,11 @@ func New(ls LocalStorage, cfg *sectorbuilder.Config, sc SectorIDCounter) (*Manag
 	}
 
 	m := &Manager{
-		workers:      []Worker{
+		workers: []Worker{
 			&localWorker{scfg: cfg, storage: stor},
 		},
 		scfg: cfg,
-		sc: sc,
+		sc:   sc,
 
 		storage: stor,
 
@@ -159,7 +159,7 @@ func (m *Manager) AddPiece(ctx context.Context, sz abi.UnpaddedPieceSize, sn abi
 func (m *Manager) SealPreCommit1(ctx context.Context, sectorNum abi.SectorNumber, ticket abi.SealRandomness, pieces []abi.PieceInfo) (out []byte, err error) {
 	// TODO: also consider where the unsealed data sits
 
-	best, err := m.storage.findBestAllocStorage(sectorbuilder.FTCache | sectorbuilder.FTSealed, true)
+	best, err := m.storage.findBestAllocStorage(sectorbuilder.FTCache|sectorbuilder.FTSealed, true)
 	if err != nil {
 		return nil, xerrors.Errorf("finding path for sector sealing: %w", err)
 	}
@@ -174,7 +174,7 @@ func (m *Manager) SealPreCommit1(ctx context.Context, sectorNum abi.SectorNumber
 func (m *Manager) SealPreCommit2(ctx context.Context, sectorNum abi.SectorNumber, phase1Out []byte) (sealedCID cid.Cid, unsealedCID cid.Cid, err error) {
 	// TODO: allow workers to fetch the sectors
 
-	best, err := m.storage.findSector(m.minerID(), sectorNum, sectorbuilder.FTCache | sectorbuilder.FTSealed)
+	best, err := m.storage.findSector(m.minerID(), sectorNum, sectorbuilder.FTCache|sectorbuilder.FTSealed)
 	if err != nil {
 		return cid.Undef, cid.Undef, xerrors.Errorf("finding path for sector sealing: %w", err)
 	}
@@ -187,7 +187,7 @@ func (m *Manager) SealPreCommit2(ctx context.Context, sectorNum abi.SectorNumber
 }
 
 func (m *Manager) SealCommit1(ctx context.Context, sectorNum abi.SectorNumber, ticket abi.SealRandomness, seed abi.InteractiveSealRandomness, pieces []abi.PieceInfo, sealedCID cid.Cid, unsealedCID cid.Cid) (output []byte, err error) {
-	best, err := m.storage.findSector(m.minerID(), sectorNum, sectorbuilder.FTCache | sectorbuilder.FTSealed)
+	best, err := m.storage.findSector(m.minerID(), sectorNum, sectorbuilder.FTCache|sectorbuilder.FTSealed)
 	if err != nil {
 		return nil, xerrors.Errorf("finding path for sector sealing: %w", err)
 	}
@@ -212,7 +212,7 @@ func (m *Manager) SealCommit2(ctx context.Context, sectorNum abi.SectorNumber, p
 }
 
 func (m *Manager) FinalizeSector(ctx context.Context, sectorNum abi.SectorNumber) error {
-	best, err := m.storage.findSector(m.minerID(), sectorNum, sectorbuilder.FTCache | sectorbuilder.FTSealed | sectorbuilder.FTUnsealed)
+	best, err := m.storage.findSector(m.minerID(), sectorNum, sectorbuilder.FTCache|sectorbuilder.FTSealed|sectorbuilder.FTUnsealed)
 	if err != nil {
 		return xerrors.Errorf("finding sealed sector: %w", err)
 	}

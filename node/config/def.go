@@ -53,7 +53,6 @@ type Metrics struct {
 
 // // Storage Miner
 type Storage struct {
-
 }
 
 func defCommon() Common {
