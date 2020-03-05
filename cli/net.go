@@ -76,7 +76,7 @@ var netListen = &cli.Command{
 var netConnect = &cli.Command{
 	Name:      "connect",
 	Usage:     "Connect to a peer",
-	ArgsUsage: "<peer multiaddr>",
+	ArgsUsage: "[peerMultiaddr]",
 	Action: func(cctx *cli.Context) error {
 		api, closer, err := GetAPI(cctx)
 		if err != nil {
@@ -129,7 +129,7 @@ var netId = &cli.Command{
 var netFindPeer = &cli.Command{
 	Name:      "findpeer",
 	Usage:     "Find the addresses of a given peerID",
-	ArgsUsage: "<peer ID>",
+	ArgsUsage: "[peerId]",
 	Action: func(cctx *cli.Context) error {
 		if cctx.NArg() != 1 {
 			fmt.Println("Usage: findpeer [peer ID]")
