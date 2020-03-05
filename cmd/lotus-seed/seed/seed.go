@@ -145,7 +145,7 @@ func PreSeal(maddr address.Address, pt abi.RegisteredProof, offset abi.SectorNum
 			return nil, nil, xerrors.Errorf("marshaling storage config: %w", err)
 		}
 
-		if err := ioutil.WriteFile(filepath.Join(sbroot, "storage.json"), b, 0644); err != nil {
+		if err := ioutil.WriteFile(filepath.Join(sbroot, "sectorstore.json"), b, 0644); err != nil {
 			return nil, nil, xerrors.Errorf("persisting storage metadata (%s): %w", filepath.Join(sbroot, "storage.json"), err)
 		}
 	}

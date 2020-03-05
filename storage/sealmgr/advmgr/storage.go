@@ -4,6 +4,7 @@ import (
 	"encoding/json"
 	"fmt"
 	"io/ioutil"
+	"os"
 	"path/filepath"
 	"sync"
 
@@ -15,7 +16,7 @@ import (
 	"github.com/filecoin-project/lotus/node/config"
 )
 
-const metaFile = "storage.json"
+const metaFile = "sectorstore.json"
 var pathTypes = []sectorbuilder.SectorFileType{sectorbuilder.FTUnsealed, sectorbuilder.FTSealed, sectorbuilder.FTCache}
 
 type storage struct {
@@ -42,6 +43,13 @@ func openPath(p string, meta config.StorageMeta) (path, error) {
 	for _, t := range pathTypes {
 		ents, err := ioutil.ReadDir(filepath.Join(p, t.String()))
 		if err != nil {
+			if os.IsNotExist(err) {
+				if err := os.MkdirAll(filepath.Join(p, t.String()), 0755); err != nil {
+					return path{}, xerrors.Errorf("mkdir '%s': %w", filepath.Join(p, t.String()), err)
+				}
+
+				continue
+			}
 			return path{}, xerrors.Errorf("listing %s: %w", filepath.Join(p, t.String()), err)
 		}
 

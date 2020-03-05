@@ -8,6 +8,7 @@ import (
 	"fmt"
 	"io/ioutil"
 	"os"
+	"path/filepath"
 	"strconv"
 
 	"github.com/filecoin-project/go-sectorbuilder"
@@ -16,6 +17,7 @@ import (
 	miner2 "github.com/filecoin-project/specs-actors/actors/builtin/miner"
 	"github.com/filecoin-project/specs-actors/actors/builtin/power"
 	crypto2 "github.com/filecoin-project/specs-actors/actors/crypto"
+	"github.com/google/uuid"
 
 	"github.com/filecoin-project/go-address"
 	cborutil "github.com/filecoin-project/go-cbor-util"
@@ -91,6 +93,10 @@ var initCmd = &cli.Command{
 			Name:  "symlink-imported-sectors",
 			Usage: "attempt to symlink to presealed sectors instead of copying them into place",
 		},
+		&cli.BoolFlag{
+			Name:  "no-local-storage",
+			Usage: "don't use storageminer repo for sector storage",
+		},
 	},
 	Action: func(cctx *cli.Context) error {
 		log.Info("Initializing lotus storage miner")
@@ -157,24 +163,47 @@ var initCmd = &cli.Command{
 			return err
 		}
 
-		if pssb := cctx.StringSlice("pre-sealed-sectors"); len(pssb) != 0 {
-			log.Infof("Setting up storage config with presealed sector", pssb)
-
+		{
 			lr, err := r.Lock(repo.StorageMiner)
 			if err != nil {
 				return err
 			}
+
 			var sc config.StorageConfig
 
-			for _, psp := range pssb {
-				psp, err := homedir.Expand(psp)
-				if err != nil {
-					return err
+			if pssb := cctx.StringSlice("pre-sealed-sectors"); len(pssb) != 0 {
+				log.Infof("Setting up storage config with presealed sector", pssb)
+
+				for _, psp := range pssb {
+					psp, err := homedir.Expand(psp)
+					if err != nil {
+						return err
+					}
+					sc.StoragePaths = append(sc.StoragePaths, config.LocalPath{
+						Path: psp,
+					})
 				}
-				sc.StoragePaths = append(sc.StoragePaths, config.LocalPath{
-					Path: psp,
-				})
 			}
+
+			if !cctx.Bool("no-local-storage") {
+					b, err := json.MarshalIndent(&config.StorageMeta{
+						ID:       uuid.New().String(),
+						Weight:   10,
+						CanSeal:  true,
+						CanStore: true,
+					}, "", "  ")
+					if err != nil {
+						return xerrors.Errorf("marshaling storage config: %w", err)
+					}
+
+					if err := ioutil.WriteFile(filepath.Join(lr.Path(), "sectorstore.json"), b, 0644); err != nil {
+						return xerrors.Errorf("persisting storage metadata (%s): %w", filepath.Join(lr.Path(), "storage.json"), err)
+					}
+			}
+
+			sc.StoragePaths = append(sc.StoragePaths, config.LocalPath{
+				Path: lr.Path(),
+			})
 
 			if err := lr.SetStorage(sc); err != nil {
 				return xerrors.Errorf("set storage config: %w", err)
@@ -184,6 +213,7 @@ var initCmd = &cli.Command{
 				return err
 			}
 		}
+
 
 		if err := storageMinerInit(ctx, cctx, api, r, ssize); err != nil {
 			log.Errorf("Failed to initialize lotus-storage-miner: %+v", err)

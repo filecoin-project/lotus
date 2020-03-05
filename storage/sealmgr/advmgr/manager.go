@@ -140,7 +140,7 @@ func (m *Manager) AddPiece(ctx context.Context, sz abi.UnpaddedPieceSize, sn abi
 	}
 
 	if len(candidateWorkers) == 0 {
-		return abi.PieceInfo{}, xerrors.New("no worker selected")
+		return abi.PieceInfo{}, xerrors.New("no worker found")
 	}
 
 	// TODO: schedule(addpiece, ..., )
