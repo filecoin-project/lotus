@@ -94,12 +94,11 @@ func (st *storage) open() error {
 }
 
 func (st *storage) acquireSector(mid abi.ActorID, id abi.SectorNumber, existing sectorbuilder.SectorFileType, allocate sectorbuilder.SectorFileType, sealing bool) (sectorbuilder.SectorPaths, func(), error) {
-	st.localLk.RLock()
-
-	if allocate != 0 {
-		st.localLk.RUnlock()
-		return sectorbuilder.SectorPaths{}, nil, xerrors.New("acquire alloc todo")
+	if existing | allocate != existing ^ allocate {
+		return sectorbuilder.SectorPaths{}, nil, xerrors.New("can't both find and allocate a sector")
 	}
+
+	st.localLk.RLock()
 
 	var out sectorbuilder.SectorPaths
 
@@ -135,7 +134,100 @@ func (st *storage) acquireSector(mid abi.ActorID, id abi.SectorNumber, existing 
 		}
 	}
 
+	for _, fileType := range pathTypes {
+		if fileType & allocate == 0 {
+			continue
+		}
+
+		var best string
+
+		for _, p := range st.paths {
+			if sealing && !p.meta.CanSeal {
+				continue
+			}
+			if !sealing && !p.meta.CanStore {
+				continue
+			}
+
+			s, ok := p.sectors[abi.SectorID{
+				Miner:  mid,
+				Number: id,
+			}]
+			if !ok {
+				continue
+			}
+			if s & fileType == 0 {
+				continue
+			}
+
+			// TODO: Check free space
+			// TODO: Calc weights
+
+			best = filepath.Join(p.local, fileType.String(), fmt.Sprintf("s-t0%d-%d", mid, id))
+			break // todo: the first path won't always be the best
+		}
+
+		if best == "" {
+			st.localLk.RUnlock()
+			return sectorbuilder.SectorPaths{}, nil, xerrors.Errorf("couldn't find a suitable path for a sector")
+		}
+
+		switch fileType {
+		case sectorbuilder.FTUnsealed:
+			out.Unsealed = best
+		case sectorbuilder.FTSealed:
+			out.Sealed = best
+		case sectorbuilder.FTCache:
+			out.Cache = best
+		}
+
+		allocate ^= fileType
+	}
+
 	return out, st.localLk.RUnlock, nil
+}
+
+func (st *storage) findBestAllocStorage(allocate sectorbuilder.SectorFileType, sealing bool) ([]config.StorageMeta, error) {
+	var out []config.StorageMeta
+
+	for _, p := range st.paths {
+		if sealing && !p.meta.CanSeal {
+			continue
+		}
+		if !sealing && !p.meta.CanStore {
+			continue
+		}
+
+		// TODO: filter out of space
+
+		out = append(out, p.meta)
+	}
+
+	if len(out) == 0 {
+		return nil, xerrors.New("no good path found")
+	}
+
+	// todo: sort by some kind of preference
+	return out, nil
+}
+
+func (st *storage) findSector(mid abi.ActorID, sn abi.SectorNumber, typ sectorbuilder.SectorFileType) ([]config.StorageMeta, error) {
+	var out []config.StorageMeta
+	for _, p := range st.paths {
+		t := p.sectors[abi.SectorID{
+			Miner:  mid,
+			Number: sn,
+		}]
+		if t | typ == 0 {
+			continue
+		}
+		out = append(out, p.meta)
+	}
+	if len(out) == 0 {
+		return nil, xerrors.Errorf("sector %s/s-t0%d-%d not found", typ, mid, sn)
+	}
+
+	return out, nil
 }
 
 func parseSectorID(baseName string) (abi.SectorID, error) {
