@@ -21,6 +21,7 @@ import (
 	"github.com/filecoin-project/lotus/chain/types"
 	"github.com/filecoin-project/lotus/miner"
 	"github.com/filecoin-project/lotus/storage"
+	"github.com/filecoin-project/lotus/storage/sealmgr/advmgr"
 	"github.com/filecoin-project/lotus/storage/sectorblocks"
 )
 
@@ -35,6 +36,7 @@ type StorageMinerAPI struct {
 	Miner           *storage.Miner
 	BlockMiner      *miner.Miner
 	Full            api.FullNode
+	StorageMgr *advmgr.Manager `optional:"true"`
 }
 
 func (sm *StorageMinerAPI) ServeRemote(w http.ResponseWriter, r *http.Request) {
@@ -298,6 +300,14 @@ func (sm *StorageMinerAPI) DealsImportData(ctx context.Context, deal cid.Cid, fn
 	defer fi.Close()
 
 	return sm.StorageProvider.ImportDataForDeal(ctx, deal, fi)
+}
+
+func (sm *StorageMinerAPI) StorageAddLocal(ctx context.Context, path string) error {
+	if sm.StorageMgr == nil {
+		return xerrors.Errorf("no storage manager")
+	}
+
+	return sm.StorageMgr.AddLocalStorage(path)
 }
 
 var _ api.StorageMiner = &StorageMinerAPI{}

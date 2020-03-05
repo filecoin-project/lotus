@@ -5,6 +5,7 @@ import (
 	"io"
 
 	"github.com/ipfs/go-cid"
+	"github.com/mitchellh/go-homedir"
 	"golang.org/x/xerrors"
 
 	"github.com/filecoin-project/go-address"
@@ -82,6 +83,25 @@ func New(ls LocalStorage, cfg *sectorbuilder.Config, sc SectorIDCounter) (*Manag
 	}
 
 	return m, nil
+}
+
+func (m *Manager) AddLocalStorage(path string) error {
+	path, err := homedir.Expand(path)
+	if err != nil {
+		return xerrors.Errorf("expanding local path: %w", err)
+	}
+
+	if err := m.storage.openPath(path); err != nil {
+		return xerrors.Errorf("opening local path: %w", err)
+	}
+
+	sc, err := m.storage.localStorage.GetStorage()
+	if err != nil {
+		return xerrors.Errorf("get storage config: %w", err)
+	}
+
+	sc.StoragePaths = append(sc.StoragePaths, config.LocalPath{Path: path})
+	return nil
 }
 
 func (m *Manager) SectorSize() abi.SectorSize {

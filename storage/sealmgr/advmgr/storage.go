@@ -34,7 +34,19 @@ type path struct {
 	sectors map[abi.SectorID]sectorbuilder.SectorFileType
 }
 
-func openPath(p string, meta config.StorageMeta) (path, error) {
+func (st *storage) openPath(p string) error {
+	mb, err := ioutil.ReadFile(filepath.Join(p, metaFile))
+	if err != nil {
+		return xerrors.Errorf("reading storage metadata for %s: %w", p, err)
+	}
+
+	var meta config.StorageMeta
+	if err := json.Unmarshal(mb, &meta); err != nil {
+		return xerrors.Errorf("unmarshalling storage metadata for %s: %w", p, err)
+	}
+
+	// TODO: Check existing / dedupe
+
 	out := path{
 		meta:    meta,
 		local:   p,
@@ -46,25 +58,27 @@ func openPath(p string, meta config.StorageMeta) (path, error) {
 		if err != nil {
 			if os.IsNotExist(err) {
 				if err := os.MkdirAll(filepath.Join(p, t.String()), 0755); err != nil {
-					return path{}, xerrors.Errorf("mkdir '%s': %w", filepath.Join(p, t.String()), err)
+					return xerrors.Errorf("mkdir '%s': %w", filepath.Join(p, t.String()), err)
 				}
 
 				continue
 			}
-			return path{}, xerrors.Errorf("listing %s: %w", filepath.Join(p, t.String()), err)
+			return xerrors.Errorf("listing %s: %w", filepath.Join(p, t.String()), err)
 		}
 
 		for _, ent := range ents {
 			sid, err := parseSectorID(ent.Name())
 			if err != nil {
-				return path{}, xerrors.Errorf("parse sector id %s: %w", ent.Name(), err)
+				return xerrors.Errorf("parse sector id %s: %w", ent.Name(), err)
 			}
 
 			out.sectors[sid] |= t
 		}
 	}
 
-	return out, nil
+	st.paths = append(st.paths, out)
+
+	return nil
 }
 
 func (st *storage) open() error {
@@ -81,22 +95,10 @@ func (st *storage) open() error {
 	}
 
 	for _, path := range cfg.StoragePaths {
-		mb, err := ioutil.ReadFile(filepath.Join(path.Path, metaFile))
-		if err != nil {
-			return xerrors.Errorf("reading storage metadata for %s: %w", path.Path, err)
-		}
-
-		var meta config.StorageMeta
-		if err := json.Unmarshal(mb, &meta); err != nil {
-			return xerrors.Errorf("unmarshalling storage metadata for %s: %w", path.Path, err)
-		}
-
-		pi, err := openPath(path.Path, meta)
+		err := st.openPath(path.Path)
 		if err != nil {
 			return xerrors.Errorf("opening path %s: %w", path.Path, err)
 		}
-
-		st.paths = append(st.paths, pi)
 	}
 
 	return nil
