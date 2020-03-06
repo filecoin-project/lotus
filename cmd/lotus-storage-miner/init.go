@@ -1,6 +1,7 @@
 package main
 
 import (
+	"bytes"
 	"context"
 	"crypto/rand"
 	"encoding/binary"
@@ -439,7 +440,7 @@ func storageMinerInit(ctx context.Context, cctx *cli.Context, api lapi.FullNode,
 	} else {
 		a, err := createStorageMiner(ctx, api, peerid, cctx)
 		if err != nil {
-			return err
+			return xerrors.Errorf("creating miner failed: %w", err)
 		}
 
 		addr = a
@@ -550,6 +551,7 @@ func createStorageMiner(ctx context.Context, api lapi.FullNode, peerid peer.ID, 
 	}
 
 	params, err := actors.SerializeParams(&power.CreateMinerParams{
+		Owner:      owner,
 		Worker:     worker,
 		SectorSize: abi.SectorSize(ssize),
 		Peer:       peerid,
@@ -587,11 +589,11 @@ func createStorageMiner(ctx context.Context, api lapi.FullNode, peerid peer.ID, 
 		return address.Undef, xerrors.Errorf("create storage miner failed: exit code %d", mw.Receipt.ExitCode)
 	}
 
-	addr, err = address.NewFromBytes(mw.Receipt.Return)
-	if err != nil {
+	var retval power.CreateMinerReturn
+	if err := retval.UnmarshalCBOR(bytes.NewReader(mw.Receipt.Return)); err != nil {
 		return address.Undef, err
 	}
 
-	log.Infof("New storage miners address is: %s", addr)
+	log.Infof("New storage miners address is: %s (%s)", retval.IDAddress, retval.RobustAddress)
 	return addr, nil
 }
