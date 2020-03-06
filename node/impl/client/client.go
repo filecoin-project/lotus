@@ -10,6 +10,7 @@ import (
 	"golang.org/x/xerrors"
 
 	"github.com/ipfs/go-blockservice"
+	"github.com/ipfs/go-car"
 	"github.com/ipfs/go-cid"
 	"github.com/ipfs/go-filestore"
 	chunker "github.com/ipfs/go-ipfs-chunker"
@@ -194,19 +195,38 @@ func (a *API) ClientFindData(ctx context.Context, root cid.Cid) ([]api.QueryOffe
 	return out, nil
 }
 
-func (a *API) ClientImport(ctx context.Context, path string) (cid.Cid, error) {
-	f, err := os.Open(path)
+func (a *API) ClientImport(ctx context.Context, ref api.FileRef) (cid.Cid, error) {
+	f, err := os.Open(ref.Path)
 	if err != nil {
 		return cid.Undef, err
 	}
+
 	stat, err := f.Stat()
 	if err != nil {
 		return cid.Undef, err
 	}
 
-	file, err := files.NewReaderPathFile(path, f, stat)
+	file, err := files.NewReaderPathFile(ref.Path, f, stat)
 	if err != nil {
 		return cid.Undef, err
+	}
+	if ref.IsCAR {
+		var store car.Store
+		if a.Filestore == nil {
+			store = a.Blockstore
+		} else {
+			store = (*filestore.Filestore)(a.Filestore)
+		}
+		result, err := car.LoadCar(store, file)
+		if err != nil {
+			return cid.Undef, err
+		}
+
+		if len(result.Roots) != 1 {
+			return cid.Undef, xerrors.New("cannot import car with more than one root")
+		}
+
+		return result.Roots[0], nil
 	}
 
 	bufferedDS := ipld.NewBufferedDAG(ctx, a.LocalDAG)
@@ -271,24 +291,41 @@ func (a *API) ClientListImports(ctx context.Context) ([]api.Import, error) {
 	// TODO: make this less very bad by tracking root cids instead of using ListAll
 
 	out := make([]api.Import, 0)
+	lowest := make([]uint64, 0)
 	for {
 		r := next()
 		if r == nil {
 			return out, nil
 		}
-		if r.Offset != 0 {
-			continue
+		matched := false
+		for i := range out {
+			if out[i].FilePath == r.FilePath {
+				matched = true
+				if lowest[i] > r.Offset {
+					lowest[i] = r.Offset
+					out[i] = api.Import{
+						Status:   r.Status,
+						Key:      r.Key,
+						FilePath: r.FilePath,
+						Size:     r.Size,
+					}
+				}
+				break
+			}
 		}
-		out = append(out, api.Import{
-			Status:   r.Status,
-			Key:      r.Key,
-			FilePath: r.FilePath,
-			Size:     r.Size,
-		})
+		if !matched {
+			out = append(out, api.Import{
+				Status:   r.Status,
+				Key:      r.Key,
+				FilePath: r.FilePath,
+				Size:     r.Size,
+			})
+			lowest = append(lowest, r.Offset)
+		}
 	}
 }
 
-func (a *API) ClientRetrieve(ctx context.Context, order api.RetrievalOrder, path string) error {
+func (a *API) ClientRetrieve(ctx context.Context, order api.RetrievalOrder, ref api.FileRef) error {
 	if order.MinerPeerID == "" {
 		pid, err := a.StateMinerPeerID(ctx, order.Miner, types.EmptyTSK)
 		if err != nil {
@@ -336,6 +373,18 @@ func (a *API) ClientRetrieve(ctx context.Context, order api.RetrievalOrder, path
 
 	unsubscribe()
 
+	if ref.IsCAR {
+		f, err := os.Open(ref.Path)
+		if err != nil {
+			return err
+		}
+		err = car.WriteCar(ctx, a.LocalDAG, []cid.Cid{order.Root}, f)
+		if err != nil {
+			return err
+		}
+		return f.Close()
+	}
+
 	nd, err := a.LocalDAG.Get(ctx, order.Root)
 	if err != nil {
 		return xerrors.Errorf("ClientRetrieve: %w", err)
@@ -344,7 +393,7 @@ func (a *API) ClientRetrieve(ctx context.Context, order api.RetrievalOrder, path
 	if err != nil {
 		return xerrors.Errorf("ClientRetrieve: %w", err)
 	}
-	return files.WriteTo(file, path)
+	return files.WriteTo(file, ref.Path)
 }
 
 func (a *API) ClientQueryAsk(ctx context.Context, p peer.ID, miner address.Address) (*storagemarket.SignedStorageAsk, error) {
