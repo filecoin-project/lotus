@@ -159,8 +159,10 @@ func GetTips(ctx context.Context, api api.FullNode, lastHeight abi.ChainEpoch) (
 				log.Info("Running health check")
 
 				cctx, cancel := context.WithTimeout(ctx, 5*time.Second)
+
 				if _, err := api.ID(cctx); err != nil {
 					log.Error("Health check failed")
+					cancel()
 					return
 				}
 

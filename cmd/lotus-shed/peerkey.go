@@ -35,14 +35,10 @@ func (ks *keystore) Get(name string) (types.KeyInfo, error) {
 
 func (ks *keystore) Delete(name string) error {
 	panic("Implement me")
-
-	return nil
 }
 
 func (ks *keystore) List() ([]string, error) {
 	panic("Implement me")
-
-	return []string{}, nil
 }
 
 var peerkeyCmd = &cli.Command{
