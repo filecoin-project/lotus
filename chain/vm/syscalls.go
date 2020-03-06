@@ -3,11 +3,9 @@ package vm
 import (
 	"context"
 	"fmt"
-	"math/bits"
 
 	"github.com/filecoin-project/go-address"
 	"github.com/filecoin-project/go-sectorbuilder"
-	"github.com/filecoin-project/lotus/lib/zerocomm"
 	"github.com/filecoin-project/specs-actors/actors/abi"
 	"github.com/filecoin-project/specs-actors/actors/crypto"
 	"github.com/filecoin-project/specs-actors/actors/runtime"
@@ -34,28 +32,6 @@ func (ss *syscallShim) ComputeUnsealedSectorCID(st abi.RegisteredProof, pieces [
 	var sum abi.PaddedPieceSize
 	for _, p := range pieces {
 		sum += p.Size
-	}
-
-	ssize, err := st.SectorSize()
-	if err != nil {
-		return cid.Undef, err
-	}
-
-	{
-		// pad remaining space with 0 CommPs
-		toFill := uint64(abi.PaddedPieceSize(ssize) - sum)
-		n := bits.OnesCount64(toFill)
-		for i := 0; i < n; i++ {
-			next := bits.TrailingZeros64(toFill)
-			psize := uint64(1) << next
-			toFill ^= psize
-
-			unpadded := abi.PaddedPieceSize(psize).Unpadded()
-			pieces = append(pieces, abi.PieceInfo{
-				Size:     unpadded.Padded(),
-				PieceCID: zerocomm.ForSize(unpadded),
-			})
-		}
 	}
 
 	commd, err := sectorbuilder.GenerateUnsealedCID(st, pieces)
