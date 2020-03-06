@@ -519,9 +519,10 @@ func configureStorageMiner(ctx context.Context, api lapi.FullNode, addr address.
 	return nil
 }
 
-func createStorageMiner(ctx context.Context, api lapi.FullNode, peerid peer.ID, cctx *cli.Context) (addr address.Address, err error) {
+func createStorageMiner(ctx context.Context, api lapi.FullNode, peerid peer.ID, cctx *cli.Context) (address.Address, error) {
 	log.Info("Creating StorageMarket.CreateStorageMiner message")
 
+	var err error
 	var owner address.Address
 	if cctx.String("owner") != "" {
 		owner, err = address.NewFromString(cctx.String("owner"))
@@ -595,5 +596,5 @@ func createStorageMiner(ctx context.Context, api lapi.FullNode, peerid peer.ID, 
 	}
 
 	log.Infof("New storage miners address is: %s (%s)", retval.IDAddress, retval.RobustAddress)
-	return addr, nil
+	return retval.IDAddress, nil
 }
