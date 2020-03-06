@@ -135,8 +135,8 @@ var walletGetDefault = &cli.Command{
 }
 
 var walletSetDefault = &cli.Command{
-	Name:  "set-default",
-	Usage: "Set default wallet address",
+	Name:      "set-default",
+	Usage:     "Set default wallet address",
 	ArgsUsage: "[address]",
 	Action: func(cctx *cli.Context) error {
 		api, closer, err := GetFullNodeAPI(cctx)
@@ -160,8 +160,8 @@ var walletSetDefault = &cli.Command{
 }
 
 var walletExport = &cli.Command{
-	Name:  "export",
-	Usage: "export keys",
+	Name:      "export",
+	Usage:     "export keys",
 	ArgsUsage: "[address]",
 	Action: func(cctx *cli.Context) error {
 		api, closer, err := GetFullNodeAPI(cctx)
@@ -196,8 +196,8 @@ var walletExport = &cli.Command{
 }
 
 var walletImport = &cli.Command{
-	Name:  "import",
-	Usage: "import keys",
+	Name:      "import",
+	Usage:     "import keys",
 	ArgsUsage: "[<path> (optional, will read from stdin if omitted)]",
 	Action: func(cctx *cli.Context) error {
 		api, closer, err := GetFullNodeAPI(cctx)

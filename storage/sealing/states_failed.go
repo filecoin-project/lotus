@@ -4,6 +4,7 @@ import (
 	"bytes"
 	"time"
 
+	"github.com/filecoin-project/go-statemachine"
 	"github.com/filecoin-project/specs-actors/actors/builtin/miner"
 	"github.com/filecoin-project/specs-actors/actors/util/adt"
 	"golang.org/x/xerrors"
@@ -12,7 +13,6 @@ import (
 	"github.com/filecoin-project/lotus/api/apibstore"
 	"github.com/filecoin-project/lotus/chain/store"
 	"github.com/filecoin-project/lotus/chain/types"
-	"github.com/filecoin-project/lotus/lib/statemachine"
 )
 
 const minRetryTime = 1 * time.Minute

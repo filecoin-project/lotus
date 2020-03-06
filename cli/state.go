@@ -61,8 +61,8 @@ var stateCmd = &cli.Command{
 }
 
 var stateMinerInfo = &cli.Command{
-	Name:  "miner-info",
-	Usage: "Retrieve miner information",
+	Name:      "miner-info",
+	Usage:     "Retrieve miner information",
 	ArgsUsage: "[minerAddress]",
 	Action: func(cctx *cli.Context) error {
 		api, closer, err := GetFullNodeAPI(cctx)
@@ -153,8 +153,8 @@ func loadTipSet(ctx context.Context, cctx *cli.Context, api api.FullNode) (*type
 }
 
 var statePowerCmd = &cli.Command{
-	Name:  "power",
-	Usage: "Query network or miner power",
+	Name:      "power",
+	Usage:     "Query network or miner power",
 	ArgsUsage: "[<minerAddress> (optional)]",
 	Action: func(cctx *cli.Context) error {
 		api, closer, err := GetFullNodeAPI(cctx)
@@ -197,8 +197,8 @@ var statePowerCmd = &cli.Command{
 }
 
 var stateSectorsCmd = &cli.Command{
-	Name:  "sectors",
-	Usage: "Query the sector set of a miner",
+	Name:      "sectors",
+	Usage:     "Query the sector set of a miner",
 	ArgsUsage: "[minerAddress]",
 	Action: func(cctx *cli.Context) error {
 		api, closer, err := GetFullNodeAPI(cctx)
@@ -237,8 +237,8 @@ var stateSectorsCmd = &cli.Command{
 }
 
 var stateProvingSetCmd = &cli.Command{
-	Name:  "proving",
-	Usage: "Query the proving set of a miner",
+	Name:      "proving",
+	Usage:     "Query the proving set of a miner",
 	ArgsUsage: "[minerAddress]",
 	Action: func(cctx *cli.Context) error {
 		api, closer, err := GetFullNodeAPI(cctx)
@@ -277,8 +277,8 @@ var stateProvingSetCmd = &cli.Command{
 }
 
 var stateReplaySetCmd = &cli.Command{
-	Name:  "replay",
-	Usage: "Replay a particular message within a tipset",
+	Name:      "replay",
+	Usage:     "Replay a particular message within a tipset",
 	ArgsUsage: "[tipsetKey messageCid]",
 	Action: func(cctx *cli.Context) error {
 		if cctx.Args().Len() < 1 {
@@ -384,8 +384,8 @@ var statePledgeCollateralCmd = &cli.Command{
 }
 
 var stateGetDealSetCmd = &cli.Command{
-	Name:  "get-deal",
-	Usage: "View on-chain deal info",
+	Name:      "get-deal",
+	Usage:     "View on-chain deal info",
 	ArgsUsage: "[dealId]",
 	Action: func(cctx *cli.Context) error {
 		api, closer, err := GetFullNodeAPI(cctx)
@@ -486,8 +486,8 @@ var stateListActorsCmd = &cli.Command{
 }
 
 var stateGetActorCmd = &cli.Command{
-	Name:  "get-actor",
-	Usage: "Print actor information",
+	Name:      "get-actor",
+	Usage:     "Print actor information",
 	ArgsUsage: "[actorrAddress]",
 	Action: func(cctx *cli.Context) error {
 		api, closer, err := GetFullNodeAPI(cctx)
@@ -528,8 +528,8 @@ var stateGetActorCmd = &cli.Command{
 }
 
 var stateLookupIDCmd = &cli.Command{
-	Name:  "lookup",
-	Usage: "Find corresponding ID address",
+	Name:      "lookup",
+	Usage:     "Find corresponding ID address",
 	ArgsUsage: "[address]",
 	Action: func(cctx *cli.Context) error {
 		api, closer, err := GetFullNodeAPI(cctx)
@@ -566,8 +566,8 @@ var stateLookupIDCmd = &cli.Command{
 }
 
 var stateSectorSizeCmd = &cli.Command{
-	Name:  "sector-size",
-	Usage: "Look up miners sector size",
+	Name:      "sector-size",
+	Usage:     "Look up miners sector size",
 	ArgsUsage: "[minerAddress]",
 	Action: func(cctx *cli.Context) error {
 		api, closer, err := GetFullNodeAPI(cctx)
@@ -603,8 +603,8 @@ var stateSectorSizeCmd = &cli.Command{
 }
 
 var stateReadStateCmd = &cli.Command{
-	Name:  "read-state",
-	Usage: "View a json representation of an actors state",
+	Name:      "read-state",
+	Usage:     "View a json representation of an actors state",
 	ArgsUsage: "[actorAddress]",
 	Action: func(cctx *cli.Context) error {
 		api, closer, err := GetFullNodeAPI(cctx)
@@ -796,8 +796,8 @@ var stateComputeStateCmd = &cli.Command{
 }
 
 var stateWaitMsgCmd = &cli.Command{
-	Name:  "wait-msg",
-	Usage: "Wait for a message to appear on chain",
+	Name:      "wait-msg",
+	Usage:     "Wait for a message to appear on chain",
 	ArgsUsage: "[messageCid]",
 	Flags: []cli.Flag{
 		&cli.StringFlag{
@@ -837,8 +837,8 @@ var stateWaitMsgCmd = &cli.Command{
 }
 
 var stateCallCmd = &cli.Command{
-	Name:  "call",
-	Usage: "Invoke a method on an actor locally",
+	Name:      "call",
+	Usage:     "Invoke a method on an actor locally",
 	ArgsUsage: "[toAddress methodId <param1 param2 ...> (optional)]",
 	Flags: []cli.Flag{
 		&cli.StringFlag{

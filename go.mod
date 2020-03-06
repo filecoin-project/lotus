@@ -22,6 +22,7 @@ require (
 	github.com/filecoin-project/go-padreader v0.0.0-20200210211231-548257017ca6
 	github.com/filecoin-project/go-paramfetch v0.0.2-0.20200218225740-47c639bab663
 	github.com/filecoin-project/go-sectorbuilder v0.0.2-0.20200306043753-5cdbe369b47d
+	github.com/filecoin-project/go-statemachine v0.0.0-20200226041606-2074af6d51d9
 	github.com/filecoin-project/go-statestore v0.1.0
 	github.com/filecoin-project/specs-actors v0.0.0-20200306043603-709a3ce21094
 	github.com/filecoin-project/specs-storage v0.0.0-20200303233430-1a5a408f7513
@@ -84,7 +85,6 @@ require (
 	github.com/multiformats/go-multiaddr-dns v0.2.0
 	github.com/multiformats/go-multiaddr-net v0.1.2
 	github.com/multiformats/go-multihash v0.0.13
-	github.com/multiformats/go-varint v0.0.5
 	github.com/opentracing/opentracing-go v1.1.0
 	github.com/prometheus/client_golang v0.9.3-0.20190127221311-3c4408c8b829
 	github.com/prometheus/common v0.4.0
