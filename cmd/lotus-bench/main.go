@@ -179,8 +179,8 @@ func main() {
 			}
 
 			sbfs := &fs.Basic{
-				Miner:  maddr,
-				Root:   sbdir,
+				Miner: maddr,
+				Root:  sbdir,
 			}
 
 			sb, err := sectorbuilder.New(sbfs, cfg)

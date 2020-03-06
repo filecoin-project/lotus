@@ -47,8 +47,8 @@ var multisigCmd = &cli.Command{
 }
 
 var msigCreateCmd = &cli.Command{
-	Name:  "create",
-	Usage: "Create a new multisig wallet",
+	Name:      "create",
+	Usage:     "Create a new multisig wallet",
 	ArgsUsage: "[address1 address2 ...]",
 	Flags: []cli.Flag{
 		&cli.Int64Flag{
@@ -158,10 +158,10 @@ var msigCreateCmd = &cli.Command{
 }
 
 var msigInspectCmd = &cli.Command{
-	Name:  "inspect",
-	Usage: "Inspect a multisig wallet",
+	Name:      "inspect",
+	Usage:     "Inspect a multisig wallet",
 	ArgsUsage: "[address]",
-	Flags: []cli.Flag{},
+	Flags:     []cli.Flag{},
 	Action: func(cctx *cli.Context) error {
 		api, closer, err := GetFullNodeAPI(cctx)
 		if err != nil {
@@ -271,10 +271,10 @@ func state(tx *samsig.Transaction) string {
 }
 
 var msigProposeCmd = &cli.Command{
-	Name:  "propose",
-	Usage: "Propose a multisig transaction",
+	Name:      "propose",
+	Usage:     "Propose a multisig transaction",
 	ArgsUsage: "[multisigAddress destinationAddress value <methodName methodParams> (optional)]",
-	Flags: []cli.Flag{},
+	Flags:     []cli.Flag{},
 	Action: func(cctx *cli.Context) error {
 		api, closer, err := GetFullNodeAPI(cctx)
 		if err != nil {
@@ -385,10 +385,10 @@ var msigProposeCmd = &cli.Command{
 }
 
 var msigApproveCmd = &cli.Command{
-	Name:  "approve",
-	Usage: "Approve a multisig message",
+	Name:      "approve",
+	Usage:     "Approve a multisig message",
 	ArgsUsage: "[multisigAddress messageId]",
-	Flags: []cli.Flag{},
+	Flags:     []cli.Flag{},
 	Action: func(cctx *cli.Context) error {
 		api, closer, err := GetFullNodeAPI(cctx)
 		if err != nil {
