@@ -17,7 +17,7 @@ import (
 func (m *Sealing) Plan(events []statemachine.Event, user interface{}) (interface{}, uint64, error) {
 	next, err := m.plan(events, user.(*SectorInfo))
 	if err != nil || next == nil {
-		return nil, 0, err
+		return nil, uint64(len(events)), err
 	}
 
 	return func(ctx statemachine.Context, si SectorInfo) error {
