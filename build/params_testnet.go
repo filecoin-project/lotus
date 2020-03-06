@@ -8,6 +8,7 @@ import (
 )
 
 var SectorSizes = []abi.SectorSize{
+	512 << 20,
 	32 << 30,
 }
 
