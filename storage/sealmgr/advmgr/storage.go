@@ -58,7 +58,7 @@ func (st *storage) openPath(p string) error {
 		if err != nil {
 			if os.IsNotExist(err) {
 				if err := os.MkdirAll(filepath.Join(p, t.String()), 0755); err != nil {
-					return xerrors.Errorf("mkdir '%s': %w", filepath.Join(p, t.String()), err)
+					return xerrors.Errorf("openPath mkdir '%s': %w", filepath.Join(p, t.String()), err)
 				}
 
 				continue
