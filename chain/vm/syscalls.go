@@ -71,7 +71,7 @@ func (ss *syscallShim) HashBlake2b(data []byte) [32]byte {
 	panic("NYI")
 }
 
-func (ss *syscallShim) VerifyConsensusFault(a, b []byte) error {
+func (ss *syscallShim) VerifyConsensusFault(a, b, extra []byte) (*runtime.ConsensusFault, error) {
 	panic("NYI")
 }
 
