@@ -57,11 +57,11 @@ func init() {
 					return xerrors.Errorf("failed to get miner worker addr: %w", err)
 				}
 
-				if ret.ExitCode != 0 {
-					return xerrors.Errorf("failed to get miner worker addr (exit code %d)", ret.ExitCode)
+				if ret.MsgRct.ExitCode != 0 {
+					return xerrors.Errorf("failed to get miner worker addr (exit code %d)", ret.MsgRct.ExitCode)
 				}
 
-				w, err := address.NewFromBytes(ret.Return)
+				w, err := address.NewFromBytes(ret.MsgRct.Return)
 				if err != nil {
 					return xerrors.Errorf("GetWorkerAddr returned malformed address: %w", err)
 				}
