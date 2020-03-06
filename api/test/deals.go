@@ -131,7 +131,11 @@ loop:
 		t.Fatal(err)
 	}
 
-	err = client.ClientRetrieve(ctx, offers[0].Order(caddr), filepath.Join(rpath, "ret"))
+	ref := api.FileRef{
+		Path:  filepath.Join(rpath, "ret"),
+		IsCAR: false,
+	}
+	err = client.ClientRetrieve(ctx, offers[0].Order(caddr), ref)
 	if err != nil {
 		t.Fatalf("%+v", err)
 	}

@@ -38,6 +38,12 @@ var clientImportCmd = &cli.Command{
 	Name:      "import",
 	Usage:     "Import data",
 	ArgsUsage: "[inputPath]",
+	Flags: []cli.Flag{
+		&cli.BoolFlag{
+			Name:  "car",
+			Usage: "export to a car file instead of a regular file",
+		},
+	},
 	Action: func(cctx *cli.Context) error {
 		api, closer, err := GetFullNodeAPI(cctx)
 		if err != nil {
@@ -50,7 +56,11 @@ var clientImportCmd = &cli.Command{
 			return err
 		}
 
-		c, err := api.ClientImport(ctx, absPath)
+		ref := lapi.FileRef{
+			Path:  absPath,
+			IsCAR: cctx.Bool("car"),
+		}
+		c, err := api.ClientImport(ctx, ref)
 		if err != nil {
 			return err
 		}
@@ -251,6 +261,10 @@ var clientRetrieveCmd = &cli.Command{
 			Name:  "address",
 			Usage: "address to use for transactions",
 		},
+		&cli.BoolFlag{
+			Name:  "car",
+			Usage: "export to a car file instead of a regular file",
+		},
 	},
 	Action: func(cctx *cli.Context) error {
 		if cctx.NArg() != 2 {
@@ -304,7 +318,11 @@ var clientRetrieveCmd = &cli.Command{
 			return nil
 		}
 
-		if err := api.ClientRetrieve(ctx, offers[0].Order(payer), cctx.Args().Get(1)); err != nil {
+		ref := lapi.FileRef{
+			Path:  cctx.Args().Get(1),
+			IsCAR: cctx.Bool("car"),
+		}
+		if err := api.ClientRetrieve(ctx, offers[0].Order(payer), ref); err != nil {
 			return xerrors.Errorf("Retrieval Failed: %w", err)
 		}
 

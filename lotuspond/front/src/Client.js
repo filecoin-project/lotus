@@ -71,7 +71,12 @@ class Client extends React.Component {
     let file = await this.props.pondClient.call('Pond.CreateRandomFile', [
       this.state.kbs * 1000
     ]) // 1024 won't fit in 1k blocks :(
-    let cid = await this.props.client.call('Filecoin.ClientImport', [file])
+    let cid = await this.props.client.call('Filecoin.ClientImport', [
+      {
+        Path: file,
+        IsCar: false
+      }
+    ])
     let dealcid = await this.props.client.call('Filecoin.ClientStartDeal', [
       cid,
       this.state.miner,
@@ -100,7 +105,10 @@ class Client extends React.Component {
 
     await this.props.client.call('Filecoin.ClientRetrieve', [
       order,
-      '/dev/null'
+      {
+        Path: '/dev/null',
+        IsCAR: false
+      }
     ])
   }
 
