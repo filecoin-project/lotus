@@ -124,8 +124,8 @@ func toLotusMsg(msg *vtypes.Message) *types.Message {
 		Nonce:  uint64(msg.CallSeqNum),
 		Method: msg.Method,
 
-		Value:    types.BigInt{msg.Value.Int},
-		GasPrice: types.BigInt{msg.GasPrice.Int},
+		Value:    types.BigInt{Int: msg.Value.Int},
+		GasPrice: types.BigInt{Int: msg.GasPrice.Int},
 		GasLimit: types.NewInt(uint64(msg.GasLimit)),
 
 		Params: msg.Params,
