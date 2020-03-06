@@ -360,7 +360,7 @@ func main() {
 			}
 
 			log.Info("generating election post candidates")
-			fcandidates, err := sb.GenerateEPostCandidates(sealedSectors, abi.PoStRandomness(challenge[:]), []abi.SectorNumber{})
+			fcandidates, err := sb.GenerateEPostCandidates(sealedSectors, challenge[:], []abi.SectorNumber{})
 			if err != nil {
 				return err
 			}
@@ -469,7 +469,7 @@ func main() {
 	}
 
 	if err := app.Run(os.Args); err != nil {
-		log.Warn(err)
+		log.Warnf("%+v", err)
 		return
 	}
 }
