@@ -52,9 +52,10 @@ func PreSeal(maddr address.Address, pt abi.RegisteredProof, offset abi.SectorNum
 		return nil, nil, err
 	}
 
+	next := offset
+
 	sbfs := &fs.Basic{
 		Miner:  maddr,
-		NextID: offset,
 		Root:   sbroot,
 	}
 
@@ -70,12 +71,10 @@ func PreSeal(maddr address.Address, pt abi.RegisteredProof, offset abi.SectorNum
 
 	var sealedSectors []*genesis.PreSeal
 	for i := 0; i < sectors; i++ {
-		sid, err := sbfs.AcquireSectorNumber()
-		if err != nil {
-			return nil, nil, err
-		}
+		sid := next
+		next++
 
-		pi, err := sb.AddPiece(context.TODO(), abi.PaddedPieceSize(ssize).Unpadded(), sid, rand.Reader, nil)
+		pi, err := sb.AddPiece(context.TODO(), sid, nil, abi.PaddedPieceSize(ssize).Unpadded(), rand.Reader)
 		if err != nil {
 			return nil, nil, err
 		}

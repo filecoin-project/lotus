@@ -13,13 +13,12 @@ import (
 	commcid "github.com/filecoin-project/go-fil-commcid"
 	"github.com/filecoin-project/go-sectorbuilder"
 	"github.com/filecoin-project/specs-actors/actors/abi"
+	"github.com/filecoin-project/specs-storage/storage"
 	"github.com/ipfs/go-cid"
 	logging "github.com/ipfs/go-log"
 	"golang.org/x/xerrors"
 
 	"github.com/filecoin-project/lotus/api"
-
-	ffi "github.com/filecoin-project/filecoin-ffi"
 )
 
 var log = logging.Logger("sbmock")
@@ -75,7 +74,7 @@ func (sb *SBMock) RateLimit() func() {
 	}
 }
 
-func (sb *SBMock) AddPiece(ctx context.Context, size abi.UnpaddedPieceSize, sectorId abi.SectorNumber, r io.Reader, existingPieces []abi.UnpaddedPieceSize) (abi.PieceInfo, error) {
+func (sb *SBMock) AddPiece(ctx context.Context, sectorId abi.SectorNumber, existingPieces []abi.UnpaddedPieceSize, size abi.UnpaddedPieceSize, r io.Reader) (abi.PieceInfo, error) {
 	log.Warn("Add piece: ", sectorId, size, sb.proofType)
 	sb.lk.Lock()
 	ss, ok := sb.sectors[sectorId]
@@ -115,11 +114,11 @@ func (sb *SBMock) AcquireSectorNumber() (abi.SectorNumber, error) {
 	return id, nil
 }
 
-func (sb *SBMock) GenerateFallbackPoSt([]abi.SectorInfo, abi.PoStRandomness, []abi.SectorNumber) ([]ffi.PoStCandidateWithTicket, []abi.PoStProof, error) {
+func (sb *SBMock) GenerateFallbackPoSt([]abi.SectorInfo, abi.PoStRandomness, []abi.SectorNumber) ([]storage.PoStCandidateWithTicket, []abi.PoStProof, error) {
 	panic("NYI")
 }
 
-func (sb *SBMock) SealPreCommit1(ctx context.Context, sid abi.SectorNumber, ticket abi.SealRandomness, pieces []abi.PieceInfo) (out []byte, err error) {
+func (sb *SBMock) SealPreCommit1(ctx context.Context, sid abi.SectorNumber, ticket abi.SealRandomness, pieces []abi.PieceInfo) (out storage.PreCommit1Out, err error) {
 	sb.lk.Lock()
 	ss, ok := sb.sectors[sid]
 	sb.lk.Unlock()
@@ -174,7 +173,7 @@ func (sb *SBMock) SealPreCommit1(ctx context.Context, sid abi.SectorNumber, tick
 	return cc, nil
 }
 
-func (sb *SBMock) SealPreCommit2(ctx context.Context, sid abi.SectorNumber, phase1Out []byte) (sealedCID cid.Cid, unsealedCID cid.Cid, err error) {
+func (sb *SBMock) SealPreCommit2(ctx context.Context, sid abi.SectorNumber, phase1Out storage.PreCommit1Out) (sealedCID cid.Cid, unsealedCID cid.Cid, err error) {
 	db := []byte(string(phase1Out))
 	db[0] ^= 'd'
 
@@ -190,7 +189,7 @@ func (sb *SBMock) SealPreCommit2(ctx context.Context, sid abi.SectorNumber, phas
 	return commR, d, nil
 }
 
-func (sb *SBMock) SealCommit1(ctx context.Context, sid abi.SectorNumber, ticket abi.SealRandomness, seed abi.InteractiveSealRandomness, pieces []abi.PieceInfo, sealedCid cid.Cid, unsealed cid.Cid) (output []byte, err error) {
+func (sb *SBMock) SealCommit1(ctx context.Context, sid abi.SectorNumber, ticket abi.SealRandomness, seed abi.InteractiveSealRandomness, pieces []abi.PieceInfo, sealedCid cid.Cid, unsealed cid.Cid) (output storage.Commit1Out, err error) {
 	sb.lk.Lock()
 	ss, ok := sb.sectors[sid]
 	sb.lk.Unlock()
@@ -218,7 +217,7 @@ func (sb *SBMock) SealCommit1(ctx context.Context, sid abi.SectorNumber, ticket 
 	return out[:], nil
 }
 
-func (sb *SBMock) SealCommit2(ctx context.Context, sectorNum abi.SectorNumber, phase1Out []byte) (proof []byte, err error) {
+func (sb *SBMock) SealCommit2(ctx context.Context, sectorNum abi.SectorNumber, phase1Out storage.Commit1Out) (proof storage.Proof, err error) {
 	var out [32]byte
 	for i := range out {
 		out[i] = phase1Out[i] ^ byte(sectorNum&0xff)
@@ -261,7 +260,7 @@ func (sb *SBMock) ComputeElectionPoSt(sectorInfo []abi.SectorInfo, challengeSeed
 	panic("implement me")
 }
 
-func (sb *SBMock) GenerateEPostCandidates(sectorInfo []abi.SectorInfo, challengeSeed abi.PoStRandomness, faults []abi.SectorNumber) ([]ffi.PoStCandidateWithTicket, error) {
+func (sb *SBMock) GenerateEPostCandidates(sectorInfo []abi.SectorInfo, challengeSeed abi.PoStRandomness, faults []abi.SectorNumber) ([]storage.PoStCandidateWithTicket, error) {
 	if len(faults) > 0 {
 		panic("todo")
 	}
@@ -271,13 +270,13 @@ func (sb *SBMock) GenerateEPostCandidates(sectorInfo []abi.SectorInfo, challenge
 		n = uint64(len(sectorInfo))
 	}
 
-	out := make([]ffi.PoStCandidateWithTicket, n)
+	out := make([]storage.PoStCandidateWithTicket, n)
 
 	seed := big.NewInt(0).SetBytes(challengeSeed[:])
 	start := seed.Mod(seed, big.NewInt(int64(len(sectorInfo)))).Int64()
 
 	for i := range out {
-		out[i] = ffi.PoStCandidateWithTicket{
+		out[i] = storage.PoStCandidateWithTicket{
 			Candidate: abi.PoStCandidate{
 				SectorID: abi.SectorID{
 					Number: abi.SectorNumber((int(start) + i) % len(sectorInfo)),
@@ -308,7 +307,7 @@ func (sb *SBMock) StageFakeData() (abi.SectorNumber, []abi.PieceInfo, error) {
 	buf := make([]byte, usize)
 	rand.Read(buf)
 
-	pi, err := sb.AddPiece(context.TODO(), usize, sid, bytes.NewReader(buf), nil)
+	pi, err := sb.AddPiece(context.TODO(), sid, nil, usize, bytes.NewReader(buf))
 	if err != nil {
 		return 0, nil, err
 	}

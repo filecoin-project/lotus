@@ -4,14 +4,16 @@ import (
 	"context"
 	"io"
 
+	"github.com/ipfs/go-cid"
+
 	"github.com/filecoin-project/go-sectorbuilder"
 	"github.com/filecoin-project/specs-actors/actors/abi"
-	"github.com/ipfs/go-cid"
+	"github.com/filecoin-project/specs-storage/storage"
 )
 
 type Worker interface {
 	sectorbuilder.Sealer
-	sectorbuilder.Prover
+	storage.Prover
 }
 
 type Manager interface {
@@ -28,5 +30,5 @@ type Manager interface {
 	ReadPieceFromSealedSector(context.Context, abi.SectorNumber, sectorbuilder.UnpaddedByteIndex, abi.UnpaddedPieceSize, abi.SealRandomness, cid.Cid) (io.ReadCloser, error)
 
 	sectorbuilder.Sealer
-	sectorbuilder.Prover
+	storage.Prover
 }

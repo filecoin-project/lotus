@@ -180,7 +180,6 @@ func main() {
 
 			sbfs := &fs.Basic{
 				Miner:  maddr,
-				NextID: 1,
 				Root:   sbdir,
 			}
 
@@ -205,7 +204,7 @@ func main() {
 
 				r := rand.New(rand.NewSource(100 + int64(i)))
 
-				pi, err := sb.AddPiece(context.TODO(), abi.PaddedPieceSize(sectorSize).Unpadded(), i, r, nil)
+				pi, err := sb.AddPiece(context.TODO(), i, nil, abi.PaddedPieceSize(sectorSize).Unpadded(), r)
 				if err != nil {
 					return err
 				}

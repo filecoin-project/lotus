@@ -8,12 +8,12 @@ import (
 	"io/ioutil"
 	"sync/atomic"
 
-	ffi "github.com/filecoin-project/filecoin-ffi"
 	"github.com/filecoin-project/go-address"
 	commcid "github.com/filecoin-project/go-fil-commcid"
 	sectorbuilder "github.com/filecoin-project/go-sectorbuilder"
 	"github.com/filecoin-project/specs-actors/actors/abi"
 	"github.com/filecoin-project/specs-actors/actors/crypto"
+	"github.com/filecoin-project/specs-storage/storage"
 	block "github.com/ipfs/go-block-format"
 	"github.com/ipfs/go-blockservice"
 	"github.com/ipfs/go-car"
@@ -514,14 +514,14 @@ func (mca mca) WalletSign(ctx context.Context, a address.Address, v []byte) (*cr
 }
 
 type ElectionPoStProver interface {
-	GenerateCandidates(context.Context, []abi.SectorInfo, abi.PoStRandomness) ([]ffi.PoStCandidateWithTicket, error)
-	ComputeProof(context.Context, []abi.SectorInfo, []byte, []ffi.PoStCandidateWithTicket) ([]abi.PoStProof, error)
+	GenerateCandidates(context.Context, []abi.SectorInfo, abi.PoStRandomness) ([]storage.PoStCandidateWithTicket, error)
+	ComputeProof(context.Context, []abi.SectorInfo, []byte, []storage.PoStCandidateWithTicket) ([]abi.PoStProof, error)
 }
 
 type eppProvider struct{}
 
-func (epp *eppProvider) GenerateCandidates(ctx context.Context, _ []abi.SectorInfo, eprand abi.PoStRandomness) ([]ffi.PoStCandidateWithTicket, error) {
-	return []ffi.PoStCandidateWithTicket{
+func (epp *eppProvider) GenerateCandidates(ctx context.Context, _ []abi.SectorInfo, eprand abi.PoStRandomness) ([]storage.PoStCandidateWithTicket, error) {
+	return []storage.PoStCandidateWithTicket{
 		{
 			Candidate: abi.PoStCandidate{
 				RegisteredProof: abi.RegisteredProof_StackedDRG2KiBPoSt,
@@ -534,7 +534,7 @@ func (epp *eppProvider) GenerateCandidates(ctx context.Context, _ []abi.SectorIn
 	}, nil
 }
 
-func (epp *eppProvider) ComputeProof(ctx context.Context, _ []abi.SectorInfo, eprand []byte, winners []ffi.PoStCandidateWithTicket) ([]abi.PoStProof, error) {
+func (epp *eppProvider) ComputeProof(ctx context.Context, _ []abi.SectorInfo, eprand []byte, winners []storage.PoStCandidateWithTicket) ([]abi.PoStProof, error) {
 
 	return []abi.PoStProof{{
 		ProofBytes: []byte("valid proof"),
@@ -544,7 +544,7 @@ func (epp *eppProvider) ComputeProof(ctx context.Context, _ []abi.SectorInfo, ep
 type ProofInput struct {
 	sectors []abi.SectorInfo
 	hvrf    []byte
-	winners []ffi.PoStCandidateWithTicket
+	winners []storage.PoStCandidateWithTicket
 	vrfout  []byte
 }
 
@@ -600,7 +600,7 @@ func IsRoundWinner(ctx context.Context, ts *types.TipSet, round int64, miner add
 		return nil, xerrors.Errorf("failed to look up miners sector size: %w", err)
 	}
 
-	var winners []ffi.PoStCandidateWithTicket
+	var winners []storage.PoStCandidateWithTicket
 	for _, c := range candidates {
 		if types.IsTicketWinner(c.Candidate.PartialTicket, ssize, uint64(len(sinfos)), pow.TotalPower) {
 			winners = append(winners, c)
