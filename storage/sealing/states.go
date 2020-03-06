@@ -5,6 +5,7 @@ import (
 
 	"github.com/filecoin-project/specs-actors/actors/crypto"
 
+	"github.com/filecoin-project/go-statemachine"
 	"github.com/filecoin-project/specs-actors/actors/abi"
 	"github.com/filecoin-project/specs-actors/actors/builtin"
 	"github.com/filecoin-project/specs-actors/actors/builtin/miner"
@@ -14,7 +15,6 @@ import (
 	"github.com/filecoin-project/lotus/build"
 	"github.com/filecoin-project/lotus/chain/actors"
 	"github.com/filecoin-project/lotus/chain/types"
-	"github.com/filecoin-project/lotus/lib/statemachine"
 )
 
 func (m *Sealing) handlePacking(ctx statemachine.Context, sector SectorInfo) error {
