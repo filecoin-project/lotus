@@ -26,6 +26,7 @@ func main() {
 		infoCmd,
 		initCmd,
 		pledgeSectorCmd,
+		rewardsCmd,
 		runCmd,
 		sectorsCmd,
 		setPriceCmd,
