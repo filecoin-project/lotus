@@ -11,7 +11,6 @@ import (
 	"strings"
 	"time"
 
-	"github.com/filecoin-project/go-address"
 	cborutil "github.com/filecoin-project/go-cbor-util"
 	"github.com/filecoin-project/specs-actors/actors/abi"
 	"github.com/filecoin-project/specs-actors/actors/builtin"
@@ -66,8 +65,8 @@ var chainHeadCmd = &cli.Command{
 }
 
 var chainGetBlock = &cli.Command{
-	Name:  "getblock",
-	Usage: "Get a block and print its details",
+	Name:      "getblock",
+	Usage:     "Get a block and print its details",
 	ArgsUsage: "[blockCid]",
 	Flags: []cli.Flag{
 		&cli.BoolFlag{
@@ -157,8 +156,8 @@ func apiMsgCids(in []api.Message) []cid.Cid {
 }
 
 var chainReadObjCmd = &cli.Command{
-	Name:  "read-obj",
-	Usage: "Read the raw bytes of an object",
+	Name:      "read-obj",
+	Usage:     "Read the raw bytes of an object",
 	ArgsUsage: "[objectCid]",
 	Action: func(cctx *cli.Context) error {
 		api, closer, err := GetFullNodeAPI(cctx)
@@ -184,8 +183,8 @@ var chainReadObjCmd = &cli.Command{
 }
 
 var chainGetMsgCmd = &cli.Command{
-	Name:  "getmessage",
-	Usage: "Get and print a message by its cid",
+	Name:      "getmessage",
+	Usage:     "Get and print a message by its cid",
 	ArgsUsage: "[messageCid]",
 	Action: func(cctx *cli.Context) error {
 		if !cctx.Args().Present() {
@@ -232,8 +231,8 @@ var chainGetMsgCmd = &cli.Command{
 }
 
 var chainSetHeadCmd = &cli.Command{
-	Name:  "sethead",
-	Usage: "manually set the local nodes head tipset (Caution: normally only used for recovery)",
+	Name:      "sethead",
+	Usage:     "manually set the local nodes head tipset (Caution: normally only used for recovery)",
 	ArgsUsage: "[tipsetkey]",
 	Flags: []cli.Flag{
 		&cli.BoolFlag{
@@ -359,8 +358,8 @@ var chainListCmd = &cli.Command{
 }
 
 var chainGetCmd = &cli.Command{
-	Name:  "get",
-	Usage: "Get chain DAG node by path",
+	Name:      "get",
+	Usage:     "Get chain DAG node by path",
 	ArgsUsage: "[path]",
 	Description: `Get ipld node under a specified path:
 
@@ -417,8 +416,8 @@ func printTipSet(format string, ts *types.TipSet) {
 }
 
 var chainBisectCmd = &cli.Command{
-	Name:  "bisect",
-	Usage: "bisect chain for an event",
+	Name:      "bisect",
+	Usage:     "bisect chain for an event",
 	ArgsUsage: "[minHeight maxHeight path shellCommand <shellCommandArgs (if any)>]",
 	Description: `Bisect the chain state tree:
 
@@ -523,8 +522,8 @@ var chainBisectCmd = &cli.Command{
 }
 
 var chainExportCmd = &cli.Command{
-	Name:  "export",
-	Usage: "export chain to a car file",
+	Name:      "export",
+	Usage:     "export chain to a car file",
 	ArgsUsage: "[outputPath]",
 	Flags: []cli.Flag{
 		&cli.StringFlag{
@@ -571,8 +570,8 @@ var chainExportCmd = &cli.Command{
 }
 
 var slashConsensusFault = &cli.Command{
-	Name:  "slash-consensus",
-	Usage: "Report consensus fault",
+	Name:      "slash-consensus",
+	Usage:     "Report consensus fault",
 	ArgsUsage: "[blockCid1 blockCid2]",
 	Action: func(cctx *cli.Context) error {
 		api, closer, err := GetFullNodeAPI(cctx)
@@ -620,9 +619,6 @@ var slashConsensusFault = &cli.Command{
 		params, err := actors.SerializeParams(&power.ReportConsensusFaultParams{
 			BlockHeader1: bh1,
 			BlockHeader2: bh2,
-			Target:       address.Address{},
-			FaultEpoch:   0,
-			FaultType:    0,
 		})
 
 		msg := &types.Message{
