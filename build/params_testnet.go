@@ -33,4 +33,4 @@ const SlashablePowerDelay = miner.ProvingPeriod * 3 // TODO: remove
 const InteractivePoRepConfidence = 6
 
 // Bytes
-var MinimumMinerPower uint64 = 512 << 30 // 512GB
+var MinimumMinerPower uint64 = 2 << 30 // 2 GiB
