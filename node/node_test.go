@@ -75,6 +75,11 @@ func testStorageNode(ctx context.Context, t *testing.T, waddr address.Address, a
 	err = ds.Put(datastore.NewKey("miner-address"), act.Bytes())
 	require.NoError(t, err)
 
+	nic := storedcounter.New(ds, datastore.NewKey("/storage/nextid"))
+	for i := 0; i < nPreseal; i++ {
+		nic.Next()
+	}
+
 	err = lr.Close()
 	require.NoError(t, err)
 
@@ -173,7 +178,7 @@ func builder(t *testing.T, nFull int, storage []int) ([]test.TestNode, []test.Te
 		if err != nil {
 			t.Fatal(err)
 		}
-		genm, k, err := seed.PreSeal(maddr, abi.RegisteredProof_StackedDRG2KiBPoSt, 0, 2, tdir, []byte("make genesis mem random"), nil)
+		genm, k, err := seed.PreSeal(maddr, abi.RegisteredProof_StackedDRG2KiBPoSt, 0, nPreseal, tdir, []byte("make genesis mem random"), nil)
 		if err != nil {
 			t.Fatal(err)
 		}
@@ -266,6 +271,8 @@ func builder(t *testing.T, nFull int, storage []int) ([]test.TestNode, []test.Te
 	return fulls, storers
 }
 
+const nPreseal = 2
+
 func mockSbBuilder(t *testing.T, nFull int, storage []int) ([]test.TestNode, []test.TestStorageNode) {
 	ctx := context.Background()
 	mn := mocknet.New(ctx)
@@ -301,7 +308,7 @@ func mockSbBuilder(t *testing.T, nFull int, storage []int) ([]test.TestNode, []t
 		if err != nil {
 			t.Fatal(err)
 		}
-		genm, k, err := sbmock.PreSeal(2048, maddr, 2)
+		genm, k, err := sbmock.PreSeal(2048, maddr, nPreseal)
 		if err != nil {
 			t.Fatal(err)
 		}
@@ -434,7 +441,7 @@ func TestAPIRPC(t *testing.T) {
 
 func TestAPIDealFlow(t *testing.T) {
 	logging.SetLogLevel("miner", "ERROR")
-	//logging.SetLogLevel("chainstore", "ERROR")
+	logging.SetLogLevel("chainstore", "ERROR")
 	logging.SetLogLevel("chain", "ERROR")
 	logging.SetLogLevel("sub", "ERROR")
 	logging.SetLogLevel("storageminer", "ERROR")
@@ -446,5 +453,11 @@ func TestAPIDealFlowReal(t *testing.T) {
 	if testing.Short() {
 		t.Skip("skipping test in short mode")
 	}
+	logging.SetLogLevel("miner", "ERROR")
+	logging.SetLogLevel("chainstore", "ERROR")
+	logging.SetLogLevel("chain", "ERROR")
+	logging.SetLogLevel("sub", "ERROR")
+	logging.SetLogLevel("storageminer", "ERROR")
+
 	test.TestDealFlow(t, builder, time.Second)
 }

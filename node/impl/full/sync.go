@@ -27,7 +27,8 @@ func (a *SyncAPI) SyncState(ctx context.Context) (*api.SyncState, error) {
 
 	out := &api.SyncState{}
 
-	for _, ss := range states {
+	for i := range states {
+		ss := &states[i]
 		out.ActiveSyncs = append(out.ActiveSyncs, api.ActiveSync{
 			Base:    ss.Base,
 			Target:  ss.Target,

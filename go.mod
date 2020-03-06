@@ -11,7 +11,7 @@ require (
 	github.com/coreos/go-systemd/v22 v22.0.0
 	github.com/docker/go-units v0.4.0
 	github.com/filecoin-project/chain-validation v0.0.6-0.20200305212458-670d41260fd7
-	github.com/filecoin-project/filecoin-ffi v0.0.0-20200226231125-fc253ccb5294
+	github.com/filecoin-project/filecoin-ffi v0.0.0-20200304181354-4446ff8a1bb9
 	github.com/filecoin-project/go-address v0.0.2-0.20200218010043-eb9bb40ed5be
 	github.com/filecoin-project/go-amt-ipld/v2 v2.0.1-0.20200131012142-05d80eeccc5e
 	github.com/filecoin-project/go-cbor-util v0.0.0-20191219014500-08c40a1e63a2
@@ -21,9 +21,10 @@ require (
 	github.com/filecoin-project/go-fil-markets v0.0.0-20200304003055-d449a980d4bd
 	github.com/filecoin-project/go-padreader v0.0.0-20200210211231-548257017ca6
 	github.com/filecoin-project/go-paramfetch v0.0.2-0.20200218225740-47c639bab663
-	github.com/filecoin-project/go-sectorbuilder v0.0.2-0.20200304050010-2cfac00a93e7
+	github.com/filecoin-project/go-sectorbuilder v0.0.2-0.20200306043753-5cdbe369b47d
 	github.com/filecoin-project/go-statestore v0.1.0
 	github.com/filecoin-project/specs-actors v0.0.0-20200306043603-709a3ce21094
+	github.com/filecoin-project/specs-storage v0.0.0-20200303233430-1a5a408f7513
 	github.com/gbrlsnchs/jwt/v3 v3.0.0-beta.1
 	github.com/go-ole/go-ole v1.2.4 // indirect
 	github.com/google/uuid v1.1.1
@@ -37,8 +38,8 @@ require (
 	github.com/ipfs/go-blockservice v0.1.3-0.20190908200855-f22eea50656c
 	github.com/ipfs/go-car v0.0.3-0.20200221191037-3762780fa84e
 	github.com/ipfs/go-cid v0.0.5
-	github.com/ipfs/go-datastore v0.3.1
-	github.com/ipfs/go-ds-badger2 v0.0.0-20200123200730-d75eb2678a5d
+	github.com/ipfs/go-datastore v0.4.2
+	github.com/ipfs/go-ds-badger2 v0.0.0-20200211201106-609c9d2a39c7
 	github.com/ipfs/go-filestore v0.0.2
 	github.com/ipfs/go-fs-lock v0.0.1
 	github.com/ipfs/go-graphsync v0.0.4
@@ -52,13 +53,13 @@ require (
 	github.com/ipfs/go-ipfs-routing v0.1.0
 	github.com/ipfs/go-ipld-cbor v0.0.5-0.20200204214505-252690b78669
 	github.com/ipfs/go-ipld-format v0.0.2
-	github.com/ipfs/go-log v1.0.1
+	github.com/ipfs/go-log v1.0.2
 	github.com/ipfs/go-log/v2 v2.0.2
 	github.com/ipfs/go-merkledag v0.2.4
 	github.com/ipfs/go-path v0.0.7
 	github.com/ipfs/go-unixfs v0.2.2-0.20190827150610-868af2e9e5cb
 	github.com/lib/pq v1.2.0
-	github.com/libp2p/go-libp2p v0.4.2
+	github.com/libp2p/go-libp2p v0.5.2
 	github.com/libp2p/go-libp2p-circuit v0.1.4
 	github.com/libp2p/go-libp2p-connmgr v0.1.0
 	github.com/libp2p/go-libp2p-core v0.3.0
@@ -81,7 +82,7 @@ require (
 	github.com/multiformats/go-base32 v0.0.3
 	github.com/multiformats/go-multiaddr v0.2.0
 	github.com/multiformats/go-multiaddr-dns v0.2.0
-	github.com/multiformats/go-multiaddr-net v0.1.1
+	github.com/multiformats/go-multiaddr-net v0.1.2
 	github.com/multiformats/go-multihash v0.0.13
 	github.com/multiformats/go-varint v0.0.5
 	github.com/opentracing/opentracing-go v1.1.0

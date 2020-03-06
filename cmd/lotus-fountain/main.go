@@ -1,6 +1,7 @@
 package main
 
 import (
+	"bytes"
 	"context"
 	"fmt"
 	"net"
@@ -265,7 +266,7 @@ func (h *handler) mkminer(w http.ResponseWriter, r *http.Request) {
 	log.Infof("%s: push funds %s", owner, smsg.Cid())
 
 	params, err := actors.SerializeParams(&power.CreateMinerParams{
-		Owner:      owner, // TODO: That is useful
+		Owner:      owner,
 		Worker:     owner,
 		SectorSize: abi.SectorSize(ssize),
 		Peer:       peer.ID("SETME"),
@@ -345,12 +346,13 @@ func (h *handler) msgwaitaddr(w http.ResponseWriter, r *http.Request) {
 	}
 	w.WriteHeader(200)
 
-	addr, err := address.NewFromBytes(mw.Receipt.Return)
-	if err != nil {
+	var ma power.CreateMinerReturn
+	if err := ma.UnmarshalCBOR(bytes.NewReader(mw.Receipt.Return)); err != nil {
+		log.Errorf("%w", err)
 		w.WriteHeader(400)
 		w.Write([]byte(err.Error()))
 		return
 	}
 
-	fmt.Fprintf(w, "{\"addr\": \"%s\"}", addr)
+	fmt.Fprintf(w, "{\"addr\": \"%s\"}", ma.IDAddress)
 }

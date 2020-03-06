@@ -494,7 +494,6 @@ func (vm *VM) ApplyMessage(ctx context.Context, msg *types.Message) (*ApplyRet, 
 		return nil, xerrors.Errorf("failed to look up from actor: %w", err)
 	}
 
-
 	gascost := types.BigMul(msg.GasLimit, msg.GasPrice)
 	totalCost := types.BigAdd(gascost, msg.Value)
 	if fromActor.Balance.LessThan(totalCost) {
@@ -787,5 +786,5 @@ func MiningReward(remainingReward types.BigInt) types.BigInt {
 	res := ci.Mul(ci, build.InitialReward)
 	res = res.Div(res, miningRewardTotal.Int)
 	res = res.Div(res, blocksPerEpoch.Int)
-	return types.BigInt{res}
+	return types.BigInt{Int: res}
 }
