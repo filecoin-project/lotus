@@ -359,11 +359,11 @@ func (m *Miner) getMinerWorker(ctx context.Context, addr address.Address, tsk ty
 		return address.Undef, xerrors.Errorf("failed to get miner worker addr: %w", err)
 	}
 
-	if ret.ExitCode != 0 {
-		return address.Undef, xerrors.Errorf("failed to get miner worker addr (exit code %d)", ret.ExitCode)
+	if ret.MsgRct.ExitCode != 0 {
+		return address.Undef, xerrors.Errorf("failed to get miner worker addr (exit code %d)", ret.MsgRct.ExitCode)
 	}
 
-	w, err := address.NewFromBytes(ret.Return)
+	w, err := address.NewFromBytes(ret.MsgRct.Return)
 	if err != nil {
 		return address.Undef, xerrors.Errorf("GetWorkerAddr returned malformed address: %w", err)
 	}

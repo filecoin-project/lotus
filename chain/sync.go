@@ -481,11 +481,11 @@ func (syncer *Syncer) minerIsValid(ctx context.Context, maddr address.Address, b
 		return xerrors.Errorf("checking if block miner is valid failed: %w", err)
 	}
 
-	if ret.ExitCode != 0 {
-		return xerrors.Errorf("StorageMarket.IsValidMiner check failed (exit code %d)", ret.ExitCode)
+	if ret.MsgRct.ExitCode != 0 {
+		return xerrors.Errorf("StorageMarket.IsValidMiner check failed (exit code %d)", ret.MsgRct.ExitCode)
 	}
 
-	if !bytes.Equal(ret.Return, cbg.CborBoolTrue) {
+	if !bytes.Equal(ret.MsgRct.Return, cbg.CborBoolTrue) {
 		return xerrors.New("miner isn't valid")
 	}
 

@@ -36,11 +36,11 @@ func GetMinerWorkerRaw(ctx context.Context, sm *StateManager, st cid.Cid, maddr 
 		return address.Undef, xerrors.Errorf("callRaw failed: %w", err)
 	}
 
-	if recp.ExitCode != 0 {
-		return address.Undef, xerrors.Errorf("getting miner worker addr failed (exit code %d)", recp.ExitCode)
+	if recp.MsgRct.ExitCode != 0 {
+		return address.Undef, xerrors.Errorf("getting miner worker addr failed (exit code %d)", recp.MsgRct.ExitCode)
 	}
 
-	worker, err := address.NewFromBytes(recp.Return)
+	worker, err := address.NewFromBytes(recp.MsgRct.Return)
 	if err != nil {
 		return address.Undef, err
 	}
@@ -62,11 +62,11 @@ func GetMinerOwner(ctx context.Context, sm *StateManager, st cid.Cid, maddr addr
 		return address.Undef, xerrors.Errorf("callRaw failed: %w", err)
 	}
 
-	if recp.ExitCode != 0 {
-		return address.Undef, xerrors.Errorf("getting miner owner addr failed (exit code %d)", recp.ExitCode)
+	if recp.MsgRct.ExitCode != 0 {
+		return address.Undef, xerrors.Errorf("getting miner owner addr failed (exit code %d)", recp.MsgRct.ExitCode)
 	}
 
-	owner, err := address.NewFromBytes(recp.Return)
+	owner, err := address.NewFromBytes(recp.MsgRct.Return)
 	if err != nil {
 		return address.Undef, err
 	}
@@ -97,11 +97,11 @@ func GetPower(ctx context.Context, sm *StateManager, ts *types.TipSet, maddr add
 		if err != nil {
 			return types.EmptyInt, types.EmptyInt, xerrors.Errorf("failed to get miner power from chain: %w", err)
 		}
-		if ret.ExitCode != 0 {
-			return types.EmptyInt, types.EmptyInt, xerrors.Errorf("failed to get miner power from chain (exit code %d)", ret.ExitCode)
+		if ret.MsgRct.ExitCode != 0 {
+			return types.EmptyInt, types.EmptyInt, xerrors.Errorf("failed to get miner power from chain (exit code %d)", ret.MsgRct.ExitCode)
 		}
 
-		mpow = types.BigFromBytes(ret.Return)
+		mpow = types.BigFromBytes(ret.MsgRct.Return)
 	}
 
 	ret, err := sm.Call(ctx, &types.Message{
@@ -112,11 +112,11 @@ func GetPower(ctx context.Context, sm *StateManager, ts *types.TipSet, maddr add
 	if err != nil {
 		return types.EmptyInt, types.EmptyInt, xerrors.Errorf("failed to get total power from chain: %w", err)
 	}
-	if ret.ExitCode != 0 {
-		return types.EmptyInt, types.EmptyInt, xerrors.Errorf("failed to get total power from chain (exit code %d)", ret.ExitCode)
+	if ret.MsgRct.ExitCode != 0 {
+		return types.EmptyInt, types.EmptyInt, xerrors.Errorf("failed to get total power from chain (exit code %d)", ret.MsgRct.ExitCode)
 	}
 
-	tpow := types.BigFromBytes(ret.Return)
+	tpow := types.BigFromBytes(ret.MsgRct.Return)
 
 	return mpow, tpow, nil
 }
@@ -131,11 +131,11 @@ func GetMinerPeerID(ctx context.Context, sm *StateManager, ts *types.TipSet, mad
 		return "", xerrors.Errorf("call failed: %w", err)
 	}
 
-	if recp.ExitCode != 0 {
-		return "", xerrors.Errorf("getting miner peer ID failed (exit code %d)", recp.ExitCode)
+	if recp.MsgRct.ExitCode != 0 {
+		return "", xerrors.Errorf("getting miner peer ID failed (exit code %d)", recp.MsgRct.ExitCode)
 	}
 
-	return peer.IDFromBytes(recp.Return)
+	return peer.IDFromBytes(recp.MsgRct.Return)
 }
 
 func GetMinerWorker(ctx context.Context, sm *StateManager, ts *types.TipSet, maddr address.Address) (address.Address, error) {
@@ -148,11 +148,11 @@ func GetMinerWorker(ctx context.Context, sm *StateManager, ts *types.TipSet, mad
 		return address.Undef, xerrors.Errorf("call failed: %w", err)
 	}
 
-	if recp.ExitCode != 0 {
-		return address.Undef, xerrors.Errorf("getting miner peer ID failed (exit code %d)", recp.ExitCode)
+	if recp.MsgRct.ExitCode != 0 {
+		return address.Undef, xerrors.Errorf("getting miner peer ID failed (exit code %d)", recp.MsgRct.ExitCode)
 	}
 
-	return address.NewFromBytes(recp.Return)
+	return address.NewFromBytes(recp.MsgRct.Return)
 }
 
 func GetMinerElectionPeriodStart(ctx context.Context, sm *StateManager, ts *types.TipSet, maddr address.Address) (uint64, error) {

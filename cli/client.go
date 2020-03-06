@@ -300,14 +300,14 @@ var clientQueryAskCmd = &cli.Command{
 				return xerrors.Errorf("failed to get peerID for miner: %w", err)
 			}
 
-			if ret.ExitCode != 0 {
-				return fmt.Errorf("call to GetPeerID was unsuccesful (exit code %d)", ret.ExitCode)
+			if ret.MsgRct.ExitCode != 0 {
+				return fmt.Errorf("call to GetPeerID was unsuccesful (exit code %d)", ret.MsgRct.ExitCode)
 			}
-			if peer.ID(ret.Return) == peer.ID("SETME") {
+			if peer.ID(ret.MsgRct.Return) == peer.ID("SETME") {
 				return fmt.Errorf("the miner hasn't initialized yet")
 			}
 
-			p, err := peer.IDFromBytes(ret.Return)
+			p, err := peer.IDFromBytes(ret.MsgRct.Return)
 			if err != nil {
 				return err
 			}
