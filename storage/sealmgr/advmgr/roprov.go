@@ -1,6 +1,8 @@
 package advmgr
 
 import (
+	"context"
+
 	"github.com/filecoin-project/go-sectorbuilder"
 	"github.com/filecoin-project/specs-actors/actors/abi"
 	"golang.org/x/xerrors"
@@ -11,15 +13,7 @@ type readonlyProvider struct {
 	stor  *storage
 }
 
-func (l *readonlyProvider) AcquireSectorNumber() (abi.SectorNumber, error) {
-	return 0, xerrors.New("read-only provider")
-}
-
-func (l *readonlyProvider) FinalizeSector(abi.SectorNumber) error {
-	return xerrors.New("read-only provider")
-}
-
-func (l *readonlyProvider) AcquireSector(id abi.SectorNumber, existing sectorbuilder.SectorFileType, allocate sectorbuilder.SectorFileType, sealing bool) (sectorbuilder.SectorPaths, func(), error) {
+func (l *readonlyProvider) AcquireSector(ctx context.Context, id abi.SectorNumber, existing sectorbuilder.SectorFileType, allocate sectorbuilder.SectorFileType, sealing bool) (sectorbuilder.SectorPaths, func(), error) {
 	if allocate != 0 {
 		return sectorbuilder.SectorPaths{}, nil, xerrors.New("read-only storage")
 	}

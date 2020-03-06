@@ -5,9 +5,6 @@ import (
 	"errors"
 	"time"
 
-	"github.com/filecoin-project/specs-actors/actors/runtime"
-
-	sectorbuilder "github.com/filecoin-project/go-sectorbuilder"
 	blockstore "github.com/ipfs/go-ipfs-blockstore"
 	logging "github.com/ipfs/go-log"
 	ci "github.com/libp2p/go-libp2p-core/crypto"
@@ -26,6 +23,9 @@ import (
 	"github.com/filecoin-project/go-fil-markets/retrievalmarket/discovery"
 	"github.com/filecoin-project/go-fil-markets/storagemarket"
 	deals "github.com/filecoin-project/go-fil-markets/storagemarket/impl"
+	sectorbuilder "github.com/filecoin-project/go-sectorbuilder"
+	"github.com/filecoin-project/specs-actors/actors/runtime"
+	storage2 "github.com/filecoin-project/specs-storage/storage"
 
 	"github.com/filecoin-project/lotus/api"
 	"github.com/filecoin-project/lotus/chain"
@@ -261,7 +261,7 @@ func Online() Option {
 			Override(new(*advmgr.Manager), advmgr.New),
 
 			Override(new(sealmgr.Manager), From(new(*advmgr.Manager))),
-			Override(new(sectorbuilder.Prover), From(new(sealmgr.Manager))),
+			Override(new(storage2.Prover), From(new(sealmgr.Manager))),
 
 			Override(new(*sectorblocks.SectorBlocks), sectorblocks.NewSectorBlocks),
 			Override(new(sealing.TicketFn), modules.SealTicketGen),
