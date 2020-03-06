@@ -265,7 +265,7 @@ func (h *handler) mkminer(w http.ResponseWriter, r *http.Request) {
 	log.Infof("%s: push funds %s", owner, smsg.Cid())
 
 	params, err := actors.SerializeParams(&power.CreateMinerParams{
-		Owner:      owner, // TODO: That is useful
+		Owner:      owner,
 		Worker:     owner,
 		SectorSize: abi.SectorSize(ssize),
 		Peer:       peer.ID("SETME"),
