@@ -409,7 +409,8 @@ func testControlChanDeadlock(t *testing.T) {
 		serverHandler.wait <- struct{}{}
 	}
 
-	ctx, _ := context.WithCancel(context.Background())
+	ctx, cancel := context.WithCancel(context.Background())
+	defer cancel()
 
 	sub, err := client.Sub(ctx, 1, -1)
 	require.NoError(t, err)
