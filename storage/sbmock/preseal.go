@@ -3,6 +3,7 @@ package sbmock
 import (
 	"github.com/filecoin-project/go-address"
 	commcid "github.com/filecoin-project/go-fil-commcid"
+	"github.com/filecoin-project/go-sectorbuilder"
 	"github.com/filecoin-project/specs-actors/actors/abi"
 	"github.com/filecoin-project/specs-actors/actors/abi/big"
 	"github.com/filecoin-project/specs-actors/actors/builtin/market"
@@ -12,7 +13,6 @@ import (
 	"github.com/filecoin-project/lotus/chain/types"
 	"github.com/filecoin-project/lotus/chain/wallet"
 	"github.com/filecoin-project/lotus/genesis"
-	"github.com/filecoin-project/lotus/lib/zerocomm"
 )
 
 func PreSeal(ssize abi.SectorSize, maddr address.Address, sectors int) (*genesis.Miner, *types.KeyInfo, error) {
@@ -39,7 +39,7 @@ func PreSeal(ssize abi.SectorSize, maddr address.Address, sectors int) (*genesis
 		preseal := &genesis.PreSeal{}
 
 		preseal.ProofType = st
-		preseal.CommD = zerocomm.ForSize(abi.PaddedPieceSize(ssize).Unpadded())
+		preseal.CommD = sectorbuilder.ZeroPieceCommitment(abi.PaddedPieceSize(ssize).Unpadded())
 		d, _ := commcid.CIDToPieceCommitmentV1(preseal.CommD)
 		r := commDR(d)
 		preseal.CommR = commcid.ReplicaCommitmentV1ToCID(r[:])
