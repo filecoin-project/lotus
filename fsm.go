@@ -6,17 +6,18 @@ import (
 	"reflect"
 	"time"
 
-	"github.com/filecoin-project/specs-actors/actors/abi"
 	"golang.org/x/xerrors"
 
+	"github.com/filecoin-project/go-statemachine"
+	"github.com/filecoin-project/specs-actors/actors/abi"
+
 	"github.com/filecoin-project/lotus/api"
-	"github.com/filecoin-project/lotus/lib/statemachine"
 )
 
-func (m *Sealing) Plan(events []statemachine.Event, user interface{}) (interface{}, error) {
+func (m *Sealing) Plan(events []statemachine.Event, user interface{}) (interface{}, uint64, error) {
 	next, err := m.plan(events, user.(*SectorInfo))
 	if err != nil || next == nil {
-		return nil, err
+		return nil, 0, err
 	}
 
 	return func(ctx statemachine.Context, si SectorInfo) error {
@@ -27,7 +28,7 @@ func (m *Sealing) Plan(events []statemachine.Event, user interface{}) (interface
 		}
 
 		return nil
-	}, nil
+	}, uint64(len(events)), nil // TODO: This processed event count is not very correct
 }
 
 var fsmPlanners = []func(events []statemachine.Event, state *SectorInfo) error{
