@@ -23,8 +23,8 @@ var paychCmd = &cli.Command{
 }
 
 var paychGetCmd = &cli.Command{
-	Name:  "get",
-	Usage: "Create a new payment channel or get existing one",
+	Name:      "get",
+	Usage:     "Create a new payment channel or get existing one",
 	ArgsUsage: "[fromAddress toAddress amount]",
 	Action: func(cctx *cli.Context) error {
 		if cctx.Args().Len() != 3 {
@@ -102,8 +102,8 @@ var paychVoucherCmd = &cli.Command{
 }
 
 var paychVoucherCreateCmd = &cli.Command{
-	Name:  "create",
-	Usage: "Create a signed payment channel voucher",
+	Name:      "create",
+	Usage:     "Create a signed payment channel voucher",
 	ArgsUsage: "[channelAddress amount]",
 	Flags: []cli.Flag{
 		&cli.IntFlag{
@@ -153,8 +153,8 @@ var paychVoucherCreateCmd = &cli.Command{
 }
 
 var paychVoucherCheckCmd = &cli.Command{
-	Name:  "check",
-	Usage: "Check validity of payment channel voucher",
+	Name:      "check",
+	Usage:     "Check validity of payment channel voucher",
 	ArgsUsage: "[channelAddress voucher]",
 	Action: func(cctx *cli.Context) error {
 		if cctx.Args().Len() != 2 {
@@ -189,8 +189,8 @@ var paychVoucherCheckCmd = &cli.Command{
 }
 
 var paychVoucherAddCmd = &cli.Command{
-	Name:  "add",
-	Usage: "Add payment channel voucher to local datastore",
+	Name:      "add",
+	Usage:     "Add payment channel voucher to local datastore",
 	ArgsUsage: "[channelAddress voucher]",
 	Action: func(cctx *cli.Context) error {
 		if cctx.Args().Len() != 2 {
@@ -225,8 +225,8 @@ var paychVoucherAddCmd = &cli.Command{
 }
 
 var paychVoucherListCmd = &cli.Command{
-	Name:  "list",
-	Usage: "List stored vouchers for a given payment channel",
+	Name:      "list",
+	Usage:     "List stored vouchers for a given payment channel",
 	ArgsUsage: "[channelAddress]",
 	Flags: []cli.Flag{
 		&cli.BoolFlag{
@@ -275,8 +275,8 @@ var paychVoucherListCmd = &cli.Command{
 }
 
 var paychVoucherBestSpendableCmd = &cli.Command{
-	Name:  "best-spendable",
-	Usage: "Print voucher with highest value that is currently spendable",
+	Name:      "best-spendable",
+	Usage:     "Print voucher with highest value that is currently spendable",
 	ArgsUsage: "[channelAddress]",
 	Action: func(cctx *cli.Context) error {
 		if cctx.Args().Len() != 1 {
@@ -330,8 +330,8 @@ var paychVoucherBestSpendableCmd = &cli.Command{
 }
 
 var paychVoucherSubmitCmd = &cli.Command{
-	Name:  "submit",
-	Usage: "Submit voucher to chain to update payment channel state",
+	Name:      "submit",
+	Usage:     "Submit voucher to chain to update payment channel state",
 	ArgsUsage: "[channelAddress voucher]",
 	Action: func(cctx *cli.Context) error {
 		if cctx.Args().Len() != 2 {
