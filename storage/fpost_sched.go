@@ -4,12 +4,12 @@ import (
 	"context"
 	"sync"
 
-	"github.com/filecoin-project/specs-actors/actors/abi"
 	"go.opencensus.io/trace"
 	"golang.org/x/xerrors"
 
 	"github.com/filecoin-project/go-address"
-	"github.com/filecoin-project/go-sectorbuilder"
+	"github.com/filecoin-project/specs-actors/actors/abi"
+	"github.com/filecoin-project/specs-storage/storage"
 
 	"github.com/filecoin-project/lotus/build"
 	"github.com/filecoin-project/lotus/chain/store"
@@ -22,7 +22,7 @@ const StartConfidence = 4 // TODO: config
 
 type FPoStScheduler struct {
 	api storageMinerApi
-	sb  sectorbuilder.Prover
+	sb  storage.Prover
 
 	actor  address.Address
 	worker address.Address
@@ -37,7 +37,7 @@ type FPoStScheduler struct {
 	failLk sync.Mutex
 }
 
-func NewFPoStScheduler(api storageMinerApi, sb sectorbuilder.Prover, actor address.Address, worker address.Address) *FPoStScheduler {
+func NewFPoStScheduler(api storageMinerApi, sb storage.Prover, actor address.Address, worker address.Address) *FPoStScheduler {
 	return &FPoStScheduler{api: api, sb: sb, actor: actor, worker: worker}
 }
 

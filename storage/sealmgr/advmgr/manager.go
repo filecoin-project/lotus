@@ -11,6 +11,7 @@ import (
 	"github.com/filecoin-project/go-address"
 	"github.com/filecoin-project/go-sectorbuilder"
 	"github.com/filecoin-project/specs-actors/actors/abi"
+	storage2 "github.com/filecoin-project/specs-storage/storage"
 
 	"github.com/filecoin-project/lotus/node/config"
 	"github.com/filecoin-project/lotus/storage/sealmgr"
@@ -49,7 +50,7 @@ type Manager struct {
 
 	storage *storage
 
-	sectorbuilder.Prover
+	storage2.Prover
 }
 
 func New(ls LocalStorage, cfg *sectorbuilder.Config, sc SectorIDCounter) (*Manager, error) {
@@ -151,7 +152,7 @@ func (m *Manager) getWorkersByPaths(task sealmgr.TaskType, inPaths []config.Stor
 	return workers, paths
 }
 
-func (m *Manager) AddPiece(ctx context.Context, sz abi.UnpaddedPieceSize, sn abi.SectorNumber, r io.Reader, existingPieces []abi.UnpaddedPieceSize) (abi.PieceInfo, error) {
+func (m *Manager) AddPiece(ctx context.Context, sn abi.SectorNumber, existingPieces []abi.UnpaddedPieceSize, sz abi.UnpaddedPieceSize, r io.Reader) (abi.PieceInfo, error) {
 	// TODO: consider multiple paths vs workers when initially allocating
 
 	var best []config.StorageMeta
@@ -173,10 +174,10 @@ func (m *Manager) AddPiece(ctx context.Context, sz abi.UnpaddedPieceSize, sn abi
 
 	// TODO: select(candidateWorkers, ...)
 	// TODO: remove the sectorbuilder abstraction, pass path directly
-	return candidateWorkers[0].AddPiece(ctx, sz, sn, r, existingPieces)
+	return candidateWorkers[0].AddPiece(ctx, sn, existingPieces, sz, r)
 }
 
-func (m *Manager) SealPreCommit1(ctx context.Context, sectorNum abi.SectorNumber, ticket abi.SealRandomness, pieces []abi.PieceInfo) (out []byte, err error) {
+func (m *Manager) SealPreCommit1(ctx context.Context, sectorNum abi.SectorNumber, ticket abi.SealRandomness, pieces []abi.PieceInfo) (out storage2.PreCommit1Out, err error) {
 	// TODO: also consider where the unsealed data sits
 
 	best, err := m.storage.findBestAllocStorage(sectorbuilder.FTCache|sectorbuilder.FTSealed, true)
@@ -191,7 +192,7 @@ func (m *Manager) SealPreCommit1(ctx context.Context, sectorNum abi.SectorNumber
 	return candidateWorkers[0].SealPreCommit1(ctx, sectorNum, ticket, pieces)
 }
 
-func (m *Manager) SealPreCommit2(ctx context.Context, sectorNum abi.SectorNumber, phase1Out []byte) (sealedCID cid.Cid, unsealedCID cid.Cid, err error) {
+func (m *Manager) SealPreCommit2(ctx context.Context, sectorNum abi.SectorNumber, phase1Out storage2.PreCommit1Out) (sealedCID cid.Cid, unsealedCID cid.Cid, err error) {
 	// TODO: allow workers to fetch the sectors
 
 	best, err := m.storage.findSector(m.minerID(), sectorNum, sectorbuilder.FTCache|sectorbuilder.FTSealed)
@@ -206,7 +207,7 @@ func (m *Manager) SealPreCommit2(ctx context.Context, sectorNum abi.SectorNumber
 	return candidateWorkers[0].SealPreCommit2(ctx, sectorNum, phase1Out)
 }
 
-func (m *Manager) SealCommit1(ctx context.Context, sectorNum abi.SectorNumber, ticket abi.SealRandomness, seed abi.InteractiveSealRandomness, pieces []abi.PieceInfo, sealedCID cid.Cid, unsealedCID cid.Cid) (output []byte, err error) {
+func (m *Manager) SealCommit1(ctx context.Context, sectorNum abi.SectorNumber, ticket abi.SealRandomness, seed abi.InteractiveSealRandomness, pieces []abi.PieceInfo, sealedCID cid.Cid, unsealedCID cid.Cid) (output storage2.Commit1Out, err error) {
 	best, err := m.storage.findSector(m.minerID(), sectorNum, sectorbuilder.FTCache|sectorbuilder.FTSealed)
 	if err != nil {
 		return nil, xerrors.Errorf("finding path for sector sealing: %w", err)
@@ -219,7 +220,7 @@ func (m *Manager) SealCommit1(ctx context.Context, sectorNum abi.SectorNumber, t
 	return candidateWorkers[0].SealCommit1(ctx, sectorNum, ticket, seed, pieces, sealedCID, unsealedCID)
 }
 
-func (m *Manager) SealCommit2(ctx context.Context, sectorNum abi.SectorNumber, phase1Out []byte) (proof []byte, err error) {
+func (m *Manager) SealCommit2(ctx context.Context, sectorNum abi.SectorNumber, phase1Out storage2.Commit1Out) (proof storage2.Proof, err error) {
 	for _, worker := range m.workers {
 		if _, ok := worker.TaskTypes()[sealmgr.TTCommit2]; !ok {
 			continue

@@ -6,16 +6,15 @@ import (
 	"time"
 
 	"github.com/filecoin-project/go-address"
+	"github.com/filecoin-project/specs-storage/storage"
 	"github.com/ipfs/go-cid"
 	"github.com/ipfs/go-datastore"
 	logging "github.com/ipfs/go-log/v2"
 	"github.com/libp2p/go-libp2p-core/host"
 	"golang.org/x/xerrors"
 
-	ffi "github.com/filecoin-project/filecoin-ffi"
 	"github.com/filecoin-project/lotus/storage/sealmgr"
 
-	"github.com/filecoin-project/go-sectorbuilder"
 	"github.com/filecoin-project/specs-actors/actors/abi"
 	"github.com/filecoin-project/specs-actors/actors/builtin/miner"
 	"github.com/filecoin-project/specs-actors/actors/crypto"
@@ -121,16 +120,16 @@ func (m *Miner) runPreflightChecks(ctx context.Context) error {
 }
 
 type SectorBuilderEpp struct {
-	prover sectorbuilder.Prover
+	prover storage.Prover
 }
 
-func NewElectionPoStProver(sb sectorbuilder.Prover) *SectorBuilderEpp {
+func NewElectionPoStProver(sb storage.Prover) *SectorBuilderEpp {
 	return &SectorBuilderEpp{sb}
 }
 
 var _ gen.ElectionPoStProver = (*SectorBuilderEpp)(nil)
 
-func (epp *SectorBuilderEpp) GenerateCandidates(ctx context.Context, ssi []abi.SectorInfo, rand abi.PoStRandomness) ([]ffi.PoStCandidateWithTicket, error) {
+func (epp *SectorBuilderEpp) GenerateCandidates(ctx context.Context, ssi []abi.SectorInfo, rand abi.PoStRandomness) ([]storage.PoStCandidateWithTicket, error) {
 	start := time.Now()
 	var faults []abi.SectorNumber // TODO
 
@@ -142,7 +141,7 @@ func (epp *SectorBuilderEpp) GenerateCandidates(ctx context.Context, ssi []abi.S
 	return cds, nil
 }
 
-func (epp *SectorBuilderEpp) ComputeProof(ctx context.Context, ssi []abi.SectorInfo, rand []byte, winners []ffi.PoStCandidateWithTicket) ([]abi.PoStProof, error) {
+func (epp *SectorBuilderEpp) ComputeProof(ctx context.Context, ssi []abi.SectorInfo, rand []byte, winners []storage.PoStCandidateWithTicket) ([]abi.PoStProof, error) {
 	if build.InsecurePoStValidation {
 		log.Warn("Generating fake EPost proof! You should only see this while running tests!")
 		return []abi.PoStProof{{ProofBytes: []byte("valid proof")}}, nil
