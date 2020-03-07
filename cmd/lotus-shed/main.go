@@ -21,6 +21,7 @@ func main() {
 		peerkeyCmd,
 		noncefix,
 		bigIntParseCmd,
+		staterootStatsCmd,
 	}
 
 	app := &cli.App{
@@ -28,6 +29,14 @@ func main() {
 		Usage:    "A place for all the lotus tools",
 		Version:  build.BuildVersion,
 		Commands: local,
+		Flags: []cli.Flag{
+			&cli.StringFlag{
+				Name:    "repo",
+				EnvVars: []string{"LOTUS_PATH"},
+				Hidden:  true,
+				Value:   "~/.lotus", // TODO: Consider XDG_DATA_HOME
+			},
+		},
 	}
 
 	if err := app.Run(os.Args); err != nil {
