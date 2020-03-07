@@ -46,7 +46,7 @@ type FullNode interface {
 	ChainSetHead(context.Context, types.TipSetKey) error
 	ChainGetGenesis(context.Context) (*types.TipSet, error)
 	ChainTipSetWeight(context.Context, types.TipSetKey) (types.BigInt, error)
-	ChainGetNode(ctx context.Context, p string) (interface{}, error)
+	ChainGetNode(ctx context.Context, p string) (*IpldObject, error)
 	ChainGetMessage(context.Context, cid.Cid) (*types.Message, error)
 	ChainGetPath(ctx context.Context, from types.TipSetKey, to types.TipSetKey) ([]*store.HeadChange, error)
 	ChainExport(context.Context, types.TipSetKey) (<-chan []byte, error)
@@ -316,6 +316,11 @@ type StartDealParams struct {
 	Miner          address.Address
 	EpochPrice     types.BigInt
 	BlocksDuration uint64
+}
+
+type IpldObject struct {
+	Cid cid.Cid
+	Obj interface{}
 }
 
 type ActiveSync struct {
