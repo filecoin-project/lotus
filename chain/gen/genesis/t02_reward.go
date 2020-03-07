@@ -30,7 +30,7 @@ func SetupRewardActor(bs bstore.Blockstore) (*types.Actor, error) {
 
 	return &types.Actor{
 		Code:    builtin.RewardActorCodeID,
-		Balance: types.BigInt{Int: build.InitialReward},
+		Balance: types.BigInt{Int: build.InitialRewardBalance},
 		Head:    hcid,
 	}, nil
 }

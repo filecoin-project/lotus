@@ -84,23 +84,15 @@ const CollateralPrecision = 1000
 const TotalFilecoin = 2_000_000_000
 const MiningRewardTotal = 1_400_000_000
 
-const InitialRewardStr = "153856861913558700202"
-
-var InitialReward *big.Int
-
 const FilecoinPrecision = 1_000_000_000_000_000_000
+
+var InitialRewardBalance *big.Int
 
 // TODO: Move other important consts here
 
 func init() {
-	InitialReward = new(big.Int)
-
-	var ok bool
-	InitialReward, ok = InitialReward.
-		SetString(InitialRewardStr, 10)
-	if !ok {
-		panic("could not parse InitialRewardStr")
-	}
+	InitialRewardBalance = big.NewInt(MiningRewardTotal)
+	InitialRewardBalance = InitialRewardBalance.Mul(InitialRewardBalance, big.NewInt(FilecoinPrecision))
 }
 
 // Sync
