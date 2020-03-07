@@ -157,6 +157,10 @@ func (s *FPoStScheduler) runPost(ctx context.Context, eps abi.ChainEpoch, ts *ty
 	if err != nil {
 		return nil, xerrors.Errorf("getting sorted sector info: %w", err)
 	}
+	if len(ssi) == 0 {
+		log.Warn("attempted to run fpost without any sectors...")
+		return nil, xerrors.Errorf("no sectors to run fpost on")
+	}
 
 	log.Infow("running fPoSt",
 		"chain-random", rand,
@@ -218,8 +222,9 @@ func (s *FPoStScheduler) sortedSectorInfo(ctx context.Context, ts *types.TipSet)
 	for k, sector := range sset {
 
 		sbsi[k] = abi.SectorInfo{
-			SectorNumber: sector.Info.Info.SectorNumber,
-			SealedCID:    sector.Info.Info.SealedCID,
+			SectorNumber:    sector.Info.Info.SectorNumber,
+			SealedCID:       sector.Info.Info.SealedCID,
+			RegisteredProof: sector.Info.Info.RegisteredProof,
 		}
 	}
 
