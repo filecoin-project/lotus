@@ -594,7 +594,7 @@ var chainExportCmd = &cli.Command{
 		}
 		defer fi.Close()
 
-		ts, err := loadTipSet(ctx, cctx, api)
+		ts, err := LoadTipSet(ctx, cctx, api)
 		if err != nil {
 			return err
 		}
