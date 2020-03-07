@@ -6,8 +6,10 @@ import (
 	"io"
 	"strconv"
 	"strings"
+	"sync"
 
 	"github.com/filecoin-project/go-amt-ipld/v2"
+	commcid "github.com/filecoin-project/go-fil-commcid"
 	"github.com/filecoin-project/specs-actors/actors/abi"
 	"github.com/filecoin-project/specs-actors/actors/crypto"
 	"github.com/ipfs/go-blockservice"
@@ -183,6 +185,54 @@ func (a *ChainAPI) ChainReadObj(ctx context.Context, obj cid.Cid) ([]byte, error
 
 func (a *ChainAPI) ChainHasObj(ctx context.Context, obj cid.Cid) (bool, error) {
 	return a.Chain.Blockstore().Has(obj)
+}
+
+func (a *ChainAPI) ChainStatObj(ctx context.Context, obj cid.Cid, base cid.Cid) (api.ObjStat, error) {
+	bs := a.Chain.Blockstore()
+	bsvc := blockservice.New(bs, offline.Exchange(bs))
+
+	dag := merkledag.NewDAGService(bsvc)
+
+	seen := cid.NewSet()
+
+	var statslk sync.Mutex
+	var stats api.ObjStat
+	var collect = true
+
+	walker := func(ctx context.Context, c cid.Cid) ([]*ipld.Link, error) {
+		if c.Prefix().MhType == uint64(commcid.FC_SEALED_V1) || c.Prefix().MhType == uint64(commcid.FC_UNSEALED_V1) {
+			return []*ipld.Link{}, nil
+		}
+
+		nd, err := dag.Get(ctx, c)
+		if err != nil {
+			return nil, err
+		}
+
+		if collect {
+			s := uint64(len(nd.RawData()))
+			statslk.Lock()
+			stats.Size = stats.Size + s
+			stats.Links = stats.Links + 1
+			statslk.Unlock()
+		}
+
+		return nd.Links(), nil
+	}
+
+	if base != cid.Undef {
+		collect = false
+		if err := merkledag.Walk(ctx, walker, base, seen.Visit, merkledag.Concurrent()); err != nil {
+			return api.ObjStat{}, err
+		}
+		collect = true
+	}
+
+	if err := merkledag.Walk(ctx, walker, obj, seen.Visit, merkledag.Concurrent()); err != nil {
+		return api.ObjStat{}, err
+	}
+
+	return stats, nil
 }
 
 func (a *ChainAPI) ChainSetHead(ctx context.Context, tsk types.TipSetKey) error {

@@ -11,6 +11,7 @@ import (
 	"strings"
 	"time"
 
+	"github.com/docker/go-units"
 	cborutil "github.com/filecoin-project/go-cbor-util"
 	"github.com/filecoin-project/specs-actors/actors/abi"
 	"github.com/filecoin-project/specs-actors/actors/builtin"
@@ -31,6 +32,7 @@ var chainCmd = &cli.Command{
 		chainHeadCmd,
 		chainGetBlock,
 		chainReadObjCmd,
+		chainStatObjCmd,
 		chainGetMsgCmd,
 		chainSetHeadCmd,
 		chainListCmd,
@@ -178,6 +180,50 @@ var chainReadObjCmd = &cli.Command{
 		}
 
 		fmt.Printf("%x\n", obj)
+		return nil
+	},
+}
+
+var chainStatObjCmd = &cli.Command{
+	Name:      "stat-obj",
+	Usage:     "Collect size and ipld link counts for objs",
+	ArgsUsage: "[cid]",
+	Description: `Collect object size and ipld link count for an object.
+
+   When a base is provided it will be walked first, and all links visisted
+   will be ignored when the passed in object is walked.
+`,
+	Flags: []cli.Flag{
+		&cli.StringFlag{
+			Name:  "base",
+			Usage: "ignore links found in this obj",
+		},
+	},
+	Action: func(cctx *cli.Context) error {
+		api, closer, err := GetFullNodeAPI(cctx)
+		if err != nil {
+			return err
+		}
+		defer closer()
+		ctx := ReqContext(cctx)
+
+		obj, err := cid.Decode(cctx.Args().First())
+		if err != nil {
+			return fmt.Errorf("failed to parse cid input: %s", err)
+		}
+
+		base := cid.Undef
+		if cctx.IsSet("base") {
+			base, err = cid.Decode(cctx.String("base"))
+		}
+
+		stats, err := api.ChainStatObj(ctx, obj, base)
+		if err != nil {
+			return err
+		}
+
+		fmt.Printf("Links: %d\n", stats.Links)
+		fmt.Printf("Size: %s (%d)\n", units.BytesSize(float64(stats.Size)), stats.Size)
 		return nil
 	},
 }
@@ -548,7 +594,7 @@ var chainExportCmd = &cli.Command{
 		}
 		defer fi.Close()
 
-		ts, err := loadTipSet(ctx, cctx, api)
+		ts, err := LoadTipSet(ctx, cctx, api)
 		if err != nil {
 			return err
 		}
