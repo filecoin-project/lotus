@@ -82,7 +82,7 @@ var stateMinerInfo = &cli.Command{
 			return err
 		}
 
-		ts, err := loadTipSet(ctx, cctx, api)
+		ts, err := LoadTipSet(ctx, cctx, api)
 		if err != nil {
 			return err
 		}
@@ -133,7 +133,7 @@ func parseTipSetString(cctx *cli.Context) ([]cid.Cid, error) {
 	return cids, nil
 }
 
-func loadTipSet(ctx context.Context, cctx *cli.Context, api api.FullNode) (*types.TipSet, error) {
+func LoadTipSet(ctx context.Context, cctx *cli.Context, api api.FullNode) (*types.TipSet, error) {
 	cids, err := parseTipSetString(cctx)
 	if err != nil {
 		return nil, err
@@ -173,7 +173,7 @@ var statePowerCmd = &cli.Command{
 			}
 		}
 
-		ts, err := loadTipSet(ctx, cctx, api)
+		ts, err := LoadTipSet(ctx, cctx, api)
 		if err != nil {
 			return err
 		}
@@ -218,7 +218,7 @@ var stateSectorsCmd = &cli.Command{
 			return err
 		}
 
-		ts, err := loadTipSet(ctx, cctx, api)
+		ts, err := LoadTipSet(ctx, cctx, api)
 		if err != nil {
 			return err
 		}
@@ -258,7 +258,7 @@ var stateProvingSetCmd = &cli.Command{
 			return err
 		}
 
-		ts, err := loadTipSet(ctx, cctx, api)
+		ts, err := LoadTipSet(ctx, cctx, api)
 		if err != nil {
 			return err
 		}
@@ -368,7 +368,7 @@ var statePledgeCollateralCmd = &cli.Command{
 
 		ctx := ReqContext(cctx)
 
-		ts, err := loadTipSet(ctx, cctx, api)
+		ts, err := LoadTipSet(ctx, cctx, api)
 		if err != nil {
 			return err
 		}
@@ -405,7 +405,7 @@ var stateGetDealSetCmd = &cli.Command{
 			return xerrors.Errorf("parsing deal ID: %w", err)
 		}
 
-		ts, err := loadTipSet(ctx, cctx, api)
+		ts, err := LoadTipSet(ctx, cctx, api)
 		if err != nil {
 			return err
 		}
@@ -437,7 +437,7 @@ var stateListMinersCmd = &cli.Command{
 
 		ctx := ReqContext(cctx)
 
-		ts, err := loadTipSet(ctx, cctx, api)
+		ts, err := LoadTipSet(ctx, cctx, api)
 		if err != nil {
 			return err
 		}
@@ -467,7 +467,7 @@ var stateListActorsCmd = &cli.Command{
 
 		ctx := ReqContext(cctx)
 
-		ts, err := loadTipSet(ctx, cctx, api)
+		ts, err := LoadTipSet(ctx, cctx, api)
 		if err != nil {
 			return err
 		}
@@ -507,7 +507,7 @@ var stateGetActorCmd = &cli.Command{
 			return err
 		}
 
-		ts, err := loadTipSet(ctx, cctx, api)
+		ts, err := LoadTipSet(ctx, cctx, api)
 		if err != nil {
 			return err
 		}
@@ -549,7 +549,7 @@ var stateLookupIDCmd = &cli.Command{
 			return err
 		}
 
-		ts, err := loadTipSet(ctx, cctx, api)
+		ts, err := LoadTipSet(ctx, cctx, api)
 		if err != nil {
 			return err
 		}
@@ -587,7 +587,7 @@ var stateSectorSizeCmd = &cli.Command{
 			return err
 		}
 
-		ts, err := loadTipSet(ctx, cctx, api)
+		ts, err := LoadTipSet(ctx, cctx, api)
 		if err != nil {
 			return err
 		}
@@ -624,7 +624,7 @@ var stateReadStateCmd = &cli.Command{
 			return err
 		}
 
-		ts, err := loadTipSet(ctx, cctx, api)
+		ts, err := LoadTipSet(ctx, cctx, api)
 		if err != nil {
 			return err
 		}
@@ -698,7 +698,7 @@ var stateListMessagesCmd = &cli.Command{
 
 		toh := cctx.Uint64("toheight")
 
-		ts, err := loadTipSet(ctx, cctx, api)
+		ts, err := LoadTipSet(ctx, cctx, api)
 		if err != nil {
 			return err
 		}
@@ -751,7 +751,7 @@ var stateComputeStateCmd = &cli.Command{
 
 		ctx := ReqContext(cctx)
 
-		ts, err := loadTipSet(ctx, cctx, api)
+		ts, err := LoadTipSet(ctx, cctx, api)
 		if err != nil {
 			return err
 		}
@@ -880,7 +880,7 @@ var stateCallCmd = &cli.Command{
 			return fmt.Errorf("given 'from' address %q was invalid: %w", cctx.String("from"), err)
 		}
 
-		ts, err := loadTipSet(ctx, cctx, api)
+		ts, err := LoadTipSet(ctx, cctx, api)
 		if err != nil {
 			return err
 		}

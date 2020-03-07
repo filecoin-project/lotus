@@ -27,3 +27,8 @@ func (m *MultiaddrSlice) UnmarshalJSON(raw []byte) (err error) {
 }
 
 var _ json.Unmarshaler = new(MultiaddrSlice)
+
+type ObjStat struct {
+	Size  uint64
+	Links uint64
+}
