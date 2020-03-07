@@ -16,6 +16,7 @@ import (
 	"github.com/filecoin-project/specs-actors/actors/builtin"
 	"github.com/filecoin-project/specs-actors/actors/builtin/power"
 	cid "github.com/ipfs/go-cid"
+	cbg "github.com/whyrusleeping/cbor-gen"
 	"golang.org/x/xerrors"
 	"gopkg.in/urfave/cli.v2"
 
@@ -361,6 +362,12 @@ var chainGetCmd = &cli.Command{
 	Name:      "get",
 	Usage:     "Get chain DAG node by path",
 	ArgsUsage: "[path]",
+	Flags: []cli.Flag{
+		&cli.StringFlag{
+			Name:  "as-type",
+			Usage: "specify type to interpret output as",
+		},
+	},
 	Description: `Get ipld node under a specified path:
 
    lotus chain get /ipfs/[cid]/some/path
@@ -379,12 +386,45 @@ var chainGetCmd = &cli.Command{
 		defer closer()
 		ctx := ReqContext(cctx)
 
-		nd, err := api.ChainGetNode(ctx, cctx.Args().First())
+		obj, err := api.ChainGetNode(ctx, cctx.Args().First())
 		if err != nil {
 			return err
 		}
 
-		b, err := json.MarshalIndent(nd, "", "\t")
+		t := strings.ToLower(cctx.String("as-type"))
+		if t == "" {
+			b, err := json.MarshalIndent(obj.Obj, "", "\t")
+			if err != nil {
+				return err
+			}
+			fmt.Println(string(b))
+			return nil
+		}
+
+		var cbu cbg.CBORUnmarshaler
+		switch t {
+		case "block":
+			cbu = new(types.BlockHeader)
+		case "message":
+			cbu = new(types.Message)
+		case "smessage", "signedmessage":
+			cbu = new(types.SignedMessage)
+		case "actor":
+			cbu = new(types.Actor)
+		default:
+			return fmt.Errorf("unknown type: %q", t)
+		}
+
+		raw, err := api.ChainReadObj(ctx, obj.Cid)
+		if err != nil {
+			return err
+		}
+
+		if err := cbu.UnmarshalCBOR(bytes.NewReader(raw)); err != nil {
+			return fmt.Errorf("failed to unmarshal as %q", t)
+		}
+
+		b, err := json.MarshalIndent(cbu, "", "\t")
 		if err != nil {
 			return err
 		}
