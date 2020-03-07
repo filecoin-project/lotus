@@ -29,7 +29,6 @@ import (
 	"github.com/filecoin-project/specs-actors/actors/runtime"
 	"github.com/filecoin-project/specs-actors/actors/runtime/exitcode"
 
-	"github.com/filecoin-project/lotus/build"
 	"github.com/filecoin-project/lotus/chain/actors/aerrors"
 	"github.com/filecoin-project/lotus/chain/state"
 	"github.com/filecoin-project/lotus/chain/types"
@@ -774,17 +773,4 @@ func deductFunds(act *types.Actor, amt types.BigInt) error {
 
 func depositFunds(act *types.Actor, amt types.BigInt) {
 	act.Balance = types.BigAdd(act.Balance, amt)
-}
-
-var miningRewardTotal = types.FromFil(build.MiningRewardTotal)
-var blocksPerEpoch = types.NewInt(build.BlocksPerEpoch)
-
-// MiningReward returns correct mining reward
-//   coffer is amount of FIL in NetworkAddress
-func MiningReward(remainingReward types.BigInt) types.BigInt {
-	ci := big.NewInt(0).Set(remainingReward.Int)
-	res := ci.Mul(ci, build.InitialReward)
-	res = res.Div(res, miningRewardTotal.Int)
-	res = res.Div(res, blocksPerEpoch.Int)
-	return types.BigInt{Int: res}
 }
