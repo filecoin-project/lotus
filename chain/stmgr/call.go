@@ -17,7 +17,7 @@ import (
 	"github.com/filecoin-project/lotus/chain/vm"
 )
 
-func (sm *StateManager) CallRaw(ctx context.Context, msg *types.Message, bstate cid.Cid, r vm.Rand, bheight abi.ChainEpoch) (*api.MethodCall, error) {
+func (sm *StateManager) CallRaw(ctx context.Context, msg *types.Message, bstate cid.Cid, r vm.Rand, bheight abi.ChainEpoch) (*api.InvocResult, error) {
 	ctx, span := trace.StartSpan(ctx, "statemanager.CallRaw")
 	defer span.End()
 
@@ -62,14 +62,17 @@ func (sm *StateManager) CallRaw(ctx context.Context, msg *types.Message, bstate 
 		errs = ret.ActorErr.Error()
 		log.Warnf("chain call failed: %s", ret.ActorErr)
 	}
-	return &api.MethodCall{
-		MessageReceipt: ret.MessageReceipt,
-		Error:          errs,
+
+	return &api.InvocResult{
+		Msg:                msg,
+		MsgRct:             &ret.MessageReceipt,
+		InternalExecutions: ret.InternalExecutions,
+		Error:              errs,
 	}, nil
 
 }
 
-func (sm *StateManager) Call(ctx context.Context, msg *types.Message, ts *types.TipSet) (*api.MethodCall, error) {
+func (sm *StateManager) Call(ctx context.Context, msg *types.Message, ts *types.TipSet) (*api.InvocResult, error) {
 	if ts == nil {
 		ts = sm.cs.GetHeaviestTipSet()
 	}
