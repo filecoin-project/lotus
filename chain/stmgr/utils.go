@@ -308,36 +308,41 @@ func LoadSectorsFromSet(ctx context.Context, bs blockstore.Blockstore, ssc cid.C
 	return sset, nil
 }
 
-func ComputeState(ctx context.Context, sm *StateManager, height abi.ChainEpoch, msgs []*types.Message, ts *types.TipSet) (cid.Cid, error) {
+func ComputeState(ctx context.Context, sm *StateManager, height abi.ChainEpoch, msgs []*types.Message, ts *types.TipSet) (cid.Cid, []*api.InvocResult, error) {
 	if ts == nil {
 		ts = sm.cs.GetHeaviestTipSet()
 	}
 
-	base, _, err := sm.TipSetState(ctx, ts)
+	base, trace, err := sm.ExecutionTrace(ctx, ts)
 	if err != nil {
-		return cid.Undef, err
+		return cid.Undef, nil, err
 	}
 
 	fstate, err := sm.handleStateForks(ctx, base, height, ts.Height())
 	if err != nil {
-		return cid.Undef, err
+		return cid.Undef, nil, err
 	}
 
 	r := store.NewChainRand(sm.cs, ts.Cids(), height)
 	vmi, err := vm.NewVM(fstate, height, r, builtin.SystemActorAddr, sm.cs.Blockstore(), sm.cs.VMSys())
 	if err != nil {
-		return cid.Undef, err
+		return cid.Undef, nil, err
 	}
 
 	for i, msg := range msgs {
 		ret, err := vmi.ApplyMessage(ctx, msg)
 		if err != nil {
-			return cid.Undef, xerrors.Errorf("applying message %s: %w", msg.Cid(), err)
+			return cid.Undef, nil, xerrors.Errorf("applying message %s: %w", msg.Cid(), err)
 		}
 		if ret.ExitCode != 0 {
 			log.Infof("compute state apply message %d failed (exit: %d): %s", i, ret.ExitCode, ret.ActorErr)
 		}
 	}
 
-	return vmi.Flush(ctx)
+	root, err := vmi.Flush(ctx)
+	if err != nil {
+		return cid.Undef, nil, err
+	}
+
+	return root, trace, nil
 }

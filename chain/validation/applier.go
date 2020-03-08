@@ -4,6 +4,7 @@ import (
 	"context"
 
 	"github.com/filecoin-project/specs-actors/actors/abi"
+	"github.com/filecoin-project/specs-actors/actors/builtin"
 	"github.com/filecoin-project/specs-actors/actors/crypto"
 	"github.com/filecoin-project/specs-actors/actors/runtime/exitcode"
 	"github.com/ipfs/go-cid"
@@ -83,6 +84,9 @@ func (a *Applier) ApplyTipSetMessages(state vstate.VMWrapper, blocks []vtypes.Bl
 
 	var receipts []vtypes.MessageReceipt
 	sroot, _, err := sm.ApplyBlocks(context.TODO(), state.Root(), bms, epoch, &randWrapper{rnd}, func(c cid.Cid, msg *types.Message, ret *vm.ApplyRet) error {
+		if msg.From == builtin.SystemActorAddr {
+			return nil // ignore reward and cron calls
+		}
 		receipts = append(receipts, vtypes.MessageReceipt{
 			ExitCode:    exitcode.ExitCode(ret.ExitCode),
 			ReturnValue: ret.Return,

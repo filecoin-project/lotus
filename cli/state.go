@@ -5,10 +5,11 @@ import (
 	"context"
 	"encoding/json"
 	"fmt"
-	"github.com/filecoin-project/specs-actors/actors/builtin"
 	"reflect"
 	"strconv"
 	"strings"
+
+	"github.com/filecoin-project/specs-actors/actors/builtin"
 
 	"github.com/filecoin-project/go-address"
 	"github.com/filecoin-project/specs-actors/actors/abi"
@@ -741,6 +742,10 @@ var stateComputeStateCmd = &cli.Command{
 			Name:  "apply-mpool-messages",
 			Usage: "apply messages from the mempool to the computed state",
 		},
+		&cli.BoolFlag{
+			Name:  "show-trace",
+			Usage: "print out full execution trace for given tipset",
+		},
 	},
 	Action: func(cctx *cli.Context) error {
 		api, closer, err := GetFullNodeAPI(cctx)
@@ -785,12 +790,20 @@ var stateComputeStateCmd = &cli.Command{
 			}
 		}
 
-		nstate, err := api.StateCompute(ctx, h, msgs, ts.Key())
+		stout, err := api.StateCompute(ctx, h, msgs, ts.Key())
 		if err != nil {
 			return err
 		}
 
-		fmt.Println("computed state cid: ", nstate)
+		fmt.Println("computed state cid: ", stout.Root)
+		if cctx.Bool("show-trace") {
+			for _, ir := range stout.Trace {
+				fmt.Printf("%s\t%s\t%s\t%d\t%x\t%d\t%x\n", ir.Msg.From, ir.Msg.To, ir.Msg.Value, ir.Msg.Method, ir.Msg.Params, ir.MsgRct.ExitCode, ir.MsgRct.Return)
+				for _, im := range ir.InternalExecutions {
+					fmt.Printf("\t%s\t%s\t%s\t%d\t%x\t%d\t%x\n", im.Msg.From, im.Msg.To, im.Msg.Value, im.Msg.Method, im.Msg.Params, im.MsgRct.ExitCode, im.MsgRct.Return)
+				}
+			}
+		}
 		return nil
 	},
 }
