@@ -13,15 +13,12 @@ var SectorSizes = []abi.SectorSize{
 }
 
 // Seconds
-const BlockDelay = 45
+const BlockDelay = 25
 
 const PropagationDelay = 6
 
-// FallbackPoStDelay is the number of epochs the miner needs to wait after
-//  ElectionPeriodStart before starting fallback post computation
-//
 // Epochs
-const FallbackPoStDelay = miner.ProvingPeriod
+const FallbackPoStConfidence = 6
 
 // SlashablePowerDelay is the number of epochs after ElectionPeriodStart, after
 // which the miner is slashed
