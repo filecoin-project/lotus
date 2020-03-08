@@ -117,6 +117,27 @@ func (sm *StateManager) TipSetState(ctx context.Context, ts *types.TipSet) (st c
 	return st, rec, nil
 }
 
+func (sm *StateManager) ExecutionTrace(ctx context.Context, ts *types.TipSet) (cid.Cid, []*api.InvocResult, error) {
+	var trace []*api.InvocResult
+	st, _, err := sm.computeTipSetState(ctx, ts.Blocks(), func(mcid cid.Cid, msg *types.Message, ret *vm.ApplyRet) error {
+		ir := &api.InvocResult{
+			Msg:                msg,
+			MsgRct:             &ret.MessageReceipt,
+			InternalExecutions: ret.InternalExecutions,
+		}
+		if ret.ActorErr != nil {
+			ir.Error = ret.ActorErr.Error()
+		}
+		trace = append(trace, ir)
+		return nil
+	})
+	if err != nil {
+		return cid.Undef, nil, err
+	}
+
+	return st, trace, nil
+}
+
 type BlockMessages struct {
 	Miner         address.Address
 	BlsMessages   []store.ChainMsg
@@ -130,10 +151,6 @@ func (sm *StateManager) ApplyBlocks(ctx context.Context, pstate cid.Cid, bms []B
 	if err != nil {
 		return cid.Undef, cid.Undef, xerrors.Errorf("instantiating VM failed: %w", err)
 	}
-
-	/*
-		}
-	*/
 
 	applied := make(map[address.Address]uint64)
 	balances := make(map[address.Address]types.BigInt)
@@ -203,7 +220,7 @@ func (sm *StateManager) ApplyBlocks(ctx context.Context, pstate cid.Cid, bms []B
 			return cid.Undef, cid.Undef, xerrors.Errorf("failed to get system actor: %w", err)
 		}
 
-		ret, err := vmi.ApplyMessage(ctx, &types.Message{
+		rwMsg := &types.Message{
 			From:     builtin.SystemActorAddr,
 			To:       builtin.RewardActorAddr,
 			Nonce:    sysAct.Nonce,
@@ -212,10 +229,17 @@ func (sm *StateManager) ApplyBlocks(ctx context.Context, pstate cid.Cid, bms []B
 			GasLimit: types.NewInt(1 << 30),
 			Method:   builtin.MethodsReward.AwardBlockReward,
 			Params:   params,
-		})
+		}
+		ret, err := vmi.ApplyMessage(ctx, rwMsg)
 		if err != nil {
 			return cid.Undef, cid.Undef, xerrors.Errorf("failed to apply reward message for miner %s: %w", b.Miner, err)
 		}
+		if cb != nil {
+			if err := cb(rwMsg.Cid(), rwMsg, ret); err != nil {
+				return cid.Undef, cid.Undef, xerrors.Errorf("callback failed on reward message: %w", err)
+			}
+		}
+
 		if ret.ExitCode != 0 {
 			return cid.Undef, cid.Undef, xerrors.Errorf("reward application message failed (exit %d): %s", ret.ExitCode, ret.ActorErr)
 		}
@@ -228,7 +252,7 @@ func (sm *StateManager) ApplyBlocks(ctx context.Context, pstate cid.Cid, bms []B
 		return cid.Undef, cid.Undef, err
 	}
 
-	ret, err := vmi.ApplyMessage(ctx, &types.Message{
+	cronMsg := &types.Message{
 		To:       builtin.CronActorAddr,
 		From:     builtin.SystemActorAddr,
 		Nonce:    ca.Nonce,
@@ -237,9 +261,15 @@ func (sm *StateManager) ApplyBlocks(ctx context.Context, pstate cid.Cid, bms []B
 		GasLimit: types.NewInt(1 << 30), // Make super sure this is never too little
 		Method:   builtin.MethodsCron.EpochTick,
 		Params:   nil,
-	})
+	}
+	ret, err := vmi.ApplyMessage(ctx, cronMsg)
 	if err != nil {
 		return cid.Undef, cid.Undef, err
+	}
+	if cb != nil {
+		if err := cb(cronMsg.Cid(), cronMsg, ret); err != nil {
+			return cid.Undef, cid.Undef, xerrors.Errorf("callback failed on cron message: %w", err)
+		}
 	}
 	if ret.ExitCode != 0 {
 		return cid.Undef, cid.Undef, xerrors.Errorf("CheckProofSubmissions exit was non-zero: %d", ret.ExitCode)

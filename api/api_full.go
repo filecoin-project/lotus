@@ -138,7 +138,7 @@ type FullNode interface {
 	StateGetReceipt(context.Context, cid.Cid, types.TipSetKey) (*types.MessageReceipt, error)
 	StateMinerSectorCount(context.Context, address.Address, types.TipSetKey) (MinerSectors, error)
 	StateListRewards(context.Context, address.Address, types.TipSetKey) ([]reward.Reward, error)
-	StateCompute(context.Context, abi.ChainEpoch, []*types.Message, types.TipSetKey) (cid.Cid, error)
+	StateCompute(context.Context, abi.ChainEpoch, []*types.Message, types.TipSetKey) (*ComputeStateOutput, error)
 
 	MsigGetAvailableBalance(context.Context, address.Address, types.TipSetKey) (types.BigInt, error)
 
@@ -360,6 +360,11 @@ const (
 type MpoolUpdate struct {
 	Type    MpoolChange
 	Message *types.SignedMessage
+}
+
+type ComputeStateOutput struct {
+	Root  cid.Cid
+	Trace []*InvocResult
 }
 
 func ProofTypeFromSectorSize(ssize abi.SectorSize) (abi.RegisteredProof, abi.RegisteredProof, error) {
