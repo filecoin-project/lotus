@@ -19,8 +19,9 @@ import (
 	blockstore "github.com/ipfs/go-ipfs-blockstore"
 	"github.com/mitchellh/go-homedir"
 	"github.com/multiformats/go-multiaddr"
-	"github.com/prometheus/client_golang/prometheus"
-	"github.com/prometheus/client_golang/prometheus/promauto"
+	"go.opencensus.io/stats"
+	"go.opencensus.io/stats/view"
+	"go.opencensus.io/tag"
 	"golang.org/x/xerrors"
 	"gopkg.in/urfave/cli.v2"
 
@@ -30,6 +31,7 @@ import (
 	"github.com/filecoin-project/lotus/chain/store"
 	"github.com/filecoin-project/lotus/chain/vm"
 	"github.com/filecoin-project/lotus/lib/peermgr"
+	"github.com/filecoin-project/lotus/metrics"
 	"github.com/filecoin-project/lotus/node"
 	"github.com/filecoin-project/lotus/node/modules"
 	"github.com/filecoin-project/lotus/node/modules/testing"
@@ -98,7 +100,7 @@ var DaemonCmd = &cli.Command{
 			defer pprof.StopCPUProfile()
 		}
 
-		ctx := context.Background()
+		ctx, _ := tag.New(context.Background(), tag.Insert(metrics.Version, build.BuildVersion), tag.Insert(metrics.Commit, build.CurrentCommit))
 		{
 			dir, err := homedir.Expand(cctx.String("repo"))
 			if err != nil {
@@ -186,16 +188,15 @@ var DaemonCmd = &cli.Command{
 			}
 		}
 
-		// Add lotus version info to prometheus metrics
-		var lotusInfoMetric = promauto.NewGaugeVec(prometheus.GaugeOpts{
-			Name: "lotus_info",
-			Help: "Lotus version information.",
-		}, []string{"version"})
+		// Register all metric views
+		if err = view.Register(
+			metrics.DefaultViews...,
+		); err != nil {
+			log.Fatalf("Cannot register the view: %v", err)
+		}
 
-		// Setting to 1 lets us multiply it with other stats to add the version labels
-		lotusInfoMetric.With(prometheus.Labels{
-			"version": build.UserVersion,
-		}).Set(1)
+		// Set the metric to one so it is published to the exporter
+		stats.Record(ctx, metrics.LotusInfo.M(1))
 
 		endpoint, err := r.APIEndpoint()
 		if err != nil {

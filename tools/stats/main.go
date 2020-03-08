@@ -23,10 +23,12 @@ func main() {
 	var database string = "lotus"
 	var reset bool = false
 	var height int64 = 0
+	var headlag int = 3
 
 	flag.StringVar(&repo, "repo", repo, "lotus repo path")
 	flag.StringVar(&database, "database", database, "influx database")
 	flag.Int64Var(&height, "height", height, "block height to start syncing from (0 will resume)")
+	flag.IntVar(&headlag, "head-lag", headlag, "number of head events to hold to protect against small reorgs")
 	flag.BoolVar(&reset, "reset", reset, "truncate database before starting stats gathering")
 
 	flag.Parse()
@@ -67,7 +69,7 @@ func main() {
 		log.Fatal(err)
 	}
 
-	tipsetsCh, err := GetTips(ctx, api, abi.ChainEpoch(height))
+	tipsetsCh, err := GetTips(ctx, api, abi.ChainEpoch(height), headlag)
 	if err != nil {
 		log.Fatal(err)
 	}
@@ -76,6 +78,7 @@ func main() {
 	defer wq.Close()
 
 	for tipset := range tipsetsCh {
+		log.Infow("Collect stats", "height", tipset.Height())
 		pl := NewPointList()
 		height := tipset.Height()
 

@@ -152,8 +152,8 @@ func (a *StateAPI) StatePledgeCollateral(ctx context.Context, tsk types.TipSetKe
 		return types.NewInt(0), xerrors.Errorf("failed to get miner worker addr: %w", err)
 	}
 
-	if ret.ExitCode != 0 {
-		return types.NewInt(0), xerrors.Errorf("failed to get miner worker addr (exit code %d)", ret.ExitCode)
+	if ret.MsgRct.ExitCode != 0 {
+		return types.NewInt(0), xerrors.Errorf("failed to get miner worker addr (exit code %d)", ret.MsgRct.ExitCode)
 	}
 
 	return types.BigFromBytes(ret.Return), nil*/
@@ -161,7 +161,7 @@ func (a *StateAPI) StatePledgeCollateral(ctx context.Context, tsk types.TipSetKe
 	return big.Zero(), nil
 }
 
-func (a *StateAPI) StateCall(ctx context.Context, msg *types.Message, tsk types.TipSetKey) (*api.MethodCall, error) {
+func (a *StateAPI) StateCall(ctx context.Context, msg *types.Message, tsk types.TipSetKey) (*api.InvocResult, error) {
 	ts, err := a.Chain.GetTipSetFromKey(tsk)
 	if err != nil {
 		return nil, xerrors.Errorf("loading tipset %s: %w", tsk, err)
@@ -169,7 +169,7 @@ func (a *StateAPI) StateCall(ctx context.Context, msg *types.Message, tsk types.
 	return a.StateManager.Call(ctx, msg, ts)
 }
 
-func (a *StateAPI) StateReplay(ctx context.Context, tsk types.TipSetKey, mc cid.Cid) (*api.ReplayResults, error) {
+func (a *StateAPI) StateReplay(ctx context.Context, tsk types.TipSetKey, mc cid.Cid) (*api.InvocResult, error) {
 	ts, err := a.Chain.GetTipSetFromKey(tsk)
 	if err != nil {
 		return nil, xerrors.Errorf("loading tipset %s: %w", tsk, err)
@@ -184,10 +184,11 @@ func (a *StateAPI) StateReplay(ctx context.Context, tsk types.TipSetKey, mc cid.
 		errstr = r.ActorErr.Error()
 	}
 
-	return &api.ReplayResults{
-		Msg:     m,
-		Receipt: &r.MessageReceipt,
-		Error:   errstr,
+	return &api.InvocResult{
+		Msg:                m,
+		MsgRct:             &r.MessageReceipt,
+		InternalExecutions: r.InternalExecutions,
+		Error:              errstr,
 	}, nil
 }
 

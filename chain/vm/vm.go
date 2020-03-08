@@ -54,6 +54,12 @@ const (
 	outOfGasErrCode = 200
 )
 
+type ExecutionResult struct {
+	Msg    *types.Message
+	MsgRct *types.MessageReceipt
+	Error  string
+}
+
 type VMContext struct {
 	ctx context.Context
 
@@ -73,6 +79,8 @@ type VMContext struct {
 
 	// address that started invoke chain
 	origin address.Address
+
+	internalExecutions []*ExecutionResult
 }
 
 // Message is the message that kicked off the current invocation
@@ -174,6 +182,24 @@ func (vmc *VMContext) Send(to address.Address, method abi.MethodNum, value types
 			return nil, aerrors.Escalate(err, "failed to revert state tree after failed subcall")
 		}
 	}
+
+	mr := types.MessageReceipt{
+		ExitCode: exitcode.ExitCode(aerrors.RetCode(err)),
+		Return:   ret,
+		GasUsed:  types.EmptyInt,
+	}
+
+	var es = ""
+	if err != nil {
+		es = err.Error()
+	}
+	er := ExecutionResult{
+		Msg:    msg,
+		MsgRct: &mr,
+		Error:  es,
+	}
+
+	vmc.internalExecutions = append(vmc.internalExecutions, &er)
 	return ret, err
 }
 
@@ -368,8 +394,9 @@ type Rand interface {
 
 type ApplyRet struct {
 	types.MessageReceipt
-	ActorErr aerrors.ActorError
-	Penalty  big.Int
+	ActorErr           aerrors.ActorError
+	Penalty            big.Int
+	InternalExecutions []*ExecutionResult
 }
 
 func (vm *VM) send(ctx context.Context, msg *types.Message, parent *VMContext,
@@ -566,7 +593,8 @@ func (vm *VM) ApplyMessage(ctx context.Context, msg *types.Message) (*ApplyRet, 
 			Return:   ret,
 			GasUsed:  gasUsed,
 		},
-		ActorErr: actorErr,
+		ActorErr:           actorErr,
+		InternalExecutions: vmctx.internalExecutions,
 	}, nil
 }
 

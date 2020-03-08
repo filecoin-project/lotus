@@ -53,7 +53,15 @@ func init() {
 					return xerrors.Errorf("StateMinerWorker: %w", err)
 				}
 
+<<<<<<< HEAD
 				rand, err := api.ChainGetRandomness(ctx, head.Key(), crypto.DomainSeparationTag_TicketProduction, head.Height(), addr.Bytes())
+=======
+				if ret.MsgRct.ExitCode != 0 {
+					return xerrors.Errorf("failed to get miner worker addr (exit code %d)", ret.MsgRct.ExitCode)
+				}
+
+				w, err := address.NewFromBytes(ret.MsgRct.Return)
+>>>>>>> master
 				if err != nil {
 					return xerrors.Errorf("failed to get randomness: %w", err)
 				}

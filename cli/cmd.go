@@ -28,6 +28,20 @@ const (
 	metadataTraceConetxt = "traceContext"
 )
 
+// custom CLI error
+
+type ErrCmdFailed struct {
+	msg string
+}
+
+func (e *ErrCmdFailed) Error() string {
+	return e.msg
+}
+
+func NewCliError(s string) error {
+	return &ErrCmdFailed{s}
+}
+
 // ApiConnector returns API instance
 type ApiConnector func() api.FullNode
 

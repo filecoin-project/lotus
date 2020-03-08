@@ -250,7 +250,7 @@ func (pm *Manager) CheckVoucherSpendable(ctx context.Context, ch address.Address
 		return false, err
 	}
 
-	if ret.ExitCode != 0 {
+	if ret.MsgRct.ExitCode != 0 {
 		return false, nil
 	}
 
