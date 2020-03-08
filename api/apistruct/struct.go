@@ -64,7 +64,7 @@ type FullNodeStruct struct {
 		ChainSetHead           func(context.Context, types.TipSetKey) error                                                                       `perm:"admin"`
 		ChainGetGenesis        func(context.Context) (*types.TipSet, error)                                                                       `perm:"read"`
 		ChainTipSetWeight      func(context.Context, types.TipSetKey) (types.BigInt, error)                                                       `perm:"read"`
-		ChainGetNode           func(ctx context.Context, p string) (interface{}, error)                                                           `perm:"read"`
+		ChainGetNode           func(ctx context.Context, p string) (*api.IpldObject, error)                                                       `perm:"read"`
 		ChainGetMessage        func(context.Context, cid.Cid) (*types.Message, error)                                                             `perm:"read"`
 		ChainGetPath           func(context.Context, types.TipSetKey, types.TipSetKey) ([]*store.HeadChange, error)                               `perm:"read"`
 		ChainExport            func(context.Context, types.TipSetKey) (<-chan []byte, error)                                                      `perm:"read"`
@@ -94,14 +94,14 @@ type FullNodeStruct struct {
 		WalletExport         func(context.Context, address.Address) (*types.KeyInfo, error)                       `perm:"admin"`
 		WalletImport         func(context.Context, *types.KeyInfo) (address.Address, error)                       `perm:"admin"`
 
-		ClientImport      func(ctx context.Context, ref api.FileRef) (cid.Cid, error)                                              `perm:"admin"`
+		ClientImport      func(ctx context.Context, ref api.FileRef) (cid.Cid, error)                                          `perm:"admin"`
 		ClientListImports func(ctx context.Context) ([]api.Import, error)                                                      `perm:"write"`
 		ClientHasLocal    func(ctx context.Context, root cid.Cid) (bool, error)                                                `perm:"write"`
 		ClientFindData    func(ctx context.Context, root cid.Cid) ([]api.QueryOffer, error)                                    `perm:"read"`
 		ClientStartDeal   func(ctx context.Context, params *api.StartDealParams) (*cid.Cid, error)                             `perm:"admin"`
 		ClientGetDealInfo func(context.Context, cid.Cid) (*api.DealInfo, error)                                                `perm:"read"`
 		ClientListDeals   func(ctx context.Context) ([]api.DealInfo, error)                                                    `perm:"write"`
-		ClientRetrieve    func(ctx context.Context, order api.RetrievalOrder, ref api.FileRef) error                               `perm:"admin"`
+		ClientRetrieve    func(ctx context.Context, order api.RetrievalOrder, ref api.FileRef) error                           `perm:"admin"`
 		ClientQueryAsk    func(ctx context.Context, p peer.ID, miner address.Address) (*storagemarket.SignedStorageAsk, error) `perm:"read"`
 
 		StateMinerSectors       func(context.Context, address.Address, types.TipSetKey) ([]*api.ChainSectorInfo, error)                      `perm:"read"`
@@ -397,7 +397,7 @@ func (c *FullNodeStruct) ChainTipSetWeight(ctx context.Context, tsk types.TipSet
 	return c.Internal.ChainTipSetWeight(ctx, tsk)
 }
 
-func (c *FullNodeStruct) ChainGetNode(ctx context.Context, p string) (interface{}, error) {
+func (c *FullNodeStruct) ChainGetNode(ctx context.Context, p string) (*api.IpldObject, error) {
 	return c.Internal.ChainGetNode(ctx, p)
 }
 
