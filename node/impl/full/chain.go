@@ -356,7 +356,7 @@ func resolveOnce(bs blockstore.Blockstore) func(ctx context.Context, ds ipld.Nod
 	}
 }
 
-func (a *ChainAPI) ChainGetNode(ctx context.Context, p string) (interface{}, error) {
+func (a *ChainAPI) ChainGetNode(ctx context.Context, p string) (*api.IpldObject, error) {
 	ip, err := path.ParsePath(p)
 	if err != nil {
 		return nil, xerrors.Errorf("parsing path: %w", err)
@@ -377,7 +377,10 @@ func (a *ChainAPI) ChainGetNode(ctx context.Context, p string) (interface{}, err
 		return nil, err
 	}
 
-	return node, nil
+	return &api.IpldObject{
+		Cid: node.Cid(),
+		Obj: node,
+	}, nil
 }
 
 func (a *ChainAPI) ChainGetMessage(ctx context.Context, mc cid.Cid) (*types.Message, error) {
