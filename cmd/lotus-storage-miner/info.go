@@ -4,6 +4,7 @@ import (
 	"context"
 	"fmt"
 
+	"github.com/filecoin-project/specs-actors/actors/builtin/power"
 	"gopkg.in/urfave/cli.v2"
 
 	"github.com/filecoin-project/lotus/api"
@@ -97,18 +98,15 @@ var infoCmd = &cli.Command{
 			if err != nil {
 				return err
 			}
-			lastEps := int64(head.Height() - ps.ProvingPeriodStart)
-			lastEpsS := lastEps * build.BlockDelay
 
-			fallback := lastEps + build.FallbackPoStDelay
+			fallback := ps.ProvingPeriodStart - head.Height()
 			fallbackS := fallback * build.BlockDelay
 
-			next := lastEps + build.SlashablePowerDelay
+			next := fallback + power.WindowedPostChallengeDuration
 			nextS := next * build.BlockDelay
 
 			fmt.Printf("PoSt Submissions:\n")
-			fmt.Printf("\tPrevious: Epoch %d (%d block(s), ~%dm %ds ago)\n", ps.ProvingPeriodStart, lastEps, lastEpsS/60, lastEpsS%60)
-			fmt.Printf("\tFallback: Epoch %d (in %d blocks, ~%dm %ds)\n", ps.ProvingPeriodStart+build.FallbackPoStDelay, fallback, fallbackS/60, fallbackS%60)
+			fmt.Printf("\tFallback: Epoch %d (in %d blocks, ~%dm %ds)\n", ps.ProvingPeriodStart, fallback, fallbackS/60, fallbackS%60)
 			fmt.Printf("\tDeadline: Epoch %d (in %d blocks, ~%dm %ds)\n", ps.ProvingPeriodStart+build.SlashablePowerDelay, next, nextS/60, nextS%60)
 			fmt.Printf("\tConsecutive Failures: %d\n", ps.NumConsecutiveFailures)
 		} else {

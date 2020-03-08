@@ -21,8 +21,9 @@ const Inactive = 0
 const StartConfidence = 4 // TODO: config
 
 type FPoStScheduler struct {
-	api storageMinerApi
-	sb  storage.Prover
+	api       storageMinerApi
+	sb        storage.Prover
+	proofType abi.RegisteredProof
 
 	actor  address.Address
 	worker address.Address
@@ -37,8 +38,8 @@ type FPoStScheduler struct {
 	failLk sync.Mutex
 }
 
-func NewFPoStScheduler(api storageMinerApi, sb storage.Prover, actor address.Address, worker address.Address) *FPoStScheduler {
-	return &FPoStScheduler{api: api, sb: sb, actor: actor, worker: worker}
+func NewFPoStScheduler(api storageMinerApi, sb storage.Prover, actor address.Address, worker address.Address, rt abi.RegisteredProof) *FPoStScheduler {
+	return &FPoStScheduler{api: api, sb: sb, actor: actor, worker: worker, proofType: rt}
 }
 
 func (s *FPoStScheduler) Run(ctx context.Context) {
@@ -168,8 +169,8 @@ func (s *FPoStScheduler) shouldFallbackPost(ctx context.Context, ts *types.TipSe
 		return 0, false, xerrors.Errorf("getting ElectionPeriodStart: %w", err)
 	}
 
-	if ts.Height() >= ps.ProvingPeriodStart+build.FallbackPoStDelay {
-		return ps.ProvingPeriodStart, ts.Height() >= ps.ProvingPeriodStart+build.FallbackPoStDelay+StartConfidence, nil
+	if ts.Height() >= ps.ProvingPeriodStart {
+		return ps.ProvingPeriodStart, ts.Height() >= ps.ProvingPeriodStart+build.FallbackPoStConfidence, nil
 	}
 	return 0, false, nil
 }
