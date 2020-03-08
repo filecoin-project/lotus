@@ -121,8 +121,10 @@ sync_complete:
 	}
 }
 
-func GetTips(ctx context.Context, api api.FullNode, lastHeight abi.ChainEpoch) (<-chan *types.TipSet, error) {
+func GetTips(ctx context.Context, api api.FullNode, lastHeight abi.ChainEpoch, headlag int) (<-chan *types.TipSet, error) {
 	chmain := make(chan *types.TipSet)
+
+	hb := NewHeadBuffer(headlag)
 
 	notif, err := api.ChainNotify(ctx)
 	if err != nil {
@@ -152,7 +154,11 @@ func GetTips(ctx context.Context, api api.FullNode, lastHeight abi.ChainEpoch) (
 							chmain <- tipset
 						}
 					case store.HCApply:
-						chmain <- change.Val
+						if out := hb.Push(change); out != nil {
+							chmain <- out.Val
+						}
+					case store.HCRevert:
+						hb.Pop()
 					}
 				}
 			case <-ping:

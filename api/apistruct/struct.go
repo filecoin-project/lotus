@@ -89,6 +89,7 @@ type FullNodeStruct struct {
 		WalletBalance        func(context.Context, address.Address) (types.BigInt, error)                         `perm:"read"`
 		WalletSign           func(context.Context, address.Address, []byte) (*crypto.Signature, error)            `perm:"sign"`
 		WalletSignMessage    func(context.Context, address.Address, *types.Message) (*types.SignedMessage, error) `perm:"sign"`
+		WalletVerify         func(context.Context, address.Address, []byte, *crypto.Signature) bool               `perm:"read"`
 		WalletDefaultAddress func(context.Context) (address.Address, error)                                       `perm:"write"`
 		WalletSetDefault     func(context.Context, address.Address) error                                         `perm:"admin"`
 		WalletExport         func(context.Context, address.Address) (*types.KeyInfo, error)                       `perm:"admin"`
@@ -112,8 +113,8 @@ type FullNodeStruct struct {
 		StateMinerPostState     func(ctx context.Context, actor address.Address, tsk types.TipSetKey) (*miner.PoStState, error)              `perm:"read"`
 		StateMinerSectorSize    func(context.Context, address.Address, types.TipSetKey) (abi.SectorSize, error)                              `perm:"read"`
 		StateMinerFaults        func(context.Context, address.Address, types.TipSetKey) ([]abi.SectorNumber, error)                          `perm:"read"`
-		StateCall               func(context.Context, *types.Message, types.TipSetKey) (*api.MethodCall, error)                              `perm:"read"`
-		StateReplay             func(context.Context, types.TipSetKey, cid.Cid) (*api.ReplayResults, error)                                  `perm:"read"`
+		StateCall               func(context.Context, *types.Message, types.TipSetKey) (*api.InvocResult, error)                             `perm:"read"`
+		StateReplay             func(context.Context, types.TipSetKey, cid.Cid) (*api.InvocResult, error)                                    `perm:"read"`
 		StateGetActor           func(context.Context, address.Address, types.TipSetKey) (*types.Actor, error)                                `perm:"read"`
 		StateReadState          func(context.Context, *types.Actor, types.TipSetKey) (*api.ActorState, error)                                `perm:"read"`
 		StatePledgeCollateral   func(context.Context, types.TipSetKey) (types.BigInt, error)                                                 `perm:"read"`
@@ -329,6 +330,10 @@ func (c *FullNodeStruct) WalletSignMessage(ctx context.Context, k address.Addres
 	return c.Internal.WalletSignMessage(ctx, k, msg)
 }
 
+func (c *FullNodeStruct) WalletVerify(ctx context.Context, k address.Address, msg []byte, sig *crypto.Signature) bool {
+	return c.Internal.WalletVerify(ctx, k, msg, sig)
+}
+
 func (c *FullNodeStruct) WalletDefaultAddress(ctx context.Context) (address.Address, error) {
 	return c.Internal.WalletDefaultAddress(ctx)
 }
@@ -465,11 +470,11 @@ func (c *FullNodeStruct) StateMinerFaults(ctx context.Context, actor address.Add
 	return c.Internal.StateMinerFaults(ctx, actor, tsk)
 }
 
-func (c *FullNodeStruct) StateCall(ctx context.Context, msg *types.Message, tsk types.TipSetKey) (*api.MethodCall, error) {
+func (c *FullNodeStruct) StateCall(ctx context.Context, msg *types.Message, tsk types.TipSetKey) (*api.InvocResult, error) {
 	return c.Internal.StateCall(ctx, msg, tsk)
 }
 
-func (c *FullNodeStruct) StateReplay(ctx context.Context, tsk types.TipSetKey, mc cid.Cid) (*api.ReplayResults, error) {
+func (c *FullNodeStruct) StateReplay(ctx context.Context, tsk types.TipSetKey, mc cid.Cid) (*api.InvocResult, error) {
 	return c.Internal.StateReplay(ctx, tsk, mc)
 }
 

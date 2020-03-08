@@ -2,9 +2,10 @@ package cli
 
 import (
 	"fmt"
-	"github.com/libp2p/go-libp2p-core/peer"
 	"sort"
 	"strings"
+
+	"github.com/libp2p/go-libp2p-core/peer"
 
 	"gopkg.in/urfave/cli.v2"
 
