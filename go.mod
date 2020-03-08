@@ -88,8 +88,6 @@ require (
 	github.com/multiformats/go-multiaddr-net v0.1.2
 	github.com/multiformats/go-multihash v0.0.13
 	github.com/opentracing/opentracing-go v1.1.0
-	github.com/polydawn/refmt v0.0.0-20190809202753-05966cbd336a
-	github.com/prometheus/client_golang v0.9.3-0.20190127221311-3c4408c8b829
 	github.com/prometheus/common v0.4.0
 	github.com/stretchr/testify v1.4.0
 	github.com/whyrusleeping/bencher v0.0.0-20190829221104-bb6607aa8bba

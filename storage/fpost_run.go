@@ -12,7 +12,6 @@ import (
 	"go.opencensus.io/trace"
 	"golang.org/x/xerrors"
 
-	"github.com/filecoin-project/lotus/build"
 	"github.com/filecoin-project/lotus/chain/actors"
 	"github.com/filecoin-project/lotus/chain/types"
 )
@@ -146,7 +145,7 @@ func (s *FPoStScheduler) runPost(ctx context.Context, eps abi.ChainEpoch, ts *ty
 	ctx, span := trace.StartSpan(ctx, "storage.runPost")
 	defer span.End()
 
-	challengeRound := eps + build.FallbackPoStDelay
+	challengeRound := eps
 
 	rand, err := s.api.ChainGetRandomness(ctx, ts.Key(), crypto.DomainSeparationTag_WindowedPoStChallengeSeed, challengeRound, s.actor.Bytes())
 	if err != nil {
@@ -196,7 +195,7 @@ func (s *FPoStScheduler) runPost(ctx context.Context, eps abi.ChainEpoch, ts *ty
 		part := make([]byte, 32)
 		copy(part, sc.Candidate.PartialTicket[:])
 		candidates[i] = abi.PoStCandidate{
-			RegisteredProof: abi.RegisteredProof_StackedDRG32GiBPoSt, // TODO: build setting
+			RegisteredProof: s.proofType,
 			PartialTicket:   part,
 			SectorID:        sc.Candidate.SectorID,
 			ChallengeIndex:  sc.Candidate.ChallengeIndex,
