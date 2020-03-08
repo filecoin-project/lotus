@@ -12,6 +12,7 @@ import (
 	"github.com/filecoin-project/go-address"
 	types "github.com/filecoin-project/lotus/chain/types"
 	"github.com/filecoin-project/lotus/chain/wallet"
+	"github.com/filecoin-project/specs-actors/actors/crypto"
 
 	"gopkg.in/urfave/cli.v2"
 )
@@ -27,6 +28,8 @@ var walletCmd = &cli.Command{
 		walletImport,
 		walletGetDefault,
 		walletSetDefault,
+		walletSign,
+		walletVerify,
 	},
 }
 
@@ -241,5 +244,95 @@ var walletImport = &cli.Command{
 
 		fmt.Printf("imported key %s successfully!\n", addr)
 		return nil
+	},
+}
+
+var walletSign = &cli.Command{
+	Name:      "sign",
+	Usage:     "sign a message",
+	ArgsUsage: "<signing address> <hexMessage>",
+	Action: func(cctx *cli.Context) error {
+		api, closer, err := GetFullNodeAPI(cctx)
+		if err != nil {
+			return err
+		}
+		defer closer()
+		ctx := ReqContext(cctx)
+
+		if !cctx.Args().Present() || cctx.NArg() != 2 {
+			return fmt.Errorf("must specify signing address and message to sign")
+		}
+
+		addr, err := address.NewFromString(cctx.Args().First())
+
+		if err != nil {
+			return err
+		}
+
+		msg, err := hex.DecodeString(cctx.Args().Get(1))
+
+		if err != nil {
+			return err
+		}
+
+		sig, err := api.WalletSign(ctx, addr, msg)
+
+		if err != nil {
+			return err
+		}
+
+		sigBytes := append([]byte{byte(sig.Type)}, sig.Data...)
+
+		fmt.Println(hex.EncodeToString(sigBytes))
+		return nil
+	},
+}
+
+var walletVerify = &cli.Command{
+	Name:      "verify",
+	Usage:     "verify the signature of a message",
+	ArgsUsage: "<signing address> <hexMessage> <signature>",
+	Action: func(cctx *cli.Context) error {
+		api, closer, err := GetFullNodeAPI(cctx)
+		if err != nil {
+			return err
+		}
+		defer closer()
+		ctx := ReqContext(cctx)
+
+		if !cctx.Args().Present() || cctx.NArg() != 3 {
+			return fmt.Errorf("must specify signing address, message, and signature to verify")
+		}
+
+		addr, err := address.NewFromString(cctx.Args().First())
+
+		if err != nil {
+			return err
+		}
+
+		msg, err := hex.DecodeString(cctx.Args().Get(1))
+
+		if err != nil {
+			return err
+		}
+
+		sigBytes, err := hex.DecodeString(cctx.Args().Get(2))
+
+		if err != nil {
+			return err
+		}
+
+		var sig crypto.Signature
+		if err := sig.UnmarshalBinary(sigBytes); err != nil {
+			return err
+		}
+
+		if api.WalletVerify(ctx, addr, msg, &sig) {
+			fmt.Println("valid")
+			return nil
+		} else {
+			fmt.Println("invalid")
+			return NewCliError("CLI Verify called with invalid signature")
+		}
 	},
 }

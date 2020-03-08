@@ -98,12 +98,12 @@ func checkSeal(ctx context.Context, maddr address.Address, si SectorInfo, api se
 	if err != nil {
 		return &ErrApi{xerrors.Errorf("calling ComputeDataCommitment: %w", err)}
 	}
-	if r.ExitCode != 0 {
-		return &ErrBadCommD{xerrors.Errorf("receipt for ComputeDataCommitment had exit code %d", r.ExitCode)}
+	if r.MsgRct.ExitCode != 0 {
+		return &ErrBadCommD{xerrors.Errorf("receipt for ComputeDataCommitment had exit code %d", r.MsgRct.ExitCode)}
 	}
 
 	var c cbg.CborCid
-	if err := c.UnmarshalCBOR(bytes.NewReader(r.Return)); err != nil {
+	if err := c.UnmarshalCBOR(bytes.NewReader(r.MsgRct.Return)); err != nil {
 		return err
 	}
 

@@ -3,6 +3,8 @@ package full
 import (
 	"context"
 
+	"github.com/filecoin-project/lotus/lib/sigs"
+
 	"github.com/filecoin-project/go-address"
 	"github.com/filecoin-project/specs-actors/actors/crypto"
 
@@ -53,6 +55,10 @@ func (a *WalletAPI) WalletSignMessage(ctx context.Context, k address.Address, ms
 		Message:   *msg,
 		Signature: *sig,
 	}, nil
+}
+
+func (a *WalletAPI) WalletVerify(ctx context.Context, k address.Address, msg []byte, sig *crypto.Signature) bool {
+	return sigs.Verify(sig, k, msg) == nil
 }
 
 func (a *WalletAPI) WalletDefaultAddress(ctx context.Context) (address.Address, error) {

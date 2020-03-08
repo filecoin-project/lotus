@@ -15,12 +15,14 @@ import (
 	"github.com/filecoin-project/specs-actors/actors/abi"
 	"github.com/filecoin-project/specs-actors/actors/runtime"
 	"github.com/filecoin-project/specs-actors/actors/util/adt"
-	"go.opencensus.io/trace"
-	"go.uber.org/multierr"
 
 	"github.com/filecoin-project/lotus/build"
 	"github.com/filecoin-project/lotus/chain/state"
 	"github.com/filecoin-project/lotus/chain/vm"
+	"github.com/filecoin-project/lotus/metrics"
+	"go.opencensus.io/stats"
+	"go.opencensus.io/trace"
+	"go.uber.org/multierr"
 
 	amt "github.com/filecoin-project/go-amt-ipld/v2"
 
@@ -107,7 +109,15 @@ func NewChainStore(bs bstore.Blockstore, ds dstore.Batching, vmcalls runtime.Sys
 		return nil
 	}
 
-	cs.headChangeNotifs = append(cs.headChangeNotifs, hcnf)
+	hcmetric := func(rev, app []*types.TipSet) error {
+		ctx := context.Background()
+		for _, r := range app {
+			stats.Record(ctx, metrics.ChainNodeHeight.M(int64(r.Height())))
+		}
+		return nil
+	}
+
+	cs.headChangeNotifs = append(cs.headChangeNotifs, hcnf, hcmetric)
 
 	return cs
 }
