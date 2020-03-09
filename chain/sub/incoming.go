@@ -2,7 +2,6 @@ package sub
 
 import (
 	"context"
-	"fmt"
 	"time"
 
 	lru "github.com/hashicorp/golang-lru"
@@ -112,11 +111,6 @@ func (bv *BlockValidator) flagPeer(p peer.ID) {
 
 func (bv *BlockValidator) Validate(ctx context.Context, pid peer.ID, msg *pubsub.Message) bool {
 	stats.Record(ctx, metrics.BlockReceived.M(1))
-	ctx, _ = tag.New(
-		ctx,
-		tag.Insert(metrics.PeerID, pid.String()),
-		tag.Insert(metrics.ReceivedFrom, msg.ReceivedFrom.String()),
-	)
 	blk, err := types.DecodeBlockMsg(msg.GetData())
 	if err != nil {
 		log.Error("got invalid block over pubsub: ", err)
@@ -178,7 +172,6 @@ func NewMessageValidator(mp *messagepool.MessagePool) *MessageValidator {
 
 func (mv *MessageValidator) Validate(ctx context.Context, pid peer.ID, msg *pubsub.Message) bool {
 	stats.Record(ctx, metrics.MessageReceived.M(1))
-	ctx, _ = tag.New(ctx, tag.Insert(metrics.PeerID, pid.String()))
 	m, err := types.DecodeSignedMessage(msg.Message.GetData())
 	if err != nil {
 		log.Warnf("failed to decode incoming message: %s", err)
@@ -191,9 +184,6 @@ func (mv *MessageValidator) Validate(ctx context.Context, pid peer.ID, msg *pubs
 		log.Warnf("failed to add message from network to message pool (From: %s, To: %s, Nonce: %d, Value: %s): %s", m.Message.From, m.Message.To, m.Message.Nonce, types.FIL(m.Message.Value), err)
 		ctx, _ = tag.New(
 			ctx,
-			tag.Insert(metrics.MessageFrom, m.Message.From.String()),
-			tag.Insert(metrics.MessageTo, m.Message.To.String()),
-			tag.Insert(metrics.MessageNonce, fmt.Sprint(m.Message.Nonce)),
 			tag.Insert(metrics.FailureType, "add"),
 		)
 		stats.Record(ctx, metrics.MessageValidationFailure.M(1))
