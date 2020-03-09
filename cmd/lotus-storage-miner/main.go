@@ -29,6 +29,7 @@ func main() {
 		rewardsCmd,
 		runCmd,
 		sectorsCmd,
+		storageCmd,
 		setPriceCmd,
 	}
 	jaeger := tracing.SetupJaegerTracing("lotus")

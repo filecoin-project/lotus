@@ -198,7 +198,7 @@ var initCmd = &cli.Command{
 				}
 
 				if err := ioutil.WriteFile(filepath.Join(lr.Path(), "sectorstore.json"), b, 0644); err != nil {
-					return xerrors.Errorf("persisting storage metadata (%s): %w", filepath.Join(lr.Path(), "storage.json"), err)
+					return xerrors.Errorf("persisting storage metadata (%s): %w", filepath.Join(lr.Path(), "sectorstore.json"), err)
 				}
 			}
 
