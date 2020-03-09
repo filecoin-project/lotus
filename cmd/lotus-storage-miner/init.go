@@ -170,7 +170,7 @@ var initCmd = &cli.Command{
 				return err
 			}
 
-			var sc config.StorageConfig
+			var localPaths []config.LocalPath
 
 			if pssb := cctx.StringSlice("pre-sealed-sectors"); len(pssb) != 0 {
 				log.Infof("Setting up storage config with presealed sector", pssb)
@@ -180,7 +180,7 @@ var initCmd = &cli.Command{
 					if err != nil {
 						return err
 					}
-					sc.StoragePaths = append(sc.StoragePaths, config.LocalPath{
+					localPaths = append(localPaths, config.LocalPath{
 						Path: psp,
 					})
 				}
@@ -201,12 +201,14 @@ var initCmd = &cli.Command{
 					return xerrors.Errorf("persisting storage metadata (%s): %w", filepath.Join(lr.Path(), "sectorstore.json"), err)
 				}
 
-				sc.StoragePaths = append(sc.StoragePaths, config.LocalPath{
+				localPaths = append(localPaths, config.LocalPath{
 					Path: lr.Path(),
 				})
 			}
 
-			if err := lr.SetStorage(sc); err != nil {
+			if err := lr.SetStorage(func(sc *config.StorageConfig) {
+				sc.StoragePaths = append(sc.StoragePaths, localPaths...)
+			}); err != nil {
 				return xerrors.Errorf("set storage config: %w", err)
 			}
 

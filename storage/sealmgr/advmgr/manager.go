@@ -23,7 +23,7 @@ type SectorIDCounter interface {
 
 type LocalStorage interface {
 	GetStorage() (config.StorageConfig, error)
-	SetStorage(config.StorageConfig) error
+	SetStorage(func(*config.StorageConfig)) error
 }
 
 type Path struct {
@@ -96,16 +96,9 @@ func (m *Manager) AddLocalStorage(path string) error {
 		return xerrors.Errorf("opening local path: %w", err)
 	}
 
-	// TODO: Locks!
-
-	sc, err := m.storage.localStorage.GetStorage()
-	if err != nil {
-		return xerrors.Errorf("get storage config: %w", err)
-	}
-
-	sc.StoragePaths = append(sc.StoragePaths, config.LocalPath{Path: path})
-
-	if err := m.storage.localStorage.SetStorage(sc); err != nil {
+	if err := m.storage.localStorage.SetStorage(func(sc *config.StorageConfig) {
+		sc.StoragePaths = append(sc.StoragePaths, config.LocalPath{Path: path})
+	}); err != nil {
 		return xerrors.Errorf("get storage config: %w", err)
 	}
 	return nil
