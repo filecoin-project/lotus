@@ -219,6 +219,8 @@ type fsLockedRepo struct {
 	ds     datastore.Batching
 	dsErr  error
 	dsOnce sync.Once
+
+	storageLk sync.Mutex
 }
 
 func (fsr *fsLockedRepo) Path() string {
@@ -278,6 +280,13 @@ func (fsr *fsLockedRepo) Config() (interface{}, error) {
 }
 
 func (fsr *fsLockedRepo) GetStorage() (config.StorageConfig, error) {
+	fsr.storageLk.Lock()
+	defer fsr.storageLk.Unlock()
+
+	return fsr.getStorage()
+}
+
+func (fsr *fsLockedRepo) getStorage() (config.StorageConfig, error) {
 	c, err := config.StorageFromFile(fsr.join(fsStorageConfig), nil)
 	if err != nil {
 		return config.StorageConfig{}, err
@@ -285,8 +294,18 @@ func (fsr *fsLockedRepo) GetStorage() (config.StorageConfig, error) {
 	return *c, nil
 }
 
-func (fsr *fsLockedRepo) SetStorage(c config.StorageConfig) error {
-	return config.WriteStorageFile(fsr.join(fsStorageConfig), c)
+func (fsr *fsLockedRepo) SetStorage(c func(*config.StorageConfig)) error {
+	fsr.storageLk.Lock()
+	defer fsr.storageLk.Unlock()
+
+	sc, err := fsr.getStorage()
+	if err != nil {
+		return xerrors.Errorf("get storage: %w", err)
+	}
+
+	c(&sc)
+
+	return config.WriteStorageFile(fsr.join(fsStorageConfig), sc)
 }
 
 func (fsr *fsLockedRepo) SetAPIEndpoint(ma multiaddr.Multiaddr) error {

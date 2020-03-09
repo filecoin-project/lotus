@@ -28,6 +28,8 @@ type storage struct {
 }
 
 type path struct {
+	lk sync.Mutex
+
 	meta  config.StorageMeta
 	local string
 
@@ -115,10 +117,12 @@ func (st *storage) acquireSector(mid abi.ActorID, id abi.SectorNumber, existing 
 		}
 
 		for _, p := range st.paths {
+			p.lk.Lock()
 			s, ok := p.sectors[abi.SectorID{
 				Miner:  mid,
 				Number: id,
 			}]
+			p.lk.Unlock()
 			if !ok {
 				continue
 			}
@@ -155,10 +159,13 @@ func (st *storage) acquireSector(mid abi.ActorID, id abi.SectorNumber, existing 
 			if !sealing && !p.meta.CanStore {
 				continue
 			}
+
+			p.lk.Lock()
 			p.sectors[abi.SectorID{
 				Miner:  mid,
 				Number: id,
 			}] |= fileType
+			p.lk.Unlock()
 
 			// TODO: Check free space
 			// TODO: Calc weights
@@ -214,6 +221,7 @@ func (st *storage) findBestAllocStorage(allocate sectorbuilder.SectorFileType, s
 func (st *storage) findSector(mid abi.ActorID, sn abi.SectorNumber, typ sectorbuilder.SectorFileType) ([]config.StorageMeta, error) {
 	var out []config.StorageMeta
 	for _, p := range st.paths {
+		p.lk.Lock()
 		t := p.sectors[abi.SectorID{
 			Miner:  mid,
 			Number: sn,
@@ -221,6 +229,7 @@ func (st *storage) findSector(mid abi.ActorID, sn abi.SectorNumber, typ sectorbu
 		if t|typ == 0 {
 			continue
 		}
+		p.lk.Unlock()
 		out = append(out, p.meta)
 	}
 	if len(out) == 0 {

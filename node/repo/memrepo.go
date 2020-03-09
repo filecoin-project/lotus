@@ -53,8 +53,10 @@ func (lmem *lockedMemRepo) GetStorage() (config.StorageConfig, error) {
 	return *lmem.sc, nil
 }
 
-func (lmem *lockedMemRepo) SetStorage(sc config.StorageConfig) error {
-	lmem.sc = &sc
+func (lmem *lockedMemRepo) SetStorage(c func(*config.StorageConfig)) error {
+	_, _ = lmem.GetStorage()
+
+	c(lmem.sc)
 	return nil
 }
 
