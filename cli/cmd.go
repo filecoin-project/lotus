@@ -205,7 +205,7 @@ func ReqContext(cctx *cli.Context) context.Context {
 		<-sigChan
 		done()
 	}()
-	signal.Notify(sigChan, syscall.SIGTERM, syscall.SIGINT)
+	signal.Notify(sigChan, syscall.SIGTERM, syscall.SIGINT, syscall.SIGHUP)
 
 	return ctx
 }
