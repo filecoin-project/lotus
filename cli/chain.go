@@ -12,6 +12,7 @@ import (
 	"time"
 
 	"github.com/docker/go-units"
+	"github.com/filecoin-project/go-address"
 	cborutil "github.com/filecoin-project/go-cbor-util"
 	"github.com/filecoin-project/specs-actors/actors/abi"
 	"github.com/filecoin-project/specs-actors/actors/builtin"
@@ -462,6 +463,8 @@ var chainGetCmd = &cli.Command{
 			return handleAmt(ctx, api, obj.Cid)
 		case "hamt-epoch":
 			return handleHamtEpoch(ctx, api, obj.Cid)
+		case "hamt-address":
+			return handleHamtAddress(ctx, api, obj.Cid)
 		case "cronevent":
 			cbu = new(power.CronEvent)
 		default:
@@ -535,6 +538,20 @@ func handleHamtEpoch(ctx context.Context, api api.FullNode, r cid.Cid) error {
 		}
 
 		fmt.Printf("%d\n", ik)
+		return nil
+	})
+}
+
+func handleHamtAddress(ctx context.Context, api api.FullNode, r cid.Cid) error {
+	s := &apiIpldStore{ctx, api}
+	mp := adt.AsMap(s, r)
+	return mp.ForEach(nil, func(key string) error {
+		addr, err := address.NewFromBytes([]byte(key))
+		if err != nil {
+			return err
+		}
+
+		fmt.Printf("%s\n", addr)
 		return nil
 	})
 }
