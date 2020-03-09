@@ -80,7 +80,6 @@ var runCmd = &cli.Command{
 
 		log.Infof("Remote version: %s", v.Version)
 
-
 		maxBatch := cctx.Int("max-batch")
 
 		st, err := openStorage(cctx.String("db"))
