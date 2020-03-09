@@ -90,10 +90,6 @@ func (st *storage) open() error {
 		return xerrors.Errorf("getting local storage config: %w", err)
 	}
 
-	if len(cfg.StoragePaths) == 0 {
-		return xerrors.New("no local storage paths configured")
-	}
-
 	for _, path := range cfg.StoragePaths {
 		err := st.openPath(path.Path)
 		if err != nil {
