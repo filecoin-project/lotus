@@ -2,8 +2,6 @@ package build
 
 import (
 	"math/big"
-
-	"github.com/filecoin-project/specs-actors/actors/abi"
 )
 
 // Core network constants
@@ -18,15 +16,6 @@ const DhtProtocolName = "/fil/kad/" + NetworkName
 
 const UnixfsChunkSize uint64 = 1 << 20
 const UnixfsLinksPerLevel = 1024
-
-func SupportedSectorSize(ssize abi.SectorSize) bool {
-	for _, ss := range SectorSizes {
-		if ssize == ss {
-			return true
-		}
-	}
-	return false
-}
 
 const SectorChallengeRatioDiv = 25
 
@@ -60,6 +49,9 @@ const WRatioDen = 2
 // Proofs
 
 // Epochs
+const FallbackPoStConfidence = 6
+
+// Epochs
 const SealRandomnessLookback = Finality
 
 // Epochs
@@ -73,10 +65,6 @@ const MaxSealLookback = SealRandomnessLookbackLimit + 2000
 
 // Epochs
 const EcRandomnessLookback = 300
-
-const PowerCollateralProportion = 5
-const PerCapitaCollateralProportion = 1
-const CollateralPrecision = 1000
 
 // /////
 // Devnet settings
@@ -106,4 +94,3 @@ const BlsSignatureCacheSize = 40000
 // Limits
 
 const BlockMessageLimit = 512
-const MinerMaxSectors = 1 << 48

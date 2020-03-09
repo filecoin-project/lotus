@@ -206,7 +206,6 @@ var initCmd = &cli.Command{
 				})
 			}
 
-
 			if err := lr.SetStorage(sc); err != nil {
 				return xerrors.Errorf("set storage config: %w", err)
 			}

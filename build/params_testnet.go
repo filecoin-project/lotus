@@ -17,9 +17,6 @@ const BlockDelay = 25
 
 const PropagationDelay = 6
 
-// Epochs
-const FallbackPoStConfidence = 6
-
 // SlashablePowerDelay is the number of epochs after ElectionPeriodStart, after
 // which the miner is slashed
 //
