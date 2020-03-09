@@ -119,7 +119,7 @@ type FullNode interface {
 
 	StateMinerSectors(context.Context, address.Address, types.TipSetKey) ([]*ChainSectorInfo, error)
 	StateMinerProvingSet(context.Context, address.Address, types.TipSetKey) ([]*ChainSectorInfo, error)
-	StateMinerPower(context.Context, address.Address, types.TipSetKey) (MinerPower, error)
+	StateMinerPower(context.Context, address.Address, types.TipSetKey) (*MinerPower, error)
 	StateMinerWorker(context.Context, address.Address, types.TipSetKey) (address.Address, error)
 	StateMinerPeerID(ctx context.Context, m address.Address, tsk types.TipSetKey) (peer.ID, error)
 	StateMinerPostState(ctx context.Context, actor address.Address, tsk types.TipSetKey) (*miner.PoStState, error)
