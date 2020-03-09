@@ -96,12 +96,18 @@ func (m *Manager) AddLocalStorage(path string) error {
 		return xerrors.Errorf("opening local path: %w", err)
 	}
 
+	// TODO: Locks!
+
 	sc, err := m.storage.localStorage.GetStorage()
 	if err != nil {
 		return xerrors.Errorf("get storage config: %w", err)
 	}
 
 	sc.StoragePaths = append(sc.StoragePaths, config.LocalPath{Path: path})
+
+	if err := m.storage.localStorage.SetStorage(sc); err != nil {
+		return xerrors.Errorf("get storage config: %w", err)
+	}
 	return nil
 }
 
