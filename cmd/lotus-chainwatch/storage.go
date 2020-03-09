@@ -175,10 +175,10 @@ create table if not exists messages
 create unique index if not exists messages_cid_uindex
 	on messages (cid);
 
-create index messages_from_index
+create index if not exists messages_from_index
 	on messages ("from");
 
-create index messages_to_index
+create index if not exists messages_to_index
 	on messages ("to");
 
 create table if not exists block_messages
@@ -451,51 +451,51 @@ func (st *storage) storeActors(actors map[address.Address]map[types.Actor]actorI
 
 func (st *storage) storeMiners(miners map[minerKey]*minerInfo) error {
 	/*tx, err := st.db.Begin()
-	if err != nil {
-		return err
-	}
-
-	if _, err := tx.Exec(`
-
-create temp table mh (like miner_heads excluding constraints) on commit drop;
-
-
-`); err != nil {
-		return xerrors.Errorf("prep temp: %w", err)
-	}
-
-	stmt, err := tx.Prepare(`copy mh (head, addr, stateroot, sectorset, setsize, provingset, provingsize, owner, worker, peerid, sectorsize, power, ppe) from STDIN`)
-	if err != nil {
-		return err
-	}
-	for k, i := range miners {
-		if _, err := stmt.Exec(
-			k.act.Head.String(),
-			k.addr.String(),
-			k.stateroot.String(),
-			i.state.Sectors.String(),
-			fmt.Sprint(i.ssize),
-			i.state.ProvingSet.String(),
-			fmt.Sprint(i.psize),
-			i.info.Owner.String(),
-			i.info.Worker.String(),
-			i.info.PeerId.String(),
-			i.info.SectorSize,
-			i.power.String(), // TODO: SPA
-			i.state.PoStState.ProvingPeriodStart,
-		); err != nil {
+		if err != nil {
 			return err
 		}
-	}
-	if err := stmt.Close(); err != nil {
-		return err
-	}
 
-	if _, err := tx.Exec(`insert into miner_heads select * from mh on conflict do nothing `); err != nil {
-		return xerrors.Errorf("actor put: %w", err)
-	}
+		if _, err := tx.Exec(`
 
-	return tx.Commit()*/
+	create temp table mh (like miner_heads excluding constraints) on commit drop;
+
+
+	`); err != nil {
+			return xerrors.Errorf("prep temp: %w", err)
+		}
+
+		stmt, err := tx.Prepare(`copy mh (head, addr, stateroot, sectorset, setsize, provingset, provingsize, owner, worker, peerid, sectorsize, power, ppe) from STDIN`)
+		if err != nil {
+			return err
+		}
+		for k, i := range miners {
+			if _, err := stmt.Exec(
+				k.act.Head.String(),
+				k.addr.String(),
+				k.stateroot.String(),
+				i.state.Sectors.String(),
+				fmt.Sprint(i.ssize),
+				i.state.ProvingSet.String(),
+				fmt.Sprint(i.psize),
+				i.info.Owner.String(),
+				i.info.Worker.String(),
+				i.info.PeerId.String(),
+				i.info.SectorSize,
+				i.power.String(), // TODO: SPA
+				i.state.PoStState.ProvingPeriodStart,
+			); err != nil {
+				return err
+			}
+		}
+		if err := stmt.Close(); err != nil {
+			return err
+		}
+
+		if _, err := tx.Exec(`insert into miner_heads select * from mh on conflict do nothing `); err != nil {
+			return xerrors.Errorf("actor put: %w", err)
+		}
+
+		return tx.Commit()*/
 	return nil
 }
 
@@ -941,7 +941,7 @@ func (st *storage) storeDeals(deals map[string]api.MarketDeal) error {
 	if err := tx.Commit(); err != nil {
 		return err
 	}
-*/
+	*/
 	return nil
 }
 
