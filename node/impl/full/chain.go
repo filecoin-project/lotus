@@ -12,6 +12,7 @@ import (
 	commcid "github.com/filecoin-project/go-fil-commcid"
 	"github.com/filecoin-project/specs-actors/actors/abi"
 	"github.com/filecoin-project/specs-actors/actors/crypto"
+	"github.com/filecoin-project/specs-actors/actors/util/adt"
 	"github.com/ipfs/go-blockservice"
 	"github.com/ipfs/go-cid"
 	"github.com/ipfs/go-hamt-ipld"
@@ -269,6 +270,17 @@ func resolveOnce(bs blockstore.Blockstore) func(ctx context.Context, ds ipld.Nod
 			}
 
 			names[0] = "@H:" + string(addr.Bytes())
+		}
+
+		if strings.HasPrefix(names[0], "@Hi:") {
+			i, err := strconv.ParseInt(names[0][4:], 10, 64)
+			if err != nil {
+				return nil, nil, xerrors.Errorf("parsing int64: %w", err)
+			}
+
+			ik := adt.IntKey(i)
+
+			names[0] = "@H:" + ik.Key()
 		}
 
 		if strings.HasPrefix(names[0], "@H:") {
