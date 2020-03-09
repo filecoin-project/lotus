@@ -283,11 +283,11 @@ func (fsr *fsLockedRepo) GetStorage() (config.StorageConfig, error) {
 	fsr.storageLk.Lock()
 	defer fsr.storageLk.Unlock()
 
-	return fsr.getStorage()
+	return fsr.getStorage(nil)
 }
 
-func (fsr *fsLockedRepo) getStorage() (config.StorageConfig, error) {
-	c, err := config.StorageFromFile(fsr.join(fsStorageConfig), nil)
+func (fsr *fsLockedRepo) getStorage(def *config.StorageConfig) (config.StorageConfig, error) {
+	c, err := config.StorageFromFile(fsr.join(fsStorageConfig), def)
 	if err != nil {
 		return config.StorageConfig{}, err
 	}
@@ -298,7 +298,7 @@ func (fsr *fsLockedRepo) SetStorage(c func(*config.StorageConfig)) error {
 	fsr.storageLk.Lock()
 	defer fsr.storageLk.Unlock()
 
-	sc, err := fsr.getStorage()
+	sc, err := fsr.getStorage(&config.StorageConfig{})
 	if err != nil {
 		return xerrors.Errorf("get storage: %w", err)
 	}
