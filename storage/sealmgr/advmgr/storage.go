@@ -24,7 +24,7 @@ type storage struct {
 	localLk      sync.RWMutex
 	localStorage LocalStorage
 
-	paths []path
+	paths []*path
 }
 
 type path struct {
@@ -49,7 +49,7 @@ func (st *storage) openPath(p string) error {
 
 	// TODO: Check existing / dedupe
 
-	out := path{
+	out := &path{
 		meta:    meta,
 		local:   p,
 		sectors: map[abi.SectorID]sectorbuilder.SectorFileType{},
