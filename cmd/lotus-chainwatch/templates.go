@@ -9,6 +9,9 @@ import (
 	"strconv"
 
 	rice "github.com/GeertJohan/go.rice"
+	"github.com/filecoin-project/go-address"
+	"github.com/filecoin-project/specs-actors/actors/abi"
+	"github.com/filecoin-project/specs-actors/actors/abi/big"
 	"github.com/ipfs/go-cid"
 	"golang.org/x/xerrors"
 
@@ -243,6 +246,45 @@ func (h *handler) qstrs(q string, n int, p ...interface{}) ([]string, error) {
 	return c, nil
 }
 
+type sbig types.BigInt
+
+func (bi *sbig) Scan(value interface{}) error {
+	switch value := value.(type) {
+	case string:
+		i, ok := big.NewInt(0).SetString(value, 10)
+		if !ok {
+			if value == "<nil>" {
+				return nil
+			}
+			return xerrors.Errorf("failed to parse bigint string: '%s'", value)
+		}
+
+		bi.Int = i
+
+		return nil
+	case int64:
+		bi.Int = big.NewInt(value).Int
+		return nil
+	default:
+		return xerrors.Errorf("non-string types unsupported: %T", value)
+	}
+}
+
+type Message struct {
+	To   address.Address
+	From address.Address
+
+	Nonce uint64
+
+	Value sbig
+
+	GasPrice sbig
+	GasLimit sbig
+
+	Method abi.MethodNum
+	Params []byte
+}
+
 func (h *handler) messages(filter string, args ...interface{}) (out []types.Message, err error) {
 	if len(filter) > 0 {
 		filter = " where " + filter
@@ -255,7 +297,7 @@ func (h *handler) messages(filter string, args ...interface{}) (out []types.Mess
 		return nil, err
 	}
 	for rws.Next() {
-		var r types.Message
+		var r Message
 		var cs string
 
 		if err := rws.Scan(
@@ -276,11 +318,21 @@ func (h *handler) messages(filter string, args ...interface{}) (out []types.Mess
 		if err != nil {
 			return nil, err
 		}
-		if c != r.Cid() {
+		tr := types.Message{
+			To:       r.To,
+			From:     r.From,
+			Nonce:    r.Nonce,
+			Value:    types.BigInt(r.Value),
+			GasPrice: types.BigInt(r.GasPrice),
+			GasLimit: types.BigInt(r.GasLimit),
+			Method:   r.Method,
+			Params:   r.Params,
+		}
+		if c != tr.Cid() {
 			log.Warn("msg cid doesn't match")
 		}
 
-		out = append(out, r)
+		out = append(out, tr)
 	}
 
 	return
