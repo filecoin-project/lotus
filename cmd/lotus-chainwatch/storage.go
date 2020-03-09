@@ -2,7 +2,6 @@ package main
 
 import (
 	"database/sql"
-	"fmt"
 	"sync"
 	"time"
 
@@ -211,7 +210,7 @@ create table if not exists receipts
 
 create index if not exists receipts_msg_state_index
 	on receipts (msg, state);
-
+/*
 create table if not exists miner_heads
 (
 	head text not null,
@@ -300,7 +299,7 @@ create index if not exists deal_activations_activation_epoch_index
 
 create unique index if not exists deal_activations_deal_uindex
 	on deal_activations (deal);
-
+*/
 create table if not exists blocks_challenges
 (
 	block text not null
@@ -442,7 +441,7 @@ func (st *storage) storeActors(actors map[address.Address]map[types.Actor]actorI
 }
 
 func (st *storage) storeMiners(miners map[minerKey]*minerInfo) error {
-	tx, err := st.db.Begin()
+	/*tx, err := st.db.Begin()
 	if err != nil {
 		return err
 	}
@@ -487,7 +486,8 @@ create temp table mh (like miner_heads excluding constraints) on commit drop;
 		return xerrors.Errorf("actor put: %w", err)
 	}
 
-	return tx.Commit()
+	return tx.Commit()*/
+	return nil
 }
 
 func (st *storage) storeHeaders(bhs map[cid.Cid]*types.BlockHeader, sync bool) error {
@@ -839,7 +839,7 @@ func (st *storage) storeMpoolInclusions(msgs []api.MpoolUpdate) error {
 }
 
 func (st *storage) storeDeals(deals map[string]api.MarketDeal) error {
-	tx, err := st.db.Begin()
+	/*tx, err := st.db.Begin()
 	if err != nil {
 		return err
 	}
@@ -932,7 +932,7 @@ func (st *storage) storeDeals(deals map[string]api.MarketDeal) error {
 	if err := tx.Commit(); err != nil {
 		return err
 	}
-
+*/
 	return nil
 }
 
