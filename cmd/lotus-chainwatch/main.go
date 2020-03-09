@@ -78,7 +78,8 @@ var runCmd = &cli.Command{
 			return err
 		}
 
-		log.Info("Remote version: %s", v.Version)
+		log.Infof("Remote version: %s", v.Version)
+
 
 		maxBatch := cctx.Int("max-batch")
 
