@@ -30,20 +30,20 @@ var storageAttachCmd = &cli.Command{
 	Usage: "attach local storage path",
 	Flags: []cli.Flag{
 		&cli.BoolFlag{
-			Name: "init",
+			Name:  "init",
 			Usage: "initialize the path first",
 		},
 		&cli.Uint64Flag{
-			Name: "weight",
+			Name:  "weight",
 			Usage: "(for init) path weight",
 			Value: 10,
 		},
 		&cli.BoolFlag{
-			Name: "seal",
+			Name:  "seal",
 			Usage: "(for init) use path for sealing",
 		},
 		&cli.BoolFlag{
-			Name: "store",
+			Name:  "store",
 			Usage: "(for init) use path for long-term storage",
 		},
 	},
