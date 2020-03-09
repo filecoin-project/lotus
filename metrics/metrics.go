@@ -36,67 +36,83 @@ var (
 	RPCResponseError         = stats.Int64("rpc/response_error", "Total number of responses errors handled", stats.UnitDimensionless)
 )
 
-// DefaultViews is an array of Consensus views for metric gathering purposes
-var DefaultViews = []*view.View{
-	&view.View{
+var (
+	InfoView = &view.View{
 		Name:        "info",
 		Description: "Lotus node information",
 		Measure:     LotusInfo,
 		Aggregation: view.LastValue(),
 		TagKeys:     []tag.Key{Version, Commit},
-	},
-	&view.View{
+	}
+	ChainNodeHeightView = &view.View{
 		Measure:     ChainNodeHeight,
 		Aggregation: view.LastValue(),
-	},
-	&view.View{
+	}
+	ChainNodeWorkerHeightView = &view.View{
 		Measure:     ChainNodeWorkerHeight,
 		Aggregation: view.LastValue(),
-	},
-	&view.View{
+	}
+	BlockReceivedView = &view.View{
 		Measure:     BlockReceived,
 		Aggregation: view.Count(),
-	},
-	&view.View{
+	}
+	BlockValidationFailureView = &view.View{
 		Measure:     BlockValidationFailure,
 		Aggregation: view.Count(),
-		TagKeys:     []tag.Key{FailureType, PeerID, ReceivedFrom},
-	},
-	&view.View{
+		TagKeys:     []tag.Key{FailureType},
+	}
+	BlockValidationSuccessView = &view.View{
 		Measure:     BlockValidationSuccess,
 		Aggregation: view.Count(),
-	},
-	&view.View{
+	}
+	MessageReceivedView = &view.View{
 		Measure:     MessageReceived,
 		Aggregation: view.Count(),
-	},
-	&view.View{
+	}
+	MessageValidationFailureView = &view.View{
 		Measure:     MessageValidationFailure,
 		Aggregation: view.Count(),
-		TagKeys:     []tag.Key{FailureType, MessageFrom, MessageTo, MessageNonce},
-	},
-	&view.View{
+		TagKeys:     []tag.Key{FailureType},
+	}
+	MessageValidationSuccessView = &view.View{
 		Measure:     MessageValidationSuccess,
 		Aggregation: view.Count(),
-	},
-	&view.View{
+	}
+	PeerCountView = &view.View{
 		Measure:     PeerCount,
 		Aggregation: view.LastValue(),
-	},
+	}
 	// All RPC related metrics should at the very least tag the RPCMethod
-	&view.View{
+	RPCInvalidMethodView = &view.View{
 		Measure:     RPCInvalidMethod,
 		Aggregation: view.Count(),
 		TagKeys:     []tag.Key{RPCMethod},
-	},
-	&view.View{
+	}
+	RPCRequestErrorView = &view.View{
 		Measure:     RPCRequestError,
 		Aggregation: view.Count(),
 		TagKeys:     []tag.Key{RPCMethod},
-	},
-	&view.View{
+	}
+	RPCResponseErrorView = &view.View{
 		Measure:     RPCResponseError,
 		Aggregation: view.Count(),
 		TagKeys:     []tag.Key{RPCMethod},
-	},
+	}
+)
+
+// DefaultViews is an array of OpenCensus views for metric gathering purposes
+var DefaultViews = []*view.View{
+	InfoView,
+	ChainNodeHeightView,
+	ChainNodeWorkerHeightView,
+	BlockReceivedView,
+	BlockValidationFailureView,
+	BlockValidationSuccessView,
+	MessageReceivedView,
+	MessageValidationFailureView,
+	MessageValidationSuccessView,
+	PeerCountView,
+	RPCInvalidMethodView,
+	RPCRequestErrorView,
+	RPCResponseErrorView,
 }
