@@ -174,7 +174,13 @@ create table if not exists messages
 
 create unique index if not exists messages_cid_uindex
 	on messages (cid);
-	
+
+create index messages_from_index
+	on messages ("from");
+
+create index messages_to_index
+	on messages ("to");
+
 create table if not exists block_messages
 (
 	block text not null,
