@@ -12,7 +12,7 @@ import (
 
 var setPriceCmd = &cli.Command{
 	Name:  "set-price",
-	Usage: "Set price that miner will accept storage deals at",
+	Usage: "Set price that miner will accept storage deals at (FIL / GiB / Epoch)",
 	Flags: []cli.Flag{},
 	Action: func(cctx *cli.Context) error {
 		api, closer, err := lcli.GetStorageMinerAPI(cctx)
