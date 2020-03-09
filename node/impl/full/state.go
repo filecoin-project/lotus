@@ -541,12 +541,20 @@ func (a *StateAPI) StateListMessages(ctx context.Context, match *types.Message, 
 	return out, nil
 }
 
-func (a *StateAPI) StateCompute(ctx context.Context, height abi.ChainEpoch, msgs []*types.Message, tsk types.TipSetKey) (cid.Cid, error) {
+func (a *StateAPI) StateCompute(ctx context.Context, height abi.ChainEpoch, msgs []*types.Message, tsk types.TipSetKey) (*api.ComputeStateOutput, error) {
 	ts, err := a.Chain.GetTipSetFromKey(tsk)
 	if err != nil {
-		return cid.Undef, xerrors.Errorf("loading tipset %s: %w", tsk, err)
+		return nil, xerrors.Errorf("loading tipset %s: %w", tsk, err)
 	}
-	return stmgr.ComputeState(ctx, a.StateManager, height, msgs, ts)
+	st, t, err := stmgr.ComputeState(ctx, a.StateManager, height, msgs, ts)
+	if err != nil {
+		return nil, err
+	}
+
+	return &api.ComputeStateOutput{
+		Root:  st,
+		Trace: t,
+	}, nil
 }
 
 func (a *StateAPI) MsigGetAvailableBalance(ctx context.Context, addr address.Address, tsk types.TipSetKey) (types.BigInt, error) {
