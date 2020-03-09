@@ -16,6 +16,7 @@ import (
 	"github.com/filecoin-project/specs-actors/actors/abi"
 	"github.com/filecoin-project/specs-actors/actors/builtin"
 	"github.com/filecoin-project/specs-actors/actors/builtin/power"
+	"github.com/filecoin-project/specs-actors/actors/util/adt"
 	cid "github.com/ipfs/go-cid"
 	cbg "github.com/whyrusleeping/cbor-gen"
 	"golang.org/x/xerrors"
@@ -457,6 +458,12 @@ var chainGetCmd = &cli.Command{
 			cbu = new(types.SignedMessage)
 		case "actor":
 			cbu = new(types.Actor)
+		case "amt":
+			return handleAmt(ctx, api, obj.Cid)
+		case "hamt-epoch":
+			return handleHamtEpoch(ctx, api, obj.Cid)
+		case "cronevent":
+			cbu = new(power.CronEvent)
 		default:
 			return fmt.Errorf("unknown type: %q", t)
 		}
@@ -477,6 +484,59 @@ var chainGetCmd = &cli.Command{
 		fmt.Println(string(b))
 		return nil
 	},
+}
+
+type apiIpldStore struct {
+	ctx context.Context
+	api api.FullNode
+}
+
+func (ht *apiIpldStore) Context() context.Context {
+	return ht.ctx
+}
+
+func (ht *apiIpldStore) Get(ctx context.Context, c cid.Cid, out interface{}) error {
+	raw, err := ht.api.ChainReadObj(ctx, c)
+	if err != nil {
+		return err
+	}
+
+	cu, ok := out.(cbg.CBORUnmarshaler)
+	if ok {
+		if err := cu.UnmarshalCBOR(bytes.NewReader(raw)); err != nil {
+			return err
+		}
+		return nil
+	}
+
+	return fmt.Errorf("Object does not implement CBORUnmarshaler")
+}
+
+func (ht *apiIpldStore) Put(ctx context.Context, v interface{}) (cid.Cid, error) {
+	panic("No mutations allowed")
+}
+
+func handleAmt(ctx context.Context, api api.FullNode, r cid.Cid) error {
+	s := &apiIpldStore{ctx, api}
+	mp := adt.AsArray(s, r)
+	return mp.ForEach(nil, func(key int64) error {
+		fmt.Printf("%d\n", key)
+		return nil
+	})
+}
+
+func handleHamtEpoch(ctx context.Context, api api.FullNode, r cid.Cid) error {
+	s := &apiIpldStore{ctx, api}
+	mp := adt.AsMap(s, r)
+	return mp.ForEach(nil, func(key string) error {
+		ik, err := adt.ParseIntKey(key)
+		if err != nil {
+			return err
+		}
+
+		fmt.Printf("%d\n", ik)
+		return nil
+	})
 }
 
 func printTipSet(format string, ts *types.TipSet) {
