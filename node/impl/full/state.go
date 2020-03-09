@@ -64,27 +64,27 @@ func (a *StateAPI) StateMinerProvingSet(ctx context.Context, addr address.Addres
 	return stmgr.GetMinerProvingSet(ctx, a.StateManager, ts, addr)
 }
 
-func (a *StateAPI) StateMinerPower(ctx context.Context, maddr address.Address, tsk types.TipSetKey) (api.MinerPower, error) {
+func (a *StateAPI) StateMinerPower(ctx context.Context, maddr address.Address, tsk types.TipSetKey) (*api.MinerPower, error) {
 	ts, err := a.Chain.GetTipSetFromKey(tsk)
 	if err != nil {
-		return api.MinerPower{}, xerrors.Errorf("loading tipset %s: %w", tsk, err)
+		return nil, xerrors.Errorf("loading tipset %s: %w", tsk, err)
 	}
 	mpow, tpow, err := stmgr.GetPower(ctx, a.StateManager, ts, maddr)
 	if err != nil {
-		return api.MinerPower{}, err
+		return nil, err
 	}
 
 	if maddr != address.Undef {
 		slashed, err := stmgr.GetMinerSlashed(ctx, a.StateManager, ts, maddr)
 		if err != nil {
-			return api.MinerPower{}, err
+			return nil, err
 		}
 		if slashed {
 			mpow = types.NewInt(0)
 		}
 	}
 
-	return api.MinerPower{
+	return &api.MinerPower{
 		MinerPower: mpow,
 		TotalPower: tpow,
 	}, nil

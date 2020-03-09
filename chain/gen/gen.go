@@ -444,7 +444,7 @@ func (cg *ChainGen) YieldRepo() (repo.Repo, error) {
 type MiningCheckAPI interface {
 	ChainGetRandomness(ctx context.Context, tsk types.TipSetKey, personalization crypto.DomainSeparationTag, randEpoch abi.ChainEpoch, entropy []byte) (abi.Randomness, error)
 
-	StateMinerPower(context.Context, address.Address, types.TipSetKey) (api.MinerPower, error)
+	StateMinerPower(context.Context, address.Address, types.TipSetKey) (*api.MinerPower, error)
 
 	StateMinerWorker(context.Context, address.Address, types.TipSetKey) (address.Address, error)
 
@@ -469,17 +469,17 @@ func (mca mca) ChainGetRandomness(ctx context.Context, tsk types.TipSetKey, pers
 	return mca.sm.ChainStore().GetRandomness(ctx, pts.Cids(), personalization, int64(randEpoch), entropy)
 }
 
-func (mca mca) StateMinerPower(ctx context.Context, maddr address.Address, tsk types.TipSetKey) (api.MinerPower, error) {
+func (mca mca) StateMinerPower(ctx context.Context, maddr address.Address, tsk types.TipSetKey) (*api.MinerPower, error) {
 	ts, err := mca.sm.ChainStore().LoadTipSet(tsk)
 	if err != nil {
-		return api.MinerPower{}, xerrors.Errorf("loading tipset %s: %w", tsk, err)
+		return nil, xerrors.Errorf("loading tipset %s: %w", tsk, err)
 	}
 	mpow, tpow, err := stmgr.GetPower(ctx, mca.sm, ts, maddr)
 	if err != nil {
-		return api.MinerPower{}, err
+		return nil, err
 	}
 
-	return api.MinerPower{
+	return &api.MinerPower{
 		MinerPower: mpow,
 		TotalPower: tpow,
 	}, err
