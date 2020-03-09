@@ -40,16 +40,22 @@ type lockedMemRepo struct {
 
 	tempDir string
 	token   *byte
+	sc      *config.StorageConfig
 }
 
 func (lmem *lockedMemRepo) GetStorage() (config.StorageConfig, error) {
-	return config.StorageConfig{StoragePaths: []config.LocalPath{
-		{Path: lmem.Path()},
-	}}, nil
+	if lmem.sc == nil {
+		lmem.sc = &config.StorageConfig{StoragePaths: []config.LocalPath{
+			{Path: lmem.Path()},
+		}}
+	}
+
+	return *lmem.sc, nil
 }
 
-func (lmem *lockedMemRepo) SetStorage(config.StorageConfig) error {
-	panic("implement me")
+func (lmem *lockedMemRepo) SetStorage(sc config.StorageConfig) error {
+	lmem.sc = &sc
+	return nil
 }
 
 func (lmem *lockedMemRepo) Path() string {
