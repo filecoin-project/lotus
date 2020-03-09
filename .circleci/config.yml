@@ -107,6 +107,18 @@ jobs:
           paths:
             - linux
 
+  build-debug:
+    executor: golang
+    steps:
+      - install-deps
+      - prepare
+      - go/mod-download
+      - restore_cache:
+          name: restore go mod cache
+          key: v1-go-deps-{{ arch }}-{{ checksum "/home/circleci/project/go.mod" }}
+      - run:
+          command: make debug
+
   test: &test
     description: |
       Run tests with gotestsum.
@@ -242,6 +254,15 @@ jobs:
             - "~/.rustup"
             - "~/.cargo"
 
+  gofmt:
+    executor: golang
+    steps:
+      - install-deps
+      - prepare
+      - go/mod-download
+      - run:
+          command: "! go fmt ./... 2>&1 | read"
+
   lint: &lint
     description: |
       Run golangci-lint.
@@ -315,12 +336,14 @@ workflows:
       - test:
           codecov-upload: true
       - mod-tidy-check
+      - gofmt
       - test-short:
           go-test-flags: "--timeout 10m --short"
           filters:
             tags:
               only:
                 - /^v\d+\.\d+\.\d+$/
+      - build-debug
       - build-all:
           requires:
             - test-short
