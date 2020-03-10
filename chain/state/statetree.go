@@ -125,6 +125,30 @@ func (st *StateTree) GetActor(addr address.Address) (*types.Actor, error) {
 	return &act, nil
 }
 
+func (st *StateTree) DeleteActor(addr address.Address) error {
+	if addr == address.Undef {
+		return xerrors.Errorf("DeleteActor called on undefined address")
+	}
+
+	iaddr, err := st.LookupID(addr)
+	if err != nil {
+		if xerrors.Is(err, init_.ErrAddressNotFound) {
+			return xerrors.Errorf("resolution lookup failed (%s): %w", addr, err)
+		}
+		return xerrors.Errorf("address resolution: %w", err)
+	}
+
+	addr = iaddr
+
+	delete(st.actorcache, addr)
+
+	if err := st.root.Delete(context.TODO(), string(addr.Bytes())); err != nil {
+		return xerrors.Errorf("failed to delete actor: %w", err)
+	}
+
+	return nil
+}
+
 func (st *StateTree) Flush(ctx context.Context) (cid.Cid, error) {
 	ctx, span := trace.StartSpan(ctx, "stateTree.Flush")
 	defer span.End()
