@@ -292,9 +292,26 @@ func main() {
 					UnsealedCID:           commD,
 				}
 
+				{
+						f, err := ioutil.TempFile("/tmp/", "sinput-")
+						if err != nil {
+							return err
+						}
+
+						if err := json.NewEncoder(f).Encode(&svi); err != nil {
+							return err
+						}
+
+						fmt.Println("Seal Verify info saved to ", f.Name())
+
+						if err := f.Close(); err != nil {
+							return err
+						}
+				}
+
 				ok, err := sectorbuilder.ProofVerifier.VerifySeal(svi)
 				if err != nil {
-					return err
+					log.Errorf("seal verify:", err)
 				}
 				if !ok {
 					return xerrors.Errorf("porep proof for sector %d was invalid", i)
