@@ -68,7 +68,8 @@ func (a *Applier) ApplyTipSetMessages(state vstate.VMWrapper, blocks []vtypes.Bl
 	var bms []stmgr.BlockMessages
 	for _, b := range blocks {
 		bm := stmgr.BlockMessages{
-			Miner: b.Miner,
+			Miner:       b.Miner,
+			TicketCount: 1,
 		}
 
 		for _, m := range b.BLSMessages {
