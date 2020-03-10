@@ -1,10 +1,14 @@
 package main
 
 import (
+	"fmt"
+	"math"
+
 	"github.com/filecoin-project/go-address"
+	"gopkg.in/urfave/cli.v2"
+
 	"github.com/filecoin-project/lotus/chain/types"
 	lcli "github.com/filecoin-project/lotus/cli"
-	"gopkg.in/urfave/cli.v2"
 )
 
 var noncefix = &cli.Command{
@@ -25,6 +29,9 @@ var noncefix = &cli.Command{
 		&cli.StringFlag{
 			Name: "addr",
 		},
+		&cli.BoolFlag{
+				Name: "auto",
+		},
 	},
 	Action: func(cctx *cli.Context) error {
 		api, closer, err := lcli.GetFullNodeAPI(cctx)
@@ -40,7 +47,44 @@ var noncefix = &cli.Command{
 			return err
 		}
 
-		for i := cctx.Uint64("start"); i < cctx.Uint64("end"); i++ {
+		start := cctx.Uint64("start")
+		end := cctx.Uint64("end")
+		if end == 0 {
+			end = math.MaxUint64
+		}
+
+		if cctx.Bool("auto") {
+			a, err := api.StateGetActor(ctx, addr, types.EmptyTSK)
+			if err != nil {
+				return err
+			}
+			start = a.Nonce + 1
+
+			msgs, err := api.MpoolPending(ctx, types.EmptyTSK)
+			if err != nil {
+				return err
+			}
+
+			for _, msg := range msgs {
+				if msg.Message.From != addr {
+					continue
+				}
+				if msg.Message.Nonce < start {
+					continue // past
+				}
+				if msg.Message.Nonce < end {
+					end = msg.Message.Nonce
+				}
+			}
+
+			if end == math.MaxUint64 {
+				fmt.Println("No nonce gap found")
+				return nil
+			}
+		}
+		fmt.Printf("Creating %d filler messages (%d ~ %d)", end - start, start, end)
+
+		for i := start; i < end; i++ {
 			msg := &types.Message{
 				From:     addr,
 				To:       addr,
