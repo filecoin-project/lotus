@@ -77,10 +77,10 @@ var noncefix = &cli.Command{
 				}
 			}
 
-			if end == math.MaxUint64 {
-				fmt.Println("No nonce gap found")
-				return nil
-			}
+		}
+		if end == math.MaxUint64 {
+			fmt.Println("No nonce gap found or no --end flag specified")
+			return nil
 		}
 		fmt.Printf("Creating %d filler messages (%d ~ %d)\n", end-start, start, end)
 
