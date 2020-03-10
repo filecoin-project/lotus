@@ -12,7 +12,7 @@ func SetupLogLevels() {
 		logging.SetLogLevel("dht", "ERROR")
 		logging.SetLogLevel("swarm2", "WARN")
 		logging.SetLogLevel("bitswap", "WARN")
-		logging.SetLogLevel("pubsub", "WARN")
+		//logging.SetLogLevel("pubsub", "WARN")
 		logging.SetLogLevel("connmgr", "WARN")
 	}
 }

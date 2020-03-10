@@ -102,5 +102,9 @@ func (sm *StateManager) Replay(ctx context.Context, ts *types.TipSet, mcid cid.C
 		return nil, nil, xerrors.Errorf("unexpected error during execution: %w", err)
 	}
 
+	if outr == nil {
+		return nil, nil, xerrors.Errorf("given message not found in tipset")
+	}
+
 	return outm, outr, nil
 }
