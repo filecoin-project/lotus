@@ -3,6 +3,7 @@ package cli
 import (
 	"encoding/json"
 	"fmt"
+	"sort"
 
 	"golang.org/x/xerrors"
 	"gopkg.in/urfave/cli.v2"
@@ -86,6 +87,10 @@ var mpoolSub = &cli.Command{
 type statBucket struct {
 	msgs map[uint64]*types.SignedMessage
 }
+type mpStat struct {
+	addr              string
+	past, cur, future uint64
+}
 
 var mpoolStat = &cli.Command{
 	Name:  "stat",
@@ -122,6 +127,9 @@ var mpoolStat = &cli.Command{
 
 			bkt.msgs[v.Message.Nonce] = v
 		}
+
+		var out []mpStat
+
 		for a, bkt := range buckets {
 			act, err := api.StateGetActor(ctx, a, ts.Key())
 			if err != nil {
@@ -138,8 +146,8 @@ var mpoolStat = &cli.Command{
 				cur++
 			}
 
-			past := 0
-			future := 0
+			past := uint64(0)
+			future := uint64(0)
 			for _, m := range bkt.msgs {
 				if m.Message.Nonce < act.Nonce {
 					past++
@@ -149,7 +157,20 @@ var mpoolStat = &cli.Command{
 				}
 			}
 
-			fmt.Printf("%s, past: %d, cur: %d, future: %d\n", a, past, cur-act.Nonce, future)
+			out = append(out, mpStat{
+				addr:   a.String(),
+				past:   past,
+				cur:    cur - act.Nonce,
+				future: future,
+			})
+		}
+
+		sort.Slice(out, func(i, j int) bool {
+			return out[i].addr < out[j].addr
+		})
+
+		for _, stat := range out {
+			fmt.Printf("%s, past: %d, cur: %d, future: %d\n", stat.addr, stat.past, stat.cur, stat.future)
 		}
 
 		return nil
