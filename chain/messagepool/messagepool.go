@@ -96,7 +96,7 @@ func (ms *msgSet) add(m *types.SignedMessage) error {
 	}
 	if _, has := ms.msgs[m.Message.Nonce]; has {
 		if m.Cid() != ms.msgs[m.Message.Nonce].Cid() {
-			log.Error("Add with duplicate nonce")
+			log.Info("add with duplicate nonce")
 			return xerrors.Errorf("message to %s with nonce %d already in mpool", m.Message.To, m.Message.Nonce)
 		}
 	}
@@ -365,7 +365,7 @@ func (mp *MessagePool) addLocked(m *types.SignedMessage) error {
 	}
 
 	if err := mset.add(m); err != nil {
-		log.Error(err)
+		log.Info(err)
 	}
 
 	mp.changes.Pub(api.MpoolUpdate{
