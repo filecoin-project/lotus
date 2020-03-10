@@ -4,7 +4,6 @@ import (
 	"bytes"
 	"context"
 	"encoding/binary"
-	"fmt"
 	"runtime/debug"
 
 	"github.com/filecoin-project/go-address"
@@ -293,7 +292,6 @@ func (rs *Runtime) Send(to address.Address, method abi.MethodNum, m vmr.CBORMars
 }
 
 func (rt *Runtime) internalSend(to address.Address, method abi.MethodNum, value types.BigInt, params []byte) ([]byte, aerrors.ActorError) {
-	fmt.Println("internal send: ", to, method)
 	ctx, span := trace.StartSpan(rt.ctx, "vmc.Send")
 	defer span.End()
 	if span.IsRecordingEvents() {
@@ -321,12 +319,10 @@ func (rt *Runtime) internalSend(to address.Address, method abi.MethodNum, value 
 
 	ret, err, subrt := rt.vm.send(ctx, msg, rt, 0)
 	if err != nil {
-		fmt.Println("send failed")
 		if err := st.Revert(); err != nil {
 			return nil, aerrors.Escalate(err, "failed to revert state tree after failed subcall")
 		}
 	}
-	fmt.Println("after 'send'", ret)
 
 	mr := types.MessageReceipt{
 		ExitCode: exitcode.ExitCode(aerrors.RetCode(err)),
@@ -345,7 +341,6 @@ func (rt *Runtime) internalSend(to address.Address, method abi.MethodNum, value 
 		Subcalls: subrt.internalExecutions,
 	}
 
-	fmt.Println("keeping execution!")
 	rt.internalExecutions = append(rt.internalExecutions, &er)
 	return ret, err
 }
