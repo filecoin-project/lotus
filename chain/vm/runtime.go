@@ -197,6 +197,13 @@ func (rt *Runtime) CreateActor(codeId cid.Cid, address address.Address) {
 }
 
 func (rt *Runtime) DeleteActor() {
+	act, err := rt.state.GetActor(rt.Message().Receiver())
+	if err != nil {
+		rt.Abortf(exitcode.SysErrInternal, "failed to load actor in delete actor: %s", err)
+	}
+	if !act.Balance.IsZero() {
+		rt.Abortf(exitcode.SysErrInternal, "cannot delete actor with non-zero balance")
+	}
 	if err := rt.state.DeleteActor(rt.Message().Receiver()); err != nil {
 		rt.Abortf(exitcode.SysErrInternal, "failed to delete actor: %s", err)
 	}
