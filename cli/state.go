@@ -23,6 +23,7 @@ import (
 
 	"github.com/filecoin-project/lotus/api"
 	"github.com/filecoin-project/lotus/chain/types"
+	"github.com/filecoin-project/lotus/chain/vm"
 	"github.com/filecoin-project/lotus/miner"
 
 	"github.com/docker/go-units"
@@ -799,13 +800,18 @@ var stateComputeStateCmd = &cli.Command{
 		if cctx.Bool("show-trace") {
 			for _, ir := range stout.Trace {
 				fmt.Printf("%s\t%s\t%s\t%d\t%x\t%d\t%x\n", ir.Msg.From, ir.Msg.To, ir.Msg.Value, ir.Msg.Method, ir.Msg.Params, ir.MsgRct.ExitCode, ir.MsgRct.Return)
-				for _, im := range ir.InternalExecutions {
-					fmt.Printf("\t%s\t%s\t%s\t%d\t%x\t%d\t%x\n", im.Msg.From, im.Msg.To, im.Msg.Value, im.Msg.Method, im.Msg.Params, im.MsgRct.ExitCode, im.MsgRct.Return)
-				}
+				printInternalExecutions("\t", ir.InternalExecutions)
 			}
 		}
 		return nil
 	},
+}
+
+func printInternalExecutions(prefix string, trace []*vm.ExecutionResult) {
+	for _, im := range trace {
+		fmt.Printf("%s%s\t%s\t%s\t%d\t%x\t%d\t%x\n", prefix, im.Msg.From, im.Msg.To, im.Msg.Value, im.Msg.Method, im.Msg.Params, im.MsgRct.ExitCode, im.MsgRct.Return)
+		printInternalExecutions(prefix+"\t", im.Subcalls)
+	}
 }
 
 var stateWaitMsgCmd = &cli.Command{

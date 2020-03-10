@@ -56,6 +56,8 @@ type ExecutionResult struct {
 	Msg    *types.Message
 	MsgRct *types.MessageReceipt
 	Error  string
+
+	Subcalls []*ExecutionResult
 }
 
 // Storage interface
@@ -113,12 +115,11 @@ func (bs *gasChargingBlocks) Put(blk block.Block) error {
 	return nil
 }
 
-func (vm *VM) makeRuntime(ctx context.Context, sroot cid.Cid, msg *types.Message, origin address.Address, usedGas types.BigInt) *Runtime {
+func (vm *VM) makeRuntime(ctx context.Context, msg *types.Message, origin address.Address, usedGas types.BigInt) *Runtime {
 	rt := &Runtime{
 		ctx:    ctx,
 		vm:     vm,
 		state:  vm.cstate,
-		sroot:  sroot,
 		msg:    msg,
 		origin: origin,
 		height: vm.blockHeight,
@@ -209,7 +210,7 @@ func (vm *VM) send(ctx context.Context, msg *types.Message, parent *Runtime,
 		gasUsed = types.BigAdd(parent.gasUsed, gasUsed)
 		origin = parent.origin
 	}
-	rt := vm.makeRuntime(ctx, toActor.Head, msg, origin, gasUsed)
+	rt := vm.makeRuntime(ctx, msg, origin, gasUsed)
 	if parent != nil {
 		defer func() {
 			parent.gasUsed = rt.gasUsed
@@ -226,9 +227,6 @@ func (vm *VM) send(ctx context.Context, msg *types.Message, parent *Runtime,
 
 	if msg.Method != 0 {
 		ret, err := vm.Invoke(toActor, rt, msg.Method, msg.Params)
-		if !aerrors.IsFatal(err) {
-			toActor.Head = rt.sroot
-		}
 		return ret, err, rt
 	}
 
