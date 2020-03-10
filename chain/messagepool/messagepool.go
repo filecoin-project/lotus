@@ -4,6 +4,7 @@ import (
 	"bytes"
 	"context"
 	"errors"
+	"math"
 	"sort"
 	"sync"
 	"time"
@@ -31,6 +32,8 @@ import (
 )
 
 var log = logging.Logger("messagepool")
+
+const futureDebug = false
 
 var (
 	ErrMessageTooBig = errors.New("message too big")
@@ -340,7 +343,7 @@ func (mp *MessagePool) addSkipChecks(m *types.SignedMessage) error {
 }
 
 func (mp *MessagePool) addLocked(m *types.SignedMessage) error {
-	log.Debugf("mpooladd: %s %s", m.Message.From, m.Message.Nonce)
+	log.Debugf("mpooladd: %s %d", m.Message.From, m.Message.Nonce)
 	if m.Signature.Type == crypto.SigTypeBLS {
 		mp.blsSigCache.Add(m.Cid(), m.Signature)
 	}
@@ -624,7 +627,76 @@ func (mp *MessagePool) HeadChange(revert []*types.TipSet, apply []*types.TipSet)
 		}
 	}
 
+	if len(revert) > 0 && futureDebug {
+		msgs, ts := mp.Pending()
+
+		buckets := map[address.Address]*statBucket{}
+
+		for _, v := range msgs {
+			bkt, ok := buckets[v.Message.From]
+			if !ok {
+				bkt = &statBucket{
+					msgs: map[uint64]*types.SignedMessage{},
+				}
+				buckets[v.Message.From] = bkt
+			}
+
+			bkt.msgs[v.Message.Nonce] = v
+		}
+
+		for a, bkt := range buckets {
+			act, err := mp.api.StateGetActor(a, ts)
+			if err != nil {
+				log.Debugf("%s, err: %s\n", a, err)
+				continue
+			}
+
+			var cmsg *types.SignedMessage
+			var ok bool
+
+			cur := act.Nonce
+			for {
+				cmsg, ok = bkt.msgs[cur]
+				if !ok {
+					break
+				}
+				cur++
+			}
+
+			ff := uint64(math.MaxUint64)
+			for k := range bkt.msgs {
+				if k > cur && k < ff {
+					ff = k
+				}
+			}
+
+			if ff != math.MaxUint64 {
+				m := bkt.msgs[ff]
+
+				// cmsg can be nil if no messages from the current nonce are in the mpool
+				ccid := "nil"
+				if cmsg != nil {
+					ccid = cmsg.Cid().String()
+				}
+
+				log.Debugw("Nonce gap",
+					"actor", a,
+					"future_cid", m.Cid(),
+					"future_nonce", ff,
+					"current_cid", ccid,
+					"current_nonce", cur,
+					"revert_tipset", revert[0].Key(),
+					"new_head", ts.Key(),
+				)
+			}
+		}
+	}
+
 	return nil
+}
+
+type statBucket struct {
+	msgs map[uint64]*types.SignedMessage
 }
 
 func (mp *MessagePool) MessagesForBlocks(blks []*types.BlockHeader) ([]*types.SignedMessage, error) {
