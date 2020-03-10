@@ -11,7 +11,6 @@ import (
 
 	block "github.com/ipfs/go-block-format"
 	cid "github.com/ipfs/go-cid"
-	hamt "github.com/ipfs/go-hamt-ipld"
 	blockstore "github.com/ipfs/go-ipfs-blockstore"
 	cbor "github.com/ipfs/go-ipld-cbor"
 	logging "github.com/ipfs/go-log/v2"
@@ -33,7 +32,6 @@ import (
 	"github.com/filecoin-project/lotus/chain/state"
 	"github.com/filecoin-project/lotus/chain/types"
 	"github.com/filecoin-project/lotus/lib/bufbstore"
-	"github.com/filecoin-project/lotus/lib/sigs"
 )
 
 var log = logging.Logger("vm")
@@ -58,210 +56,15 @@ type ExecutionResult struct {
 	Msg    *types.Message
 	MsgRct *types.MessageReceipt
 	Error  string
-}
 
-type VMContext struct {
-	ctx context.Context
-
-	vm     *VM
-	state  *state.StateTree
-	msg    *types.Message
-	height abi.ChainEpoch
-	cst    cbor.IpldStore
-
-	gasAvailable types.BigInt
-	gasUsed      types.BigInt
-
-	sys runtime.Syscalls
-
-	// root cid of the state of the actor this invocation will be on
-	sroot cid.Cid
-
-	// address that started invoke chain
-	origin address.Address
-
-	internalExecutions []*ExecutionResult
-}
-
-// Message is the message that kicked off the current invocation
-func (vmc *VMContext) Message() *types.Message {
-	return vmc.msg
-}
-
-func (vmc *VMContext) GetRandomness(personalization crypto.DomainSeparationTag, randEpoch abi.ChainEpoch, entropy []byte) ([]byte, aerrors.ActorError) {
-	res, err := vmc.vm.rand.GetRandomness(vmc.ctx, personalization, int64(randEpoch), entropy)
-	if err != nil {
-		return nil, aerrors.Escalate(err, "could not get randomness")
-	}
-	return res, nil
-}
-
-func (vmc *VMContext) Sys() runtime.Syscalls {
-	return vmc.sys
+	Subcalls []*ExecutionResult
 }
 
 // Storage interface
 
-func (vmc *VMContext) Put(i cbg.CBORMarshaler) (cid.Cid, aerrors.ActorError) {
-	c, err := vmc.cst.Put(context.TODO(), i)
-	if err != nil {
-		return cid.Undef, aerrors.HandleExternalError(err, fmt.Sprintf("putting object %T", i))
-	}
-	return c, nil
-}
-
-func (vmc *VMContext) Get(c cid.Cid, out cbg.CBORUnmarshaler) aerrors.ActorError {
-	err := vmc.cst.Get(context.TODO(), c, out)
-	if err != nil {
-		return aerrors.HandleExternalError(err, "getting cid")
-	}
-	return nil
-}
-
-func (vmc *VMContext) GetHead() cid.Cid {
-	return vmc.sroot
-}
-
-func (vmc *VMContext) Commit(oldh, newh cid.Cid) aerrors.ActorError {
-	if err := vmc.ChargeGas(gasCommit); err != nil {
-		return aerrors.Wrap(err, "out of gas")
-	}
-	if vmc.sroot != oldh {
-		return aerrors.New(1, "failed to update, inconsistent base reference")
-	}
-
-	vmc.sroot = newh
-	return nil
-}
-
 // End of storage interface
 
-// Storage provides access to the VM storage layer
-func (vmc *VMContext) Storage() types.Storage {
-	return vmc
-}
-
-func (vmc *VMContext) Ipld() cbor.IpldStore {
-	return vmc.cst
-}
-
-func (vmc *VMContext) Origin() address.Address {
-	return vmc.origin
-}
-
 // Send allows the current execution context to invoke methods on other actors in the system
-func (vmc *VMContext) Send(to address.Address, method abi.MethodNum, value types.BigInt, params []byte) ([]byte, aerrors.ActorError) {
-	ctx, span := trace.StartSpan(vmc.ctx, "vmc.Send")
-	defer span.End()
-	if span.IsRecordingEvents() {
-		span.AddAttributes(
-			trace.StringAttribute("to", to.String()),
-			trace.Int64Attribute("method", int64(method)),
-			trace.StringAttribute("value", value.String()),
-		)
-	}
-
-	msg := &types.Message{
-		From:     vmc.msg.To,
-		To:       to,
-		Method:   method,
-		Value:    value,
-		Params:   params,
-		GasLimit: vmc.gasAvailable,
-	}
-
-	st := vmc.state
-	if err := st.Snapshot(ctx); err != nil {
-		return nil, aerrors.Fatalf("snapshot failed: %s", err)
-	}
-	defer st.ClearSnapshot()
-
-	ret, err, _ := vmc.vm.send(ctx, msg, vmc, 0)
-	if err != nil {
-		if err := st.Revert(); err != nil {
-			return nil, aerrors.Escalate(err, "failed to revert state tree after failed subcall")
-		}
-	}
-
-	mr := types.MessageReceipt{
-		ExitCode: exitcode.ExitCode(aerrors.RetCode(err)),
-		Return:   ret,
-		GasUsed:  types.EmptyInt,
-	}
-
-	var es = ""
-	if err != nil {
-		es = err.Error()
-	}
-	er := ExecutionResult{
-		Msg:    msg,
-		MsgRct: &mr,
-		Error:  es,
-	}
-
-	vmc.internalExecutions = append(vmc.internalExecutions, &er)
-	return ret, err
-}
-
-// BlockHeight returns the height of the block this message was added to the chain in
-func (vmc *VMContext) BlockHeight() abi.ChainEpoch {
-	return vmc.height
-}
-
-func (vmc *VMContext) GasUsed() types.BigInt {
-	return vmc.gasUsed
-}
-
-func (vmc *VMContext) ChargeGas(amount uint64) aerrors.ActorError {
-	toUse := types.NewInt(amount)
-	vmc.gasUsed = types.BigAdd(vmc.gasUsed, toUse)
-	if vmc.gasUsed.GreaterThan(vmc.gasAvailable) {
-		return aerrors.Newf(uint8(exitcode.SysErrOutOfGas), "not enough gas: used=%s, available=%s", vmc.gasUsed, vmc.gasAvailable)
-	}
-	return nil
-}
-
-func (vmc *VMContext) StateTree() (types.StateTree, aerrors.ActorError) {
-	if vmc.msg.To != builtin.InitActorAddr {
-		return nil, aerrors.Escalate(fmt.Errorf("only init actor can access state tree directly"), "invalid use of StateTree")
-	}
-
-	return vmc.state, nil
-}
-
-func (vmc *VMContext) ActorCodeCID(addr address.Address) (ret cid.Cid, err error) {
-	act, err := vmc.state.GetActor(addr)
-	if err != nil {
-		return cid.Undef, err
-	}
-	return act.Code, nil
-}
-
-func (vmc *VMContext) LookupID(a address.Address) (address.Address, error) {
-	return vmc.state.LookupID(a)
-}
-
-const GasVerifySignature = 50
-
-func (vmctx *VMContext) VerifySignature(sig *crypto.Signature, act address.Address, data []byte) aerrors.ActorError {
-	if err := vmctx.ChargeGas(GasVerifySignature); err != nil {
-		return err
-	}
-
-	if act.Protocol() == address.ID {
-		kaddr, err := ResolveToKeyAddr(vmctx.state, vmctx.cst, act)
-		if err != nil {
-			return aerrors.Wrap(err, "failed to resolve address to key address")
-		}
-		act = kaddr
-	}
-
-	if err := sigs.Verify(sig, act, data); err != nil {
-		return aerrors.New(2, "signature verification failed")
-	}
-
-	return nil
-}
 
 func ResolveToKeyAddr(state types.StateTree, cst cbor.IpldStore, addr address.Address) (address.Address, aerrors.ActorError) {
 	if addr.Protocol() == address.BLS || addr.Protocol() == address.SECP256K1 {
@@ -285,60 +88,38 @@ func ResolveToKeyAddr(state types.StateTree, cst cbor.IpldStore, addr address.Ad
 	return aast.Address, nil
 }
 
-func (vmctx *VMContext) GetBalance(a address.Address) (types.BigInt, aerrors.ActorError) {
-	act, err := vmctx.state.GetActor(a)
-	switch err {
-	default:
-		return types.EmptyInt, aerrors.Escalate(err, "failed to look up actor balance")
-	case hamt.ErrNotFound:
-		return types.NewInt(0), nil
-	case nil:
-		return act.Balance, nil
-	}
-}
-
-func (vmctx *VMContext) Context() context.Context {
-	return vmctx.ctx
-}
-
 var _ cbor.IpldBlockstore = (*gasChargingBlocks)(nil)
 
 type gasChargingBlocks struct {
-	chargeGas func(uint64) aerrors.ActorError
+	chargeGas func(uint64)
 	under     cbor.IpldBlockstore
 }
 
 func (bs *gasChargingBlocks) Get(c cid.Cid) (block.Block, error) {
-	if err := bs.chargeGas(gasGetObj); err != nil {
-		return nil, err
-	}
+	bs.chargeGas(gasGetObj)
 	blk, err := bs.under.Get(c)
 	if err != nil {
 		return nil, aerrors.Escalate(err, "failed to get block from blockstore")
 	}
-	if err := bs.chargeGas(uint64(len(blk.RawData())) * gasGetPerByte); err != nil {
-		return nil, err
-	}
+	bs.chargeGas(uint64(len(blk.RawData())) * gasGetPerByte)
 
 	return blk, nil
 }
 
 func (bs *gasChargingBlocks) Put(blk block.Block) error {
-	if err := bs.chargeGas(gasPutObj + uint64(len(blk.RawData()))*gasPutPerByte); err != nil {
-		return err
-	}
+	bs.chargeGas(gasPutObj + uint64(len(blk.RawData()))*gasPutPerByte)
+
 	if err := bs.under.Put(blk); err != nil {
 		return aerrors.Escalate(err, "failed to write data to disk")
 	}
 	return nil
 }
 
-func (vm *VM) makeVMContext(ctx context.Context, sroot cid.Cid, msg *types.Message, origin address.Address, usedGas types.BigInt) *VMContext {
-	vmc := &VMContext{
+func (vm *VM) makeRuntime(ctx context.Context, msg *types.Message, origin address.Address, usedGas types.BigInt) *Runtime {
+	rt := &Runtime{
 		ctx:    ctx,
 		vm:     vm,
 		state:  vm.cstate,
-		sroot:  sroot,
 		msg:    msg,
 		origin: origin,
 		height: vm.blockHeight,
@@ -347,11 +128,12 @@ func (vm *VM) makeVMContext(ctx context.Context, sroot cid.Cid, msg *types.Messa
 		gasUsed:      usedGas,
 		gasAvailable: msg.GasLimit,
 	}
-	vmc.cst = &cbor.BasicIpldStore{
-		Blocks: &gasChargingBlocks{vmc.ChargeGas, vm.cst.Blocks},
+	rt.cst = &cbor.BasicIpldStore{
+		Blocks: &gasChargingBlocks{rt.ChargeGas, vm.cst.Blocks},
 		Atlas:  vm.cst.Atlas,
 	}
-	return vmc
+
+	return rt
 }
 
 type VM struct {
@@ -399,8 +181,8 @@ type ApplyRet struct {
 	InternalExecutions []*ExecutionResult
 }
 
-func (vm *VM) send(ctx context.Context, msg *types.Message, parent *VMContext,
-	gasCharge uint64) ([]byte, aerrors.ActorError, *VMContext) {
+func (vm *VM) send(ctx context.Context, msg *types.Message, parent *Runtime,
+	gasCharge uint64) ([]byte, aerrors.ActorError, *Runtime) {
 
 	st := vm.cstate
 
@@ -428,17 +210,15 @@ func (vm *VM) send(ctx context.Context, msg *types.Message, parent *VMContext,
 		gasUsed = types.BigAdd(parent.gasUsed, gasUsed)
 		origin = parent.origin
 	}
-	vmctx := vm.makeVMContext(ctx, toActor.Head, msg, origin, gasUsed)
+	rt := vm.makeRuntime(ctx, msg, origin, gasUsed)
 	if parent != nil {
 		defer func() {
-			parent.gasUsed = vmctx.gasUsed
+			parent.gasUsed = rt.gasUsed
 		}()
 	}
 
 	if types.BigCmp(msg.Value, types.NewInt(0)) != 0 {
-		if aerr := vmctx.ChargeGas(gasFundTransfer); aerr != nil {
-			return nil, aerrors.Wrap(aerr, "sending funds"), nil
-		}
+		rt.ChargeGas(gasFundTransfer)
 
 		if err := Transfer(fromActor, toActor, msg.Value); err != nil {
 			return nil, aerrors.Absorb(err, 1, "failed to transfer funds"), nil
@@ -446,14 +226,11 @@ func (vm *VM) send(ctx context.Context, msg *types.Message, parent *VMContext,
 	}
 
 	if msg.Method != 0 {
-		ret, err := vm.Invoke(toActor, vmctx, msg.Method, msg.Params)
-		if !aerrors.IsFatal(err) {
-			toActor.Head = vmctx.Storage().GetHead()
-		}
-		return ret, err, vmctx
+		ret, err := vm.Invoke(toActor, rt, msg.Method, msg.Params)
+		return ret, err, rt
 	}
 
-	return nil, nil, vmctx
+	return nil, nil, rt
 }
 
 func checkMessage(msg *types.Message) error {
@@ -546,7 +323,7 @@ func (vm *VM) ApplyMessage(ctx context.Context, msg *types.Message) (*ApplyRet, 
 	}
 	fromActor.Nonce++
 
-	ret, actorErr, vmctx := vm.send(ctx, msg, nil, msgGasCost)
+	ret, actorErr, rt := vm.send(ctx, msg, nil, msgGasCost)
 
 	if aerrors.IsFatal(actorErr) {
 		return nil, xerrors.Errorf("[from=%s,to=%s,n=%d,m=%d,h=%d] fatal error: %w", msg.From, msg.To, msg.Nonce, msg.Method, vm.blockHeight, actorErr)
@@ -565,8 +342,8 @@ func (vm *VM) ApplyMessage(ctx context.Context, msg *types.Message) (*ApplyRet, 
 			return nil, xerrors.Errorf("revert state failed: %w", err)
 		}
 	} else {
+		gasUsed = rt.gasUsed
 		// refund unused gas
-		gasUsed = vmctx.GasUsed()
 		refund := types.BigMul(types.BigSub(msg.GasLimit, gasUsed), msg.GasPrice)
 		if err := Transfer(gasHolder, fromActor, refund); err != nil {
 			return nil, xerrors.Errorf("failed to refund gas")
@@ -594,7 +371,7 @@ func (vm *VM) ApplyMessage(ctx context.Context, msg *types.Message) (*ApplyRet, 
 			GasUsed:  gasUsed,
 		},
 		ActorErr:           actorErr,
-		InternalExecutions: vmctx.internalExecutions,
+		InternalExecutions: rt.internalExecutions,
 	}, nil
 }
 
@@ -744,26 +521,24 @@ func (vm *VM) SetBlockHeight(h abi.ChainEpoch) {
 	vm.blockHeight = h
 }
 
-func (vm *VM) Invoke(act *types.Actor, vmctx *VMContext, method abi.MethodNum, params []byte) ([]byte, aerrors.ActorError) {
-	ctx, span := trace.StartSpan(vmctx.ctx, "vm.Invoke")
+func (vm *VM) Invoke(act *types.Actor, rt *Runtime, method abi.MethodNum, params []byte) ([]byte, aerrors.ActorError) {
+	ctx, span := trace.StartSpan(rt.ctx, "vm.Invoke")
 	defer span.End()
 	if span.IsRecordingEvents() {
 		span.AddAttributes(
-			trace.StringAttribute("to", vmctx.Message().To.String()),
+			trace.StringAttribute("to", rt.Message().Receiver().String()),
 			trace.Int64Attribute("method", int64(method)),
-			trace.StringAttribute("value", vmctx.Message().Value.String()),
+			trace.StringAttribute("value", rt.Message().ValueReceived().String()),
 		)
 	}
 
 	var oldCtx context.Context
-	oldCtx, vmctx.ctx = vmctx.ctx, ctx
+	oldCtx, rt.ctx = rt.ctx, ctx
 	defer func() {
-		vmctx.ctx = oldCtx
+		rt.ctx = oldCtx
 	}()
-	if err := vmctx.ChargeGas(gasInvoke); err != nil {
-		return nil, aerrors.Wrap(err, "invokeing")
-	}
-	ret, err := vm.inv.Invoke(act, vmctx, method, params)
+	rt.ChargeGas(gasInvoke)
+	ret, err := vm.inv.Invoke(act, rt, method, params)
 	if err != nil {
 		return nil, err
 	}
