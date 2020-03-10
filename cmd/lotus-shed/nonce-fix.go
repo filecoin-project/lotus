@@ -30,7 +30,7 @@ var noncefix = &cli.Command{
 			Name: "addr",
 		},
 		&cli.BoolFlag{
-				Name: "auto",
+			Name: "auto",
 		},
 	},
 	Action: func(cctx *cli.Context) error {
@@ -58,7 +58,7 @@ var noncefix = &cli.Command{
 			if err != nil {
 				return err
 			}
-			start = a.Nonce + 1
+			start = a.Nonce
 
 			msgs, err := api.MpoolPending(ctx, types.EmptyTSK)
 			if err != nil {
@@ -82,7 +82,7 @@ var noncefix = &cli.Command{
 				return nil
 			}
 		}
-		fmt.Printf("Creating %d filler messages (%d ~ %d)", end - start, start, end)
+		fmt.Printf("Creating %d filler messages (%d ~ %d)\n", end-start, start, end)
 
 		for i := start; i < end; i++ {
 			msg := &types.Message{
