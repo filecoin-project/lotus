@@ -21,6 +21,7 @@ import (
 	"github.com/filecoin-project/specs-actors/actors/builtin/power"
 	"github.com/filecoin-project/specs-actors/actors/builtin/reward"
 	"github.com/filecoin-project/specs-actors/actors/builtin/system"
+	"github.com/filecoin-project/specs-actors/actors/runtime"
 	vmr "github.com/filecoin-project/specs-actors/actors/runtime"
 	"github.com/filecoin-project/specs-actors/actors/util/adt"
 
@@ -33,7 +34,7 @@ type invoker struct {
 	builtInState map[cid.Cid]reflect.Type
 }
 
-type invokeFunc func(act *types.Actor, vmctx types.VMContext, params []byte) ([]byte, aerrors.ActorError)
+type invokeFunc func(act *types.Actor, rt runtime.Runtime, params []byte) ([]byte, aerrors.ActorError)
 type nativeCode []invokeFunc
 
 func NewInvoker() *invoker {
@@ -56,7 +57,7 @@ func NewInvoker() *invoker {
 	return inv
 }
 
-func (inv *invoker) Invoke(act *types.Actor, vmctx types.VMContext, method abi.MethodNum, params []byte) ([]byte, aerrors.ActorError) {
+func (inv *invoker) Invoke(act *types.Actor, rt runtime.Runtime, method abi.MethodNum, params []byte) ([]byte, aerrors.ActorError) {
 
 	if act.Code == builtin.AccountActorCodeID {
 		return nil, aerrors.Newf(254, "cannot invoke methods on account actors")
@@ -64,13 +65,13 @@ func (inv *invoker) Invoke(act *types.Actor, vmctx types.VMContext, method abi.M
 
 	code, ok := inv.builtInCode[act.Code]
 	if !ok {
-		log.Errorf("no code for actor %s (Addr: %s)", act.Code, vmctx.Message().To)
+		log.Errorf("no code for actor %s (Addr: %s)", act.Code, rt.Message().Receiver())
 		return nil, aerrors.Newf(255, "no code for actor %s(%d)(%s)", act.Code, method, hex.EncodeToString(params))
 	}
 	if method >= abi.MethodNum(len(code)) || code[method] == nil {
 		return nil, aerrors.Newf(255, "no method %d on actor", method)
 	}
-	return code[method](act, vmctx, params)
+	return code[method](act, rt, params)
 
 }
 
@@ -87,7 +88,6 @@ type Invokee interface {
 	Exports() []interface{}
 }
 
-var tVMContext = reflect.TypeOf((*types.VMContext)(nil)).Elem()
 var tAError = reflect.TypeOf((*aerrors.ActorError)(nil)).Elem()
 
 func (*invoker) transform(instance Invokee) (nativeCode, error) {
@@ -117,7 +117,7 @@ func (*invoker) transform(instance Invokee) (nativeCode, error) {
 			return nil, newErr("first arguemnt should be vmr.Runtime")
 		}
 		if t.In(1).Kind() != reflect.Ptr {
-			return nil, newErr("second argument should be types.VMContext")
+			return nil, newErr("second argument should be Runtime")
 		}
 
 		if t.NumOut() != 1 {
@@ -150,10 +150,10 @@ func (*invoker) transform(instance Invokee) (nativeCode, error) {
 						}
 					}
 				}
-				shim := &runtimeShim{vmctx: in[1].Interface().(*VMContext)}
-				rval, aerror := shim.shimCall(func() interface{} {
+				rt := in[1].Interface().(*Runtime)
+				rval, aerror := rt.shimCall(func() interface{} {
 					ret := meth.Call([]reflect.Value{
-						reflect.ValueOf(shim),
+						reflect.ValueOf(rt),
 						param,
 					})
 					return ret[0].Interface()
