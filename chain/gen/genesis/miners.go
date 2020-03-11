@@ -193,12 +193,6 @@ func SetupStorageMiners(ctx context.Context, cs *store.ChainStore, sroot cid.Cid
 				}
 			}
 
-			// TODO: to avoid division by zero, we set the initial power actor power to 1, this adjusts that back down so the accounting is accurate.
-			err = vm.MutateState(ctx, builtin.StoragePowerActorAddr, func(cst cbor.IpldStore, st *power.State) error {
-				st.TotalNetworkPower = big.Sub(st.TotalNetworkPower, big.NewInt(1))
-				return nil
-			})
-
 			// Put sectors to miner sector sets
 			{
 				newSectorInfo := &miner.SectorOnChainInfo{
@@ -256,6 +250,12 @@ func SetupStorageMiners(ctx context.Context, cs *store.ChainStore, sroot cid.Cid
 		}
 
 	}
+
+	// TODO: to avoid division by zero, we set the initial power actor power to 1, this adjusts that back down so the accounting is accurate.
+	err = vm.MutateState(ctx, builtin.StoragePowerActorAddr, func(cst cbor.IpldStore, st *power.State) error {
+		st.TotalNetworkPower = big.Sub(st.TotalNetworkPower, big.NewInt(1))
+		return nil
+	})
 
 	c, err := vm.Flush(ctx)
 	return c, err
