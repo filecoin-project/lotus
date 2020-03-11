@@ -9,6 +9,7 @@ import (
 
 	"github.com/filecoin-project/go-sectorbuilder"
 	"github.com/filecoin-project/lotus/api"
+	"github.com/filecoin-project/lotus/storage/sealmgr/sectorutil"
 )
 
 type workerStorage struct {
@@ -37,6 +38,11 @@ func (w *workerStorage) AcquireSector(ctx context.Context, id abi.SectorNumber, 
 	})
 
 	best := si[0].URLs // TODO: not necessarily true
+
+	sname := sectorutil.SectorName(abi.SectorID{
+		Miner:  w.mid,
+		Number: id,
+	})
 
 	w.fetch(best, )
 }

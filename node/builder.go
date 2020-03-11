@@ -23,7 +23,10 @@ import (
 	"github.com/filecoin-project/go-fil-markets/retrievalmarket/discovery"
 	"github.com/filecoin-project/go-fil-markets/storagemarket"
 	deals "github.com/filecoin-project/go-fil-markets/storagemarket/impl"
+
 	sectorbuilder "github.com/filecoin-project/go-sectorbuilder"
+	"github.com/filecoin-project/lotus/storage/sealmgr/stores"
+
 	"github.com/filecoin-project/specs-actors/actors/runtime"
 	storage2 "github.com/filecoin-project/specs-storage/storage"
 
@@ -256,7 +259,7 @@ func Online() Option {
 		// Storage miner
 		ApplyIf(func(s *Settings) bool { return s.nodeType == repo.StorageMiner },
 			Override(new(*sectorbuilder.Config), modules.SectorBuilderConfig),
-			Override(new(advmgr.LocalStorage), From(new(repo.LockedRepo))),
+			Override(new(stores.LocalStorage), From(new(repo.LockedRepo))),
 			Override(new(advmgr.SectorIDCounter), modules.SectorIDCounter),
 			Override(new(*advmgr.Manager), advmgr.New),
 

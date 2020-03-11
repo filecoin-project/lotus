@@ -1,32 +1,31 @@
-package advmgr
+package stores
 
 import (
 	"encoding/json"
-	"fmt"
-	"io"
 	"io/ioutil"
-	"net/http"
 	"os"
 	"path/filepath"
 	"sync"
 
-	"github.com/gorilla/mux"
+	"github.com/filecoin-project/specs-actors/actors/abi"
 	"golang.org/x/xerrors"
 
 	"github.com/filecoin-project/go-sectorbuilder"
 	"github.com/filecoin-project/lotus/api"
-	"github.com/filecoin-project/lotus/lib/tarutil"
-
-	"github.com/filecoin-project/specs-actors/actors/abi"
-
 	"github.com/filecoin-project/lotus/node/config"
+	"github.com/filecoin-project/lotus/storage/sealmgr/sectorutil"
 )
 
-const metaFile = "sectorstore.json"
+type LocalStorage interface {
+	GetStorage() (config.StorageConfig, error)
+	SetStorage(func(*config.StorageConfig)) error
+}
+
+const MetaFile = "sectorstore.json"
 
 var pathTypes = []sectorbuilder.SectorFileType{sectorbuilder.FTUnsealed, sectorbuilder.FTSealed, sectorbuilder.FTCache}
 
-type storage struct {
+type Local struct {
 	localLk      sync.RWMutex
 	localStorage LocalStorage
 
@@ -42,8 +41,15 @@ type path struct {
 	sectors map[abi.SectorID]sectorbuilder.SectorFileType
 }
 
-func (st *storage) openPath(p string) error {
-	mb, err := ioutil.ReadFile(filepath.Join(p, metaFile))
+func NewLocal(ls LocalStorage) (*Local, error) {
+	l := &Local{
+		localStorage: ls,
+	}
+	return l, l.open()
+}
+
+func (st *Local) OpenPath(p string) error {
+	mb, err := ioutil.ReadFile(filepath.Join(p, MetaFile))
 	if err != nil {
 		return xerrors.Errorf("reading storage metadata for %s: %w", p, err)
 	}
@@ -75,7 +81,7 @@ func (st *storage) openPath(p string) error {
 		}
 
 		for _, ent := range ents {
-			sid, err := parseSectorID(ent.Name())
+			sid, err := sectorutil.ParseSectorID(ent.Name())
 			if err != nil {
 				return xerrors.Errorf("parse sector id %s: %w", ent.Name(), err)
 			}
@@ -89,7 +95,7 @@ func (st *storage) openPath(p string) error {
 	return nil
 }
 
-func (st *storage) open() error {
+func (st *Local) open() error {
 	st.localLk.Lock()
 	defer st.localLk.Unlock()
 
@@ -99,7 +105,7 @@ func (st *storage) open() error {
 	}
 
 	for _, path := range cfg.StoragePaths {
-		err := st.openPath(path.Path)
+		err := st.OpenPath(path.Path)
 		if err != nil {
 			return xerrors.Errorf("opening path %s: %w", path.Path, err)
 		}
@@ -108,7 +114,7 @@ func (st *storage) open() error {
 	return nil
 }
 
-func (st *storage) acquireSector(mid abi.ActorID, id abi.SectorNumber, existing sectorbuilder.SectorFileType, allocate sectorbuilder.SectorFileType, sealing bool) (sectorbuilder.SectorPaths, func(), error) {
+func (st *Local) AcquireSector(sid abi.SectorID, existing sectorbuilder.SectorFileType, allocate sectorbuilder.SectorFileType, sealing bool) (sectorbuilder.SectorPaths, func(), error) {
 	if existing|allocate != existing^allocate {
 		return sectorbuilder.SectorPaths{}, nil, xerrors.New("can't both find and allocate a sector")
 	}
@@ -124,10 +130,7 @@ func (st *storage) acquireSector(mid abi.ActorID, id abi.SectorNumber, existing 
 
 		for _, p := range st.paths {
 			p.lk.Lock()
-			s, ok := p.sectors[abi.SectorID{
-				Miner:  mid,
-				Number: id,
-			}]
+			s, ok := p.sectors[sid]
 			p.lk.Unlock()
 			if !ok {
 				continue
@@ -136,10 +139,10 @@ func (st *storage) acquireSector(mid abi.ActorID, id abi.SectorNumber, existing 
 				continue
 			}
 			if p.local == "" {
-				continue // TODO: fetch
+				continue
 			}
 
-			spath := filepath.Join(p.local, fileType.String(), fmt.Sprintf("s-t0%d-%d", mid, id))
+			spath := filepath.Join(p.local, fileType.String(), sectorutil.SectorName(sid))
 
 			switch fileType {
 			case sectorbuilder.FTUnsealed:
@@ -170,16 +173,13 @@ func (st *storage) acquireSector(mid abi.ActorID, id abi.SectorNumber, existing 
 			}
 
 			p.lk.Lock()
-			p.sectors[abi.SectorID{
-				Miner:  mid,
-				Number: id,
-			}] |= fileType
+			p.sectors[sid] |= fileType
 			p.lk.Unlock()
 
 			// TODO: Check free space
 			// TODO: Calc weights
 
-			best = filepath.Join(p.local, fileType.String(), fmt.Sprintf("s-t0%d-%d", mid, id))
+			best = filepath.Join(p.local, fileType.String(), sectorutil.SectorName(sid))
 			break // todo: the first path won't always be the best
 		}
 
@@ -203,7 +203,7 @@ func (st *storage) acquireSector(mid abi.ActorID, id abi.SectorNumber, existing 
 	return out, st.localLk.RUnlock, nil
 }
 
-func (st *storage) findBestAllocStorage(allocate sectorbuilder.SectorFileType, sealing bool) ([]config.StorageMeta, error) {
+func (st *Local) FindBestAllocStorage(allocate sectorbuilder.SectorFileType, sealing bool) ([]config.StorageMeta, error) {
 	var out []config.StorageMeta
 
 	for _, p := range st.paths {
@@ -227,7 +227,7 @@ func (st *storage) findBestAllocStorage(allocate sectorbuilder.SectorFileType, s
 	return out, nil
 }
 
-func (st *storage) findSector(mid abi.ActorID, sn abi.SectorNumber, typ sectorbuilder.SectorFileType) ([]config.StorageMeta, error) {
+func (st *Local) FindSector(mid abi.ActorID, sn abi.SectorNumber, typ sectorbuilder.SectorFileType) ([]config.StorageMeta, error) {
 	var out []config.StorageMeta
 	for _, p := range st.paths {
 		p.lk.Lock()
@@ -248,7 +248,7 @@ func (st *storage) findSector(mid abi.ActorID, sn abi.SectorNumber, typ sectorbu
 	return out, nil
 }
 
-func (st *storage) local() []api.StoragePath {
+func (st *Local) Local() []api.StoragePath {
 	var out []api.StoragePath
 	for _, p := range st.paths {
 		if p.local == "" {
@@ -265,109 +265,4 @@ func (st *storage) local() []api.StoragePath {
 	}
 
 	return out
-}
-
-func (st *storage) ServeHTTP(w http.ResponseWriter, r *http.Request) { // /storage/
-	mux := mux.NewRouter()
-
-	mux.HandleFunc("/{type}/{id}", st.remoteGetSector).Methods("GET")
-
-	log.Infof("SERVEGETREMOTE %s", r.URL)
-
-	mux.ServeHTTP(w, r)
-}
-
-
-func (st *storage) remoteGetSector(w http.ResponseWriter, r *http.Request) {
-	vars := mux.Vars(r)
-
-	id, err := parseSectorID(vars["id"])
-	if err != nil {
-		log.Error(err)
-		w.WriteHeader(500)
-		return
-	}
-
-	ft, err := ftFromString(vars["type"])
-	if err != nil {
-		return
-	}
-	paths, done, err := st.acquireSector(id.Miner, id.Number, ft, 0, false)
-	if err != nil {
-		return
-	}
-	defer done()
-
-	var path string
-	switch ft {
-	case sectorbuilder.FTUnsealed:
-		path = paths.Unsealed
-	case sectorbuilder.FTSealed:
-		path = paths.Sealed
-	case sectorbuilder.FTCache:
-		path = paths.Cache
-	}
-	if path == "" {
-		log.Error("acquired path was empty")
-		w.WriteHeader(500)
-		return
-	}
-
-	stat, err := os.Stat(path)
-	if err != nil {
-		log.Error(err)
-		w.WriteHeader(500)
-		return
-	}
-
-	var rd io.Reader
-	if stat.IsDir() {
-		rd, err = tarutil.TarDirectory(path)
-		w.Header().Set("Content-Type", "application/x-tar")
-	} else {
-		rd, err = os.OpenFile(path, os.O_RDONLY, 0644)
-		w.Header().Set("Content-Type", "application/octet-stream")
-	}
-	if err != nil {
-		log.Error(err)
-		w.WriteHeader(500)
-		return
-	}
-
-	w.WriteHeader(200)
-	if _, err := io.Copy(w, rd); err != nil { // TODO: default 32k buf may be too small
-		log.Error(err)
-		return
-	}
-}
-
-func ftFromString(t string) (sectorbuilder.SectorFileType, error) {
-	switch t {
-	case sectorbuilder.FTUnsealed.String():
-		return sectorbuilder.FTUnsealed, nil
-	case sectorbuilder.FTSealed.String():
-		return sectorbuilder.FTSealed, nil
-	case sectorbuilder.FTCache.String():
-		return sectorbuilder.FTCache, nil
-	default:
-		return 0, xerrors.Errorf("unknown sector file type: '%s'", t)
-	}
-}
-
-func parseSectorID(baseName string) (abi.SectorID, error) {
-	var n abi.SectorNumber
-	var mid abi.ActorID
-	read, err := fmt.Sscanf(baseName, "s-t0%d-%d", &mid, &n)
-	if err != nil {
-		return abi.SectorID{}, xerrors.Errorf(": %w", err)
-	}
-
-	if read != 2 {
-		return abi.SectorID{}, xerrors.Errorf("parseSectorID expected to scan 2 values, got %d", read)
-	}
-
-	return abi.SectorID{
-		Miner:  mid,
-		Number: n,
-	}, nil
 }

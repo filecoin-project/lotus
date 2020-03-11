@@ -13,13 +13,14 @@ import (
 
 	"github.com/filecoin-project/go-sectorbuilder"
 	"github.com/filecoin-project/lotus/api"
+	"github.com/filecoin-project/lotus/storage/sealmgr/stores"
 
 	"github.com/filecoin-project/lotus/storage/sealmgr"
 )
 
 type localWorker struct {
 	scfg    *sectorbuilder.Config
-	storage *storage
+	storage *stores.Local
 }
 
 type localWorkerPathProvider struct {
@@ -32,7 +33,10 @@ func (l *localWorkerPathProvider) AcquireSector(ctx context.Context, id abi.Sect
 		return sectorbuilder.SectorPaths{}, nil, xerrors.Errorf("get miner ID: %w", err)
 	}
 
-	return l.w.storage.acquireSector(abi.ActorID(mid), id, existing, allocate, sealing)
+	return l.w.storage.AcquireSector(abi.SectorID{
+		Miner: abi.ActorID(mid),
+		Number: id,
+	}, existing, allocate, sealing)
 }
 
 func (l *localWorker) sb() (sectorbuilder.Basic, error) {
@@ -103,7 +107,7 @@ func (l *localWorker) TaskTypes(context.Context) (map[sealmgr.TaskType]struct{},
 }
 
 func (l *localWorker) Paths(context.Context) ([]api.StoragePath, error) {
-	return l.storage.local(), nil
+	return l.storage.Local(), nil
 }
 
 var _ Worker = &localWorker{}
