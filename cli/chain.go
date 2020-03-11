@@ -451,6 +451,8 @@ var chainGetCmd = &cli.Command{
 
 		var cbu cbg.CBORUnmarshaler
 		switch t {
+		case "raw":
+			cbu = nil
 		case "block":
 			cbu = new(types.BlockHeader)
 		case "message":
@@ -474,6 +476,11 @@ var chainGetCmd = &cli.Command{
 		raw, err := api.ChainReadObj(ctx, obj.Cid)
 		if err != nil {
 			return err
+		}
+
+		if cbu == nil {
+			fmt.Printf("%x", raw)
+			return nil
 		}
 
 		if err := cbu.UnmarshalCBOR(bytes.NewReader(raw)); err != nil {
