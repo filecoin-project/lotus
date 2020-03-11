@@ -3,13 +3,14 @@ package main
 import (
 	"context"
 
+	"github.com/ipfs/go-cid"
+
 	"github.com/filecoin-project/specs-actors/actors/abi"
 	"github.com/filecoin-project/specs-storage/storage"
-	"github.com/ipfs/go-cid"
 )
 
 type worker struct {
-
+	spt abi.RegisteredProof
 }
 
 func (w *worker) SealPreCommit1(ctx context.Context, sectorNum abi.SectorNumber, ticket abi.SealRandomness, pieces []abi.PieceInfo) (storage.PreCommit1Out, error) {

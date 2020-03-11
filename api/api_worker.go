@@ -14,6 +14,7 @@ type WorkerApi interface {
 	// TODO: Info() (name, ...) ?
 
 	TaskTypes(context.Context) (map[sealmgr.TaskType]struct{}, error) // TaskType -> Weight
+	Paths(context.Context) ([]StoragePath, error)
 
 	storage.Sealer
 }
