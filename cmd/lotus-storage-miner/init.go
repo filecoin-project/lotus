@@ -173,7 +173,7 @@ var initCmd = &cli.Command{
 			var localPaths []config.LocalPath
 
 			if pssb := cctx.StringSlice("pre-sealed-sectors"); len(pssb) != 0 {
-				log.Infof("Setting up storage config with presealed sector", pssb)
+				log.Infof("Setting up storage config with presealed sector: %v", pssb)
 
 				for _, psp := range pssb {
 					psp, err := homedir.Expand(psp)

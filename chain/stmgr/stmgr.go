@@ -289,7 +289,6 @@ func (sm *StateManager) ApplyBlocks(ctx context.Context, pstate cid.Cid, bms []B
 	}
 
 	return st, rectroot, nil
-
 }
 
 func (sm *StateManager) computeTipSetState(ctx context.Context, blks []*types.BlockHeader, cb ExecCallback) (cid.Cid, cid.Cid, error) {
