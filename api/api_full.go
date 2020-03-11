@@ -2,8 +2,9 @@ package api
 
 import (
 	"context"
-	"github.com/filecoin-project/lotus/chain/vm"
 	"time"
+
+	"github.com/filecoin-project/lotus/chain/vm"
 
 	"github.com/filecoin-project/go-address"
 	"github.com/ipfs/go-cid"
@@ -168,6 +169,8 @@ type DealInfo struct {
 
 	PricePerEpoch types.BigInt
 	Duration      uint64
+
+	DealID uint64
 }
 
 type MsgWait struct {
@@ -273,10 +276,10 @@ type RetrievalOrder struct {
 }
 
 type InvocResult struct {
-	Msg *types.Message
-	MsgRct *types.MessageReceipt
+	Msg                *types.Message
+	MsgRct             *types.MessageReceipt
 	InternalExecutions []*vm.ExecutionResult
-	Error   string
+	Error              string
 }
 
 type ActiveSync struct {
