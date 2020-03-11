@@ -2,21 +2,16 @@ package validation
 
 import (
 	"context"
-	"math/bits"
 
-	"github.com/filecoin-project/go-address"
 	"github.com/filecoin-project/specs-actors/actors/abi"
 	"github.com/filecoin-project/specs-actors/actors/builtin"
 	"github.com/filecoin-project/specs-actors/actors/crypto"
-	"github.com/filecoin-project/specs-actors/actors/runtime"
 	"github.com/filecoin-project/specs-actors/actors/runtime/exitcode"
 	"github.com/ipfs/go-cid"
 
-	"github.com/filecoin-project/go-sectorbuilder"
-
 	vtypes "github.com/filecoin-project/chain-validation/chain/types"
+	vdrivers "github.com/filecoin-project/chain-validation/drivers"
 	vstate "github.com/filecoin-project/chain-validation/state"
-	"github.com/filecoin-project/chain-validation/suites/utils"
 
 	"github.com/filecoin-project/lotus/chain/stmgr"
 	"github.com/filecoin-project/lotus/chain/store"
@@ -34,74 +29,13 @@ func NewApplier() *Applier {
 	return &Applier{}
 }
 
-type ChainValidationSyscalls struct {
-}
-
-
-
-func (c ChainValidationSyscalls) VerifySignature(signature crypto.Signature, signer address.Address, plaintext []byte) error {
-	return nil
-}
-
-func (c ChainValidationSyscalls) HashBlake2b(data []byte) [32]byte {
-	return vm.Syscalls(sectorbuilder.ProofVerifier).HashBlake2b(data)
-}
-
-func (c ChainValidationSyscalls) ComputeUnsealedSectorCID(proof abi.RegisteredProof, pieces []abi.PieceInfo) (cid.Cid, error) {
-	var sum abi.PaddedPieceSize
-	for _, p := range pieces {
-		sum += p.Size
-	}
-
-	ssize, err := proof.SectorSize()
-	if err != nil {
-		return cid.Undef, err
-	}
-
-	{
-		// pad remaining space with 0 CommPs
-		toFill := uint64(abi.PaddedPieceSize(ssize) - sum)
-		n := bits.OnesCount64(toFill)
-		for i := 0; i < n; i++ {
-			next := bits.TrailingZeros64(toFill)
-			psize := uint64(1) << next
-			toFill ^= psize
-
-			unpadded := abi.PaddedPieceSize(psize).Unpadded()
-			pieces = append(pieces, abi.PieceInfo{
-				Size:     unpadded.Padded(),
-				PieceCID: utils.ForSize(unpadded),
-			})
-		}
-	}
-
-	commd, err := sectorbuilder.GenerateUnsealedCID(proof, pieces)
-	if err != nil {
-		return cid.Undef, err
-	}
-
-	return commd, nil
-}
-
-func (c ChainValidationSyscalls) VerifySeal( info abi.SealVerifyInfo) error {
-	return nil
-}
-
-func (c ChainValidationSyscalls) VerifyPoSt(info abi.PoStVerifyInfo) error {
-	return nil
-}
-
-func (c ChainValidationSyscalls) VerifyConsensusFault(h1, h2, extra []byte, earliest abi.ChainEpoch) (*runtime.ConsensusFault, error) {
-	panic("implement me")
-}
-
 func (a *Applier) ApplyMessage(eCtx *vtypes.ExecutionContext, state vstate.VMWrapper, message *vtypes.Message) (vtypes.MessageReceipt, error) {
 	ctx := context.TODO()
 	st := state.(*StateWrapper)
 
 	base := st.Root()
 	randSrc := &vmRand{eCtx}
-	lotusVM, err := vm.NewVM(base, abi.ChainEpoch(eCtx.Epoch), randSrc, eCtx.Miner, st.bs, &ChainValidationSyscalls{})
+	lotusVM, err := vm.NewVM(base, abi.ChainEpoch(eCtx.Epoch), randSrc, eCtx.Miner, st.bs, vdrivers.NewChainValidationSyscalls())
 	if err != nil {
 		return vtypes.MessageReceipt{}, err
 	}
@@ -127,7 +61,7 @@ func (a *Applier) ApplyMessage(eCtx *vtypes.ExecutionContext, state vstate.VMWra
 
 func (a *Applier) ApplyTipSetMessages(state vstate.VMWrapper, blocks []vtypes.BlockMessagesInfo, epoch abi.ChainEpoch, rnd vstate.RandomnessSource) ([]vtypes.MessageReceipt, error) {
 	sw := state.(*StateWrapper)
-	cs := store.NewChainStore(sw.bs, sw.ds, &ChainValidationSyscalls{})
+	cs := store.NewChainStore(sw.bs, sw.ds, vdrivers.NewChainValidationSyscalls())
 	sm := stmgr.NewStateManager(cs)
 
 	var bms []stmgr.BlockMessages

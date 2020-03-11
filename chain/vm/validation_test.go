@@ -37,7 +37,6 @@ func init() {
 		/* tests to skip go here */
 		tipset.TestInternalMessageApplicationFailure,
 		tipset.TestInvalidSenderAddress,
-		tipset.TestMinerCreateProveCommitAndMissPoStChallengeWindow,
 	}}
 }
 
@@ -60,9 +59,3 @@ func TestChainValidationTipSetSuite(t *testing.T) {
 		testCase(t, f)
 	}
 }
-
-func TestMinerWorkflow(t *testing.T) {
-	f := factory.NewFactories()
-	tipset.TestMinerCreateProveCommitAndMissPoStChallengeWindow(t,f)
-}
-
