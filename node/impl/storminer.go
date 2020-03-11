@@ -13,7 +13,9 @@ import (
 
 	"github.com/filecoin-project/go-address"
 	storagemarket "github.com/filecoin-project/go-fil-markets/storagemarket"
+
 	"github.com/filecoin-project/go-sectorbuilder"
+
 	"github.com/filecoin-project/specs-actors/actors/abi"
 
 	"github.com/filecoin-project/lotus/api"
@@ -256,15 +258,26 @@ func (sm *StorageMinerAPI) SectorsUpdate(ctx context.Context, id abi.SectorNumbe
 	return sm.Miner.ForceSectorState(ctx, id, state)
 }
 
-/*
-func (sm *StorageMinerAPI) WorkerQueue(ctx context.Context, cfg sectorbuilder.WorkerCfg) (<-chan sectorbuilder.WorkerTask, error) {
-	return sm.SectorBuilder.AddWorker(ctx, cfg)
+func (sm *StorageMinerAPI) WorkerConnect(ctx context.Context, url string) error {
+	_, err := advmgr.ConnectRemote(ctx, sm.Full, url)
+	if err != nil {
+		return err
+	}
+
+	panic("todo register ")
 }
 
-func (sm *StorageMinerAPI) WorkerDone(ctx context.Context, task uint64, res sectorbuilder.SealRes) error {
-	return sm.SectorBuilder.TaskDone(ctx, task, res)
+func (sm *StorageMinerAPI) WorkerAttachStorage(ctx context.Context, si api.StorageInfo) error {
+	panic("implement me")
 }
-*/
+
+func (sm *StorageMinerAPI) WorkerDeclareSector(ctx context.Context, storageId string, s abi.SectorID) error {
+	panic("implement me")
+}
+
+func (sm *StorageMinerAPI) WorkerFindSector(ctx context.Context, si abi.SectorID, types sectorbuilder.SectorFileType) ([]api.StorageInfo, error) {
+	panic("implement me")
+}
 
 func (sm *StorageMinerAPI) MarketImportDealData(ctx context.Context, propCid cid.Cid, path string) error {
 	fi, err := os.Open(path)

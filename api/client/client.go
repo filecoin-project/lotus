@@ -42,3 +42,13 @@ func NewStorageMinerRPC(addr string, requestHeader http.Header) (api.StorageMine
 
 	return &res, closer, err
 }
+
+func NewWorkerRPC(addr string, requestHeader http.Header) (api.WorkerApi, jsonrpc.ClientCloser, error) {
+	var res apistruct.WorkerStruct
+	closer, err := jsonrpc.NewMergeClient(addr, "Filecoin",
+		[]interface{}{
+			&res.Internal,
+		}, requestHeader)
+
+	return &res, closer, err
+}

@@ -5,6 +5,7 @@ import (
 	"io"
 
 	"github.com/ipfs/go-cid"
+	logging "github.com/ipfs/go-log/v2"
 	"github.com/mitchellh/go-homedir"
 	"golang.org/x/xerrors"
 
@@ -16,6 +17,8 @@ import (
 	"github.com/filecoin-project/lotus/node/config"
 	"github.com/filecoin-project/lotus/storage/sealmgr"
 )
+
+var log = logging.Logger("advmgr")
 
 type SectorIDCounter interface {
 	Next() (abi.SectorNumber, error)
@@ -39,7 +42,7 @@ type Path struct {
 type Worker interface {
 	sectorbuilder.Sealer
 
-	TaskTypes() map[sealmgr.TaskType]struct{}
+	TaskTypes(context.Context) (map[sealmgr.TaskType]struct{}, error)
 	Paths() []Path
 }
 
@@ -122,7 +125,12 @@ func (m *Manager) getWorkersByPaths(task sealmgr.TaskType, inPaths []config.Stor
 	paths := map[int]config.StorageMeta{}
 
 	for i, worker := range m.workers {
-		if _, ok := worker.TaskTypes()[task]; !ok {
+		tt, err := worker.TaskTypes(context.TODO())
+		if err != nil {
+			log.Errorf("error getting supported worker task types: %+v", err)
+			continue
+		}
+		if _, ok := tt[task]; !ok {
 			continue
 		}
 
@@ -221,7 +229,12 @@ func (m *Manager) SealCommit1(ctx context.Context, sectorNum abi.SectorNumber, t
 
 func (m *Manager) SealCommit2(ctx context.Context, sectorNum abi.SectorNumber, phase1Out storage2.Commit1Out) (proof storage2.Proof, err error) {
 	for _, worker := range m.workers {
-		if _, ok := worker.TaskTypes()[sealmgr.TTCommit2]; !ok {
+		tt, err := worker.TaskTypes(context.TODO())
+		if err != nil {
+			log.Errorf("error getting supported worker task types: %+v", err)
+			continue
+		}
+		if _, ok := tt[sealmgr.TTCommit2]; !ok {
 			continue
 		}
 

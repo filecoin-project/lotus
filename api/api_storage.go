@@ -10,6 +10,7 @@ import (
 	"github.com/filecoin-project/specs-actors/actors/abi"
 
 	"github.com/filecoin-project/go-fil-markets/storagemarket"
+	"github.com/filecoin-project/go-sectorbuilder"
 	"github.com/filecoin-project/lotus/chain/types"
 )
 
@@ -107,16 +108,12 @@ type StorageMiner interface {
 
 	SectorsUpdate(context.Context, abi.SectorNumber, SectorState) error
 
-	/*WorkerStats(context.Context) (sealsched.WorkerStats, error)*/
+	// WorkerConnect tells the node to connect to workers RPC
+	WorkerConnect(context.Context, string) error
+	WorkerAttachStorage(context.Context, StorageInfo) error
+	WorkerDeclareSector(ctx context.Context, storageId string, s abi.SectorID) error
+	WorkerFindSector(context.Context, abi.SectorID, sectorbuilder.SectorFileType) ([]StorageInfo, error)
 
-	/*// WorkerQueue registers a remote worker
-	WorkerQueue(context.Context, WorkerCfg) (<-chan WorkerTask, error)
-
-	// WorkerQueue registers a remote worker
-	WorkerQueue(context.Context, sectorbuilder.WorkerCfg) (<-chan sectorbuilder.WorkerTask, error)
-
-	WorkerDone(ctx context.Context, task uint64, res sectorbuilder.SealRes) error
-	*/
 	MarketImportDealData(ctx context.Context, propcid cid.Cid, path string) error
 	MarketListDeals(ctx context.Context) ([]storagemarket.StorageDeal, error)
 	MarketListIncompleteDeals(ctx context.Context) ([]storagemarket.MinerDeal, error)
@@ -126,6 +123,15 @@ type StorageMiner interface {
 	DealsList(ctx context.Context) ([]storagemarket.StorageDeal, error)
 
 	StorageAddLocal(ctx context.Context, path string) error
+}
+
+type StorageInfo struct {
+	ID             string
+	URLs []string // TODO: Support non-http transports
+	Cost int
+
+	CanSeal bool
+	CanStore bool
 }
 
 type SealRes struct {
