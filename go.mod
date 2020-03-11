@@ -11,7 +11,7 @@ require (
 	github.com/StackExchange/wmi v0.0.0-20190523213315-cbe66965904d // indirect
 	github.com/coreos/go-systemd/v22 v22.0.0
 	github.com/docker/go-units v0.4.0
-	github.com/filecoin-project/chain-validation v0.0.6-0.20200305212458-670d41260fd7
+	github.com/filecoin-project/chain-validation v0.0.6-0.20200311174724-0f08f47289af
 	github.com/filecoin-project/filecoin-ffi v0.0.0-20200304181354-4446ff8a1bb9
 	github.com/filecoin-project/go-address v0.0.2-0.20200218010043-eb9bb40ed5be
 	github.com/filecoin-project/go-amt-ipld/v2 v2.0.1-0.20200131012142-05d80eeccc5e
@@ -95,17 +95,12 @@ require (
 	github.com/whyrusleeping/multiaddr-filter v0.0.0-20160516205228-e903e4adabd7
 	github.com/whyrusleeping/pubsub v0.0.0-20131020042734-02de8aa2db3d
 	go.opencensus.io v0.22.2
-	go.uber.org/atomic v1.5.1 // indirect
-	go.uber.org/dig v1.7.0 // indirect
+	go.uber.org/dig v1.8.0 // indirect
 	go.uber.org/fx v1.9.0
-	go.uber.org/goleak v0.10.0 // indirect
+	go.uber.org/goleak v1.0.0 // indirect
 	go.uber.org/multierr v1.4.0
 	go.uber.org/zap v1.13.0
-	go4.org v0.0.0-20190313082347-94abd6928b1d // indirect
-	golang.org/x/lint v0.0.0-20191125180803-fdd1cda4f05f // indirect
-	golang.org/x/sys v0.0.0-20200107162124-548cf772de50 // indirect
 	golang.org/x/time v0.0.0-20190308202827-9d24e82272b4
-	golang.org/x/tools v0.0.0-20200108195415-316d2f248479 // indirect
 	golang.org/x/xerrors v0.0.0-20191204190536-9bdfabe68543
 	gopkg.in/urfave/cli.v2 v2.0.0-20180128182452-d3ae77c26ac8
 	gotest.tools v2.2.0+incompatible
