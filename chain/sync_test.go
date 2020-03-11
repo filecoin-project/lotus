@@ -8,6 +8,8 @@ import (
 	"time"
 
 	"github.com/filecoin-project/specs-actors/actors/abi"
+	"github.com/filecoin-project/specs-actors/actors/abi/big"
+	"github.com/filecoin-project/specs-actors/actors/builtin/power"
 	logging "github.com/ipfs/go-log/v2"
 	"github.com/libp2p/go-libp2p-core/peer"
 	mocknet "github.com/libp2p/go-libp2p/p2p/net/mock"
@@ -29,7 +31,7 @@ func init() {
 	build.InsecurePoStValidation = true
 	os.Setenv("TRUST_PARAMS", "1")
 	build.SectorSizes = []abi.SectorSize{2048}
-	build.MinimumMinerPower = 2048
+	power.ConsensusMinerMinPower = big.NewInt(2048)
 }
 
 const source = 0

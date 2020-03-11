@@ -10,13 +10,15 @@ import (
 	"github.com/filecoin-project/lotus/chain/types"
 	"github.com/filecoin-project/lotus/node/repo"
 	"github.com/filecoin-project/specs-actors/actors/abi"
+	"github.com/filecoin-project/specs-actors/actors/abi/big"
+	"github.com/filecoin-project/specs-actors/actors/builtin/power"
 	"github.com/filecoin-project/specs-actors/actors/crypto"
 	blockstore "github.com/ipfs/go-ipfs-blockstore"
 )
 
 func init() {
 	build.SectorSizes = []abi.SectorSize{2048}
-	build.MinimumMinerPower = 2048
+	power.ConsensusMinerMinPower = big.NewInt(2048)
 }
 
 func BenchmarkGetRandomness(b *testing.B) {
