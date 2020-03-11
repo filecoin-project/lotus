@@ -66,7 +66,7 @@ func New(ls stores.LocalStorage, cfg *sectorbuilder.Config, sc SectorIDCounter) 
 
 	m := &Manager{
 		workers: []Worker{
-			&localWorker{scfg: cfg, storage: stor},
+			&LocalWorker{scfg: cfg, storage: stor},
 		},
 		scfg: cfg,
 		sc:   sc,
