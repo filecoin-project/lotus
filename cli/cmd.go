@@ -134,7 +134,6 @@ func GetAPIInfo(ctx *cli.Context, t repo.RepoType) (APIInfo, error) {
 }
 
 func GetRawAPI(ctx *cli.Context, t repo.RepoType) (string, http.Header, error) {
-
 	ainfo, err := GetAPIInfo(ctx, t)
 	if err != nil {
 		return "", nil, xerrors.Errorf("could not get API info: %w", err)

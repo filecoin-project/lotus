@@ -4,9 +4,15 @@ import (
 	"os"
 
 	logging "github.com/ipfs/go-log/v2"
+	manet "github.com/multiformats/go-multiaddr-net"
+	"golang.org/x/xerrors"
 	"gopkg.in/urfave/cli.v2"
 
+	paramfetch "github.com/filecoin-project/go-paramfetch"
+
+	"github.com/filecoin-project/lotus/api"
 	"github.com/filecoin-project/lotus/build"
+	lcli "github.com/filecoin-project/lotus/cli"
 	"github.com/filecoin-project/lotus/lib/lotuslog"
 	"github.com/filecoin-project/lotus/node/repo"
 )
@@ -75,60 +81,53 @@ var runCmd = &cli.Command{
 	Name:  "run",
 	Usage: "Start lotus worker",
 	Action: func(cctx *cli.Context) error {
-		/*	if !cctx.Bool("enable-gpu-proving") {
-				os.Setenv("BELLMAN_NO_GPU", "true")
-			}
+		if !cctx.Bool("enable-gpu-proving") {
+			os.Setenv("BELLMAN_NO_GPU", "true")
+		}
 
-			nodeApi, closer, err := lcli.GetStorageMinerAPI(cctx)
-			if err != nil {
-				return xerrors.Errorf("getting miner api: %w", err)
-			}
-			defer closer()
-			ctx := lcli.ReqContext(cctx)
+		nodeApi, closer, err := lcli.GetStorageMinerAPI(cctx)
+		if err != nil {
+			return xerrors.Errorf("getting miner api: %w", err)
+		}
+		defer closer()
+		ctx := lcli.ReqContext(cctx)
 
-			ainfo, err := lcli.GetAPIInfo(cctx, repo.StorageMiner)
-			if err != nil {
-				return xerrors.Errorf("could not get api info: %w", err)
-			}
-			_, storageAddr, err := manet.DialArgs(ainfo.Addr)
+		v, err := nodeApi.Version(ctx)
+		if err != nil {
+			return err
+		}
+		if v.APIVersion != build.APIVersion {
+			return xerrors.Errorf("lotus-storage-miner API version doesn't match: local: ", api.Version{APIVersion: build.APIVersion})
+		}
 
-			r, err := homedir.Expand(cctx.String("repo"))
-			if err != nil {
-				return err
-			}
+		go func() {
+			<-ctx.Done()
+			log.Warn("Shutting down..")
+		}()
 
-			v, err := nodeApi.Version(ctx)
-			if err != nil {
-				return err
-			}
-			if v.APIVersion != build.APIVersion {
-				return xerrors.Errorf("lotus-storage-miner API version doesn't match: local: ", api.Version{APIVersion: build.APIVersion})
-			}
+		act, err := nodeApi.ActorAddress(ctx)
+		if err != nil {
+			return err
+		}
+		ssize, err := nodeApi.ActorSectorSize(ctx, act)
+		if err != nil {
+			return err
+		}
 
-			go func() {
-				<-ctx.Done()
-				log.Warn("Shutting down..")
-			}()
+		if err := paramfetch.GetParams(build.ParametersJson(), uint64(ssize)); err != nil {
+			return xerrors.Errorf("get params: %w", err)
+		}
 
-			limiter := &limits{
-				workLimit:     make(chan struct{}, workers),
-				transferLimit: make(chan struct{}, transfers),
-			}
+		ainfo, err := lcli.GetAPIInfo(cctx, repo.StorageMiner)
+		if err != nil {
+			return xerrors.Errorf("could not get api info: %w", err)
+		}
+		_, storageAddr, err := manet.DialArgs(ainfo.Addr)
 
-			act, err := nodeApi.ActorAddress(ctx)
-			if err != nil {
-				return err
-			}
-			ssize, err := nodeApi.ActorSectorSize(ctx, act)
-			if err != nil {
-				return err
-			}
 
-			if err := paramfetch.GetParams(build.ParametersJson(), uint64(ssize)); err != nil {
-				return xerrors.Errorf("get params: %w", err)
-			}
 
-			/*ppt, spt, err := api.ProofTypeFromSectorSize(ssize)
+		/*
+		/*ppt, spt, err := api.ProofTypeFromSectorSize(ssize)
 			if err != nil {
 				return err
 			}

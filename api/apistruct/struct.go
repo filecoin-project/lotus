@@ -3,6 +3,7 @@ package apistruct
 import (
 	"context"
 
+	"github.com/filecoin-project/specs-storage/storage"
 	"github.com/ipfs/go-cid"
 	"github.com/libp2p/go-libp2p-core/network"
 	"github.com/libp2p/go-libp2p-core/peer"
@@ -16,9 +17,12 @@ import (
 	"github.com/filecoin-project/specs-actors/actors/builtin/reward"
 	"github.com/filecoin-project/specs-actors/actors/crypto"
 
+	"github.com/filecoin-project/go-sectorbuilder"
 	"github.com/filecoin-project/lotus/api"
+	"github.com/filecoin-project/lotus/build"
 	"github.com/filecoin-project/lotus/chain/store"
 	"github.com/filecoin-project/lotus/chain/types"
+	"github.com/filecoin-project/lotus/storage/sealmgr"
 )
 
 // All permissions are listed in permissioned.go
@@ -167,6 +171,7 @@ type StorageMinerStruct struct {
 		MarketImportDealData      func(context.Context, cid.Cid, string) error                   `perm:"write"`
 		MarketListDeals           func(ctx context.Context) ([]storagemarket.StorageDeal, error) `perm:"read"`
 		MarketListIncompleteDeals func(ctx context.Context) ([]storagemarket.MinerDeal, error)   `perm:"read"`
+		/* Market */ SetPrice func(context.Context, types.BigInt) error `perm:"admin"`
 
 		PledgeSector func(context.Context) error `perm:"write"`
 
@@ -175,17 +180,31 @@ type StorageMinerStruct struct {
 		SectorsRefs   func(context.Context) (map[string][]api.SealedRef, error)       `perm:"read"`
 		SectorsUpdate func(context.Context, abi.SectorNumber, api.SectorState) error  `perm:"write"`
 
-		/*		WorkerStats func(context.Context) (sectorbuilder.WorkerStats, error) `perm:"read"`
-
-				WorkerQueue func(ctx context.Context, cfg sectorbuilder.WorkerCfg) (<-chan sectorbuilder.WorkerTask, error) `perm:"admin"` // TODO: worker perm
-				WorkerDone  func(ctx context.Context, task uint64, res sectorbuilder.SealRes) error                         `perm:"admin"`
-		*/
-		SetPrice func(context.Context, types.BigInt) error `perm:"admin"`
+		WorkerConnect func(context.Context, string) error `perm:"admin"` // TODO: worker perm
+		WorkerAttachStorage func(context.Context, api.StorageInfo) error  `perm:"admin"`
+		WorkerDeclareSector func(ctx context.Context, storageId string, s abi.SectorID) error  `perm:"admin"`
+		WorkerFindSector func(context.Context, abi.SectorID, sectorbuilder.SectorFileType) ([]api.StorageInfo, error)  `perm:"admin"`
 
 		DealsImportData func(ctx context.Context, dealPropCid cid.Cid, file string) error `perm:"write"`
 		DealsList       func(ctx context.Context) ([]storagemarket.StorageDeal, error)    `perm:"read"`
 
 		StorageAddLocal func(ctx context.Context, path string) error `perm:"admin"`
+	}
+}
+
+type WorkerStruct struct {
+	Internal struct {
+		// TODO: lower perms
+
+		Version func(context.Context) (build.Version, error) `perm:"admin"`
+
+		TaskTypes func(context.Context) (map[sealmgr.TaskType]struct{}, error) `perm:"admin"`
+
+		SealPreCommit1 func(ctx context.Context, sectorNum abi.SectorNumber, ticket abi.SealRandomness, pieces []abi.PieceInfo) (storage.PreCommit1Out, error)                                                                          `perm:"admin"`
+		SealPreCommit2 func(context.Context, abi.SectorNumber, storage.PreCommit1Out) (sealedCID cid.Cid, unsealedCID cid.Cid, err error)                                                                                               `perm:"admin"`
+		SealCommit1    func(ctx context.Context, sectorNum abi.SectorNumber, ticket abi.SealRandomness, seed abi.InteractiveSealRandomness, pieces []abi.PieceInfo, sealedCID cid.Cid, unsealedCID cid.Cid) (storage.Commit1Out, error) `perm:"admin"`
+		SealCommit2    func(context.Context, abi.SectorNumber, storage.Commit1Out) (storage.Proof, error)                                                                                                                               `perm:"admin"`
+		FinalizeSector func(context.Context, abi.SectorNumber) error                                                                                                                                                                    `perm:"admin"`
 	}
 }
 
@@ -627,17 +646,21 @@ func (c *StorageMinerStruct) SectorsUpdate(ctx context.Context, id abi.SectorNum
 	return c.Internal.SectorsUpdate(ctx, id, state)
 }
 
-/*func (c *StorageMinerStruct) WorkerStats(ctx context.Context) (sealsched.WorkerStats, error) {
-	return c.Internal.WorkerStats(ctx)
-}*/
-
-/*func (c *StorageMinerStruct) WorkerQueue(ctx context.Context, cfg sectorbuilder.WorkerCfg) (<-chan sectorbuilder.WorkerTask, error) {
-	return c.Internal.WorkerQueue(ctx, cfg)
+func (c *StorageMinerStruct) WorkerConnect(ctx context.Context, url string) error {
+	return c.Internal.WorkerConnect(ctx, url)
 }
 
-func (c *StorageMinerStruct) WorkerDone(ctx context.Context, task uint64, res sectorbuilder.SealRes) error {
-	return c.Internal.WorkerDone(ctx, task, res)
-}*/
+func (c *StorageMinerStruct) WorkerAttachStorage(ctx context.Context, si api.StorageInfo) error {
+	return c.Internal.WorkerAttachStorage(ctx, si)
+}
+
+func (c *StorageMinerStruct) WorkerDeclareSector(ctx context.Context, storageId string, s abi.SectorID) error {
+	return c.Internal.WorkerDeclareSector(ctx, storageId, s)
+}
+
+func (c *StorageMinerStruct) WorkerFindSector(ctx context.Context, si abi.SectorID, types sectorbuilder.SectorFileType) ([]api.StorageInfo, error) {
+	return c.Internal.WorkerFindSector(ctx, si, types)
+}
 
 func (c *StorageMinerStruct) MarketImportDealData(ctx context.Context, propcid cid.Cid, path string) error {
 	return c.Internal.MarketImportDealData(ctx, propcid, path)
@@ -667,6 +690,35 @@ func (c *StorageMinerStruct) StorageAddLocal(ctx context.Context, path string) e
 	return c.Internal.StorageAddLocal(ctx, path)
 }
 
+func (w *WorkerStruct) Version(ctx context.Context) (build.Version, error) {
+	return w.Internal.Version(ctx)
+}
+
+func (w *WorkerStruct) TaskTypes(ctx context.Context) (map[sealmgr.TaskType]struct{}, error) {
+	return w.Internal.TaskTypes(ctx)
+}
+
+func (w *WorkerStruct) SealPreCommit1(ctx context.Context, sectorNum abi.SectorNumber, ticket abi.SealRandomness, pieces []abi.PieceInfo) (storage.PreCommit1Out, error) {
+	return w.Internal.SealPreCommit1(ctx, sectorNum, ticket, pieces)
+}
+
+func (w *WorkerStruct) SealPreCommit2(ctx context.Context, sectorNum abi.SectorNumber, p1o storage.PreCommit1Out) (sealedCID cid.Cid, unsealedCID cid.Cid, err error) {
+	return w.Internal.SealPreCommit2(ctx, sectorNum, p1o)
+}
+
+func (w *WorkerStruct) SealCommit1(ctx context.Context, sectorNum abi.SectorNumber, ticket abi.SealRandomness, seed abi.InteractiveSealRandomness, pieces []abi.PieceInfo, sealedCID cid.Cid, unsealedCID cid.Cid) (storage.Commit1Out, error) {
+	return w.Internal.SealCommit1(ctx, sectorNum, ticket, seed, pieces, sealedCID, unsealedCID)
+}
+
+func (w *WorkerStruct) SealCommit2(ctx context.Context, sectorNum abi.SectorNumber, c1o storage.Commit1Out) (storage.Proof, error) {
+	return w.Internal.SealCommit2(ctx, sectorNum, c1o)
+}
+
+func (w *WorkerStruct) FinalizeSector(ctx context.Context, sectorNum abi.SectorNumber) error {
+	return w.Internal.FinalizeSector(ctx, sectorNum)
+}
+
 var _ api.Common = &CommonStruct{}
 var _ api.FullNode = &FullNodeStruct{}
 var _ api.StorageMiner = &StorageMinerStruct{}
+var _ api.WorkerApi = &WorkerStruct{}

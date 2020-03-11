@@ -91,13 +91,13 @@ func (l *localWorker) FinalizeSector(ctx context.Context, sectorNum abi.SectorNu
 	return sb.FinalizeSector(ctx, sectorNum)
 }
 
-func (l *localWorker) TaskTypes() map[sealmgr.TaskType]struct{} {
+func (l *localWorker) TaskTypes(context.Context) (map[sealmgr.TaskType]struct{}, error) {
 	return map[sealmgr.TaskType]struct{}{
 		sealmgr.TTAddPiece:   {},
 		sealmgr.TTPreCommit1: {},
 		sealmgr.TTPreCommit2: {},
 		sealmgr.TTCommit2:    {},
-	}
+	}, nil
 }
 
 func (l *localWorker) Paths() []Path {
