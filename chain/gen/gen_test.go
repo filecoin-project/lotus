@@ -9,13 +9,14 @@ import (
 	_ "github.com/filecoin-project/lotus/lib/sigs/secp"
 
 	"github.com/filecoin-project/lotus/build"
-	_ "github.com/filecoin-project/lotus/lib/sigs/bls"
-	_ "github.com/filecoin-project/lotus/lib/sigs/secp"
+
+	"github.com/filecoin-project/specs-actors/actors/abi/big"
+	"github.com/filecoin-project/specs-actors/actors/builtin/power"
 )
 
 func init() {
 	build.SectorSizes = []abi.SectorSize{2048}
-	build.MinimumMinerPower = 2048
+	power.ConsensusMinerMinPower = big.NewInt(2048)
 }
 
 func testGeneration(t testing.TB, n int, msgs int) {
