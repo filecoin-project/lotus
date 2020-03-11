@@ -18,13 +18,13 @@ import (
 	"github.com/filecoin-project/lotus/storage/sealmgr"
 )
 
-type localWorker struct {
+type LocalWorker struct {
 	scfg    *sectorbuilder.Config
 	storage *stores.Local
 }
 
 type localWorkerPathProvider struct {
-	w *localWorker
+	w *LocalWorker
 }
 
 func (l *localWorkerPathProvider) AcquireSector(ctx context.Context, id abi.SectorNumber, existing sectorbuilder.SectorFileType, allocate sectorbuilder.SectorFileType, sealing bool) (sectorbuilder.SectorPaths, func(), error) {
@@ -39,11 +39,11 @@ func (l *localWorkerPathProvider) AcquireSector(ctx context.Context, id abi.Sect
 	}, existing, allocate, sealing)
 }
 
-func (l *localWorker) sb() (sectorbuilder.Basic, error) {
+func (l *LocalWorker) sb() (sectorbuilder.Basic, error) {
 	return sectorbuilder.New(&localWorkerPathProvider{w: l}, l.scfg)
 }
 
-func (l *localWorker) AddPiece(ctx context.Context, sn abi.SectorNumber, epcs []abi.UnpaddedPieceSize, sz abi.UnpaddedPieceSize, r io.Reader) (abi.PieceInfo, error) {
+func (l *LocalWorker) AddPiece(ctx context.Context, sn abi.SectorNumber, epcs []abi.UnpaddedPieceSize, sz abi.UnpaddedPieceSize, r io.Reader) (abi.PieceInfo, error) {
 	sb, err := l.sb()
 	if err != nil {
 		return abi.PieceInfo{}, err
@@ -52,7 +52,7 @@ func (l *localWorker) AddPiece(ctx context.Context, sn abi.SectorNumber, epcs []
 	return sb.AddPiece(ctx, sn, epcs, sz, r)
 }
 
-func (l *localWorker) SealPreCommit1(ctx context.Context, sectorNum abi.SectorNumber, ticket abi.SealRandomness, pieces []abi.PieceInfo) (out storage2.PreCommit1Out, err error) {
+func (l *LocalWorker) SealPreCommit1(ctx context.Context, sectorNum abi.SectorNumber, ticket abi.SealRandomness, pieces []abi.PieceInfo) (out storage2.PreCommit1Out, err error) {
 	sb, err := l.sb()
 	if err != nil {
 		return nil, err
@@ -61,7 +61,7 @@ func (l *localWorker) SealPreCommit1(ctx context.Context, sectorNum abi.SectorNu
 	return sb.SealPreCommit1(ctx, sectorNum, ticket, pieces)
 }
 
-func (l *localWorker) SealPreCommit2(ctx context.Context, sectorNum abi.SectorNumber, phase1Out storage2.PreCommit1Out) (sealedCID cid.Cid, unsealedCID cid.Cid, err error) {
+func (l *LocalWorker) SealPreCommit2(ctx context.Context, sectorNum abi.SectorNumber, phase1Out storage2.PreCommit1Out) (sealedCID cid.Cid, unsealedCID cid.Cid, err error) {
 	sb, err := l.sb()
 	if err != nil {
 		return cid.Undef, cid.Undef, err
@@ -70,7 +70,7 @@ func (l *localWorker) SealPreCommit2(ctx context.Context, sectorNum abi.SectorNu
 	return sb.SealPreCommit2(ctx, sectorNum, phase1Out)
 }
 
-func (l *localWorker) SealCommit1(ctx context.Context, sectorNum abi.SectorNumber, ticket abi.SealRandomness, seed abi.InteractiveSealRandomness, pieces []abi.PieceInfo, sealedCID cid.Cid, unsealedCID cid.Cid) (output storage2.Commit1Out, err error) {
+func (l *LocalWorker) SealCommit1(ctx context.Context, sectorNum abi.SectorNumber, ticket abi.SealRandomness, seed abi.InteractiveSealRandomness, pieces []abi.PieceInfo, sealedCID cid.Cid, unsealedCID cid.Cid) (output storage2.Commit1Out, err error) {
 	sb, err := l.sb()
 	if err != nil {
 		return nil, err
@@ -79,7 +79,7 @@ func (l *localWorker) SealCommit1(ctx context.Context, sectorNum abi.SectorNumbe
 	return sb.SealCommit1(ctx, sectorNum, ticket, seed, pieces, sealedCID, unsealedCID)
 }
 
-func (l *localWorker) SealCommit2(ctx context.Context, sectorNum abi.SectorNumber, phase1Out storage2.Commit1Out) (proof storage2.Proof, err error) {
+func (l *LocalWorker) SealCommit2(ctx context.Context, sectorNum abi.SectorNumber, phase1Out storage2.Commit1Out) (proof storage2.Proof, err error) {
 	sb, err := l.sb()
 	if err != nil {
 		return nil, err
@@ -88,7 +88,7 @@ func (l *localWorker) SealCommit2(ctx context.Context, sectorNum abi.SectorNumbe
 	return sb.SealCommit2(ctx, sectorNum, phase1Out)
 }
 
-func (l *localWorker) FinalizeSector(ctx context.Context, sectorNum abi.SectorNumber) error {
+func (l *LocalWorker) FinalizeSector(ctx context.Context, sectorNum abi.SectorNumber) error {
 	sb, err := l.sb()
 	if err != nil {
 		return err
@@ -97,7 +97,7 @@ func (l *localWorker) FinalizeSector(ctx context.Context, sectorNum abi.SectorNu
 	return sb.FinalizeSector(ctx, sectorNum)
 }
 
-func (l *localWorker) TaskTypes(context.Context) (map[sealmgr.TaskType]struct{}, error) {
+func (l *LocalWorker) TaskTypes(context.Context) (map[sealmgr.TaskType]struct{}, error) {
 	return map[sealmgr.TaskType]struct{}{
 		sealmgr.TTAddPiece:   {},
 		sealmgr.TTPreCommit1: {},
@@ -106,8 +106,8 @@ func (l *localWorker) TaskTypes(context.Context) (map[sealmgr.TaskType]struct{},
 	}, nil
 }
 
-func (l *localWorker) Paths(context.Context) ([]api.StoragePath, error) {
+func (l *LocalWorker) Paths(context.Context) ([]api.StoragePath, error) {
 	return l.storage.Local(), nil
 }
 
-var _ Worker = &localWorker{}
+var _ Worker = &LocalWorker{}

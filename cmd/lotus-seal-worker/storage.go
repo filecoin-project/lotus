@@ -6,16 +6,18 @@ import (
 	"sort"
 
 	"github.com/filecoin-project/specs-actors/actors/abi"
-
 	"github.com/filecoin-project/go-sectorbuilder"
+	"github.com/filecoin-project/lotus/storage/sealmgr/stores"
+
 	"github.com/filecoin-project/lotus/api"
 	"github.com/filecoin-project/lotus/storage/sealmgr/sectorutil"
 )
 
 type workerStorage struct {
 	path string // TODO: multi-path support
-	mid abi.ActorID
+	mid abi.ActorID // ewwhh TODO: passthru in sectobuilder/ffi
 
+	local *stores.Local
 	auth http.Header
 	api api.StorageMiner
 }
@@ -27,6 +29,7 @@ func (w *workerStorage) AcquireSector(ctx context.Context, id abi.SectorNumber, 
 	}
 
 	// extract local storage; prefer
+
 
 	si, err := w.api.WorkerFindSector(ctx, asid, existing)
 	if err != nil {
