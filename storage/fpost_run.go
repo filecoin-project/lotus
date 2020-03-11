@@ -1,6 +1,7 @@
 package storage
 
 import (
+	"bytes"
 	"context"
 	"time"
 
@@ -147,7 +148,11 @@ func (s *FPoStScheduler) runPost(ctx context.Context, eps abi.ChainEpoch, ts *ty
 
 	challengeRound := eps
 
-	rand, err := s.api.ChainGetRandomness(ctx, ts.Key(), crypto.DomainSeparationTag_WindowedPoStChallengeSeed, challengeRound, s.actor.Bytes())
+	buf := new(bytes.Buffer)
+	if err := s.actor.MarshalCBOR(buf); err != nil {
+		return nil, xerrors.Errorf("failed to marshal address to cbor: %w", err)
+	}
+	rand, err := s.api.ChainGetRandomness(ctx, ts.Key(), crypto.DomainSeparationTag_WindowedPoStChallengeSeed, challengeRound, buf.Bytes())
 	if err != nil {
 		return nil, xerrors.Errorf("failed to get chain randomness for fpost (ts=%d; eps=%d): %w", ts.Height(), eps, err)
 	}
@@ -186,6 +191,15 @@ func (s *FPoStScheduler) runPost(ctx context.Context, eps abi.ChainEpoch, ts *ty
 	if err != nil {
 		return nil, xerrors.Errorf("running post failed: %w", err)
 	}
+
+	if len(scandidates) == 0 {
+		return nil, xerrors.Errorf("received zero candidates back from generate fallback post")
+	}
+
+	// TODO: until we figure out how fallback post is really supposed to work,
+	// let's just pass a single candidate...
+	scandidates = scandidates[:1]
+	proof = proof[:1]
 
 	elapsed := time.Since(tsStart)
 	log.Infow("submitting PoSt", "pLen", len(proof), "elapsed", elapsed)

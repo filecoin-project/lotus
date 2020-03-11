@@ -138,7 +138,7 @@ func SetupStorageMiners(ctx context.Context, cs *store.ChainStore, sroot cid.Cid
 				return cid.Undef, err
 			}
 			params := &power.EnrollCronEventParams{
-				EventEpoch: miner.ProvingPeriod,
+				EventEpoch: miner.ProvingPeriod + power.WindowedPostChallengeDuration,
 				Payload:    payload,
 			}
 
@@ -210,9 +210,11 @@ func SetupStorageMiners(ctx context.Context, cs *store.ChainStore, sroot cid.Cid
 						DealIDs:         []abi.DealID{dealIDs[pi]},
 						Expiration:      preseal.Deal.EndEpoch,
 					},
-					ActivationEpoch:   0,
-					DealWeight:        dealWeight,
-					PledgeRequirement: pledge,
+					ActivationEpoch:       0,
+					DealWeight:            dealWeight,
+					PledgeRequirement:     pledge,
+					DeclaredFaultEpoch:    -1,
+					DeclaredFaultDuration: -1,
 				}
 
 				err = vm.MutateState(ctx, maddr, func(cst cbor.IpldStore, st *miner.State) error {
