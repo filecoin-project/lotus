@@ -322,7 +322,7 @@ func (vm *VM) ApplyMessage(ctx context.Context, msg *types.Message) (*ApplyRet, 
 		return &ApplyRet{
 			MessageReceipt: types.MessageReceipt{
 				ExitCode: exitcode.SysErrInvalidCallSeqNum,
-				GasUsed:  msg.GasLimit,
+				GasUsed:  0,
 			},
 		}, nil
 	}
