@@ -61,3 +61,8 @@ func TestChainValidationTipSetSuite(t *testing.T) {
 	}
 }
 
+func TestMinerWorkflow(t *testing.T) {
+	f := factory.NewFactories()
+	tipset.TestMinerCreateProveCommitAndMissPoStChallengeWindow(t,f)
+}
+
