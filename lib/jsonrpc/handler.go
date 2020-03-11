@@ -230,7 +230,13 @@ func (h handlers) handle(ctx context.Context, req request, w func(func(io.Writer
 			}
 		}
 	}
-	if resp.Result != nil && reflect.TypeOf(resp.Result).Kind() == reflect.Chan {
+
+	var res interface{}
+	if handler.valOut != -1 {
+		res = callResult[handler.valOut].Interface()
+	}
+
+	if res != nil && reflect.TypeOf(res).Kind() == reflect.Chan {
 		// Channel responses are sent from channel control goroutine.
 		// Sending responses here could cause deadlocks on writeLk, or allow
 		// sending channel messages before this rpc call returns
@@ -250,8 +256,8 @@ func (h handlers) handle(ctx context.Context, req request, w func(func(io.Writer
 	}
 
 	// check error as JSON-RPC spec prohibits error and value at the same time
-	if resp.Error == nil && handler.valOut != -1 {
-		resp.Result = callResult[handler.valOut].Interface()
+	if resp.Error == nil {
+		resp.Result = res
 	}
 
 	w(func(w io.Writer) {
