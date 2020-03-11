@@ -44,9 +44,9 @@ const (
 )
 
 type ExecutionResult struct {
-	Msg		*types.Message
-	MsgRct	*types.MessageReceipt
-	Error   string
+	Msg    *types.Message
+	MsgRct *types.MessageReceipt
+	Error  string
 }
 
 type VMContext struct {
@@ -173,9 +173,9 @@ func (vmc *VMContext) Send(to address.Address, method uint64, value types.BigInt
 		es = err.Error()
 	}
 	er := ExecutionResult{
-		Msg:        msg,
+		Msg:    msg,
 		MsgRct: &mr,
-		Error:          es,
+		Error:  es,
 	}
 
 	vmc.internalExecutions = append(vmc.internalExecutions, &er)
@@ -366,7 +366,7 @@ type Rand interface {
 
 type ApplyRet struct {
 	types.MessageReceipt
-	ActorErr aerrors.ActorError
+	ActorErr           aerrors.ActorError
 	InternalExecutions []*ExecutionResult
 }
 
@@ -532,15 +532,21 @@ func (vm *VM) ApplyMessage(ctx context.Context, msg *types.Message) (*ApplyRet, 
 		return nil, xerrors.Errorf("gas handling math is wrong")
 	}
 
-	return &ApplyRet{
+	r := ApplyRet{
 		MessageReceipt: types.MessageReceipt{
 			ExitCode: errcode,
 			Return:   ret,
 			GasUsed:  gasUsed,
 		},
-		ActorErr: actorErr,
-		InternalExecutions: vmctx.internalExecutions,
-	}, nil
+		ActorErr:           actorErr,
+		InternalExecutions: nil,
+	}
+
+	if vmctx != nil {
+		r.InternalExecutions = vmctx.internalExecutions
+	}
+
+	return &r, nil
 }
 
 func (vm *VM) SetBlockMiner(m address.Address) {
