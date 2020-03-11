@@ -134,6 +134,16 @@ type StorageInfo struct {
 	CanStore bool
 }
 
+type StoragePath struct {
+	ID     string
+	Weight uint64
+
+	LocalPath string
+
+	CanSeal  bool
+	CanStore bool
+}
+
 type SealRes struct {
 	Err   string
 	GoErr error `json:"-"`

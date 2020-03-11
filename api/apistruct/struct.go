@@ -199,6 +199,7 @@ type WorkerStruct struct {
 		Version func(context.Context) (build.Version, error) `perm:"admin"`
 
 		TaskTypes func(context.Context) (map[sealmgr.TaskType]struct{}, error) `perm:"admin"`
+		Paths     func(context.Context) ([]api.StoragePath, error)                 `perm:"admin"`
 
 		SealPreCommit1 func(ctx context.Context, sectorNum abi.SectorNumber, ticket abi.SealRandomness, pieces []abi.PieceInfo) (storage.PreCommit1Out, error)                                                                          `perm:"admin"`
 		SealPreCommit2 func(context.Context, abi.SectorNumber, storage.PreCommit1Out) (sealedCID cid.Cid, unsealedCID cid.Cid, err error)                                                                                               `perm:"admin"`
@@ -696,6 +697,10 @@ func (w *WorkerStruct) Version(ctx context.Context) (build.Version, error) {
 
 func (w *WorkerStruct) TaskTypes(ctx context.Context) (map[sealmgr.TaskType]struct{}, error) {
 	return w.Internal.TaskTypes(ctx)
+}
+
+func (w *WorkerStruct) Paths(ctx context.Context) ([]api.StoragePath, error) {
+	return w.Internal.Paths(ctx)
 }
 
 func (w *WorkerStruct) SealPreCommit1(ctx context.Context, sectorNum abi.SectorNumber, ticket abi.SealRandomness, pieces []abi.PieceInfo) (storage.PreCommit1Out, error) {

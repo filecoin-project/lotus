@@ -3,14 +3,20 @@ package advmgr
 import (
 	"encoding/json"
 	"fmt"
+	"io"
 	"io/ioutil"
+	"net/http"
 	"os"
 	"path/filepath"
 	"sync"
 
+	"github.com/gorilla/mux"
 	"golang.org/x/xerrors"
 
 	"github.com/filecoin-project/go-sectorbuilder"
+	"github.com/filecoin-project/lotus/api"
+	"github.com/filecoin-project/lotus/lib/tarutil"
+
 	"github.com/filecoin-project/specs-actors/actors/abi"
 
 	"github.com/filecoin-project/lotus/node/config"
@@ -129,6 +135,9 @@ func (st *storage) acquireSector(mid abi.ActorID, id abi.SectorNumber, existing 
 			if s&fileType == 0 {
 				continue
 			}
+			if p.local == "" {
+				continue // TODO: fetch
+			}
 
 			spath := filepath.Join(p.local, fileType.String(), fmt.Sprintf("s-t0%d-%d", mid, id))
 
@@ -239,14 +248,14 @@ func (st *storage) findSector(mid abi.ActorID, sn abi.SectorNumber, typ sectorbu
 	return out, nil
 }
 
-func (st *storage) local() []Path {
-	var out []Path
+func (st *storage) local() []api.StoragePath {
+	var out []api.StoragePath
 	for _, p := range st.paths {
 		if p.local == "" {
 			continue
 		}
 
-		out = append(out, Path{
+		out = append(out, api.StoragePath{
 			ID:        p.meta.ID,
 			Weight:    p.meta.Weight,
 			LocalPath: p.local,
@@ -256,6 +265,93 @@ func (st *storage) local() []Path {
 	}
 
 	return out
+}
+
+func (st *storage) ServeHTTP(w http.ResponseWriter, r *http.Request) { // /storage/
+	mux := mux.NewRouter()
+
+	mux.HandleFunc("/{type}/{id}", st.remoteGetSector).Methods("GET")
+
+	log.Infof("SERVEGETREMOTE %s", r.URL)
+
+	mux.ServeHTTP(w, r)
+}
+
+
+func (st *storage) remoteGetSector(w http.ResponseWriter, r *http.Request) {
+	vars := mux.Vars(r)
+
+	id, err := parseSectorID(vars["id"])
+	if err != nil {
+		log.Error(err)
+		w.WriteHeader(500)
+		return
+	}
+
+	ft, err := ftFromString(vars["type"])
+	if err != nil {
+		return
+	}
+	paths, done, err := st.acquireSector(id.Miner, id.Number, ft, 0, false)
+	if err != nil {
+		return
+	}
+	defer done()
+
+	var path string
+	switch ft {
+	case sectorbuilder.FTUnsealed:
+		path = paths.Unsealed
+	case sectorbuilder.FTSealed:
+		path = paths.Sealed
+	case sectorbuilder.FTCache:
+		path = paths.Cache
+	}
+	if path == "" {
+		log.Error("acquired path was empty")
+		w.WriteHeader(500)
+		return
+	}
+
+	stat, err := os.Stat(path)
+	if err != nil {
+		log.Error(err)
+		w.WriteHeader(500)
+		return
+	}
+
+	var rd io.Reader
+	if stat.IsDir() {
+		rd, err = tarutil.TarDirectory(path)
+		w.Header().Set("Content-Type", "application/x-tar")
+	} else {
+		rd, err = os.OpenFile(path, os.O_RDONLY, 0644)
+		w.Header().Set("Content-Type", "application/octet-stream")
+	}
+	if err != nil {
+		log.Error(err)
+		w.WriteHeader(500)
+		return
+	}
+
+	w.WriteHeader(200)
+	if _, err := io.Copy(w, rd); err != nil { // TODO: default 32k buf may be too small
+		log.Error(err)
+		return
+	}
+}
+
+func ftFromString(t string) (sectorbuilder.SectorFileType, error) {
+	switch t {
+	case sectorbuilder.FTUnsealed.String():
+		return sectorbuilder.FTUnsealed, nil
+	case sectorbuilder.FTSealed.String():
+		return sectorbuilder.FTSealed, nil
+	case sectorbuilder.FTCache.String():
+		return sectorbuilder.FTCache, nil
+	default:
+		return 0, xerrors.Errorf("unknown sector file type: '%s'", t)
+	}
 }
 
 func parseSectorID(baseName string) (abi.SectorID, error) {

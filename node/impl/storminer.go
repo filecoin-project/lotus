@@ -7,7 +7,6 @@ import (
 	"os"
 	"strconv"
 
-	"github.com/gorilla/mux"
 	"github.com/ipfs/go-cid"
 	"golang.org/x/xerrors"
 
@@ -48,122 +47,7 @@ func (sm *StorageMinerAPI) ServeRemote(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	mux := mux.NewRouter()
-
-	mux.HandleFunc("/remote/{type}/{id}", sm.remoteGetSector).Methods("GET")
-	mux.HandleFunc("/remote/{type}/{id}", sm.remotePutSector).Methods("PUT")
-
-	log.Infof("SERVEGETREMOTE %s", r.URL)
-
-	mux.ServeHTTP(w, r)
-}
-
-func (sm *StorageMinerAPI) remoteGetSector(w http.ResponseWriter, r *http.Request) {
-	panic("todo")
-	/*	vars := mux.Vars(r)
-
-		id, err := strconv.ParseUint(vars["id"], 10, 64)
-		if err != nil {
-			log.Error("parsing sector id: ", err)
-			w.WriteHeader(500)
-			return
-		}
-
-		path, err := sm.SectorBuilder.SectorPath(fs.DataType(vars["type"]), abi.SectorNumber(id))
-		if err != nil {
-			log.Error(err)
-			w.WriteHeader(500)
-			return
-		}
-
-		stat, err := os.Stat(string(path))
-		if err != nil {
-			log.Error(err)
-			w.WriteHeader(500)
-			return
-		}
-
-		var rd io.Reader
-		if stat.IsDir() {
-			rd, err = tarutil.TarDirectory(string(path))
-			w.Header().Set("Content-Type", "application/x-tar")
-		} else {
-			rd, err = os.OpenFile(string(path), os.O_RDONLY, 0644)
-			w.Header().Set("Content-Type", "application/octet-stream")
-		}
-		if err != nil {
-			log.Error(err)
-			w.WriteHeader(500)
-			return
-		}
-
-		w.WriteHeader(200)
-		if _, err := io.Copy(w, rd); err != nil {
-			log.Error(err)
-			return
-		}*/
-}
-
-func (sm *StorageMinerAPI) remotePutSector(w http.ResponseWriter, r *http.Request) {
-	panic("todo")
-	/*	vars := mux.Vars(r)
-
-		id, err := strconv.ParseUint(vars["id"], 10, 64)
-		if err != nil {
-			log.Error("parsing sector id: ", err)
-			w.WriteHeader(500)
-			return
-		}
-
-		// This is going to get better with worker-to-worker transfers
-
-		path, err := sm.SectorBuilder.SectorPath(fs.DataType(vars["type"]), abi.SectorNumber(id))
-		if err != nil {
-			if err != fs.ErrNotFound {
-				log.Error(err)
-				w.WriteHeader(500)
-				return
-			}
-
-			path, err = sm.SectorBuilder.AllocSectorPath(fs.DataType(vars["type"]), abi.SectorNumber(id), true)
-			if err != nil {
-				log.Error(err)
-				w.WriteHeader(500)
-				return
-			}
-		}
-
-		mediatype, _, err := mime.ParseMediaType(r.Header.Get("Content-Type"))
-		if err != nil {
-			log.Error(err)
-			w.WriteHeader(500)
-			return
-		}
-
-		if err := os.RemoveAll(string(path)); err != nil {
-			log.Error(err)
-			w.WriteHeader(500)
-			return
-		}
-
-		switch mediatype {
-		case "application/x-tar":
-			if err := tarutil.ExtractTar(r.Body, string(path)); err != nil {
-				log.Error(err)
-				w.WriteHeader(500)
-				return
-			}
-		default:
-			if err := files.WriteTo(files.NewReaderFile(r.Body), string(path)); err != nil {
-				log.Error(err)
-				w.WriteHeader(500)
-				return
-			}
-		}
-
-		w.WriteHeader(200)
-
-		log.Infof("received %s sector (%s): %d bytes", vars["type"], vars["sname"], r.ContentLength)*/
+	sm.StorageMgr.ServeHTTP(w, r)
 }
 
 /*

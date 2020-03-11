@@ -3,6 +3,7 @@ package advmgr
 import (
 	"context"
 	"io"
+	"net/http"
 
 	"github.com/ipfs/go-cid"
 	logging "github.com/ipfs/go-log/v2"
@@ -11,6 +12,8 @@ import (
 
 	"github.com/filecoin-project/go-address"
 	"github.com/filecoin-project/go-sectorbuilder"
+	"github.com/filecoin-project/lotus/api"
+
 	"github.com/filecoin-project/specs-actors/actors/abi"
 	storage2 "github.com/filecoin-project/specs-storage/storage"
 
@@ -24,26 +27,11 @@ type SectorIDCounter interface {
 	Next() (abi.SectorNumber, error)
 }
 
-type LocalStorage interface {
-	GetStorage() (config.StorageConfig, error)
-	SetStorage(func(*config.StorageConfig)) error
-}
-
-type Path struct {
-	ID     string
-	Weight uint64
-
-	LocalPath string
-
-	CanSeal  bool
-	CanStore bool
-}
-
 type Worker interface {
 	sectorbuilder.Sealer
 
 	TaskTypes(context.Context) (map[sealmgr.TaskType]struct{}, error)
-	Paths() []Path
+	Paths(context.Context) ([]api.StoragePath, error)
 }
 
 type Manager struct {
@@ -107,6 +95,10 @@ func (m *Manager) AddLocalStorage(path string) error {
 	return nil
 }
 
+func (m *Manager) ServeHTTP(w http.ResponseWriter, r *http.Request) {
+	m.storage.ServeHTTP(w, r)
+}
+
 func (m *Manager) SectorSize() abi.SectorSize {
 	sz, _ := m.scfg.SealProofType.SectorSize()
 	return sz
@@ -134,16 +126,22 @@ func (m *Manager) getWorkersByPaths(task sealmgr.TaskType, inPaths []config.Stor
 			continue
 		}
 
+		phs, err := worker.Paths(context.TODO())
+		if err != nil {
+			log.Errorf("error getting worker paths: %+v", err)
+			continue
+		}
+
 		// check if the worker has access to the path we selected
 		var st *config.StorageMeta
-		for _, p := range worker.Paths() {
-			for _, m := range inPaths {
-				if p.ID == m.ID {
+		for _, p := range phs {
+			for _, meta := range inPaths {
+				if p.ID == meta.ID {
 					if st != nil && st.Weight > p.Weight {
 						continue
 					}
 
-					p := m // copy
+					p := meta // copy
 					st = &p
 				}
 			}

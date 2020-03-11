@@ -4,13 +4,15 @@ import (
 	"context"
 	"io"
 
-	storage2 "github.com/filecoin-project/specs-storage/storage"
 	"github.com/ipfs/go-cid"
 	"golang.org/x/xerrors"
 
 	"github.com/filecoin-project/go-address"
-	"github.com/filecoin-project/go-sectorbuilder"
 	"github.com/filecoin-project/specs-actors/actors/abi"
+	storage2 "github.com/filecoin-project/specs-storage/storage"
+
+	"github.com/filecoin-project/go-sectorbuilder"
+	"github.com/filecoin-project/lotus/api"
 
 	"github.com/filecoin-project/lotus/storage/sealmgr"
 )
@@ -100,8 +102,8 @@ func (l *localWorker) TaskTypes(context.Context) (map[sealmgr.TaskType]struct{},
 	}, nil
 }
 
-func (l *localWorker) Paths() []Path {
-	return l.storage.local()
+func (l *localWorker) Paths(context.Context) ([]api.StoragePath, error) {
+	return l.storage.local(), nil
 }
 
 var _ Worker = &localWorker{}
