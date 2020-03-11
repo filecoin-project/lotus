@@ -297,6 +297,15 @@ func (vm *VM) ApplyMessage(ctx context.Context, msg *types.Message) (*ApplyRet, 
 		return nil, xerrors.Errorf("failed to look up from actor: %w", err)
 	}
 
+	if msg.Nonce != fromActor.Nonce {
+		return &ApplyRet{
+			MessageReceipt: types.MessageReceipt{
+				ExitCode: exitcode.SysErrInvalidCallSeqNum,
+				GasUsed:  msg.GasLimit,
+			},
+		}, nil
+	}
+
 	gascost := types.BigMul(msg.GasLimit, msg.GasPrice)
 	totalCost := types.BigAdd(gascost, msg.Value)
 	if fromActor.Balance.LessThan(totalCost) {
@@ -313,14 +322,6 @@ func (vm *VM) ApplyMessage(ctx context.Context, msg *types.Message) (*ApplyRet, 
 		return nil, xerrors.Errorf("failed to withdraw gas funds: %w", err)
 	}
 
-	if msg.Nonce != fromActor.Nonce {
-		return &ApplyRet{
-			MessageReceipt: types.MessageReceipt{
-				ExitCode: exitcode.SysErrInvalidCallSeqNum,
-				GasUsed:  msg.GasLimit,
-			},
-		}, nil
-	}
 	fromActor.Nonce++
 
 	ret, actorErr, rt := vm.send(ctx, msg, nil, msgGasCost)
