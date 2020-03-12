@@ -9,9 +9,8 @@ import (
 	"github.com/filecoin-project/specs-actors/actors/runtime/exitcode"
 	"github.com/ipfs/go-cid"
 
-	"github.com/filecoin-project/go-sectorbuilder"
-
 	vtypes "github.com/filecoin-project/chain-validation/chain/types"
+	vdrivers "github.com/filecoin-project/chain-validation/drivers"
 	vstate "github.com/filecoin-project/chain-validation/state"
 
 	"github.com/filecoin-project/lotus/chain/stmgr"
@@ -36,7 +35,7 @@ func (a *Applier) ApplyMessage(eCtx *vtypes.ExecutionContext, state vstate.VMWra
 
 	base := st.Root()
 	randSrc := &vmRand{eCtx}
-	lotusVM, err := vm.NewVM(base, abi.ChainEpoch(eCtx.Epoch), randSrc, eCtx.Miner, st.bs, vm.Syscalls(sectorbuilder.ProofVerifier))
+	lotusVM, err := vm.NewVM(base, abi.ChainEpoch(eCtx.Epoch), randSrc, eCtx.Miner, st.bs, vdrivers.NewChainValidationSyscalls())
 	if err != nil {
 		return vtypes.MessageReceipt{}, err
 	}
@@ -62,7 +61,7 @@ func (a *Applier) ApplyMessage(eCtx *vtypes.ExecutionContext, state vstate.VMWra
 
 func (a *Applier) ApplyTipSetMessages(state vstate.VMWrapper, blocks []vtypes.BlockMessagesInfo, epoch abi.ChainEpoch, rnd vstate.RandomnessSource) ([]vtypes.MessageReceipt, error) {
 	sw := state.(*StateWrapper)
-	cs := store.NewChainStore(sw.bs, sw.ds, nil)
+	cs := store.NewChainStore(sw.bs, sw.ds, vdrivers.NewChainValidationSyscalls())
 	sm := stmgr.NewStateManager(cs)
 
 	var bms []stmgr.BlockMessages
