@@ -2,6 +2,7 @@ package sectorutil
 
 import (
 	"fmt"
+	"github.com/filecoin-project/go-sectorbuilder"
 
 	"golang.org/x/xerrors"
 
@@ -28,4 +29,28 @@ func ParseSectorID(baseName string) (abi.SectorID, error) {
 
 func SectorName(sid abi.SectorID) string {
 	return fmt.Sprintf("s-t0%d-%d", sid.Miner, sid.Number)
+}
+
+func PathByType(sps sectorbuilder.SectorPaths, fileType sectorbuilder.SectorFileType) string {
+	switch fileType {
+	case sectorbuilder.FTUnsealed:
+		return sps.Unsealed
+	case sectorbuilder.FTSealed:
+		return sps.Sealed
+	case sectorbuilder.FTCache:
+		return sps.Cache
+	}
+
+	panic("requested unknown path type")
+}
+
+func SetPathByType(sps *sectorbuilder.SectorPaths, fileType sectorbuilder.SectorFileType, p string) {
+	switch fileType {
+	case sectorbuilder.FTUnsealed:
+		sps.Unsealed = p
+	case sectorbuilder.FTSealed:
+		sps.Sealed = p
+	case sectorbuilder.FTCache:
+		sps.Cache = p
+	}
 }
