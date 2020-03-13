@@ -12,10 +12,28 @@ import (
 	"golang.org/x/xerrors"
 
 	"github.com/filecoin-project/go-sectorbuilder"
-	"github.com/filecoin-project/lotus/api"
 	"github.com/filecoin-project/lotus/node/config"
 	"github.com/filecoin-project/lotus/storage/sealmgr/sectorutil"
 )
+
+type StoragePath struct {
+	ID     ID
+	Weight uint64
+
+	LocalPath string
+
+	CanSeal  bool
+	CanStore bool
+}
+
+// [path]/sectorstore.json
+type StorageMeta struct {
+	ID     ID
+	Weight uint64 // 0 = readonly
+
+	CanSeal  bool
+	CanStore bool
+}
 
 type LocalStorage interface {
 	GetStorage() (config.StorageConfig, error)
@@ -36,7 +54,7 @@ type Local struct {
 type path struct {
 	lk sync.Mutex
 
-	meta  config.StorageMeta
+	meta  StorageMeta
 	local string
 
 	sectors map[abi.SectorID]sectorbuilder.SectorFileType
@@ -55,7 +73,7 @@ func (st *Local) OpenPath(p string) error {
 		return xerrors.Errorf("reading storage metadata for %s: %w", p, err)
 	}
 
-	var meta config.StorageMeta
+	var meta StorageMeta
 	if err := json.Unmarshal(mb, &meta); err != nil {
 		return xerrors.Errorf("unmarshalling storage metadata for %s: %w", p, err)
 	}
@@ -151,7 +169,7 @@ func (st *Local) acquireSector(ctx context.Context, sid abi.SectorID, existing s
 
 			spath := filepath.Join(p.local, fileType.String(), sectorutil.SectorName(sid))
 			sectorutil.SetPathByType(&out, fileType, spath)
-			sectorutil.SetPathByType(&storageIDs, fileType, p.meta.ID)
+			sectorutil.SetPathByType(&storageIDs, fileType, string(p.meta.ID))
 
 			existing ^= fileType
 		}
@@ -162,7 +180,8 @@ func (st *Local) acquireSector(ctx context.Context, sid abi.SectorID, existing s
 			continue
 		}
 
-		var best, bestID string
+		var best string
+		var bestID ID
 
 		for _, p := range st.paths {
 			if sealing && !p.meta.CanSeal {
@@ -190,15 +209,15 @@ func (st *Local) acquireSector(ctx context.Context, sid abi.SectorID, existing s
 		}
 
 		sectorutil.SetPathByType(&out, fileType, best)
-		sectorutil.SetPathByType(&storageIDs, fileType, bestID)
+		sectorutil.SetPathByType(&storageIDs, fileType, string(bestID))
 		allocate ^= fileType
 	}
 
 	return out, storageIDs, st.localLk.RUnlock, nil
 }
 
-func (st *Local) FindBestAllocStorage(allocate sectorbuilder.SectorFileType, sealing bool) ([]config.StorageMeta, error) {
-	var out []config.StorageMeta
+func (st *Local) FindBestAllocStorage(allocate sectorbuilder.SectorFileType, sealing bool) ([]StorageMeta, error) {
+	var out []StorageMeta
 
 	for _, p := range st.paths {
 		if sealing && !p.meta.CanSeal {
@@ -221,8 +240,8 @@ func (st *Local) FindBestAllocStorage(allocate sectorbuilder.SectorFileType, sea
 	return out, nil
 }
 
-func (st *Local) FindSector(mid abi.ActorID, sn abi.SectorNumber, typ sectorbuilder.SectorFileType) ([]config.StorageMeta, error) {
-	var out []config.StorageMeta
+func (st *Local) FindSector(mid abi.ActorID, sn abi.SectorNumber, typ sectorbuilder.SectorFileType) ([]StorageMeta, error) {
+	var out []StorageMeta
 	for _, p := range st.paths {
 		p.lk.Lock()
 		t := p.sectors[abi.SectorID{
@@ -242,14 +261,14 @@ func (st *Local) FindSector(mid abi.ActorID, sn abi.SectorNumber, typ sectorbuil
 	return out, nil
 }
 
-func (st *Local) Local() []api.StoragePath {
-	var out []api.StoragePath
+func (st *Local) Local() []StoragePath {
+	var out []StoragePath
 	for _, p := range st.paths {
 		if p.local == "" {
 			continue
 		}
 
-		out = append(out, api.StoragePath{
+		out = append(out, StoragePath{
 			ID:        p.meta.ID,
 			Weight:    p.meta.Weight,
 			LocalPath: p.local,

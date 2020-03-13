@@ -7,6 +7,7 @@ import (
 	"encoding/hex"
 	"encoding/json"
 	"fmt"
+	"github.com/filecoin-project/lotus/storage/sealmgr/stores"
 	"io/ioutil"
 	"os"
 	"path/filepath"
@@ -26,7 +27,6 @@ import (
 	"github.com/filecoin-project/lotus/chain/types"
 	"github.com/filecoin-project/lotus/chain/wallet"
 	"github.com/filecoin-project/lotus/genesis"
-	"github.com/filecoin-project/lotus/node/config"
 )
 
 var log = logging.Logger("preseal")
@@ -134,8 +134,8 @@ func PreSeal(maddr address.Address, pt abi.RegisteredProof, offset abi.SectorNum
 	}
 
 	{
-		b, err := json.MarshalIndent(&config.StorageMeta{
-			ID:       uuid.New().String(),
+		b, err := json.MarshalIndent(&stores.StorageMeta{
+			ID:       stores.ID(uuid.New().String()),
 			Weight:   0, // read-only
 			CanSeal:  false,
 			CanStore: false,

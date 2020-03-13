@@ -17,7 +17,7 @@ type remote struct {
 }
 
 func (r *remote) AddPiece(ctx context.Context, sector abi.SectorNumber, pieceSizes []abi.UnpaddedPieceSize, newPieceSize abi.UnpaddedPieceSize, pieceData storage2.Data) (abi.PieceInfo, error) {
-	return abi.PieceInfo{},xerrors.New("unsupported")
+	return abi.PieceInfo{}, xerrors.New("unsupported")
 }
 
 func ConnectRemote(ctx context.Context, fa api.FullNode, url string) (*remote, error) {
