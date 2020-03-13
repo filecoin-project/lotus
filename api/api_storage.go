@@ -111,8 +111,8 @@ type StorageMiner interface {
 	// WorkerConnect tells the node to connect to workers RPC
 	WorkerConnect(context.Context, string) error
 	WorkerAttachStorage(context.Context, StorageInfo) error
-	WorkerDeclareSector(ctx context.Context, storageId string, s abi.SectorID) error
-	FindSector(context.Context, abi.SectorID, sectorbuilder.SectorFileType) ([]StorageInfo, error)
+	StorageDeclareSector(ctx context.Context, storageId string, s abi.SectorID) error
+	StorageFindSector(context.Context, abi.SectorID, sectorbuilder.SectorFileType) ([]StorageInfo, error)
 
 	MarketImportDealData(ctx context.Context, propcid cid.Cid, path string) error
 	MarketListDeals(ctx context.Context) ([]storagemarket.StorageDeal, error)

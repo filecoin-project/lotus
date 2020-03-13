@@ -182,8 +182,8 @@ type StorageMinerStruct struct {
 
 		WorkerConnect func(context.Context, string) error `perm:"admin"` // TODO: worker perm
 		WorkerAttachStorage func(context.Context, api.StorageInfo) error  `perm:"admin"`
-		WorkerDeclareSector func(ctx context.Context, storageId string, s abi.SectorID) error  `perm:"admin"`
-		FindSector func(context.Context, abi.SectorID, sectorbuilder.SectorFileType) ([]api.StorageInfo, error)  `perm:"admin"`
+		StorageDeclareSector func(ctx context.Context, storageId string, s abi.SectorID) error  `perm:"admin"`
+		StorageFindSector func(context.Context, abi.SectorID, sectorbuilder.SectorFileType) ([]api.StorageInfo, error)  `perm:"admin"`
 
 		DealsImportData func(ctx context.Context, dealPropCid cid.Cid, file string) error `perm:"write"`
 		DealsList       func(ctx context.Context) ([]storagemarket.StorageDeal, error)    `perm:"read"`
@@ -655,12 +655,12 @@ func (c *StorageMinerStruct) WorkerAttachStorage(ctx context.Context, si api.Sto
 	return c.Internal.WorkerAttachStorage(ctx, si)
 }
 
-func (c *StorageMinerStruct) WorkerDeclareSector(ctx context.Context, storageId string, s abi.SectorID) error {
-	return c.Internal.WorkerDeclareSector(ctx, storageId, s)
+func (c *StorageMinerStruct) StorageDeclareSector(ctx context.Context, storageId string, s abi.SectorID) error {
+	return c.Internal.StorageDeclareSector(ctx, storageId, s)
 }
 
-func (c *StorageMinerStruct) FindSector(ctx context.Context, si abi.SectorID, types sectorbuilder.SectorFileType) ([]api.StorageInfo, error) {
-	return c.Internal.FindSector(ctx, si, types)
+func (c *StorageMinerStruct) StorageFindSector(ctx context.Context, si abi.SectorID, types sectorbuilder.SectorFileType) ([]api.StorageInfo, error) {
+	return c.Internal.StorageFindSector(ctx, si, types)
 }
 
 func (c *StorageMinerStruct) MarketImportDealData(ctx context.Context, propcid cid.Cid, path string) error {
