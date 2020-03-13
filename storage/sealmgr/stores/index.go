@@ -75,16 +75,23 @@ func (i *Index) StorageDeclareSector(ctx context.Context, storageId ID, s abi.Se
 	i.lk.Lock()
 	defer i.lk.Unlock()
 
-	d := decl{s, ft}
-
-	for _, sid := range i.sectors[d] {
-		if sid == storageId {
-			log.Warnf("sector %v redeclared in %s", storageId)
-			return nil
+	for _, fileType := range pathTypes {
+		if fileType&ft == 0 {
+			continue
 		}
+
+		d := decl{s, fileType}
+
+		for _, sid := range i.sectors[d] {
+			if sid == storageId {
+				log.Warnf("sector %v redeclared in %s", storageId)
+				return nil
+			}
+		}
+
+		i.sectors[d] = append(i.sectors[d], storageId)
 	}
 
-	i.sectors[d] = append(i.sectors[d], storageId)
 	return nil
 }
 

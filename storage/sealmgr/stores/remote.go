@@ -37,17 +37,17 @@ func NewRemote(local *Local, remote SectorIndex, auth http.Header) *Remote {
 	}
 }
 
-func (r *Remote) AcquireSector(ctx context.Context, s abi.SectorID, existing sectorbuilder.SectorFileType, allocate sectorbuilder.SectorFileType, sealing bool) (sectorbuilder.SectorPaths, func(), error) {
+func (r *Remote) AcquireSector(ctx context.Context, s abi.SectorID, existing sectorbuilder.SectorFileType, allocate sectorbuilder.SectorFileType, sealing bool) (sectorbuilder.SectorPaths, sectorbuilder.SectorPaths, func(), error) {
 	if existing|allocate != existing^allocate {
-		return sectorbuilder.SectorPaths{}, nil, xerrors.New("can't both find and allocate a sector")
+		return sectorbuilder.SectorPaths{}, sectorbuilder.SectorPaths{}, nil, xerrors.New("can't both find and allocate a sector")
 	}
 
 	r.fetchLk.Lock()
 	defer r.fetchLk.Unlock()
 
-	paths, done, err := r.local.AcquireSector(ctx, s, existing, allocate, sealing)
+	paths, stores, done, err := r.local.AcquireSector(ctx, s, existing, allocate, sealing)
 	if err != nil {
-		return sectorbuilder.SectorPaths{}, nil, err
+		return sectorbuilder.SectorPaths{}, sectorbuilder.SectorPaths{}, nil, err
 	}
 
 	for _, fileType := range pathTypes {
@@ -62,18 +62,19 @@ func (r *Remote) AcquireSector(ctx context.Context, s abi.SectorID, existing sec
 		ap, storageID, rdone, err := r.acquireFromRemote(ctx, s, fileType, sealing)
 		if err != nil {
 			done()
-			return sectorbuilder.SectorPaths{}, nil, err
+			return sectorbuilder.SectorPaths{}, sectorbuilder.SectorPaths{}, nil, err
 		}
 
 		done = mergeDone(done, rdone)
 		sectorutil.SetPathByType(&paths, fileType, ap)
+		sectorutil.SetPathByType(&stores, fileType, string(storageID))
 
 		if err := r.remote.StorageDeclareSector(ctx, storageID, s, fileType); err != nil {
 			log.Warnf("declaring sector %v in %s failed: %+v", s, storageID, err)
 		}
 	}
 
-	return paths, done, nil
+	return paths, stores, done, nil
 }
 
 func (r *Remote) acquireFromRemote(ctx context.Context, s abi.SectorID, fileType sectorbuilder.SectorFileType, sealing bool) (string, ID, func(), error) {
@@ -86,7 +87,7 @@ func (r *Remote) acquireFromRemote(ctx context.Context, s abi.SectorID, fileType
 		return si[i].Cost < si[j].Cost
 	})
 
-	apaths, ids, done, err := r.local.acquireSector(ctx, s, 0, fileType, sealing)
+	apaths, ids, done, err := r.local.AcquireSector(ctx, s, 0, fileType, sealing)
 	if err != nil {
 		return "", "", nil, xerrors.Errorf("allocate local sector for fetching: %w", err)
 	}

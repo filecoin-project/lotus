@@ -8,22 +8,25 @@ import (
 	"golang.org/x/xerrors"
 
 	"github.com/filecoin-project/go-address"
+	"github.com/filecoin-project/go-sectorbuilder"
 	"github.com/filecoin-project/specs-actors/actors/abi"
 	storage2 "github.com/filecoin-project/specs-storage/storage"
 
-	"github.com/filecoin-project/go-sectorbuilder"
-	"github.com/filecoin-project/lotus/storage/sealmgr/stores"
-
 	"github.com/filecoin-project/lotus/storage/sealmgr"
+	"github.com/filecoin-project/lotus/storage/sealmgr/sectorutil"
+	"github.com/filecoin-project/lotus/storage/sealmgr/stores"
 )
+
+var pathTypes = []sectorbuilder.SectorFileType{sectorbuilder.FTUnsealed, sectorbuilder.FTSealed, sectorbuilder.FTCache}
 
 type LocalWorker struct {
 	scfg       *sectorbuilder.Config
 	storage    stores.Store
 	localStore *stores.Local
+	sindex     stores.SectorIndex
 }
 
-func NewLocalWorker(ma address.Address, spt abi.RegisteredProof, store stores.Store, local *stores.Local) *LocalWorker {
+func NewLocalWorker(ma address.Address, spt abi.RegisteredProof, store stores.Store, local *stores.Local, sindex stores.SectorIndex) *LocalWorker {
 	ppt, err := spt.RegisteredPoStProof()
 	if err != nil {
 		panic(err)
@@ -36,6 +39,7 @@ func NewLocalWorker(ma address.Address, spt abi.RegisteredProof, store stores.St
 		},
 		storage:    store,
 		localStore: local,
+		sindex:     sindex,
 	}
 }
 
@@ -49,10 +53,31 @@ func (l *localWorkerPathProvider) AcquireSector(ctx context.Context, id abi.Sect
 		return sectorbuilder.SectorPaths{}, nil, xerrors.Errorf("get miner ID: %w", err)
 	}
 
-	return l.w.storage.AcquireSector(ctx, abi.SectorID{
+	sector := abi.SectorID{
 		Miner:  abi.ActorID(mid),
 		Number: id,
-	}, existing, allocate, sealing)
+	}
+
+	paths, storageIDs, done, err := l.w.storage.AcquireSector(ctx, sector, existing, allocate, sealing)
+	if err != nil {
+		return sectorbuilder.SectorPaths{}, nil, err
+	}
+
+	return paths, func() {
+		done()
+
+		for _, fileType := range pathTypes {
+			if fileType&allocate == 0 {
+				continue
+			}
+
+			sid := sectorutil.PathByType(storageIDs, fileType)
+
+			if err := l.w.sindex.StorageDeclareSector(ctx, stores.ID(sid), sector, fileType); err != nil {
+				log.Errorf("declare sector error: %+v", err)
+			}
+		}
+	}, nil
 }
 
 func (l *LocalWorker) sb() (sectorbuilder.Basic, error) {

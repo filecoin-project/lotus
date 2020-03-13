@@ -258,6 +258,7 @@ func Online() Option {
 
 		// Storage miner
 		ApplyIf(func(s *Settings) bool { return s.nodeType == repo.StorageMiner },
+			Override(new(*stores.Index), stores.NewIndex()),
 			Override(new(*sectorbuilder.Config), modules.SectorBuilderConfig),
 			Override(new(stores.LocalStorage), From(new(repo.LockedRepo))),
 			Override(new(advmgr.SectorIDCounter), modules.SectorIDCounter),
