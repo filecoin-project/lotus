@@ -23,6 +23,7 @@ import (
 	"github.com/filecoin-project/specs-actors/actors/abi/big"
 	"github.com/filecoin-project/specs-actors/actors/builtin"
 	saminer "github.com/filecoin-project/specs-actors/actors/builtin/miner"
+	"github.com/filecoin-project/specs-actors/actors/builtin/power"
 
 	"github.com/filecoin-project/lotus/api"
 	"github.com/filecoin-project/lotus/api/client"
@@ -49,7 +50,7 @@ func init() {
 	_ = logging.SetLogLevel("*", "INFO")
 
 	build.SectorSizes = []abi.SectorSize{2048}
-	build.MinimumMinerPower = 2048
+	power.ConsensusMinerMinPower = big.NewInt(2048)
 }
 
 func testStorageNode(ctx context.Context, t *testing.T, waddr address.Address, act address.Address, pk crypto.PrivKey, tnd test.TestNode, mn mocknet.Mocknet, opts node.Option) test.TestStorageNode {
