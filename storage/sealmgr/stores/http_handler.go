@@ -44,7 +44,7 @@ func (handler *FetchHandler) remoteGetSector(w http.ResponseWriter, r *http.Requ
 	if err != nil {
 		return
 	}
-	paths, done, err := handler.Store.AcquireSector(id, ft, 0, false)
+	paths, done, err := handler.Store.AcquireSector(r.Context(), id, ft, 0, false)
 	if err != nil {
 		return
 	}

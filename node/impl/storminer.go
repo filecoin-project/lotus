@@ -159,7 +159,7 @@ func (sm *StorageMinerAPI) WorkerDeclareSector(ctx context.Context, storageId st
 	panic("implement me")
 }
 
-func (sm *StorageMinerAPI) WorkerFindSector(ctx context.Context, si abi.SectorID, types sectorbuilder.SectorFileType) ([]api.StorageInfo, error) {
+func (sm *StorageMinerAPI) FindSector(ctx context.Context, si abi.SectorID, types sectorbuilder.SectorFileType) ([]api.StorageInfo, error) {
 	panic("implement me")
 }
 
