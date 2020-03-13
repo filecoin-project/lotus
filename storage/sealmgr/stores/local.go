@@ -116,13 +116,19 @@ func (st *Local) open() error {
 }
 
 func (st *Local) AcquireSector(ctx context.Context, sid abi.SectorID, existing sectorbuilder.SectorFileType, allocate sectorbuilder.SectorFileType, sealing bool) (sectorbuilder.SectorPaths, func(), error) {
+	out, _, done, err := st.acquireSector(ctx, sid, existing, allocate, sealing)
+	return out, done, err
+}
+
+func (st *Local) acquireSector(ctx context.Context, sid abi.SectorID, existing sectorbuilder.SectorFileType, allocate sectorbuilder.SectorFileType, sealing bool) (sectorbuilder.SectorPaths, sectorbuilder.SectorPaths, func(), error) {
 	if existing|allocate != existing^allocate {
-		return sectorbuilder.SectorPaths{}, nil, xerrors.New("can't both find and allocate a sector")
+		return sectorbuilder.SectorPaths{}, sectorbuilder.SectorPaths{}, nil, xerrors.New("can't both find and allocate a sector")
 	}
 
 	st.localLk.RLock()
 
 	var out sectorbuilder.SectorPaths
+	var storageIDs sectorbuilder.SectorPaths
 
 	for _, fileType := range pathTypes {
 		if fileType&existing == 0 {
@@ -145,6 +151,7 @@ func (st *Local) AcquireSector(ctx context.Context, sid abi.SectorID, existing s
 
 			spath := filepath.Join(p.local, fileType.String(), sectorutil.SectorName(sid))
 			sectorutil.SetPathByType(&out, fileType, spath)
+			sectorutil.SetPathByType(&storageIDs, fileType, p.meta.ID)
 
 			existing ^= fileType
 		}
@@ -155,7 +162,7 @@ func (st *Local) AcquireSector(ctx context.Context, sid abi.SectorID, existing s
 			continue
 		}
 
-		var best string
+		var best, bestID string
 
 		for _, p := range st.paths {
 			if sealing && !p.meta.CanSeal {
@@ -173,19 +180,21 @@ func (st *Local) AcquireSector(ctx context.Context, sid abi.SectorID, existing s
 			// TODO: Calc weights
 
 			best = filepath.Join(p.local, fileType.String(), sectorutil.SectorName(sid))
+			bestID = p.meta.ID
 			break // todo: the first path won't always be the best
 		}
 
 		if best == "" {
 			st.localLk.RUnlock()
-			return sectorbuilder.SectorPaths{}, nil, xerrors.Errorf("couldn't find a suitable path for a sector")
+			return sectorbuilder.SectorPaths{}, sectorbuilder.SectorPaths{}, nil, xerrors.Errorf("couldn't find a suitable path for a sector")
 		}
 
 		sectorutil.SetPathByType(&out, fileType, best)
+		sectorutil.SetPathByType(&storageIDs, fileType, bestID)
 		allocate ^= fileType
 	}
 
-	return out, st.localLk.RUnlock, nil
+	return out, storageIDs, st.localLk.RUnlock, nil
 }
 
 func (st *Local) FindBestAllocStorage(allocate sectorbuilder.SectorFileType, sealing bool) ([]config.StorageMeta, error) {
